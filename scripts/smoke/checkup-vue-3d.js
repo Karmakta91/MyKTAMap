@@ -26,7 +26,8 @@
 // cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
 // « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Greffe (21) :
-// prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ».
+// prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
+// (22) : refus, confirmation, partie en vagues, masquage, endurance, sortie.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -3556,7 +3557,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
         K.greffer(g);
         await K.fermer();
         r.fermeture = { journal: j.slice(), apres: K.greffer(g) };
-        // Code « six vers le bas » : pavé, clavier, joystick.
+        // Code « six vers le bas » : pavé, clavier, joystick. L'add-on lié est remplacé par un faux qui compte ses
+        // lancements (le vrai ouvrirait sa confirmation par-dessus la vue) ; § 22 joue le vrai.
+        const addonsAvant = window.KtaAddons;
+        let lances = 0;
+        window.KtaAddons = { mkmg: { lancer: function () { lances++; } } };
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
         const ar = q('[data-v3d="ar"]'), av = q('[data-v3d="av"]');
         const appui = function (b) {
@@ -3615,6 +3620,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         r.stickCote = codes.length;
         await K.fermer();
         window.removeEventListener("kta:vue3dCode", surCode);
+        r.lances = lances;
+        window.KtaAddons = addonsAvant;
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
         K.basculerRendu(renduAvant);
         await K.fermer();
@@ -3656,6 +3663,128 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(GR.stick6 === 1 && GR.stickTenu === 0 && GR.stickCote === 0,
         "code : 6 coups brefs du joystick vers le bas ; un coup tenu ou vers le côté → rien",
         { six: GR.stick6, tenu: GR.stickTenu, cote: GR.stickCote });
+      verifier(GR.lances === GR.pave6.codes.length + GR.clavier + GR.stick6,
+        "code : chaque « bas6 » lance l'add-on lié (" + GR.lances + " lancements)", GR.lances);
+
+      // ── 22. Add-on « mkmg » (jeu en vagues) : refus, confirmation, partie, masquage, endurance, cible, sortie ──
+      const MK = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const q = function (s) { return document.querySelector(s); };
+        const acc = window.ktaEstAccessible, ext = window.KtaExtensions.etat, poisAvant = window.getEditorPoints();
+        window.ktaEstAccessible = function () { return true; };
+        const tracker = window.getTrackingActif();
+        if (tracker) window.stopTracking();
+        window.setStructures([]);
+        window.setRoads([
+          { uid: "rd_mk", type: "principal", level: 0, points: [P(-80, 0), P(80, 0)] },
+          { uid: "rd_mk_iti", type: "itinerary", level: 0, points: [P(-20, 0), P(-10, 0)] }
+        ]);
+        window.setEditorPoints([{ id: "mk1", nom: "Salle fictive", x: P(15, 0).x, y: P(15, 0).y, level: 0, tags: [] }]);
+        window.KtaGalerie.invalider();
+        const d = P(-30, 0), r = {};
+        const appui = function (b) {
+          b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 2 }));
+          window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+        };
+        const code = async function () {
+          appui(document.querySelector('#kta-vue3d [data-v3d="av"]'));
+          const ar = document.querySelector('#kta-vue3d [data-v3d="ar"]');
+          for (let k = 0; k < 6; k++) { appui(ar); await pause(30); }
+          for (let k = 0; k < 40 && !q("#kta-confirm-oui"); k++) await pause(50);
+        };
+        const texteFenetre = function () { return q("#kta-confirm-oui") ? document.body.textContent : ""; };
+        const M = function () { return window.KtaAddons && window.KtaAddons.mkmg; };
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+        r.avant = { roads: K.etat().compte.roads, greffe: K.etat().greffe };
+        // Refus : installation reliée, puis suivi du tracker actif.
+        window.KtaExtensions.etat = function () { return { etat: "on", raison: "" }; };
+        await code();
+        r.refusInstallation = !!q("#kta-confirm-oui") && texteFenetre().indexOf("installation") >= 0;
+        if (q("#kta-confirm-oui")) q("#kta-confirm-oui").click();
+        window.KtaExtensions.etat = ext;
+        await pause(100);
+        window.startTracking();
+        await code();
+        r.refusSuivi = !!q("#kta-confirm-oui") && /tracker|suivi/.test(texteFenetre()) && K.etat().greffe === null;
+        if (q("#kta-confirm-oui")) q("#kta-confirm-oui").click();
+        window.stopTracking();
+        await pause(100);
+        // Confirmation avec la difficulté (facile par défaut), puis partie.
+        await code();
+        r.radios = document.querySelectorAll('input[name="kta-confirm-choix"]').length;
+        q("#kta-confirm-oui").click();
+        for (let k = 0; k < 60 && !(M() && M().etat().cible); k++) await pause(50);
+        await pause(200);
+        const e1 = K.etat(), m1 = M().etat();
+        r.partie = { greffe: e1.greffe && e1.greffe.nom, reglage: e1.greffe && e1.greffe.reglage, roads: e1.compte.roads,
+          diff: m1.diff, vague: m1.vague, cible: m1.cible && m1.cible.nom, route: m1.route, objets: m1.objets,
+          panneau: !!q("#kta-vue3d .kta-v3d-greffe .mkmg-panneau"), fleche: !!q(".mkmg-fleche") &&
+            !q(".mkmg-fleche").hidden, reste: q(".mkmg-reste") && q(".mkmg-reste").textContent };
+        // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
+        K.placer(d.x, d.y, 270);
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft", bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
+        await pause(700);
+        r.court = { endurance: M().etat().endurance, rapide: K.etat().rapide };
+        for (let k = 0; k < 120 && !M().etat().souffle; k++) await pause(50);
+        await pause(100);
+        r.souffle = { souffle: M().etat().souffle, course: K.etat().greffe.reglage.course, rapide: K.etat().rapide };
+        document.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift", code: "ShiftLeft", bubbles: true }));
+        await pause(2500);
+        r.repos = { souffle: M().etat().souffle, course: K.etat().greffe.reglage.course,
+          endurance: M().etat().endurance };
+        // Cible atteinte : vague suivante.
+        const c = M().etat().cible;
+        K.placer(c.x, c.y, 90);
+        for (let k = 0; k < 60 && M().etat().vague < 2; k++) await pause(50);
+        r.vague2 = { vague: M().etat().vague, reussies: M().etat().reussies };
+        // Quitter : la greffe part, l'itinéraire de l'app revient.
+        q(".mkmg-quitter").click();
+        await pause(300);
+        r.quitte = { enCours: M().etat().enCours, greffe: K.etat().greffe, roads: K.etat().compte.roads,
+          panneau: !!q(".mkmg-panneau") };
+        // Difficile : ni tracés, ni trajet, ni balise, ni guidage.
+        await code();
+        q('input[name="kta-confirm-choix"][value="difficile"]').click();
+        q("#kta-confirm-oui").click();
+        for (let k = 0; k < 60 && !(M().etat().cible); k++) await pause(50);
+        await pause(200);
+        r.difficile = { diff: M().etat().diff, reglage: K.etat().greffe.reglage, roads: K.etat().compte.roads,
+          objets: M().etat().objets, guide: q(".mkmg-guide").hidden };
+        // Fermer la vue termine la partie.
+        await K.fermer();
+        r.ferme = M().etat().enCours;
+        window.ktaEstAccessible = acc;
+        window.setEditorPoints(poisAvant || []);
+        window.setRoads([]); window.KtaGalerie.invalider();
+        if (tracker) window.startTracking();
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      verifier(MK.avant.greffe === null && MK.avant.roads === 2, "jeu : rien avant le code (tracé et itinéraire dessinés)",
+        MK.avant);
+      verifier(MK.refusInstallation && MK.refusSuivi, "jeu : refusé sur une installation reliée et pendant le suivi",
+        { installation: MK.refusInstallation, suivi: MK.refusSuivi });
+      verifier(MK.radios === 3 && MK.partie.greffe === "mkmg" && MK.partie.diff === "facile" && MK.partie.vague === 1 &&
+        MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.objets === 3 && MK.partie.panneau &&
+        MK.partie.fleche && /\d/.test(MK.partie.reste || ""),
+        "jeu : confirmation à 3 difficultés ; facile → cible (POI fictif), trajet, balise, panneau, flèche, reste",
+        MK.partie);
+      verifier(MK.partie.reglage.itineraire === false && MK.partie.reglage.guidage === false &&
+        MK.partie.reglage.traces !== false && MK.partie.roads === 1,
+        "jeu : itinéraire et guidage de l'app masqués pendant la partie, tracés gardés (facile)", MK.partie);
+      verifier(MK.court.endurance < 100 && MK.souffle.souffle && MK.souffle.course === false && !MK.souffle.rapide &&
+        MK.repos.souffle === false && MK.repos.course === true,
+        "jeu : le pas rapide vide l'endurance ; à bout de souffle plus de course, elle revient au repos",
+        { court: MK.court, souffle: MK.souffle, repos: MK.repos });
+      verifier(MK.vague2.vague === 2 && MK.vague2.reussies === 1, "jeu : cible atteinte → vague 2", MK.vague2);
+      verifier(MK.quitte.enCours === false && MK.quitte.greffe === null && MK.quitte.roads === 2 && !MK.quitte.panneau,
+        "jeu : Quitter retire la greffe, l'itinéraire de l'app revient", MK.quitte);
+      verifier(MK.difficile.diff === "difficile" && MK.difficile.reglage.traces === false && MK.difficile.roads === 0 &&
+        MK.difficile.objets === 0 && MK.difficile.guide === true && MK.ferme === false,
+        "jeu : difficile → ni tracés, ni trajet, ni balise, ni guidage ; fermer la vue termine la partie",
+        { difficile: MK.difficile, ferme: MK.ferme });
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;

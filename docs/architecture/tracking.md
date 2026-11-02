@@ -1593,14 +1593,34 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `mode`, `vue`, `commandes`, `sale()`. Règle du pas **de la vue**, jamais une copie (px plan) : `bloque(x0, y0, x1,
   y1)` (un corps de 0,8 m ne passe pas, `_balayage`), `ligneBloquee(x0, y0, x1, y1)` (ligne de vue coupée, `_juger`),
   `libre(x, y)` (place où un corps tient : ni coincée, ni dans une structure **dessinée**, corps dégagé — un calque
-  masqué n'y compte pas).
+  masqué n'y compte pas). `court` = pas rapide en cours. `regler({ traces, itineraire, guidage, course })` : `false`
+  masque, **pour la greffe seulement**, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app
+  (ruban, étapes, 🏁), son guidage (bandeau, chevrons), ou interdit le pas rapide ; levé au retrait ; scène refaite
+  seulement si les tracés ou l'itinéraire changent. Les filtres de la carte n'en savent rien.
 - 🔒 Une exception dans un appel retire la greffe ; la vue continue. La greffe ne touche ni tracker, ni session, ni
   filtres : elle n'a que ce `ctx`.
 - **Code « six vers le bas »** (décision produit, `CODE_BAS`) : 6 appuis vers le bas en moins de 2 s — ▼ du pavé, ↓ ou
   S (répétition du clavier ignorée), ou coup bref du joystick vers le bas (relâché moins de 0,5 s après la sortie de
   la zone morte, toujours à plus de 135° de l'avant) — sans autre commande de déplacement entre deux (elle remet le
   compte à 0) → `window` reçoit `kta:vue3dCode` (`detail.code = "bas6"`). Le déplacement, lui, se fait normalement.
-  Rien n'écoute cet évènement aujourd'hui.
+  Puis la vue lance l'add-on lié au code (`vue3d.js > ADDONS_CODE` : `bas6` → `addons/mkmg/js/coeur.js`), chargé à
+  la première fois en script classique, précaché par `sw.js` ; il s'inscrit dans `window.KtaAddons.<nom> = { lancer
+  }` et décide seul s'il démarre.
+- **Add-on `mkmg`** (`addons/mkmg/`, `js/coeur.js` + `css/coeur.css`) : jeu en vagues sur le plan ouvert.
+  - Refusé (message) sur une installation reliée à un serveur (`KtaExtensions.etat().etat` ≠ `off`), pendant le
+    suivi du tracker, une sortie d'urgence (itinéraire `urgence`, `EmergencyMode`) ou le mode Secours ouvert ; sinon
+    confirmation « Descendre plus bas ? » avec la difficulté (`ktaConfirm`, `choix`).
+  - Vague = rejoindre un point B depuis la position de la vue : un POI du niveau dont la distance à vol d'oiseau est
+    la plus proche de 40 m + 30 m par vague (10 m au moins), sinon un sommet des tracés ; le premier joignable par
+    `Pathfinder.computeRoute` (lecture), sinon le plus proche du voulu, sans trajet. B à 2 m : vague suivante.
+  - Difficulté : facile = tracés + trajet du jeu au sol + balise de B + flèche de guidage + reste à parcourir ;
+    moyen = sans la flèche ; difficile = ni tracés (`regler({ traces: false })`), ni trajet, ni balise, ni guidage.
+    L'itinéraire et le guidage de l'app sont masqués pendant toute la partie (le jeu dessine le sien).
+  - Santé (sans dégâts pour l'instant) et endurance : le pas rapide la vide (22 / s), elle revient au repos
+    (14 / s) ; vide = à bout de souffle, pas rapide interdit (`regler({ course: false })`) jusqu'à 30.
+  - Panneau en haut à droite (la moitié gauche est au joystick), « Quitter » retire la greffe ; fermer la vue
+    termine la partie. Textes fr / en / es dans le fichier (pas dans `lang/*.json`), couleurs en jetons `--kta-*`.
+    Volontairement absent des guides et de l'Aide.
 
 ### Garde-fous et limites
 
@@ -1652,7 +1672,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   écran), fermée par ⚙️, un toucher ailleurs ou Échap, repère et pastille 🕹️ en libre, boussole masquée retenue. Greffe (§ 21) : rien sans greffon ; scene("greffe"), calque après le canvas, une
   seule greffe ; rendu à la demande, ctx.sale() redessine ; retrait, scène refaite, reprise avec un groupe neuf,
   exception (greffe retirée, vue ouverte), fermeture ; règle du pas contre un pilier fictif ; code « six vers le bas »
-  au pavé, au clavier (répétition ignorée) et au joystick, coupé par une autre commande, un coup tenu ou plus de 2 s.
+  au pavé, au clavier (répétition ignorée) et au joystick, coupé par une autre commande, un coup tenu ou plus de 2 s ;
+  chaque code lance l'add-on lié. Add-on `mkmg` (§ 22, objets fictifs) : refus sur une installation reliée et pendant
+  le suivi ; confirmation à 3 difficultés ; facile → cible (POI), trajet, balise, flèche, reste, itinéraire et guidage
+  de l'app masqués ; endurance vidée par le pas rapide, course interdite à bout de souffle puis rendue ; cible
+  atteinte → vague 2 ; Quitter ; difficile → ni tracés, ni trajet, ni balise ; fermer la vue termine la partie.
   Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.

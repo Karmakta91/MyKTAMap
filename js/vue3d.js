@@ -247,9 +247,10 @@
       });
       fin(niveau === null ? defaut : niveau);
     });
-    const roads = itiDuNiveau
-      .concat(_filtrer(sessionRoads.filter(function (r) { return r.type !== "itinerary"; }), embRoads,
-        "roadTypes", type));
+    const roads = (_permisGreffe("itineraire") ? itiDuNiveau : [])
+      .concat(!_permisGreffe("traces") ? [] : _filtrer(sessionRoads.filter(function (r) {
+        return r.type !== "itinerary";
+      }), embRoads, "roadTypes", type));
     // Un POI jonction se montre sur chacun de ses niveaux, à son raccord validé de ce niveau s'il en a un.
     const J = window.KtaPoiJonction, points = [];
     const montres = _filtrer(_tab(window.getEditorPoints), _tab(window.getAllEmbeddedPoints), "tags", _premierTag);
@@ -2448,6 +2449,7 @@
   // ── Guidage de l'itinéraire : bandeau et chevrons (js/itiGuidage.js, aucun calcul de chemin ici) ──────────
 
   function _itineraire() {
+    if (!_permisGreffe("itineraire")) return null;
     const r = _tab(window.getRoads).filter(function (x) { return x && x.type === "itinerary" && !x._preview; })[0];
     return r && Array.isArray(r.points) && r.points.length >= 2 ? r : null;
   }
@@ -2458,7 +2460,10 @@
   // abscisses { s, sCible } (px le long du trajet) des chevrons, montrés même réglé sur « Jamais ».
   function _lireGuidage() {
     const e = _e, G = window.ItiGuidage;
-    if (!G || !_itineraire()) { e.apS = undefined; return { bandeau: null, chevrons: null }; }
+    if (!G || !_itineraire() || !_permisGreffe("guidage")) {
+      e.apS = undefined;
+      return { bandeau: null, chevrons: null };
+    }
     let reel = null;
     if (e.mode === "suivi" && typeof G.etat === "function") {
       reel = G.etat();
@@ -2932,7 +2937,7 @@
     const dt = e.tsPrec ? Math.min(0.1, (ts - e.tsPrec) / 1000) : 0;
     e.tsPrec = ts;
     const k = e.touches;
-    const rapide = k.Shift || (k.av && e.avDepuis > 0 && ts - e.avDepuis > APPUI_LONG);
+    const rapide = _permisGreffe("course") && (k.Shift || (k.av && e.avDepuis > 0 && ts - e.avDepuis > APPUI_LONG));
     const vit = VITESSE * (rapide ? FACTEUR_RAPIDE : 1);
     const av = (k.av ? 1 : 0) - (k.ar ? 1 : 0), lat = (k.dr ? 1 : 0) - (k.ga ? 1 : 0);
     const rot = (k.td ? 1 : 0) - (k.tg ? 1 : 0);
@@ -2944,7 +2949,7 @@
     // Joystick : un seul pas dans la direction du bouton, à sa vitesse ; course = pleine vitesse × FACTEUR_RAPIDE.
     const st = e.stick;
     if (st && st.m > 0) {
-      const course = st.fortDepuis > 0 && ts - st.fortDepuis > APPUI_LONG;
+      const course = _permisGreffe("course") && st.fortDepuis > 0 && ts - st.fortDepuis > APPUI_LONG;
       _passerEnLibre();
       _pas(VITESSE * (course ? FACTEUR_RAPIDE : st.m) * dt, e.cap + st.ang);
       e.rapide = e.rapide || course;
@@ -3622,6 +3627,33 @@
     c.n = 0;
     e.codesBas++;
     window.dispatchEvent(new CustomEvent("kta:vue3dCode", { detail: { code: "bas6" } }));
+    _lancerAddon("bas6");
+  }
+
+  // ⚠️ contrat : un code lance l'add-on qui lui est lié (addons/<nom>/), chargé à la première fois (script classique,
+  // même origine, précaché par sw.js). L'add-on s'inscrit dans window.KtaAddons[<nom>] = { lancer() } ; c'est lui
+  // qui décide s'il démarre (refus, confirmation) puis se greffe (greffer). Rien d'autre ne le charge.
+  const ADDONS_CODE = { bas6: { nom: "mkmg", src: "addons/mkmg/js/coeur.js" } };
+  const _addonsEnCours = {};
+  function _lancerAddon(code) {
+    const a = ADDONS_CODE[code];
+    if (!a) return;
+    const lancer = function () {
+      const x = window.KtaAddons && window.KtaAddons[a.nom];
+      if (x && typeof x.lancer === "function" && _e) x.lancer();
+    };
+    if (window.KtaAddons && window.KtaAddons[a.nom]) { lancer(); return; }
+    if (_addonsEnCours[a.nom]) return;
+    _addonsEnCours[a.nom] = true;
+    const s = document.createElement("script");
+    s.src = a.src;
+    s.addEventListener("load", function () { _addonsEnCours[a.nom] = false; lancer(); });
+    s.addEventListener("error", function () {
+      _addonsEnCours[a.nom] = false;
+      if (s.parentNode) s.parentNode.removeChild(s);
+      console.warn("[Vue3D] add-on « " + a.nom + " » introuvable");
+    });
+    document.head.appendChild(s);
   }
 
   // ── Greffe : prise NEUTRE pour un add-on (addons/<nom>/), rien sans greffon ──────────────────────────────
@@ -3640,6 +3672,9 @@
   // sc (px/m), pos {x, y} (px plan), cap, rendu, mode, vue, commandes, sale() ; règle du pas de la vue, jamais une
   // copie (px plan) : bloque(x0, y0, x1, y1) = un corps ne passe pas, ligneBloquee(x0, y0, x1, y1) = ligne de vue
   // coupée, libre(x, y) = place où un corps tient (hors des structures DESSINÉES : un calque masqué n'y compte pas).
+  // court = pas rapide en cours. regler({ traces, itineraire, guidage, course }) : false masque, pour la greffe
+  // seulement, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app (ruban, étapes, 🏁), son
+  // guidage (bandeau, chevrons), ou interdit le pas rapide ; levé au retrait. Les filtres de la carte n'en savent rien.
   // 🔒 Une exception dans un appel retire la greffe (la vue continue). La greffe ne touche ni tracker, ni session, ni
   // filtres : elle n'a que ce ctx.
   function greffer(g) {
@@ -3649,7 +3684,7 @@
     hud.className = "kta-v3d-greffe";
     e.cv.insertAdjacentElement("afterend", hud);
     const gr = { g: g, nom: String(g.nom || "greffe"), hud: hud, groupe: new THREE.Group(), raison: "greffe",
-      appels: { scene: 0, image: 0 } };
+      appels: { scene: 0, image: 0 }, reglage: {} };
     e.scene.add(gr.groupe);
     gr.ctx = _ctxGreffe(gr);
     e.greffe = gr;
@@ -3673,7 +3708,19 @@
       get mode() { return _e.mode; },
       get vue() { return _e.vue; },
       get commandes() { return _e.commandes; },
+      get court() { return !!_e.rapide; },
       sale: function () { if (_e) _e.sale = true; },
+      regler: function (r) {
+        if (!_e || _e.greffe !== gr || !r) return;
+        const change = {};
+        ["traces", "itineraire", "guidage", "course"].forEach(function (k) {
+          if ((r[k] === true || r[k] === false) && _permisGreffe(k) !== r[k]) { gr.reglage[k] = r[k]; change[k] = true; }
+        });
+        // Scène refaite seulement si ce qu'elle dessine change (la course ne coûte rien).
+        if (change.traces || change.itineraire) _e.filtresChanges = true;
+        if (change.guidage || change.itineraire) { _e.guidageForce = true; _e.apS = undefined; }
+        _e.sale = true;
+      },
       bloque: function (x0, y0, x1, y1) {
         const l = Math.hypot(x1 - x0, y1 - y0);
         if (!_e || l < 1e-9) return false;
@@ -3687,6 +3734,12 @@
         return !!_e && !_coince(x, y) && !_volumeContenant(x / _e.sc, y / _e.sc) && _rayonsBloques(x, y) === 0;
       }
     };
+  }
+
+  // Réglage de la greffe (ctx.regler) : false = masqué / interdit ; sans greffe ou sans réglage, tout est permis.
+  function _permisGreffe(k) {
+    const gr = _e && _e.greffe;
+    return !gr || gr.reglage[k] !== false;
   }
 
   function _sceneGreffe() {
@@ -3718,6 +3771,7 @@
     }
     if (gr.groupe.parent) gr.groupe.parent.remove(gr.groupe);
     if (gr.hud.parentNode) gr.hud.parentNode.removeChild(gr.hud);
+    if (Object.keys(gr.reglage).length) { e.filtresChanges = true; e.guidageForce = true; e.apS = undefined; }
     e.sale = true;
     console.log("[Vue3D] greffe « " + gr.nom + " » retirée (" + raison + ")");
   }
@@ -4028,7 +4082,7 @@
       stick: e.stickZone ? _etatStick() : null, toucheNom: e.toucheNom, codesBas: e.codesBas,
       greffe: e.greffe ? { nom: e.greffe.nom, appels: Object.assign({}, e.greffe.appels),
         objets: e.greffe.groupe.children.length, dansScene: e.greffe.groupe.parent === e.scene,
-        hud: e.greffe.hud.isConnected } : null,
+        hud: e.greffe.hud.isConnected, reglage: Object.assign({}, e.greffe.reglage) } : null,
       reglages: { ouvert: !!e.tuileReglages && !e.tuileReglages.hidden,
         repere: !!e.boutonReglages && e.boutonReglages.classList.contains("kta-v3d-modifie"),
         indic: e.indicMode ? e.indicMode.textContent : "", boussole: !!e.boussole && !e.boussole.hidden },
