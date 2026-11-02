@@ -118,7 +118,7 @@
     const t = performance.now();
     if (!frais && _sig !== null && t - _sigT < MEMO_MS) return _sig;
     let h = 0;
-    const mel = function (v) { h = Math.imul(h ^ (v | 0), 16777619); };
+    const mel = function (v) { h = Math.imul(h ^ v, 16777619); };
     const lire = function (liste) {
       mel(liste.length);
       for (let i = 0; i < liste.length; i++) {

@@ -337,7 +337,7 @@
         const ici = (Number.isInteger(p.level) ? p.level : 0) === niveau ? p : (raccord(niveau) || p);
         const cibles = nv.filter(function (n) { return n !== niveau; }).map(function (n) {
           const a = raccord(n);
-          return { niveau: n, x: a ? a.x : NaN, y: a ? a.y : NaN };
+          return { niveau: n, x: a ? a.x : Number.NaN, y: a ? a.y : Number.NaN };
         });
         out.push({ x: ici.x, y: ici.y, poi: p, cibles: cibles });
       });
@@ -1574,7 +1574,7 @@
       }
     }
     let graine = Math.floor(alea() * 2147483647) | 1;
-    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) | 0; return (graine >>> 0) / 4294967296; };
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
     const bR = base.r * 255, bG = base.g * 255, bB = base.b * 255, mR = mo.r * 255, mG = mo.g * 255, mB = mo.b * 255;
     const biseau = o.biseau, bosse = o.bosse, grR = o.grainRelief, grC = o.grain, ta = o.taches, li = o.lits;
     for (let y = 0; y < n; y++) {
@@ -1725,7 +1725,7 @@
     for (let p = 0; p < n * n; p++) haut[p] -= creux[p];
     const img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(R.couleur);
     let graine = Math.floor(alea() * 2147483647) | 1;
-    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) | 0; return (graine >>> 0) / 4294967296; };
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
     for (let y = 0; y < n; y++) {
       for (let x = 0; x < n; x++) {
         const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
@@ -1757,7 +1757,7 @@
     const t1 = _champBoucle(alea, 6, 6, n), t2 = _champBoucle(alea, 22, 22, n), t3 = _champBoucle(alea, 64, 64, n);
     const terre = new THREE.Color(o.terre), pierre = new THREE.Color(o.pierre);
     let graine = Math.floor(alea() * 2147483647) | 1;
-    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) | 0; return (graine >>> 0) / 4294967296; };
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
     for (let p = 0; p < n * n; p++) haut[p] = 0.1 * t1[p] + 0.06 * t2[p] + 0.05 * t3[p];
     const teintes = [], hmax = o.tailles[o.tailles.length - 1][1], nfMax = o.facettes[1];
     // Un bloc : facettes en tableaux typés réutilisés (le tracé, _poserBloc, est appelé des centaines de fois).
@@ -2753,7 +2753,7 @@
     e.nordCalibre = typeof window.getPlanNorthCalibre === "function" && window.getPlanNorthCalibre() === true;
     const lire = typeof window.getPlanNorthOffset === "function" ? window.getPlanNorthOffset : null;
     e.nord = e.nordCalibre && lire ? Number(lire()) || 0 : 0;
-    e.roseAngle = NaN;
+    e.roseAngle = Number.NaN;
     if (e.boussole) {
       const non = e.nordCalibre ? "" : " · " + _t("vue3d.nordNonCalibre");
       e.boussole.setAttribute("aria-label", _t("vue3d.boussole") + non);
@@ -4648,7 +4648,7 @@
         touches: {}, ecouteurs: [], tuiles: new Map(), couleurs: new Map(), sale: true, images: 0, butees: 0,
         msIndex: 0, msTuiles: 0, compteurN: 0, compteurT0: 0, w: 0, h: 0, aBouge: false, perdu: false,
         msPerdu: 0, reprises: 0, minuterie: null, inclinaison: INCLINAISON.defaut, nord: 0, nordCalibre: false,
-        roseAngle: NaN, rendu: "structures", galerie: null, passages: [], passageSig: null, passageCibles: null,
+        roseAngle: Number.NaN, rendu: "structures", galerie: null, passages: [], passageSig: null, passageCibles: null,
         volPassages: [], geste: null, dy: 0, fondu: null, fonduOp: 0, bandeauNiveau: null, bandeauNiveauFin: 0,
         niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, rubans: {}, liseres: {},

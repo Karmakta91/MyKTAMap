@@ -2645,7 +2645,7 @@
     }
     const colonnes = [];
     if (leg.colonnes) {
-      const nbCol = Math.max(1, Math.min(4, parseInt(leg.colonnes, 10) || 1));
+      const nbCol = Math.max(1, Math.min(4, Number.parseInt(leg.colonnes, 10) || 1));
       const total = entrees.reduce(function(s, sec) { return s + _hauteurEstimee(sec); }, 0);
       const vise = Math.ceil(total / nbCol);
       let col = [], h = 0;

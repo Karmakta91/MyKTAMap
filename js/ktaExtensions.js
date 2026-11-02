@@ -1702,7 +1702,7 @@
       const e = typeof window.getTrackingPositionEtat === "function" ? window.getTrackingPositionEtat() : {};
       if (!e.suiviActif && !e.confirmee) return null;
       const p = window.getTrackingPosition();
-      if (!p || !isFinite(p.x) || !isFinite(p.y)) return null;
+      if (!p || !Number.isFinite(Number(p.x)) || !Number.isFinite(Number(p.y))) return null;
       const n = typeof window.getTrackerLevel === "function" ? window.getTrackerLevel() : null;
       return { x: p.x, y: p.y, niveau: Number.isInteger(n) ? n : null, suiviActif: !!e.suiviActif, ts: Date.now() };
     } catch (e) { return null; }
@@ -1719,9 +1719,10 @@
     if (!f) return false;
     let v = null;
     if (p) {
-      if (!presenceActive() || !isFinite(p.x) || !isFinite(p.y)) return false;
+      if (!presenceActive() || !Number.isFinite(Number(p.x)) || !Number.isFinite(Number(p.y))) return false;
       v = { x: Number(p.x), y: Number(p.y), niveau: Number.isInteger(p.niveau) ? p.niveau : null,
-        cap: isFinite(p.cap) ? ((Number(p.cap) % 360) + 360) % 360 : null, source: "vue3d", ts: Date.now() };
+        cap: Number.isFinite(Number(p.cap)) ? ((Number(p.cap) % 360) + 360) % 360 : null,
+        source: "vue3d", ts: Date.now() };
     }
     try { f(v); return true; } catch (e) { console.warn("[Extensions] presence.vue3d :", e); return false; }
   }

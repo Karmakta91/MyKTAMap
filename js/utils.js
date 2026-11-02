@@ -1435,12 +1435,12 @@ function _ktaPopupAction(e) {
     case "ici": {
       // data-kta-niveau absent (mono-niveau, étape posée au clic) : recalerTrackerSurPoint prend le niveau actif.
       // `dansGalerie` : une icône posée à côté du tracé met le tracker dans la galerie, pas dans la roche.
-      const n = parseInt(d.ktaNiveau, 10);
+      const n = Number.parseInt(d.ktaNiveau, 10);
       return appel("recalerTrackerSurPoint", x, y, Number.isInteger(n) ? n : undefined, { dansGalerie: true });
     }
     case "aller": {
       // data-kta-niveau absent (mono-niveau) : pas de niveau de cible, le calcul garde sa règle.
-      const n = parseInt(d.ktaNiveau, 10);
+      const n = Number.parseInt(d.ktaNiveau, 10);
       return appel("itineraireYAller", x, y, d.ktaNom || "", Number.isInteger(n) ? { niveauCible: n } : undefined);
     }
     case "etape":         return appel("itineraireAjouterWaypoint", x, y, d.ktaNom || "");

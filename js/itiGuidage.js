@@ -865,7 +865,9 @@
     const distM = pr.dist / e;
     let c = _consigneApres(g, pr.s);
     // Déjà au niveau d'arrivée d'une consigne de niveau (on vient de passer) : elle est faite, la suivante parle.
-    while (niv !== null && c.consigne.type === "niveau" && c.consigne.vers === niv && c.suivante) {
+    // Une consigne de plus par tour : borné par leur nombre.
+    const auNiveau = function (cc) { return niv !== null && cc.consigne.type === "niveau" && cc.consigne.vers === niv; };
+    for (let k = 0; k < g.consignes.length && c.suivante && auNiveau(c); k++) {
       c = _consigneApres(g, c.s + 0.5 * e + 1e-6);
     }
     const r = distM > S.surM
