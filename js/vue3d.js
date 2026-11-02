@@ -180,7 +180,22 @@
     const type = function (o) { return o.type; };
     const sessionRoads = _tab(window.getRoads).filter(function (r) { return r && !r._preview; });
     const embRoads = _tab(window.getAllEmbeddedRoads);
-    const roads = sessionRoads.filter(function (r) { return r.type === "itinerary"; })
+    // 🩸 L'itinéraire est UN tracé dont chaque point porte son niveau (pathfinder.js) : il est découpé en morceaux
+    // du niveau affiché, sinon un itinéraire au −1 (tracé sans `level` = 0) disparaissait tout entier.
+    const itiDuNiveau = [];
+    sessionRoads.forEach(function (r) {
+      if (r.type !== "itinerary" || !Array.isArray(r.points)) return;
+      const defaut = Number.isInteger(r.level) ? r.level : 0;
+      let cur = [];
+      r.points.forEach(function (q) {
+        const n = q && Number.isInteger(q.level) ? q.level : defaut;
+        if (niveau === null || n === niveau) { cur.push(q); return; }
+        if (cur.length > 1) itiDuNiveau.push(Object.assign({}, r, { points: cur, level: niveau }));
+        cur = [];
+      });
+      if (cur.length > 1) itiDuNiveau.push(Object.assign({}, r, { points: cur, level: niveau === null ? defaut : niveau }));
+    });
+    const roads = itiDuNiveau
       .concat(_filtrer(sessionRoads.filter(function (r) { return r.type !== "itinerary"; }), embRoads,
         "roadTypes", type));
     const toutes = _tab(window.getStructures).concat(_tab(window.getAllEmbeddedStructures));
@@ -349,12 +364,12 @@
   }
 
   // Segment d'itinéraire du niveau de la scène (chevrons) : chaque point du chemin porte son niveau (pathfinder.js >
-  // computeRoute) ; un bout sans niveau (passage, ancien itinéraire) suit l'autre ; aucun des deux : partout.
-  function _segmentDuNiveau(a, b, niveau) {
+  // computeRoute), sinon celui du tracé (0 par défaut), la règle du ruban (_collecter).
+  function _segmentDuNiveau(road, a, b, niveau) {
     if (niveau === null) return true;
-    const na = Number.isInteger(a.level) ? a.level : null, nb = Number.isInteger(b.level) ? b.level : null;
-    if (na === null && nb === null) return true;
-    return (na === null ? nb : na) === niveau && (nb === null ? na : nb) === niveau;
+    const defaut = Number.isInteger(road.level) ? road.level : 0;
+    return (Number.isInteger(a.level) ? a.level : defaut) === niveau &&
+      (Number.isInteger(b.level) ? b.level : defaut) === niveau;
   }
 
   // ── Géométrie : triangles non indexés, normales int8, couleurs uint8 (18 octets par sommet) ───────────
@@ -1650,7 +1665,7 @@
       }
       if (i >= pts.length) break;
       const a = pts[i - 1], b = pts[i], d = Math.hypot(b.x - a.x, b.y - a.y);
-      if (d < 1e-6 || !_segmentDuNiveau(a, b, e.niveau)) continue;
+      if (d < 1e-6 || !_segmentDuNiveau(road, a, b, e.niveau)) continue;
       const t = (s - cum) / d, ux = (b.x - a.x) / d, uz = (b.y - a.y) / d, nx = -uz, nz = ux;
       const cx = (a.x + t * (b.x - a.x)) / sc, cz = (a.y + t * (b.y - a.y)) / sc;
       // Pointe devant, deux branches vers l'arrière de part et d'autre.

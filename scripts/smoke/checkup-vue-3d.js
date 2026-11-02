@@ -1983,6 +1983,25 @@ async function mesuresGalerie(page) {
           window.ktaSetActiveLevel(0);
         });
       });
+      // Itinéraire multi-niveau (niveau porté par chaque point) : au −1, seul son morceau du −1 est dessiné.
+      const iti = await page.evaluate(function (a) {
+        const C = window.APP_CONFIG, av = { m: C.multiLevel, l: C.activeLevel }, sc = C.scale;
+        C.multiLevel = true; C.activeLevel = -1;
+        window.setRoads([{ type: "itinerary", points: [
+          { x: a.x, y: a.y, level: 0 }, { x: a.x + 2 * sc, y: a.y, level: 0 },
+          { x: a.x + 2 * sc, y: a.y + 1, level: -1 }, { x: a.x + 6 * sc, y: a.y, level: -1 },
+          { x: a.x + 9 * sc, y: a.y, level: -1 }] }]);
+        return window.KtaVue3D.ouvrir({ depart: a }).then(function () {
+          const e = window.KtaVue3D.etat();
+          const r = { niveau: e.niveau, roads: e.compte.roads };
+          return window.KtaVue3D.fermer().then(function () {
+            C.multiLevel = av.m; C.activeLevel = av.l; window.setRoads([]);
+            return r;
+          });
+        });
+      }, pt(0, -8, 0, 90));
+      verifier(iti.niveau === -1 && iti.roads === 1,
+        "itinéraire multi-niveau : au −1, son morceau du −1 est dessiné (plus d'itinéraire disparu)", iti);
       await page.evaluate(function () {
         const s = window.__v3dEmb;
         window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
