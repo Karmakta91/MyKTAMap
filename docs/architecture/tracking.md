@@ -1321,8 +1321,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   paroi, `_contreParoi`) ; sinon règle des structures (contre la face d'un pilier).
 - **Hauteur** (décision produit) : `HAUTEUR` de la scène = `config.js > getPlanHauteurGalerie()` (2 m sans pref),
   **le même chiffre que ⛏️ Volume exploité**. Bouton **⛏️** (hauteur affichée par `formatDistance`) → − / + de 1,5 à
-  4 m par 0,1 m (`reglerHauteur(m)` : borné, arrondi, `setPlanHauteurGalerie`) ; une valeur saisie hors bornes dans
-  ⛏️ est montrée telle quelle jusqu'au premier − / +. Les tuiles sont refaites sur place (`_refaireTuiles` : même
+  20 m, par 0,1 m jusqu'à 5 m puis 0,5 m (`reglerHauteur(m)` : borné, arrondi, `setPlanHauteurGalerie`) ; une valeur
+  saisie hors bornes dans ⛏️ est montrée telle quelle jusqu'au premier − / +. Les tuiles sont refaites sur place (`_refaireTuiles` : même
   index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais à 60 %, rideaux, tubes, plafond, œil
   (`_oeil`) et panneaux suivent.
 - **Filtres = ceux de la carte** (décision produit) : ≡ de la vue ouvre **le** panneau ≡ Filtres (`FilterPanel.ouvrir`),
@@ -1515,7 +1515,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `null` en suivi et à la fermeture, tracker inchangé, membre « en 3D » marqué ; sortie : carte au niveau et à la place de la 3D (libre,
   après Non, en suivi), Oui recale aussi le niveau. Hauteur ⛏️ (structures et galerie) : réglée à 3 m → piliers,
   murs à 98 %, parois, plafond et rideaux à 3 m, remblais à 1,8 m, `getPlanHauteurGalerie()` = 3, relue à la
-  réouverture et par ⛏️ Volume exploité (et l'inverse) ; bornes 1,5 / 4 m. Filtres : ≡ ouvre le ≡ Filtres de la
+  réouverture et par ⛏️ Volume exploité (et l'inverse) ; bornes 1,5 / 20 m. Filtres : ≡ ouvre le ≡ Filtres de la
   carte au-dessus de la vue ; zone, calque, type de tracé et tag décochés → retirés de la 3D et de la carte ; « Tout
   afficher » sur la carte → revenus en 3D ; type de structure masqué depuis la carte → retiré, butée gardée ; niveau
   masqué → rien de dessiné ; pastille ; itinéraire toujours là. 🚨 = Sortie d'urgence, toast sous la rangée, ✕ au

@@ -40,7 +40,8 @@
   const TUILE = 16;                 // m : côté d'une tuile de géométrie
   const TUILES_PAR_IMAGE = 3;       // tuiles construites au plus par image après l'ouverture (pas d'à-coup)
   const HAUTEUR_DEFAUT = 2;         // m, comme ⛏️ Volume exploité
-  const HAUTEUR_REGLAGE = { min: 1.5, max: 4 };   // m, bornes du réglage ⛏️ (pas de 0,1 m)
+  const HAUTEUR_REGLAGE = { min: 1.5, max: 20 };  // m, bornes du réglage ⛏️ (20 m : rarement au-delà, décision produit)
+  const HAUTEUR_PAS_FIN = 5;                      // m : pas de 0,1 m jusque-là, 0,5 m au-delà (160 touches sinon)
   const OEIL = 1.6;                 // m
   const RAYON_CORPS = 0.4;          // m : demi-largeur du corps, gardée devant et sur les côtés (un mur en ligne
                                     // de 0,4 m est dessiné à 0,2 m de son axe : on reste à 0,2 m de sa face)
@@ -2547,7 +2548,8 @@
       if (a === "hauteur") { _basculerReglageHauteur(); return; }
       if (a === "hauteurMoins" || a === "hauteurPlus") {
         ev.preventDefault();
-        reglerHauteur(e.hauteur + (a === "hauteurPlus" ? 0.1 : -0.1));
+        const pas = (a === "hauteurPlus" ? e.hauteur : e.hauteur - 0.1) >= HAUTEUR_PAS_FIN ? 0.5 : 0.1;
+        reglerHauteur(e.hauteur + (a === "hauteurPlus" ? pas : -pas));
         return;
       }
       if (a === "niveauHaut" || a === "niveauBas") { changerNiveau(a === "niveauHaut" ? "haut" : "bas"); return; }

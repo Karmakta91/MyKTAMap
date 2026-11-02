@@ -1260,7 +1260,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
       await capture(page, "hauteur-reglage");
       const h3 = await page.evaluate(function () {
         const K = window.KtaVue3D, r = {};
-        r.haut = K.reglerHauteur(10); r.bas = K.reglerHauteur(1);
+        r.haut = K.reglerHauteur(30); r.bas = K.reglerHauteur(1);
+        r.v12 = K.reglerHauteur(12);
+        document.querySelector('#kta-vue3d [data-v3d="hauteurMoins"]')
+          .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));   // − / + agissent au pointerdown
+        r.v12moins = K.etat().hauteur;
         r.v = K.reglerHauteur(3);
         const e = K.etat();
         r.hauteur = e.hauteur; r.pref = window.getPlanHauteurGalerie(); r.yMax = e.yMax; r.oeil = e.oeil;
@@ -1268,8 +1272,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
         r.plus = document.querySelector('#kta-vue3d [data-v3d="hauteurPlus"]').disabled;
         return r;
       });
-      verifier(h3.haut === 4 && h3.bas === 1.5 && h3.v === 3 && h3.hauteur === 3 && h3.pref === 3 && !h3.plus,
-        "réglage borné de 1,5 à 4 m ; à 3 m, getPlanHauteurGalerie() vaut 3", h3);
+      verifier(h3.haut === 20 && h3.bas === 1.5 && h3.v12 === 12 && h3.v12moins === 11.5 && h3.v === 3 && h3.hauteur === 3 &&
+        h3.pref === 3 && !h3.plus,
+        "réglage borné de 1,5 à 20 m (12 m puis − → 11,5 m, pas de 0,5 au-delà de 5 m) ; à 3 m, getPlanHauteurGalerie() vaut 3", h3);
       verifier(Math.abs(h3.yMax.opaque - 3) < 1e-6 && Math.abs(h3.yMax.murs - 3 * 0.98) < 1e-6 && h3.oeil === 1.6 &&
         h3.construites > 0 && h3.rendu === "mixte" &&
         h3.pos.x === h0.pos.x && h3.pos.y === h0.pos.y && h3.cap === h0.cap,
