@@ -1,10 +1,10 @@
 # Étude — Vue 3D autour de sa position
 
-> Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01/11/2026. Lots 1, 2 et 4 bis livrés, lot 4 en
-> partie (passage de niveau par POI jonction) : la vue est en **bêta**, ouverte par le bouton cube de la barre de
-> droite (sous ≡ Filtres), avec deux rendus exclusifs (structures, galerie), les filtres de la carte, précachée,
-> textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone (lot 3), le reste du lot 4 et la question 9. Contrats
-> à jour : `docs/architecture/tracking.md` § Vue 3D ; place dans l'interface : `docs/architecture/ui.md` § Vue 3D.
+> Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01/11/2026 et du 02/11/2026. Lots 1, 2, 4 et 4 bis
+> livrés : la vue est en **bêta**, ouverte par le bouton cube de la barre de droite (sous ≡ Filtres), avec deux rendus
+> exclusifs (structures, galerie), les filtres de la carte, le guidage de l'itinéraire, la fiche des POI, précachée,
+> textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone (lot 3) et la question 9. Contrats à jour :
+> `docs/architecture/tracking.md` § Vue 3D ; place dans l'interface : `docs/architecture/ui.md` § Vue 3D.
 
 ## Le besoin
 
@@ -38,7 +38,23 @@ Après l'audit de cohérence (la 3D se posait par-dessus l'app comme une autre a
 | 5 | Panneaux de POI | Toujours sombres (jetons du thème sombre) ; distance minimale et fondu de près |
 | 6 | Finitions | Indicateur de chargement ; Échap ferme d'abord le panneau ouvert ; focus et `aria-modal` ; rendu en pause (bruit de la boussole ignoré) ; statistiques en i18n ; section « Vue 3D » dans `ui.md` |
 
-Choix faits à la livraison, à valider : 🧭 pour le suivi (le tracker en 2D), 🦅 pour la vue plongeante (sans autre
+## Décisions de KARMA (QCM du 02/11/2026) : guidage, fiche, « Y aller »
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Guidage en 3D | Bandeau compact sous la rangée du haut, mêmes textes que le guidage 2D (lus comme l'écran XL) ; chevrons au sol sur le ruban vers la prochaine manœuvre ; en libre un **aperçu** depuis la position 3D, sans toucher l'état du guidage, marqué « Aperçu » ; en suivi la consigne réelle. La scène se redessine quand l'itinéraire change (`kta:itineraireChange`). Pas de voix |
+| 2 | Toucher un POI | Sa fiche de la carte, la même, au-dessus de la 3D ; pas de nouvelle fiche |
+| 3 | « Y aller » depuis la fiche | Suivi → du tracker ; libre → de la position 3D, niveau compris, tracker non recalé ; jamais de la position d'avant l'ouverture de la 3D |
+| 4 | Tracker arrêté + « Y aller » (2D et 3D) | « D'où pars-tu ? » à chaque fois : « Ici » (3D : recale le tracker à la position 3D, puis l'itinéraire en part), « Ma dernière position (il y a N min) », « Me repositionner » (picker et son niveau) ; Annuler = pas d'itinéraire |
+| 5 | « Je suis ici » d'un POI d'un niveau sans tracé | Repli sur l'image de collision (point accessible le plus proche, 6 m) même si d'autres niveaux ont des tracés |
+| — | Rangée du haut (demande du 02/11/2026) | ≡ Filtres collé à gauche de ✕, au téléphone comme au PC |
+
+Choix faits à la livraison, à valider : un POI jonction garde son toucher (passage 🪜) plutôt que d'ouvrir sa fiche ;
+la fiche en 3D n'a ni ✏️ ni Repositionner ni 🗑️ (ils se jouent sur la carte, cachée dessous) ; en libre, l'aperçu
+suit le réglage Auto / Jamais (hors urgence) mais les chevrons restent ; sans position jamais confirmée et hors 3D,
+« Me repositionner » serait la seule réponse : le picker s'ouvre directement, sans question.
+
+Choix faits à la livraison du lot de cohérence, à valider : 🧭 pour le suivi (le tracker en 2D), 🦅 pour la vue plongeante (sans autre
 sens dans l'app), ⛏️ pour la hauteur (↕ dit « passages entre niveaux » dans la légende ; ⛏️ = Volume exploité,
 dont c'est le même chiffre).
 
@@ -93,10 +109,16 @@ dont c'est le même chiffre).
   sur la position, sans animation), quelle que soit la réponse à « Je suis ici ? », qui recale aussi le niveau.
 - **Filtres** (QCM du 02/11/2026) : ceux de la carte ; ≡ ouvre le même panneau par-dessus la vue ; masquer ne retire
   que le dessin (collisions, parois, 🪜 restent), l'itinéraire n'en suit aucun.
-- **Rangée du haut** : ✕, 🚨 Sortie d'urgence, ❓ aide, ≡, 🦅, ⛏️ hauteur, rendu, mode, « bêta » ; Échap ferme
-  d'abord un réglage ou une fenêtre ouverts ; focus dans la vue, rendu au bouton à la fermeture.
-- **Outils de mesure** : `etat()` (tuiles, triangles, appels, contexte vivant…), `mesurer({ images })`,
-  `placer(x, y, cap)`.
+- **Rangée du haut** : ✕, ≡ (collé à ✕), 🚨 Sortie d'urgence, ❓ aide, 🦅, ⛏️ hauteur, rendu, mode, « bêta » ; Échap
+  ferme d'abord un réglage, une fiche ou une fenêtre ouverts ; focus dans la vue, rendu au bouton à la fermeture.
+- **Guidage** (QCM du 02/11/2026) : l'itinéraire en ruban, au niveau de chacun de ses points, redessiné dès qu'il
+  change (tracé depuis 🚨 pendant la vue compris) ; bandeau compact sous la rangée du haut (consigne réelle en suivi,
+  aperçu marqué en libre) ; chevrons dorés au sol vers la prochaine consigne.
+- **Fiche d'un POI** : toucher son panneau ouvre sa fiche de la carte (Je suis ici, Y aller, Itinéraire, favori,
+  photos, liaisons) ; « Y aller » part de la position 3D en libre, du tracker en suivi ; tracker arrêté, « D'où
+  pars-tu ? » propose d'abord « Ici ».
+- **Outils de mesure** : `etat()` (tuiles, triangles, appels, contexte vivant, bandeau, chevrons, fiche…),
+  `mesurer({ images })`, `placer(x, y, cap)`, `origineItineraire()`.
 
 ## Choix et pourquoi
 
@@ -305,7 +327,7 @@ constructions de tuiles (3 par image au plus).
 | 1 | Entrée (d'abord tuile du menu Tracker, puis bouton de la barre de droite), chargement à la demande, textes fr/en/es, refus sans échelle, précache, reprise après perte de contexte, « Je suis ici ? », checkup | **S**, livré |
 | 2 | Docs : guides 3 langues, Aide, AI_CONTEXT, tracking.md, journal | **S**, livré |
 | 3 | Mesure sur un vrai iPhone et un plan dense réel ; réglages (distance, densité) d'après les chiffres | **M** |
-| 4 | Multi-niveau par POI jonction et tracé `jonction` (question B) : **livré** ; reste POI touchables (fiche), itinéraire vivant suivi en 3D | **M** |
+| 4 | Multi-niveau par POI jonction et tracé `jonction` (question B), POI touchables (fiche), guidage de l'itinéraire en 3D | **M**, livré |
 | 4 bis | Mode « galerie » : tracés en tubes, carrefours exacts, bascule exclusive structures / galerie, collisions contre les parois (question A) | **M**, livré |
 | 5 | Rendu plus « vrai » (texture de roche, ombres de la lampe, niveaux voisins en transparence) | **L**, à n'engager qu'après le retour terrain |
 

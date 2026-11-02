@@ -43,6 +43,8 @@ dessiné : il faut une logique de croisements.
 | K | Raccord dans l'itinéraire | Dessiné **et compté** dans **tous** les itinéraires (il ne l'était pas : `snappedPoints` était renvoyé mais lu nulle part). |
 | — | Limite du raccord | **50 m** : au-delà, on **avertit sans bloquer**. |
 | — | Aucun tracé sur le plan | On **avertit** au lancement (modale, « Y aller », sortie d'urgence) : le guidage n'aurait rien à dire. |
+| — | Vue 3D (QCM du 02/11/2026) | Bandeau compact dans la vue, mêmes textes : en suivi la consigne réelle (comme l'écran XL), en libre un **aperçu** depuis la position 3D, marqué, qui ne touche pas l'état du guidage (`ItiGuidage.apercu`) ; chevrons au sol vers la prochaine consigne ; pas de voix. |
+| — | « Y aller » tracker arrêté (QCM du 02/11/2026) | « D'où pars-tu ? » **à chaque fois** : « Ici » (vue 3D), « Ma dernière position (il y a N min) », « Me repositionner » ; Annuler = pas d'itinéraire. Avant : seulement si la position n'avait jamais été confirmée. |
 
 ## Logique « quand annoncer »
 

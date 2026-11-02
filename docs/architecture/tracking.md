@@ -792,8 +792,11 @@ pas suivant, seulement si la navigation intelligente est active (`smartNav`, dé
      session et des calques lus directement, types du graphe de navigation (principal, secondaire, chemin) ; les
      jonctions sont exclues, un puits n'est pas une galerie. Mono-niveau : tous les tracés. 🩸 Pas de
      `RoadGraph.getGraph()` : son premier calcul (croisements en O(N²)) gèlerait le tap sur un grand plan ;
-  2. plan **sans aucun tracé** (`Pathfinder.aDesTraces()`), image de collision chargée et POI refusé par
-     `estAccessible` : point accessible le plus proche (anneaux au pas d'un pixel du canvas de collision).
+  2. **niveau du recalage sans aucun tracé** (`_tracesDuNiveau` : session et calques, ni itinéraire ni jonction ;
+     mono-niveau : tout le plan), image de collision chargée et POI refusé par `estAccessible` : point accessible le
+     plus proche (anneaux au pas d'un pixel du canvas de collision). Vaut aussi pour un plan multi-niveau dont seuls
+     d'autres niveaux ont des tracés (décision produit) ; un niveau qui a des tracés, tous à plus du seuil : on reste
+     sur le POI (le tracé fait foi, pas l'image).
 - **Seuil** = rayon du verrou sur tracé, `APP_CONFIG.smartNavRadiusM` (**6 m** par défaut, réglable par plan) :
   le premier pas calé aurait mis le tracker là de toute façon. Au-delà : on reste sur le POI.
 - Le POI ne bouge pas. L'ancre de timeline `recalage` et le recentrage de la vue portent la position ajustée.
@@ -803,7 +806,7 @@ pas suivant, seulement si la navigation intelligente est active (`smartNav`, dé
 - Non concernés (coordonnées exactes, sans `dansGalerie`) : arrivée de portail, Mode Secours, picker « Où es-tu ? »,
   position de fin du Carnet, « Je suis ici ? » de la vue 3D (`vue3d.js`, position déjà contrainte par le pas), et le
   clic du 📍 Mode recalage (`_recalerSurClic`, chemin distinct) : un tap sur la carte est une position voulue.
-- Checkup : `scripts/smoke/checkup-recaler-niveau.js` § 16.
+- Checkup : `scripts/smoke/checkup-recaler-niveau.js` § 16 et 16 bis.
 
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
 
@@ -1014,7 +1017,14 @@ Lecture : `window.getTrackingPositionEtat()` → `{ confirmee, ts, suiviActif }`
 - **Suivi actif OU confirmée → position du tracker à l'instant T, zéro question.** Pas de seuil de fraîcheur (décision KARMA « b : pas de seuil ») : l'écart s'affiche, l'utilisateur juge.
 - **Jamais confirmée → picker partagé** `utils.js > ktaDemanderPositionCarte(onPick, {icone, texte, recaler, onCancel})`. Floater `.kta-iti-floater` (donc reconnu par `_modeClicCarteActif()` : pas de popup parasite, clic ré-émis en capture par `map.js`, **le tap porte même sur un marqueur**), les autres modes clic-carte sont éteints avant d'armer (`window._desactiverTousLesModes`, exposé par `interface.js` à cette occasion). **Le tap recale le tracker** (`recalerTrackerSurPoint`) — donc confirme la position — puis rend la main. Plan multi-niveau : même question de niveau que le clic de recalage (§ Niveau d'un recalage sur la carte) ; Annuler laisse le picker armé ; `recaler: false` ne demande rien.
 - `sortieUrgence.js` : `_lancer(origine, meta)` garde `meta.mode` (`suivi` / `confirmee` / `clic`) + `ts` pour la ligne d'état de la modale ; `_tracerIndex` passe `{ origine }` à `itineraireYAller`.
-- `itineraireYAller(x, y, nom, opts)` : `opts.origine` impose l'origine ; sans elle, même règle (picker si jamais confirmée).
+- `itineraireYAller(x, y, nom, opts)` : `opts.origine` impose l'origine. Sans elle (décision produit, QCM du
+  02/11/2026), la règle est **plus stricte que l'instant T** : suivi actif → du tracker (vue 3D ouverte en mode libre :
+  de la position 3D, niveau compris, sans recaler le tracker) ; **tracker arrêté → « D'où pars-tu ? » à chaque fois**
+  (`interfaceItineraire.js > _demanderDepart`, `ktaConfirm` en mode choix, id `kta-iti-depart`) : « Ici » (vue 3D en
+  libre seulement : `recalerTrackerSurPoint` à la position 3D avec `sansReplan`, puis départ de là), « Ma dernière
+  position (il y a N min) » (position confirmée seulement, date par `window.ktaDateRelative`, départ du tracker et de
+  son niveau sans recalage), « Me repositionner » (picker, la vue 3D se fermant d'abord). Annuler = pas d'itinéraire.
+  Une seule réponse possible (jamais confirmée, hors 3D) → picker direct, sans question.
 - `emergencyMode.js` (afficheur, pas de picker) : statut « position par défaut — jamais confirmée » dans la bulle 📋 des coordonnées ; sa bulle de point propose « 📍 Je suis ici » (`recalerTrackerSurPoint`), qui confirme la position.
 
 🪤 **Piège** : tout nouveau chemin qui écrit `position` sans passer par le clic recalage ni `recalerTrackerSurPoint`
@@ -1220,6 +1230,12 @@ demi-tours en 350 m sous 4 m de bruit).
 - **Urgence** : `road.urgence = true` (posé par la sortie d'urgence via `itineraireYAller(…, { urgence })`,
   gardé par la replanification) → pas de croix, affiché même réglé sur « Jamais », « Recalculer » =
   `SortieUrgence.relancerDepuis(pos)`. L'écran XL lit `ItiGuidage.etat()` dans son `_tick`.
+- **Vue 3D** (`vue3d.js`, § Vue 3D › Guidage) : en suivi, elle lit `ItiGuidage.etat()` comme l'écran XL (`s` /
+  `sCible` : abscisses de la position et de la prochaine consigne, pour ses chevrons) ; en libre,
+  `ItiGuidage.apercu(pos, { cap, sPrec })` : mêmes textes (`_textes`, partagé avec le bandeau), calculés depuis une
+  position quelconque **sans toucher l'état** du guidage (ni progression, ni écart, ni demi-tour ; loin du trajet,
+  « rejoindre »). Elle se redessine à `kta:itineraireChange` (`road.js`), émis à chaque itinéraire tracé, remplacé
+  ou effacé.
 - **Pas de « mode Navigation »** : livré puis retiré le 27/09/2026 (KARMA 3:a). Le guidage ne touche NI
   `MapBearing` NI `WakeLock` : « Plan orienté » (menu Tracker) et l'écran allumé (Réglages) restent les seuls
   interrupteurs — un doublon sans libellé dans le bandeau n'était pas lisible.
@@ -1331,7 +1347,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   jonction (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à son raccord) ou d'un
   bout de tracé `jonction` (pris dans les deux sens), une boîte à gauche : ▲ / ▼ vers le niveau lié voisin au-dessus
   ou au-dessous (profondeurs saisies, sinon numéro), une liste s'il y en a plus d'un de chaque côté. Toucher le
-  panneau du POI (`_toucher`, lancer de rayon sur les panneaux) fait de même, d'où que l'on soit. Arrivée : raccord
+  panneau du POI jonction (`_toucher`, lancer de rayon sur les panneaux) fait de même, d'où que l'on soit (un autre POI
+  ouvre sa fiche, ci-dessous). Arrivée : raccord
   validé du niveau, sinon bout opposé du tracé jonction, sinon même position (au POI touché s'il est à plus de 2 m) ;
   cap gardé, scène refaite. ⚠️ contrat (décision produit) : la 3D change seulement **son** niveau (`niveauLibre`,
   oublié si le niveau actif de la carte change ou en repassant en suivi) ; ni le tracker ni la carte 2D ne bougent
@@ -1354,7 +1371,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   plan, dit seulement au libellé accessible (`vue3d.nordNonCalibre`, aucun texte à l'écran). Rose posée sur la
   carte de la petite boussole du mode plan (surface 88 %, liseré doré). Relu à `kta:northOffsetChange`.
 - **Clavier et focus** : dialog `aria-modal`, focus posé dans la vue à l'ouverture, Tab y reste, focus rendu au
-  bouton cube à la fermeture. Échap ferme d'abord le réglage de hauteur ouvert, puis la vue ; une fenêtre de l'app
+  bouton cube à la fermeture. Échap ferme d'abord le réglage de hauteur ou la fiche ouverts, puis la vue ; une fenêtre de l'app
   par-dessus (≡ Filtres, Aide, Sortie d'urgence, confirmation) garde ses touches (`_recouverte` : au centre de
   l'écran, un élément qui n'est pas de la vue).
 - **🚨 Sortie d'urgence** : la même action que l'en-tête (`SortieUrgence.declencher`), sa fenêtre par-dessus la vue ;
@@ -1393,6 +1410,33 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Textes** : clés `vue3d.*` et `ui.vue3d.title`, lues au rendu (ligne de statistiques `vue3d.stats`, option
   `stats` des mesures).
 
+### Guidage, fiche d'un POI et « Y aller » (QCM du 02/11/2026)
+
+- **Itinéraire** : ruban lumineux, découpé en morceaux du niveau de la scène (`pathfinder.js > computeRoute` pose
+  `level` sur chaque point, sinon celui du tracé ; `vue3d.js > _collecter`). ⚠️ contrat : la scène
+  est refaite à `kta:itineraireChange` (`road.js > setRoads / resetRoads`, detail `{ road | null }` : itinéraire tracé,
+  remplacé ou effacé ; pas sur une étape validée), donc un itinéraire tracé pendant la vue (🚨, fiche, recalcul du
+  guidage) s'y montre aussitôt.
+- **Bandeau** (`_majBandeau`, dans `_e.bandeau` sous la rangée du haut, `top` posé par `_majSousHaut` sous la rangée
+  seule) : icône (ou schéma du carrefour), consigne, ligne « puis… », mêmes textes que le bandeau 2D, relus toutes les
+  250 ms (`_lireGuidage`). ⚠️ contrat (décision produit) : **en suivi**, la consigne réelle (`ItiGuidage.etat()`,
+  comme l'écran XL), rien quand le bandeau 2D ne parle pas (réglage « Jamais », position inconnue) ; **en libre**, un
+  **aperçu** depuis la position 3D (`ItiGuidage.apercu(pos, { cap, sPrec })`, qui ne touche ni la progression ni les
+  alertes du guidage), marqué « Aperçu » (`vue3d.apercu`), masqué en « Jamais » hors urgence. Pas de voix (elle
+  n'existe pas en 2D non plus).
+- **Chevrons au sol** (`_majChevrons`) : « ^ » dorés (accent sombre) sur le ruban, de la position vers la prochaine
+  consigne (`s` → `sCible`, abscisses rendues par `etat()` ou `apercu()`), un tous les 2 m à des abscisses fixes du
+  trajet (ils ne glissent pas), 30 m au plus, sur le niveau de la scène ; montrés même en « Jamais ».
+- **Toucher un panneau de POI** (`_toucher`) → **sa fiche de la carte** (`_ouvrirFiche` :
+  `utils.js > buildPointPopupHtml`, ses boutons agissent par `_ktaPopupAction`), dans un cadre sous le bandeau ;
+  ✕ ou Échap la ferment ; « Je suis ici », « Y aller » et « Itinéraire » la ferment après leur action. ⚠️ Sans ✏️ /
+  Repositionner / 🗑️ (ils se jouent sur la carte, cachée dessous). Photos par `attachPopupPhotos` sur un marqueur de
+  substitution (`on`, `isPopupOpen`). Un **POI jonction** garde son toucher : le passage 🪜.
+- **« Y aller » depuis la 3D** (`KtaVue3D.origineItineraire()` → `{ mode, x, y, niveau }`, lu par
+  `itineraireYAller`) : suivi → du tracker ; libre, tracker actif → de la position 3D, niveau compris, tracker non
+  recalé ; tracker arrêté → « D'où pars-tu ? » avec « Ici » en premier (§ Position confirmée). Jamais de la position
+  d'avant l'ouverture de la vue.
+
 ### Garde-fous et limites
 
 - `scripts/smoke/checkup-vue-3d.js` (Chromium et WebKit) : bouton cube sous ≡ grisé sans échelle (rien chargé),
@@ -1410,8 +1454,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   carte au-dessus de la vue ; zone, calque, type de tracé et tag décochés → retirés de la 3D et de la carte ; « Tout
   afficher » sur la carte → revenus en 3D ; type de structure masqué depuis la carte → retiré, butée gardée ; niveau
   masqué → rien de dessiné ; pastille ; itinéraire toujours là. 🚨 = Sortie d'urgence, toast sous la rangée, ✕ au
-  coin haut droit à 393 px, ❓ → aide de la 3D, Échap (aide, ≡, réglage, puis vue), panneau de POI sombre en thème
-  clair et borné de près, rendu en pause (immobile et boussole qui tremble). `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons.
+  coin haut droit à 393 px et ≡ collé à sa gauche (393 px et PC), ❓ → aide de la 3D, Échap (aide, ≡, réglage, puis
+  vue), panneau de POI sombre en thème
+  clair et borné de près, rendu en pause (immobile et boussole qui tremble). Guidage (§ 10) : itinéraire tracé pendant
+  la vue montré, bandeau d'aperçu marqué en libre et consigne réelle en suivi, chevrons, bandeau stable au
+  redimensionnement, toucher d'un POI → sa fiche (sans ✏️ / 🗑️), Échap ferme la fiche, « Y aller » en libre depuis la
+  position 3D au niveau 1 sans recaler le tracker, tracker arrêté → « Ici » recale et part de la position 3D.
+  `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons.
   `smoke.js` : rien de la 3D au démarrage.
 - **Non couvert** : aucun vrai iPhone (images/s, mémoire, batterie, perte de contexte réelle), aucun plan dense
   réel ; mode galerie jamais vu sur un relevé réel (tracés dessinés à la main : raccords imprécis, sommets serrés).
