@@ -86,9 +86,10 @@
   const HACHURE_PAS = 0.6;   // m : période des hachures d'une zone inaccessible (sol et rideau)
   const GRAIN_TAILLE = 128;         // px du motif
   const GRAIN_METRES = 2;           // m couverts par un motif
-  // Mode galerie : parois en moellons de calcaire taillés (assises horizontales à joints décalés, dessinées dans un
-  // canvas comme le grain du sol), liseré au sol de la couleur du tracé, POI proches seulement. Pierre plus claire
-  // et plus grise que le sol, joints de mortier : la paroi se détache du sol.
+  // Mode galerie : parois des galeries et des tubes en pierre de taille (🧱 Textures activé, PIERRE ci-dessous) ou
+  // en moellons de calcaire taillés (🧱 coupé : assises horizontales à joints décalés, dessinées dans un canvas comme
+  // le grain du sol), liseré au sol de la couleur du tracé, POI proches seulement. Pierre plus claire et plus grise
+  // que le sol, joints de mortier : la paroi se détache du sol.
   const MOELLON = { couleur: "#d4c9b2", l: 0.4, h: 0.25, joint: 0.015 };   // teinte de base ; bloc et joint en m
   const MOELLONS_MOTIF = { l: 4, h: 4 };   // blocs par motif (1,6 × 1 m), répété en mètres sur la paroi
   const MOELLON_PX_M = 160;                // px du motif par mètre de paroi
@@ -102,6 +103,11 @@
   // `grappes` grappes de traces d'outil (pic, broche). Longueurs en m.
   const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 7, grappes: 40,
     grain: 0.07, relief: 4, graine: 53 };
+  // Pierre de taille de carrière (parois des galeries et des tubes, 🧱 activé ; jamais les piliers ni les fronts) :
+  // motif de 2 m (128 px/m), assises de hauteur tirée, blocs de longueur tirée, joints irréguliers (largeur, pente,
+  // lit ondulé), arêtes émoussées. Longueurs en m.
+  const PIERRE = { m: 2, px: 256, couleur: "#d5c9ad", mortier: "#8f8571", assise: [0.28, 0.46], bloc: [0.5, 1.1],
+    joint: [0.008, 0.02], onde: 0.008, pente: 0.05, biseau: 0.03, relief: 2.2, graine: 29 };
   // Parpaing (murs) : motif de 1 m (256 px/m, un joint de 1 cm fait 2,6 px ; un appareil régulier se répète de
   // toute façon), blocs de 50 × 20 cm à joints droits, gris béton, pores.
   const PARPAING = { m: 1, px: 256, couleur: "#a3a29c", mortier: "#b5b1a6", l: 0.5, h: 0.2, joint: 0.01,
@@ -144,7 +150,8 @@
   let THREE = null;
   let _import = null;
   let _e = null;                    // état de la vue ouverte (null = fermée)
-  let _appareils = {};               // canvas des textures de structures déjà dessinés (_matsTextures)
+  let _appareils = {};               // canvas des textures déjà dessinés (_texturesPeintes : structures, parois)
+  const _appareilsMs = {};          // ms du premier dessin de chacun (checkup)
   let _dernierGl = null;            // contexte de la dernière vue fermée (checkup : libéré ou non)
   let _derniereFermeture = null;    // "utilisateur" | "contexte" (checkup)
   let _gesteAnime = true;           // false : passage sans fondu ni descente (checkup des parties anciennes)
@@ -692,6 +699,7 @@
     ajouter(transp, _e.mats.transp, 2);
     ajouter(hachSol, _e.mats.hachSol, 0, "opaque");
     ajouter(hachRideau, _e.mats.hachRideau, 2);
+    if (parois.p.length) _paroiTexturee();
     ajouter(parois, _e.mats.paroi, 0, "parois");
     ajouter(remblaisTube, _e.mats.opaque, 0, "remblais");
     ajouter(eauTube, _e.mats.eauGalerie, 2, "eau");
@@ -759,15 +767,9 @@
     }
   }
 
-  // Paroi verticale (m) du sol au plafond, face vers l'intérieur de la galerie (à gauche du bord), en moellons.
-  // ⚠️ Texture en mètres dans les deux sens (jamais étirée à la hauteur) : une assise part du sol.
+  // Paroi verticale (m) du sol au plafond, face vers l'intérieur de la galerie (à gauche du bord) : _paroiY.
   function _paroi(lot, x0, z0, x1, z1, h) {
-    const dx = x1 - x0, dz = z1 - z0, l = Math.hypot(dx, dz);
-    if (l < 1e-6) return;
-    const lm = MOELLON.l * MOELLONS_MOTIF.l, hm = MOELLON.h * MOELLONS_MOTIF.h;
-    const u0 = (x0 * dx + z0 * dz) / l / lm, u1 = u0 + l / lm, v1 = h / hm;
-    lot.quad([x0, 0, z0], [x1, 0, z1], [x1, h, z1], [x0, h, z0], [-dz / l, 0, dx / l], BLANC,
-      [u0, 0, u1, 0, u1, v1, u0, v1]);
+    _paroiY(lot, [x0, z0], [x1, z1], 0, h);
   }
 
   function _construireTuileGalerie(t) {
@@ -816,6 +818,7 @@
     };
     ajouter(sol, e.mats.solGalerie, 0, "sol");
     ajouter(plafond, e.mats.plafondGalerie, 0, "plafond");
+    if (parois.p.length) _paroiTexturee();
     ajouter(parois, e.mats.paroi, 0, "parois");
     ajouter(opaque, e.mats.opaque, 0, "opaque");
     ajouter(rubans, e.mats.rubans, 0, "rubans");
@@ -1281,7 +1284,7 @@
   // de blocs MOELLON.l × MOELLON.h, joints décalés (chaque assise part d'un décalage tiré, les blocs bouclent sur la
   // largeur : motif sans couture), longueur de bloc ± 25 %, teinte par bloc autour de MOELLON.couleur, arêtes un peu
   // éclairées en haut et ombrées en bas, joints de mortier plus sombres ou plus clairs, grain fin. ~3 ms, 160 Ko de
-  // texture ; aucune image téléchargée.
+  // texture ; aucune image téléchargée. `repeat` = un motif par MOELLON × MOELLONS_MOTIF mètres (uv en m, _paroiY).
   function _moellons() {
     const k = MOELLON_PX_M, bl = Math.round(MOELLON.l * k), bh = Math.round(MOELLON.h * k);
     const L = bl * MOELLONS_MOTIF.l, H = bh * MOELLONS_MOTIF.h, jt = Math.max(1, Math.round(MOELLON.joint * k));
@@ -1326,6 +1329,7 @@
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1 / (MOELLON.l * MOELLONS_MOTIF.l), 1 / (MOELLON.h * MOELLONS_MOTIF.h));
     tex.anisotropy = 4;
     return tex;
   }
@@ -1566,6 +1570,30 @@
     return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, R.relief) };
   }
 
+  // Assises d'une pierre de taille de carrière (PIERRE) : hauteurs tirées dont la somme fait le motif, blocs de
+  // longueur tirée partant d'un décalage tiré (joints jamais alignés d'une assise à l'autre), joints irréguliers.
+  function _assisesPierre(alea) {
+    const P = PIERRE, k = P.px / P.m, A = [], tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
+    for (let y = 0; y < P.m - 1e-6;) {
+      let h = tire(P.assise);
+      const reste = P.m - y;
+      if (reste - h < P.assise[0]) h = reste > P.assise[1] ? reste / 2 : reste;
+      const blocs = [], dec = alea() * P.m;
+      for (let x = 0; ;) {
+        const t = 0.86 + alea() * 0.16, chaud = alea(), gris = alea() < 0.2;
+        blocs.push({ x: ((dec + x) % P.m) * k, pente: (alea() - 0.5) * 2 * P.pente, demi: tire(P.joint) * k / 2,
+          teinte: gris ? [t * 0.95, t * 0.97, t * 1.0] : [t * (1 + 0.03 * chaud), t, t * (0.97 - 0.05 * chaud)] });
+        x += tire(P.bloc);
+        if (P.m - x < P.bloc[0] * 0.8) break;
+      }
+      A.push({ bas: y * k, demiLit: tire(P.joint) * k / 2,
+        onde: [(0.4 + alea() * 0.6) * P.onde * k, 1 + Math.floor(alea() * 3), alea() * 2 * Math.PI], blocs: blocs });
+      y += h;
+    }
+    return { assises: A, couleur: P.couleur, mortier: P.mortier, biseau: P.biseau * k, relief: P.relief,
+      bosse: 0.12, grainRelief: 0.06, taches: 0.16, grain: 0.08, lits: 0.05, pores: 120, pore: [0.6, 1.8], px: P.px };
+  }
+
   // Assises de parpaings (PARPAING) : blocs réguliers posés à joints croisés (demi-bloc de décalage).
   function _assisesParpaing(alea) {
     const P = PARPAING, k = P.px / P.m, A = [], nl = Math.round(P.m / P.l);
@@ -1589,22 +1617,9 @@
   function _matsTextures() {
     const e = _e;
     if (e.mats.roche) return;
-    const t0 = performance.now(), aniso = Math.min(4, e.renderer.capabilities.getMaxAnisotropy());
-    // `dessin(alea)` → { couleur, normale } (canvas).
+    const t0 = performance.now();
     const fab = function (nom, dessin, graine, recule) {
-      if (!_appareils[nom]) {
-        let g = graine;
-        const alea = function () { g = (g * 16807) % 2147483647; return g / 2147483647; };
-        _appareils[nom] = dessin(alea);
-      }
-      const t = { couleur: new THREE.CanvasTexture(_appareils[nom].couleur),
-        normale: new THREE.CanvasTexture(_appareils[nom].normale) };
-      [t.couleur, t.normale].forEach(function (x) {
-        x.wrapS = x.wrapT = THREE.RepeatWrapping;
-        x.anisotropy = aniso;
-        e.texStructures.push(x);
-      });
-      t.couleur.colorSpace = THREE.SRGBColorSpace;
+      const t = _texturesPeintes(nom, dessin, graine);
       const o = { map: t.couleur, normalMap: t.normale };
       if (recule) Object.assign(o, { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
       return new THREE.MeshLambertMaterial(o);
@@ -1613,6 +1628,56 @@
     e.mats.parpaing = fab("parpaing", function (alea) { return _appareil(_assisesParpaing(alea), alea); },
       PARPAING.graine, true);
     e.msTextures = performance.now() - t0;
+  }
+
+  // Couleur + normal map (CanvasTexture répétées, anisotropie ≤ 4, libérées avec la vue) d'une texture dessinée par
+  // `dessin(alea)` → { couleur, normale } (canvas), une fois par page (_appareils ; durée de ce premier dessin dans
+  // _appareilsMs, lue par le checkup).
+  function _texturesPeintes(nom, dessin, graine) {
+    const e = _e, aniso = Math.min(4, e.renderer.capabilities.getMaxAnisotropy());
+    if (!_appareils[nom]) {
+      const t0 = performance.now();
+      let g = graine;
+      const alea = function () { g = (g * 16807) % 2147483647; return g / 2147483647; };
+      _appareils[nom] = dessin(alea);
+      _appareilsMs[nom] = Math.round(performance.now() - t0);
+    }
+    const t = { couleur: new THREE.CanvasTexture(_appareils[nom].couleur),
+      normale: new THREE.CanvasTexture(_appareils[nom].normale) };
+    [t.couleur, t.normale].forEach(function (x) {
+      x.wrapS = x.wrapT = THREE.RepeatWrapping;
+      x.anisotropy = aniso;
+      e.texStructures.push(x);
+    });
+    t.couleur.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+
+  // Parois (matériau `paroi`, un seul pour les galeries, les tubes et les puits) : pierre de taille avec relief si
+  // 🧱 est activé, moellons d'origine sinon. On remplace la carte du matériau, jamais la géométrie (uv en mètres,
+  // _paroiY) : aucun matériau de plus par image, et une paroi déjà construite suit la bascule. Pierre dessinée à la
+  // première paroi texturée (aucun coût en rendu structures, ni 🧱 coupé). ⚠️ `repeat` = un motif par PIERRE.m
+  // mètres, sur la couleur ET le relief (three.js transforme chaque carte avec la sienne).
+  function _paroiTexturee() {
+    const e = _e, pierre = e.textures === true, mat = e.mats.paroi;
+    if (e.paroiPierre === pierre) return;
+    if (pierre) {
+      if (!e.texPierre) {
+        const t0 = performance.now();
+        e.texPierre = _texturesPeintes("pierre", function (alea) { return _appareil(_assisesPierre(alea), alea); },
+          PIERRE.graine);
+        e.texPierre.couleur.repeat.set(1 / PIERRE.m, 1 / PIERRE.m);
+        e.texPierre.normale.repeat.set(1 / PIERRE.m, 1 / PIERRE.m);
+        e.msParoi = performance.now() - t0;
+      }
+      mat.map = e.texPierre.couleur;
+      mat.normalMap = e.texPierre.normale;
+    } else {
+      mat.map = e.moellons;
+      mat.normalMap = null;
+    }
+    mat.needsUpdate = true;
+    e.paroiPierre = pierre;
   }
 
   // Hachures à 45° en coordonnées monde (une bande sombre tous les HACHURE_PAS m) sur un matériau Lambert :
@@ -1639,9 +1704,12 @@
     monde.offset.set(0, 0);
     monde.needsUpdate = true;
     _e.moellons = _moellons();
-    // Pierre et parpaing (🧱) : faits à la demande (_matsTextures) ; refaits avec la scène (reprise du contexte).
+    // Roche, parpaing et pierre des parois (🧱) : faits à la demande (_matsTextures, _paroiTexturee) ; refaits avec
+    // la scène (reprise du contexte). La paroi naît en moellons.
     _e.textures = _texturesVoulues();
     _e.texStructures = [];
+    _e.texPierre = null;
+    _e.paroiPierre = false;
     const m = {
       opaque: new THREE.MeshLambertMaterial({ vertexColors: true }),
       murs: new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1,
@@ -1911,7 +1979,7 @@
   // ── Volumes des passages entre niveaux (POI jonction, puits de surface, tracé jonction) ─────────────────
   // ⚠️ contrat (décision produit) : un POI jonction ou un puits de surface montre son volume là où est son panneau
   // (raccord validé du niveau, sinon le point), selon son moyen (KtaPoiJonction.moyen) : escalier (jes, eso) = cage
-  // de 2,5 × 1,5 m à marches ; échelons (jpe, peo) = puits carré de 1,2 m en moellons, échelons tous les 0,3 m ;
+  // de 2,5 × 1,5 m à marches ; échelons (jpe, peo) = puits carré de 1,2 m (paroi des galeries), échelons tous les 0,3 m ;
   // corde (jps) = puits nu. Ouvert dans le SOL vers un niveau lié au-dessous, dans le PLAFOND vers un niveau lié
   // au-dessus (le volume dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface
   // (peo, eso au plus haut de leurs niveaux ; pa partout) : plafond seulement, disque de ciel au sommet (peo, eso) ou
@@ -2031,14 +2099,17 @@
       [ring[3][0], y0, ring[3][1]], [0, -1, 0], col);
   }
 
-  // Paroi en moellons de y0 à y1 (m), texture en mètres comme _paroi (une assise part de y = 0).
+  // Paroi de y0 à y1 (m), matériau `paroi` (pierre de taille ou moellons, _paroiTexturee). ⚠️ contrat :
+  // coordonnées de texture en MÈTRES, u le long de la paroi (projection sur sa direction : deux tronçons alignés se
+  // suivent sans saut), v = hauteur depuis le sol (une assise part toujours de y = 0) ; la taille du motif est la
+  // `repeat` de la texture, jamais la géométrie : aucun étirement quand la hauteur change, et la bascule 🧱 ne
+  // refait rien ici.
   function _paroiY(lot, p, q, y0, y1) {
     const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
     if (l < 1e-6 || y1 <= y0) return;
-    const lm = MOELLON.l * MOELLONS_MOTIF.l, hm = MOELLON.h * MOELLONS_MOTIF.h;
-    const u0 = (p[0] * dx + p[1] * dz) / l / lm, u1 = u0 + l / lm;
+    const u0 = (p[0] * dx + p[1] * dz) / l, u1 = u0 + l;
     lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], [-dz / l, 0, dx / l], BLANC,
-      [u0, y0 / hm, u1, y0 / hm, u1, y1 / hm, u0, y1 / hm]);
+      [u0, y0, u1, y0, u1, y1, u0, y1]);
   }
 
   function _quadPlat(lot, ring, y, col) {
@@ -2079,6 +2150,7 @@
     };
     ajouter(lots.sol, e.mats.boucheSol, -1, "boucheSol");
     ajouter(lots.plafond, e.mats.bouchePlafond, -1, "bouchePlafond");
+    if (lots.parois.p.length) _paroiTexturee();
     ajouter(lots.parois, e.mats.paroi, 0, "paroiPassage");
     ajouter(lots.opaque, e.mats.opaque, 0, "passage");
     ajouter(lots.lumineux, e.mats.lumineux, 1, "cadre");
@@ -2161,7 +2233,7 @@
   }
 
   // Rampe d'un tracé jonction : ruban incliné, couleur du canon. Vers un niveau au-dessus, du sol (notre bout) au
-  // plafond (l'autre bout) ; au-dessous, du sol à −hauteur dans une tranchée (bouche au sol, parois en moellons).
+  // plafond (l'autre bout) ; au-dessous, du sol à −hauteur dans une tranchée (bouche au sol, parois des galeries).
   function _rampe(v, lots) {
     const e = _e, sc = e.sc, h = e.hauteur, w = VOLUME.rampe / 2, col = _couleur("traces", "jonction", "color");
     const pts = v.pts.map(function (q) { return [q.x / sc, q.y / sc]; }), cum = [0];
@@ -4587,17 +4659,22 @@
     return out;
   }
 
-  // Textures des structures (checkup) : interrupteur, maillages des tuiles construites par matériau, couleurs des
-  // sommets des maillages à couleur unie, matériaux texturés (tailles, mipmaps, anisotropie, `lits` : écart relatif
-  // de la rangée la plus éloignée de la médiane, haut pour un appareil à lits de mortier, faible pour la roche brute)
-  // et échelle mesurée sur les arêtes horizontales et verticales des faces texturées :
-  // { x, z (milieu, m), sens "h" | "v", uvParM }.
+  // Textures des structures et des parois (checkup) : interrupteur, maillages des tuiles construites par matériau,
+  // couleurs des sommets des maillages à couleur unie, matériaux texturés (tailles, mipmaps, anisotropie, `lits` :
+  // écart relatif de la rangée la plus éloignée de la médiane, haut pour un appareil à lits de mortier, faible pour la
+  // roche brute ; paroi : `pierre` ou moellons) et échelle mesurée sur les arêtes horizontales et verticales des
+  // faces texturées : { x, z (milieu, m), sens "h" | "v", uvParM } (paroi : uv de la géométrie × `repeat` de sa
+  // carte, l'échelle vue). ms : dessin des matériaux des structures et de la pierre des parois à cette ouverture ;
+  // dessins : durée du premier dessin de chaque texture dans la page.
   function textures() {
     if (!_e) return null;
-    const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs };
+    const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs,
+      paroi: e.mats.paroi };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
-      uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m }, maillages: {}, couleurs: {}, aretes: [], ms: Math.round(e.msTextures || 0),
-      materiaux: {} };
+      uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m,
+        moellons: { h: 1 / (MOELLON.l * MOELLONS_MOTIF.l), v: 1 / (MOELLON.h * MOELLONS_MOTIF.h) } },
+      maillages: {}, couleurs: {}, aretes: [], ms: Math.round(e.msTextures || 0), msParoi: Math.round(e.msParoi || 0),
+      dessins: Object.assign({}, _appareilsMs), materiaux: {} };
     const lits = function (cv) {
       const w = cv.width, h = cv.height, d = cv.getContext("2d").getImageData(0, 0, w, h).data, l = [];
       for (let y = 0; y < h; y++) {
@@ -4608,14 +4685,20 @@
       const med = l.slice().sort(function (a, b) { return a - b; })[h >> 1];
       return +(l.reduce(function (m, v) { return Math.max(m, Math.abs(v - med)); }, 0) / med).toFixed(3);
     };
-    ["roche", "parpaing"].forEach(function (k) {
+    ["roche", "parpaing", "paroi"].forEach(function (k) {
       const m = mats[k];
       if (!m) return;
       r.materiaux[k] = { carte: m.map.image.width + "x" + m.map.image.height, normale: !!m.normalMap,
-        relief: m.normalMap ? m.normalMap.image.width : 0, mipmaps: m.map.generateMipmaps && m.normalMap.generateMipmaps,
+        relief: m.normalMap ? m.normalMap.image.width : 0,
+        mipmaps: m.map.generateMipmaps && (!m.normalMap || m.normalMap.generateMipmaps),
         anisotropie: m.map.anisotropy, couleursSommets: m.vertexColors, recule: m.polygonOffset,
         lits: lits(m.map.image) };
     });
+    r.materiaux.paroi.pierre = !!e.texPierre && e.mats.paroi.map === e.texPierre.couleur;
+    r.materiaux.paroi.repetition = [e.mats.paroi.map.repeat.x, e.mats.paroi.map.repeat.y];
+    if (e.mats.paroi.normalMap) {
+      r.materiaux.paroi.repetitionRelief = [e.mats.paroi.normalMap.repeat.x, e.mats.paroi.normalMap.repeat.y];
+    }
     e.tuiles.forEach(function (t) {
       if (!t.obj) return;
       t.obj.children.forEach(function (me) {
@@ -4638,8 +4721,10 @@
             const lh = Math.hypot(dx, dz), sens = Math.abs(dy) < 1e-6 ? "h" : lh < 1e-6 ? "v" : null;
             const l = Math.hypot(lh, dy);
             if (!sens || l < 0.05) continue;
+            const rep = nom === "paroi" ? me.material.map.repeat : null;
+            const du = (uv[b * 2] - uv[a * 2]) * (rep ? rep.x : 1), dv = (uv[b * 2 + 1] - uv[a * 2 + 1]) * (rep ? rep.y : 1);
             r.aretes.push({ x: (p[a * 3] + p[b * 3]) / 2, z: (p[a * 3 + 2] + p[b * 3 + 2]) / 2, y: p[a * 3 + 1],
-              sens: sens, mat: nom, uvParM: Math.hypot(uv[b * 2] - uv[a * 2], uv[b * 2 + 1] - uv[a * 2 + 1]) / l });
+              y1: p[b * 3 + 1], v0: uv[a * 2 + 1], sens: sens, mat: nom, uvParM: Math.hypot(du, dv) / l });
           }
         }
       });

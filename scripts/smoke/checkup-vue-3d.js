@@ -25,7 +25,9 @@
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
 // Interrupteur 🪧 Guidage (§ 22) : bandeau et chevrons masqués, ruban gardé, urgence affichée, retenu.
 // Interrupteur 🧱 Textures (§ 24) : roche brute (sans lits de mortier) et parpaing par défaut, taille réelle (mur de 2 m = mur de 40 m), coupé =
-// couleurs de la légende (type perso compris), retenu, greffe intacte, mixte / structures / galerie.
+// couleurs de la légende (type perso compris), retenu, greffe intacte, mixte / structures / galerie ; parois des
+// tubes et des galeries en pierre de taille (lits de joint mesurés, 0,5 de texture par mètre à 2,5 m comme à 6 m de
+// hauteur, une assise part du sol), moellons d'origine une fois coupé, temps de dessin des trois textures.
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
@@ -299,12 +301,14 @@ async function mesuresGalerie(page, nom, semisDonne) {
     const r = await page.evaluate(function (c) {
       return window.KtaVue3D.ouvrir({ depart: c.depart, distanceVue: c.d }).then(function () {
         const e0 = window.KtaVue3D.etat(), m = window.KtaVue3D.mesurer({ images: 90 }), e1 = window.KtaVue3D.etat();
-        const parois = window.KtaVue3D.parois().length;
+        const parois = window.KtaVue3D.parois().length, tx = window.KtaVue3D.textures();
         window.KtaVue3D.fermer();
         const tas = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null;
+        // Textures : dessin à cette ouverture (structures, pierre des parois) et premier dessin dans la page.
         return { rendu: e1.rendu, ouverture: e0.msOuverture, index: e0.msIndex, construites: e1.construites,
           parois: parois, premierTour: m.msPremierTour, msMed: m.msMed, msP95: m.msP95,
-          msMax: m.msMax, triangles: m.trianglesMax, appels: m.appelsMax, tasMo: tas };
+          msMax: m.msMax, triangles: m.trianglesMax, appels: m.appelsMax, tasMo: tas,
+          textures: { structures: tx.ms, parois: tx.msParoi, premiers: tx.dessins } };
       });
     }, { depart: semis.depart, d: d });
     console.log("  📏 " + nom + " " + d + " m : " + JSON.stringify(r));
@@ -4121,12 +4125,22 @@ async function mesuresGalerie(page, nom, semisDonne) {
         const lire = function () {
           const t = K.textures(), e = K.etat();
           return { t: t, repere: e.reglages.repere, murDecale: e.murDecale, yMax: e.yMax,
-            parois: !!e.boites.parois, rendu: e.rendu, greffe: e.greffe };
+            parois: !!e.boites.parois, rendu: e.rendu, greffe: e.greffe, hauteur: e.hauteur };
         };
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
         await pause(100);
         r.defaut = lire();
         r.defaut.pref = window.getVue3DTextures();
+        // Parois à deux hauteurs de galerie : même échelle (aucun étirement), puis hauteur rendue.
+        const h0 = K.etat().hauteur;
+        K.reglerHauteur(2.5);
+        await pause(50);
+        r.h25 = lire();
+        K.reglerHauteur(6);
+        await pause(50);
+        r.h6 = lire();
+        K.reglerHauteur(h0);
+        await pause(50);
         // Une greffe posée ne doit rien sentir de la bascule (scène et groupe gardés).
         const j = [];
         K.greffer({ nom: "tex", scene: function (ctx, raison) {
@@ -4186,6 +4200,43 @@ async function mesuresGalerie(page, nom, semisDonne) {
         });
       };
       const D0 = TX.defaut.t, C0 = TX.coupe.t, R0 = TX.rouverte.t;
+      // Parois des tubes (mixte) : pierre de taille avec relief quand 🧱 est activé, moellons d'origine coupé.
+      const pa = D0.materiaux.paroi || {}, pc = C0.materiaux.paroi || {}, pr = R0.materiaux.paroi || {};
+      const ech2 = function (t, sens) {
+        const v = t.aretes.filter(function (x) { return x.mat === "paroi" && x.sens === sens; }).map(function (x) {
+          return x.uvParM;
+        });
+        return v.length ? { n: v.length, min: +Math.min.apply(null, v).toFixed(4), max: +Math.max.apply(null, v).toFixed(4) }
+          : { n: 0 };
+      };
+      const juste2 = function (s, v) { return s.n > 0 && Math.abs(s.min - v) < 2e-3 && Math.abs(s.max - v) < 2e-3; };
+      const UP = D0.uvParMetre;
+      verifier(pa.pierre === true && pa.carte === "256x256" && pa.normale && pa.relief === 256 && pa.mipmaps &&
+        pa.anisotropie >= 1 && pa.anisotropie <= 4 && pa.lits > 0.12 && D0.maillages.paroi >= 1 &&
+        JSON.stringify(pa.repetition) === JSON.stringify([UP.pierre, UP.pierre]) &&
+        JSON.stringify(pa.repetitionRelief) === JSON.stringify([UP.pierre, UP.pierre]),
+        "🧱 activé : parois des tubes en pierre de taille, 256 px, relief (normal map), mipmaps, lits de joint " +
+        "mesurés (écart de rangée " + pa.lits + ")", pa);
+      const ePa = { h: ech2(D0, "h"), v: ech2(D0, "v"), h25: { h: ech2(TX.h25.t, "h"), v: ech2(TX.h25.t, "v") },
+        h6: { h: ech2(TX.h6.t, "h"), v: ech2(TX.h6.t, "v") }, hauteurs: [TX.h25.hauteur, TX.h6.hauteur],
+        attendu: UP.pierre };
+      verifier(juste2(ePa.h, UP.pierre) && juste2(ePa.v, UP.pierre) && TX.h25.hauteur === 2.5 && TX.h6.hauteur === 6 &&
+        juste2(ePa.h25.h, UP.pierre) && juste2(ePa.h25.v, UP.pierre) && juste2(ePa.h6.h, UP.pierre) &&
+        juste2(ePa.h6.v, UP.pierre) && TX.h6.t.materiaux.paroi.pierre,
+        "pierre des parois à la taille réelle : " + UP.pierre + " de texture par mètre en long et en hauteur, à 2,5 m " +
+        "comme à 6 m de hauteur de galerie (aucun étirement)", ePa);
+      const sol = D0.aretes.filter(function (x) { return x.mat === "paroi" && x.sens === "v" && Math.abs(x.y) < 1e-6; });
+      verifier(sol.length > 0 && sol.every(function (x) { return Math.abs(x.v0) < 1e-6; }),
+        "parois : une assise part toujours du sol (v = 0 à y = 0, " + sol.length + " arêtes)", sol.slice(0, 3));
+      verifier(pc.pierre === false && pc.carte === "256x160" && !pc.normale && C0.maillages.paroi >= 1 &&
+        juste2(ech2(C0, "h"), UP.moellons.h) && juste2(ech2(C0, "v"), UP.moellons.v) &&
+        JSON.stringify(pc) === JSON.stringify(pr) && JSON.stringify(ech2(C0, "h")) === JSON.stringify(ech2(R0, "h")),
+        "🧱 coupé : parois en moellons d'origine (256 × 160, sans relief, un motif par 1,6 × 1 m), comme une vue " +
+        "ouverte sans textures", { coupe: pc, rouverte: pr, h: ech2(C0, "h"), v: ech2(C0, "v") });
+      const dess = D0.dessins || {};
+      verifier(dess.roche >= 0 && dess.parpaing >= 0 && dess.pierre >= 0 && D0.msParoi >= 0,
+        "premier dessin des trois textures : roche " + dess.roche + " ms, parpaing " + dess.parpaing + " ms, pierre " +
+        dess.pierre + " ms (à cette ouverture : structures " + D0.ms + " ms, parois " + D0.msParoi + " ms)", dess);
       verifier(D0.actives && D0.bouton === "true" && TX.defaut.pref === true &&
         D0.maillages.roche >= 1 && D0.maillages.parpaing >= 1 && !D0.maillages.murs,
         "textures actives par défaut : roche brute (piliers, fronts, type perso) et parpaing (murs)",
@@ -4221,7 +4272,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "celui de 40 m, en hauteur et sur le dessus (aucun étirement)", ech);
       verifier(!C0.actives && C0.bouton === "false" && TX.coupe.pref === false && TX.coupe.repere && TX.coupe.tuile &&
         TX.coupe.dansTuile && !C0.maillages.roche && !C0.maillages.parpaing && C0.maillages.opaque >= 1 &&
-        C0.maillages.murs >= 1 && C0.aretes.length === 0,
+        C0.maillages.murs >= 1 && C0.aretes.every(function (x) { return x.mat === "paroi"; }),
         "🧱 coupé dans la tuile ⚙️ : matériaux d'origine, plus aucune texture ; repère sur ⚙️ ; tuile ouverte",
         { actives: C0.actives, maillages: C0.maillages, repere: TX.coupe.repere });
       verifier(contient(C0.couleurs.opaque, "#3c9be0") && contient(C0.couleurs.opaque, "#f4c542") &&
@@ -4238,9 +4289,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
         TX.rouverte.repere, "réglage retenu sur l'appareil : rouverte, textures toujours coupées",
         { remis: TX.remis.t.actives, rouverte: R0.actives });
       verifier(TX.defaut.rendu === "mixte" && TX.defaut.parois && TX.structures.t.maillages.roche >= 1 &&
-        TX.structures.t.maillages.parpaing >= 1 && !TX.galerie.t.maillages.roche && TX.galerie.parois && TX.libere,
-        "mixte (parois des tubes en moellons gardées), structures seules texturées ; galerie sans structures ; rien " +
-        "après la fermeture", { mixte: TX.defaut.parois, structures: TX.structures.t.maillages, galerie: TX.galerie.t.maillages });
+        TX.structures.t.maillages.parpaing >= 1 && !TX.structures.t.maillages.paroi && !TX.galerie.t.maillages.roche &&
+        TX.galerie.parois && TX.galerie.t.maillages.paroi >= 1 && TX.galerie.t.materiaux.paroi.pierre && TX.libere,
+        "mixte (parois des tubes en pierre de taille), structures seules texturées sans paroi ; galerie : parois en " +
+        "pierre de taille, aucune structure ; rien après la fermeture",
+        { mixte: TX.defaut.parois, structures: TX.structures.t.maillages, galerie: TX.galerie.t.maillages });
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;

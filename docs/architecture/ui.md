@@ -2208,7 +2208,9 @@ icônes.
   montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🪧 Guidage (`getVue3DGuidage`,
   `myktamap_v3d_guidage_v1`, cet appareil, montré par défaut ; coupé : ni bandeau ni chevrons en 3D, ruban, étapes
   et 🏁 gardés, urgence toujours affichée, préférence et état du guidage 2D intacts, `vue3d.js > _lireGuidage`), 🧱
-  Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut ; sur la ligne du rendu,
+  Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
+  des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing ; coupé : parois en moellons,
+  structures aux couleurs de la légende ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
   Boussole et Guidage sur la suivante : une ligne de plus recouvrait ▼ de l'inclinaison en vue plongeante, tuile
   ouverte ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`, sans toucher scène ni
   greffe). Fermée par ⚙️, Échap (avant tout le reste) ou un

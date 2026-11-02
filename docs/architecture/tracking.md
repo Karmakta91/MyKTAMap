@@ -1404,11 +1404,16 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (à moins d'une demi-largeur d'un tracé ou dans un joint) ou entre dans un remblais du niveau. Niveau sans galerie :
   rien n'arrête. Parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
 - **Scène galerie** : sol et plafond = les pièces, texture calcaire posée en coordonnées monde (pièces superposées sans
-  couture) ; parois = moellons de calcaire taillés (`_moellons`, constantes `MOELLON` / `MOELLONS_MOTIF` : blocs
-  de 40 × 25 cm ± 25 % en longueur, assises horizontales à joints décalés, teinte par bloc autour de
-  `MOELLON.couleur`, plus claire et plus grise que le sol, mortier plus sombre ou plus clair, grain ; motif de
-  1,6 × 1 m à 160 px/m, canvas, aucune image), texture **en mètres dans les deux sens** (`_paroi` : jamais étirée à la
-  hauteur, une assise part du sol) ; liseré au sol de 15 cm, couleur de la
+  couture) ; parois (galeries, tubes du mixte, puits et tranchées des passages : un seul matériau `paroi`) en
+  **pierre de taille** quand 🧱 Textures est activé (`_paroiTexturee` : `_appareil` + `_assisesPierre`, `PIERRE` :
+  256 px, motif de 2 m, assises de hauteur tirée, blocs de longueur tirée, joints irréguliers, arêtes émoussées,
+  normal map `_carteNormale`), en **moellons** de calcaire taillés sinon (`_moellons`, constantes `MOELLON` /
+  `MOELLONS_MOTIF` : blocs de 40 × 25 cm ± 25 % en longueur, assises horizontales à joints décalés, teinte par bloc
+  autour de `MOELLON.couleur`, plus claire et plus grise que le sol, mortier plus sombre ou plus clair, grain ; motif
+  de 1,6 × 1 m à 160 px/m, canvas, aucune image). ⚠️ contrat : coordonnées de texture **en mètres** (`_paroiY` :
+  u le long de la paroi, v = hauteur depuis le sol, une assise part du sol) ; la taille du motif est la `repeat`
+  de la carte (pierre 1/2, moellons 1/1,6 × 1/1), jamais la géométrie : aucun étirement de 1,5 à 20 m de hauteur, et
+  la bascule ne remplace que la carte du matériau (aucun matériau de plus) ; liseré au sol de 15 cm, couleur de la
   légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est pas un tube : c'est une rampe
   (volumes des passages, ci-dessous). Structures (intégrées et perso)
   ni dessinées ni bloquantes (sauf en rendu mixte, ci-dessus). Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
@@ -1442,7 +1447,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   validé du niveau, sinon le point), aligné sur l'axe de galerie le plus proche : `jes` / `eso` cage d'escalier
   2,5 × 1,5 m (10 marches pleines), `jpe` / `peo` puits de 1,2 m à échelons (tous les 0,3 m, deux montants), `jps`
   puits nu, `pa` tube de 0,8 m à grille. Ouvert dans le **sol** vers un niveau lié au-dessous, dans le **plafond** vers
-  un niveau lié au-dessus, les deux entre trois niveaux ; parois en moellons sur 6 m au-delà (le reste se perd dans le
+  un niveau lié au-dessus, les deux entre trois niveaux ; parois (matériau des galeries) sur 6 m au-delà (le reste se perd dans le
   noir). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
   disque de ciel (sprite clair non éclairé) au sommet de `peo` / `eso`. Cadre doré au sol d'un passage. Un tracé
   `jonction` (filtre de son type respecté) devient une **rampe** de 1 m à sa couleur du canon : du sol au plafond vers
@@ -1506,7 +1511,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.
-- **Textures des structures** (interrupteur 🧱 de la tuile ⚙️, `config.js > getVue3DTextures`, actif par défaut) :
+- **Textures des structures et des parois** (interrupteur 🧱 de la tuile ⚙️, `config.js > getVue3DTextures`, actif
+  par défaut) : parois des galeries et des tubes en pierre de taille (§ Scène galerie ; coupé : moellons d'origine) ;
   piliers et fronts en **roche brute** (décision produit : la masse calcaire laissée en place, jamais appareillée —
   bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux, traces
   d'outil ; aucun joint), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
@@ -1519,7 +1525,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   mètres posées face par face (`_prisme`) : u = longueur de contour cumulée (l'appareil tourne l'angle), v = hauteur
   depuis le sol, dessus en projection monde (x, z). Normal map plutôt que bump map (une lecture par pixel, pas de
   scintillement au loin). Coupé : lots et matériaux d'origine, couleurs de la légende exactes. Basculer refait les
-  tuiles sur place (`_refaireTuiles`), sans toucher la scène ni la greffe. Paroi des tubes du mixte : moellons.
+  tuiles sur place (`_refaireTuiles`), sans toucher la scène ni la greffe. Coût : chaque texture (roche, parpaing,
+  pierre) est dessinée une fois par page (`_texturesPeintes`, canvas gardés dans `_appareils`, ~15 à 30 ms au PC),
+  la pierre seulement à la première paroi texturée ; `KtaVue3D.textures()` rend ces temps (checkup § 24).
 - **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés à la
   distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). De près
   (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un
