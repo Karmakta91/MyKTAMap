@@ -19,6 +19,8 @@
 // interrupteur retenu par plan ; passages 🪜 par POI et tracé jonction ; carte 2D placée à la sortie. Passages (14) :
 // volume par moyen, rampe, panneau ↕, 🪜 nommé, fiche, fondu et descente, arrivée dans le tube, cap, guidage, suivi.
 // Aucune paroi de tube dans un passage (§ 14 bis) : bouche ou tranchée coupée par un tracé, cul-de-sac, 3 rendus.
+// Accès de surface sans passage (§ 14 quater : esf, pef, pb, pc, psf, ps, pe, cao, caf) : forme, place, ni 🪜 ni
+// cadre, blocage (cône, bassin, cavage fermé), itinéraire sur le cône, arrivée devant un cavage fermé, 🧱, 2D intacte.
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
@@ -3331,6 +3333,285 @@ async function mesuresGalerie(page, nom, semisDonne) {
         verifier(DC.inchanges, "POI enregistrés inchangés (seule la 3D recale le dessin)");
       }
 
+
+      // ── 14 quater. Accès de surface sans passage (esf, pef, pb, pc, psf, ps, pe, cao, caf), fictifs ─────────────
+      // Galerie principale (paroi à 1,25 m) au niveau 0 ; un POI par tag, posé à 2 m de l'axe (le cas courant). Par
+      // rendu : forme et bouches de chaque volume, place (dans le tube en galerie / mixte, porte sur l'axe ; au point
+      // en structures), ni 🪜 ni cadre doré, blocage du pas (cône, bassin, porte fermée ; porte ouverte, puits fermés
+      // et bouché laissent passer), départ dedans ramené au bord ; itinéraire par-dessus le cône ; arrivée d'un
+      // itinéraire 2D devant un cavage fermé atteinte ; 🧱 coupé = couleurs unies, obstacles gardés ; 2D intacte
+      // (recalage, itinéraire, pas du tracker identiques sans et avec ces POI) ; mesures d'ouverture et du pas.
+      const AC = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, G = window.KtaGalerie, sc = a.sc;
+        const P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const acc = window.ktaEstAccessible;
+        window.ktaEstAccessible = function () { return true; };
+        window.ktaSetActiveLevel(0);
+        window.setVue3DTextures(true);
+        window.setStructures([]); window.setZones([]);
+        window.setRoads([{ uid: "rd_ac", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] }]);
+        const T = [["esf", -50], ["pef", -40], ["pb", -30], ["pc", -20], ["psf", -10], ["ps", 0], ["pe", 10],
+          ["cao", 20], ["caf", 30]];
+        const pois = T.map(function (t) {
+          return Object.assign({ id: "ac " + t[0], nom: "ac " + t[0], uid: "pt_ac_" + t[0], level: 0, tags: [t[0]] },
+            P(t[1], 2));
+        });
+        const relx = function () { return +(K.etat().pos.x / sc - a.ox).toFixed(2); };
+        const r = { moyens: T.map(function (t) {
+          return [t[0], window.KtaPoiJonction.moyen(t[0]), window.KtaPoiJonction.porteNiveaux(t[0])];
+        }) };
+        // 2D : recalage autour de chaque POI, itinéraire le long de la galerie, pas du tracker : sans puis avec.
+        const deux = async function () {
+          G.invalider();
+          const rec = T.map(function (t) {
+            return [[t[1], 2], [t[1], 0.8], [t[1] - 1, 0]].map(function (q) {
+              const v = G.versGalerie(P(q[0], q[1]).x, P(q[0], q[1]).y, 0);
+              return [v.etat, +(v.x / sc - a.ox).toFixed(3), +(v.y / sc - a.oz).toFixed(3)];
+            });
+          });
+          let it;
+          try {
+            const ri = await window.Pathfinder.computeRoute([P(-60, 0), P(40, 0)], { allowedTypes: ["principal"] });
+            it = { d: Math.round(ri.totalDistance), n: (ri.path || []).length };
+          } catch (e) { it = String(e && e.message); }
+          const seg = [[P(-60, 0).x, P(-60, 0).y, P(40, 0).x, P(40, 0).y], [P(-60, 2).x, P(-60, 2).y, P(40, 2).x, P(40, 2).y]];
+          return { rec: rec, iti: it, pas: window.ktaSegmentsBloquesParStructure(seg, 0) };
+        };
+        window.setEditorPoints([]);
+        r.sans = await deux();
+        const zb = G.zonesBloquent, dz = G.dansZone;
+        let appels = 0;
+        G.zonesBloquent = function () { appels++; return zb.apply(null, arguments); };
+        G.dansZone = function () { appels++; return dz.apply(null, arguments); };
+        window.setEditorPoints(pois);
+        r.avec = await deux();
+        r.appels2D = appels;
+        G.zonesBloquent = zb; G.dansZone = dz;
+        const avantPts = JSON.stringify(window.getEditorPoints());
+        // Marche le long de z depuis x0 vers l'est, n pas de 0,1 m → x atteint (m relatifs).
+        const marcher = function (x0, z, n) {
+          const d = P(x0, z);
+          K.placer(d.x, d.y, 90);
+          for (let i = 0; i < n; i++) K.avancer(0.1);
+          return relx();
+        };
+        for (const rendu of ["mixte", "galerie", "structures"]) {
+          window.setPlanRenduVue3D(null, rendu);
+          G.invalider();
+          const d = P(-60, 0), t0 = performance.now();
+          await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 200, tuiles: false });
+          const o = r[rendu] = { ms: Math.round(performance.now() - t0), h: K.etat().hauteur, vol: {}, marche: {},
+            echelle: {} };
+          await pause(50);
+          K.etat().volumes.forEach(function (v) {
+            if (!v.acces) return;
+            o.vol[v.tag] = Object.assign({}, v, { x: +(v.x / sc - a.ox).toFixed(3), z: +(v.y / sc - a.oz).toFixed(3),
+              bouche: null });
+          });
+          T.forEach(function (t) {
+            const v = o.vol[t[0]];
+            if (!v) return;
+            const z = v.z;
+            o.marche[t[0]] = marcher(t[1] - 4, z, 80);
+            if (t[0] === "caf") {
+              o.marche.cafBord1 = marcher(t[1] - 4, z + 0.8, 80);
+              o.marche.cafBord2 = marcher(t[1] - 4, z - 0.8, 80);
+            }
+            K.placer(P(t[1], z).x, P(t[1], z).y, 90);
+            o.echelle[t[0]] = K.etat().passage.visible;
+          });
+          await K.fermer();
+          // Départ au centre d'un obstacle : ramené au bord, on repart.
+          o.dedans = {};
+          for (const tag of ["pc", "pe", "caf"]) {
+            const v = o.vol[tag], t = T.filter(function (q) { return q[0] === tag; })[0];
+            await K.ouvrir({ depart: Object.assign({ cap: 270 }, P(t[1], v.z)), tuiles: false });
+            const p = K.etat().pos;
+            o.dedans[tag] = { degage: K.etat().degagements, dans: G.dansZone(p.x, p.y, 0, rendu), x: relx() };
+            // Repartir : 2 m vers l'est, sinon vers l'ouest.
+            let best = 0;
+            for (const cap of [90, 270]) {
+              K.placer(p.x, p.y, cap);
+              for (let i = 0; i < 10; i++) K.avancer(0.2);
+              best = Math.max(best, Math.hypot(K.etat().pos.x - p.x, K.etat().pos.y - p.y) / sc);
+            }
+            o.dedans[tag].parcouru = +best.toFixed(2);
+            await K.fermer();
+          }
+        }
+        // Itinéraire par-dessus le cône (mixte) : ruban sur le dessus (0,6 m + 5 cm), jamais dedans.
+        window.setPlanRenduVue3D(null, "mixte");
+        G.invalider();
+        const zc = r.mixte.vol.pc.z, Pl = function (x, z) { return Object.assign({ level: 0 }, P(x, z)); };
+        const ipts = [Pl(-26, zc), Pl(-14, zc)];
+        window.setVue3DGuidage(true);
+        window.setRoads([{ uid: "rd_ac", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] },
+          { uid: "rd_ac_i", type: "itinerary", level: 0, points: ipts,
+            raccords: [{ role: "depart", vers: { x: ipts[0].x, y: ipts[0].y } },
+              { role: "arrivee", label: "Arrivée fictive", vers: { x: ipts[1].x, y: ipts[1].y } }] }]);
+        await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(-25, zc + 0.6)), tuiles: false });
+        await pause(300);
+        r.iti = (K.etat({ profilIti: true }).itineraire.profil || []).map(function (q) {
+          return [+(q[0] - a.ox).toFixed(2), q[1], q[2], q[3]];
+        });
+        await K.fermer();
+        // Arrivée d'un itinéraire 2D sur le cavage fermé : chemin du Pathfinder jusqu'au POI (décalé de 2 m).
+        const caf = pois.filter(function (p) { return p.tags[0] === "caf"; })[0];
+        window.setRoads([{ uid: "rd_ac", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] }]);
+        G.invalider();
+        const route = await window.Pathfinder.computeRoute([P(15, 0), { x: caf.x, y: caf.y }],
+          { allowedTypes: ["principal"] });
+        const chemin = (route.path || []).map(function (q) { return { x: q.x, y: q.y, level: 0 }; });
+        const fin = chemin[chemin.length - 1];
+        window.setRoads([{ uid: "rd_ac", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] },
+          { uid: "rd_ac_c", type: "itinerary", level: 0, points: chemin,
+            raccords: [{ role: "depart", vers: { x: chemin[0].x, y: chemin[0].y } },
+              { role: "arrivee", label: "ac caf", vers: { x: caf.x, y: caf.y } }] }]);
+        await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(22, 0)), tuiles: false });
+        if (K.etat().mode !== "libre") K.basculerSuivi();
+        for (let i = 0; i < 100; i++) K.avancer(0.1);
+        await pause(600);
+        const pf = K.etat().pos, eb = K.etat().bandeau;
+        r.arrivee = { fin: [+(fin.x / sc - a.ox).toFixed(2), +(fin.y / sc - a.oz).toFixed(2)], x: relx(),
+          reste: +(Math.hypot(pf.x - fin.x, pf.y - fin.y) / sc).toFixed(2), bandeau: eb,
+          coince: G.dansZone(pf.x, pf.y, 0, "mixte") };
+        const xa = relx();
+        K.placer(pf.x, pf.y, 270);
+        for (let i = 0; i < 10; i++) K.avancer(0.2);
+        r.arrivee.recul = +Math.abs(relx() - xa).toFixed(2);
+        await K.fermer();
+        window.setRoads([{ uid: "rd_ac", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] }]);
+        // 🧱 coupé : couleurs unies, obstacles gardés.
+        window.setVue3DTextures(false);
+        G.invalider();
+        await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(-60, 0)), distanceVue: 200, tuiles: false });
+        await pause(50);
+        r.coupe = { vol: {} };
+        K.etat().volumes.forEach(function (v) { if (v.acces) r.coupe.vol[v.tag] = v; });
+        r.coupe.caf = marcher(26, 0, 80);
+        await K.fermer();
+        window.setVue3DTextures(true);
+        // Mesures : ouverture avec et sans ces POI, temps de avancer (médiane, max) le long des accès.
+        const mesure = async function () {
+          G.invalider();
+          const t0 = performance.now();
+          await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(-56, 0)) });
+          const ouv = performance.now() - t0, ts = [];
+          for (let i = 0; i < 120; i++) {
+            const t1 = performance.now();
+            K.avancer(0.5);
+            ts.push(performance.now() - t1);
+          }
+          await K.fermer();
+          ts.sort(function (x, y) { return x - y; });
+          return { ouverture: Math.round(ouv), med: +ts[60].toFixed(2), max: +ts[119].toFixed(2) };
+        };
+        window.setPlanRenduVue3D(null, "mixte");
+        window.setEditorPoints([]);
+        r.perfSans = await mesure();
+        window.setEditorPoints(pois);
+        r.perfAvec = await mesure();
+        r.inchanges = JSON.stringify(window.getEditorPoints()) === avantPts;
+        window.ktaEstAccessible = acc;
+        r.T = T;
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      if (CAPTURES) {
+        for (const t of AC.T) {
+          await page.evaluate(async function (q) {
+            const P = function (x, z) { return { x: (q.ox + x) * q.sc, y: (q.oz + z) * q.sc }; };
+            window.KtaGalerie.invalider();
+            const d = P(q.x - 3.5, 0);
+            await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
+          }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, x: t[1] });
+          await page.waitForTimeout(500);
+          await capture(page, "acces-" + t[0]);
+          await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+        }
+      }
+      await page.evaluate(function () {
+        window.setEditorPoints([]); window.setRoads([]); window.KtaGalerie.invalider();
+      });
+      verifier(AC.moyens.every(function (m) { return m[1] === null && m[2] === false; }),
+        "accès : aucun des 9 tags n'a de moyen ni de niveaux (ni 🪜, ni itinéraire, ni coût vertical)", AC.moyens);
+      const prAc = function (v, att, tol) { return typeof v === "number" && Math.abs(v - att) <= (tol || 0.02); };
+      ["mixte", "galerie", "structures"].forEach(function (k) {
+        const o = AC[k], V = o.vol, h = o.h, tube = k !== "structures";
+        const manque = AC.T.filter(function (t) { return !V[t[0]] || !V[t[0]].construit; }).map(function (t) { return t[0]; });
+        verifier(manque.length === 0, k + " : un volume construit par accès (9 tags)", manque);
+        if (manque.length) return;
+        verifier(AC.T.every(function (t) { return !V[t[0]].passage && !V[t[0]].cadre && !o.echelle[t[0]]; }),
+          k + " : aucun accès n'a de 🪜 ni de cadre doré", o.echelle);
+        // Place : en galerie / mixte dans le tube (demi-emprise comprise), porte sur l'axe ; en structures au POI.
+        const demi = { esf: 0.75, pef: 0.6, pb: 0.6, pc: 0.9, psf: 0.9, ps: 0.9, pe: 1, cao: Infinity, caf: Infinity };
+        verifier(AC.T.every(function (t) {
+          const v = V[t[0]];
+          return prAc(v.x, t[1]) && (tube ? prAc(v.z, Math.max(0, 1.25 - demi[t[0]])) : prAc(v.z, 2));
+        }), k + (tube ? " : volume ramené dans le tube du côté du POI (au plus w − demi-emprise de l'axe), porte sur l'axe"
+          : " : volume au point du POI"), AC.T.map(function (t) { return [t[0], V[t[0]].x, V[t[0]].z]; }));
+        const esf = V.esf, pef = V.pef, pb = V.pb, pc = V.pc, psf = V.psf, ps = V.ps, pe = V.pe, cao = V.cao, caf = V.caf;
+        verifier(esf.forme === "escalier" && esf.ferme && esf.plafond && !esf.ciel && !esf.cielVu &&
+          esf.bouchesPlafond > 0 && prAc(esf.dalleY, h + 2.5) && pef.forme === "puits" && pef.echelons && pef.ferme &&
+          !pef.cielVu && prAc(pef.dalleY, h + 2.5),
+          k + " : esf / pef = volume d'eso / peo (marches, échelons) fermé par une dalle sombre, sans ciel", [esf, pef]);
+        verifier(pb.bouchee && pb.bouchesPlafond === 0 && pb.bouchesSol === 0 && prAc(pb.dalleY, h - 0.06) &&
+          pb.yMax <= h + 0.001, k + " : pb = dalle maçonnée au ras du plafond, plafond non troué", pb);
+        verifier(pc.comble && pc.bouchesPlafond > 0 && pc.cone && pc.cone.R === 0.9 && pc.remblais > 0 &&
+          pc.remblaisTexture && prAc(pc.combleY, h + 0.5) && psf.comble && psf.forme === "rond" &&
+          psf.bouchesPlafond === 14 && psf.cone && psf.remblais > 0,
+          k + " : pc / psf = bouche au plafond (carrée / ronde) remplie de remblais texturé, cône d'éboulis au sol",
+          [pc, psf]);
+        verifier(ps.forme === "rond" && !ps.echelons && ps.cielVu && ps.bouchesPlafond === 14 && prAc(ps.yMax, h + 6) &&
+          ps.bouchesSol === 0, k + " : ps = puits rond maçonné de 1,8 m, sans échelons, ciel au sommet", ps);
+        verifier(pe.bassin && pe.bouchesSol === 14 && pe.bouchesPlafond === 0 && pe.eau > 0 && prAc(pe.eauY, -0.8) &&
+          prAc(pe.yMin, -1.2) && prAc(pe.margelleH, 0.4),
+          k + " : pe = bassin creusé (bouche au sol), margelle de 0,4 m, eau à −0,8 m", pe);
+        const lg = 2.5;
+        verifier(cao.porte && cao.ouvert && caf.porte && !caf.ouvert && prAc(cao.largeur, lg) && prAc(caf.largeur, lg) &&
+          cao.bois > 0 && caf.bois > 0 && cao.porteTexturee && caf.porteTexturee &&
+          caf.battants.every(function (b) { return Math.abs(b[0]) < 0.05 && Math.abs(b[1]) < 0.05; }) &&
+          cao.battants.every(function (b) {
+            return b[1] - b[0] > 1 && Math.abs(Math.max(Math.abs(b[2]), Math.abs(b[3])) - 1.13) < 0.01;
+          }),
+          k + " : cavage = porte à deux battants de bois texturé, largeur de la galerie (2,5 m) ; fermée en travers, " +
+          "ouverte à 90° contre les parois", [cao, caf]);
+        // Blocage : départ 4 m avant (x − 4), 8 m de marche. Bord ouest de l'obstacle : cône 0,9 m, bassin 1 m,
+        // porte 0,1 m ; arrêt entre 0,3 et 0,7 m avant (corps 0,4 m, pas de 0,1 m).
+        const bord = { pc: 0.9, psf: 0.9, pe: 1, caf: 0.1 }, M = o.marche;
+        const arrete = function (tag, x) { const b = x - bord[tag]; return M[tag] < b - 0.3 && M[tag] > b - 0.75; };
+        verifier(arrete("pc", -20) && arrete("psf", -10) && arrete("pe", 10) && arrete("caf", 30) &&
+          M.cafBord1 < 29.6 && M.cafBord2 < 29.6,
+          k + " : cône (pc, psf), bassin (pe) et cavage fermé (caf, sur toute sa largeur) arrêtent le pas", M);
+        verifier(M.esf > -46.5 && M.pef > -36.5 && M.pb > -26.5 && M.ps > 3.5 && M.cao > 23.5,
+          k + " : esf, pef, pb, ps et cavage ouvert (cao) ne bloquent pas : on passe", M);
+        verifier(["pc", "pe", "caf"].every(function (t) {
+          const q = o.dedans[t];
+          return q.degage >= 1 && !q.dans && q.parcouru > 1;
+        }), k + " : départ dans le cône, le bassin ou la porte fermée : ramené au bord, on repart", o.dedans);
+      });
+      const horAc = AC.iti.filter(function (q) { return q[3] - q[2] < 0.01; });
+      const surCone = horAc.filter(function (q) { return q[0] > -20.6 && q[0] < -19.4; });
+      verifier(surCone.length >= 1 && surCone.every(function (q) { return prAc(q[2], 0.65, 0.015); }) &&
+        horAc.every(function (q) { return !(q[0] > -20.8 && q[0] < -19.2 && q[2] < 0.6); }),
+        "mixte : le ruban de l'itinéraire passe par-dessus le cône d'éboulis (0,6 m + 5 cm), jamais dedans",
+        { sur: surCone.slice(0, 4), n: horAc.length });
+      verifier(AC.arrivee.reste <= 1 && !AC.arrivee.coince && AC.arrivee.recul > 1 && AC.arrivee.bandeau.affiche &&
+        /arriv/i.test(AC.arrivee.bandeau.principal || ""),
+        "cavage fermé : l'arrivée de l'itinéraire 2D (bout du chemin " + JSON.stringify(AC.arrivee.fin) + ") est " +
+        "atteinte devant la porte (" + AC.arrivee.reste + " m), bandeau d'arrivée, on repart", AC.arrivee);
+      const cvA = AC.coupe.vol;
+      verifier(cvA.cao && cvA.cao.bois === 0 && !cvA.cao.porteTexturee && cvA.caf.bois === 0 && cvA.pc.remblais === 0 &&
+        !cvA.pc.remblaisTexture && cvA.pc.triangles > 0 && cvA.cao.triangles > 0 && AC.coupe.caf < 29.6,
+        "🧱 coupé : battants et remblais en couleur unie (aucune texture), porte fermée toujours bloquante", AC.coupe);
+      verifier(JSON.stringify(AC.sans) === JSON.stringify(AC.avec) && AC.appels2D === 0 && AC.inchanges,
+        "2D intacte : recalage du tracker autour des 9 POI, itinéraire et pas du tracker identiques sans et avec eux ; " +
+        "règles d'obstacles de la 3D appelées " + AC.appels2D + " fois par la 2D ; POI enregistrés inchangés",
+        { sans: AC.sans, avec: AC.avec });
+      ok("mesure (info) : ouverture sans / avec les 9 accès " + AC.perfSans.ouverture + " / " + AC.perfAvec.ouverture +
+        " ms ; avancer médiane " + AC.perfSans.med + " / " + AC.perfAvec.med + " ms, max " + AC.perfSans.max + " / " +
+        AC.perfAvec.max + " ms ; ouverture par rendu (mixte, galerie, structures) " +
+        [AC.mixte.ms, AC.galerie.ms, AC.structures.ms].join(" / ") + " ms");
 
       // ── 15. Raccord galerie / structures par côté (mixte), fictif ───────────────────────────────────────────
       // Un tube principal d'ouest en est (z = 0, paroi à 1,25 m) ; « droite » en marchant vers l'est = +z. Cas :
