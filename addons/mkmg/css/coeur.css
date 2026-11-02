@@ -52,6 +52,7 @@
   box-shadow: inset 0 0 0 0 var(--kta-erreur); transition: box-shadow 120ms ease-out;
 }
 .mkmg-coup.mkmg-coup-actif { box-shadow: inset 0 0 70px 18px var(--kta-erreur); }
+.mkmg-coup.mkmg-eclair-actif { box-shadow: inset 0 0 90px 10px var(--kta-accent); transition: none; }
 /* Fin de partie : carte au centre, touchable. */
 .mkmg-fin {
   position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: min(320px, 86vw);
