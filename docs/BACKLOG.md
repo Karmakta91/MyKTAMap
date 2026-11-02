@@ -105,6 +105,11 @@
   (`docs/architecture/ui.md` §53.3).
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
+- **Système de modules community (`modules/<nom>/`)** — un vrai cadre pour qu'un module (ou un dev tiers) s'ajoute
+  sans toucher l'app : chargement à la demande, contrat des prises, interrupteur par installation, garde-fous et
+  précache qui couvrent `modules/`, guide pour écrire un module. Le premier module prévu y sera branché à la main.
+  `qui: Claude · action: étude et QCM du contrat de module, d'après le premier module livré
+  · fini: contrat documenté, garde-fous sur modules/, un module ajouté sans toucher js/ · depuis: 02/11/2026 · taille: L`
 
 ## Entrant
 
