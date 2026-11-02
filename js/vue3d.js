@@ -9,7 +9,7 @@
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(), parois(),
 //   mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), changerNiveau(sens), incliner(deg), avancer(m),
-//   tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(), charge() } ;
+//   tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(), placerSurTracker(), charge() } ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus }.
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
@@ -21,7 +21,8 @@
 // chaque construction et suivis par FilterPanel.onChange ; ≡ ouvre le même panneau (filterPanel.js) par-dessus.
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
 // ne suit aucun filtre et se redessine à `kta:itineraireChange` (road.js). Guidage : bandeau et chevrons
-// (_lireGuidage) ; toucher un POI ouvre sa fiche de la carte (_ouvrirFiche, « Y aller » : origineItineraire).
+// (_lireGuidage) ; toucher un POI ouvre sa fiche de la carte (_ouvrirFiche, « Y aller » : origineItineraire). En
+// libre, un tracker recalé ou choisi comme départ depuis la vue y amène la place (placerSurTracker).
 // ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
 // ⚠️ contrat : déplacement = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux règles, structures et
@@ -2088,11 +2089,37 @@
     return true;
   }
 
-  // Origine de « Y aller » pendant la vue (interfaceItineraire.js > itineraireYAller) : mode, position et niveau de
-  // la 3D, ou null vue fermée. En libre, l'itinéraire part d'ici sans recaler le tracker (décision produit).
+  // Origine de « Y aller » pendant la vue (interfaceItineraire.js > itineraireYAller) : mode, position, niveau et
+  // cap de la 3D, ou null vue fermée. En libre, l'itinéraire part d'ici sans recaler le tracker (décision produit).
   function origineItineraire() {
     if (!_e) return null;
-    return { mode: _e.mode, x: _e.pos.x, y: _e.pos.y, niveau: _e.niveau };
+    return { mode: _e.mode, x: _e.pos.x, y: _e.pos.y, niveau: _e.niveau, cap: _e.cap };
+  }
+
+  // Le tracker vient d'être recalé ou choisi comme départ DEPUIS la vue (« 📍 Je suis ici » d'une fiche, « D'où
+  // pars-tu ? » → « Ici » ou « Ma dernière position ») : en mode libre, la place vient à la position RÉELLE du tracker
+  // (ajustée dans la galerie s'il l'a été) et à son niveau, cap gardé. Appelants : tracking.js > _notifierRecalage
+  // (chaque recalage) et interfaceItineraire.js > _demanderDepart. Vue fermée ou en suivi (elle suit déjà) : rien.
+  // ⚠️ contrat : rien n'est recalé ici (lecture seule du tracker) ; la place est celle du tracker au centimètre et la
+  // vue n'a plus « bougé » : la fermeture ne pose pas « Je suis ici ? » tant qu'on n'avance pas. → true si posée.
+  function placerSurTracker() {
+    const e = _e;
+    if (!e || e.mode !== "libre" || typeof window.getTrackingPosition !== "function") return false;
+    const p = window.getTrackingPosition();
+    if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
+    e.pos.x = p.x; e.pos.y = p.y;
+    e.aBouge = false; e.libreBouge = false;   // la place est celle du tracker : pas de pseudo « 3D » pour l'équipe
+    e.passageForce = null;
+    e.sortie = null;
+    const cfg = window.APP_CONFIG || {};
+    if (cfg.multiLevel === true && typeof window.getTrackerLevel === "function") {
+      const n = window.getTrackerLevel();
+      // Comme un passage 🪜 : niveau tenu tant que le niveau actif de la carte ne change pas (_niveauCourant).
+      if (Number.isInteger(n)) { e.niveauLibre = n; e.actifVu = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0; }
+    }
+    e.sale = true;
+    console.log("[Vue3D] place posée sur le tracker");
+    return true;
   }
 
   function _trackerActif() {
@@ -3015,6 +3042,6 @@
     ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue, incliner: incliner,
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
-    origineItineraire: origineItineraire, charge: function () { return !!THREE; }
+    origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, charge: function () { return !!THREE; }
   };
 })();

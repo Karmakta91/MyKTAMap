@@ -1023,7 +1023,9 @@ Lecture : `window.getTrackingPositionEtat()` → `{ confirmee, ts, suiviActif }`
   (`interfaceItineraire.js > _demanderDepart`, `ktaConfirm` en mode choix, id `kta-iti-depart`) : « Ici » (vue 3D en
   libre seulement : `recalerTrackerSurPoint` à la position 3D avec `sansReplan`, puis départ de là), « Ma dernière
   position (il y a N min) » (position confirmée seulement, date par `window.ktaDateRelative`, départ du tracker et de
-  son niveau sans recalage), « Me repositionner » (picker, la vue 3D se fermant d'abord). Annuler = pas d'itinéraire.
+  son niveau sans recalage ; vue 3D en libre : sa place vient au tracker, `KtaVue3D.placerSurTracker`), « Me
+  repositionner » (picker, la vue 3D se fermant d'abord et se **rouvrant** en libre au point et au niveau choisis, cap
+  gardé, une fois la position prise ; picker annulé → on reste sur la carte). Annuler = pas d'itinéraire.
   Une seule réponse possible (jamais confirmée, hors 3D) → picker direct, sans question.
 - `emergencyMode.js` (afficheur, pas de picker) : statut « position par défaut — jamais confirmée » dans la bulle 📋 des coordonnées ; sa bulle de point propose « 📍 Je suis ici » (`recalerTrackerSurPoint`), qui confirme la position.
 
@@ -1484,10 +1486,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   ✕ ou Échap la ferment ; « Je suis ici », « Y aller » et « Itinéraire » la ferment après leur action. ⚠️ Sans ✏️ /
   Repositionner / 🗑️ (ils se jouent sur la carte, cachée dessous). Photos par `attachPopupPhotos` sur un marqueur de
   substitution (`on`, `isPopupOpen`). Un **POI jonction** garde son toucher : le passage 🪜.
-- **« Y aller » depuis la 3D** (`KtaVue3D.origineItineraire()` → `{ mode, x, y, niveau }`, lu par
+- **« Y aller » depuis la 3D** (`KtaVue3D.origineItineraire()` → `{ mode, x, y, niveau, cap }`, lu par
   `itineraireYAller`) : suivi → du tracker ; libre, tracker actif → de la position 3D, niveau compris, tracker non
   recalé ; tracker arrêté → « D'où pars-tu ? » avec « Ici » en premier (§ Position confirmée). Jamais de la position
   d'avant l'ouverture de la vue.
+- **La 3D en libre suit un tracker fixé ou choisi depuis elle** (`KtaVue3D.placerSurTracker()`, décision produit) : la
+  place vient à la position **réelle** du tracker (ajustée dans la galerie s'il l'a été) et à son niveau
+  (`niveauLibre`, comme après un passage 🪜), cap gardé, `aBouge` et `libreBouge` remis à faux (plus de pseudo « 3D »
+  pour l'équipe, pas de « Je suis ici ? » à la fermeture tant qu'on n'avance pas). Appelants : `tracking.js >
+  _notifierRecalage` (chaque recalage : « 📍 Je suis ici » d'une fiche ouverte en 3D, « Ici » de « D'où pars-tu ? » —
+  sans effet visible, on y est déjà) et `interfaceItineraire.js > _demanderDepart` pour « Ma dernière position »
+  (aucun recalage, donc pas de hook). « Me repositionner » : la vue se ferme pour le picker puis se **rouvre**
+  (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
+  fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
 ### Garde-fous et limites
 
@@ -1514,7 +1525,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Guidage (§ 10) : itinéraire tracé pendant la vue montré, bandeau d'aperçu marqué en libre et consigne réelle en
   suivi, chevrons, bandeau stable au redimensionnement, toucher d'un POI → sa fiche (sans ✏️ / 🗑️), Échap ferme la
   fiche, « Y aller » en libre depuis la position 3D au niveau 1 sans recaler le tracker, tracker arrêté → « Ici »
-  recale et part de la position 3D. Mixte (§ 11), sur une galerie fictive qui
+  recale et part de la position 3D, la 3D ne bouge pas. La 3D suit un tracker fixé depuis elle (§ 10b) : recalage
+  pendant la vue → place sur le tracker à son niveau ; 3D à 10 m sur l'autre niveau, « Y aller » → « Ma dernière
+  position » → 3D sur le tracker (niveau 0, cap gardé), itinéraire parti de là, tracker non recalé ; « Je suis ici »
+  d'une fiche (tracker actif) → tracker ajusté dans la galerie, 3D à cette position ajustée, fermer sans « Je suis
+  ici ? » ; « Me repositionner » → vue fermée, picker, niveau 1 choisi → vue rouverte en libre au point et au niveau 1,
+  cap gardé, tracker et itinéraire au point, fermer sans question. Mixte (§ 11), sur une galerie fictive qui
   débouche sur une chambre (fronts et six piliers) : tube avant la chambre, aucune paroi dans la chambre ni à travers
   une structure, bout ouvert, eau du tube découpée et eau de la chambre entière, POI de la chambre à sa place et POI du
   tube ramené contre la paroi ; on bute contre la paroi du tube, on entre dans la chambre, on bute contre un pilier,

@@ -757,7 +757,9 @@ function _basculerNiveauSiTraversee(m) {
 
 // Hook émis à CHAQUE recalage (clic carte, « Je suis ici », arrivée de portail via recalerTrackerSurPoint).
 // source : "click" | "point". Consommateurs : interfaceItineraire.js (window._onTrackerRecale : replanifie et valide
-// les étapes) et InterPlanRoute (re-propose la traversée sur le portail de sortie).
+// les étapes), InterPlanRoute (re-propose la traversée sur le portail de sortie) et la vue 3D ouverte en mode libre
+// (KtaVue3D.placerSurTracker : sa place vient à la position réelle du tracker, `position` après ajustement, et à son
+// niveau ; en suivi elle le suit déjà, fermée elle ne fait rien). Les trois lisent l'état du tracker déjà posé.
 function _notifierRecalage(x, y, source, opts) {
   if (typeof window._onTrackerRecale === "function") {
     try { window._onTrackerRecale(x, y, source, opts); }
@@ -766,6 +768,10 @@ function _notifierRecalage(x, y, source, opts) {
   if (window.InterPlanRoute && typeof window.InterPlanRoute.onTrackerRecale === "function") {
     try { window.InterPlanRoute.onTrackerRecale(x, y, source); }
     catch(e) { console.warn("[Tracking] hook recalage portail échoué :", e); }
+  }
+  if (window.KtaVue3D && typeof window.KtaVue3D.placerSurTracker === "function") {
+    try { window.KtaVue3D.placerSurTracker(); }
+    catch(e) { console.warn("[Tracking] hook recalage vue 3D échoué :", e); }
   }
 }
 

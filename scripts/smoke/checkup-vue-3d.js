@@ -2007,12 +2007,186 @@ async function mesuresGalerie(page, nom, semisDonne) {
       }
       const ya2 = await page.evaluate(function () {
         const r = window.getRoads().find(function (x) { return x && x.type === "itinerary"; });
+        const e = window.KtaVue3D.etat();
         return { wp0: r && r.waypoints[0], tr: window.getTrackingPosition(), trN: window.getTrackerLevel(),
-          confirmee: window.getTrackingPositionEtat().confirmee };
+          confirmee: window.getTrackingPositionEtat().confirmee, pos: e.pos, niveau: e.niveau, mode: e.mode };
       });
       verifier(ya2.wp0 && Math.hypot(ya2.wp0.x - BB.x, ya2.wp0.y - BB.y) < 0.5 && Math.hypot(ya2.tr.x - BB.x, ya2.tr.y - BB.y) < 0.01 &&
         (hautN ? ya2.trN === 1 && ya2.wp0.level === 1 : true) && ya2.confirmee,
         "« Ici » : tracker recalé à la position 3D" + (hautN ? " et au niveau 1" : "") + ", l'itinéraire en part", ya2);
+      verifier(Math.hypot(ya2.pos.x - BB.x, ya2.pos.y - BB.y) < 0.01 && (hautN ? ya2.niveau === 1 : true) && ya2.mode === "libre",
+        "« Ici » : la 3D ne bouge pas (elle y est déjà)", ya2);
+
+      // ── 10b. Depuis la 3D en libre, choisir ou fixer la position du tracker amène la 3D dessus ─────────────
+      // (retour terrain : « Y aller » → « Ma dernière position » laissait la 3D où elle était.) Fermer ensuite ne
+      // demande pas « Je suis ici ? » : on est au tracker. Même règle pour « Je suis ici » d'une fiche et « Me
+      // repositionner » (picker sur la carte, la 3D se rouvrant au point et au niveau choisis).
+      const dist = function (a, b) { return (a && b) ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity; };
+      // Ferme la vue en guettant « Je suis ici ? » : une question laissée ouverte bloquerait le harnais (Non).
+      const fermerSansQuestion = function () {
+        return page.evaluate(function () {
+          return new Promise(function (res) {
+            let question = false;
+            const t = setInterval(function () { if (document.getElementById("kta-confirm-oui")) question = true; }, 40);
+            const garde = setTimeout(function () {
+              clearInterval(t);
+              const non = document.getElementById("kta-confirm-non");
+              if (non) non.click();
+              res({ question: true, bloquee: true });
+            }, 3000);
+            window.KtaVue3D.fermer().then(function (recale) {
+              clearInterval(t); clearTimeout(garde);
+              res({ question: question, recale: recale, ouvert: window.KtaVue3D.etat().ouvert });
+            });
+          });
+        });
+      };
+      // a. « Ma dernière position » : tracker (arrêté) recalé au T du niveau 0 — depuis la 3D en libre, la place y
+      // vient aussitôt (règle du recalage) — puis 3D emmenée à 10 m, au niveau 1 par le POI jonction si le plan en a.
+      const TR = pt(0, -10, 0);
+      await page.evaluate(function (a) {
+        window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
+        // Les itinéraires de cette partie changent de niveau : le POI jonction reçoit aussi son raccord du niveau 0
+        // (le pathfinder ne relie un puits qu'à ses raccords validés). Remis avec les points d'avant, plus bas.
+        window.setEditorPoints(window.getEditorPoints().map(function (p) {
+          if (p.id !== "POI jonction v3d") return p;
+          return Object.assign({}, p, { accroches: [{ level: 0, x: p.x, y: p.y }].concat(p.accroches || []) });
+        }));
+        window.recalerTrackerSurPoint(a.x, a.y, 0);
+      }, TR);
+      await page.waitForTimeout(300);
+      const rc1 = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat();
+        return { pos: e.pos, niveau: e.niveau, mode: e.mode, bouge: e.aBouge, tr: window.getTrackingPosition() };
+      });
+      verifier(dist(rc1.pos, TR) < 0.01 && dist(rc1.tr, TR) < 0.01 && (hautN ? rc1.niveau === 0 : true) &&
+        rc1.mode === "libre" && !rc1.bouge, "recalage du tracker pendant la 3D libre : la place vient dessus, à son niveau", rc1);
+      const LOIN = hautN ? pt(0, -2, -6, 90) : pt(0, 0, 0, 90);
+      await page.evaluate(function (a) {
+        const K = window.KtaVue3D;
+        if (a.hautN) { K.placer(a.pres.x, a.pres.y, 90); K.changerNiveau("haut"); }
+        K.placer(a.LOIN.x, a.LOIN.y, 90);
+      }, { hautN: hautN, pres: pt(0, -7, 0, 90), LOIN: LOIN });
+      await page.waitForTimeout(400);
+      const av1 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { pos: e.pos, niveau: e.niveau, cap: e.cap }; });
+      verifier(Math.abs(dist(av1.pos, TR) / G.sc - 10) < 0.05 && (hautN ? av1.niveau === 1 : true) && Math.abs(av1.cap - 90) < 0.01,
+        "3D emmenée à 10 m du tracker" + (hautN ? ", au niveau 1" : "") + ", cap 90", av1);
+      viseP = await visePoi(hautN ? "Salle haut v3d" : "Salle v3d");
+      if (viseP) await page.mouse.click(viseP.x, viseP.y);
+      await page.waitForTimeout(300);
+      await noterIti();
+      await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-aller").click();
+      await attendre(page, function () { return !!document.getElementById("kta-iti-depart"); }, 3000).catch(function () {});
+      const qd = await page.locator('#kta-iti-depart [data-kta-confirm-choix="derniere"]').count();
+      verifier(qd === 1, "« D'où pars-tu ? » propose « Ma dernière position »", qd);
+      if (qd) {
+        await page.locator('#kta-iti-depart [data-kta-confirm-choix="derniere"]').check();
+        await page.locator("#kta-iti-depart #kta-confirm-oui").click();
+        await page.waitForTimeout(300);
+        if (await page.locator("#kta-iti-confirm-ok").count()) await page.locator("#kta-iti-confirm-ok").click();
+        await attendreIti();
+      }
+      const md = await page.evaluate(function () {
+        const r = window.getRoads().find(function (x) { return x && x.type === "itinerary"; });
+        const e = window.KtaVue3D.etat();
+        return { wp0: r && r.waypoints[0], pos: e.pos, niveau: e.niveau, cap: e.cap, mode: e.mode, ouvert: e.ouvert,
+          tr: window.getTrackingPosition(), trN: window.getTrackerLevel(), fiche: e.fiche };
+      });
+      verifier(md.ouvert && md.mode === "libre" && dist(md.pos, TR) < 0.01 && (hautN ? md.niveau === 0 : true) &&
+        Math.abs(md.cap - 90) < 0.01, "« Ma dernière position » : la 3D est sur le tracker" +
+        (hautN ? ", à son niveau 0" : "") + ", cap gardé", md);
+      verifier(md.wp0 && dist(md.wp0, TR) < 0.5 && (hautN ? md.wp0.level === 0 : true) && dist(md.tr, TR) < 0.01 &&
+        (hautN ? md.trN === 0 : true), "l'itinéraire part du tracker, tracker non recalé", md);
+      // b. « 📍 Je suis ici » d'une fiche ouverte en 3D, tracker ACTIF, libre à 10 m du POI : le tracker est mis dans
+      // la galerie (0,6 m sous le POI), la 3D vient à cette position ajustée ; fermer ne pose pas « Je suis ici ? ».
+      const SALLE = pt(0, 7, 0.6);
+      await page.evaluate(function (a) {
+        window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
+        if (!window.getTrackingActif()) window.startTracking();
+        window.KtaVue3D.placer(a.x, a.y, 90);
+      }, pt(0, -3, 0, 90));
+      await page.waitForTimeout(400);
+      viseP = await visePoi("Salle v3d");
+      if (viseP) await page.mouse.click(viseP.x, viseP.y);
+      await page.waitForTimeout(300);
+      const ici0 = await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-here").count();
+      if (ici0) await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-here").click();
+      await page.waitForTimeout(400);
+      const ji = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat();
+        return { pos: e.pos, niveau: e.niveau, mode: e.mode, fiche: e.fiche, bouge: e.aBouge, actif: window.getTrackingActif(),
+          tr: window.getTrackingPosition(), trN: window.getTrackerLevel() };
+      });
+      verifier(ici0 === 1 && ji.actif && ji.mode === "libre" && dist(ji.tr, SALLE) > 0.3 * G.sc && dist(ji.tr, SALLE) < 1 * G.sc,
+        "« Je suis ici » sur le POI : tracker mis dans la galerie (position ajustée)", ji);
+      verifier(dist(ji.pos, ji.tr) < 0.01 && (hautN ? ji.niveau === 0 : true) && !ji.fiche && !ji.bouge,
+        "la 3D est à la position ajustée du tracker, au niveau du POI, fiche refermée", ji);
+      const fq1 = await fermerSansQuestion();
+      verifier(!fq1.question && fq1.recale === false && fq1.ouvert === false,
+        "fermer juste après : pas de « Je suis ici ? » (on est au tracker)", fq1);
+      // c. « Me repositionner » : la 3D se ferme pour le picker « Où es-tu ? » ; une fois le point choisi (niveau
+      // demandé si un autre niveau passe à moins de 10 m : on prend le 1), le tracker est recalé là et la 3D se
+      // ROUVRE en libre, au point et au niveau choisis, cap gardé ; l'itinéraire en part ; fermer : pas de question.
+      await page.evaluate(function (a) {
+        window.stopTracking();
+        window.ktaSetActiveLevel(0);
+        return window.KtaVue3D.ouvrir({ depart: a });
+      }, pt(0, -3, 0, 90));
+      await page.waitForTimeout(400);
+      viseP = await visePoi("Salle v3d");
+      if (viseP) await page.mouse.click(viseP.x, viseP.y);
+      await page.waitForTimeout(300);
+      await noterIti();
+      await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-aller").click();
+      await attendre(page, function () { return !!document.getElementById("kta-iti-depart"); }, 3000).catch(function () {});
+      const qr = await page.locator('#kta-iti-depart [data-kta-confirm-choix="repositionner"]').count();
+      if (qr) {
+        await page.locator('#kta-iti-depart [data-kta-confirm-choix="repositionner"]').check();
+        await page.locator("#kta-iti-depart #kta-confirm-oui").click();
+      }
+      await attendre(page, function () {
+        return !window.KtaVue3D.etat().ouvert && window.ktaDemanderPositionCarte.estActif();
+      }, 5000).catch(function () {});
+      const pk0 = await page.evaluate(function () {
+        return { ouvert: window.KtaVue3D.etat().ouvert, picker: window.ktaDemanderPositionCarte.estActif() };
+      });
+      verifier(qr === 1 && !pk0.ouvert && pk0.picker, "« Me repositionner » : la 3D se ferme, picker « Où es-tu ? » armé", pk0);
+      // Point choisi : sur la galerie du niveau 1 (z = −6, à 6 m de celle du niveau 0 → niveau demandé) ; plan à un
+      // niveau : au bout sud de la secondaire.
+      const PK = hautN ? pt(0, 6, -6, 90) : pt(0, 0, 10, 90);
+      const NPK = hautN ? 1 : 0;
+      const xy = await page.evaluate(function (a) {
+        window.map.setView(window.convertCoord(a.x, a.y), window.map.getZoom(), { animate: false });
+        const cp = window.map.latLngToContainerPoint(window.convertCoord(a.x, a.y));
+        const r = window.map.getContainer().getBoundingClientRect();
+        return { cx: r.left + cp.x, cy: r.top + cp.y };
+      }, PK);
+      await page.mouse.click(xy.cx, xy.cy);
+      await page.waitForTimeout(400);
+      if (hautN) {
+        const qn = await page.locator('#kta-recal-niveau [data-kta-confirm-choix="1"]').count();
+        verifier(qn === 1, "picker : « Dans quel niveau es-tu ? » (niveau 1 à portée)", qn);
+        if (qn) {
+          await page.locator('#kta-recal-niveau [data-kta-confirm-choix="1"]').check();
+          await page.locator("#kta-recal-niveau #kta-confirm-oui").click();
+        }
+      }
+      await attendre(page, function () { return window.KtaVue3D.etat().ouvert; }, 10000).catch(function () {});
+      await attendreIti();
+      const rp = await page.evaluate(function () {
+        const r = window.getRoads().find(function (x) { return x && x.type === "itinerary"; });
+        const e = window.KtaVue3D.etat();
+        return { ouvert: e.ouvert, mode: e.mode, pos: e.pos, niveau: e.niveau, cap: e.cap, wp0: r && r.waypoints[0],
+          tr: window.getTrackingPosition(), trN: window.getTrackerLevel(), actif: window.APP_CONFIG.activeLevel };
+      });
+      // Le tap sur la carte tombe au pixel de l'écran (quelques px du plan de PK) : la référence est le tracker recalé.
+      verifier(rp.ouvert && rp.mode === "libre" && dist(rp.pos, rp.tr) < 0.01 && (hautN ? rp.niveau === NPK : true) &&
+        Math.abs(rp.cap - 90) < 0.01, "point choisi : la 3D se rouvre en libre, au point" + (hautN ? " et au niveau 1" : "") +
+        ", cap gardé", rp);
+      verifier(dist(rp.tr, PK) < 1 * G.sc && (hautN ? rp.trN === NPK : true) && rp.wp0 && dist(rp.wp0, rp.tr) < 0.5 &&
+        (hautN ? rp.wp0.level === NPK : true), "tracker recalé au point choisi (à moins d'un mètre du tap), l'itinéraire en part", rp);
+      const fq2 = await fermerSansQuestion();
+      verifier(!fq2.question && fq2.ouvert === false, "fermer ensuite : pas de « Je suis ici ? »", fq2);
       await page.evaluate(function () {
         return window.KtaVue3D.fermer().then(function () {
           window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));

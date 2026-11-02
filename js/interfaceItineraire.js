@@ -183,24 +183,30 @@ function _origineIti(x, y, niveau) {
 }
 
 // « Me repositionner » : picker « Où es-tu ? » (niveau demandé s'il le faut) qui recale le tracker, puis « Y aller »
-// depuis là. Le picker se joue sur la carte 2D : une vue 3D ouverte se ferme d'abord, sinon il resterait dessous.
+// depuis là. Le picker se joue sur la carte 2D : une vue 3D ouverte se ferme d'abord, sinon il resterait dessous ;
+// une fois la position choisie, la vue 3D se rouvre en libre au point et au niveau choisis (niveau actif posé par
+// le picker), cap gardé : on est repositionné DANS la 3D, pas rejeté sur la carte. Picker annulé : on reste sur la
+// carte (décision produit).
 function _repositionnerPuisAller(x, y, nom, opts) {
   if (typeof window.ktaDemanderPositionCarte !== "function") return;
+  const V = window.KtaVue3D;
+  const v3 = (V && typeof V.origineItineraire === "function") ? V.origineItineraire() : null;
   const lancer = function() {
     window.ktaDemanderPositionCarte(function(p) {
       // Les autres options (niveauCible…) suivent : seule l'origine vient du picker.
       window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(p.x, p.y, p.niveau) }));
+      if (v3 && typeof V.ouvrir === "function") V.ouvrir({ depart: { x: p.x, y: p.y, cap: v3.cap } });
     }, { icone: "🧭", texte: window.I18n.t("iti.pick.ouEsTu") });
   };
-  const V = window.KtaVue3D;
-  if (V && typeof V.etat === "function" && V.etat().ouvert) { V.fermer().then(lancer); return; }
+  if (v3 && typeof V.fermer === "function") { V.fermer().then(lancer); return; }
   lancer();
 }
 
 // Tracker arrêté : « D'où pars-tu ? » (ktaConfirm en mode choix). « Ici » (vue 3D en mode libre seulement) : le
 // tracker est recalé à la position 3D, niveau compris, comme « Je suis ici », puis l'itinéraire en part ; « Ma
-// dernière position (il y a N min) » (position confirmée seulement) : départ de là, sans recalage ; « Me
-// repositionner » : picker. Annuler = pas d'itinéraire. → Promise du choix (null si annulé).
+// dernière position (il y a N min) » (position confirmée seulement) : départ de là, sans recalage — vue 3D en
+// libre : sa place vient au tracker, niveau compris, cap gardé (KtaVue3D.placerSurTracker) ; « Me repositionner » :
+// picker. Annuler = pas d'itinéraire. → Promise du choix (null si annulé).
 function _demanderDepart(x, y, nom, opts, etat, v3) {
   const T = function(k, p) { return window.I18n.t(k, p); }, esc = window.ktaEsc;
   const options = [];
@@ -231,6 +237,9 @@ function _demanderDepart(x, y, nom, opts, etat, v3) {
       window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(v3.x, v3.y, v3.niveau) }));
     } else if (c === "derniere") {
       const p = window.getTrackingPosition();
+      // Rien n'est recalé (donc pas de hook) : c'est ici que la 3D en libre est amenée au tracker.
+      const V = window.KtaVue3D;
+      if (v3 && v3.mode === "libre" && V && typeof V.placerSurTracker === "function") V.placerSurTracker();
       window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(p.x, p.y, _niveauTracker()) }));
     } else if (c === "repositionner") {
       _repositionnerPuisAller(x, y, nom, opts);
