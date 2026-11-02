@@ -20,7 +20,8 @@
 // volume par moyen, rampe, panneau ↕, 🪜 nommé, fiche, fondu et descente, arrivée dans le tube, cap, guidage, suivi.
 // Aucune paroi de tube dans un passage (§ 14 bis) : bouche ou tranchée coupée par un tracé, cul-de-sac, 3 rendus.
 // Accès de surface sans passage (§ 14 quater : esf, pef, pb, pc, psf, ps, pe, cao, caf) : forme, place, ni 🪜 ni
-// cadre, blocage (cône, bassin, cavage fermé), itinéraire sur le cône, arrivée devant un cavage fermé, 🧱, 2D intacte.
+// cadre, blocage (cône, cavage fermé ; bassin contre la paroi, qu'on longe), itinéraire sur le cône, arrivée devant
+// un cavage fermé, 🧱, 2D intacte. Sens des marches (§ 14 quinquies : esf, eso, jes) : entrée côté galerie longue.
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
@@ -3336,9 +3337,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
 
       // ── 14 quater. Accès de surface sans passage (esf, pef, pb, pc, psf, ps, pe, cao, caf), fictifs ─────────────
       // Galerie principale (paroi à 1,25 m) au niveau 0 ; un POI par tag, posé à 2 m de l'axe (le cas courant). Par
-      // rendu : forme et bouches de chaque volume, place (dans le tube en galerie / mixte, porte sur l'axe ; au point
-      // en structures), ni 🪜 ni cadre doré, blocage du pas (cône, bassin, porte fermée ; porte ouverte, puits fermés
-      // et bouché laissent passer), départ dedans ramené au bord ; itinéraire par-dessus le cône ; arrivée d'un
+      // rendu : forme et bouches de chaque volume, place (dans le tube en galerie / mixte, porte sur l'axe, bassin
+      // contre la paroi ; au point en structures), ni 🪜 ni cadre doré, blocage du pas (cône, porte fermée ; bassin,
+      // porte ouverte, puits fermés et bouché laissent passer), départ dedans ramené au bord ; itinéraire par-dessus le cône ; arrivée d'un
       // itinéraire 2D devant un cavage fermé atteinte ; 🧱 coupé = couleurs unies, obstacles gardés ; 2D intacte
       // (recalage, itinéraire, pas du tracker identiques sans et avec ces POI) ; mesures d'ouverture et du pas.
       const AC = await page.evaluate(async function (a) {
@@ -3407,13 +3408,15 @@ async function mesuresGalerie(page, nom, semisDonne) {
           K.etat().volumes.forEach(function (v) {
             if (!v.acces) return;
             o.vol[v.tag] = Object.assign({}, v, { x: +(v.x / sc - a.ox).toFixed(3), z: +(v.y / sc - a.oz).toFixed(3),
-              bouche: null });
+              bouche: null, diam: v.bouche ? +Math.hypot(v.bouche[1][0] - v.bouche[0][0],
+                v.bouche[1][1] - v.bouche[0][1]).toFixed(3) : null });
           });
           T.forEach(function (t) {
             const v = o.vol[t[0]];
             if (!v) return;
             const z = v.z;
             o.marche[t[0]] = marcher(t[1] - 4, z, 80);
+            if (t[0] === "pe") o.marche.peCote = marcher(t[1] - 4, -0.8, 80);   // centre hors du bassin (bord à −0,75)
             if (t[0] === "caf") {
               o.marche.cafBord1 = marcher(t[1] - 4, z + 0.8, 80);
               o.marche.cafBord2 = marcher(t[1] - 4, z - 0.8, 80);
@@ -3424,7 +3427,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
           await K.fermer();
           // Départ au centre d'un obstacle : ramené au bord, on repart.
           o.dedans = {};
-          for (const tag of ["pc", "pe", "caf"]) {
+          for (const tag of ["pc", "caf"]) {
             const v = o.vol[tag], t = T.filter(function (q) { return q[0] === tag; })[0];
             await K.ouvrir({ depart: Object.assign({ cap: 270 }, P(t[1], v.z)), tuiles: false });
             const p = K.etat().pos;
@@ -3440,6 +3443,19 @@ async function mesuresGalerie(page, nom, semisDonne) {
             await K.fermer();
           }
         }
+        // Bassin contre la paroi (placePassage) : POI près de l'axe ou de l'autre côté, galerie plus étroite que lui.
+        window.setRoads([{ uid: "rd_ac", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] },
+          { uid: "rd_ac_ch", type: "chemin", level: 0, points: [P(-70, 40), P(70, 40)] }]);
+        r.contre = {};
+        for (const rendu of ["mixte", "galerie", "structures"]) {
+          G.invalider();
+          r.contre[rendu] = [[10, 0.1], [10, -2], [10, 42]].map(function (q) {
+            const pl = G.placePassage(Object.assign({ uid: "pt_ac_pe_c", level: 0, tags: ["pe"] }, P(q[0], q[1])), 0,
+              rendu);
+            return pl ? +(pl.y / sc - a.oz).toFixed(3) : null;
+          });
+        }
+        window.setRoads([{ uid: "rd_ac", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] }]);
         // Itinéraire par-dessus le cône (mixte) : ruban sur le dessus (0,6 m + 5 cm), jamais dedans.
         window.setPlanRenduVue3D(null, "mixte");
         G.invalider();
@@ -3544,7 +3560,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         verifier(AC.T.every(function (t) { return !V[t[0]].passage && !V[t[0]].cadre && !o.echelle[t[0]]; }),
           k + " : aucun accès n'a de 🪜 ni de cadre doré", o.echelle);
         // Place : en galerie / mixte dans le tube (demi-emprise comprise), porte sur l'axe ; en structures au POI.
-        const demi = { esf: 0.75, pef: 0.6, pb: 0.6, pc: 0.9, psf: 0.9, ps: 0.9, pe: 1, cao: Infinity, caf: Infinity };
+        const demi = { esf: 0.75, pef: 0.6, pb: 0.6, pc: 0.9, psf: 1.25, ps: 1.25, pe: 1, cao: Infinity, caf: Infinity };
         verifier(AC.T.every(function (t) {
           const v = V[t[0]];
           return prAc(v.x, t[1]) && (tube ? prAc(v.z, Math.max(0, 1.25 - demi[t[0]])) : prAc(v.z, 2));
@@ -3563,7 +3579,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
           k + " : pc / psf = bouche au plafond (carrée / ronde) remplie de remblais texturé, cône d'éboulis au sol",
           [pc, psf]);
         verifier(ps.forme === "rond" && !ps.echelons && ps.cielVu && ps.bouchesPlafond === 14 && prAc(ps.yMax, h + 6) &&
-          ps.bouchesSol === 0, k + " : ps = puits rond maçonné de 1,8 m, sans échelons, ciel au sommet", ps);
+          ps.bouchesSol === 0 && prAc(ps.diam, 2.5) && prAc(psf.diam, 2.5),
+          k + " : ps = puits rond maçonné de 2,5 m (psf aussi), sans échelons, ciel au sommet", [ps.diam, psf.diam]);
         verifier(pe.bassin && pe.bouchesSol === 14 && pe.bouchesPlafond === 0 && pe.eau > 0 && prAc(pe.eauY, -0.8) &&
           prAc(pe.yMin, -1.2) && prAc(pe.margelleH, 0.4),
           k + " : pe = bassin creusé (bouche au sol), margelle de 0,4 m, eau à −0,8 m", pe);
@@ -3576,20 +3593,28 @@ async function mesuresGalerie(page, nom, semisDonne) {
           }),
           k + " : cavage = porte à deux battants de bois texturé, largeur de la galerie (2,5 m) ; fermée en travers, " +
           "ouverte à 90° contre les parois", [cao, caf]);
-        // Blocage : départ 4 m avant (x − 4), 8 m de marche. Bord ouest de l'obstacle : cône 0,9 m, bassin 1 m,
-        // porte 0,1 m ; arrêt entre 0,3 et 0,7 m avant (corps 0,4 m, pas de 0,1 m).
-        const bord = { pc: 0.9, psf: 0.9, pe: 1, caf: 0.1 }, M = o.marche;
+        // Blocage : départ 4 m avant (x − 4), 8 m de marche. Bord ouest de l'obstacle : cône 0,9 m, porte 0,1 m ;
+        // arrêt entre 0,3 et 0,7 m avant (corps 0,4 m, pas de 0,1 m).
+        const bord = { pc: 0.9, psf: 0.9, caf: 0.1 }, M = o.marche;
         const arrete = function (tag, x) { const b = x - bord[tag]; return M[tag] < b - 0.3 && M[tag] > b - 0.75; };
-        verifier(arrete("pc", -20) && arrete("psf", -10) && arrete("pe", 10) && arrete("caf", 30) &&
+        verifier(arrete("pc", -20) && arrete("psf", -10) && arrete("caf", 30) &&
           M.cafBord1 < 29.6 && M.cafBord2 < 29.6,
-          k + " : cône (pc, psf), bassin (pe) et cavage fermé (caf, sur toute sa largeur) arrêtent le pas", M);
-        verifier(M.esf > -46.5 && M.pef > -36.5 && M.pb > -26.5 && M.ps > 3.5 && M.cao > 23.5,
-          k + " : esf, pef, pb, ps et cavage ouvert (cao) ne bloquent pas : on passe", M);
-        verifier(["pc", "pe", "caf"].every(function (t) {
+          k + " : cône (pc, psf) et cavage fermé (caf, sur toute sa largeur) arrêtent le pas", M);
+        verifier(M.esf > -46.5 && M.pef > -36.5 && M.pb > -26.5 && M.ps > 3.5 && M.pe > 13.5 && M.peCote > 13.5 &&
+          M.cao > 23.5, k + " : esf, pef, pb, ps, bassin (pe : par son centre et en le longeant) et cavage ouvert (cao) " +
+          "ne bloquent pas : on passe", M);
+        verifier(["pc", "caf"].every(function (t) {
           const q = o.dedans[t];
           return q.degage >= 1 && !q.dans && q.parcouru > 1;
-        }), k + " : départ dans le cône, le bassin ou la porte fermée : ramené au bord, on repart", o.dedans);
+        }), k + " : départ dans le cône ou la porte fermée : ramené au bord, on repart", o.dedans);
       });
+      verifier(["mixte", "galerie"].every(function (k) {
+        const c = AC.contre[k];
+        return prAc(c[0], 0.25) && prAc(c[1], -0.25) && prAc(c[2], 39.85);
+      }) && prAc(AC.contre.structures[0], 0.1) && prAc(AC.contre.structures[2], 42),
+        "bassin (pe) contre la paroi du côté du POI, margelle tangente (POI près de l'axe : 0,25 m ; de l'autre côté : " +
+        "−0,25 m ; chemin de 1,7 m plus étroit que lui : passe l'axe, 0,15 m dans la roche d'en face) ; structures : " +
+        "au point", AC.contre);
       const horAc = AC.iti.filter(function (q) { return q[3] - q[2] < 0.01; });
       const surCone = horAc.filter(function (q) { return q[0] > -20.6 && q[0] < -19.4; });
       verifier(surCone.length >= 1 && surCone.every(function (q) { return prAc(q[2], 0.65, 0.015); }) &&
@@ -3612,6 +3637,137 @@ async function mesuresGalerie(page, nom, semisDonne) {
         " ms ; avancer médiane " + AC.perfSans.med + " / " + AC.perfAvec.med + " ms, max " + AC.perfSans.max + " / " +
         AC.perfAvec.max + " ms ; ouverture par rendu (mixte, galerie, structures) " +
         [AC.mixte.ms, AC.galerie.ms, AC.structures.ms].join(" / ") + " ms");
+
+      // ── 14 quinquies. Sens des marches (esf, eso, jes), fictifs ─────────────────────────────────────────────────
+      // Une galerie principale par cas, à 20 m d'écart, dessinée dans les deux sens (le sens a → b du tracé ne doit
+      // rien changer) ; POI à 1,5 m de l'axe. Entrée attendue (KtaGalerie.placePassage > entree) : côté où la galerie
+      // continue le plus longtemps (cul-de-sac : côté ouvert). Relevé sur la géométrie construite (stats.marches) :
+      // le haut de la volée qui monte est à l'opposé de l'entrée, la marche la plus haute de celle qui descend du côté
+      // de l'entrée ; entre trois niveaux, les deux. Boucle : entree = 0 (sens du tracé gardé). 2D intacte.
+      const MS = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, G = window.KtaGalerie, sc = a.sc;
+        const P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
+        const acc = window.ktaEstAccessible;
+        window.ktaEstAccessible = function () { return true; };
+        window.ktaSetActiveLevel(0);
+        window.setStructures([]); window.setZones([]);
+        // [nom, tag, niveaux, x0 → x1 du tracé, x du POI, entrée attendue (−1 ouest, +1 est)]
+        const C = [["ms esf impasse est", "esf", null, -60, 0, -2, -1], ["ms eso impasse ouest", "eso", null, 0, 60, 2, 1],
+          ["ms esf milieu", "esf", null, -60, 30, 10, -1], ["ms eso milieu", "eso", null, -30, 60, -10, 1]];
+        if (a.multi) {
+          C.push(["ms jes bas impasse", "jes", [0, -1], -60, 0, -2, -1], ["ms jes haut milieu", "jes", [0, 1], -30, 60, -10, 1],
+            ["ms jes trois impasse", "jes", [-1, 0, 1], 0, 60, 2, 1]);
+        }
+        const roads = [], pois = [], cas = [];
+        C.forEach(function (c, i) {
+          [false, true].forEach(function (inv, j) {
+            const z = (2 * i + j) * 20, id = c[0] + (inv ? " inverse" : "");
+            const pts = [P(c[3], z), P(c[4], z)];
+            roads.push({ uid: "rd_ms_" + i + "_" + j, type: "principal", level: 0, points: inv ? pts.reverse() : pts });
+            const o = Object.assign({ id: id, nom: id, uid: "pt_ms_" + i + "_" + j, level: 0, tags: [c[1]] },
+              P(c[5], z + 1.5));
+            if (c[2]) o.niveaux = c[2];
+            pois.push(o);
+            cas.push({ nom: id, x: c[5], z: z, attendu: c[6] });
+          });
+        });
+        // Boucle (rectangle de 20 × 10 m) : entree = 0.
+        const zb = 2 * C.length * 20;
+        roads.push({ uid: "rd_ms_boucle", type: "principal", level: 0,
+          points: [P(-10, zb), P(10, zb), P(10, zb + 10), P(-10, zb + 10), P(-10, zb)] });
+        const boucle = Object.assign({ id: "ms esf boucle", nom: "ms esf boucle", uid: "pt_ms_boucle", level: 0,
+          tags: ["esf"] }, P(0, zb + 1.5));
+        window.setRoads(roads);
+        // 2D : recalage autour de chaque POI, itinéraire le long d'une galerie, pas du tracker : sans puis avec.
+        const deux = async function () {
+          G.invalider();
+          const rec = cas.map(function (c) {
+            const v = G.versGalerie(P(c.x, c.z + 1.5).x, P(c.x, c.z + 1.5).y, 0);
+            return [v.etat, +(v.x / sc - a.ox).toFixed(3), +(v.y / sc - a.oz).toFixed(3)];
+          });
+          let it;
+          try {
+            const ri = await window.Pathfinder.computeRoute([P(-50, 0), P(-1, 0)], { allowedTypes: ["principal"] });
+            it = { d: Math.round(ri.totalDistance), n: (ri.path || []).length };
+          } catch (e) { it = String(e && e.message); }
+          const seg = [[P(-50, 0).x, P(-50, 0).y, P(-1, 0).x, P(-1, 0).y]];
+          return { rec: rec, iti: it, pas: window.ktaSegmentsBloquesParStructure(seg, 0),
+            galerie: G.segmentsBloques(seg, 0) };
+        };
+        window.setEditorPoints([]);
+        const r = { sans: await deux(), cas: cas };
+        window.setEditorPoints(pois.concat([boucle]));
+        const avantPts = JSON.stringify(window.getEditorPoints());
+        r.avec = await deux();
+        r.entrees = {};
+        r.places = {};
+        for (const rendu of ["mixte", "galerie", "structures"]) {
+          window.setPlanRenduVue3D(null, rendu);
+          G.invalider();
+          r.entrees[rendu] = pois.concat([boucle]).map(function (p) {
+            const pl = G.placePassage(p, 0, rendu);
+            return pl ? [p.nom, pl.entree, Math.round(Math.cos(pl.ang))] : [p.nom, null, null];
+          });
+          r.places[rendu] = pois.map(function (p) {
+            const pl = G.placePassage(p, 0, rendu);
+            return pl ? [+(pl.x / sc - a.ox).toFixed(3), +(pl.y / sc - a.oz).toFixed(3), +pl.ang.toFixed(4)] : null;
+          });
+          const d = P(0, zb / 2);
+          await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 400, tuiles: false });
+          await new Promise(function (ok) { setTimeout(ok, 50); });
+          r[rendu] = K.etat().volumes.filter(function (v) { return v.genre === "poi" && v.forme === "escalier"; })
+            .map(function (v) {
+              const m = v.marches || {}, rx = function (q) { return q ? +(q[0] - a.ox).toFixed(2) : null; };
+              return { x: +(v.x / sc - a.ox).toFixed(2), z: +(v.y / sc - a.oz).toFixed(2), tag: v.tag, sol: v.sol,
+                plafond: v.plafond, construit: v.construit, haut: rx(m.haut), entreeBas: rx(m.entreeBas) };
+            });
+          await K.fermer();
+        }
+        r.inchanges = JSON.stringify(window.getEditorPoints()) === avantPts;
+        window.setEditorPoints([]); window.setRoads([]); G.invalider();
+        window.setPlanRenduVue3D(null, "mixte");
+        window.ktaEstAccessible = acc;
+        r.roads = roads; r.pois = pois;
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, multi: G.multi });
+      ["mixte", "galerie", "structures"].forEach(function (k) {
+        const V = MS[k], faux = [];
+        MS.cas.forEach(function (c) {
+          const v = V.filter(function (q) { return Math.abs(q.z - c.z) < 5; })[0];
+          if (!v || !v.construit) { faux.push([c.nom, "absent"]); return; }
+          const okHaut = !v.plafond || (v.haut !== null && Math.sign(v.haut - v.x) === -c.attendu);
+          const okBas = !v.sol || (v.entreeBas !== null && Math.sign(v.entreeBas - v.x) === c.attendu);
+          if (!okHaut || !okBas) faux.push([c.nom, v]);
+        });
+        verifier(faux.length === 0, k + " : " + MS.cas.length + " escaliers (esf, eso" + (G.multi ? ", jes vers −1, +1 et " +
+          "entre trois niveaux" : "") + ", tracé dans les deux sens) : entrée (pied de la volée qui monte, haut de celle " +
+          "qui descend) du côté où la galerie continue le plus longtemps", faux);
+        const E = MS.entrees[k], bo = E[E.length - 1];
+        verifier(E.slice(0, -1).every(function (q, i) { return q[1] * q[2] === MS.cas[i].attendu; }) && bo[1] === 0,
+          k + " : placePassage > entree indépendant du sens du tracé ; boucle → 0", E);
+      });
+      verifier(JSON.stringify(MS.sans) === JSON.stringify(MS.avec) && MS.inchanges,
+        "sens des marches : 2D intacte (recalage, itinéraire, pas du tracker et de la galerie identiques sans et avec " +
+        "les escaliers) ; POI enregistrés inchangés", { sans: MS.sans, avec: MS.avec });
+      ok("info places des escaliers (x, z, axe) : " + JSON.stringify(MS.places));
+      if (CAPTURES) {
+        for (const c of MS.cas.slice(0, 2)) {
+          await page.evaluate(async function (q) {
+            const P = function (x, z) { return { x: (q.ox + x) * q.sc, y: (q.oz + z) * q.sc }; };
+            window.setRoads(q.roads); window.setEditorPoints(q.pois);
+            window.KtaGalerie.invalider();
+            const d = P(q.x + 5 * q.attendu, q.z);   // arrivée par le côté d'entrée, face au volume
+            await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: q.attendu > 0 ? 270 : 90 }, tuiles: false });
+          }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, x: c.x, z: c.z, attendu: c.attendu, roads: MS.roads, pois: MS.pois });
+          await page.waitForTimeout(500);
+          await capture(page, "marches-" + c.nom.replace(/\s+/g, "-"));
+          await page.evaluate(function () {
+            return window.KtaVue3D.fermer().then(function () {
+              window.setEditorPoints([]); window.setRoads([]); window.KtaGalerie.invalider();
+            });
+          });
+        }
+      }
 
       // ── 15. Raccord galerie / structures par côté (mixte), fictif ───────────────────────────────────────────
       // Un tube principal d'ouest en est (z = 0, paroi à 1,25 m) ; « droite » en marchant vers l'est = +z. Cas :

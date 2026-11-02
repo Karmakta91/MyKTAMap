@@ -11,7 +11,7 @@
 //   tracking.js > ktaSegmentsBloquesParStructure), paroisBloquent(segs, niveau) (mode mixte), invalider(),
 //   SEUIL_CHAMBRE_M, PASSAGE (dimensions des volumes de passage ; leur emprise est une pièce : _emprisesPassages),
 //   PROCHE_M, versGalerie(x, y, niveau) (où poser un tracker recalé : tracking.js > _positionDansGalerie),
-//   placePassage(p, niveau, rendu) (place et axe du volume de passage d'un POI en 3D : _placeVolume),
+//   placePassage(p, niveau, rendu) (place, axe et côté d'entrée du volume de passage d'un POI en 3D : _placeVolume),
 //   zonesBloquent(segs, niveau, depart, rendu), dansZone(x, y, niveau, rendu) (zones qui bouchent, ZONES_BOUCHENT, et
 //   obstacles des accès de surface, BLOQUE, dans les 3 rendus), ACCES / ACCES_DIM (accès sans passage : formes et
 //   dimensions des volumes).
@@ -29,7 +29,7 @@
 // des tubes coupés au bord de la dalle et aucune paroi qui en traverse une autre, même pour des tracés presque
 // parallèles qui se chevauchent. Règle du pas en mode galerie (vue 3D) : rester dans l'emprise (à moins d'une
 // demi-largeur d'un tracé ou dans un joint). Dans les trois rendus, un remblais, un effondrement ou une zone
-// inaccessible du niveau arrête aussi, comme le cône d'un puits comblé, un bassin ou un cavage fermé (zonesBloquent).
+// inaccessible du niveau arrête aussi, comme le cône d'un puits comblé ou un cavage fermé (zonesBloquent).
 // ⚠️ contrat : ces zones et obstacles ne bouchent que la vue 3D ; versGalerie
 // (recalage du tracker) ne lit que l'emprise, l'itinéraire et le tracker ne passent pas par ici.
 // 🩸 Le graphe de roadGraph.js ne sert pas ici : c'est un graphe d'itinéraire (croisements en arêtes virtuelles,
@@ -83,19 +83,20 @@
   // Accès de surface SANS passage (vue 3D seule) : tag → forme du volume (vue3d.js > _volumeAcces). Aucun n'a de
   // moyen (poiJonction.js > MOYEN) : ni 🪜, ni itinéraire, ni coût vertical. esf / pef = eso / peo fermés en haut ;
   // pb bouché au ras du plafond ; pc / psf comblés (cône d'éboulis au sol) ; ps puits d'extraction rond ouvert ;
-  // pe bassin creusé dans le sol ; cao / caf cavage, porte à deux battants en travers de la galerie.
+  // pe bassin creusé dans le sol, contre la paroi ; cao / caf cavage, porte à deux battants en travers de la galerie.
   // ⚠️ contrat : aucune emprise de galerie (pas de pièce, d'où versGalerie et le recalage inchangés) ; seuls les
   // obstacles (BLOQUE) comptent, pour la règle du pas de la 3D seulement (zonesBloquent, dansZone, dedans).
   const ACCES = { esf: "escalier", pef: "puits", pb: "puits", pc: "puits", psf: "rond", ps: "rond", pe: "bassin",
     cao: "porte", caf: "porte" };
-  // Obstacles d'un accès (décision produit) : cône d'éboulis d'un puits comblé, margelle du bassin, porte fermée.
-  const BLOQUE = { pc: "cone", psf: "cone", pe: "bassin", caf: "porte" };
+  // Obstacles d'un accès (décision produit) : cône d'éboulis d'un puits comblé, porte fermée. Le bassin (pe) n'arrête
+  // pas : posé contre la paroi (_placeVolume, `contre`), on passe à côté.
+  const BLOQUE = { pc: "cone", psf: "cone", caf: "porte" };
   // Dimensions (m) des accès : puits rond d'extraction `rond` de diamètre ; bassin `bassin` de diamètre intérieur,
   // margelle de `margelle` d'épaisseur et `margelleH` de haut, eau à `eau` sous le sol, fond à `fond` ; cône
   // d'éboulis de `cone` de rayon et `coneH` de haut ; porte de la largeur de la galerie (demi-largeur de l'axe le
   // plus proche à DIR_PASSAGE_M), `porteDefaut` sans galerie, obstacle de `porteEp` d'épaisseur qui déborde de
   // `porteDeborde` dans la paroi (aucune fente au bord).
-  const ACCES_DIM = { rond: 1.8, bassin: 1.6, margelle: 0.2, margelleH: 0.4, eau: 0.8, fond: 1.2, cone: 0.9,
+  const ACCES_DIM = { rond: 2.5, bassin: 1.6, margelle: 0.2, margelleH: 0.4, eau: 0.8, fond: 1.2, cone: 0.9,
     coneH: 0.6, porteDefaut: 2, porteEp: 0.2, porteDeborde: 0.4 };
   const COTES_CERCLE = 16;          // côtés d'un cercle d'obstacle (cône, margelle), les mêmes que la 3D
   // ⚠️ contrat : un point est « dans la galerie » s'il a un axe à moins de PROCHE_M ; c'est le rayon unique de la vue
@@ -331,8 +332,7 @@
   }
 
   // Obstacle d'un accès (BLOQUE[tag]) posé en (x, y) px sur l'axe `ang` (rad), galerie de demi-largeur `w` px (null :
-  // ACCES_DIM.porteDefaut) → contour [{x, y}]. Cône et bassin : cercle de COTES_CERCLE côtés (rayon du cône ;
-  // bassin + margelle). Porte fermée : rectangle de porteEp le long de l'axe, en travers sur la largeur de la
+  // ACCES_DIM.porteDefaut) → contour [{x, y}]. Cône : cercle de COTES_CERCLE côtés, de son rayon. Porte fermée : rectangle de porteEp le long de l'axe, en travers sur la largeur de la
   // galerie + porteDeborde de chaque côté.
   function _obstacleAcces(tag, x, y, ang, w, sc) {
     const D = ACCES_DIM, genre = BLOQUE[tag];
@@ -342,7 +342,7 @@
       const Q = function (a, b) { return { x: x + ux * a - uy * b, y: y + uy * a + ux * b }; };
       return [Q(-s, -t), Q(s, -t), Q(s, t), Q(-s, t)];
     }
-    const R = (genre === "cone" ? D.cone : D.bassin / 2 + D.margelle) * sc, out = [];
+    const R = D.cone * sc, out = [];
     for (let k = 0; k < COTES_CERCLE; k++) {
       const a = 2 * Math.PI * k / COTES_CERCLE;
       out.push({ x: x + R * Math.cos(a), y: y + R * Math.sin(a) });
@@ -695,19 +695,24 @@
   // validé du niveau est pris au point exact. Sinon le POI (souvent posé à côté de l'axe pour la lecture en 2D) : en
   // mode galerie, ou dans un tube du mixte (hors chambre, comme son panneau), à moins de PROCHE_M d'un axe, le volume
   // est posé dans le tube du côté du POI, son emprise (`demi` m en travers) gardée entre les parois (au plus w − demi
-  // de l'axe ; sur l'axe si le tube est plus étroit). Hors de l'emprise, la galerie est d'abord gagnée par le trajet de
+  // de l'axe ; sur l'axe si le tube est plus étroit) ; `contre` (bassin, pe) : contre la paroi du côté du POI, à
+  // w − demi de l'axe même au-delà du POI (margelle tangente à la paroi ; galerie plus étroite que lui : il passe
+  // l'axe et s'enfonce dans la roche d'en face, sans niche). Hors de l'emprise, la galerie est d'abord gagnée par le trajet de
   // versGalerie (jamais à travers la roche vers une autre). 🩸 Sinon un POI dans la roche dessinait son puits
   // derrière la paroi, bouche hors du sol dessiné : invisible. 🩸 Près d'un carrefour, la galerie retenue est celle
   // dont l'emprise est la plus près du POI, pas forcément celle voulue : seul un raccord validé du niveau tranche.
-  // Rendu structures, chambre, rien à PROCHE_M : le point tel quel. L'axe (DIR_PASSAGE_M) est lu à la place finale.
+  // Rendu structures, chambre, rien à PROCHE_M : le point tel quel. L'axe (DIR_PASSAGE_M) est lu à la place finale,
+  // avec le côté d'entrée (_entree).
   // C : { sc, pieces, aretes, plusProche, pres(x0, y0, x1, y1) → indices, tubes (bool), enChambre, tubeAu }.
-  function _placeVolume(x, y, demi, C) {
+  function _placeVolume(x, y, demi, C, contre) {
     const sc = C.sc, R = PROCHE_M * sc;
-    const dir = function (px, py) {
+    const axeA = function (px, py, pl) {
       const pp = C.plusProche(px, py, DIR_PASSAGE_M * sc), r = pp ? C.aretes[pp.arete] : null;
-      return r ? Math.atan2(r.by - r.ay, r.bx - r.ax) : 0;
+      pl.ang = r ? Math.atan2(r.by - r.ay, r.bx - r.ax) : 0;
+      pl.entree = r ? _entree(C.aretes, pp, sc) : 0;
+      return pl;
     };
-    const brut = { x: x, y: y, ang: dir(x, y), ramene: false };
+    const brut = axeA(x, y, { x: x, y: y, ramene: false });
     if (!C.tubes) return brut;
     const pp = C.plusProche(x, y, R);
     if (!pp || C.enChambre(x, y) || !C.tubeAu(pp.arete, pp.t)) return brut;
@@ -721,18 +726,66 @@
       if (!best) return brut;
       axe = _axeDuBord(C, best, R);
     }
-    const dx = x - axe.x, dy = y - axe.y, d = Math.hypot(dx, dy), off = Math.max(0, axe.w - demi * sc);
-    const k = d > 1e-9 ? Math.min(d, off) / d : 0, nx = axe.x + dx * k, ny = axe.y + dy * k;
+    const dx = x - axe.x, dy = y - axe.y, d = Math.hypot(dx, dy), off = axe.w - demi * sc;
+    const k = d <= 1e-9 ? 0 : contre ? off / d : Math.min(d, Math.max(0, off)) / d;
+    const nx = axe.x + dx * k, ny = axe.y + dy * k;
     if (Math.hypot(nx - x, ny - y) < 1e-6) return brut;
-    return { x: nx, y: ny, ang: dir(nx, ny), ramene: true };
+    return axeA(nx, ny, { x: nx, y: ny, ramene: true });
   }
 
-  // Place du volume de passage de p au niveau donné (_placeVolume) → { x, y, ang, ramene, raccord } | null.
+  // Côté d'entrée d'un volume posé sur l'axe pp (plusProche) : +1 = vers b (le sens de `ang`), −1 = vers a, 0 =
+  // égalité à 1 cm près ou boucle. ⚠️ contrat (vue3d.js > _marches) : la galerie continue le plus longtemps de ce
+  // côté (le tronçon jusqu'au nœud, puis toute la galerie atteinte de ce nœud sans repasser par l'arête) : on arrive
+  // le plus souvent par là ; au bout d'un cul-de-sac, c'est le côté ouvert. Arête dans une boucle (l'autre nœud
+  // atteint sans elle) : les deux côtés mènent partout, 0. 🩸 Le sens a → b d'une arête est celui du dessin du
+  // tracé, arbitraire : jamais une règle à lui seul. Portées calculées une fois par arête et par modèle.
+  const _portees = new WeakMap();   // aretes (d'un modèle) → { adj, par: Map(arête → [depuis a, depuis b]) }
+  function _entree(aretes, pp, sc) {
+    let g = _portees.get(aretes);
+    if (!g) {
+      const adj = new Map();
+      aretes.forEach(function (r, k) {
+        [r.a, r.b].forEach(function (n) { if (!adj.has(n)) adj.set(n, []); adj.get(n).push(k); });
+      });
+      g = { adj: adj, par: new Map() };
+      _portees.set(aretes, g);
+    }
+    const i = pp.arete, r = aretes[i];
+    let p = g.par.get(i);
+    if (!p) {
+      // Longueur (px) atteinte depuis le nœud `de` sans l'arête i ; `boucle` : l'autre bout de i atteint.
+      const portee = function (de, autre) {
+        const vus = new Set([de]), faites = new Set([i]), pile = [de];
+        let l = 0, boucle = false;
+        while (pile.length) {
+          const n = pile.pop();
+          (g.adj.get(n) || []).forEach(function (k) {
+            if (faites.has(k)) return;
+            faites.add(k);
+            const q = aretes[k], m = q.a === n ? q.b : q.a;
+            l += q.l || 0;
+            if (m === autre) boucle = true;
+            if (!vus.has(m)) { vus.add(m); pile.push(m); }
+          });
+        }
+        return { l: l, boucle: boucle };
+      };
+      p = [portee(r.a, r.b), portee(r.b, r.a)];
+      g.par.set(i, p);
+    }
+    if (p[0].boucle) return 0;
+    const versA = pp.t * r.l + p[0].l, versB = (1 - pp.t) * r.l + p[1].l;
+    if (Math.abs(versA - versB) < 0.01 * sc) return 0;
+    return versB > versA ? 1 : -1;
+  }
+
+  // Place du volume de passage de p au niveau donné (_placeVolume) → { x, y, ang, entree, ramene, raccord } | null.
   function _placePassageDans(p, niveau, C) {
     const d = _departPassage(p, niveau);
     if (!d) return null;
     const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
-    const pl = _placeVolume(d.x, d.y, _demiTravers(tag), d.raccord ? Object.assign({}, C, { tubes: false }) : C);
+    const pl = _placeVolume(d.x, d.y, _demiTravers(tag), d.raccord ? Object.assign({}, C, { tubes: false }) : C,
+      ACCES[tag] === "bassin");
     pl.raccord = d.raccord;
     return pl;
   }
@@ -1209,7 +1262,7 @@
   }
 
   // Segments [x0, y0, x1, y1] (px) → true s'il entre dans une zone ZONES_BOUCHENT du niveau ou dans l'obstacle d'un
-  // accès (BLOQUE : cône d'un puits comblé, bassin, porte fermée) — contour coupé ou touché, arrivée dedans ; un
+  // accès (BLOQUE : cône d'un puits comblé, porte fermée) — contour coupé ou touché, arrivée dedans ; un
   // contour où il commence, ou qui contient `depart` ({ x, y } px, la place d'où part le pas), ne l'arrête pas
   // (jamais coincé). Lu par la 3D dans les trois rendus (vue3d.js > _juger), en plus de la règle du rendu.
   function zonesBloquent(segs, niveau, depart, rendu) {
@@ -1264,15 +1317,16 @@
   }
 
   // Place du volume de passage du POI p au niveau donné dans un rendu ("mixte" | "galerie" | "structures") →
-  // { x, y (px), ang (rad, axe de la galerie), ramene, raccord } | null (p ne passe pas par ce niveau). La règle
-  // (_placeVolume) est celle de l'emprise du modèle : vue3d.js y lit la place du volume, du panneau et de 🪜.
-  // Rendu structures : le point tel quel, aligné sur l'axe du mode galerie.
+  // { x, y (px), ang (rad, axe de la galerie), entree (+1 / −1 / 0 : côté d'entrée le long de `ang`, _entree), ramene,
+  // raccord } | null (p ne passe pas par ce niveau). La règle (_placeVolume) est celle de l'emprise du modèle :
+  // vue3d.js y lit la place du volume, du panneau et de 🪜, et le sens des marches. Rendu structures : le point tel
+  // quel, aligné sur l'axe du mode galerie.
   function placePassage(p, niveau, rendu) {
     const n = Number.isInteger(niveau) ? niveau : null;
     const m = modele(n, rendu === "mixte");
     if (!m) {
       const d = _departPassage(p, n);
-      return d ? { x: d.x, y: d.y, ang: 0, ramene: false, raccord: d.raccord } : null;
+      return d ? { x: d.x, y: d.y, ang: 0, entree: 0, ramene: false, raccord: d.raccord } : null;
     }
     const C = { sc: m.sc, pieces: m.pieces, aretes: m.aretes, plusProche: m.plusProche, pres: m.piecesPres,
       tubes: rendu === "mixte" || rendu === "galerie", enChambre: m.enChambre, tubeAu: m.tubeAu };

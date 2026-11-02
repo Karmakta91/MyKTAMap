@@ -151,7 +151,7 @@
   const VOLUME = Object.assign({ long: 6, echelon: 0.3, marches: 10 }, window.KtaGalerie.PASSAGE);
   const COULEUR_FER = "#5e5a52";    // échelons, montants, grille : couleur de la scène, pas de la charte de l'UI
   // Accès de surface sans passage (_volumeAcces) : formes et dimensions dans KtaGalerie (ACCES, ACCES_DIM), d'où
-  // leurs obstacles (cône, bassin, porte fermée) sont la règle du pas. Ici, ce que seule la 3D dessine (m) :
+  // leurs obstacles (cône, porte fermée) sont la règle du pas. Ici, ce que seule la 3D dessine (m) :
   // dalle sombre d'un accès fermé (esf, pef) à `fermeY` au-dessus du plafond, de `fermeEp` ; puits comblé (pc, psf) :
   // remblais à `comble` au-dessus du plafond ; puits bouché (pb) : dalle maçonnée de `boucheEp`, débordant de
   // `boucheDeborde` autour de la bouche, au ras du plafond.
@@ -2344,7 +2344,8 @@
       const pl = window.KtaGalerie.placePassage(src, N, e.rendu) || { x: p.x, y: p.y, ang: 0, ramene: false };
       v.a = dim[0] / 2; v.b = dim[1] / 2;
       v.x = pl.x; v.y = pl.y; v.ramene = pl.ramene;
-      v.dir = pl.ang;
+      // Escalier : repère retourné quand l'entrée (KtaGalerie, _entree) est du côté +ang, les marches partant de −a.
+      v.dir = pl.ang + (v.forme === "escalier" && pl.entree === 1 ? Math.PI : 0);
       v.cx = pl.x / e.sc; v.cz = pl.y / e.sc;
       v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
       // Volume ailleurs que le point (recalé, raccord validé) : son panneau le suit (_placePanneau).
@@ -2491,7 +2492,8 @@
     v.stats = { triangles: n(lots.parois) + n(lots.opaque) + n(lots.lumineux), bouchesSol: n(lots.sol),
       bouchesPlafond: n(lots.plafond), cadre: n(lots.lumineux) > 0, yMin: Number.isFinite(y0) ? +y0.toFixed(2) : null,
       yMax: Number.isFinite(y1) ? +y1.toFixed(2) : null,
-      cielVu: g.children.some(function (o) { return o.userData.famille === "ciel"; }) };
+      cielVu: g.children.some(function (o) { return o.userData.famille === "ciel"; }),
+      marches: v.relMarches || null };
     if (v.acces) Object.assign(v.stats, _statsAcces(v, lots, g));
     e.scene.add(g);
     v.obj = g;
@@ -2540,14 +2542,36 @@
 
   // Marches d'une cage d'escalier, le long de la galerie : vers le haut (du sol, à travers le plafond) et / ou vers le
   // bas (du sol dans le puits) ; entre trois niveaux, une volée par moitié de largeur.
+  // ⚠️ contrat : toute volée part de s = −a (pied de celle qui monte, haut de celle qui descend : l'entrée, côte à
+  // côte entre trois niveaux) ; _volumesDuNiveau oriente le repère pour que −a soit le côté d'entrée de la place
+  // (KtaGalerie.placePassage > entree : où la galerie continue le plus longtemps ; égalité : sens du tracé).
   function _marches(v, lot, Q, col) {
     const h = _e.hauteur, n = VOLUME.marches, a = v.a, b = v.b, pas = 2 * a / n, haut = (h + 0.4) / n;
     const monte = v.plafond && !v.grille, deux = monte && v.sol;
-    for (let k = 0; k < n; k++) {
-      const s0 = -a + k * pas, s1 = s0 + pas;
-      if (monte) _pave(lot, Q, s0, s1, deux ? 0 : -b, b, 0, (k + 1) * haut, col);
-      if (v.sol) _pave(lot, Q, s0, s1, -b, deux ? 0 : b, -VOLUME.long, -(k + 1) * haut, col);
+    // Relevé (etat().volumes, checkup) : centre [x, z] des sommets les plus hauts posés depuis l'indice i0.
+    const plusHaut = function (i0) {
+      let best = -Infinity, sx = 0, sz = 0, nb = 0;
+      for (let i = i0; i < lot.p.length; i += 3) {
+        const y = lot.p[i + 1];
+        if (y > best + 1e-6) { best = y; sx = 0; sz = 0; nb = 0; }
+        if (y >= best - 1e-6) { sx += lot.p[i]; sz += lot.p[i + 2]; nb++; }
+      }
+      return nb ? [+(sx / nb).toFixed(3), +(sz / nb).toFixed(3)] : null;
+    };
+    const rel = { haut: null, entreeBas: null };
+    let i0 = lot.p.length;
+    for (let k = 0; monte && k < n; k++) {
+      const s0 = -a + k * pas;
+      _pave(lot, Q, s0, s0 + pas, deux ? 0 : -b, b, 0, (k + 1) * haut, col);
     }
+    if (monte) rel.haut = plusHaut(i0);
+    i0 = lot.p.length;
+    for (let k = 0; v.sol && k < n; k++) {
+      const s0 = -a + k * pas;
+      _pave(lot, Q, s0, s0 + pas, -b, deux ? 0 : b, -VOLUME.long, -(k + 1) * haut, col);
+    }
+    if (v.sol) rel.entreeBas = plusHaut(i0);
+    v.relMarches = rel;   // haut de la volée qui monte ; marche d'entrée (la plus haute) de celle qui descend
   }
 
   // Échelle scellée contre une paroi : échelons tous les VOLUME.echelon m et deux montants ; vers le bas, les montants
@@ -2598,10 +2622,11 @@
   //   pb : dalle maçonnée au ras du plafond, sans bouche ;
   //   pc / psf : bouche au plafond (carrée / ronde) remplie de remblais, cône d'éboulis au sol ;
   //   ps : puits rond maçonné de DIM_ACCES.rond, sans échelons, ciel au sommet ;
-  //   pe : bassin creusé dans le sol, margelle basse, eau à −DIM_ACCES.eau (couleur de la zone eau) ;
+  //   pe : bassin creusé dans le sol contre la paroi du côté du POI, margelle basse, eau à −DIM_ACCES.eau (couleur de
+  //   la zone eau) ; il n'arrête pas le pas : on passe à côté ;
   //   cao / caf : porte à deux battants en travers de la galerie (sa largeur à cet endroit), ouverte (battants
   //   rabattus contre les parois) ou fermée.
-  // Cône, bassin et porte fermée arrêtent le pas en 3D seulement (KtaGalerie.zonesBloquent : contour de
+  // Cône et porte fermée arrêtent le pas en 3D seulement (KtaGalerie.zonesBloquent : contour de
   // galerieEmprise.js > _obstacleAcces, même cercle de COTES_CERCLE côtés que _cercle) ; l'itinéraire passe
   // par-dessus le cône et la margelle (_volumesItiAcces). Remblais et bois texturés avec 🧱, couleurs unies sinon :
   // la bascule refait les volumes (_refaireTuiles).

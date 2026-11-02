@@ -1343,7 +1343,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_indexZones`, indépendant du modèle des galeries : le rendu structures n'en construit pas). ⚠️ contrat : la 3D
   seulement ; `ktaSegmentsBloquesParStructure` (pas du tracker), `versGalerie` (recalage), l'itinéraire, le guidage
   et la carte ne lisent aucune de ces zones (l'itinéraire 2D garde sa règle : seul l'inaccessible le coupe).
-  Les **obstacles des accès** (cône d'un puits comblé `pc` / `psf`, bassin `pe`, cavage fermé `caf`, ci-dessous) suivent
+  Les **obstacles des accès** (cône d'un puits comblé `pc` / `psf`, cavage fermé `caf`, ci-dessous) suivent
   la même règle et le même contrat (`KtaGalerie.BLOQUE`, `_indexObstacles` : contour posé par `placePassage` dans le
   rendu affiché, que `zonesBloquent` / `dansZone` reçoivent de `_juger` et `_coince`).
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
@@ -1474,7 +1474,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   celle d'une autre galerie : seul un raccord validé du niveau tranche. Rendu structures (sol partout) : le point.
   Le panneau suit le volume s'il est posé ailleurs que le point (`_placePanneau`) ; le POI enregistré, la 2D,
   l'itinéraire et le tracker n'en savent rien. Aligné sur l'axe de galerie le plus proche de cette place : `jes` / `eso` cage d'escalier
-  2,5 × 1,5 m (10 marches pleines), `jpe` / `peo` puits de 1,2 m à échelons (tous les 0,3 m, deux montants), `jps`
+  2,5 × 1,5 m (10 marches pleines ; **entrée** — pied de la volée qui monte, haut de celle qui descend, côte à côte
+  entre trois niveaux — du côté où la galerie continue le plus longtemps depuis la place, `placePassage > entree`,
+  `galerieEmprise.js > _entree` : longueur de galerie atteinte de chaque côté sans repasser par l'arête ; au bout
+  d'un cul-de-sac, côté ouvert ; arête dans une boucle ou égalité : sens du tracé. 🩸 Le sens a → b d'une arête
+  est celui du dessin, arbitraire : seul, il mettait le haut de la volée face à qui arrive. Marches en calcaire uni),
+  `jpe` / `peo` puits de 1,2 m à échelons (tous les 0,3 m, deux montants), `jps`
   puits nu, `pa` tube de 0,8 m à grille. Ouvert dans le **sol** vers un niveau lié au-dessous, dans le **plafond** vers
   un niveau lié au-dessus, les deux entre trois niveaux ; parois (matériau des galeries) sur 6 m au-delà (le reste se perd dans le
   noir). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
@@ -1506,21 +1511,26 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   doré, ni itinéraire, ni coût vertical : `KtaPoiJonction.moyen` nul) et **sans emprise** (aucune pièce de niche :
   `versGalerie` et le recalage ne changent pas). `esf` / `pef` : la cage à marches d'`eso`, le puits à échelons de
   `peo`, fermés par une dalle sombre à 2,5 m au-dessus du plafond (pas de ciel). `pb` : dalle maçonnée (matériau des
-  parois) au ras du plafond, plafond non troué. `pc` / `psf` : bouche au plafond (carrée de 1,2 m / ronde de 1,8 m)
+  parois) au ras du plafond, plafond non troué. `pc` / `psf` : bouche au plafond (carrée de 1,2 m / ronde de 2,5 m)
   remplie de remblais sur 0,5 m, et **cône d'éboulis** au sol (rayon 0,9 m, 0,6 m de haut, 16 côtés) qui arrête le
-  pas ; l'itinéraire passe par-dessus (`_volumesItiAcces`, comme un remblais, à 0,6 m). `ps` : puits rond maçonné de
-  1,8 m, sans échelons, ciel au sommet. `pe` : bassin rond de 1,6 m creusé dans le sol (bouche au sol), margelle de
-  0,2 × 0,4 m, eau à −0,8 m (couleur de la zone eau, matériau de l'eau des galeries), fond à −1,2 m ; arrête le pas
-  (margelle comprise), l'itinéraire passe sur la margelle. `cao` / `caf` : **porte à deux battants** en travers de la
+  pas (le cône du `psf` garde ce rayon sous sa bouche plus large) ; l'itinéraire passe par-dessus
+  (`_volumesItiAcces`, comme un remblais, à 0,6 m). `ps` : puits rond maçonné de 2,5 m (`ACCES_DIM.rond`, comme
+  `psf`), sans échelons, ciel au sommet. `pe` : bassin rond de 1,6 m creusé dans le sol (bouche au sol), margelle de
+  0,2 × 0,4 m, eau à −0,8 m (couleur de la zone eau, matériau de l'eau des galeries), fond à −1,2 m ; posé **contre
+  la paroi** du côté du POI (`_placeVolume`, `contre` : margelle tangente à la paroi, à w − 1 m de l'axe ; galerie
+  plus étroite que lui : il passe l'axe et s'enfonce dans la roche d'en face, sans niche) ; il **n'arrête pas** le
+  pas (hors de `BLOQUE`, décision produit : on passe à côté) ; l'itinéraire, sur l'axe, passe sur la margelle là où
+  il la croise. `cao` / `caf` : **porte à deux battants** en travers de la
   galerie, posée sur l'axe (demi-emprise infinie : elle barre toute la largeur), largeur = celle de la galerie à cet
   endroit (demi-largeur de l'axe le plus proche, 2 m sans galerie), cadre de fer, paroi au-dessus du linteau (2,1 m,
   borné par la hauteur) jusqu'au plafond ; `caf` fermé arrête le pas sur toute la largeur (obstacle de 0,2 m qui
   déborde de 0,4 m dans la paroi), `cao` a ses battants rabattus à 90° contre les parois. Un itinéraire 2D finit au
   cavage (bout du chemin sur l'axe) : l'arrivée est atteinte devant la porte, à un corps d'elle. Bois des battants
   (planches, pentures cloutées, `_bois`) et remblais texturés avec 🧱, couleurs unies sinon (bascule = volumes
-  refaits). 🩸 Un volume large (puits rond, bassin) dans un tube plus étroit que lui reste sur l'axe et dépasse dans
-  la paroi (pas de niche, voulu). Garde-fou : `checkup-vue-3d.js` § 14 quater (3 rendus, blocage, arrivée devant un
-  cavage fermé, 🧱 coupé, 2D intacte).
+  refaits). 🩸 Un puits rond dans un tube plus étroit que lui reste sur l'axe et dépasse dans la paroi (pas de
+  niche, voulu). Garde-fou : `checkup-vue-3d.js` § 14 quater (3 rendus, blocage, bassin contre la paroi qu'on longe,
+  arrivée devant un cavage fermé, 🧱 coupé, 2D intacte) ; sens des marches : § 14 quinquies (cul-de-sac, milieu,
+  boucle, tracé dans les deux sens, `esf` / `eso` / `jes` vers le haut, le bas et entre trois niveaux, 2D intacte).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
