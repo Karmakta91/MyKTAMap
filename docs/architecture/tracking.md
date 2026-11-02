@@ -1667,10 +1667,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `mode`, `vue`, `commandes`, `sale()`. Règle du pas **de la vue**, jamais une copie (px plan) : `bloque(x0, y0, x1,
   y1)` (un corps de 0,8 m ne passe pas, `_balayage`), `ligneBloquee(x0, y0, x1, y1)` (ligne de vue coupée, `_juger`),
   `libre(x, y)` (place où un corps tient : ni coincée, ni dans une structure **dessinée**, corps dégagé — un calque
-  masqué n'y compte pas). `court` = pas rapide en cours. `regler({ traces, itineraire, guidage, course })` : `false`
-  masque, **pour la greffe seulement**, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app
-  (ruban, étapes, 🏁), son guidage (bandeau, chevrons), ou interdit le pas rapide ; levé au retrait ; scène refaite
-  seulement si les tracés ou l'itinéraire changent. Les filtres de la carte n'en savent rien.
+  masqué n'y compte pas). `court` = pas rapide en cours. `regler({ traces, itineraire, guidage, course, avatar,
+  commandes })` : `false` masque, **pour la greffe seulement**, les tracés au sol (les tubes des galeries restent),
+  l'itinéraire de l'app (ruban, étapes, 🏁), son guidage (bandeau, chevrons), la silhouette dorée de la vue
+  plongeante, le joystick et le pavé (une carte à toucher là où est le pouce ; `display` en style, le pavé étant en
+  grille), ou interdit le pas rapide ; levé au retrait ; scène refaite seulement si les tracés ou l'itinéraire
+  changent. Les filtres de la carte n'en savent rien.
 - 🔒 Une exception dans un appel retire la greffe ; la vue continue. La greffe ne touche ni tracker, ni session, ni
   filtres : elle n'a que ce `ctx`.
 - **Code « six vers le bas »** (décision produit, `CODE_BAS`) : 6 appuis vers le bas en moins de 2 s — ▼ du pavé, ↓ ou
@@ -1681,8 +1683,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   la première fois en script classique, précaché par `sw.js` ; il s'inscrit dans `window.KtaAddons.<nom> = { lancer
   }` et décide seul s'il démarre.
 - **Add-on `mkmg`** (`addons/mkmg/` : `js/coeur.js` partie et interface, `js/monde.js` menaces, objets et tir,
-  `js/son.js` sons WebAudio sans fichier, `css/coeur.css`, `img/fusil.svg` ; `coeur.js` charge les deux autres) :
-  jeu en vagues sur le plan ouvert.
+  `js/son.js` sons WebAudio sans fichier, `js/joueur.js` bras et fusil, `css/coeur.css`, `img/fusil.svg` ; `coeur.js`
+  charge les trois autres) : jeu en vagues sur le plan ouvert.
   - Refusé (message) sur une installation reliée à un serveur (`KtaExtensions.etat().etat` ≠ `off`) sauf si son
     hébergeur l'autorise (`data/reglages.json` > `"addons": { "mkmg": true }`, `KtaInstance.etat().reglages`), pendant le
     suivi du tracker, une sortie d'urgence (itinéraire `urgence`, `EmergencyMode`) ou le mode Secours ouvert ; sinon
@@ -1731,8 +1733,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
     un égaré tué en lâche un sur quatre).
   - Santé à 0 : fin de partie, meilleure vague par difficulté sous `localStorage["myktamap_mkmg_v1"]` (jamais la
     session), « Rejouer » ou « Quitter ». Passage de niveau 🪜 : le monde de la vague est refait au nouveau niveau.
-  - Panneau en haut à droite (la moitié gauche est au joystick), « Quitter » retire la greffe ; fermer la vue
-    termine la partie. Textes fr / en / es dans le fichier (pas dans `lang/*.json`), couleurs en jetons `--kta-*`.
+  - Joueur (`joueur.js`) : à hauteur d'yeux, deux bras et un fusil à deux coups en formes simples, accrochés à
+    `ctx.camera`, en couleurs fixes non éclairées (la lampe, collée à la caméra, les délavait) et dessinés par-dessus
+    la scène (sans test de profondeur, ordre de rendu fixé) ; balancement à la marche, recul et éclair de bouche au
+    tir. En vue plongeante : silhouette verte armée à sa place, celle de la vue masquée (`regler({ avatar: false })`).
+  - Interface : santé et endurance en haut à gauche (toujours visibles) ; panneau en haut à droite, réductible (▾ / ▸,
+    retenu sur l'appareil, `myktamap_mkmg_panneau_v1`) : vague, chrono et guidage toujours là ; objectif,
+    statistiques (égarés tués, balles tirées, balles au but) et « Quitter » repliés. Cartouches sur le bouton de tir.
+    Fin de partie : joystick et pavé retirés le temps de toucher la carte (`regler({ commandes: false })`), rendus à
+    « Rejouer » ou « Quitter ». « Quitter » retire la greffe ; fermer la vue termine la partie. Textes fr / en / es dans le fichier (pas dans `lang/*.json`), couleurs en jetons `--kta-*`.
     Volontairement absent des guides et de l'Aide.
 
 ### Garde-fous et limites

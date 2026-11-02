@@ -6,7 +6,8 @@
 
 // addons/mkmg/js/coeur.js — add-on « mkmg » : jeu en vagues dans la vue 3D, sur le plan ouvert. Chargé par la vue 3D
 // seule (vue3d.js > ADDONS_CODE, code « six vers le bas »), jamais au démarrage ; charge à son tour son.js et
-// monde.js. Expose window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
+// monde.js et joueur.js (bras et fusil en vue à hauteur d'yeux, silhouette verte en vue plongeante). Expose
+// window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
 // rejoindre un point B (POI de plus en plus loin, sinon un point des tracés) avec des égarés et, dès la vague 2, la
 // silhouette (monde.js) ; fusil à deux coups, munitions et champignons ramassés en passant ; santé à 0 = fin, meilleure
 // vague retenue par difficulté. Difficulté : facile = tracés + itinéraire du jeu + guidage ; moyen = tracés +
@@ -36,6 +37,8 @@
       "hud.objectif": "Rejoins : {nom}", "hud.restant": "{d} restants", "hud.recherche": "Recherche d'une destination…",
       "hud.aucune": "Aucune destination sur ce niveau : il faut des POI ou des tracés.",
       "hud.reussie": "Vague {n} réussie !", "hud.souffle": "À bout de souffle", "hud.quitter": "Quitter",
+      "hud.reduire": "Réduire", "hud.agrandir": "Agrandir", "hud.tues": "Égarés tués", "hud.tirs": "Balles tirées",
+      "hud.touches": "Balles au but",
       "hud.sansNom": "un point du réseau", "hud.tirer": "Tirer", "hud.cartouches": "Cartouches",
       "hud.recharge": "Recharge…", "hud.vide": "Plus de cartouches", "hud.plusCartouches": "+{n} cartouches",
       "hud.plusSante": "+{n} santé", "hud.recule": "Elle recule…",
@@ -58,6 +61,8 @@
       "hud.objectif": "Reach: {nom}", "hud.restant": "{d} left", "hud.recherche": "Looking for a destination…",
       "hud.aucune": "No destination on this level: points or paths are needed.",
       "hud.reussie": "Wave {n} cleared!", "hud.souffle": "Out of breath", "hud.quitter": "Quit",
+      "hud.reduire": "Collapse", "hud.agrandir": "Expand", "hud.tues": "Lost ones killed", "hud.tirs": "Shots fired",
+      "hud.touches": "Hits",
       "hud.sansNom": "a point of the network", "hud.tirer": "Shoot", "hud.cartouches": "Shells",
       "hud.recharge": "Reloading…", "hud.vide": "Out of shells", "hud.plusCartouches": "+{n} shells",
       "hud.plusSante": "+{n} health", "hud.recule": "It backs away…",
@@ -80,6 +85,8 @@
       "hud.objectif": "Llega a: {nom}", "hud.restant": "faltan {d}", "hud.recherche": "Buscando un destino…",
       "hud.aucune": "Ningún destino en este nivel: hacen falta puntos o trazados.",
       "hud.reussie": "¡Oleada {n} superada!", "hud.souffle": "Sin aliento", "hud.quitter": "Salir",
+      "hud.reduire": "Reducir", "hud.agrandir": "Ampliar", "hud.tues": "Perdidos abatidos", "hud.tirs": "Disparos",
+      "hud.touches": "Aciertos",
       "hud.sansNom": "un punto de la red", "hud.tirer": "Disparar", "hud.cartouches": "Cartuchos",
       "hud.recharge": "Recargando…", "hud.vide": "Sin cartuchos", "hud.plusCartouches": "+{n} cartuchos",
       "hud.plusSante": "+{n} salud", "hud.recule": "Retrocede…",
@@ -113,7 +120,7 @@
   const ROUTE = { largeur: 0.3, y: 0.08 };
   const BALISE = { rayon: 0.25, anneau: [0.6, 0.85], opacite: 0.55 };
   const CLE_SCORES = "myktamap_mkmg_v1";
-  const SCRIPTS = ["addons/mkmg/js/son.js", "addons/mkmg/js/monde.js"];
+  const SCRIPTS = ["addons/mkmg/js/son.js", "addons/mkmg/js/monde.js", "addons/mkmg/js/joueur.js"];
 
   let _p = null;   // partie en cours (null = aucune)
 
@@ -131,6 +138,7 @@
 
   function _son() { return window.KtaAddons.mkmgSon; }
   function _monde() { return window.KtaAddons.mkmgMonde; }
+  function _joueur() { return window.KtaAddons.mkmgJoueur; }
   function _jouer(nom, force) { const S = _son(); if (S) S.jouer(nom, force); }
 
   // ── Démarrage ─────────────────────────────────────────────────────────────────────────────────────────
@@ -203,6 +211,7 @@
       souffle: false, cible: null, route: null, longueurs: null, calcul: 0, ctx: null, hud: null, traits: [],
       majHud: 0, reussies: 0, restantM: null, ennemis: [], objets: [], gabarits: null, niveauMonde: null,
       canon: REGLES.cartouches.canon, reserve: REGLES.cartouches.reserve, rechargeFin: 0, fin: false, tues: 0,
+      tirs: 0, touches: 0,
       blesseT: 0, ecouteurs: [], saleT: 0, carte: null };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
     if (!retirer) { _p = null; return; }
@@ -219,11 +228,12 @@
     if (raison === "greffe") {
       ctx.regler({ traces: p.regle.traces, itineraire: false, guidage: false });
       _monterHud(ctx);
+      _joueur().monter(p, ctx);
       _brancher();
       _nouvelleVague();
     }
     // 🩸 Reprise du contexte : groupe neuf, les objets d'avant sont morts avec l'ancien (jamais dispose()).
-    if (raison === "reprise") { p.traits = []; _monde().dessiner(p, ctx, true); }
+    if (raison === "reprise") { p.traits = []; _monde().dessiner(p, ctx, true); _joueur().monter(p, ctx, true); }
     // Autre niveau (passage 🪜) : le monde de la vague est refait là où l'on est.
     if (raison === "refaite" && p.niveauMonde !== null && ctx.niveau !== p.niveauMonde && !p.fin) {
       _monde().vider(p);
@@ -237,6 +247,7 @@
     if (!p) return;
     p.ctx = ctx;
     const t = performance.now();
+    _joueur().image(p, ctx, dt);
     if (p.fin) return;
     if (ctx.court && !p.souffle) {
       p.endurance = Math.max(0, p.endurance - REGLES.videParS * dt);
@@ -291,6 +302,7 @@
     p.ecouteurs.forEach(function (x) { x[0].removeEventListener(x[1], x[2], x[3]); });
     if (raison !== "contexte") _vider();
     if (_monde()) _monde().liberer(p, raison === "contexte");
+    if (_joueur()) _joueur().liberer(p, raison === "contexte");
     if (_son()) _son().arreter();
     clearTimeout(p.messageMinuterie);
     _p = null;
@@ -338,13 +350,16 @@
     p.canon--;
     _jouer("tir");
     _eclair();
+    _joueur().tir(p);
     if (p.hud) {
       // Recul du bouton rejoué à chaque coup : la classe retirée puis remise après un reflow.
       p.hud.tirer.classList.remove("mkmg-recul");
       void p.hud.tirer.offsetWidth;
       p.hud.tirer.classList.add("mkmg-recul");
     }
+    p.tirs++;
     const r = _monde().tirer(p, ctx);
+    if (r.touche) p.touches++;
     if (r.tue) { p.tues++; _jouer("mort"); }
     if (r.touche === "silhouette") _message(_t("hud.recule"));
     if (p.canon === 0 && p.reserve > 0) _recharger();
@@ -539,7 +554,8 @@
   function _finPartie() {
     const p = _p;
     p.fin = true;
-    p.ctx.regler({ course: false });
+    // La carte de fin est sous les commandes (calque de la greffe) : joystick et pavé retirés le temps de toucher.
+    p.ctx.regler({ course: false, commandes: false });
     _son().proximite(0);
     _jouer("fin");
     const scores = _lireScores(), avant = Number(scores[p.diff]) || 0;
@@ -683,18 +699,26 @@
   function _monterHud(ctx) {
     const p = _p, h = {};
     h.coup = _el(ctx.hud, "div", "mkmg-coup");
-    h.panneau = _el(ctx.hud, "div", "mkmg-panneau");
-    h.vague = _el(h.panneau, "div", "mkmg-vague");
-    h.chrono = _el(h.panneau, "div", "mkmg-chrono");
-    h.sante = _barre(h.panneau, _t("hud.sante"));
-    h.endurance = _barre(h.panneau, _t("hud.endurance"));
+    // Jauges en haut à gauche, hors du panneau : toujours visibles, même panneau réduit.
+    h.jauges = _el(ctx.hud, "div", "mkmg-jauges");
+    h.sante = _barre(h.jauges, _t("hud.sante"));
+    h.endurance = _barre(h.jauges, _t("hud.endurance"));
     h.endurance.parentNode.parentNode.classList.add("mkmg-jauge-endurance");
-    h.cartouches = _el(h.panneau, "div", "mkmg-cartouches");
-    h.objectif = _el(h.panneau, "div", "mkmg-objectif");
+    // Panneau en haut à droite, réductible (retenu sur l'appareil) : en-tête (vague, chrono) et guidage toujours là.
+    h.panneau = _el(ctx.hud, "div", "mkmg-panneau");
+    const tete = _el(h.panneau, "div", "mkmg-tete");
+    h.vague = _el(tete, "div", "mkmg-vague");
+    h.chrono = _el(tete, "div", "mkmg-chrono");
+    h.plier = _el(tete, "button", "mkmg-plier");
+    h.plier.type = "button";
+    h.plier.addEventListener("click", function () { _plier(!h.panneau.classList.contains("mkmg-reduit")); });
     h.guide = _el(h.panneau, "div", "mkmg-guide");
     h.fleche = _el(h.guide, "span", "mkmg-fleche", "↑");
     h.reste = _el(h.guide, "span", "mkmg-reste");
-    h.quitter = _el(h.panneau, "button", "mkmg-bouton", _t("hud.quitter"));
+    h.corps = _el(h.panneau, "div", "mkmg-corps");
+    h.objectif = _el(h.corps, "div", "mkmg-objectif");
+    h.stats = _el(h.corps, "div", "mkmg-stats");
+    h.quitter = _el(h.corps, "button", "mkmg-bouton", _t("hud.quitter"));
     h.quitter.type = "button";
     h.quitter.addEventListener("click", quitter);
     h.tirer = _el(ctx.hud, "button", "mkmg-tirer");
@@ -705,10 +729,14 @@
     img.src = "addons/mkmg/img/fusil.svg";
     img.alt = "";
     h.tirer.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _tirer(); });
+    h.cartouches = _el(h.tirer, "span", "mkmg-cartouches");
     h.message = _el(ctx.hud, "div", "mkmg-message");
     h.message.hidden = true;
     h.message.setAttribute("aria-live", "polite");
     p.hud = h;
+    let reduit = false;
+    try { reduit = localStorage.getItem(CLE_PANNEAU) === "reduit"; } catch (e) { /* stockage refusé */ }
+    _plier(reduit);
     _majHud();
   }
 
@@ -719,6 +747,19 @@
     h.coup.classList.add("mkmg-eclair-actif");
     clearTimeout(_p.eclairMinuterie);
     _p.eclairMinuterie = setTimeout(function () { h.coup.classList.remove("mkmg-eclair-actif"); }, REGLES.eclairMs);
+  }
+
+  // Panneau réduit ou non, retenu sur cet appareil (clé à part, jamais la session).
+  const CLE_PANNEAU = "myktamap_mkmg_panneau_v1";
+  function _plier(reduit) {
+    const h = _p && _p.hud;
+    if (!h) return;
+    h.panneau.classList.toggle("mkmg-reduit", reduit);
+    h.plier.textContent = reduit ? "▸" : "▾";
+    h.plier.title = _t(reduit ? "hud.agrandir" : "hud.reduire");
+    h.plier.setAttribute("aria-label", h.plier.title);
+    h.plier.setAttribute("aria-expanded", reduit ? "false" : "true");
+    try { localStorage.setItem(CLE_PANNEAU, reduit ? "reduit" : "ouvert"); } catch (e) { /* stockage refusé */ }
   }
 
   function _coup() {
@@ -753,8 +794,11 @@
     h.endurance.style.width = Math.round(p.endurance / REGLES.endurance * 100) + "%";
     h.endurance.parentNode.parentNode.classList.toggle("mkmg-souffle", p.souffle);
     h.endurance.parentNode.parentNode.title = p.souffle ? _t("hud.souffle") : "";
-    h.cartouches.textContent = "🔫 " + p.canon + " · " + p.reserve + " " + _t("hud.cartouches").toLowerCase() +
-      (p.rechargeFin ? " · " + _t("hud.recharge") : "");
+    h.cartouches.textContent = p.rechargeFin ? "…" : p.canon + " · " + p.reserve;
+    h.tirer.title = _t("hud.tirer") + " — " + _t("hud.cartouches") + " : " + p.canon + " + " + p.reserve +
+      (p.rechargeFin ? " (" + _t("hud.recharge") + ")" : "");
+    h.stats.textContent = _t("hud.tues") + " : " + p.tues + " · " + _t("hud.tirs") + " : " + p.tirs + " · " +
+      _t("hud.touches") + " : " + p.touches;
     h.tirer.disabled = p.fin;
     if (!p.cible) {
       h.objectif.textContent = p.cherche ? _t("hud.recherche") : _t("hud.aucune");
@@ -788,8 +832,10 @@
       endurance: Math.round(p.endurance), souffle: p.souffle, cible: p.cible ? { x: p.cible.x, y: p.cible.y,
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
       traits: p.traits.length, calcul: p.calcul, canon: p.canon, reserve: p.reserve, recharge: !!p.rechargeFin,
-      fin: p.fin, tues: p.tues, scores: _lireScores(), coeur: +(p.coeur || 0).toFixed(2),
-      msMonde: +(p.msMonde || 0).toFixed(3), tenailleMi: p.tenailleMi, chronoDepasse: p.chronoDepasse,
+      fin: p.fin, tues: p.tues, tirs: p.tirs, touches: p.touches,
+      reduit: !!p.hud && p.hud.panneau.classList.contains("mkmg-reduit"), scores: _lireScores(), coeur: +(p.coeur || 0).toFixed(2),
+      msMonde: +(p.msMonde || 0).toFixed(3), joueur: _joueur().etat(p), tenailleMi: p.tenailleMi,
+      chronoDepasse: p.chronoDepasse,
       chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
       ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),
       objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }) };

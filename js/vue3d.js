@@ -2672,7 +2672,7 @@
     e.tuiles.forEach(function (t) {
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
     });
-    e.avatar.visible = haut;
+    e.avatar.visible = haut && _permisGreffe("avatar");
     e.ambiance.intensity = haut ? 0.9 : 0.04;
     e.scene.fog.near = haut ? e.distance : e.distance * 0.45;
     e.scene.fog.far = haut ? e.distance * 1.4 + 20 : e.distance;
@@ -4372,9 +4372,10 @@
   // sc (px/m), pos {x, y} (px plan), cap, rendu, mode, vue, commandes, sale() ; règle du pas de la vue, jamais une
   // copie (px plan) : bloque(x0, y0, x1, y1) = un corps ne passe pas, ligneBloquee(x0, y0, x1, y1) = ligne de vue
   // coupée, libre(x, y) = place où un corps tient (hors des structures DESSINÉES : un calque masqué n'y compte pas).
-  // court = pas rapide en cours. regler({ traces, itineraire, guidage, course }) : false masque, pour la greffe
-  // seulement, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app (ruban, étapes, 🏁), son
-  // guidage (bandeau, chevrons), ou interdit le pas rapide ; levé au retrait. Les filtres de la carte n'en savent rien.
+  // court = pas rapide en cours. regler({ traces, itineraire, guidage, course, avatar, commandes }) : false masque,
+  // pour la greffe seulement, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app (ruban,
+  // étapes, 🏁), son guidage (bandeau, chevrons), la silhouette dorée de la vue plongeante, le joystick et le pavé,
+  // ou interdit le pas rapide ; levé au retrait. Les filtres de la carte n'en savent rien.
   // 🔒 Une exception dans un appel retire la greffe (la vue continue). La greffe ne touche ni tracker, ni session, ni
   // filtres : elle n'a que ce ctx.
   function greffer(g) {
@@ -4413,12 +4414,14 @@
       regler: function (r) {
         if (!_e || _e.greffe !== gr || !r) return;
         const change = {};
-        ["traces", "itineraire", "guidage", "course"].forEach(function (k) {
+        ["traces", "itineraire", "guidage", "course", "avatar", "commandes"].forEach(function (k) {
           if ((r[k] === true || r[k] === false) && _permisGreffe(k) !== r[k]) { gr.reglage[k] = r[k]; change[k] = true; }
         });
         // Scène refaite seulement si ce qu'elle dessine change (la course ne coûte rien).
         if (change.traces || change.itineraire) _e.filtresChanges = true;
         if (change.guidage || change.itineraire) { _e.guidageForce = true; _e.apS = undefined; }
+        if (change.avatar) _e.avatar.visible = _e.vue === "plongee" && _permisGreffe("avatar");
+        if (change.commandes) _montrerCommandes(_permisGreffe("commandes"));
         _e.sale = true;
       },
       bloque: function (x0, y0, x1, y1) {
@@ -4434,6 +4437,15 @@
         return !!_e && !_coince(x, y) && !_volumeContenant(x / _e.sc, y / _e.sc) && _rayonsBloques(x, y) === 0;
       }
     };
+  }
+
+  // Joystick et pavé montrés ou retirés (greffe : regler({ commandes: false }), ex. une carte à toucher là où est le
+  // pouce). 🩸 display en style, pas `hidden` : le pavé est en display: grid (css/vue3d.css), qui l'emporte.
+  function _montrerCommandes(oui) {
+    const e = _e;
+    if (!e) return;
+    if (!oui) { _lacherStick(); e.touches = {}; }
+    [e.stickZone, e.pave].forEach(function (el) { if (el) el.style.display = oui ? "" : "none"; });
   }
 
   // Réglage de la greffe (ctx.regler) : false = masqué / interdit ; sans greffe ou sans réglage, tout est permis.
@@ -4472,6 +4484,8 @@
     if (gr.groupe.parent) gr.groupe.parent.remove(gr.groupe);
     if (gr.hud.parentNode) gr.hud.parentNode.removeChild(gr.hud);
     if (Object.keys(gr.reglage).length) { e.filtresChanges = true; e.guidageForce = true; e.apS = undefined; }
+    if (gr.reglage.avatar === false && e.avatar) e.avatar.visible = e.vue === "plongee";
+    if (gr.reglage.commandes === false) _montrerCommandes(true);
     e.sale = true;
     console.log("[Vue3D] greffe « " + gr.nom + " » retirée (" + raison + ")");
   }

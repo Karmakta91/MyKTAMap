@@ -3910,17 +3910,28 @@ async function mesuresGalerie(page, nom, semisDonne) {
           document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
         };
         X.vider();
+        // Joueur : fusil tenu à deux mains, accroché à la caméra ; en vue plongeante, silhouette verte à la place de
+        // la silhouette dorée de la vue (réglage avatar de la greffe).
+        r.joueur = M().etat().joueur;
+        K.basculerVue();
+        await pause(150);
+        r.joueurHaut = Object.assign({ avatar: K.etat().greffe.reglage.avatar }, M().etat().joueur);
+        K.basculerVue();
+        await pause(100);
         K.placer(d.x, d.y, 90);
         X.poser("egare", P(-25, 0).x, P(-25, 0).y);
         await pause(50);
         tape();
-        await pause(50);
+        await pause(30);
+        r.tirJoueur = M().etat().joueur;
+        await pause(20);
         r.tir = { canon: M().etat().canon, tues: M().etat().tues, ennemis: M().etat().ennemis.length };
         tape();
         await pause(50);
         r.recharge = { canon: M().etat().canon, recharge: M().etat().recharge };
         await pause(1700);
         r.recharge.apres = M().etat().canon + "/" + M().etat().reserve;
+        r.stats = { tirs: M().etat().tirs, touches: M().etat().touches, tues: M().etat().tues };
         // Ramasser en passant dessus : munitions, champignon (soin).
         X.vider();   // l'égaré tué peut avoir lâché un champignon (au hasard)
         X.sante(50);
@@ -4002,12 +4013,24 @@ async function mesuresGalerie(page, nom, semisDonne) {
         // Santé à 0 : fin de partie, meilleure vague retenue, « Rejouer » relance la vague 1.
         X.sante(0);
         await pause(150);
+        const pave = function () { const el = q("#kta-vue3d .kta-v3d-pad"); return !!el && getComputedStyle(el).display !== "none"; };
         r.fin = { fin: M().etat().fin, carte: !!q(".mkmg-fin"), score: M().etat().scores.facile,
-          tirer: q(".mkmg-tirer").disabled };
+          tirer: q(".mkmg-tirer").disabled, pave: pave() };
         q(".mkmg-fin .mkmg-bouton-primaire").click();
         for (let k = 0; k < 60 && !(M().etat().cible); k++) await pause(50);
-        r.rejoue = { enCours: M().etat().enCours, fin: M().etat().fin, vague: M().etat().vague, carte: !!q(".mkmg-fin") };
+        r.rejoue = { enCours: M().etat().enCours, fin: M().etat().fin, vague: M().etat().vague, carte: !!q(".mkmg-fin"),
+          pave: pave() };
         M().essai.vider();
+        // Panneau réductible (Quitter, objectif, statistiques repliés ; en-tête et guidage gardés), jauges dehors.
+        const corps = function () { return q(".mkmg-corps").getBoundingClientRect().height; };
+        r.panneau = { jaugesDehors: !!q(".mkmg-jauges .mkmg-jauge") && !q(".mkmg-panneau .mkmg-jauge"),
+          ouvert: corps() > 0 && !M().etat().reduit, stats: /\d/.test(q(".mkmg-stats").textContent),
+          cartouches: /\d · \d/.test(q(".mkmg-tirer .mkmg-cartouches").textContent) };
+        q(".mkmg-plier").click();
+        r.panneau.reduit = M().etat().reduit && corps() === 0 && !!q(".mkmg-vague").getBoundingClientRect().height &&
+          q(".mkmg-plier").getAttribute("aria-expanded") === "false";
+        q(".mkmg-plier").click();
+        r.panneau.rouvert = !M().etat().reduit && corps() > 0;
         // Quitter : la greffe part, l'itinéraire de l'app revient.
         q(".mkmg-panneau .mkmg-bouton").click();
         await pause(300);
@@ -4046,6 +4069,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "jeu : vague 1 peuplée (égarés, munitions, champignons), bouton de tir, 2 cartouches + 6", MK.partie);
       verifier(MK.tir.canon === 1 && MK.tir.tues === 1 && MK.tir.ennemis === 0,
         "jeu : un coup à 5 m tue l'égaré devant soi (Espace)", MK.tir);
+      verifier(MK.joueur.arme && MK.joueur.surCamera && !MK.joueur.silhouette && MK.joueurHaut.silhouette &&
+        !MK.joueurHaut.arme && MK.joueurHaut.avatar === false && MK.tirJoueur.recul > 0 && MK.tirJoueur.eclair,
+        "jeu : bras et fusil 3D accrochés à la caméra (recul et éclair au tir) ; vue plongeante : silhouette verte, " +
+        "fusil et silhouette dorée masqués", { yeux: MK.joueur, haut: MK.joueurHaut, tir: MK.tirJoueur });
       verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",
         "jeu : canon vide → recharge automatique de 1,5 s (2 cartouches prises dans la réserve)", MK.recharge);
       verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,
@@ -4065,7 +4092,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         { affiche: MK.chronoAffiche, tropTard: MK.tropTard });
       verifier(MK.tenaille.devant >= 2 && MK.tenaille.derriere >= 2,
         "jeu : tenaille = un groupe devant sur le trajet ET un groupe dans le dos", MK.tenaille);
-      verifier(MK.mi.fait === true && MK.mi.ennemis >= 4, "jeu : à mi-parcours du trajet, la tenaille se déclenche seule",
+      // ≥ 2 : une partie du groupe peut tomber dans l'effondrement fictif près de B, refusée (placeOk).
+      verifier(MK.mi.fait === true && MK.mi.ennemis >= 2, "jeu : à mi-parcours du trajet, la tenaille se déclenche seule",
         MK.mi);
       verifier(MK.partie.reglage.itineraire === false && MK.partie.reglage.guidage === false &&
         MK.partie.reglage.traces !== false && MK.partie.roads === 1,
@@ -4079,9 +4107,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
         { silhouette: MK.silDos.coeur, court: MK.court.coeur, souffle: MK.souffle.coeur, repos: MK.repos.coeur });
       verifier(MK.vague2.vague === 2 && MK.vague2.reussies === 1, "jeu : cible atteinte → vague 2", MK.vague2);
       verifier(MK.fin.fin && MK.fin.carte && MK.fin.score === 1 && MK.fin.tirer === true && MK.rejoue.enCours &&
-        !MK.rejoue.fin && MK.rejoue.vague === 1 && !MK.rejoue.carte,
-        "jeu : santé à 0 → fin, meilleure vague retenue (1), tir coupé ; « Rejouer » relance la vague 1",
+        !MK.rejoue.fin && MK.rejoue.vague === 1 && !MK.rejoue.carte && MK.fin.pave === false && MK.rejoue.pave === true,
+        "jeu : santé à 0 → fin, meilleure vague retenue (1), tir coupé, commandes retirées (la carte se touche) ; " +
+        "« Rejouer » relance la vague 1, commandes revenues",
         { fin: MK.fin, rejoue: MK.rejoue });
+      verifier(MK.stats.tirs === 2 && MK.stats.touches === 1 && MK.stats.tues === 1,
+        "jeu : statistiques (2 balles tirées, 1 au but, 1 égaré tué)", MK.stats);
+      verifier(MK.panneau.jaugesDehors && MK.panneau.ouvert && MK.panneau.stats && MK.panneau.cartouches &&
+        MK.panneau.reduit && MK.panneau.rouvert,
+        "jeu : jauges en haut à gauche hors du panneau, cartouches sur le bouton de tir ; panneau réduit puis rouvert " +
+        "(vague et chrono gardés)", MK.panneau);
       verifier(MK.quitte.enCours === false && MK.quitte.greffe === null && MK.quitte.roads === 2 && !MK.quitte.panneau,
         "jeu : Quitter retire la greffe, l'itinéraire de l'app revient", MK.quitte);
       verifier(MK.difficile.diff === "difficile" && MK.difficile.reglage.traces === false && MK.difficile.roads === 0 &&
