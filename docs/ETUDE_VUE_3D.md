@@ -1,8 +1,8 @@
 # Étude — Vue 3D autour de sa position
 
-> Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01/11/2026. Lots 1, 2 et 4 bis livrés, lot 4 en
+> Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01 et du 02/11/2026. Lots 1, 2, 4 bis et 4 ter livrés, lot 4 en
 > partie (passage de niveau par POI jonction) : la vue est en **bêta**, ouverte par le bouton cube de la barre de
-> droite (sous ≡ Filtres), avec deux rendus exclusifs (structures, galerie), les filtres de la carte, précachée,
+> droite (sous ≡ Filtres), avec trois rendus (mixte par défaut, structures, galerie), les filtres de la carte, précachée,
 > textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone (lot 3), le reste du lot 4 et la question 9. Contrats
 > à jour : `docs/architecture/tracking.md` § Vue 3D ; place dans l'interface : `docs/architecture/ui.md` § Vue 3D.
 
@@ -42,6 +42,24 @@ Choix faits à la livraison, à valider : 🧭 pour le suivi (le tracker en 2D),
 sens dans l'app), ⛏️ pour la hauteur (↕ dit « passages entre niveaux » dans la légende ; ⛏️ = Volume exploité,
 dont c'est le même chiffre).
 
+## Décisions de KARMA (QCM du 02/11/2026) : mode mixte, dangers, favoris, équipe
+
+KARMA a montré un relevé réel où une galerie débouche sur une chambre à piliers bordée de fronts de taille : le mode
+galerie (tubes sans structures) n'y convient pas.
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Mode mixte | **Par défaut** : piliers, murs et fronts dessinés partout ; les tracés en tubes seulement là où aucune structure n'est autour (galeries de liaison), le tube s'ouvre en entrant dans une chambre, sans paroi de fond ni paroi orpheline. Chambre repérée à ~3 m d'une structure du niveau (valeur à proposer, constante nommée). L'interrupteur devient **trois états Mixte / Structures / Galerie**, retenu par plan. Collisions : structures partout, parois des tubes là où elles existent. Zones et POI : règle de la galerie dans les tubes, des structures dans les chambres |
+| 2 | Dangers | Halo ou pictogramme au sol, rouge de la charte, en plus du panneau ; sobre, lisible à la lampe |
+| 3 | Favoris | Une marque sur le panneau (⭐ dans un coin) |
+| 4 | Membres et repères (pro) | Par la prise neutre existante (`KtaPresences`), lecture seule : membres au bon niveau (silhouette et nom), repères, itinéraires partagés ; rien sans extension ; testé avec une extension factice |
+
+Choix faits à la livraison, à valider : **3 m** (justification au modèle de scène), 🏛️🛣️ pour le mixte (les deux
+icônes de la carte accolées, aucune n'en dit « les deux »), ordre du bouton mixte → structures → galerie, halo en
+anneau et disque pâle de `--kta-erreur` (le rouge de la charte du thème sombre, celui des panneaux), liseré du
+panneau danger rouge lui aussi, tubes de moins de 3 m entre deux chambres ouverts, tracés en rubans au sol en mixte
+(pas de liseré : il appartient au mode galerie).
+
 ## Ce que fait la vue
 
 - **Entrée** : bouton cube de la barre de droite, sous ≡ Filtres, titré « le plan, pas la galerie réelle » ; grisé
@@ -80,9 +98,15 @@ dont c'est le même chiffre).
   un **point** avec une marge seulement dans le sens de la marche : en biais ou en glissant, on frôlait une face
   à 4 cm ; la caméra (plan proche à 5 cm) entrait alors dans le pilier et l'on voyait au travers. Aucun pas ne
   traversait un pilier intégré : le segment était bien testé en entier.
-- **Rendus 🏛️ Structures / 🛣️ Galerie** (question A) : interrupteur exclusif, bouton en haut avec le mode écrit en
-  clair, retenu par plan ; sans choix, structures si le niveau affiché en a, galerie sinon. En galerie, les tracés
-  deviennent des tubes et les structures disparaissent (ni dessinées ni bloquantes).
+- **Rendus 🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie** (question A, revue au QCM du 02/11/2026) : interrupteur à
+  trois états, bouton en haut avec le mode écrit en clair (un toucher passe au suivant), retenu par plan ; sans
+  choix, **mixte**. En mixte, structures partout et tubes seulement loin d'elles (modèle de scène) ; en structures,
+  aucun tube ; en galerie, les tracés deviennent des tubes et les structures disparaissent (ni dessinées ni
+  bloquantes).
+- **Dangers et favoris** : un POI danger a un liseré rouge et un halo rouge au sol, visible de près ; un favori, une ⭐
+  au coin de son panneau.
+- **Équipe** (installation reliée seulement) : membres qui partagent leur position (silhouette à leur couleur et nom,
+  au niveau affiché), repères et itinéraires publiés, lus dans ce que la carte affiche déjà (`KtaPresences`).
 - **Niveau** : celui du tracker en suivi actif, sinon celui pris par un passage 🪜, sinon le niveau actif du
   sélecteur ; lu à chaque image, la scène est refaite dès qu'il change.
 - **Passage de niveau 🪜** (question B, mode libre) : à moins de 2 m d'un POI jonction ou d'un bout de tracé
@@ -171,6 +195,27 @@ dont c'est le même chiffre).
     effondrement et perso au sol. **POI** à moins de 10 m de l'axe (relevé à 10 m le 02/11 : les salles sont souvent loin d'un tracé), ramenés contre la paroi, sinon masqués.
   - **Collision** : `KtaGalerie.segmentsBloques` (même forme que la règle des structures) : rester dans l'emprise et
     hors d'un remblais ; même corps de 0,8 m balayé.
+- **Rendu mixte** (défaut ; `KtaGalerie.modele(niveau, true)` + `vue3d.js > _construireTuile`) : structures comme en
+  rendu structures (sol et plafond d'un seul tenant, tracés en rubans au sol), plus les **tubes des galeries de
+  liaison**. Un morceau de tracé est en **chambre** (sans parois) s'il passe à moins de `SEUIL_CHAMBRE_M` = **3 m**
+  d'une structure de son niveau (intégrée ou perso, filtres ignorés) : axe échantillonné tous les 0,5 m, coupe au seuil
+  exact. **Pourquoi 3 m** : la paroi d'un tube principal est à 1,25 m de l'axe ; une structure plus proche que 3 m
+  laisserait entre elle et la paroi moins de 1,75 m (la largeur d'un chemin), une lame de roche doublée qui ne
+  ressemble à rien : la structure borde alors la galerie elle-même (front, mur de consolidation, pilier de chambre).
+  À 2 m, une chambre traversée en son milieu entre deux rangées de piliers (5 à 7 m) gardait des bouts de tube ; à
+  4-5 m, une galerie qui longe un pilier isolé perdait ses parois sans rien d'autre à dessiner. Autour d'un nœud en
+  chambre, les tubes s'arrêtent à la plus grande demi-largeur + 0,5 m et aucun joint n'est construit ; un tube de
+  moins de 3 m entre deux chambres est ouvert (pas de paroi orpheline entre deux piliers). Le bout d'un tube qui
+  débouche dans une chambre est **ouvert**. Les parois (moellons) sont celles du modèle (`paroisDe`), la collision
+  aussi (`KtaGalerie.paroisBloquent` : on bute contre une paroi dessinée, jamais dans une chambre où seules les
+  structures arrêtent). Zones : découpées aux tubes si elles touchent un tube loin de toute structure, entières
+  sinon ; POI : ramenés contre la paroi si l'axe le plus proche (10 m au plus) passe en tube, sinon règle des
+  structures.
+- **Halo des dangers** : anneau de 0,45 à 0,7 m et disque pâle au sol, rouge `--kta-erreur` du thème sombre, non
+  éclairé et sans compression de tons (ACES le délavait en saumon) ; liseré du panneau rouge, plus épais.
+- **Équipe** (`_majEquipe`) : silhouette de 1,7 m au plus (85 % de la hauteur), corps et tête, couleur de la
+  personne ; pseudo au-dessus sur une carte coupée à la largeur du texte ; repère en carte « symbole titre » ;
+  itinéraire publié en tirets jaunes au sol. Refait quand `KtaPresences.version()` change.
 - **Lumière** : projecteur (cône de 35°, pénombre 0,55, intensité 24, décroissance 1,2, portée = distance de vue)
   porté par la tête, petite lumière de proximité (4,5 m), ambiance presque nulle en vue à hauteur d'yeux ;
   brouillard noir de 13,5 à 30 m (rien n'est construit ni dessiné au-delà) ; tons compressés (ACES) pour qu'une
@@ -250,6 +295,22 @@ l'ouverture (et à chaque changement de niveau ou de rendu) : c'est l'essentiel 
 parois, elles, sont calculées par tuile. Les deux images lentes de la marche sous émulation tombent sur des
 constructions de tuiles (3 par image au plus).
 
+### Mode mixte
+
+Le réseau ci-dessus posé sur le plan dense (`KTA_V3D_PERF=mixte`), piliers gardés sur la moitié est seulement : 8 296
+structures, 4 673 arêtes dont 2 042 nœuds en chambre, 10 150 pièces de tube, 56 bouts ouverts ; départ à la limite
+des deux moitiés. Poste partagé avec d'autres lots : chiffres bruités d'un passage à l'autre (fourchettes).
+
+| | Modèle mixte | Ouverture | Triangles · appels (30 m) | ms / image 30 m (médiane · p95) | 50 m | Marche 120 m | Pas balayé |
+|---|---|---|---|---|---|---|---|
+| **PC** (Edge, RTX 5070) | 139 à 174 ms (galerie seule : 65 à 74) | 101 à 145 ms | 2 366 · 31 | 0,8 à 1,8 · 1,3 à 3,5 | 0,9 à 2,8 · 1,4 à 4,3 | aucune image > 33 ms | 0,1 à 0,3 ms |
+| **Émulation iPhone** (393 × 852, ×3, processeur ÷4) | 366 ms (801 à 971 avant l'allègement de la grille) | 371 à 674 ms | 1 831 · 21 | 1,9 à 3,6 · 3,5 à 6,5 | 3,2 à 3,9 · 5,7 à 6,8 | 0 à 1 image sur 597 > 33 ms (36 ms) | 0,6 à 1,4 · 1,8 à 2,9 ms |
+
+Rotation continue : 102 à 164 images/s au PC, 52 à 54 sous émulation. Le modèle mixte coûte environ deux fois le
+modèle galerie : la recherche des structures à moins de 3 m de chaque échantillon d'axe (une arête loin de toute
+structure n'est pas échantillonnée). Comme en galerie, il est construit à l'ouverture et à chaque changement de
+niveau, de rendu ou de données : sous émulation, l'ouverture d'un tel plan est d'environ 0,4 + 0,4 s.
+
 ### Ce qui n'a **pas** été mesuré
 
 - **Aucun vrai iPhone** : ni images/s réelles, ni mémoire, ni chauffe, ni batterie. L'émulation ralentit le
@@ -307,6 +368,7 @@ constructions de tuiles (3 par image au plus).
 | 3 | Mesure sur un vrai iPhone et un plan dense réel ; réglages (distance, densité) d'après les chiffres | **M** |
 | 4 | Multi-niveau par POI jonction et tracé `jonction` (question B) : **livré** ; reste POI touchables (fiche), itinéraire vivant suivi en 3D | **M** |
 | 4 bis | Mode « galerie » : tracés en tubes, carrefours exacts, bascule exclusive structures / galerie, collisions contre les parois (question A) | **M**, livré |
+| 4 ter | Mode mixte par défaut (trois états), halo des dangers, ⭐ des favoris, membres / repères / itinéraires d'une extension | **M**, livré |
 | 5 | Rendu plus « vrai » (texture de roche, ombres de la lampe, niveaux voisins en transparence) | **L**, à n'engager qu'après le retour terrain |
 
 ## Questions tranchées (QCM du 01/11/2026, toutes les recos prises)
@@ -322,6 +384,7 @@ constructions de tuiles (3 par image au plus).
 | 7 | Contexte WebGL | **c** : libéré à chaque fermeture + reprise automatique après une perte, fermeture avec message si elle échoue |
 | 8 | Distance de vue | **a** : 30 m fixes |
 | — | Murs et piliers | Règle ajoutée : un mur est toujours sous un pilier ou un front de son niveau (modèle de scène) |
+| A bis | Mode mixte (QCM du 02/11/2026) | L'interrupteur exclusif devient **trois états Mixte / Structures / Galerie**, mixte par défaut, retenu par plan ; en mixte, structures partout, tubes seulement à plus de 3 m d'une structure, bouts ouverts dans les chambres, collisions des deux règles, zones et POI selon le lieu (tube ou chambre) |
 | A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🏛️ / 🛣️ écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **moellons de calcaire taillés** (assises à joints décalés), sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |
 | B | Passer par un POI jonction (QCM du 01/11/2026) | Bouton 🪜 à moins de 2 m, **▲ / ▼** vers le niveau lié suivant, liste au-delà ; toucher le panneau = même chose ; arrivée au raccord validé ou à la même position, cap gardé ; tracé `jonction` **dans les deux sens** ; **le tracker ne bouge pas**, « Je suis ici ? » recale aussi le niveau ; en suivi, pas de 🪜 ; niveau de la carte 2D inchangé pendant la 3D |
 | — | Sortie de la 3D (demande du 01/11/2026) | La carte 2D se place là où l'on était en 3D : niveau de la 3D, centre sur la position, quelle que soit la réponse à « Je suis ici ? » |

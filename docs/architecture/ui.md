@@ -2200,20 +2200,27 @@ icônes.
   sous la rangée du haut (`--kta-v3d-sous-haut`, posé sur `<html>` par `vue3d.js > _majSousHaut`, lu par
   `css/vue3d.css` quand `html.kta-vue3d-ouverte`). Une fenêtre par-dessus garde le clavier (`_recouverte`).
 - **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, 🚨, ❓, ≡, 🦅 vue
-  plongeante, ⛏️ hauteur, 🏛️ / 🛣️ rendu, 🧭 / 🕹️ mode, marque « bêta ». ✕ reste au coin haut droit quand la rangée
+  plongeante, ⛏️ hauteur, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, le mode en cours écrit en clair, un
+  toucher passe au suivant), 🧭 / 🕹️ mode, marque « bêta ». ✕ reste au coin haut droit quand la rangée
   passe sur deux lignes (téléphone). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
   `kta-vue3d` → section `vue-3d`) dans la rangée marquée `kta-aide-ctx-entete`, avant la croix `data-aide-croix`.
 - **Filtres partagés** (décision produit) : ≡ ouvre **le** ≡ Filtres de la carte (`FilterPanel.ouvrir`), un seul
   état ; `FilterPanel.onChange` est appelé à tout changement (types, tags, calque coché, niveaux, plan de base) et la
   vue se redessine ; pastille sur tout bouton `data-kta-pastille-filtres` (`FilterPanel.majBadge`). Les calques
   image et le plan de base restent dans le panneau, sans effet en 3D.
-- **Icônes = leur sens sur la carte** : 🏛️ structures, 🛣️ tracés (rendu Galerie), ⛏️ hauteur (le chiffre de ⛏️
+- **Icônes = leur sens sur la carte** : 🏛️ structures, 🛣️ tracés (rendu Galerie), 🏛️🛣️ les deux accolés (rendu
+  Mixte : aucune icône de la carte ne dit « les deux », on n'en invente pas une), ⛏️ hauteur (le chiffre de ⛏️
   Volume exploité), 🧭 suivi (le tracker), 🚨 Sortie d'urgence, ≡ Filtres, ❓ aide, 🪜 passage entre niveaux, 📍 « Je
   suis ici ? » (recalage). Écartés parce qu'ils disent autre chose en 2D : 📍 pour le suivi (recalage), 🛰️ pour la
   vue plongeante (Export GeoTIFF), ↕ pour la hauteur (passages entre niveaux de la légende), 🧱 / 🚇.
 - **Panneaux de POI** : toujours aux jetons du thème **sombre** (la scène est noire dans les deux thèmes), lus dans
   la règle `:root` des feuilles (`vue3d.js > _jetonsSombres`) : sur `<html>`, `getComputedStyle` rendrait ceux du
-  thème clair. Les boutons de la vue, eux, suivent le thème.
+  thème clair. Les boutons de la vue, eux, suivent le thème. Liseré doré ; **danger** (`poiDanger.js > estDanger`) :
+  liseré rouge `--kta-erreur` (sombre) plus épais et **halo au sol** (anneau et disque pâle du même rouge, non
+  éclairés, sans compression de tons : le rouge reste celui du jeton), montré aussi de près quand le panneau
+  s'efface ; **favori** (`Favoris.isFav(id, uid)`) : ⭐ doré au coin haut droit. Membres et repères d'une extension :
+  même carte, sans icône, coupée à la largeur du texte, liseré à la couleur de la personne (`KtaPresences.couleurDe`)
+  ou à la teinte de la charte du repère.
 - **Points d'accroche** : `_e.bandeau` (sous la rangée du haut, caché tant qu'il est vide ; les toasts passent
   dessous) pour un message durable de la vue ; `vue3d.js > _toucher` (lancer de rayon sur les panneaux de POI)
   pour ce que fait un toucher de panneau.

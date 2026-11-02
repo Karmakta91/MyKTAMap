@@ -338,6 +338,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `couleur` fournie par l'extension (#rrggbb, ex. équipe d'une intervention Secours) > `couleurDe(id)`. Un
   panneau d'extension reprend la même fonction pour que la carte et sa liste concordent. `masquerPersonne(id, bool)` / `personneMasquee(id)` (14/10/2026) : ni repère ni trace, plus suivie, oublié en sortie de plan (`reinitialiser`). `presenceActive()` / `basculerPresence()` : une erreur de
   l'extension = inactif. Sans extension : pas de tuile, rien n'est lu.
+- **Vue 3D** (`js/vue3d.js > _majEquipe`) : redessine en relief, en **lecture seule**, ce que `KtaPresences` affiche
+  déjà sur la carte : présences (silhouette et pseudo au niveau affiché, masquages respectés), repères
+  (`calques()` + `reperes(nom)`), itinéraires publiés (tirets jaunes au sol). Elle relit seulement quand
+  `KtaPresences.version()` change (monte à chaque dessin et à `reinitialiser`). Aucune prise appelée, aucune requête
+  (`check-extensions.js`) ; sans extension, les listes sont vides et rien n'est dessiné.
 - **Itinéraire montré à l'équipe** (opt-in) : une extension qui déclare `itineraire: { publie(), basculer() }`
   fait apparaître le bouton **🧭 Montrer mon itinéraire à l'équipe** dans la fenêtre Itinéraire (mode
   navigation). L'app ne fournit que `itineraireActuel()` — `{ points: [[x, y, niveau]], etapes: [[x, y, faite]] }`

@@ -1275,11 +1275,32 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Glissement le long d'un mur. 🩸 Avec le seul axe et une marge devant, on frôlait une face à quelques centimètres
   en biais : la caméra (plan proche à 5 cm) entrait dans le pilier et l'on voyait au travers ; et les types perso,
   dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s. En rendu galerie, la
-  règle est celle des parois (ci-dessous), même corps, même balayage ; l'image de collision du plan n'est pas lue.
-- **Rendus structures / galerie** (décision produit : interrupteur exclusif) : bouton 🏛️ Structures / 🛣️ Galerie, mode
-  écrit en clair, retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ; sans
-  choix, structures si le niveau affiché en a, galerie sinon (`vue3d.js > _renduVoulu`, relu à chaque `_reindexer`).
-  Basculer refait la scène.
+  règle est celle de l'emprise (ci-dessous), même corps, même balayage ; l'image de collision du plan n'est pas lue.
+  En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout (image de collision comprise)
+  et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes, un remblais dans un tube) ; dans une chambre,
+  seules les structures arrêtent.
+- **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
+  🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
+  (`basculerRendu([vers])`), retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ;
+  sans choix, **mixte** quel que soit le niveau (`vue3d.js > _renduVoulu`, relu à chaque `_reindexer`). Basculer refait
+  la scène.
+- **Rendu mixte** (`KtaGalerie.modele(niveau, true)`, gardé à part du modèle galerie) : structures dressées partout
+  (comme en structures, sol et plafond d'un seul tenant, tracés en rubans au sol), et les tracés en tubes **seulement
+  là où aucune structure n'est autour**. ⚠️ contrat : un morceau de tracé perd ses parois s'il passe à moins de
+  `SEUIL_CHAMBRE_M` = **3 m** d'une structure de son niveau, intégrée ou perso, filtres ignorés (axe échantillonné
+  tous les 0,5 m, coupe au seuil exact par dichotomie). Pourquoi 3 m : la paroi d'un tube principal est à 1,25 m de
+  l'axe ; plus près, il resterait entre elle et la structure moins de 1,75 m (la largeur d'un chemin), une lame de
+  roche doublée ; la structure borde donc la galerie elle-même (front, mur de consolidation, pilier de chambre).
+  Un nœud est en chambre si la structure est proche de lui ou de l'échantillon voisin ; autour, les tubes s'arrêtent
+  à la plus grande demi-largeur + 0,5 m (sinon la paroi d'une branche fermerait l'entrée d'une autre) et aucun joint
+  n'y est construit. Un tube plus court que 3 m entre deux chambres (ou une chambre et un bout libre) est ouvert aussi :
+  **aucune paroi orpheline** entre deux piliers. Le bout d'un tube qui débouche dans une chambre est **ouvert** (bord
+  noté dans `piece.ouverts`, aucune paroi de fond). Parois = `modele.paroisDe(i)` (`galerieEmprise.js > _parois`,
+  union des pièces, bouts ouverts exclus), la même source pour le dessin et pour la collision. Zones : règle de la
+  galerie (découpées aux tubes, `_zoneGalerie`) si la zone touche un tube et qu'aucune structure n'est à moins de 3 m
+  de son contour ni de son centre (`_zoneDeTube`), sinon règle des structures. POI : si l'axe le plus proche (10 m au
+  plus) passe en tube à cet endroit et qu'aucune structure n'est à moins de 3 m, règle de la galerie (ramené contre la
+  paroi, `_contreParoi`) ; sinon règle des structures (contre la face d'un pilier).
 - **Hauteur** (décision produit) : `HAUTEUR` de la scène = `config.js > getPlanHauteurGalerie()` (2 m sans pref),
   **le même chiffre que ⛏️ Volume exploité**. Bouton **⛏️** (hauteur affichée par `formatDistance`) → − / + de 1,5 à
   4 m par 0,1 m (`reglerHauteur(m)` : borné, arrondi, `setPlanHauteurGalerie`) ; une valeur saisie hors bornes dans
@@ -1306,10 +1327,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   deux demi-largeurs (biseau au-delà), dalle de carrefour (degré ≥ 3) dont les coupes reculent jusqu'au point où les
   parois voisines se croisent (4 m au plus) et dont les parois relient les coins. ⚠️ contrat : l'emprise est
   l'**union** des pièces ; une paroi est un morceau de bord de pièce dont le point juste à l'extérieur n'est dans
-  aucune autre pièce (`vue3d.js > _paroisPiece`). D'où des tubes coupés au bord des dalles et **aucune paroi qui en
+  aucune autre pièce (`galerieEmprise.js > _parois`, `modele.paroisDe`). D'où des tubes coupés au bord des dalles et **aucune paroi qui en
   traverse une autre**, même pour deux tracés presque parallèles qui se chevauchent (ils se fondent). 🩸 Le graphe de
   `roadGraph.js` n'est pas réutilisé : c'est un graphe d'itinéraire (croisements en arêtes virtuelles, tronçons non
   coupés, tronçon retiré s'il croise un mur en ligne, types perso exclus).
+- **Jamais coincé** (`vue3d.js > _degager`, `_sortie`) : à l'ouverture en mode libre et à l'arrivée d'un passage 🪜, une
+  place hors de l'emprise (galerie) ou d'où aucun pas de 0,3 m n'est possible (structures, mixte : dans un pilier, dans
+  la roche de l'image de collision) est ramenée au point libre le plus proche : l'axe du tracé le plus proche
+  (`KtaGalerie` du rendu, `plusProche`) à moins de `smartNavRadiusM` (6 m, le rayon de
+  `tracking.js > _positionDansGalerie`), sinon un point libre cherché en couronnes de 0,25 m. 🩸 Une accroche de POI
+  jonction posée à côté de la galerie figeait la vue après le passage. Rien trouvé : `_pas` laisse passer tout pas qui
+  rapproche de l'axe le plus proche (30 m), ou tout pas sans tracé. En suivi, la place reste celle du tracker.
 - **Règle du pas en galerie** : `KtaGalerie.segmentsBloques(segs, niveau)`, même forme que
   `ktaSegmentsBloquesParStructure` (lot de segments → booléens) : bloqué si un point (tous les 5 cm) sort de l'emprise
   (à moins d'une demi-largeur d'un tracé ou dans un joint) ou entre dans un remblais du niveau. Niveau sans galerie :
@@ -1321,7 +1349,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   1,6 × 1 m à 160 px/m, canvas, aucune image), texture **en mètres dans les deux sens** (`_paroi` : jamais étirée à la
   hauteur, une assise part du sol) ; liseré au sol de 15 cm, couleur de la
   légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est jamais dessiné en 3D (le passage se fait par 🪜). Structures (intégrées et perso)
-  ni dessinées ni bloquantes. Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
+  ni dessinées ni bloquantes (sauf en rendu mixte, ci-dessus). Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
   à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais à 60 % avec une face seulement là où
   il donne sur la galerie, inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
   contour coupe l'axe (`_hachurer`), effondrement et perso au sol. **POI** à moins de 10 m de l'axe d'un tracé, ramenés
@@ -1385,7 +1413,20 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   panneau remplissait l'écran du téléphone). Toujours aux jetons du thème **sombre** (décision produit : la scène est
   noire dans les deux thèmes), lus dans la règle `:root` des feuilles (`_jetonsSombres`). Un POI
   dans un volume fermé du niveau (pilier, mur, type perso ; grille `_grilleVolumes` refaite à chaque
-  `_reindexer`) est posé contre la face de ce volume la plus proche de la caméra, 8 cm devant.
+  `_reindexer`) est posé contre la face de ce volume la plus proche de la caméra, 8 cm devant. **Danger**
+  (`KtaPoiDanger.estDanger`) : liseré rouge (`--kta-erreur` du thème sombre) et **halo au sol** (`_ajouterPanneau` :
+  anneau de 0,45 à 0,7 m et disque pâle, `MeshBasicMaterial` sans compression de tons, géométrie partagée par la vue)
+  qui suit la place du panneau et reste montré de près quand le panneau s'efface. **Favori**
+  (`Favoris.isFav(id, uid)`) : ⭐ dorée au coin haut droit du panneau. Relus à chaque construction de tuile.
+- **Membres, repères et itinéraires d'une extension** (`_majEquipe`) : ⚠️ contrat (frontière) : la vue **lit**
+  `KtaPresences` (`liste`, `calques` + `reperes(nom)`, `itineraires`, masquages `personneMasquee` /
+  `itineraireMasque`), ce que la prise neutre a posé sur la carte (`afficherPresences`, `afficherReperes`,
+  `afficherItineraires`) ; elle ne demande rien et n'envoie rien. Sans extension, ces listes sont vides : rien n'est
+  dessiné. Refait quand `KtaPresences.version()` (monte à chaque dessin de la carte), le niveau ou la hauteur
+  changent. Membre : silhouette (cylindre et tête, `MEMBRE`, à sa couleur `couleurDe(id)` ou celle donnée, non
+  éclairée) et son pseudo au-dessus, au niveau affiché seulement (niveau inconnu : partout). Repère : carte « symbole
+  titre ×nombre », liseré à la teinte de la charte qu'il porte, sur ses niveaux. Itinéraire partagé : tirets jaunes
+  (accent) au sol, tronçons du niveau affiché.
 - **Couleurs** : celles de la légende, par `ktaResolveStyle(…, { flat: true })` / `ktaSwatchColor` ; aucune table
   locale. Sol et plafond : `COULEUR_CALCAIRE` (sable calcaire, couleur de la scène, hors charte de l'UI), motif
   procédural de 128 px répété tous les 2 m, fixe sous les pieds. Lampe : intensité 24, décroissance 1,2, portée =
@@ -1411,7 +1452,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   afficher » sur la carte → revenus en 3D ; type de structure masqué depuis la carte → retiré, butée gardée ; niveau
   masqué → rien de dessiné ; pastille ; itinéraire toujours là. 🚨 = Sortie d'urgence, toast sous la rangée, ✕ au
   coin haut droit à 393 px, ❓ → aide de la 3D, Échap (aide, ≡, réglage, puis vue), panneau de POI sombre en thème
-  clair et borné de près, rendu en pause (immobile et boussole qui tremble). `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons.
+  clair et borné de près, rendu en pause (immobile et boussole qui tremble). Interrupteur : mixte par défaut (avec ou
+  sans structure), mixte → structures → galerie en boucle, retenu par plan. Mixte, sur une galerie fictive qui
+  débouche sur une chambre (fronts et six piliers) : tube avant la chambre, aucune paroi dans la chambre ni à travers
+  une structure, bout ouvert, eau du tube découpée et eau de la chambre entière, POI de la chambre à sa place et POI du
+  tube ramené contre la paroi ; on bute contre la paroi du tube, on entre dans la chambre, on bute contre un pilier,
+  aucune paroi n'arrête dans la chambre. Halo et liseré rouges d'un danger, ⭐ d'un favori. Extension factice : rien
+  sans elle ; membre au niveau affiché (celui d'un autre niveau absent), repère, itinéraire ; listes vidées → retirés.
+  Jamais coincé : accroche de POI jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ;
+  parti du centre d'un pilier, un pas vers la galerie passe.
+  `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons ; `KTA_V3D_PERF=mixte` : ce réseau sur le plan dense
+  gardé à l'est (tubes à l'ouest, chambres à l'est).
   `smoke.js` : rien de la 3D au démarrage.
 - **Non couvert** : aucun vrai iPhone (images/s, mémoire, batterie, perte de contexte réelle), aucun plan dense
   réel ; mode galerie jamais vu sur un relevé réel (tracés dessinés à la main : raccords imprécis, sommets serrés).
+  Mixte : entre le bout ouvert d'un tube et la structure qui a ouvert la chambre (jusqu'à 3 m), rien ne ferme les
+  côtés : on peut y sortir de la galerie (la roche n'est dessinée nulle part hors des tubes et des structures).
