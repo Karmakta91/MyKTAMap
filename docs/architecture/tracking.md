@@ -1652,7 +1652,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Add-on `mkmg`** (`addons/mkmg/` : `js/coeur.js` partie et interface, `js/monde.js` menaces, objets et tir,
   `js/son.js` sons WebAudio sans fichier, `css/coeur.css`, `img/fusil.svg` ; `coeur.js` charge les deux autres) :
   jeu en vagues sur le plan ouvert.
-  - Refusé (message) sur une installation reliée à un serveur (`KtaExtensions.etat().etat` ≠ `off`), pendant le
+  - Refusé (message) sur une installation reliée à un serveur (`KtaExtensions.etat().etat` ≠ `off`) sauf si son
+    hébergeur l'autorise (`data/reglages.json` > `"addons": { "mkmg": true }`, `KtaInstance.etat().reglages`), pendant le
     suivi du tracker, une sortie d'urgence (itinéraire `urgence`, `EmergencyMode`) ou le mode Secours ouvert ; sinon
     confirmation « Descendre plus bas ? » avec la difficulté (`ktaConfirm`, `choix`).
   - Vague = rejoindre un point B depuis la position de la vue : un POI du niveau dont la distance à vol d'oiseau est
@@ -1665,13 +1666,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
     moyen = sans la flèche ; difficile = ni tracés (`regler({ traces: false })`), ni trajet, ni balise, ni guidage.
     L'itinéraire et le guidage de l'app sont masqués pendant toute la partie (le jeu dessine le sien).
   - Santé et endurance : le pas rapide la vide (22 / s), elle revient au repos (14 / s) ; vide = à bout de souffle,
-    pas rapide interdit (`regler({ course: false })`) jusqu'à 30.
+    pas rapide interdit (`regler({ course: false })`) jusqu'à 30. Battement de cœur (décision produit) seulement sous
+    5 % d'endurance ou à bout de souffle : fort et rapide à sec, de plus en plus lent pendant la reprise, éteint à 30.
   - Menaces (`monde.js`, placées sur les tracés du niveau à 15-35 m, places libres de la règle du pas) : **égarés**
     (1 + 1 par vague, 8 au plus et 10 en tout ; 1,1 m/s + 0,08 par vague, 2 m/s au plus ; 18 de santé par seconde au
     contact ; ils foncent à vue directe sous 12 m, suivent sinon un trajet `Pathfinder` redemandé toutes les 2 s, une
     demande à la fois) ; **silhouette** dès la vague 2 (une seule, invulnérable, 3,2 m/s mais figée dans le faisceau :
-    à moins de 30 m, à moins de 32° du cap, rien entre elle et soi ; au contact 35 de santé puis elle repart loin ;
-    battement de cœur à moins de 25 m). Tout pas passe `ctx.bloque`.
+    à moins de 30 m, à moins de 32° du cap, rien entre elle et soi ; au contact 35 de santé puis elle repart loin). Tout pas passe `ctx.bloque`.
   - Fusil à deux coups (bouton en bas à droite, Espace, clic bref de la souris sur la scène) : la menace la plus
     proche dans l'axe (6° ou le gabarit du corps), à 18 m au plus, ligne de vue libre (`ctx.ligneBloquee`) ; un égaré
     a 2 points, un coup à 8 m ou moins en ôte 2 ; la silhouette touchée recule (repart loin). Recharge automatique de

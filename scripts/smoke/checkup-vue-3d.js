@@ -3856,6 +3856,18 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await code();
         r.refusInstallation = !!q("#kta-confirm-oui") && texteFenetre().indexOf("installation") >= 0;
         if (q("#kta-confirm-oui")) q("#kta-confirm-oui").click();
+        await pause(100);
+        // Même installation, autorisée par son hébergeur (data/reglages.json > addons.mkmg) : la confirmation vient.
+        const inst = window.KtaInstance.etat;
+        window.KtaInstance.etat = function () {
+          return Object.assign({}, inst(), { reglages: { addons: { mkmg: true } } });
+        };
+        await code();
+        r.permisInstallation = document.querySelectorAll('input[name="kta-confirm-choix"]').length === 3;
+        if (q("#kta-confirm-non")) q("#kta-confirm-non").click();
+        await pause(100);
+        r.permisInstallation = r.permisInstallation && K.etat().greffe === null;
+        window.KtaInstance.etat = inst;
         window.KtaExtensions.etat = ext;
         await pause(100);
         window.startTracking();
@@ -3917,7 +3929,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         K.tourner(180);
         await pause(400);
         const s1 = M().etat().ennemis[0];
-        r.silDos = { vu: s1.vu, avance: s0.x - s1.x };
+        r.silDos = { vu: s1.vu, avance: s0.x - s1.x, coeur: M().etat().coeur };
         X.vider();
         K.tourner(180);
         // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
@@ -3925,15 +3937,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft", bubbles: true }));
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
         await pause(700);
-        r.court = { endurance: M().etat().endurance, rapide: K.etat().rapide };
+        r.court = { endurance: M().etat().endurance, rapide: K.etat().rapide, coeur: M().etat().coeur };
         for (let k = 0; k < 120 && !M().etat().souffle; k++) await pause(50);
         await pause(100);
-        r.souffle = { souffle: M().etat().souffle, course: K.etat().greffe.reglage.course, rapide: K.etat().rapide };
+        r.souffle = { souffle: M().etat().souffle, course: K.etat().greffe.reglage.course, rapide: K.etat().rapide,
+          coeur: M().etat().coeur };
         document.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
         document.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift", code: "ShiftLeft", bubbles: true }));
         await pause(2500);
         r.repos = { souffle: M().etat().souffle, course: K.etat().greffe.reglage.course,
-          endurance: M().etat().endurance };
+          endurance: M().etat().endurance, coeur: M().etat().coeur };
         // Cible atteinte : vague suivante.
         const c = M().etat().cible;
         K.placer(c.x, c.y, 90);
@@ -3975,6 +3988,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         MK.avant);
       verifier(MK.refusInstallation && MK.refusSuivi, "jeu : refusé sur une installation reliée et pendant le suivi",
         { installation: MK.refusInstallation, suivi: MK.refusSuivi });
+      verifier(MK.permisInstallation, "jeu : installation reliée autorisée par reglages.json (addons.mkmg) → " +
+        "confirmation ; « Rester ici » ne lance rien", MK.permisInstallation);
       verifier(MK.radios === 3 && MK.partie.greffe === "mkmg" && MK.partie.diff === "facile" && MK.partie.vague === 1 &&
         MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.traits === 3 && MK.partie.panneau &&
         MK.partie.fleche && /\d/.test(MK.partie.reste || "") && MK.partie.surTrace && MK.partie.horsPilier,
@@ -4000,6 +4015,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
         MK.repos.souffle === false && MK.repos.course === true,
         "jeu : le pas rapide vide l'endurance ; à bout de souffle plus de course, elle revient au repos",
         { court: MK.court, souffle: MK.souffle, repos: MK.repos });
+      verifier(MK.silDos.coeur === 0 && MK.court.coeur === 0 && MK.souffle.coeur > 0.5 && MK.repos.coeur === 0,
+        "jeu : battement de cœur seulement à bout de souffle (ni près de la silhouette, ni en courant), éteint au repos",
+        { silhouette: MK.silDos.coeur, court: MK.court.coeur, souffle: MK.souffle.coeur, repos: MK.repos.coeur });
       verifier(MK.vague2.vague === 2 && MK.vague2.reussies === 1, "jeu : cible atteinte → vague 2", MK.vague2);
       verifier(MK.fin.fin && MK.fin.carte && MK.fin.score === 1 && MK.fin.tirer === true && MK.rejoue.enCours &&
         !MK.rejoue.fin && MK.rejoue.vague === 1 && !MK.rejoue.carte,

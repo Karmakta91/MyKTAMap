@@ -89,7 +89,7 @@
   // Réglages du jeu (m, points, par seconde, ms) : premiers essais, à revoir au jeu.
   const REGLES = {
     departM: 40, pasM: 30, minM: 10, candidats: 8, arriveeM: 2, sante: 100, endurance: 100,
-    videParS: 22, repriseParS: 14, souffleReprise: 30, regardM: 5, majHudMs: 150, messageMs: 2200,
+    videParS: 22, repriseParS: 14, souffleReprise: 30, coeurSous: 5, regardM: 5, majHudMs: 150, messageMs: 2200,
     cartouches: { canon: 2, reserve: 6 }, eclairMs: 90, blesseMs: 600, coupMs: 250, tapeMs: 250, tapePx: 6
   };
   const DIFFICULTES = {
@@ -125,7 +125,10 @@
 
   function _refus() {
     const X = window.KtaExtensions;
-    if (X && typeof X.etat === "function" && X.etat().etat !== "off") return "refus.installation";
+    // Installation reliée : refusé, sauf si son hébergeur l'autorise (data/reglages.json > addons.mkmg, ktaInstance.js).
+    const I = window.KtaInstance && window.KtaInstance.etat(), permis = !!(I && I.reglages && I.reglages.addons &&
+      I.reglages.addons.mkmg === true);
+    if (X && typeof X.etat === "function" && X.etat().etat !== "off" && !permis) return "refus.installation";
     if (typeof window.getTrackingActif === "function" && window.getTrackingActif() === true) return "refus.suivi";
     const roads = typeof window.getRoads === "function" ? window.getRoads() || [] : [];
     const urgence = roads.some(function (r) { return r && r.type === "itinerary" && r.urgence; });
@@ -244,7 +247,11 @@
     if (p.eclair && p.eclair.intensity > 0 && t - p.eclairT > REGLES.eclairMs) p.eclair.intensity = 0;
     const r = _monde().animer(p, ctx, dt);
     r.sons.forEach(function (s) { _jouer(s[0], s[1]); });
-    _son().proximite(r.proximiteSilhouette);
+    // Battement de cœur (décision produit) : seulement à bout de souffle ou sous coeurSous % d'endurance, fort et
+    // rapide à sec, de plus en plus lent pendant la reprise, éteint une fois le souffle revenu.
+    const seuil = p.souffle ? REGLES.souffleReprise : REGLES.coeurSous;
+    p.coeur = p.endurance < seuil ? Math.max(0.2, 1 - p.endurance / seuil) : 0;
+    _son().proximite(p.coeur);
     r.ramasse.forEach(function (type) {
       if (type === "munitions") {
         const n = _monde().REGLES.munitions.gain;
@@ -690,7 +697,7 @@
       endurance: Math.round(p.endurance), souffle: p.souffle, cible: p.cible ? { x: p.cible.x, y: p.cible.y,
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
       traits: p.traits.length, calcul: p.calcul, canon: p.canon, reserve: p.reserve, recharge: !!p.rechargeFin,
-      fin: p.fin, tues: p.tues, scores: _lireScores(),
+      fin: p.fin, tues: p.tues, scores: _lireScores(), coeur: +(p.coeur || 0).toFixed(2),
       ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),
       objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }) };
   }

@@ -39,7 +39,7 @@ pré-installe **ses plans** dans `data/` + un `data/index.json` enrichi (génér
 | Étiquettes proposées par plan | `index.json > plans[].tags` (12 × 24 car.) | v1.90.1 |
 | Mot de passe d'accès de l'instance | `index.json > config.accessHash` (SHA-256) | v1.90.6 |
 | Écran d'arrivée (ville seule) : titre et description | `data/reglages.json > accueil` (recommandé), sinon `index.json > config.accueil` | — |
-| Réglages de l'installation hors du fichier livré | `data/reglages.json` : `accueil` et `subtitle` **seulement** | — |
+| Réglages de l'installation hors du fichier livré | `data/reglages.json` : `accueil`, `subtitle` et `addons` **seulement** | — |
 | Dossiers de « Mes plans » proposés | `index.json > folders[{ id, name, color, order, rule? }]` + `plans[].folder` — verrouillés tant que déclarés, libérés (jamais supprimés) sinon ; l'utilisateur déplace toujours ses plans | v1.95.0 |
 | Ouvrir la liste en mode Dossiers | `index.json > config.plansViewDefault: "folders"` — seulement tant que l'utilisateur n'a pas choisi lui-même | v1.95.0 |
 | Ne pas charger les plans du site au démarrage | `index.json > config.sitePlansHiddenDefault: true` — défaut de « Ne pas charger les plans du site » (⚙️ Configuration) tant que l'utilisateur n'a pas choisi ; sans effet avec `serverPlansOnly` (installation où les plans vivent en base, demande KARMA 05/10/2026) | v2.9.0 |
@@ -99,11 +99,13 @@ photos restent locales et exportables).
 > 📄 **`data/reglages.json`** : fichier **facultatif** posé par qui héberge, **jamais livré ni suivi par Git** (l'index
 > l'est côté pro : un réglage écrit dedans entrerait en conflit à chaque mise à jour). Lu par `js/ktaInstance.js` avec
 > l'index (même délai, mémoire `myktamap_instance_reglages_v1` rejouée hors ligne ; `sw.js` : réseau d'abord, gardé en
-> cache, un 404 du serveur vide le cache). Absent : 404 nominal, aucune erreur. 🔒 **Seules `accueil` et `subtitle`
-> en sont lues** (`KtaInstance.filtrerReglages`) : jamais `serverConnection`, `plans`, `accessHash` ni aucune autre
+> cache, un 404 du serveur vide le cache). Absent : 404 nominal, aucune erreur. 🔒 **Seules `accueil`, `subtitle` et
+> `addons` en sont lues** (`KtaInstance.filtrerReglages`) : jamais `serverConnection`, `plans`, `accessHash` ni aucune autre
 > clé — un fichier ajouté à côté de l'index ne peut ni ouvrir une instance protégée, ni greffer un module, ni déclarer
 > un plan (`check-gate-instance.js`, `checkup-accueil-hote.js`). Son `subtitle` remplace celui de l'index partout
-> (`KtaInstance.etat().config`).
+> (`KtaInstance.etat().config`). `addons` = `{ "<nom>": true }` (nom `[a-z0-9-]`, booléen `true` seul) : autorise sur
+> cette installation un add-on déjà livré avec l'app (`addons/<nom>/`), qu'une installation reliée refuse sinon ; il
+> n'en charge aucun (add-on `mkmg` : `docs/architecture/tracking.md` § Greffe de la vue 3D).
 > 🏙️ **Écran d'accueil d'une gate déléguée** : `KtaExtensions.ecranAccueil()` → Promise<`{ attendreEntree() →
 > Promise, fermer(), ouverte() → bool }` | `null`>. La même ville seule, en mode **connexion** (`connexion: true`) :
 > « Me connecter » au lieu d'« Entrer », jamais de champ de code. `attendreEntree()` se résout au prochain clic sur
