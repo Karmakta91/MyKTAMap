@@ -334,7 +334,8 @@
         const nv = J.niveaux(p), acc = J.accroches(p);
         if (nv.indexOf(niveau) < 0) return;
         const raccord = function (n) { return acc.filter(function (a) { return a.level === n; })[0] || null; };
-        const ici = (Number.isInteger(p.level) ? p.level : 0) === niveau ? p : (raccord(niveau) || p);
+        // 🪜 là où est le volume (KtaGalerie.placePassage) : un POI posé à côté de l'axe est atteint depuis le tube.
+        const ici = window.KtaGalerie.placePassage(p, niveau, _e.rendu) || p;
         const cibles = nv.filter(function (n) { return n !== niveau; }).map(function (n) {
           const a = raccord(n);
           return { niveau: n, x: a ? a.x : Number.NaN, y: a ? a.y : Number.NaN };
@@ -843,8 +844,11 @@
       // Mixte : POI dont l'axe le plus proche (10 m au plus) passe en tube → règle de la galerie (contre la paroi) ;
       // en chambre, près d'une structure ou loin de tout tracé → règle des structures (contre la face d'un pilier).
       const pp = mx && !mx.enChambre(p.x, p.y) ? mx.plusProche(p.x, p.y, POI_GALERIE * sc) : null;
-      if (pp && mx.tubeAu(pp.arete, pp.t)) { _e.poiTube++; _ajouterPanneau(groupe, p, _contreParoi(p, pp)); }
-      else _ajouterPanneau(groupe, p);
+      if (pp && mx.tubeAu(pp.arete, pp.t)) {
+        _e.poiTube++;
+        _ajouterPanneau(groupe, p, _placePanneau(p) || _contreParoi(p, pp));
+      }
+      else _ajouterPanneau(groupe, p, _placePanneau(p));
     }
     _e.scene.add(groupe);
     t.obj = groupe;
@@ -972,12 +976,16 @@
       const p = t.p[i];
       const pp = m.plusProche(p.x, p.y, POI_GALERIE * sc);
       if (!pp) { e.poiMasques++; continue; }
-      _ajouterPanneau(groupe, p, _contreParoi(p, pp));
+      _ajouterPanneau(groupe, p, _placePanneau(p) || _contreParoi(p, pp));
     }
     e.scene.add(groupe);
     t.obj = groupe;
     e.sale = true;
   }
+
+  // Place [x, z] (m) du panneau d'un POI dont le volume de passage est posé ailleurs que lui (_volumesDuNiveau) :
+  // au-dessus du volume, jamais à un endroit et le puits à un autre. null sinon.
+  function _placePanneau(p) { return (_e.placesPassage && _e.placesPassage.get(p)) || null; }
 
   // Place [x, z] (m) d'un POI selon l'axe le plus proche `pp` (plusProche) : dans le tube, là où il est ; au-delà
   // de la paroi, ramené contre elle, RECUL_PAROI devant.
@@ -2265,6 +2273,7 @@
     e.passages = _passages(e.niveau, d.jonctions);
     e.passageSig = null;
     (e.volPassages || []).forEach(_libererVolume);
+    e.placesPassage = new Map();
     e.volPassages = _volumesDuNiveau(d);
     e.tuiles = _indexer(d, e.sc, e.tuilesActives ? TUILE : 0);
     e.msIndex = performance.now() - t0;
@@ -2277,8 +2286,9 @@
   }
 
   // ── Volumes des passages entre niveaux (POI jonction, puits de surface, tracé jonction) ─────────────────
-  // ⚠️ contrat (décision produit) : un POI jonction ou un puits de surface montre son volume là où est son panneau
-  // (raccord validé du niveau, sinon le point), selon son moyen (KtaPoiJonction.moyen) : escalier (jes, eso) = cage
+  // ⚠️ contrat (décision produit) : un POI jonction ou un puits de surface montre son volume à la place
+  // de KtaGalerie.placePassage (raccord validé du niveau, sinon le POI ramené dans le tube ; son panneau et 🪜 l'y
+  // suivent), selon son moyen (KtaPoiJonction.moyen) : escalier (jes, eso) = cage
   // de 2,5 × 1,5 m à marches ; échelons (jpe, peo) = puits carré de 1,2 m (paroi des galeries), échelons tous les 0,3 m ;
   // corde (jps) = puits nu. Ouvert dans le SOL vers un niveau lié au-dessous, dans le PLAFOND vers un niveau lié
   // au-dessus (le volume dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface
@@ -2308,10 +2318,15 @@
       if (!v.sol && !v.plafond) return;   // passage sans autre niveau (plan à un niveau) : rien à ouvrir
       const dim = v.forme === "escalier" ? VOLUME.escalier
         : v.forme === "puits" ? [VOLUME.puits, VOLUME.puits] : [VOLUME.aeration, VOLUME.aeration];
+      // Place et axe : KtaGalerie.placePassage, le calcul de l'emprise qui ouvre le tube (une seule règle).
+      const pl = window.KtaGalerie.placePassage(src, N, e.rendu) || { x: p.x, y: p.y, ang: 0, ramene: false };
       v.a = dim[0] / 2; v.b = dim[1] / 2;
-      v.dir = _dirGalerie(p.x, p.y);
-      v.cx = p.x / e.sc; v.cz = p.y / e.sc;
+      v.x = pl.x; v.y = pl.y; v.ramene = pl.ramene;
+      v.dir = pl.ang;
+      v.cx = pl.x / e.sc; v.cz = pl.y / e.sc;
       v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
+      // Volume ailleurs que le point (recalé, raccord validé) : son panneau le suit (_placePanneau).
+      if (Math.hypot(pl.x - p.x, pl.y - p.y) > 1e-6) e.placesPassage.set(p, [v.cx, v.cz]);
       out.push(v);
     });
     if (N === null || !_typeTraceMontre("jonction")) return out;
@@ -2331,16 +2346,6 @@
         cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, r: Math.hypot(x1 - x0, z1 - z0) / 2 + VOLUME.rampe });
     });
     return out;
-  }
-
-  // Angle (rad, plan x / z) de l'axe de galerie le plus proche (10 m), 0 sans galerie : la cage d'escalier s'aligne.
-  function _dirGalerie(x, y) {
-    const e = _e, niv = e.niveau === null ? undefined : e.niveau;
-    const m = e.galerie || e.mixte || (window.KtaGalerie ? window.KtaGalerie.modele(niv) : null);
-    const pp = m ? m.plusProche(x, y, 10 * e.sc) : null;
-    if (!pp) return 0;
-    const r = m.aretes[pp.arete];
-    return Math.atan2(r.by - r.ay, r.bx - r.ax);
   }
 
   // Volumes à portée construits, lointains libérés : la règle des tuiles (_gererTuiles).

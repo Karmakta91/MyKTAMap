@@ -3140,7 +3140,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
               await K.fermer();
               window.setPlanRenduVue3D(null, rendu);
               window.ktaSetActiveLevel(niv);
-              const d = P(-20, 1.5);   // départ au centre d'une bouche qui déborde : jamais coincé
+              // Départ dans la niche d'une bouche qui déborde du tube (jamais coincé) : au 0, au-delà du bout du
+              // cul-de-sac (la place d'un POI sans raccord est ramenée dans le tube : plus de niche à côté) ; au −1, la
+              // bouche au raccord validé, hors du tube.
+              const d = niv === 0 ? P(0, 12.8) : P(-20, 1.5);
               await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 150 });
               const e = K.etat(), ps = K.parois(), polys = [];
               e.volumes.forEach(function (v) {
@@ -3178,10 +3181,154 @@ async function mesuresGalerie(page, nom, semisDonne) {
             c.rendu + ", niveau " + c.niveau + " : aucune paroi de tube dans les " + c.bouches +
             " emprises de passage (" + c.parois + " parois, " + (c.passages === null ? "—" : c.passages) + " niches)", c);
           verifier(c.degage === 0 && c.avance, c.rendu + ", niveau " + c.niveau +
-            " : départ au centre d'une bouche qui déborde du tube, pas ramené, un pas passe", c);
+            " : départ dans la niche d'une bouche qui déborde du tube, pas ramené, un pas passe", c);
         });
         verifier(CE.cas.filter(function (c) { return c.niveau === 0; }).every(function (c) { return c.rubans; }),
           "rubans des tracés dans leur famille (gabarit du sol : coupés à la bouche)", CE.cas);
+      }
+
+      // ── 14 ter. POI de passage posé à côté de l'axe (le cas courant : lisible en 2D) ─────────────────────────
+      // Galerie principale (paroi à 1,25 m) aux niveaux −1, 0, +1 ; une branche secondaire (paroi à 1 m) vers +z au
+      // niveau 0 (carrefour). Sur le 0, des POI décalés de 1 à 5 m des deux côtés, sans raccord validé : chaque volume
+      // doit tomber dans le tube (bouche ET cadre doré dans l'emprise : visible), sur CHAQUE niveau sans raccord ; un
+      // raccord validé reste au point exact ; panneau au-dessus du volume, 🪜 montré au volume. Près du carrefour, le
+      // POI va à la galerie dont l'emprise est la plus proche (la branche) ; un raccord validé sur son niveau tranche.
+      // Rendu structures : le point tel quel. Les POI enregistrés ne bougent pas.
+      if (G.multi) {
+        const DC = await page.evaluate(async function (a) {
+          const K = window.KtaVue3D, sc = a.sc, P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
+          const acc = window.ktaEstAccessible;
+          window.ktaEstAccessible = function () { return true; };
+          window.setStructures([]); window.setZones([]);
+          window.setRoads([-1, 0, 1].map(function (n) {
+            return { uid: "rd_dc_" + (n + 1), type: "principal", level: n, points: [P(-80, 0), P(80, 0)] };
+          }).concat([{ uid: "rd_dc_b", type: "secondaire", level: 0, points: [P(60, 0), P(60, 20)] },
+            { uid: "rd_dc_c", type: "secondaire", level: 0, points: [P(75, 0), P(75, 20)] }]));
+          const poi = function (id, x, z, tag, niveaux, raccords) {
+            const q = P(x, z), o = { id: id, nom: id, uid: "pt_dc_" + id.replace(/\W/g, "_"), level: 0, tags: [tag],
+              x: q.x, y: q.y };
+            if (niveaux) { o.niveaux = niveaux; o.accroches = []; }
+            (raccords || []).forEach(function (r) { const c = P(r[1], r[2]); o.accroches.push({ level: r[0], x: c.x, y: c.y }); });
+            return o;
+          };
+          // [nom, x, z, tag, niveaux, raccords [niveau, x, z], attendu au 0 (z), au −1 / +1 (z | null = exact)]
+          const C = [
+            ["dc jpe bas 3", -70, 3, "jpe", [0, -1], [[-1, -70, 0]]],
+            ["dc jpe bas -2", -60, -2, "jpe", [0, -1], []],
+            ["dc jpe haut 1.5", -50, 1.5, "jpe", [0, 1], [[1, -50, 0.3]]],
+            ["dc jpe haut -5", -40, -5, "jpe", [0, 1], []],
+            ["dc jes 2", -30, 2, "jes", [0, -1], []],
+            ["dc jps 4", -20, -4, "jps", [-1, 0, 1], [[-1, -20, -0.2]]],
+            ["dc peo 2.5", -10, 2.5, "peo", null, []],
+            ["dc eso -3", 0, -3, "eso", null, []],
+            ["dc pa 2", 10, 2, "pa", [0, -1], []],
+            ["dc jpe dedans 1", 20, 1, "jpe", [0, -1], []],
+            ["dc jpe raccord 0", 30, 3, "jpe", [0, -1], [[0, 30, 0]]],
+            ["dc jpe carrefour", 62.2, 4, "jpe", [0, -1], []],
+            ["dc jpe carrefour raccord", 77.2, 4, "jpe", [0, -1], [[0, 77.2, 0]]]
+          ];
+          const pts = C.map(function (c) { return poi(c[0], c[1], c[2], c[3], c[4], c[5]); });
+          window.setEditorPoints(pts);
+          const avant = JSON.stringify(window.getEditorPoints());
+          window.KtaGalerie.invalider();
+          const r = { cas: [], panneaux: [], echelles: [] };
+          for (const rendu of ["mixte", "galerie", "structures"]) {
+            for (const niv of [0, -1, 1]) {
+              await K.fermer();
+              window.setPlanRenduVue3D(null, rendu);
+              window.ktaSetActiveLevel(niv);
+              const d = P(-78, 0);
+              await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 200 });
+              const e = K.etat(), m = rendu === "structures" ? null : window.KtaGalerie.modele(niv, rendu === "mixte");
+              for (const v of e.volumes) {
+                if (v.genre !== "poi") continue;
+                const c = C.filter(function (q) { return Math.abs((a.ox + q[1]) * sc - v.x) < 3.5 * sc; })[0];
+                if (!c) continue;
+                const cx = v.x / sc, cz = v.y / sc, ux = Math.cos(Math.atan2(v.bouche[1][1] - v.bouche[0][1],
+                  v.bouche[1][0] - v.bouche[0][0])), uz = Math.sin(Math.atan2(v.bouche[1][1] - v.bouche[0][1],
+                  v.bouche[1][0] - v.bouche[0][0]));
+                // Emprise avec cadre (bouche + 0,2 m) : 7 × 7 échantillons, tous dans l'emprise des tubes et joints.
+                const A = Math.hypot(v.bouche[1][0] - v.bouche[0][0], v.bouche[1][1] - v.bouche[0][1]) / 2 + 0.2;
+                const B = Math.hypot(v.bouche[3][0] - v.bouche[0][0], v.bouche[3][1] - v.bouche[0][1]) / 2 + 0.2;
+                let hors = 0;
+                if (m) {
+                  for (let i = 0; i <= 6; i++) for (let j = 0; j <= 6; j++) {
+                    const s = (i / 3 - 1) * A * 0.995, t = (j / 3 - 1) * B * 0.995;
+                    const x = cx + ux * s - uz * t, z = cz + uz * s + ux * t;
+                    const ok = m.piecesPres(x * sc, z * sc, x * sc, z * sc).some(function (k) {
+                      return m.pieces[k].genre !== "passage" && window.KtaGalerie.dansPiece(m.pieces[k], x * sc, z * sc, 1e-6);
+                    });
+                    if (!ok) hors++;
+                  }
+                }
+                r.cas.push({ rendu: rendu, niv: niv, nom: c[0], z: +(cz - a.oz).toFixed(3), x: +(cx - a.ox).toFixed(3),
+                  hors: hors, cadre: v.cadre, construit: v.construit });
+              }
+              e.panneaux.filter(function (p) { return /^dc /.test(p.nom); }).forEach(function (p) {
+                r.panneaux.push({ rendu: rendu, niv: niv, nom: p.nom, x: +(p.x - a.ox).toFixed(3), z: +(p.z - a.oz).toFixed(3) });
+              });
+              // 🪜 : posé au centre de chaque volume de passage (POI à moyen), la boîte des niveaux apparaît.
+              if (rendu !== "structures") {
+                for (const v of e.volumes) {
+                  if (v.genre !== "poi" || !v.passage) continue;
+                  K.placer(v.x, v.y, 90);
+                  await new Promise(function (ok) { setTimeout(ok, 120); });
+                  const b = K.etat().passage;
+                  r.echelles.push({ rendu: rendu, niv: niv, x: +(v.x / sc - a.ox).toFixed(1), visible: b.visible, liste: b.liste });
+                }
+              }
+            }
+          }
+          r.inchanges = JSON.stringify(window.getEditorPoints()) === avant;
+          await K.fermer();
+          window.setPlanRenduVue3D(null, "mixte");
+          window.ktaEstAccessible = acc;
+          window.setStructures([]); window.setEditorPoints([]); window.setRoads([]);
+          window.ktaSetActiveLevel(0);
+          window.KtaGalerie.invalider();
+          return r;
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        const un = function (rendu, niv, nom) {
+          return DC.cas.filter(function (c) { return c.rendu === rendu && c.niv === niv && c.nom === nom; })[0] || null;
+        };
+        const pres = function (a, b, tol) { return a !== null && a !== undefined && Math.abs(a - b) <= (tol || 0.01); };
+        for (const rendu of ["mixte", "galerie"]) {
+          const tube = DC.cas.filter(function (c) { return c.rendu === rendu; });
+          verifier(tube.length >= 20 && tube.every(function (c) { return c.hors === 0 && c.construit; }),
+            rendu + " : " + tube.length + " volumes de POI décalés de 1 à 5 m (3 niveaux) : bouche et cadre doré dans le tube",
+            tube.filter(function (c) { return c.hors > 0 || !c.construit; }));
+          const z = function (niv, nom) { const c = un(rendu, niv, nom); return c ? c.z : null; };
+          verifier(pres(z(0, "dc jpe bas 3"), 0.45) && pres(z(0, "dc jpe bas -2"), -0.45) && pres(z(-1, "dc jpe bas -2"), -0.45) &&
+            pres(z(0, "dc jpe haut -5"), -0.45) && pres(z(1, "dc jpe haut -5"), -0.45) && pres(z(0, "dc jes 2"), 0.3) &&
+            pres(z(0, "dc pa 2"), 0.65) && pres(z(0, "dc jpe dedans 1"), 0.45),
+            rendu + " : sans raccord, ramené dans le tube du côté du POI (puits 0,45 m, escalier 0,3 m, aération 0,65 m de l'axe), " +
+            "sur chaque niveau", tube);
+          verifier(pres(z(-1, "dc jpe bas 3"), 0) && pres(z(1, "dc jpe haut 1.5"), 0.3) && pres(z(-1, "dc jps 4"), -0.2) &&
+            pres(z(1, "dc jps 4"), -0.45) && pres(z(0, "dc jpe raccord 0"), 0),
+            rendu + " : raccord validé (autre niveau ou celui du POI) au point exact ; niveau sans raccord ramené", tube);
+          const cb = un(rendu, 0, "dc jpe carrefour"), cr = un(rendu, 0, "dc jpe carrefour raccord");
+          verifier(!!cb && pres(cb.x, 60.2, 0.02) && cb.z > 2 && !!cr && pres(cr.x, 77.2) && pres(cr.z, 0),
+            rendu + " : près d'un carrefour, galerie à l'emprise la plus proche (la branche) ; un raccord validé tranche", [cb, cr]);
+          const loin = DC.panneaux.filter(function (p) {
+            const c = un(rendu, p.niv, p.nom);
+            return p.rendu === rendu && (!c || Math.hypot(p.x - c.x, p.z - c.z) > 0.01);
+          });
+          verifier(DC.panneaux.some(function (p) { return p.rendu === rendu; }) && loin.length === 0,
+            rendu + " : panneau de chaque POI de passage au-dessus de son volume, sur chaque niveau", loin);
+          const sans = DC.echelles.filter(function (q) { return q.rendu === rendu && !q.visible; });
+          verifier(DC.echelles.filter(function (q) { return q.rendu === rendu; }).length >= 12 && sans.length === 0,
+            rendu + " : 🪜 montré au centre de chaque volume de passage recalé", sans);
+        }
+        const loinSt = DC.panneaux.filter(function (p) {
+          const c = un("structures", p.niv, p.nom);
+          return p.rendu === "structures" && (!c || Math.hypot(p.x - c.x, p.z - c.z) > 0.01);
+        });
+        verifier(loinSt.length === 0, "structures : panneau au-dessus du volume (raccord validé du niveau du POI compris)", loinSt);
+        const st = DC.cas.filter(function (c) { return c.rendu === "structures" && c.niv === 0; });
+        verifier(st.length > 0 && pres((un("structures", 0, "dc jpe bas 3") || {}).z, 3) &&
+          pres((un("structures", 0, "dc jpe haut -5") || {}).z, -5),
+          "structures : volume au point du POI (sol dessiné partout, rien à recaler)", st);
+        verifier(DC.inchanges, "POI enregistrés inchangés (seule la 3D recale le dessin)");
       }
 
 
