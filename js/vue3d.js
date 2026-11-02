@@ -1962,6 +1962,7 @@
       b.setAttribute("aria-label", _t("vue3d.renduActuel", { mode: _t(ici.nom) }) + " · " + b.title);
       b.dataset.rendu = e.rendu;
     }
+    _majRepere();
     e.sale = true;
   }
 
@@ -2067,6 +2068,7 @@
     e.camera.far = haut ? e.distance * 1.4 + 30 : e.distance + 5;
     e.camera.updateProjectionMatrix();
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
+    _majRepere();
     if (e.boutonsIncl) e.boutonsIncl.hidden = !haut;
     e.sale = true;
   }
@@ -2430,7 +2432,7 @@
     if (!hit) return false;
     if (hit.object.userData.poi.genre !== "poi") {
       e.toucheNom = hit.object.userData.poi.nom;
-      _toast(e.toucheNom, "info");
+      _toast(e.toucheNom, "success");
       return true;
     }
     return _ouvrirFiche(hit.object.userData.poi.point);
@@ -2835,6 +2837,7 @@
     // Mode écrit en clair : sans lui, rien ne disait qu'on était passé en libre ni comment revenir au suivi.
     // 🧭 = le tracker, comme son menu sur la carte (📍 y est le recalage).
     b.textContent = e.mode === "suivi" ? "🧭 " + _t("vue3d.etatSuivi") : "🕹️ " + _t("vue3d.etatLibre");
+    _majRepere();
   }
 
   // Mode « suivi » : position du tracker et cap de l'appareil, la même source que le mode « plan orienté »
@@ -2882,8 +2885,8 @@
     e.publiee = p;
     e.publications++;
     // Dit une fois par ouverture : la place libre est vue de l'équipe (vie privée), marquée « en vue 3D ».
-    // Information, pas une alerte (décision produit) : rien ne va mal, la place est montrée comme convenu.
-    if (!e.publicationDite) { e.publicationDite = true; _toast(_t("vue3d.presencePartagee"), "info"); }
+    // « success » (décision produit) : jamais une alerte, et toujours vu (« info » est tu par défaut, oomGuard.js).
+    if (!e.publicationDite) { e.publicationDite = true; _toast(_t("vue3d.presencePartagee"), "success"); }
   }
 
   function _lireTracker() {
@@ -3023,8 +3026,10 @@
   // Rangée du haut, à droite (row-reverse : l'ordre CSS de chaque élément dit sa place, de droite à gauche) : ✕
   // toujours au coin haut droit, même quand la rangée passe sur deux lignes au téléphone, ≡ collé à sa gauche
   // (décision produit), puis 🚨, ❓ (posé par interfaceDocs.js > _aidePoserBouton dans l'en-tête marqué
-  // kta-aide-ctx-entete), vue, hauteur, rendu et mode. Réglage de hauteur sur sa propre ligne dessous. Ordre de
-  // tabulation = ordre du DOM. Joystick (zone gauche) posé juste après la scène : tout le reste passe au-dessus.
+  // kta-aide-ctx-entete) et ⚙️ : une seule ligne, même au téléphone (décision produit). Suivi / libre, vue, hauteur
+  // (et son − / +), rendu et boussole sont dans la tuile ⚙️ (_basculerReglages) ; le mode reste montré par une
+  // pastille hors de la tuile. Ordre de tabulation = ordre du DOM. Joystick (zone gauche) posé juste après la scène,
+  // tuile en dernier : tout le reste passe au-dessus du joystick, la tuile au-dessus de tout.
   function _monterDom(stats) {
     const e = _e;
     const ov = document.createElement("div");
@@ -3064,12 +3069,24 @@
     e.boutonFiltres.setAttribute("data-kta-pastille-filtres", "");
     const urgence = _bouton(haut, "kta-v3d-urgence", "🚨", _t("ui.refonte.counter_sortie_title"), "urgence");
     urgence.setAttribute("aria-label", _t("ui.refonte.counter_sortie_title"));
-    e.boutonVue = _bouton(haut, "kta-v3d-vue", "🦅", _t("vue3d.plongee"), "vue");
-    e.boutonHauteur = _bouton(haut, "kta-v3d-btn-mode kta-v3d-btn-hauteur", "", _t("vue3d.hauteur"), "hauteur");
+    // ⚙️ ouvre la tuile des réglages de la vue (_basculerReglages) ; point doré si l'un n'est pas celui par défaut.
+    e.boutonReglages = _bouton(haut, "kta-v3d-btn-reglages", "⚙️", _t("vue3d.reglages"), "reglages");
+    e.boutonReglages.setAttribute("aria-expanded", "false");
+    e.boutonReglages.setAttribute("aria-controls", "kta-v3d-reglages");
+    // Tuile des réglages (décision produit : la rangée du haut tient sur une ligne au téléphone) : suivi / libre, vue,
+    // hauteur et son − / +, rendu, chacun écrit en clair avec son état. Petit panneau ancré sous ⚙️.
+    const tuile = document.createElement("div");
+    tuile.id = "kta-v3d-reglages";
+    tuile.className = "kta-v3d-reglages";
+    tuile.setAttribute("role", "group");
+    tuile.setAttribute("aria-label", _t("vue3d.reglages"));
+    tuile.hidden = true;
+    e.tuileReglages = tuile;
+    e.boutonSuivre = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-suivre", "🧭", _t("vue3d.suivre"), "suivre");
+    e.boutonVue = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-vue", "🦅 " + _t("vue3d.plongee"), _t("vue3d.plongee"), "vue");
+    e.boutonHauteur = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-hauteur", "", _t("vue3d.hauteur"), "hauteur");
     e.boutonHauteur.setAttribute("aria-expanded", "false");
-    e.boutonRendu = _bouton(haut, "kta-v3d-btn-mode kta-v3d-btn-rendu", "", "", "rendu");
-    e.boutonSuivre = _bouton(haut, "kta-v3d-btn-mode kta-v3d-btn-suivre", "🧭", _t("vue3d.suivre"), "suivre");
-    // Réglage de la hauteur : − valeur +, sous la rangée du haut, ouvert par ⛏️.
+    // Réglage de la hauteur : − valeur +, dans la tuile sous ⛏️, ouvert par lui.
     const regl = document.createElement("div");
     regl.className = "kta-v3d-hauteur";
     regl.setAttribute("role", "group");
@@ -3081,10 +3098,25 @@
     e.hauteurValeur.setAttribute("aria-live", "polite");
     regl.appendChild(e.hauteurValeur);
     e.hauteurPlus = _bouton(regl, "", "+", _t("vue3d.hauteurPlus"), "hauteurPlus");
-    haut.appendChild(regl);
+    tuile.appendChild(regl);
     e.reglageHauteur = regl;
+    e.boutonRendu = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-rendu", "", "", "rendu");
+    // Boussole montrée ou non (réglage de cet appareil, montrée par défaut) : la rose de la boussole 2D en icône.
+    e.boutonBoussole = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-boussole", "", _t("vue3d.boussoleMontrer"),
+      "boussole");
+    const ic = document.createElement("img");
+    ic.src = "icon/compass.svg"; ic.alt = ""; ic.className = "kta-v3d-btn-icone"; ic.draggable = false;
+    e.boutonBoussole.appendChild(ic);
+    e.boutonBoussole.appendChild(document.createTextNode(_t("vue3d.boussoleNom")));
     ov.appendChild(haut);
     e.haut = haut;
+    // Mode suivi / libre toujours visible hors de la tuile (c'est ce qui compte en marchant) : pastille discrète en
+    // haut à gauche, non touchable (la bascule est dans la tuile, et la scène reste touchable autour).
+    const indic = document.createElement("div");
+    indic.className = "kta-v3d-mode-indic";
+    indic.setAttribute("role", "status");
+    ov.appendChild(indic);
+    e.indicMode = indic;
     // Bandeau sous la rangée du haut : guidage de l'itinéraire (_majBandeau) ; les toasts de l'app et la fiche d'un
     // POI passent dessous (_majSousHaut).
     const bandeau = document.createElement("div");
@@ -3126,6 +3158,7 @@
     bous.appendChild(rose);
     ov.appendChild(bous);
     e.rose = rose; e.boussole = bous;
+    _appliquerBoussole();
     if (stats) {
       e.compteur = document.createElement("div");
       e.compteur.className = "kta-v3d-stats";
@@ -3139,6 +3172,7 @@
     niv.hidden = true;
     ov.appendChild(niv);
     e.boiteNiveaux = niv;
+    ov.appendChild(e.tuileReglages);
     document.body.appendChild(ov);
     e.ov = ov; e.cv = cv;
     document.documentElement.classList.add("kta-vue3d-ouverte");
@@ -3146,6 +3180,63 @@
     _majHauteur();
     if (window.FilterPanel && typeof window.FilterPanel.majBadge === "function") window.FilterPanel.majBadge();
     _majSousHaut();
+  }
+
+  // ── Tuile des réglages (⚙️) ─────────────────────────────────────────────────────────────────────────
+  // Ouverte sous ⚙️, alignée à droite ; fermée par ⚙️, Échap ou un toucher ailleurs dans la vue (_brancher).
+  function _basculerReglages(ouvrir) {
+    const e = _e, t = e && e.tuileReglages;
+    if (!t) return false;
+    const voulu = typeof ouvrir === "boolean" ? ouvrir : t.hidden;
+    if (voulu === !t.hidden) return voulu;
+    if (voulu) {
+      const b = e.boutonReglages.getBoundingClientRect(), o = e.ov.getBoundingClientRect();
+      t.style.top = Math.round(b.bottom - o.top + 6) + "px";
+    } else if (e.reglageHauteur && !e.reglageHauteur.hidden) {
+      _basculerReglageHauteur();
+    }
+    t.hidden = !voulu;
+    e.boutonReglages.setAttribute("aria-expanded", voulu ? "true" : "false");
+    return voulu;
+  }
+
+  // Boussole montrée ou masquée (config.js > getVue3DBoussole) ; masquée, rien ne bouge autour (joystick, 🪜).
+  function _appliquerBoussole() {
+    const e = _e, oui = typeof window.getVue3DBoussole !== "function" || window.getVue3DBoussole() === true;
+    if (e.boussole) e.boussole.hidden = !oui;
+    if (e.boutonBoussole) e.boutonBoussole.setAttribute("aria-pressed", oui ? "true" : "false");
+    _majRepere();
+    return oui;
+  }
+
+  function _basculerBoussole() {
+    const e = _e;
+    if (!e) return null;
+    const oui = !(e.boussole && !e.boussole.hidden);
+    if (typeof window.setVue3DBoussole === "function") window.setVue3DBoussole(oui);
+    else if (e.boussole) e.boussole.hidden = !oui;
+    return _appliquerBoussole();
+  }
+
+  // Repère sur ⚙️ (un réglage n'est pas celui par défaut : mode libre, vue plongeante, rendu autre que mixte,
+  // boussole masquée) et
+  // pastille du mode, hors de la tuile.
+  function _majRepere() {
+    const e = _e;
+    if (!e || !e.boutonReglages) return;
+    const modifie = e.mode === "libre" || e.vue === "plongee" || e.rendu !== "mixte" ||
+      (!!e.boussole && e.boussole.hidden);
+    e.boutonReglages.classList.toggle("kta-v3d-modifie", modifie);
+    const titre = _t("vue3d.reglages") + (modifie ? " · " + _t("vue3d.reglagesModifies") : "");
+    e.boutonReglages.title = titre;
+    e.boutonReglages.setAttribute("aria-label", titre);
+    if (e.indicMode) {
+      const suivi = e.mode === "suivi", txt = _t(suivi ? "vue3d.etatSuivi" : "vue3d.etatLibre");
+      e.indicMode.textContent = suivi ? "🧭" : "🕹️";
+      e.indicMode.title = txt;
+      e.indicMode.setAttribute("aria-label", txt);
+      e.indicMode.classList.toggle("kta-v3d-mode-libre", !suivi);
+    }
   }
 
   // Bas de la rangée du haut (et du bandeau s'il est montré), en px, posé sur <html> : css/vue3d.css y descend la
@@ -3269,6 +3360,7 @@
       const a = b && b.dataset.v3d;
       if (a === "fermer") fermer();
       else if (a === "filtres") _ouvrirFiltres();
+      else if (a === "reglages") _basculerReglages();
       else if (a === "urgence") _urgence();
       else if (a === "ficheFermer") _fermerFiche();
       // Action de la fiche qui mène ailleurs (déjà jouée par utils.js > _ktaPopupAction, en capture) : la fiche se
@@ -3280,8 +3372,9 @@
       const b = ev.target.closest && ev.target.closest("[data-v3d]");
       if (!b) return;
       const a = b.dataset.v3d;
-      if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer") return;
+      if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages") return;
       if (a === "vue") { basculerVue(); return; }
+      if (a === "boussole") { _basculerBoussole(); return; }
       if (a === "rendu") { basculerRendu(); return; }
       if (a === "hauteur") { _basculerReglageHauteur(); return; }
       if (a === "hauteurMoins" || a === "hauteurPlus") {
@@ -3308,6 +3401,12 @@
     });
     on(window, "pointerup", relacher);
     on(window, "pointercancel", relacher);
+    // Toucher ailleurs que dans la tuile ou sur ⚙️ : la tuile se ferme (le toucher garde son effet).
+    on(e.ov, "pointerdown", function (ev) {
+      const t = e.tuileReglages;
+      if (!t || t.hidden || t.contains(ev.target) || e.boutonReglages.contains(ev.target)) return;
+      _basculerReglages(false);
+    }, true);
     if (e.stickZone) _brancherStick(on);
     on(e.ov, "pointerout", function (ev) { if (ev.target.dataset && ev.target.dataset.v3d) relacher(); });
     // Glisser sur la scène : un doigt tourne (horizontal) et lève / baisse les yeux (vertical) ; deux doigts,
@@ -3369,7 +3468,8 @@
       if (_recouverte()) return;
       if (ev.key === "Escape") {
         ev.stopPropagation(); ev.preventDefault();
-        // Échap ferme d'abord un réglage ou une fiche ouverts, puis la vue.
+        // Échap ferme d'abord la tuile des réglages (et la hauteur qu'elle montre), une fiche, puis la vue.
+        if (e.tuileReglages && !e.tuileReglages.hidden) { _basculerReglages(false); return; }
         if (e.reglageHauteur && !e.reglageHauteur.hidden) { _basculerReglageHauteur(); return; }
         if (_fermerFiche()) return;
         fermer();
@@ -3798,6 +3898,9 @@
       murDecale: e.mats.murs.polygonOffset === true,
       commandes: e.commandes, pave: !!e.pave && e.pave.isConnected,
       stick: e.stickZone ? _etatStick() : null, toucheNom: e.toucheNom,
+      reglages: { ouvert: !!e.tuileReglages && !e.tuileReglages.hidden,
+        repere: !!e.boutonReglages && e.boutonReglages.classList.contains("kta-v3d-modifie"),
+        indic: e.indicMode ? e.indicMode.textContent : "", boussole: !!e.boussole && !e.boussole.hidden },
       itineraire: Object.assign({ largeurVoulue: LARGEUR_ITI, lisereVoulu: ITI.lisere, couleur: _couleursIti().hexRuban,
         couleurLisere: _couleursIti().hexLisere, tirets: e.itiTirets }, e.nbMarqueurs, _mesureIti()),
       ronds: e.listeRonds.map(function (r) { return Object.assign({}, r); }),

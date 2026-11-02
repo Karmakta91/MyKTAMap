@@ -66,6 +66,14 @@ const problemes = [];
 function pb(msg) { problemes.push(msg); console.log("  ❌ " + msg); }
 function ok(msg) { console.log("  ✅ " + msg); }
 function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== undefined ? " " + JSON.stringify(detail) : "")); }
+// Suivi, vue, hauteur, rendu et boussole sont dans la tuile ⚙️ : l'ouvrir avant de toucher l'un d'eux (sans la
+// refermer si elle l'est déjà ; un toucher ailleurs la ferme).
+async function reglages(page) {
+  await page.evaluate(function () {
+    const t = document.getElementById("kta-v3d-reglages");
+    if (t && t.hidden) document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
+  });
+}
 
 async function capture(page, nom) {
   if (!CAPTURES) return;
@@ -657,6 +665,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       });
       verifier(capVrai && s1.mode === "suivi" && Math.abs(s1.cap - 120) < 2 && s1.dispo && s1.presse === "true" &&
         s1.titre === s1.attendu, "suivi : la vue prend le cap de l'appareil (120° simulés)", s1);
+      await reglages(page);
       await page.locator('#kta-vue3d [data-v3d="suivre"]').click();
       await page.evaluate(function () { window.getPlanRelHeading = function () { return 200; }; });
       await page.waitForTimeout(500);
@@ -668,6 +677,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       });
       verifier(etiq.texte.indexOf(etiq.libre) >= 0 && etiq.texte.indexOf(etiq.suivi) < 0,
         "le bouton de mode dit « Libre » en mode libre", etiq);
+      await reglages(page);
       await page.locator('#kta-vue3d [data-v3d="suivre"]').click();
       await page.waitForTimeout(800);
       const s3 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { mode: e.mode, cap: e.cap }; });
@@ -686,6 +696,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(sTouche.mode === "suivi" && Math.abs(sTouche.cap - 200) < 2, "suivi : toucher et glisser l'écran ne quitte pas le suivi", sTouche);
       await page.evaluate(function () { window.stopTracking(); });
       await page.waitForTimeout(300);
+      await reglages(page);
       await page.locator('#kta-vue3d [data-v3d="suivre"]').click();
       await page.waitForTimeout(200);
       const s4 = await page.evaluate(function () {
@@ -711,13 +722,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
         return { etat: window.KtaVue3D.etat(), tri: m.trianglesMax, canvas: !!document.querySelector("#kta-vue3d canvas"),
           css: !!document.getElementById("kta-vue3d-css"),
           titres: Array.prototype.map.call(document.querySelectorAll("#kta-vue3d [data-v3d]"), function (b) { return b.title; }),
+          // ⚙️ : « Réglages de la vue », suivi d'une mention quand un réglage n'est pas celui par défaut.
           attendus: ["vue3d.fermer", window.FilterPanel.nbActifs() > 0 ? "filter.badge.actifs" : "filter.badge.aucun",
-            "ui.refonte.counter_sortie_title", "vue3d.plongee",
-            "vue3d.hauteur", "vue3d.passerStructures", "vue3d.suivre", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
-
+            "ui.refonte.counter_sortie_title", "vue3d.reglages",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
-            "vue3d.pasDroite", "vue3d.inclinaisonPlus", "vue3d.inclinaisonMoins"].map(function (k) {
-            return window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
+            "vue3d.pasDroite", "vue3d.inclinaisonPlus", "vue3d.inclinaisonMoins",
+            "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
+            "vue3d.passerStructures", "vue3d.boussoleMontrer"].map(function (k) {
+            const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
+            return k === "vue3d.reglages" && window.KtaVue3D.etat().reglages.repere ?
+              t + " · " + window.I18n.t("vue3d.reglagesModifies") : t;
           }) };
       });
       verifier(e0.canvas && e0.css, "fenêtre, scène et feuille montées");
@@ -776,6 +790,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       });
       verifier(!aideFermee.aide && aideFermee.vue, "Échap avec l'aide ouverte : l'aide se ferme, la vue reste", aideFermee);
       // Échap : d'abord le réglage de hauteur ouvert, puis (plus loin, § 4) la vue.
+      await reglages(page);
       await page.locator('#kta-vue3d [data-v3d="hauteur"]').click();
       await page.keyboard.press("Escape");
       const echap = await page.evaluate(function () {
@@ -817,8 +832,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
           right: Math.max.apply(null, rs.map(function (r) { return r.right; })), lignes: Object.keys(lignes).length,
           largeur: window.innerWidth };
       });
-      verifier(Math.abs(tel.xTop - tel.top) < 1 && Math.abs(tel.xRight - tel.right) < 1 && tel.largeur === 393,
-        "téléphone (393 px) : ✕ en haut à droite, première ligne (" + tel.lignes + " ligne(s) de boutons)", tel);
+      verifier(Math.abs(tel.xTop - tel.top) < 1 && Math.abs(tel.xRight - tel.right) < 1 && tel.largeur === 393 &&
+        tel.lignes === 1, "téléphone (393 px) : ✕ en haut à droite, rangée du haut sur une seule ligne (" + tel.lignes +
+        ")", tel);
       await capture(page, "integration-telephone");
       await page.setViewportSize({ width: 1200, height: 800 });
       await page.waitForTimeout(300);
@@ -945,6 +961,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(maj === true, "Maj maintenue au clavier : pas rapide");
       await page.evaluate(function () { window.KtaVue3D.tourner(180); });
 
+      await reglages(page);
       await page.locator('#kta-vue3d [data-v3d="vue"]').click();
       await page.waitForTimeout(300);
       const vue = await page.evaluate(function () { return window.KtaVue3D.etat().vue; });
@@ -1327,6 +1344,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         return window.KtaVue3D.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } });
       }, prep);
       const h0 = await page.evaluate(function () { return window.KtaVue3D.etat(); });
+      await reglages(page);
       await page.locator('#kta-vue3d [data-v3d="hauteur"]').click();
       await page.locator('#kta-vue3d [data-v3d="hauteurPlus"]').click();
       const h1 = await page.evaluate(function () {
@@ -3343,9 +3361,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
         return r;
       });
       verifier(!FI.beta && !/b[êe]ta/i.test(FI.titre), "plus de « bêta » dans la vue (rangée, titre)", FI);
-      verifier(FI.presence.length === 1 && FI.presence[0][1] === "info",
-        "toast de présence 3D en « info » (plus « warn »)", FI.presence);
-      verifier(!!FI.vise && FI2.nom === "Membre T" && FI2.toast.length === 1 && !FI2.fiche,
+      verifier(FI.presence.length === 1 && FI.presence[0][1] === "success",
+        "toast de présence 3D en « success » (toujours vu, jamais une alerte)", FI.presence);
+      verifier(!!FI.vise && FI2.nom === "Membre T" && FI2.toast.length === 1 && FI2.toast[0][1] === "success" &&
+        !FI2.fiche,
         "toucher un membre : un toast court avec son nom, pas de fiche", FI2);
       // Focus rendu au bouton cube après « Je suis ici ? » (suivi actif, déplacé, Non).
       const FO = await page.evaluate(async function (a) {
@@ -3378,6 +3397,76 @@ async function mesuresGalerie(page, nom, semisDonne) {
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       verifier(FO.question && FO.focus, "focus rendu au bouton cube après « Je suis ici ? » (Non)", FO);
+
+      // ── 20. Tuile ⚙️ Réglages : rangée du haut réduite, tuile ancrée, fermeture, repère, mode visible, boussole ──
+      const TU = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+        window.setVue3DBoussole(true);
+        const d = P(-30, 0), r = {};
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.rangee = Array.prototype.map.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *"), function (b) {
+          return b.getAttribute("data-v3d") || (b.classList.contains("kta-aide-ctx-btn") ? "aide" : b.className);
+        }).sort();
+        r.dansTuile = ["suivre", "vue", "hauteur", "rendu", "boussole"].map(function (k) {
+          const b = q('[data-v3d="' + k + '"]');
+          return !!b && !!b.closest("#kta-v3d-reglages") && b.textContent.trim().length > 1;
+        });
+        r.ferme0 = K.etat().reglages.ouvert;
+        q('[data-v3d="reglages"]').click();
+        await pause(50);
+        const t = q("#kta-v3d-reglages").getBoundingClientRect(), g = q('[data-v3d="reglages"]').getBoundingClientRect();
+        r.ouverte = { ouvert: K.etat().reglages.ouvert, sous: t.top >= g.bottom - 0.5 && t.top <= g.bottom + 12,
+          droite: Math.abs(t.right - (window.innerWidth - 10)) < 1.5, pleinEcran: t.height > window.innerHeight * 0.9,
+          expanded: q('[data-v3d="reglages"]').getAttribute("aria-expanded") };
+        q('[data-v3d="reglages"]').click();
+        await pause(50);
+        r.reclic = K.etat().reglages.ouvert;
+        q('[data-v3d="reglages"]').click();
+        const cv = q("canvas"), cr = cv.getBoundingClientRect();
+        cv.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 3, clientX: cr.left + 30,
+          clientY: cr.top + cr.height - 30 }));
+        cv.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 3, clientX: cr.left + 30,
+          clientY: cr.top + cr.height - 30 }));
+        await pause(50);
+        r.ailleurs = K.etat().reglages.ouvert;
+        // Repère et pastille du mode : libre (ouvert avec un départ) → repère, pastille 🕹️.
+        r.libre = { repere: K.etat().reglages.repere, indic: K.etat().reglages.indic, mode: K.etat().mode,
+          indicVisible: q(".kta-v3d-mode-indic").getBoundingClientRect().width > 0 };
+        // Boussole : masquée par l'interrupteur, retenue sur l'appareil, rien d'autre ne bouge.
+        const avant = q('[data-v3d="reglages"]').getBoundingClientRect().top;
+        q('[data-v3d="reglages"]').click();
+        q('[data-v3d="boussole"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 4 }));
+        await pause(50);
+        r.masquee = { visible: K.etat().reglages.boussole, pref: window.getVue3DBoussole(),
+          presse: q('[data-v3d="boussole"]').getAttribute("aria-pressed"), tuile: K.etat().reglages.ouvert,
+          rangee: q('[data-v3d="reglages"]').getBoundingClientRect().top === avant };
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.rouverte = { visible: K.etat().reglages.boussole, repere: K.etat().reglages.repere };
+        // Échap : la tuile d'abord, la vue reste.
+        q('[data-v3d="reglages"]').click();
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await pause(50);
+        r.echap = { tuile: K.etat().reglages.ouvert, vue: K.etat().ouvert };
+        window.setVue3DBoussole(true);
+        await K.fermer();
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      verifier(JSON.stringify(TU.rangee) === JSON.stringify(["aide", "fermer", "filtres", "reglages", "urgence"]) &&
+        TU.dansTuile.every(Boolean), "rangée du haut : ✕, ≡, 🚨, ❓, ⚙️ ; suivi, vue, hauteur, rendu et boussole dans la " +
+        "tuile, écrits en clair", TU);
+      verifier(TU.ferme0 === false && TU.ouverte.ouvert && TU.ouverte.sous && TU.ouverte.droite && !TU.ouverte.pleinEcran &&
+        TU.ouverte.expanded === "true", "⚙️ ouvre un petit panneau ancré sous lui, à droite (pas une fenêtre plein écran)",
+        TU.ouverte);
+      verifier(TU.reclic === false && TU.ailleurs === false && TU.echap.tuile === false && TU.echap.vue,
+        "tuile fermée par ⚙️ à nouveau, par un toucher ailleurs, par Échap (la vue reste)", TU);
+      verifier(TU.libre.mode === "libre" && TU.libre.repere && TU.libre.indic === "🕹️" && TU.libre.indicVisible,
+        "mode libre : repère sur ⚙️, pastille 🕹️ visible hors de la tuile", TU.libre);
+      verifier(TU.masquee.visible === false && TU.masquee.pref === false && TU.masquee.presse === "false" &&
+        TU.masquee.tuile && TU.masquee.rangee && TU.rouverte.visible === false && TU.rouverte.repere,
+        "boussole masquée par la tuile, retenue sur l'appareil (rouverte masquée), rien d'autre ne bouge", TU);
       await page.evaluate(function () { window.setStructures([]); window.KtaGalerie.invalider(); });
 
       await page.evaluate(function () {

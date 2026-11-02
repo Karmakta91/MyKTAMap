@@ -1150,6 +1150,19 @@ function setVue3DPave(oui) {
 window.getVue3DPave = getVue3DPave;
 window.setVue3DPave = setVue3DPave;
 
+// ── Boussole de la vue 3D (rose en bas à gauche) : montrée ou non, réglage de CET appareil ─────────────────────
+// localStorage["myktamap_v3d_boussole_v1"] = "0" (masquée) | "1" ; absente → montrée. Réglée dans la tuile ⚙️ de la
+// vue (vue3d.js > _basculerBoussole).
+const V3D_BOUSSOLE_CLE = "myktamap_v3d_boussole_v1";
+function getVue3DBoussole() {
+  try { return localStorage.getItem(V3D_BOUSSOLE_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DBoussole(oui) {
+  try { localStorage.setItem(V3D_BOUSSOLE_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DBoussole = getVue3DBoussole;
+window.setVue3DBoussole = setVue3DBoussole;
+
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.
 // Math : Δpixels → mètres (échelle), rotation ANTI-horaire de +northOffsetDeg (image → géographique : offset 90°,

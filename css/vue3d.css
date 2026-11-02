@@ -30,11 +30,34 @@
 .kta-v3d-haut > .kta-v3d-filtres { order: 2; }
 .kta-v3d-haut > .kta-v3d-urgence { order: 3; }
 .kta-v3d-haut > .kta-aide-ctx-btn { order: 4; }
-.kta-v3d-haut > .kta-v3d-vue { order: 5; }
-.kta-v3d-haut > .kta-v3d-btn-hauteur { order: 6; }
-.kta-v3d-haut > .kta-v3d-btn-rendu { order: 7; }
-.kta-v3d-haut > .kta-v3d-btn-suivre { order: 8; }
-.kta-v3d-haut > .kta-v3d-hauteur { order: 20; }
+.kta-v3d-haut > .kta-v3d-btn-reglages { order: 5; }
+/* ⚙️ : point doré quand un réglage de la tuile n'est pas celui par défaut (vue3d.js > _majRepere). */
+.kta-v3d-btn.kta-v3d-btn-reglages { position: relative; }
+.kta-v3d-btn.kta-v3d-btn-reglages.kta-v3d-modifie { border-color: var(--kta-accent); }
+.kta-v3d-btn.kta-v3d-btn-reglages.kta-v3d-modifie::after {
+  content: ""; position: absolute; top: -4px; right: -4px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--kta-accent); box-shadow: 0 0 0 2px var(--kta-surface); pointer-events: none;
+}
+.kta-v3d-btn.kta-v3d-btn-reglages[aria-expanded="true"] { border-color: var(--kta-accent); }
+/* Tuile des réglages : petit panneau ancré sous ⚙️ (`top` posé par _basculerReglages), au-dessus de tout dans la
+   vue ; chaque réglage écrit en clair sur toute la largeur. */
+.kta-v3d-reglages {
+  position: absolute; right: 10px; top: 80px; width: max-content; max-width: calc(100% - 20px);
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px; box-sizing: border-box;
+  padding: 10px; border-radius: 12px; border: 1px solid var(--kta-texte-3);
+  background: var(--kta-surface); color: var(--kta-texte); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+.kta-v3d-reglages[hidden] { display: none; }
+.kta-v3d-reglages > .kta-v3d-btn { width: 100%; text-align: left; }
+.kta-v3d-btn-icone { width: 22px; height: 22px; vertical-align: middle; margin-right: 6px; }
+/* Mode suivi / libre, hors de la tuile : pastille discrète en haut à gauche, non touchable. */
+.kta-v3d-mode-indic {
+  position: absolute; top: max(16px, calc(env(safe-area-inset-top) + 6px)); left: 10px;
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  border-radius: 50%; border: 1px solid var(--kta-texte-3); background: var(--kta-surface);
+  font-size: 20px; line-height: 1; pointer-events: none;
+}
+.kta-v3d-mode-indic.kta-v3d-mode-libre { border-color: var(--kta-accent); }
 .kta-v3d-pad {
   position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
@@ -138,9 +161,9 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 /* Boutons écrits (🧭 Suivi / 🕹️ Libre, rendu, hauteur) : largeur à leur texte. */
 .kta-v3d-btn.kta-v3d-btn-mode { width: auto; padding: 0 12px; font-size: 14px; font-weight: 600; white-space: nowrap; }
 
-/* Réglage de la hauteur (⛏️) : − valeur +, sur sa propre ligne sous la rangée du haut, calé à droite. */
+/* Réglage de la hauteur (⛏️) : − valeur +, dans la tuile sous ⛏️. */
 .kta-v3d-hauteur {
-  flex-basis: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+  display: flex; justify-content: flex-start; align-items: center; gap: 8px;
 }
 .kta-v3d-hauteur[hidden] { display: none; }
 .kta-v3d-hauteur-valeur {
@@ -152,6 +175,7 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 
 /* Rose des vents (icon/compass.svg, tournée par vue3d.js > _majBoussole) en bas à gauche, hors du pavé, sur la
    même carte que la petite boussole du mode plan (style.css > .kta-compass-widget) : surface à 88 %, liseré doré. */
+.kta-v3d-boussole[hidden] { display: none; }
 .kta-v3d-boussole {
   position: absolute; left: 10px; bottom: max(14px, env(safe-area-inset-bottom));
   display: flex; align-items: center; justify-content: center;
