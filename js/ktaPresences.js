@@ -10,7 +10,8 @@
 // étapes ○ / ✓, lecture seule. Repères d'une extension (`afficherReperes`, ex. tâches ouvertes) : calques nommés,
 // pastille à symbole et teinte de la charte posée près de l'objet. Rien n'est lu ni envoyé ici ; sans extension,
 // aucun calque, aucun coût.
-// Expose window.KtaPresences (afficher, afficherItineraires, afficherReperes, couleurDe, reinitialiser, actions).
+// Expose window.KtaPresences (afficher, afficherItineraires, afficherReperes, couleurDe, reinitialiser, actions ;
+// lecture : liste, itineraires, calques, reperes, version — la vue 3D les redessine en relief, vue3d.js > _majEquipe).
 // Garde-fou : scripts/check-extensions.js
 (function () {
   "use strict";
@@ -27,6 +28,9 @@
   var _itisMasques = {};             // id → true : itinéraire non dessiné
   var _personnesMasquees = {};       // id → true : ni repère ni trace (« Masquer une personne »)
   var _reperes = {};                 // calque → { liste, groupe, clic }
+  // Monte à chaque dessin (présences, itinéraires, repères, masquages, sortie du plan) : la vue 3D (vue3d.js >
+  // _majEquipe) relit les listes seulement quand il change.
+  var _version = 0;
 
   // Une couleur par personne, tirée de son identifiant (la même sur tous les appareils, sans serveur). Lisible
   // sur fond sombre et clair ; ⚠️ évite le jaune d'accent (itinéraires), les rouges (urgence), les gris
@@ -107,6 +111,7 @@
   }
 
   function _dessiner() {
+    _version++;
     _vider();
     var map = window.map;
     if (!map || !_liste.length || typeof L === "undefined") return;
@@ -178,6 +183,7 @@
     _calqueIti = null;
   }
   function _dessinerItis() {
+    _version++;
     _viderItis();
     var map = window.map;
     if (!map || !_itis.length || typeof L === "undefined") return;
@@ -269,6 +275,7 @@
   }
   var TAILLE_REPERE = 30;
   function _dessinerReperes(nom) {
+    _version++;
     _viderReperes(nom);
     var c = _reperes[nom], map = window.map;
     if (!c || !map || !c.liste.length || typeof L === "undefined") return;
@@ -325,6 +332,7 @@
   // 🩸 Sortie du plan : tout ce qui appartenait à l'ancien plan disparaît (présences, itinéraires, repères, suivi,
   // masquages, minuteur), sinon l'équipe est redessinée sur le nouveau plan à ses anciennes coordonnées.
   function reinitialiser() {
+    _version++;
     clearInterval(_minuteur); _minuteur = null;
     _liste = []; _itis = []; _suivi = null; _tracesMasquees = {}; _itisMasques = {};
     _personnesMasquees = {};
@@ -361,6 +369,9 @@
     afficherReperes: afficherReperes,
     // Copie des repères d'un calque (tests, diagnostic).
     reperes: function (nom) { return _reperes[nom] ? JSON.parse(JSON.stringify(_reperes[nom].liste)) : []; },
+    // Calques de repères affichés, et compteur de dessins : lecture seule (vue 3D, tests).
+    calques: function () { return Object.keys(_reperes); },
+    version: function () { return _version; },
     nombre: function () { return _liste.length; },
     // Copie de ce qui est affiché (tests, diagnostic).
     liste: function () { return JSON.parse(JSON.stringify(_liste)); }

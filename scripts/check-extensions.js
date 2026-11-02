@@ -2163,8 +2163,13 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       R2[1].niveaux.join() === "1", R2);
     t("🎨 repère absent : contour pointillé (classe)", /kta-repere-absent/.test(marqueurs[marqueurs.length - 1].o.icon.html.className) &&
       /\.kta-repere-absent \{ border-style: dashed; \}/.test(lire("css/style.css")));
-    c.w.KtaPresences.reinitialiser();
-    t("🩸 sortie du plan : tous les calques de repères effacés", c.w.KtaPresences.reperes("autre").length === 0);
+    const KP = c.w.KtaPresences, v0 = KP.version();
+    t("vue 3D : calques() liste les calques de repères affichés, version() monte à chaque dessin",
+      KP.calques().join() === "autre,absents" && (c.K.afficherReperes("autre", [{ id: "b", x: 2, y: 2 }]), KP.version() > v0));
+    const v1 = KP.version();
+    KP.reinitialiser();
+    t("🩸 sortie du plan : tous les calques de repères effacés", KP.reperes("autre").length === 0 &&
+      KP.calques().length === 0 && KP.version() > v1);
     const IA = lire("js/interfaceAlerts.js");
     const corpsModale = IA.slice(IA.indexOf("window.afficherModaleAlerte = function"), IA.indexOf("window.afficherModaleUpdateDispo"));
     t("alerte à l'écran : afficherModaleAlerte émet mktm:alerte-affichee { id, released } après l'avoir posée",
