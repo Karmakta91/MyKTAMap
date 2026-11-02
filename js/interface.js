@@ -105,6 +105,9 @@ function _fmtDateRel(iso) {
     return d.toLocaleDateString(window.ktaLocale ? window.ktaLocale() : "fr-FR", { day: "2-digit", month: "2-digit" });
   } catch(e) { return ""; }
 }
+// Date relative (ISO ou ms) : « à l'instant », « il y a 5 min », « hier »… Aussi pour « Ma dernière position » de
+// « Y aller » (interfaceItineraire.js > _demanderDepart).
+window.ktaDateRelative = _fmtDateRel;
 
 function _ouvrirPlanSwitcher() {
   _fermerPlanSwitcher();
