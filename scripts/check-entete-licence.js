@@ -47,7 +47,7 @@ if (autoTest) {
 
 let fichiers;
 try {
-  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/tracking.md § Greffe de la vue 3D).
+  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
   fichiers = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "js/*.js", "sw.js",
     "addons/*.js"], { encoding: "utf8" }).split("\n").filter(Boolean);
 } catch (e) {

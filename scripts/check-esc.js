@@ -34,7 +34,7 @@ const EXCEPTIONS = {
   "ktaExtensions.js": 1, // assainisseur HTML des extensions : une balise inconnue est rendue en texte
 };
 const LITTERAL = /["'`]&(?:amp|lt);["'`]/;
-// Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/tracking.md § Greffe de la vue 3D).
+// Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
 const jsAddons = (d = "addons") => (!fs.existsSync(d) ? [] : fs.readdirSync(d, { withFileTypes: true })
   .flatMap((e) => (e.isDirectory() ? jsAddons(d + "/" + e.name) : e.name.endsWith(".js") ? [d + "/" + e.name] : [])));
 const fichiers = fs.readdirSync("js").filter((f) => f.endsWith(".js")).map((f) => "js/" + f).concat(jsAddons());

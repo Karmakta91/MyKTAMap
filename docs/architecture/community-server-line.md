@@ -105,7 +105,7 @@ photos restent locales et exportables).
 > un plan (`check-gate-instance.js`, `checkup-accueil-hote.js`). Son `subtitle` remplace celui de l'index partout
 > (`KtaInstance.etat().config`). `addons` = `{ "<nom>": true }` (nom `[a-z0-9-]`, booléen `true` seul) : autorise sur
 > cette installation un add-on déjà livré avec l'app (`addons/<nom>/`), qu'une installation reliée refuse sinon ; il
-> n'en charge aucun (add-on `mkmg` : `docs/architecture/tracking.md` § Greffe de la vue 3D).
+> n'en charge aucun (`docs/architecture/addons.md`).
 > 🏙️ **Écran d'accueil d'une gate déléguée** : `KtaExtensions.ecranAccueil()` → Promise<`{ attendreEntree() →
 > Promise, fermer(), ouverte() → bool }` | `null`>. La même ville seule, en mode **connexion** (`connexion: true`) :
 > « Me connecter » au lieu d'« Entrer », jamais de champ de code. `attendreEntree()` se résout au prochain clic sur

@@ -13,7 +13,7 @@
 // (la silhouette), retirés par liberer().
 // 🩸 Reprise du contexte WebGL : caméra et groupe sont neufs, les objets d'avant sont morts (jamais dispose()) :
 // monter(p, ctx, true) refait tout sans rien libérer.
-// Doc : docs/architecture/tracking.md § Greffe de la vue 3D
+// Doc : docs/architecture/addons.md
 
 (function () {
   "use strict";

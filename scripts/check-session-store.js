@@ -26,7 +26,7 @@ const lire = (f) => fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
 // Seuls à nommer la clé : le module (migration, repli), SessionPersist (repli sans module), utils.js (mesure)
 const PERMIS = new Set(["sessionStore.js", "sessionPersist.js", "utils.js"]);
 const fautifs = [];
-// Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/tracking.md § Greffe de la vue 3D).
+// Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
 const jsAddons = (d = "addons") => (!fs.existsSync(d) ? [] : fs.readdirSync(d, { withFileTypes: true })
   .flatMap((e) => (e.isDirectory() ? jsAddons(d + "/" + e.name) : e.name.endsWith(".js") ? [d + "/" + e.name] : [])));
 fs.readdirSync("js").filter((f) => f.endsWith(".js") && !PERMIS.has(f)).map((f) => "js/" + f).concat(jsAddons())

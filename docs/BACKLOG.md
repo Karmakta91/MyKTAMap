@@ -67,7 +67,7 @@
   · taille: S`
 - **Test appareil : add-on mkmg sur iPhone et plan dense** — perf (carte des distances, 30 images/s) jamais mesurée
   sur un vrai téléphone ; difficulté (égarés, chrono, tenailles), bras et fusil, panneau réductible à juger en jouant
-  (`tracking.md` § Greffe de la vue 3D).
+  (`docs/architecture/addons.md`).
   `qui: KARMA · action: jouer plusieurs vagues sur iPhone, plan dense, avec et sans 🧱 Textures · fini: perf et
   réglages validés, ou chiffres à ajuster transmis · depuis: 02/11/2026 · taille: S`
 ## Ensuite

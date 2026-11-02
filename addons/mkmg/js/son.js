@@ -9,7 +9,7 @@
 // Noms : tir, recharge, vide, ramasse, soin, blesse, grogne, mort, souffle, vague, fin.
 // 🩸 Un navigateur ne joue rien avant un geste de l'utilisateur : demarrer() est appelé dans le geste qui lance la
 // partie (bouton de la confirmation), sinon le contexte reste suspendu.
-// Doc : docs/architecture/tracking.md § Greffe de la vue 3D
+// Doc : docs/architecture/addons.md
 
 (function () {
   "use strict";

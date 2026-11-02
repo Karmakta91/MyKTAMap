@@ -14,7 +14,7 @@
 // de RoadGraph, une seule pour toutes). Pensées à 15 Hz, pas à chaque image. Rien n'est écrit ailleurs que dans l'état
 // de la partie et le groupe de la greffe.
 // 🩸 Reprise du contexte WebGL : les maillages d'avant sont morts (jamais dispose()) ; dessiner() les refait tous.
-// Doc : docs/architecture/tracking.md § Greffe de la vue 3D
+// Doc : docs/architecture/addons.md
 
 (function () {
   "use strict";

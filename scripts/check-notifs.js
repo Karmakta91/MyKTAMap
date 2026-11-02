@@ -59,7 +59,7 @@ const OOM = lire("js/oomGuard.js");
     /function _grouper\([\s\S]{0,1400}if \(vus\[m\]\) return false;[\s\S]{0,120}uniques\.join\(" · "\)/.test(OOM));
   const OSM = lire("js/osmView.js");
   t("🩸 le toast maison de la Vue OSM demande la permission au goulot", /toastAutorise\("info"\)\) return;/.test(OSM));
-  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/tracking.md § Greffe de la vue 3D).
+  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
   const jsAddons = function (d) {
     const a = path.join(ROOT, d);
     return !fs.existsSync(a) ? [] : fs.readdirSync(a, { withFileTypes: true }).flatMap(function (e) {

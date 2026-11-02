@@ -84,6 +84,7 @@
 | **Vue 3D** autour de sa position (bouton cube sous ≡ dans la barre de droite, mêmes filtres que la carte, joystick au téléphone, three.js à la demande) | `docs/ETUDE_VUE_3D.md` (décisions) · `docs/architecture/tracking.md` §Vue 3D · `docs/architecture/ui.md` §Vue 3D · `js/vue3d.js` |
 | **Guidage de l'itinéraire** (« dans X m, tourner à gauche », feuille de route, urgence) | `docs/ETUDE_GUIDAGE.md` (décisions) · `docs/architecture/tracking.md` §Guidage · `js/itiGuidage.js` |
 | **Identifiant stable des objets** (`uid` + `updatedAt`, traces de suppression, fusion, photos/favoris/liaisons/Secours par uid) — chantier 1, livré v2.1.0 → v2.5.0 | `docs/ETUDE_UID.md` (décisions) · `js/ktaUid.js` · `scripts/check-uid.js` |
+| **Add-ons** (`addons/<nom>/`) : lancement, prise `KtaVue3D.greffer`, connecteurs, règles — à donner à une IA | `docs/architecture/addons.md` |
 | Multi-niveau, pathfinding, itinéraire | `docs/architecture/multilevel-pathfinding.md` |
 | Exports PNG/PDF/KMZ/GPX + légende | `docs/architecture/exports.md` |
 | Refonte UI, thème, modales, filtres | `docs/architecture/ui.md` |

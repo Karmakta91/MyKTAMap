@@ -16,7 +16,7 @@
 // seul accès ; ses trajets sont calculés par Pathfinder.computeRoute (lecture) et dessinés dans son propre groupe.
 // ⚠️ contrat (décision produit) : refusé sur une installation reliée à un serveur, pendant le suivi du tracker, une
 // sortie d'urgence ou le mode Secours ; textes fr/en/es ici, jamais dans lang/*.json ; scores sous sa propre clé.
-// Doc : docs/architecture/tracking.md § Greffe de la vue 3D · Garde-fou : scripts/smoke/checkup-vue-3d.js
+// Doc : docs/architecture/addons.md · Garde-fou : scripts/smoke/checkup-vue-3d.js
 
 (function () {
   "use strict";

@@ -681,6 +681,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `plans-loader.md` | Plans : registre, loader, Générateur |
 | `perf-memory.md` | Performance, mémoire, OOM, tuilage V2, Perf ULTRA, batterie |
 | `tracking.md` | Tracker, boussole, cap, navigation, plan orienté, guidage |
+| `addons.md` | Add-ons (`addons/<nom>/`) : lancement, prise de la vue 3D, connecteurs, règles, add-on `mkmg` |
 | `multilevel-pathfinding.md` | Multi-niveau, pathfinding, itinéraire (inter-plan compris) |
 | `exports.md` | Exports PNG / PDF / KMZ / GPX / GeoTIFF / GeoJSON et légende |
 | `ui.md` | Interface, charte et thème, modales, filtres |

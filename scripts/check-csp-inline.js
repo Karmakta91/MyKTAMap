@@ -81,7 +81,7 @@ if (rate.length || faux.length) {
 let fichiers;
 try {
   // Pages servies : racine + docs/applications/ (pages d'audit, dont le script de pied est un piège classique).
-  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/tracking.md § Greffe de la vue 3D).
+  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
   fichiers = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "js/*.js", "*.html",
     "lang/*.json", "addons/*.js", "addons/*.html"],
     { encoding: "utf8" }).split("\n").filter(Boolean)
