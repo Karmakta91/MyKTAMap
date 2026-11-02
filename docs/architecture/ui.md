@@ -2179,3 +2179,41 @@ rend l'originale du plan.
 **Prouvé par falsification** : 12 cas ajoutés à `check-api-surface.js`, dont
 **7 tombent** quand on remet le `return false` (les 5 autres sont des témoins —
 listage, absence de doublon, `resetSession`, id inconnu).
+
+---
+
+## 🧊 Vue 3D (bêta) — sa place dans l'interface
+
+La 3D (`js/vue3d.js`, `css/vue3d.css` ; contrats de la scène : `docs/architecture/tracking.md` § Vue 3D) est une
+**vue de l'app**, pas une autre appli : même entrée que les outils de la carte, mêmes filtres, mêmes fenêtres, mêmes
+icônes.
+
+- **Entrée** : bouton cube de la barre de droite, juste sous ≡ Filtres (`interface.js > L.control.ktaVue3DControl`,
+  ajouté après `ktaFilterControl` : l'ordre d'ajout fait l'ordre de la barre). Picto au trait partagé avec l'écran
+  Bienvenue (`js/ktaPictos.js > ktaPicto("cube")`, jamais recopié), en `currentColor` : couleur et fond viennent de
+  `.leaflet-bar a`, dans les deux thèmes. Sans plan ou sans échelle : `kta-inactif` (`--kta-texte-3`, `grayscale`,
+  **sans opacité**), toujours touchable pour dire pourquoi. Plus de tuile dans le menu Tracker. Entre le toucher et
+  la scène : `ComputeLoader` (message plus long au premier chargement de three.js).
+- **z-index** : la vue est une fenêtre plein écran au rang des modales (**99999**, dialog `aria-modal`, dans
+  `<body>`). Les fenêtres ouvertes depuis elle (≡ Filtres, Aide et sa sous-modale, Sortie d'urgence, confirmations)
+  sont posées sur `<html>` après elle, donc au-dessus à z-index égal ; les toasts (100000) aussi, et ils descendent
+  sous la rangée du haut (`--kta-v3d-sous-haut`, posé sur `<html>` par `vue3d.js > _majSousHaut`, lu par
+  `css/vue3d.css` quand `html.kta-vue3d-ouverte`). Une fenêtre par-dessus garde le clavier (`_recouverte`).
+- **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, 🚨, ❓, ≡, 🦅 vue
+  plongeante, ⛏️ hauteur, 🏛️ / 🛣️ rendu, 🧭 / 🕹️ mode, marque « bêta ». ✕ reste au coin haut droit quand la rangée
+  passe sur deux lignes (téléphone). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
+  `kta-vue3d` → section `vue-3d`) dans la rangée marquée `kta-aide-ctx-entete`, avant la croix `data-aide-croix`.
+- **Filtres partagés** (décision produit) : ≡ ouvre **le** ≡ Filtres de la carte (`FilterPanel.ouvrir`), un seul
+  état ; `FilterPanel.onChange` est appelé à tout changement (types, tags, calque coché, niveaux, plan de base) et la
+  vue se redessine ; pastille sur tout bouton `data-kta-pastille-filtres` (`FilterPanel.majBadge`). Les calques
+  image et le plan de base restent dans le panneau, sans effet en 3D.
+- **Icônes = leur sens sur la carte** : 🏛️ structures, 🛣️ tracés (rendu Galerie), ⛏️ hauteur (le chiffre de ⛏️
+  Volume exploité), 🧭 suivi (le tracker), 🚨 Sortie d'urgence, ≡ Filtres, ❓ aide, 🪜 passage entre niveaux, 📍 « Je
+  suis ici ? » (recalage). Écartés parce qu'ils disent autre chose en 2D : 📍 pour le suivi (recalage), 🛰️ pour la
+  vue plongeante (Export GeoTIFF), ↕ pour la hauteur (passages entre niveaux de la légende), 🧱 / 🚇.
+- **Panneaux de POI** : toujours aux jetons du thème **sombre** (la scène est noire dans les deux thèmes), lus dans
+  la règle `:root` des feuilles (`vue3d.js > _jetonsSombres`) : sur `<html>`, `getComputedStyle` rendrait ceux du
+  thème clair. Les boutons de la vue, eux, suivent le thème.
+- **Points d'accroche** : `_e.bandeau` (sous la rangée du haut, caché tant qu'il est vide ; les toasts passent
+  dessous) pour un message durable de la vue ; `vue3d.js > _toucher` (lancer de rayon sur les panneaux de POI)
+  pour ce que fait un toucher de panneau.

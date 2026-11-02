@@ -1215,17 +1215,22 @@ demi-tours en 350 m sous 4 m de bruit).
 
 ## 🧊 Vue 3D (bêta) — `js/vue3d.js`
 
-Le plan en relief autour de la position du tracker. Décisions, mesures et risques : `docs/ETUDE_VUE_3D.md`.
+Le plan en relief autour de la position du tracker. Décisions, mesures et risques : `docs/ETUDE_VUE_3D.md` ; place
+dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.md` § Vue 3D.
 
 ### Entrée et chargement
 
-- Tuile **🧊 Vue 3D (bêta)** du menu Tracker, section Outils (`interface.js > sousActions` du groupe `tracker`).
-  Sa ligne d'aide (`dynamicAide`, rendue par `_creerTuileTracker`) rappelle que la 3D montre le plan, pas la
-  galerie réelle.
-- **Grisée** (`etat` → `"off"`, cliquable) sans plan chargé ou sans échelle (`APP_CONFIG.scale` absente ou ≤ 0) :
-  `interface.js > _vue3dRaison` fait le test **avant** de charger quoi que ce soit, la ligne d'aide et le toucher
-  disent pourquoi. `KtaVue3D.ouvrir` refait le même refus (appel direct).
-- Toucher la tuile : `_chargerVue3D` pose `<script src="js/vue3d.js">` une fois, puis `KtaVue3D.ouvrir()`.
+- **Bouton cube** de la barre de droite, juste sous ≡ Filtres (`interface.js > L.control.ktaVue3DControl`, ajouté
+  après `ktaFilterControl`) : picto au trait de l'écran Bienvenue (`js/ktaPictos.js > ktaPicto("cube")`), en
+  `currentColor`, aux couleurs de `.leaflet-bar a` dans les deux thèmes. Titre `ui.vue3d.title` (la 3D montre le plan,
+  pas la galerie réelle).
+- **Grisé** (`kta-inactif` : `--kta-texte-3`, `grayscale`, sans opacité ; toujours touchable) sans plan chargé ou sans
+  échelle (`APP_CONFIG.scale` absente ou ≤ 0) : `interface.js > _vue3dRaison` fait le test **avant** de charger quoi
+  que ce soit, le titre et le toucher disent pourquoi. Recalculé à l'ajout, à `mktm:plan-pret` et au rafraîchissement
+  de la barre d'état (`ktaMajBoutonVue3D`). `KtaVue3D.ouvrir` refait le même refus (appel direct).
+- Toucher le bouton : `ComputeLoader.wrap` montre l'indicateur (une image peinte avant le travail synchrone),
+  `vue3d.chargementPremier` tant que three.js n'est pas importé (`KtaVue3D.charge()`), `vue3d.chargement` ensuite ;
+  `_chargerVue3D` pose `<script src="js/vue3d.js">` une fois, puis `KtaVue3D.ouvrir({ retourFocus })`.
   `vue3d.js` charge `css/vue3d.css` et importe `lib/three/three.module.js` (module ES, `import()` dynamique, URL
   absolue : pas d'import map, la CSP refuse tout script en ligne). Échec du chargement → `vue3d.chargementImpossible` ;
   WebGL absent → `vue3d.indisponible`. Rien de cela n'est demandé au démarrage (`smoke.js` refuse toute requête vers
@@ -1243,23 +1248,28 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   en biais : la caméra (plan proche à 5 cm) entrait dans le pilier et l'on voyait au travers ; et les types perso,
   dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s. En rendu galerie, la
   règle est celle des parois (ci-dessous), même corps, même balayage ; l'image de collision du plan n'est pas lue.
-- **Rendus structures / galerie** (décision produit : interrupteur exclusif) : bouton 🧱 Structures / 🚇 Galerie, mode
+- **Rendus structures / galerie** (décision produit : interrupteur exclusif) : bouton 🏛️ Structures / 🛣️ Galerie, mode
   écrit en clair, retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ; sans
   choix, structures si le niveau affiché en a, galerie sinon (`vue3d.js > _renduVoulu`, relu à chaque `_reindexer`).
   Basculer refait la scène.
 - **Hauteur** (décision produit) : `HAUTEUR` de la scène = `config.js > getPlanHauteurGalerie()` (2 m sans pref),
-  **le même chiffre que ⛏️ Volume exploité**. Bouton **↕** (hauteur affichée par `formatDistance`) → − / + de 1,5 à
+  **le même chiffre que ⛏️ Volume exploité**. Bouton **⛏️** (hauteur affichée par `formatDistance`) → − / + de 1,5 à
   4 m par 0,1 m (`reglerHauteur(m)` : borné, arrondi, `setPlanHauteurGalerie`) ; une valeur saisie hors bornes dans
   ⛏️ est montrée telle quelle jusqu'au premier − / +. Les tuiles sont refaites sur place (`_refaireTuiles` : même
   index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais à 60 %, rideaux, tubes, plafond, œil
   (`_oeil`) et panneaux suivent.
-- **Affichage ≡** (décision produit) : cases POI (tous, puis par premier tag, comme `editor.js` en 2D), tracés par
-  type (session et calques, sans `jonction` ni `itinerary`, libellés et pastilles de la légende) et itinéraire.
-  ⚠️ contrat : l'état (`_e.aff`) part de `_ktaRuntimeFilters` (`tags`, `roadTypes`) à l'ouverture, l'itinéraire
-  affiché (toujours visible en 2D) ; il reste propre à la 3D tant qu'elle est ouverte et **n'écrit jamais** les
-  filtres 2D. Masquer ne retire que le dessin, au moment de construire les tuiles (`_poiMontre`, `_traceMontre`) :
-  panneaux, rubans (structures), liseré (galerie) ; collisions, parois des tubes et passages 🪜 restent.
-  `afficher(famille, cle, visible)` (checkup).
+- **Filtres = ceux de la carte** (décision produit) : ≡ de la vue ouvre **le** panneau ≡ Filtres (`FilterPanel.ouvrir`),
+  posé par-dessus ; un seul état : masquer en 3D masque en 2D, et inversement. ⚠️ contrat : la vue dessine ce que
+  la carte montre, règles lues à leur source à chaque `_reindexer` (`vue3d.js > _collecter`, `_montre`) : types de
+  tracés, zones et structures et premier tag des POI (`_ktaRuntimeFilters`, `Set` = montrés, `null` = tout), calque
+  de données coché (`dataLayerGroups[layerId]` ; la session vit dans « editor »), niveaux visibles
+  (`passeFiltreNiveau`, POI jonction compris). L'itinéraire, comme en 2D, ne suit aucun filtre. Suivi par
+  `FilterPanel.onChange`, appelé à tout changement (types, tags, calque, niveaux par `onLevelChange`, plan de base) :
+  la scène est refaite à l'image suivante (`_e.filtresChanges`, une fois pour plusieurs cases). Masquer ne retire
+  que le dessin : collisions, parois des tubes et passages 🪜 restent ; le choix du rendu par défaut compte toutes
+  les structures. En galerie, le liseré suit le type de tracé (les tubes, collision, restent). Les calques image et le
+  plan de base n'ont pas d'objet en 3D : leurs cases restent dans le panneau, sans effet sur la scène. Pastille de
+  filtre actif sur le ≡ de la vue (`data-kta-pastille-filtres`, posée par `FilterPanel.majBadge`).
 - **Emprise des galeries** (`js/galerieEmprise.js`, `window.KtaGalerie`, chargé au démarrage pour servir aussi le pas) :
   graphe plan des tracés du niveau (sommets confondus à 15 cm, croisements coupés en nœuds, bout libre arrêté à moins
   de 0,5 m de la paroi d'un autre tracé raccordé à lui), largeur par type (`KtaGalerie.largeur` : principal 2,5 m,
@@ -1298,12 +1308,16 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   cap gardé, scène refaite. ⚠️ contrat (décision produit) : la 3D change seulement **son** niveau (`niveauLibre`,
   oublié si le niveau actif de la carte change ou en repassant en suivi) ; ni le tracker ni la carte 2D ne bougent
   pendant la 3D.
-- **Suivi / libre** (`basculerSuivi`, bouton 📍) : en suivi, position du tracker et cap de l'appareil lissés,
+- **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
+  l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
   la vue (pas celui de `mapBearing.js`, qui ne tourne que mode activé). Ouvert en suivi si le tracker tourne,
-  sinon en libre ; tracker arrêté en route → libre, 📍 grisé (`vue3d.suiviIndispo`, toast au toucher). Tout
+  sinon en libre ; tracker arrêté en route → libre, 🧭 grisé (`vue3d.suiviIndispo`, toast au toucher). Tout
   bouton de déplacement passe en libre ; en suivi, glisser sur la scène ne règle que le regard haut / bas (le
-  cap reste celui de l'appareil).
+  cap reste celui de l'appareil). Un écart de cap sous 2° (bruit de la boussole) ne redessine pas ; un vrai virage
+  est suivi jusqu'à 0,2° près.
+- **Rendu en pause** : la boucle `requestAnimationFrame` tourne, mais ne dessine que si quelque chose a bougé
+  (`_e.sale`) ; immobile, aucune image (le checkup le mesure, boussole qui tremble comprise).
 - **Vue plongeante** : caméra à 18,4 m du point visé (2 m devant soi), inclinaison 15° à 85° (60° par défaut) ;
   deux doigts à la verticale, molette, PageUp / PageDown, boutons ▲ ▼ (montrés dans cette vue seulement) ; retenue
   tant que la vue est ouverte.
@@ -1311,6 +1325,13 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   Plan sans Nord calibré (`config.js > getPlanNorthCalibre` : ni pref du plan ni `plan.northOffsetDeg`) : haut du
   plan, dit seulement au libellé accessible (`vue3d.nordNonCalibre`, aucun texte à l'écran). Rose posée sur la
   carte de la petite boussole du mode plan (surface 88 %, liseré doré). Relu à `kta:northOffsetChange`.
+- **Clavier et focus** : dialog `aria-modal`, focus posé dans la vue à l'ouverture, Tab y reste, focus rendu au
+  bouton cube à la fermeture. Échap ferme d'abord le réglage de hauteur ouvert, puis la vue ; une fenêtre de l'app
+  par-dessus (≡ Filtres, Aide, Sortie d'urgence, confirmation) garde ses touches (`_recouverte` : au centre de
+  l'écran, un élément qui n'est pas de la vue).
+- **🚨 Sortie d'urgence** : la même action que l'en-tête (`SortieUrgence.declencher`), sa fenêtre par-dessus la vue ;
+  sans position connue du tracker (`SortieUrgence.demandeLaCarte`), la vue se ferme d'abord (le pointeur « Où
+  es-tu ? » est sur la carte).
 - **Le tracker n'est pas déplacé** par la vue (décision produit). `fermer()` (✕, Échap) : si le suivi est actif
   (`getTrackingActif`) et qu'un déplacement en mode libre a écarté la vue d'au moins 0,5 m du tracker, ou l'a menée à
   un autre niveau que le sien (🪜, texte `vue3d.jeSuisIci.texteNiveau`), `ktaConfirm` « 📍 Je suis ici ? » ; Oui =
@@ -1331,19 +1352,23 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.
 - **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés à la
-  distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). Un POI
+  distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). De près
+  (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un
+  panneau remplissait l'écran du téléphone). Toujours aux jetons du thème **sombre** (décision produit : la scène est
+  noire dans les deux thèmes), lus dans la règle `:root` des feuilles (`_jetonsSombres`). Un POI
   dans un volume fermé du niveau (pilier, mur, type perso ; grille `_grilleVolumes` refaite à chaque
   `_reindexer`) est posé contre la face de ce volume la plus proche de la caméra, 8 cm devant.
 - **Couleurs** : celles de la légende, par `ktaResolveStyle(…, { flat: true })` / `ktaSwatchColor` ; aucune table
   locale. Sol et plafond : `COULEUR_CALCAIRE` (sable calcaire, couleur de la scène, hors charte de l'UI), motif
   procédural de 128 px répété tous les 2 m, fixe sous les pieds. Lampe : intensité 24, décroissance 1,2, portée =
-  distance de vue ; brouillard noir de 45 % à 100 % des 30 m. Les panneaux de POI gardent un fond sombre fixe (la scène est toujours noire, quel que soit le thème).
-- **Textes** : clés `vue3d.*` et `tracker.menu.vue3d*`, lues au rendu.
+  distance de vue ; brouillard noir de 45 % à 100 % des 30 m.
+- **Textes** : clés `vue3d.*` et `ui.vue3d.title`, lues au rendu (ligne de statistiques `vue3d.stats`, option
+  `stats` des mesures).
 
 ### Garde-fous et limites
 
-- `scripts/smoke/checkup-vue-3d.js` (Chromium et WebKit) : tuile grisée sans échelle (rien chargé), ouverture
-  depuis la tuile, scène, mur plus bas que le pilier qu'il traverse, butée, pas rapide, collisions (6 obstacles,
+- `scripts/smoke/checkup-vue-3d.js` (Chromium et WebKit) : bouton cube sous ≡ grisé sans échelle (rien chargé),
+  plus de tuile au menu Tracker, ouverture par le bouton derrière l'indicateur, focus et `aria-modal`, scène, mur plus bas que le pilier qu'il traverse, butée, pas rapide, collisions (6 obstacles,
   12 angles, pas rapides et grand pas, départ collé à une face), inclinaison, boussole, clavier, vues, niveau, perte simulée
   (`WEBGL_lose_context`) puis reprise, perte sans reprise, « Je suis ici ? » Non puis Oui, WebGL absent,
   20 ouvertures de suite. Galerie, sur des tracés fictifs (T, X, coude droit, coude aigu, cul-de-sac, presque
@@ -1351,11 +1376,14 @@ Le plan en relief autour de la position du tracker. Décisions, mesures et risqu
   coude passés, remblais qui arrête, zones coupées au tube, rideau en travers, POI à 2 m montré et à 5 m masqué,
   interrupteur exclusif retenu par plan ; passages 🪜 (POI jonction ▲ / ▼, tracé jonction dans les deux sens, toucher
   du panneau, suivi sans 🪜, tracker et carte inchangés) ; sortie : carte au niveau et à la place de la 3D (libre,
-  après Non, en suivi), Oui recale aussi le niveau. Hauteur ↕ (structures et galerie) : réglée à 3 m → piliers,
+  après Non, en suivi), Oui recale aussi le niveau. Hauteur ⛏️ (structures et galerie) : réglée à 3 m → piliers,
   murs à 98 %, parois, plafond et rideaux à 3 m, remblais à 1,8 m, `getPlanHauteurGalerie()` = 3, relue à la
-  réouverture et par ⛏️ Volume exploité (et l'inverse) ; bornes 1,5 / 4 m. Affichage ≡ : POI masqués → plus de
-  panneau, type de tracé masqué → plus de liseré (galerie) ni de ruban (structures), itinéraire, état parti des
-  filtres 2D sans les modifier, collisions inchangées. `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons.
+  réouverture et par ⛏️ Volume exploité (et l'inverse) ; bornes 1,5 / 4 m. Filtres : ≡ ouvre le ≡ Filtres de la
+  carte au-dessus de la vue ; zone, calque, type de tracé et tag décochés → retirés de la 3D et de la carte ; « Tout
+  afficher » sur la carte → revenus en 3D ; type de structure masqué depuis la carte → retiré, butée gardée ; niveau
+  masqué → rien de dessiné ; pastille ; itinéraire toujours là. 🚨 = Sortie d'urgence, toast sous la rangée, ✕ au
+  coin haut droit à 393 px, ❓ → aide de la 3D, Échap (aide, ≡, réglage, puis vue), panneau de POI sombre en thème
+  clair et borné de près, rendu en pause (immobile et boussole qui tremble). `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons.
   `smoke.js` : rien de la 3D au démarrage.
 - **Non couvert** : aucun vrai iPhone (images/s, mémoire, batterie, perte de contexte réelle), aucun plan dense
   réel ; mode galerie jamais vu sur un relevé réel (tracés dessinés à la main : raccords imprécis, sommets serrés).

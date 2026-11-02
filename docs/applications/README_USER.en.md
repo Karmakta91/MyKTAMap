@@ -304,7 +304,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 
 **At the bottom**, a status bar groups what is in progress: 📐 measurement, 📏 total path distance, 🗺️ route (distance, time, pace — tap it to open the route) and the **🧭 tracker** light (ON · steps · distance while tracking; tap it to open the Tracker menu). It wraps onto a second line if everything doesn't fit; the ▾▴ button collapses it.
 
-**On the sides**, the two side bars hold the tools. The interface is organized into **13 groups** spread over the **two side bars** — left: ⭐ Favorites, 📚 Help, ⚙️ Settings, ⬇️ Load, ⬆️ Save, ⏪ History; right: 🔍 Search, 🧭 Tracker, 📐 Measurement, ✏️ Edit, 🛣️ Paths, ⬛ Zones, 🏛️ Structures:
+**On the sides**, the two side bars hold the tools. The interface is organized into **13 groups** spread over the **two side bars** — left: ⭐ Favorites, 📚 Help, ⚙️ Settings, ⬇️ Load, ⬆️ Save, ⏪ History; right: 🔍 Search, 🧭 Tracker, 📐 Measurement, ✏️ Edit, 🛣️ Paths, ⬛ Zones, 🏛️ Structures. At the top of the right-hand bar, **≡ Filters** then the **cube button** of the 🧊 3D view (beta):
 
 | Group | Icon | What it's for |
 |---|---|---|
@@ -371,7 +371,8 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 | 🛣️ ⬛ 🏛️ **Types** | Path, zone and structure types, including your own |
 
 - Each section folds away, and has its **👁️ All** / **🚫 None** buttons.
-- **🔄 Show all** sets tags and types back to “everything visible”, without touching levels or layers.
+- **🔄 Show all** sets everything back to visible: tags, types, layers and levels.
+- The same filters apply in the **🧊 3D view**: its ≡ button opens this panel.
 - At the bottom, **Active filters: …** reminds you what is filtered; the ≡ button also signals when items are hidden.
 - Filters are **remembered per map**: you find them again when you come back to this map, and a message tells you so.
 - What you are drawing stays visible, even if you untick its type.
@@ -450,7 +451,7 @@ The **🧭 Tracker** button (or the 🧭 light in the bottom bar) opens a **full
 | Section | Tiles |
 |---|---|
 | **Tracking** | ▶️ / ⏹️ Start / stop · 📍 Realignment mode · 🎯 My position (re-centres the map on you) · 🔓 Suspend trace lock |
-| **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🗺️ Oriented map · 🧊 3D view (beta) |
+| **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🗺️ Oriented map |
 | **Emergency** (red background) | ⛑️ I'm lost · 🔆 XL display · 🚑 Rescue mode — see 🆘 In an emergency underground |
 
 Smart navigation (trace lock), oriented map, route across multiple plans, replay and heatmap are options turned off by default → 🔭 Going further.
@@ -492,22 +493,24 @@ If it doesn't match, the magnetic field is disturbed (scrap metal, reinforcement
 
 ### 🧊 3D view (beta)
 
-The **🧊 3D view (beta)** tile shows the map **in relief around your position**, as if you were there, lit by a headlamp. It loads on first tap and stays available offline.
+The **cube button** in the right-hand bar, just below **≡ Filters**, shows the map **in relief around your position**, as if you were there, lit by a headlamp. An indicator waits while it opens (longer the first time); it then stays available offline. The **beta** mark stays shown at the top of the view.
 
-- **🧱 Structures / 🚇 Tunnels**: the top button, which shows the current mode, switches between the two renderings; the choice is kept for this map (default: Structures if the displayed level has some, Tunnels otherwise).
-  - **🧱 Structures**: pillars, walls and quarry faces raised to the map's gallery height (⛏️ Mined volume, otherwise 2 m), backfill, water, ⛔ inaccessible and collapse zones, traces and route on the floor, points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away.
-  - **🚇 Tunnels**: traces become tunnels (main 2.5 m wide, secondary 2 m, path 1.7 m, custom trace 2 m), without the structures: open crossroads, bends, closed dead ends, walls of dressed limestone blocks, a floor stripe in the trace's colour. Zones stop at the walls: backfill blocks the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it. Only points within 3 m of a trace are shown, against the wall.
-  - In both: one level at a time, hidden layers included, 30 m around you. Junction traces are not drawn: you change level with 🪜.
-- **↕ Height**: the **↕** button (it shows the current height) opens **−** / **+**, from 1.5 to 4 m in 0.1 m steps. It is the same height as ⛏️ Mined volume, kept for this map: changing one changes the other. The scene is rebuilt in place, without moving you.
-- **≡ Display**: checkboxes to show or hide in 3D the points (all, or by point type), each path type and the route. On opening they take the map's ≡ Filters; after that they only apply to the 3D view, while it stays open, and change nothing on the map. Hiding a path only removes its drawing: you still bump into the walls, and 🪜 is still offered.
+- **🏛️ Structures / 🛣️ Tunnels**: the top button, which shows the current mode, switches between the two renderings; the choice is kept for this map (default: Structures if the displayed level has some, Tunnels otherwise).
+  - **🏛️ Structures**: pillars, walls and quarry faces raised to the map's gallery height (⛏️ Mined volume, otherwise 2 m), backfill, water, ⛔ inaccessible and collapse zones, traces and route on the floor, points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
+  - **🛣️ Tunnels**: traces become tunnels (main 2.5 m wide, secondary 2 m, path 1.7 m, custom trace 2 m), without the structures: open crossroads, bends, closed dead ends, walls of dressed limestone blocks, a floor stripe in the trace's colour. Zones stop at the walls: backfill blocks the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it. Only points within 3 m of a trace are shown, against the wall.
+  - In both: one level at a time, 30 m around you. Junction traces are not drawn: you change level with 🪜.
+- **≡ Filters**: the same panel as on the map, opened over the view, with the same settings. What you hide in 3D is hidden on the map, and the other way round: point tags, path, zone and structure types, data layers, visible levels. A dot on ≡ signals an active filter. Hiding only removes the drawing: you still bump into pillars and walls, and 🪜 is still offered. The route stays shown, as on the map. Image layers have no effect in 3D.
+- **⛏️ Height**: the **⛏️** button (it shows the current height) opens **−** / **+**, from 1.5 to 4 m in 0.1 m steps. It is the same height as ⛏️ Mined volume, kept for this map: changing one changes the other. The scene is rebuilt in place, without moving you.
 - **Moving**: hold the ▲ ▼ ↶ ↷ ◀ ▶ pad, arrow keys or WASD, or drag on the scene to turn and look up. **Faster**: hold Shift, or keep ▲ pressed for more than half a second. You bump into pillars, walls and faces (custom ones included) in Structures mode, into the walls and backfill in Tunnels mode, with the width of a body.
 - **🪜 Change level** (free mode): within 2 m of a way between levels (stairs, shaft) or of the end of a junction trace, **▲** / **▼** buttons take you to the next level (a small list if it serves more than two); touching the point's sign does the same. You arrive at the validated link of that level if there is one. In follow mode, the level is the tracker's.
-- **📍 Follow / free**: in **follow** mode (chosen on opening when the tracker runs), the view follows your position and **turns with your phone**, like 🗺️ Oriented map; touching a move button switches to **free** (dragging on the scene only tilts your gaze up / down), and the top button, which shows the current mode (**📍 Follow** or **🕹️ Free**), switches between the two. Tracker stopped: 📍 is greyed and says why.
-- **🛰️ Bird's-eye view** (or V): you see yourself from above. Its tilt goes from almost vertical to low: drag up or down with two fingers, mouse wheel or PageUp / PageDown, or the small ▲ ▼ buttons on the right; it is kept while the view stays open.
+- **🧭 Follow / 🕹️ Free**: in **follow** mode (chosen on opening when the tracker runs), the view follows your position and **turns with your phone**, like 🗺️ Oriented map; touching a move button switches to **free** (dragging on the scene only tilts your gaze up / down), and the top button, which shows the current mode, switches between the two. Tracker stopped: 🧭 is greyed and says why. When you stand still, the view does not redraw (battery), even if the compass shakes a little.
+- **🦅 Bird's-eye view** (or V): you see yourself from above. Its tilt goes from almost vertical to low: drag up or down with two fingers, mouse wheel or PageUp / PageDown, or the small ▲ ▼ buttons on the right; it is kept while the view stays open.
 - **Compass** (bottom left): its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
-- **The tracker does not move** while you move in 3D, nor does the level shown on the map. When you close it (✕ or Esc), if tracking is on and you moved or changed level, **📍 Am I here?** offers to realign it where you stopped, level included; **No** leaves the tracker as it was.
+- **🚨 Emergency exit**: the same button as at the top of the map; its window opens over the view. If your position is not known, the view closes so you can point to it on the map. App messages appear below the row of buttons.
+- **❓** opens the help for the 3D view.
+- **The tracker does not move** while you move in 3D, nor does the level shown on the map. When you close it (✕, top right, or Esc — which first closes an open setting or window), if tracking is on and you moved or changed level, **📍 Am I here?** offers to realign it where you stopped, level included; **No** leaves the tracker as it was.
 - **On leaving**, the map goes where you were in 3D: centred on your position, on the 3D level, whatever your answer.
-- **Greyed tile**: no map open, or a map without a scale (⚙️ Settings → 📐 Map: scale & geolocation). A browser that cannot display 3D says so when you open it.
+- **Greyed button**: no map open, or a map without a scale (⚙️ Settings → 📐 Map: scale & geolocation); touching it says why. A browser that cannot display 3D says so when you open it.
 
 > ⚠️ **Beta**: the 3D shows the **map**, not the real tunnel. Shapes and heights come from the survey (in Tunnels mode, fixed widths per trace type), your position from the tracker, which drifts. Do not trust it more than the map.
 
