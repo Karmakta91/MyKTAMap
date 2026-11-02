@@ -1439,7 +1439,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   contre la paroi la plus proche (8 cm devant) s'ils sont au-delà ; plus loin, masqués ; toujours sans test de
   profondeur. Vue plongeante : plafond des pièces masqué, parois vues des deux côtés.
 - **Passages de niveau 🪜** (en libre ; en suivi, le niveau est celui du tracker) : à moins de 2 m d'un POI jonction
-  (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à son raccord ; jamais `pa`,
+  (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à la place de son volume, ci-dessous ; jamais `pa`,
   qui n'a pas de moyen) ou d'un bout de tracé `jonction` (pris dans les deux sens), une boîte à gauche : boutons
   **nommés** vers le niveau lié voisin au-dessus ou au-dessous (profondeurs saisies, sinon numéro), « ▼ -1 · Nom (moyen) »
   (`_textePassage`, nom coupé à 22 signes à l'écran, entier au libellé accessible ; tracé : « ▼ -1 (tracé jonction) »),
@@ -1459,8 +1459,18 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Niveau changé hors passage (tracker en suivi, niveau actif de la carte) : le fondu seul (500 ms). Ensuite le bandeau
   « Niveau n » 2 s (`_annoncerNiveau`, `vue3d.niveauBandeau`). `prefers-reduced-motion` : fondu seul.
   `KtaVue3D.gesteAnime(false)` bascule sans geste (mesures, checkup).
-- **Volumes des passages** (`_volumesDuNiveau`, `_construireVolume`, décision produit) : au panneau du POI (raccord
-  validé du niveau, sinon le point), aligné sur l'axe de galerie le plus proche : `jes` / `eso` cage d'escalier
+- **Volumes des passages** (`_volumesDuNiveau`, `_construireVolume`, décision produit) : place et axe par
+  `KtaGalerie.placePassage` (`galerieEmprise.js > _placeVolume`), la seule règle, lue aussi par le panneau du POI, le
+  🪜 et l'emprise qui ouvre le tube. Raccord validé du niveau (celui du niveau du POI compris) : au point exact. Sinon
+  le POI, que l'on pose **en général à côté de l'axe** (lisible en 2D) : en galerie et dans un tube du mixte (hors
+  chambre), à moins de `PROCHE_M` d'un axe, le volume est posé **dans le tube**, du côté du POI, bouche et cadre doré
+  entre les parois (au plus w − demi-emprise de l'axe, sur l'axe si le tube est plus étroit) ; hors de l'emprise, la
+  galerie est d'abord gagnée par le trajet de `versGalerie` (celle dont l'emprise est la plus proche). 🩸 Posé au
+  point, le puits d'un POI dans la roche restait derrière la paroi, bouche hors du sol dessiné : invisible au niveau
+  du POI, visible seulement au raccord validé de l'autre. 🩸 Près d'un carrefour, l'emprise la plus proche peut être
+  celle d'une autre galerie : seul un raccord validé du niveau tranche. Rendu structures (sol partout) : le point.
+  Le panneau suit le volume s'il est posé ailleurs que le point (`_placePanneau`) ; le POI enregistré, la 2D,
+  l'itinéraire et le tracker n'en savent rien. Aligné sur l'axe de galerie le plus proche de cette place : `jes` / `eso` cage d'escalier
   2,5 × 1,5 m (10 marches pleines), `jpe` / `peo` puits de 1,2 m à échelons (tous les 0,3 m, deux montants), `jps`
   puits nu, `pa` tube de 0,8 m à grille. Ouvert dans le **sol** vers un niveau lié au-dessous, dans le **plafond** vers
   un niveau lié au-dessus, les deux entre trois niveaux ; parois (matériau des galeries) sur 6 m au-delà (le reste se perd dans le
@@ -1474,16 +1484,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_gererVolumes`, règle des tuiles), libérés au loin ; 🩸 après une perte du contexte, jamais `dispose()` sur un
   volume de l'ancienne scène. Aucune collision : le pas reste la règle du tracker.
 - **Aucune paroi de tube dans un passage** (mixte et galerie) : `galerieEmprise.js > _emprisesPassages` rend l'emprise
-  de chaque volume du niveau (bouche + cadre doré, mêmes règles et même axe que `_volumesDuNiveau`, dimensions
+  de chaque volume du niveau (bouche + cadre doré, mêmes règles que `_volumesDuNiveau`, place et axe par le même
+  calcul `_placeVolume`, jugé sur les tubes et joints seuls, dimensions
   `KtaGalerie.PASSAGE`, que `vue3d.js > VOLUME` lit) et celle de la tranchée d'un tracé jonction (un rectangle par
   segment). Une emprise qui chevauche un tube devient une **pièce** du modèle : l'emprise étant l'union des pièces,
   bout de cul-de-sac, paroi qui longe la bouche ou la coupe tombent dedans ; ses bords hors des tubes sont des parois :
-  le tube s'ouvre sur une **niche** autour de la bouche, et l'on peut y marcher (`dedans`, `paroisBloquent` : une seule
+  le tube s'ouvre sur une **niche** autour de la bouche (bout de cul-de-sac, tube plus étroit que la bouche, raccord
+  validé hors du tube), et l'on peut y marcher (`dedans`, `paroisBloquent` : une seule
   source). Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé). 🩸 Sans
   cela, une paroi du sol au plafond passait au travers de la cage, vue dans le trou en plongée. Filtres ignorés (masquer
   ne retire que le dessin). Les **rubans des tracés** et les liserés (matériau `rubans`) lisent le gabarit du sol comme
   le sol : coupés à la bouche, jamais suspendus au-dessus du vide ; l'itinéraire (marqueurs à mât) n'est pas coupé.
-  `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux).
+  `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux) ; POI décalés de 1 à 5 m, carrefour, raccords,
+  panneau et 🪜 au volume : § 14 ter.
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de

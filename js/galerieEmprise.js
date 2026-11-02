@@ -11,6 +11,7 @@
 //   tracking.js > ktaSegmentsBloquesParStructure), paroisBloquent(segs, niveau) (mode mixte), invalider(),
 //   SEUIL_CHAMBRE_M, PASSAGE (dimensions des volumes de passage ; leur emprise est une pièce : _emprisesPassages),
 //   PROCHE_M, versGalerie(x, y, niveau) (où poser un tracker recalé : tracking.js > _positionDansGalerie),
+//   placePassage(p, niveau, rendu) (place et axe du volume de passage d'un POI en 3D : _placeVolume),
 //   zonesBloquent(segs, niveau), dansZone(x, y, niveau) (zones qui bouchent, ZONES_BOUCHENT, dans les 3 rendus).
 // Modèle MIXTE (vue 3D par défaut) : chaque côté du tube est jugé à part ; une structure du niveau (intégrée ou
 // perso) proche d'un côté ouvre CE côté (la paroi d'en face reste), un pan de retour relie la paroi gardée à la
@@ -77,8 +78,9 @@
   const PASSAGE = { escalier: [2.5, 1.5], puits: 1.2, aeration: 0.8, rampe: 1, tranchee: 0.1, marge: 0.12, cadre: 0.08 };
   const DIR_PASSAGE_M = 10;
   // ⚠️ contrat : un point est « dans la galerie » s'il a un axe à moins de PROCHE_M ; c'est le rayon unique de la vue
-  // 3D (vue3d.js > POI_GALERIE : POI montré contre la paroi) et du recalage du tracker (versGalerie). Une seule
-  // valeur : deux rayons divergents remettaient le tracker dans la roche à côté d'un POI que la 3D montrait.
+  // 3D (vue3d.js > POI_GALERIE : POI montré contre la paroi ; volume de passage recalé, _placeVolume) et du
+  // recalage du tracker (versGalerie). Une seule valeur : deux rayons divergents remettaient le tracker dans la roche
+  // à côté d'un POI que la 3D montrait.
   const PROCHE_M = 10;
 
   const _cache = new Map();         // "niveau|m" → { sig, modele }
@@ -557,14 +559,105 @@
     return !separe(P.pts, Q.pts) && !separe(Q.pts, P.pts);
   }
 
+  // Point de départ du volume de passage de p au niveau donné → { x, y, raccord } (px) | null s'il n'y passe pas :
+  // le raccord validé de ce niveau (celui du niveau du POI compris), sinon le POI lui-même.
+  function _departPassage(p, niveau) {
+    const J = window.KtaPoiJonction;
+    if (!J || !p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+    if (niveau !== null && niveau !== undefined && J.estJonction(p)) {
+      if (J.niveaux(p).indexOf(niveau) < 0) return null;
+      const a = J.accroches(p).filter(function (q) { return q.level === niveau; })[0];
+      return a ? { x: a.x, y: a.y, raccord: true } : { x: p.x, y: p.y, raccord: false };
+    }
+    return _surNiveau(p, niveau) ? { x: p.x, y: p.y, raccord: false } : null;
+  }
+
+  // Demi-largeur (m) d'une emprise de passage en travers de la galerie, cadre doré compris.
+  function _demiTravers(tag) {
+    const J = window.KtaPoiJonction, moyen = J && J.moyen(tag);
+    const t = moyen === "escalier" ? PASSAGE.escalier[1] : moyen ? PASSAGE.puits : PASSAGE.aeration;
+    return t / 2 + PASSAGE.marge + PASSAGE.cadre;
+  }
+
+  // Bord de pièce le plus proche de (x, y) à moins de R px → { d, x, y, i } | null ; `liste` = indices de pièces.
+  function _bordProche(pieces, liste, x, y, R) {
+    let best = null;
+    liste.forEach(function (i) {
+      const q = _bordLePlusProche(pieces[i], x, y);
+      if (q && q.d <= R && (!best || q.d < best.d)) best = { d: q.d, x: q.x, y: q.y, i: i };
+    });
+    return best;
+  }
+
+  // Du bord atteint (_bordProche) à l'axe : celui de la même pièce (tube), sinon l'axe le plus proche du bord (joint,
+  // passage) → { x, y, w (demi-largeur, px) }. C : { pieces, aretes, plusProche }.
+  function _axeDuBord(C, best, R) {
+    const P = C.pieces[best.i];
+    if (P.genre === "tube" && C.aretes[P.arete]) {
+      const r = C.aretes[P.arete], dx = r.bx - r.ax, dy = r.by - r.ay, l2 = dx * dx + dy * dy;
+      let t = l2 ? ((best.x - r.ax) * dx + (best.y - r.ay) * dy) / l2 : 0;
+      t = Math.max(P.t0 || 0, Math.min(P.t1 === undefined ? 1 : P.t1, t));
+      return { x: r.ax + t * dx, y: r.ay + t * dy, w: r.w };
+    }
+    const pp = C.plusProche(best.x, best.y, R);
+    return pp ? { x: pp.x, y: pp.y, w: pp.w } : { x: best.x, y: best.y, w: 0 };
+  }
+
+  // ⚠️ contrat : place (px) et axe (rad) d'un volume de passage, LA règle de la vue 3D (volume, cadre doré, panneau,
+  // 🪜 : vue3d.js > _volumesDuNiveau, _passages, via placePassage) et de son emprise (_emprisesPassages). Un raccord
+  // validé du niveau est pris au point exact. Sinon le POI (souvent posé à côté de l'axe pour la lecture en 2D) : en
+  // mode galerie, ou dans un tube du mixte (hors chambre, comme son panneau), à moins de PROCHE_M d'un axe, le volume
+  // est posé dans le tube du côté du POI, son emprise (`demi` m en travers) gardée entre les parois (au plus w − demi
+  // de l'axe ; sur l'axe si le tube est plus étroit). Hors de l'emprise, la galerie est d'abord gagnée par le trajet de
+  // versGalerie (jamais à travers la roche vers une autre). 🩸 Sinon un POI dans la roche dessinait son puits
+  // derrière la paroi, bouche hors du sol dessiné : invisible. 🩸 Près d'un carrefour, la galerie retenue est celle
+  // dont l'emprise est la plus près du POI, pas forcément celle voulue : seul un raccord validé du niveau tranche.
+  // Rendu structures, chambre, rien à PROCHE_M : le point tel quel. L'axe (DIR_PASSAGE_M) est lu à la place finale.
+  // C : { sc, pieces, aretes, plusProche, pres(x0, y0, x1, y1) → indices, tubes (bool), enChambre, tubeAu }.
+  function _placeVolume(x, y, demi, C) {
+    const sc = C.sc, R = PROCHE_M * sc;
+    const dir = function (px, py) {
+      const pp = C.plusProche(px, py, DIR_PASSAGE_M * sc), r = pp ? C.aretes[pp.arete] : null;
+      return r ? Math.atan2(r.by - r.ay, r.bx - r.ax) : 0;
+    };
+    const brut = { x: x, y: y, ang: dir(x, y), ramene: false };
+    if (!C.tubes) return brut;
+    const pp = C.plusProche(x, y, R);
+    if (!pp || C.enChambre(x, y) || !C.tubeAu(pp.arete, pp.t)) return brut;
+    // Les emprises de passage elles-mêmes ne comptent pas : le volume se pose dans la galerie, pas dans une niche.
+    const liste = C.pres(x - R, y - R, x + R, y + R).filter(function (i) { return C.pieces[i].genre !== "passage"; });
+    let axe;
+    if (liste.some(function (i) { return dansPiece(C.pieces[i], x, y, 1e-6); })) {
+      axe = { x: pp.x, y: pp.y, w: pp.w };
+    } else {
+      const best = _bordProche(C.pieces, liste, x, y, R);
+      if (!best) return brut;
+      axe = _axeDuBord(C, best, R);
+    }
+    const dx = x - axe.x, dy = y - axe.y, d = Math.hypot(dx, dy), off = Math.max(0, axe.w - demi * sc);
+    const k = d > 1e-9 ? Math.min(d, off) / d : 0, nx = axe.x + dx * k, ny = axe.y + dy * k;
+    if (Math.hypot(nx - x, ny - y) < 1e-6) return brut;
+    return { x: nx, y: ny, ang: dir(nx, ny), ramene: true };
+  }
+
+  // Place du volume de passage de p au niveau donné (_placeVolume) → { x, y, ang, ramene, raccord } | null.
+  function _placePassageDans(p, niveau, C) {
+    const d = _departPassage(p, niveau);
+    if (!d) return null;
+    const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
+    const pl = _placeVolume(d.x, d.y, _demiTravers(tag), d.raccord ? Object.assign({}, C, { tubes: false }) : C);
+    pl.raccord = d.raccord;
+    return pl;
+  }
+
   // Emprises (px, rectangles) des volumes de passage du niveau, cadre doré compris.
-  // ⚠️ contrat : mêmes règles que vue3d.js > _volumesDuNiveau (quels POI ont un volume, à quelle place, quelle
-  // forme, alignée sur quel axe) ; filtres de la carte ignorés (masquer ne retire que le dessin, comme la règle du
-  // pas). POI jonction : à son raccord validé sur un autre de ses niveaux ; jes / jpe / jps seulement s'ils relient
-  // un autre niveau ; puits de surface (peo, eso) et aération (pa) toujours. Tracé jonction qui part de ce niveau
-  // ou y arrive (plan multi-niveau) : un rectangle par segment, de la largeur de sa tranchée.
-  function _emprisesPassages(niveau, sc, plusProche, aretes) {
-    const J = window.KtaPoiJonction, out = [];
+  // ⚠️ contrat : mêmes règles que vue3d.js > _volumesDuNiveau (quels POI ont un volume, quelle forme) ; place et axe
+  // par _placeVolume, le même calcul que la 3D ; filtres de la carte ignorés (masquer ne retire que le dessin, comme
+  // la règle du pas). jes / jpe / jps seulement s'ils relient un autre niveau ; puits de surface (peo, eso) et
+  // aération (pa) toujours. Tracé jonction qui part de ce niveau ou y arrive (plan multi-niveau) : un rectangle par
+  // segment, de la largeur de sa tranchée.
+  function _emprisesPassages(niveau, C) {
+    const J = window.KtaPoiJonction, out = [], sc = C.sc;
     if (!J || typeof J.porteNiveaux !== "function") return out;
     const surface = J.TAGS_SURFACE_NIVEAUX || [], bord = PASSAGE.marge + PASSAGE.cadre;
     const multi = niveau !== null && niveau !== undefined;
@@ -572,21 +665,15 @@
       if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
       const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
       if (!J.porteNiveaux(tag)) return;
-      const jonction = multi && J.estJonction(p);
-      let x = p.x, y = p.y;
-      if (!_surNiveau(p, niveau)) {
-        if (!jonction || J.niveaux(p).indexOf(niveau) < 0) return;
-        const a = J.accroches(p).filter(function (q) { return q.level === niveau; })[0];
-        if (a) { x = a.x; y = a.y; }
-      }
       const moyen = J.moyen(tag);
-      const autres = jonction ? J.niveaux(p).filter(function (n) { return n !== niveau; }).length : 0;
+      const autres = multi && J.estJonction(p) ? J.niveaux(p).filter(function (n) { return n !== niveau; }).length : 0;
       if (moyen && surface.indexOf(tag) < 0 && !autres) return;
+      const pl = _placePassageDans(p, niveau, C);
+      if (!pl) return;
       const dim = moyen === "escalier" ? PASSAGE.escalier
         : moyen ? [PASSAGE.puits, PASSAGE.puits] : [PASSAGE.aeration, PASSAGE.aeration];
       const a = (dim[0] / 2 + bord) * sc, b = (dim[1] / 2 + bord) * sc;
-      const pp = plusProche(x, y, DIR_PASSAGE_M * sc), r = pp ? aretes[pp.arete] : null;
-      const ang = r ? Math.atan2(r.by - r.ay, r.bx - r.ax) : 0, ux = Math.cos(ang), uy = Math.sin(ang);
+      const x = pl.x, y = pl.y, ux = Math.cos(pl.ang), uy = Math.sin(pl.ang);
       const Q = function (s, t) { return [x + ux * s - uy * t, y + uy * s + ux * t]; };
       out.push([Q(-a, -b), Q(a, -b), Q(a, b), Q(-a, b)]);
     });
@@ -800,20 +887,30 @@
     // 6. Passages entre niveaux : l'emprise d'un volume qui chevauche un tube devient une pièce. L'emprise étant
     // l'union des pièces, aucune paroi de tube ne reste dans le volume (bout de tube, paroi qui longe ou coupe la
     // bouche) ; ses bords hors des tubes sont des parois : le tube s'ouvre sur une niche autour de la bouche.
-    // Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé).
+    // Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé). La place
+    // de chaque volume (_placeVolume) est jugée sur les tubes et joints, avant toute emprise de passage.
+    const enChambre = function (x, y) { return !!S && S.proche(x, y); };
+    const tubeAu = function (i, t) {
+      const r = aretes[i];
+      return !r || !r.tubes || r.tubes.some(function (u) { return t >= u[0] - 1e-9 && t <= u[1] + 1e-9; });
+    };
+    const gP = new Grille(CASE_M * sc);
+    pieces.forEach(function (p, i) { gP.poser(i, p.x0, p.y0, p.x1, p.y1); });
+    const C = { sc: sc, pieces: pieces, aretes: aretes, plusProche: plusProche, tubes: true, enChambre: enChambre,
+      tubeAu: tubeAu, pres: function (x0, y0, x1, y1) { return gP.pres(x0, y0, x1, y1); } };
+    const nTubes = pieces.length;
     let passages = 0;
-    _emprisesPassages(niveau, sc, plusProche, aretes).forEach(function (pts) {
+    _emprisesPassages(niveau, C).forEach(function (pts) {
       const P = _piece(pts, null, "passage");
-      for (let i = 0; i < pieces.length; i++) {
-        if (pieces[i].genre === "passage" || !_chevauche(P, pieces[i], 1e-3 * sc)) continue;
+      for (let i = 0; i < nTubes; i++) {
+        if (!_chevauche(P, pieces[i], 1e-3 * sc)) continue;
         P.type = pieces[i].type;
         pieces.push(P);
+        gP.poser(pieces.length - 1, P.x0, P.y0, P.x1, P.y1);
         passages++;
         return;
       }
     });
-    const gP = new Grille(CASE_M * sc);
-    pieces.forEach(function (p, i) { gP.poser(i, p.x0, p.y0, p.x1, p.y1); });
     const gW = new Grille(CASE_M * sc);
     retours.forEach(function (w, i) {
       gW.poser(i, Math.min(w[0], w[2]), Math.min(w[1], w[3]), Math.max(w[0], w[2]), Math.max(w[1], w[3]));
@@ -830,12 +927,9 @@
       cotesOuverts: cotesOuverts, retours: retours,
       retoursPres: function (x0, y0, x1, y1) { return gW.pres(x0, y0, x1, y1).map(function (i) { return retours[i]; }); },
       // Mixte : une structure du niveau est à moins de SEUIL_CHAMBRE_M (chambre) ? Toujours faux sinon.
-      enChambre: function (x, y) { return !!S && S.proche(x, y); },
+      enChambre: enChambre,
       // Mixte : le point t (0 → 1, de a vers b) de l'arête i est-il dans un morceau de tube ? Toujours vrai sinon.
-      tubeAu: function (i, t) {
-        const r = aretes[i];
-        return !r || !r.tubes || r.tubes.some(function (u) { return t >= u[0] - 1e-9 && t <= u[1] + 1e-9; });
-      },
+      tubeAu: tubeAu,
       // Parois de la pièce i → [[x0, y0, x1, y1]] (px), calculées une fois (_parois), pans de retour compris.
       paroisDe: function (i) {
         const c = m._parois || (m._parois = new Map());
@@ -1070,28 +1164,33 @@
     if (m.dedans(x, y)) return { etat: "dedans", x: x, y: y };
     const R = PROCHE_M * m.sc;
     if (!m.plusProche(x, y, R)) return { etat: "loin", x: x, y: y };
-    let best = null;
-    m.piecesPres(x - R, y - R, x + R, y + R).forEach(function (i) {
-      const q = _bordLePlusProche(m.pieces[i], x, y);
-      if (q && q.d <= R && (!best || q.d < best.d)) best = { d: q.d, x: q.x, y: q.y, i: i };
-    });
+    const best = _bordProche(m.pieces, m.piecesPres(x - R, y - R, x + R, y + R), x, y, R);
     if (!best) return { etat: "loin", x: x, y: y };
-    const P = m.pieces[best.i];
-    if (P.genre === "tube" && m.aretes[P.arete]) {
-      const r = m.aretes[P.arete], dx = r.bx - r.ax, dy = r.by - r.ay, l2 = dx * dx + dy * dy;
-      let t = l2 ? ((best.x - r.ax) * dx + (best.y - r.ay) * dy) / l2 : 0;
-      t = Math.max(P.t0 || 0, Math.min(P.t1 === undefined ? 1 : P.t1, t));
-      return { etat: "ramene", x: r.ax + t * dx, y: r.ay + t * dy };
+    const a = _axeDuBord(m, best, R);
+    return { etat: "ramene", x: a.x, y: a.y };
+  }
+
+  // Place du volume de passage du POI p au niveau donné dans un rendu ("mixte" | "galerie" | "structures") →
+  // { x, y (px), ang (rad, axe de la galerie), ramene, raccord } | null (p ne passe pas par ce niveau). La règle
+  // (_placeVolume) est celle de l'emprise du modèle : vue3d.js y lit la place du volume, du panneau et de 🪜.
+  // Rendu structures : le point tel quel, aligné sur l'axe du mode galerie.
+  function placePassage(p, niveau, rendu) {
+    const n = Number.isInteger(niveau) ? niveau : null;
+    const m = modele(n, rendu === "mixte");
+    if (!m) {
+      const d = _departPassage(p, n);
+      return d ? { x: d.x, y: d.y, ang: 0, ramene: false, raccord: d.raccord } : null;
     }
-    const pp = m.plusProche(best.x, best.y, R);
-    return pp ? { etat: "ramene", x: pp.x, y: pp.y } : { etat: "ramene", x: best.x, y: best.y };
+    const C = { sc: m.sc, pieces: m.pieces, aretes: m.aretes, plusProche: m.plusProche, pres: m.piecesPres,
+      tubes: rendu === "mixte" || rendu === "galerie", enChambre: m.enChambre, tubeAu: m.tubeAu };
+    return _placePassageDans(p, n, C);
   }
 
   window.KtaGalerie = {
     SEUIL_CHAMBRE_M: SEUIL_CHAMBRE_M, paroisBloquent: paroisBloquent, PASSAGE: PASSAGE,
     LARGEURS: Object.assign({}, LARGEURS), LARGEUR_PERSO: LARGEUR_PERSO,
     largeur: largeur, modele: modele, dedans: dedans, segmentsBloques: segmentsBloques, invalider: invalider,
-    dansPiece: dansPiece, PROCHE_M: PROCHE_M, versGalerie: versGalerie, zonesBloquent: zonesBloquent,
+    dansPiece: dansPiece, PROCHE_M: PROCHE_M, versGalerie: versGalerie, placePassage: placePassage, zonesBloquent: zonesBloquent,
     dansZone: dansZone, ZONES_BOUCHENT: Object.assign({}, ZONES_BOUCHENT)
   };
 })();
