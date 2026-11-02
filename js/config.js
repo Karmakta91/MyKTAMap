@@ -1163,6 +1163,20 @@ function setVue3DBoussole(oui) {
 window.getVue3DBoussole = getVue3DBoussole;
 window.setVue3DBoussole = setVue3DBoussole;
 
+// ── Guidage dans la vue 3D (bandeau de consigne, chevrons au sol) : montré ou non, réglage de CET appareil ────────
+// localStorage["myktamap_v3d_guidage_v1"] = "0" (coupé) | "1" ; absente → montré. Réglé dans la tuile ⚙️ de la vue
+// (vue3d.js > _basculerGuidage). ⚠️ contrat : ne masque qu'en 3D ; la préférence du guidage 2D (ItiGuidage) et son
+// état ne changent pas, et un guidage d'urgence s'affiche toujours.
+const V3D_GUIDAGE_CLE = "myktamap_v3d_guidage_v1";
+function getVue3DGuidage() {
+  try { return localStorage.getItem(V3D_GUIDAGE_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DGuidage(oui) {
+  try { localStorage.setItem(V3D_GUIDAGE_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DGuidage = getVue3DGuidage;
+window.setVue3DGuidage = setVue3DGuidage;
+
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.
 // Math : Δpixels → mètres (échelle), rotation ANTI-horaire de +northOffsetDeg (image → géographique : offset 90°,

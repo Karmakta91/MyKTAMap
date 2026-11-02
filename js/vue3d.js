@@ -2459,8 +2459,9 @@
 
   // ⚠️ contrat (décision produit) : en suivi, la consigne RÉELLE du guidage (ItiGuidage.etat(), comme l'écran XL),
   // rien si le bandeau 2D ne parle pas ; en libre, un APERÇU depuis la position 3D (ItiGuidage.apercu, qui ne
-  // touche pas l'état du guidage), marqué comme tel. → { bandeau, chevrons } : consigne à montrer (null = rien) et
-  // abscisses { s, sCible } (px le long du trajet) des chevrons, montrés même réglé sur « Jamais ».
+  // touche pas l'état du guidage). → { bandeau, chevrons } : consigne à montrer (null = rien) et abscisses
+  // { s, sCible } (px le long du trajet) des chevrons, montrés même réglé sur « Jamais ». Guidage coupé dans ⚙️
+  // (_guidageMontre) : ni bandeau ni chevrons, sauf un guidage d'urgence (comme en 2D : `masque: !urgence && …`).
   function _lireGuidage() {
     const e = _e, G = window.ItiGuidage;
     if (!G || !_itineraire()) { e.apS = undefined; return { bandeau: null, chevrons: null }; }
@@ -2477,6 +2478,7 @@
     e.apS = ap ? ap.s : undefined;
     const bandeau = reel || (e.mode !== "suivi" && ap && !ap.masque ? ap : null);
     const src = reel || ap;
+    if (!_guidageMontre() && !(src && src.urgence)) return { bandeau: null, chevrons: null };
     return { bandeau: bandeau, chevrons: src && Number.isFinite(src.s) && Number.isFinite(src.sCible) ? src : null };
   }
 
@@ -3107,13 +3109,27 @@
     tuile.appendChild(regl);
     e.reglageHauteur = regl;
     e.boutonRendu = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-rendu", "", "", "rendu");
-    // Boussole montrée ou non (réglage de cet appareil, montrée par défaut) : la rose de la boussole 2D en icône.
-    e.boutonBoussole = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-boussole", "", _t("vue3d.boussoleMontrer"),
+    // Boussole et guidage montrés ou non (réglages de cet appareil, montrés par défaut), côte à côte : une ligne de
+    // plus aurait recouvert les boutons d'inclinaison (▼) en vue plongeante, tuile ouverte.
+    const ligne = document.createElement("div");
+    ligne.className = "kta-v3d-reglages-ligne";
+    tuile.appendChild(ligne);
+    // Boussole : la rose de la boussole 2D en icône.
+    e.boutonBoussole = _bouton(ligne, "kta-v3d-btn-mode kta-v3d-btn-boussole", "", _t("vue3d.boussoleMontrer"),
       "boussole");
     const ic = document.createElement("img");
     ic.src = "icon/compass.svg"; ic.alt = ""; ic.className = "kta-v3d-btn-icone"; ic.draggable = false;
     e.boutonBoussole.appendChild(ic);
     e.boutonBoussole.appendChild(document.createTextNode(_t("vue3d.boussoleNom")));
+    // Guidage : bandeau et chevrons, pas l'itinéraire.
+    e.boutonGuidage = _bouton(ligne, "kta-v3d-btn-mode kta-v3d-btn-guidage", "", _t("vue3d.guidageMontrer"),
+      "guidage");
+    const icG = document.createElement("span");
+    icG.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icG.setAttribute("aria-hidden", "true");
+    icG.textContent = "🪧";
+    e.boutonGuidage.appendChild(icG);
+    e.boutonGuidage.appendChild(document.createTextNode(_t("vue3d.guidageNom")));
     ov.appendChild(haut);
     e.haut = haut;
     // Mode suivi / libre toujours visible hors de la tuile (c'est ce qui compte en marchant) : pastille discrète en
@@ -3165,6 +3181,7 @@
     ov.appendChild(bous);
     e.rose = rose; e.boussole = bous;
     _appliquerBoussole();
+    _appliquerGuidage();
     if (stats) {
       e.compteur = document.createElement("div");
       e.compteur.className = "kta-v3d-stats";
@@ -3224,14 +3241,35 @@
     return _appliquerBoussole();
   }
 
+  // Guidage montré ou coupé en 3D (config.js > getVue3DGuidage) : relu au prochain passage de _majGuidage.
+  function _guidageMontre() {
+    return typeof window.getVue3DGuidage !== "function" || window.getVue3DGuidage() === true;
+  }
+
+  function _appliquerGuidage() {
+    const e = _e, oui = _guidageMontre();
+    if (e.boutonGuidage) e.boutonGuidage.setAttribute("aria-pressed", oui ? "true" : "false");
+    e.guidageForce = true;
+    e.sale = true;
+    _majRepere();
+    return oui;
+  }
+
+  function _basculerGuidage() {
+    if (!_e) return null;
+    const oui = !_guidageMontre();
+    if (typeof window.setVue3DGuidage === "function") window.setVue3DGuidage(oui);
+    return _appliquerGuidage();
+  }
+
   // Repère sur ⚙️ (un réglage n'est pas celui par défaut : mode libre, vue plongeante, rendu autre que mixte,
-  // boussole masquée) et
+  // boussole masquée, guidage coupé) et
   // pastille du mode, hors de la tuile.
   function _majRepere() {
     const e = _e;
     if (!e || !e.boutonReglages) return;
     const modifie = e.mode === "libre" || e.vue === "plongee" || e.rendu !== "mixte" ||
-      (!!e.boussole && e.boussole.hidden);
+      (!!e.boussole && e.boussole.hidden) || !_guidageMontre();
     e.boutonReglages.classList.toggle("kta-v3d-modifie", modifie);
     const titre = _t("vue3d.reglages") + (modifie ? " · " + _t("vue3d.reglagesModifies") : "");
     e.boutonReglages.title = titre;
@@ -3381,6 +3419,7 @@
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages") return;
       if (a === "vue") { basculerVue(); return; }
       if (a === "boussole") { _basculerBoussole(); return; }
+      if (a === "guidage") { _basculerGuidage(); return; }
       if (a === "rendu") { basculerRendu(); return; }
       if (a === "hauteur") { _basculerReglageHauteur(); return; }
       if (a === "hauteurMoins" || a === "hauteurPlus") {
@@ -4032,7 +4071,8 @@
         hud: e.greffe.hud.isConnected } : null,
       reglages: { ouvert: !!e.tuileReglages && !e.tuileReglages.hidden,
         repere: !!e.boutonReglages && e.boutonReglages.classList.contains("kta-v3d-modifie"),
-        indic: e.indicMode ? e.indicMode.textContent : "", boussole: !!e.boussole && !e.boussole.hidden },
+        indic: e.indicMode ? e.indicMode.textContent : "", boussole: !!e.boussole && !e.boussole.hidden,
+        guidage: _guidageMontre() },
       itineraire: Object.assign({ largeurVoulue: LARGEUR_ITI, lisereVoulu: ITI.lisere, couleur: _couleursIti().hexRuban,
         couleurLisere: _couleursIti().hexLisere, tirets: e.itiTirets }, e.nbMarqueurs, _mesureIti()),
       ronds: e.listeRonds.map(function (r) { return Object.assign({}, r); }),

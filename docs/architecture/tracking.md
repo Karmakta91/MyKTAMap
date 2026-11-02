@@ -1550,7 +1550,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   250 ms (`_lireGuidage`). ⚠️ contrat (décision produit) : **en suivi**, la consigne réelle (`ItiGuidage.etat()`,
   comme l'écran XL), rien quand le bandeau 2D ne parle pas (réglage « Jamais », position inconnue) ; **en libre**, un
   **aperçu** depuis la position 3D (`ItiGuidage.apercu(pos, { cap, sPrec })`, qui ne touche ni la progression ni les
-  alertes du guidage), sans marque à part, masqué en « Jamais » hors urgence. Pas de voix (elle
+  alertes du guidage), sans marque à part, masqué en « Jamais » hors urgence. Interrupteur 🪧 Guidage de la tuile ⚙️
+  (`config.js > getVue3DGuidage`, cet appareil) : coupé, ni bandeau ni chevrons, sauf un guidage d'urgence (comme le
+  `masque: !urgence && …` de la 2D) ; il ne touche ni `ItiGuidage.getPref` ni l'état du guidage. Pas de voix (elle
   n'existe pas en 2D non plus).
 - **Chevrons au sol** (`_majChevrons`) : « ^ » dorés (accent sombre) sur le ruban, de la position vers la prochaine
   consigne (`s` → `sCible`, abscisses rendues par `etat()` ou `apercu()`), un tous les 2 m à des abscisses fixes du

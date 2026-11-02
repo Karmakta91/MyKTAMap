@@ -55,7 +55,10 @@
 }
 .kta-v3d-reglages[hidden] { display: none; }
 .kta-v3d-reglages > .kta-v3d-btn { width: 100%; text-align: left; }
+.kta-v3d-reglages-ligne { display: flex; gap: 8px; }
+.kta-v3d-reglages-ligne > .kta-v3d-btn { flex: 1 1 0; text-align: left; white-space: nowrap; }
 .kta-v3d-btn-icone { width: 22px; height: 22px; vertical-align: middle; margin-right: 6px; }
+.kta-v3d-btn-emoji { display: inline-block; font-size: 18px; line-height: 22px; text-align: center; }
 /* Mode suivi / libre, hors de la tuile : pastille discrète en haut à gauche, non touchable. */
 .kta-v3d-mode-indic {
   position: absolute; top: max(16px, calc(env(safe-area-inset-top) + 6px)); left: 10px;

@@ -23,6 +23,7 @@
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
+// Interrupteur 🪧 Guidage (§ 22) : bandeau et chevrons masqués, ruban gardé, urgence affichée, retenu.
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
@@ -730,7 +731,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.inclinaisonPlus", "vue3d.inclinaisonMoins",
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
-            "vue3d.passerStructures", "vue3d.boussoleMontrer"].map(function (k) {
+            "vue3d.passerStructures", "vue3d.boussoleMontrer", "vue3d.guidageMontrer"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
             return k === "vue3d.reglages" && window.KtaVue3D.etat().reglages.repere ?
               t + " · " + window.I18n.t("vue3d.reglagesModifies") : t;
@@ -3511,7 +3512,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         r.rangee = Array.prototype.map.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *"), function (b) {
           return b.getAttribute("data-v3d") || (b.classList.contains("kta-aide-ctx-btn") ? "aide" : b.className);
         }).sort();
-        r.dansTuile = ["suivre", "vue", "hauteur", "rendu", "boussole"].map(function (k) {
+        r.dansTuile = ["suivre", "vue", "hauteur", "rendu", "boussole", "guidage"].map(function (k) {
           const b = q('[data-v3d="' + k + '"]');
           return !!b && !!b.closest("#kta-v3d-reglages") && b.textContent.trim().length > 1;
         });
@@ -3557,8 +3558,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       verifier(JSON.stringify(TU.rangee) === JSON.stringify(["aide", "fermer", "filtres", "reglages", "urgence"]) &&
-        TU.dansTuile.every(Boolean), "rangée du haut : ✕, ≡, 🚨, ❓, ⚙️ ; suivi, vue, hauteur, rendu et boussole dans la " +
-        "tuile, écrits en clair", TU);
+        TU.dansTuile.every(Boolean), "rangée du haut : ✕, ≡, 🚨, ❓, ⚙️ ; suivi, vue, hauteur, rendu, boussole et guidage " +
+        "dans la tuile, écrits en clair", TU);
       verifier(TU.ferme0 === false && TU.ouverte.ouvert && TU.ouverte.sous && TU.ouverte.droite && !TU.ouverte.pleinEcran &&
         TU.ouverte.expanded === "true", "⚙️ ouvre un petit panneau ancré sous lui, à droite (pas une fenêtre plein écran)",
         TU.ouverte);
@@ -3757,6 +3758,67 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(GR.stick6 === 1 && GR.stickTenu === 0 && GR.stickCote === 0,
         "code : 6 coups brefs du joystick vers le bas ; un coup tenu ou vers le côté → rien",
         { six: GR.stick6, tenu: GR.stickTenu, cote: GR.stickCote });
+
+      // ── 22. Interrupteur 🪧 Guidage de la tuile ⚙️ : bandeau et chevrons masqués, ruban gardé, urgence toujours ──
+      const GU = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return Object.assign({ level: 0 }, { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }); };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+        const acc = window.ktaEstAccessible;
+        window.ktaEstAccessible = function () { return true; };
+        window.setVue3DGuidage(true);
+        let pref2D = null;
+        try { pref2D = localStorage.getItem("myktamap_guidage_v1"); } catch (err) { /* lecture seule */ }
+        const iti = function (urgence) {
+          const r = { uid: "rd_gu_iti", type: "itinerary", level: 0, points: [P(-30, 0), P(0, 0), P(0, 20)] };
+          if (urgence) r.urgence = true;
+          return r;
+        };
+        window.setStructures([]);
+        window.setRoads([{ uid: "rd_gu_p", type: "principal", level: 0, points: [P(-40, 0), P(0, 0), P(0, 30)] }, iti(false)]);
+        window.KtaGalerie.invalider();
+        const d = P(-26, 0), r = {};
+        const lire = function () {
+          const e = K.etat();
+          return { bandeau: e.bandeau.affiche, urgence: !!e.bandeau.affiche && q(".kta-v3d-bandeau").classList.contains("kta-v3d-guid-urgence"),
+            chevrons: e.chevronsVisibles ? e.chevrons : 0, ruban: e.rubans.itinerary || 0, montre: e.reglages.guidage,
+            presse: q('[data-v3d="guidage"]').getAttribute("aria-pressed"), repere: e.reglages.repere,
+            dansTuile: !!q('[data-v3d="guidage"]').closest("#kta-v3d-reglages") };
+        };
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        await pause(500);
+        r.montre = lire();
+        q('[data-v3d="reglages"]').click();
+        q('[data-v3d="guidage"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 5 }));
+        await pause(500);
+        r.coupe = lire();
+        r.coupe.pref = window.getVue3DGuidage();
+        try { r.coupe.pref2D = localStorage.getItem("myktamap_guidage_v1") === pref2D; } catch (err) { r.coupe.pref2D = true; }
+        // Guidage d'urgence : affiché même coupé.
+        window.setRoads([{ uid: "rd_gu_p", type: "principal", level: 0, points: [P(-40, 0), P(0, 0), P(0, 30)] }, iti(true)]);
+        await pause(600);
+        r.urgence = lire();
+        window.setRoads([{ uid: "rd_gu_p", type: "principal", level: 0, points: [P(-40, 0), P(0, 0), P(0, 30)] }, iti(false)]);
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        await pause(500);
+        r.rouverte = lire();
+        window.setVue3DGuidage(true);
+        await K.fermer();
+        window.ktaEstAccessible = acc;
+        window.setRoads([]); window.KtaGalerie.invalider();
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      verifier(GU.montre.bandeau && GU.montre.chevrons > 0 && GU.montre.ruban > 0 && GU.montre.montre &&
+        GU.montre.presse === "true" && GU.montre.dansTuile,
+        "guidage montré par défaut : bandeau, chevrons et ruban ; interrupteur 🪧 dans la tuile ⚙️", GU.montre);
+      verifier(!GU.coupe.bandeau && GU.coupe.chevrons === 0 && GU.coupe.ruban > 0 && !GU.coupe.montre &&
+        GU.coupe.presse === "false" && GU.coupe.repere && GU.coupe.pref === false && GU.coupe.pref2D,
+        "guidage coupé : ni bandeau ni chevrons, le ruban reste ; repère sur ⚙️ ; préférence 2D inchangée", GU.coupe);
+      verifier(GU.urgence.bandeau && GU.urgence.urgence && GU.urgence.chevrons > 0 && !GU.urgence.montre,
+        "guidage coupé : un guidage d'urgence s'affiche quand même (bandeau et chevrons)", GU.urgence);
+      verifier(!GU.rouverte.bandeau && GU.rouverte.chevrons === 0 && GU.rouverte.ruban > 0 && !GU.rouverte.montre &&
+        GU.rouverte.presse === "false", "réglage retenu sur l'appareil : rouverte, guidage toujours coupé", GU.rouverte);
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;
