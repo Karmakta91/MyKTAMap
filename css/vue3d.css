@@ -17,6 +17,12 @@
   user-select: none; -webkit-user-select: none;
 }
 .kta-v3d-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+/* Calque d'une greffe (js/vue3d.js > greffer) : sous la rangée du haut et le bandeau, au-dessus de la scène, sous les
+   commandes (posé juste après le canvas). Il laisse passer le doigt : le greffon rend touchables ses éléments. */
+.kta-v3d-greffe {
+  position: absolute; top: var(--kta-v3d-sous-haut, 80px); left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+}
 
 /* Rangée du haut en row-reverse : de droite à gauche selon `order`, ✕ toujours au coin haut droit, même sur deux
    lignes au téléphone, ≡ Filtres collé à sa gauche (décision produit). ❓ est posé par interfaceDocs.js (classe

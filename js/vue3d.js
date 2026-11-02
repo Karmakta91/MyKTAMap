@@ -10,7 +10,7 @@
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(), parois(),
 //   mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), changerNiveau(sens), incliner(deg), avancer(m),
 //   tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(), placerSurTracker(), charge(),
-//   gesteAnime(bool) } ;
+//   gesteAnime(bool), greffer(g) (prise neutre d'un add-on, _ctxGreffe) } ; code « six vers le bas » : kta:vue3dCode ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus,
 //   commandes ("joystick" | "pave" : sinon joystick au téléphone, pavé au PC ou option ⚙️, _commandesVoulues) }.
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
@@ -117,6 +117,10 @@
   // abscisses fixes du trajet : ils ne glissent pas quand on avance), sur `long` m au plus ; taille en m.
   const CHEVRON = { pas: 2, long: 30, l: 0.4, ep: 0.09, y: 0.07 };
   const GUIDAGE_MS = 250;           // ms entre deux lectures du guidage (bandeau, chevrons)
+  // ⚠️ contrat (décision produit) : `n` appuis vers le bas (▼ du pavé, ↓ / S, coup bref du joystick vers le bas) en
+  // moins de `ms`, sans autre commande de déplacement entre deux → `kta:vue3dCode` (detail.code = "bas6"). Coup de
+  // joystick : relâché moins de `coup` ms après la sortie de la zone morte, toujours à plus de `angle`° de l'avant.
+  const CODE_BAS = { n: 6, ms: 2000, coup: 500, angle: 135 };
 
   let THREE = null;
   let _import = null;
@@ -1390,6 +1394,8 @@
     e.avatar = new THREE.Mesh(cone, e.mats.avatar);
     e.avatar.visible = false;
     e.scene.add(e.avatar);
+    // Reprise du contexte : la greffe retrouve un groupe neuf dans la nouvelle scène (_reindexer l'appelle ensuite).
+    if (e.greffe) { e.greffe.groupe = new THREE.Group(); e.scene.add(e.greffe.groupe); e.greffe.raison = "reprise"; }
   }
 
   // ── Membres, repères et itinéraires d'une extension (KtaPresences, lecture seule) ─────────────────────
@@ -1565,6 +1571,7 @@
     _majMarqueursIti();
     _majRonds();
     _gererVolumes();
+    _sceneGreffe();
   }
 
   // ── Volumes des passages entre niveaux (POI jonction, puits de surface, tracé jonction) ─────────────────
@@ -2969,6 +2976,7 @@
     _majGuidage(ts);
     if (e.perdu) return;
     _redimensionner();
+    if (e.greffe) { e.greffe.appels.image++; _appelGreffe("surImage", dt); }
     if (!e.sale) return;
     e.sale = false;
     _placerCamera();
@@ -3395,6 +3403,7 @@
         return;
       }
       ev.preventDefault();
+      _codeBas(a === "ar");
       e.touches[a] = true;
       // Appui long sur ▲ = pas rapide (pendant de Maj au clavier). Même base de temps que requestAnimationFrame.
       if (a === "av") e.avDepuis = performance.now();
@@ -3486,6 +3495,7 @@
       const a = TOUCHES[ev.code];
       if (!a) return;
       ev.stopPropagation(); ev.preventDefault();
+      if (!ev.repeat) _codeBas(a === "ar");
       e.touches[a] = true;
     }, true);
     on(document, "keyup", function (ev) {
@@ -3553,7 +3563,8 @@
       ev.preventDefault();
       const r = zone.getBoundingClientRect();
       e.stick = { id: ev.pointerId, cx: ev.clientX, cy: ev.clientY, x0: ev.clientX - r.left, y0: ev.clientY - r.top,
-        m: 0, ang: 0, d: 0, fortDepuis: 0, t: performance.now(), bouge: false };
+        m: 0, ang: 0, d: 0, fortDepuis: 0, t: performance.now(), bouge: false, bas: false, ailleurs: false,
+        horsMorte: 0 };
       try { zone.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur synthétique ou déjà relâché */ }
       e.stickAnneau.classList.remove("kta-v3d-stick-repos");
       e.stickAnneau.classList.add("kta-v3d-stick-actif");
@@ -3572,12 +3583,19 @@
       st.ang = Math.atan2(dx, -dy) * 180 / Math.PI;   // 0 = devant, 90 = pas à droite
       if (d > JOYSTICK.course * D) { if (!st.fortDepuis) st.fortDepuis = performance.now(); } else st.fortDepuis = 0;
       if (st.m > 0 && !st.bouge) { st.bouge = true; e.stickLibres++; _passerEnLibre(); }
+      if (st.m > 0) {
+        if (!st.horsMorte) st.horsMorte = performance.now();
+        if (Math.abs(st.ang) > CODE_BAS.angle) st.bas = true; else st.ailleurs = true;
+      }
       e.sale = true;
     });
     const lacher = function (ev) {
       const st = e.stick;
       if (!st || ev.pointerId !== st.id) return;
       const tape = ev.type === "pointerup" && !st.bouge && st.d < 8 && performance.now() - st.t < 500;
+      if (ev.type === "pointerup" && st.bouge) {
+        _codeBas(st.bas && !st.ailleurs && performance.now() - st.horsMorte < CODE_BAS.coup);
+      }
       _lacherStick();
       if (tape) _toucher(ev.clientX, ev.clientY);
     };
@@ -3593,6 +3611,115 @@
     e.stickAnneau.classList.remove("kta-v3d-stick-actif");
     e.stickAnneau.style.left = e.stickAnneau.style.top = "";
     e.stickBouton.style.transform = "";
+  }
+
+  // « Six pieds sous terre » (CODE_BAS) : un appui vers le bas compte, toute autre commande de déplacement remet à 0.
+  function _codeBas(bas) {
+    const e = _e, c = e.codeBas, t = performance.now();
+    if (!bas) { c.n = 0; return; }
+    if (!c.n || t - c.t0 > CODE_BAS.ms) { c.n = 0; c.t0 = t; }
+    if (++c.n < CODE_BAS.n) return;
+    c.n = 0;
+    e.codesBas++;
+    window.dispatchEvent(new CustomEvent("kta:vue3dCode", { detail: { code: "bas6" } }));
+  }
+
+  // ── Greffe : prise NEUTRE pour un add-on (addons/<nom>/), rien sans greffon ──────────────────────────────
+  // ⚠️ contrat : KtaVue3D.greffer(g) → fonction qui retire la greffe, ou null (vue fermée, greffe déjà posée).
+  // Une greffe à la fois, qui vit avec la vue ouverte. g = { nom, scene(ctx, raison), surImage(ctx, dt),
+  // demonter(ctx, raison) }, tous facultatifs :
+  //   scene : appelé à la greffe ("greffe"), après chaque scène refaite ("refaite" : niveau, rendu, hauteur, filtres,
+  //     itinéraire) et après une perte du contexte WebGL ("reprise" : ctx.groupe est NEUF, les objets d'avant sont
+  //     morts avec l'ancien contexte, jamais dispose()) ;
+  //   surImage : à chaque image tant que la vue rend (pas pendant une perte de contexte) ; la vue ne dessine que si
+  //     quelque chose a bougé : un greffon animé appelle ctx.sale() ;
+  //   demonter : retrait ("degreffe"), fermeture de la vue ("fermeture"), contexte non repris ("contexte"),
+  //     erreur du greffon ("erreur") ; le greffon y libère ce qu'il a créé, la vue retire ctx.groupe et ctx.hud.
+  // ctx (lu à l'appel) : THREE, groupe (THREE.Group dans la scène, mètres), hud (calque sous le bandeau, au-dessus
+  // de la scène, sous les commandes ; pointer-events à poser par le greffon sur ses enfants), camera, niveau, hauteur,
+  // sc (px/m), pos {x, y} (px plan), cap, rendu, mode, vue, commandes, sale() ; règle du pas de la vue, jamais une
+  // copie (px plan) : bloque(x0, y0, x1, y1) = un corps ne passe pas, ligneBloquee(x0, y0, x1, y1) = ligne de vue
+  // coupée, libre(x, y) = place où un corps tient (hors des structures DESSINÉES : un calque masqué n'y compte pas).
+  // 🔒 Une exception dans un appel retire la greffe (la vue continue). La greffe ne touche ni tracker, ni session, ni
+  // filtres : elle n'a que ce ctx.
+  function greffer(g) {
+    const e = _e;
+    if (!e || e.greffe || !g || typeof g !== "object") return null;
+    const hud = document.createElement("div");
+    hud.className = "kta-v3d-greffe";
+    e.cv.insertAdjacentElement("afterend", hud);
+    const gr = { g: g, nom: String(g.nom || "greffe"), hud: hud, groupe: new THREE.Group(), raison: "greffe",
+      appels: { scene: 0, image: 0 } };
+    e.scene.add(gr.groupe);
+    gr.ctx = _ctxGreffe(gr);
+    e.greffe = gr;
+    console.log("[Vue3D] greffe « " + gr.nom + " » posée");
+    _sceneGreffe();
+    if (_e) _e.sale = true;
+    return function () { if (_e && _e.greffe === gr) _degreffer("degreffe"); };
+  }
+
+  function _ctxGreffe(gr) {
+    return {
+      THREE: THREE, hud: gr.hud,
+      get groupe() { return gr.groupe; },
+      get camera() { return _e.camera; },
+      get niveau() { return _e.niveau; },
+      get hauteur() { return _e.hauteur; },
+      get sc() { return _e.sc; },
+      get pos() { return { x: _e.pos.x, y: _e.pos.y }; },
+      get cap() { return _e.cap; },
+      get rendu() { return _e.rendu; },
+      get mode() { return _e.mode; },
+      get vue() { return _e.vue; },
+      get commandes() { return _e.commandes; },
+      sale: function () { if (_e) _e.sale = true; },
+      bloque: function (x0, y0, x1, y1) {
+        const l = Math.hypot(x1 - x0, y1 - y0);
+        if (!_e || l < 1e-9) return false;
+        const n = _balayage(x0, y0, x1, y1, (x1 - x0) / l, (y1 - y0) / l);
+        return n < 0 || (n > 0 && n > _rayonsBloques(x0, y0));
+      },
+      ligneBloquee: function (x0, y0, x1, y1) { return !!_e && !!_juger([[x0, y0, x1, y1]])[0]; },
+      // 🩸 La règle du pas ignore la structure où l'on se trouve déjà (on en sort) : la place est donc aussi
+      // testée hors des volumes dessinés et corps dégagé (aucun rayon bloqué).
+      libre: function (x, y) {
+        return !!_e && !_coince(x, y) && !_volumeContenant(x / _e.sc, y / _e.sc) && _rayonsBloques(x, y) === 0;
+      }
+    };
+  }
+
+  function _sceneGreffe() {
+    const gr = _e && _e.greffe;
+    if (!gr) return;
+    const raison = gr.raison || "refaite";
+    gr.raison = null;
+    gr.appels.scene++;
+    _appelGreffe("scene", raison);
+  }
+
+  function _appelGreffe(nom, arg) {
+    const gr = _e && _e.greffe;
+    if (!gr || typeof gr.g[nom] !== "function") return;
+    try { gr.g[nom](gr.ctx, arg); } catch (err) {
+      console.warn("[Vue3D] greffe « " + gr.nom + " » retirée (" + nom + ") :", err && err.message);
+      _degreffer("erreur");
+    }
+  }
+
+  function _degreffer(raison) {
+    const e = _e, gr = e && e.greffe;
+    if (!gr) return;
+    e.greffe = null;
+    if (typeof gr.g.demonter === "function") {
+      try { gr.g.demonter(gr.ctx, raison); } catch (err) {
+        console.warn("[Vue3D] greffe « " + gr.nom + " » : démontage en erreur :", err && err.message);
+      }
+    }
+    if (gr.groupe.parent) gr.groupe.parent.remove(gr.groupe);
+    if (gr.hud.parentNode) gr.hud.parentNode.removeChild(gr.hud);
+    e.sale = true;
+    console.log("[Vue3D] greffe « " + gr.nom + " » retirée (" + raison + ")");
   }
 
   function _fermerSansContexte() {
@@ -3646,7 +3773,7 @@
         chevRoad: null, chevPts: null, nChevrons: 0, fiche: null, publiee: null, publications: 0,
         publicationDite: false, libreBouge: false, commandes: _commandesVoulues(o.commandes), stick: null,
         stickLibres: 0, toucheNom: null, itiTirets: 0, nbMarqueurs: { etapes: 0, arrivee: false }, listeRonds: [],
-        rondsChange: false,
+        rondsChange: false, greffe: null, codeBas: { n: 0, t0: 0 }, codesBas: 0,
         retourFocus: o.retourFocus || document.activeElement || null,
         attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
       };
@@ -3686,6 +3813,7 @@
     const e = _e;
     if (!e) return;
     _derniereFermeture = raison || "utilisateur";
+    if (e.greffe) _degreffer(_derniereFermeture === "utilisateur" ? "fermeture" : _derniereFermeture);
     if (e.raf) cancelAnimationFrame(e.raf);
     clearInterval(e.minuterie);
     e.ecouteurs.forEach(function (x) { x[0].removeEventListener(x[1], x[2], x[3]); });
@@ -3897,7 +4025,10 @@
       }),
       murDecale: e.mats.murs.polygonOffset === true,
       commandes: e.commandes, pave: !!e.pave && e.pave.isConnected,
-      stick: e.stickZone ? _etatStick() : null, toucheNom: e.toucheNom,
+      stick: e.stickZone ? _etatStick() : null, toucheNom: e.toucheNom, codesBas: e.codesBas,
+      greffe: e.greffe ? { nom: e.greffe.nom, appels: Object.assign({}, e.greffe.appels),
+        objets: e.greffe.groupe.children.length, dansScene: e.greffe.groupe.parent === e.scene,
+        hud: e.greffe.hud.isConnected } : null,
       reglages: { ouvert: !!e.tuileReglages && !e.tuileReglages.hidden,
         repere: !!e.boutonReglages && e.boutonReglages.classList.contains("kta-v3d-modifie"),
         indic: e.indicMode ? e.indicMode.textContent : "", boussole: !!e.boussole && !e.boussole.hidden },
@@ -4013,6 +4144,7 @@
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
     origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, charge: function () { return !!THREE; },
+    greffer: greffer,
     // Passages avec ou sans geste (fondu, descente) : false = bascule immédiate (mesures, checkup).
     gesteAnime: function (oui) { if (oui !== undefined) _gesteAnime = oui !== false; return _gesteAnime; }
   };

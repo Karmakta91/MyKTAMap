@@ -25,7 +25,8 @@
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
-// « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ».
+// « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Greffe (21) :
+// prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ».
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -3468,6 +3469,193 @@ async function mesuresGalerie(page, nom, semisDonne) {
         TU.masquee.tuile && TU.masquee.rangee && TU.rouverte.visible === false && TU.rouverte.repere,
         "boussole masquée par la tuile, retenue sur l'appareil (rouverte masquée), rien d'autre ne bouge", TU);
       await page.evaluate(function () { window.setStructures([]); window.KtaGalerie.invalider(); });
+
+      // ── 21. Greffe (prise neutre d'un add-on) et code « six vers le bas » ────────────────────────────────────
+      perteSimulee = true;
+      const GR = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+        const acc = window.ktaEstAccessible;
+        window.ktaEstAccessible = function () { return true; };
+        window.setRoads([{ uid: "rd_gr", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] }]);
+        window.setStructures([{ uid: "st_gr", type: "pilier-2", level: 0,
+          points: [P(-1, -1), P(1, -1), P(1, 1), P(-1, 1)] }]);
+        window.KtaGalerie.invalider();
+        const codes = [];
+        const surCode = function (ev) { codes.push(ev.detail && ev.detail.code); };
+        window.addEventListener("kta:vue3dCode", surCode);
+        const r = {}, d = P(-6, 0);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+        const renduAvant = K.etat().rendu;
+        K.basculerRendu("structures");
+        await pause(50);
+        r.sans = { greffe: K.etat().greffe, calque: !!q(".kta-v3d-greffe") };
+        // Greffon d'essai : journal des appels, un cube dans son groupe, un élément dans son calque.
+        const j = [];
+        let cube = null, animer = false, jeter = false;
+        const g = {
+          nom: "essai",
+          scene: function (ctx, raison) {
+            j.push("scene:" + raison);
+            cube = new ctx.THREE.Mesh(new ctx.THREE.BoxGeometry(0.5, 0.5, 0.5), new ctx.THREE.MeshBasicMaterial());
+            cube.position.set(d.x / ctx.sc + 2, 1, d.y / ctx.sc);
+            ctx.groupe.add(cube);
+            if (!ctx.hud.firstChild) { const b = document.createElement("div"); b.className = "essai"; ctx.hud.appendChild(b); }
+          },
+          surImage: function (ctx, dt) {
+            if (jeter) throw new Error("essai");
+            if (animer) { cube.rotation.y += dt; ctx.sale(); }
+          },
+          demonter: function (ctx, raison) { j.push("demonter:" + raison); }
+        };
+        const retirer = K.greffer(g);
+        r.double = K.greffer({ nom: "autre" });
+        await pause(100);
+        r.posee = { greffe: K.etat().greffe, journal: j.slice(), calque: !!q(".kta-v3d-greffe .essai"),
+          apresCanvas: q("canvas").nextElementSibling === q(".kta-v3d-greffe") };
+        // Rendu à la demande : immobile, rien ; greffon animé (ctx.sale), une image à chaque fois.
+        const i0 = K.etat().images;
+        await pause(300);
+        const i1 = K.etat().images;
+        animer = true;
+        await pause(300);
+        const i2 = K.etat().images;
+        animer = false;
+        r.images = { immobile: i1 - i0, anime: i2 - i1 };
+        // Retrait, puis un second greffon qui garde son ctx : règle du pas contre le pilier de 2 m du centre.
+        let ctxPris = null;
+        retirer();
+        r.retire = { journal: j.slice(), greffe: K.etat().greffe, calque: !!q(".kta-v3d-greffe") };
+        K.greffer({ nom: "regle", scene: function (ctx) { ctxPris = ctx; } });
+        const A = P(-3, 0), B = P(3, 0), C = P(-3, 3), D = P(3, 3);
+        r.regle = { pilier: ctxPris.bloque(A.x, A.y, B.x, B.y), cote: ctxPris.bloque(C.x, C.y, D.x, D.y),
+          vuePilier: ctxPris.ligneBloquee(A.x, A.y, B.x, B.y), vueCote: ctxPris.ligneBloquee(C.x, C.y, D.x, D.y),
+          dansPilier: ctxPris.libre(P(0, 0).x, P(0, 0).y), dehors: ctxPris.libre(C.x, C.y),
+          sc: ctxPris.sc === a.sc, pos: ctxPris.pos.x === K.etat().pos.x, niveau: ctxPris.niveau };
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+        j.length = 0;
+        K.greffer(g);
+        // Scène refaite (itinéraire changé) puis perte du contexte et reprise : groupe neuf.
+        window.dispatchEvent(new Event("kta:itineraireChange"));
+        await pause(150);
+        const gl = q("canvas").getContext("webgl2"), perte = gl.getExtension("WEBGL_lose_context");
+        perte.loseContext();
+        await pause(300);
+        perte.restoreContext();
+        await pause(500);
+        r.cycle = { journal: j.slice(), greffe: K.etat().greffe };
+        // Exception du greffon : la greffe part, la vue reste.
+        jeter = true;
+        await pause(150);
+        jeter = false;
+        r.erreur = { journal: j.slice(), greffe: K.etat().greffe, ouvert: K.etat().ouvert };
+        // Fermeture de la vue : demonter("fermeture") ; vue fermée : greffer refusé.
+        j.length = 0;
+        K.greffer(g);
+        await K.fermer();
+        r.fermeture = { journal: j.slice(), apres: K.greffer(g) };
+        // Code « six vers le bas » : pavé, clavier, joystick.
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+        const ar = q('[data-v3d="ar"]'), av = q('[data-v3d="av"]');
+        const appui = function (b) {
+          b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 2 }));
+          window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+        };
+        codes.length = 0;
+        for (let k = 0; k < 6; k++) { appui(ar); await pause(40); }
+        r.pave6 = { codes: codes.slice(), compte: K.etat().codesBas };
+        codes.length = 0;
+        for (let k = 0; k < 6; k++) { appui(k === 3 ? av : ar); await pause(40); }
+        r.paveCoupe = codes.length;
+        // Chaque série repart de 0 (un ▲ remet le compte à zéro) : le compte entamé d'une série vaut pour la suivante.
+        appui(av);
+        codes.length = 0;
+        for (let k = 0; k < 5; k++) { appui(ar); await pause(40); }
+        await pause(2100);
+        appui(ar);
+        r.paveLent = codes.length;
+        const touche = function (type, code, rep) {
+          document.dispatchEvent(new KeyboardEvent(type, { code: code, key: code, bubbles: true, repeat: !!rep }));
+        };
+        appui(av);
+        codes.length = 0;
+        for (let k = 0; k < 6; k++) { touche("keydown", "ArrowDown"); touche("keyup", "ArrowDown"); await pause(30); }
+        r.clavier = codes.length;
+        codes.length = 0;
+        touche("keydown", "KeyS");
+        for (let k = 0; k < 8; k++) { touche("keydown", "KeyS", true); await pause(20); }
+        touche("keyup", "KeyS");
+        r.clavierRepete = codes.length;
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "joystick" });
+        const z = q(".kta-v3d-stick-zone"), zr = z.getBoundingClientRect();
+        const x0 = zr.left + 100, y0 = zr.top + zr.height / 2;
+        const ev = function (type, x, y) {
+          z.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch",
+            isPrimary: true, clientX: x, clientY: y }));
+        };
+        const coup = async function (dx, dy, tenir) {
+          ev("pointerdown", x0, y0); ev("pointermove", x0 + dx, y0 + dy);
+          await pause(tenir || 30);
+          ev("pointerup", x0 + dx, y0 + dy);
+          await pause(30);
+        };
+        codes.length = 0;
+        for (let k = 0; k < 6; k++) await coup(0, 40);
+        r.stick6 = codes.length;
+        await coup(40, 0);   // coup de côté : compte remis à 0 avant chaque série
+        codes.length = 0;
+        for (let k = 0; k < 6; k++) await coup(0, 40, k === 2 ? 650 : 30);
+        r.stickTenu = codes.length;
+        await coup(40, 0);
+        codes.length = 0;
+        for (let k = 0; k < 6; k++) await coup(k === 4 ? 40 : 0, k === 4 ? 0 : 40);
+        r.stickCote = codes.length;
+        await K.fermer();
+        window.removeEventListener("kta:vue3dCode", surCode);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        K.basculerRendu(renduAvant);
+        await K.fermer();
+        window.ktaEstAccessible = acc;
+        window.setStructures([]); window.setRoads([]); window.KtaGalerie.invalider();
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      perteSimulee = false;
+      verifier(GR.sans.greffe === null && !GR.sans.calque, "greffe : rien sans greffon (ni calque, ni état)", GR.sans);
+      verifier(GR.posee.greffe && GR.posee.greffe.nom === "essai" && GR.posee.greffe.dansScene &&
+        GR.posee.greffe.objets === 1 && GR.posee.greffe.hud && GR.posee.calque && GR.posee.apresCanvas &&
+        GR.posee.journal[0] === "scene:greffe" && GR.double === null,
+        "greffe posée : scene(\"greffe\"), groupe dans la scène, calque juste après le canvas ; une seule à la fois",
+        { posee: GR.posee, double: GR.double });
+      verifier(GR.posee.greffe.appels.image > 0 && GR.images.immobile === 0 && GR.images.anime >= 5,
+        "greffe : surImage à chaque image ; immobile, rien n'est dessiné ; ctx.sale() redessine (" + GR.images.anime +
+        " images en 0,3 s)", GR.images);
+      verifier(GR.retire.greffe === null && !GR.retire.calque &&
+        GR.retire.journal[GR.retire.journal.length - 1] === "demonter:degreffe",
+        "greffe retirée : demonter(\"degreffe\"), calque et groupe enlevés", GR.retire);
+      verifier(GR.regle.pilier === true && GR.regle.cote === false && GR.regle.vuePilier === true &&
+        GR.regle.vueCote === false && GR.regle.dansPilier === false && GR.regle.dehors === true && GR.regle.sc &&
+        GR.regle.pos, "greffe : règle du pas de la vue (corps, ligne de vue, place libre) contre un pilier fictif",
+        GR.regle);
+      verifier(GR.cycle.journal[0] === "scene:greffe" && GR.cycle.journal.indexOf("scene:refaite") > 0 &&
+        GR.cycle.journal.indexOf("scene:reprise") > 0 && GR.cycle.greffe && GR.cycle.greffe.dansScene &&
+        GR.cycle.greffe.objets === 1, "greffe : scene(\"refaite\") puis scene(\"reprise\") avec un groupe neuf", GR.cycle);
+      verifier(GR.erreur.greffe === null && GR.erreur.ouvert &&
+        GR.erreur.journal[GR.erreur.journal.length - 1] === "demonter:erreur",
+        "greffe : une exception du greffon le retire, la vue reste ouverte", GR.erreur);
+      verifier(GR.fermeture.journal.indexOf("demonter:fermeture") >= 0 && GR.fermeture.apres === null,
+        "greffe : fermer la vue appelle demonter(\"fermeture\") ; vue fermée, greffer refusé", GR.fermeture);
+      verifier(GR.pave6.codes.length === 1 && GR.pave6.codes[0] === "bas6" && GR.pave6.compte === 1 &&
+        GR.paveCoupe === 0 && GR.paveLent === 0,
+        "code : 6 × ▼ en moins de 2 s → kta:vue3dCode « bas6 » ; un ▲ entre deux ou plus de 2 s → rien",
+        { pave6: GR.pave6, coupe: GR.paveCoupe, lent: GR.paveLent });
+      verifier(GR.clavier === 1 && GR.clavierRepete === 0, "code : 6 × ↓ au clavier ; S maintenu (répétition) ne compte pas",
+        { clavier: GR.clavier, repete: GR.clavierRepete });
+      verifier(GR.stick6 === 1 && GR.stickTenu === 0 && GR.stickCote === 0,
+        "code : 6 coups brefs du joystick vers le bas ; un coup tenu ou vers le côté → rien",
+        { six: GR.stick6, tenu: GR.stickTenu, cote: GR.stickCote });
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;
