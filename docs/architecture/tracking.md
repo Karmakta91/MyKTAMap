@@ -1492,6 +1492,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.
+- **Textures des structures** (interrupteur 🧱 de la tuile ⚙️, `config.js > getVue3DTextures`, actif par défaut) :
+  piliers et fronts en pierre de taille de carrière, murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type
+  perso `cust-…` résolu par le canon prend la pierre (son entrée de légende n'a pas de type de base, seulement une
+  géométrie : ligne = front, polygone = pilier), un type inconnu garde sa couleur. Appareil et normal map dessinés
+  dans un canvas (`_appareil`, `PIERRE` / `PARPAING` : 256 px, motif de 2 m et 1 m), faits à la première structure
+  texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée. Deux matériaux de plus,
+  structures toujours regroupées par matériau (un maillage par tuile et par matériau). Coordonnées de texture en
+  mètres posées face par face (`_prisme`) : u = longueur de contour cumulée (l'appareil tourne l'angle), v = hauteur
+  depuis le sol, dessus en projection monde (x, z). Normal map plutôt que bump map (une lecture par pixel, pas de
+  scintillement au loin). Coupé : lots et matériaux d'origine, couleurs de la légende exactes. Basculer refait les
+  tuiles sur place (`_refaireTuiles`), sans toucher la scène ni la greffe. Paroi des tubes du mixte : moellons.
 - **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés à la
   distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). De près
   (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un
@@ -1574,13 +1585,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `itineraireYAller`) : suivi → du tracker ; libre, tracker actif → de la position 3D, niveau compris, tracker non
   recalé ; tracker arrêté → « D'où pars-tu ? » avec « Ici » en premier (§ Position confirmée). Jamais de la position
   d'avant l'ouverture de la vue.
-- **La 3D en libre suit un tracker fixé ou choisi depuis elle** (`KtaVue3D.placerSurTracker()`, décision produit) : la
-  place vient à la position **réelle** du tracker (ajustée dans la galerie s'il l'a été) et à son niveau
-  (`niveauLibre`, comme après un passage 🪜), cap gardé, `aBouge` et `libreBouge` remis à faux (plus de pseudo « 3D »
-  pour l'équipe, pas de « Je suis ici ? » à la fermeture tant qu'on n'avance pas). Appelants : `tracking.js >
-  _notifierRecalage` (chaque recalage : « 📍 Je suis ici » d'une fiche ouverte en 3D, « Ici » de « D'où pars-tu ? » —
-  sans effet visible, on y est déjà) et `interfaceItineraire.js > _demanderDepart` pour « Ma dernière position »
-  (aucun recalage, donc pas de hook). « Me repositionner » : la vue se ferme pour le picker puis se **rouvre**
+- **La 3D en libre suit un tracker choisi comme départ depuis elle** (`KtaVue3D.placerSurTracker()`, décision
+  produit) : « Ma dernière position » de `interfaceItineraire.js > _demanderDepart` (aucun recalage, donc pas de
+  hook) ; la place vient à la position **réelle** du tracker et à son niveau (`niveauLibre`, comme après un passage
+  🪜), cap gardé, `aBouge` et `libreBouge` remis à faux (plus de pseudo « 3D » pour l'équipe, pas de « Je suis ici ? »
+  à la fermeture tant qu'on n'avance pas).
+- **Un tracker recalé pendant la 3D ne la déplace pas** (`KtaVue3D.trackerRecale()`, appelé par `tracking.js >
+  _notifierRecalage` ; décision produit, retour terrain) : « 📍 Je suis ici » d'une fiche ouverte en 3D recale le
+  tracker comme sur la carte (position ajustée par `_positionDansGalerie`), mais en libre la place 3D reste ; seul
+  `aBouge` est remis à faux (pas de « Je suis ici ? » à la fermeture). 🩸 La position ajustée n'est pas la galerie
+  dessinée : projection sur les seuls types principal / secondaire / chemin à moins de `smartNavRadiusM` (6 m),
+  alors que la 3D fait des tubes des types perso et montre contre la paroi un POI jusqu'à 10 m de l'axe
+  (`POI_GALERIE`) ; au-delà de 6 m le tracker reste sur le POI, dans la roche. En suivi, la vue suit le tracker et
+  saute donc au point recalé (comportement inchangé). « Me repositionner » : la vue se ferme pour le picker puis se **rouvre**
   (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
   fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
