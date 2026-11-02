@@ -81,9 +81,11 @@ if (rate.length || faux.length) {
 let fichiers;
 try {
   // Pages servies : racine + docs/applications/ (pages d'audit, dont le script de pied est un piège classique).
-  fichiers = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "js/*.js", "*.html", "lang/*.json"],
+  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/tracking.md § Greffe de la vue 3D).
+  fichiers = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "js/*.js", "*.html",
+    "lang/*.json", "addons/*.js", "addons/*.html"],
     { encoding: "utf8" }).split("\n").filter(Boolean)
-    .filter((f) => !f.includes("/") || /^(js|lang)\//.test(f) || /^docs\/applications\/[^/]+\.html$/.test(f));
+    .filter((f) => !f.includes("/") || /^(js|lang|addons)\//.test(f) || /^docs\/applications\/[^/]+\.html$/.test(f));
 } catch (e) {
   console.error("❌ [check-csp-inline] git ls-files impossible : " + e.message);
   process.exit(1);

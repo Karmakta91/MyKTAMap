@@ -206,7 +206,7 @@ function jsDe(dossier, recursif) {
   return out;
 }
 const fichiers = jsDe("js", false).filter((f) => path.basename(f) !== "copyright.js")
-  .concat(["sw.js", path.join("css", "style.css"), "index.html"], jsDe("scripts", true))
+  .concat(["sw.js", path.join("css", "style.css"), "index.html"], jsDe("scripts", true), jsDe("addons", true))
   .filter((f) => fs.existsSync(f)).sort();
 
 const liste = process.argv.indexOf("--liste") >= 0;
