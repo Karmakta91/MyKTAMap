@@ -4504,11 +4504,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.ktaEstAccessible = function () { return true; };
         window.setVue3DTextures(true);
         window.setRoads([{ uid: "rd_ef", type: "principal", level: 0, points: [P(-40, 0), P(44, 0)] }]);
-        // 🩸 Piliers décalés de 0,13 m : un rayon du corps aligné sur une face (x entier atteint par pas de 0,1 m)
-        // compte comme un contact (tracking.js > _segmentsSeCoupent, cas colinéaire) et figerait la marche.
+        // Faces des piliers sur des x entiers, atteints par les pas de 0,1 m : un rayon du corps aligné sur une
+        // face sans la recouvrir ne compte pas comme un contact (tracking.js > _segmentsSeCoupent).
         const st = [];
         for (let i = 0; i < 4; i++) {
-          const x = 22.13 + i * 6;
+          const x = 22 + i * 6;
           st.push({ uid: "st_ef_n" + i, type: "pilier-1", level: 0, points: rect(x, -3.5, x + 2, -2) });
           st.push({ uid: "st_ef_s" + i, type: "pilier-1", level: 0, points: rect(x, 2, x + 2, 3.5) });
         }

@@ -723,6 +723,9 @@ timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests n
    - **Coût** : grille d'index de 128 px par liste, refaite seulement quand la liste change (même tableau, même
      longueur, même somme des `updatedAt` et des nombres de points). ~0,3 ms par pas pour 13 000 piliers (Node, PC).
    - La structure **en cours de tracé** ne compte pas.
+   - **Contact** (`_segmentsSeCoupent`) : croisement, extrémité posée sur l'arête, bout commun. 🩸 Un pas
+     **colinéaire** à une arête ne compte que s'il la recouvre (un point commun au moins) : longer une face dans son
+     prolongement passait pour un contact et figeait le tracker (et la vue 3D) le long d'un pilier aligné.
    - **Exposée** : `window.ktaPasBloqueParStructure(x0, y0, x1, y1[, niveau[, avecPerso]])` (true = refusé),
      `niveau` remplaçant celui du tracker ; `window.ktaSegmentsBloquesParStructure(segments[, niveau[, avecPerso]])`
      juge un lot de segments en relisant l'index une seule fois (la signature parcourt toutes les structures : quinze
