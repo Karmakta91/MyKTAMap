@@ -1579,14 +1579,102 @@
       const x1 = e.pos.x + sx, y1 = e.pos.y + sy;
       const n = _balayage(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l);
       if (n < 0 || (n > 0 && n > depart())) continue;
-      e.pos.x = x1; e.pos.y = y1;
-      e.aBouge = true;
-      e.passageForce = null;
-      e.sale = true;
+      _poser(x1, y1);
       return true;
+    }
+    // Jamais coincé : parti d'une place d'où aucun pas n'est possible (dans un pilier, dans la roche de l'image de
+    // collision), tout pas qui rapproche du point libre le plus proche passe (_sortie).
+    const s = _sortie();
+    if (s) {
+      const x1 = e.pos.x + dx, y1 = e.pos.y + dy, d0 = Math.hypot(s.x - e.pos.x, s.y - e.pos.y);
+      if (s.x === undefined || Math.hypot(s.x - x1, s.y - y1) < d0) { _poser(x1, y1); return true; }
     }
     e.butees++;
     return false;
+  }
+
+  function _poser(x, y) {
+    const e = _e;
+    e.pos.x = x; e.pos.y = y;
+    e.aBouge = true;
+    e.passageForce = null;
+    e.sale = true;
+  }
+
+  // ── Jamais coincé (ouverture, arrivée d'un passage 🪜) ─────────────────────────────────────────────────
+  // 🩸 Une accroche de POI jonction posée à côté de la galerie, un POI dans un pilier ou un point que l'image de
+  // collision dit dans la roche : la règle du pas refusait tout pas, la vue restait figée. ⚠️ contrat : une place
+  // hors de l'emprise (galerie) ou d'où aucun pas n'est possible est ramenée au point libre le plus proche :
+  // l'axe du tracé le plus proche (modèle KtaGalerie du rendu, plusProche) à moins de smartNavRadiusM (6 m par
+  // défaut, le rayon de tracking.js > _positionDansGalerie), sinon un point libre cherché en couronnes de 0,25 m dans
+  // ce rayon. Rien trouvé : _pas laisse passer tout pas qui rapproche de l'axe le plus proche (30 m), ou tout pas.
+
+  // Un pas de 0,3 m est-il possible dans l'une des 8 directions, depuis (x, y) (px) ?
+  function _pasPossible(x, y) {
+    const e = _e, l = 0.3 * e.sc, bloques = _rayonsBloques(x, y);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4, ux = Math.cos(a), uy = Math.sin(a);
+      const n = _balayage(x, y, x + ux * l, y + uy * l, ux, uy);
+      if (n === 0 || (n > 0 && n <= bloques)) return true;
+    }
+    return false;
+  }
+
+  function _coince(x, y) {
+    if (_e.galerie) return !window.KtaGalerie.dedans(x, y, _niveauPas());
+    return !_pasPossible(x, y);
+  }
+
+  function _rayonLibre() {
+    const r = Number(window.APP_CONFIG && window.APP_CONFIG.smartNavRadiusM);
+    return (Number.isFinite(r) && r > 0 ? r : 6) * _e.sc;
+  }
+
+  // Point libre le plus proche de (x, y) (px), ou null.
+  function _pointLibre(x, y) {
+    const e = _e, m = e.galerie || e.mixte, R = _rayonLibre();
+    const pp = m ? m.plusProche(x, y, R) : null;
+    if (pp && !_coince(pp.x, pp.y)) return { x: pp.x, y: pp.y };
+    const pas = 0.25 * e.sc;
+    for (let r = pas; r <= R; r += pas) {
+      const n = Math.max(8, Math.ceil(2 * Math.PI * r / pas));
+      for (let k = 0; k < n; k++) {
+        const qx = x + r * Math.cos(2 * Math.PI * k / n), qy = y + r * Math.sin(2 * Math.PI * k / n);
+        if (!e.galerie && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(qx, qy)) continue;
+        if (!_coince(qx, qy)) return { x: qx, y: qy };
+      }
+    }
+    return null;
+  }
+
+  // Ramène la place au point libre le plus proche si elle est coincée. → true si elle a bougé.
+  function _degager() {
+    const e = _e;
+    if (!_coince(e.pos.x, e.pos.y)) return false;
+    const p = _pointLibre(e.pos.x, e.pos.y);
+    if (!p) {
+      console.warn("[Vue3D] place coincée, aucun point libre à portée : tout pas qui en rapproche passera");
+      return false;
+    }
+    e.pos.x = p.x; e.pos.y = p.y;
+    e.degagements++;
+    e.sale = true;
+    console.log("[Vue3D] place ramenée dans la galerie (point libre le plus proche)");
+    return true;
+  }
+
+  // Cible de sortie d'une place d'où aucun pas n'est possible (mise en cache par place) : l'axe le plus proche à
+  // 30 m, sinon {} (tout pas passe). null si la place n'est pas coincée.
+  function _sortie() {
+    const e = _e, cle = Math.round(e.pos.x) + "," + Math.round(e.pos.y);
+    if (e.sortie && e.sortie.cle === cle) return e.sortie.cible;
+    let cible = null;
+    if (!_pasPossible(e.pos.x, e.pos.y)) {
+      const m = e.galerie || e.mixte, pp = m ? m.plusProche(e.pos.x, e.pos.y, 30 * e.sc) : null;
+      cible = pp ? { x: pp.x, y: pp.y } : {};
+    }
+    e.sortie = { cle: cle, cible: cible };
+    return cible;
   }
 
   // → -1 si un couloir est coupé (ou l'arrivée hors plan / hors image de collision), sinon le nombre de rayons
@@ -1736,6 +1824,7 @@
     e.changementsNiveau++;
     console.log("[Vue3D] passage vers le niveau " + c.niveau);
     _reindexer();
+    _degager();
     _majPassage();
     e.sale = true;
     return true;
@@ -2343,7 +2432,7 @@
         roseAngle: NaN, rendu: "structures", galerie: null, passages: [], passageSig: null, passageCibles: null,
         passageForce: null, niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         zonesDecoupees: {}, rideaux: [], facesRemblais: 0, rubans: {}, liseres: {}, filtresChanges: false,
-        virage: false, desabonner: null, sousHaut: null,
+        virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
         retourFocus: o.retourFocus || document.activeElement || null,
         attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
       };
@@ -2367,6 +2456,7 @@
       _brancher();
       _redimensionner();
       _reindexer();
+      if (_e.mode === "libre") _degager();   // en suivi, la place est celle du tracker
       _appliquerVue();
       _placerCamera();
       _e.msOuverture = performance.now() - t0;
@@ -2529,6 +2619,7 @@
         inclinaisonVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden },
       niveau: e.niveau, niveauLibre: Number.isInteger(e.niveauLibre) ? e.niveauLibre : null,
       changementsNiveau: e.changementsNiveau, hauteur: e.hauteur, oeil: e.oeil, distance: e.distance,
+      degagements: e.degagements,
       reglageHauteur: { visible: !!e.reglageHauteur && !e.reglageHauteur.hidden,
         bouton: e.boutonHauteur ? e.boutonHauteur.textContent : "",
         valeur: e.hauteurValeur ? e.hauteurValeur.textContent : "" },

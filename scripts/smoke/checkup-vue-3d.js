@@ -2066,6 +2066,62 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.setStructures([]);
       });
 
+      // ── 12. Jamais coincé : accroche d'un POI jonction posée à 3 m d'un tube (dans la roche) ─────────────────
+      // Après le passage, la place est ramenée dans le tube et l'on avance, en galerie et en mixte ; partie d'un
+      // pilier (aucun pas possible), un pas qui rapproche de la galerie passe.
+      if (G.multi) {
+        const nc = await page.evaluate(async function (a) {
+          const K = window.KtaVue3D, acc = window.ktaEstAccessible, P = function (x, z) {
+            return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc };
+          };
+          window.ktaEstAccessible = function () { return true; };
+          window.ktaSetActiveLevel(0);
+          window.setRoads([
+            { uid: "rd_nc_0", type: "principal", level: 0, points: [P(-20, 0), P(0, 0)] },
+            { uid: "rd_nc_1", type: "principal", level: 1, points: [P(-20, -6), P(0, -6)] }
+          ]);
+          const ac = P(-8, -9);
+          window.setEditorPoints([Object.assign({ id: "POI jonction nc v3d", level: 0, tags: ["jes"], niveaux: [0, 1],
+            accroches: [{ level: 1, x: ac.x, y: ac.y }] }, P(-10, 0))]);
+          window.setStructures([{ uid: "st_nc", type: "pilier-1", level: 1,
+            points: [P(-15, -13), P(-13, -13), P(-13, -11), P(-15, -11)] }]);
+          window.KtaGalerie.invalider();
+          const r = {};
+          for (const rendu of ["galerie", "mixte"]) {
+            window.setPlanRenduVue3D(null, rendu);
+            window.ktaSetActiveLevel(0);   // la fermeture précédente a mis la carte au niveau de la 3D
+            const d = P(-9.5, 0);
+            await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+            const ok = K.changerNiveau("haut"), e = K.etat();
+            const z0 = e.pos.y / a.sc - a.oz, x0 = e.pos.x / a.sc - a.ox;
+            for (let i = 0; i < 10; i++) K.avancer(0.2);
+            const x1 = K.etat().pos.x / a.sc - a.ox;
+            r[rendu] = { passe: ok, niveau: e.niveau, z: +z0.toFixed(2), degage: e.degagements, avance: +(x1 - x0).toFixed(2) };
+            if (rendu === "mixte") {
+              const c = P(-14, -12);
+              K.placer(c.x, c.y, 180);   // au centre du pilier : vers le sud, on s'approche de la galerie
+              const yA = K.etat().pos.y;
+              for (let i = 0; i < 5; i++) K.avancer(0.2);
+              r.pilier = +((K.etat().pos.y - yA) / a.sc).toFixed(2);
+            }
+            await K.fermer();
+          }
+          window.setPlanRenduVue3D(null, "mixte");
+          window.ktaEstAccessible = acc;
+          window.setStructures([]); window.setEditorPoints([]);
+          return r;
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        verifier(nc.galerie.passe && nc.galerie.niveau === 1 && Math.abs(nc.galerie.z + 6) < 0.05 &&
+          nc.galerie.degage === 1 && nc.galerie.avance > 1.5,
+          "galerie : accroche à 3 m du tube → ramené dans le tube (axe), on avance", nc.galerie);
+        verifier(nc.mixte.passe && nc.mixte.niveau === 1 && nc.mixte.avance > 1.5,
+          "mixte : après le passage (accroche hors du tube), on avance", nc.mixte);
+        verifier(nc.pilier > 0.5, "mixte : parti du centre d'un pilier, un pas qui rapproche de la galerie passe (" +
+          nc.pilier + " m)", nc);
+      } else {
+        console.log("  ℹ️ plan à un niveau : passage vers une accroche hors du tube non joué");
+      }
+
       await page.evaluate(function () {
         const s = window.__v3dEmb;
         window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
