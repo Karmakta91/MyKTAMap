@@ -318,6 +318,8 @@ const ASSETS_TO_CACHE = [
   "./js/debug.js",
   "./js/devMode.js",
   "./js/perfUltra.js",
+  // pictos au trait partagés (écran Bienvenue, bouton de la vue 3D).
+  "./js/ktaPictos.js",
   // 🎨 Interface refondue. Module no-op si le flag
   // localStorage["myktamap_refonte_v1"] est absent. Précaché pour que le toggle
   // marche aussi hors ligne.

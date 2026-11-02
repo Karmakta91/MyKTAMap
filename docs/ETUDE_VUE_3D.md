@@ -1,14 +1,16 @@
 # Étude — Vue 3D autour de sa position
 
 > Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01/11/2026. Lots 1, 2 et 4 bis livrés, lot 4 en
-> partie (passage de niveau par POI jonction) : la vue est en **bêta** dans le menu Tracker (tuile 🧊), avec deux
-> rendus exclusifs (structures, galerie), précachée, textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone
-> (lot 3), le reste du lot 4 et la question 9. Contrats à jour : `docs/architecture/tracking.md` § Vue 3D.
+> partie (passage de niveau par POI jonction) : la vue est en **bêta**, ouverte par le bouton cube de la barre de
+> droite (sous ≡ Filtres), avec deux rendus exclusifs (structures, galerie), les filtres de la carte, précachée,
+> textes fr/en/es, docs. Reste : la mesure sur un vrai iPhone (lot 3), le reste du lot 4 et la question 9. Contrats
+> à jour : `docs/architecture/tracking.md` § Vue 3D ; place dans l'interface : `docs/architecture/ui.md` § Vue 3D.
 
 ## Le besoin
 
 Sur un plan dense en piliers, murs et fronts de taille, la vue de dessus dit mal ce qu'on a devant soi. Depuis sa
-position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, depuis la tuile 🧊 du menu Tracker.
+position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, depuis le bouton cube de la barre de
+droite.
 
 ## Décisions de KARMA (QCM du 01/11/2026)
 
@@ -23,16 +25,33 @@ position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, d
 | 7 | Niveaux | Niveau actif seul ; un changement de niveau refait la scène |
 | 8 | Performance | 30 images/s sur un iPhone récent, plan dense (~9 000 piliers, 4 000 murs, 700 fronts) |
 
+## Décisions de KARMA (QCM du 02/11/2026) : cohérence avec l'app
+
+Après l'audit de cohérence (la 3D se posait par-dessus l'app comme une autre appli) :
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Entrée | Bouton dans la barre de droite, juste sous ≡ Filtres, picto cube au trait de l'écran Bienvenue ; grisé sans plan ou sans échelle, toujours touchable ; la tuile du menu Tracker est retirée |
+| 2 | Filtres | Le même panneau ≡ Filtres que la carte, un seul état (masquer en 3D masque en 2D, et inversement) ; toutes les sections lues (tags, types, calques de données, niveaux) ; panneau propre à la 3D supprimé. **Revient sur** « la 3D ne touche pas aux filtres 2D » et sur la question 6 ci-dessous |
+| 3 | Urgence | 🚨 dans la rangée du haut, même action que l'en-tête ; toasts sous la rangée |
+| 4 | Icônes | Celles de la 2D : 🏛️ Structures, 🛣️ Galerie ; ni 📍 (recalage) pour le suivi, ni 🛰️ (Export GeoTIFF) pour la vue plongeante ; ✕ au coin haut droit au téléphone ; ❓ d'aide et marque « bêta » visibles |
+| 5 | Panneaux de POI | Toujours sombres (jetons du thème sombre) ; distance minimale et fondu de près |
+| 6 | Finitions | Indicateur de chargement ; Échap ferme d'abord le panneau ouvert ; focus et `aria-modal` ; rendu en pause (bruit de la boussole ignoré) ; statistiques en i18n ; section « Vue 3D » dans `ui.md` |
+
+Choix faits à la livraison, à valider : 🧭 pour le suivi (le tracker en 2D), 🦅 pour la vue plongeante (sans autre
+sens dans l'app), ⛏️ pour la hauteur (↕ dit « passages entre niveaux » dans la légende ; ⛏️ = Volume exploité,
+dont c'est le même chiffre).
+
 ## Ce que fait la vue
 
-- **Entrée** : tuile **🧊 Vue 3D (bêta)** du menu Tracker, avec une ligne d'aide « Montre le plan, pas la galerie
-  réelle » ; grisée (et son toucher dit pourquoi) sans plan ou sans échelle, sans rien charger.
+- **Entrée** : bouton cube de la barre de droite, sous ≡ Filtres, titré « le plan, pas la galerie réelle » ; grisé
+  (et son toucher dit pourquoi) sans plan ou sans échelle, sans rien charger ; indicateur pendant l'ouverture.
 - **Ouvrir** : `KtaVue3D.ouvrir({ distanceVue, tuiles, depart, densiteMax, stats, attenteReprise })` charge
   `css/vue3d.css` et three.js, monte une fenêtre plein écran (z-index des modales), part de la position et du cap
   du tracker (`getTrackingPosition`, `getPlanRelHeading`). Refus avec message sans échelle, sans WebGL, ou si
   three.js ne se charge pas. `fermer()` (✕ ou Échap) démonte tout, libère le contexte WebGL, puis pose
   « 📍 Je suis ici ? » si le suivi est actif et qu'on s'est déplacé (Oui = recalage du tracker).
-- **Vues** : à hauteur d'yeux (1,6 m, ou 80 % de la hauteur si la galerie est basse) ; 🛰️ ou touche V = plongeante
+- **Vues** : à hauteur d'yeux (1,6 m, ou 80 % de la hauteur si la galerie est basse) ; 🦅 ou touche V = plongeante
   (caméra à 18,4 m du point visé 2 m devant soi, plafond masqué, silhouette dorée à sa place, éclairage
   d'ambiance relevé). **Inclinaison** de 15° (rasante) à 85° (presque verticale), 60° par défaut : deux doigts
   glissés à la verticale, molette, PageUp / PageDown, ou deux petits boutons ▲ ▼ montrés dans cette vue
@@ -42,10 +61,10 @@ position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, d
   `compass.js` et l'inverse de `tracking.js > _getPlanRelHeading`, sans autre calcul. Plan sans Nord calibré
   (`config.js > getPlanNorthCalibre`) : la rose montre le haut du plan, avec la mention « Haut du plan (nord non
   calibré) ».
-- **Suivi / libre** : 📍 bascule entre **suivi** (la caméra suit la position du tracker et le cap de l'appareil,
+- **Suivi / libre** : 🧭 / 🕹️ bascule entre **suivi** (la caméra suit la position du tracker et le cap de l'appareil,
   lissés, lus à la même source que le mode 2D « plan orienté » : `getPlanRelHeading`, offset Nord compris ; on
   tourne avec le téléphone, la vue tourne) et **libre** (boutons et clavier). Ouverture en suivi si le tracker
-  tourne, sinon en libre ; tracker arrêté : 📍 grisé, son toucher l'explique ; arrêté en route : retour en libre.
+  tourne, sinon en libre ; tracker arrêté : 🧭 grisé, son toucher l'explique ; arrêté en route : retour en libre.
 - **Déplacement** (mode libre) : pavé ▲ ▼ ◀ ▶ ↶ ↷ maintenu, ou clavier (flèches, ZQSD / WASD, A/E en pas de
   côté), ou glisser sur la scène (tourner, lever les yeux) ; tout geste de déplacement passe en libre. **2,8 m/s** (le double du prototype : on explore, on ne
   marche pas) ; **pas rapide × 2,5** avec Maj maintenue ou ▲ gardé appuyé plus de 0,6 s ; 90 °/s.
@@ -61,7 +80,7 @@ position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, d
   un **point** avec une marge seulement dans le sens de la marche : en biais ou en glissant, on frôlait une face
   à 4 cm ; la caméra (plan proche à 5 cm) entrait alors dans le pilier et l'on voyait au travers. Aucun pas ne
   traversait un pilier intégré : le segment était bien testé en entier.
-- **Rendus 🧱 Structures / 🚇 Galerie** (question A) : interrupteur exclusif, bouton en haut avec le mode écrit en
+- **Rendus 🏛️ Structures / 🛣️ Galerie** (question A) : interrupteur exclusif, bouton en haut avec le mode écrit en
   clair, retenu par plan ; sans choix, structures si le niveau affiché en a, galerie sinon. En galerie, les tracés
   deviennent des tubes et les structures disparaissent (ni dessinées ni bloquantes).
 - **Niveau** : celui du tracker en suivi actif, sinon celui pris par un passage 🪜, sinon le niveau actif du
@@ -72,6 +91,10 @@ position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, d
   gardé. Le tracker et le niveau de la carte ne bougent pas pendant la 3D.
 - **Sortie** (demande de KARMA du 01/11/2026) : la carte 2D se place là où l'on était en 3D (niveau de la 3D, centre
   sur la position, sans animation), quelle que soit la réponse à « Je suis ici ? », qui recale aussi le niveau.
+- **Filtres** (QCM du 02/11/2026) : ceux de la carte ; ≡ ouvre le même panneau par-dessus la vue ; masquer ne retire
+  que le dessin (collisions, parois, 🪜 restent), l'itinéraire n'en suit aucun.
+- **Rangée du haut** : ✕, 🚨 Sortie d'urgence, ❓ aide, ≡, 🦅, ⛏️ hauteur, rendu, mode, « bêta » ; Échap ferme
+  d'abord un réglage ou une fenêtre ouverts ; focus dans la vue, rendu au bouton à la fermeture.
 - **Outils de mesure** : `etat()` (tuiles, triangles, appels, contexte vivant…), `mesurer({ images })`,
   `placer(x, y, cap)`.
 
@@ -155,7 +178,7 @@ position (tracker), l'utilisateur voit en 3D ce qui l'entoure et s'y déplace, d
 
 ## Chargement et hors ligne (`sw.js`)
 
-- La **page** ne demande rien de la 3D avant le toucher de la tuile : `interface.js > _chargerVue3D` pose alors
+- La **page** ne demande rien de la 3D avant le toucher du bouton cube : `interface.js > _chargerVue3D` pose alors
   `js/vue3d.js`, qui charge sa feuille et importe three.js. `smoke.js` refuse toute requête de la page vers
   `lib/three/`, `js/vue3d.js` ou `css/vue3d.css` pendant son parcours (il bloque le service worker : ce qu'il
   compte, ce sont les requêtes de la page).
@@ -257,31 +280,29 @@ constructions de tuiles (3 par image au plus).
 | **Mémoire iOS** (Safari tue l'onglet sans prévenir au-delà de ~1 à 1,5 Go) | Tuiles autour de soi, libérées au loin ; géométrie compacte ; 64 à 80 Mo de tas pour toute la page pendant la 3D en émulation | Mesurer sur un iPhone avec un plan réel (Instruments ou le relevé mémoire de l'app) |
 | **Perte du contexte WebGL** (mémoire graphique, onglet longtemps en fond) | `webglcontextlost` : la vue attend `webglcontextrestored` 8 s d'écran visible, remonte sa scène à neuf (jamais `dispose()` sur les objets d'avant la perte), sinon se ferme avec un toast (question 7 c). Simulée par le checkup (`WEBGL_lose_context`) | Perte réelle sur un iPhone : non observée |
 | **Contextes WebGL en trop** | Chaque fermeture appelle `forceContextLoss` ; Chromium rend la place aussitôt. WebKit ne la rend qu'au ramasse-miettes : après ~16 ouvertures rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien, **déjà fermé** (sans effet ; toléré par le checkup sous WebKit seulement) | Si l'app utilisait un autre contexte WebGL un jour, garder un seul contexte pour la session (question 7) |
-| **Batterie** | Rendu seulement quand on bouge ; pas d'ombres ; GPU de bureau mesuré à < 1 ms par image | Mesure réelle de décharge sur une sortie ; couper la vue quand l'écran se verrouille (la boucle s'arrête déjà avec l'onglet caché) |
-| **Fausse précision** : la 3D a l'air exacte, la position du tracker ne l'est pas (dérive PDR) | Lissage ; mode libre + « Je suis ici ? » pour se recaler à l'œil ; mention « bêta » et ligne d'aide de la tuile, Aide et guides : « la 3D montre le plan, pas la galerie réelle » | Retour terrain |
-| Plan sans échelle ou sans structures | Sans échelle : tuile grisée et ouverture refusée avec un message | Plan sans structures : la vue montre sol, plafond, tracés et points |
+| **Batterie** | Rendu seulement quand on bouge (bruit de la boussole sous 2° ignoré en suivi) ; pas d'ombres ; GPU de bureau mesuré à < 1 ms par image | Mesure réelle de décharge sur une sortie ; couper la vue quand l'écran se verrouille (la boucle s'arrête déjà avec l'onglet caché) |
+| **Fausse précision** : la 3D a l'air exacte, la position du tracker ne l'est pas (dérive PDR) | Lissage ; mode libre + « Je suis ici ? » pour se recaler à l'œil ; marque « bêta » dans la vue, titre du bouton, Aide et guides : « la 3D montre le plan, pas la galerie réelle » | Retour terrain |
+| Plan sans échelle ou sans structures | Sans échelle : bouton grisé et ouverture refusée avec un message | Plan sans structures : la vue montre sol, plafond, tracés et points |
 
-## Intégration au menu Tracker (lots 1 et 2, livrés)
+## Intégration à l'app (lots 1, 2 et cohérence, livrés)
 
-1. **Entrée** : tuile « 🧊 Vue 3D (bêta) » dans `interface.js > _ouvrirTrackerModal` (section Outils, après la
-   tuile 🪧), qui charge `js/vue3d.js` à la demande comme `unlockGate.js` charge `bienvenue.js`, puis appelle
-   `KtaVue3D.ouvrir()`. Grisée sans plan chargé ou sans échelle ; WebGL absent : `vue3d.indisponible`.
-2. **Textes** (`lang/fr.json`, `en.json`, `es.json`, appel au rendu) : `vue3d.titre`, `vue3d.suivre`,
-   `vue3d.plongee`, `vue3d.fermer`, `vue3d.avancer`, `vue3d.reculer`, `vue3d.tournerGauche`,
-   `vue3d.tournerDroite`, `vue3d.pasGauche`, `vue3d.pasDroite`, `vue3d.contextePerdu`, `vue3d.sansPlan`,
-   `vue3d.sansEchelle`, `vue3d.indisponible`, `vue3d.chargementImpossible`, `vue3d.jeSuisIci.*`,
-   `tracker.menu.vue3d` et `tracker.menu.vue3dAide` ; section d'Aide `aide.sec.vue-3d.*`.
-3. **Garde-fous** : `checkup-vue-3d.js` rejoué depuis la tuile (Chromium et WebKit) ; `smoke.js` (rien au
-   démarrage) ; `check-i18n.js`, `check-aide-sections.js` ; `check-libs.js` (three.js).
-4. **Docs** : `docs/architecture/tracking.md` § Vue 3D, guides `README_USER{,.en,.es}.md`, Aide intégrée,
-   `AI_CONTEXT.md` (liste fermée de ce que montre la 3D), journal `README.md`, `NETWORK_AUDIT` (librairies ; note
-   v2.22.0 de l'historique), `CLAUDE.md` (Où chercher). Pas de point du smoke manuel de la porte de release.
+1. **Entrée** : bouton cube de la barre de droite, sous ≡ Filtres (`interface.js > L.control.ktaVue3DControl`), qui
+   charge `js/vue3d.js` à la demande comme `unlockGate.js` charge `bienvenue.js`, derrière `ComputeLoader`, puis
+   appelle `KtaVue3D.ouvrir()`. Grisé sans plan chargé ou sans échelle ; WebGL absent : `vue3d.indisponible`.
+2. **Textes** (`lang/fr.json`, `en.json`, `es.json`, appel au rendu) : clés `vue3d.*` et `ui.vue3d.title` ; section
+   d'Aide `aide.sec.vue-3d.*`, ouverte aussi par le ❓ de la vue.
+3. **Garde-fous** : `checkup-vue-3d.js` (Chromium et WebKit), joué depuis le bouton ; `smoke.js` (rien au
+   démarrage) ; `check-i18n.js`, `check-aide-sections.js`, `check-aide-contextuelle.js` ; `check-libs.js` (three.js).
+4. **Docs** : `docs/architecture/tracking.md` § Vue 3D, `docs/architecture/ui.md` § Vue 3D, guides
+   `README_USER{,.en,.es}.md`, Aide intégrée, `AI_CONTEXT.md` (liste fermée de ce que montre la 3D), journal
+   `README.md`, `NETWORK_AUDIT` (librairies ; note v2.22.0 de l'historique), `CLAUDE.md` (Où chercher). Pas de point
+   du smoke manuel de la porte de release.
 
 ## Estimation
 
 | Lot | Contenu | Taille |
 |---|---|---|
-| 1 | Tuile du menu Tracker, chargement à la demande, textes fr/en/es, refus sans échelle, précache, reprise après perte de contexte, « Je suis ici ? », checkup rejoué depuis la tuile | **S**, livré |
+| 1 | Entrée (d'abord tuile du menu Tracker, puis bouton de la barre de droite), chargement à la demande, textes fr/en/es, refus sans échelle, précache, reprise après perte de contexte, « Je suis ici ? », checkup | **S**, livré |
 | 2 | Docs : guides 3 langues, Aide, AI_CONTEXT, tracking.md, journal | **S**, livré |
 | 3 | Mesure sur un vrai iPhone et un plan dense réel ; réglages (distance, densité) d'après les chiffres | **M** |
 | 4 | Multi-niveau par POI jonction et tracé `jonction` (question B) : **livré** ; reste POI touchables (fiche), itinéraire vivant suivi en 3D | **M** |
@@ -297,11 +318,11 @@ constructions de tuiles (3 par image au plus).
 | 3 | Épaisseurs | **a** : fixes (mur en ligne 0,4 m, front 0,3 m) |
 | 4 | Remblais | **a** : volume à 60 % de la hauteur |
 | 5 | Couleurs | **a** : celles de la légende |
-| 6 | Calques masqués | **a** : montrés en 3D |
+| 6 | Calques masqués | Comme sur la carte (QCM du 02/11/2026, à la place de « montrés en 3D ») : un calque masqué ne se dessine pas, ses objets bloquent toujours |
 | 7 | Contexte WebGL | **c** : libéré à chaque fermeture + reprise automatique après une perte, fermeture avec message si elle échoue |
 | 8 | Distance de vue | **a** : 30 m fixes |
 | — | Murs et piliers | Règle ajoutée : un mur est toujours sous un pilier ou un front de son niveau (modèle de scène) |
-| A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🧱 / 🚇 écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **moellons de calcaire taillés** (assises à joints décalés), sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |
+| A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🏛️ / 🛣️ écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **moellons de calcaire taillés** (assises à joints décalés), sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |
 | B | Passer par un POI jonction (QCM du 01/11/2026) | Bouton 🪜 à moins de 2 m, **▲ / ▼** vers le niveau lié suivant, liste au-delà ; toucher le panneau = même chose ; arrivée au raccord validé ou à la même position, cap gardé ; tracé `jonction` **dans les deux sens** ; **le tracker ne bouge pas**, « Je suis ici ? » recale aussi le niveau ; en suivi, pas de 🪜 ; niveau de la carte 2D inchangé pendant la 3D |
 | — | Sortie de la 3D (demande du 01/11/2026) | La carte 2D se place là où l'on était en 3D : niveau de la 3D, centre sur la position, quelle que soit la réponse à « Je suis ici ? » |
 

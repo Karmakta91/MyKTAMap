@@ -3,19 +3,23 @@
 // =====================================================================
 // checkup-vue-3d.js — checkup (Playwright) : vue 3D (js/vue3d.js) sur le relevé fictif
 // =====================================================================
-// Rien de la 3D n'est demandé au démarrage ni au chargement du plan. Tuile 🧊 du menu Tracker grisée sans échelle
-// (rien chargé, message), puis ouverte depuis la tuile : scène non vide, textes du dictionnaire, mur plus bas que
-// le pilier qu'il traverse, avancer, buter contre le pilier (règle du pas du tracker), clavier, vue plongeante,
+// Rien de la 3D n'est demandé au démarrage ni au chargement du plan. Bouton cube de la barre de droite (sous ≡) grisé
+// sans échelle (rien chargé, message), plus de tuile au menu Tracker ; ouverte par ce bouton derrière un indicateur de
+// chargement, focus dans la vue (aria-modal) puis rendu au bouton : scène non vide, textes du dictionnaire,
+// mur plus bas que le pilier qu'il traverse, avancer, buter contre le pilier (règle du pas du tracker), clavier, vue plongeante,
 // niveau ; perte du contexte WebGL simulée (WEBGL_lose_context) puis reprise ; « Je suis ici ? » à la fermeture
 // (Non = rien, Oui = tracker recalé) ; perte sans reprise = fermeture avec message ; WebGL absent = refus avec
 // message ; 20 ouvertures de suite sans « Too many active WebGL contexts » ; aucune erreur de page ni de console.
 // Aussi : pas rapide (appui long ▲, Maj) ; collisions sur 6 obstacles fictifs (pilier, pilier fin, mur, mur en
 // ligne, front, pilier perso) sous 12 angles, pas rapides et grand pas, départ collé à une face, jugées par une
 // géométrie propre au checkup ; inclinaison de la vue plongeante ; rose des vents (nord calibré ou non) ; bascule
-// suivi / libre avec un cap d'appareil simulé, 📍 grisé tracker arrêté ; POI au centre d'un pilier visible depuis
+// suivi / libre avec un cap d'appareil simulé, 🧭 grisé tracker arrêté ; POI au centre d'un pilier visible depuis
 // la galerie, collé à la face vue. Mode galerie sur des tracés fictifs (T, X, coudes droit et aigu, cul-de-sac, presque
 // parallèles) : aucune paroi à travers une autre, butées, carrefours, zones coupées au tube, POI à 2 / 5 m,
-// interrupteur retenu par plan ; passages 🪜 par POI et tracé jonction ; carte 2D placée à la sortie.
+// interrupteur retenu par plan ; passages 🪜 par POI et tracé jonction ; carte 2D placée à la sortie. Intégration :
+// ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
+// 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
+// Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=1 → plan dense synthétique (9 000 piliers, 3 000 murs, 1 000 murs en ligne, 700 fronts,
@@ -414,34 +418,45 @@ async function mesuresGalerie(page) {
       }
       await mesuresGalerie(page);
     } else {
-      // ── 1. Tuile 🧊 grisée sans échelle : rien n'est chargé, le toucher explique ────────────────────
+      // ── 1. Bouton cube grisé sans échelle : rien n'est chargé, le toucher explique ; plus de tuile au Tracker ──
       const grise = await page.evaluate(function () {
         const sc = window.APP_CONFIG.scale;
         window.APP_CONFIG.scale = 0;
-        window.ouvrirMenuTracker();
-        const tuile = tuileVue3D();
-        const r = { existe: !!tuile, inactif: !!tuile && tuile.classList.contains("kta-inactif"),
-          aide: tuile ? (tuile.querySelector(".kta-tracker-modal-tile-aide") || {}).textContent : null,
-          attendu: window.I18n.t("vue3d.sansEchelle") };
-        if (tuile) tuile.click();
+        window.ktaMajBoutonVue3D();
+        const a = document.querySelector(".kta-vue3d-ctrl a"), droite = document.querySelector(".leaflet-top.leaflet-right");
+        const ctrls = droite ? Array.prototype.slice.call(droite.children) : [];
+        const iFiltres = ctrls.findIndex(function (c) { return c.classList.contains("kta-filter-ctrl"); });
+        const r = { existe: !!a, inactif: !!a && a.classList.contains("kta-inactif"), titre: a ? a.title : null,
+          attendu: window.I18n.t("vue3d.sansEchelle"), sousFiltres: iFiltres >= 0 && ctrls[iFiltres + 1] &&
+            ctrls[iFiltres + 1].classList.contains("kta-vue3d-ctrl"),
+          picto: !!(a && a.querySelector("svg.kta-vue3d-ctrl-picto path")),
+          couleur: a ? getComputedStyle(a).color : null, texte3: getComputedStyle(document.body).getPropertyValue("--kta-texte-3").trim(),
+          opacite: a ? getComputedStyle(a).opacity : null, filtre: a ? getComputedStyle(a).filter : null };
+        if (a) a.click();
         const ok = document.getElementById("kta-confirm-oui");
         r.alerte = ok ? ok.closest(".kta-readme-modal-boite").textContent : null;
         if (ok) ok.click();
         window.APP_CONFIG.scale = sc;
+        window.ktaMajBoutonVue3D();
+        r.actifApres = !a.classList.contains("kta-inactif");
+        window.ouvrirMenuTracker();
+        r.tuile = Array.prototype.slice.call(document.querySelectorAll(".kta-tracker-modal-tile")).some(function (t) {
+          return t.textContent.indexOf("🧊") >= 0 || /3D/.test(t.textContent);
+        });
+        r.tuiles = document.querySelectorAll(".kta-tracker-modal-tile").length;
+        const croix = document.querySelector(".kta-tracker-modal-close");
+        if (croix) croix.click();
         return r;
-        function tuileVue3D() {
-          return Array.prototype.slice.call(document.querySelectorAll(".kta-tracker-modal-tile")).find(function (t) {
-            return t.textContent.indexOf("🧊") >= 0;
-          });
-        }
       });
-      verifier(grise.existe && grise.inactif && grise.aide === grise.attendu,
-        "sans échelle : tuile 🧊 grisée, sa ligne d'aide dit pourquoi", grise);
-      verifier(!!grise.alerte && grise.alerte.indexOf(grise.attendu) >= 0, "toucher la tuile grisée : message, pas de 3D",
-        grise);
+      verifier(grise.existe && grise.sousFiltres && grise.picto, "bouton cube (picto de l'écran Bienvenue) juste sous ≡ Filtres", grise);
+      verifier(grise.inactif && grise.titre === grise.attendu && grise.opacite === "1" && /grayscale/.test(grise.filtre),
+        "sans échelle : bouton grisé (texte-3, désaturé, sans opacité), son titre dit pourquoi", grise);
+      verifier(!!grise.alerte && grise.alerte.indexOf(grise.attendu) >= 0 && grise.actifApres,
+        "toucher le bouton grisé : message, pas de 3D ; échelle revenue : bouton actif", grise);
+      verifier(!grise.tuile && grise.tuiles > 0, "menu Tracker : plus de tuile Vue 3D (" + grise.tuiles + " tuiles)", grise);
       await page.waitForTimeout(300);
       verifier(requetes3d.length === 0 && await page.evaluate(function () { return !window.KtaVue3D; }),
-        "tuile grisée : rien de la 3D chargé", requetes3d);
+        "bouton grisé : rien de la 3D chargé", requetes3d);
 
       // Pilier de session à 3 m au nord du départ, et un mur qui le traverse d'est en ouest (objets fictifs).
       const prep = await page.evaluate(function () {
@@ -481,27 +496,45 @@ async function mesuresGalerie(page) {
         return { x: x, y: y, sc: sc, multi: window.APP_CONFIG.multiLevel === true };
       });
 
-      // ── 2. Ouverture depuis la tuile du menu Tracker ─────────────────────────────────────────────
-      const tuileOk = await page.evaluate(function () {
-        window.ouvrirMenuTracker();
-        const t = Array.prototype.slice.call(document.querySelectorAll(".kta-tracker-modal-tile")).find(function (x) {
-          return x.textContent.indexOf("🧊") >= 0;
+      // ── 2. Ouverture par le bouton cube : indicateur de chargement, focus dans la vue ─────────────────────
+      await page.evaluate(function () {
+        window.__v3dLoader = [];
+        window.__v3dObs = new MutationObserver(function () {
+          const ov = document.getElementById("kta-compute-overlay");
+          if (ov && ov.style.display !== "none") {
+            const m = ov.querySelector(".kta-compute-msg");
+            const t = m ? m.textContent : "";
+            if (window.__v3dLoader.indexOf(t) < 0) window.__v3dLoader.push(t);
+          }
         });
-        return { inactif: t.classList.contains("kta-inactif"),
-          libelle: t.querySelector(".kta-tracker-modal-tile-label").textContent,
-          aide: (t.querySelector(".kta-tracker-modal-tile-aide") || {}).textContent,
-          attenduLibelle: window.I18n.t("tracker.menu.vue3d"), attenduAide: window.I18n.t("tracker.menu.vue3dAide") };
+        window.__v3dObs.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
       });
-      verifier(!tuileOk.inactif && tuileOk.libelle === tuileOk.attenduLibelle && tuileOk.aide === tuileOk.attenduAide,
-        "tuile « " + tuileOk.libelle + " » active, ligne d'aide « " + tuileOk.aide + " »", tuileOk);
       ouvert = true;
-      await page.locator(".kta-tracker-modal-tile", { hasText: "🧊" }).click();
+      await page.locator(".kta-vue3d-ctrl a").click();
       await attendre(page, function () {
         return !!window.KtaVue3D && window.KtaVue3D.etat().ouvert === true;
       }, 20000);
+      await page.waitForTimeout(200);
+      const charge = await page.evaluate(function () {
+        window.__v3dObs.disconnect();
+        const ov = document.getElementById("kta-vue3d");
+        return { messages: window.__v3dLoader, attendu: window.I18n.t("vue3d.chargementPremier"),
+          reste: !!document.getElementById("kta-compute-overlay"), modal: ov.getAttribute("aria-modal"),
+          role: ov.getAttribute("role"), focus: ov.contains(document.activeElement) };
+      });
+      verifier(charge.messages.indexOf(charge.attendu) >= 0 && !charge.reste,
+        "toucher → indicateur « premier chargement » jusqu'à la scène, puis retiré", charge);
+      verifier(charge.role === "dialog" && charge.modal === "true" && charge.focus,
+        "vue ouverte : dialog aria-modal, focus clavier dedans", charge);
+      await page.keyboard.press("Tab");
+      const tab = await page.evaluate(function () {
+        return { dans: document.getElementById("kta-vue3d").contains(document.activeElement),
+          v3d: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.v3d : null };
+      });
+      verifier(tab.dans, "Tab : le focus reste dans la vue", tab);
       const depuisTuile = await page.evaluate(function () { return window.KtaVue3D.etat(); });
       verifier(depuisTuile.mode === "suivi" && Math.abs(depuisTuile.pos.x - prep.x) < 1 &&
-        Math.abs(depuisTuile.pos.y - prep.y) < 1, "ouverte depuis la tuile, à la position du tracker, en suivi",
+        Math.abs(depuisTuile.pos.y - prep.y) < 1, "ouverte par le bouton, à la position du tracker, en suivi",
         { mode: depuisTuile.mode, pos: depuisTuile.pos });
       // ── Mode « suivi » / « libre » : cap simulé à la source du mode plan orienté (getPlanRelHeading) ────────
       const capVrai = await page.evaluate(function () {
@@ -521,7 +554,7 @@ async function mesuresGalerie(page) {
       await page.evaluate(function () { window.getPlanRelHeading = function () { return 200; }; });
       await page.waitForTimeout(500);
       const s2 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { mode: e.mode, cap: e.cap }; });
-      verifier(s2.mode === "libre" && Math.abs(s2.cap - 120) < 2, "📍 → libre : le cap de l'appareil n'agit plus", s2);
+      verifier(s2.mode === "libre" && Math.abs(s2.cap - 120) < 2, "🧭 → libre : le cap de l'appareil n'agit plus", s2);
       const etiq = await page.evaluate(function () {
         return { texte: document.querySelector('#kta-vue3d [data-v3d="suivre"]').textContent,
           libre: window.I18n.t("vue3d.etatLibre"), suivi: window.I18n.t("vue3d.etatSuivi") };
@@ -531,7 +564,7 @@ async function mesuresGalerie(page) {
       await page.locator('#kta-vue3d [data-v3d="suivre"]').click();
       await page.waitForTimeout(800);
       const s3 = await page.evaluate(function () { const e = window.KtaVue3D.etat(); return { mode: e.mode, cap: e.cap }; });
-      verifier(s3.mode === "suivi" && Math.abs(s3.cap - 200) < 2, "📍 → suivi : la vue tourne avec l'appareil (200°)", s3);
+      verifier(s3.mode === "suivi" && Math.abs(s3.cap - 200) < 2, "🧭 → suivi : la vue tourne avec l'appareil (200°)", s3);
       verifier(await page.evaluate(function () {
         return document.querySelector('#kta-vue3d [data-v3d="suivre"]').textContent.indexOf(window.I18n.t("vue3d.etatSuivi")) >= 0;
       }), "le bouton de mode dit « Suivi » en suivi");
@@ -555,14 +588,14 @@ async function mesuresGalerie(page) {
           toast: pile ? pile.textContent : "", attendu: window.I18n.t("vue3d.suiviIndispo") };
       });
       verifier(s4.mode === "libre" && !s4.dispo && s4.grise && s4.titre === s4.attendu && s4.toast.indexOf(s4.attendu) >= 0,
-        "tracker arrêté : retour en libre, 📍 grisé, son toucher explique", s4);
+        "tracker arrêté : retour en libre, 🧭 grisé, son toucher explique", s4);
       await page.evaluate(function () {
         window.getPlanRelHeading = window.__v3dCapVrai;
         window.startTracking();
       });
       await page.waitForTimeout(200);
       verifier(await page.evaluate(function () { return window.KtaVue3D.etat().suiviDispo; }) === true,
-        "tracker relancé : 📍 de nouveau disponible");
+        "tracker relancé : 🧭 de nouveau disponible");
 
       await page.evaluate(function (p) { window.KtaVue3D.placer(p.x, p.y, 0); }, prep);
       await page.waitForTimeout(600);
@@ -571,8 +604,13 @@ async function mesuresGalerie(page) {
         return { etat: window.KtaVue3D.etat(), tri: m.trianglesMax, canvas: !!document.querySelector("#kta-vue3d canvas"),
           css: !!document.getElementById("kta-vue3d-css"),
           titres: Array.prototype.map.call(document.querySelectorAll("#kta-vue3d [data-v3d]"), function (b) { return b.title; }),
-          attendus: ["suivre", "passerGalerie", "hauteur", "affichage", "plongee", "fermer", "hauteurMoins", "hauteurPlus", "tournerGauche", "avancer", "tournerDroite", "pasGauche", "reculer",
-            "pasDroite", "inclinaisonPlus", "inclinaisonMoins"].map(function (k) { return window.I18n.t("vue3d." + k); }) };
+          attendus: ["vue3d.fermer", "ui.refonte.counter_sortie_title",
+            window.FilterPanel.nbActifs() > 0 ? "filter.badge.actifs" : "filter.badge.aucun", "vue3d.plongee",
+            "vue3d.hauteur", "vue3d.passerGalerie", "vue3d.suivre", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
+            "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
+            "vue3d.pasDroite", "vue3d.inclinaisonPlus", "vue3d.inclinaisonMoins"].map(function (k) {
+            return window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
+          }) };
       });
       verifier(e0.canvas && e0.css, "fenêtre, scène et feuille montées");
       verifier(JSON.stringify(e0.titres) === JSON.stringify(e0.attendus), "boutons titrés par le dictionnaire", e0.titres);
@@ -587,6 +625,139 @@ async function mesuresGalerie(page) {
         pan[0].z > zFace && pan[0].z < zFace + 0.2 && Math.abs(pan[0].x - prep.x / prep.sc) < 0.05,
         "POI au centre du pilier : panneau visible, sans test de profondeur, collé à la face vue de la galerie", pan);
       await capture(page, "fictif-yeux");
+
+      // ── Intégration : 🚨, toasts, ❓, ✕ au téléphone, Échap, panneau de POI sombre et borné, rendu en pause ──────
+      const urg = await page.evaluate(function () {
+        const S = window.SortieUrgence, d = S.declencher, c = S.demandeLaCarte;
+        window.__v3dSortie = 0;
+        S.declencher = function () { window.__v3dSortie++; };
+        S.demandeLaCarte = function () { return false; };
+        document.querySelector('#kta-vue3d [data-v3d="urgence"]').click();
+        const r = { appels: window.__v3dSortie, ouvert: window.KtaVue3D.etat().ouvert };
+        S.declencher = d; S.demandeLaCarte = c;
+        return r;
+      });
+      verifier(urg.appels === 1 && urg.ouvert, "🚨 de la vue : Sortie d'urgence déclenchée (même action que l'en-tête)", urg);
+      const toast = await page.evaluate(function () {
+        window.OOMGuard.showToast("Toast de test (vue 3D)", "warn");
+        const t = Array.prototype.slice.call(document.querySelectorAll(".kta-toast")).pop();
+        const bas = Math.max.apply(null, Array.prototype.map.call(
+          document.querySelectorAll("#kta-vue3d .kta-v3d-haut > button"), function (b) { return b.getBoundingClientRect().bottom; }));
+        return { haut: t ? t.getBoundingClientRect().top : -1, rangee: bas };
+      });
+      verifier(toast.haut >= toast.rangee, "toast sous la rangée du haut (" + Math.round(toast.haut) + " px ≥ " +
+        Math.round(toast.rangee) + " px)", toast);
+      await capture(page, "integration-toast");
+      await page.evaluate(function () {
+        document.querySelectorAll(".kta-toast").forEach(function (t) { t.remove(); });
+      });
+      // ❓ : l'aide de la vue 3D, par-dessus ; Échap ferme l'aide, la vue reste.
+      await page.locator("#kta-vue3d .kta-v3d-haut .kta-aide-ctx-btn").click();
+      await page.waitForTimeout(300);
+      const aide = await page.evaluate(function () {
+        const sm = document.getElementById("kta-aide-submodal");
+        return { ouverte: !!sm, texte: sm ? sm.textContent.slice(0, 300) : "", recouverte: window.KtaVue3D.etat().recouverte,
+          attendu: window.I18n.t("aide.sec.vue-3d.titre") };
+      });
+      verifier(aide.ouverte && aide.recouverte && aide.texte.indexOf(aide.attendu) >= 0,
+        "❓ ouvre l'aide « Vue 3D » au-dessus de la vue", aide);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(200);
+      const aideFermee = await page.evaluate(function () {
+        return { aide: !!document.getElementById("kta-aide-submodal"), vue: window.KtaVue3D.etat().ouvert };
+      });
+      verifier(!aideFermee.aide && aideFermee.vue, "Échap avec l'aide ouverte : l'aide se ferme, la vue reste", aideFermee);
+      // Échap : d'abord le réglage de hauteur ouvert, puis (plus loin, § 4) la vue.
+      await page.locator('#kta-vue3d [data-v3d="hauteur"]').click();
+      await page.keyboard.press("Escape");
+      const echap = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat();
+        return { ouvert: e.ouvert, reglage: e.reglageHauteur.visible };
+      });
+      verifier(echap.ouvert && !echap.reglage, "Échap ferme d'abord le réglage ouvert, la vue reste", echap);
+      // Téléphone : ✕ au coin haut droit, sur la première ligne de boutons.
+      await page.setViewportSize({ width: 393, height: 852 });
+      await page.waitForTimeout(400);
+      const tel = await page.evaluate(function () {
+        const bs = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > button"));
+        const rs = bs.map(function (b) { return b.getBoundingClientRect(); });
+        const x = document.querySelector('#kta-vue3d [data-v3d="fermer"]').getBoundingClientRect();
+        const lignes = {};
+        rs.forEach(function (r) { lignes[Math.round(r.top)] = true; });
+        return { xTop: x.top, xRight: x.right, top: Math.min.apply(null, rs.map(function (r) { return r.top; })),
+          right: Math.max.apply(null, rs.map(function (r) { return r.right; })), lignes: Object.keys(lignes).length,
+          largeur: window.innerWidth };
+      });
+      verifier(Math.abs(tel.xTop - tel.top) < 1 && Math.abs(tel.xRight - tel.right) < 1 && tel.largeur === 393,
+        "téléphone (393 px) : ✕ en haut à droite, première ligne (" + tel.lignes + " ligne(s) de boutons)", tel);
+      await capture(page, "integration-telephone");
+      await page.setViewportSize({ width: 1200, height: 800 });
+      await page.waitForTimeout(300);
+      // Rendu en pause : immobile en libre, aucune image ; en suivi, le bruit de la boussole (± 0,9°) non plus.
+      const pause = await page.evaluate(function () {
+        return new Promise(function (r) {
+          setTimeout(function () {
+            const i0 = window.KtaVue3D.etat().images;
+            setTimeout(function () { r({ libre: window.KtaVue3D.etat().images - i0 }); }, 1000);
+          }, 300);
+        });
+      });
+      const pauseSuivi = await page.evaluate(function (p) {
+        window.__v3dCap = window.getPlanRelHeading;
+        let k = 0;
+        window.getPlanRelHeading = function () { k++; return 90 + (k % 2 ? 0.9 : -0.9); };
+        window.recalerTrackerSurPoint(p.x, p.y, 0);
+        if (!window.getTrackingActif()) window.startTracking();
+        window.KtaVue3D.suivre();
+        return new Promise(function (r) {
+          setTimeout(function () {
+            const i0 = window.KtaVue3D.etat().images;
+            setTimeout(function () {
+              const e = window.KtaVue3D.etat();
+              window.getPlanRelHeading = window.__v3dCap;
+              window.KtaVue3D.placer(p.x, p.y, 0);
+              r({ suivi: e.images - i0, mode: e.mode, cap: e.cap });
+            }, 1000);
+          }, 1500);
+        });
+      }, prep);
+      verifier(pause.libre <= 1 && pauseSuivi.mode === "suivi" && pauseSuivi.suivi <= 2,
+        "rendu en pause : " + pause.libre + " image(s) en 1 s immobile, " + pauseSuivi.suivi +
+        " en suivi avec une boussole qui tremble de ± 0,9°", { pause: pause, suivi: pauseSuivi });
+      // Panneau de POI : couleurs du thème sombre en thème clair ; de près, borné à l'écran, fondu puis masqué.
+      const prox = await page.evaluate(function (p) {
+        const K = window.KtaVue3D, clair = window.ThemeManager.isLight(), r = {};
+        // Tracker arrêté le temps de ces réouvertures (pas de « Je suis ici ? »), relancé au départ ensuite.
+        window.stopTracking();
+        return K.fermer().then(function () {
+          if (clair) window.ThemeManager.setTheme("dark");
+          r.surfaceSombre = getComputedStyle(document.body).getPropertyValue("--kta-surface").trim();
+          window.ThemeManager.setTheme("light");
+          r.surfaceClaire = getComputedStyle(document.body).getPropertyValue("--kta-surface").trim();
+          return K.ouvrir({ depart: { x: p.x, y: p.y - 1.4 * p.sc, cap: 0 } });
+        }).then(function () {
+          return new Promise(function (res) { setTimeout(res, 300); });
+        }).then(function () {
+          const pan = K.etat().panneaux.filter(function (q) { return q.dansVolume; })[0];
+          r.fond = pan.fond; r.loin = pan;
+          K.placer(p.x, p.y - 2.4 * p.sc, 0);
+          return new Promise(function (res) { setTimeout(res, 300); });
+        }).then(function () {
+          r.pres = K.etat().panneaux.filter(function (q) { return q.dansVolume; })[0];
+          return K.fermer();
+        }).then(function () {
+          window.ThemeManager.setTheme(clair ? "light" : "dark");
+          window.recalerTrackerSurPoint(p.x, p.y, 0);
+          window.startTracking();
+          return K.ouvrir({ depart: { x: p.x, y: p.y, cap: 0 } });
+        }).then(function () { return r; });
+      }, prep);
+      verifier(prox.fond === prox.surfaceSombre && prox.surfaceClaire !== prox.surfaceSombre,
+        "thème clair : panneau de POI aux couleurs du thème sombre (" + prox.fond + ")", prox);
+      verifier(prox.loin.visible && prox.loin.largeurEcran <= 0.46 && prox.loin.opacite < 1 && !prox.pres.visible,
+        "de près : panneau à " + Math.round(prox.loin.largeurEcran * 100) + " % de l'écran au plus, fondu (" +
+        prox.loin.opacite + "), masqué sous 1 m", { loin: prox.loin, pres: prox.pres });
+      await page.waitForTimeout(300);
 
       // Avancer vers le sud (dégagé), puis buter contre le pilier au nord.
       const sud = await page.evaluate(function (p) {
@@ -929,9 +1100,8 @@ async function mesuresGalerie(page) {
       const apresNon = await page.evaluate(function () { return window.getTrackingPosition(); });
       verifier(apresNon.x === prep.x && apresNon.y === prep.y, "« Non » : le tracker n'a pas bougé", apresNon);
 
-      // ── 5. Rouvrir depuis la tuile, 1 m au sud, ✕ → « Oui » recale le tracker là ─────────────────
-      await page.evaluate(function () { window.ouvrirMenuTracker(); });
-      await page.locator(".kta-tracker-modal-tile", { hasText: "🧊" }).click();
+      // ── 5. Rouvrir par le bouton cube, 1 m au sud, ✕ → « Oui » recale le tracker là ─────────────────
+      await page.locator(".kta-vue3d-ctrl a").click();
       await attendre(page, function () { return window.KtaVue3D.etat().ouvert === true; }, 10000);
       const cible = await page.evaluate(function () {
         window.KtaVue3D.placer(window.getTrackingPosition().x, window.getTrackingPosition().y, 180);
@@ -1023,7 +1193,7 @@ async function mesuresGalerie(page) {
       }, prep);
       verifier(apres === true, "21e ouverture : la vue a un contexte vivant");
 
-      // ── Hauteur ↕ (structures) : le chiffre de ⛏️ Volume exploité, scène refaite, relu à la réouverture ──
+      // ── Hauteur ⛏️ (structures) : le chiffre de ⛏️ Volume exploité, scène refaite, relu à la réouverture ──
       await page.evaluate(function (p) {
         return window.KtaVue3D.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } });
       }, prep);
@@ -1036,8 +1206,8 @@ async function mesuresGalerie(page) {
           attendu: window.formatDistance(e.hauteur, 1) };
       });
       verifier(h0.hauteur === 2 && h1.hauteur === 2.1 && h1.pref === 2.1 && h1.reglage.visible &&
-        h1.reglage.valeur === h1.attendu && h1.reglage.bouton === "↕ " + h1.attendu,
-        "↕ puis + : 2 m → 2,1 m, écrit pour le plan, montré sur le bouton et dans le réglage", { h0: h0.hauteur, h1: h1 });
+        h1.reglage.valeur === h1.attendu && h1.reglage.bouton === "⛏️ " + h1.attendu,
+        "⛏️ puis + : 2 m → 2,1 m, écrit pour le plan, montré sur le bouton et dans le réglage", { h0: h0.hauteur, h1: h1 });
       await capture(page, "hauteur-reglage");
       const h3 = await page.evaluate(function () {
         const K = window.KtaVue3D, r = {};
@@ -1194,7 +1364,7 @@ async function mesuresGalerie(page) {
         "défaut : galerie sans structure au niveau, structures avec", inter);
       verifier(inter.bouton.indexOf(inter.libelles.s) >= 0 && inter.apres === "galerie" &&
         inter.boutonApres.indexOf(inter.libelles.g) >= 0 && inter.pref === "galerie",
-        "bouton 🧱 / 🚇 : bascule, mode écrit en clair, retenu pour ce plan", inter);
+        "bouton 🏛️ / 🛣️ : bascule, mode écrit en clair, retenu pour ce plan", inter);
       verifier(inter.parois === 0 && inter.paroisGalerie > 0 && inter.yMaxOpaque < 0.1 && inter.traverse > 5,
         "exclusif : pas de paroi en structures ; en galerie, ni pilier dessiné ni butée contre lui", inter);
       verifier(inter.rouvert === "galerie" && inter.autrePlan === null && inter.bloqueStructures < 3.5 &&
@@ -1303,7 +1473,7 @@ async function mesuresGalerie(page) {
         "POI à 2 m de l'axe : visible, ramené contre la paroi ; POI à 5 m : masqué", zp.poi);
       await capture(page, "galerie-zones");
 
-      // Hauteur ↕ en mode galerie : tubes, plafond, remblais à 60 % et rideaux refaits à 3 m ; relue à la réouverture.
+      // Hauteur ⛏️ en mode galerie : tubes, plafond, remblais à 60 % et rideaux refaits à 3 m ; relue à la réouverture.
       const hg = await page.evaluate(function (a) {
         const K = window.KtaVue3D, r = {};
         return K.ouvrir({ depart: a.dep }).then(function () {
@@ -1333,89 +1503,155 @@ async function mesuresGalerie(page) {
         "galerie : réglé à 3 m, parois, plafond et rideaux à 3 m, remblais à 1,8 m, position et cap gardés", hg);
       verifier(hg.rouvert === 3, "galerie : 3 m relus à la réouverture", hg.rouvert);
 
-      // ── Affichage ≡ : POI et tracés masqués en 3D seulement (filtres 2D intacts), collisions inchangées ──────
+      // ── Filtres partagés : ≡ ouvre le ≡ Filtres de la carte ; masquer d'un côté masque de l'autre ──────────────
+      // Calque de données fictif (une zone d'effondrement au bout du cul-de-sac), itinéraire, et un pilier pour le
+      // rendu structures. Collisions et itinéraire ne suivent aucun filtre.
       await page.evaluate(function (a) {
         window.__v3dRoutes = window.getRoads();
         window.setRoads(window.__v3dRoutes.concat([{ uid: "rd_v3d_iti", type: "itinerary", level: 0,
           points: [a.it0, a.it1] }]));
+        const g = L.layerGroup().addTo(window.map);
+        window.dataLayerGroups.v3d_calque = g;
+        window.__v3dZonesEmb = window.getAllEmbeddedZones;
+        window.getAllEmbeddedZones = function () {
+          return [{ type: "effondrement", level: 0, layerId: "v3d_calque", points: a.calque }];
+        };
+        window.setStructures([{ uid: "st_v3d_f", type: "pilier-1", level: 0, points: a.pilier }]);
         window.KtaGalerie.invalider();
-        return window.KtaVue3D.ouvrir({ depart: a.dep });
-      }, { dep: pt(200, 5, 0, 90), it0: pt(200, 1, 0), it1: pt(200, 12, 0) });
-      const a0 = await page.evaluate(function () {
-        const e = window.KtaVue3D.etat();
-        return { rendu: e.rendu, liseres: e.liseres, rubans: e.rubans, panneaux: e.panneaux.length };
-      });
-      await page.locator('#kta-vue3d [data-v3d="affichage"]').click();
-      const a1 = await page.evaluate(function () {
-        const cases = Array.prototype.map.call(document.querySelectorAll("#kta-vue3d [data-v3d-aff]"), function (c) {
-          return c.dataset.v3dAff + ":" + c.dataset.cle;
+        return window.KtaVue3D.ouvrir({ depart: a.dep }).then(function () {
+          if (window.KtaVue3D.etat().rendu !== "galerie") window.KtaVue3D.basculerRendu();
         });
-        return { cases: cases, ouvert: window.KtaVue3D.etat().affichage.ouvert };
+      }, { dep: pt(200, 5, 0, 90), it0: pt(200, 1, 0), it1: pt(200, 12, 0),
+        calque: [pt(200, 12, -3), pt(200, 13, -3), pt(200, 13, 3), pt(200, 12, 3)],
+        pilier: [pt(200, 6, -5), pt(200, 7, -5), pt(200, 7, -4), pt(200, 6, -4)] });
+      const f0 = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat();
+        return { rendu: e.rendu, zones: e.zonesDecoupees, liseres: e.liseres, rubans: e.rubans,
+          panneaux: e.panneaux.length, pastille: e.filtres.pastille };
       });
-      verifier(a0.rendu === "galerie" && a0.liseres.principal > 0 && a0.rubans.itinerary > 0 && a0.panneaux > 0 &&
-        a1.ouvert && a1.cases.indexOf("poi:") >= 0 && a1.cases.indexOf("tag:danger") >= 0 &&
-        a1.cases.indexOf("trace:principal") >= 0 && a1.cases.indexOf("itineraire:") >= 0 &&
-        a1.cases.indexOf("trace:jonction") < 0 && a1.cases.indexOf("trace:itinerary") < 0,
-        "≡ Affichage : cases POI (tous, par tag), tracés par type sans jonction, itinéraire", { a0: a0, a1: a1 });
-      await capture(page, "galerie-affichage");
-      await page.locator('#kta-vue3d [data-v3d-aff="poi"]').click();
-      await page.locator('#kta-vue3d [data-v3d-aff="trace"][data-cle="principal"]').click();
-      const a2 = await page.evaluate(function (a) {
-        const K = window.KtaVue3D, e = K.etat(), r = { panneaux: e.panneaux.length, liseres: e.liseres,
-          aff: e.affichage, filtres2D: window._ktaRuntimeFilters.roadTypes, tagsGris: !!document.querySelector(
-            '#kta-vue3d [data-v3d-aff="tag"]:disabled') };
-        // Collision : le bout du T (principal, 12 m à l'est) arrête toujours, liseré masqué ou non.
+      await page.locator('#kta-vue3d [data-v3d="filtres"]').click();
+      await page.waitForTimeout(200);
+      const f1 = await page.evaluate(function () {
+        const fp = document.getElementById("kta-fp-modal"), e = window.KtaVue3D.etat();
+        return { panneau: !!fp, ouvert: e.filtres.panneauOuvert, dessus: e.recouverte, vue: e.ouvert,
+          ancien: !!document.querySelector("#kta-vue3d [data-v3d-aff], #kta-vue3d .kta-v3d-affichage"),
+          calque: !!(fp && fp.querySelector('[data-data-layer="v3d_calque"]')) };
+      });
+      verifier(f0.rendu === "galerie" && f0.zones.eau > 0 && f0.zones.effondrement > 0 && f0.liseres.principal > 0 &&
+        f0.rubans.itinerary > 0 && f0.panneaux > 0 && !f0.pastille, "galerie : zones (calque compris), liserés, " +
+        "itinéraire et POI dessinés, ≡ sans pastille", f0);
+      verifier(f1.panneau && f1.ouvert && f1.dessus && f1.vue && !f1.ancien && f1.calque,
+        "≡ de la vue : le panneau ≡ Filtres de la carte, au-dessus de la 3D (plus de panneau propre à la 3D)", f1);
+      await capture(page, "filtres-dans-la-3d");
+      await page.evaluate(function () {
+        ['[data-set="zoneTypes"][data-type="eau"]', '[data-set="roadTypes"][data-type="principal"]',
+          '[data-set="tags"][data-type="danger"]', '[data-data-layer="v3d_calque"]'].forEach(function (q) {
+          document.querySelector("#kta-fp-modal " + q).click();
+        });
+      });
+      await page.waitForTimeout(400);
+      const f2 = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat(), f = window._ktaRuntimeFilters;
+        return { zones: e.zonesDecoupees, liseres: e.liseres, rubans: e.rubans,
+          danger: e.panneaux.some(function (q) { return /POI [25] m v3d/.test(q.nom); }),
+          eau2D: f.zoneTypes instanceof Set && !f.zoneTypes.has("eau"),
+          principal2D: f.roadTypes instanceof Set && !f.roadTypes.has("principal"),
+          danger2D: f.tags instanceof Set && !f.tags.has("danger"),
+          calque2D: window.map.hasLayer(window.dataLayerGroups.v3d_calque),
+          pastille: e.filtres.pastille, pastille2D: document.querySelector(".kta-filter-ctrl a").classList.contains(
+            "kta-filter-ctrl-actif") };
+      });
+      verifier(!f2.zones.eau && !f2.zones.effondrement && f2.eau2D && !f2.calque2D,
+        "zone « eau » et calque décochés dans ≡ : retirés de la 3D ET de la carte", f2);
+      verifier(!f2.liseres.principal && f2.principal2D && f2.rubans.itinerary > 0,
+        "type de tracé décoché : liseré retiré en 3D et en 2D ; l'itinéraire reste (son propre interrupteur)", f2);
+      verifier(!f2.danger && f2.danger2D, "tag « danger » décoché : panneaux retirés en 3D et en 2D", f2);
+      verifier(f2.pastille && f2.pastille2D, "pastille de filtre actif sur le ≡ de la vue comme sur celui de la carte", f2);
+      // Échap : le panneau ≡ se ferme, la vue reste.
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(200);
+      const f3 = await page.evaluate(function (a) {
+        const K = window.KtaVue3D, r = { panneau: !!document.getElementById("kta-fp-modal"), vue: K.etat().ouvert };
+        // Collision : le bout du cul-de-sac (tracé principal masqué) arrête toujours.
         K.placer(a.bout.x, a.bout.y, 90);
         for (let i = 0; i < 20; i++) K.avancer(1);
         r.avance = (K.etat().pos.x - a.bout.x) / a.sc;
-        r.iti = K.afficher("itineraire", "", false);
-        r.rubansSansIti = K.etat().rubans;
-        K.afficher("itineraire", "", true);
-        r.basc = K.basculerRendu();
-        r.rubansStructures = K.etat().rubans;
-        K.afficher("trace", "principal", true);
-        r.rubansRetour = K.etat().rubans;
-        K.basculerRendu();
         return r;
       }, { bout: pt(0, 5, 0, 90), sc: G.sc });
-      verifier(a2.panneaux === 0 && a2.tagsGris && !a2.aff.poi, "« Tous les POI » décoché : plus aucun panneau, tags grisés", a2);
-      verifier(!a2.liseres.principal && a2.aff.tracesMasques.indexOf("principal") >= 0 && a2.filtres2D === null,
-        "galerie : type « principal » décoché → son liseré disparaît, filtres 2D intacts", a2);
-      verifier(a2.avance > 4 && a2.avance < 8, "tracé masqué : le bout du tube arrête toujours (" + a2.avance.toFixed(2) +
-        " m sur 20)", a2.avance);
-      verifier(a2.iti.itineraire === false && !a2.rubansSansIti.itinerary, "itinéraire décoché : son ruban disparaît", a2.rubansSansIti);
-      verifier(a2.basc === "structures" && !a2.rubansStructures.principal && a2.rubansStructures.secondaire > 0 &&
-        a2.rubansRetour.principal > 0, "structures : ruban « principal » masqué puis rendu (état gardé d'un rendu à l'autre)", a2);
-      const a3 = await page.evaluate(function (a) {
-        const K = window.KtaVue3D, f = window._ktaRuntimeFilters, r = {};
-        return K.fermer().then(function () {
-          // Filtres 2D : danger et principal masqués → la 3D part de là ; un changement en 3D ne les touche pas.
-          f.tags = new Set(["jes"]); f.roadTypes = new Set(["secondaire", "chemin"]);
-          return K.ouvrir({ depart: a.dep });
+      verifier(!f3.panneau && f3.vue, "Échap avec ≡ ouvert : le panneau se ferme, la vue reste", f3);
+      verifier(f3.avance > 4 && f3.avance < 8, "tracé masqué : le bout du tube arrête toujours (" +
+        f3.avance.toFixed(2) + " m sur 20)", f3.avance);
+      // Inversement : filtres remis depuis la carte (« Tout afficher » du ≡ Filtres) → la 3D les suit.
+      await page.evaluate(function (d) { window.KtaVue3D.placer(d.x, d.y, 90); window.FilterPanel.ouvrir(); },
+        pt(200, 5, 0, 90));
+      await page.locator("#kta-fp-reset-all").click();
+      await page.waitForTimeout(400);
+      await page.evaluate(function () { window.FilterPanel.fermer(); });
+      const f4 = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat();
+        return { zones: e.zonesDecoupees, liseres: e.liseres, pastille: e.filtres.pastille,
+          danger: e.panneaux.some(function (q) { return /POI [25] m v3d/.test(q.nom); }) };
+      });
+      verifier(f4.zones.eau > 0 && f4.zones.effondrement > 0 && f4.liseres.principal > 0 && f4.danger && !f4.pastille,
+        "« Tout afficher » sur la carte : zone, calque, liseré et POI reviennent en 3D, pastille éteinte", f4);
+      // Structures : un type masqué depuis la carte (FilterPanel.setFilters) disparaît de la 3D, la butée reste.
+      const f5 = await page.evaluate(function (a) {
+        const K = window.KtaVue3D, r = {}, acc = window.ktaEstAccessible;
+        window.ktaEstAccessible = function () { return true; };   // image de collision du plan hors jeu ici
+        K.basculerRendu();
+        r.rendu = K.etat().rendu;
+        r.avant = K.etat().compte.structures;
+        window.FilterPanel.setFilters({ structTypes: new Set(["mur"]) });
+        return new Promise(function (res) { setTimeout(res, 300); }).then(function () {
+          r.apres = K.etat().compte.structures;
+          K.placer(a.dep.x, a.dep.y, 0);
+          for (let i = 0; i < 20; i++) K.avancer(0.25);
+          r.nord = (a.dep.y - K.etat().pos.y) / a.sc;
+          window.FilterPanel.setFilters({ structTypes: null });
+          return new Promise(function (res) { setTimeout(res, 300); });
         }).then(function () {
-          const e = K.etat();
-          r.aff = e.affichage; r.liseres = e.liseres;
-          r.danger = e.panneaux.some(function (q) { return /POI 2 m v3d/.test(q.nom); });
-          K.afficher("trace", "principal", true);
-          r.liseresApres = K.etat().liseres;
-          r.filtres2D = Array.from(f.roadTypes);
-          return K.fermer();
-        }).then(function () {
-          f.tags = null; f.roadTypes = null;
-          return K.ouvrir({ depart: a.dep });
-        }).then(function () {
-          r.rouvert = K.etat().affichage;
-          window.setRoads(window.__v3dRoutes);
-          window.KtaGalerie.invalider();
-          return K.fermer();
-        }).then(function () { return r; });
-      }, { dep: pt(200, 5, 0, 90) });
-      verifier(a3.aff.tagsMasques.indexOf("danger") >= 0 && a3.aff.tracesMasques.indexOf("principal") >= 0 &&
-        !a3.danger && !a3.liseres.principal, "ouverture : l'affichage part des filtres 2D (tag et type masqués)", a3);
-      verifier(a3.liseresApres.principal > 0 && a3.filtres2D.indexOf("principal") < 0,
-        "rendu en 3D : liseré revenu, filtre 2D inchangé", a3);
-      verifier(a3.rouvert.poi && a3.rouvert.tagsMasques.length === 0 && a3.rouvert.tracesMasques.length === 0,
-        "réouverte sans filtre 2D : tout affiché (état gardé le temps de la vue seulement)", a3.rouvert);
+          r.retour = K.etat().compte.structures;
+          K.basculerRendu();
+          window.ktaEstAccessible = acc;
+          return r;
+        });
+      }, { dep: pt(200, 6.5, -2.5), sc: G.sc });
+      verifier(f5.rendu === "structures" && f5.avant === 1 && f5.apres === 0 && f5.retour === 1,
+        "structures : pilier masqué par les filtres de la carte → retiré de la 3D, puis rendu", f5);
+      verifier(f5.nord > 0.3 && f5.nord < 1.5, "pilier masqué : la butée reste (arrêt à " + f5.nord.toFixed(2) +
+        " m du départ, face à 1,5 m)", f5);
+      // Niveaux visibles (plan multi-niveau) : le niveau de la vue décoché sur la carte → plus rien dessiné.
+      const f6 = await page.evaluate(function () {
+        const c = window.APP_CONFIG;
+        if (c.multiLevel !== true) return null;
+        const avant = c.visibleLevels.slice(), K = window.KtaVue3D;
+        c.visibleLevels = c.availableLevels.filter(function (l) { return l !== 0; });
+        window.appliquerFiltreNiveau();
+        return new Promise(function (res) { setTimeout(res, 300); }).then(function () {
+          const e = K.etat(), r = { zones: e.compte.zones, pastille: e.filtres.pastille };
+          c.visibleLevels = avant;
+          window.appliquerFiltreNiveau();
+          return new Promise(function (res) { setTimeout(res, 300); }).then(function () {
+            r.retour = K.etat().compte.zones;
+            return r;
+          });
+        });
+      });
+      if (f6) {
+        verifier(f6.zones === 0 && f6.pastille && f6.retour > 0,
+          "niveau 0 masqué sur la carte : rien de dessiné en 3D, pastille ; remis : la 3D le redessine", f6);
+      } else {
+        console.log("  ℹ️ plan à un niveau : filtre de niveaux non joué");
+      }
+      await page.evaluate(function () {
+        window.map.removeLayer(window.dataLayerGroups.v3d_calque);
+        delete window.dataLayerGroups.v3d_calque;
+        window.getAllEmbeddedZones = window.__v3dZonesEmb;
+        window.setStructures([]);
+        window.setRoads(window.__v3dRoutes);
+        window.KtaGalerie.invalider();
+        return window.KtaVue3D.fermer();
+      });
 
       // ── 9. Passage de niveau 🪜 (POI jonction, tracé jonction) ; carte placée à la sortie ─────────────────
       if (G.multi) {

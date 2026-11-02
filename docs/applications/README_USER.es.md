@@ -304,7 +304,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 
 **Abajo**, una barra de estado reúne lo que está en curso: 📐 medición, 📏 distancia total de los trazados, 🗺️ itinerario (distancia, tiempo, ritmo — tócalo para abrir el itinerario) y el indicador **🧭 tracker** (ON · pasos · distancia durante el seguimiento; tócalo para abrir el menú del Tracker). Pasa a una segunda línea si no cabe todo; el botón ▾▴ la reduce.
 
-**A los lados**, las dos barras laterales contienen las herramientas. La interfaz está organizada en **13 grupos** repartidos en las **dos barras laterales** — izquierda: ⭐ Favoritos, 📚 Ayuda, ⚙️ Ajustes, ⬇️ Cargar, ⬆️ Guardar, ⏪ Historial; derecha: 🔍 Búsqueda, 🧭 Rastreador, 📐 Medición, ✏️ Edición, 🛣️ Trazados, ⬛ Zonas, 🏛️ Estructuras:
+**A los lados**, las dos barras laterales contienen las herramientas. La interfaz está organizada en **13 grupos** repartidos en las **dos barras laterales** — izquierda: ⭐ Favoritos, 📚 Ayuda, ⚙️ Ajustes, ⬇️ Cargar, ⬆️ Guardar, ⏪ Historial; derecha: 🔍 Búsqueda, 🧭 Rastreador, 📐 Medición, ✏️ Edición, 🛣️ Trazados, ⬛ Zonas, 🏛️ Estructuras. Arriba de la barra derecha, **≡ Filtros** y después el **botón del cubo** de la 🧊 Vista 3D (beta):
 
 | Grupo | Icono | Para qué sirve |
 |---|---|---|
@@ -371,7 +371,8 @@ El botón **≡** arriba a la derecha del mapa abre **≡ Filtros de visualizaci
 | 🛣️ ⬛ 🏛️ **Tipos** | Tipos de trazados, de zonas y de estructuras, incluidos los tuyos |
 
 - Cada sección se pliega y tiene sus botones **👁️ Todo** / **🚫 Ninguno**.
-- **🔄 Mostrar todo** devuelve tags y tipos a «todo visible», sin tocar los niveles ni las capas.
+- **🔄 Mostrar todo** vuelve a mostrarlo todo: tags, tipos, capas y niveles.
+- Los mismos filtros valen en la **🧊 Vista 3D**: su botón ≡ abre este panel.
 - Abajo, **Filtros activos: …** recuerda lo que está filtrado; el botón ≡ también indica cuándo hay elementos ocultos.
 - Los filtros se **recuerdan por mapa**: los recuperas al volver a ese mapa, y un mensaje te lo indica.
 - Lo que estás dibujando sigue visible, aunque desmarques su tipo.
@@ -450,7 +451,7 @@ El botón **🧭 Tracker** (o el indicador 🧭 de la barra de abajo) abre una *
 | Sección | Fichas |
 |---|---|
 | **Seguimiento** | ▶️ / ⏹️ Iniciar / detener · 📍 Modo recolocación · 🎯 Mi posición (vuelve a centrar el mapa en ti) · 🔓 Suspender el bloqueo en trazado |
-| **Herramientas** | 🧭 Brújula · 🗺️ Calcular una ruta · 🪧 Guiado del itinerario · 🗺️ Mapa orientado · 🧊 Vista 3D (beta) |
+| **Herramientas** | 🧭 Brújula · 🗺️ Calcular una ruta · 🪧 Guiado del itinerario · 🗺️ Mapa orientado |
 | **Emergencia** (fondo rojo) | ⛑️ Estoy perdido · 🔆 Vista XL · 🚑 Modo Rescate — ver 🆘 En caso de emergencia bajo tierra |
 
 Navegación inteligente (bloqueo en trazado), mapa orientado, itinerario a través de varios mapas, replay y mapa de calor son opciones desactivadas por defecto → 🔭 Para ir más lejos.
@@ -492,22 +493,24 @@ Si no coincide, el campo magnético está perturbado (chatarra, armaduras): reco
 
 ### 🧊 Vista 3D (beta)
 
-La ficha **🧊 Vista 3D (beta)** muestra el plano **en relieve alrededor de tu posición**, como si estuvieras allí, iluminado por una linterna frontal. Se carga al primer toque y sigue disponible sin conexión.
+El **botón del cubo** de la barra derecha, justo debajo de **≡ Filtros**, muestra el plano **en relieve alrededor de tu posición**, como si estuvieras allí, iluminado por una linterna frontal. Un indicador espera mientras se abre (más tiempo la primera vez); después sigue disponible sin conexión. La marca **beta** queda visible arriba de la vista.
 
-- **🧱 Estructuras / 🚇 Galería**: el botón de arriba, que muestra el modo actual, alterna entre las dos representaciones; la elección se guarda para este plano (por defecto: Estructuras si el nivel mostrado tiene, Galería si no).
-  - **🧱 Estructuras**: pilares, muros y frentes de explotación levantados a la altura de galería del plano (⛏️ Volumen explotado, si no 2 m), rellenos, agua, zonas ⛔ inaccesibles y derrumbes, trazados e itinerario en el suelo, puntos en carteles, siempre visibles (un punto levantado dentro de un pilar se muestra contra su cara), más pequeños y pálidos a lo lejos.
-  - **🚇 Galería**: los trazados se convierten en galerías (principal 2,5 m de ancho, secundario 2 m, camino 1,7 m, trazado personalizado 2 m), sin las estructuras: cruces abiertos, codos, fondos de saco cerrados, paredes de bloques de caliza tallados, una franja en el suelo del color del trazado. Las zonas se detienen en las paredes: el relleno tapa la galería, una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado. Solo se muestran los puntos a menos de 3 m de un trazado, contra la pared.
-  - En ambos casos: un nivel a la vez, capas ocultas incluidas, a 30 m alrededor de ti. Los trazados de unión no se dibujan: se cambia de nivel con 🪜.
-- **↕ Altura**: el botón **↕** (muestra la altura actual) abre **−** / **+**, de 1,5 a 4 m de 0,1 en 0,1 m. Es la misma altura que ⛏️ Volumen explotado, guardada para este plano: cambiar una cambia la otra. La escena se rehace en el sitio, sin moverte.
-- **≡ Visualización**: casillas para mostrar u ocultar en 3D los puntos (todos, o por tipo de punto), cada tipo de trazado y el itinerario. Al abrir, retoman los ≡ Filtros del mapa; después solo valen para la 3D, mientras siga abierta, y no cambian nada en el mapa. Ocultar un trazado solo quita su dibujo: sigues chocando con las paredes y 🪜 se sigue ofreciendo.
+- **🏛️ Estructuras / 🛣️ Galería**: el botón de arriba, que muestra el modo actual, alterna entre las dos representaciones; la elección se guarda para este plano (por defecto: Estructuras si el nivel mostrado tiene, Galería si no).
+  - **🏛️ Estructuras**: pilares, muros y frentes de explotación levantados a la altura de galería del plano (⛏️ Volumen explotado, si no 2 m), rellenos, agua, zonas ⛔ inaccesibles y derrumbes, trazados e itinerario en el suelo, puntos en carteles, siempre visibles (un punto levantado dentro de un pilar se muestra contra su cara), más pequeños y pálidos a lo lejos, y difuminados muy cerca de ti para no tapar la vista.
+  - **🛣️ Galería**: los trazados se convierten en galerías (principal 2,5 m de ancho, secundario 2 m, camino 1,7 m, trazado personalizado 2 m), sin las estructuras: cruces abiertos, codos, fondos de saco cerrados, paredes de bloques de caliza tallados, una franja en el suelo del color del trazado. Las zonas se detienen en las paredes: el relleno tapa la galería, una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado. Solo se muestran los puntos a menos de 3 m de un trazado, contra la pared.
+  - En ambos casos: un nivel a la vez, a 30 m alrededor de ti. Los trazados de unión no se dibujan: se cambia de nivel con 🪜.
+- **≡ Filtros**: el mismo panel que en el mapa, abierto sobre la vista, con los mismos ajustes. Lo que ocultas en 3D se oculta en el mapa, y al revés: tags de los puntos, tipos de trazados, de zonas y de estructuras, capas de datos, niveles visibles. Un punto en el ≡ indica un filtro activo. Ocultar solo quita el dibujo: sigues chocando con los pilares y las paredes, y 🪜 se sigue ofreciendo. El itinerario sigue visible, como en el mapa. Las capas de imagen no tienen efecto en 3D.
+- **⛏️ Altura**: el botón **⛏️** (muestra la altura actual) abre **−** / **+**, de 1,5 a 4 m de 0,1 en 0,1 m. Es la misma altura que ⛏️ Volumen explotado, guardada para este plano: cambiar una cambia la otra. La escena se rehace en el sitio, sin moverte.
 - **Desplazarse**: mantén el pad ▲ ▼ ↶ ↷ ◀ ▶, flechas o WASD, o arrastra sobre la escena para girar y levantar la vista. **Más rápido**: mantén Mayús, o deja ▲ pulsado más de medio segundo. Chocas contra pilares, muros y frentes (personalizados incluidos) en modo Estructuras, contra las paredes y los rellenos en modo Galería, con la anchura de un cuerpo.
 - **🪜 Cambiar de nivel** (modo libre): a menos de 2 m de un paso entre niveles (escalera, pozo) o del extremo de un trazado de unión, los botones **▲** / **▼** te llevan al nivel vecino (una pequeña lista si da servicio a más de dos); tocar el cartel del punto hace lo mismo. Llegas al enlace validado de ese nivel si lo hay. En seguimiento, el nivel es el del tracker.
-- **📍 Seguimiento / libre**: en **seguimiento** (elegido al abrir si el tracker está activo), la vista sigue tu posición y **gira con tu teléfono**, como 🗺️ Mapa orientado; tocar un botón de desplazamiento pasa a **libre** (arrastrar sobre la escena solo inclina la mirada arriba / abajo), y el botón de arriba, que muestra el modo actual (**📍 Seguimiento** o **🕹️ Libre**), alterna entre ambos. Tracker detenido: 📍 aparece en gris y explica por qué.
-- **🛰️ Vista aérea** (o V): te ves desde arriba. Su inclinación va de casi vertical a rasante: desliza hacia arriba o abajo con dos dedos, rueda del ratón o RePág / AvPág, o los botoncitos ▲ ▼ de la derecha; se conserva mientras la vista sigue abierta.
+- **🧭 Seguimiento / 🕹️ Libre**: en **seguimiento** (elegido al abrir si el tracker está activo), la vista sigue tu posición y **gira con tu teléfono**, como 🗺️ Mapa orientado; tocar un botón de desplazamiento pasa a **libre** (arrastrar sobre la escena solo inclina la mirada arriba / abajo), y el botón de arriba, que muestra el modo actual, alterna entre ambos. Tracker detenido: 🧭 aparece en gris y explica por qué. Quieto, la vista no se vuelve a dibujar (batería), aunque la brújula tiemble un poco.
+- **🦅 Vista aérea** (o V): te ves desde arriba. Su inclinación va de casi vertical a rasante: desliza hacia arriba o abajo con dos dedos, rueda del ratón o RePág / AvPág, o los botoncitos ▲ ▼ de la derecha; se conserva mientras la vista sigue abierta.
 - **Brújula** (abajo a la izquierda): su **N** indica el norte real, según la calibración del norte del plano, y gira con tu vista. Plano sin norte calibrado: muestra la parte superior del plano y lo indica.
-- **El tracker no se mueve** mientras te desplazas en 3D, ni el nivel mostrado en el mapa. Al cerrar (✕ o Esc), si el seguimiento está activo y te has desplazado o has cambiado de nivel, **📍 ¿Estoy aquí?** propone recolocarlo donde te detuviste, nivel incluido; **No** no cambia el tracker.
+- **🚨 Salida de emergencia**: el mismo botón que arriba del mapa; su ventana se abre sobre la vista. Si no se conoce tu posición, la vista se cierra para que la indiques en el mapa. Los mensajes de la app aparecen debajo de la fila de botones.
+- **❓** abre la ayuda de la vista 3D.
+- **El tracker no se mueve** mientras te desplazas en 3D, ni el nivel mostrado en el mapa. Al cerrar (✕, arriba a la derecha, o Esc — que cierra primero un ajuste o una ventana abiertos), si el seguimiento está activo y te has desplazado o has cambiado de nivel, **📍 ¿Estoy aquí?** propone recolocarlo donde te detuviste, nivel incluido; **No** no cambia el tracker.
 - **Al salir**, el mapa se coloca donde estabas en 3D: centrado en tu posición, en el nivel de la 3D, sea cual sea tu respuesta.
-- **Ficha en gris**: ningún plano abierto, o plano sin escala (⚙️ Ajustes → 📐 Mapa: escala y geolocalización). Un navegador que no puede mostrar 3D lo indica al abrirla.
+- **Botón en gris**: ningún plano abierto, o plano sin escala (⚙️ Ajustes → 📐 Mapa: escala y geolocalización); tocarlo explica por qué. Un navegador que no puede mostrar 3D lo indica al abrirla.
 
 > ⚠️ **Beta**: la 3D muestra el **plano**, no la galería real. Formas y alturas vienen del levantamiento (en modo Galería, anchuras fijas por tipo de trazado), tu posición del tracker, que deriva. No te fíes más que del mapa.
 

@@ -687,7 +687,8 @@ const AIDE_PAR_MODALE = {
   "kta-convert-modal":        "corriger",
   "kta-niv-modal":            "multi-niveau",
   "kta-jct-modal":            "multi-niveau",
-  "kta-depannage-modal":      "depannage"
+  "kta-depannage-modal":      "depannage",
+  "kta-vue3d":                "vue-3d"
 };
 
 function ktaAideContextuelleActive() {
@@ -717,8 +718,9 @@ function _aidePoserBouton(modal) {
   if (!modal || !modal.id) return;
   const slug = AIDE_PAR_MODALE[modal.id];
   if (!slug || !ktaAideContextuelleActive()) return;
-  // Deux familles d'en-tête (modales de contenu, menu Tracker) : ❓ au même endroit, avant la croix.
-  const head = modal.querySelector(".kta-readme-modal-header, .kta-tracker-modal-header");
+  // Deux familles d'en-tête (modales de contenu, menu Tracker) : ❓ au même endroit, avant la croix. Une fenêtre
+  // sans en-tête de modale (vue 3D) marque sa rangée de boutons kta-aide-ctx-entete et sa croix data-aide-croix.
+  const head = modal.querySelector(".kta-readme-modal-header, .kta-tracker-modal-header, .kta-aide-ctx-entete");
   if (!head || head.querySelector(".kta-aide-ctx-btn")) return;
   const b = document.createElement("button");
   b.type = "button";
@@ -730,7 +732,8 @@ function _aidePoserBouton(modal) {
     e.stopPropagation();
     ktaOuvrirAideSection(slug);
   });
-  const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close, .kta-tracker-modal-close");
+  const croix = head.querySelector(".kta-panneau-close, .kta-readme-modal-close, .kta-tracker-modal-close, " +
+    "[data-aide-croix]");
   // 🩸 `querySelector` cherche en PROFONDEUR : la croix est parfois imbriquée dans un conteneur d'actions,
   // et insérer dans `head` lève un NotFoundError — depuis un MutationObserver, donc hors de tout try, et la
   // modale reste sans ❓. On insère dans le parent RÉEL de la croix.

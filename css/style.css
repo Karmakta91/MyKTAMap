@@ -19610,6 +19610,14 @@ html.kta-theme-light .kta-storage-banner {
 }
 html.kta-theme-light .kta-filter-ctrl a.kta-filter-ctrl-actif::after { box-shadow: 0 0 0 2px #f0e8d8; }
 
+/* Bouton Vue 3D (bêta), sous ≡ dans la barre de droite : picto cube au trait (js/ktaPictos.js) en currentColor, la
+   couleur et le fond du thème venant de .leaflet-bar a, comme ≡. */
+.kta-vue3d-ctrl a { display: flex !important; align-items: center; justify-content: center; }
+.kta-vue3d-ctrl-picto { width: 20px; height: 20px; pointer-events: none; }
+/* Sans plan ou sans échelle : grisé sans opacité, toujours touchable (le toucher dit pourquoi). */
+body .leaflet-bar.kta-vue3d-ctrl a.kta-inactif,
+html.kta-theme-light .leaflet-bar.kta-vue3d-ctrl a.kta-inactif { color: var(--kta-texte-3) !important; filter: grayscale(1); }
+
 /* Case « garder l'écran allumé » (modale de démarrage du tracker). */
 .kta-tracker-warn-wake {
   display: flex;

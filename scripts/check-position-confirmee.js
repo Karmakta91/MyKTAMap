@@ -67,9 +67,14 @@ verif(/type === "recalage"/.test(rebuild) && rebuild.includes("_marquerPositionC
       "session restaurée : confirmée SEULEMENT si la timeline contient un recalage");
 
 // ── 2. Les consommateurs appliquent la règle ─────────────────────────
+// La règle vit dans _origineConnue, lue par declencher() et par demandeLaCarte() (vue 3D) : une seule copie.
+const origine = bloc(sortie, "function _origineConnue() {", "function declencher() {");
 const declencher = bloc(sortie, "function declencher() {", "SU._modePickerCarte();");
-verif(declencher.includes("getTrackingPositionEtat"), "sortieUrgence.declencher lit l'état de la position");
-verif(/etat\.suiviActif \|\| etat\.confirmee/.test(declencher), "🩸 règle « instant T » : suivi actif OU confirmée → calcul direct, sans question");
+verif(origine.includes("getTrackingPositionEtat") && declencher.includes("_origineConnue()"),
+  "sortieUrgence.declencher lit l'état de la position (_origineConnue)");
+verif(/etat\.suiviActif \|\| etat\.confirmee/.test(origine), "🩸 règle « instant T » : suivi actif OU confirmée → calcul direct, sans question");
+verif(/function demandeLaCarte\(\) \{ return !_origineConnue\(\); \}/.test(sortie),
+  "demandeLaCarte (vue 3D) applique la même règle, sans copie");
 verif(sortie.includes("window.ktaDemanderPositionCarte("), "sortieUrgence : le cas « jamais confirmée » passe par le picker partagé");
 
 const tracer = bloc(sortie, "SU._tracerIndex = function", "SU._toggleAlternatives");

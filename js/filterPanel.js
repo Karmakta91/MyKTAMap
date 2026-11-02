@@ -22,6 +22,8 @@
 // API : window.FilterPanel = { ouvrir, fermer, getState, setFilters, onChange, applyFilters, isVisible, majBadge… }
 // Cascade : `window.appliquerFiltreRuntime()` notifie road.js, zones.js, structures.js,
 // utils.js > _applyTagFilterToDataPoints, editor.js > renderEditorPoints.
+// ⚠️ contrat : onChange(cb) est appelé à TOUT changement (types, tags, calque de données coché, niveaux visibles,
+// plan de base) : la vue 3D (js/vue3d.js) s'y abonne et redessine, avec le même état ; elle ouvre aussi ce panneau.
 // Garde-fou : check-calque-session.js. Doc : docs/architecture/ui.md.
 
 (function() {
@@ -92,21 +94,24 @@
     if (f.planDeBase === false) n++;
     return n;
   }
+  // Le ≡ de la carte et tout bouton marqué data-kta-pastille-filtres (≡ de la vue 3D) portent la même pastille.
   function majBadge() {
-    const a = document.querySelector(".kta-filter-ctrl a");
-    if (!a) return;
+    const boutons = document.querySelectorAll(".kta-filter-ctrl a, [data-kta-pastille-filtres]");
+    if (!boutons.length) return;
     const n = _nbFiltresActifs();
-    a.classList.toggle("kta-filter-ctrl-actif", n > 0);
-    // UN POINT, PAS UN CHIFFRE (décision produit) : `n` compte les CATÉGORIES filtrées, pas les objets masqués
-    // (un type décoché ou vingt afficheraient « 1 »). Le compte reste dans l'infobulle.
-    if (n > 0) {
-      a.setAttribute("data-filtre-actif", "1");
-      a.setAttribute("title", window.I18n.t("filter.badge.actifs", { n: n }));
-    } else {
-      a.removeAttribute("data-filtre-actif");
-      a.setAttribute("title", window.I18n.t("filter.badge.aucun"));
-    }
-    a.removeAttribute("data-count");   // legacy : le chiffre ne revient pas par la bande
+    boutons.forEach(function(a) {
+      a.classList.toggle("kta-filter-ctrl-actif", n > 0);
+      // UN POINT, PAS UN CHIFFRE (décision produit) : `n` compte les CATÉGORIES filtrées, pas les objets masqués
+      // (un type décoché ou vingt afficheraient « 1 »). Le compte reste dans l'infobulle.
+      if (n > 0) {
+        a.setAttribute("data-filtre-actif", "1");
+        a.setAttribute("title", window.I18n.t("filter.badge.actifs", { n: n }));
+      } else {
+        a.removeAttribute("data-filtre-actif");
+        a.setAttribute("title", window.I18n.t("filter.badge.aucun"));
+      }
+      a.removeAttribute("data-count");   // legacy : le chiffre ne revient pas par la bande
+    });
   }
 
   function _notify() {
@@ -155,6 +160,7 @@
   // Synchro des niveaux : appelé par appliquerFiltreNiveau quand visibleLevels / activeLevel changent ailleurs ;
   // ne re-rend que la section niveaux, si la modale est ouverte.
   function onLevelChange() {
+    _notify();   // niveaux visibles : la vue 3D les suit aussi
     if (!_modal) return;
     const sec = document.getElementById("kta-fp-sec-lvl");
     if (!sec) return;
@@ -685,7 +691,7 @@
         if (typeof window._applyLevelFilterToBasePlan === "function") window._applyLevelFilterToBasePlan();
         _majCasePlanDeBase(overlay);
         _refreshChipsState(overlay);
-        majBadge();
+        _notify();
         _updateStatus();
         return;
       }
@@ -708,6 +714,7 @@
         else           { try { window.map.removeLayer(grp); } catch(_) {} }
         // Roads + cercles d'intersection recalculés (cf. _scheduleRoadsRecalc).
         _scheduleRoadsRecalc();
+        _notify();
         return;
       }
       // Tags + types (par Set)

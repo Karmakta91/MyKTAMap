@@ -11,7 +11,8 @@
 // Cas dégradés : position jamais confirmée → picker « Où es-tu ? » ; aucun candidat → toast ; Pathfinder en échec
 //   pour une sortie → distance à vol d'oiseau, affichée comme NON vérifiée, en fin de liste.
 // Vibration : trouvée → medium ; aucune → error.
-// Expose : window.SortieUrgence — declencher(), declencherDepuis(x, y, level, opts), isActive(), relancerDepuis(pos)
+// Expose : window.SortieUrgence — declencher(), declencherDepuis(x, y, level, opts), isActive(), relancerDepuis(pos),
+//   demandeLaCarte() (declencher() demandera la position sur la carte : la vue 3D se ferme d'abord)
 // Garde-fous : scripts/check-guidage.js, scripts/check-position-confirmee.js · Doc : docs/architecture/tracking.md
 
 (function() {
@@ -407,7 +408,8 @@
     return o;
   }
 
-  function declencher() {
+  // Position du tracker utilisable (suivi actif ou position confirmée) → { pos, etat }, sinon null.
+  function _origineConnue() {
     const pos = (typeof window.getTrackingPosition === "function")
       ? window.getTrackingPosition()
       : null;
@@ -415,7 +417,15 @@
       ? window.getTrackingPositionEtat()
       : null;
     const posOk = !!(pos && typeof pos.x === "number" && typeof pos.y === "number");
-    if (posOk && (!etat || etat.suiviActif || etat.confirmee)) {
+    return (posOk && (!etat || etat.suiviActif || etat.confirmee)) ? { pos: pos, etat: etat } : null;
+  }
+
+  function demandeLaCarte() { return !_origineConnue(); }
+
+  function declencher() {
+    const o = _origineConnue();
+    const pos = o && o.pos, etat = o && o.etat;
+    if (o) {
       _lancer(_origineTracker(pos), {
         mode: (etat && etat.suiviActif) ? "suivi" : "confirmee",
         ts:   etat ? etat.ts : null
@@ -515,6 +525,7 @@
   // ── Export ──────────────
   SU.declencher       = declencher;
   SU.declencherDepuis = declencherDepuis;
+  SU.demandeLaCarte   = demandeLaCarte;
   SU.isActive         = function() { return !!_modal; };
 
   window.SortieUrgence = SU;

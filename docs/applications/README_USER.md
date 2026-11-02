@@ -304,7 +304,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 
 **En bas**, une barre d'état regroupe ce qui est en cours : 📐 mesure, 📏 distance totale des tracés, 🗺️ itinéraire (distance, temps, allure — touche-le pour ouvrir l'itinéraire) et le voyant **🧭 tracker** (ON · pas · distance pendant le suivi ; touche-le pour ouvrir le menu Tracker). Elle passe à la ligne si tout ne tient pas ; le bouton ▾▴ la réduit.
 
-**Sur les côtés**, les deux barres latérales portent les outils. L'interface est organisée en **13 groupes** répartis sur les **deux barres latérales** — à gauche : ⭐ Favoris, 📚 Aide, ⚙️ Réglages, ⬇️ Charger, ⬆️ Enregistrer, ⏪ Historique ; à droite : 🔍 Recherche, 🧭 Tracker, 📐 Mesure, ✏️ Édition, 🛣️ Tracés, ⬛ Zones, 🏛️ Structures :
+**Sur les côtés**, les deux barres latérales portent les outils. L'interface est organisée en **13 groupes** répartis sur les **deux barres latérales** — à gauche : ⭐ Favoris, 📚 Aide, ⚙️ Réglages, ⬇️ Charger, ⬆️ Enregistrer, ⏪ Historique ; à droite : 🔍 Recherche, 🧭 Tracker, 📐 Mesure, ✏️ Édition, 🛣️ Tracés, ⬛ Zones, 🏛️ Structures. En haut de la barre de droite, **≡ Filtres** puis le **bouton cube** de la 🧊 Vue 3D (bêta) :
 
 | Groupe | Icône | À quoi ça sert |
 |---|---|---|
@@ -371,7 +371,8 @@ Le bouton **≡** en haut à droite de la carte ouvre **≡ Filtres d'affichage*
 | 🛣️ ⬛ 🏛️ **Types** | Types de tracés, de zones et de structures, y compris les tiens |
 
 - Chaque section se replie, et a ses boutons **👁️ Tout** / **🚫 Aucun**.
-- **🔄 Tout afficher** remet les tags et les types à « tout visible », sans toucher aux niveaux ni aux calques.
+- **🔄 Tout afficher** remet tout à « visible » : tags, types, calques et niveaux.
+- Les mêmes filtres valent dans la **🧊 Vue 3D** : son bouton ≡ ouvre ce panneau.
 - En bas, **Filtres actifs : …** rappelle ce qui est filtré ; le bouton ≡ signale aussi quand des éléments sont masqués.
 - Les filtres sont **mémorisés par plan** : tu les retrouves en revenant sur ce plan, et un message te le signale.
 - Ce que tu es en train de dessiner reste visible, même si tu décoches son type.
@@ -450,7 +451,7 @@ Le bouton **🧭 Tracker** (ou le voyant 🧭 de la barre du bas) ouvre une **mo
 | Section | Tuiles |
 |---|---|
 | **Suivi** | ▶️ / ⏹️ Démarrer / arrêter · 📍 Mode recalage · 🎯 Ma position (recentre la carte sur toi) · 🔓 Suspendre le verrou sur tracé |
-| **Outils** | 🧭 Boussole · 🗺️ Calculer un itinéraire · 🪧 Guidage de l'itinéraire · 🗺️ Plan orienté · 🧊 Vue 3D (bêta) |
+| **Outils** | 🧭 Boussole · 🗺️ Calculer un itinéraire · 🪧 Guidage de l'itinéraire · 🗺️ Plan orienté |
 | **Urgence** (fond rouge) | ⛑️ Je suis perdu · 🔆 Affichage XL · 🚑 Mode Secours — voir 🆘 En cas d'urgence sous terre |
 
 Navigation intelligente (verrou sur tracé), plan orienté, itinéraire via plusieurs plans, replay et heatmap sont des options désactivées par défaut → 🔭 Pour aller plus loin.
@@ -492,22 +493,24 @@ Si ça ne colle pas, le champ magnétique est perturbé (ferraille, armatures) :
 
 ### 🧊 Vue 3D (bêta)
 
-La tuile **🧊 Vue 3D (bêta)** montre le plan **en relief autour de ta position**, comme si tu y étais, éclairé par une lampe frontale. Elle se charge au premier toucher et reste disponible hors ligne.
+Le **bouton cube** de la barre de droite, juste sous **≡ Filtres**, montre le plan **en relief autour de ta position**, comme si tu y étais, éclairé par une lampe frontale. Un indicateur patiente le temps de l'ouvrir (plus longtemps la première fois) ; elle reste ensuite disponible hors ligne. La marque **bêta** reste affichée en haut de la vue.
 
-- **🧱 Structures / 🚇 Galerie** : le bouton en haut, qui affiche le mode en cours, passe d'un rendu à l'autre ; le choix est retenu pour ce plan (par défaut : Structures si le niveau affiché en a, Galerie sinon).
-  - **🧱 Structures** : piliers, murs et fronts de taille dressés à la hauteur de galerie du plan (⛏️ Volume exploité, 2 m sinon), remblais, eau, zones ⛔ inaccessibles et effondrements, tracés et itinéraire au sol, points en panneaux, toujours visibles (un point relevé dans un pilier s'affiche contre sa face), plus petits et plus pâles au loin.
-  - **🚇 Galerie** : les tracés deviennent des galeries (principal 2,5 m de large, secondaire 2 m, chemin 1,7 m, tracé personnalisé 2 m), sans les structures : carrefours ouverts, coudes, cul-de-sac fermé, parois en moellons de calcaire taillés, un liseré au sol de la couleur du tracé. Les zones s'arrêtent aux parois : le remblais bouche la galerie, une zone ⛔ inaccessible tend un rideau rouge hachuré en travers. Seuls les points à moins de 3 m d'un tracé s'affichent, contre la paroi.
-  - Dans les deux cas : un niveau à la fois, calques masqués compris, sur 30 m autour de toi. Les tracés jonction ne sont pas dessinés : on change de niveau par 🪜.
-- **↕ Hauteur** : le bouton **↕** (il affiche la hauteur en cours) ouvre **−** / **+**, de 1,5 à 4 m par 0,1 m. C'est la même hauteur que ⛏️ Volume exploité, retenue pour ce plan : changer l'une change l'autre. La scène se refait sur place, sans te déplacer.
-- **≡ Affichage** : des cases pour montrer ou cacher en 3D les points (tous, ou par type de point), chaque type de tracé et l'itinéraire. À l'ouverture, elles reprennent les ≡ Filtres de la carte ; ensuite elles ne valent que pour la 3D, tant qu'elle reste ouverte, et ne changent rien à la carte. Cacher un tracé n'enlève que son dessin : on bute toujours contre les parois, et 🪜 reste proposé.
+- **🏛️ Structures / 🛣️ Galerie** : le bouton en haut, qui affiche le mode en cours, passe d'un rendu à l'autre ; le choix est retenu pour ce plan (par défaut : Structures si le niveau affiché en a, Galerie sinon).
+  - **🏛️ Structures** : piliers, murs et fronts de taille dressés à la hauteur de galerie du plan (⛏️ Volume exploité, 2 m sinon), remblais, eau, zones ⛔ inaccessibles et effondrements, tracés et itinéraire au sol, points en panneaux, toujours visibles (un point relevé dans un pilier s'affiche contre sa face), plus petits et plus pâles au loin, et effacés tout près de toi pour ne pas boucher la vue.
+  - **🛣️ Galerie** : les tracés deviennent des galeries (principal 2,5 m de large, secondaire 2 m, chemin 1,7 m, tracé personnalisé 2 m), sans les structures : carrefours ouverts, coudes, cul-de-sac fermé, parois en moellons de calcaire taillés, un liseré au sol de la couleur du tracé. Les zones s'arrêtent aux parois : le remblais bouche la galerie, une zone ⛔ inaccessible tend un rideau rouge hachuré en travers. Seuls les points à moins de 3 m d'un tracé s'affichent, contre la paroi.
+  - Dans les deux cas : un niveau à la fois, sur 30 m autour de toi. Les tracés jonction ne sont pas dessinés : on change de niveau par 🪜.
+- **≡ Filtres** : le même panneau que sur la carte, ouvert par-dessus la vue, avec les mêmes réglages. Ce que tu masques en 3D est masqué sur la carte, et inversement : tags des points, types de tracés, de zones et de structures, calques de données, niveaux visibles. Un point sur le ≡ signale un filtre actif. Masquer n'enlève que le dessin : on bute toujours contre les piliers et les parois, et 🪜 reste proposé. L'itinéraire reste affiché, comme sur la carte. Les calques d'image n'ont pas d'effet en 3D.
+- **⛏️ Hauteur** : le bouton **⛏️** (il affiche la hauteur en cours) ouvre **−** / **+**, de 1,5 à 4 m par 0,1 m. C'est la même hauteur que ⛏️ Volume exploité, retenue pour ce plan : changer l'une change l'autre. La scène se refait sur place, sans te déplacer.
 - **Se déplacer** : pavé ▲ ▼ ↶ ↷ ◀ ▶ maintenu, flèches ou ZQSD au clavier, ou glisser sur la scène pour tourner et lever les yeux. **Plus vite** : Maj maintenue, ou ▲ gardé appuyé plus d'une demi-seconde. On bute contre les piliers, murs et fronts (personnalisés compris) en mode Structures, contre les parois et les remblais en mode Galerie, avec la largeur du corps.
 - **🪜 Changer de niveau** (mode libre) : à moins de 2 m d'un point de passage entre niveaux (escalier, puits) ou du bout d'un tracé jonction, des boutons **▲** / **▼** t'emmènent au niveau voisin (une petite liste s'il en dessert plus de deux) ; toucher le panneau du point fait de même. Tu arrives au raccord validé de ce niveau s'il y en a un. En suivi, le niveau est celui du tracker.
-- **📍 Suivi / libre** : en **suivi** (choisi à l'ouverture quand le tracker tourne), la vue suit ta position et **tourne avec ton téléphone**, comme 🗺️ Plan orienté ; toucher un bouton de déplacement passe en **libre** (glisser sur la scène règle seulement le regard haut / bas), et le bouton en haut, qui affiche le mode en cours (**📍 Suivi** ou **🕹️ Libre**), bascule de l'un à l'autre. Tracker arrêté : 📍 est grisé et dit pourquoi.
-- **🛰️ Vue plongeante** (ou V) : tu te vois d'au-dessus. Son inclinaison va de presque verticale à rasante : glisser vers le haut ou le bas à deux doigts, molette ou PageUp / PageDown, ou les petits boutons ▲ ▼ à droite ; elle est retenue tant que la vue reste ouverte.
+- **🧭 Suivi / 🕹️ Libre** : en **suivi** (choisi à l'ouverture quand le tracker tourne), la vue suit ta position et **tourne avec ton téléphone**, comme 🗺️ Plan orienté ; toucher un bouton de déplacement passe en **libre** (glisser sur la scène règle seulement le regard haut / bas), et le bouton en haut, qui affiche le mode en cours, bascule de l'un à l'autre. Tracker arrêté : 🧭 est grisé et dit pourquoi. Immobile, la vue ne se redessine pas (batterie), même si la boussole tremble un peu.
+- **🦅 Vue plongeante** (ou V) : tu te vois d'au-dessus. Son inclinaison va de presque verticale à rasante : glisser vers le haut ou le bas à deux doigts, molette ou PageUp / PageDown, ou les petits boutons ▲ ▼ à droite ; elle est retenue tant que la vue reste ouverte.
 - **Boussole** (en bas à gauche) : son **N** montre le nord réel, d'après la calibration du Nord du plan, et tourne avec ta vue. Plan sans Nord calibré : elle montre le haut du plan et l'écrit.
-- **Le tracker ne bouge pas** pendant que tu te déplaces en 3D, ni le niveau affiché sur la carte. À la fermeture (✕ ou Échap), si le suivi tourne et que tu t'es déplacé ou as changé de niveau, **📍 Je suis ici ?** propose de le recaler là où tu t'es arrêté, niveau compris ; **Non** ne change rien au tracker.
+- **🚨 Sortie d'urgence** : le même bouton qu'en haut de la carte ; sa fenêtre s'ouvre par-dessus la vue. Si ta position n'est pas connue, la vue se ferme pour que tu la montres sur la carte. Les messages de l'app s'affichent sous la rangée de boutons.
+- **❓** ouvre l'aide de la vue 3D.
+- **Le tracker ne bouge pas** pendant que tu te déplaces en 3D, ni le niveau affiché sur la carte. À la fermeture (✕, en haut à droite, ou Échap — qui ferme d'abord un réglage ou une fenêtre ouverts), si le suivi tourne et que tu t'es déplacé ou as changé de niveau, **📍 Je suis ici ?** propose de le recaler là où tu t'es arrêté, niveau compris ; **Non** ne change rien au tracker.
 - **En sortant**, la carte se place là où tu étais en 3D : centrée sur ta position, au niveau de la 3D, quelle que soit ta réponse.
-- **Tuile grisée** : aucun plan ouvert, ou plan sans échelle (⚙️ Réglages → 📐 Plan : échelle & géolocalisation). Un navigateur qui ne sait pas afficher la 3D le dit à l'ouverture.
+- **Bouton grisé** : aucun plan ouvert, ou plan sans échelle (⚙️ Réglages → 📐 Plan : échelle & géolocalisation) ; le toucher dit pourquoi. Un navigateur qui ne sait pas afficher la 3D le dit à l'ouverture.
 
 > ⚠️ **Bêta** : la 3D montre le **plan**, pas la galerie réelle. Formes et hauteurs sont celles du relevé (en mode Galerie, des largeurs fixes par type de tracé), ta position celle du tracker, qui dérive. Ne t'y fie pas plus qu'à la carte.
 
