@@ -73,7 +73,10 @@
   // Joystick (téléphone) : débattement en px pour 0 → VITESSE, zone morte, course au-delà de `course` du
   // débattement tenu APPUI_LONG ; tailles de l'anneau et du bouton (px, posées par css/vue3d.css).
   const JOYSTICK = { debattement: 40, morte: 12, course: 0.85 };
-  const HAUTEUR_REMBLAIS = 0.6;     // part de la hauteur du plan
+  // Part de la hauteur du plan : remblais ET effondrement, deux volumes qui bouchent la galerie de la même façon
+  // (même règle du pas, KtaGalerie). Une seule valeur : à 60 %, on voit par-dessus et on lit la galerie au-delà ;
+  // un éboulis plus haut ferait un mur sans relief à hauteur d'yeux.
+  const HAUTEUR_REMBLAIS = 0.6;
   const PANNEAU = { l: 1.6, h: 0.5 };   // m : taille d'un panneau de POI de près
   // De près : rien sous PRES.min, fondu jusqu'à PRES.net ; jamais plus large que PRES.ecran de la largeur de l'écran
   // (au téléphone en portrait, un panneau de 1,6 m à 2 m couvrait tout l'écran).
@@ -120,7 +123,7 @@
   const REMBLAIS = { m: 2, px: 256, terre: "#b09e7e", pierre: "#d6cdb7", tailles: [[0.008, 0.02, 520, 0.35],
     [0.025, 0.06, 90, 0.5], [0.07, 0.13, 14, 0.6], [0.16, 0.24, 3, 0.7]], facettes: [5, 8], allonge: 0.5,
     sable: 900, fissures: 0, relief: 3.2, graine: 61 };
-  // Effondrement (fontis : éboulis du ciel tombé, 🧱 activé), posé sur le dessin d'aujourd'hui (au sol, sans volume) :
+  // Effondrement (fontis : éboulis du ciel tombé, 🧱 activé), volume comme le remblais (HAUTEUR_REMBLAIS) :
   // gros blocs cassés empilés en désordre, arêtes vives, fissures, débris, peu de terre. Motif de 4 m (64 px/m) :
   // les gros blocs se répéteraient à l'œil sur un motif plus petit ; relief plus fort, la lampe accroche les arêtes.
   const EBOULIS = { m: 4, px: 256, terre: "#857864", pierre: "#cbc2ab", tailles: [[0.02, 0.05, 460, 0.4],
@@ -660,8 +663,8 @@
       }
     }
     // Textures (🧱) : roche et parpaing dans leurs lots, couleur blanche (texture naturelle, jamais teintée par la
-    // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine. Remblais et effondrement texturés :
-    // un lot chacun, chambres et tubes ensemble (_zoneGalerie) ; 🧱 coupé, les lots d'origine.
+    // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine. Remblais et effondrement (deux
+    // volumes) texturés : un lot chacun, chambres et tubes ensemble (_zoneGalerie) ; 🧱 coupé, les lots d'origine.
     const roche = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
     const remblaisTex = new Lot(), eboulis = new Lot();
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
@@ -687,7 +690,9 @@
       } else if (z.type === "remblais") {
         _prisme(opaque, ring, 0, h * HAUTEUR_REMBLAIS, _couleur("zones", z.type, "fillColor"), true);
       } else if (z.type === "effondrement" && tx) {
-        _dessus(eboulis, ring, 0.02, BLANC, EBOULIS.m);
+        _prisme(eboulis, ring, 0, h * HAUTEUR_REMBLAIS, BLANC, true, EBOULIS.m);
+      } else if (z.type === "effondrement") {
+        _prisme(opaque, ring, 0, h * HAUTEUR_REMBLAIS, _couleur("zones", z.type, "fillColor"), true);
       } else if (z.type === "eau") {
         _dessus(transp, ring, 0.04, _couleur("zones", z.type, "fillColor"));
       } else if (z.type === "inaccessible") {
@@ -695,7 +700,7 @@
         _dessus(hachSol, ring, 0.02, _couleur("zones", z.type, "fillColor"));
         _prisme(hachRideau, ring, 0, h, _couleur("zones", z.type, "fillColor"), false);
       } else {
-        _dessus(opaque, ring, 0.02, _couleur("zones", z.type, "fillColor"));   // effondrement, types perso
+        _dessus(opaque, ring, 0.02, _couleur("zones", z.type, "fillColor"));   // types perso
       }
     }
     for (let i = 0; i < t.r.length; i++) {
@@ -906,10 +911,11 @@
     return true;
   }
 
-  // Zone en mode galerie : découpée à chaque pièce de l'emprise qu'elle touche. Eau à 4 cm ; remblais en volume
-  // (faces seulement là où il donne sur la galerie) ; inaccessible au sol + rideau en travers du tube là où son
-  // contour coupe l'axe ; effondrement et types perso au sol. `lots.texRemblais` / `lots.eboulis` (🧱) : remblais et
-  // effondrement en blanc avec des coordonnées de texture en mètres, comme en chambre (_construireTuile).
+  // Zone en mode galerie : découpée à chaque pièce de l'emprise qu'elle touche. Eau à 4 cm ; remblais et
+  // effondrement en volume (faces seulement là où il donne sur la galerie) ; inaccessible au sol + rideau en travers
+  // du tube là où son contour coupe l'axe ; types perso au sol. `lots.texRemblais` / `lots.eboulis` (🧱) : remblais et
+  // effondrement en blanc avec des coordonnées de texture en mètres, comme en chambre (_construireTuile) ; 🧱 coupé,
+  // l'effondrement va au lot opaque, à la couleur de la légende.
   function _zoneGalerie(z, m, lots) {
     const e = _e, sc = e.sc, h = e.hauteur, ring = _anneau(z.points, sc);
     if (ring.length < 3) return;
@@ -928,8 +934,10 @@
       else if (z.type === "remblais") {
         _remblaisGalerie(lots.remblais, c, ring, m, h * HAUTEUR_REMBLAIS, lots.texRemblais ? BLANC : col,
           lots.texRemblais ? REMBLAIS.m : undefined);
-      } else if (z.type === "effondrement" && lots.eboulis) _dessus(lots.eboulis, c, 0.02, BLANC, EBOULIS.m);
-      else _dessus(lots.opaque, c, 0.02, col);
+      } else if (z.type === "effondrement") {
+        _remblaisGalerie(lots.eboulis || lots.opaque, c, ring, m, h * HAUTEUR_REMBLAIS, lots.eboulis ? BLANC : col,
+          lots.eboulis ? EBOULIS.m : undefined, "facesEboulis");
+      } else _dessus(lots.opaque, c, 0.02, col);
     }
     if (z.type !== "inaccessible") return;
     m.aretesPres(x0 * sc, y0 * sc, x1 * sc, y1 * sc).forEach(function (k) {
@@ -949,11 +957,12 @@
     });
   }
 
-  // Remblais découpé : dessus, et une face sur chaque bord qui donne sur la galerie (pas contre une paroi ni à
-  // l'intérieur du remblais, où elle ne se verrait pas ou scintillerait contre la paroi). `tm` (m par motif, 🧱) :
-  // coordonnées de texture de _prisme sur le contour entier de la zone (u = abscisse du bord sur `ring`, même
-  // origine ; v = hauteur), dessus projeté au sol : un remblais coupé par le tube garde le dessin d'une chambre.
-  function _remblaisGalerie(lot, c, ring, m, hr, col, tm) {
+  // Remblais (ou effondrement) découpé : dessus, et une face sur chaque bord qui donne sur la galerie (pas contre une
+  // paroi ni à l'intérieur de la zone, où elle ne se verrait pas ou scintillerait contre la paroi). `tm` (m par
+  // motif, 🧱) : coordonnées de texture de _prisme sur le contour entier de la zone (u = abscisse du bord sur `ring`,
+  // même origine ; v = hauteur), dessus projeté au sol : une zone coupée par le tube garde le dessin d'une chambre.
+  // `compteur` : compteur de faces de l'état (facesRemblais par défaut, facesEboulis).
+  function _remblaisGalerie(lot, c, ring, m, hr, col, tm, compteur) {
     const sc = m.sc, dedansZone = function (x, z) {
       let r = false;
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -973,7 +982,7 @@
         uv = [s, 0, s + l / tm, 0, s + l / tm, hr / tm, s, hr / tm];
       }
       lot.quad([p[0], 0, p[1]], [q[0], 0, q[1]], [q[0], hr, q[1]], [p[0], hr, p[1]], [dz / l, 0, -dx / l], col, uv);
-      _e.facesRemblais++;
+      _e[compteur || "facesRemblais"]++;
     }
     _dessus(lot, c, hr, col, tm);
   }
@@ -2118,8 +2127,8 @@
   // Compteurs tenus par la construction des tuiles (checkup), remis à zéro avec elles.
   function _razCompteurs() {
     const e = _e;
-    e.poiMasques = 0; e.zonesDecoupees = {}; e.rideaux = []; e.facesRemblais = 0; e.rubans = {}; e.liseres = {};
-    e.zonesTube = 0; e.poiTube = 0; e.halos = 0; e.itiTirets = 0;
+    e.poiMasques = 0; e.zonesDecoupees = {}; e.rideaux = []; e.facesRemblais = 0; e.facesEboulis = 0; e.rubans = {};
+    e.liseres = {}; e.zonesTube = 0; e.poiTube = 0; e.halos = 0; e.itiTirets = 0;
   }
 
   // Tuiles refaites sur place (hauteur, affichage) : même index, position, cap, niveau et rendu gardés.
@@ -2807,8 +2816,9 @@
 
   // → -1 si un couloir est coupé (ou l'arrivée hors plan / hors image de collision), sinon le nombre de rayons
   // bloqués autour de l'arrivée. Un seul lot de segments par essai (_juger : structures ou galerie).
-  // Mode galerie : on bute contre les parois et les remblais (KtaGalerie.segmentsBloques), l'image de collision du
-  // plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
+  // Mode galerie : on bute contre les parois, les remblais et les effondrements (KtaGalerie.segmentsBloques),
+  // l'image de collision du plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé), on se déplace
+  // librement pour y entrer.
   // Mode mixte : règle des structures (image de collision comprise) et parois dessinées des tubes (_juger).
   function _balayage(x0, y0, x1, y1, ux, uy) {
     const r = RAYON_CORPS * _e.sc, fx = x1 + ux * r, fy = y1 + uy * r, gal = !!_e.galerie;
@@ -4510,7 +4520,8 @@
         roseAngle: NaN, rendu: "structures", galerie: null, passages: [], passageSig: null, passageCibles: null,
         volPassages: [], geste: null, dy: 0, fondu: null, fonduOp: 0, bandeauNiveau: null, bandeauNiveauFin: 0,
         niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
-        zonesDecoupees: {}, rideaux: [], facesRemblais: 0, rubans: {}, liseres: {}, filtresChanges: false,
+        zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, rubans: {}, liseres: {},
+        filtresChanges: false,
         virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
         itiChange: false, guidageT: 0, guidageForce: true,
         apS: undefined, bandeauCle: null, bandeauEtat: { visible: false }, chevrons: null, chevSig: null,
@@ -4725,7 +4736,8 @@
         bouton: e.boutonHauteur ? e.boutonHauteur.textContent : "",
         valeur: e.hauteurValeur ? e.hauteurValeur.textContent : "" },
       rendu: e.rendu, poiMasques: e.poiMasques, zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux.slice(),
-      facesRemblais: e.facesRemblais, rubans: Object.assign({}, e.rubans), liseres: Object.assign({}, e.liseres),
+      facesRemblais: e.facesRemblais, facesEboulis: e.facesEboulis, rubans: Object.assign({}, e.rubans),
+      liseres: Object.assign({}, e.liseres),
       zonesTube: e.zonesTube, poiTube: e.poiTube, halos: e.halos,
       equipe: Object.assign({ membres: 0, membres3d: 0, reperes: 0, itineraires: 0 }, e.nbEquipe || {}),
       membres: e.equipe ? e.equipe.children.filter(function (o) { return o.userData.famille === "membre"; })

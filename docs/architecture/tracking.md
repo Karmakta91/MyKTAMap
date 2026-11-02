@@ -1327,7 +1327,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s. En rendu galerie, la
   règle est celle de l'emprise (ci-dessous), même corps, même balayage ; l'image de collision du plan n'est pas lue.
   En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout (image de collision comprise)
-  et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes et leurs pans de retour, un remblais dans un tube) ; dans une chambre,
+  et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes et leurs pans de retour, un remblais ou un
+  effondrement dans un tube) ; dans une chambre,
   seules les structures arrêtent.
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
   🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
@@ -1364,7 +1365,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   **le même chiffre que ⛏️ Volume exploité**. Bouton **⛏️** (hauteur affichée par `formatDistance`) → − / + de 1,5 à
   20 m, par 0,1 m jusqu'à 5 m puis 0,5 m (`reglerHauteur(m)` : borné, arrondi, `setPlanHauteurGalerie`) ; une valeur
   saisie hors bornes dans ⛏️ est montrée telle quelle jusqu'au premier − / +. Les tuiles sont refaites sur place (`_refaireTuiles` : même
-  index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais à 60 %, rideaux, tubes, plafond, œil
+  index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais et effondrements à 60 %, rideaux, tubes, plafond, œil
   (`_oeil`) et panneaux suivent.
 - **Filtres = ceux de la carte** (décision produit) : ≡ de la vue ouvre **le** panneau ≡ Filtres (`FilterPanel.ouvrir`),
   posé par-dessus ; un seul état : masquer en 3D masque en 2D, et inversement. ⚠️ contrat : la vue dessine ce que
@@ -1401,8 +1402,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   rapproche de l'axe le plus proche (30 m), ou tout pas sans tracé. En suivi, la place reste celle du tracker.
 - **Règle du pas en galerie** : `KtaGalerie.segmentsBloques(segs, niveau)`, même forme que
   `ktaSegmentsBloquesParStructure` (lot de segments → booléens) : bloqué si un point (tous les 5 cm) sort de l'emprise
-  (à moins d'une demi-largeur d'un tracé ou dans un joint) ou entre dans un remblais du niveau. Niveau sans galerie :
-  rien n'arrête. Parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
+  (à moins d'une demi-largeur d'un tracé ou dans un joint) ou entre dans un remblais ou un effondrement du niveau
+  (`galerieEmprise.js > ZONES_BOUCHENT`). Niveau sans galerie : rien n'arrête. ⚠️ contrat : ces deux zones ne
+  bouchent que la 3D (`dedans`, `segmentsBloques`, `paroisBloquent`) ; `versGalerie` (recalage du tracker) ne lit
+  que l'emprise, et la carte, l'itinéraire, le guidage et le tracker les ignorent : un itinéraire 2D qui traverse un
+  effondrement est dessiné tel quel, son ruban (à 5 cm) passe dans le volume. Départ dans l'une d'elles : ramené
+  au point libre le plus proche (jamais coincé, ci-dessus). Parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
 - **Scène galerie** : sol et plafond = les pièces, texture calcaire posée en coordonnées monde (pièces superposées sans
   couture) ; parois (galeries, tubes du mixte, puits et tranchées des passages : un seul matériau `paroi`) en
   **pierre de taille** quand 🧱 Textures est activé (`_paroiTexturee` : `_appareil` + `_assisesPierre`, `PIERRE` :
@@ -1417,9 +1422,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est pas un tube : c'est une rampe
   (volumes des passages, ci-dessous). Structures (intégrées et perso)
   ni dessinées ni bloquantes (sauf en rendu mixte, ci-dessus). Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
-  à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais à 60 % avec une face seulement là où
-  il donne sur la galerie, inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
-  contour coupe l'axe (`_hachurer`), effondrement et perso au sol. **POI** à moins de 10 m de l'axe d'un tracé, ramenés
+  à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais et effondrement à 60 % avec une
+  face seulement là où ils donnent sur la galerie (`_remblaisGalerie`), inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
+  contour coupe l'axe (`_hachurer`), perso au sol. **POI** à moins de 10 m de l'axe d'un tracé, ramenés
   contre la paroi la plus proche (8 cm devant) s'ils sont au-delà ; plus loin, masqués ; toujours sans test de
   profondeur. Vue plongeante : plafond des pièces masqué, parois vues des deux côtés.
 - **Passages de niveau 🪜** (en libre ; en suivi, le niveau est celui du tracker) : à moins de 2 m d'un POI jonction
@@ -1533,16 +1538,16 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   cailloux et blocs anguleux à moitié enfouis (`REMBLAIS` : motif de 2 m, du gravier de 1 cm aux blocs de 25 cm),
   `effondrement` en éboulis de fontis (`EBOULIS` : motif de 4 m, gros blocs cassés jusqu'à 60 cm, empilés, fissurés,
   peu de terre, relief plus fort). Un seul dessin pour les deux (`_pierraille` : blocs convexes en demi-plans,
-  hauteur en facettes, la plus haute surface gardée ; `_poserBloc`), normal map `_carteNormale`. Forme inchangée :
-  le remblais reste un volume à 60 % de la hauteur, l'effondrement un sol à 2 cm. Un matériau par type (`_matZone` :
+  hauteur en facettes, la plus haute surface gardée ; `_poserBloc`), normal map `_carteNormale`. Forme : deux
+  volumes à 60 % de la hauteur (`HAUTEUR_REMBLAIS`, une seule valeur : même obstacle, on voit par-dessus). Un matériau par type (`_matZone` :
   `remblais`, `eboulis`), fait à la première zone du type, un lot par tuile (chambres et tubes ensemble). ⚠️ contrat :
   coordonnées de texture en mètres, comme `_prisme` : dessus projeté au sol, flancs u = abscisse sur le contour de
   la zone depuis la même origine (`_origineMotif`), v = hauteur ; découpé au tube (`_remblaisGalerie`), un flanc
-  prend l'abscisse de son bord sur le contour entier (`_abscisse`) : un remblais coupé par le tube garde le dessin
-  qu'il aurait en chambre. Un type de zone perso `cust-…` garde sa couleur (décision : son entrée de légende n'a ni
+  prend l'abscisse de son bord sur le contour entier (`_abscisse`) : une zone coupée par le tube garde le dessin
+  qu'elle aurait en chambre. Un type de zone perso `cust-…` garde sa couleur (décision : son entrée de légende n'a ni
   type de base ni forme propre — toutes les zones sont des polygones — et il est dessiné au sol, pas en volume ; rien
   ne permet de le rattacher au remblais). Eau et hachures de l'inaccessible inchangées. Coupé : lots et matériau
-  `opaque` d'origine, couleur de la légende exacte.
+  `opaque` d'origine, couleur de la légende exacte, volume gardé.
 - **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés à la
   distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). De près
   (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un
@@ -1736,7 +1741,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`WEBGL_lose_context`) puis reprise, perte sans reprise, « Je suis ici ? » Non puis Oui, WebGL absent,
   20 ouvertures de suite. Galerie, sur des tracés fictifs (T, X, coude droit, coude aigu, cul-de-sac, presque
   parallèles) : aucune paroi qui en traverse une autre, axes libres, bouts fermés, butée contre une paroi, carrefour et
-  coude passés, remblais qui arrête, zones coupées au tube, rideau en travers, POI à 2 m montré et à 5 m masqué,
+  coude passés, remblais qui arrête, zones coupées au tube, effondrement en volume qui arrête comme le remblais
+  (§ 24 bis : trois rendus, départ dedans, 🧱 coupé, recalage et itinéraire 2D inchangés), rideau en travers, POI à 2 m montré et à 5 m masqué,
   interrupteur retenu par plan ; passages 🪜 (POI jonction ▲ / ▼, tracé jonction dans les deux sens, toucher
   du panneau, suivi sans 🪜, tracker et carte inchangés) ; place libre (extension factice) : rien sans partage ni
   avant un pas, une remise puis rien à l'arrêt, ≤ 1 remise par 0,5 m en marchant, rien sous 10° de rotation,
