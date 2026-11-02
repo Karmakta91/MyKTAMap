@@ -73,7 +73,9 @@ dessiné : il faut une logique de croisements.
 6. **Vocabulaire** : < 25° tout droit · 25–60° légèrement · 60–135° tourner · > 135° demi-tour. Deux sorties à
    moins de 35° l'une de l'autre → « prendre la branche de gauche / droite ».
 7. **Repère** : un point nommé à quelques mètres du carrefour enrichit la consigne (« au niveau de … »).
-8. **Changement de niveau** : « monter / descendre vers … » au passage d'une jonction.
+8. **Changement de niveau** : « monter / descendre vers le niveau +1 / -1 » (libellé signé du sélecteur) au passage
+   d'une jonction. Décision KARMA (QCM du 02/11/2026) : elle **absorbe** les consignes de carrefour à ≤ 5 m et passe
+   devant à abscisse égale (par un tracé `jonction`, elle tombait sur le virage du nœud et n'était jamais dite).
 9. **Seuils de marche** : pré-annonce, puis « maintenant » à l'approche.
 
 ## Découpage
