@@ -3777,12 +3777,15 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.ktaEstAccessible = function () { return true; };
         const tracker = window.getTrackingActif();
         if (tracker) window.stopTracking();
-        window.setStructures([]);
+        // Pilier fictif sur le tracé, au droit du POI : la validation ne doit tomber ni hors galerie, ni dedans.
+        window.setStructures([{ uid: "st_mk", type: "pilier-2", level: 0,
+          points: [P(14.2, -0.8), P(15.8, -0.8), P(15.8, 0.8), P(14.2, 0.8)] }]);
         window.setRoads([
           { uid: "rd_mk", type: "principal", level: 0, points: [P(-80, 0), P(80, 0)] },
           { uid: "rd_mk_iti", type: "itinerary", level: 0, points: [P(-20, 0), P(-10, 0)] }
         ]);
-        window.setEditorPoints([{ id: "mk1", nom: "Salle fictive", x: P(15, 0).x, y: P(15, 0).y, level: 0, tags: [] }]);
+        // POI relevé à 4 m du tracé (hors galerie) : sa validation doit tomber sur le tracé.
+        window.setEditorPoints([{ id: "mk1", nom: "Salle fictive", x: P(15, 4).x, y: P(15, 4).y, level: 0, tags: [] }]);
         window.KtaGalerie.invalider();
         const d = P(-30, 0), r = {};
         const appui = function (b) {
@@ -3824,7 +3827,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
           panneau: !!q("#kta-vue3d .kta-v3d-greffe .mkmg-panneau"), fleche: !!q(".mkmg-fleche") &&
             !q(".mkmg-fleche").hidden, reste: q(".mkmg-reste") && q(".mkmg-reste").textContent,
           ennemis: m1.ennemis.length, objets: m1.objets.length, tirer: !!q(".mkmg-tirer"),
-          cartouches: m1.canon + "/" + m1.reserve };
+          cartouches: m1.canon + "/" + m1.reserve,
+          surTrace: !!m1.cible && Math.hypot(m1.cible.x - P(15, 0).x, m1.cible.y - P(15, 0).y) < 3 * a.sc &&
+            Math.abs(m1.cible.y - P(15, 4).y) > 3 * a.sc,
+          horsPilier: !!m1.cible && (Math.abs(m1.cible.x - P(15, 0).x) > 0.8 * a.sc ||
+            Math.abs(m1.cible.y - P(15, 0).y) > 0.8 * a.sc) };
         // Situation contrôlée : monde vidé, puis un égaré à 5 m devant (cap 90 = vers l'est).
         const X = M().essai, tape = function () {
           document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
@@ -3911,7 +3918,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         r.ferme = M().etat().enCours;
         window.ktaEstAccessible = acc;
         window.setEditorPoints(poisAvant || []);
-        window.setRoads([]); window.KtaGalerie.invalider();
+        window.setStructures([]); window.setRoads([]); window.KtaGalerie.invalider();
         if (tracker) window.startTracking();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -3921,8 +3928,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
         { installation: MK.refusInstallation, suivi: MK.refusSuivi });
       verifier(MK.radios === 3 && MK.partie.greffe === "mkmg" && MK.partie.diff === "facile" && MK.partie.vague === 1 &&
         MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.traits === 3 && MK.partie.panneau &&
-        MK.partie.fleche && /\d/.test(MK.partie.reste || ""),
-        "jeu : confirmation à 3 difficultés ; facile → cible (POI fictif), trajet, balise, panneau, flèche, reste",
+        MK.partie.fleche && /\d/.test(MK.partie.reste || "") && MK.partie.surTrace && MK.partie.horsPilier,
+        "jeu : confirmation à 3 difficultés ; facile → cible (POI fictif à 4 m du tracé, validée près du tracé, hors " +
+        "du pilier qui le couvre), trajet, balise, panneau, flèche, reste",
         MK.partie);
       verifier(MK.partie.ennemis >= 1 && MK.partie.objets >= 2 && MK.partie.tirer && MK.partie.cartouches === "2/6",
         "jeu : vague 1 peuplée (égarés, munitions, champignons), bouton de tir, 2 cartouches + 6", MK.partie);

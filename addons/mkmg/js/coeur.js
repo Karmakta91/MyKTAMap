@@ -377,6 +377,19 @@
     return meilleur ? { x: meilleur.x, y: meilleur.y, nom: _t("hud.sansNom") } : null;
   }
 
+  // Place libre (règle du pas de la vue) la plus proche de q, en couronnes de 0,25 m jusqu'à 6 m ; q sinon.
+  function _placeLibre(ctx, q) {
+    if (ctx.libre(q.x, q.y)) return { x: q.x, y: q.y };
+    for (let r = 0.25; r <= 6; r += 0.25) {
+      const n = Math.max(8, Math.round(2 * Math.PI * r / 0.25));
+      for (let k = 0; k < n; k++) {
+        const a = k * 2 * Math.PI / n, x = q.x + Math.cos(a) * r * ctx.sc, y = q.y + Math.sin(a) * r * ctx.sc;
+        if (ctx.libre(x, y)) return { x: x, y: y };
+      }
+    }
+    return { x: q.x, y: q.y };
+  }
+
   async function _route(de, vers, niv) {
     const P = window.Pathfinder;
     if (!P || typeof P.computeRoute !== "function") return null;
@@ -412,6 +425,10 @@
     }
     // Aucun trajet (plan sans tracés) : la cible la plus proche du voulu, sans itinéraire.
     if (!cible) cible = cands[0] || null;
+    // ⚠️ contrat (décision produit) : un POI relevé hors de la galerie (dans la roche, une salle sans tracé) est
+    // validé DANS la galerie, au bout du trajet sur les tracés ; et jamais dans une structure (pilier, mur, front) :
+    // la place libre la plus proche de ce point (règle du pas de la vue, ctx.libre).
+    if (cible) cible = Object.assign({}, cible, _placeLibre(ctx, route ? route[route.length - 1] : cible));
     p.cible = cible;
     p.cherche = false;
     p.route = route;

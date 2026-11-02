@@ -1628,6 +1628,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   - Vague = rejoindre un point B depuis la position de la vue : un POI du niveau dont la distance à vol d'oiseau est
     la plus proche de 40 m + 30 m par vague (10 m au moins), sinon un sommet des tracés ; le premier joignable par
     `Pathfinder.computeRoute` (lecture), sinon le plus proche du voulu, sans trajet. B à 2 m : vague suivante.
+    Point de validation (décision produit) : jamais hors de la galerie ni dans une structure — le bout du trajet sur
+    les tracés (le POI relevé dans la roche est rejoint au plus près), puis la place libre la plus proche
+    (`ctx.libre`, couronnes de 0,25 m jusqu'à 6 m). La balise est posée là.
   - Difficulté : facile = tracés + trajet du jeu au sol + balise de B + flèche de guidage + reste à parcourir ;
     moyen = sans la flèche ; difficile = ni tracés (`regler({ traces: false })`), ni trajet, ni balise, ni guidage.
     L'itinéraire et le guidage de l'app sont masqués pendant toute la partie (le jeu dessine le sien).
