@@ -24,7 +24,7 @@
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
 // Interrupteur 🪧 Guidage (§ 22) : bandeau et chevrons masqués, ruban gardé, urgence affichée, retenu.
-// Interrupteur 🧱 Textures (§ 24) : pierre et parpaing par défaut, taille réelle (mur de 2 m = mur de 40 m), coupé =
+// Interrupteur 🧱 Textures (§ 24) : roche brute (sans lits de mortier) et parpaing par défaut, taille réelle (mur de 2 m = mur de 40 m), coupé =
 // couleurs de la légende (type perso compris), retenu, greffe intacte, mixte / structures / galerie.
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
@@ -4073,7 +4073,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(!GU.rouverte.bandeau && GU.rouverte.chevrons === 0 && GU.rouverte.ruban > 0 && !GU.rouverte.montre &&
         GU.rouverte.presse === "false", "réglage retenu sur l'appareil : rouverte, guidage toujours coupé", GU.rouverte);
 
-      // ── 24. Interrupteur 🧱 Textures : pierre et parpaing à l'échelle réelle, couleurs de la légende une fois coupé ──
+      // ── 24. Interrupteur 🧱 Textures : roche brute et parpaing à l'échelle réelle, couleurs de la légende une fois coupé ──
       const TX = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
@@ -4169,10 +4169,15 @@ async function mesuresGalerie(page, nom, semisDonne) {
       };
       const D0 = TX.defaut.t, C0 = TX.coupe.t, R0 = TX.rouverte.t;
       verifier(D0.actives && D0.bouton === "true" && TX.defaut.pref === true &&
-        D0.maillages.pierre >= 1 && D0.maillages.parpaing >= 1 && !D0.maillages.murs,
-        "textures actives par défaut : pierre (piliers, fronts, type perso) et parpaing (murs)",
+        D0.maillages.roche >= 1 && D0.maillages.parpaing >= 1 && !D0.maillages.murs,
+        "textures actives par défaut : roche brute (piliers, fronts, type perso) et parpaing (murs)",
         { actives: D0.actives, bouton: D0.bouton, maillages: D0.maillages });
-      const mp = D0.materiaux.pierre || {}, mg = D0.materiaux.parpaing || {};
+      const mp = D0.materiaux.roche || {}, mg = D0.materiaux.parpaing || {};
+      // Roche brute : aucune assise appareillée, donc aucune rangée de la couleur nettement à l'écart des autres
+      // (lits de mortier) ; le parpaing, lui, en a (témoin de la mesure ; l'ancienne pierre de taille : 0,57).
+      verifier(mp.lits < 0.1 && mg.lits > 0.12,
+        "piliers et fronts en roche brute : aucun lit de mortier (écart de rangée " + mp.lits + " ; parpaing " +
+        mg.lits + ")", { roche: mp.lits, parpaing: mg.lits });
       verifier(mp.carte === "256x256" && mp.normale && mp.relief === 256 && mp.mipmaps && mp.anisotropie >= 1 &&
         mp.anisotropie <= 4 && mp.couleursSommets === false && mp.recule === false && mg.carte === "256x256" &&
         mg.normale && mg.mipmaps && mg.recule === true && TX.defaut.murDecale,
@@ -4180,7 +4185,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "parpaing reculé en profondeur comme les murs (" + D0.ms + " ms pour les dessiner)", D0.materiaux);
       verifier((D0.couleurs.opaque || []).length >= 1 && !contient(D0.couleurs.opaque, "#3c9be0") &&
         TX.defaut.yMax.murs > 0 && TX.defaut.yMax.murs < TX.defaut.yMax.opaque,
-        "type perso en pierre (sa couleur n'est plus dessinée), type inconnu du canon gardé en couleur unie ; " +
+        "type perso en roche brute (sa couleur n'est plus dessinée), type inconnu du canon gardé en couleur unie ; " +
         "mur toujours plus bas que pilier et front", { couleurs: D0.couleurs, yMax: TX.defaut.yMax });
       // Échelle : chaque arête horizontale ou verticale d'une face texturée, mur de 2 m comme mur de 40 m.
       const echelle = function (filtre) {
@@ -4190,14 +4195,14 @@ async function mesuresGalerie(page, nom, semisDonne) {
       const zM = function (z) { return function (x) { return x.mat === "parpaing" && Math.abs(x.z - (MX.oz + z)) < 0.5; }; };
       const ech = { mur2: echelle(zM(6.2)), mur40: echelle(zM(14.2)),
         verticalesMur: echelle(function (x) { return x.sens === "v" && x.mat === "parpaing"; }),
-        pierre: echelle(function (x) { return x.mat === "pierre"; }), attendu: D0.uvParMetre };
+        roche: echelle(function (x) { return x.mat === "roche"; }), attendu: D0.uvParMetre };
       const juste = function (s, v) { return s.n > 0 && Math.abs(s.min - v) < 2e-3 && Math.abs(s.max - v) < 2e-3; };
-      const ap = ech.attendu.parpaing, ar = ech.attendu.pierre;
-      verifier(juste(ech.mur2, ap) && juste(ech.mur40, ap) && juste(ech.verticalesMur, ap) && juste(ech.pierre, ar),
-        "taille réelle : parpaing " + ap + " et pierre " + ar + " de texture par mètre, sur le mur de 2 m comme sur " +
+      const ap = ech.attendu.parpaing, ar = ech.attendu.roche;
+      verifier(juste(ech.mur2, ap) && juste(ech.mur40, ap) && juste(ech.verticalesMur, ap) && juste(ech.roche, ar),
+        "taille réelle : parpaing " + ap + " et roche " + ar + " de texture par mètre, sur le mur de 2 m comme sur " +
         "celui de 40 m, en hauteur et sur le dessus (aucun étirement)", ech);
       verifier(!C0.actives && C0.bouton === "false" && TX.coupe.pref === false && TX.coupe.repere && TX.coupe.tuile &&
-        TX.coupe.dansTuile && !C0.maillages.pierre && !C0.maillages.parpaing && C0.maillages.opaque >= 1 &&
+        TX.coupe.dansTuile && !C0.maillages.roche && !C0.maillages.parpaing && C0.maillages.opaque >= 1 &&
         C0.maillages.murs >= 1 && C0.aretes.length === 0,
         "🧱 coupé dans la tuile ⚙️ : matériaux d'origine, plus aucune texture ; repère sur ⚙️ ; tuile ouverte",
         { actives: C0.actives, maillages: C0.maillages, repere: TX.coupe.repere });
@@ -4211,11 +4216,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
         TX.coupe.journal.length === 1 && TX.coupe.journal[0] === "scene:greffe" && TX.remis.greffe &&
         TX.remis.greffe.dansScene && TX.remis.journal.length === 1,
         "bascule avec une greffe posée : groupe gardé dans la scène, ni demonter ni scene refaite", TX.coupe.journal);
-      verifier(TX.remis.t.actives && TX.remis.t.maillages.pierre >= 1 && !R0.actives && R0.bouton === "false" &&
+      verifier(TX.remis.t.actives && TX.remis.t.maillages.roche >= 1 && !R0.actives && R0.bouton === "false" &&
         TX.rouverte.repere, "réglage retenu sur l'appareil : rouverte, textures toujours coupées",
         { remis: TX.remis.t.actives, rouverte: R0.actives });
-      verifier(TX.defaut.rendu === "mixte" && TX.defaut.parois && TX.structures.t.maillages.pierre >= 1 &&
-        TX.structures.t.maillages.parpaing >= 1 && !TX.galerie.t.maillages.pierre && TX.galerie.parois && TX.libere,
+      verifier(TX.defaut.rendu === "mixte" && TX.defaut.parois && TX.structures.t.maillages.roche >= 1 &&
+        TX.structures.t.maillages.parpaing >= 1 && !TX.galerie.t.maillages.roche && TX.galerie.parois && TX.libere,
         "mixte (parois des tubes en moellons gardées), structures seules texturées ; galerie sans structures ; rien " +
         "après la fermeture", { mixte: TX.defaut.parois, structures: TX.structures.t.maillages, galerie: TX.galerie.t.maillages });
 

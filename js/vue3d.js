@@ -96,16 +96,17 @@
   // (couleur et normal map), motif carré de `m` m sur `px` px (puissance de 2 : mipmaps). Coordonnées de texture en
   // mètres / m, posées face par face (_prisme). ⚠️ `px` borne le temps de dessin à l'ouverture (~4 ms par texture
   // de 256 px au PC, 4 fois plus au téléphone) : 512 px coûtait 0,4 s au téléphone ralenti.
-  // Pierre de taille de carrière (piliers, fronts) : motif de 2 m (128 px/m : les assises ne se répètent pas sur la
-  // hauteur d'un pilier), assises de hauteur tirée, blocs de longueur tirée, joints irréguliers (largeur, pente, lit
-  // ondulé), arêtes émoussées. Longueurs en m.
-  const PIERRE = { m: 2, px: 256, couleur: "#d5c9ad", mortier: "#8f8571", assise: [0.28, 0.46], bloc: [0.5, 1.1],
-    joint: [0.008, 0.02], onde: 0.008, pente: 0.05, biseau: 0.03, relief: 2.2, graine: 29 };
+  // Roche brute (piliers, fronts : la masse calcaire laissée en place, décision produit, jamais appareillée) :
+  // motif de 3 m (85 px/m) — sans joints la répétition se voit plus, d'où un motif plus grand que l'appareil et des
+  // taches à deux échelles ; strates tous les `strate` m (lit de `lit` m, ondulé de `onde` m), `fissures` fissures,
+  // `grappes` grappes de traces d'outil (pic, broche). Longueurs en m.
+  const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 7, grappes: 40,
+    grain: 0.07, relief: 4, graine: 53 };
   // Parpaing (murs) : motif de 1 m (256 px/m, un joint de 1 cm fait 2,6 px ; un appareil régulier se répète de
   // toute façon), blocs de 50 × 20 cm à joints droits, gris béton, pores.
   const PARPAING = { m: 1, px: 256, couleur: "#a3a29c", mortier: "#b5b1a6", l: 0.5, h: 0.2, joint: 0.01,
     biseau: 0.006, relief: 2.4, graine: 41 };
-  const TEXTURE_TYPE = { "pilier-1": "pierre", "pilier-2": "pierre", "front-1": "pierre", "front-2": "pierre",
+  const TEXTURE_TYPE = { "pilier-1": "roche", "pilier-2": "roche", "front-1": "roche", "front-2": "roche",
     "mur": "parpaing", "mur-ligne": "parpaing" };
   const LISERE = 0.15;              // m
   // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie (salles comprises). ⚠️ contrat : le rayon du
@@ -634,13 +635,13 @@
       }
     }
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau, remblais: remblaisTube };
-    // Textures (🧱) : pierre et parpaing dans leurs lots, couleur blanche (texture naturelle, jamais teintée par la
+    // Textures (🧱) : roche et parpaing dans leurs lots, couleur blanche (texture naturelle, jamais teintée par la
     // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine.
-    const pierre = new Lot(), parpaing = new Lot();
+    const roche = new Lot(), parpaing = new Lot();
     for (let i = 0; i < t.s.length; i++) {
       const s = t.s[i], tex = _e.textures ? _textureDe(s.type) : null;
-      const col = tex ? BLANC : _couleur("structures", s.type), m = tex ? (tex === "pierre" ? PIERRE : PARPAING).m : undefined;
-      const lot = tex === "pierre" ? pierre : tex === "parpaing" ? parpaing : _estMur(s.type) ? murs : opaque;
+      const col = tex ? BLANC : _couleur("structures", s.type), m = tex ? (tex === "roche" ? ROCHE : PARPAING).m : undefined;
+      const lot = tex === "roche" ? roche : tex === "parpaing" ? parpaing : _estMur(s.type) ? murs : opaque;
       const hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
       if (_estLigne(s.type)) {
         const ep = s.type === "mur-ligne" ? EPAISSEUR_MUR_LIGNE : EPAISSEUR_FRONT;
@@ -684,8 +685,8 @@
     ajouter(opaque, _e.mats.opaque, 0, "opaque");
     ajouter(rubans, _e.mats.rubans, 0, "rubans");
     ajouter(murs, _e.mats.murs, 0, "murs");
-    if (pierre.p.length || parpaing.p.length) _matsTextures();
-    ajouter(pierre, _e.mats.pierre, 0, "opaque");
+    if (roche.p.length || parpaing.p.length) _matsTextures();
+    ajouter(roche, _e.mats.roche, 0, "opaque");
     ajouter(parpaing, _e.mats.parpaing, 0, "murs");
     ajouter(lumineux, _e.mats.iti, 1, "itineraire");
     ajouter(transp, _e.mats.transp, 2);
@@ -1331,17 +1332,17 @@
 
   // ── Textures des structures (🧱) ──────────────────────────────────────────────────────────────────────
 
-  // Type de structure → "pierre" | "parpaing" | null (couleur unie), en cache pour la vue. Un type perso `cust-…`
+  // Type de structure → "roche" | "parpaing" | null (couleur unie), en cache pour la vue. Un type perso `cust-…`
   // n'a pas de type de base, seulement la géométrie de son entrée de légende (styleResolver.js > _styleCustom) :
   // en ligne, un front de taille ; en polygone, un pilier (il monte à toute la hauteur comme un pilier, la règle
-  // du mur ne vaut que pour les clés `mur` et `mur-ligne`) : pierre de taille dans les deux cas, s'il est résolu
+  // du mur ne vaut que pour les clés `mur` et `mur-ligne`) : roche brute dans les deux cas, s'il est résolu
   // par le canon. Un type inconnu du canon garde sa couleur.
   function _textureDe(type) {
     const e = _e, cache = e.texType || (e.texType = new Map());
     if (cache.has(type)) return cache.get(type);
     let t = Object.prototype.hasOwnProperty.call(TEXTURE_TYPE, type) ? TEXTURE_TYPE[type] : null;
     if (!t && /^cust-/.test(type) && typeof window.ktaResolveStyle === "function" &&
-        window.ktaResolveStyle("structures", type)) t = "pierre";
+        window.ktaResolveStyle("structures", type)) t = "roche";
     cache.set(type, t);
     return t;
   }
@@ -1381,9 +1382,9 @@
   // blocs: [{ x (px : joint à gauche du bloc), pente (px par px de hauteur), demi (px), teinte [r, g, b] }] } ;
   // le lit d'en haut du motif est celui d'en bas (motif sans couture dans les deux sens).
   // Hauteur : 1 sur la face, descend en `biseau` px vers le joint (arête émoussée), mortier en creux ; normal map
-  // tirée de cette hauteur (différences centrées bouclées, force `relief`). 🩸 Le canvas a y vers le bas et la
-  // texture v vers le haut (flipY) : la ligne y est écrite à la rangée n − 1 − y, et la pente selon v suit y.
-  // ⚠️ Coût proportionnel au nombre de pixels (PIERRE.px, PARPAING.px) : tout ce qui ne dépend pas du pixel est
+  // tirée de cette hauteur (_carteNormale, force `relief`). 🩸 Le canvas a y vers le bas et la texture v vers le
+  // haut (flipY) : la ligne y est écrite à la rangée n − 1 − y, et la pente selon v suit y.
+  // ⚠️ Coût proportionnel au nombre de pixels (PARPAING.px, ROCHE.px) : tout ce qui ne dépend pas du pixel est
   // précalculé (lits ondulés par colonne, champs de bruit), aléa du grain par un générateur entier.
   function _appareil(o, alea) {
     const n = o.px, A = o.assises, na = A.length, haut = new Float32Array(n * n);
@@ -1448,14 +1449,26 @@
         }
       }
     }
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, o.relief) };
+  }
+
+  // Pixels RVBA (n × n) → canvas.
+  function _canvasDe(img, n) {
     const cv = document.createElement("canvas");
     cv.width = n; cv.height = n;
     const ctx = cv.getContext("2d"), id = ctx.createImageData(n, n);
     id.data.set(img);
     ctx.putImageData(id, 0, 0);
-    const cvN = document.createElement("canvas");
-    cvN.width = n; cvN.height = n;
-    const ctxN = cvN.getContext("2d"), idN = ctxN.createImageData(n, n), dn = idN.data, s = o.relief;
+    return cv;
+  }
+
+  // Normal map d'un champ de hauteur n × n (rangée 0 = bas de la texture, v vers le haut) : différences centrées
+  // bouclées (motif sans couture), force `s` ; écrite à l'endroit du canvas de couleur (flipY). Partagée par
+  // l'appareil (parpaing) et la roche brute.
+  function _carteNormale(haut, n, s) {
+    const cv = document.createElement("canvas");
+    cv.width = n; cv.height = n;
+    const ctx = cv.getContext("2d"), id = ctx.createImageData(n, n), dn = id.data;
     for (let y = 0; y < n; y++) {
       const yb = ((y + n - 1) % n) * n, yh = ((y + 1) % n) * n;
       for (let x = 0; x < n; x++) {
@@ -1466,32 +1479,91 @@
         dn[o4 + 2] = (1 / l * 0.5 + 0.5) * 255; dn[o4 + 3] = 255;
       }
     }
-    ctxN.putImageData(idN, 0, 0);
-    return { couleur: cv, normale: cvN };
+    ctx.putImageData(id, 0, 0);
+    return cv;
   }
 
-  // Assises d'une pierre de taille de carrière (PIERRE) : hauteurs tirées dont la somme fait le motif, blocs de
-  // longueur tirée partant d'un décalage tiré (joints jamais alignés d'une assise à l'autre), joints irréguliers.
-  function _assisesPierre(alea) {
-    const P = PIERRE, k = P.px / P.m, A = [], tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
-    for (let y = 0; y < P.m - 1e-6;) {
-      let h = tire(P.assise);
-      const reste = P.m - y;
-      if (reste - h < P.assise[0]) h = reste > P.assise[1] ? reste / 2 : reste;
-      const blocs = [], dec = alea() * P.m;
-      for (let x = 0; ;) {
-        const t = 0.86 + alea() * 0.16, chaud = alea(), gris = alea() < 0.2;
-        blocs.push({ x: ((dec + x) % P.m) * k, pente: (alea() - 0.5) * 2 * P.pente, demi: tire(P.joint) * k / 2,
-          teinte: gris ? [t * 0.95, t * 0.97, t * 1.0] : [t * (1 + 0.03 * chaud), t, t * (0.97 - 0.05 * chaud)] });
-        x += tire(P.bloc);
-        if (P.m - x < P.bloc[0] * 0.8) break;
-      }
-      A.push({ bas: y * k, demiLit: tire(P.joint) * k / 2,
-        onde: [(0.4 + alea() * 0.6) * P.onde * k, 1 + Math.floor(alea() * 3), alea() * 2 * Math.PI], blocs: blocs });
-      y += h;
+  // Roche brute (piliers et fronts : la masse calcaire laissée en place, jamais appareillée) : relief en bosses à
+  // trois échelles (champs bouclés), nuances de calcaire en taches larges, strates horizontales discrètes et
+  // ondulées, fissures en creux (marches aléatoires bouclées) et traces d'outil (pic, broche : courts sillons
+  // parallèles en grappes, obliques). Aucun joint, aucun bloc. Motif de ROCHE.m mètres (décalé par structure) : sans
+  // joints la répétition se voit plus, d'où un motif plus grand que celui du parpaing et deux échelles de taches.
+  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  function _rocheBrute(alea) {
+    const R = ROCHE, n = R.px, k = n / R.m, haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
+    const creux = new Float32Array(n * n);
+    const gros = _champBoucle(alea, 5, 5, n), moyen = _champBoucle(alea, 14, 14, n);
+    const fin = _champBoucle(alea, 40, 40, n);
+    const tache = _champBoucle(alea, 4, 4, n), tache2 = _champBoucle(alea, 11, 11, n);
+    const onde = _champBoucle(alea, 3, 9, n), voile = _champBoucle(alea, 7, 3, n);
+    // Bosses : trois échelles ; la grosse en valeur absolue recentrée (crêtes et cuvettes de la masse taillée).
+    for (let p = 0; p < n * n; p++) {
+      const g = 1 - Math.abs(gros[p] * 2 - 1);
+      haut[p] = 0.5 * g + 0.32 * moyen[p] + 0.18 * fin[p];
     }
-    return { assises: A, couleur: P.couleur, mortier: P.mortier, biseau: P.biseau * k, relief: P.relief,
-      bosse: 0.12, grainRelief: 0.06, taches: 0.16, grain: 0.08, lits: 0.05, pores: 120, pore: [0.6, 1.8], px: P.px };
+    // Strates : lits horizontaux tous les R.strate m, ondulés, visibles par endroits seulement (voile).
+    const ns = Math.max(1, Math.round(R.m / R.strate)), lit = R.lit * k;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, f = (((y + (onde[p] - 0.5) * R.onde * k) * ns / n) % 1 + 1) % 1;
+        const d = Math.min(f, 1 - f) * n / ns, v = Math.max(0, voile[p] * 2 - 0.7);
+        if (d >= lit * 2) continue;
+        const s = (1 - d / (lit * 2)) * v;
+        creux[p] = Math.max(creux[p], 0.05 * s);
+        sombre[p] += 0.05 * s;
+      }
+    }
+    // Creux (fissure, trace d'outil) : on garde le plus profond par pixel, jamais la somme des passages.
+    const creuser = function (x, y, r, prof, assomb) {
+      for (let yy = Math.floor(y - r); yy <= y + r; yy++) {
+        for (let xx = Math.floor(x - r); xx <= x + r; xx++) {
+          const d = Math.hypot(xx - x, yy - y);
+          if (d > r) continue;
+          const p = (((yy % n) + n) % n) * n + (((xx % n) + n) % n), s = 1 - d / r;
+          creux[p] = Math.max(creux[p], prof * s);
+          sombre[p] = Math.max(sombre[p], assomb * s);
+        }
+      }
+    };
+    // Fissures : fines, presque droites, surtout verticales, qui s'amincissent ; une branche parfois.
+    const fissure = function (x, y, a, l, w0) {
+      for (let s = 0; s < l; s += 0.5) {
+        a += (alea() - 0.5) * 0.18;
+        x += Math.cos(a) * 0.5; y += Math.sin(a) * 0.5;
+        creuser(x, y, w0 * (1 - s / l) + 0.5, 0.25, 0.22);
+        if (alea() < 0.004) fissure(x, y, a + (alea() < 0.5 ? -1 : 1) * (0.5 + alea() * 0.5), (l - s) * 0.4, w0 * 0.6);
+      }
+    };
+    for (let f = 0; f < R.fissures; f++) {
+      fissure(alea() * n, alea() * n, Math.PI / 2 + (alea() - 0.5) * 0.9, (0.3 + alea() * 0.9) * k, 0.4 + alea() * 0.6);
+    }
+    // Traces d'outil (pic, broche) : sillons isolés ou par deux ou trois, de longueur, d'angle et d'écart tirés.
+    for (let g = 0; g < R.grappes; g++) {
+      const cx = alea() * n, cy = alea() * n, a0 = (alea() < 0.5 ? -1 : 1) * (0.4 + alea() * 0.8);
+      const nb = 1 + Math.floor(alea() * 3);
+      for (let i = 0; i < nb; i++) {
+        const a = a0 + (alea() - 0.5) * 0.3, l = (0.06 + alea() * 0.14) * k, e = (0.02 + alea() * 0.04) * k * i;
+        const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
+        for (let s = 0; s < l; s += 0.5) creuser(ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9, 0.07, 0.035);
+      }
+    }
+    for (let p = 0; p < n * n; p++) haut[p] -= creux[p];
+    const img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(R.couleur);
+    let graine = Math.floor(alea() * 2147483647) | 1;
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) | 0; return (graine >>> 0) / 4294967296; };
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
+        const t = (0.86 + 0.2 * tache[p]) * (0.94 + 0.12 * tache2[p]), chaud = tache2[p];
+        const f = t * (0.9 + 0.2 * haut[p]) * (1 - sombre[p]) * (1 + (grain() - 0.5) * R.grain);
+        img[o4] = base.r * 255 * f * (0.99 + 0.03 * chaud);
+        img[o4 + 1] = base.g * 255 * f;
+        img[o4 + 2] = base.b * 255 * f * (1.01 - 0.05 * chaud);
+        img[o4 + 3] = 255;
+      }
+    }
+    for (let p = 0; p < n * n; p++) haut[p] += (grain() - 0.5) * 0.02;
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, R.relief) };
   }
 
   // Assises de parpaings (PARPAING) : blocs réguliers posés à joints croisés (demi-bloc de décalage).
@@ -1509,20 +1581,21 @@
       bosse: 0.08, grainRelief: 0.14, taches: 0.1, grain: 0.2, lits: 0, pores: 550, pore: [0.6, 1.8], px: P.px };
   }
 
-  // Matériaux pierre et parpaing, faits à la première structure texturée (aucun coût si l'interrupteur est coupé) :
+  // Matériaux roche et parpaing, faits à la première structure texturée (aucun coût si l'interrupteur est coupé) :
   // couleur + normal map. Normal map plutôt que bump map : une seule lecture par pixel, et la pente est calculée une
   // fois ici (une bump map relit la hauteur trois fois par pixel et scintille au loin avec les mipmaps). Parpaing
   // reculé en profondeur comme les murs (contrat de _estMur). Textures libérées à la fermeture (_demonter) ; les
   // canvas dessinés restent pour la page (_appareils, 1 Mo) : seule la première ouverture paie le dessin.
   function _matsTextures() {
     const e = _e;
-    if (e.mats.pierre) return;
+    if (e.mats.roche) return;
     const t0 = performance.now(), aniso = Math.min(4, e.renderer.capabilities.getMaxAnisotropy());
-    const fab = function (nom, spec, graine, recule) {
+    // `dessin(alea)` → { couleur, normale } (canvas).
+    const fab = function (nom, dessin, graine, recule) {
       if (!_appareils[nom]) {
         let g = graine;
         const alea = function () { g = (g * 16807) % 2147483647; return g / 2147483647; };
-        _appareils[nom] = _appareil(spec(alea), alea);
+        _appareils[nom] = dessin(alea);
       }
       const t = { couleur: new THREE.CanvasTexture(_appareils[nom].couleur),
         normale: new THREE.CanvasTexture(_appareils[nom].normale) };
@@ -1536,8 +1609,9 @@
       if (recule) Object.assign(o, { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
       return new THREE.MeshLambertMaterial(o);
     };
-    e.mats.pierre = fab("pierre", _assisesPierre, PIERRE.graine, false);
-    e.mats.parpaing = fab("parpaing", _assisesParpaing, PARPAING.graine, true);
+    e.mats.roche = fab("roche", _rocheBrute, ROCHE.graine, false);
+    e.mats.parpaing = fab("parpaing", function (alea) { return _appareil(_assisesParpaing(alea), alea); },
+      PARPAING.graine, true);
     e.msTextures = performance.now() - t0;
   }
 
@@ -4514,20 +4588,33 @@
   }
 
   // Textures des structures (checkup) : interrupteur, maillages des tuiles construites par matériau, couleurs des
-  // sommets des maillages à couleur unie, matériaux texturés (tailles, mipmaps, anisotropie) et échelle mesurée
-  // sur les arêtes horizontales et verticales des faces texturées : { x, z (milieu, m), sens "h" | "v", uvParM }.
+  // sommets des maillages à couleur unie, matériaux texturés (tailles, mipmaps, anisotropie, `lits` : écart relatif
+  // de la rangée la plus éloignée de la médiane, haut pour un appareil à lits de mortier, faible pour la roche brute)
+  // et échelle mesurée sur les arêtes horizontales et verticales des faces texturées :
+  // { x, z (milieu, m), sens "h" | "v", uvParM }.
   function textures() {
     if (!_e) return null;
-    const e = _e, mats = { pierre: e.mats.pierre, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs };
+    const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
-      uvParMetre: { pierre: 1 / PIERRE.m, parpaing: 1 / PARPAING.m }, maillages: {}, couleurs: {}, aretes: [], ms: Math.round(e.msTextures || 0),
+      uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m }, maillages: {}, couleurs: {}, aretes: [], ms: Math.round(e.msTextures || 0),
       materiaux: {} };
-    ["pierre", "parpaing"].forEach(function (k) {
+    const lits = function (cv) {
+      const w = cv.width, h = cv.height, d = cv.getContext("2d").getImageData(0, 0, w, h).data, l = [];
+      for (let y = 0; y < h; y++) {
+        let t = 0;
+        for (let x = 0; x < w; x++) { const o = (y * w + x) * 4; t += d[o] + d[o + 1] + d[o + 2]; }
+        l.push(t / w);
+      }
+      const med = l.slice().sort(function (a, b) { return a - b; })[h >> 1];
+      return +(l.reduce(function (m, v) { return Math.max(m, Math.abs(v - med)); }, 0) / med).toFixed(3);
+    };
+    ["roche", "parpaing"].forEach(function (k) {
       const m = mats[k];
       if (!m) return;
       r.materiaux[k] = { carte: m.map.image.width + "x" + m.map.image.height, normale: !!m.normalMap,
         relief: m.normalMap ? m.normalMap.image.width : 0, mipmaps: m.map.generateMipmaps && m.normalMap.generateMipmaps,
-        anisotropie: m.map.anisotropy, couleursSommets: m.vertexColors, recule: m.polygonOffset };
+        anisotropie: m.map.anisotropy, couleursSommets: m.vertexColors, recule: m.polygonOffset,
+        lits: lits(m.map.image) };
     });
     e.tuiles.forEach(function (t) {
       if (!t.obj) return;

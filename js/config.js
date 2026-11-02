@@ -1177,7 +1177,7 @@ function setVue3DGuidage(oui) {
 window.getVue3DGuidage = getVue3DGuidage;
 window.setVue3DGuidage = setVue3DGuidage;
 
-// ── Textures des structures dans la vue 3D (pierre de taille, parpaing) : actives ou non, réglage de CET appareil ──
+// ── Textures des structures dans la vue 3D (roche brute, parpaing) : actives ou non, réglage de CET appareil ──
 // localStorage["myktamap_v3d_textures_v1"] = "0" (couleurs de la légende) | "1" ; absente → textures. Réglé dans la
 // tuile ⚙️ de la vue (vue3d.js > _basculerTextures). ⚠️ contrat : coupé, la vue rend exactement les couleurs de la
 // légende (couleurs choisies et types perso compris).
