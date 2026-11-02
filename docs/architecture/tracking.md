@@ -1193,6 +1193,10 @@ rayon r + ~3 m). `itiGuidage` regroupe de la même façon (constante jumelle), l
 
 `ItiGuidage.construire(road)` → consignes (`virage` léger/franc · `branche` · `toutDroit` · `demiTour` ·
 `niveau` · `etape` · `arrivee`), chacune à son abscisse curviligne `s`. 1–2 ms sur un trajet réel.
+⚠️ contrat (décision produit, QCM du 02/11/2026) : une consigne `niveau` **absorbe** les consignes de carrefour à
+≤ `ZONE_ECART_M` de son `s` et passe devant à `s` égal. 🩸 Par un tracé `jonction`, le changement de niveau tombe sur
+le nœud d'arrivée, au même `s` que son virage, et se triait après lui : la descente n'était jamais dite. Libellé du
+niveau signé (`ktaFormatNiveau` : « vers le niveau +1 »), carte et 3D.
 
 `tracking.js > updateMap` → `ItiGuidage.onPosition(position)` à chaque pas / recalage, + un battement d'1 s
 (apparition / disparition). Les consignes ne sont recalculées que si la road change.
@@ -1234,9 +1238,12 @@ demi-tours en 350 m sous 4 m de bruit).
   `SortieUrgence.relancerDepuis(pos)`. L'écran XL lit `ItiGuidage.etat()` dans son `_tick`.
 - **Vue 3D** (`vue3d.js`, § Vue 3D › Guidage) : en suivi, elle lit `ItiGuidage.etat()` comme l'écran XL (`s` /
   `sCible` : abscisses de la position et de la prochaine consigne, pour ses chevrons) ; en libre,
-  `ItiGuidage.apercu(pos, { cap, sPrec })` : mêmes textes (`_textes`, partagé avec le bandeau), calculés depuis une
-  position quelconque **sans toucher l'état** du guidage (ni progression, ni écart, ni demi-tour ; loin du trajet,
-  « rejoindre »). Elle se redessine à `kta:itineraireChange` (`road.js`), émis à chaque itinéraire tracé, remplacé
+  `ItiGuidage.apercu(pos, { cap, sPrec, niveau })` : mêmes textes (`_textes`, partagé avec le bandeau), calculés depuis
+  une position quelconque **sans toucher l'état** du guidage (ni progression, ni écart, ni demi-tour ; loin du trajet,
+  « rejoindre »). `niveau` : la position n'est projetée que sur les points du trajet à ce niveau (chaque point porte le
+  sien, `pathfinder.js > computeRoute` ; transit = aucun) ; niveau sans tronçon → `visible: false` (plus de
+  « Rejoindre le tracé » vers un autre étage) ; arrivé au niveau d'une consigne `niveau`, elle est faite et la
+  suivante parle. `capTrajet` : cap du trajet devant soi (cap d'arrivée d'un passage en 3D). Elle se redessine à `kta:itineraireChange` (`road.js`), émis à chaque itinéraire tracé, remplacé
   ou effacé.
 - **Pas de « mode Navigation »** : livré puis retiré le 27/09/2026 (KARMA 3:a). Le guidage ne touche NI
   `MapBearing` NI `WakeLock` : « Plan orienté » (menu Tracker) et l'écran allumé (Réglages) restent les seuls
@@ -1354,7 +1361,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   la roche de l'image de collision) est ramenée au point libre le plus proche : l'axe du tracé le plus proche
   (`KtaGalerie` du rendu, `plusProche`) à moins de `smartNavRadiusM` (6 m, le rayon de
   `tracking.js > _positionDansGalerie`), sinon un point libre cherché en couronnes de 0,25 m. 🩸 Une accroche de POI
-  jonction posée à côté de la galerie figeait la vue après le passage. Rien trouvé : `_pas` laisse passer tout pas qui
+  jonction posée à côté de la galerie figeait la vue après le passage. ⚠️ contrat (`_coince`) : en **mixte** comme en
+  galerie, une place hors des tubes, hors d'une chambre et à moins de `smartNavRadiusM` d'un axe en tube est coincée
+  (🩸 elle restait dans la roche, d'où un pas était possible mais jamais à travers la paroi pour entrer). Rien trouvé : `_pas` laisse passer tout pas qui
   rapproche de l'axe le plus proche (30 m), ou tout pas sans tracé. En suivi, la place reste celle du tracker.
 - **Règle du pas en galerie** : `KtaGalerie.segmentsBloques(segs, niveau)`, même forme que
   `ktaSegmentsBloquesParStructure` (lot de segments → booléens) : bloqué si un point (tous les 5 cm) sort de l'emprise
@@ -1366,23 +1375,49 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `MOELLON.couleur`, plus claire et plus grise que le sol, mortier plus sombre ou plus clair, grain ; motif de
   1,6 × 1 m à 160 px/m, canvas, aucune image), texture **en mètres dans les deux sens** (`_paroi` : jamais étirée à la
   hauteur, une assise part du sol) ; liseré au sol de 15 cm, couleur de la
-  légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est jamais dessiné en 3D (le passage se fait par 🪜). Structures (intégrées et perso)
+  légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est pas un tube : c'est une rampe
+  (volumes des passages, ci-dessous). Structures (intégrées et perso)
   ni dessinées ni bloquantes (sauf en rendu mixte, ci-dessus). Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
   à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais à 60 % avec une face seulement là où
   il donne sur la galerie, inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
   contour coupe l'axe (`_hachurer`), effondrement et perso au sol. **POI** à moins de 10 m de l'axe d'un tracé, ramenés
   contre la paroi la plus proche (8 cm devant) s'ils sont au-delà ; plus loin, masqués ; toujours sans test de
   profondeur. Vue plongeante : plafond des pièces masqué, parois vues des deux côtés.
-- **Passages de niveau 🪜** (mode libre seulement ; en suivi, le niveau est celui du tracker) : à moins de 2 m d'un POI
-  jonction (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à son raccord) ou d'un
-  bout de tracé `jonction` (pris dans les deux sens), une boîte à gauche : ▲ / ▼ vers le niveau lié voisin au-dessus
-  ou au-dessous (profondeurs saisies, sinon numéro), une liste s'il y en a plus d'un de chaque côté. Toucher le
-  panneau du POI jonction (`_toucher`, lancer de rayon sur les panneaux) fait de même, d'où que l'on soit (un autre POI
-  ouvre sa fiche, ci-dessous). Arrivée : raccord
-  validé du niveau, sinon bout opposé du tracé jonction, sinon même position (au POI touché s'il est à plus de 2 m) ;
-  cap gardé, scène refaite. ⚠️ contrat (décision produit) : la 3D change seulement **son** niveau (`niveauLibre`,
-  oublié si le niveau actif de la carte change ou en repassant en suivi) ; ni le tracker ni la carte 2D ne bougent
-  pendant la 3D.
+- **Passages de niveau 🪜** (en libre ; en suivi, le niveau est celui du tracker) : à moins de 2 m d'un POI jonction
+  (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à son raccord ; jamais `pa`,
+  qui n'a pas de moyen) ou d'un bout de tracé `jonction` (pris dans les deux sens), une boîte à gauche : boutons
+  **nommés** vers le niveau lié voisin au-dessus ou au-dessous (profondeurs saisies, sinon numéro), « ▼ -1 · Nom (moyen) »
+  (`_textePassage`, nom coupé à 22 signes à l'écran, entier au libellé accessible ; tracé : « ▼ -1 (tracé jonction) »),
+  une liste s'il y en a plus d'un de chaque côté. La fiche du POI jonction propose les mêmes niveaux (ci-dessous).
+  Arrivée (`_basculerNiveau`) : raccord validé du niveau, sinon bout opposé du tracé jonction, sinon le point (s'il est
+  à plus de 2 m) ; ramenée dans le tube si elle tombe à côté (`_degager`) ; cap (`_capArrivee`) le long de
+  l'itinéraire s'il passe à moins de 3 m (`apercu > capTrajet`, vers sa prochaine consigne), sinon le long de l'axe de
+  galerie le plus proche, du côté où il est le plus long, sinon gardé. ⚠️ contrat (décision produit) : la 3D change
+  seulement **son** niveau (`niveauLibre`, oublié si le niveau actif de la carte change ou en repassant en suivi) ; ni
+  le tracker ni la carte 2D ne bougent pendant la 3D.
+- **Geste d'un changement de niveau** (`_lancerGeste`, `_majGeste`, décision produit) : fondu noir (`GESTE.fondu`
+  250 ms, `.kta-v3d-fondu` au fond des jetons sombres, sous les boutons) de part et d'autre de la **bascule**, où la
+  scène du niveau d'arrivée est construite (au noir). Passage 🪜 ou fiche : la caméra s'enfonce (descente) ou monte
+  dans le volume pendant la première moitié de `GESTE.ms` (1 s), jusqu'à 0,8 m sous le sol ou au-dessus du plafond,
+  puis arrive du plafond (ou du sol) du niveau d'arrivée ; vertical seul, sans rotation, tenu par `dt` dans la boucle
+  d'image (`_image`), rendu continu seulement pendant le geste ; un second passage pendant le geste est refusé.
+  Niveau changé hors passage (tracker en suivi, niveau actif de la carte) : le fondu seul (500 ms). Ensuite le bandeau
+  « Niveau n » 2 s (`_annoncerNiveau`, `vue3d.niveauBandeau`). `prefers-reduced-motion` : fondu seul.
+  `KtaVue3D.gesteAnime(false)` bascule sans geste (mesures, checkup).
+- **Volumes des passages** (`_volumesDuNiveau`, `_construireVolume`, décision produit) : au panneau du POI (raccord
+  validé du niveau, sinon le point), aligné sur l'axe de galerie le plus proche : `jes` / `eso` cage d'escalier
+  2,5 × 1,5 m (10 marches pleines), `jpe` / `peo` puits de 1,2 m à échelons (tous les 0,3 m, deux montants), `jps`
+  puits nu, `pa` tube de 0,8 m à grille. Ouvert dans le **sol** vers un niveau lié au-dessous, dans le **plafond** vers
+  un niveau lié au-dessus, les deux entre trois niveaux ; parois en moellons sur 6 m au-delà (le reste se perd dans le
+  noir). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
+  disque de ciel (sprite clair non éclairé) au sommet de `peo` / `eso`. Cadre doré au sol d'un passage. Un tracé
+  `jonction` (filtre de son type respecté) devient une **rampe** de 1 m à sa couleur du canon : du sol au plafond vers
+  un niveau au-dessus, du sol à −hauteur dans une tranchée ouverte vers un niveau au-dessous. ⚠️ contrat : les
+  **bouches** marquent le gabarit (stencil, `boucheSol` = 1, `bouchePlafond` = 2, `renderOrder` −1, ni couleur ni
+  profondeur) et les matériaux du sol et du plafond (plan unique et pièces des tubes) ne se dessinent pas là
+  (`NotEqualStencilFunc`) : on voit dans le puits ; le contexte est créé avec `stencil: true`. Construits à portée
+  (`_gererVolumes`, règle des tuiles), libérés au loin ; 🩸 après une perte du contexte, jamais `dispose()` sur un
+  volume de l'ancienne scène. Aucune collision : le pas reste la règle du tracker.
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
@@ -1432,7 +1467,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   panneau remplissait l'écran du téléphone). Toujours aux jetons du thème **sombre** (décision produit : la scène est
   noire dans les deux thèmes), lus dans la règle `:root` des feuilles (`_jetonsSombres`). Un POI
   dans un volume fermé du niveau (pilier, mur, type perso ; grille `_grilleVolumes` refaite à chaque
-  `_reindexer`) est posé contre la face de ce volume la plus proche de la caméra, 8 cm devant. **Danger**
+  `_reindexer`) est posé contre la face de ce volume la plus proche de la caméra, 8 cm devant. **Passage** (POI
+  jonction avec un moyen, `_estPassage`) : liseré à la couleur du tracé `jonction` du canon et ↕ dans une pastille au
+  coin de l'icône ; lisible jusqu'à 1 m (`PRES_PASSAGE` : effacé seulement sous 0,8 m), là où 🪜 apparaît. **Danger**
   (`KtaPoiDanger.estDanger`) : liseré rouge (`--kta-erreur` du thème sombre) et **halo au sol** (`_ajouterPanneau` :
   anneau de 0,45 à 0,7 m et disque pâle, `MeshBasicMaterial` sans compression de tons, géométrie partagée par la vue)
   qui suit la place du panneau et reste montré de près quand le panneau s'efface. **Favori**
@@ -1485,7 +1522,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `utils.js > buildPointPopupHtml`, ses boutons agissent par `_ktaPopupAction`), dans un cadre sous le bandeau ;
   ✕ ou Échap la ferment ; « Je suis ici », « Y aller » et « Itinéraire » la ferment après leur action. ⚠️ Sans ✏️ /
   Repositionner / 🗑️ (ils se jouent sur la carte, cachée dessous). Photos par `attachPopupPhotos` sur un marqueur de
-  substitution (`on`, `isPopupOpen`). Un **POI jonction** garde son toucher : le passage 🪜.
+  substitution (`on`, `isPopupOpen`). Un **POI jonction** ouvre aussi sa fiche (décision produit, QCM du
+  02/11/2026), avec un bouton par niveau lié (`_passagesFiche` : « ▼ Descendre au niveau -1 (échelle) », le plus haut
+  d'abord), d'où que l'on soit ; ces boutons n'ont pas de `data-v3d` (l'écouteur de la fiche les joue).
 - **« Y aller » depuis la 3D** (`KtaVue3D.origineItineraire()` → `{ mode, x, y, niveau, cap }`, lu par
   `itineraireYAller`) : suivi → du tracker ; libre, tracker actif → de la position 3D, niveau compris, tracker non
   recalé ; tracker arrêté → « D'où pars-tu ? » avec « Ici » en premier (§ Position confirmée). Jamais de la position

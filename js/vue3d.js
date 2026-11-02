@@ -9,14 +9,16 @@
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(), parois(),
 //   mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), changerNiveau(sens), incliner(deg), avancer(m),
-//   tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(), placerSurTracker(), charge() } ;
+//   tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(), placerSurTracker(), charge(),
+//   gesteAnime(bool) } ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus }.
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
 // STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire,
 // POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
-// (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau. Tuiles
-// autour de soi, lampe frontale, rendu au mouvement seul.
+// (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau, passages en
+// volume (_construireVolume), changement de niveau derrière un fondu (_lancerGeste). Tuiles autour de soi, lampe
+// frontale, rendu au mouvement seul.
 // ⚠️ contrat : filtres = ceux de la carte (window._ktaRuntimeFilters, calques de données, niveaux visibles), lus à
 // chaque construction et suivis par FilterPanel.onChange ; ≡ ouvre le même panneau (filterPanel.js) par-dessus.
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
