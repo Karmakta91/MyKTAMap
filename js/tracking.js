@@ -383,11 +383,21 @@ function _indexDe(k, liste) {
   return idx;
 }
 
-// Segments [a,b] et [c,d] qui se coupent (contact compris).
+// Segments [a,b] et [c,d] qui se coupent (contact compris : extrémité sur l'autre segment, bout commun).
+// 🩸 Colinéaires, il faut un recouvrement réel (un point commun au moins) : sinon un pas qui longe une arête dans son
+// prolongement comptait comme un contact et figeait le tracker (et la vue 3D) le long d'une face alignée.
 function _segmentsSeCoupent(ax, ay, bx, by, cx, cy, dx, dy) {
   const o = function(px, py, qx, qy, rx, ry) { return (qx - px) * (ry - py) - (qy - py) * (rx - px); };
   const d1 = o(cx, cy, dx, dy, ax, ay), d2 = o(cx, cy, dx, dy, bx, by);
   const d3 = o(ax, ay, bx, by, cx, cy), d4 = o(ax, ay, bx, by, dx, dy);
+  if (d1 === 0 && d2 === 0 && d3 === 0 && d4 === 0) {
+    // Sur une même droite : intervalles comparés sur l'axe où les quatre points s'étalent le plus.
+    const etendue = function(u, v, w, z) { return Math.max(u, v, w, z) - Math.min(u, v, w, z); };
+    const enX = etendue(ax, bx, cx, dx) >= etendue(ay, by, cy, dy);
+    const a0 = enX ? Math.min(ax, bx) : Math.min(ay, by), a1 = enX ? Math.max(ax, bx) : Math.max(ay, by);
+    const c0 = enX ? Math.min(cx, dx) : Math.min(cy, dy), c1 = enX ? Math.max(cx, dx) : Math.max(cy, dy);
+    return a0 <= c1 && c0 <= a1;
+  }
   return ((d1 > 0) !== (d2 > 0) || d1 === 0 || d2 === 0) && ((d3 > 0) !== (d4 > 0) || d3 === 0 || d4 === 0);
 }
 

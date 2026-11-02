@@ -22,7 +22,8 @@
 // tracé → au point tapé exact (un tap est une position voulue, jamais ramené sur l'axe), image de collision sans tracé → point accessible, et de même pour un POI d'un niveau sans
 // tracé quand d'autres niveaux en ont (§ 16 bis) ; « Y aller » tracker arrêté (§ 17) : « D'où pars-tu ? » à chaque
 // fois (« Ma dernière position (il y a …) » part de là, « Me repositionner » arme le picker, Annuler ne fait rien),
-// picker direct si la position n'a jamais été confirmée ; mono-niveau → jamais de fenêtre.
+// picker direct si la position n'a jamais été confirmée ; pas du tracker le long d'une arête de pilier (§ 18 :
+// longée sans la recouvrir = libre, chevauchée, bout qui touche, croisement = bloqué) ; mono-niveau → jamais de fenêtre.
 // Usage : node scripts/smoke/checkup-recaler-niveau.js (SMOKE_PORT pour une autre copie)
 // Doc : docs/architecture/tracking.md
 // =====================================================================
@@ -854,6 +855,49 @@ async function repondreDepart(page, valeur) {
     verifier(!direct.fenetre && direct.picker, "jamais confirmée : picker direct, sans question", direct);
     await page.evaluate(function () { window.ktaDemanderPositionCarte.annuler(); });
     await effacerItineraire();
+
+    console.log("\n── 18. Pas du tracker le long d'une arête (tracking.js > _segmentsSeCoupent) ──");
+    // Pilier de 2 × 2 m à 10 m à l'est de P. Un pas colinéaire à une arête ne compte que s'il la recouvre ou en
+    // touche une extrémité ; longer l'arête dans son prolongement passe (le tracker se figeait là).
+    await poserCas(page, P, { structures: [{ type: "pilier-1", level: 0, pts: [[10, -1], [12, -1], [12, 1], [10, 1]] }] });
+    const arete = await page.evaluate(function (P) {
+      const s = P.sc, X = function (dx) { return P.x + dx * s; }, Y = function (dy) { return P.y + dy * s; };
+      const pas = function (a, b, c, d) { return window.ktaPasBloqueParStructure(X(a), Y(b), X(c), Y(d), 0); };
+      const coupe = window._segmentsSeCoupent;
+      // Marche du tracker le long de x = 10 (arête ouest), de −5 m à −1,05 m, par pas de 0,25 m.
+      let marche = 0;
+      for (let y = -5; y + 0.25 <= -1.05 + 1e-9; y += 0.25) { if (pas(10, y, 10, y + 0.25)) marche++; }
+      return {
+        longee: pas(10, -3, 10, -1.5), longeeNord: pas(12, 3, 12, 1.4), marche: marche,
+        chevauchee: pas(10, -3, 10, 0),
+        boutTouche: pas(10, -3, 10, -1), boutPerpendiculaire: pas(8, 0, 10, 0), croisement: pas(8, 0, 14, 0),
+        coin: pas(9, -2, 11, 0), loin: pas(8, -3, 8, 3),
+        // Géométrie seule (unités quelconques) : mêmes cas, sans l'index des structures.
+        brut: {
+          colineaireDisjoint: coupe(0, -3, 0, -1.5, 0, -1, 0, 1), colineaireRecouvre: coupe(0, -3, 0, 0, 0, -1, 0, 1),
+          colineaireInclus: coupe(0, -0.5, 0, 0.5, 0, -1, 0, 1), colineaireBout: coupe(0, -3, 0, -1, 0, -1, 0, 1),
+          colineaireHorizontal: coupe(-3, 0, -1.5, 0, -1, 0, 1, 0), colineaireOblique: coupe(0, 0, 1, 1, 2, 2, 3, 3),
+          obliqueRecouvre: coupe(0, 0, 2.5, 2.5, 2, 2, 3, 3), extremiteSurSegment: coupe(-1, 0, 0, 0, 0, -1, 0, 1),
+          croisement: coupe(-1, 0, 1, 0, 0, -1, 0, 1), parallele: coupe(0.5, -1, 0.5, 1, 0, -1, 0, 1),
+          point: coupe(0, 0, 0, 0, 0, -1, 0, 1)
+        }
+      };
+    }, P);
+    verifier(arete.longee === false && arete.longeeNord === false && arete.marche === 0,
+      "arête longée dans son prolongement, sans la recouvrir : le pas passe (marche de 4 m sans arrêt)", arete);
+    verifier(arete.chevauchee === true,
+      "arête chevauchée (pas colinéaire qui la recouvre en partie ou en entier) : bloqué", arete);
+    verifier(arete.boutTouche === true && arete.boutPerpendiculaire === true,
+      "extrémité qui touche l'arête (colinéaire jusqu'au coin, perpendiculaire jusqu'à la face) : bloqué, comme avant",
+      arete);
+    verifier(arete.croisement === true && arete.coin === true && arete.loin === false,
+      "vrai croisement (à travers le pilier, à travers un coin) : bloqué ; à 2 m de la face : libre", arete);
+    const b = arete.brut;
+    verifier(!b.colineaireDisjoint && !b.colineaireHorizontal && !b.colineaireOblique && !b.parallele &&
+      b.colineaireRecouvre && b.colineaireInclus && b.colineaireBout && b.obliqueRecouvre && b.extremiteSurSegment &&
+      b.croisement && b.point, "_segmentsSeCoupent : colinéaire disjoint (vertical, horizontal, oblique) et parallèle " +
+      "libres ; recouvrement, inclusion, bout commun, extrémité sur le segment, croisement, point sur le segment : " +
+      "contact", b);
 
     console.log("\n── 9. Plan mono-niveau ──");
     await page.evaluate(function () { window.APP_CONFIG.multiLevel = false; });

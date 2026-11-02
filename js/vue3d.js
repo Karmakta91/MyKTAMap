@@ -7,7 +7,7 @@
 // vue3d.js — vue 3D à la première personne autour de la position du tracker, ouverte par le bouton cube de
 // la barre de droite (interface.js > _ouvrirVue3D, qui la charge à la demande avec css/vue3d.css) ; three.js
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
-// Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(), parois(),
+// Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(o), parois(),
 //   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
@@ -31,7 +31,7 @@
 // ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
 // ⚠️ contrat : déplacement = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux règles, structures et
-// KtaGalerie.paroisBloquent), sur la largeur d'un corps. Le tracker
+// KtaGalerie.paroisBloquent ; partout, KtaGalerie.zonesBloquent), sur la largeur d'un corps. Le tracker
 // n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le recaler (position, niveau).
 // 🩸 three.js est un module ES : import() dynamique, URL absolue (pas d'import map, la CSP refuse tout script en
 // ligne). Fermer libère le contexte WebGL (forceContextLoss) : un navigateur en garde peu (iOS ~ 8, Chrome 16).
@@ -610,21 +610,122 @@
   // Segment d'itinéraire { a, b (px), s0 (abscisse de a, px) } en tirets (ITI) : chaque tiret est une bande claire
   // posée sur une bande sombre plus large et plus longue de ITI.lisere (le liseré). Phase prise sur l'abscisse du
   // trajet : les tirets se suivent d'un segment et d'une tuile à l'autre.
+  // Par-dessus un remblais ou un effondrement (_morceauxIti), chaque morceau du tiret est posé sur le dessus du
+  // volume, et une contremarche monte (descend) le long de la face franchie.
   function _rubanIti(lot, r) {
     const e = _e, sc = e.sc, ax = r.a.x / sc, az = r.a.y / sc, bx = r.b.x / sc, bz = r.b.y / sc;
     const L = Math.hypot(bx - ax, bz - az), s0 = (r.s0 || 0) / sc, P = ITI.tiret + ITI.vide;
     if (L < 1e-6) return;
     const ux = (bx - ax) / L, uz = (bz - az) / L, cols = _couleursIti(), m = ITI.lisere;
+    const mc = _morceauxIti(ax, az, ux, uz, L);
     for (let k = Math.floor(s0 / P); k * P < s0 + L; k++) {
-      const d0 = Math.max(k * P, s0) - s0, d1 = Math.min(k * P + ITI.tiret, s0 + L) - s0;
+      const D0 = k * P - s0, D1 = D0 + ITI.tiret, d0 = Math.max(D0, 0), d1 = Math.min(D1, L);
       if (d1 - d0 < 0.01) continue;
-      // Liseré prolongé de m aux bouts du tiret seulement (pas au raccord de deux segments d'un même tiret).
-      const m0 = k * P >= s0 ? m : 0, m1 = k * P + ITI.tiret <= s0 + L ? m : 0;
-      _bande(lot, ax + ux * (d0 - m0), az + uz * (d0 - m0), ax + ux * (d1 + m1), az + uz * (d1 + m1),
-        LARGEUR_ITI + 2 * m, ITI.y - 0.005, cols.lisere);
-      _bande(lot, ax + ux * d0, az + uz * d0, ax + ux * d1, az + uz * d1, LARGEUR_ITI, ITI.y, cols.ruban);
-      if (k * P >= s0) e.itiTirets++;
+      for (let i = 0; i < mc.length; i++) {
+        const q0 = Math.max(d0, mc[i].d0), q1 = Math.min(d1, mc[i].d1), h = mc[i].h;
+        if (q1 - q0 > 1e-4) {
+          // Liseré prolongé de m aux bouts du tiret seulement (ni au raccord de deux segments, ni contre une face).
+          const m0 = q0 === D0 ? m : 0, m1 = q1 === D1 ? m : 0;
+          _bande(lot, ax + ux * (q0 - m0), az + uz * (q0 - m0), ax + ux * (q1 + m1), az + uz * (q1 + m1),
+            LARGEUR_ITI + 2 * m, h + ITI.y - 0.005, cols.lisere);
+          _bande(lot, ax + ux * q0, az + uz * q0, ax + ux * q1, az + uz * q1, LARGEUR_ITI, h + ITI.y, cols.ruban);
+        }
+        if (i > 0 && mc[i].h !== mc[i - 1].h && mc[i].d0 > d0 && mc[i].d0 < d1) {
+          _contremarche(lot, ax + ux * mc[i].d0, az + uz * mc[i].d0, ux, uz, mc[i].face, mc[i - 1].h, mc[i].h, cols);
+        }
+      }
+      if (D0 >= 0) e.itiTirets++;
     }
+  }
+
+  // ── Itinéraire par-dessus les volumes (remblais, effondrement) ────────────────────────────────────────
+  // ⚠️ contrat : ruban, tirets, chevrons et marqueurs de l'itinéraire passent PAR-DESSUS un remblais ou un
+  // effondrement dessiné (zones montrées du niveau, _collecter) : posés sur son dessus (HAUTEUR_REMBLAIS de la
+  // hauteur) à leur hauteur propre, une contremarche verticale à ITI_FACE devant la face là où le trajet y entre et en
+  // sort (ni ruban dans le volume, ni rampe en l'air). Le tracé 2D ne change pas ; les rubans des tracés restent au sol.
+  const ITI_SUR = { remblais: true, effondrement: true };
+  const ITI_FACE = 0.03;   // m : contremarche décollée de la face (pas de scintillement)
+
+  // Volumes que l'itinéraire enjambe → [{ ring (m), x0, z0, x1, z1 }]. Refaits à _reindexer.
+  function _volumesIti(zones) {
+    const sc = _e.sc, out = [];
+    zones.forEach(function (z) {
+      if (!z || !ITI_SUR[z.type] || !Array.isArray(z.points)) return;
+      const ring = _anneau(z.points, sc);
+      if (ring.length < 3) return;
+      const v = { ring: ring, x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity };
+      ring.forEach(function (q) {
+        v.x0 = Math.min(v.x0, q[0]); v.x1 = Math.max(v.x1, q[0]); v.z0 = Math.min(v.z0, q[1]); v.z1 = Math.max(v.z1, q[1]);
+      });
+      out.push(v);
+    });
+    return out;
+  }
+
+  // Hauteur (m) du dessus du volume sous (x, z), 0 hors volume.
+  function _dessusIti(x, z) {
+    const l = _e.volumesIti;
+    if (!l || !l.length) return 0;
+    for (let i = 0; i < l.length; i++) {
+      const v = l[i], a = v.ring;
+      if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1) continue;
+      let r = false;
+      for (let j = 0, k = a.length - 1; j < a.length; k = j++) {
+        const p = a[j], q = a[k];
+        if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) r = !r;
+      }
+      if (r) return _e.hauteur * HAUTEUR_REMBLAIS;
+    }
+    return 0;
+  }
+
+  // Segment de (ax, az), direction (ux, uz), longueur L (m) coupé aux bords des volumes → [{ d0, d1, h, face }] (d en
+  // m depuis le début) ; face = direction normée du bord franchi à d0 (morceaux suivants).
+  function _morceauxIti(ax, az, ux, uz, L) {
+    const vols = _e.volumesIti || [], coupes = [], bx = ax + ux * L, bz = az + uz * L;
+    const mx0 = Math.min(ax, bx), mx1 = Math.max(ax, bx), mz0 = Math.min(az, bz), mz1 = Math.max(az, bz);
+    vols.forEach(function (v) {
+      if (v.x1 < mx0 || v.x0 > mx1 || v.z1 < mz0 || v.z0 > mz1) return;
+      for (let j = 0, k = v.ring.length - 1; j < v.ring.length; k = j++) {
+        const p = v.ring[k], q = v.ring[j], ex = q[0] - p[0], ez = q[1] - p[1], d = ux * ez - uz * ex;
+        if (Math.abs(d) < 1e-12) continue;
+        const rx = p[0] - ax, rz = p[1] - az, t = (rx * ez - rz * ex) / d, u = (rx * uz - rz * ux) / d;
+        if (t <= 0 || t >= L || u < 0 || u > 1) continue;
+        const el = Math.hypot(ex, ez);
+        coupes.push({ d: t, face: { ex: ex / el, ez: ez / el } });
+      }
+    });
+    coupes.sort(function (a, b) { return a.d - b.d; });
+    coupes.push({ d: L, face: null });
+    const out = [];
+    let d0 = 0, face = null;
+    coupes.forEach(function (c) {
+      if (c.d - d0 > 1e-6) {
+        const dm = (d0 + c.d) / 2;
+        out.push({ d0: d0, d1: c.d, h: _dessusIti(ax + ux * dm, az + uz * dm), face: face });
+        d0 = c.d;
+      }
+      face = c.face || face;
+    });
+    return out;
+  }
+
+  // Contremarche du ruban en (cx, cz) (m) sur la face de direction `face`, de la hauteur hA à hB : bande verticale
+  // dans le plan de la face, côté bas, à ITI_FACE devant elle, aussi large que le ruban vu sous l'angle d'entrée.
+  function _contremarche(lot, cx, cz, ux, uz, face, hA, hB, cols) {
+    if (!face) return;
+    const ex = face.ex, ez = face.ez, haut = hB > hA ? -1 : 1;
+    let nx = -ez, nz = ex;
+    if ((nx * ux + nz * uz) * haut < 0) { nx = -nx; nz = -nz; }
+    const sin = Math.max(0.35, Math.abs(ux * ez - uz * ex));
+    const y0 = Math.min(hA, hB) + ITI.y, y1 = Math.max(hA, hB) + ITI.y;
+    const bande = function (larg, off, col) {
+      const w = larg / 2 / sin, px = cx + nx * off, pz = cz + nz * off;
+      lot.quad([px - ex * w, y0, pz - ez * w], [px + ex * w, y0, pz + ez * w], [px + ex * w, y1, pz + ez * w],
+        [px - ex * w, y1, pz - ez * w], [nx, 0, nz], col);
+    };
+    bande(LARGEUR_ITI + 2 * ITI.lisere, ITI_FACE, cols.lisere);
+    bande(LARGEUR_ITI, ITI_FACE + 0.005, cols.ruban);
   }
 
   // Couleurs de l'itinéraire, jetons du thème sombre (la scène est noire dans les deux thèmes) : ruban
@@ -2160,6 +2261,7 @@
       msGalerie: m ? Math.round(m.msConstruction) : 0 };
     _razCompteurs();
     if (e.galerie) e.volumes = null; else _grilleVolumes(d.structures);
+    e.volumesIti = _volumesIti(d.zones);
     e.passages = _passages(e.niveau, d.jonctions);
     e.passageSig = null;
     (e.volPassages || []).forEach(_libererVolume);
@@ -2751,9 +2853,13 @@
   // 🩸 Mixte : une arrivée hors du tube mais près de son axe (accroche posée à côté) restait dans la roche, d'où
   // un pas était possible sans jamais pouvoir franchir la paroi pour entrer. ⚠️ contrat : comme en galerie, hors
   // des tubes et à moins de smartNavRadiusM d'un axe qui est en tube à cet endroit (pas dans une chambre) = coincé.
+  // Corps dans une zone qui bouche ou contre elle (centre dedans, ou un rayon de RAYON_CORPS qui y entre), dans tous
+  // les rendus : coincé (on en sortirait librement, mais la place serait dans le volume) ; le point libre est donc à
+  // un corps du bord.
   function _coince(x, y) {
-    const e = _e;
-    if (e.galerie) return !window.KtaGalerie.dedans(x, y, _niveauPas());
+    const e = _e, G = window.KtaGalerie, n = _niveauPas();
+    if (G.dansZone(x, y, n) || G.zonesBloquent(_rayons([], x, y, RAYON_CORPS * e.sc), n).some(Boolean)) return true;
+    if (e.galerie) return !G.dedans(x, y, n);
     const m = e.mixte;
     if (m && m.pieces.length && !m.dedans(x, y) && !m.enChambre(x, y)) {
       const pp = m.plusProche(x, y, _rayonLibre());
@@ -2816,24 +2922,23 @@
 
   // → -1 si un couloir est coupé (ou l'arrivée hors plan / hors image de collision), sinon le nombre de rayons
   // bloqués autour de l'arrivée. Un seul lot de segments par essai (_juger : structures ou galerie).
-  // Mode galerie : on bute contre les parois, les remblais et les effondrements (KtaGalerie.segmentsBloques),
-  // l'image de collision du plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé), on se déplace
-  // librement pour y entrer.
-  // Mode mixte : règle des structures (image de collision comprise) et parois dessinées des tubes (_juger).
+  // Mode galerie : on bute contre les parois (KtaGalerie.segmentsBloques) et les zones qui bouchent, l'image de
+  // collision du plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé, dans une zone qui bouche),
+  // on se déplace librement pour y entrer.
+  // Mode mixte : règle des structures (image de collision comprise), parois dessinées des tubes et zones (_juger).
   function _balayage(x0, y0, x1, y1, ux, uy) {
     const r = RAYON_CORPS * _e.sc, fx = x1 + ux * r, fy = y1 + uy * r, gal = !!_e.galerie;
     const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
     if (pc && (fx < 0 || fy < 0 || fx > pc.imageWidth || fy > pc.imageHeight)) return -1;
     if (gal && !window.KtaGalerie.dedans(x0, y0, _niveauPas())) return 0;
     if (!gal && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(fx, fy)) return -1;
-    if (!gal && !_e.mixte && typeof window.ktaSegmentsBloquesParStructure !== "function") return 0;
     const segs = [];
     for (let i = 0; i < RAILS.length; i++) {
       const ox = -uy * r * RAILS[i], oy = ux * r * RAILS[i];
       segs.push([x0 + ox, y0 + oy, fx + ox, fy + oy]);
     }
     _rayons(segs, x1, y1, r);
-    const res = _juger(segs);
+    const res = _juger(segs, { x: x0, y: y0 });
     for (let i = 0; i < RAILS.length; i++) { if (res[i]) return -1; }
     let n = 0;
     for (let i = RAILS.length; i < res.length; i++) { if (res[i]) n++; }
@@ -2852,13 +2957,22 @@
 
   // Règle du rendu affiché : structures (tracking.js, types perso compris), emprise des galeries, ou en mixte les
   // deux à la fois : structures partout, parois des tubes là où elles sont dessinées (dans une chambre, aucune).
-  function _juger(segs) {
-    if (_e.galerie) return window.KtaGalerie.segmentsBloques(segs, _niveauPas());
-    const s = typeof window.ktaSegmentsBloquesParStructure === "function"
-      ? window.ktaSegmentsBloquesParStructure(segs, _niveauPas(), true) : segs.map(function () { return false; });
-    if (!_e.mixte) return s;
-    const p = window.KtaGalerie.paroisBloquent(segs, _niveauPas());
-    return s.map(function (b, i) { return b || p[i]; });
+  // Dans les trois rendus, les zones qui bouchent (KtaGalerie.zonesBloquent : remblais, effondrement, inaccessible).
+  // ⚠️ contrat : la 3D seulement ; ktaSegmentsBloquesParStructure (pas du tracker en 2D) ne lit aucune zone.
+  // `depart` ({ x, y } px, facultatif) : place d'où part le pas ; une zone qui la contient ne l'arrête pas.
+  function _juger(segs, depart) {
+    const n = _niveauPas(), z = window.KtaGalerie.zonesBloquent(segs, n, depart);
+    let r;
+    if (_e.galerie) r = window.KtaGalerie.segmentsBloques(segs, n);
+    else {
+      r = typeof window.ktaSegmentsBloquesParStructure === "function"
+        ? window.ktaSegmentsBloquesParStructure(segs, n, true) : segs.map(function () { return false; });
+      if (_e.mixte) {
+        const p = window.KtaGalerie.paroisBloquent(segs, n);
+        r = r.map(function (b, i) { return b || p[i]; });
+      }
+    }
+    return r.map(function (b, i) { return b || z[i]; });
   }
 
   function _rayonsBloques(x, y) {
@@ -3158,7 +3272,7 @@
     e.nChevrons = 0;
     if (!sig) return;
     const pts = road.points, lot = new Lot(), col = new THREE.Color(_jetonsSombres().accent);
-    const l = CHEVRON.l, ep = CHEVRON.ep, y = CHEVRON.y, haut = [0, 1, 0];
+    const l = CHEVRON.l, ep = CHEVRON.ep, haut = [0, 1, 0];
     let i = 1, cum = 0;
     for (let k = k0; k <= k1; k++) {
       const s = k * pas;
@@ -3173,6 +3287,7 @@
       if (d < 1e-6 || !_segmentDuNiveau(road, a, b, e.niveau)) continue;
       const t = (s - cum) / d, ux = (b.x - a.x) / d, uz = (b.y - a.y) / d, nx = -uz, nz = ux;
       const cx = (a.x + t * (b.x - a.x)) / sc, cz = (a.y + t * (b.y - a.y)) / sc;
+      const y = CHEVRON.y + _dessusIti(cx, cz);   // par-dessus un remblais ou un effondrement, comme le ruban
       // Pointe devant, deux branches vers l'arrière de part et d'autre.
       const px = cx + ux * l / 2, pz = cz + uz * l / 2;
       [-1, 1].forEach(function (cote) {
@@ -3248,7 +3363,7 @@
         m.add(me);
       });
       m.children[0].position.y = MARQUEUR.y;
-      m.position.set(r.vers.x / sc, 0, r.vers.y / sc);
+      m.position.set(r.vers.x / sc, _dessusIti(r.vers.x / sc, r.vers.y / sc), r.vers.y / sc);
       m.userData.famille = "etape";
       g.add(m);
       e.nbMarqueurs.etapes++;
@@ -3262,7 +3377,7 @@
       })[0];
       const nom = "🏁" + (rArr && rArr.label ? " " + rArr.label : "");
       g.add(_panneau({ nom: nom }, [fin.x / sc, fin.y / sc], { bord: _jetonsSombres().interaction, sansIcone: true,
-        genre: "arrivee", y: Math.min(MARQUEUR.mat + 0.5, e.hauteur - 0.15) }));
+        genre: "arrivee", y: Math.min(_dessusIti(fin.x / sc, fin.y / sc) + MARQUEUR.mat + 0.5, e.hauteur - 0.15) }));
       e.nbMarqueurs.arrivee = true;
     }
     e.scene.add(g);
@@ -4003,6 +4118,8 @@
       e.hauteur = v;
       e.oeil = _oeil(v);
       _refaireTuiles();
+      _majMarqueursIti();   // étapes et 🏁 posées sur un volume : elles suivent sa hauteur
+      e.chevSig = null;
     }
     _majHauteur();
     return v;
@@ -4709,7 +4826,8 @@
 
   function tourner(deg) { if (!_e) return; _passerEnLibre(); _e.cap = (_e.cap + deg + 360) % 360; _e.sale = true; }
 
-  function etat() {
+  // `o.profilIti` : ajoute le profil de l'itinéraire (_profilIti), coûteux : jamais lu image par image.
+  function etat(o) {
     if (!_e) {
       return { ouvert: false, contexteLibere: _dernierGl ? _dernierGl.isContextLost() : null,
         fermeture: _derniereFermeture };
@@ -4808,7 +4926,7 @@
         indic: e.indicMode ? e.indicMode.textContent : "", boussole: !!e.boussole && !e.boussole.hidden,
         guidage: _guidageMontre() },
       itineraire: Object.assign({ largeurVoulue: LARGEUR_ITI, lisereVoulu: ITI.lisere, couleur: _couleursIti().hexRuban,
-        couleurLisere: _couleursIti().hexLisere, tirets: e.itiTirets }, e.nbMarqueurs, _mesureIti()),
+        couleurLisere: _couleursIti().hexLisere, tirets: e.itiTirets }, e.nbMarqueurs, _mesureIti(!!(o && o.profilIti))),
       ronds: e.listeRonds.map(function (r) { return Object.assign({}, r); }),
       triangles: info.render.triangles, appels: info.render.calls,
       geometries: info.memory.geometries, textures: info.memory.textures,
@@ -4829,7 +4947,7 @@
 
   // Ruban de l'itinéraire tel que construit (checkup) : largeur médiane des tirets (bande claire) et du liseré
   // (bande sombre), longueur médiane d'un tiret, en m, lues dans la géométrie des tuiles construites.
-  function _mesureIti() {
+  function _mesureIti(profil) {
     const ruban = [], lisere = [], longueurs = [];
     _e.tuiles.forEach(function (t) {
       if (!t.obj) return;
@@ -4849,7 +4967,48 @@
       t.sort(function (a, b) { return a - b; });
       return +t[t.length >> 1].toFixed(3);
     };
-    return { ruban: med(ruban), lisere: med(lisere), longueurTiret: med(longueurs) };
+    return Object.assign({ ruban: med(ruban), lisere: med(lisere), longueurTiret: med(longueurs) },
+      profil ? _profilIti() : null);
+  }
+
+  // Profil de l'itinéraire construit (checkup : par-dessus les volumes) : un quadrilatère par entrée
+  // [x, z, yMin, yMax, clair] (m, centre ; clair = bande du ruban, sinon liseré), chevrons [x, z, y], étapes
+  // [x, z, y], et la plus haute bande des rubans des tracés (rubansYMax).
+  function _profilIti() {
+    const e = _e, cols = _couleursIti(), rouge = Math.round(cols.ruban.r * 255), profil = [], rubansY = [];
+    const quads = function (m, f) {
+      const p = m.geometry.attributes.position.array, c = m.geometry.attributes.color.array;
+      for (let q = 0; q + 17 < p.length; q += 18) {
+        let x = 0, z = 0, y0 = Infinity, y1 = -Infinity;
+        for (let i = 0; i < 6; i++) {
+          x += p[q + 3 * i] / 6; z += p[q + 3 * i + 2] / 6;
+          y0 = Math.min(y0, p[q + 3 * i + 1]); y1 = Math.max(y1, p[q + 3 * i + 1]);
+        }
+        f(+x.toFixed(3), +z.toFixed(3), +y0.toFixed(3), +y1.toFixed(3), c[q] === rouge);
+      }
+    };
+    e.tuiles.forEach(function (t) {
+      if (!t.obj) return;
+      t.obj.children.forEach(function (m) {
+        if (!m.geometry) return;
+        if (m.userData.famille === "itineraire") {
+          quads(m, function (x, z, y0, y1, clair) { profil.push([x, z, y0, y1, clair ? 1 : 0]); });
+        } else if (m.userData.famille === "rubans") {
+          quads(m, function (x, z, y0, y1) { rubansY.push(y1); });
+        }
+      });
+    });
+    const chevronsY = [];
+    if (e.chevrons && e.chevrons.geometry) quads(e.chevrons, function (x, z, y0) { chevronsY.push([x, z, y0]); });
+    const etapesY = [];
+    if (e.marqueursIti) {
+      e.marqueursIti.children.forEach(function (g) {
+        if (g.userData.famille === "etape") etapesY.push([+g.position.x.toFixed(3), +g.position.z.toFixed(3),
+          +g.position.y.toFixed(3)]);
+      });
+    }
+    return { profil: profil, chevronsY: chevronsY, etapesY: etapesY,
+      rubansYMax: rubansY.length ? Math.max.apply(null, rubansY) : null };
   }
 
   // Part de la largeur de l'écran couverte par un panneau visible (checkup : pas plus que PRES.ecran de près).

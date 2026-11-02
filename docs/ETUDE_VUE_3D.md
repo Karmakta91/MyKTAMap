@@ -245,7 +245,9 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
 - **Zones** : remblais et effondrement = volumes à 60 % de la hauteur (l'effondrement était un aplat au sol ;
   révisé, retour de KARMA : c'est un obstacle aussi, en 3D seulement) ; eau = surface translucide à 4 cm ;
   inaccessible = aplat au sol + rideau translucide sur son contour, rouges à hachures à 45° comme sur la carte
-  (`_hachurer`, une bande sombre tous les 0,6 m, en coordonnées monde) ; types perso = aplat au sol.
+  (`_hachurer`, une bande sombre tous les 0,6 m, en coordonnées monde) ; types perso = aplat au sol. Remblais,
+  effondrement et inaccessible arrêtent le pas dans les trois rendus, en tube comme en chambre (décision de KARMA ;
+  l'inaccessible par la seule constante `galerieEmprise.js > INACCESSIBLE_BOUCHE`), en 3D seulement.
 - **Tracés** : rubans de 0,25 m à 3 cm du sol ; **itinéraire** : tirets de 1,2 m tous les 1,8 m, ruban de 0,35 m à
   `--kta-interaction` sur un liseré `--kta-fond` de 4 cm de chaque côté, à 5 cm du sol, non éclairés et sans
   compression de tons (lisibles hors du faisceau, le brouillard les éteint au loin) ; disque et mât de 0,6 m à chaque
@@ -288,8 +290,8 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   - **Zones** découpées à chaque pièce (CPU, par tuile) : eau à 4 cm ; remblais et effondrement à 60 %, faces
     seulement côté galerie, bloquants ; inaccessible au sol + rideau rouge hachuré en travers du tube là où le
     contour coupe l'axe ; perso au sol. **POI** à moins de 10 m de l'axe (relevé à 10 m le 02/11 : les salles sont souvent loin d'un tracé), ramenés contre la paroi, sinon masqués.
-  - **Collision** : `KtaGalerie.segmentsBloques` (même forme que la règle des structures) : rester dans l'emprise et
-    hors d'un remblais ou d'un effondrement ; même corps de 0,8 m balayé.
+  - **Collision** : `KtaGalerie.segmentsBloques` (même forme que la règle des structures) : rester dans l'emprise,
+    plus `KtaGalerie.zonesBloquent` (remblais, effondrement, inaccessible, dans tous les rendus) ; même corps balayé.
 - **Rendu mixte** (défaut ; `KtaGalerie.modele(niveau, true)` + `vue3d.js > _construireTuile`) : structures comme en
   rendu structures (sol et plafond d'un seul tenant, tracés en rubans au sol), plus les **tubes des galeries de
   liaison**. **Chaque côté est jugé à part** (QCM du 02/11/2026, `galerieEmprise.js > _cotesOuverts`) : à chaque
