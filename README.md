@@ -208,7 +208,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (144 modules)
+## 🟢 L'application : modules JS (145 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -243,6 +243,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `profileExportImport.js` | Export / import du profil complet par sections (JSON, ou ZIP avec les archives de plans) |
 | `debug.js` | Capture des logs et modale plein écran « Afficher les logs » |
 | `perfUltra.js` | Optimisations Perf ULTRA par plan (décimation, culling, sauvegarde lente…), jamais actives par défaut |
+| `ktaPictos.js` | Pictos au trait partagés (`window.ktaPicto`) : écran Bienvenue, bouton cube de la vue 3D |
 
 ### 🔒 Gates et configuration
 
