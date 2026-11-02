@@ -120,10 +120,10 @@
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
 - **Système d'add-ons community (`addons/<nom>/`)** — un vrai cadre pour qu'un add-on (ou un dev tiers) s'ajoute
-  sans toucher l'app. Déjà là : garde-fous sur `addons/`, prise `KtaVue3D.greffer`, `ADDONS_CODE`, `reglages.json >
-  addons`, premier add-on (mkmg) branché à la main. Reste : registre au lieu de la table en dur, précache, guide.
-  `qui: Claude · action: étude et QCM du contrat d'add-on, d'après mkmg · fini: contrat documenté, un add-on ajouté
-  sans toucher js/ ni sw.js · depuis: 02/11/2026 · taille: L`
+  sans toucher l'app (`docs/architecture/addons.md`). QCM du 02/11/2026 : manifeste par add-on + liste lus par l'app
+  et le précache, section « Add-ons » des Réglages (secrets absents), cases dans ConfAdmin, add-ons livrés seulement.
+  `qui: Claude · action: coder le lot après l'essai iPhone de mkmg · fini: un add-on ajouté sans toucher js/ ni sw.js,
+  interrupteur dans les Réglages et ConfAdmin · depuis: 02/11/2026 · taille: M`
 - **Add-on mkmg : interrupteur par organisation (pro)** — aujourd'hui refusé sur une installation reliée, sauf
   `data/reglages.json > addons.mkmg` posé par l'hébergeur (toute l'installation) ; décision : un admin d'orga
   l'allume. Prise neutre côté community, réglage et case d'admin côté pro.
