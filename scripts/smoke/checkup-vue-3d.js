@@ -339,6 +339,27 @@ async function mesuresGalerie(page, nom, semisDonne) {
     });
   }, semis.depart);
   console.log("  📏 " + nom + ", marche 120 m (intervalle entre images) : " + JSON.stringify(marche));
+  // Règle du pas sur la même marche : 600 pas de 0,2 m (avancer = un lot _juger par essai) ; chaque pas part de sa
+  // place sur la ligne, pour couvrir les 120 m (tubes et chambres) même si l'un est refusé.
+  const pasMarche = await page.evaluate(function (d) {
+    return window.KtaVue3D.ouvrir({ depart: d, distanceVue: 30 }).then(function () {
+      const sc = window.APP_CONFIG.scale, t = [];
+      let refus = 0;
+      for (let i = 0; i < 600; i++) {
+        window.KtaVue3D.placer(d.x + (i * 0.2 - 60) * sc, d.y, 90);
+        const t0 = performance.now();
+        if (!window.KtaVue3D.avancer(0.2)) refus++;
+        t.push(performance.now() - t0);
+      }
+      window.KtaVue3D.fermer();
+      const total = t.reduce(function (s, v) { return s + v; }, 0);
+      t.sort(function (a, b) { return a - b; });
+      return { pas: t.length, refus: refus, msMed: +t[t.length >> 1].toFixed(3),
+        msP95: +t[Math.floor(t.length * 0.95)].toFixed(3), msMax: +t[t.length - 1].toFixed(3),
+        msTotal: Math.round(total) };
+    });
+  }, semis.depart);
+  console.log("  📏 " + nom + ", règle du pas sur la marche 120 m (avancer 0,2 m) : " + JSON.stringify(pasMarche));
   const coutPas = await page.evaluate(function (d) {
     return window.KtaVue3D.ouvrir({ depart: d, distanceVue: 30 }).then(function () {
       const libres = [], refuses = [];
@@ -4395,13 +4416,15 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "🧱 coupé : remblais et effondrement à la couleur de la légende (mixte et galerie), comme une vue ouverte " +
         "sans textures", { mixte: C0.couleurs.opaque, galerie: TX.galerieCoupe.t.couleurs.opaque, legende: Lz });
 
-      // ── 24 bis. Effondrement = volume et obstacle de la 3D, comme le remblais ; 2D intacte ─────────────────────
-      // Tube principal à l'ouest (remblais de 3 m, effondrement de 4 m en travers), chambre à piliers à l'est (un
-      // effondrement et un remblais entre deux rangées). Volume dans les trois rendus ; un pas qui traverse arrêté là
-      // où le remblais l'est (galerie, tube du mixte), libre là où il ne l'est pas (structures, chambre du mixte) ;
-      // départ dedans = ramené dehors ; recalage (versGalerie) et itinéraire identiques avec et sans effondrement.
+      // ── 24 bis. Remblais, effondrement et inaccessible = obstacles de la 3D dans tous les rendus ; 2D intacte ────
+      // Tube principal à l'ouest (remblais, inaccessible, effondrement en travers), chambre à piliers à l'est (un
+      // effondrement, un remblais, un inaccessible entre deux rangées). Volume dans les trois rendus ; un pas qui
+      // traverse une des trois zones est arrêté au bord dans les 4 contextes (galerie, tube et chambre du mixte,
+      // structures) ; départ dedans = ramené au bord, on repart ; recalage (versGalerie), itinéraire et pas du tracker
+      // identiques avec et sans les zones, et jamais appelés par les règles de zones de la 3D.
       const EF = await page.evaluate(async function (a) {
-        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const K = window.KtaVue3D, G = window.KtaGalerie;
+        const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
         const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
         const acc = window.ktaEstAccessible;
@@ -4417,12 +4440,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
           st.push({ uid: "st_ef_s" + i, type: "pilier-1", level: 0, points: rect(x, 2, x + 2, 3.5) });
         }
         window.setStructures(st);
-        const zones = [
-          { uid: "zn_ef_rt", type: "remblais", level: 0, points: rect(-34, -3, -31, 3) },
-          { uid: "zn_ef_et", type: "effondrement", level: 0, points: rect(-16, -3, -12, 3) },
-          { uid: "zn_ef_ec", type: "effondrement", level: 0, points: rect(25, -1.5, 27, 1.5) },
-          { uid: "zn_ef_rc", type: "remblais", level: 0, points: rect(31, -1.5, 33, 1.5) }
+        // [nom, type, x0 (bord ouest, m), x1, départ de la marche, contexte du mixte]
+        const Z = [
+          ["rt", "remblais", -34, -31, -39, "tube"], ["it", "inaccessible", -27, -25, -30, "tube"],
+          ["et", "effondrement", -16, -12, -22, "tube"], ["ec", "effondrement", 25, 27, 23, "chambre"],
+          ["rc", "remblais", 31, 33, 29.5, "chambre"], ["ic", "inaccessible", 37, 39, 35.5, "chambre"]
         ];
+        const zones = Z.map(function (z) {
+          const h = z[5] === "tube" ? 3 : 1.5;
+          return { uid: "zn_ef_" + z[0], type: z[1], level: 0, points: rect(z[2], -h, z[3], h) };
+        });
         const relx = function () { return +(K.etat().pos.x / a.sc - a.ox).toFixed(2); };
         const marcher = function (x, n) {
           const d = P(x, 0);
@@ -4442,27 +4469,41 @@ async function mesuresGalerie(page, nom, semisDonne) {
           }
           return +(Math.hypot(p1.x - p0.x, p1.y - p0.y) / a.sc).toFixed(2);
         };
-        const r = {};
-        // 2D : recalage dans l'effondrement du tube et à côté, itinéraire qui le traverse, pas du tracker.
+        const r = { chambres: {} };
+        // 2D : recalage dans l'effondrement du tube et à côté, dans l'inaccessible du tube, itinéraire qui traverse
+        // l'effondrement, pas du tracker à travers les trois zones du tube.
         const deux = async function () {
-          window.KtaGalerie.invalider();
-          const v = window.KtaGalerie.versGalerie(P(-14, 0.5).x, P(-14, 0.5).y, 0);
-          const w = window.KtaGalerie.versGalerie(P(-14, 4).x, P(-14, 4).y, 0);
+          G.invalider();
+          const v = G.versGalerie(P(-14, 0.5).x, P(-14, 0.5).y, 0), w = G.versGalerie(P(-14, 4).x, P(-14, 4).y, 0);
+          const vi = G.versGalerie(P(-26, 0.5).x, P(-26, 0.5).y, 0);
           let it;
           try {
             const ri = await window.Pathfinder.computeRoute([P(-20, 0), P(-6, 0)], { allowedTypes: ["principal"] });
             it = { d: Math.round(ri.totalDistance), chemin: JSON.stringify(ri.path || ri.points || ri.coords || null) };
           } catch (e) { it = e.code || String(e && e.message); }
-          const seg = [[P(-20, 0).x, P(-20, 0).y, P(-6, 0).x, P(-6, 0).y]];
-          return { dedans: v, ramene: w, iti: it, pasTracker: window.ktaSegmentsBloquesParStructure(seg, 0)[0] };
+          const seg = [[P(-39, 0).x, P(-39, 0).y, P(-6, 0).x, P(-6, 0).y], [P(24, 0).x, P(24, 0).y, P(40, 0).x, P(40, 0).y]];
+          return { dedans: v, ramene: w, inaccessible: vi, iti: it,
+            pasTracker: window.ktaSegmentsBloquesParStructure(seg, 0),
+            pasUn: window.ktaPasBloqueParStructure(seg[0][0], seg[0][1], seg[0][2], seg[0][3], 0) };
         };
-        window.setZones(zones.filter(function (z) { return z.type !== "effondrement"; }));
+        window.setZones([]);
         r.sans = await deux();
+        // Sentinelle : les règles de zones de la 3D ne sont jamais appelées par la 2D.
+        const zb = G.zonesBloquent, dz = G.dansZone;
+        let appels = 0;
+        G.zonesBloquent = function () { appels++; return zb.apply(null, arguments); };
+        G.dansZone = function () { appels++; return dz.apply(null, arguments); };
+        // Remblais et effondrement seuls : tout identique ; avec l'inaccessible (qui coupe déjà l'itinéraire en 2D,
+        // règle du Pathfinder inchangée), recalage et pas du tracker identiques.
+        window.setZones(zones.filter(function (z) { return z.type !== "inaccessible"; }));
+        r.volumes = await deux();
         window.setZones(zones);
         r.avec = await deux();
+        r.appels2D = appels;
+        G.zonesBloquent = zb; G.dansZone = dz;
         for (const rendu of ["galerie", "mixte", "structures"]) {
           window.setPlanRenduVue3D(null, rendu);
-          window.KtaGalerie.invalider();
+          G.invalider();
           await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(-22, 0)), tuiles: false });
           await pause(50);
           const e = K.etat(), b = e.boites.effondrement, t = K.textures();
@@ -4470,15 +4511,21 @@ async function mesuresGalerie(page, nom, semisDonne) {
             rendu: e.rendu, hauteur: e.hauteur, faces: e.facesEboulis,
             boite: b ? { x0: +(b.x0 - a.ox).toFixed(2), x1: +(b.x1 - a.ox).toFixed(2), y1: +b.y1.toFixed(2) } : null,
             remblaisY: e.boites.remblais ? +e.boites.remblais.y1.toFixed(2) : null,
-            maillages: t.maillages.eboulis || 0,
-            tube: marcher(-22, 100), remblaisTube: marcher(-39, 100),
-            chambre: marcher(23, 60), remblaisChambre: marcher(29.5, 50)
+            maillages: t.maillages.eboulis || 0, marche: {}, dedans: {}
           };
+          Z.forEach(function (z) { o.marche[z[0]] = marcher(z[4], 100); });
+          if (rendu === "mixte") {
+            const m = G.modele(0, true);
+            Z.forEach(function (z) { r.chambres[z[0]] = m.enChambre(P((z[2] + z[3]) / 2, 0).x, P(0, 0).y); });
+          }
           await K.fermer();
-          // Départ au milieu de l'effondrement du tube (et du remblais, témoin) : ramené dehors, on repart.
-          for (const z of [["dedans", -14], ["dedansRemblais", -32.5]]) {
-            await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(z[1], 0)), tuiles: false });
-            o[z[0]] = { x: relx(), degage: K.etat().degagements, repart: repartir() };
+          // Départ au milieu de chaque zone : ramené dehors (au bord), on repart.
+          for (const z of Z) {
+            const c = (z[2] + z[3]) / 2;
+            await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(c, 0)), tuiles: false });
+            const p = K.etat().pos;
+            o.dedans[z[0]] = { x: relx(), degage: K.etat().degagements, dansZone: G.dansZone(p.x, p.y, 0),
+              repart: repartir() };
             await K.fermer();
           }
         }
@@ -4494,7 +4541,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.setVue3DTextures(true);
         window.setPlanRenduVue3D(null, "mixte");
         window.ktaEstAccessible = acc;
-        window.setStructures([]); window.setRoads([]); window.setZones([]); window.KtaGalerie.invalider();
+        window.setStructures([]); window.setRoads([]); window.setZones([]); G.invalider();
+        r.Z = Z;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       const hEf = EF.galerie.hauteur * 0.6;
@@ -4507,32 +4555,36 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "effondrement en volume texturé (éboulis) à la hauteur du remblais (" + hEf.toFixed(2) + " m) en galerie, " +
         "mixte (tube et chambre) et structures ; découpé au tube, faces vers la galerie seulement",
         { g: EF.galerie.boite, m: EF.mixte.boite, s: EF.structures.boite, faces: [EF.galerie.faces, EF.mixte.faces] });
-      verifier(EF.galerie.tube > -16.6 && EF.galerie.tube < -16.3 && EF.mixte.tube > -16.6 && EF.mixte.tube < -16.3 &&
-        EF.galerie.remblaisTube > -34.6 && EF.galerie.remblaisTube < -34.3 && EF.mixte.remblaisTube > -34.6 &&
-        EF.mixte.remblaisTube < -34.3 && EF.galerie.chambre < 25,
-        "un pas qui traverse l'effondrement est arrêté au bord, comme au remblais : galerie " + EF.galerie.tube +
-        " m, tube du mixte " + EF.mixte.tube + " m (bord à -16 m, corps de 0,4 m)",
-        { galerie: [EF.galerie.tube, EF.galerie.remblaisTube, EF.galerie.chambre],
-          mixte: [EF.mixte.tube, EF.mixte.remblaisTube] });
-      verifier(EF.structures.tube > -12.5 && EF.structures.remblaisTube > -29.5 && EF.mixte.chambre > 28.5 &&
-        EF.mixte.remblaisChambre > 34 && EF.structures.chambre > 28.5,
-        "contre-épreuve, parité avec le remblais : en structures seules et dans une chambre du mixte, ni l'un ni " +
-        "l'autre n'arrête (règle des structures, inchangée)", { structures: [EF.structures.tube,
-          EF.structures.remblaisTube, EF.structures.chambre], chambre: [EF.mixte.chambre, EF.mixte.remblaisChambre] });
-      verifier(["galerie", "mixte"].every(function (k) {
-        const o = EF[k];
-        return o.dedans.degage >= 1 && (o.dedans.x <= -15.99 || o.dedans.x >= -12.01) && o.dedans.repart > 1 &&
-          o.dedansRemblais.degage >= 1 && o.dedansRemblais.repart > 1;
-      }) && EF.structures.dedans.repart > 1,
-        "départ dans un effondrement (galerie, tube du mixte) : ramené au bord, on repart, comme d'un remblais ; " +
-        "structures seules : rien ne bloque", { galerie: EF.galerie.dedans, mixte: EF.mixte.dedans,
-          remblais: [EF.galerie.dedansRemblais, EF.mixte.dedansRemblais], structures: EF.structures.dedans });
-      verifier(JSON.stringify(EF.sans) === JSON.stringify(EF.avec) && EF.avec.dedans.etat === "dedans" &&
-        EF.avec.ramene.etat === "ramene" && typeof EF.avec.iti === "object" && EF.avec.iti.d > 0 &&
-        EF.avec.pasTracker === false,
-        "2D intacte : recalage du tracker (versGalerie dans et à côté de l'effondrement), itinéraire qui le traverse " +
-        "et pas du tracker identiques avec et sans l'effondrement", { sans: EF.sans, avec: EF.avec });
-      verifier(EF.coupe.eboulis === 0 && pres2(EF.coupe.y1, hEf) && EF.coupe.faces === 4 && EF.coupe.tube < -16.3 &&
+      verifier(EF.Z.every(function (z) { return EF.chambres[z[0]] === (z[5] === "chambre"); }),
+        "témoin : les zones de l'ouest sont dans un tube du mixte, celles de l'est dans une chambre", EF.chambres);
+      // Arrêt au bord : corps de 0,2 m et balayage prolongé de 0,2 m, pas de 0,1 m → entre 0,3 et 0,6 m avant le bord.
+      const arrete = function (v, bord) { return typeof v === "number" && v > bord - 0.6 && v < bord - 0.3; };
+      ["galerie", "mixte", "structures"].forEach(function (k) {
+        EF.Z.forEach(function (z) {
+          const ctx = k === "mixte" ? "mixte (" + z[5] + ")" : k;
+          verifier(arrete(EF[k].marche[z[0]], z[2]),
+            ctx + " : un pas qui traverse " + (z[1] === "inaccessible" ? "l'inaccessible" : "le " + z[1]) +
+            " est arrêté au bord (" + EF[k].marche[z[0]] + " m, bord à " + z[2] + " m)", EF[k].marche);
+        });
+      });
+      ["galerie", "mixte", "structures"].forEach(function (k) {
+        const d = EF[k].dedans;
+        verifier(EF.Z.every(function (z) {
+          const o = d[z[0]];
+          return o.degage >= 1 && !o.dansZone && (o.x <= z[2] + 0.01 || o.x >= z[3] - 0.01) && o.repart > 1;
+        }), k + " : départ dans chacune des 6 zones (" + (k === "mixte" ? "3 en tube, 3 en chambre" : "remblais, " +
+          "effondrement, inaccessible") + ") ramené au bord, on repart", d);
+      });
+      const sansIti = function (o) { return JSON.stringify(Object.assign({}, o, { iti: null })); };
+      verifier(JSON.stringify(EF.sans) === JSON.stringify(EF.volumes) && sansIti(EF.sans) === sansIti(EF.avec) &&
+        EF.appels2D === 0 && EF.avec.dedans.etat === "dedans" && EF.avec.ramene.etat === "ramene" &&
+        EF.avec.inaccessible.etat === "dedans" && typeof EF.volumes.iti === "object" && EF.volumes.iti.d > 0 &&
+        EF.avec.pasTracker.every(function (b) { return !b; }) && EF.avec.pasUn === false,
+        "2D intacte : recalage du tracker (versGalerie dans et à côté de l'effondrement, dans l'inaccessible), " +
+        "itinéraire qui traverse l'effondrement et pas du tracker à travers les 6 zones identiques avec et sans elles ; " +
+        "règles de zones de la 3D appelées " + EF.appels2D + " fois par la 2D",
+        { sans: EF.sans, volumes: EF.volumes, avec: EF.avec });
+      verifier(EF.coupe.eboulis === 0 && pres2(EF.coupe.y1, hEf) && EF.coupe.faces === 4 && arrete(EF.coupe.tube, -16) &&
         contient(EF.coupe.couleurs, EF.coupe.legende),
         "🧱 coupé : l'effondrement reste un volume qui arrête, à la couleur de la légende", EF.coupe);
 

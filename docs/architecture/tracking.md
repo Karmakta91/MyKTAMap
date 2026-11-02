@@ -1327,9 +1327,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s. En rendu galerie, la
   règle est celle de l'emprise (ci-dessous), même corps, même balayage ; l'image de collision du plan n'est pas lue.
   En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout (image de collision comprise)
-  et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes et leurs pans de retour, un remblais ou un
-  effondrement dans un tube) ; dans une chambre,
-  seules les structures arrêtent.
+  et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes et leurs pans de retour) ; dans une chambre,
+  seules les structures arrêtent. Dans les trois rendus s'y ajoutent les zones qui bouchent (règle ci-dessous).
+- **Zones obstacles de la 3D** (décision produit) : un remblais, un effondrement ou une zone inaccessible du niveau
+  arrête le pas dans les trois rendus, en tube comme en chambre (`galerieEmprise.js > ZONES_BOUCHENT`, lu par
+  `KtaGalerie.zonesBloquent` et `dansZone` ; `vue3d.js > _juger` l'ajoute à la règle du rendu). L'inaccessible y
+  est par la constante `INACCESSIBLE_BOUCHE` seule (son rendu, hachures au sol et rideau, n'en dépend pas). Un
+  segment est arrêté s'il finit dans une zone ou entre dans son contour ; ⚠️ contrat (jamais coincé) : une zone qui
+  contient le départ du pas (ou le début du segment) ne l'arrête pas, et un contact au point de départ, sur le bord,
+  ne compte pas. Une place dont le corps touche une zone est coincée (`_coince`) : ramenée au point libre le plus
+  proche, à un corps du bord. Index des zones par niveau, gardé tant que la signature des données ne change pas
+  (`_indexZones`, indépendant du modèle des galeries : le rendu structures n'en construit pas). ⚠️ contrat : la 3D
+  seulement ; `ktaSegmentsBloquesParStructure` (pas du tracker), `versGalerie` (recalage), l'itinéraire, le guidage
+  et la carte ne lisent aucune de ces zones (l'itinéraire 2D garde sa règle : seul l'inaccessible le coupe).
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
   🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
   (`basculerRendu([vers])`), retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ;
@@ -1402,12 +1412,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   rapproche de l'axe le plus proche (30 m), ou tout pas sans tracé. En suivi, la place reste celle du tracker.
 - **Règle du pas en galerie** : `KtaGalerie.segmentsBloques(segs, niveau)`, même forme que
   `ktaSegmentsBloquesParStructure` (lot de segments → booléens) : bloqué si un point (tous les 5 cm) sort de l'emprise
-  (à moins d'une demi-largeur d'un tracé ou dans un joint) ou entre dans un remblais ou un effondrement du niveau
-  (`galerieEmprise.js > ZONES_BOUCHENT`). Niveau sans galerie : rien n'arrête. ⚠️ contrat : ces deux zones ne
-  bouchent que la 3D (`dedans`, `segmentsBloques`, `paroisBloquent`) ; `versGalerie` (recalage du tracker) ne lit
-  que l'emprise, et la carte, l'itinéraire, le guidage et le tracker les ignorent : un itinéraire 2D qui traverse un
-  effondrement est dessiné tel quel, son ruban (à 5 cm) passe dans le volume. Départ dans l'une d'elles : ramené
-  au point libre le plus proche (jamais coincé, ci-dessus). Parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
+  (à moins d'une demi-largeur d'un tracé ou dans un joint) ; les zones qui bouchent s'y ajoutent (ci-dessus).
+  `KtaGalerie.dedans` = dans l'emprise et hors de ces zones. Niveau sans galerie : rien n'arrête que les zones.
+  `versGalerie` (recalage du tracker) ne lit que l'emprise. Départ dans une zone : ramené au point libre le plus
+  proche (jamais coincé, ci-dessus). Parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
 - **Scène galerie** : sol et plafond = les pièces, texture calcaire posée en coordonnées monde (pièces superposées sans
   couture) ; parois (galeries, tubes du mixte, puits et tranchées des passages : un seul matériau `paroi`) en
   **pierre de taille** quand 🧱 Textures est activé (`_paroiTexturee` : `_appareil` + `_assisesPierre`, `PIERRE` :
@@ -1732,8 +1740,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`WEBGL_lose_context`) puis reprise, perte sans reprise, « Je suis ici ? » Non puis Oui, WebGL absent,
   20 ouvertures de suite. Galerie, sur des tracés fictifs (T, X, coude droit, coude aigu, cul-de-sac, presque
   parallèles) : aucune paroi qui en traverse une autre, axes libres, bouts fermés, butée contre une paroi, carrefour et
-  coude passés, remblais qui arrête, zones coupées au tube, effondrement en volume qui arrête comme le remblais
-  (§ 24 bis : trois rendus, départ dedans, 🧱 coupé, recalage et itinéraire 2D inchangés), rideau en travers, POI à 2 m montré et à 5 m masqué,
+  coude passés, remblais qui arrête, zones coupées au tube, effondrement en volume ; remblais, effondrement et
+  inaccessible qui arrêtent dans les 4 contextes (§ 24 bis : galerie, tube et chambre du mixte, structures ; départ
+  dedans dans chacune, 🧱 coupé ; recalage, itinéraire et pas du tracker 2D inchangés, règles de zones de la 3D
+  jamais appelées par la 2D), rideau en travers, POI à 2 m montré et à 5 m masqué,
   interrupteur retenu par plan ; passages 🪜 (POI jonction ▲ / ▼, tracé jonction dans les deux sens, toucher
   du panneau, suivi sans 🪜, tracker et carte inchangés) ; place libre (extension factice) : rien sans partage ni
   avant un pas, une remise puis rien à l'arrêt, ≤ 1 remise par 0,5 m en marchant, rien sous 10° de rotation,

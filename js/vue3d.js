@@ -31,7 +31,7 @@
 // ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
 // ⚠️ contrat : déplacement = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux règles, structures et
-// KtaGalerie.paroisBloquent), sur la largeur d'un corps. Le tracker
+// KtaGalerie.paroisBloquent ; partout, KtaGalerie.zonesBloquent), sur la largeur d'un corps. Le tracker
 // n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le recaler (position, niveau).
 // 🩸 three.js est un module ES : import() dynamique, URL absolue (pas d'import map, la CSP refuse tout script en
 // ligne). Fermer libère le contexte WebGL (forceContextLoss) : un navigateur en garde peu (iOS ~ 8, Chrome 16).
@@ -2751,9 +2751,13 @@
   // 🩸 Mixte : une arrivée hors du tube mais près de son axe (accroche posée à côté) restait dans la roche, d'où
   // un pas était possible sans jamais pouvoir franchir la paroi pour entrer. ⚠️ contrat : comme en galerie, hors
   // des tubes et à moins de smartNavRadiusM d'un axe qui est en tube à cet endroit (pas dans une chambre) = coincé.
+  // Corps dans une zone qui bouche ou contre elle (centre dedans, ou un rayon de RAYON_CORPS qui y entre), dans tous
+  // les rendus : coincé (on en sortirait librement, mais la place serait dans le volume) ; le point libre est donc à
+  // un corps du bord.
   function _coince(x, y) {
-    const e = _e;
-    if (e.galerie) return !window.KtaGalerie.dedans(x, y, _niveauPas());
+    const e = _e, G = window.KtaGalerie, n = _niveauPas();
+    if (G.dansZone(x, y, n) || G.zonesBloquent(_rayons([], x, y, RAYON_CORPS * e.sc), n).some(Boolean)) return true;
+    if (e.galerie) return !G.dedans(x, y, n);
     const m = e.mixte;
     if (m && m.pieces.length && !m.dedans(x, y) && !m.enChambre(x, y)) {
       const pp = m.plusProche(x, y, _rayonLibre());
@@ -2816,24 +2820,23 @@
 
   // → -1 si un couloir est coupé (ou l'arrivée hors plan / hors image de collision), sinon le nombre de rayons
   // bloqués autour de l'arrivée. Un seul lot de segments par essai (_juger : structures ou galerie).
-  // Mode galerie : on bute contre les parois, les remblais et les effondrements (KtaGalerie.segmentsBloques),
-  // l'image de collision du plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé), on se déplace
-  // librement pour y entrer.
-  // Mode mixte : règle des structures (image de collision comprise) et parois dessinées des tubes (_juger).
+  // Mode galerie : on bute contre les parois (KtaGalerie.segmentsBloques) et les zones qui bouchent, l'image de
+  // collision du plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé, dans une zone qui bouche),
+  // on se déplace librement pour y entrer.
+  // Mode mixte : règle des structures (image de collision comprise), parois dessinées des tubes et zones (_juger).
   function _balayage(x0, y0, x1, y1, ux, uy) {
     const r = RAYON_CORPS * _e.sc, fx = x1 + ux * r, fy = y1 + uy * r, gal = !!_e.galerie;
     const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
     if (pc && (fx < 0 || fy < 0 || fx > pc.imageWidth || fy > pc.imageHeight)) return -1;
     if (gal && !window.KtaGalerie.dedans(x0, y0, _niveauPas())) return 0;
     if (!gal && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(fx, fy)) return -1;
-    if (!gal && !_e.mixte && typeof window.ktaSegmentsBloquesParStructure !== "function") return 0;
     const segs = [];
     for (let i = 0; i < RAILS.length; i++) {
       const ox = -uy * r * RAILS[i], oy = ux * r * RAILS[i];
       segs.push([x0 + ox, y0 + oy, fx + ox, fy + oy]);
     }
     _rayons(segs, x1, y1, r);
-    const res = _juger(segs);
+    const res = _juger(segs, { x: x0, y: y0 });
     for (let i = 0; i < RAILS.length; i++) { if (res[i]) return -1; }
     let n = 0;
     for (let i = RAILS.length; i < res.length; i++) { if (res[i]) n++; }
@@ -2852,13 +2855,22 @@
 
   // Règle du rendu affiché : structures (tracking.js, types perso compris), emprise des galeries, ou en mixte les
   // deux à la fois : structures partout, parois des tubes là où elles sont dessinées (dans une chambre, aucune).
-  function _juger(segs) {
-    if (_e.galerie) return window.KtaGalerie.segmentsBloques(segs, _niveauPas());
-    const s = typeof window.ktaSegmentsBloquesParStructure === "function"
-      ? window.ktaSegmentsBloquesParStructure(segs, _niveauPas(), true) : segs.map(function () { return false; });
-    if (!_e.mixte) return s;
-    const p = window.KtaGalerie.paroisBloquent(segs, _niveauPas());
-    return s.map(function (b, i) { return b || p[i]; });
+  // Dans les trois rendus, les zones qui bouchent (KtaGalerie.zonesBloquent : remblais, effondrement, inaccessible).
+  // ⚠️ contrat : la 3D seulement ; ktaSegmentsBloquesParStructure (pas du tracker en 2D) ne lit aucune zone.
+  // `depart` ({ x, y } px, facultatif) : place d'où part le pas ; une zone qui la contient ne l'arrête pas.
+  function _juger(segs, depart) {
+    const n = _niveauPas(), z = window.KtaGalerie.zonesBloquent(segs, n, depart);
+    let r;
+    if (_e.galerie) r = window.KtaGalerie.segmentsBloques(segs, n);
+    else {
+      r = typeof window.ktaSegmentsBloquesParStructure === "function"
+        ? window.ktaSegmentsBloquesParStructure(segs, n, true) : segs.map(function () { return false; });
+      if (_e.mixte) {
+        const p = window.KtaGalerie.paroisBloquent(segs, n);
+        r = r.map(function (b, i) { return b || p[i]; });
+      }
+    }
+    return r.map(function (b, i) { return b || z[i]; });
   }
 
   function _rayonsBloques(x, y) {

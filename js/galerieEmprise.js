@@ -10,14 +10,14 @@
 //   dedans(x, y, niveau), segmentsBloques(segs, niveau) → [bool] (même forme que
 //   tracking.js > ktaSegmentsBloquesParStructure), paroisBloquent(segs, niveau) (mode mixte), invalider(),
 //   SEUIL_CHAMBRE_M, PASSAGE (dimensions des volumes de passage ; leur emprise est une pièce : _emprisesPassages),
-//   PROCHE_M, versGalerie(x, y, niveau) (où poser un tracker recalé : tracking.js > _positionDansGalerie).
+//   PROCHE_M, versGalerie(x, y, niveau) (où poser un tracker recalé : tracking.js > _positionDansGalerie),
+//   zonesBloquent(segs, niveau), dansZone(x, y, niveau) (zones qui bouchent, ZONES_BOUCHENT, dans les 3 rendus).
 // Modèle MIXTE (vue 3D par défaut) : chaque côté du tube est jugé à part ; une structure du niveau (intégrée ou
 // perso) proche d'un côté ouvre CE côté (la paroi d'en face reste), un pan de retour relie la paroi gardée à la
 // structure ; proche des deux côtés, le tracé traverse une CHAMBRE, sans parois. Un tube qui débouche dans une
 // chambre s'y arrête sur un bout OUVERT (aucune paroi de fond) ; un tube plus court que TUBE_MIN_M entre deux
 // chambres est ouvert aussi (pas de paroi orpheline). Règle du pas : on bute contre les parois dessinées et les
-// pans de retour (paroisBloquent), contre les structures (règle du tracker) et contre un remblais ou un effondrement
-// dans un tube.
+// pans de retour (paroisBloquent) et contre les structures (règle du tracker).
 // Modèle : graphe plan des tracés (sommets confondus à 15 cm, croisements coupés, bout libre raccordé au tracé
 // voisin s'il s'arrête à moins de 0,5 m de sa paroi) ; une PIÈCE convexe par tronçon (rectangle de sa largeur,
 // d'un nœud à l'autre) et, à chaque nœud de degré ≥ 2, les triangles d'un joint : coude en onglet (borné à deux
@@ -25,9 +25,9 @@
 // ⚠️ contrat : l'emprise est l'UNION des pièces ; une paroi est un bord de pièce qui n'est dans aucune autre, d'où
 // des tubes coupés au bord de la dalle et aucune paroi qui en traverse une autre, même pour des tracés presque
 // parallèles qui se chevauchent. Règle du pas en mode galerie (vue 3D) : rester dans l'emprise (à moins d'une
-// demi-largeur d'un tracé ou dans un joint) et hors d'un remblais ou d'un effondrement du niveau (ZONES_BOUCHENT).
-// ⚠️ contrat : ces zones ne bouchent que la vue 3D (dedans, segmentsBloques, paroisBloquent) ; versGalerie (recalage
-// du tracker) ne lit que l'emprise, l'itinéraire et le tracker ne passent pas par ici.
+// demi-largeur d'un tracé ou dans un joint). Dans les trois rendus, un remblais, un effondrement ou une zone
+// inaccessible du niveau arrête aussi (zonesBloquent). ⚠️ contrat : ces zones ne bouchent que la vue 3D ; versGalerie
+// (recalage du tracker) ne lit que l'emprise, l'itinéraire et le tracker ne passent pas par ici.
 // 🩸 Le graphe de roadGraph.js ne sert pas ici : c'est un graphe d'itinéraire (croisements en arêtes virtuelles,
 // tronçons non coupés, tronçon retiré s'il croise un mur en ligne, types perso exclus), pas une géométrie.
 // Doc : docs/architecture/tracking.md § Vue 3D · Garde-fou : scripts/smoke/checkup-vue-3d.js
@@ -45,8 +45,12 @@
   const CASE_M = 4;                 // m : maille des grilles de recherche
   const PAS_M = 0.05;               // m : pas d'échantillonnage d'un segment jugé par segmentsBloques
   const MEMO_MS = 250;              // signature des données relue au plus tous les MEMO_MS
-  // Zones dessinées en volume par la 3D, qui bouchent la galerie (règle du pas de la vue 3D seulement).
-  const ZONES_BOUCHENT = { remblais: true, effondrement: true };
+  // Zone inaccessible : obstacle de la 3D comme le remblais (décision produit, réversible ici seul : son rendu, hachures
+  // au sol et rideau, ne dépend pas de ce choix).
+  const INACCESSIBLE_BOUCHE = true;
+  // Zones qui arrêtent la règle du pas de la vue 3D, dans les trois rendus (zonesBloquent, dedans, segmentsBloques) ;
+  // jamais la 2D (carte, tracker, itinéraire, recalage).
+  const ZONES_BOUCHENT = { remblais: true, effondrement: true, inaccessible: INACCESSIBLE_BOUCHE };
   // Mode mixte. 3 m : un tube principal a sa paroi à 1,25 m de l'axe ; une structure plus proche que 3 m de l'axe
   // laisserait entre elle et la paroi moins de 1,75 m (la largeur d'un chemin) : une lame de roche doublée qui ne
   // ressemble à rien. Elle borde donc la galerie elle-même (front de taille, mur de consolidation, pilier de
@@ -78,6 +82,7 @@
   const PROCHE_M = 10;
 
   const _cache = new Map();         // "niveau|m" → { sig, modele }
+  const _cacheZones = new Map();    // niveau → { sig, index } (_indexZones)
   let _sig = null, _sigT = 0;
 
   function largeur(type) { return SANS_TUBE[type] ? 0 : (LARGEURS[type] || LARGEUR_PERSO); }
@@ -143,7 +148,7 @@
     return _sig;
   }
 
-  function invalider() { _cache.clear(); _sig = null; }
+  function invalider() { _cache.clear(); _cacheZones.clear(); _sig = null; }
 
   function _surNiveau(o, niveau) {
     return niveau === null || niveau === undefined || (Number.isInteger(o.level) ? o.level : 0) === niveau;
@@ -220,6 +225,63 @@
       if ((p.y > y) !== (q.y > y) && x < (q.x - p.x) * (y - p.y) / (q.y - p.y) + p.x) r = !r;
     }
     return r;
+  }
+
+  // ── Zones qui bouchent (règle du pas de la 3D) ───────────────────────────────────────────────────
+
+  // Zones ZONES_BOUCHENT du niveau (null = tous) en grille → { n, dedans(x, y), bloque(x0, y0, x1, y1) } (px), gardé
+  // tant que la signature des données ne change pas. Indépendant du modèle des galeries : le rendu structures n'en
+  // construit aucun.
+  function _indexZones(niveau) {
+    const n = Number.isInteger(niveau) ? niveau : null, sig = _signature(false), c = _cacheZones.get(n);
+    if (c && c.sig === sig) return c.index;
+    const anneaux = [], g = new Grille(CASE_M * (_echelle() || 1));
+    _zones().forEach(function (z) {
+      if (!z || !ZONES_BOUCHENT[z.type] || !Array.isArray(z.points) || !_surNiveau(z, n)) return;
+      const a = z.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
+      if (a.length < 3) return;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      a.forEach(function (p) {
+        x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+      });
+      anneaux.push(a);
+      g.poser(anneaux.length - 1, x0, y0, x1, y1);
+    });
+    const index = {
+      n: anneaux.length,
+      dedans: function (x, y) {
+        if (!anneaux.length) return false;
+        const l = g.case(x, y);
+        for (let i = 0; i < l.length; i++) { if (_dansAnneau(anneaux[l[i]], x, y)) return true; }
+        return false;
+      },
+      // ⚠️ contrat (jamais coincé) : une zone où le segment commence, ou qui contient le départ du pas (dx, dy :
+      // facultatif), ne l'arrête pas, on en sort librement ; une autre l'arrête s'il finit dedans ou entre dans son
+      // contour (un contact au point de départ, sur le bord, ne compte pas : on s'en éloigne).
+      bloque: function (x0, y0, x1, y1, dx, dy) {
+        if (!anneaux.length) return false;
+        const l = g.pres(Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1));
+        for (let i = 0; i < l.length; i++) {
+          const a = anneaux[l[i]];
+          if (_dansAnneau(a, x0, y0) || (dx !== undefined && _dansAnneau(a, dx, dy))) continue;
+          if (_dansAnneau(a, x1, y1) || _coupeAnneau(a, x0, y0, x1, y1)) return true;
+        }
+        return false;
+      }
+    };
+    _cacheZones.set(n, { sig: sig, index: index });
+    return index;
+  }
+
+  function _coupeAnneau(a, x0, y0, x1, y1) {
+    const dx = x1 - x0, dy = y1 - y0;
+    for (let i = 0, j = a.length - 1; i < a.length; j = i++) {
+      const p = a[j], q = a[i], ex = q.x - p.x, ey = q.y - p.y, d = dx * ey - dy * ex;
+      if (Math.abs(d) < 1e-12) continue;
+      const rx = p.x - x0, ry = p.y - y0, t = (rx * ey - ry * ex) / d, u = (rx * dy - ry * dx) / d;
+      if (t > 1e-9 && t <= 1 && u >= 0 && u <= 1) return true;
+    }
+    return false;
   }
 
   // ── Mode mixte : structures proches de l'axe ──────────────────────────────────────────────────────
@@ -756,19 +818,8 @@
     retours.forEach(function (w, i) {
       gW.poser(i, Math.min(w[0], w[2]), Math.min(w[1], w[3]), Math.max(w[0], w[2]), Math.max(w[1], w[3]));
     });
-    // Remblais et effondrements du niveau (ZONES_BOUCHENT) : ils bouchent la galerie (règle du pas de la 3D).
-    const remblais = [], gR = new Grille(CASE_M * sc);
-    _zones().forEach(function (z) {
-      if (!z || !ZONES_BOUCHENT[z.type] || !Array.isArray(z.points) || z.points.length < 3) return;
-      if (!_surNiveau(z, niveau)) return;
-      const a = z.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
-      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      a.forEach(function (p) {
-        x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
-      });
-      remblais.push(a);
-      gR.poser(remblais.length - 1, x0, y0, x1, y1);
-    });
+    // Zones qui bouchent la galerie (ZONES_BOUCHENT) : le même index que les rendus mixte et structures.
+    const Z = _indexZones(niveau);
     const m = {
       niveau: niveau, sc: sc, mixte: !!mixte, noeuds: noeuds, aretes: aretes, pieces: pieces,
       degres: incid.map(function (l) { return l.length; }),
@@ -799,12 +850,7 @@
         for (let i = 0; i < l.length; i++) { if (dansPiece(pieces[l[i]], x, y, 1e-6)) return true; }
         return false;
       },
-      enRemblais: function (x, y) {
-        const l = gR.case(x, y);
-        for (let i = 0; i < l.length; i++) { if (_dansAnneau(remblais[l[i]], x, y)) return true; }
-        return false;
-      },
-      remblaisPres: function (x0, y0, x1, y1) { return gR.pres(x0, y0, x1, y1).length > 0; },
+      enRemblais: Z.dedans,
       plusProche: plusProche
     };
     return m;
@@ -944,8 +990,8 @@
     return !!m && m.dedans(x, y) && !m.enRemblais(x, y);
   }
 
-  // Segments [x0, y0, x1, y1] (px) → true si une partie sort de l'emprise ou entre dans un remblais ou un
-  // effondrement (ZONES_BOUCHENT). Niveau sans galerie : rien n'arrête (true partout figerait la vue dans le vide).
+  // Segments [x0, y0, x1, y1] (px) → true si une partie sort de l'emprise (les zones qui bouchent : zonesBloquent).
+  // Niveau sans galerie : rien n'arrête (true partout figerait la vue dans le vide).
   function segmentsBloques(segs, niveau) {
     const m = modele(niveau);
     if (!m || !m.pieces.length) return segs.map(function () { return false; });
@@ -953,20 +999,19 @@
     return segs.map(function (s) {
       const l = Math.hypot(s[2] - s[0], s[3] - s[1]), n = Math.max(1, Math.ceil(l / pas));
       for (let i = 0; i <= n; i++) {
-        const x = s[0] + (s[2] - s[0]) * i / n, y = s[1] + (s[3] - s[1]) * i / n;
-        if (!m.dedans(x, y) || m.enRemblais(x, y)) return true;
+        if (!m.dedans(s[0] + (s[2] - s[0]) * i / n, s[1] + (s[3] - s[1]) * i / n)) return true;
       }
       return false;
     });
   }
 
   // Mode mixte : segments [x0, y0, x1, y1] (px) → true s'il coupe ou touche une paroi dessinée (bouts ouverts
-  // exclus : on entre dans une chambre par là) ou s'il entre dans un remblais ou un effondrement à l'intérieur d'un
-  // tube. Dans une chambre, rien ici n'arrête : les structures y bloquent par la règle du tracker (vue3d.js > _juger).
+  // exclus : on entre dans une chambre par là). Dans une chambre, rien ici n'arrête : les structures y bloquent par
+  // la règle du tracker, les zones par zonesBloquent (vue3d.js > _juger).
   function paroisBloquent(segs, niveau) {
     const m = modele(niveau, true);
     if (!m || !m.pieces.length) return segs.map(function () { return false; });
-    const pas = PAS_M * m.sc, e = 1e-9;
+    const e = 1e-9;
     return segs.map(function (s) {
       const x0 = Math.min(s[0], s[2]), x1 = Math.max(s[0], s[2]), y0 = Math.min(s[1], s[3]), y1 = Math.max(s[1], s[3]);
       const dx = s[2] - s[0], dy = s[3] - s[1], ps = m.piecesPres(x0 - 1, y0 - 1, x1 + 1, y1 + 1);
@@ -978,16 +1023,21 @@
       };
       for (let k = 0; k < ps.length; k++) { if (m.paroisDe(ps[k]).some(coupe)) return true; }
       // Pans de retour : ils sortent de l'emprise de leur pièce (jusqu'à la structure), cherchés à part.
-      if (m.retoursPres(x0 - 1, y0 - 1, x1 + 1, y1 + 1).some(coupe)) return true;
-      if (!m.remblaisPres(x0, y0, x1, y1)) return false;
-      const n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / pas));
-      for (let i = 0; i <= n; i++) {
-        const x = s[0] + dx * i / n, y = s[1] + dy * i / n;
-        if (m.dedans(x, y) && m.enRemblais(x, y)) return true;
-      }
-      return false;
+      return m.retoursPres(x0 - 1, y0 - 1, x1 + 1, y1 + 1).some(coupe);
     });
   }
+
+  // Segments [x0, y0, x1, y1] (px) → true s'il entre dans une zone ZONES_BOUCHENT du niveau (contour coupé ou touché,
+  // arrivée dedans) ; une zone où il commence, ou qui contient `depart` ({ x, y } px, la place d'où part le pas),
+  // ne l'arrête pas (jamais coincé). Lu par la 3D dans les trois rendus (vue3d.js > _juger), en plus de la règle du
+  // rendu.
+  function zonesBloquent(segs, niveau, depart) {
+    const Z = _indexZones(niveau), dx = depart ? depart.x : undefined, dy = depart ? depart.y : undefined;
+    return segs.map(function (s) { return Z.bloque(s[0], s[1], s[2], s[3], dx, dy); });
+  }
+
+  // Point dans une zone ZONES_BOUCHENT du niveau (vue3d.js > _coince : départ dedans = ramené au bord).
+  function dansZone(x, y, niveau) { return _indexZones(niveau).dedans(x, y); }
 
   // Distance (px) d'un point extérieur à une pièce convexe, et le point du bord atteint → { d, x, y }.
   function _bordLePlusProche(P, x, y) {
@@ -1041,6 +1091,7 @@
     SEUIL_CHAMBRE_M: SEUIL_CHAMBRE_M, paroisBloquent: paroisBloquent, PASSAGE: PASSAGE,
     LARGEURS: Object.assign({}, LARGEURS), LARGEUR_PERSO: LARGEUR_PERSO,
     largeur: largeur, modele: modele, dedans: dedans, segmentsBloques: segmentsBloques, invalider: invalider,
-    dansPiece: dansPiece, PROCHE_M: PROCHE_M, versGalerie: versGalerie
+    dansPiece: dansPiece, PROCHE_M: PROCHE_M, versGalerie: versGalerie, zonesBloquent: zonesBloquent,
+    dansZone: dansZone, ZONES_BOUCHENT: Object.assign({}, ZONES_BOUCHENT)
   };
 })();
