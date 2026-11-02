@@ -175,7 +175,22 @@
     const type = function (o) { return o.type; };
     const sessionRoads = _tab(window.getRoads).filter(function (r) { return r && !r._preview; });
     const embRoads = _tab(window.getAllEmbeddedRoads);
-    const roads = sessionRoads.filter(function (r) { return r.type === "itinerary"; })
+    // 🩸 L'itinéraire est UN tracé dont chaque point porte son niveau (pathfinder.js) : il est découpé en morceaux
+    // du niveau affiché, sinon un itinéraire au −1 (tracé sans `level` = 0) disparaissait tout entier.
+    const itiDuNiveau = [];
+    sessionRoads.forEach(function (r) {
+      if (r.type !== "itinerary" || !Array.isArray(r.points)) return;
+      const defaut = Number.isInteger(r.level) ? r.level : 0;
+      let cur = [];
+      r.points.forEach(function (q) {
+        const n = q && Number.isInteger(q.level) ? q.level : defaut;
+        if (niveau === null || n === niveau) { cur.push(q); return; }
+        if (cur.length > 1) itiDuNiveau.push(Object.assign({}, r, { points: cur, level: niveau }));
+        cur = [];
+      });
+      if (cur.length > 1) itiDuNiveau.push(Object.assign({}, r, { points: cur, level: niveau === null ? defaut : niveau }));
+    });
+    const roads = itiDuNiveau
       .concat(_filtrer(sessionRoads.filter(function (r) { return r.type !== "itinerary"; }), embRoads,
         "roadTypes", type));
     const toutes = _tab(window.getStructures).concat(_tab(window.getAllEmbeddedStructures));
