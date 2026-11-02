@@ -319,7 +319,11 @@
       cible.addEventListener(type, f, opt);
       p.ecouteurs.push([cible, type, f, opt]);
     };
+    // 🩸 Son relancé à chaque geste (iOS le suspend sur une interruption et ne le rend que dans un geste).
+    on(document, "pointerdown", function () { _son().reveiller(); }, true);
+    on(document, "visibilitychange", function () { if (document.visibilityState === "visible") _son().reveiller(); });
     on(document, "keydown", function (ev) {
+      _son().reveiller();
       if (ev.code !== "Space" || ev.repeat || document.getElementById("kta-confirm-oui")) return;
       ev.preventDefault();
       _tirer();
@@ -833,8 +837,10 @@
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
       traits: p.traits.length, calcul: p.calcul, canon: p.canon, reserve: p.reserve, recharge: !!p.rechargeFin,
       fin: p.fin, tues: p.tues, tirs: p.tirs, touches: p.touches,
-      reduit: !!p.hud && p.hud.panneau.classList.contains("mkmg-reduit"), scores: _lireScores(), coeur: +(p.coeur || 0).toFixed(2),
-      msMonde: +(p.msMonde || 0).toFixed(3), joueur: _joueur().etat(p), tenailleMi: p.tenailleMi,
+      reduit: !!p.hud && p.hud.panneau.classList.contains("mkmg-reduit"), scores: _lireScores(),
+      coeur: +(p.coeur || 0).toFixed(2),
+      msMonde: +(p.msMonde || 0).toFixed(3), joueur: _joueur().etat(p), son: _son().etat(),
+      tenailleMi: p.tenailleMi,
       chronoDepasse: p.chronoDepasse,
       chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
       ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),

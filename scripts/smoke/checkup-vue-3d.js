@@ -4020,6 +4020,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
         for (let k = 0; k < 60 && !(M().etat().cible); k++) await pause(50);
         r.rejoue = { enCours: M().etat().enCours, fin: M().etat().fin, vague: M().etat().vague, carte: !!q(".mkmg-fin"),
           pave: pave() };
+        // Son après « Rejouer » : l'arrêt de l'ancienne partie ne suspend pas le son de la nouvelle (veille différée).
+        const sonAvant = M().etat().son.contexte;
+        await pause(1800);
+        r.son = { avant: sonAvant, apres: M().etat().son.contexte, actif: M().etat().son.actif };
         M().essai.vider();
         // Panneau réductible (Quitter, objectif, statistiques repliés ; en-tête et guidage gardés), jauges dehors.
         const corps = function () { return q(".mkmg-corps").getBoundingClientRect().height; };
@@ -4111,6 +4115,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "jeu : santé à 0 → fin, meilleure vague retenue (1), tir coupé, commandes retirées (la carte se touche) ; " +
         "« Rejouer » relance la vague 1, commandes revenues",
         { fin: MK.fin, rejoue: MK.rejoue });
+      console.log("  ℹ️ jeu, son après « Rejouer » : " + MK.son.avant + " → " + MK.son.apres + " (navigateur de test : " +
+        "un clic simulé n'est pas un geste, le son peut y rester suspendu)");
+      verifier(MK.son.actif === true && !(MK.son.avant === "running" && MK.son.apres !== "running"),
+        "jeu : après « Rejouer », le son reste actif (la veille de l'ancienne partie ne le suspend pas)", MK.son);
       verifier(MK.stats.tirs === 2 && MK.stats.touches === 1 && MK.stats.tues === 1,
         "jeu : statistiques (2 balles tirées, 1 au but, 1 égaré tué)", MK.stats);
       verifier(MK.panneau.jaugesDehors && MK.panneau.ouvert && MK.panneau.stats && MK.panneau.cartouches &&

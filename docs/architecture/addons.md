@@ -207,6 +207,10 @@ Fichiers : `js/coeur.js` (partie, interface, chrono), `js/monde.js` (menaces, ob
   des distances** au joueur (Dijkstra sur `RoadGraph.getGraph`, refait au plus chaque seconde et s'il a bougé de
   2 m), une seule pour toutes — un `Pathfinder.computeRoute` par égaré reconstruisait tout le réseau ; règle du pas à
   moins de 25 m ; 30 images/s au plus (`ctx.sale` espacé de 33 ms) ; éclair du tir sur le calque, pas en lumière.
+- **Son** (`son.js`, WebAudio, aucun fichier) : démarré dans le geste qui lance la partie ; 🩸 iOS le suspend sur une
+  interruption (notification, appel, écran verrouillé) et ne le rend que dans un geste : `reveiller()` à chaque
+  `pointerdown` / `keydown` et au retour à l'écran. Arrêt d'une partie : suspension différée de 1,5 s, sinon
+  « Rejouer » (arrêt puis démarrage) laissait la nouvelle partie muette sur Safari.
 - **Checkup** : `checkup-vue-3d.js` § 21 (prise, code) et § 23 (jeu, avec `KtaAddons.mkmg.essai` : `vider`, `poser`,
   `sante`, `chrono`, `tenaille`).
 

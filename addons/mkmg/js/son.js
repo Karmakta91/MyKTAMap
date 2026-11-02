@@ -5,16 +5,20 @@
  */
 
 // addons/mkmg/js/son.js — sons de l'add-on « mkmg », fabriqués par WebAudio (aucun fichier, aucun réseau). Expose
-// window.KtaAddons.mkmgSon = { demarrer(), arreter(), jouer(nom, force), coeur(intensite), proximite(intensite) }.
-// Noms : tir, recharge, vide, ramasse, soin, blesse, grogne, mort, souffle, vague, fin.
+// window.KtaAddons.mkmgSon = { demarrer(), arreter(), reveiller(), jouer(nom, force), coeur(intensite),
+// proximite(intensite), etat() }. Noms : tir, recharge, vide, ramasse, soin, blesse, grogne, mort, souffle, vague, fin.
 // 🩸 Un navigateur ne joue rien avant un geste de l'utilisateur : demarrer() est appelé dans le geste qui lance la
-// partie (bouton de la confirmation), sinon le contexte reste suspendu.
+// partie. iOS suspend (« interrupted ») le son sur une notification, un appel, l'écran verrouillé : reveiller() le
+// relance à chaque geste de la partie (le jeu l'appelle sur pointerdown / keydown / retour à l'écran).
+// 🩸 arreter() ne suspend qu'après un délai : « Rejouer » enchaîne arrêt puis démarrage, et une suspension qui passait
+// après la reprise (Safari) laissait la nouvelle partie muette.
 // Doc : docs/architecture/addons.md
 
 (function () {
   "use strict";
 
-  let _ac = null, _maitre = null, _bruit = null, _coeur = null;
+  let _ac = null, _maitre = null, _bruit = null, _coeur = null, _actif = false, _veille = null;
+  const VEILLE_MS = 1500;   // délai avant de suspendre le son une fois la partie arrêtée
 
   function demarrer() {
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -29,14 +33,27 @@
       const d = _bruit.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
-    if (_ac.state === "suspended") _ac.resume();
+    _actif = true;
+    clearTimeout(_veille);
+    reveiller();
     return true;
+  }
+
+  function reveiller() {
+    if (!_ac || !_actif || _ac.state === "running" || _ac.state === "closed") return;
+    try { _ac.resume().catch(function () { /* pas de geste : réessayé au suivant */ }); } catch (e) { /* idem */ }
   }
 
   function arreter() {
     coeur(0);
-    if (_ac && _ac.state === "running") _ac.suspend();
+    _actif = false;
+    clearTimeout(_veille);
+    _veille = setTimeout(function () {
+      if (!_actif && _ac && _ac.state === "running") _ac.suspend();
+    }, VEILLE_MS);
   }
+
+  function etat() { return { contexte: _ac ? _ac.state : null, actif: _actif }; }
 
   // Enveloppe : montée en `a` s, tenue jusqu'à `d` s, extinction exponentielle.
   function _env(g, t, v, a, d) {
@@ -129,5 +146,6 @@
   }
 
   window.KtaAddons = window.KtaAddons || {};
-  window.KtaAddons.mkmgSon = { demarrer: demarrer, arreter: arreter, jouer: jouer, coeur: coeur, proximite: proximite };
+  window.KtaAddons.mkmgSon = { demarrer: demarrer, arreter: arreter, reveiller: reveiller, jouer: jouer, coeur: coeur,
+    proximite: proximite, etat: etat };
 })();
