@@ -3416,7 +3416,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
             if (!v) return;
             const z = v.z;
             o.marche[t[0]] = marcher(t[1] - 4, z, 80);
-            if (t[0] === "pe") o.marche.peCote = marcher(t[1] - 4, -0.8, 80);   // centre hors du bassin (bord à −0,75)
+            if (t[0] === "pe") o.marche.peCote = marcher(t[1] - 4, -0.85, 80);   // le long du passage laissé (0,8 m)
             if (t[0] === "caf") {
               o.marche.cafBord1 = marcher(t[1] - 4, z + 0.8, 80);
               o.marche.cafBord2 = marcher(t[1] - 4, z - 0.8, 80);
@@ -3469,6 +3469,19 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(-25, zc + 0.6)), tuiles: false });
         await pause(300);
         r.iti = (K.etat({ profilIti: true }).itineraire.profil || []).map(function (q) {
+          return [+(q[0] - a.ox).toFixed(2), q[1], q[2], q[3]];
+        });
+        await K.fermer();
+        // Itinéraire sur l'axe le long du bassin (galerie principale) : le passage de 0,8 m est contre l'autre paroi,
+        // le bassin couvre l'axe ; le ruban monte sur la margelle (0,4 m + 5 cm), jamais dans l'eau.
+        const ipe = [Pl(4, 0), Pl(16, 0)];
+        window.setRoads([{ uid: "rd_ac", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] },
+          { uid: "rd_ac_ipe", type: "itinerary", level: 0, points: ipe,
+            raccords: [{ role: "depart", vers: { x: ipe[0].x, y: ipe[0].y } },
+              { role: "arrivee", label: "Arrivée fictive", vers: { x: ipe[1].x, y: ipe[1].y } }] }]);
+        await K.ouvrir({ depart: Object.assign({ cap: 90 }, P(5, 0)), tuiles: false });
+        await pause(300);
+        r.itiPe = (K.etat({ profilIti: true }).itineraire.profil || []).map(function (q) {
           return [+(q[0] - a.ox).toFixed(2), q[1], q[2], q[3]];
         });
         await K.fermer();
@@ -3563,7 +3576,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
         const demi = { esf: 0.75, pef: 0.6, pb: 0.6, pc: 0.9, psf: 1.25, ps: 1.25, pe: 1, cao: Infinity, caf: Infinity };
         verifier(AC.T.every(function (t) {
           const v = V[t[0]];
-          return prAc(v.x, t[1]) && (tube ? prAc(v.z, Math.max(0, 1.25 - demi[t[0]])) : prAc(v.z, 2));
+          // Bassin : 0,8 m libre jusqu'à la paroi d'en face (−1,25) → centre à 0,55 dans un tube de 2,5 m.
+          const zt = t[0] === "pe" ? 0.55 : Math.max(0, 1.25 - demi[t[0]]);
+          return prAc(v.x, t[1]) && (tube ? prAc(v.z, zt) : prAc(v.z, 2));
         }), k + (tube ? " : volume ramené dans le tube du côté du POI (au plus w − demi-emprise de l'axe), porte sur l'axe"
           : " : volume au point du POI"), AC.T.map(function (t) { return [t[0], V[t[0]].x, V[t[0]].z]; }));
         const esf = V.esf, pef = V.pef, pb = V.pb, pc = V.pc, psf = V.psf, ps = V.ps, pe = V.pe, cao = V.cao, caf = V.caf;
@@ -3610,11 +3625,17 @@ async function mesuresGalerie(page, nom, semisDonne) {
       });
       verifier(["mixte", "galerie"].every(function (k) {
         const c = AC.contre[k];
-        return prAc(c[0], 0.25) && prAc(c[1], -0.25) && prAc(c[2], 39.85);
+        // Rayon 1 m (margelle comprise), passage libre = (z − 1) − (−w) ; centre du côté du POI.
+        return prAc(c[0], 0.55) && prAc(c[1], -0.55) && prAc(c[2], 40.95) && c[2] - 1 - (40 - 0.85) >= 0.8 - 0.005 &&
+          c[2] > 40;
       }) && prAc(AC.contre.structures[0], 0.1) && prAc(AC.contre.structures[2], 42),
-        "bassin (pe) contre la paroi du côté du POI, margelle tangente (POI près de l'axe : 0,25 m ; de l'autre côté : " +
-        "−0,25 m ; chemin de 1,7 m plus étroit que lui : passe l'axe, 0,15 m dans la roche d'en face) ; structures : " +
-        "au point", AC.contre);
+        "bassin (pe) contre la paroi du côté du POI, enfoncé dans SA paroi pour laisser 0,8 m jusqu'à la paroi d'en " +
+        "face (tube de 2,5 m : centre à 0,55 m, POI près de l'axe ou de l'autre côté ; chemin de 1,7 m : 0,95 m, " +
+        "centre jamais au-delà de l'axe) ; structures : au point", AC.contre);
+      const pePlat = AC.itiPe.filter(function (q) { return q[0] > 9.3 && q[0] < 10.7; });   // corde de ±0,83 m
+      verifier(pePlat.length >= 1 && pePlat.every(function (q) { return q[2] > 0.4; }),
+        "mixte : le ruban de l'itinéraire sur l'axe passe sur la margelle du bassin (tube de 2,5 m : le bassin couvre " +
+        "l'axe, le passage libre est contre l'autre paroi), jamais dans l'eau", pePlat.slice(0, 4));
       const horAc = AC.iti.filter(function (q) { return q[3] - q[2] < 0.01; });
       const surCone = horAc.filter(function (q) { return q[0] > -20.6 && q[0] < -19.4; });
       verifier(surCone.length >= 1 && surCone.every(function (q) { return prAc(q[2], 0.65, 0.015); }) &&

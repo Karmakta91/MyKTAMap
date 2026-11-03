@@ -1517,10 +1517,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_volumesItiAcces`, comme un remblais, à 0,6 m). `ps` : puits rond maçonné de 2,5 m (`ACCES_DIM.rond`, comme
   `psf`), sans échelons, ciel au sommet. `pe` : bassin rond de 1,6 m creusé dans le sol (bouche au sol), margelle de
   0,2 × 0,4 m, eau à −0,8 m (couleur de la zone eau, matériau de l'eau des galeries), fond à −1,2 m ; posé **contre
-  la paroi** du côté du POI (`_placeVolume`, `contre` : margelle tangente à la paroi, à w − 1 m de l'axe ; galerie
-  plus étroite que lui : il passe l'axe et s'enfonce dans la roche d'en face, sans niche) ; il **n'arrête pas** le
-  pas (hors de `BLOQUE`, décision produit : on passe à côté) ; l'itinéraire, sur l'axe, passe sur la margelle là où
-  il la croise. `cao` / `caf` : **porte à deux battants** en travers de la
+  la paroi** du côté du POI (`_placeVolume`, `contre` : margelle tangente à la paroi, à w − 1 m de l'axe) ; galerie
+  trop étroite pour laisser `ACCES_DIM.bassinLibre` (0,8 m, un corps) entre la margelle et la paroi d'en face : il
+  s'enfonce dans SA paroi d'autant (centre à 1,8 m − w de l'axe, jamais au-delà ; sans niche), soit dans toute
+  galerie de moins de 2,8 m (les trois types intégrés : 0,55 m de l'axe en principal, 0,95 m en chemin) ; il
+  **n'arrête pas** le pas (hors de `BLOQUE`, décision produit : on passe à côté, le long de la paroi d'en face).
+  🩸 Le passage laissé est contre l'autre paroi, pas sur l'axe : de 1,25 à ~4,35 m de large (les trois types
+  intégrés), le bassin couvre l'axe et le ruban de l'itinéraire, qui le suit, monte sur la margelle là où il la
+  croise (`_volumesItiAcces`), jamais dans l'eau. `cao` / `caf` : **porte à deux battants** en travers de la
   galerie, posée sur l'axe (demi-emprise infinie : elle barre toute la largeur), largeur = celle de la galerie à cet
   endroit (demi-largeur de l'axe le plus proche, 2 m sans galerie), cadre de fer, paroi au-dessus du linteau (2,1 m,
   borné par la hauteur) jusqu'au plafond ; `caf` fermé arrête le pas sur toute la largeur (obstacle de 0,2 m qui

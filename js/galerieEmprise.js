@@ -95,9 +95,10 @@
   // margelle de `margelle` d'épaisseur et `margelleH` de haut, eau à `eau` sous le sol, fond à `fond` ; cône
   // d'éboulis de `cone` de rayon et `coneH` de haut ; porte de la largeur de la galerie (demi-largeur de l'axe le
   // plus proche à DIR_PASSAGE_M), `porteDefaut` sans galerie, obstacle de `porteEp` d'épaisseur qui déborde de
-  // `porteDeborde` dans la paroi (aucune fente au bord).
+  // `porteDeborde` dans la paroi (aucune fente au bord) ; passage d'au moins `bassinLibre` (la largeur d'un corps,
+  // vue3d.js > RAYON_CORPS) entre la margelle et la paroi d'en face (_placeVolume).
   const ACCES_DIM = { rond: 2.5, bassin: 1.6, margelle: 0.2, margelleH: 0.4, eau: 0.8, fond: 1.2, cone: 0.9,
-    coneH: 0.6, porteDefaut: 2, porteEp: 0.2, porteDeborde: 0.4 };
+    coneH: 0.6, porteDefaut: 2, porteEp: 0.2, porteDeborde: 0.4, bassinLibre: 0.8 };
   const COTES_CERCLE = 16;          // côtés d'un cercle d'obstacle (cône, margelle), les mêmes que la 3D
   // ⚠️ contrat : un point est « dans la galerie » s'il a un axe à moins de PROCHE_M ; c'est le rayon unique de la vue
   // 3D (vue3d.js > POI_GALERIE : POI montré contre la paroi ; volume de passage recalé, _placeVolume) et du
@@ -696,9 +697,10 @@
   // mode galerie, ou dans un tube du mixte (hors chambre, comme son panneau), à moins de PROCHE_M d'un axe, le volume
   // est posé dans le tube du côté du POI, son emprise (`demi` m en travers) gardée entre les parois (au plus w − demi
   // de l'axe ; sur l'axe si le tube est plus étroit) ; `contre` (bassin, pe) : contre la paroi du côté du POI, à
-  // w − demi de l'axe même au-delà du POI (margelle tangente à la paroi ; galerie plus étroite que lui : il passe
-  // l'axe et s'enfonce dans la roche d'en face, sans niche). Hors de l'emprise, la galerie est d'abord gagnée par le trajet de
-  // versGalerie (jamais à travers la roche vers une autre). 🩸 Sinon un POI dans la roche dessinait son puits
+  // w − demi de l'axe même au-delà du POI (margelle tangente à la paroi) ; galerie trop étroite pour laisser
+  // ACCES_DIM.bassinLibre entre la margelle et la paroi d'en face : enfoncé dans SA paroi d'autant (centre à
+  // bassinLibre + demi − w de l'axe), centre jamais de l'autre côté de l'axe, sans niche. Hors de l'emprise, la
+  // galerie est d'abord gagnée par le trajet de versGalerie (jamais à travers la roche vers une autre). 🩸 Sinon un POI dans la roche dessinait son puits
   // derrière la paroi, bouche hors du sol dessiné : invisible. 🩸 Près d'un carrefour, la galerie retenue est celle
   // dont l'emprise est la plus près du POI, pas forcément celle voulue : seul un raccord validé du niveau tranche.
   // Rendu structures, chambre, rien à PROCHE_M : le point tel quel. L'axe (DIR_PASSAGE_M) est lu à la place finale,
@@ -726,7 +728,8 @@
       if (!best) return brut;
       axe = _axeDuBord(C, best, R);
     }
-    const dx = x - axe.x, dy = y - axe.y, d = Math.hypot(dx, dy), off = axe.w - demi * sc;
+    const dx = x - axe.x, dy = y - axe.y, d = Math.hypot(dx, dy);
+    const off = contre ? Math.max(axe.w - demi * sc, (ACCES_DIM.bassinLibre + demi) * sc - axe.w) : axe.w - demi * sc;
     const k = d <= 1e-9 ? 0 : contre ? off / d : Math.min(d, Math.max(0, off)) / d;
     const nx = axe.x + dx * k, ny = axe.y + dy * k;
     if (Math.hypot(nx - x, ny - y) < 1e-6) return brut;
