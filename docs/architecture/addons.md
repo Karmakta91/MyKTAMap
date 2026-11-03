@@ -231,6 +231,10 @@ embuscades, un monde par niveau), `js/son.js`
 - **Fusil** à deux coups (bouton en bas à droite, Espace, clic gauche de la souris capturée) : la menace la plus
   proche dans l'axe (6° ou le gabarit du corps), à 18 m au plus, ligne de vue libre ; un égaré a 2 points, un coup à
   8 m ou moins en ôte 2 ; la silhouette touchée recule. Recharge automatique de 1,5 s ; départ 2 + 6 cartouches.
+- **Rage** (décision produit) : prête après 20 égarés tués hors rage (compteur sur le petit bouton au-dessus du
+  fusil, puis « Rage » qui pulse) ; bouton ou touche R : 30 s de tir automatique tant que la détente est tenue
+  (bouton, clic gauche capturé, Espace ; un coup toutes les 110 ms), cartouches non comptées, chargeur de 25 puis
+  recharge de 1,5 s. Les égarés tués pendant la rage ne chargent pas la suivante.
 - **À ramasser** à moins d'1 m : munitions (+4 ; 4 par vague, une de moins toutes les deux vagues, 1 au moins), piles,
   champignons (+30 santé ; 3, un de moins toutes les trois vagues, au bout des culs-de-sac de préférence ; un égaré
   tué en lâche un sur quatre).
@@ -258,7 +262,7 @@ embuscades, un monde par niveau), `js/son.js`
   joueur seulement en courant sous 50 d'endurance ou à bout de souffle. 🩸 Rien ne revient à intervalle fixe : un
   son régulier se lit comme un bip ou un métronome.
 - **Checkup** : `checkup-vue-3d.js` § 21 (prise, code) et § 23 (jeu, avec `KtaAddons.mkmg.essai` : `vider`, `poser`,
-  `sante`, `chrono`, `tenaille`, `pile`, `viser` ; `poser` accepte `rampant`, `hurleur`, `gardien`, `pile`). Non joués
+  `sante`, `chrono`, `tenaille`, `pile`, `viser`, `rage`, `rageFin` ; `poser` accepte `rampant`, `hurleur`, `gardien`, `pile`). Non joués
   par le checkup : passage de niveau (monde rangé, refuge) et B à un autre niveau (le relevé fictif est sur un niveau).
 
 ## À donner à une IA (résumé à coller)

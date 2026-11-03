@@ -9,7 +9,8 @@
 // monde.js et joueur.js (bras et fusil en vue à hauteur d'yeux, silhouette verte en vue plongeante). Expose
 // window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
 // rejoindre un point B (POI de plus en plus loin, sinon un point des tracés) avec des égarés et, dès la vague 2, la
-// silhouette (monde.js) ; fusil à deux coups, munitions, piles et champignons ramassés en passant ; santé à 0 = fin,
+// silhouette (monde.js) ; fusil à deux coups (rage après 20 égarés : 30 s de tir automatique), munitions, piles et
+// champignons ramassés en passant ; viseur à la souris capturée (PC) ; santé à 0 = fin,
 // meilleure vague retenue par difficulté. La pile de la lampe s'use (lampe qui baisse et vacille, à plat = lueur de
 // quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
 // éboulis couvrent les grognements. Dès la vague 4, sur un plan multi-niveau, B est parfois à un autre niveau ; toutes
@@ -44,6 +45,9 @@
       "hud.touches": "Balles au but",
       "hud.sansNom": "un point du réseau", "hud.tirer": "Tirer", "hud.cartouches": "Cartouches",
       "hud.viser": "Clic sur la scène : viser à la souris · Échap pour la libérer",
+      "hud.rage": "Rage", "hud.ragePrete": "Rage prête ! (bouton au-dessus du fusil, ou R)",
+      "hud.rageCharge": "Rage : {n} / {m} égarés", "hud.rageActive": "RAGE ! Garde le doigt sur la détente",
+      "hud.rageFin": "La rage retombe",
       "hud.recharge": "Recharge…", "hud.vide": "Plus de cartouches", "hud.plusCartouches": "+{n} cartouches",
       "hud.plusSante": "+{n} santé", "hud.recule": "Elle recule…",
       "fin.titre": "Tu es resté sous terre", "fin.texte": "Vague {n} · {r} réussie(s)",
@@ -73,6 +77,9 @@
       "hud.touches": "Hits",
       "hud.sansNom": "a point of the network", "hud.tirer": "Shoot", "hud.cartouches": "Shells",
       "hud.viser": "Click the scene to aim with the mouse · Esc to release it",
+      "hud.rage": "Rage", "hud.ragePrete": "Rage ready! (button above the shotgun, or R)",
+      "hud.rageCharge": "Rage: {n} / {m} lost ones", "hud.rageActive": "RAGE! Hold the trigger",
+      "hud.rageFin": "The rage fades",
       "hud.recharge": "Reloading…", "hud.vide": "Out of shells", "hud.plusCartouches": "+{n} shells",
       "hud.plusSante": "+{n} health", "hud.recule": "It backs away…",
       "fin.titre": "You stayed underground", "fin.texte": "Wave {n} · {r} cleared",
@@ -102,6 +109,9 @@
       "hud.touches": "Aciertos",
       "hud.sansNom": "un punto de la red", "hud.tirer": "Disparar", "hud.cartouches": "Cartuchos",
       "hud.viser": "Clic en la escena: apuntar con el ratón · Esc para soltarlo",
+      "hud.rage": "Furia", "hud.ragePrete": "¡Furia lista! (botón sobre la escopeta, o R)",
+      "hud.rageCharge": "Furia: {n} / {m} perdidos", "hud.rageActive": "¡FURIA! Mantén el gatillo",
+      "hud.rageFin": "La furia se apaga",
       "hud.recharge": "Recargando…", "hud.vide": "Sin cartuchos", "hud.plusCartouches": "+{n} cartuchos",
       "hud.plusSante": "+{n} salud", "hud.recule": "Retrocede…",
       "fin.titre": "Te quedaste bajo tierra", "fin.texte": "Oleada {n} · {r} superada(s)",
@@ -122,6 +132,9 @@
     tapePx: 6,
     // Viseur (souris capturée) : px rejoués par px de souris, refus avant de rendre le glisser, Échap ignoré après.
     viseur: { id: 7331, k: 1, refus: 3, echapMs: 300 },
+    // Rage (décision produit) : prête après `tues` égarés tués hors rage ; `dureeS` s de tir automatique (un coup
+    // toutes les `cadenceMs` tant que la détente est tenue), munitions illimitées, `chargeur` coups avant recharge.
+    rage: { tues: 20, dureeS: 30, chargeur: 25, cadenceMs: 110 },
     // Chrono d'une vague (décision produit) : longueur du trajet vers B à `vitesse` m/s (+ `parVague`, `max` au plus)
     // plus une marge qui fond ; sans trajet, la distance à vol d'oiseau × `sansTrajet`. À 0 : horde et santé.
     chrono: { vitesse: 1.4, parVague: 0.08, max: 2.4, marge: 30, margeParVague: 2, margeMin: 10, sansTrajet: 1.4,
@@ -246,7 +259,8 @@
       tirs: 0, touches: 0,
       blesseT: 0, ecouteurs: [], saleT: 0, carte: null, mondes: {}, pile: REGLES.pile.max, lampeK: 1, eau: false,
       eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0,
-      ecartT: 0, recaleT: 0, recale: false, recalages: 0 };
+      ecartT: 0, recaleT: 0, recale: false, recalages: 0,
+      rageTues: 0, rageFin: 0, rageCanon: 0, rechargeRage: false, gachette: false, prochainTir: 0 };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
     if (!retirer) { _p = null; return; }
     if (_p) _p.retirer = retirer;
@@ -292,9 +306,14 @@
       if (p.souffle && p.endurance >= REGLES.souffleReprise) { p.souffle = false; ctx.regler({ course: true }); }
     }
     if (p.rechargeFin && t >= p.rechargeFin) {
-      const n = Math.min(REGLES.cartouches.canon - p.canon, p.reserve);
-      p.canon += n; p.reserve -= n; p.rechargeFin = 0;
+      if (p.rechargeRage) { p.rageCanon = REGLES.rage.chargeur; p.rechargeRage = false; } else {
+        const n = Math.min(REGLES.cartouches.canon - p.canon, p.reserve);
+        p.canon += n; p.reserve -= n;
+      }
+      p.rechargeFin = 0;
     }
+    if (p.rageFin && t >= p.rageFin) _finRage(p);
+    if (p.gachette && p.rageFin && t >= p.prochainTir) _tirer();
     _pile(p, ctx, t, dt);
     _eau(p, ctx, t);
     _eboulis(p, ctx, t);
@@ -434,10 +453,19 @@
     on(document, "visibilitychange", function () { if (document.visibilityState === "visible") _son().reveiller(); });
     on(document, "keydown", function (ev) {
       _son().reveiller();
-      if (ev.code !== "Space" || ev.repeat || document.getElementById("kta-confirm-oui")) return;
+      if (ev.repeat || document.getElementById("kta-confirm-oui")) return;
+      if (ev.code === "KeyR") { _rage(); return; }
+      if (ev.code !== "Space") return;
       ev.preventDefault();
-      _tirer();
+      _gachette(true);
     });
+    on(document, "keyup", function (ev) { if (ev.code === "Space") p.gachette = false; });
+    // Détente relâchée où que ce soit (window en capture : le viseur arrête le pointerup de la souris capturée sur
+    // window, mais pas les autres écouteurs du même nœud).
+    const lacher = function () { p.gachette = false; };
+    on(window, "pointerup", lacher, true);
+    on(window, "pointercancel", lacher, true);
+    on(window, "blur", lacher);
     const cv = document.querySelector("#kta-vue3d .kta-v3d-canvas");
     if (cv) {
       _brancherViseur(p, cv, on);
@@ -482,7 +510,7 @@
       ev.stopPropagation();
       ev.preventDefault();
       _son().reveiller();
-      if (capte()) { if (ev.button === 0) _tirer(); return; }
+      if (capte()) { if (ev.button === 0) _gachette(true); return; }
       if (p.fin) return;
       try {
         const r = cv.requestPointerLock();
@@ -517,12 +545,13 @@
   function _tirer() {
     const p = _p;
     if (!p || p.fin || !p.ctx || p.rechargeFin) return;
-    const ctx = p.ctx;
-    if (p.canon === 0) {
+    const ctx = p.ctx, rage = !!p.rageFin;
+    if (!rage && p.canon === 0) {
       if (p.reserve > 0) _recharger(); else { _jouer("vide"); _message(_t("hud.vide")); }
       return;
     }
-    p.canon--;
+    // En rage, les cartouches ne sont pas comptées : seul le chargeur de la rage descend.
+    if (rage) { p.rageCanon--; p.prochainTir = performance.now() + REGLES.rage.cadenceMs; } else p.canon--;
     _jouer("tir");
     _eclair();
     _joueur().tir(p);
@@ -536,9 +565,11 @@
     const r = _monde().tirer(p, ctx);
     if (r.touche) p.touches++;
     if (r.tue) { p.tues++; _jouer("mort"); }
-    if (r.tue && r.touche === "gardien") _message(_t("hud.gardienAbattu"));
+    // Les égarés tués pendant la rage ne rechargent pas la suivante (pas de rage sans fin).
+    if (r.tue && !rage && ++p.rageTues === REGLES.rage.tues) { _jouer("vague"); _message(_t("hud.ragePrete")); }
+    else if (r.tue && r.touche === "gardien") _message(_t("hud.gardienAbattu"));
     if (r.touche === "silhouette") _message(_t("hud.recule"));
-    if (p.canon === 0 && p.reserve > 0) _recharger();
+    if (rage ? p.rageCanon === 0 : p.canon === 0 && p.reserve > 0) _recharger();
     _majHud();
     ctx.sale();
   }
@@ -546,7 +577,41 @@
   function _recharger() {
     const p = _p;
     p.rechargeFin = performance.now() + _monde().REGLES.tir.recharge * 1000;
+    p.rechargeRage = !!p.rageFin;
     _jouer("recharge");
+  }
+
+  // Rage : prête après REGLES.rage.tues égarés tués ; bouton au-dessus du fusil ou touche R.
+  function _rage() {
+    const p = _p;
+    if (!p || p.fin || p.rageFin || p.rageTues < REGLES.rage.tues) return;
+    const R = REGLES.rage;
+    p.rageTues = 0;
+    p.rageFin = performance.now() + R.dureeS * 1000;
+    p.rageCanon = R.chargeur;
+    // Une recharge du fusil en cours est abandonnée : la rage tire tout de suite (les cartouches restent comptées).
+    p.rechargeFin = 0;
+    p.rechargeRage = false;
+    p.prochainTir = 0;
+    _jouer("vague");
+    _message(_t("hud.rageActive"));
+    _majHud();
+  }
+
+  function _finRage(p) {
+    p.rageFin = 0;
+    if (p.rechargeRage) { p.rechargeFin = 0; p.rechargeRage = false; }
+    if (p.canon === 0 && p.reserve > 0) _recharger();
+    _message(_t("hud.rageFin"));
+    _majHud();
+  }
+
+  // Détente tenue (bouton, clic gauche de la souris capturée, Espace) : tir automatique pendant la rage.
+  function _gachette(oui) {
+    const p = _p;
+    if (!p) return;
+    p.gachette = oui;
+    if (oui) _tirer();
   }
 
   // ── Vagues ────────────────────────────────────────────────────────────────────────────────────────────
@@ -1002,8 +1067,11 @@
     const img = _el(h.tirer, "img", "mkmg-tirer-image");
     img.src = "addons/mkmg/img/fusil.svg";
     img.alt = "";
-    h.tirer.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _tirer(); });
+    h.tirer.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _gachette(true); });
     h.cartouches = _el(h.tirer, "span", "mkmg-cartouches");
+    h.rage = _el(ctx.hud, "button", "mkmg-rage");
+    h.rage.type = "button";
+    h.rage.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _rage(); });
     h.message = _el(ctx.hud, "div", "mkmg-message");
     h.message.hidden = true;
     h.message.setAttribute("aria-live", "polite");
@@ -1073,7 +1141,17 @@
     const g = p.ennemis.find(function (o) { return o.type === "gardien"; });
     h.gardien.parentNode.parentNode.hidden = !g;
     if (g) h.gardien.style.width = Math.round(Math.max(0, g.pv) / g.pvMax * 100) + "%";
-    h.cartouches.textContent = p.rechargeFin ? "…" : p.canon + " · " + p.reserve;
+    const R = REGLES.rage, rage = !!p.rageFin, prete = !rage && p.rageTues >= R.tues;
+    h.cartouches.textContent = p.rechargeFin ? "…" : rage ? "∞ · " + p.rageCanon : p.canon + " · " + p.reserve;
+    h.rage.textContent = rage ? String(Math.max(0, Math.ceil((p.rageFin - performance.now()) / 1000))) :
+      prete ? _t("hud.rage") : Math.min(p.rageTues, R.tues) + "/" + R.tues;
+    h.rage.disabled = p.fin || !(prete || rage);
+    h.rage.classList.toggle("mkmg-rage-prete", prete);
+    h.rage.classList.toggle("mkmg-rage-active", rage);
+    h.rage.title = rage ? _t("hud.rageActive") : prete ? _t("hud.ragePrete") :
+      _t("hud.rageCharge", { n: Math.min(p.rageTues, R.tues), m: R.tues });
+    h.rage.setAttribute("aria-label", h.rage.title);
+    h.tirer.classList.toggle("mkmg-tirer-rage", rage);
     h.tirer.title = _t("hud.tirer") + " — " + _t("hud.cartouches") + " : " + p.canon + " + " + p.reserve +
       (p.rechargeFin ? " (" + _t("hud.recharge") + ")" : "");
     h.stats.textContent = _t("hud.tues") + " : " + p.tues + " · " + _t("hud.tirs") + " : " + p.tirs + " · " +
@@ -1110,7 +1188,8 @@
     return { enCours: true, diff: p.diff, vague: p.vague, reussies: p.reussies, sante: Math.round(p.sante),
       endurance: Math.round(p.endurance), souffle: p.souffle, cible: p.cible ? { x: p.cible.x, y: p.cible.y,
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
-      recalages: p.recalages, ecartM: p.route && p.ctx ?
+      rage: { tues: p.rageTues, active: !!p.rageFin, canon: p.rageCanon,
+        bouton: !!p.hud && !p.hud.rage.disabled }, recalages: p.recalages, ecartM: p.route && p.ctx ?
         +(_proche(p.route, p.longueurs, p.ctx.pos, p.ctx.niveau).d / p.ctx.sc).toFixed(1) : null, viseur: !!(p.viseur && p.viseur.capte()),
       traits: p.traits.length, chevrons: p.nChevrons || 0, calcul: p.calcul, canon: p.canon, reserve: p.reserve,
       recharge: !!p.rechargeFin,
@@ -1140,6 +1219,8 @@
       _monde().dessiner(_p, _p.ctx, false);
     },
     pile: function (v) { if (_p) _p.pile = v; },
+    rage: function (n) { if (_p) { _p.rageTues = n; _majHud(); } },
+    rageFin: function () { if (_p && _p.rageFin) _p.rageFin = performance.now(); },
     sante: function (v) { if (_p) _p.sante = v; },
     chrono: function (ms) { if (_p) { _p.chronoFin = performance.now() + ms; _p.chronoDepasse = false; } },
     tenaille: function () { if (_p && _p.ctx) _tenaille(_p, _p.ctx); },

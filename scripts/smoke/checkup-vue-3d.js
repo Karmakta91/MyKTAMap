@@ -4763,6 +4763,33 @@ async function mesuresGalerie(page, nom, semisDonne) {
         r.recalage.ecart = M().etat().ecartM;
         X.vider();
         K.placer(d.x, d.y, 90);
+        // (Les Espace des tirs plus haut n'ont pas de keyup : détente relâchée d'abord.)
+        document.dispatchEvent(new KeyboardEvent("keyup", { key: " ", code: "Space", bubbles: true }));
+        // Rage : prête à 20 égarés ; bouton au-dessus du fusil ; Espace tenu = tir automatique, cartouches non comptées.
+        X.rage(19);
+        await pause(50);
+        r.rage = { a19: M().etat().rage.bouton };
+        X.rage(20);
+        await pause(50);
+        r.rage.a20 = M().etat().rage.bouton;
+        q(".mkmg-rage").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+        await pause(50);
+        const avR = M().etat();
+        r.rage.active = avR.rage.active;
+        r.rage.tues = avR.rage.tues;
+        r.rage.chargeurAvant = avR.rage.canon;
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
+        await pause(650);
+        document.dispatchEvent(new KeyboardEvent("keyup", { key: " ", code: "Space", bubbles: true }));
+        const apR = M().etat();
+        r.rage.tirs = apR.tirs - avR.tirs;
+        r.rage.chargeur = apR.rage.canon;
+        r.rage.munitions = apR.canon + "/" + apR.reserve === avR.canon + "/" + avR.reserve;
+        await pause(300);
+        r.rage.lache = M().etat().tirs - apR.tirs;
+        X.rageFin();
+        await pause(100);
+        r.rage.fin = M().etat().rage.active;
         // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
         K.placer(d.x, d.y, 270);
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft", bubbles: true }));
@@ -4860,6 +4887,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
         MK.viseur);
       verifier(MK.recalage.apres > MK.recalage.avant && MK.recalage.resteApres > MK.recalage.resteAvant + 25 &&
         MK.recalage.ecart < 2, "jeu : enfui à 30 m derrière le départ, le trajet se recale d'ici à B", MK.recalage);
+      verifier(MK.rage.a19 === false && MK.rage.a20 === true && MK.rage.active && MK.rage.tues === 0 &&
+        MK.rage.tirs >= 4 && MK.rage.chargeurAvant === 25 &&
+        MK.rage.chargeur === 25 - MK.rage.tirs && MK.rage.munitions && MK.rage.lache === 0 &&
+        MK.rage.fin === false, "jeu : rage prête à 20 égarés, détente tenue = tir automatique (chargeur de 25), " +
+        "cartouches non comptées, s'arrête au relâché, retombe à la fin", MK.rage);
       verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",
         "jeu : canon vide → recharge automatique de 1,5 s (2 cartouches prises dans la réserve)", MK.recharge);
       verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,

@@ -100,3 +100,20 @@
   background: var(--kta-surface); color: var(--kta-texte); font-size: 18px; font-weight: 700; text-align: center;
 }
 .mkmg-message[hidden] { display: none; }
+/* Rage : petit bouton au-dessus du fusil ; compteur d'égarés tant qu'elle charge, « Rage » prête, secondes restantes
+   pendant. Fusil cerclé de rouge pendant la rage. */
+.mkmg-rage {
+  position: absolute; right: 26px; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 100px);
+  min-width: 52px; height: 32px; padding: 0 8px; border-radius: 999px; box-sizing: border-box; cursor: pointer;
+  border: 1px solid var(--kta-texte-3); background: var(--kta-surface); color: var(--kta-texte-2);
+  font-size: 12px; font-weight: 700; pointer-events: auto; touch-action: none;
+}
+.mkmg-rage:disabled { cursor: default; }
+.mkmg-rage-prete {
+  border: 2px solid var(--kta-accent); background: var(--kta-accent); color: var(--kta-sur-accent);
+  animation: mkmg-rage-pouls 900ms ease-in-out infinite;
+}
+.mkmg-rage-active { border: 2px solid var(--kta-erreur); color: var(--kta-texte); font-size: 15px; }
+.mkmg-tirer.mkmg-tirer-rage { border-color: var(--kta-erreur); box-shadow: 0 0 14px var(--kta-erreur); }
+@keyframes mkmg-rage-pouls { 50% { transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .mkmg-rage-prete { animation: none; } }
