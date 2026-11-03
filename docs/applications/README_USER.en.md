@@ -554,9 +554,11 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **Compass**: the tile shows or hides it, for this device. At the bottom left, its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
 - **🪧 Guidance**: when off, the 3D view hides the instruction banner and the chevrons on the ground. The route, its stops and 🏁 stay drawn; an emergency exit is always shown; the map's guidance is not affected. Kept on this device.
 - **🔭 Range**: a slider from 15 to 100 m (30 m by default) sets how far you see. The black fog, the lamp and the scenery follow. Further is heavier for the phone. Kept on this device.
-- **💡 Lamp**: **Normal**, **Strong** (brighter and further, up to the end of the range) or **Daylight** (everything is lit, like a scale model; the fog stays at the range). Kept on this device.
-- During a game, the range goes back to 30 m and the lamp to Normal (both settings greyed out), then your settings come back.
-- A **golden dot** on ⚙️ means a setting is not the default one: free mode, bird's-eye view, rendering other than Mixed, textures off, compass hidden, guidance off, range other than 30 m, lamp other than Normal.
+- **💡 Lamp**: a slider from 25 to 300% (100% by default) sets the headlamp's strength; the stronger, the farther it reaches. Kept on this device.
+- **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
+- **☀️ Daylight**: everything is lit, like a scale model; the fog stays at the range. Kept on this device.
+- During a game, the range goes back to 30 m, the lamp to 100%, the beam to 71° and Daylight is off (settings greyed out), then your settings come back.
+- A **golden dot** on ⚙️ means a setting is not the default one: free mode, bird's-eye view, rendering other than Mixed, textures off, compass hidden, guidance off, range other than 30 m, lamp other than 100%, beam other than 71°, Daylight.
 
 #### 🏛️ The three renderings
 
@@ -632,8 +634,8 @@ Where and how a way through is drawn:
 - ![](../../icon/psf.png) **Filled extraction shaft**: the same mouth full of backfill and the same cone, which stops you.
 - ![](../../icon/ps.png) **Extraction shaft**: a round masonry shaft, daylight at the top.
 - ![](../../icon/pe.png) **Ground shaft / Basin**: a kerb and water, against the wall. You walk past it.
-- ![](../../icon/cao.png) **Open quarry access**: a double door across the tunnel, leaves folded against the walls.
-- ![](../../icon/caf.png) **Closed quarry access**: the same door, leaves closed. **You bump into it.**
+- ![](../../icon/cao.png) **Open quarry access**: a double door across the tunnel, leaves folded against the walls. In a tunnel wider than the door, dressed stone fills the sides up to the walls and pillars: you only get through the door.
+- ![](../../icon/caf.png) **Closed quarry access**: the same door, leaves closed. **You bump into it**, and into the stone around it.
 - Wood, stone and backfill follow **🧱 Textures**.
 
 #### 🪜 Changing level

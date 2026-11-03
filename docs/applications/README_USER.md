@@ -554,9 +554,11 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **Boussole** : la tuile la montre ou la masque, pour cet appareil. En bas à gauche, son **N** montre le nord réel, d'après la calibration du Nord du plan, et tourne avec ta vue. Plan sans Nord calibré : elle montre le haut du plan et l'écrit.
 - **🪧 Guidage** : coupé, il masque en 3D le bandeau de consigne et les chevrons au sol. L'itinéraire, ses étapes et 🏁 restent dessinés ; une sortie d'urgence s'affiche toujours ; le guidage de la carte n'est pas touché. Retenu sur cet appareil.
 - **🔭 Portée** : un curseur de 15 à 100 m (30 m par défaut) règle jusqu'où tu vois. Le brouillard noir, la lampe et le décor suivent. Plus loin, c'est plus lourd pour le téléphone. Retenu sur cet appareil.
-- **💡 Lampe** : **Normale**, **Forte** (éclaire plus fort et plus loin, jusqu'au bout de la portée) ou **Plein jour** (tout est éclairé, comme une maquette ; le brouillard reste à la portée). Retenu sur cet appareil.
-- Pendant une partie de jeu, la portée repasse à 30 m et la lampe en Normale (les deux réglages grisés), puis tes réglages reviennent.
-- Un **point doré** sur ⚙️ signale qu'un réglage n'est pas celui par défaut : mode libre, vue plongeante, autre rendu que Mixte, textures coupées, boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que Normale.
+- **💡 Lampe** : un curseur de 25 à 300 % (100 % par défaut) règle la force de la lampe frontale ; plus elle est forte, plus elle porte loin. Retenu sur cet appareil.
+- **🔦 Faisceau** : un curseur de 40 à 160° (71° par défaut) règle la largeur du faisceau ; plus il est large, plus son bord se fond dans le noir. Retenu sur cet appareil.
+- **☀️ Plein jour** : tout est éclairé, comme une maquette ; le brouillard reste à la portée. Retenu sur cet appareil.
+- Pendant une partie de jeu, la portée repasse à 30 m, la lampe à 100 %, le faisceau à 71° et Plein jour est coupé (réglages grisés), puis tes réglages reviennent.
+- Un **point doré** sur ⚙️ signale qu'un réglage n'est pas celui par défaut : mode libre, vue plongeante, autre rendu que Mixte, textures coupées, boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71°, Plein jour.
 
 #### 🏛️ Les trois rendus
 
@@ -632,8 +634,8 @@ Où et comment un passage se dessine :
 - ![](../../icon/psf.png) **Puits d'extraction comblé** : la même bouche pleine de remblais et le même cône, qui t'arrête.
 - ![](../../icon/ps.png) **Puits extraction** : un puits rond maçonné, le jour en haut.
 - ![](../../icon/pe.png) **Puits au sol / Bassin** : une margelle et de l'eau, contre la paroi. On passe à côté.
-- ![](../../icon/cao.png) **Cavage ouvert** : une porte à deux battants en travers de la galerie, rabattus contre les parois.
-- ![](../../icon/caf.png) **Cavage fermé** : la même porte, battants fermés. **On bute dessus.**
+- ![](../../icon/cao.png) **Cavage ouvert** : une porte à deux battants en travers de la galerie, rabattus contre les parois. Dans une galerie plus large que la porte, de la pierre de taille comble les côtés jusqu'aux murs et piliers : on ne passe que par la porte.
+- ![](../../icon/caf.png) **Cavage fermé** : la même porte, battants fermés. **On bute dessus**, et sur la pierre qui la borde.
 - Bois, pierre et remblais suivent **🧱 Textures**.
 
 #### 🪜 Changer de niveau

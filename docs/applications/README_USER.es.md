@@ -554,9 +554,11 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **Brújula**: la ficha la muestra o la oculta, para este dispositivo. Abajo a la izquierda, su **N** indica el norte real, según la calibración del norte del plano, y gira con tu vista. Plano sin norte calibrado: muestra la parte superior del plano y lo indica.
 - **🪧 Guiado**: desactivado, la vista 3D oculta la banda de indicaciones y los chevrones del suelo. La ruta, sus etapas y 🏁 siguen dibujadas; una salida de emergencia se muestra siempre; el guiado del mapa no cambia. Se guarda en este dispositivo.
 - **🔭 Alcance**: un cursor de 15 a 100 m (30 m por defecto) ajusta hasta dónde ves. La niebla negra, la lámpara y el decorado siguen. Más lejos es más pesado para el teléfono. Se guarda en este dispositivo.
-- **💡 Lámpara**: **Normal**, **Fuerte** (ilumina más y más lejos, hasta el final del alcance) o **Pleno día** (todo iluminado, como una maqueta; la niebla se queda en el alcance). Se guarda en este dispositivo.
-- Durante una partida, el alcance vuelve a 30 m y la lámpara a Normal (ambos ajustes en gris), y luego vuelven tus ajustes.
-- Un **punto dorado** en ⚙️ indica que un ajuste no es el predeterminado: modo libre, vista aérea, representación distinta de Mixto, texturas desactivadas, brújula oculta, guiado desactivado, alcance distinto de 30 m, lámpara distinta de Normal.
+- **💡 Lámpara**: un cursor de 25 a 300 % (100 % por defecto) ajusta la fuerza de la linterna frontal; cuanto más fuerte, más lejos alumbra. Se guarda en este dispositivo.
+- **🔦 Haz**: un cursor de 40 a 160° (71° por defecto) ajusta la anchura del haz; cuanto más ancho, más se funde su borde en la oscuridad. Se guarda en este dispositivo.
+- **☀️ Pleno día**: todo iluminado, como una maqueta; la niebla se queda en el alcance. Se guarda en este dispositivo.
+- Durante una partida, el alcance vuelve a 30 m, la lámpara a 100 %, el haz a 71° y Pleno día se apaga (ajustes en gris), y luego vuelven tus ajustes.
+- Un **punto dorado** en ⚙️ indica que un ajuste no es el predeterminado: modo libre, vista aérea, representación distinta de Mixto, texturas desactivadas, brújula oculta, guiado desactivado, alcance distinto de 30 m, lámpara distinta de 100 %, haz distinto de 71°, Pleno día.
 
 #### 🏛️ Las tres representaciones
 
@@ -632,8 +634,8 @@ Dónde y cómo se dibuja un paso:
 - ![](../../icon/psf.png) **Pozo de extracción inyectado**: la misma boca llena de relleno y el mismo cono, que te para.
 - ![](../../icon/ps.png) **Pozo de extracción**: un pozo redondo de mampostería, con la luz del día arriba.
 - ![](../../icon/pe.png) **Pozo en el suelo / Estanque**: un brocal y agua, contra la pared. Se pasa al lado.
-- ![](../../icon/cao.png) **Acceso a cantera abierto**: una puerta de dos hojas atravesada en la galería, hojas abatidas contra las paredes.
-- ![](../../icon/caf.png) **Acceso a cantera cerrado**: la misma puerta, hojas cerradas. **Chocas con ella.**
+- ![](../../icon/cao.png) **Acceso a cantera abierto**: una puerta de dos hojas atravesada en la galería, hojas abatidas contra las paredes. En una galería más ancha que la puerta, la sillería rellena los lados hasta los muros y pilares: solo se pasa por la puerta.
+- ![](../../icon/caf.png) **Acceso a cantera cerrado**: la misma puerta, hojas cerradas. **Chocas con ella**, y con la piedra que la rodea.
 - Madera, piedra y relleno siguen **🧱 Texturas**.
 
 #### 🪜 Cambiar de nivel
