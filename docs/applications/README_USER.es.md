@@ -653,6 +653,10 @@ Dónde y cómo se dibuja un paso:
 
 - **Tocar el cartel de un punto** abre **su ficha**, la misma que en el mapa (📍 Estoy aquí, 🧭 Ir allí, ➕ Ruta, favorito, fotos), sobre la vista. ✕ o Esc la cierra.
 - Modificar, mover o borrar el punto se hace en el mapa.
+- **Tocar una estructura, una zona o un trazado** (pilar, muro, frente, zona, galería) abre **su ficha**, la misma que en el mapa: nota, 🔄 Convertir, nivel, 🗑️ Eliminar. En una capa de datos es de solo lectura.
+- El cartel de un punto va primero. Tocar en el vacío no hace nada.
+- **🗺️ Ver en el mapa**, al pie de la ficha: la vista 3D se cierra, el mapa se centra en el objeto, abre su ficha y lo resalta unos segundos.
+- En la representación 🛣️ Galería, los pilares y muros no se dibujan: tocar una pared abre la ficha del trazado.
 - **🧭 Ir allí**: en seguimiento, la ruta sale del tracker. En libre, sale de **donde estás en 3D**, nivel incluido, sin mover el tracker.
 - Tracker detenido: **¿Desde dónde sales?** propone primero **Aquí** (el tracker se recoloca donde estás en 3D y la ruta sale de ahí).
 - **Mi última posición** o **Recolocarme**: la 3D te lleva donde queda el tracker (posición y nivel).

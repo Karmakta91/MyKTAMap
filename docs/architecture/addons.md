@@ -106,6 +106,7 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `avatar` | silhouette dorée de la vue plongeante masquée (l'add-on dessine la sienne) |
 | `commandes` | joystick et pavé retirés (une carte à toucher là où est le pouce) ; 🩸 `display` en style, le pavé étant en grille |
 | `plongee` | vue plongeante interdite : bouton 🦅 grisé, `basculerVue` et `zoomer` refusés, retour à hauteur d'yeux si l'on y était |
+| `fiches` | un toucher bref sur la scène n'ouvre plus rien (ni fiche de POI, de structure, de zone ou de tracé, ni nom d'un membre) : il est au greffon (un jeu qui tire au doigt) ; une fiche ouverte se ferme |
 | `reglagesFiges` (`true` pour l'activer, absent = `false`) | réglages ⚙️ Portée et Lampe de l'utilisateur figés : portée par défaut (30 m), intensité 100 %, faisceau de 71° et Plein jour coupé, trois curseurs et ☀️ grisés ; ce qui est retenu (vue et appareil) n'est jamais réécrit et revient au retrait ou avec la clé à `false`. Sans la clé, la greffe garde la portée et la lampe de l'utilisateur, Plein jour compris |
 
 Deux **facteurs** (nombre de 0 à 1, 1 = normal, rendus au retrait) :

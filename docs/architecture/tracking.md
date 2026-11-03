@@ -1785,6 +1785,30 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   substitution (`on`, `isPopupOpen`). Un **POI jonction** ouvre aussi sa fiche (décision produit, QCM du
   02/11/2026), avec un bouton par niveau lié (`_passagesFiche` : « ▼ Descendre au niveau -1 (échelle) », le plus haut
   d'abord), d'où que l'on soit ; ces boutons n'ont pas de `data-v3d` (l'écouteur de la fiche les joue).
+- **Toucher une structure, une zone ou un tracé** (`_toucher`, décision produit, QCM du 03/11/2026) → **sa fiche de
+  la carte** (`_ouvrirFicheObjet`). Priorité au toucher : panneau (POI, membre, repère), puis structure, zone, tracé ;
+  rien dessous = rien. ⚠️ contrat (visée, `_rayonEcran` → `_pointVise` → `_objetAuPoint`) : les tuiles fusionnent
+  la géométrie (plus d'objet par structure), la visée prend donc le **point touché** (rayon contre les maillages
+  montrés : tuiles, sol ; plafond et au-delà de la portée = rien) puis cherche l'objet dans les données dessinées
+  (`e.vus`, refait à `_reindexer`) en px plan : point dans le contour d'une structure (ou à 8 cm de sa face ; ligne :
+  demi-épaisseur), d'une zone, distance à un tracé (largeur de sa galerie en tube, 0,35 m de plus au sol, 2 cm par
+  mètre de distance pour la zone et le tracé). Indépendante de la construction des tuiles : même règle dans les trois
+  rendus et les deux vues ; en galerie, ni pilier ni mur (jamais dessinés), la paroi d'un tube donne son tracé. Sans
+  état, réutilisable par un dessin depuis la vue ; `KtaVue3D.viser(cx, cy)` rend ce qui est sous un point d'écran sans
+  rien ouvrir. La fiche est **la même que sur la carte** : `utils.js > attacherNotePopup` rejoué sur un hôte de
+  substitution (faux layer : `bindPopup`, `on`, `closePopup` ; corps en `.leaflet-popup-content`), avec les
+  arguments de la carte (`ktaFicheObjetDe(obj)`, registre clé = tableau `points`, partagé par l'objet de session,
+  celui du calque et son entrée `getAllEmbedded*`) : mêmes droits. Calque de données en lecture seule, copie de
+  session d'un calque en « Modifier » modifiable, lecture seule d'une extension (`ktaEditionRefusee`) ; un objet sans
+  fiche sur la carte (calque sans note) montre son titre en lecture seule. Note, 🔄 Convertir, Niveau et 🗑️ écrivent
+  par la carte ; la scène suit par `kta:donneesPlanChange` et `_majFicheObjet` ferme la fiche d'un objet disparu
+  (rouverte sur la copie après une annulation). Focus dans la fiche, rendu à la vue à sa fermeture (✕, Échap) ; les
+  touches d'un champ de la fiche restent les siennes (W A S D s'écrivent). « Sélection multiple » de Convertir ferme
+  la vue d'abord (elle se joue sur la carte). **« 🗺️ Voir sur la carte »** (`_voirSurCarte`) : la vue se ferme comme
+  par ✕, puis `_montrerObjetCarte` centre la carte sur l'objet (dézoome seulement s'il ne tient pas), ouvre sa fiche
+  de la carte s'il en a une et surligne son contour 5 s (`--kta-interaction`, sans clic). La 2D n'a pas de retouche
+  de forme sommet par sommet : sa fiche et l'annulation sont les gestes qu'elle offre. Une greffe coupe tous les
+  touchers de fiche (`ctx.regler({ fiches: false })`).
 - **« Y aller » depuis la 3D** (`KtaVue3D.origineItineraire()` → `{ mode, x, y, niveau, cap }`, lu par
   `itineraireYAller`) : suivi → du tracker ; libre, tracker actif → de la position 3D, niveau compris, tracker non
   recalé ; tracker arrêté → « D'où pars-tu ? » avec « Ici » en premier (§ Position confirmée). Jamais de la position
@@ -1879,6 +1903,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   relue au renommage, fermée à la suppression du POI ; pilier posé sur la place → dégagée ; greffe prévenue une fois,
   `ctx.libre` à jour ; écriture pendant un geste de passage → rien pendant, relue à sa fin ; calque rapatrié (copies,
   ni double ni trou), copie retouchée, restitué ; case du calque dans ≡ = une reconstruction par clic.
+  Toucher un objet (§ 27, formes fictives, doigt) : pilier et mur par leur face et leur dessus, zone, tracé, en mixte
+  et en structures, à hauteur d'yeux et en plongée ; galerie : zone dans le tube, tracé par son sol et sa paroi ; sol
+  vide et plafond → rien ; panneau de POI collé au pilier → la fiche du POI ; fiche du pilier = celle de la carte
+  (note, 🗑️, rang des modales, focus) ; note tapée au clavier sans déplacer la vue, sauvée ; Échap → fiche fermée,
+  focus à la vue ; greffe `fiches: false` → ni pilier ni POI au doigt, retirée → la fiche revient ; extension en
+  lecture seule → ni note ni 🗑️ ; 🗑️ → pilier retiré de la scène sans rouvrir, annulation → revenu ; calque de
+  données → lecture seule (noté : sa note ; muet : son titre) ; « Voir sur la carte » → vue fermée, carte centrée,
+  surbrillance, fiche de la carte ouverte (zone de session).
   Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.

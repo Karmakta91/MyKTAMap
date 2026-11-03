@@ -653,6 +653,10 @@ Où et comment un passage se dessine :
 
 - **Toucher le panneau d'un point** ouvre **sa fiche**, la même que sur la carte (📍 Je suis ici, 🧭 Y aller, ➕ Itinéraire, favori, photos), au-dessus de la vue. ✕ ou Échap la referme.
 - Modifier, déplacer ou supprimer le point se fait sur la carte.
+- **Toucher une structure, une zone ou un tracé** (pilier, mur, front, zone, galerie) ouvre **sa fiche**, la même que sur la carte : note, 🔄 Convertir, niveau, 🗑️ Supprimer. Sur un calque de données, elle est en lecture seule.
+- Un panneau de point passe d'abord. Toucher dans le vide ne fait rien.
+- **🗺️ Voir sur la carte**, en bas de la fiche : la 3D se ferme, la carte se centre sur l'objet, ouvre sa fiche et le surligne quelques secondes.
+- En rendu 🛣️ Galerie, piliers et murs ne sont pas dessinés : toucher une paroi ouvre la fiche du tracé.
 - **🧭 Y aller** : en suivi, l'itinéraire part du tracker. En libre, il part de **l'endroit où tu es en 3D**, niveau compris, sans déplacer le tracker.
 - Tracker arrêté : **D'où pars-tu ?** propose d'abord **Ici** (le tracker est recalé là où tu es en 3D, puis l'itinéraire en part).
 - **Ma dernière position** ou **Me repositionner** : la 3D te place là où le tracker est mis (position et niveau).

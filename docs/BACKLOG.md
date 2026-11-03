@@ -107,10 +107,10 @@
   validé (texte retenu dans la mémoire du poste).
   `qui: Claude · action: l'écrire dans les 3 guides au commit de bump · fini: phrase présente dans README_USER{,.en,.es}
   · depuis: 02/11/2026 · taille: XS`
-- **Add-on mkmg : clic de souris sur un panneau de POI** — au PC, un clic bref sur la scène tire ; s'il tombe sur le
-  panneau d'un POI, la vue 3D ouvre aussi sa fiche.
-  `qui: Claude · action: pendant une partie, ne pas ouvrir la fiche au clic qui tire (réglage de la prise) · fini: tir
-  sans fiche, checkup § 23 · depuis: 02/11/2026 · taille: XS`
+- **Add-on mkmg : un toucher qui tire ouvre une fiche** — au doigt (et souris en repli), un tap sur la scène tire et
+  ouvre la fiche du POI ou de l'objet dessous. La prise existe : `ctx.regler({ fiches: false })` (checkup § 27).
+  `qui: Claude · action: ajouter fiches: false au regler de coeur.js > _scene (greffe) · fini: tir au doigt sans fiche,
+  checkup § 23 · depuis: 02/11/2026 · taille: XS`
 
 ## Plus tard
 

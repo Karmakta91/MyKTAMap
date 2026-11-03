@@ -2272,6 +2272,13 @@ icônes.
   Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous. POI jonction : en tête de la fiche,
   un bouton par niveau lié (`.kta-v3d-fiche-passages`, « ▲ Monter au niveau +1 (escalier) », liseré doré, le plus haut
   d'abord).
+- **Fiche d'une structure, d'une zone ou d'un tracé** (`.kta-v3d-fiche.kta-v3d-fiche-objet`, `role="dialog"`) :
+  toucher l'objet dans la scène (après un panneau, qui passe d'abord) ouvre la fiche de la carte
+  (`attacherNotePopup` : note, 💾, 🔄 Convertir, Niveau, 🗑️, ou lecture seule) dans le même cadre que celle d'un POI,
+  corps en `.leaflet-popup-content` sans marge ; en bas, **« 🗺️ Voir sur la carte »** (`.kta-v3d-fiche-voir`,
+  44 px, liseré `--kta-interaction`) ferme la vue et montre l'objet sur la carte (sa fiche, contour en surbrillance
+  5 s). La fiche prend le focus (anneau `--kta-interaction` au clavier), Échap la ferme et rend le focus à la vue ;
+  Tab passe par ses champs. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
 - **Passages entre niveaux** : boîte 🪜 à gauche, au milieu, boutons écrits « ▼ -1 · Nom (moyen) », coupés à la
   largeur (`.kta-v3d-btn-passage`, 72 % de l'écran au plus) ; le nom entier au libellé accessible. Changement de
   niveau derrière un **voile** (`.kta-v3d-fondu` : fond des jetons sombres posé par la vue en

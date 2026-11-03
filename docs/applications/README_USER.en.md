@@ -653,6 +653,10 @@ Where and how a way through is drawn:
 
 - **Touching a point's sign** opens **its card**, the same as on the map (📍 I am here, 🧭 Go there, ➕ Route, favourite, photos), over the view. ✕ or Esc closes it.
 - Editing, moving or deleting the point is done on the map.
+- **Touching a structure, a zone or a trace** (pillar, wall, face, zone, tunnel) opens **its card**, the same as on the map: note, 🔄 Convert, level, 🗑️ Delete. On a data layer it is read-only.
+- A point's sign comes first. Touching empty space does nothing.
+- **🗺️ Show on the map**, at the bottom of the card: the 3D view closes, the map centres on the object, opens its card and highlights it for a few seconds.
+- In the 🛣️ Tunnels rendering, pillars and walls are not drawn: touching a tunnel wall opens the trace's card.
 - **🧭 Go there**: in follow mode the route starts from the tracker. In free mode it starts from **where you are in 3D**, level included, without moving the tracker.
 - Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there).
 - **My last position** or **Set my position**: the 3D view takes you where the tracker is put (position and level).
