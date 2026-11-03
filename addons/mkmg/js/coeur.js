@@ -1069,11 +1069,15 @@
     const img = _el(h.tirer, "img", "mkmg-tirer-image");
     img.src = "addons/mkmg/img/fusil.svg";
     img.alt = "";
+    img.draggable = false;
+    // Menu contextuel de l'appui long (Android, souris) : jamais sur les boutons du jeu.
+    h.tirer.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
     h.tirer.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _gachette(true); });
     h.cartouches = _el(h.tirer, "span", "mkmg-cartouches");
     h.rage = _el(ctx.hud, "button", "mkmg-rage");
     h.rage.type = "button";
     h.rage.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _rage(); });
+    h.rage.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
     h.message = _el(ctx.hud, "div", "mkmg-message");
     h.message.hidden = true;
     h.message.setAttribute("aria-live", "polite");

@@ -70,7 +70,10 @@
   border: 2px solid var(--kta-accent); background: var(--kta-surface); pointer-events: auto; touch-action: none;
 }
 .mkmg-tirer:disabled { border-color: var(--kta-texte-3); cursor: default; }
-.mkmg-tirer-image { width: 100%; height: 100%; display: block; }
+/* 🩸 Appui long (détente tenue en rage) : sans ces règles, iOS ouvre son menu « Partager / Enregistrer l'image » sur
+   l'icône du fusil, ou sélectionne le texte des boutons. */
+.mkmg-tirer, .mkmg-rage { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.mkmg-tirer-image { width: 100%; height: 100%; display: block; pointer-events: none; -webkit-user-drag: none; }
 .mkmg-recul { animation: mkmg-recul 160ms ease-out; }
 @keyframes mkmg-recul { 30% { transform: translate(6px, 6px) rotate(-8deg); } }
 /* Coup reçu : bord rouge de l'écran, bref. */
