@@ -418,6 +418,29 @@ function _chargerReadme(fichier, opts) {
     });
 }
 
+// 🔒 Adresse d'une image du guide (déjà échappée HTML) → adresse gardée, ou null (l'image s'affiche en texte).
+// Liste blanche : http(s), data:image/<format matriciel ou svg>, chemin relatif qui ne remonte pas au-dessus de
+// la racine de l'app. Refusé : tout autre schéma (javascript:, vbscript:, data: hors image…), « // » (autre
+// hôte), « / » en tête, antislash, < > " ' (déjà échappés), blanc ou caractère de contrôle (le navigateur retire
+// tab et saut de ligne d'une URL : « java\tscript: » redevient un schéma), « .. » encodé compris.
+function _urlImageSure(url) {
+  const u = String(url || "").trim();
+  if (!u || /[\s\u0000-\u001f\u007f\\]/.test(u) || /&(lt|gt|quot|#39);/.test(u)) return null;
+  if (/^https?:\/\/[^/]/i.test(u)) return u;
+  if (/^data:image\/(png|jpeg|gif|webp|avif|svg\+xml)[;,]/i.test(u)) return u;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(u) || u.charAt(0) === "/") return null;
+  let chemin = u.replace(/[?#].*$/, "");
+  try { chemin = decodeURIComponent(chemin); } catch (e) { return null; }
+  if (/[\\:]/.test(chemin)) return null;
+  let prof = 0;
+  const segs = chemin.split("/");
+  for (let i = 0; i < segs.length; i++) {
+    if (segs[i] === "..") { prof--; if (prof < 0) return null; }
+    else if (segs[i] !== "." && segs[i] !== "") prof++;
+  }
+  return u;
+}
+
 function _renderMarkdown(md) {
   // 0. Fins de ligne normalisées : le CRLF casse les regex \n (blocs de code fenced).
   md = md.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -441,7 +464,14 @@ function _renderMarkdown(md) {
     if (url.includes("github.com") || url.includes("user-attachments")) {
       return '<span class="kta-readme-img-skip">📷 <em>' + (alt || "Image") + '</em></span>';
     }
-    return '<img src="' + url + '" alt="' + alt + '" style="max-width:100%;border-radius:6px;margin:8px 0;">';
+    // Icône du catalogue (icon/<nom>.png, précachée) : petite, alignée sur le texte. Le guide l'écrit
+    // `../../icon/…` pour GitHub et le site de doc ; ici la page est la racine, d'où le préfixe retiré.
+    // 🔒 src reconstruit depuis le motif seul (lettres, chiffres, _ et -) : rien d'autre du texte n'y passe.
+    const icone = /^(?:\.\.\/)*icon\/([a-z0-9_-]+)\.png$/.exec(url);
+    if (icone) return '<img class="kta-readme-icone" src="icon/' + icone[1] + '.png" alt="' + alt + '">';
+    const sure = _urlImageSure(url);
+    if (!sure) return '<span class="kta-readme-img-skip">📷 <em>' + (alt || "Image") + '</em></span>';
+    return '<img src="' + sure + '" alt="' + alt + '" style="max-width:100%;border-radius:6px;margin:8px 0;">';
   });
 
   // 5. Liens.

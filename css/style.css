@@ -20381,6 +20381,8 @@ button.kta-cfg-ligne-action {
 .kta-readme-corps h3 { font-size: 16px; }
 .kta-readme-corps h4 { font-size: 15px; }
 .kta-readme-corps .kta-readme-table { font-size: 14px; }
+/* Icône de POI dans le guide (interfaceDocs.js > _renderMarkdown) : à la taille du texte. */
+.kta-readme-corps img.kta-readme-icone { width: 1.5em; height: 1.5em; vertical-align: middle; margin: 0 0.3em 0 0; }
 @media (max-width: 480px) {
   .kta-readme-corps { font-size: 15px; }
   .kta-readme-corps h2 { font-size: 17px; }
