@@ -2411,7 +2411,7 @@
     e.filtresChanges = false; e.itiChange = false; e.rondsChange = false;
     e.sortie = null;
     _reindexer();
-    // Volumes comptés : un pilier posé sur la place ne la coince pas pour la règle du pas (on en sort).
+    // Volumes comptés, comme à l'ouverture : un pilier posé sur la place ne la coince pas pour la règle du pas.
     if (e.mode === "libre" && _degager(true)) d.degagees++;
     _majFicheDonnees();
     d.refaites++;
@@ -3535,11 +3535,14 @@
     return null;
   }
 
-  // Ramène la place au point libre le plus proche si elle est coincée (`volumes` : voir _coince). → true si elle a
-  // bougé.
+  // Ramène la place au point libre le plus proche si elle est coincée. `volumes` : aussi si son centre est dans une
+  // structure dessinée, et le point libre cherché à un corps de toute structure (_coince). 🩸 La place elle-même
+  // n'est jugée que sur son centre : à moins d'un corps d'une face (galerie étroite de l'image de collision), elle
+  // reste où elle est. → true si elle a bougé.
   function _degager(volumes) {
     const e = _e;
-    if (!_coince(e.pos.x, e.pos.y, volumes)) return false;
+    const dedans = !!volumes && !!_volumeContenant(e.pos.x / e.sc, e.pos.y / e.sc);
+    if (!dedans && !_coince(e.pos.x, e.pos.y)) return false;
     const p = _pointLibre(e.pos.x, e.pos.y, volumes);
     if (!p) {
       console.warn("[Vue3D] place coincée, aucun point libre à portée : tout pas qui en rapproche passera");
@@ -5494,7 +5497,8 @@
       const tE = performance.now();
       _e.donnees.empreinte = _empreinteDonnees();
       _e.donnees.msEmpreinte = performance.now() - tE;
-      if (_e.mode === "libre") _degager();   // en suivi, la place est celle du tracker
+      // En suivi, la place est celle du tracker ; en libre, dégagée aussi d'une structure dessinée (_coince).
+      if (_e.mode === "libre") _degager(true);
       _appliquerVue();
       _placerCamera();
       _e.msOuverture = performance.now() - t0;

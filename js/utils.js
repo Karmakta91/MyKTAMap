@@ -859,9 +859,11 @@ window._kta_resetDataLayerNoteGhosts = function() {
 // ⚠️ contrat : `kta:donneesPlanChange` (window, detail { source }) = « ce que lit une vue du plan a PU changer ».
 // Émis par les rendus de la carte (renderRoads / renderZones / renderStructures / renderEditorPoints : toute
 // écriture finit par l'un d'eux, couleurs de la légende comprises) et par CalqueSession (verrou, rapatrier,
-// restituer). 🩸 Un indice, pas une preuve : un rendu part aussi sans rien changer (moveend sous PerfUltra,
-// option de la carte) ; l'abonné relit sa propre empreinte avant de refaire quoi que ce soit (vue3d.js >
-// _empreinteDonnees). Sans abonné, rien d'autre que l'envoi. Doc : tracking.md § Vue 3D.
+// restituer). Jamais pour un redessin d'affichage seul : carte déplacée ou zoomée sous la décimation PerfUltra et
+// réglage PerfUltra passent `renderRoads({ affichage: true })`. 🩸 Un indice, pas une preuve : un rendu part
+// aussi sans rien changer (option de la carte, filtres) ; l'abonné relit sa propre empreinte avant de refaire
+// quoi que ce soit (vue3d.js > _empreinteDonnees). Sans abonné, rien d'autre que l'envoi. Doc : tracking.md
+// § Vue 3D.
 window.ktaSignalerDonneesPlan = function(source) {
   try { window.dispatchEvent(new CustomEvent("kta:donneesPlanChange", { detail: { source: source || "" } })); }
   catch (e) { /* rien : un abonné en erreur ne bloque pas le rendu */ }

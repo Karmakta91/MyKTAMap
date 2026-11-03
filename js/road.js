@@ -92,15 +92,20 @@ function initRoad() {
 
   // Calque affiché/masqué → intersections recalculées. Throttle 250 ms : bascules en rafale et burst d'événements
   // au changement de plan, sur un calcul lourd.
-  let _renderRoadsTimer = null;
-  function _renderRoadsThrottled() {
+  // `affichage` : redessin pour l'affichage seul (carte déplacée ou zoomée, réglage PerfUltra) ; un appel sans lui
+  // dans la même fenêtre l'emporte (renderRoads > opts.affichage).
+  let _renderRoadsTimer = null, _renderRoadsDonnees = false;
+  function _renderRoadsThrottled(affichage) {
+    if (affichage !== true) _renderRoadsDonnees = true;
     if (_renderRoadsTimer) return;
     _renderRoadsTimer = setTimeout(function() {
       _renderRoadsTimer = null;
-      renderRoads();
+      const donnees = _renderRoadsDonnees;
+      _renderRoadsDonnees = false;
+      renderRoads(donnees ? undefined : { affichage: true });
     }, 250);
   }
-  window.map.on("overlayadd overlayremove", _renderRoadsThrottled);
+  window.map.on("overlayadd overlayremove", function() { _renderRoadsThrottled(false); });
 
   // PerfUltra au moveend/zoomend : décimation ON → renderRoads complet (la RDP dépend du zoom) ; culling seul →
   // _refreshRoadsViewportOnly (addTo/remove ciblé, 5-10× plus rapide sur plan dense).
@@ -109,7 +114,7 @@ function initRoad() {
     const _vp = !!window.PerfUltra.get("viewportCull");
     const _dc = !!window.PerfUltra.get("decim");
     if (_dc) {
-      _renderRoadsThrottled();
+      _renderRoadsThrottled(true);
     } else if (_vp) {
       _refreshRoadsViewportOnly();
     }
@@ -123,7 +128,7 @@ function initRoad() {
       const touchedRender = changedKeys.some(function(k) {
         return ["decim", "viewportCull", "noIntersect"].indexOf(k) >= 0;
       });
-      if (touchedRender && _renderRoadsThrottledRef) _renderRoadsThrottledRef();
+      if (touchedRender && _renderRoadsThrottledRef) _renderRoadsThrottledRef(true);
     });
   }
 
@@ -721,8 +726,12 @@ function _rendererItineraire() {
   return m._ktaItiRenderer;
 }
 
-function renderRoads() {
-  if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("roads");
+// opts.affichage : redessin pour l'affichage seul (déplacement, zoom, réglage PerfUltra) : aucune donnée n'a changé,
+// donc pas de `kta:donneesPlanChange` (utils.js > ktaSignalerDonneesPlan).
+function renderRoads(opts) {
+  if (!(opts && opts.affichage === true) && typeof window.ktaSignalerDonneesPlan === "function") {
+    window.ktaSignalerDonneesPlan("roads");
+  }
   // ⚠️ Chemin chaud (chaque point pendant le dessin) : ne jamais logger le tableau roadsData (sérialisation, et la
   // console retient les références). Compte seulement, en debugMode.
   if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {

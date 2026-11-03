@@ -459,6 +459,25 @@ async function sectionDonnees(page, MX) {
     window.setEditorPoints([Object.assign({ id: "POI donnees v3d", uid: "pt_dn_a", level: 0, tags: ["salle"] }, P(-6, 1))]);
     window.KtaGalerie.invalider();
     const d = P(-10, 0);
+    // Ouverture en libre avec la place au centre d'un pilier : dégagée au point libre le plus proche ; en suivi
+    // (tracker posé dans le pilier), rien : la place est celle du tracker.
+    window.setStructures([pilier("st_dn_a", 10, 4), pilier("st_dn_o", -10, 0, 1)]);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+    const o1 = K.etat();
+    r.ouvLibre = { mode: o1.mode, degagements: o1.degagements, dM: Math.hypot(o1.pos.x - d.x, o1.pos.y - d.y) / a.sc,
+      cap: o1.cap };
+    await K.fermer();
+    window.startTracking();
+    window.recalerTrackerSurPoint(d.x, d.y, 0);
+    const tr = window.getTrackingPosition();
+    await K.ouvrir({ commandes: "pave" });
+    const o2 = K.etat();
+    r.ouvSuivi = { mode: o2.mode, degagements: o2.degagements, ecart: Math.hypot(o2.pos.x - tr.x, o2.pos.y - tr.y),
+      dansPilier: Math.hypot(tr.x - d.x, tr.y - d.y) / a.sc < 1 };
+    await K.fermer();
+    window.stopTracking();
+    window.setStructures([pilier("st_dn_a", 10, 4)]);
+    window.KtaGalerie.invalider();
     await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
     await pause(300);
     // Place et vue réglées à la main : tout doit survivre aux reconstructions.
@@ -607,6 +626,36 @@ async function sectionDonnees(page, MX) {
       r.retourNiveau = await apres(n); n = r.retourNiveau.donnees.refaites;
       K.gesteAnime(anime);
     }
+    // Carte déplacée et zoomée sous la décimation PerfUltra (renderRoads complet à chaque moveend / zoomend), vue
+    // ouverte : redessin d'affichage seul, ni signal, ni empreinte, ni reconstruction. Les redessins sont comptés
+    // par le journal de road.js (debugMode).
+    const PU = window.PerfUltra, decimAvant = !!PU.get("decim"), debugAvant = window.APP_CONFIG.debugMode;
+    const logAvant = console.log;
+    let redessins = 0;
+    console.log = function (m) {
+      if (typeof m === "string" && m.indexOf("[Road] renderRoads") === 0) { redessins++; return; }
+      return logAvant.apply(console, arguments);
+    };
+    window.APP_CONFIG.debugMode = true;
+    PU.set("decim", true);
+    await pause(400);
+    const m0 = lire();
+    window.map.panBy([120, 60], { animate: false });
+    await pause(400);
+    window.map.setZoom(window.map.getZoom() + 1, { animate: false });
+    await pause(400);
+    window.map.panBy([-120, -60], { animate: false });
+    await pause(400);
+    window.map.setZoom(window.map.getZoom() - 1, { animate: false });
+    await pause(400);
+    const m1 = lire();
+    r.carteBouge = { redessins: redessins, signaux: m1.donnees.signaux - m0.donnees.signaux,
+      verifs: m1.donnees.verifs - m0.donnees.verifs, refaites: m1.donnees.refaites - m0.donnees.refaites,
+      reindex: m1.reindex - m0.reindex };
+    PU.set("decim", decimAvant);
+    await pause(400);
+    window.APP_CONFIG.debugMode = debugAvant;
+    console.log = logAvant;
     // Calque de données (lu comme un calque du plan) : rapatrié (🔄 Modifier), copie de session retouchée, restitué ;
     // puis case du calque décochée et recochée dans ≡ Filtres. La vue reste ouverte de bout en bout.
     r.finAvantCalque = lire();
@@ -745,6 +794,16 @@ async function sectionDonnees(page, MX) {
     "case du calque dans ≡ : une reconstruction par clic (le rendu de la carte qui suit ne refait rien), place gardée",
     { trouvee: R.caseTrouvee, structures: [R.cal3.compte.structures, R.decoche.compte.structures,
       R.recoche.compte.structures], delta: [R.decoche.reindexDelta, R.recoche.reindexDelta] });
+  verifier(R.ouvLibre.mode === "libre" && R.ouvLibre.degagements === 1 && R.ouvLibre.dM > 1.3 && R.ouvLibre.dM < 4 &&
+    R.ouvLibre.cap === 90, "ouverture en libre au centre d'un pilier : place dégagée hors du pilier, cap gardé",
+    R.ouvLibre);
+  verifier(R.ouvSuivi.dansPilier && R.ouvSuivi.mode === "suivi" && R.ouvSuivi.degagements === 0 &&
+    R.ouvSuivi.ecart < 1e-6,
+    "ouverture en suivi, tracker dans le pilier : rien, la place est celle du tracker", R.ouvSuivi);
+  verifier(R.carteBouge.redessins >= 4 && R.carteBouge.signaux === 0 && R.carteBouge.verifs === 0 &&
+    R.carteBouge.refaites === 0 && R.carteBouge.reindex === 0,
+    "carte déplacée et zoomée sous la décimation PerfUltra (" + R.carteBouge.redessins + " redessins) : " +
+    "ni signal, ni empreinte, ni reconstruction de la 3D", R.carteBouge);
   verifier(R.fin.donnees.signaux > 0 && R.fin.donnees.refaites > 10,
     "bilan : " + R.fin.donnees.signaux + " signaux, " + R.fin.donnees.verifs + " relectures, " +
     R.fin.donnees.refaites + " reconstructions (dernière " + R.fin.donnees.ms + " ms, empreinte " +

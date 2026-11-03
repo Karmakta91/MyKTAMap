@@ -499,8 +499,8 @@ dense synthétique, ms) :
 
 [Probable] Acceptable par clic (un objet ajouté, supprimé, une annulation) ; trop lent pour un dessin point par
 point en 3D sur un plan dense en mixte (étape « dessiner depuis la 3D ») : il faudra alors un modèle des galeries
-refait par morceaux. L'empreinte relue sur un rendu sans changement (moveend sous PerfUltra) coûte ~60 ms au
-téléphone sur ce plan.
+refait par morceaux. L'empreinte relue sur un rendu sans changement coûte ~60 ms au téléphone sur ce plan ; les
+redessins dus au déplacement de la carte (moveend / zoomend sous la décimation PerfUltra) ne la déclenchent pas.
 
 ### Ce qui n'a **pas** été mesuré
 
