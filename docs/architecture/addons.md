@@ -186,9 +186,10 @@ embuscades, un monde par niveau), `js/son.js`
   effondrement ou une zone inaccessible — le bout du trajet sur les tracés, puis la place libre la plus proche
   (`monde.js > placeOk` : `ctx.libre` et hors de ces trois zones du niveau ; couronnes de 0,25 m jusqu'à 8 m). La
   balise est posée là. Même règle pour les menaces, les objets et les embuscades.
-- **Difficulté** : facile = tracés + trajet du jeu au sol + balise + flèche + reste à parcourir ; moyen = sans la
-  flèche ; difficile = ni tracés (`regler({ traces: false })`), ni trajet, ni balise, ni guidage. L'itinéraire et le
-  guidage de l'app sont masqués pendant toute la partie (le jeu dessine le sien).
+- **Difficulté** : facile = tracés + trajet du jeu au sol (ruban doré, chevrons sombres tous les 2 m pointés vers
+  B) + balise + flèche + reste à parcourir ; moyen = sans la flèche ; difficile = ni tracés
+  (`regler({ traces: false })`), ni trajet, ni balise, ni guidage. L'itinéraire et le guidage de l'app sont masqués
+  pendant toute la partie (le jeu dessine le sien).
 - **Santé et endurance** : le pas rapide vide l'endurance (22 / s), elle revient au repos (14 / s) ; vide = à bout de
   souffle, pas rapide interdit (`regler({ course: false })`) jusqu'à 30. Battement de cœur (décision produit)
   seulement sous 5 % ou à bout de souffle, de plus en plus lent pendant la reprise.

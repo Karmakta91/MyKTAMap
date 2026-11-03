@@ -4615,7 +4615,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await pause(200);
         const e1 = K.etat(), m1 = M().etat();
         r.partie = { greffe: e1.greffe && e1.greffe.nom, reglage: e1.greffe && e1.greffe.reglage, roads: e1.compte.roads,
-          diff: m1.diff, vague: m1.vague, cible: m1.cible && m1.cible.nom, route: m1.route, traits: m1.traits,
+          diff: m1.diff, vague: m1.vague, cible: m1.cible && m1.cible.nom, route: m1.route, traits: m1.traits, chevrons: m1.chevrons,
           panneau: !!q("#kta-vue3d .kta-v3d-greffe .mkmg-panneau"), fleche: !!q(".mkmg-fleche") &&
             !q(".mkmg-fleche").hidden, reste: q(".mkmg-reste") && q(".mkmg-reste").textContent,
           ennemis: m1.ennemis.length, objets: m1.objets.length, tirer: !!q(".mkmg-tirer"),
@@ -4821,10 +4821,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(MK.permisInstallation, "jeu : installation reliée autorisée par reglages.json (addons.mkmg) → " +
         "confirmation ; « Rester ici » ne lance rien", MK.permisInstallation);
       verifier(MK.radios === 3 && MK.partie.greffe === "mkmg" && MK.partie.diff === "facile" && MK.partie.vague === 1 &&
-        MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.traits === 3 && MK.partie.panneau &&
-        MK.partie.fleche && /\d/.test(MK.partie.reste || "") && MK.partie.surTrace && MK.partie.horsPilier,
+        MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.traits === 4 &&
+        MK.partie.chevrons >= 2 && MK.partie.panneau && MK.partie.fleche && /\d/.test(MK.partie.reste || "") &&
+        MK.partie.surTrace && MK.partie.horsPilier,
         "jeu : confirmation à 3 difficultés ; facile → cible (POI fictif à 4 m du tracé, validée près du tracé, hors " +
-        "du pilier et de l'effondrement qui le couvrent), trajet, balise, panneau, flèche, reste",
+        "du pilier et de l'effondrement qui le couvrent), trajet et ses chevrons de sens, balise, panneau, flèche, reste",
         MK.partie);
       verifier(MK.partie.ennemis >= 1 && MK.partie.objets >= 2 && MK.partie.tirer && MK.partie.cartouches === "2/6",
         "jeu : vague 1 peuplée (égarés, munitions, champignons), bouton de tir, 2 cartouches + 6", MK.partie);

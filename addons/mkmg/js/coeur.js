@@ -140,6 +140,8 @@
     difficile: { traces: false, route: false, guidage: false }
   };
   const ROUTE = { largeur: 0.3, y: 0.08 };
+  // Chevrons du sens du trajet, posés sur le ruban (m) : un tous les `pas`, longueur `l`, épaisseur des branches `ep`.
+  const CHEVRON = { pas: 2, l: 0.26, ep: 0.06, y: 0.09 };
   const BALISE = { rayon: 0.25, anneau: [0.6, 0.85], opacite: 0.55 };
   const CLE_SCORES = "myktamap_mkmg_v1";
   const SCRIPTS = ["addons/mkmg/js/son.js", "addons/mkmg/js/monde.js", "addons/mkmg/js/joueur.js"];
@@ -763,23 +765,45 @@
 
   function _ajouter(o) { _p.ctx.groupe.add(o); _p.traits.push(o); }
 
+  // Un chevron « ^ » au sol en (cx, cz) m, pointe dans le sens (ux, uz) : deux branches (2 triangles chacune).
+  function _chevron(out, cx, cz, ux, uz) {
+    const l = CHEVRON.l, ep = CHEVRON.ep, y = CHEVRON.y, nx = -uz, nz = ux;
+    const px = cx + ux * l / 2, pz = cz + uz * l / 2;
+    [-1, 1].forEach(function (cote) {
+      const qx = cx - ux * l / 2 + cote * nx * l / 2, qz = cz - uz * l / 2 + cote * nz * l / 2;
+      const bx = qx - px, bz = qz - pz, bl = Math.hypot(bx, bz), ox = -bz / bl * ep / 2, oz = bx / bl * ep / 2;
+      out.push(px + ox, y, pz + oz, qx + ox, y, qz + oz, qx - ox, y, qz - oz,
+        px + ox, y, pz + oz, qx - ox, y, qz - oz, px - ox, y, pz - oz);
+    });
+  }
+
   function _dessiner() {
     const p = _p;
     if (!p || !p.ctx) return;
     const ctx = p.ctx, T = ctx.THREE, sc = ctx.sc;
     _vider();
+    p.nChevrons = 0;
     const accent = new T.Color(_couleur("--kta-accent", "") || 0xf4c542);
     if (p.route && p.regle.route) {
-      const pos = [], niv = ctx.niveau;
+      const pos = [], chev = [], niv = ctx.niveau;
+      let cum = 0, prochain = CHEVRON.pas / 2;
       for (let i = 1; i < p.route.length; i++) {
         const a = p.route[i - 1], b = p.route[i];
-        if (niv !== null && ((Number.isInteger(a.level) && a.level !== niv) || (Number.isInteger(b.level) &&
-          b.level !== niv))) continue;
         const ax = a.x / sc, az = a.y / sc, bx = b.x / sc, bz = b.y / sc, l = Math.hypot(bx - ax, bz - az);
+        const autre = niv !== null && ((Number.isInteger(a.level) && a.level !== niv) ||
+          (Number.isInteger(b.level) && b.level !== niv));
         if (l < 1e-6) continue;
-        const nx = -(bz - az) / l * ROUTE.largeur / 2, nz = (bx - ax) / l * ROUTE.largeur / 2, y = ROUTE.y;
-        pos.push(ax + nx, y, az + nz, bx + nx, y, bz + nz, bx - nx, y, bz - nz,
-          ax + nx, y, az + nz, bx - nx, y, bz - nz, ax - nx, y, az - nz);
+        const ux = (bx - ax) / l, uz = (bz - az) / l;
+        if (!autre) {
+          const nx = -uz * ROUTE.largeur / 2, nz = ux * ROUTE.largeur / 2, y = ROUTE.y;
+          pos.push(ax + nx, y, az + nz, bx + nx, y, bz + nz, bx - nx, y, bz - nz,
+            ax + nx, y, az + nz, bx - nx, y, bz - nz, ax - nx, y, az - nz);
+        }
+        // Chevrons tous les CHEVRON.pas m le long du trajet (abscisse continue, même sur un autre niveau).
+        for (; prochain <= cum + l; prochain += CHEVRON.pas) {
+          if (!autre) _chevron(chev, ax + ux * (prochain - cum), az + uz * (prochain - cum), ux, uz);
+        }
+        cum += l;
       }
       if (pos.length) {
         const g = new T.BufferGeometry();
@@ -787,6 +811,18 @@
         const m = new T.MeshBasicMaterial({ color: accent, side: T.DoubleSide, toneMapped: false,
           polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         _ajouter(new T.Mesh(g, m));
+      }
+      // Sens du trajet : chevrons sombres sur le ruban doré, pointe vers B (comme l'itinéraire de la vue 3D).
+      if (chev.length) {
+        const g = new T.BufferGeometry();
+        g.setAttribute("position", new T.Float32BufferAttribute(chev, 3));
+        const m = new T.MeshBasicMaterial({ color: new T.Color(_couleur("--kta-sur-accent", "") || 0x1a1405),
+          side: T.DoubleSide, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -4,
+          polygonOffsetUnits: -4 });
+        const mesh = new T.Mesh(g, m);
+        mesh.renderOrder = 1;
+        _ajouter(mesh);
+        p.nChevrons = chev.length / 36;
       }
     }
     // Balise de la cible (facile, moyen) : colonne et anneau au sol, éteints par le brouillard au loin.
@@ -968,7 +1004,7 @@
     return { enCours: true, diff: p.diff, vague: p.vague, reussies: p.reussies, sante: Math.round(p.sante),
       endurance: Math.round(p.endurance), souffle: p.souffle, cible: p.cible ? { x: p.cible.x, y: p.cible.y,
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
-      traits: p.traits.length, calcul: p.calcul, canon: p.canon, reserve: p.reserve, recharge: !!p.rechargeFin,
+      traits: p.traits.length, chevrons: p.nChevrons || 0, calcul: p.calcul, canon: p.canon, reserve: p.reserve, recharge: !!p.rechargeFin,
       fin: p.fin, tues: p.tues, tirs: p.tirs, touches: p.touches,
       reduit: !!p.hud && p.hud.panneau.classList.contains("mkmg-reduit"), scores: _lireScores(),
       coeur: +(p.coeur || 0).toFixed(2),
