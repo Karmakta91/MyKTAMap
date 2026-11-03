@@ -58,6 +58,16 @@
 .kta-v3d-reglages-ligne { display: flex; gap: 8px; }
 .kta-v3d-reglages-ligne > .kta-v3d-btn { flex: 1 1 0; text-align: left; white-space: nowrap; }
 .kta-v3d-btn-icone { width: 22px; height: 22px; vertical-align: middle; margin-right: 6px; }
+/* Portée : nom, curseur, valeur (vue3d.js > _majPortee) sur une ligne. */
+.kta-v3d-portee { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.kta-v3d-portee-nom { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.kta-v3d-portee-curseur { flex: 1 1 auto; min-width: 120px; height: 32px; margin: 0; accent-color: var(--kta-accent); }
+.kta-v3d-portee-curseur:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
+.kta-v3d-portee-valeur { min-width: 44px; text-align: right; font-size: 14px; font-weight: 600; }
+/* Lampe : 💡 puis Normale / Forte / Plein jour (aria-pressed), chacun à la largeur de son texte. */
+.kta-v3d-reglages-ligne.kta-v3d-lampe { align-items: center; }
+.kta-v3d-reglages-ligne.kta-v3d-lampe > .kta-v3d-btn { flex: 1 1 auto; text-align: center; }
+.kta-v3d-lampe-icone { margin-right: 0; }
 .kta-v3d-btn-emoji { display: inline-block; font-size: 18px; line-height: 22px; text-align: center; }
 /* Mode suivi / libre, hors de la tuile : pastille discrète en haut à gauche, non touchable. */
 .kta-v3d-mode-indic {
@@ -156,10 +166,11 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
   font: 12px/1.4 monospace;
 }
 
-/* Inclinaison de la vue plongeante : deux petits boutons à droite, montrés seulement dans cette vue. */
+/* Zoom (+ −) et inclinaison (▲ ▼) de la vue plongeante : petite grille en bas à droite, montrée seulement dans cette
+   vue ; plus bas que la tuile ⚙️ ouverte, qui ne la recouvre pas. */
 .kta-v3d-incl {
-  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-  display: flex; flex-direction: column; gap: 6px;
+  position: absolute; right: 10px; bottom: max(14px, env(safe-area-inset-bottom));
+  display: grid; grid-template-columns: repeat(2, 40px); gap: 6px;
 }
 .kta-v3d-incl[hidden] { display: none; }
 .kta-v3d-btn.kta-v3d-btn-petit { width: 40px; height: 40px; font-size: 16px; }

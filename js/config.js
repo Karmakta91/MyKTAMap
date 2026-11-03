@@ -1191,6 +1191,51 @@ function setVue3DTextures(oui) {
 window.getVue3DTextures = getVue3DTextures;
 window.setVue3DTextures = setVue3DTextures;
 
+// ── Portée de la vue 3D (brouillard, profondeur, lampe, tuiles), réglage de CET appareil ────────────────────────
+// localStorage["myktamap_v3d_portee_v1"] = mètres entiers, bornés à V3D_PORTEE ; absente ou illisible → défaut.
+// Réglée par le curseur de la tuile ⚙️ (vue3d.js > reglerPortee). ⚠️ contrat : la borne haute coûte des tuiles et
+// du temps par image (mesures : checkup-vue-3d.js, KTA_V3D_PERF) ; ne la monter qu'avec de nouvelles mesures.
+const V3D_PORTEE_CLE = "myktamap_v3d_portee_v1";
+const V3D_PORTEE = { min: 15, max: 100, defaut: 30 };
+function _bornerPortee(v) {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.max(V3D_PORTEE.min, Math.min(V3D_PORTEE.max, n)) : V3D_PORTEE.defaut;
+}
+function getVue3DPortee() {
+  try {
+    const v = localStorage.getItem(V3D_PORTEE_CLE);
+    return v === null ? V3D_PORTEE.defaut : _bornerPortee(v);
+  } catch (e) { return V3D_PORTEE.defaut; }
+}
+function setVue3DPortee(m) {
+  const v = _bornerPortee(m);
+  try { localStorage.setItem(V3D_PORTEE_CLE, String(v)); } catch (e) { /* stockage refusé : valeur de la vue seule */ }
+  return v;
+}
+window.V3D_PORTEE = V3D_PORTEE;
+window.getVue3DPortee = getVue3DPortee;
+window.setVue3DPortee = setVue3DPortee;
+
+// ── Lampe de la vue 3D : "normale" | "forte" | "jour" (plein jour : éclairage d'ambiance), réglage de CET appareil ─
+// localStorage["myktamap_v3d_lampe_v1"] ; absente ou inconnue → "normale". Réglée dans la tuile ⚙️ (vue3d.js >
+// reglerLampe). ⚠️ contrat : c'est la préférence ; la vue peut l'ignorer un temps (plein jour refusé pendant une
+// greffe) sans la réécrire.
+const V3D_LAMPE_CLE = "myktamap_v3d_lampe_v1";
+const V3D_LAMPES = ["normale", "forte", "jour"];
+function getVue3DLampe() {
+  try {
+    const v = localStorage.getItem(V3D_LAMPE_CLE);
+    return V3D_LAMPES.indexOf(v) >= 0 ? v : "normale";
+  } catch (e) { return "normale"; }
+}
+function setVue3DLampe(v) {
+  const m = V3D_LAMPES.indexOf(v) >= 0 ? v : "normale";
+  try { localStorage.setItem(V3D_LAMPE_CLE, m); } catch (e) { /* stockage refusé : valeur de la vue seule */ }
+  return m;
+}
+window.getVue3DLampe = getVue3DLampe;
+window.setVue3DLampe = setVue3DLampe;
+
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.
 // Math : Δpixels → mètres (échelle), rotation ANTI-horaire de +northOffsetDeg (image → géographique : offset 90°,

@@ -39,13 +39,17 @@
 // « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Greffe (21) :
 // prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
 // (23) : refus, confirmation, partie en vagues, masquage, endurance, tir, recharge, objets, égaré, silhouette, fin.
+// Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), lampe Normale / Forte /
+// Plein jour (facteur d'une greffe multiplié, Plein jour refusé puis rendu), zoom de la vue plongeante 6 / 60 m
+// (molette, Maj + molette, + / −, = / -, pincement, tuiles qui suivent le recul).
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
 //   chambres à l'est), en mode mixte ;
 //   KTA_V3D_PERF=passages → plan dense, sans puis avec 10 passages entre niveaux et 2 rampes à portée de vue ;
 //   KTA_V3D_PERF=1 → plan dense synthétique (9 000 piliers, 3 000 murs, 1 000 murs en ligne, 700 fronts,
-//   zones, tracés, POI) : temps d'ouverture, triangles, appels, ms par image à 20 / 30 / 50 m et sans tuiles ;
+//   zones, tracés, POI) : temps d'ouverture, triangles, appels, ms par image à 20 / 30 / 50 / 75 / 100 m, sans
+//   tuiles et en vue plongeante dézoomée (recul 60 m) ; marche de 120 m à 30 et 100 m ;
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
 //   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt).
 // Usage : node scripts/smoke/checkup-vue-3d.js (SMOKE_PORT pour une autre copie) · doc : docs/ETUDE_VUE_3D.md
@@ -154,11 +158,13 @@ function semerPlanDense() {
 
 async function mesures(page, depart) {
   const out = {};
-  const cas_ = [{ nom: "20 m", d: 20 }, { nom: "30 m", d: 30 }, { nom: "50 m", d: 50 },
-    { nom: "30 m sans tuiles", d: 30, sansTuiles: true }];
+  const cas_ = [{ nom: "20 m", d: 20 }, { nom: "30 m", d: 30 }, { nom: "50 m", d: 50 }, { nom: "75 m", d: 75 },
+    { nom: "100 m", d: 100 }, { nom: "30 m sans tuiles", d: 30, sansTuiles: true },
+    { nom: "plongée, recul 60 m", d: 30, recul: 60 }];
   for (const cas of cas_) {
     const r = await page.evaluate(function (c) {
       return window.KtaVue3D.ouvrir({ depart: c.depart, distanceVue: c.d, tuiles: !c.sansTuiles }).then(function () {
+        if (c.recul) { window.KtaVue3D.basculerVue(); window.KtaVue3D.zoomer(c.recul / 18.4); }
         const e0 = window.KtaVue3D.etat();
         const m = window.KtaVue3D.mesurer({ images: 90 });
         const e1 = window.KtaVue3D.etat();
@@ -168,7 +174,7 @@ async function mesures(page, depart) {
           geometries: m.memoire.geometries, premierTour: m.msPremierTour, msMed: m.msMed, msP95: m.msP95,
           msMax: m.msMax, triangles: m.trianglesMax, appels: m.appelsMax, tasMo: tas };
       });
-    }, { depart: depart, d: cas.d, sansTuiles: !!cas.sansTuiles });
+    }, { depart: depart, d: cas.d, sansTuiles: !!cas.sansTuiles, recul: cas.recul || 0 });
     out[cas.nom] = r;
     console.log("  📏 " + cas.nom + " : " + JSON.stringify(r));
   }
@@ -471,31 +477,35 @@ async function mesuresGalerie(page, nom, semisDonne) {
       const semis = await page.evaluate(semerPlanDense);
       console.log("  ℹ️ plan dense synthétique : " + JSON.stringify(semis));
       await mesures(page, semis.depart);
-      // Marche de 120 m en ligne droite (0,2 m par image) : durée de chaque image, constructions de tuiles comprises.
-      const marche = await page.evaluate(function (d) {
-        return window.KtaVue3D.ouvrir({ depart: d, distanceVue: 30 }).then(function () {
-          const sc = window.APP_CONFIG.scale, durees = [];
-          return new Promise(function (r) {
-            let i = 0, t = 0;
-            function pas(ts) {
-              if (t && i > 3) durees.push(ts - t);   // les premières images compilent les shaders
-              t = ts;
-              if (i++ >= 600) {
-                window.KtaVue3D.fermer();
-                durees.sort(function (a, b) { return a - b; });
-                r({ images: durees.length, msMed: +durees[durees.length >> 1].toFixed(1),
-                  msP95: +durees[Math.floor(durees.length * 0.95)].toFixed(1), msMax: +durees[durees.length - 1].toFixed(1),
-                  plus33ms: durees.filter(function (v) { return v > 33.4; }).length });
-                return;
+      // Marche de 120 m en ligne droite (0,2 m par image) : durée de chaque image, constructions de tuiles comprises,
+      // à la portée par défaut et à la borne haute du réglage.
+      for (const portee of [30, 100]) {
+        const marche = await page.evaluate(function (o) {
+          const d = o.d;
+          return window.KtaVue3D.ouvrir({ depart: d, distanceVue: o.portee }).then(function () {
+            const sc = window.APP_CONFIG.scale, durees = [];
+            return new Promise(function (r) {
+              let i = 0, t = 0;
+              function pas(ts) {
+                if (t && i > 3) durees.push(ts - t);   // les premières images compilent les shaders
+                t = ts;
+                if (i++ >= 600) {
+                  window.KtaVue3D.fermer();
+                  durees.sort(function (a, b) { return a - b; });
+                  r({ images: durees.length, msMed: +durees[durees.length >> 1].toFixed(1),
+                    msP95: +durees[Math.floor(durees.length * 0.95)].toFixed(1), msMax: +durees[durees.length - 1].toFixed(1),
+                    plus33ms: durees.filter(function (v) { return v > 33.4; }).length });
+                  return;
+                }
+                window.KtaVue3D.placer(d.x + i * 0.2 * sc, d.y, 90);
+                requestAnimationFrame(pas);
               }
-              window.KtaVue3D.placer(d.x + i * 0.2 * sc, d.y, 90);
               requestAnimationFrame(pas);
-            }
-            requestAnimationFrame(pas);
+            });
           });
-        });
-      }, semis.depart);
-      console.log("  📏 marche 120 m, 30 m de vue (intervalle entre images) : " + JSON.stringify(marche));
+        }, { d: semis.depart, portee: portee });
+        console.log("  📏 marche 120 m, " + portee + " m de vue (intervalle entre images) : " + JSON.stringify(marche));
+      }
       // Coût d'un pas balayé (corps de 0,8 m : 3 couloirs + 12 rayons) dans le plan dense, buttées comprises.
       const coutPas = await page.evaluate(function (d) {
         // Image de collision du plan fictif mise de côté : seules les structures synthétiques sont jugées.
@@ -762,9 +772,10 @@ async function mesuresGalerie(page, nom, semisDonne) {
           attendus: ["vue3d.fermer", window.FilterPanel.nbActifs() > 0 ? "filter.badge.actifs" : "filter.badge.aucun",
             "ui.refonte.counter_sortie_title", "vue3d.reglages",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
-            "vue3d.pasDroite", "vue3d.inclinaisonPlus", "vue3d.inclinaisonMoins",
+            "vue3d.pasDroite", "vue3d.zoomPlus", "vue3d.inclinaisonPlus", "vue3d.zoomMoins", "vue3d.inclinaisonMoins",
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
-            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer"].map(function (k) {
+            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer",
+            "vue3d.lampeNormale", "vue3d.lampeForte", "vue3d.lampeJour"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
             return k === "vue3d.reglages" && window.KtaVue3D.etat().reglages.repere ?
               t + " · " + window.I18n.t("vue3d.reglagesModifies") : t;
@@ -1006,7 +1017,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       await page.keyboard.press("KeyV");
       verifier(await page.evaluate(function () { return window.KtaVue3D.etat().vue; }) === "yeux", "touche V : retour à hauteur d'yeux");
 
-      // ── Inclinaison de la vue plongeante : PageUp/PageDown, molette, boutons, deux doigts ; bornée et retenue ──
+      // ── Inclinaison de la vue plongeante : PageUp/PageDown, Maj + molette, boutons, deux doigts ; bornée et retenue ──
       const i0 = await page.evaluate(function () {
         window.KtaVue3D.basculerVue();
         return window.KtaVue3D.etat();
@@ -1020,14 +1031,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
       const iDown = await page.evaluate(function () { return window.KtaVue3D.etat().inclinaison; });
       const cvBoite = await page.locator("#kta-vue3d canvas").boundingBox();
       await page.mouse.move(cvBoite.x + cvBoite.width / 2, cvBoite.y + cvBoite.height / 3);
+      await page.keyboard.down("Shift");
       await page.mouse.wheel(0, -100);
       await page.waitForTimeout(100);
-      const iMolette = await page.evaluate(function () { return window.KtaVue3D.etat().inclinaison; });
+      await page.keyboard.up("Shift");
+      const iMolette = await page.evaluate(function () { return window.KtaVue3D.etat(); });
       await page.locator('#kta-vue3d [data-v3d="inclMoins"]').click();
       const iBouton = await page.evaluate(function () { return window.KtaVue3D.etat().inclinaison; });
-      verifier(iUp === 65 && iDown === 55 && iMolette === 60 && iBouton === 50,
-        "PageUp / PageDown, molette et bouton ▼ changent l'inclinaison",
-        { pageUp: iUp, pageDown: iDown, molette: iMolette, bouton: iBouton });
+      verifier(iUp === 65 && iDown === 55 && iMolette.inclinaison === 60 && iMolette.portee.recul === 18.4 &&
+        iBouton === 50, "PageUp / PageDown, Maj + molette (sans zoomer) et bouton ▼ changent l'inclinaison",
+        { pageUp: iUp, pageDown: iDown, molette: iMolette.inclinaison, recul: iMolette.portee.recul, bouton: iBouton });
       // Deux doigts glissés vers le bas (pointeurs tactiles synthétiques) : plus verticale.
       const iDoigts = await page.evaluate(function () {
         const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
@@ -5561,6 +5574,321 @@ async function mesuresGalerie(page, nom, semisDonne) {
       await page.evaluate(function () {
         window.setRoads([]); window.setZones([]); window.setPlanRenduVue3D(null, "mixte"); window.KtaGalerie.invalider();
       });
+
+      // ── 25. Réglages ⚙️ Portée et Lampe, zoom de la vue plongeante (QCM du 03/11/2026) ─────────────────────────
+      // Piliers fictifs tous les 12 m sur 260 m autour du départ : de quoi remplir des tuiles à toute portée.
+      await page.evaluate(function (a) {
+        const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; }, st = [];
+        for (let x = -130; x <= 130; x += 12) {
+          for (let z = -130; z <= 130; z += 12) {
+            st.push({ uid: "st_rg_" + x + "_" + z, type: "pilier-1", level: 0,
+              points: [P(x - 1, z - 1), P(x + 1, z - 1), P(x + 1, z + 1), P(x - 1, z + 1)] });
+          }
+        }
+        window.setStructures(st);
+        window.KtaGalerie.invalider();
+        localStorage.removeItem("myktamap_v3d_portee_v1");
+        localStorage.removeItem("myktamap_v3d_lampe_v1");
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      const RG = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+        const pose = async function () {
+          await pause(100);
+          for (let i = 0; i < 80 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
+            await pause(50);
+          }
+        };
+        const d = P(6, 6), r = {};
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        await pose();
+        r.defaut = K.etat().portee;
+        const c = q("#kta-v3d-portee");
+        r.curseur = { dansTuile: !!c.closest("#kta-v3d-reglages"), libelle: !!q('label[for="kta-v3d-portee"]') &&
+          q('label[for="kta-v3d-portee"]').textContent.length > 2, valuetext: c.getAttribute("aria-valuetext") };
+        c.value = "50";
+        c.dispatchEvent(new Event("input", { bubbles: true }));
+        await pose();
+        r.p50 = K.etat().portee;
+        r.lampe50 = K.etat().eclairage.portee;
+        r.pref50 = window.getVue3DPortee();
+        r.p100 = { retenue: K.reglerPortee(500) };
+        await pose();
+        Object.assign(r.p100, K.etat().portee);
+        r.p15 = { retenue: K.reglerPortee(3) };
+        await pose();
+        Object.assign(r.p15, K.etat().portee);
+        r.repere = K.etat().reglages.repere;
+        K.reglerPortee(42);
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.rouverte = { distance: K.etat().portee.distance, curseur: Number(q("#kta-v3d-portee").value) };
+        K.reglerPortee(30);
+        // Lampe : Normale par défaut, Forte, Plein jour ; retenue sur l'appareil.
+        const btn = function (m) { return q('[data-v3d="lampe"][data-lampe="' + m + '"]'); };
+        const appui = function (m) {
+          btn(m).dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 5 }));
+        };
+        r.normale = Object.assign({ brume: K.etat().portee.brume }, K.etat().eclairage);
+        appui("forte");
+        r.forte = Object.assign({ brume: K.etat().portee.brume, pref: window.getVue3DLampe() }, K.etat().eclairage);
+        appui("jour");
+        r.jour = Object.assign({ brume: K.etat().portee.brume, pref: window.getVue3DLampe(), lampe: K.etat().lampe },
+          K.etat().eclairage);
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.jourRouverte = K.etat().eclairage.active;
+        // Greffe (une partie) : plein jour refusé et grisé, facteur de lampe du jeu combiné au réglage.
+        let ctx = null;
+        K.greffer({ nom: "essai-lampe", scene: function (c2) { ctx = c2; } });
+        await pause(50);
+        ctx.regler({ lampe: 0.5, plongee: false });
+        r.greffeJour = Object.assign({ lampe: K.etat().lampe, refus: K.reglerLampe("jour"),
+          pref: window.getVue3DLampe() }, K.etat().eclairage);
+        appui("jour");
+        r.greffeAppui = K.etat().eclairage.active;
+        r.greffeZoom = { avant: K.etat().portee.recul, apres: K.zoomer(0.5), vue: K.etat().vue };
+        K.basculerVue();
+        r.greffeZoom.vueApres = K.etat().vue;
+        K.reglerLampe("forte");
+        r.greffeForte = Object.assign({ lampe: K.etat().lampe }, K.etat().eclairage);
+        K.reglerLampe("jour");
+        r.greffeForte.refusApres = K.etat().eclairage.active;
+        // Préférence Plein jour, greffe posée puis retirée : rendue au retrait.
+        window.setVue3DLampe("jour");
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        let ctx2 = null;
+        const retirer2 = K.greffer({ nom: "essai-lampe-2", scene: function (c2) { ctx2 = c2; } });
+        await pause(50);
+        ctx2.regler({ lampe: 0.3 });
+        r.avantRetrait = Object.assign({}, K.etat().eclairage);
+        retirer2();
+        r.retrait = Object.assign({ lampe: K.etat().lampe }, K.etat().eclairage);
+        K.reglerLampe("normale");
+        await K.fermer();
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      const RD0 = RG.defaut;
+      verifier(RD0.distance === 30 && RD0.curseur && RD0.curseur.min === 15 && RD0.curseur.max === 100 &&
+        RD0.curseur.valeur === 30 && RG.curseur.dansTuile && RG.curseur.libelle && /30/.test(RG.curseur.valuetext),
+        "portée : curseur de 15 à 100 m dans la tuile ⚙️, 30 m par défaut, libellé et valeur dite",
+        { RD0: RD0, c: RG.curseur });
+      verifier(RD0.brume[1] === 30 && RD0.far === 35 && RD0.tuiles.manquantes === 0 && RD0.tuiles.hors === 0 &&
+        RD0.tuiles.montrees > 0, "portée 30 m : brouillard noir à 30 m, profondeur 35 m, tuiles à portée", RD0);
+      const RP5 = RG.p50;
+      verifier(RP5.distance === 50 && RG.pref50 === 50 && RP5.brume[1] === 50 && RP5.far === 55 && RG.lampe50 === 50 &&
+        RP5.rayon === 50 && RP5.tuiles.manquantes === 0 && RP5.tuiles.hors === 0 &&
+        RP5.tuiles.montrees > RD0.tuiles.montrees && RP5.sol >= 100,
+        "curseur à 50 m : retenu, brouillard, profondeur, lampe, sol et tuiles suivent",
+        { p50: RP5, lampe: RG.lampe50, pref: RG.pref50 });
+      verifier(RG.p100.retenue === 100 && RG.p100.distance === 100 && RG.p100.tuiles.manquantes === 0 &&
+        RG.p100.tuiles.hors === 0 && RG.p100.tuiles.montrees > RP5.tuiles.montrees && RG.p15.retenue === 15 &&
+        RG.p15.distance === 15 && RG.p15.tuiles.hors === 0 && RG.p15.tuiles.montrees < RD0.tuiles.montrees &&
+        RG.repere, "portée bornée à 15 / 100 m, tuiles suivies dans les deux sens, repère sur ⚙️",
+        { p100: RG.p100, p15: RG.p15 });
+      verifier(RG.rouverte.distance === 42 && RG.rouverte.curseur === 42, "portée relue à la réouverture", RG.rouverte);
+      const RN = RG.normale, RF = RG.forte, RJ = RG.jour;
+      const presses = function (o) {
+        return o.boutons.filter(function (b) { return b.presse === "true"; }).map(function (b) { return b.mode; }).join();
+      };
+      verifier(RN.voulue === "normale" && RN.active === "normale" && RN.intensite === 24 && RN.decay === 1.2 &&
+        RN.ambiance === 0.04 && RN.portee === 30 && RN.boutons.length === 3 && presses(RN) === "normale",
+        "lampe : Normale par défaut (force 24, portée = portée réglée), un seul bouton pressé", RN);
+      verifier(RF.active === "forte" && RF.pref === "forte" && RF.decay < RN.decay && RF.portee > RN.portee &&
+        RF.brume[0] > RN.brume[0] && RF.ambiance === 0.04 && presses(RF) === "forte",
+        "lampe Forte : décroissance plus lente, plus loin, brouillard repoussé, retenue", RF);
+      verifier(RJ.active === "jour" && RJ.pref === "jour" && RJ.ambiance === 0.9 && RJ.lampe === 1 &&
+        RG.jourRouverte === "jour" && presses(RJ) === "jour",
+        "lampe Plein jour : ambiance de la vue plongeante (0,9), retenue à la réouverture", { J: RJ, r: RG.jourRouverte });
+      const GJ = RG.greffeJour;
+      verifier(GJ.active === "normale" && GJ.voulue === "jour" && GJ.pref === "jour" && GJ.refus === false &&
+        GJ.ambiance === 0.04 && GJ.lampe === 0.5 && GJ.intensite === 12 && GJ.portee === 15 &&
+        GJ.boutons.filter(function (b) { return b.mode === "jour"; })[0].grise && RG.greffeAppui === "normale",
+        "greffe : Plein jour refusé et grisé (lampe normale), facteur du jeu appliqué (×0,5 : force et portée)", GJ);
+      verifier(RG.greffeForte.active === "forte" && RG.greffeForte.lampe === 0.5 &&
+        RG.greffeForte.portee === +(30 * 1.3 * 0.5).toFixed(2) && RG.greffeForte.intensite === 15 &&
+        RG.greffeForte.refusApres === "forte",
+        "greffe : Forte × facteur du jeu (multiplication)", RG.greffeForte);
+      verifier(RG.greffeZoom.apres === RG.greffeZoom.avant && RG.greffeZoom.vueApres === "yeux",
+        "greffe qui interdit la plongée : zoom refusé, pas de vue plongeante", RG.greffeZoom);
+      verifier(RG.avantRetrait.active === "normale" && RG.retrait.active === "jour" && RG.retrait.ambiance === 0.9 &&
+        RG.retrait.lampe === 1 && RG.retrait.portee === 30 &&
+        !RG.retrait.boutons.filter(function (b) { return b.mode === "jour"; })[0].grise,
+        "retrait de la greffe : plein jour rendu, lampe à la portée réglée, bouton de nouveau actif",
+        { avant: RG.avantRetrait, apres: RG.retrait });
+
+      // Zoom de la vue plongeante : molette, Maj + molette, boutons, clavier, pincement ; borné ; tuiles suivent.
+      await page.evaluate(async function (a) {
+        const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; }, d = P(6, 6);
+        await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+        window.KtaVue3D.basculerVue();
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      await page.waitForTimeout(200);
+      const z0 = await page.evaluate(function () { return window.KtaVue3D.etat(); });
+      const cvZ = await page.locator("#kta-vue3d canvas").boundingBox();
+      await page.mouse.move(cvZ.x + cvZ.width / 2, cvZ.y + cvZ.height / 3);
+      await page.mouse.wheel(0, 100);
+      await page.waitForTimeout(100);
+      const zLoin = await page.evaluate(function () { return window.KtaVue3D.etat(); });
+      await page.mouse.wheel(0, -100);
+      await page.waitForTimeout(100);
+      await page.mouse.wheel(0, -100);
+      await page.waitForTimeout(100);
+      const zPres = await page.evaluate(function () { return window.KtaVue3D.etat(); });
+      await page.keyboard.down("Shift");
+      await page.mouse.wheel(0, -100);
+      await page.waitForTimeout(100);
+      await page.keyboard.up("Shift");
+      const zMaj = await page.evaluate(function () { return window.KtaVue3D.etat(); });
+      verifier(z0.vue === "plongee" && z0.portee.recul === 18.4 && z0.portee.zoomVisible &&
+        Math.abs(zLoin.portee.recul - 18.4 * 1.15) < 0.01 && Math.abs(zPres.portee.recul - 18.4 / 1.15) < 0.01 &&
+        zLoin.inclinaison === z0.inclinaison && zMaj.inclinaison === z0.inclinaison + 5 &&
+        zMaj.portee.recul === zPres.portee.recul,
+        "molette = zoom (vers soi = plus loin), Maj + molette = inclinaison seule ; recul 18,4 m par défaut",
+        { r0: z0.portee.recul, loin: zLoin.portee.recul, pres: zPres.portee.recul,
+          i: [z0.inclinaison, zLoin.inclinaison, zMaj.inclinaison] });
+      const zB = await page.evaluate(async function () {
+        const K = window.KtaVue3D, q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const pose = async function () {
+          await pause(100);
+          for (let i = 0; i < 120 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
+            await pause(50);
+          }
+        };
+        const r = {}, appui = function (k) {
+          q('[data-v3d="' + k + '"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 6 }));
+        };
+        K.zoomer(18.4 / K.etat().portee.recul);
+        const r0 = K.etat().portee.recul;
+        appui("zoomPlus");
+        r.plus = K.etat().portee.recul / r0;
+        appui("zoomMoins");
+        r.moins = K.etat().portee.recul / r0;
+        r.min = K.zoomer(0.001);
+        r.minGrise = K.etat().portee.zoomPlusGrise;
+        r.max = K.zoomer(1000);
+        await pose();
+        r.loin = K.etat().portee;
+        K.basculerVue();
+        r.yeux = K.etat().portee;
+        K.basculerVue();
+        r.retenu = K.etat().portee.recul;
+        K.zoomer(18.4 / 60);
+        await pose();
+        r.defaut = K.etat().portee;
+        return r;
+      });
+      const RZL = zB.loin;
+      verifier(Math.abs(zB.plus - 1 / 1.3225) < 0.01 && Math.abs(zB.moins - 1) < 0.01 && zB.min === 6 && zB.minGrise &&
+        zB.max === 60 && RZL.zoomMoinsGrise && zB.retenu === 60,
+        "boutons + / − (deux crans), recul borné à 6 / 60 m (bouton grisé à la borne), retenu d'une vue à l'autre", zB);
+      verifier(RZL.rayon === 138 && RZL.tuiles.manquantes === 0 && RZL.tuiles.hors === 0 &&
+        RZL.tuiles.montrees > zB.defaut.tuiles.montrees && RZL.sol >= 2 * RZL.rayon &&
+        RZL.brume[1] === +(60 + 138 + 2).toFixed(2) && zB.yeux.rayon === 30 && zB.defaut.rayon === 42.32 &&
+        Math.abs(zB.defaut.brume[1] - (18.4 + 42.32 + 2)) < 0.02,
+        "dézoomé à 60 m : tuiles jusqu'à 138 m (2,3 m par mètre de recul), sol et brouillard suivent ; 42,3 m au défaut",
+        { loin: RZL, defaut: zB.defaut, yeux: zB.yeux.rayon });
+      // Clavier : = rapproche, - éloigne (vue plongeante seulement).
+      await page.keyboard.press("Equal");
+      const kPlus = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
+      await page.keyboard.press("Minus");
+      const kMoins = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
+      verifier(Math.abs(kPlus - 18.4 / 1.15) < 0.01 && Math.abs(kMoins - 18.4) < 0.01,
+        "clavier : = rapproche, - éloigne", { plus: kPlus, moins: kMoins });
+      // Pincement (deux pointeurs tactiles qui s'écartent) : plus près, sans pencher ; deux doigts glissés ensemble :
+      // penche sans zoomer.
+      const zP = await page.evaluate(function () {
+        const K = window.KtaVue3D, cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+        const ev = function (type, id, x, y) {
+          cv.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: id === 21,
+            clientX: x, clientY: y, bubbles: true }));
+        };
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2, e0 = K.etat(), out = {};
+        ev("pointerdown", 21, cx - 40, cy); ev("pointerdown", 22, cx + 40, cy);
+        for (let k = 1; k <= 10; k++) {
+          ev("pointermove", 21, cx - 40 - k * 4, cy); ev("pointermove", 22, cx + 40 + k * 4, cy);
+        }
+        ev("pointerup", 21, cx - 80, cy); ev("pointerup", 22, cx + 80, cy);
+        const e1 = K.etat();
+        out.pince = { avant: e0.portee.recul, apres: e1.portee.recul, incl: [e0.inclinaison, e1.inclinaison],
+          cap: [e0.cap, e1.cap] };
+        ev("pointerdown", 23, cx - 40, cy - 60); ev("pointerdown", 24, cx + 40, cy - 60);
+        for (let k = 1; k <= 10; k++) {
+          ev("pointermove", 23, cx - 40, cy - 60 + k * 8); ev("pointermove", 24, cx + 40, cy - 60 + k * 8);
+        }
+        ev("pointerup", 23, cx - 40, cy + 20); ev("pointerup", 24, cx + 40, cy + 20);
+        const e2 = K.etat();
+        out.glisse = { recul: [e1.portee.recul, e2.portee.recul], incl: [e1.inclinaison, e2.inclinaison] };
+        return out;
+      });
+      verifier(Math.abs(zP.pince.apres - zP.pince.avant / 2) < 0.1 && zP.pince.incl[0] === zP.pince.incl[1] &&
+        Math.abs(zP.pince.cap[0] - zP.pince.cap[1]) < 0.01 && zP.glisse.recul[0] === zP.glisse.recul[1] &&
+        zP.glisse.incl[1] > zP.glisse.incl[0],
+        "pincer = zoom (écart doublé : recul moitié), sans pencher ni tourner ; deux doigts glissés = inclinaison seule",
+        zP);
+      const zF = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+        const d = P(6, 6);
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        const recul = K.etat().portee.recul;
+        await K.fermer();
+        window.setStructures([]); window.KtaGalerie.invalider();
+        return { recul: recul };
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      verifier(zF.recul === 18.4, "zoom retenu tant que la vue est ouverte : 18,4 m à la réouverture", zF);
+      if (CAPTURES) {
+        // Lampe Normale / Forte / Plein jour à 60 m de portée, tuile ouverte au téléphone, plongée dézoomée.
+        const vp = page.viewportSize();
+        await page.evaluate(async function (a) {
+          const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; }, st = [];
+          for (let x = -130; x <= 130; x += 12) {
+            for (let z = -130; z <= 130; z += 12) {
+              st.push({ uid: "st_rc_" + x + "_" + z, type: "pilier-1", level: 0,
+                points: [P(x - 1, z - 1), P(x + 1, z - 1), P(x + 1, z + 1), P(x - 1, z + 1)] });
+            }
+          }
+          window.setStructures(st);
+          window.KtaGalerie.invalider();
+          const d = P(0, 6);
+          await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+          window.KtaVue3D.reglerPortee(60);
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        for (const m of ["normale", "forte", "jour"]) {
+          await page.evaluate(function (x) { window.KtaVue3D.reglerLampe(x); }, m);
+          await page.waitForTimeout(1500);
+          await capture(page, "reglage-lampe-" + m);
+        }
+        await page.evaluate(function () {
+          window.KtaVue3D.reglerLampe("normale");
+          window.KtaVue3D.basculerVue();
+          window.KtaVue3D.zoomer(1000);
+        });
+        await page.waitForTimeout(2500);
+        await capture(page, "reglage-plongee-recul-60");
+        await page.evaluate(function () { window.KtaVue3D.zoomer(0.001); });
+        await page.waitForTimeout(800);
+        await capture(page, "reglage-plongee-recul-6");
+        await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+        await page.setViewportSize({ width: 393, height: 852 });
+        await page.evaluate(async function (a) {
+          const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; }, d = P(0, 6);
+          await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "joystick" });
+          window.KtaVue3D.basculerVue();
+          document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        await page.waitForTimeout(800);
+        await capture(page, "reglage-tuile-telephone");
+        await page.evaluate(function () {
+          window.KtaVue3D.reglerPortee(30);
+          window.setStructures([]); window.KtaGalerie.invalider();
+          return window.KtaVue3D.fermer();
+        });
+        await page.setViewportSize(vp);
+      }
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;

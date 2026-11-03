@@ -9,6 +9,7 @@
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(o), parois(),
 //   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
+//   zoomer(facteur), reglerPortee(m), reglerLampe(mode),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
 //   _ctxGreffe) } ; code « six vers le bas » : kta:vue3dCode ;
@@ -43,7 +44,9 @@
   "use strict";
 
   const URL_THREE = "lib/three/three.module.js";
-  const DISTANCE_VUE = 30;          // m : au-delà, brouillard noir complet et tuiles masquées
+  // Portée (m) : au-delà, brouillard noir complet et tuiles masquées. Réglage ⚙️ de l'appareil (config.js >
+  // getVue3DPortee, curseur : reglerPortee) ; ces bornes ne servent que sans config.js.
+  const PORTEE = window.V3D_PORTEE || { min: 15, max: 100, defaut: 30 };
   const TUILE = 16;                 // m : côté d'une tuile de géométrie
   const TUILES_PAR_IMAGE = 3;       // tuiles construites au plus par image après l'ouverture (pas d'à-coup)
   const HAUTEUR_DEFAUT = 2;         // m, comme ⛏️ Volume exploité
@@ -58,9 +61,26 @@
   const FACTEUR_RAPIDE = 2.5;       // pas rapide : Maj maintenue, ou ▲ maintenu plus de APPUI_LONG
   // Lampe frontale : force, halo autour de soi, portée minimale (part de la distance de vue) d'une lampe baissée.
   const LAMPE = { force: 24, halo: 1.6, porteeMin: 0.06 };
+  // Réglage ⚙️ Lampe (config.js > getVue3DLampe), par mode : facteurs de force, de coupure (part de la portée) et de
+  // halo, décroissance, début du brouillard (part de la portée) et éclairage d'ambiance à hauteur d'yeux. Forte :
+  // décroissance plus lente (à 20 m, ~10 fois l'éclairement de Normale ; 2 fois à 2 m : rien ne brûle de près),
+  // brouillard à 80 % de la portée au lieu de 45 % : c'est lui qui bornait la lecture au loin, lisible jusqu'à 100 m.
+  // Plein jour : l'ambiance de la vue plongeante, lampe normale ; le brouillard reste à la portée (décision : même
+  // coût, et la portée reste le seul réglage de « jusqu'où l'on voit »), commencé à 65 % (plus loin, le fond noir
+  // tranche en bande à l'horizon).
+  const LAMPES = {
+    normale: { force: 1, coupure: 1, halo: 1, decay: 1.2, brume: 0.45, ambiance: 0.04 },
+    forte: { force: 1.25, coupure: 1.3, halo: 1.5, decay: 0.5, brume: 0.8, ambiance: 0.04 },
+    jour: { force: 1, coupure: 1, halo: 1, decay: 1.2, brume: 0.65, ambiance: 0.9 }
+  };
+  const AMBIANCE_PLONGEE = 0.9;
   const APPUI_LONG = 600;           // ms
   const INCLINAISON = { defaut: 60, min: 15, max: 85, pas: 5 };   // ° de la vue plongeante (90 = verticale)
-  const RECUL_PLONGEE = 18.4;       // m entre la caméra plongeante et le point visé, 2 m devant soi
+  // Recul (m) entre la caméra plongeante et le point visé, 2 m devant soi : zoom de la vue plongeante, borné, retenu
+  // tant que la vue est ouverte ; `pas` = facteur d'un cran (molette, + / −, clavier).
+  const RECUL = { defaut: 18.4, min: 6, max: 60, pas: 1.15 };
+  // Rayon de scène en plongée : 2,3 m de sol par mètre de recul (au recul par défaut, 1,4 × la portée de 30 m).
+  const SOL_PAR_RECUL = 2.3;
   const ROTATION = 90;              // °/s
   const EPAISSEUR_MUR_LIGNE = 0.4;  // m
   const EPAISSEUR_FRONT = 0.3;      // m
@@ -1418,7 +1438,7 @@
     return best;
   }
 
-  // Panneaux : dans la distance de vue (comptée depuis soi), échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite.
+  // Panneaux : dans le rayon de scène (_rayonScene, depuis soi), échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite.
   // De près (distance à la caméra) : rien sous PRES.min, fondu jusqu'à PRES.net, et jamais plus large que PRES.ecran
   // de l'écran (champ horizontal de la caméra à cette distance).
   function _majPanneaux() {
@@ -1430,7 +1450,7 @@
       const u = sp.userData.poi;
       let x = u.x, z = u.z;
       if (u.anneau) { const b = _bordProche(u.anneau, cam.x, cam.z); x = b[0]; z = b[1]; }
-      const k = Math.hypot(x - px, z - pz) / e.distance;
+      const k = Math.hypot(x - px, z - pz) / _rayonScene();
       const dc = Math.hypot(x - cam.x, sp.position.y - cam.y, z - cam.z);
       const halo = sp.userData.halo;
       if (halo) { halo.visible = k <= 1; halo.position.x = x; halo.position.z = z; }
@@ -1480,7 +1500,7 @@
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(_e.distance * 2.4 / GRAIN_METRES, _e.distance * 2.4 / GRAIN_METRES);
+    // Répétition posée par _appliquerPortee (le carré de sol suit la portée et le recul).
     tex.anisotropy = 4;
     return tex;
   }
@@ -2092,14 +2112,15 @@
     e.panneaux = new Set();
     e.scene = new THREE.Scene();
     e.scene.background = new THREE.Color(0x000000);
-    e.scene.fog = new THREE.Fog(0x000000, e.distance * 0.45, e.distance);
+    e.scene.fog = new THREE.Fog(0x000000, e.distance * 0.45, e.distance);   // suit la portée : _appliquerPortee
     e.camera = new THREE.PerspectiveCamera(70, 1, 0.05, e.distance + 5);
     e.camera.rotation.order = "YXZ";
     e.scene.add(e.camera);
     e.mats = _materiaux();
     e.texCiel = null;   // 🩸 refaite avec la scène (reprise du contexte) : jamais celle de l'ancien contexte
-    // Sol et plafond : un carré qui suit la position, plus grand que la distance de vue.
-    const plan = new THREE.PlaneGeometry(e.distance * 2.4, e.distance * 2.4, 8, 8);
+    // Sol et plafond : un carré qui suit la position, plus grand que le rayon de scène ; carré unité mis à
+    // l'échelle (_appliquerPortee), la répétition du grain suit.
+    const plan = new THREE.PlaneGeometry(1, 1, 8, 8);
     plan.rotateX(-Math.PI / 2);
     e.sol = new THREE.Mesh(plan, e.mats.sol);
     e.plafond = new THREE.Mesh(plan, e.mats.plafond);
@@ -2109,7 +2130,8 @@
     e.tete = new THREE.Object3D();
     e.tete.rotation.order = "YXZ";
     e.scene.add(e.tete);
-    // Lampe frontale : portée = distance de vue (au-delà, le brouillard est noir de toute façon), décroissance douce.
+    // Lampe frontale : portée = distance de vue (au-delà, le brouillard est noir de toute façon), décroissance douce ;
+    // force, portée et décroissance selon le réglage ⚙️ Lampe et le facteur d'une greffe (_lampeGreffe).
     e.lampe = new THREE.SpotLight(0xfff1d6, LAMPE.force, e.distance, 0.62, 0.55, 1.2);
     e.lampe.position.set(0, 0.05, 0);
     e.lampe.target.position.set(0, -0.3, -1);
@@ -2117,7 +2139,7 @@
     e.halo = new THREE.PointLight(0xfff1d6, LAMPE.halo, 4.5, 2);
     e.tete.add(e.halo);
     _lampeGreffe();
-    e.ambiance = new THREE.AmbientLight(0xffffff, 0.04);
+    e.ambiance = new THREE.AmbientLight(0xffffff, LAMPES.normale.ambiance);
     e.scene.add(e.ambiance);
     // Membres, repères et itinéraires d'une extension (_majEquipe) ; géométries partagées refaites avec la scène.
     e.equipe = new THREE.Group();
@@ -2385,7 +2407,7 @@
     const e = _e;
     if (!e.volPassages || !e.volPassages.length) return;
     const px = e.pos.x / e.sc, pz = e.pos.y / e.sc;
-    const rVue = e.vue === "plongee" ? e.distance * 1.4 : e.distance, rGarde = rVue + 2 * TUILE;
+    const rVue = _rayonScene(), rGarde = rVue + 2 * TUILE;
     for (let i = 0; i < e.volPassages.length; i++) {
       const v = e.volPassages[i], d = Math.max(0, Math.hypot(v.cx - px, v.cz - pz) - v.r);
       if (d <= rVue) { if (!v.obj) _construireVolume(v); }
@@ -3064,13 +3086,12 @@
   // Tuiles proches construites (toutes à l'ouverture, puis quelques-unes par image), lointaines jetées.
   function _gererTuiles(tout) {
     const e = _e, px = e.pos.x / e.sc, pz = e.pos.y / e.sc;
-    const rVue = e.vue === "plongee" ? e.distance * 1.4 : e.distance;
+    const rVue = _rayonScene();
     const rGarde = rVue + 2 * TUILE;
     let construites = 0;
     const t0 = performance.now();
     e.tuiles.forEach(function (t) {
-      const dx = Math.max(t.x0 - px, 0, px - t.x1), dz = Math.max(t.z0 - pz, 0, pz - t.z1);
-      const d = Math.hypot(dx, dz);
+      const d = _distTuile(t, px, pz);
       if (d <= rVue) {
         if (!t.obj && (tout || construites < TUILES_PAR_IMAGE)) { _construireTuile(t); construites++; }
         if (t.obj && !t.obj.visible) { t.obj.visible = true; e.sale = true; }
@@ -3081,6 +3102,24 @@
       }
     });
     if (construites) e.msTuiles += performance.now() - t0;
+  }
+
+  // Distance (m) de (px, pz) au carré d'une tuile (0 dedans).
+  function _distTuile(t, px, pz) {
+    return Math.hypot(Math.max(t.x0 - px, 0, px - t.x1), Math.max(t.z0 - pz, 0, pz - t.z1));
+  }
+
+  // Tuiles à portée pas encore montrées, et tuiles montrées hors de portée (checkup : 0 et 0 une fois posé).
+  function _ecartTuiles() {
+    const e = _e, px = e.pos.x / e.sc, pz = e.pos.y / e.sc, r = _rayonScene();
+    let manquantes = 0, hors = 0, montrees = 0;
+    e.tuiles.forEach(function (t) {
+      const d = _distTuile(t, px, pz), vue = !!t.obj && t.obj.visible;
+      if (vue) montrees++;
+      if (d <= r && !vue) manquantes++;
+      if (vue && d > r) hors++;
+    });
+    return { manquantes: manquantes, hors: hors, montrees: montrees };
   }
 
   function _placerCamera() {
@@ -3096,8 +3135,8 @@
     e.avatar.rotation.set(0, -cap, 0);
     if (e.vue === "plongee") {
       const fx = Math.sin(cap), fz = -Math.cos(cap), i = e.inclinaison * Math.PI / 180;
-      const vx = x + fx * 2, vz = z + fz * 2, h = RECUL_PLONGEE * Math.cos(i);
-      e.camera.position.set(vx - fx * h, RECUL_PLONGEE * Math.sin(i), vz - fz * h);
+      const vx = x + fx * 2, vz = z + fz * 2, h = e.recul * Math.cos(i);
+      e.camera.position.set(vx - fx * h, e.recul * Math.sin(i), vz - fz * h);
       e.camera.lookAt(vx, 0, vz);
     } else {
       e.camera.position.set(x, e.oeil + dy, z);
@@ -3139,6 +3178,49 @@
     _e.sale = true;
   }
 
+  // Zoom de la vue plongeante : recul multiplié par `facteur` (< 1 = plus près), borné à RECUL, retenu tant que la vue
+  // est ouverte. Refusé quand une greffe interdit la plongée (ctx.regler({ plongee: false })). Rend le recul.
+  function zoomer(facteur) {
+    const e = _e;
+    if (!e) return null;
+    const f = Number(facteur);
+    if (!(f > 0) || !Number.isFinite(f) || !_permisGreffe("plongee")) return e.recul;
+    const v = Math.max(RECUL.min, Math.min(RECUL.max, e.recul * f));
+    if (v !== e.recul) { e.recul = v; _appliquerPortee(); }
+    _majZoom();
+    return e.recul;
+  }
+
+  function _majZoom() {
+    const e = _e;
+    if (e.zoomPlus) e.zoomPlus.disabled = e.recul <= RECUL.min + 1e-6;
+    if (e.zoomMoins) e.zoomMoins.disabled = e.recul >= RECUL.max - 1e-6;
+  }
+
+  // Rayon de scène (m autour de soi) : tuiles, volumes, panneaux. À hauteur d'yeux, la portée ; en plongée, il suit
+  // aussi le recul (vu de plus haut, on voit plus loin : pas de bord de scène en dézoomant).
+  function _rayonScene() {
+    const e = _e;
+    return e.vue === "plongee" ? Math.max(e.distance * 1.4, e.recul * SOL_PAR_RECUL) : e.distance;
+  }
+
+  // Brouillard, profondeur de la caméra, carré de sol, ambiance et lampe selon la vue, la portée, le recul et le
+  // réglage de la lampe. En plongée, le brouillard se compte depuis la caméra : il part du recul.
+  function _appliquerPortee() {
+    const e = _e, haut = e.vue === "plongee", m = LAMPES[_lampeActive()], r = _rayonScene();
+    e.ambiance.intensity = haut ? AMBIANCE_PLONGEE : m.ambiance;
+    e.scene.fog.near = haut ? e.recul + r * 0.3 : e.distance * m.brume;
+    e.scene.fog.far = haut ? e.recul + r + 2 : e.distance;
+    e.camera.far = e.scene.fog.far + (haut ? 10 : 5);
+    e.camera.updateProjectionMatrix();
+    const cote = 2.4 * r;
+    e.sol.scale.set(cote, 1, cote);
+    e.plafond.scale.set(cote, 1, cote);
+    e.grain.repeat.set(cote / GRAIN_METRES, cote / GRAIN_METRES);
+    _lampeGreffe();
+    e.sale = true;
+  }
+
   function _appliquerVue() {
     const e = _e, haut = e.vue === "plongee";
     e.plafond.visible = !haut && !e.galerie;
@@ -3146,15 +3228,86 @@
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
     });
     e.avatar.visible = haut && _permisGreffe("avatar");
-    e.ambiance.intensity = haut ? 0.9 : 0.04;
-    e.scene.fog.near = haut ? e.distance : e.distance * 0.45;
-    e.scene.fog.far = haut ? e.distance * 1.4 + 20 : e.distance;
-    e.camera.far = haut ? e.distance * 1.4 + 30 : e.distance + 5;
-    e.camera.updateProjectionMatrix();
+    _appliquerPortee();
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
     _majRepere();
     if (e.boutonsIncl) e.boutonsIncl.hidden = !haut;
+    _majZoom();
     e.sale = true;
+  }
+
+  // ── Portée et lampe (tuile ⚙️, réglages de cet appareil) ─────────────────────────────────────────────────
+  // Portée bornée (config.js > V3D_PORTEE), retenue sur l'appareil ; brouillard, profondeur, lampe et rayon des tuiles
+  // suivent à l'image suivante (_gererTuiles construit au plus TUILES_PAR_IMAGE par image : pas d'à-coup). Rend la
+  // portée retenue (null : vue fermée).
+  function reglerPortee(m) {
+    const e = _e;
+    if (!e) return null;
+    const n = Math.round(Number(m));
+    if (!Number.isFinite(n)) return e.distance;
+    const v = Math.max(PORTEE.min, Math.min(PORTEE.max, n));
+    if (typeof window.setVue3DPortee === "function") window.setVue3DPortee(v);
+    if (v !== e.distance) { e.distance = v; _appliquerPortee(); }
+    _majPortee();
+    _majRepere();
+    return v;
+  }
+
+  function _porteeVoulue() {
+    return typeof window.getVue3DPortee === "function" ? window.getVue3DPortee() : PORTEE.defaut;
+  }
+
+  function _majPortee() {
+    const e = _e;
+    if (!e || !e.curseurPortee) return;
+    if (Number(e.curseurPortee.value) !== e.distance) e.curseurPortee.value = String(e.distance);
+    const txt = typeof window.formatDistance === "function" ? window.formatDistance(e.distance, 0)
+      : e.distance + " m";
+    e.porteeValeur.textContent = txt;
+    e.curseurPortee.setAttribute("aria-valuetext", txt);
+  }
+
+  // Mode de lampe en vigueur : la préférence, sauf plein jour pendant une greffe (refusé : une partie ne se joue pas
+  // en pleine lumière ; rendu au retrait de la greffe, la préférence n'est pas réécrite).
+  function _lampeActive() {
+    const e = _e, v = e && e.lampeVoulue;
+    if (!LAMPES[v]) return "normale";
+    return v === "jour" && e.greffe ? "normale" : v;
+  }
+
+  // Lampe choisie ("normale" | "forte" | "jour"), retenue sur l'appareil. Rend le mode en vigueur, false si « jour »
+  // est refusé (greffe posée), null si la vue est fermée.
+  function reglerLampe(mode) {
+    const e = _e;
+    if (!e) return null;
+    if (!LAMPES[mode]) return _lampeActive();
+    if (mode === "jour" && e.greffe) return false;
+    e.lampeVoulue = typeof window.setVue3DLampe === "function" ? window.setVue3DLampe(mode) : mode;
+    _appliquerPortee();
+    _majLampe();
+    _majRepere();
+    return _lampeActive();
+  }
+
+  function _lampeVoulue() {
+    const v = typeof window.getVue3DLampe === "function" ? window.getVue3DLampe() : "normale";
+    return LAMPES[v] ? v : "normale";
+  }
+
+  function _majLampe() {
+    const e = _e;
+    if (!e || !e.boutonsLampe) return;
+    const actif = _lampeActive();
+    e.boutonsLampe.forEach(function (b) {
+      const m = b.dataset.lampe;
+      b.setAttribute("aria-pressed", m === actif ? "true" : "false");
+      if (m === "jour") {
+        b.disabled = !!e.greffe;
+        const titre = _t("vue3d.lampeJour") + (e.greffe ? " · " + _t("vue3d.lampeJourGreffe") : "");
+        b.title = titre;
+        b.setAttribute("aria-label", _t("vue3d.lampe") + " : " + titre);
+      }
+    });
   }
 
   // ── Déplacement ────────────────────────────────────────────────────────────────────────────────────
@@ -4224,8 +4377,8 @@
     e.hauteurPlus = _bouton(regl, "", "+", _t("vue3d.hauteurPlus"), "hauteurPlus");
     tuile.appendChild(regl);
     e.reglageHauteur = regl;
-    // Rendu et textures des structures (🧱, réglage de cet appareil, actif par défaut) côte à côte : une ligne de
-    // plus recouvrirait ▼ de l'inclinaison en vue plongeante, tuile ouverte.
+    // Rendu et textures des structures (🧱, réglage de cet appareil, actif par défaut) côte à côte : la tuile tient
+    // au téléphone en hauteur (393 × 852 : elle finit au-dessus des boutons + − ▲ ▼ de la vue plongeante).
     const ligneRendu = document.createElement("div");
     ligneRendu.className = "kta-v3d-reglages-ligne";
     tuile.appendChild(ligneRendu);
@@ -4238,8 +4391,7 @@
     icT.textContent = "🧱";
     e.boutonTextures.appendChild(icT);
     e.boutonTextures.appendChild(document.createTextNode(_t("vue3d.texturesNom")));
-    // Boussole et guidage montrés ou non (réglages de cet appareil, montrés par défaut), côte à côte : une ligne de
-    // plus aurait recouvert les boutons d'inclinaison (▼) en vue plongeante, tuile ouverte.
+    // Boussole et guidage montrés ou non (réglages de cet appareil, montrés par défaut), côte à côte, même raison.
     const ligne = document.createElement("div");
     ligne.className = "kta-v3d-reglages-ligne";
     tuile.appendChild(ligne);
@@ -4259,6 +4411,48 @@
     icG.textContent = "🪧";
     e.boutonGuidage.appendChild(icG);
     e.boutonGuidage.appendChild(document.createTextNode(_t("vue3d.guidageNom")));
+    // Portée : curseur libre (réglage de cet appareil, reglerPortee), valeur écrite à côté ; flèches, Origine et Fin
+    // au clavier (le clavier de la vue lui laisse ses touches, _brancher).
+    const portee = document.createElement("div");
+    portee.className = "kta-v3d-portee";
+    const lab = document.createElement("label");
+    lab.className = "kta-v3d-portee-nom";
+    lab.htmlFor = "kta-v3d-portee";
+    lab.textContent = "🔭 " + _t("vue3d.portee");
+    const curseur = document.createElement("input");
+    curseur.type = "range";
+    curseur.id = "kta-v3d-portee";
+    curseur.className = "kta-v3d-portee-curseur";
+    curseur.min = String(PORTEE.min); curseur.max = String(PORTEE.max); curseur.step = "1";
+    curseur.value = String(e.distance);
+    curseur.title = _t("vue3d.porteeAide");
+    const val = document.createElement("span");
+    val.className = "kta-v3d-portee-valeur";
+    val.setAttribute("aria-hidden", "true");   // dite par aria-valuetext du curseur
+    portee.appendChild(lab); portee.appendChild(curseur); portee.appendChild(val);
+    tuile.appendChild(portee);
+    e.curseurPortee = curseur; e.porteeValeur = val;
+    _majPortee();
+    // Lampe : trois boutons (réglage de cet appareil, reglerLampe) ; Plein jour grisé pendant une greffe (_majLampe).
+    const lampe = document.createElement("div");
+    lampe.className = "kta-v3d-reglages-ligne kta-v3d-lampe";
+    lampe.setAttribute("role", "group");
+    lampe.setAttribute("aria-label", _t("vue3d.lampe"));
+    const icL = document.createElement("span");
+    icL.className = "kta-v3d-btn-icone kta-v3d-btn-emoji kta-v3d-lampe-icone";
+    icL.title = _t("vue3d.lampe");
+    icL.textContent = "💡";
+    icL.setAttribute("aria-hidden", "true");
+    lampe.appendChild(icL);
+    e.boutonsLampe = [["normale", "vue3d.lampeNormale"], ["forte", "vue3d.lampeForte"], ["jour", "vue3d.lampeJour"]]
+      .map(function (m) {
+        const b = _bouton(lampe, "kta-v3d-btn-mode", _t(m[1]), _t(m[1]), "lampe");
+        b.setAttribute("aria-label", _t("vue3d.lampe") + " : " + _t(m[1]));
+        b.dataset.lampe = m[0];
+        return b;
+      });
+    tuile.appendChild(lampe);
+    _majLampe();
     ov.appendChild(haut);
     e.haut = haut;
     // Mode suivi / libre toujours visible hors de la tuile (c'est ce qui compte en marchant) : pastille discrète en
@@ -4288,11 +4482,14 @@
       ov.appendChild(pad);
       e.pave = pad;
     }
-    // Inclinaison (vue plongeante seulement) : deux petits boutons à droite.
+    // Zoom et inclinaison (vue plongeante seulement) : + − à gauche de ▲ ▼, en bas à droite (la tuile ⚙️ ouverte ne
+    // les recouvre pas). Ordre du DOM = ordre de tabulation : +, ▲, −, ▼ (grille de deux colonnes).
     const incl = document.createElement("div");
     incl.className = "kta-v3d-incl";
     incl.hidden = true;
+    e.zoomPlus = _bouton(incl, "kta-v3d-btn-petit", "+", _t("vue3d.zoomPlus"), "zoomPlus");
     _bouton(incl, "kta-v3d-btn-petit", "▲", _t("vue3d.inclinaisonPlus"), "inclPlus");
+    e.zoomMoins = _bouton(incl, "kta-v3d-btn-petit", "−", _t("vue3d.zoomMoins"), "zoomMoins");
     _bouton(incl, "kta-v3d-btn-petit", "▼", _t("vue3d.inclinaisonMoins"), "inclMoins");
     ov.appendChild(incl);
     e.boutonsIncl = incl;
@@ -4417,13 +4614,14 @@
   }
 
   // Repère sur ⚙️ (un réglage n'est pas celui par défaut : mode libre, vue plongeante, rendu autre que mixte,
-  // boussole masquée, guidage coupé, textures coupées) et
-  // pastille du mode, hors de la tuile.
+  // boussole masquée, guidage coupé, textures coupées, portée autre que celle par défaut, lampe autre que normale)
+  // et pastille du mode, hors de la tuile.
   function _majRepere() {
     const e = _e;
     if (!e || !e.boutonReglages) return;
     const modifie = e.mode === "libre" || e.vue === "plongee" || e.rendu !== "mixte" ||
-      (!!e.boussole && e.boussole.hidden) || !_guidageMontre() || !_texturesActives();
+      (!!e.boussole && e.boussole.hidden) || !_guidageMontre() || !_texturesActives() ||
+      e.distance !== PORTEE.defaut || e.lampeVoulue !== "normale";
     e.boutonReglages.classList.toggle("kta-v3d-modifie", modifie);
     const titre = _t("vue3d.reglages") + (modifie ? " · " + _t("vue3d.reglagesModifies") : "");
     e.boutonReglages.title = titre;
@@ -4511,7 +4709,7 @@
 
   // Tab reste dans la vue (fenêtre modale) : du dernier bouton on revient au premier, et inversement.
   function _tabulation(ev) {
-    const e = _e, liste = Array.prototype.filter.call(e.ov.querySelectorAll("button"), function (b) {
+    const e = _e, liste = Array.prototype.filter.call(e.ov.querySelectorAll("button, input"), function (b) {
       return !b.disabled && b.offsetParent !== null;
     });
     if (!liste.length) return;
@@ -4596,6 +4794,12 @@
         incliner(a === "inclPlus" ? INCLINAISON.pas * 2 : -INCLINAISON.pas * 2);
         return;
       }
+      if (a === "zoomPlus" || a === "zoomMoins") {
+        ev.preventDefault();
+        zoomer(a === "zoomPlus" ? 1 / (RECUL.pas * RECUL.pas) : RECUL.pas * RECUL.pas);
+        return;
+      }
+      if (a === "lampe") { reglerLampe(b.dataset.lampe); return; }
       ev.preventDefault();
       _codeBas(a === "ar");
       e.touches[a] = true;
@@ -4612,23 +4816,44 @@
     }, true);
     if (e.stickZone) _brancherStick(on);
     on(e.ov, "pointerout", function (ev) { if (ev.target.dataset && ev.target.dataset.v3d) relacher(); });
-    // Glisser sur la scène : un doigt tourne (horizontal) et lève / baisse les yeux (vertical) ; deux doigts,
-    // glissés à la verticale, inclinent la vue plongeante (vers le haut = plus rasante).
-    let glisse = null;
+    on(e.curseurPortee, "input", function () { reglerPortee(e.curseurPortee.value); });
+    // Glisser sur la scène : un doigt tourne (horizontal) et lève / baisse les yeux (vertical). Deux doigts, en vue
+    // plongeante, comme une carte : pincer = zoom (écarter = plus près), glisser ensemble à la verticale = inclinaison
+    // (vers le haut = plus rasante). Le geste est tranché une fois (deux.mode) dès que l'écart ou le milieu a bougé de
+    // GESTE_SEUIL px : un pincement ne penche pas la vue, un glisser ne zoome pas.
+    const GESTE_SEUIL = 12;
+    let glisse = null, deux = null;
     const doigts = new Map();
     // Toucher bref et immobile (< 8 px, < 0,5 s) : un panneau de POI jonction ? (_toucher).
     let tape = null;
     on(e.cv, "pointerdown", function (ev) {
       tape = doigts.size === 0 ? { id: ev.pointerId, x: ev.clientX, y: ev.clientY, t: performance.now() } : null;
-      doigts.set(ev.pointerId, ev.clientY);
+      doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       glisse = doigts.size === 1 ? { x: ev.clientX, y: ev.clientY } : null;
+      deux = doigts.size === 2 ? { mode: null, d: 0, y: 0 } : null;
       try { e.cv.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur déjà relâché */ }
     });
     on(e.cv, "pointermove", function (ev) {
       if (doigts.size >= 2 && doigts.has(ev.pointerId)) {
-        const dy = ev.clientY - doigts.get(ev.pointerId);
-        doigts.set(ev.pointerId, ev.clientY);
-        if (e.vue === "plongee" && dy) incliner(dy * 0.15 / doigts.size);
+        const it = doigts.values(), a0 = it.next().value, b0 = it.next().value;
+        const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y), y0 = (a0.y + b0.y) / 2;
+        doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        const it1 = doigts.values(), a1 = it1.next().value, b1 = it1.next().value;
+        const d1 = Math.hypot(a1.x - b1.x, a1.y - b1.y), dy = (a1.y + b1.y) / 2 - y0;
+        if (e.vue !== "plongee" || !deux) return;
+        if (!deux.mode) {
+          deux.d += d1 - d0; deux.y += dy;
+          if (Math.abs(deux.d) > GESTE_SEUIL && Math.abs(deux.d) > Math.abs(deux.y)) {
+            deux.mode = "zoom";
+            if (d1 > 1 && d1 - deux.d > 1) zoomer((d1 - deux.d) / d1);
+          } else if (Math.abs(deux.y) > GESTE_SEUIL) {
+            deux.mode = "incl";
+            incliner(deux.y * 0.15);
+          }
+          return;
+        }
+        if (deux.mode === "zoom" && d0 > 1 && d1 > 1) zoomer(d0 / d1);
+        else if (deux.mode === "incl" && dy) incliner(dy * 0.15);
         return;
       }
       if (!glisse) return;
@@ -4643,6 +4868,7 @@
     const lever = function (ev) {
       doigts.delete(ev.pointerId);
       glisse = null;
+      if (doigts.size < 2) deux = null;
       if (ev.type === "pointerup" && tape && tape.id === ev.pointerId && doigts.size === 0 &&
           Math.hypot(ev.clientX - tape.x, ev.clientY - tape.y) < 8 && performance.now() - tape.t < 500) {
         _toucher(ev.clientX, ev.clientY);
@@ -4651,11 +4877,20 @@
     };
     on(e.cv, "pointerup", lever);
     on(e.cv, "pointercancel", lever);
-    // Molette (PC) : incline la vue plongeante (vers soi = plus verticale).
+    // Molette (PC), vue plongeante, comme une carte : zoom (vers l'avant = plus près), d'un cran par 100 px de
+    // défilement (pavé tactile : en continu) ; Maj + molette : inclinaison (vers soi = plus verticale).
+    // 🩸 Avec Maj, Chrome et Safari font défiler à l'horizontale : le défilement arrive en deltaX.
     on(e.cv, "wheel", function (ev) {
       if (e.vue !== "plongee") return;
       ev.preventDefault();
-      incliner(ev.deltaY < 0 ? INCLINAISON.pas : -INCLINAISON.pas);
+      const k = ev.deltaMode === 1 ? 33 : ev.deltaMode === 2 ? 400 : 1;
+      if (ev.shiftKey) {
+        const d = ev.deltaY || ev.deltaX;
+        if (d) incliner(d < 0 ? INCLINAISON.pas : -INCLINAISON.pas);
+        return;
+      }
+      const crans = Math.max(-3, Math.min(3, ev.deltaY * k / 100));
+      if (crans) zoomer(Math.pow(RECUL.pas, crans));
     }, { passive: false });
     on(window, "kta:northOffsetChange", function () { _lireNord(); });
     // Itinéraire tracé, remplacé ou effacé pendant la vue (🚨, fiche, guidage) : scène refaite à l'image suivante,
@@ -4679,6 +4914,14 @@
         return;
       }
       if (ev.key === "Tab") { _tabulation(ev); return; }
+      // Curseur de portée au clavier : ses touches restent les siennes (ni pas, ni inclinaison, ni raccourci de la
+      // carte dessous).
+      if (ev.target === e.curseurPortee && /^(Arrow|Page|Home$|End$)/.test(ev.key)) { ev.stopPropagation(); return; }
+      if (e.vue === "plongee" && ["+", "=", "-", "_"].indexOf(ev.key) >= 0) {
+        ev.stopPropagation(); ev.preventDefault();
+        zoomer(ev.key === "+" || ev.key === "=" ? 1 / RECUL.pas : RECUL.pas);
+        return;
+      }
       if (ev.code === "KeyV") { ev.stopPropagation(); basculerVue(); return; }
       if (ev.key === "PageUp" || ev.key === "PageDown") {
         ev.stopPropagation(); ev.preventDefault();
@@ -4880,6 +5123,9 @@
     e.scene.add(gr.groupe);
     gr.ctx = _ctxGreffe(gr);
     e.greffe = gr;
+    // Plein jour refusé pendant la greffe (_lampeActive) : lampe normale et bouton grisé, la préférence est gardée.
+    _appliquerPortee();
+    _majLampe();
     console.log("[Vue3D] greffe « " + gr.nom + " » posée");
     _sceneGreffe();
     if (_e) _e.sale = true;
@@ -4965,15 +5211,18 @@
     return typeof v === "number" ? v : 1;
   }
 
-  // Lampe frontale selon le facteur : force et portée baissent ensemble (au-delà, noir : l'ambiance est à 0,04).
+  // Lampe frontale : mode du réglage ⚙️ Lampe (_lampeActive) multiplié par le facteur de la greffe ; force et portée
+  // baissent ensemble (au-delà, noir : l'ambiance est à 0,04). Portée comptée sur la portée réglée (e.distance) :
+  // elle y revient au retrait de la greffe.
   // 🩸 Refaite avec la scène (reprise du contexte) : réappliquée par _monterScene.
   function _lampeGreffe() {
     const e = _e;
     if (!e || !e.lampe) return;
-    const k = _facteurGreffe("lampe");
-    e.lampe.intensity = LAMPE.force * k;
-    e.lampe.distance = e.distance * Math.max(LAMPE.porteeMin, k);
-    if (e.halo) e.halo.intensity = LAMPE.halo * Math.max(0.35, k);
+    const k = _facteurGreffe("lampe"), m = LAMPES[_lampeActive()];
+    e.lampe.intensity = LAMPE.force * m.force * k;
+    e.lampe.decay = m.decay;
+    e.lampe.distance = e.distance * m.coupure * Math.max(LAMPE.porteeMin, k);
+    if (e.halo) e.halo.intensity = LAMPE.halo * m.halo * Math.max(0.35, k);
   }
 
   function _sceneGreffe() {
@@ -5009,7 +5258,8 @@
     if (gr.reglage.avatar === false && e.avatar) e.avatar.visible = e.vue === "plongee";
     if (gr.reglage.commandes === false) _montrerCommandes(true);
     if (gr.reglage.plongee === false) _permettrePlongee(true);
-    _lampeGreffe();
+    _appliquerPortee();   // lampe à la portée réglée, plein jour rendu s'il était choisi
+    _majLampe();
     e.sale = true;
     console.log("[Vue3D] greffe « " + gr.nom + " » retirée (" + raison + ")");
   }
@@ -5049,7 +5299,8 @@
         : (typeof window.getPlanRelHeading === "function" ? Number(window.getPlanRelHeading()) || 0 : 0);
       _e = {
         sc: sc, hauteur: hauteur, oeil: _oeil(hauteur),
-        distance: o.distanceVue > 0 ? o.distanceVue : DISTANCE_VUE, tuilesActives: o.tuiles !== false,
+        distance: o.distanceVue > 0 ? o.distanceVue : _porteeVoulue(), tuilesActives: o.tuiles !== false,
+        recul: RECUL.defaut, lampeVoulue: _lampeVoulue(),
         pos: { x: pos.x, y: pos.y }, cap: cap, tangage: 0, vue: "yeux",
         mode: o.depart || !_trackerActif() ? "libre" : "suivi",
         touches: {}, ecouteurs: [], tuiles: new Map(), couleurs: new Map(), sale: true, images: 0, butees: 0,
@@ -5273,7 +5524,20 @@
     });
     return {
       ouvert: true, contexteVivant: !e.renderer.getContext().isContextLost(), perdu: e.perdu, reprises: e.reprises,
-      lampe: e.lampe ? +(e.lampe.intensity / LAMPE.force).toFixed(2) : null,
+      lampe: e.lampe ? +(e.lampe.intensity / (LAMPE.force * LAMPES[_lampeActive()].force)).toFixed(2) : null,
+      eclairage: { voulue: e.lampeVoulue, active: _lampeActive(), intensite: e.lampe ? +e.lampe.intensity.toFixed(2) : null,
+        portee: e.lampe ? +e.lampe.distance.toFixed(2) : null, decay: e.lampe ? e.lampe.decay : null,
+        ambiance: e.ambiance ? e.ambiance.intensity : null,
+        boutons: (e.boutonsLampe || []).map(function (b) {
+          return { mode: b.dataset.lampe, presse: b.getAttribute("aria-pressed"), grise: b.disabled };
+        }) },
+      portee: { distance: e.distance, rayon: +_rayonScene().toFixed(2), recul: +e.recul.toFixed(3),
+        brume: e.scene ? [+e.scene.fog.near.toFixed(2), +e.scene.fog.far.toFixed(2)] : null,
+        far: e.camera ? +e.camera.far.toFixed(2) : null, sol: e.sol ? +e.sol.scale.x.toFixed(2) : null,
+        curseur: e.curseurPortee ? { valeur: Number(e.curseurPortee.value), min: Number(e.curseurPortee.min),
+          max: Number(e.curseurPortee.max), texte: e.porteeValeur.textContent } : null,
+        tuiles: _ecartTuiles(), zoomVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden,
+        zoomPlusGrise: !!e.zoomPlus && e.zoomPlus.disabled, zoomMoinsGrise: !!e.zoomMoins && e.zoomMoins.disabled },
       aBouge: e.aBouge, rapide: !!e.rapide, suiviDispo: !!e.suiviDispo, vue: e.vue, mode: e.mode,
       inclinaison: e.inclinaison,
       boussole: { angle: e.roseAngle, nord: e.nord, calibre: e.nordCalibre,
@@ -5581,6 +5845,7 @@
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     textures: textures, basculerTextures: function () { return _basculerTextures(); },
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
+    reglerPortee: reglerPortee, reglerLampe: reglerLampe, zoomer: zoomer,
     origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, trackerRecale: trackerRecale,
     charge: function () { return !!THREE; },
     greffer: greffer,
