@@ -43,10 +43,15 @@
   sur iPhone, date de constat modifiable à la CRÉATION d'un POI danger (`3b06dad4`, non reproductible hors iPhone).
   `qui: KARMA · action: jouer ces écrans sur dev puis en prod · fini: vus conformes, ou bugs ouverts
   · depuis: 26/10/2026 · taille: XS`
-- **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
-  Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
-  `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
-  · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
+- **Essai sur dev : corrections de la vue 3D du 03/11** — escalier en niche contre la paroi (`c374a771`), bassin
+  enfoncé dans sa paroi, puits d'extraction à 2,5 m (`f62ec4d1`), liaison supprimée par « 🔄 Modifier » absente de la
+  3D et de l'itinéraire (`3240e977`). Prouvé par les checkups, pas à la main.
+  `qui: KARMA · action: après /killsw.html, escalier en milieu de galerie et en boucle, bassin, puits d'extraction,
+  liaison supprimée par Modifier · fini: vus conformes, ou bugs ouverts · depuis: 03/11/2026 · taille: XS`
+- **Test WebKit « fondu −1 » instable** — `checkup-vue-3d.js` : 1 KO par intermittence sous charge, vu aussi sur la
+  base `f62ec4d1` ; 🔬 test instable plutôt que régression. Bloquerait la porte de release.
+  `qui: Claude · action: trouver ce qui dépend du temps dans le contrôle du fondu et le rendre déterministe
+  · fini: 5 passages WebKit verts de suite · depuis: 03/11/2026 · taille: S`
 
 - **Test appareil : ouverture de plans sur iPhone** — plus de clics répétés ; si le journal montre souvent « copie
   gardée relue », quelque chose réécrit encore les copies.
@@ -72,6 +77,18 @@
   réglages validés, ou chiffres à ajuster transmis · depuis: 02/11/2026 · taille: S`
 ## Ensuite
 
+- **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
+  Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
+  `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
+  · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
+- **Aide ❓ de la vue 3D : accès et niches** — `aide.sec.vue-3d.html` (`lang/fr,en,es`) ne dit rien des accès sans
+  passage (fermés, comblés, bassin, cavage) ni de l'escalier en niche.
+  `qui: Claude · action: compléter la section dans les 3 langues · fini: section à jour, check-i18n vert
+  · depuis: 03/11/2026 · taille: XS`
+- **Vue 3D ouverte pendant un « 🔄 Modifier »** — la 3D ne se réindexe pas quand un calque est rapatrié ou restitué
+  pendant qu'elle est ouverte ; il faut la fermer et la rouvrir.
+  `qui: Claude · action: reconstruire la scène sur l'événement de rapatriement / restitution · fini: checkup vert,
+  calque modifié vu sans rouvrir la 3D · depuis: 03/11/2026 · taille: S`
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
   (`security-legal.md` §36.3).
   `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert
