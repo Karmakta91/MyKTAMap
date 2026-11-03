@@ -190,7 +190,9 @@ embuscades, un monde par niveau), `js/son.js`
 - **Difficulté** : facile = tracés + trajet du jeu au sol (ruban doré, chevrons sombres tous les 2 m pointés vers
   B) + balise + flèche + reste à parcourir ; moyen = sans la flèche ; difficile = ni tracés
   (`regler({ traces: false })`), ni trajet, ni balise, ni guidage. L'itinéraire et le guidage de l'app sont masqués
-  pendant toute la partie (le jeu dessine le sien).
+  pendant toute la partie (le jeu dessine le sien). **Recalé** quand on fuit : à plus de 6 m du trajet pendant
+  1,5 s, nouveau trajet d'ici à B (au plus toutes les 3 s ; même cible, chrono inchangé ; aussi en difficile, pour
+  la tenaille posée sur le trajet).
 - **Santé et endurance** : le pas rapide vide l'endurance (22 / s), elle revient au repos (14 / s) ; vide = à bout de
   souffle, pas rapide interdit (`regler({ course: false })`) jusqu'à 30. Battement de cœur (décision produit)
   seulement sous 5 % ou à bout de souffle, de plus en plus lent pendant la reprise.
@@ -221,7 +223,12 @@ embuscades, un monde par niveau), `js/son.js`
 - **Tenaille** (décision produit) : un groupe devant SUR le trajet du jeu (18 m), un autre derrière (15 m sur le
   trajet, sinon dans le dos), 2 + 1 toutes les deux vagues chacun (`surgir`, au-delà du plafond de 8 au plus) ; une
   fois par vague à mi-parcours, et au hasard dès la vague 3 (40 à 70 s, de plus en plus souvent).
-- **Fusil** à deux coups (bouton en bas à droite, Espace, clic bref de la souris sur la scène) : la menace la plus
+- **Viseur à la souris** (PC) : un clic sur la scène capture la souris (Pointer Lock) ; elle tourne la vue sans
+  bouton enfoncé, le clic gauche tire, Échap la rend (sans fermer la vue). Sans toucher à la vue 3D : la souris
+  capturée lui rejoue un glisser du doigt (événements synthétiques sur la scène) ; les vrais événements de souris
+  sur la scène sont arrêtés en capture pendant la partie. Capture refusée 3 fois de suite : glisser pour regarder,
+  clic bref pour tirer. Souris rendue en fin de partie et en quittant.
+- **Fusil** à deux coups (bouton en bas à droite, Espace, clic gauche de la souris capturée) : la menace la plus
   proche dans l'axe (6° ou le gabarit du corps), à 18 m au plus, ligne de vue libre ; un égaré a 2 points, un coup à
   8 m ou moins en ôte 2 ; la silhouette touchée recule. Recharge automatique de 1,5 s ; départ 2 + 6 cartouches.
 - **À ramasser** à moins d'1 m : munitions (+4 ; 4 par vague, une de moins toutes les deux vagues, 1 au moins), piles,
@@ -251,7 +258,7 @@ embuscades, un monde par niveau), `js/son.js`
   joueur seulement en courant sous 50 d'endurance ou à bout de souffle. 🩸 Rien ne revient à intervalle fixe : un
   son régulier se lit comme un bip ou un métronome.
 - **Checkup** : `checkup-vue-3d.js` § 21 (prise, code) et § 23 (jeu, avec `KtaAddons.mkmg.essai` : `vider`, `poser`,
-  `sante`, `chrono`, `tenaille`, `pile` ; `poser` accepte `rampant`, `hurleur`, `gardien`, `pile`). Non joués
+  `sante`, `chrono`, `tenaille`, `pile`, `viser` ; `poser` accepte `rampant`, `hurleur`, `gardien`, `pile`). Non joués
   par le checkup : passage de niveau (monde rangé, refuge) et B à un autre niveau (le relevé fictif est sur un niveau).
 
 ## À donner à une IA (résumé à coller)

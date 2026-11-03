@@ -43,6 +43,7 @@
       "hud.reduire": "Réduire", "hud.agrandir": "Agrandir", "hud.tues": "Égarés tués", "hud.tirs": "Balles tirées",
       "hud.touches": "Balles au but",
       "hud.sansNom": "un point du réseau", "hud.tirer": "Tirer", "hud.cartouches": "Cartouches",
+      "hud.viser": "Clic sur la scène : viser à la souris · Échap pour la libérer",
       "hud.recharge": "Recharge…", "hud.vide": "Plus de cartouches", "hud.plusCartouches": "+{n} cartouches",
       "hud.plusSante": "+{n} santé", "hud.recule": "Elle recule…",
       "fin.titre": "Tu es resté sous terre", "fin.texte": "Vague {n} · {r} réussie(s)",
@@ -71,6 +72,7 @@
       "hud.reduire": "Collapse", "hud.agrandir": "Expand", "hud.tues": "Lost ones killed", "hud.tirs": "Shots fired",
       "hud.touches": "Hits",
       "hud.sansNom": "a point of the network", "hud.tirer": "Shoot", "hud.cartouches": "Shells",
+      "hud.viser": "Click the scene to aim with the mouse · Esc to release it",
       "hud.recharge": "Reloading…", "hud.vide": "Out of shells", "hud.plusCartouches": "+{n} shells",
       "hud.plusSante": "+{n} health", "hud.recule": "It backs away…",
       "fin.titre": "You stayed underground", "fin.texte": "Wave {n} · {r} cleared",
@@ -99,6 +101,7 @@
       "hud.reduire": "Reducir", "hud.agrandir": "Ampliar", "hud.tues": "Perdidos abatidos", "hud.tirs": "Disparos",
       "hud.touches": "Aciertos",
       "hud.sansNom": "un punto de la red", "hud.tirer": "Disparar", "hud.cartouches": "Cartuchos",
+      "hud.viser": "Clic en la escena: apuntar con el ratón · Esc para soltarlo",
       "hud.recharge": "Recargando…", "hud.vide": "Sin cartuchos", "hud.plusCartouches": "+{n} cartuchos",
       "hud.plusSante": "+{n} salud", "hud.recule": "Retrocede…",
       "fin.titre": "Te quedaste bajo tierra", "fin.texte": "Oleada {n} · {r} superada(s)",
@@ -117,6 +120,8 @@
     videParS: 22, repriseParS: 14, souffleReprise: 30, coeurSous: 5, regardM: 5, majHudMs: 150, messageMs: 2200,
     cartouches: { canon: 2, reserve: 6 }, eclairMs: 90, imageMs: 33, blesseMs: 600, coupMs: 250, tapeMs: 250,
     tapePx: 6,
+    // Viseur (souris capturée) : px rejoués par px de souris, refus avant de rendre le glisser, Échap ignoré après.
+    viseur: { id: 7331, k: 1, refus: 3, echapMs: 300 },
     // Chrono d'une vague (décision produit) : longueur du trajet vers B à `vitesse` m/s (+ `parVague`, `max` au plus)
     // plus une marge qui fond ; sans trajet, la distance à vol d'oiseau × `sansTrajet`. À 0 : horde et santé.
     chrono: { vitesse: 1.4, parVague: 0.08, max: 2.4, marge: 30, margeParVague: 2, margeMin: 10, sansTrajet: 1.4,
@@ -132,7 +137,10 @@
     respireSous: 50, eau: { x: 0.6, ploufM: 0.6, testMs: 200 },
     eboulis: { rayonM: 15, s: [8, 20], masqueMs: 2500, testMs: 1000 },
     // B à un autre niveau (plan multi-niveau) : dès la vague `des`, une fois sur `1 / chance` ; jamais en vague boss.
-    autreNiveau: { des: 4, chance: 0.4 }, gardienTous: 5
+    autreNiveau: { des: 4, chance: 0.4 }, gardienTous: 5,
+    // Trajet recalé (on fuit, le trajet suit) : à plus de `ecartM` du trajet pendant `tenirMs`, au plus une fois
+    // toutes les `entreMs`.
+    recalage: { ecartM: 6, tenirMs: 1500, entreMs: 3000 }
   };
   const DIFFICULTES = {
     facile: { traces: true, route: true, guidage: true },
@@ -237,7 +245,8 @@
       canon: REGLES.cartouches.canon, reserve: REGLES.cartouches.reserve, rechargeFin: 0, fin: false, tues: 0,
       tirs: 0, touches: 0,
       blesseT: 0, ecouteurs: [], saleT: 0, carte: null, mondes: {}, pile: REGLES.pile.max, lampeK: 1, eau: false,
-      eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0 };
+      eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0,
+      ecartT: 0, recaleT: 0, recale: false, recalages: 0 };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
     if (!retirer) { _p = null; return; }
     if (_p) _p.retirer = retirer;
@@ -334,6 +343,7 @@
     }
     if (p.chronoFin && !p.chronoDepasse && t >= p.chronoFin) _tropTard(p, ctx);
     _guetter(p, ctx, t);
+    _recaler(p, ctx, t);
     if (t - p.majHud > REGLES.majHudMs) { p.majHud = t; _majHud(); }
     // Les menaces bougent sans nous : une image redemandée, 30 par seconde au plus (iPhone, plan dense).
     if (t - p.saleT >= REGLES.imageMs) { p.saleT = t; ctx.sale(); }
@@ -398,6 +408,7 @@
   function _demonter(ctx, raison) {
     const p = _p;
     if (!p) return;
+    if (p.viseur) p.viseur.liberer();
     p.ecouteurs.forEach(function (x) { x[0].removeEventListener(x[1], x[2], x[3]); });
     if (raison !== "contexte") _vider();
     if (_monde()) _monde().liberer(p, raison === "contexte");
@@ -410,7 +421,7 @@
 
   function quitter() { if (_p && _p.retirer) _p.retirer(); }
 
-  // ── Commandes : bouton, Espace, clic bref de la souris sur la scène ───────────────────────────────────
+  // ── Commandes : bouton, Espace, souris capturée (sinon clic bref) sur la scène ───────────────────────
 
   function _brancher() {
     const p = _p;
@@ -429,6 +440,8 @@
     });
     const cv = document.querySelector("#kta-vue3d .kta-v3d-canvas");
     if (cv) {
+      _brancherViseur(p, cv, on);
+      // Souris non capturable (navigateur, refus répétés) : glisser pour regarder, clic bref pour tirer.
       let appui = null;
       on(cv, "pointerdown", function (ev) {
         appui = ev.pointerType === "mouse" && ev.button === 0 ? { x: ev.clientX, y: ev.clientY, t: performance.now() }
@@ -440,6 +453,65 @@
         appui = null;
       });
     }
+  }
+
+  // Viseur à la souris (PC) : un clic sur la scène capture la souris (Pointer Lock) ; elle tourne alors la vue sans
+  // bouton enfoncé, le clic gauche tire, Échap la rend. La vue 3D n'en sait rien : la souris capturée lui rejoue un
+  // glisser du doigt (pointerdown / pointermove / pointercancel synthétiques sur la scène), son seul geste de regard.
+  // 🩸 Les vrais événements de souris sur la scène sont arrêtés en capture sur window : la vue les compterait comme
+  // un deuxième doigt (inclinaison) et le glisser rejoué se figerait. Le glisser rejoué est toujours clos
+  // (pointercancel) : un doigt resté posé bloquerait le regard à la souris après la partie.
+  // 🩸 L'Échap qui rend la souris ne doit pas fermer la vue : arrêté pendant la capture et juste après (selon le
+  // navigateur, keydown part avant ou après pointerlockchange).
+  function _brancherViseur(p, cv, on) {
+    if (typeof cv.requestPointerLock !== "function") return;
+    const V = REGLES.viseur, v = { x: 0, y: 0, pose: false, rendu: 0, refus: 0 };
+    const capte = function () { return document.pointerLockElement === cv; };
+    const rejouer = function (type) {
+      cv.dispatchEvent(new PointerEvent(type, { pointerId: V.id, pointerType: "mouse", clientX: v.x, clientY: v.y,
+        bubbles: true, cancelable: true }));
+    };
+    const poser = function () { if (!v.pose) { v.x = 0; v.y = 0; v.pose = true; rejouer("pointerdown"); } };
+    const lever = function () { if (v.pose) { v.pose = false; rejouer("pointercancel"); } };
+    const tourner = function (dx, dy) { poser(); v.x += dx * V.k; v.y += dy * V.k; rejouer("pointermove"); };
+    const souris = function (ev) {
+      return ev.isTrusted && ev.pointerType === "mouse" && ev.target === cv && v.refus < V.refus;
+    };
+    on(window, "pointerdown", function (ev) {
+      if (!souris(ev)) return;
+      ev.stopPropagation();
+      ev.preventDefault();
+      _son().reveiller();
+      if (capte()) { if (ev.button === 0) _tirer(); return; }
+      if (p.fin) return;
+      try {
+        const r = cv.requestPointerLock();
+        if (r && typeof r.catch === "function") r.catch(function () { v.refus++; });
+      } catch (err) { v.refus++; }
+    }, true);
+    on(window, "pointerup", function (ev) { if (souris(ev)) ev.stopPropagation(); }, true);
+    on(window, "pointermove", function (ev) {
+      if (!souris(ev)) return;
+      ev.stopPropagation();
+      if (capte() && (ev.movementX || ev.movementY)) tourner(ev.movementX, ev.movementY);
+    }, true);
+    on(document, "pointerlockchange", function () {
+      if (capte()) { v.refus = 0; poser(); return; }
+      v.rendu = performance.now();
+      lever();
+      if (!p.fin) _message(_t("hud.viser"));
+    });
+    on(window, "keydown", function (ev) {
+      if (ev.key !== "Escape" || !(capte() || performance.now() - v.rendu < V.echapMs)) return;
+      ev.stopPropagation();
+      ev.preventDefault();
+      if (capte()) document.exitPointerLock();
+    }, true);
+    p.viseur = {
+      liberer: function () { if (capte()) document.exitPointerLock(); lever(); },
+      tourner: tourner, lever: lever, capte: capte
+    };
+    if (window.matchMedia && window.matchMedia("(pointer: fine)").matches) _message(_t("hud.viser"));
   }
 
   function _tirer() {
@@ -593,6 +665,30 @@
     else if (cible) _message(_objectif(cible));
   }
 
+  // On a fui loin du trajet (facile, moyen : le ruban ne mènerait plus nulle part) : nouveau trajet d'ici à B, à
+  // la même cible et sans toucher au chrono. Aussi en difficile, pour la tenaille posée sur le trajet.
+  function _recaler(p, ctx, t) {
+    const R = REGLES.recalage;
+    if (!p.cible || !p.route || p.recale || t - p.recaleT < R.entreMs) return;
+    const pos = ctx.pos;
+    if (_proche(p.route, p.longueurs, pos, ctx.niveau).d / ctx.sc <= R.ecartM) { p.ecartT = 0; return; }
+    if (!p.ecartT) { p.ecartT = t; return; }
+    if (t - p.ecartT < R.tenirMs) return;
+    p.recale = true;
+    p.recaleT = t;
+    const jeton = p.calcul, cible = p.cible;
+    _route(pos, cible, ctx.niveau, cible.niveau).then(function (route) {
+      p.recale = false;
+      p.ecartT = 0;
+      if (_p !== p || jeton !== p.calcul || p.cible !== cible || !route) return;
+      p.route = route;
+      p.longueurs = _cumuls(route);
+      p.recalages++;
+      _dessiner();
+      _majHud();
+    });
+  }
+
   function _objectif(c) {
     return c.niveau === undefined ? _t("hud.objectif", { nom: c.nom })
       : _t("hud.objectifNiveau", { nom: c.nom, n: c.niveau });
@@ -685,6 +781,7 @@
   function _finPartie() {
     const p = _p;
     p.fin = true;
+    if (p.viseur) p.viseur.liberer();   // la souris rendue pour toucher la carte de fin
     // La carte de fin est sous les commandes (calque de la greffe) : joystick et pavé retirés le temps de toucher.
     p.ctx.regler({ course: false, commandes: false });
     _son().proximite(0);
@@ -728,15 +825,20 @@
   }
 
   // Abscisse (px) du point du trajet le plus proche de pos.
-  function _abscisse(path, cum, pos) {
+  function _abscisse(path, cum, pos) { return _proche(path, cum, pos).s; }
+
+  // Point du trajet le plus proche : abscisse s et écart d (px). niv : seulement les segments de ce niveau.
+  function _proche(path, cum, pos, niv) {
     let best = Infinity, s = 0;
     for (let i = 1; i < path.length; i++) {
       const a = path[i - 1], b = path[i], dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy || 1e-9;
+      if (niv !== undefined && niv !== null && ((Number.isInteger(a.level) && a.level !== niv) ||
+        (Number.isInteger(b.level) && b.level !== niv))) continue;
       const k = Math.max(0, Math.min(1, ((pos.x - a.x) * dx + (pos.y - a.y) * dy) / l2));
       const d = Math.hypot(a.x + dx * k - pos.x, a.y + dy * k - pos.y);
       if (d < best) { best = d; s = cum[i - 1] + k * Math.sqrt(l2); }
     }
-    return s;
+    return { s: s, d: best };
   }
 
   function _pointA(path, cum, s) {
@@ -1008,6 +1110,8 @@
     return { enCours: true, diff: p.diff, vague: p.vague, reussies: p.reussies, sante: Math.round(p.sante),
       endurance: Math.round(p.endurance), souffle: p.souffle, cible: p.cible ? { x: p.cible.x, y: p.cible.y,
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
+      recalages: p.recalages, ecartM: p.route && p.ctx ?
+        +(_proche(p.route, p.longueurs, p.ctx.pos, p.ctx.niveau).d / p.ctx.sc).toFixed(1) : null, viseur: !!(p.viseur && p.viseur.capte()),
       traits: p.traits.length, chevrons: p.nChevrons || 0, calcul: p.calcul, canon: p.canon, reserve: p.reserve,
       recharge: !!p.rechargeFin,
       fin: p.fin, tues: p.tues, tirs: p.tirs, touches: p.touches,
@@ -1038,7 +1142,9 @@
     pile: function (v) { if (_p) _p.pile = v; },
     sante: function (v) { if (_p) _p.sante = v; },
     chrono: function (ms) { if (_p) { _p.chronoFin = performance.now() + ms; _p.chronoDepasse = false; } },
-    tenaille: function () { if (_p && _p.ctx) _tenaille(_p, _p.ctx); }
+    tenaille: function () { if (_p && _p.ctx) _tenaille(_p, _p.ctx); },
+    // Regard rejoué comme la souris capturée (dx, dy en px), glisser clos aussitôt.
+    viser: function (dx, dy) { if (_p && _p.viseur) { _p.viseur.tourner(dx, dy); _p.viseur.lever(); } }
   };
 
   window.KtaAddons = window.KtaAddons || {};

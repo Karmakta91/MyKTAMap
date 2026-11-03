@@ -4639,6 +4639,15 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await pause(150);
         r.plongee = { vue: K.etat().vue, reglage: K.etat().greffe.reglage.plongee,
           bouton: !!q("#kta-vue3d .kta-v3d-vue") && q("#kta-vue3d .kta-v3d-vue").disabled };
+        // Viseur (souris capturée, PC) : le regard rejoué comme un glisser de la vue (40 px = 10°), glisser clos.
+        K.placer(d.x, d.y, 90);
+        await pause(50);
+        X.viser(40, 0);
+        await pause(50);
+        r.viseur = { cap: Math.round(K.etat().cap), apres: 0 };
+        X.viser(-40, 0);
+        await pause(50);
+        r.viseur.apres = Math.round(K.etat().cap);
         K.placer(d.x, d.y, 90);
         X.poser("egare", P(-25, 0).x, P(-25, 0).y);
         await pause(50);
@@ -4743,6 +4752,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await pause(300);
         r.mi = { fait: M().etat().tenailleMi, ennemis: M().etat().ennemis.length };
         X.vider();
+        // On fuit à 30 m derrière le départ (dos à B) : le trajet se recale d'ici à B, plus long d'autant.
+        K.placer(d.x, d.y, 90);
+        await pause(100);
+        r.recalage = { avant: M().etat().recalages, resteAvant: M().etat().restantM };
+        K.placer(P(-60, 0).x, P(-60, 0).y, 270);
+        await pause(2200);
+        r.recalage.apres = M().etat().recalages;
+        r.recalage.resteApres = M().etat().restantM;
+        r.recalage.ecart = M().etat().ecartM;
+        X.vider();
         K.placer(d.x, d.y, 90);
         // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
         K.placer(d.x, d.y, 270);
@@ -4836,6 +4855,11 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(MK.plongee.vue === "yeux" && MK.plongee.reglage === false && MK.plongee.bouton && MK.quitte.boutonVue,
         "jeu : vue plongeante interdite pendant la partie (🦅 grisé, basculement refusé), rendue en quittant",
         { partie: MK.plongee, quitte: MK.quitte.boutonVue });
+      verifier(MK.viseur.cap === 100 && MK.viseur.apres === 90,
+        "jeu : viseur à la souris — regard rejoué par la vue (40 px → 10°), glisser clos (pas de doigt resté posé)",
+        MK.viseur);
+      verifier(MK.recalage.apres > MK.recalage.avant && MK.recalage.resteApres > MK.recalage.resteAvant + 25 &&
+        MK.recalage.ecart < 2, "jeu : enfui à 30 m derrière le départ, le trajet se recale d'ici à B", MK.recalage);
       verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",
         "jeu : canon vide → recharge automatique de 1,5 s (2 cartouches prises dans la réserve)", MK.recharge);
       verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,
