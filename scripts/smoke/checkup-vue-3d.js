@@ -21,7 +21,7 @@
 // Aucune paroi de tube dans un passage (§ 14 bis) : bouche ou tranchée coupée par un tracé, cul-de-sac, 3 rendus.
 // Accès de surface sans passage (§ 14 quater : esf, pef, pb, pc, psf, ps, pe, cao, caf) : forme, place, ni 🪜 ni
 // cadre, blocage (cône, cavage fermé ; bassin contre la paroi, qu'on longe), itinéraire sur le cône, arrivée devant
-// un cavage fermé, 🧱, 2D intacte. Sens des marches (§ 14 quinquies : esf, eso, jes) : entrée côté galerie longue.
+// un cavage fermé, 🧱, 2D intacte. Escaliers (§ 14 quinquies : esf, eso, jes) en niche latérale, pied contre la paroi.
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
@@ -1624,7 +1624,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         const marcher = function (n, pas) { for (let i = 0; i < n; i++) K.avancer(pas || 0.2); };
         return K.ouvrir({ depart: a.t }).then(function () {
           const r = {};
-          K.placer(a.t.x, a.t.y, 0); marcher(30); r.paroiNord = rel(0).z;
+          // À 2 m du POI jonction (x = −8, sur l'axe) : sa niche d'escalier ouvre la paroi nord.
+          K.placer(a.t.x + 2 * a.sc, a.t.y, 0); marcher(30); r.paroiNord = rel(0).z;
           K.placer(a.t.x - 2 * a.sc, a.t.y, 90); marcher(120); r.carrefourEst = rel(0).x;
           K.placer((a.ox + 0) * a.sc, a.oz * a.sc, 180); marcher(70); r.branche = rel(0).z;
           K.placer((a.ox + 100) * a.sc, (a.oz - 10) * a.sc, 180); marcher(70); r.coudeSud = rel(100).z;
@@ -3298,14 +3299,15 @@ async function mesuresGalerie(page, nom, semisDonne) {
         for (const rendu of ["mixte", "galerie"]) {
           const tube = DC.cas.filter(function (c) { return c.rendu === rendu; });
           verifier(tube.length >= 20 && tube.every(function (c) { return c.hors === 0 && c.construit; }),
-            rendu + " : " + tube.length + " volumes de POI décalés de 1 à 5 m (3 niveaux) : bouche et cadre doré dans le tube",
+            rendu + " : " + tube.length + " volumes de POI décalés de 1 à 5 m (3 niveaux) : bouche et cadre doré " +
+            "dans le tube (ou la niche d'un escalier)",
             tube.filter(function (c) { return c.hors > 0 || !c.construit; }));
           const z = function (niv, nom) { const c = un(rendu, niv, nom); return c ? c.z : null; };
           verifier(pres(z(0, "dc jpe bas 3"), 0.45) && pres(z(0, "dc jpe bas -2"), -0.45) && pres(z(-1, "dc jpe bas -2"), -0.45) &&
-            pres(z(0, "dc jpe haut -5"), -0.45) && pres(z(1, "dc jpe haut -5"), -0.45) && pres(z(0, "dc jes 2"), 0.3) &&
-            pres(z(0, "dc pa 2"), 0.65) && pres(z(0, "dc jpe dedans 1"), 0.45),
-            rendu + " : sans raccord, ramené dans le tube du côté du POI (puits 0,45 m, escalier 0,3 m, aération 0,65 m de l'axe), " +
-            "sur chaque niveau", tube);
+            pres(z(0, "dc jpe haut -5"), -0.45) && pres(z(1, "dc jpe haut -5"), -0.45) && pres(z(0, "dc jes 2"), 2.5) &&
+            pres(z(0, "dc eso -3"), -2.5) && pres(z(0, "dc pa 2"), 0.65) && pres(z(0, "dc jpe dedans 1"), 0.45),
+            rendu + " : sans raccord, ramené du côté du POI (puits 0,45 m, aération 0,65 m de l'axe, escalier en " +
+            "niche à 2,5 m), sur chaque niveau", tube);
           verifier(pres(z(-1, "dc jpe bas 3"), 0) && pres(z(1, "dc jpe haut 1.5"), 0.3) && pres(z(-1, "dc jps 4"), -0.2) &&
             pres(z(1, "dc jps 4"), -0.45) && pres(z(0, "dc jpe raccord 0"), 0),
             rendu + " : raccord validé (autre niveau ou celui du POI) au point exact ; niveau sans raccord ramené", tube);
@@ -3414,7 +3416,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
           T.forEach(function (t) {
             const v = o.vol[t[0]];
             if (!v) return;
-            const z = v.z;
+            // esf en niche latérale (à 2,5 m de l'axe, hors du passage) : on passe devant, sur l'axe.
+            const z = t[0] === "esf" ? 0 : v.z;
             o.marche[t[0]] = marcher(t[1] - 4, z, 80);
             if (t[0] === "pe") o.marche.peCote = marcher(t[1] - 4, -0.85, 80);   // le long du passage laissé (0,8 m)
             if (t[0] === "caf") {
@@ -3572,15 +3575,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
         if (manque.length) return;
         verifier(AC.T.every(function (t) { return !V[t[0]].passage && !V[t[0]].cadre && !o.echelle[t[0]]; }),
           k + " : aucun accès n'a de 🪜 ni de cadre doré", o.echelle);
-        // Place : en galerie / mixte dans le tube (demi-emprise comprise), porte sur l'axe ; en structures au POI.
+        // Place : en galerie / mixte dans le tube (demi-emprise comprise), porte sur l'axe, esf en niche (centre à
+        // 1,25 + 1,25 m de l'axe) ; en structures au POI.
         const demi = { esf: 0.75, pef: 0.6, pb: 0.6, pc: 0.9, psf: 1.25, ps: 1.25, pe: 1, cao: Infinity, caf: Infinity };
         verifier(AC.T.every(function (t) {
           const v = V[t[0]];
           // Bassin : 0,8 m libre jusqu'à la paroi d'en face (−1,25) → centre à 0,55 dans un tube de 2,5 m.
-          const zt = t[0] === "pe" ? 0.55 : Math.max(0, 1.25 - demi[t[0]]);
+          const zt = t[0] === "pe" ? 0.55 : t[0] === "esf" ? 2.5 : Math.max(0, 1.25 - demi[t[0]]);
           return prAc(v.x, t[1]) && (tube ? prAc(v.z, zt) : prAc(v.z, 2));
-        }), k + (tube ? " : volume ramené dans le tube du côté du POI (au plus w − demi-emprise de l'axe), porte sur l'axe"
-          : " : volume au point du POI"), AC.T.map(function (t) { return [t[0], V[t[0]].x, V[t[0]].z]; }));
+        }), k + (tube ? " : volume ramené dans le tube du côté du POI (au plus w − demi-emprise de l'axe), porte sur " +
+          "l'axe, esf en niche" : " : volume au point du POI"), AC.T.map(function (t) { return [t[0], V[t[0]].x, V[t[0]].z]; }));
         const esf = V.esf, pef = V.pef, pb = V.pb, pc = V.pc, psf = V.psf, ps = V.ps, pe = V.pe, cao = V.cao, caf = V.caf;
         verifier(esf.forme === "escalier" && esf.ferme && esf.plafond && !esf.ciel && !esf.cielVu &&
           esf.bouchesPlafond > 0 && prAc(esf.dalleY, h + 2.5) && pef.forme === "puits" && pef.echelons && pef.ferme &&
@@ -3659,12 +3663,15 @@ async function mesuresGalerie(page, nom, semisDonne) {
         AC.perfAvec.max + " ms ; ouverture par rendu (mixte, galerie, structures) " +
         [AC.mixte.ms, AC.galerie.ms, AC.structures.ms].join(" / ") + " ms");
 
-      // ── 14 quinquies. Sens des marches (esf, eso, jes), fictifs ─────────────────────────────────────────────────
-      // Une galerie principale par cas, à 20 m d'écart, dessinée dans les deux sens (le sens a → b du tracé ne doit
-      // rien changer) ; POI à 1,5 m de l'axe. Entrée attendue (KtaGalerie.placePassage > entree) : côté où la galerie
-      // continue le plus longtemps (cul-de-sac : côté ouvert). Relevé sur la géométrie construite (stats.marches) :
-      // le haut de la volée qui monte est à l'opposé de l'entrée, la marche la plus haute de celle qui descend du côté
-      // de l'entrée ; entre trois niveaux, les deux. Boucle : entree = 0 (sens du tracé gardé). 2D intacte.
+      // ── 14 quinquies. Escaliers en niche latérale (esf, eso, jes), fictifs ────────────────────────────────────────
+      // Une galerie principale par cas (paroi à 1,25 m), à 20 m d'écart, dessinée dans les deux sens. Attendu
+      // (KtaGalerie.placePassage > niche, décision produit : jamais en plein milieu de la galerie) : volée
+      // perpendiculaire à l'axe, dans une niche du côté du POI (POI sur l'axe : à gauche du sens du tracé), centre à
+      // 1,25 + 1,25 m de l'axe, pied contre la paroi (haut de la volée qui monte au fond de la niche, marche la plus
+      // haute de celle qui descend contre la paroi ; entre trois niveaux, les deux) ; bouche hors du passage de la
+      // galerie ; niche marchable (dedans, pas de l'axe à la niche, ctx.libre des add-ons), paroi de la galerie ouverte
+      // devant elle, fond muré. POI au-delà du bout d'un cul-de-sac : volée dans l'axe vers le fond, sans niche.
+      // Rendu structures : le point. 2D intacte (recalage, itinéraire, pas du tracker et de la galerie).
       const MS = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, G = window.KtaGalerie, sc = a.sc;
         const P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
@@ -3672,114 +3679,174 @@ async function mesuresGalerie(page, nom, semisDonne) {
         window.ktaEstAccessible = function () { return true; };
         window.ktaSetActiveLevel(0);
         window.setStructures([]); window.setZones([]);
-        // [nom, tag, niveaux, x0 → x1 du tracé, x du POI, entrée attendue (−1 ouest, +1 est)]
-        const C = [["ms esf impasse est", "esf", null, -60, 0, -2, -1], ["ms eso impasse ouest", "eso", null, 0, 60, 2, 1],
-          ["ms esf milieu", "esf", null, -60, 30, 10, -1], ["ms eso milieu", "eso", null, -30, 60, -10, 1]];
+        // [nom, tag, niveaux, x0 → x1 du tracé, POI (x, z), côté de la niche (+1 / −1 ; "gauche" : sens du tracé ;
+        // 0 : bout de cul-de-sac, volée dans l'axe vers +x)]
+        const C = [["mn esf cote", "esf", null, -30, 30, 0, 1.5, 1], ["mn eso loin", "eso", null, -30, 30, 5, -4, -1],
+          ["mn esf dedans", "esf", null, -30, 30, -5, 0.5, 1], ["mn esf axe", "esf", null, -30, 30, 0, 0, "gauche"],
+          ["mn esf fond", "esf", null, -60, 0, 2, 0.5, 0]];
         if (a.multi) {
-          C.push(["ms jes bas impasse", "jes", [0, -1], -60, 0, -2, -1], ["ms jes haut milieu", "jes", [0, 1], -30, 60, -10, 1],
-            ["ms jes trois impasse", "jes", [-1, 0, 1], 0, 60, 2, 1]);
+          C.push(["mn jes bas", "jes", [0, -1], -30, 30, 0, 2, 1], ["mn jes haut", "jes", [0, 1], -30, 30, 0, -2, -1],
+            ["mn jes trois", "jes", [-1, 0, 1], -30, 30, 0, 3, 1]);
         }
         const roads = [], pois = [], cas = [];
         C.forEach(function (c, i) {
           [false, true].forEach(function (inv, j) {
-            const z = (2 * i + j) * 20, id = c[0] + (inv ? " inverse" : "");
+            // Rangées de part et d'autre du centre du plan : un pas jugé hors de l'image est refusé (_balayage).
+            const z = (2 * i + j - C.length) * 20, id = c[0] + (inv ? " inverse" : "");
             const pts = [P(c[3], z), P(c[4], z)];
             roads.push({ uid: "rd_ms_" + i + "_" + j, type: "principal", level: 0, points: inv ? pts.reverse() : pts });
             const o = Object.assign({ id: id, nom: id, uid: "pt_ms_" + i + "_" + j, level: 0, tags: [c[1]] },
-              P(c[5], z + 1.5));
+              P(c[5], z + c[6]));
             if (c[2]) o.niveaux = c[2];
             pois.push(o);
-            cas.push({ nom: id, x: c[5], z: z, attendu: c[6] });
+            // Carte nord en haut, plan en y vers le bas : la gauche d'un tracé vers +x est −z.
+            const cote = c[7] === "gauche" ? (inv ? 1 : -1) : c[7];
+            cas.push({ nom: id, x: c[5], z: z, pz: c[6], cote: cote });
           });
         });
-        // Boucle (rectangle de 20 × 10 m) : entree = 0.
-        const zb = 2 * C.length * 20;
+        // Boucle (rectangle de 20 × 10 m), POI à 1,5 m sous son bord sud : niche aussi.
+        const zb = C.length * 20;
         roads.push({ uid: "rd_ms_boucle", type: "principal", level: 0,
           points: [P(-10, zb), P(10, zb), P(10, zb + 10), P(-10, zb + 10), P(-10, zb)] });
         const boucle = Object.assign({ id: "ms esf boucle", nom: "ms esf boucle", uid: "pt_ms_boucle", level: 0,
-          tags: ["esf"] }, P(0, zb + 1.5));
+          tags: ["esf"] }, P(0, zb - 1.5));
+        cas.push({ nom: boucle.nom, x: 0, z: zb, pz: -1.5, cote: -1 });
+        const tous = pois.concat([boucle]);
         window.setRoads(roads);
-        // 2D : recalage autour de chaque POI, itinéraire le long d'une galerie, pas du tracker : sans puis avec.
+        // 2D : recalage autour de chaque POI et devant chaque niche, itinéraire, pas du tracker : sans puis avec.
         const deux = async function () {
           G.invalider();
-          const rec = cas.map(function (c) {
-            const v = G.versGalerie(P(c.x, c.z + 1.5).x, P(c.x, c.z + 1.5).y, 0);
-            return [v.etat, +(v.x / sc - a.ox).toFixed(3), +(v.y / sc - a.oz).toFixed(3)];
+          const rec = [];
+          cas.forEach(function (c) {
+            [c.pz, 1.2 * (c.cote || 1), 2.5 * (c.cote || 1)].forEach(function (dz) {
+              const q = P(c.x, c.z + dz), v = G.versGalerie(q.x, q.y, 0);
+              rec.push([v.etat, +(v.x / sc - a.ox).toFixed(3), +(v.y / sc - a.oz).toFixed(3)]);
+            });
           });
           let it;
           try {
-            const ri = await window.Pathfinder.computeRoute([P(-50, 0), P(-1, 0)], { allowedTypes: ["principal"] });
+            const ri = await window.Pathfinder.computeRoute([P(-25, 0), P(25, 0)], { allowedTypes: ["principal"] });
             it = { d: Math.round(ri.totalDistance), n: (ri.path || []).length };
           } catch (e) { it = String(e && e.message); }
-          const seg = [[P(-50, 0).x, P(-50, 0).y, P(-1, 0).x, P(-1, 0).y]];
+          const seg = [[P(-25, 0).x, P(-25, 0).y, P(25, 0).x, P(25, 0).y]];
           return { rec: rec, iti: it, pas: window.ktaSegmentsBloquesParStructure(seg, 0),
             galerie: G.segmentsBloques(seg, 0) };
         };
         window.setEditorPoints([]);
         const r = { sans: await deux(), cas: cas };
-        window.setEditorPoints(pois.concat([boucle]));
+        window.setEditorPoints(tous);
         const avantPts = JSON.stringify(window.getEditorPoints());
         r.avec = await deux();
-        r.entrees = {};
         r.places = {};
+        r.vol = {};
+        r.niche = {};
         for (const rendu of ["mixte", "galerie", "structures"]) {
           window.setPlanRenduVue3D(null, rendu);
           G.invalider();
-          r.entrees[rendu] = pois.concat([boucle]).map(function (p) {
+          r.places[rendu] = tous.map(function (p) {
             const pl = G.placePassage(p, 0, rendu);
-            return pl ? [p.nom, pl.entree, Math.round(Math.cos(pl.ang))] : [p.nom, null, null];
+            return pl ? { x: +(pl.x / sc - a.ox).toFixed(3), z: +(pl.y / sc - a.oz).toFixed(3), niche: !!pl.niche,
+              entree: pl.entree } : null;
           });
-          r.places[rendu] = pois.map(function (p) {
-            const pl = G.placePassage(p, 0, rendu);
-            return pl ? [+(pl.x / sc - a.ox).toFixed(3), +(pl.y / sc - a.oz).toFixed(3), +pl.ang.toFixed(4)] : null;
-          });
-          const d = P(0, zb / 2);
+          const d = P(0, 0);
           await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 400, tuiles: false });
           await new Promise(function (ok) { setTimeout(ok, 50); });
-          r[rendu] = K.etat().volumes.filter(function (v) { return v.genre === "poi" && v.forme === "escalier"; })
+          let ctx = null;
+          const retirer = K.greffer({ nom: "ms-niche", scene: function (c) { ctx = c; } });
+          r.vol[rendu] = K.etat().volumes.filter(function (v) { return v.genre === "poi" && v.forme === "escalier"; })
             .map(function (v) {
-              const m = v.marches || {}, rx = function (q) { return q ? +(q[0] - a.ox).toFixed(2) : null; };
+              const m = v.marches || {};
+              const rel = function (q) { return q ? [+(q[0] - a.ox).toFixed(2), +(q[1] - a.oz).toFixed(2)] : null; };
               return { x: +(v.x / sc - a.ox).toFixed(2), z: +(v.y / sc - a.oz).toFixed(2), tag: v.tag, sol: v.sol,
-                plafond: v.plafond, construit: v.construit, haut: rx(m.haut), entreeBas: rx(m.entreeBas) };
+                plafond: v.plafond, construit: v.construit, haut: rel(m.haut), entreeBas: rel(m.entreeBas),
+                bouche: v.bouche.map(function (q) { return [+(q[0] - a.ox).toFixed(3), +(q[1] - a.oz).toFixed(3)]; }) };
             });
+          if (rendu !== "structures") {
+            // Niche : marchable (règle du pas de la 3D, ctx des add-ons), paroi de la galerie ouverte devant elle,
+            // fond muré. Parois du modèle de ce rendu (celles que la 3D dessine et contre lesquelles le mixte bute).
+            const m = G.modele(0, rendu === "mixte");
+            const parois = function (x0, z0, x1, z1) {
+              const out = [];
+              m.piecesPres(P(x0, z0).x, P(x0, z0).y, P(x1, z1).x, P(x1, z1).y).forEach(function (i) {
+                m.paroisDe(i).forEach(function (w) {
+                  out.push([w[0] / sc - a.ox, w[1] / sc - a.oz, w[2] / sc - a.ox, w[3] / sc - a.oz]);
+                });
+              });
+              return out;
+            };
+            const touche = function (ws, x, z) {
+              return ws.some(function (w) {
+                const dx = w[2] - w[0], dz = w[3] - w[1], l2 = dx * dx + dz * dz;
+                const t = l2 ? Math.max(0, Math.min(1, ((x - w[0]) * dx + (z - w[1]) * dz) / l2)) : 0;
+                return Math.hypot(x - w[0] - t * dx, z - w[1] - t * dz) < 0.01;
+              });
+            };
+            r.niche[rendu] = cas.filter(function (c) { return c.cote; }).map(function (c) {
+              const s = c.cote, zc = c.z + s * 2.5, A = P(c.x, c.z), B = P(c.x, zc), F = P(c.x, c.z + s * 4.5);
+              const ws = parois(c.x - 3, c.z - 5, c.x + 3, c.z + 5);
+              return { nom: c.nom, dedans: G.dedans(B.x, B.y, 0), pas: !G.segmentsBloques([[A.x, A.y, B.x, B.y]], 0)[0],
+                fond: G.segmentsBloques([[B.x, B.y, F.x, F.y]], 0)[0],
+                libre: !!ctx && ctx.libre(B.x, B.y), ctxPas: !!ctx && !ctx.bloque(A.x, A.y, B.x, B.y),
+                ouverte: [-0.6, 0, 0.6].every(function (dx) { return !touche(ws, c.x + dx, c.z + s * 1.25); }),
+                muree: touche(ws, c.x, c.z + s * 3.95) };
+            });
+          }
+          if (retirer) retirer();
           await K.fermer();
         }
         r.inchanges = JSON.stringify(window.getEditorPoints()) === avantPts;
         window.setEditorPoints([]); window.setRoads([]); G.invalider();
         window.setPlanRenduVue3D(null, "mixte");
         window.ktaEstAccessible = acc;
-        r.roads = roads; r.pois = pois;
+        r.roads = roads; r.pois = tous;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, multi: G.multi });
-      ["mixte", "galerie", "structures"].forEach(function (k) {
-        const V = MS[k], faux = [];
-        MS.cas.forEach(function (c) {
-          const v = V.filter(function (q) { return Math.abs(q.z - c.z) < 5; })[0];
-          if (!v || !v.construit) { faux.push([c.nom, "absent"]); return; }
-          const okHaut = !v.plafond || (v.haut !== null && Math.sign(v.haut - v.x) === -c.attendu);
-          const okBas = !v.sol || (v.entreeBas !== null && Math.sign(v.entreeBas - v.x) === c.attendu);
-          if (!okHaut || !okBas) faux.push([c.nom, v]);
+      const presMs = function (u, v, tol) { return u !== null && u !== undefined && Math.abs(u - v) <= (tol || 0.02); };
+      ["mixte", "galerie"].forEach(function (k) {
+        const V = MS.vol[k], faux = [];
+        MS.cas.forEach(function (c, i) {
+          const v = V.filter(function (q) { return Math.abs(q.z - c.z) < 6 && Math.abs(q.x - c.x) < 6; })[0];
+          const pl = MS.places[k][i];
+          if (!v || !v.construit || !pl) { faux.push([c.nom, "absent"]); return; }
+          if (!c.cote) {
+            // Bout de cul-de-sac : dans l'axe, sans niche, la volée qui monte vers le fond (+x).
+            if (pl.niche || Math.abs(v.z - c.z) > 1.25 || !v.haut || !(v.haut[0] > v.x)) faux.push([c.nom, v, pl]);
+            return;
+          }
+          const s = c.cote, d = function (q) { return q ? (q[1] - c.z) * s : null; };
+          const okPlace = pl.niche && presMs(v.x, c.x) && presMs((v.z - c.z) * s, 2.5);
+          const okHaut = !v.plafond || d(v.haut) > 2.5;
+          const okBas = !v.sol || (d(v.entreeBas) !== null && d(v.entreeBas) < 2.5);
+          const libre = v.bouche.every(function (q) { return (q[1] - c.z) * s >= 1.25 - 0.01; });
+          if (!okPlace || !okHaut || !okBas || !libre) faux.push([c.nom, v, pl]);
         });
-        verifier(faux.length === 0, k + " : " + MS.cas.length + " escaliers (esf, eso" + (G.multi ? ", jes vers −1, +1 et " +
-          "entre trois niveaux" : "") + ", tracé dans les deux sens) : entrée (pied de la volée qui monte, haut de celle " +
-          "qui descend) du côté où la galerie continue le plus longtemps", faux);
-        const E = MS.entrees[k], bo = E[E.length - 1];
-        verifier(E.slice(0, -1).every(function (q, i) { return q[1] * q[2] === MS.cas[i].attendu; }) && bo[1] === 0,
-          k + " : placePassage > entree indépendant du sens du tracé ; boucle → 0", E);
+        verifier(faux.length === 0, k + " : " + MS.cas.length + " escaliers (esf, eso" +
+          (G.multi ? ", jes vers −1, +1 et entre trois niveaux" : "") + ", tracé dans les deux sens, boucle) en niche " +
+          "latérale du côté du POI (sur l'axe : à gauche du tracé), pied contre la paroi, passage de la galerie libre ; " +
+          "bout de cul-de-sac dans l'axe vers le fond", faux);
+        const N = MS.niche[k], mauvais = N.filter(function (n) {
+          return !n.dedans || !n.pas || !n.fond || !n.libre || !n.ctxPas || !n.ouverte || !n.muree;
+        });
+        verifier(N.length > 0 && mauvais.length === 0, k + " : " + N.length + " niches marchables (pas de l'axe à la " +
+          "niche, ctx.libre et ctx.bloque des add-ons), paroi de la galerie ouverte devant, fond muré", mauvais);
       });
+      const st = MS.places.structures.filter(function (pl, i) {
+        const c = MS.cas[i];
+        return !pl || pl.niche || !presMs(pl.x, c.x) || !presMs(pl.z, c.z + c.pz);
+      });
+      verifier(st.length === 0, "structures : escalier au point du POI, sans niche", st);
       verifier(JSON.stringify(MS.sans) === JSON.stringify(MS.avec) && MS.inchanges,
-        "sens des marches : 2D intacte (recalage, itinéraire, pas du tracker et de la galerie identiques sans et avec " +
-        "les escaliers) ; POI enregistrés inchangés", { sans: MS.sans, avec: MS.avec });
-      ok("info places des escaliers (x, z, axe) : " + JSON.stringify(MS.places));
+        "niches d'escalier : 2D intacte (recalage au POI et devant la niche, itinéraire, pas du tracker et de la " +
+        "galerie identiques sans et avec les escaliers) ; POI enregistrés inchangés", { sans: MS.sans, avec: MS.avec });
       if (CAPTURES) {
         for (const c of MS.cas.slice(0, 2)) {
           await page.evaluate(async function (q) {
             const P = function (x, z) { return { x: (q.ox + x) * q.sc, y: (q.oz + z) * q.sc }; };
             window.setRoads(q.roads); window.setEditorPoints(q.pois);
             window.KtaGalerie.invalider();
-            const d = P(q.x + 5 * q.attendu, q.z);   // arrivée par le côté d'entrée, face au volume
-            await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: q.attendu > 0 ? 270 : 90 }, tuiles: false });
-          }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, x: c.x, z: c.z, attendu: c.attendu, roads: MS.roads, pois: MS.pois });
+            const d = P(q.x - 5, q.z);   // dans la galerie, la niche sur le côté
+            await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: q.cote > 0 ? 135 : 45 }, tuiles: false });
+          }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, x: c.x, z: c.z, cote: c.cote, roads: MS.roads, pois: MS.pois });
           await page.waitForTimeout(500);
           await capture(page, "marches-" + c.nom.replace(/\s+/g, "-"));
           await page.evaluate(function () {
