@@ -9,8 +9,11 @@
 // monde.js et joueur.js (bras et fusil en vue à hauteur d'yeux, silhouette verte en vue plongeante). Expose
 // window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
 // rejoindre un point B (POI de plus en plus loin, sinon un point des tracés) avec des égarés et, dès la vague 2, la
-// silhouette (monde.js) ; fusil à deux coups, munitions et champignons ramassés en passant ; santé à 0 = fin, meilleure
-// vague retenue par difficulté. Difficulté : facile = tracés + itinéraire du jeu + guidage ; moyen = tracés +
+// silhouette (monde.js) ; fusil à deux coups, munitions, piles et champignons ramassés en passant ; santé à 0 = fin,
+// meilleure vague retenue par difficulté. La pile de la lampe s'use (lampe qui baisse et vacille, à plat = lueur de
+// quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
+// éboulis couvrent les grognements. Dès la vague 4, sur un plan multi-niveau, B est parfois à un autre niveau ; toutes
+// les 5 vagues, un gardien garde B. Difficulté : facile = tracés + itinéraire du jeu + guidage ; moyen = tracés +
 // itinéraire ; difficile = rien.
 // 🔒 Ne touche ni tracker, ni session, ni filtres, ni l'itinéraire de l'app : la greffe (KtaVue3D.greffer) est son
 // seul accès ; ses trajets sont calculés par Pathfinder.computeRoute (lecture) et dessinés dans son propre groupe.
@@ -44,7 +47,11 @@
       "hud.plusSante": "+{n} santé", "hud.recule": "Elle recule…",
       "fin.titre": "Tu es resté sous terre", "fin.texte": "Vague {n} · {r} réussie(s)",
       "fin.meilleure": "Meilleure vague ({diff}) : {m}", "fin.rejouer": "Rejouer",
-      "hud.tropTard": "Trop tard ! Ils arrivent de partout…", "hud.tenaille": "Pris en tenaille : fuis !"
+      "hud.tropTard": "Trop tard ! Ils arrivent de partout…", "hud.tenaille": "Pris en tenaille : fuis !",
+      "hud.lampe": "Lampe", "hud.plusPile": "+{n} % de pile", "hud.pileFaible": "La lampe faiblit…",
+      "hud.pileVide": "Plus de pile : avance à tâtons", "hud.objectifNiveau": "Rejoins : {nom} · niveau {n}",
+      "hud.hurle": "Un hurlement… ils accourent !", "hud.gardien": "Gardien",
+      "hud.gardienVague": "Quelque chose garde la sortie…", "hud.gardienAbattu": "Le gardien est tombé !"
     },
     en: {
       "confirmer.titre": "⛏️ Six feet under",
@@ -68,7 +75,11 @@
       "hud.plusSante": "+{n} health", "hud.recule": "It backs away…",
       "fin.titre": "You stayed underground", "fin.texte": "Wave {n} · {r} cleared",
       "fin.meilleure": "Best wave ({diff}): {m}", "fin.rejouer": "Play again",
-      "hud.tropTard": "Too late! They come from everywhere…", "hud.tenaille": "Caught in a pincer: run!"
+      "hud.tropTard": "Too late! They come from everywhere…", "hud.tenaille": "Caught in a pincer: run!",
+      "hud.lampe": "Lamp", "hud.plusPile": "+{n}% battery", "hud.pileFaible": "The lamp is fading…",
+      "hud.pileVide": "Battery dead: feel your way", "hud.objectifNiveau": "Reach: {nom} · level {n}",
+      "hud.hurle": "A howl… they're coming!", "hud.gardien": "Guardian",
+      "hud.gardienVague": "Something guards the way out…", "hud.gardienAbattu": "The guardian has fallen!"
     },
     es: {
       "confirmer.titre": "⛏️ Dos metros bajo tierra",
@@ -92,7 +103,11 @@
       "hud.plusSante": "+{n} salud", "hud.recule": "Retrocede…",
       "fin.titre": "Te quedaste bajo tierra", "fin.texte": "Oleada {n} · {r} superada(s)",
       "fin.meilleure": "Mejor oleada ({diff}): {m}", "fin.rejouer": "Jugar otra vez",
-      "hud.tropTard": "¡Demasiado tarde! Llegan por todas partes…", "hud.tenaille": "Atrapado en tenaza: ¡huye!"
+      "hud.tropTard": "¡Demasiado tarde! Llegan por todas partes…", "hud.tenaille": "Atrapado en tenaza: ¡huye!",
+      "hud.lampe": "Linterna", "hud.plusPile": "+{n} % de batería", "hud.pileFaible": "La linterna se apaga…",
+      "hud.pileVide": "Sin batería: avanza a tientas", "hud.objectifNiveau": "Llega a: {nom} · nivel {n}",
+      "hud.hurle": "Un aullido… ¡vienen corriendo!", "hud.gardien": "Guardián",
+      "hud.gardienVague": "Algo vigila la salida…", "hud.gardienAbattu": "¡El guardián ha caído!"
     }
   };
 
@@ -110,7 +125,14 @@
     // Sandwich (décision produit) : un groupe devant soi SUR le trajet, un autre derrière, à mi-parcours de chaque
     // vague, et au hasard dès la vague `hasardDes`, de plus en plus souvent.
     tenaille: { mi: 0.5, devantM: 18, derriereM: 15, n: 2, parDeuxVagues: 1, hasardDes: 3, hasardS: [40, 70],
-      hasardParVague: 0.1 }
+      hasardParVague: 0.1 },
+    // Pile (décision produit) : s'use de `parS` % par seconde ; sous `faible` %, la lampe baisse jusqu'à `min` (lueur
+    // de quelques mètres, jamais le noir) et vacille (×`vacille`, de plus en plus souvent).
+    pile: { max: 100, parS: 0.55, faible: 25, min: 0.08, vacille: 0.35, vacilleHz: 2.5, vacilleMs: [50, 200] },
+    respireSous: 50, eau: { x: 0.6, ploufM: 0.6, testMs: 200 },
+    eboulis: { rayonM: 15, s: [8, 20], masqueMs: 2500, testMs: 1000 },
+    // B à un autre niveau (plan multi-niveau) : dès la vague `des`, une fois sur `1 / chance` ; jamais en vague boss.
+    autreNiveau: { des: 4, chance: 0.4 }, gardienTous: 5
   };
   const DIFFICULTES = {
     facile: { traces: true, route: true, guidage: true },
@@ -139,7 +161,7 @@
   function _son() { return window.KtaAddons.mkmgSon; }
   function _monde() { return window.KtaAddons.mkmgMonde; }
   function _joueur() { return window.KtaAddons.mkmgJoueur; }
-  function _jouer(nom, force) { const S = _son(); if (S) S.jouer(nom, force); }
+  function _jouer(nom, force, angle) { const S = _son(); if (S) S.jouer(nom, force, angle); }
 
   // ── Démarrage ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -212,7 +234,8 @@
       majHud: 0, reussies: 0, restantM: null, ennemis: [], objets: [], cadavres: [], gabarits: null, niveauMonde: null,
       canon: REGLES.cartouches.canon, reserve: REGLES.cartouches.reserve, rechargeFin: 0, fin: false, tues: 0,
       tirs: 0, touches: 0,
-      blesseT: 0, ecouteurs: [], saleT: 0, carte: null };
+      blesseT: 0, ecouteurs: [], saleT: 0, carte: null, mondes: {}, pile: REGLES.pile.max, lampeK: 1, eau: false,
+      eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0 };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
     if (!retirer) { _p = null; return; }
     if (_p) _p.retirer = retirer;
@@ -230,14 +253,14 @@
       _monterHud(ctx);
       _joueur().monter(p, ctx);
       _brancher();
+      _son().ambiance(true);
       _nouvelleVague();
     }
     // 🩸 Reprise du contexte : groupe neuf, les objets d'avant sont morts avec l'ancien (jamais dispose()).
     if (raison === "reprise") { p.traits = []; _monde().dessiner(p, ctx, true); _joueur().monter(p, ctx, true); }
-    // Autre niveau (passage 🪜) : le monde de la vague est refait là où l'on est.
+    // Autre niveau (passage 🪜) : le monde quitté attend là (refuge), celui d'ici est repris ou peuplé à moitié.
     if (raison === "refaite" && p.niveauMonde !== null && ctx.niveau !== p.niveauMonde && !p.fin) {
-      _monde().vider(p);
-      _monde().peupler(p, ctx);
+      _monde().changerNiveau(p, ctx);
     }
     _dessiner();
   }
@@ -260,8 +283,17 @@
       const n = Math.min(REGLES.cartouches.canon - p.canon, p.reserve);
       p.canon += n; p.reserve -= n; p.rechargeFin = 0;
     }
+    _pile(p, ctx, t, dt);
+    _eau(p, ctx, t);
+    _eboulis(p, ctx, t);
     const r = _monde().animer(p, ctx, dt);
-    r.sons.forEach(function (s) { _jouer(s[0], s[1]); });
+    // Un éboulis couvre grognements et pas un moment.
+    r.sons.forEach(function (s) {
+      if (t < p.masqueFin && (s[0] === "grogne" || s[0] === "pas")) return;
+      _jouer(s[0], s[1], s[2]);
+    });
+    if (r.hurle) _message(_t("hud.hurle"));
+    _son().respiration(p.endurance < REGLES.respireSous ? 1 - p.endurance / REGLES.respireSous : 0);
     // Battement de cœur (décision produit) : seulement à bout de souffle ou sous coeurSous % d'endurance, fort et
     // rapide à sec, de plus en plus lent pendant la reprise, éteint une fois le souffle revenu.
     const seuil = p.souffle ? REGLES.souffleReprise : REGLES.coeurSous;
@@ -273,6 +305,11 @@
         p.reserve += n;
         _jouer("ramasse");
         _message(_t("hud.plusCartouches", { n: n }));
+      } else if (type === "pile") {
+        const n = _monde().REGLES.piles.gain;
+        p.pile = Math.min(REGLES.pile.max, p.pile + n);
+        _jouer("pile");
+        _message(_t("hud.plusPile", { n: n }));
       } else {
         const n = _monde().REGLES.champignons.soin;
         p.sante = Math.min(REGLES.sante, p.sante + n);
@@ -285,7 +322,7 @@
       if (t - p.blesseT > REGLES.blesseMs) { p.blesseT = t; _jouer("blesse"); _coup(); }
     }
     if (p.sante <= 0) { _finPartie(); return; }
-    if (p.cible) {
+    if (p.cible && (p.cible.niveau === undefined || p.cible.niveau === ctx.niveau)) {
       const pos = ctx.pos, d = Math.hypot(p.cible.x - pos.x, p.cible.y - pos.y) / ctx.sc;
       if (d <= REGLES.arriveeM) { _vagueReussie(); return; }
     }
@@ -294,6 +331,62 @@
     if (t - p.majHud > REGLES.majHudMs) { p.majHud = t; _majHud(); }
     // Les menaces bougent sans nous : une image redemandée, 30 par seconde au plus (iPhone, plan dense).
     if (t - p.saleT >= REGLES.imageMs) { p.saleT = t; ctx.sale(); }
+  }
+
+  // Pile de la lampe : s'use, la lampe baisse et vacille sous le seuil faible, lueur minimale à plat.
+  function _pile(p, ctx, t, dt) {
+    const L = REGLES.pile;
+    p.pile = Math.max(0, p.pile - L.parS * dt);
+    let k = p.pile >= L.faible ? 1 : L.min + (1 - L.min) * p.pile / L.faible;
+    if (p.pile < L.faible) {
+      const freq = L.vacilleHz * (1 - p.pile / L.faible) + 0.4;
+      if (t > (p.vacilleFin || 0) && Math.random() < dt * freq) {
+        p.vacilleFin = t + L.vacilleMs[0] + Math.random() * (L.vacilleMs[1] - L.vacilleMs[0]);
+      }
+      if (t < p.vacilleFin) k *= L.vacille;
+    }
+    if (Math.abs(k - p.lampeK) > 0.005) { p.lampeK = k; ctx.regler({ lampe: k }); }
+    // Messages au passage des seuils (1 = faible, 2 = à plat), oubliés quand une pile les remonte.
+    const palier = p.pile <= 0 ? 2 : p.pile < L.faible ? 1 : 0;
+    if (palier > p.pileAlerte) _message(_t(palier === 2 ? "hud.pileVide" : "hud.pileFaible"));
+    p.pileAlerte = palier;
+  }
+
+  // Eau : pas ralenti (ctx.regler({ vitesse })) et éclaboussures en avançant.
+  function _eau(p, ctx, t) {
+    const E = REGLES.eau, pos = ctx.pos;
+    if (t - p.eauT >= E.testMs) {
+      p.eauT = t;
+      const dedans = _monde().dansEau(ctx, pos.x, pos.y);
+      if (dedans !== p.eau) { p.eau = dedans; ctx.regler({ vitesse: dedans ? E.x : 1 }); p.plouf = null; }
+    }
+    if (!p.eau) return;
+    if (!p.plouf) p.plouf = { x: pos.x, y: pos.y };
+    if (Math.hypot(pos.x - p.plouf.x, pos.y - p.plouf.y) / ctx.sc >= E.ploufM) {
+      p.plouf = { x: pos.x, y: pos.y };
+      _jouer("eclabousse", 0.6 + Math.random() * 0.4);
+    }
+  }
+
+  // Effondrement à moins de rayonM : éboulis au hasard, situés, qui couvrent les grognements un moment.
+  function _eboulis(p, ctx, t) {
+    const B = REGLES.eboulis;
+    if (t - p.eboulisT < B.testMs) return;
+    p.eboulisT = t;
+    const pos = ctx.pos, sc = ctx.sc;
+    let best = null, bd = Infinity;
+    _monde().zonesDe(ctx.niveau, ["effondrement"]).forEach(function (z) {
+      z.points.forEach(function (q) {
+        const d = Math.hypot(q.x - pos.x, q.y - pos.y) / sc;
+        if (d < bd) { bd = d; best = q; }
+      });
+    });
+    if (!best || bd > B.rayonM) { p.eboulisProchain = 0; return; }
+    if (!p.eboulisProchain) { p.eboulisProchain = t + (B.s[0] + Math.random() * (B.s[1] - B.s[0])) * 1000 / 2; return; }
+    if (t < p.eboulisProchain) return;
+    p.eboulisProchain = t + (B.s[0] + Math.random() * (B.s[1] - B.s[0])) * 1000;
+    p.masqueFin = t + B.masqueMs;
+    _jouer("eboulis", 1 - 0.5 * bd / B.rayonM, _monde().angle(ctx, best));
   }
 
   function _demonter(ctx, raison) {
@@ -365,6 +458,7 @@
     const r = _monde().tirer(p, ctx);
     if (r.touche) p.touches++;
     if (r.tue) { p.tues++; _jouer("mort"); }
+    if (r.tue && r.touche === "gardien") _message(_t("hud.gardienAbattu"));
     if (r.touche === "silhouette") _message(_t("hud.recule"));
     if (p.canon === 0 && p.reserve > 0) _recharger();
     _majHud();
@@ -421,12 +515,14 @@
     return { x: q.x, y: q.y };
   }
 
-  async function _route(de, vers, niv) {
+  // nivVers : niveau de l'arrivée s'il diffère du départ (trajet par les jonctions).
+  async function _route(de, vers, niv, nivVers) {
     const P = window.Pathfinder;
     if (!P || typeof P.computeRoute !== "function") return null;
     const lvl = niv === null || niv === undefined ? undefined : niv;
+    const lvlB = nivVers === undefined ? lvl : nivVers;
     try {
-      const r = await P.computeRoute([{ x: de.x, y: de.y, level: lvl }, { x: vers.x, y: vers.y, level: lvl }]);
+      const r = await P.computeRoute([{ x: de.x, y: de.y, level: lvl }, { x: vers.x, y: vers.y, level: lvlB }]);
       return r && Array.isArray(r.path) && r.path.length >= 2 ? r.path : null;
     } catch (e) { return null; }
   }
@@ -442,25 +538,44 @@
     _monde().peupler(p, ctx);
     _dessiner();
     _majHud();
-    const cands = _pois(niv).map(function (q) {
-      return { x: q.x, y: q.y, nom: q.nom || q.name || q.label || _t("hud.sansNom"),
-        d: Math.hypot(q.x - pos.x, q.y - pos.y) / sc };
-    }).filter(function (c) { return c.d >= REGLES.minM; })
-      .sort(function (a, b) { return Math.abs(a.d - voulu) - Math.abs(b.d - voulu); }).slice(0, REGLES.candidats);
+    const candidats = function (liste, autre) {
+      return liste.map(function (q) {
+        const c = { x: q.x, y: q.y, nom: q.nom || q.name || q.label || _t("hud.sansNom"),
+          d: Math.hypot(q.x - pos.x, q.y - pos.y) / sc };
+        if (autre) c.niveau = _niveauDe(q);
+        return c;
+      }).filter(function (c) { return c.d >= REGLES.minM || autre; })
+        .sort(function (a, b) { return Math.abs(a.d - voulu) - Math.abs(b.d - voulu); }).slice(0, REGLES.candidats);
+    };
+    const cands = candidats(_pois(niv), false);
     const repli = _pointDesTraces(niv, pos, sc, voulu);
     if (repli) cands.push(repli);
+    // Vague boss : B sur ce niveau (le gardien y est posé) ; sinon, parfois, à un autre niveau du plan.
+    const boss = p.vague % REGLES.gardienTous === 0, AN = REGLES.autreNiveau;
+    const autre = !boss && niv !== null && niv !== undefined && p.vague >= AN.des && window.APP_CONFIG &&
+      window.APP_CONFIG.multiLevel === true && Math.random() < AN.chance;
+    const listes = [cands];
+    if (autre) {
+      listes.unshift(candidats(_pois(null).filter(function (q) { return _niveauDe(q) !== niv; }), true));
+    }
     let cible = null, route = null;
-    for (let i = 0; i < cands.length && !route; i++) {
-      route = await _route(pos, cands[i], niv);
-      if (_p !== p || jeton !== p.calcul) return;
-      if (route) cible = cands[i];
+    for (let l = 0; l < listes.length && !route; l++) {
+      for (let i = 0; i < listes[l].length && !route; i++) {
+        route = await _route(pos, listes[l][i], niv, listes[l][i].niveau);
+        if (_p !== p || jeton !== p.calcul) return;
+        if (route) cible = listes[l][i];
+      }
     }
     // Aucun trajet (plan sans tracés) : la cible la plus proche du voulu, sans itinéraire.
     if (!cible) cible = cands[0] || null;
     // ⚠️ contrat (décision produit) : un POI relevé hors de la galerie (dans la roche, une salle sans tracé) est
     // validé DANS la galerie, au bout du trajet sur les tracés ; et jamais dans une structure (pilier, mur, front) :
     // la place libre la plus proche de ce point (règle du pas de la vue, hors remblais, effondrement, inaccessible).
-    if (cible) cible = Object.assign({}, cible, _placeLibre(ctx, route ? route[route.length - 1] : cible));
+    // B à un autre niveau : le bout du trajet (sur les tracés de ce niveau-là ; la règle du pas d'ici n'y vaut rien).
+    if (cible && cible.niveau !== undefined) {
+      const b = route[route.length - 1];
+      cible = Object.assign({}, cible, { x: b.x, y: b.y });
+    } else if (cible) cible = Object.assign({}, cible, _placeLibre(ctx, route ? route[route.length - 1] : cible));
     p.cible = cible;
     p.cherche = false;
     p.route = route;
@@ -468,7 +583,13 @@
     _lancerChrono(p, ctx, cible, route);
     _dessiner();
     _majHud();
-    if (cible) _message(_t("hud.objectif", { nom: cible.nom }));
+    if (cible && boss && _monde().poserGardien(p, ctx, cible)) _message(_t("hud.gardienVague"));
+    else if (cible) _message(_objectif(cible));
+  }
+
+  function _objectif(c) {
+    return c.niveau === undefined ? _t("hud.objectif", { nom: c.nom })
+      : _t("hud.objectifNiveau", { nom: c.nom, n: c.niveau });
   }
 
   function _vagueReussie() {
@@ -561,6 +682,8 @@
     // La carte de fin est sous les commandes (calque de la greffe) : joystick et pavé retirés le temps de toucher.
     p.ctx.regler({ course: false, commandes: false });
     _son().proximite(0);
+    _son().respiration(0);
+    _son().ambiance(false);
     _jouer("fin");
     const scores = _lireScores(), avant = Number(scores[p.diff]) || 0;
     scores[p.diff] = Math.max(avant, p.reussies);
@@ -667,7 +790,7 @@
       }
     }
     // Balise de la cible (facile, moyen) : colonne et anneau au sol, éteints par le brouillard au loin.
-    if (p.cible && p.regle.route) {
+    if (p.cible && p.regle.route && (p.cible.niveau === undefined || p.cible.niveau === ctx.niveau)) {
       const cx = p.cible.x / sc, cz = p.cible.y / sc, h = ctx.hauteur;
       const col = new T.Mesh(new T.CylinderGeometry(BALISE.rayon, BALISE.rayon, h, 16, 1, true),
         new T.MeshBasicMaterial({ color: accent, transparent: true, opacity: BALISE.opacite, toneMapped: false,
@@ -708,6 +831,11 @@
     h.sante = _barre(h.jauges, _t("hud.sante"));
     h.endurance = _barre(h.jauges, _t("hud.endurance"));
     h.endurance.parentNode.parentNode.classList.add("mkmg-jauge-endurance");
+    h.lampe = _barre(h.jauges, _t("hud.lampe"));
+    h.lampe.parentNode.parentNode.classList.add("mkmg-jauge-lampe");
+    h.gardien = _barre(h.jauges, _t("hud.gardien"));
+    h.gardien.parentNode.parentNode.classList.add("mkmg-jauge-gardien");
+    h.gardien.parentNode.parentNode.hidden = true;
     // Panneau en haut à droite, réductible (retenu sur l'appareil) : en-tête (vague, chrono) et guidage toujours là.
     h.panneau = _el(ctx.hud, "div", "mkmg-panneau");
     const tete = _el(h.panneau, "div", "mkmg-tete");
@@ -798,6 +926,11 @@
     h.endurance.style.width = Math.round(p.endurance / REGLES.endurance * 100) + "%";
     h.endurance.parentNode.parentNode.classList.toggle("mkmg-souffle", p.souffle);
     h.endurance.parentNode.parentNode.title = p.souffle ? _t("hud.souffle") : "";
+    h.lampe.style.width = Math.round(p.pile / REGLES.pile.max * 100) + "%";
+    h.lampe.parentNode.parentNode.classList.toggle("mkmg-faible", p.pile < REGLES.pile.faible);
+    const g = p.ennemis.find(function (o) { return o.type === "gardien"; });
+    h.gardien.parentNode.parentNode.hidden = !g;
+    if (g) h.gardien.style.width = Math.round(Math.max(0, g.pv) / g.pvMax * 100) + "%";
     h.cartouches.textContent = p.rechargeFin ? "…" : p.canon + " · " + p.reserve;
     h.tirer.title = _t("hud.tirer") + " — " + _t("hud.cartouches") + " : " + p.canon + " + " + p.reserve +
       (p.rechargeFin ? " (" + _t("hud.recharge") + ")" : "");
@@ -809,7 +942,7 @@
       h.guide.hidden = true;
       return;
     }
-    h.objectif.textContent = _t("hud.objectif", { nom: p.cible.nom });
+    h.objectif.textContent = _objectif(p.cible);
     const pos = ctx.pos;
     let reste = null, vise = p.cible;
     if (p.route && p.longueurs) {
@@ -845,7 +978,9 @@
       chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
       ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),
       objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }),
-      cadavres: (p.cadavres || []).length };
+      cadavres: (p.cadavres || []).length, pile: Math.round(p.pile), lampe: +p.lampeK.toFixed(2), eau: p.eau,
+      cibleNiveau: p.cible && p.cible.niveau !== undefined ? p.cible.niveau : null,
+      mondes: Object.keys(p.mondes || {}).length, niveauMonde: p.niveauMonde };
   }
 
   // Mise en place d'une situation (checkup seulement) : vider le monde, poser un ennemi ou un objet, la santé.
@@ -853,11 +988,13 @@
     vider: function () { if (_p) _monde().vider(_p); },
     poser: function (type, x, y) {
       if (!_p || !_p.ctx) return;
+      const marcheur = ["egare", "rampant", "hurleur", "gardien"].indexOf(type) >= 0;
       const o = type === "egare" ? { type: type, x: x, y: y, pv: _monde().REGLES.egares.pv, vitesse: 1.2, grogneT: 9 }
-        : { type: type, x: x, y: y };
-      (type === "egare" || type === "silhouette" ? _p.ennemis : _p.objets).push(o);
+        : marcheur ? Object.assign(_monde().nouveau(_p, type, x, y), { grogneT: 9 }) : { type: type, x: x, y: y };
+      (marcheur || type === "silhouette" ? _p.ennemis : _p.objets).push(o);
       _monde().dessiner(_p, _p.ctx, false);
     },
+    pile: function (v) { if (_p) _p.pile = v; },
     sante: function (v) { if (_p) _p.sante = v; },
     chrono: function (ms) { if (_p) { _p.chronoFin = performance.now() + ms; _p.chronoDepasse = false; } },
     tenaille: function () { if (_p && _p.ctx) _tenaille(_p, _p.ctx); }

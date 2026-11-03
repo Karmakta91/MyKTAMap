@@ -23,6 +23,10 @@
 .mkmg-jauge-plein { display: block; height: 100%; width: 100%; background: var(--kta-erreur); }
 .mkmg-jauge-endurance .mkmg-jauge-plein { background: var(--kta-ok); }
 .mkmg-jauge-endurance.mkmg-souffle .mkmg-jauge-plein { background: var(--kta-texte-3); }
+.mkmg-jauge-lampe .mkmg-jauge-plein { background: var(--kta-accent); }
+.mkmg-jauge-lampe.mkmg-faible .mkmg-jauge-plein { background: var(--kta-avert); }
+.mkmg-jauge-gardien .mkmg-jauge-plein { background: var(--kta-tuilage-v2); }
+.mkmg-jauge[hidden] { display: none; }
 .mkmg-objectif { color: var(--kta-texte); overflow-wrap: anywhere; }
 .mkmg-guide { display: flex; align-items: center; gap: 8px; color: var(--kta-texte-2); }
 .mkmg-guide[hidden], .mkmg-fleche[hidden] { display: none; }

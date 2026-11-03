@@ -4688,6 +4688,39 @@ async function mesuresGalerie(page, nom, semisDonne) {
           approche: (Math.abs(loin0.x - P(-30, 0).x) - Math.abs(loin1.x - P(-30, 0).x)) / a.sc };
         X.vider();
         K.tourner(180);
+        // Pile faible : la lampe de la vue baisse (ctx.regler({ lampe })) ; pile pleine : elle revient.
+        K.placer(d.x, d.y, 90);
+        X.pile(10);
+        await pause(300);
+        r.pile = { lampe: M().etat().lampe, vue: K.etat().lampe, faible: !!q(".mkmg-jauge-lampe.mkmg-faible") };
+        X.pile(100);
+        await pause(200);
+        r.pile.rendue = K.etat().lampe;
+        // Gardien à 5 m : sa jauge paraît ; un coup lui ôte 2 PV, il recule et poursuit.
+        X.poser("gardien", P(-25, 0).x, P(-25, 0).y);
+        await pause(200);
+        const g0 = M().etat().ennemis[0];
+        tape();
+        await pause(200);
+        const g1 = M().etat().ennemis[0];
+        r.gardien = { jauge: !q(".mkmg-jauge-gardien").hidden, pv: g0.pv - g1.pv, recul: (g1.x - g0.x) / a.sc,
+          vivant: g1.type === "gardien" };
+        X.vider();
+        await pause(200);
+        r.gardien.jaugePartie = q(".mkmg-jauge-gardien").hidden;
+        // Hurleur à 8 m, en vue : il crie (message) et des égarés sortent du noir près de lui.
+        X.poser("hurleur", P(-22, 0).x, P(-22, 0).y);
+        await pause(500);
+        r.hurleur = { message: /hurlement/.test(q(".mkmg-message").textContent), ennemis: M().etat().ennemis.length };
+        X.vider();
+        // Eau sous ses pieds : pas ralenti (ctx.regler({ vitesse })), rendu en sortant.
+        const zonesAvant = window.getZones() || [];
+        window.setZones(zonesAvant.concat([{ type: "eau", points: [P(-31, -1), P(-29, -1), P(-29, 1), P(-31, 1)] }]));
+        await pause(2300);   // zones relues au plus toutes les 2 s (monde.js > zonesDe)
+        r.eau = { dedans: M().etat().eau, vitesse: K.etat().greffe.reglage.vitesse };
+        window.setZones(zonesAvant);
+        await pause(2300);
+        r.eau.sortie = K.etat().greffe.reglage.vitesse;
         // Chrono à 0 : −25 de santé et horde autour de soi ; la vague continue.
         K.placer(d.x, d.y, 90);
         r.chronoAffiche = !q(".mkmg-chrono").hidden && /⏱ \d+:\d\d/.test(q(".mkmg-chrono").textContent) &&
@@ -4809,6 +4842,16 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(MK.silFace.vu === true && MK.silDos.vu === false && MK.silDos.avance > 0,
         "jeu : la silhouette reste figée dans le faisceau, avance dès qu'on lui tourne le dos",
         { face: MK.silFace, dos: MK.silDos });
+      verifier(MK.pile.lampe < 0.5 && Math.abs(MK.pile.vue - MK.pile.lampe) < 0.02 && MK.pile.faible &&
+        MK.pile.rendue === 1, "jeu : pile à 10 % → la lampe de la vue baisse (jauge en alerte) ; pile pleine → rendue",
+        MK.pile);
+      verifier(MK.gardien.jauge && MK.gardien.pv === 2 && MK.gardien.recul > 0.2 && MK.gardien.vivant &&
+        MK.gardien.jaugePartie, "jeu : gardien = jauge à part ; un coup à 5 m lui ôte 2 PV, il recule et tient debout",
+        MK.gardien);
+      verifier(MK.hurleur.message && MK.hurleur.ennemis >= 1,
+        "jeu : un hurleur en vue crie (message), les égarés accourent", MK.hurleur);
+      verifier(MK.eau.dedans === true && MK.eau.vitesse === 0.6 && MK.eau.sortie === 1,
+        "jeu : dans l'eau, pas ralenti à 60 % (réglage vitesse de la greffe), rendu en sortant", MK.eau);
       console.log("  ℹ️ jeu, charge (8 égarés + silhouette) : " + MK.charge.msMonde + " ms de monde par image, égaré loin " +
         "rapproché de " + MK.charge.approche.toFixed(1) + " m en 1,5 s");
       verifier(MK.charge.ennemis === 9 && MK.charge.msMonde < 2 && MK.charge.approche > 0.5,
