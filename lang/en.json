@@ -5674,6 +5674,7 @@
   "update.attente.msg": "Version {v} is accepted, but the old code ({charge}) is still loaded on this device. Fully close the app (not just the tab) and reopen it, or run the soft update again now. Your plans, sessions and photos are kept.",
   "update.attente.relancer": "🪶 Run the soft update again",
   "utils.note.empty": "(no note)",
+  "utils.note.lectureSeule": "📖 Note (read-only)",
   "utils.note.save": "💾 Save the note",
   "utils.note.placeholder": "Free note (multiple lines allowed)…",
   "utils.copied": "✓ Copied!",

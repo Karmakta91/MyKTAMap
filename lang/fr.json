@@ -5674,6 +5674,7 @@
   "update.attente.msg": "La version {v} est acceptée, mais l'ancien code ({charge}) est encore chargé sur cet appareil. Ferme complètement l'app (pas seulement l'onglet) puis rouvre-la, ou relance la mise à jour douce maintenant. Tes plans, sessions et photos sont préservés.",
   "update.attente.relancer": "🪶 Relancer la mise à jour douce",
   "utils.note.empty": "(aucune note)",
+  "utils.note.lectureSeule": "📖 Note (lecture seule)",
   "utils.note.save": "💾 Sauver la note",
   "utils.note.placeholder": "Note libre (multilignes possibles)…",
   "utils.copied": "✓ Copié !",

@@ -1028,7 +1028,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       return '<div class="kta-popup-point kta-note-popup kta-note-popup-readonly-mode"' +
                (_uidLu ? ' data-kta-uid="' + _esc(_uidLu).replace(/"/g, "&quot;") + '"' : "") + '>' +
                '<b>' + _titreHtml() + '</b>' +
-               '<div class="kta-note-popup-readonly-label">📖 Note (lecture seule)</div>' +
+               '<div class="kta-note-popup-readonly-label">' + _esc(window.I18n.t("utils.note.lectureSeule")) + '</div>' +
                corps +
              '</div>';
     }

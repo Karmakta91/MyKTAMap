@@ -5674,6 +5674,7 @@
   "update.attente.msg": "La versión {v} está aceptada, pero el código antiguo ({charge}) sigue cargado en este dispositivo. Cierra la app por completo (no solo la pestaña) y vuelve a abrirla, o relanza ahora la actualización suave. Tus mapas, sesiones y fotos se conservan.",
   "update.attente.relancer": "🪶 Relanzar la actualización suave",
   "utils.note.empty": "(sin nota)",
+  "utils.note.lectureSeule": "📖 Nota (solo lectura)",
   "utils.note.save": "💾 Guardar la nota",
   "utils.note.placeholder": "Nota libre (varias líneas posibles)…",
   "utils.copied": "✓ ¡Copiado!",
