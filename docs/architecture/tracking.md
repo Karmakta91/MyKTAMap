@@ -1575,9 +1575,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   structure ; deux côtés indépendants (inégaux si le tracé est décalé) ; la porte garde sa taille. Il arrête le pas
   comme la porte fermée, `cao` compris (`_obstaclesAcces` : `caf` d'un bout de comblement à l'autre, `cao` chaque
   comblement seul, l'ouverture du cadre reste libre) ; `ctx.libre`, `_coince` et `_degager` le lisent par
-  `dansZone` / `zonesBloquent`. Pierre de taille des parois avec 🧱, unie (`PIERRE.couleur`) sinon. Rendu galerie :
-  aucun comblement (les parois du tube, de la largeur de la porte, la bordent déjà). Itinéraire 2D inchangé. Un
-  itinéraire 2D finit au
+  `dansZone` / `zonesBloquent`. Mur de porte homogène (décision produit) : paroi au-dessus du linteau et comblement
+  en pierre de taille des parois avec 🧱, unis (`PIERRE.couleur`) sinon. Rendu galerie : aucun comblement (les
+  parois du tube, de la largeur de la porte, la bordent déjà). Itinéraire 2D inchangé. Un itinéraire 2D finit au
   cavage (bout du chemin sur l'axe) : l'arrivée est atteinte devant la porte, à un corps d'elle. Bois des battants
   (planches, pentures cloutées, `_bois`) et remblais texturés avec 🧱, couleurs unies sinon (bascule = volumes
   refaits). 🩸 Un puits rond dans un tube plus étroit que lui reste sur l'axe et dépasse dans la paroi (pas de

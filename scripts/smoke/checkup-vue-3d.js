@@ -4221,8 +4221,21 @@ async function sectionDonnees(page, MX) {
         await ouvrir();
         const u = vol();
         r.uni = { comble: u && u.comble, combleUni: u && u.combleUni, s16: marcher(-4, -1.5, 80) };
+        // Galerie de 3 m : paroi au-dessus du linteau (2,1 m + cadre), même couleur unie que le comblement.
+        const h0 = K.etat().hauteur;
+        K.reglerHauteur(3);
+        await pause(50);
+        const u3 = vol();
+        r.uni.haut = { tympan: u3 && u3.tympan, tympanUni: u3 && u3.tympanUni, combleUni: u3 && u3.combleUni };
         await K.fermer();
         window.setVue3DTextures(true);
+        await ouvrir();
+        K.reglerHauteur(3);
+        await pause(50);
+        const t3 = vol();
+        r.uni.pierre = { tympan: t3 && t3.tympan, tympanUni: t3 && t3.tympanUni, combleUni: t3 && t3.combleUni };
+        K.reglerHauteur(h0);
+        await K.fermer();
         window.ktaEstAccessible = acc;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -4290,6 +4303,10 @@ async function sectionDonnees(page, MX) {
         { caf: GF, cao: GO });
       verifier(CB.uni.combleUni === true && CB.uni.comble[0] > 0.7 && bloque(CB.uni.s16),
         "🧱 coupé : comblement en couleur unie, toujours bloquant", CB.uni);
+      verifier(CB.uni.haut.tympan === true && CB.uni.haut.tympanUni === true && CB.uni.haut.combleUni === true &&
+        CB.uni.pierre.tympan === true && CB.uni.pierre.tympanUni === false && CB.uni.pierre.combleUni === false,
+        "mur de porte homogène (galerie de 3 m) : paroi au-dessus du linteau et comblement unis avec 🧱 coupé, en " +
+        "pierre de taille avec 🧱", CB.uni);
 
       // ── 14 quinquies. Escaliers en niche latérale (esf, eso, jes), fictifs ────────────────────────────────────────
       // Une galerie principale par cas (paroi à 1,25 m), à 15 m d'écart, dessinée dans les deux sens. Attendu

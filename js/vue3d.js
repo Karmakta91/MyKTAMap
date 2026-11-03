@@ -2932,25 +2932,28 @@
 
   // cao / caf : cadre de fer (deux montants, linteau) en travers de la galerie, paroi au-dessus jusqu'au plafond,
   // deux battants de bois : fermés dans le plan du cadre, ou ouverts à 90°, rabattus contre les parois. De chaque
-  // côté du cadre, le comblement (v.comblement) : pierre de taille des parois avec 🧱, unie (PIERRE.couleur)
-  // sinon, dans le plan du cadre, du sol au plafond, enfoncé de COMBLE_ENFONCE dans la structure (aucun jour au bord).
+  // côté du cadre, le comblement (v.comblement), dans le plan du cadre, du sol au plafond, enfoncé de COMBLE_ENFONCE
+  // dans la structure (aucun jour au bord). Paroi au-dessus du linteau et comblement = un même mur : pierre de taille
+  // des parois avec 🧱, unie (PIERRE.couleur) sinon (décision produit : mur de porte homogène).
   function _porte(v, lots) {
     const e = _e, h = e.hauteur, Q = _repere(v), w = v.b, c = PORTE.cadre, H = Math.min(PORTE.haut, h - c);
     const fer = _couleurFixe(COULEUR_FER);
     _pave(lots.opaque, Q, -c / 2, c / 2, -w, -w + c, 0, H, fer);
     _pave(lots.opaque, Q, -c / 2, c / 2, w - c, w, 0, H, fer);
     _pave(lots.opaque, Q, -c / 2, c / 2, -w, w, H, H + c, fer);
-    if (h > H + c + 0.01) {
-      _paroiY(lots.parois, Q(-c / 2, -w), Q(-c / 2, w), H + c, h);
-      _paroiY(lots.parois, Q(c / 2, w), Q(c / 2, -w), H + c, h);
-    }
+    // Mur de la porte (au-dessus du linteau, comblement) : un seul matériau, pierre des parois avec 🧱, uni sinon.
     const cb = v.comblement || [0, 0], uni = e.textures !== true ? _couleurFixe(PIERRE.couleur) : null;
+    const mur = function (a, b, y0, y1) {
+      if (uni) { _pave(lots.opaque, Q, -c / 2, c / 2, a, b, y0, y1, uni); return; }
+      _paroiY(lots.parois, Q(-c / 2, a), Q(-c / 2, b), y0, y1);
+      _paroiY(lots.parois, Q(c / 2, b), Q(c / 2, a), y0, y1);
+    };
+    const tympan = h > H + c + 0.01;
+    if (tympan) mur(-w, w, H + c, h);
     [[-1, cb[0]], [1, cb[1]]].forEach(function (q) {
       if (!(q[1] > 0)) return;
-      const t0 = q[0] * w, t1 = q[0] * (w + q[1] + COMBLE_ENFONCE), a = Math.min(t0, t1), b = Math.max(t0, t1);
-      if (uni) { _pave(lots.opaque, Q, -c / 2, c / 2, a, b, 0, h, uni); return; }
-      _paroiY(lots.parois, Q(-c / 2, a), Q(-c / 2, b), 0, h);
-      _paroiY(lots.parois, Q(c / 2, b), Q(c / 2, a), 0, h);
+      const t0 = q[0] * w, t1 = q[0] * (w + q[1] + COMBLE_ENFONCE);
+      mur(Math.min(t0, t1), Math.max(t0, t1), 0, h);
     });
     const tx = e.textures === true, lot = tx ? _lot(lots, "bois") : lots.opaque;
     const col = tx ? BLANC : _couleurFixe(COULEUR_BOIS), lw = w - c, ep = PORTE.ep, j = PORTE.jeu;
@@ -2959,7 +2962,7 @@
     battants.forEach(function (b) { _battant(lot, Q, b, j, H - j, col, tx); });
     v.trace = { largeur: +(2 * w).toFixed(3), haut: +H.toFixed(3), ouvert: !!v.ouvert,
       battants: battants.map(function (b) { return b.map(function (x) { return +x.toFixed(3); }); }),
-      comble: cb.slice(), combleUni: !!uni };
+      comble: cb.slice(), combleUni: !!uni, tympan: tympan, tympanUni: tympan && !!uni };
   }
 
   // Battant : pavé b = [s0, s1, t0, t1] (repère du volume) de y0 à y1 ; ses deux grandes faces portent le motif
