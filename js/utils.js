@@ -943,9 +943,22 @@ window.ktaSignalerNiveauxJonction = function(de, vers) {
     masque ? "warn" : "info");
 };
 
+// Fiche d'un objet rejouée hors de la carte (vue3d.js > _ouvrirFicheObjet : la même fiche, sur un hôte de
+// substitution). ⚠️ contrat : clé = le tableau `points` de l'objet (opts.convertir.obj, sinon opts.objet), partagé
+// par l'objet de session, l'objet d'un calque et son entrée de registre (getAllEmbedded*) ; chaque rendu réécrit
+// la sienne. → { layer, args } (args = ceux de attacherNotePopup) ou null : objet sans fiche sur la carte.
+const _fichesObjets = new WeakMap();
+window.ktaFicheObjetDe = function(o) {
+  return (o && Array.isArray(o.points) && _fichesObjets.get(o.points)) || null;
+};
+
 window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) {
   if (!layer || typeof layer.bindPopup !== "function") return;
   opts = opts || {};
+  const _objetFiche = (opts.convertir && opts.convertir.obj) || opts.objet;
+  if (_objetFiche && Array.isArray(_objetFiche.points) && !opts.horsCarte) {
+    _fichesObjets.set(_objetFiche.points, { layer: layer, args: [getDescr, setDescr, titreType, opts] });
+  }
   const _modeDemande = (opts.mode === "readonly") ? "readonly" : "edit";
   // 🔒 Plan en lecture seule (installation reliée, droit « lire ») : la fiche d'un tracé / zone /
   // structure s'affiche en lecture (ni note modifiable, ni Convertir, ni 🗑️). Réévalué à chaque ouverture.
@@ -2441,7 +2454,7 @@ function ajouterPointsDepuisJSON(url, layer) {
               function() { return road.description; },
               null,
               function() { return _roadROTitle(road.type); },
-              { mode: "readonly", pastille: { cat: "traces", cle: road.type } }
+              { mode: "readonly", pastille: { cat: "traces", cle: road.type }, objet: road }
             );
           }
           // registre du filtre multi-niveau (level absent → 0) ; type, points et description pour
@@ -2595,7 +2608,7 @@ function ajouterPointsDepuisJSON(url, layer) {
               function() { return structure.description; },
               null,
               function() { return _structROTitle(structure.type); },
-              { mode: "readonly", pastille: { cat: "structures", cle: structure.type } }
+              { mode: "readonly", pastille: { cat: "structures", cle: structure.type }, objet: structure }
             );
           }
           // clé `polygon` gardée pour _filtreNiveauSurPolygonData (une polyline supporte aussi setStyle)
@@ -2661,7 +2674,7 @@ function ajouterPointsDepuisJSON(url, layer) {
               function() { return zone.description; },
               null,
               function() { return _zoneROTitle(zone.type); },
-              { mode: "readonly", pastille: { cat: "zones", cle: zone.type } }
+              { mode: "readonly", pastille: { cat: "zones", cle: zone.type }, objet: zone }
             );
           }
           // registre du filtre multi-niveau ; `type` + `points` (coords plan) : le Pathfinder y lit les zones

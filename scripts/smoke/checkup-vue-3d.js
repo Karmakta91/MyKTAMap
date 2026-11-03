@@ -45,6 +45,10 @@
 // et faisceau 40 / 160° (curseurs, pénombre, relus, ancien « forte » / « jour » relu), ☀️ Plein jour (interrupteur),
 // greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
 // (molette, Maj + molette, + / −, = / -, pincement, tuiles qui suivent le recul).
+// Données changées pendant la vue (26). Toucher un objet (27) : fiche de la carte d'un pilier, d'un mur, d'une zone,
+// d'un tracé (mixte, structures, galerie ; yeux et plongée), vide = rien, panneau de POI d'abord, note au clavier,
+// Échap et focus, greffe qui coupe les fiches (doigt), lecture seule (extension, calque), 🗑️ suivi sans rouvrir,
+// « Voir sur la carte » (carte centrée, fiche de la carte, surbrillance).
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -812,6 +816,360 @@ async function sectionDonnees(page, MX) {
     "bilan : " + R.fin.donnees.signaux + " signaux, " + R.fin.donnees.verifs + " relectures, " +
     R.fin.donnees.refaites + " reconstructions (dernière " + R.fin.donnees.ms + " ms, empreinte " +
     R.fin.donnees.msEmpreinte + " ms)", R.fin.donnees);
+}
+
+// ── 27. Toucher un objet → sa fiche de la carte (structure, zone, tracé), « Voir sur la carte », verrous ──────
+// Formes fictives autour du centre du plan (m) : tracé principal z = 0 (x de -30 à 30), zone eau qui le coupe
+// (x -20 à -18), pilier (8, 6), mur polygone (x 7,8 à 8,2, z 10 à 14), zone remblais hors du tracé, POI collé au
+// pilier. On vise un point du monde projeté par la caméra de la vue (ctx d'une greffe vide) et on touche au doigt.
+async function sectionFichesObjets(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = async function (n) {
+      for (let i = 0; i < (n || 3); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    };
+    const rect = function (x0, x1, z0, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const r = { cas: [] };
+    if (window.getTrackingActif()) window.stopTracking();
+    // Calques du plan mis de côté : seules les formes du checkup comptent (rendus au calque de la fin de section).
+    window.__v3dFi = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-fiches";
+    const poser = function () {
+      window.setRoads([{ uid: "rd_fi_p", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)],
+        description: "note du trace" }]);
+      window.setStructures([
+        { uid: "st_fi_pil", type: "pilier-1", level: 0, points: rect(7, 9, 5, 7) },
+        { uid: "st_fi_mur", type: "mur", level: 0, points: rect(7.8, 8.2, 10, 14) }
+      ]);
+      window.setZones([
+        { uid: "zn_fi_eau", type: "eau", level: 0, points: rect(-20, -18, -4, 4) },
+        { uid: "zn_fi_rem", type: "remblais", level: 0, points: rect(-8, -4, 5, 8) }
+      ]);
+      window.setEditorPoints([Object.assign({ id: "POI fiche v3d", nom: "POI fiche v3d", uid: "pt_fi_a", level: 0,
+        tags: ["salle"] }, P(6.7, 6))]);
+      window.KtaGalerie.invalider();
+    };
+    poser();
+    let ctxV = null;
+    // Caméra de la vue (greffe vide, aussitôt retirée : ctx lit la vue ouverte).
+    const camera = function () {
+      const deg = K.greffer({ nom: "v3d-fiches-camera", scene: function (ctx) { ctxV = ctx; } });
+      if (deg) deg();
+    };
+    const ecran = function (x, z, h) {
+      const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+      const v = new ctxV.THREE.Vector3(ox + x, h, oz + z).project(ctxV.camera);
+      return { x: rc.left + (v.x + 1) / 2 * rc.width, y: rc.top + (1 - v.y) / 2 * rc.height, z: v.z };
+    };
+    const tap = async function (pt, doigt) {
+      const cv = document.querySelector("#kta-vue3d canvas");
+      const o = { bubbles: true, cancelable: true, pointerId: doigt ? 61 : 1, pointerType: doigt ? "touch" : "mouse",
+        isPrimary: true, clientX: pt.x, clientY: pt.y, button: 0 };
+      cv.dispatchEvent(new PointerEvent("pointerdown", o));
+      await pause(40);
+      cv.dispatchEvent(new PointerEvent("pointerup", o));
+      await pause(80);
+      return K.etat().fiche;
+    };
+    const fermerFiche = function () {
+      const b = document.querySelector('#kta-vue3d .kta-v3d-fiche [data-v3d="ficheFermer"]');
+      if (b) b.click();
+    };
+    const ouvrir = async function (rendu, x, z, cap) {
+      if (K.etat().ouvert !== false) await K.fermer();
+      window.setPlanRenduVue3D(null, rendu);
+      const d = P(x, z);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: cap }, commandes: "joystick" });
+      camera();
+      await pause(250);
+      await images(4);
+    };
+    const m = function (q) { return [+(q.x / sc - ox).toFixed(2), +(q.y / sc - oz).toFixed(2)]; };   // px → m
+    const essai = async function (nom, cible, attendu, plonger) {
+      if (plonger && K.etat().vue !== "plongee") { K.basculerVue(); await pause(250); await images(4); }
+      if (!plonger && K.etat().vue === "plongee") { K.basculerVue(); await pause(250); await images(4); }
+      const pt = ecran(cible[0], cible[1], cible[2]);
+      const vise = K.viser(pt.x, pt.y);
+      const f = await tap(pt, true);
+      const ok = attendu === null ? !f : !!f && f.uid === attendu && !!f.voir;
+      r.cas.push({ nom: nom, ok: ok, attendu: attendu, fiche: f ? { uid: f.uid || null, nom: f.nom || null,
+        famille: f.famille || null } : null, vise: vise, ou: m(K.etat().pos),
+        touche: vise && vise.x !== undefined ? m(vise).concat([+vise.h.toFixed(2)]) : null,
+        ecran: { x: Math.round(pt.x), y: Math.round(pt.y) } });
+      fermerFiche();
+      await pause(60);
+    };
+    // Mixte et structures : pilier (face), mur (face), zone au sol, tracé au sol, vide ; puis en plongée.
+    for (const rendu of ["mixte", "structures"]) {
+      await ouvrir(rendu, 3, 6, 90);
+      r.cap = K.etat().cap;
+      await essai(rendu + " · pilier (face, yeux)", [7, 6, 1], "st_fi_pil");
+      await ouvrir(rendu, 3, 12, 90);
+      await essai(rendu + " · mur (face, yeux)", [7.8, 12, 1], "st_fi_mur");
+      await ouvrir(rendu, -12, 6.5, 90);
+      await essai(rendu + " · zone remblais (yeux)", [-6, 6.5, 0.3], "zn_fi_rem");
+      await essai(rendu + " · sol vide (yeux)", [-9, 3, 0], null);
+      await ouvrir(rendu, -26, 0, 90);
+      await essai(rendu + " · zone eau sur le tracé (yeux)", [-19, 0, 0.04], "zn_fi_eau");
+      await essai(rendu + " · tracé (yeux)", [-23, 0, 0.03], "rd_fi_p");
+      await essai(rendu + " · plafond (yeux)", [-22, 0, 5], null);
+      await ouvrir(rendu, 0, 6, 90);
+      await essai(rendu + " · pilier (dessus, plongée)", [8, 6, K.etat().hauteur], "st_fi_pil", true);
+      await essai(rendu + " · mur (plongée)", [8, 12, K.etat().hauteur * 0.98], "st_fi_mur", true);
+      await essai(rendu + " · zone remblais (plongée)", [-6, 6.5, K.etat().hauteur * 0.6], "zn_fi_rem", true);
+      await essai(rendu + " · tracé (plongée)", [-2, 0, 0.03], "rd_fi_p", true);
+      await essai(rendu + " · sol vide (plongée)", [2, 9, 0], null, true);
+    }
+    // Galerie : ni pilier ni mur (jamais dessinés en galerie) ; tracé par sa paroi, son sol, zone dans le tube.
+    await ouvrir("galerie", -26, 0, 90);
+    const demi = 0.9;
+    await essai("galerie · zone eau dans le tube (yeux)", [-19, 0, 0.04], "zn_fi_eau");
+    await essai("galerie · tracé par le sol (yeux)", [-23, 0, 0], "rd_fi_p");
+    r.galeriePilier = null;
+    await essai("galerie · tracé par la paroi (yeux)", [-22, -demi * 0.98, 1.2], "rd_fi_p");
+    await essai("galerie · zone eau (plongée)", [-19, 0, 0.04], "zn_fi_eau", true);
+    await essai("galerie · tracé (plongée)", [-12, 0, 0], "rd_fi_p", true);
+    // Priorité au panneau du POI collé au pilier : sa fiche, pas celle du pilier.
+    await ouvrir("mixte", 3, 6, 90);
+    const sp = K.etat().panneaux.filter(function (q) { return q.nom === "POI fiche v3d" && q.visible; })[0];
+    r.poiVu = !!sp;
+    if (sp) {
+      const f = await tap(sp.ecran, true);
+      r.poi = f ? { nom: f.nom || null, famille: f.famille || null } : null;
+      fermerFiche();
+    }
+    // Fiche d'un objet de session : focus, saisie dans la note sans déplacer la vue, Échap, focus rendu.
+    const pil = ecran(7, 6, 1);
+    let f = await tap(pil, true);
+    const posAvant = K.etat().pos;
+    r.focus = { ouverte: !!f, focus: f && f.focus, note: f && f.note, supprimer: f && f.supprimer,
+      registre: f && f.registre };
+    const ta = document.querySelector("#kta-vue3d .kta-v3d-fiche .kta-note-popup-textarea");
+    r.zIndex = getComputedStyle(document.getElementById("kta-vue3d")).zIndex;
+    r.fichePosee = !!document.querySelector("#kta-vue3d .kta-v3d-fiche .leaflet-popup-content .kta-note-popup");
+    if (ta) {
+      ta.focus();
+      r.taFocus = document.activeElement === ta;
+    }
+    return { r: r, pil: pil, posAvant: posAvant };
+  });
+  await capture(page, "fiche-objet-pilier");
+  // Saisie réelle au clavier (W A S D font avancer la vue d'ordinaire).
+  await page.keyboard.type("wasd note");
+  await page.waitForTimeout(200);
+  const R2 = await page.evaluate(async function (a) {
+    const K = window.KtaVue3D, r = a.r;
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const ta = document.querySelector("#kta-vue3d .kta-v3d-fiche .kta-note-popup-textarea");
+    const pos = K.etat().pos;
+    r.saisie = { valeur: ta ? ta.value : null, bouge: Math.hypot(pos.x - a.posAvant.x, pos.y - a.posAvant.y) };
+    const sauver = document.querySelector("#kta-vue3d .kta-v3d-fiche .kta-note-popup-save");
+    if (sauver) sauver.click();
+    await pause(1100);
+    const pil = window.getStructures().filter(function (q) { return q.uid === "st_fi_pil"; })[0];
+    r.noteEcrite = pil ? pil.description || null : null;
+    r.fermeeApresSauver = !K.etat().fiche;
+    return r;
+  }, { r: R.r, posAvant: R.posAvant });
+  // Échap ferme la fiche et rend le focus à la vue.
+  await page.evaluate(async function (a) {
+    const cv = document.querySelector("#kta-vue3d canvas");
+    const o = { bubbles: true, cancelable: true, pointerId: 62, pointerType: "touch", isPrimary: true,
+      clientX: a.x, clientY: a.y };
+    cv.dispatchEvent(new PointerEvent("pointerdown", o));
+    cv.dispatchEvent(new PointerEvent("pointerup", o));
+    await new Promise(function (ok) { setTimeout(ok, 100); });
+  }, R.pil);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(150);
+  const R3 = await page.evaluate(async function (a) {
+    const K = window.KtaVue3D, r = a.r, sc = window.APP_CONFIG.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const rect = function (x0, x1, z0, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    r.echap = { vueOuverte: K.etat().ouvert !== false, fiche: !!K.etat().fiche,
+      focusVue: document.activeElement === document.getElementById("kta-vue3d") };
+    let ctxV = null;
+    const deg0 = K.greffer({ nom: "v3d-fiches-camera", scene: function (ctx) { ctxV = ctx; } });
+    if (deg0) deg0();
+    const ecran = function (x, z, h) {
+      const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+      const v = new ctxV.THREE.Vector3(ox + x, h, oz + z).project(ctxV.camera);
+      return { x: rc.left + (v.x + 1) / 2 * rc.width, y: rc.top + (1 - v.y) / 2 * rc.height };
+    };
+    const tap = async function (pt) {
+      const cv = document.querySelector("#kta-vue3d canvas");
+      const o = { bubbles: true, cancelable: true, pointerId: 63, pointerType: "touch", isPrimary: true,
+        clientX: pt.x, clientY: pt.y };
+      cv.dispatchEvent(new PointerEvent("pointerdown", o));
+      await pause(30);
+      cv.dispatchEvent(new PointerEvent("pointerup", o));
+      await pause(80);
+      return K.etat().fiche;
+    };
+    const apres = async function (n0) {
+      for (let i = 0; i < 40; i++) {
+        await pause(50);
+        const d = K.etat().donnees;
+        if (!d.attente && d.refaites > n0) break;
+      }
+      await pause(60);
+    };
+    // Greffe qui coupe les fiches (un jeu) : un toucher au doigt n'ouvre ni pilier ni POI ; retirée, tout revient.
+    const sp = K.etat().panneaux.filter(function (q) { return q.nom === "POI fiche v3d" && q.visible; })[0];
+    const deg = K.greffer({ nom: "v3d-fiches-coupees", scene: function (ctx) { ctx.regler({ fiches: false }); } });
+    await pause(60);
+    r.greffe = { pilier: !!(await tap(a.pil)), poi: sp ? !!(await tap(sp.ecran)) : null };
+    if (deg) deg();
+    await pause(60);
+    r.greffe.apres = !!(await tap(a.pil));
+    document.querySelector('#kta-vue3d .kta-v3d-fiche [data-v3d="ficheFermer"]').click();
+    // Lecture seule d'une extension (prise ktaEditionRefusee) : la fiche s'affiche sans note modifiable ni 🗑️.
+    window.ktaEditionRefusee = function () { return true; };
+    const fRO = await tap(a.pil);
+    r.extensionLecture = fRO ? { note: fRO.note, supprimer: fRO.supprimer, voir: fRO.voir } : null;
+    delete window.ktaEditionRefusee;
+    document.querySelector('#kta-vue3d .kta-v3d-fiche [data-v3d="ficheFermer"]').click();
+    // 🗑️ depuis la fiche : le pilier quitte la scène sans rouvrir la vue (E1), la fiche se ferme.
+    await tap(a.pil);
+    const n0 = K.etat().donnees.refaites, nS = K.etat().compte.structures;
+    const suppr = document.querySelector("#kta-vue3d .kta-v3d-fiche .kta-note-popup-supprimer");
+    if (suppr) suppr.click();
+    await apres(n0);
+    const vise = K.viser(a.pil.x, a.pil.y);
+    r.suppression = { bouton: !!suppr, fiche: !!K.etat().fiche, structures: [nS, K.etat().compte.structures],
+      refaites: K.etat().donnees.refaites - n0, session: window.getStructures().some(function (q) {
+        return q.uid === "st_fi_pil"; }), viseApres: vise ? vise.genre : null, vueOuverte: K.etat().ouvert !== false };
+    // Annuler (Ctrl+Z de la carte) : le pilier revient dans la scène.
+    window.HistoryManager.undo();
+    await apres(K.etat().donnees.refaites);
+    r.annule = window.getStructures().some(function (q) { return q.uid === "st_fi_pil"; }) &&
+      K.etat().compte.structures === nS;
+    // Calque de données (non modifiable) : pilier noté et pilier muet → fiche en lecture seule, sans 🗑️.
+    await K.fermer();
+    const vrais = window.__v3dFi;
+    window.getAllEmbeddedRoads = vrais.r; window.getAllEmbeddedZones = vrais.z; window.getAllEmbeddedPoints = vrais.p;
+    window.getAllEmbeddedStructures = vrais.s;
+    const CAL = "v3d_fi_calque";
+    const json = { data: [], structures: [
+      { uid: "st_fi_cal1", type: "pilier-1", level: 0, points: rect(13, 15, 5, 7), description: "note du calque" },
+      { uid: "st_fi_cal2", type: "pilier-1", level: 0, points: rect(13, 15, 11, 13) }] };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(json)], { type: "application/json" }));
+    window.PLAN_CONFIG.dataLayers = (window.PLAN_CONFIG.dataLayers || []).concat([
+      { id: CAL, label: "Calque du checkup v3d", file: url, visible: true }]);
+    const groupe = L.layerGroup().addTo(window.map);
+    window.dataLayerGroups[CAL] = groupe;
+    window.ajouterPointsDepuisJSON(url, groupe);
+    const charge = function () {
+      return window.getAllEmbeddedStructures().some(function (o) { return o && o.uid === "st_fi_cal1"; });
+    };
+    for (let i = 0; i < 60 && !charge(); i++) await pause(50);
+    window.setPlanRenduVue3D(null, "mixte");
+    const d = P(10, 6);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "joystick" });
+    const deg2 = K.greffer({ nom: "v3d-fiches-camera", scene: function (ctx) { ctxV = ctx; } });
+    if (deg2) deg2();
+    await pause(300);
+    const f1 = await tap(ecran(13, 6, 1));
+    r.calqueNote = f1 ? { uid: f1.uid, note: f1.note, supprimer: f1.supprimer, session: f1.session,
+      registre: f1.registre,
+      texte: /note du calque/.test(document.querySelector("#kta-vue3d .kta-v3d-fiche").textContent) } : null;
+    const x1 = document.querySelector('#kta-vue3d .kta-v3d-fiche [data-v3d="ficheFermer"]');
+    if (x1) x1.click();
+    K.placer(P(10, 12).x, P(10, 12).y, 90);
+    await pause(300);
+    const f2 = await tap(ecran(13, 12, 1));
+    r.calqueMuet = f2 ? { uid: f2.uid, note: f2.note, supprimer: f2.supprimer, registre: f2.registre } : null;
+    // « Voir sur la carte » depuis la fiche du pilier muet : vue fermée, carte centrée, contour en surbrillance.
+    const voir = document.querySelector('#kta-vue3d .kta-v3d-fiche [data-v3d="ficheVoir"]');
+    if (voir) voir.click();
+    await pause(300);
+    const cible = P(14, 12), c = window.map.getCenter();
+    const centre = { x: c.lng, y: window.APP_CONFIG.imageHeight - c.lat };
+    r.voirMuet = { vue: K.etat().ouvert !== false, montre: K.derniereMontre(),
+      ecartM: Math.hypot(centre.x - cible.x, centre.y - cible.y) / window.APP_CONFIG.scale };
+    // Calque restitué au plan : bouchons remis.
+    window.map.removeLayer(groupe);
+    delete window.dataLayerGroups[CAL];
+    window.PLAN_CONFIG.dataLayers = window.PLAN_CONFIG.dataLayers.filter(function (l) { return l.id !== CAL; });
+    URL.revokeObjectURL(url);
+    // « Voir sur la carte » d'une zone de session : vue fermée, carte centrée, fiche de la carte ouverte sur la zone.
+    window.setPlanRenduVue3D(null, "structures");
+    const d2 = P(-12, 6.5);
+    await K.ouvrir({ depart: { x: d2.x, y: d2.y, cap: 90 }, commandes: "joystick" });
+    const deg3 = K.greffer({ nom: "v3d-fiches-camera", scene: function (ctx) { ctxV = ctx; } });
+    if (deg3) deg3();
+    await pause(300);
+    const fz = await tap(ecran(-6, 6.5, 0.3));
+    r.zoneOuverte = fz ? fz.uid : null;
+    const v2 = document.querySelector('#kta-vue3d .kta-v3d-fiche [data-v3d="ficheVoir"]');
+    if (v2) v2.click();
+    await pause(400);
+    const cz = window.map.getCenter(), cibleZ = P(-6, 6.5);
+    const popup = document.querySelector(".leaflet-popup .kta-note-popup");
+    r.voirZone = { vue: K.etat().ouvert !== false, montre: K.derniereMontre(),
+      ecartM: Math.hypot(cz.lng - cibleZ.x, window.APP_CONFIG.imageHeight - cz.lat - cibleZ.y) / sc,
+      popup: !!popup, popupNote: !!(popup && popup.querySelector(".kta-note-popup-textarea")),
+      popupSuppr: !!(popup && popup.querySelector(".kta-note-popup-supprimer")) };
+    window.map.closePopup();
+    window.setRoads([]); window.setZones([]); window.setStructures([]);
+    window.setEditorPoints(window.__v3dPoints || []);
+    window._currentLoadedPlanId = vrais.id;
+    window.KtaGalerie.invalider();
+    return r;
+  }, { r: R2, pil: R.pil });
+
+  const r = R3;
+  r.cas.forEach(function (c) {
+    verifier(c.ok, "toucher " + c.nom + " → " + (c.attendu ? "fiche de " + c.attendu : "rien"),
+      { fiche: c.fiche, ou: c.ou, touche: c.touche, genre: c.vise && c.vise.genre, ecran: c.ecran });
+  });
+  verifier(r.poiVu && r.poi && r.poi.nom === "POI fiche v3d" && !r.poi.famille,
+    "panneau de POI collé au pilier : sa fiche d'abord (priorité), pas celle du pilier", { vu: r.poiVu, poi: r.poi });
+  verifier(r.focus.ouverte && r.focus.focus && r.focus.note && r.focus.supprimer && r.focus.registre && r.fichePosee &&
+    String(r.zIndex) === "99999",
+    "fiche du pilier de session : la même que la carte (note, 🗑️), au rang des modales, focus dans la fiche",
+    { focus: r.focus, posee: r.fichePosee, z: r.zIndex });
+  verifier(r.taFocus && r.saisie.valeur === "wasd note" && r.saisie.bouge < 1e-6 && r.noteEcrite === "wasd note" &&
+    r.fermeeApresSauver,
+    "note saisie au clavier dans la fiche (W A S D compris, la vue ne bouge pas), sauvée, fiche fermée",
+    { saisie: r.saisie, note: r.noteEcrite, fermee: r.fermeeApresSauver });
+  verifier(r.echap.vueOuverte && !r.echap.fiche && r.echap.focusVue,
+    "Échap ferme la fiche (pas la vue), focus rendu à la vue", r.echap);
+  verifier(r.greffe.pilier === false && r.greffe.poi === false && r.greffe.apres === true,
+    "greffe ctx.regler({ fiches: false }) : un toucher au doigt n'ouvre ni pilier ni POI ; retirée, la fiche revient",
+    r.greffe);
+  verifier(r.extensionLecture && !r.extensionLecture.note && !r.extensionLecture.supprimer && r.extensionLecture.voir,
+    "lecture seule d'une extension (ktaEditionRefusee) : fiche sans note modifiable ni 🗑️", r.extensionLecture);
+  verifier(r.suppression.bouton && !r.suppression.fiche && !r.suppression.session && r.suppression.refaites === 1 &&
+    r.suppression.structures[1] === r.suppression.structures[0] - 1 && r.suppression.viseApres !== "structures" &&
+    r.suppression.vueOuverte,
+    "🗑️ depuis la fiche : pilier retiré de la session et de la scène sans rouvrir (une reconstruction), fiche fermée",
+    r.suppression);
+  verifier(r.annule, "annuler : le pilier revient dans la scène", r.annule);
+  verifier(r.calqueNote && r.calqueNote.uid === "st_fi_cal1" && !r.calqueNote.note && !r.calqueNote.supprimer &&
+    !r.calqueNote.session && r.calqueNote.registre && r.calqueNote.texte,
+    "calque de données : fiche de la carte en lecture seule (note lue, ni saisie ni 🗑️)", r.calqueNote);
+  verifier(r.calqueMuet && r.calqueMuet.uid === "st_fi_cal2" && !r.calqueMuet.note && !r.calqueMuet.supprimer &&
+    !r.calqueMuet.registre, "pilier de calque sans note (pas de fiche sur la carte) : titre en lecture seule",
+    r.calqueMuet);
+  verifier(!r.voirMuet.vue && r.voirMuet.montre && r.voirMuet.montre.uid === "st_fi_cal2" && r.voirMuet.montre.centre &&
+    !r.voirMuet.montre.fiche && r.voirMuet.montre.surbrillance && r.voirMuet.ecartM < 1,
+    "« Voir sur la carte » (pilier muet) : vue fermée, carte centrée sur lui, contour en surbrillance", r.voirMuet);
+  verifier(r.zoneOuverte === "zn_fi_rem" && !r.voirZone.vue && r.voirZone.montre && r.voirZone.montre.fiche &&
+    r.voirZone.popup && r.voirZone.popupNote && r.voirZone.popupSuppr && r.voirZone.ecartM < 1,
+    "« Voir sur la carte » (zone de session) : vue fermée, carte centrée, la fiche de la carte ouverte sur la zone",
+    { zone: r.zoneOuverte, voir: r.voirZone });
 }
 
 (async function main() {
@@ -6648,6 +7006,8 @@ async function sectionDonnees(page, MX) {
         window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
         window.KtaGalerie.invalider();
       });
+
+      await sectionFichesObjets(page);
     }
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous

@@ -155,6 +155,11 @@
 }
 .kta-v3d-fiche .kta-v3d-fiche-fermer { position: sticky; top: 0; float: right; margin: 0 0 6px 8px; }
 .kta-v3d-fiche-corps { font-size: 14px; line-height: 1.45; }
+/* Fiche d'un objet (structure, zone, tracé) : la fiche de la carte (utils.js > attacherNotePopup) dans la boîte de la
+   vue ; son corps porte .leaflet-popup-content, la racine que cherche la fiche, sans les marges d'une bulle. */
+.kta-v3d-fiche .leaflet-popup-content { margin: 0; width: auto; }
+.kta-v3d-btn.kta-v3d-fiche-voir { margin-top: 10px; height: 44px; border-color: var(--kta-interaction); }
+.kta-v3d-fiche:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
 html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 .kta-vue3d:focus { outline: none; }
 /* 📍 tracker éteint : grisé sans opacité (texte-3, désaturé), toujours touchable pour dire pourquoi. */
