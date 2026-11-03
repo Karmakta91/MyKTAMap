@@ -3079,6 +3079,27 @@ async function mesuresGalerie(page, nom, semisDonne) {
           sAp.some(function (q) { return q.b === su.texte; }),
           "suivi : le tracker passe au −1 → fondu noir sans descente, scène refaite au noir, bandeau « " + su.texte + " »",
           { avant: sAv.length, apres: sAp.length, premier: sAp[0], dernier: sAp[sAp.length - 1] });
+
+        // Tracker arrêté, recalé au −1 (« Je suis ici » d'un POI du −1 vu depuis le 0) : la vue s'ouvre au −1, la
+        // carte reste au 0 ; recalé au 0, elle s'y rouvre.
+        const ji = await page.evaluate(async function (a) {
+          const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+          await K.fermer();
+          if (window.getTrackingActif()) window.stopTracking();
+          window.ktaSetActiveLevel(0);
+          const t = P(-30, 0);
+          window.recalerTrackerSurPoint(t.x, t.y, -1, { dansGalerie: true });
+          await K.ouvrir({});
+          const r = { mode: K.etat().mode, niveau: K.etat().niveau, actif: window.APP_CONFIG.activeLevel };
+          await K.fermer();
+          window.recalerTrackerSurPoint(t.x, t.y, 0);
+          await K.ouvrir({});
+          r.niveau0 = K.etat().niveau;
+          await K.fermer();
+          return r;
+        }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+        verifier(ji.mode === "libre" && ji.niveau === -1 && ji.actif === 0 && ji.niveau0 === 0,
+          "tracker arrêté recalé au −1, carte au 0 : la vue s'ouvre au niveau du tracker, la carte reste au 0", ji);
         await page.evaluate(function () {
           window.ktaEstAccessible = window.__v3dAcc14;
           if (window.KtaVue3D.gesteAnime) window.KtaVue3D.gesteAnime(false);

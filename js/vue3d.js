@@ -5032,6 +5032,16 @@
         retourFocus: o.retourFocus || document.activeElement || null,
         attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
       };
+      // 🩸 Ouverte en libre sur la place du tracker, la vue prend aussi son niveau : un « Je suis ici » sur un POI
+      // du −1 visible depuis le 0 laisse le niveau actif de la carte au 0, et la scène du 0 entourerait le tracker.
+      // Tenu comme après un passage 🪜 (_niveauCourant). Tracker jamais recalé : le niveau affiché, comme avant.
+      const etatTr = typeof window.getTrackingPositionEtat === "function" ? window.getTrackingPositionEtat() : null;
+      const nivTr = typeof window.getTrackerLevel === "function" ? window.getTrackerLevel() : null;
+      if (!o.depart && _e.mode === "libre" && window.APP_CONFIG.multiLevel === true && etatTr && etatTr.confirmee &&
+          Number.isInteger(nivTr)) {
+        _e.niveauLibre = nivTr;
+        _e.actifVu = Number.isInteger(window.APP_CONFIG.activeLevel) ? window.APP_CONFIG.activeLevel : 0;
+      }
       const t0 = performance.now();
       _monterDom(!!o.stats);
       try {

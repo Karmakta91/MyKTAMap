@@ -1452,7 +1452,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   l'itinéraire s'il passe à moins de 3 m (`apercu > capTrajet`, vers sa prochaine consigne), sinon le long de l'axe de
   galerie le plus proche, du côté où il est le plus long, sinon gardé. ⚠️ contrat (décision produit) : la 3D change
   seulement **son** niveau (`niveauLibre`, oublié si le niveau actif de la carte change ou en repassant en suivi) ; ni
-  le tracker ni la carte 2D ne bougent pendant la 3D.
+  le tracker ni la carte 2D ne bougent pendant la 3D. **Ouverture en libre** sur la place d'un tracker recalé
+  (`getTrackingPositionEtat().confirmee`) : `niveauLibre` = niveau du **tracker** (un « Je suis ici » sur un POI du −1
+  vu depuis le 0 laisse la carte au 0) ; tracker jamais recalé : niveau actif de la carte. `checkup-vue-3d.js` § 14.
 - **Geste d'un changement de niveau** (`_lancerGeste`, `_majGeste`, décision produit) : fondu noir (`GESTE.fondu`
   250 ms, `.kta-v3d-fondu` au fond des jetons sombres, sous les boutons) de part et d'autre de la **bascule**, où la
   scène du niveau d'arrivée est construite (au noir). Passage 🪜 ou fiche : la caméra s'enfonce (descente) ou monte
