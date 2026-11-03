@@ -243,9 +243,11 @@ embuscades, un monde par niveau), `js/son.js`
   interruption (notification, appel, écran verrouillé) et ne le rend que dans un geste : `reveiller()` à chaque
   `pointerdown` / `keydown` et au retour à l'écran. Arrêt d'une partie : suspension différée de 1,5 s, sinon
   « Rejouer » (arrêt puis démarrage) laissait la nouvelle partie muette sur Safari. Sons **situés** : grognements,
-  pas (les deux plus proches à moins de 10 m), cris et éboulis viennent de leur direction (panoramique gauche /
-  droite, étouffés quand ils viennent de derrière ; au centre sans `StereoPanner`). Fond : gouttes et éboulis
-  lointains au hasard ; respiration du joueur sous 50 d'endurance.
+  pas (les deux plus proches à moins de 6 m, un sur trois sauté), cris et éboulis viennent de leur direction
+  (panoramique gauche / droite, étouffés quand ils viennent de derrière ; au centre sans `StereoPanner`). Fond :
+  gouttes (« plic » qui monte, puis écho ; toutes les 4 à 11 s) et éboulis lointains au hasard ; respiration du
+  joueur seulement en courant sous 50 d'endurance ou à bout de souffle. 🩸 Rien ne revient à intervalle fixe : un
+  son régulier se lit comme un bip ou un métronome.
 - **Checkup** : `checkup-vue-3d.js` § 21 (prise, code) et § 23 (jeu, avec `KtaAddons.mkmg.essai` : `vider`, `poser`,
   `sante`, `chrono`, `tenaille`, `pile` ; `poser` accepte `rampant`, `hurleur`, `gardien`, `pile`). Non joués
   par le checkup : passage de niveau (monde rangé, refuge) et B à un autre niveau (le relevé fictif est sur un niveau).

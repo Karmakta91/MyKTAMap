@@ -21,8 +21,9 @@
 
   let _ac = null, _maitre = null, _bruit = null, _coeur = null, _actif = false, _veille = null;
   let _dest = null, _souffle = null, _fond = null;   // _dest : sortie du son en cours (situé), sinon _maitre
-  // Fond : gouttes et éboulis lointains au hasard (s) ; respiration du joueur (s entre deux souffles).
-  const FOND = { goutte: [1.2, 4.5], eboulis: [25, 50], respire: [1.4, 0.55] };
+  // Fond : gouttes et éboulis lointains au hasard (s) ; respiration du joueur (s entre deux souffles, ± `flou`).
+  // 🩸 Un son répété à intervalle fixe se lit comme un bip ou un métronome : tout ce qui revient est tiré au hasard.
+  const FOND = { goutte: [4, 11], eboulis: [25, 50], respire: [1.4, 0.55], flou: 0.25 };
   const VEILLE_MS = 1500;   // délai avant de suspendre le son une fois la partie arrêtée
 
   function demarrer() {
@@ -120,7 +121,10 @@
       _ton(t, "sawtooth", 220, 55, 0.25, 0.05, 2.2);
       _bruite(t, "lowpass", 300, 1, 0.3, 0.3, 2.4);
     },
-    pas: function (t, k) { _bruite(t, "lowpass", 260 + Math.random() * 80, 1, 0.3 * k, 0.005, 0.12); },
+    pas: function (t, k) {
+      _bruite(t, "lowpass", 160 + Math.random() * 180, 0.7 + Math.random(), 0.25 * k * (0.7 + Math.random() * 0.6),
+        0.004, 0.08 + Math.random() * 0.08);
+    },
     hurle: function (t, k) {
       const f = _bruite(t, "bandpass", 700, 4, 0.5 * k, 0.08, 1.6);
       f.frequency.linearRampToValueAtTime(1300, t + 0.5);
@@ -142,7 +146,13 @@
         _bruite(t + 0.2 + Math.random() * 1.8, "bandpass", 500 + Math.random() * 900, 3, 0.25 * k, 0.005, 0.1);
       }
     },
-    goutte: function (t, k) { _ton(t, "sine", 1400 + Math.random() * 900, 700, 0.07 * k, 0.002, 0.09); },
+    // Goutte : « plic » dont la hauteur MONTE très vite (une goutte qui tombe dans une flaque), puis son écho.
+    goutte: function (t, k) {
+      const f = 450 + Math.random() * 500, v = 0.045 * k, e = 0.14 + Math.random() * 0.12;
+      _ton(t, "sine", f, f * (2.5 + Math.random()), v, 0.001, 0.045);
+      _bruite(t, "highpass", 3000, 0.7, v * 0.25, 0.001, 0.015);
+      _ton(t + e, "sine", f * 0.9, f * 2.4, v * 0.3, 0.001, 0.04);
+    },
     pile: function (t) {
       _ton(t, "square", 880, 880, 0.08, 0.005, 0.06);
       _ton(t + 0.1, "square", 660, 660, 0.08, 0.005, 0.06);
@@ -207,11 +217,12 @@
       if (!_souffle || !_ac) return;
       if (_ac.state === "running") {
         const t = _ac.currentTime, v = 0.05 + 0.2 * _souffle.p;
-        _bruite(t, "bandpass", 700, 1.2, v, 0.12, 0.45);
-        _bruite(t + 0.5, "bandpass", 1000, 1.5, v * 0.8, 0.08, 0.35);
+        _bruite(t, "bandpass", 600 + Math.random() * 250, 1.2, v, 0.12, 0.4 + Math.random() * 0.15);
+        _bruite(t + 0.45 + Math.random() * 0.1, "bandpass", 900 + Math.random() * 250, 1.5, v * 0.8, 0.08, 0.35);
       }
       const R = FOND.respire;
-      _souffle.minuterie = setTimeout(souffler, (R[0] - (R[0] - R[1]) * _souffle.p) * 1000);
+      const flou = 1 + (Math.random() * 2 - 1) * FOND.flou;
+      _souffle.minuterie = setTimeout(souffler, (R[0] - (R[0] - R[1]) * _souffle.p) * 1000 * flou);
     };
     souffler();
   }

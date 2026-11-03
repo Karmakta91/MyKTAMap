@@ -295,7 +295,10 @@
       _jouer(s[0], s[1], s[2]);
     });
     if (r.hurle) _message(_t("hud.hurle"));
-    _son().respiration(p.endurance < REGLES.respireSous ? 1 - p.endurance / REGLES.respireSous : 0);
+    // Respiration seulement en courant (sous respireSous d'endurance) ou à bout de souffle : jamais au repos.
+    const respire = p.souffle ? 1 : ctx.court && p.endurance < REGLES.respireSous ?
+      1 - p.endurance / REGLES.respireSous : 0;
+    _son().respiration(respire);
     // Battement de cœur (décision produit) : seulement à bout de souffle ou sous coeurSous % d'endurance, fort et
     // rapide à sec, de plus en plus lent pendant la reprise, éteint une fois le souffle revenu.
     const seuil = p.souffle ? REGLES.souffleReprise : REGLES.coeurSous;
@@ -1004,7 +1007,8 @@
     return { enCours: true, diff: p.diff, vague: p.vague, reussies: p.reussies, sante: Math.round(p.sante),
       endurance: Math.round(p.endurance), souffle: p.souffle, cible: p.cible ? { x: p.cible.x, y: p.cible.y,
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
-      traits: p.traits.length, chevrons: p.nChevrons || 0, calcul: p.calcul, canon: p.canon, reserve: p.reserve, recharge: !!p.rechargeFin,
+      traits: p.traits.length, chevrons: p.nChevrons || 0, calcul: p.calcul, canon: p.canon, reserve: p.reserve,
+      recharge: !!p.rechargeFin,
       fin: p.fin, tues: p.tues, tirs: p.tirs, touches: p.touches,
       reduit: !!p.hud && p.hud.panneau.classList.contains("mkmg-reduit"), scores: _lireScores(),
       coeur: +(p.coeur || 0).toFixed(2),

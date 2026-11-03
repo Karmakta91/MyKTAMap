@@ -46,7 +46,9 @@
     // Refuge : un niveau jamais visité de la vague est peuplé à `part` seulement, sans silhouette.
     refuge: { part: 0.5 },
     eau: { x: 0.6 },
-    pas: { rayonM: 10, parImage: 2 },
+    // Pas entendus : plus près (`rayonM`), plus vite étouffés (carré de la distance), et un sur trois sauté au
+    // hasard pour casser le métronome de la foulée.
+    pas: { rayonM: 6, parImage: 2, saut: 0.35 },
     ramasser: 1, iaHz: 15,
     tir: { portee: 18, ecart: 6, pres: 8, recharge: 1.5, canon: 2 }
   };
@@ -710,12 +712,15 @@
         o.phase = (o.phase || 0) + (o.vitPas || 0) * dt * ANIM.pasParM;
         o.marche = (o.marche || 0) + ((o.vitPas > 0.05 ? 1 : 0) - (o.marche || 0)) * Math.min(1, dt * 6);
         // Un pas posé (demi-foulée) près de soi : bruit situé, les plus proches seulement.
-        if (Math.floor(o.phase / Math.PI) !== avant && d < REGLES.pas.rayonM) pas.push([d, o]);
+        if (Math.floor(o.phase / Math.PI) !== avant && d < REGLES.pas.rayonM && Math.random() >= REGLES.pas.saut) {
+          pas.push([d, o]);
+        }
         _poserVivant(o, t);
       }
     });
     pas.sort(function (a, b) { return a[0] - b[0]; }).slice(0, REGLES.pas.parImage).forEach(function (x) {
-      const f = (1 - x[0] / REGLES.pas.rayonM) * (x[1].type === "gardien" ? 1.6 : x[1].type === "rampant" ? 0.5 : 1);
+      const k = 1 - x[0] / REGLES.pas.rayonM;
+      const f = k * k * (x[1].type === "gardien" ? 1.6 : x[1].type === "rampant" ? 0.5 : 1);
       r.sons.push(["pas", f, angle(ctx, x[1])]);
     });
     (p.cadavres || []).forEach(function (o) {
