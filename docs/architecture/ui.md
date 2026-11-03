@@ -2275,8 +2275,8 @@ icônes.
 - **Fiche d'une structure, d'une zone ou d'un tracé** (`.kta-v3d-fiche.kta-v3d-fiche-objet`, `role="dialog"`) :
   toucher l'objet dans la scène (après un panneau, qui passe d'abord) ouvre la fiche de la carte
   (`attacherNotePopup` : note, 💾, 🔄 Convertir, Niveau, 🗑️, ou lecture seule) dans le même cadre que celle d'un POI,
-  corps en `.leaflet-popup-content` sans marge ; en bas, **« 🗺️ Voir sur la carte »** (`.kta-v3d-fiche-voir`,
-  44 px, liseré `--kta-interaction`) ferme la vue et montre l'objet sur la carte (sa fiche, contour en surbrillance
+  corps en `.leaflet-popup-content` sans marge ; en bas, **« 🗺️ Voir sur la carte »** (`.kta-v3d-fiche-voir`, un
+  bouton de fiche `kta-popup-btn`, comme 💾 Sauver la note) ferme la vue et montre l'objet sur la carte (sa fiche, contour en surbrillance
   5 s). La fiche prend le focus (anneau `--kta-interaction` au clavier), Échap la ferme et rend le focus à la vue ;
   Tab passe par ses champs. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
 - **Passages entre niveaux** : boîte 🪜 à gauche, au milieu, boutons écrits « ▼ -1 · Nom (moyen) », coupés à la

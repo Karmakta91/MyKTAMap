@@ -4444,9 +4444,18 @@
     const corps = document.createElement("div");
     corps.className = "kta-v3d-fiche-corps leaflet-popup-content";
     boite.appendChild(corps);
-    const voir = _bouton(boite, "kta-v3d-btn-mode kta-v3d-fiche-voir", "🗺️ " + _t("vue3d.voirSurCarte"),
-      _t("vue3d.voirSurCarteTitre"), "ficheVoir");
-    voir.classList.add("kta-v3d-fiche-voir");
+    // « Voir sur la carte » : un bouton de fiche comme ceux de la note (kta-popup-btn), hors du corps que la fiche
+    // réécrit à chaque ouverture.
+    const ligne = document.createElement("div");
+    ligne.className = "kta-popup-actions kta-v3d-fiche-voir-ligne";
+    const voir = document.createElement("button");
+    voir.type = "button";
+    voir.className = "kta-popup-btn kta-v3d-fiche-voir";
+    voir.textContent = "🗺️ " + _t("vue3d.voirSurCarte");
+    voir.title = _t("vue3d.voirSurCarteTitre");
+    voir.dataset.v3d = "ficheVoir";
+    ligne.appendChild(voir);
+    boite.appendChild(ligne);
     e.ov.appendChild(boite);
     const fiche = { boite: boite, objet: o, famille: v.famille, session: v.session, marqueur: null };
     const hote = {
