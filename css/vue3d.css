@@ -52,7 +52,11 @@
   display: flex; flex-direction: column; align-items: stretch; gap: 8px; box-sizing: border-box;
   padding: 10px; border-radius: 12px; border: 1px solid var(--kta-texte-3);
   background: var(--kta-surface); color: var(--kta-texte); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  /* 🩸 Téléphone en paysage : la tuile dépasse l'écran (≈ 400 px de haut), le bas défile dans la tuile. */
+  max-height: calc(100% - 80px - max(10px, env(safe-area-inset-bottom))); overflow-y: auto;
+  overscroll-behavior: contain;
 }
+.kta-v3d-reglages > * { flex-shrink: 0; }
 .kta-v3d-reglages[hidden] { display: none; }
 .kta-v3d-reglages > .kta-v3d-btn { width: 100%; text-align: left; }
 .kta-v3d-reglages-ligne { display: flex; gap: 8px; }

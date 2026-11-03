@@ -883,6 +883,25 @@ async function mesuresGalerie(page, nom, semisDonne) {
         tel.lignes === 1, "téléphone (393 px) : ✕ en haut à droite, rangée du haut sur une seule ligne (" + tel.lignes +
         ")", tel);
       await capture(page, "integration-telephone");
+      // Téléphone en paysage : la tuile ⚙️ tient dans l'écran, son dernier réglage s'atteint en la faisant défiler.
+      await page.setViewportSize({ width: 852, height: 393 });
+      await page.waitForTimeout(300);
+      const pay = await page.evaluate(async function () {
+        const t = document.getElementById("kta-v3d-reglages");
+        const ouverte = !t.hidden;
+        if (!ouverte) document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
+        await new Promise(function (r) { setTimeout(r, 100); });
+        const dernier = t.lastElementChild;
+        dernier.scrollIntoView({ block: "nearest" });
+        await new Promise(function (r) { setTimeout(r, 100); });
+        const rt = t.getBoundingClientRect(), rd = dernier.getBoundingClientRect();
+        const r = { bas: Math.round(rt.bottom), haut: window.innerHeight, defile: t.scrollHeight > t.clientHeight,
+          dernierVisible: rd.top >= rt.top - 1 && rd.bottom <= rt.bottom + 1 };
+        if (!ouverte) document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
+        return r;
+      });
+      verifier(pay.bas <= pay.haut && pay.dernierVisible,
+        "téléphone en paysage (852 × 393) : tuile ⚙️ dans l'écran, dernier réglage atteint en la faisant défiler", pay);
       await page.setViewportSize({ width: 1200, height: 800 });
       await page.waitForTimeout(300);
       // Rendu en pause : immobile en libre, aucune image ; en suivi, le bruit de la boussole (± 0,9°) non plus.
