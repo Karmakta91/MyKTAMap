@@ -441,6 +441,11 @@ function _renderMarkdown(md) {
     if (url.includes("github.com") || url.includes("user-attachments")) {
       return '<span class="kta-readme-img-skip">📷 <em>' + (alt || "Image") + '</em></span>';
     }
+    // Icône du catalogue (icon/<nom>.png, précachée) : petite, alignée sur le texte. Le guide l'écrit
+    // `../../icon/…` pour GitHub et le site de doc ; ici la page est la racine, d'où le préfixe retiré.
+    // 🔒 src reconstruit depuis le motif seul (lettres, chiffres, _ et -) : rien d'autre du texte n'y passe.
+    const icone = /^(?:\.\.\/)*icon\/([a-z0-9_-]+)\.png$/.exec(url);
+    if (icone) return '<img class="kta-readme-icone" src="icon/' + icone[1] + '.png" alt="' + alt + '">';
     return '<img src="' + url + '" alt="' + alt + '" style="max-width:100%;border-radius:6px;margin:8px 0;">';
   });
 
