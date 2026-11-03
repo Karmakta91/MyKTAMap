@@ -1981,17 +1981,46 @@ window.ktaExportEtatsFiltres = function (liste) {
   return (X && typeof X.filtrerPourExport === "function") ? X.filtrerPourExport(liste) : (Array.isArray(liste) ? liste : []);
 };
 
+// ── Calque en modification : sa copie de session le REMPLACE dans toute lecture du plan ──────────
+// ⚠️ contrat : les objets d'un calque rapatrié (CalqueSession.estRapatrie) ne sortent ni de getAllEmbedded* (les
+// quatre, road.js compris) ni des lectures directes des registres (obstacles de l'itinéraire, collisions du tracker,
+// volume exploité, export KMZ, carte de chaleur, comptes des filtres), ni des relectures de son fichier (recherche,
+// export avancé). 🩸 Le verrou ne fait que MASQUER le
+// groupe du calque : lu quand même, l'original doublait sa copie (graphe, comptes, obstacles) et un objet supprimé
+// de la copie revenait dans l'itinéraire et la vue 3D. La carte 2D, elle, dessine l'original si l'on recoche sa
+// case (comparaison voulue) ; rien d'autre ne le lit, pas même l'export avancé (exporter.js >
+// _calqueEnModification : sa case n'exporte plus l'original).
+// Restitution, rapatriement : CalqueSession invalide les caches (RoadGraph, KtaGalerie).
+window.ktaCalquesEnModification = function() {
+  const CS = window.CalqueSession;
+  try { return (CS && typeof CS.listeRapatries === "function") ? CS.listeRapatries() : []; } catch (e) { return []; }
+};
+
+// Entrées d'un registre de calque (`_ktaDataMarkers` → `_ktaLayerId`, polygones et structures → `layerId`) sans
+// celles d'un calque en modification. Aucun calque rapatrié : la MÊME liste (cache par identité de tracking.js).
+window.ktaHorsCalquesEnModification = function(liste) {
+  if (!Array.isArray(liste)) return [];
+  const ex = window.ktaCalquesEnModification();
+  if (!ex.length) return liste;
+  return liste.filter(function(e) {
+    if (!e) return false;
+    return ex.indexOf(e._ktaLayerId !== undefined ? e._ktaLayerId : e.layerId) < 0;
+  });
+};
+
 // ── Getters publics des data layers ──────────
 // ⚠️ getAllEmbeddedPoints → [{x, y, nom, id, tags, level, layerId, description?, uid?, updatedAt?}], même
 // format que window.getEditorPoints (concaténation directe). Lu sur _ktaDataMarkers (_ktaLevel, _ktaNom, _ktaId,
 // _ktaTags…) ; x = lng, y = imageHeight - lat (inverse de convertCoord). Sans lui, stats et exports ne
-// verraient que la session.
+// verraient que la session. Calque en modification exclu (voir plus haut).
 window.getAllEmbeddedPoints = function() {
   if (!Array.isArray(window._ktaDataMarkers)) return [];
   const imgH = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
+  const exclus = window.ktaCalquesEnModification();
   const out = [];
   window._ktaDataMarkers.forEach(function(m) {
     if (!m || typeof m.getLatLng !== "function") return;
+    if (exclus.length && exclus.indexOf(m._ktaLayerId) >= 0) return;
     try {
       const ll = m.getLatLng();
       const item = {
@@ -2017,10 +2046,13 @@ window.getAllEmbeddedPoints = function() {
 
 // Zones embarquées → [{type, points, level, layerId, description?, uid?, updatedAt?}], même format que
 // window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement la session.
+// Calque en modification exclu.
 window.getAllEmbeddedZones = function() {
   if (!Array.isArray(window._ktaDataPolygons)) return [];
+  const exclus = window.ktaCalquesEnModification();
   return window._ktaDataPolygons
     .filter(function(e) {
+      if (e && exclus.length && exclus.indexOf(e.layerId) >= 0) return false;
       return e && e.type && Array.isArray(e.points) && e.points.length >= 3;
     })
     .map(function(e) {
@@ -2034,13 +2066,16 @@ window.getAllEmbeddedZones = function() {
 
 // Structures embarquées (export KMZ/GPX, Vue OSM, exports image, Mode Secours).
 // ⚠️ Le pathfinder ne fait aucune arête d'une structure ; il lit `mur-ligne` comme obstacle dur, directement
-// dans le registre (pathfinder.js > _collecterMursLigne), comme les zones `inaccessible`.
+// dans le registre (pathfinder.js > _collecterMursLigne), comme les zones `inaccessible`. Calque en modification
+// exclu.
 window.getAllEmbeddedStructures = function() {
   if (!Array.isArray(window._ktaDataStructurePolygons)) return [];
+  const exclus = window.ktaCalquesEnModification();
   return window._ktaDataStructurePolygons
     .filter(function(e) {
       // minimum de points selon la géométrie : polyligne (fronts, mur en ligne) 2, polygone (piliers, mur) 3
       if (!e || !e.type || !Array.isArray(e.points)) return false;
+      if (exclus.length && exclus.indexOf(e.layerId) >= 0) return false;
       // 🩸 Géométrie lue dans la légende (structures.js > _isPolylineType) : un test littéral front-1/front-2
       // ferait tomber un type CUSTOM polyligne à 2 points, visible à l'écran mais absent de la Vue OSM et des
       // exports. Repli sur le test littéral si structures.js n'est pas chargé.

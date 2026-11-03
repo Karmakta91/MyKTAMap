@@ -361,6 +361,11 @@ Constante `PDF_SIZES` (array de `{key, label, hint}`) utilisée pour rendre les 
 Modale auto-liste `PLAN_CONFIG.imageLayers[]` et `PLAN_CONFIG.dataLayers[]` :
 - Section **🖼️ Image de base & calques** : checkbox "Image plan de base" + 1 checkbox par `imageLayers[]`
 - Section **📊 Calques de données** : 1 checkbox par `dataLayers[]` avec label spécial pour `editor` (= calque session)
+- **Calque en « 🔄 Modifier »** (décision produit, PNG et PDF) : sa case reste cochable mais n'exporte rien de
+  l'original (`exporter.js > _calqueEnModification`, dans la boucle des calques) ; sa copie part avec la session.
+  Libellé suivi de « exporté par la session » (`imgexport.calquesData.parSession`), pas de sous-cases. Le KMZ et le
+  GeoJSON lisent aussi la copie seule (`getAllEmbedded*`, `ktaHorsCalquesEnModification`) : aucun doublon, aucun
+  objet supprimé de la copie qui revient. Règle commune : `session-data.md` §« La copie remplace l'original ».
 - Pré-cochage = visibilité actuelle sur la carte (via helpers `_getVisibleImageLayerIds` / `_getVisibleDataLayerIds` locaux — duplique exporter.js volontairement pour éviter dep cross-module)
 
 `_lireOptionsModale` capte ces choix dans `opts.imageLayers = {id: bool}` et `opts.dataLayers = {id: bool}`. Le wrapper `_publicGenererCanvas` de exporter.js accepte ce format granulaire (rétrocompat v1 avec booléens globaux préservée pour les futurs callers).

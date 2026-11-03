@@ -246,9 +246,9 @@
     if (typeof window.getEditorPoints === "function") {
       (window.getEditorPoints() || []).forEach(_addPt);
     }
-    // Calques (points embarqués) : _ktaDataMarkers porte _ktaTags.
+    // Calques (points embarqués) : _ktaDataMarkers porte _ktaTags ; un calque en modification est compté par sa copie.
     if (Array.isArray(window._ktaDataMarkers)) {
-      window._ktaDataMarkers.forEach(function(m) {
+      window.ktaHorsCalquesEnModification(window._ktaDataMarkers).forEach(function(m) {
         if (!m) return;
         const t = (Array.isArray(m._ktaTags) && m._ktaTags[0]) || "default";
         counts[t] = (counts[t] || 0) + 1;

@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.22.1 (correctif de la vue 3D, accès de surface)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** La place des passages dans la galerie et les nouveaux volumes de la vue 3D (accès fermés, puits comblés, bassins, cavages, avec leurs textures dessinées par le code) se calculent sur l'appareil ; aucune image n'est téléchargée.
+
 ### v2.22.0 (suppression par zone, volume exploité, mur en ligne, contours fermés)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** La sélection et la suppression par zone, le volume exploité, le mur en ligne, la conversion des contours fermés et le pas du tracker se calculent sur l'appareil. Sur une installation reliée, une suppression en lot demande d'abord à l'installation si elle est permise, et la fenêtre 🚨 affiche ses nouveautés : ces échanges vont à son serveur seulement, rien ne part de myktamap.fr. La **🧊 Vue 3D (bêta)** du menu Tracker se dessine sur l'appareil : ses fichiers (`js/vue3d.js`, `css/vue3d.css` et la librairie three.js de `lib/three/`) sont des fichiers du site, précachés par l'app avec le reste à l'installation ou à la mise à jour (+2,1 Mo bruts, ~420 Ko transférés), jamais demandés par la page au démarrage. Aucun appel réseau nouveau, aucun domaine nouveau.

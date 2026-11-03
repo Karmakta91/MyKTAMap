@@ -116,6 +116,9 @@
     const cfg          = window.PLAN_CONFIG || {};
     const imageLayers  = (cfg.imageLayers || []);
     const dataLayers   = (cfg.dataLayers  || []);
+    // Calque en « 🔄 Modifier » : sa case ne peint rien de l'original, la copie part avec la session (exporter.js).
+    const modif = (typeof window.ktaCalquesEnModification === "function") ? window.ktaCalquesEnModification() : [];
+    const _enModification = function(id) { return modif.indexOf(id) >= 0; };
     const visibleImg   = _getVisibleImageLayerIds(cfg);
     const visibleData  = _getVisibleDataLayerIds(cfg);
 
@@ -183,7 +186,8 @@
                     const isEditor = l.id === "editor";
                     const label = isEditor
                       ? "✏️ " + window.ktaLibelleCalque(l) + " " + T("pdfexport.data.calqueSessionSuffixe")
-                      : "📁 " + (l.label || l.id);
+                      : "📁 " + (l.label || l.id) +
+                        (_enModification(l.id) ? " " + T("imgexport.calquesData.parSession") : "");
                     return _cbRowSub("pdf_data_layer_" + _slug(l.id), label, null, checked, l.id);
                   }).join("") +
                 '</div>'

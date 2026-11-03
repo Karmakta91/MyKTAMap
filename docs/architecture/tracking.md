@@ -1343,6 +1343,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_indexZones`, indépendant du modèle des galeries : le rendu structures n'en construit pas). ⚠️ contrat : la 3D
   seulement ; `ktaSegmentsBloquesParStructure` (pas du tracker), `versGalerie` (recalage), l'itinéraire, le guidage
   et la carte ne lisent aucune de ces zones (l'itinéraire 2D garde sa règle : seul l'inaccessible le coupe).
+  Les **obstacles des accès** (cône d'un puits comblé `pc` / `psf`, cavage fermé `caf`, ci-dessous) suivent
+  la même règle et le même contrat (`KtaGalerie.BLOQUE`, `_indexObstacles` : contour posé par `placePassage` dans le
+  rendu affiché, que `zonesBloquent` / `dansZone` reçoivent de `_juger` et `_coince`).
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
   🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
   (`basculerRendu([vers])`), retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ;
@@ -1439,7 +1442,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   contre la paroi la plus proche (8 cm devant) s'ils sont au-delà ; plus loin, masqués ; toujours sans test de
   profondeur. Vue plongeante : plafond des pièces masqué, parois vues des deux côtés.
 - **Passages de niveau 🪜** (en libre ; en suivi, le niveau est celui du tracker) : à moins de 2 m d'un POI jonction
-  (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à son raccord ; jamais `pa`,
+  (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à la place de son volume, ci-dessous ; jamais `pa`,
   qui n'a pas de moyen) ou d'un bout de tracé `jonction` (pris dans les deux sens), une boîte à gauche : boutons
   **nommés** vers le niveau lié voisin au-dessus ou au-dessous (profondeurs saisies, sinon numéro), « ▼ -1 · Nom (moyen) »
   (`_textePassage`, nom coupé à 22 signes à l'écran, entier au libellé accessible ; tracé : « ▼ -1 (tracé jonction) »),
@@ -1459,9 +1462,35 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Niveau changé hors passage (tracker en suivi, niveau actif de la carte) : le fondu seul (500 ms). Ensuite le bandeau
   « Niveau n » 2 s (`_annoncerNiveau`, `vue3d.niveauBandeau`). `prefers-reduced-motion` : fondu seul.
   `KtaVue3D.gesteAnime(false)` bascule sans geste (mesures, checkup).
-- **Volumes des passages** (`_volumesDuNiveau`, `_construireVolume`, décision produit) : au panneau du POI (raccord
-  validé du niveau, sinon le point), aligné sur l'axe de galerie le plus proche : `jes` / `eso` cage d'escalier
-  2,5 × 1,5 m (10 marches pleines), `jpe` / `peo` puits de 1,2 m à échelons (tous les 0,3 m, deux montants), `jps`
+- **Volumes des passages** (`_volumesDuNiveau`, `_construireVolume`, décision produit) : place et axe par
+  `KtaGalerie.placePassage` (`galerieEmprise.js > _placeVolume`), la seule règle, lue aussi par le panneau du POI, le
+  🪜 et l'emprise qui ouvre le tube. Raccord validé du niveau (celui du niveau du POI compris) : au point exact (un escalier : en niche à
+  cette place, ci-dessous). Sinon
+  le POI, que l'on pose **en général à côté de l'axe** (lisible en 2D) : en galerie et dans un tube du mixte (hors
+  chambre), à moins de `PROCHE_M` d'un axe, le volume est posé **dans le tube**, du côté du POI, bouche et cadre doré
+  entre les parois (au plus w − demi-emprise de l'axe, sur l'axe si le tube est plus étroit) ; hors de l'emprise, la
+  galerie est d'abord gagnée par le trajet de `versGalerie` (celle dont l'emprise est la plus proche). 🩸 Posé au
+  point, le puits d'un POI dans la roche restait derrière la paroi, bouche hors du sol dessiné : invisible au niveau
+  du POI, visible seulement au raccord validé de l'autre. 🩸 Près d'un carrefour, l'emprise la plus proche peut être
+  celle d'une autre galerie : seul un raccord validé du niveau tranche. Rendu structures (sol partout) : le point.
+  Le panneau suit le volume s'il est posé ailleurs que le point (`_placePanneau`) ; le POI enregistré, la 2D,
+  l'itinéraire et le tracker n'en savent rien. Aligné sur l'axe de galerie le plus proche de cette place : `jes` / `eso` cage d'escalier
+  2,5 × 1,5 m (10 marches pleines en calcaire uni ; **entrée** — pied de la volée qui monte, haut de celle qui
+  descend, côte à côte entre trois niveaux — `placePassage > entree`). **Escalier en niche latérale** (`jes`, `eso`,
+  `esf` ; `galerieEmprise.js > _niche`, décision produit : jamais en plein milieu de la galerie) : dans un tube
+  (galerie, mixte hors chambre, axe à moins de `PROCHE_M`), la volée est **perpendiculaire** à l'axe, du côté du POI
+  (POI sur l'axe à 1 cm près : à gauche du sens du tracé, carte nord en haut) ; avec un raccord validé du niveau, à
+  sa place exacte le long de la galerie et du côté du raccord (`_nicheAuRaccord`, même règle sur l'axe), pied contre la paroi (centre à w + 1,25 m
+  de l'axe), montée ou descente vers le fond de la niche ; le passage de la galerie reste libre, la paroi s'ouvre
+  devant la niche (son emprise, pièce « niche » du modèle), fond et côtés murés ; 🪜 au pied de la volée. 🩸 La niche
+  reste contre la paroi quel que soit l'écart du POI (profondeur = la volée) et n'évite pas une galerie voisine plus
+  proche que sa profondeur. Exceptions, dans l'axe : POI **au bout d'un cul-de-sac** ou au-delà (`_auFond` : volée
+  vers le fond, entrée côté ouvert), rendu structures, chambre (raccord validé : au point exact), aucun axe à
+  `PROCHE_M` (le point ; aucun axe à `DIR_PASSAGE_M` : orientation arbitraire, est-ouest). Dans l'axe, l'entrée est du
+  côté où la galerie continue le plus longtemps depuis la place (`_entree` : longueur de galerie atteinte de chaque
+  côté sans repasser par l'arête ; arête dans une boucle ou égalité : sens du tracé). 🩸 Le sens a → b d'une arête
+  est celui du dessin, arbitraire : seul, il mettait le haut de la volée face à qui arrive),
+  `jpe` / `peo` puits de 1,2 m à échelons (tous les 0,3 m, deux montants), `jps`
   puits nu, `pa` tube de 0,8 m à grille. Ouvert dans le **sol** vers un niveau lié au-dessous, dans le **plafond** vers
   un niveau lié au-dessus, les deux entre trois niveaux ; parois (matériau des galeries) sur 6 m au-delà (le reste se perd dans le
   noir). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
@@ -1474,16 +1503,52 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_gererVolumes`, règle des tuiles), libérés au loin ; 🩸 après une perte du contexte, jamais `dispose()` sur un
   volume de l'ancienne scène. Aucune collision : le pas reste la règle du tracker.
 - **Aucune paroi de tube dans un passage** (mixte et galerie) : `galerieEmprise.js > _emprisesPassages` rend l'emprise
-  de chaque volume du niveau (bouche + cadre doré, mêmes règles et même axe que `_volumesDuNiveau`, dimensions
+  de chaque volume du niveau (bouche + cadre doré, mêmes règles que `_volumesDuNiveau`, place et axe par le même
+  calcul `_placeVolume`, jugé sur les tubes et joints seuls, dimensions
   `KtaGalerie.PASSAGE`, que `vue3d.js > VOLUME` lit) et celle de la tranchée d'un tracé jonction (un rectangle par
   segment). Une emprise qui chevauche un tube devient une **pièce** du modèle : l'emprise étant l'union des pièces,
   bout de cul-de-sac, paroi qui longe la bouche ou la coupe tombent dedans ; ses bords hors des tubes sont des parois :
-  le tube s'ouvre sur une **niche** autour de la bouche, et l'on peut y marcher (`dedans`, `paroisBloquent` : une seule
-  source). Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé). 🩸 Sans
+  le tube s'ouvre sur une **niche** autour de la bouche (bout de cul-de-sac, tube plus étroit que la bouche, raccord
+  validé hors du tube, escalier en niche latérale), et l'on peut y marcher (`dedans`, `paroisBloquent`, `ctx.libre`
+  des add-ons : une seule source). ⚠️ contrat : la niche latérale d'un escalier est une pièce « niche » que
+  `versGalerie` ignore (recalage de la 2D inchangé : un tracker recalé n'y entre pas). Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé). 🩸 Sans
   cela, une paroi du sol au plafond passait au travers de la cage, vue dans le trou en plongée. Filtres ignorés (masquer
   ne retire que le dessin). Les **rubans des tracés** et les liserés (matériau `rubans`) lisent le gabarit du sol comme
   le sol : coupés à la bouche, jamais suspendus au-dessus du vide ; l'itinéraire (marqueurs à mât) n'est pas coupé.
-  `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux).
+  `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux) ; POI décalés de 1 à 5 m, carrefour, raccords,
+  panneau et 🪜 au volume : § 14 ter.
+- **Accès de surface sans passage** (`vue3d.js > _volumeAcces`, `_acces` ; formes et dimensions :
+  `galerieEmprise.js > ACCES`, `ACCES_DIM` ; décision produit) : un volume à la place d'un passage (`placePassage`,
+  demi-emprise propre à l'accès, `_demiAcces`), panneau au-dessus, construit à portée, **sans moyen** (ni 🪜, ni cadre
+  doré, ni itinéraire, ni coût vertical : `KtaPoiJonction.moyen` nul) et **sans emprise** (aucune pièce :
+  `versGalerie` et le recalage ne changent pas), sauf la niche latérale d'`esf` (celle d'`eso`, ignorée par
+  `versGalerie`). `esf` / `pef` : la cage à marches d'`eso`, le puits à échelons de
+  `peo`, fermés par une dalle sombre à 2,5 m au-dessus du plafond (pas de ciel). `pb` : dalle maçonnée (matériau des
+  parois) au ras du plafond, plafond non troué. `pc` / `psf` : bouche au plafond (carrée de 1,2 m / ronde de 2,5 m)
+  remplie de remblais sur 0,5 m, et **cône d'éboulis** au sol (rayon 0,9 m, 0,6 m de haut, 16 côtés) qui arrête le
+  pas (le cône du `psf` garde ce rayon sous sa bouche plus large) ; l'itinéraire passe par-dessus
+  (`_volumesItiAcces`, comme un remblais, à 0,6 m). `ps` : puits rond maçonné de 2,5 m (`ACCES_DIM.rond`, comme
+  `psf`), sans échelons, ciel au sommet. `pe` : bassin rond de 1,6 m creusé dans le sol (bouche au sol), margelle de
+  0,2 × 0,4 m, eau à −0,8 m (couleur de la zone eau, matériau de l'eau des galeries), fond à −1,2 m ; posé **contre
+  la paroi** du côté du POI (`_placeVolume`, `contre` : margelle tangente à la paroi, à w − 1 m de l'axe) ; galerie
+  trop étroite pour laisser `ACCES_DIM.bassinLibre` (0,8 m, un corps) entre la margelle et la paroi d'en face : il
+  s'enfonce dans SA paroi d'autant (centre à 1,8 m − w de l'axe, jamais au-delà ; sans niche), soit dans toute
+  galerie de moins de 2,8 m (les trois types intégrés : 0,55 m de l'axe en principal, 0,95 m en chemin) ; il
+  **n'arrête pas** le pas (hors de `BLOQUE`, décision produit : on passe à côté, le long de la paroi d'en face).
+  🩸 Le passage laissé est contre l'autre paroi, pas sur l'axe : de 1,25 à ~4,35 m de large (les trois types
+  intégrés), le bassin couvre l'axe et le ruban de l'itinéraire, qui le suit, monte sur la margelle là où il la
+  croise (`_volumesItiAcces`), jamais dans l'eau. `cao` / `caf` : **porte à deux battants** en travers de la
+  galerie, posée sur l'axe (demi-emprise infinie : elle barre toute la largeur), largeur = celle de la galerie à cet
+  endroit (demi-largeur de l'axe le plus proche, 2 m sans galerie), cadre de fer, paroi au-dessus du linteau (2,1 m,
+  borné par la hauteur) jusqu'au plafond ; `caf` fermé arrête le pas sur toute la largeur (obstacle de 0,2 m qui
+  déborde de 0,4 m dans la paroi), `cao` a ses battants rabattus à 90° contre les parois. Un itinéraire 2D finit au
+  cavage (bout du chemin sur l'axe) : l'arrivée est atteinte devant la porte, à un corps d'elle. Bois des battants
+  (planches, pentures cloutées, `_bois`) et remblais texturés avec 🧱, couleurs unies sinon (bascule = volumes
+  refaits). 🩸 Un puits rond dans un tube plus étroit que lui reste sur l'axe et dépasse dans la paroi (pas de
+  niche, voulu). Garde-fou : `checkup-vue-3d.js` § 14 quater (3 rendus, blocage, bassin contre la paroi qu'on longe,
+  arrivée devant un cavage fermé, 🧱 coupé, 2D intacte) ; escaliers en niche : § 14 quinquies (POI d'un côté, de
+  l'autre, dans le tube, sur l'axe, boucle, bout de cul-de-sac, tracé dans les deux sens, `esf` / `eso` / `jes` vers
+  le haut, le bas et entre trois niveaux ; niche marchable, paroi ouverte, fond muré, 2D intacte).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de

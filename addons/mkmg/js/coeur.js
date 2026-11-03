@@ -209,7 +209,7 @@
   function _demarrer(diff) {
     _p = { diff: diff, regle: DIFFICULTES[diff], vague: 0, sante: REGLES.sante, endurance: REGLES.endurance,
       souffle: false, cible: null, route: null, longueurs: null, calcul: 0, ctx: null, hud: null, traits: [],
-      majHud: 0, reussies: 0, restantM: null, ennemis: [], objets: [], gabarits: null, niveauMonde: null,
+      majHud: 0, reussies: 0, restantM: null, ennemis: [], objets: [], cadavres: [], gabarits: null, niveauMonde: null,
       canon: REGLES.cartouches.canon, reserve: REGLES.cartouches.reserve, rechargeFin: 0, fin: false, tues: 0,
       tirs: 0, touches: 0,
       blesseT: 0, ecouteurs: [], saleT: 0, carte: null };
@@ -844,7 +844,8 @@
       chronoDepasse: p.chronoDepasse,
       chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
       ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),
-      objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }) };
+      objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }),
+      cadavres: (p.cadavres || []).length };
   }
 
   // Mise en place d'une situation (checkup seulement) : vider le monde, poser un ennemi ou un objet, la santé.
