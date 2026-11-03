@@ -1021,6 +1021,7 @@ function removeLastEditorPoint() {
 // ⚠️ Jamais layerEditor.clearLayers() ici (il contient aussi roads et zones de session) : on retire seulement
 // les marqueurs de _markersEditor.
 window.renderEditorPoints = function() {
+  if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("points");
   if (!window.layerEditor) return;
   _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
   _markersEditor = [];

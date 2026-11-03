@@ -495,6 +495,7 @@ function fermerStructureEnCours() {
 
 // ── Rendu ──────────────
 function renderStructures() {
+  if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("structures");
   // Idempotent (drapeau sur la map) : une closure fraîche par rendu empilerait les écouteurs.
   window.brancherLargeurFronts();
   structureLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });

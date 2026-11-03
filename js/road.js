@@ -722,6 +722,7 @@ function _rendererItineraire() {
 }
 
 function renderRoads() {
+  if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("roads");
   // ⚠️ Chemin chaud (chaque point pendant le dessin) : ne jamais logger le tableau roadsData (sérialisation, et la
   // console retient les références). Compte seulement, en debugMode.
   if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {

@@ -642,8 +642,10 @@ window.CalqueSession = (function () {
   }
 
   // Le verrou change ce que lisent getAllEmbedded* (utils.js > ktaCalquesEnModification) : les caches bâtis sur ces
-  // lectures (graphe de navigation, modèle de galerie de la vue 3D) se refont.
+  // lectures (graphe de navigation, modèle de galerie de la vue 3D) se refont, et une vue ouverte est prévenue
+  // (utils.js > ktaSignalerDonneesPlan).
   function _invaliderLectures() {
+    if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("calques");
     try { if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate(); } catch (e) {}
     try { if (window.KtaGalerie && typeof window.KtaGalerie.invalider === "function") window.KtaGalerie.invalider(); } catch (e) {}
   }

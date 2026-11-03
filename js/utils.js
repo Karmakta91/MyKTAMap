@@ -856,6 +856,17 @@ window._kta_resetDataLayerNoteGhosts = function() {
   window._kta_dataLayerNoteGhosts = [];
 };
 
+// ⚠️ contrat : `kta:donneesPlanChange` (window, detail { source }) = « ce que lit une vue du plan a PU changer ».
+// Émis par les rendus de la carte (renderRoads / renderZones / renderStructures / renderEditorPoints : toute
+// écriture finit par l'un d'eux, couleurs de la légende comprises) et par CalqueSession (verrou, rapatrier,
+// restituer). 🩸 Un indice, pas une preuve : un rendu part aussi sans rien changer (moveend sous PerfUltra,
+// option de la carte) ; l'abonné relit sa propre empreinte avant de refaire quoi que ce soit (vue3d.js >
+// _empreinteDonnees). Sans abonné, rien d'autre que l'envoi. Doc : tracking.md § Vue 3D.
+window.ktaSignalerDonneesPlan = function(source) {
+  try { window.dispatchEvent(new CustomEvent("kta:donneesPlanChange", { detail: { source: source || "" } })); }
+  catch (e) { /* rien : un abonné en erreur ne bloque pas le rendu */ }
+};
+
 // Re-rend tracés, zones, structures et ghosts du data layer à chaque bascule de mode d'édition.
 window._kta_syncAllNoteUiForModeChange = function() {
   try { if (typeof window.renderRoads === "function") window.renderRoads(); } catch(e) {}

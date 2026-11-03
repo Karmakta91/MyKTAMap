@@ -218,6 +218,7 @@ function fermerZoneEnCours() {
 
 // ── Rendu ──────────────────────────────
 function renderZones() {
+  if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("zones");
   zoneLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
   zoneLayers = [];
 
