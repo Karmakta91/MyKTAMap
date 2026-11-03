@@ -75,7 +75,7 @@
   const RETOUR_MAX_M = 1.5;
   const RETOUR_PAS_M = 0.1;
   // Passages entre niveaux (m) : dimensions des volumes de la vue 3D (vue3d.js > VOLUME les lit ici) : escalier
-  // (jes, eso) 2,5 le long de la galerie × 1,5, puits carré (jpe, jps, peo) 1,2, aération (pa) 0,8 ; cadre doré au
+  // (jes, eso) 2,5 de volée × 1,5, puits carré (jpe, jps, peo) 1,2, aération (pa) 0,8 ; cadre doré au
   // sol de `cadre` à `marge` de la bouche ; rampe d'un tracé jonction de `rampe`, sa tranchée `tranchee` de plus de
   // chaque côté. Le volume s'aligne sur l'axe le plus proche à moins de DIR_PASSAGE_M (plusProche, même règle).
   const PASSAGE = { escalier: [2.5, 1.5], puits: 1.2, aeration: 0.8, rampe: 1, tranchee: 0.1, marge: 0.12, cadre: 0.08 };
@@ -84,8 +84,9 @@
   // moyen (poiJonction.js > MOYEN) : ni 🪜, ni itinéraire, ni coût vertical. esf / pef = eso / peo fermés en haut ;
   // pb bouché au ras du plafond ; pc / psf comblés (cône d'éboulis au sol) ; ps puits d'extraction rond ouvert ;
   // pe bassin creusé dans le sol, contre la paroi ; cao / caf cavage, porte à deux battants en travers de la galerie.
-  // ⚠️ contrat : aucune emprise de galerie (pas de pièce, d'où versGalerie et le recalage inchangés) ; seuls les
-  // obstacles (BLOQUE) comptent, pour la règle du pas de la 3D seulement (zonesBloquent, dansZone, dedans).
+  // ⚠️ contrat : aucune emprise de galerie (pas de pièce, d'où versGalerie et le recalage inchangés), sauf la niche
+  // d'un esf (_niche, comme eso ; versGalerie l'ignore) ; seuls les obstacles (BLOQUE) comptent, pour la règle du pas
+  // de la 3D seulement (zonesBloquent, dansZone, dedans).
   const ACCES = { esf: "escalier", pef: "puits", pb: "puits", pc: "puits", psf: "rond", ps: "rond", pe: "bassin",
     cao: "porte", caf: "porte" };
   // Obstacles d'un accès (décision produit) : cône d'éboulis d'un puits comblé, porte fermée. Le bassin (pe) n'arrête
@@ -693,7 +694,8 @@
 
   // ⚠️ contrat : place (px) et axe (rad) d'un volume de passage, LA règle de la vue 3D (volume, cadre doré, panneau,
   // 🪜 : vue3d.js > _volumesDuNiveau, _passages, via placePassage) et de son emprise (_emprisesPassages). Un raccord
-  // validé du niveau est pris au point exact. Sinon le POI (souvent posé à côté de l'axe pour la lecture en 2D) : en
+  // validé du niveau est pris au point exact (un escalier dans un tube : en niche à cette place, _nicheAuRaccord).
+  // Sinon le POI (souvent posé à côté de l'axe pour la lecture en 2D) : en
   // mode galerie, ou dans un tube du mixte (hors chambre, comme son panneau), à moins de PROCHE_M d'un axe, le volume
   // est posé dans le tube du côté du POI, son emprise (`demi` m en travers) gardée entre les parois (au plus w − demi
   // de l'axe ; sur l'axe si le tube est plus étroit) ; `contre` (bassin, pe) : contre la paroi du côté du POI, à
@@ -704,9 +706,11 @@
   // derrière la paroi, bouche hors du sol dessiné : invisible. 🩸 Près d'un carrefour, la galerie retenue est celle
   // dont l'emprise est la plus près du POI, pas forcément celle voulue : seul un raccord validé du niveau tranche.
   // Rendu structures, chambre, rien à PROCHE_M : le point tel quel. L'axe (DIR_PASSAGE_M) est lu à la place finale,
-  // avec le côté d'entrée (_entree).
+  // avec le côté d'entrée (_entree). `niche` (escalier : jes, eso, esf ; décision produit, jamais en plein milieu de
+  // la galerie) : volée en niche latérale (_niche), sauf POI au bout d'un cul-de-sac ou au-delà (_auFond : volée dans
+  // l'axe vers le fond, règle ci-dessus).
   // C : { sc, pieces, aretes, plusProche, pres(x0, y0, x1, y1) → indices, tubes (bool), enChambre, tubeAu }.
-  function _placeVolume(x, y, demi, C, contre) {
+  function _placeVolume(x, y, demi, C, contre, niche) {
     const sc = C.sc, R = PROCHE_M * sc;
     const axeA = function (px, py, pl) {
       const pp = C.plusProche(px, py, DIR_PASSAGE_M * sc), r = pp ? C.aretes[pp.arete] : null;
@@ -719,7 +723,7 @@
     const pp = C.plusProche(x, y, R);
     if (!pp || C.enChambre(x, y) || !C.tubeAu(pp.arete, pp.t)) return brut;
     // Les emprises de passage elles-mêmes ne comptent pas : le volume se pose dans la galerie, pas dans une niche.
-    const liste = C.pres(x - R, y - R, x + R, y + R).filter(function (i) { return C.pieces[i].genre !== "passage"; });
+    const liste = C.pres(x - R, y - R, x + R, y + R).filter(function (i) { return !_estPassage(C.pieces[i]); });
     let axe;
     if (liste.some(function (i) { return dansPiece(C.pieces[i], x, y, 1e-6); })) {
       axe = { x: pp.x, y: pp.y, w: pp.w };
@@ -728,12 +732,39 @@
       if (!best) return brut;
       axe = _axeDuBord(C, best, R);
     }
+    if (niche && !_auFond(C, pp)) return _niche(C, axe, x, y) || brut;
     const dx = x - axe.x, dy = y - axe.y, d = Math.hypot(dx, dy);
     const off = contre ? Math.max(axe.w - demi * sc, (ACCES_DIM.bassinLibre + demi) * sc - axe.w) : axe.w - demi * sc;
     const k = d <= 1e-9 ? 0 : contre ? off / d : Math.min(d, Math.max(0, off)) / d;
     const nx = axe.x + dx * k, ny = axe.y + dy * k;
     if (Math.hypot(nx - x, ny - y) < 1e-6) return brut;
     return axeA(nx, ny, { x: nx, y: ny, ramene: true });
+  }
+
+  // Pièce d'une emprise de passage (_emprisesPassages) : bouche dans le tube (« passage ») ou niche d'escalier.
+  function _estPassage(P) { return P.genre === "passage" || P.genre === "niche"; }
+
+  // Niche latérale d'un escalier → place | null. Volée perpendiculaire à l'axe de `axe` ({ x, y, w } : point de l'axe
+  // et demi-largeur), pied contre la paroi (à w de l'axe), montée ou descente vers le côté du POI ; POI sur l'axe (à
+  // 1 cm près) : à gauche du sens du tracé, carte nord en haut. ⚠️ contrat : ang = normale vers la niche, entree = −1
+  // (vue3d.js > _marches : le pied, −a, contre la paroi) ; son emprise (_emprisesPassages, pièce « niche ») ouvre la
+  // paroi, le passage de la galerie reste libre. 🩸 POI loin de la paroi : la niche reste contre elle (profondeur de
+  // la volée), jamais au POI ; une galerie voisine à moins de la profondeur d'une volée n'est pas évitée.
+  function _niche(C, axe, x, y) {
+    const sc = C.sc, pp = C.plusProche(axe.x, axe.y, DIR_PASSAGE_M * sc), r = pp ? C.aretes[pp.arete] : null;
+    if (!r || !r.l) return null;
+    const ux = (r.bx - r.ax) / r.l, uy = (r.by - r.ay) / r.l, c = ux * (y - axe.y) - uy * (x - axe.x);
+    // Côté + = normale (−uy, ux) ; plan en y vers le bas : la gauche du sens du tracé est le côté −.
+    const s = Math.abs(c) < 0.01 * sc ? -1 : Math.sign(c), nx = -uy * s, ny = ux * s;
+    const d = axe.w + PASSAGE.escalier[0] / 2 * sc;
+    return { x: axe.x + nx * d, y: axe.y + ny * d, ang: Math.atan2(ny, nx), entree: -1, ramene: true, niche: true };
+  }
+
+  // POI au bout d'un cul-de-sac ou au-delà ? pp : axe le plus proche du POI, projection bornée à un nœud de degré 1
+  // (la volée y prolonge la galerie).
+  function _auFond(C, pp) {
+    const r = C.aretes[pp.arete], bout = pp.t <= 1e-9 ? r.a : pp.t >= 1 - 1e-9 ? r.b : null;
+    return bout !== null && (_graphe(C.aretes).adj.get(bout) || []).length === 1;
   }
 
   // Côté d'entrée d'un volume posé sur l'axe pp (plusProche) : +1 = vers b (le sens de `ang`), −1 = vers a, 0 =
@@ -743,7 +774,7 @@
   // atteint sans elle) : les deux côtés mènent partout, 0. 🩸 Le sens a → b d'une arête est celui du dessin du
   // tracé, arbitraire : jamais une règle à lui seul. Portées calculées une fois par arête et par modèle.
   const _portees = new WeakMap();   // aretes (d'un modèle) → { adj, par: Map(arête → [depuis a, depuis b]) }
-  function _entree(aretes, pp, sc) {
+  function _graphe(aretes) {
     let g = _portees.get(aretes);
     if (!g) {
       const adj = new Map();
@@ -753,7 +784,10 @@
       g = { adj: adj, par: new Map() };
       _portees.set(aretes, g);
     }
-    const i = pp.arete, r = aretes[i];
+    return g;
+  }
+  function _entree(aretes, pp, sc) {
+    const g = _graphe(aretes), i = pp.arete, r = aretes[i];
     let p = g.par.get(i);
     if (!p) {
       // Longueur (px) atteinte depuis le nœud `de` sans l'arête i ; `boucle` : l'autre bout de i atteint.
@@ -782,13 +816,30 @@
     return versB > versA ? 1 : -1;
   }
 
-  // Place du volume de passage de p au niveau donné (_placeVolume) → { x, y, ang, entree, ramene, raccord } | null.
+  // Escalier (jes, eso par leur moyen ; esf, accès sans passage) : volée en niche (_niche).
+  function _estEscalier(tag) {
+    const J = window.KtaPoiJonction;
+    return ACCES[tag] === "escalier" || (!!J && J.moyen(tag) === "escalier");
+  }
+
+  // Escalier au raccord validé (x, y) dans un tube : en niche (_niche) à sa place exacte le long de la galerie, du
+  // côté du raccord (sur l'axe : la règle de _niche) → place | null (hors tube, chambre, bout de cul-de-sac : le point).
+  function _nicheAuRaccord(C, x, y) {
+    if (!C.tubes) return null;
+    const pp = C.plusProche(x, y, PROCHE_M * C.sc);
+    if (!pp || C.enChambre(x, y) || !C.tubeAu(pp.arete, pp.t) || _auFond(C, pp)) return null;
+    return _niche(C, { x: pp.x, y: pp.y, w: pp.w }, x, y);
+  }
+
+  // Place du volume de passage de p au niveau donné (_placeVolume) → { x, y, ang, entree, ramene, raccord, niche }
+  // | null.
   function _placePassageDans(p, niveau, C) {
     const d = _departPassage(p, niveau);
     if (!d) return null;
-    const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
-    const pl = _placeVolume(d.x, d.y, _demiTravers(tag), d.raccord ? Object.assign({}, C, { tubes: false }) : C,
-      ACCES[tag] === "bassin");
+    const tag = (Array.isArray(p.tags) && p.tags[0]) || "default", esc = _estEscalier(tag);
+    const pl = (d.raccord && esc && _nicheAuRaccord(C, d.x, d.y)) ||
+      _placeVolume(d.x, d.y, _demiTravers(tag), d.raccord ? Object.assign({}, C, { tubes: false }) : C,
+        ACCES[tag] === "bassin", esc);
     pl.raccord = d.raccord;
     return pl;
   }
@@ -807,18 +858,22 @@
     _points().forEach(function (p) {
       if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
       const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
-      if (!J.porteNiveaux(tag)) return;
-      const moyen = J.moyen(tag);
+      // esf (accès sans passage) : une emprise seulement en niche, celle d'eso (sinon aucune : ACCES).
+      const esf = ACCES[tag] === "escalier";
+      if (!J.porteNiveaux(tag) && !esf) return;
+      const moyen = esf ? "escalier" : J.moyen(tag);
       const autres = multi && J.estJonction(p) ? J.niveaux(p).filter(function (n) { return n !== niveau; }).length : 0;
-      if (moyen && surface.indexOf(tag) < 0 && !autres) return;
+      if (!esf && moyen && surface.indexOf(tag) < 0 && !autres) return;
       const pl = _placePassageDans(p, niveau, C);
-      if (!pl) return;
+      if (!pl || (esf && !pl.niche)) return;
       const dim = moyen === "escalier" ? PASSAGE.escalier
         : moyen ? [PASSAGE.puits, PASSAGE.puits] : [PASSAGE.aeration, PASSAGE.aeration];
       const a = (dim[0] / 2 + bord) * sc, b = (dim[1] / 2 + bord) * sc;
       const x = pl.x, y = pl.y, ux = Math.cos(pl.ang), uy = Math.sin(pl.ang);
       const Q = function (s, t) { return [x + ux * s - uy * t, y + uy * s + ux * t]; };
-      out.push([Q(-a, -b), Q(a, -b), Q(a, b), Q(-a, b)]);
+      const e = [Q(-a, -b), Q(a, -b), Q(a, b), Q(-a, b)];
+      e.niche = !!pl.niche;
+      out.push(e);
     });
     if (!multi) return out;
     const w = (PASSAGE.rampe / 2 + PASSAGE.tranchee) * sc;
@@ -1044,7 +1099,7 @@
     const nTubes = pieces.length;
     let passages = 0;
     _emprisesPassages(niveau, C).forEach(function (pts) {
-      const P = _piece(pts, null, "passage");
+      const P = _piece(pts, null, pts.niche ? "niche" : "passage");
       for (let i = 0; i < nTubes; i++) {
         if (!_chevauche(P, pieces[i], 1e-3 * sc)) continue;
         P.type = pieces[i].type;
@@ -1082,9 +1137,13 @@
       },
       piecesPres: function (x0, y0, x1, y1) { return gP.pres(x0, y0, x1, y1); },
       aretesPres: function (x0, y0, x1, y1) { return gA.pres(x0, y0, x1, y1); },
-      dedans: function (x, y) {
+      // sansNiches : les niches d'escalier ne comptent pas (versGalerie : le recalage de la 2D ne les connaît pas).
+      dedans: function (x, y, sansNiches) {
         const l = gP.case(x, y);
-        for (let i = 0; i < l.length; i++) { if (dansPiece(pieces[l[i]], x, y, 1e-6)) return true; }
+        for (let i = 0; i < l.length; i++) {
+          const P = pieces[l[i]];
+          if ((!sansNiches || P.genre !== "niche") && dansPiece(P, x, y, 1e-6)) return true;
+        }
         return false;
       },
       enRemblais: Z.dedans,
@@ -1310,10 +1369,12 @@
   function versGalerie(x, y, niveau) {
     const m = modele(niveau, false, true);
     if (!m || !m.pieces.length) return { etat: "sans", x: x, y: y };
-    if (m.dedans(x, y)) return { etat: "dedans", x: x, y: y };
+    if (m.dedans(x, y, true)) return { etat: "dedans", x: x, y: y };
     const R = PROCHE_M * m.sc;
     if (!m.plusProche(x, y, R)) return { etat: "loin", x: x, y: y };
-    const best = _bordProche(m.pieces, m.piecesPres(x - R, y - R, x + R, y + R), x, y, R);
+    const best = _bordProche(m.pieces, m.piecesPres(x - R, y - R, x + R, y + R).filter(function (i) {
+      return m.pieces[i].genre !== "niche";
+    }), x, y, R);
     if (!best) return { etat: "loin", x: x, y: y };
     const a = _axeDuBord(m, best, R);
     return { etat: "ramene", x: a.x, y: a.y };

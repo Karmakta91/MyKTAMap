@@ -355,7 +355,11 @@
         if (nv.indexOf(niveau) < 0) return;
         const raccord = function (n) { return acc.filter(function (a) { return a.level === n; })[0] || null; };
         // 🪜 là où est le volume (KtaGalerie.placePassage) : un POI posé à côté de l'axe est atteint depuis le tube.
-        const ici = window.KtaGalerie.placePassage(p, niveau, _e.rendu) || p;
+        // Escalier en niche : au pied de la volée, contre la paroi (le centre est à 2,5 m de l'axe, hors de portée
+        // de qui passe dans la galerie).
+        const pl = window.KtaGalerie.placePassage(p, niveau, _e.rendu);
+        const pied = pl && pl.niche ? window.KtaGalerie.PASSAGE.escalier[0] / 2 * _e.sc : 0;
+        const ici = pl ? { x: pl.x - Math.cos(pl.ang) * pied, y: pl.y - Math.sin(pl.ang) * pied } : p;
         const cibles = nv.filter(function (n) { return n !== niveau; }).map(function (n) {
           const a = raccord(n);
           return { niveau: n, x: a ? a.x : Number.NaN, y: a ? a.y : Number.NaN };
@@ -2308,8 +2312,8 @@
 
   // ── Volumes des passages entre niveaux (POI jonction, puits de surface, tracé jonction) ─────────────────
   // ⚠️ contrat (décision produit) : un POI jonction ou un puits de surface montre son volume à la place
-  // de KtaGalerie.placePassage (raccord validé du niveau, sinon le POI ramené dans le tube ; son panneau et 🪜 l'y
-  // suivent), selon son moyen (KtaPoiJonction.moyen) : escalier (jes, eso) = cage
+  // de KtaGalerie.placePassage (raccord validé du niveau, sinon le POI ramené dans le tube, un escalier dans une niche
+  // latérale ; son panneau et 🪜 l'y suivent), selon son moyen (KtaPoiJonction.moyen) : escalier (jes, eso) = cage
   // de 2,5 × 1,5 m à marches ; échelons (jpe, peo) = puits carré de 1,2 m (paroi des galeries), échelons tous les 0,3 m ;
   // corde (jps) = puits nu. Ouvert dans le SOL vers un niveau lié au-dessous, dans le PLAFOND vers un niveau lié
   // au-dessus (le volume dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface
@@ -2344,7 +2348,8 @@
       const pl = window.KtaGalerie.placePassage(src, N, e.rendu) || { x: p.x, y: p.y, ang: 0, ramene: false };
       v.a = dim[0] / 2; v.b = dim[1] / 2;
       v.x = pl.x; v.y = pl.y; v.ramene = pl.ramene;
-      // Escalier : repère retourné quand l'entrée (KtaGalerie, _entree) est du côté +ang, les marches partant de −a.
+      // Escalier : repère retourné quand l'entrée (KtaGalerie, _entree) est du côté +ang, les marches partant de −a ;
+      // en niche, ang est la normale vers le fond et l'entrée −1 (pied contre la paroi).
       v.dir = pl.ang + (v.forme === "escalier" && pl.entree === 1 ? Math.PI : 0);
       v.cx = pl.x / e.sc; v.cz = pl.y / e.sc;
       v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
@@ -2408,7 +2413,8 @@
     return c;
   }
 
-  // Repère du volume (m) : s le long de la galerie (v.dir), t en travers, centre (v.cx, v.cz).
+  // Repère du volume (m) : s le long de v.dir (la galerie ; en travers pour un escalier en niche), t en travers de s,
+  // centre (v.cx, v.cz).
   function _repere(v) {
     const ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
     return function (s, t) { return [v.cx + ux * s - uz * t, v.cz + uz * s + ux * t]; };
@@ -2540,11 +2546,12 @@
     }
   }
 
-  // Marches d'une cage d'escalier, le long de la galerie : vers le haut (du sol, à travers le plafond) et / ou vers le
+  // Marches d'une cage d'escalier, le long de s : vers le haut (du sol, à travers le plafond) et / ou vers le
   // bas (du sol dans le puits) ; entre trois niveaux, une volée par moitié de largeur.
   // ⚠️ contrat : toute volée part de s = −a (pied de celle qui monte, haut de celle qui descend : l'entrée, côte à
   // côte entre trois niveaux) ; _volumesDuNiveau oriente le repère pour que −a soit le côté d'entrée de la place
-  // (KtaGalerie.placePassage > entree : où la galerie continue le plus longtemps ; égalité : sens du tracé).
+  // (KtaGalerie.placePassage > entree : la paroi d'une niche ; dans l'axe, où la galerie continue le plus longtemps,
+  // égalité : sens du tracé).
   function _marches(v, lot, Q, col) {
     const h = _e.hauteur, n = VOLUME.marches, a = v.a, b = v.b, pas = 2 * a / n, haut = (h + 0.4) / n;
     const monte = v.plafond && !v.grille, deux = monte && v.sol;
@@ -2616,8 +2623,8 @@
 
   // ── Accès de surface sans passage (esf, pef, pb, pc, psf, ps, pe, cao, caf) ──────────────────────────────
   // ⚠️ contrat (décision produit) : un volume à la place d'un passage (KtaGalerie.placePassage : le POI ramené dans
-  // le tube, sur l'axe pour une porte ; _volumesDuNiveau), panneau au-dessus ; jamais de 🪜, de cadre doré ni
-  // d'itinéraire (aucun moyen : KtaPoiJonction.moyen).
+  // le tube, sur l'axe pour une porte, en niche pour esf ; _volumesDuNiveau), panneau au-dessus ; jamais de 🪜, de
+  // cadre doré ni d'itinéraire (aucun moyen : KtaPoiJonction.moyen).
   //   esf / pef : cage à marches ou puits à échelons d'eso / peo, fermés par une dalle sombre (DIM_ACCES.fermeY) ;
   //   pb : dalle maçonnée au ras du plafond, sans bouche ;
   //   pc / psf : bouche au plafond (carrée / ronde) remplie de remblais, cône d'éboulis au sol ;
