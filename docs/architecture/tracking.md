@@ -1561,9 +1561,35 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   est suivi jusqu'à 0,2° près.
 - **Rendu en pause** : la boucle `requestAnimationFrame` tourne, mais ne dessine que si quelque chose a bougé
   (`_e.sale`) ; immobile, aucune image (le checkup le mesure, boussole qui tremble comprise).
-- **Vue plongeante** : caméra à 18,4 m du point visé (2 m devant soi), inclinaison 15° à 85° (60° par défaut) ;
-  deux doigts à la verticale, molette, PageUp / PageDown, boutons ▲ ▼ (montrés dans cette vue seulement) ; retenue
-  tant que la vue est ouverte.
+- **Vue plongeante** (décision produit : comme une carte) : caméra au **recul** `e.recul` du point visé (2 m devant
+  soi), 18,4 m par défaut, de 6 à 60 m (`RECUL`) ; inclinaison 15° à 85° (60° par défaut). **Zoom** (`zoomer(f)`,
+  un cran = × 1,15) : molette (vers l'avant = plus près, un cran par 100 px de défilement, en continu au pavé
+  tactile), pincement à deux doigts, boutons + / − (deux crans), touches = et -. **Inclinaison** : Maj + molette
+  (🩸 Chrome et Safari envoient alors le défilement en `deltaX`), deux doigts glissés ensemble à la verticale,
+  PageUp / PageDown, boutons ▲ ▼. Deux doigts : le geste est tranché une fois, dès que l'écart ou le milieu a bougé
+  de 12 px (`GESTE_SEUIL`) : un pincement ne penche pas, un glisser ne zoome pas. Boutons + − ▲ ▼ en grille en bas à
+  droite, montrés dans cette vue seulement (la tuile ⚙️ ouverte ne les recouvre pas). Recul et inclinaison retenus
+  tant que la vue est ouverte (repartent du défaut à la réouverture). ⚠️ contrat : une greffe qui interdit la
+  plongée (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Rayon de scène
+  en plongée (`_rayonScene`) : max(1,4 × portée, 2,3 m par mètre de recul) — tuiles, volumes, panneaux de POI, carré
+  de sol (2,4 × le rayon) et brouillard (compté depuis la caméra : du recul + 30 % du rayon au recul + rayon + 2 m)
+  le suivent : pas de bord de scène en dézoomant. À 60 m de recul, 138 m de rayon (mesures : ETUDE_VUE_3D.md).
+- **Portée** (curseur 🔭 de la tuile ⚙️, `config.js > getVue3DPortee`, réglage de cet appareil, décision produit) :
+  15 à 100 m au mètre près, 30 m par défaut (`V3D_PORTEE`) ; `reglerPortee(m)`. Brouillard noir complet à la portée,
+  profondeur de la caméra (portée + 5 m), portée de la lampe et rayon des tuiles suivent à l'image suivante
+  (`_appliquerPortee`, tuiles construites au plus 3 par image : pas d'à-coup). `ouvrir({ distanceVue })` (mesures,
+  checkup) passe avant le réglage sans l'écrire. Clavier : flèches, Origine, Fin sur le curseur (le clavier de la vue
+  lui laisse ces touches) ; valeur dite par `aria-valuetext` (`formatDistance`).
+- **Lampe** (💡 Normale / Forte / Plein jour de la tuile ⚙️, `config.js > getVue3DLampe`, réglage de cet appareil,
+  décision produit) ; `reglerLampe(mode)`. Modes dans `LAMPES` : **Normale** = lampe d'origine ; **Forte** = force
+  × 1,25, décroissance 0,5 au lieu de 1,2, coupure à 1,3 × la portée, halo × 1,5, brouillard commencé à 80 % de la
+  portée au lieu de 45 % (c'est lui qui bornait la lecture au loin) ; **Plein jour** = éclairage d'ambiance de la vue
+  plongeante (0,9) à hauteur d'yeux, lampe normale, brouillard gardé à la portée (même coût, la portée reste le seul
+  réglage de « jusqu'où l'on voit »), commencé à 65 %. ⚠️ contrat : le mode se **multiplie** au facteur `lampe` d'une
+  greffe (`_lampeGreffe` : force × mode × k, portée × coupure × max(0,06, k), comptée sur la portée réglée et rendue
+  au retrait) ; **Plein jour est refusé pendant une greffe** (`_lampeActive` → normale, bouton grisé, `reglerLampe`
+  rend false), la préférence n'est pas réécrite et revient au retrait. `etat().lampe` reste le facteur de la greffe
+  (intensité / force du mode).
 - **Boussole** : `icon/compass.svg` tournée de −(cap plan − `getPlanNorthOffset()`), la convention de `compass.js`.
   Plan sans Nord calibré (`config.js > getPlanNorthCalibre` : ni pref du plan ni `plan.northOffsetDeg`) : haut du
   plan, dit seulement au libellé accessible (`vue3d.nordNonCalibre`, aucun texte à l'écran). Rose posée sur la
@@ -1626,8 +1652,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   type de base ni forme propre — toutes les zones sont des polygones — et il est dessiné au sol, pas en volume ; rien
   ne permet de le rattacher au remblais). Eau et hachures de l'inaccessible inchangées. Coupé : lots et matériau
   `opaque` d'origine, couleur de la légende exacte, volume gardé.
-- **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés à la
-  distance de vue comptée depuis soi, échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite (`_majPanneaux`). De près
+- **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés au rayon de
+  scène compté depuis soi (la portée ; en plongée, `_rayonScene`), échelle 1 → 0,5 et opacité 1 → 0,4 vers la
+  limite (`_majPanneaux`). De près
   (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un
   panneau remplissait l'écran du téléphone). Toujours aux jetons du thème **sombre** (décision produit : la scène est
   noire dans les deux thèmes), lus dans la règle `:root` des feuilles (`_jetonsSombres`). Un POI
@@ -1661,8 +1688,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (accent) au sol, tronçons du niveau affiché.
 - **Couleurs** : celles de la légende, par `ktaResolveStyle(…, { flat: true })` / `ktaSwatchColor` ; aucune table
   locale. Sol et plafond : `COULEUR_CALCAIRE` (sable calcaire, couleur de la scène, hors charte de l'UI), motif
-  procédural de 128 px répété tous les 2 m, fixe sous les pieds. Lampe : intensité 24, décroissance 1,2, portée =
-  distance de vue ; brouillard noir de 45 % à 100 % des 30 m.
+  procédural de 128 px répété tous les 2 m, fixe sous les pieds. Lampe Normale : intensité 24, décroissance 1,2,
+  portée = la portée réglée ; brouillard noir de 45 % à 100 % de la portée (§ Portée, § Lampe ci-dessus).
 - **Textes** : clés `vue3d.*` et `ui.vue3d.title`, lues au rendu (ligne de statistiques `vue3d.stats`, option
   `stats` des mesures).
 

@@ -2212,12 +2212,19 @@ icônes.
   des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),
   battants de bois des cavages et remblais des puits comblés ; coupé : parois en moellons, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
-  Boussole et Guidage sur la suivante : une ligne de plus recouvrait ▼ de l'inclinaison en vue plongeante, tuile
-  ouverte ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`, sans toucher scène ni
-  greffe). Fermée par ⚙️, Échap (avant tout le reste) ou un
+  Boussole et Guidage sur la suivante ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
+  sans toucher scène ni greffe), 🔭 **Portée** (curseur natif `input type=range` `#kta-v3d-portee`, 15 à 100 m,
+  30 m par défaut, `getVue3DPortee`, `myktamap_v3d_portee_v1`, cet appareil ; libellé `<label for>`, valeur écrite à
+  droite et dite par `aria-valuetext`, couleur `accent-color: var(--kta-accent)`, contour de focus
+  `--kta-interaction` ; flèches, Origine, Fin au clavier), 💡 **Lampe** (trois boutons `aria-pressed` Normale /
+  Forte / Plein jour sur une ligne, `getVue3DLampe`, `myktamap_v3d_lampe_v1`, cet appareil, Normale par défaut ;
+  Plein jour `disabled` pendant une greffe, titre « indisponible pendant une partie » ; effets :
+  `tracking.md` § Vue 3D › Lampe). La tuile tient au téléphone (393 px) ; les boutons de la vue plongeante (+ − ▲ ▼)
+  sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
-  inchangés (V, PageUp / PageDown…). **Repère** : point doré sur ⚙️ (`kta-v3d-modifie`, `_majRepere`) en mode libre,
-  en vue plongeante, rendu autre que mixte, textures coupées, boussole masquée ou guidage coupé. **Mode toujours visible** : pastille ronde de 40 px
+  inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue plongeante. **Repère** : point doré sur ⚙️
+  (`kta-v3d-modifie`, `_majRepere`) en mode libre, en vue plongeante, rendu autre que mixte, textures coupées,
+  boussole masquée, guidage coupé, portée autre que 30 m ou lampe autre que Normale. **Mode toujours visible** : pastille ronde de 40 px
   en haut à gauche (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
