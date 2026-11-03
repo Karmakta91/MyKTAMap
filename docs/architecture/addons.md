@@ -244,7 +244,8 @@ embuscades, un monde par niveau), `js/son.js`
   couleurs fixes non éclairées (la lampe, collée à la caméra, les délavait) et dessinés par-dessus la scène (sans
   test de profondeur, ordre de rendu fixé) ; balancement, recul et éclair au tir. En vue plongeante : silhouette
   verte armée, celle de la vue masquée (`regler({ avatar: false })`) — gardée, mais la partie interdit la vue
-  plongeante (`regler({ plongee: false })`, décision produit : voir d'en haut serait tricher).
+  plongeante (`regler({ plongee: false })`, décision produit : voir d'en haut serait tricher). Pas de fiche au
+  toucher pendant la partie (`regler({ fiches: false })`) : un tir au doigt ouvrirait celle d'un pilier ou d'un POI.
 - **Interface** : santé, endurance et lampe (pile) en haut à gauche ; panneau en haut à droite réductible (▾ / ▸,
   retenu sous `myktamap_mkmg_panneau_v1`) : vague, chrono et guidage toujours là ; objectif, statistiques (égarés tués, balles
   tirées, balles au but) et « Quitter » repliés ; cartouches sur le bouton de tir. Fin de partie (santé à 0) :

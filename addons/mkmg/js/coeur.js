@@ -275,8 +275,10 @@
     if (!p) return;
     p.ctx = ctx;
     if (raison === "greffe") {
-      // Pas de vue plongeante pendant la partie (décision produit) : voir d'en haut serait tricher.
-      ctx.regler({ traces: p.regle.traces, itineraire: false, guidage: false, plongee: false, reglagesFiges: true });
+      // Pas de vue plongeante pendant la partie (décision produit) : voir d'en haut serait tricher. Pas de fiche au
+      // toucher non plus : un tir au doigt ouvrirait celle d'un pilier ou d'un POI.
+      ctx.regler({ traces: p.regle.traces, itineraire: false, guidage: false, plongee: false, reglagesFiges: true,
+        fiches: false });
       _monterHud(ctx);
       _joueur().monter(p, ctx);
       _brancher();
