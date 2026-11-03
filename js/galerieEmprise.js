@@ -694,7 +694,8 @@
 
   // ⚠️ contrat : place (px) et axe (rad) d'un volume de passage, LA règle de la vue 3D (volume, cadre doré, panneau,
   // 🪜 : vue3d.js > _volumesDuNiveau, _passages, via placePassage) et de son emprise (_emprisesPassages). Un raccord
-  // validé du niveau est pris au point exact. Sinon le POI (souvent posé à côté de l'axe pour la lecture en 2D) : en
+  // validé du niveau est pris au point exact (un escalier dans un tube : en niche à cette place, _nicheAuRaccord).
+  // Sinon le POI (souvent posé à côté de l'axe pour la lecture en 2D) : en
   // mode galerie, ou dans un tube du mixte (hors chambre, comme son panneau), à moins de PROCHE_M d'un axe, le volume
   // est posé dans le tube du côté du POI, son emprise (`demi` m en travers) gardée entre les parois (au plus w − demi
   // de l'axe ; sur l'axe si le tube est plus étroit) ; `contre` (bassin, pe) : contre la paroi du côté du POI, à
@@ -821,14 +822,24 @@
     return ACCES[tag] === "escalier" || (!!J && J.moyen(tag) === "escalier");
   }
 
+  // Escalier au raccord validé (x, y) dans un tube : en niche (_niche) à sa place exacte le long de la galerie, du
+  // côté du raccord (sur l'axe : la règle de _niche) → place | null (hors tube, chambre, bout de cul-de-sac : le point).
+  function _nicheAuRaccord(C, x, y) {
+    if (!C.tubes) return null;
+    const pp = C.plusProche(x, y, PROCHE_M * C.sc);
+    if (!pp || C.enChambre(x, y) || !C.tubeAu(pp.arete, pp.t) || _auFond(C, pp)) return null;
+    return _niche(C, { x: pp.x, y: pp.y, w: pp.w }, x, y);
+  }
+
   // Place du volume de passage de p au niveau donné (_placeVolume) → { x, y, ang, entree, ramene, raccord, niche }
   // | null.
   function _placePassageDans(p, niveau, C) {
     const d = _departPassage(p, niveau);
     if (!d) return null;
-    const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
-    const pl = _placeVolume(d.x, d.y, _demiTravers(tag), d.raccord ? Object.assign({}, C, { tubes: false }) : C,
-      ACCES[tag] === "bassin", _estEscalier(tag));
+    const tag = (Array.isArray(p.tags) && p.tags[0]) || "default", esc = _estEscalier(tag);
+    const pl = (d.raccord && esc && _nicheAuRaccord(C, d.x, d.y)) ||
+      _placeVolume(d.x, d.y, _demiTravers(tag), d.raccord ? Object.assign({}, C, { tubes: false }) : C,
+        ACCES[tag] === "bassin", esc);
     pl.raccord = d.raccord;
     return pl;
   }

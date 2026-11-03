@@ -1464,7 +1464,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `KtaVue3D.gesteAnime(false)` bascule sans geste (mesures, checkup).
 - **Volumes des passages** (`_volumesDuNiveau`, `_construireVolume`, décision produit) : place et axe par
   `KtaGalerie.placePassage` (`galerieEmprise.js > _placeVolume`), la seule règle, lue aussi par le panneau du POI, le
-  🪜 et l'emprise qui ouvre le tube. Raccord validé du niveau (celui du niveau du POI compris) : au point exact. Sinon
+  🪜 et l'emprise qui ouvre le tube. Raccord validé du niveau (celui du niveau du POI compris) : au point exact (un escalier : en niche à
+  cette place, ci-dessous). Sinon
   le POI, que l'on pose **en général à côté de l'axe** (lisible en 2D) : en galerie et dans un tube du mixte (hors
   chambre), à moins de `PROCHE_M` d'un axe, le volume est posé **dans le tube**, du côté du POI, bouche et cadre doré
   entre les parois (au plus w − demi-emprise de l'axe, sur l'axe si le tube est plus étroit) ; hors de l'emprise, la
@@ -1478,12 +1479,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   descend, côte à côte entre trois niveaux — `placePassage > entree`). **Escalier en niche latérale** (`jes`, `eso`,
   `esf` ; `galerieEmprise.js > _niche`, décision produit : jamais en plein milieu de la galerie) : dans un tube
   (galerie, mixte hors chambre, axe à moins de `PROCHE_M`), la volée est **perpendiculaire** à l'axe, du côté du POI
-  (POI sur l'axe à 1 cm près : à gauche du sens du tracé, carte nord en haut), pied contre la paroi (centre à w + 1,25 m
+  (POI sur l'axe à 1 cm près : à gauche du sens du tracé, carte nord en haut) ; avec un raccord validé du niveau, à
+  sa place exacte le long de la galerie et du côté du raccord (`_nicheAuRaccord`, même règle sur l'axe), pied contre la paroi (centre à w + 1,25 m
   de l'axe), montée ou descente vers le fond de la niche ; le passage de la galerie reste libre, la paroi s'ouvre
   devant la niche (son emprise, pièce « niche » du modèle), fond et côtés murés ; 🪜 au pied de la volée. 🩸 La niche
   reste contre la paroi quel que soit l'écart du POI (profondeur = la volée) et n'évite pas une galerie voisine plus
   proche que sa profondeur. Exceptions, dans l'axe : POI **au bout d'un cul-de-sac** ou au-delà (`_auFond` : volée
-  vers le fond, entrée côté ouvert), raccord validé du niveau (au point exact), rendu structures, chambre, aucun axe à
+  vers le fond, entrée côté ouvert), rendu structures, chambre (raccord validé : au point exact), aucun axe à
   `PROCHE_M` (le point ; aucun axe à `DIR_PASSAGE_M` : orientation arbitraire, est-ouest). Dans l'axe, l'entrée est du
   côté où la galerie continue le plus longtemps depuis la place (`_entree` : longueur de galerie atteinte de chaque
   côté sans repasser par l'arête ; arête dans une boucle ou égalité : sens du tracé). 🩸 Le sens a → b d'une arête
