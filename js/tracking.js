@@ -428,12 +428,15 @@ function _segmentsBloquesParStructure(segments, niveau, avecPerso) {
     window._ktaDataStructurePolygons
   ];
   const index = sources.map(function(liste, k) { return Array.isArray(liste) ? _indexDe(k, liste) : null; });
+  // Calque en modification : sa copie (session) fait foi, l'original masqué ne bloque plus. Filtré à la lecture, pas
+  // dans l'index (cache par identité de liste).
+  const exclus = (typeof window.ktaCalquesEnModification === "function") ? window.ktaCalquesEnModification() : [];
   return segments.map(function(sg) {
-    return _segmentBloque(index, sg[0], sg[1], sg[2], sg[3], lvl, multi, enCours, avecPerso === true);
+    return _segmentBloque(index, sg[0], sg[1], sg[2], sg[3], lvl, multi, enCours, avecPerso === true, exclus);
   });
 }
 
-function _segmentBloque(index, x0, y0, x1, y1, lvl, multi, enCours, avecPerso) {
+function _segmentBloque(index, x0, y0, x1, y1, lvl, multi, enCours, avecPerso, exclus) {
   const sx0 = Math.min(x0, x1), sx1 = Math.max(x0, x1), sy0 = Math.min(y0, y1), sy1 = Math.max(y0, y1);
   const vus = new Set();
   for (let k = 0; k < index.length; k++) {
@@ -447,6 +450,7 @@ function _segmentBloque(index, x0, y0, x1, y1, lvl, multi, enCours, avecPerso) {
           const s = liste[i];
           if (vus.has(s) || s === enCours) continue;
           vus.add(s);
+          if (k === 1 && exclus.length && exclus.indexOf(s.layerId) >= 0) continue;
           const poly = _formeObstacle(s.type, avecPerso);
           if (poly === undefined) continue;
           if (multi && (Number.isInteger(s.level) ? s.level : 0) !== lvl) continue;

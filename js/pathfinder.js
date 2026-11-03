@@ -226,6 +226,13 @@
       });
   }
 
+  // Registre d'un calque (_ktaDataPolygons, _ktaDataStructurePolygons) sans les objets d'un calque en modification :
+  // sa copie de session est lue par getZones / getStructures (utils.js > ktaHorsCalquesEnModification).
+  function _registre(liste) {
+    if (typeof window.ktaHorsCalquesEnModification === "function") return window.ktaHorsCalquesEnModification(liste);
+    return Array.isArray(liste) ? liste : [];
+  }
+
   // Zones inaccessibles du plan : session (getZones) + embarquées (_ktaDataPolygons).
   // → [{ points: [{x,y}], level }].
   function _collecterZonesInaccessibles() {
@@ -245,16 +252,15 @@
         }
       }
     }
-    if (Array.isArray(window._ktaDataPolygons)) {
-      for (let i = 0; i < window._ktaDataPolygons.length; i++) {
-        const e = window._ktaDataPolygons[i];
-        if (e && e.type === "inaccessible" &&
-            Array.isArray(e.points) && e.points.length >= 3) {
-          out.push({
-            points: e.points,
-            level:  Number.isInteger(e.level) ? e.level : 0
-          });
-        }
+    const zonesCalques = _registre(window._ktaDataPolygons);
+    for (let i = 0; i < zonesCalques.length; i++) {
+      const e = zonesCalques[i];
+      if (e && e.type === "inaccessible" &&
+          Array.isArray(e.points) && e.points.length >= 3) {
+        out.push({
+          points: e.points,
+          level:  Number.isInteger(e.level) ? e.level : 0
+        });
       }
     }
     return out;
@@ -273,7 +279,7 @@
       const session = window.getStructures();
       if (Array.isArray(session)) session.forEach(_pousser);
     }
-    if (Array.isArray(window._ktaDataStructurePolygons)) window._ktaDataStructurePolygons.forEach(_pousser);
+    _registre(window._ktaDataStructurePolygons).forEach(_pousser);
     return out;
   }
 
@@ -307,7 +313,7 @@
       var s = window.getZones();
       if (Array.isArray(s)) s.forEach(_compter);
     }
-    if (Array.isArray(window._ktaDataPolygons)) window._ktaDataPolygons.forEach(_compter);
+    _registre(window._ktaDataPolygons).forEach(_compter);
     return Object.keys(counts).map(function(type) {
       return { type: type, label: _zoneTypeLabel(type), count: counts[type] };
     }).sort(function(a, b) { return String(a.label).localeCompare(String(b.label)); });
@@ -328,7 +334,7 @@
       var s = window.getZones();
       if (Array.isArray(s)) s.forEach(_pousser);
     }
-    if (Array.isArray(window._ktaDataPolygons)) window._ktaDataPolygons.forEach(_pousser);
+    _registre(window._ktaDataPolygons).forEach(_pousser);
     return out;
   }
 

@@ -112,7 +112,7 @@ Tout est **en lecture seule** ; un add-on n'écrit que dans son état, son group
 
 | Besoin | Connecteur |
 |---|---|
-| POI du plan | `getEditorPoints()`, `getAllEmbeddedPoints()` (masqués compris ; champ `nom`, `x`, `y`, `level`, `tags`) |
+| POI du plan | `getEditorPoints()`, `getAllEmbeddedPoints()` (masqués compris, sauf un calque en « Modifier », lu par sa copie de session ; champ `nom`, `x`, `y`, `level`, `tags`) |
 | Tracés | `getRoads()`, `getAllEmbeddedRoads()` (ignorer `itinerary` et `jonction`) |
 | Zones | `getZones()`, `getAllEmbeddedZones()` (`type` : `remblais`, `effondrement`, `inaccessible`, `eau`, `cust-…`) |
 | Structures | `getStructures()`, `getAllEmbeddedStructures()` (préférer `ctx.bloque` / `ctx.libre` pour les collisions) |

@@ -486,7 +486,7 @@ silencieusement (`console.warn`), et l'export ne sortait que le fond de plan.
 
 | # | Défaut | Correction |
 |---|---|---|
-| 1 | Contenu des calques introuvable (`fetch` 404) | **Repli sur les registres en mémoire** (`getAllEmbedded*`), filtré par `layerId`. Repli seulement : quand le fichier existe, il fait foi. |
+| 1 | Contenu des calques introuvable (`fetch` 404) | **Repli sur les registres en mémoire** (`getAllEmbedded*({ originaux: true })` : un calque en modification garde son contenu), filtré par `layerId`. Repli seulement : quand le fichier existe, il fait foi. |
 | 2 | Compteurs des modales comptés sur la **seule session** | `window.ktaAnnotationsCompletes(famille)` — un seul point de vérité, utilisé par les deux modales |
 | 3 | Sous-types listés **en dur** (5 noms intégrés) | Comptage des types réellement présents + une ligne par type personnalisé, sous le libellé de sa légende |
 

@@ -2932,7 +2932,7 @@
     const sessionPts = (window.getEditorPoints ? window.getEditorPoints() : []) || [];
     const dataLayerPts = [];
     if (Array.isArray(window._ktaDataMarkers)) {
-      window._ktaDataMarkers.forEach(function(m) {
+      window.ktaHorsCalquesEnModification(window._ktaDataMarkers).forEach(function(m) {
         if (!m) return;
         dataLayerPts.push({ tags: Array.isArray(m._ktaTags) ? m._ktaTags : [] });
       });
@@ -3809,7 +3809,7 @@
     // Points des calques : _ktaDataMarkers → {x, y, nom, tags, level}
     const dataLayerPoints = [];
     if (Array.isArray(window._ktaDataMarkers)) {
-      window._ktaDataMarkers.forEach(function(m) {
+      window.ktaHorsCalquesEnModification(window._ktaDataMarkers).forEach(function(m) {
         if (!m || !m.getLatLng) return;
         const ll = m.getLatLng();
         const pt = {

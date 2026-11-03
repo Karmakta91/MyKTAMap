@@ -1230,15 +1230,23 @@ window.getEmbeddedRoads = function() {
 };
 
 // ⚠️ TOUTES les routes embarquées, calque masqué compris : le Pathfinder doit voir le réseau même quand on masque
-// le calque (routes déjà dessinées sur le PNG) pour alléger le rendu.
+// le calque (routes déjà dessinées sur le PNG) pour alléger le rendu. SAUF un calque en modification
+// (utils.js > ktaCalquesEnModification) : son groupe n'est que masqué par le verrou, mais sa copie de session le
+// remplace (sinon doublons dans le graphe, et une jonction supprimée de la copie restait dans l'itinéraire et la
+// vue 3D). `opts.originaux` le garde (export d'une case « calque »).
 // 🩸 Avec `layerId` (l'export respecte ses cases « calques ») sur une COPIE : jamais de champ greffé sur l'original.
-window.getAllEmbeddedRoads = function() {
+window.getAllEmbeddedRoads = function(opts) {
   const groupes = window.dataLayerGroups || {};
-  return _embeddedRoads.map(function(e) {
+  const exclus = (opts && opts.originaux === true) || typeof window.ktaCalquesEnModification !== "function"
+    ? [] : window.ktaCalquesEnModification();
+  const out = [];
+  _embeddedRoads.forEach(function(e) {
     let layerId = null;
     for (const id in groupes) { if (groupes[id] === e.layer) { layerId = id; break; } }
-    return Object.assign({}, e.road, { layerId: layerId });
+    if (layerId !== null && exclus.indexOf(layerId) >= 0) return;
+    out.push(Object.assign({}, e.road, { layerId: layerId }));
   });
+  return out;
 };
 
 // ── Exports ──────────────────────

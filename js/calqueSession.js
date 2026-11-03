@@ -560,6 +560,7 @@ window.CalqueSession = (function () {
         } catch (e) {}
       }
     }
+    _invaliderLectures();
     return { verrouilles: _rapatries.slice(), liberes: perdus };
   }
 
@@ -640,7 +641,15 @@ window.CalqueSession = (function () {
     }
   }
 
+  // Le verrou change ce que lisent getAllEmbedded* (utils.js > ktaCalquesEnModification) : les caches bâtis sur ces
+  // lectures (graphe de navigation, modèle de galerie de la vue 3D) se refont.
+  function _invaliderLectures() {
+    try { if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate(); } catch (e) {}
+    try { if (window.KtaGalerie && typeof window.KtaGalerie.invalider === "function") window.KtaGalerie.invalider(); } catch (e) {}
+  }
+
   function _persister() {
+    _invaliderLectures();
     if (window.SessionPersist && typeof window.SessionPersist.save === "function") {
       try { window.SessionPersist.save({ force: true }); } catch (e) {}
     }

@@ -1783,6 +1783,33 @@ Règle KARMA : un calque rapatrié est **interdit d'affichage**, automatiquement
 
 Il vit dans `filterPanel.js` — **seul point de contrôle** de la visibilité d'un calque. Le poser ailleurs ferait deux contrôles concurrents sur le même état.
 
+### La copie remplace l'original dans toutes les lectures
+
+Le verrou ne fait que **masquer** le groupe du calque (`map.removeLayer`) ; ses objets restent dans les registres
+(`_ktaDataMarkers`, `_ktaDataPolygons`…, `road.js > _embeddedRoads`). Les lectures « tout l'embarqué » excluent donc
+elles-mêmes un calque en modification (`utils.js > ktaCalquesEnModification` = `CalqueSession.listeRapatries()`) :
+
+- `getAllEmbeddedPoints` / `Roads` / `Zones` / `Structures` ne rendent pas ses objets ; sa copie de session est lue
+  à leur place par `getEditorPoints` / `getRoads`… Tous leurs consommateurs en héritent : itinéraire et graphe de
+  navigation, passages et galerie de la vue 3D, POI jonction, comptes des filtres, stats, recherche, exports, Secours,
+  Vue OSM.
+- Les lectures directes des registres qui servent un calcul passent par `ktaHorsCalquesEnModification(liste)` :
+  obstacles durs et zones à éviter de l'itinéraire (`pathfinder.js > _registre`), volume exploité, points de l'export
+  KMZ, comptes d'icônes des filtres ; les collisions du tracker filtrent à la lecture (`tracking.js >
+  _segmentBloque`, l'index est en cache par identité de liste).
+- **Recocher la case** du calque le redessine en 2D (comparaison voulue) ; rien d'autre ne le lit : itinéraire, 3D et
+  comptes suivent la copie, qui fait foi.
+- **Lecture explicite de l'original** : `getAllEmbedded*({ originaux: true })`, pour la case d'un calque dans l'export
+  avancé (repli sans fichier d'un plan importé) : elle exporte le contenu du calque, comme le `fetch` de son fichier.
+  `CalqueSession` relit le fichier pour la restitution, l'export et `contenuCalque` ; il ne dépend pas des getters.
+- Rapatriement, restitution, verrous rétablis, resynchronisation : `CalqueSession` invalide `RoadGraph` et
+  `KtaGalerie` (le graphe a aussi une signature de contenu ; la vue 3D se réindexe à sa prochaine ouverture ou au
+  prochain changement de filtres).
+
+🩸 Avant cette règle, l'original masqué était lu à côté de sa copie : doublons (graphe, obstacles, comptes) et, après
+suppression d'une jonction de la copie, itinéraire et vue 3D passaient encore par l'original. Garde-fou :
+`scripts/smoke/checkup-calque-modif-source.js`.
+
 ### 🩸 Les deux pièges, et pourquoi ils coûtent cher
 
 1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre. Là où la restitution se partage (`CalqueSession.restitutionPartagee()` : plan d'extension modifiable) et qu'au moins un calque est en modification, la confirmation propose trois issues (`ktaConfirm`, `opts.autre`) : **« Effacer sur cet appareil seulement »** (`restituer(id, { local: true })` : la relecture complète qui suit ramène les copies du serveur, le calque repasse en modification, et la fenêtre l'annonce), **« Rendre aussi les calques à l'équipe »** (restitution partagée notée AVANT le vidage, car elle porte les uids des copies retirées ; la fenêtre nomme les calques et prévient que les retouches non exportées des autres sur ces copies seront perdues), ou Annuler. Si l'extension répond aussi à `effacerSession` (plan partagé, §9 « Effacer la session »), ce choix

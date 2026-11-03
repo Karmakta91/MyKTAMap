@@ -538,9 +538,11 @@
         const duCalque = function (arr) {
           return (arr || []).filter(function (o) { return !o.layerId || o.layerId === layerCfg.id; });
         };
-        points = duCalque(typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []);
-        roads  = duCalque(typeof window.getAllEmbeddedRoads  === "function" ? window.getAllEmbeddedRoads()  : []);
-        zones  = duCalque(typeof window.getAllEmbeddedZones  === "function" ? window.getAllEmbeddedZones()  : []);
+        // `originaux` : la case d'un calque suit son fichier, même en modification (comme le fetch ci-dessus).
+        const O = { originaux: true };
+        points = duCalque(typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints(O) : []);
+        roads  = duCalque(typeof window.getAllEmbeddedRoads  === "function" ? window.getAllEmbeddedRoads(O)  : []);
+        zones  = duCalque(typeof window.getAllEmbeddedZones  === "function" ? window.getAllEmbeddedZones(O)  : []);
       }
     }
 
@@ -2084,15 +2086,17 @@
             return !o.layerId || o.layerId === layerCfg.id;
           });
         };
+        // `originaux` : la case d'un calque suit son fichier, même en modification (comme le fetch ci-dessus).
+        const O = { originaux: true };
         embeddedRoads = duCalque(typeof window.getAllEmbeddedRoads === "function"
-          ? window.getAllEmbeddedRoads() : []);
+          ? window.getAllEmbeddedRoads(O) : []);
         embeddedZones = duCalque(typeof window.getAllEmbeddedZones === "function"
-          ? window.getAllEmbeddedZones() : []);
+          ? window.getAllEmbeddedZones(O) : []);
         embeddedStructures = duCalque(typeof window.getAllEmbeddedStructures === "function"
-          ? window.getAllEmbeddedStructures() : []);
+          ? window.getAllEmbeddedStructures(O) : []);
         if (!pts.length) {
           pts = duCalque(typeof window.getAllEmbeddedPoints === "function"
-            ? window.getAllEmbeddedPoints() : []);
+            ? window.getAllEmbeddedPoints(O) : []);
         }
         if (_debugAdv) console.log("[Export avancé] repli registre", layerCfg.id,
           "→ roads:", embeddedRoads.length, "zones:", embeddedZones.length,
