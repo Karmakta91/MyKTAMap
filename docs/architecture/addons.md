@@ -105,6 +105,7 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `course` | pas rapide interdit |
 | `avatar` | silhouette dorée de la vue plongeante masquée (l'add-on dessine la sienne) |
 | `commandes` | joystick et pavé retirés (une carte à toucher là où est le pouce) ; 🩸 `display` en style, le pavé étant en grille |
+| `plongee` | vue plongeante interdite : bouton 🦅 grisé, `basculerVue` refusé, retour à hauteur d'yeux si l'on y était |
 
 Deux **facteurs** (nombre de 0 à 1, 1 = normal, rendus au retrait) :
 
@@ -229,7 +230,8 @@ embuscades, un monde par niveau), `js/son.js`
 - **Joueur** (`joueur.js`) : à hauteur d'yeux, deux bras et un fusil en formes simples accrochés à `ctx.camera`, en
   couleurs fixes non éclairées (la lampe, collée à la caméra, les délavait) et dessinés par-dessus la scène (sans
   test de profondeur, ordre de rendu fixé) ; balancement, recul et éclair au tir. En vue plongeante : silhouette
-  verte armée, celle de la vue masquée (`regler({ avatar: false })`).
+  verte armée, celle de la vue masquée (`regler({ avatar: false })`) — gardée, mais la partie interdit la vue
+  plongeante (`regler({ plongee: false })`, décision produit : voir d'en haut serait tricher).
 - **Interface** : santé, endurance et lampe (pile) en haut à gauche ; panneau en haut à droite réductible (▾ / ▸,
   retenu sous `myktamap_mkmg_panneau_v1`) : vague, chrono et guidage toujours là ; objectif, statistiques (égarés tués, balles
   tirées, balles au but) et « Quitter » repliés ; cartouches sur le bouton de tir. Fin de partie (santé à 0) :

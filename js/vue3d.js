@@ -4861,10 +4861,10 @@
   // sc (px/m), pos {x, y} (px plan), cap, rendu, mode, vue, commandes, sale() ; règle du pas de la vue, jamais une
   // copie (px plan) : bloque(x0, y0, x1, y1) = un corps ne passe pas, ligneBloquee(x0, y0, x1, y1) = ligne de vue
   // coupée, libre(x, y) = place où un corps tient (hors des structures DESSINÉES : un calque masqué n'y compte pas).
-  // court = pas rapide en cours. regler({ traces, itineraire, guidage, course, avatar, commandes }) : false masque,
-  // pour la greffe seulement, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app (ruban,
-  // étapes, 🏁), son guidage (bandeau, chevrons), la silhouette dorée de la vue plongeante, le joystick et le pavé,
-  // ou interdit le pas rapide ; levé au retrait. Les filtres de la carte n'en savent rien. Deux facteurs (nombre de 0
+  // court = pas rapide en cours. regler({ traces, itineraire, guidage, course, avatar, commandes, plongee }) : false
+  // masque, pour la greffe seulement, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app
+  // (ruban, étapes, 🏁), son guidage (bandeau, chevrons), la silhouette dorée de la vue plongeante, le joystick et le
+  // pavé, ou interdit le pas rapide ou la vue plongeante (retour à hauteur d'yeux) ; levé au retrait. Les filtres de la carte n'en savent rien. Deux facteurs (nombre de 0
   // à 1, 1 = normal) : lampe = force et portée de la lampe frontale (vue à hauteur d'yeux), vitesse = pas au pavé, au
   // clavier et au joystick.
   // 🔒 Une exception dans un appel retire la greffe (la vue continue). La greffe ne touche ni tracker, ni session, ni
@@ -4905,7 +4905,7 @@
       regler: function (r) {
         if (!_e || _e.greffe !== gr || !r) return;
         const change = {};
-        ["traces", "itineraire", "guidage", "course", "avatar", "commandes"].forEach(function (k) {
+        ["traces", "itineraire", "guidage", "course", "avatar", "commandes", "plongee"].forEach(function (k) {
           if ((r[k] === true || r[k] === false) && _permisGreffe(k) !== r[k]) { gr.reglage[k] = r[k]; change[k] = true; }
         });
         ["lampe", "vitesse"].forEach(function (k) {
@@ -4917,6 +4917,7 @@
         if (change.guidage || change.itineraire) { _e.guidageForce = true; _e.apS = undefined; }
         if (change.avatar) _e.avatar.visible = _e.vue === "plongee" && _permisGreffe("avatar");
         if (change.commandes) _montrerCommandes(_permisGreffe("commandes"));
+        if (change.plongee) _permettrePlongee(_permisGreffe("plongee"));
         _e.sale = true;
       },
       bloque: function (x0, y0, x1, y1) {
@@ -4947,6 +4948,15 @@
   function _permisGreffe(k) {
     const gr = _e && _e.greffe;
     return !gr || gr.reglage[k] !== false;
+  }
+
+  // Vue plongeante permise ou non (greffe : regler({ plongee: false }), ex. un jeu où voir d'en haut serait
+  // tricher) : bouton 🦅 grisé, basculement refusé, et retour à hauteur d'yeux si l'on y était.
+  function _permettrePlongee(oui) {
+    const e = _e;
+    if (!e) return;
+    if (e.boutonVue) e.boutonVue.disabled = !oui;
+    if (!oui && e.vue === "plongee") { e.vue = "yeux"; _appliquerVue(); }
   }
 
   // Facteur de la greffe (ctx.regler : lampe, vitesse) ; 1 sans greffe ou sans réglage.
@@ -4998,6 +5008,7 @@
     if (Object.keys(gr.reglage).length) { e.filtresChanges = true; e.guidageForce = true; e.apS = undefined; }
     if (gr.reglage.avatar === false && e.avatar) e.avatar.visible = e.vue === "plongee";
     if (gr.reglage.commandes === false) _montrerCommandes(true);
+    if (gr.reglage.plongee === false) _permettrePlongee(true);
     _lampeGreffe();
     e.sale = true;
     console.log("[Vue3D] greffe « " + gr.nom + " » retirée (" + raison + ")");
@@ -5203,7 +5214,7 @@
   }
 
   function basculerVue() {
-    if (!_e) return;
+    if (!_e || (_e.vue !== "plongee" && !_permisGreffe("plongee"))) return;
     _e.vue = _e.vue === "plongee" ? "yeux" : "plongee";
     _appliquerVue();
   }

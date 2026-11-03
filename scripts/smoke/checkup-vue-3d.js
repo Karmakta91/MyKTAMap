@@ -4632,14 +4632,13 @@ async function mesuresGalerie(page, nom, semisDonne) {
           document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
         };
         X.vider();
-        // Joueur : fusil tenu à deux mains, accroché à la caméra ; en vue plongeante, silhouette verte à la place de
-        // la silhouette dorée de la vue (réglage avatar de la greffe).
+        // Joueur : fusil tenu à deux mains, accroché à la caméra. Vue plongeante interdite pendant la partie (voir
+        // d'en haut serait tricher) : bouton 🦅 grisé, basculement refusé.
         r.joueur = M().etat().joueur;
         K.basculerVue();
         await pause(150);
-        r.joueurHaut = Object.assign({ avatar: K.etat().greffe.reglage.avatar }, M().etat().joueur);
-        K.basculerVue();
-        await pause(100);
+        r.plongee = { vue: K.etat().vue, reglage: K.etat().greffe.reglage.plongee,
+          bouton: !!q("#kta-vue3d .kta-v3d-vue") && q("#kta-vue3d .kta-v3d-vue").disabled };
         K.placer(d.x, d.y, 90);
         X.poser("egare", P(-25, 0).x, P(-25, 0).y);
         await pause(50);
@@ -4796,7 +4795,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
         q(".mkmg-panneau .mkmg-bouton").click();
         await pause(300);
         r.quitte = { enCours: M().etat().enCours, greffe: K.etat().greffe, roads: K.etat().compte.roads,
-          panneau: !!q(".mkmg-panneau") };
+          panneau: !!q(".mkmg-panneau"), boutonVue: !q("#kta-vue3d .kta-v3d-vue").disabled };
         // Difficile : ni tracés, ni trajet, ni balise, ni guidage.
         await code();
         q('input[name="kta-confirm-choix"][value="difficile"]').click();
@@ -4831,10 +4830,12 @@ async function mesuresGalerie(page, nom, semisDonne) {
         "jeu : vague 1 peuplée (égarés, munitions, champignons), bouton de tir, 2 cartouches + 6", MK.partie);
       verifier(MK.tir.canon === 1 && MK.tir.tues === 1 && MK.tir.ennemis === 0 && MK.tir.cadavres === 1,
         "jeu : un coup à 5 m tue l'égaré devant soi (Espace) ; il tombe et reste au sol", MK.tir);
-      verifier(MK.joueur.arme && MK.joueur.surCamera && !MK.joueur.silhouette && MK.joueurHaut.silhouette &&
-        !MK.joueurHaut.arme && MK.joueurHaut.avatar === false && MK.tirJoueur.recul > 0 && MK.tirJoueur.eclair,
-        "jeu : bras et fusil 3D accrochés à la caméra (recul et éclair au tir) ; vue plongeante : silhouette verte, " +
-        "fusil et silhouette dorée masqués", { yeux: MK.joueur, haut: MK.joueurHaut, tir: MK.tirJoueur });
+      verifier(MK.joueur.arme && MK.joueur.surCamera && !MK.joueur.silhouette && MK.tirJoueur.recul > 0 &&
+        MK.tirJoueur.eclair, "jeu : bras et fusil 3D accrochés à la caméra (recul et éclair au tir)",
+        { yeux: MK.joueur, tir: MK.tirJoueur });
+      verifier(MK.plongee.vue === "yeux" && MK.plongee.reglage === false && MK.plongee.bouton && MK.quitte.boutonVue,
+        "jeu : vue plongeante interdite pendant la partie (🦅 grisé, basculement refusé), rendue en quittant",
+        { partie: MK.plongee, quitte: MK.quitte.boutonVue });
       verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",
         "jeu : canon vide → recharge automatique de 1,5 s (2 cartouches prises dans la réserve)", MK.recharge);
       verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,
