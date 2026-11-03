@@ -71,7 +71,7 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | Appel | Quand | À faire |
 |---|---|---|
 | `scene(ctx, "greffe")` | à la greffe | poser ses objets dans `ctx.groupe`, son interface dans `ctx.hud`, `ctx.regler(…)` |
-| `scene(ctx, "refaite")` | scène refaite : niveau, rendu, hauteur, filtres, itinéraire | se recaler (ex. autre niveau) |
+| `scene(ctx, "refaite")` | scène refaite : niveau, rendu, hauteur, filtres, itinéraire, données du plan changées pendant la vue (objet ajouté, modifié, supprimé, annulé, calque rapatrié ou restitué, légende) | se recaler (ex. autre niveau) ; `ctx.bloque` / `ligneBloquee` / `libre` lisent déjà les nouvelles données : un greffon qui en tient un cache (carte des distances…) le refait ici |
 | `scene(ctx, "reprise")` | après une perte du contexte WebGL | 🩸 `ctx.groupe` et `ctx.camera` sont **neufs** : tout refaire, **jamais** `dispose()` sur les objets d'avant (morts avec l'ancien contexte) |
 | `surImage(ctx, dt)` | à chaque image tant que la vue rend (pas pendant une perte) | animer ; la vue ne dessine que si quelque chose bouge : appeler `ctx.sale()` |
 | `demonter(ctx, raison)` | `"degreffe"` (retrait), `"fermeture"` (vue fermée), `"contexte"` (contexte non repris), `"erreur"` | libérer ce qu'on a créé (sauf `"contexte"`) ; la vue retire ensuite `ctx.groupe` et `ctx.hud` |

@@ -85,10 +85,6 @@
   passage (fermés, comblés, bassin, cavage) ni de l'escalier en niche.
   `qui: Claude · action: compléter la section dans les 3 langues · fini: section à jour, check-i18n vert
   · depuis: 03/11/2026 · taille: XS`
-- **Vue 3D ouverte pendant un « 🔄 Modifier »** — la 3D ne se réindexe pas quand un calque est rapatrié ou restitué
-  pendant qu'elle est ouverte ; il faut la fermer et la rouvrir.
-  `qui: Claude · action: reconstruire la scène sur l'événement de rapatriement / restitution · fini: checkup vert,
-  calque modifié vu sans rouvrir la 3D · depuis: 03/11/2026 · taille: S`
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
   (`security-legal.md` §36.3).
   `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert

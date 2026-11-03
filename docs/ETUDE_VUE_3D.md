@@ -484,6 +484,24 @@ dense) : image médiane de 6 ms, mais l'image de la **bascule** (scène du nivea
 100 ms par image). 2 à 3 images de plus de 33 ms sur le geste. Si un vrai iPhone le rend gênant : construire les
 tuiles du niveau d'arrivée sur plusieurs images pendant le noir.
 
+### Données changées pendant la vue (scène refaite, QCM du 03/11/2026)
+
+Décision : scène refaite **entière** (`_reindexer`) sur un signal unique `kta:donneesPlanChange` confirmé par une
+empreinte des données, pas tuile par tuile (le modèle des galeries, qui domine le coût en mixte, est global au
+niveau : refaire une tuile ne l'éviterait pas). Mesure (`KTA_V3D_PERF=1`, un pilier de session ajouté à 3 m, plan
+dense synthétique, ms) :
+
+| | PC | iPhone émulé (×4) |
+|---|---|---|
+| Structures, 13 700 objets : scène refaite | 46 – 57 | 236 – 300 |
+| Mixte, 8 300 structures + 64 tracés : scène refaite (modèle des galeries compris) | 123 – 160 | 606 – 734 |
+| Empreinte seule (signal sans changement) | 9 – 12 | 60 – 64 |
+
+[Probable] Acceptable par clic (un objet ajouté, supprimé, une annulation) ; trop lent pour un dessin point par
+point en 3D sur un plan dense en mixte (étape « dessiner depuis la 3D ») : il faudra alors un modèle des galeries
+refait par morceaux. L'empreinte relue sur un rendu sans changement (moveend sous PerfUltra) coûte ~60 ms au
+téléphone sur ce plan.
+
 ### Ce qui n'a **pas** été mesuré
 
 - **Aucun vrai iPhone** : ni images/s réelles, ni mémoire, ni chauffe, ni batterie. L'émulation ralentit le

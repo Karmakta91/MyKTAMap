@@ -26,7 +26,9 @@
 // ⚠️ contrat : filtres = ceux de la carte (window._ktaRuntimeFilters, calques de données, niveaux visibles), lus à
 // chaque construction et suivis par FilterPanel.onChange ; ≡ ouvre le même panneau (filterPanel.js) par-dessus.
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
-// ne suit aucun filtre et se redessine à `kta:itineraireChange` (road.js). Guidage : bandeau et chevrons
+// ne suit aucun filtre et se redessine à `kta:itineraireChange` (road.js). Données du plan changées pendant la vue
+// (session, calque rapatrié ou restitué, annulation, légende) : `kta:donneesPlanChange` (utils.js >
+// ktaSignalerDonneesPlan), empreinte relue après la rafale, scène refaite sur place (_majDonnees). Guidage : bandeau et chevrons
 // (_lireGuidage) ; toucher un POI ouvre sa fiche de la carte (_ouvrirFiche, « Y aller » : origineItineraire). En
 // libre, un tracker choisi comme départ depuis la vue y amène la place (placerSurTracker) ; un tracker recalé (« 📍 Je
 // suis ici ») ne la bouge pas (trackerRecale).
@@ -205,6 +207,10 @@
   // moins de `ms`, sans autre commande de déplacement entre deux → `kta:vue3dCode` (detail.code = "bas6"). Coup de
   // joystick : relâché moins de `coup` ms après la sortie de la zone morte, toujours à plus de `angle`° de l'avant.
   const CODE_BAS = { n: 6, ms: 2000, coup: 500, angle: 135 };
+  // Rafale de `kta:donneesPlanChange` (annulations répétées, import, « Tout afficher ») : données relues une fois,
+  // `calme` ms après le dernier signal, au plus tard `max` ms après le premier (une rafale continue ne retarde pas
+  // la scène sans fin). _majDonnees.
+  const RAFALE = { calme: 120, max: 600 };
 
   let THREE = null;
   let _import = null;
@@ -360,6 +366,55 @@
   }
 
   // Type de tracé montré par les filtres de la carte : liseré du mode galerie (le tube, lui, reste : collision).
+  // Empreinte de ce que la scène lit des données : session et calques (filtres ignorés : ils ont leur signal,
+  // FilterPanel.onChange), chaque sommet, chaque champ simple d'un objet (type, niveau, nom, tags, updatedAt…),
+  // niveaux et raccords des POI jonction, légende personnalisée de la session (couleurs, types `cust-…`). Relue sur
+  // signal seulement (_majDonnees), jamais à l'image ; coût au checkup (etat().donnees.msEmpreinte).
+  // 🩸 Pas la signature de KtaGalerie : bon marché à dessein (premier et dernier sommets), elle ne voit ni un sommet
+  // du milieu déplacé, ni un renommage, ni une couleur. Champs « _… » sautés : état d'exécution (marqueur Leaflet,
+  // copie de prévisualisation), pas de la donnée, et parfois des cycles.
+  function _empreinteDonnees() {
+    let h = 2166136261 | 0;
+    const mel = function (v) { h = Math.imul(h ^ v, 16777619); };
+    const num = function (v) { mel(Number.isFinite(v) ? Math.round(v * 1000) | 0 : -7); };
+    const txt = function (s) { mel(s.length); for (let i = 0; i < s.length; i++) mel(s.charCodeAt(i)); };
+    const val = function (v, prof) {
+      const t = typeof v;
+      if (v === null || v === undefined) mel(-1);
+      else if (t === "number") num(v);
+      else if (t === "string") txt(v);
+      else if (t === "boolean") mel(v ? -2 : -3);
+      else if (prof > 0 && Array.isArray(v)) { mel(v.length); for (let i = 0; i < v.length; i++) val(v[i], prof - 1); }
+      else if (prof > 0 && t === "object" && Object.getPrototypeOf(v) === Object.prototype) objet(v, prof - 1);
+    };
+    const objet = function (o, prof) {
+      for (const k in o) {
+        if (k.charCodeAt(0) === 95 || !Object.prototype.hasOwnProperty.call(o, k)) continue;
+        txt(k);
+        const v = o[k];
+        if (k !== "points" || !Array.isArray(v)) { val(v, prof); continue; }
+        mel(v.length);
+        for (let i = 0; i < v.length; i++) {
+          const q = v[i];
+          if (q) { num(q.x); num(q.y); if (q.level !== undefined) num(q.level); }
+        }
+      }
+    };
+    const liste = function (l) {
+      mel(-9); mel(l.length);
+      for (let i = 0; i < l.length; i++) { if (l[i] && !l[i]._preview) objet(l[i], 2); else mel(-4); }
+    };
+    [window.getRoads, window.getAllEmbeddedRoads, window.getZones, window.getAllEmbeddedZones, window.getStructures,
+      window.getAllEmbeddedStructures, window.getEditorPoints, window.getAllEmbeddedPoints].forEach(function (f) {
+      liste(_tab(f));
+    });
+    const L = window.LegendCustomization;
+    if (L && typeof L.getSessionState === "function") {
+      try { txt(JSON.stringify(L.getSessionState()) || ""); } catch (err) { mel(-5); }
+    }
+    return h;
+  }
+
   function _typeTraceMontre(type) {
     const f = window._ktaRuntimeFilters || {};
     return type === "itinerary" || !(f.roadTypes instanceof Set) || f.roadTypes.has(type);
@@ -2302,6 +2357,7 @@
 
   function _reindexer() {
     const e = _e;
+    e.reindexations++;
     e.tuiles.forEach(_libererTuile);
     const t0 = performance.now();
     e.niveau = _niveauCourant();
@@ -2333,6 +2389,47 @@
     _majRonds();
     _gererVolumes();
     _sceneGreffe();
+  }
+
+  // Données du plan changées pendant la vue (signal `kta:donneesPlanChange`, utils.js > ktaSignalerDonneesPlan) :
+  // après la rafale (RAFALE) et jamais pendant un geste de passage (rattrapé à sa fin), l'empreinte est relue.
+  // Changée : caches de KtaGalerie vidés (sa signature ne voit pas tout), scène refaite sur place (_reindexer :
+  // position, cap, tangage, niveau, mode, vue, réglages, itinéraire et guidage gardés), place dégagée en libre si un
+  // obstacle neuf la recouvre (en suivi, la place est celle du tracker), fiche ouverte relue. Inchangée : rien.
+  // ⚠️ contrat : scène refaite entière, pas tuile par tuile (coût mesuré au checkup, KTA_V3D_PERF=1).
+  function _majDonnees() {
+    const e = _e, d = e.donnees, t = performance.now();
+    if (!d.signal || e.geste) return;
+    if (t - d.signal < RAFALE.calme && t - d.premier < RAFALE.max) return;
+    d.signal = d.premier = 0;
+    const emp = _empreinteDonnees();
+    d.msEmpreinte = performance.now() - t;
+    d.verifs++;
+    if (emp === d.empreinte) return;
+    d.empreinte = emp;
+    if (window.KtaGalerie && typeof window.KtaGalerie.invalider === "function") window.KtaGalerie.invalider();
+    e.filtresChanges = false; e.itiChange = false; e.rondsChange = false;
+    e.sortie = null;
+    _reindexer();
+    // Volumes comptés : un pilier posé sur la place ne la coince pas pour la règle du pas (on en sort).
+    if (e.mode === "libre" && _degager(true)) d.degagees++;
+    _majFicheDonnees();
+    d.refaites++;
+    d.ms = performance.now() - t;
+    e.sale = true;
+  }
+
+  // Fiche ouverte : son POI retrouvé (même objet, sinon même uid : une annulation rend des copies) est relu s'il a
+  // changé ; disparu (supprimé depuis la fiche elle-même, annulé), la fiche se ferme.
+  function _majFicheDonnees() {
+    const e = _e, f = e.fiche;
+    if (!f) return;
+    const avant = f.point._v3dJonction || f.point;
+    const tous = _tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints));
+    let p = tous.indexOf(avant) >= 0 ? avant : null;
+    if (!p && avant.uid) p = tous.filter(function (q) { return q && q.uid === avant.uid; })[0] || null;
+    if (!p) { _fermerFiche(); return; }
+    if (p !== avant || _htmlFiche(p) !== f.html) _ouvrirFiche(p);
   }
 
   // ── Volumes des passages entre niveaux (POI jonction, puits de surface, tracé jonction) ─────────────────
@@ -3400,9 +3497,11 @@
   // des tubes et à moins de smartNavRadiusM d'un axe qui est en tube à cet endroit (pas dans une chambre) = coincé.
   // Corps dans une zone qui bouche ou contre elle (centre dedans, ou un rayon de RAYON_CORPS qui y entre), dans tous
   // les rendus : coincé (on en sortirait librement, mais la place serait dans le volume) ; le point libre est donc à
-  // un corps du bord.
-  function _coince(x, y) {
+  // un corps du bord. `volumes` : aussi dans une structure dessinée ou à moins d'un corps d'elle (la règle du pas
+  // ignore la structure où l'on est déjà : on en sortirait, mais la place serait dans le pilier), comme ctx.libre.
+  function _coince(x, y, volumes) {
     const e = _e, G = window.KtaGalerie, n = _niveauPas();
+    if (volumes && (_volumeContenant(x / e.sc, y / e.sc) || _rayonsBloques(x, y) > 0)) return true;
     if (G.dansZone(x, y, n, e.rendu) ||
         G.zonesBloquent(_rayons([], x, y, RAYON_CORPS * e.sc), n, undefined, e.rendu).some(Boolean)) return true;
     if (e.galerie) return !G.dedans(x, y, n);
@@ -3420,27 +3519,28 @@
   }
 
   // Point libre le plus proche de (x, y) (px), ou null.
-  function _pointLibre(x, y) {
+  function _pointLibre(x, y, volumes) {
     const e = _e, m = e.galerie || e.mixte, R = _rayonLibre();
     const pp = m ? m.plusProche(x, y, R) : null;
-    if (pp && !_coince(pp.x, pp.y)) return { x: pp.x, y: pp.y };
+    if (pp && !_coince(pp.x, pp.y, volumes)) return { x: pp.x, y: pp.y };
     const pas = 0.25 * e.sc;
     for (let r = pas; r <= R; r += pas) {
       const n = Math.max(8, Math.ceil(2 * Math.PI * r / pas));
       for (let k = 0; k < n; k++) {
         const qx = x + r * Math.cos(2 * Math.PI * k / n), qy = y + r * Math.sin(2 * Math.PI * k / n);
         if (!e.galerie && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(qx, qy)) continue;
-        if (!_coince(qx, qy)) return { x: qx, y: qy };
+        if (!_coince(qx, qy, volumes)) return { x: qx, y: qy };
       }
     }
     return null;
   }
 
-  // Ramène la place au point libre le plus proche si elle est coincée. → true si elle a bougé.
-  function _degager() {
+  // Ramène la place au point libre le plus proche si elle est coincée (`volumes` : voir _coince). → true si elle a
+  // bougé.
+  function _degager(volumes) {
     const e = _e;
-    if (!_coince(e.pos.x, e.pos.y)) return false;
-    const p = _pointLibre(e.pos.x, e.pos.y);
+    if (!_coince(e.pos.x, e.pos.y, volumes)) return false;
+    const p = _pointLibre(e.pos.x, e.pos.y, volumes);
     if (!p) {
       console.warn("[Vue3D] place coincée, aucun point libre à portée : tout pas qui en rapproche passera");
       return false;
@@ -3986,12 +4086,17 @@
     return { layerId: id, layerLabel: lc && lc.label ? lc.label : id };
   }
 
+  function _htmlFiche(p) {
+    const session = _tab(window.getEditorPoints).indexOf(p) >= 0;
+    const info = session ? { layerId: "editor", layerLabel: _t("editor.popup.myAdds") } : _infoCalque(p.layerId);
+    return window.buildPointPopupHtml(p, false, info);   // HTML échappé par la fiche elle-même
+  }
+
   function _ouvrirFiche(p) {
     const e = _e;
     if (!p || typeof window.buildPointPopupHtml !== "function") return false;
     _fermerFiche();
-    const session = _tab(window.getEditorPoints).indexOf(p) >= 0;
-    const info = session ? { layerId: "editor", layerLabel: _t("editor.popup.myAdds") } : _infoCalque(p.layerId);
+    const html = _htmlFiche(p);
     const boite = document.createElement("div");
     boite.className = "kta-v3d-fiche";
     boite.setAttribute("role", "group");
@@ -3999,7 +4104,7 @@
     _bouton(boite, "kta-v3d-btn-petit kta-v3d-fiche-fermer", "✕", _t("vue3d.ficheFermer"), "ficheFermer");
     const corps = document.createElement("div");
     corps.className = "kta-v3d-fiche-corps";
-    corps.innerHTML = window.buildPointPopupHtml(p, false, info);   // HTML échappé par la fiche elle-même
+    corps.innerHTML = html;
     _passagesFiche(boite, p);
     boite.appendChild(corps);
     e.ov.appendChild(boite);
@@ -4009,7 +4114,7 @@
       isPopupOpen: function () { return this.ouvert; },
       emettre: function (type, ev) { (this.h[type] || []).forEach(function (f) { f(ev); }); }
     };
-    e.fiche = { boite: boite, point: p, marqueur: marqueur };
+    e.fiche = { boite: boite, point: p, marqueur: marqueur, html: html };
     if (typeof window.attachPopupPhotos === "function") {
       try {
         window.attachPopupPhotos(marqueur, String(p.id || ""), p.uid);
@@ -4245,6 +4350,7 @@
     }
     if (e.mode === "suivi") _lireTracker();
     if (e.geste) _majGeste(dt);
+    _majDonnees();
     _majPassage();
     const niv = _niveauCourant();
     // Pendant un geste, la scène attend sa bascule (au noir). Niveau changé hors passage (tracker en suivi, niveau
@@ -4252,7 +4358,9 @@
     if (!e.geste) {
       if (niv !== e.niveau && e.niveau !== null && niv !== null && _gesteAnime) {
         _lancerGeste(0, function () { _reindexer(); _annoncerNiveau(); });
-      } else if (niv !== e.niveau || e.filtresChanges || e.itiChange) {
+      } else if (niv !== e.niveau || ((e.filtresChanges || e.itiChange) && !e.donnees.signal)) {
+        // Filtres ou itinéraire changés avec des données en attente (annulation, import : setRoads annonce aussi
+        // l'itinéraire) : une seule reconstruction, celle de _majDonnees ; données inchangées, faite ici ensuite.
         e.filtresChanges = false; e.itiChange = false; e.rondsChange = false;
         _reindexer();
       }
@@ -4919,6 +5027,13 @@
     on(window, "kta:itineraireChange", function () { e.itiChange = true; e.guidageForce = true; e.apS = undefined; });
     // Ronds d'intersection redessinés par la carte (option, filtres, tracés) : refaits à l'image suivante.
     on(window, "kta:intersectionsChange", function () { e.rondsChange = true; });
+    // Données du plan peut-être changées (session, calques, légende) : relues après la rafale (_majDonnees).
+    on(window, "kta:donneesPlanChange", function () {
+      const d = e.donnees, t = performance.now();
+      d.signaux++;
+      if (!d.signal) d.premier = t;
+      d.signal = t;
+    });
     on(e.cv, "contextmenu", function (ev) { ev.preventDefault(); });
     // Clavier : capturé pendant que la vue est ouverte (les raccourcis de la carte ne partent pas dessous).
     // Une fenêtre de l'app par-dessus la vue (≡ Filtres, Aide, Sortie d'urgence, confirmation) garde ses touches :
@@ -5114,7 +5229,7 @@
   // Une greffe à la fois, qui vit avec la vue ouverte. g = { nom, scene(ctx, raison), surImage(ctx, dt),
   // demonter(ctx, raison) }, tous facultatifs :
   //   scene : appelé à la greffe ("greffe"), après chaque scène refaite ("refaite" : niveau, rendu, hauteur, filtres,
-  //     itinéraire) et après une perte du contexte WebGL ("reprise" : ctx.groupe est NEUF, les objets d'avant sont
+  //     itinéraire, données du plan changées pendant la vue) et après une perte du contexte WebGL ("reprise" : ctx.groupe est NEUF, les objets d'avant sont
   //     morts avec l'ancien contexte, jamais dispose()) ;
   //   surImage : à chaque image tant que la vue rend (pas pendant une perte de contexte) ; la vue ne dessine que si
   //     quelque chose a bougé : un greffon animé appelle ctx.sale() ;
@@ -5333,7 +5448,9 @@
         volPassages: [], geste: null, dy: 0, fondu: null, fonduOp: 0, bandeauNiveau: null, bandeauNiveauFin: 0,
         niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, rubans: {}, liseres: {},
-        filtresChanges: false,
+        filtresChanges: false, reindexations: 0,
+        donnees: { empreinte: null, signal: 0, premier: 0, signaux: 0, verifs: 0, refaites: 0, degagees: 0, ms: 0,
+          msEmpreinte: 0 },
         virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
         itiChange: false, guidageT: 0, guidageForce: true,
         apS: undefined, bandeauCle: null, bandeauEtat: { visible: false }, chevrons: null, chevSig: null,
@@ -5374,6 +5491,9 @@
       _brancher();
       _redimensionner();
       _reindexer();
+      const tE = performance.now();
+      _e.donnees.empreinte = _empreinteDonnees();
+      _e.donnees.msEmpreinte = performance.now() - tE;
       if (_e.mode === "libre") _degager();   // en suivi, la place est celle du tracker
       _appliquerVue();
       _placerCamera();
@@ -5568,6 +5688,10 @@
         libelle: e.boussole ? e.boussole.getAttribute("aria-label") : "",
         inclinaisonVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden },
       niveau: e.niveau, niveauLibre: Number.isInteger(e.niveauLibre) ? e.niveauLibre : null,
+      reindexations: e.reindexations,
+      donnees: { signaux: e.donnees.signaux, verifs: e.donnees.verifs, refaites: e.donnees.refaites,
+        degagees: e.donnees.degagees, attente: !!e.donnees.signal, ms: +e.donnees.ms.toFixed(1),
+        msEmpreinte: +e.donnees.msEmpreinte.toFixed(2) },
       changementsNiveau: e.changementsNiveau, hauteur: e.hauteur, oeil: e.oeil, distance: e.distance,
       degagements: e.degagements,
       reglageHauteur: { visible: !!e.reglageHauteur && !e.reglageHauteur.hidden,

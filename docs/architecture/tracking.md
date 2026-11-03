@@ -1395,6 +1395,27 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   les structures. En galerie, le liseré suit le type de tracé (les tubes, collision, restent). Les calques image et le
   plan de base n'ont pas d'objet en 3D : leurs cases restent dans le panneau, sans effet sur la scène. Pastille de
   filtre actif sur le ≡ de la vue (`data-kta-pastille-filtres`, posée par `FilterPanel.majBadge`).
+- **Données changées pendant la vue** : objet ajouté, modifié ou supprimé (fiche de la carte, setRoads / setZones /
+  setStructures / setEditorPoints, import, Tableur, Secours), annulation / rétablissement, calque rapatrié, restitué
+  ou verrouillé (`CalqueSession`), couleurs et types `cust-…` de la légende, raccords et niveaux d'un POI jonction.
+  ⚠️ contrat : un seul signal, `kta:donneesPlanChange` (`utils.js > ktaSignalerDonneesPlan`, detail `{ source }`),
+  émis par les rendus de la carte (`renderRoads`, `renderZones`, `renderStructures`, `renderEditorPoints` : toute
+  écriture finit par l'un d'eux, la légende repeint par eux aussi) et par `CalqueSession._invaliderLectures`. C'est
+  un **indice**, pas une preuve : un rendu part aussi sans rien changer (moveend sous PerfUltra, option de la
+  carte). La vue (`vue3d.js > _majDonnees`) attend la fin de la rafale (120 ms sans signal, 600 ms au plus après le
+  premier : une annulation répétée ou un import = une reconstruction), jamais pendant un geste de passage (rattrapée
+  à sa fin), puis relit son **empreinte** (`_empreinteDonnees` : chaque sommet, chaque champ simple des objets de la
+  session et des calques, état de la légende de la session ; filtres exclus, ils ont leur signal) : inchangée, rien ;
+  changée, caches de `KtaGalerie` vidés et scène refaite **entière** sur place (`_reindexer` : position, cap,
+  tangage, niveau dont `niveauLibre`, mode, vue, inclinaison, zoom, portée, lampe, `reglagesFiges`, itinéraire et
+  guidage gardés). Sans signal, aucun coût (ni relecture, ni reconstruction). 🩸 Pas la signature de KtaGalerie :
+  bon marché à dessein (premier et dernier sommets, longueur du type), elle ne voit ni un sommet du milieu déplacé,
+  ni un renommage, ni une couleur. Un filtre ou un itinéraire changé en même temps que des données en attente
+  (`setRoads` annonce aussi l'itinéraire) attend la même reconstruction. En libre, une place qu'un obstacle neuf
+  recouvre est dégagée au point libre le plus proche, structures dessinées comptées (`_degager(true)` : la règle du
+  pas ignore la structure où l'on est, on en sortirait mais la place serait dans le pilier) ; en suivi, rien (la
+  place est celle du tracker). Fiche ouverte : son POI retrouvé (même objet, sinon même `uid`) est relu, disparu elle
+  se ferme. Greffe : `scene(ctx, "refaite")`. Coût mesuré (`KTA_V3D_PERF=1`, voir `docs/ETUDE_VUE_3D.md` § Mesures).
 - **Emprise des galeries** (`js/galerieEmprise.js`, `window.KtaGalerie`, chargé au démarrage pour servir aussi le pas) :
   graphe plan des tracés du niveau (sommets confondus à 15 cm, croisements coupés en nœuds, bout libre arrêté à moins
   de 0,5 m de la paroi d'un autre tracé raccordé à lui), largeur par type (`KtaGalerie.largeur` : principal 2,5 m,
@@ -1826,6 +1847,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Monde vidé puis situations posées (`essai`) : vague peuplée, un coup tue l'égaré à 5 m, recharge de 1,5 s,
   munitions et champignon ramassés, santé qui baisse au contact, silhouette figée dans le faisceau et qui avance de
   dos, santé à 0 → fin et meilleure vague retenue, « Rejouer ».
+  Données changées pendant la vue (§ 26, objets fictifs) : rien sur 40 images sans signal, un rendu sans changement
+  relu sans rien refaire ; setStructures, setZones, setRoads, setEditorPoints, sommet du milieu déplacé, annulation
+  (HistoryManager) et couleur de légende → une reconstruction chacun, scène changée, place, cap, niveau, mode, vue,
+  portée, lampe et itinéraire gardés ; rafale (6 écritures à 30 ms, 5 d'un coup) = une ; fiche ouverte depuis la 3D
+  relue au renommage, fermée à la suppression du POI ; pilier posé sur la place → dégagée ; greffe prévenue une fois,
+  `ctx.libre` à jour ; écriture pendant un geste de passage → rien pendant, relue à sa fin ; calque rapatrié (copies,
+  ni double ni trou), copie retouchée, restitué ; case du calque dans ≡ = une reconstruction par clic.
   Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.

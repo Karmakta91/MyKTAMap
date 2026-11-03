@@ -305,6 +305,41 @@ async function mesuresPassages(page, depart) {
   console.log("  📏 passage animé (images pendant le geste) : " + JSON.stringify(geste));
 }
 
+// Coût d'une scène refaite sur changement de données (vue ouverte, un pilier de session ajouté à 3 m puis retiré,
+// 3 fois) : relecture complète (empreinte, caches de KtaGalerie vidés, _reindexer, tuiles proches), et empreinte
+// seule après un rendu sans changement.
+async function mesuresDonnees(page, depart, nom) {
+  const r = await page.evaluate(async function (d) {
+    const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const attendre = async function (n) {
+      for (let i = 0; i < 100 && (K.etat().donnees.attente || K.etat().donnees.refaites <= n); i++) await pause(30);
+      return K.etat().donnees;
+    };
+    await K.ouvrir({ depart: d, distanceVue: 30 });
+    await pause(300);
+    const avant = window.getStructures(), ms = [], x = d.x + 3 * sc, y = d.y;
+    for (let i = 0; i < 3; i++) {
+      let n = K.etat().donnees.refaites;
+      window.setStructures(avant.concat([{ uid: "st_mesure_" + i, type: "pilier-1", level: 0,
+        points: [{ x: x, y: y }, { x: x + sc, y: y }, { x: x + sc, y: y + sc }, { x: x, y: y + sc }] }]));
+      const a = await attendre(n);
+      ms.push({ total: a.ms, empreinte: a.msEmpreinte, index: K.etat().msIndex });
+      n = a.refaites;
+      window.setStructures(avant);
+      await attendre(n);
+    }
+    const v0 = K.etat().donnees.verifs;
+    window.renderStructures();
+    for (let i = 0; i < 40 && K.etat().donnees.verifs === v0; i++) await pause(30);
+    const vide = K.etat().donnees.msEmpreinte;
+    const c = K.etat().compte;
+    await K.fermer();
+    return { refaites: ms, empreinteSeule: vide, objets: { structures: c.structures, roads: c.roads, points: c.points } };
+  }, depart);
+  console.log("  📏 " + nom + ", scène refaite sur données changées (ms) : " + JSON.stringify(r));
+}
+
 async function mesuresGalerie(page, nom, semisDonne) {
   const semis = semisDonne || await page.evaluate(semerGalerie);
   console.log("  ℹ️ réseau " + nom + " synthétique : " + JSON.stringify(semis));
@@ -403,6 +438,319 @@ async function mesuresGalerie(page, nom, semisDonne) {
   console.log("  📏 " + nom + ", rotation continue 3 s : " + Math.round(n / 3) + " images/s");
 }
 
+// ── 26. Données du plan changées pendant la vue : scène refaite sans rouvrir, place gardée (kta:donneesPlanChange) ──
+// Chaque source (setStructures, setZones, setRoads, setEditorPoints, fiche, annulation, calque rapatrié puis
+// restitué, case de calque, légende) : la scène change sans rouvrir, une rafale = une reconstruction, rien pendant
+// un geste (rattrapé à sa fin), aucun coût sans changement, un rendu sans changement relu sans rien refaire.
+async function sectionDonnees(page, MX) {
+  const R = await page.evaluate(async function (a) {
+    const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const carre = function (cx, cz, r) { return [P(cx - r, cz - r), P(cx + r, cz - r), P(cx + r, cz + r), P(cx - r, cz + r)]; };
+    const pilier = function (uid, cx, cz, r) { return { uid: uid, type: "pilier-1", level: 0, points: carre(cx, cz, r || 1) }; };
+    const r = {};
+    if (window.getTrackingActif()) window.stopTracking();
+    window._currentLoadedPlanId = "v3d-checkup-donnees";
+    window.setPlanRenduVue3D(null, "mixte");
+    window.setRoads([{ uid: "rd_dn_p", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] },
+      { uid: "rd_dn_iti", type: "itinerary", level: 0, points: [P(-12, 0), P(30, 0)] }]);
+    window.setStructures([pilier("st_dn_a", 10, 4)]);
+    window.setZones([]);
+    window.setEditorPoints([Object.assign({ id: "POI donnees v3d", uid: "pt_dn_a", level: 0, tags: ["salle"] }, P(-6, 1))]);
+    window.KtaGalerie.invalider();
+    const d = P(-10, 0);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+    await pause(300);
+    // Place et vue réglées à la main : tout doit survivre aux reconstructions.
+    K.tourner(20);
+    K.basculerVue();
+    K.incliner(10);
+    K.zoomer(0.8);
+    K.reglerPortee(42);
+    K.reglerLampe("forte");
+    await pause(200);
+    const place = function () {
+      const e = K.etat();
+      return { x: +e.pos.x.toFixed(3), y: +e.pos.y.toFixed(3), cap: +e.cap.toFixed(3), niveau: e.niveau,
+        niveauLibre: e.niveauLibre, mode: e.mode, vue: e.vue, inclinaison: e.inclinaison, recul: e.portee.recul,
+        distance: e.distance, lampe: e.eclairage.active, rendu: e.rendu, iti: (e.rubans.itinerary || 0) > 0,
+        guidage: e.bandeau.affiche };
+    };
+    const lire = function () {
+      const e = K.etat();
+      return { reindex: e.reindexations, donnees: e.donnees, compte: e.compte, place: place(), fiche: e.fiche,
+        panneaux: e.panneaux.map(function (q) { return q.nom; }) };
+    };
+    // Attente de la relecture (rafale de 120 ms au moins) : jusqu'à `refaites` atteint ou 1,5 s.
+    const apres = async function (n0) {
+      for (let i = 0; i < 30; i++) {
+        await pause(50);
+        const e = K.etat();
+        if (!e.donnees.attente && e.donnees.refaites > n0) break;
+      }
+      await pause(60);
+      return lire();
+    };
+    r.avant = lire();
+    r.place0 = place();
+    // Aucun changement : rien sur 40 images (signal absent), puis un rendu sans changement relu sans rien refaire.
+    const img0 = K.etat().images;
+    K.tourner(0.01);
+    for (let i = 0; i < 40; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    r.repos = { reindex: K.etat().reindexations - r.avant.reindex, verifs: K.etat().donnees.verifs - r.avant.donnees.verifs,
+      images: K.etat().images - img0 };
+    K.tourner(-0.01);
+    window.renderRoads(); window.renderStructures();
+    await pause(400);
+    r.vide = lire();
+    // setStructures : un pilier de plus.
+    let n = r.vide.donnees.refaites;
+    window.setStructures(window.getStructures().concat([pilier("st_dn_b", 14, -4)]));
+    r.structures = await apres(n); n = r.structures.donnees.refaites;
+    window.setZones([{ uid: "zn_dn_e", type: "eau", level: 0, points: carre(20, 0, 1) }]);
+    r.zones = await apres(n); n = r.zones.donnees.refaites;
+    window.setRoads(window.getRoads().concat([{ uid: "rd_dn_s", type: "secondaire", level: 0,
+      points: [P(0, 0), P(0, -20)] }]));
+    r.roads = await apres(n); n = r.roads.donnees.refaites;
+    window.setEditorPoints(window.getEditorPoints().concat([Object.assign({ id: "POI ajout v3d", uid: "pt_dn_b",
+      level: 0, tags: ["salle"] }, P(-4, -1))]));
+    r.points = await apres(n); n = r.points.donnees.refaites;
+    // Sommet du milieu déplacé (la signature de KtaGalerie ne le voit pas) : relu quand même.
+    const sec = window.getRoads().filter(function (q) { return q.uid === "rd_dn_s"; })[0];
+    sec.points.splice(1, 0, P(2, -10));
+    window.renderRoads();
+    r.sommet = await apres(n); n = r.sommet.donnees.refaites;
+    // Rafale : 6 écritures à 30 ms d'écart, puis 5 dans la même tâche → une reconstruction chacune.
+    for (let i = 0; i < 6; i++) {
+      window.setStructures(window.getStructures().concat([pilier("st_dn_r" + i, 24 + i * 3, 6, 0.5)]));
+      await pause(30);
+    }
+    r.rafale = await apres(n); n = r.rafale.donnees.refaites;
+    for (let i = 0; i < 5; i++) window.setStructures(window.getStructures().slice(0, -1));
+    r.rafale2 = await apres(n); n = r.rafale2.donnees.refaites;
+    // Fiche ouverte DEPUIS la 3D : renommé ailleurs → relue ; supprimé (🗑️ de la fiche de la carte) → fermée.
+    K.basculerVue();
+    const cible = window.getEditorPoints().filter(function (q) { return q.uid === "pt_dn_a"; })[0];
+    K.placer(P(-9, 1).x, P(-9, 1).y, 90);
+    await pause(400);
+    const sp = K.etat().panneaux.filter(function (q) { return q.nom === "POI donnees v3d" && q.visible; })[0];
+    r.ficheVisee = !!sp;
+    if (sp) {
+      const cv = document.querySelector("#kta-vue3d canvas");
+      const down = { bubbles: true, pointerId: 41, clientX: sp.ecran.x, clientY: sp.ecran.y };
+      cv.dispatchEvent(new PointerEvent("pointerdown", down));
+      cv.dispatchEvent(new PointerEvent("pointerup", down));
+    }
+    await pause(100);
+    r.ficheOuverte = !!K.etat().fiche;
+    n = K.etat().donnees.refaites;
+    cible.nom = "POI renomme v3d";
+    window.renderEditorPoints();
+    r.renomme = await apres(n); n = r.renomme.donnees.refaites;
+    r.renommeTexte = (document.querySelector("#kta-vue3d .kta-v3d-fiche") || {}).textContent || "";
+    window.supprimerPointEditor(cible.id, cible.x, cible.y);
+    r.supprime = await apres(n); n = r.supprime.donnees.refaites;
+    // Annuler (HistoryManager) : le pilier retiré revient.
+    const H = window.HistoryManager, avantH = H.captureState();
+    window.setStructures(window.getStructures().filter(function (q) { return q.uid !== "st_dn_b"; }));
+    H.record("checkup v3d", avantH);
+    r.retire = await apres(n); n = r.retire.donnees.refaites;
+    H.undo();
+    r.annule = await apres(n); n = r.annule.donnees.refaites;
+    // Obstacle posé sur la place, en libre : la place est dégagée, comme à l'ouverture.
+    const ici = K.etat().pos, sc = a.sc;
+    window.setStructures(window.getStructures().concat([{ uid: "st_dn_sur", type: "pilier-1", level: 0,
+      points: [{ x: ici.x - sc, y: ici.y - sc }, { x: ici.x + sc, y: ici.y - sc }, { x: ici.x + sc, y: ici.y + sc },
+        { x: ici.x - sc, y: ici.y + sc }] }]));
+    r.surPlace = await apres(n); n = r.surPlace.donnees.refaites;
+    r.surPlaceDe = { x: ici.x, y: ici.y };
+    window.setStructures(window.getStructures().filter(function (q) { return q.uid !== "st_dn_sur"; }));
+    r.retireSur = await apres(n); n = r.retireSur.donnees.refaites;
+    // Légende : couleur du pilier changée (session) → scène refaite ; remise.
+    window.LegendCustomization.setColor("structures", "pilier-1", "#c0392b");
+    r.legende = await apres(n); n = r.legende.donnees.refaites;
+    window.LegendCustomization.setColor("structures", "pilier-1", null);
+    r.legendeRemise = await apres(n); n = r.legendeRemise.donnees.refaites;
+    // Greffe factice : prévenue (scene « refaite ») et sa règle du pas voit l'obstacle neuf aussitôt.
+    const appels = [];
+    const q = P(5, 0);
+    let ctxG = null;
+    const degreffer2 = K.greffer({ nom: "v3d-donnees", scene: function (ctx, raison) { ctxG = ctx; appels.push(raison); } });
+    r.greffeLibreAvant = ctxG ? ctxG.libre(q.x, q.y) : null;
+    window.setStructures(window.getStructures().concat([pilier("st_dn_g", 5, 0, 1)]));
+    r.greffe = await apres(n); n = r.greffe.donnees.refaites;
+    r.greffeLibreApres = ctxG ? ctxG.libre(q.x, q.y) : null;
+    r.greffeAppels = appels.slice();
+    if (degreffer2) degreffer2();
+    window.setStructures(window.getStructures().filter(function (s) { return s.uid !== "st_dn_g"; }));
+    r.greffeRetiree = await apres(n); n = r.greffeRetiree.donnees.refaites;
+    // Geste de passage (niveau de la carte changé : fondu) : une écriture pendant le geste attend sa fin.
+    r.multi = window.APP_CONFIG.multiLevel === true && (window.APP_CONFIG.availableLevels || []).indexOf(1) >= 0;
+    if (r.multi) {
+      r.nGeste = n;
+      const anime = K.gesteAnime();
+      K.gesteAnime(true);
+      window.ktaSetActiveLevel(1);
+      await new Promise(function (ok) { requestAnimationFrame(ok); });
+      await new Promise(function (ok) { requestAnimationFrame(ok); });
+      r.gesteEnCours = !!K.etat().geste;
+      window.setStructures(window.getStructures().concat([pilier("st_dn_n1", 12, 0, 1)]));
+      window.getStructures()[window.getStructures().length - 1].level = 1;
+      window.renderStructures();
+      await pause(180);
+      r.pendant = { geste: !!K.etat().geste, refaites: K.etat().donnees.refaites - n, attente: K.etat().donnees.attente };
+      for (let i = 0; i < 40 && K.etat().geste; i++) await pause(50);
+      r.gesteFini = await apres(n); n = r.gesteFini.donnees.refaites;
+      window.ktaSetActiveLevel(0);
+      for (let i = 0; i < 40 && (K.etat().geste || K.etat().niveau !== 0); i++) await pause(50);
+      window.setStructures(window.getStructures().filter(function (s) { return s.uid !== "st_dn_n1"; }));
+      r.retourNiveau = await apres(n); n = r.retourNiveau.donnees.refaites;
+      K.gesteAnime(anime);
+    }
+    // Calque de données (lu comme un calque du plan) : rapatrié (🔄 Modifier), copie de session retouchée, restitué ;
+    // puis case du calque décochée et recochée dans ≡ Filtres. La vue reste ouverte de bout en bout.
+    r.finAvantCalque = lire();
+    await K.fermer();
+    const bouchons = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures };
+    const vrais = window.__v3dEmb;
+    window.getAllEmbeddedRoads = vrais.r; window.getAllEmbeddedZones = vrais.z; window.getAllEmbeddedPoints = vrais.p;
+    window.getAllEmbeddedStructures = vrais.s;
+    const CAL = "v3d_dn_calque";
+    const json = { data: [Object.assign({ id: "POI calque v3d", nom: "POI calque v3d", uid: "pt_dn_cal", tags: ["salle"],
+      level: 0, description: "" }, P(-3, 2))],
+      structures: [pilier("st_dn_cal1", 16, 4, 0.8), pilier("st_dn_cal2", 16, -4, 0.8)] };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(json)], { type: "application/json" }));
+    window.PLAN_CONFIG.dataLayers = (window.PLAN_CONFIG.dataLayers || []).concat([
+      { id: CAL, label: "Calque du checkup v3d", file: url, visible: true }]);
+    const groupe = L.layerGroup().addTo(window.map);
+    window.dataLayerGroups[CAL] = groupe;
+    window.ajouterPointsDepuisJSON(url, groupe);
+    const charge = function () {
+      return window.getAllEmbeddedStructures().some(function (o) { return o && o.uid === "st_dn_cal1"; });
+    };
+    for (let i = 0; i < 60 && !charge(); i++) await pause(50);
+    r.calqueCharge = charge();
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+    await pause(300);
+    r.cal0 = lire(); n = r.cal0.donnees.refaites;
+    r.rapatrie = await window.CalqueSession.rapatrier(CAL);
+    r.cal1 = await apres(n); n = r.cal1.donnees.refaites;
+    r.copieSession = window.getStructures().filter(function (o) { return o && o.uid === "st_dn_cal1"; }).length;
+    window.setStructures(window.getStructures().filter(function (o) { return !o || o.uid !== "st_dn_cal1"; }));
+    r.cal2 = await apres(n); n = r.cal2.donnees.refaites;
+    r.restitue = window.CalqueSession.restituer(CAL, { local: true });
+    r.cal3 = await apres(n); n = r.cal3.donnees.refaites;
+    // Case du calque (≡ Filtres) : son propre signal (FilterPanel.onChange), une reconstruction ; le rendu de la
+    // carte qui suit (150 ms plus tard) est relu sans rien refaire.
+    window.FilterPanel.ouvrir();
+    await pause(150);
+    const caseCal = function () { return document.querySelector('#kta-fp-modal [data-data-layer="' + CAL + '"]'); };
+    r.caseTrouvee = !!caseCal();
+    const ri = K.etat().reindexations;
+    if (caseCal()) caseCal().click();
+    await pause(700);
+    r.decoche = Object.assign(lire(), { reindexDelta: K.etat().reindexations - ri });
+    const ri2 = K.etat().reindexations;
+    if (caseCal()) caseCal().click();
+    await pause(700);
+    r.recoche = Object.assign(lire(), { reindexDelta: K.etat().reindexations - ri2 });
+    window.FilterPanel.fermer();
+    await pause(100);
+    await K.fermer();
+    window.map.removeLayer(groupe);
+    delete window.dataLayerGroups[CAL];
+    window.PLAN_CONFIG.dataLayers = window.PLAN_CONFIG.dataLayers.filter(function (l) { return l.id !== CAL; });
+    window.getAllEmbeddedRoads = bouchons.r; window.getAllEmbeddedZones = bouchons.z;
+    window.getAllEmbeddedPoints = bouchons.p; window.getAllEmbeddedStructures = bouchons.s;
+    URL.revokeObjectURL(url);
+    r.fin = r.finAvantCalque;
+    window.setRoads([]); window.setZones([]); window.setStructures([]); window.setEditorPoints([]);
+    window.KtaGalerie.invalider();
+    return r;
+  }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+
+  const eq = function (p, q) { return JSON.stringify(p) === JSON.stringify(q); };
+  const A = R.avant, P0 = R.place0;
+  verifier(R.repos.reindex === 0 && R.repos.verifs === 0 && A.donnees.signaux === 0,
+    "sans changement : aucune relecture ni reconstruction sur 40 images", { repos: R.repos, signaux: A.donnees.signaux });
+  verifier(R.vide.donnees.verifs > A.donnees.verifs && R.vide.donnees.refaites === 0 && R.vide.reindex === A.reindex,
+    "rendu de la carte sans changement (renderRoads, renderStructures) : empreinte relue, rien refait",
+    { verifs: R.vide.donnees.verifs, refaites: R.vide.donnees.refaites, reindex: [A.reindex, R.vide.reindex],
+      msEmpreinte: R.vide.donnees.msEmpreinte });
+  const cas = [
+    ["setStructures", R.structures, R.vide, function (x, y) { return x.compte.structures === y.compte.structures + 1; }],
+    ["setZones", R.zones, R.structures, function (x, y) { return x.compte.zones === y.compte.zones + 1; }],
+    ["setRoads", R.roads, R.zones, function (x, y) { return x.compte.roads === y.compte.roads + 1; }],
+    ["setEditorPoints", R.points, R.roads, function (x, y) { return x.compte.points === y.compte.points + 1; }],
+    ["sommet du milieu déplacé", R.sommet, R.points, function (x, y) { return x.compte.roads === y.compte.roads; }],
+    ["annuler (HistoryManager)", R.annule, R.retire, function (x, y) { return x.compte.structures === y.compte.structures + 1; }],
+    ["légende (couleur du pilier)", R.legende, R.retireSur, function (x, y) { return x.compte.structures === y.compte.structures; }]
+  ];
+  cas.forEach(function (c) {
+    const x = c[1], y = c[2];
+    verifier(x.donnees.refaites === y.donnees.refaites + 1 && x.reindex === y.reindex + 1 && c[3](x, y) &&
+      eq(x.place, y.place), c[0] + " pendant la vue : une reconstruction, scène changée, place, cap, niveau, mode, " +
+      "vue, réglages, itinéraire gardés", { refaites: [y.donnees.refaites, x.donnees.refaites], reindex: [y.reindex, x.reindex],
+      compte: [y.compte, x.compte], place: [y.place, x.place] });
+  });
+  verifier(eq(R.structures.place, P0) && P0.vue === "plongee" && P0.distance === 42 && P0.lampe === "forte" && P0.iti &&
+    P0.rendu === "mixte", "place de départ réglée (plongée, inclinaison, zoom, portée 42 m, lampe Forte, itinéraire)", P0);
+  verifier(R.rafale.donnees.refaites === R.sommet.donnees.refaites + 1 &&
+    R.rafale.compte.structures === R.sommet.compte.structures + 6 &&
+    R.rafale2.donnees.refaites === R.rafale.donnees.refaites + 1 &&
+    R.rafale2.compte.structures === R.rafale.compte.structures - 5,
+    "rafale (6 écritures à 30 ms, puis 5 d'un coup) : une reconstruction chacune",
+    { refaites: [R.sommet.donnees.refaites, R.rafale.donnees.refaites, R.rafale2.donnees.refaites],
+      structures: [R.sommet.compte.structures, R.rafale.compte.structures, R.rafale2.compte.structures] });
+  verifier(R.ficheVisee && R.ficheOuverte && R.renomme.fiche && R.renomme.fiche.nom === "POI renomme v3d" &&
+    /POI renomme v3d/.test(R.renommeTexte) && R.renomme.panneaux.indexOf("POI renomme v3d") >= 0,
+    "fiche ouverte depuis la 3D : POI renommé ailleurs → fiche et panneau relus",
+    { visee: R.ficheVisee, ouverte: R.ficheOuverte, fiche: R.renomme.fiche, panneaux: R.renomme.panneaux });
+  verifier(!R.supprime.fiche && R.supprime.compte.points === R.renomme.compte.points - 1 &&
+    R.supprime.panneaux.indexOf("POI renomme v3d") < 0 && R.supprime.donnees.refaites === R.renomme.donnees.refaites + 1,
+    "POI supprimé (🗑️ de la fiche de la carte) : panneau retiré, fiche de la 3D fermée",
+    { fiche: R.supprime.fiche, points: [R.renomme.compte.points, R.supprime.compte.points] });
+  const dS = Math.hypot(R.surPlace.place.x - R.surPlaceDe.x, R.surPlace.place.y - R.surPlaceDe.y) / MX.sc;
+  verifier(R.surPlace.donnees.degagees === R.annule.donnees.degagees + 1 && dS > 0.9 && dS < 4 &&
+    R.surPlace.place.cap === R.annule.place.cap && R.surPlace.place.mode === "libre",
+    "pilier posé sur la place (libre) : place dégagée au point libre le plus proche, cap gardé", { dS: dS });
+  verifier(R.greffeLibreAvant === true && R.greffeLibreApres === false &&
+    R.greffeAppels.filter(function (x) { return x === "refaite"; }).length === 1,
+    "greffe : prévenue une fois (scene « refaite »), ctx.libre voit l'obstacle neuf aussitôt",
+    { avant: R.greffeLibreAvant, apres: R.greffeLibreApres, appels: R.greffeAppels });
+  if (R.multi) {
+    verifier(R.gesteEnCours && R.pendant.geste && R.pendant.refaites === 0 && R.pendant.attente &&
+      R.gesteFini.donnees.refaites === R.nGeste + 1 && R.gesteFini.place.niveau === 1,
+      "écriture pendant un geste de passage : rien pendant, relue à sa fin", { pendant: R.pendant,
+        fini: R.gesteFini.donnees });
+  } else {
+    console.log("  ℹ️ plan à un niveau : écriture pendant un geste non jouée");
+  }
+  verifier(R.calqueCharge && R.rapatrie && R.rapatrie.ok && R.copieSession === 1 &&
+    R.cal1.donnees.refaites === R.cal0.donnees.refaites + 1 && R.cal1.compte.structures === R.cal0.compte.structures &&
+    R.cal1.compte.points === R.cal0.compte.points && eq(R.cal1.place, R.cal0.place),
+    "calque rapatrié (🔄 Modifier) vue ouverte : scène refaite sur les copies de session (ni double, ni trou), place gardée",
+    { charge: R.calqueCharge, rap: R.rapatrie, copie: R.copieSession, compte: [R.cal0.compte, R.cal1.compte] });
+  verifier(R.cal2.compte.structures === R.cal1.compte.structures - 1 && R.restitue && R.restitue.ok &&
+    R.cal3.compte.structures === R.cal0.compte.structures && R.cal3.donnees.refaites === R.cal2.donnees.refaites + 1 &&
+    eq(R.cal3.place, R.cal0.place),
+    "copie retouchée (pilier retiré) puis calque restitué : scène suivie à chaque fois, place gardée",
+    { structures: [R.cal0.compte.structures, R.cal1.compte.structures, R.cal2.compte.structures,
+      R.cal3.compte.structures], restitue: R.restitue });
+  verifier(R.caseTrouvee && R.decoche.compte.structures === R.cal3.compte.structures - 2 &&
+    R.decoche.compte.points === R.cal3.compte.points - 1 && R.decoche.reindexDelta === 1 &&
+    R.recoche.compte.structures === R.cal3.compte.structures && R.recoche.reindexDelta === 1 &&
+    R.decoche.donnees.refaites === R.cal3.donnees.refaites && eq(R.recoche.place, R.cal0.place),
+    "case du calque dans ≡ : une reconstruction par clic (le rendu de la carte qui suit ne refait rien), place gardée",
+    { trouvee: R.caseTrouvee, structures: [R.cal3.compte.structures, R.decoche.compte.structures,
+      R.recoche.compte.structures], delta: [R.decoche.reindexDelta, R.recoche.reindexDelta] });
+  verifier(R.fin.donnees.signaux > 0 && R.fin.donnees.refaites > 10,
+    "bilan : " + R.fin.donnees.signaux + " signaux, " + R.fin.donnees.verifs + " relectures, " +
+    R.fin.donnees.refaites + " reconstructions (dernière " + R.fin.donnees.ms + " ms, empreinte " +
+    R.fin.donnees.msEmpreinte + " ms)", R.fin.donnees);
+}
+
 (async function main() {
   const lancement = { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] };
   const nav = await lancerNavigateur(chromium, lancement);
@@ -477,6 +825,7 @@ async function mesuresGalerie(page, nom, semisDonne) {
       const semis = await page.evaluate(semerPlanDense);
       console.log("  ℹ️ plan dense synthétique : " + JSON.stringify(semis));
       await mesures(page, semis.depart);
+      await mesuresDonnees(page, semis.depart, "structures");
       // Marche de 120 m en ligne droite (0,2 m par image) : durée de chaque image, constructions de tuiles comprises,
       // à la portée par défaut et à la borne haute du réglage.
       for (const portee of [30, 100]) {
@@ -574,7 +923,9 @@ async function mesuresGalerie(page, nom, semisDonne) {
       if (PERF_MIXTE) {
         await page.evaluate(semerGalerie);
         await page.evaluate(semerPlanDense);
-        await mesuresGalerie(page, "mixte", await page.evaluate(semerMixte));
+        const semisM = await page.evaluate(semerMixte);
+        await mesuresGalerie(page, "mixte", semisM);
+        await mesuresDonnees(page, semisM.depart, "mixte");
       }
     } else {
       // ── 1. Bouton cube grisé sans échelle : rien n'est chargé, le toucher explique ; plus de tuile au Tracker ──
@@ -5952,6 +6303,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         });
         await page.setViewportSize(vp);
       }
+
+      await sectionDonnees(page, MX);
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;
