@@ -21,7 +21,9 @@
 // Aucune paroi de tube dans un passage (§ 14 bis) : bouche ou tranchée coupée par un tracé, cul-de-sac, 3 rendus.
 // Accès de surface sans passage (§ 14 quater : esf, pef, pb, pc, psf, ps, pe, cao, caf) : forme, place, ni 🪜 ni
 // cadre, blocage (cône, cavage fermé ; bassin contre la paroi, qu'on longe), itinéraire sur le cône, arrivée devant
-// un cavage fermé, 🧱, 2D intacte. Escaliers (§ 14 quinquies : esf, eso, jes) en niche latérale, pied contre la paroi.
+// un cavage fermé, 🧱, 2D intacte ; cavage comblé (§ 14 sexies : galerie de 4 m entre deux murs, comblement jusqu'aux
+// murs, côtés inégaux, porte ouverte ou fermée, rendu galerie inchangé). Escaliers (§ 14 quinquies : esf, eso, jes)
+// en niche latérale, pied contre la paroi.
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
@@ -4129,6 +4131,166 @@ async function sectionDonnees(page, MX) {
         AC.perfAvec.max + " ms ; ouverture par rendu (mixte, galerie, structures) " +
         [AC.mixte.ms, AC.galerie.ms, AC.structures.ms].join(" / ") + " ms");
 
+      // ── 14 sexies. Cavage comblé : galerie de 4 m entre deux murs, porte de la largeur du tracé (fictifs) ─────────
+      // Principal (porte de 2,5 m) entre deux murs dont la face est à ±2 m de l'axe : de chaque côté, 0,75 m de pierre
+      // de taille du cadre au mur, jusqu'au plafond ; tracé décalé de 0,5 m : côtés inégaux (1,25 / 0,25 m). Porte
+      // fermée (caf) : on ne passe nulle part ; ouverte (cao) : par l'ouverture seulement. Rendu galerie : la porte
+      // touche les parois du tube, rien ne change (aucun comblement, volume identique sans et avec les murs).
+      const CB = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, G = window.KtaGalerie, sc = a.sc;
+        const P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const acc = window.ktaEstAccessible;
+        window.ktaEstAccessible = function () { return true; };
+        window.ktaSetActiveLevel(0);
+        window.setVue3DTextures(true);
+        window.setZones([]);
+        const murs = [
+          { uid: "st_cb_n", type: "mur", level: 0, points: [P(-20, 2), P(20, 2), P(20, 2.6), P(-20, 2.6)] },
+          { uid: "st_cb_s", type: "mur", level: 0, points: [P(-20, -2.6), P(20, -2.6), P(20, -2), P(-20, -2)] }];
+        const route = function (z) {
+          window.setRoads([{ uid: "rd_cb", type: "principal", level: 0, points: [P(-40, z), P(40, z)] }]);
+        };
+        const poser = function (tag, z) {
+          window.setEditorPoints([Object.assign({ id: "cb " + tag, nom: "cb " + tag, uid: "pt_cb_" + tag, level: 0,
+            tags: [tag] }, P(0, z))]);
+        };
+        const relx = function () { return +(K.etat().pos.x / sc - a.ox).toFixed(2); };
+        const marcher = function (x0, z, n) {
+          const d = P(x0, z);
+          K.placer(d.x, d.y, 90);
+          for (let i = 0; i < n; i++) K.avancer(0.1);
+          return relx();
+        };
+        const vol = function () {
+          return K.etat().volumes.filter(function (v) { return v.acces && v.porte; })[0] || null;
+        };
+        const ouvrir = async function () {
+          G.invalider();
+          const d = P(-6, 0);
+          await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 60, tuiles: false });
+          await pause(50);
+        };
+        const r = {};
+        // Témoin : murs seuls, sans porte, on longe le mur (centre à 1,5 m de l'axe) d'un bout à l'autre.
+        window.setStructures(murs); route(0); window.setEditorPoints([]);
+        window.setPlanRenduVue3D(null, "mixte");
+        await ouvrir();
+        r.temoin = { axe: marcher(-4, 0, 80), bordN: marcher(-4, 1.5, 80), bordS: marcher(-4, -1.5, 80) };
+        await K.fermer();
+        for (const rendu of ["mixte", "structures", "galerie"]) {
+          window.setPlanRenduVue3D(null, rendu);
+          const o = r[rendu] = {};
+          for (const tag of ["caf", "cao"]) {
+            route(0); poser(tag, 0);
+            await ouvrir();
+            const v = vol();
+            o[tag] = { comble: v && v.comble, combleUni: v && v.combleUni, largeur: v && v.largeur,
+              triangles: v && v.triangles, battants: v && v.battants,
+              api: G.comblementPorte(P(0, 0).x, P(0, 0).y, 0, 1.25 * sc, 0, rendu),
+              axe: marcher(-4, 0, 80), n1: marcher(-4, 1.0, 80), s1: marcher(-4, -1.0, 80),
+              n16: marcher(-4, 1.5, 80), s16: marcher(-4, -1.5, 80) };
+            // Retour par l'ouverture (cao) : depuis l'est, vers l'ouest.
+            const d = P(4, 0);
+            K.placer(d.x, d.y, 270);
+            for (let i = 0; i < 80; i++) K.avancer(0.1);
+            o[tag].retour = relx();
+            await K.fermer();
+            // Côtés inégaux : tracé à z = 0,5, porte sur l'axe.
+            route(0.5); poser(tag, 0.5);
+            await ouvrir();
+            const w = vol();
+            o[tag].inegal = { comble: w && w.comble, s16: marcher(-4, -1.5, 80), axe: marcher(-4, 0.5, 80) };
+            await K.fermer();
+            // Rendu galerie : le même volume sans les murs (comparaison).
+            if (rendu === "galerie") {
+              window.setStructures([]); route(0); poser(tag, 0);
+              await ouvrir();
+              const s = vol();
+              o[tag].sansMurs = { comble: s && s.comble, largeur: s && s.largeur, triangles: s && s.triangles,
+                battants: s && s.battants };
+              await K.fermer();
+              window.setStructures(murs);
+            }
+          }
+        }
+        // 🧱 coupé : comblement uni, toujours bloquant.
+        window.setPlanRenduVue3D(null, "mixte");
+        window.setVue3DTextures(false);
+        route(0); poser("caf", 0);
+        await ouvrir();
+        const u = vol();
+        r.uni = { comble: u && u.comble, combleUni: u && u.combleUni, s16: marcher(-4, -1.5, 80) };
+        await K.fermer();
+        window.setVue3DTextures(true);
+        window.ktaEstAccessible = acc;
+        return r;
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+      if (CAPTURES) {
+        for (const tag of ["caf", "cao"]) {
+          await page.evaluate(async function (q) {
+            const P = function (x, z) { return { x: (q.ox + x) * q.sc, y: (q.oz + z) * q.sc }; };
+            window.ktaSetActiveLevel(0);
+            window.setPlanRenduVue3D(null, "mixte");
+            window.setStructures([
+              { uid: "st_cb_n", type: "mur", level: 0, points: [P(-20, 2), P(20, 2), P(20, 2.6), P(-20, 2.6)] },
+              { uid: "st_cb_s", type: "mur", level: 0, points: [P(-20, -2.6), P(20, -2.6), P(20, -2), P(-20, -2)] }]);
+            window.setRoads([{ uid: "rd_cb", type: "principal", level: 0, points: [P(-40, 0.5), P(40, 0.5)] }]);
+            window.setEditorPoints([Object.assign({ id: "cb", nom: "cb", uid: "pt_cb", level: 0, tags: [q.tag] },
+              P(0, 0.5))]);
+            window.KtaGalerie.invalider();
+            const d = P(-3.5, 0);
+            await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
+          }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, tag: tag });
+          await page.waitForTimeout(800);
+          await capture(page, "cavage-comble-" + tag);
+          await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+        }
+      }
+      await page.evaluate(function () {
+        window.setEditorPoints([]); window.setRoads([]); window.setStructures([]); window.KtaGalerie.invalider();
+        window.setPlanRenduVue3D(null, "mixte");
+      });
+      const bloque = function (x) { return typeof x === "number" && x < -0.3; };   // arrêté avant le plan de la porte
+      const passe = function (x) { return typeof x === "number" && x > 3.5; };
+      verifier(passe(CB.temoin.axe) && passe(CB.temoin.bordN) && passe(CB.temoin.bordS),
+        "cavage comblé (témoin) : sans porte, on longe les deux murs d'une galerie de 4 m", CB.temoin);
+      ["mixte", "structures"].forEach(function (k) {
+        const o = CB[k], F = o.caf, O = o.cao;
+        const egal = function (c, x, y) {
+          return Array.isArray(c) && Math.abs(c[0] - x) < 0.02 && Math.abs(c[1] - y) < 0.02;
+        };
+        verifier(egal(F.comble, 0.75, 0.75) && egal(O.comble, 0.75, 0.75) && egal(F.api, 0.75, 0.75) &&
+          F.largeur === 2.5 && O.largeur === 2.5 && F.combleUni === false,
+          k + " : la porte garde 2,5 m (tracé principal), pierre de taille de 0,75 m de chaque côté jusqu'aux murs",
+          { caf: F, cao: O });
+        const ci = F.inegal.comble, oi = O.inegal.comble;
+        const inegal = function (c) {
+          return Array.isArray(c) && Math.abs(Math.min(c[0], c[1]) - 0.25) < 0.02 &&
+            Math.abs(Math.max(c[0], c[1]) - 1.25) < 0.02;
+        };
+        verifier(inegal(ci) && inegal(oi) && bloque(F.inegal.s16) && bloque(O.inegal.s16) && bloque(F.inegal.axe) &&
+          passe(O.inegal.axe),
+          k + " : tracé décalé de 0,5 m, côtés inégaux (0,25 / 1,25 m), le grand côté bloque, l'ouverture passe",
+          { caf: F.inegal, cao: O.inegal });
+        verifier(bloque(F.axe) && bloque(F.n1) && bloque(F.s1) && bloque(F.n16) && bloque(F.s16),
+          k + " : porte fermée, on ne passe ni par elle ni à côté (comblement des deux côtés)", F);
+        verifier(passe(O.axe) && O.retour < -3.5 && bloque(O.n16) && bloque(O.s16),
+          k + " : porte ouverte, on passe par son ouverture (aller et retour), jamais à côté", O);
+      });
+      const GF = CB.galerie.caf, GO = CB.galerie.cao;
+      verifier(GF.comble[0] === 0 && GF.comble[1] === 0 && GO.comble[0] === 0 && GO.comble[1] === 0 &&
+        GF.api[0] === 0 && GF.api[1] === 0 &&
+        JSON.stringify([GF.largeur, GF.triangles, GF.battants]) ===
+        JSON.stringify([GF.sansMurs.largeur, GF.sansMurs.triangles, GF.sansMurs.battants]) &&
+        JSON.stringify([GO.largeur, GO.triangles, GO.battants]) ===
+        JSON.stringify([GO.sansMurs.largeur, GO.sansMurs.triangles, GO.sansMurs.battants]) &&
+        bloque(GF.axe) && bloque(GF.n1) && bloque(GF.s1) && passe(GO.axe),
+        "rendu galerie : la porte touche les parois du tube, aucun comblement, volume identique sans et avec les murs",
+        { caf: GF, cao: GO });
+      verifier(CB.uni.combleUni === true && CB.uni.comble[0] > 0.7 && bloque(CB.uni.s16),
+        "🧱 coupé : comblement en couleur unie, toujours bloquant", CB.uni);
+
       // ── 14 quinquies. Escaliers en niche latérale (esf, eso, jes), fictifs ────────────────────────────────────────
       // Une galerie principale par cas (paroi à 1,25 m), à 15 m d'écart, dessinée dans les deux sens. Attendu
       // (KtaGalerie.placePassage > niche, décision produit : jamais en plein milieu de la galerie) : volée
@@ -6098,6 +6260,9 @@ async function sectionDonnees(page, MX) {
         r.jourCoupe = lire();
         // Ancien réglage retenu (Normale / Forte / Plein jour) : relu tant que les nouvelles clés manquent.
         await K.fermer();
+        const neuves = ["myktamap_v3d_lampe_intensite_v1", "myktamap_v3d_faisceau_v1", "myktamap_v3d_jour_v1"];
+        neuves.forEach(function (k) { localStorage.removeItem(k); });
+        localStorage.setItem("myktamap_v3d_lampe_v1", "forte");
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
         r.migreForte = lire();
         await K.fermer();
@@ -6319,9 +6484,6 @@ async function sectionDonnees(page, MX) {
           for (let i = 0; i < 120 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
             await pause(50);
           }
-        const neuves = ["myktamap_v3d_lampe_intensite_v1", "myktamap_v3d_faisceau_v1", "myktamap_v3d_jour_v1"];
-        neuves.forEach(function (k) { localStorage.removeItem(k); });
-        localStorage.setItem("myktamap_v3d_lampe_v1", "forte");
         };
         const r = {}, appui = function (k) {
           q('[data-v3d="' + k + '"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 6 }));

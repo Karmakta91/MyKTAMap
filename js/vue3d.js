@@ -186,6 +186,7 @@
   // `haut` bornée par celle du plan ; au-dessus du linteau, la paroi jusqu'au plafond. Ouvert (cao) : battants
   // rabattus à 90° contre les parois. Bois dessiné (_bois) avec 🧱, couleur unie COULEUR_BOIS sinon.
   const PORTE = { haut: 2.1, cadre: 0.12, ep: 0.08, jeu: 0.02 };
+  const COMBLE_ENFONCE = 0.05;      // m : comblement d'un cavage enfoncé dans la structure qu'il rejoint (_porte)
   const COULEUR_BOIS = "#4b3626";
   // Bois des battants (🧱) : un battant par motif (u en travers, v vers le haut), `planches` planches verticales,
   // `pentures` bandes de fer horizontales (centres en part de la hauteur) cloutées tous les `clou` px.
@@ -2757,9 +2758,10 @@
   //   pe : bassin creusé dans le sol contre la paroi du côté du POI, margelle basse, eau à −DIM_ACCES.eau (couleur de
   //   la zone eau) ; il n'arrête pas le pas : on passe à côté ;
   //   cao / caf : porte à deux battants en travers de la galerie (sa largeur à cet endroit), ouverte (battants
-  //   rabattus contre les parois) ou fermée.
-  // Cône et porte fermée arrêtent le pas en 3D seulement (KtaGalerie.zonesBloquent : contour de
-  // galerieEmprise.js > _obstacleAcces, même cercle de COTES_CERCLE côtés que _cercle) ; l'itinéraire passe
+  //   rabattus contre les parois) ou fermée ; en mixte et structures, pierre de taille du cadre jusqu'à la structure
+  //   la plus proche de chaque côté (KtaGalerie.comblementPorte), qui ferme le passage autour de la porte.
+  // Cône, porte fermée et comblement arrêtent le pas en 3D seulement (KtaGalerie.zonesBloquent : contours de
+  // galerieEmprise.js > _obstaclesAcces, même cercle de COTES_CERCLE côtés que _cercle) ; l'itinéraire passe
   // par-dessus le cône et la margelle (_volumesItiAcces). Remblais et bois texturés avec 🧱, couleurs unies sinon :
   // la bascule refait les volumes (_refaireTuiles).
 
@@ -2773,13 +2775,20 @@
   }
 
   // Dimensions d'un accès placé (v.cx, v.cz, v.dir) : rond et bassin d'après DIM_ACCES ; porte de la largeur de la
-  // galerie à sa place ; portée (v.r) qui couvre le cône.
+  // galerie à sa place, comblée jusqu'aux structures (v.comblement = [côté −t, côté +t] m,
+  // KtaGalerie.comblementPorte : la règle de l'obstacle) ; portée (v.r) qui couvre le cône et le comblement.
   function _dimAcces(v) {
     const D = DIM_ACCES;
     if (v.forme === "rond") v.a = v.b = D.rond / 2;
     else if (v.bassin) v.a = v.b = D.bassin / 2 + D.margelle;
-    else if (v.porte) { v.b = _demiLargeurGalerie(v.cx, v.cz); v.a = v.ouvert ? v.b : PORTE.cadre; }
-    v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
+    else if (v.porte) {
+      v.b = _demiLargeurGalerie(v.cx, v.cz);
+      v.a = v.ouvert ? v.b : PORTE.cadre;
+      const sc = _e.sc, niv = _e.niveau === null ? undefined : _e.niveau;
+      v.comblement = window.KtaGalerie.comblementPorte(v.cx * sc, v.cz * sc, v.dir || 0, v.b * sc, niv, _e.rendu);
+    }
+    const cb = v.comblement ? Math.max(v.comblement[0], v.comblement[1]) : 0;
+    v.r = Math.hypot(v.a, v.b + cb) + VOLUME.marge + VOLUME.cadre;
     if (v.comble) v.r = Math.max(v.r, D.cone);
   }
 
@@ -2922,7 +2931,9 @@
   }
 
   // cao / caf : cadre de fer (deux montants, linteau) en travers de la galerie, paroi au-dessus jusqu'au plafond,
-  // deux battants de bois : fermés dans le plan du cadre, ou ouverts à 90°, rabattus contre les parois.
+  // deux battants de bois : fermés dans le plan du cadre, ou ouverts à 90°, rabattus contre les parois. De chaque
+  // côté du cadre, le comblement (v.comblement) : pierre de taille des parois avec 🧱, unie (PIERRE.couleur)
+  // sinon, dans le plan du cadre, du sol au plafond, enfoncé de COMBLE_ENFONCE dans la structure (aucun jour au bord).
   function _porte(v, lots) {
     const e = _e, h = e.hauteur, Q = _repere(v), w = v.b, c = PORTE.cadre, H = Math.min(PORTE.haut, h - c);
     const fer = _couleurFixe(COULEUR_FER);
@@ -2933,13 +2944,22 @@
       _paroiY(lots.parois, Q(-c / 2, -w), Q(-c / 2, w), H + c, h);
       _paroiY(lots.parois, Q(c / 2, w), Q(c / 2, -w), H + c, h);
     }
+    const cb = v.comblement || [0, 0], uni = e.textures !== true ? _couleurFixe(PIERRE.couleur) : null;
+    [[-1, cb[0]], [1, cb[1]]].forEach(function (q) {
+      if (!(q[1] > 0)) return;
+      const t0 = q[0] * w, t1 = q[0] * (w + q[1] + COMBLE_ENFONCE), a = Math.min(t0, t1), b = Math.max(t0, t1);
+      if (uni) { _pave(lots.opaque, Q, -c / 2, c / 2, a, b, 0, h, uni); return; }
+      _paroiY(lots.parois, Q(-c / 2, a), Q(-c / 2, b), 0, h);
+      _paroiY(lots.parois, Q(c / 2, b), Q(c / 2, a), 0, h);
+    });
     const tx = e.textures === true, lot = tx ? _lot(lots, "bois") : lots.opaque;
     const col = tx ? BLANC : _couleurFixe(COULEUR_BOIS), lw = w - c, ep = PORTE.ep, j = PORTE.jeu;
     const battants = v.ouvert ? [[c / 2, c / 2 + lw, -lw, -lw + ep], [c / 2, c / 2 + lw, lw - ep, lw]]
       : [[-ep / 2, ep / 2, -lw, -j / 2], [-ep / 2, ep / 2, j / 2, lw]];
     battants.forEach(function (b) { _battant(lot, Q, b, j, H - j, col, tx); });
     v.trace = { largeur: +(2 * w).toFixed(3), haut: +H.toFixed(3), ouvert: !!v.ouvert,
-      battants: battants.map(function (b) { return b.map(function (x) { return +x.toFixed(3); }); }) };
+      battants: battants.map(function (b) { return b.map(function (x) { return +x.toFixed(3); }); }),
+      comble: cb.slice(), combleUni: !!uni };
   }
 
   // Battant : pavé b = [s0, s1, t0, t1] (repère du volume) de y0 à y1 ; ses deux grandes faces portent le motif
@@ -4833,6 +4853,7 @@
   function _majRepere() {
     const e = _e;
     if (!e || !e.boutonReglages) return;
+    const lv = e.lampeVoulue, L = REGLAGE_LAMPE;
     const modifie = e.mode === "libre" || e.vue === "plongee" || e.rendu !== "mixte" ||
       (!!e.boussole && e.boussole.hidden) || !_guidageMontre() || !_texturesActives() ||
       e.porteeVoulue !== PORTEE.defaut || lv.intensite !== L.intensite.defaut || lv.faisceau !== L.faisceau.defaut ||
@@ -4854,7 +4875,6 @@
   // pile des toasts de l'app pendant la vue. Refait au redimensionnement et à chaque ouverture / fermeture d'un
   // réglage ou du bandeau.
   function _majSousHaut() {
-    const lv = e.lampeVoulue, L = REGLAGE_LAMPE;
     const e = _e;
     if (!e || !e.haut) return;
     let bas = e.haut.getBoundingClientRect().bottom;
@@ -5033,6 +5053,8 @@
     if (e.stickZone) _brancherStick(on);
     on(e.ov, "pointerout", function (ev) { if (ev.target.dataset && ev.target.dataset.v3d) relacher(); });
     on(e.curseurPortee, "input", function () { reglerPortee(e.curseurPortee.value); });
+    on(e.curseurLampe, "input", function () { reglerLampe(e.curseurLampe.value); });
+    on(e.curseurFaisceau, "input", function () { reglerFaisceau(e.curseurFaisceau.value); });
     // Glisser sur la scène : un doigt tourne (horizontal) et lève / baisse les yeux (vertical). Deux doigts, en vue
     // plongeante, comme une carte : pincer = zoom (écarter = plus près), glisser ensemble à la verticale = inclinaison
     // (vers le haut = plus rasante). Le geste est tranché une fois (deux.mode) dès que l'écart ou le milieu a bougé de
@@ -5053,8 +5075,6 @@
       if (doigts.size >= 2 && doigts.has(ev.pointerId)) {
         const it = doigts.values(), a0 = it.next().value, b0 = it.next().value;
         const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y), y0 = (a0.y + b0.y) / 2;
-    on(e.curseurLampe, "input", function () { reglerLampe(e.curseurLampe.value); });
-    on(e.curseurFaisceau, "input", function () { reglerFaisceau(e.curseurFaisceau.value); });
         doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
         const it1 = doigts.values(), a1 = it1.next().value, b1 = it1.next().value;
         const d1 = Math.hypot(a1.x - b1.x, a1.y - b1.y), dy = (a1.y + b1.y) / 2 - y0;
@@ -5450,6 +5470,8 @@
     e.lampe.intensity = LAMPE.force * m.force * k;
     e.lampe.decay = m.decay;
     e.lampe.distance = e.distance * m.coupure * Math.max(LAMPE.porteeMin, k);
+    e.lampe.angle = l.cone.angle;
+    e.lampe.penumbra = l.cone.penombre;
     if (e.halo) e.halo.intensity = LAMPE.halo * m.halo * Math.max(0.35, k);
   }
 
@@ -5470,8 +5492,6 @@
       _degreffer("erreur");
     }
   }
-    e.lampe.angle = l.cone.angle;
-    e.lampe.penumbra = l.cone.penombre;
 
   function _degreffer(raison) {
     const e = _e, gr = e && e.greffe;

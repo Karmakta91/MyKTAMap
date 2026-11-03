@@ -92,7 +92,7 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `sale()` | demander une image |
 | `bloque(x0, y0, x1, y1)` | règle du pas **de la vue** (jamais une copie) : un corps de 0,8 m ne passe pas (px plan) |
 | `ligneBloquee(x0, y0, x1, y1)` | une ligne de vue est coupée (pilier, mur, paroi) |
-| `libre(x, y)` | un corps tient là : ni coincé, ni dans une structure **dessinée**, corps dégagé (un calque masqué n'y compte pas), ni dans ou contre un remblais, un effondrement ou une zone inaccessible du niveau (`galerieEmprise.js > ZONES_BOUCHENT`), ni dans ou contre l'obstacle d'un accès de surface : cône d'un puits comblé, cavage fermé (`KtaGalerie.BLOQUE`, posé par `placePassage`) |
+| `libre(x, y)` | un corps tient là : ni coincé, ni dans une structure **dessinée**, corps dégagé (un calque masqué n'y compte pas), ni dans ou contre un remblais, un effondrement ou une zone inaccessible du niveau (`galerieEmprise.js > ZONES_BOUCHENT`), ni dans ou contre l'obstacle d'un accès de surface : cône d'un puits comblé, cavage fermé, pierre de taille qui comble un cavage (ouvert ou fermé) jusqu'aux structures (`KtaGalerie.BLOQUE`, posé par `placePassage`, `comblementPorte`) |
 | `regler(r)` | réglages de la vue **pour la greffe seulement**, levés au retrait (table ci-dessous) |
 
 `regler({ … })` — `false` masque ou interdit, `true` rend ; les filtres de la carte n'en savent rien :

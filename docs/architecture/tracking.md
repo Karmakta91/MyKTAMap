@@ -1343,7 +1343,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_indexZones`, indépendant du modèle des galeries : le rendu structures n'en construit pas). ⚠️ contrat : la 3D
   seulement ; `ktaSegmentsBloquesParStructure` (pas du tracker), `versGalerie` (recalage), l'itinéraire, le guidage
   et la carte ne lisent aucune de ces zones (l'itinéraire 2D garde sa règle : seul l'inaccessible le coupe).
-  Les **obstacles des accès** (cône d'un puits comblé `pc` / `psf`, cavage fermé `caf`, ci-dessous) suivent
+  Les **obstacles des accès** (cône d'un puits comblé `pc` / `psf`, cavage fermé `caf`, comblement d'un cavage,
+  ci-dessous) suivent
   la même règle et le même contrat (`KtaGalerie.BLOQUE`, `_indexObstacles` : contour posé par `placePassage` dans le
   rendu affiché, que `zonesBloquent` / `dansZone` reçoivent de `_juger` et `_coince`).
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
@@ -1566,12 +1567,23 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   galerie, posée sur l'axe (demi-emprise infinie : elle barre toute la largeur), largeur = celle de la galerie à cet
   endroit (demi-largeur de l'axe le plus proche, 2 m sans galerie), cadre de fer, paroi au-dessus du linteau (2,1 m,
   borné par la hauteur) jusqu'au plafond ; `caf` fermé arrête le pas sur toute la largeur (obstacle de 0,2 m qui
-  déborde de 0,4 m dans la paroi), `cao` a ses battants rabattus à 90° contre les parois. Un itinéraire 2D finit au
+  déborde de 0,4 m dans la paroi), `cao` a ses battants rabattus à 90° contre les parois. **Comblement** (décision
+  produit : une porte de la largeur du tracé dans une galerie plus large se contournait) : en mixte et structures, de
+  chaque côté, pierre de taille du cadre jusqu'à la structure la plus proche (mur, pilier, front), cherchée dans le
+  plan de la porte depuis l'axe (`KtaGalerie.comblementPorte`, rayon sur les bords des structures du niveau), au plus
+  `COMBLE_MAX_M` = 3 m au-delà du cadre (plus loin : une chambre, rien), du sol au plafond, enfoncée de 5 cm dans la
+  structure ; deux côtés indépendants (inégaux si le tracé est décalé) ; la porte garde sa taille. Il arrête le pas
+  comme la porte fermée, `cao` compris (`_obstaclesAcces` : `caf` d'un bout de comblement à l'autre, `cao` chaque
+  comblement seul, l'ouverture du cadre reste libre) ; `ctx.libre`, `_coince` et `_degager` le lisent par
+  `dansZone` / `zonesBloquent`. Pierre de taille des parois avec 🧱, unie (`PIERRE.couleur`) sinon. Rendu galerie :
+  aucun comblement (les parois du tube, de la largeur de la porte, la bordent déjà). Itinéraire 2D inchangé. Un
+  itinéraire 2D finit au
   cavage (bout du chemin sur l'axe) : l'arrivée est atteinte devant la porte, à un corps d'elle. Bois des battants
   (planches, pentures cloutées, `_bois`) et remblais texturés avec 🧱, couleurs unies sinon (bascule = volumes
   refaits). 🩸 Un puits rond dans un tube plus étroit que lui reste sur l'axe et dépasse dans la paroi (pas de
   niche, voulu). Garde-fou : `checkup-vue-3d.js` § 14 quater (3 rendus, blocage, bassin contre la paroi qu'on longe,
-  arrivée devant un cavage fermé, 🧱 coupé, 2D intacte) ; escaliers en niche : § 14 quinquies (POI d'un côté, de
+  arrivée devant un cavage fermé, 🧱 coupé, 2D intacte), comblement : § 14 sexies (galerie de 4 m entre deux murs,
+  côtés égaux et inégaux, porte fermée et ouverte, rendu galerie identique sans et avec les murs) ; escaliers en niche : § 14 quinquies (POI d'un côté, de
   l'autre, dans le tube, sur l'axe, boucle, bout de cul-de-sac, tracé dans les deux sens, `esf` / `eso` / `jes` vers
   le haut, le bas et entre trois niveaux ; niche marchable, paroi ouverte, fond muré, 2D intacte).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
