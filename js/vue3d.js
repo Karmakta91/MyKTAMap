@@ -56,6 +56,8 @@
   const RAYONS = 12;                // rayons de RAYON_CORPS autour du point d'arrivée (un tous les 30°)
   const VITESSE = 2.8;              // m/s au pavé et au clavier (explorer, pas marcher : le tracker n'en dépend pas)
   const FACTEUR_RAPIDE = 2.5;       // pas rapide : Maj maintenue, ou ▲ maintenu plus de APPUI_LONG
+  // Lampe frontale : force, halo autour de soi, portée minimale (part de la distance de vue) d'une lampe baissée.
+  const LAMPE = { force: 24, halo: 1.6, porteeMin: 0.06 };
   const APPUI_LONG = 600;           // ms
   const INCLINAISON = { defaut: 60, min: 15, max: 85, pas: 5 };   // ° de la vue plongeante (90 = verticale)
   const RECUL_PLONGEE = 18.4;       // m entre la caméra plongeante et le point visé, 2 m devant soi
@@ -2108,12 +2110,13 @@
     e.tete.rotation.order = "YXZ";
     e.scene.add(e.tete);
     // Lampe frontale : portée = distance de vue (au-delà, le brouillard est noir de toute façon), décroissance douce.
-    e.lampe = new THREE.SpotLight(0xfff1d6, 24, e.distance, 0.62, 0.55, 1.2);
+    e.lampe = new THREE.SpotLight(0xfff1d6, LAMPE.force, e.distance, 0.62, 0.55, 1.2);
     e.lampe.position.set(0, 0.05, 0);
     e.lampe.target.position.set(0, -0.3, -1);
     e.tete.add(e.lampe, e.lampe.target);
-    e.halo = new THREE.PointLight(0xfff1d6, 1.6, 4.5, 2);
+    e.halo = new THREE.PointLight(0xfff1d6, LAMPE.halo, 4.5, 2);
     e.tete.add(e.halo);
+    _lampeGreffe();
     e.ambiance = new THREE.AmbientLight(0xffffff, 0.04);
     e.scene.add(e.ambiance);
     // Membres, repères et itinéraires d'une extension (_majEquipe) ; géométries partagées refaites avec la scène.
@@ -4046,7 +4049,7 @@
     e.tsPrec = ts;
     const k = e.touches;
     const rapide = _permisGreffe("course") && (k.Shift || (k.av && e.avDepuis > 0 && ts - e.avDepuis > APPUI_LONG));
-    const vit = VITESSE * (rapide ? FACTEUR_RAPIDE : 1);
+    const vit = VITESSE * _facteurGreffe("vitesse") * (rapide ? FACTEUR_RAPIDE : 1);
     const av = (k.av ? 1 : 0) - (k.ar ? 1 : 0), lat = (k.dr ? 1 : 0) - (k.ga ? 1 : 0);
     const rot = (k.td ? 1 : 0) - (k.tg ? 1 : 0);
     e.rapide = !!rapide && !!(av || lat);
@@ -4059,7 +4062,7 @@
     if (st && st.m > 0) {
       const course = _permisGreffe("course") && st.fortDepuis > 0 && ts - st.fortDepuis > APPUI_LONG;
       _passerEnLibre();
-      _pas(VITESSE * (course ? FACTEUR_RAPIDE : st.m) * dt, e.cap + st.ang);
+      _pas(VITESSE * _facteurGreffe("vitesse") * (course ? FACTEUR_RAPIDE : st.m) * dt, e.cap + st.ang);
       e.rapide = e.rapide || course;
     }
     if (_trackerActif() !== e.suiviDispo) {
@@ -4861,7 +4864,9 @@
   // court = pas rapide en cours. regler({ traces, itineraire, guidage, course, avatar, commandes }) : false masque,
   // pour la greffe seulement, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app (ruban,
   // étapes, 🏁), son guidage (bandeau, chevrons), la silhouette dorée de la vue plongeante, le joystick et le pavé,
-  // ou interdit le pas rapide ; levé au retrait. Les filtres de la carte n'en savent rien.
+  // ou interdit le pas rapide ; levé au retrait. Les filtres de la carte n'en savent rien. Deux facteurs (nombre de 0
+  // à 1, 1 = normal) : lampe = force et portée de la lampe frontale (vue à hauteur d'yeux), vitesse = pas au pavé, au
+  // clavier et au joystick.
   // 🔒 Une exception dans un appel retire la greffe (la vue continue). La greffe ne touche ni tracker, ni session, ni
   // filtres : elle n'a que ce ctx.
   function greffer(g) {
@@ -4903,6 +4908,10 @@
         ["traces", "itineraire", "guidage", "course", "avatar", "commandes"].forEach(function (k) {
           if ((r[k] === true || r[k] === false) && _permisGreffe(k) !== r[k]) { gr.reglage[k] = r[k]; change[k] = true; }
         });
+        ["lampe", "vitesse"].forEach(function (k) {
+          if (typeof r[k] === "number" && Number.isFinite(r[k])) gr.reglage[k] = Math.max(0, Math.min(1, r[k]));
+        });
+        if (typeof r.lampe === "number") _lampeGreffe();
         // Scène refaite seulement si ce qu'elle dessine change (la course ne coûte rien).
         if (change.traces || change.itineraire) _e.filtresChanges = true;
         if (change.guidage || change.itineraire) { _e.guidageForce = true; _e.apS = undefined; }
@@ -4940,6 +4949,23 @@
     return !gr || gr.reglage[k] !== false;
   }
 
+  // Facteur de la greffe (ctx.regler : lampe, vitesse) ; 1 sans greffe ou sans réglage.
+  function _facteurGreffe(k) {
+    const gr = _e && _e.greffe, v = gr && gr.reglage[k];
+    return typeof v === "number" ? v : 1;
+  }
+
+  // Lampe frontale selon le facteur : force et portée baissent ensemble (au-delà, noir : l'ambiance est à 0,04).
+  // 🩸 Refaite avec la scène (reprise du contexte) : réappliquée par _monterScene.
+  function _lampeGreffe() {
+    const e = _e;
+    if (!e || !e.lampe) return;
+    const k = _facteurGreffe("lampe");
+    e.lampe.intensity = LAMPE.force * k;
+    e.lampe.distance = e.distance * Math.max(LAMPE.porteeMin, k);
+    if (e.halo) e.halo.intensity = LAMPE.halo * Math.max(0.35, k);
+  }
+
   function _sceneGreffe() {
     const gr = _e && _e.greffe;
     if (!gr) return;
@@ -4972,6 +4998,7 @@
     if (Object.keys(gr.reglage).length) { e.filtresChanges = true; e.guidageForce = true; e.apS = undefined; }
     if (gr.reglage.avatar === false && e.avatar) e.avatar.visible = e.vue === "plongee";
     if (gr.reglage.commandes === false) _montrerCommandes(true);
+    _lampeGreffe();
     e.sale = true;
     console.log("[Vue3D] greffe « " + gr.nom + " » retirée (" + raison + ")");
   }
@@ -5235,6 +5262,7 @@
     });
     return {
       ouvert: true, contexteVivant: !e.renderer.getContext().isContextLost(), perdu: e.perdu, reprises: e.reprises,
+      lampe: e.lampe ? +(e.lampe.intensity / LAMPE.force).toFixed(2) : null,
       aBouge: e.aBouge, rapide: !!e.rapide, suiviDispo: !!e.suiviDispo, vue: e.vue, mode: e.mode,
       inclinaison: e.inclinaison,
       boussole: { angle: e.roseAngle, nord: e.nord, calibre: e.nordCalibre,
