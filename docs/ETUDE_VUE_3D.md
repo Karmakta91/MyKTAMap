@@ -516,8 +516,8 @@ redessins dus au déplacement de la carte (moveend / zoomend sous la décimation
 
 ### Ce qu'il faut couper (conclusion)
 
-1. **Distance de vue : 30 m** suffit et coûte peu ; 50 m reste confortable. Au-delà, la lampe Normale ne montre
-   presque rien (la lampe Forte et Plein jour, si : QCM du 03/11/2026, portée réglable jusqu'à 100 m).
+1. **Distance de vue : 30 m** suffit et coûte peu ; 50 m reste confortable. Au-delà, la lampe à 100 % ne montre
+   presque rien (plus forte, dès 200 %, et Plein jour, si : QCM du 03/11/2026, portée réglable jusqu'à 100 m).
 2. **Tuiles : indispensables**, pour l'ouverture (×15 plus rapide) et surtout le tas JS (×4 de moins). Pas pour
    le GPU : même tout le plan (390 000 triangles) passe en 2 à 7 ms ici.
 3. **Fusion** : faite par tuile (un appel par matériau et par tuile, 12 à 26 appels en tout). Rien à gagner de
@@ -576,7 +576,8 @@ redessins dus au déplacement de la carte (moveend / zoomend sous la décimation
 | 6 | Calques masqués | Comme sur la carte (QCM du 02/11/2026, à la place de « montrés en 3D ») : un calque masqué ne se dessine pas, ses objets bloquent toujours |
 | 7 | Contexte WebGL | **c** : libéré à chaque fermeture + reprise automatique après une perte, fermeture avec message si elle échoue |
 | 8 | Distance de vue | **a** : 30 m fixes ; remplacé (QCM du 03/11/2026) par le réglage ⚙️ **Portée**, curseur de 15 à 100 m, 30 m par défaut, retenu sur l'appareil |
-| 8 bis | Lampe (QCM du 03/11/2026) | Réglage ⚙️ **Lampe** Normale / Forte / Plein jour, retenu sur l'appareil ; Forte = plus fort et plus loin ; Plein jour = ambiance de la vue plongeante, brouillard gardé à la portée ; multiplié au facteur lampe d'une greffe ; une greffe qui le demande (`reglagesFiges`, le jeu) fige portée à 30 m et lampe Normale, réglages rendus au retrait |
+| 8 bis | Lampe (QCM du 03/11/2026, revu le même jour) | Réglages ⚙️ retenus sur l'appareil : **intensité** en curseur de 25 à 300 % (100 % = la lampe d'origine ; plus haut, plus loin : force, décroissance, coupure, halo et brouillard suivent ; l'ancienne Forte = 200 %), **faisceau** en curseur de 40 à 160° de cône (71° par défaut ; la pénombre grandit avec la largeur, un faisceau large se fond dans le noir), **☀️ Plein jour** en interrupteur (ambiance de la vue plongeante, brouillard gardé à la portée) ; multiplié au facteur lampe d'une greffe ; une greffe qui le demande (`reglagesFiges`, le jeu) fige portée à 30 m, 100 %, 71° et Plein jour coupé, réglages rendus au retrait |
+| 8 quater | Cavage dans une galerie plus large que son tracé (retour terrain du 03/11/2026) | La porte garde la largeur du tracé ; de la pierre de taille comble, côté par côté, l'espace du cadre à la structure la plus proche (au plus 3 m), du sol au plafond, et bloque le pas comme la porte fermée, porte ouverte comprise (seule son ouverture laisse passer) ; rien en rendu galerie ; itinéraire 2D inchangé |
 | 8 ter | Zoom de la vue plongeante (QCM du 03/11/2026) | Comme une carte : pincer, molette et + / − = zoom (recul de 6 à 60 m, 18,4 m par défaut) ; deux doigts glissés ensemble, Maj + molette et ▲ ▼ = inclinaison ; tuiles qui suivent le recul ; retenu tant que la vue est ouverte |
 | — | Murs et piliers | Règle ajoutée : un mur est toujours sous un pilier ou un front de son niveau (modèle de scène) |
 | A bis | Mode mixte (QCM du 02/11/2026) | L'interrupteur exclusif devient **trois états Mixte / Structures / Galerie**, mixte par défaut, retenu par plan ; en mixte, structures partout, tubes seulement à plus de 3 m d'une structure, bouts ouverts dans les chambres, collisions des deux règles, zones et POI selon le lieu (tube ou chambre) |

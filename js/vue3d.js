@@ -9,7 +9,7 @@
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(o), parois(),
 //   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
-//   zoomer(facteur), reglerPortee(m), reglerLampe(mode),
+//   zoomer(facteur), reglerPortee(m), reglerLampe(%), reglerFaisceau(°), reglerPleinJour(bool),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
 //   _ctxGreffe) } ; code « six vers le bas » : kta:vue3dCode ;
@@ -63,18 +63,17 @@
   const FACTEUR_RAPIDE = 2.5;       // pas rapide : Maj maintenue, ou ▲ maintenu plus de APPUI_LONG
   // Lampe frontale : force, halo autour de soi, portée minimale (part de la distance de vue) d'une lampe baissée.
   const LAMPE = { force: 24, halo: 1.6, porteeMin: 0.06 };
-  // Réglage ⚙️ Lampe (config.js > getVue3DLampe), par mode : facteurs de force, de coupure (part de la portée) et de
-  // halo, décroissance, début du brouillard (part de la portée) et éclairage d'ambiance à hauteur d'yeux. Forte :
-  // décroissance plus lente (à 20 m, ~10 fois l'éclairement de Normale ; 2 fois à 2 m : rien ne brûle de près),
-  // brouillard à 80 % de la portée au lieu de 45 % : c'est lui qui bornait la lecture au loin, lisible jusqu'à 100 m.
-  // Plein jour : l'ambiance de la vue plongeante, lampe normale ; le brouillard reste à la portée (décision : même
-  // coût, et la portée reste le seul réglage de « jusqu'où l'on voit »), commencé à 65 % (plus loin, le fond noir
-  // tranche en bande à l'horizon).
-  const LAMPES = {
-    normale: { force: 1, coupure: 1, halo: 1, decay: 1.2, brume: 0.45, ambiance: 0.04 },
-    forte: { force: 1.25, coupure: 1.3, halo: 1.5, decay: 0.5, brume: 0.8, ambiance: 0.04 },
-    jour: { force: 1, coupure: 1, halo: 1, decay: 1.2, brume: 0.65, ambiance: 0.9 }
-  };
+  // Réglages ⚙️ de la lampe (config.js > V3D_LAMPE ; ces bornes ne servent que sans config.js) : intensité en % (100 =
+  // la lampe d'origine), faisceau en ° de cône total (71° ≈ demi-angle de 0,62 rad), Plein jour à part.
+  const REGLAGE_LAMPE = window.V3D_LAMPE ||
+    { intensite: { min: 25, max: 300, defaut: 100 }, faisceau: { min: 40, max: 160, defaut: 71 } };
+  // Éclairage d'ambiance à hauteur d'yeux : nuit (la lampe seule), Plein jour (celui de la vue plongeante) ; Plein
+  // jour commence le brouillard à 65 % de la portée au moins (plus loin, le fond noir tranche en bande à l'horizon),
+  // la portée restant le seul réglage de « jusqu'où l'on voit » (décision : même coût).
+  const AMBIANCE = { nuit: 0.04, jour: 0.9, brumeJour: 0.65 };
+  // Pénombre du faisceau (part du cône fondue) aux bornes et au défaut : un faisceau large se fond dans le noir au
+  // lieu de dessiner un rond net sur les parois ; 0,55 au défaut (la lampe d'origine).
+  const PENOMBRE = { min: 0.4, defaut: 0.55, max: 1 };
   const AMBIANCE_PLONGEE = 0.9;
   const APPUI_LONG = 600;           // ms
   const INCLINAISON = { defaut: 60, min: 15, max: 85, pas: 5 };   // ° de la vue plongeante (90 = verticale)
@@ -2186,15 +2185,15 @@
     e.tete.rotation.order = "YXZ";
     e.scene.add(e.tete);
     // Lampe frontale : portée = distance de vue (au-delà, le brouillard est noir de toute façon), décroissance douce ;
-    // force, portée et décroissance selon le réglage ⚙️ Lampe et le facteur d'une greffe (_lampeGreffe).
-    e.lampe = new THREE.SpotLight(0xfff1d6, LAMPE.force, e.distance, 0.62, 0.55, 1.2);
+    // force, portée, décroissance et cône selon les réglages ⚙️ de la lampe et le facteur d'une greffe (_lampeGreffe).
+    e.lampe = new THREE.SpotLight(0xfff1d6, LAMPE.force, e.distance, 0.62, PENOMBRE.defaut, 1.2);
     e.lampe.position.set(0, 0.05, 0);
     e.lampe.target.position.set(0, -0.3, -1);
     e.tete.add(e.lampe, e.lampe.target);
     e.halo = new THREE.PointLight(0xfff1d6, LAMPE.halo, 4.5, 2);
     e.tete.add(e.halo);
     _lampeGreffe();
-    e.ambiance = new THREE.AmbientLight(0xffffff, LAMPES.normale.ambiance);
+    e.ambiance = new THREE.AmbientLight(0xffffff, AMBIANCE.nuit);
     e.scene.add(e.ambiance);
     // Membres, repères et itinéraires d'une extension (_majEquipe) ; géométries partagées refaites avec la scène.
     e.equipe = new THREE.Group();
@@ -3304,9 +3303,10 @@
   // Brouillard, profondeur de la caméra, carré de sol, ambiance et lampe selon la vue, la portée, le recul et le
   // réglage de la lampe. En plongée, le brouillard se compte depuis la caméra : il part du recul.
   function _appliquerPortee() {
-    const e = _e, haut = e.vue === "plongee", m = LAMPES[_lampeActive()], r = _rayonScene();
-    e.ambiance.intensity = haut ? AMBIANCE_PLONGEE : m.ambiance;
-    e.scene.fog.near = haut ? e.recul + r * 0.3 : e.distance * m.brume;
+    const e = _e, haut = e.vue === "plongee", l = _lampeEnVigueur(), r = _rayonScene();
+    const brume = l.jour ? Math.max(AMBIANCE.brumeJour, l.courbe.brume) : l.courbe.brume;
+    e.ambiance.intensity = haut ? AMBIANCE_PLONGEE : l.jour ? AMBIANCE.jour : AMBIANCE.nuit;
+    e.scene.fog.near = haut ? e.recul + r * 0.3 : e.distance * brume;
     e.scene.fog.far = haut ? e.recul + r + 2 : e.distance;
     e.camera.far = e.scene.fog.far + (haut ? 10 : 5);
     e.camera.updateProjectionMatrix();
@@ -3335,10 +3335,11 @@
 
   // ── Portée et lampe (tuile ⚙️, réglages de cet appareil) ─────────────────────────────────────────────────
   // ⚠️ contrat (décision produit) : une greffe qui fige les réglages (ctx.regler({ reglagesFiges: true }), _fige)
-  // impose portée par défaut (PORTEE.defaut) et lampe Normale, curseur et boutons grisés ; les réglages retenus
-  // (e.porteeVoulue, e.lampeVoulue, et ceux de l'appareil) ne sont jamais réécrits et reviennent tels quels au retrait
-  // ou avec la clé à false (_appliquerGreffeReglages). Sans la clé, la greffe garde portée et lampe de l'utilisateur
-  // (Plein jour compris), son facteur lampe s'y multiplie. e.distance = la portée en vigueur.
+  // impose portée par défaut (PORTEE.defaut), lampe à 100 %, faisceau par défaut et Plein jour coupé, curseurs et
+  // bouton grisés ; les réglages retenus (e.porteeVoulue, e.lampeVoulue, et ceux de l'appareil) ne sont jamais
+  // réécrits et reviennent tels quels au retrait ou avec la clé à false (_appliquerGreffeReglages). Sans la clé, la
+  // greffe garde portée et lampe de l'utilisateur (Plein jour compris), son facteur lampe s'y multiplie toujours.
+  // e.distance = la portée en vigueur.
   function _fige() {
     const gr = _e && _e.greffe;
     return !!gr && gr.reglage.reglagesFiges === true;
@@ -3379,53 +3380,134 @@
   function _majPortee() {
     const e = _e;
     if (!e || !e.curseurPortee) return;
-    if (Number(e.curseurPortee.value) !== e.distance) e.curseurPortee.value = String(e.distance);
-    e.curseurPortee.disabled = _fige();
-    e.curseurPortee.title = _t("vue3d.porteeAide") + (_fige() ? " · " + _t("vue3d.reglageGreffe") : "");
     const txt = typeof window.formatDistance === "function" ? window.formatDistance(e.distance, 0)
       : e.distance + " m";
-    e.porteeValeur.textContent = txt;
-    e.curseurPortee.setAttribute("aria-valuetext", txt);
+    _majCurseur(e.curseurPortee, e.porteeValeur, e.distance, "vue3d.porteeAide", txt);
   }
 
-  // Mode de lampe en vigueur : la préférence, sauf réglages figés par une greffe (Normale ; la préférence revient au
-  // retrait ou avec la clé à false, jamais réécrite).
-  function _lampeActive() {
-    const e = _e, v = e && e.lampeVoulue;
-    if (!LAMPES[v] || _fige()) return "normale";
-    return v;
+  // Lampe selon l'intensité k (part de 1 : 0,25 à 3) → facteurs de force, de coupure (part de la portée) et de halo,
+  // décroissance, début du brouillard (part de la portée). ⚠️ contrat (décision produit) : plus on monte, plus la
+  // lumière porte loin — c'est la décroissance qui porte (1,2 · k^−1,263 au-dessus de 100 %), la force ne monte que
+  // de 25 % par 100 % (de près, rien ne brûle) ; coupure, halo et brouillard repoussés avec elle. k = 2 donne
+  // exactement l'ancienne lampe « Forte » (config.js > V3D_LAMPE_FORTE : 1,25 · 1,3 · 1,5 · 0,5 · 0,8). Sous 100 % :
+  // force et halo ∝ k, coupure √k, décroissance plus rapide, brouillard plus tôt.
+  function _courbeLampe(k) {
+    if (k >= 1) {
+      return { force: 1 + 0.25 * (k - 1), coupure: 1 + 0.3 * (k - 1), halo: 1 + 0.5 * (k - 1),
+        decay: +(1.2 * Math.pow(k, -Math.log2(2.4))).toFixed(3), brume: Math.min(0.85, 0.45 + 0.35 * (k - 1)) };
+    }
+    const b = (1 - k) / 0.75;   // 0 à 100 %, 1 à 25 %
+    return { force: k, coupure: Math.sqrt(k), halo: k, decay: +(1.2 + 0.4 * b).toFixed(3), brume: 0.45 - 0.2 * b };
   }
 
-  // Lampe choisie ("normale" | "forte" | "jour"), retenue sur l'appareil. Rend le mode en vigueur, false si une greffe
-  // fige les réglages (refusé, rien d'écrit), null si la vue est fermée.
-  function reglerLampe(mode) {
-    const e = _e;
-    if (!e) return null;
-    if (_fige()) return false;
-    if (!LAMPES[mode]) return _lampeActive();
-    e.lampeVoulue = typeof window.setVue3DLampe === "function" ? window.setVue3DLampe(mode) : mode;
+  // Faisceau (° de cône total) → demi-angle (rad) et pénombre du SpotLight. 🩸 three.js borne le demi-angle à π/2 :
+  // 160° = 80°, sous la borne. Pénombre linéaire de PENOMBRE.min (40°) à PENOMBRE.defaut (71°), puis jusqu'à
+  // PENOMBRE.max (160° : le bord se fond dans le noir).
+  function _coneLampe(deg) {
+    const F = REGLAGE_LAMPE.faisceau, d = Math.max(F.min, Math.min(F.max, deg));
+    const p = d <= F.defaut ? PENOMBRE.defaut - (PENOMBRE.defaut - PENOMBRE.min) * (F.defaut - d) / (F.defaut - F.min)
+      : PENOMBRE.defaut + (PENOMBRE.max - PENOMBRE.defaut) * (d - F.defaut) / (F.max - F.defaut);
+    return { angle: Math.min(Math.PI / 2, d * Math.PI / 360), penombre: +Math.max(0, Math.min(1, p)).toFixed(3) };
+  }
+
+  // Lampe en vigueur : la préférence, sauf réglages figés par une greffe (100 %, faisceau par défaut, Plein jour
+  // coupé ; la préférence revient au retrait ou avec la clé à false, jamais réécrite).
+  function _lampeEnVigueur() {
+    const e = _e, v = e && e.lampeVoulue, L = REGLAGE_LAMPE;
+    const r = !v || _fige() ? { intensite: L.intensite.defaut, faisceau: L.faisceau.defaut, jour: false }
+      : { intensite: v.intensite, faisceau: v.faisceau, jour: v.jour };
+    r.courbe = _courbeLampe(r.intensite / 100);
+    r.cone = _coneLampe(r.faisceau);
+    return r;
+  }
+
+  function _borner(v, b) {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.max(b.min, Math.min(b.max, n)) : null;
+  }
+
+  function _apresReglageLampe() {
     _appliquerPortee();
     _majLampe();
     _majRepere();
-    return _lampeActive();
+  }
+
+  // Intensité de la lampe (%, bornée à REGLAGE_LAMPE.intensite), retenue sur l'appareil. Rend l'intensité en vigueur,
+  // false si une greffe fige les réglages (refusée, rien d'écrit), null vue fermée.
+  function reglerLampe(pourcent) {
+    const e = _e;
+    if (!e) return null;
+    if (_fige()) return false;
+    const v = _borner(pourcent, REGLAGE_LAMPE.intensite);
+    if (v === null) return e.lampeVoulue.intensite;
+    e.lampeVoulue.intensite = typeof window.setVue3DLampeIntensite === "function"
+      ? window.setVue3DLampeIntensite(v) : v;
+    _apresReglageLampe();
+    return e.lampeVoulue.intensite;
+  }
+
+  // Largeur du faisceau (° de cône total, bornée à REGLAGE_LAMPE.faisceau), retenue sur l'appareil ; mêmes retours.
+  function reglerFaisceau(deg) {
+    const e = _e;
+    if (!e) return null;
+    if (_fige()) return false;
+    const v = _borner(deg, REGLAGE_LAMPE.faisceau);
+    if (v === null) return e.lampeVoulue.faisceau;
+    e.lampeVoulue.faisceau = typeof window.setVue3DFaisceau === "function" ? window.setVue3DFaisceau(v) : v;
+    _apresReglageLampe();
+    return e.lampeVoulue.faisceau;
+  }
+
+  // ☀️ Plein jour (éclairage d'ambiance de la vue plongeante), retenu sur l'appareil. Rend l'état en vigueur ; une
+  // greffe qui fige les réglages le refuse (false, rien d'écrit) ; null vue fermée.
+  function reglerPleinJour(oui) {
+    const e = _e;
+    if (!e) return null;
+    if (_fige()) return false;
+    const v = !!oui;
+    e.lampeVoulue.jour = typeof window.setVue3DPleinJour === "function" ? window.setVue3DPleinJour(v) : v;
+    _apresReglageLampe();
+    return _lampeEnVigueur().jour;
   }
 
   function _lampeVoulue() {
-    const v = typeof window.getVue3DLampe === "function" ? window.getVue3DLampe() : "normale";
-    return LAMPES[v] ? v : "normale";
+    const L = REGLAGE_LAMPE, w = window;
+    return {
+      intensite: _borner(typeof w.getVue3DLampeIntensite === "function" ? w.getVue3DLampeIntensite() : NaN,
+        L.intensite) || L.intensite.defaut,
+      faisceau: _borner(typeof w.getVue3DFaisceau === "function" ? w.getVue3DFaisceau() : NaN, L.faisceau) ||
+        L.faisceau.defaut,
+      jour: typeof w.getVue3DPleinJour === "function" ? w.getVue3DPleinJour() === true : false
+    };
+  }
+
+  function _fmtPourcent(p) {
+    try {
+      const loc = typeof window.ktaLocale === "function" ? window.ktaLocale() : "fr-FR";
+      return new Intl.NumberFormat(loc, { style: "percent", maximumFractionDigits: 0 }).format(p / 100);
+    } catch (err) { return p + " %"; }
+  }
+
+  // Curseur de la tuile (valeur, grisé, titre, valeur dite) ; `txt` = la valeur écrite à côté.
+  function _majCurseur(c, val, v, aide, txt) {
+    if (Number(c.value) !== v) c.value = String(v);
+    c.disabled = _fige();
+    c.title = _t(aide) + (_fige() ? " · " + _t("vue3d.reglageGreffe") : "");
+    val.textContent = txt;
+    c.setAttribute("aria-valuetext", txt);
   }
 
   function _majLampe() {
     const e = _e;
-    if (!e || !e.boutonsLampe) return;
-    const actif = _lampeActive(), suffixe = _fige() ? " · " + _t("vue3d.reglageGreffe") : "";
-    e.boutonsLampe.forEach(function (b) {
-      const cle = { normale: "vue3d.lampeNormale", forte: "vue3d.lampeForte", jour: "vue3d.lampeJour" }[b.dataset.lampe];
-      b.setAttribute("aria-pressed", b.dataset.lampe === actif ? "true" : "false");
-      b.disabled = _fige();
-      b.title = _t(cle) + suffixe;
-      b.setAttribute("aria-label", _t("vue3d.lampe") + " : " + _t(cle) + suffixe);
-    });
+    if (!e || !e.curseurLampe) return;
+    const l = _lampeEnVigueur(), suffixe = _fige() ? " · " + _t("vue3d.reglageGreffe") : "";
+    _majCurseur(e.curseurLampe, e.lampeValeur, l.intensite, "vue3d.lampeAide", _fmtPourcent(l.intensite));
+    _majCurseur(e.curseurFaisceau, e.faisceauValeur, l.faisceau, "vue3d.faisceauAide", l.faisceau + "°");
+    const b = e.boutonJour;
+    b.setAttribute("aria-pressed", l.jour ? "true" : "false");
+    b.disabled = _fige();
+    b.title = _t("vue3d.lampeJourAide") + suffixe;
+    b.setAttribute("aria-label", _t("vue3d.lampeJour") + suffixe);
   }
 
   // ── Déplacement ────────────────────────────────────────────────────────────────────────────────────
@@ -4543,47 +4625,47 @@
     icG.textContent = "🪧";
     e.boutonGuidage.appendChild(icG);
     e.boutonGuidage.appendChild(document.createTextNode(_t("vue3d.guidageNom")));
-    // Portée : curseur libre (réglage de cet appareil, reglerPortee), valeur écrite à côté ; flèches, Origine et Fin
-    // au clavier (le clavier de la vue lui laisse ses touches, _brancher).
-    const portee = document.createElement("div");
-    portee.className = "kta-v3d-portee";
-    const lab = document.createElement("label");
-    lab.className = "kta-v3d-portee-nom";
-    lab.htmlFor = "kta-v3d-portee";
-    lab.textContent = "🔭 " + _t("vue3d.portee");
-    const curseur = document.createElement("input");
-    curseur.type = "range";
-    curseur.id = "kta-v3d-portee";
-    curseur.className = "kta-v3d-portee-curseur";
-    curseur.min = String(PORTEE.min); curseur.max = String(PORTEE.max); curseur.step = "1";
-    curseur.value = String(e.distance);
-    curseur.title = _t("vue3d.porteeAide");
-    const val = document.createElement("span");
-    val.className = "kta-v3d-portee-valeur";
-    val.setAttribute("aria-hidden", "true");   // dite par aria-valuetext du curseur
-    portee.appendChild(lab); portee.appendChild(curseur); portee.appendChild(val);
-    tuile.appendChild(portee);
-    e.curseurPortee = curseur; e.porteeValeur = val;
+    // Portée, intensité et faisceau de la lampe : curseurs libres (réglages de cet appareil : reglerPortee,
+    // reglerLampe, reglerFaisceau), valeur écrite à côté ; flèches, Origine et Fin au clavier (le clavier de la vue
+    // leur laisse leurs touches, _brancher). Grisés pendant une greffe qui fige les réglages (_majCurseur).
+    const curseur = function (id, icone, nom, aide, b, pas, valeur) {
+      const ligne = document.createElement("div");
+      ligne.className = "kta-v3d-curseur";
+      const lab = document.createElement("label");
+      lab.className = "kta-v3d-curseur-nom";
+      lab.htmlFor = id;
+      lab.textContent = icone + " " + _t(nom);
+      const c = document.createElement("input");
+      c.type = "range";
+      c.id = id;
+      c.className = "kta-v3d-curseur-champ";
+      c.min = String(b.min); c.max = String(b.max); c.step = String(pas);
+      c.value = String(valeur);
+      c.title = _t(aide);
+      const val = document.createElement("span");
+      val.className = "kta-v3d-curseur-valeur";
+      val.setAttribute("aria-hidden", "true");   // dite par aria-valuetext du curseur
+      ligne.appendChild(lab); ligne.appendChild(c); ligne.appendChild(val);
+      tuile.appendChild(ligne);
+      return [c, val];
+    };
+    const lv = _lampeEnVigueur();
+    let cc = curseur("kta-v3d-portee", "🔭", "vue3d.portee", "vue3d.porteeAide", PORTEE, 1, e.distance);
+    e.curseurPortee = cc[0]; e.porteeValeur = cc[1];
+    cc = curseur("kta-v3d-lampe", "💡", "vue3d.lampe", "vue3d.lampeAide", REGLAGE_LAMPE.intensite, 5, lv.intensite);
+    e.curseurLampe = cc[0]; e.lampeValeur = cc[1];
+    cc = curseur("kta-v3d-faisceau", "🔦", "vue3d.faisceau", "vue3d.faisceauAide", REGLAGE_LAMPE.faisceau, 1,
+      lv.faisceau);
+    e.curseurFaisceau = cc[0]; e.faisceauValeur = cc[1];
     _majPortee();
-    // Lampe : trois boutons (réglage de cet appareil, reglerLampe) ; Plein jour grisé pendant une greffe (_majLampe).
-    const lampe = document.createElement("div");
-    lampe.className = "kta-v3d-reglages-ligne kta-v3d-lampe";
-    lampe.setAttribute("role", "group");
-    lampe.setAttribute("aria-label", _t("vue3d.lampe"));
-    const icL = document.createElement("span");
-    icL.className = "kta-v3d-btn-icone kta-v3d-btn-emoji kta-v3d-lampe-icone";
-    icL.title = _t("vue3d.lampe");
-    icL.textContent = "💡";
-    icL.setAttribute("aria-hidden", "true");
-    lampe.appendChild(icL);
-    e.boutonsLampe = [["normale", "vue3d.lampeNormale"], ["forte", "vue3d.lampeForte"], ["jour", "vue3d.lampeJour"]]
-      .map(function (m) {
-        const b = _bouton(lampe, "kta-v3d-btn-mode", _t(m[1]), _t(m[1]), "lampe");
-        b.setAttribute("aria-label", _t("vue3d.lampe") + " : " + _t(m[1]));
-        b.dataset.lampe = m[0];
-        return b;
-      });
-    tuile.appendChild(lampe);
+    // ☀️ Plein jour : interrupteur (aria-pressed, reglerPleinJour), comme 🧭 ou 🪧.
+    e.boutonJour = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-jour", "", _t("vue3d.lampeJour"), "pleinJour");
+    const icJ = document.createElement("span");
+    icJ.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icJ.setAttribute("aria-hidden", "true");
+    icJ.textContent = "☀️";
+    e.boutonJour.appendChild(icJ);
+    e.boutonJour.appendChild(document.createTextNode(_t("vue3d.lampeJour")));
     _majLampe();
     ov.appendChild(haut);
     e.haut = haut;
@@ -4746,14 +4828,15 @@
   }
 
   // Repère sur ⚙️ (un réglage n'est pas celui par défaut : mode libre, vue plongeante, rendu autre que mixte,
-  // boussole masquée, guidage coupé, textures coupées, portée autre que celle par défaut, lampe autre que normale)
-  // et pastille du mode, hors de la tuile.
+  // boussole masquée, guidage coupé, textures coupées, portée, intensité ou faisceau autres que ceux par défaut,
+  // Plein jour) et pastille du mode, hors de la tuile.
   function _majRepere() {
     const e = _e;
     if (!e || !e.boutonReglages) return;
     const modifie = e.mode === "libre" || e.vue === "plongee" || e.rendu !== "mixte" ||
       (!!e.boussole && e.boussole.hidden) || !_guidageMontre() || !_texturesActives() ||
-      e.porteeVoulue !== PORTEE.defaut || e.lampeVoulue !== "normale";
+      e.porteeVoulue !== PORTEE.defaut || lv.intensite !== L.intensite.defaut || lv.faisceau !== L.faisceau.defaut ||
+      lv.jour;
     e.boutonReglages.classList.toggle("kta-v3d-modifie", modifie);
     const titre = _t("vue3d.reglages") + (modifie ? " · " + _t("vue3d.reglagesModifies") : "");
     e.boutonReglages.title = titre;
@@ -4771,6 +4854,7 @@
   // pile des toasts de l'app pendant la vue. Refait au redimensionnement et à chaque ouverture / fermeture d'un
   // réglage ou du bandeau.
   function _majSousHaut() {
+    const lv = e.lampeVoulue, L = REGLAGE_LAMPE;
     const e = _e;
     if (!e || !e.haut) return;
     let bas = e.haut.getBoundingClientRect().bottom;
@@ -4931,7 +5015,7 @@
         zoomer(a === "zoomPlus" ? 1 / (RECUL.pas * RECUL.pas) : RECUL.pas * RECUL.pas);
         return;
       }
-      if (a === "lampe") { reglerLampe(b.dataset.lampe); return; }
+      if (a === "pleinJour") { reglerPleinJour(!_lampeEnVigueur().jour); return; }
       ev.preventDefault();
       _codeBas(a === "ar");
       e.touches[a] = true;
@@ -4969,6 +5053,8 @@
       if (doigts.size >= 2 && doigts.has(ev.pointerId)) {
         const it = doigts.values(), a0 = it.next().value, b0 = it.next().value;
         const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y), y0 = (a0.y + b0.y) / 2;
+    on(e.curseurLampe, "input", function () { reglerLampe(e.curseurLampe.value); });
+    on(e.curseurFaisceau, "input", function () { reglerFaisceau(e.curseurFaisceau.value); });
         doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
         const it1 = doigts.values(), a1 = it1.next().value, b1 = it1.next().value;
         const d1 = Math.hypot(a1.x - b1.x, a1.y - b1.y), dy = (a1.y + b1.y) / 2 - y0;
@@ -5053,9 +5139,10 @@
         return;
       }
       if (ev.key === "Tab") { _tabulation(ev); return; }
-      // Curseur de portée au clavier : ses touches restent les siennes (ni pas, ni inclinaison, ni raccourci de la
+      // Curseurs de la tuile au clavier : leurs touches restent les leurs (ni pas, ni inclinaison, ni raccourci de la
       // carte dessous).
-      if (ev.target === e.curseurPortee && /^(Arrow|Page|Home$|End$)/.test(ev.key)) { ev.stopPropagation(); return; }
+      const champ = ev.target === e.curseurPortee || ev.target === e.curseurLampe || ev.target === e.curseurFaisceau;
+      if (champ && /^(Arrow|Page|Home$|End$)/.test(ev.key)) { ev.stopPropagation(); return; }
       if (e.vue === "plongee" && ["+", "=", "-", "_"].indexOf(ev.key) >= 0) {
         ev.stopPropagation(); ev.preventDefault();
         zoomer(ev.key === "+" || ev.key === "=" ? 1 / RECUL.pas : RECUL.pas);
@@ -5352,14 +5439,14 @@
     return typeof v === "number" ? v : 1;
   }
 
-  // Lampe frontale : mode du réglage ⚙️ Lampe (_lampeActive) multiplié par le facteur de la greffe ; force et portée
-  // baissent ensemble (au-delà, noir : l'ambiance est à 0,04). Portée comptée sur la portée réglée (e.distance) :
-  // elle y revient au retrait de la greffe.
+  // Lampe frontale : réglages ⚙️ en vigueur (_lampeEnVigueur : intensité, faisceau) multipliés par le facteur de la
+  // greffe ; force et portée baissent ensemble (au-delà, noir : l'ambiance de nuit est à 0,04). Portée comptée sur la
+  // portée réglée (e.distance) : elle y revient au retrait de la greffe.
   // 🩸 Refaite avec la scène (reprise du contexte) : réappliquée par _monterScene.
   function _lampeGreffe() {
     const e = _e;
     if (!e || !e.lampe) return;
-    const k = _facteurGreffe("lampe"), m = LAMPES[_lampeActive()];
+    const k = _facteurGreffe("lampe"), l = _lampeEnVigueur(), m = l.courbe;
     e.lampe.intensity = LAMPE.force * m.force * k;
     e.lampe.decay = m.decay;
     e.lampe.distance = e.distance * m.coupure * Math.max(LAMPE.porteeMin, k);
@@ -5383,6 +5470,8 @@
       _degreffer("erreur");
     }
   }
+    e.lampe.angle = l.cone.angle;
+    e.lampe.penumbra = l.cone.penombre;
 
   function _degreffer(raison) {
     const e = _e, gr = e && e.greffe;
@@ -5647,7 +5736,7 @@
       return { ouvert: false, contexteLibere: _dernierGl ? _dernierGl.isContextLost() : null,
         fermeture: _derniereFermeture };
     }
-    const e = _e, info = e.renderer.info;
+    const e = _e, info = e.renderer.info, lv = _lampeEnVigueur();
     let construites = 0, visibles = 0;
     const yMax = { opaque: 0, murs: 0 }, boites = {};
     e.tuiles.forEach(function (t) {
@@ -5671,13 +5760,21 @@
     });
     return {
       ouvert: true, contexteVivant: !e.renderer.getContext().isContextLost(), perdu: e.perdu, reprises: e.reprises,
-      lampe: e.lampe ? +(e.lampe.intensity / (LAMPE.force * LAMPES[_lampeActive()].force)).toFixed(2) : null,
-      eclairage: { voulue: e.lampeVoulue, porteeVoulue: e.porteeVoulue, active: _lampeActive(), intensite: e.lampe ? +e.lampe.intensity.toFixed(2) : null,
+      lampe: e.lampe ? +(e.lampe.intensity / (LAMPE.force * lv.courbe.force)).toFixed(2) : null,
+      eclairage: { voulue: Object.assign({}, e.lampeVoulue), porteeVoulue: e.porteeVoulue,
+        active: { intensite: lv.intensite, faisceau: lv.faisceau, jour: lv.jour },
+        intensite: e.lampe ? +e.lampe.intensity.toFixed(2) : null,
         portee: e.lampe ? +e.lampe.distance.toFixed(2) : null, decay: e.lampe ? e.lampe.decay : null,
-        ambiance: e.ambiance ? e.ambiance.intensity : null,
-        boutons: (e.boutonsLampe || []).map(function (b) {
-          return { mode: b.dataset.lampe, presse: b.getAttribute("aria-pressed"), grise: b.disabled };
-        }) },
+        angle: e.lampe ? +e.lampe.angle.toFixed(4) : null, penombre: e.lampe ? e.lampe.penumbra : null,
+        halo: e.halo ? +e.halo.intensity.toFixed(3) : null, ambiance: e.ambiance ? e.ambiance.intensity : null,
+        curseurs: [[e.curseurLampe, e.lampeValeur], [e.curseurFaisceau, e.faisceauValeur]].map(function (q) {
+          const c = q[0];
+          return c ? { id: c.id, valeur: Number(c.value), min: Number(c.min), max: Number(c.max), grise: c.disabled,
+            texte: q[1].textContent, valuetext: c.getAttribute("aria-valuetext"),
+            libelle: !!document.querySelector('label[for="' + c.id + '"]') } : null;
+        }),
+        jour: e.boutonJour ? { presse: e.boutonJour.getAttribute("aria-pressed"), grise: e.boutonJour.disabled }
+          : null },
       portee: { distance: e.distance, rayon: +_rayonScene().toFixed(2), recul: +e.recul.toFixed(3),
         brume: e.scene ? [+e.scene.fog.near.toFixed(2), +e.scene.fog.far.toFixed(2)] : null,
         far: e.camera ? +e.camera.far.toFixed(2) : null, sol: e.sol ? +e.sol.scale.x.toFixed(2) : null,
@@ -5997,7 +6094,8 @@
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     textures: textures, basculerTextures: function () { return _basculerTextures(); },
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
-    reglerPortee: reglerPortee, reglerLampe: reglerLampe, zoomer: zoomer,
+    reglerPortee: reglerPortee, reglerLampe: reglerLampe, reglerFaisceau: reglerFaisceau,
+    reglerPleinJour: reglerPleinJour, zoomer: zoomer,
     origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, trackerRecale: trackerRecale,
     charge: function () { return !!THREE; },
     greffer: greffer,

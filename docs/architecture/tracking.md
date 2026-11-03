@@ -1603,19 +1603,29 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_appliquerPortee`, tuiles construites au plus 3 par image : pas d'à-coup). `ouvrir({ distanceVue })` (mesures,
   checkup) passe avant le réglage sans l'écrire. Clavier : flèches, Origine, Fin sur le curseur (le clavier de la vue
   lui laisse ces touches) ; valeur dite par `aria-valuetext` (`formatDistance`).
-- **Lampe** (💡 Normale / Forte / Plein jour de la tuile ⚙️, `config.js > getVue3DLampe`, réglage de cet appareil,
-  décision produit) ; `reglerLampe(mode)`. Modes dans `LAMPES` : **Normale** = lampe d'origine ; **Forte** = force
-  × 1,25, décroissance 0,5 au lieu de 1,2, coupure à 1,3 × la portée, halo × 1,5, brouillard commencé à 80 % de la
-  portée au lieu de 45 % (c'est lui qui bornait la lecture au loin) ; **Plein jour** = éclairage d'ambiance de la vue
-  plongeante (0,9) à hauteur d'yeux, lampe normale, brouillard gardé à la portée (même coût, la portée reste le seul
-  réglage de « jusqu'où l'on voit »), commencé à 65 %. ⚠️ contrat : le mode se **multiplie** au facteur `lampe` d'une
-  greffe (`_lampeGreffe` : force × mode × k, portée × coupure × max(0,06, k), comptée sur la portée réglée et rendue
-  au retrait). ⚠️ contrat : une greffe qui pose **`ctx.regler({ reglagesFiges: true })`** (`_fige`) impose la portée
-  par défaut (30 m) et la lampe Normale (Plein jour et Forte compris), curseur et trois boutons grisés,
-  `reglerPortee` / `reglerLampe` rendent false ; les réglages retenus (`e.porteeVoulue`, `e.lampeVoulue`, et ceux de
-  l'appareil) ne sont jamais réécrits et reviennent tels quels au retrait ou avec la clé à false
-  (`_appliquerGreffeReglages`). Sans la clé, une greffe garde portée et lampe de l'utilisateur, Plein jour compris. `etat().lampe` reste le facteur de la greffe
-  (intensité / force du mode).
+- **Lampe** (réglages de la tuile ⚙️, cet appareil, décision produit : `config.js > getVue3DLampeIntensite`,
+  `getVue3DFaisceau`, `getVue3DPleinJour`) : 💡 **intensité** en curseur, 25 à 300 % par pas de 5, 100 % = la lampe
+  d'origine (`reglerLampe(%)`) ; 🔦 **faisceau** en curseur, 40 à 160° de cône total, 71° par défaut = demi-angle de
+  0,62 rad d'origine (`reglerFaisceau(°)`) ; ☀️ **Plein jour** en interrupteur (`reglerPleinJour(bool)`).
+  Intensité k (`_courbeLampe`) : au-dessus de 100 %, c'est la décroissance qui porte (1,2 · k^−1,263), force
+  × (1 + 0,25 (k − 1)), coupure × (1 + 0,3 (k − 1)) de la portée, halo × (1 + 0,5 (k − 1)), brouillard commencé à
+  45 % + 35 % (k − 1) de la portée, au plus 85 % ; 200 % = l'ancienne lampe Forte exactement (× 1,25, 0,5, × 1,3,
+  × 1,5, 80 %) ; 300 % = × 1,5, 0,3, × 1,6, × 2, 85 % (à 20 m, ~22 fois l'éclairement de 100 % ; 2,8 fois à 2 m :
+  rien ne brûle de près). Sous 100 % : force et halo × k, coupure × √k, décroissance de 1,2 à 1,6, brouillard de 45
+  à 25 % (25 % : force × 0,25, portée moitié). Faisceau (`_coneLampe`) : demi-angle = cône / 2 (160° = 80°, sous la
+  borne π/2 du SpotLight de three.js), pénombre de 0,4 (40°) à 0,55 (71°), puis jusqu'à 1 (160° : le bord se fond
+  dans le noir au lieu de dessiner un rond net). **Plein jour** = éclairage d'ambiance de la vue plongeante (0,9) à
+  hauteur d'yeux, lampe inchangée, brouillard gardé à la portée (même coût, la portée reste le seul réglage de
+  « jusqu'où l'on voit »), commencé à 65 % au moins. Ancienne clé `myktamap_v3d_lampe_v1` lue tant que les
+  nouvelles manquent : « forte » = 200 %, « jour » = Plein jour ; jamais réécrite. ⚠️ contrat : la lampe se
+  **multiplie** au facteur `lampe` d'une greffe (`_lampeGreffe` : force × courbe × k, portée × coupure × max(0,06, k),
+  comptée sur la portée réglée et rendue au retrait). ⚠️ contrat : une greffe qui pose
+  **`ctx.regler({ reglagesFiges: true })`** (`_fige`) impose la portée par défaut (30 m), la lampe à 100 %, le
+  faisceau de 71° et Plein jour coupé, trois curseurs et ☀️ grisés, `reglerPortee` / `reglerLampe` /
+  `reglerFaisceau` / `reglerPleinJour` rendent false ; les réglages retenus (`e.porteeVoulue`, `e.lampeVoulue`, et
+  ceux de l'appareil) ne sont jamais réécrits et reviennent tels quels au retrait ou avec la clé à false
+  (`_appliquerGreffeReglages`). Sans la clé, une greffe garde portée et lampe de l'utilisateur, Plein jour compris.
+  `etat().lampe` reste le facteur de la greffe (intensité / force de la courbe).
 - **Boussole** : `icon/compass.svg` tournée de −(cap plan − `getPlanNorthOffset()`), la convention de `compass.js`.
   Plan sans Nord calibré (`config.js > getPlanNorthCalibre` : ni pref du plan ni `plan.northOffsetDeg`) : haut du
   plan, dit seulement au libellé accessible (`vue3d.nordNonCalibre`, aucun texte à l'écran). Rose posée sur la

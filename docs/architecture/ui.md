@@ -2216,15 +2216,20 @@ icônes.
   sans toucher scène ni greffe), 🔭 **Portée** (curseur natif `input type=range` `#kta-v3d-portee`, 15 à 100 m,
   30 m par défaut, `getVue3DPortee`, `myktamap_v3d_portee_v1`, cet appareil ; libellé `<label for>`, valeur écrite à
   droite et dite par `aria-valuetext`, couleur `accent-color: var(--kta-accent)`, contour de focus
-  `--kta-interaction` ; flèches, Origine, Fin au clavier), 💡 **Lampe** (trois boutons `aria-pressed` Normale /
-  Forte / Plein jour sur une ligne, `getVue3DLampe`, `myktamap_v3d_lampe_v1`, cet appareil, Normale par défaut ;
-  curseur et trois boutons `disabled` quand une greffe fige les réglages (`reglagesFiges`), titre suffixé « indisponible pendant une partie » ; effets :
-  `tracking.md` § Vue 3D › Lampe). La tuile tient au téléphone (393 px) ; les boutons de la vue plongeante (+ − ▲ ▼)
+  `--kta-interaction` ; flèches, Origine, Fin au clavier), 💡 **Lampe** (curseur `#kta-v3d-lampe`, 25 à 300 % par
+  pas de 5, 100 % par défaut, valeur en pourcentage de la langue, `myktamap_v3d_lampe_intensite_v1`), 🔦
+  **Faisceau** (curseur `#kta-v3d-faisceau`, 40 à 160°, 71° par défaut, `myktamap_v3d_faisceau_v1`) — même ligne
+  que la portée (`.kta-v3d-curseur`, nom, curseur, valeur ; noms d'une même largeur, curseurs alignés, mêmes
+  libellé, valeur dite, couleurs et clavier) — et ☀️ **Plein jour** (interrupteur `aria-pressed` pleine largeur,
+  `myktamap_v3d_jour_v1`), tous de cet appareil ; trois curseurs et ☀️ `disabled` quand une greffe fige les réglages
+  (`reglagesFiges`), titre suffixé « indisponible pendant une partie » ; effets : `tracking.md` § Vue 3D › Lampe).
+  La tuile tient au téléphone (393 px) ; les boutons de la vue plongeante (+ − ▲ ▼)
   sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
   inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue plongeante. **Repère** : point doré sur ⚙️
   (`kta-v3d-modifie`, `_majRepere`) en mode libre, en vue plongeante, rendu autre que mixte, textures coupées,
-  boussole masquée, guidage coupé, portée autre que 30 m ou lampe autre que Normale. **Mode toujours visible** : pastille ronde de 40 px
+  boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71° ou Plein
+  jour. **Mode toujours visible** : pastille ronde de 40 px
   en haut à gauche (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,

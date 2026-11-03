@@ -106,13 +106,13 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `avatar` | silhouette dorée de la vue plongeante masquée (l'add-on dessine la sienne) |
 | `commandes` | joystick et pavé retirés (une carte à toucher là où est le pouce) ; 🩸 `display` en style, le pavé étant en grille |
 | `plongee` | vue plongeante interdite : bouton 🦅 grisé, `basculerVue` et `zoomer` refusés, retour à hauteur d'yeux si l'on y était |
-| `reglagesFiges` (`true` pour l'activer, absent = `false`) | réglages ⚙️ Portée et Lampe de l'utilisateur figés : portée par défaut (30 m) et lampe Normale, curseur et boutons grisés ; ce qui est retenu (vue et appareil) n'est jamais réécrit et revient au retrait ou avec la clé à `false`. Sans la clé, la greffe garde la portée et la lampe de l'utilisateur, Plein jour compris |
+| `reglagesFiges` (`true` pour l'activer, absent = `false`) | réglages ⚙️ Portée et Lampe de l'utilisateur figés : portée par défaut (30 m), intensité 100 %, faisceau de 71° et Plein jour coupé, trois curseurs et ☀️ grisés ; ce qui est retenu (vue et appareil) n'est jamais réécrit et revient au retrait ou avec la clé à `false`. Sans la clé, la greffe garde la portée et la lampe de l'utilisateur, Plein jour compris |
 
 Deux **facteurs** (nombre de 0 à 1, 1 = normal, rendus au retrait) :
 
 | Clé | Effet |
 |---|---|
-| `lampe` | force et portée de la lampe frontale, multipliées au réglage ⚙️ Lampe de l'appareil (portée comptée sur la portée réglée, jamais sous 6 % ; le halo autour de soi reste un peu) ; réappliqué quand la scène est refaite après une perte du contexte. Avec `reglagesFiges`, ce calcul part de 30 m et de la lampe Normale |
+| `lampe` | force et portée de la lampe frontale, multipliées aux réglages ⚙️ de la lampe de l'appareil (intensité ; portée comptée sur la portée réglée, jamais sous 6 % ; le halo autour de soi reste un peu) ; réappliqué quand la scène est refaite après une perte du contexte. Avec `reglagesFiges`, ce calcul part de 30 m, de 100 % et de 71° |
 | `vitesse` | pas au pavé, au clavier et au joystick (course comprise) |
 
 ## Les connecteurs : ce qu'un add-on peut lire

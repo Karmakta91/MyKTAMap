@@ -39,8 +39,9 @@
 // « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Greffe (21) :
 // prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
 // (23) : refus, confirmation, partie en vagues, masquage, endurance, tir, recharge, objets, égaré, silhouette, fin.
-// Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), lampe Normale / Forte /
-// Plein jour (facteur d'une greffe multiplié, Plein jour refusé puis rendu), zoom de la vue plongeante 6 / 60 m
+// Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), intensité 25 / 300 %
+// et faisceau 40 / 160° (curseurs, pénombre, relus, ancien « forte » / « jour » relu), ☀️ Plein jour (interrupteur),
+// greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
 // (molette, Maj + molette, + / −, = / -, pincement, tuiles qui suivent le recul).
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
@@ -486,13 +487,13 @@ async function sectionDonnees(page, MX) {
     K.incliner(10);
     K.zoomer(0.8);
     K.reglerPortee(42);
-    K.reglerLampe("forte");
+    K.reglerLampe(200);
     await pause(200);
     const place = function () {
       const e = K.etat();
       return { x: +e.pos.x.toFixed(3), y: +e.pos.y.toFixed(3), cap: +e.cap.toFixed(3), niveau: e.niveau,
         niveauLibre: e.niveauLibre, mode: e.mode, vue: e.vue, inclinaison: e.inclinaison, recul: e.portee.recul,
-        distance: e.distance, lampe: e.eclairage.active, rendu: e.rendu, iti: (e.rubans.itinerary || 0) > 0,
+        distance: e.distance, lampe: e.eclairage.active.intensite, rendu: e.rendu, iti: (e.rubans.itinerary || 0) > 0,
         guidage: e.bandeau.affiche };
     };
     const lire = function () {
@@ -743,8 +744,9 @@ async function sectionDonnees(page, MX) {
       "vue, réglages, itinéraire gardés", { refaites: [y.donnees.refaites, x.donnees.refaites], reindex: [y.reindex, x.reindex],
       compte: [y.compte, x.compte], place: [y.place, x.place] });
   });
-  verifier(eq(R.structures.place, P0) && P0.vue === "plongee" && P0.distance === 42 && P0.lampe === "forte" && P0.iti &&
-    P0.rendu === "mixte", "place de départ réglée (plongée, inclinaison, zoom, portée 42 m, lampe Forte, itinéraire)", P0);
+  verifier(eq(R.structures.place, P0) && P0.vue === "plongee" && P0.distance === 42 && P0.lampe === 200 && P0.iti &&
+    P0.rendu === "mixte", "place de départ réglée (plongée, inclinaison, zoom, portée 42 m, lampe 200 %, itinéraire)",
+    P0);
   verifier(R.rafale.donnees.refaites === R.sommet.donnees.refaites + 1 &&
     R.rafale.compte.structures === R.sommet.compte.structures + 6 &&
     R.rafale2.donnees.refaites === R.rafale.donnees.refaites + 1 &&
@@ -1185,7 +1187,7 @@ async function sectionDonnees(page, MX) {
             "vue3d.pasDroite", "vue3d.zoomPlus", "vue3d.inclinaisonPlus", "vue3d.zoomMoins", "vue3d.inclinaisonMoins",
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer",
-            "vue3d.lampeNormale", "vue3d.lampeForte", "vue3d.lampeJour"].map(function (k) {
+            "vue3d.lampeJourAide"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
             return k === "vue3d.reglages" && window.KtaVue3D.etat().reglages.repere ?
               t + " · " + window.I18n.t("vue3d.reglagesModifies") : t;
@@ -6018,8 +6020,8 @@ async function sectionDonnees(page, MX) {
         }
         window.setStructures(st);
         window.KtaGalerie.invalider();
-        localStorage.removeItem("myktamap_v3d_portee_v1");
-        localStorage.removeItem("myktamap_v3d_lampe_v1");
+        ["myktamap_v3d_portee_v1", "myktamap_v3d_lampe_v1", "myktamap_v3d_lampe_intensite_v1",
+          "myktamap_v3d_faisceau_v1", "myktamap_v3d_jour_v1"].forEach(function (k) { localStorage.removeItem(k); });
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       const RG = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
@@ -6056,48 +6058,89 @@ async function sectionDonnees(page, MX) {
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
         r.rouverte = { distance: K.etat().portee.distance, curseur: Number(q("#kta-v3d-portee").value) };
         K.reglerPortee(30);
-        // Lampe : Normale par défaut, Forte, Plein jour ; retenue sur l'appareil.
-        const btn = function (m) { return q('[data-v3d="lampe"][data-lampe="' + m + '"]'); };
-        const appui = function (m) {
-          btn(m).dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 5 }));
+        // Lampe : intensité 100 %, faisceau 71°, Plein jour coupé par défaut ; deux curseurs et un interrupteur,
+        // bornés, retenus sur l'appareil.
+        const curs = function (id, v) {
+          const c = q("#" + id);
+          c.value = String(v);
+          c.dispatchEvent(new Event("input", { bubbles: true }));
         };
-        r.normale = Object.assign({ brume: K.etat().portee.brume }, K.etat().eclairage);
-        appui("forte");
-        r.forte = Object.assign({ brume: K.etat().portee.brume, pref: window.getVue3DLampe() }, K.etat().eclairage);
-        appui("jour");
-        r.jour = Object.assign({ brume: K.etat().portee.brume, pref: window.getVue3DLampe(), lampe: K.etat().lampe },
-          K.etat().eclairage);
+        const appuiJour = function () {
+          q('[data-v3d="pleinJour"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 5 }));
+        };
+        const pref = function () {
+          return { intensite: window.getVue3DLampeIntensite(), faisceau: window.getVue3DFaisceau(),
+            jour: window.getVue3DPleinJour() };
+        };
+        const lire = function () {
+          return Object.assign({ brume: K.etat().portee.brume, lampe: K.etat().lampe, pref: pref(),
+            repere: K.etat().reglages.repere }, K.etat().eclairage);
+        };
+        r.l100 = lire();
+        curs("kta-v3d-lampe", 200);
+        r.l200 = lire();
+        curs("kta-v3d-lampe", 300);
+        r.l300 = lire();
+        r.l25 = Object.assign({ retenue: K.reglerLampe(5) }, lire());
+        r.lMax = { retenue: K.reglerLampe(900), pref: window.getVue3DLampeIntensite() };
+        curs("kta-v3d-lampe", 150);
+        r.l150 = lire();
+        curs("kta-v3d-faisceau", 160);
+        r.f160 = lire();
+        r.f40 = Object.assign({ retenu: K.reglerFaisceau(10) }, lire());
+        r.f100 = Object.assign({ retenu: K.reglerFaisceau(100) }, lire());
+        appuiJour();
+        r.jour = lire();
         await K.fermer();
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
-        r.jourRouverte = K.etat().eclairage.active;
-        // Greffe SANS reglagesFiges : Plein jour gardé et permis, facteur de lampe du jeu multiplié au réglage.
+        r.rouverteL = lire();
+        appuiJour();
+        r.jourCoupe = lire();
+        // Ancien réglage retenu (Normale / Forte / Plein jour) : relu tant que les nouvelles clés manquent.
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.migreForte = lire();
+        await K.fermer();
+        localStorage.setItem("myktamap_v3d_lampe_v1", "jour");
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.migreJour = lire();
+        K.reglerPleinJour(false);
+        r.migreJour.apres = { pref: pref(), ancienne: localStorage.getItem("myktamap_v3d_lampe_v1") };
+        localStorage.removeItem("myktamap_v3d_lampe_v1");
+        K.reglerLampe(100);
+        K.reglerFaisceau(71);
+        r.defautRendu = lire();
+        // Greffe SANS reglagesFiges : réglages gardés et permis (Plein jour compris), facteur du jeu multiplié.
+        K.reglerLampe(200);
+        K.reglerFaisceau(120);
+        K.reglerPleinJour(true);
         let ctx = null;
         K.greffer({ nom: "essai-lampe", scene: function (c2) { ctx = c2; } });
         await pause(50);
         ctx.regler({ lampe: 0.5, plongee: false });
-        r.greffeJour = Object.assign({ lampe: K.etat().lampe, pref: window.getVue3DLampe() }, K.etat().eclairage);
+        r.greffeLibre = lire();
         r.greffeZoom = { avant: K.etat().portee.recul, apres: K.zoomer(0.5), vue: K.etat().vue };
         K.basculerVue();
         r.greffeZoom.vueApres = K.etat().vue;
-        appui("forte");
-        r.greffeForte = Object.assign({ lampe: K.etat().lampe }, K.etat().eclairage);
-        r.greffeForte.jour = K.reglerLampe("jour");
-        // Portée 100 m et lampe Forte retenues : greffe sans la clé, rien ne change ; avec la clé, 30 m, Normale,
-        // contrôles grisés ; clé à false puis retrait : rendues ; l'appareil les garde.
+        curs("kta-v3d-lampe", 100);
+        r.greffe100 = lire();
+        r.greffe100.jourCoupe = K.reglerPleinJour(false);
+        r.greffe100.jourRemis = K.reglerPleinJour(true);
+        // Réglages poussés retenus : greffe sans la clé, rien ne change ; avec la clé, 30 m, 100 %, faisceau par
+        // défaut, Plein jour coupé, contrôles grisés ; clé à false puis retrait : rendus ; l'appareil les garde.
         await K.fermer();
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
         K.reglerPortee(100);
-        K.reglerLampe("forte");
+        K.reglerLampe(250);
+        K.reglerFaisceau(140);
+        K.reglerPleinJour(true);
         await pause(100);
         const cliche = function () {
-          const p = K.etat().portee, l = K.etat().eclairage;
-          return { distance: p.distance, brume: p.brume, far: p.far, rayon: p.rayon, grise: p.curseur.grise,
-            curseur: p.curseur.valeur, active: l.active, voulue: l.voulue, porteeVoulue: l.porteeVoulue,
-            portee: l.portee, intensite: l.intensite, lampe: K.etat().lampe,
-            boutonsGrises: l.boutons.every(function (b) { return b.grise; }),
-            boutonsActifs: l.boutons.every(function (b) { return !b.grise; }),
-            presse: l.boutons.filter(function (b) { return b.presse === "true"; }).map(function (b) { return b.mode; }).join(),
-            app: { portee: window.getVue3DPortee(), lampe: window.getVue3DLampe() } };
+          const p = K.etat().portee, l = lire();
+          return Object.assign(l, { distance: p.distance, far: p.far, rayon: p.rayon, grise: p.curseur.grise,
+            curseur: p.curseur.valeur, app: { portee: window.getVue3DPortee(), lampe: pref() },
+            tousGrises: p.curseur.grise && l.jour.grise && l.curseurs.every(function (c) { return c.grise; }),
+            tousActifs: !p.curseur.grise && !l.jour.grise && l.curseurs.every(function (c) { return !c.grise; }) });
         };
         r.avant = cliche();
         let ctx2 = null;
@@ -6107,11 +6150,13 @@ async function sectionDonnees(page, MX) {
         r.sansCle = cliche();
         ctx2.regler({ reglagesFiges: true });
         r.pendant = cliche();
-        r.pendant.refus = [K.reglerPortee(60), K.reglerLampe("forte"), K.reglerLampe("jour")];
-        const cG = q("#kta-v3d-portee");
-        cG.value = "70";
-        cG.dispatchEvent(new Event("input", { bubbles: true }));
-        r.pendant.apresSaisie = { distance: K.etat().portee.distance, app: window.getVue3DPortee() };
+        r.pendant.refus = [K.reglerPortee(60), K.reglerLampe(50), K.reglerFaisceau(50), K.reglerPleinJour(true)];
+        curs("kta-v3d-portee", 70);
+        curs("kta-v3d-lampe", 60);
+        curs("kta-v3d-faisceau", 45);
+        appuiJour();
+        r.pendant.apresSaisie = { distance: K.etat().portee.distance, app: window.getVue3DPortee(), lampe: pref(),
+          active: K.etat().eclairage.active };
         ctx2.regler({ reglagesFiges: false });
         r.cleFausse = cliche();
         ctx2.regler({ reglagesFiges: true });
@@ -6122,7 +6167,9 @@ async function sectionDonnees(page, MX) {
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
         r.rouverteFin = cliche();
         K.reglerPortee(30);
-        K.reglerLampe("normale");
+        K.reglerLampe(100);
+        K.reglerFaisceau(71);
+        K.reglerPleinJour(false);
         await K.fermer();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -6145,52 +6192,94 @@ async function sectionDonnees(page, MX) {
         RG.repere, "portée bornée à 15 / 100 m, tuiles suivies dans les deux sens, repère sur ⚙️",
         { p100: RG.p100, p15: RG.p15 });
       verifier(RG.rouverte.distance === 42 && RG.rouverte.curseur === 42, "portée relue à la réouverture", RG.rouverte);
-      const RN = RG.normale, RF = RG.forte, RJ = RG.jour;
-      const presses = function (o) {
-        return o.boutons.filter(function (b) { return b.presse === "true"; }).map(function (b) { return b.mode; }).join();
+      // Lampe : chiffres de vue3d.js > _courbeLampe et _coneLampe (100 % = la lampe d'origine, 200 % = l'ancienne
+      // Forte).
+      const prL = function (v, att, tol) { return typeof v === "number" && Math.abs(v - att) <= (tol || 0.011); };
+      const act = function (o, i, f, j) {
+        return !!o.active && o.active.intensite === i && o.active.faisceau === f && o.active.jour === j;
       };
-      verifier(RN.voulue === "normale" && RN.active === "normale" && RN.intensite === 24 && RN.decay === 1.2 &&
-        RN.ambiance === 0.04 && RN.portee === 30 && RN.boutons.length === 3 && presses(RN) === "normale",
-        "lampe : Normale par défaut (force 24, portée = portée réglée), un seul bouton pressé", RN);
-      verifier(RF.active === "forte" && RF.pref === "forte" && RF.decay < RN.decay && RF.portee > RN.portee &&
-        RF.brume[0] > RN.brume[0] && RF.ambiance === 0.04 && presses(RF) === "forte",
-        "lampe Forte : décroissance plus lente, plus loin, brouillard repoussé, retenue", RF);
-      verifier(RJ.active === "jour" && RJ.pref === "jour" && RJ.ambiance === 0.9 && RJ.lampe === 1 &&
-        RG.jourRouverte === "jour" && presses(RJ) === "jour",
-        "lampe Plein jour : ambiance de la vue plongeante (0,9), retenue à la réouverture", { J: RJ, r: RG.jourRouverte });
-      const GJ = RG.greffeJour, GF = RG.greffeForte;
-      verifier(GJ.active === "jour" && GJ.voulue === "jour" && GJ.pref === "jour" && GJ.ambiance === 0.9 &&
-        GJ.lampe === 0.5 && GJ.intensite === 12 && GJ.portee === 15 &&
-        GJ.boutons.every(function (b) { return !b.grise; }),
-        "greffe sans reglagesFiges : Plein jour gardé et permis, facteur du jeu multiplié (×0,5 : force et portée)", GJ);
-      verifier(GF.active === "forte" && GF.lampe === 0.5 && GF.intensite === 15 &&
-        GF.portee === +(30 * 1.3 * 0.5).toFixed(2) && GF.jour === "jour", "greffe sans la clé : Forte × facteur du jeu (multiplication), Plein jour choisi de nouveau",
-        GF);
+      const rad = function (deg) { return deg * Math.PI / 360; };
+      const L1 = RG.l100, L2 = RG.l200, L3 = RG.l300, L0 = RG.l25, L15 = RG.l150;
+      const cI = L1.curseurs[0], cF = L1.curseurs[1];
+      verifier(act(L1, 100, 71, false) && prL(L1.intensite, 24) && L1.decay === 1.2 && prL(L1.portee, 30) &&
+        prL(L1.halo, 1.6) && prL(L1.angle, rad(71), 0.001) && L1.penombre === 0.55 && L1.ambiance === 0.04 &&
+        prL(L1.brume[0], 13.5) && L1.jour.presse === "false" &&
+        cI.id === "kta-v3d-lampe" && cI.min === 25 && cI.max === 300 && cI.valeur === 100 && cI.libelle &&
+        /100/.test(cI.valuetext) && cF.id === "kta-v3d-faisceau" && cF.min === 40 && cF.max === 160 &&
+        cF.valeur === 71 && cF.libelle && cF.valuetext === "71°",
+        "lampe : 100 % et faisceau de 71° par défaut (force 24, décroissance 1,2, portée = portée réglée, demi-angle " +
+        "0,62 rad, pénombre 0,55), Plein jour coupé ; curseurs 25–300 % et 40–160°, libellés, valeur dite", L1);
+      verifier(L2.pref.intensite === 200 && prL(L2.intensite, 30) && L2.decay === 0.5 && prL(L2.portee, 39) &&
+        prL(L2.halo, 2.4) && prL(L2.brume[0], 24) && prL(L3.intensite, 36) && L3.decay === 0.3 && prL(L3.portee, 48) &&
+        prL(L3.halo, 3.2) && prL(L3.brume[0], 25.5) && L3.curseurs[0].valeur === 300 &&
+        L15.decay > L2.decay && L15.decay < L1.decay && L15.portee > L1.portee && L15.portee < L2.portee,
+        "intensité : plus haut = plus loin (200 % = l'ancienne Forte : ×1,25, décroissance 0,5, coupure ×1,3, halo " +
+        "×1,5, brouillard à 80 % ; 300 % : ×1,5, 0,3, ×1,6, ×2, 85 %), retenue", { L2: L2, L3: L3, L15: L15 });
+      verifier(RG.l25.retenue === 25 && prL(L0.intensite, 6) && prL(L0.portee, 15) && L0.decay === 1.6 &&
+        prL(L0.halo, 0.4) && prL(L0.brume[0], 7.5) && L0.curseurs[0].valeur === 25 && RG.lMax.retenue === 300 &&
+        RG.lMax.pref === 300, "intensité bornée à 25 / 300 % (25 % : ×0,25, portée moitié, décroissance 1,6)",
+        { L0: L0, max: RG.lMax });
+      const F6 = RG.f160, F4 = RG.f40, FC = RG.f100;
+      verifier(F6.pref.faisceau === 160 && prL(F6.angle, rad(160), 0.001) && F6.angle <= Math.PI / 2 &&
+        F6.penombre === 1 && F6.curseurs[1].texte === "160°" && F4.retenu === 40 && prL(F4.angle, rad(40), 0.001) &&
+        F4.penombre === 0.4 && FC.retenu === 100 && prL(FC.angle, rad(100), 0.001) && FC.penombre === 0.697 &&
+        FC.pref.faisceau === 100,
+        "faisceau borné à 40 / 160° (demi-angle ≤ π/2), pénombre qui suit (0,4 à 40°, 0,55 à 71°, 0,7 à 100°, 1 à " +
+        "160° : le bord se fond dans le noir), retenu", { F6: F6, F4: F4, FC: FC });
+      const RJ = RG.jour, RJO = RG.rouverteL, RJC = RG.jourCoupe;
+      verifier(act(RJ, 150, 100, true) && RJ.pref.jour && RJ.ambiance === 0.9 && RJ.jour.presse === "true" &&
+        prL(RJ.brume[0], 19.5) && prL(RJ.intensite, 27) && RJ.lampe === 1 && RJ.repere &&
+        act(RJO, 150, 100, true) && RJO.curseurs[0].valeur === 150 && RJO.curseurs[1].valeur === 100 &&
+        RJO.ambiance === 0.9 && act(RJC, 150, 100, false) && RJC.ambiance === 0.04 && !RJC.pref.jour &&
+        RJC.jour.presse === "false",
+        "☀️ Plein jour : interrupteur à part (ambiance 0,9, brouillard à 65 % au moins, lampe inchangée), les trois " +
+        "réglages relus à la réouverture, coupé de nouveau", { J: RJ, O: RJO, C: RJC });
+      const MF = RG.migreForte, MJ = RG.migreJour;
+      verifier(act(MF, 200, 71, false) && MF.pref.intensite === 200 && prL(MF.intensite, 30) && MF.decay === 0.5 &&
+        act(MJ, 100, 71, true) && MJ.ambiance === 0.9 && MJ.apres.pref.jour === false &&
+        MJ.apres.ancienne === "jour" && act(RG.defautRendu, 100, 71, false),
+        "ancien réglage retenu : « forte » = 200 %, « jour » = Plein jour (ancienne clé jamais réécrite)",
+        { MF: MF, MJ: MJ });
+      const GL = RG.greffeLibre, G1 = RG.greffe100;
+      const actifs = function (o) { return !o.jour.grise && o.curseurs.every(function (c) { return !c.grise; }); };
+      verifier(act(GL, 200, 120, true) && GL.lampe === 0.5 && prL(GL.intensite, 15) && prL(GL.portee, 19.5) &&
+        prL(GL.angle, rad(120), 0.001) && GL.ambiance === 0.9 && actifs(GL) && act(G1, 100, 120, true) &&
+        prL(G1.intensite, 12) && prL(G1.portee, 15) && G1.lampe === 0.5 && G1.jourCoupe === false &&
+        G1.jourRemis === true,
+        "greffe sans reglagesFiges : 200 %, 120° et Plein jour gardés et permis, facteur du jeu multiplié (×0,5 : " +
+        "force et portée), curseur suivi pendant la greffe", { GL: GL, G1: G1 });
       verifier(RG.greffeZoom.apres === RG.greffeZoom.avant && RG.greffeZoom.vueApres === "yeux",
         "greffe qui interdit la plongée : zoom refusé, pas de vue plongeante", RG.greffeZoom);
       const RGA = RG.avant, RGP = RG.pendant, RGR = RG.apres, RGO = RG.rouverteFin;
-      verifier(RGA.distance === 100 && RGA.active === "forte" && RGA.app.portee === 100 && RGA.app.lampe === "forte" &&
-        !RGA.grise && RGA.boutonsActifs && RGA.brume[1] === 100,
-        "avant la greffe : portée 100 m et lampe Forte, retenues sur l'appareil, contrôles actifs", RGA);
+      const pousses = function (o) {
+        return o.app.portee === 100 && o.app.lampe.intensite === 250 && o.app.lampe.faisceau === 140 &&
+          o.app.lampe.jour === true;
+      };
+      verifier(RGA.distance === 100 && act(RGA, 250, 140, true) && pousses(RGA) && RGA.tousActifs &&
+        RGA.brume[1] === 100 && prL(RGA.intensite, 33) && prL(RGA.portee, 145) && RGA.ambiance === 0.9,
+        "avant la greffe : portée 100 m, lampe 250 %, faisceau 140°, Plein jour, retenus, contrôles actifs", RGA);
       const RGS = RG.sansCle, RGF = RG.cleFausse;
-      verifier(RGS.distance === 100 && RGS.active === "forte" && !RGS.grise && RGS.boutonsActifs && RGS.lampe === 0.3 &&
-        RGS.portee === +(100 * 1.3 * 0.3).toFixed(2),
-        "greffe sans la clé : 100 m et Forte gardés, contrôles actifs, facteur du jeu multiplié", RGS);
-      verifier(RGF.distance === 100 && RGF.active === "forte" && !RGF.grise && RGF.boutonsActifs,
-        "reglagesFiges à false, greffe posée : 100 m et Forte rendus, contrôles actifs", RGF);
+      verifier(RGS.distance === 100 && act(RGS, 250, 140, true) && RGS.tousActifs && RGS.lampe === 0.3 &&
+        prL(RGS.intensite, 9.9) && prL(RGS.portee, 43.5),
+        "greffe sans la clé : réglages gardés, contrôles actifs, facteur du jeu multiplié", RGS);
+      verifier(RGF.distance === 100 && act(RGF, 250, 140, true) && RGF.tousActifs,
+        "reglagesFiges à false, greffe posée : réglages rendus, contrôles actifs", RGF);
       verifier(RGP.distance === 30 && RGP.brume[1] === 30 && RGP.far === 35 && RGP.rayon === 30 && RGP.curseur === 30 &&
-        RGP.active === "normale" && RGP.presse === "normale" && RGP.grise && RGP.boutonsGrises &&
-        RGP.portee === +(30 * 0.3).toFixed(2) && RGP.intensite === +(24 * 0.3).toFixed(2) && RGP.lampe === 0.3 &&
-        RGP.voulue === "forte" && RGP.porteeVoulue === 100 && RGP.app.portee === 100 && RGP.app.lampe === "forte" &&
-        RGP.refus.every(function (v) { return v === false; }) && RGP.apresSaisie.distance === 30 &&
-        RGP.apresSaisie.app === 100,
-        "reglagesFiges : 30 m, Normale, lampe du jeu sur 30 m (×0,3), curseur et lampe grisés, saisies refusées, " +
-        "appareil intact", RGP);
-      verifier(RGR.distance === 100 && RGR.brume[1] === 100 && RGR.active === "forte" && RGR.presse === "forte" &&
-        RGR.lampe === 1 && RGR.portee === +(100 * 1.3).toFixed(2) && !RGR.grise && RGR.boutonsActifs &&
-        RGR.app.portee === 100 && RGR.app.lampe === "forte",
-        "retrait de la greffe : 100 m et Forte rendus, contrôles actifs", RGR);
-      verifier(RGO.distance === 100 && RGO.active === "forte", "l'appareil garde 100 m et Forte (réouverture)", RGO);
+        act(RGP, 100, 71, false) && RGP.tousGrises && RGP.jour.presse === "false" &&
+        RGP.curseurs[0].valeur === 100 && RGP.curseurs[1].valeur === 71 && RGP.ambiance === 0.04 &&
+        prL(RGP.portee, 9) && prL(RGP.intensite, 7.2) && prL(RGP.angle, rad(71), 0.001) && RGP.penombre === 0.55 &&
+        RGP.lampe === 0.3 && RGP.voulue.intensite === 250 && RGP.voulue.faisceau === 140 && RGP.voulue.jour === true &&
+        RGP.porteeVoulue === 100 && pousses(RGP) && RGP.refus.every(function (v) { return v === false; }) &&
+        RGP.apresSaisie.distance === 30 && RGP.apresSaisie.app === 100 &&
+        RGP.apresSaisie.lampe.intensite === 250 && RGP.apresSaisie.lampe.faisceau === 140 &&
+        RGP.apresSaisie.lampe.jour === true && RGP.apresSaisie.active.intensite === 100,
+        "reglagesFiges : 30 m, 100 %, 71°, Plein jour coupé, lampe du jeu sur 30 m (×0,3), trois curseurs et ☀️ " +
+        "grisés, saisies refusées, appareil intact", RGP);
+      verifier(RGR.distance === 100 && RGR.brume[1] === 100 && act(RGR, 250, 140, true) && RGR.lampe === 1 &&
+        prL(RGR.portee, 145) && RGR.tousActifs && pousses(RGR) && RGR.ambiance === 0.9,
+        "retrait de la greffe : 100 m, 250 %, 140° et Plein jour rendus, contrôles actifs", RGR);
+      verifier(RGO.distance === 100 && act(RGO, 250, 140, true),
+        "l'appareil garde 100 m, 250 %, 140° et Plein jour (réouverture)", RGO);
 
       // Zoom de la vue plongeante : molette, Maj + molette, boutons, clavier, pincement ; borné ; tuiles suivent.
       await page.evaluate(async function (a) {
@@ -6230,6 +6319,9 @@ async function sectionDonnees(page, MX) {
           for (let i = 0; i < 120 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
             await pause(50);
           }
+        const neuves = ["myktamap_v3d_lampe_intensite_v1", "myktamap_v3d_faisceau_v1", "myktamap_v3d_jour_v1"];
+        neuves.forEach(function (k) { localStorage.removeItem(k); });
+        localStorage.setItem("myktamap_v3d_lampe_v1", "forte");
         };
         const r = {}, appui = function (k) {
           q('[data-v3d="' + k + '"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 6 }));
@@ -6314,7 +6406,8 @@ async function sectionDonnees(page, MX) {
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       verifier(zF.recul === 18.4, "zoom retenu tant que la vue est ouverte : 18,4 m à la réouverture", zF);
       if (CAPTURES) {
-        // Lampe Normale / Forte / Plein jour à 60 m de portée, tuile ouverte au téléphone, plongée dézoomée.
+        // Lampe à 25 / 100 / 300 %, faisceau de 40 / 160°, Plein jour, à 60 m de portée ; tuile ouverte au téléphone,
+        // plongée dézoomée.
         const vp = page.viewportSize();
         await page.evaluate(async function (a) {
           const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; }, st = [];
@@ -6330,13 +6423,17 @@ async function sectionDonnees(page, MX) {
           await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
           window.KtaVue3D.reglerPortee(60);
         }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
-        for (const m of ["normale", "forte", "jour"]) {
-          await page.evaluate(function (x) { window.KtaVue3D.reglerLampe(x); }, m);
+        for (const m of [[25, 71, false], [100, 71, false], [300, 71, false], [100, 40, false], [100, 160, false],
+          [100, 71, true]]) {
+          await page.evaluate(function (x) {
+            const K = window.KtaVue3D;
+            K.reglerLampe(x[0]); K.reglerFaisceau(x[1]); K.reglerPleinJour(x[2]);
+          }, m);
           await page.waitForTimeout(1500);
-          await capture(page, "reglage-lampe-" + m);
+          await capture(page, "reglage-lampe-" + m[0] + "-" + m[1] + (m[2] ? "-jour" : ""));
         }
         await page.evaluate(function () {
-          window.KtaVue3D.reglerLampe("normale");
+          window.KtaVue3D.reglerLampe(100); window.KtaVue3D.reglerFaisceau(71); window.KtaVue3D.reglerPleinJour(false);
           window.KtaVue3D.basculerVue();
           window.KtaVue3D.zoomer(1000);
         });

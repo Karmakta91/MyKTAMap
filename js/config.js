@@ -1216,25 +1216,66 @@ window.V3D_PORTEE = V3D_PORTEE;
 window.getVue3DPortee = getVue3DPortee;
 window.setVue3DPortee = setVue3DPortee;
 
-// ── Lampe de la vue 3D : "normale" | "forte" | "jour" (plein jour : éclairage d'ambiance), réglage de CET appareil ─
-// localStorage["myktamap_v3d_lampe_v1"] ; absente ou inconnue → "normale". Réglée dans la tuile ⚙️ (vue3d.js >
-// reglerLampe). ⚠️ contrat : c'est la préférence ; la vue peut l'ignorer un temps (plein jour refusé pendant une
-// greffe) sans la réécrire.
-const V3D_LAMPE_CLE = "myktamap_v3d_lampe_v1";
-const V3D_LAMPES = ["normale", "forte", "jour"];
-function getVue3DLampe() {
-  try {
-    const v = localStorage.getItem(V3D_LAMPE_CLE);
-    return V3D_LAMPES.indexOf(v) >= 0 ? v : "normale";
-  } catch (e) { return "normale"; }
+// ── Lampe de la vue 3D : intensité, faisceau, Plein jour, réglages de CET appareil ──────────────────────────────
+// localStorage["myktamap_v3d_lampe_intensite_v1"] = % entier (V3D_LAMPE.intensite, 100 = la lampe d'origine),
+// ["myktamap_v3d_faisceau_v1"] = ° entiers de cône total (V3D_LAMPE.faisceau), ["myktamap_v3d_jour_v1"] = "1" | "0" ;
+// absente ou illisible → défaut. Réglés dans la tuile ⚙️ (vue3d.js > reglerLampe, reglerFaisceau, reglerPleinJour).
+// Ancienne clé myktamap_v3d_lampe_v1 ("normale" | "forte" | "jour") lue tant que la nouvelle est absente : « forte »
+// = V3D_LAMPE_FORTE % (la même lampe, vue3d.js > _courbeLampe), « jour » = Plein jour ; jamais réécrite.
+// ⚠️ contrat : c'est la préférence ; la vue peut l'ignorer un temps (greffe qui fige les réglages) sans la réécrire.
+const V3D_LAMPE = { intensite: { min: 25, max: 300, defaut: 100 }, faisceau: { min: 40, max: 160, defaut: 71 } };
+const V3D_LAMPE_FORTE = 200;
+const V3D_LAMPE_ANCIENNE_CLE = "myktamap_v3d_lampe_v1";
+const V3D_LAMPE_INTENSITE_CLE = "myktamap_v3d_lampe_intensite_v1";
+const V3D_FAISCEAU_CLE = "myktamap_v3d_faisceau_v1";
+const V3D_JOUR_CLE = "myktamap_v3d_jour_v1";
+function _bornerLampe(v, b) {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.max(b.min, Math.min(b.max, n)) : b.defaut;
 }
-function setVue3DLampe(v) {
-  const m = V3D_LAMPES.indexOf(v) >= 0 ? v : "normale";
-  try { localStorage.setItem(V3D_LAMPE_CLE, m); } catch (e) { /* stockage refusé : valeur de la vue seule */ }
-  return m;
+function _ancienneLampeV3D() {
+  try { return localStorage.getItem(V3D_LAMPE_ANCIENNE_CLE); } catch (e) { return null; }
 }
-window.getVue3DLampe = getVue3DLampe;
-window.setVue3DLampe = setVue3DLampe;
+function _lireReglageV3D(cle) {
+  try { return localStorage.getItem(cle); } catch (e) { return null; }
+}
+function _ecrireReglageV3D(cle, v) {
+  try { localStorage.setItem(cle, v); } catch (e) { /* stockage refusé : valeur de la vue seule */ }
+}
+function getVue3DLampeIntensite() {
+  const v = _lireReglageV3D(V3D_LAMPE_INTENSITE_CLE);
+  if (v !== null) return _bornerLampe(v, V3D_LAMPE.intensite);
+  return _ancienneLampeV3D() === "forte" ? V3D_LAMPE_FORTE : V3D_LAMPE.intensite.defaut;
+}
+function setVue3DLampeIntensite(p) {
+  const v = _bornerLampe(p, V3D_LAMPE.intensite);
+  _ecrireReglageV3D(V3D_LAMPE_INTENSITE_CLE, String(v));
+  return v;
+}
+function getVue3DFaisceau() {
+  const v = _lireReglageV3D(V3D_FAISCEAU_CLE);
+  return v === null ? V3D_LAMPE.faisceau.defaut : _bornerLampe(v, V3D_LAMPE.faisceau);
+}
+function setVue3DFaisceau(d) {
+  const v = _bornerLampe(d, V3D_LAMPE.faisceau);
+  _ecrireReglageV3D(V3D_FAISCEAU_CLE, String(v));
+  return v;
+}
+function getVue3DPleinJour() {
+  const v = _lireReglageV3D(V3D_JOUR_CLE);
+  return v === null ? _ancienneLampeV3D() === "jour" : v === "1";
+}
+function setVue3DPleinJour(oui) {
+  _ecrireReglageV3D(V3D_JOUR_CLE, oui ? "1" : "0");
+  return !!oui;
+}
+window.V3D_LAMPE = V3D_LAMPE;
+window.getVue3DLampeIntensite = getVue3DLampeIntensite;
+window.setVue3DLampeIntensite = setVue3DLampeIntensite;
+window.getVue3DFaisceau = getVue3DFaisceau;
+window.setVue3DFaisceau = setVue3DFaisceau;
+window.getVue3DPleinJour = getVue3DPleinJour;
+window.setVue3DPleinJour = setVue3DPleinJour;
 
 // ── Estimation du point B de géoréférencement ──────────────────────
 // GPS d'UN seul point A + échelle fiable (px/m) + Nord calibré suffisent à DÉDUIRE B.

@@ -62,16 +62,13 @@
 .kta-v3d-reglages-ligne { display: flex; gap: 8px; }
 .kta-v3d-reglages-ligne > .kta-v3d-btn { flex: 1 1 0; text-align: left; white-space: nowrap; }
 .kta-v3d-btn-icone { width: 22px; height: 22px; vertical-align: middle; margin-right: 6px; }
-/* Portée : nom, curseur, valeur (vue3d.js > _majPortee) sur une ligne. */
-.kta-v3d-portee { display: flex; align-items: center; gap: 8px; min-height: 44px; }
-.kta-v3d-portee-nom { font-size: 14px; font-weight: 600; white-space: nowrap; }
-.kta-v3d-portee-curseur { flex: 1 1 auto; min-width: 120px; height: 32px; margin: 0; accent-color: var(--kta-accent); }
-.kta-v3d-portee-curseur:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
-.kta-v3d-portee-valeur { min-width: 44px; text-align: right; font-size: 14px; font-weight: 600; }
-/* Lampe : 💡 puis Normale / Forte / Plein jour (aria-pressed), chacun à la largeur de son texte. */
-.kta-v3d-reglages-ligne.kta-v3d-lampe { align-items: center; }
-.kta-v3d-reglages-ligne.kta-v3d-lampe > .kta-v3d-btn { flex: 1 1 auto; text-align: center; }
-.kta-v3d-lampe-icone { margin-right: 0; }
+/* Portée, intensité et faisceau de la lampe : nom, curseur, valeur (vue3d.js > _majCurseur) sur une ligne ; noms
+   d'une même largeur, les trois curseurs alignés. */
+.kta-v3d-curseur { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.kta-v3d-curseur-nom { min-width: 7.5em; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.kta-v3d-curseur-champ { flex: 1 1 auto; min-width: 120px; height: 32px; margin: 0; accent-color: var(--kta-accent); }
+.kta-v3d-curseur-champ:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
+.kta-v3d-curseur-valeur { min-width: 52px; text-align: right; font-size: 14px; font-weight: 600; }
 .kta-v3d-btn-emoji { display: inline-block; font-size: 18px; line-height: 22px; text-align: center; }
 /* Mode suivi / libre, hors de la tuile : pastille discrète en haut à gauche, non touchable. */
 .kta-v3d-mode-indic {
