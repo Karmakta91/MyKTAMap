@@ -233,8 +233,8 @@ embuscades, un monde par niveau), `js/son.js`
   proche dans l'axe (6° ou le gabarit du corps), à 18 m au plus, ligne de vue libre ; un égaré a 2 points, un coup à
   8 m ou moins en ôte 2 ; la silhouette touchée recule. Recharge automatique de 1,5 s ; départ 2 + 6 cartouches.
 - **Rage** (décision produit) : prête après 20 égarés tués hors rage (compteur sur le petit bouton au-dessus du
-  fusil, puis « Rage » qui pulse) ; bouton ou touche R : 30 s de tir automatique tant que la détente est tenue
-  (bouton, clic gauche capturé, Espace ; un coup toutes les 110 ms), cartouches non comptées, chargeur de 25 puis
+  fusil, puis « Rage » qui pulse) ; bouton ou touche R : toute la santé rendue, 30 s de tir automatique tant que
+  la détente est tenue (bouton, clic gauche capturé, Espace ; un coup toutes les 110 ms), cartouches non comptées, chargeur de 25 puis
   recharge de 1,5 s. Les égarés tués pendant la rage ne chargent pas la suivante.
 - **À ramasser** à moins d'1 m : munitions (+4 ; 4 par vague, une de moins toutes les deux vagues, 1 au moins), piles,
   champignons (+30 santé ; 3, un de moins toutes les trois vagues, au bout des culs-de-sac de préférence ; un égaré

@@ -9,8 +9,8 @@
 // monde.js et joueur.js (bras et fusil en vue à hauteur d'yeux, silhouette verte en vue plongeante). Expose
 // window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
 // rejoindre un point B (POI de plus en plus loin, sinon un point des tracés) avec des égarés et, dès la vague 2, la
-// silhouette (monde.js) ; fusil à deux coups (rage après 20 égarés : 30 s de tir automatique), munitions, piles et
-// champignons ramassés en passant ; viseur à la souris capturée (PC) ; santé à 0 = fin,
+// silhouette (monde.js) ; fusil à deux coups (rage après 20 égarés : santé pleine, 30 s de tir auto), munitions,
+// piles et champignons ramassés en passant ; viseur à la souris capturée (PC) ; santé à 0 = fin,
 // meilleure vague retenue par difficulté. La pile de la lampe s'use (lampe qui baisse et vacille, à plat = lueur de
 // quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
 // éboulis couvrent les grognements. Dès la vague 4, sur un plan multi-niveau, B est parfois à un autre niveau ; toutes
@@ -46,7 +46,8 @@
       "hud.sansNom": "un point du réseau", "hud.tirer": "Tirer", "hud.cartouches": "Cartouches",
       "hud.viser": "Clic sur la scène : viser à la souris · Échap pour la libérer",
       "hud.rage": "Rage", "hud.ragePrete": "Rage prête ! (bouton au-dessus du fusil, ou R)",
-      "hud.rageCharge": "Rage : {n} / {m} égarés", "hud.rageActive": "RAGE ! Garde le doigt sur la détente",
+      "hud.rageCharge": "Rage : {n} / {m} égarés",
+      "hud.rageActive": "RAGE ! Santé au max, garde le doigt sur la détente",
       "hud.rageFin": "La rage retombe",
       "hud.recharge": "Recharge…", "hud.vide": "Plus de cartouches", "hud.plusCartouches": "+{n} cartouches",
       "hud.plusSante": "+{n} santé", "hud.recule": "Elle recule…",
@@ -78,7 +79,7 @@
       "hud.sansNom": "a point of the network", "hud.tirer": "Shoot", "hud.cartouches": "Shells",
       "hud.viser": "Click the scene to aim with the mouse · Esc to release it",
       "hud.rage": "Rage", "hud.ragePrete": "Rage ready! (button above the shotgun, or R)",
-      "hud.rageCharge": "Rage: {n} / {m} lost ones", "hud.rageActive": "RAGE! Hold the trigger",
+      "hud.rageCharge": "Rage: {n} / {m} lost ones", "hud.rageActive": "RAGE! Full health, hold the trigger",
       "hud.rageFin": "The rage fades",
       "hud.recharge": "Reloading…", "hud.vide": "Out of shells", "hud.plusCartouches": "+{n} shells",
       "hud.plusSante": "+{n} health", "hud.recule": "It backs away…",
@@ -110,7 +111,7 @@
       "hud.sansNom": "un punto de la red", "hud.tirer": "Disparar", "hud.cartouches": "Cartuchos",
       "hud.viser": "Clic en la escena: apuntar con el ratón · Esc para soltarlo",
       "hud.rage": "Furia", "hud.ragePrete": "¡Furia lista! (botón sobre la escopeta, o R)",
-      "hud.rageCharge": "Furia: {n} / {m} perdidos", "hud.rageActive": "¡FURIA! Mantén el gatillo",
+      "hud.rageCharge": "Furia: {n} / {m} perdidos", "hud.rageActive": "¡FURIA! Salud al máximo, mantén el gatillo",
       "hud.rageFin": "La furia se apaga",
       "hud.recharge": "Recargando…", "hud.vide": "Sin cartuchos", "hud.plusCartouches": "+{n} cartuchos",
       "hud.plusSante": "+{n} salud", "hud.recule": "Retrocede…",
@@ -589,6 +590,7 @@
     p.rageTues = 0;
     p.rageFin = performance.now() + R.dureeS * 1000;
     p.rageCanon = R.chargeur;
+    p.sante = REGLES.sante;   // la rage rend toute la santé (décision produit)
     // Une recharge du fusil en cours est abandonnée : la rage tire tout de suite (les cartouches restent comptées).
     p.rechargeFin = 0;
     p.rechargeRage = false;
@@ -1190,7 +1192,8 @@
         nom: p.cible.nom } : null, route: p.route ? p.route.length : 0, restantM: p.restantM,
       rage: { tues: p.rageTues, active: !!p.rageFin, canon: p.rageCanon,
         bouton: !!p.hud && !p.hud.rage.disabled }, recalages: p.recalages, ecartM: p.route && p.ctx ?
-        +(_proche(p.route, p.longueurs, p.ctx.pos, p.ctx.niveau).d / p.ctx.sc).toFixed(1) : null, viseur: !!(p.viseur && p.viseur.capte()),
+        +(_proche(p.route, p.longueurs, p.ctx.pos, p.ctx.niveau).d / p.ctx.sc).toFixed(1) : null,
+      viseur: !!(p.viseur && p.viseur.capte()),
       traits: p.traits.length, chevrons: p.nChevrons || 0, calcul: p.calcul, canon: p.canon, reserve: p.reserve,
       recharge: !!p.rechargeFin,
       fin: p.fin, tues: p.tues, tirs: p.tirs, touches: p.touches,
