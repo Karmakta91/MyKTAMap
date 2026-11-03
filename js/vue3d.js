@@ -2567,17 +2567,21 @@
     };
     const rel = { haut: null, entreeBas: null };
     let i0 = lot.p.length;
-    for (let k = 0; monte && k < n; k++) {
-      const s0 = -a + k * pas;
-      _pave(lot, Q, s0, s0 + pas, deux ? 0 : -b, b, 0, (k + 1) * haut, col);
+    if (monte) {
+      for (let k = 0; k < n; k++) {
+        const s0 = -a + k * pas;
+        _pave(lot, Q, s0, s0 + pas, deux ? 0 : -b, b, 0, (k + 1) * haut, col);
+      }
+      rel.haut = plusHaut(i0);
     }
-    if (monte) rel.haut = plusHaut(i0);
     i0 = lot.p.length;
-    for (let k = 0; v.sol && k < n; k++) {
-      const s0 = -a + k * pas;
-      _pave(lot, Q, s0, s0 + pas, -b, deux ? 0 : b, -VOLUME.long, -(k + 1) * haut, col);
+    if (v.sol) {
+      for (let k = 0; k < n; k++) {
+        const s0 = -a + k * pas;
+        _pave(lot, Q, s0, s0 + pas, -b, deux ? 0 : b, -VOLUME.long, -(k + 1) * haut, col);
+      }
+      rel.entreeBas = plusHaut(i0);
     }
-    if (v.sol) rel.entreeBas = plusHaut(i0);
     v.relMarches = rel;   // haut de la volée qui monte ; marche d'entrée (la plus haute) de celle qui descend
   }
 

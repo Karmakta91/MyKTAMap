@@ -167,7 +167,7 @@
       // 🩸 Le tag entier, pas sa longueur : cao → caf (porte fermée) ou pa → pe ne changeaient rien sinon.
       const tg = String((p.tags && p.tags[0]) || "");
       mel(p.x * 10); mel(p.y * 10); mel(p.level); mel(tg.length);
-      for (let k = 0; k < tg.length; k++) mel(tg.charCodeAt(k));
+      for (let k = 0; k < tg.length; k++) mel(tg.codePointAt(k));
       (Array.isArray(p.niveaux) ? p.niveaux : []).forEach(mel);
       (Array.isArray(p.accroches) ? p.accroches : []).forEach(function (a) {
         if (a) { mel(a.level); mel(a.x * 10); mel(a.y * 10); }
