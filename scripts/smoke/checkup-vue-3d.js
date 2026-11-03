@@ -4626,7 +4626,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await pause(30);
         r.tirJoueur = M().etat().joueur;
         await pause(20);
-        r.tir = { canon: M().etat().canon, tues: M().etat().tues, ennemis: M().etat().ennemis.length };
+        r.tir = { canon: M().etat().canon, tues: M().etat().tues, ennemis: M().etat().ennemis.length,
+          cadavres: M().etat().cadavres };
         tape();
         await pause(50);
         r.recharge = { canon: M().etat().canon, recharge: M().etat().recharge };
@@ -4773,8 +4774,8 @@ async function mesuresGalerie(page, nom, semisDonne) {
         MK.partie);
       verifier(MK.partie.ennemis >= 1 && MK.partie.objets >= 2 && MK.partie.tirer && MK.partie.cartouches === "2/6",
         "jeu : vague 1 peuplée (égarés, munitions, champignons), bouton de tir, 2 cartouches + 6", MK.partie);
-      verifier(MK.tir.canon === 1 && MK.tir.tues === 1 && MK.tir.ennemis === 0,
-        "jeu : un coup à 5 m tue l'égaré devant soi (Espace)", MK.tir);
+      verifier(MK.tir.canon === 1 && MK.tir.tues === 1 && MK.tir.ennemis === 0 && MK.tir.cadavres === 1,
+        "jeu : un coup à 5 m tue l'égaré devant soi (Espace) ; il tombe et reste au sol", MK.tir);
       verifier(MK.joueur.arme && MK.joueur.surCamera && !MK.joueur.silhouette && MK.joueurHaut.silhouette &&
         !MK.joueurHaut.arme && MK.joueurHaut.avatar === false && MK.tirJoueur.recul > 0 && MK.tirJoueur.eclair,
         "jeu : bras et fusil 3D accrochés à la caméra (recul et éclair au tir) ; vue plongeante : silhouette verte, " +

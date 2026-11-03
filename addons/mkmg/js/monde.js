@@ -5,9 +5,9 @@
  */
 
 // addons/mkmg/js/monde.js — ce qui vit dans la carrière pendant une partie de l'add-on « mkmg » : égarés (presque
-// aussi rapides que la marche, nombreux, ils chargent à vue ; tués au fusil), silhouette (une seule, invulnérable, ne
-// bouge que hors du faisceau de la lampe ; un tir la fait reculer), munitions et champignons à ramasser en passant
-// dessus, tir, embuscades (surgir). Expose window.KtaAddons.mkmgMonde = { peupler, animer, tirer, dessiner, vider,
+// aussi rapides que la marche, nombreux, ils chargent à vue ; tués au fusil, ils tombent et restent au sol),
+// silhouette (une seule, invulnérable, ne bouge que hors du faisceau de la lampe ; un tir la fait reculer), munitions
+// et champignons à ramasser en passant dessus, tir, embuscades (surgir). Expose window.KtaAddons.mkmgMonde = { peupler, animer, tirer, dessiner, vider,
 // liberer, surgir, REGLES }. Positions en px plan (comme ctx.pos), maillages en m.
 // ⚠️ contrat : à moins de 25 m (et droit sur le joueur) tout pas passe la règle du pas de la vue (ctx.bloque) ; plus
 // loin, hors de vue, une menace glisse de nœud en nœud des tracés (_carte : distances au joueur sur le graphe en cache
@@ -34,8 +34,11 @@
     ramasser: 1, iaHz: 15,
     tir: { portee: 18, ecart: 6, pres: 8, recharge: 1.5, canon: 2 }
   };
-  const COULEURS = { egare: 0x5a6650, tete: 0x6e7a62, silhouette: 0x0d0d0f, yeux: 0xd8d8d0, caisse: 0x8a6a3a,
-    pied: 0xe8dcc8, chapeau: 0xb03a2e };
+  const COULEURS = { haillons: 0x5b5f4a, pantalon: 0x3a372f, peau: 0x9aa58a, casque: 0xa8842c, bottes: 0x231f1a,
+    yeuxE: 0xff6a3a, silhouette: 0x0d0d0f, yeux: 0xd8d8d0, caisse: 0x8a6a3a, pied: 0xe8dcc8, chapeau: 0xb03a2e,
+    flaque: 0x2a0705 };
+  // Animation des égarés : foulée (rad, pas par m), recul quand le coup ne tue pas, chute, corps gardés au sol.
+  const ANIM = { foulee: 0.55, pasParM: 3.2, recul: 0.45, reculMs: 250, chuteMs: 550, flaqueMs: 3000, cadavres: 16 };
 
   function _d(a, b, sc) { return Math.hypot(a.x - b.x, a.y - b.y) / sc; }
 
@@ -157,44 +160,180 @@
 
   // ── Maillages ─────────────────────────────────────────────────────────────────────────────────────────
 
+  // Pièces fusionnées en UNE géométrie à couleurs de sommets : un égaré = 4 maillages (haut, yeux, deux jambes),
+  // pas un par pièce (des dizaines d'égarés et de corps sur un téléphone). pieces = [[géométrie, couleur, matrice]].
+  function _fusion(T, pieces) {
+    const gs = pieces.map(function (pc) {
+      const g = pc[0].index ? pc[0].toNonIndexed() : pc[0];
+      if (g !== pc[0]) pc[0].dispose();
+      g.applyMatrix4(pc[2]);
+      return [g, new T.Color(pc[1])];
+    });
+    const n = gs.reduce(function (s, x) { return s + x[0].attributes.position.count; }, 0);
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3);
+    let k = 0;
+    gs.forEach(function (x) {
+      const g = x[0], c = x[1], m = g.attributes.position.count;
+      pos.set(g.attributes.position.array, k * 3);
+      nor.set(g.attributes.normal.array, k * 3);
+      for (let i = 0; i < m; i++) { col[(k + i) * 3] = c.r; col[(k + i) * 3 + 1] = c.g; col[(k + i) * 3 + 2] = c.b; }
+      k += m;
+      g.dispose();
+    });
+    const out = new T.BufferGeometry();
+    out.setAttribute("position", new T.BufferAttribute(pos, 3));
+    out.setAttribute("normal", new T.BufferAttribute(nor, 3));
+    out.setAttribute("color", new T.BufferAttribute(col, 3));
+    return out;
+  }
+
+  // Matrice : position, rotation (x, y, z), échelle (un nombre ou [x, y, z]).
+  function _mx(T, x, y, z, rx, ry, rz, s) {
+    const e = Array.isArray(s) ? s : [s || 1, s || 1, s || 1];
+    return new T.Matrix4().compose(new T.Vector3(x, y, z),
+      new T.Quaternion().setFromEuler(new T.Euler(rx || 0, ry || 0, rz || 0)), new T.Vector3(e[0], e[1], e[2]));
+  }
+
+  // Cylindre de a à b (m) → [géométrie, matrice].
+  function _seg(T, a, b, r0, r1) {
+    const va = new T.Vector3(a[0], a[1], a[2]), vb = new T.Vector3(b[0], b[1], b[2]), d = vb.clone().sub(va);
+    const q = new T.Quaternion().setFromUnitVectors(new T.Vector3(0, 1, 0), d.clone().normalize());
+    return [new T.CylinderGeometry(r1, r0, d.length(), 8),
+      new T.Matrix4().compose(va.add(vb).multiplyScalar(0.5), q, new T.Vector3(1, 1, 1))];
+  }
+
+  // Égaré : mineur voûté, casque à lampe, bras tendus vers le joueur (+z = face). Haut du corps à partir des hanches.
+  function _gabaritEgare(T, g, H) {
+    const C = COULEURS, hanche = H * 0.46, ht = H * 0.3, epaule = 0.12 + ht - 0.04, tete = 0.12 + ht + 0.15;
+    const voute = 0.35;
+    g.hautE = _fusion(T, [
+      [new T.BoxGeometry(0.34, 0.16, 0.2), C.pantalon, _mx(T, 0, 0.05, 0)],
+      [new T.BoxGeometry(0.38, ht, 0.22), C.haillons, _mx(T, 0, 0.12 + ht / 2, 0)],
+      [new T.SphereGeometry(0.13, 10, 8), C.peau, _mx(T, 0, tete, 0.02)],
+      [new T.SphereGeometry(0.15, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), C.casque, _mx(T, 0, tete + 0.02, 0.02)],
+      [new T.CylinderGeometry(0.16, 0.16, 0.02, 12), C.casque, _mx(T, 0, tete + 0.03, 0.03)],
+      [new T.CylinderGeometry(0.03, 0.03, 0.03, 8), C.yeux, _mx(T, 0, tete + 0.09, 0.15, Math.PI / 2)]
+    ]);
+    g.hautE.rotateX(voute);
+    g.yeuxE = _fusion(T, [-0.045, 0.045].map(function (dx) {
+      return [new T.SphereGeometry(0.026, 6, 4), C.yeuxE, _mx(T, dx, tete + 0.005, 0.15)];
+    }));
+    g.yeuxE.rotateX(voute);
+    // Bras à part (pivot aux épaules) : tendus vers le joueur, ils retombent le long du corps à la mort.
+    const bras = function (s) {
+      const sg = _seg(T, [s * 0.21, 0, 0], [s * 0.15, -0.06, 0.42], 0.058, 0.048);
+      return [sg[0], C.haillons, sg[1]];
+    };
+    g.brasE = _fusion(T, [bras(-1), bras(1),
+      [new T.SphereGeometry(0.055, 8, 6), C.peau, _mx(T, -0.15, -0.06, 0.45)],
+      [new T.SphereGeometry(0.055, 8, 6), C.peau, _mx(T, 0.15, -0.06, 0.45)]]);
+    g.epaule = new T.Vector3(0, epaule, 0.02).applyAxisAngle(new T.Vector3(1, 0, 0), voute);
+    g.voute = voute;
+    g.jambeE = _fusion(T, [
+      [new T.CylinderGeometry(0.075, 0.062, hanche, 8), C.pantalon, _mx(T, 0, -hanche / 2, 0)],
+      [new T.BoxGeometry(0.12, 0.08, 0.21), C.bottes, _mx(T, 0, -hanche + 0.04, 0.04)]
+    ]);
+    g.hanche = hanche;
+  }
+
+  // Silhouette : longue, mince, bras jusqu'aux genoux.
+  function _gabaritSilhouette(T, g, hS) {
+    const c = COULEURS.silhouette, j = hS * 0.48, tr = hS * 0.34, ep = j + tr;
+    const seg = function (a, b, r0, r1) { const s = _seg(T, a, b, r0, r1); return [s[0], c, s[1]]; };
+    g.corpsS = _fusion(T, [
+      seg([-0.07, 0, 0], [-0.06, j, 0], 0.035, 0.05), seg([0.07, 0, 0], [0.06, j, 0], 0.035, 0.05),
+      [new T.CylinderGeometry(0.14, 0.1, tr, 8), c, _mx(T, 0, j + tr / 2, 0)],
+      seg([-0.15, ep - 0.03, 0], [-0.22, j * 0.45, 0.04], 0.035, 0.025),
+      seg([0.15, ep - 0.03, 0], [0.22, j * 0.45, 0.04], 0.035, 0.025),
+      [new T.SphereGeometry(0.11, 10, 8), c, _mx(T, 0, ep + 0.16, 0, 0, 0, 0, [0.9, 1.25, 0.95])]
+    ]);
+    g.yeuxS = _fusion(T, [-0.04, 0.04].map(function (dx) {
+      return [new T.SphereGeometry(0.022, 6, 4), COULEURS.yeux, _mx(T, dx, ep + 0.18, 0.095)];
+    }));
+  }
+
   function _gabarits(p, ctx) {
     const T = ctx.THREE, h = ctx.hauteur, g = {};
     const lam = function (c) { return new T.MeshLambertMaterial({ color: c }); };
-    const hE = Math.min(1.25, h * 0.6), hS = Math.min(2.1, h * 0.95);
-    g.corpsE = new T.CylinderGeometry(0.2, 0.26, hE, 10); g.corpsE.translate(0, hE / 2, 0);
-    g.teteE = new T.SphereGeometry(0.16, 10, 8); g.teteE.translate(0, hE + 0.12, 0);
-    g.corpsS = new T.CylinderGeometry(0.12, 0.2, hS, 10); g.corpsS.translate(0, hS / 2, 0);
-    g.oeil = new T.SphereGeometry(0.025, 6, 4);
+    _gabaritEgare(T, g, Math.min(1.6, h * 0.78));
+    _gabaritSilhouette(T, g, Math.min(2.1, h * 0.95));
     g.caisse = new T.BoxGeometry(0.35, 0.16, 0.22); g.caisse.translate(0, 0.08, 0);
     g.pied = new T.CylinderGeometry(0.04, 0.05, 0.14, 8); g.pied.translate(0, 0.07, 0);
     g.chapeau = new T.SphereGeometry(0.12, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2); g.chapeau.translate(0, 0.13, 0);
-    g.hS = hS;
-    const m = { egare: lam(COULEURS.egare), tete: lam(COULEURS.tete), silhouette: lam(COULEURS.silhouette),
-      yeux: new T.MeshBasicMaterial({ color: COULEURS.yeux }), caisse: lam(COULEURS.caisse),
-      pied: lam(COULEURS.pied), chapeau: lam(COULEURS.chapeau) };
+    g.flaque = new T.CircleGeometry(0.45, 16); g.flaque.rotateX(-Math.PI / 2); g.flaque.scale(0.9, 1, 1.3);
+    const m = { corps: new T.MeshLambertMaterial({ vertexColors: true }),
+      yeux: new T.MeshBasicMaterial({ vertexColors: true }), caisse: lam(COULEURS.caisse),
+      pied: lam(COULEURS.pied), chapeau: lam(COULEURS.chapeau),
+      // 🩸 Flaque à ras du sol : décalage de profondeur, sinon elle scintille à travers le sol.
+      flaque: new T.MeshLambertMaterial({ color: COULEURS.flaque, polygonOffset: true, polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2 }) };
     p.gabarits = { g: g, m: m };
   }
 
   function _maillage(p, ctx, o) {
     const T = ctx.THREE, g = p.gabarits.g, m = p.gabarits.m, grp = new T.Group();
-    if (o.type === "egare") { grp.add(new T.Mesh(g.corpsE, m.egare), new T.Mesh(g.teteE, m.tete)); }
-    if (o.type === "silhouette") {
-      grp.add(new T.Mesh(g.corpsS, m.silhouette));
-      [-0.05, 0.05].forEach(function (dx) {
-        const y = new T.Mesh(g.oeil, m.yeux); y.position.set(dx, g.hS - 0.12, 0.13); grp.add(y);
+    if (o.type === "egare") {
+      // corps (pivot aux pieds, pour la chute) > haut (aux hanches, yeux dedans) + deux jambes.
+      const corps = new T.Group(), haut = new T.Mesh(g.hautE, m.corps), yeux = new T.Mesh(g.yeuxE, m.yeux);
+      haut.position.y = g.hanche;
+      const bras = new T.Mesh(g.brasE, m.corps);
+      bras.position.copy(g.epaule);
+      bras.rotation.x = g.voute;
+      haut.add(yeux, bras);
+      const jambes = [-0.1, 0.1].map(function (dx) {
+        const j = new T.Mesh(g.jambeE, m.corps);
+        j.position.set(dx, g.hanche, 0);
+        return j;
       });
+      corps.add(haut, jambes[0], jambes[1]);
+      grp.add(corps);
+      o.os = { corps: corps, haut: haut, yeux: yeux, bras: bras, jambes: jambes, flaque: null, voute: g.voute };
     }
+    if (o.type === "silhouette") grp.add(new T.Mesh(g.corpsS, m.corps), new T.Mesh(g.yeuxS, m.yeux));
     if (o.type === "munitions") grp.add(new T.Mesh(g.caisse, m.caisse));
     if (o.type === "champignon") grp.add(new T.Mesh(g.pied, m.pied), new T.Mesh(g.chapeau, m.chapeau));
     o.mesh = grp;
     _placer(o, ctx);
     ctx.groupe.add(grp);
+    if (o.mortT) _poserMort(p, ctx, o, 1, 1);
+  }
+
+  // Pose d'un égaré vivant : foulée selon la distance parcourue, balancement, recul d'un coup qui ne tue pas.
+  function _poserVivant(o, t) {
+    const os = o.os, ph = o.phase || 0, a = o.marche || 0;
+    if (!os) return;
+    os.jambes[0].rotation.x = Math.sin(ph) * ANIM.foulee * a;
+    os.jambes[1].rotation.x = -Math.sin(ph) * ANIM.foulee * a;
+    const recul = o.toucheT ? Math.max(0, 1 - (t - o.toucheT) / ANIM.reculMs) : 0;
+    os.haut.rotation.set(-recul * ANIM.recul, 0, Math.sin(ph) * 0.07 * a);
+    os.bras.rotation.set(os.voute + Math.cos(ph * 2) * 0.08 * a - recul * 0.6, 0, 0);
+  }
+
+  // Chute en arrière (k : 0 → 1), corps couché un peu de biais, yeux éteints, flaque qui s'étale (kf : 0 → 1).
+  function _poserMort(p, ctx, o, k, kf) {
+    const os = o.os;
+    if (!os) return;
+    const e = k * k;
+    os.corps.rotation.set(-Math.PI / 2 * e, 0, (o.biais || 0) * e);
+    os.corps.position.y = 0.11 * e;
+    os.haut.rotation.set(-0.35 * e, 0, 0);
+    os.bras.rotation.set(os.voute + 1.3 * e, 0, 0);
+    os.jambes[0].rotation.x = 0.15 * e;
+    os.jambes[1].rotation.x = -0.1 * e;
+    os.yeux.visible = k < 0.5;
+    if (!os.flaque && k >= 1) {
+      os.flaque = new ctx.THREE.Mesh(p.gabarits.g.flaque, p.gabarits.m.flaque);
+      os.flaque.position.set(0, 0.012, -p.gabarits.g.hanche * 1.1);
+      o.mesh.add(os.flaque);
+    }
+    if (os.flaque) os.flaque.scale.setScalar(0.2 + 0.8 * Math.min(1, kf));
   }
 
   function _placer(o, ctx) {
     if (!o.mesh) return;
     o.mesh.position.set(o.x / ctx.sc, 0, o.y / ctx.sc);
-    if (o.type === "egare" || o.type === "silhouette") {
+    if (o.mortT) o.mesh.rotation.y = o.lacet || 0;
+    else if (o.type === "egare" || o.type === "silhouette") {
       const pos = ctx.pos;
       o.mesh.rotation.y = Math.atan2(pos.x - o.x, pos.y - o.y);
     }
@@ -203,18 +342,28 @@
   // neuf : true après une reprise du contexte (gabarits refaits, rien n'est libéré).
   function dessiner(p, ctx, neuf) {
     if (neuf || !p.gabarits) _gabarits(p, ctx);
-    p.ennemis.concat(p.objets).forEach(function (o) {
+    p.ennemis.concat(p.objets, p.cadavres || []).forEach(function (o) {
       if (o.mesh && !neuf && o.mesh.parent === ctx.groupe) return;
       if (o.mesh && o.mesh.parent) o.mesh.parent.remove(o.mesh);
       _maillage(p, ctx, o);
     });
   }
 
-  function _retirer(o) { if (o.mesh && o.mesh.parent) o.mesh.parent.remove(o.mesh); o.mesh = null; }
+  function _retirer(o) { if (o.mesh && o.mesh.parent) o.mesh.parent.remove(o.mesh); o.mesh = null; o.os = null; }
 
   function vider(p) {
-    p.ennemis.concat(p.objets).forEach(_retirer);
-    p.ennemis = []; p.objets = [];
+    p.ennemis.concat(p.objets, p.cadavres || []).forEach(_retirer);
+    p.ennemis = []; p.objets = []; p.cadavres = [];
+  }
+
+  // Égaré tué : il tombe et reste au sol (les `ANIM.cadavres` derniers ; le plus ancien disparaît).
+  function _abattre(p, o) {
+    o.mortT = performance.now();
+    o.lacet = o.mesh ? o.mesh.rotation.y : 0;
+    o.biais = (Math.random() - 0.5) * 0.5;
+    p.ennemis = p.ennemis.filter(function (e) { return e !== o; });
+    p.cadavres = (p.cadavres || []).concat([o]);
+    while (p.cadavres.length > ANIM.cadavres) _retirer(p.cadavres.shift());
   }
 
   // Fin de partie : gabarits libérés (maillages partagés).
@@ -394,6 +543,24 @@
         if (_d(o, pos, sc) <= S.contact) { r.degats += S.degats; r.sons.push(["blesse", 1]); _eloigner(p, ctx, o); }
       }
       if (pense) _placer(o, ctx);
+      // Foulée : vitesse relue à chaque pensée (la place ne change qu'alors), phase avancée à chaque image pour des
+      // jambes fluides ; à l'arrêt l'amplitude s'éteint en douceur.
+      if (o.type === "egare") {
+        if (pense) {
+          const fait = o.avantX === undefined ? 0 : Math.hypot(o.x - o.avantX, o.y - o.avantY) / sc;
+          o.avantX = o.x; o.avantY = o.y;
+          o.vitPas = fait / Math.max(dtIa, 1e-3);
+        }
+        o.phase = (o.phase || 0) + (o.vitPas || 0) * dt * ANIM.pasParM;
+        o.marche = (o.marche || 0) + ((o.vitPas > 0.05 ? 1 : 0) - (o.marche || 0)) * Math.min(1, dt * 6);
+        _poserVivant(o, t);
+      }
+    });
+    (p.cadavres || []).forEach(function (o) {
+      if (o.posee) return;
+      const k = Math.min(1, (t - o.mortT) / ANIM.chuteMs), kf = (t - o.mortT - ANIM.chuteMs) / ANIM.flaqueMs;
+      _poserMort(p, ctx, o, k, Math.max(0, kf));
+      if (kf >= 1) o.posee = true;
     });
     p.msMonde = (p.msMonde || 0) * 0.95 + (performance.now() - t0) * 0.05;
     p.objets = p.objets.filter(function (o) {
@@ -433,10 +600,10 @@
     res.touche = cible.type;
     if (cible.type === "silhouette") { _eloigner(p, ctx, cible); return res; }
     cible.pv -= dMin <= T.pres ? 2 : 1;
+    cible.toucheT = performance.now();
     if (cible.pv <= 0) {
       res.tue = true;
-      _retirer(cible);
-      p.ennemis = p.ennemis.filter(function (o) { return o !== cible; });
+      _abattre(p, cible);
       if (Math.random() < REGLES.champignons.lacher) {
         const o = { type: "champignon", x: cible.x, y: cible.y };
         p.objets.push(o);
