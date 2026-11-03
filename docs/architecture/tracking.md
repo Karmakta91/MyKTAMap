@@ -1587,8 +1587,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   plongeante (0,9) à hauteur d'yeux, lampe normale, brouillard gardé à la portée (même coût, la portée reste le seul
   réglage de « jusqu'où l'on voit »), commencé à 65 %. ⚠️ contrat : le mode se **multiplie** au facteur `lampe` d'une
   greffe (`_lampeGreffe` : force × mode × k, portée × coupure × max(0,06, k), comptée sur la portée réglée et rendue
-  au retrait) ; **Plein jour est refusé pendant une greffe** (`_lampeActive` → normale, bouton grisé, `reglerLampe`
-  rend false), la préférence n'est pas réécrite et revient au retrait. `etat().lampe` reste le facteur de la greffe
+  au retrait). ⚠️ contrat : une greffe qui pose **`ctx.regler({ reglagesFiges: true })`** (`_fige`) impose la portée
+  par défaut (30 m) et la lampe Normale (Plein jour et Forte compris), curseur et trois boutons grisés,
+  `reglerPortee` / `reglerLampe` rendent false ; les réglages retenus (`e.porteeVoulue`, `e.lampeVoulue`, et ceux de
+  l'appareil) ne sont jamais réécrits et reviennent tels quels au retrait ou avec la clé à false
+  (`_appliquerGreffeReglages`). Sans la clé, une greffe garde portée et lampe de l'utilisateur, Plein jour compris. `etat().lampe` reste le facteur de la greffe
   (intensité / force du mode).
 - **Boussole** : `icon/compass.svg` tournée de −(cap plan − `getPlanNorthOffset()`), la convention de `compass.js`.
   Plan sans Nord calibré (`config.js > getPlanNorthCalibre` : ni pref du plan ni `plan.northOffsetDeg`) : haut du

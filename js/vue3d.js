@@ -3237,16 +3237,38 @@
   }
 
   // ── Portée et lampe (tuile ⚙️, réglages de cet appareil) ─────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : une greffe qui fige les réglages (ctx.regler({ reglagesFiges: true }), _fige)
+  // impose portée par défaut (PORTEE.defaut) et lampe Normale, curseur et boutons grisés ; les réglages retenus
+  // (e.porteeVoulue, e.lampeVoulue, et ceux de l'appareil) ne sont jamais réécrits et reviennent tels quels au retrait
+  // ou avec la clé à false (_appliquerGreffeReglages). Sans la clé, la greffe garde portée et lampe de l'utilisateur
+  // (Plein jour compris), son facteur lampe s'y multiplie. e.distance = la portée en vigueur.
+  function _fige() {
+    const gr = _e && _e.greffe;
+    return !!gr && gr.reglage.reglagesFiges === true;
+  }
+
+  function _appliquerGreffeReglages() {
+    const e = _e;
+    const v = _fige() ? PORTEE.defaut : e.porteeVoulue;
+    if (v !== e.distance) e.distance = v;
+    _appliquerPortee();
+    _majPortee();
+    _majLampe();
+    _majRepere();
+  }
+
   // Portée bornée (config.js > V3D_PORTEE), retenue sur l'appareil ; brouillard, profondeur, lampe et rayon des tuiles
   // suivent à l'image suivante (_gererTuiles construit au plus TUILES_PAR_IMAGE par image : pas d'à-coup). Rend la
-  // portée retenue (null : vue fermée).
+  // portée retenue, false si une greffe fige les réglages (refusée, rien d'écrit), null vue fermée.
   function reglerPortee(m) {
     const e = _e;
     if (!e) return null;
+    if (_fige()) return false;
     const n = Math.round(Number(m));
     if (!Number.isFinite(n)) return e.distance;
     const v = Math.max(PORTEE.min, Math.min(PORTEE.max, n));
     if (typeof window.setVue3DPortee === "function") window.setVue3DPortee(v);
+    e.porteeVoulue = v;
     if (v !== e.distance) { e.distance = v; _appliquerPortee(); }
     _majPortee();
     _majRepere();
@@ -3261,27 +3283,29 @@
     const e = _e;
     if (!e || !e.curseurPortee) return;
     if (Number(e.curseurPortee.value) !== e.distance) e.curseurPortee.value = String(e.distance);
+    e.curseurPortee.disabled = _fige();
+    e.curseurPortee.title = _t("vue3d.porteeAide") + (_fige() ? " · " + _t("vue3d.reglageGreffe") : "");
     const txt = typeof window.formatDistance === "function" ? window.formatDistance(e.distance, 0)
       : e.distance + " m";
     e.porteeValeur.textContent = txt;
     e.curseurPortee.setAttribute("aria-valuetext", txt);
   }
 
-  // Mode de lampe en vigueur : la préférence, sauf plein jour pendant une greffe (refusé : une partie ne se joue pas
-  // en pleine lumière ; rendu au retrait de la greffe, la préférence n'est pas réécrite).
+  // Mode de lampe en vigueur : la préférence, sauf réglages figés par une greffe (Normale ; la préférence revient au
+  // retrait ou avec la clé à false, jamais réécrite).
   function _lampeActive() {
     const e = _e, v = e && e.lampeVoulue;
-    if (!LAMPES[v]) return "normale";
-    return v === "jour" && e.greffe ? "normale" : v;
+    if (!LAMPES[v] || _fige()) return "normale";
+    return v;
   }
 
-  // Lampe choisie ("normale" | "forte" | "jour"), retenue sur l'appareil. Rend le mode en vigueur, false si « jour »
-  // est refusé (greffe posée), null si la vue est fermée.
+  // Lampe choisie ("normale" | "forte" | "jour"), retenue sur l'appareil. Rend le mode en vigueur, false si une greffe
+  // fige les réglages (refusé, rien d'écrit), null si la vue est fermée.
   function reglerLampe(mode) {
     const e = _e;
     if (!e) return null;
+    if (_fige()) return false;
     if (!LAMPES[mode]) return _lampeActive();
-    if (mode === "jour" && e.greffe) return false;
     e.lampeVoulue = typeof window.setVue3DLampe === "function" ? window.setVue3DLampe(mode) : mode;
     _appliquerPortee();
     _majLampe();
@@ -3297,16 +3321,13 @@
   function _majLampe() {
     const e = _e;
     if (!e || !e.boutonsLampe) return;
-    const actif = _lampeActive();
+    const actif = _lampeActive(), suffixe = _fige() ? " · " + _t("vue3d.reglageGreffe") : "";
     e.boutonsLampe.forEach(function (b) {
-      const m = b.dataset.lampe;
-      b.setAttribute("aria-pressed", m === actif ? "true" : "false");
-      if (m === "jour") {
-        b.disabled = !!e.greffe;
-        const titre = _t("vue3d.lampeJour") + (e.greffe ? " · " + _t("vue3d.lampeJourGreffe") : "");
-        b.title = titre;
-        b.setAttribute("aria-label", _t("vue3d.lampe") + " : " + titre);
-      }
+      const cle = { normale: "vue3d.lampeNormale", forte: "vue3d.lampeForte", jour: "vue3d.lampeJour" }[b.dataset.lampe];
+      b.setAttribute("aria-pressed", b.dataset.lampe === actif ? "true" : "false");
+      b.disabled = _fige();
+      b.title = _t(cle) + suffixe;
+      b.setAttribute("aria-label", _t("vue3d.lampe") + " : " + _t(cle) + suffixe);
     });
   }
 
@@ -4621,7 +4642,7 @@
     if (!e || !e.boutonReglages) return;
     const modifie = e.mode === "libre" || e.vue === "plongee" || e.rendu !== "mixte" ||
       (!!e.boussole && e.boussole.hidden) || !_guidageMontre() || !_texturesActives() ||
-      e.distance !== PORTEE.defaut || e.lampeVoulue !== "normale";
+      e.porteeVoulue !== PORTEE.defaut || e.lampeVoulue !== "normale";
     e.boutonReglages.classList.toggle("kta-v3d-modifie", modifie);
     const titre = _t("vue3d.reglages") + (modifie ? " · " + _t("vue3d.reglagesModifies") : "");
     e.boutonReglages.title = titre;
@@ -5123,9 +5144,7 @@
     e.scene.add(gr.groupe);
     gr.ctx = _ctxGreffe(gr);
     e.greffe = gr;
-    // Plein jour refusé pendant la greffe (_lampeActive) : lampe normale et bouton grisé, la préférence est gardée.
-    _appliquerPortee();
-    _majLampe();
+    _appliquerGreffeReglages();   // sans effet tant que la greffe ne fige rien (ctx.regler({ reglagesFiges }))
     console.log("[Vue3D] greffe « " + gr.nom + " » posée");
     _sceneGreffe();
     if (_e) _e.sale = true;
@@ -5158,6 +5177,10 @@
           if (typeof r[k] === "number" && Number.isFinite(r[k])) gr.reglage[k] = Math.max(0, Math.min(1, r[k]));
         });
         if (typeof r.lampe === "number") _lampeGreffe();
+        if ((r.reglagesFiges === true || r.reglagesFiges === false) && r.reglagesFiges !== _fige()) {
+          gr.reglage.reglagesFiges = r.reglagesFiges;
+          _appliquerGreffeReglages();
+        }
         // Scène refaite seulement si ce qu'elle dessine change (la course ne coûte rien).
         if (change.traces || change.itineraire) _e.filtresChanges = true;
         if (change.guidage || change.itineraire) { _e.guidageForce = true; _e.apS = undefined; }
@@ -5258,8 +5281,7 @@
     if (gr.reglage.avatar === false && e.avatar) e.avatar.visible = e.vue === "plongee";
     if (gr.reglage.commandes === false) _montrerCommandes(true);
     if (gr.reglage.plongee === false) _permettrePlongee(true);
-    _appliquerPortee();   // lampe à la portée réglée, plein jour rendu s'il était choisi
-    _majLampe();
+    _appliquerGreffeReglages();   // portée et lampe retenues rendues telles quelles
     e.sale = true;
     console.log("[Vue3D] greffe « " + gr.nom + " » retirée (" + raison + ")");
   }
@@ -5301,6 +5323,7 @@
         sc: sc, hauteur: hauteur, oeil: _oeil(hauteur),
         distance: o.distanceVue > 0 ? o.distanceVue : _porteeVoulue(), tuilesActives: o.tuiles !== false,
         recul: RECUL.defaut, lampeVoulue: _lampeVoulue(),
+        porteeVoulue: o.distanceVue > 0 ? o.distanceVue : _porteeVoulue(),
         pos: { x: pos.x, y: pos.y }, cap: cap, tangage: 0, vue: "yeux",
         mode: o.depart || !_trackerActif() ? "libre" : "suivi",
         touches: {}, ecouteurs: [], tuiles: new Map(), couleurs: new Map(), sale: true, images: 0, butees: 0,
@@ -5525,7 +5548,7 @@
     return {
       ouvert: true, contexteVivant: !e.renderer.getContext().isContextLost(), perdu: e.perdu, reprises: e.reprises,
       lampe: e.lampe ? +(e.lampe.intensity / (LAMPE.force * LAMPES[_lampeActive()].force)).toFixed(2) : null,
-      eclairage: { voulue: e.lampeVoulue, active: _lampeActive(), intensite: e.lampe ? +e.lampe.intensity.toFixed(2) : null,
+      eclairage: { voulue: e.lampeVoulue, porteeVoulue: e.porteeVoulue, active: _lampeActive(), intensite: e.lampe ? +e.lampe.intensity.toFixed(2) : null,
         portee: e.lampe ? +e.lampe.distance.toFixed(2) : null, decay: e.lampe ? e.lampe.decay : null,
         ambiance: e.ambiance ? e.ambiance.intensity : null,
         boutons: (e.boutonsLampe || []).map(function (b) {
@@ -5535,6 +5558,7 @@
         brume: e.scene ? [+e.scene.fog.near.toFixed(2), +e.scene.fog.far.toFixed(2)] : null,
         far: e.camera ? +e.camera.far.toFixed(2) : null, sol: e.sol ? +e.sol.scale.x.toFixed(2) : null,
         curseur: e.curseurPortee ? { valeur: Number(e.curseurPortee.value), min: Number(e.curseurPortee.min),
+          grise: e.curseurPortee.disabled,
           max: Number(e.curseurPortee.max), texte: e.porteeValeur.textContent } : null,
         tuiles: _ecartTuiles(), zoomVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden,
         zoomPlusGrise: !!e.zoomPlus && e.zoomPlus.disabled, zoomMoinsGrise: !!e.zoomMoins && e.zoomMoins.disabled },

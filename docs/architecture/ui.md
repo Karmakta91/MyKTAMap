@@ -2218,7 +2218,7 @@ icônes.
   droite et dite par `aria-valuetext`, couleur `accent-color: var(--kta-accent)`, contour de focus
   `--kta-interaction` ; flèches, Origine, Fin au clavier), 💡 **Lampe** (trois boutons `aria-pressed` Normale /
   Forte / Plein jour sur une ligne, `getVue3DLampe`, `myktamap_v3d_lampe_v1`, cet appareil, Normale par défaut ;
-  Plein jour `disabled` pendant une greffe, titre « indisponible pendant une partie » ; effets :
+  curseur et trois boutons `disabled` quand une greffe fige les réglages (`reglagesFiges`), titre suffixé « indisponible pendant une partie » ; effets :
   `tracking.md` § Vue 3D › Lampe). La tuile tient au téléphone (393 px) ; les boutons de la vue plongeante (+ − ▲ ▼)
   sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier

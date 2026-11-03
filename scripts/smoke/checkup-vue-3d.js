@@ -5639,33 +5639,58 @@ async function mesuresGalerie(page, nom, semisDonne) {
         await K.fermer();
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
         r.jourRouverte = K.etat().eclairage.active;
-        // Greffe (une partie) : plein jour refusé et grisé, facteur de lampe du jeu combiné au réglage.
+        // Greffe SANS reglagesFiges : Plein jour gardé et permis, facteur de lampe du jeu multiplié au réglage.
         let ctx = null;
         K.greffer({ nom: "essai-lampe", scene: function (c2) { ctx = c2; } });
         await pause(50);
         ctx.regler({ lampe: 0.5, plongee: false });
-        r.greffeJour = Object.assign({ lampe: K.etat().lampe, refus: K.reglerLampe("jour"),
-          pref: window.getVue3DLampe() }, K.etat().eclairage);
-        appui("jour");
-        r.greffeAppui = K.etat().eclairage.active;
+        r.greffeJour = Object.assign({ lampe: K.etat().lampe, pref: window.getVue3DLampe() }, K.etat().eclairage);
         r.greffeZoom = { avant: K.etat().portee.recul, apres: K.zoomer(0.5), vue: K.etat().vue };
         K.basculerVue();
         r.greffeZoom.vueApres = K.etat().vue;
-        K.reglerLampe("forte");
+        appui("forte");
         r.greffeForte = Object.assign({ lampe: K.etat().lampe }, K.etat().eclairage);
-        K.reglerLampe("jour");
-        r.greffeForte.refusApres = K.etat().eclairage.active;
-        // Préférence Plein jour, greffe posée puis retirée : rendue au retrait.
-        window.setVue3DLampe("jour");
+        r.greffeForte.jour = K.reglerLampe("jour");
+        // Portée 100 m et lampe Forte retenues : greffe sans la clé, rien ne change ; avec la clé, 30 m, Normale,
+        // contrôles grisés ; clé à false puis retrait : rendues ; l'appareil les garde.
         await K.fermer();
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        K.reglerPortee(100);
+        K.reglerLampe("forte");
+        await pause(100);
+        const cliche = function () {
+          const p = K.etat().portee, l = K.etat().eclairage;
+          return { distance: p.distance, brume: p.brume, far: p.far, rayon: p.rayon, grise: p.curseur.grise,
+            curseur: p.curseur.valeur, active: l.active, voulue: l.voulue, porteeVoulue: l.porteeVoulue,
+            portee: l.portee, intensite: l.intensite, lampe: K.etat().lampe,
+            boutonsGrises: l.boutons.every(function (b) { return b.grise; }),
+            boutonsActifs: l.boutons.every(function (b) { return !b.grise; }),
+            presse: l.boutons.filter(function (b) { return b.presse === "true"; }).map(function (b) { return b.mode; }).join(),
+            app: { portee: window.getVue3DPortee(), lampe: window.getVue3DLampe() } };
+        };
+        r.avant = cliche();
         let ctx2 = null;
         const retirer2 = K.greffer({ nom: "essai-lampe-2", scene: function (c2) { ctx2 = c2; } });
         await pause(50);
         ctx2.regler({ lampe: 0.3 });
-        r.avantRetrait = Object.assign({}, K.etat().eclairage);
+        r.sansCle = cliche();
+        ctx2.regler({ reglagesFiges: true });
+        r.pendant = cliche();
+        r.pendant.refus = [K.reglerPortee(60), K.reglerLampe("forte"), K.reglerLampe("jour")];
+        const cG = q("#kta-v3d-portee");
+        cG.value = "70";
+        cG.dispatchEvent(new Event("input", { bubbles: true }));
+        r.pendant.apresSaisie = { distance: K.etat().portee.distance, app: window.getVue3DPortee() };
+        ctx2.regler({ reglagesFiges: false });
+        r.cleFausse = cliche();
+        ctx2.regler({ reglagesFiges: true });
         retirer2();
-        r.retrait = Object.assign({ lampe: K.etat().lampe }, K.etat().eclairage);
+        await pause(50);
+        r.apres = cliche();
+        await K.fermer();
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
+        r.rouverteFin = cliche();
+        K.reglerPortee(30);
         K.reglerLampe("normale");
         await K.fermer();
         return r;
@@ -5702,22 +5727,39 @@ async function mesuresGalerie(page, nom, semisDonne) {
       verifier(RJ.active === "jour" && RJ.pref === "jour" && RJ.ambiance === 0.9 && RJ.lampe === 1 &&
         RG.jourRouverte === "jour" && presses(RJ) === "jour",
         "lampe Plein jour : ambiance de la vue plongeante (0,9), retenue à la réouverture", { J: RJ, r: RG.jourRouverte });
-      const GJ = RG.greffeJour;
-      verifier(GJ.active === "normale" && GJ.voulue === "jour" && GJ.pref === "jour" && GJ.refus === false &&
-        GJ.ambiance === 0.04 && GJ.lampe === 0.5 && GJ.intensite === 12 && GJ.portee === 15 &&
-        GJ.boutons.filter(function (b) { return b.mode === "jour"; })[0].grise && RG.greffeAppui === "normale",
-        "greffe : Plein jour refusé et grisé (lampe normale), facteur du jeu appliqué (×0,5 : force et portée)", GJ);
-      verifier(RG.greffeForte.active === "forte" && RG.greffeForte.lampe === 0.5 &&
-        RG.greffeForte.portee === +(30 * 1.3 * 0.5).toFixed(2) && RG.greffeForte.intensite === 15 &&
-        RG.greffeForte.refusApres === "forte",
-        "greffe : Forte × facteur du jeu (multiplication)", RG.greffeForte);
+      const GJ = RG.greffeJour, GF = RG.greffeForte;
+      verifier(GJ.active === "jour" && GJ.voulue === "jour" && GJ.pref === "jour" && GJ.ambiance === 0.9 &&
+        GJ.lampe === 0.5 && GJ.intensite === 12 && GJ.portee === 15 &&
+        GJ.boutons.every(function (b) { return !b.grise; }),
+        "greffe sans reglagesFiges : Plein jour gardé et permis, facteur du jeu multiplié (×0,5 : force et portée)", GJ);
+      verifier(GF.active === "forte" && GF.lampe === 0.5 && GF.intensite === 15 &&
+        GF.portee === +(30 * 1.3 * 0.5).toFixed(2) && GF.jour === "jour", "greffe sans la clé : Forte × facteur du jeu (multiplication), Plein jour choisi de nouveau",
+        GF);
       verifier(RG.greffeZoom.apres === RG.greffeZoom.avant && RG.greffeZoom.vueApres === "yeux",
         "greffe qui interdit la plongée : zoom refusé, pas de vue plongeante", RG.greffeZoom);
-      verifier(RG.avantRetrait.active === "normale" && RG.retrait.active === "jour" && RG.retrait.ambiance === 0.9 &&
-        RG.retrait.lampe === 1 && RG.retrait.portee === 30 &&
-        !RG.retrait.boutons.filter(function (b) { return b.mode === "jour"; })[0].grise,
-        "retrait de la greffe : plein jour rendu, lampe à la portée réglée, bouton de nouveau actif",
-        { avant: RG.avantRetrait, apres: RG.retrait });
+      const RGA = RG.avant, RGP = RG.pendant, RGR = RG.apres, RGO = RG.rouverteFin;
+      verifier(RGA.distance === 100 && RGA.active === "forte" && RGA.app.portee === 100 && RGA.app.lampe === "forte" &&
+        !RGA.grise && RGA.boutonsActifs && RGA.brume[1] === 100,
+        "avant la greffe : portée 100 m et lampe Forte, retenues sur l'appareil, contrôles actifs", RGA);
+      const RGS = RG.sansCle, RGF = RG.cleFausse;
+      verifier(RGS.distance === 100 && RGS.active === "forte" && !RGS.grise && RGS.boutonsActifs && RGS.lampe === 0.3 &&
+        RGS.portee === +(100 * 1.3 * 0.3).toFixed(2),
+        "greffe sans la clé : 100 m et Forte gardés, contrôles actifs, facteur du jeu multiplié", RGS);
+      verifier(RGF.distance === 100 && RGF.active === "forte" && !RGF.grise && RGF.boutonsActifs,
+        "reglagesFiges à false, greffe posée : 100 m et Forte rendus, contrôles actifs", RGF);
+      verifier(RGP.distance === 30 && RGP.brume[1] === 30 && RGP.far === 35 && RGP.rayon === 30 && RGP.curseur === 30 &&
+        RGP.active === "normale" && RGP.presse === "normale" && RGP.grise && RGP.boutonsGrises &&
+        RGP.portee === +(30 * 0.3).toFixed(2) && RGP.intensite === +(24 * 0.3).toFixed(2) && RGP.lampe === 0.3 &&
+        RGP.voulue === "forte" && RGP.porteeVoulue === 100 && RGP.app.portee === 100 && RGP.app.lampe === "forte" &&
+        RGP.refus.every(function (v) { return v === false; }) && RGP.apresSaisie.distance === 30 &&
+        RGP.apresSaisie.app === 100,
+        "reglagesFiges : 30 m, Normale, lampe du jeu sur 30 m (×0,3), curseur et lampe grisés, saisies refusées, " +
+        "appareil intact", RGP);
+      verifier(RGR.distance === 100 && RGR.brume[1] === 100 && RGR.active === "forte" && RGR.presse === "forte" &&
+        RGR.lampe === 1 && RGR.portee === +(100 * 1.3).toFixed(2) && !RGR.grise && RGR.boutonsActifs &&
+        RGR.app.portee === 100 && RGR.app.lampe === "forte",
+        "retrait de la greffe : 100 m et Forte rendus, contrôles actifs", RGR);
+      verifier(RGO.distance === 100 && RGO.active === "forte", "l'appareil garde 100 m et Forte (réouverture)", RGO);
 
       // Zoom de la vue plongeante : molette, Maj + molette, boutons, clavier, pincement ; borné ; tuiles suivent.
       await page.evaluate(async function (a) {

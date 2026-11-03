@@ -275,7 +275,7 @@
     p.ctx = ctx;
     if (raison === "greffe") {
       // Pas de vue plongeante pendant la partie (décision produit) : voir d'en haut serait tricher.
-      ctx.regler({ traces: p.regle.traces, itineraire: false, guidage: false, plongee: false });
+      ctx.regler({ traces: p.regle.traces, itineraire: false, guidage: false, plongee: false, reglagesFiges: true });
       _monterHud(ctx);
       _joueur().monter(p, ctx);
       _brancher();
