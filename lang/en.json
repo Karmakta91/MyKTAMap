@@ -1956,6 +1956,7 @@
   "imgexport.btn.generation": "⏳ Generating…",
   "imgexport.btn.telecharger": "⬇️ Download",
   "imgexport.calquesData.aucun": "No data layer",
+  "imgexport.calquesData.parSession": "(being edited: exported with the session)",
   "imgexport.calquesData.titre": "🗂️ Data layers",
   "imgexport.calquesImage.aucun": "No image layer",
   "imgexport.calquesImage.titre": "🖼️ Image layers",

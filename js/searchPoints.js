@@ -337,7 +337,10 @@
   function _signaturePlan() {
     const c = window.PLAN_CONFIG;
     if (!c) return null;
-    return (c.plan?.name || "") + "|" + (c.plan?.version || "") + "|" + (c.plan?.baseImage || "");
+    // Calques en modification dans la signature : leur copie est lue par la session, le cache se refait au verrou.
+    const modif = (typeof window.ktaCalquesEnModification === "function") ? window.ktaCalquesEnModification() : [];
+    return (c.plan?.name || "") + "|" + (c.plan?.version || "") + "|" + (c.plan?.baseImage || "") + "|" +
+      modif.join(",");
   }
 
   // ── Modale ──────────────────────────────
@@ -523,9 +526,12 @@
     const config = window.PLAN_CONFIG;
     if (!config) throw new Error(window.I18n.t("search.error.noPlan"));
 
+    const modif = (typeof window.ktaCalquesEnModification === "function") ? window.ktaCalquesEnModification() : [];
+    const _enModification = function(id) { return modif.indexOf(id) >= 0; };
     if (Array.isArray(config.dataLayers)) {
       for (const lc of config.dataLayers) {
         if (lc.id === "editor") continue;       // editor traité séparément à chaque recherche
+        if (_enModification(lc.id)) continue;   // sa copie est dans la session (getEditorPoints)
         try {
           const r = await fetch(lc.file);
           const j = await r.json();

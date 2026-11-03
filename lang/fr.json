@@ -1956,6 +1956,7 @@
   "imgexport.btn.generation": "⏳ Génération…",
   "imgexport.btn.telecharger": "⬇️ Télécharger",
   "imgexport.calquesData.aucun": "Aucun calque de données",
+  "imgexport.calquesData.parSession": "(en modification : exporté par la session)",
   "imgexport.calquesData.titre": "🗂️ Calques de données",
   "imgexport.calquesImage.aucun": "Aucun calque image",
   "imgexport.calquesImage.titre": "🖼️ Calques d'image",

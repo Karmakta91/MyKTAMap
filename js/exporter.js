@@ -443,6 +443,14 @@
     }).join("");
   }
 
+  // ⚠️ Calque en « 🔄 Modifier » (CalqueSession) : sa copie part avec la session (case du calque de session et
+  // annotations), sa case ne peint rien de l'original (décision produit : pas de doublon, pas d'objet supprimé de la
+  // copie qui revient). Elle reste cochable ; la modale le dit (imgexport.calquesData.parSession).
+  function _calqueEnModification(id) {
+    const ids = (typeof window.ktaCalquesEnModification === "function") ? window.ktaCalquesEnModification() : [];
+    return ids.indexOf(id) >= 0;
+  }
+
   function _peuplerCalquesData(config, visibles) {
     const cont = document.getElementById("kta-export-data-layers");
     if (!cont) return;
@@ -456,16 +464,20 @@
     cont.innerHTML = layers.map(function(l) {
       const checked = visibles.includes(l.id) ? "checked" : "";
       const safeId = _slugLayerId(l.id);
+      const parSession = window.ktaEsc(window.I18n.t("imgexport.calquesData.parSession"));
+      const note = _calqueEnModification(l.id)
+        ? ` <span class="kta-tx-muted" data-calque-par-session="${l.id}">${parSession}</span>` : "";
       return `<div class="kta-export-data-layer-block" data-layer-id="${l.id}">
         <label class="kta-export-cb-row">
           <input type="checkbox" id="export_layer_${safeId}" data-layer-id="${l.id}" data-layer-type="data" ${checked}>
-          <span>${window.ktaLibelleCalque(l)}</span>
+          <span>${window.ktaLibelleCalque(l)}${note}</span>
         </label>
         <div class="kta-export-layer-tags" id="export_layer_tags_${safeId}"></div>
       </div>`;
     }).join("");
 
     layers.forEach(function(l) {
+      if (_calqueEnModification(l.id)) return;   // rien de l'original à filtrer : pas de sous-cases
       _chargerInfosCalque(l).then(function(infos) {
         _renderInfosCalque(l, infos);
       }).catch(function(e) {
@@ -538,11 +550,9 @@
         const duCalque = function (arr) {
           return (arr || []).filter(function (o) { return !o.layerId || o.layerId === layerCfg.id; });
         };
-        // `originaux` : la case d'un calque suit son fichier, même en modification (comme le fetch ci-dessus).
-        const O = { originaux: true };
-        points = duCalque(typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints(O) : []);
-        roads  = duCalque(typeof window.getAllEmbeddedRoads  === "function" ? window.getAllEmbeddedRoads(O)  : []);
-        zones  = duCalque(typeof window.getAllEmbeddedZones  === "function" ? window.getAllEmbeddedZones(O)  : []);
+        points = duCalque(typeof window.getAllEmbeddedPoints === "function" ? window.getAllEmbeddedPoints() : []);
+        roads  = duCalque(typeof window.getAllEmbeddedRoads  === "function" ? window.getAllEmbeddedRoads()  : []);
+        zones  = duCalque(typeof window.getAllEmbeddedZones  === "function" ? window.getAllEmbeddedZones()  : []);
       }
     }
 
@@ -2048,7 +2058,7 @@
     for (const layerCfg of (config.dataLayers || [])) {
       const cocheModale = !!opts.dataLayers[layerCfg.id];
       if (_debugAdv) console.log("[Export avancé] layer", layerCfg.id, "→ coche modale:", cocheModale);
-      if (!cocheModale) { _diagAdv.layersSkipped++; continue; }
+      if (!cocheModale || _calqueEnModification(layerCfg.id)) { _diagAdv.layersSkipped++; continue; }
       _diagAdv.layersVisited++;
 
       let pts = [];
@@ -2086,17 +2096,15 @@
             return !o.layerId || o.layerId === layerCfg.id;
           });
         };
-        // `originaux` : la case d'un calque suit son fichier, même en modification (comme le fetch ci-dessus).
-        const O = { originaux: true };
         embeddedRoads = duCalque(typeof window.getAllEmbeddedRoads === "function"
-          ? window.getAllEmbeddedRoads(O) : []);
+          ? window.getAllEmbeddedRoads() : []);
         embeddedZones = duCalque(typeof window.getAllEmbeddedZones === "function"
-          ? window.getAllEmbeddedZones(O) : []);
+          ? window.getAllEmbeddedZones() : []);
         embeddedStructures = duCalque(typeof window.getAllEmbeddedStructures === "function"
-          ? window.getAllEmbeddedStructures(O) : []);
+          ? window.getAllEmbeddedStructures() : []);
         if (!pts.length) {
           pts = duCalque(typeof window.getAllEmbeddedPoints === "function"
-            ? window.getAllEmbeddedPoints(O) : []);
+            ? window.getAllEmbeddedPoints() : []);
         }
         if (_debugAdv) console.log("[Export avancé] repli registre", layerCfg.id,
           "→ roads:", embeddedRoads.length, "zones:", embeddedZones.length,
@@ -3003,7 +3011,7 @@
       const cfg = window.PLAN_CONFIG;
       if (cfg && Array.isArray(cfg.dataLayers)) {
         for (const l of cfg.dataLayers) {
-          if (l.id === "editor") continue;
+          if (l.id === "editor" || _calqueEnModification(l.id)) continue;   // copie : dans getEditorPoints
           try {
             const r = await fetch(l.file);
             const j = await r.json();

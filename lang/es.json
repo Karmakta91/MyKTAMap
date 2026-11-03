@@ -1956,6 +1956,7 @@
   "imgexport.btn.generation": "⏳ Generando…",
   "imgexport.btn.telecharger": "⬇️ Descargar",
   "imgexport.calquesData.aucun": "Ninguna capa de datos",
+  "imgexport.calquesData.parSession": "(en edición: se exporta con la sesión)",
   "imgexport.calquesData.titre": "🗂️ Capas de datos",
   "imgexport.calquesImage.aucun": "Ninguna capa de imagen",
   "imgexport.calquesImage.titre": "🖼️ Capas de imagen",

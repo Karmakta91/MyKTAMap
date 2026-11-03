@@ -408,12 +408,13 @@
     const _dlZ = _legacyDL ? true : !!opts.srcDataZones;
     const _dlS = _legacyDL ? true : !!opts.srcDataStructures;
 
+    // Calque en modification : lu par sa copie de session (sources « session »), jamais en double.
     // Points isolés (L.marker en latlng → retournés en coords plan). ⚠️ `window._ktaDataMarkers` est un tableau
     // PLAT de L.marker (cf. utils.js), pas un objet layerId → marqueurs ; niveau via marker._ktaLevel.
     if (_dlP && Array.isArray(window._ktaDataMarkers)) {
       const pc = window.PLAN_CONFIG;
       const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
-      window._ktaDataMarkers.forEach(function(m) {
+      window.ktaHorsCalquesEnModification(window._ktaDataMarkers).forEach(function(m) {
         if (m && typeof m.getLatLng === "function") {
           if (levelSet && !levelSet.has(m._ktaLevel || 0)) return;
           const ll = m.getLatLng();
@@ -423,7 +424,7 @@
     }
     // Tracés de calque (entry.points en coords plan, polylines ouvertes), entry.level + jonctions.
     if (_dlR && Array.isArray(window._ktaDataPolylines)) {
-      window._ktaDataPolylines.forEach(function(entry) {
+      window.ktaHorsCalquesEnModification(window._ktaDataPolylines).forEach(function(entry) {
           // Les circleMarker d'extrémité de jonction n'ont pas de points.
         if (!entry || !Array.isArray(entry.points)) return;
         if (!_passeFiltreLevel(entry, levelSet)) return;
@@ -432,7 +433,7 @@
     }
     // Zones de calque (polygones fermés).
     if (_dlZ && Array.isArray(window._ktaDataPolygons)) {
-      window._ktaDataPolygons.forEach(function(entry) {
+      window.ktaHorsCalquesEnModification(window._ktaDataPolygons).forEach(function(entry) {
         if (!entry || !Array.isArray(entry.points)) return;
         if (!_passeFiltreLevel(entry, levelSet)) return;
         _pushPolylineSegs(segs, entry.points, true);
@@ -441,7 +442,7 @@
     // Structures de calque : polylines (front-1/2) ou polygones (pilier-1/2, mur), selon le type (cf. utils.js >
     // STRUCTURE_STYLES_DATA.isPolyline).
     if (_dlS && Array.isArray(window._ktaDataStructurePolygons)) {
-      window._ktaDataStructurePolygons.forEach(function(entry) {
+      window.ktaHorsCalquesEnModification(window._ktaDataStructurePolygons).forEach(function(entry) {
         if (!entry || !Array.isArray(entry.points)) return;
         if (!_passeFiltreLevel(entry, levelSet)) return;
         const isPolyline = (typeof window.isStructurePolylineType === "function")
@@ -539,7 +540,7 @@
     const nStruct     = structArr.length;
     const nStructPts  = _countVertices(structArr);
     // ⚠️ _ktaDataMarkers est un tableau PLAT de L.marker (cf. utils.js).
-    const nDataMarkers = Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers.length : 0;
+    const nDataMarkers = window.ktaHorsCalquesEnModification(window._ktaDataMarkers).length;
     // 4 compteurs de calque (points / tracés / zones / structures), cochés indépendamment ; les circleMarker
     // d'extrémité de jonction (sans `.points`) sont exclus.
     function _countDataLayerEntries(arr) {
@@ -552,9 +553,10 @@
       });
       return { n: n, pts: pts };
     }
-    const dlRoads   = _countDataLayerEntries(window._ktaDataPolylines);
-    const dlZones   = _countDataLayerEntries(window._ktaDataPolygons);
-    const dlStructs = _countDataLayerEntries(window._ktaDataStructurePolygons);
+    // Calque en modification : compté par sa copie (sources « session »), comme _collecterSegments.
+    const dlRoads   = _countDataLayerEntries(window.ktaHorsCalquesEnModification(window._ktaDataPolylines));
+    const dlZones   = _countDataLayerEntries(window.ktaHorsCalquesEnModification(window._ktaDataPolygons));
+    const dlStructs = _countDataLayerEntries(window.ktaHorsCalquesEnModification(window._ktaDataStructurePolygons));
 
     // Valeurs par défaut : options précédentes si disponibles.
     const o = _lastOpts || {};

@@ -79,6 +79,8 @@ async function semerCalque(page) {
     const x = Math.round(c.lng), y = Math.round(h - c.lat);
     window.APP_CONFIG.visibleLevels = window.APP_CONFIG.availableLevels.slice();
     const json = {
+      data: [{ id: "PtCheckupModif", nom: "PtCheckupModif", uid: "pt_kta_modif", x: x - 150, y: y + 150,
+               tags: ["salle"], level: 0, description: "" }],
       roads: [
         { uid: "rd_kta_modif_n0", type: "principal", level: 0, points: [{ x: x - 200, y: y }, { x: x, y: y }] },
         { uid: a.uidJ, type: "jonction", fromLevel: 0, toLevel: -1, points: [{ x: x, y: y }, { x: x + 20, y: y }] },
@@ -166,6 +168,106 @@ async function rampes3d(page, g) {
   }, g);
 }
 
+// Export avancé (pipeline commun PNG / PDF) avec la case du calque cochée, sur un rectangle autour du réseau, fond
+// blanc : pixels non blancs au milieu de la jonction (J0 → J1) et au milieu du tracé niveau 0 (copie de session).
+async function exportAvance(page, g, calque) {
+  return page.evaluate(async function (a) {
+    const g = a.g, reg = { x: g.A.x - 10, y: g.A.y - 30, w: (g.B.x - g.A.x) + 20, h: 60 };
+    const dl = {};
+    (window.PLAN_CONFIG.dataLayers || []).forEach(function (l) { dl[l.id] = false; });
+    dl[a.calque] = true;
+    const cv = await window.MyKTAMapExporterGenererCanvas({
+      ann: { points: true, roads: true, zones: true, structures: true }, bg: "white", scale: 1, region: reg,
+      dataLayers: dl, imageLayers: {}, includeImgLayers: false });
+    const k = cv.width / reg.w, ctx = cv.getContext("2d");
+    const encre = function (x, y) {
+      const d = ctx.getImageData(Math.round((x - reg.x) * k) - 1, Math.round((y - reg.y) * k) - 1, 3, 3).data;
+      let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 0 && (d[i] < 235 || d[i + 1] < 235 || d[i + 2] < 235)) n++;
+      return n;
+    };
+    return { jonction: encre(g.J0.x + 10, g.J0.y), copie: encre(g.A.x + 100, g.A.y) };
+  }, { g: g, calque: calque });
+}
+
+// Note « exporté par la session » sur la case du calque dans la modale d'export avancé, sans sous-cases.
+async function modaleExport(page, calque) {
+  await page.evaluate(function () { window.ouvrirExportModal(); });
+  await page.waitForTimeout(1200);
+  return page.evaluate(function (id) {
+    const bloc = document.querySelector('.kta-export-data-layer-block[data-layer-id="' + id + '"]');
+    const note = bloc && bloc.querySelector("[data-calque-par-session]");
+    const cb = bloc && bloc.querySelector('input[data-layer-type="data"]');
+    const sous = bloc ? bloc.querySelectorAll(".kta-export-layer-tags input").length : -1;
+    const res = { bloc: !!bloc, note: note ? note.textContent : null, cochable: !!cb && !cb.disabled, sousCases: sous };
+    const m = document.getElementById("kta-export-modal");
+    const x = m && m.querySelector(".kta-panneau-close");
+    if (x) x.click(); else if (m) m.remove();
+    return res;
+  }, calque);
+}
+
+// Export KMZ par l'interface (onglet Export externe), plan calé pour le test : les données passées à
+// KmzExport.genererKmz sont relevées (uids du calque fabriqué), aucun fichier produit.
+async function exportKmz(page) {
+  await page.evaluate(function () {
+    const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight, KE = window.KmzExport;
+    const gps = function (x, y) {
+      return Object.assign({ x: x, y: y }, KE.decalerGps(46.5, 3.0, x * 0.25, -y * 0.25));
+    };
+    KE.setCalibration(window._currentLoadedPlanId, { pointA: gps(W * 0.1, H * 0.9), pointB: gps(W * 0.9, H * 0.1),
+      pointC: gps(W * 0.85, H * 0.8), modele: KE.MODELE_LOCAL });
+    window.__kmzData = null;
+    if (!window.__kmzOrig) window.__kmzOrig = KE.genererKmz;
+    KE.genererKmz = function (o) { window.__kmzData = o.data; return Promise.resolve(new Blob(["x"])); };
+    window.ouvrirExportSessionModal("extern", false, { format: "kmz" });
+  });
+  await page.waitForTimeout(1500);
+  await page.evaluate(function () {
+    const img = document.getElementById("kmz_inc_image");
+    if (img && img.checked && img.offsetParent) img.click();
+    HTMLAnchorElement.prototype.__clic = HTMLAnchorElement.prototype.__clic || HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {};
+    document.getElementById("kta-ses-download").click();
+  });
+  await attendre(page, function () { return !!window.__kmzData; }, 60000);
+  return page.evaluate(function () {
+    HTMLAnchorElement.prototype.click = HTMLAnchorElement.prototype.__clic;
+    window.KmzExport.genererKmz = window.__kmzOrig;
+    const m = document.getElementById("kta-session-modal");
+    if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+    const d = window.__kmzData, out = {};
+    Object.keys(d).forEach(function (k) {
+      (Array.isArray(d[k]) ? d[k] : []).forEach(function (o) {
+        if (o && typeof o.uid === "string" && o.uid.indexOf("_kta_modif") >= 0) out[o.uid] = (out[o.uid] || 0) + 1;
+      });
+    });
+    return out;
+  });
+}
+
+// Recherche (SearchPoints, aussi lue par l'itinéraire pour les évitements) : occurrences du point du calque.
+async function recherche(page) {
+  return page.evaluate(async function () {
+    const tous = await window.SearchPoints.getAllPoints();
+    return tous.filter(function (it) { return it && it.point && it.point.uid === "pt_kta_modif"; }).length;
+  });
+}
+
+// Carte de chaleur : nombre de tracés de calque annoncé par sa modale (même filtre que la collecte des segments).
+async function heatmapTraces(page) {
+  return page.evaluate(function () {
+    window.MyKTAMapHeatmap.ouvrirModale();
+    const cb = document.getElementById("kta-hm-src-data-roads");
+    const c = cb && cb.closest("label").querySelector(".kta-heatmap-cb-count");
+    const n = c ? parseInt((c.textContent.match(/\d+/) || ["-1"])[0], 10) : -1;
+    const m = cb && cb.closest(".kta-readme-modal-overlay");
+    const x = m && m.querySelector(".kta-panneau-close");
+    if (x) x.click(); else if (m) m.remove();
+    return n;
+  });
+}
+
 (async function main() {
   // WebGL pour la vue 3D (mêmes options que checkup-vue-3d.js).
   const nav = await lancerNavigateur(chromium, { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] });
@@ -201,6 +303,10 @@ async function rampes3d(page, g) {
     const r0 = await rampes3d(page, g);
     if (r0 === null) inf("vue 3D indisponible ici (WebGL ou échelle) : passages 3D non joués");
     else verifier(r0 === 1, "vue 3D : un passage (rampe) au départ de la jonction", r0);
+    const hm0 = await heatmapTraces(page);
+    verifier(await recherche(page) === 1, "recherche : le point du calque trouvé une fois");
+    const x0 = await exportAvance(page, g, CALQUE);
+    verifier(x0.jonction > 0 && x0.copie > 0, "export avancé, case du calque cochée : jonction et tracé dessinés", x0);
 
     console.log("\n── 2. « 🔄 Modifier » : la copie remplace l'original ──");
     const rap = await page.evaluate(function (id) { return window.CalqueSession.rapatrier(id); }, CALQUE);
@@ -215,6 +321,14 @@ async function rampes3d(page, g) {
     verifier(e1.route.ok && e1.route.viaJonction, "itinéraire 0 → −1 par la copie de la jonction", e1.route);
     const r1 = await rampes3d(page, g);
     if (r1 !== null) verifier(r1 === 1, "vue 3D : un seul passage (la copie), pas de doublon", r1);
+    const hm1 = await heatmapTraces(page);
+    const rc1 = await recherche(page);
+    verifier(rc1 === 1, "recherche : le point trouvé une fois (copie), pas de doublon", rc1);
+    verifier(hm0 - hm1 === 3, "carte de chaleur : les 3 tracés de l'original ne comptent plus (copie en session)",
+      { avant: hm0, apres: hm1 });
+    const mx = await modaleExport(page, CALQUE);
+    verifier(mx.bloc && !!mx.note && mx.cochable && mx.sousCases === 0,
+      "modale d'export : case du calque cochable, « exporté par la session », sans sous-cases", mx);
 
     console.log("\n── 3. Jonction, zone et mur supprimés de la copie ──");
     await page.evaluate(function () {
@@ -233,6 +347,13 @@ async function rampes3d(page, g) {
       "zone inaccessible et mur supprimés : plus d'obstacle, plus de compte", e2);
     const r2 = await rampes3d(page, g);
     if (r2 !== null) verifier(r2 === 0, "vue 3D : plus de passage au départ de la jonction supprimée", r2);
+    const x2 = await exportAvance(page, g, CALQUE);
+    verifier(x2.jonction === 0, "export avancé, case du calque cochée : la jonction supprimée n'est plus dessinée", x2);
+    verifier(x2.copie > 0, "export avancé : le tracé de la copie (session) est dessiné", x2);
+    const k2 = await exportKmz(page);
+    verifier(!k2[UID_J] && !k2.zn_kta_modif && !k2.st_kta_modif,
+      "KMZ : jonction, zone et mur supprimés absents", k2);
+    verifier(k2.rd_kta_modif_n0 === 1 && k2.rd_kta_modif_n1 === 1, "KMZ : chaque tracé de la copie une fois", k2);
 
     console.log("\n── 4. Restitution : l'original revient ──");
     const res = await page.evaluate(function (id) { return window.CalqueSession.restituer(id); }, CALQUE);

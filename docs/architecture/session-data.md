@@ -1793,15 +1793,19 @@ elles-mêmes un calque en modification (`utils.js > ktaCalquesEnModification` = 
   à leur place par `getEditorPoints` / `getRoads`… Tous leurs consommateurs en héritent : itinéraire et graphe de
   navigation, passages et galerie de la vue 3D, POI jonction, comptes des filtres, stats, recherche, exports, Secours,
   Vue OSM.
-- Les lectures directes des registres qui servent un calcul passent par `ktaHorsCalquesEnModification(liste)` :
-  obstacles durs et zones à éviter de l'itinéraire (`pathfinder.js > _registre`), volume exploité, points de l'export
-  KMZ, comptes d'icônes des filtres ; les collisions du tracker filtrent à la lecture (`tracking.js >
-  _segmentBloque`, l'index est en cache par identité de liste).
-- **Recocher la case** du calque le redessine en 2D (comparaison voulue) ; rien d'autre ne le lit : itinéraire, 3D et
-  comptes suivent la copie, qui fait foi.
-- **Lecture explicite de l'original** : `getAllEmbedded*({ originaux: true })`, pour la case d'un calque dans l'export
-  avancé (repli sans fichier d'un plan importé) : elle exporte le contenu du calque, comme le `fetch` de son fichier.
-  `CalqueSession` relit le fichier pour la restitution, l'export et `contenuCalque` ; il ne dépend pas des getters.
+- Les lectures directes des registres passent par `ktaHorsCalquesEnModification(liste)` : obstacles durs et zones à
+  éviter de l'itinéraire (`pathfinder.js > _registre`), volume exploité, points de l'export KMZ, carte de chaleur
+  (collecte et comptes de sa fenêtre), comptes d'icônes des filtres ; les collisions du tracker filtrent à la lecture
+  (`tracking.js > _segmentBloque`, l'index est en cache par identité de liste).
+- Les relectures du **fichier** du calque le sautent aussi : recherche (`searchPoints.js > _chargerCache`, calques en
+  modification dans la signature du cache, donc aussi les évitements par tag de l'itinéraire) et export avancé.
+- **Export avancé (PNG, PDF)** (décision produit) : la case d'un calque en modification reste cochable mais n'exporte
+  rien de l'original ; la copie part avec la session. La modale le dit (« exporté par la session »,
+  `imgexport.calquesData.parSession`, aussi sur la case du PDF) et n'en propose pas les sous-cases
+  (`exporter.js > _calqueEnModification`).
+- **Recocher la case** du calque le redessine en 2D (comparaison voulue) ; c'est la seule lecture de l'original :
+  itinéraire, 3D, exports et comptes suivent la copie, qui fait foi. `CalqueSession` relit le fichier pour la
+  restitution, l'export du calque et `contenuCalque` ; il ne dépend pas des getters.
 - Rapatriement, restitution, verrous rétablis, resynchronisation : `CalqueSession` invalide `RoadGraph` et
   `KtaGalerie` (le graphe a aussi une signature de contenu ; la vue 3D se réindexe à sa prochaine ouverture ou au
   prochain changement de filtres).

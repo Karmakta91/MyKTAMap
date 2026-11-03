@@ -361,6 +361,11 @@ Constante `PDF_SIZES` (array de `{key, label, hint}`) utilisée pour rendre les 
 Modale auto-liste `PLAN_CONFIG.imageLayers[]` et `PLAN_CONFIG.dataLayers[]` :
 - Section **🖼️ Image de base & calques** : checkbox "Image plan de base" + 1 checkbox par `imageLayers[]`
 - Section **📊 Calques de données** : 1 checkbox par `dataLayers[]` avec label spécial pour `editor` (= calque session)
+- **Calque en « 🔄 Modifier »** (décision produit, PNG et PDF) : sa case reste cochable mais n'exporte rien de
+  l'original (`exporter.js > _calqueEnModification`, dans la boucle des calques) ; sa copie part avec la session.
+  Libellé suivi de « exporté par la session » (`imgexport.calquesData.parSession`), pas de sous-cases. Le KMZ et le
+  GeoJSON lisent aussi la copie seule (`getAllEmbedded*`, `ktaHorsCalquesEnModification`) : aucun doublon, aucun
+  objet supprimé de la copie qui revient. Règle commune : `session-data.md` §« La copie remplace l'original ».
 - Pré-cochage = visibilité actuelle sur la carte (via helpers `_getVisibleImageLayerIds` / `_getVisibleDataLayerIds` locaux — duplique exporter.js volontairement pour éviter dep cross-module)
 
 `_lireOptionsModale` capte ces choix dans `opts.imageLayers = {id: bool}` et `opts.dataLayers = {id: bool}`. Le wrapper `_publicGenererCanvas` de exporter.js accepte ce format granulaire (rétrocompat v1 avec booléens globaux préservée pour les futurs callers).
@@ -486,7 +491,7 @@ silencieusement (`console.warn`), et l'export ne sortait que le fond de plan.
 
 | # | Défaut | Correction |
 |---|---|---|
-| 1 | Contenu des calques introuvable (`fetch` 404) | **Repli sur les registres en mémoire** (`getAllEmbedded*({ originaux: true })` : un calque en modification garde son contenu), filtré par `layerId`. Repli seulement : quand le fichier existe, il fait foi. |
+| 1 | Contenu des calques introuvable (`fetch` 404) | **Repli sur les registres en mémoire** (`getAllEmbedded*`), filtré par `layerId`. Repli seulement : quand le fichier existe, il fait foi. |
 | 2 | Compteurs des modales comptés sur la **seule session** | `window.ktaAnnotationsCompletes(famille)` — un seul point de vérité, utilisé par les deux modales |
 | 3 | Sous-types listés **en dur** (5 noms intégrés) | Comptage des types réellement présents + une ligne par type personnalisé, sous le libellé de sa légende |
 

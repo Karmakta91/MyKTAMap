@@ -1233,12 +1233,11 @@ window.getEmbeddedRoads = function() {
 // le calque (routes déjà dessinées sur le PNG) pour alléger le rendu. SAUF un calque en modification
 // (utils.js > ktaCalquesEnModification) : son groupe n'est que masqué par le verrou, mais sa copie de session le
 // remplace (sinon doublons dans le graphe, et une jonction supprimée de la copie restait dans l'itinéraire et la
-// vue 3D). `opts.originaux` le garde (export d'une case « calque »).
+// vue 3D).
 // 🩸 Avec `layerId` (l'export respecte ses cases « calques ») sur une COPIE : jamais de champ greffé sur l'original.
-window.getAllEmbeddedRoads = function(opts) {
+window.getAllEmbeddedRoads = function() {
   const groupes = window.dataLayerGroups || {};
-  const exclus = (opts && opts.originaux === true) || typeof window.ktaCalquesEnModification !== "function"
-    ? [] : window.ktaCalquesEnModification();
+  const exclus = (typeof window.ktaCalquesEnModification === "function") ? window.ktaCalquesEnModification() : [];
   const out = [];
   _embeddedRoads.forEach(function(e) {
     let layerId = null;
