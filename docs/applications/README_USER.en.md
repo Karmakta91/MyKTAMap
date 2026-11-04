@@ -986,6 +986,16 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 
 > ℹ️ Only **your** objects can be erased. Those of the map or of a data layer are read-only: first open their layer for editing from ≡ **Filters**, then export the corrected layer.
 
+### ✋ Adjust a shape
+
+A **route**, a **zone**, a **structure** or a **📐 measurement** already drawn can be corrected without redrawing it, on the map, with the drawing tools off:
+
+- **Move a point**: press and hold (half a second) a point of the shape; a gold circle appears: drag it, the shape follows as a dotted line, then release.
+- **Add a point**: press and hold the middle of a side; a point appears there, drag it straight away.
+- **Delete a point**: press and hold a point without moving, then tap **🗑️**. A line keeps at least 2 points, a surface 3: below that, a message says so and nothing is removed.
+
+A short tap still opens the object's popup. A route released near a point of another route snaps onto it if **🧲 Snap while drawing** is on. Each gesture can be undone with ⏪ (except on a measurement). Objects of a data layer only move once the layer is in **🔄 Edit**; a shared map in read-only mode cannot be changed. With a mouse, same gesture: hold the button half a second, then drag.
+
 ---
 
 ## 🫧 An object's popup — note, convert, delete

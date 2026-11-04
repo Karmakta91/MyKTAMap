@@ -986,6 +986,16 @@ Les jonctions 🪜 s'effacent comme les autres tracés.
 
 > ℹ️ Seuls **tes** objets s'effacent. Ceux du plan ou d'un calque de données sont en lecture seule : ouvre d'abord leur calque à la modification depuis ≡ **Filtres**, puis exporte le calque corrigé.
 
+### ✋ Ajuster une forme
+
+Un **tracé**, une **zone**, une **structure** ou une **mesure 📐** déjà dessinés se corrigent sans les redessiner, sur la carte, outils de dessin éteints :
+
+- **Déplacer un point** : appuie longuement (une demi-seconde) sur un point de la forme ; un rond doré apparaît : glisse-le, la forme suit en pointillé, puis lâche.
+- **Ajouter un point** : appuie longuement au milieu d'un côté ; un point naît là, glisse-le aussitôt.
+- **Supprimer un point** : appuie longuement sur un point sans bouger, puis touche **🗑️**. Une ligne garde au moins 2 points, une surface 3 : en dessous, un message le dit et rien n'est retiré.
+
+Un tap court ouvre toujours la bulle de l'objet. Un tracé lâché près d'un point d'un autre tracé s'y colle si le **🧲 Magnétisme au dessin** est allumé. Chaque geste s'annule avec ⏪ (sauf sur une mesure). Les objets d'un calque de données ne bougent qu'une fois le calque en **🔄 Modifier** ; un plan partagé en lecture seule ne se modifie pas. À la souris, même geste : bouton enfoncé une demi-seconde, puis glisser.
+
 ---
 
 ## 🫧 La bulle d'un objet — note, conversion, suppression

@@ -2328,3 +2328,48 @@ icônes.
   **« Niveau n »** (`.kta-v3d-bandeau-niveau`, pastille surface à liseré doré, au centre, 2 s, `role="status"`).
 - **« D'où pars-tu ? »** (« Y aller », tracker arrêté) : `ktaConfirm` en mode choix (z-index 100002, au-dessus de
   la vue) ; pas de nouvelle fenêtre.
+
+## ✋ Ajuster une forme dessinée (`js/ajusterSommets.js`)
+
+Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans le redessiner :
+
+- **Déplacer un sommet** : appui long (`APPUI_MS`, 500 ms) sur le sommet, puis glisser ; aperçu en pointillé doré
+  pendant le glisser (SVG, classes `.kta-ajuster-apercu` / `.kta-ajuster-poignee`, jetons `--kta-accent`), objet
+  écrit au lâcher.
+- **Ajouter** : appui long au milieu d'un segment (segment de fermeture compris pour une forme fermée) ; le sommet
+  naît là et se glisse aussitôt ; lâché sans bouger, il reste au milieu.
+- **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point (marqueur Leaflet, cible
+  de 44 px, contre-tourné sous le plan orienté, retiré seul après 6 s ou au premier toucher ailleurs). Sous le
+  minimum de la forme (2 sommets pour une ligne, 3 pour une surface), pas de 🗑️ : un toast le dit.
+
+Familles : tracés, zones, structures (polygones et lignes), mesures 📐 (distance et surface). Pas les POI
+(« Repositionner »), pas l'itinéraire calculé. Chaque module expose sa **prise**
+`window.ktaFormesAjustables.<roads|zones|structures|mesure>` = `{ cat, objets(), ferme(o), minimum(o), libelle(o),
+rendre(), aimanter?(x, y, o, exclus) }` ; `objets()` ne rend que les objets de session **visibles** (mêmes filtres
+que le rendu : `_tracePasseFiltres`, `_zonePasseFiltres`, `_structurePasseFiltres` — niveaux, types, état d'une
+extension), hors objet en cours de tracé.
+
+- ⚠️ **Droits** : rien en lecture seule (`ktaEditionRefusee(true)`, silencieux), rien sous un outil ou un mode
+  « clic carte » armé (`_modeClicCarteActif`, ajout de point, sélection multiple ou par zone). Un calque de données
+  n'est pas en session, donc pas modifiable ; en « 🔄 Modifier », sa copie l'est. Calque « Mes annotations » masqué :
+  rien.
+- ⚠️ **Écriture** (un geste = une entrée annulable) : `HistoryManager.captureState(cat)` → mutation →
+  `KtaUid.touch` (uid gardé, `updatedAt` changé) → `rendre()` (un seul rendu, donc un seul `kta:donneesPlanChange`,
+  jamais pendant le glisser) → `record` → `SessionPersist.save({ force: true })`. Tracés : aimantation du dessin au
+  lâcher (`snapDraw`, road.js > `_snapSurSommetProche` avec `exclus` = le sommet et ses voisins, au niveau du
+  tracé), puis `RoadGraph.invalidate()` (sa signature compte les sommets, pas leur place). La mesure est hors
+  historique (état temporaire, `cat: null`).
+- 🩸 **Gestes** : écoutes en capture sur `window`. Avant l'appui long, un mouvement de plus de 6 px (seuil du pan
+  manuel du plan orienté) annule : c'est un pan ; en deçà, les `pointermove` / `mousemove` / `touchmove` sont avalés
+  pour que la carte ne glisse pas sous le doigt. Armé : `map.dragging.disable()` le temps du geste (rendu à son
+  état d'avant, donc coupé sous le plan orienté), mouvements avalés (ni drag Leaflet ni
+  `mapBearing.js > _installerPanManuel`), clic suivant et menu contextuel avalés (pas de fiche). `pointerup` n'est
+  jamais avalé (Leaflet et le pan manuel y referment leur suivi des doigts). Un 2e doigt, la molette ou Échap
+  annulent. Drapeau neutre pour tout autre geste : `KtaAjusterSommets.enCours()`.
+- 🩸 **Position** : `map.mouseEventToLatLng` (rotation défaite par le patch de `mouseEventToContainerPoint`) ;
+  `clientX` ne sert qu'aux seuils. Le sommet garde son décalage au doigt (il ne saute pas sous lui).
+- **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon milieu de segment ; un balayage des
+  objets visibles au `pointerdown`, jamais au `pointermove`.
+- Souris (décision) : appui long aussi, pas de glisser direct : un glisser à la souris reste un pan de la carte.
+
+Preuve : `scripts/smoke/checkup-ajuster-sommets.js` (Chromium et WebKit, souris et doigt).
