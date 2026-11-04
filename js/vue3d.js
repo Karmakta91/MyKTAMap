@@ -4434,14 +4434,14 @@
       return a;
     };
     const d = e.dessin;
-    d.outils = GROUPES_DESSIN.map(function (g) { const b = lien("outil", g); b.hidden = true; return b; });
-    // 🗺️ Plan au sol (_majPlanSol) : interrupteur, après les groupes.
+    // 🗺️ Plan au sol (_majPlanSol) : interrupteur, en tête de colonne, au-dessus des outils (décision produit).
     d.boutonSol = lien("planSol");
     d.boutonSol.textContent = "🗺️";
     d.boutonSol.title = _t("vue3d.dessin.planSol");
     d.boutonSol.setAttribute("aria-label", _t("vue3d.dessin.planSol"));
     d.boutonSol.setAttribute("aria-pressed", "false");
     d.boutonSol.hidden = true;
+    d.outils = GROUPES_DESSIN.map(function (g) { const b = lien("outil", g); b.hidden = true; return b; });
     ov.appendChild(barre);
     d.barre = barre;
   }

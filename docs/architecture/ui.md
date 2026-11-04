@@ -2404,10 +2404,10 @@ icônes.
   `display: flex !important` : le `hidden` de la colonne tient par `#kta-vue3d .kta-v3d-outils[hidden]` en
   `!important` (sinon les outils restaient à hauteur d'yeux et dans le jeu), et la colonne s'y range en ligne, comme
   les pilules de la barre 2D. Boutons : **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
-  la barre de droite 2D, qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
+  la barre de droite 2D, sous **🗺️ Plan au sol** (en tête), qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
   mêmes états ; icône, titre, `kta-group-mode-actif` (pastille du type armé) et `kta-outil-lecture-seule` **recopiés
-  du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. Puis **🗺️ Plan au sol**
-  (interrupteur, `aria-pressed`, niveau 0 seulement). Un groupe ouvre **le panneau de la carte**
+  du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. **🗺️ Plan au sol** :
+  interrupteur, `aria-pressed`, niveau 0 seulement. Un groupe ouvre **le panneau de la carte**
   (`interface.js > window.ktaOuvrirOutils(groupe, { ancre })` : `_ouvrirFlyout` avec `vue3d: true`, sous-actions
   `horsVue3D` retirées : 🪜 jonction, 🧹 Effacer — « Sélectionner » et « Par zone » se jouent au clic sur la carte —,
   📏 et ⛏️), au rang de la vue (`html.kta-vue3d-ouverte .kta-group-flyout` et son fond à 99999, posés après elle) ;

@@ -3950,8 +3950,8 @@ async function sectionDessin(page) {
             "ui.refonte.counter_sortie_title", "vue3d.reglages",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.zoomPlus", "vue3d.inclinaisonPlus", "vue3d.zoomMoins", "vue3d.inclinaisonMoins",
-            "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "ui.group.mesure", "ui.group.traces", "ui.group.zones", "ui.group.structures",
-            "vue3d.dessin.planSol", "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
+            "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "vue3d.dessin.planSol", "ui.group.mesure", "ui.group.traces", "ui.group.zones", "ui.group.structures",
+            "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer",
             "vue3d.lampeJourAide"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
