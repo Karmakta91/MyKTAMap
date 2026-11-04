@@ -41,14 +41,16 @@
 
   // Carte 2D : mapBearing.js > _rotMolette (Maj + molette, bouton nord), ajusterSommets.js (appui long, souris
   // comprise), Leaflet (molette, flèches et + / − quand la carte a le focus, Échap ferme la bulle), utils.js >
-  // ktaDemanderPositionCarte (Échap annule le choix d'une position).
+  // ktaDemanderPositionCarte (Échap annule le choix d'une position), shortcuts.js > _echapCarte (Échap désarme
+  // l'outil, après tout ce qui le prend avant).
   const CARTE = [
     { id: "carte.tourner",  touches: [["Shift", "Molette"]], cle: "cheatsheet.carte.tourner" },
     { id: "carte.sommet",   touches: [["ClicLong", "Glisser"]], cle: "cheatsheet.carte.sommet" },
     { id: "carte.zoom",     touches: [["Molette"], ["+"], ["-"]], cle: "cheatsheet.carte.zoom" },
     { id: "carte.deplacer", touches: [["ArrowLeft"], ["ArrowUp"], ["ArrowRight"], ["ArrowDown"]],
       cle: "cheatsheet.carte.deplacer" },
-    { id: "carte.echap",    touches: [["Escape"]], cle: "cheatsheet.carte.echap" }
+    { id: "carte.echap",    touches: [["Escape"]], cle: "cheatsheet.carte.echap" },
+    { id: "carte.desarmer", touches: [["Escape"]], cle: "cheatsheet.carte.desarmer" }
   ];
 
   // Combinaisons globales : historyManager.js (Ctrl+Z / Ctrl+Y / Ctrl+Maj+Z, la mesure 📐 comprise outil armé),

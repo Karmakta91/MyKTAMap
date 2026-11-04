@@ -8,6 +8,8 @@
 // la sidebar (re-presser ferme l'outil), L légende, B boussole, R recherche, ? aide-mémoire.
 // ⚠️ Ignorés : avec Ctrl/Cmd/Alt (raccourcis navigateur), focus dans un champ, modale / gate /
 //   splash / chargement visibles, mode présentation.
+// Échap désarme l'outil clic-carte armé (_echapCarte), comme son bouton : passe APRÈS tout ce qui le prend avant
+// (fenêtre, bulle, panneau d'un groupe, appui long d'ajustement, choix d'une position, vue 3D, champ texte).
 // Expose : window.KtaShortcuts { listMapping() (aide-mémoire), trigger(action) }
 
 (function() {
@@ -142,6 +144,44 @@
     e.stopPropagation();
     _triggerAction(mapping.action);
   });
+
+  // ── Échap : désarme l'outil de la carte ───────────────
+  // Même geste que le bouton de l'outil (interface.js > _desactiverTousLesModes) : un objet en cours se traite comme
+  // en 2D, la mesure annulable est purgée à la fermeture de 📐 (interface.js > _initPrecisionCursor).
+  // 🩸 Décidé en capture sur window, AVANT que les autres écouteurs ne ferment leur fenêtre ou leur bulle : tout ce
+  // qui prend l'Échap avant l'outil se lit encore à l'écran. Un écouteur antérieur qui l'arrête (appui long :
+  // ajusterSommets.js ; confirmation : utils.js > ktaConfirm) le garde pour lui. Pas au bouillonnement : Leaflet
+  // arrête tout Échap tapé carte au focus dès qu'une bulle a été ouverte une fois (map._popup gardé après fermeture).
+  // Panneau d'un groupe ouvert (focus dedans ou non) et bulle (Leaflet ne la ferme que carte au focus) : fermés ici,
+  // sans désarmer.
+  const ECHAP_AVANT = ".kta-readme-modal-overlay, .kta-cfg-modal-overlay, .kta-secours-modal-overlay, " +
+    ".kta-secours-overlay, .kta-fp-overlay, .kta-emergency-overlay, .kta-modal-overlay, .kta-tracker-modal-overlay, " +
+    ".kta-iti-floater, #kta-export-pick-banner, #kta-unlock-overlay, .kta-pin-gate-overlay, #kta-vue3d, " +
+    "[aria-modal='true']";
+
+  function _echapPrisAvant() {
+    if (_isInputFocused() || _isModaleBloquante()) return true;
+    if (window.PresentationMode && window.PresentationMode.isActive && window.PresentationMode.isActive()) return true;
+    const els = document.querySelectorAll(ECHAP_AVANT);
+    for (let i = 0; i < els.length; i++) {
+      // 🩸 getClientRects, pas offsetParent : une fenêtre en position fixe n'a jamais d'offsetParent.
+      if (els[i].getClientRects().length > 0) return true;
+    }
+    return false;
+  }
+
+  function _echapCarte(e) {
+    if (e.key !== "Escape" || e.cancelBubble) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    if (_echapPrisAvant()) return;
+    if (typeof window.ktaOutilsOuverts === "function" && window.ktaOutilsOuverts()) { window.ktaFermerOutils(); return; }
+    const m = window.map;
+    if (m && m._popup && m.hasLayer(m._popup)) { m.closePopup(); return; }
+    if (typeof window.ktaOutilArme !== "function" || !window.ktaOutilArme()) return;
+    if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+    console.log("[Shortcuts] Échap → outil désarmé");
+  }
+  window.addEventListener("keydown", _echapCarte, true);
 
   // ── API ──────────────────────────────────────────────
   function listMapping() {

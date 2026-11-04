@@ -11,7 +11,7 @@
 // armé, 2 points, ⏪ ×2 → mesure vide et zone intacte, ⏪ suivant → la zone ; outil fermé → aucune entrée « mesure »
 // dans la pile (annuler comme rétablir), ⏪ défait directement l'objet et la mesure reste affichée ; outil fermé, un
 // ajustement de la mesure n'entre pas dans l'historique ; vue 3D, vue d'édition : ⏪ met le bandeau et l'aperçu à
-// jour, la fermeture de la vue purge.
+// jour, la fermeture de la vue purge ; Échap sur la carte désarme 📐 et purge de même.
 // Usage : node scripts/smoke/checkup-mesure-annulable.js (SMOKE_PORT pour une autre copie) · code : js/measure.js,
 // js/historyManager.js (purger), js/interface.js > _initPrecisionCursor · doc : docs/architecture/session-data.md
 // =====================================================================
@@ -363,6 +363,30 @@ async function section2D(page) {
     window._desactiverTousLesModes();
     window.setZones([]); window.resetMesure(); window.HistoryManager.reset();
   });
+
+  // ── Échap : 📐 désarmé comme par son bouton, entrées purgées, mesure affichée (shortcuts.js > _echapCarte) ──
+  r = await page.evaluate(function () {
+    const M = window.__ma;
+    const okArme = M.choisir("mesure", "ui.subaction.mesureDistance");
+    if (window.ktaFermerOutils) window.ktaFermerOutils();
+    [[100, 100], [300, 100], [300, 300]].forEach(function (q) { M.clic(M.P(q[0], q[1])); });
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    return okArme && window.modeMesure === true;
+  });
+  m = await mesure(page);
+  verifier(r && m.d.length === 3 && m.pile.mesureUndo === 3, "📐 armé, 3 points (avant Échap)", m.pile);
+  await page.keyboard.press("Escape");
+  await tour(page);
+  m = await mesure(page);
+  const allume = await page.evaluate(function () {
+    const g = window._groupes.mesure;
+    return g.btnPrincipal.classList.contains("kta-group-mode-actif") ||
+      g.subActions.some(function (b) { return b.classList.contains("kta-actif"); });
+  });
+  verifier(!m.arme && !allume && m.pile.mesureUndo === 0 && m.pile.mesureRedo === 0 && m.d.length === 3,
+    "Échap : 📐 désarmé (bouton éteint), aucune entrée « mesure » dans la pile, la mesure reste affichée",
+    { arme: m.arme, allume: allume, pile: m.pile, d: m.d.length });
+  await page.evaluate(function () { window.resetMesure(); window.HistoryManager.reset(); });
 }
 
 // ── Vue 3D, vue d'édition : ⏪ met à jour le bandeau et l'aperçu ; fermer la vue purge ──

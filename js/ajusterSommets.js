@@ -380,8 +380,12 @@ window.KtaAjusterSommets = (function () {
   window.addEventListener("wheel", function () { annuler(); }, { capture: true, passive: true });
   window.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
+    // ⚠️ contrat : l'Échap qui annule un appui en cours ou ferme le menu s'arrête là, sinon il désarmerait aussi
+    // l'outil (shortcuts.js > _echapCarte).
+    const pris = !!_g || !!_menu;
     if (_g) annuler();
     _fermerMenu();
+    if (pris) e.stopPropagation();
   }, true);
 
   return {

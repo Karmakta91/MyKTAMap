@@ -522,6 +522,8 @@ function _desactiverTousLesModes() {
   });
   Object.keys(_modesActifs).forEach(function(k) { delete _modesActifs[k]; });
 }
+// Un outil clic-carte est-il armé (registre ci-dessus) ? Lu par l'Échap de la carte (shortcuts.js > _echapCarte).
+window.ktaOutilArme = function() { return Object.keys(_modesActifs).length > 0; };
 
 
 // 🩸 Une suppression qui efface le tracé en cours DOIT fermer le mode : sinon le bouton reste

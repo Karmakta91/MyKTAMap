@@ -10,6 +10,8 @@
 // chargé, three.js non) ; noms de touches lisibles (Maj, Échap) ; puis CHAQUE ligne affichée est jouée au clavier ou à
 // la souris et son effet relu (outil pressé, mesure annulée, carte tournée puis redressée par le bouton nord, sommet
 // déplacé, zoom, pan, bulle fermée, vue 3D : pas, cap, V, zoom, inclinaison, caméra libre, cap au clic droit, Échap…).
+// Échap désarme l'outil : chacun (✏️ 📐 🛣️ ⬛ 🏛️, carte au focus ou non), après la fenêtre de nommage, la bulle, le
+// panneau d'un groupe, l'appui long ; rien depuis un champ texte ; vue 3D : sa règle seule (vue d'édition, réglages).
 // Une ligne sans contrôle ici = rouge : une touche ajoutée à la fiche doit être prouvée. Ouverte par-dessus la vue 3D,
 // la fiche montre la Vue 3D d'abord, dépliée, et Échap la ferme sans fermer la vue.
 // Gestes tactiles (section des appareils tactiles) : prouvés par checkup-rotation-manuelle.js (deux doigts),
@@ -361,9 +363,15 @@ async function sectionCarte(page) {
   await page.mouse.up();
   await page.waitForTimeout(300);
   const fin = await mesure(page);
-  verifier(arme && fin.length === 3 && Math.hypot(fin[0].x - apres[0].x, fin[0].y - apres[0].y) < 1e-6,
-    "Échap pendant l'appui long : le sommet reste", { avant: apres[0], apres: fin[0] });
+  const garde = await page.evaluate(function () { return window.modeMesure === true; });
+  verifier(arme && fin.length === 3 && Math.hypot(fin[0].x - apres[0].x, fin[0].y - apres[0].y) < 1e-6 && garde,
+    "Échap pendant l'appui long : le sommet reste, 📐 reste armé", { avant: apres[0], apres: fin[0], arme: garde });
   joue("carte.echap");
+  await sansFocus(page);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(150);
+  verifier(!(await page.evaluate(function () { return window.modeMesure; })),
+    "…puis Échap : 📐 désarmé (appui long avant l'outil)");
   await page.evaluate(function () { window._desactiverTousLesModes(); window.resetMesure(); window.HistoryManager.reset(); });
 
   // Ctrl+K : recherche ouverte puis refermée.
@@ -387,6 +395,135 @@ async function sectionCarte(page) {
   const p2 = await page.evaluate(function () { return window.PresentationMode.isActive(); });
   verifier(p1 && !p2, "F : mode présentation ; Échap en sort", [p1, p2]);
   joue("global.presentation");
+}
+
+// Échap désarme l'outil armé (shortcuts.js > _echapCarte), outil par outil, puis la priorité : fenêtre, bulle, panneau
+// d'un groupe et champ texte prennent l'Échap avant l'outil (l'appui long : sectionCarte).
+const OUTILS_ECHAP = [
+  { nom: "✏️ ajout de point", groupe: "edition", flag: "modeEdition" },
+  { nom: "📐 mesure", groupe: "mesure", cle: "ui.subaction.mesureDistance", flag: "modeMesure" },
+  { nom: "🛣️ tracé", groupe: "traces", cle: "ui.trace.principal", flag: "modeRoad" },
+  { nom: "⬛ zone", groupe: "zones", cle: "ui.zone.eau", flag: "modeZone" },
+  { nom: "🏛️ structure", groupe: "structures", cle: "ui.struct.pilier1", flag: "modeStructure" }
+];
+
+function armerOutil(page, o) {
+  return page.evaluate(function (o) {
+    if (o.groupe === "edition") {
+      if (!window.modeEdition) window._groupes.edition.btnPrincipal.click();
+    } else {
+      window.__rc.choisir(o.groupe, o.cle);
+    }
+    if (window.ktaOutilsOuverts && window.ktaOutilsOuverts()) window.ktaFermerOutils();
+    return !!window[o.flag];
+  }, o);
+}
+
+function etatOutil(page, o) {
+  return page.evaluate(function (o) {
+    const g = window._groupes[o.groupe];
+    const allume = g.btnPrincipal.classList.contains("kta-group-mode-actif") ||
+      (g.subActions || []).some(function (b) { return b.classList.contains("kta-actif"); });
+    return { arme: !!window[o.flag], allume: allume, registre: window.ktaOutilArme() };
+  }, o);
+}
+
+async function echap(page, focus) {
+  if (focus === "carte") await page.evaluate(function () { window.map.getContainer().focus(); });
+  else if (focus !== "garder") await sansFocus(page);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(200);
+}
+
+async function sectionDesarmer(page) {
+  console.log("— Échap désarme l'outil —");
+  await page.evaluate(function () { window._desactiverTousLesModes(); window.resetMesure(); window.HistoryManager.reset(); });
+  for (const o of OUTILS_ECHAP) {
+    const a = await armerOutil(page, o);
+    for (const focus of ["aucun", "carte"]) {
+      if (focus === "carte") await armerOutil(page, o);
+      await echap(page, focus);
+      const e = await etatOutil(page, o);
+      verifier(a && !e.arme && !e.allume && !e.registre, "Échap (focus " + focus + ") : " + o.nom + " désarmé, bouton éteint",
+        { armeAvant: a, apres: e });
+    }
+  }
+  const mes = OUTILS_ECHAP[1];
+
+  // Fenêtre d'abord : la fenêtre de nommage d'un point (ouverte par le clic de ✏️, elle ne coupe pas l'outil) se
+  // ferme, ✏️ reste armé ; Échap suivant : ✏️ désarmé.
+  const edi = OUTILS_ECHAP[0];
+  await armerOutil(page, edi);
+  const ouverte = await page.evaluate(function () {
+    window.__rc.clic(window.__rc.P(-150, 80));
+    return !!document.getElementById("kta-poi-modal");
+  });
+  await echap(page, "aucun");
+  let e = await etatOutil(page, edi);
+  const fermee = !(await page.evaluate(function () { return !!document.getElementById("kta-poi-modal"); }));
+  verifier(ouverte && fermee && e.arme, "Échap, fenêtre de nommage ouverte : la fenêtre se ferme, ✏️ reste armé",
+    { ouverte: ouverte, fermee: fermee, etat: e });
+  await echap(page, "aucun");
+  e = await etatOutil(page, edi);
+  verifier(!e.arme && !e.allume, "…Échap suivant : ✏️ désarmé", e);
+
+  // Bulle : fermée d'abord, carte au focus (Leaflet) comme sans focus (shortcuts.js). Avec un outil armé, aucune bulle
+  // ne s'ouvre (map.js > popupopen) : la priorité bulle > outil tient par construction.
+  for (const focus of ["carte", "aucun"]) {
+    await page.evaluate(function () { window.map.openPopup("Bulle du checkup", window.map.getCenter()); });
+    await echap(page, focus);
+    const b = await page.evaluate(function () { return !!window.map._popup && window.map.hasLayer(window.map._popup); });
+    verifier(!b, "Échap, bulle ouverte (focus " + focus + ") : la bulle se ferme", { bulle: b });
+  }
+  await armerOutil(page, mes);
+  const refus = await page.evaluate(function () {
+    window.map.openPopup("Bulle du checkup", window.map.getCenter());
+    return !!window.map._popup && window.map.hasLayer(window.map._popup);
+  });
+  verifier(!refus, "📐 armé : aucune bulle ne s'ouvre (map.js > popupopen)", { bulle: refus });
+  await echap(page, "carte");
+  e = await etatOutil(page, mes);
+  verifier(!e.arme, "Échap carte au focus, une bulle déjà ouverte une fois : 📐 désarmé", e);
+
+  // Panneau d'un groupe ouvert (focus dedans ou non) : il se ferme, l'outil reste armé.
+  const zon = OUTILS_ECHAP[3];
+  for (const focus of ["garder", "aucun"]) {
+    const p = await page.evaluate(function (o) {
+      window.__rc.choisir(o.groupe, o.cle);   // le type choisi ferme le panneau
+      window._groupes[o.groupe].btnPrincipal.click();   // rouvert, outil armé
+      const fly = document.querySelector(".kta-group-flyout");
+      const btn = fly && fly.querySelector(".kta-group-flyout-btn");
+      if (btn) btn.focus();
+      return { panneau: !!window.ktaOutilsOuverts(), arme: !!window[o.flag] };
+    }, zon);
+    await echap(page, focus);
+    const apres = await page.evaluate(function () { return !!window.ktaOutilsOuverts(); });
+    e = await etatOutil(page, zon);
+    verifier(p.panneau && p.arme && !apres && e.arme, "Échap, panneau ⬛ ouvert (" + (focus === "garder" ? "focus dedans" :
+      "sans focus") + ") : le panneau se ferme, ⬛ reste armé", { avant: p, panneau: apres, etat: e });
+    await echap(page, "aucun");
+    e = await etatOutil(page, zon);
+    verifier(!e.arme && !e.allume, "…Échap suivant : ⬛ désarmé", e);
+  }
+
+  // Champ texte : un Échap tapé dedans ne désarme rien.
+  await armerOutil(page, mes);
+  await page.evaluate(function () {
+    const i = document.createElement("input");
+    i.id = "kta-checkup-champ"; i.type = "text";
+    i.style.cssText = "position:fixed;left:8px;top:8px;z-index:1;";
+    document.body.appendChild(i);
+    i.focus();
+  });
+  await echap(page, "garder");
+  e = await etatOutil(page, mes);
+  await page.evaluate(function () { document.getElementById("kta-checkup-champ").remove(); });
+  verifier(e.arme, "Échap tapé dans un champ texte : 📐 reste armé", e);
+  await echap(page, "aucun");
+  e = await etatOutil(page, mes);
+  verifier(!e.arme, "…Échap hors du champ : 📐 désarmé", e);
+  await page.evaluate(function () { window._desactiverTousLesModes(); window.resetMesure(); window.HistoryManager.reset(); });
+  joue("carte.desarmer");
 }
 
 function etat3D(page) {
@@ -562,6 +699,41 @@ async function section3D(page) {
     { droit: g.cap, ctrl: g2.cap });
   joue("v3d.cap");
 
+  // Échap de la vue et de la carte ne se cumulent pas. Vue d'édition, 📐 armé : un Échap le désarme (règle de la
+  // vue), la vue reste ouverte. À hauteur d'yeux, 📐 armé : Échap ferme la vue (règle de la vue), 📐 reste armé ;
+  // l'Échap suivant, sur la carte, le désarme.
+  const armer3D = function (vue) {
+    return page.evaluate(function (vue) {
+      const K = window.KtaVue3D;
+      if (K.etat().vue !== vue) K.basculerVue();
+      window.__rc.choisir("mesure", "ui.subaction.mesureDistance");
+      if (window.ktaOutilsOuverts && window.ktaOutilsOuverts()) window.ktaFermerOutils();
+      const v = document.getElementById("kta-vue3d");
+      if (v) { v.setAttribute("tabindex", "-1"); v.focus(); }
+      return { vue: K.etat().vue, arme: window.modeMesure === true };
+    }, vue);
+  };
+  let c3 = await armer3D("plongee");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  let s3 = await page.evaluate(function () { return { ouvert: window.KtaVue3D.etat().ouvert, arme: !!window.modeMesure }; });
+  verifier(c3.vue === "plongee" && c3.arme && s3.ouvert && !s3.arme,
+    "3D, vue d'édition, 📐 armé : Échap le désarme, la vue reste ouverte (un seul effet)", { avant: c3, apres: s3 });
+  // À hauteur d'yeux, 📐 armé, réglages ⚙️ ouverts : Échap ne ferme que la tuile (la carte ne désarme pas dessous).
+  c3 = await armer3D("yeux");
+  await page.evaluate(function () { document.querySelector("#kta-vue3d .kta-v3d-btn-reglages").click(); });
+  await page.waitForTimeout(200);
+  const tuile = await page.evaluate(function () { const t = document.getElementById("kta-v3d-reglages"); return !!t && !t.hidden; });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(250);
+  s3 = await page.evaluate(function () {
+    const t = document.getElementById("kta-v3d-reglages");
+    return { tuile: !!t && !t.hidden, ouvert: window.KtaVue3D.etat().ouvert, arme: !!window.modeMesure };
+  });
+  verifier(c3.vue === "yeux" && c3.arme && tuile && !s3.tuile && s3.ouvert && s3.arme,
+    "3D à hauteur d'yeux, 📐 armé, ⚙️ ouvert : Échap ferme la tuile seule (vue ouverte, 📐 armé)",
+    { avant: c3, tuile: tuile, apres: s3 });
+  await page.evaluate(function () { const v = document.getElementById("kta-vue3d"); if (v) v.focus(); });
   // Tab : le focus reste dans la vue ; Échap : la vue se ferme (rien d'autre d'ouvert).
   await page.keyboard.press("Tab");
   await page.waitForTimeout(100);
@@ -576,6 +748,9 @@ async function section3D(page) {
   const fin = await page.evaluate(function () { return window.KtaVue3D.etat().ouvert; });
   verifier(!fin, "3D : Échap → la vue se ferme");
   joue("v3d.echap");
+  s3 = await page.evaluate(function () { return !!window.modeMesure; });
+  verifier(!s3, "3D : la vue fermée par Échap éteint 📐 (règle de la vue : vue3d.js > _quitterDessin)", { arme: s3 });
+  await page.evaluate(function () { window._desactiverTousLesModes(); window.resetMesure(); window.HistoryManager.reset(); });
   await page.evaluate(function () { window.ktaEstAccessible = window.__acc; });
 }
 
@@ -630,6 +805,7 @@ async function jouer(nav, moteur) {
     if (fiche) {
       await sectionOutils(page, fiche.filter(function (s) { return s.id === "outils"; })[0].lignes);
       await sectionCarte(page);
+      await sectionDesarmer(page);
       await section3D(page);
     }
     // Toute ligne que la fiche peut afficher (tactile compris) : jouée ici, ou prouvée par un autre checkup.

@@ -1090,7 +1090,7 @@ A message at the bottom of the screen says what was undone or redone ("↩ Undon
 
 The history is **forgotten** when you reload the page or change map, and a new action after some undos clears whatever was left to redo.
 
-> ⌨️ On PC, **`?`** shows all shortcuts, in foldable sections: `E` Editing, `M` Measurement, `Z` Zones, `S` Structures, `T` Tracker, `P` Paths, `L` Legend, `B` Compass, `R` or `Ctrl+K` Search, `F` presentation mode, `Esc` to close; on the map, `Shift` + wheel rotates it and a long click on a vertex adjusts it. In the 🧊 3D view, `?` shows its keys first (arrows, WASD or ZQSD, `V`, zoom, tilt). In an open tool menu, `Tab` moves through the choices and `Enter` confirms. They do nothing while you are typing in a field. On a phone, the same sheet (from Help) starts with the touch gestures.
+> ⌨️ On PC, **`?`** shows all shortcuts, in foldable sections: `E` Editing, `M` Measurement, `Z` Zones, `S` Structures, `T` Tracker, `P` Paths, `L` Legend, `B` Compass, `R` or `Ctrl+K` Search, `F` presentation mode, `Esc` to close; on the map, `Shift` + wheel rotates it, a long click on a vertex adjusts it and `Esc` turns off the active tool (path, zone, structure, measurement, adding a point) like its button, once the open window, bubble, panel or adjustment is closed. In the 🧊 3D view, `?` shows its keys first (arrows, WASD or ZQSD, `V`, zoom, tilt). In an open tool menu, `Tab` moves through the choices and `Enter` confirms. They do nothing while you are typing in a field. On a phone, the same sheet (from Help) starts with the touch gestures.
 
 ---
 

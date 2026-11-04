@@ -1090,7 +1090,7 @@ Un message en bas de l'écran dit ce qui a été annulé ou refait (« ↩ Annul
 
 L'historique est **oublié** quand tu recharges la page ou changes de plan, et une nouvelle action après des annulations efface ce qu'il restait à rétablir.
 
-> ⌨️ Sur PC, **`?`** affiche tous les raccourcis, par sections repliables : `E` Édition, `M` Mesure, `Z` Zones, `S` Structures, `T` Tracker, `P` Tracés, `L` Légende, `B` Boussole, `R` ou `Ctrl+K` Recherche, `F` mode présentation, `Échap` pour fermer ; sur la carte, `Maj` + molette la fait tourner et un clic long sur un sommet l'ajuste. Dans la 🧊 Vue 3D, `?` montre d'abord ses touches (flèches, ZQSD ou WASD, `V`, zoom, inclinaison). Dans un menu d'outils ouvert, `Tab` parcourt les choix et `Entrée` valide. Ils ne réagissent pas pendant que tu tapes dans un champ. Au téléphone, la même fiche (depuis l'Aide) commence par les gestes tactiles.
+> ⌨️ Sur PC, **`?`** affiche tous les raccourcis, par sections repliables : `E` Édition, `M` Mesure, `Z` Zones, `S` Structures, `T` Tracker, `P` Tracés, `L` Légende, `B` Boussole, `R` ou `Ctrl+K` Recherche, `F` mode présentation, `Échap` pour fermer ; sur la carte, `Maj` + molette la fait tourner, un clic long sur un sommet l'ajuste et `Échap` éteint l'outil armé (tracé, zone, structure, mesure, ajout de point) comme son bouton, une fois fermés la fenêtre, la bulle, le panneau ou l'ajustement en cours. Dans la 🧊 Vue 3D, `?` montre d'abord ses touches (flèches, ZQSD ou WASD, `V`, zoom, inclinaison). Dans un menu d'outils ouvert, `Tab` parcourt les choix et `Entrée` valide. Ils ne réagissent pas pendant que tu tapes dans un champ. Au téléphone, la même fiche (depuis l'Aide) commence par les gestes tactiles.
 
 ---
 

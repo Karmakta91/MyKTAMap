@@ -39,6 +39,23 @@ l'outil **au point touché**, même posé sur un POI, une structure, une zone, u
 d'un calque de données. Aucune fiche (popup Leaflet) ne s'ouvre. Un seul outil est armé à la fois : chaque bouton
 d'outil commence par `_desactiverTousLesModes()` (`interface.js`, registre `_modesActifs`).
 
+**Échap désarme** (`shortcuts.js > _echapCarte`, carte 2D) : même geste que le bouton de l'outil
+(`_desactiverTousLesModes()` : un objet en cours finit comme en éteignant l'outil, la mesure annulable est purgée par
+`_initPrecisionCursor`). Décidé en capture sur `window`, avant les écouteurs des fenêtres, dans cet ordre :
+- Échap déjà arrêté par un écouteur antérieur (`e.cancelBubble`) : appui long ou menu de sommet
+  (`ajusterSommets.js`, qui l'arrête quand il annule), confirmation (`ktaConfirm`, `stopImmediatePropagation`) ;
+- champ texte au focus, gate / splash / chargement (`_isModaleBloquante`), mode présentation, fenêtre visible
+  (`ECHAP_AVANT` : overlays de l'app, fenêtre de nommage d'un point comprise, pickers `.kta-iti-floater`, vue 3D
+  `#kta-vue3d`) : rien, la fenêtre se ferme par son propre écouteur ;
+- panneau d'un groupe ouvert (`ktaOutilsOuverts`) ou bulle ouverte : fermé ici, l'outil reste armé ;
+- sinon, outil armé (`window.ktaOutilArme()`, registre `_modesActifs`) : désarmé.
+🩸 Pas au bouillonnement : Leaflet (`Keyboard._onKeyDown`) arrête tout Échap tapé carte au focus dès qu'une bulle a
+été ouverte une fois (`map._popup` gardé après fermeture). Une bulle ne coexiste pas avec un outil armé (garde
+`popupopen` ci-dessous) : la priorité bulle > outil tient par construction. Vue 3D ouverte : sa règle seule
+(`vue3d.js`, écouteur `keydown` de la vue) ; l'Échap de la carte s'efface devant `#kta-vue3d`, jamais les deux.
+Checkups : `checkup-raccourcis.js` (chaque outil, priorités, 3D), `checkup-dessin-sans-fiche.js` (Échap = bouton,
+objet en cours), `checkup-mesure-annulable.js` (purge).
+
 **Source unique** : `utils.js > _modeClicCarteActif()`, lue par :
 - `map.js > _ktaPickCaptureClick` (capture du `click` sur le conteneur, avant les calques) : le clic posé sur un
   objet est arrêté et ré-émis à la carte au point touché, `map.on("click")` de l'outil reçoit le bon `latlng` ;
@@ -1896,7 +1913,8 @@ i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Sco
     (`icon/compass.svg`, comme son bouton dans la vue 3D), 🧭 restant au Tracker.
   - **Carte** (table `CARTE`) : Maj + molette tourne la carte, le bouton nord la redresse (`mapBearing.js`) ; clic
     long + glisser sur un sommet (`ajusterSommets.js`, souris comprise) ; molette, + / − et flèches (clavier de
-    Leaflet, carte touchée) ; Échap ferme la bulle, annule un sommet en cours ou le choix d'une position.
+    Leaflet, carte touchée) ; Échap ferme la bulle, annule un sommet en cours ou le choix d'une position ; Échap
+    désarme l'outil armé, après tout cela (§ Outil armé, `shortcuts.js > _echapCarte`).
   - **Actions globales** (table `GLOBAL`) : Ctrl+Z (la mesure 📐 comprise tant que l'outil est armé), Ctrl+Y et
     Ctrl+Maj+Z (`historyManager.js`), Ctrl+K (`searchPoints.js`), F et Échap (`presentationMode.js`), `?`, Échap.
   - **Vue 3D** : `KtaVue3D.raccourcis()` (`vue3d.js`, lu dans ses tables `TOUCHES`, `TOUCHES_ZOOM`,
@@ -1910,8 +1928,6 @@ i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Sco
 - Ajouter une touche : dans le module qui la traite, puis sa ligne (table de la fiche ou `raccourcis()`) et son
   contrôle dans `scripts/smoke/checkup-raccourcis.js`, qui joue CHAQUE ligne affichée et vérifie son effet (une ligne
   sans contrôle = rouge), sous Chromium et WebKit.
-- 🩸 En 2D, Échap ne désarme pas un outil de dessin (seul l'outil armé de la vue 3D s'éteint à Échap) : la fiche ne le
-  promet pas.
 
 #### 93.2 Lot B — Navigation clavier dans les menus (`interface.js > _installFocusNav`)
 - Helper partagé `_installFocusNav(container, opts)` branché sur **`_ouvrirFlyout`** (flyout latéral, partagé traces/zones/structures/édition/mesure/favoris) **ET** `_ouvrirTrackerModal` (modal Tracker).

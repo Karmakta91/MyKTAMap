@@ -11,7 +11,8 @@
 // Ajout de point (✏️ modeEdition) : sa fenêtre de nommage s'ouvre, même sur un POI. « Où es-tu ? »
 // (ktaDemanderPositionCarte) et recalage (📍) : le toucher sur un POI rend la position touchée, sans fiche. Appui long
 // sur un sommet, outil armé : pas d'ajustement (ajusterSommets.js) ; outil désarmé : le 1er toucher rouvre la fiche.
-// Un seul outil armé (POI / mesure / zone / tracé). Vue 3D d'édition, outil armé (colonne toujours active, sans
+// Un seul outil armé (POI / mesure / zone / tracé). Échap, 3 sommets posés : même fin que le re-clic du bouton de type
+// (tracé, zone, structure, mesure), ajout de point désarmé. Vue 3D d'édition, outil armé (colonne toujours active, sans
 // interrupteur) : panneau de POI, pilier, zone → sommet, aucune fiche ; armé par les vrais boutons (groupe, type) puis
 // le sol ; un seul outil ; pas d'ajout de point dans la colonne ; outil armé en 2D puis vue d'édition : le PREMIER
 // toucher pose ; outil armé à hauteur d'yeux : toucher consommé, aucune fiche.
@@ -431,6 +432,57 @@ async function section2D(page, entree) {
   }
   await page.evaluate(remettre);
   verifier(doubles.length === 0, "2D : un seul outil armé (POI / mesure / zone / tracé, dans les deux sens)", doubles);
+
+  // Échap désarme l'outil comme son bouton (shortcuts.js > _echapCarte) : 3 sommets posés, puis Échap ou re-clic du
+  // bouton de type ; l'objet en cours finit pareil (mêmes listes, rien en cours), outil et bouton éteints.
+  const bilan = function () {
+    const cours = [window.getCurrentRoad, window.getCurrentZone, window.getCurrentStructure].some(function (f) {
+      try { return typeof f === "function" && !!f(); } catch (e) { return false; }
+    });
+    const allume = Object.keys(window._groupes || {}).filter(function (id) {
+      const g = window._groupes[id];
+      return id !== "tracker" && g.btnPrincipal && (g.btnPrincipal.classList.contains("kta-group-mode-actif") ||
+        (g.subActions || []).some(function (b) { return b.classList.contains("kta-actif"); }));
+    });
+    return { roads: window.getRoads().length, zones: window.getZones().length,
+      structs: window.getStructures().length, mesure: (window.getMeasurePoints() || []).length, cours: cours,
+      arme: !!(window.modeRoad || window.modeZone || window.modeStructure || window.modeMesure || window.modeEdition),
+      allume: allume };
+  };
+  const echap = [];
+  for (const o of OUTILS) {
+    const fin = {};
+    for (const voie of ["echap", "bouton"]) {
+      await page.evaluate(remettre);
+      await page.waitForTimeout(150);
+      const a = await page.evaluate(armer, o);
+      if (!a.arme) { echap.push(o.nom + " : non armé " + JSON.stringify(a)); break; }
+      for (const k of ["poiSession", "structSession", "zoneSession"]) await toucher(page, entree, cibles[k]);
+      if (voie === "echap") {
+        await page.evaluate(function () { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+        await page.keyboard.press("Escape");
+      } else {
+        await page.evaluate(armer, o);
+      }
+      await page.waitForTimeout(250);
+      fin[voie] = await page.evaluate(bilan);
+    }
+    if (!fin.echap || !fin.bouton) continue;
+    if (fin.echap.arme || fin.echap.allume.length || fin.echap.cours ||
+        JSON.stringify(fin.echap) !== JSON.stringify(fin.bouton)) {
+      echap.push(o.nom + " : " + JSON.stringify(fin));
+    }
+  }
+  await page.evaluate(remettre);
+  await page.evaluate(armerPoi);
+  await page.evaluate(function () { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(150);
+  const poiEchap = await page.evaluate(bilan);
+  if (poiEchap.arme || poiEchap.allume.length) echap.push("ajout de point : " + JSON.stringify(poiEchap));
+  await page.evaluate(remettre);
+  verifier(echap.length === 0, "Échap, 3 sommets posés : outil désarmé comme par son bouton (tracé, zone, structure, " +
+    "mesure), ajout de point désarmé", echap);
 }
 
 // ── 3D plongeante ────────────────────────────────────────────────────────────────────────────────────
