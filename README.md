@@ -657,6 +657,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-poi-jonction.js` | POI entre niveaux : raccords proposés et validés, itinéraire |
 | `smoke/checkup-zones-niveaux.js` | Zone reliée à plusieurs niveaux : cases de la fiche, filtre, itinéraire contourné sur chacun, ⏪, KMZ et GeoJSON relus |
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
+| `smoke/checkup-dessin-sans-fiche.js` | Outil armé (dessin, mesure, ajout de point, pickers) : tout toucher pose au point touché, aucune fiche, un seul outil à la fois (2D et 3D, doigt et souris) |
 | `smoke/checkup-recalage-scan.js` | « Recaler des données sur un autre scan » sur des jeux fictifs |
 | `smoke/checkup-repositionner.js` | « Repositionner » un POI de session à la souris |
 | `smoke/checkup-retour-accueil.js` | Fermer un plan le vide, « Reprendre » le retrouve |
