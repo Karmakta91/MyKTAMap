@@ -9,7 +9,8 @@
 // monde.js et joueur.js (bras et fusil en vue à hauteur d'yeux, silhouette verte en vue plongeante). Expose
 // window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
 // rejoindre un point B (POI de plus en plus loin, sinon un point des tracés) avec des égarés et, dès la vague 2, la
-// silhouette (monde.js) ; fusil à deux coups (rage après 20 égarés : santé pleine, 30 s de tir auto), munitions,
+// silhouette (monde.js) ; fusil à pompe (rage après 20 égarés : santé pleine, 30 s de tir auto, endurance sans fin,
+// dégâts reçus ÷ 2, halo rouge), munitions,
 // piles et champignons ramassés en passant ; viseur à la souris capturée (PC) ; santé à 0 = fin,
 // meilleure vague retenue par difficulté. La pile de la lampe s'use (lampe qui baisse et vacille, à plat = lueur de
 // quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
@@ -134,8 +135,9 @@
     // Viseur (souris capturée) : px rejoués par px de souris, refus avant de rendre le glisser, Échap ignoré après.
     viseur: { id: 7331, k: 1, refus: 3, echapMs: 300 },
     // Rage (décision produit) : prête après `tues` égarés tués hors rage ; `dureeS` s de tir automatique (un coup
-    // toutes les `cadenceMs` tant que la détente est tenue), munitions illimitées, `chargeur` coups avant recharge.
-    rage: { tues: 20, dureeS: 30, chargeur: 25, cadenceMs: 110 },
+    // toutes les `cadenceMs` tant que la détente est tenue), munitions illimitées, `chargeur` coups avant recharge ;
+    // endurance sans fin et dégâts reçus × `degatsX`.
+    rage: { tues: 20, dureeS: 30, chargeur: 25, cadenceMs: 110, degatsX: 0.5 },
     // Chrono d'une vague (décision produit) : longueur du trajet vers B à `vitesse` m/s (+ `parVague`, `max` au plus)
     // plus une marge qui fond ; sans trajet, la distance à vol d'oiseau × `sansTrajet`. À 0 : horde et santé.
     chrono: { vitesse: 1.4, parVague: 0.08, max: 2.4, marge: 30, margeParVague: 2, margeMin: 10, sansTrajet: 1.4,
@@ -306,7 +308,10 @@
     const t = performance.now();
     _joueur().image(p, ctx, dt);
     if (p.fin) return;
-    if (ctx.court && !p.souffle) {
+    if (p.rageFin) {
+      p.endurance = REGLES.endurance;
+      if (p.souffle) { p.souffle = false; ctx.regler({ course: true }); }
+    } else if (ctx.court && !p.souffle) {
       p.endurance = Math.max(0, p.endurance - REGLES.videParS * dt);
       if (p.endurance === 0) { p.souffle = true; ctx.regler({ course: false }); _jouer("souffle"); }
     } else {
@@ -360,7 +365,7 @@
       }
     });
     if (r.degats > 0) {
-      p.sante = Math.max(0, p.sante - r.degats);
+      p.sante = Math.max(0, p.sante - r.degats * _degatsX(p));
       if (t - p.blesseT > REGLES.blesseMs) { p.blesseT = t; _jouer("blesse"); _coup(); }
     }
     if (p.sante <= 0) { _finPartie(); return; }
@@ -570,6 +575,8 @@
     // En rage, les cartouches ne sont pas comptées : seul le chargeur de la rage descend.
     if (rage) { p.rageCanon--; p.prochainTir = performance.now() + REGLES.rage.cadenceMs; } else p.canon--;
     _jouer("tir");
+    // Coup de pompe après le tir, sauf en rage (tir automatique) et quand la recharge s'en charge.
+    if (!rage && !(p.canon === 0 && p.reserve > 0)) _jouer("pompe");
     _eclair();
     _joueur().tir(p);
     if (p.hud) {
@@ -615,6 +622,8 @@
     _message(_t("hud.rageActive"));
     _majHud();
   }
+
+  function _degatsX(p) { return p.rageFin ? REGLES.rage.degatsX : 1; }
 
   function _finRage(p) {
     p.rageFin = 0;
@@ -811,7 +820,7 @@
   function _tropTard(p, ctx) {
     const T = REGLES.tropTard, pos = ctx.pos, n = T.horde + T.parVague * (p.vague - 1);
     p.chronoDepasse = true;
-    p.sante = Math.max(0, p.sante - T.degats);
+    p.sante = Math.max(0, p.sante - T.degats * _degatsX(p));
     // Groupes répartis autour de soi ; un groupe tombé hors du plan (ou dans la roche) est reposé ailleurs.
     const a0 = Math.random() * Math.PI * 2, r = T.rayonM * ctx.sc;
     let poses = 0;
@@ -1051,6 +1060,7 @@
   function _monterHud(ctx) {
     const p = _p, h = {};
     h.coup = _el(ctx.hud, "div", "mkmg-coup");
+    h.halo = _el(ctx.hud, "div", "mkmg-halo-rage");
     // Jauges en haut à gauche, hors du panneau : toujours visibles, même panneau réduit.
     h.jauges = _el(ctx.hud, "div", "mkmg-jauges");
     h.sante = _barre(h.jauges, _t("hud.sante"));
@@ -1174,6 +1184,7 @@
       _t("hud.rageCharge", { n: Math.min(p.rageTues, R.tues), m: R.tues });
     h.rage.setAttribute("aria-label", h.rage.title);
     h.tirer.classList.toggle("mkmg-tirer-rage", rage);
+    h.halo.classList.toggle("mkmg-halo-actif", rage);
     h.tirer.title = _t("hud.tirer") + " — " + _t("hud.cartouches") + " : " + p.canon + " + " + p.reserve +
       (p.rechargeFin ? " (" + _t("hud.recharge") + ")" : "");
     h.stats.textContent = _t("hud.tues") + " : " + p.tues + " · " + _t("hud.tirs") + " : " + p.tirs + " · " +

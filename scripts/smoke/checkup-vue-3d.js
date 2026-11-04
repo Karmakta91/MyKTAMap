@@ -3000,10 +3000,17 @@ async function sectionColonneEtJeu(page, MX) {
     const c = await lire(), ch = await chevauchements();
     if (c.colonne) jeu.push(nom + " : colonne d'outils visible pendant le jeu");
     if (!ch.jeu || ch.chevauche.length) jeu.push(nom + " : " + JSON.stringify(ch));
-    if (t.width === 852) await capture(page, "jeu-paysage");
+    // Rage loin de « Quitter » (panneau) : au-dessus du fusil, 8 px les séparaient en paysage au téléphone.
+    const ecart = await page.evaluate(function () {
+      const a = document.querySelector(".mkmg-rage").getBoundingClientRect();
+      const b = document.querySelector(".mkmg-panneau .mkmg-bouton").getBoundingClientRect();
+      return Math.round(Math.max(b.left - a.right, a.left - b.right, b.top - a.bottom, a.top - b.bottom));
+    });
+    if (ecart < 40) jeu.push(nom + " : Rage à " + ecart + " px de Quitter");
+    await capture(page, "jeu-" + t.width + "x" + t.height);
   }
   verifier(lance && jeu.length === 0, "jeu lancé (PC, téléphone, paysage) : pas de colonne d'outils, ses éléments " +
-    "ne chevauchent aucune commande de la vue", { lance: lance, fautes: jeu });
+    "ne chevauchent aucune commande de la vue, Rage à 40 px au moins de Quitter", { lance: lance, fautes: jeu });
   await page.setViewportSize(vp0);
   await page.evaluate(async function () {
     await window.KtaVue3D.fermer();
@@ -9028,9 +9035,27 @@ async function sectionDessin(page) {
         r.rage.munitions = apR.canon + "/" + apR.reserve === avR.canon + "/" + avR.reserve;
         await pause(300);
         r.rage.lache = M().etat().tirs - apR.tirs;
+        // En rage : halo rouge, endurance sans fin (Maj + ↑ tenus), dégâts reçus ÷ 2 (chrono à 0 : −12,5 au lieu de −25).
+        r.rage.halo = q(".mkmg-halo-rage").classList.contains("mkmg-halo-actif") &&
+          getComputedStyle(q(".mkmg-halo-rage")).display !== "none";
+        K.placer(d.x, d.y, 270);
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft", bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
+        await pause(700);
+        r.rage.endurance = M().etat().endurance;
+        r.rage.rapide = K.etat().rapide;
+        document.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift", code: "ShiftLeft", bubbles: true }));
+        X.sante(100);
+        X.chrono(150);
+        await pause(400);
+        r.rage.degats = 100 - M().etat().sante;
+        X.vider();
+        K.placer(d.x, d.y, 90);
         X.rageFin();
         await pause(100);
         r.rage.fin = M().etat().rage.active;
+        r.rage.haloFin = q(".mkmg-halo-rage").classList.contains("mkmg-halo-actif");
         // Touche R (PC) : la rage part, la recherche de la carte (même raccourci, shortcuts.js) ne s'ouvre pas.
         X.rage(20);
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "r", code: "KeyR", bubbles: true, cancelable: true }));
@@ -9153,6 +9178,9 @@ async function sectionDessin(page) {
         MK.rage.chargeur === 25 - MK.rage.tirs && MK.rage.munitions && MK.rage.lache === 0 &&
         MK.rage.fin === false, "jeu : rage prête à 20 égarés, santé rendue, détente tenue = tir automatique (chargeur de 25), " +
         "cartouches non comptées, s'arrête au relâché, retombe à la fin", MK.rage);
+      verifier(MK.rage.halo && !MK.rage.haloFin && MK.rage.rapide && MK.rage.endurance === 100 &&
+        MK.rage.degats >= 12 && MK.rage.degats <= 13,
+        "jeu : en rage, halo rouge (retiré à la fin), endurance sans fin en courant, dégâts reçus ÷ 2", MK.rage);
       verifier(MK.toucheR.rage && !MK.toucheR.recherche,
         "jeu : touche R → rage, sans ouvrir la recherche de la carte (même raccourci)", MK.toucheR);
       verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",

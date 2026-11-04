@@ -6,8 +6,8 @@
 
 // addons/mkmg/js/son.js — sons de l'add-on « mkmg », fabriqués par WebAudio (aucun fichier, aucun réseau). Expose
 // window.KtaAddons.mkmgSon = { demarrer(), arreter(), reveiller(), jouer(nom, force, angle), coeur(intensite),
-// proximite(intensite), respiration(intensite), ambiance(actif), etat() }. Noms : tir, recharge, vide, ramasse, soin,
-// blesse, grogne, mort, souffle, vague, fin, pas, hurle, rugit, eclabousse, eboulis, goutte, pile.
+// proximite(intensite), respiration(intensite), ambiance(actif), etat() }. Noms : tir, pompe, recharge, vide, ramasse,
+// soin, blesse, grogne, mort, souffle, vague, fin, pas, hurle, rugit, eclabousse, eboulis, goutte, pile.
 // angle (degrés, 0 = devant, 90 = à droite) : le son vient de là (gauche / droite), étouffé quand il vient de derrière.
 // 🩸 Un navigateur ne joue rien avant un geste de l'utilisateur : demarrer() est appelé dans le geste qui lance la
 // partie. iOS suspend (« interrupted ») le son sur une notification, un appel, l'écran verrouillé : reveiller() le
@@ -91,9 +91,20 @@
   }
 
   const SONS = {
+    // Fusil à pompe : détonation grave et longue (claquement, souffle, queue qui roule dans la galerie).
     tir: function (t, k) {
-      _bruite(t, "lowpass", 1800, 0.7, 0.9 * k, 0.003, 0.35);
-      _ton(t, "sine", 120, 40, 0.8 * k, 0.003, 0.25);
+      _bruite(t, "highpass", 2500, 0.7, 0.5 * k, 0.001, 0.04);
+      const f = _bruite(t, "lowpass", 2400, 0.8, 1.0 * k, 0.002, 0.6);
+      f.frequency.exponentialRampToValueAtTime(300, t + 0.5);
+      _ton(t, "sine", 90, 32, 0.9 * k, 0.002, 0.4);
+    },
+    // Pompe : glissière tirée puis renvoyée (« tchk-tchak »), chaque course = frottement + choc métallique.
+    pompe: function (t) {
+      [[0.32, 1900, 0.35], [0.5, 2600, 0.45]].forEach(function (c) {
+        _bruite(t + c[0], "bandpass", 1200, 2, 0.12, 0.005, 0.07);
+        _bruite(t + c[0] + 0.06, "bandpass", c[1], 9, c[2], 0.001, 0.05);
+        _ton(t + c[0] + 0.06, "square", 420, 380, 0.04, 0.001, 0.03);
+      });
     },
     recharge: function (t) {
       _bruite(t, "bandpass", 2500, 8, 0.4, 0.002, 0.05);

@@ -103,13 +103,17 @@
   background: var(--kta-surface); color: var(--kta-texte); font-size: 18px; font-weight: 700; text-align: center;
 }
 .mkmg-message[hidden] { display: none; }
-/* Rage : petit bouton au-dessus du fusil ; compteur d'égarés tant qu'elle charge, « Rage » prête, secondes restantes
-   pendant. Fusil cerclé de rouge pendant la rage. */
+/* Rage : petit bouton au-dessus du fusil, à sa gauche sur un écran bas (au-dessus, il touchait « Quitter » du panneau
+   en paysage au téléphone ; à gauche en portrait, le pavé) ; compteur d'égarés tant qu'elle charge, « Rage » prête,
+   secondes restantes pendant. Fusil cerclé de rouge et halo rouge au bord de l'écran pendant la rage. */
 .mkmg-rage {
   position: absolute; right: 26px; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 100px);
   min-width: 52px; height: 32px; padding: 0 8px; border-radius: 999px; box-sizing: border-box; cursor: pointer;
   border: 1px solid var(--kta-texte-3); background: var(--kta-surface); color: var(--kta-texte-2);
   font-size: 12px; font-weight: 700; pointer-events: auto; touch-action: none;
+}
+@media (max-height: 500px) {
+  .mkmg-rage { right: 104px; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 22px); }
 }
 .mkmg-rage:disabled { cursor: default; }
 .mkmg-rage-prete {
@@ -118,5 +122,12 @@
 }
 .mkmg-rage-active { border: 2px solid var(--kta-erreur); color: var(--kta-texte); font-size: 15px; }
 .mkmg-tirer.mkmg-tirer-rage { border-color: var(--kta-erreur); box-shadow: 0 0 14px var(--kta-erreur); }
+.mkmg-halo-rage {
+  position: absolute; inset: calc(-1 * var(--kta-v3d-sous-haut, 80px)) 0 0 0; pointer-events: none; display: none;
+}
+.mkmg-halo-rage.mkmg-halo-actif {
+  display: block; box-shadow: inset 0 0 36px 4px var(--kta-erreur); animation: mkmg-halo 1600ms ease-in-out infinite;
+}
+@keyframes mkmg-halo { 50% { box-shadow: inset 0 0 24px 2px var(--kta-erreur); } }
 @keyframes mkmg-rage-pouls { 50% { transform: scale(1.08); } }
-@media (prefers-reduced-motion: reduce) { .mkmg-rage-prete { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .mkmg-rage-prete, .mkmg-halo-rage.mkmg-halo-actif { animation: none; } }
