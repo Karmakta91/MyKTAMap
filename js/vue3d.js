@@ -4576,6 +4576,9 @@
     e.dessin = { permis: false, sig: null, apSig: null, apercu: null, etiquettes: [], poses: 0, msPoses: [],
       fermetures: 0, finT: 0, msFin: null, avaleJusqua: 0, renduBascule: null, barre: null, planSol: false,
       sol: null, suivi: null };
+    e.ajuste = null;
+    e.ajusteMenu = null;
+    e.ajustements = { armes: 0, annules: 0, ajoute: 0, deplace: 0, supprime: 0, refus: 0, menu: 0, rien: 0 };
     if (!window._groupes) return;
     const barre = document.createElement("div");
     barre.className = "leaflet-bar leaflet-control kta-v3d-outils";
@@ -4679,6 +4682,7 @@
     const e = _e, d = e.dessin;
     if (!d || !d.barre) return;
     _suivrePermisDessin();
+    if (!_dessinPermis()) { _ajusterAnnuler(); _ajusterFermerMenu(); } else _placerMenuAjuster();
     const G = window._groupes || {}, o = _outilArme();
     let sig = (_dessinPermis() ? "1" : "0") + (d.planSol ? "1" : "0") + e.niveau +
       (o ? o.famille + ":" + o.type : "") + "|" +
@@ -4771,10 +4775,11 @@
     return { x: q.x * e.sc, y: q.z * e.sc, dist: q.distanceTo(e.camera.position) };
   }
 
-  // Rayon d'aimantation des tracés de la carte (APP_CONFIG.snapDrawPx, px d'écran) à la profondeur `dist` (m) → px plan.
-  function _tolerancePlan(dist) {
+  // Rayon d'aimantation des tracés de la carte (APP_CONFIG.snapDrawPx, px d'écran ; `pxVoulu` à la place s'il est donné)
+  // à la profondeur `dist` (m) → px plan.
+  function _tolerancePlan(dist, pxVoulu) {
     const e = _e, cfg = window.APP_CONFIG || {}, r = e.cv.getBoundingClientRect();
-    const px = Number.isFinite(cfg.snapDrawPx) && cfg.snapDrawPx > 0 ? cfg.snapDrawPx : 14;
+    const px = pxVoulu > 0 ? pxVoulu : Number.isFinite(cfg.snapDrawPx) && cfg.snapDrawPx > 0 ? cfg.snapDrawPx : 14;
     if (!r.height) return undefined;
     return px * 2 * dist * Math.tan(e.camera.fov * Math.PI / 360) / r.height * e.sc;
   }
@@ -4837,6 +4842,158 @@
     return true;
   }
 
+  // ── Ajuster une forme depuis la vue d'édition : appui long, les gestes et les règles de la carte ────────────────
+  // ⚠️ contrat (décision produit) : une seule prise pour la carte et la vue (ajusterSommets.js > KtaAjusterSommets.plan :
+  // familles, droits, minimum et toast, aimantation, une entrée ⏪, un rendu au lâcher). La vue ne mène que le geste :
+  // appui long (APPUI_MS) sur un sommet ou au milieu d'un côté de ce qu'elle montre (son niveau, ses filtres : e.vus ;
+  // la mesure toujours), au sol sous le point d'APPUI (_pointSol), RAYON_PX px d'écran convertis à la profondeur ;
+  // puis glisser (aperçu au sol, ronds dorés, aucune reconstruction : la scène est refaite au lâcher) ou, sans bouger,
+  // 🗑️ au sommet. Un outil de dessin armé passe avant (sauf 📐 pour la mesure), comme sur la carte.
+  // 🩸 Caméra : plus de BOUGE_PX avant l'appui long = un pan (l'appui est oublié, le pan part à TAPE.bouge) ; armé, le
+  // doigt ne tient plus que le sommet (ni pan, ni cap) ; un 2e doigt, une sortie de la vue d'édition ou Échap annulent
+  // sans rien écrire.
+  function _ajusteur() {
+    const A = window.KtaAjusterSommets;
+    return A && A.plan && typeof A.plan.saisir === "function" ? A : null;
+  }
+  function _garderVu(famille, o) {
+    if (famille === "mesure") return true;
+    const v = _e.vus && _e.vus[famille];
+    return !!v && v.indexOf(o) >= 0;
+  }
+
+  // Appui d'un seul pointeur sur la scène (vue d'édition) : un sommet ou un milieu visé → l'appui long est attendu.
+  function _ajusterAppui(ev) {
+    const e = _e, A = _ajusteur();
+    if (!A || e.ajuste || !_dessinPermis() || !_rayonEcran(ev.clientX, ev.clientY)) return false;
+    const v = _pointSol();
+    const c = v ? A.plan.saisir(v.x, v.y, _tolerancePlan(v.dist, A.RAYON_PX), _garderVu) : null;
+    if (!c) return false;
+    e.ajuste = { id: ev.pointerId, cx: ev.clientX, cy: ev.clientY, depart: v, dist: v.dist, c: c, arme: false,
+      bouge: false, n: 0, timer: setTimeout(_ajusterArmer, A.APPUI_MS) };
+    return true;
+  }
+
+  function _ajusterArmer() {
+    const e = _e, g = e && e.ajuste, A = _ajusteur();
+    if (!g) return;
+    g.timer = 0;
+    const f = A && _dessinPermis() ? A.plan.forme(g.c) : null;
+    if (!f) { _ajusterAnnuler(); return; }
+    g.arme = true;
+    g.pts = f.pts; g.idx = f.idx; g.ferme = f.ferme; g.avant = f.pts.slice();
+    g.decalage = { x: f.pts[f.idx].x - g.depart.x, y: f.pts[f.idx].y - g.depart.y };
+    e.ajustements.armes++;
+    if (window.kta_vibrate && typeof window.kta_vibrate.light === "function") window.kta_vibrate.light();
+    e.sale = true;
+  }
+
+  // Pointeur bougé → true s'il appartient à l'ajustement (la caméra ne le reçoit pas).
+  function _ajusterBouge(ev) {
+    const e = _e, g = e.ajuste, A = _ajusteur();
+    if (!g || ev.pointerId !== g.id || !A) return false;
+    const d = Math.hypot(ev.clientX - g.cx, ev.clientY - g.cy);
+    if (!g.arme) {
+      if (d > A.BOUGE_PX) { _ajusterAnnuler(); return false; }
+      return true;
+    }
+    if (!g.bouge && d > A.GLISSE_PX) g.bouge = true;
+    if (g.bouge && _rayonEcran(ev.clientX, ev.clientY)) {
+      const v = _pointSol();
+      if (v) {
+        g.pts[g.idx] = { x: v.x + g.decalage.x, y: v.y + g.decalage.y };
+        g.dist = v.dist;
+        g.n++;
+      }
+    }
+    return true;
+  }
+
+  // Pointeur levé → true si c'était un ajustement armé (le lâcher n'est pas un toucher).
+  function _ajusterLacher(ev) {
+    const e = _e, g = e.ajuste, A = _ajusteur();
+    if (!g || ev.pointerId !== g.id) return false;
+    if (!g.arme || !A) { _ajusterFin(); return false; }
+    const p = g.bouge || g.c.genre === "milieu" ? g.pts[g.idx] : null;
+    const r = A.plan.lacher(g.c, p, p ? _tolerancePlan(g.dist) : undefined);
+    e.ajustements[r] = (e.ajustements[r] || 0) + 1;
+    if (r === "menu") _ajusterMenu(g);
+    else if (r === "ajoute" || r === "deplace") _ajusterRefaire(g.avant.concat(g.pts));
+    _ajusterFin();
+    return true;
+  }
+
+  function _ajusterFin() {
+    const e = _e, g = e && e.ajuste;
+    if (!g) return;
+    clearTimeout(g.timer);
+    e.ajuste = null;
+    e.sale = true;
+  }
+  function _ajusterAnnuler() {
+    const e = _e, A = _ajusteur();
+    if (!e || !e.ajuste) return false;
+    if (A) A.plan.annule();
+    e.ajustements.annules++;
+    _ajusterFin();
+    return true;
+  }
+
+  // Forme écrite : scène refaite à l'image suivante (sans attendre la fin de la rafale), sur l'emprise de l'avant et
+  // de l'après seulement (_noterFin). La mesure n'est que dans l'aperçu : sa signature suffit.
+  function _ajusterRefaire(pts) {
+    const e = _e;
+    _noterFin({ points: pts });
+    if (e.donnees.signal) e.donnees.premier = e.donnees.signal - RAFALE.max;
+    e.sale = true;
+  }
+
+  // 🗑️ au sommet (le bouton de la carte, classe kta-ajuster-suppr), suivi à l'écran ; il se retire seul (MENU_MS), au
+  // toucher suivant hors de lui (avalé s'il tombe sur la scène) ou par Échap.
+  function _ajusterMenu(g) {
+    const e = _e, A = _ajusteur();
+    _ajusterFermerMenu();
+    const b = document.createElement("button"), titre = _t("ajuster.supprimer");
+    b.type = "button";
+    b.className = "kta-ajuster-suppr kta-v3d-ajuster-suppr";
+    b.dataset.v3d = "ajusterSuppr";
+    b.title = titre;
+    b.setAttribute("aria-label", titre);
+    b.textContent = "🗑️";
+    e.ov.appendChild(b);
+    e.ajusteMenu = { b: b, c: g.c, pts: g.avant, p: g.pts[g.idx],
+      timer: setTimeout(_ajusterFermerMenu, A ? A.MENU_MS : 6000) };
+    _placerMenuAjuster();
+    e.sale = true;
+  }
+  function _placerMenuAjuster() {
+    const e = _e, m = e.ajusteMenu;
+    if (!m) return;
+    const s = _ecran({ x: m.p.x / e.sc, y: DESSIN.y, z: m.p.y / e.sc }), r = e.ov.getBoundingClientRect();
+    const x = Math.round(s.x - r.left - 22) + "px", y = Math.round(s.y - r.top - 58) + "px";
+    if (m.b.style.left !== x) m.b.style.left = x;
+    if (m.b.style.top !== y) m.b.style.top = y;
+    m.b.hidden = !s.devant;
+  }
+  function _ajusterFermerMenu() {
+    const e = _e, m = e && e.ajusteMenu;
+    if (!m) return false;
+    clearTimeout(m.timer);
+    if (m.b.parentNode) m.b.parentNode.removeChild(m.b);
+    e.ajusteMenu = null;
+    e.sale = true;
+    return true;
+  }
+  function _ajusterSupprimer() {
+    const e = _e, m = e.ajusteMenu, A = _ajusteur();
+    if (!m) return;
+    _ajusterFermerMenu();
+    if (A && A.plan.supprimer(m.c)) {
+      e.ajustements.supprime++;
+      _ajusterRefaire(m.pts);
+    }
+  }
+
   // ── Aperçu au sol : objet en cours (ruban et sommets, 1er sommet cerclé pour fermer) et mesures de la carte (ruban
   // rouge, total en panneau). Une géométrie de quelques triangles, refaite sur signature : jamais la scène.
   function _apercuSig() {
@@ -4854,6 +5011,9 @@
       for (let i = 0; i < l.length; i++) somme += l[i].x * (i + 1) + l[i].y * (i + 2);
       parts.push(l.length, somme);
     });
+    // Ajustement armé (chaque déplacement compte) ou 🗑️ proposé : ronds dorés de la forme touchée.
+    const g = e.ajuste && e.ajuste.arme ? e.ajuste : null;
+    parts.push(g ? "a" + g.n + ":" + g.idx : "", e.ajusteMenu ? "m" : "");
     return parts.join(",");
   }
 
@@ -4889,13 +5049,13 @@
       for (let i = 0; i + 1 < pts.length; i++) _ruban(lot, pts[i], pts[i + 1], sc, DESSIN.larg, DESSIN.y, col);
       if (ferme && pts.length > 2) _ruban(lot, pts[pts.length - 1], pts[0], sc, DESSIN.larg, DESSIN.y, col);
     };
+    const accent = new THREE.Color();
+    try { accent.setStyle(coul.accent); } catch (err) { accent.set(0xf4c542); }
     const cur = o && o.famille !== "mesure" ? _objetEnCours(o.famille) : null;
     if (cur && Array.isArray(cur.points) && cur.points.length) {
       const champ = o.famille === "roads" || _estLigne(cur.type) ? "color" : "fillColor";
       const col = _couleur(CAT_DESSIN[o.famille], cur.type, champ);
       ligne(cur.points, false, col);
-      const accent = new THREE.Color();
-      try { accent.setStyle(coul.accent); } catch (err) { accent.set(0xf4c542); }
       const poly = o.famille === "zones" || (o.famille === "structures" && !_estLigne(cur.type));
       if (poly && cur.points.length >= 3) disque(cur.points[0], DESSIN.premier, accent);
       cur.points.forEach(function (p) { disque(p, DESSIN.sommet, col); });
@@ -4904,7 +5064,18 @@
     const mD = _tab(window.getMeasurePoints), mS = _tab(window.getMeasurePointsSurface);
     ligne(mD, false, rouge);
     ligne(mS, true, rouge);
-    mD.concat(mS).forEach(function (p) { disque(p, DESSIN.sommet * 0.75, rouge); });
+    // ⚠️ contrat (décision produit) : un rond doré à chaque sommet de la mesure, comme sur la carte (measure.js >
+    // _majSommetsMesure) : on voit qu'il se déplace. Les autres formes n'en portent que pendant leur ajustement.
+    mD.concat(mS).forEach(function (p) { disque(p, DESSIN.sommet, accent); });
+    const g = e.ajuste && e.ajuste.arme ? e.ajuste : null, mm = e.ajusteMenu;
+    if (g) {
+      ligne(g.pts, g.ferme, accent);
+      g.pts.forEach(function (p, i) { disque(p, i === g.idx ? DESSIN.sommet * 1.6 : DESSIN.sommet, accent); });
+    } else if (mm) {
+      mm.pts.forEach(function (p) { disque(p, DESSIN.sommet, accent); });
+      disque(mm.p, DESSIN.sommet * 1.6, accent);
+    }
+    d.ronds = { mesure: mD.length + mS.length, forme: g ? g.pts.length : mm ? mm.pts.length : 0 };
     const geo = lot.geometrie();
     if (geo) {
       if (!e.mats.apercu) {
@@ -5121,6 +5292,11 @@
       apercu: d.apercu ? d.apercu.geometry.attributes.position.count / 3 : 0,
       etiquettes: d.etiquettes.map(function (sp) { return sp.userData.poi.nom; }), renduBascule: d.renduBascule,
       tuilesReprises: e.tuilesReprises || 0, textures: e.renderer.info.memory.textures,
+      ajuste: e.ajuste ? { arme: e.ajuste.arme, bouge: e.ajuste.bouge, genre: e.ajuste.c.genre, famille: e.ajuste.c.f,
+        pts: e.ajuste.pts ? e.ajuste.pts.length : 0 } : null,
+      ajusteMenu: e.ajusteMenu ? { visible: !e.ajusteMenu.b.hidden, ecran: e.ajusteMenu.b.getBoundingClientRect() }
+        : null,
+      ajustements: Object.assign({}, e.ajustements), ronds: Object.assign({}, d.ronds || {}),
       planSol: d.sol && d.sol.mesh ? { px: d.sol.px, cote: +d.sol.cote.toFixed(1), ok: d.sol.ok, v2: d.sol.v2,
         tuiles: d.sol.tuiles || null, ms: Math.round(d.sol.ms), faits: d.sol.faits, niveau: d.sol.niveau,
         calques: d.sol.calques,
@@ -5175,6 +5351,8 @@
   function _quitterDessin() {
     const e = _e, d = e && e.dessin;
     if (!d) return;
+    _ajusterAnnuler();
+    _ajusterFermerMenu();
     _desarmerDessin();
     d.permis = false;
     if (e.scene) { _libererApercu(); _libererPlanSol(); }
@@ -6058,6 +6236,7 @@
       { id: "inclinerMolette", touches: [["Shift", "Molette"]], edition: true },
       { id: "panner", touches: [["Glisser"]], edition: true },
       { id: "cap", touches: [["ClicDroit", "Glisser"], ["Control", "Glisser"]], edition: true },
+      { id: "sommet", touches: [["ClicLong", "Glisser"]], edition: true },
       { id: "tab", touches: [["Tab"]] },
       { id: "echap", touches: [["Escape"]] }
     ].map(function (r) { return { id: r.id, touches: r.touches, edition: r.edition === true }; });
@@ -6640,6 +6819,7 @@
       else if (a === "ficheVoir") _voirSurCarte();
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
+      else if (a === "ajusterSuppr") { ev.preventDefault(); _ajusterSupprimer(); }
       else if (a === "place") surPlace();
       else if (a === "guidAction") _actionGuidage(b.dataset.guidAction);
       // Entrée / Espace sur un bouton qui agit au pointerdown (bascules de la tuile, − / +, passages) : le navigateur
@@ -6659,7 +6839,8 @@
       const a = b.dataset.v3d;
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
-        a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place" || a === "guidAction") return;
+        a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place" || a === "guidAction" ||
+        a === "ajusterSuppr") return;
       if (_agirBouton(a, b, ev)) return;
       ev.preventDefault();
       _codeBas(a === "ar");
@@ -6674,6 +6855,12 @@
       const t = e.tuileReglages;
       if (!t || t.hidden || t.contains(ev.target) || e.boutonReglages.contains(ev.target)) return;
       _basculerReglages(false);
+    }, true);
+    // 🗑️ d'un ajustement ouvert : le toucher suivant hors de lui le retire ; sur la scène, il ne fait rien d'autre.
+    on(e.ov, "pointerdown", function (ev) {
+      if (!e.ajusteMenu || e.ajusteMenu.b.contains(ev.target)) return;
+      _ajusterFermerMenu();
+      if (ev.target === e.cv) e.ajusteAvale = ev.pointerId;
     }, true);
     // Panneau d'un groupe de dessin ouvert : le toucher qui le ferme ne pose aucun sommet (_poserSommet). Posé avant
     // l'écouteur du panneau (interface.js > _onDocClickFlyout, qui le retire aussitôt) : il le voit encore ouvert.
@@ -6710,8 +6897,14 @@
         deux.a0 = Math.atan2(q.y - p.y, q.x - p.x);
       }
       try { e.cv.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur déjà relâché */ }
+      // Ajustement (_ajusterAppui) : un seul pointeur, bouton principal, vue d'édition ; un 2e doigt l'annule.
+      if (e.ajusteAvale === ev.pointerId) { e.ajusteAvale = null; tape = null; }
+      else if (e.ajuste) _ajusterAnnuler();
+      else if (doigts.size === 1 && e.vue === "plongee" && glisse && !glisse.cap &&
+        (ev.pointerType !== "mouse" || ev.button === 0)) _ajusterAppui(ev);
     });
     on(e.cv, "pointermove", function (ev) {
+      if (e.ajuste && _ajusterBouge(ev)) return;
       if (doigts.size >= 2 && doigts.has(ev.pointerId)) {
         const it = doigts.values(), a0 = it.next().value, b0 = it.next().value;
         const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y), y0 = (a0.y + b0.y) / 2;
@@ -6774,10 +6967,12 @@
       e.sale = true;
     });
     const lever = function (ev) {
+      const ajuste = ev.type === "pointerup" ? _ajusterLacher(ev)
+        : !!(e.ajuste && e.ajuste.id === ev.pointerId && _ajusterAnnuler());
       doigts.delete(ev.pointerId);
       glisse = null;
       if (doigts.size < 2) deux = null;
-      if (ev.type === "pointerup") {
+      if (ev.type === "pointerup" && !ajuste) {
         const bouge = tape ? Math.hypot(ev.clientX - tape.x, ev.clientY - tape.y) : 0;
         const duree = tape ? ev.timeStamp - tape.t : 0;
         if (tape && tape.id === ev.pointerId && doigts.size === 0 && bouge < TAPE.bouge && duree < TAPE.ms) {
@@ -6801,6 +6996,7 @@
     // défilement (pavé tactile : en continu) ; Maj + molette : inclinaison (vers soi = plus verticale).
     // 🩸 Avec Maj, Chrome et Safari font défiler à l'horizontale : le défilement arrive en deltaX.
     on(e.cv, "wheel", function (ev) {
+      if (e.ajuste) _ajusterAnnuler();
       if (e.vue !== "plongee") return;
       ev.preventDefault();
       const k = ev.deltaMode === 1 ? 33 : ev.deltaMode === 2 ? 400 : 1;
@@ -6841,6 +7037,9 @@
       if (_champFiche(ev) && ev.key !== "Escape" && ev.key !== "Tab") { ev.stopPropagation(); return; }
       if (ev.key === "Escape") {
         ev.stopPropagation(); ev.preventDefault();
+        // Un ajustement en cours ou son 🗑️ passent avant tout le reste.
+        const ajuste = _ajusterAnnuler();
+        if (_ajusterFermerMenu() || ajuste) return;
         // Échap ferme d'abord la tuile des réglages (et la hauteur qu'elle montre), éteint l'outil de dessin armé,
         // ferme une fiche, puis la vue.
         if (e.tuileReglages && !e.tuileReglages.hidden) { _basculerReglages(false); return; }

@@ -89,6 +89,7 @@
     inclinerMolette: "cheatsheet.v3d.inclinerMolette",
     panner: "cheatsheet.v3d.panner",
     cap: "cheatsheet.v3d.cap",
+    sommet: "cheatsheet.v3d.sommet",
     tab: "cheatsheet.v3d.tab",
     echap: "cheatsheet.v3d.echap"
   };

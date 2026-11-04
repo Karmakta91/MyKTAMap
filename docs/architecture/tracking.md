@@ -1983,6 +1983,26 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
   fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
+### Ajuster une forme en vue d'édition (décision du 04/11/2026)
+
+- **Mêmes gestes, même prise** ⚠️ contrat : appui long (500 ms) sur un sommet d'un pilier, d'une zone, d'un tracé ou de
+  la mesure, puis glisser = déplacer ; au milieu d'un côté = ajouter ; sans bouger = 🗑️ au sommet (bouton de la carte,
+  `.kta-ajuster-suppr`, suivi à l'écran, retiré seul après 6 s, au toucher suivant, avalé sur la scène, ou par Échap) ;
+  sous le minimum, le toast de la carte. Tout ce qui décide passe par `ajusterSommets.js > KtaAjusterSommets.plan`
+  (familles, droits : lecture seule, calque non rapatrié, outil armé sauf 📐 pour la mesure ; aimantation ; une entrée
+  ⏪, un rendu au lâcher). La vue ne mène que le geste (`vue3d.js > _ajusterAppui`, `_ajusterBouge`, `_ajusterLacher`).
+- **Ce qui se vise** : ce que la vue montre (`e.vus` : son niveau, ses filtres, pas de structure en rendu Galerie), la
+  mesure toujours ; au sol sous le point d'**appui** (`_pointSol`), rayon de 24 px d'écran converti à la profondeur
+  (`_tolerancePlan(dist, RAYON_PX)`) ; aimantation d'un tracé au rayon de `snapDrawPx` à la profondeur du lâcher.
+- **Caméra** 🩸 : plus de 6 px avant l'appui long = un pan (l'appui est oublié ; le pan part à 8 px, `TAPE.bouge`) ;
+  armé, les mouvements du doigt ne vont qu'au sommet (ni pan, ni cap) ; un 2e doigt, la molette, Échap ou la sortie de
+  la vue d'édition annulent sans rien écrire. Le lâcher d'un ajustement n'est pas un toucher (pas de fiche).
+- **Aperçu** : ruban doré de la forme et ronds dorés à ses sommets (plus gros au sommet tenu) dans le maillage d'aperçu
+  (`_majApercu`, signature : un pas = un recalcul de quelques triangles), aucune reconstruction pendant le glisser ;
+  au lâcher, `kta:donneesPlanChange` refait la scène à l'image suivante, sur l'emprise avant / après (`_noterFin`).
+  La mesure a ses ronds dorés en permanence, comme sur la carte.
+- Garde-fou : `checkup-vue-3d.js` § 35 (`KTA_V3D_SEUL=ajuster`, souris et doigt).
+
 ### Dessiner en vue d'édition (QCM du 03/11 et du 04/11/2026)
 
 - **Où** (décision produit) : en ✏️ Édition seulement, la colonne des groupes de la carte est toujours là et active

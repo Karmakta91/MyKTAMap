@@ -712,6 +712,7 @@ Where and how a way through is drawn:
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
 - **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
 - In read-only mode, the drawing tools stay greyed out, as on the map; 📐 Measurement stays allowed.
+- **✋ Adjust a shape**, as on the map: press and hold a point of a pillar, zone, path or measurement, then drag; in the middle of a side, a point is added; without moving, **🗑️**. **Gold circles** mark the points of the touched shape. Dragging straight away moves the view, without adjusting anything; a chosen drawing tool comes first (except 📐 for the measurement).
 
 > ⚠️ The 3D view shows the **map**, not the real tunnel. Shapes and heights come from the survey (tunnels in Tunnels and Mixed modes: fixed widths per trace type), your position from the tracker, which drifts. Do not trust it more than the map.
 
@@ -1004,6 +1005,8 @@ A **route**, a **zone**, a **structure** or a **📐 measurement** already drawn
 - **Delete a point**: press and hold a point without moving, then tap **🗑️**. A line keeps at least 2 points, a surface 3: below that, a message says so and nothing is removed.
 
 A short tap still opens the object's popup. A route released near a point of another route snaps onto it if **🧲 Snap while drawing** is on. Each gesture can be undone with ⏪ (on a measurement, only while the 📐 tool is on). Objects of a data layer only move once the layer is in **🔄 Edit**; a shared map in read-only mode cannot be changed. With a mouse, same gesture: hold the button half a second, then drag.
+
+**The gold circles**: each point of a 📐 measurement (distance and area) carries a gold circle, to show it can be moved. Other shapes only show them while being adjusted. **In 3D**, ✏️ Edit view: same gestures, same rules, on the ground under your finger (see ✏️ Drawing in edit view).
 
 ---
 

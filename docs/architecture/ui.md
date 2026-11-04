@@ -2471,6 +2471,16 @@ extension), hors objet en cours de tracé.
   `clientX` ne sert qu'aux seuils. Le sommet garde son décalage au doigt (il ne saute pas sous lui).
 - **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon milieu de segment ; un balayage des
   objets visibles au `pointerdown`, jamais au `pointermove`.
+- **Ronds dorés de la mesure** (décision produit) : chaque sommet des deux mesures 📐 porte un rond doré
+  (`measure.js > _majSommetsMesure`, `.kta-mesure-sommet` : `--kta-accent`, liseré `--kta-sur-accent`, renderer SVG
+  propre créé après le canvas des mesures, donc au-dessus du trait ; non interactif), refait à chaque `updateMesure` :
+  on voit que la mesure se corrige. Les autres formes n'en portent pas en permanence (trop chargé) : seulement la
+  poignée et l'aperçu de leur ajustement. Le contour de la sélection par zone, qui emprunte la mesure surface, les
+  porte aussi.
+- **Hors de la carte** (vue 3D, vue d'édition) : `KtaAjusterSommets.plan` = `{ saisir(x, y, tol, garder), forme(c),
+  lacher(c, p, tol), supprimer(c), annule() }`, en coordonnées plan : mêmes familles, droits, minimum, aimantation
+  (`aimanter(…, tol)` : rayon déjà converti par l'appelant) et écriture ; l'appelant mène le geste et l'aperçu
+  (`tracking.md` § Vue 3D › Ajuster une forme en vue d'édition).
 - Souris (décision) : appui long aussi, pas de glisser direct : un glisser à la souris reste un pan de la carte.
 
 Preuve : `scripts/smoke/checkup-ajuster-sommets.js` (Chromium et WebKit, souris et doigt).

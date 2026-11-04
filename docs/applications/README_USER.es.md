@@ -712,6 +712,7 @@ Dónde y cómo se dibuja un paso:
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
 - **Volver a tocar la herramienta, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
 - En solo lectura, las herramientas de dibujo quedan en gris, como en el mapa; 📐 Medición sigue permitida.
+- **✋ Ajustar una forma**, como en el mapa: mantén pulsado un punto de un pilar, una zona, un trazado o la medición y arrastra; en el centro de un lado, se añade un punto; sin moverte, **🗑️**. Unos **círculos dorados** marcan los puntos de la forma tocada. Arrastrar enseguida mueve la vista, sin ajustar nada; una herramienta de dibujo elegida va primero (salvo 📐 para la medición).
 
 > ⚠️ La 3D muestra el **plano**, no la galería real. Formas y alturas vienen del levantamiento (las galerías de los modos Galería y Mixto: anchuras fijas por tipo de trazado), tu posición del tracker, que deriva. No te fíes más que del mapa.
 
@@ -1004,6 +1005,8 @@ Un **trazado**, una **zona**, una **estructura** o una **medida 📐** ya dibuja
 - **Eliminar un punto**: mantén pulsado un punto sin moverlo y toca **🗑️**. Una línea conserva al menos 2 puntos, una superficie 3: por debajo, un mensaje lo indica y no se quita nada.
 
 Un toque corto sigue abriendo la ventana del objeto. Un trazado soltado cerca de un punto de otro trazado se engancha a él si la **🧲 Imantación al dibujar** está activada. Cada gesto se deshace con ⏪ (en una medida, solo mientras la herramienta 📐 está encendida). Los objetos de una capa de datos solo se mueven con la capa en **🔄 Modificar**; un mapa compartido en solo lectura no se modifica. Con el ratón, el mismo gesto: botón pulsado medio segundo y arrastrar.
+
+**Los círculos dorados**: cada punto de una medición 📐 (distancia y superficie) lleva un círculo dorado, para ver que se puede mover. Las demás formas solo los muestran mientras se ajustan. **En 3D**, vista ✏️ Edición: mismos gestos, mismas reglas, en el suelo bajo el dedo (ver ✏️ Dibujar en vista de edición).
 
 ---
 
