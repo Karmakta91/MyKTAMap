@@ -7033,6 +7033,10 @@
     };
     on(e.cv, "pointerup", lever);
     on(e.cv, "pointercancel", lever);
+    // Ajustement en cours quand l'appli se replie ou perd la main : annulé sans rien écrire (son lâcher ne viendra
+    // pas ; même règle que la carte, ajusterSommets.js).
+    on(window, "blur", function () { _ajusterAnnuler(); });
+    on(document, "visibilitychange", function () { if (document.hidden) _ajusterAnnuler(); });
     // Molette (PC), vue plongeante, comme une carte : zoom (vers l'avant = plus près), d'un cran par 100 px de
     // défilement (pavé tactile : en continu) ; Maj + molette : inclinaison (vers soi = plus verticale).
     // 🩸 Avec Maj, Chrome et Safari font défiler à l'horizontale : le défilement arrive en deltaX.
