@@ -23,8 +23,7 @@ let currentZone = null;
 let zoneLayers = [];      // polygones fermés (remplis)
 let previewLayer = null;  // polyline pointillée pendant le tracé
 
-// Tolérance du re-clic sur le 1er sommet (px, coordonnées plan).
-const CLOSE_TOLERANCE = 5;
+// Tolérance du re-clic sur le 1er sommet : utils.js > ktaToleranceFermeture (mètres du plan, plancher en px d'écran).
 
 // ── Styles ──────────────────────────────
 const ZONE_STYLE_PREVIEW = {
@@ -122,7 +121,8 @@ function initZones() {
       const dx = x - p0.x;
       const dy = y - p0.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= CLOSE_TOLERANCE) {
+      const tol = typeof window.ktaToleranceFermeture === "function" ? window.ktaToleranceFermeture(e) : 5;
+      if (dist <= tol) {
         fermerZoneEnCours();
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("history.action.closeZone", { type: _typeLabel }), _historyBefore, "zones");

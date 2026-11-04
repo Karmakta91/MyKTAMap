@@ -55,8 +55,7 @@ let currentStructure = null;
 let structureLayers = [];      // polygones fermés (remplis)
 let structurePreviewLayer = null;  // polyline pointillée pendant le tracé
 
-// Re-clic sur le 1er point (unités plan) pour fermer.
-const STRUCT_CLOSE_TOLERANCE = 5;
+// Re-clic sur le 1er point pour fermer : utils.js > ktaToleranceFermeture (mètres du plan, plancher en px d'écran).
 
 // ── Styles (décisions produit, valeurs dans styleResolver.js) ──────────────
 //   • Piliers / mur : contour NOIR systématique (ce qui distingue une structure d'une zone), remplissage plus
@@ -393,7 +392,8 @@ function initStructures() {
       const dx = x - p0.x;
       const dy = y - p0.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= STRUCT_CLOSE_TOLERANCE) {
+      const tol = typeof window.ktaToleranceFermeture === "function" ? window.ktaToleranceFermeture(e) : 5;
+      if (dist <= tol) {
         fermerStructureEnCours();
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("struct.undo.close", { type: _typeLabel }), _historyBefore, "structures");

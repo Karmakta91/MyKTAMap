@@ -1872,9 +1872,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   aimantation au niveau actif) jouant d'elle-même. Rien d'asynchrone de la vue ne lit le niveau pendant ce temps.
 - **Tolérances** (décision produit) : la fermeture d'une zone ou d'une structure se fait dans le **rond doré** du 1er
   sommet (`DESSIN.premier`, 0,3 m, dessiné à l'échelle : zoomer l'agrandit) ; le point est alors ce sommet exact. En
-  mètres et non en px d'écran : à 24 px, le 4e coin d'un mur de 0,4 m fermait la forme au recul par défaut. La
-  tolérance de la 2D (`CLOSE_TOLERANCE` = 5 px **plan**) joue toujours en plus : sur un plan à 6 px/m elle vaut 0,8 m
-  et l'emporte, en 2D comme en 3D. Aimantation des tracés (`snapDraw`) : le rayon d'écran de la 2D (`snapDrawPx`, 14)
+  mètres et non en px d'écran : à 24 px, le 4e coin d'un mur de 0,4 m fermait la forme au recul par défaut. Une seule
+  règle en 2D et en 3D : `utils.js > ktaToleranceFermeture` (`KTA_FERMETURE_M` = 0,3 m à l'échelle du plan ; sur la
+  carte, jamais sous `KTA_FERMETURE_MIN_PX` = 8 px d'écran pour rester touchable au zoom faible ; un geste de la vue
+  3D, `ktaVue3D`, prend les mètres seuls ; plan sans échelle : 5 px plan). Aimantation des tracés (`snapDraw`) : le rayon d'écran de la 2D (`snapDrawPx`, 14)
   converti à la profondeur du point touché, passé en `ktaTolerancePlan` (road.js > `_snapSurSommetProche`).
 - **Coût par sommet** ⚠️ contrat : objet en cours (✏️ ouvert, `getCurrentStructure` / `Zone` / `Road`), la scène ne
   le montre pas (`_collecter` > `_horsTrace`) et `_majDonnees` attend sa fin (`_traceEnCours`) : un sommet = le geste

@@ -714,6 +714,25 @@ window._aucunModeEditionActif = function() {
   return !window.modeRoad && !window.modeZone && !window.modeStructure;
 };
 
+// ── Fermeture d'une forme sur son 1er sommet (zones, structures ; carte et vue 3D) ──────────
+// ⚠️ contrat (décision produit) : KTA_FERMETURE_M mètres à l'échelle du plan (APP_CONFIG.scale, px/m), la règle
+// du rond doré de la vue 3D (vue3d.js > DESSIN.premier). Sur la carte, jamais sous KTA_FERMETURE_MIN_PX px
+// d'écran : au zoom faible, 0,3 m tient en 2 px et le 1er sommet ne se toucherait plus. Geste de la vue 3D
+// (`e.ktaVue3D`) : les mètres seuls, la vue a déjà ramené le point sur le sommet touché dans son rond.
+// Plan sans échelle : 5 px plan.
+// 🩸 Une tolérance en px plan vaut 0,8 m sur le relevé fictif et fermait en triangle, au 4e coin, un mur de 0,4 m
+// posé coin par coin.
+window.KTA_FERMETURE_M = 0.3;
+window.KTA_FERMETURE_MIN_PX = 8;
+window.ktaToleranceFermeture = function(e) {
+  const sc = Number(window.APP_CONFIG && window.APP_CONFIG.scale);
+  const m = sc > 0 ? window.KTA_FERMETURE_M * sc : 5;
+  if ((e && e.ktaVue3D) || !window.map || typeof window.map.getZoom !== "function") return m;
+  let pxParUnite = 0;
+  try { pxParUnite = window.map.options.crs.scale(window.map.getZoom()); } catch (err) { pxParUnite = 0; }
+  return pxParUnite > 0 ? Math.max(m, window.KTA_FERMETURE_MIN_PX / pxParUnite) : m;
+};
+
 // true si un mode « clic carte » consommateur de clics est actif : dessin, mesure, recalage tracker, et tous
 // les pickers de position (floater commun `.kta-iti-floater`). Lu par le garde `popupopen` (map.js) : le clic
 // va au mode actif, pas à une popup d'annotation.

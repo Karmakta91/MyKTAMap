@@ -4104,10 +4104,11 @@
   // 🩸 Les outils 2D lisent `e.latlng` seul ; ce qui dépend de la carte est donné par la vue. Fermeture d'une zone ou
   // d'une structure (décision produit) : toucher le rond doré du 1er sommet, DESSIN.premier m de rayon dessiné à
   // l'échelle (le point est alors ce sommet exact) ; en mètres et non en px d'écran, sinon le 4e coin d'un mur de
-  // 0,4 m fermait la forme au recul par défaut (zoomer agrandit la cible). Aimantation des tracés (road.js >
-  // _snapSurSommetProche) au même rayon d'écran que la 2D, converti à la profondeur du point touché
+  // 0,4 m fermait la forme au recul par défaut (zoomer agrandit la cible). Le rayon est celui de la carte
+  // (utils.js > KTA_FERMETURE_M, ktaToleranceFermeture) : une seule règle en 2D et en 3D. Aimantation des tracés
+  // (road.js > _snapSurSommetProche) au même rayon d'écran que la 2D, converti à la profondeur du point touché
   // (`ktaTolerancePlan`).
-  const DESSIN = { larg: 0.12, sommet: 0.16, premier: 0.3, y: 0.09 };
+  const DESSIN = { larg: 0.12, sommet: 0.16, premier: window.KTA_FERMETURE_M || 0.3, y: 0.09 };
   const DESSIN_AVALER = 700;          // ms : toucher qui ferme le panneau d'un groupe, avalé (comme sur la carte)
   const GROUPES_DESSIN = ["mesure", "traces", "zones", "structures"];   // ordre de la barre de droite 2D
   const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };

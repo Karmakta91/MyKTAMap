@@ -1647,8 +1647,8 @@ async function sectionDessin(page) {
     r.echelle = sc;
     r.armeMur = choisir("structures", "ui.struct.mur") && window.modeStructure === "mur";
     const avM = uids(window.getStructures()), nM = K.etat().donnees.refaites;
-    // 1,2 m d'épaisseur : la tolérance de fermeture de la 2D (zones.js > CLOSE_TOLERANCE, 5 px plan) vaut 0,8 m sur
-    // le relevé fictif ; un 4e coin plus près du 1er fermerait la forme, en 2D comme en 3D.
+    // 1,2 m d'épaisseur, bien au-delà de la tolérance de fermeture (utils.js > ktaToleranceFermeture, 0,3 m) : le
+    // 4e coin ne ferme pas la forme, ✅ la ferme.
     for (const c of [[-4, -8], [4, -8], [4, -6.8], [-4, -6.8]]) await tap(ecran(c[0], c[1]));
     const fermeMur = choisir("structures", "ui.struct.fermer");
     await apres(nM);
