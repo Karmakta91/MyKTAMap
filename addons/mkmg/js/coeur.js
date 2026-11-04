@@ -150,7 +150,7 @@
     // Pile (décision produit) : s'use de `parS` % par seconde ; sous `faible` %, la lampe baisse jusqu'à `min` (lueur
     // de quelques mètres, jamais le noir) et vacille (×`vacille`, de plus en plus souvent).
     pile: { max: 100, parS: 0.55, faible: 25, min: 0.08, vacille: 0.35, vacilleHz: 2.5, vacilleMs: [50, 200] },
-    respireSous: 50, eau: { x: 0.6, ploufM: 0.6, testMs: 200 },
+    eau: { x: 0.6, ploufM: 0.6, testMs: 200 },
     eboulis: { rayonM: 15, s: [8, 20], masqueMs: 2500, testMs: 1000 },
     // B à un autre niveau (plan multi-niveau) : dès la vague `des`, une fois sur `1 / chance` ; jamais en vague boss.
     autreNiveau: { des: 4, chance: 0.4 }, gardienTous: 5,
@@ -313,7 +313,7 @@
       if (p.souffle) { p.souffle = false; ctx.regler({ course: true }); }
     } else if (ctx.court && !p.souffle) {
       p.endurance = Math.max(0, p.endurance - REGLES.videParS * dt);
-      if (p.endurance === 0) { p.souffle = true; ctx.regler({ course: false }); _jouer("souffle"); }
+      if (p.endurance === 0) { p.souffle = true; ctx.regler({ course: false }); }
     } else {
       p.endurance = Math.min(REGLES.endurance, p.endurance + REGLES.repriseParS * dt);
       if (p.souffle && p.endurance >= REGLES.souffleReprise) { p.souffle = false; ctx.regler({ course: true }); }
@@ -337,10 +337,6 @@
       _jouer(s[0], s[1], s[2]);
     });
     if (r.hurle) _message(_t("hud.hurle"));
-    // Respiration seulement en courant (sous respireSous d'endurance) ou à bout de souffle : jamais au repos.
-    const respire = p.souffle ? 1 : ctx.court && p.endurance < REGLES.respireSous ?
-      1 - p.endurance / REGLES.respireSous : 0;
-    _son().respiration(respire);
     // Battement de cœur (décision produit) : seulement à bout de souffle ou sous coeurSous % d'endurance, fort et
     // rapide à sec, de plus en plus lent pendant la reprise, éteint une fois le souffle revenu.
     const seuil = p.souffle ? REGLES.souffleReprise : REGLES.coeurSous;
@@ -877,7 +873,6 @@
     // La carte de fin est sous les commandes (calque de la greffe) : joystick et pavé retirés le temps de toucher.
     p.ctx.regler({ course: false, commandes: false });
     _son().proximite(0);
-    _son().respiration(0);
     _son().ambiance(false);
     _jouer("fin");
     const scores = _lireScores(), avant = Number(scores[p.diff]) || 0;

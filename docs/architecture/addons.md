@@ -264,8 +264,8 @@ embuscades, un monde par niveau), `js/son.js`
   « Rejouer » (arrêt puis démarrage) laissait la nouvelle partie muette sur Safari. Sons **situés** : grognements,
   pas (les deux plus proches à moins de 6 m, un sur trois sauté), cris et éboulis viennent de leur direction
   (panoramique gauche / droite, étouffés quand ils viennent de derrière ; au centre sans `StereoPanner`). Fond :
-  gouttes (« plic » qui monte, puis écho ; toutes les 4 à 11 s) et éboulis lointains au hasard ; respiration du
-  joueur seulement en courant sous 50 d'endurance ou à bout de souffle. 🩸 Rien ne revient à intervalle fixe : un
+  gouttes (« plic » qui monte, puis écho ; toutes les 4 à 11 s) et éboulis lointains au hasard ; pas de bruit de
+  respiration ni d'essoufflement (décision produit : seul le cœur bat à bout de souffle). 🩸 Rien ne revient à intervalle fixe : un
   son régulier se lit comme un bip ou un métronome.
 - **Checkup** : `checkup-vue-3d.js` § 21 (prise, code) et § 23 (jeu, avec `KtaAddons.mkmg.essai` : `vider`, `poser`,
   `sante`, `chrono`, `tenaille`, `pile`, `viser`, `rage`, `rageFin` ; `poser` accepte `rampant`, `hurleur`, `gardien`, `pile`). Non joués

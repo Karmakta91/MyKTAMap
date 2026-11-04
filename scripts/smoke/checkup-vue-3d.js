@@ -10099,7 +10099,10 @@ async function sectionFichesReglage(nav) {
         if (q("#kta-search-modal")) q("#kta-search-modal").remove();
         X.rageFin();
         await pause(100);
-        // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
+        // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos. Aucun bruit de
+        // respiration ni d'essoufflement (décision produit) : les sons demandés sont relevés.
+        const S = window.KtaAddons.mkmgSon, jouer0 = S.jouer, joues = [];
+        S.jouer = function (nom) { joues.push(nom); return jouer0.apply(S, arguments); };
         K.placer(d.x, d.y, 270);
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft", bubbles: true }));
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
@@ -10112,7 +10115,9 @@ async function sectionFichesReglage(nav) {
         document.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowUp", code: "ArrowUp", bubbles: true }));
         document.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift", code: "ShiftLeft", bubbles: true }));
         await pause(2500);
-        r.repos = { souffle: M().etat().souffle, course: K.etat().greffe.reglage.course,
+        S.jouer = jouer0;
+        r.repos = { sons: joues.filter(function (n) { return /souffl|respir/.test(n); }).join(","),
+          respiration: typeof S.respiration, souffle: M().etat().souffle, course: K.etat().greffe.reglage.course,
           endurance: M().etat().endurance, coeur: M().etat().coeur };
         // Cible atteinte : vague suivante.
         const c = M().etat().cible;
@@ -10260,6 +10265,8 @@ async function sectionFichesReglage(nav) {
         MK.repos.souffle === false && MK.repos.course === true,
         "jeu : le pas rapide vide l'endurance ; à bout de souffle plus de course, elle revient au repos",
         { court: MK.court, souffle: MK.souffle, repos: MK.repos });
+      verifier(MK.repos.sons === "" && MK.repos.respiration === "undefined",
+        "jeu : aucun bruit de respiration ni d'essoufflement en courant ni à bout de souffle", MK.repos);
       verifier(MK.silDos.coeur === 0 && MK.court.coeur === 0 && MK.souffle.coeur > 0.5 && MK.repos.coeur === 0,
         "jeu : battement de cœur seulement à bout de souffle (ni près de la silhouette, ni en courant), éteint au repos",
         { silhouette: MK.silDos.coeur, court: MK.court.coeur, souffle: MK.souffle.coeur, repos: MK.repos.coeur });
