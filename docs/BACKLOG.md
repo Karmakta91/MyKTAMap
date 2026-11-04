@@ -43,11 +43,11 @@
   sur iPhone, date de constat modifiable à la CRÉATION d'un POI danger (`3b06dad4`, non reproductible hors iPhone).
   `qui: KARMA · action: jouer ces écrans sur dev puis en prod · fini: vus conformes, ou bugs ouverts
   · depuis: 26/10/2026 · taille: XS`
-- **Essai sur dev : corrections de la vue 3D du 03/11** — escalier en niche contre la paroi (`c374a771`), bassin
-  enfoncé dans sa paroi, puits d'extraction à 2,5 m (`f62ec4d1`), liaison supprimée par « 🔄 Modifier » absente de la
-  3D et de l'itinéraire (`3240e977`). Prouvé par les checkups, pas à la main.
-  `qui: KARMA · action: après /killsw.html, escalier en milieu de galerie et en boucle, bassin, puits d'extraction,
-  liaison supprimée par Modifier · fini: vus conformes, ou bugs ouverts · depuis: 03/11/2026 · taille: XS`
+- **Essai sur dev : v2.22.2 sur vrai téléphone et PC** — tout est prouvé en émulation seulement : vue 3D d'édition
+  (dessin au doigt, caméra libre, sélecteur de niveau, 🗺️ plan au sol sur plan réel), rotation 2D et bouton nord,
+  ajustement des sommets, guidage (encart, repère au bon niveau, recalcul en 3D libre), corrections 3D du 03/11.
+  `qui: KARMA · action: après /killsw.html, jouer ces gestes sur iPhone et au PC ; un sommet 3D refusé →
+  KtaVue3D.etat().dessin.refus · fini: vus conformes, ou bugs ouverts · depuis: 03/11/2026 · taille: S`
 - **Test WebKit « fondu −1 » instable** — `checkup-vue-3d.js` : 1 KO par intermittence sous charge, vu aussi sur la
   base `f62ec4d1` ; 🔬 test instable plutôt que régression. Bloquerait la porte de release.
   `qui: Claude · action: trouver ce qui dépend du temps dans le contrôle du fondu et le rendre déterministe
@@ -81,8 +81,8 @@
   Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
   `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
   · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
-- **Aide ❓ de la vue 3D : accès et niches** — `aide.sec.vue-3d.html` (`lang/fr,en,es`) ne dit rien des accès sans
-  passage (fermés, comblés, bassin, cavage) ni de l'escalier en niche.
+- **Aide ❓ de la vue 3D : accès et niches** — ✅ vérifié 04/11 : l'Aide cite le cavage mais ni les accès comblés ni
+  l'escalier en niche (le guide, lui, les liste).
   `qui: Claude · action: compléter la section dans les 3 langues · fini: section à jour, check-i18n vert
   · depuis: 03/11/2026 · taille: XS`
 - **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
@@ -107,10 +107,6 @@
   validé (texte retenu dans la mémoire du poste).
   `qui: Claude · action: l'écrire dans les 3 guides au commit de bump · fini: phrase présente dans README_USER{,.en,.es}
   · depuis: 02/11/2026 · taille: XS`
-- **Add-on mkmg : un toucher qui tire ouvre une fiche** — au doigt (et souris en repli), un tap sur la scène tire et
-  ouvre la fiche du POI ou de l'objet dessous. La prise existe : `ctx.regler({ fiches: false })` (checkup § 27).
-  `qui: Claude · action: ajouter fiches: false au regler de coeur.js > _scene (greffe) · fini: tir au doigt sans fiche,
-  checkup § 23 · depuis: 02/11/2026 · taille: XS`
 
 ## Plus tard
 
@@ -143,7 +139,20 @@
   `qui: KARMA · action: dire si un client le demande · fini: case d'admin, prise testée avec et sans pro
   · depuis: 02/11/2026 · taille: M`
 
+- **Plan au sol net sur un grand plan** — ✅ mesuré 04/11 : une texture de 1024 px pour ~100 m de sol, floue de près ;
+  piste : ne couvrir que la partie visible, plus fine.
+  `qui: Claude · action: texture limitée au champ visible, mémoire mesurée en iPhone émulé · fini: lisible de près,
+  mémoire tenue · depuis: 04/11/2026 · taille: S`
+- **Recalcul d'itinéraire sans à-coup** — ✅ mesuré 04/11 : en 3D libre, le calcul du chemin fige une image de
+  ~0,3 s au téléphone émulé (accepté par KARMA) ; piste : calcul hors du fil principal (worker).
+  `qui: KARMA · action: dire si l'à-coup gêne sur iPhone · fini: décision prise · depuis: 04/11/2026 · taille: M`
+
 ## Entrant
+
+- **🗺️ Plan au sol hors du niveau 0** — caché aux autres niveaux (`vue3d.js > _planSolPermis`). Question à KARMA :
+  le montrer à tous les niveaux (une seule image par plan ?) ou le griser avec un message.
+  `qui: KARMA · action: dire a (tous niveaux) ou b (grisé), et si ses plans ont une image par niveau · depuis: 04/11/2026
+  · taille: XS`
 
 - **Cap jamais lu si requestPermission répond « prompt »** — ✅ vu 04/11 (lot rotation-manuelle) : la Chromium du
   harnais répond « prompt » à DeviceMotionEvent.requestPermission() : aucun écouteur d'orientation
