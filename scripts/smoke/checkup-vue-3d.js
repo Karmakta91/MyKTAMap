@@ -6415,6 +6415,28 @@ async function sectionDessin(page) {
         X.viser(-40, 0);
         await pause(50);
         r.viseur.apres = Math.round(K.etat().cap);
+        // Tir au doigt sur un objet (pilier, POI…) : aucune fiche pendant la partie (regler({ fiches: false })).
+        const cvJ = document.querySelector("#kta-vue3d canvas"), rcJ = cvJ.getBoundingClientRect();
+        let cible = null;
+        for (let i = 1; i < 10 && !cible; i++) {
+          for (let j = 1; j < 10 && !cible; j++) {
+            const x = rcJ.left + rcJ.width * i / 10, y = rcJ.top + rcJ.height * j / 10, v = K.viser(x, y);
+            if (v && v.genre) cible = { x: x, y: y, genre: v.genre };
+          }
+        }
+        const doigt = { bubbles: true, cancelable: true, pointerId: 62, pointerType: "touch", isPrimary: true,
+          clientX: cible ? cible.x : 0, clientY: cible ? cible.y : 0, button: 0 };
+        if (cible) {
+          cvJ.dispatchEvent(new PointerEvent("pointerdown", doigt));
+          await pause(40);
+          cvJ.dispatchEvent(new PointerEvent("pointerup", doigt));
+          await pause(80);
+        }
+        r.ficheDoigt = { cible: cible && cible.genre, fiche: !!K.etat().fiche, reglage: K.etat().greffe.reglage.fiches };
+        // Commandes de la vue venues après le jeu : barre ✏️, lampe, faisceau et Plein jour restent fermées.
+        const jour = q("#kta-vue3d .kta-v3d-btn-jour");
+        r.commandes = { dessin: K.dessiner(true), lampe: K.reglerLampe(40), faisceau: K.reglerFaisceau(30),
+          jour: K.reglerPleinJour(true), boutonJour: !!jour && jour.disabled };
         K.placer(d.x, d.y, 90);
         X.poser("egare", P(-25, 0).x, P(-25, 0).y);
         await pause(50);
@@ -6655,6 +6677,11 @@ async function sectionDessin(page) {
       verifier(MK.plongee.vue === "yeux" && MK.plongee.reglage === false && MK.plongee.bouton && MK.quitte.boutonVue,
         "jeu : vue plongeante interdite pendant la partie (🦅 grisé, basculement refusé), rendue en quittant",
         { partie: MK.plongee, quitte: MK.quitte.boutonVue });
+      verifier(!!MK.ficheDoigt.cible && !MK.ficheDoigt.fiche && MK.ficheDoigt.reglage === false,
+        "jeu : tir au doigt sur un objet de la scène → aucune fiche (regler({ fiches: false }))", MK.ficheDoigt);
+      verifier(MK.commandes.dessin === false && MK.commandes.lampe === false && MK.commandes.faisceau === false &&
+        MK.commandes.jour === false && MK.commandes.boutonJour,
+        "jeu : barre ✏️, lampe, faisceau et Plein jour refusés pendant la partie", MK.commandes);
       verifier(MK.viseur.cap === 100 && MK.viseur.apres === 90,
         "jeu : viseur à la souris — regard rejoué par la vue (40 px → 10°), glisser clos (pas de doigt resté posé)",
         MK.viseur);
