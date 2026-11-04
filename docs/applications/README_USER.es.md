@@ -635,8 +635,8 @@ Dónde y cómo se dibuja un paso:
 - ![](../../icon/esf.png) **Escalera de servicio cerrada**: el volumen de la escalera abierta, cerrado arriba por una losa oscura.
 - ![](../../icon/pef.png) **Pozo con peldaños cerrado**: el volumen del pozo abierto, cerrado arriba por una losa oscura.
 - ![](../../icon/pb.png) **Pozo tapado**: una losa de mampostería a ras del techo.
-- ![](../../icon/pc.png) **Pozo inyectado**: la boca llena de relleno, un cono de escombros en el suelo. **El cono te para.**
-- ![](../../icon/psf.png) **Pozo de extracción inyectado**: la misma boca llena de relleno y el mismo cono, que te para.
+- ![](../../icon/pc.png) **Pozo inyectado**: la boca llena de relleno, un cono de escombros en el suelo, empujado contra la pared del lado del punto. **Chocas con el cono, pasas a su lado**: siempre deja sitio para un cuerpo.
+- ![](../../icon/psf.png) **Pozo de extracción inyectado**: la misma boca llena de relleno y el mismo cono; pasas al lado del cono.
 - ![](../../icon/ps.png) **Pozo de extracción**: un pozo redondo de mampostería, con la luz del día arriba.
 - ![](../../icon/pe.png) **Pozo en el suelo / Estanque**: un brocal y agua, contra la pared. Se pasa al lado.
 - ![](../../icon/cao.png) **Acceso a cantera abierto**: una puerta de dos hojas atravesada en la galería, hojas abatidas contra las paredes. En una galería más ancha que la puerta, la sillería rellena los lados hasta los muros y pilares: solo se pasa por la puerta.

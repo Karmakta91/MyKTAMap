@@ -635,8 +635,8 @@ Où et comment un passage se dessine :
 - ![](../../icon/esf.png) **Escalier service fermé** : le volume de l'escalier ouvert, fermé en haut par une dalle sombre.
 - ![](../../icon/pef.png) **Puits à échelon fermé** : le volume du puits ouvert, fermé en haut par une dalle sombre.
 - ![](../../icon/pb.png) **Puits Bouché** : une dalle maçonnée au ras du plafond.
-- ![](../../icon/pc.png) **Puits Comblé** : la bouche pleine de remblais, un cône d'éboulis au sol. **Le cône t'arrête.**
-- ![](../../icon/psf.png) **Puits d'extraction comblé** : la même bouche pleine de remblais et le même cône, qui t'arrête.
+- ![](../../icon/pc.png) **Puits Comblé** : la bouche pleine de remblais, un cône d'éboulis au sol, poussé contre la paroi du côté du point. **On bute sur le cône, on passe à côté** : il laisse toujours la place d'un corps.
+- ![](../../icon/psf.png) **Puits d'extraction comblé** : la même bouche pleine de remblais et le même cône ; on passe à côté du cône.
 - ![](../../icon/ps.png) **Puits extraction** : un puits rond maçonné, le jour en haut.
 - ![](../../icon/pe.png) **Puits au sol / Bassin** : une margelle et de l'eau, contre la paroi. On passe à côté.
 - ![](../../icon/cao.png) **Cavage ouvert** : une porte à deux battants en travers de la galerie, rabattus contre les parois. Dans une galerie plus large que la porte, de la pierre de taille comble les côtés jusqu'aux murs et piliers : on ne passe que par la porte.
