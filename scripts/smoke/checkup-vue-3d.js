@@ -6676,6 +6676,15 @@ async function sectionDessin(page) {
         X.rageFin();
         await pause(100);
         r.rage.fin = M().etat().rage.active;
+        // Touche R (PC) : la rage part, la recherche de la carte (même raccourci, shortcuts.js) ne s'ouvre pas.
+        X.rage(20);
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "r", code: "KeyR", bubbles: true, cancelable: true }));
+        document.dispatchEvent(new KeyboardEvent("keyup", { key: "r", code: "KeyR", bubbles: true }));
+        await pause(80);
+        r.toucheR = { rage: M().etat().rage.active, recherche: !!q("#kta-search-modal") };
+        if (q("#kta-search-modal")) q("#kta-search-modal").remove();
+        X.rageFin();
+        await pause(100);
         // Endurance : pas rapide (Maj + ↑) vers l'ouest jusqu'à bout de souffle, puis repos.
         K.placer(d.x, d.y, 270);
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", code: "ShiftLeft", bubbles: true }));
@@ -6787,6 +6796,8 @@ async function sectionDessin(page) {
         MK.rage.chargeur === 25 - MK.rage.tirs && MK.rage.munitions && MK.rage.lache === 0 &&
         MK.rage.fin === false, "jeu : rage prête à 20 égarés, santé rendue, détente tenue = tir automatique (chargeur de 25), " +
         "cartouches non comptées, s'arrête au relâché, retombe à la fin", MK.rage);
+      verifier(MK.toucheR.rage && !MK.toucheR.recherche,
+        "jeu : touche R → rage, sans ouvrir la recherche de la carte (même raccourci)", MK.toucheR);
       verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",
         "jeu : canon vide → recharge automatique de 1,5 s (2 cartouches prises dans la réserve)", MK.recharge);
       verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,

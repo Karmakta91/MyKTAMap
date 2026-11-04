@@ -454,10 +454,19 @@
     // 🩸 Son relancé à chaque geste (iOS le suspend sur une interruption et ne le rend que dans un geste).
     on(document, "pointerdown", function () { _son().reveiller(); }, true);
     on(document, "visibilitychange", function () { if (document.visibilityState === "visible") _son().reveiller(); });
+    // 🩸 R est aussi le raccourci « Recherche » de la carte (shortcuts.js, écouteur de document posé avant le jeu) :
+    // pris sur window en capture et arrêté là, sinon la recherche s'ouvre par-dessus la partie.
+    on(window, "keydown", function (ev) {
+      if (ev.code !== "KeyR" || ev.ctrlKey || ev.metaKey || ev.altKey || document.getElementById("kta-confirm-oui")) {
+        return;
+      }
+      ev.stopPropagation();
+      ev.preventDefault();
+      if (!ev.repeat) _rage();
+    }, true);
     on(document, "keydown", function (ev) {
       _son().reveiller();
       if (ev.repeat || document.getElementById("kta-confirm-oui")) return;
-      if (ev.code === "KeyR") { _rage(); return; }
       if (ev.code !== "Space") return;
       ev.preventDefault();
       _gachette(true);
