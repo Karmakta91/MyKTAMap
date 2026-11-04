@@ -2363,11 +2363,16 @@
     e.sale = true;
   }
 
-  function _reindexer() {
+  // `reprise` (passé par _majDonnees seul) : emprise d'un objet fini depuis la vue (✏️, _noterFin) ; les tuiles loin
+  // de lui sont reprises telles quelles (_reprendreTuiles). Tout autre appel refait tout.
+  function _reindexer(reprise) {
     const e = _e;
     e.reindexations++;
-    e.tuiles.forEach(_libererTuile);
+    const anciennes = e.tuiles;
+    e.reprise = null;
+    if (!reprise) anciennes.forEach(_libererTuile);
     const t0 = performance.now();
+    const niveauAvant = e.niveau, renduAvant = e.rendu;
     e.niveau = _niveauCourant();
     const d = _collecter(e.niveau);
     e.rendu = _renduVoulu();
@@ -2390,6 +2395,7 @@
     e.volPassages = _volumesDuNiveau(d);
     e.volumesIti = e.volumesIti.concat(_volumesItiAcces(e.volPassages));
     e.tuiles = _indexer(d, e.sc, e.tuilesActives ? TUILE : 0);
+    if (reprise) _reprendreTuiles(anciennes, reprise, niveauAvant === e.niveau && renduAvant === e.rendu);
     // Objets dessinés que la visée cherche sous le doigt (_objetAuPoint) : ni structures en galerie (pas dessinées),
     // ni itinéraire (calculé), ni jonction (jamais dessinée).
     e.vus = { structures: e.galerie ? [] : d.structures, zones: d.zones,
@@ -2423,7 +2429,8 @@
     if (window.KtaGalerie && typeof window.KtaGalerie.invalider === "function") window.KtaGalerie.invalider();
     e.filtresChanges = false; e.itiChange = false; e.rondsChange = false;
     e.sortie = null;
-    _reindexer();
+    // Reprise locale : seulement juste après la fin d'un objet (une emprise oubliée ne sert jamais plus tard).
+    _reindexer(e.reprise && t - e.reprise.t < 2000 ? e.reprise : null);
     // Volumes comptés, comme à l'ouverture : un pilier posé sur la place ne la coince pas pour la règle du pas.
     if (e.mode === "libre" && _degager(true)) d.degagees++;
     _majFicheDonnees();
@@ -4224,6 +4231,10 @@
         _toast(_t("vue3d.dessin.renduMixte"), "success");
       }
     }
+    // Objet fini autrement que par un toucher (✅ du panneau, annulation) : la reconstruction qui suit est locale.
+    const cur = o && o.famille !== "mesure" ? _objetEnCours(o.famille) : null;
+    if (d.suivi && d.suivi !== cur) _noterFin(d.suivi);
+    d.suivi = cur;
     _majApercu(false);
   }
 
@@ -4289,7 +4300,9 @@
     d.msPoses.push(performance.now() - t0);
     if (d.msPoses.length > 50) d.msPoses.shift();
     // Objet fini (re-toucher du 1er sommet) : la scène est refaite à l'image suivante, sans attendre la fin de rafale.
-    if (cur && !_objetEnCours(o.famille)) {
+    d.suivi = _objetEnCours(o.famille);
+    if (cur && !d.suivi) {
+      _noterFin(cur);
       d.fermetures++;
       d.finT = performance.now();
       d.msFin = null;
@@ -4405,7 +4418,52 @@
         return b.dataset.groupe; }) : [],
       poses: d.poses, msPoses: d.msPoses.slice(), fermetures: d.fermetures, msFin: d.msFin,
       apercu: d.apercu ? d.apercu.geometry.attributes.position.count / 3 : 0,
-      etiquettes: d.etiquettes.map(function (sp) { return sp.userData.poi.nom; }), renduBascule: d.renduBascule };
+      etiquettes: d.etiquettes.map(function (sp) { return sp.userData.poi.nom; }), renduBascule: d.renduBascule,
+      tuilesReprises: e.tuilesReprises || 0 };
+  }
+
+  // Objet fini depuis la vue : la reconstruction qui suit ne refait que les tuiles qu'il peut toucher (_reprendreTuiles).
+  function _noterFin(o) {
+    const e = _e, pts = o && Array.isArray(o.points) ? o.points : [];
+    if (!pts.length) return;
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    pts.forEach(function (p) {
+      x0 = Math.min(x0, p.x / e.sc); x1 = Math.max(x1, p.x / e.sc);
+      z0 = Math.min(z0, p.y / e.sc); z1 = Math.max(z1, p.y / e.sc);
+    });
+    const r = e.reprise;
+    e.reprise = r ? { x0: Math.min(r.x0, x0), z0: Math.min(r.z0, z0), x1: Math.max(r.x1, x1), z1: Math.max(r.z1, z1),
+      t: performance.now() } : { x0: x0, z0: z0, x1: x1, z1: z1, t: performance.now() };
+  }
+
+  // ⚠️ contrat : une tuile garde sa géométrie si elle a le même contenu (mêmes objets, segments, pièces : nombres
+  // égaux) et que son emprise reste à plus de REPRISE_M de l'objet fini. Pourquoi cette marge : un pilier ouvre les
+  // côtés des tubes à moins de 3 m (galerieEmprise.js > SEUIL_CHAMBRE_M), décide la règle d'une zone ou d'un POI à
+  // 3 m (mixte) et attire un POI qui tombe dedans ; au-delà, rien de ce qu'une tuile dessine n'en dépend. Niveau ou
+  // rendu changé entre-temps : tout est refait. 🩸 Les compteurs de construction (etat : rubans, halos, faces) ne
+  // comptent alors que les tuiles refaites.
+  const REPRISE_M = 4;
+  function _reprendreTuiles(anciennes, b, memeScene) {
+    const e = _e;
+    let reprises = 0;
+    const loin = function (t) {
+      return t.x1 < b.x0 - REPRISE_M || t.x0 > b.x1 + REPRISE_M || t.z1 < b.z0 - REPRISE_M || t.z0 > b.z1 + REPRISE_M;
+    };
+    const meme = function (a, t) {
+      return a.s.length === t.s.length && a.z.length === t.z.length && a.r.length === t.r.length &&
+        a.p.length === t.p.length && a.g.length === t.g.length && a.a.length === t.a.length &&
+        a.x0 === t.x0 && a.z0 === t.z0 && a.x1 === t.x1 && a.z1 === t.z1;
+    };
+    if (memeScene) {
+      e.tuiles.forEach(function (t, k) {
+        const a = anciennes.get(k);
+        if (!a || !a.obj || !loin(t) || !loin(a) || !meme(a, t)) return;
+        t.obj = a.obj; t.parois = a.parois; a.obj = null;
+        reprises++;
+      });
+    }
+    anciennes.forEach(_libererTuile);
+    e.tuilesReprises = reprises;
   }
 
   // Fermeture de la vue : outil éteint (comme en 2D), aperçu libéré.

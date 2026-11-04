@@ -59,6 +59,7 @@
 //   KTA_V3D_PERF=1 → plan dense synthétique (9 000 piliers, 3 000 murs, 1 000 murs en ligne, 700 fronts,
 //   zones, tracés, POI) : temps d'ouverture, triangles, appels, ms par image à 20 / 30 / 50 / 75 / 100 m, sans
 //   tuiles et en vue plongeante dézoomée (recul 60 m) ; marche de 120 m à 30 et 100 m ;
+//   KTA_V3D_PERF=dessin → plan dense, pilier dessiné au doigt en plongée : coût d'un sommet, délai de fermeture ;
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
 //   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt) ; KTA_V3D_SEUL=dessin → la section 28 seule.
 // Usage : node scripts/smoke/checkup-vue-3d.js (SMOKE_PORT pour une autre copie) · doc : docs/ETUDE_VUE_3D.md
@@ -73,7 +74,8 @@ const server = require("./server.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);
 // KTA_V3D_PERF=1 : toutes les mesures ; =galerie ou =mixte : celles de ce rendu seulement.
-const PERF = ["1", "galerie", "mixte", "passages"].indexOf(process.env.KTA_V3D_PERF) >= 0;
+const PERF = ["1", "galerie", "mixte", "passages", "dessin"].indexOf(process.env.KTA_V3D_PERF) >= 0;
+const PERF_DESSIN = process.env.KTA_V3D_PERF === "dessin";
 const PERF_PASSAGES = process.env.KTA_V3D_PERF === "passages";
 const PERF_STRUCTURES = process.env.KTA_V3D_PERF === "1";
 const PERF_GALERIE = process.env.KTA_V3D_PERF === "1" || process.env.KTA_V3D_PERF === "galerie";
@@ -216,6 +218,60 @@ function semerPlanDense() {
   window.setEditorPoints(points);
   return { piliers: piliers, murs: murs, lignes: lignes, fronts: fronts, zones: zones.length, poi: points.length,
     depart: { x: x0 + maille * cotes / 2, y: y0 + maille * cotes / 2 + maille / 2, cap: 90 } };
+}
+
+// Dessin d'un pilier au doigt en vue plongeante sur le plan dense (KTA_V3D_PERF=dessin) : coût d'un sommet (geste de
+// la carte et aperçu, sans reconstruction) et délai de la fermeture jusqu'à la scène refaite, par rendu.
+async function mesuresDessin(page, depart) {
+  for (const rendu of ["structures", "mixte"]) {
+    const r = await page.evaluate(async function (a) {
+      const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const images = async function (n) {
+        for (let i = 0; i < n; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      };
+      window.setPlanRenduVue3D(null, a.rendu);
+      await K.ouvrir({ depart: a.d, commandes: "joystick" });
+      K.basculerVue();
+      await pause(400); await images(10);
+      let ctx = null;
+      const deg = K.greffer({ nom: "v3d-perf-dessin", scene: function (c) { ctx = c; } });
+      if (deg) deg();
+      await pause(400); await images(10);
+      const ecran = function (x, z) {
+        const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+        const v = new ctx.THREE.Vector3(x, 0, z).project(ctx.camera);
+        return { x: rc.left + (v.x + 1) / 2 * rc.width, y: rc.top + (1 - v.y) / 2 * rc.height };
+      };
+      const tap = async function (x, z) {
+        const p = ecran(a.d.x / sc + x, a.d.y / sc + z), cv = document.querySelector("#kta-vue3d canvas");
+        const o = { bubbles: true, cancelable: true, pointerId: 90, pointerType: "touch", isPrimary: true,
+          clientX: p.x, clientY: p.y };
+        cv.dispatchEvent(new PointerEvent("pointerdown", o));
+        cv.dispatchEvent(new PointerEvent("pointerup", o));
+        await images(2);
+      };
+      K.dessiner(true);
+      window.toggleStructureMode("pilier-1");
+      const n0 = K.etat().donnees.refaites;
+      for (const c of [[2.5, -0.5], [3.5, -0.5], [3.5, 0.5], [2.5, 0.5]]) await tap(c[0], c[1]);
+      const pendant = K.etat().donnees.refaites - n0, poses = K.etat().dessin.msPoses.slice();
+      const t0 = performance.now();
+      await tap(2.5, -0.5);
+      while (K.etat().donnees.refaites === n0 && performance.now() - t0 < 20000) await images(1);
+      await images(1);
+      const visible = performance.now() - t0;
+      const ed = K.etat();
+      window.toggleStructureMode("pilier-1");
+      await K.fermer();
+      window.setStructures([]);
+      return { rendu: a.rendu, msSommets: poses.map(function (v) { return +v.toFixed(1); }), refaitesPendant: pendant,
+        msFermetureScene: ed.dessin.msFin === null ? null : +ed.dessin.msFin.toFixed(0),
+        msReconstruction: ed.donnees.ms, msVisible: +visible.toFixed(0), tuilesReprises: ed.dessin.tuilesReprises,
+        tuiles: ed.tuiles, msIndex: ed.msIndex, msEmpreinte: ed.donnees.msEmpreinte };
+    }, { d: depart, rendu: rendu });
+    console.log("  📏 dessin d'un pilier (plan dense, plongée) : " + JSON.stringify(r));
+  }
 }
 
 async function mesures(page, depart) {
@@ -1766,6 +1822,10 @@ async function sectionDessin(page) {
           await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
           console.log("  ℹ️ processeur ralenti x4");
         } catch (e) { console.log("  ℹ️ ralentissement processeur indisponible : " + e.message); }
+      }
+      if (PERF_DESSIN) {
+        const semisD = await page.evaluate(semerPlanDense);
+        await mesuresDessin(page, semisD.depart);
       }
       if (PERF_STRUCTURES) {
       await page.evaluate(function () { window.setPlanRenduVue3D(null, "structures"); });
