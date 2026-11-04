@@ -145,6 +145,10 @@
 
 ## Entrant
 
+- **Barre 2D rognée en paysage bas** — ✅ mesuré 04/11 (lot 3d-interface) : à 852 × 393, les pilules ≡ et cube de la
+  barre de droite font 32 × 27,6 px pour des boutons de 30 × 30 : le bas est coupé par overflow: hidden.
+  `qui: Claude · action: corriger la hauteur des pilules en paysage bas · fini: boutons entiers à 852 × 393, contrôle
+  · depuis: 04/11/2026 · taille: XS`
 - **Site de doc : la vue 3D dans les capacités** — `MyKTAMap-doc/generateur/accueil.js > CAPACITES` est une liste en dur
   qui ne cite pas la vue 3D ; à ajouter seulement quand la 3D est en prod (le site public lit community `main`).
   `qui: Claude · action: ajouter la ligne après le merge main de la 3D, puis relecture de KARMA avant deploy-doc public
