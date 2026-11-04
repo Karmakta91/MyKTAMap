@@ -1,8 +1,8 @@
 {
-  "version": "v2.22.1",
-  "released": "2026-11-02",
+  "version": "v2.22.2",
+  "released": "2026-11-04",
   "notes": [
-    "🧊 Vue 3D corrigée : les escaliers et les puits entre niveaux apparaissent maintenant dans la galerie, même quand leur point est posé à côté sur la carte (avant, on ne voyait parfois que le panneau).",
-    "🚪 Nouveaux accès dessinés en 3D : escaliers et puits fermés, puits bouchés ou comblés, puits d'extraction, bassins et cavages (porte ouverte ou fermée). Une porte fermée, un bassin ou le cône d'un puits comblé arrêtent la marche en 3D."
+    "✏️ Vue 3D : la vue d'édition (ex-vue plongeante) permet de dessiner piliers, murs, zones, tracés et mesures au doigt, de déplacer librement la caméra, de changer de niveau et de survoler les obstacles ; toucher un objet ouvre sa fiche. Nouveaux réglages : portée, lampe et faisceau.",
+    "🗺️ Carte : tourne-la à deux doigts (bouton nord en bas à gauche), ajuste une forme par appui long sur un sommet, et le guidage affiche destination, distance et temps restants, avec des repères pris au bon niveau."
   ]
 }

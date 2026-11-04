@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.22.1` (02/11/2026)
+## 📦 Version courante — `v2.22.2` (04/11/2026)
 
-> 🧊 **v2.22.1 — Correctif de la vue 3D, accès de surface dessinés** : un passage entre niveaux (escalier, puits) se dessine dans la galerie de chaque niveau, même quand son point est posé à côté pour la lisibilité de la carte (il n'en restait parfois que le panneau) ; escaliers et puits fermés, puits bouchés ou comblés, puits d'extraction, bassins et cavages (porte à deux battants) ont leur volume en 3D, et une porte fermée, un bassin ou le cône d'un puits comblé arrêtent la marche. Détail : journal ci-dessous.
+> ✏️ **v2.22.2 — Vue 3D d'édition, carte tournée à la main, formes ajustables** : la vue plongeante devient la **vue d'édition** (dessin des structures, zones, tracés et mesures au doigt, caméra libre, survol, sélecteur de niveau, plan au sol), toucher un objet en 3D ouvre sa fiche, la scène suit les données modifiées pendant qu'elle est ouverte ; en 2D, rotation à deux doigts et ajustement des sommets par appui long ; guidage : encart destination / distance / temps, repère au bon niveau, recalcul automatique en 3D libre ; zones sur plusieurs niveaux. Détail : journal ci-dessous.
 
 ---
 
@@ -776,6 +776,18 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.22.2 (04/11/2026) — Vue 3D d'édition, carte tournée à la main, formes ajustables (branche `Karma_dev`)
+
+- **🧊 Vue 3D, la scène suit les données** (`js/vue3d.js`, signal `kta:donneesPlanChange` émis par les rendus de la carte, empreinte relue sur signal) : objet ajouté, modifié, supprimé, annulé, calque modifié / restitué / coché, légende changée → scène refaite sans bouger la place ; une rafale = une reconstruction ; l'itinéraire a ses propres tuiles (un recalcul ne refait que le ruban). `checkup-vue-3d.js` § 26.
+- **📍 Toucher un objet en 3D** : pilier, mur, zone, tracé → la fiche de la carte (mêmes droits), « Voir sur la carte » ; prise `fiches: false` pour une greffe. § 27.
+- **✏️ Vue d'édition** (ex-vue plongeante, nom de code `plongee`) : outils de la carte (structures, zones, tracés, 📐) au doigt et à la souris, sommet posé au sol sous le point d'appui, niveau de la 3D ; caméra libre (un doigt = pan, deux doigts = cap / zoom / inclinaison), aucun obstacle ne bloque, sélecteur de niveau, vue retenue par plan, 🗺️ plan au sol, bandeau de mesure avec segments et angles. §§ 28, 30.
+- **🔦 Réglages 3D** : portée (15–100 m), lampe (25–300 %), faisceau (40–160°), ☀️ Plein jour ; figés pendant une partie (`reglagesFiges`). 🧱 coupé : sol et plafond noirs, parois à la couleur de légende. Cavage comblé en pierre de taille jusqu'aux structures. Interface alignée sur la barre 2D (jetons `--kta-barre-*`). § 25.
+- **🗺️ Carte 2D** : rotation à deux doigts sans tracker (`mapBearing.js`, seuil 15°, Maj + molette au PC), bouton nord en bas à gauche ; ajuster une forme par appui long (`js/ajusterSommets.js` : déplacer, ajouter, supprimer un sommet), fermeture d'une forme en mètres ; outil armé = tout toucher pose un point, aucune fiche ; Échap désarme l'outil ; mesure annulable tant que 📐 est armé. `checkup-rotation-manuelle.js`, `checkup-ajuster-sommets.js`, `checkup-dessin-sans-fiche.js`, `checkup-mesure-annulable.js`.
+- **🧭 Guidage** : repère cité au niveau du tronçon seulement ; encart destination / distance / temps restants (allure « lente » 3 km/h par défaut, itinéraire et Perdu) ; en 3D libre, recalcul automatique quand on s'écarte, en suivi les boutons de la 2D.
+- **⬛ Zones sur plusieurs niveaux** (`ktaNiveauxObjet`), vues et bloquantes sur chacun ; l'inaccessible passe sous les structures.
+- **⌨️ Fiche des raccourcis** refaite (carte, vue 3D lue par `KtaVue3D.raccourcis()`, gestes tactiles). `checkup-raccourcis.js`.
+- **Docs** : section Vue 3D du guide rangée en sous-parties avec les icônes des POI (`interfaceDocs.js`, adresses d'image sur liste blanche).
 
 #### v2.22.1 (02/11/2026) — Correctif de la vue 3D, accès de surface dessinés (branche `Karma_dev`)
 

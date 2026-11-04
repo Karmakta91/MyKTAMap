@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.22.2 (vue 3D d'édition, carte tournée, formes ajustables)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Dessin en vue 3D, plan au sol (images déjà chargées par la carte), rotation de la carte, ajustement des sommets, guidage et zones multi-niveaux se calculent sur l'appareil ; les icônes du guide viennent de l'app (précache).
+
 ### v2.22.1 (correctif de la vue 3D, accès de surface)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** La place des passages dans la galerie et les nouveaux volumes de la vue 3D (accès fermés, puits comblés, bassins, cavages, avec leurs textures dessinées par le code) se calculent sur l'appareil ; aucune image n'est téléchargée.
