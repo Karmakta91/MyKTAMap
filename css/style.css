@@ -20680,6 +20680,8 @@ button.kta-cfg-ligne-action {
 .kta-ajuster-apercu { stroke: var(--kta-accent); fill: none; }
 .kta-ajuster-poignee { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.35; }
 .kta-ajuster-poignee-attente { fill-opacity: 0; stroke-dasharray: 4 3; }
+/* Sommets de la mesure 📐 (measure.js > _majSommetsMesure) : rond doré plein, liseré sombre, lisible sur le plan. */
+.kta-mesure-sommet { fill: var(--kta-accent); fill-opacity: 1; stroke: var(--kta-sur-accent); }
 .kta-ajuster-menu { background: none; border: 0; }
 .kta-ajuster-suppr {
   width: 44px; height: 44px; padding: 0; border-radius: 22px; cursor: pointer; font-size: 20px; line-height: 1;

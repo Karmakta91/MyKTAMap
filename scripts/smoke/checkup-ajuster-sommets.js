@@ -9,7 +9,8 @@
 // Vérifie : déplacer / ajouter / supprimer un sommet sur les 4 familles, refus sous le minimum (toast), un geste =
 // une entrée d'historique annulable, uid gardé et updatedAt changé, un seul rendu au lâcher (aucun pendant), carte
 // immobile pendant le glisser, aucune fiche après un appui long et une fiche au tap court, outil armé = rien,
-// lecture seule = rien, calque verrouillé = rien et sa copie « 🔄 Modifier » = oui, aimantation d'un tracé, mur de
+// lecture seule = rien, ronds dorés aux sommets des mesures (au départ, après ajustement), calque verrouillé = rien
+// et sa copie « 🔄 Modifier » = oui, aimantation d'un tracé, mur de
 // 0,4 m posé coin par coin fermé au 4e coin seulement, et un déplacement carte tournée (rotation manuelle, plan orienté).
 // Après chaque geste (déplacer, ajouter, 🗑️, annulé par Échap / molette / 2e doigt, fermé par pointercancel / blur /
 // visibilitychange, lâcher jamais reçu), vue droite puis carte tournée à deux doigts : un pan déplace la carte et le
@@ -322,6 +323,36 @@ async function geste(page, ptr, de, vers) {
   return { pendant: pendant, apres: await etat(page) };
 }
 
+// Ronds dorés de la mesure (measure.js > _majSommetsMesure) : un par sommet des deux mesures, centré dessus (2 px),
+// doré, au-dessus du trait (renderer SVG posé après le canvas des mesures).
+async function ronds(page, quand) {
+  const r = await page.evaluate(function () {
+    const pts = window.getMeasurePoints().concat(window.getMeasurePointsSurface());
+    const els = Array.prototype.slice.call(document.querySelectorAll(".kta-mesure-sommet"));
+    const centres = els.map(function (el) { const b = el.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; });
+    const ecarts = pts.map(function (p) {
+      const a = window.__as.ecran(p.x, p.y);
+      return Math.min.apply(null, centres.map(function (c) { return Math.hypot(c[0] - a[0], c[1] - a[1]); }).concat([1e9]));
+    });
+    const el = els[0], svg = el && el.ownerSVGElement;
+    const canvas = document.querySelector(".leaflet-overlay-pane canvas");
+    return { n: els.length, voulu: pts.length, pire: +Math.max.apply(null, ecarts.concat([0])).toFixed(2),
+      fill: el ? getComputedStyle(el).fill : null, accent: (function () {
+        const t = document.createElement("span");
+        t.style.color = "var(--kta-accent)";
+        document.body.appendChild(t);
+        const c = getComputedStyle(t).color;
+        t.remove();
+        return c;
+      })(),
+      dessus: !!(svg && canvas && (canvas.compareDocumentPosition(svg) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      cliquable: el ? getComputedStyle(el).pointerEvents : null };
+  });
+  const dore = !!r.fill && r.fill === r.accent;
+  verifier(r.n === r.voulu && r.voulu >= 5 && r.pire <= 2 && dore && r.dessus,
+    "ronds dorés aux sommets des deux mesures (" + quand + ") : un par sommet, centrés, au-dessus du trait", r);
+}
+
 function proche(p, q, tol) { return !!p && !!q && Math.hypot(p.x - q.x, p.y - q.y) <= tol; }
 function memeCentre(a, b) { return Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6; }
 
@@ -623,6 +654,7 @@ async function jouer(nav, moteur, mode) {
     await page.waitForTimeout(800);
     const base2 = await page.evaluate(function () { const p = window.__as.P(0, 0); return window.__as.ecran(p.x, p.y).map(Math.round); });
     verifier(Math.hypot(base2[0] - s.base[0], base2[1] - s.base[1]) < 2, "la vue reste où le harnais l'a posée", { avant: s.base, apres: base2 });
+    await ronds(page, "au départ");
     const tol = 2.5 * s.k;   // 2,5 px d'écran
 
     // ── Tap court : la fiche s'ouvre toujours ──
@@ -647,6 +679,7 @@ async function jouer(nav, moteur, mode) {
     await famille(page, ptr, "mur (ligne)", "st_as_l", 1, 0, tol);
     await famille(page, ptr, "mesure distance", "distance", 2, 0, tol);
     await famille(page, ptr, "mesure surface", "surface", 1, 2, tol);
+    await ronds(page, "après déplacer, ajouter et supprimer");
     await refus(page, ptr, "tracé de 2 points", "rd_as_r2");
     await refus(page, ptr, "zone de 3 sommets", "zn_as_t");
 
