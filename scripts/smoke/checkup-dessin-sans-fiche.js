@@ -821,6 +821,11 @@ async function section3D(page, entree) {
       window.toggleStructureMode("pilier-1");   // armé comme sur la carte, aucun bouton de la vue touché
     });
     await page.waitForTimeout(300);
+    // 🩸 Le pilier d'une 1re cible abandonné à l'extinction peut finir après le réarmement : armé de nouveau s'il le faut.
+    const armeAvant = await page.evaluate(function () {
+      if (window.modeStructure !== "pilier-1") window.toggleStructureMode("pilier-1");
+      return window.modeStructure;
+    });
     const avant = await etat3();
     await toucher3(cibles[k]);
     const e = await etat3();
@@ -829,7 +834,7 @@ async function section3D(page, entree) {
         return { arme: window.modeStructure || null, refus: window.KtaVue3D.etat().dessin.refus };
       });
       direct.push(k + " : " + JSON.stringify({ sommets: e.n, poses: e.poses - avant.poses, fiche: e.fiche || e.popup,
-        arme: diag.arme, refus: diag.refus, sous: cibles[k].sous, vise: cibles[k].vise }));
+        armeAvant: armeAvant, arme: diag.arme, refus: diag.refus, sous: cibles[k].sous, vise: cibles[k].vise }));
     }
     await fermerFiche();
   }
