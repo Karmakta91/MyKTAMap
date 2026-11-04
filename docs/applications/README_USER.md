@@ -782,7 +782,7 @@ Dès qu'un **itinéraire est tracé** et que ta position est connue — tracker 
 
 **Tu t'écartes ou tu fais demi-tour ?** Le bandeau passe en orange (« Hors itinéraire ? » / « Demi-tour ? ») et propose **Je suis ici** (touche l'endroit où tu es), **Recalculer d'ici** ou **Ignorer**. Rien n'est recalculé sans toi.
 
-Sous la consigne, un encart dit **🏁 la destination** (avec son niveau s'il n'est pas le tien), **la distance et le temps restants** (« ~ », à l'allure choisie dans la fenêtre Itinéraire) ; le toucher le replie sur la consigne seule (retenu sur l'appareil, en 2D comme en 3D, repris en gros sur l'Affichage XL).
+Sous la consigne, un encart dit **🏁 la destination** (avec son niveau s'il n'est pas le tien), **la distance et le temps restants** (« ~ », à l'allure choisie dans la fenêtre Itinéraire), sur une ligne, en 2D comme en 3D, et repris en gros sur l'Affichage XL. Une destination trop longue est coupée par « … » : la distance et le temps restent toujours lisibles.
 
 **Toucher la consigne** ouvre la **🪧 Feuille de route** : toutes les consignes et leurs distances (touche une ligne pour voir l'endroit). Elle s'ouvre aussi depuis la fenêtre Itinéraire, sans tracker, pour préparer une sortie.
 

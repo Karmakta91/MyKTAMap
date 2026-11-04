@@ -1259,9 +1259,11 @@ seulement s'il diffère de celui de la position (tracker en 2D, scène en 3D), d
 `getItiTempsMinutes(reste, 2 + étapes restantes)` (allure et pauses de la fenêtre Itinéraire ; rien de choisi :
 « lente », 3 km/h, `interfaceItineraire.js > DEFAULT_ITI_SPEED`, décision produit), « ~ » + arrondi à la
 minute (`ktaFormatTempsItineraire`). ⚠️ contrat : une seule source, `etat().resume` (bandeau 2D, écran XL) et
-`apercu().resume` (3D en libre), calculée avec la consigne : jamais de chemin. Replié (`encartReduit`,
-`reglerEncart`, `myktamap_guidage_encart_v1`, cet appareil) : une languette ▾ seule, 2D et 3D ensemble ; l'écran XL
-le montre toujours. Contrôles : `checkup-guidage.js` G12, `checkup-vue-3d.js` § 32.
+`apercu().resume` (3D en libre), calculée avec la consigne : jamais de chemin. Rendu `rendreEncart(conteneur,
+resume)` (bandeau 2D, vue 3D, écran XL) : **une ligne, toujours affichée, jamais repliée** (décision produit) ;
+`resume.destination` (« 🏁 nom ») coupée par une ellipse si trop longue, `resume.reste` (« · distance · temps »)
+toujours entier ; `resume.texte` = la ligne entière (titre). La clé de l'ancien repli, `myktamap_guidage_encart_v1`,
+est effacée au chargement d'`itiGuidage.js`. Contrôles : `checkup-guidage.js` G12, `checkup-vue-3d.js` § 32.
 
 **✂️ Coupe derrière** (`interfaceItineraire.js > _couperDerriere`, appelée par `_onTrackerRecale` pour la source
 `"point"` — « Je suis ici », picker « Où es-tu ? », portail ; jamais le clic carte) : si le point est à ≤ `COUPE_SEUIL_M`

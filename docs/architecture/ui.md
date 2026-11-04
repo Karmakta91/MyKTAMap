@@ -2364,9 +2364,11 @@ icônes.
   appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage. Il passe à la
   ligne (`flex-wrap`) : boutons d'écart en suivi (`.kta-v3d-guid-actions`, 44 px) puis l'encart « reste » de la 2D
   (`.kta-guid-resume`, `style.css`, même rendu : `ItiGuidage.rendreEncart`), en pleine largeur au bas du bandeau.
-  Bandeau 2D : même encart sous la consigne (12,5 px, `--kta-texte-2`, filet `--kta-bordure`), languette ▾ de 22 px
-  replié ; ni l'un ni l'autre ne chevauche les commandes aux trois tailles (`checkup-guidage.js` G12, `checkup-vue-3d.js`
-  § 32).
+  Bandeau 2D et écran XL : même encart sous la consigne (12,5 px, `--kta-texte-2`, filet `--kta-bordure` en 2D),
+  toujours affiché sur **une ligne**, sans repli (décision produit : une ligne, rien à gagner) — `.kta-guid-resume-ligne`
+  (flex, `nowrap`) : seule la destination (`.kta-guid-resume-nom`) rétrécit en ellipse, distance et temps
+  (`.kta-guid-resume-reste`) gardent leur largeur. Ni l'un ni l'autre ne chevauche les commandes aux trois tailles,
+  une ligne avec une destination de 60 caractères (`checkup-guidage.js` G12, `checkup-vue-3d.js` § 32).
 - **Toasts de la vue** : présence 3D partagée et nom d'un membre, d'un repère ou du 🏁 touché en `success` (décision
   produit : toujours vus, `info` est tu par défaut) ; perte du contexte WebGL en `warn`.
 - **Commandes** : au téléphone, **joystick** (`.kta-v3d-stick-zone`, `.kta-v3d-stick`, `.kta-v3d-stick-bouton`) :
