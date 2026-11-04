@@ -1213,6 +1213,25 @@ function setVue3DTextures(oui) {
 window.getVue3DTextures = getVue3DTextures;
 window.setVue3DTextures = setVue3DTextures;
 
+// ── Fiches des objets au toucher dans la vue 3D (structure, zone, tracé), réglage de CET appareil ───────────────
+// localStorage["myktamap_v3d_fiches_objets_v1"] = "0" (coupé) | "1" ; absente → selon le pointeur (décision produit) :
+// coupé au doigt (window.ktaAppareilTactile, pointer: coarse : une fiche ouverte par erreur gêne l'écran), ouvert au
+// pointeur fin. Réglé dans la tuile ⚙️ de la vue (vue3d.js > _basculerFichesObjets). ⚠️ contrat : un panneau de POI
+// ouvre toujours sa fiche ; une greffe `fiches: false` coupe tout, quel que soit ce réglage.
+const V3D_FICHES_CLE = "myktamap_v3d_fiches_objets_v1";
+function getVue3DFichesObjets() {
+  try {
+    const v = localStorage.getItem(V3D_FICHES_CLE);
+    if (v === "1" || v === "0") return v === "1";
+  } catch (e) { /* stockage refusé : le défaut */ }
+  return !(typeof window.ktaAppareilTactile === "function" && window.ktaAppareilTactile());
+}
+function setVue3DFichesObjets(oui) {
+  try { localStorage.setItem(V3D_FICHES_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DFichesObjets = getVue3DFichesObjets;
+window.setVue3DFichesObjets = setVue3DFichesObjets;
+
 // ── Portée de la vue 3D (brouillard, profondeur, lampe, tuiles), réglage de CET appareil ────────────────────────
 // localStorage["myktamap_v3d_portee_v1"] = mètres entiers, bornés à V3D_PORTEE ; absente ou illisible → défaut.
 // Réglée par le curseur de la tuile ⚙️ (vue3d.js > reglerPortee). ⚠️ contrat : la borne haute coûte des tuiles et

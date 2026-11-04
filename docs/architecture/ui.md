@@ -2311,7 +2311,11 @@ icônes.
   suivant), Boussole (montrée / masquée, `config.js > getVue3DBoussole`, `myktamap_v3d_boussole_v1`, cet appareil,
   montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🪧 Guidage (`getVue3DGuidage`,
   `myktamap_v3d_guidage_v1`, cet appareil, montré par défaut ; coupé : ni bandeau ni chevrons en 3D, ruban, étapes
-  et 🏁 gardés (posés par-dessus un remblais ou un effondrement, `tracking.md` § Vue 3D › Itinéraire), urgence toujours affichée, préférence et état du guidage 2D intacts, `vue3d.js > _lireGuidage`), 🧱
+  et 🏁 gardés (posés par-dessus un remblais ou un effondrement, `tracking.md` § Vue 3D › Itinéraire), urgence toujours affichée, préférence et état du guidage 2D intacts, `vue3d.js > _lireGuidage`), 🗂️ Fiches
+  (`getVue3DFichesObjets`, `myktamap_v3d_fiches_objets_v1`, cet appareil ; absent : coupé au pointeur grossier,
+  `ktaAppareilTactile`, ouvert au pointeur fin ; coupé, `_toucher` n'ouvre la fiche d'aucune structure, zone ni tracé,
+  un panneau de POI ouvre toujours la sienne, l'ajustement par appui long reste permis ; une greffe `fiches: false`
+  l'emporte), 🧱
   Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
   des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),

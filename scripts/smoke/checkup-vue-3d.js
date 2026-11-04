@@ -68,6 +68,7 @@
 // Ajuster une forme en vue d'édition (35, =ajuster) : souris et doigt, pilier, zone, tracé, mesure (déplacer, ajouter,
 // 🗑️, ⏪, caméra immobile, scène refaite), refus, niveau, calque, lecture seule, outil armé, pan, Échap. Ajouter un POI
 // en vue d'édition (36, =poi) : ✏️ à sa place, un seul outil, fenêtre de nommage, clavier, niveau, ⏪, Échap, lecture seule.
+// Réglage ⚙️ Fiches (37, =fiches) : défaut selon le pointeur, coupé = rien sur pilier, zone, tracé (POI : sa fiche), retenu.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -4261,6 +4262,7 @@ async function sectionAjusterSommets(nav, mode) {
       if (window.getTrackingActif()) window.stopTracking();
     });
     await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    await page.evaluate(function (m) { window.__ajDoigt = m === "doigt"; }, mode);
     await page.evaluate(async function () {
       const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
       const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
@@ -4278,6 +4280,8 @@ async function sectionAjusterSommets(nav, mode) {
         points: [P(-1, 4), P(1, 4), P(1, 6), P(-1, 6)] }];
       window.getAllEmbeddedStructures = function () { return calque; };
       window._currentLoadedPlanId = "v3d-checkup-ajuster";
+      // Au doigt, réglage ⚙️ Fiches coupé (défaut du téléphone) : l'ajustement reste permis (§ 37).
+      if (window.__ajDoigt) window.setVue3DFichesObjets(false);
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
       window.setPlanRenduVue3D(null, "structures");
       window.setStructures([{ uid: "st_aj_p", type: "pilier-1", level: -1,
@@ -4757,6 +4761,158 @@ async function sectionPoi3D(nav) {
   }
 }
 
+// ── 37. Réglage ⚙️ « Fiches » (config.js > getVue3DFichesObjets, vue3d.js > _toucher) ───────────────────────────────
+// Défaut selon le pointeur (fin : ouvert ; grossier, téléphone émulé sous Chromium : coupé) ; coupé : toucher un
+// pilier, une zone ou un tracé n'ouvre rien, un panneau de POI ouvre sa fiche ; ouvert : la fiche du pilier ; bascule
+// au bouton de la tuile (aria-pressed), retenue à la réouverture de la vue.
+async function sectionFichesReglage(nav) {
+  const chromiumNav = nav.browserType().name() === "chromium";
+  const nom = "§ 37 ";
+  console.log("§ 37 — réglage ⚙️ des fiches d'objets au toucher");
+  const ouvrirPage = async function (opts) {
+    const ctx = await nav.newContext(Object.assign({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" },
+      opts || {}));
+    const page = await ctx.newPage();
+    await page.addInitScript(function (ls) {
+      for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+    }, LS_PREGATES);
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0 && typeof window.getVue3DFichesObjets === "function";
+    }, 20000);
+    return { ctx: ctx, page: page };
+  };
+  const erreurs = [];
+  // Défaut au pointeur grossier (téléphone émulé : Chromium seul sait émuler isMobile).
+  if (chromiumNav) {
+    const t = await ouvrirPage({ viewport: { width: 393, height: 852 }, isMobile: true, hasTouch: true });
+    const d = await t.page.evaluate(function () {
+      return { coarse: window.matchMedia("(pointer: coarse)").matches, voulu: window.getVue3DFichesObjets() };
+    });
+    verifier(d.coarse && d.voulu === false, nom + "téléphone (pointeur grossier) : fiches d'objets coupées par défaut", d);
+    await t.ctx.close();
+  }
+  const o = await ouvrirPage();
+  const page = o.page;
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    const d0 = await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+      return { coarse: window.matchMedia("(pointer: coarse)").matches, voulu: window.getVue3DFichesObjets() };
+    });
+    verifier(d0.voulu === !d0.coarse, nom + "défaut selon le pointeur (" + (d0.coarse ? "grossier : coupé" :
+      "fin : ouvert") + ")", d0);
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const prep = await page.evaluate(async function () {
+      const C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      window.getPlanEditionVue3D = function () { return null; };
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = "v3d-checkup-fiches";
+      C.multiLevel = false;
+      window.setPlanRenduVue3D(null, "structures");
+      window.setStructures([{ uid: "st_fi_p", type: "pilier-1", points: [P(-6, -4), P(-3, -4), P(-3, -1), P(-6, -1)] }]);
+      window.setZones([{ uid: "zn_fi_z", type: "eau", points: [P(2, -5), P(6, -5), P(6, -1), P(2, -1)] }]);
+      window.setRoads([{ uid: "rd_fi_r", type: "principal", points: [P(-6, 3), P(-1, 3)] }]);
+      window.setEditorPoints([Object.assign({ id: "Repère fiches fictif", nom: "Repère fiches fictif", uid: "pt_fi",
+        tags: ["salle"] }, P(3, 3))]);
+      window.KtaGalerie.invalider();
+      window.__fiP = P;
+      return { ox: ox, oz: oz, sc: sc };
+    });
+    // Ouvre la vue d'édition, rend les points écran des cibles (centre des formes, panneau du POI).
+    const ouvrirVue = async function () {
+      return page.evaluate(async function () {
+        const K = window.KtaVue3D, P = window.__fiP, sc = window.APP_CONFIG.scale;
+        if (K.etat().ouvert) await K.fermer();
+        await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 0 }, commandes: "pave" });
+        K.basculerVue();
+        for (let i = 0; i < 8; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+        let ctxV = null;
+        const deg = K.greffer({ nom: "v3d-fiches-camera", scene: function (c) { ctxV = c; } });
+        if (deg) deg();
+        for (let i = 0; i < 3; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+        const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+        const ec = function (q) {
+          const v = new ctxV.THREE.Vector3(q.x / sc, 0, q.y / sc).project(ctxV.camera);
+          return [rc.left + (v.x + 1) / 2 * rc.width, rc.top + (1 - v.y) / 2 * rc.height];
+        };
+        const poi = K.etat().panneaux.filter(function (s) { return s.nom === "Repère fiches fictif" && s.visible; })[0];
+        return { pilier: ec(P(-4.5, -2.5)), zone: ec(P(4, -3)), trace: ec(P(-3.5, 3)),
+          poi: poi ? [poi.ecran.x, poi.ecran.y] : null, etat: K.etat().fichesObjets };
+      });
+    };
+    const fiche = function () {
+      return page.evaluate(function () {
+        const f = window.KtaVue3D.etat().fiche;
+        return f ? (f.famille || "poi") : null;
+      });
+    };
+    const fermerFiche = function () {
+      return page.evaluate(function () { const b = document.querySelector('#kta-vue3d [data-v3d="ficheFermer"]'); if (b) b.click(); });
+    };
+    const toucher = async function (p) {
+      await page.mouse.click(p[0], p[1]);
+      await page.waitForTimeout(250);
+      const f = await fiche();
+      await fermerFiche();
+      await page.waitForTimeout(100);
+      return f;
+    };
+    // Bascule par le bouton de la tuile ⚙️ (vrai clic).
+    const basculer = async function () {
+      await page.locator("#kta-vue3d .kta-v3d-btn-reglages").click();
+      await page.waitForTimeout(150);
+      await page.locator("#kta-vue3d .kta-v3d-btn-fiches").click();
+      await page.waitForTimeout(100);
+      const r = await page.evaluate(function () { return window.KtaVue3D.etat().fichesObjets; });
+      await page.locator("#kta-vue3d .kta-v3d-btn-reglages").click();
+      await page.waitForTimeout(150);
+      return r;
+    };
+    let v = await ouvrirVue();
+    verifier(v.etat.bouton === String(v.etat.voulu), nom + "bouton 🗂️ de la tuile : aria-pressed = le réglage", v.etat);
+    if (v.etat.voulu) await basculer();
+    v = await ouvrirVue();
+    const coupe = { etat: v.etat, pilier: await toucher(v.pilier), zone: await toucher(v.zone),
+      trace: await toucher(v.trace), poi: v.poi ? await toucher(v.poi) : "absent" };
+    verifier(coupe.etat.voulu === false && coupe.etat.bouton === "false" && !coupe.pilier && !coupe.zone &&
+      !coupe.trace && coupe.poi === "poi",
+    nom + "coupé (retenu à la réouverture) : pilier, zone, tracé n'ouvrent rien, le POI ouvre sa fiche", coupe);
+    const ls = await page.evaluate(function () { return localStorage.getItem("myktamap_v3d_fiches_objets_v1"); });
+    const r1 = await basculer();
+    const ouvert = { etat: r1, pilier: await toucher(v.pilier), zone: await toucher(v.zone), trace: await toucher(v.trace) };
+    verifier(ls === "0" && r1.voulu === true && r1.bouton === "true" && ouvert.pilier === "structures" &&
+      ouvert.zone === "zones" && ouvert.trace === "roads",
+    nom + "ouvert : pilier, zone et tracé ouvrent leur fiche, comme avant", { ls: ls, ouvert: ouvert });
+    v = await ouvrirVue();
+    verifier(v.etat.voulu === true && v.etat.bouton === "true", nom + "ouvert : retenu à la réouverture", v.etat);
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+    await page.evaluate(function () { window.KtaVue3D.fermer(); });
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await o.ctx.close();
+  }
+}
+
 (async function main() {
   const lancement = { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] };
   const nav = await lancerNavigateur(chromium, lancement);
@@ -4827,7 +4983,8 @@ async function sectionPoi3D(nav) {
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionDessin(page);
       if (CAPTURES) await capturesDessin(page);
-    } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi") {
+    } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" ||
+      SEUL === "fiches") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -10876,6 +11033,7 @@ async function sectionPoi3D(nav) {
       for (const mode of ["souris", "doigt"]) await sectionAjusterSommets(nav, mode);
     }
     if (!SEUL || SEUL === "poi") await sectionPoi3D(nav);
+    if (!SEUL || SEUL === "fiches") await sectionFichesReglage(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

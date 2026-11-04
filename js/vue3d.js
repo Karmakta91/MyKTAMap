@@ -4396,6 +4396,8 @@
       return true;
     }
     if (hit) return _ouvrirFiche(hit.object.userData.poi.point);
+    // ⚠️ contrat (décision produit) : réglage ⚙️ coupé, structure, zone ou tracé touchés n'ouvrent rien (le POI, si).
+    if (!_fichesObjets()) return false;
     const o = _objetAuPoint(_pointVise());
     return o ? _ouvrirFicheObjet(o) : false;
   }
@@ -6385,6 +6387,19 @@
     icG.textContent = "🪧";
     e.boutonGuidage.appendChild(icG);
     e.boutonGuidage.appendChild(document.createTextNode(_t("vue3d.guidageNom")));
+    // Fiches des objets au toucher (structure, zone, tracé ; jamais les POI) : réglage de cet appareil, coupé par
+    // défaut au doigt (config.js > getVue3DFichesObjets).
+    const ligneF = document.createElement("div");
+    ligneF.className = "kta-v3d-reglages-ligne";
+    tuile.appendChild(ligneF);
+    e.boutonFiches = _bouton(ligneF, "kta-v3d-btn-mode kta-v3d-btn-fiches", "", _t("vue3d.fichesMontrer"),
+      "fichesObjets");
+    const icF = document.createElement("span");
+    icF.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icF.setAttribute("aria-hidden", "true");
+    icF.textContent = "🗂️";
+    e.boutonFiches.appendChild(icF);
+    e.boutonFiches.appendChild(document.createTextNode(_t("vue3d.fichesNom")));
     // Portée, intensité et faisceau de la lampe : curseurs libres (réglages de cet appareil : reglerPortee,
     // reglerLampe, reglerFaisceau), valeur écrite à côté ; flèches, Origine et Fin au clavier (le clavier de la vue
     // leur laisse leurs touches, _brancher). Grisés pendant une greffe qui fige les réglages (_majCurseur).
@@ -6508,6 +6523,7 @@
     e.rose = rose; e.boussole = bous;
     _appliquerBoussole();
     _appliquerGuidage();
+    _appliquerFichesObjets();
     _appliquerTextures();
     if (stats) {
       e.compteur = document.createElement("div");
@@ -6582,6 +6598,21 @@
     e.sale = true;
     _majRepere();
     return oui;
+  }
+
+  // Fiches des structures, zones et tracés au toucher (config.js > getVue3DFichesObjets), lu à chaque toucher.
+  function _fichesObjets() {
+    return typeof window.getVue3DFichesObjets !== "function" || window.getVue3DFichesObjets() === true;
+  }
+  function _appliquerFichesObjets() {
+    const e = _e, oui = _fichesObjets();
+    if (e.boutonFiches) e.boutonFiches.setAttribute("aria-pressed", oui ? "true" : "false");
+    return oui;
+  }
+  function _basculerFichesObjets() {
+    if (!_e) return null;
+    if (typeof window.setVue3DFichesObjets === "function") window.setVue3DFichesObjets(!_fichesObjets());
+    return _appliquerFichesObjets();
   }
 
   function _basculerGuidage() {
@@ -6774,6 +6805,7 @@
     if (a === "vue") { basculerVue(); return true; }
     if (a === "boussole") { _basculerBoussole(); return true; }
     if (a === "guidage") { _basculerGuidage(); return true; }
+    if (a === "fichesObjets") { _basculerFichesObjets(); return true; }
     if (a === "textures") { _basculerTextures(); return true; }
     if (a === "rendu") { basculerRendu(); return true; }
     if (a === "hauteur") { _basculerReglageHauteur(); return true; }
@@ -7805,6 +7837,7 @@
         raison: e.recalcul.raison, ecartM: e.ecartLibre === null || e.ecartLibre === undefined ? null :
           (Number.isFinite(e.ecartLibre) ? +e.ecartLibre.toFixed(2) : -1) },
       dessin: _etatDessin(),
+      fichesObjets: { voulu: _fichesObjets(), bouton: e.boutonFiches ? e.boutonFiches.getAttribute("aria-pressed") : null },
       fiche: e.fiche && e.fiche.objet ? { famille: e.fiche.famille, uid: e.fiche.objet.uid || null,
         type: e.fiche.objet.type, session: e.fiche.session, registre: e.fiche.registre,
         note: !!e.fiche.boite.querySelector(".kta-note-popup-textarea"),

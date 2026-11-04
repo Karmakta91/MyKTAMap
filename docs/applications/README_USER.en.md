@@ -558,6 +558,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **🧱 Textures** (on by default): stone, rock, concrete block, earth and rubble at their real size (see below). Kept on this device.
 - **Compass**: the tile shows or hides it, for this device. At the bottom left, its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
 - **🪧 Guidance**: on, it is enough: with a route, the banner and the chevrons show in 3D even if the map's guidance is off (its ✕). When off, the 3D view hides the instruction banner and the chevrons on the ground. The route, its stops and 🏁 stay drawn; an emergency exit is always shown; the map's guidance is not affected. Kept on this device.
+- **🗂️ Cards**: ticked, touching a pillar, wall, zone or path opens its card; unticked, nothing opens (the view moves as usual, a long press still adjusts). A point always opens its own. Unticked by default on a phone, ticked on a PC; remembered on this device.
 - **🔭 Range**: a slider from 15 to 100 m (30 m by default) sets how far you see. The black fog, the lamp and the scenery follow. Further is heavier for the phone. Kept on this device.
 - **💡 Lamp**: a slider from 25 to 300% (100% by default) sets the headlamp's strength; the stronger, the farther it reaches. Kept on this device.
 - **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
