@@ -151,6 +151,10 @@ function afficherFormulaire(x, y, existingPoint) {
   const optionsNiveau = (isEdit && typeof window.ktaOptionsNiveauHtml === "function")
     ? window.ktaOptionsNiveauHtml(niveauInitial) : "";
   const descInitial  = isEdit ? (existingPoint.description || "") : "";
+  // ⚠️ contrat : à l'ajout, le niveau est celui qui est actif À L'OUVERTURE (le clic), pas à l'enregistrement : la vue
+  // 3D pose le point à son niveau en prêtant activeLevel le temps du clic (vue3d.js > _poserSommet).
+  const niveauAjout = (window.APP_CONFIG && Number.isInteger(window.APP_CONFIG.activeLevel))
+    ? window.APP_CONFIG.activeLevel : 0;
 
   // Échappement du préremplissage (une apostrophe casserait l'attribut value).
   function _esc(s) { return window.ktaEsc(s); }
@@ -291,7 +295,7 @@ function afficherFormulaire(x, y, existingPoint) {
     const tagForm = (selectType.value && selectType.value !== "__new__") ? selectType.value : (tagInitial || null);
     let niveau = null;
     if (isEdit) niveau = Number.isInteger(existingPoint.level) ? existingPoint.level : null;
-    else if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) niveau = window.APP_CONFIG.activeLevel || 0;
+    else if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) niveau = niveauAjout;
     return { nom: inputNom.value.trim() || nomInitial, x: x, y: y, niveau: niveau, type: tagForm, maj: Date.now() };
   }
 
@@ -342,7 +346,7 @@ function afficherFormulaire(x, y, existingPoint) {
     level: function() {
       if (selNiveauForm) { const n = Number.parseInt(selNiveauForm.value, 10); if (Number.isInteger(n)) return n; }
       if (isEdit) return niveauInitial;
-      return (window.APP_CONFIG && Number.isInteger(window.APP_CONFIG.activeLevel)) ? window.APP_CONFIG.activeLevel : 0;
+      return niveauAjout;
     }
   }) : null;
   if (_jonction && selNiveauForm) selNiveauForm.addEventListener("change", _jonction.rafraichir);
@@ -720,7 +724,7 @@ function afficherFormulaire(x, y, existingPoint) {
 
         // Multi-niveau actif : le point prend le niveau actif ; sinon aucun champ `level`.
         if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
-          point.level = window.APP_CONFIG.activeLevel || 0;
+          point.level = niveauAjout;
         }
         if (_jonction) window.KtaPoiJonction.appliquer(point, _jonction.lire());
         if (_danger) window.KtaPoiDanger.appliquer(point, _danger.lire());
@@ -730,6 +734,8 @@ function afficherFormulaire(x, y, existingPoint) {
 
         listePoints.push(point);
         _ajouterMarker(point);
+        // Une vue du plan (3D) relit ses points : le marqueur posé ici ne passe pas par renderEditorPoints.
+        if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("points");
         // Les photos prises avant le nom reçoivent la fiche définitive.
         if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && _photosAddedThisSession.size) {
           window.MyKTAMapPhotos.majFichesPoints(planId, [point]);

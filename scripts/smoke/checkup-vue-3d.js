@@ -66,7 +66,8 @@
 // ni validation ni distance, Carnet « bureau » ; « Je suis ici » d'une fiche = validation (KTA_V3D_SEUL=saut). Plan au
 // sol à tous les niveaux (34) : base au −1, calque du +1, pixels lus, refait au changement de niveau (=solniveaux).
 // Ajuster une forme en vue d'édition (35, =ajuster) : souris et doigt, pilier, zone, tracé, mesure (déplacer, ajouter,
-// 🗑️, ⏪, caméra immobile, scène refaite), refus, niveau, calque, lecture seule, outil armé, pan, Échap.
+// 🗑️, ⏪, caméra immobile, scène refaite), refus, niveau, calque, lecture seule, outil armé, pan, Échap. Ajouter un POI
+// en vue d'édition (36, =poi) : ✏️ à sa place, un seul outil, fenêtre de nommage, clavier, niveau, ⏪, Échap, lecture seule.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -3760,7 +3761,7 @@ async function sectionDessin(page) {
     const src = window._groupes.structures.btnPrincipal;
     r.boutons = K.etat().dessin.boutons.slice();
     // Ordre de la barre de droite 2D (position dans le document des boutons de groupe).
-    r.ordre2d = ["mesure", "traces", "zones", "structures"].slice().sort(function (a, b) {
+    r.ordre2d = ["mesure", "edition", "traces", "zones", "structures"].slice().sort(function (a, b) {
       const x = window._groupes[a].btnPrincipal, y = window._groupes[b].btnPrincipal;
       return x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
     });
@@ -4140,7 +4141,7 @@ async function sectionDessin(page) {
   };
   verifier(!r.yeux.barre && !r.yeux.bouton, "dessin : pas de colonne d'outils à hauteur d'yeux", r.yeux);
   verifier(r.plongee.barre && r.sansInterrupteur && JSON.stringify(r.boutons) === JSON.stringify(r.ordre2d) &&
-    JSON.stringify(r.boutons) === JSON.stringify(["mesure", "traces", "zones", "structures"]),
+    JSON.stringify(r.boutons) === JSON.stringify(["mesure", "edition", "traces", "zones", "structures"]),
     "vue d'édition : colonne 📐 🛣️ ⬛ 🏛️ toujours là, sans interrupteur 🛠️ (ordre de la barre de droite 2D)", { plongee: r.plongee, boutons: r.boutons,
     ordre2d: r.ordre2d });
   verifier(r.style && r.style.w === r.style.wSrc && r.style.h === r.style.hSrc && r.style.icone && r.style.titre &&
@@ -4561,6 +4562,201 @@ async function sectionAjusterSommets(nav, mode) {
   }
 }
 
+// ── 36. Ajouter un POI en vue d'édition (✏️ de la colonne : editor.js > modeEdition, vue3d.js > _poserSommet) ──────
+// Plan à deux niveaux, carte au 0, vue au −1. Au doigt (CDP sous Chromium, PointerEvent `touch` sous WebKit) : ✏️ arme
+// l'ajout (un seul outil : 📐 s'éteint), un toucher au sol ouvre la fenêtre de nommage de la carte par-dessus la vue ;
+// nom tapé au clavier (lettres des raccourcis comprises : la vue ne bouge pas), « Ajouter » → point au sol touché, au
+// −1, la carte restée au 0, panneau dans la scène ; ⏪ l'annule ; Échap désarme ; lecture seule : rien ne s'arme.
+async function sectionPoi3D(nav) {
+  const webkit = nav.browserType().name() === "webkit";
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, hasTouch: true, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  const nom = "§ 36 ";
+  console.log("§ 36 — ajouter un POI en vue d'édition");
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const r0 = await page.evaluate(async function () {
+      const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      const images = async function (n) {
+        for (let i = 0; i < (n || 3); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      };
+      window.getPlanEditionVue3D = function () { return null; };
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = "v3d-checkup-poi";
+      C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
+      window.setPlanRenduVue3D(null, "structures");
+      window.setStructures([]); window.setZones([]); window.setRoads([]); window.setEditorPoints([]);
+      window.KtaGalerie.invalider();
+      window.HistoryManager.reset();
+      let ctxV = null;
+      await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 0, niveau: -1 }, commandes: "joystick" });
+      K.basculerVue();
+      await new Promise(function (ok) { setTimeout(ok, 250); });
+      await images(4);
+      const deg = K.greffer({ nom: "v3d-poi-camera", scene: function (c) { ctxV = c; } });
+      if (deg) deg();
+      await images(2);
+      const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+      const cible = P(2, 1);
+      const v = new ctxV.THREE.Vector3(cible.x / sc, 0, cible.y / sc).project(ctxV.camera);
+      const bouton = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="edition"]');
+      const boutons = Array.prototype.map.call(document.querySelectorAll("#kta-vue3d .kta-v3d-outils [data-groupe]"),
+        function (b) { return b.hidden ? null : b.dataset.groupe; }).filter(Boolean);
+      const ordre2d = boutons.slice().sort(function (a, b) {
+        const x = window._groupes[a].btnPrincipal, y = window._groupes[b].btnPrincipal;
+        return x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+      });
+      // 📐 armé d'abord : ✏️ doit l'éteindre (un seul outil armé).
+      const bm = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="mesure"]');
+      if (bm) bm.click();
+      const fly = document.querySelector(".kta-group-flyout"), lib = window.I18n.t("ui.subaction.mesureDistance");
+      const bd = fly && Array.prototype.slice.call(fly.querySelectorAll(".kta-group-flyout-btn")).filter(function (x) {
+        return x.textContent.indexOf(lib) >= 0; })[0];
+      if (bd) bd.click();
+      const mesureAvant = window.modeMesure === true;
+      if (bouton) bouton.click();
+      await images(2);
+      return { ecran: [rc.left + (v.x + 1) / 2 * rc.width, rc.top + (1 - v.y) / 2 * rc.height], cible: cible, sc: sc,
+        bouton: !!bouton, icone: bouton ? bouton.innerHTML === window._groupes.edition.btnPrincipal.innerHTML : false,
+        boutons: boutons, ordre2d: ordre2d, mesureAvant: mesureAvant, mesureApres: window.modeMesure === true,
+        edition: window.modeEdition === true, actif: !!bouton && bouton.classList.contains("kta-group-mode-actif") };
+    });
+    verifier(r0.bouton && r0.icone && JSON.stringify(r0.boutons) === JSON.stringify(r0.ordre2d) &&
+      r0.boutons.indexOf("edition") === 1,
+    nom + "✏️ dans la colonne, icône de la carte, à sa place de la barre 2D", { boutons: r0.boutons, ordre2d: r0.ordre2d });
+    verifier(r0.mesureAvant && !r0.mesureApres && r0.edition && r0.actif,
+      nom + "✏️ arme l'ajout de point et éteint 📐 (un seul outil armé)", r0);
+    // Toucher au sol.
+    const cdp = webkit ? null : await ctx.newCDPSession(page);
+    const tap = async function (p) {
+      if (cdp) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: p[0], y: p[1] }] });
+        await page.waitForTimeout(60);
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        return;
+      }
+      await page.evaluate(function (a) {
+        const cv = document.querySelector("#kta-vue3d canvas");
+        const o = { bubbles: true, cancelable: true, pointerId: 93, pointerType: "touch", isPrimary: true,
+          clientX: a[0], clientY: a[1], button: 0 };
+        cv.dispatchEvent(new PointerEvent("pointerdown", o));
+        cv.dispatchEvent(new PointerEvent("pointerup", o));
+      }, p);
+    };
+    await tap(r0.ecran);
+    await page.waitForTimeout(400);
+    const fenetre = await page.evaluate(function () {
+      const m = document.getElementById("kta-poi-modal");
+      if (!m) return null;
+      const b = m.querySelector(".kta-readme-modal-boite").getBoundingClientRect();
+      const el = document.elementFromPoint(b.left + b.width / 2, b.top + 20);
+      return { dessus: !!el && m.contains(el), focus: document.activeElement && document.activeElement.id };
+    });
+    verifier(!!fenetre && fenetre.dessus && fenetre.focus === "kta-poi-nom",
+      nom + "toucher au sol : la fenêtre de nommage de la carte s'ouvre par-dessus la vue, nom au focus", fenetre);
+    const avantClavier = await page.evaluate(function () {
+      const e = window.KtaVue3D.etat(); return [e.camera.visee.x, e.camera.visee.z, e.cap, e.pos.x, e.pos.y];
+    });
+    await page.keyboard.type("Salle ZQSD EMT fictive", { delay: 15 });
+    const apresClavier = await page.evaluate(function () {
+      const e = window.KtaVue3D.etat();
+      return { cam: [e.camera.visee.x, e.camera.visee.z, e.cap, e.pos.x, e.pos.y],
+        nom: document.getElementById("kta-poi-nom").value, ouvert: e.ouvert };
+    });
+    verifier(apresClavier.nom === "Salle ZQSD EMT fictive" && apresClavier.ouvert &&
+      JSON.stringify(apresClavier.cam) === JSON.stringify(avantClavier),
+    nom + "nom tapé au clavier, lettres des raccourcis comprises : la vue ne bouge pas", apresClavier);
+    await page.locator("#kta-poi-valider").click();
+    // Scène refaite : le panneau du POI paraît.
+    let r1 = null;
+    for (let i = 0; i < 40; i++) {
+      await page.waitForTimeout(60);
+      r1 = await page.evaluate(function () {
+        const pts = window.getEditorPoints(), q = pts[pts.length - 1] || null;
+        const e = window.KtaVue3D.etat();
+        return { n: pts.length, p: q ? { nom: q.nom, x: q.x, y: q.y, level: q.level, uid: !!q.uid } : null,
+          actifCarte: window.APP_CONFIG.activeLevel, fenetre: !!document.getElementById("kta-poi-modal"),
+          panneau: e.panneaux.some(function (s) { return s.nom === "Salle ZQSD EMT fictive" && s.visible; }),
+          undo: window.HistoryManager.canUndo(), encoreArme: window.modeEdition === true };
+      });
+      if (r1.panneau) break;
+    }
+    const ecart = r1.p ? Math.hypot(r1.p.x - r0.cible.x, r1.p.y - r0.cible.y) / r0.sc : null;
+    verifier(r1.n === 1 && r1.p && r1.p.nom === "Salle ZQSD EMT fictive" && r1.p.level === -1 && r1.actifCarte === 0 &&
+      ecart !== null && ecart < 0.15 && !r1.fenetre && r1.p.uid,
+    nom + "POI nommé, au sol touché (" + (ecart === null ? "?" : ecart.toFixed(3)) + " m), au −1 ; la carte reste au 0",
+      r1);
+    verifier(r1.panneau && r1.encoreArme, nom + "scène refaite : le panneau du POI est dans la vue ; ✏️ reste armé", r1);
+    await page.evaluate(function () { window.HistoryManager.undo(); });
+    await page.waitForTimeout(200);
+    const r2 = await page.evaluate(function () { return window.getEditorPoints().length; });
+    verifier(r1.undo && r2 === 0, nom + "⏪ annule l'ajout", { undo: r1.undo, n: r2 });
+    // Échap désarme (vue ouverte).
+    await page.evaluate(function () { const v = document.getElementById("kta-vue3d"); if (v) v.focus(); });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+    const r3 = await page.evaluate(function () {
+      return { arme: window.modeEdition === true, ouvert: window.KtaVue3D.etat().ouvert };
+    });
+    verifier(!r3.arme && r3.ouvert, nom + "Échap désarme ✏️, la vue reste ouverte", r3);
+    // Lecture seule : ✏️ ne s'arme pas, un toucher ne pose rien.
+    const r4 = await page.evaluate(async function () {
+      window.ktaEditionRefusee = function () { return true; };
+      if (window.ktaMajOutilsLectureSeule) window.ktaMajOutilsLectureSeule();
+      await new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); });
+      const b = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="edition"]');
+      if (b) b.click();
+      await new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); });
+      return { arme: window.modeEdition === true, grise: !!b && b.classList.contains("kta-outil-lecture-seule") };
+    });
+    await tap(r0.ecran);
+    await page.waitForTimeout(300);
+    const r5 = await page.evaluate(function () {
+      delete window.ktaEditionRefusee;
+      if (window.ktaMajOutilsLectureSeule) window.ktaMajOutilsLectureSeule();
+      return { fenetre: !!document.getElementById("kta-poi-modal"), n: window.getEditorPoints().length };
+    });
+    verifier(!r4.arme && r4.grise && !r5.fenetre && r5.n === 0, nom + "lecture seule : ✏️ grisé, ne s'arme pas, rien posé",
+      { r4: r4, r5: r5 });
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+    await page.evaluate(function () { window.KtaVue3D.fermer(); });
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await ctx.close();
+  }
+}
+
 (async function main() {
   const lancement = { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] };
   const nav = await lancerNavigateur(chromium, lancement);
@@ -4631,7 +4827,7 @@ async function sectionAjusterSommets(nav, mode) {
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionDessin(page);
       if (CAPTURES) await capturesDessin(page);
-    } else if (SEUL === "sol" || SEUL === "ajuster") {
+    } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -10679,6 +10875,7 @@ async function sectionAjusterSommets(nav, mode) {
     if (!SEUL || SEUL === "ajuster") {
       for (const mode of ["souris", "doigt"]) await sectionAjusterSommets(nav, mode);
     }
+    if (!SEUL || SEUL === "poi") await sectionPoi3D(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

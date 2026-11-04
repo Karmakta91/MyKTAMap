@@ -700,11 +700,12 @@ Dónde y cómo se dibuja un paso:
 
 #### ✏️ Dibujar en vista de edición
 
-- En la vista **✏️ Edición**, las herramientas del mapa están siempre ahí, a la derecha en el centro, en el mismo orden: **📐 Medición**, **🛣️ Trazados**, **⬛ Zonas**, **🏛️ Estructuras**. A la altura de los ojos, no se dibuja.
+- En la vista **✏️ Edición**, las herramientas del mapa están siempre ahí, a la derecha en el centro, en el mismo orden: **📐 Medición**, **✏️ Añadir un punto**, **🛣️ Trazados**, **⬛ Zonas**, **🏛️ Estructuras**. A la altura de los ojos, no se dibuja.
 - Cada botón abre **el mismo menú que en el mapa**: pilares, muros, frentes de corte, tus tipos personalizados, ➕ nuevo tipo, ✅ Cerrar / Validar.
 - No se dibuja nada mientras no elijas una herramienta. **Elegir una herramienta basta**: un toque pone un punto donde tocas. Deslizar, pellizcar y la rueda siguen moviendo la vista, sin poner puntos.
 - **Cerrar un pilar, un muro o una zona**: toca el **círculo dorado** del primer punto, o ✅ en el menú. Para un muro fino, acerca la vista antes: el círculo crece con ella.
 - Un trazado o un frente se termina con ✅. La herramienta sigue elegida para encadenar, como en el mapa.
+- **✏️ Añadir un punto**: toca el suelo donde va; la ventana del mapa se abre sobre la vista (nombre, tipo, fotos), con el dedo o con el teclado. El punto toma **el nivel de la 3D** y aparece en la escena; ⏪ lo deshace.
 - El objeto es **el del mapa**: misma ficha, mismos colores, ⏪ Deshacer. Toma **el nivel de la 3D**; el mapa conserva el suyo.
 - Mientras dibujas, una **línea en el suelo** muestra el objeto; aparece en relieve al terminar.
 - **📐 Medición**: la distancia (y la superficie) se muestra en una **franja abajo de la vista**, actualizada en cada punto, como en el mapa; la longitud de cada segmento y el ángulo en cada punto también se muestran en la 3D, legibles.

@@ -4534,9 +4534,10 @@
   }
 
   // ── Dessin depuis la vue d'édition (plongée) ──────────────────────────────────────────────────────────
-  // ⚠️ contrat (décision produit) : en vue d'édition seulement, et toujours là, la colonne 📐 🛣️ ⬛ 🏛️ 🗺️
+  // ⚠️ contrat (décision produit) : en vue d'édition seulement, et toujours là, la colonne 🗺️ 📐 ✏️ 🛣️ ⬛ 🏛️
   // (boutons .leaflet-bar de la barre de droite 2D, dans son ordre, icône et état recopiés de son bouton :
-  // _majBarreDessin). Chaque bouton ouvre le panneau de son groupe 2D (interface.js > ktaOuvrirOutils : mêmes types, customs, ➕ et ✅). Rien ne se dessine
+  // _majBarreDessin). Chaque bouton ouvre le panneau de son groupe 2D (interface.js > ktaOuvrirOutils : mêmes types,
+  // customs, ➕ et ✅) ; ✏️ (ajout de point, sans panneau) joue le geste de son bouton 2D. Rien ne se dessine
   // tant qu'aucun outil n'est armé ; armer un outil suffit : un toucher bref de la scène pose un sommet AVANT toute
   // fiche (_toucher). Le désarmer (son bouton, son panneau) suffit pour arrêter.
   // Le toucher rejoue le geste de la carte (_poserSommet : map.fire mousedown puis click, latlng du point touché) :
@@ -4565,7 +4566,8 @@
     console.log("[Vue3D] toucher refusé : " + raison);
   }
   const DESSIN_AVALER = 700;          // ms : toucher qui ferme le panneau d'un groupe, avalé (comme sur la carte)
-  const GROUPES_DESSIN = ["mesure", "traces", "zones", "structures"];   // ordre de la barre de droite 2D
+  // Ordre de la barre de droite 2D ; ✏️ « edition » = l'ajout de point (bouton seul, sans panneau : editor.js).
+  const GROUPES_DESSIN = ["mesure", "edition", "traces", "zones", "structures"];
   const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };
   const COULEUR_MESURE = "#ff0000";   // la mesure de la carte (measure.js : red), pas une couleur de la charte
 
@@ -4609,6 +4611,7 @@
   }
 
   function _outilArme() {
+    if (window.modeEdition) return { famille: "points", type: "poi" };
     if (window.modeStructure) return { famille: "structures", type: window.modeStructure };
     if (window.modeZone) return { famille: "zones", type: window.modeZone };
     if (window.modeRoad) return { famille: "roads", type: window.modeRoad };
@@ -4755,6 +4758,12 @@
     if (g.btnPrincipal.classList.contains("kta-outil-lecture-seule") &&
         typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
     _e.dessin.sig = null;
+    // Bouton seul (✏️ ajout de point) : son geste de la barre 2D, qui arme ou désarme (un seul outil armé).
+    if (!g.useFlyout && !g.useModal && !(g.sousActionsConfig && g.sousActionsConfig.length)) {
+      if (window.ktaOutilsOuverts()) window.ktaFermerOutils();
+      g.btnPrincipal.click();
+      return true;
+    }
     if (window.ktaOutilsOuverts() === groupe) { window.ktaFermerOutils(); return false; }
     window.ktaOuvrirOutils(groupe, { ancre: ancre });
     return true;

@@ -700,11 +700,12 @@ Where and how a way through is drawn:
 
 #### ✏️ Drawing in edit view
 
-- In the **✏️ Edit** view, the map tools are always there, on the right in the middle, in the same order: **📐 Measurement**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
+- In the **✏️ Edit** view, the map tools are always there, on the right in the middle, in the same order: **📐 Measurement**, **✏️ Add a point**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
 - Each button opens **the same menu as on the map**: pillars, walls, working faces, your custom types, ➕ new type, ✅ Close / Validate.
 - Nothing is drawn until a tool is chosen. **Choosing a tool is enough**: a tap places a point where you touch. Dragging, pinching and the mouse wheel still move the view, without placing a point.
 - **Closing a pillar, a wall or a zone**: tap the **gold circle** of the first point, or ✅ in the menu. For a thin wall, zoom in first: the circle grows with the view.
 - A path or a working face ends with ✅. The tool stays chosen so you can carry on, as on the map.
+- **✏️ Add a point**: touch the ground where it goes; the map's window opens over the view (name, type, photos), by finger or keyboard. The point takes **the 3D level** and appears in the scene; ⏪ undoes it.
 - The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
 - While drawing, a **line on the ground** shows the object; it stands up in relief when finished.
 - **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.

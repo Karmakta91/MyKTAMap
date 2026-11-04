@@ -2005,6 +2005,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 
 ### Dessiner en vue d'édition (QCM du 03/11 et du 04/11/2026)
 
+- **✏️ Ajouter un point** (décision du 04/11/2026) : le bouton seul de la carte (groupe `edition`, sans panneau),
+  à sa place dans la colonne ; `_outilArme` le compte (`modeEdition`), donc un toucher bref le rejoue comme un sommet
+  (`_poserSommet` : `activeLevel` prêté le temps du clic). La fenêtre de nommage de la carte (`#kta-poi-modal`) s'ouvre
+  par-dessus la vue, qui lui laisse ses touches (`_recouverte`) ; ⚠️ contrat (editor.js > afficherFormulaire) : à
+  l'ajout, le niveau est lu À L'OUVERTURE, pas à l'enregistrement. L'ajout signale `kta:donneesPlanChange` : la scène
+  est refaite, le panneau du POI paraît. Aucune touche propre en 3D (les lettres de la carte y sont arrêtées).
 - **Où** (décision produit) : en ✏️ Édition seulement, la colonne des groupes de la carte est toujours là et active
   (`_monterOutils`, place : `ui.md` § Vue 3D) : aucun interrupteur à ouvrir, armer un outil suffit, le désarmer suffit
   pour arrêter. Rien ne se dessine tant qu'aucun outil n'est armé (`_dessinActif` : vue d'édition, greffe sans

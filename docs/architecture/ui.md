@@ -2405,7 +2405,7 @@ icônes.
   pendant une greffe qui coupe l'édition (jeu). 🩸 En paysage bas, style.css passe toute `.leaflet-bar` en
   `display: flex !important` : le `hidden` de la colonne tient par `#kta-vue3d .kta-v3d-outils[hidden]` en
   `!important` (sinon les outils restaient à hauteur d'yeux et dans le jeu), et la colonne s'y range en ligne, comme
-  les pilules de la barre 2D. Boutons : **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
+  les pilules de la barre 2D. Boutons : **📐 ✏️ 🛣️ ⬛ 🏛️** (✏️ = ajout de point, bouton seul : son geste de la carte), dans l'ordre de
   la barre de droite 2D, sous **🗺️ Plan au sol** (en tête), qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
   mêmes états ; icône, titre, `kta-group-mode-actif` (pastille du type armé) et `kta-outil-lecture-seule` **recopiés
   du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. **🗺️ Plan au sol** :

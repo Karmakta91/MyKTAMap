@@ -700,11 +700,12 @@ Où et comment un passage se dessine :
 
 #### ✏️ Dessiner en vue d'édition
 
-- En vue **✏️ Édition**, les outils de la carte sont toujours là, à droite au milieu, dans le même ordre : **📐 Mesure**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. À hauteur d'yeux, pas de dessin.
+- En vue **✏️ Édition**, les outils de la carte sont toujours là, à droite au milieu, dans le même ordre : **📐 Mesure**, **✏️ Ajouter un point**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. À hauteur d'yeux, pas de dessin.
 - Chaque bouton ouvre **le même menu que sur la carte** : piliers, murs, fronts de taille, tes types perso, ➕ nouveau type, ✅ Fermer / Valider.
 - Rien ne se dessine tant qu'aucun outil n'est choisi. **Choisir un outil suffit** : un toucher pose un point là où tu touches. Glisser, pincer et la molette bougent toujours la vue, sans poser de point.
 - **Fermer un pilier, un mur ou une zone** : touche le **rond doré** du premier point, ou ✅ dans le menu. Pour un mur fin, zoome d'abord : le rond grandit avec la vue.
 - Un tracé ou un front se termine par ✅. L'outil reste choisi pour enchaîner, comme sur la carte.
+- **✏️ Ajouter un point** : touche le sol là où il va ; la fenêtre de la carte s'ouvre par-dessus la vue (nom, type, photos), au doigt comme au clavier. Le point prend **le niveau de la 3D** et paraît dans la scène ; ⏪ l'annule.
 - L'objet est **celui de la carte** : même fiche, mêmes couleurs, ⏪ Annuler. Il prend **le niveau de la 3D** ; la carte, elle, ne change pas de niveau.
 - Pendant le dessin, un **trait au sol** montre l'objet ; il apparaît en relief à sa fin.
 - **📐 Mesure** : la distance (et la surface) s'affiche dans un **bandeau en bas de la vue**, mis à jour à chaque point, comme sur la carte ; la longueur de chaque segment et l'angle à chaque point s'affichent aussi dans la 3D, lisibles.

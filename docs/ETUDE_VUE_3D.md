@@ -545,9 +545,9 @@ redessins dus au déplacement de la carte (moveend / zoomend sous la décimation
 | Sujet | Décision |
 |---|---|
 | Où | Vue plongeante 🦅 seulement ; ✏️ fait apparaître la barre, rien ne se dessine sans outil armé (règle de la 2D : retoucher l'outil l'éteint) ; à hauteur d'yeux, pas d'édition |
-| Outils | Toutes les structures (types perso compris), zones, tracés, 📐 mesure ; pas les POI ; ni 🪜 jonction (deux niveaux, la 3D en montre un) ni 🧹 Effacer (« Sélectionner » et « Par zone » se jouent sur la carte) |
+| Outils | Toutes les structures (types perso compris), zones, tracés, 📐 mesure ; POI (✏️ ajout de point, décision du 04/11/2026 : toucher au sol, fenêtre de nommage de la carte par-dessus la vue) ; ni 🪜 jonction (deux niveaux, la 3D en montre un) ni 🧹 Effacer (« Sélectionner » et « Par zone » se jouent sur la carte) |
 | Gestes | Ceux de la 2D, rejoués (`map.fire` au point touché) : undo, uid, fiches, styles, sous-menus, droits de la 2D ; caméra inchangée (seul un toucher bref pose) ; outil armé passe avant la fiche |
-| Interface | La barre de droite 2D : mêmes boutons, même ordre (📐 🛣️ ⬛ 🏛️), mêmes panneaux |
+| Interface | La barre de droite 2D : mêmes boutons, même ordre (📐 ✏️ 🛣️ ⬛ 🏛️), mêmes panneaux |
 | Niveau | Celui de la 3D ; la carte garde le sien |
 | Coût | Aperçu au sol pendant l'objet, une reconstruction à sa fin ; tuiles loin de l'objet reprises |
 | Fermeture au doigt | Choix du lot : rond doré de 0,3 m autour du 1er sommet, en mètres (24 px d'écran fermaient un mur de 0,4 m au 4e coin) ; zoomer agrandit la cible |
