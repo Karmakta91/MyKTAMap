@@ -222,7 +222,7 @@ html.kta-theme-light .kta-v3d-mode-indic {
 .kta-v3d-guid-principal { font-size: 16px; font-weight: 600; line-height: 1.3; }
 .kta-v3d-guid-sous { font-size: 13px; line-height: 1.3; color: var(--kta-texte-2); }
 /* Encart « reste » et boutons d'écart en suivi (vue3d.js > _majBandeau) : chacun sur une ligne à part sous la
-   consigne ; l'encart a le rendu du bandeau 2D (itiGuidage.js > rendreEncart, classes .kta-guid-resume). */
+   consigne ; l'encart a le rendu du bandeau 2D (itiGuidage.js > rendreEncart, classes .kta-guid-resume-*). */
 .kta-v3d-bandeau { flex-wrap: wrap; row-gap: 6px; }
 .kta-v3d-guid-textes { flex-basis: calc(100% - 46px); }
 .kta-v3d-bandeau .kta-guid-resume { flex: 0 0 calc(100% + 24px); margin: 0 -12px -8px; }

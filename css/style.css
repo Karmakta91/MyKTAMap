@@ -20135,16 +20135,16 @@ html.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
   cursor: pointer;
 }
 .kta-guid-fermer:hover { color: var(--kta-texte); }
-/* Encart « reste » (itiGuidage.js > _rendreEncart) : destination, distance et temps restants sur une ligne sous la
-   consigne ; replié, une languette ▾ seule. Le toucher le replie ou le rouvre (pas la feuille de route). */
+/* Encart « reste » (itiGuidage.js > _rendreEncart) : destination, distance et temps restants sur UNE ligne sous la
+   consigne, toujours affiché (bandeau 2D, vue 3D, écran XL). Seule la destination rétrécit (ellipse) : distance et
+   temps restent entiers, en portrait comme en paysage. */
+.kta-guid-resume-ligne { display: flex; align-items: baseline; gap: 4px; min-width: 0; white-space: nowrap; }
+.kta-guid-resume-nom { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.kta-guid-resume-reste { flex: 0 0 auto; }
 .kta-guid-resume {
-  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 26px; box-sizing: border-box;
-  padding: 3px 10px 5px; background: none; border: 0; border-top: 1px solid var(--kta-bordure);
-  color: var(--kta-texte-2); font: inherit; font-size: 12.5px; line-height: 1.3; text-align: left; cursor: pointer;
+  width: 100%; min-height: 26px; box-sizing: border-box; padding: 3px 10px 5px;
+  border-top: 1px solid var(--kta-bordure); color: var(--kta-texte-2); font-size: 12.5px; line-height: 1.3;
 }
-.kta-guid-resume-txt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kta-guid-resume-chevron { flex: 0 0 auto; color: var(--kta-texte-3); font-size: 12px; }
-.kta-guid-resume.kta-guid-resume-reduit { min-height: 22px; padding: 0 10px 2px; justify-content: center; }
 .kta-guid-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px; }
 .kta-guid-actions:not(:empty) { padding: 0 10px 10px; }
 .kta-guid-btn { flex: 1 1 auto; min-height: 40px; font-size: 13px; }

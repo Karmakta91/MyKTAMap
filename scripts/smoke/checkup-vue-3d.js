@@ -60,7 +60,8 @@
 // recalcul en libre (seuil, délai, un seul, étape validée, tracker intact, édition, autre niveau, greffe), boutons de
 // la 2D en suivi sans recalcul automatique, repère du niveau du tronçon (KTA_V3D_SEUL=iti : cette section seule ;
 // KTA_V3D_PERF=iti : coût d'un recalcul). Encart « reste » (32) : distance et temps restants à 3 places, niveau de
-// l'arrivée, replié / déplié partagé avec la 2D, aucun chevauchement à 3 tailles (yeux, vue d'édition).
+// l'arrivée, sans bouton de repli, une ligne avec une destination de 60 caractères (distance et temps entiers), aucun
+// chevauchement à 3 tailles (yeux, vue d'édition).
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -1918,8 +1919,8 @@ async function sectionEcartItineraire(page) {
 // § 32 — Encart « reste » du bandeau 3D (itiGuidage.js > _resume, la source de la 2D) : itinéraire FICTIF connu
 // (66 m au 0, passage de 4 m, 66 m au −1 = 136 m), distance restante à 1 m près à 3 places (deux au 0, une au −1
 // après le passage), niveau de l'arrivée dit seulement depuis le 0, temps = distance / vitesse de l'itinéraire ;
-// toucher l'encart le replie (réglage partagé avec la 2D) ; aucun chevauchement à 3 tailles, à hauteur d'yeux
-// (joystick ou pavé) et en vue d'édition (colonne d'outils).
+// rien pour le replier ; avec une destination de 60 caractères, une seule ligne (destination coupée, distance et
+// temps entiers) et aucun chevauchement à 3 tailles, à hauteur d'yeux (joystick ou pavé) et en vue d'édition.
 async function sectionEncartReste(page) {
   const prep = await page.evaluate(async function () {
     const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
@@ -1940,10 +1941,7 @@ async function sectionEncartReste(page) {
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
     if (K.etat().ouvert !== false) await K.fermer();
     if (window.getTrackingActif()) window.stopTracking();
-    try {
-      localStorage.removeItem("myktamap_guidage_v1");
-      localStorage.removeItem("myktamap_guidage_encart_v1");
-    } catch (err) { /* réglages par défaut */ }
+    try { localStorage.removeItem("myktamap_guidage_v1"); } catch (err) { /* réglage par défaut */ }
     window.setPlanRenduVue3D(null, "structures");
     window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
     window.setRoads([
@@ -1966,8 +1964,7 @@ async function sectionEncartReste(page) {
       await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 270, niveau: q.n }, commandes: q.cmd || "pave" });
       await new Promise(function (ok) { setTimeout(ok, 600); });
       const e = K.etat(), b = document.querySelector("#kta-vue3d .kta-v3d-bandeau .kta-guid-resume");
-      return { niveau: e.niveau, resume: e.bandeau.resume, reduit: e.bandeau.encartReduit,
-        texte: b ? b.querySelector(".kta-guid-resume-txt").textContent : null };
+      return { niveau: e.niveau, resume: e.bandeau.resume, texte: b ? b.textContent : null };
     }, o);
   };
   console.log("§ 32 — encart « reste » du bandeau 3D");
@@ -1980,21 +1977,22 @@ async function sectionEncartReste(page) {
     verifier(ok3, "au " + c.n + " (" + c.x + ", " + c.z + ") : reste " + (m.resume ? m.resume.resteM.toFixed(1) : "?") +
       " m (attendu " + c.att + "), « " + m.texte + " »", m);
   }
-  const bascule = await page.evaluate(async function () {
-    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
-    const q = function () { return document.querySelector("#kta-vue3d .kta-v3d-bandeau .kta-guid-resume"); };
-    q().click();
-    await pause(500);
-    const r = { reduit: window.KtaVue3D.etat().bandeau.encartReduit, partage: window.ItiGuidage.encartReduit(),
-      texte: q().querySelector(".kta-guid-resume-txt").textContent, h: Math.round(q().getBoundingClientRect().height) };
-    q().click();
-    await pause(500);
-    r.deplie = !window.KtaVue3D.etat().bandeau.encartReduit && !window.ItiGuidage.encartReduit() &&
-      !!q().querySelector(".kta-guid-resume-txt").textContent;
-    return r;
+  const sansRepli = await page.evaluate(function () {
+    const q = document.querySelector("#kta-vue3d .kta-v3d-bandeau .kta-guid-resume");
+    return { tag: q.tagName, boutons: q.querySelectorAll("button").length, v3d: q.hasAttribute("data-v3d"),
+      chevron: !!document.querySelector("#kta-vue3d .kta-guid-resume-chevron"),
+      etat: "encartReduit" in window.KtaVue3D.etat().bandeau, api: typeof window.ItiGuidage.reglerEncart };
   });
-  verifier(bascule.reduit && bascule.partage && bascule.texte === "" && bascule.deplie,
-    "toucher l'encart le replie (languette de " + bascule.h + " px), réglage partagé avec la 2D, puis le rouvre", bascule);
+  verifier(sansRepli.tag !== "BUTTON" && !sansRepli.boutons && !sansRepli.v3d && !sansRepli.chevron &&
+    !sansRepli.etat && sansRepli.api === "undefined", "encart sans bouton de repli (ni chevron, ni réglage)", sansRepli);
+  // Destination de 60 caractères (fictive) : même itinéraire, arrivée renommée.
+  const longue = await page.evaluate(function () {
+    const nom = "Cible fictive au fond d'une très longue galerie de test, bis".padEnd(60, "x").slice(0, 60);
+    const it = window.getRoads().find(function (x) { return x.type === "itinerary"; });
+    it.raccords[0].label = nom;
+    it.waypoints[it.waypoints.length - 1].label = nom;
+    return nom;
+  });
   const vp0 = page.viewportSize();
   for (const t of [{ w: 390, h: 844, cmd: "joystick" }, { w: 844, h: 390, cmd: "joystick" }, { w: 1280, h: 800, cmd: "pave" }]) {
     await page.setViewportSize({ width: t.w, height: t.h });
@@ -2015,10 +2013,27 @@ async function sectionEncartReste(page) {
           const r = x.getBoundingClientRect();
           return r.left < rb.right - 0.5 && r.right > rb.left + 0.5 && r.top < rb.bottom - 0.5 && r.bottom > rb.top + 0.5;
         }).map(function (x) { return (x.getAttribute("data-v3d") || x.className || x.tagName).toString().slice(0, 50); });
-        return { touche: touche, n: autres.length, encart: !!b.querySelector(".kta-guid-resume"), vue: window.KtaVue3D.etat().vue };
+        // Une ligne : destination et reste côte à côte, hauteur d'une ligne, reste entier dans l'encart et la fenêtre.
+        const enc = b.querySelector(".kta-guid-resume");
+        const nom = enc && enc.querySelector(".kta-guid-resume-nom"), reste = enc && enc.querySelector(".kta-guid-resume-reste");
+        const li = { ok: false };
+        if (nom && reste) {
+          const cs = getComputedStyle(enc), re = enc.getBoundingClientRect(), rn = nom.getBoundingClientRect();
+          const rr = reste.getBoundingClientRect(), lh = parseFloat(getComputedStyle(reste).lineHeight) || rr.height;
+          li.h = Math.round(enc.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom));
+          li.lh = Math.round(lh); li.reste = reste.textContent; li.nom = nom.textContent;
+          li.coupe = nom.scrollWidth > nom.clientWidth + 1;
+          li.ok = li.h < 1.6 * lh && Math.abs(rn.top - rr.top) < 2 && reste.scrollWidth <= reste.clientWidth + 1 &&
+            rr.left >= re.left - 0.5 && rr.right <= re.right + 0.5 && rr.right <= window.innerWidth + 0.5 &&
+            /\d/.test(li.reste) && /min/.test(li.reste);
+        }
+        return { touche: touche, n: autres.length, encart: !!enc, ligne: li, vue: window.KtaVue3D.etat().vue };
       }, plongee);
       verifier(ch.encart && !ch.touche.length, t.w + "×" + t.h + (plongee ? " vue d'édition" : " " + t.cmd) +
         " : bandeau avec l'encart, aucun chevauchement (" + ch.n + " éléments)", ch);
+      verifier(ch.ligne.ok && ch.ligne.nom.indexOf(longue) >= 0, t.w + "×" + t.h + (plongee ? " vue d'édition" : " " + t.cmd) +
+        " : encart sur une ligne (" + ch.ligne.h + " px), « " + ch.ligne.reste + " » entier" +
+        (ch.ligne.coupe ? ", destination de 60 caractères coupée" : ""), ch.ligne);
     }
   }
   await page.setViewportSize(vp0);
