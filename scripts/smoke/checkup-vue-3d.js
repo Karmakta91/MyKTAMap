@@ -61,7 +61,8 @@
 // la 2D en suivi sans recalcul automatique, repère du niveau du tronçon (KTA_V3D_SEUL=iti : cette section seule ;
 // KTA_V3D_PERF=iti : coût d'un recalcul). Encart « reste » (32) : distance et temps restants à 3 places, niveau de
 // l'arrivée, sans bouton de repli, une ligne avec une destination de 60 caractères (distance et temps entiers), aucun
-// chevauchement à 3 tailles (yeux, vue d'édition).
+// chevauchement à 3 tailles (yeux, vue d'édition). Recalage venu de la 3D (33) : « Oui » après 50 m et « Ici » = saut,
+// ni validation ni distance, Carnet « bureau » ; « Je suis ici » d'une fiche = validation (KTA_V3D_SEUL=saut).
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -2793,6 +2794,133 @@ async function sectionColonneEtJeu(page, MX) {
 // tuiles V2 (tuiles du relevé fabriquées en mémoire, RUNTIME_ASSETS, niveau z0). 🩸 Sous WebKit sans anticrénelage
 // (pixels denses), la première image d'une texture tirée d'un canvas la montrait absente : rien ne redessinant une
 // vue immobile, le plan restait invisible (vu sur un relevé réel au téléphone). Pixels lus sans redessiner d'office.
+// ── 33. Recalage venu de la 3D = saut (tracking.js > recalerTrackerSurPoint, opts.teleport) ─────────────────────
+// Balade de 50 m en 3D, fermeture « Oui » à « Je suis ici ? » ; « Ici » de « D'où pars-tu ? » : tracker recalé, ancre
+// `tp`, ni validation ni distance estimée, sortie du Carnet (journal.js > _classer) toujours « bureau ». Le
+// « 📍 Je suis ici » d'une fiche ouverte depuis la 3D reste un geste de terrain : une validation, sortie « terrain ».
+async function sectionSautCarnet(page) {
+  const prep = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    window.__v3dSaut = { ml: C.multiLevel, acc: window.ktaEstAccessible, r: window.getAllEmbeddedRoads,
+      z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures,
+      id: window._currentLoadedPlanId };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-saut";
+    window.ktaEstAccessible = function () { return true; };
+    C.multiLevel = false;
+    window.setPlanRenduVue3D(null, "structures");
+    window.setStructures([]); window.setZones([]);
+    window.setRoads([{ uid: "rd_saut", type: "principal", points: [P(-70, 0), P(70, 0)] }]);
+    window.setEditorPoints([Object.assign({ id: "Repère saut fictif", nom: "Repère saut fictif", uid: "pt_saut",
+      tags: ["salle"] }, P(36, -1))]);
+    window.KtaGalerie.invalider();
+    window.startTracking();
+    window.recalerTrackerSurPoint(P(-30, 0).x, P(-30, 0).y);
+    // Sortie neuve : son point de départ compte les validations et la distance déjà là (journal.js > _ouvrir).
+    await window.Journal.cloturer();
+    return { ox: ox, oz: oz, sc: sc };
+  });
+  const releve = function () {
+    return page.evaluate(function () {
+      const tl = window.getTrackingTimeline(), der = tl[tl.length - 1] || {}, j = window.Journal.getCurrent();
+      return { v: window.getTrackingValidations(), est: +window.getTrackingDistanceEstimeeM().toFixed(2),
+        tp: der.type === "recalage" ? der.tp === 1 : null, tr: window.getTrackingPosition(),
+        carnet: j ? { type: j.type, validations: j.validations, distM: +(+j.distM).toFixed(2) } : null };
+    });
+  };
+  const r0 = await releve();
+  // Balade de 50 m vers l'est, puis ✕ → « Oui ».
+  const balade = await page.evaluate(async function () {
+    const K = window.KtaVue3D, t = window.getTrackingPosition();
+    await K.ouvrir({ depart: { x: t.x, y: t.y, cap: 90 }, commandes: "pave" });
+    K.placer(t.x, t.y, 90);
+    for (let i = 0; i < 50; i++) K.avancer(1);
+    const p = K.etat().pos;
+    window.__v3dFerme = K.fermer();
+    return { x: p.x, y: p.y, m: +(Math.hypot(p.x - t.x, p.y - t.y) / window.APP_CONFIG.scale).toFixed(1) };
+  });
+  await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 3000).catch(function () {});
+  const question = await page.locator("#kta-confirm-oui").count();
+  if (question) await page.locator("#kta-confirm-oui").click();
+  await page.evaluate(function () { return window.__v3dFerme; });
+  await page.waitForTimeout(300);
+  const r1 = await releve();
+  console.log("§ 33 — recalage venu de la 3D : un saut, pas un pas de terrain (Carnet)");
+  verifier(question && balade.m >= 49 && Math.hypot(r1.tr.x - balade.x, r1.tr.y - balade.y) < 0.01,
+    "balade de " + balade.m + " m, « Oui » : le tracker est recalé à la place 3D", { balade: balade, tr: r1.tr });
+  verifier(r1.tp === true && r1.v === r0.v && r1.est === r0.est,
+    "« Oui » : ancre de saut (tp), validations et distance estimée inchangées", { avant: r0, apres: r1 });
+  verifier(r1.carnet && r1.carnet.type === "bureau" && r1.carnet.validations === 0 && r1.carnet.distM === 0,
+    "« Oui » : la sortie du Carnet reste « bureau » (0 validation, 0 m)", r1.carnet);
+
+  // « Ici » de « D'où pars-tu ? » (tracker arrêté, 3D en libre) : même règle.
+  await page.evaluate(async function (a) {
+    const K = window.KtaVue3D, x = (a.ox + 10) * a.sc, y = a.oz * a.sc;
+    window.stopTracking();
+    await K.ouvrir({ depart: { x: x, y: y, cap: 90 }, commandes: "pave" });
+    for (let i = 0; i < 5; i++) K.avancer(1);
+    window.itineraireYAller((a.ox + 36) * a.sc, (a.oz - 1) * a.sc, "Repère saut fictif");
+  }, prep);
+  await attendre(page, function () { return !!document.getElementById("kta-iti-depart"); }, 3000).catch(function () {});
+  const ici = await page.locator('#kta-iti-depart [data-kta-confirm-choix="ici"]').count();
+  if (ici) {
+    await page.locator('#kta-iti-depart [data-kta-confirm-choix="ici"]').check();
+    await page.locator("#kta-iti-depart #kta-confirm-oui").click();
+  }
+  await page.waitForTimeout(600);
+  const pos3 = await page.evaluate(function () { return window.KtaVue3D.etat().pos; });
+  const r2 = await releve();
+  verifier(ici && Math.hypot(r2.tr.x - pos3.x, r2.tr.y - pos3.y) < 0.01, "« Ici » : le tracker est recalé à la place 3D",
+    { tr: r2.tr, pos: pos3 });
+  verifier(r2.tp === true && r2.v === r0.v && r2.est === r0.est && r2.carnet && r2.carnet.type === "bureau" &&
+    r2.carnet.validations === 0 && r2.carnet.distM === 0,
+  "« Ici » : saut (tp), ni validation ni distance estimée, sortie « bureau »", r2);
+
+  // « 📍 Je suis ici » de la fiche d'un POI ouverte depuis la 3D : geste de terrain, une validation.
+  await page.evaluate(function (a) {
+    window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
+    window.KtaVue3D.placer((a.ox + 32) * a.sc, (a.oz - 1) * a.sc, 90);
+  }, prep);
+  await page.waitForTimeout(500);
+  const vise = await page.evaluate(function () {
+    const q = window.KtaVue3D.etat().panneaux.filter(function (p) { return p.nom === "Repère saut fictif" && p.visible; })[0];
+    return q ? q.ecran : null;
+  });
+  if (vise) await page.mouse.click(vise.x, vise.y);
+  await page.waitForTimeout(300);
+  const bouton = await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-here").count();
+  if (bouton) await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-here").click();
+  await page.waitForTimeout(300);
+  const r3 = await releve();
+  verifier(!!vise && bouton > 0 && r3.tp === false && r3.v === r0.v + 1 && r3.carnet && r3.carnet.validations === 1 &&
+    r3.carnet.type === "terrain", "« Je suis ici » d'une fiche en 3D : une validation, sortie « terrain »",
+  { vise: vise, bouton: bouton, r3: r3 });
+
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, s = window.__v3dSaut, C = window.APP_CONFIG;
+    if (K.etat().ouvert !== false) {
+      const f = K.fermer();
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+      const non = document.getElementById("kta-confirm-non");
+      if (non) non.click();
+      await f;
+    }
+    if (window.getTrackingActif()) window.stopTracking();
+    C.multiLevel = s.ml; window.ktaEstAccessible = s.acc;
+    window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
+    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
+    window.KtaGalerie.invalider();
+  });
+}
+
 async function sectionPlanSolEcranDense(nav) {
   const ctx = await nav.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, hasTouch: true,
     isMobile: nav.browserType().name() === "chromium", serviceWorkers: "block" });
@@ -3833,6 +3961,11 @@ async function sectionDessin(page) {
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol") {
       ouvert = true;
+    } else if (SEUL === "saut") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionSautCarnet(page);
     } else if (SEUL === "iti") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -9794,6 +9927,7 @@ async function sectionDessin(page) {
       await sectionEcartItineraire(page);
       await sectionEncartReste(page);
       await sectionCamera(page);
+      await sectionSautCarnet(page);
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures

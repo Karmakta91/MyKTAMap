@@ -1430,6 +1430,10 @@ CSS : `.kta-secours-imported-chip` (badge bleu clair + variants thème clair). T
 3. **La rétention n'examinait QUE la branche du type classé** : un seul pas PDR parasite basculait la session en terrain, qui n'était alors jugée que sur ses 50 m — 3 h de travail et 20 ajouts partaient à la poubelle sans appel. C'est le passage au **OU** ci-dessus. Le type redevient un **libellé d'affichage**, plus un juge.
 
 **Classement révisé** (`_classer`) : `validations > 0` → terrain **à lui seul** (l'user affirme être physiquement passé par un point, et ce geste ne produit aucun pas PDR) ; sinon terrain si `distM ≥ MIN_TERRAIN_DIST_M` (**20 m**). L'ancienne bascule « dès le 1er pas » polluait les totaux, qui ne comptent que le terrain.
+⚠️ Ne comptent **ni** en validation **ni** en distance estimée les recalages en **saut** (ancre `tp`,
+`recalerTrackerSurPoint(…, { teleport: true })`) : arrivée de portail, Secours, et toute place venue de la **vue 3D**
+(« Oui » à « Je suis ici ? » en la fermant, « Ici » de « D'où pars-tu ? ») — une balade en 3D depuis son bureau ne
+fait pas une sortie terrain. Le « 📍 Je suis ici » d'une fiche (carte ou fiche ouverte depuis la 3D) compte.
 
 **Baseline des validations** : `onPlanLoaded` mémorise `getTrackingValidations()` au démarrage — la timeline est **restaurée** au chargement du plan, donc sans cette baseline les validations d'une sortie précédente seraient recomptées et classeraient d'office la nouvelle session en terrain.
 

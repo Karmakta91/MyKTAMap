@@ -42,7 +42,7 @@
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux, et paroisBloquent ;
 // partout, KtaGalerie.zonesBloquent : zones et obstacles des accès), sur la largeur d'un corps ; vue d'édition :
 // survol (_pas). Le tracker n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le
-// recaler (position, niveau).
+// recaler (position, niveau), en saut : ni validation ni distance estimée, rien de « terrain » au Carnet.
 // 🩸 three.js est un module ES : import() dynamique, URL absolue (pas d'import map, la CSP refuse tout script en
 // ligne). Fermer libère le contexte WebGL (forceContextLoss) : un navigateur en garde peu (iOS ~ 8, Chrome 16).
 // Doc : docs/ETUDE_VUE_3D.md, tracking.md § Vue 3D, ui.md § Vue 3D · Garde-fou : scripts/smoke/checkup-vue-3d.js
@@ -7344,7 +7344,9 @@
       // 🩸 La fenêtre de la question prend le focus et le rend à <html> en se fermant : il revient au bouton cube.
       _rendreFocus(retour);
       if (!oui) return false;
-      window.recalerTrackerSurPoint(pos.x, pos.y, niveau === null ? undefined : niveau);
+      // ⚠️ contrat (décision produit) : un recalage venu de la balade 3D est un SAUT (ancre `tp`) : ni validation, ni
+      // distance estimée, la sortie n'en devient pas « terrain » au Carnet (journal.js > _classer). Hook inchangé.
+      window.recalerTrackerSurPoint(pos.x, pos.y, niveau === null ? undefined : niveau, { teleport: true });
       return true;
     });
   }
