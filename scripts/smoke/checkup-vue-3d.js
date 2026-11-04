@@ -1310,6 +1310,10 @@ async function capturesDessin(page) {
     const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
     const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
     window.setStructures([]);
+    // Toasts des contrôles d'avant (§ 28 : objet abandonné en sortant de la plongée, rendu passé en mixte) retirés :
+    // ils restent affichés et feraient croire qu'ils viennent du dessin capturé.
+    const pile = document.getElementById("kta-toasts");
+    if (pile) pile.textContent = "";
     window.setPlanRenduVue3D(null, "mixte");
     await K.ouvrir({ depart: { x: ox * sc, y: oz * sc, cap: 0 }, commandes: "joystick" });
     K.basculerVue();
@@ -1466,7 +1470,9 @@ async function sectionDessin(page) {
       return x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
     });
     r.style = a0 ? { w: getComputedStyle(a0).width, h: getComputedStyle(a0).height, wSrc: getComputedStyle(src).width,
-      hSrc: getComputedStyle(src).height, icone: a0.innerHTML === src.innerHTML, titre: a0.title === src.title } : null;
+      hSrc: getComputedStyle(src).height, icone: a0.innerHTML === src.innerHTML, titre: a0.title === src.title,
+      cible: [getComputedStyle(a0, "::before").width, getComputedStyle(a0, "::before").height],
+      jeton: getComputedStyle(document.documentElement).getPropertyValue("--kta-cible-toucher").trim() } : null;
     // Rien d'armé : un toucher n'ouvre pas d'outil, ne pose rien.
     await tap(ecran(3, 3));
     r.sansOutil = { structures: window.getStructures().length, poses: K.etat().dessin.poses };
@@ -1708,6 +1714,32 @@ async function sectionDessin(page) {
     window._desactiverTousLesModes();
     await K.fermer();
 
+    // ── Parcours normal, Galerie puis Mixte : armer le pilier depuis ✏️, 3 sommets, fermer, fermer la vue → aucun
+    // toast « abandonné » (les toasts sont relevés à leur appel, pas à l'écran où ceux d'avant restent affichés) ──
+    r.parcours = [];
+    const motAbandon = window.I18n.t("struct.toast.abandon", { type: "" }).split(":")[0].trim().split(" ").pop();
+    for (const rendu of ["galerie", "mixte"]) {
+      await ouvrir(rendu, 0, 0);
+      const dits = [], orig = window.OOMGuard.showToast;
+      window.OOMGuard.showToast = function (m, t) { dits.push(String(m)); return orig.apply(this, arguments); };
+      try {
+        K.dessiner(true);
+        choisir("structures", "ui.struct.pilier1");
+        await images(3);
+        const avP = uids(window.getStructures()), nP = K.etat().donnees.refaites;
+        for (const c of [[-3, -5], [-1, -5], [-2, -3]]) await tap(ecran(c[0], c[1]));
+        await tap(ecran(-3, -5));
+        await apres(nP);
+        const cree = nouveau(window.getStructures(), avP);
+        await K.fermer();
+        r.parcours.push({ rendu: rendu, cree: !!cree && cree.points.length === 3, toasts: dits.slice(),
+          abandon: dits.some(function (m) { return m.indexOf(motAbandon) >= 0; }) });
+      } finally {
+        window.OOMGuard.showToast = orig;
+      }
+      window.ktaSetActiveLevel ? window.ktaSetActiveLevel(0) : (C.activeLevel = 0);
+    }
+
     // ── Même geste sur la carte (2D, niveau −1) : même objet que la 3D ──
     r.geste2d = null;
     window.__v3dDessinRef = r.pilier.points;
@@ -1778,8 +1810,9 @@ async function sectionDessin(page) {
     JSON.stringify(r.boutons) === JSON.stringify(["mesure", "traces", "zones", "structures"]),
     "vue plongeante : ✏️ montre 📐 🛣️ ⬛ 🏛️ (ordre de la barre de droite 2D)", { plongee: r.plongee, boutons: r.boutons,
     ordre2d: r.ordre2d });
-  verifier(r.style && r.style.w === r.style.wSrc && r.style.h === r.style.hSrc && r.style.icone && r.style.titre,
-    "boutons de la barre : taille, icône et titre de ceux de la carte", r.style);
+  verifier(r.style && r.style.w === r.style.wSrc && r.style.h === r.style.hSrc && r.style.icone && r.style.titre &&
+    r.style.cible[0] === r.style.jeton && r.style.cible[1] === r.style.jeton,
+    "boutons de la barre : taille, icône et titre de ceux de la carte, zone de toucher de --kta-cible-toucher", r.style);
   verifier(r.sansOutil.structures === 0 && r.sansOutil.poses === 0, "✏️ ouvert sans outil armé : un toucher ne pose rien",
     r.sansOutil);
   verifier(r.panneau && String(r.panneau.z) === "99999" && r.panneau.dessus && !r.panneau.jonction &&
@@ -1830,6 +1863,9 @@ async function sectionDessin(page) {
     r.planSol.textures[1] === r.planSol.textures[0] + 1 && r.planSol.textures[2] === r.planSol.textures[0] &&
     r.planSol.presse === "false" && r.planSol.coupe && r.planSol.coupe.voulu === false,
     "plan au sol 🗺️ : caché au −1, au 0 une texture du fond (une de plus), libérée une fois coupé", r.planSol);
+  verifier(r.parcours.length === 2 && r.parcours.every(function (x) { return x.cree && !x.abandon; }),
+    "parcours normal (Galerie puis Mixte) : pilier armé depuis ✏️, 3 sommets, fermé, vue fermée → aucun toast « abandonné »",
+    r.parcours);
   verifier(r.galerie.rendu === "mixte" && r.galerie.bascule === "mixte" && r.galerie.retenu === "mixte",
     "rendu galerie : armer une structure passe en mixte (retenu), on voit ce qu'on dessine", r.galerie);
   verifier(R2.cree && R2.type === "pilier-1" && R2.niveau === -1 && R2.n === 4 && R2.ecartM !== null &&

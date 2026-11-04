@@ -334,4 +334,11 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin: 0; clear: none; float: none;
 }
 .kta-v3d-outils[hidden], .kta-v3d-outils a[hidden] { display: none; }
+/* Zone de toucher de 44 px (--kta-cible-toucher), comme la rangée du haut : on joue au doigt. Les zones de deux
+   boutons voisins se recouvrent de 4 px, au bord commun (la colonne n'a pas de trou). */
+.kta-v3d-outils > a { position: relative; }
+.kta-v3d-outils > a::before {
+  content: ""; position: absolute;
+  inset: calc((var(--kta-barre-bouton, 36px) - var(--kta-cible-toucher, 44px)) / 2);
+}
 html.kta-vue3d-ouverte .kta-group-flyout, html.kta-vue3d-ouverte .kta-group-flyout-fond { z-index: 99999; }
