@@ -9,8 +9,9 @@
 // MAP-BEARING — rotation de la vue 2D : plan orienté (cap du téléphone) et rotation manuelle (deux doigts)
 // =========================
 // Plan orienté (réglage de la modale 🧭 Tracker, OFF par défaut) : en suivi, la direction de marche pointe vers le
-// haut. Rotation manuelle : deux doigts au-delà de SEUIL_ROTATION, Maj + molette au PC, bouton nord dans la barre
-// de droite. Le cap reprend la main dès qu'il arrive ; un outil armé ou un mode plein écran redresse la vue.
+// haut. Rotation manuelle : deux doigts au-delà de SEUIL_ROTATION, Maj + molette au PC, bouton nord en bas à gauche
+// (au-dessus de la boussole ouverte). Le cap reprend la main dès qu'il arrive ; un outil armé ou un mode plein écran
+// redresse la vue.
 // 🩸 La rotation vit sur un pane INTERCALAIRE (`.kta-rotate-pane`, entre le map-pane et ses enfants), JAMAIS sur le
 //   map-pane : Leaflet le positionne en `transform: translate3d`, une rotation y ferait pivoter la translation.
 // ⚠️ `transform-origin` est en layerPoint : il DÉRIVE à chaque pan/zoom → réappliqué sur move/zoom.
@@ -477,37 +478,34 @@
   }
 
   // ── Bouton nord ──
-  // Pilule de la barre de droite, juste après le repli de la barre (à l'écran : sous ≡ Filtres et le cube) : ni
-  // flottant à placer ni chevauchement possible, au téléphone comme au PC. Visible seulement quand la vue est tournée
-  // À LA MAIN (le plan orienté a son propre arrêt).
-  // ⚠️ Inséré au milieu du coin, jamais en dernier : un enfant masqué en fin de coin volerait le `:last-child` qui
-  // arrondit le bas de la barre.
+  // Carte flottante du coin bas gauche de la carte (`.leaflet-bottom.leaflet-left`, hors du pane qui tourne), à la
+  // place de la boussole 2D (compass.js) et posée au-dessus d'elle quand elle est ouverte. Jamais fusionnée avec elle
+  // (décision produit) : la rose montre le nord réel d'après le cap du téléphone, l'aiguille montre le haut du PLAN.
+  // Place et gabarit : style.css > .kta-nord-ctrl. Visible seulement quand la vue est tournée À LA MAIN (le plan
+  // orienté a son propre arrêt).
   const SVG_NORD = '<svg class="kta-nord-picto" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
     '<path class="kta-nord-pointe" d="M12 2.5 16 12H8Z"/><path class="kta-nord-queue" d="M8 12h8l-4 9.5Z"/></svg>';
 
   function _creerBoutonNord(map) {
     const cont = map.getContainer && map.getContainer();
-    const coin = cont && cont.querySelector(".leaflet-top.leaflet-right");
+    const coin = cont && cont.querySelector(".leaflet-bottom.leaflet-left");
     if (!coin) return null;
     const ctrl = document.createElement("div");
-    ctrl.className = "leaflet-bar leaflet-control kta-nord-ctrl";
-    const a = document.createElement("a");
-    a.href = "#";   // pas « javascript: » (CSP stricte)
-    a.setAttribute("role", "button");
-    a.className = "kta-nord-btn";
+    ctrl.className = "leaflet-control kta-nord-ctrl";
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "kta-nord-btn";
     const lib = _t("bearing.nord", "Remettre le nord en haut");
-    a.title = lib;
-    a.setAttribute("aria-label", lib);
-    a.innerHTML = SVG_NORD;
-    ctrl.appendChild(a);
+    b.title = lib;
+    b.setAttribute("aria-label", lib);
+    b.innerHTML = SVG_NORD;
+    ctrl.appendChild(b);
     if (L.DomEvent) L.DomEvent.disableClickPropagation(ctrl);
-    a.addEventListener("click", function(ev) {
-      ev.preventDefault();
+    b.addEventListener("click", function(ev) {
       ev.stopPropagation();
       remettreNord();
     });
-    const repli = coin.querySelector(".kta-refonte-collapse-bar");
-    coin.insertBefore(ctrl, repli ? repli.nextSibling : coin.firstChild);
+    coin.appendChild(ctrl);
     map._ktaNordCtrl = ctrl;
     return ctrl;
   }

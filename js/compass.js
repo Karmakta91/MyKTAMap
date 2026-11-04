@@ -10,9 +10,9 @@
 // =========================
 // Rose (icon/compass.png) au-dessus de la carte, contre-tournée en temps réel selon le cap de tracking.js
 // (window.getCurrentHeading) : le « N » pointe toujours le vrai Nord.
-// Deux vues : widget flottant (bas-droite, rose ~100 px, cardinal + angle ; ✕ ferme tout, clic sur la rose ouvre
-// le plein écran) et modale plein écran (.kta-readme-modal-overlay, rose ~240 px ; ✕ / fond / Échap).
-// Bouton 🧭 du groupe Tracker → show() / hide().
+// Deux vues : widget flottant (bas gauche, centré en paysage bas ; rose ~100 px, cardinal + angle ; ✕ ferme tout,
+// clic sur la rose ouvre le plein écran) et modale plein écran (.kta-readme-modal-overlay, rose ~240 px ; ✕ / fond /
+// Échap). Bouton 🧭 du groupe Tracker → show() / hide(). Ouvert : body.kta-boussole-ouverte (bouton nord au-dessus).
 // Rotation : téléphone à plat, bord haut vers la marche, cap 0 = Nord, sens horaire ; on applique
 // rotate(-cap) à la rose (cap 90 → N à gauche, 180 → en bas, 270 → à droite).
 // Perf : boucle rAF seulement si le widget est visible, seuil ≥ 0,5° ; widget et modale mis à jour dans le même
@@ -53,6 +53,15 @@
         '<span class="kta-compass-heading kta-compass-text-display">N 0°</span>' +
       '</div>';
     document.body.appendChild(_widgetEl);
+
+    // ⚠️ Contrat avec le bouton nord (style.css > .kta-nord-ctrl) : il se pose au-dessus du widget ouvert, d'après
+    // `body.kta-boussole-ouverte` et la hauteur réelle `--kta-boussole-h` (elle change avec la largeur d'écran).
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(function() {
+        const h = _widgetEl.offsetHeight;
+        if (h > 0) document.body.style.setProperty("--kta-boussole-h", h + "px");
+      }).observe(_widgetEl);
+    }
 
     // ✕ : ferme tout (widget + modale).
     _widgetEl.querySelector(".kta-compass-close").addEventListener("click", function(e) {
@@ -172,6 +181,7 @@
   function show() {
     _ensureWidget();
     _widgetEl.style.display = "";
+    document.body.classList.add("kta-boussole-ouverte");
     _lastApplied = -999;
     // Idempotent côté tracking.js (cf. _orientationListenerAttached). Le clic qui déclenche show() est un geste
     // utilisateur valide pour iOS : requestPermission peut afficher sa demande.
@@ -194,6 +204,7 @@
   function hide() {
     _closeFullModal();  // si modal ouvert, on le ferme aussi
     if (_widgetEl) _widgetEl.style.display = "none";
+    document.body.classList.remove("kta-boussole-ouverte");
     if (_rafId) {
       cancelAnimationFrame(_rafId);
       _rafId = null;

@@ -347,7 +347,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 ### 🗺️ Lire le plan
 
 - **Pincer** pour zoomer, **glisser** pour te déplacer (ou les boutons **+** / **−** en haut à gauche).
-- **Tourner deux doigts** fait pivoter la carte (Maj + molette sur ordinateur) ; le bouton **nord**, sous le cube de la barre de droite, la remet droite. Un outil de dessin, la mesure ou le recalage la redressent ; 🗺️ Plan orienté prend la main pendant le suivi.
+- **Tourner deux doigts** fait pivoter la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche (au-dessus de la boussole si elle est ouverte), la remet droite. Un outil de dessin, la mesure ou le recalage la redressent ; 🗺️ Plan orienté prend la main pendant le suivi.
 - **Toucher une icône** ouvre la fiche du point ; **double-toucher** zoome dessus (comme le bouton « Y aller » de la fiche).
 - Les icônes rapetissent au dézoom pour rester à l'échelle du plan, en mode plan comme sur les cartes OSM (Vue OSM et carte de l'accueil). Pour garder une taille fixe : ⚙️ Configuration de l'accueil → 🎨 Affichage → « 📐 Adapter la taille des icônes au zoom ».
 

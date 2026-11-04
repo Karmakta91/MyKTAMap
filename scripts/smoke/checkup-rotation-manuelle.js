@@ -9,8 +9,9 @@
 // doigts · R3 bouton nord · R4 outil armé : vue droite, geste refusé, droite au désarmement · R5 toucher d'un POI et
 // d'une structure sous rotation : la bonne fiche · R6 popup droite · R7 Maj + molette · R8 exports PNG/PDF droits
 // (même canvas qu'à plat) · R9 mode plein écran redresse · R10 vue 3D aller-retour · R11 plan orienté qui reprend la
-// main · R12 changement de plan · R13 bouton nord sans chevauchement (portrait, paysage, PC) et barre 2D entière à
-// 852 × 393 · R14 (Chromium) vrai geste tactile CDP.
+// main · R12 changement de plan · R13 bouton nord en bas à gauche, hors de la barre de droite, sans chevauchement
+// (393 × 852, 430 × 932, 852 × 393, 1366 × 768 ; seul, boussole ouverte, mode Présentation) et barre 2D entière
+// (10 pilules de 30 px à 852 × 393) · R14 (Chromium) vrai geste tactile CDP.
 // 🩸 Les doigts simulés suivent la famille d'événements de Leaflet (`L.Browser.touchNative` : TouchEvent sous
 // Chromium, PointerEvent sous WebKit de bureau) : sinon le pinch-zoom de Leaflet ne voit rien et R1 passe à vide.
 // Usage : node scripts/smoke/checkup-rotation-manuelle.js · doc : docs/architecture/tracking.md §plan orienté
@@ -235,7 +236,7 @@ async function suite(nav, nomMoteur) {
     // ── R3 — bouton nord ──
     console.log("— R3 : bouton nord —");
     const btn = await page.evaluate(function () {
-      const a = document.querySelector(".kta-nord-ctrl a");
+      const a = document.querySelector(".kta-nord-ctrl .kta-nord-btn");
       const r = a.getBoundingClientRect();
       const x = r.left + r.width / 2, y = r.top + r.height / 2;
       const hit = document.elementFromPoint(x, y);
@@ -563,55 +564,98 @@ async function suite(nav, nomMoteur) {
     await ctx.close();
   }
 
-  // ── R13 — bouton nord placé sans chevauchement, barre 2D entière ──
-  console.log("— R13 : bouton nord et barre 2D aux trois formats —");
+  // ── R13 — bouton nord en bas à gauche, sans chevauchement, barre 2D entière ──
+  // Trois états par format : seul, boussole 2D ouverte avec un toast témoin, mode Présentation. Paysage bas : la
+  // boussole est centrée, le bouton ne s'empile pas sur elle.
+  console.log("— R13 : bouton nord et barre 2D aux quatre formats —");
   const formats = [
-    { nom: "téléphone portrait 430 × 932", viewport: { width: 430, height: 932 } },
-    { nom: "téléphone paysage 852 × 393", viewport: { width: 852, height: 393 } },
-    { nom: "PC 1366 × 768", viewport: { width: 1366, height: 768 } }
+    { nom: "portrait 393 × 852", viewport: { width: 393, height: 852 }, paysageBas: false },
+    { nom: "portrait 430 × 932", viewport: { width: 430, height: 932 }, paysageBas: false },
+    { nom: "paysage 852 × 393", viewport: { width: 852, height: 393 }, paysageBas: true },
+    { nom: "PC 1366 × 768", viewport: { width: 1366, height: 768 }, paysageBas: false }
   ];
   for (const f of formats) {
     const o = await ouvrirPlan(nav, { viewport: f.viewport });
     try {
-      const m = await o.page.evaluate(function () {
-        window.MapBearing.setManuel(30);
-        const btn = document.querySelector(".kta-nord-ctrl");
-        const a = btn && btn.querySelector("a");
-        const r = a ? a.getBoundingClientRect() : null;
-        const res = { visible: window.__rm.nordVisible(), touche: false, chevauche: [], w: 0, h: 0 };
-        if (!r) return res;
-        res.w = Math.round(r.width); res.h = Math.round(r.height);
-        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-        res.touche = !!(hit && a.contains(hit));
-        const inter = function (q) {
-          return !(q.right <= r.left + 0.5 || q.left >= r.right - 0.5 || q.bottom <= r.top + 0.5 || q.top >= r.bottom - 0.5);
-        };
-        document.querySelectorAll(".leaflet-control a, .leaflet-control button, .kta-refonte-header, " +
-                                  "#kta-refonte-statusbar, .kta-compass-widget, .kta-bearing-recentrer").forEach(function (el) {
-          if (btn.contains(el)) return;
-          const q = el.getBoundingClientRect();
-          if (!q.width || !q.height || getComputedStyle(el).visibility === "hidden") return;
-          if (inter(q)) res.chevauche.push(el.className || el.id);
-        });
-        // Barre 2D : chaque bouton entier dans sa pilule (bas non coupé).
-        const coupes = [];
-        document.querySelectorAll(".leaflet-top .leaflet-bar").forEach(function (bar) {
-          const rb = bar.getBoundingClientRect();
-          if (!rb.width || !rb.height) return;
-          bar.querySelectorAll("a").forEach(function (x) {
-            const q = x.getBoundingClientRect();
-            if (!q.width || !q.height) return;
-            if (q.bottom > rb.bottom + 0.5 || q.top < rb.top - 0.5) {
-              coupes.push((bar.className.match(/kta-[\w-]+/) || ["?"])[0] + " " + Math.round(q.height) + "/" + Math.round(rb.height));
-            }
+      for (const etat of ["seul", "boussole", "présentation"]) {
+        const m = await o.page.evaluate(async function (etat) {
+          if (etat === "boussole") {
+            window.CompassWidget.show();
+            window.OOMGuard.showToast("Toast témoin du checkup", "success");
+          }
+          if (etat === "présentation") { window.CompassWidget.hide(); window.PresentationMode.activate(); }
+          window.MapBearing.setManuel(30);
+          await window.__rm.attente(450);   // transition de 0,2 s du bouton, toast posé
+          const ctrl = document.querySelector(".kta-nord-ctrl");
+          const b = ctrl && ctrl.querySelector(".kta-nord-btn");
+          const r = b ? b.getBoundingClientRect() : null;
+          const res = { visible: window.__rm.nordVisible(), touche: false, chevauche: [], w: 0, h: 0 };
+          if (!r) return res;
+          res.w = Math.round(r.width); res.h = Math.round(r.height);
+          res.rect = [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)];
+          res.dansBarreDroite = !!ctrl.closest(".leaflet-top.leaflet-right");
+          res.basGauche = r.left + r.width / 2 < innerWidth / 2 && r.top + r.height / 2 > innerHeight / 2;
+          res.dansEcran = r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight;
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          res.touche = !!(hit && b.contains(hit));
+          const inter = function (q) {
+            return !(q.right <= r.left + 0.5 || q.left >= r.right - 0.5 || q.bottom <= r.top + 0.5 || q.top >= r.bottom - 0.5);
+          };
+          document.querySelectorAll(".leaflet-top .leaflet-control, .leaflet-control a, .leaflet-control button, " +
+                                    ".kta-refonte-header, #kta-refonte-statusbar, .kta-compass-widget, " +
+                                    ".kta-bearing-recentrer, .kta-toast, .kta-presentation-exit-btn, " +
+                                    ".leaflet-control-scale, .leaflet-control-attribution").forEach(function (el) {
+            if (ctrl.contains(el)) return;
+            const q = el.getBoundingClientRect();
+            const cs = getComputedStyle(el);
+            if (!q.width || !q.height || cs.visibility === "hidden" || cs.display === "none") return;
+            if (inter(q)) res.chevauche.push(el.className || el.id);
           });
-        });
-        res.coupes = coupes;
-        return res;
-      });
-      verifier(m.visible && m.touche && m.chevauche.length === 0, f.nom + " : bouton nord " + m.w + " × " + m.h +
-        " px, touchable, sans chevauchement", m);
-      verifier(m.coupes.length === 0, f.nom + " : boutons de la barre 2D entiers", m.coupes);
+          res.toasts = document.querySelectorAll(".kta-toast").length;
+          const bou = document.querySelector(".kta-compass-widget");
+          const rb = bou && bou.getBoundingClientRect();
+          res.boussole = rb && rb.width ? { haut: Math.round(rb.top), gauche: Math.round(rb.left) } : null;
+          // Barre 2D : chaque bouton entier dans sa pilule (bas non coupé), hauteurs des pilules de droite.
+          const coupes = [];
+          document.querySelectorAll(".leaflet-top .leaflet-bar").forEach(function (bar) {
+            const rbar = bar.getBoundingClientRect();
+            if (!rbar.width || !rbar.height) return;
+            bar.querySelectorAll("a").forEach(function (x) {
+              const q = x.getBoundingClientRect();
+              if (!q.width || !q.height) return;
+              if (q.bottom > rbar.bottom + 0.5 || q.top < rbar.top - 0.5) {
+                coupes.push((bar.className.match(/kta-[\w-]+/) || ["?"])[0] + " " + Math.round(q.height) + "/" + Math.round(rbar.height));
+              }
+            });
+          });
+          res.coupes = coupes;
+          res.pilulesDroite = [].map.call(document.querySelectorAll(".leaflet-top.leaflet-right > .leaflet-control"),
+            function (p) { return Math.round(p.getBoundingClientRect().height * 10) / 10; })
+            .filter(function (h) { return h > 0; });
+          if (etat === "présentation") window.PresentationMode.deactivate();
+          return res;
+        }, etat);
+        const nom = f.nom + ", " + etat;
+        verifier(m.visible && m.touche && m.dansEcran && m.chevauche.length === 0, nom + " : bouton nord " + m.w +
+          " × " + m.h + " px " + JSON.stringify(m.rect) + ", touchable, sans chevauchement", m);
+        verifier(m.basGauche && !m.dansBarreDroite, nom + " : en bas à gauche, hors de la barre de droite", m);
+        if (etat === "boussole") {
+          verifier(m.toasts > 0, nom + " : un toast affiché pendant la mesure (témoin)", m.toasts);
+          if (f.paysageBas) {
+            verifier(!!m.boussole, nom + " : boussole centrée, bouton au coin", m.boussole);
+          } else {
+            verifier(!!m.boussole && m.rect[3] <= m.boussole.haut - 4 && m.rect[0] === m.boussole.gauche,
+              nom + " : posé au-dessus de la boussole, aligné à gauche", { nord: m.rect, boussole: m.boussole });
+          }
+        }
+        if (etat === "seul") {
+          verifier(m.coupes.length === 0, f.nom + " : boutons de la barre 2D entiers", m.coupes);
+          if (f.paysageBas) {
+            verifier(m.pilulesDroite.length === 10 && m.pilulesDroite.every(function (h) { return h >= 30; }),
+              f.nom + " : 10 pilules de 30 px dans la barre de droite", m.pilulesDroite);
+          }
+        }
+      }
     } finally {
       await o.ctx.close();
     }
@@ -646,7 +690,7 @@ async function suite(nav, nomMoteur) {
     const sur = await t.page.evaluate(function () { return { b: window.__rm.angle(), nord: window.__rm.nordVisible() }; });
     verifier(Math.abs(sur.b - (50 - franchi(50, 12, 15))) < 2 && sur.nord, "vrai toucher, 50° de torsion : vue à " + sur.b.toFixed(1) + "°", sur);
     const n = await t.page.evaluate(function () {
-      const r = document.querySelector(".kta-nord-ctrl a").getBoundingClientRect();
+      const r = document.querySelector(".kta-nord-ctrl .kta-nord-btn").getBoundingClientRect();
       return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     });
     await t.page.touchscreen.tap(n.x, n.y);

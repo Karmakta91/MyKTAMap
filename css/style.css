@@ -19956,22 +19956,61 @@ html.kta-theme-light .kta-bearing-recentrer {
   touch-action: none;
 }
 
-/* Bouton nord (rotation manuelle, mapBearing.js > _creerBoutonNord) : pilule de la barre de droite, sous le cube,
-   visible seulement quand la vue est tournée à la main. L'aiguille suit --kta-bearing : elle montre le
-   haut du plan. 🩸 En paysage bas, `.leaflet-bar` passe en display: flex !important : le masquage doit l'emporter.
-   Reste visible barre repliée et en mode Présentation (la vue peut y être tournée). */
-body.kta-refonte-v1 .leaflet-control.kta-nord-ctrl:not(.kta-nord-visible),
+/* Bouton nord (rotation manuelle, mapBearing.js > _creerBoutonNord) : carte du coin bas gauche, visible seulement
+   quand la vue est tournée à la main. Même place et même carte que la boussole 2D (.kta-compass-widget : 36 px
+   au-dessus de la barre du bas, 12 px du bas en mode Présentation) ; boussole ouverte, il se pose 8 px au-dessus
+   d'elle (body.kta-boussole-ouverte, hauteur --kta-boussole-h posée par compass.js). En paysage bas, la boussole est
+   centrée : le bouton reste au coin, décalé de la barre de gauche (elle peut descendre jusqu'à la barre du bas).
+   🩸 Fixe, comme la boussole : #map déborde sous la barre du bas, son coin bas gauche serait caché dessous. */
 .leaflet-control.kta-nord-ctrl:not(.kta-nord-visible) {
   display: none !important;
 }
-body.kta-refonte-sidebar-right-collapsed .leaflet-top.leaflet-right > .leaflet-control.kta-nord-ctrl.kta-nord-visible,
-body.kta-presentation-mode .leaflet-top.leaflet-right > .leaflet-control.kta-nord-ctrl.kta-nord-visible {
-  display: block !important;
+.leaflet-control.kta-nord-ctrl {
+  --kta-nord-sur-boussole: 0px;
+  position: fixed;
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  bottom: calc(var(--kta-statusbar-h, 52px) + 36px + var(--kta-nord-sur-boussole));
+  transition: bottom 0.2s ease-out;
 }
-.kta-nord-ctrl a { display: flex !important; align-items: center; justify-content: center; }
+body.kta-boussole-ouverte .leaflet-control.kta-nord-ctrl {
+  --kta-nord-sur-boussole: calc(var(--kta-boussole-h, 143px) + 8px);
+}
+body.kta-presentation-mode .leaflet-control.kta-nord-ctrl {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px + var(--kta-nord-sur-boussole));
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .leaflet-control.kta-nord-ctrl,
+  body.kta-boussole-ouverte .leaflet-control.kta-nord-ctrl {
+    --kta-nord-sur-boussole: 0px;
+    left: calc(env(safe-area-inset-left, 0px) + var(--kta-barre-bouton) + 14px);
+    bottom: calc(var(--kta-statusbar-h, 40px) + 8px);
+  }
+  body.kta-presentation-mode .leaflet-control.kta-nord-ctrl {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+}
+.kta-nord-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--kta-cible-toucher);
+  height: var(--kta-cible-toucher);
+  padding: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--kta-surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--kta-accent) 30%, transparent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+.kta-nord-btn:hover { border-color: color-mix(in srgb, var(--kta-accent) 55%, transparent); }
+html.kta-theme-light .kta-nord-btn,
+body.kta-theme-light .kta-nord-btn { box-shadow: 0 6px 20px var(--kta-light-shadow); }
+.kta-nord-btn:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
 .kta-nord-picto {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   pointer-events: none;
   transform: rotate(var(--kta-bearing, 0deg));
 }
