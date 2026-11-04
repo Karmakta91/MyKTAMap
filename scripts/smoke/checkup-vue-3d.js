@@ -62,7 +62,8 @@
 //   tuiles et en vue plongeante dézoomée (recul 60 m) ; marche de 120 m à 30 et 100 m ;
 //   KTA_V3D_PERF=dessin → plan dense, pilier dessiné au doigt en plongée : coût d'un sommet, délai de fermeture ;
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
-//   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt) ; KTA_V3D_SEUL=dessin → la section 28 seule ; =camera → la 30.
+//   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt) ; KTA_V3D_SEUL=dessin → la section 28 seule ; =camera → la 30 ;
+//   =sol → plan au sol sur écran dense (image, V1, V2).
 // Usage : node scripts/smoke/checkup-vue-3d.js (SMOKE_PORT pour une autre copie) · doc : docs/ETUDE_VUE_3D.md
 // =====================================================================
 "use strict";
@@ -2011,6 +2012,125 @@ async function sectionCameraPixels(page) {
     "🧱 coupé : le plan au sol reste visible sur le sol noir", { noir: uni, plan: planSurNoir });
 }
 
+// Plan au sol 🗺️ sur un écran DENSE (téléphone : 393 × 852, ×3, tactile), vue IMMOBILE après l'interrupteur, pour les
+// trois rendus du fond : image unique (le relevé fictif), tuiles V1 (fond retuilé en mémoire, tuiles de 768 px) et
+// tuiles V2 (tuiles du relevé fabriquées en mémoire, RUNTIME_ASSETS, niveau z0). 🩸 Sous WebKit sans anticrénelage
+// (pixels denses), la première image d'une texture tirée d'un canvas la montrait absente : rien ne redessinant une
+// vue immobile, le plan restait invisible (vu sur un relevé réel au téléphone). Pixels lus sans redessiner d'office.
+async function sectionPlanSolEcranDense(nav) {
+  const ctx = await nav.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, hasTouch: true,
+    isMobile: nav.browserType().name() === "chromium", serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    // Bande de sol de la capture : 15 → 70 % de la largeur, 40 → 70 % de la hauteur (ni boutons ni colonne).
+    const pixels = async function () {
+      await page.waitForTimeout(500);
+      const b64 = (await page.screenshot({ type: "png" })).toString("base64");
+      return page.evaluate(function (b) {
+        return new Promise(function (ok) {
+          const img = new Image();
+          img.onload = function () {
+            const c = document.createElement("canvas"), w = img.width, h = img.height;
+            c.width = w; c.height = h;
+            const g = c.getContext("2d");
+            g.drawImage(img, 0, 0);
+            const d = g.getImageData(Math.round(w * 0.15), Math.round(h * 0.4), Math.round(w * 0.55),
+              Math.round(h * 0.3)).data;
+            let n = 0, sr = 0, sg = 0, sb = 0;
+            for (let i = 0; i < d.length; i += 4 * 11) { n++; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; }
+            ok([Math.round(sr / n), Math.round(sg / n), Math.round(sb / n)]);
+          };
+          img.src = "data:image/png;base64," + b;
+        });
+      }, b64);
+    };
+    const essai = async function (mode) {
+      await page.evaluate(async function (mode) {
+        const K = window.KtaVue3D, pc = window.PLAN_CONFIG, W = pc.plan.imageWidth, H = pc.plan.imageHeight;
+        const images = async function (n) {
+          for (let i = 0; i < n; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+        };
+        if (!window.__solFond) window.__solFond = { couches: window._ktaBaseLayers.slice() };
+        const f = window.__solFond, img = f.couches[0]._image;
+        if (mode === "v1") {
+          f.couches.forEach(function (ov) { window.map.removeLayer(ov); });
+          window._ktaBaseLayers = [];
+          window._baseTiles = await window.chargerImageTuillee(f.couches[0]._url, [[0, 0], [H, W]], window.map, null,
+            window.PERF_PRESETS.performance);
+        } else if (mode === "v2") {
+          if (window._baseTiles) { window.libererTuiles(window._baseTiles, window.map); window._baseTiles = []; }
+          const T = 512, cols = Math.ceil(W / T), rows = Math.ceil(H / T), kx = img.naturalWidth / W,
+            ky = img.naturalHeight / H;
+          window.RUNTIME_ASSETS = window.RUNTIME_ASSETS || {};
+          for (let k = 1; k <= rows; k++) {
+            for (let col = 0; col < cols; col++) {
+              const cv = document.createElement("canvas");
+              cv.width = cv.height = T;
+              cv.getContext("2d").drawImage(img, col * T * kx, (H - k * T) * ky, T * kx, T * ky, 0, 0, T, T);
+              const blob = await new Promise(function (ok) { cv.toBlob(ok, "image/jpeg", 0.8); });
+              window.RUNTIME_ASSETS["data/tiles/z0/x" + col + "_y" + (-k) + ".jpg"] = { file: blob };
+            }
+          }
+          pc.plan.tiledV2 = true;
+          pc.tiling = { version: 2, tileSize: T, format: "jpg", minNativeZoom: 0, maxNativeZoom: 0 };
+        }
+        window.setPlanRenduVue3D(null, "structures");
+        await K.ouvrir({ depart: { x: W / 2, y: H / 2, cap: 0, niveau: 0 }, commandes: "joystick" });
+        if (K.etat().vue !== "plongee") K.basculerVue();
+        await images(20);
+      }, mode);
+      const sans = await pixels();
+      const etat = await page.evaluate(async function () {
+        const K = window.KtaVue3D;
+        document.querySelector('#kta-vue3d [data-v3d="planSol"]').click();
+        for (let i = 0; i < 300 && !(K.etat().dessin.planSol && K.etat().dessin.planSol.px); i++) {
+          await new Promise(function (ok) { requestAnimationFrame(ok); });
+        }
+        for (let i = 0; i < 10; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+        return K.etat().dessin.planSol;
+      });
+      const avec = await pixels();
+      await capture(page, "plan-sol-dense-" + mode);
+      await page.evaluate(async function () { await window.KtaVue3D.fermer(); });
+      const ecart = Math.abs(avec[0] - sans[0]) + Math.abs(avec[1] - sans[1]) + Math.abs(avec[2] - sans[2]);
+      verifier(!!etat && etat.ok && etat.px === 1024 && etat.v2 === (mode === "v2") && ecart > 30,
+        "🗺️ plan au sol, écran dense (×3, tactile), vue immobile, fond " + mode + " : visible dès l'interrupteur " +
+        "(texture de 1024 px, " + (etat && etat.octets ? Math.round(etat.octets / 1048576) : "?") + " Mo)",
+        { sans: sans, avec: avec, etat: etat });
+    };
+    for (const mode of ["image", "v1", "v2"]) await essai(mode);
+    verifier(erreurs.length === 0, "plan au sol, écran dense : aucune erreur de page", erreurs.slice(0, 3));
+  } finally {
+    await ctx.close();
+  }
+}
+
 // Tuile ⚙️ ouverte en vue d'édition : au-dessus de la colonne 🛠️ (aucun point commun où la colonne passe dessus),
 // valeurs des curseurs entières dans la tuile.
 async function sectionTuileColonne(page) {
@@ -2896,6 +3016,8 @@ async function sectionDessin(page) {
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionDessin(page);
       if (CAPTURES) await capturesDessin(page);
+    } else if (SEUL === "sol") {
+      ouvert = true;
     } else if (SEUL === "camera") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -8819,6 +8941,7 @@ async function sectionDessin(page) {
       await sectionZonesNiveaux(page);
       await sectionCamera(page);
     }
+    if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

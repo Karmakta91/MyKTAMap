@@ -4722,7 +4722,10 @@
   // dessine juste après le sol (ORDRE_SOL < `ordre` < tout le reste), sans test ni écriture de profondeur, troué par
   // les bouches des passages comme lui ; tout ce qui vient ensuite (tracés, zones, structures) passe dessus par la
   // profondeur du sol.
-  const PLAN_SOL = { pxFin: 2048, pxDoigt: 1024, y: 0, ecart: 0.25, ordre: -0.5 };
+  // 🩸 Sous WebKit sans anticrénelage (écran dense : iPhone), la première image qui montre une texture tout juste tirée
+  // d'un canvas la montre absente ou noire, les suivantes sont justes ; or la vue ne redessine qu'au mouvement : le plan
+  // restait invisible, vue immobile. `reprises` : images redessinées d'office après chaque nouvelle texture.
+  const PLAN_SOL = { pxFin: 2048, pxDoigt: 1024, y: 0, ecart: 0.25, ordre: -0.5, reprises: 2 };
 
   function _planSolPermis() { const n = _e.niveau; return n === null || n === 0; }
 
@@ -4765,6 +4768,7 @@
     if (!voulu) { if (d.sol && d.sol.mesh) _libererPlanSol(); return; }
     const c = _centreScene(), s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonScene(), px = c.x, pz = c.z;
     if (s.enCours) return;
+    if (s.reprises > 0) { s.reprises--; e.sale = true; }
     if (s.mesh && Math.hypot(px - s.cx, pz - s.cz) < s.cote * PLAN_SOL.ecart &&
         Math.abs(cote - s.cote) < s.cote * PLAN_SOL.ecart) return;
     _dessinerPlanSol(px, pz, cote);
@@ -4815,7 +4819,8 @@
       mesh.userData.famille = "planSol";
       e.scene.add(mesh);
       Object.assign(s, { mesh: mesh, tex: tex, cx: cx, cz: cz, cote: cote, px: N, ok: !!(r && r.ok),
-        v2: v2, tuiles: r && r.tuiles, ms: performance.now() - t0, faits: (s.faits || 0) + 1 });
+        v2: v2, tuiles: r && r.tuiles, ms: performance.now() - t0, faits: (s.faits || 0) + 1,
+        reprises: PLAN_SOL.reprises });
       e.sale = true;
     });
   }
