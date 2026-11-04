@@ -288,7 +288,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
     Textures activé, les parois passent en pierre de taille (assises appareillées, joints irréguliers, relief) ;
     les moellons restent le rendu 🧱 coupé (`tracking.md` § Scène galerie). **Révisé le 04/11/2026** (décision de
     KARMA) : 🧱 coupé, parois des galeries et des tubes à la couleur de légende de leur type de tracé (canon, types
-    perso compris ; carrefour : l'arête la plus large), sol et plafond unis ; les moellons ne restent qu'aux puits et
+    perso compris ; carrefour : l'arête la plus large), sol et plafond noirs dans les trois rendus ; les moellons ne restent qu'aux puits et
     tranchées des passages.
   - **Zones** découpées à chaque pièce (CPU, par tuile) : eau à 4 cm ; remblais et effondrement à 60 %, faces
     seulement côté galerie, bloquants ; inaccessible au sol + rideau rouge hachuré en travers du tube là où le

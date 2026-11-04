@@ -600,7 +600,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **Relleno**: tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados.
 - **Derrumbe** (hundimiento): un amontonamiento de grandes bloques rotos y agrietados, con poca tierra.
 - Relleno y derrumbe están a su tamaño real y no cambian de forma. Una zona personalizada conserva su color.
-- Desactivado: cada estructura y cada zona recupera el color de la leyenda, el tuyo incluido; las paredes de las galerías toman el color de su trazado (en un cruce, el del trazado más ancho); suelo y techo quedan lisos.
+- Desactivado: cada estructura y cada zona recupera el color de la leyenda, el tuyo incluido; las paredes de las galerías toman el color de su trazado (en un cruce, el del trazado más ancho); suelo y techo quedan negros (el 🗺️ plano en el suelo sigue visible encima).
 - La madera, la piedra y el relleno de los accesos (más abajo) también siguen este ajuste.
 
 #### ↕️ Pasos y accesos

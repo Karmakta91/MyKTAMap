@@ -600,7 +600,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **Backfill**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
 - **Collapse** (sinkhole): rubble of large broken, cracked blocks, with little earth.
 - Backfill and collapse are at their real size and do not change shape. A custom zone keeps its colour.
-- Off: every structure and every zone takes back its legend colour, yours included; tunnel walls take the colour of their trace (at a crossroads, the widest trace's); floor and ceiling turn plain.
+- Off: every structure and every zone takes back its legend colour, yours included; tunnel walls take the colour of their trace (at a crossroads, the widest trace's); floor and ceiling turn black (the 🗺️ plan on the ground stays visible on top).
 - The wood, stone and backfill of accesses (below) follow this setting too.
 
 #### ↕️ Ways through and accesses

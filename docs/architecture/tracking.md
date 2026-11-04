@@ -1478,9 +1478,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   des tubes **unies à la couleur de légende du type de tracé** de leur pièce (`_couleurParoi` → `_couleur("traces",
   type, "color")`, canon `ktaResolveStyle` à plat : types `cust-…` et couleurs choisies compris ; matériau
   `paroiUnie`, couleurs de sommets) ; carrefour et coude : le type de l'arête la plus large (`type` de la pièce,
-  galerieEmprise.js) ; sol et plafond unis à la teinte du calcaire (`_grainSol`, teinte neutre : un sol à la couleur
-  du tracé disputerait au ruban d'itinéraire et aux liserés la lecture du sol). Panneaux de POI lisibles quelle que
-  soit la paroi (toujours devant, fond des jetons sombres) ; légende changée vue ouverte : l'empreinte la lit, les
+  galerieEmprise.js) ; sol et plafond **noirs** dans les trois rendus (`_grainSol`, décision produit) : panneaux de
+  POI (toujours devant, fond des jetons sombres), ruban d'itinéraire et chevrons (non éclairés), liserés, ronds,
+  zones et plan au sol (dessiné après le sol) passent dessus ; légende changée vue ouverte : l'empreinte la lit, les
   couleurs résolues sont relues (`_majDonnees` vide `e.couleurs`). Puits et tranchées des passages : **moellons** de
   calcaire taillés (`_moellons`, constantes `MOELLON` / `MOELLONS_MOTIF` : blocs de 40 × 25 cm ± 25 % en longueur,
   assises horizontales à joints décalés, teinte par bloc autour de `MOELLON.couleur`, mortier plus sombre ou plus
@@ -1957,8 +1957,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   dessinée juste après le sol (`ORDRE_SOL` −0,6 < `PLAN_SOL.ordre` −0,5 < le reste), sans test ni écriture de
   profondeur, trouée par les bouches comme le sol : tracés, zones et structures passent dessus par la profondeur du sol
   (🩸 posée 6 mm au-dessus et départagée par la profondeur, elle dépendait de la précision du tampon de profondeur).
-- **Sol et plafond unis 🧱 coupé** (décision produit, `_grainSol`) : carré qui suit et pièces des galeries à la teinte
-  du motif (`COULEUR_CALCAIRE`), sans grain ; allumé, le grain calcaire. Le matériau change, rien n'est reconstruit.
+- **Sol et plafond noirs 🧱 coupé** (décision produit, `_grainSol`) : carré qui suit et pièces des galeries noirs,
+  sans grain, dans les trois rendus ; allumé, le grain calcaire. Le matériau change, rien n'est reconstruit.
 
 ### Greffe de la vue 3D (prise des add-ons) et code « six vers le bas »
 
@@ -2058,7 +2058,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   loin à taille normale ; outil armé : glisser ne pose rien, le tap suivant pose sous le doigt (5 cm) ; bandeau (2
   sommets, 3e, surface, désarmé caché, sans chevaucher boussole, joystick, pavé ni zoom) ; angle droit → « 90° » comme
   la carte ; survol (pilier, cavage fermé) en édition, bloqué à hauteur d'yeux, place dégagée au retour ; plan au sol
-  au point visé et vu à l'écran (pixels d'une capture) ; 🧱 coupé : sol uni, parois de galerie à la couleur de légende
+  au point visé et vu à l'écran (pixels d'une capture) ; 🧱 coupé : sol et plafond noirs (trois rendus), plan au sol visible dessus, parois de galerie à la couleur de légende
   de leur tracé (type `cust-…` compris), légende changée vue ouverte → la paroi suit, rallumé → la pierre ; tuile ⚙️
   au-dessus de la colonne ✏️, curseurs entiers, sélecteur de niveau hors de la colonne, de la tuile et de la grille
   (portrait et paysage) ; ▼ en vue d'édition → la 3D au −1 sans passage, carte et tracker au 0, tracé dessiné au −1,

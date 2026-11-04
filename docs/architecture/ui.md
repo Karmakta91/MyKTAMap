@@ -2272,7 +2272,7 @@ icônes.
   Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
   des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),
-  battants de bois des cavages et remblais des puits comblés ; coupé : parois des galeries et des tubes à la couleur de légende de leur tracé, sol et plafond unis, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
+  battants de bois des cavages et remblais des puits comblés ; coupé : parois des galeries et des tubes à la couleur de légende de leur tracé, sol et plafond noirs, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
   Boussole et Guidage sur la suivante ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
   sans toucher scène ni greffe), 🔭 **Portée** (curseur natif `input type=range` `#kta-v3d-portee`, 15 à 100 m,
   30 m par défaut, `getVue3DPortee`, `myktamap_v3d_portee_v1`, cet appareil ; libellé `<label for>`, valeur écrite à
@@ -2348,7 +2348,8 @@ icônes.
   corps en `.leaflet-popup-content` sans marge ; en bas, **« 🗺️ Voir sur la carte »** (`.kta-v3d-fiche-voir`, un
   bouton de fiche `kta-popup-btn`, comme 💾 Sauver la note) ferme la vue et montre l'objet sur la carte (sa fiche, contour en surbrillance
   5 s). La fiche prend le focus (anneau `--kta-interaction` au clavier), Échap la ferme et rend le focus à la vue ;
-  Tab passe par ses champs. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
+  Tab passe par ses champs. 🩸 Fiche neuve sans pointeur 400 ms (`_ficheNeuve`) : le click qui suit un toucher tombait sur
+  « Voir sur la carte » ouvert sous le doigt et fermait la vue. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
 - **Dessin en vue d'édition** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, au
   milieu, montrée en ✏️ Édition seulement : **🛠️** (`kta-actif` enfoncé, `aria-pressed`) puis **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
   la barre de droite 2D, qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
