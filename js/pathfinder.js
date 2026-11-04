@@ -28,6 +28,9 @@
 
   // Jonctions imparfaites (T et extrémité↔extrémité). Plus permissif que les 8 px du DESSIN des cercles
   // d'intersection : les tracés à la main ont 5-10 px de jitter aux jonctions.
+  // ⚠️ contrat (décision produit) : ne s'applique qu'aux BOUTS de tracé (graph.bouts, 1er et dernier sommets) ;
+  // un raté de connexion vient toujours d'un bout. 🩸 Appliquée à tous les sommets, elle reliait deux galeries
+  // parallèles plus proches que la tolérance (15 px ≈ 3 m à 5 px/m) : itinéraire à travers le mur.
   const PROXIMITY_TOLERANCE = 15;
 
   // ── Géométrie ──────────
@@ -357,7 +360,8 @@
       buckets:    {},   // bucketKey → [nodeIdx, ...]
       // Set<niveau> par nœud : 1 niveau pour un nœud de route, plusieurs pour un nœud fusionné,
       // ["transit"] pour le milieu d'une jonction. Décide des connexions à l'enrichissement.
-      nodeLevels: []    // nodeLevels[i] = Set<number|"transit">
+      nodeLevels: [],   // nodeLevels[i] = Set<number|"transit">
+      bouts:      new Set()   // 1er et dernier sommets des tracés : seuls candidats aux jonctions imparfaites
     };
   }
 
@@ -490,6 +494,7 @@
       const partsDeniv = isJonction ? _partsDenivJonction(road.points) : null;
 
       let prevIdx = _getOrAddNode(graph, road.points[0].x, road.points[0].y, isJonction ? fromLvl : segLevel);
+      graph.bouts.add(prevIdx);
       _ajouterNiveauNode(graph, prevIdx, isJonction ? fromLvl : segLevel);
 
       for (let i = 1; i < road.points.length; i++) {
@@ -501,6 +506,7 @@
           : segLevel;
         const idx = _getOrAddNode(graph, p.x, p.y, nodeLvl);
         _ajouterNiveauNode(graph, idx, nodeLvl);
+        if (isLast) graph.bouts.add(idx);
 
         // Segment exclu (nœud sans arête) si une zone inaccessible le traverse ou s'il croise un mur en ligne
         // (DUR, jamais relâché), ou si un point d'évitement est à moins de `avoidRadius` (SOUPLE, passe 2).
@@ -653,14 +659,16 @@
       }
     }
 
-    // ── 2. T par proximité : extrémité projetée à l'INTÉRIEUR d'un autre segment, sous la tolérance ──
+    // ── 2. T par proximité : BOUT de tracé projeté à l'INTÉRIEUR d'un autre segment, sous la tolérance ──
+    const bouts = graph.bouts || new Set();
     for (let i = 0; i < segs.length; i++) {
       const segA = segs[i];
+      if (!bouts.has(segA.a) && !bouts.has(segA.b)) continue;
+      const pa = graph.nodes[segA.a], pb = graph.nodes[segA.b];
       const endpoints = [
-        { nodeIdx: segA.a, point: graph.nodes[segA.a] },
-        { nodeIdx: segA.b, point: graph.nodes[segA.b] }
-      ];
-      const pa = endpoints[0].point, pb = endpoints[1].point;
+        { nodeIdx: segA.a, point: pa },
+        { nodeIdx: segA.b, point: pb }
+      ].filter(function(ep) { return bouts.has(ep.nodeIdx); });
       const candB = _candidatsGrille(grilleProxi, Math.min(pa.x, pb.x), Math.min(pa.y, pb.y),
                                      Math.max(pa.x, pb.x), Math.max(pa.y, pb.y));
 
@@ -702,8 +710,8 @@
       }
     }
 
-    // ── 3. Extrémité↔extrémité : derniers points décalés de quelques px (jitter), trop loin pour
-    // SPATIAL_MERGE_THRESHOLD au build → arête directe pondérée ──
+    // ── 3. Bout↔sommet : un BOUT décalé de quelques px (jitter) d'un sommet d'un autre tracé, trop loin pour
+    // SPATIAL_MERGE_THRESHOLD au build → arête directe pondérée. Deux sommets intérieurs ne se relient jamais. ──
     const endpointSet = new Set();
     for (let i = 0; i < segs.length; i++) {
       endpointSet.add(segs[i].a);
@@ -744,6 +752,7 @@
           continue;
         }
 
+        if (!bouts.has(idxA) && !bouts.has(idxB)) continue;
         const pB = graph.nodes[idxB];
         const d = Math.hypot(pB.x - pA.x, pB.y - pA.y);
         // Au-dessus du seuil de fusion (sinon déjà fusionnés au build).

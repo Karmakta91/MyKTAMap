@@ -630,6 +630,42 @@ async function evacuationBrancard() {
       ip.includes("abandonnerSuite:     abandonnerSuite,") && ii.includes("window.InterPlanRoute.abandonnerSuite();"));
   }
 
+  // 15) Jonctions imparfaites : seul un BOUT de tracé se raccroche par tolérance (15 px), à n'importe quel point
+  // de l'autre tracé ; un sommet intérieur ne crée jamais de lien (galeries parallèles séparées par un mur).
+  {
+    const relie = function(roads, pA, pB) {
+      const g = bac(roads).Pathfinder.buildNetworkGraph({});
+      const proche = function(p) {
+        let best = -1, bd = Infinity;
+        g.nodes.forEach(function(n, i) { const d = Math.hypot(n.x - p[0], n.y - p[1]); if (d < bd) { bd = d; best = i; } });
+        return best;
+      };
+      const a = proche(pA), b = proche(pB), vu = new Set([a]), pile = [a];
+      while (pile.length) {
+        const u = pile.pop();
+        if (u === b) return true;
+        g.edges[u].forEach(function(e) { if (!vu.has(e.to)) { vu.add(e.to); pile.push(e.to); } });
+      }
+      return false;
+    };
+    // Galerie A coudée : ses sommets intérieurs longent B à 10 px, ses bouts en sont à plus de 100 px.
+    const A = R("principal", [[0, 400], [100, 500], [200, 500], [300, 500], [400, 400]]);
+    const B = R("principal", [[-200, 510], [200, 510], [600, 510]]);
+    t("jonction : deux galeries parallèles à 10 px, sommets intérieurs seuls → aucun lien",
+      !relie([A, B], [200, 500], [-200, 510]));
+    t("jonction : bout à 10 px du MILIEU d'un segment → lien en T",
+      relie([R("principal", [[200, 400], [200, 500]]), R("principal", [[0, 510], [400, 510]])], [200, 400], [0, 510]));
+    t("jonction : bout à 10 px d'un sommet INTÉRIEUR de l'autre tracé → lien",
+      relie([R("principal", [[200, 400], [200, 500]]), R("principal", [[0, 510], [200, 510], [400, 510]])],
+            [200, 400], [0, 510]));
+    t("jonction : bout à 5 px d'un bout → lien",
+      relie([R("principal", [[0, 500], [200, 500]]), R("principal", [[205, 500], [400, 500]])], [0, 500], [400, 500]));
+    t("jonction : bout à 3 px d'une galerie (T imparfait) → lien",
+      relie([R("principal", [[200, 300], [200, 497]]), R("principal", [[0, 500], [400, 500]])], [200, 300], [0, 500]));
+    t("jonction : deux segments qui se croisent sans sommet commun → reliés au croisement",
+      relie([R("principal", [[0, 0], [400, 400]]), R("principal", [[0, 400], [400, 0]])], [0, 0], [0, 400]));
+  }
+
   // 11) Bandeau en direct : simulation de marche, faux DOM minimal
   await bandeau();
 

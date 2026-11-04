@@ -13,9 +13,11 @@ Calcul d'un trajet le plus court entre N waypoints en suivant le réseau de poly
 1. **Construction du graphe** (`_buildGraph`) — chaque point d'une polyline = nœud, connecté à son voisin par une arête euclidienne. Spatial-bucketing 1.5 px pour fusionner les points coïncidents.
 2. **Enrichissement** (`_enrichirGrapheAvecCroisements`) — gère 3 cas de jonction entre polylines distinctes :
    - Croisement strict segment-segment (intersection paramétrique)
-   - T-junction (extrémité d'un segment à ≤ 15 px de l'intérieur d'un autre, avec projection orthogonale)
-   - Endpoint↔endpoint (2 extrémités distinctes à 1.5 < d < 15 px)
+   - T-junction (**bout de tracé** à < 15 px de l'intérieur d'un segment d'un autre tracé, projection orthogonale)
+   - Bout↔sommet (**bout de tracé** à 1.5 < d < 15 px d'un sommet quelconque d'un autre tracé, bout ou sommet intérieur)
    → ajout de nœuds virtuels et arêtes ad-hoc. Sans ça, les roads tracés à la main qui se croisent sans partager de point exact restent dans des composantes graphe disjointes.
+
+   ⚠️ **La tolérance de 15 px (`PROXIMITY_TOLERANCE`) ne vaut que pour les BOUTS** (1er et dernier sommets de chaque tracé, `graph.bouts`, posés par `_buildGraph`) (décision produit) : un raté de connexion vient toujours d'un bout. Un sommet intérieur ne crée jamais de lien par proximité ; seuls le croisement strict et la fusion à 1,5 px (`SPATIAL_MERGE_THRESHOLD`) le relient. 🩸 Appliquée à tous les sommets, la tolérance reliait deux galeries parallèles plus proches que 15 px (≈ 3 m sur un plan à 5 px/m) : l'itinéraire traversait le mur qui les sépare. Mesuré sur un relevé réel : 5 008 liens → 2 043, raccourcis suspects (lien ≥ 0,6 m entre deux tracés, qui évite un détour de plus de 15 m) 82 → 26. 🩸 Revers : deux tracés qui se rejoignent par deux sommets **intérieurs** voisins sans se croiser (carrefour dessiné en deux « L » qui se touchent) ne sont plus reliés au-delà de 1,5 px ; il faut faire passer un tracé par le sommet de l'autre. Le recalage des points de jonction entre niveaux (`_insererSurNiveau`) garde ses 15 px, à part. Tenu par `check-guidage.js` §15.
 3. **Snap des waypoints** (`_insertVirtualNode`) — projection orthogonale du waypoint sur le segment le plus proche, insertion d'un nœud virtuel à la projection (split du segment d'origine).
 4. **Dijkstra** entre paires consécutives, concaténation des chemins.
 
