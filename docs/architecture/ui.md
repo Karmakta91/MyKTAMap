@@ -2297,6 +2297,19 @@ icônes.
   bouton de fiche `kta-popup-btn`, comme 💾 Sauver la note) ferme la vue et montre l'objet sur la carte (sa fiche, contour en surbrillance
   5 s). La fiche prend le focus (anneau `--kta-interaction` au clavier), Échap la ferme et rend le focus à la vue ;
   Tab passe par ses champs. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
+- **Dessin en vue plongeante** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, au
+  milieu, montrée en 🦅 seulement : **✏️** (`kta-actif` enfoncé, `aria-pressed`) puis **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
+  la barre de droite 2D, qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
+  mêmes états ; icône, titre, `kta-group-mode-actif` (pastille du type armé) et `kta-outil-lecture-seule` **recopiés
+  du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. Puis **🗺️ Plan au sol**
+  (interrupteur, `aria-pressed`, niveau 0 seulement). Un groupe ouvre **le panneau de la carte**
+  (`interface.js > window.ktaOuvrirOutils(groupe, { ancre })` : `_ouvrirFlyout` avec `vue3d: true`, sous-actions
+  `horsVue3D` retirées : 🪜 jonction, 🧹 Effacer — « Sélectionner » et « Par zone » se jouent au clic sur la carte —,
+  📏 et ⛏️), au rang de la vue (`html.kta-vue3d-ouverte .kta-group-flyout` et son fond à 99999, posés après elle) ;
+  📐, groupe en accordéon sur la carte, y passe aussi (surbrillance par `isActive`). Le toucher qui ferme le panneau
+  ne pose rien (avalé, comme sur la carte). Groupe grisé : le refus de la carte (`ktaEditionRefusee`), pas de panneau.
+  Aperçu au sol de l'objet en cours (ruban, sommets, rond doré du 1er sommet) et étiquette de la mesure en panneau
+  (liseré rouge de la mesure de la carte). Contrats : `tracking.md` § Vue 3D › Dessiner en vue plongeante.
 - **Passages entre niveaux** : boîte 🪜 à gauche, au milieu, boutons écrits « ▼ -1 · Nom (moyen) », coupés à la
   largeur (`.kta-v3d-btn-passage`, 72 % de l'écran au plus) ; le nom entier au libellé accessible. Changement de
   niveau derrière un **voile** (`.kta-v3d-fondu` : fond des jetons sombres posé par la vue en

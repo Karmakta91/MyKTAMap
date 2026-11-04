@@ -692,6 +692,21 @@ Où et comment un passage se dessine :
 - Masquer n'enlève que le dessin : on bute toujours contre les piliers et les parois, et 🪜 reste proposé.
 - L'itinéraire reste affiché, comme sur la carte. Les calques d'image n'ont pas d'effet en 3D.
 
+#### ✏️ Dessiner en vue plongeante
+
+- En **🦅 vue plongeante**, le bouton **✏️** (à droite, au milieu) montre les outils de la carte, dans le même ordre : **📐 Mesure**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. À hauteur d'yeux, pas de dessin.
+- Chaque bouton ouvre **le même menu que sur la carte** : piliers, murs, fronts de taille, tes types perso, ➕ nouveau type, ✅ Fermer / Valider.
+- Rien ne se dessine tant qu'aucun outil n'est choisi. Outil choisi : **un toucher pose un point** là où tu touches. Glisser, pincer et la molette bougent toujours la vue, sans poser de point.
+- **Fermer un pilier, un mur ou une zone** : touche le **rond doré** du premier point, ou ✅ dans le menu. Pour un mur fin, zoome d'abord : le rond grandit avec la vue.
+- Un tracé ou un front se termine par ✅. L'outil reste choisi pour enchaîner, comme sur la carte.
+- L'objet est **celui de la carte** : même fiche, mêmes couleurs, ⏪ Annuler. Il prend **le niveau de la 3D** ; la carte, elle, ne change pas de niveau.
+- Pendant le dessin, un **trait au sol** montre l'objet ; il apparaît en relief à sa fin.
+- **📐 Mesure** : la distance (ou la surface) s'affiche dans la 3D, au dernier point, comme sur la carte.
+- **🗺️ Plan au sol** : l'image du plan sous la scène, pour dessiner sur le relevé (niveau 0, celui du plan de base).
+- En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
+- **✏️, Échap, quitter la vue plongeante ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
+- En lecture seule, les outils de dessin restent grisés, comme sur la carte ; 📐 Mesure reste permise.
+
 > ⚠️ La 3D montre le **plan**, pas la galerie réelle. Formes et hauteurs sont celles du relevé (les galeries des modes Galerie et Mixte : des largeurs fixes par type de tracé), ta position celle du tracker, qui dérive. Ne t'y fie pas plus qu'à la carte.
 
 ### ⚙️ Réglages du tracker

@@ -1828,6 +1828,55 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
   fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
+### Dessiner en vue plongeante (✏️, QCM du 03/11 et du 04/11/2026)
+
+- **Où** (décision produit) : en 🦅 seulement ; ✏️ montre la barre des groupes de la carte (`_monterOutils`, place :
+  `ui.md` § Vue 3D). Rien ne se dessine tant qu'aucun outil n'est armé (`_dessinActif` : ✏️ ouvert, plongée, greffe
+  sans `fiches: false`, un mode de la carte armé : `modeStructure`, `modeZone`, `modeRoad`, `modeMesure`). Armé, un
+  toucher bref de la scène pose un sommet **avant** toute fiche (`_toucher` → `_poserSommet`) ; glisser, pincer, deux
+  doigts, molette et Maj + molette restent la caméra (seul le toucher bref, moins de 8 px et 0,5 s, pose).
+- **Outils de la carte, jamais copiés** ⚠️ contrat : armement par le panneau du groupe 2D (`ktaOuvrirOutils`, donc
+  `_activerStructure` / `_activerZone` / `_activerRoute` / 📐 et leurs refus `ktaEditionRefusee`) ; le toucher rejoue le
+  geste de la carte au point du sol touché : `map.fire("mousedown")` puis `map.fire("click")`, `latlng =
+  convertCoord(x, y)` (road.js écoute `mousedown`, les autres `click`). Undo (HistoryManager), uid, styles, sous-menus
+  de type, fermeture, toasts et validation à l'extinction sont ceux de `structures.js`, `zones.js`, `road.js`,
+  `measure.js`. Ils ne lisent que `e.latlng` (vérifié outil par outil).
+- **Point touché** (`_pointSol`) : la surface montrée sous le doigt (`_pointVise` : le dessus d'un pilier donne son
+  emprise ; un objet devant masque le sol derrière lui, ce qu'on voit est ce qu'on touche), sinon le plan y = 0.
+- **Niveau** ⚠️ contrat : l'objet prend le niveau de la 3D (`e.niveau`, `niveauLibre` compris) : `APP_CONFIG.activeLevel`
+  le prend le temps des deux `fire` puis est rendu (`finally`), la règle de la 2D (pilier-2 / front-2 au niveau − 1,
+  aimantation au niveau actif) jouant d'elle-même. Rien d'asynchrone de la vue ne lit le niveau pendant ce temps.
+- **Tolérances** (décision produit) : la fermeture d'une zone ou d'une structure se fait dans le **rond doré** du 1er
+  sommet (`DESSIN.premier`, 0,3 m, dessiné à l'échelle : zoomer l'agrandit) ; le point est alors ce sommet exact. En
+  mètres et non en px d'écran : à 24 px, le 4e coin d'un mur de 0,4 m fermait la forme au recul par défaut. La
+  tolérance de la 2D (`CLOSE_TOLERANCE` = 5 px **plan**) joue toujours en plus : sur un plan à 6 px/m elle vaut 0,8 m
+  et l'emporte, en 2D comme en 3D. Aimantation des tracés (`snapDraw`) : le rayon d'écran de la 2D (`snapDrawPx`, 14)
+  converti à la profondeur du point touché, passé en `ktaTolerancePlan` (road.js > `_snapSurSommetProche`).
+- **Coût par sommet** ⚠️ contrat : objet en cours (✏️ ouvert, `getCurrentStructure` / `Zone` / `Road`), la scène ne
+  le montre pas (`_collecter` > `_horsTrace`) et `_majDonnees` attend sa fin (`_traceEnCours`) : un sommet = le geste
+  de la carte + l'aperçu (`_majApercu` : rubans de 0,12 m et disques à la couleur du canon, rond doré du 1er sommet,
+  matériau sans profondeur, un seul maillage refait sur signature). Fin de l'objet (1er sommet retouché, ✅, Échap) :
+  une reconstruction, sans attendre la fin de rafale ; les tuiles de même contenu à plus de 4 m de l'objet gardent
+  leur géométrie (`_noterFin`, `_reprendreTuiles` ; pourquoi 4 m : un pilier ouvre les tubes et décide zones et POI à
+  3 m). Mesures (`KTA_V3D_PERF=dessin`, plan dense, iPhone émulé) : `ETUDE_VUE_3D.md` § Mesures du dessin.
+- **Fin, extinction** : gestes de la 2D (1er sommet, ✅ Fermer / Valider du panneau) ; ✏️, Échap (après tuile et
+  hauteur, avant la fiche), sortir de la plongée (`_appliquerVue`) et fermer la vue (`_quitterDessin`) éteignent par
+  `_desactiverTousLesModes` de la carte : un objet non fini est validé s'il a assez de points, abandonné sinon
+  (toasts de la 2D). Un objet fini n'est jamais perdu.
+- **Rendu** (décision produit) : le rendu galerie ne dessine aucune structure ; armer un outil de structure y passe en
+  **mixte** (`basculerRendu`, retenu par plan) avec un toast (`vue3d.dessin.renduMixte`) : on voit ce qu'on dessine.
+- **Mesure 📐** : distance et surface de `measure.js` (`calculDistance`, `calculSurface`), ruban rouge au sol et
+  libellé de la carte (`measure.label.*`) en panneau au dernier point (`_panneau`, genre `mesure`), tant que la mesure
+  a des points.
+- **Droits** : ceux de la carte (armement refusé en lecture seule, groupe grisé recopié ; 📐 permise). Greffe
+  `fiches: false` : ni barre ni sommet (`addons.md`).
+- **🗺️ Plan au sol** (décision produit : livré si la mémoire suit) : interrupteur de la barre, coupé par défaut, gardé
+  tant que la vue est ouverte, niveau 0 seulement (le plan de base, `tiling.js > ktaPlanDeBaseVisible`). Une texture
+  carrée (1024 px au doigt, 2048 au pointeur fin) sur le carré de sol, à une place fixe, redessinée à un quart
+  d'écart (place ou emprise) ; source : les `<img>` du fond déjà chargés par la carte (direct, tuiles V1), plan V2 :
+  `ktaDessinerRegionTuiles` (tuiles du ZIP ou du cache, niveau le moins détaillé qui suffit). Libérée coupée, à la
+  fermeture et à la perte du contexte.
+
 ### Greffe de la vue 3D (prise des add-ons) et code « six vers le bas »
 
 - La vue 3D prête une **prise neutre** aux add-ons (`KtaVue3D.greffer`, sans effet sans greffon) et lance l'add-on
@@ -1911,6 +1960,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   lecture seule → ni note ni 🗑️ ; 🗑️ → pilier retiré de la scène sans rouvrir, annulation → revenu ; calque de
   données → lecture seule (noté : sa note ; muet : son titre) ; « Voir sur la carte » → vue fermée, carte centrée,
   surbrillance, fiche de la carte ouverte (zone de session).
+  Dessin en plongée (§ 28, formes fictives, doigt, 3D au −1 et carte au 0) : ni barre à hauteur d'yeux ; ✏️ → 📐 🛣️
+  ⬛ 🏛️ dans l'ordre de la carte, taille et icône de ses boutons ; panneau de la carte au-dessus de la vue (sans 🪜 ni
+  🧹) ; rien sans outil ; pilier (4 sommets, aucune reconstruction, aperçu) fermé dans le rond doré → niveau −1, carte
+  au 0, sommets à 3 cm, une reconstruction, visé ; glisser, pincer, deux doigts, molette, Maj + molette → aucun sommet ;
+  annulé ; mur fermé par ✅, mur en ligne, zone, tracé (aucune reconstruction pendant), aimantation, mesure de 10 m et
+  son étiquette ; sortie de plongée (objet de 2 sommets abandonné), Échap, fermeture (objet de 3 sommets gardé) ;
+  greffe `fiches: false` ; lecture seule ; plan au sol (caché au −1, une texture au 0, libérée) ; rendu galerie →
+  mixte ; même pilier à la souris sur la carte : mêmes champs, sommets, historique.
   Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.

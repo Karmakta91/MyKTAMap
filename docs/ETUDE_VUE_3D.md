@@ -537,6 +537,34 @@ redessins dus au déplacement de la carte (moveend / zoomend sous la décimation
 | **Fausse précision** : la 3D a l'air exacte, la position du tracker ne l'est pas (dérive PDR) | Lissage ; mode libre + « Je suis ici ? » pour se recaler à l'œil ; titre du bouton, Aide et guides : « la 3D montre le plan, pas la galerie réelle » | Retour terrain |
 | Plan sans échelle ou sans structures | Sans échelle : bouton grisé et ouverture refusée avec un message | Plan sans structures : la vue montre sol, plafond, tracés et points |
 
+## Dessiner depuis la 3D, étape E3 (QCM du 03 et du 04/11/2026)
+
+| Sujet | Décision |
+|---|---|
+| Où | Vue plongeante 🦅 seulement ; ✏️ fait apparaître la barre, rien ne se dessine sans outil armé (règle de la 2D : retoucher l'outil l'éteint) ; à hauteur d'yeux, pas d'édition |
+| Outils | Toutes les structures (types perso compris), zones, tracés, 📐 mesure ; pas les POI ; ni 🪜 jonction (deux niveaux, la 3D en montre un) ni 🧹 Effacer (« Sélectionner » et « Par zone » se jouent sur la carte) |
+| Gestes | Ceux de la 2D, rejoués (`map.fire` au point touché) : undo, uid, fiches, styles, sous-menus, droits de la 2D ; caméra inchangée (seul un toucher bref pose) ; outil armé passe avant la fiche |
+| Interface | La barre de droite 2D : mêmes boutons, même ordre (📐 🛣️ ⬛ 🏛️), mêmes panneaux |
+| Niveau | Celui de la 3D ; la carte garde le sien |
+| Coût | Aperçu au sol pendant l'objet, une reconstruction à sa fin ; tuiles loin de l'objet reprises |
+| Fermeture au doigt | Choix du lot : rond doré de 0,3 m autour du 1er sommet, en mètres (24 px d'écran fermaient un mur de 0,4 m au 4e coin) ; zoomer agrandit la cible |
+| Rendu galerie | Choix du lot : armer une structure passe en mixte (retenu), avec un toast — on voit ce qu'on dessine, sans réglage caché |
+| Plan au sol | Livré (mémoire mesurée ci-dessous) : 🗺️ de la barre, coupé par défaut, niveau 0 seulement |
+| Greffe | `fiches: false` coupe aussi le dessin (`addons.md`) |
+
+### Mesures du dessin (`KTA_V3D_PERF=dessin KTA_V3D_TEL=1`, plan dense synthétique, Chromium, processeur × 4)
+
+| Mesure | Structures | Mixte |
+|---|---|---|
+| Sommet posé (geste de la carte + aperçu, sans reconstruction) | 3 à 10 ms | 2 à 5 ms |
+| Fermeture d'un pilier → scène refaite (visible) | 0,35 à 0,39 s | 0,41 à 0,53 s |
+| Dont relecture des données (index, empreinte) | ~0,2 s + 0,06 à 0,08 s | ~0,3 s + 0,06 à 0,08 s |
+| Plan au sol (1024 px) | 4 Mo de texture, dessin 4 à 7 ms, tas JS et images par seconde inchangés | idem |
+
+La reprise des tuiles (32 sur 32 hors de l'objet) ne gagne que ~45 ms : le reste est la relecture des 13 700 objets
+du plan (collecte, grille des volumes, index, empreinte), pas les tuiles. Non mesuré : un vrai iPhone ; un plan tuilé V2
+(le relevé fictif n'en est pas un : le chemin V2 du plan au sol est celui de l'export, `ktaDessinerRegionTuiles`).
+
 ## Intégration à l'app (lots 1, 2 et cohérence, livrés)
 
 1. **Entrée** : bouton cube de la barre de droite, sous ≡ Filtres (`interface.js > L.control.ktaVue3DControl`), qui
