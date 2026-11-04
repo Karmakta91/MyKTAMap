@@ -543,10 +543,10 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 **⚙️** opens a small **Settings** tile below it, each setting written out. It closes with ⚙️, Esc or a touch elsewhere.
 
 - **🧭 Follow / 🕹️ Free**: see above.
-- **🦅 Bird's-eye view** (or the V key): you see yourself from above, and it handles like a map.
-- 🦅 **Zoom** (from 6 to 60 m back): pinch with two fingers, mouse wheel, the **+ / −** buttons at the bottom right or the = / - keys. Zooming out, the scenery spreads with the view.
-- 🦅 **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or the small ▲ ▼ buttons next to + / −.
-- 🦅 Zoom and tilt are kept while the view stays open.
+- **✏️ Edit** (formerly bird's-eye view; or the V key): you see yourself from above, and it handles like a map.
+- ✏️ **Zoom** (from 6 to 60 m back): pinch with two fingers, mouse wheel, the **+ / −** buttons at the bottom right or the = / - keys. Zooming out, the scenery spreads with the view.
+- ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or the small ▲ ▼ buttons next to + / −.
+- ✏️ Zoom and tilt are kept while the view stays open.
 - **⛏️ Height**: the button shows the current height and opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m).
 - ⛏️ It is the same height as ⛏️ Mined volume, kept for this map: changing one changes the other. The scene is rebuilt in place, without moving you.
 - **Rendering**: the button shows the current rendering and moves to the next one (Mixed, Structures, Tunnels, see below). Kept for this map; default: Mixed.
@@ -558,7 +558,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
 - **☀️ Daylight**: everything is lit, like a scale model; the fog stays at the range. Kept on this device.
 - During a game, the range goes back to 30 m, the lamp to 100%, the beam to 71° and Daylight is off (settings greyed out), then your settings come back.
-- A **golden dot** on ⚙️ means a setting is not the default one: free mode, bird's-eye view, rendering other than Mixed, textures off, compass hidden, guidance off, range other than 30 m, lamp other than 100%, beam other than 71°, Daylight.
+- A **golden dot** on ⚙️ means a setting is not the default one: free mode, edit view, rendering other than Mixed, textures off, compass hidden, guidance off, range other than 30 m, lamp other than 100%, beam other than 71°, Daylight.
 
 #### 🏛️ The three renderings
 
@@ -692,9 +692,9 @@ Where and how a way through is drawn:
 - Hiding only removes the drawing: you still bump into pillars and walls, and 🪜 is still offered.
 - The route stays shown, as on the map. Image layers have no effect in 3D.
 
-#### ✏️ Drawing in bird's-eye view
+#### ✏️ Drawing in edit view
 
-- In **🦅 bird's-eye view**, the **✏️** button (on the right, in the middle) shows the map tools, in the same order: **📐 Measurement**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
+- In the **✏️ Edit** view, the **✏️** button (on the right, in the middle) shows the map tools, in the same order: **📐 Measurement**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
 - Each button opens **the same menu as on the map**: pillars, walls, working faces, your custom types, ➕ new type, ✅ Close / Validate.
 - Nothing is drawn until a tool is chosen. With a tool chosen, **a tap places a point** where you touch. Dragging, pinching and the mouse wheel still move the view, without placing a point.
 - **Closing a pillar, a wall or a zone**: tap the **gold circle** of the first point, or ✅ in the menu. For a thin wall, zoom in first: the circle grows with the view.
@@ -704,7 +704,7 @@ Where and how a way through is drawn:
 - **📐 Measurement**: the distance (or area) is shown in the 3D view, at the last point, as on the map.
 - **🗺️ Plan on the ground**: the plan image under the scene, to draw over the survey (level 0, the base plan).
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
-- **✏️, Escape, leaving bird's-eye view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
+- **✏️, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
 - In read-only mode, the drawing tools stay greyed out, as on the map; 📐 Measurement stays allowed.
 
 > ⚠️ The 3D view shows the **map**, not the real tunnel. Shapes and heights come from the survey (tunnels in Tunnels and Mixed modes: fixed widths per trace type), your position from the tracker, which drifts. Do not trust it more than the map.

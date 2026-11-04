@@ -2220,7 +2220,7 @@ icônes.
   `--kta-info-fond`, 44 px de haut au moins) ; un interrupteur (`aria-pressed`) montre sa **case à cocher** (16 px,
   cochée en `--kta-interaction`), le rendu et ⛏️ un chevron ; tous s'activent aussi à **Entrée et Espace**
   (`vue3d.js > _agirBouton`, rejoué au `click` du clavier ; le `click` qui suit le `pointerdown` d'un toucher est
-  ignoré). Dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, 🦅 Vue plongeante
+  ignoré). Dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, ✏️ Édition
   (`aria-pressed`), ⛏️ hauteur et son − / +, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, un toucher passe au
   suivant), Boussole (montrée / masquée, `config.js > getVue3DBoussole`, `myktamap_v3d_boussole_v1`, cet appareil,
   montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🪧 Guidage (`getVue3DGuidage`,
@@ -2241,11 +2241,11 @@ icônes.
   libellé, valeur dite, couleurs et clavier) — et ☀️ **Plein jour** (interrupteur `aria-pressed` pleine largeur,
   `myktamap_v3d_jour_v1`), tous de cet appareil ; trois curseurs et ☀️ `disabled` quand une greffe fige les réglages
   (`reglagesFiges`), titre suffixé « indisponible pendant une partie » ; effets : `tracking.md` § Vue 3D › Lampe).
-  La tuile tient au téléphone (393 px) ; les boutons de la vue plongeante (+ − ▲ ▼)
+  La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼)
   sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
-  inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue plongeante. **Repère** : point doré sur ⚙️
-  (`kta-v3d-modifie`, `_majRepere`) en mode libre, en vue plongeante, rendu autre que mixte, textures coupées,
+  inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue d'édition. **Repère** : point doré sur ⚙️
+  (`kta-v3d-modifie`, `_majRepere`) en mode libre, en vue d'édition, rendu autre que mixte, textures coupées,
   boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71° ou Plein
   jour. **Mode toujours visible** : pastille ronde à la taille des boutons
   en haut à gauche, à la hauteur de la rangée (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
@@ -2260,7 +2260,7 @@ icônes.
   Mixte : aucune icône de la carte ne dit « les deux », on n'en invente pas une), ⛏️ hauteur (le chiffre de ⛏️
   Volume exploité), 🧭 suivi (le tracker), 🚨 Sortie d'urgence, ≡ Filtres, ❓ aide, 🪜 passage entre niveaux, 📍 « Je
   suis ici ? » (recalage). Écartés parce qu'ils disent autre chose en 2D : 📍 pour le suivi (recalage), 🛰️ pour la
-  vue plongeante (Export GeoTIFF), ↕ pour la hauteur (passages entre niveaux de la légende), 🧱 / 🚇.
+  vue d'édition (Export GeoTIFF), ↕ pour la hauteur (passages entre niveaux de la légende), 🧱 / 🚇.
 - **Panneaux de POI** : toujours aux jetons du thème **sombre** (la scène est noire dans les deux thèmes), lus dans
   la règle `:root` des feuilles (`vue3d.js > _jetonsSombres`) : sur `<html>`, `getComputedStyle` rendrait ceux du
   thème clair. Les boutons de la vue, eux, suivent le thème. Liseré doré ; **danger** (`poiDanger.js > estDanger`) :
@@ -2297,8 +2297,8 @@ icônes.
   bouton de fiche `kta-popup-btn`, comme 💾 Sauver la note) ferme la vue et montre l'objet sur la carte (sa fiche, contour en surbrillance
   5 s). La fiche prend le focus (anneau `--kta-interaction` au clavier), Échap la ferme et rend le focus à la vue ;
   Tab passe par ses champs. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
-- **Dessin en vue plongeante** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, au
-  milieu, montrée en 🦅 seulement : **✏️** (`kta-actif` enfoncé, `aria-pressed`) puis **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
+- **Dessin en vue d'édition** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, au
+  milieu, montrée en ✏️ seulement : **✏️** (`kta-actif` enfoncé, `aria-pressed`) puis **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
   la barre de droite 2D, qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
   mêmes états ; icône, titre, `kta-group-mode-actif` (pastille du type armé) et `kta-outil-lecture-seule` **recopiés
   du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. Puis **🗺️ Plan au sol**
@@ -2309,7 +2309,7 @@ icônes.
   📐, groupe en accordéon sur la carte, y passe aussi (surbrillance par `isActive`). Le toucher qui ferme le panneau
   ne pose rien (avalé, comme sur la carte). Groupe grisé : le refus de la carte (`ktaEditionRefusee`), pas de panneau.
   Aperçu au sol de l'objet en cours (ruban, sommets, rond doré du 1er sommet) et étiquette de la mesure en panneau
-  (liseré rouge de la mesure de la carte). Contrats : `tracking.md` § Vue 3D › Dessiner en vue plongeante.
+  (liseré rouge de la mesure de la carte). Contrats : `tracking.md` § Vue 3D › Dessiner en vue d'édition.
 - **Passages entre niveaux** : boîte 🪜 à gauche, au milieu, boutons écrits « ▼ -1 · Nom (moyen) », coupés à la
   largeur (`.kta-v3d-btn-passage`, 72 % de l'écran au plus) ; le nom entier au libellé accessible. Changement de
   niveau derrière un **voile** (`.kta-v3d-fondu` : fond des jetons sombres posé par la vue en

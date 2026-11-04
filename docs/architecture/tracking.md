@@ -1464,7 +1464,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   face seulement là où ils donnent sur la galerie (`_remblaisGalerie`), inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
   contour coupe l'axe (`_hachurer`), perso au sol. **POI** à moins de 10 m de l'axe d'un tracé, ramenés
   contre la paroi la plus proche (8 cm devant) s'ils sont au-delà ; plus loin, masqués ; toujours sans test de
-  profondeur. Vue plongeante : plafond des pièces masqué, parois vues des deux côtés.
+  profondeur. Vue d'édition : plafond des pièces masqué, parois vues des deux côtés.
 - **Passages de niveau 🪜** (en libre ; en suivi, le niveau est celui du tracker) : à moins de 2 m d'un POI jonction
   (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à la place de son volume, ci-dessous ; jamais `pa`,
   qui n'a pas de moyen) ou d'un bout de tracé `jonction` (pris dans les deux sens), une boîte à gauche : boutons
@@ -1538,7 +1538,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   validé hors du tube, escalier en niche latérale), et l'on peut y marcher (`dedans`, `paroisBloquent`, `ctx.libre`
   des add-ons : une seule source). ⚠️ contrat : la niche latérale d'un escalier est une pièce « niche » que
   `versGalerie` ignore (recalage de la 2D inchangé : un tracker recalé n'y entre pas). Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé). 🩸 Sans
-  cela, une paroi du sol au plafond passait au travers de la cage, vue dans le trou en plongée. Filtres ignorés (masquer
+  cela, une paroi du sol au plafond passait au travers de la cage, vue dans le trou en vue d'édition. Filtres ignorés (masquer
   ne retire que le dessin). Les **rubans des tracés** et les liserés (matériau `rubans`) lisent le gabarit du sol comme
   le sol : coupés à la bouche, jamais suspendus au-dessus du vide ; l'itinéraire (marqueurs à mât) n'est pas coupé.
   `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux) ; POI décalés de 1 à 5 m, carrefour, raccords,
@@ -1596,7 +1596,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   est suivi jusqu'à 0,2° près.
 - **Rendu en pause** : la boucle `requestAnimationFrame` tourne, mais ne dessine que si quelque chose a bougé
   (`_e.sale`) ; immobile, aucune image (le checkup le mesure, boussole qui tremble comprise).
-- **Vue plongeante** (décision produit : comme une carte) : caméra au **recul** `e.recul` du point visé (2 m devant
+- **Vue d'édition** (nom de code `plongee` ; décision produit : comme une carte) : caméra au **recul** `e.recul` du point visé (2 m devant
   soi), 18,4 m par défaut, de 6 à 60 m (`RECUL`) ; inclinaison 15° à 85° (60° par défaut). **Zoom** (`zoomer(f)`,
   un cran = × 1,15) : molette (vers l'avant = plus près, un cran par 100 px de défilement, en continu au pavé
   tactile), pincement à deux doigts, boutons + / − (deux crans), touches = et -. **Inclinaison** : Maj + molette
@@ -1605,8 +1605,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   de 12 px (`GESTE_SEUIL`) : un pincement ne penche pas, un glisser ne zoome pas. Boutons + − ▲ ▼ en grille en bas à
   droite, montrés dans cette vue seulement (la tuile ⚙️ ouverte ne les recouvre pas). Recul et inclinaison retenus
   tant que la vue est ouverte (repartent du défaut à la réouverture). ⚠️ contrat : une greffe qui interdit la
-  plongée (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Rayon de scène
-  en plongée (`_rayonScene`) : max(1,4 × portée, 2,3 m par mètre de recul) — tuiles, volumes, panneaux de POI, carré
+  vue d'édition (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Rayon de scène
+  en vue d'édition (`_rayonScene`) : max(1,4 × portée, 2,3 m par mètre de recul) — tuiles, volumes, panneaux de POI, carré
   de sol (2,4 × le rayon) et brouillard (compté depuis la caméra : du recul + 30 % du rayon au recul + rayon + 2 m)
   le suivent : pas de bord de scène en dézoomant. À 60 m de recul, 138 m de rayon (mesures : ETUDE_VUE_3D.md).
 - **Portée** (curseur 🔭 de la tuile ⚙️, `config.js > getVue3DPortee`, réglage de cet appareil, décision produit) :
@@ -1626,7 +1626,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   rien ne brûle de près). Sous 100 % : force et halo × k, coupure × √k, décroissance de 1,2 à 1,6, brouillard de 45
   à 25 % (25 % : force × 0,25, portée moitié). Faisceau (`_coneLampe`) : demi-angle = cône / 2 (160° = 80°, sous la
   borne π/2 du SpotLight de three.js), pénombre de 0,4 (40°) à 0,55 (71°), puis jusqu'à 1 (160° : le bord se fond
-  dans le noir au lieu de dessiner un rond net). **Plein jour** = éclairage d'ambiance de la vue plongeante (0,9) à
+  dans le noir au lieu de dessiner un rond net). **Plein jour** = éclairage d'ambiance de la vue d'édition (0,9) à
   hauteur d'yeux, lampe inchangée, brouillard gardé à la portée (même coût, la portée reste le seul réglage de
   « jusqu'où l'on voit »), commencé à 65 % au moins. Ancienne clé `myktamap_v3d_lampe_v1` lue tant que les
   nouvelles manquent : « forte » = 200 %, « jour » = Plein jour ; jamais réécrite. ⚠️ contrat : la lampe se
@@ -1701,7 +1701,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   ne permet de le rattacher au remblais). Eau et hachures de l'inaccessible inchangées. Coupé : lots et matériau
   `opaque` d'origine, couleur de la légende exacte, volume gardé.
 - **Panneaux de POI** : jamais cachés par la géométrie (`depthTest: false`, `renderOrder` 10), bornés au rayon de
-  scène compté depuis soi (la portée ; en plongée, `_rayonScene`), échelle 1 → 0,5 et opacité 1 → 0,4 vers la
+  scène compté depuis soi (la portée ; en vue d'édition, `_rayonScene`), échelle 1 → 0,5 et opacité 1 → 0,4 vers la
   limite (`_majPanneaux`). De près
   (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un
   panneau remplissait l'écran du téléphone). Toujours aux jetons du thème **sombre** (décision produit : la scène est
@@ -1828,10 +1828,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
   fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
-### Dessiner en vue plongeante (✏️, QCM du 03/11 et du 04/11/2026)
+### Dessiner en vue d'édition (✏️, QCM du 03/11 et du 04/11/2026)
 
-- **Où** (décision produit) : en 🦅 seulement ; ✏️ montre la barre des groupes de la carte (`_monterOutils`, place :
-  `ui.md` § Vue 3D). Rien ne se dessine tant qu'aucun outil n'est armé (`_dessinActif` : ✏️ ouvert, plongée, greffe
+- **Où** (décision produit) : en ✏️ seulement ; ✏️ montre la barre des groupes de la carte (`_monterOutils`, place :
+  `ui.md` § Vue 3D). Rien ne se dessine tant qu'aucun outil n'est armé (`_dessinActif` : ✏️ ouvert, vue d'édition, greffe
   sans `fiches: false`, un mode de la carte armé : `modeStructure`, `modeZone`, `modeRoad`, `modeMesure`). Armé, un
   toucher bref de la scène pose un sommet **avant** toute fiche (`_toucher` → `_poserSommet`) ; glisser, pincer, deux
   doigts, molette et Maj + molette restent la caméra (seul le toucher bref, moins de 8 px et 0,5 s, pose).
@@ -1860,7 +1860,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   leur géométrie (`_noterFin`, `_reprendreTuiles` ; pourquoi 4 m : un pilier ouvre les tubes et décide zones et POI à
   3 m). Mesures (`KTA_V3D_PERF=dessin`, plan dense, iPhone émulé) : `ETUDE_VUE_3D.md` § Mesures du dessin.
 - **Fin, extinction** : gestes de la 2D (1er sommet, ✅ Fermer / Valider du panneau) ; ✏️, Échap (après tuile et
-  hauteur, avant la fiche), sortir de la plongée (`_appliquerVue`) et fermer la vue (`_quitterDessin`) éteignent par
+  hauteur, avant la fiche), sortir de la vue d'édition (`_appliquerVue`) et fermer la vue (`_quitterDessin`) éteignent par
   `_desactiverTousLesModes` de la carte : un objet non fini est validé s'il a assez de points, abandonné sinon
   (toasts de la 2D). Un objet fini n'est jamais perdu.
 - **Rendu** (décision produit) : le rendu galerie ne dessine aucune structure ; armer un outil de structure y passe en
@@ -1953,19 +1953,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `ctx.libre` à jour ; écriture pendant un geste de passage → rien pendant, relue à sa fin ; calque rapatrié (copies,
   ni double ni trou), copie retouchée, restitué ; case du calque dans ≡ = une reconstruction par clic.
   Toucher un objet (§ 27, formes fictives, doigt) : pilier et mur par leur face et leur dessus, zone, tracé, en mixte
-  et en structures, à hauteur d'yeux et en plongée ; galerie : zone dans le tube, tracé par son sol et sa paroi ; sol
+  et en structures, à hauteur d'yeux et en vue d'édition ; galerie : zone dans le tube, tracé par son sol et sa paroi ; sol
   vide et plafond → rien ; panneau de POI collé au pilier → la fiche du POI ; fiche du pilier = celle de la carte
   (note, 🗑️, rang des modales, focus) ; note tapée au clavier sans déplacer la vue, sauvée ; Échap → fiche fermée,
   focus à la vue ; greffe `fiches: false` → ni pilier ni POI au doigt, retirée → la fiche revient ; extension en
   lecture seule → ni note ni 🗑️ ; 🗑️ → pilier retiré de la scène sans rouvrir, annulation → revenu ; calque de
   données → lecture seule (noté : sa note ; muet : son titre) ; « Voir sur la carte » → vue fermée, carte centrée,
   surbrillance, fiche de la carte ouverte (zone de session).
-  Dessin en plongée (§ 28, formes fictives, doigt, 3D au −1 et carte au 0) : ni barre à hauteur d'yeux ; ✏️ → 📐 🛣️
+  Dessin en vue d'édition (§ 28, formes fictives, doigt, 3D au −1 et carte au 0) : ni barre à hauteur d'yeux ; ✏️ → 📐 🛣️
   ⬛ 🏛️ dans l'ordre de la carte, taille et icône de ses boutons ; panneau de la carte au-dessus de la vue (sans 🪜 ni
   🧹) ; rien sans outil ; pilier (4 sommets, aucune reconstruction, aperçu) fermé dans le rond doré → niveau −1, carte
   au 0, sommets à 3 cm, une reconstruction, visé ; glisser, pincer, deux doigts, molette, Maj + molette → aucun sommet ;
   annulé ; mur fermé par ✅, mur en ligne, zone, tracé (aucune reconstruction pendant), aimantation, mesure de 10 m et
-  son étiquette ; sortie de plongée (objet de 2 sommets abandonné), Échap, fermeture (objet de 3 sommets gardé) ;
+  son étiquette ; sortie de la vue d'édition (objet de 2 sommets abandonné), Échap, fermeture (objet de 3 sommets gardé) ;
   greffe `fiches: false` ; lecture seule ; plan au sol (caché au −1, une texture au 0, libérée) ; rendu galerie →
   mixte ; même pilier à la souris sur la carte : mêmes champs, sommets, historique.
   Jamais coincé (§ 13) : accroche de POI

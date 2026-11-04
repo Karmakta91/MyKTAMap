@@ -103,9 +103,9 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `itineraire` | itinéraire de l'app masqué (ruban, étapes, 🏁) ; scène refaite |
 | `guidage` | bandeau et chevrons du guidage de l'app masqués |
 | `course` | pas rapide interdit |
-| `avatar` | silhouette dorée de la vue plongeante masquée (l'add-on dessine la sienne) |
+| `avatar` | silhouette dorée de la vue d'édition masquée (l'add-on dessine la sienne) |
 | `commandes` | joystick et pavé retirés (une carte à toucher là où est le pouce) ; 🩸 `display` en style, le pavé étant en grille |
-| `plongee` | vue plongeante interdite : bouton 🦅 grisé, `basculerVue` et `zoomer` refusés, retour à hauteur d'yeux si l'on y était |
+| `plongee` | vue d'édition interdite : bouton ✏️ grisé, `basculerVue` et `zoomer` refusés, retour à hauteur d'yeux si l'on y était |
 | `fiches` | un toucher bref sur la scène n'ouvre plus rien (ni fiche de POI, de structure, de zone ou de tracé, ni nom d'un membre) : il est au greffon (un jeu qui tire au doigt) ; une fiche ouverte se ferme. ⚠️ Coupe aussi le **dessin** depuis la vue plongeante : barre ✏️ masquée, outil éteint, aucun sommet posé même si un outil de la carte était armé (`vue3d.js > _dessinPermis`) ; le jeu `mkmg` n'édite donc jamais le plan |
 | `reglagesFiges` (`true` pour l'activer, absent = `false`) | réglages ⚙️ Portée et Lampe de l'utilisateur figés : portée par défaut (30 m), intensité 100 %, faisceau de 71° et Plein jour coupé, trois curseurs et ☀️ grisés ; ce qui est retenu (vue et appareil) n'est jamais réécrit et revient au retrait ou avec la clé à `false`. Sans la clé, la greffe garde la portée et la lampe de l'utilisateur, Plein jour compris |
 
@@ -170,7 +170,7 @@ l'add-on.
 
 Fichiers : `js/coeur.js` (partie, interface, chrono, pile, eau, éboulis), `js/monde.js` (menaces, objets, tir,
 embuscades, un monde par niveau), `js/son.js`
-(sons WebAudio, aucun fichier), `js/joueur.js` (bras et fusil, silhouette en vue plongeante), `css/coeur.css`,
+(sons WebAudio, aucun fichier), `js/joueur.js` (bras et fusil, silhouette en vue d'édition), `css/coeur.css`,
 `img/fusil.svg` ; `coeur.js` charge les trois autres. Réglages chiffrés en tête de chaque fichier (`REGLES`).
 
 - **Lancement** : code `bas6`. Refus de terrain et d'installation ci-dessus ; sinon confirmation « Descendre plus
@@ -242,9 +242,9 @@ embuscades, un monde par niveau), `js/son.js`
   tué en lâche un sur quatre).
 - **Joueur** (`joueur.js`) : à hauteur d'yeux, deux bras et un fusil en formes simples accrochés à `ctx.camera`, en
   couleurs fixes non éclairées (la lampe, collée à la caméra, les délavait) et dessinés par-dessus la scène (sans
-  test de profondeur, ordre de rendu fixé) ; balancement, recul et éclair au tir. En vue plongeante : silhouette
+  test de profondeur, ordre de rendu fixé) ; balancement, recul et éclair au tir. En vue d'édition : silhouette
   verte armée, celle de la vue masquée (`regler({ avatar: false })`) — gardée, mais la partie interdit la vue
-  plongeante (`regler({ plongee: false })`, décision produit : voir d'en haut serait tricher). Pas de fiche au
+  d'édition (`regler({ plongee: false })`, décision produit : voir d'en haut serait tricher). Pas de fiche au
   toucher pendant la partie (`regler({ fiches: false })`) : un tir au doigt ouvrirait celle d'un pilier ou d'un POI.
 - **Interface** : santé, endurance et lampe (pile) en haut à gauche ; panneau en haut à droite réductible (▾ / ▸,
   retenu sous `myktamap_mkmg_panneau_v1`) : vague, chrono et guidage toujours là ; objectif, statistiques (égarés tués, balles

@@ -5427,7 +5427,7 @@
     tuile.hidden = true;
     e.tuileReglages = tuile;
     e.boutonSuivre = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-suivre", "🧭", _t("vue3d.suivre"), "suivre");
-    e.boutonVue = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-vue", "🦅 " + _t("vue3d.plongee"), _t("vue3d.plongee"), "vue");
+    e.boutonVue = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-vue", "✏️ " + _t("vue3d.plongee"), _t("vue3d.plongee"), "vue");
     e.boutonHauteur = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-hauteur", "", _t("vue3d.hauteur"), "hauteur");
     e.boutonHauteur.setAttribute("aria-expanded", "false");
     // Réglage de la hauteur : − valeur +, dans la tuile sous ⛏️, ouvert par lui.
@@ -6328,7 +6328,7 @@
   }
 
   // Vue plongeante permise ou non (greffe : regler({ plongee: false }), ex. un jeu où voir d'en haut serait
-  // tricher) : bouton 🦅 grisé, basculement refusé, et retour à hauteur d'yeux si l'on y était.
+  // tricher) : bouton ✏️ grisé, basculement refusé, et retour à hauteur d'yeux si l'on y était.
   function _permettrePlongee(oui) {
     const e = _e;
     if (!e) return;

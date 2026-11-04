@@ -543,10 +543,10 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 **⚙️** ouvre une petite tuile **Réglages** sous lui, chaque réglage écrit en clair. Elle se ferme par ⚙️, Échap ou un toucher ailleurs.
 
 - **🧭 Suivi / 🕹️ Libre** : voir ci-dessus.
-- **🦅 Vue plongeante** (ou touche V) : tu te vois d'au-dessus, et elle se manie comme une carte.
-- 🦅 **Zoom** (de 6 à 60 m de recul) : pincer à deux doigts, molette, boutons **+ / −** en bas à droite ou touches = / -. En dézoomant, le décor s'étend avec la vue.
-- 🦅 **Inclinaison** (de presque verticale à rasante) : glisser deux doigts ensemble vers le haut ou le bas, **Maj + molette**, PageUp / PageDown ou les petits boutons ▲ ▼ à côté de + / −.
-- 🦅 Zoom et inclinaison sont retenus tant que la vue reste ouverte.
+- **✏️ Édition** (ex-vue plongeante ; ou touche V) : tu te vois d'au-dessus, et elle se manie comme une carte.
+- ✏️ **Zoom** (de 6 à 60 m de recul) : pincer à deux doigts, molette, boutons **+ / −** en bas à droite ou touches = / -. En dézoomant, le décor s'étend avec la vue.
+- ✏️ **Inclinaison** (de presque verticale à rasante) : glisser deux doigts ensemble vers le haut ou le bas, **Maj + molette**, PageUp / PageDown ou les petits boutons ▲ ▼ à côté de + / −.
+- ✏️ Zoom et inclinaison sont retenus tant que la vue reste ouverte.
 - **⛏️ Hauteur** : le bouton affiche la hauteur en cours et ouvre **−** / **+**, de 1,5 à 20 m (par 0,1 m jusqu'à 5 m, puis 0,5 m).
 - ⛏️ C'est la même hauteur que ⛏️ Volume exploité, retenue pour ce plan : changer l'une change l'autre. La scène se refait sur place, sans te déplacer.
 - **Rendu** : le bouton affiche le rendu en cours et passe au suivant (Mixte, Structures, Galerie, voir plus bas). Retenu pour ce plan ; par défaut, Mixte.
@@ -558,7 +558,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **🔦 Faisceau** : un curseur de 40 à 160° (71° par défaut) règle la largeur du faisceau ; plus il est large, plus son bord se fond dans le noir. Retenu sur cet appareil.
 - **☀️ Plein jour** : tout est éclairé, comme une maquette ; le brouillard reste à la portée. Retenu sur cet appareil.
 - Pendant une partie de jeu, la portée repasse à 30 m, la lampe à 100 %, le faisceau à 71° et Plein jour est coupé (réglages grisés), puis tes réglages reviennent.
-- Un **point doré** sur ⚙️ signale qu'un réglage n'est pas celui par défaut : mode libre, vue plongeante, autre rendu que Mixte, textures coupées, boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71°, Plein jour.
+- Un **point doré** sur ⚙️ signale qu'un réglage n'est pas celui par défaut : mode libre, vue d'édition, autre rendu que Mixte, textures coupées, boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71°, Plein jour.
 
 #### 🏛️ Les trois rendus
 
@@ -692,9 +692,9 @@ Où et comment un passage se dessine :
 - Masquer n'enlève que le dessin : on bute toujours contre les piliers et les parois, et 🪜 reste proposé.
 - L'itinéraire reste affiché, comme sur la carte. Les calques d'image n'ont pas d'effet en 3D.
 
-#### ✏️ Dessiner en vue plongeante
+#### ✏️ Dessiner en vue d'édition
 
-- En **🦅 vue plongeante**, le bouton **✏️** (à droite, au milieu) montre les outils de la carte, dans le même ordre : **📐 Mesure**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. À hauteur d'yeux, pas de dessin.
+- En vue **✏️ Édition**, le bouton **✏️** (à droite, au milieu) montre les outils de la carte, dans le même ordre : **📐 Mesure**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. À hauteur d'yeux, pas de dessin.
 - Chaque bouton ouvre **le même menu que sur la carte** : piliers, murs, fronts de taille, tes types perso, ➕ nouveau type, ✅ Fermer / Valider.
 - Rien ne se dessine tant qu'aucun outil n'est choisi. Outil choisi : **un toucher pose un point** là où tu touches. Glisser, pincer et la molette bougent toujours la vue, sans poser de point.
 - **Fermer un pilier, un mur ou une zone** : touche le **rond doré** du premier point, ou ✅ dans le menu. Pour un mur fin, zoome d'abord : le rond grandit avec la vue.
@@ -704,7 +704,7 @@ Où et comment un passage se dessine :
 - **📐 Mesure** : la distance (ou la surface) s'affiche dans la 3D, au dernier point, comme sur la carte.
 - **🗺️ Plan au sol** : l'image du plan sous la scène, pour dessiner sur le relevé (niveau 0, celui du plan de base).
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
-- **✏️, Échap, quitter la vue plongeante ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
+- **✏️, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
 - En lecture seule, les outils de dessin restent grisés, comme sur la carte ; 📐 Mesure reste permise.
 
 > ⚠️ La 3D montre le **plan**, pas la galerie réelle. Formes et hauteurs sont celles du relevé (les galeries des modes Galerie et Mixte : des largeurs fixes par type de tracé), ta position celle du tracker, qui dérive. Ne t'y fie pas plus qu'à la carte.

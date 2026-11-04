@@ -543,10 +543,10 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 **⚙️** abre una pequeña ficha **Ajustes** debajo, cada ajuste escrito con todas las letras. Se cierra con ⚙️, Esc o un toque en otro sitio.
 
 - **🧭 Seguimiento / 🕹️ Libre**: ver arriba.
-- **🦅 Vista aérea** (o la tecla V): te ves desde arriba, y se maneja como un mapa.
-- 🦅 **Zoom** (de 6 a 60 m de distancia): pellizca con dos dedos, rueda del ratón, botones **+ / −** abajo a la derecha o teclas = / -. Al alejar, el decorado se extiende con la vista.
-- 🦅 **Inclinación** (de casi vertical a rasante): desliza dos dedos juntos hacia arriba o abajo, **Mayús + rueda**, RePág / AvPág o los botoncitos ▲ ▼ junto a + / −.
-- 🦅 El zoom y la inclinación se conservan mientras la vista sigue abierta.
+- **✏️ Edición** (antes vista aérea; o la tecla V): te ves desde arriba, y se maneja como un mapa.
+- ✏️ **Zoom** (de 6 a 60 m de distancia): pellizca con dos dedos, rueda del ratón, botones **+ / −** abajo a la derecha o teclas = / -. Al alejar, el decorado se extiende con la vista.
+- ✏️ **Inclinación** (de casi vertical a rasante): desliza dos dedos juntos hacia arriba o abajo, **Mayús + rueda**, RePág / AvPág o los botoncitos ▲ ▼ junto a + / −.
+- ✏️ El zoom y la inclinación se conservan mientras la vista sigue abierta.
 - **⛏️ Altura**: el botón muestra la altura actual y abre **−** / **+**, de 1,5 a 20 m (de 0,1 en 0,1 m hasta 5 m, luego 0,5 m).
 - ⛏️ Es la misma altura que ⛏️ Volumen explotado, guardada para este plano: cambiar una cambia la otra. La escena se rehace en el sitio, sin moverte.
 - **Representación**: el botón muestra la representación actual y pasa a la siguiente (Mixto, Estructuras, Galería, ver más abajo). Guardada para este plano; por defecto, Mixto.
@@ -558,7 +558,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **🔦 Haz**: un cursor de 40 a 160° (71° por defecto) ajusta la anchura del haz; cuanto más ancho, más se funde su borde en la oscuridad. Se guarda en este dispositivo.
 - **☀️ Pleno día**: todo iluminado, como una maqueta; la niebla se queda en el alcance. Se guarda en este dispositivo.
 - Durante una partida, el alcance vuelve a 30 m, la lámpara a 100 %, el haz a 71° y Pleno día se apaga (ajustes en gris), y luego vuelven tus ajustes.
-- Un **punto dorado** en ⚙️ indica que un ajuste no es el predeterminado: modo libre, vista aérea, representación distinta de Mixto, texturas desactivadas, brújula oculta, guiado desactivado, alcance distinto de 30 m, lámpara distinta de 100 %, haz distinto de 71°, Pleno día.
+- Un **punto dorado** en ⚙️ indica que un ajuste no es el predeterminado: modo libre, vista de edición, representación distinta de Mixto, texturas desactivadas, brújula oculta, guiado desactivado, alcance distinto de 30 m, lámpara distinta de 100 %, haz distinto de 71°, Pleno día.
 
 #### 🏛️ Las tres representaciones
 
@@ -692,9 +692,9 @@ Dónde y cómo se dibuja un paso:
 - Ocultar solo quita el dibujo: sigues chocando con los pilares y las paredes, y 🪜 se sigue ofreciendo.
 - El itinerario sigue visible, como en el mapa. Las capas de imagen no tienen efecto en 3D.
 
-#### ✏️ Dibujar en vista aérea
+#### ✏️ Dibujar en vista de edición
 
-- En **🦅 vista aérea**, el botón **✏️** (a la derecha, en el centro) muestra las herramientas del mapa, en el mismo orden: **📐 Medición**, **🛣️ Trazados**, **⬛ Zonas**, **🏛️ Estructuras**. A la altura de los ojos, no se dibuja.
+- En la vista **✏️ Edición**, el botón **✏️** (a la derecha, en el centro) muestra las herramientas del mapa, en el mismo orden: **📐 Medición**, **🛣️ Trazados**, **⬛ Zonas**, **🏛️ Estructuras**. A la altura de los ojos, no se dibuja.
 - Cada botón abre **el mismo menú que en el mapa**: pilares, muros, frentes de corte, tus tipos personalizados, ➕ nuevo tipo, ✅ Cerrar / Validar.
 - No se dibuja nada mientras no elijas una herramienta. Con una herramienta elegida, **un toque pone un punto** donde tocas. Deslizar, pellizcar y la rueda siguen moviendo la vista, sin poner puntos.
 - **Cerrar un pilar, un muro o una zona**: toca el **círculo dorado** del primer punto, o ✅ en el menú. Para un muro fino, acerca la vista antes: el círculo crece con ella.
@@ -704,7 +704,7 @@ Dónde y cómo se dibuja un paso:
 - **📐 Medición**: la distancia (o la superficie) se muestra en la 3D, en el último punto, como en el mapa.
 - **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, para dibujar sobre el levantamiento (nivel 0, el del plano base).
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
-- **✏️, Escape, salir de la vista aérea o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
+- **✏️, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
 - En solo lectura, las herramientas de dibujo quedan en gris, como en el mapa; 📐 Medición sigue permitida.
 
 > ⚠️ La 3D muestra el **plano**, no la galería real. Formas y alturas vienen del levantamiento (las galerías de los modos Galería y Mixto: anchuras fijas por tipo de trazado), tu posición del tracker, que deriva. No te fíes más que del mapa.

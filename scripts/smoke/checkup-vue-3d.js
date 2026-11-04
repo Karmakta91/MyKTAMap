@@ -6495,7 +6495,7 @@ async function sectionDessin(page) {
         };
         X.vider();
         // Joueur : fusil tenu à deux mains, accroché à la caméra. Vue plongeante interdite pendant la partie (voir
-        // d'en haut serait tricher) : bouton 🦅 grisé, basculement refusé.
+        // d'en haut serait tricher) : bouton ✏️ grisé, basculement refusé.
         r.joueur = M().etat().joueur;
         K.basculerVue();
         await pause(150);
@@ -6770,7 +6770,7 @@ async function sectionDessin(page) {
         MK.tirJoueur.eclair, "jeu : bras et fusil 3D accrochés à la caméra (recul et éclair au tir)",
         { yeux: MK.joueur, tir: MK.tirJoueur });
       verifier(MK.plongee.vue === "yeux" && MK.plongee.reglage === false && MK.plongee.bouton && MK.quitte.boutonVue,
-        "jeu : vue plongeante interdite pendant la partie (🦅 grisé, basculement refusé), rendue en quittant",
+        "jeu : vue plongeante interdite pendant la partie (✏️ grisé, basculement refusé), rendue en quittant",
         { partie: MK.plongee, quitte: MK.quitte.boutonVue });
       verifier(!!MK.ficheDoigt.cible && !MK.ficheDoigt.fiche && MK.ficheDoigt.reglage === false,
         "jeu : tir au doigt sur un objet de la scène → aucune fiche (regler({ fiches: false }))", MK.ficheDoigt);
