@@ -5707,7 +5707,8 @@ async function sectionFichesObjets(page) {
           horsEffondrement: !!m1.cible && (Math.abs(m1.cible.x - P(15, 0).x) > 2.5 * a.sc ||
             Math.abs(m1.cible.y - P(15, 0).y) > 2.5 * a.sc) };
         // Éléments du jeu (addons/mkmg/css) en place autour des commandes de la vue : aucun ne chevauche un bouton,
-        // la pastille de mode ni la boussole.
+        // la pastille de mode ni la boussole. Les calques plein écran sans pointeur (voile d'un coup reçu) ne comptent
+        // pas : ils passent sous tout.
         const boite = function (el) { return el.getBoundingClientRect(); };
         const commandes = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *, " +
           "#kta-vue3d .kta-v3d-mode-indic, #kta-vue3d .kta-v3d-boussole, #kta-vue3d .kta-v3d-pad > *, " +
@@ -5715,7 +5716,9 @@ async function sectionFichesObjets(page) {
         const jeu = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-greffe [class*='mkmg-']"))
           .filter(function (el) {
             const b = boite(el);
-            return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== "hidden";
+            const plein = b.width >= window.innerWidth - 1 && b.height >= window.innerHeight * 0.8 &&
+              getComputedStyle(el).pointerEvents === "none";
+            return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== "hidden" && !plein;
           });
         r.chevauche = [];
         jeu.forEach(function (j) {
