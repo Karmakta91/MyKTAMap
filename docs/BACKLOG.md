@@ -145,6 +145,11 @@
 
 ## Entrant
 
+- **Générateur : rendu 3D par défaut du plan** — demande KARMA 04/11 : choisir à la génération le rendu de la vue 3D
+  par défaut (Mixte / Structures / Galerie), au lieu de Mixte pour tous ; le choix de l'utilisateur, retenu par plan
+  (`setPlanRenduVue3D`), reste prioritaire. À faire après les lots du 04/11.
+  `qui: Claude · action: champ du Générateur (createConf.js) + lecture par vue3d.js > _renduVoulu · fini: plan généré en
+  Galerie qui s'ouvre en Galerie, checkup · depuis: 04/11/2026 · taille: S`
 - **Fermeture d'une forme en px plan (2D)** — ✅ mesuré 04/11 (lot 3d-e3) : `zones.js > CLOSE_TOLERANCE` et
   `structures.js > STRUCT_CLOSE_TOLERANCE` valent 5 px plan, soit 0,8 m sur le relevé fictif (6,25 px/m) : un mur de
   0,4 m posé coin par coin se ferme en triangle au 4e coin, en 2D comme en 3D (rond doré de 0,3 m en 3D, dominé).
