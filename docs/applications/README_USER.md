@@ -557,7 +557,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **Rendu** : le bouton affiche le rendu en cours et passe au suivant (Mixte, Structures, Galerie, voir plus bas). Retenu pour ce plan ; par défaut, Mixte.
 - **🧱 Textures** (activé par défaut) : pierre, roche, parpaing, terre et éboulis à leur taille réelle (voir plus bas). Retenu sur cet appareil.
 - **Boussole** : la tuile la montre ou la masque, pour cet appareil. En bas à gauche, son **N** montre le nord réel, d'après la calibration du Nord du plan, et tourne avec ta vue. Plan sans Nord calibré : elle montre le haut du plan et l'écrit.
-- **🪧 Guidage** : coupé, il masque en 3D le bandeau de consigne et les chevrons au sol. L'itinéraire, ses étapes et 🏁 restent dessinés ; une sortie d'urgence s'affiche toujours ; le guidage de la carte n'est pas touché. Retenu sur cet appareil.
+- **🪧 Guidage** : coché, il suffit : avec un itinéraire, le bandeau et les chevrons s'affichent en 3D même si le guidage de la carte est coupé (sa ✕). Coupé, il masque en 3D le bandeau de consigne et les chevrons au sol. L'itinéraire, ses étapes et 🏁 restent dessinés ; une sortie d'urgence s'affiche toujours ; le guidage de la carte n'est pas touché. Retenu sur cet appareil.
 - **🔭 Portée** : un curseur de 15 à 100 m (30 m par défaut) règle jusqu'où tu vois. Le brouillard noir, la lampe et le décor suivent. Plus loin, c'est plus lourd pour le téléphone. Retenu sur cet appareil.
 - **💡 Lampe** : un curseur de 25 à 300 % (100 % par défaut) règle la force de la lampe frontale ; plus elle est forte, plus elle porte loin. Retenu sur cet appareil.
 - **🔦 Faisceau** : un curseur de 40 à 160° (71° par défaut) règle la largeur du faisceau ; plus il est large, plus son bord se fond dans le noir. Retenu sur cet appareil.
@@ -670,7 +670,7 @@ Où et comment un passage se dessine :
 - Là où il traverse un **remblais** ou un **effondrement**, il monte le long de sa face et passe **par-dessus** (chevrons et étapes aussi), sans que le tracé de la carte change.
 - La vue le redessine dès qu'il change (tracé depuis 🚨 pendant la 3D compris).
 - **Guidage** : un **bandeau** sous la rangée de boutons donne la même consigne que sur la carte (« Dans ~20 m, tourner à droite »). Des **chevrons dorés** au sol montrent le chemin jusqu'à la prochaine manœuvre.
-- En **suivi**, c'est la consigne de ton tracker. En **libre**, c'est un **aperçu** calculé depuis l'endroit où tu es en 3D (le guidage réel, lui, suit le tracker) ; si tu t'écartes du trajet en libre, l'itinéraire est recalculé tout seul depuis ta place en 3D, sans bouger le tracker, et en suivi le bandeau propose, comme sur la carte, **Recalculer d'ici**, **Je suis ici** ou **Ignorer**. Pas d'annonce vocale.
+- En **suivi**, c'est la consigne de ton tracker (un aperçu depuis le tracker si le guidage de la carte est coupé). En **libre**, c'est un **aperçu** calculé depuis l'endroit où tu es en 3D (le guidage réel, lui, suit le tracker) ; si tu t'écartes du trajet en libre, l'itinéraire est recalculé tout seul depuis ta place en 3D, sans bouger le tracker, et en suivi le bandeau propose, comme sur la carte, **Recalculer d'ici**, **Je suis ici** ou **Ignorer**. Pas d'annonce vocale.
 - **⚪ Ronds aux intersections** : si l'option est cochée pour ce plan (⚙️ Configuration › 🎨 Affichage), les ronds de la carte sont posés au sol en 3D aussi, à leur couleur, au niveau affiché.
 
 #### 🚨 Dangers, favoris et sortie d'urgence

@@ -557,7 +557,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **Rendering**: the button shows the current rendering and moves to the next one (Mixed, Structures, Tunnels, see below). Kept for this map; default: Mixed.
 - **🧱 Textures** (on by default): stone, rock, concrete block, earth and rubble at their real size (see below). Kept on this device.
 - **Compass**: the tile shows or hides it, for this device. At the bottom left, its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
-- **🪧 Guidance**: when off, the 3D view hides the instruction banner and the chevrons on the ground. The route, its stops and 🏁 stay drawn; an emergency exit is always shown; the map's guidance is not affected. Kept on this device.
+- **🪧 Guidance**: on, it is enough: with a route, the banner and the chevrons show in 3D even if the map's guidance is off (its ✕). When off, the 3D view hides the instruction banner and the chevrons on the ground. The route, its stops and 🏁 stay drawn; an emergency exit is always shown; the map's guidance is not affected. Kept on this device.
 - **🔭 Range**: a slider from 15 to 100 m (30 m by default) sets how far you see. The black fog, the lamp and the scenery follow. Further is heavier for the phone. Kept on this device.
 - **💡 Lamp**: a slider from 25 to 300% (100% by default) sets the headlamp's strength; the stronger, the farther it reaches. Kept on this device.
 - **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
@@ -670,7 +670,7 @@ Where and how a way through is drawn:
 - Where it crosses **backfill** or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same.
 - The view redraws it as soon as it changes (drawn from 🚨 during the 3D view included).
 - **Guidance**: a **banner** under the row of buttons gives the same instruction as on the map ("In ~20 m, turn right"). **Golden chevrons** on the ground show the way to the next manoeuvre.
-- In **follow** mode it is your tracker's instruction. In **free** mode it is a **preview** worked out from where you are in 3D (real guidance still follows the tracker); if you stray from the route in free mode, the route is recalculated on its own from your 3D spot, without moving the tracker, and in follow mode the banner offers, as on the map, **Recompute from here**, **I am here** or **Ignore**. No voice announcements.
+- In **follow** mode it is your tracker's instruction (a preview from the tracker if the map's guidance is off). In **free** mode it is a **preview** worked out from where you are in 3D (real guidance still follows the tracker); if you stray from the route in free mode, the route is recalculated on its own from your 3D spot, without moving the tracker, and in follow mode the banner offers, as on the map, **Recompute from here**, **I am here** or **Ignore**. No voice announcements.
 - **⚪ Circles at intersections**: if the option is ticked for this map (⚙️ Settings › 🎨 Display), the map's circles are laid on the ground in 3D too, in their colour, on the level shown.
 
 #### 🚨 Dangers, favourites and emergency exit

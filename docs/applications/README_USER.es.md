@@ -557,7 +557,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **Representación**: el botón muestra la representación actual y pasa a la siguiente (Mixto, Estructuras, Galería, ver más abajo). Guardada para este plano; por defecto, Mixto.
 - **🧱 Texturas** (activado por defecto): piedra, roca, bloque de hormigón, tierra y escombros a su tamaño real (ver más abajo). Se guarda en este dispositivo.
 - **Brújula**: la ficha la muestra o la oculta, para este dispositivo. Abajo a la izquierda, su **N** indica el norte real, según la calibración del norte del plano, y gira con tu vista. Plano sin norte calibrado: muestra la parte superior del plano y lo indica.
-- **🪧 Guiado**: desactivado, la vista 3D oculta la banda de indicaciones y los chevrones del suelo. La ruta, sus etapas y 🏁 siguen dibujadas; una salida de emergencia se muestra siempre; el guiado del mapa no cambia. Se guarda en este dispositivo.
+- **🪧 Guiado**: activado, basta: con un itinerario, la banda y los chevrones se muestran en 3D aunque el guiado del mapa esté desactivado (su ✕). Desactivado, la vista 3D oculta la banda de indicaciones y los chevrones del suelo. La ruta, sus etapas y 🏁 siguen dibujadas; una salida de emergencia se muestra siempre; el guiado del mapa no cambia. Se guarda en este dispositivo.
 - **🔭 Alcance**: un cursor de 15 a 100 m (30 m por defecto) ajusta hasta dónde ves. La niebla negra, la lámpara y el decorado siguen. Más lejos es más pesado para el teléfono. Se guarda en este dispositivo.
 - **💡 Lámpara**: un cursor de 25 a 300 % (100 % por defecto) ajusta la fuerza de la linterna frontal; cuanto más fuerte, más lejos alumbra. Se guarda en este dispositivo.
 - **🔦 Haz**: un cursor de 40 a 160° (71° por defecto) ajusta la anchura del haz; cuanto más ancho, más se funde su borde en la oscuridad. Se guarda en este dispositivo.
@@ -670,7 +670,7 @@ Dónde y cómo se dibuja un paso:
 - Donde cruza un **relleno** o un **derrumbe**, sube por su cara y pasa **por encima** (chevrones y etapas también), sin que cambie la ruta del mapa.
 - La vista la vuelve a dibujar en cuanto cambia (trazada desde 🚨 durante la vista 3D incluida).
 - **Guiado**: una **banda** bajo la fila de botones da la misma indicación que en el mapa (« En ~20 m, gira a la derecha »). **Chevrones dorados** en el suelo muestran el camino hasta la próxima maniobra.
-- En **seguimiento**, es la indicación de tu tracker. En **libre**, es una **vista previa** calculada desde donde estás en 3D (el guiado real sigue al tracker); si te apartas del trayecto en libre, el itinerario se recalcula solo desde tu lugar en 3D, sin mover el tracker, y en seguimiento la banda ofrece, como en el mapa, **Recalcular desde aquí**, **Estoy aquí** o **Ignorar**. Sin anuncios de voz.
+- En **seguimiento**, es la indicación de tu tracker (una vista previa desde el tracker si el guiado del mapa está desactivado). En **libre**, es una **vista previa** calculada desde donde estás en 3D (el guiado real sigue al tracker); si te apartas del trayecto en libre, el itinerario se recalcula solo desde tu lugar en 3D, sin mover el tracker, y en seguimiento la banda ofrece, como en el mapa, **Recalcular desde aquí**, **Estoy aquí** o **Ignorar**. Sin anuncios de voz.
 - **⚪ Círculos en las intersecciones**: si la opción está marcada para este plano (⚙️ Configuración › 🎨 Visualización), los círculos del mapa también se colocan en el suelo en 3D, de su color, en el nivel mostrado.
 
 #### 🚨 Peligros, favoritos y salida de emergencia

@@ -5122,11 +5122,13 @@
     return r && Array.isArray(r.points) && r.points.length >= 2 ? r : null;
   }
 
-  // ⚠️ contrat (décision produit) : en suivi, la consigne RÉELLE du guidage (ItiGuidage.etat(), comme l'écran XL),
-  // rien si le bandeau 2D ne parle pas ; en libre, un APERÇU depuis la position 3D (ItiGuidage.apercu, qui ne
-  // touche pas l'état du guidage). → { bandeau, chevrons } : consigne à montrer (null = rien) et abscisses
-  // { s, sCible } (px le long du trajet) des chevrons, montrés même réglé sur « Jamais ». Guidage coupé dans ⚙️
-  // (_guidageMontre) : ni bandeau ni chevrons, sauf un guidage d'urgence (comme en 2D : `masque: !urgence && …`).
+  // ⚠️ contrat (décision produit) : 🪧 Guidage montré dans ⚙️ suffit ; le bandeau 2D réglé sur « Jamais » (croix,
+  // bouton de la barre) n'éteint pas la 3D, et la 3D ne touche pas ce réglage. En suivi, la consigne RÉELLE du
+  // guidage (ItiGuidage.etat(), comme l'écran XL, avec ses boutons d'écart) quand le bandeau 2D parle, sinon un
+  // APERÇU depuis la position du tracker ; en libre, un APERÇU depuis la position 3D (ItiGuidage.apercu, qui ne
+  // touche pas l'état du guidage ; son `masque` ne vaut que pour la 2D). → { bandeau, chevrons } : consigne à
+  // montrer (null = rien) et abscisses { s, sCible } (px le long du trajet) des chevrons. Guidage coupé dans ⚙️
+  // (_guidageMontre) : ni bandeau ni chevrons, sauf un guidage d'urgence, toujours montré (comme en 2D).
   // Écart de la place libre au trajet (m, Infinity sans tronçon à son niveau ; null hors libre) : `e.ecartLibre`, lu
   // par _recalerLibre, mesuré par le même aperçu, même guidage coupé (le recalcul vise l'itinéraire, pas le bandeau).
   function _lireGuidage() {
@@ -5143,16 +5145,18 @@
     }
     let ap = null;
     if (!reel && typeof G.apercu === "function") {
-      ap = G.apercu(e.pos, { cap: e.cap, sPrec: e.apS, niveau: e.niveau === null ? undefined : e.niveau });
+      const tr = e.mode === "suivi" && typeof window.getTrackingPosition === "function"
+        ? window.getTrackingPosition() : null;
+      const depuis = tr && Number.isFinite(tr.x) && Number.isFinite(tr.y) ? tr : e.pos;
+      ap = G.apercu(depuis, { cap: e.cap, sPrec: e.apS, niveau: e.niveau === null ? undefined : e.niveau });
       if (!ap || !ap.visible) ap = null;
     }
     e.apS = ap ? ap.s : undefined;
     if (e.mode === "libre" && typeof G.apercu === "function") e.ecartLibre = ap ? ap.distM : Infinity;
     if (!_permisGreffe("guidage")) return { bandeau: null, chevrons: null };
-    const bandeau = reel || (e.mode !== "suivi" && ap && !ap.masque ? ap : null);
     const src = reel || ap;
     if (!_guidageMontre() && !(src && src.urgence)) return { bandeau: null, chevrons: null };
-    return { bandeau: bandeau, chevrons: src && Number.isFinite(src.s) && Number.isFinite(src.sCible) ? src : null };
+    return { bandeau: src, chevrons: src && Number.isFinite(src.s) && Number.isFinite(src.sCible) ? src : null };
   }
 
   function _majGuidage(ts) {

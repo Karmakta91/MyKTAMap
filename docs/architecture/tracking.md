@@ -1297,8 +1297,9 @@ demi-tours en 350 m sous 4 m de bruit).
   gardé par la replanification) → pas de croix, affiché même réglé sur « Jamais », « Recalculer » =
   `SortieUrgence.relancerDepuis(pos)`. L'écran XL lit `ItiGuidage.etat()` dans son `_tick`.
 - **Vue 3D** (`vue3d.js`, § Vue 3D › Guidage) : en suivi, elle lit `ItiGuidage.etat()` comme l'écran XL (`s` /
-  `sCible` : abscisses de la position et de la prochaine consigne, pour ses chevrons) ; en libre,
-  `ItiGuidage.apercu(pos, { cap, sPrec, niveau })` : mêmes textes (`_textes`, partagé avec le bandeau), calculés depuis
+  `sCible` : abscisses de la position et de la prochaine consigne, pour ses chevrons) quand le bandeau 2D parle,
+  sinon l'aperçu depuis le tracker ; en libre, `ItiGuidage.apercu(pos, { cap, sPrec, niveau })` : mêmes textes
+  (`_textes`, partagé avec le bandeau), calculés depuis
   une position quelconque **sans toucher l'état** du guidage (ni progression, ni écart, ni demi-tour ; loin du trajet,
   « rejoindre »). `niveau` : la position n'est projetée que sur les points du trajet à ce niveau (chaque point porte le
   sien, `pathfinder.js > computeRoute` ; transit = aucun) ; niveau sans tronçon → `visible: false` (plus de
@@ -1877,12 +1878,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`Pathfinder.computeRoute`, 210 à 300 ms) et du rendu de la carte (20 à 40 ms) ; l'itinéraire 3D, 2 à 12 ms.
 - **Bandeau** (`_majBandeau`, dans `_e.bandeau` sous la rangée du haut, `top` posé par `_majSousHaut` sous la rangée
   seule) : icône (ou schéma du carrefour), consigne, ligne « puis… », mêmes textes que le bandeau 2D, relus toutes les
-  250 ms (`_lireGuidage`). ⚠️ contrat (décision produit) : **en suivi**, la consigne réelle (`ItiGuidage.etat()`,
-  comme l'écran XL), rien quand le bandeau 2D ne parle pas (réglage « Jamais », position inconnue) ; **en libre**, un
-  **aperçu** depuis la position 3D (`ItiGuidage.apercu(pos, { cap, sPrec })`, qui ne touche ni la progression ni les
-  alertes du guidage), sans marque à part, masqué en « Jamais » hors urgence. Interrupteur 🪧 Guidage de la tuile ⚙️
-  (`config.js > getVue3DGuidage`, cet appareil) : coupé, ni bandeau ni chevrons, sauf un guidage d'urgence (comme le
-  `masque: !urgence && …` de la 2D) ; il ne touche ni `ItiGuidage.getPref` ni l'état du guidage. Pas de voix (elle
+  250 ms (`_lireGuidage`). ⚠️ contrat (décision produit) : **🪧 Guidage coché dans la tuile ⚙️ suffit** — le bandeau
+  2D réglé sur « Jamais » (sa croix, le bouton de la barre) ou muet (position inconnue) n'éteint pas la 3D. **En
+  suivi**, la consigne réelle (`ItiGuidage.etat()`, comme l'écran XL, boutons d'écart compris) quand le bandeau 2D
+  parle, sinon un **aperçu** depuis la position du tracker (`getTrackingPosition`) ; **en libre**, un **aperçu**
+  depuis la position 3D (`ItiGuidage.apercu(pos, { cap, sPrec })`, qui ne touche ni la progression ni les alertes du
+  guidage ; son `masque` ne vaut que pour la 2D), sans marque à part. 🩸 La 3D ne change jamais le réglage de la 2D :
+  allumer le guidage de l'app depuis 🪧 aurait changé la carte sans le dire. Interrupteur 🪧 (`config.js >
+  getVue3DGuidage`, cet appareil) : coupé, ni bandeau ni chevrons, sauf un guidage d'urgence, toujours montré ; il ne
+  touche ni `ItiGuidage.getPref` ni l'état du guidage. Pas de voix (elle
   n'existe pas en 2D non plus). **Écart en suivi** : les boutons de la 2D (`etat().actions`, même ordre : sans
   navigation intelligente « Je suis ici » d'abord) sur une ligne sous la consigne (`.kta-v3d-guid-actions`, 44 px),
   joués par `_actionGuidage` → `ItiGuidage.agir` ; « Je suis ici » ferme la vue (le picker est sur la carte) et la
@@ -2066,7 +2070,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   vue), panneau de POI sombre en thème clair et borné de près, rendu en pause (immobile et boussole qui tremble).
   Interrupteur : mixte par défaut (avec ou sans structure), mixte → structures → galerie en boucle, retenu par plan.
   Guidage (§ 10) : itinéraire tracé pendant la vue montré, bandeau d'aperçu en libre et consigne réelle en
-  suivi, chevrons, bandeau stable au redimensionnement, toucher d'un POI → sa fiche (sans ✏️ / 🗑️), Échap ferme la
+  suivi, chevrons, bandeau 2D réglé sur « Jamais » (bandeau et chevrons quand même en suivi et en libre, rien 🪧
+  décoché), bandeau stable au redimensionnement, toucher d'un POI → sa fiche (sans ✏️ / 🗑️), Échap
+  ferme la
   fiche, « Y aller » en libre depuis la position 3D au niveau 1 sans recaler le tracker, tracker arrêté → « Ici »
   recale et part de la position 3D, la 3D ne bouge pas. La 3D suit un tracker fixé depuis elle (§ 10b) : recalage
   pendant la vue → place sur le tracker à son niveau ; 3D à 10 m sur l'autre niveau, « Y aller » → « Ma dernière

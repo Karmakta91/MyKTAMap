@@ -30,7 +30,8 @@
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
 // Homogène à la 2D (PC, téléphone, paysage) : boutons du haut à la taille du ≡ de la barre 2D (± 1 px), mêmes
 // icônes (☰ 🚨 ⚙️ ❓), cibles ≥ 44 px, pastille de mode ; interrupteurs de la tuile à Entrée et Espace, focus visible.
-// Interrupteur 🪧 Guidage (§ 22) : bandeau et chevrons masqués, ruban gardé, urgence affichée, retenu.
+// Interrupteur 🪧 Guidage (§ 22) : bandeau et chevrons masqués, ruban gardé, urgence affichée, retenu ; coché, il
+// suffit (§ 10) : bandeau 2D sur « Jamais », bandeau et chevrons en suivi (aperçu depuis le tracker) et en libre.
 // Interrupteur 🧱 Textures (§ 24) : roche brute (sans lits de mortier) et parpaing par défaut, taille réelle (mur de 2 m = mur de 40 m), coupé =
 // couleurs de la légende (type perso compris), retenu, greffe intacte, mixte / structures / galerie ; parois des
 // tubes et des galeries en pierre de taille (lits de joint mesurés, 0,5 de texture par mètre à 2,5 m comme à 6 m de
@@ -5573,6 +5574,47 @@ async function sectionDessin(page) {
       }, pt(0, -10, 0));
       verifier(ga2.mode === "suivi" && ga2.bandeau.affiche && !ga2.bandeau.apercu && ga2.reel &&
         ga2.bandeau.principal === ga2.reel && ga2.chevrons > 0, "suivi : la consigne réelle du guidage, sans « Aperçu »", ga2);
+      // Bandeau 2D réglé sur « Jamais » (sa croix) : 🪧 coché en 3D suffit. Suivi = aperçu depuis le tracker, libre =
+      // aperçu depuis la place 3D, bandeau ET chevrons ; 🪧 décoché : ni l'un ni l'autre ; réglage 2D jamais touché.
+      const ga3 = await page.evaluate(function (a) {
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const K = window.KtaVue3D, G = window.ItiGuidage;
+        const lire = function () {
+          const e = K.etat(), b = document.querySelector("#kta-vue3d .kta-v3d-bandeau");
+          return { mode: e.mode, affiche: e.bandeau.affiche, apercu: e.bandeau.apercu, principal: e.bandeau.principal,
+            texte: b && !b.hidden ? b.textContent : "", chevrons: e.chevronsVisibles ? e.chevrons : 0, pref: G.getPref() };
+        };
+        G.setPref("jamais");
+        return pause(700).then(function () {
+          const r = { reel2D: G.etat().visible, suivi: lire() };
+          const tr = window.getTrackingPosition();
+          r.suivi.attendu = (G.apercu(tr, { cap: K.etat().cap, niveau: 0 }) || {}).principal || null;
+          K.basculerSuivi();
+          K.placer(a.x, a.y, 90);
+          return pause(700).then(function () {
+            r.libre = lire();
+            r.libre.attendu = (G.apercu(K.etat().pos, { cap: K.etat().cap, niveau: 0 }) || {}).principal || null;
+            window.setVue3DGuidage(false);
+            return pause(700);
+          }).then(function () {
+            r.coupe = lire();
+            window.setVue3DGuidage(true);
+            G.setPref("auto");
+            K.basculerSuivi();
+            return pause(400).then(function () { r.retour = K.etat().mode; return r; });
+          });
+        });
+      }, pt(0, -8, 0, 90));
+      verifier(!ga3.reel2D && ga3.suivi.pref === "jamais" && ga3.suivi.mode === "suivi" && ga3.suivi.affiche &&
+        ga3.suivi.apercu && !!ga3.suivi.principal && ga3.suivi.principal === ga3.suivi.attendu &&
+        ga3.suivi.texte.indexOf(ga3.suivi.principal) >= 0 && ga3.suivi.chevrons > 0,
+        "guidage 2D éteint, 🪧 coché, suivi : bandeau (aperçu depuis le tracker) et chevrons", ga3.suivi);
+      verifier(ga3.libre.mode === "libre" && ga3.libre.affiche && !!ga3.libre.principal &&
+        ga3.libre.principal === ga3.libre.attendu && ga3.libre.chevrons > 0 && ga3.libre.pref === "jamais",
+        "guidage 2D éteint, 🪧 coché, libre : bandeau (aperçu depuis la place 3D) et chevrons", ga3.libre);
+      verifier(!ga3.coupe.affiche && ga3.coupe.chevrons === 0 && ga3.coupe.pref === "jamais",
+        "guidage 2D éteint, 🪧 décoché : ni bandeau ni chevrons", ga3.coupe);
+      verifier(ga3.retour === "suivi", "retour au suivi pour la suite", ga3.retour);
       // Toucher un panneau de POI → sa fiche de la carte (sans ✏️ / 🗑️ : la carte est dessous). Le POI jonction
       // reste derrière (le toucher d'un POI jonction garde son passage 🪜).
       await page.evaluate(function (a) {
