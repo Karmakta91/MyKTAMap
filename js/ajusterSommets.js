@@ -18,6 +18,8 @@
 // le drag de Leaflet, ni le pan manuel, ni la rotation à deux doigts (mapBearing.js > _panSuivre, _rotPointerMove)
 // ne bougent la carte ; `enCours()` est le drapeau neutre pour tout autre geste. Le clic qui suit un appui long est
 // avalé (pas de fiche), le menu contextuel aussi. Un 2e doigt, plus de BOUGE_PX avant l'appui long : rien n'est fait.
+// ⚠️ contrat : tout geste se ferme et rend le drag de la carte, même mal terminé : pointercancel, appli repliée, fenêtre
+// quittée, lâcher jamais reçu (l'appui primaire suivant le ferme).
 // 🩸 Position par map.mouseEventToLatLng : la rotation du plan orienté y est défaite (mapBearing.js >
 // _installerPatchConversions) ; clientX ne sert qu'aux seuils de mouvement.
 // Rien sans droit : lecture seule (ktaEditionRefusee), outil ou mode « clic carte » armé, calque non rapatrié (ses
@@ -278,6 +280,10 @@ window.KtaAjusterSommets = (function () {
   }
 
   function _onDown(e) {
+    // 🩸 Un appui primaire (premier doigt posé, ou la souris) pendant un geste ouvert, ou le même pointerId reposé :
+    // le lâcher de ce geste n'est jamais arrivé. Il est fermé en silence (drag rendu, rien d'écrit) et l'appui compte
+    // pour lui-même ; sinon les mouvements restaient avalés et la carte ne suivait plus le doigt.
+    if (_g && (e.isPrimary || e.pointerId === _g.id)) { _stats.annules++; _nettoyer(); }
     if (!_g) _lacherAvale = null;
     if (_menu && !_dansMenu(e.target)) {
       _fermerMenu();
@@ -378,6 +384,15 @@ window.KtaAjusterSommets = (function () {
   window.addEventListener("contextmenu", _onContexte, CAPTURE);
   window.addEventListener("selectstart", function (e) { if (_g && e.cancelable) e.preventDefault(); }, CAPTURE);
   window.addEventListener("wheel", function () { annuler(); }, { capture: true, passive: true });
+  // Appli repliée, fenêtre quittée : le lâcher ne viendra peut-être jamais, le geste est fermé et le drag rendu.
+  function _horsFocus(e) {
+    if (e.type === "visibilitychange" && document.visibilityState === "visible") return;
+    annuler();
+    _fermerMenu();
+  }
+  window.addEventListener("blur", _horsFocus);
+  window.addEventListener("pagehide", _horsFocus);
+  document.addEventListener("visibilitychange", _horsFocus);
   window.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     // ⚠️ contrat : l'Échap qui annule un appui en cours ou ferme le menu s'arrête là, sinon il désarmerait aussi
