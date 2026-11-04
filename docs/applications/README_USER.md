@@ -670,7 +670,7 @@ Où et comment un passage se dessine :
 - Là où il traverse un **remblais** ou un **effondrement**, il monte le long de sa face et passe **par-dessus** (chevrons et étapes aussi), sans que le tracé de la carte change.
 - La vue le redessine dès qu'il change (tracé depuis 🚨 pendant la 3D compris).
 - **Guidage** : un **bandeau** sous la rangée de boutons donne la même consigne que sur la carte (« Dans ~20 m, tourner à droite »). Des **chevrons dorés** au sol montrent le chemin jusqu'à la prochaine manœuvre.
-- En **suivi**, c'est la consigne de ton tracker. En **libre**, c'est un **aperçu** calculé depuis l'endroit où tu es en 3D (le guidage réel, lui, suit le tracker). Pas d'annonce vocale.
+- En **suivi**, c'est la consigne de ton tracker. En **libre**, c'est un **aperçu** calculé depuis l'endroit où tu es en 3D (le guidage réel, lui, suit le tracker) ; si tu t'écartes du trajet en libre, l'itinéraire est recalculé tout seul depuis ta place en 3D, sans bouger le tracker, et en suivi le bandeau propose, comme sur la carte, **Recalculer d'ici**, **Je suis ici** ou **Ignorer**. Pas d'annonce vocale.
 - **⚪ Ronds aux intersections** : si l'option est cochée pour ce plan (⚙️ Configuration › 🎨 Affichage), les ronds de la carte sont posés au sol en 3D aussi, à leur couleur, au niveau affiché.
 
 #### 🚨 Dangers, favoris et sortie d'urgence

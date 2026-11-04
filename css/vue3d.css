@@ -221,6 +221,11 @@ html.kta-theme-light .kta-v3d-mode-indic {
 .kta-v3d-guid-textes { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .kta-v3d-guid-principal { font-size: 16px; font-weight: 600; line-height: 1.3; }
 .kta-v3d-guid-sous { font-size: 13px; line-height: 1.3; color: var(--kta-texte-2); }
+/* Boutons d'écart en suivi (vue3d.js > _majBandeau) : ceux du bandeau 2D, sur une ligne à part sous la consigne. */
+.kta-v3d-bandeau.kta-v3d-guid-avec-actions { flex-wrap: wrap; }
+.kta-v3d-guid-avec-actions .kta-v3d-guid-textes { flex-basis: calc(100% - 46px); }
+.kta-v3d-guid-actions { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+.kta-v3d-guid-btn { flex: 1 1 auto; min-height: 44px; font-size: 13px; }
 
 /* Fiche d'un POI (vue3d.js > _ouvrirFiche) : celle de la carte, dans un cadre sous le bandeau, défilable. */
 .kta-v3d-fiche {

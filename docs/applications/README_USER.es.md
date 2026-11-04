@@ -670,7 +670,7 @@ Dónde y cómo se dibuja un paso:
 - Donde cruza un **relleno** o un **derrumbe**, sube por su cara y pasa **por encima** (chevrones y etapas también), sin que cambie la ruta del mapa.
 - La vista la vuelve a dibujar en cuanto cambia (trazada desde 🚨 durante la vista 3D incluida).
 - **Guiado**: una **banda** bajo la fila de botones da la misma indicación que en el mapa (« En ~20 m, gira a la derecha »). **Chevrones dorados** en el suelo muestran el camino hasta la próxima maniobra.
-- En **seguimiento**, es la indicación de tu tracker. En **libre**, es una **vista previa** calculada desde donde estás en 3D (el guiado real sigue al tracker). Sin anuncios de voz.
+- En **seguimiento**, es la indicación de tu tracker. En **libre**, es una **vista previa** calculada desde donde estás en 3D (el guiado real sigue al tracker); si te apartas del trayecto en libre, el itinerario se recalcula solo desde tu lugar en 3D, sin mover el tracker, y en seguimiento la banda ofrece, como en el mapa, **Recalcular desde aquí**, **Estoy aquí** o **Ignorar**. Sin anuncios de voz.
 - **⚪ Círculos en las intersecciones**: si la opción está marcada para este plano (⚙️ Configuración › 🎨 Visualización), los círculos del mapa también se colocan en el suelo en 3D, de su color, en el nivel mostrado.
 
 #### 🚨 Peligros, favoritos y salida de emergencia

@@ -1291,7 +1291,15 @@ demi-tours en 350 m sous 4 m de bruit).
   sien, `pathfinder.js > computeRoute` ; transit = aucun) ; niveau sans tronçon → `visible: false` (plus de
   « Rejoindre le tracé » vers un autre étage) ; arrivé au niveau d'une consigne `niveau`, elle est faite et la
   suivante parle. `capTrajet` : cap du trajet devant soi (cap d'arrivée d'un passage en 3D). Elle se redessine à `kta:itineraireChange` (`road.js`), émis à chaque itinéraire tracé, remplacé
-  ou effacé.
+  ou effacé. ⚠️ contrat (décision produit, QCM du 04/11/2026) : **en suivi**, l'écart suit la règle D / E / F de la
+  2D (jamais de recalcul automatique) ; `etat().actions` porte les boutons du bandeau, que la 3D affiche et joue par
+  `ItiGuidage.agir(id[, { apres }])` (`apres(p)` : position choisie au picker de « Je suis ici », la vue s'y rouvre).
+  **En libre**, la place 3D n'est pas le tracker : un écart tenu recalcule l'itinéraire depuis elle
+  (`vue3d.js > _recalerLibre`, § Vue 3D › Guidage), par la prise `itineraireReplanifierDepuis(x, y, niveau,
+  { discret, valide })` : même replanification que « Recalculer d'ici » (destination, étapes non validées dans l'ordre,
+  urgence, évacuation, suite inter-plans gardées), sans indicateur ni toast, résultat `{ ok, raison }` ; jamais de
+  clôture ni de parcours d'équipe ; résultat jeté si l'itinéraire actif a changé pendant le calcul ou si `valide()`
+  rend false ; pas de chemin → itinéraire gardé (`raison: "chemin"`).
 - **Pas de « mode Navigation »** : livré puis retiré le 27/09/2026 (KARMA 3:a). Le guidage ne touche NI
   `MapBearing` NI `WakeLock` : « Plan orienté » (menu Tracker) et l'écran allumé (Réglages) restent les seuls
   interrupteurs — un doublon sans libellé dans le bandeau n'était pas lisible.
@@ -1839,7 +1847,26 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   alertes du guidage), sans marque à part, masqué en « Jamais » hors urgence. Interrupteur 🪧 Guidage de la tuile ⚙️
   (`config.js > getVue3DGuidage`, cet appareil) : coupé, ni bandeau ni chevrons, sauf un guidage d'urgence (comme le
   `masque: !urgence && …` de la 2D) ; il ne touche ni `ItiGuidage.getPref` ni l'état du guidage. Pas de voix (elle
-  n'existe pas en 2D non plus).
+  n'existe pas en 2D non plus). **Écart en suivi** : les boutons de la 2D (`etat().actions`, même ordre : sans
+  navigation intelligente « Je suis ici » d'abord) sur une ligne sous la consigne (`.kta-v3d-guid-actions`, 44 px),
+  joués par `_actionGuidage` → `ItiGuidage.agir` ; « Je suis ici » ferme la vue (le picker est sur la carte) et la
+  rouvre au tracker recalé, picker annulé = on reste sur la carte. Aucun recalcul automatique.
+- **Recalcul en libre** (`_recalerLibre`, à chaque lecture du guidage, décision produit QCM du 04/11/2026) : écart =
+  distance de la place au trajet sur les tronçons de **son** niveau (`ItiGuidage.apercu(…, { niveau })` ; aucun
+  tronçon à ce niveau = écart). 🩸 Un segment d'un autre niveau superposé en plan ferait croire qu'on est sur le
+  trajet. Seuils `RECALCUL_LIBRE` : plus de **8 m** (tolérance « sur le trajet » de la 2D sans navigation intelligente
+  et de la coupe derrière ; la position 3D ne dérive pas, la navigation intelligente n'y change rien) tenus **2 s**
+  (≈ 5 m au pas de la vue), au plus un recalcul toutes les **5 s**, et pas deux du même endroit (8 m à parcourir depuis
+  le dernier, réussi ou non : hors des galeries le raccord à vol d'oiseau garde l'écart, on ne recalcule pas à chaque
+  pas). Départ = place et niveau de la 3D, destination et étapes non validées gardées dans l'ordre (une étape passée
+  en 3D sans « Je suis ici » n'est pas validée), destination à un autre niveau comprise (passages de l'itinéraire) ;
+  le tracker ne bouge pas ; c'est l'itinéraire de l'app (carte comprise). Rien en suivi, en vue d'édition, pendant un
+  geste de passage, avant d'avoir bougé en libre, pour un parcours d'équipe (Secours) ni quand une greffe coupe
+  l'itinéraire (le jeu). Un calcul à la fois ; un résultat arrivé vue fermée, passée en suivi ou en édition, ou
+  itinéraire changé, est jeté. Toast `vue3d.itiRecalcule` (succès) ; pas de chemin : itinéraire gardé, toast
+  `vue3d.itiRecalculEchec`. État : `etat().recalcul = { enCours, n, echecs, ms, raison, ecartM }`. Coût mesuré
+  (`KTA_V3D_PERF=iti`, réseau fictif de 3 120 tronçons, itinéraire de ~420 m) : 40-70 ms au PC, 230-380 ms en iPhone
+  émulé (processeur ×4), une image tenue autant (calcul et scène refaite sur le fil principal) — d'où les 5 s.
 - **Chevrons au sol** (`_majChevrons`) : « ^ » dorés (accent sombre) sur le ruban, de la position vers la prochaine
   consigne (`s` → `sCible`, abscisses rendues par `etat()` ou `apercu()`), un tous les 2 m à des abscisses fixes du
   trajet (ils ne glissent pas), 30 m au plus, sur le niveau de la scène ; montrés même en « Jamais ».

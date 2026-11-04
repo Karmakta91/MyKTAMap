@@ -54,7 +54,10 @@
 // d'un tracé (mixte, structures, galerie ; yeux et plongée), vide = rien, panneau de POI d'abord, note au clavier,
 // Échap et focus, greffe qui coupe les fiches (doigt), lecture seule (extension, calque), 🗑️ suivi sans rouvrir,
 // « Voir sur la carte » (carte centrée, fiche de la carte, surbrillance). Zone reliée à plusieurs niveaux (29) : vue et
-// obstacle sur chacun des siens, pas ailleurs, scène refaite quand un niveau est décoché.
+// obstacle sur chacun des siens, pas ailleurs, scène refaite quand un niveau est décoché. Écart à l'itinéraire (31) :
+// recalcul en libre (seuil, délai, un seul, étape validée, tracker intact, édition, autre niveau, greffe), boutons de
+// la 2D en suivi sans recalcul automatique, repère du niveau du tronçon (KTA_V3D_SEUL=iti : cette section seule ;
+// KTA_V3D_PERF=iti : coût d'un recalcul).
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -79,8 +82,9 @@ const server = require("./server.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);
 // KTA_V3D_PERF=1 : toutes les mesures ; =galerie ou =mixte : celles de ce rendu seulement.
-const PERF = ["1", "galerie", "mixte", "passages", "dessin"].indexOf(process.env.KTA_V3D_PERF) >= 0;
+const PERF = ["1", "galerie", "mixte", "passages", "dessin", "iti"].indexOf(process.env.KTA_V3D_PERF) >= 0;
 const PERF_DESSIN = process.env.KTA_V3D_PERF === "dessin";
+const PERF_ITI = process.env.KTA_V3D_PERF === "iti";
 const PERF_PASSAGES = process.env.KTA_V3D_PERF === "passages";
 const PERF_STRUCTURES = process.env.KTA_V3D_PERF === "1";
 const PERF_GALERIE = process.env.KTA_V3D_PERF === "1" || process.env.KTA_V3D_PERF === "galerie";
@@ -1451,6 +1455,261 @@ async function sectionZonesNiveaux(page) {
   verifier(R.refaites >= 1 && R.apres.niveau === -1 && R.apres.zones === 0 && R.apres.libreDedans &&
     !R.apres.traverse, "vue ouverte au −1 : scène refaite (empreinte), la zone n'y est plus ni ne bouche",
   { refaites: R.refaites, apres: R.apres });
+}
+
+// § 31 — Écart à l'itinéraire (réseau FICTIF en mémoire : galerie est-ouest au 0, branche nord au milieu, galerie
+// est-ouest au −1 à 4 m au sud reliée par un tracé jonction). Libre (vue3d.js > RECALCUL_LIBRE) : sur le trajet, rien ;
+// à 10 m, recalcul une fois l'écart tenu 2 s, depuis la place 3D, destination et étape validée gardées, tracker
+// intact, même itinéraire en 2D ; écart tenu hors des galeries = un seul recalcul ; retour sur le trajet, rien ; vue
+// d'édition, rien ; au −1 sous le trajet du 0 (superposé en plan), recalcul depuis le −1 jusqu'à la cible du 0 ; greffe
+// qui coupe l'itinéraire, rien. Suivi : écart → bandeau avec les 3 boutons de la 2D, aucun recalcul automatique,
+// « Recalculer d'ici » recalcule. Repère : bandeau 3D au 0 sous un POI nommé du 1, cite celui du 0 (itiGuidage.js).
+async function sectionEcartItineraire(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z, n) {
+      const o = { x: (ox + x) * sc, y: (oz + z) * sc };
+      if (Number.isInteger(n)) o.level = n;
+      return o;
+    };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const iti = function () { return (window.getRoads() || []).find(function (x) { return x && x.type === "itinerary"; }); };
+    const dist = function (a, b) { return a && b ? +(Math.hypot(a.x - b.x, a.y - b.y) / sc).toFixed(2) : null; };
+    const rec = function () { return K.etat().recalcul; };
+    const attendreN = async function (n, max) {
+      const t0 = performance.now();
+      while (performance.now() - t0 < max) {
+        if (rec().n >= n && !rec().enCours) return Math.round(performance.now() - t0);
+        await pause(100);
+      }
+      return -1;
+    };
+    // Fermer en répondant « Non » à « Je suis ici ? » (la place a bougé, tracker actif).
+    const fermerNon = async function () {
+      const ferme = K.fermer();
+      await pause(300);
+      const non = Array.prototype.filter.call(document.querySelectorAll("button"), function (b) {
+        return b.offsetParent !== null && b.textContent.trim() === window.I18n.t("vue3d.jeSuisIci.non");
+      })[0];
+      if (non) non.click();
+      await ferme;
+      await pause(200);
+    };
+    const r = {};
+    const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, pos: window.getTrackingPosition,
+      smart: C.smartNav };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-ecart-iti";
+    C.multiLevel = true; C.availableLevels = [-1, 0, 1]; C.visibleLevels = [-1, 0, 1]; C.activeLevel = 0;
+    C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    try { localStorage.removeItem("myktamap_guidage_v1"); } catch (err) { /* réglage « Auto » par défaut */ }
+    window.setPlanRenduVue3D(null, "structures");
+    window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
+    window.setRoads([
+      { uid: "rd_ec_0", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] },
+      { uid: "rd_ec_n", type: "secondaire", level: 0, points: [P(0, 0), P(0, -30)] },
+      { uid: "rd_ec_m1", type: "principal", level: -1, points: [P(-40, 4), P(40, 4)] },
+      { uid: "rd_ec_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(-36, 0), P(-36, 4)] }
+    ]);
+    window.KtaGalerie.invalider();
+    window.ktaSetActiveLevel(0);
+    window.startTracking();
+    window.recalerTrackerSurPoint(P(-20, 0).x, P(-20, 0).y, 0);
+    const tr0 = window.getTrackingPosition(), trAvant = { x: tr0.x, y: tr0.y };
+    // Itinéraire déjà calculé, étape validée comprise (interfaceItineraire.js > itineraireActiverRoad).
+    const activer = async function (o, cible) {
+      const wps = [Object.assign({ source: "tracker", label: "Départ" }, o),
+        Object.assign({ source: "search", label: "Étape fictive", done: true }, P(-10, 0, 0)),
+        Object.assign({ source: "search", label: "Cible fictive" }, cible)];
+      const res = await window.Pathfinder.computeRoute([wps[0], wps[2]], {});
+      window.itineraireActiverRoad({ type: "itinerary", points: res.path, waypoints: wps,
+        raccords: res.raccords || [], carrefours: res.carrefours || [] });
+    };
+    const CIBLE = P(30, 0, 0);
+    await activer(P(-20, 0, 0), CIBLE);
+    await K.ouvrir({ depart: Object.assign(P(-15, 0), { cap: 90, niveau: 0 }), commandes: "pave" });
+    await pause(300);
+    // Sur le trajet : rien.
+    K.placer(P(-5, 0).x, P(-5, 0).y, 90);
+    await pause(3000);
+    r.surTrajet = { n: rec().n, ecart: rec().ecartM, mode: K.etat().mode };
+    // À 10 m dans la branche nord : rien pendant l'écart tenu, puis un recalcul.
+    const pts0 = iti().points;
+    K.placer(P(0, -10).x, P(0, -10).y, 0);
+    await pause(1200);
+    r.pendant = { n: rec().n, ecart: rec().ecartM };
+    const ms = await attendreN(1, 6000);
+    const it1 = iti(), tr1 = window.getTrackingPosition();
+    r.ecart = { n: rec().n, apresMs: ms + 1200, change: it1.points !== pts0, depuis: dist(it1.points[0], P(0, -10)),
+      cible: dist(it1.points[it1.points.length - 1], CIBLE), wps: it1.waypoints.map(function (w) {
+        return w.label + (w.done ? "✓" : "");
+      }), etapesRaccords: (it1.raccords || []).filter(function (x) { return x.role === "etape"; }).length,
+      tracker: dist(tr1, trAvant), itis: window.getRoads().filter(function (x) { return x.type === "itinerary"; }).length,
+      ms: rec().ms, toast: Array.prototype.some.call(document.querySelectorAll(".kta-toast"),
+        function (t) { return t.textContent.indexOf(window.I18n.t("vue3d.itiRecalcule")) >= 0; }) };
+    // Écart tenu hors des galeries (raccord à vol d'oiseau gardé) : un seul recalcul.
+    K.placer(P(15, -14).x, P(15, -14).y, 0);
+    const ms2 = await attendreN(2, 8000);
+    await pause(8000);
+    r.tenu = { n: rec().n, apresMs: ms2, ecart: rec().ecartM };
+    // Retour sur le trajet : rien.
+    K.placer(P(20, 0).x, P(20, 0).y, 90);
+    await pause(3000);
+    r.retour = { n: rec().n, ecart: rec().ecartM };
+    // Vue d'édition : rien, même loin du trajet.
+    K.placer(P(-25, -20).x, P(-25, -20).y, 90);
+    K.basculerVue();
+    await pause(4000);
+    r.edition = { n: rec().n, vue: K.etat().vue };
+    // Au −1, sous le trajet du 0 (4 m en plan) : écart (aucun tronçon du −1), recalcul depuis le −1.
+    K.niveauEdition("bas");
+    K.placer(P(10, 4).x, P(10, 4).y, 270);
+    K.basculerVue();
+    const n0 = rec().n, ms3 = await attendreN(n0 + 1, 8000), it3 = iti();
+    r.niveau = { niveau: K.etat().niveau, vue: K.etat().vue, n: rec().n - n0, apresMs: ms3,
+      depart: it3.points[0] && it3.points[0].level, departDist: dist(it3.points[0], P(10, 4)),
+      arrivee: it3.points[it3.points.length - 1].level, cible: dist(it3.points[it3.points.length - 1], CIBLE),
+      tracker: dist(window.getTrackingPosition(), trAvant) };
+    // Greffe qui coupe l'itinéraire (le jeu) : rien.
+    let ctx = null;
+    const degreffer = K.greffer({ nom: "v3d-ecart-iti", scene: function (c) { ctx = c; } });
+    if (ctx) ctx.regler({ itineraire: false, guidage: false });
+    K.basculerVue(); K.niveauEdition("haut"); K.basculerVue();
+    K.placer(P(-30, -20).x, P(-30, -20).y, 90);
+    const n1 = rec().n;
+    await pause(4000);
+    r.greffe = { n: rec().n - n1, niveau: K.etat().niveau, ctx: !!ctx };
+    if (degreffer) degreffer();
+    await fermerNon();
+
+    // Suivi : la règle de la 2D (bandeau d'écart, boutons, aucun recalcul automatique).
+    window.setRoads(window.getRoads().filter(function (x) { return x.type !== "itinerary"; }));
+    window.recalerTrackerSurPoint(P(-20, 0).x, P(-20, 0).y, 0);
+    await activer(P(-20, 0, 0), CIBLE);
+    window.__ecPos = P(-20, 0);
+    window.getTrackingPosition = function () { return window.__ecPos; };
+    await K.ouvrir({ commandes: "pave" });
+    await pause(300);
+    for (let i = 0; i < 4; i++) { window.__ecPos = P(-19 + i, 0); window.ItiGuidage.onPosition(window.__ecPos); }
+    const ptsS = iti().points;
+    for (let i = 0; i < 7; i++) { window.__ecPos = P(0, -28 + i * 0.1); window.ItiGuidage.onPosition(window.__ecPos); }
+    await pause(3000);
+    const b = document.querySelector("#kta-vue3d .kta-v3d-bandeau");
+    const btns = b ? Array.prototype.map.call(b.querySelectorAll(".kta-v3d-guid-btn"), function (x) {
+      const rb = x.getBoundingClientRect();
+      return { id: x.dataset.guidAction, h: Math.round(rb.height), visible: rb.width > 0 };
+    }) : [];
+    r.suivi = { mode: K.etat().mode, bandeau: K.etat().bandeau, btns: btns, n: rec().n, inchange: iti().points === ptsS };
+    const bt = b && b.querySelector('[data-guid-action="recalculer"]');
+    if (bt) bt.click();
+    const t0 = performance.now();
+    while (iti().points === ptsS && performance.now() - t0 < 8000) await pause(100);
+    const itS = iti();
+    r.suiviRecalc = { change: itS.points !== ptsS, depuis: dist(itS.points[0], window.__ecPos),
+      cible: dist(itS.points[itS.points.length - 1], CIBLE), mode: K.etat().mode };
+    await fermerNon();
+    window.getTrackingPosition = av.pos;
+    window.stopTracking();
+
+    // Repère au niveau du tronçon, dans le bandeau 3D : virage à gauche au carrefour de la branche nord, POI nommé du
+    // 1 à l'aplomb, POI nommé du 0 à côté.
+    window.setRoads(window.getRoads().filter(function (x) { return x.type !== "itinerary"; }));
+    window.setEditorPoints([
+      Object.assign({ id: "Repère haut fictif", nom: "Repère haut fictif", uid: "pt_ec_haut", tags: ["salle"] }, P(0, 0, 1)),
+      Object.assign({ id: "Repère bas fictif", nom: "Repère bas fictif", uid: "pt_ec_bas", tags: ["salle"] }, P(2, 2, 0))
+    ]);
+    const resR = await window.Pathfinder.computeRoute([P(-20, 0, 0), P(0, -25, 0)], {});
+    window.itineraireActiverRoad({ type: "itinerary", points: resR.path,
+      waypoints: [Object.assign({ source: "tracker", label: "Départ" }, P(-20, 0, 0)),
+        Object.assign({ source: "search", label: "Cible repère" }, P(0, -25, 0))],
+      raccords: resR.raccords || [], carrefours: resR.carrefours || [] });
+    await K.ouvrir({ depart: Object.assign(P(-12, 0), { cap: 90, niveau: 0 }), commandes: "pave" });
+    await pause(800);
+    r.repere = { bandeau: K.etat().bandeau.principal || "", carrefours: (resR.carrefours || []).length };
+    await K.fermer();
+
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    C.smartNav = av.smart;
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.setRoads([]); window.setZones([]); window.setStructures([]);
+    window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
+    window.KtaGalerie.invalider();
+    window.ktaSetActiveLevel(0);
+    return r;
+  });
+  console.log("§ 31 — écart à l'itinéraire : recalcul en libre, règle de la 2D en suivi");
+  verifier(R.surTrajet.mode === "libre" && R.surTrajet.n === 0 && R.surTrajet.ecart < 1,
+    "libre, sur le trajet : aucun recalcul", R.surTrajet);
+  verifier(R.pendant.n === 0 && R.pendant.ecart > 9, "libre, à 10 m : rien avant que l'écart soit tenu 2 s", R.pendant);
+  const E = R.ecart;
+  verifier(E.n === 1 && E.change && E.depuis < 1 && E.cible < 1 && E.itis === 1 && E.apresMs >= 1900,
+    "libre, à 10 m tenus 2 s : itinéraire recalculé depuis la place 3D, même destination (" + E.apresMs + " ms)", E);
+  verifier(E.wps.join("|") === "Départ|Étape fictive✓|Cible fictive" || /✓\|Cible fictive$/.test(E.wps.join("|")),
+    "étape validée gardée validée, hors calcul (aucun raccord d'étape)", E.wps);
+  verifier(E.etapesRaccords === 0, "le trajet recalculé ne repasse pas par l'étape validée", E.etapesRaccords);
+  verifier(E.tracker === 0, "tracker intact (recalcul sans recalage)", E.tracker);
+  verifier(E.toast, "toast « Itinéraire recalculé depuis ta position 3D »", E);
+  verifier(R.tenu.n === 2 && R.tenu.ecart > 8, "écart tenu hors des galeries : un seul recalcul, pas un par pas", R.tenu);
+  verifier(R.retour.n === 2 && R.retour.ecart < 1, "retour sur le trajet : aucun recalcul", R.retour);
+  verifier(R.edition.n === 2 && R.edition.vue === "plongee", "vue d'édition : rien, même loin du trajet", R.edition);
+  const N = R.niveau;
+  verifier(N.niveau === -1 && N.vue !== "plongee" && N.n === 1 && N.depart === -1 && N.departDist < 1 &&
+    N.arrivee === 0 && N.cible < 1 && N.tracker === 0,
+  "au −1 sous le trajet du 0 : recalcul depuis le −1 (segments d'un autre niveau ignorés), cible du 0 gardée", N);
+  verifier(R.greffe.ctx && R.greffe.n === 0, "greffe qui coupe l'itinéraire : aucun recalcul", R.greffe);
+  const S = R.suivi;
+  verifier(S.mode === "suivi" && S.bandeau.mode === "ecart" && S.btns.length === 3 &&
+    S.btns.map(function (x) { return x.id; }).sort().join() === "ici,ignorer,recalculer" &&
+    S.btns.every(function (x) { return x.visible && x.h >= 44; }),
+  "suivi, écart : bandeau avec les 3 boutons de la 2D (≥ 44 px)", S);
+  verifier(S.n === 0 && S.inchange, "suivi, écart : aucun recalcul automatique", { n: S.n, inchange: S.inchange });
+  verifier(R.suiviRecalc.change && R.suiviRecalc.depuis < 1 && R.suiviRecalc.cible < 1,
+    "suivi : « Recalculer d'ici » recalcule depuis le tracker", R.suiviRecalc);
+  verifier(/Repère bas fictif/.test(R.repere.bandeau) && !/Repère haut fictif/.test(R.repere.bandeau),
+    "bandeau 3D au 0 : repère du 0 cité, jamais celui du 1 à l'aplomb", R.repere);
+}
+
+// Coût d'un recalcul (KTA_V3D_PERF=iti) : réseau fictif de semerGalerie (3 120 tronçons), itinéraire d'un coin à
+// l'autre, recalcul discret depuis cinq places ; durée et image la plus longue pendant le calcul (le calcul tient le
+// fil principal : c'est l'à-coup ressenti).
+async function mesuresRecalcul(page) {
+  const semis = await page.evaluate(semerGalerie);
+  console.log("  ℹ️ réseau galerie synthétique : " + JSON.stringify({ troncons: semis.troncons }));
+  const r = await page.evaluate(async function (d) {
+    const sc = window.APP_CONFIG.scale, K = window.KtaVue3D;
+    const P = function (dx, dz) { return { x: d.x + dx * sc, y: d.y + dz * sc, level: 0 }; };
+    const res = await window.Pathfinder.computeRoute([P(-140, -138), P(140, 150)], {});
+    window.itineraireActiverRoad({ type: "itinerary", points: res.path,
+      waypoints: [Object.assign({ source: "tracker", label: "A" }, P(-140, -138)),
+        Object.assign({ source: "search", label: "B" }, P(140, 150))], raccords: res.raccords, carrefours: res.carrefours });
+    await K.ouvrir({ depart: d, distanceVue: 30 });
+    const out = [];
+    for (const q of [[0, 0], [-60, 30], [60, -40], [100, 100], [-120, -100]]) {
+      let maxImage = 0, t = 0, actif = true;
+      const boucle = function (ts) { if (t) maxImage = Math.max(maxImage, ts - t); t = ts; if (actif) requestAnimationFrame(boucle); };
+      requestAnimationFrame(boucle);
+      await new Promise(function (ok) { setTimeout(ok, 100); });
+      const t0 = performance.now();
+      const rr = await window.itineraireReplanifierDepuis(P(q[0], q[1]).x, P(q[0], q[1]).y, 0, { discret: true });
+      const ms = performance.now() - t0;
+      await new Promise(function (ok) { setTimeout(ok, 100); });
+      actif = false;
+      out.push({ ms: Math.round(ms), imageMax: Math.round(maxImage), ok: rr && rr.ok });
+    }
+    await K.fermer();
+    window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
+    return out;
+  }, semis.depart);
+  console.log("  📏 recalcul discret (ms, image la plus longue) : " + JSON.stringify(r));
 }
 
 // § 30 — Caméra libre de la vue d'édition (plongée), mesures lisibles, survol, plan au sol, tuile ⚙️ (formes FICTIVES,
@@ -3167,6 +3426,11 @@ async function sectionDessin(page) {
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol") {
       ouvert = true;
+    } else if (SEUL === "iti") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionEcartItineraire(page);
     } else if (SEUL === "camera") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -3182,6 +3446,7 @@ async function sectionDessin(page) {
           console.log("  ℹ️ processeur ralenti x4");
         } catch (e) { console.log("  ℹ️ ralentissement processeur indisponible : " + e.message); }
       }
+      if (PERF_ITI) await mesuresRecalcul(page);
       if (PERF_DESSIN) {
         const semisD = await page.evaluate(semerPlanDense);
         await mesuresDessin(page, semisD.depart);
@@ -9089,6 +9354,7 @@ async function sectionDessin(page) {
       await sectionFichesObjets(page);
       await sectionDessin(page);
       await sectionZonesNiveaux(page);
+      await sectionEcartItineraire(page);
       await sectionCamera(page);
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);

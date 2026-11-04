@@ -670,7 +670,7 @@ Where and how a way through is drawn:
 - Where it crosses **backfill** or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same.
 - The view redraws it as soon as it changes (drawn from 🚨 during the 3D view included).
 - **Guidance**: a **banner** under the row of buttons gives the same instruction as on the map ("In ~20 m, turn right"). **Golden chevrons** on the ground show the way to the next manoeuvre.
-- In **follow** mode it is your tracker's instruction. In **free** mode it is a **preview** worked out from where you are in 3D (real guidance still follows the tracker). No voice announcements.
+- In **follow** mode it is your tracker's instruction. In **free** mode it is a **preview** worked out from where you are in 3D (real guidance still follows the tracker); if you stray from the route in free mode, the route is recalculated on its own from your 3D spot, without moving the tracker, and in follow mode the banner offers, as on the map, **Recompute from here**, **I am here** or **Ignore**. No voice announcements.
 - **⚪ Circles at intersections**: if the option is ticked for this map (⚙️ Settings › 🎨 Display), the map's circles are laid on the ground in 3D too, in their colour, on the level shown.
 
 #### 🚨 Dangers, favourites and emergency exit

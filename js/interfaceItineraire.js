@@ -78,6 +78,11 @@ async function _withItiComputeLoader(fn) {
   }
 }
 
+// Même appel, sans indicateur : un recalcul automatique (vue 3D en libre) ne couvre pas la vue.
+async function _sansIndicateur(fn) {
+  return await fn();
+}
+
 // ── Pan + flash (boutons « aller à » des étapes) ──────────
 let _itiFlashLayer = null;
 function _panEtFlashSurPoint(p) {
@@ -1041,18 +1046,26 @@ window.itineraireActiverRoad = function(newRoad, opts) {
 };
 
 // ⚠️ (px, py) = position du tracker (guidage, Mode Secours) : le départ prend son niveau, sauf `niveau` donné.
-window.itineraireReplanifierDepuis = function(px, py, niveau) {
+// `opts.discret` (recalcul automatique de la vue 3D en libre, depuis une position qui n'est pas le tracker) : ni
+// indicateur de calcul ni toast (l'appelant dit le résultat), jamais de clôture ni de parcours d'équipe (Secours) ;
+// le résultat est JETÉ si l'itinéraire actif a changé pendant le calcul (autre destination, effacé) ou si
+// `opts.valide()` rend false. → Promise<{ ok, road?, raison?, err? }> ; raison : "aucun" | "fini" | "secours" |
+// "perime" | "chemin" (pas de chemin, l'itinéraire est gardé).
+window.itineraireReplanifierDepuis = function(px, py, niveau, opts) {
   if (typeof px !== "number" || typeof py !== "number") return;
   // la promesse : un appelant peut attendre le nouveau tracé
-  return _replanifierDepuis(px, py, Number.isInteger(niveau) ? niveau : _niveauTracker());
+  return _replanifierDepuis(px, py, Number.isInteger(niveau) ? niveau : _niveauTracker(), opts);
 };
 
 // `niveau` (facultatif) : niveau du départ, posé sur le waypoint d'origine (calage sur une galerie de ce niveau).
-async function _replanifierDepuis(px, py, niveau) {
+async function _replanifierDepuis(px, py, niveau, opts) {
+  const discret = !!(opts && opts.discret);
   const road = _roadItineraireActive();
-  if (!road || !Array.isArray(road.waypoints)) return;
+  if (!road || !Array.isArray(road.waypoints)) return { ok: false, raison: "aucun" };
   const etapes    = road.waypoints.filter(function(w) { return w.source !== "tracker"; });
   const restantes = etapes.filter(function(w) { return !w.done; });
+  if (discret && restantes.length === 0) return { ok: false, raison: "fini" };
+  if (discret && road.secours) return { ok: false, raison: "secours" };
 
   // Toutes les étapes validées → terminé : on efface le tracé itinéraire (pas le tracé tracker).
   if (restantes.length === 0) {
@@ -1112,7 +1125,7 @@ async function _replanifierDepuis(px, py, niveau) {
       console.log("[Itineraire] Balayage rejoint au point " + k + "/" + B.length);
       return;
     }
-    const result = await _withItiComputeLoader(function() {
+    const result = await (discret ? _sansIndicateur : _withItiComputeLoader)(function() {
       if (evC) return window.Pathfinder.computeRoute([origin].concat(restantes), _optsEvitement(avoidPrefs, evC));
       return window.Pathfinder.computeRoute([origin].concat(restantes), {
         avoidPoints: sec ? (sec.avoidPoints || []) : (avoidPrefs.points || []),
@@ -1131,6 +1144,10 @@ async function _replanifierDepuis(px, py, niveau) {
       points:    result.path,
       waypoints: [origin].concat(etapes.map(function(w) { return Object.assign({}, w); }))
     }, _champsGuidage(result));
+    // 🩸 Un calcul arrivé après un changement d'itinéraire écraserait le nouveau par l'ancienne destination.
+    if (discret && (_roadItineraireActive() !== road || (typeof opts.valide === "function" && !opts.valide()))) {
+      return { ok: false, raison: "perime" };
+    }
     // Une sortie d'urgence replanifiée reste une sortie d'urgence.
     if (road.urgence) newRoad.urgence = true;
     if (road.evacuation) newRoad.evacuation = road.evacuation;   // garde ses options brancard
@@ -1146,13 +1163,15 @@ async function _replanifierDepuis(px, py, niveau) {
     console.log("[Itineraire] Replanifié depuis (" + Math.round(px) + "," + Math.round(py) + ") — " +
                 restantes.length + " étape(s) restante(s)");
     const alerteRaccord = _texteAlerteRaccord(newRoad);
-    if (alerteRaccord) _toastIti("⚠️ " + alerteRaccord, "warn");
+    if (alerteRaccord && !discret) _toastIti("⚠️ " + alerteRaccord, "warn");
+    return { ok: true, road: newRoad };
   } catch(err) {
     // Pas de chemin depuis la nouvelle position : on GARDE l'ancien tracé, on informe sans bloquer.
     const msg = (err && err.i18nKey && window.I18n)
       ? window.I18n.t(err.i18nKey, err.i18nParams || {})
       : (err && err.message) || String(err);
-    _toastIti(window.I18n.t("iti.replan.err", { err: msg }), "warn");
+    if (!discret) _toastIti(window.I18n.t("iti.replan.err", { err: msg }), "warn");
+    return { ok: false, raison: "chemin", err: msg };
   }
 }
 

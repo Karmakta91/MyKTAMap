@@ -31,8 +31,9 @@
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
 // ne suit aucun filtre et se redessine à `kta:itineraireChange` (road.js). Données du plan changées pendant la vue
 // (session, calque rapatrié ou restitué, annulation, légende) : `kta:donneesPlanChange` (utils.js >
-// ktaSignalerDonneesPlan), empreinte relue après la rafale, scène refaite sur place (_majDonnees). Guidage : bandeau et chevrons
-// (_lireGuidage) ; toucher un POI ouvre sa fiche de la carte (_ouvrirFiche, « Y aller » : origineItineraire). En
+// ktaSignalerDonneesPlan), empreinte relue après la rafale, scène refaite sur place (_majDonnees). Guidage : bandeau,
+// chevrons (_lireGuidage), recalcul auto en libre (_recalerLibre) ; toucher un POI ouvre sa fiche de la carte
+// (_ouvrirFiche, « Y aller » : origineItineraire). En
 // libre, un tracker choisi comme départ depuis la vue y amène la place (placerSurTracker) ; un tracker recalé (« 📍 Je
 // suis ici ») ne la bouge pas (trackerRecale).
 // ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
@@ -219,6 +220,13 @@
   // abscisses fixes du trajet : ils ne glissent pas quand on avance), sur `long` m au plus ; taille en m.
   const CHEVRON = { pas: 2, long: 30, l: 0.4, ep: 0.09, y: 0.07 };
   const GUIDAGE_MS = 250;           // ms entre deux lectures du guidage (bandeau, chevrons)
+  // ⚠️ contrat (décision produit) : en libre, place 3D à plus de `ecartM` du trajet (tronçons de son niveau ; aucun =
+  // écart) pendant `tenirMs`, au plus un recalcul toutes les `entreMs`, et pas deux du même endroit (`repriseM` à
+  // parcourir depuis le dernier, réussi ou non : un départ hors des galeries garde son raccord à vol d'oiseau). 8 m =
+  // la tolérance « sur le trajet » de la 2D sans navigation intelligente et de la coupe derrière (une salle large ou
+  // un regard dans une galerie voisine ne recalcule rien) ; 2 s ≈ 5 m de marche au pas de la vue (on s'est engagé
+  // ailleurs, ce n'est pas un écart d'un instant) ; 5 s bornent le coût d'un calcul sur un grand plan.
+  const RECALCUL_LIBRE = { ecartM: 8, tenirMs: 2000, entreMs: 5000, repriseM: 8 };
   // ⚠️ contrat (décision produit) : `n` appuis vers le bas (▼ du pavé, ↓ / S, coup bref du joystick vers le bas) en
   // moins de `ms`, sans autre commande de déplacement entre deux → `kta:vue3dCode` (detail.code = "bas6"). Coup de
   // joystick : relâché moins de `coup` ms après la sortie de la zone morte, toujours à plus de `angle`° de l'avant.
@@ -4902,9 +4910,12 @@
   // touche pas l'état du guidage). → { bandeau, chevrons } : consigne à montrer (null = rien) et abscisses
   // { s, sCible } (px le long du trajet) des chevrons, montrés même réglé sur « Jamais ». Guidage coupé dans ⚙️
   // (_guidageMontre) : ni bandeau ni chevrons, sauf un guidage d'urgence (comme en 2D : `masque: !urgence && …`).
+  // Écart de la place libre au trajet (m, Infinity sans tronçon à son niveau ; null hors libre) : `e.ecartLibre`, lu
+  // par _recalerLibre, mesuré par le même aperçu, même guidage coupé (le recalcul vise l'itinéraire, pas le bandeau).
   function _lireGuidage() {
     const e = _e, G = window.ItiGuidage;
-    if (!G || !_itineraire() || !_permisGreffe("guidage")) {
+    e.ecartLibre = null;
+    if (!G || !_itineraire()) {
       e.apS = undefined;
       return { bandeau: null, chevrons: null };
     }
@@ -4919,6 +4930,8 @@
       if (!ap || !ap.visible) ap = null;
     }
     e.apS = ap ? ap.s : undefined;
+    if (e.mode === "libre" && typeof G.apercu === "function") e.ecartLibre = ap ? ap.distM : Infinity;
+    if (!_permisGreffe("guidage")) return { bandeau: null, chevrons: null };
     const bandeau = reel || (e.mode !== "suivi" && ap && !ap.masque ? ap : null);
     const src = reel || ap;
     if (!_guidageMontre() && !(src && src.urgence)) return { bandeau: null, chevrons: null };
@@ -4933,6 +4946,48 @@
     const g = _lireGuidage();
     _majBandeau(g.bandeau);
     _majChevrons(g.chevrons);
+    _recalerLibre(ts);
+  }
+
+  // Recalcul automatique en libre (RECALCUL_LIBRE) : depuis la place et le niveau de la 3D, même destination, étapes
+  // non validées dans l'ordre (interfaceItineraire.js > itineraireReplanifierDepuis, `discret`) ; le tracker ne bouge
+  // pas. Rien en suivi (règle de la 2D : bandeau d'écart, ItiGuidage), en vue d'édition, pendant un geste de passage,
+  // tant que la place n'a pas bougé depuis l'ouverture (l'écart serait celui du tracker), pour un parcours d'équipe ni
+  // quand une greffe coupe l'itinéraire (_itineraire). Un calcul à la fois ; un résultat arrivé alors que la vue a
+  // changé (fermée, suivi, édition, greffe) ou l'itinéraire aussi est jeté ; pas de chemin : l'itinéraire est gardé.
+  function _recalerLibre(ts) {
+    const e = _e, R = RECALCUL_LIBRE, road = _itineraire();
+    const permis = e.mode === "libre" && e.libreBouge && e.vue !== "plongee" && !e.geste && !!road && !road.secours &&
+      typeof window.itineraireReplanifierDepuis === "function";
+    if (!permis || e.recalcul.enCours || !(e.ecartLibre > R.ecartM)) { e.recalcul.depuis = 0; return; }
+    const der = e.recalcul.dernier;
+    if (der && der.niveau === e.niveau && Math.hypot(e.pos.x - der.x, e.pos.y - der.y) / e.sc < R.repriseM) return;
+    if (!e.recalcul.depuis) { e.recalcul.depuis = ts; return; }
+    if (ts - e.recalcul.depuis < R.tenirMs || (der && ts - der.t < R.entreMs)) return;
+    const vue = e, x = e.pos.x, y = e.pos.y, niveau = e.niveau, t0 = performance.now();
+    e.recalcul.enCours = true;
+    e.recalcul.depuis = 0;
+    e.recalcul.dernier = { x: x, y: y, niveau: niveau, t: ts };
+    const valide = function () {
+      return _e === vue && vue.mode === "libre" && vue.vue !== "plongee" && _itineraire() === road;
+    };
+    Promise.resolve(window.itineraireReplanifierDepuis(x, y, Number.isInteger(niveau) ? niveau : undefined,
+      { discret: true, valide: valide })).then(function (r) {
+      vue.recalcul.enCours = false;
+      vue.recalcul.ms = Math.round(performance.now() - t0);
+      vue.recalcul.raison = r && r.raison ? r.raison : null;
+      if (_e !== vue || !r) return;
+      if (r.ok) {
+        vue.recalcul.n++;
+        _toast(_t("vue3d.itiRecalcule"), "success");
+      } else if (r.raison === "chemin") {
+        vue.recalcul.echecs++;
+        _toast(_t("vue3d.itiRecalculEchec"), "warn");
+      }
+    }, function (err) {
+      vue.recalcul.enCours = false;
+      console.warn("[Vue3D] recalcul de l'itinéraire échoué :", err);
+    });
   }
 
   // Bandeau compact dans _e.bandeau : icône (ou schéma du carrefour), consigne, ligne « puis… ».
@@ -4940,16 +4995,20 @@
   function _majBandeau(g) {
     const e = _e, b = e.bandeau;
     if (!b) return;
-    const cle = g ? [g.apercu ? "a" : "r", g.mode, g.icone, g.picto, g.principal, g.sous, g.fleche, g.urgence].join("|")
-      : "";
+    // En suivi, sur un écart ou un demi-tour : les boutons du bandeau 2D (ItiGuidage.etat().actions, dans son ordre),
+    // joués par _actionGuidage.
+    const actions = g && Array.isArray(g.actions) ? g.actions : [];
+    const cle = g ? [g.apercu ? "a" : "r", g.mode, g.icone, g.picto, g.principal, g.sous, g.fleche, g.urgence,
+      actions.map(function (a) { return a.id; }).join()].join("|") : "";
     if (cle === e.bandeauCle) return;
     e.bandeauCle = cle;
     e.bandeauEtat = g ? { visible: true, apercu: !!g.apercu, mode: g.mode, principal: g.principal || "",
-      sous: g.sous || "" } : { visible: false };
+      sous: g.sous || "", actions: actions.map(function (a) { return a.id; }) } : { visible: false };
     if (!g) { b.hidden = true; b.textContent = ""; _majSousHaut(); return; }
     b.textContent = "";
     b.classList.toggle("kta-v3d-guid-alerte", g.mode === "ecart" || g.mode === "demi");
     b.classList.toggle("kta-v3d-guid-urgence", !!g.urgence);
+    b.classList.toggle("kta-v3d-guid-avec-actions", actions.length > 0);
     const ic = document.createElement("span");
     ic.className = "kta-v3d-guid-icone";
     ic.setAttribute("aria-hidden", "true");
@@ -4970,8 +5029,35 @@
     }
     b.appendChild(ic);
     b.appendChild(txt);
+    if (actions.length) {
+      const boite = document.createElement("div");
+      boite.className = "kta-v3d-guid-actions";
+      actions.forEach(function (a, i) {
+        const bt = document.createElement("button");
+        bt.type = "button";
+        bt.className = "kta-btn " + (i === 0 ? "kta-btn-primary" : "kta-btn-ghost") + " kta-v3d-guid-btn";
+        bt.dataset.v3d = "guidAction";
+        bt.dataset.guidAction = a.id;
+        bt.textContent = a.label;
+        boite.appendChild(bt);
+      });
+      b.appendChild(boite);
+    }
     b.hidden = false;
     _majSousHaut();
+  }
+
+  // Bouton d'écart du bandeau (suivi) : la règle de la 2D, jouée par ItiGuidage.agir. « Je suis ici » : le picker se
+  // joue sur la carte, la vue se ferme d'abord et se rouvre (au tracker recalé) une fois la position choisie ; picker
+  // annulé : on reste sur la carte (comme interfaceItineraire.js > _repositionnerPuisAller).
+  function _actionGuidage(id) {
+    const G = window.ItiGuidage;
+    if (!G || typeof G.agir !== "function") return;
+    _e.bandeauCle = null;
+    if (id !== "ici") { G.agir(id); _e.guidageForce = true; return; }
+    fermer().then(function () {
+      G.agir("ici", { apres: function () { ouvrir({}); } });
+    });
   }
 
   function _libererChevrons() {
@@ -6218,6 +6304,7 @@
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
       else if (a === "place") surPlace();
+      else if (a === "guidAction") _actionGuidage(b.dataset.guidAction);
       // Entrée / Espace sur un bouton qui agit au pointerdown (bascules de la tuile, − / +, passages) : le navigateur
       // n'envoie qu'un click. 🩸 Un toucher envoie pointerdown PUIS click : ce click-là est ignoré (même bouton,
       // pointerdown récent), sinon la bascule jouerait deux fois.
@@ -6235,7 +6322,7 @@
       const a = b.dataset.v3d;
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
-        a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place") return;
+        a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place" || a === "guidAction") return;
       if (_agirBouton(a, b, ev)) return;
       ev.preventDefault();
       _codeBas(a === "ar");
@@ -6842,7 +6929,9 @@
         itiChange: false, guidageT: 0, guidageForce: true,
         apS: undefined, bandeauCle: null, bandeauEtat: { visible: false }, chevrons: null, chevSig: null,
         chevRoad: null, chevPts: null, nChevrons: 0, fiche: null, publiee: null, publications: 0,
-        publicationDite: false, libreBouge: false, commandes: _commandesVoulues(o.commandes), stick: null,
+        publicationDite: false, libreBouge: false,
+        commandes: _commandesVoulues(o.commandes), stick: null,
+        recalcul: { enCours: false, depuis: 0, dernier: null, n: 0, echecs: 0, ms: null, raison: null },
         stickLibres: 0, toucheNom: null, itiTirets: 0, nbMarqueurs: { etapes: 0, arrivee: false }, listeRonds: [],
         rondsChange: false, greffe: null, codeBas: { n: 0, t0: 0 }, codesBas: 0,
         retourFocus: o.retourFocus || document.activeElement || null,
@@ -7150,6 +7239,9 @@
       boutonRendu: e.boutonRendu ? e.boutonRendu.textContent : "",
       bandeau: Object.assign({ affiche: !!e.bandeau && !e.bandeau.hidden }, e.bandeauEtat),
       chevrons: e.nChevrons, chevronsVisibles: !!e.chevrons && !!e.chevrons.parent,
+      recalcul: { enCours: e.recalcul.enCours, n: e.recalcul.n, echecs: e.recalcul.echecs, ms: e.recalcul.ms,
+        raison: e.recalcul.raison, ecartM: e.ecartLibre === null || e.ecartLibre === undefined ? null :
+          (Number.isFinite(e.ecartLibre) ? +e.ecartLibre.toFixed(2) : -1) },
       dessin: _etatDessin(),
       fiche: e.fiche && e.fiche.objet ? { famille: e.fiche.famille, uid: e.fiche.objet.uid || null,
         type: e.fiche.objet.type, session: e.fiche.session, registre: e.fiche.registre,

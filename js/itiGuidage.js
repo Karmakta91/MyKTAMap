@@ -16,7 +16,7 @@
 // Expose window.ItiGuidage : construire(road, {scale, pois}) · projeter(guide, p, sMin, sMax) → {s, dist, x, y}
 //   · texteAction · longueurRaccordsPx · alerteRaccord → {distM, role, label}|null · ouvrirFeuilleDeRoute ·
 //   onPosition(pos) (tracking.js, chaque pas) · rafraichir · etat() · apercu(pos, {cap, sPrec}) (sans toucher
-//   l'état : vue 3D en mode libre) · getPref/setPref("auto"|"jamais") · agir("recalculer"|"ici"|"ignorer").
+//   l'état : vue 3D en mode libre) · getPref/setPref("auto"|"jamais") · agir("recalculer"|"ici"|"ignorer"[, {apres}]).
 // ⚠️ Cap : degrés, 0 = haut du plan, sens horaire (= tracking.js) ; écart sortie − entrée > 0 = DROITE.
 // Garde-fou : scripts/check-guidage.js · Doc : docs/architecture/tracking.md §Guidage
 // =========================
@@ -664,7 +664,8 @@
     return (p && typeof p.x === "number" && typeof p.y === "number") ? p : null;
   }
 
-  function _action(nom) {
+  // `opts.apres(p)` (« ici ») : appelé une fois la position choisie au picker (la vue 3D s'y rouvre) ; annulé : rien.
+  function _action(nom, opts) {
     const pos = _positionTracker();
     if (nom === "recalculer") {
       _alerte = null; _horsCompte = 0; _demiCompte = 0;
@@ -678,7 +679,9 @@
       _alerte = null; _horsCompte = 0; _demiCompte = 0;
       // Le picker partagé RECALE le tracker : la replanification (interfaceItineraire > _onTrackerRecale) suit.
       if (typeof window.ktaDemanderPositionCarte === "function") {
-        window.ktaDemanderPositionCarte(function() {}, { icone: "📍", texte: _t("guid.pick") });
+        window.ktaDemanderPositionCarte(function(p) {
+          if (opts && typeof opts.apres === "function") opts.apres(p);
+        }, { icone: "📍", texte: _t("guid.pick") });
       }
     } else if (nom === "ignorer") {
       if (_alerte === "ecart") _ignoreEcart = true;          // F : jusqu'au retour sur le chemin
@@ -811,7 +814,7 @@
 
     // `s` / `sCible` (px le long du trajet) : position et prochaine consigne, pour les chevrons de la vue 3D.
     _etat = {
-      visible: true, mode: r.mode, icone: icone, principal: principal, sous: sous,
+      visible: true, mode: r.mode, icone: icone, principal: principal, sous: sous, actions: actions,
       fleche: fleche, urgence: urgence, picto: picto, s: r.s, sCible: r.sCible
     };
 
