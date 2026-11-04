@@ -14,7 +14,7 @@
 // Un seul outil armé (POI / mesure / zone / tracé). Échap, 3 sommets posés : même fin que le re-clic du bouton de type
 // (tracé, zone, structure, mesure), ajout de point désarmé. Vue 3D d'édition, outil armé (colonne toujours active, sans
 // interrupteur) : panneau de POI, pilier, zone → sommet, aucune fiche ; armé par les vrais boutons (groupe, type) puis
-// le sol ; un seul outil ; pas d'ajout de point dans la colonne ; outil armé en 2D puis vue d'édition : le PREMIER
+// le sol ; un seul outil ; ✏️ ajout de point à sa place dans la colonne ; outil armé en 2D puis vue d'édition : le PREMIER
 // toucher pose ; outil armé à hauteur d'yeux : toucher consommé, aucune fiche.
 // Clic lent sous une image lourde, recul 60 m aux 4 coins et 3 inclinaisons (point du plan y = 0 à 5 cm), Galerie
 // hors tube : sommet posé.
@@ -582,7 +582,9 @@ async function section3D(page, entree) {
   verifier(!!cibles.poi && cibles.pilier.vise === "structures" && cibles.zone.vise === "zones",
     "3D : panneau de POI, pilier et zone sous le doigt", cibles);
 
-  // Hors outil : la fiche s'ouvre (référence).
+  // Hors outil : la fiche s'ouvre (référence ; réglage ⚙️ Fiches ouvert, sinon coupé par défaut au doigt :
+  // checkup-vue-3d.js § 37).
+  await page.evaluate(function () { window.setVue3DFichesObjets(true); });
   const ref = {};
   for (const k of ["poi", "pilier", "zone"]) {
     if (!cibles[k]) continue;
@@ -630,7 +632,7 @@ async function section3D(page, entree) {
   }
 
   // Un seul outil à la fois dans la vue : POI armé sur la carte avant la vue, puis 📐 de la colonne ; mesure puis
-  // tracé ; tracé puis zone. La colonne ne propose pas l'ajout de point (décision produit).
+  // tracé ; tracé puis zone. La colonne propose ✏️ ajout de point, à sa place de la barre 2D (décision produit).
   const armer3 = function (o) {
     return page.evaluate(function (o) {
       const K = window.KtaVue3D;
@@ -669,7 +671,7 @@ async function section3D(page, entree) {
   });
   verifier(seul3.length === 0, "3D : un seul outil armé (POI de la carte puis 📐, 📐 puis tracé, tracé puis zone)",
     seul3);
-  verifier(barrePoi.indexOf("edition") < 0, "3D : la colonne d'outils ne propose pas l'ajout de point", barrePoi);
+  verifier(barrePoi.indexOf("edition") === 1, "3D : la colonne d'outils propose ✏️ ajout de point, après 📐", barrePoi);
 
   // Armer par les vrais boutons, au pointeur de l'entrée (souris ou doigt) : groupe, type du panneau, puis le sol.
   const reels = [];

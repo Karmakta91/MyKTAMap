@@ -711,7 +711,8 @@ async function section3D(page) {
     await new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); });
     const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
     const q = new ctx.THREE.Vector3(p.x / sc - 2, 0, p.y / sc).project(ctx.camera);
-    return { a: [rc.left + (q.x + 1) / 2 * rc.width, rc.top + (1 - q.y) / 2 * rc.height], x0: p.x - 2 * sc };
+    return { a: [rc.left + (q.x + 1) / 2 * rc.width, rc.top + (1 - q.y) / 2 * rc.height], p0: { x: p.x - 2 * sc, y: p.y },
+      sc: sc };
   });
   await page.mouse.move(somm.a[0], somm.a[1]);
   await page.mouse.down();
@@ -719,9 +720,11 @@ async function section3D(page) {
   for (let i = 1; i <= 8; i++) { await page.mouse.move(somm.a[0] + 5 * i, somm.a[1] + 4 * i); await page.waitForTimeout(25); }
   await page.mouse.up();
   await page.waitForTimeout(200);
-  const sommApres = await page.evaluate(function () { return window.getMeasurePoints().map(function (q) { return q.x; }); });
-  verifier(sommApres.length === 3 && Math.abs(sommApres[0] - somm.x0) > 1,
-    "3D : clic long + glisser sur un sommet de la mesure → il se déplace", { avant: somm.x0, apres: sommApres });
+  const sommApres = await page.evaluate(function () { return window.getMeasurePoints(); });
+  const bougeM = sommApres.length === 3 ? Math.hypot(sommApres[0].x - somm.p0.x, sommApres[0].y - somm.p0.y) / somm.sc : 0;
+  verifier(sommApres.length === 3 && bougeM > 0.3,
+    "3D : clic long + glisser sur un sommet de la mesure → il se déplace (" + bougeM.toFixed(2) + " m)",
+    { avant: somm.p0, apres: sommApres });
   await page.evaluate(function () { window.resetMesure(); window.HistoryManager.reset(); });
   joue("v3d.sommet");
 
