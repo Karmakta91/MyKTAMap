@@ -1467,6 +1467,18 @@ async function sectionDessin(page) {
     r.trace = { type: trace && trace.type, niveau: trace && trace.level, points: trace ? trace.points.map(m) : null,
       fini: !window.getCurrentRoad() && !window.modeRoad, vise: vR ? { genre: vR.genre, uid: vR.uid } : null,
       uid: trace && trace.uid, refaitesPendant: refaitesPendant };
+    // Aimantation des tracés (réglage de la carte) : un toucher à 0,22 m d'un sommet s'y accroche (rayon d'écran de
+    // la 2D converti à la profondeur du point touché).
+    const snapAv = { on: C.snapDraw, px: C.snapDrawPx };
+    C.snapDraw = true; C.snapDrawPx = 14;
+    choisir("traces", "ui.trace.chemin");
+    const avA = uids(window.getRoads());
+    await tap(ecran(6.18, 4.12)); await tap(ecran(6, 0));
+    choisir("traces", "ui.trace.valider");
+    const aim = nouveau(window.getRoads(), avA);
+    r.aimant = { premier: aim ? m(aim.points[0]) : null, n: aim ? aim.points.length : 0 };
+    C.snapDraw = snapAv.on; C.snapDrawPx = snapAv.px;
+    window._desactiverTousLesModes();
 
     // ── Mesure 📐 : deux points à 10 m, distance de la carte et étiquette dans la 3D ──
     r.armeMesure = choisir("mesure", "ui.subaction.mesureDistance") && window.modeMesure === true;
@@ -1656,6 +1668,8 @@ async function sectionDessin(page) {
     r.trace.refaitesPendant === 0 && proche(r.trace.points, [[6, 4], [10, 4], [10, 8]], 0.03) &&
     r.trace.vise && r.trace.vise.uid === r.trace.uid,
     "tracé au doigt, validé par ✅ : niveau −1, aucune reconstruction pendant, visible", r.trace);
+  verifier(r.aimant.n === 2 && proche([r.aimant.premier], [[6, 4]], 1e-6),
+    "aimantation des tracés (snapDraw) : toucher à 0,22 m d'un sommet → accroché sur lui", r.aimant);
   verifier(r.armeMesure && r.mesure.points === 2 && Math.abs(r.mesure.distance - 10) < 0.03 &&
     r.mesure.etiquettes.some(function (t) { return t.indexOf(r.mesure.attendu) >= 0; }) && r.mesure.eteinte,
     "mesure 📐 au doigt : 10 m justes, étiquette de la carte dans la 3D, retoucher l'éteint", r.mesure);

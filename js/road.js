@@ -141,7 +141,7 @@ function initRoad() {
     // Magnétisme : le point cliqué s'accroche au sommet existant le plus proche. 🩸 Deux tracés joints à l'œil
     // tombent souvent à 5-10 px l'un de l'autre → deux nœuds au lieu d'un ; au-delà de la PROXIMITY_TOLERANCE du
     // Pathfinder (15 px), l'itinéraire refuse une galerie visiblement reliée.
-    const _snap = _snapSurSommetProche(x, y);
+    const _snap = _snapSurSommetProche(x, y, e.ktaTolerancePlan);
     if (_snap) {
       x = _snap.x;
       y = _snap.y;
@@ -505,20 +505,24 @@ function _calculerIntersectionsRoads(roads) {
 //     éligibles (fermer une boucle marche).
 //   • Multi-niveau : seulement les roads du niveau actif, sauf les jonctions (faites pour relier) — sinon
 //     accrochage sur une galerie d'un autre étage superposée en x/y.
-function _snapSurSommetProche(x, y) {
+// `tolPlan` (px plan, facultatif) : rayon donné par l'appelant quand le geste ne vient pas de la carte (vue 3D :
+// js/vue3d.js > _poserSommet, le même rayon écran converti à la profondeur du point touché).
+function _snapSurSommetProche(x, y, tolPlan) {
   const cfg = window.APP_CONFIG || {};
   if (cfg.snapDraw !== true) return null;
   if (!window.map || typeof window.map.latLngToLayerPoint !== "function") return null;
 
   // Rayon écran → unités plan, mesuré au CENTRE de la vue avec la projection courante (indépendant du CRS).
   const px = (Number.isFinite(cfg.snapDrawPx) && cfg.snapDrawPx > 0) ? cfg.snapDrawPx : 14;
-  let tol;
-  try {
-    const c   = window.map.getCenter();
-    const p0  = window.map.latLngToLayerPoint(c);
-    const ll1 = window.map.layerPointToLatLng(L.point(p0.x + px, p0.y));
-    tol = Math.abs(ll1.lng - c.lng);
-  } catch(e) { return null; }
+  let tol = Number.isFinite(tolPlan) && tolPlan > 0 ? tolPlan : null;
+  if (tol === null) {
+    try {
+      const c   = window.map.getCenter();
+      const p0  = window.map.latLngToLayerPoint(c);
+      const ll1 = window.map.layerPointToLatLng(L.point(p0.x + px, p0.y));
+      tol = Math.abs(ll1.lng - c.lng);
+    } catch(e) { return null; }
+  }
   if (!Number.isFinite(tol) || tol <= 0) return null;
 
   const mlOn  = cfg.multiLevel === true;
