@@ -113,7 +113,7 @@ html.kta-theme-light .kta-v3d-mode-indic {
 
 /* Tuile des réglages : petit panneau ancré sous ⚙️ (`top` posé par _basculerReglages), au-dessus de tout dans la
    vue ; la boîte de la fenêtre ⚙️ Réglages (surface, liseré, rayon 14 px), chaque réglage sur une ligne écrite.
-   🩸 z-index au-dessus de .leaflet-control (800, leaflet.css) : la colonne ✏️ de la vue d'édition en porte la classe
+   🩸 z-index au-dessus de .leaflet-control (800, leaflet.css) : la colonne 🛠️ de la vue d'édition en porte la classe
    et passait sur la tuile ouverte, valeurs des curseurs coupées. */
 .kta-v3d-reglages {
   position: absolute; right: 10px; top: 80px; z-index: 900; width: max-content; max-width: calc(100% - 20px);
@@ -329,7 +329,7 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 }
 .kta-v3d-bandeau-niveau[hidden] { display: none; }
 
-/* Dessin depuis la vue plongeante (vue3d.js > _monterOutils) : ✏️ puis 📐 🛣️ ⬛ 🏛️, les boutons de la barre de
+/* Dessin depuis la vue plongeante (vue3d.js > _monterOutils) : 🛠️ puis 📐 🛣️ ⬛ 🏛️, les boutons de la barre de
    droite 2D (.leaflet-bar a, leur taille et leurs états : style.css), en colonne à droite, au milieu. Le panneau d'un
    groupe (interface.js > ktaOuvrirOutils) passe au rang de la vue, posé après elle : au-dessus. */
 .kta-v3d-outils {
@@ -379,3 +379,18 @@ html.kta-vue3d-ouverte .kta-group-flyout, html.kta-vue3d-ouverte .kta-group-flyo
   margin-top: 4px; padding-top: 4px; border-top: 1px dashed color-mix(in srgb, var(--kta-accent) 25%, transparent);
 }
 .kta-v3d-mesure-ligne.kta-v3d-mesure-active { border-left-color: var(--kta-accent); }
+/* Niveau en vue d'édition (vue3d.js > _majNiveauEdition) : ▲ niveau ▼ en colonne à gauche, sous la rangée du haut
+   (et le bandeau, --kta-v3d-sous-haut) ; plan à un niveau : caché. Boutons au gabarit de la vue, cible de 44 px. */
+.kta-v3d-niveau-edition {
+  position: absolute; left: 10px; top: calc(var(--kta-v3d-sous-haut, 80px) + 8px);
+  display: flex; flex-direction: column; align-items: center; gap: var(--kta-v3d-ecart);
+}
+.kta-v3d-niveau-edition[hidden] { display: none; }
+.kta-v3d-niveau-edition > .kta-v3d-btn::before {
+  content: ""; position: absolute; inset: calc((var(--kta-v3d-taille) - 2px - var(--kta-v3d-cible)) / 2);
+}
+.kta-v3d-niveau-edition-valeur {
+  min-width: var(--kta-v3d-taille); padding: 4px 6px; box-sizing: border-box; border-radius: var(--kta-v3d-rayon);
+  border: 1px solid var(--kta-accent); background: var(--kta-surface); color: var(--kta-texte);
+  font-size: 14px; font-weight: 700; text-align: center; white-space: nowrap;
+}

@@ -1457,7 +1457,7 @@ async function sectionZonesNiveaux(page) {
 // marcher et hauteur d'yeux ramènent la caméra ; deux doigts tournés = cap ; bandeau de mesure (2 sommets, 3e, angle
 // droit = 90° comme la 2D, surface, désarmé = caché) ; lettres d'un panneau jamais sous 13 px, fiche à taille normale ;
 // survol (pilier, cavage fermé traversés en plongée, bloqués à hauteur d'yeux, place dégagée au retour) ; plan au sol
-// visible (pixels lus dans une capture), sol uni 🧱 coupé ; tuile ⚙️ au-dessus de la colonne ✏️, curseurs entiers.
+// visible (pixels lus dans une capture), sol uni 🧱 coupé ; tuile ⚙️ au-dessus de la colonne 🛠️, curseurs entiers.
 async function sectionCamera(page) {
   const R = await page.evaluate(async function () {
     const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
@@ -1744,6 +1744,41 @@ async function sectionCamera(page) {
     r.solUni.rallume = solM ? !!solM.material.map : null;
     await K.fermer();
 
+    // ── 🧱 coupé : parois des galeries à la couleur de légende de leur tracé (type perso compris), la légende suit ──
+    const LC = window.LegendCustomization, trouver = LC.findCustomEntry;
+    LC.findCustomEntry = function (id) {
+      return id === "cust-v3d-galerie" ? { id: id, category: "traces", geometry: "line", color: "#3c9be0" }
+        : trouver.apply(LC, arguments);
+    };
+    try {
+      window.setStructures([]);
+      window.setRoads([{ uid: "rd_cam_p", type: "principal", level: 0, points: [P(-30, 0), P(0, 0)] },
+        { uid: "rd_cam_c", type: "cust-v3d-galerie", level: 0, points: [P(0, 0), P(0, 30)] }]);
+      window.setEditorPoints([]);
+      window.KtaGalerie.invalider();
+      window.setVue3DTextures(false);
+      await ouvrir("galerie", -5, 0, 90);
+      K.basculerVue();
+      await images(2);
+      const couleurs = function () { return (K.textures().couleurs.paroiUnie || []).slice(); };
+      const style = function (t) { return window.ktaResolveStyle("traces", t, { flat: true }).color; };
+      r.paroisUnies = { coupe: couleurs(), attendu: [style("principal"), style("cust-v3d-galerie")],
+        maillages: Object.assign({}, K.textures().maillages) };
+      const n0 = K.etat().donnees.refaites;
+      LC.setColor("traces", "principal", "#c0392b");
+      for (let i = 0; i < 60 && K.etat().donnees.refaites === n0; i++) await pause(40);
+      await images(2);
+      r.paroisUnies.apresLegende = { couleurs: couleurs(), refaites: K.etat().donnees.refaites - n0,
+        attendu: style("principal") };
+      LC.setColor("traces", "principal", null);
+      K.basculerTextures();
+      await images(2);
+      r.paroisUnies.allume = Object.assign({}, K.textures().maillages);
+      await K.fermer();
+    } finally {
+      LC.findCustomEntry = trouver;
+    }
+
     // Restitution : plan, niveaux, calques, données.
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
@@ -1807,6 +1842,24 @@ async function sectionCamera(page) {
   verifier(!!r.planSol.etat && r.planSol.etat.ok && proche(r.planSol.centre, [20, -2], 0.5) &&
     r.planSol.ordre > r.planSol.ordreSol && r.planSol.profondeur === false && r.planSol.grainAllume === true,
     "plan au sol centré sur le point visé, posé sur le sol par l'ordre de rendu (sans profondeur)", r.planSol);
+  // Couleur d'un sommet (octets linéaires de three.js) → comparée au hex sRGB de la légende (4 près).
+  const memeCouleur = function (lineaire, hex) {
+    const v = [1, 3, 5].map(function (i) { return parseInt(hex.substr(i, 2), 16); });
+    const w = [1, 3, 5].map(function (i) {
+      const c = parseInt(lineaire.substr(i, 2), 16) / 255;
+      return Math.round((c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055) * 255);
+    });
+    return w.every(function (x, i) { return Math.abs(x - v[i]) <= 4; });
+  };
+  const parmi = function (liste, hex) { return (liste || []).some(function (h) { return memeCouleur(h, hex); }); };
+  const pu = r.paroisUnies;
+  verifier(pu.coupe.length === 2 && pu.attendu.every(function (h) { return parmi(pu.coupe, h); }) &&
+    !pu.maillages.paroi && pu.maillages.paroiUnie >= 1,
+    "🧱 coupé (rendu galerie) : chaque paroi à la couleur de légende de son tracé, type perso cust-… compris", pu);
+  verifier(pu.apresLegende.refaites >= 1 && parmi(pu.apresLegende.couleurs, pu.apresLegende.attendu) &&
+    !parmi(pu.apresLegende.couleurs, pu.attendu[0]), "couleur changée dans la légende, vue ouverte : la paroi suit",
+    pu.apresLegende);
+  verifier(pu.allume.paroi >= 1 && !pu.allume.paroiUnie, "🧱 rallumé : la pierre de taille revient", pu.allume);
   verifier(r.solUni.map === null && r.solUni.couleur === "#c9b48c" && r.solUni.textures === false &&
     r.solUni.rallume, "🧱 coupé : sol uni à la teinte du motif ; rallumé : grain", r.solUni);
   await sectionCameraPixels(page);
@@ -1818,6 +1871,8 @@ async function sectionCamera(page) {
   await sectionTuileColonne(page);
   await page.setViewportSize(vp);
   await page.waitForTimeout(300);
+  await sectionNiveauEdition(page);
+  await sectionEditionRetenue(page);
 }
 
 // Plan au sol vu à l'écran : moyenne des pixels d'une bande de sol lue dans une capture, sans puis avec 🗺️ (le relevé
@@ -1843,7 +1898,7 @@ async function sectionCameraPixels(page) {
           c.width = w; c.height = h;
           const g = c.getContext("2d");
           g.drawImage(img, 0, 0);
-          // Bande de sol : 20 → 60 % de la largeur, 45 → 60 % de la hauteur (ni boutons ni colonne ✏️).
+          // Bande de sol : 20 → 60 % de la largeur, 45 → 60 % de la hauteur (ni boutons ni colonne 🛠️).
           const d = g.getImageData(Math.round(w * 0.2), Math.round(h * 0.45), Math.round(w * 0.4), Math.round(h * 0.15)).data;
           let n = 0, sr = 0, sg = 0, sb = 0, s2 = 0;
           for (let i = 0; i < d.length; i += 4 * 7) { n++; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; s2 += d[i] * d[i]; }
@@ -1904,7 +1959,7 @@ async function sectionCameraPixels(page) {
     { grain: sansPlan, uni: uni });
 }
 
-// Tuile ⚙️ ouverte en vue d'édition : au-dessus de la colonne ✏️ (aucun point commun où la colonne passe dessus),
+// Tuile ⚙️ ouverte en vue d'édition : au-dessus de la colonne 🛠️ (aucun point commun où la colonne passe dessus),
 // valeurs des curseurs entières dans la tuile.
 async function sectionTuileColonne(page) {
   const r = await page.evaluate(async function () {
@@ -1930,6 +1985,23 @@ async function sectionTuileColonne(page) {
       }
     }
     // Paysage bas : la tuile défile ; chaque valeur est amenée dans la tuile avant d'être regardée.
+    // Sélecteur de niveau (plan à deux niveaux simulé) : ni sous la colonne 🛠️, ni sous la tuile, ni sous la grille.
+    const occ = window.ktaNiveauxOccupes, ml = window.APP_CONFIG.multiLevel;
+    window.ktaNiveauxOccupes = function () { return [-1, 0]; };
+    window.APP_CONFIG.multiLevel = true;
+    K.basculerVue(); K.basculerVue();
+    const nivB = document.querySelector("#kta-vue3d .kta-v3d-niveau-edition");
+    const coupe = function (p, q) { return !(p.right <= q.left || p.left >= q.right || p.bottom <= q.top || p.top >= q.bottom); };
+    // Tuile ouverte : le sélecteur est caché ; tuile fermée : montré, ni sous la colonne ni sous la grille.
+    const sousTuile = !nivB.hidden && coupe(nivB.getBoundingClientRect(), t.getBoundingClientRect());
+    document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
+    await new Promise(function (ok) { setTimeout(ok, 50); });
+    const rn = nivB.getBoundingClientRect(), incl = document.querySelector("#kta-vue3d .kta-v3d-incl").getBoundingClientRect();
+    const niveau = { visible: !nivB.hidden, colonne: coupe(rn, rcol), tuile: sousTuile, zoom: coupe(rn, incl) };
+    document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
+    await new Promise(function (ok) { setTimeout(ok, 50); });
+    window.ktaNiveauxOccupes = occ;
+    window.APP_CONFIG.multiLevel = ml;
     const valeurs = Array.prototype.map.call(t.querySelectorAll(".kta-v3d-curseur-valeur"), function (v) {
       v.scrollIntoView({ block: "nearest" });
       const rv = v.getBoundingClientRect(), el = document.elementFromPoint(rv.right - 2, rv.top + rv.height / 2);
@@ -1938,11 +2010,242 @@ async function sectionTuileColonne(page) {
     });
     document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
     await K.fermer();
-    return { chevauchement: points, colonneDessus: dessous, valeurs: valeurs, vw: window.innerWidth, vh: window.innerHeight };
+    return { chevauchement: points, colonneDessus: dessous, valeurs: valeurs, niveau: niveau, vw: window.innerWidth,
+      vh: window.innerHeight };
   });
+  verifier(r.niveau.visible && !r.niveau.colonne && !r.niveau.tuile && !r.niveau.zoom,
+    "sélecteur de niveau (" + r.vw + " × " + r.vh + ") : ni sur la colonne 🛠️ ni sur la grille + −, caché sous la " +
+    "tuile ⚙️ ouverte",
+    r.niveau);
   verifier(r.colonneDessus === 0 && r.valeurs.length >= 3 && r.valeurs.every(function (v) { return v.entier && v.dessus; }),
-    "tuile ⚙️ ouverte en vue d'édition (" + r.vw + " × " + r.vh + ") : au-dessus de la colonne ✏️, valeurs des " +
+    "tuile ⚙️ ouverte en vue d'édition (" + r.vw + " × " + r.vh + ") : au-dessus de la colonne 🛠️, valeurs des " +
     "curseurs entières", r);
+}
+
+// Niveau choisi en vue d'édition (▲ niveau ▼, sans passage) : scène du niveau construite, place et caméra gardées,
+// carte et tracker immobiles, un tracé dessiné prend le niveau de la 3D ; retour à hauteur d'yeux dégagé.
+async function sectionNiveauEdition(page) {
+  const r = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rel = function (q) { return [+(q.x / sc - ox).toFixed(3), +(q.y / sc - oz).toFixed(3)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = async function (n) {
+      for (let i = 0; i < (n || 3); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    };
+    const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, occ: window.ktaNiveauxOccupes };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
+    if (window.ktaSetActiveLevel) window.ktaSetActiveLevel(0); else C.activeLevel = 0;
+    const carre = function (x0, z0, x1, z1, lv) {
+      return { uid: "st_ne_" + lv, type: "pilier-1", level: lv, points: [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)] };
+    };
+    window.setRoads([{ uid: "rd_ne0", type: "principal", level: 0, points: [P(-20, 0), P(20, 0)] },
+      { uid: "rd_ne1", type: "principal", level: -1, points: [P(-20, 6), P(20, 6)] }]);
+    window.setStructures([carre(2, -8, 4, -6, 0), carre(-1, -1, 1, 1, -1)]);
+    window.setZones([]); window.setEditorPoints([]);
+    window.KtaGalerie.invalider();
+    const t0 = P(-6, 0);
+    window.startTracking();
+    window.recalerTrackerSurPoint(t0.x, t0.y, 0);
+    window.setPlanRenduVue3D(null, "structures");
+    await K.ouvrir({ depart: { x: t0.x, y: t0.y, cap: 0, niveau: 0 }, commandes: "joystick" });
+    const out = { yeux: K.etat().niveauEdition };
+    K.basculerVue();
+    await images(3);
+    K.panner(3, -2);
+    const e0 = K.etat(), tr0 = window.getTrackingPosition();
+    out.avant = { niveau: e0.niveau, boite: e0.niveauEdition, structures: e0.compte.structures, vise: e0.camera.vise };
+    const b = document.querySelector('#kta-vue3d [data-v3d="niveauEditionBas"]');
+    b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, pointerId: 41 }));
+    await images(4);
+    const e1 = K.etat(), tr1 = window.getTrackingPosition();
+    out.apres = { niveau: e1.niveau, boite: e1.niveauEdition, structures: e1.compte.structures, vise: e1.camera.vise,
+      pos: [rel(e0.pos), rel(e1.pos)], carte: C.activeLevel, tracker: [rel(tr0), rel(tr1)],
+      trackerNiveau: window.getTrackerLevel(), bandeau: e1.bandeauNiveau, mode: e1.mode,
+      manquantes: e1.portee.tuiles.manquantes };
+    // Tracé dessiné en vue d'édition, après le changement : au niveau de la 3D.
+    K.dessiner(true);
+    const choisir = function (groupe, cle) {
+      const bt = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="' + groupe + '"]');
+      if (bt) bt.click();
+      const fly = document.querySelector(".kta-group-flyout"), lib = window.I18n.t(cle);
+      const btn = fly && Array.prototype.slice.call(fly.querySelectorAll(".kta-group-flyout-btn")).filter(function (x) {
+        return x.textContent.indexOf(lib) >= 0;
+      })[0];
+      if (btn) btn.click(); else if (fly) window.ktaFermerOutils();
+      return !!btn;
+    };
+    K.surPlace();
+    await images(2);
+    let ctxV = null;
+    const deg = K.greffer({ nom: "ne", scene: function (c) { ctxV = c; } });
+    if (deg) deg();
+    const ecran = function (x, z) {
+      const rc = document.querySelector("#kta-vue3d canvas").getBoundingClientRect();
+      const v = new ctxV.THREE.Vector3(ox + x, 0, oz + z).project(ctxV.camera);
+      return { x: rc.left + (v.x + 1) / 2 * rc.width, y: rc.top + (1 - v.y) / 2 * rc.height };
+    };
+    const tap = async function (pt) {
+      const c = document.querySelector("#kta-vue3d canvas");
+      const o = { bubbles: true, cancelable: true, pointerId: 42, pointerType: "touch", isPrimary: true,
+        clientX: pt.x, clientY: pt.y, button: 0 };
+      c.dispatchEvent(new PointerEvent("pointerdown", o));
+      await pause(30);
+      c.dispatchEvent(new PointerEvent("pointerup", o));
+      await pause(40);
+    };
+    const avR = window.getRoads().map(function (x) { return x.uid; });
+    out.arme = choisir("traces", "ui.trace.chemin");
+    await tap(ecran(-8, -3)); await tap(ecran(-4, -3));
+    choisir("traces", "ui.trace.valider");
+    await images(2);
+    const nv = window.getRoads().filter(function (x) { return avR.indexOf(x.uid) < 0; })[0];
+    out.dessin = nv ? { niveau: nv.level, n: nv.points.length } : null;
+    window._desactiverTousLesModes();
+    K.dessiner(false);
+    // Retour à hauteur d'yeux, place mise dans le pilier du −1 : dégagée.
+    K.placer(P(0, 0).x, P(0, 0).y, 0);
+    const dg0 = K.etat().degagements;
+    K.basculerVue();
+    await images(2);
+    const pd = rel(K.etat().pos);
+    out.retour = { niveau: K.etat().niveau, vue: K.etat().vue, degagements: K.etat().degagements - dg0, pos: pd,
+      boite: K.etat().niveauEdition };
+    // Tracker arrêté avant : sinon « Je suis ici ? » attendrait une réponse (la place a bougé).
+    window.stopTracking();
+    await K.fermer();
+    // Plan à un niveau : pas de sélecteur.
+    C.multiLevel = false;
+    await K.ouvrir({ depart: { x: t0.x, y: t0.y, cap: 0 }, commandes: "joystick" });
+    K.basculerVue();
+    await images(2);
+    out.unNiveau = K.etat().niveauEdition;
+    await K.fermer();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s;
+    window.setRoads([]); window.setStructures([]); window.setZones([]);
+    window.setEditorPoints(window.__v3dPoints || []);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  const a = r.apres;
+  verifier(r.yeux && !r.yeux.visible && r.avant.niveau === 0 && r.avant.boite.visible && r.avant.boite.bas &&
+    !r.avant.boite.haut && a.niveau === -1 && a.boite.visible && a.boite.haut && !a.boite.bas &&
+    a.boite.texte !== r.avant.boite.texte && a.manquantes === 0 &&
+    JSON.stringify(a.pos[0]) === JSON.stringify(a.pos[1]) && JSON.stringify(a.vise) === JSON.stringify(r.avant.vise) &&
+    a.carte === 0 && JSON.stringify(a.tracker[0]) === JSON.stringify(a.tracker[1]) && a.trackerNiveau === 0 &&
+    !!a.bandeau && a.mode === "libre",
+    "vue d'édition : ▼ passe la 3D au −1 sans passage (scène du niveau, place et caméra gardées), carte et tracker " +
+    "au 0, immobiles", r);
+  verifier(r.arme && !!r.dessin && r.dessin.niveau === -1 && r.dessin.n === 2,
+    "tracé dessiné après le changement de niveau : au niveau de la 3D (−1)", r.dessin);
+  verifier(r.retour.vue === "yeux" && r.retour.niveau === -1 && r.retour.degagements >= 1 && !r.retour.boite.visible &&
+    !(Math.abs(r.retour.pos[0]) < 1 && Math.abs(r.retour.pos[1]) < 1),
+    "retour à hauteur d'yeux dans le pilier du −1 : place dégagée, sélecteur caché", r.retour);
+  verifier(!!r.unNiveau && !r.unNiveau.visible, "plan à un niveau : pas de sélecteur", r.unNiveau);
+}
+
+// Vue d'édition retenue par plan : fermer et rouvrir, recharger la page (nouvel onglet, même appareil) → vue d'édition,
+// même zoom et inclinaison, caméra sur la place ; autre plan → sa valeur ; greffe qui l'interdit → hauteur d'yeux,
+// réglage intact.
+async function sectionEditionRetenue(page) {
+  const r = await page.evaluate(async function () {
+    const K = window.KtaVue3D, W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const stub = window.getPlanEditionVue3D;
+    window.getPlanEditionVue3D = window.__v3dEditionVraie;
+    const out = {};
+    try {
+      window.setPlanEditionVue3D(null, { on: false });
+      const d = { x: W / 2, y: H / 2, cap: 0, niveau: 0 };
+      await K.ouvrir({ depart: d, commandes: "joystick" });
+      out.premiere = K.etat().vue;
+      K.basculerVue();
+      K.zoomer(1.5);
+      K.incliner(-10);
+      K.panner(8, 0);
+      const voulu = { recul: K.etat().portee.recul, inclinaison: K.etat().inclinaison };
+      out.voulu = voulu;
+      await K.fermer();
+      await K.ouvrir({ depart: d, commandes: "joystick" });
+      const e1 = K.etat();
+      out.rouverte = { vue: e1.vue, recul: e1.portee.recul, inclinaison: e1.inclinaison, vise: e1.camera.vise,
+        outil: e1.dessin ? e1.dessin.outil : null };
+      await K.fermer();
+      // Autre plan : sa propre valeur (rien de retenu → hauteur d'yeux).
+      const id = window._currentLoadedPlanId;
+      window._currentLoadedPlanId = "v3d-checkup-autre-plan";
+      await K.ouvrir({ depart: d, commandes: "joystick" });
+      out.autrePlan = K.etat().vue;
+      await K.fermer();
+      window._currentLoadedPlanId = id;
+      // Greffe qui interdit la vue d'édition : hauteur d'yeux, réglage intact.
+      await K.ouvrir({ depart: d, commandes: "joystick" });
+      const deg = K.greffer({ nom: "sans-edition", scene: function (ctx) { ctx.regler({ plongee: false }); } });
+      await pause(50);
+      out.greffe = { vue: K.etat().vue };
+      await K.fermer();
+      if (deg) deg();
+      out.greffe.retenu = window.getPlanEditionVue3D();
+    } finally {
+      window.getPlanEditionVue3D = stub;
+    }
+    return out;
+  });
+  // Rechargement : un nouvel onglet du même appareil (même stockage), plan fictif rechargé.
+  const page2 = await page.context().newPage();
+  let r2 = null;
+  try {
+    await page2.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page2, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page2.waitForTimeout(1500);
+    await page2.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok");
+      if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page2, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page2.waitForTimeout(1000);
+    await page2.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+    });
+    await page2.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    r2 = await page2.evaluate(async function () {
+      const K = window.KtaVue3D, W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      await K.ouvrir({ depart: { x: W / 2, y: H / 2, cap: 0, niveau: 0 }, commandes: "joystick" });
+      const e = K.etat();
+      const v = { vue: e.vue, recul: e.portee.recul, inclinaison: e.inclinaison, vise: e.camera.vise };
+      await K.fermer();
+      window.setPlanEditionVue3D(null, { on: false });
+      return v;
+    });
+  } finally {
+    await page2.close();
+  }
+  const pr = function (a, b) { return Math.abs(a - b) < 1e-6; };
+  verifier(r.premiere === "yeux" && r.rouverte.vue === "plongee" && pr(r.rouverte.recul, r.voulu.recul) &&
+    pr(r.rouverte.inclinaison, r.voulu.inclinaison) && r.rouverte.vise === null && !r.rouverte.outil,
+    "vue d'édition retenue : rouverte en édition, même zoom et inclinaison, caméra sur la place, aucun outil armé", r);
+  verifier(!!r2 && r2.vue === "plongee" && pr(r2.recul, r.voulu.recul) && pr(r2.inclinaison, r.voulu.inclinaison) &&
+    r2.vise === null, "après un rechargement (même appareil) : vue d'édition, même zoom et inclinaison", r2);
+  verifier(r.autrePlan === "yeux", "autre plan : sa propre valeur (hauteur d'yeux)", r.autrePlan);
+  verifier(r.greffe.vue === "yeux" && !!r.greffe.retenu && r.greffe.retenu.on === true,
+    "greffe qui interdit la vue d'édition : ouverte à hauteur d'yeux, réglage retenu intact", r.greffe);
 }
 
 async function sectionDessin(page) {
@@ -2398,15 +2701,15 @@ async function sectionDessin(page) {
       return Math.hypot(q[0] - attendus[i][0], q[1] - attendus[i][1]) <= tol;
     });
   };
-  verifier(!r.yeux.barre && r.yeux.refuse, "dessin : ni barre ni ✏️ à hauteur d'yeux", r.yeux);
+  verifier(!r.yeux.barre && r.yeux.refuse, "dessin : ni barre ni 🛠️ à hauteur d'yeux", r.yeux);
   verifier(r.plongee.barre && r.ouvre === true && JSON.stringify(r.boutons) === JSON.stringify(r.ordre2d) &&
     JSON.stringify(r.boutons) === JSON.stringify(["mesure", "traces", "zones", "structures"]),
-    "vue plongeante : ✏️ montre 📐 🛣️ ⬛ 🏛️ (ordre de la barre de droite 2D)", { plongee: r.plongee, boutons: r.boutons,
+    "vue d'édition : 🛠️ montre 📐 🛣️ ⬛ 🏛️ (ordre de la barre de droite 2D)", { plongee: r.plongee, boutons: r.boutons,
     ordre2d: r.ordre2d });
   verifier(r.style && r.style.w === r.style.wSrc && r.style.h === r.style.hSrc && r.style.icone && r.style.titre &&
     r.style.cible[0] === r.style.jeton && r.style.cible[1] === r.style.jeton,
     "boutons de la barre : taille, icône et titre de ceux de la carte, zone de toucher de --kta-cible-toucher", r.style);
-  verifier(r.sansOutil.structures === 0 && r.sansOutil.poses === 0, "✏️ ouvert sans outil armé : un toucher ne pose rien",
+  verifier(r.sansOutil.structures === 0 && r.sansOutil.poses === 0, "🛠️ ouvert sans outil armé : un toucher ne pose rien",
     r.sansOutil);
   verifier(r.panneau && String(r.panneau.z) === "99999" && r.panneau.dessus && !r.panneau.jonction &&
     !r.panneau.effacer && r.panneau.fermer,
@@ -2458,7 +2761,7 @@ async function sectionDessin(page) {
     r.planSol.presse === "false" && r.planSol.coupe && r.planSol.coupe.voulu === false,
     "plan au sol 🗺️ : caché au −1, au 0 une texture du fond (une de plus), libérée une fois coupé", r.planSol);
   verifier(r.parcours.length === 2 && r.parcours.every(function (x) { return x.cree && !x.abandon; }),
-    "parcours normal (Galerie puis Mixte) : pilier armé depuis ✏️, 3 sommets, fermé, vue fermée → aucun toast « abandonné »",
+    "parcours normal (Galerie puis Mixte) : pilier armé depuis 🛠️, 3 sommets, fermé, vue fermée → aucun toast « abandonné »",
     r.parcours);
   verifier(r.galerie.rendu === "mixte" && r.galerie.bascule === "mixte" && r.galerie.retenu === "mixte",
     "rendu galerie : armer une structure passe en mixte (retenu), on voit ce qu'on dessine", r.galerie);
@@ -2511,6 +2814,11 @@ async function sectionDessin(page) {
     }, 40000);
     await page.waitForTimeout(1500);
     verifier(requetes3d.length === 0, "rien de la 3D chargé au démarrage ni avec le plan", requetes3d);
+    // Vue d'édition retenue par plan (§ 30) : neutralisée ailleurs, chaque section part à hauteur d'yeux.
+    await page.evaluate(function () {
+      window.__v3dEditionVraie = window.getPlanEditionVue3D;
+      window.getPlanEditionVue3D = function () { return null; };
+    });
     verifier(await page.evaluate(function () { return !window.KtaVue3D && !document.getElementById("kta-vue3d-css"); }),
       "KtaVue3D absent tant qu'on ne l'a pas demandé");
 
@@ -2859,7 +3167,7 @@ async function sectionDessin(page) {
             "ui.refonte.counter_sortie_title", "vue3d.reglages",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.zoomPlus", "vue3d.inclinaisonPlus", "vue3d.zoomMoins", "vue3d.inclinaisonMoins",
-            "vue3d.surPlace", "vue3d.dessin.titre", "ui.group.mesure", "ui.group.traces", "ui.group.zones", "ui.group.structures",
+            "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "vue3d.dessin.titre", "ui.group.mesure", "ui.group.traces", "ui.group.zones", "ui.group.structures",
             "vue3d.dessin.planSol", "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer",
             "vue3d.lampeJourAide"].map(function (k) {
@@ -7307,7 +7615,7 @@ async function sectionDessin(page) {
         "jeu : tir au doigt sur un objet de la scène → aucune fiche (regler({ fiches: false }))", MK.ficheDoigt);
       verifier(MK.commandes.dessin === false && MK.commandes.lampe === false && MK.commandes.faisceau === false &&
         MK.commandes.jour === false && MK.commandes.boutonJour,
-        "jeu : barre ✏️, lampe, faisceau et Plein jour refusés pendant la partie", MK.commandes);
+        "jeu : barre 🛠️, lampe, faisceau et Plein jour refusés pendant la partie", MK.commandes);
       verifier(MK.viseur.cap === 100 && MK.viseur.apres === 90,
         "jeu : viseur à la souris — regard rejoué par la vue (40 px → 10°), glisser clos (pas de doigt resté posé)",
         MK.viseur);
@@ -7501,6 +7809,7 @@ async function sectionDessin(page) {
         r.defaut = lire();
         r.defaut.pref = window.getVue3DTextures();
         r.legende = legendeZ;
+        r.legendeTube = window.ktaResolveStyle("traces", "principal", { flat: true }).color;
         // Parois à deux hauteurs de galerie : même échelle (aucun étirement), puis hauteur rendue.
         const h0 = K.etat().hauteur;
         K.reglerHauteur(2.5);
@@ -7574,8 +7883,8 @@ async function sectionDessin(page) {
         });
       };
       const D0 = TX.defaut.t, C0 = TX.coupe.t, R0 = TX.rouverte.t;
-      // Parois des tubes (mixte) : pierre de taille avec relief quand 🧱 est activé, moellons d'origine coupé.
-      const pa = D0.materiaux.paroi || {}, pc = C0.materiaux.paroi || {}, pr = R0.materiaux.paroi || {};
+      // Parois des tubes (mixte) : pierre de taille avec relief quand 🧱 est activé, couleur de légende du tracé coupé.
+      const pa = D0.materiaux.paroi || {};
       const ech2 = function (t, sens) {
         const v = t.aretes.filter(function (x) { return x.mat === "paroi" && x.sens === sens; }).map(function (x) {
           return x.uvParM;
@@ -7602,11 +7911,12 @@ async function sectionDessin(page) {
       const sol = D0.aretes.filter(function (x) { return x.mat === "paroi" && x.sens === "v" && Math.abs(x.y) < 1e-6; });
       verifier(sol.length > 0 && sol.every(function (x) { return Math.abs(x.v0) < 1e-6; }),
         "parois : une assise part toujours du sol (v = 0 à y = 0, " + sol.length + " arêtes)", sol.slice(0, 3));
-      verifier(pc.pierre === false && pc.carte === "256x160" && !pc.normale && C0.maillages.paroi >= 1 &&
-        juste2(ech2(C0, "h"), UP.moellons.h) && juste2(ech2(C0, "v"), UP.moellons.v) &&
-        JSON.stringify(pc) === JSON.stringify(pr) && JSON.stringify(ech2(C0, "h")) === JSON.stringify(ech2(R0, "h")),
-        "🧱 coupé : parois en moellons d'origine (256 × 160, sans relief, un motif par 1,6 × 1 m), comme une vue " +
-        "ouverte sans textures", { coupe: pc, rouverte: pr, h: ech2(C0, "h"), v: ech2(C0, "v") });
+      const unies = function (t) { return t.couleurs.paroiUnie || []; };
+      verifier(!C0.maillages.paroi && C0.maillages.paroiUnie >= 1 && contient(unies(C0), TX.legendeTube) &&
+        unies(C0).length === 1 && JSON.stringify(unies(C0)) === JSON.stringify(unies(R0)) && D0.maillages.paroi >= 1 &&
+        !D0.maillages.paroiUnie, "🧱 coupé : parois des tubes unies à la couleur de légende de leur tracé, comme une vue " +
+        "ouverte sans textures ; rallumé, la pierre", { coupe: unies(C0), rouverte: unies(R0), legende: TX.legendeTube,
+        maillages: [C0.maillages, D0.maillages] });
       const dess = D0.dessins || {};
       verifier(dess.roche >= 0 && dess.parpaing >= 0 && dess.pierre >= 0 && D0.msParoi >= 0,
         "premier dessin des trois textures : roche " + dess.roche + " ms, parpaing " + dess.parpaing + " ms, pierre " +

@@ -9,11 +9,11 @@
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(o), parois(),
 //   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
-//   zoomer(facteur), panner(dx, dz), surPlace(), reglerPortee(m), reglerLampe(%), reglerFaisceau(°),
-//   reglerPleinJour(bool),
+//   zoomer(facteur), panner(dx, dz), surPlace(), niveauEdition(sens), reglerPortee(m), reglerLampe(%),
+//   reglerFaisceau(°), reglerPleinJour(bool),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
-//   _ctxGreffe), viser(cx, cy), dessiner(bool) (barre ✏️ de la vue plongeante : outils de la carte, _poserSommet) } ;
+//   _ctxGreffe), viser(cx, cy), dessiner(bool) (barre 🛠️ de la vue plongeante : outils de la carte, _poserSommet) } ;
 //   code « six vers le bas » : kta:vue3dCode ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap, niveau}, densiteMax, stats, attenteReprise (ms),
 //   retourFocus,
@@ -36,11 +36,11 @@
 // libre, un tracker choisi comme départ depuis la vue y amène la place (placerSurTracker) ; un tracker recalé (« 📍 Je
 // suis ici ») ne la bouge pas (trackerRecale).
 // ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
-// ⚠️ contrat : déplacement = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
-// ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux règles, structures et
-// KtaGalerie.paroisBloquent ; partout, KtaGalerie.zonesBloquent : zones et obstacles des accès), sur la largeur d'un
-// corps. Le tracker n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le recaler
-// (position, niveau).
+// ⚠️ contrat : déplacement à hauteur d'yeux = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
+// ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux, et paroisBloquent ;
+// partout, KtaGalerie.zonesBloquent : zones et obstacles des accès), sur la largeur d'un corps ; vue d'édition :
+// survol (_pas). Le tracker n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le
+// recaler (position, niveau).
 // 🩸 three.js est un module ES : import() dynamique, URL absolue (pas d'import map, la CSP refuse tout script en
 // ligne). Fermer libère le contexte WebGL (forceContextLoss) : un navigateur en garde peu (iOS ~ 8, Chrome 16).
 // Doc : docs/ETUDE_VUE_3D.md, tracking.md § Vue 3D, ui.md § Vue 3D · Garde-fou : scripts/smoke/checkup-vue-3d.js
@@ -882,14 +882,14 @@
     const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot(), rubans = new Lot();
     const hachSol = new Lot(), hachRideau = new Lot();
     // Mixte : parois des tubes (pièces de la tuile, bouts ouverts exclus), zones des tubes découpées comme en galerie.
-    const parois = new Lot(), eauTube = new Lot(), remblaisTube = new Lot();
+    const parois = new Lot(), paroisUnies = new Lot(), eauTube = new Lot(), remblaisTube = new Lot();
     if (mx) {
       t.parois = [];
       for (let i = 0; i < t.g.length; i++) {
-        const ps = mx.paroisDe(t.g[i]);
+        const ps = mx.paroisDe(t.g[i]), col = _couleurParoi(mx.pieces[t.g[i]]);
         for (let k = 0; k < ps.length; k++) {
           const s = ps[k], x0 = s[0] / sc, z0 = s[1] / sc, x1 = s[2] / sc, z1 = s[3] / sc;
-          _paroi(parois, x0, z0, x1, z1, h);
+          if (col) _paroiY(paroisUnies, [x0, z0], [x1, z1], 0, h, col); else _paroi(parois, x0, z0, x1, z1, h);
           t.parois.push([x0, z0, x1, z1]);
         }
       }
@@ -963,6 +963,7 @@
     ajouter(hachRideau, _e.mats.hachRideau, 2);
     if (parois.p.length) _paroiTexturee();
     ajouter(parois, _e.mats.paroi, 0, "parois");
+    ajouter(paroisUnies, _e.mats.paroiUnie, 0, "parois");
     ajouter(remblaisTube, _e.mats.opaque, 0, "remblais");
     if (remblaisTex.p.length) _matZone("remblais");
     ajouter(remblaisTex, _e.mats.remblais, 0, "remblais");
@@ -1036,6 +1037,13 @@
     }
   }
 
+  // ⚠️ contrat (décision produit) : 🧱 coupé, une paroi de galerie ou de tube prend la couleur de légende du type de
+  // tracé de sa pièce (le canon, types `cust-…` et couleurs choisies compris) ; carrefour et coude : le type de
+  // l'arête la plus large (galerieEmprise.js > modèle, `type` de la pièce). 🧱 allumé : null, la pierre de taille.
+  function _couleurParoi(piece) {
+    return _e.textures === true || !piece ? null : _couleur("traces", piece.type, "color");
+  }
+
   // Paroi verticale (m) du sol au plafond, face vers l'intérieur de la galerie (à gauche du bord) : _paroiY.
   function _paroi(lot, x0, z0, x1, z1, h) {
     _paroiY(lot, [x0, z0], [x1, z1], 0, h);
@@ -1044,17 +1052,17 @@
   function _construireTuileGalerie(t) {
     const e = _e, m = e.galerie, sc = e.sc, h = e.hauteur;
     const sol = new Lot(), plafond = new Lot(), parois = new Lot(), opaque = new Lot(), lumineux = new Lot();
-    const rubans = new Lot();
+    const rubans = new Lot(), paroisUnies = new Lot();
     const eau = new Lot(), hachSol = new Lot(), hachRideau = new Lot(), remblais = new Lot(), eboulis = new Lot();
     t.parois = [];
     for (let i = 0; i < t.g.length; i++) {
       const ring = _metres(m.pieces[t.g[i]].pts, sc);
       _dalleTexturee(sol, ring, 0, true);
       _dalleTexturee(plafond, ring, h, false);
-      const ps = m.paroisDe(t.g[i]);
+      const ps = m.paroisDe(t.g[i]), col = _couleurParoi(m.pieces[t.g[i]]);
       for (let k = 0; k < ps.length; k++) {
         const s = ps[k], x0 = s[0] / sc, z0 = s[1] / sc, x1 = s[2] / sc, z1 = s[3] / sc;
-        _paroi(parois, x0, z0, x1, z1, h);
+        if (col) _paroiY(paroisUnies, [x0, z0], [x1, z1], 0, h, col); else _paroi(parois, x0, z0, x1, z1, h);
         t.parois.push([x0, z0, x1, z1]);
       }
     }
@@ -1092,6 +1100,7 @@
     ajouter(plafond, e.mats.plafondGalerie, 0, "plafond");
     if (parois.p.length) _paroiTexturee();
     ajouter(parois, e.mats.paroi, 0, "parois");
+    ajouter(paroisUnies, e.mats.paroiUnie, 0, "parois");
     ajouter(opaque, e.mats.opaque, 0, "opaque");
     ajouter(rubans, e.mats.rubans, 0, "rubans");
     if (tx && remblais.p.length) _matZone("remblais");
@@ -2179,6 +2188,7 @@
       solGalerie: new THREE.MeshLambertMaterial({ map: monde }),
       plafondGalerie: new THREE.MeshLambertMaterial({ map: monde }),
       paroi: new THREE.MeshLambertMaterial({ map: _e.moellons, side: THREE.DoubleSide }),
+      paroiUnie: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
       // 🩸 Eau découpée en plusieurs pièces qui se recouvrent : sans écriture de profondeur stricte, chaque
       // recouvrement serait mélangé deux fois (taches plus sombres).
       eauGalerie: new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45,
@@ -2408,7 +2418,7 @@
     e.sale = true;
   }
 
-  // `reprise` (passé par _majDonnees seul) : emprise d'un objet fini depuis la vue (✏️, _noterFin) ; les tuiles loin
+  // `reprise` (passé par _majDonnees seul) : emprise d'un objet fini depuis la vue (🛠️, _noterFin) ; les tuiles loin
   // de lui sont reprises telles quelles (_reprendreTuiles). Tout autre appel refait tout.
   function _reindexer(reprise) {
     const e = _e;
@@ -2452,6 +2462,7 @@
     _majRonds();
     _gererVolumes();
     _sceneGreffe();
+    _majNiveauEdition();
   }
 
   // Données du plan changées pendant la vue (signal `kta:donneesPlanChange`, utils.js > ktaSignalerDonneesPlan) :
@@ -2460,7 +2471,7 @@
   // position, cap, tangage, niveau, mode, vue, réglages, itinéraire et guidage gardés), place dégagée en libre si un
   // obstacle neuf la recouvre (en suivi, la place est celle du tracker), fiche ouverte relue. Inchangée : rien.
   // ⚠️ contrat : scène refaite entière, pas tuile par tuile (coût mesuré au checkup, KTA_V3D_PERF=1). Un objet dessiné
-  // depuis la vue (✏️) attend sa fin : un sommet ne refait rien (_traceEnCours), la fin refait la scène une fois.
+  // depuis la vue (🛠️) attend sa fin : un sommet ne refait rien (_traceEnCours), la fin refait la scène une fois.
   function _majDonnees() {
     const e = _e, d = e.donnees, t = performance.now();
     if (!d.signal || e.geste || _traceEnCours()) return;
@@ -2471,6 +2482,9 @@
     d.verifs++;
     if (emp === d.empreinte) return;
     d.empreinte = emp;
+    // 🩸 La légende est dans l'empreinte : les couleurs résolues (_couleur) sont relues, sinon une couleur changée
+    // pendant la vue refaisait la scène à l'ancienne teinte.
+    e.couleurs.clear();
     if (window.KtaGalerie && typeof window.KtaGalerie.invalider === "function") window.KtaGalerie.invalider();
     e.filtresChanges = false; e.itiChange = false; e.rondsChange = false;
     e.sortie = null;
@@ -2638,13 +2652,13 @@
   // coordonnées de texture en MÈTRES, u le long de la paroi (projection sur sa direction : deux tronçons alignés se
   // suivent sans saut), v = hauteur depuis le sol (une assise part toujours de y = 0) ; la taille du motif est la
   // `repeat` de la texture, jamais la géométrie : aucun étirement quand la hauteur change, et la bascule 🧱 ne
-  // refait rien ici.
-  function _paroiY(lot, p, q, y0, y1) {
+  // refait rien ici. `col` : paroi unie à cette couleur, sans coordonnées de texture (matériau `paroiUnie`).
+  function _paroiY(lot, p, q, y0, y1, col) {
     const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
     if (l < 1e-6 || y1 <= y0) return;
     const u0 = (p[0] * dx + p[1] * dz) / l, u1 = u0 + l;
-    lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], [-dz / l, 0, dx / l], BLANC,
-      [u0, y0, u1, y0, u1, y1, u0, y1]);
+    lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], [-dz / l, 0, dx / l],
+      col || BLANC, col ? undefined : [u0, y0, u1, y0, u1, y1, u0, y1]);
   }
 
   function _quadPlat(lot, ring, y, col) {
@@ -3444,6 +3458,7 @@
     if (!_e) return;
     _e.inclinaison = Math.max(INCLINAISON.min, Math.min(INCLINAISON.max, _e.inclinaison + deg));
     _e.sale = true;
+    if (deg) _retenirEdition(false);
   }
 
   // Zoom de la vue plongeante : recul multiplié par `facteur` (< 1 = plus près), borné à RECUL, retenu tant que la vue
@@ -3454,7 +3469,7 @@
     const f = Number(facteur);
     if (!(f > 0) || !Number.isFinite(f) || !_permisGreffe("plongee")) return e.recul;
     const v = Math.max(RECUL.min, Math.min(RECUL.max, e.recul * f));
-    if (v !== e.recul) { e.recul = v; _appliquerPortee(); }
+    if (v !== e.recul) { e.recul = v; _appliquerPortee(); _retenirEdition(false); }
     _majZoom();
     return e.recul;
   }
@@ -3501,6 +3516,7 @@
     e.vueAppliquee = e.vue;
     if (e.ov) e.ov.classList.toggle("kta-v3d-edition", haut);
     _majBoutonPlace();
+    _majNiveauEdition();
     e.plafond.visible = !haut && !e.galerie;
     e.tuiles.forEach(function (t) {
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
@@ -3510,7 +3526,7 @@
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
     _majRepere();
     if (e.boutonsIncl) e.boutonsIncl.hidden = !haut;
-    // Dessin (✏️) : en plongée seulement ; la quitter éteint l'outil.
+    // Dessin (🛠️) : en plongée seulement ; la quitter éteint l'outil.
     if (e.dessin && !haut && e.dessin.ouvert) _basculerDessin(false);
     _majBarreDessin();
     _majZoom();
@@ -3918,6 +3934,56 @@
     return Number.isFinite(za) && Number.isFinite(zb) && za !== zb ? za > zb : a > b;
   }
 
+  // ── Niveau choisi en vue d'édition (▲ niveau ▼), sans passage ──────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : change le niveau DE LA 3D (`niveauLibre`, comme 🪜), sans geste de descente
+  // (bandeau « Niveau n » seul) ; caméra et place gardent leur position plan (rien ne bloque en vue d'édition, la place
+  // est dégagée au retour à hauteur d'yeux) ; ni le tracker ni le niveau actif de la carte ne bougent (« Je suis ici ? »
+  // le propose à la fermeture). Niveaux = ceux qui portent quelque chose (main.js > ktaNiveauxOccupes) et le niveau
+  // affiché, du plus haut au plus bas (_auDessus : profondeurs saisies, sinon numéro). Plan à un niveau : rien.
+  function _niveauxEdition() {
+    const e = _e, c = window.APP_CONFIG || {};
+    if (c.multiLevel !== true || !Number.isInteger(e.niveau)) return [];
+    const l = _tab(window.ktaNiveauxOccupes).filter(Number.isInteger);
+    if (l.indexOf(e.niveau) < 0) l.push(e.niveau);
+    return l.filter(function (v, i) { return l.indexOf(v) === i; }).sort(function (a, b) {
+      return _auDessus(a, b) ? -1 : _auDessus(b, a) ? 1 : 0;
+    });
+  }
+
+  // `sens` : "haut", "bas" ou un niveau. Rend true si le niveau a changé.
+  function niveauEdition(sens) {
+    const e = _e;
+    if (!e || e.vue !== "plongee" || e.geste) return false;
+    const l = _niveauxEdition(), i = l.indexOf(e.niveau);
+    if (l.length < 2 || i < 0) return false;
+    const n = Number.isInteger(sens) ? sens : l[i + (sens === "haut" ? -1 : 1)];
+    if (!Number.isInteger(n) || l.indexOf(n) < 0 || n === e.niveau) return false;
+    _passerEnLibre();
+    const cfg = window.APP_CONFIG || {};
+    e.niveauLibre = n;
+    e.actifVu = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
+    e.aBouge = true; e.libreBouge = true;
+    e.changementsNiveau++;
+    console.log("[Vue3D] vue d'édition : niveau " + n);
+    _reindexer();
+    _majPassage();
+    _annoncerNiveau();
+    e.sale = true;
+    return true;
+  }
+
+  function _majNiveauEdition() {
+    const e = _e, b = e.boiteNiveauEdition;
+    if (!b) return;
+    const l = e.vue === "plongee" ? _niveauxEdition() : [], i = l.indexOf(e.niveau);
+    // Tuile ⚙️ ouverte : caché (la tuile, large au téléphone, passerait dessus).
+    b.hidden = l.length < 2 || i < 0 || (!!e.tuileReglages && !e.tuileReglages.hidden);
+    if (b.hidden) return;
+    e.niveauEditionValeur.textContent = _fmtNiveau(e.niveau);
+    e.niveauEditionHaut.disabled = i <= 0;
+    e.niveauEditionBas.disabled = i >= l.length - 1;
+  }
+
   // Niveaux proposés : ceux des passages à moins de PASSAGE m, le plus proche d'abord.
   function _ciblesProches() {
     const e = _e;
@@ -4063,7 +4129,7 @@
     return _allerNiveau(c || null);
   }
 
-  // Outil de dessin armé (✏️, vue plongeante) : le toucher pose un sommet, rien d'autre (_poserSommet).
+  // Outil de dessin armé (🛠️, vue plongeante) : le toucher pose un sommet, rien d'autre (_poserSommet).
   // Toucher bref sur la scène, par priorité : panneau de POI (sa fiche de la carte, _ouvrirFiche, POI jonction
   // compris : boutons de passage, _passagesFiche), puis l'objet sous le doigt, structure, zone, tracé (sa fiche de
   // la carte, _ouvrirFicheObjet). Rien dessous : rien. Une greffe coupe tout (ctx.regler({ fiches: false })).
@@ -4226,8 +4292,8 @@
       type: o ? o.obj.type : null, session: o ? o.session : null };
   }
 
-  // ── Dessin depuis la vue plongeante (✏️) ──────────────────────────────────────────────────────────────
-  // ⚠️ contrat (décision produit) : en plongée seulement, ✏️ montre la barre 📐 🛣️ ⬛ 🏛️ (boutons .leaflet-bar de la
+  // ── Dessin depuis la vue plongeante (🛠️) ──────────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : en plongée seulement, 🛠️ montre la barre 📐 🛣️ ⬛ 🏛️ (boutons .leaflet-bar de la
   // barre de droite 2D, dans son ordre, icône et état recopiés de son bouton : _majBarreDessin). Chaque bouton ouvre
   // le panneau de son groupe 2D (interface.js > ktaOuvrirOutils : mêmes types, customs, ➕ et ✅). Rien ne se dessine
   // tant qu'aucun outil n'est armé ; armé, un toucher bref de la scène pose un sommet AVANT toute fiche (_toucher).
@@ -4235,8 +4301,8 @@
   // undo, uid, styles, fermeture et droits restent ceux des outils 2D, jamais copiés. Le niveau de l'objet est celui
   // de la 3D : APP_CONFIG.activeLevel le prend le temps du geste, puis est rendu. Objet en cours : aperçu léger au sol
   // (_majApercu) et aucune reconstruction de la scène (_majDonnees attend sa fin). Sortir de la plongée, fermer la vue,
-  // Échap ou ✏️ désarment (_desactiverTousLesModes de la carte : un objet non fini se traite comme en 2D). Une greffe
-  // `fiches: false` coupe aussi le dessin (ni ✏️, ni sommet).
+  // Échap ou 🛠️ désarment (_desactiverTousLesModes de la carte : un objet non fini se traite comme en 2D). Une greffe
+  // `fiches: false` coupe aussi le dessin (ni 🛠️, ni sommet).
   // 🩸 Les outils 2D lisent `e.latlng` seul ; ce qui dépend de la carte est donné par la vue. Fermeture d'une zone ou
   // d'une structure (décision produit) : toucher le rond doré du 1er sommet, DESSIN.premier m de rayon dessiné à
   // l'échelle (le point est alors ce sommet exact) ; en mètres et non en px d'écran, sinon le 4e coin d'un mur de
@@ -4261,7 +4327,7 @@
   const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };
   const COULEUR_MESURE = "#ff0000";   // la mesure de la carte (measure.js : red), pas une couleur de la charte
 
-  // Barre (dans la vue, posée par _monterDom) : ✏️ puis un bouton par groupe, cachés tant que ✏️ n'est pas enfoncé.
+  // Barre (dans la vue, posée par _monterDom) : 🛠️ puis un bouton par groupe, cachés tant que 🛠️ n'est pas enfoncé.
   // Sans la barre de droite 2D (interface.js absent), rien.
   function _monterOutils(ov) {
     const e = _e;
@@ -4286,7 +4352,7 @@
     };
     const d = e.dessin;
     d.bouton = lien("dessin");
-    d.bouton.textContent = "✏️";
+    d.bouton.textContent = "🛠️";
     d.bouton.title = _t("vue3d.dessin.titre");
     d.bouton.setAttribute("aria-label", _t("vue3d.dessin.titre"));
     d.bouton.setAttribute("aria-pressed", "false");
@@ -4320,7 +4386,7 @@
     return _enCours({ structures: window.getCurrentStructure, zones: window.getCurrentZone,
       roads: window.getCurrentRoad }[famille]);
   }
-  // Objet commencé, barre ✏️ ouverte : la scène attend sa fin (_majDonnees) et ne le montre pas encore (_collecter).
+  // Objet commencé, barre 🛠️ ouverte : la scène attend sa fin (_majDonnees) et ne le montre pas encore (_collecter).
   function _traceEnCours() {
     const d = _e && _e.dessin;
     return !!d && d.ouvert && !!(_objetEnCours("structures") || _objetEnCours("zones") || _objetEnCours("roads"));
@@ -4637,8 +4703,8 @@
     e.sale = true;
   }
 
-  // ── Plan au sol (🗺️ de la barre ✏️, vue plongeante) : l'image du plan sous la scène, pour dessiner sur le relevé ──
-  // ⚠️ contrat (décision produit) : interrupteur de la barre ✏️, coupé par défaut, gardé tant que la vue est ouverte.
+  // ── Plan au sol (🗺️ de la barre 🛠️, vue plongeante) : l'image du plan sous la scène, pour dessiner sur le relevé ──
+  // ⚠️ contrat (décision produit) : interrupteur de la barre 🛠️, coupé par défaut, gardé tant que la vue est ouverte.
   // Une seule texture carrée (PLAN_SOL.px côté : 1024 au doigt, 2048 au pointeur fin) qui couvre le carré de sol
   // (2,4 × le rayon de scène) autour de la place, posée à une position fixe et redessinée quand on s'en écarte d'un
   // quart ou que le recul change l'emprise de plus d'un quart. Source : les images que la carte a déjà (overlays du
@@ -5780,6 +5846,20 @@
     // ⌖ : caméra de la vue plongeante ramenée sur la place, au-dessus de la grille ; montré caméra détachée seulement.
     e.boutonPlace = _bouton(ov, "kta-v3d-btn-petit kta-v3d-place", "⌖", _t("vue3d.surPlace"), "place");
     e.boutonPlace.hidden = true;
+    // Niveau en vue d'édition (_majNiveauEdition) : ▲ niveau ▼ à gauche, sous la rangée du haut.
+    const nivE = document.createElement("div");
+    nivE.className = "kta-v3d-niveau-edition";
+    nivE.setAttribute("role", "group");
+    nivE.setAttribute("aria-label", _t("vue3d.niveauEdition"));
+    nivE.hidden = true;
+    e.niveauEditionHaut = _bouton(nivE, "kta-v3d-btn-petit", "▲", _t("vue3d.niveauEditionHaut"), "niveauEditionHaut");
+    e.niveauEditionValeur = document.createElement("span");
+    e.niveauEditionValeur.className = "kta-v3d-niveau-edition-valeur";
+    e.niveauEditionValeur.setAttribute("aria-live", "polite");
+    nivE.appendChild(e.niveauEditionValeur);
+    e.niveauEditionBas = _bouton(nivE, "kta-v3d-btn-petit", "▼", _t("vue3d.niveauEditionBas"), "niveauEditionBas");
+    ov.appendChild(nivE);
+    e.boiteNiveauEdition = nivE;
     // Bandeau de la mesure 📐 en cours (_majBandeauMesure) : en bas, entre la boussole et la grille, lu à voix haute.
     const mes = document.createElement("div");
     mes.className = "kta-v3d-mesure";
@@ -5843,6 +5923,7 @@
     }
     t.hidden = !voulu;
     e.boutonReglages.setAttribute("aria-expanded", voulu ? "true" : "false");
+    _majNiveauEdition();
     return voulu;
   }
 
@@ -6075,6 +6156,10 @@
       if (ev) ev.preventDefault();
       const pas = (a === "hauteurPlus" ? e.hauteur : e.hauteur - 0.1) >= HAUTEUR_PAS_FIN ? 0.5 : 0.1;
       reglerHauteur(e.hauteur + (a === "hauteurPlus" ? pas : -pas));
+      return true;
+    }
+    if (a === "niveauEditionHaut" || a === "niveauEditionBas") {
+      niveauEdition(a === "niveauEditionHaut" ? "haut" : "bas");
       return true;
     }
     if (a === "niveauHaut" || a === "niveauBas") { changerNiveau(a === "niveauHaut" ? "haut" : "bas"); return true; }
@@ -6788,6 +6873,7 @@
       _e.donnees.msEmpreinte = performance.now() - tE;
       // En suivi, la place est celle du tracker ; en libre, dégagée aussi d'une structure dessinée (_coince).
       if (_e.mode === "libre") _degager(true);
+      _lireEdition();
       _appliquerVue();
       _placerCamera();
       _e.msOuverture = performance.now() - t0;
@@ -6806,6 +6892,7 @@
     if (e.greffe) _degreffer(_derniereFermeture === "utilisateur" ? "fermeture" : _derniereFermeture);
     if (e.raf) cancelAnimationFrame(e.raf);
     clearInterval(e.minuterie);
+    clearTimeout(e.minuterieEdition);
     e.ecouteurs.forEach(function (x) { x[0].removeEventListener(x[1], x[2], x[3]); });
     if (e.desabonner) e.desabonner();
     // Place libre retirée : l'équipe revoit la position du tracker (ou le partage tel qu'avant la 3D).
@@ -6857,6 +6944,7 @@
     if (!e) return Promise.resolve(false);
     const pos = { x: e.pos.x, y: e.pos.y }, niveau = e.niveau, sc = e.sc, bouge = e.aBouge;
     const suivi = e.mode === "suivi", retour = e.retourFocus;
+    _retenirEdition(true);
     _demonter("utilisateur");
     console.log("[Vue3D] fermée");
     const actif = typeof window.getTrackingActif === "function" && window.getTrackingActif() === true;
@@ -6905,6 +6993,33 @@
     if (!_e || (_e.vue !== "plongee" && !_permisGreffe("plongee"))) return;
     _e.vue = _e.vue === "plongee" ? "yeux" : "plongee";
     _appliquerVue();
+    _retenirEdition(true);
+  }
+
+  // ⚠️ contrat (décision produit) : vue d'édition, zoom et inclinaison retenus par plan sur cet appareil
+  // (config.js > get/setPlanEditionVue3D) ; jamais la place de la caméra libre (on rouvre sur sa place) ni un outil
+  // armé. Ouverte en vue d'édition, tracker en marche compris (la caméra suit alors le tracker). Une greffe qui
+  // interdit la vue d'édition ouvre à hauteur d'yeux (_permettrePlongee) et n'écrit rien : le réglage reste intact.
+  function _lireEdition() {
+    const e = _e, v = typeof window.getPlanEditionVue3D === "function" ? window.getPlanEditionVue3D() : null;
+    if (!v) return;
+    if (Number.isFinite(v.recul)) e.recul = Math.max(RECUL.min, Math.min(RECUL.max, v.recul));
+    if (Number.isFinite(v.inclinaison)) {
+      e.inclinaison = Math.max(INCLINAISON.min, Math.min(INCLINAISON.max, v.inclinaison));
+    }
+    if (v.on && _permisGreffe("plongee")) e.vue = "plongee";
+  }
+
+  // `tout de suite` : bascule et fermeture ; sinon après 400 ms sans changement (molette, pincement).
+  function _retenirEdition(toutDeSuite) {
+    const e = _e;
+    if (!e || typeof window.setPlanEditionVue3D !== "function") return;
+    clearTimeout(e.minuterieEdition);
+    const ecrire = function () {
+      if (_e !== e || !_permisGreffe("plongee")) return;
+      window.setPlanEditionVue3D(null, { on: e.vue === "plongee", recul: e.recul, inclinaison: e.inclinaison });
+    };
+    if (toutDeSuite) ecrire(); else e.minuterieEdition = setTimeout(ecrire, 400);
   }
 
   function suivre() {
@@ -7042,6 +7157,9 @@
       fonduPresent: !!e.fondu && !!e.fondu.parentNode && !e.fondu.hidden,
       bandeauNiveau: e.bandeauNiveau && !e.bandeauNiveau.hidden ? e.bandeauNiveau.textContent : null,
       pos: { x: e.pos.x, y: e.pos.y }, cap: e.cap, butees: e.butees, images: e.images,
+      niveauEdition: e.boiteNiveauEdition ? { visible: !e.boiteNiveauEdition.hidden,
+        texte: e.niveauEditionValeur.textContent, haut: !e.niveauEditionHaut.disabled,
+        bas: !e.niveauEditionBas.disabled } : null,
       camera: { vise: e.vise ? { x: e.vise.x, z: e.vise.z } : null, centre: Object.assign({}, _centreScene()),
         visee: Object.assign({}, _viseeCamera()), place: !!e.boutonPlace && !e.boutonPlace.hidden,
         edition: !!e.ov && e.ov.classList.contains("kta-v3d-edition") },
@@ -7190,7 +7308,7 @@
   function textures() {
     if (!_e) return null;
     const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs,
-      paroi: e.mats.paroi, remblais: e.mats.remblais, eboulis: e.mats.eboulis, porte: e.mats.porte };
+      paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis, porte: e.mats.porte };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
       uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m, remblais: 1 / REMBLAIS.m,
         eboulis: 1 / EBOULIS.m,
@@ -7306,7 +7424,7 @@
 
   window.KtaVue3D = {
     ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue, incliner: incliner,
-    panner: panner, surPlace: surPlace,
+    panner: panner, surPlace: surPlace, niveauEdition: niveauEdition,
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     textures: textures, basculerTextures: function () { return _basculerTextures(); },
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
@@ -7316,7 +7434,7 @@
     charge: function () { return !!THREE; },
     greffer: greffer,
     viser: viser,
-    // Barre de dessin ✏️ (vue plongeante) ouverte ou fermée ; sans argument, bascule. Rend l'état, false si refusé.
+    // Barre de dessin 🛠️ (vue plongeante) ouverte ou fermée ; sans argument, bascule. Rend l'état, false si refusé.
     dessiner: function (oui) { return _e ? _basculerDessin(oui) : false; },
     // Dernier objet montré sur la carte par « Voir sur la carte » (checkup) : { famille, uid, centre, fiche, at }.
     derniereMontre: function () {

@@ -1137,6 +1137,28 @@ function setPlanRenduVue3D(planId, value) {
 window.getPlanRenduVue3D = getPlanRenduVue3D;
 window.setPlanRenduVue3D = setPlanRenduVue3D;
 
+// ── Vue d'édition de la 3D retenue, par plan, sur cet appareil (vue3d.js > _retenirEdition) ──────────────────
+// Pref `vue3dEdition` = { on: bool, recul: m, inclinaison: ° } ; absente ou illisible → null (hauteur d'yeux, zoom et
+// inclinaison par défaut). Bornes appliquées par la vue. La place de la caméra libre ne se retient pas.
+function getPlanEditionVue3D(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _readPlanPrefs(pid).vue3dEdition;
+  if (!v || typeof v !== "object") return null;
+  return { on: v.on === true, recul: Number.isFinite(v.recul) ? v.recul : null,
+    inclinaison: Number.isFinite(v.inclinaison) ? v.inclinaison : null };
+}
+function setPlanEditionVue3D(planId, value) {
+  if (!value || typeof value !== "object") return false;
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  prefs.vue3dEdition = { on: value.on === true, recul: Number.isFinite(value.recul) ? value.recul : null,
+    inclinaison: Number.isFinite(value.inclinaison) ? value.inclinaison : null };
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanEditionVue3D = getPlanEditionVue3D;
+window.setPlanEditionVue3D = setPlanEditionVue3D;
+
 // ── Commandes de la vue 3D : « Pavé classique » au lieu du joystick au téléphone, réglage de CET appareil ──────
 // localStorage["myktamap_v3d_pave_v1"] = "1" | "0" (défaut : joystick). Lu à l'ouverture de la vue
 // (vue3d.js > _commandesVoulues) ; au PC (pointeur fin) le pavé est là de toute façon.
