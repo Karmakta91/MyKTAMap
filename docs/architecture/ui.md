@@ -2272,7 +2272,7 @@ icônes.
   Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
   des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),
-  battants de bois des cavages et remblais des puits comblés ; coupé : parois en moellons, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
+  battants de bois des cavages et remblais des puits comblés ; coupé : parois des galeries et des tubes à la couleur de légende de leur tracé, sol et plafond unis, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
   Boussole et Guidage sur la suivante ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
   sans toucher scène ni greffe), 🔭 **Portée** (curseur natif `input type=range` `#kta-v3d-portee`, 15 à 100 m,
   30 m par défaut, `getVue3DPortee`, `myktamap_v3d_portee_v1`, cet appareil ; libellé `<label for>`, valeur écrite à
@@ -2327,7 +2327,16 @@ icônes.
   `--kta-texte-3` au repos en bas de la zone, `--kta-accent` actif, fond `--kta-surface` à 70 %), bouton de 44 px
   (`--kta-accent` actif), aucune image ; `touch-action: none`. Au PC (`pointer: fine`) ou avec ⚙️ › 🎨 Affichage ›
   « 🕹️ Pavé classique dans la vue 3D » (cet appareil), le pavé ▲ ▼ ◀ ▶ ↶ ↷ en bas au centre. Contrat du geste :
-  `tracking.md` § Vue 3D › Joystick.
+  `tracking.md` § Vue 3D › Joystick. En vue d'édition (`.kta-vue3d.kta-v3d-edition`), la zone du joystick se réduit au
+  coin bas gauche (200 × 180 px au-dessus de la boussole) : ailleurs, un doigt déplace la caméra.
+- **Vue d'édition, caméra libre** : **⌖** (`.kta-v3d-place`, bouton carré de la vue, cible de 44 px) au-dessus de la
+  grille + − ▲ ▼, montré caméra détachée seulement (`vue3d.surPlace`). **Sélecteur de niveau** (`.kta-v3d-niveau-edition`,
+  `role="group"`) : ▲, le niveau en clair (`ktaFormatNiveau`, pastille surface à liseré doré), ▼, en colonne à gauche
+  sous la rangée du haut ; plan à un niveau ou hauteur d'yeux : caché. **Bandeau de mesure** (`.kta-v3d-mesure`,
+  `role="status"`) : en bas au milieu, entre la boussole et la grille (au-dessus du pavé au PC), charte du libellé de
+  mesure de la carte (surface, texte `--kta-accent-texte`, liseré doré, 15 px, ligne du mode actif marquée). La tuile
+  ⚙️ passe au-dessus de la colonne 🛠️ (`z-index` 900 > `.leaflet-control` 800 : la colonne en porte la classe).
+  Contrats : `tracking.md` § Vue 3D › Caméra libre, Dessiner en vue d'édition.
 - **Fiche d'un POI** (`.kta-v3d-fiche`) : toucher un panneau de POI (`vue3d.js > _toucher`) ouvre la fiche de la carte
   (`buildPointPopupHtml`) dans un cadre surface à liseré doré, à droite sous le bandeau, défilable, ✕ de 40 px ;
   Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous. POI jonction : en tête de la fiche,
@@ -2341,7 +2350,7 @@ icônes.
   5 s). La fiche prend le focus (anneau `--kta-interaction` au clavier), Échap la ferme et rend le focus à la vue ;
   Tab passe par ses champs. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
 - **Dessin en vue d'édition** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, au
-  milieu, montrée en ✏️ seulement : **✏️** (`kta-actif` enfoncé, `aria-pressed`) puis **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
+  milieu, montrée en ✏️ Édition seulement : **🛠️** (`kta-actif` enfoncé, `aria-pressed`) puis **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
   la barre de droite 2D, qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
   mêmes états ; icône, titre, `kta-group-mode-actif` (pastille du type armé) et `kta-outil-lecture-seule` **recopiés
   du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. Puis **🗺️ Plan au sol**

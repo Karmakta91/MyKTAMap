@@ -547,7 +547,11 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **✏️ Édition** (ex-vue plongeante ; ou touche V) : tu te vois d'au-dessus, et elle se manie comme une carte.
 - ✏️ **Zoom** (de 6 à 60 m de recul) : pincer à deux doigts, molette, boutons **+ / −** en bas à droite ou touches = / -. En dézoomant, le décor s'étend avec la vue.
 - ✏️ **Inclinaison** (de presque verticale à rasante) : glisser deux doigts ensemble vers le haut ou le bas, **Maj + molette**, PageUp / PageDown ou les petits boutons ▲ ▼ à côté de + / −.
-- ✏️ Zoom et inclinaison sont retenus tant que la vue reste ouverte.
+- ✏️ L'Édition, son zoom et son inclinaison sont retenus pour ce plan sur cet appareil : tu t'y retrouves en rouvrant la 3D, même après avoir rechargé l'app (sur ta place, sans outil choisi). Un jeu qui interdit l'Édition ouvre à hauteur d'yeux sans effacer ce choix.
+- ✏️ **Caméra libre** : glisse un doigt (ou la souris) pour déplacer la vue, comme une carte ; ta place, ton tracker et ta silhouette ne bougent pas. Deux doigts qui tournent tournent la vue (au PC : clic droit ou Ctrl + glisser, ↶ ↷). **⌖** (en bas à droite) te ramène sur ta place ; marcher (joystick, pavé, flèches) ou revenir à hauteur d'yeux aussi. En Édition, le joystick n'occupe que le coin bas gauche.
+- ✏️ **Survol** : en Édition, rien ne bloque ta place (piliers, murs, cavages fermés). En revenant à hauteur d'yeux, si tu es dans un obstacle, tu en es sorti.
+- ✏️ **Niveau** (plan à plusieurs niveaux) : ▲ / ▼ à gauche changent le niveau montré par la 3D, sans passer par un escalier ; la carte et le tracker gardent le leur.
+- ✏️ Les panneaux des points restent lisibles même dézoomés ; leur fiche s'ouvre à taille normale.
 - **⛏️ Hauteur** : le bouton affiche la hauteur en cours et ouvre **−** / **+**, de 1,5 à 20 m (par 0,1 m jusqu'à 5 m, puis 0,5 m).
 - ⛏️ C'est la même hauteur que ⛏️ Volume exploité, retenue pour ce plan : changer l'une change l'autre. La scène se refait sur place, sans te déplacer.
 - **Rendu** : le bouton affiche le rendu en cours et passe au suivant (Mixte, Structures, Galerie, voir plus bas). Retenu pour ce plan ; par défaut, Mixte.
@@ -584,7 +588,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 
 - Les tracés deviennent des galeries, sans les structures : principal 2,5 m de large, secondaire 2 m, chemin 1,7 m, tracé personnalisé 2 m.
 - Carrefours ouverts, coudes, cul-de-sac fermé, un liseré au sol de la couleur du tracé.
-- Parois en pierre de taille (avec 🧱 Textures ; coupé : moellons de calcaire taillés).
+- Parois en pierre de taille (avec 🧱 Textures ; coupé : à la couleur de la légende de leur tracé).
 - Les zones s'arrêtent aux parois : le remblais et l'effondrement bouchent la galerie, une zone ⛔ inaccessible tend un rideau rouge hachuré en travers.
 - Seuls les points à moins de 10 m d'un tracé (salles comprises) s'affichent, contre la paroi.
 
@@ -596,7 +600,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **Remblais** : terre et sable calcaire tassés, mêlés de cailloux et de blocs de calcaire anguleux à moitié enfouis.
 - **Effondrement** (fontis) : un éboulis de gros blocs cassés et fissurés, avec peu de terre.
 - Remblais et effondrement sont à leur taille réelle et ne changent pas de forme. Une zone personnalisée garde sa couleur.
-- Coupé : chaque structure et chaque zone reprend la couleur de la légende, la tienne comprise, et les parois redeviennent des moellons.
+- Coupé : chaque structure et chaque zone reprend la couleur de la légende, la tienne comprise ; les parois des galeries prennent la couleur de leur tracé (à un carrefour, celle du tracé le plus large) ; sol et plafond deviennent unis.
 - Le bois, la pierre et les remblais des accès (plus bas) suivent aussi ce réglage.
 
 #### ↕️ Passages et accès
@@ -693,19 +697,19 @@ Où et comment un passage se dessine :
 - Masquer n'enlève que le dessin : on bute toujours contre les piliers et les parois, et 🪜 reste proposé.
 - L'itinéraire reste affiché, comme sur la carte. Les calques d'image n'ont pas d'effet en 3D.
 
-#### ✏️ Dessiner en vue d'édition
+#### 🛠️ Dessiner en vue d'édition
 
-- En vue **✏️ Édition**, le bouton **✏️** (à droite, au milieu) montre les outils de la carte, dans le même ordre : **📐 Mesure**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. À hauteur d'yeux, pas de dessin.
+- En vue **✏️ Édition**, le bouton **🛠️** (à droite, au milieu) montre les outils de la carte, dans le même ordre : **📐 Mesure**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. À hauteur d'yeux, pas de dessin.
 - Chaque bouton ouvre **le même menu que sur la carte** : piliers, murs, fronts de taille, tes types perso, ➕ nouveau type, ✅ Fermer / Valider.
 - Rien ne se dessine tant qu'aucun outil n'est choisi. Outil choisi : **un toucher pose un point** là où tu touches. Glisser, pincer et la molette bougent toujours la vue, sans poser de point.
 - **Fermer un pilier, un mur ou une zone** : touche le **rond doré** du premier point, ou ✅ dans le menu. Pour un mur fin, zoome d'abord : le rond grandit avec la vue.
 - Un tracé ou un front se termine par ✅. L'outil reste choisi pour enchaîner, comme sur la carte.
 - L'objet est **celui de la carte** : même fiche, mêmes couleurs, ⏪ Annuler. Il prend **le niveau de la 3D** ; la carte, elle, ne change pas de niveau.
 - Pendant le dessin, un **trait au sol** montre l'objet ; il apparaît en relief à sa fin.
-- **📐 Mesure** : la distance (ou la surface) s'affiche dans la 3D, au dernier point, comme sur la carte.
-- **🗺️ Plan au sol** : l'image du plan sous la scène, pour dessiner sur le relevé (niveau 0, celui du plan de base).
+- **📐 Mesure** : la distance (et la surface) s'affiche dans un **bandeau en bas de la vue**, mis à jour à chaque point, comme sur la carte ; la longueur de chaque segment et l'angle à chaque point s'affichent aussi dans la 3D, lisibles.
+- **🗺️ Plan au sol** : l'image du plan sous la scène, là où tu regardes, pour dessiner sur le relevé (niveau 0, celui du plan de base).
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
-- **✏️, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
+- **🛠️, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
 - En lecture seule, les outils de dessin restent grisés, comme sur la carte ; 📐 Mesure reste permise.
 
 > ⚠️ La 3D montre le **plan**, pas la galerie réelle. Formes et hauteurs sont celles du relevé (les galeries des modes Galerie et Mixte : des largeurs fixes par type de tracé), ta position celle du tracker, qui dérive. Ne t'y fie pas plus qu'à la carte.

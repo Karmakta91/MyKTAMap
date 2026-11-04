@@ -286,7 +286,10 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
     motif de 1,6 × 1 m répété en mètres, canvas), sol et plafond au grain calcaire (la paroi, plus claire et plus
     grise, s'en détache), liseré au sol de 15 cm à la couleur de la légende. Révisé depuis (retour de KARMA) : 🧱
     Textures activé, les parois passent en pierre de taille (assises appareillées, joints irréguliers, relief) ;
-    les moellons restent le rendu 🧱 coupé (`tracking.md` § Scène galerie).
+    les moellons restent le rendu 🧱 coupé (`tracking.md` § Scène galerie). **Révisé le 04/11/2026** (décision de
+    KARMA) : 🧱 coupé, parois des galeries et des tubes à la couleur de légende de leur type de tracé (canon, types
+    perso compris ; carrefour : l'arête la plus large), sol et plafond unis ; les moellons ne restent qu'aux puits et
+    tranchées des passages.
   - **Zones** découpées à chaque pièce (CPU, par tuile) : eau à 4 cm ; remblais et effondrement à 60 %, faces
     seulement côté galerie, bloquants ; inaccessible au sol + rideau rouge hachuré en travers du tube là où le
     contour coupe l'axe ; perso au sol. **POI** à moins de 10 m de l'axe (relevé à 10 m le 02/11 : les salles sont souvent loin d'un tracé), ramenés contre la paroi, sinon masqués.

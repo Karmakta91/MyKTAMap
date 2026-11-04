@@ -547,7 +547,11 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **✏️ Edit** (formerly bird's-eye view; or the V key): you see yourself from above, and it handles like a map.
 - ✏️ **Zoom** (from 6 to 60 m back): pinch with two fingers, mouse wheel, the **+ / −** buttons at the bottom right or the = / - keys. Zooming out, the scenery spreads with the view.
 - ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or the small ▲ ▼ buttons next to + / −.
-- ✏️ Zoom and tilt are kept while the view stays open.
+- ✏️ Edit view, its zoom and its tilt are kept for this plan on this device: you find them again when you reopen the 3D view, even after reloading the app (on your place, with no tool chosen). A game that forbids Edit view opens at eye level without erasing this choice.
+- ✏️ **Free camera**: drag one finger (or the mouse) to move the view, like a map; your place, your tracker and your figure do not move. Two fingers turning turn the view (on a computer: right-click or Ctrl + drag, ↶ ↷). **⌖** (bottom right) brings you back to your place; so do walking (joystick, pad, arrows) and going back to eye level. In Edit view, the joystick only takes the bottom left corner.
+- ✏️ **Fly-over**: in Edit view, nothing blocks your place (pillars, walls, closed adits). Back at eye level, if you are inside an obstacle, you are moved out of it.
+- ✏️ **Level** (multi-level plan): ▲ / ▼ on the left change the level shown by the 3D view, without taking a staircase; the map and the tracker keep theirs.
+- ✏️ Point panels stay readable even zoomed out; their card opens at normal size.
 - **⛏️ Height**: the button shows the current height and opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m).
 - ⛏️ It is the same height as ⛏️ Mined volume, kept for this map: changing one changes the other. The scene is rebuilt in place, without moving you.
 - **Rendering**: the button shows the current rendering and moves to the next one (Mixed, Structures, Tunnels, see below). Kept for this map; default: Mixed.
@@ -584,7 +588,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 
 - Traces become tunnels, without the structures: main 2.5 m wide, secondary 2 m, path 1.7 m, custom trace 2 m.
 - Open crossroads, bends, closed dead ends, a floor stripe in the trace's colour.
-- Walls of dressed stone (with 🧱 Textures; off: dressed limestone blocks).
+- Walls of dressed stone (with 🧱 Textures; off: in the legend colour of their trace).
 - Zones stop at the walls: backfill and collapses block the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it.
 - Only points within 10 m of a trace (rooms included) are shown, against the wall.
 
@@ -596,7 +600,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **Backfill**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
 - **Collapse** (sinkhole): rubble of large broken, cracked blocks, with little earth.
 - Backfill and collapse are at their real size and do not change shape. A custom zone keeps its colour.
-- Off: every structure and every zone takes back its legend colour, yours included, and tunnel walls go back to limestone blocks.
+- Off: every structure and every zone takes back its legend colour, yours included; tunnel walls take the colour of their trace (at a crossroads, the widest trace's); floor and ceiling turn plain.
 - The wood, stone and backfill of accesses (below) follow this setting too.
 
 #### ↕️ Ways through and accesses
@@ -693,19 +697,19 @@ Where and how a way through is drawn:
 - Hiding only removes the drawing: you still bump into pillars and walls, and 🪜 is still offered.
 - The route stays shown, as on the map. Image layers have no effect in 3D.
 
-#### ✏️ Drawing in edit view
+#### 🛠️ Drawing in edit view
 
-- In the **✏️ Edit** view, the **✏️** button (on the right, in the middle) shows the map tools, in the same order: **📐 Measurement**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
+- In the **✏️ Edit** view, the **🛠️** button (on the right, in the middle) shows the map tools, in the same order: **📐 Measurement**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
 - Each button opens **the same menu as on the map**: pillars, walls, working faces, your custom types, ➕ new type, ✅ Close / Validate.
 - Nothing is drawn until a tool is chosen. With a tool chosen, **a tap places a point** where you touch. Dragging, pinching and the mouse wheel still move the view, without placing a point.
 - **Closing a pillar, a wall or a zone**: tap the **gold circle** of the first point, or ✅ in the menu. For a thin wall, zoom in first: the circle grows with the view.
 - A path or a working face ends with ✅. The tool stays chosen so you can carry on, as on the map.
 - The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
 - While drawing, a **line on the ground** shows the object; it stands up in relief when finished.
-- **📐 Measurement**: the distance (or area) is shown in the 3D view, at the last point, as on the map.
-- **🗺️ Plan on the ground**: the plan image under the scene, to draw over the survey (level 0, the base plan).
+- **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.
+- **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey (level 0, the base plan).
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
-- **✏️, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
+- **🛠️, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
 - In read-only mode, the drawing tools stay greyed out, as on the map; 📐 Measurement stays allowed.
 
 > ⚠️ The 3D view shows the **map**, not the real tunnel. Shapes and heights come from the survey (tunnels in Tunnels and Mixed modes: fixed widths per trace type), your position from the tracker, which drifts. Do not trust it more than the map.

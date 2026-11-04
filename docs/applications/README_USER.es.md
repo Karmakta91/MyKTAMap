@@ -547,7 +547,11 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **✏️ Edición** (antes vista aérea; o la tecla V): te ves desde arriba, y se maneja como un mapa.
 - ✏️ **Zoom** (de 6 a 60 m de distancia): pellizca con dos dedos, rueda del ratón, botones **+ / −** abajo a la derecha o teclas = / -. Al alejar, el decorado se extiende con la vista.
 - ✏️ **Inclinación** (de casi vertical a rasante): desliza dos dedos juntos hacia arriba o abajo, **Mayús + rueda**, RePág / AvPág o los botoncitos ▲ ▼ junto a + / −.
-- ✏️ El zoom y la inclinación se conservan mientras la vista sigue abierta.
+- ✏️ La Edición, su zoom y su inclinación se conservan para este plano en este dispositivo: los encuentras al volver a abrir la 3D, incluso tras recargar la app (en tu lugar, sin herramienta elegida). Un juego que prohíbe la Edición abre a la altura de los ojos sin borrar esta elección.
+- ✏️ **Cámara libre**: desliza un dedo (o el ratón) para mover la vista, como un mapa; tu lugar, tu tracker y tu silueta no se mueven. Dos dedos que giran giran la vista (en PC: clic derecho o Ctrl + arrastrar, ↶ ↷). **⌖** (abajo a la derecha) te devuelve a tu lugar; también caminar (joystick, teclado, flechas) o volver a la altura de los ojos. En Edición, el joystick solo ocupa la esquina inferior izquierda.
+- ✏️ **Sobrevuelo**: en Edición, nada bloquea tu lugar (pilares, muros, cavas cerradas). Al volver a la altura de los ojos, si estás dentro de un obstáculo, sales de él.
+- ✏️ **Nivel** (plano de varios niveles): ▲ / ▼ a la izquierda cambian el nivel que muestra la 3D, sin pasar por una escalera; el mapa y el tracker conservan el suyo.
+- ✏️ Los paneles de los puntos siguen legibles incluso alejados; su ficha se abre a tamaño normal.
 - **⛏️ Altura**: el botón muestra la altura actual y abre **−** / **+**, de 1,5 a 20 m (de 0,1 en 0,1 m hasta 5 m, luego 0,5 m).
 - ⛏️ Es la misma altura que ⛏️ Volumen explotado, guardada para este plano: cambiar una cambia la otra. La escena se rehace en el sitio, sin moverte.
 - **Representación**: el botón muestra la representación actual y pasa a la siguiente (Mixto, Estructuras, Galería, ver más abajo). Guardada para este plano; por defecto, Mixto.
@@ -584,7 +588,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 
 - Los trazados se convierten en galerías, sin las estructuras: principal 2,5 m de ancho, secundario 2 m, camino 1,7 m, trazado personalizado 2 m.
 - Cruces abiertos, codos, fondos de saco cerrados, una franja en el suelo del color del trazado.
-- Paredes de sillería (con 🧱 Texturas; desactivado: bloques de caliza tallados).
+- Paredes de sillería (con 🧱 Texturas; desactivado: del color de la leyenda de su trazado).
 - Las zonas se detienen en las paredes: el relleno y el derrumbe tapan la galería, una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado.
 - Solo se muestran los puntos a menos de 10 m de un trazado (salas incluidas), contra la pared.
 
@@ -596,7 +600,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **Relleno**: tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados.
 - **Derrumbe** (hundimiento): un amontonamiento de grandes bloques rotos y agrietados, con poca tierra.
 - Relleno y derrumbe están a su tamaño real y no cambian de forma. Una zona personalizada conserva su color.
-- Desactivado: cada estructura y cada zona recupera el color de la leyenda, el tuyo incluido, y las paredes vuelven a ser bloques de caliza.
+- Desactivado: cada estructura y cada zona recupera el color de la leyenda, el tuyo incluido; las paredes de las galerías toman el color de su trazado (en un cruce, el del trazado más ancho); suelo y techo quedan lisos.
 - La madera, la piedra y el relleno de los accesos (más abajo) también siguen este ajuste.
 
 #### ↕️ Pasos y accesos
@@ -693,19 +697,19 @@ Dónde y cómo se dibuja un paso:
 - Ocultar solo quita el dibujo: sigues chocando con los pilares y las paredes, y 🪜 se sigue ofreciendo.
 - El itinerario sigue visible, como en el mapa. Las capas de imagen no tienen efecto en 3D.
 
-#### ✏️ Dibujar en vista de edición
+#### 🛠️ Dibujar en vista de edición
 
-- En la vista **✏️ Edición**, el botón **✏️** (a la derecha, en el centro) muestra las herramientas del mapa, en el mismo orden: **📐 Medición**, **🛣️ Trazados**, **⬛ Zonas**, **🏛️ Estructuras**. A la altura de los ojos, no se dibuja.
+- En la vista **✏️ Edición**, el botón **🛠️** (a la derecha, en el centro) muestra las herramientas del mapa, en el mismo orden: **📐 Medición**, **🛣️ Trazados**, **⬛ Zonas**, **🏛️ Estructuras**. A la altura de los ojos, no se dibuja.
 - Cada botón abre **el mismo menú que en el mapa**: pilares, muros, frentes de corte, tus tipos personalizados, ➕ nuevo tipo, ✅ Cerrar / Validar.
 - No se dibuja nada mientras no elijas una herramienta. Con una herramienta elegida, **un toque pone un punto** donde tocas. Deslizar, pellizcar y la rueda siguen moviendo la vista, sin poner puntos.
 - **Cerrar un pilar, un muro o una zona**: toca el **círculo dorado** del primer punto, o ✅ en el menú. Para un muro fino, acerca la vista antes: el círculo crece con ella.
 - Un trazado o un frente se termina con ✅. La herramienta sigue elegida para encadenar, como en el mapa.
 - El objeto es **el del mapa**: misma ficha, mismos colores, ⏪ Deshacer. Toma **el nivel de la 3D**; el mapa conserva el suyo.
 - Mientras dibujas, una **línea en el suelo** muestra el objeto; aparece en relieve al terminar.
-- **📐 Medición**: la distancia (o la superficie) se muestra en la 3D, en el último punto, como en el mapa.
-- **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, para dibujar sobre el levantamiento (nivel 0, el del plano base).
+- **📐 Medición**: la distancia (y la superficie) se muestra en una **franja abajo de la vista**, actualizada en cada punto, como en el mapa; la longitud de cada segmento y el ángulo en cada punto también se muestran en la 3D, legibles.
+- **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, donde miras, para dibujar sobre el levantamiento (nivel 0, el del plano base).
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
-- **✏️, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
+- **🛠️, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
 - En solo lectura, las herramientas de dibujo quedan en gris, como en el mapa; 📐 Medición sigue permitida.
 
 > ⚠️ La 3D muestra el **plano**, no la galería real. Formas y alturas vienen del levantamiento (las galerías de los modos Galería y Mixto: anchuras fijas por tipo de trazado), tu posición del tracker, que deriva. No te fíes más que del mapa.
