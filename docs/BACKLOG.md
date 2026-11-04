@@ -146,9 +146,8 @@
 ## Entrant
 
 - **Cap jamais lu si requestPermission répond « prompt »** — ✅ vu 04/11 (lot rotation-manuelle) : la Chromium du
-  harnais expose DeviceMotionEvent.requestPermission(), qui répond « prompt » ; tracking.js > requestPermission
-  n'attache alors aucun écouteur d'orientation (checkup-plan-oriente : 5 KO sous Chromium, déjà sur la base). 🔬 un
-  Chrome Android récent ferait pareil : ni icône ni plan orienté ne tourneraient.
+  harnais répond « prompt » à DeviceMotionEvent.requestPermission() : aucun écouteur d'orientation
+  (tracking.js > requestPermission ; checkup-plan-oriente 5 KO). 🔬 un Chrome Android récent ferait pareil.
   `qui: KARMA · action: vérifier sur un Android que la boussole et le plan orienté tournent · fini: vu conforme, ou
   correctif (demander la permission dans le geste) · depuis: 04/11/2026 · taille: S`
 - **Générateur : rendu 3D par défaut du plan** — demande KARMA 04/11 : choisir à la génération le rendu de la vue 3D
