@@ -76,6 +76,7 @@
   const PENOMBRE = { min: 0.4, defaut: 0.55, max: 1 };
   const AMBIANCE_PLONGEE = 0.9;
   const APPUI_LONG = 600;           // ms
+  const APPUI_CLIC = 1000;          // ms : click d'un toucher (pointerdown juste avant), pas du clavier (_brancher)
   const INCLINAISON = { defaut: 60, min: 15, max: 85, pas: 5 };   // ° de la vue plongeante (90 = verticale)
   // Recul (m) entre la caméra plongeante et le point visé, 2 m devant soi : zoom de la vue plongeante, borné, retenu
   // tant que la vue est ouverte ; `pas` = facteur d'un cran (molette, + / −, clavier).
@@ -4864,7 +4865,8 @@
     fermer.setAttribute("data-aide-croix", "");
     // ≡ = le panneau ≡ Filtres de la carte ; titre et pastille posés par FilterPanel.majBadge
     // (data-kta-pastille-filtres).
-    e.boutonFiltres = _bouton(haut, "kta-v3d-filtres", "≡", _t("ui.filter.title"), "filtres");
+    // ⚠️ contrat : le glyphe du bouton de la carte (☰, interface.js > ktaFilterControl), pas ≡ (U+2261).
+    e.boutonFiltres = _bouton(haut, "kta-v3d-filtres", "☰", _t("ui.filter.title"), "filtres");
     e.boutonFiltres.setAttribute("aria-label", _t("ui.filter.aria"));
     e.boutonFiltres.setAttribute("data-kta-pastille-filtres", "");
     const urgence = _bouton(haut, "kta-v3d-urgence", "🚨", _t("ui.refonte.counter_sortie_title"), "urgence");
@@ -5274,6 +5276,42 @@
     S.declencher();
   }
 
+  // Bouton qui agit d'un coup (au pointerdown, ou au click venu du clavier) : bascules de la tuile, − / +, zoom,
+  // inclinaison, passages. Rend false pour un bouton de déplacement (maintenu) ou inconnu. `ev` absent : clavier.
+  function _agirBouton(a, b, ev) {
+    const e = _e;
+    if (a === "vue") { basculerVue(); return true; }
+    if (a === "boussole") { _basculerBoussole(); return true; }
+    if (a === "guidage") { _basculerGuidage(); return true; }
+    if (a === "textures") { _basculerTextures(); return true; }
+    if (a === "rendu") { basculerRendu(); return true; }
+    if (a === "hauteur") { _basculerReglageHauteur(); return true; }
+    if (a === "hauteurMoins" || a === "hauteurPlus") {
+      if (ev) ev.preventDefault();
+      const pas = (a === "hauteurPlus" ? e.hauteur : e.hauteur - 0.1) >= HAUTEUR_PAS_FIN ? 0.5 : 0.1;
+      reglerHauteur(e.hauteur + (a === "hauteurPlus" ? pas : -pas));
+      return true;
+    }
+    if (a === "niveauHaut" || a === "niveauBas") { changerNiveau(a === "niveauHaut" ? "haut" : "bas"); return true; }
+    if (a === "niveau") {
+      _allerNiveau(e.passageCibles && e.passageCibles.liste[Number(b.dataset.indice)]);
+      return true;
+    }
+    if (a === "suivre") { basculerSuivi(); return true; }
+    if (a === "inclPlus" || a === "inclMoins") {
+      if (ev) ev.preventDefault();
+      incliner(a === "inclPlus" ? INCLINAISON.pas * 2 : -INCLINAISON.pas * 2);
+      return true;
+    }
+    if (a === "zoomPlus" || a === "zoomMoins") {
+      if (ev) ev.preventDefault();
+      zoomer(a === "zoomPlus" ? 1 / (RECUL.pas * RECUL.pas) : RECUL.pas * RECUL.pas);
+      return true;
+    }
+    if (a === "pleinJour") { reglerPleinJour(!_lampeEnVigueur().jour); return true; }
+    return false;
+  }
+
   function _brancher() {
     const e = _e, l = e.ecouteurs;
     const on = function (cible, type, f, opt) { cible.addEventListener(type, f, opt); l.push([cible, type, f, opt]); };
@@ -5293,6 +5331,12 @@
       else if (a === "urgence") _urgence();
       else if (a === "ficheFermer") _fermerFiche();
       else if (a === "ficheVoir") _voirSurCarte();
+      // Entrée / Espace sur un bouton qui agit au pointerdown (bascules de la tuile, − / +, passages) : le navigateur
+      // n'envoie qu'un click. 🩸 Un toucher envoie pointerdown PUIS click : ce click-là est ignoré (même bouton,
+      // pointerdown récent), sinon la bascule jouerait deux fois.
+      else if (a && !(e.appui && e.appui.b === b && performance.now() - e.appui.t < APPUI_CLIC)) {
+        _agirBouton(a, b, null);
+      }
       // Action de la fiche qui mène ailleurs (déjà jouée par utils.js > _ktaPopupAction, en capture) : la fiche se
       // ferme, comme la bulle de la carte.
       const act = !a && ev.target.closest && ev.target.closest(".kta-v3d-fiche [data-kta-act]");
@@ -5302,37 +5346,10 @@
       const b = ev.target.closest && ev.target.closest("[data-v3d]");
       if (!b) return;
       const a = b.dataset.v3d;
+      e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
         a === "ficheVoir") return;
-      if (a === "vue") { basculerVue(); return; }
-      if (a === "boussole") { _basculerBoussole(); return; }
-      if (a === "guidage") { _basculerGuidage(); return; }
-      if (a === "textures") { _basculerTextures(); return; }
-      if (a === "rendu") { basculerRendu(); return; }
-      if (a === "hauteur") { _basculerReglageHauteur(); return; }
-      if (a === "hauteurMoins" || a === "hauteurPlus") {
-        ev.preventDefault();
-        const pas = (a === "hauteurPlus" ? e.hauteur : e.hauteur - 0.1) >= HAUTEUR_PAS_FIN ? 0.5 : 0.1;
-        reglerHauteur(e.hauteur + (a === "hauteurPlus" ? pas : -pas));
-        return;
-      }
-      if (a === "niveauHaut" || a === "niveauBas") { changerNiveau(a === "niveauHaut" ? "haut" : "bas"); return; }
-      if (a === "niveau") {
-        _allerNiveau(e.passageCibles && e.passageCibles.liste[Number(b.dataset.indice)]);
-        return;
-      }
-      if (a === "suivre") { basculerSuivi(); return; }
-      if (a === "inclPlus" || a === "inclMoins") {
-        ev.preventDefault();
-        incliner(a === "inclPlus" ? INCLINAISON.pas * 2 : -INCLINAISON.pas * 2);
-        return;
-      }
-      if (a === "zoomPlus" || a === "zoomMoins") {
-        ev.preventDefault();
-        zoomer(a === "zoomPlus" ? 1 / (RECUL.pas * RECUL.pas) : RECUL.pas * RECUL.pas);
-        return;
-      }
-      if (a === "pleinJour") { reglerPleinJour(!_lampeEnVigueur().jour); return; }
+      if (_agirBouton(a, b, ev)) return;
       ev.preventDefault();
       _codeBas(a === "ar");
       e.touches[a] = true;

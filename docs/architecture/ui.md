@@ -2199,10 +2199,28 @@ icônes.
   sont posées sur `<html>` après elle, donc au-dessus à z-index égal ; les toasts (100000) aussi, et ils descendent
   sous la rangée du haut (`--kta-v3d-sous-haut`, posé sur `<html>` par `vue3d.js > _majSousHaut`, lu par
   `css/vue3d.css` quand `html.kta-vue3d-ouverte`). Une fenêtre par-dessus garde le clavier (`_recouverte`).
+- **Gabarit = la barre 2D** (décision produit : la 2D est la référence ; `css/vue3d.css`, variables posées sur
+  `.kta-vue3d`) : un bouton carré de la vue (rangée du haut, pavé, zoom et inclinaison) a la boîte de la pilule
+  `.leaflet-bar` de la carte, par les jetons communs `--kta-barre-bouton` (36 px, 30 px en paysage bas :
+  `max-height: 500px` et paysage), `--kta-barre-rayon` (8 px) et `--kta-cible-toucher` (44 px) de `style.css > :root`,
+  que la barre 2D lit aussi — **38 px** (côté + liseré), 32 px en paysage bas, emoji à 16 px (14 px en paysage bas, ☰
+  2 px de plus) — fond `--kta-surface`,
+  liseré `--kta-bordure`, ombre de la barre, survol `--kta-surface-2`, focus `--kta-interaction` ; thème clair :
+  fond et liseré des barres claires (`--kta-light-bg-bar`, `--kta-light-border-strong`). La barre 2D descend sous
+  44 px : la vue garde la même taille **visible** et porte la **zone de toucher à 44 px** par un `::before`
+  invisible (comme le 🚨 de l'en-tête 2D), d'où un écart de 44 px − taille (6 px, 12 px en paysage bas) entre deux
+  boutons. **Mêmes icônes qu'en 2D** : ☰ (le glyphe de `ktaFilterControl`, pas ≡), 🚨 sur la puce rouge de l'en-tête
+  (fond `--kta-erreur` à 22 %, liseré à 55 %), ⚙️, ❓. Repère « actif » de ≡ et de ⚙️ : celui du ≡ de la carte
+  (liseré doré, point doré de 10 px). Bandeau de guidage et boîte 🪜 : même boîte.
 - **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, ⚙️, sur
   **une seule ligne** au téléphone (décision produit). ⚙️ ouvre la **tuile Réglages** (`#kta-v3d-reglages`,
   `vue3d.js > _basculerReglages`) : petit panneau ancré sous ⚙️, aligné à droite, au-dessus de tout dans la vue
-  (posé en dernier dans le DOM) ; dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, 🦅 Vue plongeante
+  (posé en dernier dans le DOM), à la boîte de la fenêtre ⚙️ Réglages (rayon 14 px), chaque réglage sur une **ligne
+  de la fenêtre Réglages** (`.kta-perf-ultra-row` : 13 px gras, rayon 6, liseré `--kta-bordure`, survol
+  `--kta-info-fond`, 44 px de haut au moins) ; un interrupteur (`aria-pressed`) montre sa **case à cocher** (16 px,
+  cochée en `--kta-interaction`), le rendu et ⛏️ un chevron ; tous s'activent aussi à **Entrée et Espace**
+  (`vue3d.js > _agirBouton`, rejoué au `click` du clavier ; le `click` qui suit le `pointerdown` d'un toucher est
+  ignoré). Dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, 🦅 Vue plongeante
   (`aria-pressed`), ⛏️ hauteur et son − / +, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, un toucher passe au
   suivant), Boussole (montrée / masquée, `config.js > getVue3DBoussole`, `myktamap_v3d_boussole_v1`, cet appareil,
   montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🪧 Guidage (`getVue3DGuidage`,
@@ -2215,7 +2233,7 @@ icônes.
   Boussole et Guidage sur la suivante ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
   sans toucher scène ni greffe), 🔭 **Portée** (curseur natif `input type=range` `#kta-v3d-portee`, 15 à 100 m,
   30 m par défaut, `getVue3DPortee`, `myktamap_v3d_portee_v1`, cet appareil ; libellé `<label for>`, valeur écrite à
-  droite et dite par `aria-valuetext`, couleur `accent-color: var(--kta-accent)`, contour de focus
+  droite et dite par `aria-valuetext`, couleur `accent-color: var(--kta-interaction)` (celle des cases de la fenêtre Réglages), contour de focus
   `--kta-interaction` ; flèches, Origine, Fin au clavier), 💡 **Lampe** (curseur `#kta-v3d-lampe`, 25 à 300 % par
   pas de 5, 100 % par défaut, valeur en pourcentage de la langue, `myktamap_v3d_lampe_intensite_v1`), 🔦
   **Faisceau** (curseur `#kta-v3d-faisceau`, 40 à 160°, 71° par défaut, `myktamap_v3d_faisceau_v1`) — même ligne
@@ -2229,8 +2247,8 @@ icônes.
   inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue plongeante. **Repère** : point doré sur ⚙️
   (`kta-v3d-modifie`, `_majRepere`) en mode libre, en vue plongeante, rendu autre que mixte, textures coupées,
   boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71° ou Plein
-  jour. **Mode toujours visible** : pastille ronde de 40 px
-  en haut à gauche (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
+  jour. **Mode toujours visible** : pastille ronde à la taille des boutons
+  en haut à gauche, à la hauteur de la rangée (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
   `kta-vue3d` → section `vue-3d`) dans la rangée marquée `kta-aide-ctx-entete`, avant la croix `data-aide-croix`.

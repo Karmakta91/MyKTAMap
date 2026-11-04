@@ -28,6 +28,8 @@
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
 // Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
+// Homogène à la 2D (PC, téléphone, paysage) : boutons du haut à la taille du ≡ de la barre 2D (± 1 px), mêmes
+// icônes (☰ 🚨 ⚙️ ❓), cibles ≥ 44 px, pastille de mode ; interrupteurs de la tuile à Entrée et Espace, focus visible.
 // Interrupteur 🪧 Guidage (§ 22) : bandeau et chevrons masqués, ruban gardé, urgence affichée, retenu.
 // Interrupteur 🧱 Textures (§ 24) : roche brute (sans lits de mortier) et parpaing par défaut, taille réelle (mur de 2 m = mur de 40 m), coupé =
 // couleurs de la légende (type perso compris), retenu, greffe intacte, mixte / structures / galerie ; parois des
@@ -97,6 +99,57 @@ async function reglages(page) {
     const t = document.getElementById("kta-v3d-reglages");
     if (t && t.hidden) document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
   });
+}
+
+// Interface homogène à la 2D (décision produit : la 2D est la référence), à la taille de fenêtre courante, vue
+// ouverte (la carte reste dessous dans le DOM) : boutons de la rangée du haut à la taille de la pilule ≡ de la barre
+// de droite (± 1 px), mêmes icônes que la 2D, zone de toucher d'au moins 44 px (sondée à 21 px du centre), pastille
+// de mode à la même taille.
+async function homogene(page, nom) {
+  const r = await page.evaluate(function () {
+    const q = function (s) { return document.querySelector(s); };
+    const barre = q(".kta-filter-ctrl").getBoundingClientRect();
+    const haut = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > button"));
+    const tailles = haut.map(function (b) {
+      const rb = b.getBoundingClientRect();
+      return { b: b.getAttribute("data-v3d") || "aide", w: +rb.width.toFixed(1), h: +rb.height.toFixed(1) };
+    });
+    // 🩸 Référence = la LARGEUR de la pilule : en paysage bas, la barre 2D est plus basse que ses boutons de 30 px
+    // (rognés par overflow: hidden) ; la 3D reste carrée.
+    const ecarts = tailles.filter(function (t) {
+      return Math.abs(t.w - barre.width) > 1 || Math.abs(t.h - barre.width) > 1;
+    });
+    const sonder = function (b) {
+      const rb = b.getBoundingClientRect(), cx = rb.left + rb.width / 2, cy = rb.top + rb.height / 2;
+      return [[21, 0], [-21, 0], [0, 21], [0, -21]].every(function (d) {
+        const el = document.elementFromPoint(cx + d[0], cy + d[1]);
+        return !!el && (el === b || b.contains(el));
+      });
+    };
+    const flottants = haut.concat(Array.prototype.slice.call(
+      document.querySelectorAll("#kta-vue3d .kta-v3d-pad > button, #kta-vue3d .kta-v3d-incl:not([hidden]) > button")));
+    const petits = flottants.filter(function (b) { return b.offsetParent !== null && !sonder(b); })
+      .map(function (b) { return b.getAttribute("data-v3d") || "aide"; });
+    const texte = function (el) { return el ? el.textContent.trim() : null; };
+    const gauche = Array.prototype.slice.call(document.querySelectorAll(".leaflet-top.leaflet-left .leaflet-bar a"))
+      .map(texte);
+    const icones = {
+      filtres: [texte(q('#kta-vue3d [data-v3d="filtres"]')), texte(q(".kta-filter-ctrl a"))],
+      urgence: [texte(q('#kta-vue3d [data-v3d="urgence"]')),
+        texte(q("#kta-refonte-counter-sortie .kta-refonte-counter-icon"))],
+      reglages: [texte(q('#kta-vue3d [data-v3d="reglages"]')), gauche.indexOf("⚙️") >= 0 ? "⚙️" : gauche.join("")],
+      aide: [texte(q("#kta-vue3d .kta-v3d-haut > .kta-aide-ctx-btn")), "❓"]
+    };
+    const autres = Object.keys(icones).filter(function (k) { return icones[k][0] !== icones[k][1]; });
+    const indic = q("#kta-vue3d .kta-v3d-mode-indic").getBoundingClientRect();
+    return { barre: [+barre.width.toFixed(1), +barre.height.toFixed(1)], tailles: tailles, ecarts: ecarts,
+      petits: petits, autres: autres, icones: icones, indic: Math.abs(indic.width - barre.width) <= 1 };
+  });
+  verifier(r.ecarts.length === 0 && r.tailles.length === 5,
+    nom + " : boutons du haut de la 3D à la taille de la barre 2D (" + r.barre.join(" × ") + ", ± 1 px)", r);
+  verifier(r.autres.length === 0, nom + " : ☰ 🚨 ⚙️ ❓ de la 3D = icônes de la 2D", r.icones);
+  verifier(r.petits.length === 0, nom + " : cibles de toucher ≥ 44 px (rangée du haut, pavé, zoom)", r.petits);
+  verifier(r.indic, nom + " : pastille de mode à la taille des boutons", r);
 }
 
 async function capture(page, nom) {
@@ -1633,12 +1686,14 @@ async function sectionFichesObjets(page) {
           largeur: window.innerWidth };
       };
       const filtresPc = await page.evaluate(filtresAColle);
+      await homogene(page, "PC (1200 × 800)");
       verifier(filtresPc.memeLigne && filtresPc.ecart >= 0 && filtresPc.ecart <= 12 && filtresPc.entre === 0,
         "PC : ≡ immédiatement à gauche de ✕", filtresPc);
       // Téléphone : ✕ au coin haut droit, sur la première ligne de boutons.
       await page.setViewportSize({ width: 393, height: 852 });
       await page.waitForTimeout(400);
       const filtresTel = await page.evaluate(filtresAColle);
+      await homogene(page, "téléphone (393 × 852)");
       verifier(filtresTel.memeLigne && filtresTel.ecart >= 0 && filtresTel.ecart <= 12 && filtresTel.entre === 0 &&
         filtresTel.largeur === 393, "téléphone (393 px) : ≡ immédiatement à gauche de ✕", filtresTel);
       const tel = await page.evaluate(function () {
@@ -1658,6 +1713,7 @@ async function sectionFichesObjets(page) {
       // Téléphone en paysage : la tuile ⚙️ tient dans l'écran, son dernier réglage s'atteint en la faisant défiler.
       await page.setViewportSize({ width: 852, height: 393 });
       await page.waitForTimeout(300);
+      await homogene(page, "paysage (852 × 393)");
       const pay = await page.evaluate(async function () {
         const t = document.getElementById("kta-v3d-reglages");
         const ouverte = !t.hidden;
@@ -1676,6 +1732,48 @@ async function sectionFichesObjets(page) {
         "téléphone en paysage (852 × 393) : tuile ⚙️ dans l'écran, dernier réglage atteint en la faisant défiler", pay);
       await page.setViewportSize({ width: 1200, height: 800 });
       await page.waitForTimeout(300);
+      // Interrupteurs de la tuile au clavier : Entrée puis Espace basculent (une seule fois chacun), focus visible au
+      // jeton --kta-interaction ; un toucher (pointerdown puis click) ne bascule qu'une fois.
+      await reglages(page);
+      const clavier = [];
+      for (const a of ["boussole", "guidage", "textures", "pleinJour"]) {
+        const sel = '#kta-vue3d [data-v3d="' + a + '"]';
+        const lire = function (s) { return document.querySelector(s).getAttribute("aria-pressed"); };
+        const avant = await page.evaluate(lire, sel);
+        await page.focus(sel);
+        await page.keyboard.press("Enter");
+        await page.waitForTimeout(80);
+        const entree = await page.evaluate(lire, sel);
+        const focus = await page.evaluate(function (s) {
+          const b = document.querySelector(s), st = getComputedStyle(b);
+          const sonde = document.createElement("span");
+          sonde.style.color = "var(--kta-interaction)";
+          b.parentNode.appendChild(sonde);
+          const attendu = getComputedStyle(sonde).color;
+          sonde.remove();
+          return { visible: b.matches(":focus-visible"), style: st.outlineStyle, couleur: st.outlineColor,
+            attendu: attendu };
+        }, sel);
+        await page.keyboard.press("Space");
+        await page.waitForTimeout(80);
+        const espace = await page.evaluate(lire, sel);
+        await page.locator(sel).click();
+        await page.waitForTimeout(80);
+        const toucher = await page.evaluate(lire, sel);
+        await page.locator(sel).click();
+        await page.waitForTimeout(80);
+        clavier.push({ a: a, avant: avant, entree: entree, espace: espace, toucher: toucher, focus: focus });
+      }
+      verifier(clavier.every(function (c) {
+        return c.entree !== c.avant && c.espace === c.avant && c.toucher !== c.avant && c.focus.visible &&
+          c.focus.style === "solid" && c.focus.couleur === c.focus.attendu;
+      }), "tuile ⚙️ : interrupteurs à Entrée et Espace, focus visible --kta-interaction, un toucher = une bascule",
+      clavier);
+      await reglages(page);
+      await page.evaluate(function () {
+        const t = document.getElementById("kta-v3d-reglages");
+        if (t && !t.hidden) document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
+      });
       // Rendu en pause : immobile en libre, aucune image ; en suivi, le bruit de la boussole (± 0,9°) non plus.
       const pause = await page.evaluate(function () {
         return new Promise(function (r) {
@@ -5608,6 +5706,28 @@ async function sectionFichesObjets(page) {
             Math.abs(m1.cible.y - P(15, 0).y) > 0.8 * a.sc),
           horsEffondrement: !!m1.cible && (Math.abs(m1.cible.x - P(15, 0).x) > 2.5 * a.sc ||
             Math.abs(m1.cible.y - P(15, 0).y) > 2.5 * a.sc) };
+        // Éléments du jeu (addons/mkmg/css) en place autour des commandes de la vue : aucun ne chevauche un bouton,
+        // la pastille de mode ni la boussole.
+        const boite = function (el) { return el.getBoundingClientRect(); };
+        const commandes = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *, " +
+          "#kta-vue3d .kta-v3d-mode-indic, #kta-vue3d .kta-v3d-boussole, #kta-vue3d .kta-v3d-pad > *, " +
+          "#kta-vue3d .kta-v3d-incl > *")).filter(function (el) { return el.getClientRects().length > 0; });
+        const jeu = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-greffe [class*='mkmg-']"))
+          .filter(function (el) {
+            const b = boite(el);
+            return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== "hidden";
+          });
+        r.chevauche = [];
+        jeu.forEach(function (j) {
+          const bj = boite(j);
+          commandes.forEach(function (c) {
+            const bc = boite(c);
+            if (bc.width && bj.left < bc.right && bj.right > bc.left && bj.top < bc.bottom && bj.bottom > bc.top) {
+              r.chevauche.push(j.className + " / " + (c.getAttribute("data-v3d") || c.className));
+            }
+          });
+        });
+        r.elementsJeu = jeu.length;
         // Situation contrôlée : monde vidé, puis un égaré à 5 m devant (cap 90 = vers l'est).
         const X = M().essai, tape = function () {
           document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
@@ -5855,6 +5975,10 @@ async function sectionFichesObjets(page) {
         "jeu : confirmation à 3 difficultés ; facile → cible (POI fictif à 4 m du tracé, validée près du tracé, hors " +
         "du pilier et de l'effondrement qui le couvrent), trajet et ses chevrons de sens, balise, panneau, flèche, reste",
         MK.partie);
+      verifier(MK.elementsJeu > 0 && MK.chevauche.length === 0,
+        "jeu : ses éléments (" + MK.elementsJeu + ") ne chevauchent aucune commande de la vue (boutons, pastille, " +
+        "boussole)",
+        MK.chevauche);
       verifier(MK.partie.ennemis >= 1 && MK.partie.objets >= 2 && MK.partie.tirer && MK.partie.cartouches === "2/6",
         "jeu : vague 1 peuplée (égarés, munitions, champignons), bouton de tir, 2 cartouches + 6", MK.partie);
       verifier(MK.tir.canon === 1 && MK.tir.tues === 1 && MK.tir.ennemis === 0 && MK.tir.cadavres === 1,
