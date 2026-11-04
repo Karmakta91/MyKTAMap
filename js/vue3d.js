@@ -2213,13 +2213,15 @@
     return m;
   }
 
-  // ⚠️ contrat (décision produit) : 🧱 coupé, sol et plafond (carré qui suit et pièces des galeries) sont unis, à la
-  // teinte du motif (COULEUR_CALCAIRE) ; allumé, le grain calcaire. Rien à reconstruire : le matériau change.
+  // ⚠️ contrat (décision produit) : 🧱 coupé, sol et plafond (carré qui suit et pièces des galeries) sont NOIRS dans
+  // les trois rendus ; parois à la couleur de leur tracé, structures et zones à celle de la légende, panneaux,
+  // itinéraire, liserés et plan au sol passent dessus. Allumé, le grain calcaire. Rien à reconstruire : le matériau
+  // change.
   function _grainSol(m, oui) {
     [[m.sol, _e.grain], [m.plafond, _e.grain], [m.solGalerie, _e.grainMonde], [m.plafondGalerie, _e.grainMonde]]
       .forEach(function (q) {
         q[0].map = oui ? q[1] : null;
-        q[0].color.set(oui ? 0xffffff : COULEUR_CALCAIRE);
+        q[0].color.set(oui ? 0xffffff : 0x000000);
         q[0].needsUpdate = true;
       });
   }
@@ -5166,6 +5168,14 @@
     return window.buildPointPopupHtml(p, false, info);   // HTML échappé par la fiche elle-même
   }
 
+  // 🩸 Au doigt, le navigateur envoie un click après le toucher, au même point : il tombait sur la fiche qui venait de
+  // s'ouvrir sous le doigt (« 🗺️ Voir sur la carte » fermait la vue). La fiche ignore le pointeur FICHE_NEUVE ms.
+  const FICHE_NEUVE = 400;
+  function _ficheNeuve(boite) {
+    boite.classList.add("kta-v3d-fiche-neuve");
+    setTimeout(function () { boite.classList.remove("kta-v3d-fiche-neuve"); }, FICHE_NEUVE);
+  }
+
   function _ouvrirFiche(p) {
     const e = _e;
     if (!p || typeof window.buildPointPopupHtml !== "function") return false;
@@ -5183,6 +5193,7 @@
     _passagesFiche(boite, p);
     boite.appendChild(corps);
     e.ov.appendChild(boite);
+    _ficheNeuve(boite);
     const marqueur = {
       h: {}, ouvert: true,
       on: function (type, f) { (this.h[type] = this.h[type] || []).push(f); return this; },
@@ -5279,6 +5290,7 @@
     ligne.appendChild(voir);
     boite.appendChild(ligne);
     e.ov.appendChild(boite);
+    _ficheNeuve(boite);
     const fiche = { boite: boite, objet: o, famille: v.famille, session: v.session, marqueur: null };
     const hote = {
       h: {}, html: "", ouvert: true,
@@ -7343,6 +7355,12 @@
         lits: lits(m.map.image) };
     });
     r.materiaux.paroi.pierre = !!e.texPierre && e.mats.paroi.map === e.texPierre.couleur;
+    // Sol et plafond (🧱 coupé : noirs, sans carte).
+    r.sols = {};
+    ["sol", "plafond", "solGalerie", "plafondGalerie"].forEach(function (k) {
+      const m = e.mats[k];
+      r.sols[k] = { carte: !!m.map, couleur: "#" + m.color.getHexString() };
+    });
     r.materiaux.paroi.repetition = [e.mats.paroi.map.repeat.x, e.mats.paroi.map.repeat.y];
     if (e.mats.paroi.normalMap) {
       r.materiaux.paroi.repetitionRelief = [e.mats.paroi.normalMap.repeat.x, e.mats.paroi.normalMap.repeat.y];

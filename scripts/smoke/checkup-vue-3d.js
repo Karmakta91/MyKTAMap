@@ -1774,7 +1774,17 @@ async function sectionCamera(page) {
       K.basculerTextures();
       await images(2);
       r.paroisUnies.allume = Object.assign({}, K.textures().maillages);
+      r.paroisUnies.solsAllumes = K.textures().sols;
       await K.fermer();
+      // Sol et plafond noirs 🧱 coupé, dans les trois rendus.
+      window.setVue3DTextures(false);
+      r.paroisUnies.solsCoupes = {};
+      for (const rendu of ["mixte", "structures", "galerie"]) {
+        await ouvrir(rendu, -5, 0, 90);
+        r.paroisUnies.solsCoupes[rendu] = K.textures().sols;
+        await K.fermer();
+      }
+      window.setVue3DTextures(true);
     } finally {
       LC.findCustomEntry = trouver;
     }
@@ -1860,8 +1870,17 @@ async function sectionCamera(page) {
     !parmi(pu.apresLegende.couleurs, pu.attendu[0]), "couleur changée dans la légende, vue ouverte : la paroi suit",
     pu.apresLegende);
   verifier(pu.allume.paroi >= 1 && !pu.allume.paroiUnie, "🧱 rallumé : la pierre de taille revient", pu.allume);
-  verifier(r.solUni.map === null && r.solUni.couleur === "#c9b48c" && r.solUni.textures === false &&
-    r.solUni.rallume, "🧱 coupé : sol uni à la teinte du motif ; rallumé : grain", r.solUni);
+  const noirs = function (sols) {
+    return !!sols && Object.keys(sols).length === 4 && Object.keys(sols).every(function (k) {
+      return !sols[k].carte && sols[k].couleur === "#000000";
+    });
+  };
+  verifier(["mixte", "structures", "galerie"].every(function (k) { return noirs(pu.solsCoupes[k]); }) &&
+    Object.keys(pu.solsAllumes).every(function (k) { return pu.solsAllumes[k].carte; }),
+    "🧱 coupé : sol et plafond noirs en mixte, structures et galerie ; rallumé : le grain revient",
+    { coupe: pu.solsCoupes, allume: pu.solsAllumes });
+  verifier(r.solUni.map === null && r.solUni.couleur === "#000000" && r.solUni.textures === false &&
+    r.solUni.rallume, "🧱 coupé : sol noir, sans motif ; rallumé : grain", r.solUni);
   await sectionCameraPixels(page);
   await sectionTuileColonne(page);
   // Et l'autre orientation (paysage bas au téléphone : 852 × 393 ; PC : fenêtre de téléphone en portrait).
@@ -1942,6 +1961,17 @@ async function sectionCameraPixels(page) {
   });
   const uni = await mesure();
   await capture(page, "camera-2-sol-uni");
+  // Sol noir 🧱 coupé : le plan au sol reste visible par-dessus.
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D;
+    document.querySelector('#kta-vue3d [data-v3d="planSol"]').click();
+    for (let i = 0; i < 200 && !(K.etat().dessin.planSol && K.etat().dessin.planSol.px); i++) {
+      await new Promise(function (ok) { requestAnimationFrame(ok); });
+    }
+  });
+  const planSurNoir = await mesure();
+  await capture(page, "camera-3-plan-sur-sol-noir");
+  await page.evaluate(function () { document.querySelector('#kta-vue3d [data-v3d="planSol"]').click(); });
   await page.evaluate(async function () {
     const s = window.__v3dEmbCam;
     await window.KtaVue3D.fermer();
@@ -1955,8 +1985,10 @@ async function sectionCameraPixels(page) {
     Math.abs(avecPlan.b - sansPlan.b);
   verifier(ecartTeinte > 30 && Math.abs(avecPlan.r - avecPlan.b) < Math.abs(sansPlan.r - sansPlan.b),
     "🗺️ plan au sol visible à l'écran : la teinte du sol bascule vers le gris du relevé", { sansPlan, avecPlan });
-  verifier(uni.ecart < sansPlan.ecart, "🧱 coupé : sol sans motif (écart des pixels plus faible qu'avec le grain)",
-    { grain: sansPlan, uni: uni });
+  verifier(uni.ecart < sansPlan.ecart && uni.r + uni.g + uni.b < 30,
+    "🧱 coupé : sol noir, sans motif (pixels sombres, écart plus faible qu'avec le grain)", { grain: sansPlan, uni: uni });
+  verifier(planSurNoir.r + planSurNoir.g + planSurNoir.b > uni.r + uni.g + uni.b + 60,
+    "🧱 coupé : le plan au sol reste visible sur le sol noir", { noir: uni, plan: planSurNoir });
 }
 
 // Tuile ⚙️ ouverte en vue d'édition : au-dessus de la colonne 🛠️ (aucun point commun où la colonne passe dessus),

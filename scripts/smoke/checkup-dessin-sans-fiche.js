@@ -456,7 +456,8 @@ async function section3D(page, entree) {
     const ok3 = await K.ouvrir({ depart: { x: F.v3d.depart.x, y: F.v3d.depart.y, cap: 0, niveau: 0 },
       commandes: "joystick" });
     if (!ok3) return { ok: false, raison: "vue non ouverte" };
-    K.basculerVue();
+    // Vue d'édition retenue par plan (vue3d.js > _lireEdition) : l'ouverture peut déjà y être.
+    if (K.etat().vue !== "plongee") K.basculerVue();
     await pause(400);
     return { ok: K.etat().vue === "plongee" };
   });

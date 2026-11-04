@@ -394,3 +394,5 @@ html.kta-vue3d-ouverte .kta-group-flyout, html.kta-vue3d-ouverte .kta-group-flyo
   border: 1px solid var(--kta-accent); background: var(--kta-surface); color: var(--kta-texte);
   font-size: 14px; font-weight: 700; text-align: center; white-space: nowrap;
 }
+/* Fiche qui vient de s'ouvrir sous le doigt (vue3d.js > _ficheNeuve) : le click qui suit le toucher la traverse. */
+.kta-v3d-fiche.kta-v3d-fiche-neuve { pointer-events: none; }
