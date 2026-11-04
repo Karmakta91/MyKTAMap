@@ -2464,6 +2464,9 @@ extension), hors objet en cours de tracé.
   _panSuivre`, ni rotation à deux doigts `_rotPointerMove` / `_rotTouchMove`, tous sur le conteneur), clic suivant sur la carte et menu contextuel avalés (pas de fiche ; un bouton de barre, une fiche ou une fenêtre restent cliquables aussitôt). `pointerup` n'est
   jamais avalé (Leaflet et le pan manuel y referment leur suivi des doigts). Un 2e doigt (pincement, rotation : le geste
   à deux doigts reprend la main), la molette ou Échap annulent. Drapeau neutre pour tout autre geste : `KtaAjusterSommets.enCours()`.
+  ⚠️ Un geste mal terminé se ferme quand même (drag rendu, rien d'écrit) : `pointercancel`, appli repliée
+  (`visibilitychange`, `pagehide`), fenêtre quittée (`blur`), et lâcher jamais reçu — l'appui primaire suivant, ou
+  le même `pointerId` reposé, ferme l'ancien geste au lieu de laisser ses mouvements avalés.
 - 🩸 **Position** : `map.mouseEventToLatLng` (rotation défaite par le patch de `mouseEventToContainerPoint`) ;
   `clientX` ne sert qu'aux seuils. Le sommet garde son décalage au doigt (il ne saute pas sous lui).
 - **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon milieu de segment ; un balayage des
