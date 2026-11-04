@@ -38,6 +38,9 @@ window.KtaAjusterSommets = (function () {
 
   let _g = null;               // geste en cours
   let _avalerJusqua = 0;
+  // Geste armé annulé (Échap, molette) doigt encore posé : son lâcher est traité comme celui d'un geste, le clic qui
+  // suit est avalé (sinon il pose un point de mesure ou ouvre une fiche). Oublié au pointerdown suivant.
+  let _lacherAvale = null;
   let _menu = null;            // { marker, timer, c }
   const _stats = { gestes: 0, ecritures: 0, annules: 0, refus: 0 };
 
@@ -248,6 +251,7 @@ window.KtaAjusterSommets = (function () {
   }
   function annuler() {
     if (!_g) return false;
+    if (_g.arme) _lacherAvale = _g.id;
     _stats.annules++;
     _nettoyer();
     return true;
@@ -274,6 +278,7 @@ window.KtaAjusterSommets = (function () {
   }
 
   function _onDown(e) {
+    if (!_g) _lacherAvale = null;
     if (_menu && !_dansMenu(e.target)) {
       _fermerMenu();
       _avalerJusqua = _now() + AVALER_MS;   // le tap qui referme 🗑️ ne fait rien d'autre
@@ -324,6 +329,11 @@ window.KtaAjusterSommets = (function () {
 
   function _onUp(e) {
     const g = _g;
+    if (!g && _lacherAvale !== null && e.pointerId === _lacherAvale) {
+      _lacherAvale = null;
+      _avalerJusqua = _now() + AVALER_MS;
+      return;
+    }
     if (!g || e.pointerId !== g.id) return;
     // ⚠️ pointerup n'est jamais avalé : Leaflet et le pan manuel y referment leur propre suivi des doigts.
     if (!g.arme) { _nettoyer(); return; }
