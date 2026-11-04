@@ -38,6 +38,15 @@
   --kta-ok-bord:        rgba(166, 215, 133, 0.40);
   --kta-erreur-fond:    rgba(244, 107, 107, 0.05);
   --kta-erreur-bord:    rgba(244, 107, 107, 0.40);
+  /* Gabarit des boutons de barre (barres latérales de la carte, vue 3D) : côté sans le liseré, rayon de la pilule,
+     zone de toucher minimale. Thème indifférent. */
+  --kta-barre-bouton:   36px;
+  --kta-barre-rayon:    8px;
+  --kta-cible-toucher:  44px;
+}
+/* Paysage bas : boutons de barre à 30 px (sous-actions en ligne, body.kta-refonte-v1 .leaflet-bar a). */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root { --kta-barre-bouton: 30px; }
 }
 
 html, body {
@@ -11698,13 +11707,13 @@ body.kta-refonte-v1 .leaflet-bar {
 }
 body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child .leaflet-bar,
 body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child {
-  border-top-left-radius: 8px !important;
-  border-top-right-radius: 8px !important;
+  border-top-left-radius: var(--kta-barre-rayon) !important;
+  border-top-right-radius: var(--kta-barre-rayon) !important;
 }
 body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child .leaflet-bar,
 body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child {
-  border-bottom-left-radius: 8px !important;
-  border-bottom-right-radius: 8px !important;
+  border-bottom-left-radius: var(--kta-barre-rayon) !important;
+  border-bottom-right-radius: var(--kta-barre-rayon) !important;
 }
 
 /* Séparateur 1 px en border-top (ne se cumule pas avec le border-bottom natif). */
@@ -11713,9 +11722,9 @@ body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(:first-child) .leaflet-b
 }
 
 body.kta-refonte-v1 .leaflet-bar a {
-  width: 36px !important;
-  height: 36px !important;
-  line-height: 36px !important;
+  width: var(--kta-barre-bouton) !important;
+  height: var(--kta-barre-bouton) !important;
+  line-height: var(--kta-barre-bouton) !important;
   font-size: 19px;
   /* Annule le float Leaflet (sinon les sous-actions flottent à gauche). */
   float: none !important;
@@ -11724,9 +11733,9 @@ body.kta-refonte-v1 .leaflet-bar a {
 
 /* Sous-actions empilées sous le bouton du groupe. */
 body.kta-refonte-v1 .leaflet-bar a.kta-sub {
-  width: 36px !important;
-  height: 36px !important;
-  line-height: 36px !important;
+  width: var(--kta-barre-bouton) !important;
+  height: var(--kta-barre-bouton) !important;
+  line-height: var(--kta-barre-bouton) !important;
   font-size: 18px;
   display: block !important;
   float: none !important;
@@ -11815,7 +11824,7 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   body.kta-refonte-v1 .leaflet-bar {
     display: flex !important;
     align-items: center !important;
-    border-radius: 8px !important;
+    border-radius: var(--kta-barre-rayon) !important;
     overflow: hidden;
   }
   body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-bar {
@@ -11838,9 +11847,9 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    width: 30px !important;
-    height: 30px !important;
-    line-height: 30px !important;
+    width: var(--kta-barre-bouton) !important;
+    height: var(--kta-barre-bouton) !important;
+    line-height: var(--kta-barre-bouton) !important;
     font-size: 16px;
   }
   body.kta-refonte-v1 .leaflet-bar a.kta-sub.kta-hidden {
