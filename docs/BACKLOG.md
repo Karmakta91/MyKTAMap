@@ -97,6 +97,11 @@
   de plan réels restent dans `README.md`, des commentaires `js/` et `docs/architecture/`. Liste remise hors dépôt.
   `qui: KARMA · action: trancher nom par nom sur la liste hors dépôt · fini: chaque nom remplacé ou gardé par décision
   · depuis: 05/10/2026 · taille: S`
+- **Course i18n au démarrage sous WebKit** — ✅ vu 04/11 : sous WebKit, `checkup-guidage.js` tombe parfois sur
+  `[I18n] Clé manquante : "home.profile.stats.storageTitle"`, alors que la clé existe ; l'appel vient de
+  `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
+  `qui: Claude · action: rendre l'appel de homeProfile.js déterministe (attendre I18n prêt) · fini: checkup-guidage
+  vert sous WebKit sur plusieurs passages, sans clé manquante · depuis: 04/11/2026 · taille: S`
 ## Plus tard
 
 - **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
@@ -153,11 +158,6 @@
   (`setPlanRenduVue3D`), reste prioritaire. À faire après les lots du 04/11.
   `qui: Claude · action: champ du Générateur (createConf.js) + lecture par vue3d.js > _renduVoulu · fini: plan généré en
   Galerie qui s'ouvre en Galerie, checkup · depuis: 04/11/2026 · taille: S`
-- **Site de doc : la vue 3D dans les capacités** — `MyKTAMap-doc/generateur/accueil.js > CAPACITES` est une liste en dur
-  qui ne cite pas la vue 3D ; à ajouter seulement quand la 3D est en prod (le site public lit community `main`).
-  `qui: Claude · action: ajouter la ligne après le merge main de la 3D, puis relecture de KARMA avant deploy-doc public
-  · depuis: 02/11/2026 · taille: XS`
-
 - **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.
