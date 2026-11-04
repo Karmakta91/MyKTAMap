@@ -347,6 +347,7 @@ Un clic en los contadores de arriba abre el **panel de control** del mapa:
 ### 🗺️ Leer el mapa
 
 - **Pellizca** para hacer zoom, **arrastra** para moverte (o usa los botones **+** / **−** arriba a la izquierda).
+- **Girar dos dedos** hace pivotar el mapa (Mayús + rueda en un ordenador); el botón **norte**, bajo el cubo de la barra derecha, lo endereza. Una herramienta de dibujo, la medición o la recolocación lo enderezan; 🗺️ Mapa orientado toma el control durante el seguimiento.
 - **Tocar un icono** abre la ficha del punto; **tocarlo dos veces** hace zoom sobre él (como el botón «Ir» de la ficha).
 - Los iconos se reducen al alejar el zoom para mantenerse a la escala del mapa, en el plano y también en los mapas OSM (Vista OSM y mapa de la pantalla de inicio). Para conservar un tamaño fijo: ⚙️ Configuración de la pantalla de inicio → 🎨 Visualización → «📐 Adaptar el tamaño de los iconos al zoom».
 

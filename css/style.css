@@ -19951,6 +19951,28 @@ html.kta-theme-light .kta-bearing-recentrer {
   touch-action: none;
 }
 
+/* Bouton nord (rotation manuelle, mapBearing.js > _creerBoutonNord) : pilule de la barre de droite, sous le cube,
+   visible seulement quand la vue est tournée à la main. L'aiguille suit --kta-bearing : elle montre le
+   haut du plan. 🩸 En paysage bas, `.leaflet-bar` passe en display: flex !important : le masquage doit l'emporter.
+   Reste visible barre repliée et en mode Présentation (la vue peut y être tournée). */
+body.kta-refonte-v1 .leaflet-control.kta-nord-ctrl:not(.kta-nord-visible),
+.leaflet-control.kta-nord-ctrl:not(.kta-nord-visible) {
+  display: none !important;
+}
+body.kta-refonte-sidebar-right-collapsed .leaflet-top.leaflet-right > .leaflet-control.kta-nord-ctrl.kta-nord-visible,
+body.kta-presentation-mode .leaflet-top.leaflet-right > .leaflet-control.kta-nord-ctrl.kta-nord-visible {
+  display: block !important;
+}
+.kta-nord-ctrl a { display: flex !important; align-items: center; justify-content: center; }
+.kta-nord-picto {
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  transform: rotate(var(--kta-bearing, 0deg));
+}
+.kta-nord-pointe { fill: var(--kta-accent-texte); }
+.kta-nord-queue  { fill: var(--kta-texte-3); }
+
 /* ── Guidage de l'itinéraire (js/itiGuidage.js, décisions docs/ETUDE_GUIDAGE.md) ── */
 
 /* Raccord à vol d'oiseau : pointillé, sans halo — ce n'est pas une galerie. */

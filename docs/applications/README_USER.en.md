@@ -347,6 +347,7 @@ A click on the top counters opens the map's **dashboard**:
 ### 🗺️ Reading the map
 
 - **Pinch** to zoom, **drag** to move around (or use the **+** / **−** buttons at the top left).
+- **Twisting two fingers** turns the map (Shift + wheel on a computer); the **north** button, under the cube on the right-hand bar, straightens it. A drawing tool, measurement or realignment straighten it; 🗺️ Oriented map takes over while tracking.
 - **Tapping an icon** opens the point's popup; **double-tapping** zooms onto it (like the popup's “Go” button).
 - Icons shrink as you zoom out to stay at the map's scale, on the plan as well as on the OSM maps (OSM view and the home screen map). To keep a fixed size: home ⚙️ Configuration → 🎨 Display → “📐 Scale icon size with zoom”.
 

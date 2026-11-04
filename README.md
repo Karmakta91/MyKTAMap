@@ -265,7 +265,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `tiling.js` | Rendu du fond de plan : image directe, tuiles runtime V1 ou tuiles V2 du Générateur |
 | `imageLayerCalibration.js` | Calage d'un calque image par 2 ancres (similitude 2D) |
 | `imageLayerCalibrationPicker.js` | Modale de calage 2 ancres (deux mini-cartes source / plan) |
-| `mapBearing.js` | Mode « plan orienté » : la carte tourne pendant le suivi (pane intercalaire `.kta-rotate-pane`) |
+| `mapBearing.js` | Rotation de la carte 2D : plan orienté pendant le suivi, rotation manuelle à deux doigts et bouton nord (pane intercalaire `.kta-rotate-pane`) |
 | `map.js` | Carte Leaflet du plan (CRS.Simple), catalogue `TAGS_BUILTIN`, `_iconMap`, calques, filtre de niveau |
 | `tracking.js` | Tracker podométrique sans GPS : position, cap, recalage, map-matching, timeline du parcours |
 
@@ -658,6 +658,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-recalage-scan.js` | « Recaler des données sur un autre scan » sur des jeux fictifs |
 | `smoke/checkup-repositionner.js` | « Repositionner » un POI de session à la souris |
 | `smoke/checkup-retour-accueil.js` | Fermer un plan le vide, « Reprendre » le retrouve |
+| `smoke/checkup-rotation-manuelle.js` | Rotation manuelle de la carte 2D : seuil des deux doigts, bouton nord, outils armés, fiches et exports sous rotation, barre 2D en paysage bas |
 | `smoke/checkup-secours-une-intervention.js` | Une seule intervention Secours active à la fois sur un plan |
 | `smoke/checkup-session-repli.js` | Sections repliables de la modale Détails de la session sur une grosse session |
 | `smoke/checkup-splash.js` | Splash de démarrage au téléphone et au PC |

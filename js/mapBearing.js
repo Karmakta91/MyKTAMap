@@ -6,23 +6,22 @@
  */
 
 // =========================
-// MAP-BEARING — mode « plan orienté » (heading-up : la carte tourne, pas l'icône)
+// MAP-BEARING — rotation de la vue 2D : plan orienté (cap du téléphone) et rotation manuelle (deux doigts)
 // =========================
-// En tracking actif, la vue pivote pour que la direction de marche pointe vers le haut de l'écran.
-// Désactivé par défaut, activable depuis la modale 🧭 Tracker.
-// 🩸 La rotation vit sur un pane INTERCALAIRE (`.kta-rotate-pane`, entre le map-pane et ses enfants),
-//   JAMAIS sur le map-pane : Leaflet le positionne en `transform: translate3d`, et une rotation y fait
-//   pivoter le vecteur de translation (propriété `rotate` appliquée AVANT `transform` ; même défaut avec
-//   rotate() translate3d() écrit à la main) — des centaines de px d'erreur dès que la carte a été panée.
-//   Même structure que le plugin leaflet-rotate, sans patcher le cœur.
+// Plan orienté (réglage de la modale 🧭 Tracker, OFF par défaut) : en suivi, la direction de marche pointe vers le
+// haut. Rotation manuelle : deux doigts au-delà de SEUIL_ROTATION, Maj + molette au PC, bouton nord dans la barre
+// de droite. Le cap reprend la main dès qu'il arrive ; un outil armé ou un mode plein écran redresse la vue.
+// 🩸 La rotation vit sur un pane INTERCALAIRE (`.kta-rotate-pane`, entre le map-pane et ses enfants), JAMAIS sur le
+//   map-pane : Leaflet le positionne en `transform: translate3d`, une rotation y ferait pivoter la translation.
 // ⚠️ `transform-origin` est en layerPoint : il DÉRIVE à chaque pan/zoom → réappliqué sur move/zoom.
 // ⚠️ Un pane créé par `map.createPane()` atterrit dans le map-pane, HORS rotation : le créer dans
 //   `window._ktaRotatePane` pour qu'il tourne. Toute contre-rotation se pose sur un ENFANT.
-// Tournent : fond, tuiles, vecteurs, icônes POI (décision produit), heatmap, calques calibrés.
-// Restent droits : contrôles Leaflet (hors map-pane), labels de mesure et popups (contre-rotation CSS
-//   `--kta-bearing`). L'icône du tracker porte rotate(+cap) et la vue −cap : somme nulle, rien à faire.
-// Clics : seul `mouseEventToContainerPoint` est patché (cf _installerPatchConversions). Pan : refait à la
-//   main pendant le mode (le drag Leaflet déplace d'un offset ÉCRAN, donc de travers).
+// Tournent : fond, tuiles, vecteurs, icônes POI (décision produit), heatmap, calques calibrés. Restent droits :
+//   contrôles Leaflet, labels de mesure et popups (contre-rotation CSS `--kta-bearing`).
+// Clics : seul `mouseEventToContainerPoint` est patché (cf _installerPatchConversions). Pan : refait à la main
+//   pendant la rotation (le drag Leaflet déplace d'un offset ÉCRAN, donc de travers).
+// 🩸 Le div de la carte est PERSISTANT d'un plan à l'autre : ses écouteurs sont des fonctions du module (un ajout
+//   répété ne s'empile pas), qui lisent `window.map`.
 // Expose window.MapBearing · Garde-fou : scripts/check-map-listeners.js · Doc : docs/architecture/tracking.md
 // =========================
 
@@ -44,6 +43,14 @@
   const SEUIL_ARRET  = 15;    // ° — à l'arrêt, il faut une vraie intention
   const MARCHE_MS    = 2500;  // ms depuis le dernier pas → on se dit « en marche »
 
+  // Rotation manuelle. Un pincement fait tourner la droite entre les doigts de quelques degrés : en deçà du seuil,
+  // seul le zoom de Leaflet agit. Au-delà, la vue suit les doigts SANS rattraper le seuil (aucun saut).
+  const SEUIL_ROTATION  = 15;    // ° d'angle entre les doigts avant que la vue tourne
+  const SNAP_NORD       = 3;     // ° — un geste qui finit à moins de ça du nord redresse la carte
+  const NORD_MS         = 300;   // ms — retour animé du bouton nord
+  const SURVEILLANCE_MS = 250;   // ms — relecture des outils armés pendant une rotation manuelle
+  const MOLETTE_DEG     = 0.15;  // ° par pixel de molette (Maj + molette)
+
   // 🩸 Pas de marge scalaire pour « le viewport tourné déborde son rectangle » : la bonne valeur dépend du
   // FORMAT de l'écran ((grand côté / petit côté − 1)/2 : 0,19 en paysage de bureau, 0,58 sur un iPhone en
   // portrait), une constante laisse des bords jamais peints et des POI effacés le long des bords.
@@ -54,6 +61,7 @@
   const _suspensions = new Set();   // raisons actives — cf suspend()/resume()
   let _bearing    = 0;       // angle réellement appliqué (deg)
   let _cible      = 0;       // angle visé (deg)
+  let _source     = null;    // qui tient l'angle : null (vue droite) · "manuel" (doigts, molette) · "cap" (plan orienté)
   let _capLisse   = null;    // cap lissé (deg, [0,360[)
   let _dernierPas = 0;       // horodatage du dernier pas (marche / arrêt)
   let _suiviArme  = true;    // le recentrage suit-il le tracker ?
@@ -66,6 +74,12 @@
     try { return localStorage.getItem(LS_KEY) === "1"; } catch(e) { return false; }
   }
 
+  function _t(cle, repli) {
+    if (!window.I18n) return repli;
+    const v = window.I18n.t(cle);
+    return (v && v !== cle) ? v : repli;
+  }
+
   // ── Angles ──
   function _norm(deg)  { return ((deg % 360) + 360) % 360; }
   function _delta(a, b) {            // écart signé le plus court de a vers b
@@ -74,6 +88,7 @@
     if (d < -180) d += 360;
     return d;
   }
+  function _tournee() { return Math.abs(_delta(0, _bearing)) > 0.01; }
 
   // ── Pane de rotation ──
   // Créé une fois par instance de carte. 🩸 Garde portée PAR LA MAP (`map._ktaRotatePane`), jamais par
@@ -110,7 +125,7 @@
     const cont = map.getContainer();
     if (cont) {
       cont.style.setProperty("--kta-bearing", _bearing + "deg");
-      cont.classList.toggle("kta-bearing-on", Math.abs(_bearing) > 0.01);
+      cont.classList.toggle("kta-bearing-on", _tournee());
     }
     _cullerTuilesThrottle();
   }
@@ -163,7 +178,7 @@
 
   // ── Interactions ──
   // On verrouille le drag DE LEAFLET (pas le pan) : il partirait de travers de l'angle courant ; le pan
-  // est refait à la main (_installerPanManuel).
+  // est refait à la main (_panDebut…). Verrouillé = `_interactionsSauvees` non nul.
   function _verrouiller(map) {
     if (!map || _interactionsSauvees) return;
     _interactionsSauvees = { dragging: map.dragging && map.dragging.enabled() };
@@ -177,7 +192,6 @@
     // 🩸 On ne touche PAS aux options de zoom (pas de "center") : forcer le zoom au centre fait glisser
     // toute la carte quand on pince ailleurs. Avec `mouseEventToContainerPoint` patché, Leaflet zoome entre
     // les doigts avec les bons points. Les vecteurs restent cliquables (cf _installerPatchConversions).
-    _installerPanManuel(map);
   }
 
   function _deverrouiller(map) {
@@ -186,9 +200,6 @@
     const cont1 = map.getContainer();
     if (cont1) cont1.classList.remove("kta-bearing-lock");
     _majPaddingRenderer(map, false);
-    map.options.touchZoom       = _interactionsSauvees.touchZoom;
-    map.options.scrollWheelZoom = _interactionsSauvees.scrollWheelZoom;
-    map.options.doubleClickZoom = _interactionsSauvees.doubleClickZoom;
     _interactionsSauvees = null;
   }
 
@@ -224,68 +235,319 @@
 
   // ── Pan manuel ──
   // Plutôt que patcher `L.Draggable` (partagé par poignées, marqueurs déplaçables, autres cartes), le drag
-  // Leaflet reste DÉSACTIVÉ pendant le mode et on fait le pan dans le bon repère. Minimal : un doigt, pas
-  // d'inertie ; deux doigts → pinch-zoom de Leaflet.
-  function _installerPanManuel(map) {
-    if (!map || map._ktaPanManuel) return;
-    map._ktaPanManuel = true;
-    const cont = map.getContainer();
-    if (!cont) return;
-    const doigts = new Set();
-    let depart = null, engage = false, centreAvant = null;
+  // Leaflet reste DÉSACTIVÉ pendant la rotation et on fait le pan dans le bon repère. Minimal : un doigt, pas
+  // d'inertie ; deux doigts → pinch-zoom de Leaflet (et rotation manuelle).
+  const _panDoigts = new Set();
+  let _panDepart = null, _panEngage = false, _panCentreAvant = null;
 
-    cont.addEventListener("pointerdown", function(e) {
-      doigts.add(e.pointerId);
-      if (doigts.size > 1) {
-        // 🩸 Un pinch commence mal : le premier doigt bouge avant la pose du second, notre pan s'engage et
-        // déplace la carte avant que Leaflet ne voie le geste à deux doigts. On rend ce qu'on a pris : le
-        // pinch travaille sur la vue d'origine.
-        if (engage && centreAvant) {
-          try { map.setView(centreAvant, map.getZoom(), { animate: false }); } catch(err) {}
-        }
-        depart = null; engage = false; centreAvant = null;
-        return;
+  function _panDebut(e) {
+    const map = window.map;
+    _panDoigts.add(e.pointerId);
+    if (_panDoigts.size > 1) {
+      // 🩸 Un pinch commence mal : le premier doigt bouge avant la pose du second, notre pan s'engage et
+      // déplace la carte avant que Leaflet ne voie le geste à deux doigts. On rend ce qu'on a pris : le
+      // pinch travaille sur la vue d'origine.
+      if (_panEngage && _panCentreAvant && map) {
+        try { map.setView(_panCentreAvant, map.getZoom(), { animate: false }); } catch(err) {}
       }
-      if (!isActive()) { depart = null; return; }
-      depart = { x: e.clientX, y: e.clientY };
-      centreAvant = map.getCenter();
-    }, { passive: true });
+      _panDepart = null; _panEngage = false; _panCentreAvant = null;
+      return;
+    }
+    if (!_interactionsSauvees || !map) { _panDepart = null; return; }
+    _panDepart = { x: e.clientX, y: e.clientY };
+    _panCentreAvant = map.getCenter();
+  }
 
-    cont.addEventListener("pointermove", function(e) {
-      if (!depart || !isActive() || doigts.size > 1) return;
-      const dx = e.clientX - depart.x, dy = e.clientY - depart.y;
-      // Seuil d'engagement : un tap ne doit pas devenir un pan (clic volé aux marqueurs).
-      if (!engage && Math.hypot(dx, dy) < 6) return;
-      engage = true;
-      depart = { x: e.clientX, y: e.clientY };
-      // Doigt en coordonnées ÉCRAN, carte en coordonnées de calque : rotation défaite.
-      const a = -_bearing * Math.PI / 180;
-      const px = dx * Math.cos(a) - dy * Math.sin(a);
-      const py = dx * Math.sin(a) + dy * Math.cos(a);
-      try {
-        map.panBy([-px, -py], { animate: false });
-        // 🩸 `panBy({animate:false})` passe par `_rawPanBy`, qui NE borne PAS le centre : la vue sortait des
-        // `maxBounds` et le zoom suivant la ramenait d'un coup (« au zoom, tout se décale »). Contrainte
-        // appliquée en continu, comme le drag natif.
-        if (map.options.maxBounds) map.panInsideBounds(map.options.maxBounds, { animate: false });
-      } catch(err) {}
-      if (_suiviArme) { _suiviArme = false; _majBoutonRecentrer(); }
-    }, { passive: true });
+  function _panSuivre(e) {
+    const map = window.map;
+    if (!_panDepart || !_interactionsSauvees || !map || _panDoigts.size > 1) return;
+    const dx = e.clientX - _panDepart.x, dy = e.clientY - _panDepart.y;
+    // Seuil d'engagement : un tap ne doit pas devenir un pan (clic volé aux marqueurs).
+    if (!_panEngage && Math.hypot(dx, dy) < 6) return;
+    _panEngage = true;
+    _panDepart = { x: e.clientX, y: e.clientY };
+    // Doigt en coordonnées ÉCRAN, carte en coordonnées de calque : rotation défaite.
+    const a = -_bearing * Math.PI / 180;
+    const px = dx * Math.cos(a) - dy * Math.sin(a);
+    const py = dx * Math.sin(a) + dy * Math.cos(a);
+    try {
+      map.panBy([-px, -py], { animate: false });
+      // 🩸 `panBy({animate:false})` passe par `_rawPanBy`, qui NE borne PAS le centre : la vue sortait des
+      // `maxBounds` et le zoom suivant la ramenait d'un coup (« au zoom, tout se décale »). Contrainte
+      // appliquée en continu, comme le drag natif.
+      if (map.options.maxBounds) map.panInsideBounds(map.options.maxBounds, { animate: false });
+    } catch(err) {}
+    if (_suiviArme && _trackingActif()) { _suiviArme = false; _majBoutonRecentrer(); }
+  }
 
-    const fin = function(e) {
-      doigts.delete(e.pointerId);
-      depart = null; engage = false; centreAvant = null;
+  function _panFin(e) {
+    _panDoigts.delete(e.pointerId);
+    _panDepart = null; _panEngage = false; _panCentreAvant = null;
+  }
+
+  // ── Rotation manuelle ──
+  // Même famille d'événements que le pinch-zoom de Leaflet (`L.Browser.touchNative` : touch, sinon pointeurs ; Chrome
+  // de bureau expose TouchEvent et passe donc en touch) : nos écouteurs, sur le
+  // conteneur, passent AVANT les siens (sur document), donc Leaflet recentre le pincement avec l'angle déjà à jour
+  // et le contenu reste sous les doigts.
+  let _geste = null;              // { a0, engage, aBase, vueBase } pendant un geste à deux doigts
+  const _rotDoigts = new Map();   // pointerId → { x, y } (famille pointeurs)
+
+  function _manuelBloque() {
+    if (!window.map || _suspensions.size > 0) return true;
+    try {
+      if (window._modeClicCarteActif && window._modeClicCarteActif()) return true;
+    } catch(e) {}
+    return _modePleinEcranActif();
+  }
+  // Le cap du plan orienté a priorité : tant qu'il tient la vue, deux doigts ne font que zoomer.
+  function _rotationManuellePermise() { return _source !== "cap" && !_manuelBloque(); }
+
+  function _angleDoigts(p, q) { return Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI; }
+
+  function _gesteDebut(p, q) {
+    _geste = { a0: _angleDoigts(p, q), engage: false, aBase: 0, vueBase: 0 };
+  }
+
+  function _gesteSuivre(p, q) {
+    if (!_geste) return;
+    const a = _angleDoigts(p, q);
+    if (!_geste.engage) {
+      if (Math.abs(_delta(_geste.a0, a)) < SEUIL_ROTATION) return;
+      // Refusée (outil armé, cap actif…) : le pincement continue seul, jusqu'au prochain geste.
+      if (!_rotationManuellePermise()) { _geste = null; return; }
+      _geste.engage = true;
+      _geste.aBase = a;
+      _geste.vueBase = _bearing;
+      _entrerManuel();
+    } else if (_source !== "manuel") {
+      _geste = null;   // le cap ou un outil a repris la vue pendant le geste
+      return;
+    }
+    _poserManuel(_geste.vueBase + _delta(_geste.aBase, a));
+  }
+
+  function _gesteFin() {
+    const g = _geste;
+    _geste = null;
+    if (!g || !g.engage || _source !== "manuel") return;
+    if (Math.abs(_delta(0, _bearing)) < SNAP_NORD) reset();
+  }
+
+  function _entrerManuel() {
+    _stopAnim();
+    _source = "manuel";
+    _capLisse = null;
+    _verrouiller(window.map);
+    _adopterCroixPopups();
+    _surveiller(true);
+  }
+
+  // Pas de lissage : la carte suit les doigts.
+  function _poserManuel(deg) {
+    _stopAnim();
+    _bearing = _norm(deg);
+    _cible = _bearing;
+    _appliquer();
+    _majBoutonNord();
+  }
+
+  function _pointeurDoigt(e) { return e.pointerType !== "mouse"; }
+
+  function _rotPointerDown(e) {
+    if (!_pointeurDoigt(e)) return;
+    _rotDoigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (_rotDoigts.size === 2) {
+      const pts = Array.from(_rotDoigts.values());
+      _gesteDebut(pts[0], pts[1]);
+    } else if (_rotDoigts.size > 2) {
+      _gesteFin();
+    }
+  }
+  function _rotPointerMove(e) {
+    if (!_rotDoigts.has(e.pointerId)) return;
+    _rotDoigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (_rotDoigts.size !== 2 || !_geste) return;
+    const pts = Array.from(_rotDoigts.values());
+    _gesteSuivre(pts[0], pts[1]);
+  }
+  function _rotPointerFin(e) {
+    if (!_rotDoigts.delete(e.pointerId)) return;
+    if (_rotDoigts.size < 2) _gesteFin();
+  }
+
+  function _pt(t) { return { x: t.clientX, y: t.clientY }; }
+  function _rotTouchStart(e) {
+    if (!e.touches) return;
+    if (e.touches.length === 2) _gesteDebut(_pt(e.touches[0]), _pt(e.touches[1]));
+    else if (e.touches.length > 2) _gesteFin();
+  }
+  function _rotTouchMove(e) {
+    if (!_geste || !e.touches || e.touches.length !== 2) return;
+    _gesteSuivre(_pt(e.touches[0]), _pt(e.touches[1]));
+  }
+  function _rotTouchFin(e) {
+    if (!e.touches || e.touches.length < 2) _gesteFin();
+  }
+
+  // Maj + molette (PC) : la vue tourne autour du centre. Avalée seulement quand elle tourne vraiment, sinon le
+  // zoom de Leaflet garde la molette.
+  // 🩸 Chrome sous Windows convertit Maj + molette en défilement HORIZONTAL (deltaX) : les deux axes sont lus.
+  let _moletteFin = null;
+  function _rotMolette(e) {
+    if (!e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (!_rotationManuellePermise()) return;
+    const brut = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    if (!brut) return;
+    const px = brut * (e.deltaMode === 1 ? 33 : (e.deltaMode === 2 ? 400 : 1));
+    e.preventDefault();
+    // Immédiate : sur le fond nu, la cible EST le conteneur, où Leaflet écoute aussi.
+    e.stopImmediatePropagation();
+    if (_source !== "manuel") _entrerManuel();
+    _poserManuel(_bearing + px * MOLETTE_DEG);
+    clearTimeout(_moletteFin);
+    _moletteFin = setTimeout(function() {
+      if (_source === "manuel" && Math.abs(_delta(0, _bearing)) < SNAP_NORD) reset();
+    }, 400);
+  }
+
+  // Un outil armé depuis la barre (contrôles Leaflet, DANS le conteneur) : relu juste après son clic, sans attendre
+  // la surveillance.
+  function _apresClicConteneur() {
+    if (_source === "manuel") setTimeout(_verifierManuel, 0);
+  }
+
+  function _installerEcouteurs(map) {
+    const cont = map && map.getContainer && map.getContainer();
+    if (!cont) return;
+    const passif = { passive: true };
+    cont.addEventListener("pointerdown", _panDebut, passif);
+    cont.addEventListener("pointermove", _panSuivre, passif);
+    cont.addEventListener("pointerup", _panFin, passif);
+    cont.addEventListener("pointercancel", _panFin, passif);
+    cont.addEventListener("pointerleave", _panFin, passif);
+    const tactile = !!(L.Browser && L.Browser.touchNative);
+    if (tactile) {
+      cont.addEventListener("touchstart", _rotTouchStart, passif);
+      cont.addEventListener("touchmove", _rotTouchMove, passif);
+      cont.addEventListener("touchend", _rotTouchFin, passif);
+      cont.addEventListener("touchcancel", _rotTouchFin, passif);
+    } else {
+      cont.addEventListener("pointerdown", _rotPointerDown, passif);
+      cont.addEventListener("pointermove", _rotPointerMove, passif);
+      cont.addEventListener("pointerup", _rotPointerFin, passif);
+      cont.addEventListener("pointercancel", _rotPointerFin, passif);
+      cont.addEventListener("pointerleave", _rotPointerFin, passif);
+    }
+    // Capture : passe avant le zoom à la molette de Leaflet (posé sur le même conteneur).
+    cont.addEventListener("wheel", _rotMolette, { passive: false, capture: true });
+    cont.addEventListener("click", _apresClicConteneur, passif);
+  }
+
+  // ── Outils armés pendant une rotation manuelle ──
+  // Rien n'appelle ce module quand un outil s'arme (dessin, mesure, recalage, pickers) : on relit `_modeClicCarteActif`
+  // tant que la vue est tournée à la main, et on la redresse aussitôt (le clic attendu tomberait dans un repère que
+  // l'outil ignore). Désarmé, la carte reste droite (choix conservateur : aucun angle ne revient seul).
+  let _surveillance = null;
+  function _surveiller(actif) {
+    if (actif && !_surveillance) _surveillance = setInterval(_verifierManuel, SURVEILLANCE_MS);
+    else if (!actif && _surveillance) { clearInterval(_surveillance); _surveillance = null; }
+  }
+  function _verifierManuel() {
+    if (_source !== "manuel") { _surveiller(false); return; }
+    if (_manuelBloque()) reset();
+  }
+
+  // 🩸 La croix d'une popup est créée par Leaflet en FRÈRE du contenu : la contre-rotation ne l'atteint pas et elle
+  // reste de travers. On l'adopte dans le contenu (Leaflet ne dépend que de son listener) : à l'ouverture sous
+  // rotation, et pour les popups déjà ouvertes quand la rotation commence.
+  function _adopterCroix(el) {
+    if (!el) return;
+    try {
+      const contenu = el.querySelector(".leaflet-popup-content-wrapper");
+      const croix   = el.querySelector(".leaflet-popup-close-button");
+      if (contenu && croix && croix.parentNode !== contenu) contenu.appendChild(croix);
+    } catch(err) {}
+  }
+  function _adopterCroixPopups() {
+    const map = window.map;
+    const cont = map && map.getContainer && map.getContainer();
+    if (!cont) return;
+    cont.querySelectorAll(".leaflet-popup").forEach(_adopterCroix);
+  }
+
+  // ── Bouton nord ──
+  // Pilule de la barre de droite, juste après le repli de la barre (à l'écran : sous ≡ Filtres et le cube) : ni
+  // flottant à placer ni chevauchement possible, au téléphone comme au PC. Visible seulement quand la vue est tournée
+  // À LA MAIN (le plan orienté a son propre arrêt).
+  // ⚠️ Inséré au milieu du coin, jamais en dernier : un enfant masqué en fin de coin volerait le `:last-child` qui
+  // arrondit le bas de la barre.
+  const SVG_NORD = '<svg class="kta-nord-picto" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path class="kta-nord-pointe" d="M12 2.5 16 12H8Z"/><path class="kta-nord-queue" d="M8 12h8l-4 9.5Z"/></svg>';
+
+  function _creerBoutonNord(map) {
+    const cont = map.getContainer && map.getContainer();
+    const coin = cont && cont.querySelector(".leaflet-top.leaflet-right");
+    if (!coin) return null;
+    const ctrl = document.createElement("div");
+    ctrl.className = "leaflet-bar leaflet-control kta-nord-ctrl";
+    const a = document.createElement("a");
+    a.href = "#";   // pas « javascript: » (CSP stricte)
+    a.setAttribute("role", "button");
+    a.className = "kta-nord-btn";
+    const lib = _t("bearing.nord", "Remettre le nord en haut");
+    a.title = lib;
+    a.setAttribute("aria-label", lib);
+    a.innerHTML = SVG_NORD;
+    ctrl.appendChild(a);
+    if (L.DomEvent) L.DomEvent.disableClickPropagation(ctrl);
+    a.addEventListener("click", function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      remettreNord();
+    });
+    const repli = coin.querySelector(".kta-refonte-collapse-bar");
+    coin.insertBefore(ctrl, repli ? repli.nextSibling : coin.firstChild);
+    map._ktaNordCtrl = ctrl;
+    return ctrl;
+  }
+
+  function _majBoutonNord() {
+    const map = window.map;
+    if (!map) return;
+    const voulu = _source === "manuel" && _tournee();
+    let el = map._ktaNordCtrl && map._ktaNordCtrl.isConnected ? map._ktaNordCtrl : null;
+    if (voulu && !el) el = _creerBoutonNord(map);
+    if (el) el.classList.toggle("kta-nord-visible", voulu);
+  }
+
+  // Retour au nord, animé court (vitesse constante, sans le plafond du cap : un demi-tour prendrait 2 s).
+  let _nordRaf = null;
+  function remettreNord() {
+    if (_nordRaf !== null) { cancelAnimationFrame(_nordRaf); _nordRaf = null; }
+    if (_source !== "manuel" || !_tournee() || _mouvementReduit()) { reset(); return; }
+    const depart = _delta(0, _bearing);
+    let t0 = null;
+    const pas = function(ts) {
+      _nordRaf = null;
+      if (_source !== "manuel") return;   // un geste ou un outil a repris la vue
+      if (t0 === null) t0 = ts;
+      const k = Math.min(1, (ts - t0) / NORD_MS);
+      const lisse = 1 - Math.pow(1 - k, 3);
+      if (k >= 1) { reset(); return; }
+      _bearing = _norm(depart * (1 - lisse));
+      _cible = _bearing;
+      _appliquer();
+      _nordRaf = requestAnimationFrame(pas);
     };
-    cont.addEventListener("pointerup", fin, { passive: true });
-    cont.addEventListener("pointercancel", fin, { passive: true });
-    cont.addEventListener("pointerleave", fin, { passive: true });
+    _nordRaf = requestAnimationFrame(pas);
   }
 
   // ── Canvas des renderers ──
   // Leaflet dimensionne le canvas au viewport + 10 % (`padding`) : tourné, il ne couvre plus les coins.
   // Padding pour tous les angles = (diagonale / petit côté − 1)/2, calculé sur la taille RÉELLE (il croît
-  // avec l'allongement de l'écran) et seulement pendant le mode (canvas ×1,8 à ×3,5 en surface).
-  // 🩸 TOUS les renderers, y compris ceux ajoutés pendant le mode (`_onRendererAjoute`) : l'itinéraire vit
+  // avec l'allongement de l'écran) et seulement pendant la rotation (canvas ×1,8 à ×3,5 en surface).
+  // 🩸 TOUS les renderers, y compris ceux ajoutés pendant la rotation (`_onRendererAjoute`) : l'itinéraire vit
   // dans un renderer SVG à part (halo néon) ; non élargi, il coupe le trajet dans les coins et la coupe
   // change à chaque zoom (le tracé semble avancer).
   function _majPaddingRenderer(map, actif) {
@@ -303,7 +565,7 @@
   }
 
   function _onRendererAjoute(e) {
-    if (window.L && e && e.layer instanceof L.Renderer && isActive()) {
+    if (window.L && e && e.layer instanceof L.Renderer && _interactionsSauvees) {
       _majPaddingUnRenderer(window.map, e.layer, true);
     }
   }
@@ -333,7 +595,7 @@
   // ── Tuiles hors écran ──
   // 🩸 Sous un pane transformé, iOS compose le sous-arbre en une couche et renonce à peindre au-delà de
   // ses limites de texture : des pans du fond restent noirs sur un grand plan dézoomé. Le retrait des
-  // tuiles hors écran est fait en permanence par tiling.js > ktaCullerTuilesV2 ; ce mode le redemande
+  // tuiles hors écran est fait en permanence par tiling.js > ktaCullerTuilesV2 ; ce module le redemande
   // pendant que la vue tourne (la zone visible change sans moveend), zone dé-tournée comprise.
   function _cullerTuilesThrottle() {
     if (typeof window.ktaCullerTuilesV2Throttle === "function") window.ktaCullerTuilesV2Throttle();
@@ -426,6 +688,7 @@
     _installerPatchConversions();
     if (!map || map._ktaBearingHooked) return;
     map._ktaBearingHooked = true;
+    _installerEcouteurs(map);
     map.on("move zoom moveend zoomend viewreset", function() {
       if (Math.abs(_bearing) > 0.01) _appliquer();
     });
@@ -435,17 +698,9 @@
       _suiviArme = false;
       _majBoutonRecentrer();
     });
-    // 🩸 La croix d'une popup est créée par Leaflet en FRÈRE du contenu : la contre-rotation ne l'atteint
-    // pas et elle reste de travers. On l'adopte dans le contenu (Leaflet ne dépend que de son listener).
     map.on("popupopen", function(e) {
-      if (!isActive() || !e || !e.popup) return;
-      try {
-        const el = e.popup.getElement();
-        if (!el) return;
-        const contenu = el.querySelector(".leaflet-popup-content-wrapper");
-        const croix   = el.querySelector(".leaflet-popup-close-button");
-        if (contenu && croix && croix.parentNode !== contenu) contenu.appendChild(croix);
-      } catch(err) {}
+      if (!(_tournee() || isActive()) || !e || !e.popup) return;
+      try { _adopterCroix(e.popup.getElement()); } catch(err) {}
     });
 
     console.log("[MapBearing] Hooks carte posés");
@@ -493,12 +748,19 @@
     // Le mode peut devenir inapplicable sans prévenir (outil de dessin armé, Mode Secours) : détecté ici,
     // seul chemin appelé en continu, et la vue est REDRESSÉE au lieu de rester figée de travers.
     if (!isActive()) {
-      if (Math.abs(_bearing) > 0.01 || Math.abs(_cible) > 0.01) {
-        // 🩸 Redressement IMMÉDIAT, pas animé : l'outil qui vient de couper le mode attend souvent un clic,
-        // qui tomberait à côté pendant la rotation.
-        reset();
-      }
+      // 🩸 Redressement IMMÉDIAT, pas animé : l'outil qui vient de couper le mode attend souvent un clic,
+      // qui tomberait à côté pendant la rotation. Un angle posé à la main, lui, tient tant que rien ne le bloque.
+      if (_source === "manuel") { if (_manuelBloque()) reset(); }
+      else if (_tournee() || Math.abs(_cible) > 0.01) reset();
       return;
+    }
+    // Le cap prend la main sur un angle manuel : à l'arrêt du plan orienté, la vue reviendra au nord.
+    if (_source !== "cap") {
+      _source = "cap";
+      _geste = null;
+      _surveiller(false);
+      _majBoutonNord();
+      _adopterCroixPopups();
     }
     // Retour d'un mode qui avait la main : re-verrouillage.
     if (!_interactionsSauvees) _verrouiller(window.map);
@@ -549,15 +811,21 @@
     }
   }
 
-  // Vue droite SANS toucher au choix de l'utilisateur.
+  // Vue droite SANS toucher au choix de l'utilisateur. L'angle manuel est oublié (changement de plan, outil armé,
+  // mode plein écran, bouton nord) : rien ne le rétablit ensuite.
   function reset() {
     _stopAnim();
+    if (_nordRaf !== null) { cancelAnimationFrame(_nordRaf); _nordRaf = null; }
     _bearing = 0; _cible = 0; _capLisse = null;
+    _source = null;
+    _geste = null;
+    _surveiller(false);
     _appliquer();
     _deverrouiller(window.map);
     // Vue droite : la zone visible redevient le rectangle de l'écran.
     _cullerTuilesThrottle();
     _majBoutonRecentrer();
+    _majBoutonNord();
   }
 
   function setEnabled(v) {
@@ -567,7 +835,7 @@
       _suiviArme = true;
       _verrouiller(window.map);
       recentrer();
-    } else {
+    } else if (_source !== "manuel") {
       reset();
     }
     console.log("[MapBearing] Mode plan orienté :", _enabled ? "ON" : "OFF");
@@ -594,6 +862,7 @@
     }
   }
 
+  // Arrêt du suivi : le cap rend la vue droite (au nord, pas à un ancien angle manuel) ; un angle manuel tient.
   function onTrackingChange(actif) {
     if (actif && _enabled) {
       _dernierPas = Date.now();   // on part « en marche », pas gelé
@@ -602,7 +871,8 @@
     } else {
       _capLisse = null;
       _dernierPas = 0;
-      reset();
+      if (_source === "manuel") _majBoutonRecentrer();
+      else reset();
     }
   }
 
@@ -639,6 +909,17 @@
     setEnabled:       setEnabled,
     isActive:         isActive,
     getBearing:       function() { return _bearing; },
+    // "manuel" | "cap" | null : qui tient l'angle courant.
+    getSource:        function() { return _source; },
+    // Angle manuel posé par code (aide, tests) : mêmes refus que le geste. Rend true s'il est appliqué.
+    setManuel:        function(deg) {
+      if (typeof deg !== "number" || isNaN(deg) || !_rotationManuellePermise()) return false;
+      if (_source !== "manuel") _entrerManuel();
+      _poserManuel(deg);
+      if (!_tournee()) reset();
+      return true;
+    },
+    remettreNord:     remettreNord,
     onHeading:        onHeading,
     onStep:           onStep,
     onTrackingChange: onTrackingChange,
@@ -647,7 +928,8 @@
     reset:            reset,
     suspend:          suspend,
     resume:           resume,
-    zoneVisible:      zoneVisible
+    zoneVisible:      zoneVisible,
+    SEUIL_ROTATION:   SEUIL_ROTATION
   };
 
   _enabled = _lireEnabled();

@@ -1152,9 +1152,33 @@ Le mode s'éteint tout seul si : le tracking s'arrête, un mode « clic carte »
 
 Le redressement est **immédiat** (pas animé) quand le mode devient inapplicable : ce qui vient de le désactiver, c'est souvent un outil qui attend un clic — redresser en 2 s laisserait l'utilisateur cliquer pendant la rotation.
 
+#### Rotation manuelle (deux doigts, bouton nord)
+
+Sans tracker, la carte 2D tourne aussi **à la main**, avec le même pane, le même patch des gestes, le même pan manuel, le même canvas élargi et le même culling. `MapBearing` sait qui tient l'angle : `getSource()` rend `null` (vue droite), `"manuel"` ou `"cap"`.
+
+| | Règle |
+|---|---|
+| Geste | deux doigts : le pinch-zoom reste celui de Leaflet ; la vue ne tourne qu'au-delà de **`SEUIL_ROTATION` = 15°** d'angle entre les doigts (un pincement en fait 5 à 10), puis suit les doigts **sans rattraper le seuil** (aucun saut) et sans lissage. Zoom et rotation se combinent ensuite |
+| PC | **Maj + molette** (0,15° par pixel de molette ; Chrome sous Windows convertit Maj + molette en `deltaX`, les deux axes sont lus). Aucun raccourci clavier |
+| Fin du geste | à moins de **3°** du nord, la carte se redresse (`SNAP_NORD`) |
+| Bouton nord | pilule de la barre de droite (sous le cube), visible seulement en rotation manuelle ; retour en **300 ms**, immédiat sous `prefers-reduced-motion` (cf `ui.md`) |
+| Durée | l'angle tient tant qu'on n'y touche pas ; **remis à 0 au changement de plan** (`map.js` appelle `reset()` à chaque carte) |
+| Outil armé | dessin, mesure, recalage, pickers (`_modeClicCarteActif`), mode plein écran ou suspension : la carte se **redresse** et le geste est refusé ; désarmé, elle **reste droite** (choix conservateur : aucun angle ne revient seul) |
+| Plan orienté | dès que le cap arrive (`onHeading` avec le mode actif), il prend la main ; deux doigts ne font plus que zoomer ; à l'arrêt du suivi, la carte revient **au nord**, pas à l'ancien angle manuel (un angle choisi il y a longtemps reviendrait au hasard ; le nord est prévisible) |
+| 3D | la vue 3D a son propre cap : au retour, la carte 2D a gardé son angle |
+| Exports | PNG / PDF / KMZ se dessinent depuis les données, jamais depuis la vue : le plan sort **droit** (checkup R8 : même canvas, au pixel près, tourné ou non) |
+
+🩸 **Aucun module ne prévient `MapBearing` quand un outil s'arme** (les drapeaux `window.mode*` et les flottants sont posés par chaque outil). Pendant une rotation manuelle, `_modeClicCarteActif` est donc relu toutes les **250 ms**, et juste après un clic dans le conteneur (la barre d'outils y vit) : le redressement précède le premier point posé. Le cap, lui, est relu à chaque événement d'orientation, comme avant.
+
+🩸 **Même famille d'événements que le pinch-zoom de Leaflet** : `L.Browser.touchNative` (vrai dès que le navigateur expose `TouchEvent`, **Chrome de bureau compris**) → `touch*`, sinon pointeurs. Nos écouteurs, posés sur le conteneur, passent avant ceux de Leaflet (sur `document`) : il recentre le pincement avec l'angle déjà à jour, et le contenu reste sous les doigts (dérive mesurée < 1 px). Un harnais qui simule des doigts dans l'autre famille ne voit ni zoom ni rotation.
+
+🩸 **Le div `#map` est persistant** d'un plan à l'autre (`cleanupExistingMap` ne vide que son contenu) : les écouteurs du conteneur (pan manuel, rotation, molette) sont des fonctions du module, qui lisent `window.map` — un nouvel `addEventListener` de la même fonction ne s'empile pas (checkup R12 : un geste ne tourne pas deux fois après un changement de plan).
+
+Filet : `scripts/smoke/checkup-rotation-manuelle.js` (Chromium et WebKit, plus un vrai geste CDP sous Chromium). ⚠️ Non vérifié sur un vrai téléphone.
+
 #### Culling
 
-Le viewport penché déborde son propre rectangle : sans marge élargie, des tracés disparaissent dans les coins **dès 10°** de rotation. `MapBearing.padCull(base)` porte le padding de 0,1 à **0,45** quand la vue tourne — branché dans `road.js` (2 endroits) et `utils.js > _markerInViewportPadded` (qui couvre aussi les markers éditeur et data layers).
+Le viewport penché déborde son propre rectangle : sans zone élargie, des tracés disparaissent dans les coins **dès 10°** de rotation. `MapBearing.zoneVisible(pad)` rend la zone réellement montrée (détail plus bas) — branchée dans `road.js` (2 endroits), `utils.js > _markerInViewportPadded` (qui couvre aussi les markers éditeur et data layers) et le culling des tuiles.
 
 Le **canvas du renderer** a le même défaut pour la même raison : dimensionné au viewport + 10 %, il ne couvre plus les coins une fois la vue tournée. `MapBearing` recalcule donc son `padding` **sur la taille réelle du viewport** — `(diagonale / petit côté − 1) / 2`, soit 0,36 en 1100×800 et jusqu'à **0,62 en portrait téléphone** — et seulement pendant le mode, car le canvas grandit d'autant : **×1,8 à ×3,5 en surface**. C'est le poste à surveiller côté mémoire sur gros plan tuilé (`OOMGuard`), et la raison pour laquelle ce padding n'est pas figé en permanence. Il passe par `map._renderer` (champ privé de Leaflet) et est restitué à l'arrêt.
 

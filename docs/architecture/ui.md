@@ -241,6 +241,15 @@ En **landscape mobile** (`@media (max-height: 500px) and (orientation: landscape
 
 🩸 **Boutons entiers** : la colonne est un flex vertical borné (`max-height`) qui rétrécit ses pilules quand elles ne tiennent pas ; sous `overflow: hidden`, un bouton resté à 30 px y perdait son bas (pilules de 27,6 px à 852 × 393). Les pilules sont donc à 30 px de haut, **sans liseré haut ni bas**, à **1 px** l'une de l'autre (10 pilules dans les 313 px de 852 × 393) ; au-delà, le bouton suit la hauteur de sa pilule, entier et centré, jusqu'à 24 px, puis la colonne défile. Le zoom (deux boutons empilés) est exclu. Mesuré : 32 × 30 px, boutons 30 × 30 (checkup `checkup-rotation-manuelle.js` R13, `checkup-rails-toucher.js`).
 
+#### 41.7 Bouton nord (rotation manuelle de la carte)
+
+Pilule `.leaflet-bar.kta-nord-ctrl` de la barre de droite (`mapBearing.js > _creerBoutonNord`), créée au premier besoin et visible (`.kta-nord-visible`) **seulement quand la carte est tournée à la main** — pas en plan orienté, qui a son propre arrêt. Un toucher la remet droite (300 ms, immédiat sous `prefers-reduced-motion`). Libellé `bearing.nord` (title et aria-label, fr/en/es).
+
+- **Place** : insérée juste après `.kta-refonte-collapse-bar` dans le DOM, donc à l'écran sous ≡ Filtres et le cube. Dans la barre, elle ne peut rien chevaucher, au téléphone (portrait et paysage) comme au PC — aucun flottant de plus au bas-centre (déjà un carrefour, cf `tracking.md` §plan orienté) ni en haut (bandeau du guidage). ⚠️ Jamais en dernier enfant : masquée, elle volerait le `:last-child` qui arrondit le bas de la barre.
+- **Gabarit** : celui des boutons de barre (`--kta-barre-bouton`, 36 px, 30 px en paysage bas ; `--kta-barre-rayon`), couleurs de `.leaflet-bar a` dans les deux thèmes.
+- **Picto** : aiguille SVG en ligne, pointe `--kta-accent-texte`, queue `--kta-texte-3`, tournée de `--kta-bearing` (variable du conteneur de la carte) : elle montre le haut du plan.
+- 🩸 En paysage bas, `.leaflet-bar` passe en `display: flex !important` : le masquage porte `!important` et un sélecteur plus fort. Elle reste visible barre repliée et en mode Présentation (la vue peut y tourner).
+
 #### 41.7 Status bar — wrap dynamique + variable CSS (depuis v1.9.1)
 
 **Problème résolu** : avec 4 stats actives en même temps (mesure + dist totale + iti + tracker), le contenu ne tenait plus en largeur et était caché en `overflow-x: auto` (scroll horizontal masqué = info invisible).
