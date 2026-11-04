@@ -2210,6 +2210,8 @@ icônes.
   sont posées sur `<html>` après elle, donc au-dessus à z-index égal ; les toasts (100000) aussi, et ils descendent
   sous la rangée du haut (`--kta-v3d-sous-haut`, posé sur `<html>` par `vue3d.js > _majSousHaut`, lu par
   `css/vue3d.css` quand `html.kta-vue3d-ouverte`). Une fenêtre par-dessus garde le clavier (`_recouverte`).
+  Les raccourcis de la carte (`shortcuts.js`) que la vue ne traite pas sont arrêtés (`vue3d.js > _raccourciCarte`) :
+  rien ne s’ouvre derrière elle ; « ? », un modificateur ou un champ de saisie passent.
 - **Gabarit = la barre 2D** (décision produit : la 2D est la référence ; `css/vue3d.css`, variables posées sur
   `.kta-vue3d`) : un bouton carré de la vue (rangée du haut, pavé, zoom et inclinaison) a la boîte de la pilule
   `.leaflet-bar` de la carte, par les jetons communs `--kta-barre-bouton` (36 px, 30 px en paysage bas :

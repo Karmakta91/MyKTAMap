@@ -2664,6 +2664,24 @@ async function sectionDessin(page) {
       await page.keyboard.press("KeyV");
       verifier(await page.evaluate(function () { return window.KtaVue3D.etat().vue; }) === "yeux", "touche V : retour à hauteur d'yeux");
 
+      // Raccourcis de la carte (shortcuts.js) que la vue ne traite pas : arrêtés (rien ne s'ouvre derrière) ; « ? » passe.
+      await page.evaluate(function () {
+        window.__kRacc = [];
+        window.__kRaccF = function (ev) { window.__kRacc.push(ev.key); };
+        document.addEventListener("keydown", window.__kRaccF);
+      });
+      for (const t of ["KeyR", "KeyL", "KeyM", "KeyB", "KeyT", "KeyP", "Shift+Slash"]) await page.keyboard.press(t);
+      const racc = await page.evaluate(function () {
+        document.removeEventListener("keydown", window.__kRaccF);
+        const r = { recus: window.__kRacc.filter(function (k) { return k !== "Shift"; }),
+          recherche: !!document.getElementById("kta-search-modal"), ouverte: window.KtaVue3D.etat().ouvert !== false };
+        if (window.ShortcutsCheatsheet && typeof window.ShortcutsCheatsheet.toggle === "function" &&
+          window.__kRacc.indexOf("?") >= 0) window.ShortcutsCheatsheet.toggle();
+        return r;
+      });
+      verifier(racc.recus.join(",") === "?" && !racc.recherche && racc.ouverte,
+        "raccourcis de la carte (R L M B T P) arrêtés par la vue, rien ne s'ouvre derrière ; « ? » passe", racc);
+
       // ── Inclinaison de la vue plongeante : PageUp/PageDown, Maj + molette, boutons, deux doigts ; bornée et retenue ──
       const i0 = await page.evaluate(function () {
         window.KtaVue3D.basculerVue();

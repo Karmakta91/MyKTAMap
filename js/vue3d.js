@@ -5783,6 +5783,19 @@
     return !!(ev.target && ev.target.closest && ev.target.closest(".kta-v3d-fiche textarea, .kta-v3d-fiche select"));
   }
 
+  // Raccourci de la carte (shortcuts.js : E M Z S T P L B R) que la vue ne traite pas : arrêté, sinon l'édition, la
+  // légende ou la recherche s'ouvrent derrière la vue. « ? » (aide-mémoire, avec Maj), un modificateur ou un champ
+  // de saisie passent : shortcuts.js les ignore déjà, et le champ garde ses écouteurs.
+  // 🩸 stopPropagation en capture sur document : un écouteur de document en phase de bouillonnement ne reçoit plus
+  // ces lettres non plus. Un add-on qui veut une lettre de la carte l'écoute sur window en capture (mkmg : R).
+  function _raccourciCarte(ev) {
+    if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.shiftKey) return false;
+    const t = ev.target, tag = t && t.tagName ? t.tagName.toUpperCase() : "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return false;
+    const S = window.KtaShortcuts, k = (ev.key || "").toUpperCase();
+    return !!S && typeof S.listMapping === "function" && S.listMapping().some(function (m) { return m.key === k; });
+  }
+
   // Tab reste dans la vue (fenêtre modale) : du dernier bouton on revient au premier, et inversement.
   function _tabulation(ev) {
     const e = _e, champs = e.ov.querySelectorAll("button, input, textarea, select");
@@ -6017,7 +6030,8 @@
     on(document, "click", function (ev) {
       if (ev.target && ev.target.closest && ev.target.closest("#kta-convert-multi")) fermer();
     }, true);
-    // Clavier : capturé pendant que la vue est ouverte (les raccourcis de la carte ne partent pas dessous).
+    // Clavier : capturé pendant que la vue est ouverte (les raccourcis de la carte ne partent pas dessous,
+    // _raccourciCarte).
     // Une fenêtre de l'app par-dessus la vue (≡ Filtres, Aide, Sortie d'urgence, confirmation) garde ses touches :
     // Échap la ferme, elle, et les flèches ne déplacent pas la scène dessous.
     on(document, "keydown", function (ev) {
@@ -6053,7 +6067,7 @@
       }
       if (ev.key === "Shift") e.touches.Shift = true;
       const a = TOUCHES[ev.code];
-      if (!a) return;
+      if (!a) { if (_raccourciCarte(ev)) ev.stopPropagation(); return; }
       ev.stopPropagation(); ev.preventDefault();
       if (!ev.repeat) _codeBas(a === "ar");
       e.touches[a] = true;
