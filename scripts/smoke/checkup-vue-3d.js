@@ -1242,10 +1242,14 @@ async function sectionFichesObjets(page) {
     const v2 = document.querySelector('#kta-vue3d .kta-v3d-fiche [data-v3d="ficheVoir"]');
     if (v2) v2.click();
     await pause(400);
-    const cz = window.map.getCenter(), cibleZ = P(-6, 6.5);
+    // 🩸 Plan multi-niveau : la fiche d'une zone porte les cases « Aussi aux niveaux » ; plus haute, Leaflet décale la
+    // carte (autoPan) pour la montrer entière. On juge la fiche posée au centre de la zone, zone restée à l'écran.
+    const cibleZ = P(-6, 6.5), ouverte = window.map._popup, pz = ouverte && ouverte.getLatLng();
+    const cibleLL = window.convertCoord(cibleZ.x, cibleZ.y);
     const popup = document.querySelector(".leaflet-popup .kta-note-popup");
     r.voirZone = { vue: K.etat().ouvert !== false, montre: K.derniereMontre(),
-      ecartM: Math.hypot(cz.lng - cibleZ.x, window.APP_CONFIG.imageHeight - cz.lat - cibleZ.y) / sc,
+      ecartM: pz ? Math.hypot(pz.lng - cibleZ.x, window.APP_CONFIG.imageHeight - pz.lat - cibleZ.y) / sc : null,
+      aLEcran: window.map.getBounds().contains(cibleLL),
       popup: !!popup, popupNote: !!(popup && popup.querySelector(".kta-note-popup-textarea")),
       popupSuppr: !!(popup && popup.querySelector(".kta-note-popup-supprimer")) };
     window.map.closePopup();
@@ -1294,8 +1298,9 @@ async function sectionFichesObjets(page) {
     !r.voirMuet.montre.fiche && r.voirMuet.montre.surbrillance && r.voirMuet.ecartM < 1,
     "« Voir sur la carte » (pilier muet) : vue fermée, carte centrée sur lui, contour en surbrillance", r.voirMuet);
   verifier(r.zoneOuverte === "zn_fi_rem" && !r.voirZone.vue && r.voirZone.montre && r.voirZone.montre.fiche &&
-    r.voirZone.popup && r.voirZone.popupNote && r.voirZone.popupSuppr && r.voirZone.ecartM < 1,
-    "« Voir sur la carte » (zone de session) : vue fermée, carte centrée, la fiche de la carte ouverte sur la zone",
+    r.voirZone.popup && r.voirZone.popupNote && r.voirZone.popupSuppr && r.voirZone.ecartM !== null &&
+    r.voirZone.ecartM < 1 && r.voirZone.aLEcran,
+    "« Voir sur la carte » (zone de session) : vue fermée, zone à l'écran, la fiche de la carte ouverte en son centre",
     { zone: r.zoneOuverte, voir: r.voirZone });
 }
 
