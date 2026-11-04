@@ -85,8 +85,8 @@
   // zoom de la vue plongeante, borné, retenu tant que la vue est ouverte ; `pas` = facteur d'un cran (molette, + / −,
   // clavier).
   const RECUL = { defaut: 18.4, min: 6, max: 60, pas: 1.15 };
-  // Gestes de la caméra libre (vue plongeante) : un doigt ne déplace la vue qu'au-delà de TAPE.bouge px (un toucher qui
-  // pose un sommet bouge toujours d'un ou deux px) ; deux doigts tournés de `rot`° = rotation du cap.
+  // Gestes de la caméra libre (vue plongeante) : un doigt ne déplace la vue qu'au-delà de TAPE.bouge px (un toucher
+  // qui pose un sommet bouge toujours d'un ou deux px) ; deux doigts tournés de `rot`° = rotation du cap.
   const CAMERA_LIBRE = { rot: 12 };
   // Hauteur minimale à l'écran (px CSS) des lettres d'un panneau en vue plongeante : dézoomé, un panneau à l'échelle de
   // la scène n'avait plus que 3 px de texte.
@@ -6954,6 +6954,9 @@
   function fermer() {
     const e = _e;
     if (!e) return Promise.resolve(false);
+    // ⚠️ contrat : une place survolée (vue d'édition) dans un obstacle est dégagée avant « Je suis ici ? » et avant de
+    // placer la carte : jamais un tracker recalé dans un pilier.
+    if (e.mode === "libre" && e.libreBouge) _degager(true);
     const pos = { x: e.pos.x, y: e.pos.y }, niveau = e.niveau, sc = e.sc, bouge = e.aBouge;
     const suivi = e.mode === "suivi", retour = e.retourFocus;
     _retenirEdition(true);

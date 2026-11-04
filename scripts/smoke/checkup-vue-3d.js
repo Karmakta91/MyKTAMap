@@ -1715,6 +1715,23 @@ async function sectionCamera(page) {
     for (let i = 0; i < 80; i++) K.avancer(0.1);
     r.yeuxCaf = rel(K.etat().pos);
 
+    // ── Fermeture après un survol, place dans le pilier, suivi actif : dégagée avant « Je suis ici ? » (Oui) ──
+    await K.fermer();
+    window.startTracking();
+    window.recalerTrackerSurPoint(P(6, -8).x, P(6, -8).y, 0);
+    await ouvrir("structures", 6, -8, 90);
+    K.placer(P(12, -8).x, P(12, -8).y, 90);
+    const fin = K.fermer();
+    let qOui = null;
+    for (let i = 0; i < 40 && !(qOui = document.getElementById("kta-confirm-oui")); i++) await pause(25);
+    if (qOui) qOui.click();
+    await fin;
+    const trF = window.getTrackingPosition();
+    const tq = trF ? rel(trF) : null;
+    r.fermetureSurvol = { question: !!qOui, tracker: tq,
+      dehors: !!tq && !(tq[0] > 10 && tq[0] < 14 && tq[1] > -10 && tq[1] < -6) };
+    window.stopTracking();
+
     // ── Plan au sol 🗺️ au point visé ; 🧱 coupé = sol uni ──
     window.setVue3DTextures(true);
     await ouvrir("structures", 0, 0, 0);
@@ -1849,6 +1866,9 @@ async function sectionCamera(page) {
     r.degage.dehors && r.degage.degagements >= 1 && r.degage.vue === "yeux",
     "survol en vue d'édition : pilier et cavage fermé traversés ; à hauteur d'yeux, ils bloquent ; retour dans un " +
     "pilier = place dégagée", { pilier: r.survolPilier, caf: r.survolCaf, yeux: [r.yeuxPilier, r.yeuxCaf], degage: r.degage, volume: r.cafVolume });
+  verifier(r.fermetureSurvol.question && r.fermetureSurvol.dehors,
+    "fermeture après un survol dans un pilier : place dégagée avant « Je suis ici ? », tracker recalé hors du pilier",
+    r.fermetureSurvol);
   verifier(!!r.planSol.etat && r.planSol.etat.ok && proche(r.planSol.centre, [20, -2], 0.5) &&
     r.planSol.ordre > r.planSol.ordreSol && r.planSol.profondeur === false && r.planSol.grainAllume === true,
     "plan au sol centré sur le point visé, posé sur le sol par l'ordre de rendu (sans profondeur)", r.planSol);

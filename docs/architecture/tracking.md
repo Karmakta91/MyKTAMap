@@ -1698,7 +1698,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Survol en vue d'édition** (décision produit) : `_pas` ne juge rien en vue d'édition (piliers, murs, fronts, zones,
   portes fermées, parois traversés), seule l'image du plan borne la place. Retour à hauteur d'yeux en libre
   (`_appliquerVue`) : `_degager(true)`, la règle de l'ouverture en libre, sort la place d'un obstacle ; en suivi, rien
-  (place = tracker). ⚠️ contrat : une greffe qui en ferait tricher interdit la vue d'édition (`plongee: false`, mkmg) ;
+  (place = tracker). Fermeture (`fermer`) : une place libre déplacée est dégagée de même avant « Je suis ici ? » (jamais
+  un tracker recalé dans un pilier). ⚠️ contrat : une greffe qui en ferait tricher interdit la vue d'édition (`plongee: false`, mkmg) ;
   `ctx.libre`, `ctx.bloque` et la règle du pas à hauteur d'yeux sont inchangés.
 - **Niveau en vue d'édition** (décision produit, `niveauEdition(sens)`, ▲ niveau ▼) : change le niveau de la 3D
   (`niveauLibre`, comme 🪜) sans passage ni geste de descente (bandeau « Niveau n » seul) ; caméra et place gardent leur
