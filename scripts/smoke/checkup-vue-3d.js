@@ -1684,6 +1684,230 @@ async function sectionZonesNiveaux(page) {
   { refaites: R.refaites, apres: R.apres });
 }
 
+// § 14 quater (suite) — Cône d'éboulis d'un puits comblé (pc, psf) qui laisse le passage (galerieEmprise.js >
+// _coneDans), formes FICTIVES en mémoire. Galerie principale (2,5 m), secondaire (2 m) et chemin (1,7 m : cône
+// réduit), un pc et un psf de chaque côté de chaque axe, POI à 2 m de l'axe ; mixte et galerie : bouche à sa place
+// (inchangée), cône poussé vers la paroi du côté du POI, 0,8 m (+ 0,1 m de jeu) libre jusqu'à la paroi d'en face ;
+// un corps de 0,8 m y passe à l'aller et au
+// retour, on bute toujours sur le cône lui-même, ctx.libre (add-ons) suit la même emprise. Structures, chambre (mixte,
+// entre deux rangées de piliers) et POI à plus de 10 m de tout axe : le cône reste centré sur la place, de 0,9 m.
+async function sectionConePassage(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, G = window.KtaGalerie, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, acc: window.ktaEstAccessible,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-cone";
+    // Image de collision du relevé fictif ignorée (comme § 14 quater) : seules les formes posées ici arrêtent le pas.
+    window.ktaEstAccessible = function () { return true; };
+    window.ktaSetActiveLevel(0);
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    window.setVue3DTextures(true);
+    // Galeries : principale à z = 0 (demi-largeur 1,25 m), secondaire à z = 30 (1 m), chemin à z = 60 (0,85 m : cône
+    // réduit). POI (x, côté) sur chacune.
+    const GAL = [["principal", 0, 1.25], ["secondaire", 30, 1], ["chemin", 60, 0.85]];
+    const PO = [["psf", -30, 1], ["pc", -15, 1], ["psf", 0, -1], ["pc", 15, -1]];
+    const pois = [], cas = [];
+    GAL.forEach(function (g) {
+      PO.forEach(function (q) {
+        const id = "pt_cone_" + g[0] + "_" + q[0] + "_" + q[1];
+        pois.push(Object.assign({ id: id, nom: id, uid: id, level: 0, tags: [q[0]] }, P(q[1], g[1] + 2 * q[2])));
+        cas.push({ id: id, tag: q[0], x: q[1], s: q[2], axe: g[1], w: g[2], gal: g[0] });
+      });
+    });
+    // POI à plus de 10 m de tout axe (entre les deux galeries, à 15 m de chacune).
+    pois.push(Object.assign({ id: "pt_cone_loin", nom: "loin", uid: "pt_cone_loin", level: 0, tags: ["psf"] }, P(30, 15)));
+    window.setStructures([]); window.setZones([]);
+    window.setRoads(GAL.map(function (g) {
+      return { uid: "rd_cone_" + g[0], type: g[0], level: 0, points: [P(-50, g[1]), P(50, g[1])] };
+    }));
+    window.setEditorPoints(pois);
+    let ctx = null;
+    const lireCtx = function () {
+      const deg = K.greffer({ nom: "v3d-cone", scene: function (c) { ctx = c; } });
+      if (deg) deg();
+    };
+    const relx = function () { return +(K.etat().pos.x / sc - ox).toFixed(2); };
+    const marcher = function (x0, z, cap, n) {
+      const d = P(x0, z);
+      K.placer(d.x, d.y, cap);
+      for (let i = 0; i < n; i++) K.avancer(0.1);
+      return relx();
+    };
+    // Volume d'un POI (le plus proche de sa place attendue) → bouche et cône en m relatifs.
+    const lire = function (vols, x, zAxe) {
+      let best = null, bd = Infinity;
+      vols.forEach(function (v) {
+        if (!v.acces || !v.comble) return;
+        const d = Math.abs(v.x / sc - ox - x) + Math.abs(v.y / sc - oz - zAxe) * 0.01;
+        if (d < bd) { bd = d; best = v; }
+      });
+      if (!best) return null;
+      const c = best.cone || {};
+      return { bx: +(best.x / sc - ox).toFixed(3), bz: +(best.y / sc - oz).toFixed(3),
+        cx: +((Number.isFinite(c.x) ? c.x : best.x) / sc - ox).toFixed(3),
+        cz: +((Number.isFinite(c.y) ? c.y : best.y) / sc - oz).toFixed(3), R: c.R, construit: !!best.construit };
+    };
+    const r = {};
+    for (const rendu of ["mixte", "galerie", "structures"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      G.invalider();
+      const d = P(-48, 0);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 200, tuiles: false, commandes: "pave" });
+      await pause(80);
+      const vols = K.etat().volumes;
+      lireCtx();
+      const o = r[rendu] = { cas: [], loin: lire(vols, 30, 15) };
+      for (const q of cas) {
+        const v = lire(vols, q.x, q.axe), m = { id: q.id, gal: q.gal, tag: q.tag, s: q.s, w: q.w, v: v };
+        if (v && rendu !== "structures") {
+          // Passage libre : au milieu de l'espace entre le cône et la paroi d'en face.
+          const bordCone = (v.cz - q.axe) * q.s - v.R, paroi = -q.w;
+          m.libreM = +(bordCone - paroi).toFixed(3);
+          const zp = q.axe + q.s * (paroi + bordCone) / 2;
+          m.zp = +zp.toFixed(3);
+          m.aller = marcher(q.x - 4, zp, 90, 80);
+          m.retour = marcher(q.x + 4, zp, 270, 80);
+          // Sur le cône : on bute dessus, des deux côtés, corps à 5 cm de la paroi du POI (le centre du cône peut
+          // être à moins d'un corps de la paroi) ; corde du cône à cette distance de son centre.
+          const zb = q.axe + q.s * (q.w - 0.45), dz = Math.abs(zb - v.cz);
+          m.zb = +zb.toFixed(3);
+          m.corde = dz < v.R ? +Math.sqrt(v.R * v.R - dz * dz).toFixed(3) : 0;
+          m.buteA = marcher(v.cx - 4, zb, 90, 80);
+          m.buteR = marcher(v.cx + 4, zb, 270, 80);
+          const pz = P(q.x, zp), pc = P(v.cx, v.cz);
+          m.ctxPassage = !!ctx && ctx.libre(pz.x, pz.y);
+          m.ctxCone = !!ctx && ctx.libre(pc.x, pc.y);
+        }
+        o.cas.push(m);
+      }
+      await K.fermer();
+    }
+    // Chambre (mixte) : galerie principale entre deux rangées de piliers ; psf entre les piliers.
+    const carre = function (cx, cz, h) {
+      return [P(cx - h, cz - h), P(cx + h, cz - h), P(cx + h, cz + h), P(cx - h, cz + h)];
+    };
+    const st = [];
+    [-6, 0, 6].forEach(function (x) {
+      [-3.5, 3.5].forEach(function (z) {
+        st.push({ uid: "st_cone_" + x + "_" + z, type: "pilier-1", level: 0, points: carre(x, z, 1) });
+      });
+    });
+    window.setStructures(st);
+    window.setRoads([{ uid: "rd_cone_ch", type: "principal", level: 0, points: [P(-50, 0), P(50, 0)] }]);
+    window.setEditorPoints([Object.assign({ id: "pt_cone_ch", nom: "ch", uid: "pt_cone_ch", level: 0, tags: ["psf"] },
+      P(3, 1.5))]);
+    window.setPlanRenduVue3D(null, "mixte");
+    G.invalider();
+    const dc = P(-20, 0);
+    await K.ouvrir({ depart: { x: dc.x, y: dc.y, cap: 90 }, distanceVue: 200, tuiles: false, commandes: "pave" });
+    await pause(80);
+    r.chambre = lire(K.etat().volumes, 3, 0);
+    const mc = G.modele(0, true);
+    r.enChambre = !!mc && mc.enChambre(P(3, 1.5).x, P(3, 1.5).y);
+    await K.fermer();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id; window.ktaEstAccessible = av.acc;
+    window.setRoads(av.roads); window.setZones(av.zn); window.setStructures(av.st); window.setEditorPoints(av.pts);
+    window.setPlanRenduVue3D(null, av.rendu);
+    G.invalider();
+    return r;
+  });
+  if (CAPTURES) {
+    // psf en galerie secondaire (2 m), POI au nord, vu du passage laissé au sud, puis de face.
+    for (const q of [["cone-psf-passage", -4, 29.4, 90], ["cone-psf-face", -4, 30, 90]]) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        window.__v3dCone = window.__v3dCone || { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+          p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+          pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(), rendu: window.getPlanRenduVue3D() };
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window._currentLoadedPlanId = "v3d-checkup-cone";
+        window.setPlanRenduVue3D(null, "mixte");
+        window.setRoads([{ uid: "rd_cone_cap", type: "secondaire", level: 0, points: [P(-50, 30), P(50, 30)] }]);
+        window.setEditorPoints([Object.assign({ id: "cap psf", nom: "Puits comblé", uid: "pt_cone_cap", level: 0,
+          tags: ["psf"] }, P(0, 32))]);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        const d = P(c[1], c[2]);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: c[3] }, tuiles: false, commandes: "pave" });
+      }, q);
+      await page.waitForTimeout(600);
+      await capture(page, q[0]);
+      await page.evaluate(async function () {
+        const K = window.KtaVue3D, s = window.__v3dCone;
+        await K.fermer();
+        window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
+        window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+        window.setRoads(s.roads); window.setEditorPoints(s.pts); window.setPlanRenduVue3D(null, s.rendu);
+        window.__v3dCone = null;
+        window.KtaGalerie.invalider();
+      });
+    }
+  }
+  console.log("§ 14 quater (suite) — cône d'éboulis qui laisse le passage (pc, psf)");
+  const pr = function (v, att, tol) { return typeof v === "number" && Math.abs(v - att) <= (tol || 0.02); };
+  const AXE = { principal: 0, secondaire: 30, chemin: 60 };
+  const CONE = { principal: [0.55, 0.9], secondaire: [0.8, 0.9], chemin: [0.85, 0.8] };   // [centre, rayon] m
+  ["mixte", "galerie"].forEach(function (k) {
+    const L = R[k].cas;
+    const manque = L.filter(function (m) { return !m.v || !m.v.construit; }).map(function (m) { return m.id; });
+    verifier(manque.length === 0, k + " : un pc et un psf construits de chaque côté des trois galeries (12)", manque);
+    if (manque.length) return;
+    // Bouche : au plus w − demi de l'axe du côté du POI (pc 0,9 m, psf 1,25 m), comme avant.
+    verifier(L.every(function (m) {
+      const demi = m.tag === "pc" ? 0.9 : 1.25;
+      return pr((m.v.bz - AXE[m.gal]) * m.s, Math.max(0, m.w - demi));
+    }), k + " : bouche au plafond à sa place (ne bouge pas)", L.map(function (m) { return [m.id, m.v.bz]; }));
+    // Cône : poussé du côté du POI juste assez pour un corps (0,8 m) et 0,1 m de jeu ; centre au plus sur la paroi,
+    // puis rayon réduit (chemin de 1,7 m : centre sur la paroi, 0,8 m).
+    verifier(L.every(function (m) {
+      const att = CONE[m.gal];
+      return pr((m.v.cz - AXE[m.gal]) * m.s, att[0]) && pr(m.v.R, att[1]) && m.libreM >= 0.9 - 0.005;
+    }), k + " : cône poussé vers la paroi du côté du POI, au moins 0,8 m (+ 0,1 m de jeu) libre en face (2,5 m, " +
+    "2 m ; 1,7 m : rayon réduit)", L.map(function (m) { return [m.id, m.v.cz, m.v.R, m.libreM]; }));
+    verifier(L.every(function (m) { return m.aller > m.v.cx + 3.5 && m.retour < m.v.cx - 3.5; }),
+      k + " : un corps de 0,8 m passe à côté du cône, à l'aller et au retour (pc, psf, POI de chaque côté)",
+      L.map(function (m) { return [m.id, m.zp, m.aller, m.retour]; }));
+    verifier(L.every(function (m) {
+      const b = m.corde;
+      return b > 0.3 && m.buteA < m.v.cx - b - 0.2 && m.buteA > m.v.cx - b - 0.75 &&
+        m.buteR > m.v.cx + b + 0.2 && m.buteR < m.v.cx + b + 0.75;
+    }), k + " : on bute toujours sur le cône lui-même (des deux côtés)",
+    L.map(function (m) { return [m.id, m.v.cx, m.zb, m.corde, m.buteA, m.buteR]; }));
+    verifier(L.every(function (m) { return m.ctxPassage && !m.ctxCone; }),
+      k + " : ctx.libre (add-ons) suit la même emprise : passage libre, cône refusé",
+      L.map(function (m) { return [m.id, m.ctxPassage, m.ctxCone]; }));
+    const lo = R[k].loin;
+    verifier(!!lo && pr(lo.cx, lo.bx) && pr(lo.cz, lo.bz) && pr(lo.R, 0.9),
+      k + " : POI à plus de 10 m de tout axe : cône centré sur la place, 0,9 m (inchangé)", lo);
+  });
+  const S = R.structures.cas;
+  verifier(S.every(function (m) {
+    return m.v && pr(m.v.cx, m.v.bx) && pr(m.v.cz, m.v.bz) && pr(m.v.R, 0.9) &&
+      pr(m.v.bz, AXE[m.gal] + 2 * m.s);
+  }), "structures : cône centré sur le POI, 0,9 m (inchangé)", S.map(function (m) { return [m.id, m.v]; }));
+  const ch = R.chambre;
+  verifier(R.enChambre && !!ch && pr(ch.bx, 3) && pr(ch.bz, 1.5) && pr(ch.cx, 3) && pr(ch.cz, 1.5) && pr(ch.R, 0.9),
+    "chambre (mixte, entre deux rangées de piliers) : bouche et cône au POI, 0,9 m (inchangé)",
+    { enChambre: R.enChambre, v: ch });
+}
+
 // § 31 — Écart à l'itinéraire (réseau FICTIF en mémoire : galerie est-ouest au 0, branche nord au milieu, galerie
 // est-ouest au −1 à 4 m au sud reliée par un tracé jonction). Libre (vue3d.js > RECALCUL_LIBRE) : sur le trajet, rien ;
 // à 10 m, recalcul une fois l'écart tenu 2 s, depuis la place 3D, destination et étape validée gardées, tracker
@@ -3851,6 +4075,11 @@ async function sectionDessin(page) {
         } catch (e) { console.log("  ℹ️ ralentissement processeur indisponible : " + e.message); }
       }
       await sectionLampesMembres(page);
+    } else if (SEUL === "cone") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionConePassage(page);
     } else if (SEUL === "camera") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -6881,6 +7110,9 @@ async function sectionDessin(page) {
             P(t[1], 2));
         });
         const relx = function () { return +(K.etat().pos.x / sc - a.ox).toFixed(2); };
+        const coneZ = function (v) {
+          return v.cone && Number.isFinite(v.cone.y) ? +(v.cone.y / sc - a.oz).toFixed(3) : v.z;
+        };
         const r = { moyens: T.map(function (t) {
           return [t[0], window.KtaPoiJonction.moyen(t[0]), window.KtaPoiJonction.porteNiveaux(t[0])];
         }) };
@@ -6936,8 +7168,9 @@ async function sectionDessin(page) {
           T.forEach(function (t) {
             const v = o.vol[t[0]];
             if (!v) return;
-            // esf en niche latérale (à 2,5 m de l'axe, hors du passage) : on passe devant, sur l'axe.
-            const z = t[0] === "esf" ? 0 : v.z;
+            // esf en niche latérale (à 2,5 m de l'axe, hors du passage) : on passe devant, sur l'axe ; pc / psf : par
+            // le centre du cône (poussé vers la paroi, il n'est plus sous la bouche).
+            const z = t[0] === "esf" ? 0 : coneZ(v);
             o.marche[t[0]] = marcher(t[1] - 4, z, 80);
             if (t[0] === "pe") o.marche.peCote = marcher(t[1] - 4, -0.85, 80);   // le long du passage laissé (0,8 m)
             if (t[0] === "caf") {
@@ -6952,7 +7185,8 @@ async function sectionDessin(page) {
           o.dedans = {};
           for (const tag of ["pc", "caf"]) {
             const v = o.vol[tag], t = T.filter(function (q) { return q[0] === tag; })[0];
-            await K.ouvrir({ depart: Object.assign({ cap: 270 }, P(t[1], v.z)), tuiles: false });
+            const zd = tag === "pc" ? coneZ(v) : v.z;
+            await K.ouvrir({ depart: Object.assign({ cap: 270 }, P(t[1], zd)), tuiles: false });
             const p = K.etat().pos;
             o.dedans[tag] = { degage: K.etat().degagements, dans: G.dansZone(p.x, p.y, 0, rendu), x: relx() };
             // Repartir : 2 m vers l'est, sinon vers l'ouest.
@@ -6982,7 +7216,7 @@ async function sectionDessin(page) {
         // Itinéraire par-dessus le cône (mixte) : ruban sur le dessus (0,6 m + 5 cm), jamais dedans.
         window.setPlanRenduVue3D(null, "mixte");
         G.invalider();
-        const zc = r.mixte.vol.pc.z, Pl = function (x, z) { return Object.assign({ level: 0 }, P(x, z)); };
+        const zc = coneZ(r.mixte.vol.pc), Pl = function (x, z) { return Object.assign({ level: 0 }, P(x, z)); };
         const ipts = [Pl(-26, zc), Pl(-14, zc)];
         window.setVue3DGuidage(true);
         window.setRoads([{ uid: "rd_ac", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] },
@@ -7182,6 +7416,7 @@ async function sectionDessin(page) {
         " ms ; avancer médiane " + AC.perfSans.med + " / " + AC.perfAvec.med + " ms, max " + AC.perfSans.max + " / " +
         AC.perfAvec.max + " ms ; ouverture par rendu (mixte, galerie, structures) " +
         [AC.mixte.ms, AC.galerie.ms, AC.structures.ms].join(" / ") + " ms");
+      await sectionConePassage(page);
 
       // ── 14 sexies. Cavage comblé : galerie de 4 m entre deux murs, porte de la largeur du tracé (fictifs) ─────────
       // Principal (porte de 2,5 m) entre deux murs dont la face est à ±2 m de l'axe : de chaque côté, 0,75 m de pierre
