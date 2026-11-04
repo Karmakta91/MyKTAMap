@@ -2464,6 +2464,7 @@
   "vue3d.dessin.barre": "Outils de dessin",
   "vue3d.dessin.renduMixte": "Rendu passé en Mixte : le rendu Galerie ne montre pas les structures",
   "vue3d.dessin.planSol": "Plan au sol (l'image du plan sous la scène)",
+  "vue3d.dessin.horizon": "Rien sous le pointeur : visez le sol, sous l'horizon",
   "vue3d.voirSurCarte": "Voir sur la carte",
   "vue3d.voirSurCarteTitre": "Fermer la vue 3D et montrer cet objet sur la carte",
   "vue3d.inclinaisonPlus": "Vue plus verticale",

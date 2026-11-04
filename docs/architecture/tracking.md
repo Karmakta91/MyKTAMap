@@ -1858,7 +1858,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `ui.md` § Vue 3D). Rien ne se dessine tant qu'aucun outil n'est armé (`_dessinActif` : ✏️ ouvert, vue d'édition, greffe
   sans `fiches: false`, un mode de la carte armé : `modeStructure`, `modeZone`, `modeRoad`, `modeMesure`). Armé, un
   toucher bref de la scène pose un sommet **avant** toute fiche (`_toucher` → `_poserSommet`) ; glisser, pincer, deux
-  doigts, molette et Maj + molette restent la caméra (seul le toucher bref, moins de 8 px et 0,5 s, pose).
+  doigts, molette et Maj + molette restent la caméra (seul le toucher bref, moins de 8 px et 0,5 s, pose : `TAPE`).
+  🩸 Durée lue sur `ev.timeStamp` (instant du geste) : vue dézoomée, une image peut prendre des centaines de ms, et un
+  clic de 150 ms mesuré au traitement arrivait « tenu 500 ms », refusé sans un mot (clic au sol qui ne posait rien).
+  Outil armé, tout toucher refusé l'écrit en console, `[Vue3D] toucher refusé : <raison>` (`_refusDessin`, relu par
+  `etat().dessin.refus`) : appui tenu, pointeur déplacé, autre pointeur posé, vue à hauteur d'yeux, barre ✏️ fermée,
+  greffe `fiches: false`, toucher avalé (il refermait le panneau, 700 ms), aucun sol (au-dessus de l'horizon, avec un
+  toast `vue3d.dessin.horizon`).
 - **Outils de la carte, jamais copiés** ⚠️ contrat : armement par le panneau du groupe 2D (`ktaOuvrirOutils`, donc
   `_activerStructure` / `_activerZone` / `_activerRoute` / 📐 et leurs refus `ktaEditionRefusee`) ; le toucher rejoue le
   geste de la carte au point du sol touché : `map.fire("mousedown")` puis `map.fire("click")`, `latlng =
@@ -1867,6 +1873,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `measure.js`. Ils ne lisent que `e.latlng` (vérifié outil par outil).
 - **Point touché** (`_pointSol`) : la surface montrée sous le doigt (`_pointVise` : le dessus d'un pilier donne son
   emprise ; un objet devant masque le sol derrière lui, ce qu'on voit est ce qu'on touche), sinon le plan y = 0.
+  ⚠️ contrat : le sol est le plan **mathématique** y = 0, jamais un maillage : touché, le maillage du sol cède au plan
+  exact (son relief décalait le sommet de plusieurs cm en vue rasante) ; hors du carré de sol, au-delà de la portée ou
+  dans le noir hors des tubes (rendu Galerie) le point se pose quand même. Point ramené dans les bornes de l'image.
 - **Niveau** ⚠️ contrat : l'objet prend le niveau de la 3D (`e.niveau`, `niveauLibre` compris) : `APP_CONFIG.activeLevel`
   le prend le temps des deux `fire` puis est rendu (`finally`), la règle de la 2D (pilier-2 / front-2 au niveau − 1,
   aimantation au niveau actif) jouant d'elle-même. Rien d'asynchrone de la vue ne lit le niveau pendant ce temps.

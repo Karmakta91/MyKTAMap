@@ -14,6 +14,8 @@
 // Un seul outil armé (POI / mesure / zone / tracé). Vue 3D plongeante, ✏️ ouvert et outil armé : panneau de POI,
 // pilier, zone → sommet, aucune fiche ; armé par les vrais boutons (✏️, groupe, type) puis le sol ; un seul outil ;
 // pas d'ajout de point dans la barre ; outil armé en 2D puis vue ouverte (✏️ fermé) : aucune fiche non plus.
+// Clic lent sous une image lourde, recul 60 m aux 4 coins et 3 inclinaisons (point du plan y = 0 à 5 cm), Galerie
+// hors tube : sommet posé.
 // Joué au doigt (393 × 852, hasTouch, isMobile) et à la souris (1280 × 800), sous Chromium puis WebKit (KTA_MOTEURS
 // pour un seul).
 // Usage : node scripts/smoke/checkup-dessin-sans-fiche.js (SMOKE_PORT pour une autre copie) · doc : ui.md § Outil armé
@@ -664,6 +666,138 @@ async function section3D(page, entree) {
   });
   verifier(reels.length === 0, "3D, vrais boutons (✏️, groupe, type) puis le sol : sommet posé, pour les 4 outils",
     reels);
+
+  // Clic lent sous une scène lourde : le geste dure 150 ms mais son traitement attend 700 ms (image lente simulée,
+  // vue dézoomée). Le toucher reste bref (durée lue sur l'instant du geste) : sommet posé.
+  // Puis recul maximal (60 m), inclinaisons 15 / 50 / 85°, 4 coins de la vue : sommet au point du plan y = 0 visé
+  // (5 cm près), ou rien au-dessus de l'horizon. Rendu Galerie, zone armée, toucher hors de tout tube : sommet posé.
+  const armerZone3 = async function () {
+    await page.evaluate(function () {
+      window.__dsf.poser3D();
+      window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
+      if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+    });
+    await armer3(OUTILS[1]);
+    await page.waitForTimeout(800);
+  };
+  const geste = async function (p, ms) {
+    if (entree === "doigt") {
+      await page.touchscreen.tap(p.x, p.y);
+    } else {
+      await page.mouse.move(p.x, p.y);
+      await page.mouse.down();
+      await page.waitForTimeout(ms || 80);
+      await page.mouse.up();
+    }
+    await page.waitForTimeout(350);
+  };
+  await armerZone3();
+  const cvb = await page.locator("#kta-vue3d canvas").first().boundingBox();
+  const lent0 = await etat3();
+  // Geste rejoué à la main : lâcher créé 150 ms après l'appui, traité 700 ms plus tard (image lente).
+  await page.evaluate(async function (a) {
+    const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+    const o = { bubbles: true, cancelable: true, pointerId: 41, pointerType: a.doigt ? "touch" : "mouse",
+      isPrimary: true, button: 0, clientX: r.left + r.width * 0.6, clientY: r.top + r.height * 0.6 };
+    cv.dispatchEvent(new PointerEvent("pointerdown", o));
+    await new Promise(function (ok) { setTimeout(ok, 150); });
+    const up = new PointerEvent("pointerup", o);
+    const t = performance.now();
+    while (performance.now() - t < 700) { /* image lente */ }
+    cv.dispatchEvent(up);
+    await new Promise(function (ok) { setTimeout(ok, 100); });
+  }, { doigt: entree === "doigt" });
+  const lent = await etat3();
+  const refusLent = await page.evaluate(function () { return window.KtaVue3D.etat().dessin.refus; });
+  verifier(lent.poses === lent0.poses + 1 && lent.n === lent0.n + 1,
+    "3D, clic de 150 ms traité après une image de 700 ms : sommet posé", { refus: refusLent });
+
+  const loin = [];
+  for (const incl of [15, 50, 85]) {
+    await armerZone3();
+    await page.evaluate(function (incl) {
+      const K = window.KtaVue3D;
+      K.zoomer(100);   // borné au recul maximal
+      K.incliner(incl - K.etat().inclinaison);
+    }, incl);
+    await page.waitForTimeout(1500);
+    for (const c of [[0.08, 0.1], [0.92, 0.1], [0.08, 0.9], [0.92, 0.9]]) {
+      // Coin de la scène : ramené vers le centre tant qu'un bouton de la vue (pavé, zoom, barre ✏️) le couvre.
+      const p = await page.evaluate(function (a) {
+        const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+        let fx = a.c[0], fy = a.c[1];
+        for (let i = 0; i < 20; i++) {
+          // Pixel entier : WebKit arrondit clientX, et 0,5 px vaut plus de 5 cm au loin, au recul maximal.
+          const q = { x: Math.round(r.left + r.width * fx), y: Math.round(r.top + r.height * fy) };
+          const sous = document.elementFromPoint(q.x, q.y);
+          // La zone du joystick (gauche de la vue, au doigt) appartient à la scène : son toucher bref va à _toucher.
+          if (sous === cv || (sous && sous.classList.contains("kta-v3d-stick-zone"))) return q;
+          fx += (0.5 - fx) * 0.15; fy += (0.5 - fy) * 0.15;
+        }
+        const el = document.elementFromPoint(r.left + r.width * a.c[0], r.top + r.height * a.c[1]);
+        return { couvert: el ? (el.outerHTML || "").slice(0, 120) : null };
+      }, { c: c });
+      if (p.couvert !== undefined) {
+        loin.push(incl + "° coin " + c.join("/") + " : aucun point de la scène libre " + p.couvert);
+        continue;
+      }
+      // Point attendu : rayon de la caméra contre le plan y = 0, calculé ici (greffe vide pour lire la caméra).
+      const att = await page.evaluate(function (p) {
+        const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+        let ctxV = null;
+        const deg = K.greffer({ nom: "dsf-rayon", scene: function (ctx) { ctxV = ctx; } });
+        if (deg) deg();
+        const T = ctxV.THREE, rc = document.querySelector("#kta-vue3d canvas").getBoundingClientRect();
+        const r = new T.Raycaster();
+        r.setFromCamera(new T.Vector2((p.x - rc.left) / rc.width * 2 - 1, -(p.y - rc.top) / rc.height * 2 + 1),
+          ctxV.camera);
+        const q = r.ray.intersectPlane(new T.Plane(new T.Vector3(0, 1, 0), 0), new T.Vector3());
+        return { q: q ? { x: q.x * sc, y: q.z * sc } : null, sc: sc, incl: K.etat().inclinaison,
+          recul: K.etat().portee.recul };
+      }, p);
+      const av = await etat3();
+      await geste(p);
+      const ap = await etat3();
+      const dernier = await page.evaluate(function () {
+        const z = window.getCurrentZone && window.getCurrentZone();
+        return z && z.points.length ? z.points[z.points.length - 1] : null;
+      });
+      const nom = incl + "° coin " + c.join("/");
+      if (!att.q) {
+        if (ap.n !== av.n) loin.push(nom + " : au-dessus de l'horizon, un sommet posé quand même");
+        continue;
+      }
+      const ecart = dernier ? Math.hypot(dernier.x - att.q.x, dernier.y - att.q.y) / att.sc : null;
+      if (ap.n !== av.n + 1 || ecart === null || ecart > 0.05) {
+        loin.push(nom + " : " + JSON.stringify({ sommets: ap.n - av.n,
+          ecart_m: ecart === null ? null : +ecart.toFixed(3), recul: att.recul, incl: att.incl }));
+      }
+    }
+  }
+  verifier(loin.length === 0, "3D, recul 60 m, inclinaisons 15 / 50 / 85°, 4 coins : sommet au point visé (5 cm)",
+    loin);
+
+  await armerZone3();
+  await page.evaluate(function () {
+    const F = window.__dsf, P = function (dx, dy) { return { x: F.v3d.depart.x + dx, y: F.v3d.depart.y + dy }; };
+    window.setRoads([{ uid: "rd_dsf_gal", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.KtaVue3D.basculerRendu("galerie");
+    window.KtaVue3D.zoomer(0.5);
+  });
+  await page.waitForTimeout(800);
+  const gal0 = await etat3();
+  const rendu = await page.evaluate(function () { return window.KtaVue3D.etat().rendu; });
+  await geste({ x: cvb.x + cvb.width * 0.5, y: cvb.y + cvb.height * 0.2 });
+  const gal = await etat3();
+  const refusGal = await page.evaluate(function () { return window.KtaVue3D.etat().dessin.refus; });
+  verifier(rendu === "galerie" && gal.n === gal0.n + 1,
+    "3D rendu Galerie, zone armée, toucher hors de tout tube : sommet posé",
+    { rendu: rendu, sommets: gal.n - gal0.n, refus: refusGal });
+  await page.evaluate(function () {
+    if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+    window.KtaVue3D.basculerRendu("mixte");
+    window.KtaVue3D.zoomer(0.01);
+  });
 
   // Outil armé sur la carte, ✏️ fermé dans la vue : aucune fiche (le toucher ne dessine pas sans ✏️).
   const sansBarre = [];

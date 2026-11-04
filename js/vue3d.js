@@ -3949,6 +3949,11 @@
   function _toucher(cx, cy) {
     const e = _e;
     if (_dessinActif()) return _poserSommet(cx, cy);
+    if (_outilArme()) {
+      _refusDessin(e.vue !== "plongee" ? "vue à hauteur d'yeux (le dessin se fait en Édition)"
+        : !_permisGreffe("fiches") ? "une greffe coupe le dessin (fiches: false)"
+          : !e.dessin || !e.dessin.ouvert ? "barre ✏️ fermée" : "dessin non permis");
+    }
     if (window._modeClicCarteActif && window._modeClicCarteActif()) return true;
     if (!_permisGreffe("fiches") || !_rayonEcran(cx, cy)) return false;
     const hit = _panneauVise();
@@ -4112,6 +4117,17 @@
   // (road.js > _snapSurSommetProche) au même rayon d'écran que la 2D, converti à la profondeur du point touché
   // (`ktaTolerancePlan`).
   const DESSIN = { larg: 0.12, sommet: 0.16, premier: window.KTA_FERMETURE_M || 0.3, y: 0.09 };
+  // Toucher bref de la scène (_toucher) : moins de TAPE.bouge px et de TAPE.ms entre l'appui et le lâcher.
+  // 🩸 Durée lue sur `ev.timeStamp` (instant du geste), jamais sur performance.now() au traitement : vue dézoomée,
+  // une image de la scène peut prendre des centaines de ms et un clic de 150 ms arrivait « tenu 500 ms » (refusé).
+  const TAPE = { bouge: 8, ms: 500 };
+  // Toucher refusé alors qu'un outil est armé : une ligne de console qui dit pourquoi (diagnostic sur le terrain, le
+  // geste semblait « ne rien faire »). Rien sans outil armé : la scène se touche aussi pour tourner et zoomer.
+  function _refusDessin(raison) {
+    if (!_e || !_e.dessin || !_outilArme()) return;
+    _e.dessin.refus = raison;
+    console.log("[Vue3D] toucher refusé : " + raison);
+  }
   const DESSIN_AVALER = 700;          // ms : toucher qui ferme le panneau d'un groupe, avalé (comme sur la carte)
   const GROUPES_DESSIN = ["mesure", "traces", "zones", "structures"];   // ordre de la barre de droite 2D
   const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };
@@ -4278,9 +4294,12 @@
 
   // Point du sol sous le doigt (rayon posé par _rayonEcran) : la surface montrée touchée (_pointVise : dessus d'un
   // pilier = son emprise), sinon le plan du sol ; { x, y (px plan), dist (m) } ou null (rayon vers le ciel).
+  // ⚠️ contrat : le plan du sol est mathématique (y = 0), aucun maillage requis : hors galerie (rendu Galerie, fond
+  // noir), au-delà du carré de sol ou de la portée, le point visé se pose quand même.
   function _pointSol() {
     const e = _e, v = _pointVise();
-    if (v) return { x: v.x, y: v.y, dist: v.dist };
+    // Sol touché : le plan exact plutôt que le maillage (relief de quelques cm, décalé en vue rasante).
+    if (v && !v.sol) return { x: v.x, y: v.y, dist: v.dist };
     const q = e.rayon.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
     if (!q) return null;
     return { x: q.x * e.sc, y: q.z * e.sc, dist: q.distanceTo(e.camera.position) };
@@ -4298,11 +4317,24 @@
   // ferme le panneau d'un groupe est avalé (comme la carte : interface.js > _onDocClickFlyout).
   function _poserSommet(cx, cy) {
     const e = _e, d = e.dessin, o = _outilArme();
-    if (performance.now() < d.avaleJusqua) return true;
-    if (!o || !window.map || typeof window.convertCoord !== "function" || !_rayonEcran(cx, cy)) return false;
+    if (performance.now() < d.avaleJusqua) {
+      _refusDessin("toucher avalé : il refermait le panneau de l'outil (" + DESSIN_AVALER + " ms)");
+      return true;
+    }
+    if (!o || !window.map || typeof window.convertCoord !== "function" || !_rayonEcran(cx, cy)) {
+      _refusDessin(!o ? "aucun outil armé" : !window.map ? "carte absente" : "canvas de taille nulle");
+      return false;
+    }
     const v = _pointSol();
-    if (!v) return false;
-    let x = v.x, y = v.y;
+    if (!v) {
+      _refusDessin("aucun sol sous le pointeur (rayon vers le ciel)");
+      _toast(_t("vue3d.dessin.horizon"), "info");
+      return false;
+    }
+    // Point ramené dans le plan : vue dézoomée, le sol visé peut déborder de l'image (rien ne s'y verrait en 2D).
+    const W = window.PLAN_CONFIG && window.PLAN_CONFIG.plan ? Number(window.PLAN_CONFIG.plan.imageWidth) : 0;
+    const H = window.APP_CONFIG ? Number(window.APP_CONFIG.imageHeight) : 0;
+    let x = W > 0 ? Math.max(0, Math.min(W, v.x)) : v.x, y = H > 0 ? Math.max(0, Math.min(H, v.y)) : v.y;
     const cur = _objetEnCours(o.famille);
     const poly = !!cur && (o.famille === "zones" || (o.famille === "structures" && !_estLigne(cur.type)));
     if (poly && cur.points.length >= 3) {
@@ -4322,6 +4354,7 @@
       cfg.activeLevel = avant;
     }
     d.poses++;
+    d.refus = null;
     d.msPoses.push(performance.now() - t0);
     if (d.msPoses.length > 50) d.msPoses.shift();
     // Objet fini (re-toucher du 1er sommet) : la scène est refaite à l'image suivante, sans attendre la fin de rafale.
@@ -4547,7 +4580,7 @@
     return { barre: !!d.barre && !d.barre.hidden, ouvert: d.ouvert, actif: _dessinActif(), outil: o,
       boutons: d.outils ? d.outils.filter(function (b) { return !b.hidden; }).map(function (b) {
         return b.dataset.groupe; }) : [],
-      poses: d.poses, msPoses: d.msPoses.slice(), fermetures: d.fermetures, msFin: d.msFin,
+      poses: d.poses, msPoses: d.msPoses.slice(), fermetures: d.fermetures, msFin: d.msFin, refus: d.refus || null,
       apercu: d.apercu ? d.apercu.geometry.attributes.position.count / 3 : 0,
       etiquettes: d.etiquettes.map(function (sp) { return sp.userData.poi.nom; }), renduBascule: d.renduBascule,
       tuilesReprises: e.tuilesReprises || 0, textures: e.renderer.info.memory.textures,
@@ -5949,7 +5982,7 @@
     // Toucher bref et immobile (< 8 px, < 0,5 s) : un panneau de POI jonction ? (_toucher).
     let tape = null;
     on(e.cv, "pointerdown", function (ev) {
-      tape = doigts.size === 0 ? { id: ev.pointerId, x: ev.clientX, y: ev.clientY, t: performance.now() } : null;
+      tape = doigts.size === 0 ? { id: ev.pointerId, x: ev.clientX, y: ev.clientY, t: ev.timeStamp } : null;
       doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       glisse = doigts.size === 1 ? { x: ev.clientX, y: ev.clientY } : null;
       deux = doigts.size === 2 ? { mode: null, d: 0, y: 0 } : null;
@@ -5991,9 +6024,17 @@
       doigts.delete(ev.pointerId);
       glisse = null;
       if (doigts.size < 2) deux = null;
-      if (ev.type === "pointerup" && tape && tape.id === ev.pointerId && doigts.size === 0 &&
-          Math.hypot(ev.clientX - tape.x, ev.clientY - tape.y) < 8 && performance.now() - tape.t < 500) {
-        _toucher(ev.clientX, ev.clientY);
+      if (ev.type === "pointerup") {
+        const bouge = tape ? Math.hypot(ev.clientX - tape.x, ev.clientY - tape.y) : 0;
+        const duree = tape ? ev.timeStamp - tape.t : 0;
+        if (tape && tape.id === ev.pointerId && doigts.size === 0 && bouge < TAPE.bouge && duree < TAPE.ms) {
+          _toucher(ev.clientX, ev.clientY);
+        } else {
+          _refusDessin(!tape ? "un autre pointeur était déjà posé sur la scène"
+            : doigts.size ? "un autre pointeur est encore posé"
+              : bouge >= TAPE.bouge ? "pointeur déplacé de " + Math.round(bouge) + " px (≥ " + TAPE.bouge + ")"
+                : "appui tenu " + Math.round(duree) + " ms (≥ " + TAPE.ms + ")");
+        }
       }
       tape = null;
     };
@@ -6145,7 +6186,7 @@
       ev.preventDefault();
       const r = zone.getBoundingClientRect();
       e.stick = { id: ev.pointerId, cx: ev.clientX, cy: ev.clientY, x0: ev.clientX - r.left, y0: ev.clientY - r.top,
-        m: 0, ang: 0, d: 0, fortDepuis: 0, t: performance.now(), bouge: false, bas: false, ailleurs: false,
+        m: 0, ang: 0, d: 0, fortDepuis: 0, t: ev.timeStamp, bouge: false, bas: false, ailleurs: false,
         horsMorte: 0 };
       try { zone.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur synthétique ou déjà relâché */ }
       e.stickAnneau.classList.remove("kta-v3d-stick-repos");
@@ -6174,7 +6215,7 @@
     const lacher = function (ev) {
       const st = e.stick;
       if (!st || ev.pointerId !== st.id) return;
-      const tape = ev.type === "pointerup" && !st.bouge && st.d < 8 && performance.now() - st.t < 500;
+      const tape = ev.type === "pointerup" && !st.bouge && st.d < TAPE.bouge && ev.timeStamp - st.t < TAPE.ms;
       if (ev.type === "pointerup" && st.bouge) {
         _codeBas(st.bas && !st.ailleurs && performance.now() - st.horsMorte < CODE_BAS.coup);
       }

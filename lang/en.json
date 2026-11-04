@@ -2436,6 +2436,7 @@
   "vue3d.dessin.barre": "Drawing tools",
   "vue3d.dessin.renduMixte": "Rendering switched to Mixed: Tunnels does not show structures",
   "vue3d.dessin.planSol": "Plan on the ground (the plan image under the scene)",
+  "vue3d.dessin.horizon": "Nothing under the pointer: aim at the ground, below the horizon",
   "vue3d.voirSurCarte": "Show on the map",
   "vue3d.voirSurCarteTitre": "Close the 3D view and show this object on the map",
   "vue3d.plongee": "Edit",
