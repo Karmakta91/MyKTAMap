@@ -1090,7 +1090,7 @@ Un mensaje en la parte inferior de la pantalla dice lo que se ha deshecho o rehe
 
 El historial se **olvida** al recargar la página o cambiar de mapa, y una nueva acción después de deshacer borra lo que quedaba por rehacer.
 
-> ⌨️ En PC, **`?`** muestra todos los atajos: `E` Edición, `M` Medición, `Z` Zonas, `S` Estructuras, `T` Tracker, `P` Trazados, `L` Leyenda, `B` Brújula, `R` o `Ctrl+K` Búsqueda, `F` modo presentación, `Esc` para cerrar; en un menú de herramientas abierto, `Tab` recorre las opciones y `Intro` valida. No reaccionan mientras escribes en un campo.
+> ⌨️ En PC, **`?`** muestra todos los atajos, en secciones plegables: `E` Edición, `M` Medición, `Z` Zonas, `S` Estructuras, `T` Tracker, `P` Trazados, `L` Leyenda, `B` Brújula, `R` o `Ctrl+K` Búsqueda, `F` modo presentación, `Esc` para cerrar; en el mapa, `Mayús` + rueda lo gira y un clic largo sobre un vértice lo ajusta. En la 🧊 Vista 3D, `?` muestra primero sus teclas (flechas, WASD o ZQSD, `V`, zoom, inclinación). En un menú de herramientas abierto, `Tab` recorre las opciones y `Intro` valida. No reaccionan mientras escribes en un campo. En el teléfono, la misma ficha (desde la Ayuda) empieza por los gestos táctiles.
 
 ---
 

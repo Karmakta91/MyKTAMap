@@ -1111,6 +1111,9 @@ function _chargerVue3D() {
   }
   return _vue3dChargement;
 }
+// vue3d.js seul (three.js attend l'ouverture de la vue) : aussi pour la fiche des raccourcis (shortcutsCheatsheet.js),
+// qui lit KtaVue3D.raccourcis(). → Promise<bool>.
+window.ktaChargerVue3D = _chargerVue3D;
 
 // Indicateur entre le toucher et la scène (ComputeLoader : une image peinte avant le travail synchrone de
 // l'ouverture) ; au premier chargement de three.js, le message le dit. `retour` : élément qui reprend le focus à

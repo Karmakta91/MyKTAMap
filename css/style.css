@@ -1102,22 +1102,27 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: inherit !important;
 }
 
-/* ── Aide-mémoire des raccourcis clavier (touche ?) : chrome .kta-readme-modal-* + grille de touches ── */
-.kta-cheatsheet-boite { max-width: 540px; }
+/* ── Fiche des raccourcis (touche ?) : chrome .kta-readme-modal-*, sections <details>, grille de touches ── */
+.kta-cheatsheet-boite { max-width: 640px; }
+.kta-cheat-section + .kta-cheat-section { border-top: 1px solid var(--kta-bordure); }
+.kta-cheat-section-corps { padding-bottom: 6px; }
 .kta-cheat-sectitre {
-  margin: 14px 0 8px;
+  padding: 14px 0 8px;
+  cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--kta-texte-3);
 }
-.kta-cheat-sectitre:first-child { margin-top: 2px; }
+.kta-cheat-section:first-child > .kta-cheat-sectitre { padding-top: 2px; }
 .kta-cheat-grille {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 6px 18px;
 }
+.kta-cheat-grille-2 { grid-template-columns: 1fr 1fr; }
+.kta-cheat-grille-2 .kta-cheat-keys { flex-basis: 40px; }
 .kta-cheat-row {
   display: flex;
   align-items: center;
@@ -1125,8 +1130,9 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   min-height: 30px;
 }
 .kta-cheat-keys {
-  flex: 0 0 96px;
+  flex: 0 0 180px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 3px;
 }
@@ -1150,7 +1156,8 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   border-radius: 6px;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
 }
-.kta-kbd-plus { color: var(--kta-texte-3); font-size: 11px; margin: 0 1px; }
+.kta-kbd-plus,
+.kta-kbd-ou { color: var(--kta-texte-3); font-size: 11px; margin: 0 1px; }
 .kta-cheat-note {
   margin: 16px 2px 0;
   font-size: 12px;
@@ -1158,11 +1165,12 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: var(--kta-texte-3);
 }
 @media (max-width: 520px) {
-  .kta-cheat-grille { grid-template-columns: 1fr; }
+  .kta-cheat-keys { flex-basis: 130px; }
 }
 body.kta-theme-light .kta-cheat-sectitre,
 body.kta-theme-light .kta-cheat-note,
-body.kta-theme-light .kta-kbd-plus { color: var(--kta-texte-3); }
+body.kta-theme-light .kta-kbd-plus,
+body.kta-theme-light .kta-kbd-ou { color: var(--kta-texte-3); }
 body.kta-theme-light .kta-cheat-label { color: #1a1f2e; }
 body.kta-theme-light .kta-kbd {
   color: #1a1f2e;

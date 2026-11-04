@@ -13,7 +13,8 @@
 //   reglerFaisceau(°), reglerPleinJour(bool),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
-//   _ctxGreffe), viser(cx, cy) (colonne d'outils de la vue d'édition : outils de la carte, _poserSommet) } ;
+//   _ctxGreffe), viser(cx, cy) (colonne d'outils de la vue d'édition : outils de la carte, _poserSommet),
+//   raccourcis() (touches et gestes, lus par shortcutsCheatsheet.js) } ;
 //   code « six vers le bas » : kta:vue3dCode ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap, niveau}, densiteMax, stats, attenteReprise (ms),
 //   retourFocus,
@@ -5819,10 +5820,46 @@
 
   // ── Interface (aucun script en ligne : écouteurs posés ici) ──────────────────────────────────────────
 
+  // Déplacement par la place de la touche (ev.code) : ZQSD en AZERTY comme WASD en QWERTY.
   const TOUCHES = {
     ArrowUp: "av", KeyW: "av", KeyZ: "av", ArrowDown: "ar", KeyS: "ar",
     ArrowLeft: "tg", ArrowRight: "td", KeyA: "ga", KeyQ: "ga", KeyD: "dr", KeyE: "dr"
   };
+  // Vue d'édition, par le caractère tapé (ev.key) : +1 = plus près (zoom), plus verticale (inclinaison).
+  const TOUCHES_ZOOM = { "+": 1, "=": 1, "-": -1, "_": -1 };
+  const TOUCHES_INCLINAISON = { PageUp: 1, PageDown: -1 };
+  const TOUCHE_VUE = "KeyV";   // ev.code : la même place sur toutes les dispositions
+
+  // Touches et gestes de la vue pour la fiche des raccourcis (shortcutsCheatsheet.js), lus dans les tables ci-dessus
+  // et les gestes de souris de _brancher : une touche ajoutée là s'affiche dans la fiche.
+  // Rend [{ id, touches: [[jeton, …], …] (une combinaison par sous-liste), edition (vue d'édition seulement) }] ;
+  // jeton = ev.code (« KeyW », « ArrowUp »), ev.key (« + », « PageUp », « Escape », « Shift », « Control », « Tab »)
+  // ou geste (« Molette », « ClicDroit », « Glisser »).
+  // ⚠️ contrat : scripts/smoke/checkup-raccourcis.js joue chaque ligne et vérifie son effet.
+  function raccourcis() {
+    const par = {};
+    Object.keys(TOUCHES).forEach(function (c) { (par[TOUCHES[c]] = par[TOUCHES[c]] || []).push([c]); });
+    const de = function (table, sens) {
+      return Object.keys(table).filter(function (k) { return table[k] === sens; }).map(function (k) { return [k]; });
+    };
+    return [
+      { id: "avancer", touches: par.av }, { id: "reculer", touches: par.ar },
+      { id: "gauche", touches: par.ga }, { id: "droite", touches: par.dr },
+      { id: "tournerGauche", touches: par.tg }, { id: "tournerDroite", touches: par.td },
+      { id: "courir", touches: [["Shift"]] },
+      { id: "vue", touches: [[TOUCHE_VUE]] },
+      { id: "zoomPlus", touches: de(TOUCHES_ZOOM, 1), edition: true },
+      { id: "zoomMoins", touches: de(TOUCHES_ZOOM, -1), edition: true },
+      { id: "zoomMolette", touches: [["Molette"]], edition: true },
+      { id: "inclinerPlus", touches: de(TOUCHES_INCLINAISON, 1), edition: true },
+      { id: "inclinerMoins", touches: de(TOUCHES_INCLINAISON, -1), edition: true },
+      { id: "inclinerMolette", touches: [["Shift", "Molette"]], edition: true },
+      { id: "panner", touches: [["Glisser"]], edition: true },
+      { id: "cap", touches: [["ClicDroit", "Glisser"], ["Control", "Glisser"]], edition: true },
+      { id: "tab", touches: [["Tab"]] },
+      { id: "echap", touches: [["Escape"]] }
+    ].map(function (r) { return { id: r.id, touches: r.touches, edition: r.edition === true }; });
+  }
 
   function _bouton(parent, cls, txt, titre, action) {
     const b = document.createElement("button");
@@ -6618,15 +6655,15 @@
       // carte dessous).
       const champ = ev.target === e.curseurPortee || ev.target === e.curseurLampe || ev.target === e.curseurFaisceau;
       if (champ && /^(Arrow|Page|Home$|End$)/.test(ev.key)) { ev.stopPropagation(); return; }
-      if (e.vue === "plongee" && ["+", "=", "-", "_"].indexOf(ev.key) >= 0) {
+      if (e.vue === "plongee" && TOUCHES_ZOOM[ev.key]) {
         ev.stopPropagation(); ev.preventDefault();
-        zoomer(ev.key === "+" || ev.key === "=" ? 1 / RECUL.pas : RECUL.pas);
+        zoomer(TOUCHES_ZOOM[ev.key] > 0 ? 1 / RECUL.pas : RECUL.pas);
         return;
       }
-      if (ev.code === "KeyV") { ev.stopPropagation(); basculerVue(); return; }
-      if (ev.key === "PageUp" || ev.key === "PageDown") {
+      if (ev.code === TOUCHE_VUE) { ev.stopPropagation(); basculerVue(); return; }
+      if (TOUCHES_INCLINAISON[ev.key]) {
         ev.stopPropagation(); ev.preventDefault();
-        incliner(ev.key === "PageUp" ? INCLINAISON.pas : -INCLINAISON.pas);
+        incliner(TOUCHES_INCLINAISON[ev.key] * INCLINAISON.pas);
         return;
       }
       if (ev.key === "Shift") e.touches.Shift = true;
@@ -7640,6 +7677,7 @@
 
   window.KtaVue3D = {
     ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue, incliner: incliner,
+    raccourcis: raccourcis,
     panner: panner, surPlace: surPlace, niveauEdition: niveauEdition,
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     textures: textures, basculerTextures: function () { return _basculerTextures(); },

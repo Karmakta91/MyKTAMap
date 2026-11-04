@@ -1879,14 +1879,37 @@ i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Sco
 
 ---
 
-### 93. Raccourcis clavier + navigation clavier + refonte du menu Aide (v1.51.0)
+### 93. Raccourcis clavier, fiche des raccourcis, navigation clavier, hub d'Aide
 
-KARMA : « pas de raccourci clavier pour Tracés », « avec TAB et Entrée pouvoir choisir le mode », « refondre le modal Aide en sous-modales depuis un modal principal qui liste les sections ». 3 lots dans une même release.
-
-#### 93.1 Lot A — Raccourcis + cheatsheet (`shortcuts.js`, `shortcutsCheatsheet.js`)
-- **Raccourci Tracés manquant ajouté** : `MAPPING.p = { action: "group:traces", label: … }` (`shortcuts.js`). Mapping complet : E/M/Z/S/T/**P**/L/B/R.
-- **Cheatsheet `?`** : nouveau module `js/shortcutsCheatsheet.js` → `window.ShortcutsCheatsheet = { ouvrir, fermer, toggle, isOpen }`. Modale `.kta-readme-modal-overlay` réutilisée + grille `.kta-cheat-*` / keycaps `.kta-kbd`. Les lignes "outils" sont **auto-générées** depuis `KtaShortcuts.listMapping()` (zéro liste à maintenir) ; libellés localisés via `cheatsheet.tool.*` (fr/en/es). Bloc fixe des combos (Ctrl+Z/Y, Ctrl+K, F, ?, Échap). La touche `?` est gérée dans le keydown de `shortcuts.js` **AVANT** le guard `e.shiftKey` (car `?` = Shift+… sur AZERTY ; `e.key === "?"` est layout-agnostique).
-- **Fix** : `_isModaleBloquante()` (`shortcuts.js`) couvre désormais `.kta-tracker-modal-overlay` → les raccourcis ne se déclenchent plus « derrière » le modal Tracker.
+#### 93.1 Raccourcis et fiche des raccourcis (`shortcuts.js`, `shortcutsCheatsheet.js`)
+- **Raccourcis à une touche** (`shortcuts.js > MAPPING`) : E Édition, M Mesure, Z Zones, S Structures, T Tracker,
+  P Tracés (`group:<id>` = clic sur le bouton du groupe), L Légende, B Boussole, R Recherche (`fn:<nom>`). Ignorés avec
+  Ctrl / Cmd / Alt / Maj, dans un champ, sous une modale (`_isModaleBloquante`, modale Tracker comprise), en mode
+  présentation. `?` est traité AVANT le test de Maj (`e.key === "?"`, toutes dispositions). Vue 3D ouverte, ces lettres
+  sont arrêtées par la vue (`vue3d.js > _raccourciCarte`) sauf « ? ».
+- **Fiche** (`window.ShortcutsCheatsheet = { ouvrir, fermer, toggle, isOpen, lignes }`), ouverte par `?` ou la ligne
+  épinglée ⌨️ du hub d'Aide. Modale `.kta-readme-modal-overlay`, sections repliables `<details class="kta-cheat-section">`
+  (le corps défile), touches en `.kta-kbd` (combinaison « + », variantes « / »). `lignes()` rend ce que la fiche
+  affiche (sections, ordre, dépliage) : la fiche et le checkup lisent la même.
+  - **Outils** : générés depuis `KtaShortcuts.listMapping()` (libellés `cheatsheet.tool.*`).
+  - **Carte** (table `CARTE`) : Maj + molette tourne la carte, le bouton nord la redresse (`mapBearing.js`) ; clic
+    long + glisser sur un sommet (`ajusterSommets.js`, souris comprise) ; molette, + / − et flèches (clavier de
+    Leaflet, carte touchée) ; Échap ferme la bulle, annule un sommet en cours ou le choix d'une position.
+  - **Actions globales** (table `GLOBAL`) : Ctrl+Z (la mesure 📐 comprise tant que l'outil est armé), Ctrl+Y et
+    Ctrl+Maj+Z (`historyManager.js`), Ctrl+K (`searchPoints.js`), F et Échap (`presentationMode.js`), `?`, Échap.
+  - **Vue 3D** : `KtaVue3D.raccourcis()` (`vue3d.js`, lu dans ses tables `TOUCHES`, `TOUCHES_ZOOM`,
+    `TOUCHES_INCLINAISON`, `TOUCHE_VUE` et les gestes de souris) : aucune table recopiée. Jetons = `ev.code` (« KeyW »),
+    `ev.key` (« PageUp ») ou geste (« Molette ») ; nom lisible par langue (`cheatsheet.key.*` : Maj / Shift / Mayús).
+    ⚠️ vue3d.js est chargé à la demande : la section se remplit si la vue est déjà chargée, sinon à son dépliage
+    (`interface.js > ktaChargerVue3D`, vue3d.js seul, jamais three.js). Ouverte par-dessus la vue, la fiche montre
+    la Vue 3D en tête, dépliée ; Échap ferme la fiche, pas la vue (`_recouverte`).
+  - **Gestes tactiles** (appareil tactile seulement, `ktaAppareilTactile`) : en tête et dépliés, les sections clavier
+    repliées. Deux doigts pour tourner la carte, appui long sur un sommet, gestes de la vue 3D d'édition.
+- Ajouter une touche : dans le module qui la traite, puis sa ligne (table de la fiche ou `raccourcis()`) et son
+  contrôle dans `scripts/smoke/checkup-raccourcis.js`, qui joue CHAQUE ligne affichée et vérifie son effet (une ligne
+  sans contrôle = rouge), sous Chromium et WebKit.
+- 🩸 En 2D, Échap ne désarme pas un outil de dessin (seul l'outil armé de la vue 3D s'éteint à Échap) : la fiche ne le
+  promet pas.
 
 #### 93.2 Lot B — Navigation clavier dans les menus (`interface.js > _installFocusNav`)
 - Helper partagé `_installFocusNav(container, opts)` branché sur **`_ouvrirFlyout`** (flyout latéral, partagé traces/zones/structures/édition/mesure/favoris) **ET** `_ouvrirTrackerModal` (modal Tracker).
@@ -1900,7 +1923,7 @@ KARMA : « pas de raccourci clavier pour Tracés », « avec TAB et Entrée pouv
 - **❓ contextuel** : `AIDE_PAR_MODALE` (id de modale → slug), bouton posé par un `MutationObserver` dans l'en-tête `.kta-readme-modal-header` / `.kta-tracker-modal-header`, juste avant la croix ; interrupteur `myktamap_aide_contextuelle`. `ktaOuvrirAideSection(slug)` ouvre une fiche sans passer par le hub.
 - 🛡️ `check-aide-sections.js` (chaque slug a ses clés dans les 3 dicos, chaque slug rangé une fois, aucune clé `aide.*` orpheline, pas de balisage dans un titre) · `check-aide-contextuelle.js` (chaque id de la table existe dans le code, chaque slug est une fiche).
 
-**Sources** v1.51.0 ; `shortcutsCheatsheet.js` ajouté à `index.html` (après `shortcuts.js`) + `sw.js > ASSETS_TO_CACHE`. i18n : 20 clés `cheatsheet.*`. Aucune nouvelle surface réseau (1 fichier same-origin).
+**Sources** : `shortcutsCheatsheet.js` chargé par `index.html` après `shortcuts.js`, précaché par `sw.js > ASSETS_TO_CACHE`. Aucune surface réseau.
 
 ---
 

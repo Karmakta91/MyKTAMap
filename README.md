@@ -415,7 +415,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `secoursBalayage.js` | Mode Secours : découpage du réseau en secteurs et parcours de balayage (calcul pur) |
 | `secoursPhotos.js` | Photos des étapes d'un parcours d'équipe (IDB dédiée `myktamap_secours_photos`) |
 | `shortcuts.js` | Raccourcis clavier globaux |
-| `shortcutsCheatsheet.js` | Aide-mémoire des raccourcis (touche `?`) |
+| `shortcutsCheatsheet.js` | Fiche des raccourcis clavier et gestes (touche `?`) : carte, actions globales, vue 3D |
 | `presentationMode.js` | Mode présentation (touche `F`) : interface masquée, raccourcis d'outils coupés |
 | `wakeLock.js` | Écran maintenu allumé (Screen Wake Lock), repris au retour visible |
 
@@ -640,6 +640,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
 | `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
+| `smoke/checkup-raccourcis.js` | Fiche des raccourcis : chaque ligne affichée (carte 2D, actions globales, vue 3D) jouée et son effet vérifié, téléphone compris, Chromium et WebKit |
 | `smoke/checkup-mesure-annulable.js` | Mesure 📐 annulable (⏪ / ⏩) tant que l'outil est armé, entrées purgées à sa fermeture, pile partagée avec une zone, vue 3D comprise, Chromium et WebKit |
 | `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
 | `smoke/checkup-inaccessible-sous-structures.js` | Zones (inaccessible comprise) sous les structures sur le canvas commun après chargement, édition, ⏪ et filtre ; hachures en CanvasPattern ; fiche au clic |
