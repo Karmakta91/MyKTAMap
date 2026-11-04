@@ -664,6 +664,29 @@ async function sectionDonnees(page, MX) {
     window.renderRoads(); window.renderStructures();
     await pause(400);
     r.vide = lire();
+    // Itinéraire remplacé (setRoads, comme un recalcul), puis un aperçu d'itinéraire posé (`_preview`) : aucune
+    // scène refaite (hors de l'empreinte E1), ruban seul refait au premier, rien au second ; l'ancien remis.
+    const itiAvant = window.getRoads().filter(function (q) { return q.type === "itinerary"; })[0];
+    const sansIti = function () { return window.getRoads().filter(function (q) { return q.type !== "itinerary"; }); };
+    const nord = function (e) {
+      return e.itineraire.profil.filter(function (q) { return Math.abs(q[0] - a.ox) < 0.6 && q[1] < a.oz - 5; }).length;
+    };
+    const i0 = K.etat({ profilIti: true });
+    window.setRoads(sansIti().concat([{ uid: "rd_dn_iti2", type: "itinerary", level: 0,
+      points: [P(-12, 0), P(0, 0), P(0, -12)] }]));
+    await pause(500);
+    const i1 = K.etat({ profilIti: true });
+    window.setRoads(window.getRoads().concat([{ type: "itinerary", _preview: true, level: 0,
+      points: [P(-12, 0), P(12, 0)] }]));
+    await pause(500);
+    const i2 = K.etat();
+    r.itiSeul = { reindex: [i1.reindexations - i0.reindexations, i2.reindexations - i1.reindexations],
+      refaites: i2.donnees.refaites - i0.donnees.refaites, verifs: i2.donnees.verifs - i0.donnees.verifs,
+      itiRefaits: [i1.itiRefaits - i0.itiRefaits, i2.itiRefaits - i1.itiRefaits], nord: [nord(i0), nord(i1)],
+      place: [i0.pos.x === i1.pos.x && i0.pos.y === i1.pos.y && i0.cap === i1.cap] };
+    window.setRoads(sansIti().concat([itiAvant]));
+    await pause(500);
+    r.vide = lire();
     // setStructures : un pilier de plus.
     let n = r.vide.donnees.refaites;
     window.setStructures(window.getStructures().concat([pilier("st_dn_b", 14, -4)]));
@@ -869,6 +892,10 @@ async function sectionDonnees(page, MX) {
     "rendu de la carte sans changement (renderRoads, renderStructures) : empreinte relue, rien refait",
     { verifs: R.vide.donnees.verifs, refaites: R.vide.donnees.refaites, reindex: [A.reindex, R.vide.reindex],
       msEmpreinte: R.vide.donnees.msEmpreinte });
+  const I = R.itiSeul;
+  verifier(I.reindex[0] === 0 && I.reindex[1] === 0 && I.refaites === 0 && I.verifs >= 2 && I.itiRefaits[0] === 1 &&
+    I.itiRefaits[1] === 0 && I.nord[0] === 0 && I.nord[1] > 0 && I.place[0],
+    "itinéraire remplacé puis aperçu posé : empreinte relue, aucune scène refaite, ruban seul refait (le nouveau)", I);
   const cas = [
     ["setStructures", R.structures, R.vide, function (x, y) { return x.compte.structures === y.compte.structures + 1; }],
     ["setZones", R.zones, R.structures, function (x, y) { return x.compte.zones === y.compte.zones + 1; }],
@@ -1544,10 +1571,18 @@ async function sectionEcartItineraire(page) {
     r.surTrajet = { n: rec().n, ecart: rec().ecartM, mode: K.etat().mode };
     // À 10 m dans la branche nord : rien pendant l'écart tenu, puis un recalcul.
     const pts0 = iti().points;
+    const sc0 = K.etat();
     K.placer(P(0, -10).x, P(0, -10).y, 0);
     await pause(1200);
     r.pendant = { n: rec().n, ecart: rec().ecartM };
     const ms = await attendreN(1, 6000);
+    await pause(500);
+    // Scène gardée (empreinte E1 sans l'itinéraire), ruban seul refait : le nouveau passe par la branche nord.
+    const sc1 = K.etat({ profilIti: true });
+    r.scene = { reindex: sc1.reindexations - sc0.reindexations, itiRefaits: sc1.itiRefaits - sc0.itiRefaits,
+      refaites: sc1.donnees.refaites - sc0.donnees.refaites, msIti: sc1.msIti,
+      nord: sc1.itineraire.profil.filter(function (q) { return Math.abs(q[0] - ox) < 0.6 && q[1] < oz - 5; }).length,
+      quads: sc1.itineraire.profil.length };
     const it1 = iti(), tr1 = window.getTrackingPosition();
     r.ecart = { n: rec().n, apresMs: ms + 1200, change: it1.points !== pts0, depuis: dist(it1.points[0], P(0, -10)),
       cible: dist(it1.points[it1.points.length - 1], CIBLE), wps: it1.waypoints.map(function (w) {
@@ -1654,6 +1689,9 @@ async function sectionEcartItineraire(page) {
   const E = R.ecart;
   verifier(E.n === 1 && E.change && E.depuis < 1 && E.cible < 1 && E.itis === 1 && E.apresMs >= 1900,
     "libre, à 10 m tenus 2 s : itinéraire recalculé depuis la place 3D, même destination (" + E.apresMs + " ms)", E);
+  verifier(R.scene.reindex === 0 && R.scene.refaites === 0 && R.scene.itiRefaits === 1 && R.scene.nord > 0,
+    "recalcul en libre : aucune scène refaite, ruban seul refait (" + R.scene.msIti + " ms), le nouveau trajet",
+    R.scene);
   verifier(E.wps.join("|") === "Départ|Étape fictive✓|Cible fictive" || /✓\|Cible fictive$/.test(E.wps.join("|")),
     "étape validée gardée validée, hors calcul (aucun raccord d'étape)", E.wps);
   verifier(E.etapesRaccords === 0, "le trajet recalculé ne repasse pas par l'étape validée", E.etapesRaccords);
@@ -1801,37 +1839,71 @@ async function sectionEncartReste(page) {
 }
 
 // Coût d'un recalcul (KTA_V3D_PERF=iti) : réseau fictif de semerGalerie (3 120 tronçons), itinéraire d'un coin à
-// l'autre, recalcul discret depuis cinq places ; durée et image la plus longue pendant le calcul (le calcul tient le
-// fil principal : c'est l'à-coup ressenti).
+// l'autre, recalcul discret depuis cinq places, en mixte puis en galerie. Découpe : calcul du chemin
+// (Pathfinder.computeRoute), rendu de la carte (setRoads), scènes refaites (reindexations) et itinéraire seul refait
+// (itiRefaits, msIti) ; images de plus de 50 ms et la plus longue (le calcul tient le fil principal : l'à-coup ressenti).
 async function mesuresRecalcul(page) {
   const semis = await page.evaluate(semerGalerie);
   console.log("  ℹ️ réseau galerie synthétique : " + JSON.stringify({ troncons: semis.troncons }));
-  const r = await page.evaluate(async function (d) {
-    const sc = window.APP_CONFIG.scale, K = window.KtaVue3D;
-    const P = function (dx, dz) { return { x: d.x + dx * sc, y: d.y + dz * sc, level: 0 }; };
-    const res = await window.Pathfinder.computeRoute([P(-140, -138), P(140, 150)], {});
-    window.itineraireActiverRoad({ type: "itinerary", points: res.path,
-      waypoints: [Object.assign({ source: "tracker", label: "A" }, P(-140, -138)),
-        Object.assign({ source: "search", label: "B" }, P(140, 150))], raccords: res.raccords, carrefours: res.carrefours });
-    await K.ouvrir({ depart: d, distanceVue: 30 });
-    const out = [];
-    for (const q of [[0, 0], [-60, 30], [60, -40], [100, 100], [-120, -100]]) {
-      let maxImage = 0, t = 0, actif = true;
-      const boucle = function (ts) { if (t) maxImage = Math.max(maxImage, ts - t); t = ts; if (actif) requestAnimationFrame(boucle); };
-      requestAnimationFrame(boucle);
-      await new Promise(function (ok) { setTimeout(ok, 100); });
-      const t0 = performance.now();
-      const rr = await window.itineraireReplanifierDepuis(P(q[0], q[1]).x, P(q[0], q[1]).y, 0, { discret: true });
-      const ms = performance.now() - t0;
-      await new Promise(function (ok) { setTimeout(ok, 100); });
-      actif = false;
-      out.push({ ms: Math.round(ms), imageMax: Math.round(maxImage), ok: rr && rr.ok });
-    }
-    await K.fermer();
+  for (const rendu of ["mixte", "galerie"]) {
+    const r = await page.evaluate(async function (o) {
+      const d = o.d, sc = window.APP_CONFIG.scale, K = window.KtaVue3D;
+      window.setPlanRenduVue3D(null, o.rendu);
+      const P = function (dx, dz) { return { x: d.x + dx * sc, y: d.y + dz * sc, level: 0 }; };
+      const res = await window.Pathfinder.computeRoute([P(-140, -138), P(140, 150)], {});
+      window.itineraireActiverRoad({ type: "itinerary", points: res.path,
+        waypoints: [Object.assign({ source: "tracker", label: "A" }, P(-140, -138)),
+          Object.assign({ source: "search", label: "B" }, P(140, 150))], raccords: res.raccords, carrefours: res.carrefours });
+      await K.ouvrir({ depart: d, distanceVue: 30 });
+      const PF = window.Pathfinder, cr = PF.computeRoute, sr = window.setRoads;
+      let msChemin = 0, msCarte = 0;
+      PF.computeRoute = function () {
+        const t = performance.now(), v = cr.apply(this, arguments);
+        return Promise.resolve(v).then(function (x) { msChemin += performance.now() - t; return x; });
+      };
+      window.setRoads = function () {
+        const t = performance.now(), v = sr.apply(this, arguments);
+        msCarte += performance.now() - t;
+        return v;
+      };
+      const out = [];
+      try {
+        for (const q of [[0, 0], [-60, 30], [60, -40], [100, 100], [-120, -100]]) {
+          let maxImage = 0, t = 0, actif = true;
+          const longues = [];
+          const boucle = function (ts) {
+            if (t) { maxImage = Math.max(maxImage, ts - t); if (ts - t > 50) longues.push(Math.round(ts - t)); }
+            t = ts;
+            if (actif) requestAnimationFrame(boucle);
+          };
+          requestAnimationFrame(boucle);
+          await new Promise(function (ok) { setTimeout(ok, 300); });
+          maxImage = 0; longues.length = 0; msChemin = msCarte = 0;
+          const e0 = K.etat(), t0 = performance.now();
+          const rr = await window.itineraireReplanifierDepuis(P(q[0], q[1]).x, P(q[0], q[1]).y, 0, { discret: true });
+          const ms = performance.now() - t0;
+          await new Promise(function (ok) { setTimeout(ok, 1200); });
+          actif = false;
+          const e1 = K.etat();
+          out.push({ ms: Math.round(ms), chemin: Math.round(msChemin), carte: Math.round(msCarte),
+            scenes: e1.reindexations - e0.reindexations, msScene: e1.reindexations > e0.reindexations ? e1.msIndex : 0,
+            itiRefaits: (e1.itiRefaits || 0) - (e0.itiRefaits || 0), msIti: e1.msIti || 0,
+            imageMax: Math.round(maxImage), plus50: longues, ok: rr && rr.ok });
+        }
+      } finally {
+        PF.computeRoute = cr; window.setRoads = sr;
+      }
+      await K.fermer();
+      window.setRoads(window.getRoads().filter(function (x) { return x.type !== "itinerary"; }));
+      return out;
+    }, { d: semis.depart, rendu: rendu });
+    console.log("  📏 recalcul discret, " + rendu +
+      " (ms : total, chemin, carte, scènes refaites, itinéraire seul, image max, > 50 ms) :");
+    r.forEach(function (x) { console.log("     " + JSON.stringify(x)); });
+  }
+  await page.evaluate(function () {
     window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
-    return out;
-  }, semis.depart);
-  console.log("  📏 recalcul discret (ms, image la plus longue) : " + JSON.stringify(r));
+  });
 }
 
 // § 30 — Caméra libre de la vue d'édition (plongée), mesures lisibles, survol, plan au sol, tuile ⚙️ (formes FICTIVES,

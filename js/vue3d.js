@@ -351,29 +351,7 @@
     const type = function (o) { return o.type; };
     const sessionRoads = _tab(window.getRoads).filter(function (r) { return r && !r._preview; });
     const embRoads = _tab(window.getAllEmbeddedRoads);
-    // 🩸 L'itinéraire est UN tracé dont chaque point porte son niveau (pathfinder.js) : il est découpé en morceaux
-    // du niveau affiché, sinon un itinéraire au −1 (tracé sans `level` = 0) disparaissait tout entier.
-    // Chaque morceau garde l'abscisse (px, depuis le début du trajet) de ses points : tirets continus d'un morceau
-    // et d'une tuile à l'autre.
-    const itiDuNiveau = [];
-    sessionRoads.forEach(function (r) {
-      if (r.type !== "itinerary" || !Array.isArray(r.points)) return;
-      const defaut = Number.isInteger(r.level) ? r.level : 0;
-      let cur = [], abs = [], s = 0, prec = null;
-      const fin = function (lvl) {
-        if (cur.length > 1) itiDuNiveau.push(Object.assign({}, r, { points: cur, level: lvl, abscisses: abs }));
-        cur = []; abs = [];
-      };
-      r.points.forEach(function (q) {
-        if (q && prec && Number.isFinite(q.x) && Number.isFinite(prec.x)) s += Math.hypot(q.x - prec.x, q.y - prec.y);
-        if (q) prec = q;
-        const n = q && Number.isInteger(q.level) ? q.level : defaut;
-        if (niveau === null || n === niveau) { cur.push(q); abs.push(s); return; }
-        fin(niveau);
-      });
-      fin(niveau === null ? defaut : niveau);
-    });
-    const roads = (_permisGreffe("itineraire") ? itiDuNiveau : [])
+    const roads = _itiDuNiveau(sessionRoads, niveau)
       .concat(!_permisGreffe("traces") ? [] : _filtrer(sessionRoads.filter(function (r) {
         return r.type !== "itinerary";
       }), embRoads, "roadTypes", type));
@@ -402,11 +380,43 @@
     };
   }
 
+  // Morceaux de l'itinéraire au niveau affiché (_collecter ; _refaireIti quand il change seul), [] si une greffe le
+  // coupe. `sessionRoads` : tracés de la session sans les aperçus.
+  // 🩸 L'itinéraire est UN tracé dont chaque point porte son niveau (pathfinder.js) : il est découpé en morceaux
+  // du niveau affiché, sinon un itinéraire au −1 (tracé sans `level` = 0) disparaissait tout entier.
+  // Chaque morceau garde l'abscisse (px, depuis le début du trajet) de ses points : tirets continus d'un morceau
+  // et d'une tuile à l'autre.
+  function _itiDuNiveau(sessionRoads, niveau) {
+    const itiDuNiveau = [];
+    if (!_permisGreffe("itineraire")) return itiDuNiveau;
+    sessionRoads.forEach(function (r) {
+      if (r.type !== "itinerary" || !Array.isArray(r.points)) return;
+      const defaut = Number.isInteger(r.level) ? r.level : 0;
+      let cur = [], abs = [], s = 0, prec = null;
+      const fin = function (lvl) {
+        if (cur.length > 1) itiDuNiveau.push(Object.assign({}, r, { points: cur, level: lvl, abscisses: abs }));
+        cur = []; abs = [];
+      };
+      r.points.forEach(function (q) {
+        if (q && prec && Number.isFinite(q.x) && Number.isFinite(prec.x)) s += Math.hypot(q.x - prec.x, q.y - prec.y);
+        if (q) prec = q;
+        const n = q && Number.isInteger(q.level) ? q.level : defaut;
+        if (niveau === null || n === niveau) { cur.push(q); abs.push(s); return; }
+        fin(niveau);
+      });
+      fin(niveau === null ? defaut : niveau);
+    });
+    return itiDuNiveau;
+  }
+
   // Type de tracé montré par les filtres de la carte : liseré du mode galerie (le tube, lui, reste : collision).
   // Empreinte de ce que la scène lit des données : session et calques (filtres ignorés : ils ont leur signal,
   // FilterPanel.onChange), chaque sommet, chaque champ simple d'un objet (type, niveau, nom, tags, updatedAt…),
   // niveaux et raccords des POI jonction, légende personnalisée de la session (couleurs, types `cust-…`). Relue sur
   // signal seulement (_majDonnees), jamais à l'image ; coût au checkup (etat().donnees.msEmpreinte).
+  // ⚠️ contrat : ni l'itinéraire (`type: "itinerary"`) ni les aperçus (`_preview`) n'y entrent : rien de la scène
+  // n'en dépend hors de ce que _refaireIti refait (ruban, étapes ; chevrons par le guidage). Un itinéraire changé
+  // passe par `kta:itineraireChange`, sans reconstruction (un recalcul en libre figeait l'image sur un plan dense).
   // 🩸 Pas la signature de KtaGalerie : bon marché à dessein (premier et dernier sommets), elle ne voit ni un sommet
   // du milieu déplacé, ni un renommage, ni une couleur. Champs « _… » sautés : état d'exécution (marqueur Leaflet,
   // copie de prévisualisation), pas de la donnée, et parfois des cycles.
@@ -438,8 +448,16 @@
       }
     };
     const liste = function (l) {
-      mel(-9); mel(l.length);
-      for (let i = 0; i < l.length; i++) { if (l[i] && !l[i]._preview) objet(l[i], 2); else mel(-4); }
+      mel(-9);
+      let n = 0;
+      for (let i = 0; i < l.length; i++) {
+        const o = l[i];
+        if (!o) { mel(-4); continue; }
+        if (o._preview || o.type === "itinerary") continue;
+        objet(o, 2);
+        n++;
+      }
+      mel(n);
     };
     [window.getRoads, window.getAllEmbeddedRoads, window.getZones, window.getAllEmbeddedZones, window.getStructures,
       window.getAllEmbeddedStructures, window.getEditorPoints, window.getAllEmbeddedPoints].forEach(function (f) {
@@ -885,6 +903,7 @@
   function _estMur(type) { return type === "mur" || type === "mur-ligne"; }
 
   function _construireTuile(t) {
+    if (t.iti) { _construireTuileIti(t); return; }
     if (_e.galerie) { _construireTuileGalerie(t); return; }
     const sc = _e.sc, h = _e.hauteur, mx = _e.mixte;
     const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot(), rubans = new Lot();
@@ -992,6 +1011,57 @@
     _e.scene.add(groupe);
     t.obj = groupe;
     _e.sale = true;
+  }
+
+  // Tuile de l'itinéraire seul (_poserTuilesIti) : ses tirets, même matériau et même ordre que dans une tuile du plan.
+  function _construireTuileIti(t) {
+    const lumineux = new Lot(), groupe = new THREE.Group();
+    for (let i = 0; i < t.r.length; i++) { _compter(_e.rubans, t.r[i].type); _rubanIti(lumineux, t.r[i]); }
+    const g = lumineux.geometrie();
+    if (g) {
+      const m = new THREE.Mesh(g, _e.mats.iti);
+      m.renderOrder = 1;
+      m.matrixAutoUpdate = false;
+      m.userData.famille = "itineraire";
+      groupe.add(m);
+    }
+    _e.scene.add(groupe);
+    t.obj = groupe;
+    _e.sale = true;
+  }
+
+  // ⚠️ contrat : l'itinéraire a ses propres tuiles dans e.tuiles (clé « i:… », t.iti), à part de celles du plan :
+  // construites, montrées et jetées comme elles (_gererTuiles), seules refaites quand seul l'itinéraire change
+  // (_refaireIti). Posées après _reprendreTuiles, elles ne sont jamais reprises : un trajet neuf peut garder le
+  // compte de segments et l'emprise d'une tuile.
+  function _poserTuilesIti(iti) {
+    const e = _e, taille = e.tuilesActives ? TUILE : 0;
+    _indexer({ structures: [], zones: [], roads: iti, points: [] }, e.sc, taille).forEach(function (t, k) {
+      t.iti = true; t.cle = "i:" + k;
+      e.tuiles.set(t.cle, t);
+    });
+    e.compteIti = iti.length;
+  }
+
+  // Itinéraire changé seul (`kta:itineraireChange`, données du plan inchangées) : ses tuiles et ses étapes refaites,
+  // le reste de la scène gardé (tuiles du plan, volumes, passages, ronds). Chevrons et bandeau : relus par le
+  // guidage (guidageForce). Les volumes que le ruban enjambe (_volumesIti) ne dépendent que des zones.
+  function _refaireIti() {
+    const e = _e, t0 = performance.now();
+    e.tuiles.forEach(function (t, k) { if (t.iti) { _libererTuile(t); e.tuiles.delete(k); } });
+    const sessionRoads = _tab(window.getRoads).filter(function (r) { return r && !r._preview; });
+    const iti = _itiDuNiveau(sessionRoads, e.niveau);
+    if (e.compte) e.compte.roads += iti.length - e.compteIti;
+    delete e.rubans.itinerary;
+    e.itiTirets = 0;
+    _poserTuilesIti(iti);
+    _gererTuiles(true);
+    _majMarqueursIti();
+    // ⚠️ contrat de la greffe : scene(ctx, "refaite") après un itinéraire changé aussi (son groupe reste le même).
+    _sceneGreffe();
+    e.itiRefaits++;
+    e.msIti = performance.now() - t0;
+    e.sale = true;
   }
 
   function _libererTuile(t) {
@@ -2459,8 +2529,10 @@
     e.placesPassage = new Map();
     e.volPassages = _volumesDuNiveau(d);
     e.volumesIti = e.volumesIti.concat(_volumesItiAcces(e.volPassages));
-    e.tuiles = _indexer(d, e.sc, e.tuilesActives ? TUILE : 0);
+    const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
+    e.tuiles = _indexer(Object.assign({}, d, { roads: plan }), e.sc, e.tuilesActives ? TUILE : 0);
     if (reprise) _reprendreTuiles(anciennes, reprise, niveauAvant === e.niveau && renduAvant === e.rendu);
+    _poserTuilesIti(d.roads.filter(function (r) { return r.type === "itinerary"; }));
     // Objets dessinés que la visée cherche sous le doigt (_objetAuPoint) : ni structures en galerie (pas dessinées),
     // ni itinéraire (calculé), ni jonction (jamais dessinée).
     e.vus = { structures: e.galerie ? [] : d.structures, zones: d.zones,
@@ -5698,11 +5770,16 @@
     if (!e.geste) {
       if (niv !== e.niveau && e.niveau !== null && niv !== null && _gesteAnime) {
         _lancerGeste(0, function () { _reindexer(); _annoncerNiveau(); });
-      } else if (niv !== e.niveau || ((e.filtresChanges || e.itiChange) && !e.donnees.signal)) {
-        // Filtres ou itinéraire changés avec des données en attente (annulation, import : setRoads annonce aussi
-        // l'itinéraire) : une seule reconstruction, celle de _majDonnees ; données inchangées, faite ici ensuite.
+      } else if (niv !== e.niveau || (e.filtresChanges && !e.donnees.signal)) {
+        // Filtres changés avec des données en attente (annulation, import) : une seule reconstruction, celle de
+        // _majDonnees ; données inchangées, faite ici ensuite.
         e.filtresChanges = false; e.itiChange = false; e.rondsChange = false;
         _reindexer();
+      } else if (e.itiChange && !e.donnees.signal) {
+        // Itinéraire seul changé : setRoads annonce aussi les données, leur relecture passe d'abord (elle refait
+        // tout si le plan a changé avec lui) ; sinon ses tuiles et ses étapes, rien d'autre.
+        e.itiChange = false;
+        _refaireIti();
       }
     }
     if (e.rondsChange) { e.rondsChange = false; _majRonds(); }
@@ -6945,7 +7022,7 @@
         volPassages: [], geste: null, dy: 0, fondu: null, fonduOp: 0, bandeauNiveau: null, bandeauNiveauFin: 0,
         niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, rubans: {}, liseres: {},
-        filtresChanges: false, reindexations: 0,
+        filtresChanges: false, reindexations: 0, itiRefaits: 0, msIti: 0, compteIti: 0,
         donnees: { empreinte: null, signal: 0, premier: 0, signaux: 0, verifs: 0, refaites: 0, degagees: 0, ms: 0,
           msEmpreinte: 0 },
         virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
@@ -7235,7 +7312,7 @@
         libelle: e.boussole ? e.boussole.getAttribute("aria-label") : "",
         inclinaisonVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden },
       niveau: e.niveau, niveauLibre: Number.isInteger(e.niveauLibre) ? e.niveauLibre : null,
-      reindexations: e.reindexations,
+      reindexations: e.reindexations, itiRefaits: e.itiRefaits, msIti: +e.msIti.toFixed(1),
       donnees: { signaux: e.donnees.signaux, verifs: e.donnees.verifs, refaites: e.donnees.refaites,
         degagees: e.donnees.degagees, attente: !!e.donnees.signal, ms: +e.donnees.ms.toFixed(1),
         msEmpreinte: +e.donnees.msEmpreinte.toFixed(2) },

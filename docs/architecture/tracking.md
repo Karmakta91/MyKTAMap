@@ -1455,13 +1455,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   un **indice**, pas une preuve : un rendu part aussi sans rien changer (option de la carte, filtres). La vue (`vue3d.js > _majDonnees`) attend la fin de la rafale (120 ms sans signal, 600 ms au plus après le
   premier : une annulation répétée ou un import = une reconstruction), jamais pendant un geste de passage (rattrapée
   à sa fin), puis relit son **empreinte** (`_empreinteDonnees` : chaque sommet, chaque champ simple des objets de la
-  session et des calques, état de la légende de la session ; filtres exclus, ils ont leur signal) : inchangée, rien ;
+  session et des calques, état de la légende de la session ; filtres exclus, ils ont leur signal ; **ni l'itinéraire
+  ni les aperçus `_preview`**, qui ont `kta:itineraireChange`) : inchangée, rien ;
   changée, caches de `KtaGalerie` vidés et scène refaite **entière** sur place (`_reindexer` : position, cap,
   tangage, niveau dont `niveauLibre`, mode, vue, inclinaison, zoom, portée, lampe, `reglagesFiges`, itinéraire et
   guidage gardés). Sans signal, aucun coût (ni relecture, ni reconstruction). 🩸 Pas la signature de KtaGalerie :
   bon marché à dessein (premier et dernier sommets, longueur du type), elle ne voit ni un sommet du milieu déplacé,
   ni un renommage, ni une couleur. Un filtre ou un itinéraire changé en même temps que des données en attente
-  (`setRoads` annonce aussi l'itinéraire) attend la même reconstruction. En libre, à l'ouverture comme quand un obstacle
+  (`setRoads` annonce aussi l'itinéraire) attend la relecture : données changées, la reconstruction refait tout ;
+  inchangées, l'itinéraire seul est refait ensuite (`_refaireIti`, ci-dessous). En libre, à l'ouverture comme quand un obstacle
   neuf la recouvre, une place dont le centre est dans une structure dessinée est dégagée au point libre le plus
   proche, cherché à un corps de toute structure (`_degager(true)` : la règle du pas ignore la structure où l'on est,
   on en sortirait mais la place serait dans le pilier) ; une place seulement proche d'une face ne bouge pas ; en
@@ -1845,10 +1847,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_majMarqueursIti`, à chaque `_reindexer`) : disque et mât de 0,6 m à chaque `road.raccords` de rôle « etape »
   (à son point sur le trajet, au niveau du point du trajet le plus proche), panneau « 🏁 » (et le nom de l'arrivée)
   au dernier point. Itinéraire découpé en morceaux du niveau de la scène (`pathfinder.js > computeRoute` pose
-  `level` sur chaque point, sinon celui du tracé ; `vue3d.js > _collecter`). ⚠️ contrat : la scène
-  est refaite à `kta:itineraireChange` (`road.js > setRoads / resetRoads`, detail `{ road | null }` : itinéraire tracé,
-  remplacé ou effacé ; pas sur une étape validée), donc un itinéraire tracé pendant la vue (🚨, fiche, recalcul du
-  guidage) s'y montre aussitôt.
+  `level` sur chaque point, sinon celui du tracé ; `vue3d.js > _itiDuNiveau`). ⚠️ contrat : l'itinéraire a **ses
+  propres tuiles** (clé « i:… » dans `e.tuiles`, `_poserTuilesIti`, construites et jetées comme les autres) ; à
+  `kta:itineraireChange` (`road.js > setRoads / resetRoads`, detail `{ road | null }` : itinéraire tracé, remplacé ou
+  effacé ; pas sur une étape validée), **seuls** ses tuiles et ses marqueurs sont refaits (`_refaireIti`, quelques ms ;
+  chevrons et bandeau relus par le guidage), jamais la scène : un recalcul en libre ne refait ni structures, ni
+  parois, ni volumes (ceux que le ruban enjambe ne dépendent que des zones). Un itinéraire tracé pendant la vue (🚨,
+  fiche, recalcul du guidage) s'y montre aussitôt. Mesure (`KTA_V3D_PERF=iti KTA_V3D_TEL=1`, iPhone émulé, réseau
+  fictif de 3 120 tronçons) : le recalcul ne fige plus qu'une image, celle du calcul du chemin lui-même
+  (`Pathfinder.computeRoute`, 210 à 300 ms) et du rendu de la carte (20 à 40 ms) ; l'itinéraire 3D, 2 à 12 ms.
 - **Bandeau** (`_majBandeau`, dans `_e.bandeau` sous la rangée du haut, `top` posé par `_majSousHaut` sous la rangée
   seule) : icône (ou schéma du carrefour), consigne, ligne « puis… », mêmes textes que le bandeau 2D, relus toutes les
   250 ms (`_lireGuidage`). ⚠️ contrat (décision produit) : **en suivi**, la consigne réelle (`ItiGuidage.etat()`,
@@ -2077,7 +2084,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   dos, santé à 0 → fin et meilleure vague retenue, « Rejouer ».
   Données changées pendant la vue (§ 26, objets fictifs) : ouverture en libre au centre d'un pilier → place dégagée,
   en suivi (tracker dans le pilier) → rien ; rien sur 40 images sans signal, un rendu sans changement relu sans rien
-  refaire ; carte déplacée et zoomée sous la décimation PerfUltra → ni signal, ni empreinte, ni reconstruction ; setStructures, setZones, setRoads, setEditorPoints, sommet du milieu déplacé, annulation
+  refaire ; itinéraire remplacé, puis aperçu posé → aucune reconstruction, ruban seul refait (le nouveau) ; carte
+  déplacée et zoomée sous la décimation PerfUltra → ni signal, ni empreinte, ni reconstruction ; setStructures, setZones, setRoads, setEditorPoints, sommet du milieu déplacé, annulation
   (HistoryManager) et couleur de légende → une reconstruction chacun, scène changée, place, cap, niveau, mode, vue,
   portée, lampe et itinéraire gardés ; rafale (6 écritures à 30 ms, 5 d'un coup) = une ; fiche ouverte depuis la 3D
   relue au renommage, fermée à la suppression du POI ; pilier posé sur la place → dégagée ; greffe prévenue une fois,
