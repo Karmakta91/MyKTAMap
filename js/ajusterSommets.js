@@ -9,9 +9,9 @@
 // sur un sommet sans bouger : 🗑️ au point (refusé sous le minimum de la forme, un toast le dit).
 // Familles : prises `window.ktaFormesAjustables.<roads|zones|structures|mesure>` = { cat (HistoryManager, null =
 // hors historique, lu à chaque geste), objets() (modifiables ET visibles, hors objet en cours), ferme(o), minimum(o),
-// libelle(o), rendre(), aimanter?(x, y, o, exclus) → {x, y} | null, etiquette?(action, o) → libellé d'historique }
-// (road.js, zones.js, structures.js, measure.js). Outil 📐 seul armé : seule la mesure s'ajuste (_mesureSeule).
-// Expose : window.KtaAjusterSommets = { enCours(), etat(), annuler(), APPUI_MS, RAYON_PX }.
+// libelle(o), rendre(), aimanter?(x, y, o, exclus, tol?) → {x, y} | null, etiquette?(action, o) → libellé d'historique
+// } (road.js, zones.js, structures.js, measure.js). Outil 📐 seul armé : seule la mesure s'ajuste (_mesureSeule).
+// Expose : window.KtaAjusterSommets = { enCours(), etat(), annuler(), viser(), plan (vue 3D : _saisirPlan), APPUI_MS… }.
 // ⚠️ contrat : un geste = une écriture : captureState → mutation → KtaUid.touch → rendre() (un seul rendu, donc un
 // seul `kta:donneesPlanChange`) → record → SessionPersist.save. Pendant le glisser, rien n'est écrit : aperçu seul.
 // 🩸 Écoutes en CAPTURE sur window. Appui en attente puis glisser : pointermove / mousemove / touchmove avalés ; ni
@@ -97,7 +97,8 @@ window.KtaAjusterSommets = (function () {
   }
 
   // Sommet le plus proche dans le rayon, sinon milieu de segment le plus proche ; parmi les prises seulement.
-  function _chercher(m, x, y, tol) {
+  // `garder(famille, o)` facultatif : ce que l'appelant montre (vue 3D : son niveau, ses filtres).
+  function _chercher(m, x, y, tol, garder) {
     const reg = window.ktaFormesAjustables || {};
     const annotations = !window.layerEditor || m.hasLayer(window.layerEditor), seule = _mesureSeule();
     let s = null, mi = null;
@@ -108,6 +109,7 @@ window.KtaAjusterSommets = (function () {
       try { objs = a.objets() || []; } catch (err) { console.warn("[Ajuster] prise « " + f + " » :", err); return; }
       for (let k = 0; k < objs.length; k++) {
         const o = objs[k], pts = o && o.points, n = pts ? pts.length : 0;
+        if (garder && !garder(f, o)) continue;
         for (let i = 0; i < n; i++) {
           const d = Math.hypot(pts[i].x - x, pts[i].y - y);
           if (d <= tol && (!s || d < s.d)) {
@@ -200,7 +202,7 @@ window.KtaAjusterSommets = (function () {
   }
 
   // ── Écriture : un geste = une entrée d'historique, un rendu ──
-  function _ecrire(action, c, p) {
+  function _ecrire(action, c, p, tol) {
     if (!_permis() || !_encorePresent(c)) return false;
     const a = c.a, o = c.o, H = window.HistoryManager;
     if (action === "supprimer" && o.points.length - 1 < a.minimum(o)) {
@@ -216,7 +218,7 @@ window.KtaAjusterSommets = (function () {
       if (typeof a.aimanter === "function") {
         const exclus = action === "ajouter" ? [o.points[c.i - 1], o.points[c.i % o.points.length]]
           : [o.points[c.i], o.points[c.i - 1], o.points[c.i + 1]];
-        const s = a.aimanter(np.x, np.y, o, exclus.filter(Boolean));
+        const s = a.aimanter(np.x, np.y, o, exclus.filter(Boolean), tol);
         if (s) np = { x: s.x, y: s.y };
       }
       if (action === "ajouter") o.points.splice(c.i, 0, np);
@@ -403,6 +405,40 @@ window.KtaAjusterSommets = (function () {
     if (pris) e.stopPropagation();
   }, true);
 
+  // ── Le même geste mené hors de la carte (vue 3D : vue3d.js > _ajusterAppui) ──
+  // ⚠️ contrat : l'appelant mène appui long, seuils et aperçu ; il donne des coordonnées plan (px image) et une
+  // tolérance plan (son rayon d'écran converti à la profondeur). Familles, droits (_permis : outil armé, lecture seule,
+  // calque non rapatrié), refus sous le minimum, aimantation et écriture (une entrée d'historique, un rendu) restent
+  // ceux de la carte. La cible rendue par `saisir` est opaque : repassée telle quelle à forme / lacher / supprimer.
+  function _saisirPlan(x, y, tol, garder) {
+    const m = _map();
+    if (!m || _g || !_permis() || !Number.isFinite(x) || !Number.isFinite(y) || !(tol > 0)) return null;
+    const c = _chercher(m, x, y, tol, garder);
+    if (c) _stats.gestes++;
+    return c;
+  }
+  // Points de l'aperçu (copie, sommet né au milieu inséré) → { pts, idx, ferme } ; null : droit perdu, cible disparue.
+  function _formePlan(c) {
+    if (!c || !_permis() || !_encorePresent(c)) return null;
+    const pts = c.o.points.map(function (p) { return { x: p.x, y: p.y }; });
+    if (c.genre === "milieu") pts.splice(c.i, 0, { x: c.x, y: c.y });
+    return { pts: pts, idx: c.i, ferme: c.o.points.length >= 3 && c.a.ferme(c.o) };
+  }
+  // Lâcher : p = point d'arrivée (px plan), null sans glisser → "ajoute" | "deplace" | "refus" (minimum, toast dit) |
+  // "menu" (à l'appelant de proposer 🗑️, puis `supprimer`) | "rien" (droit perdu, cible disparue).
+  function _lacherPlan(c, p, tol) {
+    if (!c) return "rien";
+    if (c.genre === "milieu") return _ecrire("ajouter", c, p || { x: c.x, y: c.y }, tol) ? "ajoute" : "rien";
+    if (p) return _ecrire("deplacer", c, p, tol) ? "deplace" : "rien";
+    if (!_permis() || !_encorePresent(c)) return "rien";
+    if (c.o.points.length - 1 < c.a.minimum(c.o)) {
+      _stats.refus++;
+      _toast(_t("ajuster.toast.minimum", { n: c.a.minimum(c.o) }), "warn");
+      return "refus";
+    }
+    return "menu";
+  }
+
   return {
     enCours: function () { return !!_g; },
     etat: function () {
@@ -417,7 +453,18 @@ window.KtaAjusterSommets = (function () {
       const c = p && _permis() ? _chercher(m, p.x, p.y, _pxEnPlan(m, RAYON_PX)) : null;
       return c ? { famille: c.f, genre: c.genre, i: c.i, uid: c.o.uid || c.o.type } : null;
     },
+    plan: {
+      saisir: _saisirPlan,
+      forme: _formePlan,
+      lacher: _lacherPlan,
+      supprimer: function (c) { return !!c && _ecrire("supprimer", c, null); },
+      annule: function () { _stats.annules++; }
+    },
     APPUI_MS: APPUI_MS,
-    RAYON_PX: RAYON_PX
+    VISUEL_MS: VISUEL_MS,
+    RAYON_PX: RAYON_PX,
+    BOUGE_PX: BOUGE_PX,
+    GLISSE_PX: GLISSE_PX,
+    MENU_MS: MENU_MS
   };
 })();

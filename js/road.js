@@ -1295,7 +1295,7 @@ window.renderRoads          = renderRoads;
 
 // ── Ajustement des sommets (js/ajusterSommets.js) ──────────────────────
 // ⚠️ contrat : ktaFormesAjustables.<famille> = { cat, objets(), ferme(o), minimum(o), libelle(o), rendre(),
-// aimanter?(x, y, o, exclus) } (en-tête d'ajusterSommets.js). Tracés de session visibles hors tracé en cours et
+// aimanter?(x, y, o, exclus, tol?) } (en-tête d'ajusterSommets.js). Tracés de session visibles hors tracé en cours et
 // itinéraire ; les tracés d'un calque ne sont pas ici (lecture seule tant que le calque n'est pas en « 🔄 Modifier »).
 // 🩸 RoadGraph ne voit pas un sommet déplacé (sa signature compte les sommets) : invalidé au rendu.
 window.ktaFormesAjustables = window.ktaFormesAjustables || {};
@@ -1313,9 +1313,10 @@ window.ktaFormesAjustables.roads = {
     renderRoads();
     if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
   },
-  // Aimantation du dessin (snapDraw, même rayon) ; `exclus` : le sommet déplacé et ses voisins du même tracé.
-  aimanter: function(x, y, r, exclus) {
-    const s = _snapSurSommetProche(x, y, null, { exclus: exclus, niveau: Number.isInteger(r.level) ? r.level : null });
+  // Aimantation du dessin (snapDraw, même rayon) ; `exclus` : le sommet déplacé et ses voisins du même tracé ;
+  // `tol` (px plan) : rayon déjà converti par l'appelant (vue 3D, à la profondeur du point), sinon celui de la carte.
+  aimanter: function(x, y, r, exclus, tol) {
+    const s = _snapSurSommetProche(x, y, tol, { exclus: exclus, niveau: Number.isInteger(r.level) ? r.level : null });
     if (s) _flashSnap(s.x, s.y);
     return s ? { x: s.x, y: s.y } : null;
   }
