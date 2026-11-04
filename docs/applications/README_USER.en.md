@@ -635,8 +635,8 @@ Where and how a way through is drawn:
 - ![](../../icon/esf.png) **Closed service stairs**: the volume of the open stairs, closed at the top by a dark slab.
 - ![](../../icon/pef.png) **Closed rung shaft**: the volume of the open shaft, closed at the top by a dark slab.
 - ![](../../icon/pb.png) **Blocked shaft**: a masonry slab flush with the ceiling.
-- ![](../../icon/pc.png) **Filled shaft**: the mouth full of backfill, a scree cone on the floor. **The cone stops you.**
-- ![](../../icon/psf.png) **Filled extraction shaft**: the same mouth full of backfill and the same cone, which stops you.
+- ![](../../icon/pc.png) **Filled shaft**: the mouth full of backfill, a scree cone on the floor, pushed against the wall on the point's side. **You bump into the cone, you walk past it**: it always leaves room for a body.
+- ![](../../icon/psf.png) **Filled extraction shaft**: the same mouth full of backfill and the same cone; you walk past the cone.
 - ![](../../icon/ps.png) **Extraction shaft**: a round masonry shaft, daylight at the top.
 - ![](../../icon/pe.png) **Ground shaft / Basin**: a kerb and water, against the wall. You walk past it.
 - ![](../../icon/cao.png) **Open quarry access**: a double door across the tunnel, leaves folded against the walls. In a tunnel wider than the door, dressed stone fills the sides up to the walls and pillars: you only get through the door.

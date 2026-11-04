@@ -2795,6 +2795,10 @@
       v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
       // Volume ailleurs que le point (recalé, raccord validé) : son panneau le suit (_placePanneau).
       if (Math.hypot(pl.x - p.x, pl.y - p.y) > 1e-6) e.placesPassage.set(p, [v.cx, v.cz]);
+      if (v.comble) {
+        v.cone = pl.cone ? { cx: pl.cone.x / e.sc, cz: pl.cone.y / e.sc, R: pl.cone.R }
+          : { cx: v.cx, cz: v.cz, R: DIM_ACCES.cone };
+      }
       if (v.acces) _dimAcces(v);
       out.push(v);
     });
@@ -3071,7 +3075,9 @@
   // cadre doré ni d'itinéraire (aucun moyen : KtaPoiJonction.moyen).
   //   esf / pef : cage à marches ou puits à échelons d'eso / peo, fermés par une dalle sombre (DIM_ACCES.fermeY) ;
   //   pb : dalle maçonnée au ras du plafond, sans bouche ;
-  //   pc / psf : bouche au plafond (carrée / ronde) remplie de remblais, cône d'éboulis au sol ;
+  //   pc / psf : bouche au plafond (carrée / ronde) remplie de remblais, cône d'éboulis au sol, poussé vers la paroi
+  //   du côté du POI dans un tube pour laisser un corps (ACCES_DIM.bassinLibre) en face (KtaGalerie.placePassage >
+  //   cone : v.cone) ; il arrête le pas, on passe à côté ;
   //   ps : puits rond maçonné de DIM_ACCES.rond, sans échelons, ciel au sommet ;
   //   pe : bassin creusé dans le sol contre la paroi du côté du POI, margelle basse, eau à −DIM_ACCES.eau (couleur de
   //   la zone eau) ; il n'arrête pas le pas : on passe à côté ;
@@ -3094,7 +3100,8 @@
 
   // Dimensions d'un accès placé (v.cx, v.cz, v.dir) : rond et bassin d'après DIM_ACCES ; porte de la largeur de la
   // galerie à sa place, comblée jusqu'aux structures (v.comblement = [côté −t, côté +t] m,
-  // KtaGalerie.comblementPorte : la règle de l'obstacle) ; portée (v.r) qui couvre le cône et le comblement.
+  // KtaGalerie.comblementPorte : la règle de l'obstacle) ; portée (v.r) qui couvre le cône (v.cone, décalé de la
+  // bouche) et le comblement.
   function _dimAcces(v) {
     const D = DIM_ACCES;
     if (v.forme === "rond") v.a = v.b = D.rond / 2;
@@ -3107,7 +3114,7 @@
     }
     const cb = v.comblement ? Math.max(v.comblement[0], v.comblement[1]) : 0;
     v.r = Math.hypot(v.a, v.b + cb) + VOLUME.marge + VOLUME.cadre;
-    if (v.comble) v.r = Math.max(v.r, D.cone);
+    if (v.cone) v.r = Math.max(v.r, Math.hypot(v.cone.cx - v.cx, v.cone.cz - v.cz) + v.cone.R);
   }
 
   // Demi-largeur (m) de la galerie dont l'axe est le plus proche de (x, z) (m) à 10 m, modèle du rendu affiché :
@@ -3121,7 +3128,8 @@
 
   function _lot(lots, nom) { return lots[nom] || (lots[nom] = new Lot()); }
 
-  // Cercle de rayon R (m) autour du volume, COTES_CERCLE côtés à partir de l'axe x (même contour que l'obstacle).
+  // Cercle de rayon R (m) autour de v (cx, cz : un volume ou son cône), COTES_CERCLE côtés à partir de l'axe x
+  // (même contour que l'obstacle).
   function _cercle(v, R) {
     const n = window.KtaGalerie.COTES_CERCLE, out = [];
     for (let k = 0; k < n; k++) {
@@ -3130,6 +3138,9 @@
     }
     return _sensPositif(out);
   }
+
+  // Cône d'un puits comblé assez grand pour être dessiné et arrêter le pas (galerieEmprise.js > CONE_MIN_M).
+  function _coneMontre(v) { return !!v.cone && v.cone.R >= window.KtaGalerie.CONE_MIN_M; }
 
   function _carre(v) {
     const Q = _repere(v);
@@ -3154,7 +3165,7 @@
     if (v.bassin) { _bassin(v, lots); return; }
     const ring = v.forme === "rond" ? _cercle(v, v.a) : _carre(v);
     if (v.bouche) _dalleBouchee(v, lots);
-    else if (v.comble) { _puitsComble(v, lots, ring); _cone(v, lots); }
+    else if (v.comble) { _puitsComble(v, lots, ring); if (_coneMontre(v)) _cone(v, lots); }
     else _puitsOuvert(v, lots, g, ring);
   }
 
@@ -3185,19 +3196,21 @@
     v.trace = { combleY: yc };
   }
 
-  // Cône d'éboulis au pied d'un puits comblé : pied au rayon de l'obstacle, mi-pente bosselée (tirage fixe par
-  // place : le même cône à chaque construction), sommet.
+  // Cône d'éboulis au pied d'un puits comblé, à v.cone (centre et rayon de l'obstacle) : pied au rayon, mi-pente
+  // bosselée (tirage fixe par place : le même cône à chaque construction), sommet. Hauteur réduite comme le rayon
+  // (même pente) ; la part enfoncée dans la paroi reste cachée par la roche.
   function _cone(v, lots) {
-    const R = DIM_ACCES.cone, H = DIM_ACCES.coneH, n = window.KtaGalerie.COTES_CERCLE, tx = _e.textures === true;
+    const c = v.cone, R = c.R, H = DIM_ACCES.coneH * Math.min(1, R / DIM_ACCES.cone);
+    const n = window.KtaGalerie.COTES_CERCLE, tx = _e.textures === true;
     const lot = tx ? _lot(lots, "remblais") : lots.opaque, m = tx ? REMBLAIS.m : 0;
     const col = tx ? BLANC : _couleur("zones", "remblais", "fillColor");
     let gr = (Math.abs(Math.round(v.cx * 97 + v.cz * 13)) % 2147483646) + 1;
     const alea = function () { gr = (gr * 16807) % 2147483647; return gr / 2147483647; };
-    const pied = _cercle(v, R), mi = [], sommet = [v.cx, H, v.cz];
+    const pied = _cercle(c, R), mi = [], sommet = [c.cx, H, c.cz];
     const bas = pied.map(function (q) { return [q[0], 0, q[1]]; });
     pied.forEach(function (q) {
       const f = 0.5 + (alea() - 0.5) * 0.12, y = H * 0.55 * (0.9 + alea() * 0.2);
-      mi.push([v.cx + (q[0] - v.cx) * f, y, v.cz + (q[1] - v.cz) * f]);
+      mi.push([c.cx + (q[0] - c.cx) * f, y, c.cz + (q[1] - c.cz) * f]);
     });
     const face = function (a, b, c) {
       const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], wx = c[0] - a[0], wy = c[1] - a[1], wz = c[2] - a[2];
@@ -3213,7 +3226,8 @@
       face(bas[k], mi[k1], mi[k]);
       face(mi[k], mi[k1], sommet);
     }
-    v.trace = Object.assign(v.trace || {}, { cone: { R: R, H: H } });
+    v.trace = Object.assign(v.trace || {}, { cone: { R: R, H: +H.toFixed(3), x: +(c.cx * _e.sc).toFixed(3),
+      y: +(c.cz * _e.sc).toFixed(3) } });
   }
 
   // ps : puits rond maçonné, ouvert dans le plafond, ciel au sommet (comme un puits de surface).
@@ -3377,9 +3391,10 @@
   function _volumesItiAcces(vols) {
     const out = [];
     (vols || []).forEach(function (v) {
-      if (!v.acces || (!v.comble && !v.bassin)) return;
-      const D = DIM_ACCES, ring = _cercle(v, v.comble ? D.cone : D.bassin / 2 + D.margelle);
-      const o = { ring: ring, h: v.comble ? D.coneH : D.margelleH, x0: Infinity, z0: Infinity, x1: -Infinity,
+      if (!v.acces || (!v.comble && !v.bassin) || (v.comble && !_coneMontre(v))) return;
+      const D = DIM_ACCES, ring = v.comble ? _cercle(v.cone, v.cone.R) : _cercle(v, D.bassin / 2 + D.margelle);
+      const h = v.comble ? D.coneH * Math.min(1, v.cone.R / D.cone) : D.margelleH;
+      const o = { ring: ring, h: h, x0: Infinity, z0: Infinity, x1: -Infinity,
         z1: -Infinity };
       ring.forEach(function (q) {
         o.x0 = Math.min(o.x0, q[0]); o.x1 = Math.max(o.x1, q[0]);

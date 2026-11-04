@@ -91,7 +91,8 @@
     cao: "porte", caf: "porte" };
   // Obstacles d'un accès (décision produit) : cône d'éboulis d'un puits comblé, porte fermée ; cavage ouvert : son
   // comblement seul (comblementPorte), l'ouverture du cadre laisse passer. Le bassin (pe) n'arrête pas : posé contre
-  // la paroi (_placeVolume, `contre`), on passe à côté.
+  // la paroi (_placeVolume, `contre`), on passe à côté. Le cône ne ferme jamais une galerie non plus : poussé vers la
+  // paroi du côté du POI, il laisse au moins `bassinLibre` en face (_coneDans) ; on bute dessus, on passe à côté.
   const BLOQUE = { pc: "cone", psf: "cone", caf: "porte", cao: "porteOuverte" };
   // Dimensions (m) des accès : puits rond d'extraction `rond` de diamètre ; bassin `bassin` de diamètre intérieur,
   // margelle de `margelle` d'épaisseur et `margelleH` de haut, eau à `eau` sous le sol, fond à `fond` ; cône
@@ -101,6 +102,10 @@
   // vue3d.js > RAYON_CORPS) entre la margelle et la paroi d'en face (_placeVolume).
   const ACCES_DIM = { rond: 2.5, bassin: 1.6, margelle: 0.2, margelleH: 0.4, eau: 0.8, fond: 1.2, cone: 0.9,
     coneH: 0.6, porteDefaut: 2, porteEp: 0.2, porteDeborde: 0.4, bassinLibre: 0.8 };
+  const CONE_MIN_M = 0.05;          // rayon de cône plus petit (galerie de moins de 0,95 m) : aucun cône
+  // 🩸 Jeu laissé en plus d'un corps à côté d'un cône : un passage de bassinLibre tout juste, le corps touche le cône
+  // et la paroi d'en face à la fois, et la règle du pas (rayons de RAYON_CORPS, bord compris) l'arrête.
+  const CONE_JEU_M = 0.1;
   const COTES_CERCLE = 16;          // côtés d'un cercle d'obstacle (cône, margelle), les mêmes que la 3D
   // Comblement d'un cavage (décision produit) : la porte garde la largeur de la galerie (tracé le plus proche) ; entre
   // son cadre et la structure la plus proche de chaque côté (mur, pilier, front), cherchée dans le plan de la porte
@@ -348,20 +353,21 @@
       const pp = m ? m.plusProche(pl.x, pl.y, DIR_PASSAGE_M * sc) : null;
       const w = pp ? pp.w : ACCES_DIM.porteDefaut / 2 * sc;
       const cb = ACCES[tag] === "porte" ? comblementPorte(pl.x, pl.y, pl.ang, w, n, r) : null;
-      _obstaclesAcces(tag, pl.x, pl.y, pl.ang, w, cb, sc).forEach(function (a) { anneaux.push(a); });
+      _obstaclesAcces(tag, pl, w, cb, sc).forEach(function (a) { anneaux.push(a); });
     });
     const index = _indexAnneaux(anneaux);
     _cacheObstacles.set(cle, { sig: sig, index: index });
     return index;
   }
 
-  // Obstacles d'un accès (BLOQUE[tag]) posé en (x, y) px sur l'axe `ang` (rad), galerie de demi-largeur `w` px,
-  // comblement `cb` ([côté −, côté +] en m, comblementPorte) → contours [[{x, y}]]. Cône : cercle de COTES_CERCLE
-  // côtés, de son rayon. Porte : rectangles de porteEp le long de l'axe, en travers ; fermée, d'un bout de comblement
-  // à l'autre (la largeur de la galerie sans comblement) ; ouverte, chaque comblement seul, du cadre à la structure
-  // (l'ouverture reste libre). porteDeborde de plus au bout : aucune fente contre la paroi ou la structure.
-  function _obstaclesAcces(tag, x, y, ang, w, cb, sc) {
-    const D = ACCES_DIM, genre = BLOQUE[tag];
+  // Obstacles d'un accès (BLOQUE[tag]) à la place `pl` (placePassage : x, y px, axe `ang` rad, `cone`), galerie de
+  // demi-largeur `w` px, comblement `cb` ([côté −, côté +] en m, comblementPorte) → contours [[{x, y}]]. Cône :
+  // cercle de COTES_CERCLE côtés à pl.cone (sans lui : centré sur la place, de son rayon ; aucun sous CONE_MIN_M).
+  // Porte : rectangles de porteEp le long de l'axe, en travers ; fermée, d'un bout de comblement à l'autre (la
+  // largeur de la galerie sans comblement) ; ouverte, chaque comblement seul, du cadre à la structure (l'ouverture
+  // reste libre). porteDeborde de plus au bout : aucune fente contre la paroi ou la structure.
+  function _obstaclesAcces(tag, pl, w, cb, sc) {
+    const D = ACCES_DIM, genre = BLOQUE[tag], x = pl.x, y = pl.y, ang = pl.ang;
     if (genre === "porte" || genre === "porteOuverte") {
       const ux = Math.cos(ang), uy = Math.sin(ang), s = D.porteEp / 2 * sc, deb = D.porteDeborde * sc;
       const g0 = (cb ? cb[0] : 0) * sc, g1 = (cb ? cb[1] : 0) * sc;
@@ -373,10 +379,11 @@
       if (g1 > 0) out.push(rect(w, w + g1 + deb));
       return out;
     }
-    const R = D.cone * sc, out = [];
+    const c = pl.cone || { x: x, y: y, R: D.cone }, R = c.R * sc, out = [];
+    if (!(c.R >= CONE_MIN_M)) return [];
     for (let k = 0; k < COTES_CERCLE; k++) {
       const a = 2 * Math.PI * k / COTES_CERCLE;
-      out.push({ x: x + R * Math.cos(a), y: y + R * Math.sin(a) });
+      out.push({ x: c.x + R * Math.cos(a), y: c.y + R * Math.sin(a) });
     }
     return [out];
   }
@@ -765,8 +772,10 @@
   // avec le côté d'entrée (_entree). `niche` (escalier : jes, eso, esf ; décision produit, jamais en plein milieu de
   // la galerie) : volée en niche latérale (_niche), sauf POI au bout d'un cul-de-sac ou au-delà (_auFond : volée dans
   // l'axe vers le fond, règle ci-dessus).
+  // `cone` (pc, psf) : dans un tube, la place porte aussi celle du cône d'éboulis (_coneDans) ; ailleurs, aucune
+  // (cône centré sur la place, de son rayon : rien ne change en chambre, en structures ni sans axe).
   // C : { sc, pieces, aretes, plusProche, pres(x0, y0, x1, y1) → indices, tubes (bool), enChambre, tubeAu }.
-  function _placeVolume(x, y, demi, C, contre, niche) {
+  function _placeVolume(x, y, demi, C, contre, niche, cone) {
     const sc = C.sc, R = PROCHE_M * sc;
     const axeA = function (px, py, pl) {
       const pp = C.plusProche(px, py, DIR_PASSAGE_M * sc), r = pp ? C.aretes[pp.arete] : null;
@@ -793,8 +802,30 @@
     const off = contre ? Math.max(axe.w - demi * sc, (ACCES_DIM.bassinLibre + demi) * sc - axe.w) : axe.w - demi * sc;
     const k = d <= 1e-9 ? 0 : contre ? off / d : Math.min(d, Math.max(0, off)) / d;
     const nx = axe.x + dx * k, ny = axe.y + dy * k;
-    if (Math.hypot(nx - x, ny - y) < 1e-6) return brut;
-    return axeA(nx, ny, { x: nx, y: ny, ramene: true });
+    const pl = Math.hypot(nx - x, ny - y) < 1e-6 ? brut : axeA(nx, ny, { x: nx, y: ny, ramene: true });
+    if (cone) pl.cone = _coneDans(C, axe, x, y, pl);
+    return pl;
+  }
+
+  // Cône d'éboulis d'un puits comblé dont la bouche est à `pl`, dans le tube de `axe` ({ x, y, w } : point de l'axe
+  // et demi-largeur, px), POI en (x, y) → { x, y (px), R (m) }. ⚠️ contrat (décision produit) : le cône ne ferme
+  // jamais la galerie, il laisse ACCES_DIM.bassinLibre (un corps) plus CONE_JEU_M jusqu'à la paroi d'en face. Sous
+  // la bouche si elle le laisse déjà ; sinon poussé vers la paroi du côté du POI juste assez, enfoncé dans SA paroi
+  // (la roche en cache une part : il se couche contre elle, gardant sa taille), centre au plus sur la paroi ; plus
+  // étroit encore (moins de 1,8 m), rayon réduit pour garder le passage, aucun sous CONE_MIN_M (moins de 0,95 m).
+  // POI sur l'axe (à 1 cm près) : à gauche du sens du tracé (la règle de _niche). La bouche ne bouge pas.
+  function _coneDans(C, axe, x, y, pl) {
+    const sc = C.sc, L = ACCES_DIM.bassinLibre + CONE_JEU_M, w = axe.w / sc;
+    let ux = x - axe.x, uy = y - axe.y, d = Math.hypot(ux, uy);
+    if (d < 0.01 * sc) {
+      const pp = C.plusProche(axe.x, axe.y, DIR_PASSAGE_M * sc), r = pp ? C.aretes[pp.arete] : null;
+      if (!r || !r.l) return { x: pl.x, y: pl.y, R: ACCES_DIM.cone };
+      ux = (r.by - r.ay) / r.l; uy = -(r.bx - r.ax) / r.l; d = 1;
+    }
+    ux /= d; uy /= d;
+    const kb = ((pl.x - axe.x) * ux + (pl.y - axe.y) * uy) / sc;
+    const c = Math.min(w, Math.max(kb, ACCES_DIM.cone + L - w)), R = Math.min(ACCES_DIM.cone, w + c - L);
+    return { x: axe.x + ux * c * sc, y: axe.y + uy * c * sc, R: +Math.max(0, R).toFixed(4) };
   }
 
   // Pièce d'une emprise de passage (_emprisesPassages) : bouche dans le tube (« passage ») ou niche d'escalier.
@@ -895,7 +926,7 @@
     const tag = (Array.isArray(p.tags) && p.tags[0]) || "default", esc = _estEscalier(tag);
     const pl = (d.raccord && esc && _nicheAuRaccord(C, d.x, d.y)) ||
       _placeVolume(d.x, d.y, _demiTravers(tag), d.raccord ? Object.assign({}, C, { tubes: false }) : C,
-        ACCES[tag] === "bassin", esc);
+        ACCES[tag] === "bassin", esc, BLOQUE[tag] === "cone");
     pl.raccord = d.raccord;
     return pl;
   }
@@ -1438,8 +1469,9 @@
 
   // Place du volume de passage du POI p au niveau donné dans un rendu ("mixte" | "galerie" | "structures") →
   // { x, y (px), ang (rad, axe de la galerie), entree (+1 / −1 / 0 : côté d'entrée le long de `ang`, _entree), ramene,
-  // raccord } | null (p ne passe pas par ce niveau). La règle (_placeVolume) est celle de l'emprise du modèle :
-  // vue3d.js y lit la place du volume, du panneau et de 🪜, et le sens des marches. Rendu structures : le point tel
+  // raccord, cone ({ x, y px, R m } : cône d'un puits comblé dans un tube, _coneDans) } | null (p ne passe pas par ce
+  // niveau). La règle (_placeVolume) est celle de l'emprise du modèle : vue3d.js y lit la place du volume, du
+  // panneau, du cône et de 🪜, et le sens des marches. Rendu structures : le point tel
   // quel, aligné sur l'axe du mode galerie.
   function placePassage(p, niveau, rendu) {
     const n = Number.isInteger(niveau) ? niveau : null;
@@ -1460,6 +1492,7 @@
     dansPiece: dansPiece, PROCHE_M: PROCHE_M, versGalerie: versGalerie, placePassage: placePassage,
     zonesBloquent: zonesBloquent, dansZone: dansZone, ZONES_BOUCHENT: Object.assign({}, ZONES_BOUCHENT),
     ACCES: Object.assign({}, ACCES), BLOQUE: Object.assign({}, BLOQUE), ACCES_DIM: Object.assign({}, ACCES_DIM),
-    COTES_CERCLE: COTES_CERCLE, comblementPorte: comblementPorte, COMBLE_MAX_M: COMBLE_MAX_M
+    COTES_CERCLE: COTES_CERCLE, comblementPorte: comblementPorte, COMBLE_MAX_M: COMBLE_MAX_M,
+    CONE_MIN_M: CONE_MIN_M
   };
 })();

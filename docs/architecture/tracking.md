@@ -1613,8 +1613,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `peo`, fermés par une dalle sombre à 2,5 m au-dessus du plafond (pas de ciel). `pb` : dalle maçonnée (matériau des
   parois) au ras du plafond, plafond non troué. `pc` / `psf` : bouche au plafond (carrée de 1,2 m / ronde de 2,5 m)
   remplie de remblais sur 0,5 m, et **cône d'éboulis** au sol (rayon 0,9 m, 0,6 m de haut, 16 côtés) qui arrête le
-  pas (le cône du `psf` garde ce rayon sous sa bouche plus large) ; l'itinéraire passe par-dessus
-  (`_volumesItiAcces`, comme un remblais, à 0,6 m). `ps` : puits rond maçonné de 2,5 m (`ACCES_DIM.rond`, comme
+  pas (le cône du `psf` garde ce rayon sous sa bouche plus large) mais **ne ferme jamais la galerie** (décision
+  produit, même règle que le bassin) : dans un tube, `placePassage` rend aussi `cone` (`galerieEmprise.js >
+  _coneDans`), centre sous la bouche s'il laisse `bassinLibre` (0,8 m, un corps) plus `CONE_JEU_M` (0,1 m : à
+  0,8 m tout juste, le corps touche cône et paroi à la fois, et la règle du pas l'arrête) jusqu'à la paroi d'en face,
+  sinon poussé vers la paroi du côté du POI juste assez, enfoncé dans sa paroi (la roche en cache une part : il se
+  couche contre elle), centre au plus sur la paroi (galerie de moins de 1,8 m : rayon réduit, hauteur à la même
+  pente ; moins de 0,95 m : aucun cône) ; POI sur l'axe : à gauche du sens du tracé. Principal 2,5 m : centre à
+  0,55 m de l'axe ; secondaire 2 m : 0,8 m ; chemin 1,7 m : sur la paroi, rayon 0,8 m. La bouche ne bouge pas. En
+  chambre, en Structures, sans axe à 10 m : centré sur la place, comme avant. Un seul contour pour l'obstacle
+  (`_obstaclesAcces`), le dessin (`_cone`, `v.cone`), le ruban (`_volumesItiAcces`) et `ctx.libre` des add-ons ;
+  l'itinéraire 2D n'en sait rien. L'itinéraire passe par-dessus (`_volumesItiAcces`, comme un remblais, à 0,6 m). `ps` : puits rond maçonné de 2,5 m (`ACCES_DIM.rond`, comme
   `psf`), sans échelons, ciel au sommet. `pe` : bassin rond de 1,6 m creusé dans le sol (bouche au sol), margelle de
   0,2 × 0,4 m, eau à −0,8 m (couleur de la zone eau, matériau de l'eau des galeries), fond à −1,2 m ; posé **contre
   la paroi** du côté du POI (`_placeVolume`, `contre` : margelle tangente à la paroi, à w − 1 m de l'axe) ; galerie
@@ -1643,7 +1652,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (planches, pentures cloutées, `_bois`) et remblais texturés avec 🧱, couleurs unies sinon (bascule = volumes
   refaits). 🩸 Un puits rond dans un tube plus étroit que lui reste sur l'axe et dépasse dans la paroi (pas de
   niche, voulu). Garde-fou : `checkup-vue-3d.js` § 14 quater (3 rendus, blocage, bassin contre la paroi qu'on longe,
-  arrivée devant un cavage fermé, 🧱 coupé, 2D intacte), comblement : § 14 sexies (galerie de 4 m entre deux murs,
+  arrivée devant un cavage fermé, 🧱 coupé, 2D intacte ; suite, `KTA_V3D_SEUL=cone` : cône qui laisse le passage en
+  galerie de 2,5 / 2 / 1,7 m, pc et psf de chaque côté, aller et retour, butée sur le cône, `ctx.libre`, chambre,
+  Structures et POI loin inchangés), comblement : § 14 sexies (galerie de 4 m entre deux murs,
   côtés égaux et inégaux, porte fermée et ouverte, rendu galerie identique sans et avec les murs) ; escaliers en niche : § 14 quinquies (POI d'un côté, de
   l'autre, dans le tube, sur l'axe, boucle, bout de cul-de-sac, tracé dans les deux sens, `esf` / `eso` / `jes` vers
   le haut, le bas et entre trois niveaux ; niche marchable, paroi ouverte, fond muré, 2D intacte).
