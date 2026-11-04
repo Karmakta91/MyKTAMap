@@ -47,6 +47,9 @@
 // et faisceau 40 / 160° (curseurs, pénombre, relus, ancien « forte » / « jour » relu), ☀️ Plein jour (interrupteur),
 // greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
 // (molette, Maj + molette, + / −, = / -, pincement, tuiles qui suivent le recul).
+// Colonne d'outils en vue d'édition seulement (PC, téléphone, paysage ; absente pendant le jeu, qui ne chevauche aucune
+// commande à ces trois tailles). Plan au sol sur écran dense, vue immobile (image, V1, V2). Dessin : premier toucher
+// d'un outil armé posé, au sol sous le doigt (jamais sur le dessus d'un pilier), au point d'appui.
 // Données changées pendant la vue (26). Toucher un objet (27) : fiche de la carte d'un pilier, d'un mur, d'une zone,
 // d'un tracé (mixte, structures, galerie ; yeux et plongée), vide = rien, panneau de POI d'abord, note au clavier,
 // Échap et focus, greffe qui coupe les fiches (doigt), lecture seule (extension, calque), 🗑️ suivi sans rouvrir,
@@ -2682,6 +2685,40 @@ async function sectionDessin(page) {
       cles: nouv ? Object.keys(nouv).sort() : null };
     const pile = window.HistoryManager._peek().undo.map(function (x) { return x.label; });
     r.pilier.historique = pile.slice(-5);
+    // Toucher sur le DESSUS du pilier : sommet au sol sous le doigt (décision produit), jamais sur l'objet ; appui et
+    // lâcher à 6 px l'un de l'autre : sommet sous le point d'APPUI. Tracé de passage retiré ensuite.
+    const routesAvant = window.getRoads().slice();
+    window._desactiverTousLesModes();
+    const solSous = function (pt) {
+      const T = ctxV.THREE, rc = document.querySelector("#kta-vue3d canvas").getBoundingClientRect();
+      const ray = new T.Raycaster();
+      ray.setFromCamera(new T.Vector2((pt.x - rc.left) / rc.width * 2 - 1, -(pt.y - rc.top) / rc.height * 2 + 1),
+        ctxV.camera);
+      const q = ray.ray.intersectPlane(new T.Plane(new T.Vector3(0, 1, 0), 0), new T.Vector3());
+      return q ? [+(q.x - ox).toFixed(3), +(q.z - oz).toFixed(3)] : null;
+    };
+    const dernier = function () {
+      const rd = window.getCurrentRoad();
+      return rd && rd.points.length ? m(rd.points[rd.points.length - 1]) : null;
+    };
+    if (choisir("traces", "ui.trace.principal")) {
+      await images(2);
+      const sD = ecran(3, -5, K.etat().hauteur), vu = K.viser(sD.x, sD.y);
+      await tap(sD);
+      r.solDessus = { vise: vu && vu.genre, h: vu && +(+vu.h).toFixed(2), pose: dernier(), attendu: solSous(sD) };
+      const sA = ecran(7, -1), cvA = document.querySelector("#kta-vue3d canvas");
+      const oA = { bubbles: true, cancelable: true, pointerId: ++idDoigt, pointerType: "touch", isPrimary: true,
+        clientX: sA.x, clientY: sA.y, button: 0 };
+      cvA.dispatchEvent(new PointerEvent("pointerdown", oA));
+      await pause(30);
+      cvA.dispatchEvent(new PointerEvent("pointerup", Object.assign({}, oA, { clientX: sA.x + 6 })));
+      await pause(40);
+      r.appui = { pose: dernier(), appui: solSous(sA), lache: solSous({ x: sA.x + 6, y: sA.y }) };
+    }
+    window._desactiverTousLesModes();
+    window.setRoads(routesAvant);
+    choisir("structures", "ui.struct.pilier1");
+    await images(2);
     // Gestes de caméra, outil armé : glisser à un doigt, pincer, deux doigts glissés, molette, Maj + molette.
     const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
     const cx = rc.left + rc.width * 0.6, cy = rc.top + rc.height * 0.55;
@@ -2775,13 +2812,14 @@ async function sectionDessin(page) {
     r.trace = { type: trace && trace.type, niveau: trace && trace.level, points: trace ? trace.points.map(m) : null,
       fini: !window.getCurrentRoad() && !window.modeRoad, vise: vR ? { genre: vR.genre, uid: vR.uid } : null,
       uid: trace && trace.uid, refaitesPendant: refaitesPendant };
-    // Aimantation des tracés (réglage de la carte) : un toucher à 0,22 m d'un sommet s'y accroche (rayon d'écran de
-    // la 2D converti à la profondeur du point touché).
+    // Aimantation des tracés (réglage de la carte) : un toucher à 8 px d'écran d'un sommet s'y accroche (rayon d'écran
+    // de la 2D, 14 px, converti à la profondeur du point touché). 🩸 En px et non en mètres : le rayon suit le recul.
     const snapAv = { on: C.snapDraw, px: C.snapDrawPx };
     C.snapDraw = true; C.snapDrawPx = 14;
     choisir("traces", "ui.trace.chemin");
     const avA = uids(window.getRoads());
-    await tap(ecran(6.18, 4.12)); await tap(ecran(6, 0));
+    const s64 = ecran(6, 4);
+    await tap({ x: s64.x + 6.4, y: s64.y - 4.8 }); await tap(ecran(6, 0));
     choisir("traces", "ui.trace.valider");
     const aim = nouveau(window.getRoads(), avA);
     r.aimant = { premier: aim ? m(aim.points[0]) : null, n: aim ? aim.points.length : 0 };
@@ -2996,6 +3034,12 @@ async function sectionDessin(page) {
   verifier(r.enCours.points === 4 && r.enCours.niveau === -1 && r.enCours.refaites === 0 && r.enCours.apercu > 0 &&
     !(r.enCours.dansScene && r.enCours.dansScene.genre === "structures"),
     "pilier en cours (4 sommets au doigt) : niveau −1 de la 3D, aperçu au sol, aucune reconstruction", r.enCours);
+  const pres = function (p, q, tol) { return !!p && !!q && Math.hypot(p[0] - q[0], p[1] - q[1]) <= tol; };
+  verifier(!!r.solDessus && r.solDessus.vise === "structures" && r.solDessus.h > 0.5 &&
+    pres(r.solDessus.pose, r.solDessus.attendu, 0.03) && !pres(r.solDessus.pose, [3, -5], 0.3),
+    "toucher sur le dessus d'un pilier, outil armé : sommet au sol sous le doigt, pas sur le pilier", r.solDessus);
+  verifier(!!r.appui && pres(r.appui.pose, r.appui.appui, 0.03) && !pres(r.appui.pose, r.appui.lache, 0.03),
+    "doigt qui roule de 6 px en se levant : sommet sous le point d'appui", r.appui);
   verifier(r.pilier.cree && r.pilier.ferme && r.pilier.type === "pilier-1" && r.pilier.niveau === -1 &&
     r.pilier.actifCarte === 0 && r.pilier.niveau3d === -1 && proche(r.pilier.points, [[2, -6], [4, -6], [4, -4], [2, -4]], 0.03) &&
     r.pilier.refaites === 1 && r.pilier.vise && r.pilier.vise.genre === "structures" && r.pilier.vise.uid === r.pilier.uid &&
@@ -3020,7 +3064,7 @@ async function sectionDessin(page) {
     r.trace.vise && r.trace.vise.uid === r.trace.uid,
     "tracé au doigt, validé par ✅ : niveau −1, aucune reconstruction pendant, visible", r.trace);
   verifier(r.aimant.n === 2 && proche([r.aimant.premier], [[6, 4]], 1e-6),
-    "aimantation des tracés (snapDraw) : toucher à 0,22 m d'un sommet → accroché sur lui", r.aimant);
+    "aimantation des tracés (snapDraw) : toucher à 8 px d'écran d'un sommet → accroché sur lui", r.aimant);
   verifier(r.armeMesure && r.mesure.points === 2 && Math.abs(r.mesure.distance - 10) < 0.03 &&
     r.mesure.etiquettes.some(function (t) { return t.indexOf(r.mesure.attendu) >= 0; }) && r.mesure.eteinte,
     "mesure 📐 au doigt : 10 m justes, étiquette de la carte dans la 3D, retoucher l'éteint", r.mesure);

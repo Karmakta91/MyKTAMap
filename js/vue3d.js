@@ -4516,15 +4516,17 @@
     return true;
   }
 
-  // Point du sol sous le doigt (rayon posé par _rayonEcran) : la surface montrée touchée (_pointVise : dessus d'un
-  // pilier = son emprise), sinon le plan du sol ; { x, y (px plan), dist (m) } ou null (rayon vers le ciel).
-  // ⚠️ contrat : le plan du sol est mathématique (y = 0), aucun maillage requis : hors galerie (rendu Galerie, fond
-  // noir), au-delà du carré de sol ou de la portée, le point visé se pose quand même.
+  // Point du sol sous le doigt (rayon posé par _rayonEcran) : le plan du sol y = 0, toujours → { x, y (px plan), dist
+  // (m) } ou null (rayon vers le ciel).
+  // ⚠️ contrat (décision produit) : jamais la surface d'un objet. Le dessus d'un pilier, le haut d'une paroi de tube ou
+  // d'un mur touchés donnaient un sommet décalé du doigt d'autant que l'objet est haut (jusqu'à 1,3 m mesuré en vue
+  // inclinée), alors que l'aperçu et le plan au sol se dessinent au sol, sous le doigt : on pose où l'on voit le trait.
+  // Le plan est mathématique, aucun maillage requis : hors galerie (rendu Galerie, fond noir), au-delà du carré de sol
+  // ou de la portée, le point visé se pose quand même.
   function _pointSol() {
-    const e = _e, v = _pointVise();
-    // Sol touché : le plan exact plutôt que le maillage (relief de quelques cm, décalé en vue rasante).
-    if (v && !v.sol) return { x: v.x, y: v.y, dist: v.dist };
-    const q = e.rayon.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+    const e = _e;
+    const q = e.rayon.ray.intersectPlane(e.planSol0 || (e.planSol0 = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)),
+      new THREE.Vector3());
     if (!q) return null;
     return { x: q.x * e.sc, y: q.z * e.sc, dist: q.distanceTo(e.camera.position) };
   }
@@ -6357,7 +6359,9 @@
         if (tape && tape.id === ev.pointerId && doigts.size === 0 && bouge < TAPE.bouge && duree < TAPE.ms) {
           // Caméra déplacée depuis la dernière image (glisser, pincer) : posée avant le rayon du toucher.
           if (e.sale) _placerCamera();
-          _toucher(ev.clientX, ev.clientY);
+          // 🩸 Point d'APPUI, pas de lâcher : un doigt roule de quelques px en se levant (jusqu'à 6 px mesurés, 0,2 m
+          // posé à côté en vue dézoomée) ; la caméra n'a pas bougé (moins de TAPE.bouge px).
+          _toucher(tape.x, tape.y);
         } else {
           _refusDessin(!tape ? "un autre pointeur était déjà posé sur la scène"
             : doigts.size ? "un autre pointeur est encore posé"
