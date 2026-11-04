@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.22.1` (02/11/2026)
+## 📦 Version courante — `v2.22.2` (04/11/2026)
 
-> 🧊 **v2.22.1 — Correctif de la vue 3D, accès de surface dessinés** : un passage entre niveaux (escalier, puits) se dessine dans la galerie de chaque niveau, même quand son point est posé à côté pour la lisibilité de la carte (il n'en restait parfois que le panneau) ; escaliers et puits fermés, puits bouchés ou comblés, puits d'extraction, bassins et cavages (porte à deux battants) ont leur volume en 3D, et une porte fermée, un bassin ou le cône d'un puits comblé arrêtent la marche. Détail : journal ci-dessous.
+> ✏️ **v2.22.2 — Vue 3D d'édition, carte tournée à la main, formes ajustables** : la vue plongeante devient la **vue d'édition** (dessin des structures, zones, tracés et mesures au doigt, caméra libre, survol, sélecteur de niveau, plan au sol), toucher un objet en 3D ouvre sa fiche, la scène suit les données modifiées pendant qu'elle est ouverte ; en 2D, rotation à deux doigts et ajustement des sommets par appui long ; guidage : encart destination / distance / temps, repère au bon niveau, recalcul automatique en 3D libre ; zones sur plusieurs niveaux. Détail : journal ci-dessous.
 
 ---
 
@@ -208,7 +208,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (145 modules)
+## 🟢 L'application : modules JS (146 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -261,11 +261,11 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `ktaUid.js` | Identifiants stables des objets de carte (`uid` + `updatedAt`), traces de suppression, fusion |
 | `styleResolver.js` | Source unique des styles des types (`ktaResolveStyle`, `ktaSwatchColor`, `ktaTypeSwatchHtml`) |
 | `utils.js` | Boîte à outils globale : `convertCoord`, icônes de point, `formatDistance`, `ktaConfirm` / `ktaAlerte`, popups |
-| `measure.js` | Mesure de distance et de surface, simultanées |
+| `measure.js` | Mesure de distance et de surface, simultanées ; annulable outil armé |
 | `tiling.js` | Rendu du fond de plan : image directe, tuiles runtime V1 ou tuiles V2 du Générateur |
 | `imageLayerCalibration.js` | Calage d'un calque image par 2 ancres (similitude 2D) |
 | `imageLayerCalibrationPicker.js` | Modale de calage 2 ancres (deux mini-cartes source / plan) |
-| `mapBearing.js` | Mode « plan orienté » : la carte tourne pendant le suivi (pane intercalaire `.kta-rotate-pane`) |
+| `mapBearing.js` | Rotation de la carte 2D : plan orienté pendant le suivi, rotation manuelle à deux doigts et bouton nord (pane intercalaire `.kta-rotate-pane`) |
 | `map.js` | Carte Leaflet du plan (CRS.Simple), catalogue `TAGS_BUILTIN`, `_iconMap`, calques, filtre de niveau |
 | `tracking.js` | Tracker podométrique sans GPS : position, cap, recalage, map-matching, timeline du parcours |
 
@@ -282,13 +282,14 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `convertirObjet.js` | Changer un objet de type ou de famille (ouvert ⇄ fermé), en lot, de niveau ; suppression |
 | `selectionMulti.js` | Sélection de N objets (clic, type, zone) pour une conversion ou une suppression en lot |
 | `selectionZone.js` | Sélection par zone dessinée (outil ♦️ Surface) et suppression en lot de la sélection |
+| `ajusterSommets.js` | Ajuster une forme dessinée : déplacer, ajouter ou supprimer un sommet par appui long |
 | `calqueSession.js` | Rapatrier un calque de données entier dans la session pour le corriger |
 | `profondeurNiveaux.js` | Profondeur des niveaux (saisie) et profil en long d'un itinéraire |
 | `osmMesure.js` | Mesure de distance et de surface dans la Vue OSM (lat/lng, sans calibrage du plan) |
 | `osmCoords.js` | Coordonnées GPS de surface d'un point cliqué dans la Vue OSM |
 | `photos.js` | Photos des POI en IndexedDB (compression, EXIF retiré, 5 par point, fiche de rattachement) |
 | `photoViewer.js` | Visionneuse plein écran des photos d'un point (zoom, glissé, date de prise) |
-| `historyManager.js` | Annuler / Rétablir des 4 familles dessinables (50 entrées, photos exclues) |
+| `historyManager.js` | Annuler / Rétablir des 4 familles dessinables (50 entrées, photos exclues), et de la mesure 📐 tant que l'outil est armé |
 
 ### ⚡ Runtime plan
 
@@ -414,7 +415,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `secoursBalayage.js` | Mode Secours : découpage du réseau en secteurs et parcours de balayage (calcul pur) |
 | `secoursPhotos.js` | Photos des étapes d'un parcours d'équipe (IDB dédiée `myktamap_secours_photos`) |
 | `shortcuts.js` | Raccourcis clavier globaux |
-| `shortcutsCheatsheet.js` | Aide-mémoire des raccourcis (touche `?`) |
+| `shortcutsCheatsheet.js` | Fiche des raccourcis clavier et gestes (touche `?`) : carte, actions globales, vue 3D |
 | `presentationMode.js` | Mode présentation (touche `F`) : interface masquée, raccourcis d'outils coupés |
 | `wakeLock.js` | Écran maintenu allumé (Screen Wake Lock), repris au retour visible |
 
@@ -561,6 +562,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-plan-tags.js` | Étiquettes de plan normalisées différemment par les écrivains de plan-config | pre-commit |
 | `check-podometre-global.js` | Réglage de podomètre lu dans un plan-config au lieu du réglage global de l'appareil | pre-commit |
 | `check-poi-jonction.js` | POI entre niveaux (`jes` / `jpe` / `jps`) compté comme sortie de surface, jonctions absentes du graphe | pre-commit |
+| `check-zones-niveaux.js` | Zone reliée à plusieurs niveaux (`niveaux`) affichée hors de ses niveaux, qui ne bloque plus l'itinéraire sur chacun, ou champ perdu à l'aller-retour session / KMZ / GeoJSON | pre-commit |
 | `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
 | `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |
 | `check-position-confirmee.js` | Urgence / « Y aller » qui redemande une position déjà sûre (ou part d'une position non confirmée) | pre-commit |
@@ -637,7 +639,11 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
+| `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
+| `smoke/checkup-raccourcis.js` | Fiche des raccourcis : chaque ligne affichée (carte 2D, actions globales, vue 3D) jouée et son effet vérifié, téléphone compris, Chromium et WebKit |
+| `smoke/checkup-mesure-annulable.js` | Mesure 📐 annulable (⏪ / ⏩) tant que l'outil est armé, entrées purgées à sa fermeture, pile partagée avec une zone, vue 3D comprise, Chromium et WebKit |
 | `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
+| `smoke/checkup-inaccessible-sous-structures.js` | Zones (inaccessible comprise) sous les structures sur le canvas commun après chargement, édition, ⏪ et filtre ; hachures en CanvasPattern ; fiche au clic |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
@@ -651,10 +657,13 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-plan-folders.js` | Mode Dossiers de « Mes plans » au pixel |
 | `smoke/checkup-plan-oriente.js` | Mode « plan orienté » : la vue tournée affiche tout au bon endroit |
 | `smoke/checkup-poi-jonction.js` | POI entre niveaux : raccords proposés et validés, itinéraire |
+| `smoke/checkup-zones-niveaux.js` | Zone reliée à plusieurs niveaux : cases de la fiche, filtre, itinéraire contourné sur chacun, ⏪, KMZ et GeoJSON relus |
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
+| `smoke/checkup-dessin-sans-fiche.js` | Outil armé (dessin, mesure, ajout de point, pickers) : tout toucher pose au point touché, aucune fiche, un seul outil à la fois (2D et 3D, doigt et souris) |
 | `smoke/checkup-recalage-scan.js` | « Recaler des données sur un autre scan » sur des jeux fictifs |
 | `smoke/checkup-repositionner.js` | « Repositionner » un POI de session à la souris |
 | `smoke/checkup-retour-accueil.js` | Fermer un plan le vide, « Reprendre » le retrouve |
+| `smoke/checkup-rotation-manuelle.js` | Rotation manuelle de la carte 2D : seuil des deux doigts, bouton nord, outils armés, fiches et exports sous rotation, barre 2D en paysage bas |
 | `smoke/checkup-secours-une-intervention.js` | Une seule intervention Secours active à la fois sur un plan |
 | `smoke/checkup-session-repli.js` | Sections repliables de la modale Détails de la session sur une grosse session |
 | `smoke/checkup-splash.js` | Splash de démarrage au téléphone et au PC |
@@ -665,7 +674,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
 | `smoke/checkup-urgence-memoire.js` | Défauts invisibles à l'œil : fuite au changement de plan, console, plan de démonstration |
 | `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue par plan |
-| `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, tuile grisée sans échelle, ouverture depuis la tuile, scène, mur sous le pilier, butée, vue plongeante, perte et reprise du contexte WebGL, « Je suis ici ? », WebGL absent, collisions (6 obstacles, 12 angles, pas rapides), pas rapide, inclinaison, boussole, modes galerie et mixte (galerie qui débouche sur une chambre), halo des dangers, ⭐ des favoris, membres d'une extension factice ; mesures sur un plan dense synthétique |
+| `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, tuile grisée sans échelle, ouverture depuis la tuile, scène, mur sous le pilier, butée, vue plongeante, perte et reprise du contexte WebGL, « Je suis ici ? », WebGL absent, collisions (6 obstacles, 12 angles, pas rapides), pas rapide, inclinaison, boussole, modes galerie et mixte (galerie qui débouche sur une chambre), halo des dangers, ⭐ des favoris, membres d'une extension factice, réglages ⚙️ Portée et Lampe (intensité, faisceau, Plein jour), cavage comblé jusqu'aux structures, zoom de la vue plongeante, scène refaite quand les données changent vue ouverte (session, annulation, calque rapatrié puis restitué, légende, rafale, geste), dessin en vue plongeante avec les outils de la carte (§ 28 : pilier, murs, zone, tracé, mesure, niveau de la 3D, gestes, extinction, greffe, lecture seule, plan au sol), zone reliée à plusieurs niveaux (§ 29 : vue et obstacle sur chacun des siens, scène refaite au décochage), vue d'édition (§ 30 : caméra libre au doigt, ⌖, survol, niveau sans passage, bandeau, segments et angles de la mesure, panneaux lisibles, plan au sol au point visé, parois et sol unis 🧱 coupé, vue retenue par plan, tuile ⚙️ sur la colonne 🛠️) ; mesures sur un plan dense synthétique (portée de 20 à 100 m, plongée dézoomée, scène refaite, `KTA_V3D_PERF=dessin`) |
 
 ---
 
@@ -767,6 +776,19 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.22.2 (04/11/2026) — Vue 3D d'édition, carte tournée à la main, formes ajustables (branche `Karma_dev`)
+
+- **🧊 Vue 3D, la scène suit les données** (`js/vue3d.js`, signal `kta:donneesPlanChange` émis par les rendus de la carte, empreinte relue sur signal) : objet ajouté, modifié, supprimé, annulé, calque modifié / restitué / coché, légende changée → scène refaite sans bouger la place ; une rafale = une reconstruction ; l'itinéraire a ses propres tuiles (un recalcul ne refait que le ruban). `checkup-vue-3d.js` § 26.
+- **📍 Toucher un objet en 3D** : pilier, mur, zone, tracé → la fiche de la carte (mêmes droits), « Voir sur la carte » ; prise `fiches: false` pour une greffe. § 27.
+- **🔦 Lampe frontale des collègues en 3D** (`js/vue3d.js > _lampeMembre`) : halo sur la tête de chaque membre (additif, hors brouillard, caché par la roche, visible jusqu'à la portée réglée et jamais au-delà, taille bornée à l'écran), faisceau devant lui si sa présence donne un cap ; vraie lumière pour les 2 plus proches à moins de 20 m (coût mesuré dans le bruit) ; discret en Plein jour et en vue d'édition. § 12 ter.
+- **✏️ Vue d'édition** (ex-vue plongeante, nom de code `plongee`) : outils de la carte (structures, zones, tracés, 📐) au doigt et à la souris, sommet posé au sol sous le point d'appui, niveau de la 3D ; caméra libre (un doigt = pan, deux doigts = cap / zoom / inclinaison), aucun obstacle ne bloque, sélecteur de niveau, vue retenue par plan, 🗺️ plan au sol, bandeau de mesure avec segments et angles. §§ 28, 30.
+- **🔦 Réglages 3D** : portée (15–100 m), lampe (25–300 %), faisceau (40–160°), ☀️ Plein jour ; figés pendant une partie (`reglagesFiges`). 🧱 coupé : sol et plafond noirs, parois à la couleur de légende. Cavage comblé en pierre de taille jusqu'aux structures. Interface alignée sur la barre 2D (jetons `--kta-barre-*`). § 25.
+- **🗺️ Carte 2D** : rotation à deux doigts sans tracker (`mapBearing.js`, seuil 15°, Maj + molette au PC), bouton nord en bas à gauche ; ajuster une forme par appui long (`js/ajusterSommets.js` : déplacer, ajouter, supprimer un sommet), fermeture d'une forme en mètres ; outil armé = tout toucher pose un point, aucune fiche ; Échap désarme l'outil ; mesure annulable tant que 📐 est armé. `checkup-rotation-manuelle.js`, `checkup-ajuster-sommets.js`, `checkup-dessin-sans-fiche.js`, `checkup-mesure-annulable.js`.
+- **🧭 Guidage** : repère cité au niveau du tronçon seulement ; encart destination / distance / temps restants (allure « lente » 3 km/h par défaut, itinéraire et Perdu) ; en 3D libre, recalcul automatique quand on s'écarte, en suivi les boutons de la 2D.
+- **⬛ Zones sur plusieurs niveaux** (`ktaNiveauxObjet`), vues et bloquantes sur chacun ; l'inaccessible passe sous les structures.
+- **⌨️ Fiche des raccourcis** refaite (carte, vue 3D lue par `KtaVue3D.raccourcis()`, gestes tactiles). `checkup-raccourcis.js`.
+- **Docs** : section Vue 3D du guide rangée en sous-parties avec les icônes des POI (`interfaceDocs.js`, adresses d'image sur liste blanche).
 
 #### v2.22.1 (02/11/2026) — Correctif de la vue 3D, accès de surface dessinés (branche `Karma_dev`)
 

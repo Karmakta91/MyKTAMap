@@ -450,12 +450,13 @@ Note : pour roads/zones/structures, on passe par `reset() + set()` car `set()` s
 
 ```js
 window.HistoryManager = {
-  record(label, beforeState?)  // push une entrée d'historique
-  captureState()                // retourne snapshot complet
+  record(label, beforeState?, category?)  // push une entrée d'historique (catégorie = instantané ciblé)
+  captureState(category?)       // snapshot ciblé ("editorPoints" | "roads" | "zones" | "structures" | "mesure"), tout sinon
   recordAction(label, fn)       // helper : capture + fn() + record
   undo() / redo()               // applique state ± précédent / suivant
   canUndo() / canRedo()         // booléens pour griser les boutons
   reset()                       // vide les 2 piles
+  purger(category)              // retire des 2 piles les entrées d'une catégorie (outil 📐 fermé, §47.11)
   onChange(cb)                  // listener pour sync UI
 };
 ```
@@ -576,6 +577,33 @@ Quand on ajoute un nouveau type d'annotation dessinable (ex: 📝 notes textuell
 4. **Pas besoin** de modifier `historyManager.js` pour les UI / raccourcis / boutons (c'est automatique)
 
 ⚠️ **Penser au reset au plan switch** : `_libererRessourcesPlanPrecedent` couvre déjà le `HistoryManager.reset()` qui vide TOUTES les piles d'un coup — pas de boulot supplémentaire.
+
+#### 47.11 La mesure 📐 : annulable tant que l'outil est armé
+
+⚠️ Contrat (décision produit) : la mesure s'annule (⏪ / ⏩) **seulement tant que l'outil 📐 est armé** ; l'historique
+durable ne garde que les objets (points, tracés, zones, structures).
+
+- **Catégorie `"mesure"`** de `HistoryManager` : l'instantané porte les deux mesures (`{ mesure: { distance, surface } }`,
+  pas le sous-mode : le bouton surligné reste celui choisi). Jamais dans un instantané « tout » (`captureState()` sans
+  catégorie) : une annulation d'objet ne touche pas à la mesure. Pas de trace de suppression (aucun uid).
+- **Gestes enregistrés** (`measure.js`, `_avantGeste` → mutation → `_noter`) : point posé, ❌ dernier point, ❌ effacement
+  (distance, surface, les deux), et l'ajustement d'un sommet par appui long (`ktaFormesAjustables.mesure.cat` vaut
+  `"mesure"` outil armé, `null` sinon ; libellés `measure.histo.*`). Un passage distance ↔ surface ne touche aucun point :
+  ni entrée, ni purge. Rien pour le contour de la sélection par zone (`selectionZone.js` arme aussi `modeMesure`) :
+  `window.ktaMesureAnnulable()` l'exclut.
+- **Outil armé, appui long** (`ajusterSommets.js > _mesureSeule`) : la mesure, et elle seule, s'ajuste ; outil éteint,
+  elle s'ajuste aussi, hors historique.
+- **Purge à la fermeture** : `interface.js > _initPrecisionCursor` intercepte déjà les écritures de `window.modeMesure` ;
+  quand il retombe, `HistoryManager.purger("mesure")` en fin de tâche (microtâche : distance → surface éteint puis
+  rallume dans le même clic). Couvre le re-clic du bouton, un autre outil (`_desactiverTousLesModes`), Échap en 3D, la vue 3D
+  fermée outil armé, le changement de plan. Filet : `undo()` / `redo()` purgent d'abord si l'outil est fermé.
+- **Pile unique** : retirer des entrées au milieu est sûr, chaque entrée ne restaure que sa catégorie. Zone dessinée
+  puis mesure : ⏪ défait les gestes de mesure, puis la zone ; outil fermé, ⏪ défait directement la zone.
+- Aucune entrée n'est sauvée avec la session (l'historique est en RAM) ; les points de mesure, eux, le sont comme avant.
+- Vue 3D : bandeau et aperçu relus à chaque image sur signature (`vue3d.js > _majBandeauMesure`, `_apercuSig` qui
+  compte tous les sommets des mesures).
+
+Preuve : `scripts/smoke/checkup-mesure-annulable.js` (Chromium et WebKit).
 
 ---
 

@@ -10,7 +10,7 @@
 // Expose : initStructures, toggleStructureMode, fermerStructureEnCours, renderStructures, resetStructures,
 //   removeLastStructure(Point), get/setStructures, getCurrentStructure(Index), setCurrentStructureByIndex,
 //   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, majLargeurFronts, brancherLargeurFronts,
-//   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm,
+//   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm, ktaStructuresAuDessus,
 //   ktaMursSousPiliers / ktaOrdonnerMursCarte (un mur sous les piliers et fronts de son niveau, carte et exports).
 // ⚠️ Aucune couleur ici : la source est js/styleResolver.js (l'utilisateur choisit dans ≡ Légende).
 // 🩸 Le Pathfinder ne fait aucune arête d'une structure (graphe sur les `roads` seulement) : un relevé tout en
@@ -55,8 +55,7 @@ let currentStructure = null;
 let structureLayers = [];      // polygones fermés (remplis)
 let structurePreviewLayer = null;  // polyline pointillée pendant le tracé
 
-// Re-clic sur le 1er point (unités plan) pour fermer.
-const STRUCT_CLOSE_TOLERANCE = 5;
+// Re-clic sur le 1er point pour fermer : utils.js > ktaToleranceFermeture (mètres du plan, plancher en px d'écran).
 
 // ── Styles (décisions produit, valeurs dans styleResolver.js) ──────────────
 //   • Piliers / mur : contour NOIR systématique (ce qui distingue une structure d'une zone), remplissage plus
@@ -393,7 +392,8 @@ function initStructures() {
       const dx = x - p0.x;
       const dy = y - p0.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= STRUCT_CLOSE_TOLERANCE) {
+      const tol = typeof window.ktaToleranceFermeture === "function" ? window.ktaToleranceFermeture(e) : 5;
+      if (dist <= tol) {
         fermerStructureEnCours();
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("struct.undo.close", { type: _typeLabel }), _historyBefore, "structures");
@@ -494,7 +494,24 @@ function fermerStructureEnCours() {
 }
 
 // ── Rendu ──────────────
+// Filtres d'affichage d'une structure, lus par renderStructures et par l'ajustement des sommets
+// (ktaFormesAjustables) : niveaux visibles (`level` absent = 0), état d'une extension (ktaExtensions.js >
+// filtrerEtats), types du FilterPanel. La structure en cours de tracé passe toujours (comme les zones).
+function _structurePasseFiltres(s) {
+  if (s === currentStructure) return true;
+  const cfg = window.APP_CONFIG || {};
+  if (cfg.multiLevel === true) {
+    const vis = Array.isArray(cfg.visibleLevels) ? cfg.visibleLevels : [0];
+    if (vis.indexOf(Number.isInteger(s.level) ? s.level : 0) < 0) return false;
+  }
+  if (window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
+      !window.KtaExtensions.passeFiltreEtat(s)) return false;
+  const f = window._ktaRuntimeFilters;
+  return !(f && f.structTypes && !f.structTypes.has(s.type));
+}
+
 function renderStructures() {
+  if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("structures");
   // Idempotent (drapeau sur la map) : une closure fraîche par rendu empilerait les écouteurs.
   window.brancherLargeurFronts();
   structureLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
@@ -523,30 +540,9 @@ function renderStructures() {
 
   const target = _structureTarget();
 
-  // Multi-niveau : seul level ∈ visibleLevels passe (sans level = 0) ; hors multi-niveau, tout passe.
-  const _multiLevelOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
-  const _visibleLevels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
-                          ? window.APP_CONFIG.visibleLevels : [0];
-  function _structurePasseFiltre(s) {
-    if (!_multiLevelOn) return true;
-    // La structure en cours de tracé reste toujours visible (comme les zones).
-    if (s === currentStructure) return true;
-    const lvl = Number.isInteger(s.level) ? s.level : 0;
-    return _visibleLevels.indexOf(lvl) >= 0;
-  }
-
   structuresAffichage.forEach(function(s) {
     if (!s.points || s.points.length === 0) return;
-    if (!_structurePasseFiltre(s)) return;
-    // Filtre « objets marqués seulement » d'une extension (ktaExtensions.js > filtrerEtats) ; éteint sans elle.
-    if (s !== currentStructure && window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
-        !window.KtaExtensions.passeFiltreEtat(s)) return;
-
-    // Filtre de types du FilterPanel ; la structure en cours y échappe.
-    if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.structTypes
-        && s !== currentStructure) {
-      if (!window._ktaRuntimeFilters.structTypes.has(s.type)) return;
-    }
+    if (!_structurePasseFiltres(s)) return;
 
     const latlngs = s.points.map(function(p) { return convertCoord(p.x, p.y); });
     const style = _resolveStructureStyle(s.type) || _resolveStructureStyle("mur");
@@ -762,6 +758,18 @@ window.setCurrentStructureByIndex = function(idx) {
   }
 };
 
+// ⚠️ Ordre d'empilement : les structures (calques puis session) se peignent AU-DESSUS des zones. Tout est sur le
+// même canvas, peint dans l'ordre d'ajout : une zone (re)dessinée après une structure la recouvrirait. Appelé
+// après chaque rendu de zones (zones.js > renderZones, utils.js > zones d'un calque) ; l'ordre entre structures,
+// et celui des zones entre elles et sous les tracés, est gardé.
+window.ktaStructuresAuDessus = function() {
+  const monter = function(l) { if (l && typeof l.bringToFront === "function") l.bringToFront(); };
+  (window._ktaDataStructurePolygons || []).forEach(function(e) { monter(e && e.polygon); });
+  structureLayers.forEach(monter);
+  // 🩸 bringToFront ne déclenche pas `layeradd` : sans cette passe, un mur remonté repasserait sur un pilier.
+  _ordonnerMursCarte();
+};
+
 // interface.js > activerModeSuppressionStructureClic y lit la géométrie à tester.
 window.isStructurePolylineType       = _isPolylineType;
 window.initStructures                = initStructures;
@@ -771,3 +779,20 @@ window.resetStructures               = resetStructures;
 window.removeLastStructure           = removeLastStructure;
 window.removeLastStructurePoint      = removeLastStructurePoint;
 window.renderStructures              = renderStructures;
+
+// ── Ajustement des sommets (js/ajusterSommets.js) ──────────────
+// ⚠️ contrat : même forme que road.js > ktaFormesAjustables.roads. Structures de session visibles, hors structure en
+// cours ; une ligne (front, mur en ligne) reste ouverte, minimum 2 ; un polygone, minimum 3.
+window.ktaFormesAjustables = window.ktaFormesAjustables || {};
+window.ktaFormesAjustables.structures = {
+  cat: "structures",
+  objets: function() {
+    return structuresData.filter(function(s) {
+      return s && s !== currentStructure && Array.isArray(s.points) && _structurePasseFiltres(s);
+    });
+  },
+  ferme: function(s) { return !_isPolylineType(s.type); },
+  minimum: function(s) { return _isPolylineType(s.type) ? 2 : 3; },
+  libelle: function(s) { return _labelTypeStruct(s.type); },
+  rendre: function() { renderStructures(); }
+};

@@ -773,6 +773,11 @@
       if (PJ && PJ.estJonction(p)) return PJ.niveaux(p);
       return [Number.isInteger(p.level) ? p.level : 0];
     }
+    // Niveaux d'une zone (règle commune points / zones, poiJonction.js > ktaNiveauxObjet).
+    function _niveauxZone(z) {
+      if (typeof window.ktaNiveauxObjet === "function") return window.ktaNiveauxObjet(z);
+      return [Number.isInteger(z.level) ? z.level : 0];
+    }
 
     // `copie` : passage entre niveaux répété dans le dossier d'un autre de ses niveaux (mkm:copie, sauté à
     // l'import pour ne pas doubler le point).
@@ -859,11 +864,13 @@
              '</Placemark>';
     }
 
-    function _emitPolygon(zone, styleId) {
+    // `multi` (zone sur plusieurs niveaux) : { niveaux, niveau du dossier, copie } — la copie se pose à l'altitude
+    // du dossier où elle est répétée et porte mkm:copie (sautée à l'import, comme un passage entre niveaux).
+    function _emitPolygon(zone, styleId, multi) {
       if (!zone.points || zone.points.length < 3) return "";
       // Ring fermé : 1er point répété à la fin.
       const ring = zone.points.slice();
-      const _altZone = _altNiveau(zone.level);
+      const _altZone = _altNiveau(multi ? multi.niveau : zone.level);
       ring.push(zone.points[0]);
       const coords = ring
         .map(function(p) { return _coord(planToGps(t, p.x, p.y), _altZone); })
@@ -875,7 +882,8 @@
       else if (zone.type === "mur") nom = "Mur";
       else nom = _nomType(zone.type);
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
-      const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null);
+      const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null,
+        multi ? { niveaux: multi.niveaux, copie: multi.copie } : null);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
@@ -1167,16 +1175,26 @@
         }
       }
       if (opts.include.zones && opts.data.zones) {
+        // Zone sur plusieurs niveaux : dans le dossier de CHACUN de ses niveaux exportés, un seul original (même
+        // règle que les passages entre niveaux ci-dessus).
+        const zExportes = function(z) {
+          return _niveauxZone(z).filter(function(n) { return !opts.levels || opts.levels.has(n); });
+        };
         const zones = opts.data.zones.filter(function(z) {
           if (zoneTypesSet && !zoneTypesSet.has(z.type)) return false;
-          return _passeLevel(z, Number.isInteger(z.level) ? z.level : 0) &&
-                 (!mlOn || (Number.isInteger(z.level) ? z.level : 0) === level);
+          if (!mlOn) return _passeLevel(z, Number.isInteger(z.level) ? z.level : 0);
+          return zExportes(z).indexOf(level) >= 0;
         });
         if (zones.length > 0) {
           body += '<Folder><name>⬛ Zones (' + zones.length + ')</name>';
           zones.forEach(function(z) {
             const styleId = _idStyleEtCollecte("zone", z.type);
-            body += _emitPolygon(z, styleId);
+            const nv = _niveauxZone(z);
+            if (!mlOn || nv.length < 2) { body += _emitPolygon(z, styleId); return; }
+            const ex = zExportes(z);
+            const lvl = Number.isInteger(z.level) ? z.level : 0;
+            const orig = ex.indexOf(lvl) >= 0 ? lvl : ex[0];
+            body += _emitPolygon(z, styleId, { niveaux: nv, niveau: level, copie: orig !== level });
           });
           body += '</Folder>';
         }

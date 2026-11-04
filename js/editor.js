@@ -792,11 +792,9 @@ window.repositionnerPointEditor = function(id, x, y) {
   _repoDesactiver();   // annule un repositionnement deja arme
 
   // 🩸 LES AUTRES MODES « CLIC CARTE » DOIVENT TOMBER AVANT D'ARMER, sinon le même clic est consommé DEUX FOIS.
-  // `_modeClicCarteActif()` ne suffit pas :
-  //   1. il EXCLUT volontairement `modeEdition` (une popup de nommage y est légitime) : en mode ajout, le clic
-  //      repositionnerait le point ET ouvrirait la fiche d'un point neuf ;
-  //   2. il n'empêche que les POPUPS : `modeRoad` / `modeZone` / `modeStructure` posent leur sommet, `modeMesure`
-  //      son jalon.
+  // `_modeClicCarteActif()` ne suffit pas : il n'empêche que les POPUPS, chaque outil armé consomme aussi le clic
+  // (`modeRoad` / `modeZone` / `modeStructure` posent leur sommet, `modeMesure` son jalon, `modeEdition` ouvrirait
+  // la fiche d'un point neuf).
   // D'abord le registre des modes (lui seul retire la surbrillance du bouton, sinon la sidebar ment), puis les
   // drapeaux en filet (mode jamais enregistré, état incohérent).
   try { _desactiverTousLesModes(); } catch(e) {}
@@ -1021,6 +1019,7 @@ function removeLastEditorPoint() {
 // ⚠️ Jamais layerEditor.clearLayers() ici (il contient aussi roads et zones de session) : on retire seulement
 // les marqueurs de _markersEditor.
 window.renderEditorPoints = function() {
+  if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("points");
   if (!window.layerEditor) return;
   _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
   _markersEditor = [];

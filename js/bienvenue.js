@@ -404,7 +404,7 @@
 
   // Planche fictive de la station « Annoter » : carrière à piliers tournés et fronts de taille, un tracé principal
   // qui se dessine (css/bienvenue.css > .kta-bv-trace-anim), une zone inaccessible, des points posés — aux styles
-  // de l'app (tracé principal vert, zone inaccessible hachurée comme index.html > #kta-pattern-inaccessible).
+  // de l'app (tracé principal vert, zone inaccessible hachurée comme styleResolver.js > CANON.zones.inaccessible._motif).
   function _plancheAnnoter() {
     const reseau = "M30 260 H160 V120 H300 V60 H390 V180 M160 260 V300 H400 M330 300 V180 H390 M230 120 V300";
     // Icônes centrées sur leur point, comme les marqueurs de la carte (ancre au centre), toutes sur une galerie.

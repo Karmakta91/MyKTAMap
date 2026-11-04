@@ -763,7 +763,14 @@ window.ktaNiveauxOccupes = function() {
       });
     };
     if (typeof window.getRoads        === "function") _push(window.getRoads());
-    if (typeof window.getZones        === "function") _push(window.getZones());
+    // Zone sur plusieurs niveaux : chacun compte comme occupé.
+    const _pushZones = function(arr) {
+      (Array.isArray(arr) ? arr : []).forEach(function(z) {
+        if (!z || !Array.isArray(z.niveaux)) return;
+        z.niveaux.forEach(function(n) { if (Number.isInteger(n)) levelsFound.push(n); });
+      });
+    };
+    if (typeof window.getZones        === "function") { _push(window.getZones()); _pushZones(window.getZones()); }
     if (typeof window.getStructures   === "function") _push(window.getStructures());
     if (typeof window.getEditorPoints === "function") _push(window.getEditorPoints());
     // ⚠️ Data layers : niveau en _ktaLevel sur les markers, en .level sur les entrées polylines/polygons
@@ -781,6 +788,7 @@ window.ktaNiveauxOccupes = function() {
       window._ktaDataPolygons.forEach(function(entry) {
         if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
       });
+      _pushZones(window._ktaDataPolygons);
     }
     if (Array.isArray(window._ktaDataStructurePolygons)) {
       window._ktaDataStructurePolygons.forEach(function(entry) {

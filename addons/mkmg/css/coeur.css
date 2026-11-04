@@ -23,6 +23,10 @@
 .mkmg-jauge-plein { display: block; height: 100%; width: 100%; background: var(--kta-erreur); }
 .mkmg-jauge-endurance .mkmg-jauge-plein { background: var(--kta-ok); }
 .mkmg-jauge-endurance.mkmg-souffle .mkmg-jauge-plein { background: var(--kta-texte-3); }
+.mkmg-jauge-lampe .mkmg-jauge-plein { background: var(--kta-accent); }
+.mkmg-jauge-lampe.mkmg-faible .mkmg-jauge-plein { background: var(--kta-avert); }
+.mkmg-jauge-gardien .mkmg-jauge-plein { background: var(--kta-tuilage-v2); }
+.mkmg-jauge[hidden] { display: none; }
 .mkmg-objectif { color: var(--kta-texte); overflow-wrap: anywhere; }
 .mkmg-guide { display: flex; align-items: center; gap: 8px; color: var(--kta-texte-2); }
 .mkmg-guide[hidden], .mkmg-fleche[hidden] { display: none; }
@@ -66,7 +70,10 @@
   border: 2px solid var(--kta-accent); background: var(--kta-surface); pointer-events: auto; touch-action: none;
 }
 .mkmg-tirer:disabled { border-color: var(--kta-texte-3); cursor: default; }
-.mkmg-tirer-image { width: 100%; height: 100%; display: block; }
+/* 🩸 Appui long (détente tenue en rage) : sans ces règles, iOS ouvre son menu « Partager / Enregistrer l'image » sur
+   l'icône du fusil, ou sélectionne le texte des boutons. */
+.mkmg-tirer, .mkmg-rage { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.mkmg-tirer-image { width: 100%; height: 100%; display: block; pointer-events: none; -webkit-user-drag: none; }
 .mkmg-recul { animation: mkmg-recul 160ms ease-out; }
 @keyframes mkmg-recul { 30% { transform: translate(6px, 6px) rotate(-8deg); } }
 /* Coup reçu : bord rouge de l'écran, bref. */
@@ -96,3 +103,20 @@
   background: var(--kta-surface); color: var(--kta-texte); font-size: 18px; font-weight: 700; text-align: center;
 }
 .mkmg-message[hidden] { display: none; }
+/* Rage : petit bouton au-dessus du fusil ; compteur d'égarés tant qu'elle charge, « Rage » prête, secondes restantes
+   pendant. Fusil cerclé de rouge pendant la rage. */
+.mkmg-rage {
+  position: absolute; right: 26px; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 100px);
+  min-width: 52px; height: 32px; padding: 0 8px; border-radius: 999px; box-sizing: border-box; cursor: pointer;
+  border: 1px solid var(--kta-texte-3); background: var(--kta-surface); color: var(--kta-texte-2);
+  font-size: 12px; font-weight: 700; pointer-events: auto; touch-action: none;
+}
+.mkmg-rage:disabled { cursor: default; }
+.mkmg-rage-prete {
+  border: 2px solid var(--kta-accent); background: var(--kta-accent); color: var(--kta-sur-accent);
+  animation: mkmg-rage-pouls 900ms ease-in-out infinite;
+}
+.mkmg-rage-active { border: 2px solid var(--kta-erreur); color: var(--kta-texte); font-size: 15px; }
+.mkmg-tirer.mkmg-tirer-rage { border-color: var(--kta-erreur); box-shadow: 0 0 14px var(--kta-erreur); }
+@keyframes mkmg-rage-pouls { 50% { transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .mkmg-rage-prete { animation: none; } }

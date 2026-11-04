@@ -522,6 +522,8 @@ function _desactiverTousLesModes() {
   });
   Object.keys(_modesActifs).forEach(function(k) { delete _modesActifs[k]; });
 }
+// Un outil clic-carte est-il armé (registre ci-dessus) ? Lu par l'Échap de la carte (shortcuts.js > _echapCarte).
+window.ktaOutilArme = function() { return Object.keys(_modesActifs).length > 0; };
 
 
 // 🩸 Une suppression qui efface le tracé en cours DOIT fermer le mode : sinon le bouton reste
@@ -602,12 +604,25 @@ window._fermerModeStructure = _fermerModeStructure;
 // Les 6 flags window.modeX sont écrits à des endroits dispersés : on intercepte leurs
 // ÉCRITURES par des accesseurs. ⚠️ Sûr tant qu'ils restent des propriétés window (pas `var`).
 // modeRoad/modeStructure = null|chaîne, les autres = bool → `!!store[k]`.
+// ⚠️ contrat : modeMesure qui retombe = outil 📐 fermé → HistoryManager.purger("mesure") (measure.js, en-tête). Purge
+// à la fin de la tâche (microtâche) : passer de distance à surface éteint puis rallume l'outil dans le même clic
+// (interface.js > _desactiverTousLesModes), ce n'est pas une fermeture.
 (function _initPrecisionCursor() {
   var FLAGS = ["modeEdition", "modeMesure", "modeRecalage", "modeRoad", "modeZone", "modeStructure"];
   var store = {};
+  var purgeMesurePrevue = false;
   function _sync() {
     var on = FLAGS.some(function(k) { return !!store[k]; });
     if (document.body) document.body.classList.toggle("kta-precision-mode", on);
+  }
+  function _mesureFermee() {
+    if (purgeMesurePrevue) return;
+    purgeMesurePrevue = true;
+    Promise.resolve().then(function() {
+      purgeMesurePrevue = false;
+      if (store.modeMesure || !window.HistoryManager || typeof window.HistoryManager.purger !== "function") return;
+      window.HistoryManager.purger("mesure");
+    });
   }
   FLAGS.forEach(function(k) {
     store[k] = window[k];
@@ -615,7 +630,12 @@ window._fermerModeStructure = _fermerModeStructure;
       Object.defineProperty(window, k, {
         configurable: true, enumerable: true,
         get: function() { return store[k]; },
-        set: function(v) { store[k] = v; _sync(); }
+        set: function(v) {
+          var avant = store[k];
+          store[k] = v;
+          _sync();
+          if (k === "modeMesure" && avant && !v) _mesureFermee();
+        }
       });
     } catch (e) { /* flag non-configurable (improbable) → on laisse tel quel */ }
   });
@@ -1093,6 +1113,9 @@ function _chargerVue3D() {
   }
   return _vue3dChargement;
 }
+// vue3d.js seul (three.js attend l'ouverture de la vue) : aussi pour la fiche des raccourcis (shortcutsCheatsheet.js),
+// qui lit KtaVue3D.raccourcis(). → Promise<bool>.
+window.ktaChargerVue3D = _chargerVue3D;
 
 // Indicateur entre le toucher et la scène (ComputeLoader : une image peinte avant le travail synchrone de
 // l'ouverture) ; au premier chargement de three.js, le message le dit. `retour` : élément qui reprend le focus à
@@ -1368,6 +1391,7 @@ function _onDocClickFlyout(e) {
   const grpId = _currentFlyout.dataset.groupId;
   const grp = _groupes[grpId];
   if (grp && grp.btnPrincipal && grp.btnPrincipal.contains(e.target)) return;
+  if (_currentFlyout._ktaAncre && _currentFlyout._ktaAncre.contains(e.target)) return;
   // Toucher le fond revient à toucher la carte : une fois le fond retiré, la suite du geste tombe dessus.
   if (_cibleSurCarte(e.target) || (_currentFlyoutFond && e.target === _currentFlyoutFond)) {
     _flyoutAvalerJusqua = Date.now() + 700;
@@ -1381,16 +1405,19 @@ function _onResizeFlyout() {
   const grpId = _currentFlyout.dataset.groupId;
   const grp = _groupes[grpId];
   if (!grp) return;
-  _positionnerFlyout(_currentFlyout, grp.btnPrincipal, grp.position);
+  _positionnerFlyout(_currentFlyout, _currentFlyout._ktaAncre || grp.btnPrincipal, grp.position);
 }
 
-function _ouvrirFlyout(groupId) {
+// `opts` (window.ktaOuvrirOutils, vue 3D) : { ancre (élément qui positionne le panneau et le referme au toucher, à la
+// place du bouton du groupe), vue3d (bool : sous-actions `horsVue3D` retirées, groupe en accordéon permis : 📐) }.
+function _ouvrirFlyout(groupId, opts) {
+  const o = opts || {};
   // Un seul menu à la fois.
   _fermerFlyout();
   if (_groupeOuvert) _fermerGroupe(_groupeOuvert);
 
   const grp = _groupes[groupId];
-  if (!grp || !grp.useFlyout) return;
+  if (!grp || !(grp.useFlyout || o.vue3d)) return;
   if (!grp.btnPrincipal) return;
 
   const fly = document.createElement("div");
@@ -1420,9 +1447,10 @@ function _ouvrirFlyout(groupId) {
   fly.appendChild(grid);
 
   // Ordre : types built-in, customs, ➕ nouveau type, puis outils.
-  const baseActions = (typeof grp.dynamicSousActions === "function")
+  const baseActions = ((typeof grp.dynamicSousActions === "function")
                         ? (grp.dynamicSousActions() || [])
-                        : (grp.sousActionsConfig || []).slice();
+                        : (grp.sousActionsConfig || []).slice())
+    .filter(function(a) { return !(o.vue3d && a.horsVue3D); });
   const allActions  = baseActions.slice();
   if (window.LegendCustomization && grp.lcCat && typeof window.LegendCustomization.listCustomEntries === "function") {
     // 🩸 Pas de filtre sur `e.visible` : masquer un type de la légende n'empêche jamais de le
@@ -1548,7 +1576,8 @@ function _ouvrirFlyout(groupId) {
     document.body.appendChild(_currentFlyoutFond);
   }
   document.body.appendChild(fly);
-  _positionnerFlyout(fly, grp.btnPrincipal, grp.position);
+  fly._ktaAncre = o.ancre || null;
+  _positionnerFlyout(fly, fly._ktaAncre || grp.btnPrincipal, grp.position);
   _currentFlyout = fly;
 
   _installFocusNav(fly, { firstSelector: ".kta-group-flyout-btn", handleEscape: true, onClose: _fermerFlyout });
@@ -1571,6 +1600,12 @@ function _ouvrirFlyout(groupId) {
     }
   }, 0);
 }
+
+// Sous-menus d'un groupe d'outils ouverts hors de la barre de droite (vue 3D, js/vue3d.js > _ouvrirOutil) : le même
+// panneau, les mêmes types (customs, ➕ compris) et les mêmes gestes ; `opts` comme _ouvrirFlyout.
+window.ktaOuvrirOutils = function(groupId, opts) { _ouvrirFlyout(groupId, Object.assign({ vue3d: true }, opts || {})); };
+window.ktaFermerOutils = function() { _fermerFlyout(); };
+window.ktaOutilsOuverts = function() { return _currentFlyout ? _currentFlyout.dataset.groupId : null; };
 
 // Lit `env(safe-area-inset-*)` par une sonde CSS (seul moyen en JS) ; cache invalidé quand la
 // largeur change (rotation).
@@ -2504,6 +2539,8 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "📐",
         titre: window.I18n.t("ui.subaction.mesureDistance"),
+        // Surbrillance du panneau (vue 3D, ktaOuvrirOutils) : l'accordéon, lui, garde sa classe kta-actif.
+        isActive: function() { return window.modeMesure === true && window.getMeasureMode() !== "surface"; },
         onClick: function(btnSub) {
           const dejaActif = btnSub.classList.contains("kta-actif");
           _desactiverTousLesModes();
@@ -2532,6 +2569,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "♦️",
         titre: window.I18n.t("ui.subaction.mesureSurface"),
+        isActive: function() { return window.modeMesure === true && window.getMeasureMode() === "surface"; },
         onClick: function(btnSub) {
           const dejaActif = btnSub.classList.contains("kta-actif");
           _desactiverTousLesModes();
@@ -2563,8 +2601,9 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      // Distance totale des tracés : une mesure (lecture), pas un geste de dessin.
-      { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"),
+      // Distance totale des tracés : une mesure (lecture), pas un geste de dessin. Hors vue 3D (son panneau vit sur
+      // la carte), comme ⛏️.
+      { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"), horsVue3D: true,
         onClick: function() {
           if (typeof window.ouvrirRoadsDistanceFloater === "function") {
             window.ouvrirRoadsDistanceFloater();
@@ -2572,7 +2611,7 @@ _setGroupeModeActif("tracker", isTracking, null);
         }
       },
       // Volume exploité : lit la surface ♦️ comme secteur (lecture, pas un geste de dessin).
-      { id: "mesureVolume", icone: "⛏️", titre: window.I18n.t("ui.subaction.mesureVolume"),
+      { id: "mesureVolume", icone: "⛏️", titre: window.I18n.t("ui.subaction.mesureVolume"), horsVue3D: true,
         onClick: function() {
           if (window.KtaVolumeExploite) window.KtaVolumeExploite.ouvrir();
         }
@@ -2733,8 +2772,10 @@ _setGroupeModeActif("tracker", isTracking, null);
   );
 
   if (_isMultiLevel) {
+    // Hors vue 3D : une jonction relie deux niveaux, la 3D en montre un.
     _sousActionsTraces.push({
       icone: "🪜",
+      horsVue3D: true,
       titre: window.I18n.t("ui.trace.jonction"),
       dynamicTitre: function() { return _titreType("traces", "jonction", window.I18n.t("ui.trace.jonction")); },
       isTypeAction: true,
@@ -2769,7 +2810,8 @@ _setGroupeModeActif("tracker", isTracking, null);
         _fermerModeRoad();
       }
     },
-      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"),
+      // Hors vue 3D : « Sélectionner » et « Par zone » se jouent au clic sur la carte.
+      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"), horsVue3D: true,
         onClick: function() {
           const roads = window.getRoads ? window.getRoads() : [];
           if (roads.length === 0) return;
@@ -2909,7 +2951,8 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"),
+      // Hors vue 3D : « Sélectionner » et « Par zone » se jouent au clic sur la carte.
+      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"), horsVue3D: true,
         onClick: function() {
           const zones = window.getZones ? window.getZones() : [];
           if (zones.length === 0) return;
@@ -3071,7 +3114,8 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"),
+      // Hors vue 3D : « Sélectionner » et « Par zone » se jouent au clic sur la carte.
+      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"), horsVue3D: true,
         onClick: function() {
           const structures = window.getStructures ? window.getStructures() : [];
           if (structures.length === 0) return;

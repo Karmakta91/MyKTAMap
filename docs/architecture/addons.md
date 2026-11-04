@@ -71,7 +71,7 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | Appel | Quand | À faire |
 |---|---|---|
 | `scene(ctx, "greffe")` | à la greffe | poser ses objets dans `ctx.groupe`, son interface dans `ctx.hud`, `ctx.regler(…)` |
-| `scene(ctx, "refaite")` | scène refaite : niveau, rendu, hauteur, filtres, itinéraire | se recaler (ex. autre niveau) |
+| `scene(ctx, "refaite")` | scène refaite : niveau, rendu, hauteur, filtres, itinéraire, données du plan changées pendant la vue (objet ajouté, modifié, supprimé, annulé, calque rapatrié ou restitué, légende) | se recaler (ex. autre niveau) ; `ctx.bloque` / `ligneBloquee` / `libre` lisent déjà les nouvelles données : un greffon qui en tient un cache (carte des distances…) le refait ici |
 | `scene(ctx, "reprise")` | après une perte du contexte WebGL | 🩸 `ctx.groupe` et `ctx.camera` sont **neufs** : tout refaire, **jamais** `dispose()` sur les objets d'avant (morts avec l'ancien contexte) |
 | `surImage(ctx, dt)` | à chaque image tant que la vue rend (pas pendant une perte) | animer ; la vue ne dessine que si quelque chose bouge : appeler `ctx.sale()` |
 | `demonter(ctx, raison)` | `"degreffe"` (retrait), `"fermeture"` (vue fermée), `"contexte"` (contexte non repris), `"erreur"` | libérer ce qu'on a créé (sauf `"contexte"`) ; la vue retire ensuite `ctx.groupe` et `ctx.hud` |
@@ -92,7 +92,7 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `sale()` | demander une image |
 | `bloque(x0, y0, x1, y1)` | règle du pas **de la vue** (jamais une copie) : un corps de 0,8 m ne passe pas (px plan) |
 | `ligneBloquee(x0, y0, x1, y1)` | une ligne de vue est coupée (pilier, mur, paroi) |
-| `libre(x, y)` | un corps tient là : ni coincé, ni dans une structure **dessinée**, corps dégagé (un calque masqué n'y compte pas), ni dans ou contre un remblais, un effondrement ou une zone inaccessible du niveau (`galerieEmprise.js > ZONES_BOUCHENT`), ni dans ou contre l'obstacle d'un accès de surface : cône d'un puits comblé, cavage fermé (`KtaGalerie.BLOQUE`, posé par `placePassage`) |
+| `libre(x, y)` | un corps tient là : ni coincé, ni dans une structure **dessinée**, corps dégagé (un calque masqué n'y compte pas), ni dans ou contre un remblais, un effondrement ou une zone inaccessible du niveau (`galerieEmprise.js > ZONES_BOUCHENT`), ni dans ou contre l'obstacle d'un accès de surface : cône d'un puits comblé, cavage fermé, pierre de taille qui comble un cavage (ouvert ou fermé) jusqu'aux structures (`KtaGalerie.BLOQUE`, posé par `placePassage`, `comblementPorte`) |
 | `regler(r)` | réglages de la vue **pour la greffe seulement**, levés au retrait (table ci-dessous) |
 
 `regler({ … })` — `false` masque ou interdit, `true` rend ; les filtres de la carte n'en savent rien :
@@ -103,8 +103,18 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `itineraire` | itinéraire de l'app masqué (ruban, étapes, 🏁) ; scène refaite |
 | `guidage` | bandeau et chevrons du guidage de l'app masqués |
 | `course` | pas rapide interdit |
-| `avatar` | silhouette dorée de la vue plongeante masquée (l'add-on dessine la sienne) |
+| `avatar` | silhouette dorée de la vue d'édition masquée (l'add-on dessine la sienne) |
 | `commandes` | joystick et pavé retirés (une carte à toucher là où est le pouce) ; 🩸 `display` en style, le pavé étant en grille |
+| `plongee` | vue d'édition interdite : bouton ✏️ grisé, `basculerVue` et `zoomer` refusés, retour à hauteur d'yeux si l'on y était |
+| `fiches` | un toucher bref sur la scène n'ouvre plus rien (ni fiche de POI, de structure, de zone ou de tracé, ni nom d'un membre) : il est au greffon (un jeu qui tire au doigt) ; une fiche ouverte se ferme. ⚠️ Coupe aussi le **dessin** depuis la vue plongeante : barre ✏️ masquée, outil éteint, aucun sommet posé même si un outil de la carte était armé (`vue3d.js > _dessinPermis`) ; le jeu `mkmg` n'édite donc jamais le plan |
+| `reglagesFiges` (`true` pour l'activer, absent = `false`) | réglages ⚙️ Portée et Lampe de l'utilisateur figés : portée par défaut (30 m), intensité 100 %, faisceau de 71° et Plein jour coupé, trois curseurs et ☀️ grisés ; ce qui est retenu (vue et appareil) n'est jamais réécrit et revient au retrait ou avec la clé à `false`. Sans la clé, la greffe garde la portée et la lampe de l'utilisateur, Plein jour compris |
+
+Deux **facteurs** (nombre de 0 à 1, 1 = normal, rendus au retrait) :
+
+| Clé | Effet |
+|---|---|
+| `lampe` | force et portée de la lampe frontale, multipliées aux réglages ⚙️ de la lampe de l'appareil (intensité ; portée comptée sur la portée réglée, jamais sous 6 % ; le halo autour de soi reste un peu) ; réappliqué quand la scène est refaite après une perte du contexte. Avec `reglagesFiges`, ce calcul part de 30 m, de 100 % et de 71° |
+| `vitesse` | pas au pavé, au clavier et au joystick (course comprise) |
 
 ## Les connecteurs : ce qu'un add-on peut lire
 
@@ -158,8 +168,9 @@ l'add-on.
 
 ## Add-on `mkmg` (jeu en vagues)
 
-Fichiers : `js/coeur.js` (partie, interface, chrono), `js/monde.js` (menaces, objets, tir, embuscades), `js/son.js`
-(sons WebAudio, aucun fichier), `js/joueur.js` (bras et fusil, silhouette en vue plongeante), `css/coeur.css`,
+Fichiers : `js/coeur.js` (partie, interface, chrono, pile, eau, éboulis), `js/monde.js` (menaces, objets, tir,
+embuscades, un monde par niveau), `js/son.js`
+(sons WebAudio, aucun fichier), `js/joueur.js` (bras et fusil, silhouette en vue d'édition), `css/coeur.css`,
 `img/fusil.svg` ; `coeur.js` charge les trois autres. Réglages chiffrés en tête de chaque fichier (`REGLES`).
 
 - **Lancement** : code `bas6`. Refus de terrain et d'installation ci-dessus ; sinon confirmation « Descendre plus
@@ -167,13 +178,23 @@ Fichiers : `js/coeur.js` (partie, interface, chrono), `js/monde.js` (menaces, ob
 - **Vague** = rejoindre un point B depuis la position de la vue : un POI du niveau dont la distance à vol d'oiseau
   est la plus proche de 40 m + 30 m par vague (10 m au moins), sinon un sommet des tracés ; le premier joignable par
   `Pathfinder.computeRoute`, sinon le plus proche du voulu, sans trajet. B à 2 m : vague suivante.
+- **B à un autre niveau** (décision produit) : dès la vague 4, sur un plan multi-niveau (`APP_CONFIG.multiLevel`),
+  une fois sur 0,4 et jamais en vague de gardien, B est un POI d'un autre niveau, joint par les jonctions (trajet
+  `computeRoute` d'un niveau à l'autre ; sinon repli sur ce niveau). Validé au bout du trajet (la règle du pas d'ici
+  ne vaut rien là-bas), seulement une fois à ce niveau ; balise et trajet au sol dessinés au niveau où ils sont.
+- **Un monde par niveau, escalier = refuge** (décision produit) : les menaces ne changent pas de niveau. Au passage
+  🪜, le monde quitté est rangé tel quel (`monde.js > changerNiveau`, maillages retirés, objets gardés) et repris au
+  retour ; un niveau neuf est peuplé à moitié, sans silhouette.
 - **Point de validation** (décision produit) : jamais hors de la galerie, ni dans une structure, un remblais, un
   effondrement ou une zone inaccessible — le bout du trajet sur les tracés, puis la place libre la plus proche
   (`monde.js > placeOk` : `ctx.libre` et hors de ces trois zones du niveau ; couronnes de 0,25 m jusqu'à 8 m). La
   balise est posée là. Même règle pour les menaces, les objets et les embuscades.
-- **Difficulté** : facile = tracés + trajet du jeu au sol + balise + flèche + reste à parcourir ; moyen = sans la
-  flèche ; difficile = ni tracés (`regler({ traces: false })`), ni trajet, ni balise, ni guidage. L'itinéraire et le
-  guidage de l'app sont masqués pendant toute la partie (le jeu dessine le sien).
+- **Difficulté** : facile = tracés + trajet du jeu au sol (ruban doré, chevrons sombres tous les 2 m pointés vers
+  B) + balise + flèche + reste à parcourir ; moyen = sans la flèche ; difficile = ni tracés
+  (`regler({ traces: false })`), ni trajet, ni balise, ni guidage. L'itinéraire et le guidage de l'app sont masqués
+  pendant toute la partie (le jeu dessine le sien). **Recalé** quand on fuit : à plus de 6 m du trajet pendant
+  1,5 s, nouveau trajet d'ici à B (au plus toutes les 3 s ; même cible, chrono inchangé ; aussi en difficile, pour
+  la tenaille posée sur le trajet).
 - **Santé et endurance** : le pas rapide vide l'endurance (22 / s), elle revient au repos (14 / s) ; vide = à bout de
   souffle, pas rapide interdit (`regler({ course: false })`) jusqu'à 30. Battement de cœur (décision produit)
   seulement sous 5 % ou à bout de souffle, de plus en plus lent pendant la reprise.
@@ -181,28 +202,57 @@ Fichiers : `js/coeur.js` (partie, interface, chrono), `js/monde.js` (menaces, ob
   0,12 par vague, 2,6 au plus, proche de la marche à 2,8 (il faut courir pour décrocher, décision produit) ; 25 de
   santé par seconde au contact ; à vue directe sous 12 m ils foncent, sous 8 m ils **chargent** 2 s à ×1,6 puis
   soufflent 4 s. **Silhouette** dès la vague 2 : une seule, invulnérable, 3,2 m/s mais figée dans le faisceau (à
-  moins de 30 m, à moins de 32° du cap, rien entre elle et soi) ; au contact 35 de santé puis elle repart loin.
+  moins de 30 m × la lampe, à moins de 32° du cap, rien entre elle et soi) ; au contact 35 de santé puis elle repart
+  loin. Lampe à plat, elle ne se fige plus qu'à bout portant.
+- **Rampants** dès la vague 3 (1, + 1 toutes les deux vagues, 5 au plus) : à plat ventre, ×1,5 la vitesse des égarés,
+  1 point, chargent comme eux. **Hurleurs** dès la vague 5 (1, + 1 toutes les trois vagues, 3 au plus) : ×0,65, 3
+  points ; en vue directe à moins de 14 m, ils crient (au plus toutes les 15 s) : les marcheurs à moins de 30 m vont
+  ×1,35 pendant 8 s et 2 égarés sortent du noir près d'eux. Les uns et les autres comptent dans le plafond des égarés.
+- **Gardien** (vagues 5, 10, 15… ; décision produit) : un égaré massif posé à 3-6 m de B, qu'il garde (y revient à
+  plus de 8 m) tant que le joueur n'est pas en vue (12 m) ; vu ou touché, il poursuit (0,9 m/s, 45 de santé par
+  seconde au contact). 10 points (+ 2 par gardien suivant) ; chaque coup le fait reculer d'un demi-mètre. Tué, il
+  lâche un champignon et une caisse de munitions. Sa jauge s'affiche sous les autres tant qu'il vit.
+- **Pile de la lampe** (décision produit) : 100 %, − 0,55 par seconde (× 0,75 en facile, environ 4 min) ; sous 25 %, la lampe baisse
+  (`regler({ lampe })`) jusqu'à une lueur de quelques mètres (8 %, jamais le noir) et vacille de plus en plus
+  souvent. Piles à ramasser (+45 ; 2 par vague, une de moins toutes les trois, 1 au moins).
+- **Eau** : dans une zone `eau` du niveau, le joueur va à 60 % (`regler({ vitesse })`) et éclabousse ; les menaces
+  aussi vont à 60 %.
+- **Éboulis** : à moins de 15 m d'un effondrement, un éboulis toutes les 8 à 20 s, situé, qui couvre grognements
+  et pas pendant 2,5 s.
 - **Chrono** (décision produit) : longueur du trajet vers B à 1,4 m/s (+ 0,08 par vague, 2,4 au plus) plus une marge
   de 30 s (− 2 par vague, 10 au moins) ; rouge sous 10 s. À 0 : − 25 de santé et **horde** (6 + 1 par vague, en 3
   groupes à 12 m) ; la vague continue.
 - **Tenaille** (décision produit) : un groupe devant SUR le trajet du jeu (18 m), un autre derrière (15 m sur le
   trajet, sinon dans le dos), 2 + 1 toutes les deux vagues chacun (`surgir`, au-delà du plafond de 8 au plus) ; une
   fois par vague à mi-parcours, et au hasard dès la vague 3 (40 à 70 s, de plus en plus souvent).
-- **Fusil** à deux coups (bouton en bas à droite, Espace, clic bref de la souris sur la scène) : la menace la plus
+- **Viseur à la souris** (PC) : un clic sur la scène capture la souris (Pointer Lock) ; elle tourne la vue sans
+  bouton enfoncé, le clic gauche tire, Échap la rend (sans fermer la vue). Sans toucher à la vue 3D : la souris
+  capturée lui rejoue un glisser du doigt (événements synthétiques sur la scène) ; les vrais événements de souris
+  sur la scène sont arrêtés en capture pendant la partie. Capture refusée 3 fois de suite : glisser pour regarder,
+  clic bref pour tirer. Souris rendue en fin de partie et en quittant.
+- **Fusil** à deux coups (bouton en bas à droite, Espace, clic gauche de la souris capturée) : la menace la plus
   proche dans l'axe (6° ou le gabarit du corps), à 18 m au plus, ligne de vue libre ; un égaré a 2 points, un coup à
   8 m ou moins en ôte 2 ; la silhouette touchée recule. Recharge automatique de 1,5 s ; départ 2 + 6 cartouches.
-- **À ramasser** à moins d'1 m : munitions (+4 ; 4 par vague, une de moins toutes les deux vagues, 1 au moins),
-  champignons (+30 santé ; 3, un de moins toutes les trois vagues, au bout des culs-de-sac de préférence ; un égaré
-  tué en lâche un sur quatre).
+- **Rage** (décision produit) : prête après 20 égarés tués hors rage (compteur sur le petit bouton au-dessus du
+  fusil, puis « Rage » qui pulse) ; bouton ou touche R : toute la santé rendue, 30 s de tir automatique tant que
+  la détente est tenue (bouton, clic gauche capturé, Espace ; un coup toutes les 110 ms), cartouches non comptées, chargeur de 25 puis
+  recharge de 1,5 s. Les égarés tués pendant la rage ne chargent pas la suivante.
+- **À ramasser** à moins d'1 m : munitions (+4 ; 4 par vague, une de moins toutes les deux vagues, 1 au moins), piles,
+  champignons (+30 santé ; 3, un de moins toutes les trois vagues, au bout des culs-de-sac de préférence). Butin selon
+  la difficulté (décision produit, `coeur.js > DIFFICULTES.butin`) : facile = quantités × 2, au moins 2 de chaque,
+  un égaré tué lâche un champignon une fois sur deux et une caisse une fois sur cinq ; moyen = × 1,5, champignon une
+  fois sur quatre ; difficile = quantités de base, champignon une fois sur quatre.
 - **Joueur** (`joueur.js`) : à hauteur d'yeux, deux bras et un fusil en formes simples accrochés à `ctx.camera`, en
   couleurs fixes non éclairées (la lampe, collée à la caméra, les délavait) et dessinés par-dessus la scène (sans
-  test de profondeur, ordre de rendu fixé) ; balancement, recul et éclair au tir. En vue plongeante : silhouette
-  verte armée, celle de la vue masquée (`regler({ avatar: false })`).
-- **Interface** : santé et endurance en haut à gauche ; panneau en haut à droite réductible (▾ / ▸, retenu sous
-  `myktamap_mkmg_panneau_v1`) : vague, chrono et guidage toujours là ; objectif, statistiques (égarés tués, balles
+  test de profondeur, ordre de rendu fixé) ; balancement, recul et éclair au tir. En vue d'édition : silhouette
+  verte armée, celle de la vue masquée (`regler({ avatar: false })`) — gardée, mais la partie interdit la vue
+  d'édition (`regler({ plongee: false })`, décision produit : voir d'en haut serait tricher). Pas de fiche au
+  toucher pendant la partie (`regler({ fiches: false })`) : un tir au doigt ouvrirait celle d'un pilier ou d'un POI.
+- **Interface** : santé, endurance et lampe (pile) en haut à gauche ; panneau en haut à droite réductible (▾ / ▸,
+  retenu sous `myktamap_mkmg_panneau_v1`) : vague, chrono et guidage toujours là ; objectif, statistiques (égarés tués, balles
   tirées, balles au but) et « Quitter » repliés ; cartouches sur le bouton de tir. Fin de partie (santé à 0) :
   meilleure vague par difficulté sous `myktamap_mkmg_v1`, « Rejouer » ou « Quitter », joystick et pavé retirés le
-  temps de toucher la carte (`regler({ commandes: false })`). Passage de niveau 🪜 : monde refait au nouveau niveau.
+  temps de toucher la carte (`regler({ commandes: false })`).
 - **Performance** (plan dense, iPhone) : menaces pensées à 15 Hz ; hors de vue directe elles descendent une **carte
   des distances** au joueur (Dijkstra sur `RoadGraph.getGraph`, refait au plus chaque seconde et s'il a bougé de
   2 m), une seule pour toutes — un `Pathfinder.computeRoute` par égaré reconstruisait tout le réseau ; règle du pas à
@@ -210,9 +260,15 @@ Fichiers : `js/coeur.js` (partie, interface, chrono), `js/monde.js` (menaces, ob
 - **Son** (`son.js`, WebAudio, aucun fichier) : démarré dans le geste qui lance la partie ; 🩸 iOS le suspend sur une
   interruption (notification, appel, écran verrouillé) et ne le rend que dans un geste : `reveiller()` à chaque
   `pointerdown` / `keydown` et au retour à l'écran. Arrêt d'une partie : suspension différée de 1,5 s, sinon
-  « Rejouer » (arrêt puis démarrage) laissait la nouvelle partie muette sur Safari.
+  « Rejouer » (arrêt puis démarrage) laissait la nouvelle partie muette sur Safari. Sons **situés** : grognements,
+  pas (les deux plus proches à moins de 6 m, un sur trois sauté), cris et éboulis viennent de leur direction
+  (panoramique gauche / droite, étouffés quand ils viennent de derrière ; au centre sans `StereoPanner`). Fond :
+  gouttes (« plic » qui monte, puis écho ; toutes les 4 à 11 s) et éboulis lointains au hasard ; respiration du
+  joueur seulement en courant sous 50 d'endurance ou à bout de souffle. 🩸 Rien ne revient à intervalle fixe : un
+  son régulier se lit comme un bip ou un métronome.
 - **Checkup** : `checkup-vue-3d.js` § 21 (prise, code) et § 23 (jeu, avec `KtaAddons.mkmg.essai` : `vider`, `poser`,
-  `sante`, `chrono`, `tenaille`).
+  `sante`, `chrono`, `tenaille`, `pile`, `viser`, `rage`, `rageFin` ; `poser` accepte `rampant`, `hurleur`, `gardien`, `pile`). Non joués
+  par le checkup : passage de niveau (monde rangé, refuge) et B à un autre niveau (le relevé fictif est sur un niveau).
 
 ## À donner à une IA (résumé à coller)
 

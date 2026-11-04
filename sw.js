@@ -28,7 +28,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.22.1";
+const CACHE_NAME = "myktamap-cache-v2.22.2";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -362,6 +362,7 @@ const ASSETS_TO_CACHE = [
   "./js/convertirObjet.js",
   "./js/selectionMulti.js",
   "./js/selectionZone.js",
+  "./js/ajusterSommets.js",
   "./js/calqueSession.js",
   "./js/majPlan.js",
   // profondeur des niveaux + profil en long.

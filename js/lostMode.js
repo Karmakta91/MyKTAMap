@@ -32,7 +32,7 @@
     normale: { kmh: 5, icon: "🚶" },
     rapide:  { kmh: 7, icon: "🏃" }
   };
-  const DEFAULT_LOST_PRESET     = "normale";
+  const DEFAULT_LOST_PRESET     = "lente";
   const LOST_PRESET_STORAGE_KEY = "myktamap_lost_preset";
 
   const _initialPreset = (function() {

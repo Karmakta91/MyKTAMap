@@ -347,6 +347,7 @@ A click on the top counters opens the map's **dashboard**:
 ### 🗺️ Reading the map
 
 - **Pinch** to zoom, **drag** to move around (or use the **+** / **−** buttons at the top left).
+- **Twisting two fingers** turns the map (Shift + wheel on a computer); the **north** button, at the bottom left (above the compass when it is open), straightens it. A drawing tool, measurement or realignment straighten it; 🗺️ Oriented map takes over while tracking.
 - **Tapping an icon** opens the point's popup; **double-tapping** zooms onto it (like the popup's “Go” button).
 - Icons shrink as you zoom out to stay at the map's scale, on the plan as well as on the OSM maps (OSM view and the home screen map). To keep a fixed size: home ⚙️ Configuration → 🎨 Display → “📐 Scale icon size with zoom”.
 
@@ -493,33 +494,224 @@ If it doesn't match, the magnetic field is disturbed (scrap metal, reinforcement
 
 ### 🧊 3D view
 
-The **cube button** in the right-hand bar, just below **≡ Filters**, shows the map **in relief around your position**, as if you were there, lit by a headlamp. An indicator waits while it opens (longer the first time); it then stays available offline.
+The map **in relief around your position**, as if you were there, lit by a headlamp.
+One level at a time, 30 m around you by default (🔭 Range setting).
 
-- **🏛️🛣️ Mixed / 🏛️ Structures / 🛣️ Tunnels**: the button in the ⚙️ tile, which shows the current mode, moves to the next rendering; the choice is kept for this map (default: Mixed).
-  - **🏛️🛣️ Mixed** (default): pillars, walls and quarry faces raised wherever there are some, and traces as tunnels **only where there is no structure around** (connecting tunnels). A structure close to **one side only** (a pillar, a face running along the tunnel) opens that side only: the opposite wall stays, and a short wall section meets the structure at each end, with no gap. Between structures on **both sides** (a chamber), the trace loses its walls: the tunnel **opens up** when it enters the chamber, with no end wall and no bit of wall between two pillars; a structure across the trace opens it too. You bump into structures, and into tunnel walls where they are drawn; in a chamber, there are no walls left. Zones and points follow the tunnel rule in tunnels, the structure rule in chambers.
-  - **🏛️ Structures**: pillars, walls and quarry faces raised to the map's gallery height (⛏️ Mined volume, otherwise 2 m), backfill and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones, traces and route on the floor, points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
-  - **🛣️ Tunnels**: traces become tunnels (main 2.5 m wide, secondary 2 m, path 1.7 m, custom trace 2 m), without the structures: open crossroads, bends, closed dead ends, walls of dressed stone (with 🧱 Textures; off: dressed limestone blocks), a floor stripe in the trace's colour. Zones stop at the walls: backfill and collapses block the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it. Only points within 10 m of a trace (rooms included) are shown, against the wall.
-  - In every mode: one level at a time, 30 m around you.
-- **🪜 Stairs and shafts in volume**: a way between levels is shown where it is. **Stairs** are a stairwell with steps, a **shaft with rungs** a square stone shaft with its ladder, a **shaft without rungs** a bare shaft; it opens **in the floor** towards a level below, **in the ceiling** towards a level above (it rises and fades into the dark), both for a way between three levels, with a golden frame on the floor. An **open shaft** or **surface stairs** open in the ceiling, with daylight at the very top; an **air shaft** is a small grated tube, in the ceiling only (you cannot take it). A **junction trace** becomes a **ramp** in its colour: from floor to ceiling towards the level above, in a trench towards the level below. The sign of a way between levels has a border in the junction colour and the **↕** mark, and stays readable down to 1 m. The way is drawn **in the gallery** of each level, on its point's side, even when the point is placed beside it for the map's readability (gallery within 10 m): a validated connection on that level gives the exact spot. Near a crossing, the nearest gallery wins; a validated connection settles it. A **staircase** sits in a recess on the side of the gallery (the side of its point), never in the middle (a validated connection sets where along the gallery): you step in from the gallery at the foot of the steps; at the end of a dead end, it continues the gallery.
-- **🚪 Accesses without a way through**: **closed stairs** or a **closed shaft with rungs** have the same volume as the open ones, closed at the top by a dark slab; a **blocked shaft** is a masonry slab flush with the ceiling; a **filled shaft** (or filled extraction shaft) has its mouth full of backfill, with a scree cone on the floor you cannot walk through; an **extraction shaft** is a round masonry shaft, daylight at the top; a **floor shaft / basin** has a kerb and water, against the wall: you walk past it; a **cavage** is a double door across the gallery, leaves folded against the walls when open, closed (you bump into it) when closed. None of them takes you to another level. Wood, stone and backfill follow **🧱 Textures**.
-- **⚠️ Dangers and ⭐ favourites**: a danger point has a red outline and a **red halo on the floor**, visible even up close, when its sign fades out; a point in your favourites has a **⭐** in the corner of its sign.
-- **👥 Team** (connected installation only): members who share their position appear as a figure in their colour, with their name, if they are on the displayed level; markers and shared routes too (route as yellow dashes on the floor). They are the ones the map already shows. If you **already share your position** (📡), the place where you move in **free** mode is shown to those who see it, marked **“in 3D view”** (and “3D” on your figure on their side); in follow mode or when you close the 3D, they see your tracker's position again, which is not moved. Without sharing, nothing is sent. Touching a member or a marker shows its name. Without an installation, none of this.
-- **≡ Filters**: the same panel as on the map, opened over the view, with the same settings. What you hide in 3D is hidden on the map, and the other way round: point tags, path, zone and structure types, data layers, visible levels. A dot on ≡ signals an active filter. Hiding only removes the drawing: you still bump into pillars and walls, and 🪜 is still offered. The route stays shown, as on the map. Image layers have no effect in 3D.
-- **⛏️ Height**: the **⛏️** button in the ⚙️ tile (it shows the current height) opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m) steps. It is the same height as ⛏️ Mined volume, kept for this map: changing one changes the other. The scene is rebuilt in place, without moving you.
-- **Moving**: on a phone, a **🕹️ joystick**: put your thumb on the left half of the screen and it appears under it; slide up to move forward, down to move back, sideways to sidestep, further to go faster; held at the edge for more than half a second, you **run**. Dragging on the right half turns and looks up. On a computer: hold the ▲ ▼ ↶ ↷ ◀ ▶ pad, arrow keys or WASD, or drag on the scene; **faster**: hold Shift, or keep ▲ pressed for more than half a second. Prefer the pad on a phone: ⚙️ Settings › 🎨 Display › **🕹️ Classic pad in the 3D view** (for this device). You bump into pillars, walls and faces (custom ones included) in Structures mode, into the walls in Tunnels mode, into both in Mixed mode (in a chamber, only structures), with the width of a body. In all three modes, **backfill**, a **collapse** or an **⛔ inaccessible** zone stops you too, in a tunnel as in a chamber; if you start inside one of them, you are brought back to its edge and can move on. This is 3D only: the map, the route, the guidance and the tracker ignore them (the route already avoids ⛔ zones).
-- **Route guidance**: the route is drawn on the ground in **blue dashes edged in dark**, as on the map, with a **post** at each stop and a **🏁** sign at the end, level by level; where it crosses **backfill** or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same; the view redraws it as soon as it changes (drawn from 🚨 during the 3D view included). A **banner** under the row of buttons gives the same instruction as on the map ("In ~20 m, turn right"), and **golden chevrons** on the ground show the way to the next manoeuvre. In **follow** mode it is your tracker's instruction; in **free** mode, a **preview** worked out from where you are in 3D (real guidance still follows the tracker). No voice announcements.
-- **⚪ Circles at intersections**: if the option is ticked for this map (⚙️ Settings › 🎨 Display), the map's circles are laid on the ground in 3D too, in their colour, on the level shown.
-- **Touching a point's sign** opens **its card**, the same as on the map (📍 I am here, 🧭 Go there, ➕ Route, favourite, photos), over the view; ✕ or Esc closes it. Editing, moving or deleting the point is done on the map. The card of a way between levels also offers **▼ Go down** / **▲ Go up** to each of its levels, from wherever you are.
-- **🧭 Go there from the 3D view**: in follow mode the route starts from the tracker; in free mode it starts from **where you are in 3D**, level included, without moving the tracker. Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there). **My last position** or **Set my position**: the 3D view takes you where the tracker is put (position and level). **📍 I am here** in a point's card realigns the tracker on the map, but the 3D view stays where you are; in follow mode it then switches to **free** mode (a message says so): the follow button brings it back to the tracker.
-- **🪜 Change level**: within 2 m of a way between levels (stairs, shaft) or of the end of a junction trace, named buttons ("▼ -1 · Crossroads shaft (ladder)") take you to the next level (a small list if it serves more than two); the point's card does the same. You go down (or up) the way, the screen goes black for a moment, then you arrive through the ceiling (or floor) of the other level, and **"Level -1"** shows for 2 seconds. You arrive at the validated link of that level if there is one; if it falls beside the tunnel or inside an obstacle, you are brought back into the tunnel (6 m at most), facing the rest of your route if it goes there, otherwise facing along the tunnel, towards its longer side. You are never stuck: if no step is possible, a step that brings you closer to the tunnel always goes through. In follow mode, the level is the tracker's: when it changes, the view also goes black for a moment and shows the new level.
-- **🧭 Follow / 🕹️ Free**: in **follow** mode (chosen on opening when the tracker runs), the view follows your position and **turns with your phone**, like 🗺️ Oriented map; moving the joystick or touching a move button switches to **free** (dragging on the scene only tilts your gaze up / down), and the button in the ⚙️ tile, which shows the current mode, switches between the two (a 🧭 / 🕹️ badge at the top left always shows it). Tracker stopped: 🧭 is greyed and says why. When you stand still, the view does not redraw (battery), even if the compass shakes a little.
-- **🦅 Bird's-eye view** (⚙️ tile, or V): you see yourself from above. Its tilt goes from almost vertical to low: drag up or down with two fingers, mouse wheel or PageUp / PageDown, or the small ▲ ▼ buttons on the right; it is kept while the view stays open.
-- **Compass** (bottom left; the ⚙️ tile hides or shows it, for this device): its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
-- **🚨 Emergency exit**: the same button as at the top of the map; its window opens over the view. If your position is not known, the view closes so you can point to it on the map. App messages appear below the row of buttons.
-- **At the top**, a single row: **✕**, **≡** right next to it, **🚨**, **❓** (help for the 3D view) and **⚙️**. **⚙️** opens a small **Settings** tile below it: 🧭 Follow / 🕹️ Free, 🦅 Bird's-eye view, ⛏️ Height, the rendering, 🧱 Textures, the Compass and 🪧 Guidance, each written out; it closes with ⚙️, Esc or a touch elsewhere. **🧱 Textures** (on by default) dresses tunnel walls in dressed stone (courses of blocks, irregular joints, relief under the lamp), pillars and working faces in raw rock (the limestone mass left in place: bumps, shades, thin strata, cracks and tool marks, no joints) and walls in concrete block, at their real size (a block is 50 cm long, whatever the wall; the wall stone keeps its size whatever the tunnel height); a custom structure gets the rock. **Backfill** becomes packed earth and limestone sand, mixed with angular limestone stones and blocks half buried; a **collapse** (sinkhole) becomes rubble of large broken, cracked blocks with little earth; both at their real size and without changing shape (a custom zone keeps its colour). Off, every structure and every zone takes back its legend colour, yours included, and tunnel walls go back to limestone blocks; the setting is kept on this device. With **🪧 Guidance** off, the 3D view hides the instruction banner and the chevrons on the ground (the route, its stops and 🏁 stay drawn); an emergency exit is always shown; the map's guidance is not affected; the setting is kept on this device. A golden dot on ⚙️ means a setting is not the default one (free mode, bird's-eye view, rendering other than Mixed, textures off, compass hidden, guidance off).
-- **The tracker does not move** while you move in 3D, nor does the level shown on the map. When you close it (✕, top right, or Esc — which first closes an open setting, card or window), if tracking is on and you moved or changed level, **📍 Am I here?** offers to realign it where you stopped, level included; **No** leaves the tracker as it was.
+#### ▶️ Opening and closing
+
+- **Open**: the **cube button** in the right-hand bar, just below **≡ Filters**.
+- An indicator waits while it opens (longer the first time). It then stays available offline.
+- **Greyed button**: no map open, or a map without a scale (⚙️ Settings → 📐 Map: scale & geolocation). Touching it says why.
+- A browser that cannot display 3D says so when you open it.
+- **At the top**, a single row: **✕**, **≡** right next to it, **🚨**, **❓** (help for the 3D view) and **⚙️**. App messages appear below this row.
+- **The tracker does not move** while you move in 3D, nor does the level shown on the map.
+- **Close**: ✕ (top right) or Esc. Esc first closes an open setting, card or window.
+- When you close it, if tracking is on and you moved or changed level, **📍 Am I here?** offers to realign it where you stopped, level included. **No** leaves the tracker as it was.
 - **On leaving**, the map goes where you were in 3D: centred on your position, on the 3D level, whatever your answer.
-- **Greyed button**: no map open, or a map without a scale (⚙️ Settings → 📐 Map: scale & geolocation); touching it says why. A browser that cannot display 3D says so when you open it.
+
+#### 🕹️ Moving
+
+**On a phone**
+
+- **🕹️ Joystick**: put your thumb on the left half of the screen and it appears under it.
+- Slide up to move forward, down to move back, sideways to sidestep.
+- Further, you go faster. Held at the edge for more than half a second, you **run**.
+- Dragging on the right half turns and looks up.
+- Prefer the pad: ⚙️ Settings › 🎨 Display › **🕹️ Classic pad in the 3D view** (for this device).
+
+**On a computer**
+
+- Hold the ▲ ▼ ↶ ↷ ◀ ▶ pad, arrow keys or WASD, or drag on the scene.
+- **Faster**: hold Shift, or keep ▲ pressed for more than half a second.
+
+**What stops you**
+
+- With the width of a body, you bump into pillars, walls and faces (custom ones included) in Structures mode, into the walls in Tunnels mode, into both in Mixed mode (in a chamber, only structures).
+- In all three renderings, **backfill**, a **collapse** or an **⛔ inaccessible** zone stops you too, in a tunnel as in a chamber.
+- If you start inside one of them, you are brought back to its edge and can move on.
+- This is 3D only: the map, the route, the guidance and the tracker ignore them (the route already avoids ⛔ zones).
+
+#### 🧭 Follow or 🕹️ Free
+
+- **🧭 Follow** (chosen on opening when the tracker runs): the view follows your position and **turns with your phone**, like 🗺️ Oriented map.
+- Moving the joystick or touching a move button switches to **🕹️ Free**. Dragging on the scene only tilts your gaze up / down.
+- The button in the ⚙️ tile, which shows the current mode, switches between the two. A 🧭 / 🕹️ badge at the top left always shows it.
+- Tracker stopped: 🧭 is greyed and says why.
+- When you stand still, the view does not redraw (battery), even if the compass shakes a little.
+
+#### ⚙️ Settings
+
+**⚙️** opens a small **Settings** tile below it, each setting written out. It closes with ⚙️, Esc or a touch elsewhere.
+
+- **🧭 Follow / 🕹️ Free**: see above.
+- **✏️ Edit** (formerly bird's-eye view; or the V key): you see yourself from above, and it handles like a map.
+- ✏️ **Zoom** (from 6 to 60 m back): pinch with two fingers, mouse wheel, the **+ / −** buttons at the bottom right or the = / - keys. Zooming out, the scenery spreads with the view.
+- ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or the small ▲ ▼ buttons next to + / −.
+- ✏️ Edit view, its zoom and its tilt are kept for this plan on this device: you find them again when you reopen the 3D view, even after reloading the app (on your place, with no tool chosen). A game that forbids Edit view opens at eye level without erasing this choice.
+- ✏️ **Free camera**: drag one finger (or the mouse) to move the view, like a map; your place, your tracker and your figure do not move. Two fingers turning turn the view (on a computer: right-click or Ctrl + drag, ↶ ↷). **⌖** (bottom right) brings you back to your place; so do walking (joystick, pad, arrows) and going back to eye level. In Edit view, the joystick only takes the bottom left corner.
+- ✏️ **Fly-over**: in Edit view, nothing blocks your place (pillars, walls, closed adits). Back at eye level, if you are inside an obstacle, you are moved out of it.
+- ✏️ **Level** (multi-level plan): ▲ / ▼ on the left change the level shown by the 3D view, without taking a staircase; the map and the tracker keep theirs.
+- ✏️ Point panels stay readable even zoomed out; their card opens at normal size.
+- **⛏️ Height**: the button shows the current height and opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m).
+- ⛏️ It is the same height as ⛏️ Mined volume, kept for this map: changing one changes the other. The scene is rebuilt in place, without moving you.
+- **Rendering**: the button shows the current rendering and moves to the next one (Mixed, Structures, Tunnels, see below). Kept for this map; default: Mixed.
+- **🧱 Textures** (on by default): stone, rock, concrete block, earth and rubble at their real size (see below). Kept on this device.
+- **Compass**: the tile shows or hides it, for this device. At the bottom left, its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
+- **🪧 Guidance**: when off, the 3D view hides the instruction banner and the chevrons on the ground. The route, its stops and 🏁 stay drawn; an emergency exit is always shown; the map's guidance is not affected. Kept on this device.
+- **🔭 Range**: a slider from 15 to 100 m (30 m by default) sets how far you see. The black fog, the lamp and the scenery follow. Further is heavier for the phone. Kept on this device.
+- **💡 Lamp**: a slider from 25 to 300% (100% by default) sets the headlamp's strength; the stronger, the farther it reaches. Kept on this device.
+- **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
+- **☀️ Daylight**: everything is lit, like a scale model; the fog stays at the range. Kept on this device.
+- During a game, the range goes back to 30 m, the lamp to 100%, the beam to 71° and Daylight is off (settings greyed out), then your settings come back.
+- A **golden dot** on ⚙️ means a setting is not the default one: free mode, edit view, rendering other than Mixed, textures off, compass hidden, guidance off, range other than 30 m, lamp other than 100%, beam other than 71°, Daylight.
+
+#### 🏛️ The three renderings
+
+**🏛️🛣️ Mixed** (default)
+
+- Pillars, walls and quarry faces raised wherever there are some.
+- Traces as tunnels **only where there is no structure around** (connecting tunnels).
+- A structure close to **one side only** (a pillar, a face running along the tunnel) opens that side only: the opposite wall stays, and a short wall section meets the structure at each end, with no gap.
+- Between structures on **both sides** (a chamber), the trace loses its walls: the tunnel **opens up** when it enters the chamber, with no end wall and no bit of wall between two pillars.
+- A structure across the trace opens it too.
+- You bump into structures, and into tunnel walls where they are drawn. In a chamber, there are no walls left.
+- Zones and points follow the tunnel rule in tunnels, the structure rule in chambers.
+
+**🏛️ Structures**
+
+- Pillars, walls and quarry faces raised to the map's gallery height (⛏️ Mined volume, otherwise 2 m).
+- Backfill and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones.
+- Traces and route on the floor.
+- Points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
+
+**🛣️ Tunnels**
+
+- Traces become tunnels, without the structures: main 2.5 m wide, secondary 2 m, path 1.7 m, custom trace 2 m.
+- Open crossroads, bends, closed dead ends, a floor stripe in the trace's colour.
+- Walls of dressed stone (with 🧱 Textures; off: in the legend colour of their trace).
+- Zones stop at the walls: backfill and collapses block the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it.
+- Only points within 10 m of a trace (rooms included) are shown, against the wall.
+
+**🧱 Textures**
+
+- Tunnel walls: dressed stone (courses of blocks, irregular joints, relief under the lamp). The stone keeps its size whatever the tunnel height.
+- Pillars and working faces: raw rock (the limestone mass left in place: bumps, shades, thin strata, cracks and tool marks, no joints). A custom structure gets the rock.
+- Walls: concrete block, at its real size (a block is 50 cm long, whatever the wall).
+- **Backfill**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
+- **Collapse** (sinkhole): rubble of large broken, cracked blocks, with little earth.
+- Backfill and collapse are at their real size and do not change shape. A custom zone keeps its colour.
+- Off: every structure and every zone takes back its legend colour, yours included; tunnel walls take the colour of their trace (at a crossroads, the widest trace's); floor and ceiling turn black (the 🗺️ plan on the ground stays visible on top).
+- The wood, stone and backfill of accesses (below) follow this setting too.
+
+#### ↕️ Ways through and accesses
+
+Each way through or access has its volume, where it is.
+
+**Ways between levels**: nothing stops you, and 🪜 changes level.
+
+- ![](../../icon/jes.png) **Stairs between levels**: a stairwell with steps, in a recess on the side of the tunnel.
+- ![](../../icon/jpe.png) **Rung shaft between levels**: a square stone shaft, with its ladder.
+- ![](../../icon/jps.png) **Shaft without rungs between levels**: a bare shaft.
+- ↕️ **Junction trace**: a ramp in its colour, from floor to ceiling towards the level above, in a trench towards the level below. 🪜 at the end of the trace.
+
+Where and how a way through is drawn:
+
+- It opens **in the floor** towards a level below, **in the ceiling** towards a level above (it rises and fades into the dark), both for a way between three levels, with a golden frame on the floor.
+- Its sign has a border in the junction colour and the **↕** mark. It stays readable down to 1 m.
+- It is drawn **in the tunnel** of each level, on its point's side, even when the point is placed beside it for the map's readability (tunnel within 10 m).
+- A validated connection on that level gives the exact spot. Near a crossing, the nearest tunnel wins; a validated connection settles it.
+- A **staircase** sits in a recess on the side of the tunnel (the side of its point), never in the middle; a validated connection sets where along the tunnel.
+- You step into the staircase from the tunnel, at the foot of the steps. At the end of a dead end, it continues the tunnel.
+
+**To the surface**: nothing stops you.
+
+- ![](../../icon/peo.png) **Open rung shaft**: a shaft with rungs open in the ceiling, daylight at the very top. 🪜 if it serves several levels.
+- ![](../../icon/eso.png) **Open service stairs**: a stairwell open in the ceiling, daylight at the very top. 🪜 if it serves several levels.
+- ![](../../icon/pa.png) **Aeration shaft**: a small grated tube, in the ceiling only. You cannot take it.
+- Daylight shows on the highest level the shaft or stairs serve. Lower down, it opens like a way between levels.
+
+**Accesses without a way through**: none of them takes you to another level.
+
+- ![](../../icon/esf.png) **Closed service stairs**: the volume of the open stairs, closed at the top by a dark slab.
+- ![](../../icon/pef.png) **Closed rung shaft**: the volume of the open shaft, closed at the top by a dark slab.
+- ![](../../icon/pb.png) **Blocked shaft**: a masonry slab flush with the ceiling.
+- ![](../../icon/pc.png) **Filled shaft**: the mouth full of backfill, a scree cone on the floor. **The cone stops you.**
+- ![](../../icon/psf.png) **Filled extraction shaft**: the same mouth full of backfill and the same cone, which stops you.
+- ![](../../icon/ps.png) **Extraction shaft**: a round masonry shaft, daylight at the top.
+- ![](../../icon/pe.png) **Ground shaft / Basin**: a kerb and water, against the wall. You walk past it.
+- ![](../../icon/cao.png) **Open quarry access**: a double door across the tunnel, leaves folded against the walls. In a tunnel wider than the door, dressed stone fills the sides up to the walls and pillars: you only get through the door.
+- ![](../../icon/caf.png) **Closed quarry access**: the same door, leaves closed. **You bump into it**, and into the stone around it.
+- Wood, stone and backfill follow **🧱 Textures**.
+
+#### 🪜 Changing level
+
+- Within **2 m** of a way between levels (stairs, shaft) or of the end of a junction trace, named buttons ("▼ -1 · Crossroads shaft (ladder)") take you to the next level.
+- If it serves more than two, a small list opens.
+- The point's card does the same: **▼ Go down** / **▲ Go up** to each of its levels, from wherever you are.
+- You go down (or up) the way, the screen goes black for a moment, then you arrive through the ceiling (or floor) of the other level. **"Level -1"** shows for 2 seconds.
+- You arrive at the validated connection of that level if there is one.
+- If it falls beside the tunnel or inside an obstacle, you are brought back into the tunnel (6 m at most): facing the rest of your route if it goes there, otherwise facing along the tunnel, towards its longer side.
+- You are never stuck: if no step is possible, a step that brings you closer to the tunnel always goes through.
+- In follow mode, the level is the tracker's. When it changes, the view also goes black for a moment and shows the new level.
+
+#### 📍 Points, Go there and guidance
+
+- **Touching a point's sign** opens **its card**, the same as on the map (📍 I am here, 🧭 Go there, ➕ Route, favourite, photos), over the view. ✕ or Esc closes it.
+- Editing, moving or deleting the point is done on the map.
+- **Touching a structure, a zone or a trace** (pillar, wall, face, zone, tunnel) opens **its card**, the same as on the map: note, 🔄 Convert, level, 🗑️ Delete. On a data layer it is read-only.
+- A point's sign comes first. Touching empty space does nothing.
+- **🗺️ Show on the map**, at the bottom of the card: the 3D view closes, the map centres on the object, opens its card and highlights it for a few seconds.
+- In the 🛣️ Tunnels rendering, pillars and walls are not drawn: touching a tunnel wall opens the trace's card.
+- **🧭 Go there**: in follow mode the route starts from the tracker. In free mode it starts from **where you are in 3D**, level included, without moving the tracker.
+- Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there).
+- **My last position** or **Set my position**: the 3D view takes you where the tracker is put (position and level).
+- **📍 I am here** in a point's card realigns the tracker on the map, but the 3D view stays where you are. In follow mode it then switches to **free** mode (a message says so): the follow button brings it back to the tracker.
+- **Route**: drawn on the ground in **blue dashes edged in dark**, as on the map, with a **post** at each stop and a **🏁** sign at the end, level by level.
+- Where it crosses **backfill** or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same.
+- The view redraws it as soon as it changes (drawn from 🚨 during the 3D view included).
+- **Guidance**: a **banner** under the row of buttons gives the same instruction as on the map ("In ~20 m, turn right"). **Golden chevrons** on the ground show the way to the next manoeuvre.
+- In **follow** mode it is your tracker's instruction. In **free** mode it is a **preview** worked out from where you are in 3D (real guidance still follows the tracker); if you stray from the route in free mode, the route is recalculated on its own from your 3D spot, without moving the tracker, and in follow mode the banner offers, as on the map, **Recompute from here**, **I am here** or **Ignore**. No voice announcements.
+- **⚪ Circles at intersections**: if the option is ticked for this map (⚙️ Settings › 🎨 Display), the map's circles are laid on the ground in 3D too, in their colour, on the level shown.
+
+#### 🚨 Dangers, favourites and emergency exit
+
+- ![](../../icon/danger.png) **Danger**: a red outline and a **red halo on the floor**, visible even up close, when its sign fades out.
+- **⭐ Favourite**: a point in your favourites has a **⭐** in the corner of its sign.
+- **🚨 Emergency exit**: the same button as at the top of the map; its window opens over the view.
+- If your position is not known, the view closes so you can point to it on the map.
+
+#### 👥 Team (connected installation only)
+
+- Members who share their position appear as a figure in their colour, with their name, if they are on the displayed level.
+- Each one wears a **headlamp**: a glow on the head that you see passing at the end of a gallery in the dark, visible up to the set range (⚙️) but never through the rock; close to you, their lamp lights the wall a little (and lights ahead of them if they are in the 3D view themselves). In ☀️ **Daylight**, the glow stays discreet.
+- Markers and shared routes too (route as yellow dashes on the floor). They are the ones the map already shows.
+- Touching a member or a marker shows its name.
+- If you **already share your position** (📡), the place where you move in **free** mode is shown to those who see it, marked **"in 3D view"** (and "3D" on your figure on their side).
+- In follow mode or when you close the 3D view, they see your tracker's position again, which is not moved.
+- Without sharing, nothing is sent. Without an installation, none of this.
+
+#### ≡ Filters
+
+- The same panel as on the map, opened over the view, with the same settings.
+- What you hide in 3D is hidden on the map, and the other way round: point tags, path, zone and structure types, data layers, visible levels.
+- A dot on ≡ signals an active filter.
+- Hiding only removes the drawing: you still bump into pillars and walls, and 🪜 is still offered.
+- The route stays shown, as on the map. Image layers have no effect in 3D.
+
+#### ✏️ Drawing in edit view
+
+- In the **✏️ Edit** view, the map tools are always there, on the right in the middle, in the same order: **📐 Measurement**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
+- Each button opens **the same menu as on the map**: pillars, walls, working faces, your custom types, ➕ new type, ✅ Close / Validate.
+- Nothing is drawn until a tool is chosen. **Choosing a tool is enough**: a tap places a point where you touch. Dragging, pinching and the mouse wheel still move the view, without placing a point.
+- **Closing a pillar, a wall or a zone**: tap the **gold circle** of the first point, or ✅ in the menu. For a thin wall, zoom in first: the circle grows with the view.
+- A path or a working face ends with ✅. The tool stays chosen so you can carry on, as on the map.
+- The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
+- While drawing, a **line on the ground** shows the object; it stands up in relief when finished.
+- **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.
+- **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey (level 0, the base plan).
+- In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
+- **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
+- In read-only mode, the drawing tools stay greyed out, as on the map; 📐 Measurement stays allowed.
 
 > ⚠️ The 3D view shows the **map**, not the real tunnel. Shapes and heights come from the survey (tunnels in Tunnels and Mixed modes: fixed widths per trace type), your position from the tracker, which drifts. Do not trust it more than the map.
 
@@ -553,8 +745,8 @@ While a route is active, the bottom bar shows **🗺️ distance · time · pace
 | Pace | Speed | When |
 |---|---|---|
 | 🤕 **Injured** | 2 km/h | Hindered progress, rough ground |
-| 🐌 **Slow** | 3 km/h | Caution, squeezes, exploration |
-| 🚶 **Normal** | 5 km/h | Standard pace (default) |
+| 🐌 **Slow** | 3 km/h | Caution, squeezes, exploration (default) |
+| 🚶 **Normal** | 5 km/h | Standard pace |
 | 🏃 **Fast** | 7 km/h | Brisk pace, known route |
 
 **🛑 Pause between stops** (checkbox) adds a pause time at each intermediate stop to the estimated time.
@@ -588,7 +780,9 @@ As soon as a **route is drawn** and your position is known — tracker running, 
 
 **Straying or turning back?** The banner turns orange (“Off the itinerary?” / “Turning back?”) and offers **I am here** (tap where you are), **Recompute from here** or **Ignore**. Nothing is recomputed without you.
 
-**Tapping the banner** opens the **🪧 Route sheet**: all the instructions and their distances (tap a row to see the spot). It also opens from the Route window, without the tracker, to prepare an outing.
+Under the instruction, a strip shows **🏁 the destination** (with its level if it is not yours), **the remaining distance and time** (“~”, at the pace chosen in the Itinerary window); tapping it folds it down to the instruction alone (remembered on the device, in 2D as in 3D, shown large on the XL display).
+
+**Tapping the instruction** opens the **🪧 Route sheet**: all the instructions and their distances (tap a row to see the spot). It also opens from the Route window, without the tracker, to prepare an outing.
 
 **The banner's ✕ turns guidance off**; the **🪧 Itinerary guidance** tile of the Tracker menu turns it back on, without recomputing.
 
@@ -749,11 +943,11 @@ In the **⬛ Zones** group, closed surfaces to annotate the map:
 | 🟦 **Water** | blue | none |
 | ⛔ **Inaccessible** | dark red / black hatching | **blocks** the way |
 
-Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of everything.
+Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
 
 ### ⛔ "Inaccessible" zone — blocks the route
 
-A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its own level**, and still counts even if you hide the zones layer.
+A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its levels** (a zone can touch several, see « 🏗️ Multi-level mode »), and still counts even if you hide the zones layer.
 
 The **Respect impassable areas and walls (line)** box in the Route window (ticked by default) lets you relax it. **Rescue Mode** and "I'm lost" always respect it. For "avoid if possible", use the route's **🚫 Avoidance preferences** instead.
 
@@ -798,6 +992,16 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 **The whole map**: when you reopen a map, the "Previous session restored" window offers **🗑️ Clear the session** (also at any time in **📊 Session details**) (points, paths, zones, structures, measurements and tracking trail; a copy stays in 📦 Backups). Points that carry a **link to another map** (portals) are kept: to remove one, delete the point itself. On a **map shared with your organisation**, the window makes you choose (nothing is ticked in advance): **↻ Cancel what this device has not sent yet (N changes)**, only if changes are waiting to be sent (offline, for example: online, everything leaves within seconds and comes back from the server), or, depending on your rights, **Delete my additions for the whole organisation** or **Delete everything for the organisation** (number of items shown first; these two cannot be undone for the others). An item whose author is unknown is never counted in "my additions": the window says how many there are, only "Delete everything" covers them.
 
 > ℹ️ Only **your** objects can be erased. Those of the map or of a data layer are read-only: first open their layer for editing from ≡ **Filters**, then export the corrected layer.
+
+### ✋ Adjust a shape
+
+A **route**, a **zone**, a **structure** or a **📐 measurement** already drawn can be corrected without redrawing it, on the map, with the drawing tools off (a 📐 measurement also while the 📐 tool is on):
+
+- **Move a point**: press and hold (half a second) a point of the shape; a gold circle appears: drag it, the shape follows as a dotted line, then release.
+- **Add a point**: press and hold the middle of a side; a point appears there, drag it straight away.
+- **Delete a point**: press and hold a point without moving, then tap **🗑️**. A line keeps at least 2 points, a surface 3: below that, a message says so and nothing is removed.
+
+A short tap still opens the object's popup. A route released near a point of another route snaps onto it if **🧲 Snap while drawing** is on. Each gesture can be undone with ⏪ (on a measurement, only while the 📐 tool is on). Objects of a data layer only move once the layer is in **🔄 Edit**; a shared map in read-only mode cannot be changed. With a mouse, same gesture: hold the button half a second, then drag.
 
 ---
 
@@ -883,11 +1087,11 @@ A message at the bottom of the screen says what was undone or redone ("↩ Undon
 
 **What can be undone**: adding, editing, moving and deleting points; each point placed on a path, zone or structure, closing them, deleting them (including "All"); conversions.
 
-**What cannot be undone**: deleting a photo, importing a session, position tracking, measurement.
+**What cannot be undone**: deleting a photo, importing a session, position tracking, and the measurement once the 📐 tool is off.
 
 The history is **forgotten** when you reload the page or change map, and a new action after some undos clears whatever was left to redo.
 
-> ⌨️ On PC, **`?`** shows all shortcuts: `E` Editing, `M` Measurement, `Z` Zones, `S` Structures, `T` Tracker, `P` Paths, `L` Legend, `B` Compass, `R` or `Ctrl+K` Search, `F` presentation mode, `Esc` to close; in an open tool menu, `Tab` moves through the choices and `Enter` confirms. They do nothing while you are typing in a field.
+> ⌨️ On PC, **`?`** shows all shortcuts, in foldable sections: `E` Editing, `M` Measurement, `Z` Zones, `S` Structures, `T` Tracker, `P` Paths, `L` Legend, `B` Compass, `R` or `Ctrl+K` Search, `F` presentation mode, `Esc` to close; on the map, `Shift` + wheel rotates it, a long click on a vertex adjusts it and `Esc` turns off the active tool (path, zone, structure, measurement, adding a point) like its button, once the open window, bubble, panel or adjustment is closed. In the 🧊 3D view, `?` shows its keys first (arrows, WASD or ZQSD, `V`, zoom, tilt). In an open tool menu, `Tab` moves through the choices and `Enter` confirms. They do nothing while you are typing in a field. On a phone, the same sheet (from Help) starts with the touch gestures.
 
 ---
 
@@ -901,6 +1105,8 @@ In the **📐 Measurement** group:
 The two measurements coexist: switching from one to the other does not erase them, and your next tap goes to the one that is lit. Their accuracy depends on the map's scale (calibrated in ⚙️ Settings). They are kept with your session.
 
 **❌ Erase** offers **↩️ Last point** (on the lit measurement), **🗑️ The whole distance 📐**, **🗑️ The whole surface ♦️** or **Erase everything (📐 + ♦️)**.
+
+While the tool is on, **⏪** undoes each step of the measurement (point placed, point removed, erasing, point moved) and **⏩** redoes it; once the tool is off, ⏪ goes straight back to points, routes, zones and structures.
 
 ### 📏 Total length of paths
 
@@ -938,6 +1144,8 @@ If the map contains elements on other levels, the list extends by itself. The sa
 ### 🔀 Changing an object's level
 
 An object ended up on the wrong level? In the popup of a path, a zone or a structure you drew, the **Level** list (under 🔄 Convert) moves it at once; for a point, it is the **Level** list of **✏️ Edit**, saved with the rest of the form. The object's current level is always offered, even if it is outside the map's list. If the chosen level is hidden by the filter, the object disappears from the map and a message says so: the view stays on your level. **⏪** undoes it.
+
+A zone that touches several levels (a collapse between −1 and −2): draw it on the active level, then in its popup tick the other levels under **Also on levels** and tap **🏗️ Apply levels**. It is the same zone, with the same outline, shown on each of its levels: editing or deleting it acts everywhere, and a ⛔ zone blocks the route on each of them. Untick everything to bring it back to its single level. **⏪** undoes it.
 
 A junction has its own card, with its two levels (see below). No list on a layer object (🔄 Edit the layer first) or while a path is being drawn.
 

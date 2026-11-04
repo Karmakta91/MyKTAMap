@@ -14,7 +14,7 @@
 //   placePassage(p, niveau, rendu) (place, axe et côté d'entrée du volume de passage d'un POI en 3D : _placeVolume),
 //   zonesBloquent(segs, niveau, depart, rendu), dansZone(x, y, niveau, rendu) (zones qui bouchent, ZONES_BOUCHENT, et
 //   obstacles des accès de surface, BLOQUE, dans les 3 rendus), ACCES / ACCES_DIM (accès sans passage : formes et
-//   dimensions des volumes).
+//   dimensions des volumes), comblementPorte(x, y, ang, w, niveau, rendu) (pierre de taille d'un cavage).
 // Modèle MIXTE (vue 3D par défaut) : chaque côté du tube est jugé à part ; une structure du niveau (intégrée ou
 // perso) proche d'un côté ouvre CE côté (la paroi d'en face reste), un pan de retour relie la paroi gardée à la
 // structure ; proche des deux côtés, le tracé traverse une CHAMBRE, sans parois. Un tube qui débouche dans une
@@ -89,9 +89,10 @@
   // de la 3D seulement (zonesBloquent, dansZone, dedans).
   const ACCES = { esf: "escalier", pef: "puits", pb: "puits", pc: "puits", psf: "rond", ps: "rond", pe: "bassin",
     cao: "porte", caf: "porte" };
-  // Obstacles d'un accès (décision produit) : cône d'éboulis d'un puits comblé, porte fermée. Le bassin (pe) n'arrête
-  // pas : posé contre la paroi (_placeVolume, `contre`), on passe à côté.
-  const BLOQUE = { pc: "cone", psf: "cone", caf: "porte" };
+  // Obstacles d'un accès (décision produit) : cône d'éboulis d'un puits comblé, porte fermée ; cavage ouvert : son
+  // comblement seul (comblementPorte), l'ouverture du cadre laisse passer. Le bassin (pe) n'arrête pas : posé contre
+  // la paroi (_placeVolume, `contre`), on passe à côté.
+  const BLOQUE = { pc: "cone", psf: "cone", caf: "porte", cao: "porteOuverte" };
   // Dimensions (m) des accès : puits rond d'extraction `rond` de diamètre ; bassin `bassin` de diamètre intérieur,
   // margelle de `margelle` d'épaisseur et `margelleH` de haut, eau à `eau` sous le sol, fond à `fond` ; cône
   // d'éboulis de `cone` de rayon et `coneH` de haut ; porte de la largeur de la galerie (demi-largeur de l'axe le
@@ -101,6 +102,12 @@
   const ACCES_DIM = { rond: 2.5, bassin: 1.6, margelle: 0.2, margelleH: 0.4, eau: 0.8, fond: 1.2, cone: 0.9,
     coneH: 0.6, porteDefaut: 2, porteEp: 0.2, porteDeborde: 0.4, bassinLibre: 0.8 };
   const COTES_CERCLE = 16;          // côtés d'un cercle d'obstacle (cône, margelle), les mêmes que la 3D
+  // Comblement d'un cavage (décision produit) : la porte garde la largeur de la galerie (tracé le plus proche) ; entre
+  // son cadre et la structure la plus proche de chaque côté (mur, pilier, front), cherchée dans le plan de la porte
+  // au plus COMBLE_MAX_M au-delà du cadre, de la pierre de taille ferme le passage jusqu'au plafond. Plus loin, rien :
+  // à plus de 3 m du cadre, on n'est plus dans une galerie bordée mais dans une chambre.
+  const COMBLE_MAX_M = 3;
+  const COMBLE_MIN_M = 0.01;        // écart plus petit : la porte touche déjà la structure
   // ⚠️ contrat : un point est « dans la galerie » s'il a un axe à moins de PROCHE_M ; c'est le rayon unique de la vue
   // 3D (vue3d.js > POI_GALERIE : POI montré contre la paroi ; volume de passage recalé, _placeVolume) et du
   // recalage du tracker (versGalerie). Une seule valeur : deux rayons divergents remettaient le tracker dans la roche
@@ -110,6 +117,7 @@
   const _cache = new Map();         // "niveau|m" → { sig, modele }
   const _cacheZones = new Map();    // niveau → { sig, index } (_indexZones)
   const _cacheObstacles = new Map(); // niveau → { sig, index } (_indexObstacles)
+  const _cacheStructures = new Map(); // niveau → { sig, S } (_structuresDe : comblement des cavages)
   let _sig = null, _sigT = 0;
 
   function largeur(type) { return SANS_TUBE[type] ? 0 : (LARGEURS[type] || LARGEUR_PERSO); }
@@ -152,6 +160,7 @@
         const o = liste[i];
         if (!o || !Array.isArray(o.points)) continue;
         mel(o.points.length); mel(o.level); mel(String(o.type || "").length);
+        if (Array.isArray(o.niveaux)) o.niveaux.forEach(mel);   // zone sur plusieurs niveaux
         const p = o.points[0], q = o.points[o.points.length - 1];
         if (p && q) { mel(p.x * 10); mel(p.y * 10); mel(q.x * 10); mel(q.y * 10); }
       }
@@ -178,10 +187,20 @@
     return _sig;
   }
 
-  function invalider() { _cache.clear(); _cacheZones.clear(); _cacheObstacles.clear(); _sig = null; }
+  function invalider() {
+    _cache.clear(); _cacheZones.clear(); _cacheObstacles.clear(); _cacheStructures.clear(); _sig = null;
+  }
 
   function _surNiveau(o, niveau) {
     return niveau === null || niveau === undefined || (Number.isInteger(o.level) ? o.level : 0) === niveau;
+  }
+
+  // Zone : sur CHACUN de ses niveaux (`niveaux`, règle commune poiJonction.js > ktaNiveauxObjet), pas son seul `level`.
+  function _zoneSurNiveau(z, niveau) {
+    if (niveau === null || niveau === undefined || typeof window.ktaNiveauxObjet !== "function") {
+      return _surNiveau(z, niveau);
+    }
+    return window.ktaNiveauxObjet(z).indexOf(niveau) >= 0;
   }
 
   // ── Grille de recherche (px) ──────────────────────────────────────────────────────────────────────
@@ -267,7 +286,7 @@
     if (c && c.sig === sig) return c.index;
     const anneaux = [];
     _zones().forEach(function (z) {
-      if (!z || !ZONES_BOUCHENT[z.type] || !Array.isArray(z.points) || !_surNiveau(z, n)) return;
+      if (!z || !ZONES_BOUCHENT[z.type] || !Array.isArray(z.points) || !_zoneSurNiveau(z, n)) return;
       const a = z.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
       if (a.length >= 3) anneaux.push(a);
     });
@@ -313,8 +332,9 @@
 
   // Obstacles des accès (BLOQUE) du niveau dans un rendu ("mixte" par défaut, "galerie", "structures") → même index
   // que les zones. ⚠️ contrat : place et axe = placePassage (la règle unique du volume, du panneau et de l'emprise),
-  // largeur d'une porte = demi-largeur de l'axe le plus proche de cette place (DIR_PASSAGE_M) ; vue3d.js > _dimAcces
-  // dessine la même. Aucun modèle construit sur un niveau sans POI qui bouche (rien de plus à l'ouverture).
+  // largeur d'une porte = demi-largeur de l'axe le plus proche de cette place (DIR_PASSAGE_M), comblement =
+  // comblementPorte ; vue3d.js > _dimAcces dessine les mêmes. Aucun modèle construit sur un niveau sans POI qui
+  // bouche (rien de plus à l'ouverture).
   function _indexObstacles(niveau, rendu) {
     const n = Number.isInteger(niveau) ? niveau : null, r = rendu || "mixte", cle = n + "|" + r;
     const sig = _signature(false), c = _cacheObstacles.get(cle);
@@ -326,30 +346,66 @@
       const pl = placePassage(p, n, r), m = modele(n, r === "mixte");
       if (!pl) return;
       const pp = m ? m.plusProche(pl.x, pl.y, DIR_PASSAGE_M * sc) : null;
-      anneaux.push(_obstacleAcces(tag, pl.x, pl.y, pl.ang, pp ? pp.w : null, sc));
+      const w = pp ? pp.w : ACCES_DIM.porteDefaut / 2 * sc;
+      const cb = ACCES[tag] === "porte" ? comblementPorte(pl.x, pl.y, pl.ang, w, n, r) : null;
+      _obstaclesAcces(tag, pl.x, pl.y, pl.ang, w, cb, sc).forEach(function (a) { anneaux.push(a); });
     });
     const index = _indexAnneaux(anneaux);
     _cacheObstacles.set(cle, { sig: sig, index: index });
     return index;
   }
 
-  // Obstacle d'un accès (BLOQUE[tag]) posé en (x, y) px sur l'axe `ang` (rad), galerie de demi-largeur `w` px (null :
-  // ACCES_DIM.porteDefaut) → contour [{x, y}]. Cône : cercle de COTES_CERCLE côtés, de son rayon. Porte fermée : rectangle de porteEp le long de l'axe, en travers sur la largeur de la
-  // galerie + porteDeborde de chaque côté.
-  function _obstacleAcces(tag, x, y, ang, w, sc) {
+  // Obstacles d'un accès (BLOQUE[tag]) posé en (x, y) px sur l'axe `ang` (rad), galerie de demi-largeur `w` px,
+  // comblement `cb` ([côté −, côté +] en m, comblementPorte) → contours [[{x, y}]]. Cône : cercle de COTES_CERCLE
+  // côtés, de son rayon. Porte : rectangles de porteEp le long de l'axe, en travers ; fermée, d'un bout de comblement
+  // à l'autre (la largeur de la galerie sans comblement) ; ouverte, chaque comblement seul, du cadre à la structure
+  // (l'ouverture reste libre). porteDeborde de plus au bout : aucune fente contre la paroi ou la structure.
+  function _obstaclesAcces(tag, x, y, ang, w, cb, sc) {
     const D = ACCES_DIM, genre = BLOQUE[tag];
-    if (genre === "porte") {
-      const ux = Math.cos(ang), uy = Math.sin(ang);
-      const s = D.porteEp / 2 * sc, t = (w === null ? D.porteDefaut / 2 * sc : w) + D.porteDeborde * sc;
+    if (genre === "porte" || genre === "porteOuverte") {
+      const ux = Math.cos(ang), uy = Math.sin(ang), s = D.porteEp / 2 * sc, deb = D.porteDeborde * sc;
+      const g0 = (cb ? cb[0] : 0) * sc, g1 = (cb ? cb[1] : 0) * sc;
       const Q = function (a, b) { return { x: x + ux * a - uy * b, y: y + uy * a + ux * b }; };
-      return [Q(-s, -t), Q(s, -t), Q(s, t), Q(-s, t)];
+      const rect = function (b0, b1) { return [Q(-s, b0), Q(s, b0), Q(s, b1), Q(-s, b1)]; };
+      if (genre === "porte") return [rect(-(w + g0 + deb), w + g1 + deb)];
+      const out = [];
+      if (g0 > 0) out.push(rect(-(w + g0 + deb), -w));
+      if (g1 > 0) out.push(rect(w, w + g1 + deb));
+      return out;
     }
     const R = D.cone * sc, out = [];
     for (let k = 0; k < COTES_CERCLE; k++) {
       const a = 2 * Math.PI * k / COTES_CERCLE;
       out.push({ x: x + R * Math.cos(a), y: y + R * Math.sin(a) });
     }
-    return out;
+    return [out];
+  }
+
+  // Structures du niveau pour le comblement des cavages, refaites quand les données changent (_signature).
+  function _structuresDe(niveau, sc) {
+    const cle = Number.isInteger(niveau) ? niveau : null, sig = _signature(false), c = _cacheStructures.get(cle);
+    if (c && c.sig === sig) return c.S;
+    const S = _indexStructures(cle, sc);
+    _cacheStructures.set(cle, { sig: sig, S: S });
+    return S;
+  }
+
+  // Comblement d'une porte de cavage posée en (x, y) px sur l'axe `ang` (rad), demi-largeur `w` px, dans un rendu →
+  // [côté −, côté +] (m) : de chaque côté, distance du cadre (à w de l'axe) au premier bord de structure du niveau
+  // croisé dans le plan de la porte (S.rayon, parti de l'axe : une structure qui empiète sur la porte donne 0), au
+  // plus COMBLE_MAX_M ; 0 sans structure à portée. Côtés − / + = sens de la normale (−sin ang, cos ang), celui du
+  // repère des volumes (vue3d.js > _repere). ⚠️ contrat (décision produit) : rendu galerie = [0, 0] (aucune
+  // structure n'y est dessinée, les parois du tube bordent la porte).
+  function comblementPorte(x, y, ang, w, niveau, rendu) {
+    const sc = _echelle();
+    if (!sc || rendu === "galerie" || !(w >= 0)) return [0, 0];
+    const S = _structuresDe(niveau, sc);
+    if (!S.n) return [0, 0];
+    const nx = -Math.sin(ang), ny = Math.cos(ang), L = w + COMBLE_MAX_M * sc;
+    return [-1, 1].map(function (sgn) {
+      const d = S.rayon(x, y, nx * sgn, ny * sgn, L), g = d === null ? 0 : (d - w) / sc;
+      return g >= COMBLE_MIN_M ? +g.toFixed(3) : 0;
+    });
   }
 
   // Demi-emprise (m) d'un accès en travers de la galerie, pour _placeVolume : il est ramené au plus à w − demi de
@@ -1404,6 +1460,6 @@
     dansPiece: dansPiece, PROCHE_M: PROCHE_M, versGalerie: versGalerie, placePassage: placePassage,
     zonesBloquent: zonesBloquent, dansZone: dansZone, ZONES_BOUCHENT: Object.assign({}, ZONES_BOUCHENT),
     ACCES: Object.assign({}, ACCES), BLOQUE: Object.assign({}, BLOQUE), ACCES_DIM: Object.assign({}, ACCES_DIM),
-    COTES_CERCLE: COTES_CERCLE
+    COTES_CERCLE: COTES_CERCLE, comblementPorte: comblementPorte, COMBLE_MAX_M: COMBLE_MAX_M
   };
 })();

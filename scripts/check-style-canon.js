@@ -19,7 +19,7 @@ const EXCEPTIONS = {
   "js/emergencyMode.js":
     "palette dédiée à la mini-carte d'urgence (couleurs vives, cf. commentaire du fichier)",
   "js/osmView.js":
-    "`inaccessible` en aplat orange : le motif hachuré SVG n'est pas rendu sur fond OSM",
+    "`inaccessible` en aplat orange : le motif hachuré n'est pas rendu sur fond OSM",
   "js/osmHomePreview.js":
     "idem osmView (même repli d'aplat)"
 };
@@ -91,7 +91,7 @@ for (const fichier of FICHIERS) {
   for (const [cat, table] of Object.entries(CANON)) {
     for (const [cle, ref] of Object.entries(table)) {
       const refTrait = (ref.color || "").toLowerCase() || null;
-      // Type à motif SVG : le motif et son aplat de repli (bitmap/KMZ/OSM) passent.
+      // Type à motif : son fond et son aplat de repli (bitmap/KMZ/OSM) passent.
       const refFonds = [];
       if (ref.fillColor && ref.fillColor.indexOf("url(") !== 0) refFonds.push(ref.fillColor.toLowerCase());
       if (ref._flatFill) refFonds.push(ref._flatFill.toLowerCase());

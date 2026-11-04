@@ -869,7 +869,11 @@
           _ensure(r.level || 0).roads += 1;
         }
       });
-      zones.forEach(function(z) { _ensure(z.level || 0).zones += 1; });
+      // Zone sur plusieurs niveaux : comptée sur chacun (poiJonction.js > ktaNiveauxObjet).
+      zones.forEach(function(z) {
+        const nv = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(z) : [z.level || 0];
+        nv.forEach(function(n) { _ensure(n).zones += 1; });
+      });
       structures.forEach(function(s) { _ensure(s.level || 0).structures += 1; });
       stats.byLevel = byLevel;
     }

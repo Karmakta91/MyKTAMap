@@ -38,6 +38,15 @@
   --kta-ok-bord:        rgba(166, 215, 133, 0.40);
   --kta-erreur-fond:    rgba(244, 107, 107, 0.05);
   --kta-erreur-bord:    rgba(244, 107, 107, 0.40);
+  /* Gabarit des boutons de barre (barres latérales de la carte, vue 3D) : côté sans le liseré, rayon de la pilule,
+     zone de toucher minimale. Thème indifférent. */
+  --kta-barre-bouton:   36px;
+  --kta-barre-rayon:    8px;
+  --kta-cible-toucher:  44px;
+}
+/* Paysage bas : boutons de barre à 30 px (sous-actions en ligne, body.kta-refonte-v1 .leaflet-bar a). */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root { --kta-barre-bouton: 30px; }
 }
 
 html, body {
@@ -1093,22 +1102,27 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: inherit !important;
 }
 
-/* ── Aide-mémoire des raccourcis clavier (touche ?) : chrome .kta-readme-modal-* + grille de touches ── */
-.kta-cheatsheet-boite { max-width: 540px; }
+/* ── Fiche des raccourcis (touche ?) : chrome .kta-readme-modal-*, sections <details>, grille de touches ── */
+.kta-cheatsheet-boite { max-width: 640px; }
+.kta-cheat-section + .kta-cheat-section { border-top: 1px solid var(--kta-bordure); }
+.kta-cheat-section-corps { padding-bottom: 6px; }
 .kta-cheat-sectitre {
-  margin: 14px 0 8px;
+  padding: 14px 0 8px;
+  cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--kta-texte-3);
 }
-.kta-cheat-sectitre:first-child { margin-top: 2px; }
+.kta-cheat-section:first-child > .kta-cheat-sectitre { padding-top: 2px; }
 .kta-cheat-grille {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 6px 18px;
 }
+.kta-cheat-grille-2 { grid-template-columns: 1fr 1fr; }
+.kta-cheat-grille-2 .kta-cheat-keys { flex-basis: 40px; }
 .kta-cheat-row {
   display: flex;
   align-items: center;
@@ -1116,8 +1130,9 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   min-height: 30px;
 }
 .kta-cheat-keys {
-  flex: 0 0 96px;
+  flex: 0 0 180px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 3px;
 }
@@ -1125,6 +1140,13 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   font-size: 13.5px;
   color: var(--kta-texte);
   line-height: 1.2;
+}
+/* Icône image d'une ligne (la rose de la boussole) : à la taille d'un émoji du libellé. */
+.kta-cheat-icone {
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.3em;
+  vertical-align: -0.2em;
 }
 .kta-kbd {
   display: inline-block;
@@ -1141,7 +1163,8 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   border-radius: 6px;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
 }
-.kta-kbd-plus { color: var(--kta-texte-3); font-size: 11px; margin: 0 1px; }
+.kta-kbd-plus,
+.kta-kbd-ou { color: var(--kta-texte-3); font-size: 11px; margin: 0 1px; }
 .kta-cheat-note {
   margin: 16px 2px 0;
   font-size: 12px;
@@ -1149,11 +1172,12 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: var(--kta-texte-3);
 }
 @media (max-width: 520px) {
-  .kta-cheat-grille { grid-template-columns: 1fr; }
+  .kta-cheat-keys { flex-basis: 130px; }
 }
 body.kta-theme-light .kta-cheat-sectitre,
 body.kta-theme-light .kta-cheat-note,
-body.kta-theme-light .kta-kbd-plus { color: var(--kta-texte-3); }
+body.kta-theme-light .kta-kbd-plus,
+body.kta-theme-light .kta-kbd-ou { color: var(--kta-texte-3); }
 body.kta-theme-light .kta-cheat-label { color: #1a1f2e; }
 body.kta-theme-light .kta-kbd {
   color: #1a1f2e;
@@ -9266,6 +9290,11 @@ html.kta-theme-light .kta-toast { box-shadow: 0 4px 16px var(--kta-light-shadow)
 .kta-itinerary-polyline {
   filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.9))
           drop-shadow(0 0 10px rgba(0, 212, 255, 0.5));
+}
+/* L'itinéraire ne prend jamais le pointeur (aucune fiche). 🩸 Sélecteur aussi précis que celui de Leaflet
+   (`.leaflet-pane > svg path.leaflet-interactive { pointer-events: auto }`), qui gagnait : au doigt, WebKit
+   déplaçait alors le toucher d'un outil armé vers le tracé, et le sommet tombait à côté. */
+.leaflet-pane > svg path.kta-itinerary-polyline {
   pointer-events: none;
 }
 
@@ -11698,13 +11727,13 @@ body.kta-refonte-v1 .leaflet-bar {
 }
 body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child .leaflet-bar,
 body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child {
-  border-top-left-radius: 8px !important;
-  border-top-right-radius: 8px !important;
+  border-top-left-radius: var(--kta-barre-rayon) !important;
+  border-top-right-radius: var(--kta-barre-rayon) !important;
 }
 body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child .leaflet-bar,
 body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child {
-  border-bottom-left-radius: 8px !important;
-  border-bottom-right-radius: 8px !important;
+  border-bottom-left-radius: var(--kta-barre-rayon) !important;
+  border-bottom-right-radius: var(--kta-barre-rayon) !important;
 }
 
 /* Séparateur 1 px en border-top (ne se cumule pas avec le border-bottom natif). */
@@ -11713,9 +11742,9 @@ body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(:first-child) .leaflet-b
 }
 
 body.kta-refonte-v1 .leaflet-bar a {
-  width: 36px !important;
-  height: 36px !important;
-  line-height: 36px !important;
+  width: var(--kta-barre-bouton) !important;
+  height: var(--kta-barre-bouton) !important;
+  line-height: var(--kta-barre-bouton) !important;
   font-size: 19px;
   /* Annule le float Leaflet (sinon les sous-actions flottent à gauche). */
   float: none !important;
@@ -11724,9 +11753,9 @@ body.kta-refonte-v1 .leaflet-bar a {
 
 /* Sous-actions empilées sous le bouton du groupe. */
 body.kta-refonte-v1 .leaflet-bar a.kta-sub {
-  width: 36px !important;
-  height: 36px !important;
-  line-height: 36px !important;
+  width: var(--kta-barre-bouton) !important;
+  height: var(--kta-barre-bouton) !important;
+  line-height: var(--kta-barre-bouton) !important;
   font-size: 18px;
   display: block !important;
   float: none !important;
@@ -11815,8 +11844,22 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   body.kta-refonte-v1 .leaflet-bar {
     display: flex !important;
     align-items: center !important;
-    border-radius: 8px !important;
+    border-radius: var(--kta-barre-rayon) !important;
     overflow: hidden;
+  }
+  /* 🩸 La colonne (flex, max-height) rétrécit ses pilules quand elles ne tiennent pas : sous overflow: hidden, un
+     bouton resté à 30 px y perdait son bas. Le bouton suit la hauteur de sa pilule, entier et centré, et chaque bouton
+     reste à l'écran ; sous 24 px, la colonne défile plutôt que d'écraser encore. Le zoom (deux boutons empilés) garde
+     sa taille. */
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(.leaflet-control-zoom) {
+    flex: 0 1 var(--kta-barre-bouton);
+    min-height: 24px;
+  }
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(.leaflet-control-zoom) a {
+    height: auto !important;
+    max-height: var(--kta-barre-bouton);
+    align-self: stretch;
+    line-height: 1 !important;
   }
   body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-bar {
     flex-direction: row !important;
@@ -11838,9 +11881,9 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    width: 30px !important;
-    height: 30px !important;
-    line-height: 30px !important;
+    width: var(--kta-barre-bouton) !important;
+    height: var(--kta-barre-bouton) !important;
+    line-height: var(--kta-barre-bouton) !important;
     font-size: 16px;
   }
   body.kta-refonte-v1 .leaflet-bar a.kta-sub.kta-hidden {
@@ -11856,9 +11899,15 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(:first-child) .leaflet-bar {
     border-top: none !important;
   }
+  /* 1 px entre pilules, sans liseré haut ni bas (l'ombre les sépare) : 10 pilules de 30 px tiennent dans 313 px
+     (852 × 393), boutons entiers à 30 px. Au-delà, elles rétrécissent (règle plus haut). */
   body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-control + .leaflet-control,
   body.kta-refonte-v1 .leaflet-top.leaflet-right .leaflet-control + .leaflet-control {
-    margin-top: 4px !important;
+    margin-top: 1px !important;
+  }
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(.leaflet-control-zoom) {
+    border-top-width: 0 !important;
+    border-bottom-width: 0 !important;
   }
   /* Séparateur vertical entre boutons (a + a) ; reste juste en row-reverse. */
   body.kta-refonte-v1 .leaflet-bar a + a {
@@ -19324,13 +19373,15 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
 }
 /* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
 .kta-note-popup-convertir,
-.kta-note-popup-jct-appliquer {
+.kta-note-popup-jct-appliquer,
+.kta-note-popup-niveaux-zone-appliquer {
   background: rgba(140, 180, 255, 0.14);
   border: 1px solid rgba(140, 180, 255, 0.30);
   color: var(--kta-texte-2);
 }
 .kta-note-popup-convertir:hover,
-.kta-note-popup-jct-appliquer:hover {
+.kta-note-popup-jct-appliquer:hover,
+.kta-note-popup-niveaux-zone-appliquer:hover {
   background: rgba(140, 180, 255, 0.24);
 }
 /* Liste « Niveau » sous Convertir (multi-niveau, objet de session) ; listes Départ / Arrivée d'une jonction. */
@@ -19353,7 +19404,9 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   font-size: 12px;
 }
 body.kta-theme-light .kta-note-popup-niveau-ligne,
-html.kta-theme-light .kta-note-popup-niveau-ligne { color: #24304a; }
+html.kta-theme-light .kta-note-popup-niveau-ligne,
+body.kta-theme-light .kta-note-popup-niveaux-zone,
+html.kta-theme-light .kta-note-popup-niveaux-zone { color: #24304a; }
 body.kta-theme-light .kta-note-popup-niveau,
 html.kta-theme-light .kta-note-popup-niveau,
 body.kta-theme-light .kta-note-popup-jct-niveau,
@@ -19363,6 +19416,11 @@ html.kta-theme-light .kta-note-popup-jct-niveau {
   color: var(--kta-light-text);
 }
 .kta-note-popup-jonction .kta-note-popup-actions { margin-top: 6px; }
+/* Cases « Aussi aux niveaux » de la fiche d'une zone (multi-niveau). */
+.kta-note-popup-niveaux-zone { margin-top: 6px; font-size: 12px; color: var(--kta-texte-2); }
+.kta-note-popup-niveaux-zone-cases { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+.kta-note-popup-niveaux-zone-case { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.kta-note-popup-niveaux-zone .kta-note-popup-actions { margin-top: 6px; }
 .kta-note-popup-jct-statut { margin-top: 6px; font-size: 12px; line-height: 1.4; }
 body.kta-theme-light .kta-convert-source { color: #1a1f2e; }
 body.kta-theme-light .kta-convert-choix {
@@ -19913,6 +19971,67 @@ html.kta-theme-light .kta-bearing-recentrer {
   touch-action: none;
 }
 
+/* Bouton nord (rotation manuelle, mapBearing.js > _creerBoutonNord) : carte du coin bas gauche, visible seulement
+   quand la vue est tournée à la main. Même place et même carte que la boussole 2D (.kta-compass-widget : 36 px
+   au-dessus de la barre du bas, 12 px du bas en mode Présentation) ; boussole ouverte, il se pose 8 px au-dessus
+   d'elle (body.kta-boussole-ouverte, hauteur --kta-boussole-h posée par compass.js). En paysage bas, la boussole est
+   centrée : le bouton reste au coin, décalé de la barre de gauche (elle peut descendre jusqu'à la barre du bas).
+   🩸 Fixe, comme la boussole : #map déborde sous la barre du bas, son coin bas gauche serait caché dessous. */
+.leaflet-control.kta-nord-ctrl:not(.kta-nord-visible) {
+  display: none !important;
+}
+.leaflet-control.kta-nord-ctrl {
+  --kta-nord-sur-boussole: 0px;
+  position: fixed;
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  bottom: calc(var(--kta-statusbar-h, 52px) + 36px + var(--kta-nord-sur-boussole));
+  transition: bottom 0.2s ease-out;
+}
+body.kta-boussole-ouverte .leaflet-control.kta-nord-ctrl {
+  --kta-nord-sur-boussole: calc(var(--kta-boussole-h, 143px) + 8px);
+}
+body.kta-presentation-mode .leaflet-control.kta-nord-ctrl {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px + var(--kta-nord-sur-boussole));
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .leaflet-control.kta-nord-ctrl,
+  body.kta-boussole-ouverte .leaflet-control.kta-nord-ctrl {
+    --kta-nord-sur-boussole: 0px;
+    left: calc(env(safe-area-inset-left, 0px) + var(--kta-barre-bouton) + 14px);
+    bottom: calc(var(--kta-statusbar-h, 40px) + 8px);
+  }
+  body.kta-presentation-mode .leaflet-control.kta-nord-ctrl {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+}
+.kta-nord-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--kta-cible-toucher);
+  height: var(--kta-cible-toucher);
+  padding: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--kta-surface) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--kta-accent) 30%, transparent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+.kta-nord-btn:hover { border-color: color-mix(in srgb, var(--kta-accent) 55%, transparent); }
+html.kta-theme-light .kta-nord-btn,
+body.kta-theme-light .kta-nord-btn { box-shadow: 0 6px 20px var(--kta-light-shadow); }
+.kta-nord-btn:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
+.kta-nord-picto {
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  transform: rotate(var(--kta-bearing, 0deg));
+}
+.kta-nord-pointe { fill: var(--kta-accent-texte); }
+.kta-nord-queue  { fill: var(--kta-texte-3); }
+
 /* ── Guidage de l'itinéraire (js/itiGuidage.js, décisions docs/ETUDE_GUIDAGE.md) ── */
 
 /* Raccord à vol d'oiseau : pointillé, sans halo — ce n'est pas une galerie. */
@@ -20016,6 +20135,16 @@ html.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
   cursor: pointer;
 }
 .kta-guid-fermer:hover { color: var(--kta-texte); }
+/* Encart « reste » (itiGuidage.js > _rendreEncart) : destination, distance et temps restants sur une ligne sous la
+   consigne ; replié, une languette ▾ seule. Le toucher le replie ou le rouvre (pas la feuille de route). */
+.kta-guid-resume {
+  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 26px; box-sizing: border-box;
+  padding: 3px 10px 5px; background: none; border: 0; border-top: 1px solid var(--kta-bordure);
+  color: var(--kta-texte-2); font: inherit; font-size: 12.5px; line-height: 1.3; text-align: left; cursor: pointer;
+}
+.kta-guid-resume-txt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kta-guid-resume-chevron { flex: 0 0 auto; color: var(--kta-texte-3); font-size: 12px; }
+.kta-guid-resume.kta-guid-resume-reduit { min-height: 22px; padding: 0 10px 2px; justify-content: center; }
 .kta-guid-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px; }
 .kta-guid-actions:not(:empty) { padding: 0 10px 10px; }
 .kta-guid-btn { flex: 1 1 auto; min-height: 40px; font-size: 13px; }
@@ -20381,6 +20510,8 @@ button.kta-cfg-ligne-action {
 .kta-readme-corps h3 { font-size: 16px; }
 .kta-readme-corps h4 { font-size: 15px; }
 .kta-readme-corps .kta-readme-table { font-size: 14px; }
+/* Icône de POI dans le guide (interfaceDocs.js > _renderMarkdown) : à la taille du texte. */
+.kta-readme-corps img.kta-readme-icone { width: 1.5em; height: 1.5em; vertical-align: middle; margin: 0 0.3em 0 0; }
 @media (max-width: 480px) {
   .kta-readme-corps { font-size: 15px; }
   .kta-readme-corps h2 { font-size: 17px; }
@@ -20538,3 +20669,22 @@ button.kta-cfg-ligne-action {
 }
 .kta-recal-barre-msg { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .kta-recal-barre .kta-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
+
+/* ── Ajuster une forme (js/ajusterSommets.js) : poignée, aperçu, 🗑️ au sommet ──
+   Appui en attente : ni sélection de texte ni bulle système (iPhone) ; glisser : le navigateur ne fait rien du doigt. */
+.leaflet-container.kta-ajuster-attente,
+.leaflet-container.kta-ajuster-geste {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.leaflet-container.kta-ajuster-geste { touch-action: none; cursor: grabbing; }
+.kta-ajuster-apercu { stroke: var(--kta-accent); fill: none; }
+.kta-ajuster-poignee { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.35; }
+.kta-ajuster-poignee-attente { fill-opacity: 0; stroke-dasharray: 4 3; }
+.kta-ajuster-menu { background: none; border: 0; }
+.kta-ajuster-suppr {
+  width: 44px; height: 44px; padding: 0; border-radius: 22px; cursor: pointer; font-size: 20px; line-height: 1;
+  background: var(--kta-surface); color: var(--kta-texte); border: 2px solid var(--kta-erreur);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+.kta-ajuster-suppr:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
+.kta-bearing-on .kta-ajuster-suppr { transform: rotate(calc(-1 * var(--kta-bearing, 0deg))); }

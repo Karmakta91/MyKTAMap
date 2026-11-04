@@ -92,15 +92,20 @@ function initRoad() {
 
   // Calque affiché/masqué → intersections recalculées. Throttle 250 ms : bascules en rafale et burst d'événements
   // au changement de plan, sur un calcul lourd.
-  let _renderRoadsTimer = null;
-  function _renderRoadsThrottled() {
+  // `affichage` : redessin pour l'affichage seul (carte déplacée ou zoomée, réglage PerfUltra) ; un appel sans lui
+  // dans la même fenêtre l'emporte (renderRoads > opts.affichage).
+  let _renderRoadsTimer = null, _renderRoadsDonnees = false;
+  function _renderRoadsThrottled(affichage) {
+    if (affichage !== true) _renderRoadsDonnees = true;
     if (_renderRoadsTimer) return;
     _renderRoadsTimer = setTimeout(function() {
       _renderRoadsTimer = null;
-      renderRoads();
+      const donnees = _renderRoadsDonnees;
+      _renderRoadsDonnees = false;
+      renderRoads(donnees ? undefined : { affichage: true });
     }, 250);
   }
-  window.map.on("overlayadd overlayremove", _renderRoadsThrottled);
+  window.map.on("overlayadd overlayremove", function() { _renderRoadsThrottled(false); });
 
   // PerfUltra au moveend/zoomend : décimation ON → renderRoads complet (la RDP dépend du zoom) ; culling seul →
   // _refreshRoadsViewportOnly (addTo/remove ciblé, 5-10× plus rapide sur plan dense).
@@ -109,7 +114,7 @@ function initRoad() {
     const _vp = !!window.PerfUltra.get("viewportCull");
     const _dc = !!window.PerfUltra.get("decim");
     if (_dc) {
-      _renderRoadsThrottled();
+      _renderRoadsThrottled(true);
     } else if (_vp) {
       _refreshRoadsViewportOnly();
     }
@@ -123,7 +128,7 @@ function initRoad() {
       const touchedRender = changedKeys.some(function(k) {
         return ["decim", "viewportCull", "noIntersect"].indexOf(k) >= 0;
       });
-      if (touchedRender && _renderRoadsThrottledRef) _renderRoadsThrottledRef();
+      if (touchedRender && _renderRoadsThrottledRef) _renderRoadsThrottledRef(true);
     });
   }
 
@@ -136,7 +141,7 @@ function initRoad() {
     // Magnétisme : le point cliqué s'accroche au sommet existant le plus proche. 🩸 Deux tracés joints à l'œil
     // tombent souvent à 5-10 px l'un de l'autre → deux nœuds au lieu d'un ; au-delà de la PROXIMITY_TOLERANCE du
     // Pathfinder (15 px), l'itinéraire refuse une galerie visiblement reliée.
-    const _snap = _snapSurSommetProche(x, y);
+    const _snap = _snapSurSommetProche(x, y, e.ktaTolerancePlan);
     if (_snap) {
       x = _snap.x;
       y = _snap.y;
@@ -177,33 +182,37 @@ function initRoad() {
     renderRoads();
 
     if (window.HistoryManager && _historyBefore) {
-      let typeLabel;
-      if (window.LegendCustomization && String(window.modeRoad).startsWith("cust-")) {
-        const e = window.LegendCustomization.findCustomEntry(window.modeRoad);
-        typeLabel = e ? e.label : window.modeRoad;
-      } else {
-        typeLabel = window.modeRoad === "principal"  ? window.I18n.t("road.type.principal")
-                  : window.modeRoad === "secondaire" ? window.I18n.t("road.type.secondaire")
-                  : window.modeRoad === "chemin"     ? window.I18n.t("road.type.chemin")
-                  : window.modeRoad === "jonction"   ? window.I18n.t("road.type.jonction")
-                  : window.modeRoad;
-        // Type built-in RENOMMÉ dans la légende : son nom choisi va jusque dans le libellé d'historique.
-        const _LC = window.LegendCustomization;
-        if (_LC && typeof _LC.getLabel === "function" && typeof _LC.getSource === "function") {
-          try {
-            if (_LC.getSource("traces", window.modeRoad) !== "default") {
-              const _l = _LC.getLabel("traces", window.modeRoad);
-              if (_l) typeLabel = _l;
-            }
-          } catch(e) {}
-        }
-      }
+      const typeLabel = _libelleTypeTrace(window.modeRoad);
       const lbl = _isNewRoad
         ? window.I18n.t("road.history.new", { type: typeLabel })
         : window.I18n.t("road.history.vertex", { type: typeLabel });
       window.HistoryManager.record(lbl, _historyBefore, "roads");
     }
   });
+}
+
+// Libellé d'un type de tracé pour l'historique : custom = son libellé ; built-in renommé dans la légende = le nom
+// choisi.
+function _libelleTypeTrace(type) {
+  if (window.LegendCustomization && String(type).startsWith("cust-")) {
+    const e = window.LegendCustomization.findCustomEntry(type);
+    return e ? e.label : type;
+  }
+  let typeLabel = type === "principal"  ? window.I18n.t("road.type.principal")
+                : type === "secondaire" ? window.I18n.t("road.type.secondaire")
+                : type === "chemin"     ? window.I18n.t("road.type.chemin")
+                : type === "jonction"   ? window.I18n.t("road.type.jonction")
+                : type;
+  const _LC = window.LegendCustomization;
+  if (_LC && typeof _LC.getLabel === "function" && typeof _LC.getSource === "function") {
+    try {
+      if (_LC.getSource("traces", type) !== "default") {
+        const _l = _LC.getLabel("traces", type);
+        if (_l) typeLabel = _l;
+      }
+    } catch(e) {}
+  }
+  return typeLabel;
 }
 
 // ── Activer / désactiver un type ──────────────────────
@@ -500,24 +509,32 @@ function _calculerIntersectionsRoads(roads) {
 //     éligibles (fermer une boucle marche).
 //   • Multi-niveau : seulement les roads du niveau actif, sauf les jonctions (faites pour relier) — sinon
 //     accrochage sur une galerie d'un autre étage superposée en x/y.
-function _snapSurSommetProche(x, y) {
+// `tolPlan` (px plan, facultatif) : rayon donné par l'appelant quand le geste ne vient pas de la carte (vue 3D :
+// js/vue3d.js > _poserSommet, le même rayon écran converti à la profondeur du point touché).
+// `opts` (facultatif, ajustement d'un sommet : ktaFormesAjustables.roads) : `exclus` = sommets jamais candidats (le
+// sommet déplacé et ses voisins), `niveau` = niveau du tracé ajusté au lieu du niveau actif.
+function _snapSurSommetProche(x, y, tolPlan, opts) {
   const cfg = window.APP_CONFIG || {};
   if (cfg.snapDraw !== true) return null;
   if (!window.map || typeof window.map.latLngToLayerPoint !== "function") return null;
 
   // Rayon écran → unités plan, mesuré au CENTRE de la vue avec la projection courante (indépendant du CRS).
   const px = (Number.isFinite(cfg.snapDrawPx) && cfg.snapDrawPx > 0) ? cfg.snapDrawPx : 14;
-  let tol;
-  try {
-    const c   = window.map.getCenter();
-    const p0  = window.map.latLngToLayerPoint(c);
-    const ll1 = window.map.layerPointToLatLng(L.point(p0.x + px, p0.y));
-    tol = Math.abs(ll1.lng - c.lng);
-  } catch(e) { return null; }
+  let tol = Number.isFinite(tolPlan) && tolPlan > 0 ? tolPlan : null;
+  if (tol === null) {
+    try {
+      const c   = window.map.getCenter();
+      const p0  = window.map.latLngToLayerPoint(c);
+      const ll1 = window.map.layerPointToLatLng(L.point(p0.x + px, p0.y));
+      tol = Math.abs(ll1.lng - c.lng);
+    } catch(e) { return null; }
+  }
   if (!Number.isFinite(tol) || tol <= 0) return null;
 
   const mlOn  = cfg.multiLevel === true;
-  const actif = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
+  const actif = (opts && Number.isInteger(opts.niveau)) ? opts.niveau
+    : (Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0);
+  const exclus = (opts && Array.isArray(opts.exclus)) ? opts.exclus : [];
 
   const session  = (typeof window.getRoads === "function" ? window.getRoads() : roadsData) || [];
   const embedded = (typeof window.getAllEmbeddedRoads === "function")
@@ -539,7 +556,7 @@ function _snapSurSommetProche(x, y) {
       if (mlOn && r.type !== "jonction" && Number.isInteger(r.level) && r.level !== actif) continue;
       for (let j = 0; j < r.points.length; j++) {
         const p = r.points[j];
-        if (!p || p === exclu) continue;
+        if (!p || p === exclu || exclus.indexOf(p) >= 0) continue;
         const d = Math.hypot(p.x - x, p.y - y);
         if (d <= tol && (!best || d < best.d)) best = { x: p.x, y: p.y, d: d };
       }
@@ -721,7 +738,36 @@ function _rendererItineraire() {
   return m._ktaItiRenderer;
 }
 
-function renderRoads() {
+// Filtres d'affichage d'un tracé de session, lus par renderRoads et par l'ajustement des sommets
+// (ktaFormesAjustables) : niveaux visibles (jonction visible si l'un de ses deux niveaux l'est, `level` absent = 0),
+// état d'une extension (ktaExtensions.js > filtrerEtats), types du FilterPanel (`roadTypes` null = tout).
+// 🩸 Itinéraire et tracé EN COURS passent toujours : créé sur activeLevel alors que le filtre montre un autre niveau,
+// il ne grandirait pas à l'écran.
+function _tracePasseFiltres(road) {
+  if (road.type === "itinerary" || road === currentRoad) return true;
+  const cfg = window.APP_CONFIG || {};
+  if (cfg.multiLevel === true) {
+    const vis = Array.isArray(cfg.visibleLevels) ? cfg.visibleLevels : [0];
+    if (road.type === "jonction") {
+      const fromL = Number.isInteger(road.fromLevel) ? road.fromLevel : 0;
+      const toL   = Number.isInteger(road.toLevel)   ? road.toLevel   : 0;
+      if (vis.indexOf(fromL) < 0 && vis.indexOf(toL) < 0) return false;
+    } else if (vis.indexOf(Number.isInteger(road.level) ? road.level : 0) < 0) {
+      return false;
+    }
+  }
+  if (window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
+      !window.KtaExtensions.passeFiltreEtat(road)) return false;
+  const f = window._ktaRuntimeFilters;
+  return !(f && f.roadTypes && !f.roadTypes.has(road.type));
+}
+
+// opts.affichage : redessin pour l'affichage seul (déplacement, zoom, réglage PerfUltra) : aucune donnée n'a changé,
+// donc pas de `kta:donneesPlanChange` (utils.js > ktaSignalerDonneesPlan).
+function renderRoads(opts) {
+  if (!(opts && opts.affichage === true) && typeof window.ktaSignalerDonneesPlan === "function") {
+    window.ktaSignalerDonneesPlan("roads");
+  }
   // ⚠️ Chemin chaud (chaque point pendant le dessin) : ne jamais logger le tableau roadsData (sérialisation, et la
   // console retient les références). Compte seulement, en debugMode.
   if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
@@ -769,26 +815,7 @@ function renderRoads() {
   }
   let _culled = 0;
 
-  // Filtre multi-niveau : level ∈ visibleLevels ; jonction visible si fromLevel OU toLevel l'est. Hors
-  // multi-niveau : tout visible.
   const _multiLevelOn   = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
-  const _visibleLevels  = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
-                            ? window.APP_CONFIG.visibleLevels : [0];
-  function _passeFiltreNiveau(road) {
-    if (!_multiLevelOn) return true;
-    if (road.type === "itinerary") return true;       // itinéraire toujours visible
-    // 🩸 Road EN COURS de tracé toujours visible : créée sur activeLevel alors que le filtre montre un autre
-    // niveau, elle ne grandirait pas à l'écran.
-    if (road === currentRoad) return true;
-    if (road.type === "jonction") {
-      const fromL = Number.isInteger(road.fromLevel) ? road.fromLevel : 0;
-      const toL   = Number.isInteger(road.toLevel)   ? road.toLevel   : 0;
-      return _visibleLevels.indexOf(fromL) >= 0 || _visibleLevels.indexOf(toL) >= 0;
-    }
-    // `level` absent = 0.
-    const lvl = Number.isInteger(road.level) ? road.level : 0;
-    return _visibleLevels.indexOf(lvl) >= 0;
-  }
 
   // 🩸 Tracés sur le renderer CANVAS (preferCanvas) : forcer le SVG fait planter au dézoom sur plan dense. Seul
   // l'itinéraire a son SVG (filtre CSS drop-shadow du halo, impossible en canvas).
@@ -820,17 +847,7 @@ function renderRoads() {
   _renderQueue.forEach(road => {
     if (!road.points || road.points.length === 0) return;
 
-    if (!_passeFiltreNiveau(road)) return;
-    // Filtre « objets marqués seulement » d'une extension (ktaExtensions.js > filtrerEtats) ; éteint sans elle.
-    if (road.type !== "itinerary" && road !== currentRoad && window.KtaExtensions &&
-        typeof window.KtaExtensions.passeFiltreEtat === "function" && !window.KtaExtensions.passeFiltreEtat(road)) return;
-
-    // ⚠️ Filtre par type (FilterPanel) : window._ktaRuntimeFilters.roadTypes null = tout visible, Set = types
-    // visibles. Itinéraire et road en cours passent toujours.
-    if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.roadTypes
-        && road.type !== "itinerary" && road !== currentRoad) {
-      if (!window._ktaRuntimeFilters.roadTypes.has(road.type)) return;
-    }
+    if (!_tracePasseFiltres(road)) return;
 
     // Culling : la polyline est TOUJOURS créée, seul addTo() dépend du viewport. Au moveend,
     // _refreshRoadsViewportOnly n'a qu'à attacher/détacher (5-10× plus rapide). Itinéraire jamais cullé
@@ -1181,7 +1198,8 @@ window.getCurrentRoad = function() {
 };
 
 // Filtre de niveau partagé par les exports (utils.js > telechargerPlan, exporter.js) : on exporte ce qu'on voit.
-// Hors multi-niveau → true ; sinon level ∈ visibleLevels (jonction : fromLevel OU toLevel). `level` absent = 0.
+// Hors multi-niveau → true ; sinon level ∈ visibleLevels (jonction : fromLevel OU toLevel ; passage ou zone sur
+// plusieurs niveaux : l'un d'eux). `level` absent = 0.
 window.passeFiltreNiveau = function(item) {
   const _ml = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   if (!_ml) return true;
@@ -1195,6 +1213,11 @@ window.passeFiltreNiveau = function(item) {
   // Passage entre niveaux (POI) : visible si un de ses niveaux l'est.
   if (item && Array.isArray(item.niveaux) && window.KtaPoiJonction && window.KtaPoiJonction.estJonction(item)) {
     return window.KtaPoiJonction.passeNiveaux(window.KtaPoiJonction.niveaux(item), _visibles);
+  }
+  // Zone sur plusieurs niveaux : visible si un de ses niveaux l'est (poiJonction.js > ktaNiveauxObjet).
+  if (item && Array.isArray(item.niveaux) && Array.isArray(item.points) &&
+      typeof window.ktaNiveauxObjet === "function") {
+    return window.ktaNiveauxObjet(item).some(function(n) { return _visibles.indexOf(n) >= 0; });
   }
   const lvl = Number.isInteger(item && item.level) ? item.level : 0;
   return _visibles.indexOf(lvl) >= 0;
@@ -1269,3 +1292,31 @@ window.resetRoads           = resetRoads;
 window.removeLastRoad       = removeLastRoad;
 window.removeLastRoadPoint  = removeLastRoadPoint;
 window.renderRoads          = renderRoads;
+
+// ── Ajustement des sommets (js/ajusterSommets.js) ──────────────────────
+// ⚠️ contrat : ktaFormesAjustables.<famille> = { cat, objets(), ferme(o), minimum(o), libelle(o), rendre(),
+// aimanter?(x, y, o, exclus) } (en-tête d'ajusterSommets.js). Tracés de session visibles hors tracé en cours et
+// itinéraire ; les tracés d'un calque ne sont pas ici (lecture seule tant que le calque n'est pas en « 🔄 Modifier »).
+// 🩸 RoadGraph ne voit pas un sommet déplacé (sa signature compte les sommets) : invalidé au rendu.
+window.ktaFormesAjustables = window.ktaFormesAjustables || {};
+window.ktaFormesAjustables.roads = {
+  cat: "roads",
+  objets: function() {
+    return roadsData.filter(function(r) {
+      return r && r !== currentRoad && r.type !== "itinerary" && Array.isArray(r.points) && _tracePasseFiltres(r);
+    });
+  },
+  ferme: function() { return false; },
+  minimum: function() { return 2; },
+  libelle: function(r) { return _libelleTypeTrace(r.type); },
+  rendre: function() {
+    renderRoads();
+    if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
+  },
+  // Aimantation du dessin (snapDraw, même rayon) ; `exclus` : le sommet déplacé et ses voisins du même tracé.
+  aimanter: function(x, y, r, exclus) {
+    const s = _snapSurSommetProche(x, y, null, { exclus: exclus, niveau: Number.isInteger(r.level) ? r.level : null });
+    if (s) _flashSnap(s.x, s.y);
+    return s ? { x: s.x, y: s.y } : null;
+  }
+};

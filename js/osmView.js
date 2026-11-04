@@ -992,7 +992,10 @@
     const emb     = (typeof window.getAllEmbeddedZones === "function") ? (window.getAllEmbeddedZones() || []) : [];
     function _push(z) {
       if (!z || !Array.isArray(z.points) || z.points.length < 3) return; // polygone : ≥ 3 points
-      if (!_isZoneTypeAllowed(z) || !_isLevelAllowed(z)) return;
+      if (!_isZoneTypeAllowed(z)) return;
+      // Zone sur plusieurs niveaux : visible si l'un d'eux l'est (poiJonction.js > ktaNiveauxObjet).
+      const nv = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(z) : [z.level];
+      if (!nv.some(function(n) { return _isLevelAllowed({ level: n }); })) return;
       out.push(z);
     }
     session.forEach(_push); emb.forEach(_push);

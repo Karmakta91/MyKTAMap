@@ -7,10 +7,14 @@
 // zones.js — tracé des zones polygonales remplies (eau, remblais, effondrement, inaccessible, cust-…).
 // Fermeture : re-clic sur le 1er sommet (≥ 3 sommets) ou bouton « Fermer la zone ».
 // Expose : window.initZones, toggleZoneMode, getZones/setZones, getCurrentZone(Index), …
-// 🩸 La zone INACCESSIBLE bloque le pathfinder (segment qui traverse le polygone retiré du graphe)
-//   et se peint avec le motif SVG d'index.html : renderer L.svg() dédié (le canvas l'ignore).
+// 🩸 La zone INACCESSIBLE bloque le pathfinder (segment qui traverse le polygone retiré du graphe) ; ses
+//   hachures sont un CanvasPattern (styleResolver.js) sur le canvas commun : elle passe sous les structures.
+// ⚠️ Empilement : eau < remblais < effondrement < inaccessible < structures (structures.js >
+//   ktaStructuresAuDessus, rappelé après chaque rendu).
+// ⚠️ Plusieurs niveaux : `niveaux` (⊇ level, poiJonction.js > ktaNiveauxObjet), saisis dans la fiche de la zone
+//   (utils.js > attacherNotePopup) ; un seul polygone, affiché si l'un de ses niveaux est visible.
 // Styles : window.ktaResolveStyle (styleResolver.js), jamais de table locale.
-// Garde-fou : scripts/check-filets-donnees.js, scripts/check-uid.js, scripts/check-style-canon.js
+// Garde-fou : scripts/check-filets-donnees.js, check-uid.js, check-style-canon.js, check-zones-niveaux.js
 
 window.modeZone = null; // null | "remblais" | "effondrement" | "eau" | "inaccessible"
 
@@ -19,20 +23,9 @@ let currentZone = null;
 let zoneLayers = [];      // polygones fermés (remplis)
 let previewLayer = null;  // polyline pointillée pendant le tracé
 
-// Tolérance du re-clic sur le 1er sommet (px, coordonnées plan).
-const CLOSE_TOLERANCE = 5;
+// Tolérance du re-clic sur le 1er sommet : utils.js > ktaToleranceFermeture (mètres du plan, plancher en px d'écran).
 
 // ── Styles ──────────────────────────────
-// Renderer SVG dédié à l'inaccessible (motif url(#kta-pattern-inaccessible)) ; les autres types
-// gardent le renderer par défaut de Leaflet.
-let _inaccessibleRenderer = null;
-function _getInaccessibleRenderer() {
-  if (!_inaccessibleRenderer) {
-    _inaccessibleRenderer = L.svg({ padding: 0.5 });
-  }
-  return _inaccessibleRenderer;
-}
-
 const ZONE_STYLE_PREVIEW = {
   weight:    3,
   opacity:   1,
@@ -50,6 +43,12 @@ function _resolveZoneStyle(type) {
     return null;
   }
   return window.ktaResolveStyle("zones", type);
+}
+
+// Niveaux d'une zone : règle commune points / zones (poiJonction.js > ktaNiveauxObjet).
+function _niveauxZone(zone) {
+  if (typeof window.ktaNiveauxObjet === "function") return window.ktaNiveauxObjet(zone);
+  return [Number.isInteger(zone && zone.level) ? zone.level : 0];
 }
 
 // Cible de rendu : calque « Mes annotations » (window.layerEditor), comme points et tracés de
@@ -122,7 +121,8 @@ function initZones() {
       const dx = x - p0.x;
       const dy = y - p0.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= CLOSE_TOLERANCE) {
+      const tol = typeof window.ktaToleranceFermeture === "function" ? window.ktaToleranceFermeture(e) : 5;
+      if (dist <= tol) {
         fermerZoneEnCours();
         if (window.HistoryManager && _historyBefore) {
           window.HistoryManager.record(window.I18n.t("history.action.closeZone", { type: _typeLabel }), _historyBefore, "zones");
@@ -217,7 +217,25 @@ function fermerZoneEnCours() {
 }
 
 // ── Rendu ──────────────────────────────
+// Filtres d'affichage d'une zone, lus par renderZones et par l'ajustement des sommets (ktaFormesAjustables) :
+// un de ses niveaux visible (_niveauxZone : `niveaux`, sinon `level`, sinon 0 ; un seul polygone pour tous), état
+// d'une extension (ktaExtensions.js > filtrerEtats), types du FilterPanel.
+// 🩸 La zone en cours de tracé passe toujours (comme road.js > _tracePasseFiltres).
+function _zonePasseFiltres(zone) {
+  if (zone === currentZone) return true;
+  const cfg = window.APP_CONFIG || {};
+  if (cfg.multiLevel === true) {
+    const vis = Array.isArray(cfg.visibleLevels) ? cfg.visibleLevels : [0];
+    if (!_niveauxZone(zone).some(function(n) { return vis.indexOf(n) >= 0; })) return false;
+  }
+  if (window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
+      !window.KtaExtensions.passeFiltreEtat(zone)) return false;
+  const f = window._ktaRuntimeFilters;
+  return !(f && f.zoneTypes && !f.zoneTypes.has(zone.type));
+}
+
 function renderZones() {
+  if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("zones");
   zoneLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
   zoneLayers = [];
 
@@ -226,8 +244,8 @@ function renderZones() {
     previewLayer = null;
   }
 
-  // Ordre d'empilement : eau, remblais, effondrement, inaccessible au-dessus (elle bloque le
-  // pathfinder, elle doit se voir).
+  // Ordre d'empilement : eau, remblais, effondrement, inaccessible au-dessus des autres zones (elle bloque
+  // le pathfinder, elle doit se voir), toutes sous les structures (rappel en fin de rendu).
   const ordreType = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
   const zonesAffichage = [...zonesData].sort(function(a, b) {
     const oa = ordreType[a.type] !== undefined ? ordreType[a.type] : 99;
@@ -237,31 +255,9 @@ function renderZones() {
 
   const target = _zoneTarget();
 
-  // Multi-niveau : seules les zones de visibleLevels ; sans champ level = niveau 0.
-  const _multiLevelOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
-  const _visibleLevels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
-                          ? window.APP_CONFIG.visibleLevels : [0];
-  function _zonePasseFiltre(zone) {
-    if (!_multiLevelOn) return true;
-    // 🩸 La zone en cours de tracé reste visible quel que soit le filtre (comme
-    // road.js > _passeFiltreNiveau).
-    if (zone === currentZone) return true;
-    const lvl = Number.isInteger(zone.level) ? zone.level : 0;
-    return _visibleLevels.indexOf(lvl) >= 0;
-  }
-
   zonesAffichage.forEach(function(zone) {
     if (!zone.points || zone.points.length === 0) return;
-    if (!_zonePasseFiltre(zone)) return;
-    // Filtre « objets marqués seulement » d'une extension (ktaExtensions.js > filtrerEtats) ; éteint sans elle.
-    if (zone !== currentZone && window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
-        !window.KtaExtensions.passeFiltreEtat(zone)) return;
-
-    // Filtre par type (FilterPanel), sauf pour la zone en cours.
-    if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.zoneTypes
-        && zone !== currentZone) {
-      if (!window._ktaRuntimeFilters.zoneTypes.has(zone.type)) return;
-    }
+    if (!_zonePasseFiltres(zone)) return;
 
     const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
     const style = _resolveZoneStyle(zone.type) || _resolveZoneStyle("remblais");
@@ -289,9 +285,7 @@ function renderZones() {
         }
       }
     } else {
-      const polygonOpts = (zone.type === "inaccessible")
-        ? Object.assign({}, style, { renderer: _getInaccessibleRenderer() })
-        : style;
+      const polygonOpts = style;
       const polygon = L.polygon(latlngs, polygonOpts).addTo(target);
       zoneLayers.push(polygon);
       // État donné par une extension (prise etatObjet) : pointillé ; sans prise, uid noté seulement.
@@ -337,6 +331,7 @@ function renderZones() {
       }
     }
   });
+  if (typeof window.ktaStructuresAuDessus === "function") window.ktaStructuresAuDessus();
 }
 
 // ── Reset complet ──────────────────────────────
@@ -446,3 +441,19 @@ window.resetZones            = resetZones;
 window.removeLastZone        = removeLastZone;
 window.removeLastZonePoint   = removeLastZonePoint;
 window.renderZones           = renderZones;
+
+// ── Ajustement des sommets (js/ajusterSommets.js) ──────────────────────────────
+// ⚠️ contrat : même forme que road.js > ktaFormesAjustables.roads. Zones de session visibles, hors zone en cours.
+window.ktaFormesAjustables = window.ktaFormesAjustables || {};
+window.ktaFormesAjustables.zones = {
+  cat: "zones",
+  objets: function() {
+    return zonesData.filter(function(z) {
+      return z && z !== currentZone && Array.isArray(z.points) && _zonePasseFiltres(z);
+    });
+  },
+  ferme: function() { return true; },
+  minimum: function() { return 3; },
+  libelle: function(z) { return _labelTypeZone(z.type); },
+  rendre: function() { renderZones(); }
+};

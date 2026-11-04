@@ -31,6 +31,53 @@ Symétrique pour zones avec `getCurrentZone()`.
 
 ---
 
+### ✏️ Outil armé : tout toucher pose un sommet, aucune fiche
+
+**Règle** : tant qu'un outil « clic carte » est armé — tracé, zone, structure, mesure, ajout de point, recalage 📍,
+pickers de position (`.kta-iti-floater`, Mode perdu, légende de l'export) — un toucher ou un clic sur la carte va à
+l'outil **au point touché**, même posé sur un POI, une structure, une zone, un tracé ou l'itinéraire, de session ou
+d'un calque de données. Aucune fiche (popup Leaflet) ne s'ouvre. Un seul outil est armé à la fois : chaque bouton
+d'outil commence par `_desactiverTousLesModes()` (`interface.js`, registre `_modesActifs`).
+
+**Échap désarme** (`shortcuts.js > _echapCarte`, carte 2D) : même geste que le bouton de l'outil
+(`_desactiverTousLesModes()` : un objet en cours finit comme en éteignant l'outil, la mesure annulable est purgée par
+`_initPrecisionCursor`). Décidé en capture sur `window`, avant les écouteurs des fenêtres, dans cet ordre :
+- Échap déjà arrêté par un écouteur antérieur (`e.cancelBubble`) : appui long ou menu de sommet
+  (`ajusterSommets.js`, qui l'arrête quand il annule), confirmation (`ktaConfirm`, `stopImmediatePropagation`) ;
+- champ texte au focus, gate / splash / chargement (`_isModaleBloquante`), mode présentation, fenêtre visible
+  (`ECHAP_AVANT` : overlays de l'app, fenêtre de nommage d'un point comprise, pickers `.kta-iti-floater`, vue 3D
+  `#kta-vue3d`) : rien, la fenêtre se ferme par son propre écouteur ;
+- panneau d'un groupe ouvert (`ktaOutilsOuverts`) ou bulle ouverte : fermé ici, l'outil reste armé ;
+- sinon, outil armé (`window.ktaOutilArme()`, registre `_modesActifs`) : désarmé.
+🩸 Pas au bouillonnement : Leaflet (`Keyboard._onKeyDown`) arrête tout Échap tapé carte au focus dès qu'une bulle a
+été ouverte une fois (`map._popup` gardé après fermeture). Une bulle ne coexiste pas avec un outil armé (garde
+`popupopen` ci-dessous) : la priorité bulle > outil tient par construction. Vue 3D ouverte : sa règle seule
+(`vue3d.js`, écouteur `keydown` de la vue) ; l'Échap de la carte s'efface devant `#kta-vue3d`, jamais les deux.
+Checkups : `checkup-raccourcis.js` (chaque outil, priorités, 3D), `checkup-dessin-sans-fiche.js` (Échap = bouton,
+objet en cours), `checkup-mesure-annulable.js` (purge).
+
+**Source unique** : `utils.js > _modeClicCarteActif()`, lue par :
+- `map.js > _ktaPickCaptureClick` (capture du `click` sur le conteneur, avant les calques) : le clic posé sur un
+  objet est arrêté et ré-émis à la carte au point touché, `map.on("click")` de l'outil reçoit le bon `latlng` ;
+- le garde `popupopen` (`map.js`) : toute popup qui s'ouvrirait pendant un outil est refermée aussitôt ;
+- la vue 3D : `vue3d.js > _toucher` pose le sommet quand le dessin de la vue est actif (✏️, plongée), sinon un outil
+  armé consomme le toucher sans ouvrir de fiche (outil armé en 2D, ✏️ fermé, vue à hauteur d'yeux).
+
+🩸 L'itinéraire (SVG) ne prend jamais le pointeur (`style.css`, sélecteur aussi précis que celui de Leaflet) : au doigt,
+WebKit déplaçait le toucher d'un outil armé vers le tracé, le sommet tombait à quelques px. Rien ne coupe le pointeur
+des objets pendant un outil : un état posé sur la carte resterait en retard d'un geste au désarmement (premier toucher
+d'après sans fiche).
+
+**Ajout de point** (`modeEdition`) : compté comme un outil. Sa fenêtre de nommage `#kta-poi-modal` n'est pas une popup
+Leaflet, le garde ne la ferme pas ; touché sur un objet, il nomme un point neuf à cet endroit. La barre ✏️ de la vue
+3D ne le propose pas (décision produit).
+
+**Hors règle** : le tracé de polygone du Mode Secours (sa propre carte, son voile plein écran) ; les rendus ne posent
+pas les fantômes de notes pendant un dessin (`utils.js > _aucunModeEditionActif`) — la règle ci-dessus tient même
+sans cela. Preuve : `scripts/smoke/checkup-dessin-sans-fiche.js` (2D et 3D, doigt et souris, Chromium et WebKit).
+
+---
+
 ### 35. Modales custom pour re-sélection ZIP (depuis v172)
 
 Remplacement des `confirm()` natifs OS dans `reSelectionnerZipPourPlan` (index.html) par des modales custom respectant la charte graphique du projet. Plus important : changement **fonctionnel** sur le cas "nom différent" — refus définitif au lieu de "Charger quand même".
@@ -238,6 +285,19 @@ En **landscape mobile** (`@media (max-height: 500px) and (orientation: landscape
 - Séparateur interne `border-left` au lieu de `border-bottom`.
 
 **Exception** : `.leaflet-control-zoom` (zoom natif Leaflet) garde `flex-direction: column !important` — convention universelle "+ au-dessus du -" (Google Maps, OSM, etc.). Séparateur entre zoom-in/out en `border-top`.
+
+🩸 **Boutons entiers** : la colonne est un flex vertical borné (`max-height`) qui rétrécit ses pilules quand elles ne tiennent pas ; sous `overflow: hidden`, un bouton resté à 30 px y perdait son bas (pilules de 27,6 px à 852 × 393). Les pilules sont donc à 30 px de haut, **sans liseré haut ni bas**, à **1 px** l'une de l'autre (les 10 pilules de la barre de droite font 309 px dans les 313 px de 852 × 393) ; au-delà, le bouton suit la hauteur de sa pilule, entier et centré, jusqu'à 24 px, puis la colonne défile. Le zoom (deux boutons empilés) est exclu. Mesuré : 32 × 30 px, boutons 30 × 30 (checkup `checkup-rotation-manuelle.js` R13, `checkup-rails-toucher.js`). ⚠️ Pas de marge à rendre : 2 px d'écart font 318 px, les liserés rendus 329 px — une 11ᵉ pilule à droite refait rétrécir la colonne (27,5 px mesurés quand le bouton nord y vivait).
+
+#### 41.7 Bouton nord (rotation manuelle de la carte)
+
+Carte `.kta-nord-ctrl` > `button.kta-nord-btn` (`mapBearing.js > _creerBoutonNord`), contrôle Leaflet du coin `.leaflet-bottom.leaflet-left` (hors du pane qui tourne), créé au premier besoin et visible (`.kta-nord-visible`) **seulement quand la carte est tournée à la main** — pas en plan orienté, qui a son propre arrêt. Un toucher la remet droite (300 ms, immédiat sous `prefers-reduced-motion`). Libellé `bearing.nord` (title et aria-label, fr/en/es).
+
+- **Place** : **en bas à gauche, à la place de la boussole 2D** (`.kta-compass-widget`) : `position: fixed`, 10 px du bord gauche, 36 px au-dessus de la barre du bas (`--kta-statusbar-h`), 12 px du bas en mode Présentation. 🩸 Fixe et non au coin de la carte : `#map` déborde sous la barre du bas, son coin bas gauche est caché dessous. Jamais dans une barre latérale : la 11ᵉ pilule de droite écrasait la barre en paysage bas (cf §41.6).
+- **Avec la boussole ouverte** : posé **8 px au-dessus d'elle**, aligné à gauche — `body.kta-boussole-ouverte` et `--kta-boussole-h` (hauteur réelle, suivie par un `ResizeObserver`) posés par `compass.js`. **Jamais fusionnés** (décision produit) : la rose montre le nord réel d'après le cap du téléphone et ouvre sa vue plein écran ; l'aiguille montre le haut du **plan**. Côte à côte (x ≈ 120 px à 393 de large), il entrait dans la bande du bas-centre (Recentrer, Retour de portail, cf `tracking.md` §plan orienté).
+- **Paysage bas** : la boussole y est centrée ; le bouton reste au coin, décalé de la barre de gauche (`--kta-barre-bouton` + 14 px), qui peut descendre jusqu'à la barre du bas.
+- **Gabarit** : carré de `--kta-cible-toucher` (44 px), même carte que la boussole (surface à 88 %, liseré `--kta-accent` à 30 %, rayon 12 px, flou), dans les deux thèmes par les jetons ; ombre `--kta-light-shadow` en clair.
+- **Picto** : aiguille SVG en ligne, pointe `--kta-accent-texte`, queue `--kta-texte-3`, tournée de `--kta-bearing` (variable du conteneur de la carte) : elle montre le haut du plan.
+- Mesuré (`checkup-rotation-manuelle.js` R13, Chromium et WebKit) à 393 × 852, 430 × 932, 852 × 393 et 1366 × 768, seul, boussole ouverte avec un toast, et en mode Présentation : dans l'écran, touchable, aucun chevauchement (barres, en-tête, barre du bas, boussole, toasts, Recentrer, sortie de Présentation).
 
 #### 41.7 Status bar — wrap dynamique + variable CSS (depuis v1.9.1)
 
@@ -1836,14 +1896,38 @@ i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Sco
 
 ---
 
-### 93. Raccourcis clavier + navigation clavier + refonte du menu Aide (v1.51.0)
+### 93. Raccourcis clavier, fiche des raccourcis, navigation clavier, hub d'Aide
 
-KARMA : « pas de raccourci clavier pour Tracés », « avec TAB et Entrée pouvoir choisir le mode », « refondre le modal Aide en sous-modales depuis un modal principal qui liste les sections ». 3 lots dans une même release.
-
-#### 93.1 Lot A — Raccourcis + cheatsheet (`shortcuts.js`, `shortcutsCheatsheet.js`)
-- **Raccourci Tracés manquant ajouté** : `MAPPING.p = { action: "group:traces", label: … }` (`shortcuts.js`). Mapping complet : E/M/Z/S/T/**P**/L/B/R.
-- **Cheatsheet `?`** : nouveau module `js/shortcutsCheatsheet.js` → `window.ShortcutsCheatsheet = { ouvrir, fermer, toggle, isOpen }`. Modale `.kta-readme-modal-overlay` réutilisée + grille `.kta-cheat-*` / keycaps `.kta-kbd`. Les lignes "outils" sont **auto-générées** depuis `KtaShortcuts.listMapping()` (zéro liste à maintenir) ; libellés localisés via `cheatsheet.tool.*` (fr/en/es). Bloc fixe des combos (Ctrl+Z/Y, Ctrl+K, F, ?, Échap). La touche `?` est gérée dans le keydown de `shortcuts.js` **AVANT** le guard `e.shiftKey` (car `?` = Shift+… sur AZERTY ; `e.key === "?"` est layout-agnostique).
-- **Fix** : `_isModaleBloquante()` (`shortcuts.js`) couvre désormais `.kta-tracker-modal-overlay` → les raccourcis ne se déclenchent plus « derrière » le modal Tracker.
+#### 93.1 Raccourcis et fiche des raccourcis (`shortcuts.js`, `shortcutsCheatsheet.js`)
+- **Raccourcis à une touche** (`shortcuts.js > MAPPING`) : E Édition, M Mesure, Z Zones, S Structures, T Tracker,
+  P Tracés (`group:<id>` = clic sur le bouton du groupe), L Légende, B Boussole, R Recherche (`fn:<nom>`). Ignorés avec
+  Ctrl / Cmd / Alt / Maj, dans un champ, sous une modale (`_isModaleBloquante`, modale Tracker comprise), en mode
+  présentation. `?` est traité AVANT le test de Maj (`e.key === "?"`, toutes dispositions). Vue 3D ouverte, ces lettres
+  sont arrêtées par la vue (`vue3d.js > _raccourciCarte`) sauf « ? ».
+- **Fiche** (`window.ShortcutsCheatsheet = { ouvrir, fermer, toggle, isOpen, lignes }`), ouverte par `?` ou la ligne
+  épinglée ⌨️ du hub d'Aide. Modale `.kta-readme-modal-overlay`, sections repliables `<details class="kta-cheat-section">`
+  (le corps défile), touches en `.kta-kbd` (combinaison « + », variantes « / »). `lignes()` rend ce que la fiche
+  affiche (sections, ordre, dépliage) : la fiche et le checkup lisent la même.
+  - **Outils** : générés depuis `KtaShortcuts.listMapping()` (libellés `cheatsheet.tool.*`). Une ligne dont le vrai
+    bouton n'est pas un émoji prend son image (`ACTION_ICONE`, `.kta-cheat-icone`) : B = la rose de la boussole
+    (`icon/compass.svg`, comme son bouton dans la vue 3D), 🧭 restant au Tracker.
+  - **Carte** (table `CARTE`) : Maj + molette tourne la carte, le bouton nord la redresse (`mapBearing.js`) ; clic
+    long + glisser sur un sommet (`ajusterSommets.js`, souris comprise) ; molette, + / − et flèches (clavier de
+    Leaflet, carte touchée) ; Échap ferme la bulle, annule un sommet en cours ou le choix d'une position ; Échap
+    désarme l'outil armé, après tout cela (§ Outil armé, `shortcuts.js > _echapCarte`).
+  - **Actions globales** (table `GLOBAL`) : Ctrl+Z (la mesure 📐 comprise tant que l'outil est armé), Ctrl+Y et
+    Ctrl+Maj+Z (`historyManager.js`), Ctrl+K (`searchPoints.js`), F et Échap (`presentationMode.js`), `?`, Échap.
+  - **Vue 3D** : `KtaVue3D.raccourcis()` (`vue3d.js`, lu dans ses tables `TOUCHES`, `TOUCHES_ZOOM`,
+    `TOUCHES_INCLINAISON`, `TOUCHE_VUE` et les gestes de souris) : aucune table recopiée. Jetons = `ev.code` (« KeyW »),
+    `ev.key` (« PageUp ») ou geste (« Molette ») ; nom lisible par langue (`cheatsheet.key.*` : Maj / Shift / Mayús).
+    ⚠️ vue3d.js est chargé à la demande : la section se remplit si la vue est déjà chargée, sinon à son dépliage
+    (`interface.js > ktaChargerVue3D`, vue3d.js seul, jamais three.js). Ouverte par-dessus la vue, la fiche montre
+    la Vue 3D en tête, dépliée ; Échap ferme la fiche, pas la vue (`_recouverte`).
+  - **Gestes tactiles** (appareil tactile seulement, `ktaAppareilTactile`) : en tête et dépliés, les sections clavier
+    repliées. Deux doigts pour tourner la carte, appui long sur un sommet, gestes de la vue 3D d'édition.
+- Ajouter une touche : dans le module qui la traite, puis sa ligne (table de la fiche ou `raccourcis()`) et son
+  contrôle dans `scripts/smoke/checkup-raccourcis.js`, qui joue CHAQUE ligne affichée et vérifie son effet (une ligne
+  sans contrôle = rouge), sous Chromium et WebKit.
 
 #### 93.2 Lot B — Navigation clavier dans les menus (`interface.js > _installFocusNav`)
 - Helper partagé `_installFocusNav(container, opts)` branché sur **`_ouvrirFlyout`** (flyout latéral, partagé traces/zones/structures/édition/mesure/favoris) **ET** `_ouvrirTrackerModal` (modal Tracker).
@@ -1857,7 +1941,7 @@ KARMA : « pas de raccourci clavier pour Tracés », « avec TAB et Entrée pouv
 - **❓ contextuel** : `AIDE_PAR_MODALE` (id de modale → slug), bouton posé par un `MutationObserver` dans l'en-tête `.kta-readme-modal-header` / `.kta-tracker-modal-header`, juste avant la croix ; interrupteur `myktamap_aide_contextuelle`. `ktaOuvrirAideSection(slug)` ouvre une fiche sans passer par le hub.
 - 🛡️ `check-aide-sections.js` (chaque slug a ses clés dans les 3 dicos, chaque slug rangé une fois, aucune clé `aide.*` orpheline, pas de balisage dans un titre) · `check-aide-contextuelle.js` (chaque id de la table existe dans le code, chaque slug est une fiche).
 
-**Sources** v1.51.0 ; `shortcutsCheatsheet.js` ajouté à `index.html` (après `shortcuts.js`) + `sw.js > ASSETS_TO_CACHE`. i18n : 20 clés `cheatsheet.*`. Aucune nouvelle surface réseau (1 fichier same-origin).
+**Sources** : `shortcutsCheatsheet.js` chargé par `index.html` après `shortcuts.js`, précaché par `sw.js > ASSETS_TO_CACHE`. Aucune surface réseau.
 
 ---
 
@@ -2199,10 +2283,30 @@ icônes.
   sont posées sur `<html>` après elle, donc au-dessus à z-index égal ; les toasts (100000) aussi, et ils descendent
   sous la rangée du haut (`--kta-v3d-sous-haut`, posé sur `<html>` par `vue3d.js > _majSousHaut`, lu par
   `css/vue3d.css` quand `html.kta-vue3d-ouverte`). Une fenêtre par-dessus garde le clavier (`_recouverte`).
+  Les raccourcis de la carte (`shortcuts.js`) que la vue ne traite pas sont arrêtés (`vue3d.js > _raccourciCarte`) :
+  rien ne s’ouvre derrière elle ; « ? », un modificateur ou un champ de saisie passent.
+- **Gabarit = la barre 2D** (décision produit : la 2D est la référence ; `css/vue3d.css`, variables posées sur
+  `.kta-vue3d`) : un bouton carré de la vue (rangée du haut, pavé, zoom et inclinaison) a la boîte de la pilule
+  `.leaflet-bar` de la carte, par les jetons communs `--kta-barre-bouton` (36 px, 30 px en paysage bas :
+  `max-height: 500px` et paysage), `--kta-barre-rayon` (8 px) et `--kta-cible-toucher` (44 px) de `style.css > :root`,
+  que la barre 2D lit aussi — **38 px** (côté + liseré), 32 px en paysage bas, emoji à 16 px (14 px en paysage bas, ☰
+  2 px de plus) — fond `--kta-surface`,
+  liseré `--kta-bordure`, ombre de la barre, survol `--kta-surface-2`, focus `--kta-interaction` ; thème clair :
+  fond et liseré des barres claires (`--kta-light-bg-bar`, `--kta-light-border-strong`). La barre 2D descend sous
+  44 px : la vue garde la même taille **visible** et porte la **zone de toucher à 44 px** par un `::before`
+  invisible (comme le 🚨 de l'en-tête 2D), d'où un écart de 44 px − taille (6 px, 12 px en paysage bas) entre deux
+  boutons. **Mêmes icônes qu'en 2D** : ☰ (le glyphe de `ktaFilterControl`, pas ≡), 🚨 sur la puce rouge de l'en-tête
+  (fond `--kta-erreur` à 22 %, liseré à 55 %), ⚙️, ❓. Repère « actif » de ≡ et de ⚙️ : celui du ≡ de la carte
+  (liseré doré, point doré de 10 px). Bandeau de guidage et boîte 🪜 : même boîte.
 - **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, ⚙️, sur
   **une seule ligne** au téléphone (décision produit). ⚙️ ouvre la **tuile Réglages** (`#kta-v3d-reglages`,
   `vue3d.js > _basculerReglages`) : petit panneau ancré sous ⚙️, aligné à droite, au-dessus de tout dans la vue
-  (posé en dernier dans le DOM) ; dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, 🦅 Vue plongeante
+  (posé en dernier dans le DOM), à la boîte de la fenêtre ⚙️ Réglages (rayon 14 px), chaque réglage sur une **ligne
+  de la fenêtre Réglages** (`.kta-perf-ultra-row` : 13 px gras, rayon 6, liseré `--kta-bordure`, survol
+  `--kta-info-fond`, 44 px de haut au moins) ; un interrupteur (`aria-pressed`) montre sa **case à cocher** (16 px,
+  cochée en `--kta-interaction`), le rendu et ⛏️ un chevron ; tous s'activent aussi à **Entrée et Espace**
+  (`vue3d.js > _agirBouton`, rejoué au `click` du clavier ; le `click` qui suit le `pointerdown` d'un toucher est
+  ignoré). Dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, ✏️ Édition
   (`aria-pressed`), ⛏️ hauteur et son − / +, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, un toucher passe au
   suivant), Boussole (montrée / masquée, `config.js > getVue3DBoussole`, `myktamap_v3d_boussole_v1`, cet appareil,
   montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🪧 Guidage (`getVue3DGuidage`,
@@ -2211,14 +2315,26 @@ icônes.
   Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
   des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),
-  battants de bois des cavages et remblais des puits comblés ; coupé : parois en moellons, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
-  Boussole et Guidage sur la suivante : une ligne de plus recouvrait ▼ de l'inclinaison en vue plongeante, tuile
-  ouverte ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`, sans toucher scène ni
-  greffe). Fermée par ⚙️, Échap (avant tout le reste) ou un
+  battants de bois des cavages et remblais des puits comblés ; coupé : parois des galeries et des tubes à la couleur de légende de leur tracé, sol et plafond noirs, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
+  Boussole et Guidage sur la suivante ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
+  sans toucher scène ni greffe), 🔭 **Portée** (curseur natif `input type=range` `#kta-v3d-portee`, 15 à 100 m,
+  30 m par défaut, `getVue3DPortee`, `myktamap_v3d_portee_v1`, cet appareil ; libellé `<label for>`, valeur écrite à
+  droite et dite par `aria-valuetext`, couleur `accent-color: var(--kta-interaction)` (celle des cases de la fenêtre Réglages), contour de focus
+  `--kta-interaction` ; flèches, Origine, Fin au clavier), 💡 **Lampe** (curseur `#kta-v3d-lampe`, 25 à 300 % par
+  pas de 5, 100 % par défaut, valeur en pourcentage de la langue, `myktamap_v3d_lampe_intensite_v1`), 🔦
+  **Faisceau** (curseur `#kta-v3d-faisceau`, 40 à 160°, 71° par défaut, `myktamap_v3d_faisceau_v1`) — même ligne
+  que la portée (`.kta-v3d-curseur`, nom, curseur, valeur ; noms d'une même largeur, curseurs alignés, mêmes
+  libellé, valeur dite, couleurs et clavier) — et ☀️ **Plein jour** (interrupteur `aria-pressed` pleine largeur,
+  `myktamap_v3d_jour_v1`), tous de cet appareil ; trois curseurs et ☀️ `disabled` quand une greffe fige les réglages
+  (`reglagesFiges`), titre suffixé « indisponible pendant une partie » ; effets : `tracking.md` § Vue 3D › Lampe).
+  La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼)
+  sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
-  inchangés (V, PageUp / PageDown…). **Repère** : point doré sur ⚙️ (`kta-v3d-modifie`, `_majRepere`) en mode libre,
-  en vue plongeante, rendu autre que mixte, textures coupées, boussole masquée ou guidage coupé. **Mode toujours visible** : pastille ronde de 40 px
-  en haut à gauche (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
+  inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue d'édition. **Repère** : point doré sur ⚙️
+  (`kta-v3d-modifie`, `_majRepere`) en mode libre, en vue d'édition, rendu autre que mixte, textures coupées,
+  boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71° ou Plein
+  jour. **Mode toujours visible** : pastille ronde à la taille des boutons
+  en haut à gauche, à la hauteur de la rangée (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
   `kta-vue3d` → section `vue-3d`) dans la rangée marquée `kta-aide-ctx-entete`, avant la croix `data-aide-croix`.
@@ -2230,7 +2346,7 @@ icônes.
   Mixte : aucune icône de la carte ne dit « les deux », on n'en invente pas une), ⛏️ hauteur (le chiffre de ⛏️
   Volume exploité), 🧭 suivi (le tracker), 🚨 Sortie d'urgence, ≡ Filtres, ❓ aide, 🪜 passage entre niveaux, 📍 « Je
   suis ici ? » (recalage). Écartés parce qu'ils disent autre chose en 2D : 📍 pour le suivi (recalage), 🛰️ pour la
-  vue plongeante (Export GeoTIFF), ↕ pour la hauteur (passages entre niveaux de la légende), 🧱 / 🚇.
+  vue d'édition (Export GeoTIFF), ↕ pour la hauteur (passages entre niveaux de la légende), 🧱 / 🚇.
 - **Panneaux de POI** : toujours aux jetons du thème **sombre** (la scène est noire dans les deux thèmes), lus dans
   la règle `:root` des feuilles (`vue3d.js > _jetonsSombres`) : sur `<html>`, `getComputedStyle` rendrait ceux du
   thème clair. Les boutons de la vue, eux, suivent le thème. Liseré doré ; **danger** (`poiDanger.js > estDanger`) :
@@ -2245,7 +2361,12 @@ icônes.
   compact (icône 36 px, consigne 16 px, « puis… » 13 px en `--kta-texte-2`), liseré `--kta-erreur` en alerte ou en
   urgence (aucune marque d'aperçu en mode libre : mêmes textes). Son `top` est posé par
   `_majSousHaut` sous la rangée **seule** (🩸 posé sous `--kta-v3d-sous-haut`, qui le compte, il descendait à chaque
-  appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage.
+  appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage. Il passe à la
+  ligne (`flex-wrap`) : boutons d'écart en suivi (`.kta-v3d-guid-actions`, 44 px) puis l'encart « reste » de la 2D
+  (`.kta-guid-resume`, `style.css`, même rendu : `ItiGuidage.rendreEncart`), en pleine largeur au bas du bandeau.
+  Bandeau 2D : même encart sous la consigne (12,5 px, `--kta-texte-2`, filet `--kta-bordure`), languette ▾ de 22 px
+  replié ; ni l'un ni l'autre ne chevauche les commandes aux trois tailles (`checkup-guidage.js` G12, `checkup-vue-3d.js`
+  § 32).
 - **Toasts de la vue** : présence 3D partagée et nom d'un membre, d'un repère ou du 🏁 touché en `success` (décision
   produit : toujours vus, `info` est tu par défaut) ; perte du contexte WebGL en `warn`.
 - **Commandes** : au téléphone, **joystick** (`.kta-v3d-stick-zone`, `.kta-v3d-stick`, `.kta-v3d-stick-bouton`) :
@@ -2254,12 +2375,46 @@ icônes.
   `--kta-texte-3` au repos en bas de la zone, `--kta-accent` actif, fond `--kta-surface` à 70 %), bouton de 44 px
   (`--kta-accent` actif), aucune image ; `touch-action: none`. Au PC (`pointer: fine`) ou avec ⚙️ › 🎨 Affichage ›
   « 🕹️ Pavé classique dans la vue 3D » (cet appareil), le pavé ▲ ▼ ◀ ▶ ↶ ↷ en bas au centre. Contrat du geste :
-  `tracking.md` § Vue 3D › Joystick.
+  `tracking.md` § Vue 3D › Joystick. En vue d'édition (`.kta-vue3d.kta-v3d-edition`), la zone du joystick se réduit au
+  coin bas gauche (200 × 180 px au-dessus de la boussole) : ailleurs, un doigt déplace la caméra.
+- **Vue d'édition, caméra libre** : **⌖** (`.kta-v3d-place`, bouton carré de la vue, cible de 44 px) au-dessus de la
+  grille + − ▲ ▼, montré caméra détachée seulement (`vue3d.surPlace`). **Sélecteur de niveau** (`.kta-v3d-niveau-edition`,
+  `role="group"`) : ▲, le niveau en clair (`ktaFormatNiveau`, pastille surface à liseré doré), ▼, en colonne à gauche
+  sous la rangée du haut ; plan à un niveau ou hauteur d'yeux : caché. **Bandeau de mesure** (`.kta-v3d-mesure`,
+  `role="status"`) : en bas au milieu, entre la boussole et la grille (au-dessus du pavé au PC), charte du libellé de
+  mesure de la carte (surface, texte `--kta-accent-texte`, liseré doré, 15 px, ligne du mode actif marquée). La tuile
+  ⚙️ passe au-dessus de la colonne d'outils (`z-index` 900 > `.leaflet-control` 800 : la colonne en porte la classe).
+  Contrats : `tracking.md` § Vue 3D › Caméra libre, Dessiner en vue d'édition.
 - **Fiche d'un POI** (`.kta-v3d-fiche`) : toucher un panneau de POI (`vue3d.js > _toucher`) ouvre la fiche de la carte
   (`buildPointPopupHtml`) dans un cadre surface à liseré doré, à droite sous le bandeau, défilable, ✕ de 40 px ;
   Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous. POI jonction : en tête de la fiche,
   un bouton par niveau lié (`.kta-v3d-fiche-passages`, « ▲ Monter au niveau +1 (escalier) », liseré doré, le plus haut
   d'abord).
+- **Fiche d'une structure, d'une zone ou d'un tracé** (`.kta-v3d-fiche.kta-v3d-fiche-objet`, `role="dialog"`) :
+  toucher l'objet dans la scène (après un panneau, qui passe d'abord) ouvre la fiche de la carte
+  (`attacherNotePopup` : note, 💾, 🔄 Convertir, Niveau, 🗑️, ou lecture seule) dans le même cadre que celle d'un POI,
+  corps en `.leaflet-popup-content` sans marge ; en bas, **« 🗺️ Voir sur la carte »** (`.kta-v3d-fiche-voir`, un
+  bouton de fiche `kta-popup-btn`, comme 💾 Sauver la note) ferme la vue et montre l'objet sur la carte (sa fiche, contour en surbrillance
+  5 s). La fiche prend le focus (anneau `--kta-interaction` au clavier), Échap la ferme et rend le focus à la vue ;
+  Tab passe par ses champs. 🩸 Fiche neuve sans pointeur 400 ms (`_ficheNeuve`) : le click qui suit un toucher tombait sur
+  « Voir sur la carte » ouvert sous le doigt et fermait la vue. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
+- **Dessin en vue d'édition** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, au
+  milieu, montrée en ✏️ Édition seulement, toujours active (aucun bouton pour l'ouvrir) ; absente à hauteur d'yeux et
+  pendant une greffe qui coupe l'édition (jeu). 🩸 En paysage bas, style.css passe toute `.leaflet-bar` en
+  `display: flex !important` : le `hidden` de la colonne tient par `#kta-vue3d .kta-v3d-outils[hidden]` en
+  `!important` (sinon les outils restaient à hauteur d'yeux et dans le jeu), et la colonne s'y range en ligne, comme
+  les pilules de la barre 2D. Boutons : **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
+  la barre de droite 2D, sous **🗺️ Plan au sol** (en tête), qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
+  mêmes états ; icône, titre, `kta-group-mode-actif` (pastille du type armé) et `kta-outil-lecture-seule` **recopiés
+  du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. **🗺️ Plan au sol** :
+  interrupteur, `aria-pressed`, niveau 0 seulement. Un groupe ouvre **le panneau de la carte**
+  (`interface.js > window.ktaOuvrirOutils(groupe, { ancre })` : `_ouvrirFlyout` avec `vue3d: true`, sous-actions
+  `horsVue3D` retirées : 🪜 jonction, 🧹 Effacer — « Sélectionner » et « Par zone » se jouent au clic sur la carte —,
+  📏 et ⛏️), au rang de la vue (`html.kta-vue3d-ouverte .kta-group-flyout` et son fond à 99999, posés après elle) ;
+  📐, groupe en accordéon sur la carte, y passe aussi (surbrillance par `isActive`). Le toucher qui ferme le panneau
+  ne pose rien (avalé, comme sur la carte). Groupe grisé : le refus de la carte (`ktaEditionRefusee`), pas de panneau.
+  Aperçu au sol de l'objet en cours (ruban, sommets, rond doré du 1er sommet) et étiquette de la mesure en panneau
+  (liseré rouge de la mesure de la carte). Contrats : `tracking.md` § Vue 3D › Dessiner en vue d'édition.
 - **Passages entre niveaux** : boîte 🪜 à gauche, au milieu, boutons écrits « ▼ -1 · Nom (moyen) », coupés à la
   largeur (`.kta-v3d-btn-passage`, 72 % de l'écran au plus) ; le nom entier au libellé accessible. Changement de
   niveau derrière un **voile** (`.kta-v3d-fondu` : fond des jetons sombres posé par la vue en
@@ -2267,3 +2422,50 @@ icônes.
   **« Niveau n »** (`.kta-v3d-bandeau-niveau`, pastille surface à liseré doré, au centre, 2 s, `role="status"`).
 - **« D'où pars-tu ? »** (« Y aller », tracker arrêté) : `ktaConfirm` en mode choix (z-index 100002, au-dessus de
   la vue) ; pas de nouvelle fenêtre.
+
+## ✋ Ajuster une forme dessinée (`js/ajusterSommets.js`)
+
+Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans le redessiner :
+
+- **Déplacer un sommet** : appui long (`APPUI_MS`, 500 ms) sur le sommet, puis glisser ; aperçu en pointillé doré
+  pendant le glisser (SVG, classes `.kta-ajuster-apercu` / `.kta-ajuster-poignee`, jetons `--kta-accent`), objet
+  écrit au lâcher.
+- **Ajouter** : appui long au milieu d'un segment (segment de fermeture compris pour une forme fermée) ; le sommet
+  naît là et se glisse aussitôt ; lâché sans bouger, il reste au milieu.
+- **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point (marqueur Leaflet, cible
+  de 44 px, contre-tourné sous le plan orienté, retiré seul après 6 s ou au premier toucher ailleurs). Sous le
+  minimum de la forme (2 sommets pour une ligne, 3 pour une surface), pas de 🗑️ : un toast le dit.
+
+Familles : tracés, zones, structures (polygones et lignes), mesures 📐 (distance et surface). Pas les POI
+(« Repositionner »), pas l'itinéraire calculé. Chaque module expose sa **prise**
+`window.ktaFormesAjustables.<roads|zones|structures|mesure>` = `{ cat, objets(), ferme(o), minimum(o), libelle(o),
+rendre(), aimanter?(x, y, o, exclus), etiquette?(action, o) }` (`cat` lu à chaque geste, `etiquette` = libellé d'historique propre à la famille) ; `objets()` ne rend que les objets de session **visibles** (mêmes filtres
+que le rendu : `_tracePasseFiltres`, `_zonePasseFiltres`, `_structurePasseFiltres` — niveaux, types, état d'une
+extension), hors objet en cours de tracé.
+
+- ⚠️ **Droits** : rien en lecture seule (`ktaEditionRefusee(true)`, silencieux), rien sous un outil ou un mode
+  « clic carte » armé (`_modeClicCarteActif`, ajout de point, sélection multiple ou par zone), sauf l'outil 📐 seul armé
+  (`_mesureSeule`) : la mesure, et elle seule, s'ajuste alors. Un calque de données
+  n'est pas en session, donc pas modifiable ; en « 🔄 Modifier », sa copie l'est. Calque « Mes annotations » masqué :
+  rien.
+- ⚠️ **Écriture** (un geste = une entrée annulable) : `HistoryManager.captureState(cat)` → mutation →
+  `KtaUid.touch` (uid gardé, `updatedAt` changé) → `rendre()` (un seul rendu, donc un seul `kta:donneesPlanChange`,
+  jamais pendant le glisser) → `record` → `SessionPersist.save({ force: true })`. Tracés : aimantation du dessin au
+  lâcher (`snapDraw`, road.js > `_snapSurSommetProche` avec `exclus` = le sommet et ses voisins, au niveau du
+  tracé), puis `RoadGraph.invalidate()` (sa signature compte les sommets, pas leur place). La mesure n'entre dans
+  l'historique que l'outil 📐 armé (`cat` = `"mesure"`, entrée purgée à sa fermeture : session-data.md §47.11) ;
+  éteint, `cat: null`.
+- 🩸 **Gestes** : écoutes en capture sur `window`. Avant l'appui long, un mouvement de plus de 6 px (seuil du pan
+  manuel du plan orienté) annule : c'est un pan ; en deçà, les `pointermove` / `mousemove` / `touchmove` sont avalés
+  pour que la carte ne glisse pas sous le doigt. Armé : `map.dragging.disable()` le temps du geste (rendu à son
+  état d'avant, donc coupé carte tournée), mouvements avalés (ni drag Leaflet, ni pan manuel `mapBearing.js >
+  _panSuivre`, ni rotation à deux doigts `_rotPointerMove` / `_rotTouchMove`, tous sur le conteneur), clic suivant sur la carte et menu contextuel avalés (pas de fiche ; un bouton de barre, une fiche ou une fenêtre restent cliquables aussitôt). `pointerup` n'est
+  jamais avalé (Leaflet et le pan manuel y referment leur suivi des doigts). Un 2e doigt (pincement, rotation : le geste
+  à deux doigts reprend la main), la molette ou Échap annulent. Drapeau neutre pour tout autre geste : `KtaAjusterSommets.enCours()`.
+- 🩸 **Position** : `map.mouseEventToLatLng` (rotation défaite par le patch de `mouseEventToContainerPoint`) ;
+  `clientX` ne sert qu'aux seuils. Le sommet garde son décalage au doigt (il ne saute pas sous lui).
+- **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon milieu de segment ; un balayage des
+  objets visibles au `pointerdown`, jamais au `pointermove`.
+- Souris (décision) : appui long aussi, pas de glisser direct : un glisser à la souris reste un pan de la carte.
+
+Preuve : `scripts/smoke/checkup-ajuster-sommets.js` (Chromium et WebKit, souris et doigt).

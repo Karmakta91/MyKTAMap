@@ -1508,7 +1508,10 @@ window.ktaNiveauxRecalage = function(x, y) {
       }
     });
     lire("getZones").concat(lire("getAllEmbeddedZones")).forEach(function(z) {
-      if (z && _recalProche(p, z.points, true, r)) trouves.add(lvl(z));
+      if (!z || !_recalProche(p, z.points, true, r)) return;
+      // Zone sur plusieurs niveaux : chacun des siens est proche (poiJonction.js > ktaNiveauxObjet).
+      const nv = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(z) : [lvl(z)];
+      nv.forEach(function(n) { trouves.add(n); });
     });
     const ligne = function(t) {
       return (typeof window.isStructurePolylineType === "function") ? window.isStructurePolylineType(t)

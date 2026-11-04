@@ -220,7 +220,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
 | **Pas de `BufferGeometryUtils`** (ni d'autre `examples/jsm`) | Ces fichiers importent `"three"` par son nom nu : ils exigent une import map. La fusion est faite à la main : chaque tuile écrit directement ses tableaux de sommets, ce qui revient au même que `mergeGeometries` sans passer par une géométrie par objet. |
 | **Tuiles de 16 m** fusionnées (1 à 3 maillages par tuile) | Construire tout le plan d'un coup coûte 0,35 s au PC, 1,8 s processeur ralenti x4, et un tas JS de 180 à 280 Mo pendant la construction (mesures ci-dessous) : trop pour iOS. Les tuiles à portée sont construites à l'ouverture, puis au plus 3 par image en marchant ; au-delà de la distance de vue + 32 m elles sont libérées. |
 | **Pas d'instancing** | Les piliers relevés à la main n'ont pas deux formes identiques : l'instancing ne sert qu'à des objets répétés (il resterait utile pour des POI en 3D, pas pour les structures). |
-| **Distance de vue 30 m**, brouillard noir de 10,5 à 30 m, caméra coupée à 35 m | C'est la lampe frontale du QCM : on ne voit pas plus loin sous terre, et ce qu'on ne voit pas n'est ni construit ni dessiné. |
+| **Portée 30 m par défaut**, réglable de 15 à 100 m (QCM du 03/11/2026) ; brouillard noir de 45 % à 100 % de la portée, caméra coupée 5 m plus loin | C'est la lampe frontale du QCM : on ne voit pas plus loin sous terre, et ce qu'on ne voit pas n'est ni construit ni dessiné. Au-delà de 30 m, un choix de l'utilisateur, mesuré jusqu'à 100 m (ci-dessous). |
 | **Rendu seulement quand quelque chose bouge** | Immobile, la vue ne dessine plus rien (aucune image par seconde). C'est le premier levier batterie : en suivi, le tracker ne bouge qu'à chaque pas. |
 | Densité de pixels **plafonnée à 2** (`densiteMax`) | Un iPhone est à 3 : passer de 2 à 3 multiplie le remplissage par 2,25 sans gain visible dans le noir. Anticrénelage seulement sous une densité de 2. |
 | Normales en `int8`, couleurs en `uint8` | 18 octets par sommet au lieu de 36 : moitié moins de mémoire GPU. |
@@ -286,7 +286,10 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
     motif de 1,6 × 1 m répété en mètres, canvas), sol et plafond au grain calcaire (la paroi, plus claire et plus
     grise, s'en détache), liseré au sol de 15 cm à la couleur de la légende. Révisé depuis (retour de KARMA) : 🧱
     Textures activé, les parois passent en pierre de taille (assises appareillées, joints irréguliers, relief) ;
-    les moellons restent le rendu 🧱 coupé (`tracking.md` § Scène galerie).
+    les moellons restent le rendu 🧱 coupé (`tracking.md` § Scène galerie). **Révisé le 04/11/2026** (décision de
+    KARMA) : 🧱 coupé, parois des galeries et des tubes à la couleur de légende de leur type de tracé (canon, types
+    perso compris ; carrefour : l'arête la plus large), sol et plafond noirs dans les trois rendus ; les moellons ne restent qu'aux puits et
+    tranchées des passages.
   - **Zones** découpées à chaque pièce (CPU, par tuile) : eau à 4 cm ; remblais et effondrement à 60 %, faces
     seulement côté galerie, bloquants ; inaccessible au sol + rideau rouge hachuré en travers du tube là où le
     contour coupe l'axe ; perso au sol. **POI** à moins de 10 m de l'axe (relevé à 10 m le 02/11 : les salles sont souvent loin d'un tracé), ramenés contre la paroi, sinon masqués.
@@ -395,6 +398,29 @@ annoncé), rendu de 0 à 3 ms par image à la mesure, mais 8 à 9 images/s affic
 en fenêtre de PC, quelle que soit la densité : la présentation à l'écran de ce portage est en cause, une page
 vide y tourne à 63 images/s. Chiffre non représentatif d'un iPhone.
 
+### Portée réglable et vue plongeante dézoomée (QCM du 03/11/2026)
+
+Même plan dense, mêmes mesures (`KTA_V3D_PERF=1`, Chromium sans écran, RTX 5070), deux passages par configuration ;
+« plongée 60 m » = vue plongeante au recul maximal (rayon de scène 138 m, `tracking.md` § Vue 3D › Vue plongeante).
+
+| Configuration | Tuiles construites | Triangles · appels (PC) | ms / image PC (médiane · p95 · max) | Triangles · appels (iPhone) | ms / image iPhone émulé (médiane · p95 · max) |
+|---|---|---|---|---|---|
+| 30 m | 18 | 2 040 · 27 | 0,7 à 1,1 · 0,9 à 2,3 · 4,6 | 1 732 · 19 | 1,6 à 2,4 · 3,2 à 4,9 · 6,0 |
+| 50 m | 43 | 4 219 · 58 | 1,0 à 1,1 · 1,6 à 1,7 · 2,6 | 2 822 · 31 | 3,0 à 3,8 · 6,4 à 7,2 · 9,4 |
+| 75 m | 86 | 6 903 · 94 | 1,4 à 1,5 · 1,8 à 2,3 · 3,0 | 4 306 · 56 | 3,9 à 4,2 · 6,6 à 7,5 · 14,7 |
+| **100 m** | **146** | **11 717 · 161** | **1,9 à 2,0 · 2,4 à 2,7 · 3,0** | **6 274 · 83** | **5,6 à 7,0 · 11,6 à 11,7 · 17,3** |
+| plongée 60 m (portée 30 m) | 268 | 22 415 · 300 | 3,3 · 5,6 à 6,0 · 10,4 | 9 347 · 126 | 11,2 à 11,3 · 16,9 à 17,1 · 21,5 |
+
+Ouverture à 100 m : 98 à 135 ms au PC, 516 à 534 ms en émulation (30 m : 73 à 84 · 350 à 402 ms). Marche de 120 m à
+100 m de portée : au PC aucune image au-delà de 33 ms ; en émulation 2 images sur 597 à 33,4 ms (à 30 m, dans le même
+passage, 1 à 2 images de 83 à 100 ms : déjà là avant ce réglage). Tas JS : la valeur de `performance.memory` est celle
+de la page, arrondie par Chromium (78 à 93 Mo quelle que soit la portée) : non discriminante ici.
+
+**Budget de 33 ms tenu** à 100 m et en plongée dézoomée, en émulation comme au PC, avec une marge d'au moins 11 ms
+sur le pire cas. ⚠️ L'émulation ralentit le processeur, pas le GPU : le GPU est celui du PC. Le coût GPU croît avec les
+triangles et les appels (×3,6 et ×4,4 de 30 à 100 m au téléphone, ×5,4 et ×6,6 en plongée 60 m) ; **un vrai iPhone
+n'est pas mesuré** : c'est le chiffre à prendre avant de juger la borne de 100 m.
+
 ### Mode galerie
 
 Réseau **synthétique** (`KTA_V3D_PERF=galerie`) : 26 tracés est-ouest et 26 nord-sud tous les 12 m sur 300 m, un
@@ -461,6 +487,24 @@ dense) : image médiane de 6 ms, mais l'image de la **bascule** (scène du nivea
 100 ms par image). 2 à 3 images de plus de 33 ms sur le geste. Si un vrai iPhone le rend gênant : construire les
 tuiles du niveau d'arrivée sur plusieurs images pendant le noir.
 
+### Données changées pendant la vue (scène refaite, QCM du 03/11/2026)
+
+Décision : scène refaite **entière** (`_reindexer`) sur un signal unique `kta:donneesPlanChange` confirmé par une
+empreinte des données, pas tuile par tuile (le modèle des galeries, qui domine le coût en mixte, est global au
+niveau : refaire une tuile ne l'éviterait pas). Mesure (`KTA_V3D_PERF=1`, un pilier de session ajouté à 3 m, plan
+dense synthétique, ms) :
+
+| | PC | iPhone émulé (×4) |
+|---|---|---|
+| Structures, 13 700 objets : scène refaite | 46 – 57 | 236 – 300 |
+| Mixte, 8 300 structures + 64 tracés : scène refaite (modèle des galeries compris) | 123 – 160 | 606 – 734 |
+| Empreinte seule (signal sans changement) | 9 – 12 | 60 – 64 |
+
+[Probable] Acceptable par clic (un objet ajouté, supprimé, une annulation) ; trop lent pour un dessin point par
+point en 3D sur un plan dense en mixte (étape « dessiner depuis la 3D ») : il faudra alors un modèle des galeries
+refait par morceaux. L'empreinte relue sur un rendu sans changement coûte ~60 ms au téléphone sur ce plan ; les
+redessins dus au déplacement de la carte (moveend / zoomend sous la décimation PerfUltra) ne la déclenchent pas.
+
 ### Ce qui n'a **pas** été mesuré
 
 - **Aucun vrai iPhone** : ni images/s réelles, ni mémoire, ni chauffe, ni batterie. L'émulation ralentit le
@@ -475,7 +519,8 @@ tuiles du niveau d'arrivée sur plusieurs images pendant le noir.
 
 ### Ce qu'il faut couper (conclusion)
 
-1. **Distance de vue : 30 m** suffit et coûte peu ; 50 m reste confortable. Au-delà, la lampe ne montre rien.
+1. **Distance de vue : 30 m** suffit et coûte peu ; 50 m reste confortable. Au-delà, la lampe à 100 % ne montre
+   presque rien (plus forte, dès 200 %, et Plein jour, si : QCM du 03/11/2026, portée réglable jusqu'à 100 m).
 2. **Tuiles : indispensables**, pour l'ouverture (×15 plus rapide) et surtout le tas JS (×4 de moins). Pas pour
    le GPU : même tout le plan (390 000 triangles) passe en 2 à 7 ms ici.
 3. **Fusion** : faite par tuile (un appel par matériau et par tuile, 12 à 26 appels en tout). Rien à gagner de
@@ -494,6 +539,34 @@ tuiles du niveau d'arrivée sur plusieurs images pendant le noir.
 | **Batterie** | Rendu seulement quand on bouge (bruit de la boussole sous 2° ignoré en suivi) ; pas d'ombres ; GPU de bureau mesuré à < 1 ms par image | Mesure réelle de décharge sur une sortie ; couper la vue quand l'écran se verrouille (la boucle s'arrête déjà avec l'onglet caché) |
 | **Fausse précision** : la 3D a l'air exacte, la position du tracker ne l'est pas (dérive PDR) | Lissage ; mode libre + « Je suis ici ? » pour se recaler à l'œil ; titre du bouton, Aide et guides : « la 3D montre le plan, pas la galerie réelle » | Retour terrain |
 | Plan sans échelle ou sans structures | Sans échelle : bouton grisé et ouverture refusée avec un message | Plan sans structures : la vue montre sol, plafond, tracés et points |
+
+## Dessiner depuis la 3D, étape E3 (QCM du 03 et du 04/11/2026)
+
+| Sujet | Décision |
+|---|---|
+| Où | Vue plongeante 🦅 seulement ; ✏️ fait apparaître la barre, rien ne se dessine sans outil armé (règle de la 2D : retoucher l'outil l'éteint) ; à hauteur d'yeux, pas d'édition |
+| Outils | Toutes les structures (types perso compris), zones, tracés, 📐 mesure ; pas les POI ; ni 🪜 jonction (deux niveaux, la 3D en montre un) ni 🧹 Effacer (« Sélectionner » et « Par zone » se jouent sur la carte) |
+| Gestes | Ceux de la 2D, rejoués (`map.fire` au point touché) : undo, uid, fiches, styles, sous-menus, droits de la 2D ; caméra inchangée (seul un toucher bref pose) ; outil armé passe avant la fiche |
+| Interface | La barre de droite 2D : mêmes boutons, même ordre (📐 🛣️ ⬛ 🏛️), mêmes panneaux |
+| Niveau | Celui de la 3D ; la carte garde le sien |
+| Coût | Aperçu au sol pendant l'objet, une reconstruction à sa fin ; tuiles loin de l'objet reprises |
+| Fermeture au doigt | Choix du lot : rond doré de 0,3 m autour du 1er sommet, en mètres (24 px d'écran fermaient un mur de 0,4 m au 4e coin) ; zoomer agrandit la cible |
+| Rendu galerie | Choix du lot : armer une structure passe en mixte (retenu), avec un toast — on voit ce qu'on dessine, sans réglage caché |
+| Plan au sol | Livré (mémoire mesurée ci-dessous) : 🗺️ de la barre, coupé par défaut, niveau 0 seulement |
+| Greffe | `fiches: false` coupe aussi le dessin (`addons.md`) |
+
+### Mesures du dessin (`KTA_V3D_PERF=dessin KTA_V3D_TEL=1`, plan dense synthétique, Chromium, processeur × 4)
+
+| Mesure | Structures | Mixte |
+|---|---|---|
+| Sommet posé (geste de la carte + aperçu, sans reconstruction) | 3 à 10 ms | 2 à 5 ms |
+| Fermeture d'un pilier → scène refaite (visible) | 0,35 à 0,39 s | 0,41 à 0,53 s |
+| Dont relecture des données (index, empreinte) | ~0,2 s + 0,06 à 0,08 s | ~0,3 s + 0,06 à 0,08 s |
+| Plan au sol (1024 px) | 4 Mo de texture, dessin 4 à 7 ms, tas JS et images par seconde inchangés | idem |
+
+La reprise des tuiles (32 sur 32 hors de l'objet) ne gagne que ~45 ms : le reste est la relecture des 13 700 objets
+du plan (collecte, grille des volumes, index, empreinte), pas les tuiles. Non mesuré : un vrai iPhone ; un plan tuilé V2
+(le relevé fictif n'en est pas un : le chemin V2 du plan au sol est celui de l'export, `ktaDessinerRegionTuiles`).
 
 ## Intégration à l'app (lots 1, 2 et cohérence, livrés)
 
@@ -533,7 +606,10 @@ tuiles du niveau d'arrivée sur plusieurs images pendant le noir.
 | 5 | Couleurs | **a** : celles de la légende |
 | 6 | Calques masqués | Comme sur la carte (QCM du 02/11/2026, à la place de « montrés en 3D ») : un calque masqué ne se dessine pas, ses objets bloquent toujours |
 | 7 | Contexte WebGL | **c** : libéré à chaque fermeture + reprise automatique après une perte, fermeture avec message si elle échoue |
-| 8 | Distance de vue | **a** : 30 m fixes |
+| 8 | Distance de vue | **a** : 30 m fixes ; remplacé (QCM du 03/11/2026) par le réglage ⚙️ **Portée**, curseur de 15 à 100 m, 30 m par défaut, retenu sur l'appareil |
+| 8 bis | Lampe (QCM du 03/11/2026, revu le même jour) | Réglages ⚙️ retenus sur l'appareil : **intensité** en curseur de 25 à 300 % (100 % = la lampe d'origine ; plus haut, plus loin : force, décroissance, coupure, halo et brouillard suivent ; l'ancienne Forte = 200 %), **faisceau** en curseur de 40 à 160° de cône (71° par défaut ; la pénombre grandit avec la largeur, un faisceau large se fond dans le noir), **☀️ Plein jour** en interrupteur (ambiance de la vue plongeante, brouillard gardé à la portée) ; multiplié au facteur lampe d'une greffe ; une greffe qui le demande (`reglagesFiges`, le jeu) fige portée à 30 m, 100 %, 71° et Plein jour coupé, réglages rendus au retrait |
+| 8 quater | Cavage dans une galerie plus large que son tracé (retour terrain du 03/11/2026) | La porte garde la largeur du tracé ; de la pierre de taille comble, côté par côté, l'espace du cadre à la structure la plus proche (au plus 3 m), du sol au plafond, et bloque le pas comme la porte fermée, porte ouverte comprise (seule son ouverture laisse passer) ; rien en rendu galerie ; itinéraire 2D inchangé |
+| 8 ter | Zoom de la vue plongeante (QCM du 03/11/2026) | Comme une carte : pincer, molette et + / − = zoom (recul de 6 à 60 m, 18,4 m par défaut) ; deux doigts glissés ensemble, Maj + molette et ▲ ▼ = inclinaison ; tuiles qui suivent le recul ; retenu tant que la vue est ouverte |
 | — | Murs et piliers | Règle ajoutée : un mur est toujours sous un pilier ou un front de son niveau (modèle de scène) |
 | A bis | Mode mixte (QCM du 02/11/2026) | L'interrupteur exclusif devient **trois états Mixte / Structures / Galerie**, mixte par défaut, retenu par plan ; en mixte, structures partout, tubes seulement à plus de 3 m d'une structure, bouts ouverts dans les chambres, collisions des deux règles, zones et POI selon le lieu (tube ou chambre) |
 | A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🏛️ / 🛣️ écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **moellons de calcaire taillés** (assises à joints décalés), sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |
