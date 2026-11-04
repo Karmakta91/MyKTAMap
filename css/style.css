@@ -20600,3 +20600,22 @@ button.kta-cfg-ligne-action {
 }
 .kta-recal-barre-msg { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .kta-recal-barre .kta-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
+
+/* ── Ajuster une forme (js/ajusterSommets.js) : poignée, aperçu, 🗑️ au sommet ──
+   Appui en attente : ni sélection de texte ni bulle système (iPhone) ; glisser : le navigateur ne fait rien du doigt. */
+.leaflet-container.kta-ajuster-attente,
+.leaflet-container.kta-ajuster-geste {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.leaflet-container.kta-ajuster-geste { touch-action: none; cursor: grabbing; }
+.kta-ajuster-apercu { stroke: var(--kta-accent); fill: none; }
+.kta-ajuster-poignee { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.35; }
+.kta-ajuster-poignee-attente { fill-opacity: 0; stroke-dasharray: 4 3; }
+.kta-ajuster-menu { background: none; border: 0; }
+.kta-ajuster-suppr {
+  width: 44px; height: 44px; padding: 0; border-radius: 22px; cursor: pointer; font-size: 20px; line-height: 1;
+  background: var(--kta-surface); color: var(--kta-texte); border: 2px solid var(--kta-erreur);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+.kta-ajuster-suppr:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
+.kta-bearing-on .kta-ajuster-suppr { transform: rotate(calc(-1 * var(--kta-bearing, 0deg))); }

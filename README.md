@@ -208,7 +208,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (145 modules)
+## 🟢 L'application : modules JS (146 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -282,6 +282,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `convertirObjet.js` | Changer un objet de type ou de famille (ouvert ⇄ fermé), en lot, de niveau ; suppression |
 | `selectionMulti.js` | Sélection de N objets (clic, type, zone) pour une conversion ou une suppression en lot |
 | `selectionZone.js` | Sélection par zone dessinée (outil ♦️ Surface) et suppression en lot de la sélection |
+| `ajusterSommets.js` | Ajuster une forme dessinée : déplacer, ajouter ou supprimer un sommet par appui long |
 | `calqueSession.js` | Rapatrier un calque de données entier dans la session pour le corriger |
 | `profondeurNiveaux.js` | Profondeur des niveaux (saisie) et profil en long d'un itinéraire |
 | `osmMesure.js` | Mesure de distance et de surface dans la Vue OSM (lat/lng, sans calibrage du plan) |
@@ -638,6 +639,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
+| `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
 | `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
 | `smoke/checkup-inaccessible-sous-structures.js` | Zones (inaccessible comprise) sous les structures sur le canvas commun après chargement, édition, ⏪ et filtre ; hachures en CanvasPattern ; fiche au clic |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |

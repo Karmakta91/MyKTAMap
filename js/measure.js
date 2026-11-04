@@ -360,3 +360,22 @@ window.setMeasureMode = function(mode) {
   return true;
 };
 
+
+// ── Ajustement des sommets (js/ajusterSommets.js) ──
+// ⚠️ contrat : même forme que road.js > ktaFormesAjustables.roads, sans catégorie d'historique (cat null : la mesure
+// est un état temporaire, hors HistoryManager ; ❌ Effacer la corrige). Les deux mesures affichées, modifiées EN
+// PLACE dans leur tableau (les objets rendus portent ce tableau, pas une copie).
+window.ktaFormesAjustables = window.ktaFormesAjustables || {};
+window.ktaFormesAjustables.mesure = {
+  cat: null,
+  objets: function() {
+    const out = [];
+    if (_pointsDistance.length) out.push({ type: "distance", points: _pointsDistance });
+    if (_pointsSurface.length) out.push({ type: "surface", points: _pointsSurface });
+    return out;
+  },
+  ferme: function(o) { return o.type === "surface"; },
+  minimum: function(o) { return o.type === "surface" ? 3 : 2; },
+  libelle: function(o) { return o.type; },
+  rendre: function() { updateMesure(); }
+};

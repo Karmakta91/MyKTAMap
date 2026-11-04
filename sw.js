@@ -362,6 +362,7 @@ const ASSETS_TO_CACHE = [
   "./js/convertirObjet.js",
   "./js/selectionMulti.js",
   "./js/selectionZone.js",
+  "./js/ajusterSommets.js",
   "./js/calqueSession.js",
   "./js/majPlan.js",
   // profondeur des niveaux + profil en long.

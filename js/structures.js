@@ -494,6 +494,22 @@ function fermerStructureEnCours() {
 }
 
 // ── Rendu ──────────────
+// Filtres d'affichage d'une structure, lus par renderStructures et par l'ajustement des sommets
+// (ktaFormesAjustables) : niveaux visibles (`level` absent = 0), état d'une extension (ktaExtensions.js >
+// filtrerEtats), types du FilterPanel. La structure en cours de tracé passe toujours (comme les zones).
+function _structurePasseFiltres(s) {
+  if (s === currentStructure) return true;
+  const cfg = window.APP_CONFIG || {};
+  if (cfg.multiLevel === true) {
+    const vis = Array.isArray(cfg.visibleLevels) ? cfg.visibleLevels : [0];
+    if (vis.indexOf(Number.isInteger(s.level) ? s.level : 0) < 0) return false;
+  }
+  if (window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
+      !window.KtaExtensions.passeFiltreEtat(s)) return false;
+  const f = window._ktaRuntimeFilters;
+  return !(f && f.structTypes && !f.structTypes.has(s.type));
+}
+
 function renderStructures() {
   if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("structures");
   // Idempotent (drapeau sur la map) : une closure fraîche par rendu empilerait les écouteurs.
@@ -524,30 +540,9 @@ function renderStructures() {
 
   const target = _structureTarget();
 
-  // Multi-niveau : seul level ∈ visibleLevels passe (sans level = 0) ; hors multi-niveau, tout passe.
-  const _multiLevelOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
-  const _visibleLevels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
-                          ? window.APP_CONFIG.visibleLevels : [0];
-  function _structurePasseFiltre(s) {
-    if (!_multiLevelOn) return true;
-    // La structure en cours de tracé reste toujours visible (comme les zones).
-    if (s === currentStructure) return true;
-    const lvl = Number.isInteger(s.level) ? s.level : 0;
-    return _visibleLevels.indexOf(lvl) >= 0;
-  }
-
   structuresAffichage.forEach(function(s) {
     if (!s.points || s.points.length === 0) return;
-    if (!_structurePasseFiltre(s)) return;
-    // Filtre « objets marqués seulement » d'une extension (ktaExtensions.js > filtrerEtats) ; éteint sans elle.
-    if (s !== currentStructure && window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
-        !window.KtaExtensions.passeFiltreEtat(s)) return;
-
-    // Filtre de types du FilterPanel ; la structure en cours y échappe.
-    if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.structTypes
-        && s !== currentStructure) {
-      if (!window._ktaRuntimeFilters.structTypes.has(s.type)) return;
-    }
+    if (!_structurePasseFiltres(s)) return;
 
     const latlngs = s.points.map(function(p) { return convertCoord(p.x, p.y); });
     const style = _resolveStructureStyle(s.type) || _resolveStructureStyle("mur");
@@ -784,3 +779,20 @@ window.resetStructures               = resetStructures;
 window.removeLastStructure           = removeLastStructure;
 window.removeLastStructurePoint      = removeLastStructurePoint;
 window.renderStructures              = renderStructures;
+
+// ── Ajustement des sommets (js/ajusterSommets.js) ──────────────
+// ⚠️ contrat : même forme que road.js > ktaFormesAjustables.roads. Structures de session visibles, hors structure en
+// cours ; une ligne (front, mur en ligne) reste ouverte, minimum 2 ; un polygone, minimum 3.
+window.ktaFormesAjustables = window.ktaFormesAjustables || {};
+window.ktaFormesAjustables.structures = {
+  cat: "structures",
+  objets: function() {
+    return structuresData.filter(function(s) {
+      return s && s !== currentStructure && Array.isArray(s.points) && _structurePasseFiltres(s);
+    });
+  },
+  ferme: function(s) { return !_isPolylineType(s.type); },
+  minimum: function(s) { return _isPolylineType(s.type) ? 2 : 3; },
+  libelle: function(s) { return _labelTypeStruct(s.type); },
+  rendre: function() { renderStructures(); }
+};

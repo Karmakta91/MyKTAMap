@@ -217,6 +217,23 @@ function fermerZoneEnCours() {
 }
 
 // ── Rendu ──────────────────────────────
+// Filtres d'affichage d'une zone, lus par renderZones et par l'ajustement des sommets (ktaFormesAjustables) :
+// un de ses niveaux visible (_niveauxZone : `niveaux`, sinon `level`, sinon 0 ; un seul polygone pour tous), état
+// d'une extension (ktaExtensions.js > filtrerEtats), types du FilterPanel.
+// 🩸 La zone en cours de tracé passe toujours (comme road.js > _tracePasseFiltres).
+function _zonePasseFiltres(zone) {
+  if (zone === currentZone) return true;
+  const cfg = window.APP_CONFIG || {};
+  if (cfg.multiLevel === true) {
+    const vis = Array.isArray(cfg.visibleLevels) ? cfg.visibleLevels : [0];
+    if (!_niveauxZone(zone).some(function(n) { return vis.indexOf(n) >= 0; })) return false;
+  }
+  if (window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
+      !window.KtaExtensions.passeFiltreEtat(zone)) return false;
+  const f = window._ktaRuntimeFilters;
+  return !(f && f.zoneTypes && !f.zoneTypes.has(zone.type));
+}
+
 function renderZones() {
   if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("zones");
   zoneLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
@@ -238,31 +255,9 @@ function renderZones() {
 
   const target = _zoneTarget();
 
-  // Multi-niveau : une zone s'affiche si UN de ses niveaux est visible (`niveaux`, sinon `level`, sinon 0).
-  // Un seul objet pour tous ses niveaux : un seul polygone, jamais une copie par niveau.
-  const _multiLevelOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
-  const _visibleLevels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
-                          ? window.APP_CONFIG.visibleLevels : [0];
-  function _zonePasseFiltre(zone) {
-    if (!_multiLevelOn) return true;
-    // 🩸 La zone en cours de tracé reste visible quel que soit le filtre (comme
-    // road.js > _passeFiltreNiveau).
-    if (zone === currentZone) return true;
-    return _niveauxZone(zone).some(function(n) { return _visibleLevels.indexOf(n) >= 0; });
-  }
-
   zonesAffichage.forEach(function(zone) {
     if (!zone.points || zone.points.length === 0) return;
-    if (!_zonePasseFiltre(zone)) return;
-    // Filtre « objets marqués seulement » d'une extension (ktaExtensions.js > filtrerEtats) ; éteint sans elle.
-    if (zone !== currentZone && window.KtaExtensions && typeof window.KtaExtensions.passeFiltreEtat === "function" &&
-        !window.KtaExtensions.passeFiltreEtat(zone)) return;
-
-    // Filtre par type (FilterPanel), sauf pour la zone en cours.
-    if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.zoneTypes
-        && zone !== currentZone) {
-      if (!window._ktaRuntimeFilters.zoneTypes.has(zone.type)) return;
-    }
+    if (!_zonePasseFiltres(zone)) return;
 
     const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
     const style = _resolveZoneStyle(zone.type) || _resolveZoneStyle("remblais");
@@ -446,3 +441,19 @@ window.resetZones            = resetZones;
 window.removeLastZone        = removeLastZone;
 window.removeLastZonePoint   = removeLastZonePoint;
 window.renderZones           = renderZones;
+
+// ── Ajustement des sommets (js/ajusterSommets.js) ──────────────────────────────
+// ⚠️ contrat : même forme que road.js > ktaFormesAjustables.roads. Zones de session visibles, hors zone en cours.
+window.ktaFormesAjustables = window.ktaFormesAjustables || {};
+window.ktaFormesAjustables.zones = {
+  cat: "zones",
+  objets: function() {
+    return zonesData.filter(function(z) {
+      return z && z !== currentZone && Array.isArray(z.points) && _zonePasseFiltres(z);
+    });
+  },
+  ferme: function() { return true; },
+  minimum: function() { return 3; },
+  libelle: function(z) { return _labelTypeZone(z.type); },
+  rendre: function() { renderZones(); }
+};
