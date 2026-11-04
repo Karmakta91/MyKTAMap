@@ -4653,7 +4653,7 @@
       b.classList.toggle("kta-outil-lecture-seule", src.classList.contains("kta-outil-lecture-seule"));
       b.classList.toggle("kta-group-open", ouvert === b.dataset.groupe);
     });
-    d.boutonSol.hidden = !_planSolPermis();
+    d.boutonSol.hidden = false;
     d.boutonSol.classList.toggle("kta-actif", !!d.planSol);
     d.boutonSol.setAttribute("aria-pressed", d.planSol ? "true" : "false");
   }
@@ -4933,8 +4933,10 @@
   // (2,4 × le rayon de scène) autour de la place, posée à une position fixe et redessinée quand on s'en écarte d'un
   // quart ou que le recul change l'emprise de plus d'un quart. Source : les images que la carte a déjà (overlays du
   // fond, direct ou tuiles V1 : leur <img> chargé) ; plan tuilé V2 : tiling.js > ktaDessinerRegionTuiles (tuiles du
-  // ZIP en mémoire ou du cache, au niveau le moins détaillé qui suffit). Rien n'est téléchargé de plus. Plan de base
-  // = niveau 0 (tiling.js > ktaPlanDeBaseVisible) : montré au niveau 0 seulement.
+  // ZIP en mémoire ou du cache, au niveau le moins détaillé qui suffit). Rien n'est téléchargé de plus.
+  // ⚠️ contrat (décision produit) : offert à TOUS les niveaux. Un niveau ≠ 0 qui a ses calques image (Générateur,
+  // `imageLayers[].level`, map.js > window._ktaImageOverlays) montre ceux-là, calés comme sur la carte ; sinon le plan
+  // de base. Un calque jamais posé sur la carte (niveau masqué en 2D) est lu depuis son URL, déjà servie au plan.
   // 🩸 Posé 6 mm au-dessus du sol et départagé par la profondeur seule, le plan perdait contre le sol sous WebKit (le
   // grain calcaire restait seul à l'écran : précision de profondeur trop courte à 18 m de recul). ⚠️ contrat : il se
   // dessine juste après le sol (ORDRE_SOL < `ordre` < tout le reste), sans test ni écriture de profondeur, troué par
@@ -4945,7 +4947,53 @@
   // restait invisible, vue immobile. `reprises` : images redessinées d'office après chaque nouvelle texture.
   const PLAN_SOL = { pxFin: 2048, pxDoigt: 1024, y: 0, ecart: 0.25, ordre: -0.5, reprises: 2 };
 
-  function _planSolPermis() { const n = _e.niveau; return n === null || n === 0; }
+  // Calques image propres au niveau de la vue (le niveau 0 garde le plan de base : ses calques sont des surcouches).
+  function _calquesNiveauSol() {
+    const n = _e.niveau;
+    if (!Number.isInteger(n) || n === 0) return [];
+    return (window._ktaImageOverlays || []).filter(function (c) { return c && c.overlay && c.level === n; });
+  }
+
+  // <img> d'un overlay : celui de la carte s'il est chargé, sinon une copie lue depuis son URL (gardée sur l'overlay).
+  function _imageOverlay(ov) {
+    const pret = function (i) { return i && i.complete && i.naturalWidth > 0; };
+    const vu = ov._rawImage || ov._image;
+    if (pret(vu)) return Promise.resolve(vu);
+    if (!ov._url) return Promise.resolve(null);
+    if (!ov._ktaImgSol) {
+      ov._ktaImgSol = new Promise(function (res) {
+        const img = new Image();
+        img.onload = function () { res(img); };
+        img.onerror = function () { ov._ktaImgSol = null; res(null); };
+        img.src = ov._url;
+      });
+    }
+    return ov._ktaImgSol;
+  }
+
+  // Calques du niveau dessinés dans la texture : bornes du plan, ou parallélogramme d'un calque calé (3 coins Leaflet
+  // du plugin Rotated → transformation affine de l'image).
+  function _dessinerCalquesSol(ctx, calques, region, echelle, H) {
+    return Promise.all(calques.map(function (c) { return _imageOverlay(c.overlay); })).then(function (imgs) {
+      let n = 0;
+      imgs.forEach(function (img, i) {
+        if (!img) return;
+        const ov = calques[i].overlay, w = img.naturalWidth, h = img.naturalHeight;
+        const P = function (ll) { return { x: (ll.lng - region.x) * echelle, y: (H - ll.lat - region.y) * echelle }; };
+        if (ov._topLeft && ov._topRight && ov._bottomLeft) {
+          const tl = P(ov._topLeft), tr = P(ov._topRight), bl = P(ov._bottomLeft);
+          ctx.setTransform((tr.x - tl.x) / w, (tr.y - tl.y) / w, (bl.x - tl.x) / h, (bl.y - tl.y) / h, tl.x, tl.y);
+          ctx.drawImage(img, 0, 0);
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+        } else {
+          const b = ov.getBounds(), a = P(b.getNorthWest()), z = P(b.getSouthEast());
+          ctx.drawImage(img, a.x, a.y, z.x - a.x, z.y - a.y);
+        }
+        n++;
+      });
+      return { ok: n > 0, calques: n };
+    });
+  }
 
   function _basculerPlanSol(oui) {
     const e = _e, d = e && e.dessin;
@@ -4982,12 +5030,12 @@
   // À chaque image (_majDessin) : plan au sol voulu et permis → texture (re)faite si la place ou l'emprise ont bougé.
   function _majPlanSol() {
     const e = _e, d = e.dessin;
-    const voulu = d.planSol && _dessinPermis() && _planSolPermis();
+    const voulu = d.planSol && _dessinPermis();
     if (!voulu) { if (d.sol && d.sol.mesh) _libererPlanSol(); return; }
     const c = _centreScene(), s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonScene(), px = c.x, pz = c.z;
     if (s.enCours) return;
     if (s.reprises > 0) { s.reprises--; e.sale = true; }
-    if (s.mesh && Math.hypot(px - s.cx, pz - s.cz) < s.cote * PLAN_SOL.ecart &&
+    if (s.mesh && s.niveau === e.niveau && Math.hypot(px - s.cx, pz - s.cz) < s.cote * PLAN_SOL.ecart &&
         Math.abs(cote - s.cote) < s.cote * PLAN_SOL.ecart) return;
     _dessinerPlanSol(px, pz, cote);
   }
@@ -5004,9 +5052,11 @@
     const echelle = N / region.w, H = window.APP_CONFIG.imageHeight;
     s.enCours = true;
     const t0 = performance.now();
-    const pc = window.PLAN_CONFIG;
-    const v2 = !!(pc && pc.plan && pc.plan.tiledV2 && pc.tiling && typeof window.ktaDessinerRegionTuiles === "function");
-    const fait = v2 ? Promise.resolve(window.ktaDessinerRegionTuiles(ctx, pc, region, echelle, { aligner: true }))
+    const pc = window.PLAN_CONFIG, niveau = e.niveau, calques = _calquesNiveauSol();
+    const v2 = !calques.length &&
+      !!(pc && pc.plan && pc.plan.tiledV2 && pc.tiling && typeof window.ktaDessinerRegionTuiles === "function");
+    const fait = calques.length ? _dessinerCalquesSol(ctx, calques, region, echelle, H)
+      : v2 ? Promise.resolve(window.ktaDessinerRegionTuiles(ctx, pc, region, echelle, { aligner: true }))
       : Promise.resolve().then(function () {
         _imagesFond().forEach(function (f) {
           // Bornes Leaflet (lat = H − y) → rectangle plan, puis rectangle de la texture.
@@ -5037,7 +5087,7 @@
       mesh.userData.famille = "planSol";
       e.scene.add(mesh);
       Object.assign(s, { mesh: mesh, tex: tex, cx: cx, cz: cz, cote: cote, px: N, ok: !!(r && r.ok),
-        v2: v2, tuiles: r && r.tuiles, ms: performance.now() - t0, faits: (s.faits || 0) + 1,
+        v2: v2, niveau: niveau, calques: (r && r.calques) || 0, tuiles: r && r.tuiles, ms: performance.now() - t0, faits: (s.faits || 0) + 1,
         reprises: PLAN_SOL.reprises });
       e.sale = true;
     });
@@ -5057,7 +5107,8 @@
       etiquettes: d.etiquettes.map(function (sp) { return sp.userData.poi.nom; }), renduBascule: d.renduBascule,
       tuilesReprises: e.tuilesReprises || 0, textures: e.renderer.info.memory.textures,
       planSol: d.sol && d.sol.mesh ? { px: d.sol.px, cote: +d.sol.cote.toFixed(1), ok: d.sol.ok, v2: d.sol.v2,
-        tuiles: d.sol.tuiles || null, ms: Math.round(d.sol.ms), faits: d.sol.faits,
+        tuiles: d.sol.tuiles || null, ms: Math.round(d.sol.ms), faits: d.sol.faits, niveau: d.sol.niveau,
+        calques: d.sol.calques,
         octets: d.sol.px * d.sol.px * 4 } : { voulu: !!d.planSol } };
   }
 

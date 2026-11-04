@@ -2027,7 +2027,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Droits** : ceux de la carte (armement refusé en lecture seule, groupe grisé recopié ; 📐 permise). Greffe
   `fiches: false` : ni barre ni sommet (`addons.md`).
 - **🗺️ Plan au sol** (décision produit : livré si la mémoire suit) : interrupteur de la barre, coupé par défaut, gardé
-  tant que la vue est ouverte, niveau 0 seulement (le plan de base, `tiling.js > ktaPlanDeBaseVisible`). Une texture
+  tant que la vue est ouverte, offert à **tous les niveaux** : un niveau ≠ 0 qui a ses calques image
+  (`imageLayers[].level`, `window._ktaImageOverlays`) montre ceux-là (calés comme sur la carte, lus depuis leur URL
+  s'ils ne sont pas posés), sinon le plan de base ; changer de niveau la redessine. Une texture
   carrée (1024 px au doigt, 2048 au pointeur fin) sur le carré de sol, à une place fixe, redessinée à un quart
   d'écart (place ou emprise) ; source : les `<img>` du fond déjà chargés par la carte (direct, tuiles V1), plan V2 :
   `ktaDessinerRegionTuiles` (tuiles du ZIP ou du cache, niveau le moins détaillé qui suffit). Libérée coupée, à la
@@ -2128,7 +2130,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   au 0, sommets à 3 cm, une reconstruction, visé ; glisser, pincer, deux doigts, molette, Maj + molette → aucun sommet ;
   annulé ; mur fermé par ✅, mur en ligne, zone, tracé (aucune reconstruction pendant), aimantation, mesure de 10 m et
   son étiquette ; sortie de la vue d'édition (objet de 2 sommets abandonné), Échap, fermeture (objet de 3 sommets gardé) ;
-  greffe `fiches: false` ; lecture seule ; plan au sol (caché au −1, une texture au 0, libérée) ; rendu galerie →
+  greffe `fiches: false` ; lecture seule ; plan au sol (visible au −1, une texture au 0, libérée) ; rendu galerie →
   mixte ; même pilier à la souris sur la carte : mêmes champs, sommets, historique.
   Caméra libre et mesures (§ 30, formes fictives, doigt, téléphone et PC) : pan d'un doigt tracker en marche → point
   visé déplacé, sol pris sous le doigt (à 15 cm), place et tracker immobiles, ⌖ montré ; vue tournée de 90° → même
@@ -2149,7 +2151,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   pas vers la galerie passe.
   Saut (§ 33, `KTA_V3D_SEUL=saut`) : balade de 50 m puis « Oui », « Ici » de « D'où pars-tu ? » → tracker recalé,
   ancre `tp`, validations et distance estimée inchangées, sortie du Carnet « bureau » ; « Je suis ici » d'une fiche en
-  3D → une validation, « terrain ».
+  3D → une validation, « terrain ». Plan au sol par niveau (§ 34, `=solniveaux`) : 🗺️ visible et dessiné au −1 (plan
+  de base) et au +1 (calque image fictif du niveau), pixels lus ; niveau changé vue ouverte → redessiné.
   `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons ; `KTA_V3D_PERF=mixte` : ce réseau sur le plan dense
   gardé à l'est (tubes à l'ouest, chambres à l'est).
   `smoke.js` : rien de la 3D au démarrage.

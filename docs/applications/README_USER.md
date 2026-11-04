@@ -708,7 +708,7 @@ Où et comment un passage se dessine :
 - L'objet est **celui de la carte** : même fiche, mêmes couleurs, ⏪ Annuler. Il prend **le niveau de la 3D** ; la carte, elle, ne change pas de niveau.
 - Pendant le dessin, un **trait au sol** montre l'objet ; il apparaît en relief à sa fin.
 - **📐 Mesure** : la distance (et la surface) s'affiche dans un **bandeau en bas de la vue**, mis à jour à chaque point, comme sur la carte ; la longueur de chaque segment et l'angle à chaque point s'affichent aussi dans la 3D, lisibles.
-- **🗺️ Plan au sol** : l'image du plan sous la scène, là où tu regardes, pour dessiner sur le relevé (niveau 0, celui du plan de base).
+- **🗺️ Plan au sol** : l'image du plan sous la scène, là où tu regardes, pour dessiner sur le relevé, à chaque niveau : l'image propre au niveau si le plan en a une, sinon le plan de base.
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
 - **Retoucher l'outil, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
 - En lecture seule, les outils de dessin restent grisés, comme sur la carte ; 📐 Mesure reste permise.
