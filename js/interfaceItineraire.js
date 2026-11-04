@@ -489,6 +489,10 @@ function _formatTempsMinutes(totalMin) {
   const minutes = Math.round(totalMin - heures * 60);
   return window.I18n.t("iti.time.hourMin", { h: heures, m: (minutes < 10 ? "0" + minutes : minutes) });
 }
+// Même format pour le temps restant du guidage (itiGuidage.js > _resume).
+window.ktaFormatTempsItineraire = function(totalMin) {
+  return _formatTempsMinutes(totalMin);
+};
 
 function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
   if (!window.map) return;

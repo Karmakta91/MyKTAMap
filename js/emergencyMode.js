@@ -211,6 +211,8 @@
             '<div class="kta-emergency-guidage-textes">' +
               '<div class="kta-emergency-guidage-principal" id="kta-em-guid-principal"></div>' +
               '<div class="kta-emergency-sub" id="kta-em-guid-sous"></div>' +
+              // Destination, distance et temps restants (itiGuidage.js > _resume), toujours dépliés ici.
+              '<div class="kta-emergency-sub" id="kta-em-guid-resume"></div>' +
             '</div>' +
           '</div>' +
           '<button class="kta-emergency-guidage-choix" id="kta-em-guid-choix" type="button" style="display:none">' +
@@ -572,6 +574,8 @@
     if (pr) pr.textContent = st.principal || "";
     const so = document.getElementById("kta-em-guid-sous");
     if (so) { so.textContent = st.sous || ""; so.style.display = st.sous ? "" : "none"; }
+    const re = document.getElementById("kta-em-guid-resume");
+    if (re) { re.textContent = st.resume ? st.resume.texte : ""; re.style.display = st.resume ? "" : "none"; }
     const choix = document.getElementById("kta-em-guid-choix");
     if (choix) choix.style.display = alerte ? "" : "none";
   }

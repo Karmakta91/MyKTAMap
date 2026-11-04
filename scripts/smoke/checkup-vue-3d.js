@@ -57,7 +57,8 @@
 // obstacle sur chacun des siens, pas ailleurs, scène refaite quand un niveau est décoché. Écart à l'itinéraire (31) :
 // recalcul en libre (seuil, délai, un seul, étape validée, tracker intact, édition, autre niveau, greffe), boutons de
 // la 2D en suivi sans recalcul automatique, repère du niveau du tronçon (KTA_V3D_SEUL=iti : cette section seule ;
-// KTA_V3D_PERF=iti : coût d'un recalcul).
+// KTA_V3D_PERF=iti : coût d'un recalcul). Encart « reste » (32) : distance et temps restants à 3 places, niveau de
+// l'arrivée, replié / déplié partagé avec la 2D, aucun chevauchement à 3 tailles (yeux, vue d'édition).
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -1676,6 +1677,127 @@ async function sectionEcartItineraire(page) {
     "suivi : « Recalculer d'ici » recalcule depuis le tracker", R.suiviRecalc);
   verifier(/Repère bas fictif/.test(R.repere.bandeau) && !/Repère haut fictif/.test(R.repere.bandeau),
     "bandeau 3D au 0 : repère du 0 cité, jamais celui du 1 à l'aplomb", R.repere);
+}
+
+// § 32 — Encart « reste » du bandeau 3D (itiGuidage.js > _resume, la source de la 2D) : itinéraire FICTIF connu
+// (66 m au 0, passage de 4 m, 66 m au −1 = 136 m), distance restante à 1 m près à 3 places (deux au 0, une au −1
+// après le passage), niveau de l'arrivée dit seulement depuis le 0, temps = distance / vitesse de l'itinéraire ;
+// toucher l'encart le replie (réglage partagé avec la 2D) ; aucun chevauchement à 3 tailles, à hauteur d'yeux
+// (joystick ou pavé) et en vue d'édition (colonne d'outils).
+async function sectionEncartReste(page) {
+  const prep = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z, n) {
+      const o = { x: (ox + x) * sc, y: (oz + z) * sc };
+      if (Number.isInteger(n)) o.level = n;
+      return o;
+    };
+    window.__v3dEnc = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, P: P };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-encart";
+    C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    try {
+      localStorage.removeItem("myktamap_guidage_v1");
+      localStorage.removeItem("myktamap_guidage_encart_v1");
+    } catch (err) { /* réglages par défaut */ }
+    window.setPlanRenduVue3D(null, "structures");
+    window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
+    window.setRoads([
+      { uid: "rd_en_0", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] },
+      { uid: "rd_en_m1", type: "principal", level: -1, points: [P(-40, 4), P(40, 4)] },
+      { uid: "rd_en_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(-36, 0), P(-36, 4)] }
+    ]);
+    window.KtaGalerie.invalider();
+    window.itineraireActiverRoad({ type: "itinerary", level: 0, carrefours: [],
+      points: [P(30, 0, 0), P(-36, 0, 0), P(-36, 4, -1), P(30, 4, -1)],
+      raccords: [{ role: "arrivee", label: "Cible fictive", de: P(30, 4), vers: P(30, 4), distPx: 0 }],
+      waypoints: [Object.assign({ source: "tracker", label: "Départ" }, P(30, 0, 0)),
+        Object.assign({ source: "search", label: "Cible fictive" }, P(30, 4, -1))] });
+    return true;
+  });
+  const lire = function (o) {
+    return page.evaluate(async function (q) {
+      const K = window.KtaVue3D, P = window.__v3dEnc.P, d = P(q.x, q.z);
+      if (K.etat().ouvert !== false) await K.fermer();
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 270, niveau: q.n }, commandes: q.cmd || "pave" });
+      await new Promise(function (ok) { setTimeout(ok, 600); });
+      const e = K.etat(), b = document.querySelector("#kta-vue3d .kta-v3d-bandeau .kta-guid-resume");
+      return { niveau: e.niveau, resume: e.bandeau.resume, reduit: e.bandeau.encartReduit,
+        texte: b ? b.querySelector(".kta-guid-resume-txt").textContent : null };
+    }, o);
+  };
+  console.log("§ 32 — encart « reste » du bandeau 3D");
+  const vit = 5000 / 60;
+  for (const c of [{ x: 0, z: 0, n: 0, att: 106 }, { x: 20, z: 0, n: 0, att: 126 }, { x: 0, z: 4, n: -1, att: 30 }]) {
+    const m = await lire(c);
+    const ok3 = m.niveau === c.n && m.resume && Math.abs(m.resume.resteM - c.att) <= 1 &&
+      Math.abs(m.resume.tempsMin - c.att / vit) < 0.05 && /Cible fictive/.test(m.texte) &&
+      (c.n === 0) === /\(niveau -1\)/.test(m.texte);
+    verifier(ok3, "au " + c.n + " (" + c.x + ", " + c.z + ") : reste " + (m.resume ? m.resume.resteM.toFixed(1) : "?") +
+      " m (attendu " + c.att + "), « " + m.texte + " »", m);
+  }
+  const bascule = await page.evaluate(async function () {
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const q = function () { return document.querySelector("#kta-vue3d .kta-v3d-bandeau .kta-guid-resume"); };
+    q().click();
+    await pause(500);
+    const r = { reduit: window.KtaVue3D.etat().bandeau.encartReduit, partage: window.ItiGuidage.encartReduit(),
+      texte: q().querySelector(".kta-guid-resume-txt").textContent, h: Math.round(q().getBoundingClientRect().height) };
+    q().click();
+    await pause(500);
+    r.deplie = !window.KtaVue3D.etat().bandeau.encartReduit && !window.ItiGuidage.encartReduit() &&
+      !!q().querySelector(".kta-guid-resume-txt").textContent;
+    return r;
+  });
+  verifier(bascule.reduit && bascule.partage && bascule.texte === "" && bascule.deplie,
+    "toucher l'encart le replie (languette de " + bascule.h + " px), réglage partagé avec la 2D, puis le rouvre", bascule);
+  const vp0 = page.viewportSize();
+  for (const t of [{ w: 390, h: 844, cmd: "joystick" }, { w: 844, h: 390, cmd: "joystick" }, { w: 1280, h: 800, cmd: "pave" }]) {
+    await page.setViewportSize({ width: t.w, height: t.h });
+    for (const plongee of [false, true]) {
+      await lire({ x: 0, z: 0, n: 0, cmd: t.cmd });
+      const ch = await page.evaluate(async function (pl) {
+        if (pl) window.KtaVue3D.basculerVue();
+        await new Promise(function (ok) { setTimeout(ok, 500); });
+        const b = document.querySelector("#kta-vue3d .kta-v3d-bandeau"), rb = b.getBoundingClientRect();
+        const autres = Array.prototype.filter.call(document.querySelectorAll("#kta-vue3d button, #kta-vue3d .kta-v3d-stick, " +
+          "#kta-vue3d .kta-v3d-pad, #kta-vue3d .kta-v3d-outils, #kta-vue3d .kta-v3d-mesure, #kta-vue3d .kta-v3d-boussole, " +
+          "#kta-vue3d .kta-v3d-mode-indic, #kta-vue3d .kta-v3d-incl"), function (x) {
+          if (b.contains(x)) return false;
+          const r = x.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && x.offsetParent !== null;
+        });
+        const touche = autres.filter(function (x) {
+          const r = x.getBoundingClientRect();
+          return r.left < rb.right - 0.5 && r.right > rb.left + 0.5 && r.top < rb.bottom - 0.5 && r.bottom > rb.top + 0.5;
+        }).map(function (x) { return (x.getAttribute("data-v3d") || x.className || x.tagName).toString().slice(0, 50); });
+        return { touche: touche, n: autres.length, encart: !!b.querySelector(".kta-guid-resume"), vue: window.KtaVue3D.etat().vue };
+      }, plongee);
+      verifier(ch.encart && !ch.touche.length, t.w + "×" + t.h + (plongee ? " vue d'édition" : " " + t.cmd) +
+        " : bandeau avec l'encart, aucun chevauchement (" + ch.n + " éléments)", ch);
+    }
+  }
+  await page.setViewportSize(vp0);
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, av = window.__v3dEnc, C = window.APP_CONFIG;
+    if (K.etat().ouvert !== false) await K.fermer();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.setRoads([]); window.setZones([]); window.setStructures([]);
+    window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
+    window.KtaGalerie.invalider();
+    window.ktaSetActiveLevel(0);
+  });
+  return prep;
 }
 
 // Coût d'un recalcul (KTA_V3D_PERF=iti) : réseau fictif de semerGalerie (3 120 tronçons), itinéraire d'un coin à
@@ -3431,6 +3553,7 @@ async function sectionDessin(page) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionEcartItineraire(page);
+      await sectionEncartReste(page);
     } else if (SEUL === "camera") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -9355,6 +9478,7 @@ async function sectionDessin(page) {
       await sectionDessin(page);
       await sectionZonesNiveaux(page);
       await sectionEcartItineraire(page);
+      await sectionEncartReste(page);
       await sectionCamera(page);
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);

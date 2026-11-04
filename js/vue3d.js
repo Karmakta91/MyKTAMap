@@ -4990,25 +4990,28 @@
     });
   }
 
-  // Bandeau compact dans _e.bandeau : icône (ou schéma du carrefour), consigne, ligne « puis… ».
-  // Mêmes textes que le bandeau 2D. Le DOM n'est touché que si la consigne change.
+  // Bandeau compact dans _e.bandeau : icône (ou schéma du carrefour), consigne, ligne « puis… », encart « reste »
+  // (destination, distance et temps restants : `resume` d'ItiGuidage, rendu par ItiGuidage.rendreEncart, replié ou non
+  // comme en 2D). Mêmes textes que le bandeau 2D. Le DOM n'est touché que si la consigne ou l'encart change.
   function _majBandeau(g) {
     const e = _e, b = e.bandeau;
     if (!b) return;
     // En suivi, sur un écart ou un demi-tour : les boutons du bandeau 2D (ItiGuidage.etat().actions, dans son ordre),
     // joués par _actionGuidage.
     const actions = g && Array.isArray(g.actions) ? g.actions : [];
+    const G = window.ItiGuidage, resume = g && g.resume ? g.resume : null, reduit = !!(g && g.encartReduit);
     const cle = g ? [g.apercu ? "a" : "r", g.mode, g.icone, g.picto, g.principal, g.sous, g.fleche, g.urgence,
-      actions.map(function (a) { return a.id; }).join()].join("|") : "";
+      actions.map(function (a) { return a.id; }).join(), resume ? resume.texte : "", reduit].join("|") : "";
     if (cle === e.bandeauCle) return;
     e.bandeauCle = cle;
     e.bandeauEtat = g ? { visible: true, apercu: !!g.apercu, mode: g.mode, principal: g.principal || "",
-      sous: g.sous || "", actions: actions.map(function (a) { return a.id; }) } : { visible: false };
+      sous: g.sous || "", actions: actions.map(function (a) { return a.id; }),
+      resume: resume ? { texte: resume.texte, resteM: resume.resteM, tempsMin: resume.tempsMin } : null,
+      encartReduit: reduit } : { visible: false };
     if (!g) { b.hidden = true; b.textContent = ""; _majSousHaut(); return; }
     b.textContent = "";
     b.classList.toggle("kta-v3d-guid-alerte", g.mode === "ecart" || g.mode === "demi");
     b.classList.toggle("kta-v3d-guid-urgence", !!g.urgence);
-    b.classList.toggle("kta-v3d-guid-avec-actions", actions.length > 0);
     const ic = document.createElement("span");
     ic.className = "kta-v3d-guid-icone";
     ic.setAttribute("aria-hidden", "true");
@@ -5043,8 +5046,26 @@
       });
       b.appendChild(boite);
     }
+    if (resume && G && typeof G.rendreEncart === "function") {
+      const enc = document.createElement("button");
+      enc.type = "button";
+      enc.className = "kta-guid-resume";
+      enc.dataset.v3d = "guidResume";
+      enc.innerHTML = '<span class="kta-guid-resume-txt"></span><span class="kta-guid-resume-chevron" aria-hidden="true">' +
+        '</span>';
+      G.rendreEncart(enc, resume, reduit);
+      b.appendChild(enc);
+    }
     b.hidden = false;
     _majSousHaut();
+  }
+
+  // Encart « reste » touché : replié ou rouvert, réglage partagé avec la 2D (ItiGuidage.reglerEncart).
+  function _basculerEncart() {
+    const G = window.ItiGuidage;
+    if (!G || typeof G.reglerEncart !== "function") return;
+    G.reglerEncart(!G.encartReduit());
+    _e.guidageForce = true;
   }
 
   // Bouton d'écart du bandeau (suivi) : la règle de la 2D, jouée par ItiGuidage.agir. « Je suis ici » : le picker se
@@ -6305,6 +6326,7 @@
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
       else if (a === "place") surPlace();
       else if (a === "guidAction") _actionGuidage(b.dataset.guidAction);
+      else if (a === "guidResume") _basculerEncart();
       // Entrée / Espace sur un bouton qui agit au pointerdown (bascules de la tuile, − / +, passages) : le navigateur
       // n'envoie qu'un click. 🩸 Un toucher envoie pointerdown PUIS click : ce click-là est ignoré (même bouton,
       // pointerdown récent), sinon la bascule jouerait deux fois.
@@ -6322,7 +6344,8 @@
       const a = b.dataset.v3d;
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
-        a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place" || a === "guidAction") return;
+        a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place" || a === "guidAction" ||
+        a === "guidResume") return;
       if (_agirBouton(a, b, ev)) return;
       ev.preventDefault();
       _codeBas(a === "ar");

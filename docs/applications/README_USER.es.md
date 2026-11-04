@@ -779,7 +779,9 @@ En cuanto hay un **itinerario trazado** y tu posición es conocida — tracker e
 
 **¿Te desvías o das media vuelta?** El aviso se vuelve naranja («¿Fuera del itinerario?» / «¿Media vuelta?») y propone **Estoy aquí** (toca el lugar donde estás), **Recalcular desde aquí** o **Ignorar**. No se recalcula nada sin ti.
 
-**Tocar el aviso** abre la **🪧 Hoja de ruta**: todas las indicaciones y sus distancias (toca una línea para ver el lugar). También se abre desde la ventana del itinerario, sin tracker, para preparar una salida.
+Bajo la indicación, un recuadro muestra **🏁 el destino** (con su nivel si no es el tuyo), **la distancia y el tiempo restantes** («~», al ritmo elegido en la ventana Itinerario); al tocarlo se pliega a la indicación sola (recordado en el dispositivo, en 2D como en 3D, en grande en la Vista XL).
+
+**Tocar la indicación** abre la **🪧 Hoja de ruta**: todas las indicaciones y sus distancias (toca una línea para ver el lugar). También se abre desde la ventana del itinerario, sin tracker, para preparar una salida.
 
 **La ✕ del aviso desactiva el guiado**; la ficha **🪧 Guiado del itinerario** del menú del Tracker lo vuelve a activar, sin recalcular.
 

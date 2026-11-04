@@ -1252,6 +1252,16 @@ niveau signé (`ktaFormatNiveau` : « vers le niveau +1 »), carte et 3D.
 sans quoi la position vaut le départ du plan) + (urgence OU réglage « auto »). La croix pose « jamais » (`setPref`) :
 plus d'état « masqué pour cet itinéraire », la tuile 🪧 est le seul interrupteur.
 
+**Encart « reste »** (`_resume`, rendu par `_rendreEncart` dans `.kta-guid-resume` sous la consigne) : 🏁 nom de
+l'arrivée (`raccords` « arrivee », sinon le dernier waypoint ; un « Point (x, y) » ou rien → « Arrivée »), son niveau
+seulement s'il diffère de celui de la position (tracker en 2D, scène en 3D), distance restante = trajet après `s`
++ raccords restants (étape ×2, arrivée ×1, comme `_distanceItineraireMeters`) + l'écart en « rejoindre », temps =
+`getItiTempsMinutes(reste, 2 + étapes restantes)` (allure et pauses de la fenêtre Itinéraire), « ~ » + arrondi à la
+minute (`ktaFormatTempsItineraire`). ⚠️ contrat : une seule source, `etat().resume` (bandeau 2D, écran XL) et
+`apercu().resume` (3D en libre), calculée avec la consigne : jamais de chemin. Replié (`encartReduit`,
+`reglerEncart`, `myktamap_guidage_encart_v1`, cet appareil) : une languette ▾ seule, 2D et 3D ensemble ; l'écran XL
+le montre toujours. Contrôles : `checkup-guidage.js` G12, `checkup-vue-3d.js` § 32.
+
 **✂️ Coupe derrière** (`interfaceItineraire.js > _couperDerriere`, appelée par `_onTrackerRecale` pour la source
 `"point"` — « Je suis ici », picker « Où es-tu ? », portail ; jamais le clic carte) : si le point est à ≤ `COUPE_SEUIL_M`
 (8 m) du trajet, au **premier passage** (aller-retour), la road est remplacée par la suite du trajet depuis la

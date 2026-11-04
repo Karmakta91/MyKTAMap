@@ -779,7 +779,9 @@ As soon as a **route is drawn** and your position is known — tracker running, 
 
 **Straying or turning back?** The banner turns orange (“Off the itinerary?” / “Turning back?”) and offers **I am here** (tap where you are), **Recompute from here** or **Ignore**. Nothing is recomputed without you.
 
-**Tapping the banner** opens the **🪧 Route sheet**: all the instructions and their distances (tap a row to see the spot). It also opens from the Route window, without the tracker, to prepare an outing.
+Under the instruction, a strip shows **🏁 the destination** (with its level if it is not yours), **the remaining distance and time** (“~”, at the pace chosen in the Itinerary window); tapping it folds it down to the instruction alone (remembered on the device, in 2D as in 3D, shown large on the XL display).
+
+**Tapping the instruction** opens the **🪧 Route sheet**: all the instructions and their distances (tap a row to see the spot). It also opens from the Route window, without the tracker, to prepare an outing.
 
 **The banner's ✕ turns guidance off**; the **🪧 Itinerary guidance** tile of the Tracker menu turns it back on, without recomputing.
 

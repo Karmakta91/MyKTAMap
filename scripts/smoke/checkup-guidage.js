@@ -11,7 +11,8 @@
 //   G3 feuille de route · G4 la consigne change en avançant · G5 écart → « Hors itinéraire ? » + 3 boutons ·
 //   G6 consigne reprise sur l'écran XL · G8 urgence sans croix · G9 suivi arrêté : bandeau gardé si
 //   position confirmée, masqué sinon · G10 tracé jonction, aperçu par niveau · G11 repère au niveau du tronçon
-//   (bandeau 2D, feuille, aperçu 3D ; manœuvre inchangée) · zéro erreur console / pageerror / clé i18n manquante.
+//   (bandeau 2D, feuille, aperçu 3D ; manœuvre inchangée) · G12 encart « reste » (distance, temps, niveau,
+//   réduit retenu, sans chevauchement à 3 tailles) · zéro erreur console / pageerror / clé i18n manquante.
 // Captures : $GUID_SHOTS (défaut : dossier temporaire). Usage : node scripts/smoke/checkup-guidage.js
 "use strict";
 
@@ -334,6 +335,105 @@ function inf(msg) { console.log("  •  " + msg); }
     if (citeHaut(g11.hautSeul) || g11.hautSeul.texte !== g11.sans.texte) {
       pb("G11 : seul un POI du 1 à portée, la consigne devait se dire sans repère — " + JSON.stringify(g11.hautSeul));
     } else ok("G11 : seul un POI du 1 à portée → consigne sans repère — « " + g11.hautSeul.texte + " »");
+
+    // G12 — encart « reste » (fictif, en mémoire) : 300 m au 0, passage de 10 m vers le −1, 300 m au −1, raccord
+    // d'arrivée de 3 m (613 m). Distance restante à 1 m près à 3 positions (au 0, dans le passage, au −1), niveau de
+    // l'arrivée dit seulement depuis un autre niveau, temps = distance / vitesse de l'itinéraire (préréglage
+    // « normale », 5 km/h), réduit / déplié retenu sur l'appareil, aucun chevauchement à 3 tailles.
+    const g12 = await page.evaluate(async function (a) {
+      const e = Number(window.APP_CONFIG.scale) || 1, G = window.ItiGuidage, C = window.APP_CONFIG, r = { pos: [] };
+      const P = function (x, y, n) { return { x: a.x + x * e, y: a.y + y * e, level: n }; };
+      const route = { uid: "rd_g12", type: "itinerary", level: 0,
+        points: [P(0, 0, 0), P(300, 0, 0), P(300, 10, -1), P(600, 10, -1)], carrefours: [],
+        raccords: [{ role: "arrivee", label: "Cible fictive", de: P(603, 10), vers: P(600, 10), distPx: 3 * e }],
+        waypoints: [Object.assign({ source: "tracker", label: "Départ" }, P(0, 0, 0)),
+          Object.assign({ source: "search", label: "Cible fictive" }, P(603, 10, -1))] };
+      const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, roads: window.getRoads(),
+        niv: window.getTrackerLevel, pos: window.__guidPos, etat: window.getTrackingPositionEtat };
+      C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
+      try { localStorage.removeItem("myktamap_guidage_encart_v1"); } catch (err) { /* déplié par défaut */ }
+      let niv = 0;
+      window.getTrackerLevel = function () { return niv; };
+      window.getTrackingPositionEtat = function () { return { confirmee: true, ts: Date.now(), suiviActif: true }; };
+      window.setRoads(av.roads.filter(function (x) { return x.type !== "itinerary"; }).concat([route]));
+      const aller = function (x, y, n) {
+        niv = n;
+        window.__guidPos = P(x, y);
+        G.onPosition(window.__guidPos);
+        const st = G.etat(), el = document.querySelector("#kta-guid-bandeau .kta-guid-resume-txt");
+        return { resteM: st.resume ? +st.resume.resteM.toFixed(2) : null, tempsMin: st.resume ? st.resume.tempsMin : null,
+          niveau: st.resume ? st.resume.niveau : null, texte: el ? el.textContent : "" };
+      };
+      // On marche le long du trajet tous les 2 m (le guidage suit une progression, pas des sauts) ; relevés à 100 m,
+      // au milieu du passage (305 m, tracker encore au 0) et à 450 m (au −1, 140 m après le passage).
+      const g = G.construire(route), rel = [100, 305, 450];
+      for (let s = 0; s <= 450; s += (rel.indexOf(s + 1) >= 0 ? 1 : 2)) {
+        const p = G.pointA(g, s * e);
+        const m = aller((p.x - a.x) / e, (p.y - a.y) / e, s < 310 ? 0 : -1);
+        if (rel.indexOf(s) >= 0) r.pos.push(m);
+      }
+      r.attendu = [513, 308, 163];   // 610 m de trajet + 3 m de raccord − s
+      r.vitesse = 5000 / 60;
+      // Réduit, puis une position de plus : toujours réduit ; relu après un rechargement de l'état (réglage retenu).
+      const btn = document.querySelector("#kta-guid-bandeau .kta-guid-resume");
+      btn.click();
+      aller(460, 10, -1);
+      r.reduit = { etat: G.etat().encartReduit, texte: btn.querySelector(".kta-guid-resume-txt").textContent,
+        ls: localStorage.getItem("myktamap_guidage_encart_v1"), lu: G.encartReduit(), h: Math.round(btn.getBoundingClientRect().height) };
+      btn.click();
+      aller(470, 10, -1);
+      r.deplie = { etat: G.etat().encartReduit, texte: btn.querySelector(".kta-guid-resume-txt").textContent,
+        ls: localStorage.getItem("myktamap_guidage_encart_v1") };
+      window.__g12 = av;
+      return r;
+    }, choix.a);
+    g12.pos.forEach(function (m, i) {
+      const att = g12.attendu[i], tAtt = att / g12.vitesse;
+      if (m.resteM === null || Math.abs(m.resteM - att) > 1) pb("G12 : distance restante " + m.resteM + " m, attendu " + att);
+      else if (Math.abs(m.tempsMin - tAtt) > 0.05) pb("G12 : temps " + m.tempsMin + " min, attendu " + tAtt.toFixed(2));
+      else ok("G12 : reste " + m.resteM + " m (attendu " + att + "), " + m.tempsMin.toFixed(1) + " min — « " + m.texte + " »");
+    });
+    if (g12.pos[0].niveau !== -1 || g12.pos[2].niveau !== null || !/Cible fictive/.test(g12.pos[0].texte)) {
+      pb("G12 : niveau de l'arrivée mal dit — " + JSON.stringify([g12.pos[0], g12.pos[2]]));
+    } else ok("G12 : niveau de l'arrivée dit depuis le 0, pas depuis le −1");
+    if (!g12.reduit.etat || g12.reduit.texte !== "" || g12.reduit.ls !== "reduit" || !g12.reduit.lu ||
+        g12.deplie.etat || !g12.deplie.texte || g12.deplie.ls !== null) {
+      pb("G12 : réduit / déplié — " + JSON.stringify({ reduit: g12.reduit, deplie: g12.deplie }));
+    } else ok("G12 : réduit (languette de " + g12.reduit.h + " px) puis déplié, retenu sur l'appareil");
+    // Aucun chevauchement : bandeau (encart déplié, puis écart avec ses 3 boutons) contre les contrôles de la carte,
+    // la boussole ouverte, le bouton nord, l'en-tête et la barre du bas, en portrait, en paysage et au PC.
+    for (const vp of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1280, height: 800 }]) {
+      await page.setViewportSize(vp);
+      await page.waitForTimeout(400);
+      const ch = await page.evaluate(function () {
+        if (window.CompassWidget && typeof window.CompassWidget.show === "function") { try { window.CompassWidget.show(); } catch (err) { /* sans boussole */ } }
+        window.ItiGuidage.onPosition(window.__guidPos);
+        const b = document.getElementById("kta-guid-bandeau"), rb = b.getBoundingClientRect();
+        const autres = Array.prototype.filter.call(document.querySelectorAll(
+          ".leaflet-control, #kta-compass-widget, .kta-nord-ctrl, .kta-refonte-header, .kta-refonte-bottom, " +
+          ".kta-bottom-bar, .kta-barre-bas"), function (x) {
+          if (b.contains(x) || x.contains(b)) return false;
+          const r = x.getBoundingClientRect(), st = getComputedStyle(x);
+          return r.width > 0 && r.height > 0 && st.visibility !== "hidden" && st.display !== "none";
+        });
+        const touche = autres.filter(function (x) {
+          const r = x.getBoundingClientRect();
+          return r.left < rb.right - 0.5 && r.right > rb.left + 0.5 && r.top < rb.bottom - 0.5 && r.bottom > rb.top + 0.5;
+        }).map(function (x) { return (x.id || x.className || x.tagName).toString().slice(0, 60); });
+        return { touche: touche, n: autres.length, bas: Math.round(rb.bottom), h: window.innerHeight };
+      });
+      if (ch.touche.length) pb("G12 : " + vp.width + "×" + vp.height + " — le bandeau chevauche " + ch.touche.join(", "));
+      else ok("G12 : " + vp.width + "×" + vp.height + " — aucun chevauchement (" + ch.n + " éléments, bas du bandeau " +
+        ch.bas + "/" + ch.h + " px)");
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(function () {
+      if (window.CompassWidget && typeof window.CompassWidget.hide === "function") { try { window.CompassWidget.hide(); } catch (err) { /* idem */ } }
+      const av = window.__g12, C = window.APP_CONFIG;
+      C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis;
+      window.getTrackerLevel = av.niv; window.getTrackingPositionEtat = av.etat;
+      window.setRoads(av.roads); window.__guidPos = av.pos;
+    });
   } catch (e) {
     if (String(e && e.message) !== "stop") pb("exception : " + (e && e.stack || e));
   } finally {
