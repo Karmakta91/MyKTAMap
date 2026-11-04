@@ -13,8 +13,9 @@
 // Expose : window.KtaAjusterSommets = { enCours(), etat(), annuler(), APPUI_MS, RAYON_PX }.
 // ⚠️ contrat : un geste = une écriture : captureState → mutation → KtaUid.touch → rendre() (un seul rendu, donc un
 // seul `kta:donneesPlanChange`) → record → SessionPersist.save. Pendant le glisser, rien n'est écrit : aperçu seul.
-// 🩸 Écoutes en CAPTURE sur window. Appui en attente puis glisser : pointermove / mousemove / touchmove avalés, ni le
-// drag de Leaflet ni le pan manuel du plan orienté (mapBearing.js > _installerPanManuel) ne bougent la carte ;
+// 🩸 Écoutes en CAPTURE sur window. Appui en attente puis glisser : pointermove / mousemove / touchmove avalés ; ni
+// le drag de Leaflet, ni le pan manuel, ni la rotation à deux doigts (mapBearing.js > _panSuivre, _rotPointerMove)
+// ne bougent la carte ;
 // `enCours()` est le drapeau neutre pour tout autre geste. Le clic qui suit un appui long est avalé (pas de fiche),
 // le menu contextuel aussi. Un 2e doigt, un mouvement de plus de BOUGE_PX avant l'appui long : rien n'est fait.
 // 🩸 Position par map.mouseEventToLatLng : la rotation du plan orienté y est défaite (mapBearing.js >

@@ -10,7 +10,7 @@
 // une entrée d'historique annulable, uid gardé et updatedAt changé, un seul rendu au lâcher (aucun pendant), carte
 // immobile pendant le glisser, aucune fiche après un appui long et une fiche au tap court, outil armé = rien,
 // lecture seule = rien, calque verrouillé = rien et sa copie « 🔄 Modifier » = oui, aimantation d'un tracé, mur de
-// 0,4 m posé coin par coin fermé au 4e coin seulement, et un déplacement sous rotation (plan orienté).
+// 0,4 m posé coin par coin fermé au 4e coin seulement, et un déplacement carte tournée (rotation manuelle, plan orienté).
 // 🩸 Le doigt : Chromium passe par CDP (Input.dispatchTouchEvent : vrais touch + pointer + clic du navigateur) ;
 // WebKit n'a pas de CDP, il reçoit des PointerEvent `touch` synthétiques (la logique du module, pas le pipeline
 // tactile du moteur).
@@ -325,6 +325,28 @@ async function rien(page, ptr, nom, ref) {
   verifier(proche(o1.points[0], de, 1e-6) && g.apres.as.ecritures === e0.as.ecritures, nom, g.apres.as);
 }
 
+// Un glisser sur carte tournée : le sommet suit le pointeur dans le repère du plan ; ni pan manuel, ni rotation
+// (angle et source gardés), drag Leaflet rendu à son état d'avant.
+async function sousRotation(page, ptr, nom, rot, k, tol) {
+  const rz = await lireObjet(page, "zn_as_z");
+  const de = rz.points[0], vers = { x: de.x + 50 * k, y: de.y - 30 * k };
+  const c0 = await etat(page);
+  const g = await geste(page, ptr, de, vers);
+  const rz2 = await lireObjet(page, "zn_as_z");
+  verifier(proche(rz2.points[0], vers, tol * 2), nom + " (" + rot.b.toFixed(0) + "°) : le sommet suit le pointeur " +
+    "dans le repère du plan", { pt: rz2.points[0], voulu: vers });
+  verifier(memeCentre(g.pendant.centre, c0.centre) && memeCentre(g.apres.centre, c0.centre),
+    nom + " : le pan manuel ne déplace pas la carte pendant le glisser");
+  const apres = await page.evaluate(function () {
+    const MB = window.MapBearing;
+    return { b: MB.getBearing(), src: MB.getSource ? MB.getSource() : null, drag: window.map.dragging.enabled() };
+  });
+  verifier(Math.abs(apres.b - rot.b) < 0.5 && apres.src === rot.src, nom + " : le glisser ne fait pas tourner la carte",
+    { avant: rot, apres: apres });
+  verifier(apres.drag === rot.drag, nom + " : le drag Leaflet rendu à son état d'avant le geste",
+    { avant: rot.drag, apres: apres.drag });
+}
+
 async function jouer(nav, moteur, mode) {
   _prefixe = "[" + moteur + " · " + mode + "] ";
   console.log("\n══ " + moteur + " · " + mode + " ══");
@@ -498,8 +520,19 @@ async function jouer(nav, moteur, mode) {
     verifier(mur.n4 === 4 && mur.ferme && mur.pts === 4, "mur de 0,4 m : 4 coins posés sans fermeture anticipée, fermé " +
       "au re-clic du 1er", mur);
 
-    // ── Sous rotation (plan orienté) ──
-    const rot = await page.evaluate(async function () {
+    // ── Carte tournée : rotation manuelle à deux doigts (MapBearing.setManuel), puis plan orienté (cap du tracker) ──
+    const manuel = await page.evaluate(function () {
+      const MB = window.MapBearing;
+      if (!MB || typeof MB.setManuel !== "function") return null;
+      const okPose = MB.setManuel(60);
+      return { ok: okPose, b: MB.getBearing(), src: MB.getSource(),
+        drag: !!(window.map.dragging && window.map.dragging.enabled()) };
+    });
+    verifier(!!manuel && manuel.ok, "rotation manuelle forcée par MapBearing.setManuel(60)", manuel);
+    if (manuel && manuel.ok) await sousRotation(page, ptr, "rotation manuelle", manuel, s.k, tol);
+    await page.evaluate(function () { if (window.MapBearing && window.MapBearing.remettreNord) window.MapBearing.remettreNord(); });
+    await page.waitForTimeout(600);
+    const cap = await page.evaluate(async function () {
       const MB = window.MapBearing;
       if (!MB || typeof window.startTracking !== "function") return { b: 0 };
       MB.setEnabled(true);
@@ -510,25 +543,11 @@ async function jouer(nav, moteur, mode) {
         await new Promise(function (r) { setTimeout(r, 50); });
         if (Math.abs(MB.getBearing() - 60) < 1) break;
       }
-      return { b: MB.getBearing(), actif: MB.isActive(), drag: !!(window.map.dragging && window.map.dragging.enabled()) };
+      return { b: MB.getBearing(), src: MB.getSource ? MB.getSource() : null,
+        drag: !!(window.map.dragging && window.map.dragging.enabled()) };
     });
-    if (Math.abs(rot.b) > 5) {
-      const rz = await lireObjet(page, "zn_as_z");
-      const de = rz.points[0], vers = { x: de.x + 50 * s.k, y: de.y - 30 * s.k };
-      const c0 = await etat(page);
-      const g = await geste(page, ptr, de, vers);
-      const rz2 = await lireObjet(page, "zn_as_z");
-      verifier(proche(rz2.points[0], vers, tol * 2), "carte tournée de " + rot.b.toFixed(0) + "° : le sommet suit le " +
-        "pointeur dans le repère du plan", { pt: rz2.points[0], voulu: vers });
-      verifier(memeCentre(g.pendant.centre, c0.centre) && memeCentre(g.apres.centre, c0.centre),
-        "carte tournée : le pan manuel ne déplace pas la carte pendant le glisser");
-      const dragApres = await page.evaluate(function () { return window.map.dragging.enabled(); });
-      verifier(dragApres === rot.drag, "carte tournée : le drag Leaflet rendu à son état d'avant le geste",
-        { avant: rot.drag, apres: dragApres });
-    } else {
-      inf("rotation non obtenue (" + JSON.stringify(rot) + ") : cas tourné non joué ici");
-      pb("rotation du plan orienté non forcée");
-    }
+    if (Math.abs(cap.b) > 5) await sousRotation(page, ptr, "plan orienté", cap, s.k, tol);
+    else inf("plan orienté : le cap ne tourne pas la vue dans ce harnais (" + JSON.stringify(cap) + "), cas non joué");
     await page.evaluate(function () {
       try { if (window.stopTracking) window.stopTracking(); } catch (err) { /* rien */ }
       if (window.MapBearing) window.MapBearing.setEnabled(false);

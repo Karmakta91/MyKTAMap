@@ -2362,10 +2362,10 @@ extension), hors objet en cours de tracé.
 - 🩸 **Gestes** : écoutes en capture sur `window`. Avant l'appui long, un mouvement de plus de 6 px (seuil du pan
   manuel du plan orienté) annule : c'est un pan ; en deçà, les `pointermove` / `mousemove` / `touchmove` sont avalés
   pour que la carte ne glisse pas sous le doigt. Armé : `map.dragging.disable()` le temps du geste (rendu à son
-  état d'avant, donc coupé sous le plan orienté), mouvements avalés (ni drag Leaflet ni
-  `mapBearing.js > _installerPanManuel`), clic suivant et menu contextuel avalés (pas de fiche). `pointerup` n'est
-  jamais avalé (Leaflet et le pan manuel y referment leur suivi des doigts). Un 2e doigt, la molette ou Échap
-  annulent. Drapeau neutre pour tout autre geste : `KtaAjusterSommets.enCours()`.
+  état d'avant, donc coupé carte tournée), mouvements avalés (ni drag Leaflet, ni pan manuel `mapBearing.js >
+  _panSuivre`, ni rotation à deux doigts `_rotPointerMove` / `_rotTouchMove`, tous sur le conteneur), clic suivant et menu contextuel avalés (pas de fiche). `pointerup` n'est
+  jamais avalé (Leaflet et le pan manuel y referment leur suivi des doigts). Un 2e doigt (pincement, rotation : le geste
+  à deux doigts reprend la main), la molette ou Échap annulent. Drapeau neutre pour tout autre geste : `KtaAjusterSommets.enCours()`.
 - 🩸 **Position** : `map.mouseEventToLatLng` (rotation défaite par le patch de `mouseEventToContainerPoint`) ;
   `clientX` ne sert qu'aux seuils. Le sommet garde son décalage au doigt (il ne saute pas sous lui).
 - **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon milieu de segment ; un balayage des
