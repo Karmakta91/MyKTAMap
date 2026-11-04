@@ -149,9 +149,10 @@
   // `grappes` grappes de traces d'outil (pic, broche). Longueurs en m.
   const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 7, grappes: 40,
     grain: 0.07, relief: 4, graine: 53 };
-  // 2e masse (pilier-2, front-2) : la même roche, plus chaude (teinte multipliée ; matériau `roche2`, cartes de la
-  // roche partagées, rien à dessiner de plus). 🩸 Sans elle, 🧱 activé, 1re et 2e masse étaient la même roche : un
-  // pilier passé de l'une à l'autre ne changeait rien dans la scène.
+  // 2e masse (pilier-2, front-2) : la même roche, plus chaude (teinte par sommet multipliée par la texture, même
+  // matériau et même maillage que la 1re, blanche). 🩸 Sans elle, 🧱 activé, 1re et 2e masse étaient la même roche :
+  // un pilier passé de l'une à l'autre ne changeait rien dans la scène. Pas de second matériau : préparé au premier
+  // pilier de 2e masse, il retardait d'une image le changement de niveau sous le fondu (WebKit).
   const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f0b98a";
   // Pierre de taille de carrière (parois des galeries et des tubes, 🧱 activé ; jamais les piliers ni les fronts) :
   // motif de 2 m (128 px/m), assises de hauteur tirée, blocs de longueur tirée, joints irréguliers (largeur, pente,
@@ -940,15 +941,16 @@
     // Textures (🧱) : roche et parpaing dans leurs lots, couleur blanche (texture naturelle, jamais teintée par la
     // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine. Remblais et effondrement (deux
     // volumes) texturés : un lot chacun, chambres et tubes ensemble (_zoneGalerie) ; 🧱 coupé, les lots d'origine.
-    const roche = new Lot(), roche2 = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
+    const roche = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
     const remblaisTex = new Lot(), eboulis = new Lot();
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
       remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
       const s = t.s[i], tex = _e.textures ? _textureDe(s.type) : null;
-      const col = tex ? BLANC : _couleur("structures", s.type), m = tex ? (tex === "roche" ? ROCHE : PARPAING).m : undefined;
-      const lot = tex === "roche" ? (MASSE_2[s.type] ? roche2 : roche) : tex === "parpaing" ? parpaing
-        : _estMur(s.type) ? murs : opaque;
+      const col = !tex ? _couleur("structures", s.type) : tex === "roche" && MASSE_2[s.type]
+        ? (_e.teinte2 || (_e.teinte2 = new THREE.Color(TEINTE_MASSE_2))) : BLANC;
+      const m = tex ? (tex === "roche" ? ROCHE : PARPAING).m : undefined;
+      const lot = tex === "roche" ? roche : tex === "parpaing" ? parpaing : _estMur(s.type) ? murs : opaque;
       const hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
       if (_estLigne(s.type)) {
         const ep = s.type === "mur-ligne" ? EPAISSEUR_MUR_LIGNE : EPAISSEUR_FRONT;
@@ -998,9 +1000,8 @@
     ajouter(opaque, _e.mats.opaque, 0, "opaque");
     ajouter(rubans, _e.mats.rubans, 0, "rubans");
     ajouter(murs, _e.mats.murs, 0, "murs");
-    if (roche.p.length || roche2.p.length || parpaing.p.length) _matsTextures();
+    if (roche.p.length || parpaing.p.length) _matsTextures();
     ajouter(roche, _e.mats.roche, 0, "opaque");
-    ajouter(roche2, _e.mats.roche2, 0, "opaque");
     ajouter(parpaing, _e.mats.parpaing, 0, "murs");
     ajouter(lumineux, _e.mats.iti, 1, "itineraire");
     ajouter(transp, _e.mats.transp, 2);
@@ -2158,15 +2159,13 @@
     const e = _e;
     if (e.mats.roche) return;
     const t0 = performance.now();
-    const fab = function (nom, dessin, graine, recule) {
+    const fab = function (nom, dessin, graine, recule, teinte) {
       const t = _texturesPeintes(nom, dessin, graine);
-      const o = { map: t.couleur, normalMap: t.normale };
+      const o = { map: t.couleur, normalMap: t.normale, vertexColors: !!teinte };
       if (recule) Object.assign(o, { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
       return new THREE.MeshLambertMaterial(o);
     };
-    e.mats.roche = fab("roche", _rocheBrute, ROCHE.graine, false);
-    e.mats.roche2 = new THREE.MeshLambertMaterial({ map: e.mats.roche.map, normalMap: e.mats.roche.normalMap,
-      color: new THREE.Color(TEINTE_MASSE_2) });
+    e.mats.roche = fab("roche", _rocheBrute, ROCHE.graine, false, true);   // teinte par sommet : 2e masse
     e.mats.parpaing = fab("parpaing", function (alea) { return _appareil(_assisesParpaing(alea), alea); },
       PARPAING.graine, true);
     e.msTextures = performance.now() - t0;
@@ -8024,13 +8023,13 @@
   // dessins : durée du premier dessin de chaque texture dans la page.
   function textures() {
     if (!_e) return null;
-    const e = _e, mats = { roche: e.mats.roche, roche2: e.mats.roche2, parpaing: e.mats.parpaing,
-      opaque: e.mats.opaque, murs: e.mats.murs, paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis, porte: e.mats.porte };
+    const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs,
+      paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis, porte: e.mats.porte };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
       uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m, remblais: 1 / REMBLAIS.m,
         eboulis: 1 / EBOULIS.m,
         moellons: { h: 1 / (MOELLON.l * MOELLONS_MOTIF.l), v: 1 / (MOELLON.h * MOELLONS_MOTIF.h) } },
-      maillages: {}, couleurs: {}, aretes: [], ms: Math.round(e.msTextures || 0), msParoi: Math.round(e.msParoi || 0),
+      maillages: {}, couleurs: {}, teintes: {}, aretes: [], ms: Math.round(e.msTextures || 0), msParoi: Math.round(e.msParoi || 0),
       msZones: Math.round(e.msZones || 0),
       dessins: Object.assign({}, _appareilsMs), materiaux: {} };
     const lits = function (cv) {
@@ -8078,13 +8077,15 @@
         if (!nom || !me.geometry) return;
         r.maillages[nom] = (r.maillages[nom] || 0) + 1;
         const g = me.geometry, p = g.attributes.position.array, uv = g.attributes.uv && g.attributes.uv.array;
-        if (!uv) {
-          const c = g.attributes.color.array, vus = r.couleurs[nom] || (r.couleurs[nom] = []);
+        // Couleurs des sommets : `couleurs` des maillages unis, `teintes` des texturés qui en tiennent compte (roche).
+        if (!uv || me.material.vertexColors) {
+          const c = g.attributes.color.array, table = uv ? r.teintes : r.couleurs;
+          const vus = table[nom] || (table[nom] = []);
           for (let i = 0; i < c.length; i += 3) {
             const hex = "#" + [c[i], c[i + 1], c[i + 2]].map(function (v) { return v.toString(16).padStart(2, "0"); }).join("");
             if (vus.indexOf(hex) < 0) vus.push(hex);
           }
-          return;
+          if (!uv) return;
         }
         for (let tr = 0; tr < p.length / 9 && (parMat[nom] || 0) < 4000; tr++) {
           for (let k = 0; k < 3; k++) {

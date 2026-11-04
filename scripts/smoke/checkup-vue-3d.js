@@ -1029,11 +1029,13 @@ async function sectionTypeModifie(page) {
     window._currentLoadedPlanId = "v3d-checkup-type";
     const texAvant = window.getVue3DTextures();
     window.setRoads([]); window.setZones([]); window.setStructures([]); window.setEditorPoints([]);
-    // Ce que la scène montre : maillages par matériau et couleurs des maillages unis (triées).
+    // Ce que la scène montre : maillages par matériau, couleurs des sommets des maillages unis et teintes des
+    // maillages texturés (triées).
     const vue = function () {
-      const t = K.textures(), c = {};
+      const t = K.textures(), c = {}, te = {};
       Object.keys(t.couleurs).sort().forEach(function (k) { c[k] = t.couleurs[k].slice().sort(); });
-      return JSON.stringify({ maillages: t.maillages, couleurs: c });
+      Object.keys(t.teintes).sort().forEach(function (k) { te[k] = t.teintes[k].slice().sort(); });
+      return JSON.stringify({ maillages: t.maillages, couleurs: c, teintes: te });
     };
     const ouvrir = async function () {
       const d = P(0, 0);
@@ -10398,9 +10400,10 @@ async function sectionFichesReglage(nav) {
         "piliers et fronts en roche brute : aucun lit de mortier (écart de rangée " + mp.lits + " ; parpaing " +
         mg.lits + ")", { roche: mp.lits, parpaing: mg.lits });
       verifier(mp.carte === "256x256" && mp.normale && mp.relief === 256 && mp.mipmaps && mp.anisotropie >= 1 &&
-        mp.anisotropie <= 4 && mp.couleursSommets === false && mp.recule === false && mg.carte === "256x256" &&
-        mg.normale && mg.mipmaps && mg.recule === true && TX.defaut.murDecale,
-        "matériaux : couleur et normal map de 256 px (puissance de 2), mipmaps, anisotropie ≤ 4, jamais teintés ; " +
+        mp.anisotropie <= 4 && mp.couleursSommets === true && mg.couleursSommets === false && mp.recule === false &&
+        mg.carte === "256x256" && mg.normale && mg.mipmaps && mg.recule === true && TX.defaut.murDecale,
+        "matériaux : couleur et normal map de 256 px (puissance de 2), mipmaps, anisotropie ≤ 4, jamais teintés par " +
+        "la légende (roche : teinte fixe de la 2e masse par sommet) ; " +
         "parpaing reculé en profondeur comme les murs (" + D0.ms + " ms pour les dessiner)", D0.materiaux);
       verifier((D0.couleurs.opaque || []).length >= 1 && !contient(D0.couleurs.opaque, "#3c9be0") &&
         TX.defaut.yMax.murs > 0 && TX.defaut.yMax.murs < TX.defaut.yMax.opaque,
