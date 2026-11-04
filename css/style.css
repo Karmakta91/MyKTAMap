@@ -1141,6 +1141,13 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: var(--kta-texte);
   line-height: 1.2;
 }
+/* Icône image d'une ligne (la rose de la boussole) : à la taille d'un émoji du libellé. */
+.kta-cheat-icone {
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.3em;
+  vertical-align: -0.2em;
+}
 .kta-kbd {
   display: inline-block;
   min-width: 20px;

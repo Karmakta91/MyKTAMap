@@ -22,7 +22,7 @@
     t: { action: "group:tracker",   label: "🧭 Tracker" },
     p: { action: "group:traces",    label: "🛣️ Tracés" },
     l: { action: "fn:legende",      label: "🗺️ Légende" },
-    b: { action: "fn:boussole",     label: "🧭 Boussole" },
+    b: { action: "fn:boussole",     label: "Boussole" },
     r: { action: "fn:recherche",    label: "🔍 Recherche (alt Ctrl+K)" }
   };
 

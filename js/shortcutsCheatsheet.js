@@ -35,6 +35,9 @@
     "fn:boussole":      "cheatsheet.tool.boussole",
     "fn:recherche":     "cheatsheet.tool.recherche"
   };
+  // Icône en image quand le vrai bouton n'en est pas une (libellé sans émoji) : la boussole = la rose de son widget
+  // (compass.js), comme son bouton dans la vue 3D ; 🧭 reste au Tracker.
+  const ACTION_ICONE = { "fn:boussole": "icon/compass.svg" };
 
   // Carte 2D : mapBearing.js > _rotMolette (Maj + molette, bouton nord), ajusterSommets.js (appui long, souris
   // comprise), Leaflet (molette, flèches et + / − quand la carte a le focus, Échap ferme la bulle), utils.js >
@@ -148,7 +151,10 @@
     }).join('<span class="kta-kbd-ou">/</span>');
     return '<div class="kta-cheat-row" data-ligne="' + _esc(ligne.id) + '">' +
              '<span class="kta-cheat-keys">' + kbds + "</span>" +
-             '<span class="kta-cheat-label">' + _esc(ligne.label) + "</span>" +
+             '<span class="kta-cheat-label">' +
+               (ligne.icone ? '<img class="kta-cheat-icone" src="' + _esc(ligne.icone) +
+                 '" alt="" draggable="false">' : "") +
+               _esc(ligne.label) + "</span>" +
            "</div>";
   }
 
@@ -161,7 +167,7 @@
                    ? window.KtaShortcuts.listMapping() : [];
     return list.map(function(it) {
       return { id: "outil." + it.key, touches: [["Key" + it.key]],
-               label: _t(ACTION_LABEL[it.action] || "", it.label) || it.label };
+               label: _t(ACTION_LABEL[it.action] || "", it.label) || it.label, icone: ACTION_ICONE[it.action] || null };
     });
   }
 

@@ -1891,7 +1891,9 @@ i18n : 6 clés `tracker.modal.*` (sections + statut + « pas ») fr/en/es. **Sco
   épinglée ⌨️ du hub d'Aide. Modale `.kta-readme-modal-overlay`, sections repliables `<details class="kta-cheat-section">`
   (le corps défile), touches en `.kta-kbd` (combinaison « + », variantes « / »). `lignes()` rend ce que la fiche
   affiche (sections, ordre, dépliage) : la fiche et le checkup lisent la même.
-  - **Outils** : générés depuis `KtaShortcuts.listMapping()` (libellés `cheatsheet.tool.*`).
+  - **Outils** : générés depuis `KtaShortcuts.listMapping()` (libellés `cheatsheet.tool.*`). Une ligne dont le vrai
+    bouton n'est pas un émoji prend son image (`ACTION_ICONE`, `.kta-cheat-icone`) : B = la rose de la boussole
+    (`icon/compass.svg`, comme son bouton dans la vue 3D), 🧭 restant au Tracker.
   - **Carte** (table `CARTE`) : Maj + molette tourne la carte, le bouton nord la redresse (`mapBearing.js`) ; clic
     long + glisser sur un sommet (`ajusterSommets.js`, souris comprise) ; molette, + / − et flèches (clavier de
     Leaflet, carte touchée) ; Échap ferme la bulle, annule un sommet en cours ou le choix d'une position.
