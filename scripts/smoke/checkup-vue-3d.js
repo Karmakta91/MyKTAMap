@@ -60,7 +60,7 @@
 //   zones, tracés, POI) : temps d'ouverture, triangles, appels, ms par image à 20 / 30 / 50 / 75 / 100 m, sans
 //   tuiles et en vue plongeante dézoomée (recul 60 m) ; marche de 120 m à 30 et 100 m ;
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
-//   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt).
+//   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt) ; KTA_V3D_SEUL=dessin → la section 28 seule.
 // Usage : node scripts/smoke/checkup-vue-3d.js (SMOKE_PORT pour une autre copie) · doc : docs/ETUDE_VUE_3D.md
 // =====================================================================
 "use strict";
@@ -80,6 +80,8 @@ const PERF_GALERIE = process.env.KTA_V3D_PERF === "1" || process.env.KTA_V3D_PER
 const PERF_MIXTE = process.env.KTA_V3D_PERF === "1" || process.env.KTA_V3D_PERF === "mixte";
 const TEL = process.env.KTA_V3D_TEL === "1";
 const CAPTURES = process.env.KTA_V3D_CAPTURES || "";
+// KTA_V3D_SEUL=dessin : la section 28 seule (mise au point).
+const SEUL = process.env.KTA_V3D_SEUL || "";
 const LS_PREGATES = {
   "myktamap_unlock_v1": "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae",
   "myktamap_terms_accepted_v1": "2",
@@ -1225,6 +1227,458 @@ async function sectionFichesObjets(page) {
     { zone: r.zoneOuverte, voir: r.voirZone });
 }
 
+// ── 28. Dessiner en vue plongeante (✏️) : outils de la carte rejoués au doigt (formes fictives) ──────────────────
+// Pilier, mur, mur en ligne, zone, tracé et mesure posés au toucher (pointeurs tactiles synthétiques) sur la 3D au
+// niveau −1, carte au 0 : objet de la carte au niveau de la 3D, montré après sa fin, annulable, identique au même
+// geste fait sur la carte ; aperçu sans reconstruction par sommet ; gestes de caméra sans sommet ; désarmé en
+// sortant de la plongée, à la fermeture et par Échap ; greffe `fiches: false` et lecture seule : rien.
+async function sectionDessin(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const m = function (q) { return [+(q.x / sc - ox).toFixed(3), +(q.y / sc - oz).toFixed(3)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = async function (n) {
+      for (let i = 0; i < (n || 3); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    };
+    const r = {};
+    if (window.getTrackingActif()) window.stopTracking();
+    const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-dessin";
+    // Plan à deux niveaux (−1 et 0), carte au 0 : la 3D dessine au −1.
+    C.multiLevel = true;
+    C.availableLevels = [-1, 0];
+    C.visibleLevels = [-1, 0];
+    C.activeLevel = 0;
+    window.setRoads([]); window.setZones([]); window.setStructures([]);
+    if (window.resetMesure) window.resetMesure();
+    window.KtaGalerie.invalider();
+    if (window.HistoryManager && window.HistoryManager.reset) window.HistoryManager.reset();
+    let ctxV = null;
+    const camera = function () {
+      const deg = K.greffer({ nom: "v3d-dessin-camera", scene: function (ctx) { ctxV = ctx; } });
+      if (deg) deg();
+    };
+    const ecran = function (x, z, h) {
+      const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+      const v = new ctxV.THREE.Vector3(ox + x, h || 0, oz + z).project(ctxV.camera);
+      return { x: rc.left + (v.x + 1) / 2 * rc.width, y: rc.top + (1 - v.y) / 2 * rc.height };
+    };
+    let idDoigt = 70;
+    const tap = async function (pt) {
+      const cv = document.querySelector("#kta-vue3d canvas");
+      const o = { bubbles: true, cancelable: true, pointerId: ++idDoigt, pointerType: "touch", isPrimary: true,
+        clientX: pt.x, clientY: pt.y, button: 0 };
+      cv.dispatchEvent(new PointerEvent("pointerdown", o));
+      await pause(30);
+      cv.dispatchEvent(new PointerEvent("pointerup", o));
+      await pause(40);
+    };
+    const ouvrir = async function (rendu, x, z) {
+      if (K.etat().ouvert !== false) await K.fermer();
+      window.setPlanRenduVue3D(null, rendu);
+      const d = P(x, z);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 0, niveau: -1 }, commandes: "joystick" });
+      K.basculerVue();
+      await pause(250);
+      await images(4);
+      camera();
+      await images(2);
+    };
+    const apres = async function (n0) {
+      for (let i = 0; i < 60; i++) {
+        await pause(40);
+        const dd = K.etat().donnees;
+        if (!dd.attente && dd.refaites > n0) break;
+      }
+      await images(2);
+    };
+    // Panneau d'un groupe ouvert depuis la barre de la vue, puis un de ses boutons touché (par son libellé 2D).
+    const panneau = function (groupe) {
+      const b = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="' + groupe + '"]');
+      if (b) b.click();
+      return document.querySelector(".kta-group-flyout");
+    };
+    const choisir = function (groupe, cle) {
+      const fly = panneau(groupe);
+      if (!fly) return false;
+      const lib = window.I18n.t(cle);
+      const btn = Array.prototype.slice.call(fly.querySelectorAll(".kta-group-flyout-btn")).filter(function (b) {
+        return b.textContent.indexOf(lib) >= 0;
+      })[0];
+      if (!btn) { window.ktaFermerOutils(); return false; }
+      btn.click();
+      return true;
+    };
+    const struct = function (uid) {
+      return window.getStructures().filter(function (s) { return s.uid === uid; })[0] || null;
+    };
+    const nouveau = function (liste, avant) {
+      return liste.filter(function (o) { return avant.indexOf(o.uid) < 0; })[0] || null;
+    };
+    const uids = function (liste) { return liste.map(function (o) { return o.uid; }); };
+
+    // ── Barre : ni à hauteur d'yeux, ✏️ en plongée, les 4 groupes de la carte dans son ordre ──
+    await ouvrir("mixte", 0, 0);
+    K.basculerVue();
+    await images(2);
+    r.yeux = { barre: K.etat().dessin.barre, refuse: K.dessiner(true) === false };
+    K.basculerVue();
+    await images(2);
+    const ed0 = K.etat().dessin;
+    r.plongee = { barre: ed0.barre, boutons: ed0.boutons.slice() };
+    r.ouvre = K.dessiner(true);
+    const barreEl = document.querySelector("#kta-vue3d .kta-v3d-outils");
+    const a0 = barreEl && barreEl.querySelector('[data-groupe="structures"]');
+    const src = window._groupes.structures.btnPrincipal;
+    r.boutons = K.etat().dessin.boutons.slice();
+    r.style = a0 ? { w: getComputedStyle(a0).width, h: getComputedStyle(a0).height, wSrc: getComputedStyle(src).width,
+      hSrc: getComputedStyle(src).height, icone: a0.innerHTML === src.innerHTML, titre: a0.title === src.title } : null;
+    // Rien d'armé : un toucher n'ouvre pas d'outil, ne pose rien.
+    await tap(ecran(3, 3));
+    r.sansOutil = { structures: window.getStructures().length, poses: K.etat().dessin.poses };
+
+    // ── Pilier au doigt : 4 sommets, fermé en retouchant le 1er (à 10 px près) ──
+    const fly = panneau("structures");
+    r.panneau = fly ? { z: getComputedStyle(fly).zIndex, dessus: (function () {
+      const rc = fly.getBoundingClientRect();
+      const el = document.elementFromPoint(rc.left + rc.width / 2, rc.top + rc.height / 2);
+      return !!el && fly.contains(el);
+    })(), jonction: /🪜/.test(fly.textContent), effacer: /🧹/.test(fly.textContent),
+      fermer: fly.textContent.indexOf(window.I18n.t("ui.struct.fermer")) >= 0 } : null;
+    window.ktaFermerOutils();
+    r.arme = choisir("structures", "ui.struct.pilier1") && window.modeStructure === "pilier-1";
+    await images(2);
+    r.boutonArme = !!a0 && a0.classList.contains("kta-group-mode-actif");
+    const coins = [[2, -6], [4, -6], [4, -4], [2, -4]];
+    const avantS = uids(window.getStructures());
+    const n0 = K.etat().donnees.refaites;
+    for (const c of coins) await tap(ecran(c[0], c[1]));
+    await images(2);
+    const enCours = window.getCurrentStructure();
+    r.enCours = { points: enCours ? enCours.points.length : 0, niveau: enCours ? enCours.level : null,
+      refaites: K.etat().donnees.refaites - n0, apercu: K.etat().dessin.apercu,
+      msPoses: K.etat().dessin.msPoses.slice(), dansScene: K.viser(ecran(3, -5).x, ecran(3, -5).y) };
+    // Dans le rond doré du 1er sommet (0,3 m), pas sur lui.
+    await tap(ecran(coins[0][0] + 0.15, coins[0][1] - 0.1));
+    const nouv = nouveau(window.getStructures(), avantS);
+    await apres(n0);
+    const vis = K.viser(ecran(3, -5, K.etat().hauteur).x, ecran(3, -5, K.etat().hauteur).y);
+    r.pilier = { cree: !!nouv, ferme: !window.getCurrentStructure(), type: nouv && nouv.type, niveau: nouv && nouv.level,
+      points: nouv ? nouv.points.map(m) : null, uid: nouv && nouv.uid, actifCarte: C.activeLevel,
+      niveau3d: K.etat().niveau, refaites: K.etat().donnees.refaites - n0, msFin: K.etat().dessin.msFin,
+      vise: vis ? { genre: vis.genre, uid: vis.uid } : null, encoreArme: window.modeStructure === "pilier-1",
+      cles: nouv ? Object.keys(nouv).sort() : null };
+    const pile = window.HistoryManager._peek().undo.map(function (x) { return x.label; });
+    r.pilier.historique = pile.slice(-5);
+    // Gestes de caméra, outil armé : glisser à un doigt, pincer, deux doigts glissés, molette, Maj + molette.
+    const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+    const cx = rc.left + rc.width * 0.6, cy = rc.top + rc.height * 0.55;
+    const ptr = function (type, id, x, y) {
+      cv.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id, pointerType: "touch",
+        isPrimary: id === 201, clientX: x, clientY: y }));
+    };
+    const posesG = K.etat().dessin.poses, nbG = window.getStructures().length;
+    ptr("pointerdown", 201, cx, cy);
+    for (let i = 1; i <= 6; i++) { ptr("pointermove", 201, cx + i * 8, cy + i * 3); await pause(16); }
+    ptr("pointerup", 201, cx + 48, cy + 18);
+    await pause(40);
+    ptr("pointerdown", 201, cx - 30, cy); ptr("pointerdown", 202, cx + 30, cy);
+    for (let i = 1; i <= 6; i++) { ptr("pointermove", 201, cx - 30 - i * 6, cy); ptr("pointermove", 202, cx + 30 + i * 6, cy); await pause(16); }
+    ptr("pointerup", 201, cx - 66, cy); ptr("pointerup", 202, cx + 66, cy);
+    await pause(40);
+    ptr("pointerdown", 201, cx - 30, cy); ptr("pointerdown", 202, cx + 30, cy);
+    for (let i = 1; i <= 6; i++) { ptr("pointermove", 201, cx - 30, cy - i * 6); ptr("pointermove", 202, cx + 30, cy - i * 6); await pause(16); }
+    ptr("pointerup", 201, cx - 30, cy - 36); ptr("pointerup", 202, cx + 30, cy - 36);
+    await pause(40);
+    cv.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -200, clientX: cx, clientY: cy }));
+    cv.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 100, shiftKey: true,
+      clientX: cx, clientY: cy }));
+    await pause(60);
+    r.gestes = { poses: K.etat().dessin.poses - posesG, structures: window.getStructures().length - nbG,
+      enCours: !!window.getCurrentStructure() };
+    // Annuler (HistoryManager) jusqu'à retirer le pilier : la scène suit.
+    let tours = 0;
+    while (struct(r.pilier.uid) && window.HistoryManager.canUndo() && tours < 8) {
+      const nA = K.etat().donnees.refaites;
+      window.HistoryManager.undo();
+      tours++;
+      await apres(nA);
+    }
+    camera();
+    const vis2 = K.viser(ecran(3, -5, K.etat().hauteur).x, ecran(3, -5, K.etat().hauteur).y);
+    r.annule = { parti: !struct(r.pilier.uid), tours: tours, vise: vis2 ? vis2.genre : null };
+
+    // ── Mur (polygone) fermé par ✅ « Fermer la structure » du panneau ; mur en ligne : 2 sommets puis ✅ ──
+    r.echelle = sc;
+    r.armeMur = choisir("structures", "ui.struct.mur") && window.modeStructure === "mur";
+    const avM = uids(window.getStructures()), nM = K.etat().donnees.refaites;
+    // 1,2 m d'épaisseur : la tolérance de fermeture de la 2D (zones.js > CLOSE_TOLERANCE, 5 px plan) vaut 0,8 m sur
+    // le relevé fictif ; un 4e coin plus près du 1er fermerait la forme, en 2D comme en 3D.
+    for (const c of [[-4, -8], [4, -8], [4, -6.8], [-4, -6.8]]) await tap(ecran(c[0], c[1]));
+    const fermeMur = choisir("structures", "ui.struct.fermer");
+    await apres(nM);
+    const mur = nouveau(window.getStructures(), avM);
+    camera();
+    const vM = K.viser(ecran(0, -7.4, K.etat().hauteur * 0.98).x, ecran(0, -7.4, K.etat().hauteur * 0.98).y);
+    r.mur = { ferme: fermeMur, type: mur && mur.type, niveau: mur && mur.level, points: mur ? mur.points.map(m) : null,
+      vise: vM ? { genre: vM.genre, uid: vM.uid } : null, uid: mur && mur.uid };
+    r.armeLigne = choisir("structures", "ui.struct.murLigne") && window.modeStructure === "mur-ligne";
+    const avL = uids(window.getStructures()), nL = K.etat().donnees.refaites;
+    for (const c of [[-4, -2.5], [4, -2.5]]) await tap(ecran(c[0], c[1]));
+    choisir("structures", "ui.struct.fermer");
+    await apres(nL);
+    const ligne = nouveau(window.getStructures(), avL);
+    r.murLigne = { type: ligne && ligne.type, niveau: ligne && ligne.level, points: ligne ? ligne.points.map(m) : null };
+    window._desactiverTousLesModes();
+
+    // ── Zone de remblais : 3 sommets, fermée sur le 1er ──
+    r.armeZone = choisir("zones", "ui.zone.remblais") && window.modeZone === "remblais";
+    const avZ = uids(window.getZones()), nZ = K.etat().donnees.refaites;
+    const tri = [[-6, 2], [-2, 2], [-4, 5]];
+    for (const c of tri) await tap(ecran(c[0], c[1]));
+    await tap(ecran(tri[0][0] - 0.12, tri[0][1] + 0.12));
+    await apres(nZ);
+    const zone = nouveau(window.getZones(), avZ);
+    camera();
+    const vZ = K.viser(ecran(-4, 3, K.etat().hauteur * 0.6).x, ecran(-4, 3, K.etat().hauteur * 0.6).y);
+    r.zone = { type: zone && zone.type, niveau: zone && zone.level, points: zone ? zone.points.map(m) : null,
+      ferme: !window.getCurrentZone(), vise: vZ ? { genre: vZ.genre, uid: vZ.uid } : null, uid: zone && zone.uid,
+      arme: window.modeZone === "remblais" };
+    window._desactiverTousLesModes();
+
+    // ── Tracé principal : 3 sommets, ✅ « Valider le tracé » ──
+    r.armeTrace = choisir("traces", "ui.trace.principal") && window.modeRoad === "principal";
+    const avR = uids(window.getRoads()), nR = K.etat().donnees.refaites;
+    for (const c of [[6, 4], [10, 4], [10, 8]]) await tap(ecran(c[0], c[1]));
+    const refaitesPendant = K.etat().donnees.refaites - nR;
+    choisir("traces", "ui.trace.valider");
+    await apres(nR);
+    const trace = nouveau(window.getRoads(), avR);
+    camera();
+    const vR = K.viser(ecran(8, 4, 0.03).x, ecran(8, 4, 0.03).y);
+    r.trace = { type: trace && trace.type, niveau: trace && trace.level, points: trace ? trace.points.map(m) : null,
+      fini: !window.getCurrentRoad() && !window.modeRoad, vise: vR ? { genre: vR.genre, uid: vR.uid } : null,
+      uid: trace && trace.uid, refaitesPendant: refaitesPendant };
+
+    // ── Mesure 📐 : deux points à 10 m, distance de la carte et étiquette dans la 3D ──
+    r.armeMesure = choisir("mesure", "ui.subaction.mesureDistance") && window.modeMesure === true;
+    await tap(ecran(-6, 1)); await tap(ecran(4, 1));
+    await images(2);
+    const dist = window.calculDistance();
+    r.mesure = { points: window.getMeasurePoints().length, distance: +dist.toFixed(3),
+      etiquettes: K.etat().dessin.etiquettes.slice(), attendu: window.formatDistance(dist, 2),
+      sansObjet: window.getStructures().length };
+    // Retoucher 📐 dans son panneau : éteint.
+    choisir("mesure", "ui.subaction.mesureDistance");
+    r.mesure.eteinte = window.modeMesure !== true;
+    if (window.resetMesure) window.resetMesure();
+
+    // ── Désarmé en sortant de la plongée (objet de 2 sommets abandonné, comme en 2D) ──
+    choisir("structures", "ui.struct.pilier1");
+    await tap(ecran(-6, 6)); await tap(ecran(-4, 6));
+    const nbAvantSortie = window.getStructures().length;
+    K.basculerVue();
+    await images(2);
+    r.sortie = { arme: !!window.modeStructure, barre: K.etat().dessin.barre, enCours: !!window.getCurrentStructure(),
+      abandonne: window.getStructures().length === nbAvantSortie - 1 };
+    K.basculerVue();
+    await images(2);
+    // Échap éteint l'outil armé (la vue reste ouverte).
+    K.dessiner(true);
+    choisir("structures", "ui.struct.pilier1");
+    const avantEchap = { arme: !!window.modeStructure, actif: K.etat().dessin.actif, recouverte: K.etat().recouverte,
+      centre: (function () {
+        const el = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+        return el ? el.tagName + "." + el.className + " " + (el.closest(".kta-modal, [class*=overlay]") || el).textContent.slice(0, 200) : null;
+      })() };
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    await images(1);
+    r.echap = { arme: !!window.modeStructure, vue: K.etat().ouvert !== false, avant: avantEchap };
+    // Fermer la vue, objet de 3 sommets en cours : validé comme en 2D, outil éteint.
+    choisir("structures", "ui.struct.pilier1");
+    const avF = uids(window.getStructures());
+    for (const c of [[-8, -2], [-7, -2], [-7.5, -1]]) await tap(ecran(c[0], c[1]));
+    await K.fermer();
+    const garde = nouveau(window.getStructures(), avF);
+    r.fermeture = { arme: !!window.modeStructure, garde: !!garde && garde.points.length === 3,
+      niveau: garde && garde.level, actif: C.activeLevel };
+    window.ktaSetActiveLevel ? window.ktaSetActiveLevel(0) : (C.activeLevel = 0);
+
+    // ── Greffe `fiches: false` : ni ✏️ ni sommet, même outil armé ──
+    await ouvrir("mixte", 0, 0);
+    const deg = K.greffer({ nom: "v3d-dessin-coupe", scene: function (ctx) { ctx.regler({ fiches: false }); } });
+    await images(2);
+    const refus = K.dessiner(true);
+    window.toggleStructureMode("pilier-1");
+    const nG = window.getStructures().length;
+    await tap(ecran(1, 1)); await tap(ecran(2, 1)); await tap(ecran(2, 2));
+    r.greffe = { barre: K.etat().dessin.barre, refus: refus === false, poses: window.getStructures().length - nG,
+      enCours: !!window.getCurrentStructure() };
+    window.toggleStructureMode("pilier-1");
+    if (deg) deg();
+    await images(2);
+    r.greffe.apres = K.etat().dessin.barre;
+
+    // ── Lecture seule (extension) : groupes grisés recopiés, aucun outil de dessin armé ; 📐 reste permis ──
+    window.ktaEditionRefusee = function () { return true; };
+    window.ktaMajOutilsLectureSeule();
+    K.dessiner(true);
+    await images(2);
+    const bS = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="structures"]');
+    bS.click();
+    const flyRO = !!document.querySelector(".kta-group-flyout");
+    window.toggleStructureMode("pilier-1");
+    r.lecture = { grise: bS.classList.contains("kta-outil-lecture-seule"), panneau: flyRO,
+      arme: !!window.modeStructure };
+    document.querySelectorAll("#kta-confirm-oui, .kta-readme-modal-overlay .kta-btn-primary").forEach(function (b) {
+      b.click();
+    });
+    delete window.ktaEditionRefusee;
+    window.ktaMajOutilsLectureSeule();
+
+    // ── Rendu galerie : armer une structure passe en mixte (on voit ce qu'on dessine), toast ──
+    await ouvrir("galerie", 0, 0);
+    K.dessiner(true);
+    choisir("structures", "ui.struct.pilier1");
+    await images(3);
+    r.galerie = { rendu: K.etat().rendu, bascule: K.etat().dessin.renduBascule, retenu: window.getPlanRenduVue3D() };
+    window._desactiverTousLesModes();
+    await K.fermer();
+
+    // ── Même geste sur la carte (2D, niveau −1) : même objet que la 3D ──
+    r.geste2d = null;
+    window.__v3dDessinRef = r.pilier.points;
+    // Restitué à la fin de la section (page.evaluate suivant).
+    window.__v3dDessinAv = av;
+    return r;
+  });
+  // Même pilier tracé à la souris sur la carte (2D), carte au −1 : mêmes champs, mêmes sommets à 1 px d'écran près.
+  const coins2d = await page.evaluate(function () {
+    const C = window.APP_CONFIG, sc = C.scale;
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    C.activeLevel = -1;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    window.map.setView(window.convertCoord(P(3, -5).x, P(3, -5).y), Math.max(window.map.getZoom(), 2), { animate: false });
+    const b = window._groupes.structures.btnPrincipal;
+    b.click();
+    const lib = window.I18n.t("ui.struct.pilier1");
+    const btn = Array.prototype.slice.call(document.querySelectorAll(".kta-group-flyout .kta-group-flyout-btn"))
+      .filter(function (x) { return x.textContent.indexOf(lib) >= 0; })[0];
+    if (btn) btn.click();
+    const coins = [[2, -6], [4, -6], [4, -4], [2, -4], [2, -6]];
+    const rc = document.getElementById("map").getBoundingClientRect();
+    window.__v3dAvant2d = window.getStructures().map(function (s) { return s.uid; });
+    return { pts: coins.map(function (c) {
+      const p = P(c[0], c[1]), q = window.map.latLngToContainerPoint(window.convertCoord(p.x, p.y));
+      return { x: rc.left + q.x, y: rc.top + q.y };
+    }), pxPlan: (function () {
+      const a = window.map.containerPointToLatLng([0, 0]), b2 = window.map.containerPointToLatLng([1, 0]);
+      return Math.abs(b2.lng - a.lng);
+    })(), arme: window.modeStructure };
+  });
+  for (const p of coins2d.pts) {
+    await page.mouse.click(p.x, p.y);
+    await page.waitForTimeout(120);
+  }
+  const R2 = await page.evaluate(function (pxPlan) {
+    const C = window.APP_CONFIG, sc = C.scale;
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const s = window.getStructures().filter(function (x) { return window.__v3dAvant2d.indexOf(x.uid) < 0; })[0];
+    const ref = window.__v3dDessinRef;
+    const pts = s ? s.points.map(function (q) { return [q.x / sc - ox, q.y / sc - oz]; }) : [];
+    const ecart = s && ref && pts.length === ref.length ? Math.max.apply(null, pts.map(function (q, i) {
+      return Math.hypot(q[0] - ref[i][0], q[1] - ref[i][1]);
+    })) : null;
+    const r = { cree: !!s, type: s && s.type, niveau: s && s.level, n: pts.length, ecartM: ecart,
+      toleranceM: 1.5 * pxPlan / sc, cles: s ? Object.keys(s).sort() : null,
+      historique: window.HistoryManager._peek().undo.map(function (x) { return x.label; }).slice(-5) };
+    window._desactiverTousLesModes();
+    // Restitution : plan, niveaux, calques, données.
+    const av = window.__v3dDessinAv;
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.setRoads([]); window.setZones([]); window.setStructures([]);
+    window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
+    window.KtaGalerie.invalider();
+    return r;
+  }, coins2d.pxPlan);
+
+  const r = R;
+  const proche = function (pts, attendus, tol) {
+    return !!pts && pts.length === attendus.length && pts.every(function (q, i) {
+      return Math.hypot(q[0] - attendus[i][0], q[1] - attendus[i][1]) <= tol;
+    });
+  };
+  verifier(!r.yeux.barre && r.yeux.refuse, "dessin : ni barre ni ✏️ à hauteur d'yeux", r.yeux);
+  verifier(r.plongee.barre && r.ouvre === true && JSON.stringify(r.boutons) ===
+    JSON.stringify(["mesure", "traces", "zones", "structures"]),
+    "vue plongeante : ✏️ montre 📐 🛣️ ⬛ 🏛️ (ordre de la barre de droite 2D)", { plongee: r.plongee, boutons: r.boutons });
+  verifier(r.style && r.style.w === r.style.wSrc && r.style.h === r.style.hSrc && r.style.icone && r.style.titre,
+    "boutons de la barre : taille, icône et titre de ceux de la carte", r.style);
+  verifier(r.sansOutil.structures === 0 && r.sansOutil.poses === 0, "✏️ ouvert sans outil armé : un toucher ne pose rien",
+    r.sansOutil);
+  verifier(r.panneau && String(r.panneau.z) === "99999" && r.panneau.dessus && !r.panneau.jonction &&
+    !r.panneau.effacer && r.panneau.fermer,
+    "panneau 🏛️ de la carte au-dessus de la vue (sans 🪜 ni 🧹, ✅ Fermer gardé)", r.panneau);
+  verifier(r.arme && r.boutonArme, "pilier armé depuis le panneau : bouton 🏛️ de la vue marqué comme celui de la carte",
+    { arme: r.arme, bouton: r.boutonArme });
+  verifier(r.enCours.points === 4 && r.enCours.niveau === -1 && r.enCours.refaites === 0 && r.enCours.apercu > 0 &&
+    !(r.enCours.dansScene && r.enCours.dansScene.genre === "structures"),
+    "pilier en cours (4 sommets au doigt) : niveau −1 de la 3D, aperçu au sol, aucune reconstruction", r.enCours);
+  verifier(r.pilier.cree && r.pilier.ferme && r.pilier.type === "pilier-1" && r.pilier.niveau === -1 &&
+    r.pilier.actifCarte === 0 && r.pilier.niveau3d === -1 && proche(r.pilier.points, [[2, -6], [4, -6], [4, -4], [2, -4]], 0.03) &&
+    r.pilier.refaites === 1 && r.pilier.vise && r.pilier.vise.genre === "structures" && r.pilier.vise.uid === r.pilier.uid &&
+    r.pilier.encoreArme,
+    "pilier fermé au doigt sur son 1er sommet : niveau −1 (carte au 0), sommets justes, une reconstruction, visible, " +
+    "outil gardé (comme la 2D)", r.pilier);
+  verifier(r.gestes.poses === 0 && r.gestes.structures === 0 && !r.gestes.enCours,
+    "outil armé : glisser, pincer, deux doigts, molette et Maj + molette ne posent aucun sommet", r.gestes);
+  verifier(r.annule.parti && r.annule.vise !== "structures", "annuler (HistoryManager) : pilier retiré, scène suivie",
+    r.annule);
+  verifier(r.armeMur && r.mur.ferme && r.mur.type === "mur" && r.mur.niveau === -1 &&
+    proche(r.mur.points, [[-4, -8], [4, -8], [4, -6.8], [-4, -6.8]], 0.03) && r.mur.vise && r.mur.vise.uid === r.mur.uid,
+    "mur au doigt, fermé par ✅ du panneau : niveau −1, sommets justes, visible", { mur: r.mur, echelle: r.echelle });
+  verifier(r.armeLigne && r.murLigne.type === "mur-ligne" && r.murLigne.niveau === -1 &&
+    proche(r.murLigne.points, [[-4, -2.5], [4, -2.5]], 0.03), "mur en ligne : 2 sommets puis ✅", r.murLigne);
+  verifier(r.armeZone && r.zone.type === "remblais" && r.zone.niveau === -1 && r.zone.ferme && r.zone.arme &&
+    proche(r.zone.points, [[-6, 2], [-2, 2], [-4, 5]], 0.03) && r.zone.vise && r.zone.vise.uid === r.zone.uid,
+    "zone de remblais au doigt, fermée sur son 1er sommet : niveau −1, visible", r.zone);
+  verifier(r.armeTrace && r.trace.type === "principal" && r.trace.niveau === -1 && r.trace.fini &&
+    r.trace.refaitesPendant === 0 && proche(r.trace.points, [[6, 4], [10, 4], [10, 8]], 0.03) &&
+    r.trace.vise && r.trace.vise.uid === r.trace.uid,
+    "tracé au doigt, validé par ✅ : niveau −1, aucune reconstruction pendant, visible", r.trace);
+  verifier(r.armeMesure && r.mesure.points === 2 && Math.abs(r.mesure.distance - 10) < 0.03 &&
+    r.mesure.etiquettes.some(function (t) { return t.indexOf(r.mesure.attendu) >= 0; }) && r.mesure.eteinte,
+    "mesure 📐 au doigt : 10 m justes, étiquette de la carte dans la 3D, retoucher l'éteint", r.mesure);
+  verifier(!r.sortie.arme && !r.sortie.barre && !r.sortie.enCours && r.sortie.abandonne,
+    "sortir de la plongée : outil éteint, objet de 2 sommets abandonné (règle de la 2D)", r.sortie);
+  verifier(!r.echap.arme && r.echap.vue, "Échap : outil éteint, vue ouverte", r.echap);
+  verifier(!r.fermeture.arme && r.fermeture.garde && r.fermeture.niveau === -1,
+    "fermer la vue : outil éteint, pilier de 3 sommets gardé (validé comme en 2D)", r.fermeture);
+  verifier(!r.greffe.barre && r.greffe.refus && r.greffe.poses === 0 && !r.greffe.enCours && r.greffe.apres,
+    "greffe fiches: false : ni barre ni sommet (outil armé compris) ; retirée, la barre revient", r.greffe);
+  verifier(r.lecture.grise && !r.lecture.panneau && !r.lecture.arme,
+    "lecture seule : 🏛️ grisé comme sur la carte, pas de panneau, aucun outil armé", r.lecture);
+  verifier(r.galerie.rendu === "mixte" && r.galerie.bascule === "mixte" && r.galerie.retenu === "mixte",
+    "rendu galerie : armer une structure passe en mixte (retenu), on voit ce qu'on dessine", r.galerie);
+  verifier(R2.cree && R2.type === "pilier-1" && R2.niveau === -1 && R2.n === 4 && R2.ecartM !== null &&
+    R2.ecartM <= R2.toleranceM && JSON.stringify(R2.cles) === JSON.stringify(r.pilier.cles) &&
+    JSON.stringify(R2.historique) === JSON.stringify(r.pilier.historique),
+    "même pilier à la souris sur la carte : mêmes champs, mêmes sommets (à 1,5 px d'écran), même historique",
+    { carte: R2, vue: { cles: r.pilier.cles, historique: r.pilier.historique } });
+  console.log("  📏 sommet posé en 3D (geste de la carte compris), ms : " + JSON.stringify(r.enCours.msPoses.map(function (v) {
+    return +v.toFixed(2); })) + " · fermeture → scène refaite : " + r.pilier.msFin + " ms");
+}
+
 (async function main() {
   const lancement = { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] };
   const nav = await lancerNavigateur(chromium, lancement);
@@ -1284,7 +1738,12 @@ async function sectionFichesObjets(page) {
       if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
     });
 
-    if (PERF) {
+    if (SEUL === "dessin") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionDessin(page);
+    } else if (PERF) {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       if (TEL) {
@@ -7135,6 +7594,7 @@ async function sectionFichesObjets(page) {
       });
 
       await sectionFichesObjets(page);
+      await sectionDessin(page);
     }
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous

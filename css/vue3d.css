@@ -326,3 +326,12 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
   pointer-events: none; white-space: nowrap;
 }
 .kta-v3d-bandeau-niveau[hidden] { display: none; }
+
+/* Dessin depuis la vue plongeante (vue3d.js > _monterOutils) : ✏️ puis 📐 🛣️ ⬛ 🏛️, les boutons de la barre de
+   droite 2D (.leaflet-bar a, leur taille et leurs états : style.css), en colonne à droite, au milieu. Le panneau d'un
+   groupe (interface.js > ktaOuvrirOutils) passe au rang de la vue, posé après elle : au-dessus. */
+.kta-v3d-outils {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin: 0; clear: none; float: none;
+}
+.kta-v3d-outils[hidden], .kta-v3d-outils a[hidden] { display: none; }
+html.kta-vue3d-ouverte .kta-group-flyout, html.kta-vue3d-ouverte .kta-group-flyout-fond { z-index: 99999; }

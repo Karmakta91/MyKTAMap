@@ -12,8 +12,10 @@
 //   zoomer(facteur), reglerPortee(m), reglerLampe(%), reglerFaisceau(°), reglerPleinJour(bool),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
-//   _ctxGreffe) } ; code « six vers le bas » : kta:vue3dCode ;
-//   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap}, densiteMax, stats, attenteReprise (ms), retourFocus,
+//   _ctxGreffe), viser(cx, cy), dessiner(bool) (barre ✏️ de la vue plongeante : outils de la carte, _poserSommet) } ;
+//   code « six vers le bas » : kta:vue3dCode ;
+//   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap, niveau}, densiteMax, stats, attenteReprise (ms),
+//   retourFocus,
 //   commandes ("joystick" | "pave" : sinon joystick au téléphone, pavé au PC ou option ⚙️, _commandesVoulues) }.
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
@@ -357,11 +359,13 @@
       const a = J.accroches(p).filter(function (q) { return q.level === niveau; })[0];
       points.push(Object.assign({}, p, { x: a ? a.x : p.x, y: a ? a.y : p.y, level: niveau, _v3dJonction: p }));
     });
+    // Objet en cours de dessin depuis la vue : montré par l'aperçu seulement, jusqu'à sa fin (_horsTrace).
     return {
       structures: _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", type)
-        .filter(ok),
-      zones: _filtrer(_tab(window.getZones), _tab(window.getAllEmbeddedZones), "zoneTypes", type).filter(ok),
-      roads: roads.filter(ok),
+        .filter(ok).filter(_horsTrace),
+      zones: _filtrer(_tab(window.getZones), _tab(window.getAllEmbeddedZones), "zoneTypes", type).filter(ok)
+        .filter(_horsTrace),
+      roads: roads.filter(ok).filter(_horsTrace),
       jonctions: sessionRoads.concat(embRoads).filter(function (r) {
         return r && r.type === "jonction" && Array.isArray(r.points);
       }),
@@ -2404,10 +2408,11 @@
   // Changée : caches de KtaGalerie vidés (sa signature ne voit pas tout), scène refaite sur place (_reindexer :
   // position, cap, tangage, niveau, mode, vue, réglages, itinéraire et guidage gardés), place dégagée en libre si un
   // obstacle neuf la recouvre (en suivi, la place est celle du tracker), fiche ouverte relue. Inchangée : rien.
-  // ⚠️ contrat : scène refaite entière, pas tuile par tuile (coût mesuré au checkup, KTA_V3D_PERF=1).
+  // ⚠️ contrat : scène refaite entière, pas tuile par tuile (coût mesuré au checkup, KTA_V3D_PERF=1). Un objet dessiné
+  // depuis la vue (✏️) attend sa fin : un sommet ne refait rien (_traceEnCours), la fin refait la scène une fois.
   function _majDonnees() {
     const e = _e, d = e.donnees, t = performance.now();
-    if (!d.signal || e.geste) return;
+    if (!d.signal || e.geste || _traceEnCours()) return;
     if (t - d.signal < RAFALE.calme && t - d.premier < RAFALE.max) return;
     d.signal = d.premier = 0;
     const emp = _empreinteDonnees();
@@ -2424,6 +2429,7 @@
     _majFicheDonnees();
     d.refaites++;
     d.ms = performance.now() - t;
+    if (e.dessin && e.dessin.finT && e.dessin.msFin === null) e.dessin.msFin = performance.now() - e.dessin.finT;
     e.sale = true;
   }
 
@@ -3372,6 +3378,9 @@
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
     _majRepere();
     if (e.boutonsIncl) e.boutonsIncl.hidden = !haut;
+    // Dessin (✏️) : en plongée seulement ; la quitter éteint l'outil.
+    if (e.dessin && !haut && e.dessin.ouvert) _basculerDessin(false);
+    _majBarreDessin();
     _majZoom();
     e.sale = true;
   }
@@ -3913,6 +3922,7 @@
     return _allerNiveau(c || null);
   }
 
+  // Outil de dessin armé (✏️, vue plongeante) : le toucher pose un sommet, rien d'autre (_poserSommet).
   // Toucher bref sur la scène, par priorité : panneau de POI (sa fiche de la carte, _ouvrirFiche, POI jonction
   // compris : boutons de passage, _passagesFiche), puis l'objet sous le doigt, structure, zone, tracé (sa fiche de
   // la carte, _ouvrirFicheObjet). Rien dessous : rien. Une greffe coupe tout (ctx.regler({ fiches: false })).
@@ -3921,6 +3931,7 @@
   // aussi). Ils arrêtent quand même le toucher : sinon la fiche d'un POI ou d'un pilier caché derrière s'ouvrirait.
   function _toucher(cx, cy) {
     const e = _e;
+    if (_dessinActif()) return _poserSommet(cx, cy);
     if (!_permisGreffe("fiches") || !_rayonEcran(cx, cy)) return false;
     const hit = _panneauVise();
     if (hit && hit.object.userData.poi.genre !== "poi") {
@@ -4062,6 +4073,348 @@
     const o = _objetAuPoint(v);
     return { genre: o ? o.famille : null, x: v.x, y: v.y, h: v.h, sol: v.sol, uid: o ? o.obj.uid || null : null,
       type: o ? o.obj.type : null, session: o ? o.session : null };
+  }
+
+  // ── Dessin depuis la vue plongeante (✏️) ──────────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : en plongée seulement, ✏️ montre la barre 📐 🛣️ ⬛ 🏛️ (boutons .leaflet-bar de la
+  // barre de droite 2D, dans son ordre, icône et état recopiés de son bouton : _majBarreDessin). Chaque bouton ouvre
+  // le panneau de son groupe 2D (interface.js > ktaOuvrirOutils : mêmes types, customs, ➕ et ✅). Rien ne se dessine
+  // tant qu'aucun outil n'est armé ; armé, un toucher bref de la scène pose un sommet AVANT toute fiche (_toucher).
+  // Le toucher rejoue le geste de la carte (_poserSommet : map.fire mousedown puis click, latlng du point touché) :
+  // undo, uid, styles, fermeture et droits restent ceux des outils 2D, jamais copiés. Le niveau de l'objet est celui
+  // de la 3D : APP_CONFIG.activeLevel le prend le temps du geste, puis est rendu. Objet en cours : aperçu léger au sol
+  // (_majApercu) et aucune reconstruction de la scène (_majDonnees attend sa fin). Sortir de la plongée, fermer la vue,
+  // Échap ou ✏️ désarment (_desactiverTousLesModes de la carte : un objet non fini se traite comme en 2D). Une greffe
+  // `fiches: false` coupe aussi le dessin (ni ✏️, ni sommet).
+  // 🩸 Les outils 2D lisent `e.latlng` seul ; ce qui dépend de la carte est donné par la vue. Fermeture d'une zone ou
+  // d'une structure (décision produit) : toucher le rond doré du 1er sommet, DESSIN.premier m de rayon dessiné à
+  // l'échelle (le point est alors ce sommet exact) ; en mètres et non en px d'écran, sinon le 4e coin d'un mur de
+  // 0,4 m fermait la forme au recul par défaut (zoomer agrandit la cible). Aimantation des tracés (road.js >
+  // _snapSurSommetProche) au même rayon d'écran que la 2D, converti à la profondeur du point touché
+  // (`ktaTolerancePlan`).
+  const DESSIN = { larg: 0.12, sommet: 0.16, premier: 0.3, y: 0.09 };
+  const DESSIN_AVALER = 700;          // ms : toucher qui ferme le panneau d'un groupe, avalé (comme sur la carte)
+  const GROUPES_DESSIN = ["mesure", "traces", "zones", "structures"];   // ordre de la barre de droite 2D
+  const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };
+  const COULEUR_MESURE = "#ff0000";   // la mesure de la carte (measure.js : red), pas une couleur de la charte
+
+  // Barre (dans la vue, posée par _monterDom) : ✏️ puis un bouton par groupe, cachés tant que ✏️ n'est pas enfoncé.
+  // Sans la barre de droite 2D (interface.js absent), rien.
+  function _monterOutils(ov) {
+    const e = _e;
+    e.dessin = { ouvert: false, sig: null, apSig: null, apercu: null, etiquettes: [], poses: 0, msPoses: [],
+      fermetures: 0, finT: 0, msFin: null, avaleJusqua: 0, renduBascule: null, barre: null };
+    if (!window._groupes) return;
+    const barre = document.createElement("div");
+    barre.className = "leaflet-bar leaflet-control kta-v3d-outils";
+    barre.setAttribute("role", "toolbar");
+    barre.setAttribute("aria-label", _t("vue3d.dessin.barre"));
+    barre.hidden = true;
+    const lien = function (action, groupe) {
+      const a = document.createElement("a");
+      a.href = "#";
+      a.className = "kta-group-toggle";
+      a.setAttribute("role", "button");
+      a.dataset.v3d = action;
+      if (groupe) a.dataset.groupe = groupe;
+      barre.appendChild(a);
+      return a;
+    };
+    const d = e.dessin;
+    d.bouton = lien("dessin");
+    d.bouton.textContent = "✏️";
+    d.bouton.title = _t("vue3d.dessin.titre");
+    d.bouton.setAttribute("aria-label", _t("vue3d.dessin.titre"));
+    d.bouton.setAttribute("aria-pressed", "false");
+    d.outils = GROUPES_DESSIN.map(function (g) { const b = lien("outil", g); b.hidden = true; return b; });
+    ov.appendChild(barre);
+    d.barre = barre;
+  }
+
+  function _outilArme() {
+    if (window.modeStructure) return { famille: "structures", type: window.modeStructure };
+    if (window.modeZone) return { famille: "zones", type: window.modeZone };
+    if (window.modeRoad) return { famille: "roads", type: window.modeRoad };
+    if (window.modeMesure) {
+      return { famille: "mesure", type: typeof window.getMeasureMode === "function" ? window.getMeasureMode() : "distance" };
+    }
+    return null;
+  }
+
+  function _dessinPermis() { return !!_e && !!_e.dessin && _e.vue === "plongee" && _permisGreffe("fiches"); }
+  function _dessinActif() { return _dessinPermis() && _e.dessin.ouvert && !!_outilArme(); }
+
+  function _enCours(f) { try { return typeof f === "function" ? f() || null : null; } catch (err) { return null; } }
+  function _objetEnCours(famille) {
+    return _enCours({ structures: window.getCurrentStructure, zones: window.getCurrentZone,
+      roads: window.getCurrentRoad }[famille]);
+  }
+  // Objet commencé, barre ✏️ ouverte : la scène attend sa fin (_majDonnees) et ne le montre pas encore (_collecter).
+  function _traceEnCours() {
+    const d = _e && _e.dessin;
+    return !!d && d.ouvert && !!(_objetEnCours("structures") || _objetEnCours("zones") || _objetEnCours("roads"));
+  }
+  function _horsTrace(o) {
+    const d = _e && _e.dessin;
+    return !d || !d.ouvert || (o !== _objetEnCours("structures") && o !== _objetEnCours("zones") &&
+      o !== _objetEnCours("roads"));
+  }
+
+  function _basculerDessin(ouvrir) {
+    const e = _e, d = e && e.dessin;
+    if (!d || !d.barre) return false;
+    const v = ouvrir === undefined ? !d.ouvert : !!ouvrir;
+    if (v && !_dessinPermis()) return false;
+    if (!v) _desarmerDessin();
+    d.ouvert = v;
+    d.sig = null;
+    _majBarreDessin();
+    return v;
+  }
+
+  // Outil éteint comme sur la carte (interface.js > _desactiverTousLesModes : bouton, mode, objet non fini validé ou
+  // abandonné) ; panneau d'un groupe fermé.
+  function _desarmerDessin() {
+    if (typeof window.ktaOutilsOuverts === "function" && window.ktaOutilsOuverts()) window.ktaFermerOutils();
+    if (_outilArme() && typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+  }
+
+  // Boutons des groupes = ceux de la barre de droite 2D : icône (pastille du type armé comprise), titre, mode actif
+  // et lecture seule lus sur eux, jamais recalculés.
+  function _majBarreDessin() {
+    const e = _e, d = e.dessin;
+    if (!d || !d.barre) return;
+    d.barre.hidden = !_dessinPermis();
+    d.bouton.classList.toggle("kta-actif", d.ouvert);
+    d.bouton.setAttribute("aria-pressed", d.ouvert ? "true" : "false");
+    const ouvert = typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() : null;
+    d.outils.forEach(function (b) {
+      const g = window._groupes && window._groupes[b.dataset.groupe], src = g && g.btnPrincipal;
+      b.hidden = !d.ouvert || !src;
+      if (!src) return;
+      if (b.innerHTML !== src.innerHTML) b.innerHTML = src.innerHTML;
+      if (b.title !== src.title) { b.title = src.title; b.setAttribute("aria-label", src.title); }
+      b.classList.toggle("kta-group-mode-actif", src.classList.contains("kta-group-mode-actif"));
+      b.classList.toggle("kta-outil-lecture-seule", src.classList.contains("kta-outil-lecture-seule"));
+      b.classList.toggle("kta-group-open", ouvert === b.dataset.groupe);
+    });
+  }
+
+  // À chaque image, sur signature : barre suivie (outil armé ou éteint par le panneau, une annulation, une modale),
+  // outil éteint si le dessin n'est plus permis, rendu galerie quitté pour une structure, aperçu refait.
+  function _majDessin() {
+    const e = _e, d = e.dessin;
+    if (!d || !d.barre) return;
+    if (d.ouvert && !_dessinPermis()) _basculerDessin(false);
+    const G = window._groupes || {}, o = _outilArme();
+    let sig = (_dessinPermis() ? "1" : "0") + (d.ouvert ? "1" : "0") + (o ? o.famille + ":" + o.type : "") + "|" +
+      (typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() || "" : "");
+    GROUPES_DESSIN.forEach(function (g) {
+      const b = G[g] && G[g].btnPrincipal;
+      if (b) sig += "|" + b.className + b.innerHTML;
+    });
+    if (sig !== d.sig) {
+      d.sig = sig;
+      _majBarreDessin();
+      // ⚠️ contrat (décision produit) : le rendu galerie ne dessine aucune structure ; armer un outil de structure y
+      // passe en mixte (retenu par plan, comme un toucher du bouton), un toast le dit : on voit ce qu'on dessine.
+      if (d.ouvert && o && o.famille === "structures" && e.rendu === "galerie") {
+        basculerRendu("mixte");
+        d.renduBascule = "mixte";
+        _toast(_t("vue3d.dessin.renduMixte"), "success");
+      }
+    }
+    _majApercu(false);
+  }
+
+  // Groupe touché dans la barre : son panneau 2D, ancré au bouton ; retouché, fermé. Groupe grisé (lecture seule) :
+  // le refus de la carte (ktaEditionRefusee le dit), rien d'ouvert.
+  function _ouvrirOutil(groupe, ancre) {
+    const g = window._groupes && window._groupes[groupe];
+    if (!g || typeof window.ktaOuvrirOutils !== "function") return false;
+    if (g.btnPrincipal.classList.contains("kta-outil-lecture-seule") &&
+        typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    _e.dessin.sig = null;
+    if (window.ktaOutilsOuverts() === groupe) { window.ktaFermerOutils(); return false; }
+    window.ktaOuvrirOutils(groupe, { ancre: ancre });
+    return true;
+  }
+
+  // Point du sol sous le doigt (rayon posé par _rayonEcran) : la surface montrée touchée (_pointVise : dessus d'un
+  // pilier = son emprise), sinon le plan du sol ; { x, y (px plan), dist (m) } ou null (rayon vers le ciel).
+  function _pointSol() {
+    const e = _e, v = _pointVise();
+    if (v) return { x: v.x, y: v.y, dist: v.dist };
+    const q = e.rayon.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+    if (!q) return null;
+    return { x: q.x * e.sc, y: q.z * e.sc, dist: q.distanceTo(e.camera.position) };
+  }
+
+  // Rayon d'aimantation des tracés de la carte (APP_CONFIG.snapDrawPx, px d'écran) à la profondeur `dist` (m) → px plan.
+  function _tolerancePlan(dist) {
+    const e = _e, cfg = window.APP_CONFIG || {}, r = e.cv.getBoundingClientRect();
+    const px = Number.isFinite(cfg.snapDrawPx) && cfg.snapDrawPx > 0 ? cfg.snapDrawPx : 14;
+    if (!r.height) return undefined;
+    return px * 2 * dist * Math.tan(e.camera.fov * Math.PI / 360) / r.height * e.sc;
+  }
+
+  // Un toucher, outil armé : le geste de la carte au point du sol touché (voir l'en-tête de la section). Le toucher qui
+  // ferme le panneau d'un groupe est avalé (comme la carte : interface.js > _onDocClickFlyout).
+  function _poserSommet(cx, cy) {
+    const e = _e, d = e.dessin, o = _outilArme();
+    if (performance.now() < d.avaleJusqua) return true;
+    if (!o || !window.map || typeof window.convertCoord !== "function" || !_rayonEcran(cx, cy)) return false;
+    const v = _pointSol();
+    if (!v) return false;
+    let x = v.x, y = v.y;
+    const cur = _objetEnCours(o.famille);
+    const poly = !!cur && (o.famille === "zones" || (o.famille === "structures" && !_estLigne(cur.type)));
+    if (poly && cur.points.length >= 3) {
+      const p0 = cur.points[0];
+      if (Math.hypot(x - p0.x, y - p0.y) <= DESSIN.premier * e.sc) { x = p0.x; y = p0.y; }
+    }
+    const cfg = window.APP_CONFIG || {}, avant = cfg.activeLevel, niv = e.niveau;
+    const ev = { latlng: L.latLng(window.convertCoord(x, y)), ktaVue3D: true, ktaTolerancePlan: _tolerancePlan(v.dist) };
+    const t0 = performance.now();
+    if (cfg.multiLevel === true && Number.isInteger(niv)) cfg.activeLevel = niv;
+    try {
+      window.map.fire("mousedown", ev);
+      window.map.fire("click", ev);
+    } catch (err) {
+      console.warn("[Vue3D] sommet non posé :", err && err.message);
+    } finally {
+      cfg.activeLevel = avant;
+    }
+    d.poses++;
+    d.msPoses.push(performance.now() - t0);
+    if (d.msPoses.length > 50) d.msPoses.shift();
+    // Objet fini (re-toucher du 1er sommet) : la scène est refaite à l'image suivante, sans attendre la fin de rafale.
+    if (cur && !_objetEnCours(o.famille)) {
+      d.fermetures++;
+      d.finT = performance.now();
+      d.msFin = null;
+      if (e.donnees.signal) e.donnees.premier = e.donnees.signal - RAFALE.max;
+    }
+    _majApercu(true);
+    e.sale = true;
+    return true;
+  }
+
+  // ── Aperçu au sol : objet en cours (ruban et sommets, 1er sommet cerclé pour fermer) et mesures de la carte (ruban
+  // rouge, total en panneau). Une géométrie de quelques triangles, refaite sur signature : jamais la scène.
+  function _apercuSig() {
+    const e = _e, o = _outilArme(), parts = [e.niveau, o ? o.famille + o.type : ""];
+    const cur = o && o.famille !== "mesure" ? _objetEnCours(o.famille) : null;
+    const pts = function (l) {
+      const n = l ? l.length : 0;
+      parts.push(n);
+      if (n) parts.push(l[0].x, l[0].y, l[n - 1].x, l[n - 1].y);
+    };
+    pts(cur && cur.points);
+    pts(_tab(window.getMeasurePoints));
+    pts(_tab(window.getMeasurePointsSurface));
+    return parts.join(",");
+  }
+
+  function _libererApercu() {
+    const e = _e, d = e.dessin;
+    if (d.apercu) { e.scene.remove(d.apercu); d.apercu.geometry.dispose(); d.apercu = null; }
+    d.etiquettes.forEach(function (sp) {
+      if (sp.parent) sp.parent.remove(sp);
+      e.panneaux.delete(sp);
+      if (sp.material.map) sp.material.map.dispose();
+      sp.material.dispose();
+    });
+    d.etiquettes = [];
+  }
+
+  function _majApercu(force) {
+    const e = _e, d = e.dessin;
+    if (!d || !e.scene) return;
+    const sig = _apercuSig();
+    if (!force && sig === d.apSig) return;
+    d.apSig = sig;
+    _libererApercu();
+    const sc = e.sc, lot = new Lot(), o = _outilArme(), coul = _jetonsSombres();
+    const disque = function (p, r, col) {
+      const cx = p.x / sc, cz = p.y / sc, n = 16;
+      for (let k = 0; k < n; k++) {
+        const a0 = 2 * Math.PI * k / n, a1 = 2 * Math.PI * (k + 1) / n;
+        lot.tri([cx, DESSIN.y, cz], [cx + Math.cos(a0) * r, DESSIN.y, cz + Math.sin(a0) * r],
+          [cx + Math.cos(a1) * r, DESSIN.y, cz + Math.sin(a1) * r], [0, 1, 0], col);
+      }
+    };
+    const ligne = function (pts, ferme, col) {
+      for (let i = 0; i + 1 < pts.length; i++) _ruban(lot, pts[i], pts[i + 1], sc, DESSIN.larg, DESSIN.y, col);
+      if (ferme && pts.length > 2) _ruban(lot, pts[pts.length - 1], pts[0], sc, DESSIN.larg, DESSIN.y, col);
+    };
+    const cur = o && o.famille !== "mesure" ? _objetEnCours(o.famille) : null;
+    if (cur && Array.isArray(cur.points) && cur.points.length) {
+      const champ = o.famille === "roads" || _estLigne(cur.type) ? "color" : "fillColor";
+      const col = _couleur(CAT_DESSIN[o.famille], cur.type, champ);
+      ligne(cur.points, false, col);
+      const accent = new THREE.Color();
+      try { accent.setStyle(coul.accent); } catch (err) { accent.set(0xf4c542); }
+      const poly = o.famille === "zones" || (o.famille === "structures" && !_estLigne(cur.type));
+      if (poly && cur.points.length >= 3) disque(cur.points[0], DESSIN.premier, accent);
+      cur.points.forEach(function (p) { disque(p, DESSIN.sommet, col); });
+    }
+    const rouge = new THREE.Color(COULEUR_MESURE);
+    const mD = _tab(window.getMeasurePoints), mS = _tab(window.getMeasurePointsSurface);
+    ligne(mD, false, rouge);
+    ligne(mS, true, rouge);
+    mD.concat(mS).forEach(function (p) { disque(p, DESSIN.sommet * 0.75, rouge); });
+    const geo = lot.geometrie();
+    if (geo) {
+      if (!e.mats.apercu) {
+        e.mats.apercu = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false, depthTest: false,
+          depthWrite: false, transparent: true, side: THREE.DoubleSide });
+      }
+      d.apercu = new THREE.Mesh(geo, e.mats.apercu);
+      d.apercu.renderOrder = 20;
+      d.apercu.matrixAutoUpdate = false;
+      e.scene.add(d.apercu);
+    }
+    // Totaux de la carte (measure.js > calculDistance / calculSurface), libellés de la carte, au dernier point.
+    const etiquette = function (texte, p) {
+      const sp = _panneau({ nom: texte }, [p.x / sc, p.y / sc], { sansIcone: true, bord: COULEUR_MESURE,
+        genre: "mesure", y: 0.6 });
+      e.scene.add(sp);
+      d.etiquettes.push(sp);
+    };
+    if (mD.length > 1 && typeof window.calculDistance === "function" && typeof window.formatDistance === "function") {
+      etiquette("📐 " + _t("measure.label.distance", { val: window.formatDistance(window.calculDistance(), 2) }),
+        mD[mD.length - 1]);
+    }
+    if (mS.length > 2 && typeof window.calculSurface === "function") {
+      const m2 = window.calculSurface();
+      const txt = typeof window.formatSurface === "function" ? window.formatSurface(m2, 1) : Math.round(m2) + " m²";
+      etiquette("♦️ " + _t("measure.label.surface", { val: txt }), mS[mS.length - 1]);
+    }
+    e.sale = true;
+  }
+
+  // État du dessin (checkup) : barre, outil armé, sommets posés et leur coût (ms, geste de la carte compris), objet
+  // fini et délai jusqu'à la scène refaite, aperçu (triangles) et étiquettes de mesure.
+  function _etatDessin() {
+    const e = _e, d = e.dessin;
+    if (!d) return null;
+    const o = _outilArme();
+    return { barre: !!d.barre && !d.barre.hidden, ouvert: d.ouvert, actif: _dessinActif(), outil: o,
+      boutons: d.outils ? d.outils.filter(function (b) { return !b.hidden; }).map(function (b) {
+        return b.dataset.groupe; }) : [],
+      poses: d.poses, msPoses: d.msPoses.slice(), fermetures: d.fermetures, msFin: d.msFin,
+      apercu: d.apercu ? d.apercu.geometry.attributes.position.count / 3 : 0,
+      etiquettes: d.etiquettes.map(function (sp) { return sp.userData.poi.nom; }), renduBascule: d.renduBascule };
+  }
+
+  // Fermeture de la vue : outil éteint (comme en 2D), aperçu libéré.
+  function _quitterDessin() {
+    const e = _e, d = e && e.dessin;
+    if (!d) return;
+    _desarmerDessin();
+    d.ouvert = false;
+    if (e.scene) _libererApercu();
   }
 
   // ── Guidage de l'itinéraire : bandeau et chevrons (js/itiGuidage.js, aucun calcul de chemin ici) ──────────
@@ -4746,6 +5099,7 @@
     if (e.mode === "suivi") _lireTracker();
     if (e.geste) _majGeste(dt);
     _majDonnees();
+    if (e.dessin) _majDessin();
     _majPassage();
     const niv = _niveauCourant();
     // Pendant un geste, la scène attend sa bascule (au noir). Niveau changé hors passage (tracker en suivi, niveau
@@ -5047,6 +5401,7 @@
     niv.hidden = true;
     ov.appendChild(niv);
     e.boiteNiveaux = niv;
+    _monterOutils(ov);
     ov.appendChild(e.tuileReglages);
     document.body.appendChild(ov);
     e.ov = ov; e.cv = cv;
@@ -5331,6 +5686,8 @@
       else if (a === "urgence") _urgence();
       else if (a === "ficheFermer") _fermerFiche();
       else if (a === "ficheVoir") _voirSurCarte();
+      else if (a === "dessin") { ev.preventDefault(); _basculerDessin(); }
+      else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       // Entrée / Espace sur un bouton qui agit au pointerdown (bascules de la tuile, − / +, passages) : le navigateur
       // n'envoie qu'un click. 🩸 Un toucher envoie pointerdown PUIS click : ce click-là est ignoré (même bouton,
       // pointerdown récent), sinon la bascule jouerait deux fois.
@@ -5348,7 +5705,7 @@
       const a = b.dataset.v3d;
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
-        a === "ficheVoir") return;
+        a === "ficheVoir" || a === "dessin" || a === "outil") return;
       if (_agirBouton(a, b, ev)) return;
       ev.preventDefault();
       _codeBas(a === "ar");
@@ -5363,6 +5720,13 @@
       const t = e.tuileReglages;
       if (!t || t.hidden || t.contains(ev.target) || e.boutonReglages.contains(ev.target)) return;
       _basculerReglages(false);
+    }, true);
+    // Panneau d'un groupe de dessin ouvert : le toucher qui le ferme ne pose aucun sommet (_poserSommet). Posé avant
+    // l'écouteur du panneau (interface.js > _onDocClickFlyout, qui le retire aussitôt) : il le voit encore ouvert.
+    on(document, "pointerdown", function (ev) {
+      const fly = typeof window.ktaOutilsOuverts === "function" && window.ktaOutilsOuverts();
+      const dans = ev.target && ev.target.closest && ev.target.closest(".kta-group-flyout, .kta-v3d-outils");
+      if (fly && !dans && e.dessin) e.dessin.avaleJusqua = performance.now() + DESSIN_AVALER;
     }, true);
     if (e.stickZone) _brancherStick(on);
     on(e.ov, "pointerout", function (ev) { if (ev.target.dataset && ev.target.dataset.v3d) relacher(); });
@@ -5472,9 +5836,11 @@
       if (_champFiche(ev) && ev.key !== "Escape" && ev.key !== "Tab") { ev.stopPropagation(); return; }
       if (ev.key === "Escape") {
         ev.stopPropagation(); ev.preventDefault();
-        // Échap ferme d'abord la tuile des réglages (et la hauteur qu'elle montre), une fiche, puis la vue.
+        // Échap ferme d'abord la tuile des réglages (et la hauteur qu'elle montre), éteint l'outil de dessin armé,
+        // ferme une fiche, puis la vue.
         if (e.tuileReglages && !e.tuileReglages.hidden) { _basculerReglages(false); return; }
         if (e.reglageHauteur && !e.reglageHauteur.hidden) { _basculerReglageHauteur(); return; }
+        if (_dessinActif()) { _desarmerDessin(); return; }
         if (_fermerFiche()) return;
         fermer();
         return;
@@ -5907,6 +6273,11 @@
         _e.niveauLibre = nivTr;
         _e.actifVu = Number.isInteger(window.APP_CONFIG.activeLevel) ? window.APP_CONFIG.activeLevel : 0;
       }
+      // Départ à un niveau donné (`depart.niveau`) : tenu comme après un passage 🪜, carte inchangée.
+      if (o.depart && Number.isInteger(o.depart.niveau) && window.APP_CONFIG.multiLevel === true) {
+        _e.niveauLibre = o.depart.niveau;
+        _e.actifVu = Number.isInteger(window.APP_CONFIG.activeLevel) ? window.APP_CONFIG.activeLevel : 0;
+      }
       const t0 = performance.now();
       _monterDom(!!o.stats);
       try {
@@ -5954,6 +6325,7 @@
     if (e.desabonner) e.desabonner();
     // Place libre retirée : l'équipe revoit la position du tracker (ou le partage tel qu'avant la 3D).
     if (e.publiee) { e.publiee = null; _prisePresence(null); }
+    _quitterDessin();
     _fermerFiche();
     document.documentElement.classList.remove("kta-vue3d-ouverte");
     document.documentElement.style.removeProperty("--kta-v3d-sous-haut");
@@ -6160,6 +6532,7 @@
       boutonRendu: e.boutonRendu ? e.boutonRendu.textContent : "",
       bandeau: Object.assign({ affiche: !!e.bandeau && !e.bandeau.hidden }, e.bandeauEtat),
       chevrons: e.nChevrons, chevronsVisibles: !!e.chevrons && !!e.chevrons.parent,
+      dessin: _etatDessin(),
       fiche: e.fiche && e.fiche.objet ? { famille: e.fiche.famille, uid: e.fiche.objet.uid || null,
         type: e.fiche.objet.type, session: e.fiche.session, registre: e.fiche.registre,
         note: !!e.fiche.boite.querySelector(".kta-note-popup-textarea"),
@@ -6450,6 +6823,8 @@
     charge: function () { return !!THREE; },
     greffer: greffer,
     viser: viser,
+    // Barre de dessin ✏️ (vue plongeante) ouverte ou fermée ; sans argument, bascule. Rend l'état, false si refusé.
+    dessiner: function (oui) { return _e ? _basculerDessin(oui) : false; },
     // Dernier objet montré sur la carte par « Voir sur la carte » (checkup) : { famille, uid, centre, fiche, at }.
     derniereMontre: function () {
       return _derniereMontre ? { famille: _derniereMontre.famille, uid: _derniereMontre.uid,
