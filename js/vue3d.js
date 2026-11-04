@@ -3944,9 +3944,12 @@
   // 🩸 Les panneaux de membres et de repères d'une extension sont aussi dans _e.panneaux (même fondu) : ils ne sont
   // pas des POI, `point` n'y est qu'un { nom } — pas de fiche, un toast court avec leur nom (le 🏁 de l'arrivée
   // aussi). Ils arrêtent quand même le toucher : sinon la fiche d'un POI ou d'un pilier caché derrière s'ouvrirait.
+  // ⚠️ contrat (utils.js > _modeClicCarteActif) : un outil de la carte armé hors du dessin de la vue (armé en 2D,
+  // ✏️ fermé, vue à hauteur d'yeux) n'ouvre aucune fiche non plus ; le toucher est consommé sans rien poser.
   function _toucher(cx, cy) {
     const e = _e;
     if (_dessinActif()) return _poserSommet(cx, cy);
+    if (window._modeClicCarteActif && window._modeClicCarteActif()) return true;
     if (!_permisGreffe("fiches") || !_rayonEcran(cx, cy)) return false;
     const hit = _panneauVise();
     if (hit && hit.object.userData.poi.genre !== "poi") {

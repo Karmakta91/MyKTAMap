@@ -31,6 +31,36 @@ Symétrique pour zones avec `getCurrentZone()`.
 
 ---
 
+### ✏️ Outil armé : tout toucher pose un sommet, aucune fiche
+
+**Règle** : tant qu'un outil « clic carte » est armé — tracé, zone, structure, mesure, ajout de point, recalage 📍,
+pickers de position (`.kta-iti-floater`, Mode perdu, légende de l'export) — un toucher ou un clic sur la carte va à
+l'outil **au point touché**, même posé sur un POI, une structure, une zone, un tracé ou l'itinéraire, de session ou
+d'un calque de données. Aucune fiche (popup Leaflet) ne s'ouvre. Un seul outil est armé à la fois : chaque bouton
+d'outil commence par `_desactiverTousLesModes()` (`interface.js`, registre `_modesActifs`).
+
+**Source unique** : `utils.js > _modeClicCarteActif()`, lue par :
+- `map.js > _ktaPickCaptureClick` (capture du `click` sur le conteneur, avant les calques) : le clic posé sur un
+  objet est arrêté et ré-émis à la carte au point touché, `map.on("click")` de l'outil reçoit le bon `latlng` ;
+- le garde `popupopen` (`map.js`) : toute popup qui s'ouvrirait pendant un outil est refermée aussitôt ;
+- la vue 3D : `vue3d.js > _toucher` pose le sommet quand le dessin de la vue est actif (✏️, plongée), sinon un outil
+  armé consomme le toucher sans ouvrir de fiche (outil armé en 2D, ✏️ fermé, vue à hauteur d'yeux).
+
+🩸 L'itinéraire (SVG) ne prend jamais le pointeur (`style.css`, sélecteur aussi précis que celui de Leaflet) : au doigt,
+WebKit déplaçait le toucher d'un outil armé vers le tracé, le sommet tombait à quelques px. Rien ne coupe le pointeur
+des objets pendant un outil : un état posé sur la carte resterait en retard d'un geste au désarmement (premier toucher
+d'après sans fiche).
+
+**Ajout de point** (`modeEdition`) : compté comme un outil. Sa fenêtre de nommage `#kta-poi-modal` n'est pas une popup
+Leaflet, le garde ne la ferme pas ; touché sur un objet, il nomme un point neuf à cet endroit. La barre ✏️ de la vue
+3D ne le propose pas (décision produit).
+
+**Hors règle** : le tracé de polygone du Mode Secours (sa propre carte, son voile plein écran) ; les rendus ne posent
+pas les fantômes de notes pendant un dessin (`utils.js > _aucunModeEditionActif`) — la règle ci-dessus tient même
+sans cela. Preuve : `scripts/smoke/checkup-dessin-sans-fiche.js` (2D et 3D, doigt et souris, Chromium et WebKit).
+
+---
+
 ### 35. Modales custom pour re-sélection ZIP (depuis v172)
 
 Remplacement des `confirm()` natifs OS dans `reSelectionnerZipPourPlan` (index.html) par des modales custom respectant la charte graphique du projet. Plus important : changement **fonctionnel** sur le cas "nom différent" — refus définitif au lieu de "Charger quand même".

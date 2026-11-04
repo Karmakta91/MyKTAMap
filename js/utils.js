@@ -733,12 +733,14 @@ window.ktaToleranceFermeture = function(e) {
   return pxParUnite > 0 ? Math.max(m, window.KTA_FERMETURE_MIN_PX / pxParUnite) : m;
 };
 
-// true si un mode « clic carte » consommateur de clics est actif : dessin, mesure, recalage tracker, et tous
-// les pickers de position (floater commun `.kta-iti-floater`). Lu par le garde `popupopen` (map.js) : le clic
-// va au mode actif, pas à une popup d'annotation.
-// ⚠️ window.modeEdition (ajout de point) est EXCLU : il ouvre une popup de nommage légitime.
+// true si un outil « clic carte » est armé : dessin, mesure, ajout de point, recalage tracker, et tous les pickers
+// de position (floater commun `.kta-iti-floater`). ⚠️ contrat : outil armé = tout toucher sur la carte va à l'outil,
+// même sur un objet, et aucune fiche ne s'ouvre. Lu par le garde `popupopen` et le ré-émetteur de clic en capture
+// (map.js > _ktaPickCaptureClick), et par la vue 3D (vue3d.js > _toucher).
+// ⚠️ L'ajout de point (window.modeEdition) en fait partie : sa fenêtre de nommage (#kta-poi-modal) n'est pas une
+// popup Leaflet, le garde ne la ferme pas ; touché sur un POI ou une structure, il nomme un point neuf à cet endroit.
 window._modeClicCarteActif = function() {
-  if (window.modeRoad || window.modeZone || window.modeStructure) return true;
+  if (window.modeRoad || window.modeZone || window.modeStructure || window.modeEdition) return true;
   if (window.modeMesure || window.modeRecalage) return true;
   try {
     if (document.querySelector(".kta-iti-floater")) return true;
