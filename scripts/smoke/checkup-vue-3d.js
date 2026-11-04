@@ -8160,6 +8160,17 @@ async function sectionDessin(page) {
         await pause(1700);
         r.recharge.apres = M().etat().canon + "/" + M().etat().reserve;
         r.stats = { tirs: M().etat().tirs, touches: M().etat().touches, tues: M().etat().tues };
+        // Butin du facile : un égaré abattu lâche champignon et caisse au tirage favorable (hasard forcé à 0,1).
+        X.vider();
+        const hasard = Math.random;
+        X.poser("egare", P(-25, 0).x, P(-25, 0).y);
+        await pause(50);
+        Math.random = function () { return 0.1; };
+        tape();
+        await pause(30);
+        Math.random = hasard;
+        r.butin = { facile: M().etat().butin, tues: M().etat().tues - r.stats.tues,
+          lache: M().etat().objets.map(function (o) { return o.type; }).sort().join(",") };
         // Ramasser en passant dessus : munitions, champignon (soin).
         X.vider();   // l'égaré tué peut avoir lâché un champignon (au hasard)
         X.sante(50);
@@ -8357,7 +8368,8 @@ async function sectionDessin(page) {
         for (let k = 0; k < 60 && !(M().etat().cible); k++) await pause(50);
         await pause(200);
         r.difficile = { diff: M().etat().diff, reglage: K.etat().greffe.reglage, roads: K.etat().compte.roads,
-          traits: M().etat().traits, guide: q(".mkmg-guide").hidden };
+          traits: M().etat().traits, guide: q(".mkmg-guide").hidden, objets: M().etat().objets.length,
+          butin: M().etat().butin };
         // Fermer la vue termine la partie.
         await K.fermer();
         r.ferme = M().etat().enCours;
@@ -8414,6 +8426,10 @@ async function sectionDessin(page) {
         "jeu : touche R → rage, sans ouvrir la recherche de la carte (même raccourci)", MK.toucheR);
       verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",
         "jeu : canon vide → recharge automatique de 1,5 s (2 cartouches prises dans la réserve)", MK.recharge);
+      verifier(MK.butin.tues === 1 && MK.butin.lache === "champignon,munitions" && MK.butin.facile.pileX < 1 &&
+        MK.difficile.butin.pileX === 1 && MK.partie.objets > MK.difficile.objets,
+        "jeu : facile plus généreux que difficile (objets posés à la vague 1, lâcher champignon + caisse, pile plus " +
+        "lente)", { butin: MK.butin, facile: MK.partie.objets, difficile: MK.difficile.objets });
       verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,
         "jeu : en passant dessus, munitions (+4) et champignon (+30 santé) ramassés", MK.ramasse);
       verifier(MK.contact < 80, "jeu : au contact d'un égaré, la santé baisse (" + MK.contact + ")", MK.contact);

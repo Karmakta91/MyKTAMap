@@ -41,7 +41,8 @@
     silhouette: { desVague: 2, vitesse: 3.2, contact: 0.8, degats: 35, faisceau: 32, vue: 30 },
     apparition: { min: 15, max: 35, essais: 40 },
     munitions: { base: 4, parDeuxVagues: 1, min: 1, gain: 4 },
-    champignons: { base: 3, parTroisVagues: 1, min: 1, soin: 30, lacher: 0.25 },
+    // Quantités de base ; la difficulté les multiplie (coeur.js > DIFFICULTES.butin, lâchers compris).
+    champignons: { base: 3, parTroisVagues: 1, min: 1, soin: 30 },
     piles: { base: 2, parTroisVagues: 1, min: 1, gain: 45 },
     // Refuge : un niveau jamais visité de la vague est peuplé à `part` seulement, sans silhouette.
     refuge: { part: 0.5 },
@@ -174,6 +175,10 @@
     return o;
   }
 
+  function _butin(p) {
+    return (p.regle && p.regle.butin) || { x: 1, min: 1, lacher: 0.25, lacherMunitions: 0 };
+  }
+
   // opts.refuge : niveau rejoint pendant la vague (escalier) : population réduite, sans silhouette.
   function peupler(p, ctx, opts) {
     const n = p.vague, A = REGLES.apparition, E = REGLES.egares, niv = ctx.niveau, refuge = !!(opts && opts.refuge);
@@ -196,9 +201,10 @@
       if (q) { const s = { type: "silhouette", x: q.x, y: q.y }; p.ennemis.push(s); }
     }
     const M = REGLES.munitions, C = REGLES.champignons, Pi = REGLES.piles;
-    const nm = Math.max(M.min, M.base - Math.floor(n / 2) * M.parDeuxVagues);
-    const nc = Math.max(C.min, C.base - Math.floor(n / 3) * C.parTroisVagues);
-    const np = Math.max(Pi.min, Pi.base - Math.floor(n / 3) * Pi.parTroisVagues);
+    const B = _butin(p), fois = function (k) { return Math.max(B.min, Math.round(k * B.x)); };
+    const nm = fois(Math.max(M.min, M.base - Math.floor(n / 2) * M.parDeuxVagues));
+    const nc = fois(Math.max(C.min, C.base - Math.floor(n / 3) * C.parTroisVagues));
+    const np = fois(Math.max(Pi.min, Pi.base - Math.floor(n / 3) * Pi.parTroisVagues));
     [["munitions", nm], ["pile", np]].forEach(function (x) {
       for (let i = 0; i < x[1]; i++) {
         const q = _choisir(ctx, pts.tous, 6, A.max, pris);
@@ -804,9 +810,11 @@
     if (cible.pv <= 0) {
       res.tue = true;
       _abattre(p, cible);
-      // Le gardien lâche toujours santé et cartouches ; un autre, parfois un champignon.
-      const laches = cible.type === "gardien" ? ["champignon", "munitions"]
-        : Math.random() < REGLES.champignons.lacher ? ["champignon"] : [];
+      // Le gardien lâche toujours santé et cartouches ; un autre, parfois un champignon, parfois une caisse (selon
+      // la difficulté).
+      const B = _butin(p), laches = cible.type === "gardien" ? ["champignon", "munitions"] : [];
+      if (cible.type !== "gardien" && Math.random() < B.lacher) laches.push("champignon");
+      if (cible.type !== "gardien" && Math.random() < B.lacherMunitions) laches.push("munitions");
       laches.forEach(function (type, i) {
         const o = { type: type, x: cible.x + (i ? 0.7 * sc : 0), y: cible.y };
         p.objets.push(o);

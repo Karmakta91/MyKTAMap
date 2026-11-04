@@ -212,7 +212,7 @@ embuscades, un monde par niveau), `js/son.js`
   plus de 8 m) tant que le joueur n'est pas en vue (12 m) ; vu ou touché, il poursuit (0,9 m/s, 45 de santé par
   seconde au contact). 10 points (+ 2 par gardien suivant) ; chaque coup le fait reculer d'un demi-mètre. Tué, il
   lâche un champignon et une caisse de munitions. Sa jauge s'affiche sous les autres tant qu'il vit.
-- **Pile de la lampe** (décision produit) : 100 %, − 0,55 par seconde ; sous 25 %, la lampe baisse
+- **Pile de la lampe** (décision produit) : 100 %, − 0,55 par seconde (× 0,75 en facile, environ 4 min) ; sous 25 %, la lampe baisse
   (`regler({ lampe })`) jusqu'à une lueur de quelques mètres (8 %, jamais le noir) et vacille de plus en plus
   souvent. Piles à ramasser (+45 ; 2 par vague, une de moins toutes les trois, 1 au moins).
 - **Eau** : dans une zone `eau` du niveau, le joueur va à 60 % (`regler({ vitesse })`) et éclabousse ; les menaces
@@ -238,8 +238,10 @@ embuscades, un monde par niveau), `js/son.js`
   la détente est tenue (bouton, clic gauche capturé, Espace ; un coup toutes les 110 ms), cartouches non comptées, chargeur de 25 puis
   recharge de 1,5 s. Les égarés tués pendant la rage ne chargent pas la suivante.
 - **À ramasser** à moins d'1 m : munitions (+4 ; 4 par vague, une de moins toutes les deux vagues, 1 au moins), piles,
-  champignons (+30 santé ; 3, un de moins toutes les trois vagues, au bout des culs-de-sac de préférence ; un égaré
-  tué en lâche un sur quatre).
+  champignons (+30 santé ; 3, un de moins toutes les trois vagues, au bout des culs-de-sac de préférence). Butin selon
+  la difficulté (décision produit, `coeur.js > DIFFICULTES.butin`) : facile = quantités × 2, au moins 2 de chaque,
+  un égaré tué lâche un champignon une fois sur deux et une caisse une fois sur cinq ; moyen = × 1,5, champignon une
+  fois sur quatre ; difficile = quantités de base, champignon une fois sur quatre.
 - **Joueur** (`joueur.js`) : à hauteur d'yeux, deux bras et un fusil en formes simples accrochés à `ctx.camera`, en
   couleurs fixes non éclairées (la lampe, collée à la caméra, les délavait) et dessinés par-dessus la scène (sans
   test de profondeur, ordre de rendu fixé) ; balancement, recul et éclair au tir. En vue d'édition : silhouette

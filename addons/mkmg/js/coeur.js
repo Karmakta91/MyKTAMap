@@ -156,10 +156,15 @@
     // toutes les `entreMs`.
     recalage: { ecartM: 6, tenirMs: 1500, entreMs: 3000 }
   };
+  // Butin (décision produit) : objets posés à chaque vague × `x` (au moins `min` de chaque), chance qu'un égaré
+  // abattu lâche un champignon (`lacher`) ou une caisse (`lacherMunitions`) ; pile qui s'use × `pileX`.
   const DIFFICULTES = {
-    facile: { traces: true, route: true, guidage: true },
-    moyen: { traces: true, route: true, guidage: false },
-    difficile: { traces: false, route: false, guidage: false }
+    facile: { traces: true, route: true, guidage: true,
+      butin: { x: 2, min: 2, lacher: 0.5, lacherMunitions: 0.2, pileX: 0.75 } },
+    moyen: { traces: true, route: true, guidage: false,
+      butin: { x: 1.5, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1 } },
+    difficile: { traces: false, route: false, guidage: false,
+      butin: { x: 1, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1 } }
   };
   const ROUTE = { largeur: 0.3, y: 0.08 };
   // Chevrons du sens du trajet, posés sur le ruban (m) : un tous les `pas`, longueur `l`, épaisseur des branches `ep`.
@@ -374,7 +379,7 @@
   // Pile de la lampe : s'use, la lampe baisse et vacille sous le seuil faible, lueur minimale à plat.
   function _pile(p, ctx, t, dt) {
     const L = REGLES.pile;
-    p.pile = Math.max(0, p.pile - L.parS * dt);
+    p.pile = Math.max(0, p.pile - L.parS * p.regle.butin.pileX * dt);
     let k = p.pile >= L.faible ? 1 : L.min + (1 - L.min) * p.pile / L.faible;
     if (p.pile < L.faible) {
       const freq = L.vacilleHz * (1 - p.pile / L.faible) + 0.4;
@@ -1220,7 +1225,7 @@
       chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
       ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),
       objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }),
-      cadavres: (p.cadavres || []).length, pile: Math.round(p.pile), lampe: +p.lampeK.toFixed(2), eau: p.eau,
+      cadavres: (p.cadavres || []).length, butin: p.regle.butin, pile: Math.round(p.pile), lampe: +p.lampeK.toFixed(2), eau: p.eau,
       cibleNiveau: p.cible && p.cible.niveau !== undefined ? p.cible.niveau : null,
       mondes: Object.keys(p.mondes || {}).length, niveauMonde: p.niveauMonde };
   }
