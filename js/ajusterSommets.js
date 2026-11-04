@@ -8,16 +8,16 @@
 // sur un sommet puis glisser : il se déplace ; au milieu d'un segment : un sommet naît là et se glisse aussitôt ;
 // sur un sommet sans bouger : 🗑️ au point (refusé sous le minimum de la forme, un toast le dit).
 // Familles : prises `window.ktaFormesAjustables.<roads|zones|structures|mesure>` = { cat (HistoryManager, null =
-// hors historique), objets() (modifiables ET visibles, hors objet en cours), ferme(o), minimum(o), libelle(o),
-// rendre(), aimanter?(x, y, o, exclus) → {x, y} | null } (road.js, zones.js, structures.js, measure.js).
+// hors historique, lu à chaque geste), objets() (modifiables ET visibles, hors objet en cours), ferme(o), minimum(o),
+// libelle(o), rendre(), aimanter?(x, y, o, exclus) → {x, y} | null, etiquette?(action, o) → libellé d'historique }
+// (road.js, zones.js, structures.js, measure.js). Outil 📐 seul armé : seule la mesure s'ajuste (_mesureSeule).
 // Expose : window.KtaAjusterSommets = { enCours(), etat(), annuler(), APPUI_MS, RAYON_PX }.
 // ⚠️ contrat : un geste = une écriture : captureState → mutation → KtaUid.touch → rendre() (un seul rendu, donc un
 // seul `kta:donneesPlanChange`) → record → SessionPersist.save. Pendant le glisser, rien n'est écrit : aperçu seul.
 // 🩸 Écoutes en CAPTURE sur window. Appui en attente puis glisser : pointermove / mousemove / touchmove avalés ; ni
 // le drag de Leaflet, ni le pan manuel, ni la rotation à deux doigts (mapBearing.js > _panSuivre, _rotPointerMove)
-// ne bougent la carte ;
-// `enCours()` est le drapeau neutre pour tout autre geste. Le clic qui suit un appui long est avalé (pas de fiche),
-// le menu contextuel aussi. Un 2e doigt, un mouvement de plus de BOUGE_PX avant l'appui long : rien n'est fait.
+// ne bougent la carte ; `enCours()` est le drapeau neutre pour tout autre geste. Le clic qui suit un appui long est
+// avalé (pas de fiche), le menu contextuel aussi. Un 2e doigt, plus de BOUGE_PX avant l'appui long : rien n'est fait.
 // 🩸 Position par map.mouseEventToLatLng : la rotation du plan orienté y est défaite (mapBearing.js >
 // _installerPatchConversions) ; clientX ne sert qu'aux seuils de mouvement.
 // Rien sans droit : lecture seule (ktaEditionRefusee), outil ou mode « clic carte » armé, calque non rapatrié (ses
@@ -48,12 +48,21 @@ window.KtaAjusterSommets = (function () {
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(msg, type);
   }
 
-  // Un outil, un picker ou une sélection armés passent avant ; lecture seule : rien, en silence (l'appui long n'a
-  // rien demandé d'explicite).
+  // Outil 📐 seul armé (measure.js > ktaMesureAnnulable) : ses sommets s'ajustent, et rien d'autre.
+  function _mesureSeule() {
+    return typeof window.ktaMesureAnnulable === "function" && window.ktaMesureAnnulable() &&
+      !window.modeRoad && !window.modeZone && !window.modeStructure && !window.modeEdition && !window.modeRecalage;
+  }
+
+  // Un outil, un picker ou une sélection armés passent avant (sauf l'outil 📐 pour ses propres sommets) ; lecture
+  // seule : rien, en silence (l'appui long n'a rien demandé d'explicite).
   function _permis() {
     if (!_map()) return false;
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true)) return false;
-    if (typeof window._modeClicCarteActif === "function") {
+    if (_mesureSeule()) {
+      // un picker de position ou le choix d'emplacement d'une légende ouvert par-dessus garde la main
+      if (document.querySelector(".kta-iti-floater, #kta-export-pick-banner")) return false;
+    } else if (typeof window._modeClicCarteActif === "function") {
       if (window._modeClicCarteActif()) return false;
     } else if (window.modeRoad || window.modeZone || window.modeStructure || window.modeMesure) {
       return false;
@@ -85,11 +94,11 @@ window.KtaAjusterSommets = (function () {
   // Sommet le plus proche dans le rayon, sinon milieu de segment le plus proche ; parmi les prises seulement.
   function _chercher(m, x, y, tol) {
     const reg = window.ktaFormesAjustables || {};
-    const annotations = !window.layerEditor || m.hasLayer(window.layerEditor);
+    const annotations = !window.layerEditor || m.hasLayer(window.layerEditor), seule = _mesureSeule();
     let s = null, mi = null;
     FAMILLES.forEach(function (f) {
       const a = reg[f];
-      if (!a || typeof a.objets !== "function" || (f !== "mesure" && !annotations)) return;
+      if (!a || typeof a.objets !== "function" || (f !== "mesure" && (!annotations || seule))) return;
       let objs = [];
       try { objs = a.objets() || []; } catch (err) { console.warn("[Ajuster] prise « " + f + " » :", err); return; }
       for (let k = 0; k < objs.length; k++) {
@@ -210,7 +219,10 @@ window.KtaAjusterSommets = (function () {
     }
     if (o.uid && window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(o);
     try { a.rendre(); } catch (err) { console.warn("[Ajuster] rendu :", err); }
-    if (avant) H.record(_t("ajuster.histo." + action, { type: a.libelle(o) }), avant, a.cat);
+    if (avant) {
+      H.record(typeof a.etiquette === "function" ? a.etiquette(action, o)
+        : _t("ajuster.histo." + action, { type: a.libelle(o) }), avant, a.cat);
+    }
     if (a.cat && window.SessionPersist && typeof window.SessionPersist.save === "function") {
       try { window.SessionPersist.save({ force: true }); } catch (err) { /* le poll de SessionPersist rattrape */ }
     }

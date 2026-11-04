@@ -16,6 +16,7 @@
 //   - RAM seulement : piles vidées au changement de plan et au rechargement.
 //   - Instantanés (deep clone) par _captureState(), ciblés par catégorie.
 //   - Traces de suppression (uid) tenues ici, pour toutes les suppressions (cf. _tracerDepuis).
+//   - Catégorie "mesure" (measure.js) : entrées de l'outil 📐, vivantes tant qu'il est armé (cf. purger).
 // API : window.HistoryManager = {
 //   record(label, beforeState?, category?) - ajoute une entrée (beforeState capturé si omis)
 //   captureState(category?)     - instantané à passer plus tard à record(label, snap)
@@ -23,6 +24,7 @@
 //   undo() / redo()             - état précédent / suivant
 //   canUndo() / canRedo()       - booléens (boutons)
 //   reset()                     - vide les piles (changement de plan)
+//   purger(category)            - retire de la pile les entrées d'une catégorie (outil 📐 fermé)
 //   onChange(cb)                - synchro UI
 // };
 // Doc : docs/architecture/session-data.md.
@@ -60,6 +62,8 @@
   // (~4× moins de RAM pour les instantanés d'édition, de loin les plus fréquents) ; null → tout (import GPX, reset
   // global, note de popup multi-types). currentRoadIndex / currentZoneIndex / currentStructureIndex sont toujours
   // inclus mais restaurés SEULEMENT si leur catégorie est dans l'instantané (cf. _applyState).
+  // "mesure" : les deux mesures 📐 (distance, surface), jamais dans un instantané « tout » (null) : une annulation
+  // d'objet ne touche pas à la mesure.
   function _captureState(category) {
     const snap = {
       currentRoadIndex:      (window.getCurrentRoadIndex ? window.getCurrentRoadIndex() : -1),
@@ -79,6 +83,12 @@
     if (all || category === "structures") {
       snap.structures = _deepCloneArray(window.getStructures ? window.getStructures() : []);
     }
+    if (category === "mesure") {
+      snap.mesure = {
+        distance: _deepCloneArray(window.getMeasurePoints ? window.getMeasurePoints() : []),
+        surface:  _deepCloneArray(window.getMeasurePointsSurface ? window.getMeasurePointsSurface() : [])
+      };
+    }
     return snap;
   }
 
@@ -90,6 +100,11 @@
     try {
       if (window.setEditorPoints && Array.isArray(s.editorPoints)) {
         window.setEditorPoints(s.editorPoints);
+      }
+      // Mesure : les points seuls, pas le sous-mode (le bouton surligné reste celui que l'utilisateur a choisi).
+      if (s.mesure && window.setMeasurePoints && window.setMeasurePointsSurface) {
+        window.setMeasurePoints(s.mesure.distance);
+        window.setMeasurePointsSurface(s.mesure.surface);
       }
       // 🩸 window.modeRoad préservé : resetRoads() le remet à null (road.js), et le mousedown suivant
       // (`if (!window.modeRoad) return`) serait avorté en silence — tracé restauré mais impossible à continuer.
@@ -208,7 +223,8 @@
   // ── Record / undo / redo ──────────
   // record(label, beforeState?, category?)
   //   beforeState : instantané AVANT la mutation ; omis → état COURANT (record() appelé après la mutation).
-  //   category    : "editorPoints"|"roads"|"zones"|"structures" (instantané ciblé) ; absent = tout.
+  //   category    : "editorPoints"|"roads"|"zones"|"structures"|"mesure" (instantané ciblé) ; absent = tout (hors
+  //                 mesure).
   //                 ⚠️ DOIT être la catégorie réellement mutée ET celle passée à captureState() pour beforeState,
   //                 sinon l'undo ne restaure pas la bonne donnée.
   function record(label, beforeState, category) {
@@ -238,7 +254,28 @@
     return result;
   }
 
+  // ⚠️ contrat (décision produit) : les entrées "mesure" n'existent que tant que l'outil 📐 est armé. À sa fermeture
+  // (désarmement, autre outil, vue 3D fermée outil armé), interface.js > _initPrecisionCursor appelle purger("mesure") ;
+  // ⏪ défait alors directement l'objet qui précédait. Sûr au milieu de la pile : une entrée ne restaure que sa
+  // catégorie, celles d'objets ne portent jamais la mesure.
+  function purger(category) {
+    if (!category) return 0;
+    const garder = function(en) { return en.category !== category; };
+    const n = undoStack.length + redoStack.length;
+    undoStack = undoStack.filter(garder);
+    redoStack = redoStack.filter(garder);
+    const retirees = n - undoStack.length - redoStack.length;
+    if (retirees) _notify();
+    return retirees;
+  }
+  // Filet : une entrée de mesure restée en tête alors que l'outil est fermé (purge pas encore jouée) n'est jamais
+  // rejouée.
+  function _purgerMesureFermee() {
+    if (typeof window.ktaMesureAnnulable === "function" && !window.ktaMesureAnnulable()) purger("mesure");
+  }
+
   function undo() {
+    _purgerMesureFermee();
     if (undoStack.length === 0) return false;
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     const entry = undoStack.pop();
@@ -256,6 +293,7 @@
   }
 
   function redo() {
+    _purgerMesureFermee();
     if (redoStack.length === 0) return false;
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     const entry = redoStack.pop();
@@ -349,6 +387,7 @@
     canUndo:      canUndo,
     canRedo:      canRedo,
     reset:        reset,
+    purger:       purger,
     onChange:     onChange,
     // Debug / introspection (lecture seule).
     _peek:        function() { return { undo: undoStack.slice(), redo: redoStack.slice() }; }

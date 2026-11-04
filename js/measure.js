@@ -12,8 +12,13 @@
 // bas-gauche montre les deux lignes s'il y a deux mesures ; SessionPersist sauve les deux tableaux et le mode.
 // Expose : initMeasure, calculDistance, calculSurface, resetMesure, resetMesureMode, removeLastMeasurePoint,
 //   get/setMeasurePoints (DISTANCE, format historique de SessionPersist), get/setMeasurePointsSurface,
-//   get/setMeasureMode, afficherDistance.
+//   get/setMeasureMode, afficherDistance, ktaMesureAnnulable.
 // ⚠️ Distances : toujours window.formatDistance.
+// ⚠️ contrat (décision produit) : la mesure est annulable (⏪ / ⏩) SEULEMENT tant que l'outil 📐 est armé
+// (ktaMesureAnnulable) : chaque geste (point posé, dernier point retiré, effacement, sommet ajusté) est une entrée
+// HistoryManager de catégorie "mesure" ; l'outil fermé, ses entrées sortent de la pile (HistoryManager.purger, appelé
+// par interface.js > _initPrecisionCursor). Changer de sous-mode (distance ↔ surface) ne touche aucun point : ni
+// entrée, ni purge.
 // =========================
 
 window.modeMesure = false;
@@ -42,6 +47,25 @@ function _dedupPointsConsecutifs(points) {
     if (Math.sqrt(dx * dx + dy * dy) >= _MEASURE_DUP_EPS) out.push(points[i]);
   }
   return out;
+}
+
+// Outil 📐 armé par l'utilisateur : le tracé de contour de la sélection par zone (selectionZone.js) arme aussi
+// modeMesure, mais ses sommets sont un outil à part, hors historique.
+function ktaMesureAnnulable() {
+  if (!window.modeMesure) return false;
+  return !(window.KtaSelectionZone && typeof window.KtaSelectionZone.enCours === "function" &&
+    window.KtaSelectionZone.enCours());
+}
+
+// Instantané à prendre AVANT un geste (null si le geste ne sera pas annulable), puis _noter après la mutation.
+function _avantGeste() {
+  const H = window.HistoryManager;
+  return (ktaMesureAnnulable() && H && typeof H.captureState === "function") ? H.captureState("mesure") : null;
+}
+function _noter(cle, avant) {
+  if (!avant || !window.HistoryManager) return;
+  const lib = (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(cle) : cle;
+  window.HistoryManager.record(lib, avant, "mesure");
 }
 
 function initMeasure() {
@@ -80,8 +104,10 @@ function initMeasure() {
       const ddx = x - last.x, ddy = y - last.y;
       if (Math.sqrt(ddx * ddx + ddy * ddy) < _MEASURE_DUP_EPS) return;
     }
+    const avant = _avantGeste();
     arr.push({ x: x, y: y });
     updateMesure();
+    _noter("measure.histo.point", avant);
   };
 
   window.map.on('click', _measureClickHandler);
@@ -215,6 +241,7 @@ function calculSurface() {
 // ── Réinitialisation ──
 function resetMesure() {
   // Les deux mesures (appel sans paramètre gardé pour les anciens appelants).
+  const avant = (_pointsDistance.length || _pointsSurface.length) ? _avantGeste() : null;
   _pointsDistance = [];
   _pointsSurface  = [];
   if (polylineMesure) polylineMesure.setLatLngs([]);
@@ -224,10 +251,13 @@ function resetMesure() {
   _angleLabels.forEach(function(l) { try { l.remove(); } catch(e) {} });
   _angleLabels = [];
   _afficherMesureValeur();
+  _noter("measure.histo.efface", avant);
 }
 
 // "distance" | "surface" | "all"
 function resetMesureMode(mode) {
+  const cible = mode === "distance" ? _pointsDistance : mode === "surface" ? _pointsSurface : null;
+  const avant = (cible && cible.length) ? _avantGeste() : null;
   if (mode === "distance") {
     _pointsDistance = [];
     if (polylineMesure) polylineMesure.setLatLngs([]);
@@ -243,14 +273,18 @@ function resetMesureMode(mode) {
     return;
   }
   _afficherMesureValeur();
+  _noter("measure.histo.efface", avant);
 }
 
-// ❌ « dernier point » : seulement la mesure du mode actif.
+// ❌ « dernier point » : seulement la mesure du mode actif. Reste à côté de ⏪ : il retire aussi un point posé avant
+// l'armement (hors historique), et il est lui-même annulable outil armé.
 function removeLastMeasurePoint() {
   const arr = (_activeMode === "surface") ? _pointsSurface : _pointsDistance;
   if (arr.length === 0) return false;
+  const avant = _avantGeste();
   arr.pop();
   updateMesure();
+  _noter("measure.histo.retire", avant);
   return true;
 }
 
@@ -325,6 +359,7 @@ window.initMeasure              = initMeasure;
 window.resetMesure              = resetMesure;
 window.resetMesureMode          = resetMesureMode;
 window.removeLastMeasurePoint   = removeLastMeasurePoint;
+window.ktaMesureAnnulable       = ktaMesureAnnulable;
 
 // ⚠️ get/setMeasurePoints ciblent la DISTANCE (format historique de SessionPersist) ;
 // get/setMeasurePointsSurface la SURFACE.
@@ -362,12 +397,14 @@ window.setMeasureMode = function(mode) {
 
 
 // ── Ajustement des sommets (js/ajusterSommets.js) ──
-// ⚠️ contrat : même forme que road.js > ktaFormesAjustables.roads, sans catégorie d'historique (cat null : la mesure
-// est un état temporaire, hors HistoryManager ; ❌ Effacer la corrige). Les deux mesures affichées, modifiées EN
-// PLACE dans leur tableau (les objets rendus portent ce tableau, pas une copie).
+// ⚠️ contrat : même forme que road.js > ktaFormesAjustables.roads. `cat` vaut "mesure" outil 📐 armé (entrée annulable,
+// purgée à la fermeture), null sinon (ajustement hors historique). Outil armé, la mesure est la SEULE famille ajustable
+// (ajusterSommets.js > _permis). Les deux mesures affichées, modifiées EN PLACE dans leur tableau (les objets rendus
+// portent ce tableau, pas une copie).
 window.ktaFormesAjustables = window.ktaFormesAjustables || {};
 window.ktaFormesAjustables.mesure = {
-  cat: null,
+  get cat() { return ktaMesureAnnulable() ? "mesure" : null; },
+  etiquette: function(action) { return window.I18n.t("measure.histo." + action); },
   objets: function() {
     const out = [];
     if (_pointsDistance.length) out.push({ type: "distance", points: _pointsDistance });

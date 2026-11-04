@@ -4615,8 +4615,12 @@
       if (n) parts.push(l[0].x, l[0].y, l[n - 1].x, l[n - 1].y);
     };
     pts(cur && cur.points);
-    pts(_tab(window.getMeasurePoints));
-    pts(_tab(window.getMeasurePointsSurface));
+    // Mesures : tous les sommets comptent (une annulation ⏪ remet en place un sommet du milieu ajusté sur la carte).
+    [_tab(window.getMeasurePoints), _tab(window.getMeasurePointsSurface)].forEach(function (l) {
+      let somme = 0;
+      for (let i = 0; i < l.length; i++) somme += l[i].x * (i + 1) + l[i].y * (i + 2);
+      parts.push(l.length, somme);
+    });
     return parts.join(",");
   }
 

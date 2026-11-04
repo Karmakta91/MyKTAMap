@@ -602,12 +602,25 @@ window._fermerModeStructure = _fermerModeStructure;
 // Les 6 flags window.modeX sont écrits à des endroits dispersés : on intercepte leurs
 // ÉCRITURES par des accesseurs. ⚠️ Sûr tant qu'ils restent des propriétés window (pas `var`).
 // modeRoad/modeStructure = null|chaîne, les autres = bool → `!!store[k]`.
+// ⚠️ contrat : modeMesure qui retombe = outil 📐 fermé → HistoryManager.purger("mesure") (measure.js, en-tête). Purge
+// à la fin de la tâche (microtâche) : passer de distance à surface éteint puis rallume l'outil dans le même clic
+// (interface.js > _desactiverTousLesModes), ce n'est pas une fermeture.
 (function _initPrecisionCursor() {
   var FLAGS = ["modeEdition", "modeMesure", "modeRecalage", "modeRoad", "modeZone", "modeStructure"];
   var store = {};
+  var purgeMesurePrevue = false;
   function _sync() {
     var on = FLAGS.some(function(k) { return !!store[k]; });
     if (document.body) document.body.classList.toggle("kta-precision-mode", on);
+  }
+  function _mesureFermee() {
+    if (purgeMesurePrevue) return;
+    purgeMesurePrevue = true;
+    Promise.resolve().then(function() {
+      purgeMesurePrevue = false;
+      if (store.modeMesure || !window.HistoryManager || typeof window.HistoryManager.purger !== "function") return;
+      window.HistoryManager.purger("mesure");
+    });
   }
   FLAGS.forEach(function(k) {
     store[k] = window[k];
@@ -615,7 +628,12 @@ window._fermerModeStructure = _fermerModeStructure;
       Object.defineProperty(window, k, {
         configurable: true, enumerable: true,
         get: function() { return store[k]; },
-        set: function(v) { store[k] = v; _sync(); }
+        set: function(v) {
+          var avant = store[k];
+          store[k] = v;
+          _sync();
+          if (k === "modeMesure" && avant && !v) _mesureFermee();
+        }
       });
     } catch (e) { /* flag non-configurable (improbable) → on laisse tel quel */ }
   });

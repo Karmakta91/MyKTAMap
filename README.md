@@ -261,7 +261,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `ktaUid.js` | Identifiants stables des objets de carte (`uid` + `updatedAt`), traces de suppression, fusion |
 | `styleResolver.js` | Source unique des styles des types (`ktaResolveStyle`, `ktaSwatchColor`, `ktaTypeSwatchHtml`) |
 | `utils.js` | Boîte à outils globale : `convertCoord`, icônes de point, `formatDistance`, `ktaConfirm` / `ktaAlerte`, popups |
-| `measure.js` | Mesure de distance et de surface, simultanées |
+| `measure.js` | Mesure de distance et de surface, simultanées ; annulable outil armé |
 | `tiling.js` | Rendu du fond de plan : image directe, tuiles runtime V1 ou tuiles V2 du Générateur |
 | `imageLayerCalibration.js` | Calage d'un calque image par 2 ancres (similitude 2D) |
 | `imageLayerCalibrationPicker.js` | Modale de calage 2 ancres (deux mini-cartes source / plan) |
@@ -289,7 +289,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `osmCoords.js` | Coordonnées GPS de surface d'un point cliqué dans la Vue OSM |
 | `photos.js` | Photos des POI en IndexedDB (compression, EXIF retiré, 5 par point, fiche de rattachement) |
 | `photoViewer.js` | Visionneuse plein écran des photos d'un point (zoom, glissé, date de prise) |
-| `historyManager.js` | Annuler / Rétablir des 4 familles dessinables (50 entrées, photos exclues) |
+| `historyManager.js` | Annuler / Rétablir des 4 familles dessinables (50 entrées, photos exclues), et de la mesure 📐 tant que l'outil est armé |
 
 ### ⚡ Runtime plan
 
@@ -640,6 +640,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
 | `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
+| `smoke/checkup-mesure-annulable.js` | Mesure 📐 annulable (⏪ / ⏩) tant que l'outil est armé, entrées purgées à sa fermeture, pile partagée avec une zone, vue 3D comprise, Chromium et WebKit |
 | `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
 | `smoke/checkup-inaccessible-sous-structures.js` | Zones (inaccessible comprise) sous les structures sur le canvas commun après chargement, édition, ⏪ et filtre ; hachures en CanvasPattern ; fiche au clic |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
