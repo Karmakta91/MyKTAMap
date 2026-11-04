@@ -683,6 +683,7 @@ Dónde y cómo se dibuja un paso:
 #### 👥 Equipo (solo instalación conectada)
 
 - Los miembros que comparten su posición aparecen como una silueta de su color, con su nombre, si están en el nivel mostrado.
+- Cada uno lleva una **linterna frontal**: un halo en la cabeza que ves pasar al fondo de una galería en la oscuridad, visible hasta el alcance ajustado (⚙️) pero nunca a través de la roca; cerca de ti, su linterna ilumina un poco la pared (e ilumina delante de él si él mismo está en la vista 3D). En ☀️ **Pleno día**, el halo se queda discreto.
 - Los marcadores y los itinerarios compartidos también (itinerario en trazos amarillos en el suelo). Son los que el mapa ya muestra.
 - Tocar un miembro o un marcador muestra su nombre.
 - Si **ya compartes tu posición** (📡), el lugar por donde te mueves en modo **libre** se muestra a quienes la ven, marcado **«en vista 3D»** (y «3D» en tu silueta para ellos).

@@ -683,6 +683,7 @@ Where and how a way through is drawn:
 #### 👥 Team (connected installation only)
 
 - Members who share their position appear as a figure in their colour, with their name, if they are on the displayed level.
+- Each one wears a **headlamp**: a glow on the head that you see passing at the end of a gallery in the dark, visible up to the set range (⚙️) but never through the rock; close to you, their lamp lights the wall a little (and lights ahead of them if they are in the 3D view themselves). In ☀️ **Daylight**, the glow stays discreet.
 - Markers and shared routes too (route as yellow dashes on the floor). They are the ones the map already shows.
 - Touching a member or a marker shows its name.
 - If you **already share your position** (📡), the place where you move in **free** mode is shown to those who see it, marked **"in 3D view"** (and "3D" on your figure on their side).

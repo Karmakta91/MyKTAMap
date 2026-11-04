@@ -683,6 +683,7 @@ Où et comment un passage se dessine :
 #### 👥 Équipe (installation reliée seulement)
 
 - Les membres qui partagent leur position apparaissent en silhouette à leur couleur, avec leur nom, s'ils sont au niveau affiché.
+- Chacun porte une **lampe frontale** : un halo sur la tête, que tu vois passer au bout d'une galerie dans le noir, visible jusqu'à la portée réglée (⚙️) mais jamais à travers la roche ; près de toi, sa lampe éclaire un peu la paroi (et éclaire devant lui s'il est lui-même en vue 3D). En ☀️ **Plein jour**, le halo reste discret.
 - Les repères et les itinéraires partagés aussi (itinéraire en tirets jaunes au sol). Ce sont ceux que la carte affiche déjà.
 - Toucher un membre ou un repère affiche son nom.
 - Si tu **partages déjà ta position** (📡), l'endroit où tu te déplaces en **libre** est montré à ceux qui la voient, marqué **« en vue 3D »** (et « 3D » sur ta silhouette chez eux).

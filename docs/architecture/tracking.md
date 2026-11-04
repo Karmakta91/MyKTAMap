@@ -1814,6 +1814,22 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   changent. Membre : silhouette (cylindre et tête, `MEMBRE`, à sa couleur `couleurDe(id)` ou celle donnée, non
   éclairée) et son pseudo au-dessus, au niveau affiché seulement (niveau inconnu : partout) ; un membre dont la
   place vient de SA vue 3D (`source: "vue3d"`) : pseudo suivi de « 3D » (`presence.vue3d.marque`).
+- **Lampe frontale des membres** (`_lampeMembre`, `_majLampesMembres`, constantes `LAMPE_MEMBRE`) : sur la tête de
+  chaque silhouette, un halo additif (sprite, blanc chaud de notre lampe `0xfff1d6` teinté à 20 % de la couleur du
+  membre, `fog: false`, `toneMapped: false`) : visible au bout d'une galerie là où le brouillard a éteint la roche.
+  ⚠️ contrat : **visible jusqu'à la portée réglée, jamais au-delà** (distance au centre de la scène ≤
+  `_rayonScene()`) : plus loin, parois et piliers ne sont pas construits et le halo se verrait à travers la roche
+  (`camera.far` dépasse la portée de 5 m, il n'est pas repoussé). Profondeur testée : un pilier le cache. Taille de
+  0,6 m bornée à l'écran (7 à 40 px), posée devant la tête du côté de qui regarde (la sphère ne le cache pas).
+  Présence avec cap (`source: "vue3d"`) : léger faisceau visible devant lui (cône additif) et halo plus fort de face.
+  Une vraie lumière (`SpotLight` sans ombre, 7 m, cône vers le bas sans cap, faisceau devant lui avec) pour les **2
+  membres les plus proches** de notre place à moins de 20 m. 🩸 Le nombre de lumières entre dans les shaders de
+  three.js : les 2 sont créées au premier membre affiché et retirées quand il n'y en a plus, jamais au gré des
+  distances (une lumière sans membre proche reste à 0) ; sans extension, aucune. 🩸 Sans ombre, elle traverse la
+  roche : sa portée reste courte. Coût mesuré (`checkup-vue-3d.js` § 12 ter, `KTA_V3D_SEUL=lampes`) : écart dans
+  le bruit de la mesure (moins de 0,5 ms par image, au PC comme en iPhone émulé, processeur x4 ; le processeur
+  graphique n'est pas ralenti par l'émulation). Plein jour et vue d'édition : halo discret (35 %), sans faisceau. Rien sur notre
+  avatar : il n'est pas un membre. Une greffe ne coupe pas les présences (aucune règle) : les lampes restent.
 - **Ma place libre montrée à l'équipe** (`_publierPosition`, décision produit, QCM du 02/11/2026) : ⚠️ contrat
   (frontière) : seule prise appelée par la vue, `KtaExtensions.positionVue3D(p)` (`community-server-line.md` §3).
   En **libre** et après un déplacement à la main (`libreBouge` : pas, `placer`, passage 🪜 ; tourner seul ne compte
