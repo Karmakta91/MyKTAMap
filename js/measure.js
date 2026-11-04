@@ -379,3 +379,18 @@ window.ktaFormesAjustables.mesure = {
   libelle: function(o) { return o.type; },
   rendre: function() { updateMesure(); }
 };
+
+// Libellés de segment et d'angle posés sur la carte, tels qu'affichés : [{ genre: "segment" | "angle", x, y (px plan),
+// texte }]. ⚠️ contrat : la vue 3D les lit ici (mêmes textes, mêmes règles), jamais recalculés ailleurs.
+window.ktaMesureLibelles = function() {
+  const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
+  const lire = function(genre) {
+    return function(l) {
+      const ll = l.getLatLng(), el = l.getElement && l.getElement();
+      const html = (l.options && l.options.icon && l.options.icon.options.html) || "";
+      const texte = el ? el.textContent : html.replace(/<[^>]*>/g, "");
+      return { genre: genre, x: ll.lng, y: H - ll.lat, texte: texte };
+    };
+  };
+  return _segmentLabels.map(lire("segment")).concat(_angleLabels.map(lire("angle")));
+};

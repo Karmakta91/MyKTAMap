@@ -9,7 +9,8 @@
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(o), parois(),
 //   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
-//   zoomer(facteur), reglerPortee(m), reglerLampe(%), reglerFaisceau(°), reglerPleinJour(bool),
+//   zoomer(facteur), panner(dx, dz), surPlace(), reglerPortee(m), reglerLampe(%), reglerFaisceau(°),
+//   reglerPleinJour(bool),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
 //   _ctxGreffe), viser(cx, cy), dessiner(bool) (barre ✏️ de la vue plongeante : outils de la carte, _poserSommet) } ;
@@ -80,9 +81,16 @@
   const APPUI_LONG = 600;           // ms
   const APPUI_CLIC = 1000;          // ms : click d'un toucher (pointerdown juste avant), pas du clavier (_brancher)
   const INCLINAISON = { defaut: 60, min: 15, max: 85, pas: 5 };   // ° de la vue plongeante (90 = verticale)
-  // Recul (m) entre la caméra plongeante et le point visé, 2 m devant soi : zoom de la vue plongeante, borné, retenu
-  // tant que la vue est ouverte ; `pas` = facteur d'un cran (molette, + / −, clavier).
+  // Recul (m) entre la caméra plongeante et le point visé (2 m devant soi, ou celui où le doigt l'a mené : _panner) :
+  // zoom de la vue plongeante, borné, retenu tant que la vue est ouverte ; `pas` = facteur d'un cran (molette, + / −,
+  // clavier).
   const RECUL = { defaut: 18.4, min: 6, max: 60, pas: 1.15 };
+  // Gestes de la caméra libre (vue plongeante) : un doigt ne déplace la vue qu'au-delà de TAPE.bouge px (un toucher qui
+  // pose un sommet bouge toujours d'un ou deux px) ; deux doigts tournés de `rot`° = rotation du cap.
+  const CAMERA_LIBRE = { rot: 12 };
+  // Hauteur minimale à l'écran (px CSS) des lettres d'un panneau en vue plongeante : dézoomé, un panneau à l'échelle de
+  // la scène n'avait plus que 3 px de texte.
+  const PANNEAU_LETTRE_MIN = 13;
   // Rayon de scène en plongée : 2,3 m de sol par mètre de recul (au recul par défaut, 1,4 × la portée de 30 m).
   const SOL_PAR_RECUL = 2.3;
   const ROTATION = 90;              // °/s
@@ -108,7 +116,9 @@
   const PANNEAU = { l: 1.6, h: 0.5 };   // m : taille d'un panneau de POI de près
   // De près : rien sous PRES.min, fondu jusqu'à PRES.net ; jamais plus large que PRES.ecran de la largeur de l'écran
   // (au téléphone en portrait, un panneau de 1,6 m à 2 m couvrait tout l'écran).
-  const PRES = { min: 1, net: 2.2, ecran: 0.45 };
+  // `ecranEdition` : plafond en vue plongeante, plus large, pour qu'un panneau à icône garde ses lettres de
+  // PANNEAU_LETTRE_MIN px sur un téléphone (393 px : 222 px de large).
+  const PRES = { min: 1, net: 2.2, ecran: 0.45, ecranEdition: 0.6 };
   const BRUIT_CAP = 2;              // ° : en suivi, un écart de cap plus petit (boussole) ne redessine pas
   const HAUTEUR_MUR = 0.98;         // part de la hauteur du plan : un mur passe toujours sous pilier et front
   // Sol et ciel de carrière (plafond, à la hauteur du plan) : même teinte sable calcaire, grain procédural répété
@@ -117,6 +127,9 @@
   const HACHURE_PAS = 0.6;   // m : période des hachures d'une zone inaccessible (sol et rideau)
   const GRAIN_TAILLE = 128;         // px du motif
   const GRAIN_METRES = 2;           // m couverts par un motif
+  // Ordre de rendu du sol (carré qui suit et sol des galeries) : avant tout le reste, pour que le plan au sol
+  // (PLAN_SOL.ordre) se pose dessus sans dépendre de la profondeur.
+  const ORDRE_SOL = -0.6;
   // Mode galerie : parois des galeries et des tubes en pierre de taille (🧱 Textures activé, PIERRE ci-dessous) ou
   // en moellons de calcaire taillés (🧱 coupé : assises horizontales à joints décalés, dessinées dans un canvas comme
   // le grain du sol), liseré au sol de la couleur du tracé, POI proches seulement. Pierre plus claire et plus grise
@@ -1075,7 +1088,7 @@
       if (famille === "plafond") me.visible = e.vue !== "plongee";
       groupe.add(me);
     };
-    ajouter(sol, e.mats.solGalerie, 0, "sol");
+    ajouter(sol, e.mats.solGalerie, ORDRE_SOL, "sol");
     ajouter(plafond, e.mats.plafondGalerie, 0, "plafond");
     if (parois.p.length) _paroiTexturee();
     ajouter(parois, e.mats.paroi, 0, "parois");
@@ -1395,6 +1408,7 @@
     const sp = new THREE.Sprite(mat);
     sp.userData.ratio = H / L;
     sp.userData.part = L / W;
+    sp.userData.lettre = 30 / H;   // part de la hauteur du panneau prise par une ligne de texte (POLICE)
     sp.userData.fond = coul.surface;
     sp.scale.set(PANNEAU.l * sp.userData.part, PANNEAU.l * sp.userData.part * sp.userData.ratio, 1);
     const x = ou ? ou[0] : p.x / _e.sc, z = ou ? ou[1] : p.y / _e.sc;
@@ -1509,12 +1523,14 @@
     return best;
   }
 
-  // Panneaux : dans le rayon de scène (_rayonScene, depuis soi), échelle 1 → 0,5 et opacité 1 → 0,4 vers la limite.
-  // De près (distance à la caméra) : rien sous PRES.min, fondu jusqu'à PRES.net, et jamais plus large que PRES.ecran
-  // de l'écran (champ horizontal de la caméra à cette distance).
+  // Panneaux : dans le rayon de scène (_rayonScene, depuis son centre : _centreScene), échelle 1 → 0,5 et opacité
+  // 1 → 0,4 vers la limite. De près (distance à la caméra) : rien sous PRES.min, fondu jusqu'à PRES.net, et jamais plus
+  // large que PRES.ecran de l'écran (champ horizontal de la caméra à cette distance). En vue plongeante, jamais de
+  // lettres sous PANNEAU_LETTRE_MIN px (décision produit : un panneau lu de loin reste lisible, la scène non).
   function _majPanneaux() {
-    const e = _e, cam = e.camera.position, px = e.pos.x / e.sc, pz = e.pos.y / e.sc;
-    const demiChamp = Math.tan(e.camera.fov * Math.PI / 360) * (e.camera.aspect || 1);
+    const e = _e, cam = e.camera.position, c = _centreScene(), px = c.x, pz = c.z;
+    const demiV = Math.tan(e.camera.fov * Math.PI / 360), demiChamp = demiV * (e.camera.aspect || 1);
+    const hEcran = e.vue === "plongee" && e.cv ? e.cv.clientHeight : 0;
     const v = e.v3 || (e.v3 = new THREE.Vector3());
     e.camera.updateMatrixWorld();
     e.panneaux.forEach(function (sp) {
@@ -1532,8 +1548,16 @@
       // Profondeur devant la caméra (la largeur à l'écran en dépend) ; derrière elle, la distance suffit.
       const prof = -v.copy(sp.position).applyMatrix4(e.camera.matrixWorldInverse).z;
       const ratio = sp.userData.ratio || PANNEAU.h / PANNEAU.l;
-      const l = Math.min(PANNEAU.l * (1 - 0.5 * k), PRES.ecran * 2 * (prof > 0 ? prof : dc) * demiChamp);
       const f = sp.userData.part || 1;
+      let l0 = PANNEAU.l * (1 - 0.5 * k);
+      if (hEcran > 0 && prof > 0 && sp.userData.lettre) {
+        // Largeur (avant `f`) dont une ligne fait PANNEAU_LETTRE_MIN px à cette profondeur.
+        const mpp = 2 * prof * demiV / hEcran;
+        l0 = Math.max(l0, PANNEAU_LETTRE_MIN * mpp / (sp.userData.lettre * ratio * f));
+      }
+      // En plongée, le plafond porte sur la largeur montrée (l × f), celle d'un panneau sans icône comprise.
+      const plafond = hEcran > 0 ? PRES.ecranEdition / f : PRES.ecran;
+      const l = Math.min(l0, plafond * 2 * (prof > 0 ? prof : dc) * demiChamp);
       sp.scale.set(l * f, l * f * ratio, 1);
       const pres = Math.min(1, (dc - pr.min) / (pr.net - pr.min));
       sp.material.opacity = (1 - 0.6 * k) * pres;
@@ -2168,6 +2192,7 @@
         stencilWrite: true, stencilRef: ref, stencilFunc: THREE.AlwaysStencilFunc,
         stencilZPass: THREE.ReplaceStencilOp });
     };
+    _grainSol(m, _e.textures);
     m.boucheSol = bouche(1);
     m.bouchePlafond = bouche(2);
     [[m.sol, 1], [m.solGalerie, 1], [m.rubans, 1], [m.plafond, 2], [m.plafondGalerie, 2]].forEach(function (x) {
@@ -2176,6 +2201,17 @@
       x[0].stencilFunc = THREE.NotEqualStencilFunc;
     });
     return m;
+  }
+
+  // ⚠️ contrat (décision produit) : 🧱 coupé, sol et plafond (carré qui suit et pièces des galeries) sont unis, à la
+  // teinte du motif (COULEUR_CALCAIRE) ; allumé, le grain calcaire. Rien à reconstruire : le matériau change.
+  function _grainSol(m, oui) {
+    [[m.sol, _e.grain], [m.plafond, _e.grain], [m.solGalerie, _e.grainMonde], [m.plafondGalerie, _e.grainMonde]]
+      .forEach(function (q) {
+        q[0].map = oui ? q[1] : null;
+        q[0].color.set(oui ? 0xffffff : COULEUR_CALCAIRE);
+        q[0].needsUpdate = true;
+      });
   }
 
   function _monterScene() {
@@ -2194,6 +2230,7 @@
     const plan = new THREE.PlaneGeometry(1, 1, 8, 8);
     plan.rotateX(-Math.PI / 2);
     e.sol = new THREE.Mesh(plan, e.mats.sol);
+    e.sol.renderOrder = ORDRE_SOL;
     e.plafond = new THREE.Mesh(plan, e.mats.plafond);
     e.plafond.position.y = e.hauteur;
     e.scene.add(e.sol, e.plafond);
@@ -2544,7 +2581,7 @@
   function _gererVolumes() {
     const e = _e;
     if (!e.volPassages || !e.volPassages.length) return;
-    const px = e.pos.x / e.sc, pz = e.pos.y / e.sc;
+    const c = _centreScene(), px = c.x, pz = c.z;
     const rVue = _rayonScene(), rGarde = rVue + 2 * TUILE;
     for (let i = 0; i < e.volPassages.length; i++) {
       const v = e.volPassages[i], d = Math.max(0, Math.hypot(v.cx - px, v.cz - pz) - v.r);
@@ -3243,9 +3280,10 @@
     return e.rendu;
   }
 
-  // Tuiles proches construites (toutes à l'ouverture, puis quelques-unes par image), lointaines jetées.
+  // Tuiles proches du centre de la scène (_centreScene) construites (toutes à l'ouverture, puis quelques-unes par
+  // image), lointaines jetées.
   function _gererTuiles(tout) {
-    const e = _e, px = e.pos.x / e.sc, pz = e.pos.y / e.sc;
+    const e = _e, c = _centreScene(), px = c.x, pz = c.z;
     const rVue = _rayonScene();
     const rGarde = rVue + 2 * TUILE;
     let construites = 0;
@@ -3271,7 +3309,7 @@
 
   // Tuiles à portée pas encore montrées, et tuiles montrées hors de portée (checkup : 0 et 0 une fois posé).
   function _ecartTuiles() {
-    const e = _e, px = e.pos.x / e.sc, pz = e.pos.y / e.sc, r = _rayonScene();
+    const e = _e, c = _centreScene(), px = c.x, pz = c.z, r = _rayonScene();
     let manquantes = 0, hors = 0, montrees = 0;
     e.tuiles.forEach(function (t) {
       const d = _distTuile(t, px, pz), vue = !!t.obj && t.obj.visible;
@@ -3283,19 +3321,19 @@
   }
 
   function _placerCamera() {
-    const e = _e, x = e.pos.x / e.sc, z = e.pos.y / e.sc, cap = e.cap * Math.PI / 180;
+    const e = _e, x = e.pos.x / e.sc, z = e.pos.y / e.sc, cap = e.cap * Math.PI / 180, c = _centreScene();
     const dy = e.dy || 0;   // geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume
     e.tete.position.set(x, e.oeil + dy, z);
     e.tete.rotation.set(e.tangage, -cap, 0);
-    e.sol.position.set(x, 0, z);
-    // Le carré de sol suit la position : le motif est décalé d'autant pour rester fixe sous les pieds.
-    e.grain.offset.set(x / GRAIN_METRES, -z / GRAIN_METRES);
-    e.plafond.position.set(x, e.hauteur, z);
+    e.sol.position.set(c.x, 0, c.z);
+    // Le carré de sol suit le centre de la scène : le motif est décalé d'autant pour rester fixe sous les pieds.
+    e.grain.offset.set(c.x / GRAIN_METRES, -c.z / GRAIN_METRES);
+    e.plafond.position.set(c.x, e.hauteur, c.z);
     e.avatar.position.set(x, 0.45, z);
     e.avatar.rotation.set(0, -cap, 0);
     if (e.vue === "plongee") {
       const fx = Math.sin(cap), fz = -Math.cos(cap), i = e.inclinaison * Math.PI / 180;
-      const vx = x + fx * 2, vz = z + fz * 2, h = e.recul * Math.cos(i);
+      const v = _viseeCamera(), vx = v.x, vz = v.z, h = e.recul * Math.cos(i);
       e.camera.position.set(vx - fx * h, e.recul * Math.sin(i), vz - fz * h);
       e.camera.lookAt(vx, 0, vz);
     } else {
@@ -3304,6 +3342,76 @@
     }
     _majPanneaux();
     _majBoussole();
+  }
+
+  // ── Caméra libre de la vue plongeante ─────────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit : comme une carte) : un doigt glissé (la souris au PC) déplace le point visé `e.vise`
+  // ({ x, z } m), jamais la place : avatar, position de la 3D et tracker restent (la 3D ne recale jamais le tracker sans
+  // demande). e.vise null = la caméra suit la place (2 m devant soi). Tuiles, volumes, panneaux, sol et plan au sol
+  // suivent le point visé (_centreScene) : la scène existe là où l'on regarde. Marcher (joystick, pavé, clavier :
+  // _rattacher), ⌖ (surPlace) et le retour à hauteur d'yeux (_appliquerVue) ramènent la caméra sur la place.
+  function _viseeCamera() {
+    const e = _e;
+    if (e.vise) return e.vise;
+    const cap = e.cap * Math.PI / 180;
+    return { x: e.pos.x / e.sc + Math.sin(cap) * 2, z: e.pos.y / e.sc - Math.cos(cap) * 2 };
+  }
+
+  // Centre de la scène (m) : le point visé en plongée détachée, sinon la place.
+  function _centreScene() {
+    const e = _e;
+    return e.vue === "plongee" && e.vise ? e.vise : { x: e.pos.x / e.sc, z: e.pos.y / e.sc };
+  }
+
+  // Point visé déplacé de (dx, dz) m, gardé sur l'image du plan. Rend le point visé, null hors plongée.
+  function panner(dx, dz) {
+    const e = _e;
+    if (!e || e.vue !== "plongee" || !Number.isFinite(dx) || !Number.isFinite(dz)) return null;
+    const v = _viseeCamera(), pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
+    let x = v.x + dx, z = v.z + dz;
+    if (pc && pc.imageWidth && pc.imageHeight) {
+      x = Math.max(0, Math.min(pc.imageWidth / e.sc, x));
+      z = Math.max(0, Math.min(pc.imageHeight / e.sc, z));
+    }
+    e.vise = { x: x, z: z };
+    _majBoutonPlace();
+    e.sale = true;
+    return { x: x, z: z };
+  }
+
+  // Doigt glissé de (x0, y0) à (x1, y1) px écran : le sol pris sous le doigt le suit (rayons contre le plan y = 0).
+  // 🩸 La caméra ne fait que se translater : l'écart entre les deux points du sol vaut aussi avec la caméra de l'image
+  // précédente (plusieurs mouvements entre deux images). Un rayon près de l'horizon partirait au loin : un pas est borné
+  // au recul.
+  function _panner(x0, y0, x1, y1) {
+    const e = _e, plan = e.planSol0 || (e.planSol0 = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+    const sol = function (cx, cy) {
+      if (!_rayonEcran(cx, cy)) return null;
+      return e.rayon.ray.intersectPlane(plan, new THREE.Vector3());
+    };
+    const a = sol(x0, y0), b = sol(x1, y1);
+    if (!a || !b) return;
+    let dx = a.x - b.x, dz = a.z - b.z;
+    const l = Math.hypot(dx, dz);
+    if (l > e.recul) { dx *= e.recul / l; dz *= e.recul / l; }
+    panner(dx, dz);
+  }
+
+  // Caméra ramenée sur la place (⌖, marcher, hauteur d'yeux). Rend true si elle était détachée.
+  function surPlace() {
+    const e = _e;
+    if (!e || !e.vise) return false;
+    e.vise = null;
+    _majBoutonPlace();
+    e.sale = true;
+    return true;
+  }
+  function _rattacher() { if (_e.vise) surPlace(); }
+
+  // ⌖ montré en plongée seulement, caméra détachée de la place.
+  function _majBoutonPlace() {
+    const e = _e;
+    if (e.boutonPlace) e.boutonPlace.hidden = !(e.vue === "plongee" && e.vise);
   }
 
   // Rose des vents : même convention que la boussole 2D (compass.js, rotate(-cap)), sur le cap RÉEL de la vue :
@@ -3384,6 +3492,15 @@
 
   function _appliquerVue() {
     const e = _e, haut = e.vue === "plongee";
+    // Retour à hauteur d'yeux : caméra sur la place ; la place survolée (_pas) peut être dans un pilier, elle en est
+    // sortie par la règle de l'ouverture en libre. En suivi, la place est celle du tracker : rien n'est déplacé.
+    if (!haut && e.vueAppliquee === "plongee") {
+      e.vise = null;
+      if (e.mode === "libre") _degager(true);
+    }
+    e.vueAppliquee = e.vue;
+    if (e.ov) e.ov.classList.toggle("kta-v3d-edition", haut);
+    _majBoutonPlace();
     e.plafond.visible = !haut && !e.galerie;
     e.tuiles.forEach(function (t) {
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
@@ -3591,6 +3708,15 @@
   function _pas(m, angle) {
     const e = _e, a = angle * Math.PI / 180;
     const dx = Math.sin(a) * m * e.sc, dy = -Math.cos(a) * m * e.sc;
+    // ⚠️ contrat (décision produit) : en vue plongeante, rien ne bloque, comme un survol (piliers, murs, fronts, zones,
+    // portes, parois) ; seule l'image du plan borne la place. Une greffe qui en ferait tricher interdit la plongée
+    // (ctx.regler({ plongee: false })) ; la règle du pas et ctx.libre restent celles de la hauteur d'yeux.
+    if (e.vue === "plongee") {
+      const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan, x1 = e.pos.x + dx, y1 = e.pos.y + dy;
+      if (pc && (x1 < 0 || y1 < 0 || x1 > pc.imageWidth || y1 > pc.imageHeight)) { e.butees++; return false; }
+      _poser(x1, y1);
+      return true;
+    }
     const essais = [[dx, dy], [dx, 0], [0, dy]];
     let auDepart = -1;   // rayons bloqués au départ, lus seulement si une arrivée en a
     const depart = function () { if (auDepart < 0) auDepart = _rayonsBloques(e.pos.x, e.pos.y); return auDepart; };
@@ -3997,7 +4123,8 @@
   }
 
   // Premier maillage montré sur le rayon → { x, y (px plan), h (m au-dessus du sol), dist (m), sol (bool) }, ou null
-  // (rien, au-delà de la portée, ou plafond : on ne vise pas le plafond).
+  // (rien, au-delà de la portée — en plongée, du fond du brouillard : la caméra est au recul —, ou plafond : on ne
+  // vise pas le plafond).
   // 🩸 three.js teste aussi les objets masqués (visible n'arrête pas le raycast) : tuiles hors portée et plafond de la
   // vue plongeante sont écartés à la main.
   function _pointVise() {
@@ -4005,10 +4132,11 @@
     e.tuiles.forEach(function (t) { if (t.obj && t.obj.visible) cibles.push(t.obj); });
     [e.sol, e.plafond].forEach(function (m) { if (m && m.visible) cibles.push(m); });
     const hits = e.rayon.intersectObjects(cibles, true);
+    const loin = e.vue === "plongee" ? Math.max(e.distance, e.scene.fog.far) : e.distance;
     for (let i = 0; i < hits.length; i++) {
       const h = hits[i], o = h.object;
       if (!o.isMesh || !_montreDansScene(o)) continue;
-      if (h.distance > e.distance || o === e.plafond || o.userData.famille === "plafond") return null;
+      if (h.distance > loin || o === e.plafond || o.userData.famille === "plafond") return null;
       return { x: h.point.x * e.sc, y: h.point.z * e.sc, h: h.point.y, dist: h.distance,
         sol: o === e.sol || o.userData.famille === "sol" };
     }
@@ -4277,6 +4405,43 @@
     d.suivi = cur;
     _majApercu(false);
     _majPlanSol();
+    _majBandeauMesure();
+  }
+
+  // Bandeau fixe de la mesure 📐 (outil de mesure armé) : les lignes du libellé de la carte (measure.js >
+  // _afficherMesureValeur : distance totale, surface, ou l'invite du mode actif), mêmes clés et mêmes formats
+  // (formatDistance à 2 décimales, formatSurface à 1), relues à chaque sommet. Caché outil désarmé.
+  function _majBandeauMesure() {
+    const e = _e, b = e.bandeauMesure;
+    if (!b) return;
+    const o = _outilArme(), lignes = [];
+    if (_dessinActif() && o && o.famille === "mesure") {
+      const mD = _tab(window.getMeasurePoints), mS = _tab(window.getMeasurePointsSurface);
+      if (mD.length && typeof window.calculDistance === "function" && typeof window.formatDistance === "function") {
+        lignes.push(["distance", "📐", _t("measure.label.distance",
+          { val: window.formatDistance(window.calculDistance(), 2) })]);
+      }
+      if (mS.length && typeof window.calculSurface === "function") {
+        const m2 = window.calculSurface();
+        lignes.push(["surface", "♦️", _t("measure.label.surface", { val: typeof window.formatSurface === "function"
+          ? window.formatSurface(m2, 1) : Math.round(m2) + " m²" })]);
+      }
+      if (!lignes.length) {
+        lignes.push([o.type, o.type === "surface" ? "♦️" : "📐",
+          _t(o.type === "surface" ? "measure.hint.surface" : "measure.hint.distance")]);
+      }
+    }
+    const sig = lignes.map(function (l) { return l.join("|"); }).join(";") + "|" + (o ? o.type : "");
+    if (sig === e.mesureSig) return;
+    e.mesureSig = sig;
+    b.textContent = "";
+    lignes.forEach(function (l) {
+      const ligne = document.createElement("div");
+      ligne.className = "kta-v3d-mesure-ligne" + (o && l[0] === o.type ? " kta-v3d-mesure-active" : "");
+      ligne.textContent = l[1] + " " + l[2];
+      b.appendChild(ligne);
+    });
+    b.hidden = !lignes.length;
   }
 
   // Groupe touché dans la barre : son panneau 2D, ancré au bouton ; retouché, fermé. Groupe grisé (lecture seule) :
@@ -4446,13 +4611,20 @@
       d.apercu.matrixAutoUpdate = false;
       e.scene.add(d.apercu);
     }
-    // Totaux de la carte (measure.js > calculDistance / calculSurface), libellés de la carte, au dernier point.
-    const etiquette = function (texte, p) {
-      const sp = _panneau({ nom: texte }, [p.x / sc, p.y / sc], { sansIcone: true, bord: COULEUR_MESURE,
-        genre: "mesure", y: 0.6 });
+    // Totaux de la carte (measure.js > calculDistance / calculSurface), libellés de la carte, au dernier point ;
+    // longueur de chaque segment et angle à chaque sommet : les libellés que la carte a posés (ktaMesureLibelles),
+    // lus tels quels. Lettres jamais sous PANNEAU_LETTRE_MIN px (_majPanneaux).
+    const etiquette = function (texte, p, bord, y) {
+      const sp = _panneau({ nom: texte }, [p.x / sc, p.y / sc], { sansIcone: true, bord: bord || COULEUR_MESURE,
+        genre: "mesure", y: y || 0.6 });
       e.scene.add(sp);
       d.etiquettes.push(sp);
     };
+    if (mD.length > 1 && typeof window.ktaMesureLibelles === "function") {
+      window.ktaMesureLibelles().forEach(function (l) {
+        if (l.texte) etiquette(l.texte, l, l.genre === "angle" ? coul.neutre : COULEUR_MESURE, 0.3);
+      });
+    }
     if (mD.length > 1 && typeof window.calculDistance === "function" && typeof window.formatDistance === "function") {
       etiquette("📐 " + _t("measure.label.distance", { val: window.formatDistance(window.calculDistance(), 2) }),
         mD[mD.length - 1]);
@@ -4473,7 +4645,12 @@
   // fond, direct ou tuiles V1 : leur <img> chargé) ; plan tuilé V2 : tiling.js > ktaDessinerRegionTuiles (tuiles du
   // ZIP en mémoire ou du cache, au niveau le moins détaillé qui suffit). Rien n'est téléchargé de plus. Plan de base
   // = niveau 0 (tiling.js > ktaPlanDeBaseVisible) : montré au niveau 0 seulement.
-  const PLAN_SOL = { pxFin: 2048, pxDoigt: 1024, y: 0.006, ecart: 0.25 };
+  // 🩸 Posé 6 mm au-dessus du sol et départagé par la profondeur seule, le plan perdait contre le sol sous WebKit (le
+  // grain calcaire restait seul à l'écran : précision de profondeur trop courte à 18 m de recul). ⚠️ contrat : il se
+  // dessine juste après le sol (ORDRE_SOL < `ordre` < tout le reste), sans test ni écriture de profondeur, troué par
+  // les bouches des passages comme lui ; tout ce qui vient ensuite (tracés, zones, structures) passe dessus par la
+  // profondeur du sol.
+  const PLAN_SOL = { pxFin: 2048, pxDoigt: 1024, y: 0, ecart: 0.25, ordre: -0.5 };
 
   function _planSolPermis() { const n = _e.niveau; return n === null || n === 0; }
 
@@ -4514,7 +4691,7 @@
     const e = _e, d = e.dessin;
     const voulu = d.planSol && d.ouvert && _dessinPermis() && _planSolPermis();
     if (!voulu) { if (d.sol && d.sol.mesh) _libererPlanSol(); return; }
-    const s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonScene(), px = e.pos.x / e.sc, pz = e.pos.y / e.sc;
+    const c = _centreScene(), s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonScene(), px = c.x, pz = c.z;
     if (s.enCours) return;
     if (s.mesh && Math.hypot(px - s.cx, pz - s.cz) < s.cote * PLAN_SOL.ecart &&
         Math.abs(cote - s.cote) < s.cote * PLAN_SOL.ecart) return;
@@ -4558,11 +4735,11 @@
       tex.anisotropy = Math.min(4, e.renderer.capabilities.getMaxAnisotropy());
       const geo = new THREE.PlaneGeometry(cote, cote);
       geo.rotateX(-Math.PI / 2);
-      const mat = new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -1,
-        polygonOffsetUnits: -1 });
+      const mat = new THREE.MeshLambertMaterial({ map: tex, depthTest: false, depthWrite: false,
+        stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(cx, PLAN_SOL.y, cz);
-      mesh.renderOrder = 0;
+      mesh.renderOrder = PLAN_SOL.ordre;
       mesh.userData.famille = "planSol";
       e.scene.add(mesh);
       Object.assign(s, { mesh: mesh, tex: tex, cx: cx, cz: cz, cote: cote, px: N, ok: !!(r && r.ok),
@@ -5306,6 +5483,7 @@
     const rot = (k.td ? 1 : 0) - (k.tg ? 1 : 0);
     e.rapide = !!rapide && !!(av || lat);
     if (av || lat || rot) _passerEnLibre();
+    if (av || lat) _rattacher();
     if (rot) { e.cap = (e.cap + rot * ROTATION * dt + 360) % 360; e.sale = true; }
     if (av) _pas(vit * dt * av, e.cap);
     if (lat) _pas(vit * dt, e.cap + 90 * lat);
@@ -5314,6 +5492,7 @@
     if (st && st.m > 0) {
       const course = _permisGreffe("course") && st.fortDepuis > 0 && ts - st.fortDepuis > APPUI_LONG;
       _passerEnLibre();
+      _rattacher();
       _pas(VITESSE * _facteurGreffe("vitesse") * (course ? FACTEUR_RAPIDE : st.m) * dt, e.cap + st.ang);
       e.rapide = e.rapide || course;
     }
@@ -5585,6 +5764,7 @@
       _bouton(pad, "kta-v3d-dr", "▶", _t("vue3d.pasDroite"), "dr");
       ov.appendChild(pad);
       e.pave = pad;
+      ov.classList.add("kta-v3d-avec-pave");   // le bandeau de mesure passe au-dessus du pavé (css)
     }
     // Zoom et inclinaison (vue plongeante seulement) : + − à gauche de ▲ ▼, en bas à droite (la tuile ⚙️ ouverte ne
     // les recouvre pas). Ordre du DOM = ordre de tabulation : +, ▲, −, ▼ (grille de deux colonnes).
@@ -5597,6 +5777,17 @@
     _bouton(incl, "kta-v3d-btn-petit", "▼", _t("vue3d.inclinaisonMoins"), "inclMoins");
     ov.appendChild(incl);
     e.boutonsIncl = incl;
+    // ⌖ : caméra de la vue plongeante ramenée sur la place, au-dessus de la grille ; montré caméra détachée seulement.
+    e.boutonPlace = _bouton(ov, "kta-v3d-btn-petit kta-v3d-place", "⌖", _t("vue3d.surPlace"), "place");
+    e.boutonPlace.hidden = true;
+    // Bandeau de la mesure 📐 en cours (_majBandeauMesure) : en bas, entre la boussole et la grille, lu à voix haute.
+    const mes = document.createElement("div");
+    mes.className = "kta-v3d-mesure";
+    mes.setAttribute("role", "status");
+    mes.setAttribute("aria-live", "polite");
+    mes.hidden = true;
+    ov.appendChild(mes);
+    e.bandeauMesure = mes;
     // Rose des vents (image de la boussole 2D, précachée).
     const bous = document.createElement("div");
     bous.className = "kta-v3d-boussole";
@@ -5713,6 +5904,7 @@
     const oui = !_texturesActives();
     if (typeof window.setVue3DTextures === "function") window.setVue3DTextures(oui);
     e.textures = oui;
+    if (e.mats) { _grainSol(e.mats, oui); e.sale = true; }
     if (e.tuiles) _refaireTuiles();
     _appliquerTextures();
     return oui;
@@ -5927,6 +6119,7 @@
       else if (a === "dessin") { ev.preventDefault(); _basculerDessin(); }
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
+      else if (a === "place") surPlace();
       // Entrée / Espace sur un bouton qui agit au pointerdown (bascules de la tuile, − / +, passages) : le navigateur
       // n'envoie qu'un click. 🩸 Un toucher envoie pointerdown PUIS click : ce click-là est ignoré (même bouton,
       // pointerdown récent), sinon la bascule jouerait deux fois.
@@ -5944,7 +6137,7 @@
       const a = b.dataset.v3d;
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
-        a === "ficheVoir" || a === "dessin" || a === "outil" || a === "planSol") return;
+        a === "ficheVoir" || a === "dessin" || a === "outil" || a === "planSol" || a === "place") return;
       if (_agirBouton(a, b, ev)) return;
       ev.preventDefault();
       _codeBas(a === "ar");
@@ -5972,10 +6165,13 @@
     on(e.curseurPortee, "input", function () { reglerPortee(e.curseurPortee.value); });
     on(e.curseurLampe, "input", function () { reglerLampe(e.curseurLampe.value); });
     on(e.curseurFaisceau, "input", function () { reglerFaisceau(e.curseurFaisceau.value); });
-    // Glisser sur la scène : un doigt tourne (horizontal) et lève / baisse les yeux (vertical). Deux doigts, en vue
-    // plongeante, comme une carte : pincer = zoom (écarter = plus près), glisser ensemble à la verticale = inclinaison
-    // (vers le haut = plus rasante). Le geste est tranché une fois (deux.mode) dès que l'écart ou le milieu a bougé de
-    // GESTE_SEUIL px : un pincement ne penche pas la vue, un glisser ne zoome pas.
+    // Glisser sur la scène : à hauteur d'yeux, un doigt tourne (horizontal) et lève / baisse les yeux (vertical). En
+    // vue plongeante, comme une carte : un doigt (la souris) déplace le point visé (_panner) au-delà de
+    // TAPE.bouge px ; clic droit ou Ctrl + glisser à la souris = cap. Deux doigts : pincer = zoom (écarter =
+    // plus près), glisser ensemble à la verticale = inclinaison (vers le haut = plus rasante), tourner = cap (comme la
+    // carte qu'on tourne : le décor suit les doigts). Le geste est tranché une fois (deux.mode) dès que l'écart ou le
+    // milieu a bougé de GESTE_SEUIL px, ou l'angle de CAMERA_LIBRE.rot° : un pincement ne penche ni ne tourne la vue.
+    // En suivi, le cap reste celui de l'appareil (aucune rotation au doigt).
     const GESTE_SEUIL = 12;
     let glisse = null, deux = null;
     const doigts = new Map();
@@ -5984,21 +6180,42 @@
     on(e.cv, "pointerdown", function (ev) {
       tape = doigts.size === 0 ? { id: ev.pointerId, x: ev.clientX, y: ev.clientY, t: ev.timeStamp } : null;
       doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-      glisse = doigts.size === 1 ? { x: ev.clientX, y: ev.clientY } : null;
+      glisse = doigts.size === 1 ? { x: ev.clientX, y: ev.clientY, x0: ev.clientX, y0: ev.clientY, parti: false,
+        cap: ev.pointerType === "mouse" && (ev.button === 2 || ev.ctrlKey) } : null;
       deux = doigts.size === 2 ? { mode: null, d: 0, y: 0 } : null;
+      if (deux) {
+        const it = doigts.values(), p = it.next().value, q = it.next().value;
+        deux.a0 = Math.atan2(q.y - p.y, q.x - p.x);
+      }
       try { e.cv.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur déjà relâché */ }
     });
     on(e.cv, "pointermove", function (ev) {
       if (doigts.size >= 2 && doigts.has(ev.pointerId)) {
         const it = doigts.values(), a0 = it.next().value, b0 = it.next().value;
         const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y), y0 = (a0.y + b0.y) / 2;
+        const t0 = Math.atan2(b0.y - a0.y, b0.x - a0.x);
         doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
         const it1 = doigts.values(), a1 = it1.next().value, b1 = it1.next().value;
         const d1 = Math.hypot(a1.x - b1.x, a1.y - b1.y), dy = (a1.y + b1.y) / 2 - y0;
+        let da = (Math.atan2(b1.y - a1.y, b1.x - a1.x) - t0) * 180 / Math.PI;
+        da = ((da + 540) % 360) - 180;
         if (e.vue !== "plongee" || !deux) return;
+        // Doigts tournés dans le sens des aiguilles : le décor tourne avec eux, le cap de la vue recule d'autant.
+        const tourner = function (deg) {
+          if (deg && e.mode !== "suivi") { e.cap = (e.cap - deg + 360) % 360; e.sale = true; }
+        };
         if (!deux.mode) {
           deux.d += d1 - d0; deux.y += dy;
-          if (Math.abs(deux.d) > GESTE_SEUIL && Math.abs(deux.d) > Math.abs(deux.y)) {
+          // Rotation jugée depuis la pose des deux doigts, en arc parcouru (px) : 🩸 les doigts arrivent l'un après
+          // l'autre (un événement par doigt) ; un seul doigt bougé de 8 px tourne déjà la paire de 15° à 30 px d'écart.
+          let aT = (Math.atan2(b1.y - a1.y, b1.x - a1.x) - deux.a0) * 180 / Math.PI;
+          aT = ((aT + 540) % 360) - 180;
+          const arc = Math.abs(aT) * Math.PI / 180 * d1 / 2;
+          if (Math.abs(aT) > CAMERA_LIBRE.rot && arc > GESTE_SEUIL * 1.5 && arc > 2 * Math.abs(deux.y) &&
+              arc > Math.abs(deux.d)) {
+            deux.mode = "rot";
+            tourner(aT);
+          } else if (Math.abs(deux.d) > GESTE_SEUIL && Math.abs(deux.d) > Math.abs(deux.y)) {
             deux.mode = "zoom";
             if (d1 > 1 && d1 - deux.d > 1) zoomer((d1 - deux.d) / d1);
           } else if (Math.abs(deux.y) > GESTE_SEUIL) {
@@ -6009,11 +6226,25 @@
         }
         if (deux.mode === "zoom" && d0 > 1 && d1 > 1) zoomer(d0 / d1);
         else if (deux.mode === "incl" && dy) incliner(dy * 0.15);
+        else if (deux.mode === "rot") tourner(da);
         return;
       }
       if (!glisse) return;
+      if (e.vue === "plongee") {
+        // Même seuil que le toucher bref (TAPE) : en deçà c'est un tap, au-delà un déplacement de la caméra.
+        if (!glisse.parti && Math.hypot(ev.clientX - glisse.x0, ev.clientY - glisse.y0) < TAPE.bouge) return;
+        glisse.parti = true;
+        if (glisse.cap) {
+          if (e.mode !== "suivi") e.cap = (e.cap + (ev.clientX - glisse.x) * 0.25 + 360) % 360;
+        } else {
+          _panner(glisse.x, glisse.y, ev.clientX, ev.clientY);
+        }
+        glisse.x = ev.clientX; glisse.y = ev.clientY;
+        e.sale = true;
+        return;
+      }
       const dx = ev.clientX - glisse.x, dy = ev.clientY - glisse.y;
-      glisse = { x: ev.clientX, y: ev.clientY };
+      glisse.x = ev.clientX; glisse.y = ev.clientY;
       // 🩸 En suivi, le cap est celui de l'appareil : glisser ne règle que le regard haut/bas. Tourner au doigt
       // quittait le suivi au moindre toucher (un tap bouge toujours d'un pixel ou deux).
       if (dx && e.mode !== "suivi") e.cap = (e.cap + dx * 0.25 + 360) % 360;
@@ -6028,6 +6259,8 @@
         const bouge = tape ? Math.hypot(ev.clientX - tape.x, ev.clientY - tape.y) : 0;
         const duree = tape ? ev.timeStamp - tape.t : 0;
         if (tape && tape.id === ev.pointerId && doigts.size === 0 && bouge < TAPE.bouge && duree < TAPE.ms) {
+          // Caméra déplacée depuis la dernière image (glisser, pincer) : posée avant le rayon du toucher.
+          if (e.sale) _placerCamera();
           _toucher(ev.clientX, ev.clientY);
         } else {
           _refusDessin(!tape ? "un autre pointeur était déjà posé sur la scène"
@@ -6694,7 +6927,7 @@
     _e.sale = true;
   }
 
-  function avancer(m) { if (!_e) return false; _passerEnLibre(); return _pas(m, _e.cap); }
+  function avancer(m) { if (!_e) return false; _passerEnLibre(); _rattacher(); return _pas(m, _e.cap); }
 
   function tourner(deg) { if (!_e) return; _passerEnLibre(); _e.cap = (_e.cap + deg + 360) % 360; _e.sale = true; }
 
@@ -6809,6 +7042,11 @@
       fonduPresent: !!e.fondu && !!e.fondu.parentNode && !e.fondu.hidden,
       bandeauNiveau: e.bandeauNiveau && !e.bandeauNiveau.hidden ? e.bandeauNiveau.textContent : null,
       pos: { x: e.pos.x, y: e.pos.y }, cap: e.cap, butees: e.butees, images: e.images,
+      camera: { vise: e.vise ? { x: e.vise.x, z: e.vise.z } : null, centre: Object.assign({}, _centreScene()),
+        visee: Object.assign({}, _viseeCamera()), place: !!e.boutonPlace && !e.boutonPlace.hidden,
+        edition: !!e.ov && e.ov.classList.contains("kta-v3d-edition") },
+      mesure: e.bandeauMesure ? { affiche: !e.bandeauMesure.hidden,
+        lignes: Array.prototype.map.call(e.bandeauMesure.children, function (l) { return l.textContent; }) } : null,
       tuiles: e.tuiles.size, construites: construites, visibles: visibles, compte: e.compte, yMax: yMax,
       boites: boites,
       panneaux: Array.from(e.panneaux).map(function (sp) {
@@ -6819,7 +7057,9 @@
           bord: sp.userData.poi.bord, halo: !!sp.userData.halo && sp.userData.halo.visible,
           haloXZ: sp.userData.halo ? [sp.userData.halo.position.x, sp.userData.halo.position.z] : null,
           opacite: +sp.material.opacity.toFixed(2), echelle: +sp.scale.x.toFixed(2), fond: sp.userData.fond,
-          largeurEcran: +_largeurEcran(sp).toFixed(3) };
+          largeurEcran: +_largeurEcran(sp).toFixed(3),
+          lettrePx: +(_largeurEcran(sp) * (sp.userData.ratio || 0) * (e.camera.aspect || 1) * (sp.userData.lettre || 0) *
+            (e.cv.clientHeight || 0)).toFixed(1) };
       }),
       murDecale: e.mats.murs.polygonOffset === true,
       commandes: e.commandes, pave: !!e.pave && e.pave.isConnected,
@@ -7066,6 +7306,7 @@
 
   window.KtaVue3D = {
     ouvrir: ouvrir, fermer: fermer, etat: etat, mesurer: mesurer, basculerVue: basculerVue, incliner: incliner,
+    panner: panner, surPlace: surPlace,
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     textures: textures, basculerTextures: function () { return _basculerTextures(); },
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,

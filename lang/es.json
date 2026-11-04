@@ -2480,6 +2480,7 @@
   "vue3d.reglageGreffe": "no disponible durante una partida",
   "vue3d.zoomPlus": "Acercar la vista de edición",
   "vue3d.zoomMoins": "Alejar la vista de edición",
+  "vue3d.surPlace": "Volver a mi posición (la cámara vuelve a seguir tu lugar)",
   "vue3d.boussole": "Brújula: la N indica el norte real",
   "vue3d.nordNonCalibre": "Parte superior del plano (norte no calibrado)",
   "vue3d.modeStructures": "Estructuras",

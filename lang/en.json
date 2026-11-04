@@ -2480,6 +2480,7 @@
   "vue3d.reglageGreffe": "unavailable during a game",
   "vue3d.zoomPlus": "Zoom the edit view in",
   "vue3d.zoomMoins": "Zoom the edit view out",
+  "vue3d.surPlace": "Back to my position (the camera follows your place again)",
   "vue3d.boussole": "Compass: N shows true north",
   "vue3d.nordNonCalibre": "Top of the map (north not calibrated)",
   "vue3d.modeStructures": "Structures",

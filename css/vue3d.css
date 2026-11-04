@@ -112,9 +112,11 @@ html.kta-theme-light .kta-v3d-mode-indic {
 }
 
 /* Tuile des réglages : petit panneau ancré sous ⚙️ (`top` posé par _basculerReglages), au-dessus de tout dans la
-   vue ; la boîte de la fenêtre ⚙️ Réglages (surface, liseré, rayon 14 px), chaque réglage sur une ligne écrite. */
+   vue ; la boîte de la fenêtre ⚙️ Réglages (surface, liseré, rayon 14 px), chaque réglage sur une ligne écrite.
+   🩸 z-index au-dessus de .leaflet-control (800, leaflet.css) : la colonne ✏️ de la vue d'édition en porte la classe
+   et passait sur la tuile ouverte, valeurs des curseurs coupées. */
 .kta-v3d-reglages {
-  position: absolute; right: 10px; top: 80px; width: max-content; max-width: calc(100% - 20px);
+  position: absolute; right: 10px; top: 80px; z-index: 900; width: max-content; max-width: calc(100% - 20px);
   display: flex; flex-direction: column; align-items: stretch; gap: 4px; box-sizing: border-box;
   padding: 10px; border-radius: 14px; border: 1px solid var(--kta-bordure);
   background: var(--kta-surface); color: var(--kta-texte); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
@@ -342,3 +344,38 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
   inset: calc((var(--kta-barre-bouton, 36px) - var(--kta-cible-toucher, 44px)) / 2);
 }
 html.kta-vue3d-ouverte .kta-group-flyout, html.kta-vue3d-ouverte .kta-group-flyout-fond { z-index: 99999; }
+
+/* Caméra libre de la vue plongeante (vue3d.js > _panner) : ⌖ ramène la caméra sur la place, au-dessus de la grille
+   + − ▲ ▼, montré caméra détachée seulement. */
+.kta-v3d-btn.kta-v3d-place {
+  position: absolute; right: 10px;
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 2 * var(--kta-v3d-taille) + 2 * var(--kta-v3d-ecart));
+  font-size: calc(var(--kta-v3d-police) + 4px);
+}
+.kta-v3d-btn.kta-v3d-place::before {
+  content: ""; position: absolute; inset: calc((var(--kta-v3d-taille) - 2px - var(--kta-v3d-cible)) / 2);
+}
+.kta-v3d-place[hidden] { display: none; }
+/* Vue plongeante (décision produit) : le joystick n'occupe que le coin bas gauche, au-dessus de la boussole ;
+   ailleurs, un doigt déplace la caméra. */
+.kta-vue3d.kta-v3d-edition .kta-v3d-stick-zone { top: auto; height: 180px; width: min(50%, 200px); }
+/* Bandeau de la mesure 📐 (vue3d.js > _majBandeauMesure) : les lignes du libellé de la carte, en bas au milieu, entre
+   la boussole et la grille (au-dessus du pavé au PC) ; même charte que le libellé de mesure de la carte (style.css >
+   .kta-measure-distance) : surface, texte doré, liseré doré. */
+.kta-v3d-mesure {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: max(14px, env(safe-area-inset-bottom)); max-width: calc(100% - 200px); box-sizing: border-box;
+  padding: 8px 12px; border-radius: var(--kta-v3d-rayon);
+  border: 1px solid color-mix(in srgb, var(--kta-accent) 40%, transparent);
+  background: var(--kta-surface); color: var(--kta-accent-texte); box-shadow: var(--kta-v3d-ombre);
+  font-size: 15px; font-weight: 600; line-height: 1.35; text-align: left; pointer-events: none;
+}
+.kta-v3d-mesure[hidden] { display: none; }
+.kta-vue3d.kta-v3d-avec-pave .kta-v3d-mesure {
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 2 * var(--kta-v3d-taille) + 2 * var(--kta-v3d-ecart));
+}
+.kta-v3d-mesure-ligne { padding: 2px 0 2px 8px; border-left: 3px solid transparent; }
+.kta-v3d-mesure-ligne + .kta-v3d-mesure-ligne {
+  margin-top: 4px; padding-top: 4px; border-top: 1px dashed color-mix(in srgb, var(--kta-accent) 25%, transparent);
+}
+.kta-v3d-mesure-ligne.kta-v3d-mesure-active { border-left-color: var(--kta-accent); }
