@@ -329,13 +329,15 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 }
 .kta-v3d-bandeau-niveau[hidden] { display: none; }
 
-/* Dessin depuis la vue plongeante (vue3d.js > _monterOutils) : 🛠️ puis 📐 🛣️ ⬛ 🏛️, les boutons de la barre de
-   droite 2D (.leaflet-bar a, leur taille et leurs états : style.css), en colonne à droite, au milieu. Le panneau d'un
-   groupe (interface.js > ktaOuvrirOutils) passe au rang de la vue, posé après elle : au-dessus. */
+/* Dessin depuis la vue d'édition (vue3d.js > _monterOutils) : 📐 🛣️ ⬛ 🏛️ 🗺️, les boutons de la barre de droite 2D
+   (.leaflet-bar a, leur taille et leurs états : style.css), en colonne à droite, au milieu. Le panneau d'un groupe
+   (interface.js > ktaOuvrirOutils) passe au rang de la vue, posé après elle : au-dessus.
+   🩸 En paysage bas, style.css passe toute .leaflet-bar en `display: flex !important` (pilules de la barre 2D) : sans
+   l'id et !important, `hidden` ne cachait plus la colonne (outils visibles à hauteur d'yeux et pendant le jeu). */
 .kta-v3d-outils {
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin: 0; clear: none; float: none;
 }
-.kta-v3d-outils[hidden], .kta-v3d-outils a[hidden] { display: none; }
+#kta-vue3d .kta-v3d-outils[hidden], #kta-vue3d .kta-v3d-outils a[hidden] { display: none !important; }
 /* Zone de toucher de 44 px (--kta-cible-toucher), comme la rangée du haut : on joue au doigt. Les zones de deux
    boutons voisins se recouvrent de 4 px, au bord commun (la colonne n'a pas de trou). */
 .kta-v3d-outils > a { position: relative; }

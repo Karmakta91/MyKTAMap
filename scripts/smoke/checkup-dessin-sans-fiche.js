@@ -11,9 +11,10 @@
 // Ajout de point (✏️ modeEdition) : sa fenêtre de nommage s'ouvre, même sur un POI. « Où es-tu ? »
 // (ktaDemanderPositionCarte) et recalage (📍) : le toucher sur un POI rend la position touchée, sans fiche. Appui long
 // sur un sommet, outil armé : pas d'ajustement (ajusterSommets.js) ; outil désarmé : le 1er toucher rouvre la fiche.
-// Un seul outil armé (POI / mesure / zone / tracé). Vue 3D plongeante, ✏️ ouvert et outil armé : panneau de POI,
-// pilier, zone → sommet, aucune fiche ; armé par les vrais boutons (✏️, groupe, type) puis le sol ; un seul outil ;
-// pas d'ajout de point dans la barre ; outil armé en 2D puis vue ouverte (✏️ fermé) : aucune fiche non plus.
+// Un seul outil armé (POI / mesure / zone / tracé). Vue 3D d'édition, outil armé (colonne toujours active, sans
+// interrupteur) : panneau de POI, pilier, zone → sommet, aucune fiche ; armé par les vrais boutons (groupe, type) puis
+// le sol ; un seul outil ; pas d'ajout de point dans la colonne ; outil armé en 2D puis vue d'édition : le PREMIER
+// toucher pose ; outil armé à hauteur d'yeux : toucher consommé, aucune fiche.
 // Clic lent sous une image lourde, recul 60 m aux 4 coins et 3 inclinaisons (point du plan y = 0 à 5 cm), Galerie
 // hors tube : sommet posé.
 // Joué au doigt (393 × 852, hasTouch, isMobile) et à la souris (1280 × 800), sous Chromium puis WebKit (KTA_MOTEURS
@@ -540,7 +541,7 @@ async function section3D(page, entree) {
   verifier(Object.keys(ref).length === 3 && Object.keys(ref).every(function (k) { return ref[k]; }),
     "3D sans outil : la fiche de chaque objet s'ouvre", ref);
 
-  // ✏️ ouvert, chaque outil armé par le panneau de la vue.
+  // Chaque outil armé par le panneau de la vue.
   for (const o of OUTILS) {
     const fautes = [];
     for (const k of ["poi", "pilier", "zone"]) {
@@ -549,7 +550,6 @@ async function section3D(page, entree) {
         window.__dsf.poser3D();
         if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
         const K = window.KtaVue3D;
-        K.dessiner(true);
         const b = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="' + o.groupe + '"]');
         if (b) b.click();
         const fly = document.querySelector(".kta-group-flyout");
@@ -577,12 +577,11 @@ async function section3D(page, entree) {
     verifier(fautes.length === 0, "3D outil " + o.nom + " : sommet, aucune fiche (POI, pilier, zone)", fautes);
   }
 
-  // Un seul outil à la fois dans la vue : POI armé sur la carte avant la vue, puis 📐 de la barre ✏️ ; mesure puis
-  // tracé ; tracé puis zone. La barre ✏️ ne propose pas l'ajout de point (décision produit).
+  // Un seul outil à la fois dans la vue : POI armé sur la carte avant la vue, puis 📐 de la colonne ; mesure puis
+  // tracé ; tracé puis zone. La colonne ne propose pas l'ajout de point (décision produit).
   const armer3 = function (o) {
     return page.evaluate(function (o) {
       const K = window.KtaVue3D;
-      K.dessiner(true);
       const b = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="' + o.groupe + '"]');
       if (b) b.click();
       const fly = document.querySelector(".kta-group-flyout");
@@ -618,9 +617,9 @@ async function section3D(page, entree) {
   });
   verifier(seul3.length === 0, "3D : un seul outil armé (POI de la carte puis 📐, 📐 puis tracé, tracé puis zone)",
     seul3);
-  verifier(barrePoi.indexOf("edition") < 0, "3D : la barre ✏️ ne propose pas l'ajout de point", barrePoi);
+  verifier(barrePoi.indexOf("edition") < 0, "3D : la colonne d'outils ne propose pas l'ajout de point", barrePoi);
 
-  // Armer par les vrais boutons, au pointeur de l'entrée (souris ou doigt) : ✏️, groupe, type du panneau, puis le sol.
+  // Armer par les vrais boutons, au pointeur de l'entrée (souris ou doigt) : groupe, type du panneau, puis le sol.
   const reels = [];
   const centre = async function (sel) {
     const b = await page.locator(sel).first().boundingBox();
@@ -643,11 +642,9 @@ async function section3D(page, entree) {
     await page.evaluate(function () {
       window.__dsf.poser3D();
       if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
-      window.KtaVue3D.dessiner(false);
     });
     await page.waitForTimeout(300);
     const pas = [];
-    pas.push(await viser(await centre('#kta-vue3d .kta-v3d-outils [data-v3d="dessin"]')));
     pas.push(await viser(await centre('#kta-vue3d .kta-v3d-outils [data-groupe="' + o.groupe + '"]')));
     const lib = await page.evaluate(function (k) { return window.I18n.t(k); }, o.cle);
     pas.push(await viser(await centre('.kta-group-flyout .kta-group-flyout-btn:has-text("' + lib + '")')));
@@ -665,7 +662,7 @@ async function section3D(page, entree) {
   await page.evaluate(function () {
     if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
   });
-  verifier(reels.length === 0, "3D, vrais boutons (✏️, groupe, type) puis le sol : sommet posé, pour les 4 outils",
+  verifier(reels.length === 0, "3D, vrais boutons (groupe, type) puis le sol : sommet posé, pour les 4 outils",
     reels);
 
   // Clic lent sous une scène lourde : le geste dure 150 ms mais son traitement attend 700 ms (image lente simulée,
@@ -723,7 +720,7 @@ async function section3D(page, entree) {
     }, incl);
     await page.waitForTimeout(1500);
     for (const c of [[0.08, 0.1], [0.92, 0.1], [0.08, 0.9], [0.92, 0.9]]) {
-      // Coin de la scène : ramené vers le centre tant qu'un bouton de la vue (pavé, zoom, barre ✏️) le couvre.
+      // Coin de la scène : ramené vers le centre tant qu'un bouton de la vue (pavé, zoom, colonne d'outils) le couvre.
       const p = await page.evaluate(function (a) {
         const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
         let fx = a.c[0], fy = a.c[1];
@@ -800,23 +797,76 @@ async function section3D(page, entree) {
     window.KtaVue3D.zoomer(0.01);
   });
 
-  // Outil armé sur la carte, ✏️ fermé dans la vue : aucune fiche (le toucher ne dessine pas sans ✏️).
-  const sansBarre = [];
+  // Outil armé sur la carte (2D) puis vue d'édition : rien à ouvrir, le PREMIER toucher pose un sommet, sans fiche.
+  // Vue rouverte comme au départ (le bloc précédent l'a dézoomée).
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, F = window.__dsf;
+    if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+    await K.fermer();
+    const n = document.querySelector(".kta-modal-overlay");
+    if (n) n.remove();
+    await K.ouvrir({ depart: { x: F.v3d.depart.x, y: F.v3d.depart.y, cap: 0, niveau: 0 }, commandes: "joystick" });
+    if (K.etat().vue !== "plongee") K.basculerVue();
+    await new Promise(function (r) { setTimeout(r, 400); });
+  });
+  cibles = await projeter();
+  const direct = [];
+  let directVus = 0;
   for (const k of ["poi", "pilier", "zone"]) {
-    if (!cibles[k]) continue;
+    if (!cibles[k] || !cibles[k].dans || !cibles[k].sous) continue;   // hors de la fenêtre : rien à toucher
+    directVus++;
     await page.evaluate(function () {
       window.__dsf.poser3D();
-      window.KtaVue3D.dessiner(false);
-      window.modeZone = "eau";   // armé hors de la vue (2D), comme un outil resté armé à l'ouverture
+      if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+      window.toggleStructureMode("pilier-1");   // armé comme sur la carte, aucun bouton de la vue touché
     });
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(300);
+    const avant = await etat3();
     await toucher3(cibles[k]);
     const e = await etat3();
-    if (e.fiche || e.popup) sansBarre.push(k);
+    if (e.fiche || e.popup || e.n !== 1 || e.poses !== avant.poses + 1) {
+      const diag = await page.evaluate(function () {
+        return { arme: window.modeStructure || null, refus: window.KtaVue3D.etat().dessin.refus };
+      });
+      direct.push(k + " : " + JSON.stringify({ sommets: e.n, poses: e.poses - avant.poses, fiche: e.fiche || e.popup,
+        arme: diag.arme, refus: diag.refus, sous: cibles[k].sous, vise: cibles[k].vise }));
+    }
     await fermerFiche();
   }
-  await page.evaluate(function () { window.modeZone = null; });
-  verifier(sansBarre.length === 0, "3D, outil armé et ✏️ fermé : aucune fiche", sansBarre);
+  await page.evaluate(function () {
+    if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+  });
+  verifier(directVus >= 1 && direct.length === 0,
+    "3D d'édition, outil armé directement : le premier toucher pose, aucune fiche (" + directVus + " cibles)", direct);
+
+  // Outil armé à hauteur d'yeux (pas de dessin là) : le toucher est consommé, sans fiche ni sommet.
+  await page.evaluate(async function () {
+    window.KtaVue3D.basculerVue();
+    for (let i = 0; i < 4; i++) await new Promise(function (r) { requestAnimationFrame(r); });
+  });
+  const yeux = await page.evaluate(function () { return window.KtaVue3D.etat().vue; });
+  cibles = await projeter();
+  const cvY = await page.locator("#kta-vue3d canvas").first().boundingBox();
+  cibles.centre = { x: cvY.x + cvY.width * 0.5, y: cvY.y + cvY.height * 0.55, dans: true };
+  const sansBarre = [];
+  let yeuxVus = 0;
+  for (const k of ["poi", "pilier", "zone", "centre"]) {
+    if (!cibles[k] || !cibles[k].dans) continue;
+    yeuxVus++;
+    await page.evaluate(function () {
+      window.__dsf.poser3D();
+      window.modeZone = "eau";   // armé hors de la vue (2D), comme un outil resté armé à l'ouverture
+    });
+    await page.waitForTimeout(300);
+    const avant = await etat3();
+    await toucher3(cibles[k]);
+    const e = await etat3();
+    if (e.fiche || e.popup || e.poses !== avant.poses) sansBarre.push(k);
+    await fermerFiche();
+  }
+  await page.evaluate(function () { window.modeZone = null; window.KtaVue3D.basculerVue(); });
+  verifier(yeux !== "plongee" && yeuxVus >= 1 && sansBarre.length === 0,
+    "3D à hauteur d'yeux, outil armé : aucune fiche, aucun sommet (" + yeuxVus + " cibles)", { vue: yeux, fautes: sansBarre });
 
   await page.evaluate(async function () {
     if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();

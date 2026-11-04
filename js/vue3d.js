@@ -13,7 +13,7 @@
 //   reglerFaisceau(°), reglerPleinJour(bool),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
-//   _ctxGreffe), viser(cx, cy), dessiner(bool) (barre 🛠️ de la vue plongeante : outils de la carte, _poserSommet) } ;
+//   _ctxGreffe), viser(cx, cy) (colonne d'outils de la vue d'édition : outils de la carte, _poserSommet) } ;
 //   code « six vers le bas » : kta:vue3dCode ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap, niveau}, densiteMax, stats, attenteReprise (ms),
 //   retourFocus,
@@ -2420,7 +2420,7 @@
     e.sale = true;
   }
 
-  // `reprise` (passé par _majDonnees seul) : emprise d'un objet fini depuis la vue (🛠️, _noterFin) ; les tuiles loin
+  // `reprise` (passé par _majDonnees seul) : emprise d'un objet fini depuis la vue (_noterFin) ; les tuiles loin
   // de lui sont reprises telles quelles (_reprendreTuiles). Tout autre appel refait tout.
   function _reindexer(reprise) {
     const e = _e;
@@ -2473,7 +2473,7 @@
   // position, cap, tangage, niveau, mode, vue, réglages, itinéraire et guidage gardés), place dégagée en libre si un
   // obstacle neuf la recouvre (en suivi, la place est celle du tracker), fiche ouverte relue. Inchangée : rien.
   // ⚠️ contrat : scène refaite entière, pas tuile par tuile (coût mesuré au checkup, KTA_V3D_PERF=1). Un objet dessiné
-  // depuis la vue (🛠️) attend sa fin : un sommet ne refait rien (_traceEnCours), la fin refait la scène une fois.
+  // depuis la vue d'édition attend sa fin : un sommet ne refait rien (_traceEnCours), la fin refait la scène une fois.
   function _majDonnees() {
     const e = _e, d = e.donnees, t = performance.now();
     if (!d.signal || e.geste || _traceEnCours()) return;
@@ -3528,8 +3528,8 @@
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
     _majRepere();
     if (e.boutonsIncl) e.boutonsIncl.hidden = !haut;
-    // Dessin (🛠️) : en plongée seulement ; la quitter éteint l'outil.
-    if (e.dessin && !haut && e.dessin.ouvert) _basculerDessin(false);
+    // Dessin : en vue d'édition seulement ; la quitter éteint l'outil (_suivrePermisDessin).
+    _suivrePermisDessin();
     _majBarreDessin();
     _majZoom();
     e.sale = true;
@@ -4131,7 +4131,7 @@
     return _allerNiveau(c || null);
   }
 
-  // Outil de dessin armé (🛠️, vue plongeante) : le toucher pose un sommet, rien d'autre (_poserSommet).
+  // Outil de dessin armé (vue d'édition) : le toucher pose un sommet, rien d'autre (_poserSommet).
   // Toucher bref sur la scène, par priorité : panneau de POI (sa fiche de la carte, _ouvrirFiche, POI jonction
   // compris : boutons de passage, _passagesFiche), puis l'objet sous le doigt, structure, zone, tracé (sa fiche de
   // la carte, _ouvrirFicheObjet). Rien dessous : rien. Une greffe coupe tout (ctx.regler({ fiches: false })).
@@ -4145,8 +4145,7 @@
     if (_dessinActif()) return _poserSommet(cx, cy);
     if (_outilArme()) {
       _refusDessin(e.vue !== "plongee" ? "vue à hauteur d'yeux (le dessin se fait en Édition)"
-        : !_permisGreffe("fiches") ? "une greffe coupe le dessin (fiches: false)"
-          : !e.dessin || !e.dessin.ouvert ? "barre ✏️ fermée" : "dessin non permis");
+        : "une greffe coupe le dessin (fiches: false)");
     }
     if (window._modeClicCarteActif && window._modeClicCarteActif()) return true;
     if (!_permisGreffe("fiches") || !_rayonEcran(cx, cy)) return false;
@@ -4294,17 +4293,18 @@
       type: o ? o.obj.type : null, session: o ? o.session : null };
   }
 
-  // ── Dessin depuis la vue plongeante (🛠️) ──────────────────────────────────────────────────────────────
-  // ⚠️ contrat (décision produit) : en plongée seulement, 🛠️ montre la barre 📐 🛣️ ⬛ 🏛️ (boutons .leaflet-bar de la
-  // barre de droite 2D, dans son ordre, icône et état recopiés de son bouton : _majBarreDessin). Chaque bouton ouvre
-  // le panneau de son groupe 2D (interface.js > ktaOuvrirOutils : mêmes types, customs, ➕ et ✅). Rien ne se dessine
-  // tant qu'aucun outil n'est armé ; armé, un toucher bref de la scène pose un sommet AVANT toute fiche (_toucher).
+  // ── Dessin depuis la vue d'édition (plongée) ──────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : en vue d'édition seulement, et toujours là, la colonne 📐 🛣️ ⬛ 🏛️ 🗺️
+  // (boutons .leaflet-bar de la barre de droite 2D, dans son ordre, icône et état recopiés de son bouton :
+  // _majBarreDessin). Chaque bouton ouvre le panneau de son groupe 2D (interface.js > ktaOuvrirOutils : mêmes types, customs, ➕ et ✅). Rien ne se dessine
+  // tant qu'aucun outil n'est armé ; armer un outil suffit : un toucher bref de la scène pose un sommet AVANT toute
+  // fiche (_toucher). Le désarmer (son bouton, son panneau) suffit pour arrêter.
   // Le toucher rejoue le geste de la carte (_poserSommet : map.fire mousedown puis click, latlng du point touché) :
   // undo, uid, styles, fermeture et droits restent ceux des outils 2D, jamais copiés. Le niveau de l'objet est celui
   // de la 3D : APP_CONFIG.activeLevel le prend le temps du geste, puis est rendu. Objet en cours : aperçu léger au sol
-  // (_majApercu) et aucune reconstruction de la scène (_majDonnees attend sa fin). Sortir de la plongée, fermer la vue,
-  // Échap ou 🛠️ désarment (_desactiverTousLesModes de la carte : un objet non fini se traite comme en 2D). Une greffe
-  // `fiches: false` coupe aussi le dessin (ni 🛠️, ni sommet).
+  // (_majApercu) et aucune reconstruction de la scène (_majDonnees attend sa fin). Sortir de la vue d'édition, fermer
+  // la vue ou Échap désarment (_desactiverTousLesModes de la carte : un objet non fini se traite comme en 2D). Une
+  // greffe `fiches: false` coupe aussi le dessin (ni colonne, ni sommet).
   // 🩸 Les outils 2D lisent `e.latlng` seul ; ce qui dépend de la carte est donné par la vue. Fermeture d'une zone ou
   // d'une structure (décision produit) : toucher le rond doré du 1er sommet, DESSIN.premier m de rayon dessiné à
   // l'échelle (le point est alors ce sommet exact) ; en mètres et non en px d'écran, sinon le 4e coin d'un mur de
@@ -4329,11 +4329,11 @@
   const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };
   const COULEUR_MESURE = "#ff0000";   // la mesure de la carte (measure.js : red), pas une couleur de la charte
 
-  // Barre (dans la vue, posée par _monterDom) : 🛠️ puis un bouton par groupe, cachés tant que 🛠️ n'est pas enfoncé.
+  // Colonne (dans la vue, posée par _monterDom) : un bouton par groupe puis 🗺️, montrée en vue d'édition seulement.
   // Sans la barre de droite 2D (interface.js absent), rien.
   function _monterOutils(ov) {
     const e = _e;
-    e.dessin = { ouvert: false, sig: null, apSig: null, apercu: null, etiquettes: [], poses: 0, msPoses: [],
+    e.dessin = { permis: false, sig: null, apSig: null, apercu: null, etiquettes: [], poses: 0, msPoses: [],
       fermetures: 0, finT: 0, msFin: null, avaleJusqua: 0, renduBascule: null, barre: null, planSol: false,
       sol: null, suivi: null };
     if (!window._groupes) return;
@@ -4353,11 +4353,6 @@
       return a;
     };
     const d = e.dessin;
-    d.bouton = lien("dessin");
-    d.bouton.textContent = "🛠️";
-    d.bouton.title = _t("vue3d.dessin.titre");
-    d.bouton.setAttribute("aria-label", _t("vue3d.dessin.titre"));
-    d.bouton.setAttribute("aria-pressed", "false");
     d.outils = GROUPES_DESSIN.map(function (g) { const b = lien("outil", g); b.hidden = true; return b; });
     // 🗺️ Plan au sol (_majPlanSol) : interrupteur, après les groupes.
     d.boutonSol = lien("planSol");
@@ -4381,34 +4376,32 @@
   }
 
   function _dessinPermis() { return !!_e && !!_e.dessin && _e.vue === "plongee" && _permisGreffe("fiches"); }
-  function _dessinActif() { return _dessinPermis() && _e.dessin.ouvert && !!_outilArme(); }
+  function _dessinActif() { return _dessinPermis() && !!_outilArme(); }
 
   function _enCours(f) { try { return typeof f === "function" ? f() || null : null; } catch (err) { return null; } }
   function _objetEnCours(famille) {
     return _enCours({ structures: window.getCurrentStructure, zones: window.getCurrentZone,
       roads: window.getCurrentRoad }[famille]);
   }
-  // Objet commencé, barre 🛠️ ouverte : la scène attend sa fin (_majDonnees) et ne le montre pas encore (_collecter).
+  // Objet commencé en vue d'édition : la scène attend sa fin (_majDonnees) et ne le montre pas encore (_collecter).
   function _traceEnCours() {
-    const d = _e && _e.dessin;
-    return !!d && d.ouvert && !!(_objetEnCours("structures") || _objetEnCours("zones") || _objetEnCours("roads"));
+    return _dessinPermis() && !!(_objetEnCours("structures") || _objetEnCours("zones") || _objetEnCours("roads"));
   }
   function _horsTrace(o) {
-    const d = _e && _e.dessin;
-    return !d || !d.ouvert || (o !== _objetEnCours("structures") && o !== _objetEnCours("zones") &&
+    return !_dessinPermis() || (o !== _objetEnCours("structures") && o !== _objetEnCours("zones") &&
       o !== _objetEnCours("roads"));
   }
 
-  function _basculerDessin(ouvrir) {
-    const e = _e, d = e && e.dessin;
-    if (!d || !d.barre) return false;
-    const v = ouvrir === undefined ? !d.ouvert : !!ouvrir;
-    if (v && !_dessinPermis()) return false;
-    if (!v) _desarmerDessin();
-    d.ouvert = v;
-    d.sig = null;
-    _majBarreDessin();
-    return v;
+  // Dessin qui cesse d'être permis (vue d'édition quittée, greffe `fiches: false`) : l'outil s'éteint. ⚠️ contrat :
+  // sur ce passage seulement ; un outil armé en 2D puis la vue ouverte à hauteur d'yeux reste armé (le toucher est
+  // consommé sans fiche, _toucher).
+  function _suivrePermisDessin() {
+    const d = _e && _e.dessin;
+    if (!d) return;
+    const permis = _dessinPermis();
+    if (d.permis && !permis) _desarmerDessin();
+    if (d.permis !== permis) d.sig = null;
+    d.permis = permis;
   }
 
   // Outil éteint comme sur la carte (interface.js > _desactiverTousLesModes : bouton, mode, objet non fini validé ou
@@ -4424,12 +4417,10 @@
     const e = _e, d = e.dessin;
     if (!d || !d.barre) return;
     d.barre.hidden = !_dessinPermis();
-    d.bouton.classList.toggle("kta-actif", d.ouvert);
-    d.bouton.setAttribute("aria-pressed", d.ouvert ? "true" : "false");
     const ouvert = typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() : null;
     d.outils.forEach(function (b) {
       const g = window._groupes && window._groupes[b.dataset.groupe], src = g && g.btnPrincipal;
-      b.hidden = !d.ouvert || !src;
+      b.hidden = !src;
       if (!src) return;
       if (b.innerHTML !== src.innerHTML) b.innerHTML = src.innerHTML;
       if (b.title !== src.title) { b.title = src.title; b.setAttribute("aria-label", src.title); }
@@ -4437,7 +4428,7 @@
       b.classList.toggle("kta-outil-lecture-seule", src.classList.contains("kta-outil-lecture-seule"));
       b.classList.toggle("kta-group-open", ouvert === b.dataset.groupe);
     });
-    d.boutonSol.hidden = !d.ouvert || !_planSolPermis();
+    d.boutonSol.hidden = !_planSolPermis();
     d.boutonSol.classList.toggle("kta-actif", !!d.planSol);
     d.boutonSol.setAttribute("aria-pressed", d.planSol ? "true" : "false");
   }
@@ -4447,9 +4438,9 @@
   function _majDessin() {
     const e = _e, d = e.dessin;
     if (!d || !d.barre) return;
-    if (d.ouvert && !_dessinPermis()) _basculerDessin(false);
+    _suivrePermisDessin();
     const G = window._groupes || {}, o = _outilArme();
-    let sig = (_dessinPermis() ? "1" : "0") + (d.ouvert ? "1" : "0") + (d.planSol ? "1" : "0") + e.niveau +
+    let sig = (_dessinPermis() ? "1" : "0") + (d.planSol ? "1" : "0") + e.niveau +
       (o ? o.famille + ":" + o.type : "") + "|" +
       (typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() || "" : "");
     GROUPES_DESSIN.forEach(function (g) {
@@ -4461,7 +4452,7 @@
       _majBarreDessin();
       // ⚠️ contrat (décision produit) : le rendu galerie ne dessine aucune structure ; armer un outil de structure y
       // passe en mixte (retenu par plan, comme un toucher du bouton), un toast le dit : on voit ce qu'on dessine.
-      if (d.ouvert && o && o.famille === "structures" && e.rendu === "galerie") {
+      if (_dessinPermis() && o && o.famille === "structures" && e.rendu === "galerie") {
         basculerRendu("mixte");
         d.renduBascule = "mixte";
         _toast(_t("vue3d.dessin.renduMixte"), "success");
@@ -4709,8 +4700,8 @@
     e.sale = true;
   }
 
-  // ── Plan au sol (🗺️ de la barre 🛠️, vue plongeante) : l'image du plan sous la scène, pour dessiner sur le relevé ──
-  // ⚠️ contrat (décision produit) : interrupteur de la barre 🛠️, coupé par défaut, gardé tant que la vue est ouverte.
+  // ── Plan au sol (🗺️ de la colonne d'outils, vue d'édition) : l'image du plan sous la scène, pour dessiner dessus ──
+  // ⚠️ contrat (décision produit) : interrupteur de la colonne, coupé par défaut, gardé tant que la vue est ouverte.
   // Une seule texture carrée (PLAN_SOL.px côté : 1024 au doigt, 2048 au pointeur fin) qui couvre le carré de sol
   // (2,4 × le rayon de scène) autour de la place, posée à une position fixe et redessinée quand on s'en écarte d'un
   // quart ou que le recul change l'emprise de plus d'un quart. Source : les images que la carte a déjà (overlays du
@@ -4764,7 +4755,7 @@
   // À chaque image (_majDessin) : plan au sol voulu et permis → texture (re)faite si la place ou l'emprise ont bougé.
   function _majPlanSol() {
     const e = _e, d = e.dessin;
-    const voulu = d.planSol && d.ouvert && _dessinPermis() && _planSolPermis();
+    const voulu = d.planSol && _dessinPermis() && _planSolPermis();
     if (!voulu) { if (d.sol && d.sol.mesh) _libererPlanSol(); return; }
     const c = _centreScene(), s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonScene(), px = c.x, pz = c.z;
     if (s.enCours) return;
@@ -4831,7 +4822,7 @@
     const e = _e, d = e.dessin;
     if (!d) return null;
     const o = _outilArme();
-    return { barre: !!d.barre && !d.barre.hidden, ouvert: d.ouvert, actif: _dessinActif(), outil: o,
+    return { barre: !!d.barre && !d.barre.hidden, actif: _dessinActif(), outil: o,
       boutons: d.outils ? d.outils.filter(function (b) { return !b.hidden; }).map(function (b) {
         return b.dataset.groupe; }) : [],
       poses: d.poses, msPoses: d.msPoses.slice(), fermetures: d.fermetures, msFin: d.msFin, refus: d.refus || null,
@@ -4892,7 +4883,7 @@
     const e = _e, d = e && e.dessin;
     if (!d) return;
     _desarmerDessin();
-    d.ouvert = false;
+    d.permis = false;
     if (e.scene) { _libererApercu(); _libererPlanSol(); }
   }
 
@@ -6222,7 +6213,6 @@
       else if (a === "urgence") _urgence();
       else if (a === "ficheFermer") _fermerFiche();
       else if (a === "ficheVoir") _voirSurCarte();
-      else if (a === "dessin") { ev.preventDefault(); _basculerDessin(); }
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
       else if (a === "place") surPlace();
@@ -6243,7 +6233,7 @@
       const a = b.dataset.v3d;
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
-        a === "ficheVoir" || a === "dessin" || a === "outil" || a === "planSol" || a === "place") return;
+        a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place") return;
       if (_agirBouton(a, b, ev)) return;
       ev.preventDefault();
       _codeBas(a === "ar");
@@ -7464,8 +7454,6 @@
     charge: function () { return !!THREE; },
     greffer: greffer,
     viser: viser,
-    // Barre de dessin 🛠️ (vue plongeante) ouverte ou fermée ; sans argument, bascule. Rend l'état, false si refusé.
-    dessiner: function (oui) { return _e ? _basculerDessin(oui) : false; },
     // Dernier objet montré sur la carte par « Voir sur la carte » (checkup) : { famille, uid, centre, fiche, at }.
     derniereMontre: function () {
       return _derniereMontre ? { famille: _derniereMontre.famille, uid: _derniereMontre.uid,

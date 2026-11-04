@@ -595,7 +595,7 @@ durable ne garde que les objets (points, tracés, zones, structures).
   elle s'ajuste aussi, hors historique.
 - **Purge à la fermeture** : `interface.js > _initPrecisionCursor` intercepte déjà les écritures de `window.modeMesure` ;
   quand il retombe, `HistoryManager.purger("mesure")` en fin de tâche (microtâche : distance → surface éteint puis
-  rallume dans le même clic). Couvre le re-clic du bouton, un autre outil (`_desactiverTousLesModes`), Échap ou 🛠️ en 3D, la vue 3D
+  rallume dans le même clic). Couvre le re-clic du bouton, un autre outil (`_desactiverTousLesModes`), Échap en 3D, la vue 3D
   fermée outil armé, le changement de plan. Filet : `undo()` / `redo()` purgent d'abord si l'outil est fermé.
 - **Pile unique** : retirer des entrées au milieu est sûr, chaque entrée ne restaure que sa catégorie. Zone dessinée
   puis mesure : ⏪ défait les gestes de mesure, puis la zone ; outil fermé, ⏪ défait directement la zone.

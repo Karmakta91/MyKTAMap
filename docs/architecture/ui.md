@@ -2337,7 +2337,7 @@ icônes.
   sous la rangée du haut ; plan à un niveau ou hauteur d'yeux : caché. **Bandeau de mesure** (`.kta-v3d-mesure`,
   `role="status"`) : en bas au milieu, entre la boussole et la grille (au-dessus du pavé au PC), charte du libellé de
   mesure de la carte (surface, texte `--kta-accent-texte`, liseré doré, 15 px, ligne du mode actif marquée). La tuile
-  ⚙️ passe au-dessus de la colonne 🛠️ (`z-index` 900 > `.leaflet-control` 800 : la colonne en porte la classe).
+  ⚙️ passe au-dessus de la colonne d'outils (`z-index` 900 > `.leaflet-control` 800 : la colonne en porte la classe).
   Contrats : `tracking.md` § Vue 3D › Caméra libre, Dessiner en vue d'édition.
 - **Fiche d'un POI** (`.kta-v3d-fiche`) : toucher un panneau de POI (`vue3d.js > _toucher`) ouvre la fiche de la carte
   (`buildPointPopupHtml`) dans un cadre surface à liseré doré, à droite sous le bandeau, défilable, ✕ de 40 px ;
@@ -2353,7 +2353,11 @@ icônes.
   Tab passe par ses champs. 🩸 Fiche neuve sans pointeur 400 ms (`_ficheNeuve`) : le click qui suit un toucher tombait sur
   « Voir sur la carte » ouvert sous le doigt et fermait la vue. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
 - **Dessin en vue d'édition** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, au
-  milieu, montrée en ✏️ Édition seulement : **🛠️** (`kta-actif` enfoncé, `aria-pressed`) puis **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
+  milieu, montrée en ✏️ Édition seulement, toujours active (aucun bouton pour l'ouvrir) ; absente à hauteur d'yeux et
+  pendant une greffe qui coupe l'édition (jeu). 🩸 En paysage bas, style.css passe toute `.leaflet-bar` en
+  `display: flex !important` : le `hidden` de la colonne tient par `#kta-vue3d .kta-v3d-outils[hidden]` en
+  `!important` (sinon les outils restaient à hauteur d'yeux et dans le jeu), et la colonne s'y range en ligne, comme
+  les pilules de la barre 2D. Boutons : **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
   la barre de droite 2D, qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
   mêmes états ; icône, titre, `kta-group-mode-actif` (pastille du type armé) et `kta-outil-lecture-seule` **recopiés
   du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. Puis **🗺️ Plan au sol**

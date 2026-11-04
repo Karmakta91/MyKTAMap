@@ -436,7 +436,6 @@ async function section3D(page) {
       if (deg) deg();
       await images(2);
       r.edition = K.etat().camera.edition;
-      K.dessiner(true);
       r.arme = choisir("mesure", "ui.subaction.mesureDistance") && window.modeMesure === true;
       await images(2);
       r.vide = lignes();

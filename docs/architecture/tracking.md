@@ -1893,18 +1893,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
   fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
-### Dessiner en vue d'édition (🛠️, QCM du 03/11 et du 04/11/2026)
+### Dessiner en vue d'édition (QCM du 03/11 et du 04/11/2026)
 
-- **Où** (décision produit) : en ✏️ Édition seulement ; 🛠️ (haut de la colonne d'outils) montre la barre des groupes de la carte (`_monterOutils`, place :
-  `ui.md` § Vue 3D). Rien ne se dessine tant qu'aucun outil n'est armé (`_dessinActif` : 🛠️ ouvert, vue d'édition, greffe
-  sans `fiches: false`, un mode de la carte armé : `modeStructure`, `modeZone`, `modeRoad`, `modeMesure`). Armé, un
+- **Où** (décision produit) : en ✏️ Édition seulement, la colonne des groupes de la carte est toujours là et active
+  (`_monterOutils`, place : `ui.md` § Vue 3D) : aucun interrupteur à ouvrir, armer un outil suffit, le désarmer suffit
+  pour arrêter. Rien ne se dessine tant qu'aucun outil n'est armé (`_dessinActif` : vue d'édition, greffe sans
+  `fiches: false`, un mode de la carte armé : `modeStructure`, `modeZone`, `modeRoad`, `modeMesure`). Armé, un
   toucher bref de la scène pose un sommet **avant** toute fiche (`_toucher` → `_poserSommet`) ; glisser, pincer, deux
   doigts, molette et Maj + molette restent la caméra (seul le toucher bref, moins de 8 px et 0,5 s, pose : `TAPE`).
   🩸 Durée lue sur `ev.timeStamp` (instant du geste) : vue dézoomée, une image peut prendre des centaines de ms, et un
   clic de 150 ms mesuré au traitement arrivait « tenu 500 ms », refusé sans un mot (clic au sol qui ne posait rien).
   Outil armé, tout toucher refusé l'écrit en console, `[Vue3D] toucher refusé : <raison>` (`_refusDessin`, relu par
-  `etat().dessin.refus`) : appui tenu, pointeur déplacé, autre pointeur posé, vue à hauteur d'yeux, barre ✏️ fermée,
-  greffe `fiches: false`, toucher avalé (il refermait le panneau, 700 ms), aucun sol (au-dessus de l'horizon, avec un
+  `etat().dessin.refus`) : appui tenu, pointeur déplacé, autre pointeur posé, vue à hauteur d'yeux, greffe
+  `fiches: false`, toucher avalé (il refermait le panneau, 700 ms), aucun sol (au-dessus de l'horizon, avec un
   toast `vue3d.dessin.horizon`).
 - **Outils de la carte, jamais copiés** ⚠️ contrat : armement par le panneau du groupe 2D (`ktaOuvrirOutils`, donc
   `_activerStructure` / `_activerZone` / `_activerRoute` / 📐 et leurs refus `ktaEditionRefusee`) ; le toucher rejoue le
@@ -1927,17 +1928,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   carte, jamais sous `KTA_FERMETURE_MIN_PX` = 8 px d'écran pour rester touchable au zoom faible ; un geste de la vue
   3D, `ktaVue3D`, prend les mètres seuls ; plan sans échelle : 5 px plan). Aimantation des tracés (`snapDraw`) : le rayon d'écran de la 2D (`snapDrawPx`, 14)
   converti à la profondeur du point touché, passé en `ktaTolerancePlan` (road.js > `_snapSurSommetProche`).
-- **Coût par sommet** ⚠️ contrat : objet en cours (🛠️ ouvert, `getCurrentStructure` / `Zone` / `Road`), la scène ne
+- **Coût par sommet** ⚠️ contrat : objet en cours (vue d'édition, `getCurrentStructure` / `Zone` / `Road`), la scène ne
   le montre pas (`_collecter` > `_horsTrace`) et `_majDonnees` attend sa fin (`_traceEnCours`) : un sommet = le geste
   de la carte + l'aperçu (`_majApercu` : rubans de 0,12 m et disques à la couleur du canon, rond doré du 1er sommet,
   matériau sans profondeur, un seul maillage refait sur signature). Fin de l'objet (1er sommet retouché, ✅, Échap) :
   une reconstruction, sans attendre la fin de rafale ; les tuiles de même contenu à plus de 4 m de l'objet gardent
   leur géométrie (`_noterFin`, `_reprendreTuiles` ; pourquoi 4 m : un pilier ouvre les tubes et décide zones et POI à
   3 m). Mesures (`KTA_V3D_PERF=dessin`, plan dense, iPhone émulé) : `ETUDE_VUE_3D.md` § Mesures du dessin.
-- **Fin, extinction** : gestes de la 2D (1er sommet, ✅ Fermer / Valider du panneau) ; 🛠️, Échap (après tuile et
-  hauteur, avant la fiche), sortir de la vue d'édition (`_appliquerVue`) et fermer la vue (`_quitterDessin`) éteignent par
-  `_desactiverTousLesModes` de la carte : un objet non fini est validé s'il a assez de points, abandonné sinon
-  (toasts de la 2D). Un objet fini n'est jamais perdu.
+- **Fin, extinction** : gestes de la 2D (1er sommet, ✅ Fermer / Valider du panneau) ; le bouton de l'outil, Échap (après
+  tuile et hauteur, avant la fiche), sortir de la vue d'édition ou une greffe `fiches: false` (`_suivrePermisDessin`)
+  et fermer la vue (`_quitterDessin`) éteignent par `_desactiverTousLesModes` de la carte : un objet non fini est
+  validé s'il a assez de points, abandonné sinon (toasts de la 2D). Un objet fini n'est jamais perdu.
 - **Rendu** (décision produit) : le rendu galerie ne dessine aucune structure ; armer un outil de structure y passe en
   **mixte** (`basculerRendu`, retenu par plan) avec un toast (`vue3d.dessin.renduMixte`) : on voit ce qu'on dessine.
 - **Mesure 📐** : distance et surface de `measure.js` (`calculDistance`, `calculSurface`), ruban rouge au sol et

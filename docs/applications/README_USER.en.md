@@ -697,11 +697,11 @@ Where and how a way through is drawn:
 - Hiding only removes the drawing: you still bump into pillars and walls, and 🪜 is still offered.
 - The route stays shown, as on the map. Image layers have no effect in 3D.
 
-#### 🛠️ Drawing in edit view
+#### ✏️ Drawing in edit view
 
-- In the **✏️ Edit** view, the **🛠️** button (on the right, in the middle) shows the map tools, in the same order: **📐 Measurement**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
+- In the **✏️ Edit** view, the map tools are always there, on the right in the middle, in the same order: **📐 Measurement**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
 - Each button opens **the same menu as on the map**: pillars, walls, working faces, your custom types, ➕ new type, ✅ Close / Validate.
-- Nothing is drawn until a tool is chosen. With a tool chosen, **a tap places a point** where you touch. Dragging, pinching and the mouse wheel still move the view, without placing a point.
+- Nothing is drawn until a tool is chosen. **Choosing a tool is enough**: a tap places a point where you touch. Dragging, pinching and the mouse wheel still move the view, without placing a point.
 - **Closing a pillar, a wall or a zone**: tap the **gold circle** of the first point, or ✅ in the menu. For a thin wall, zoom in first: the circle grows with the view.
 - A path or a working face ends with ✅. The tool stays chosen so you can carry on, as on the map.
 - The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
@@ -709,7 +709,7 @@ Where and how a way through is drawn:
 - **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.
 - **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey (level 0, the base plan).
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
-- **🛠️, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
+- **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
 - In read-only mode, the drawing tools stay greyed out, as on the map; 📐 Measurement stays allowed.
 
 > ⚠️ The 3D view shows the **map**, not the real tunnel. Shapes and heights come from the survey (tunnels in Tunnels and Mixed modes: fixed widths per trace type), your position from the tracker, which drifts. Do not trust it more than the map.

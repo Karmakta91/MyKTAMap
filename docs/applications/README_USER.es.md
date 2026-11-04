@@ -697,11 +697,11 @@ Dónde y cómo se dibuja un paso:
 - Ocultar solo quita el dibujo: sigues chocando con los pilares y las paredes, y 🪜 se sigue ofreciendo.
 - El itinerario sigue visible, como en el mapa. Las capas de imagen no tienen efecto en 3D.
 
-#### 🛠️ Dibujar en vista de edición
+#### ✏️ Dibujar en vista de edición
 
-- En la vista **✏️ Edición**, el botón **🛠️** (a la derecha, en el centro) muestra las herramientas del mapa, en el mismo orden: **📐 Medición**, **🛣️ Trazados**, **⬛ Zonas**, **🏛️ Estructuras**. A la altura de los ojos, no se dibuja.
+- En la vista **✏️ Edición**, las herramientas del mapa están siempre ahí, a la derecha en el centro, en el mismo orden: **📐 Medición**, **🛣️ Trazados**, **⬛ Zonas**, **🏛️ Estructuras**. A la altura de los ojos, no se dibuja.
 - Cada botón abre **el mismo menú que en el mapa**: pilares, muros, frentes de corte, tus tipos personalizados, ➕ nuevo tipo, ✅ Cerrar / Validar.
-- No se dibuja nada mientras no elijas una herramienta. Con una herramienta elegida, **un toque pone un punto** donde tocas. Deslizar, pellizcar y la rueda siguen moviendo la vista, sin poner puntos.
+- No se dibuja nada mientras no elijas una herramienta. **Elegir una herramienta basta**: un toque pone un punto donde tocas. Deslizar, pellizcar y la rueda siguen moviendo la vista, sin poner puntos.
 - **Cerrar un pilar, un muro o una zona**: toca el **círculo dorado** del primer punto, o ✅ en el menú. Para un muro fino, acerca la vista antes: el círculo crece con ella.
 - Un trazado o un frente se termina con ✅. La herramienta sigue elegida para encadenar, como en el mapa.
 - El objeto es **el del mapa**: misma ficha, mismos colores, ⏪ Deshacer. Toma **el nivel de la 3D**; el mapa conserva el suyo.
@@ -709,7 +709,7 @@ Dónde y cómo se dibuja un paso:
 - **📐 Medición**: la distancia (y la superficie) se muestra en una **franja abajo de la vista**, actualizada en cada punto, como en el mapa; la longitud de cada segmento y el ángulo en cada punto también se muestran en la 3D, legibles.
 - **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, donde miras, para dibujar sobre el levantamiento (nivel 0, el del plano base).
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
-- **🛠️, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
+- **Volver a tocar la herramienta, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
 - En solo lectura, las herramientas de dibujo quedan en gris, como en el mapa; 📐 Medición sigue permitida.
 
 > ⚠️ La 3D muestra el **plano**, no la galería real. Formas y alturas vienen del levantamiento (las galerías de los modos Galería y Mixto: anchuras fijas por tipo de trazado), tu posición del tracker, que deriva. No te fíes más que del mapa.

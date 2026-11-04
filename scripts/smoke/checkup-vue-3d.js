@@ -253,7 +253,6 @@ async function mesuresDessin(page, depart) {
         cv.dispatchEvent(new PointerEvent("pointerup", o));
         await images(2);
       };
-      K.dessiner(true);
       window.toggleStructureMode("pilier-1");
       const n0 = K.etat().donnees.refaites;
       for (const c of [[2.5, -0.5], [3.5, -0.5], [3.5, 0.5], [2.5, 0.5]]) await tap(c[0], c[1]);
@@ -1336,7 +1335,6 @@ async function capturesDessin(page) {
       cv.dispatchEvent(new PointerEvent("pointerdown", o)); cv.dispatchEvent(new PointerEvent("pointerup", o));
       await new Promise(function (ok) { setTimeout(ok, 60); });
     };
-    K.dessiner(true);
     document.querySelector('#kta-vue3d [data-v3d="planSol"]').click();
     document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="structures"]').click();
   });
@@ -1458,7 +1456,7 @@ async function sectionZonesNiveaux(page) {
 // marcher et hauteur d'yeux ramènent la caméra ; deux doigts tournés = cap ; bandeau de mesure (2 sommets, 3e, angle
 // droit = 90° comme la 2D, surface, désarmé = caché) ; lettres d'un panneau jamais sous 13 px, fiche à taille normale ;
 // survol (pilier, cavage fermé traversés en plongée, bloqués à hauteur d'yeux, place dégagée au retour) ; plan au sol
-// visible (pixels lus dans une capture), sol uni 🧱 coupé ; tuile ⚙️ au-dessus de la colonne 🛠️, curseurs entiers.
+// visible (pixels lus dans une capture), sol uni 🧱 coupé ; tuile ⚙️ au-dessus de la colonne d'outils, curseurs entiers.
 async function sectionCamera(page) {
   const R = await page.evaluate(async function () {
     const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
@@ -1640,7 +1638,6 @@ async function sectionCamera(page) {
 
     // ── Mesure : glisser ne pose rien, le tap qui suit pose sous le doigt ; bandeau, segments, angle droit ──
     await ouvrir("structures", 0, 0, 0);
-    K.dessiner(true);
     r.arme = choisir("mesure", "ui.subaction.mesureDistance") && window.modeMesure === true;
     await images(2);
     r.bandeauVide = K.etat().mesure;
@@ -1687,7 +1684,6 @@ async function sectionCamera(page) {
     await images(2);
     r.desarme = K.etat().mesure;
     if (window.resetMesure) window.resetMesure();
-    K.dessiner(false);
 
     // ── Survol : en plongée, pilier et cavage fermé traversés ; à hauteur d'yeux, ils bloquent ──
     await ouvrir("structures", 6, -8, 90);
@@ -1736,7 +1732,6 @@ async function sectionCamera(page) {
     // ── Plan au sol 🗺️ au point visé ; 🧱 coupé = sol uni ──
     window.setVue3DTextures(true);
     await ouvrir("structures", 0, 0, 0);
-    K.dessiner(true);
     K.panner(20, 0);
     await images(2);
     document.querySelector('#kta-vue3d [data-v3d="planSol"]').click();
@@ -1938,7 +1933,7 @@ async function sectionCameraPixels(page) {
           c.width = w; c.height = h;
           const g = c.getContext("2d");
           g.drawImage(img, 0, 0);
-          // Bande de sol : 20 → 60 % de la largeur, 45 → 60 % de la hauteur (ni boutons ni colonne 🛠️).
+          // Bande de sol : 20 → 60 % de la largeur, 45 → 60 % de la hauteur (ni boutons ni colonne d'outils).
           const d = g.getImageData(Math.round(w * 0.2), Math.round(h * 0.45), Math.round(w * 0.4), Math.round(h * 0.15)).data;
           let n = 0, sr = 0, sg = 0, sb = 0, s2 = 0;
           for (let i = 0; i < d.length; i += 4 * 7) { n++; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; s2 += d[i] * d[i]; }
@@ -1963,7 +1958,6 @@ async function sectionCameraPixels(page) {
     window.setPlanRenduVue3D(null, "structures");
     await K.ouvrir({ depart: { x: W / 2, y: H / 2, cap: 0, niveau: 0 }, commandes: "joystick" });
     K.basculerVue();
-    K.dessiner(true);
   });
   const sansPlan = await mesure();
   await capture(page, "camera-0-sol-grain");
@@ -2010,6 +2004,119 @@ async function sectionCameraPixels(page) {
     "🧱 coupé : sol noir, sans motif (pixels sombres, écart plus faible qu'avec le grain)", { grain: sansPlan, uni: uni });
   verifier(planSurNoir.r + planSurNoir.g + planSurNoir.b > uni.r + uni.g + uni.b + 60,
     "🧱 coupé : le plan au sol reste visible sur le sol noir", { noir: uni, plan: planSurNoir });
+}
+
+// Colonne d'outils (vue3d.js > _monterOutils) visible en vue d'édition SEULEMENT, aux trois tailles (PC, téléphone,
+// paysage bas) : absente à hauteur d'yeux, présente en édition, masquée au retour, absente pendant le jeu (greffe
+// `plongee: false`, `fiches: false`). 🩸 En paysage bas, style.css force `.leaflet-bar { display: flex !important }`.
+// Jeu lancé (add-on mkmg) : ses éléments ne chevauchent aucune commande de la vue, à chaque taille (§ 23 au PC seul).
+const TAILLES_COLONNE = [{ width: 1200, height: 800 }, { width: 393, height: 852 }, { width: 852, height: 393 }];
+async function sectionColonneEtJeu(page, MX) {
+  const vp0 = page.viewportSize();
+  const lire = function () {
+    return page.evaluate(async function () {
+      for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      const c = document.querySelector("#kta-vue3d .kta-v3d-outils");
+      const vus = c ? Array.prototype.slice.call(c.children).filter(function (a) { return a.getClientRects().length; })
+        : [];
+      return { vue: window.KtaVue3D.etat().vue, colonne: !!c && c.getClientRects().length > 0, boutons: vus.length };
+    });
+  };
+  const chevauchements = function () {
+    return page.evaluate(function () {
+      const boite = function (el) { return el.getBoundingClientRect(); };
+      const commandes = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *, " +
+        "#kta-vue3d .kta-v3d-mode-indic, #kta-vue3d .kta-v3d-boussole, #kta-vue3d .kta-v3d-pad > *, " +
+        "#kta-vue3d .kta-v3d-incl > *, #kta-vue3d .kta-v3d-outils > *"))
+        .filter(function (el) { return el.getClientRects().length > 0; });
+      const jeu = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-greffe [class*='mkmg-']"))
+        .filter(function (el) {
+          const b = boite(el);
+          const plein = b.width >= window.innerWidth - 1 && b.height >= window.innerHeight * 0.8 &&
+            getComputedStyle(el).pointerEvents === "none";
+          return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== "hidden" && !plein;
+        });
+      const out = [];
+      jeu.forEach(function (j) {
+        const bj = boite(j);
+        commandes.forEach(function (c) {
+          const bc = boite(c);
+          if (bc.width && bj.left < bc.right && bj.right > bc.left && bj.top < bc.bottom && bj.bottom > bc.top) {
+            out.push(j.className + " / " + (c.getAttribute("data-v3d") || c.className));
+          }
+        });
+      });
+      return { jeu: jeu.length, chevauche: out };
+    });
+  };
+  await page.evaluate(async function (a) {
+    const K = window.KtaVue3D;
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
+    window.setRoads([{ uid: "rd_col", type: "principal", level: 0,
+      points: [{ x: (a.ox - 80) * a.sc, y: a.oz * a.sc }, { x: (a.ox + 80) * a.sc, y: a.oz * a.sc }] }]);
+    window.KtaGalerie.invalider();
+    await K.ouvrir({ depart: { x: (a.ox - 30) * a.sc, y: a.oz * a.sc, cap: 90 }, commandes: "pave" });
+    if (K.etat().vue === "plongee") K.basculerVue();
+  }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
+  const fautes = [];
+  for (const t of TAILLES_COLONNE) {
+    const nom = t.width + " × " + t.height;
+    await page.setViewportSize(t);
+    await page.waitForTimeout(300);
+    const yeux = await lire();
+    await page.evaluate(function () { window.KtaVue3D.basculerVue(); });
+    const edition = await lire();
+    await page.evaluate(function () { window.KtaVue3D.basculerVue(); });
+    const retour = await lire();
+    if (yeux.vue !== "yeux" || yeux.colonne) fautes.push(nom + " hauteur d'yeux : " + JSON.stringify(yeux));
+    if (edition.vue !== "plongee" || !edition.colonne || edition.boutons < 4) {
+      fautes.push(nom + " édition : " + JSON.stringify(edition));
+    }
+    if (retour.vue !== "yeux" || retour.colonne) fautes.push(nom + " retour : " + JSON.stringify(retour));
+  }
+  verifier(fautes.length === 0, "colonne d'outils en vue d'édition seulement (PC, téléphone, paysage) : absente à " +
+    "hauteur d'yeux, présente en édition, masquée au retour", fautes);
+  // Jeu : lancé par le code « six vers le bas », facile, sans installation ni tracker.
+  const lance = await page.evaluate(async function () {
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const q = function (s) { return document.querySelector(s); };
+    const appui = function (b) {
+      b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 2 }));
+      window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+    };
+    appui(q('#kta-vue3d [data-v3d="av"]'));
+    for (let k = 0; k < 6; k++) { appui(q('#kta-vue3d [data-v3d="ar"]')); await pause(30); }
+    for (let k = 0; k < 40 && !q("#kta-confirm-oui"); k++) await pause(50);
+    if (!q("#kta-confirm-oui")) return false;
+    q("#kta-confirm-oui").click();
+    const M = function () { return window.KtaAddons && window.KtaAddons.mkmg; };
+    for (let k = 0; k < 60 && !(M() && M().etat().cible); k++) await pause(50);
+    await pause(200);
+    return !!window.KtaVue3D.etat().greffe;
+  });
+  const jeu = [];
+  for (const t of lance ? TAILLES_COLONNE : []) {
+    const nom = t.width + " × " + t.height;
+    await page.setViewportSize(t);
+    await page.waitForTimeout(400);
+    const c = await lire(), ch = await chevauchements();
+    if (c.colonne) jeu.push(nom + " : colonne d'outils visible pendant le jeu");
+    if (!ch.jeu || ch.chevauche.length) jeu.push(nom + " : " + JSON.stringify(ch));
+    if (t.width === 852) await capture(page, "jeu-paysage");
+  }
+  verifier(lance && jeu.length === 0, "jeu lancé (PC, téléphone, paysage) : pas de colonne d'outils, ses éléments " +
+    "ne chevauchent aucune commande de la vue", { lance: lance, fautes: jeu });
+  await page.setViewportSize(vp0);
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    const n = document.querySelector(".kta-modal-overlay");
+    if (n) n.remove();
+    window.setRoads([]);
+    window.setEditorPoints(window.__v3dPoints || []);
+    window.KtaGalerie.invalider();
+  });
 }
 
 // Plan au sol 🗺️ sur un écran DENSE (téléphone : 393 × 852, ×3, tactile), vue IMMOBILE après l'interrupteur, pour les
@@ -2131,7 +2238,7 @@ async function sectionPlanSolEcranDense(nav) {
   }
 }
 
-// Tuile ⚙️ ouverte en vue d'édition : au-dessus de la colonne 🛠️ (aucun point commun où la colonne passe dessus),
+// Tuile ⚙️ ouverte en vue d'édition : au-dessus de la colonne d'outils (aucun point commun où la colonne passe dessus),
 // valeurs des curseurs entières dans la tuile.
 async function sectionTuileColonne(page) {
   const r = await page.evaluate(async function () {
@@ -2139,7 +2246,6 @@ async function sectionTuileColonne(page) {
     const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
     await K.ouvrir({ depart: { x: W / 2, y: H / 2, cap: 0, niveau: 0 }, commandes: "joystick" });
     K.basculerVue();
-    K.dessiner(true);
     await new Promise(function (ok) { setTimeout(ok, 200); });
     document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
     await new Promise(function (ok) { setTimeout(ok, 100); });
@@ -2157,7 +2263,7 @@ async function sectionTuileColonne(page) {
       }
     }
     // Paysage bas : la tuile défile ; chaque valeur est amenée dans la tuile avant d'être regardée.
-    // Sélecteur de niveau (plan à deux niveaux simulé) : ni sous la colonne 🛠️, ni sous la tuile, ni sous la grille.
+    // Sélecteur de niveau (plan à deux niveaux simulé) : ni sous la colonne d'outils, ni sous la tuile, ni sous la grille.
     const occ = window.ktaNiveauxOccupes, ml = window.APP_CONFIG.multiLevel;
     window.ktaNiveauxOccupes = function () { return [-1, 0]; };
     window.APP_CONFIG.multiLevel = true;
@@ -2186,11 +2292,11 @@ async function sectionTuileColonne(page) {
       vh: window.innerHeight };
   });
   verifier(r.niveau.visible && !r.niveau.colonne && !r.niveau.tuile && !r.niveau.zoom,
-    "sélecteur de niveau (" + r.vw + " × " + r.vh + ") : ni sur la colonne 🛠️ ni sur la grille + −, caché sous la " +
+    "sélecteur de niveau (" + r.vw + " × " + r.vh + ") : ni sur la colonne d'outils ni sur la grille + −, caché sous la " +
     "tuile ⚙️ ouverte",
     r.niveau);
   verifier(r.colonneDessus === 0 && r.valeurs.length >= 3 && r.valeurs.every(function (v) { return v.entier && v.dessus; }),
-    "tuile ⚙️ ouverte en vue d'édition (" + r.vw + " × " + r.vh + ") : au-dessus de la colonne 🛠️, valeurs des " +
+    "tuile ⚙️ ouverte en vue d'édition (" + r.vw + " × " + r.vh + ") : au-dessus de la colonne d'outils, valeurs des " +
     "curseurs entières", r);
 }
 
@@ -2243,7 +2349,6 @@ async function sectionNiveauEdition(page) {
       trackerNiveau: window.getTrackerLevel(), bandeau: e1.bandeauNiveau, mode: e1.mode,
       manquantes: e1.portee.tuiles.manquantes };
     // Tracé dessiné en vue d'édition, après le changement : au niveau de la 3D.
-    K.dessiner(true);
     const choisir = function (groupe, cle) {
       const bt = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="' + groupe + '"]');
       if (bt) bt.click();
@@ -2281,7 +2386,6 @@ async function sectionNiveauEdition(page) {
     const nv = window.getRoads().filter(function (x) { return avR.indexOf(x.uid) < 0; })[0];
     out.dessin = nv ? { niveau: nv.level, n: nv.points.length } : null;
     window._desactiverTousLesModes();
-    K.dessiner(false);
     // Retour à hauteur d'yeux, place mise dans le pilier du −1 : dégagée.
     K.placer(P(0, 0).x, P(0, 0).y, 0);
     const dg0 = K.etat().degagements;
@@ -2518,12 +2622,12 @@ async function sectionDessin(page) {
     await ouvrir("mixte", 0, 0);
     K.basculerVue();
     await images(2);
-    r.yeux = { barre: K.etat().dessin.barre, refuse: K.dessiner(true) === false };
+    r.yeux = { barre: K.etat().dessin.barre, bouton: !!document.querySelector('#kta-vue3d [data-v3d="dessin"]') };
     K.basculerVue();
     await images(2);
     const ed0 = K.etat().dessin;
     r.plongee = { barre: ed0.barre, boutons: ed0.boutons.slice() };
-    r.ouvre = K.dessiner(true);
+    r.sansInterrupteur = !document.querySelector('#kta-vue3d [data-v3d="dessin"]');
     const barreEl = document.querySelector("#kta-vue3d .kta-v3d-outils");
     const a0 = barreEl && barreEl.querySelector('[data-groupe="structures"]');
     const src = window._groupes.structures.btnPrincipal;
@@ -2556,7 +2660,11 @@ async function sectionDessin(page) {
     const coins = [[2, -6], [4, -6], [4, -4], [2, -4]];
     const avantS = uids(window.getStructures());
     const n0 = K.etat().donnees.refaites;
-    for (const c of coins) await tap(ecran(c[0], c[1]));
+    // Outil armé directement (aucun interrupteur à ouvrir) : le PREMIER toucher pose déjà.
+    await tap(ecran(coins[0][0], coins[0][1]));
+    const prem = window.getCurrentStructure();
+    r.premierToucher = { points: prem ? prem.points.length : 0, refus: K.etat().dessin.refus };
+    for (const c of coins.slice(1)) await tap(ecran(c[0], c[1]));
     await images(2);
     const enCours = window.getCurrentStructure();
     r.enCours = { points: enCours ? enCours.points.length : 0, niveau: enCours ? enCours.level : null,
@@ -2704,7 +2812,6 @@ async function sectionDessin(page) {
     K.basculerVue();
     await images(2);
     // Échap éteint l'outil armé (la vue reste ouverte).
-    K.dessiner(true);
     choisir("structures", "ui.struct.pilier1");
     const avantEchap = { arme: !!window.modeStructure, actif: K.etat().dessin.actif, recouverte: K.etat().recouverte,
       centre: (function () {
@@ -2728,7 +2835,7 @@ async function sectionDessin(page) {
     await ouvrir("mixte", 0, 0);
     const deg = K.greffer({ nom: "v3d-dessin-coupe", scene: function (ctx) { ctx.regler({ fiches: false }); } });
     await images(2);
-    const refus = K.dessiner(true);
+    const refus = !!K.etat().dessin.barre;
     window.toggleStructureMode("pilier-1");
     const nG = window.getStructures().length;
     await tap(ecran(1, 1)); await tap(ecran(2, 1)); await tap(ecran(2, 2));
@@ -2742,7 +2849,6 @@ async function sectionDessin(page) {
     // ── Lecture seule (extension) : groupes grisés recopiés, aucun outil de dessin armé ; 📐 reste permis ──
     window.ktaEditionRefusee = function () { return true; };
     window.ktaMajOutilsLectureSeule();
-    K.dessiner(true);
     await images(2);
     const bS = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="structures"]');
     bS.click();
@@ -2760,7 +2866,6 @@ async function sectionDessin(page) {
     const bSol = function () { return document.querySelector('#kta-vue3d [data-v3d="planSol"]'); };
     r.solMoins1 = !!bSol() && bSol().hidden;
     await ouvrir("mixte", 0, 0, 0);
-    K.dessiner(true);
     await images(2);
     const solVisible = !bSol().hidden;
     const tex0 = K.etat().dessin.textures;
@@ -2775,7 +2880,6 @@ async function sectionDessin(page) {
 
     // ── Rendu galerie : armer une structure passe en mixte (on voit ce qu'on dessine), toast ──
     await ouvrir("galerie", 0, 0);
-    K.dessiner(true);
     choisir("structures", "ui.struct.pilier1");
     await images(3);
     r.galerie = { rendu: K.etat().rendu, bascule: K.etat().dessin.renduBascule, retenu: window.getPlanRenduVue3D() };
@@ -2791,7 +2895,6 @@ async function sectionDessin(page) {
       const dits = [], orig = window.OOMGuard.showToast;
       window.OOMGuard.showToast = function (m, t) { dits.push(String(m)); return orig.apply(this, arguments); };
       try {
-        K.dessiner(true);
         choisir("structures", "ui.struct.pilier1");
         await images(3);
         const avP = uids(window.getStructures()), nP = K.etat().donnees.refaites;
@@ -2873,15 +2976,17 @@ async function sectionDessin(page) {
       return Math.hypot(q[0] - attendus[i][0], q[1] - attendus[i][1]) <= tol;
     });
   };
-  verifier(!r.yeux.barre && r.yeux.refuse, "dessin : ni barre ni 🛠️ à hauteur d'yeux", r.yeux);
-  verifier(r.plongee.barre && r.ouvre === true && JSON.stringify(r.boutons) === JSON.stringify(r.ordre2d) &&
+  verifier(!r.yeux.barre && !r.yeux.bouton, "dessin : pas de colonne d'outils à hauteur d'yeux", r.yeux);
+  verifier(r.plongee.barre && r.sansInterrupteur && JSON.stringify(r.boutons) === JSON.stringify(r.ordre2d) &&
     JSON.stringify(r.boutons) === JSON.stringify(["mesure", "traces", "zones", "structures"]),
-    "vue d'édition : 🛠️ montre 📐 🛣️ ⬛ 🏛️ (ordre de la barre de droite 2D)", { plongee: r.plongee, boutons: r.boutons,
+    "vue d'édition : colonne 📐 🛣️ ⬛ 🏛️ toujours là, sans interrupteur 🛠️ (ordre de la barre de droite 2D)", { plongee: r.plongee, boutons: r.boutons,
     ordre2d: r.ordre2d });
   verifier(r.style && r.style.w === r.style.wSrc && r.style.h === r.style.hSrc && r.style.icone && r.style.titre &&
     r.style.cible[0] === r.style.jeton && r.style.cible[1] === r.style.jeton,
     "boutons de la barre : taille, icône et titre de ceux de la carte, zone de toucher de --kta-cible-toucher", r.style);
-  verifier(r.sansOutil.structures === 0 && r.sansOutil.poses === 0, "🛠️ ouvert sans outil armé : un toucher ne pose rien",
+  verifier(r.premierToucher.points === 1 && !r.premierToucher.refus,
+    "vue d'édition, outil armé directement : le premier toucher pose un sommet", r.premierToucher);
+  verifier(r.sansOutil.structures === 0 && r.sansOutil.poses === 0, "vue d'édition sans outil armé : un toucher ne pose rien",
     r.sansOutil);
   verifier(r.panneau && String(r.panneau.z) === "99999" && r.panneau.dessus && !r.panneau.jonction &&
     !r.panneau.effacer && r.panneau.fermer,
@@ -2933,7 +3038,7 @@ async function sectionDessin(page) {
     r.planSol.presse === "false" && r.planSol.coupe && r.planSol.coupe.voulu === false,
     "plan au sol 🗺️ : caché au −1, au 0 une texture du fond (une de plus), libérée une fois coupé", r.planSol);
   verifier(r.parcours.length === 2 && r.parcours.every(function (x) { return x.cree && !x.abandon; }),
-    "parcours normal (Galerie puis Mixte) : pilier armé depuis 🛠️, 3 sommets, fermé, vue fermée → aucun toast « abandonné »",
+    "parcours normal (Galerie puis Mixte) : pilier armé depuis la colonne, 3 sommets, fermé, vue fermée → aucun toast « abandonné »",
     r.parcours);
   verifier(r.galerie.rendu === "mixte" && r.galerie.bascule === "mixte" && r.galerie.retenu === "mixte",
     "rendu galerie : armer une structure passe en mixte (retenu), on voit ce qu'on dessine", r.galerie);
@@ -3341,7 +3446,7 @@ async function sectionDessin(page) {
             "ui.refonte.counter_sortie_title", "vue3d.reglages",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.zoomPlus", "vue3d.inclinaisonPlus", "vue3d.zoomMoins", "vue3d.inclinaisonMoins",
-            "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "vue3d.dessin.titre", "ui.group.mesure", "ui.group.traces", "ui.group.zones", "ui.group.structures",
+            "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "ui.group.mesure", "ui.group.traces", "ui.group.zones", "ui.group.structures",
             "vue3d.dessin.planSol", "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer",
             "vue3d.lampeJourAide"].map(function (k) {
@@ -7532,9 +7637,9 @@ async function sectionDessin(page) {
           await pause(80);
         }
         r.ficheDoigt = { cible: cible && cible.genre, fiche: !!K.etat().fiche, reglage: K.etat().greffe.reglage.fiches };
-        // Commandes de la vue venues après le jeu : barre ✏️, lampe, faisceau et Plein jour restent fermées.
+        // Commandes de la vue venues après le jeu : colonne d'outils, lampe, faisceau et Plein jour restent fermées.
         const jour = q("#kta-vue3d .kta-v3d-btn-jour");
-        r.commandes = { dessin: K.dessiner(true), lampe: K.reglerLampe(40), faisceau: K.reglerFaisceau(30),
+        r.commandes = { dessin: !!(K.etat().dessin && K.etat().dessin.barre), lampe: K.reglerLampe(40), faisceau: K.reglerFaisceau(30),
           jour: K.reglerPleinJour(true), boutonJour: !!jour && jour.disabled };
         K.placer(d.x, d.y, 90);
         X.poser("egare", P(-25, 0).x, P(-25, 0).y);
@@ -7789,7 +7894,8 @@ async function sectionDessin(page) {
         "jeu : tir au doigt sur un objet de la scène → aucune fiche (regler({ fiches: false }))", MK.ficheDoigt);
       verifier(MK.commandes.dessin === false && MK.commandes.lampe === false && MK.commandes.faisceau === false &&
         MK.commandes.jour === false && MK.commandes.boutonJour,
-        "jeu : barre 🛠️, lampe, faisceau et Plein jour refusés pendant la partie", MK.commandes);
+        "jeu : colonne d'outils, lampe, faisceau et Plein jour refusés pendant la partie", MK.commandes);
+      await sectionColonneEtJeu(page, MX);
       verifier(MK.viseur.cap === 100 && MK.viseur.apres === 90,
         "jeu : viseur à la souris — regard rejoué par la vue (40 px → 10°), glisser clos (pas de doigt resté posé)",
         MK.viseur);
