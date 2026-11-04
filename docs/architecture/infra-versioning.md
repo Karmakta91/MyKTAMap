@@ -297,7 +297,7 @@ Le preset de vitesse le plus lent (2 km/h) de l'échelle partagée Itinéraire +
 | Emoji | 🍺 | 🤕 |
 | Hint | « Très lent, confus, désorienté » | « Progression entravée, très lent, terrain accidenté » |
 
-**Échelle complète inchangée** : `blesse` (2) / `lente` (3, défaut de l'itinéraire) / `normale` (5, défaut de Perdu) / `rapide` (7).
+**Échelle complète inchangée** : `blesse` (2) / `lente` (3, défaut de l'itinéraire et de Perdu) / `normale` (5) / `rapide` (7).
 
 **⚠️ Migration localStorage** : la clé `bourre` était persistée dans 2 slots (`myktamap_lost_preset` + `myktamap_iti_walking_preset`). Micro-migration au boot dans `lostMode.js > _initialPreset` et `interface.js > _getItiSpeedPreset` : `if (v === "bourre") { v = "blesse"; localStorage.setItem(...) }`. Pattern transparent — l'user garde son réglage. À ne PAS retirer avant plusieurs versions (sinon les vieux clients perdent le preset → fallback `normale`).
 
