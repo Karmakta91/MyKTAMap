@@ -4110,7 +4110,8 @@
   function _monterOutils(ov) {
     const e = _e;
     e.dessin = { ouvert: false, sig: null, apSig: null, apercu: null, etiquettes: [], poses: 0, msPoses: [],
-      fermetures: 0, finT: 0, msFin: null, avaleJusqua: 0, renduBascule: null, barre: null };
+      fermetures: 0, finT: 0, msFin: null, avaleJusqua: 0, renduBascule: null, barre: null, planSol: false,
+      sol: null, suivi: null };
     if (!window._groupes) return;
     const barre = document.createElement("div");
     barre.className = "leaflet-bar leaflet-control kta-v3d-outils";
@@ -4134,6 +4135,13 @@
     d.bouton.setAttribute("aria-label", _t("vue3d.dessin.titre"));
     d.bouton.setAttribute("aria-pressed", "false");
     d.outils = GROUPES_DESSIN.map(function (g) { const b = lien("outil", g); b.hidden = true; return b; });
+    // 🗺️ Plan au sol (_majPlanSol) : interrupteur, après les groupes.
+    d.boutonSol = lien("planSol");
+    d.boutonSol.textContent = "🗺️";
+    d.boutonSol.title = _t("vue3d.dessin.planSol");
+    d.boutonSol.setAttribute("aria-label", _t("vue3d.dessin.planSol"));
+    d.boutonSol.setAttribute("aria-pressed", "false");
+    d.boutonSol.hidden = true;
     ov.appendChild(barre);
     d.barre = barre;
   }
@@ -4205,6 +4213,9 @@
       b.classList.toggle("kta-outil-lecture-seule", src.classList.contains("kta-outil-lecture-seule"));
       b.classList.toggle("kta-group-open", ouvert === b.dataset.groupe);
     });
+    d.boutonSol.hidden = !d.ouvert || !_planSolPermis();
+    d.boutonSol.classList.toggle("kta-actif", !!d.planSol);
+    d.boutonSol.setAttribute("aria-pressed", d.planSol ? "true" : "false");
   }
 
   // À chaque image, sur signature : barre suivie (outil armé ou éteint par le panneau, une annulation, une modale),
@@ -4214,7 +4225,8 @@
     if (!d || !d.barre) return;
     if (d.ouvert && !_dessinPermis()) _basculerDessin(false);
     const G = window._groupes || {}, o = _outilArme();
-    let sig = (_dessinPermis() ? "1" : "0") + (d.ouvert ? "1" : "0") + (o ? o.famille + ":" + o.type : "") + "|" +
+    let sig = (_dessinPermis() ? "1" : "0") + (d.ouvert ? "1" : "0") + (d.planSol ? "1" : "0") + e.niveau +
+      (o ? o.famille + ":" + o.type : "") + "|" +
       (typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() || "" : "");
     GROUPES_DESSIN.forEach(function (g) {
       const b = G[g] && G[g].btnPrincipal;
@@ -4236,6 +4248,7 @@
     if (d.suivi && d.suivi !== cur) _noterFin(d.suivi);
     d.suivi = cur;
     _majApercu(false);
+    _majPlanSol();
   }
 
   // Groupe touché dans la barre : son panneau 2D, ancré au bouton ; retouché, fermé. Groupe grisé (lecture seule) :
@@ -4407,6 +4420,112 @@
     e.sale = true;
   }
 
+  // ── Plan au sol (🗺️ de la barre ✏️, vue plongeante) : l'image du plan sous la scène, pour dessiner sur le relevé ──
+  // ⚠️ contrat (décision produit) : interrupteur de la barre ✏️, coupé par défaut, gardé tant que la vue est ouverte.
+  // Une seule texture carrée (PLAN_SOL.px côté : 1024 au doigt, 2048 au pointeur fin) qui couvre le carré de sol
+  // (2,4 × le rayon de scène) autour de la place, posée à une position fixe et redessinée quand on s'en écarte d'un
+  // quart ou que le recul change l'emprise de plus d'un quart. Source : les images que la carte a déjà (overlays du
+  // fond, direct ou tuiles V1 : leur <img> chargé) ; plan tuilé V2 : tiling.js > ktaDessinerRegionTuiles (tuiles du
+  // ZIP en mémoire ou du cache, au niveau le moins détaillé qui suffit). Rien n'est téléchargé de plus. Plan de base
+  // = niveau 0 (tiling.js > ktaPlanDeBaseVisible) : montré au niveau 0 seulement.
+  const PLAN_SOL = { pxFin: 2048, pxDoigt: 1024, y: 0.006, ecart: 0.25 };
+
+  function _planSolPermis() { const n = _e.niveau; return n === null || n === 0; }
+
+  function _basculerPlanSol(oui) {
+    const e = _e, d = e && e.dessin;
+    if (!d) return false;
+    d.planSol = oui === undefined ? !d.planSol : !!oui;
+    if (!d.planSol) _libererPlanSol();
+    d.sig = null;
+    e.sale = true;
+    return d.planSol;
+  }
+
+  function _libererPlanSol() {
+    const e = _e, d = e.dessin, s = d && d.sol;
+    if (!s) return;
+    s.jeton++;
+    if (s.mesh) { e.scene.remove(s.mesh); s.mesh.geometry.dispose(); s.mesh.material.dispose(); }
+    if (s.tex) s.tex.dispose();
+    d.sol = { jeton: s.jeton };
+    e.sale = true;
+  }
+
+  // Overlays du fond posés par la carte (tiling.js : direct, tuiles V1) dont l'image est chargée.
+  function _imagesFond() {
+    const out = [];
+    const prendre = function (ov) {
+      const img = ov && ov._image;
+      if (img && img.complete && img.naturalWidth && typeof ov.getBounds === "function") out.push({ img: img, b: ov.getBounds() });
+    };
+    (window._ktaBaseLayers || []).forEach(prendre);
+    (window._baseTiles || []).forEach(function (t) { prendre(t && t.overlay); });
+    return out;
+  }
+
+  // À chaque image (_majDessin) : plan au sol voulu et permis → texture (re)faite si la place ou l'emprise ont bougé.
+  function _majPlanSol() {
+    const e = _e, d = e.dessin;
+    const voulu = d.planSol && d.ouvert && _dessinPermis() && _planSolPermis();
+    if (!voulu) { if (d.sol && d.sol.mesh) _libererPlanSol(); return; }
+    const s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonScene(), px = e.pos.x / e.sc, pz = e.pos.y / e.sc;
+    if (s.enCours) return;
+    if (s.mesh && Math.hypot(px - s.cx, pz - s.cz) < s.cote * PLAN_SOL.ecart &&
+        Math.abs(cote - s.cote) < s.cote * PLAN_SOL.ecart) return;
+    _dessinerPlanSol(px, pz, cote);
+  }
+
+  function _dessinerPlanSol(cx, cz, cote) {
+    const e = _e, d = e.dessin, s = d.sol, jeton = ++s.jeton, sc = e.sc;
+    const fin = !!(window.matchMedia && window.matchMedia("(pointer: fine)").matches);
+    const N = Math.min(fin ? PLAN_SOL.pxFin : PLAN_SOL.pxDoigt, e.renderer.capabilities.maxTextureSize || 2048);
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = N;
+    const ctx = cv.getContext("2d");
+    // Région en px plan (origine en haut à gauche de l'image, comme les données) ; echelle = px de texture par px plan.
+    const region = { x: (cx - cote / 2) * sc, y: (cz - cote / 2) * sc, w: cote * sc, h: cote * sc };
+    const echelle = N / region.w, H = window.APP_CONFIG.imageHeight;
+    s.enCours = true;
+    const t0 = performance.now();
+    const pc = window.PLAN_CONFIG;
+    const v2 = !!(pc && pc.plan && pc.plan.tiledV2 && pc.tiling && typeof window.ktaDessinerRegionTuiles === "function");
+    const fait = v2 ? Promise.resolve(window.ktaDessinerRegionTuiles(ctx, pc, region, echelle, { aligner: true }))
+      : Promise.resolve().then(function () {
+        _imagesFond().forEach(function (f) {
+          // Bornes Leaflet (lat = H − y) → rectangle plan, puis rectangle de la texture.
+          const x0 = f.b.getWest(), x1 = f.b.getEast(), y0 = H - f.b.getNorth(), y1 = H - f.b.getSouth();
+          ctx.drawImage(f.img, (x0 - region.x) * echelle, (y0 - region.y) * echelle, (x1 - x0) * echelle,
+            (y1 - y0) * echelle);
+        });
+        return { ok: true };
+      });
+    return fait.catch(function (err) {
+      console.warn("[Vue3D] plan au sol :", err && err.message);
+      return { ok: false };
+    }).then(function (r) {
+      if (!_e || _e !== e || s.jeton !== jeton) return;
+      s.enCours = false;
+      if (s.mesh) { e.scene.remove(s.mesh); s.mesh.geometry.dispose(); s.mesh.material.dispose(); }
+      if (s.tex) s.tex.dispose();
+      const tex = new THREE.CanvasTexture(cv);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = Math.min(4, e.renderer.capabilities.getMaxAnisotropy());
+      const geo = new THREE.PlaneGeometry(cote, cote);
+      geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshLambertMaterial({ map: tex, polygonOffset: true, polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(cx, PLAN_SOL.y, cz);
+      mesh.renderOrder = 0;
+      mesh.userData.famille = "planSol";
+      e.scene.add(mesh);
+      Object.assign(s, { mesh: mesh, tex: tex, cx: cx, cz: cz, cote: cote, px: N, ok: !!(r && r.ok),
+        v2: v2, tuiles: r && r.tuiles, ms: performance.now() - t0, faits: (s.faits || 0) + 1 });
+      e.sale = true;
+    });
+  }
+
   // État du dessin (checkup) : barre, outil armé, sommets posés et leur coût (ms, geste de la carte compris), objet
   // fini et délai jusqu'à la scène refaite, aperçu (triangles) et étiquettes de mesure.
   function _etatDessin() {
@@ -4419,7 +4538,10 @@
       poses: d.poses, msPoses: d.msPoses.slice(), fermetures: d.fermetures, msFin: d.msFin,
       apercu: d.apercu ? d.apercu.geometry.attributes.position.count / 3 : 0,
       etiquettes: d.etiquettes.map(function (sp) { return sp.userData.poi.nom; }), renduBascule: d.renduBascule,
-      tuilesReprises: e.tuilesReprises || 0 };
+      tuilesReprises: e.tuilesReprises || 0, textures: e.renderer.info.memory.textures,
+      planSol: d.sol && d.sol.mesh ? { px: d.sol.px, cote: +d.sol.cote.toFixed(1), ok: d.sol.ok, v2: d.sol.v2,
+        tuiles: d.sol.tuiles || null, ms: Math.round(d.sol.ms), faits: d.sol.faits,
+        octets: d.sol.px * d.sol.px * 4 } : { voulu: !!d.planSol } };
   }
 
   // Objet fini depuis la vue : la reconstruction qui suit ne refait que les tuiles qu'il peut toucher (_reprendreTuiles).
@@ -4472,7 +4594,7 @@
     if (!d) return;
     _desarmerDessin();
     d.ouvert = false;
-    if (e.scene) _libererApercu();
+    if (e.scene) { _libererApercu(); _libererPlanSol(); }
   }
 
   // ── Guidage de l'itinéraire : bandeau et chevrons (js/itiGuidage.js, aucun calcul de chemin ici) ──────────
@@ -5746,6 +5868,7 @@
       else if (a === "ficheVoir") _voirSurCarte();
       else if (a === "dessin") { ev.preventDefault(); _basculerDessin(); }
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
+      else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
       // Entrée / Espace sur un bouton qui agit au pointerdown (bascules de la tuile, − / +, passages) : le navigateur
       // n'envoie qu'un click. 🩸 Un toucher envoie pointerdown PUIS click : ce click-là est ignoré (même bouton,
       // pointerdown récent), sinon la bascule jouerait deux fois.
@@ -5763,7 +5886,7 @@
       const a = b.dataset.v3d;
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
-        a === "ficheVoir" || a === "dessin" || a === "outil") return;
+        a === "ficheVoir" || a === "dessin" || a === "outil" || a === "planSol") return;
       if (_agirBouton(a, b, ev)) return;
       ev.preventDefault();
       _codeBas(a === "ar");
@@ -5968,6 +6091,10 @@
       e.tuiles.forEach(function (t) { t.obj = null; });
       e.chevrons = null; e.chevSig = null; e.guidageForce = true;   // même règle : jamais dispose() d'avant la perte
       e.marqueursIti = null; e.ronds = null; e.geoMarqueur = null;
+      if (e.dessin) {   // aperçu et plan au sol refaits à l'image suivante (même règle : rien de l'ancien contexte)
+        e.dessin.apercu = null; e.dessin.etiquettes = []; e.dessin.apSig = null;
+        e.dessin.sol = e.dessin.sol ? { jeton: e.dessin.sol.jeton + 1 } : null;
+      }
       _monterScene();
       _reindexer();
       _appliquerVue();

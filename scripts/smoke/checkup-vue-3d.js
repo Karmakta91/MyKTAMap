@@ -263,9 +263,24 @@ async function mesuresDessin(page, depart) {
       const visible = performance.now() - t0;
       const ed = K.etat();
       window.toggleStructureMode("pilier-1");
+      // Plan au sol : mémoire (tas JS, Chromium) et texture avant / après, temps de dessin, images par seconde.
+      const tas = function () { return performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null; };
+      const ips = async function () {
+        const t = performance.now(); let n = 0;
+        while (performance.now() - t < 1500) { K.tourner(1); await images(1); n++; }
+        return Math.round(n * 1000 / (performance.now() - t));
+      };
+      const sol = { tasAvant: tas(), texAvant: ed.memoire ? ed.memoire.textures : null, ipsAvant: await ips() };
+      document.querySelector('#kta-vue3d [data-v3d="planSol"]').click();
+      const tS = performance.now();
+      while (!(K.etat().dessin.planSol && K.etat().dessin.planSol.px) && performance.now() - tS < 20000) await images(1);
+      await images(5);
+      const es = K.etat();
+      Object.assign(sol, { plan: es.dessin.planSol, tasApres: tas(), texApres: es.memoire ? es.memoire.textures : null,
+        ipsApres: await ips(), v2: !!(window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.tiledV2) });
       await K.fermer();
       window.setStructures([]);
-      return { rendu: a.rendu, msSommets: poses.map(function (v) { return +v.toFixed(1); }), refaitesPendant: pendant,
+      return { planSol: sol, rendu: a.rendu, msSommets: poses.map(function (v) { return +v.toFixed(1); }), refaitesPendant: pendant,
         msFermetureScene: ed.dessin.msFin === null ? null : +ed.dessin.msFin.toFixed(0),
         msReconstruction: ed.donnees.ms, msVisible: +visible.toFixed(0), tuilesReprises: ed.dessin.tuilesReprises,
         tuiles: ed.tuiles, msIndex: ed.msIndex, msEmpreinte: ed.donnees.msEmpreinte };
@@ -1288,6 +1303,55 @@ async function sectionFichesObjets(page) {
 // niveau −1, carte au 0 : objet de la carte au niveau de la 3D, montré après sa fin, annulable, identique au même
 // geste fait sur la carte ; aperçu sans reconstruction par sommet ; gestes de caméra sans sommet ; désarmé en
 // sortant de la plongée, à la fermeture et par Échap ; greffe `fiches: false` et lecture seule : rien.
+// Captures (KTA_V3D_CAPTURES) : pilier et mur dessinés au doigt en plongée, plan au sol allumé, en cours puis finis.
+async function capturesDessin(page) {
+  const etape = async function (nom, f, arg) { await page.evaluate(f, arg); await page.waitForTimeout(700); await capture(page, nom); };
+  await etape("dessin-0-barre", async function () {
+    const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    window.setStructures([]);
+    window.setPlanRenduVue3D(null, "mixte");
+    await K.ouvrir({ depart: { x: ox * sc, y: oz * sc, cap: 0 }, commandes: "joystick" });
+    K.basculerVue();
+    await new Promise(function (ok) { setTimeout(ok, 400); });
+    let ctx = null;
+    const deg = K.greffer({ nom: "v3d-capture", scene: function (c) { ctx = c; } });
+    if (deg) deg();
+    window.__v3dTap = async function (x, z) {
+      const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+      const v = new ctx.THREE.Vector3(ox + x, 0, oz + z).project(ctx.camera);
+      const o = { bubbles: true, cancelable: true, pointerId: 95, pointerType: "touch", isPrimary: true,
+        clientX: rc.left + (v.x + 1) / 2 * rc.width, clientY: rc.top + (1 - v.y) / 2 * rc.height };
+      cv.dispatchEvent(new PointerEvent("pointerdown", o)); cv.dispatchEvent(new PointerEvent("pointerup", o));
+      await new Promise(function (ok) { setTimeout(ok, 60); });
+    };
+    K.dessiner(true);
+    document.querySelector('#kta-vue3d [data-v3d="planSol"]').click();
+    document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="structures"]').click();
+  });
+  await etape("dessin-1-pilier-en-cours", async function () {
+    const lib = window.I18n.t("ui.struct.pilier1");
+    Array.prototype.slice.call(document.querySelectorAll(".kta-group-flyout .kta-group-flyout-btn")).filter(function (b) {
+      return b.textContent.indexOf(lib) >= 0; })[0].click();
+    for (const c of [[1, -6], [4, -6], [4, -3]]) await window.__v3dTap(c[0], c[1]);
+  });
+  await etape("dessin-2-pilier-fini", async function () { await window.__v3dTap(1, -3); await window.__v3dTap(1, -6); });
+  await etape("dessin-3-mur-en-cours", async function () {
+    window.toggleStructureMode("pilier-1");
+    window.toggleStructureMode("mur");
+    for (const c of [[-6, -8], [6, -8], [6, -7]]) await window.__v3dTap(c[0], c[1]);
+  });
+  await etape("dessin-4-mur-fini", async function () {
+    await window.__v3dTap(-6, -7);
+    window.fermerStructureEnCours();
+  });
+  await page.evaluate(function () {
+    window.toggleStructureMode("mur");
+    delete window.__v3dTap;
+    return window.KtaVue3D.fermer().then(function () { window.setStructures([]); });
+  });
+}
+
 async function sectionDessin(page) {
   const R = await page.evaluate(async function () {
     const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
@@ -1337,11 +1401,12 @@ async function sectionDessin(page) {
       cv.dispatchEvent(new PointerEvent("pointerup", o));
       await pause(40);
     };
-    const ouvrir = async function (rendu, x, z) {
+    const ouvrir = async function (rendu, x, z, niveau) {
       if (K.etat().ouvert !== false) await K.fermer();
       window.setPlanRenduVue3D(null, rendu);
       const d = P(x, z);
-      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 0, niveau: -1 }, commandes: "joystick" });
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 0, niveau: niveau === undefined ? -1 : niveau },
+        commandes: "joystick" });
       K.basculerVue();
       await pause(250);
       await images(4);
@@ -1395,6 +1460,11 @@ async function sectionDessin(page) {
     const a0 = barreEl && barreEl.querySelector('[data-groupe="structures"]');
     const src = window._groupes.structures.btnPrincipal;
     r.boutons = K.etat().dessin.boutons.slice();
+    // Ordre de la barre de droite 2D (position dans le document des boutons de groupe).
+    r.ordre2d = ["mesure", "traces", "zones", "structures"].slice().sort(function (a, b) {
+      const x = window._groupes[a].btnPrincipal, y = window._groupes[b].btnPrincipal;
+      return x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    });
     r.style = a0 ? { w: getComputedStyle(a0).width, h: getComputedStyle(a0).height, wSrc: getComputedStyle(src).width,
       hSrc: getComputedStyle(src).height, icone: a0.innerHTML === src.innerHTML, titre: a0.title === src.title } : null;
     // Rien d'armé : un toucher n'ouvre pas d'outil, ne pose rien.
@@ -1612,6 +1682,23 @@ async function sectionDessin(page) {
     delete window.ktaEditionRefusee;
     window.ktaMajOutilsLectureSeule();
 
+    // ── Plan au sol 🗺️ : caché au −1 (le plan de base est le niveau 0), au 0 une texture du fond, libérée coupée ──
+    const bSol = function () { return document.querySelector('#kta-vue3d [data-v3d="planSol"]'); };
+    r.solMoins1 = !!bSol() && bSol().hidden;
+    await ouvrir("mixte", 0, 0, 0);
+    K.dessiner(true);
+    await images(2);
+    const solVisible = !bSol().hidden;
+    const tex0 = K.etat().dessin.textures;
+    bSol().click();
+    for (let i = 0; i < 100 && !(K.etat().dessin.planSol && K.etat().dessin.planSol.px); i++) await images(1);
+    await images(3);
+    const ps = K.etat().dessin.planSol, tex1 = K.etat().dessin.textures;
+    bSol().click();
+    await images(2);
+    r.planSol = { moins1Cache: r.solMoins1, visible: solVisible, plan: ps, textures: [tex0, tex1, K.etat().dessin.textures],
+      presse: bSol().getAttribute("aria-pressed"), coupe: K.etat().dessin.planSol };
+
     // ── Rendu galerie : armer une structure passe en mixte (on voit ce qu'on dessine), toast ──
     await ouvrir("galerie", 0, 0);
     K.dessiner(true);
@@ -1687,9 +1774,10 @@ async function sectionDessin(page) {
     });
   };
   verifier(!r.yeux.barre && r.yeux.refuse, "dessin : ni barre ni ✏️ à hauteur d'yeux", r.yeux);
-  verifier(r.plongee.barre && r.ouvre === true && JSON.stringify(r.boutons) ===
-    JSON.stringify(["mesure", "traces", "zones", "structures"]),
-    "vue plongeante : ✏️ montre 📐 🛣️ ⬛ 🏛️ (ordre de la barre de droite 2D)", { plongee: r.plongee, boutons: r.boutons });
+  verifier(r.plongee.barre && r.ouvre === true && JSON.stringify(r.boutons) === JSON.stringify(r.ordre2d) &&
+    JSON.stringify(r.boutons) === JSON.stringify(["mesure", "traces", "zones", "structures"]),
+    "vue plongeante : ✏️ montre 📐 🛣️ ⬛ 🏛️ (ordre de la barre de droite 2D)", { plongee: r.plongee, boutons: r.boutons,
+    ordre2d: r.ordre2d });
   verifier(r.style && r.style.w === r.style.wSrc && r.style.h === r.style.hSrc && r.style.icone && r.style.titre,
     "boutons de la barre : taille, icône et titre de ceux de la carte", r.style);
   verifier(r.sansOutil.structures === 0 && r.sansOutil.poses === 0, "✏️ ouvert sans outil armé : un toucher ne pose rien",
@@ -1738,6 +1826,10 @@ async function sectionDessin(page) {
     "greffe fiches: false : ni barre ni sommet (outil armé compris) ; retirée, la barre revient", r.greffe);
   verifier(r.lecture.grise && !r.lecture.panneau && !r.lecture.arme,
     "lecture seule : 🏛️ grisé comme sur la carte, pas de panneau, aucun outil armé", r.lecture);
+  verifier(r.planSol.moins1Cache && r.planSol.visible && r.planSol.plan && r.planSol.plan.ok && r.planSol.plan.px >= 1024 &&
+    r.planSol.textures[1] === r.planSol.textures[0] + 1 && r.planSol.textures[2] === r.planSol.textures[0] &&
+    r.planSol.presse === "false" && r.planSol.coupe && r.planSol.coupe.voulu === false,
+    "plan au sol 🗺️ : caché au −1, au 0 une texture du fond (une de plus), libérée une fois coupé", r.planSol);
   verifier(r.galerie.rendu === "mixte" && r.galerie.bascule === "mixte" && r.galerie.retenu === "mixte",
     "rendu galerie : armer une structure passe en mixte (retenu), on voit ce qu'on dessine", r.galerie);
   verifier(R2.cree && R2.type === "pilier-1" && R2.niveau === -1 && R2.n === 4 && R2.ecartM !== null &&
@@ -1813,6 +1905,7 @@ async function sectionDessin(page) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionDessin(page);
+      if (CAPTURES) await capturesDessin(page);
     } else if (PERF) {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
