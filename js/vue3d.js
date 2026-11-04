@@ -149,6 +149,10 @@
   // `grappes` grappes de traces d'outil (pic, broche). Longueurs en m.
   const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 7, grappes: 40,
     grain: 0.07, relief: 4, graine: 53 };
+  // 2e masse (pilier-2, front-2) : la même roche, plus chaude (teinte multipliée ; matériau `roche2`, cartes de la
+  // roche partagées, rien à dessiner de plus). 🩸 Sans elle, 🧱 activé, 1re et 2e masse étaient la même roche : un
+  // pilier passé de l'une à l'autre ne changeait rien dans la scène.
+  const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f0b98a";
   // Pierre de taille de carrière (parois des galeries et des tubes, 🧱 activé ; jamais les piliers ni les fronts) :
   // motif de 2 m (128 px/m), assises de hauteur tirée, blocs de longueur tirée, joints irréguliers (largeur, pente,
   // lit ondulé), arêtes émoussées. Longueurs en m.
@@ -936,14 +940,15 @@
     // Textures (🧱) : roche et parpaing dans leurs lots, couleur blanche (texture naturelle, jamais teintée par la
     // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine. Remblais et effondrement (deux
     // volumes) texturés : un lot chacun, chambres et tubes ensemble (_zoneGalerie) ; 🧱 coupé, les lots d'origine.
-    const roche = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
+    const roche = new Lot(), roche2 = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
     const remblaisTex = new Lot(), eboulis = new Lot();
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
       remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
       const s = t.s[i], tex = _e.textures ? _textureDe(s.type) : null;
       const col = tex ? BLANC : _couleur("structures", s.type), m = tex ? (tex === "roche" ? ROCHE : PARPAING).m : undefined;
-      const lot = tex === "roche" ? roche : tex === "parpaing" ? parpaing : _estMur(s.type) ? murs : opaque;
+      const lot = tex === "roche" ? (MASSE_2[s.type] ? roche2 : roche) : tex === "parpaing" ? parpaing
+        : _estMur(s.type) ? murs : opaque;
       const hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
       if (_estLigne(s.type)) {
         const ep = s.type === "mur-ligne" ? EPAISSEUR_MUR_LIGNE : EPAISSEUR_FRONT;
@@ -993,8 +998,9 @@
     ajouter(opaque, _e.mats.opaque, 0, "opaque");
     ajouter(rubans, _e.mats.rubans, 0, "rubans");
     ajouter(murs, _e.mats.murs, 0, "murs");
-    if (roche.p.length || parpaing.p.length) _matsTextures();
+    if (roche.p.length || roche2.p.length || parpaing.p.length) _matsTextures();
     ajouter(roche, _e.mats.roche, 0, "opaque");
+    ajouter(roche2, _e.mats.roche2, 0, "opaque");
     ajouter(parpaing, _e.mats.parpaing, 0, "murs");
     ajouter(lumineux, _e.mats.iti, 1, "itineraire");
     ajouter(transp, _e.mats.transp, 2);
@@ -2159,6 +2165,8 @@
       return new THREE.MeshLambertMaterial(o);
     };
     e.mats.roche = fab("roche", _rocheBrute, ROCHE.graine, false);
+    e.mats.roche2 = new THREE.MeshLambertMaterial({ map: e.mats.roche.map, normalMap: e.mats.roche.normalMap,
+      color: new THREE.Color(TEINTE_MASSE_2) });
     e.mats.parpaing = fab("parpaing", function (alea) { return _appareil(_assisesParpaing(alea), alea); },
       PARPAING.graine, true);
     e.msTextures = performance.now() - t0;
@@ -8016,8 +8024,8 @@
   // dessins : durée du premier dessin de chaque texture dans la page.
   function textures() {
     if (!_e) return null;
-    const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs,
-      paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis, porte: e.mats.porte };
+    const e = _e, mats = { roche: e.mats.roche, roche2: e.mats.roche2, parpaing: e.mats.parpaing,
+      opaque: e.mats.opaque, murs: e.mats.murs, paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis, porte: e.mats.porte };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
       uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m, remblais: 1 / REMBLAIS.m,
         eboulis: 1 / EBOULIS.m,

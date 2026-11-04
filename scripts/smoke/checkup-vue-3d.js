@@ -53,7 +53,9 @@
 // Colonne d'outils en vue d'édition seulement (PC, téléphone, paysage ; absente pendant le jeu, qui ne chevauche aucune
 // commande à ces trois tailles). Plan au sol sur écran dense, vue immobile (image, V1, V2). Dessin : premier toucher
 // d'un outil armé posé, au sol sous le doigt (jamais sur le dessus d'un pilier), au point d'appui.
-// Données changées pendant la vue (26). Toucher un objet (27) : fiche de la carte d'un pilier, d'un mur, d'une zone,
+// Données changées pendant la vue (26) ; type changé (26 bis, KTA_V3D_SEUL=type : 1re → 2e masse 🧱 activé ou coupé,
+// zone, tracé, type perso ; session et calque en « Modifier » ; vue ouverte, vue rouverte).
+// Toucher un objet (27) : fiche de la carte d'un pilier, d'un mur, d'une zone,
 // d'un tracé (mixte, structures, galerie ; yeux et plongée), vide = rien, panneau de POI d'abord, note au clavier,
 // Échap et focus, greffe qui coupe les fiches (doigt), lecture seule (extension, calque), 🗑️ suivi sans rouvrir,
 // « Voir sur la carte » (carte centrée, fiche de la carte, surbrillance). Zone reliée à plusieurs niveaux (29) : vue et
@@ -988,6 +990,209 @@ async function sectionDonnees(page, MX) {
     "bilan : " + R.fin.donnees.signaux + " signaux, " + R.fin.donnees.verifs + " relectures, " +
     R.fin.donnees.refaites + " reconstructions (dernière " + R.fin.donnees.ms + " ms, empreinte " +
     R.fin.donnees.msEmpreinte + " ms)", R.fin.donnees);
+}
+
+// ── 26 bis. Type d'un objet changé (Convertir : fiche, sélection multiple, Tableur) → la 3D suit ────────────
+// Pilier et front 1re masse → 2e masse (🧱 activé, le défaut, et coupé), zone eau → remblais, tracé principal →
+// secondaire, tracé perso → autre perso de même longueur d'identifiant ; objet de la session et copie d'un calque en
+// « 🔄 Modifier ». Trois moments : type changé vue fermée puis vue ouverte, type changé vue ouverte, et une vue de
+// référence ouverte à neuf (caches de KtaGalerie vidés). Lu : matériaux par maillage et couleurs des sommets des
+// maillages unis (K.textures). Calques du plan mis de côté : seules ces formes comptent.
+async function sectionTypeModifie(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.KtaConvertir, sc = window.APP_CONFIG.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const carre = function (cx, cz, r) {
+      return [P(cx - r, cz - r), P(cx + r, cz - r), P(cx + r, cz + r), P(cx - r, cz + r)];
+    };
+    const vrais = window.__v3dEmb || { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId };
+    const bouchons = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId };
+    const CAL = "v3d_type_calque";
+    // Lectures du plan réduites au calque du checkup (la règle du calque en modification reste celle de l'app).
+    const duCalque = function (f) {
+      return function () { return (f() || []).filter(function (o) { return o && o.layerId === CAL; }); };
+    };
+    window.getAllEmbeddedRoads = duCalque(vrais.r); window.getAllEmbeddedZones = duCalque(vrais.z);
+    window.getAllEmbeddedPoints = function () { return []; }; window.getAllEmbeddedStructures = duCalque(vrais.s);
+    // Deux types perso de tracé, identifiants de même longueur, couleurs distinctes.
+    const LC = window.LegendCustomization, trouver = LC.findCustomEntry;
+    const PERSO = { "cust-v3d-ty-a": "#3c9be0", "cust-v3d-ty-b": "#e0583c" };
+    LC.findCustomEntry = function (id) {
+      return PERSO[id] ? { id: id, category: "traces", geometry: "line", lineColor: PERSO[id] } : trouver.apply(LC, arguments);
+    };
+    if (window.getTrackingActif()) window.stopTracking();
+    window._currentLoadedPlanId = "v3d-checkup-type";
+    const texAvant = window.getVue3DTextures();
+    window.setRoads([]); window.setZones([]); window.setStructures([]); window.setEditorPoints([]);
+    // Ce que la scène montre : maillages par matériau et couleurs des maillages unis (triées).
+    const vue = function () {
+      const t = K.textures(), c = {};
+      Object.keys(t.couleurs).sort().forEach(function (k) { c[k] = t.couleurs[k].slice().sort(); });
+      return JSON.stringify({ maillages: t.maillages, couleurs: c });
+    };
+    const ouvrir = async function () {
+      const d = P(0, 0);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+      await pause(300);
+      const v = vue();
+      await K.fermer();
+      return v;
+    };
+    const liste = { structures: window.getStructures, zones: window.getZones, roads: window.getRoads };
+    const ecrire = { structures: window.setStructures, zones: window.setZones, roads: window.setRoads };
+    const sess = function (famille, uid) {
+      return liste[famille]().filter(function (o) { return o && o.uid === uid; })[0];
+    };
+    // Objets du cas remis à leur type d'origine (session ou copie du calque), par uid.
+    const remettre = function (famille, types) {
+      ecrire[famille](liste[famille]().map(function (o) {
+        return o && types[o.uid] ? Object.assign({}, o, { type: types[o.uid] }) : o;
+      }));
+    };
+    const r = { cas: {} };
+    // Un cas : objets au type d'origine (`poser`), réglages (rendu, 🧱) ; `changer` = le geste de l'utilisateur.
+    const jouer = async function (nom, o) {
+      window.setPlanRenduVue3D(null, o.rendu);
+      window.setVue3DTextures(o.textures);
+      const c = { rendu: o.rendu, textures: o.textures };
+      // 1. Vue ouverte avant, type changé vue fermée, vue rouverte.
+      o.poser(); window.KtaGalerie.invalider();
+      c.avant = await ouvrir();
+      c.ok = o.changer();
+      c.fermee = await ouvrir();
+      // 2. Type changé vue ouverte : une reconstruction, la scène suit.
+      o.poser(); window.KtaGalerie.invalider();
+      const d = P(0, 0);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+      await pause(300);
+      c.avantOuverte = vue();
+      const n0 = K.etat().donnees.refaites;
+      o.changer();
+      for (let i = 0; i < 40; i++) {
+        await pause(50);
+        if (!K.etat().donnees.attente && K.etat().donnees.refaites > n0) break;
+      }
+      await pause(80);
+      c.ouverte = vue();
+      c.refaites = K.etat().donnees.refaites - n0;
+      await K.fermer();
+      // 3. Référence : vue ouverte à neuf sur les mêmes données, caches de KtaGalerie vidés.
+      window.KtaGalerie.invalider();
+      c.reference = await ouvrir();
+      r.cas[nom] = c;
+    };
+    const deuxPiliers = function () {
+      window.setStructures([{ uid: "st_ty_a", type: "pilier-1", level: 0, points: carre(4, 2, 1) },
+        { uid: "st_ty_b", type: "pilier-1", level: 0, points: carre(4, -2, 1) }]);
+    };
+    const fiche = function (famille, uid, type) {
+      return function () { return C.convertir(famille, sess(famille, uid), famille, type); };
+    };
+    // Session.
+    for (const tex of [true, false]) {
+      const suffixe = tex ? " (🧱 activé)" : " (🧱 coupé)";
+      await jouer("pilier de session, fiche" + suffixe, { rendu: "structures", textures: tex, poser: deuxPiliers,
+        changer: fiche("structures", "st_ty_a", "pilier-2") });
+    }
+    await jouer("piliers de session, sélection multiple (🧱 activé)", { rendu: "structures", textures: true,
+      poser: deuxPiliers, changer: function () {
+        return C.convertirLot([{ famille: "structures", obj: sess("structures", "st_ty_a") },
+          { famille: "structures", obj: sess("structures", "st_ty_b") }], "structures", "pilier-2");
+      } });
+    await jouer("pilier de session, Tableur (🧱 activé)", { rendu: "structures", textures: true, poser: deuxPiliers,
+      changer: function () {
+        const l = window.getStructures().map(function (q) { return JSON.parse(JSON.stringify(q)); });
+        l[0].type = "pilier-2";
+        return C.appliquerTableau("structures", l);
+      } });
+    await jouer("front de session, fiche (🧱 activé)", { rendu: "structures", textures: true, poser: function () {
+      window.setStructures([{ uid: "st_ty_f", type: "front-1", level: 0, points: [P(3, 3), P(3, -3)] }]);
+    }, changer: fiche("structures", "st_ty_f", "front-2") });
+    window.setStructures([]);
+    await jouer("zone de session, fiche (🧱 coupé)", { rendu: "structures", textures: false, poser: function () {
+      window.setZones([{ uid: "zn_ty_a", type: "eau", level: 0, points: carre(4, 2, 1) }]);
+    }, changer: fiche("zones", "zn_ty_a", "remblais") });
+    window.setZones([]);
+    await jouer("tracé de session, fiche (galerie, 🧱 coupé)", { rendu: "galerie", textures: false, poser: function () {
+      window.setRoads([{ uid: "rd_ty_a", type: "principal", level: 0, points: [P(-6, 0), P(8, 0)] }]);
+    }, changer: fiche("roads", "rd_ty_a", "secondaire") });
+    await jouer("tracé perso de session → autre perso, fiche (galerie, 🧱 coupé)", { rendu: "galerie",
+      textures: false, poser: function () {
+        window.setRoads([{ uid: "rd_ty_p", type: "cust-v3d-ty-a", level: 0, points: [P(-6, 0), P(8, 0)] }]);
+      }, changer: fiche("roads", "rd_ty_p", "cust-v3d-ty-b") });
+    window.setRoads([]);
+    // Calque de données en « 🔄 Modifier » : piliers et front 1re masse, zone eau, tracé principal ; la copie de
+    // session est convertie par la fiche.
+    const json = { data: [],
+      structures: [{ uid: "st_ty_c1", type: "pilier-1", level: 0, points: carre(4, 2, 1) },
+        { uid: "st_ty_c2", type: "pilier-1", level: 0, points: carre(4, -2, 1) },
+        { uid: "st_ty_cf", type: "front-1", level: 0, points: [P(-3, 3), P(-3, -3)] }],
+      zones: [{ uid: "zn_ty_c", type: "eau", level: 0, points: carre(8, 4, 1) }],
+      roads: [{ uid: "rd_ty_c", type: "principal", level: 0, points: [P(-6, 0), P(8, 0)] }] };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(json)], { type: "application/json" }));
+    window.PLAN_CONFIG.dataLayers = (window.PLAN_CONFIG.dataLayers || []).concat([
+      { id: CAL, label: "Calque du checkup v3d (type)", file: url, visible: true }]);
+    const groupe = L.layerGroup().addTo(window.map);
+    window.dataLayerGroups[CAL] = groupe;
+    window.ajouterPointsDepuisJSON(url, groupe);
+    const charge = function () { return window.getAllEmbeddedStructures().length === 3; };
+    for (let i = 0; i < 60 && !charge(); i++) await pause(50);
+    r.calqueCharge = charge();
+    r.rapatrie = await window.CalqueSession.rapatrier(CAL);
+    r.copies = { s: window.getStructures().length, z: window.getZones().length, r: window.getRoads().length,
+      emb: window.getAllEmbeddedStructures().length };
+    await jouer("pilier du calque en Modifier, fiche (🧱 activé)", { rendu: "structures", textures: true,
+      poser: function () { remettre("structures", { st_ty_c1: "pilier-1" }); },
+      changer: fiche("structures", "st_ty_c1", "pilier-2") });
+    await jouer("pilier du calque en Modifier, fiche (🧱 coupé)", { rendu: "structures", textures: false,
+      poser: function () { remettre("structures", { st_ty_c1: "pilier-1" }); },
+      changer: fiche("structures", "st_ty_c1", "pilier-2") });
+    await jouer("front du calque en Modifier, fiche (🧱 activé)", { rendu: "structures", textures: true,
+      poser: function () { remettre("structures", { st_ty_c1: "pilier-1", st_ty_cf: "front-1" }); },
+      changer: fiche("structures", "st_ty_cf", "front-2") });
+    await jouer("zone du calque en Modifier, fiche (🧱 coupé)", { rendu: "structures", textures: false,
+      poser: function () { remettre("zones", { zn_ty_c: "eau" }); },
+      changer: fiche("zones", "zn_ty_c", "remblais") });
+    await jouer("tracé du calque en Modifier, fiche (galerie, 🧱 coupé)", { rendu: "galerie", textures: false,
+      poser: function () { remettre("roads", { rd_ty_c: "principal" }); },
+      changer: fiche("roads", "rd_ty_c", "secondaire") });
+    r.restitue = window.CalqueSession.restituer(CAL, { local: true });
+    window.map.removeLayer(groupe);
+    delete window.dataLayerGroups[CAL];
+    window.PLAN_CONFIG.dataLayers = window.PLAN_CONFIG.dataLayers.filter(function (l) { return l.id !== CAL; });
+    // 🩸 Registres des calques vidés de ce calque : la règle du pas les lit sans regarder si le calque est montré,
+    // ses piliers au centre du plan arrêtaient les balades des sections suivantes.
+    ["_ktaDataStructurePolygons", "_ktaDataPolygons", "_ktaDataPolylines"].forEach(function (k) {
+      if (Array.isArray(window[k])) window[k] = window[k].filter(function (q) { return !q || q.layerId !== CAL; });
+    });
+    URL.revokeObjectURL(url);
+    LC.findCustomEntry = trouver;
+    window.getAllEmbeddedRoads = bouchons.r; window.getAllEmbeddedZones = bouchons.z;
+    window.getAllEmbeddedPoints = bouchons.p; window.getAllEmbeddedStructures = bouchons.s;
+    window._currentLoadedPlanId = bouchons.id;
+    window.setVue3DTextures(texAvant);
+    window.setRoads([]); window.setZones([]); window.setStructures([]);
+    window.KtaGalerie.invalider();
+    return r;
+  });
+  verifier(R.calqueCharge && R.rapatrie && R.rapatrie.ok && R.copies.s === 3 && R.copies.emb === 0,
+    "calque fictif chargé puis passé en « 🔄 Modifier » (copies en session, original hors des lectures)",
+    { charge: R.calqueCharge, rap: R.rapatrie, copies: R.copies });
+  Object.keys(R.cas).forEach(function (k) {
+    const c = R.cas[k];
+    verifier(c.ok !== false && c.ok !== null && c.avant !== c.reference && c.avantOuverte === c.avant,
+      k + " : ancien et nouveau type distincts dans la scène", c);
+    verifier(c.fermee === c.reference, k + " : type changé vue fermée → vue rouverte au nouveau type",
+      { fermee: c.fermee, reference: c.reference });
+    verifier(c.ouverte === c.reference && c.refaites === 1,
+      k + " : type changé vue ouverte → une reconstruction, scène au nouveau type",
+      { ouverte: c.ouverte, reference: c.reference, refaites: c.refaites });
+  });
 }
 
 // ── 27. Toucher un objet → sa fiche de la carte (structure, zone, tracé), « Voir sur la carte », verrous ──────
@@ -5014,6 +5219,11 @@ async function sectionFichesReglage(nav) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionConePassage(page);
+    } else if (SEUL === "type") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionTypeModifie(page);
     } else if (SEUL === "camera") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -11009,6 +11219,7 @@ async function sectionFichesReglage(nav) {
       }
 
       await sectionDonnees(page, MX);
+      await sectionTypeModifie(page);
 
       await page.evaluate(function () {
         const s = window.__v3dEmb;

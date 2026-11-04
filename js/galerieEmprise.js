@@ -164,7 +164,11 @@
       for (let i = 0; i < liste.length; i++) {
         const o = liste[i];
         if (!o || !Array.isArray(o.points)) continue;
-        mel(o.points.length); mel(o.level); mel(String(o.type || "").length);
+        // 🩸 Le type entier, pas sa longueur : un tracé passé d'un type perso `cust-…` à un autre gardait, vue
+        // rouverte, le modèle (largeur, couleur des parois) de l'ancien.
+        const ty = String(o.type || "");
+        mel(o.points.length); mel(o.level); mel(ty.length);
+        for (let k = 0; k < ty.length; k++) mel(ty.codePointAt(k));
         if (Array.isArray(o.niveaux)) o.niveaux.forEach(mel);   // zone sur plusieurs niveaux
         const p = o.points[0], q = o.points[o.points.length - 1];
         if (p && q) { mel(p.x * 10); mel(p.y * 10); mel(q.x * 10); mel(q.y * 10); }
