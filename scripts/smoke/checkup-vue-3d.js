@@ -119,8 +119,8 @@ async function homogene(page, nom) {
       const rb = b.getBoundingClientRect();
       return { b: b.getAttribute("data-v3d") || "aide", w: +rb.width.toFixed(1), h: +rb.height.toFixed(1) };
     });
-    // 🩸 Référence = la LARGEUR de la pilule : en paysage bas, la barre 2D est plus basse que ses boutons de 30 px
-    // (rognés par overflow: hidden) ; la 3D reste carrée.
+    // 🩸 Référence = la LARGEUR de la pilule : en paysage bas, la pilule de la barre 2D est plus basse que large
+    // (30 px, sans liseré haut ni bas, cf style.css) ; la 3D reste carrée.
     const ecarts = tailles.filter(function (t) {
       return Math.abs(t.w - barre.width) > 1 || Math.abs(t.h - barre.width) > 1;
     });

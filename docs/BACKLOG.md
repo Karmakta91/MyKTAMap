@@ -154,10 +154,6 @@
   `structures.js > STRUCT_CLOSE_TOLERANCE` valent 5 px plan, soit 0,8 m sur le relevé fictif (6,25 px/m) : un mur de
   0,4 m posé coin par coin se ferme en triangle au 4e coin, en 2D comme en 3D (rond doré de 0,3 m en 3D, dominé).
   `qui: KARMA · action: décider une tolérance en mètres (ou en px d'écran) pour la 2D · depuis: 04/11/2026 · taille: S`
-- **Barre 2D rognée en paysage bas** — ✅ mesuré 04/11 (lot 3d-interface) : à 852 × 393, les pilules ≡ et cube de la
-  barre de droite font 32 × 27,6 px pour des boutons de 30 × 30 : le bas est coupé par overflow: hidden.
-  `qui: Claude · action: corriger la hauteur des pilules en paysage bas · fini: boutons entiers à 852 × 393, contrôle
-  · depuis: 04/11/2026 · taille: XS`
 - **Site de doc : la vue 3D dans les capacités** — `MyKTAMap-doc/generateur/accueil.js > CAPACITES` est une liste en dur
   qui ne cite pas la vue 3D ; à ajouter seulement quand la 3D est en prod (le site public lit community `main`).
   `qui: Claude · action: ajouter la ligne après le merge main de la 3D, puis relecture de KARMA avant deploy-doc public

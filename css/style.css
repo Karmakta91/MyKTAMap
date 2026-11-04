@@ -11827,6 +11827,20 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
     border-radius: var(--kta-barre-rayon) !important;
     overflow: hidden;
   }
+  /* 🩸 La colonne (flex, max-height) rétrécit ses pilules quand elles ne tiennent pas : sous overflow: hidden, un
+     bouton resté à 30 px y perdait son bas. Le bouton suit la hauteur de sa pilule, entier et centré, et chaque bouton
+     reste à l'écran ; sous 24 px, la colonne défile plutôt que d'écraser encore. Le zoom (deux boutons empilés) garde
+     sa taille. */
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(.leaflet-control-zoom) {
+    flex: 0 1 var(--kta-barre-bouton);
+    min-height: 24px;
+  }
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(.leaflet-control-zoom) a {
+    height: auto !important;
+    max-height: var(--kta-barre-bouton);
+    align-self: stretch;
+    line-height: 1 !important;
+  }
   body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-bar {
     flex-direction: row !important;
   }
@@ -11865,9 +11879,15 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(:first-child) .leaflet-bar {
     border-top: none !important;
   }
+  /* 1 px entre pilules, sans liseré haut ni bas (l'ombre les sépare) : 10 pilules de 30 px tiennent dans 313 px
+     (852 × 393), boutons entiers à 30 px. Au-delà, elles rétrécissent (règle plus haut). */
   body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-control + .leaflet-control,
   body.kta-refonte-v1 .leaflet-top.leaflet-right .leaflet-control + .leaflet-control {
-    margin-top: 4px !important;
+    margin-top: 1px !important;
+  }
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(.leaflet-control-zoom) {
+    border-top-width: 0 !important;
+    border-bottom-width: 0 !important;
   }
   /* Séparateur vertical entre boutons (a + a) ; reste juste en row-reverse. */
   body.kta-refonte-v1 .leaflet-bar a + a {

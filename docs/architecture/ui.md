@@ -239,6 +239,8 @@ En **landscape mobile** (`@media (max-height: 500px) and (orientation: landscape
 
 **Exception** : `.leaflet-control-zoom` (zoom natif Leaflet) garde `flex-direction: column !important` — convention universelle "+ au-dessus du -" (Google Maps, OSM, etc.). Séparateur entre zoom-in/out en `border-top`.
 
+🩸 **Boutons entiers** : la colonne est un flex vertical borné (`max-height`) qui rétrécit ses pilules quand elles ne tiennent pas ; sous `overflow: hidden`, un bouton resté à 30 px y perdait son bas (pilules de 27,6 px à 852 × 393). Les pilules sont donc à 30 px de haut, **sans liseré haut ni bas**, à **1 px** l'une de l'autre (10 pilules dans les 313 px de 852 × 393) ; au-delà, le bouton suit la hauteur de sa pilule, entier et centré, jusqu'à 24 px, puis la colonne défile. Le zoom (deux boutons empilés) est exclu. Mesuré : 32 × 30 px, boutons 30 × 30 (checkup `checkup-rotation-manuelle.js` R13, `checkup-rails-toucher.js`).
+
 #### 41.7 Status bar — wrap dynamique + variable CSS (depuis v1.9.1)
 
 **Problème résolu** : avec 4 stats actives en même temps (mesure + dist totale + iti + tracker), le contenu ne tenait plus en largeur et était caché en `overflow-x: auto` (scroll horizontal masqué = info invisible).
