@@ -386,6 +386,34 @@ async function jouer(nav, moteur, mode) {
     });
     verifier(graphe !== null, "RoadGraph se reconstruit après l'ajustement", graphe);
 
+    // ── Zone sur plusieurs niveaux (zones.js > _niveauxZone) : repérée si UN de ses niveaux est visible ──
+    const ml = await page.evaluate(function () {
+      const cfg = window.APP_CONFIG, P = window.__as.P;
+      if (cfg.multiLevel !== true) return null;
+      window.__asVis = cfg.visibleLevels.slice();
+      cfg.visibleLevels = [0];
+      const z = window.getZones();
+      z.push({ uid: "zn_as_ml", type: "eau", level: -1, niveaux: [-1, 0],
+        points: [P(450, -350), P(550, -350), P(550, -250), P(450, -250)] });
+      z.push({ uid: "zn_as_m1", type: "eau", level: -1, points: [P(450, -150), P(550, -150), P(550, -60)] });
+      window.renderZones();
+      return true;
+    });
+    if (ml) {
+      const zml = await lireObjet(page, "zn_as_ml");
+      const vml = { x: zml.points[0].x - 30 * s.k, y: zml.points[0].y + 20 * s.k };
+      await geste(page, ptr, zml.points[0], vml);
+      verifier(proche((await lireObjet(page, "zn_as_ml")).points[0], vml, tol),
+        "zone de niveaux −1 et 0, niveau 0 affiché : son sommet se déplace");
+      await rien(page, ptr, "zone du seul niveau −1, niveau 0 affiché : rien", "zn_as_m1");
+      await page.evaluate(function () {
+        window.APP_CONFIG.visibleLevels = window.__asVis;
+        window.setZones(window.getZones().filter(function (o) { return o.uid !== "zn_as_ml" && o.uid !== "zn_as_m1"; }));
+      });
+    } else {
+      inf("plan sans multi-niveau : zone sur plusieurs niveaux non jouée");
+    }
+
     // ── Outil armé : rien ──
     await page.evaluate(function () { window.toggleZoneMode("eau"); });
     await rien(page, ptr, "outil de dessin armé : aucun ajustement", "rd_as_r1");

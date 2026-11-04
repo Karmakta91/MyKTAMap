@@ -95,7 +95,9 @@ window.KtaAjusterSommets = (function () {
         const o = objs[k], pts = o && o.points, n = pts ? pts.length : 0;
         for (let i = 0; i < n; i++) {
           const d = Math.hypot(pts[i].x - x, pts[i].y - y);
-          if (d <= tol && (!s || d < s.d)) s = { genre: "sommet", f: f, a: a, o: o, i: i, x: pts[i].x, y: pts[i].y, d: d };
+          if (d <= tol && (!s || d < s.d)) {
+            s = { genre: "sommet", f: f, a: a, o: o, i: i, x: pts[i].x, y: pts[i].y, d: d };
+          }
         }
         if (s && s.d === 0) continue;
         const nSeg = (n >= 3 && a.ferme(o)) ? n : n - 1;
@@ -153,7 +155,8 @@ window.KtaAjusterSommets = (function () {
   }
   function _planifierApercu() {
     if (!_g || _g.raf) return;
-    _g.raf = (typeof requestAnimationFrame === "function") ? requestAnimationFrame(_majApercu) : setTimeout(_majApercu, 16);
+    _g.raf = (typeof requestAnimationFrame === "function") ? requestAnimationFrame(_majApercu)
+      : setTimeout(_majApercu, 16);
   }
 
   // ── Menu 🗑️ au sommet ──
@@ -277,8 +280,9 @@ window.KtaAjusterSommets = (function () {
     _stats.gestes++;
     _g = { id: e.pointerId, cx: e.clientX, cy: e.clientY, depart: p, c: c, arme: false, bouge: false,
       timer: setTimeout(_armer, APPUI_MS), timerVisuel: 0, dragAvant: false };
-    _g.timerVisuel = setTimeout(function () { if (_g && !_g.arme) _poignee(_g, "kta-ajuster-poignee kta-ajuster-poignee-attente"); },
-      VISUEL_MS);
+    _g.timerVisuel = setTimeout(function () {
+      if (_g && !_g.arme) _poignee(_g, "kta-ajuster-poignee kta-ajuster-poignee-attente");
+    }, VISUEL_MS);
     cont.classList.add("kta-ajuster-attente");
   }
 
@@ -358,7 +362,8 @@ window.KtaAjusterSommets = (function () {
         ecritures: _stats.ecritures, annules: _stats.annules, refus: _stats.refus };
     },
     annuler: function () { _fermerMenu(); return annuler(); },
-    // Ce qu'un appui viserait au point d'écran (clientX, clientY) : { famille, genre, i } ou null (harnais, diagnostic).
+    // Ce qu'un appui viserait au point d'écran (clientX, clientY) : { famille, genre, i, uid } ou null (harnais,
+    // diagnostic).
     viser: function (cx, cy) {
       const m = _map(), p = m && _plan(m, { clientX: cx, clientY: cy });
       const c = p && _permis() ? _chercher(m, p.x, p.y, _pxEnPlan(m, RAYON_PX)) : null;
