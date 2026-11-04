@@ -212,6 +212,49 @@ function charger(win, fichiers) {
     t("GeoJSON du seul 0 : la zone −1 / −2 n'y est pas", fc0.features.length === 0);
   }
 
+  // ── 7. Vue 3D, sélection par zone, volume exploité : la zone compte sur chacun de ses niveaux ──
+  {
+    const w = contexte();
+    let horloge = 0;
+    w.performance = { now: () => horloge };
+    let zones = [{ uid: "zn_3", type: "inaccessible", level: 0, niveaux: [-1, 0], points: carre(100, 100, 20) },
+      { uid: "zn_r", type: "remblais", level: 0, niveaux: [-1, 0], points: carre(300, 100, 10) }];
+    w.getZones = () => zones;
+    w.getRoads = () => []; w.getStructures = () => []; w.getEditorPoints = () => [];
+    charger(w, ["js/poiJonction.js", "js/galerieEmprise.js", "js/selectionZone.js", "js/volumeExploite.js"]);
+    const G = w.KtaGalerie;
+    t("3D (règle du pas) : la zone 0 / −1 bouche au 0 et au −1, pas au −2",
+      G.dansZone(100, 100, 0, "structures") && G.dansZone(100, 100, -1, "structures") &&
+      !G.dansZone(100, 100, -2, "structures"));
+    zones = zones.map(z => Object.assign({}, z, { niveaux: undefined }));
+    horloge += 1000;
+    t("3D : −1 décoché (même contour, même `level`) → la signature le voit, la zone ne bouche plus au −1",
+      !G.dansZone(100, 100, -1, "structures") && G.dansZone(100, 100, 0, "structures"));
+    const v3d = lire("js/vue3d.js");
+    t("3D (scène) : les zones dessinées du niveau passent par _zoneSurNiveau (ktaNiveauxObjet)",
+      /zones: _filtrer\([\s\S]{0,200}_zoneSurNiveau\(z, niveau\)/.test(v3d) &&
+      /function _zoneSurNiveau\(z, niveau\) \{[\s\S]{0,200}ktaNiveauxObjet\(z\)/.test(v3d));
+    zones[0].niveaux = [-1, 0]; zones[1].niveaux = [-1, 0];
+    w.APP_CONFIG.activeLevel = -1;
+    w.ktaPointInPolygon = (q, poly) => {   // ray-casting, la règle de utils.js
+      let d = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const A = poly[i], B = poly[j];
+        if ((A.y > q.y) !== (B.y > q.y) && q.x < (B.x - A.x) * (q.y - A.y) / (B.y - A.y) + A.x) d = !d;
+      }
+      return d;
+    };
+    const sel = w.KtaSelectionZone.dansZone(carre(100, 100, 40));
+    w.APP_CONFIG.activeLevel = -2;
+    const sel2 = w.KtaSelectionZone.dansZone(carre(100, 100, 40));
+    t("sélection par zone : la zone 0 / −1 en fait partie au −1, pas au −2",
+      sel.items.some(i => i.obj === zones[0]) && !sel2.items.some(i => i.obj === zones[0]));
+    const vol = (niveau) => w.KtaVolumeExploite.calculer({ secteur: carre(300, 100, 50), structures: [],
+      zones: zones, niveau: niveau, scale: 2, hauteur: 2 });
+    t("volume exploité : le remblais 0 / −1 compte au −1, pas au −2",
+      vol(-1).remblaisM2 > 0 && vol(-2).remblaisM2 === 0, [vol(-1).remblaisM2, vol(-2).remblaisM2]);
+  }
+
   console.log(ko ? "\n⚠️ " + ko + " echec(s)" : "\n🎉 Zones sur plusieurs niveaux : tout passe");
   process.exit(ko ? 1 : 0);
 })();

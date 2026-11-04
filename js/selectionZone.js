@@ -72,6 +72,11 @@
   function _auNiveau(lvl, niveau) {
     return niveau === null || (Number.isInteger(lvl) ? lvl : 0) === niveau;
   }
+  // Zone sur plusieurs niveaux : au niveau si c'est l'un des siens (poiJonction.js > ktaNiveauxObjet).
+  function _zoneAuNiveau(z, niveau) {
+    if (niveau === null || typeof window.ktaNiveauxObjet !== "function") return _auNiveau(z.level, niveau);
+    return window.ktaNiveauxObjet(z).indexOf(niveau) >= 0;
+  }
 
   function _estPoiJonction(p) {
     const J = window.KtaPoiJonction;
@@ -91,7 +96,8 @@
     const b = _boite(poly), niveau = _niveauActif();
     FAMILLES.forEach(function (famille) {
       _lire(famille).forEach(function (obj) {
-        if (!obj || obj._preview || EXCLUS[obj.type] || !_auNiveau(obj.level, niveau)) return;
+        if (!obj || obj._preview || EXCLUS[obj.type]) return;
+        if (!(famille === "zones" ? _zoneAuNiveau(obj, niveau) : _auNiveau(obj.level, niveau))) return;
         if (famille === "editorPoints") {
           if (_estPoiJonction(obj) || !_toutDedans([obj], poly, b)) return;
         } else if (!_toutDedans(obj.points, poly, b)) {
@@ -112,7 +118,8 @@
       (Array.isArray(c[1]) ? c[1] : []).forEach(function (e) {
         // Les ronds d'extrémité de jonction n'ont pas de `points` : écartés avec les jonctions.
         if (!e || !Array.isArray(e.points) || EXCLUS[e.type] || _calqueRapatrie(e.layerId)) return;
-        if (!_auNiveau(e.level, niveau) || !_toutDedans(e.points, poly, b)) return;
+        if (!(c[0] === "zones" ? _zoneAuNiveau(e, niveau) : _auNiveau(e.level, niveau))) return;
+        if (!_toutDedans(e.points, poly, b)) return;
         res.calque.push({ famille: c[0], ref: e });
       });
     });

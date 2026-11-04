@@ -296,6 +296,13 @@
     return niveau === null || (Number.isInteger(o.level) ? o.level : 0) === niveau;
   }
 
+  // Zone : sur CHACUN de ses niveaux (`niveaux`, règle commune poiJonction.js > ktaNiveauxObjet) ; même contour,
+  // dessinée et bloquante sur chacun (galerieEmprise.js > _zoneSurNiveau pour la règle du pas).
+  function _zoneSurNiveau(z, niveau) {
+    if (niveau === null || typeof window.ktaNiveauxObjet !== "function") return _surNiveau(z, niveau);
+    return window.ktaNiveauxObjet(z).indexOf(niveau) >= 0;
+  }
+
   function _premierTag(p) { return (Array.isArray(p.tags) && p.tags[0]) || "default"; }
 
   // ⚠️ Les mêmes règles que la carte, lues à leur source : filtres ≡ (Set = types montrés, null = tout ;
@@ -363,8 +370,9 @@
     return {
       structures: _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", type)
         .filter(ok).filter(_horsTrace),
-      zones: _filtrer(_tab(window.getZones), _tab(window.getAllEmbeddedZones), "zoneTypes", type).filter(ok)
-        .filter(_horsTrace),
+      zones: _filtrer(_tab(window.getZones), _tab(window.getAllEmbeddedZones), "zoneTypes", type).filter(function (z) {
+        return z && Array.isArray(z.points) && _zoneSurNiveau(z, niveau);
+      }).filter(_horsTrace),
       roads: roads.filter(ok).filter(_horsTrace),
       jonctions: sessionRoads.concat(embRoads).filter(function (r) {
         return r && r.type === "jonction" && Array.isArray(r.points);

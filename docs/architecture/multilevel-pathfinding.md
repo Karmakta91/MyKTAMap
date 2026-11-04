@@ -350,9 +350,16 @@ Une zone (tout type, `cust-*` compris) peut toucher plusieurs niveaux : un effon
 - **Itinéraire** : une zone bloquante (inaccessible, ou type à éviter) bloque sur **chacun** de ses niveaux
   (`pathfinder.js > _zoneBloquante`, niveaux calculés une fois par calcul), y compris sur un réseau d'un autre plan
   (`computeRouteOnRoads`, `opts.zones` / `avoidZonesResolved`).
+- **Vue 3D** : dessinée et bloquante sur chacun de ses niveaux, pas ailleurs (`vue3d.js > _zoneSurNiveau` pour la
+  scène et les volumes enjambés par l'itinéraire, `galerieEmprise.js > _zoneSurNiveau` pour la règle du pas, dont
+  `ctx.libre` d'une greffe) ; `niveaux` entre dans l'empreinte des données de la vue et dans la signature de
+  `KtaGalerie` : décocher un niveau, vue ouverte, refait la scène.
 - **Comptes** : bilan par niveau (`refonteInterface.js`), statistiques (`statsGlobales.js`, colonne `niveaux` du CSV),
-  niveaux occupés (`main.js > ktaNiveauxOccupes`) et recherche comptent la zone sur chacun de ses niveaux.
-- Garde-fous : `scripts/check-zones-niveaux.js` (pre-commit : règle, rendu, itinéraire, fiche, session, KMZ, GeoJSON)
+  niveaux occupés (`main.js > ktaNiveauxOccupes`), recherche, niveaux proches d'un recalage
+  (`tracking.js`), sélection par zone (`selectionZone.js`), sélection multiple (`selectionMulti.js`) et remblais du
+  volume exploité (`volumeExploite.js`) comptent la zone sur chacun de ses niveaux.
+- Garde-fous : `scripts/check-zones-niveaux.js` (pre-commit : règle, rendu, itinéraire, fiche, session, KMZ, GeoJSON,
+  règle du pas de la 3D, sélection par zone, volume exploité), § 29 de `scripts/smoke/checkup-vue-3d.js`
   et `scripts/smoke/checkup-zones-niveaux.js` (plan fictif fabriqué dans la page : tracé, fiche, filtre, itinéraire,
   ⏪, KMZ relu par l'import, rechargement).
 

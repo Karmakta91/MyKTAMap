@@ -93,6 +93,10 @@
   function _niveauVisible(obj) {
     if (!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)) return true;
     const vis = Array.isArray(window.APP_CONFIG.visibleLevels) ? window.APP_CONFIG.visibleLevels : [0];
+    // Zone sur plusieurs niveaux : visible si l'un des siens l'est (poiJonction.js > ktaNiveauxObjet).
+    if (Array.isArray(obj.niveaux) && Array.isArray(obj.points) && typeof window.ktaNiveauxObjet === "function") {
+      return window.ktaNiveauxObjet(obj).some(function (n) { return vis.indexOf(n) >= 0; });
+    }
     const lvl = Number.isInteger(obj.level) ? obj.level : 0;
     return vis.indexOf(lvl) >= 0;
   }

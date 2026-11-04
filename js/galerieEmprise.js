@@ -160,6 +160,7 @@
         const o = liste[i];
         if (!o || !Array.isArray(o.points)) continue;
         mel(o.points.length); mel(o.level); mel(String(o.type || "").length);
+        if (Array.isArray(o.niveaux)) o.niveaux.forEach(mel);   // zone sur plusieurs niveaux
         const p = o.points[0], q = o.points[o.points.length - 1];
         if (p && q) { mel(p.x * 10); mel(p.y * 10); mel(q.x * 10); mel(q.y * 10); }
       }
@@ -192,6 +193,14 @@
 
   function _surNiveau(o, niveau) {
     return niveau === null || niveau === undefined || (Number.isInteger(o.level) ? o.level : 0) === niveau;
+  }
+
+  // Zone : sur CHACUN de ses niveaux (`niveaux`, règle commune poiJonction.js > ktaNiveauxObjet), pas son seul `level`.
+  function _zoneSurNiveau(z, niveau) {
+    if (niveau === null || niveau === undefined || typeof window.ktaNiveauxObjet !== "function") {
+      return _surNiveau(z, niveau);
+    }
+    return window.ktaNiveauxObjet(z).indexOf(niveau) >= 0;
   }
 
   // ── Grille de recherche (px) ──────────────────────────────────────────────────────────────────────
@@ -277,7 +286,7 @@
     if (c && c.sig === sig) return c.index;
     const anneaux = [];
     _zones().forEach(function (z) {
-      if (!z || !ZONES_BOUCHENT[z.type] || !Array.isArray(z.points) || !_surNiveau(z, n)) return;
+      if (!z || !ZONES_BOUCHENT[z.type] || !Array.isArray(z.points) || !_zoneSurNiveau(z, n)) return;
       const a = z.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
       if (a.length >= 3) anneaux.push(a);
     });

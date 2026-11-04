@@ -50,7 +50,8 @@
 // Données changées pendant la vue (26). Toucher un objet (27) : fiche de la carte d'un pilier, d'un mur, d'une zone,
 // d'un tracé (mixte, structures, galerie ; yeux et plongée), vide = rien, panneau de POI d'abord, note au clavier,
 // Échap et focus, greffe qui coupe les fiches (doigt), lecture seule (extension, calque), 🗑️ suivi sans rouvrir,
-// « Voir sur la carte » (carte centrée, fiche de la carte, surbrillance).
+// « Voir sur la carte » (carte centrée, fiche de la carte, surbrillance). Zone reliée à plusieurs niveaux (29) : vue et
+// obstacle sur chacun des siens, pas ailleurs, scène refaite quand un niveau est décoché.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -1354,6 +1355,95 @@ async function capturesDessin(page) {
     delete window.__v3dTap;
     return window.KtaVue3D.fermer().then(function () { window.setStructures([]); });
   });
+}
+
+// § 29 — Zone reliée à plusieurs niveaux (`niveaux`, poiJonction.js > ktaNiveauxObjet) : une inaccessible du 0
+// cochée au −1 se voit et bouche en 3D au 0 et au −1, pas au −2 ; −1 décoché vue ouverte (fiche de la carte,
+// KtaConvertir.changerNiveauxZone) : la scène se refait (empreinte des données) et la zone n'y est plus.
+async function sectionZonesNiveaux(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const r = {};
+    if (window.getTrackingActif()) window.stopTracking();
+    const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-zones-niveaux";
+    C.multiLevel = true; C.availableLevels = [-2, -1, 0]; C.visibleLevels = [-2, -1, 0]; C.activeLevel = 0;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setPlanRenduVue3D(null, "structures");
+    const carre = function (cx, cz, h) {
+      return [P(cx - h, cz - h), P(cx + h, cz - h), P(cx + h, cz + h), P(cx - h, cz + h)];
+    };
+    window.setRoads([]); window.setStructures([]); window.setEditorPoints([]);
+    window.setZones([{ uid: "zn_v3d_nv", type: "inaccessible", level: 0, niveaux: [-1, 0], points: carre(5, 0, 1.5) }]);
+    window.KtaGalerie.invalider();
+    let ctx = null;
+    const lireCtx = function () {
+      const deg = K.greffer({ nom: "v3d-zones-niveaux", scene: function (c) { ctx = c; } });
+      if (deg) deg();
+    };
+    const dedans = P(5, 0), A = P(0, 0), B = P(10, 0), loin = P(-10, 6);
+    const mesurer = function () {
+      lireCtx();
+      const e = K.etat();
+      return { niveau: e.niveau, zones: e.compte.zones, libreDedans: !!ctx && ctx.libre(dedans.x, dedans.y),
+        libreLoin: !!ctx && ctx.libre(loin.x, loin.y), traverse: !!ctx && ctx.ligneBloquee(A.x, A.y, B.x, B.y) };
+    };
+    for (const n of [0, -1, -2]) {
+      if (K.etat().ouvert !== false) await K.fermer();
+      const d = P(-10, 0);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: n }, commandes: "pave" });
+      await pause(250);
+      r["n" + n] = mesurer();
+    }
+    // Vue ouverte au −1, −1 décoché (même contour, même `level`) : relue, la zone quitte la scène et ne bouche plus.
+    if (K.etat().ouvert !== false) await K.fermer();
+    const d = P(-10, 0);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: -1 }, commandes: "pave" });
+    await pause(250);
+    const n0 = K.etat().donnees.refaites;
+    const z = window.getZones()[0];
+    r.decoche = window.KtaConvertir.changerNiveauxZone(z, []);
+    for (let i = 0; i < 40; i++) {
+      await pause(50);
+      const dd = K.etat().donnees;
+      if (!dd.attente && dd.refaites > n0) break;
+    }
+    await pause(80);
+    r.refaites = K.etat().donnees.refaites - n0;
+    r.apres = mesurer();
+    r.niveauxApres = window.getZones()[0] && window.getZones()[0].niveaux;
+    await K.fermer();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.setRoads([]); window.setZones([]); window.setStructures([]);
+    window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
+    window.KtaGalerie.invalider();
+    return r;
+  });
+  console.log("§ 29 — zone reliée à plusieurs niveaux (0 et −1)");
+  [0, -1].forEach(function (n) {
+    const m = R["n" + n];
+    verifier(m.niveau === n && m.zones === 1 && !m.libreDedans && m.traverse && m.libreLoin,
+      "au " + n + " : la zone est dans la scène et bouche (place dedans refusée, ligne qui la traverse bloquée)", m);
+  });
+  const m2 = R["n-2"];
+  verifier(m2.niveau === -2 && m2.zones === 0 && m2.libreDedans && !m2.traverse,
+    "au −2 : ni dans la scène ni bloquante", m2);
+  verifier(R.decoche === true && R.niveauxApres === undefined, "−1 décoché depuis la fiche : `niveaux` retiré",
+    { decoche: R.decoche, niveaux: R.niveauxApres });
+  verifier(R.refaites >= 1 && R.apres.niveau === -1 && R.apres.zones === 0 && R.apres.libreDedans &&
+    !R.apres.traverse, "vue ouverte au −1 : scène refaite (empreinte), la zone n'y est plus ni ne bouche",
+  { refaites: R.refaites, apres: R.apres });
 }
 
 async function sectionDessin(page) {
@@ -7826,6 +7916,7 @@ async function sectionDessin(page) {
 
       await sectionFichesObjets(page);
       await sectionDessin(page);
+      await sectionZonesNiveaux(page);
     }
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
