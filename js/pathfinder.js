@@ -33,6 +33,12 @@
   // parallèles plus proches que la tolérance (15 px ≈ 3 m à 5 px/m) : itinéraire à travers le mur.
   const PROXIMITY_TOLERANCE = 15;
 
+  // Deux sommets INTÉRIEURS de deux tracés différents à ≤ 3 px sont reliés : carrefour dessiné en deux « L » qui se
+  // touchent sans se croiser (mesuré à 2,5 px sur un relevé réel). Seuil à part de la fusion (SPATIAL_MERGE_THRESHOLD,
+  // qui confond les nœuds) : ici une arête pondérée. ⚠️ Rester sous l'écart de deux galeries parallèles : au-delà,
+  // l'itinéraire repasse à travers le mur (docs/architecture/multilevel-pathfinding.md §14).
+  const PROXIMITE_INTERIEURS_PX = 3;
+
   // ── Géométrie ──────────
   function _dist(a, b) {
     return Math.hypot(b.x - a.x, b.y - a.y);
@@ -361,7 +367,8 @@
       // Set<niveau> par nœud : 1 niveau pour un nœud de route, plusieurs pour un nœud fusionné,
       // ["transit"] pour le milieu d'une jonction. Décide des connexions à l'enrichissement.
       nodeLevels: [],   // nodeLevels[i] = Set<number|"transit">
-      bouts:      new Set()   // 1er et dernier sommets des tracés : seuls candidats aux jonctions imparfaites
+      bouts:      new Set(),  // 1er et dernier sommets des tracés : seuls candidats aux jonctions imparfaites
+      traces:     []          // traces[i] = indices des tracés qui passent par le nœud i (sommets intérieurs voisins)
     };
   }
 
@@ -406,6 +413,18 @@
     if (!graph.buckets[bk]) graph.buckets[bk] = [];
     graph.buckets[bk].push(idx);
     return idx;
+  }
+
+  function _noterTrace(graph, idx, r) {
+    const l = graph.traces[idx] || (graph.traces[idx] = []);
+    if (l[l.length - 1] !== r) l.push(r);
+  }
+
+  function _memeTrace(graph, a, b) {
+    const la = graph.traces[a], lb = graph.traces[b];
+    if (!la || !lb) return false;
+    for (let i = 0; i < la.length; i++) if (lb.indexOf(la[i]) >= 0) return true;
+    return false;
   }
 
   function _addEdge(graph, a, b, weight) {
@@ -495,6 +514,7 @@
 
       let prevIdx = _getOrAddNode(graph, road.points[0].x, road.points[0].y, isJonction ? fromLvl : segLevel);
       graph.bouts.add(prevIdx);
+      _noterTrace(graph, prevIdx, r);
       _ajouterNiveauNode(graph, prevIdx, isJonction ? fromLvl : segLevel);
 
       for (let i = 1; i < road.points.length; i++) {
@@ -507,6 +527,7 @@
         const idx = _getOrAddNode(graph, p.x, p.y, nodeLvl);
         _ajouterNiveauNode(graph, idx, nodeLvl);
         if (isLast) graph.bouts.add(idx);
+        _noterTrace(graph, idx, r);
 
         // Segment exclu (nœud sans arête) si une zone inaccessible le traverse ou s'il croise un mur en ligne
         // (DUR, jamais relâché), ou si un point d'évitement est à moins de `avoidRadius` (SOUPLE, passe 2).
@@ -752,9 +773,11 @@
           continue;
         }
 
-        if (!bouts.has(idxA) && !bouts.has(idxB)) continue;
         const pB = graph.nodes[idxB];
         const d = Math.hypot(pB.x - pA.x, pB.y - pA.y);
+        // Deux sommets intérieurs : seulement très proches, et de deux tracés différents.
+        const unBout = bouts.has(idxA) || bouts.has(idxB);
+        if (!unBout && (d > PROXIMITE_INTERIEURS_PX || _memeTrace(graph, idxA, idxB))) continue;
         // Au-dessus du seuil de fusion (sinon déjà fusionnés au build).
         if (d > SPATIAL_MERGE_THRESHOLD && d < PROXIMITY_TOLERANCE) {
           _addEdge(graph, idxA, idxB, d);

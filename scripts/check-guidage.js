@@ -664,6 +664,15 @@ async function evacuationBrancard() {
       relie([R("principal", [[200, 300], [200, 497]]), R("principal", [[0, 500], [400, 500]])], [200, 300], [0, 500]));
     t("jonction : deux segments qui se croisent sans sommet commun → reliés au croisement",
       relie([R("principal", [[0, 0], [400, 400]]), R("principal", [[0, 400], [400, 0]])], [0, 0], [0, 400]));
+    // Carrefour dessiné en deux « L » qui se touchent par leurs sommets intérieurs, sans se croiser.
+    const deuxL = function(ecart) {
+      return [R("principal", [[200, 300], [200, 500], [400, 500]]),
+              R("principal", [[0, 500 + ecart], [200, 500 + ecart], [200, 700]])];
+    };
+    t("jonction : deux sommets intérieurs à 2,5 px (carrefour en deux « L ») → reliés",
+      relie(deuxL(2.5), [200, 300], [200, 700]));
+    t("jonction : deux sommets intérieurs à 10 px → pas reliés",
+      !relie(deuxL(10), [200, 300], [200, 700]));
   }
 
   // 11) Bandeau en direct : simulation de marche, faux DOM minimal
