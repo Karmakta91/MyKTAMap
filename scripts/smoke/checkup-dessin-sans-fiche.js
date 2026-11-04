@@ -9,11 +9,14 @@
 // toucher sur chaque objet doit poser UN sommet au point touché (au px plan près) et n'ouvrir aucune fiche (popup,
 // modale) ; l'outil reste armé. Hors outil, la fiche s'ouvre comme avant (POI, structure, zone, tracé, calque).
 // Ajout de point (✏️ modeEdition) : sa fenêtre de nommage s'ouvre, même sur un POI. « Où es-tu ? »
-// (ktaDemanderPositionCarte) et recalage (📍) : le toucher sur un POI rend la position touchée, sans fiche.
-// Vue 3D plongeante, ✏️ ouvert et outil armé : panneau de POI, pilier, zone → sommet, aucune fiche ; outil armé en 2D
-// puis vue ouverte (✏️ fermé) : aucune fiche non plus. Joué au doigt (393 × 852, hasTouch, isMobile) et à la souris
-// (1280 × 800), sous Chromium puis WebKit (KTA_MOTEURS pour un seul).
-// Usage : node scripts/smoke/checkup-dessin-sans-fiche.js (SMOKE_PORT pour une autre copie) · doc : ui.md § Dessin
+// (ktaDemanderPositionCarte) et recalage (📍) : le toucher sur un POI rend la position touchée, sans fiche. Appui long
+// sur un sommet, outil armé : pas d'ajustement (ajusterSommets.js) ; outil désarmé : le 1er toucher rouvre la fiche.
+// Un seul outil armé (POI / mesure / zone / tracé). Vue 3D plongeante, ✏️ ouvert et outil armé : panneau de POI,
+// pilier, zone → sommet, aucune fiche ; armé par les vrais boutons (✏️, groupe, type) puis le sol ; un seul outil ;
+// pas d'ajout de point dans la barre ; outil armé en 2D puis vue ouverte (✏️ fermé) : aucune fiche non plus.
+// Joué au doigt (393 × 852, hasTouch, isMobile) et à la souris (1280 × 800), sous Chromium puis WebKit (KTA_MOTEURS
+// pour un seul).
+// Usage : node scripts/smoke/checkup-dessin-sans-fiche.js (SMOKE_PORT pour une autre copie) · doc : ui.md § Outil armé
 // =====================================================================
 "use strict";
 
@@ -29,7 +32,8 @@ const LS_PREGATES = {
   "myktamap_tutorial_seen_v1": "1"
 };
 const ENTREES = [
-  { nom: "doigt", ctx: { viewport: { width: 393, height: 852 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 } },
+  { nom: "doigt",
+    ctx: { viewport: { width: 393, height: 852 }, hasTouch: true, isMobile: true, deviceScaleFactor: 3 } },
   { nom: "souris", ctx: { viewport: { width: 1280, height: 800 } } }
 ];
 // Outils armés par leur panneau (groupe de la barre de droite, libellé du bouton) ; `mode` relu après le choix.
@@ -46,7 +50,9 @@ const problemes = [];
 let prefixe = "";
 function pb(msg) { problemes.push(prefixe + msg); console.log("  ❌ " + msg); }
 function ok(msg) { console.log("  ✅ " + msg); }
-function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== undefined ? " " + JSON.stringify(detail) : "")); }
+function verifier(c, msg, detail) {
+  if (c) ok(msg); else pb(msg + (detail !== undefined ? " " + JSON.stringify(detail) : ""));
+}
 
 // ── Dans la page : objets fictifs autour du centre de la vue (zoom 0 : 1 px plan = 1 px écran) ──────────
 function semer() {
@@ -64,7 +70,9 @@ function semer() {
   const c = window.map.getCenter();
   const cx = Math.round(c.lng), cy = Math.round(H - c.lat);
   const P = function (dx, dy) { return { x: cx + dx, y: cy + dy }; };
-  const carre = function (dx, dy, d) { return [P(dx - d, dy - d), P(dx + d, dy - d), P(dx + d, dy + d), P(dx - d, dy + d)]; };
+  const carre = function (dx, dy, d) {
+    return [P(dx - d, dy - d), P(dx + d, dy - d), P(dx + d, dy + d), P(dx - d, dy + d)];
+  };
   const F = {
     cx: cx, cy: cy,
     poiSession: P(-90, 270), poiCalque: P(90, 270),
@@ -79,9 +87,11 @@ function semer() {
       tags: ["salle"], description: "" }, F.poiSession)]);
     window.setStructures([{ uid: "st_dsf_s", type: "pilier-1", level: 0, points: carre(-90, -90, 25),
       description: "note du pilier" }]);
-    window.setZones([{ uid: "zn_dsf_s", type: "eau", level: 0, points: carre(-90, 20, 30), description: "note de zone" }]);
+    window.setZones([{ uid: "zn_dsf_s", type: "eau", level: 0, points: carre(-90, 20, 30),
+      description: "note de zone" }]);
     window.setRoads([
-      { uid: "rd_dsf_s", type: "principal", level: 0, points: [P(-160, 120), P(-20, 120)], description: "note du tracé" },
+      { uid: "rd_dsf_s", type: "principal", level: 0, points: [P(-160, 120), P(-20, 120)],
+        description: "note du tracé" },
       { uid: "rd_dsf_iti", type: "itinerary", level: 0, points: [P(-160, 200), P(160, 200)] }
     ]);
     if (window.resetMesure) window.resetMesure();
@@ -312,6 +322,41 @@ async function section2D(page, entree) {
   }
   await page.evaluate(remettre);
 
+  // Appui long sur un sommet, outil armé : l'ajustement des formes (ajusterSommets.js) ne part pas, aucune fiche.
+  // Puis l'outil désarmé : le premier toucher rouvre la fiche (aucun état resté en retard d'un geste).
+  await page.evaluate(remettre);
+  await page.evaluate(armer, OUTILS[1]);
+  const coin = await page.evaluate(function () {
+    const F = window.__dsf, m = window.map, rc = m.getContainer().getBoundingClientRect();
+    const q = m.latLngToContainerPoint(L.latLng(window.APP_CONFIG.imageHeight - (F.structSession.y - 25),
+      F.structSession.x - 25));
+    return { x: rc.left + q.x, y: rc.top + q.y,
+      gestes: window.KtaAjusterSommets ? window.KtaAjusterSommets.etat().gestes : null };
+  });
+  // Appui long au pointeur principal (Playwright n'a pas d'appui long au doigt) ; l'écoute est la même (pointerdown).
+  await page.mouse.move(coin.x, coin.y);
+  await page.mouse.down();
+  await page.waitForTimeout(800);
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const appui = await page.evaluate(function (g0) {
+    return { gestes: window.KtaAjusterSommets ? window.KtaAjusterSommets.etat().gestes - g0 : null,
+      enCours: window.KtaAjusterSommets ? window.KtaAjusterSommets.enCours() : null,
+      popup: !!document.querySelector(".leaflet-popup"), zone: !!window.modeZone };
+  }, coin.gestes);
+  verifier(appui.gestes === 0 && !appui.enCours && !appui.popup && appui.zone,
+    "appui long sur un sommet, outil armé : pas d'ajustement, aucune fiche, outil gardé", appui);
+  await page.evaluate(function () {
+    if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+    window.map.closePopup();
+  });
+  await page.evaluate(remettre);
+  await page.waitForTimeout(150);
+  await toucher(page, entree, cibles.poiSession);
+  const rouvre = await page.evaluate(lireEtat);
+  verifier(rouvre.fiche.length > 0, "outil désarmé : le premier toucher sur un POI rouvre sa fiche", rouvre);
+  await page.evaluate(remettre);
+
   // Ajout de point : sa fenêtre de nommage s'ouvre, même touché sur un POI (exclusion voulue).
   const ajout = [];
   for (const k of ["poiCalque", "structSession"]) {
@@ -347,7 +392,9 @@ async function section2D(page, entree) {
   });
   verifier(!!pick.r && !pick.popup && Math.hypot(pick.r.x - attPick.x, pick.r.y - attPick.y) <= 3,
     "« Où es-tu ? » sur un POI : position touchée, aucune fiche", pick);
-  await page.evaluate(function () { if (window.ktaDemanderPositionCarte.annuler) window.ktaDemanderPositionCarte.annuler(); });
+  await page.evaluate(function () {
+    if (window.ktaDemanderPositionCarte.annuler) window.ktaDemanderPositionCarte.annuler();
+  });
 
   // Recalage 📍 : armé, le toucher sur un POI recale le tracker au point touché, sans fiche.
   await page.evaluate(remettre);
@@ -432,7 +479,8 @@ async function section3D(page, entree) {
       };
       const haut = K.etat().hauteur;
       const pan = (K.etat().panneaux || []).filter(function (q) { return q.nom === "PoiSessionDsf" && q.visible; })[0];
-      const out = { pilier: ecran(F.v3d.pilier, haut), zone: ecran({ x: F.v3d.zone.x + 2, y: F.v3d.zone.y + 2 }, haut * 0.6),
+      const out = { pilier: ecran(F.v3d.pilier, haut),
+        zone: ecran({ x: F.v3d.zone.x + 2, y: F.v3d.zone.y + 2 }, haut * 0.6),
         poi: pan ? pan.ecran : null };
       Object.keys(out).forEach(function (k) {
         const p = out[k];
@@ -441,7 +489,8 @@ async function section3D(page, entree) {
         p.vise = vu ? vu.genre : null;
         p.dans = p.x > rc.left && p.x < rc.right && p.y > rc.top && p.y < rc.bottom;
         const el = document.elementFromPoint(p.x, p.y);
-        p.sous = el ? (el.className && typeof el.className === "string" ? el.className.split(" ")[0] : el.tagName) : null;
+        const cl = el && typeof el.className === "string" ? el.className.split(" ")[0] : "";
+        p.sous = el ? (cl || el.tagName) : null;
       });
       return out;
     });
@@ -567,6 +616,54 @@ async function section3D(page, entree) {
   verifier(seul3.length === 0, "3D : un seul outil armé (POI de la carte puis 📐, 📐 puis tracé, tracé puis zone)",
     seul3);
   verifier(barrePoi.indexOf("edition") < 0, "3D : la barre ✏️ ne propose pas l'ajout de point", barrePoi);
+
+  // Armer par les vrais boutons, au pointeur de l'entrée (souris ou doigt) : ✏️, groupe, type du panneau, puis le sol.
+  const reels = [];
+  const centre = async function (sel) {
+    const b = await page.locator(sel).first().boundingBox();
+    return b ? { x: b.x + b.width / 2, y: b.y + b.height / 2 } : null;
+  };
+  const viser = async function (p) {
+    if (!p) return false;
+    if (entree === "doigt") { await page.touchscreen.tap(p.x, p.y); }
+    else {
+      await page.mouse.move(p.x - 20, p.y - 10, { steps: 5 });
+      await page.mouse.move(p.x, p.y, { steps: 5 });
+      await page.mouse.down();
+      await page.waitForTimeout(120);
+      await page.mouse.up();
+    }
+    await page.waitForTimeout(250);
+    return true;
+  };
+  for (const o of OUTILS) {
+    await page.evaluate(function () {
+      window.__dsf.poser3D();
+      if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+      window.KtaVue3D.dessiner(false);
+    });
+    await page.waitForTimeout(300);
+    const pas = [];
+    pas.push(await viser(await centre('#kta-vue3d .kta-v3d-outils [data-v3d="dessin"]')));
+    pas.push(await viser(await centre('#kta-vue3d .kta-v3d-outils [data-groupe="' + o.groupe + '"]')));
+    const lib = await page.evaluate(function (k) { return window.I18n.t(k); }, o.cle);
+    pas.push(await viser(await centre('.kta-group-flyout .kta-group-flyout-btn:has-text("' + lib + '")')));
+    const arme = (await page.evaluate(modesArmes)).length === 1;
+    await page.waitForTimeout(800);
+    const avant = await etat3();
+    const cv = await page.locator("#kta-vue3d canvas").first().boundingBox();
+    await viser({ x: cv.x + cv.width * 0.62, y: cv.y + cv.height * 0.45 });
+    const apres = await etat3();
+    if (pas.indexOf(false) >= 0 || !arme || apres.poses !== avant.poses + 1 || apres.n !== avant.n + 1 || apres.fiche) {
+      reels.push(o.nom + " : " + JSON.stringify({ boutons: pas, arme: arme, poses: apres.poses - avant.poses,
+        sommets: apres.n - avant.n, fiche: apres.fiche }));
+    }
+  }
+  await page.evaluate(function () {
+    if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+  });
+  verifier(reels.length === 0, "3D, vrais boutons (✏️, groupe, type) puis le sol : sommet posé, pour les 4 outils",
+    reels);
 
   // Outil armé sur la carte, ✏️ fermé dans la vue : aucune fiche (le toucher ne dessine pas sans ✏️).
   const sansBarre = [];
