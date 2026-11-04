@@ -419,13 +419,25 @@ window.ktaFormesAjustables.mesure = {
 
 // Libellés de segment et d'angle posés sur la carte, tels qu'affichés : [{ genre: "segment" | "angle", x, y (px plan),
 // texte }]. ⚠️ contrat : la vue 3D les lit ici (mêmes textes, mêmes règles), jamais recalculés ailleurs.
+// Texte d'un libellé encore hors du DOM : balises retirées par un parcours linéaire (pas d'expression à retour arrière).
+function _texteSansBalises(html) {
+  let out = "", dans = false;
+  for (let i = 0; i < html.length; i++) {
+    const c = html.charAt(i);
+    if (c === "<") dans = true;
+    else if (c === ">") dans = false;
+    else if (!dans) out += c;
+  }
+  return out;
+}
+
 window.ktaMesureLibelles = function() {
   const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
   const lire = function(genre) {
     return function(l) {
       const ll = l.getLatLng(), el = l.getElement && l.getElement();
       const html = (l.options && l.options.icon && l.options.icon.options.html) || "";
-      const texte = el ? el.textContent : html.replace(/<[^>]*>/g, "");
+      const texte = el ? el.textContent : _texteSansBalises(html);
       return { genre: genre, x: ll.lng, y: H - ll.lat, texte: texte };
     };
   };

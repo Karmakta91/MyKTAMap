@@ -185,8 +185,8 @@ window.KtaAjusterSommets = (function () {
     const titre = _t("ajuster.supprimer");
     const icon = L.divIcon({
       className: "kta-ajuster-menu",
-      html: '<button type="button" class="kta-ajuster-suppr" aria-label="' + titre.replace(/"/g, "&quot;") +
-        '" title="' + titre.replace(/"/g, "&quot;") + '">🗑️</button>',
+      html: '<button type="button" class="kta-ajuster-suppr" aria-label="' + window.ktaEsc(titre) +
+        '" title="' + window.ktaEsc(titre) + '">🗑️</button>',
       iconSize: [44, 44], iconAnchor: [22, 58]
     });
     const marker = L.marker(_ll(c), { icon: icon, interactive: true, keyboard: false, zIndexOffset: 1000 }).addTo(m);

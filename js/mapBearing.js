@@ -913,7 +913,7 @@
     getSource:        function() { return _source; },
     // Angle manuel posé par code (aide, tests) : mêmes refus que le geste. Rend true s'il est appliqué.
     setManuel:        function(deg) {
-      if (typeof deg !== "number" || isNaN(deg) || !_rotationManuellePermise()) return false;
+      if (typeof deg !== "number" || Number.isNaN(deg) || !_rotationManuellePermise()) return false;
       if (_source !== "manuel") _entrerManuel();
       _poserManuel(deg);
       if (!_tournee()) reset();
