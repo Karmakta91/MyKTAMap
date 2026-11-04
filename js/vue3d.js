@@ -183,6 +183,17 @@
   // lisible hors du faisceau, éteint au loin par le brouillard comme le reste.
   const HALO = { r0: 0.45, r1: 0.7, y: 0.03, opacite: 0.85, fond: 0.18 };
   const MEMBRE = { rayon: 0.22, haut: 1.7, tete: 0.14 };   // m : silhouette d'un membre (extension)
+  // Lampe frontale d'un membre (extension, _lampeMembre) : halo additif sur la tête, au blanc chaud de notre lampe
+  // (`couleur`, celle du SpotLight de _monterScene) teinté de `teinte` de la couleur du membre. fog: false (vu au bout
+  // d'une galerie, là où le brouillard a éteint la roche), profondeur testée (jamais à travers un pilier). `taille`
+  // m, bornée à l'écran entre `pxMin` et `pxMax` px ; `jour` = force en Plein jour et en vue d'édition (scène
+  // éclairée : discret). Une vraie lumière (SpotLight sans ombre, `distance` m) pour les `lumieres` membres les plus
+  // proches de notre place, à moins de `portee` m : faisceau de `faisceau` rad devant lui si la présence donne un
+  // cap (plus le cône visible `cone`, incliné de `inclinaison` rad vers le sol), sinon cône de `ouvert` rad vers le
+  // bas (halo rond). 🩸 Sans ombre, cette lumière traverse la roche : sa portée reste courte exprès.
+  const LAMPE_MEMBRE = { couleur: 0xfff1d6, teinte: 0.2, taille: 0.6, pxMin: 7, pxMax: 40, jour: 0.35, devant: 0.2,
+    lumieres: 2, portee: 20, force: 4, distance: 7, decay: 1.5, faisceau: 0.6, ouvert: 1.45, penombre: 0.6,
+    inclinaison: 0.25, cone: { long: 3, rayon: 0.6, opacite: 0.045 } };
   const PASSAGE = 2;                // m : distance d'un passage (POI jonction, bout de tracé jonction) qui montre 🪜
   // Panneau d'un passage (POI jonction) : lisible jusqu'à 1 m (là où 🪜 apparaît), effacé seulement sous 0,8 m.
   const PRES_PASSAGE = { min: 0.8, net: 1 };
@@ -2346,6 +2357,9 @@
     e.equipeSig = null;
     e.matsEquipe = new Map();
     e.geoMembre = e.geoHalo = null;
+    // Lampes des membres (_lampeMembre) : texture, cône et lumières refaits avec la scène (reprise du contexte).
+    e.lampesMembres = []; e.lampesActives = []; e.lampesEquipe = null;
+    e.texLampeMembre = e.geoFaisceau = e.matFaisceau = null;
     const cone = new THREE.ConeGeometry(0.35, 0.9, 12);
     cone.rotateX(-Math.PI / 2);
     e.avatar = new THREE.Mesh(cone, e.mats.avatar);
@@ -2360,7 +2374,8 @@
   // afficherReperes, afficherItineraires → js/ktaPresences.js) ; elle ne demande rien et n'envoie rien. Sans
   // extension, ces listes sont vides : rien n'est dessiné. Masquages de la carte respectés (personne, itinéraire).
   // Au niveau affiché seulement (un niveau inconnu se montre partout). Refait quand KtaPresences.version(), le
-  // niveau ou la hauteur changent ; sprites dans _e.panneaux (même fondu et même échelle que les POI).
+  // niveau ou la hauteur changent ; sprites dans _e.panneaux (même fondu et même échelle que les POI). Chaque
+  // silhouette porte une lampe frontale (_lampeMembre), visible jusqu'à la portée réglée, jamais au-delà.
   function _hauteurSilhouette() { return Math.min(MEMBRE.haut, _e.hauteur * 0.85); }
 
   function _matCouleur(hex) {
@@ -2394,13 +2409,139 @@
     return g;
   }
 
+  // Lampe frontale d'un membre (LAMPE_MEMBRE) : halo sur la tête et, si la présence donne un cap, faisceau visible
+  // devant lui ; taille, force et lumière réelle suivies à chaque image (_majLampesMembres). Jamais sur notre place :
+  // notre avatar (vue d'édition) n'est pas un membre, et notre lampe est celle de la vue.
+  function _lampeMembre(s, couleur, cap) {
+    const e = _e, L = LAMPE_MEMBRE;
+    if (!e.texLampeMembre) e.texLampeMembre = _texLampeMembre();
+    const c = new THREE.Color(L.couleur), m = new THREE.Color();
+    try { m.setStyle(String(couleur)); c.lerp(m, L.teinte); } catch (err) { /* blanc chaud seul */ }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: e.texLampeMembre, color: c, fog: false,
+      depthTest: true, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending, toneMapped: false }));
+    sp.userData.partage = true;   // texture commune : libérée avec la vue (_demonter), pas avec le membre
+    sp.userData.famille = "lampeMembre";
+    s.add(sp);
+    const y = _hauteurSilhouette() - MEMBRE.tete, aCap = Number.isFinite(cap);
+    let faisceau = null;
+    if (aCap) {
+      if (!e.geoFaisceau) {
+        // Sommet à l'origine (la tête), ouverture vers −z : tourné comme la tête de la vue (rotation.y = −cap).
+        e.geoFaisceau = new THREE.ConeGeometry(L.cone.rayon, L.cone.long, 16, 1, true);
+        e.geoFaisceau.translate(0, -L.cone.long / 2, 0);
+        e.geoFaisceau.rotateX(Math.PI / 2);
+        e.matFaisceau = new THREE.MeshBasicMaterial({ color: L.couleur, transparent: true, opacity: L.cone.opacite,
+          blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      }
+      faisceau = new THREE.Mesh(e.geoFaisceau, e.matFaisceau);
+      faisceau.rotation.order = "YXZ";
+      faisceau.rotation.set(-L.inclinaison, -cap * Math.PI / 180, 0);
+      faisceau.position.y = y;
+      faisceau.userData.partage = true;
+      s.add(faisceau);
+    }
+    e.lampesMembres.push({ g: s, sprite: sp, faisceau: faisceau, cap: aCap ? cap : null, y: y, px: 0, d: 0 });
+  }
+
+  // Masque du halo : dégradé radial en alpha seulement (blanc), la teinte vient du matériau (LAMPE_MEMBRE).
+  function _texLampeMembre() {
+    const cv = document.createElement("canvas"), n = 64;
+    cv.width = cv.height = n;
+    const g = cv.getContext("2d"), d = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+    [[0, 1], [0.15, 0.85], [0.4, 0.22], [1, 0]].forEach(function (a) {
+      d.addColorStop(a[0], "rgba(255,255,255," + a[1] + ")");
+    });
+    g.fillStyle = d;
+    g.fillRect(0, 0, n, n);
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+
+  // Lumières réelles des membres : créées au premier membre affiché, retirées quand il n'y en a plus. 🩸 Leur nombre
+  // entre dans les shaders de three.js (en ajouter ou en retirer les recompile) : jamais au gré des distances, une
+  // lumière sans membre proche reste allumée à 0. Sans extension, aucune : rien ne coûte.
+  function _lumieresEquipe(oui) {
+    const e = _e, L = LAMPE_MEMBRE;
+    if (oui && !e.lampesEquipe) {
+      e.lampesEquipe = [];
+      for (let i = 0; i < L.lumieres; i++) {
+        const l = new THREE.SpotLight(L.couleur, 0, L.distance, L.ouvert, L.penombre, L.decay);
+        e.scene.add(l, l.target);
+        e.lampesEquipe.push(l);
+      }
+    } else if (!oui && e.lampesEquipe) {
+      e.lampesEquipe.forEach(function (l) { e.scene.remove(l, l.target); l.dispose(); });
+      e.lampesEquipe = null;
+    }
+  }
+
+  // À chaque image dessinée (_placerCamera) : halo devant la tête du côté de qui regarde (la sphère de la tête ne le
+  // cache pas), taille bornée à l'écran, plus fort de face quand le cap est connu ; les LAMPE_MEMBRE.lumieres membres
+  // les plus proches de notre place portent les lumières réelles. Plein jour et vue d'édition : discret.
+  // ⚠️ contrat : jamais au-delà de la portée réglée (_rayonScene autour de _centreScene) : plus loin, parois et
+  // piliers ne sont pas construits et le halo se verrait à travers la roche (camera.far la dépasse de quelques m).
+  function _majLampesMembres() {
+    const e = _e, L = LAMPE_MEMBRE, liste = e.lampesMembres;
+    e.lampesActives = [];
+    if (!liste || !liste.length) return;
+    const cam = e.camera.position, h = (e.cv && e.cv.clientHeight) || 800;
+    const f = h / (2 * Math.tan(e.camera.fov * Math.PI / 360));
+    const discret = _lampeEnVigueur().jour || e.vue === "plongee", k = discret ? L.jour : 1;
+    const px = e.pos.x / e.sc, pz = e.pos.y / e.sc, c0 = _centreScene(), r0 = _rayonScene(), proches = [];
+    liste.forEach(function (m) {
+      const gx = m.g.position.x, gz = m.g.position.z;
+      const dans = Math.hypot(gx - c0.x, gz - c0.z) <= r0;
+      m.sprite.visible = dans;
+      if (m.faisceau) m.faisceau.visible = dans && !discret;
+      const dx = cam.x - gx, dy = cam.y - m.y, dz = cam.z - gz, d = Math.hypot(dx, dy, dz) || 1e-3;
+      m.d = d;
+      if (!dans) return;
+      m.sprite.position.set(dx / d * L.devant, m.y + dy / d * L.devant, dz / d * L.devant);
+      m.px = Math.max(L.pxMin, Math.min(L.pxMax, L.taille * f / d));
+      const s = m.px * d / f;
+      m.sprite.scale.set(s, s, 1);
+      let face = 1;
+      if (m.cap !== null) {
+        const c = m.cap * Math.PI / 180, dh = Math.hypot(dx, dz) || 1e-3;
+        face = 0.55 + 0.45 * Math.max(0, (Math.sin(c) * dx - Math.cos(c) * dz) / dh);
+      }
+      m.sprite.material.opacity = face * k;
+      const dp = Math.hypot(gx - px, gz - pz);
+      if (dp <= Math.min(L.portee, e.distance)) proches.push({ m: m, d: dp });
+    });
+    proches.sort(function (a, b) { return a.d - b.d; });
+    e.lampesActives = proches.slice(0, L.lumieres).map(function (q) { return q.m; });
+    (e.lampesEquipe || []).forEach(function (l, i) {
+      const m = e.lampesActives[i];
+      l.intensity = m ? L.force * k : 0;
+      if (!m) return;
+      const gx = m.g.position.x, gz = m.g.position.z;
+      l.position.set(gx, m.y, gz);
+      if (m.cap !== null) {
+        const c = m.cap * Math.PI / 180;
+        l.angle = L.faisceau;
+        l.target.position.set(gx + Math.sin(c) * 3, m.y - 1, gz - Math.cos(c) * 3);
+      } else {
+        l.angle = L.ouvert;
+        l.target.position.set(gx, 0, gz);
+      }
+      l.target.updateMatrixWorld();
+    });
+  }
+
   function _viderEquipe() {
     const e = _e;
     if (!e.equipe) return;
+    e.lampesMembres = [];
+    e.lampesActives = [];
     e.equipe.children.slice().forEach(function (o) {
       o.traverse(function (q) {
         if (q.geometry && !q.isSprite && !q.userData.partage) q.geometry.dispose();
-        if (q.isSprite && q.material) { if (q.material.map) q.material.map.dispose(); q.material.dispose(); }
+        if (q.isSprite && q.material) {
+          if (q.material.map && !q.userData.partage) q.material.map.dispose();
+          q.material.dispose();
+        }
         if (q.isSprite) e.panneaux.delete(q);
       });
       e.equipe.remove(o);
@@ -2427,6 +2568,7 @@
       const s = _silhouette(x, z, couleur);
       s.userData.vue3d = en3d;
       g.add(s);
+      _lampeMembre(s, couleur, en3d ? p.cap : null);
       g.add(_panneau({ nom: p.pseudo + (en3d ? " · " + _t("presence.vue3d.marque") : "") }, [x, z],
         { bord: couleur, sansIcone: true, genre: "membre", y: Math.min(_hauteurSilhouette() + 0.35, e.hauteur - 0.15) }));
       nb.membres++;
@@ -2463,6 +2605,7 @@
       me.userData.famille = "itineraireEquipe";
       g.add(me);
     }
+    _lumieresEquipe(nb.membres > 0);
     e.nbEquipe = nb;
     e.sale = true;
   }
@@ -3428,6 +3571,7 @@
     e.plafond.position.set(c.x, e.hauteur, c.z);
     e.avatar.position.set(x, 0.45, z);
     e.avatar.rotation.set(0, -cap, 0);
+    _majLampesMembres();
     if (e.vue === "plongee") {
       const fx = Math.sin(cap), fz = -Math.cos(cap), i = e.inclinaison * Math.PI / 180;
       const v = _viseeCamera(), vx = v.x, vz = v.z, h = e.recul * Math.cos(i);
@@ -7161,6 +7305,8 @@
       [e.geoMembre, e.geoHalo, e.geoMarqueur].forEach(function (g) {
         if (g) Object.keys(g).forEach(function (k) { g[k].dispose(); });
       });
+      [e.texLampeMembre, e.geoFaisceau, e.matFaisceau].forEach(function (o) { if (o) o.dispose(); });
+      (e.lampesEquipe || []).forEach(function (l) { l.dispose(); });
       if (e.lampe) e.lampe.dispose();
       e.renderer.dispose();
       const gl = e.renderer.getContext();
@@ -7366,6 +7512,19 @@
       membres: e.equipe ? e.equipe.children.filter(function (o) { return o.userData.famille === "membre"; })
         .map(function (o) { return { x: o.position.x, z: o.position.z, vue3d: !!o.userData.vue3d }; }) : [],
       presence: { publiee: e.publiee ? Object.assign({}, e.publiee) : null, publications: e.publications },
+      // Lampes des membres : une par silhouette (_lampeMembre), lumières réelles allumées (_majLampesMembres).
+      lampesMembres: (e.lampesMembres || []).map(function (m) {
+        const w = m.sprite.getWorldPosition(new THREE.Vector3());
+        return { x: +m.g.position.x.toFixed(2), z: +m.g.position.z.toFixed(2), y: +w.y.toFixed(2), cap: m.cap,
+          visible: m.sprite.visible, faisceau: !!m.faisceau && m.faisceau.visible,
+          opacite: +m.sprite.material.opacity.toFixed(2), fog: m.sprite.material.fog,
+          depthTest: m.sprite.material.depthTest, px: +m.px.toFixed(1), d: +m.d.toFixed(2), ecran: _ecran(w),
+          lumiere: (e.lampesActives || []).indexOf(m) >= 0 };
+      }),
+      lumieresEquipe: e.lampesEquipe ? { nombre: e.lampesEquipe.length,
+        allumees: e.lampesEquipe.filter(function (l) { return l.intensity > 0; }).length } : null,
+      avatarEnfants: e.avatar ? e.avatar.children.length : 0,
+      brouillard: e.scene ? { near: +e.scene.fog.near.toFixed(2), far: +e.scene.fog.far.toFixed(2) } : null,
       filtres: { panneauOuvert: !!(window.FilterPanel && window.FilterPanel.isVisible()),
         pastille: !!e.boutonFiltres && e.boutonFiltres.classList.contains("kta-filter-ctrl-actif") },
       recouverte: _recouverte(),

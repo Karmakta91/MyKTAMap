@@ -40,7 +40,9 @@
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
-// « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Greffe (21) :
+// « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Lampe frontale
+// des membres (12 ter, KTA_V3D_SEUL=lampes : cette section seule) : halo hors brouillard jusqu'à la portée, absent
+// au-delà, caché par un pilier, 2 lumières au plus, faisceau avec cap, rien sur notre avatar, coût. Greffe (21) :
 // prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
 // (23) : refus, confirmation, partie en vagues, masquage, endurance, tir, recharge, objets, égaré, silhouette, fin.
 // Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), intensité 25 / 300 %
@@ -1399,6 +1401,202 @@ async function capturesDessin(page) {
 // § 29 — Zone reliée à plusieurs niveaux (`niveaux`, poiJonction.js > ktaNiveauxObjet) : une inaccessible du 0
 // cochée au −1 se voit et bouche en 3D au 0 et au −1, pas au −2 ; −1 décoché vue ouverte (fiche de la carte,
 // KtaConvertir.changerNiveauxZone) : la scène se refait (empreinte des données) et la zone n'y est plus.
+// ── 12 ter. Lampe frontale des membres (vue3d.js > _lampeMembre, extension FACTICE, membres fictifs) ─────────────
+// Galerie fictive de 3 m entre deux longs murs, de −40 à +40 m ; un pilier la barre de −10 à −7,5 m. Notre place au
+// milieu, cap 90 (est) ou 270 (ouest). Pixels lus sur une capture, autour du point d'écran du halo, comparés à la
+// même vue sans membre : halo à 25 m (dans le brouillard) et à 0,9 × portée visible ; à 1,1 × portée absent (rien
+// n'est construit si loin) ; derrière le pilier masqué ; 3 membres proches → 2 lumières, les plus proches ; cap
+// donné → faisceau ; aucun halo sur notre avatar (vue d'édition) ; Plein jour discret ; coût par image mesuré.
+// Hauteur de 4 m le temps de la section : le nom du membre (sans test de profondeur) passe au-dessus du halo.
+async function sectionLampesMembres(page) {
+  const lumiere = async function (pts) {
+    await page.evaluate(async function () {
+      for (let i = 0; i < 30; i++) {
+        window.KtaVue3D.incliner(0);
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+      }
+    });
+    await page.waitForTimeout(250);
+    const b64 = (await page.screenshot({ type: "png" })).toString("base64");
+    return page.evaluate(function (a) {
+      return new Promise(function (ok) {
+        const img = new Image();
+        img.onload = function () {
+          const c = document.createElement("canvas"), k = img.width / window.innerWidth;
+          c.width = img.width; c.height = img.height;
+          const g = c.getContext("2d");
+          g.drawImage(img, 0, 0);
+          ok(a.pts.map(function (p) {
+            const r = Math.max(2, Math.round(3 * k)), x = Math.round(p.x * k) - r, y = Math.round(p.y * k) - r;
+            const d = g.getImageData(x, y, 2 * r + 1, 2 * r + 1).data;
+            let m = 0;
+            for (let i = 0; i < d.length; i += 4) m = Math.max(m, (d[i] + d[i + 1] + d[i + 2]) / 3);
+            return Math.round(m);
+          }));
+        };
+        img.src = "data:image/png;base64," + a.b;
+      });
+    }, { b: b64, pts: pts });
+  };
+  const ctx = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    if (window.getTrackingActif()) window.stopTracking();
+    window.__v3dLampes = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      acc: window.ktaEstAccessible, portee: window.getVue3DPortee ? window.getVue3DPortee() : null,
+      jour: window.getVue3DPleinJour ? window.getVue3DPleinJour() : false };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.ktaEstAccessible = function () { return true; };
+    window._currentLoadedPlanId = "v3d-checkup-lampes";
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setPlanRenduVue3D(null, "structures");
+    window.setPlanHauteurGalerie(null, 4);
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    window.setRoads([]); window.setZones([]); window.setEditorPoints([]);
+    window.setStructures([
+      { uid: "st_lp_n", type: "pilier-1", level: C.activeLevel, points: rect(-40, -3, 40, -1.5) },
+      { uid: "st_lp_s", type: "pilier-1", level: C.activeLevel, points: rect(-40, 1.5, 40, 3) },
+      { uid: "st_lp_p", type: "pilier-1", level: C.activeLevel, points: rect(-10, -1.5, -7.5, 1.5) }
+    ]);
+    window.KtaGalerie.invalider();
+    window.KtaExtensions.afficherPresences([]);
+    const d = P(0, 0);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: C.activeLevel }, commandes: "pave" });
+    K.reglerPortee(30);
+    K.reglerPleinJour(false);
+    return { ox: ox, oz: oz, sc: sc, niveau: C.activeLevel, portee: K.etat().distance };
+  });
+  // Membres fictifs posés à (x, z) m de notre place ; rend l'état des lampes après rendu.
+  const poser = async function (liste, cap) {
+    return page.evaluate(async function (a) {
+      const K = window.KtaVue3D, o = a.c;
+      window.KtaExtensions.afficherPresences(a.liste.map(function (m, i) {
+        return Object.assign({ id: "membre-lampe-" + i, pseudo: "Membre " + String.fromCharCode(65 + i),
+          x: (o.ox + m.x) * o.sc, y: (o.oz + m.z) * o.sc, niveau: o.niveau, couleur: "#3fbf7f" }, m.extra || {});
+      }));
+      const p = { x: o.ox * o.sc, y: o.oz * o.sc };
+      K.placer(p.x, p.y, a.cap);
+      for (let i = 0; i < 8; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      const e = K.etat();
+      return { lampes: e.lampesMembres, lumieres: e.lumieresEquipe, membres: e.equipe.membres, brume: e.brouillard,
+        avatar: e.avatarEnfants, distance: e.distance };
+    }, { liste: liste, cap: cap, c: ctx });
+  };
+  const L = ctx.portee;
+  const vides = {};
+  for (const cap of [90, 270]) {
+    await poser([], cap);
+    vides[cap] = true;
+  }
+  const r = {};
+  // Halo à 25 m, puis à 0,9 et 1,1 × la portée, vers l'est.
+  for (const q of [["m25", 25], ["m09", +(0.9 * L).toFixed(1)], ["m11", +(1.1 * L).toFixed(1)]]) {
+    const s = await poser([{ x: q[1], z: 0 }], 90);
+    const l = s.lampes[0];
+    const avec = await lumiere([l.ecran]);
+    await capture(page, "lampes-" + q[0]);
+    await poser([], 90);
+    const sans = await lumiere([l.ecran]);
+    r[q[0]] = { m: q[1], lampe: l, brume: s.brume, avec: avec[0], sans: sans[0] };
+  }
+  // Derrière le pilier, vers l'ouest.
+  {
+    const s = await poser([{ x: -20, z: 0 }], 270);
+    const l = s.lampes[0];
+    const avec = await lumiere([l.ecran]);
+    await capture(page, "lampes-pilier");
+    await poser([], 270);
+    const sans = await lumiere([l.ecran]);
+    r.pilier = { lampe: l, avec: avec[0], sans: sans[0] };
+  }
+  // Trois membres proches et un loin : 2 lumières, sur les deux plus proches ; cap donné → faisceau.
+  r.trois = await poser([{ x: 5, z: 0.5 }, { x: 10, z: -0.5 }, { x: 15, z: 0 },
+    { x: 8, z: 0, extra: { source: "vue3d", cap: 270 } }], 90);
+  await capture(page, "lampes-trois");
+  // Vue d'édition : aucun halo sur notre avatar, halos des membres discrets ; Plein jour : discret aussi.
+  r.edition = await page.evaluate(async function () {
+    const K = window.KtaVue3D;
+    K.basculerVue();
+    for (let i = 0; i < 8; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    const e = K.etat(), out = { vue: e.vue, avatar: e.avatarEnfants, lampes: e.lampesMembres, pos: e.pos, sc: e.sc };
+    K.basculerVue();
+    K.reglerPleinJour(true);
+    for (let i = 0; i < 8; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    out.jour = K.etat().lampesMembres;
+    K.reglerPleinJour(false);
+    return out;
+  });
+  // Coût par image : sans membre (aucune lumière ajoutée) puis 3 membres proches (2 lumières allumées).
+  r.cout = await page.evaluate(async function (o) {
+    const K = window.KtaVue3D, X = window.KtaExtensions;
+    const pause = function () { return new Promise(function (ok) { requestAnimationFrame(ok); }); };
+    X.afficherPresences([]);
+    await pause(); await pause();
+    const sans = K.mesurer({ images: 120 });
+    X.afficherPresences([5, 10, 15].map(function (x, i) {
+      return { id: "membre-cout-" + i, pseudo: "Membre " + i, x: (o.ox + x) * o.sc, y: o.oz * o.sc, niveau: o.niveau };
+    }));
+    await pause(); await pause();
+    const avec = K.mesurer({ images: 120 });
+    const n = K.etat().lumieresEquipe;
+    X.afficherPresences([]);
+    return { sans: sans, avec: avec, lumieres: n };
+  }, ctx);
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, s = window.__v3dLampes;
+    if (typeof window.setVue3DPortee === "function" && s.portee) window.setVue3DPortee(s.portee);
+    if (typeof window.setVue3DPleinJour === "function") window.setVue3DPleinJour(!!s.jour);
+    await K.fermer();
+    window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
+    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id; window.ktaEstAccessible = s.acc;
+    window.setRoads([]); window.setZones([]); window.setStructures([]);
+    window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
+    window.KtaGalerie.invalider();
+  });
+  console.log("§ 12 ter — lampe frontale des membres (portée " + L + " m)");
+  const m25 = r.m25;
+  verifier(m25.lampe.visible && m25.lampe.fog === false && m25.lampe.depthTest === true &&
+    m25.lampe.d > m25.brume.near && m25.avec - m25.sans > 80,
+    "membre à 25 m, dans le brouillard (au-delà de " + m25.brume.near + " m) : halo visible (pixels " + m25.sans +
+    " → " + m25.avec + "), fog: false, profondeur testée", m25);
+  verifier(m25.lampe.px >= 7 && m25.lampe.px <= 40, "taille du halo à l'écran bornée (" + m25.lampe.px + " px)",
+    m25.lampe);
+  verifier(r.m09.lampe.visible && r.m09.avec - r.m09.sans > 80,
+    "à 0,9 × portée (" + r.m09.m + " m) : halo visible (pixels " + r.m09.sans + " → " + r.m09.avec + ")", r.m09);
+  verifier(!r.m11.lampe.visible && Math.abs(r.m11.avec - r.m11.sans) < 25,
+    "à 1,1 × portée (" + r.m11.m + " m) : halo absent (rien n'est construit si loin)", r.m11);
+  verifier(r.pilier.lampe.visible && r.pilier.lampe.ecran.devant && Math.abs(r.pilier.avec - r.pilier.sans) < 25,
+    "membre derrière un pilier : halo masqué par la roche (pixels " + r.pilier.sans + " → " + r.pilier.avec + ")",
+    r.pilier);
+  const t = r.trois, actives = t.lampes.filter(function (q) { return q.lumiere; }).map(function (q) {
+    return +(q.x - ctx.ox).toFixed(1);
+  }).sort(function (a, b) { return a - b; });
+  verifier(t.membres === 4 && t.lampes.length === 4 && t.lumieres && t.lumieres.nombre === 2 &&
+    t.lumieres.allumees === 2 && JSON.stringify(actives) === "[5,8]",
+    "4 membres à portée : 4 halos, 2 lumières réelles au plus, sur les deux plus proches", { actives: actives, t: t });
+  const capte = t.lampes.filter(function (q) { return q.cap !== null; });
+  verifier(capte.length === 1 && capte[0].faisceau && t.lampes.filter(function (q) { return q.faisceau; }).length === 1,
+    "cap donné par la présence : faisceau devant lui ; sans cap, halo rond", capte);
+  const ed = r.edition, surMoi = ed.lampes.filter(function (q) {
+    return Math.hypot(q.x - ed.pos.x / ed.sc, q.z - ed.pos.y / ed.sc) < 0.5;
+  });
+  verifier(ed.vue === "plongee" && ed.avatar === 0 && ed.lampes.length === 4 && surMoi.length === 0 &&
+    ed.lampes.every(function (q) { return q.opacite <= 0.35 && !q.faisceau; }),
+    "vue d'édition : aucun halo sur notre avatar, halos des membres discrets", ed);
+  verifier(ed.jour.length === 4 && ed.jour.every(function (q) { return q.visible && q.opacite > 0 && q.opacite <= 0.35; }),
+    "Plein jour : halo visible mais discret", ed.jour);
+  const dc = +(r.cout.avec.msMed - r.cout.sans.msMed).toFixed(2);
+  console.log("  📏 coût par image (médiane, ms) : sans membre " + r.cout.sans.msMed + " · 3 membres, 2 lumières " +
+    r.cout.avec.msMed + " (écart " + dc + " ms ; p95 " + r.cout.sans.msP95 + " → " + r.cout.avec.msP95 + ")");
+  verifier(r.cout.lumieres && r.cout.lumieres.allumees === 2, "mesure du coût faite avec 2 lumières allumées",
+    r.cout.lumieres);
+}
+
 async function sectionZonesNiveaux(page) {
   const R = await page.evaluate(async function () {
     const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
@@ -3626,6 +3824,18 @@ async function sectionDessin(page) {
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionEcartItineraire(page);
       await sectionEncartReste(page);
+    } else if (SEUL === "lampes") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      if (TEL) {
+        try {
+          const cdp = await contexte.newCDPSession(page);
+          await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+          console.log("  ℹ️ processeur ralenti x4");
+        } catch (e) { console.log("  ℹ️ ralentissement processeur indisponible : " + e.message); }
+      }
+      await sectionLampesMembres(page);
     } else if (SEUL === "camera") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -9565,6 +9775,7 @@ async function sectionDessin(page) {
       await sectionFichesObjets(page);
       await sectionDessin(page);
       await sectionZonesNiveaux(page);
+      await sectionLampesMembres(page);
       await sectionEcartItineraire(page);
       await sectionEncartReste(page);
       await sectionCamera(page);
