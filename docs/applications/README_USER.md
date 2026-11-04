@@ -715,6 +715,8 @@ Où et comment un passage se dessine :
 
 > ⚠️ La 3D montre le **plan**, pas la galerie réelle. Formes et hauteurs sont celles du relevé (les galeries des modes Galerie et Mixte : des largeurs fixes par type de tracé), ta position celle du tracker, qui dérive. Ne t'y fie pas plus qu'à la carte.
 
+*On raconte qu'à six pieds sous terre, la carrière n'est plus tout à fait la même.*
+
 ### ⚙️ Réglages du tracker
 
 Dans **⚙️ Réglages → 📍 Navigation & tracker** :

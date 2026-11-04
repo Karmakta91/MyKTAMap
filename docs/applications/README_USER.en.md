@@ -715,6 +715,8 @@ Where and how a way through is drawn:
 
 > ⚠️ The 3D view shows the **map**, not the real tunnel. Shapes and heights come from the survey (tunnels in Tunnels and Mixed modes: fixed widths per trace type), your position from the tracker, which drifts. Do not trust it more than the map.
 
+*They say that six feet under, the quarry is not quite the same any more.*
+
 ### ⚙️ Tracker settings
 
 In **⚙️ Settings → 📍 Navigation & tracker**:

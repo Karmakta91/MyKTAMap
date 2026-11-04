@@ -715,6 +715,8 @@ Dónde y cómo se dibuja un paso:
 
 > ⚠️ La 3D muestra el **plano**, no la galería real. Formas y alturas vienen del levantamiento (las galerías de los modos Galería y Mixto: anchuras fijas por tipo de trazado), tu posición del tracker, que deriva. No te fíes más que del mapa.
 
+*Dicen que a seis pies bajo tierra, la cantera ya no es del todo la misma.*
+
 ### ⚙️ Ajustes del tracker
 
 En **⚙️ Ajustes → 📍 Navegación y tracker**:

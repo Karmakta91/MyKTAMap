@@ -70,11 +70,6 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Test appareil : add-on mkmg sur iPhone et plan dense** — perf (carte des distances, 30 images/s) jamais mesurée
-  sur un vrai téléphone ; difficulté (égarés, chrono, tenailles), bras et fusil, panneau réductible à juger en jouant
-  (`docs/architecture/addons.md`).
-  `qui: KARMA · action: jouer plusieurs vagues sur iPhone, plan dense, avec et sans 🧱 Textures · fini: perf et
-  réglages validés, ou chiffres à ajuster transmis · depuis: 02/11/2026 · taille: S`
 ## Ensuite
 
 - **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
@@ -102,12 +97,6 @@
   de plan réels restent dans `README.md`, des commentaires `js/` et `docs/architecture/`. Liste remise hors dépôt.
   `qui: KARMA · action: trancher nom par nom sur la liste hors dépôt · fini: chaque nom remplacé ou gardé par décision
   · depuis: 05/10/2026 · taille: S`
-- **Add-on mkmg : phrase des guides au bump** — décision KARMA : une phrase discrète en dernière ligne de la section
-  Vue 3D des 3 guides (fr/en/es), pas dans l'Aide ; écrite au bump de la prod qui livre le jeu, une fois le jeu
-  validé (texte retenu dans la mémoire du poste).
-  `qui: Claude · action: l'écrire dans les 3 guides au commit de bump · fini: phrase présente dans README_USER{,.en,.es}
-  · depuis: 02/11/2026 · taille: XS`
-
 ## Plus tard
 
 - **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
