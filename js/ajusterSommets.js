@@ -342,9 +342,15 @@ window.KtaAjusterSommets = (function () {
     _nettoyer();
   }
 
+  // ⚠️ contrat : après le lâcher, seul le clic qui retombe SUR LA CARTE (conteneur, vecteurs, marqueurs) est avalé ;
+  // un bouton de barre (.leaflet-control, dans le conteneur), une fiche ou une fenêtre restent cliquables aussitôt.
+  function _surCarte(t) {
+    const m = _map(), cont = m && m.getContainer();
+    return !!(cont && t && cont.contains(t) && !(t.closest && t.closest(".leaflet-control, .leaflet-popup")));
+  }
   function _avaler(e) {
     if (_dansMenu(e.target)) return;
-    if (_g ? _g.arme : _now() < _avalerJusqua) {
+    if (_g ? _g.arme : (_now() < _avalerJusqua && _surCarte(e.target))) {
       e.stopPropagation();
       if (e.cancelable) e.preventDefault();
     }

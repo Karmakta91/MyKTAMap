@@ -436,6 +436,47 @@ async function jouer(nav, moteur, mode) {
       inf("plan sans multi-niveau : zone sur plusieurs niveaux non jouée");
     }
 
+    // ── Juste après un appui long : un bouton de barre agit aussitôt, un clic sur la carte est avalé ──
+    await page.evaluate(function () {
+      const g = window._groupes.history;
+      if (g.subActions[0].classList.contains("kta-hidden")) g.btnPrincipal.click();
+      window.map.closePopup();
+    });
+    await page.waitForTimeout(300);
+    const btnUndo = await page.evaluate(function () {
+      const q = window._groupes.history.subActions[0].getBoundingClientRect();
+      return q.width ? [q.left + q.width / 2, q.top + q.height / 2] : null;
+    });
+    const rA = await lireObjet(page, "rd_as_r1"), deA = rA.points[1];
+    const versA = { x: deA.x + 30 * s.k, y: deA.y + 30 * s.k };
+    const appuiEtLacher = async function () {
+      const a = await ecran(page, deA), b = await ecran(page, versA);
+      await viderToasts(page);
+      await ptr.down(a);
+      await page.waitForTimeout(650);
+      for (let i = 1; i <= 6; i++) { await ptr.move([a[0] + (b[0] - a[0]) * i / 6, a[1] + (b[1] - a[1]) * i / 6]); await page.waitForTimeout(20); }
+      await ptr.up(b);
+    };
+    if (btnUndo) {
+      await appuiEtLacher();
+      const t0 = Date.now();
+      await ptr.tap(btnUndo);
+      const dt = Date.now() - t0;
+      await page.waitForTimeout(300);
+      const rB = await lireObjet(page, "rd_as_r1");
+      verifier(proche(rB.points[1], deA, 1e-6), "appui long puis ⏪ de la barre touché aussitôt (" + dt + " ms) : le bouton " +
+        "agit, le sommet revient", { pt: rB.points[1], voulu: deA });
+    } else {
+      pb("bouton ⏪ de la barre introuvable à l'écran");
+    }
+    await appuiEtLacher();
+    await ptr.tap(await ecran(page, await planU(page, 75, -275)));
+    await page.waitForTimeout(500);
+    e = await etat(page);
+    verifier(!e.fiche, "appui long puis clic aussitôt sur une zone de la carte : avalé, aucune fiche");
+    await page.evaluate(function () { window.map.closePopup(); window.HistoryManager.undo(); });
+    await page.waitForTimeout(300);
+
     // ── Outil armé : rien ──
     await page.evaluate(function () { window.toggleZoneMode("eau"); });
     await rien(page, ptr, "outil de dessin armé : aucun ajustement", "rd_as_r1");

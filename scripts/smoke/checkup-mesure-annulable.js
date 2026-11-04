@@ -156,8 +156,7 @@ async function appuiLong(page, de, vers) {
     await page.waitForTimeout(25);
   }
   await page.mouse.up();
-  // le clic qui suit un appui long est avalé AVALER_MS (ajusterSommets.js), bouton de la barre compris
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(400);
 }
 
 async function section2D(page) {
