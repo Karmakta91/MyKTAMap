@@ -382,10 +382,10 @@
   // du milieu déplacé, ni un renommage, ni une couleur. Champs « _… » sautés : état d'exécution (marqueur Leaflet,
   // copie de prévisualisation), pas de la donnée, et parfois des cycles.
   function _empreinteDonnees() {
-    let h = 2166136261 | 0;
+    let h = 2166136261;
     const mel = function (v) { h = Math.imul(h ^ v, 16777619); };
-    const num = function (v) { mel(Number.isFinite(v) ? Math.round(v * 1000) | 0 : -7); };
-    const txt = function (s) { mel(s.length); for (let i = 0; i < s.length; i++) mel(s.charCodeAt(i)); };
+    const num = function (v) { mel(Number.isFinite(v) ? Math.round(v * 1000) : -7); };
+    const txt = function (s) { mel(s.length); for (let i = 0; i < s.length; i++) mel(s.codePointAt(i)); };
     const val = function (v, prof) {
       const t = typeof v;
       if (v === null || v === undefined) mel(-1);
@@ -397,7 +397,7 @@
     };
     const objet = function (o, prof) {
       for (const k in o) {
-        if (k.charCodeAt(0) === 95 || !Object.prototype.hasOwnProperty.call(o, k)) continue;
+        if (k.codePointAt(0) === 95 || !Object.prototype.hasOwnProperty.call(o, k)) continue;
         txt(k);
         const v = o[k];
         if (k !== "points" || !Array.isArray(v)) { val(v, prof); continue; }
@@ -3532,9 +3532,9 @@
   function _lampeVoulue() {
     const L = REGLAGE_LAMPE, w = window;
     return {
-      intensite: _borner(typeof w.getVue3DLampeIntensite === "function" ? w.getVue3DLampeIntensite() : NaN,
+      intensite: _borner(typeof w.getVue3DLampeIntensite === "function" ? w.getVue3DLampeIntensite() : Number.NaN,
         L.intensite) || L.intensite.defaut,
-      faisceau: _borner(typeof w.getVue3DFaisceau === "function" ? w.getVue3DFaisceau() : NaN, L.faisceau) ||
+      faisceau: _borner(typeof w.getVue3DFaisceau === "function" ? w.getVue3DFaisceau() : Number.NaN, L.faisceau) ||
         L.faisceau.defaut,
       jour: typeof w.getVue3DPleinJour === "function" ? w.getVue3DPleinJour() === true : false
     };

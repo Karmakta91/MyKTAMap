@@ -429,7 +429,8 @@ function _urlImageSure(url) {
   if (/^https?:\/\/[^/]/i.test(u)) return u;
   if (/^data:image\/(png|jpeg|gif|webp|avif|svg\+xml)[;,]/i.test(u)) return u;
   if (/^[a-z][a-z0-9+.-]*:/i.test(u) || u.charAt(0) === "/") return null;
-  let chemin = u.replace(/[?#].*$/, "");
+  const coupe = u.search(/[?#]/);
+  let chemin = coupe < 0 ? u : u.slice(0, coupe);
   try { chemin = decodeURIComponent(chemin); } catch (e) { return null; }
   if (/[\\:]/.test(chemin)) return null;
   let prof = 0;
