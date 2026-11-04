@@ -992,13 +992,13 @@ Les jonctions 🪜 s'effacent comme les autres tracés.
 
 ### ✋ Ajuster une forme
 
-Un **tracé**, une **zone**, une **structure** ou une **mesure 📐** déjà dessinés se corrigent sans les redessiner, sur la carte, outils de dessin éteints :
+Un **tracé**, une **zone**, une **structure** ou une **mesure 📐** déjà dessinés se corrigent sans les redessiner, sur la carte, outils de dessin éteints (une mesure 📐 aussi pendant que l'outil 📐 est allumé) :
 
 - **Déplacer un point** : appuie longuement (une demi-seconde) sur un point de la forme ; un rond doré apparaît : glisse-le, la forme suit en pointillé, puis lâche.
 - **Ajouter un point** : appuie longuement au milieu d'un côté ; un point naît là, glisse-le aussitôt.
 - **Supprimer un point** : appuie longuement sur un point sans bouger, puis touche **🗑️**. Une ligne garde au moins 2 points, une surface 3 : en dessous, un message le dit et rien n'est retiré.
 
-Un tap court ouvre toujours la bulle de l'objet. Un tracé lâché près d'un point d'un autre tracé s'y colle si le **🧲 Magnétisme au dessin** est allumé. Chaque geste s'annule avec ⏪ (sauf sur une mesure). Les objets d'un calque de données ne bougent qu'une fois le calque en **🔄 Modifier** ; un plan partagé en lecture seule ne se modifie pas. À la souris, même geste : bouton enfoncé une demi-seconde, puis glisser.
+Un tap court ouvre toujours la bulle de l'objet. Un tracé lâché près d'un point d'un autre tracé s'y colle si le **🧲 Magnétisme au dessin** est allumé. Chaque geste s'annule avec ⏪ (sur une mesure, seulement tant que l'outil 📐 est allumé). Les objets d'un calque de données ne bougent qu'une fois le calque en **🔄 Modifier** ; un plan partagé en lecture seule ne se modifie pas. À la souris, même geste : bouton enfoncé une demi-seconde, puis glisser.
 
 ---
 
@@ -1084,7 +1084,7 @@ Un message en bas de l'écran dit ce qui a été annulé ou refait (« ↩ Annul
 
 **Ce qui s'annule** : ajout, modification, déplacement et suppression de points ; chaque point posé d'un tracé, d'une zone ou d'une structure, leur fermeture, leur suppression (y compris « Tous ») ; les conversions.
 
-**Ce qui ne s'annule pas** : la suppression d'une photo, l'import d'une session, le suivi de position, la mesure.
+**Ce qui ne s'annule pas** : la suppression d'une photo, l'import d'une session, le suivi de position, et la mesure une fois l'outil 📐 éteint.
 
 L'historique est **oublié** quand tu recharges la page ou changes de plan, et une nouvelle action après des annulations efface ce qu'il restait à rétablir.
 
@@ -1102,6 +1102,8 @@ Dans le groupe **📐 Mesure** :
 Les deux mesures coexistent : passer de l'une à l'autre ne les efface pas, et le prochain tap va à celle qui est allumée. Leur précision dépend de l'échelle du plan (calibrée dans ⚙️ Réglages). Elles sont gardées avec ta session.
 
 **❌ Effacer** propose **↩️ Dernier point** (sur la mesure allumée), **🗑️ Toute la distance 📐**, **🗑️ Toute la surface ♦️** ou **Tout effacer (📐 + ♦️)**.
+
+Tant que l'outil est allumé, **⏪** annule chaque geste sur la mesure (point posé, point retiré, effacement, point déplacé) et **⏩** le rétablit ; une fois l'outil éteint, ⏪ revient directement aux points, tracés, zones et structures.
 
 ### 📏 Distance totale des tracés
 

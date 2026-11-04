@@ -992,13 +992,13 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 
 ### ✋ Adjust a shape
 
-A **route**, a **zone**, a **structure** or a **📐 measurement** already drawn can be corrected without redrawing it, on the map, with the drawing tools off:
+A **route**, a **zone**, a **structure** or a **📐 measurement** already drawn can be corrected without redrawing it, on the map, with the drawing tools off (a 📐 measurement also while the 📐 tool is on):
 
 - **Move a point**: press and hold (half a second) a point of the shape; a gold circle appears: drag it, the shape follows as a dotted line, then release.
 - **Add a point**: press and hold the middle of a side; a point appears there, drag it straight away.
 - **Delete a point**: press and hold a point without moving, then tap **🗑️**. A line keeps at least 2 points, a surface 3: below that, a message says so and nothing is removed.
 
-A short tap still opens the object's popup. A route released near a point of another route snaps onto it if **🧲 Snap while drawing** is on. Each gesture can be undone with ⏪ (except on a measurement). Objects of a data layer only move once the layer is in **🔄 Edit**; a shared map in read-only mode cannot be changed. With a mouse, same gesture: hold the button half a second, then drag.
+A short tap still opens the object's popup. A route released near a point of another route snaps onto it if **🧲 Snap while drawing** is on. Each gesture can be undone with ⏪ (on a measurement, only while the 📐 tool is on). Objects of a data layer only move once the layer is in **🔄 Edit**; a shared map in read-only mode cannot be changed. With a mouse, same gesture: hold the button half a second, then drag.
 
 ---
 
@@ -1084,7 +1084,7 @@ A message at the bottom of the screen says what was undone or redone ("↩ Undon
 
 **What can be undone**: adding, editing, moving and deleting points; each point placed on a path, zone or structure, closing them, deleting them (including "All"); conversions.
 
-**What cannot be undone**: deleting a photo, importing a session, position tracking, measurement.
+**What cannot be undone**: deleting a photo, importing a session, position tracking, and the measurement once the 📐 tool is off.
 
 The history is **forgotten** when you reload the page or change map, and a new action after some undos clears whatever was left to redo.
 
@@ -1102,6 +1102,8 @@ In the **📐 Measurement** group:
 The two measurements coexist: switching from one to the other does not erase them, and your next tap goes to the one that is lit. Their accuracy depends on the map's scale (calibrated in ⚙️ Settings). They are kept with your session.
 
 **❌ Erase** offers **↩️ Last point** (on the lit measurement), **🗑️ The whole distance 📐**, **🗑️ The whole surface ♦️** or **Erase everything (📐 + ♦️)**.
+
+While the tool is on, **⏪** undoes each step of the measurement (point placed, point removed, erasing, point moved) and **⏩** redoes it; once the tool is off, ⏪ goes straight back to points, routes, zones and structures.
 
 ### 📏 Total length of paths
 

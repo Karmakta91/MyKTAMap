@@ -992,13 +992,13 @@ Las uniones 🪜 se borran como los demás trazados.
 
 ### ✋ Ajustar una forma
 
-Un **trazado**, una **zona**, una **estructura** o una **medida 📐** ya dibujados se corrigen sin volver a dibujarlos, en el mapa, con las herramientas de dibujo apagadas:
+Un **trazado**, una **zona**, una **estructura** o una **medida 📐** ya dibujados se corrigen sin volver a dibujarlos, en el mapa, con las herramientas de dibujo apagadas (una medida 📐 también con la herramienta 📐 encendida):
 
 - **Mover un punto**: mantén pulsado (medio segundo) un punto de la forma; aparece un círculo dorado: arrástralo, la forma lo sigue en punteado, y suelta.
 - **Añadir un punto**: mantén pulsado el centro de un lado; nace un punto ahí, arrástralo enseguida.
 - **Eliminar un punto**: mantén pulsado un punto sin moverlo y toca **🗑️**. Una línea conserva al menos 2 puntos, una superficie 3: por debajo, un mensaje lo indica y no se quita nada.
 
-Un toque corto sigue abriendo la ventana del objeto. Un trazado soltado cerca de un punto de otro trazado se engancha a él si la **🧲 Imantación al dibujar** está activada. Cada gesto se deshace con ⏪ (salvo en una medida). Los objetos de una capa de datos solo se mueven con la capa en **🔄 Modificar**; un mapa compartido en solo lectura no se modifica. Con el ratón, el mismo gesto: botón pulsado medio segundo y arrastrar.
+Un toque corto sigue abriendo la ventana del objeto. Un trazado soltado cerca de un punto de otro trazado se engancha a él si la **🧲 Imantación al dibujar** está activada. Cada gesto se deshace con ⏪ (en una medida, solo mientras la herramienta 📐 está encendida). Los objetos de una capa de datos solo se mueven con la capa en **🔄 Modificar**; un mapa compartido en solo lectura no se modifica. Con el ratón, el mismo gesto: botón pulsado medio segundo y arrastrar.
 
 ---
 
@@ -1084,7 +1084,7 @@ Un mensaje en la parte inferior de la pantalla dice lo que se ha deshecho o rehe
 
 **Lo que se deshace**: añadir, modificar, mover y eliminar puntos; cada punto colocado en un trazado, una zona o una estructura, su cierre, su eliminación (incluido «Todos»); las conversiones.
 
-**Lo que no se deshace**: eliminar una foto, importar una sesión, el seguimiento de posición, la medición.
+**Lo que no se deshace**: eliminar una foto, importar una sesión, el seguimiento de posición, y la medición una vez apagada la herramienta 📐.
 
 El historial se **olvida** al recargar la página o cambiar de mapa, y una nueva acción después de deshacer borra lo que quedaba por rehacer.
 
@@ -1102,6 +1102,8 @@ En el grupo **📐 Medición**:
 Las dos mediciones conviven: pasar de una a otra no las borra, y tu siguiente toque va a la que está encendida. Su precisión depende de la escala del mapa (calibrada en ⚙️ Ajustes). Se conservan con tu sesión.
 
 **❌ Borrar** ofrece **↩️ Último punto** (en la medición encendida), **🗑️ Toda la distancia 📐**, **🗑️ Toda la superficie ♦️** o **Borrar todo (📐 + ♦️)**.
+
+Mientras la herramienta está encendida, **⏪** deshace cada gesto sobre la medición (punto colocado, punto quitado, borrado, punto movido) y **⏩** lo rehace; una vez apagada, ⏪ vuelve directamente a los puntos, trazados, zonas y estructuras.
 
 ### 📏 Distancia total de los trazados
 

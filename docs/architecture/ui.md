@@ -2387,20 +2387,22 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
 Familles : tracés, zones, structures (polygones et lignes), mesures 📐 (distance et surface). Pas les POI
 (« Repositionner »), pas l'itinéraire calculé. Chaque module expose sa **prise**
 `window.ktaFormesAjustables.<roads|zones|structures|mesure>` = `{ cat, objets(), ferme(o), minimum(o), libelle(o),
-rendre(), aimanter?(x, y, o, exclus) }` ; `objets()` ne rend que les objets de session **visibles** (mêmes filtres
+rendre(), aimanter?(x, y, o, exclus), etiquette?(action, o) }` (`cat` lu à chaque geste, `etiquette` = libellé d'historique propre à la famille) ; `objets()` ne rend que les objets de session **visibles** (mêmes filtres
 que le rendu : `_tracePasseFiltres`, `_zonePasseFiltres`, `_structurePasseFiltres` — niveaux, types, état d'une
 extension), hors objet en cours de tracé.
 
 - ⚠️ **Droits** : rien en lecture seule (`ktaEditionRefusee(true)`, silencieux), rien sous un outil ou un mode
-  « clic carte » armé (`_modeClicCarteActif`, ajout de point, sélection multiple ou par zone). Un calque de données
+  « clic carte » armé (`_modeClicCarteActif`, ajout de point, sélection multiple ou par zone), sauf l'outil 📐 seul armé
+  (`_mesureSeule`) : la mesure, et elle seule, s'ajuste alors. Un calque de données
   n'est pas en session, donc pas modifiable ; en « 🔄 Modifier », sa copie l'est. Calque « Mes annotations » masqué :
   rien.
 - ⚠️ **Écriture** (un geste = une entrée annulable) : `HistoryManager.captureState(cat)` → mutation →
   `KtaUid.touch` (uid gardé, `updatedAt` changé) → `rendre()` (un seul rendu, donc un seul `kta:donneesPlanChange`,
   jamais pendant le glisser) → `record` → `SessionPersist.save({ force: true })`. Tracés : aimantation du dessin au
   lâcher (`snapDraw`, road.js > `_snapSurSommetProche` avec `exclus` = le sommet et ses voisins, au niveau du
-  tracé), puis `RoadGraph.invalidate()` (sa signature compte les sommets, pas leur place). La mesure est hors
-  historique (état temporaire, `cat: null`).
+  tracé), puis `RoadGraph.invalidate()` (sa signature compte les sommets, pas leur place). La mesure n'entre dans
+  l'historique que l'outil 📐 armé (`cat` = `"mesure"`, entrée purgée à sa fermeture : session-data.md §47.11) ;
+  éteint, `cat: null`.
 - 🩸 **Gestes** : écoutes en capture sur `window`. Avant l'appui long, un mouvement de plus de 6 px (seuil du pan
   manuel du plan orienté) annule : c'est un pan ; en deçà, les `pointermove` / `mousemove` / `touchmove` sont avalés
   pour que la carte ne glisse pas sous le doigt. Armé : `map.dragging.disable()` le temps du geste (rendu à son
