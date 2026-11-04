@@ -1231,6 +1231,12 @@ Grands carrefours : `_zonesDeCarrefour` regroupe les croisements à ≤ `ZONE_EC
 sur le trajet et pose sur chaque membre la même `zone: { x, y, r, sorties }` (sorties mesurées sur un cercle de
 rayon r + ~3 m). `itiGuidage` regroupe de la même façon (constante jumelle), lit `zone.sorties` et produit
 `picto` (≥ 4 galeries, SVG `_pictoSvg` fait de nombres seuls) et `lieu` (point nommé à ≤ r + 5 m du centre).
+⚠️ contrat : un repère (`lieu`, `repere`) n'est cité que s'il est **au niveau du tronçon** de la consigne (`_niveauA`,
+niveau du point du trajet ; consigne `niveau` : celui d'où l'on part) — règle du filtre de niveau (`level` absent = 0,
+POI jonction sur chacun de ses niveaux, `KtaPoiJonction.niveaux`) ; sinon la consigne se dit sans repère. La manœuvre
+ne dépend pas du repère. 🩸 La distance se mesure en plan : un POI du niveau du dessus, à l'aplomb du carrefour, était
+cité pour un virage du dessous (bandeau, feuille de route, écran XL et 3D passent tous par `construire`). Contrôle :
+`checkup-guidage.js` G11.
 
 `ItiGuidage.construire(road)` → consignes (`virage` léger/franc · `branche` · `toutDroit` · `demiTour` ·
 `niveau` · `etape` · `arrivee`), chacune à son abscisse curviligne `s`. 1–2 ms sur un trajet réel.

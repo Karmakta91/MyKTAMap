@@ -10,7 +10,8 @@
 //   G1 bandeau sous l'en-tête, entre les colonnes de boutons · G2 raccord à vol d'oiseau en pointillé ·
 //   G3 feuille de route · G4 la consigne change en avançant · G5 écart → « Hors itinéraire ? » + 3 boutons ·
 //   G6 consigne reprise sur l'écran XL · G8 urgence sans croix · G9 suivi arrêté : bandeau gardé si
-//   position confirmée, masqué sinon · zéro erreur console / pageerror / clé i18n manquante.
+//   position confirmée, masqué sinon · G10 tracé jonction, aperçu par niveau · G11 repère au niveau du tronçon
+//   (bandeau 2D, feuille, aperçu 3D ; manœuvre inchangée) · zéro erreur console / pageerror / clé i18n manquante.
 // Captures : $GUID_SHOTS (défaut : dossier temporaire). Usage : node scripts/smoke/checkup-guidage.js
 "use strict";
 
@@ -267,6 +268,72 @@ function inf(msg) { console.log("  •  " + msg); }
     if (!g10.m1.visible || g10.m1.mode !== "guide" || g10.m1.cap !== 90 || g10.p1.visible || !g10.z0.visible) {
       pb("G10 : aperçu par niveau — " + JSON.stringify({ m1: g10.m1, p1: g10.p1, z0: g10.z0 }));
     } else ok("G10 : aperçu au −1 sur son tronçon (cap du trajet 90°), rien au +1 (pas de « Rejoindre »), 0 guidé");
+
+    // G11 — repère au niveau du tronçon (fictif, en mémoire) : itinéraire au niveau 0 qui tourne à gauche sous un POI
+    // nommé du niveau 1 (à l'aplomb du carrefour) et à côté d'un POI nommé du niveau 0. La consigne cite celui du 0,
+    // jamais celui du 1 : bandeau 2D (tracker au 0), feuille de route, aperçu de la vue 3D au 0. Sans POI du 0 à
+    // portée : pas de repère. La manœuvre est la même avec ou sans repère.
+    const g11 = await page.evaluate(function (a) {
+      const e = Number(window.APP_CONFIG.scale) || 1, G = window.ItiGuidage, C = window.APP_CONFIG, r = {};
+      const P = function (x, y, n) { return { x: a.x + x * e, y: a.y + y * e, level: n }; };
+      const route = { uid: "rd_g11", type: "itinerary", level: 0,
+        points: [P(0, 0, 0), P(20, 0, 0), P(20, -20, 0)],
+        carrefours: [{ x: a.x + 20 * e, y: a.y, sorties: [0, 90, 270] }] };
+      const haut = Object.assign({ nom: "Repère haut fictif", uid: "pt_g11_haut", tags: ["salle"] }, P(20, 0, 1));
+      const bas = Object.assign({ nom: "Repère bas fictif", uid: "pt_g11_bas", tags: ["salle"] }, P(22, 2, 0));
+      const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+        ed: window.getEditorPoints, emb: window.getAllEmbeddedPoints, roads: window.getRoads(),
+        niv: window.getTrackerLevel, pos: window.__guidPos, etat: window.getTrackingPositionEtat };
+      C.multiLevel = true; C.availableLevels = [0, 1]; C.visibleLevels = [0, 1]; C.activeLevel = 0;
+      window.getTrackerLevel = function () { return 0; };
+      window.getTrackingPositionEtat = function () { return { confirmee: true, ts: Date.now(), suiviActif: true }; };
+      const virage = function (g) {
+        const c = g.consignes.find(function (x) { return x.carrefour; });
+        return c ? c.type + ":" + (c.cote || "") + ":" + (c.force || "") : null;
+      };
+      // Une copie de l'itinéraire par lecture : bandeau et aperçu ne refont leurs consignes que si la road change.
+      const lire = function (pois) {
+        const rt = JSON.parse(JSON.stringify(route));
+        window.getEditorPoints = function () { return pois.slice(); };
+        window.getAllEmbeddedPoints = function () { return []; };
+        window.setRoads(av.roads.filter(function (x) { return x.type !== "itinerary"; }).concat([rt]));
+        const g = G.construire(rt);
+        window.__guidPos = P(5, 0);
+        G.onPosition(window.__guidPos);
+        const st = G.etat();
+        G.ouvrirFeuilleDeRoute(rt);
+        const f = document.getElementById("kta-guid-feuille");
+        const feuille = f ? f.querySelector(".kta-guid-feuille-liste").textContent : "";
+        if (f) f.remove();
+        const ap = G.apercu(P(5, 0), { niveau: 0 });
+        return { manoeuvre: virage(g), texte: G.texteAction(g.consignes.find(function (x) { return x.carrefour; })),
+          bandeau: (st.principal || "") + " " + (st.sous || ""), feuille: feuille,
+          apercu: (ap.principal || "") + " " + (ap.sous || "") };
+      };
+      r.sans = lire([]);
+      r.deux = lire([haut, bas]);
+      r.hautSeul = lire([haut]);
+      C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+      window.getEditorPoints = av.ed; window.getAllEmbeddedPoints = av.emb; window.getTrackerLevel = av.niv;
+      window.getTrackingPositionEtat = av.etat;
+      window.setRoads(av.roads);
+      window.__guidPos = av.pos;
+      return r;
+    }, choix.a);
+    const citeHaut = function (o) { return /Repère haut fictif/.test(o.bandeau + o.feuille + o.apercu + o.texte); };
+    const citeBas = function (o) {
+      return [o.bandeau, o.feuille, o.apercu, o.texte].every(function (t) { return /Repère bas fictif/.test(t); });
+    };
+    if (g11.sans.manoeuvre !== "virage:gauche:franc" || g11.deux.manoeuvre !== g11.sans.manoeuvre ||
+        g11.hautSeul.manoeuvre !== g11.sans.manoeuvre) {
+      pb("G11 : la manœuvre change avec le repère — " + JSON.stringify([g11.sans.manoeuvre, g11.deux.manoeuvre,
+        g11.hautSeul.manoeuvre]));
+    } else ok("G11 : même manœuvre avec ou sans repère (" + g11.sans.manoeuvre + ")");
+    if (citeHaut(g11.deux) || !citeBas(g11.deux)) pb("G11 : repère d'un autre niveau cité — " + JSON.stringify(g11.deux));
+    else ok("G11 : POI du 0 cité, celui du 1 jamais (bandeau 2D, feuille, aperçu 3D) — « " + g11.deux.texte + " »");
+    if (citeHaut(g11.hautSeul) || g11.hautSeul.texte !== g11.sans.texte) {
+      pb("G11 : seul un POI du 1 à portée, la consigne devait se dire sans repère — " + JSON.stringify(g11.hautSeul));
+    } else ok("G11 : seul un POI du 1 à portée → consigne sans repère — « " + g11.hautSeul.texte + " »");
   } catch (e) {
     if (String(e && e.message) !== "stop") pb("exception : " + (e && e.stack || e));
   } finally {

@@ -103,6 +103,19 @@
     return best;
   }
 
+  // Niveau du trajet à l'abscisse s (null : transit entre niveaux ou niveau inconnu) : celui du segment qui la porte.
+  function _niveauA(ch, s) {
+    if (!Array.isArray(ch.niv)) return null;
+    const cum = ch.cum;
+    let lo = 0, hi = cum.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (cum[mid] <= s) lo = mid; else hi = mid;
+    }
+    if (Number.isInteger(ch.niv[lo])) return ch.niv[lo];
+    return Number.isInteger(ch.niv[hi]) ? ch.niv[hi] : null;
+  }
+
   function _capEntre(ch, s1, s2) {
     const a = Math.max(0, s1), b = Math.min(ch.total, s2);
     if (b - a < 0.5) return null;
@@ -110,13 +123,25 @@
   }
 
   // ── Points nommés servant de repères ──
+  function _multiNiveau() { return !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true); }
+
+  // Niveaux où un point nommé peut servir de repère : règle du filtre de niveau (road.js > passeFiltreNiveau) — `level`
+  // absent = 0, un POI jonction compte sur chacun de ses niveaux desservis (poiJonction.js > KtaPoiJonction.niveaux).
+  function _niveauxRepere(p) {
+    const J = window.KtaPoiJonction;
+    if (p && Array.isArray(p.niveaux) && J && typeof J.estJonction === "function" && J.estJonction(p)) {
+      return J.niveaux(p);
+    }
+    return [Number.isInteger(p && p.level) ? p.level : 0];
+  }
+
   function _poisDeLApp() {
     const out = [];
     function _ajout(arr) {
       if (!Array.isArray(arr)) return;
       arr.forEach(function(p) {
         if (p && typeof p.x === "number" && typeof p.y === "number" && p.nom) {
-          out.push({ x: p.x, y: p.y, nom: String(p.nom) });
+          out.push({ x: p.x, y: p.y, nom: String(p.nom), niveaux: _niveauxRepere(p) });
         }
       });
     }
@@ -125,9 +150,15 @@
     return out;
   }
 
-  function _repereProche(pois, p, rayonPx) {
+  // `niveau` (entier) : seuls comptent les points de ce niveau (plan multi-niveau). 🩸 La distance se mesure en plan :
+  // sans ce filtre, un POI du niveau du dessus, à l'aplomb du carrefour, était cité pour un virage du niveau du dessous.
+  function _repereProche(pois, p, rayonPx, niveau) {
+    const filtre = Number.isInteger(niveau) && _multiNiveau();
     let best = null;
     for (let i = 0; i < pois.length; i++) {
+      if (filtre && (Array.isArray(pois[i].niveaux) ? pois[i].niveaux : _niveauxRepere(pois[i])).indexOf(niveau) < 0) {
+        continue;
+      }
       const d = Math.hypot(pois[i].x - p.x, pois[i].y - p.y);
       if (d <= rayonPx && (!best || d < best.d)) best = { d: d, nom: pois[i].nom };
     }
@@ -252,9 +283,10 @@
       }
       // Un point nommé DANS le carrefour ouvre la consigne (« À « Carrefour Nord », tourner à gauche »). Le rayon
       // suit la zone : le nom d'un grand carrefour tombe souvent à 8-19 m des nœuds.
-      const centre = zoneMembre || pt;
-      c.lieu = _repereProche(pois, centre, (zoneMembre ? zoneMembre.r : 0) + repPx);
-      c.repere = c.lieu ? null : _repereProche(pois, pt, repPx);
+      // ⚠️ contrat : repère pris au niveau du tronçon de la consigne seulement ; la manœuvre n'en dépend pas.
+      const centre = zoneMembre || pt, nivC = _niveauA(ch, rep.s);
+      c.lieu = _repereProche(pois, centre, (zoneMembre ? zoneMembre.r : 0) + repPx, nivC);
+      c.repere = c.lieu ? null : _repereProche(pois, pt, repPx, nivC);
       consignes.push(c);
     });
 
@@ -269,7 +301,7 @@
           const pt = _pointA(ch, sN);
           consignes.push({
             s: sN, x: pt.x, y: pt.y, type: "niveau", de: dernier, vers: lv,
-            sens: _sensNiveau(dernier, lv), repere: _repereProche(pois, pt, repPx), moyen: via
+            sens: _sensNiveau(dernier, lv), repere: _repereProche(pois, pt, repPx, dernier), moyen: via
           });
         }
         dernier = lv;
