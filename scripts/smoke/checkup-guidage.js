@@ -338,8 +338,9 @@ function inf(msg) { console.log("  •  " + msg); }
 
     // G12 — encart « reste » (fictif, en mémoire) : 300 m au 0, passage de 10 m vers le −1, 300 m au −1, raccord
     // d'arrivée de 3 m (613 m). Distance restante à 1 m près à 3 positions (au 0, dans le passage, au −1), niveau de
-    // l'arrivée dit seulement depuis un autre niveau, temps = distance / vitesse de l'itinéraire (préréglage
-    // « normale », 5 km/h), réduit / déplié retenu sur l'appareil, aucun chevauchement à 3 tailles.
+    // l'arrivée dit seulement depuis un autre niveau, temps = distance / vitesse de l'itinéraire (rien de choisi :
+    // le défaut, « lente », 3 km/h ; « normale » retenue : 5 km/h), réduit / déplié retenu sur l'appareil, aucun
+    // chevauchement à 3 tailles.
     const g12 = await page.evaluate(async function (a) {
       const e = Number(window.APP_CONFIG.scale) || 1, G = window.ItiGuidage, C = window.APP_CONFIG, r = { pos: [] };
       const P = function (x, y, n) { return { x: a.x + x * e, y: a.y + y * e, level: n }; };
@@ -373,7 +374,13 @@ function inf(msg) { console.log("  •  " + msg); }
         if (rel.indexOf(s) >= 0) r.pos.push(m);
       }
       r.attendu = [513, 308, 163];   // 610 m de trajet + 3 m de raccord − s
-      r.vitesse = 5000 / 60;
+      r.vitesse = 3000 / 60;
+      r.choixAvant = localStorage.getItem("myktamap_iti_walking_preset");
+      // Allure choisie et retenue (« normale ») : la sienne, pas le défaut.
+      localStorage.setItem("myktamap_iti_walking_preset", "normale");
+      const p450 = G.pointA(g, 450 * e);
+      r.retenue = aller((p450.x - a.x) / e, (p450.y - a.y) / e, -1);
+      localStorage.removeItem("myktamap_iti_walking_preset");
       // Réduit, puis une position de plus : toujours réduit ; relu après un rechargement de l'état (réglage retenu).
       const btn = document.querySelector("#kta-guid-bandeau .kta-guid-resume");
       btn.click();
@@ -393,6 +400,10 @@ function inf(msg) { console.log("  •  " + msg); }
       else if (Math.abs(m.tempsMin - tAtt) > 0.05) pb("G12 : temps " + m.tempsMin + " min, attendu " + tAtt.toFixed(2));
       else ok("G12 : reste " + m.resteM + " m (attendu " + att + "), " + m.tempsMin.toFixed(1) + " min — « " + m.texte + " »");
     });
+    const tRet = 163 / (5000 / 60);
+    if (g12.choixAvant !== null || !g12.retenue.tempsMin || Math.abs(g12.retenue.tempsMin - tRet) > 0.05) {
+      pb("G12 : allure retenue « normale » — " + JSON.stringify({ avant: g12.choixAvant, retenue: g12.retenue }));
+    } else ok("G12 : rien de choisi = 3 km/h ; « normale » retenue = 5 km/h (" + g12.retenue.tempsMin.toFixed(1) + " min)");
     if (g12.pos[0].niveau !== -1 || g12.pos[2].niveau !== null || !/Cible fictive/.test(g12.pos[0].texte)) {
       pb("G12 : niveau de l'arrivée mal dit — " + JSON.stringify([g12.pos[0], g12.pos[2]]));
     } else ok("G12 : niveau de l'arrivée dit depuis le 0, pas depuis le −1");

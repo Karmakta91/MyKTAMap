@@ -614,7 +614,7 @@
   // (interfaceItineraire.js > getItiTempsMinutes), « ~ » et arrondi à la minute : la marche sous terre varie trop
   // pour mieux. Réduit (consigne seule) : réglage de l'appareil, partagé par la 2D et la 3D.
   const LS_ENCART = "myktamap_guidage_encart_v1";   // "reduit" | absent
-  const VITESSE_REPLI_M_MIN = 5000 / 60;             // sans interfaceItineraire.js : le préréglage « normale »
+  const VITESSE_REPLI_M_MIN = 3000 / 60;             // sans interfaceItineraire.js : son défaut, « lente »
 
   function encartReduit() {
     try { return localStorage.getItem(LS_ENCART) === "reduit"; } catch(e) { return false; }

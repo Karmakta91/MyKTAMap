@@ -1773,7 +1773,7 @@ async function sectionEncartReste(page) {
     }, o);
   };
   console.log("§ 32 — encart « reste » du bandeau 3D");
-  const vit = 5000 / 60;
+  const vit = 3000 / 60;   // rien de choisi : le défaut de l'itinéraire, « lente »
   for (const c of [{ x: 0, z: 0, n: 0, att: 106 }, { x: 20, z: 0, n: 0, att: 126 }, { x: 0, z: 4, n: -1, att: 30 }]) {
     const m = await lire(c);
     const ok3 = m.niveau === c.n && m.resume && Math.abs(m.resume.resteM - c.att) <= 1 &&

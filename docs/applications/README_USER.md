@@ -744,8 +744,8 @@ Tant qu'un itinéraire est actif, la barre du bas affiche **🗺️ distance · 
 | Allure | Vitesse | Quand |
 |---|---|---|
 | 🤕 **Blessé** | 2 km/h | Progression entravée, terrain accidenté |
-| 🐌 **Lente** | 3 km/h | Prudence, étroitures, exploration |
-| 🚶 **Normale** | 5 km/h | Allure standard (par défaut) |
+| 🐌 **Lente** | 3 km/h | Prudence, étroitures, exploration (par défaut) |
+| 🚶 **Normale** | 5 km/h | Allure standard |
 | 🏃 **Rapide** | 7 km/h | Allure soutenue, parcours connu |
 
 **🛑 Pause entre les arrêts** (case à cocher) ajoute une durée de pause à chaque étape intermédiaire dans le temps estimé.

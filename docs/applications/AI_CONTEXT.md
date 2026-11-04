@@ -467,8 +467,8 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 5. Le trajet apparaît en cyan néon. Distance + temps estimé + mode de vitesse actif sont affichés en bas à gauche.
 6. **Vitesse de marche** : segmented control dans la modale, 4 presets :
    - 🤕 **Blessé** (2 km/h) — progression entravée, très lent
-   - 🐌 **Lente** (3 km/h) — prudente, étroitures
-   - 🚶 **Normale** (5 km/h, défaut) — allure standard
+   - 🐌 **Lente** (3 km/h, défaut) — prudente, étroitures
+   - 🚶 **Normale** (5 km/h) — allure standard
    - 🏃 **Rapide** (7 km/h) — parcours connu
    Le mode est mémorisé entre sessions. Le label bottom-left affiche le mode actif avec son icône à côté de la distance et du temps.
 7. Pour modifier : utilise les boutons 🔄 Recalculer ou ❌ Effacer.

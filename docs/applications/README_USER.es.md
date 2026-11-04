@@ -744,8 +744,8 @@ Mientras haya un itinerario activo, la barra de abajo muestra **🗺️ distanci
 | Ritmo | Velocidad | Cuándo |
 |---|---|---|
 | 🤕 **Herido** | 2 km/h | Avance dificultado, terreno accidentado |
-| 🐌 **Lenta** | 3 km/h | Prudencia, gateras, exploración |
-| 🚶 **Normal** | 5 km/h | Ritmo estándar (por defecto) |
+| 🐌 **Lenta** | 3 km/h | Prudencia, gateras, exploración (por defecto) |
+| 🚶 **Normal** | 5 km/h | Ritmo estándar |
 | 🏃 **Rápida** | 7 km/h | Ritmo sostenido, recorrido conocido |
 
 **🛑 Pausa entre las paradas** (casilla) añade un tiempo de pausa en cada etapa intermedia al tiempo estimado.

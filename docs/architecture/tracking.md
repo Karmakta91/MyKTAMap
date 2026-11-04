@@ -1256,7 +1256,8 @@ plus d'état « masqué pour cet itinéraire », la tuile 🪧 est le seul inter
 l'arrivée (`raccords` « arrivee », sinon le dernier waypoint ; un « Point (x, y) » ou rien → « Arrivée »), son niveau
 seulement s'il diffère de celui de la position (tracker en 2D, scène en 3D), distance restante = trajet après `s`
 + raccords restants (étape ×2, arrivée ×1, comme `_distanceItineraireMeters`) + l'écart en « rejoindre », temps =
-`getItiTempsMinutes(reste, 2 + étapes restantes)` (allure et pauses de la fenêtre Itinéraire), « ~ » + arrondi à la
+`getItiTempsMinutes(reste, 2 + étapes restantes)` (allure et pauses de la fenêtre Itinéraire ; rien de choisi :
+« lente », 3 km/h, `interfaceItineraire.js > DEFAULT_ITI_SPEED`, décision produit), « ~ » + arrondi à la
 minute (`ktaFormatTempsItineraire`). ⚠️ contrat : une seule source, `etat().resume` (bandeau 2D, écran XL) et
 `apercu().resume` (3D en libre), calculée avec la consigne : jamais de chemin. Replié (`encartReduit`,
 `reglerEncart`, `myktamap_guidage_encart_v1`, cet appareil) : une languette ▾ seule, 2D et 3D ensemble ; l'écran XL

@@ -406,7 +406,10 @@ const ITI_SPEED_PRESETS = {
 };
 function _presetLabel(key) { return window.I18n.t("iti.speed." + key + ".label"); }
 function _presetHint(key)  { return window.I18n.t("iti.speed." + key + ".hint"); }
-const DEFAULT_ITI_SPEED       = "normale";
+// Défaut (décision produit) : « lente », 3 km/h ; il donne le temps de la fenêtre et de l'encart « reste » du
+// guidage (itiGuidage.js > _resume). Un choix retenu (« normale » compris) reste le sien. Perdu (lostMode.js) a son
+// propre réglage et son propre défaut.
+const DEFAULT_ITI_SPEED       = "lente";
 const ITI_SPEED_STORAGE_KEY   = "myktamap_iti_walking_preset";
 
 // Pause par arrêt intermédiaire configurable (case + minutes, défaut cochée 15 min), en localStorage.

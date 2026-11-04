@@ -744,8 +744,8 @@ While a route is active, the bottom bar shows **🗺️ distance · time · pace
 | Pace | Speed | When |
 |---|---|---|
 | 🤕 **Injured** | 2 km/h | Hindered progress, rough ground |
-| 🐌 **Slow** | 3 km/h | Caution, squeezes, exploration |
-| 🚶 **Normal** | 5 km/h | Standard pace (default) |
+| 🐌 **Slow** | 3 km/h | Caution, squeezes, exploration (default) |
+| 🚶 **Normal** | 5 km/h | Standard pace |
 | 🏃 **Fast** | 7 km/h | Brisk pace, known route |
 
 **🛑 Pause between stops** (checkbox) adds a pause time at each intermediate stop to the estimated time.
