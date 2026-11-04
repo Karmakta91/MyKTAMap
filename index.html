@@ -52,19 +52,6 @@
 
 <body>
 
-  <!-- Motifs SVG partagés : `kta-pattern-inaccessible` habille les zones inaccessibles (bloquantes pour le
-       pathfinder). SVG global invisible pour que `fill: url(#…)` se résolve depuis tout polygone Leaflet
-       (rendu SVG). -->
-  <svg style="position:absolute; width:0; height:0; pointer-events:none;" aria-hidden="true">
-    <defs>
-      <pattern id="kta-pattern-inaccessible" patternUnits="userSpaceOnUse" width="14" height="14" patternTransform="rotate(45)">
-        <rect width="14" height="14" fill="#5a0a0a"/>
-        <rect width="14" height="14" fill="#cc0000" opacity="0.45"/>
-        <line x1="0" y1="0" x2="0" y2="14" stroke="#1a1f2e" stroke-width="4"/>
-      </pattern>
-    </defs>
-  </svg>
-
   <!-- Splash de démarrage : affiché par défaut ; js/ktaSplash.js (juste après) choisit la version, main.js le ferme
        quand l'accueil est affiché. Toujours sombre (décision produit). -->
   <div id="splashOverlay">

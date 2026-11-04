@@ -935,11 +935,11 @@ En el grupo **⬛ Zonas**, superficies cerradas para anotar el mapa:
 | 🟦 **Agua** | azul | ninguno |
 | ⛔ **Inaccesible** | rayado rojo oscuro / negro | **bloquea** el paso |
 
-Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego los escombros, los derrumbes, y lo inaccesible encima de todo.
+Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego los escombros, los derrumbes, y lo inaccesible encima de las demás zonas; las estructuras (pilares, muros, frentes de cantera) quedan siempre por encima de las zonas.
 
 ### ⛔ Zona «Inaccesible» — bloquea el itinerario
 
-Una zona ⛔ prohíbe al itinerario atravesarla (derrumbe reciente, agua profunda…): el cálculo busca otro camino, o falla y lo dice. Solo bloquea **su nivel**, y sigue contando aunque ocultes la capa de zonas.
+Una zona ⛔ prohíbe al itinerario atravesarla (derrumbe reciente, agua profunda…): el cálculo busca otro camino, o falla y lo dice. Solo bloquea **sus niveles** (una zona puede tocar varios, ver « 🏗️ Modo multinivel »), y sigue contando aunque ocultes la capa de zonas.
 
 La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario (marcada de origen) permite relajarla. El **Modo Rescate** y «Estoy perdido» la respetan siempre. Para «evitar si es posible», usa mejor las **🚫 Preferencias de evitación** del itinerario.
 
@@ -1124,6 +1124,8 @@ Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mi
 ### 🔀 Cambiar el nivel de un objeto
 
 ¿Un objeto quedó en el nivel equivocado? En la ventana de un trazado, una zona o una estructura que hayas dibujado, la lista **Nivel** (bajo 🔄 Convertir) lo mueve al instante; para un punto, es la lista **Nivel** de **✏️ Editar**, guardada con el resto de la ficha. El nivel actual del objeto siempre se propone, aunque esté fuera de la lista del mapa. Si el nivel elegido está oculto por el filtro, el objeto desaparece del mapa y un mensaje lo indica: la vista se queda en tu nivel. **⏪** lo deshace.
+
+Una zona que toca varios niveles (un derrumbe entre el −1 y el −2): trázala en el nivel activo y luego, en su ventana, marca los demás niveles en **También en los niveles** y toca **🏗️ Aplicar los niveles**. Es la misma zona, con el mismo contorno, mostrada en cada uno de sus niveles: modificarla o eliminarla actúa en todas partes, y una zona ⛔ bloquea el itinerario en cada uno de ellos. Desmarca todo para devolverla a su único nivel. **⏪** lo deshace.
 
 Una unión tiene su propia ficha, con sus dos niveles (ver más abajo). No hay lista en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
 

@@ -148,10 +148,15 @@
 
     if (inc.zones && Array.isArray(data.zones)) {
       data.zones.forEach(function(z) {
-        if (!z || !filtre(inc.zoneTypesSet, z.type) || !passe(z.level)) return;
+        // Zone sur plusieurs niveaux : UNE entité (règle des passages entre niveaux), propriété `niveaux`.
+        const nv = (Array.isArray(z && z.niveaux) && typeof window.ktaNiveauxObjet === "function")
+          ? window.ktaNiveauxObjet(z) : null;
+        const multi = !!(nv && nv.length >= 2);
+        if (!z || !filtre(inc.zoneTypesSet, z.type) || (multi ? !nv.some(passe) : !passe(z.level))) return;
         if (!Array.isArray(z.points) || z.points.length < 3) return;
-        ajouter(polygone(z.points), proprietes("zone", z.type, _libelle("zones", z.type), z,
-                KE.styleResolu("zones", z.type)), z.uid);
+        const props = proprietes("zone", z.type, _libelle("zones", z.type), z, KE.styleResolu("zones", z.type));
+        if (multi) props.niveaux = nv;
+        ajouter(polygone(z.points), props, z.uid);
       });
     }
 

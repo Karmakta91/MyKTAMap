@@ -93,6 +93,14 @@
 Générateur (calques), le Tableur (`niveaux` éditable, `accroches` en lecture), l'export anonymisé ; KMZ / GPX /
 GeoJSON : `niveaux` seulement (les raccords sont des pixels du plan). Voir `multilevel-pathfinding.md` §26.11.
 
+→ **Zone sur plusieurs niveaux** (tout type de zone, plan multi-niveau) : `"niveaux": [-2, -1]` (entiers, triés, sans
+doublon, contient toujours `level`), absent = le seul `level`. `level` reste le niveau d'origine (un lecteur qui
+ignore `niveaux` voit la zone à ce niveau). Un seul objet, même contour sur chacun de ses niveaux. Règle de lecture
+unique avec les passages : `poiJonction.js > ktaNiveauxObjet`. Gardé par la session, les calques (Générateur,
+`getAllEmbeddedZones`), le Tableur, l'export anonymisé, KMZ (`mkm:niveaux`, une copie par autre niveau marquée
+`mkm:copie`) et GeoJSON (propriété `niveaux`, une entité). Retiré quand la zone devient une structure. Voir
+`multilevel-pathfinding.md` §26.12.
+
 → **POI danger** (tag `danger`, `js/poiDanger.js`) : `"dateConstat": "2026-10-03"` = jour **local** où le danger a été
 vu (`AAAA-MM-JJ`, un jour qui existe). Facultatif : pré-rempli au jour même quand un point **devient** danger
 (création ou changement de tag), modifiable, retiré si vidé ou si le tag n'est plus danger ; un point danger

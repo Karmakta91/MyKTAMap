@@ -1792,6 +1792,11 @@
       if (item && Array.isArray(item.niveaux) && window.KtaPoiJonction && window.KtaPoiJonction.estJonction(item)) {
         return window.KtaPoiJonction.niveaux(item).some(function(n) { return opts.ann.levels.has(n); });
       }
+      // Zone sur plusieurs niveaux : dessinée si un de ses niveaux est exporté.
+      if (item && Array.isArray(item.niveaux) && Array.isArray(item.points) &&
+          typeof window.ktaNiveauxObjet === "function") {
+        return window.ktaNiveauxObjet(item).some(function(n) { return opts.ann.levels.has(n); });
+      }
       const lvl = Number.isInteger(item && item.level) ? item.level : 0;
       return opts.ann.levels.has(lvl);
     }

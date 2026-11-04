@@ -561,6 +561,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-plan-tags.js` | Étiquettes de plan normalisées différemment par les écrivains de plan-config | pre-commit |
 | `check-podometre-global.js` | Réglage de podomètre lu dans un plan-config au lieu du réglage global de l'appareil | pre-commit |
 | `check-poi-jonction.js` | POI entre niveaux (`jes` / `jpe` / `jps`) compté comme sortie de surface, jonctions absentes du graphe | pre-commit |
+| `check-zones-niveaux.js` | Zone reliée à plusieurs niveaux (`niveaux`) affichée hors de ses niveaux, qui ne bloque plus l'itinéraire sur chacun, ou champ perdu à l'aller-retour session / KMZ / GeoJSON | pre-commit |
 | `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
 | `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |
 | `check-position-confirmee.js` | Urgence / « Y aller » qui redemande une position déjà sûre (ou part d'une position non confirmée) | pre-commit |
@@ -638,6 +639,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
 | `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
+| `smoke/checkup-inaccessible-sous-structures.js` | Zones (inaccessible comprise) sous les structures sur le canvas commun après chargement, édition, ⏪ et filtre ; hachures en CanvasPattern ; fiche au clic |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
@@ -651,6 +653,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-plan-folders.js` | Mode Dossiers de « Mes plans » au pixel |
 | `smoke/checkup-plan-oriente.js` | Mode « plan orienté » : la vue tournée affiche tout au bon endroit |
 | `smoke/checkup-poi-jonction.js` | POI entre niveaux : raccords proposés et validés, itinéraire |
+| `smoke/checkup-zones-niveaux.js` | Zone reliée à plusieurs niveaux : cases de la fiche, filtre, itinéraire contourné sur chacun, ⏪, KMZ et GeoJSON relus |
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
 | `smoke/checkup-recalage-scan.js` | « Recaler des données sur un autre scan » sur des jeux fictifs |
 | `smoke/checkup-repositionner.js` | « Repositionner » un POI de session à la souris |

@@ -1,5 +1,5 @@
 // check-style-resolver.js — garde-fou BLOQUANT de js/styleResolver.js (ktaResolveStyle, ktaSwatchColor,
-// ktaTypeSwatchHtml) : built-in, motif SVG / { flat }, customs, couleurs et bordures choisies, robustesse.
+// ktaTypeSwatchHtml) : built-in, motif canvas / { flat }, customs, couleurs et bordures choisies, robustesse.
 const fs = require("fs"), vm = require("vm");
 const win = { console: { log(){}, warn(){} } };
 win.window = win;
@@ -19,8 +19,26 @@ t("structure pilier-1", R("structures", "pilier-1").fillColor === "#f4c542");
 t("front-1 est une polyline epaisse", R("structures", "front-1").weight === 10 && R("structures", "front-1").isPolyline === true);
 t("pilier garde son contour de 3px", R("structures", "pilier-1").weight === 3);
 
-// ── Motif SVG et son repli d'aplat : un contexte sans url(#...) (bitmap, KMZ, OSM) demande { flat } ──
-t("inaccessible par defaut = motif SVG", /^url\(#/.test(R("zones", "inaccessible").fillColor));
+// ── Motif canvas et son repli d'aplat : un contexte qui ne peint pas de motif (bitmap, KMZ, OSM) demande { flat } ──
+t("inaccessible sans canvas (Node) = aplat de repli, jamais un url(#…) mort",
+  R("zones", "inaccessible").fillColor === "#7a0000" && R("zones", "inaccessible").fillOpacity === 0.65);
+{
+  // Document factice : le motif est construit UNE fois, posé en fillColor, opacité pleine.
+  const appels = [];
+  const ctx2d = { fillRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {},
+    createPattern(c, rep) { appels.push(rep); return { motif: true, w: c.width }; } };
+  const doc = { createElement: (tag) => ({ tag: tag, getContext: () => ctx2d }) };
+  const w2 = { console: { log(){}, warn(){} }, document: doc };
+  w2.window = w2;
+  vm.runInContext("var window = this;" + fs.readFileSync("js/styleResolver.js", "utf8"), vm.createContext(w2));
+  const m1 = w2.ktaResolveStyle("zones", "inaccessible"), m2 = w2.ktaResolveStyle("zones", "inaccessible");
+  t("inaccessible sur la carte = CanvasPattern (canvas commun, sous les structures), opacite pleine",
+    m1.fillColor && m1.fillColor.motif === true && m1.fillOpacity === 1 && m1.color === "#5a0a0a");
+  t("motif construit une seule fois (tuile pas·√2 = 20 px, repeat)",
+    m1.fillColor === m2.fillColor && appels.length === 1 && appels[0] === "repeat" && m1.fillColor.w === 20);
+  t("{ flat } sur la carte = aplat, pas le motif", w2.ktaResolveStyle("zones", "inaccessible", { flat: true }).fillColor === "#7a0000");
+  t("aucun champ interne ne fuit (_motif)", !("_motif" in m1));
+}
 t("inaccessible { flat } = aplat #7a0000", R("zones", "inaccessible", { flat: true }).fillColor === "#7a0000");
 t("inaccessible { flat } baisse l'opacite", R("zones", "inaccessible", { flat: true }).fillOpacity === 0.65);
 t("{ flat } n'affecte pas un type sans motif", R("zones", "eau", { flat: true }).fillColor === "#3aa9e8");
@@ -161,6 +179,21 @@ delete win.LegendCustomization;
 
 t("ktaStyleBuiltins(zones) = 4 types", win.ktaStyleBuiltins("zones").length === 4);
 t("ktaStyleBuiltins(bidon) = []", win.ktaStyleBuiltins("bidon").length === 0);
+
+// ── 🩸 Empilement : zones sous les structures, sur le même canvas (parcours réel : checkup-inaccessible-sous-structures) ──
+{
+  const Z = fs.readFileSync("js/zones.js", "utf8"), U = fs.readFileSync("js/utils.js", "utf8");
+  const ST = fs.readFileSync("js/structures.js", "utf8");
+  t("plus de renderer SVG pour l'inaccessible (zones.js, calques) : un SVG passe au-dessus du canvas des structures",
+    !/L\.svg\(/.test(Z) && !/_inaccessibleDataRenderer/.test(U));
+  const corps = Z.slice(Z.indexOf("function renderZones()"), Z.indexOf("function resetZones()"));
+  t("renderZones remonte les structures en fin de rendu",
+    /window\.ktaStructuresAuDessus\(\);\r?\n\}\s*(\/\/[^\n]*\s*)*$/.test(corps));
+  t("zones d'un calque : structures remontées après leur ajout",
+    /_ktaDataPolygons\.push\(entry\);[\s\S]{0,400}window\.ktaStructuresAuDessus\(\)/.test(U));
+  t("ktaStructuresAuDessus : calques puis session, bringToFront dans l'ordre",
+    /window\.ktaStructuresAuDessus = function[\s\S]{0,300}_ktaDataStructurePolygons[\s\S]{0,120}structureLayers\.forEach\(monter\)/.test(ST));
+}
 
 console.log(ko === 0 ? "\n🎉 tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

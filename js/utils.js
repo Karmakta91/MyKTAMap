@@ -990,6 +990,38 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
            '</label>';
   }
 
+  // Zone de session sur un plan multi-niveau : cases « Aussi aux niveaux » (niveaux du plan hors `level`, plus ceux
+  // que la zone porte déjà même hors availableLevels), appliquées par un bouton (un geste, une entrée ⏪).
+  // "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes), comme la liste « Niveau ».
+  function _niveauxZoneHtml() {
+    const o = opts.convertir && opts.convertir.obj;
+    if (!o || opts.convertir.famille !== "zones" || typeof window.ktaNiveauxProposes !== "function") return "";
+    const lvl = Number.isInteger(o.level) ? o.level : 0;
+    const proposes = window.ktaNiveauxProposes(lvl);
+    if (!proposes) return "";
+    const portes = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(o) : [lvl];
+    const autres = proposes.concat(portes).filter(function(n, i, a) { return n !== lvl && a.indexOf(n) === i; })
+      .sort(function(a, b) { return a - b; });
+    if (!autres.length) return "";
+    return '<div class="kta-note-popup-niveaux-zone">' +
+             '<div class="kta-note-popup-niveaux-zone-titre">' + _esc(window.I18n.t("niveauxZone.label")) + '</div>' +
+             '<div class="kta-note-popup-niveaux-zone-cases">' +
+               autres.map(function(n) {
+                 return '<label class="kta-note-popup-niveaux-zone-case">' +
+                          '<input type="checkbox" value="' + n + '"' +
+                            (portes.indexOf(n) >= 0 ? " checked" : "") + '>' +
+                          '<span>' + _esc(window.ktaFormatNiveau(n)) + '</span>' +
+                        '</label>';
+               }).join("") +
+             '</div>' +
+             '<div class="kta-popup-actions kta-note-popup-actions">' +
+               '<button class="kta-popup-btn kta-note-popup-niveaux-zone-appliquer" type="button">' +
+                 _esc(window.I18n.t("niveauxZone.appliquer")) +
+               '</button>' +
+             '</div>' +
+           '</div>';
+  }
+
   // Fiche d'une jonction (`opts.jonction`) : deux listes « Départ » (premier point, fromLevel) et « Arrivée » (dernier
   // point, toLevel), appliquées ensemble par un bouton (un geste, une entrée ⏪). Chaque liste garde le niveau actuel
   // de son bout même hors availableLevels (ktaNiveauxProposes) ; "" hors multi-niveau ou pendant un dessin.
@@ -1053,7 +1085,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                      '</button>'
                    : '') +
                '</div>' +
-               (opts.jonction ? _niveauxJonctionHtml() : _niveauHtml()) +
+               (opts.jonction ? _niveauxJonctionHtml() : _niveauHtml() + _niveauxZoneHtml()) +
                // Supprimer : ligne séparée, classe danger (comme la popup d'un point, une action destructrice ne se
                // pose pas à côté de « Sauver »). `opts.convertir` = { famille, obj } sert aux DEUX boutons.
                (opts.convertir
@@ -1116,6 +1148,22 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           if (window.KtaConvertir.changerNiveau(opts.convertir.famille, opts.convertir.obj, n)
               && typeof window.ktaSignalerNiveauObjet === "function") {
             window.ktaSignalerNiveauObjet(n);
+          }
+        });
+      }
+      // Niveaux d'une zone : popup fermée AVANT le setteur, pour la même raison que la liste « Niveau ».
+      const nzBtn = popupRoot.querySelector(".kta-note-popup-niveaux-zone-appliquer");
+      if (nzBtn && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveauxZone) {
+        nzBtn.addEventListener("click", function () {
+          const autres = Array.prototype.slice.call(
+            popupRoot.querySelectorAll(".kta-note-popup-niveaux-zone-cases input:checked"))
+            .map(function(cb) { return Number.parseInt(cb.value, 10); });
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.changerNiveauxZone(opts.convertir.obj, autres)
+              && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            const nv = window.ktaNiveauxObjet({ level: opts.convertir.obj.level, niveaux: autres });
+            window.OOMGuard.showToast(window.I18n.t("niveauxZone.toast",
+              { liste: nv.map(window.ktaFormatNiveau).join(", ") }), "success");
           }
         });
       }
@@ -1791,8 +1839,8 @@ function normaliserPoints(json) {
 // ── Styles des data layers : aucune table ici, tout vient de js/styleResolver.js ──────────
 // ⚠️ Passer par le résolveur fait lire LegendCustomization : un type custom d'un calque de données a la même
 // couleur qu'en session (sinon blanc / gris / bleu de repli).
-// Deux helpers car les cibles diffèrent : carte Leaflet (motif SVG de `inaccessible` peint tel quel) ;
-// canvas d'export (pas de `url(#pattern)` → { flat: true }, aplat de repli du type).
+// Deux helpers car les cibles diffèrent : carte Leaflet (hachures de `inaccessible` en CanvasPattern) ;
+// canvas d'export ({ flat: true }, aplat de repli du type : le motif ne part pas dans un fichier).
 // `repli` = type utilisé si `type` est introuvable ; `null` pour ne rien rendre.
 
 function _ktaStyleMap(categorie, type, repli) {
@@ -1919,7 +1967,7 @@ window._applyLevelFilterToDataRoads = function() {
 // Repeint les objets des calques de données après un changement de couleur de légende (construits une
 // fois au chargement, sinon la couleur n'arrive qu'au rechargement). Ne touche qu'aux couleurs et aux
 // opacités d'ORIGINE : l'opacité affichée appartient au filtre multi-niveau, réappliqué juste après pour
-// ne pas révéler un objet masqué. `inaccessible` : renderer SVG dédié, setStyle du motif fonctionne tel quel.
+// ne pas révéler un objet masqué. `inaccessible` : setStyle pose le CanvasPattern tel quel.
 window._ktaRestyleDataLayers = function() {
   const R = window.ktaResolveStyle;
   if (typeof R !== "function") return;
@@ -1959,7 +2007,9 @@ window._ktaRestyleDataLayers = function() {
 // `kindForRuntime` (zone | structure) vient des wrappers _applyLevelFilterToData{Zones,Structures}.
 function _filtreNiveauSurPolygonData(entry, kindForRuntime) {
   if (!entry || !entry.polygon) return;
-  let visible = _passeFiltreDataLevel(entry.level);
+  // Zone sur plusieurs niveaux (`niveaux`) : visible si l'un d'eux l'est.
+  let visible = Array.isArray(entry.niveaux) ? entry.niveaux.some(_passeFiltreDataLevel)
+                                              : _passeFiltreDataLevel(entry.level);
   if (visible && entry.type && kindForRuntime) {
     if (!_passeFiltreRuntimeType(kindForRuntime, entry.type)) visible = false;
   }
@@ -2070,7 +2120,7 @@ window.getAllEmbeddedPoints = function() {
   return out;
 };
 
-// Zones embarquées → [{type, points, level, layerId, description?, uid?, updatedAt?}], même format que
+// Zones embarquées → [{type, points, level, niveaux?, layerId, description?, uid?, updatedAt?}], même format que
 // window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement la session.
 // Calque en modification exclu.
 window.getAllEmbeddedZones = function() {
@@ -2083,6 +2133,7 @@ window.getAllEmbeddedZones = function() {
     })
     .map(function(e) {
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
+      if (Array.isArray(e.niveaux) && e.niveaux.length >= 2) out.niveaux = e.niveaux.slice();
       if (e.description) out.description = e.description;
       if (e.uid) out.uid = e.uid;
       if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
@@ -2632,24 +2683,17 @@ function ajouterPointsDepuisJSON(url, layer) {
 
       // Zones embarquées en lecture seule. Ordre : eau (arrière) → remblais → effondrement (avant).
       if (Array.isArray(json.zones) && json.zones.length > 0) {
-        // 🩸 `inaccessible` est peinte au motif SVG (hachures, index.html) : renderer SVG forcé, un renderer
-        // canvas ignore url(#…).
+        // `inaccessible` : hachures en CanvasPattern (styleResolver.js), sur le canvas commun comme les autres.
         const zonesTriees = [...json.zones].sort(function(a, b) {
           const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
           return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
         });
-        // renderer SVG unique pour toutes les zones inaccessibles des data layers
-        if (!window._inaccessibleDataRenderer) {
-          window._inaccessibleDataRenderer = L.svg({ padding: 0.5 });
-        }
         zonesTriees.forEach(function(zone) {
           if (!zone.points || zone.points.length < 3) return;
           const style = _ktaStyleMap("zones", zone.type, "remblais");
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
           const hasNoteROZone = !!(zone.description && String(zone.description).trim());
-          const polyOpts = (zone.type === "inaccessible")
-            ? Object.assign({}, style, { interactive: hasNoteROZone, renderer: window._inaccessibleDataRenderer })
-            : Object.assign({}, style, { interactive: hasNoteROZone });
+          const polyOpts = Object.assign({}, style, { interactive: hasNoteROZone });
           const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
           if (hasNoteROZone && typeof window.attacherNotePopup === "function") {
             const _zoneEmojisRO = { eau: "💧", remblais: "⬛", effondrement: "🟥", inaccessible: "⛔" };
@@ -2686,6 +2730,9 @@ function ajouterPointsDepuisJSON(url, layer) {
             type:            zone.type,
             points:          zone.points,
             level:           Number.isInteger(zone.level) ? zone.level : 0,
+            // Zone sur plusieurs niveaux (poiJonction.js > ktaNiveauxObjet) : liste normalisée, `level` inclus.
+            niveaux:         (Array.isArray(zone.niveaux) && typeof window.ktaNiveauxObjet === "function")
+                               ? window.ktaNiveauxObjet(zone) : undefined,
             description:     zone.description || undefined,
             uid:             (typeof zone.uid === "string" && zone.uid) ? zone.uid : undefined,
             updatedAt:       (typeof zone.updatedAt === "number") ? zone.updatedAt : undefined,
@@ -2695,6 +2742,8 @@ function ajouterPointsDepuisJSON(url, layer) {
           window._ktaDataPolygons.push(entry);
           _filtreNiveauSurPolygonData(entry);
         });
+        // Zones peintes APRÈS les structures de ce calque (et celles de la session) : on remonte les structures.
+        if (typeof window.ktaStructuresAuDessus === "function") window.ktaStructuresAuDessus();
       }
 
       // étend availableLevels si le calque dépasse la plage par défaut (les markers arrivent par lots async :
@@ -2864,7 +2913,7 @@ async function telechargerPlan() {
     }
 
     // ── calques JSON visibles : data[] + roads[] + zones[] + structures[], comme ajouterPointsDepuisJSON ──
-    // `inaccessible` sort en aplat ({ flat: true }) : le canvas ne sait pas peindre le motif SVG. Jonctions en
+    // `inaccessible` sort en aplat ({ flat: true }), comme dans tous les exports. Jonctions en
     // trait plein (pas de setLineDash), extrémités marquées par des ronds magenta.
 
     // routes (embarquées + session) collectées pour les cercles d'intersection, dessinés à la fin

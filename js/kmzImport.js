@@ -342,7 +342,9 @@
 
       // Point en descendant DIRECT (pas dans un MultiGeometry).
       const pointCoords = pm.querySelector(":scope > Point > coordinates");
-      if (pointCoords && _mkmData.copie) { stats.skipped++; continue; }
+      // Copie répétée dans le dossier d'un autre de ses niveaux (passage entre niveaux, zone sur plusieurs
+      // niveaux) : l'original suffit, sinon l'objet serait doublé.
+      if (_mkmData.copie) { stats.skipped++; continue; }
       if (pointCoords) {
         const pts = _parseCoords(pointCoords.textContent);
         if (pts.length >= 1) {
@@ -456,6 +458,7 @@
               type: zoneType, points: projected
             };
             if (Number.isInteger(_mkmData.level)) _zn.level = _mkmData.level;
+            if (_mkmData.niveaux) _zn.niveaux = _mkmData.niveaux;
             out.zones.push(_zn);
           }
           stats.kept++;

@@ -7,15 +7,17 @@
 // styleResolver.js — source de vérité UNIQUE des styles des types built-in (tracés, zones, structures).
 // Expose : window.ktaResolveStyle(categorie, cle [, opts]) → objet de style NEUF | null
 //   categorie ∈ "traces" | "zones" | "structures" ; types `cust-*` résolus via LegendCustomization.
-//   opts.flat = true → aplat de repli au lieu d'un motif SVG (export bitmap, KMZ, fond OSM).
+//   Sans opts : style de la carte, `inaccessible` hachurée par un CanvasPattern (même canvas que les
+//   autres vecteurs : l'ordre d'empilement zones < structures tient). opts.flat = true → aplat de repli
+//   (export bitmap, KMZ, fond OSM, pastilles).
 // · ktaStyleBuiltins(cat) → clés built-in · ktaSwatchColor · ktaTypeSwatchHtml · ktaLabelAvecPastille
 // · ktaAppliquerCouleurChoisie(cat, cle, style) : applique la couleur choisie par l'utilisateur
 //   (Légende → Modifier) à un style déjà construit — réservé aux deux palettes délibérées ci-dessous.
 // 🩸 Aucun consommateur ne recopie une couleur de type : une table locale finit par diverger (zone
 //   dangereuse exportée en gris, légende qui ment sur la carte).
 // ⚠️ Variantes délibérées, à NE PAS « corriger » (décision produit) : `emergencyMode.js` (palette vive
-//   de la mini-carte d'urgence) et `osmView.js`/`osmHomePreview.js` (`inaccessible` en aplat orange,
-//   le motif SVG n'est pas rendu sur fond OSM). Elles passent par ktaAppliquerCouleurChoisie.
+//   de la mini-carte d'urgence) et `osmView.js`/`osmHomePreview.js` (`inaccessible` en aplat orange
+//   sur fond OSM). Elles passent par ktaAppliquerCouleurChoisie.
 // Garde-fou : scripts/check-style-canon.js (bloquant), scripts/check-style-resolver.js
 // Doc : docs/architecture/rendering-leaflet.md
 
@@ -35,12 +37,13 @@
       eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
       remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
       effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 },
-      // 🩸 Hachures = pattern SVG d'index.html : exige un renderer L.svg() (le canvas ignore
-      // url(#…)), d'où le renderer dédié de zones.js/utils.js. Sans motif : { flat: true }.
+      // Hachures = `_motif` peint en CanvasPattern (_motifCanvas) sur le fond `fillColor` : rayures
+      // `raie` à 45°, espacées de `pas` px, sur un voile `voile`. Sans motif : { flat: true }.
       inaccessible: {
-        color: "#5a0a0a", fillColor: "url(#kta-pattern-inaccessible)",
+        color: "#5a0a0a", fillColor: "#5a0a0a",
         fillOpacity: 1, weight: 3, opacity: 1,
-        _flatFill: "#7a0000", _flatFillOpacity: 0.65
+        _flatFill: "#7a0000", _flatFillOpacity: 0.65,
+        _motif: { voile: "#cc0000", voileOpacite: 0.45, raie: "#1a1f2e", largeur: 4, pas: 14 }
       }
     },
     structures: {
@@ -101,12 +104,50 @@
     if (c) {
       s.fillColor = c;
       s.color     = b || _assombrir(c, 0.62);
-      // 🩸 Un type à motif repeint devient un aplat : le pattern SVG d'index.html est statique.
+      // 🩸 Un type à motif repeint devient un aplat : le motif garde ses couleurs canon.
       if (s._flatFillOpacity !== undefined) s.fillOpacity = s._flatFillOpacity;
     } else {
       s.color = b;                         // bordure seule : le fond reste canon
     }
     return s;
+  }
+
+  // ── Motif de hachures en CanvasPattern (un par type, construit une fois) ───
+  // ⚠️ Accepté tel quel en `fillColor` par le renderer canvas de Leaflet (ctx.fillStyle = …) ; ancré à
+  // l'origine des points de calque : il suit la carte au glissé et garde sa taille à l'écran au zoom.
+  // null (pas de canvas : Node, contexte refusé) → l'appelant retombe sur l'aplat.
+  const _motifs = {};
+  function _motifCanvas(cle, fond, m) {
+    if (Object.prototype.hasOwnProperty.call(_motifs, cle)) return _motifs[cle];
+    let motif = null;
+    try {
+      if (typeof document !== "undefined" && document && typeof document.createElement === "function") {
+        // Tuile carrée de côté pas·√2 : des rayures à 45° espacées de `pas` s'y raccordent bord à bord.
+        const T = Math.round(m.pas * Math.SQRT2);
+        const c = document.createElement("canvas");
+        c.width = T; c.height = T;
+        const g = c.getContext && c.getContext("2d");
+        if (g && typeof g.createPattern === "function") {
+          g.fillStyle = fond;
+          g.fillRect(0, 0, T, T);
+          g.globalAlpha = m.voileOpacite;
+          g.fillStyle = m.voile;
+          g.fillRect(0, 0, T, T);
+          g.globalAlpha = 1;
+          g.strokeStyle = m.raie;
+          g.lineWidth = m.largeur;
+          for (let k = 0; k <= 2; k++) {      // droites x + y = k·T (coins compris), tracées au-delà de la tuile
+            g.beginPath();
+            g.moveTo(k * T + T, -T);
+            g.lineTo(k * T - 2 * T, 2 * T);
+            g.stroke();
+          }
+          motif = g.createPattern(c, "repeat");
+        }
+      }
+    } catch (e) { motif = null; }
+    _motifs[cle] = motif;
+    return motif;
   }
 
   function _copie(o) {
@@ -162,13 +203,24 @@
     const table = CANON[categorie];
     if (table && Object.prototype.hasOwnProperty.call(table, cle)) {
       const s = _copie(table[cle]);
-      if (opts && opts.flat && s._flatFill) {
+      const plat = !!(opts && opts.flat);
+      if (plat && s._flatFill) {
         s.fillColor   = s._flatFill;
         s.fillOpacity = (s._flatFillOpacity !== undefined) ? s._flatFillOpacity : s.fillOpacity;
       }
       // ⚠️ APRÈS l'aplat : la couleur choisie prime sur tout, motif compris.
+      const fondCanon = s.fillColor;
       _appliquerOverride(categorie, cle, s);
-      delete s._flatFill; delete s._flatFillOpacity;
+      if (!plat && s._motif && s.fillColor === fondCanon) {
+        const motif = _motifCanvas(cle, fondCanon, s._motif);
+        if (motif) {
+          s.fillColor = motif;
+        } else {
+          s.fillColor   = s._flatFill;
+          s.fillOpacity = s._flatFillOpacity;
+        }
+      }
+      delete s._flatFill; delete s._flatFillOpacity; delete s._motif;
       return s;
     }
     if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {

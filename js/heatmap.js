@@ -319,6 +319,10 @@
     if (item.type === "jonction") {
       return levelSet.has(item.fromLevel || 0) || levelSet.has(item.toLevel || 0);
     }
+    // Zone sur plusieurs niveaux : retenue si un de ses niveaux l'est.
+    if (Array.isArray(item.niveaux) && Array.isArray(item.points) && typeof window.ktaNiveauxObjet === "function") {
+      return window.ktaNiveauxObjet(item).some(function(n) { return levelSet.has(n); });
+    }
     return levelSet.has(item.level || 0);
   }
 

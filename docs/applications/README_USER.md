@@ -935,11 +935,11 @@ Dans le groupe **⬛ Zones**, des surfaces fermées pour annoter le plan :
 | 🟦 **Eau** | bleu | aucun |
 | ⛔ **Inaccessible** | hachures rouge sombre / noir | **bloque** le passage |
 
-Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone : **re-tape le premier point** (un cercle l'entoure dès le 3e point) ou appuie sur **✅ Fermer la zone en cours**. L'outil reste allumé : tape directement la zone suivante, et re-appuie sur le type pour l'éteindre. Quel que soit l'ordre de tracé, l'eau s'affiche dessous, puis les remblais, les effondrements, et l'inaccessible par-dessus tout.
+Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone : **re-tape le premier point** (un cercle l'entoure dès le 3e point) ou appuie sur **✅ Fermer la zone en cours**. L'outil reste allumé : tape directement la zone suivante, et re-appuie sur le type pour l'éteindre. Quel que soit l'ordre de tracé, l'eau s'affiche dessous, puis les remblais, les effondrements, et l'inaccessible par-dessus les autres zones ; les structures (piliers, murs, fronts de taille) restent toujours au-dessus des zones.
 
 ### ⛔ Zone « Inaccessible » — bloque l'itinéraire
 
-Une zone ⛔ interdit son passage à l'itinéraire (effondrement récent, eau profonde…) : le calcul cherche un autre chemin, ou échoue en le disant. Elle ne bloque que **son niveau**, et reste prise en compte même si tu masques le calque des zones.
+Une zone ⛔ interdit son passage à l'itinéraire (effondrement récent, eau profonde…) : le calcul cherche un autre chemin, ou échoue en le disant. Elle ne bloque que **ses niveaux** (une zone peut en toucher plusieurs, voir « 🏗️ Mode multi-niveau »), et reste prise en compte même si tu masques le calque des zones.
 
 La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire (cochée d'origine) permet de la relâcher. Le **Mode Secours** et « Je suis perdu » la respectent toujours. Pour « éviter si possible », utilise plutôt les **🚫 Préférences d'évitement** de l'itinéraire.
 
@@ -1124,6 +1124,8 @@ Si le plan contient des éléments à d'autres niveaux, la liste s'étend d'elle
 ### 🔀 Changer le niveau d'un objet
 
 Un objet a pris le mauvais niveau ? Dans la bulle d'un tracé, d'une zone ou d'une structure que tu as dessinés, la liste **Niveau** (sous 🔄 Convertir) le déplace aussitôt ; pour un point, c'est la liste **Niveau** de **✏️ Modifier**, enregistrée avec le reste de la fiche. Le niveau actuel de l'objet est toujours proposé, même s'il sort de la liste du plan. Si le niveau choisi est masqué par le filtre, l'objet disparaît de la carte et un message le dit : la vue reste sur ton niveau. **⏪** annule.
+
+Une zone qui touche plusieurs niveaux (un effondrement entre le −1 et le −2) : trace-la au niveau actif, puis dans sa bulle coche **Aussi aux niveaux** les autres niveaux concernés et tape **🏗️ Appliquer les niveaux**. C'est la même zone, avec le même contour, affichée sur chacun de ses niveaux : la modifier ou la supprimer agit partout, et une zone ⛔ bloque l'itinéraire sur chacun d'eux. Décoche tout pour la ramener à son seul niveau. **⏪** annule.
 
 Une jonction a sa propre fiche, avec ses deux niveaux (voir ci-dessous). Pas de liste sur un objet de calque (🔄 Modifier le calque d'abord) ni pendant un tracé en cours.
 
