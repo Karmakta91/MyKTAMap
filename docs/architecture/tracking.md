@@ -822,7 +822,7 @@ active, et le PDR seul (`_avancerRaster`) partirait de la roche.
   (`interPlanRoute.js > onTrackerRecale`) comparent des coordonnées arrondies à celles du point.
 - Non concernés (coordonnées exactes, sans `dansGalerie`) : clic du Mode recalage et picker « Où es-tu ? » (un tap
   sur la carte est une position voulue), arrivée de portail, Mode Secours, position de fin du Carnet, « Ici » de
-  « D'où pars-tu ? » et « Je suis ici ? » de la vue 3D (position déjà contrainte par le pas).
+  « D'où pars-tu ? » et « Je suis ici ? » de la vue 3D (position déjà contrainte par le pas ; en saut, ancre `tp`).
 - Checkup : `scripts/smoke/checkup-recaler-niveau.js` § 1, 2, 7, 9, 16 et 16 bis ; `checkup-vue-3d.js` § 10b.
 
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
@@ -1755,8 +1755,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Le tracker n'est pas déplacé** par la vue (décision produit). `fermer()` (✕, Échap) : si le suivi est actif
   (`getTrackingActif`) et qu'un déplacement en mode libre a écarté la vue d'au moins 0,5 m du tracker, ou l'a menée à
   un autre niveau que le sien (🪜, texte `vue3d.jeSuisIci.texteNiveau`), `ktaConfirm` « 📍 Je suis ici ? » ; Oui =
-  `recalerTrackerSurPoint(x, y, niveau)` (ancre de recalage normale, replanification et validation d'étape
-  comprises), Non = rien. Une fermeture forcée (contexte perdu) ne pose pas la question.
+  `recalerTrackerSurPoint(x, y, niveau, { teleport: true })`, Non = rien. ⚠️ contrat (décision produit) : un recalage
+  venu de la 3D est un **saut**, pas un pas de terrain : ancre `tp` (ni validation `getTrackingValidations`, ni
+  distance estimée), la sortie du Carnet ne devient pas « terrain » par lui (`journal.js > _classer`) ; le hook
+  (replanification, validation d'étape, portail) joue comme pour tout recalage. Même règle pour « Ici » de « D'où
+  pars-tu ? » (`interfaceItineraire.js > _demanderDepart`). Le « 📍 Je suis ici » d'une fiche ouverte depuis la 3D
+  reste un geste de terrain (l'utilisateur dit où il est) : validation comptée. Une fermeture forcée (contexte perdu) ne pose pas la question.
 - **Sortie : la carte se place là où l'on était en 3D** (décision produit, `vue3d.js > _placerCarte`, avant la
   question, quelle que soit la réponse) : niveau de la 3D s'il diffère (`ktaSetActiveLevel`, source `vue3d`), puis
   `map.setView(convertCoord(x, y))` sans animation, zoom gardé (au moins 0). En suivi sans déplacement libre, la place
@@ -2038,7 +2042,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Droits** : ceux de la carte (armement refusé en lecture seule, groupe grisé recopié ; 📐 permise). Greffe
   `fiches: false` : ni barre ni sommet (`addons.md`).
 - **🗺️ Plan au sol** (décision produit : livré si la mémoire suit) : interrupteur de la barre, coupé par défaut, gardé
-  tant que la vue est ouverte, niveau 0 seulement (le plan de base, `tiling.js > ktaPlanDeBaseVisible`). Une texture
+  tant que la vue est ouverte, offert à **tous les niveaux** : un niveau ≠ 0 qui a ses calques image
+  (`imageLayers[].level`, `window._ktaImageOverlays`) montre ceux-là (calés comme sur la carte, lus depuis leur URL
+  s'ils ne sont pas posés), sinon le plan de base ; changer de niveau la redessine. Une texture
   carrée (1024 px au doigt, 2048 au pointeur fin) sur le carré de sol, à une place fixe, redessinée à un quart
   d'écart (place ou emprise) ; source : les `<img>` du fond déjà chargés par la carte (direct, tuiles V1), plan V2 :
   `ktaDessinerRegionTuiles` (tuiles du ZIP ou du cache, niveau le moins détaillé qui suffit). Libérée coupée, à la
@@ -2141,7 +2147,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   au 0, sommets à 3 cm, une reconstruction, visé ; glisser, pincer, deux doigts, molette, Maj + molette → aucun sommet ;
   annulé ; mur fermé par ✅, mur en ligne, zone, tracé (aucune reconstruction pendant), aimantation, mesure de 10 m et
   son étiquette ; sortie de la vue d'édition (objet de 2 sommets abandonné), Échap, fermeture (objet de 3 sommets gardé) ;
-  greffe `fiches: false` ; lecture seule ; plan au sol (caché au −1, une texture au 0, libérée) ; rendu galerie →
+  greffe `fiches: false` ; lecture seule ; plan au sol (visible au −1, une texture au 0, libérée) ; rendu galerie →
   mixte ; même pilier à la souris sur la carte : mêmes champs, sommets, historique.
   Caméra libre et mesures (§ 30, formes fictives, doigt, téléphone et PC) : pan d'un doigt tracker en marche → point
   visé déplacé, sol pris sous le doigt (à 15 cm), place et tracker immobiles, ⌖ montré ; vue tournée de 90° → même
@@ -2160,6 +2166,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.
+  Saut (§ 33, `KTA_V3D_SEUL=saut`) : balade de 50 m puis « Oui », « Ici » de « D'où pars-tu ? » → tracker recalé,
+  ancre `tp`, validations et distance estimée inchangées, sortie du Carnet « bureau » ; « Je suis ici » d'une fiche en
+  3D → une validation, « terrain ». Plan au sol par niveau (§ 34, `=solniveaux`) : 🗺️ visible et dessiné au −1 (plan
+  de base) et au +1 (calque image fictif du niveau), pixels lus ; niveau changé vue ouverte → redessiné.
   `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons ; `KTA_V3D_PERF=mixte` : ce réseau sur le plan dense
   gardé à l'est (tubes à l'ouest, chambres à l'est).
   `smoke.js` : rien de la 3D au démarrage.

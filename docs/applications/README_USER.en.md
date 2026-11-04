@@ -506,7 +506,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **At the top**, a single row: **✕**, **≡** right next to it, **🚨**, **❓** (help for the 3D view) and **⚙️**. App messages appear below this row.
 - **The tracker does not move** while you move in 3D, nor does the level shown on the map.
 - **Close**: ✕ (top right) or Esc. Esc first closes an open setting, card or window.
-- When you close it, if tracking is on and you moved or changed level, **📍 Am I here?** offers to realign it where you stopped, level included. **No** leaves the tracker as it was.
+- When you close it, if tracking is on and you moved or changed level, **📍 Am I here?** offers to realign it where you stopped, level included. **No** leaves the tracker as it was. This realignment is a jump: it does not turn your session into a field outing in 📔 My logbook.
 - **On leaving**, the map goes where you were in 3D: centred on your position, on the 3D level, whatever your answer.
 
 #### 🕹️ Moving
@@ -663,7 +663,7 @@ Where and how a way through is drawn:
 - **🗺️ Show on the map**, at the bottom of the card: the 3D view closes, the map centres on the object, opens its card and highlights it for a few seconds.
 - In the 🛣️ Tunnels rendering, pillars and walls are not drawn: touching a tunnel wall opens the trace's card.
 - **🧭 Go there**: in follow mode the route starts from the tracker. In free mode it starts from **where you are in 3D**, level included, without moving the tracker.
-- Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there).
+- Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there; as when closing, this jump does not count as a field outing).
 - **My last position** or **Set my position**: the 3D view takes you where the tracker is put (position and level).
 - **📍 I am here** in a point's card realigns the tracker on the map, but the 3D view stays where you are. In follow mode it then switches to **free** mode (a message says so): the follow button brings it back to the tracker.
 - **Route**: drawn on the ground in **blue dashes edged in dark**, as on the map, with a **post** at each stop and a **🏁** sign at the end, level by level.
@@ -708,7 +708,7 @@ Where and how a way through is drawn:
 - The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
 - While drawing, a **line on the ground** shows the object; it stands up in relief when finished.
 - **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.
-- **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey (level 0, the base plan).
+- **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey, at every level: the level's own image if the plan has one, otherwise the base plan.
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
 - **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
 - In read-only mode, the drawing tools stay greyed out, as on the map; 📐 Measurement stays allowed.

@@ -208,10 +208,10 @@ function _repositionnerPuisAller(x, y, nom, opts) {
 }
 
 // Tracker arrêté : « D'où pars-tu ? » (ktaConfirm en mode choix). « Ici » (vue 3D en mode libre seulement) : le
-// tracker est recalé à la position 3D, niveau compris, comme « Je suis ici », puis l'itinéraire en part ; « Ma
-// dernière position (il y a N min) » (position confirmée seulement) : départ de là, sans recalage — vue 3D en
-// libre : sa place vient au tracker, niveau compris, cap gardé (KtaVue3D.placerSurTracker) ; « Me repositionner » :
-// picker. Annuler = pas d'itinéraire. → Promise du choix (null si annulé).
+// tracker est recalé à la position 3D, niveau compris, en saut (ancre `tp`, rien au Carnet), puis l'itinéraire
+// en part ; « Ma dernière position (il y a N min) » (position confirmée seulement) : départ de là, sans recalage —
+// vue 3D en libre : sa place vient au tracker, niveau compris, cap gardé (KtaVue3D.placerSurTracker) ;
+// « Me repositionner » : picker. Annuler = pas d'itinéraire. → Promise du choix (null si annulé).
 function _demanderDepart(x, y, nom, opts, etat, v3) {
   const T = function(k, p) { return window.I18n.t(k, p); }, esc = window.ktaEsc;
   const options = [];
@@ -235,9 +235,10 @@ function _demanderDepart(x, y, nom, opts, etat, v3) {
     const c = o.choix.valeur;
     if (c === "ici") {
       // sansReplan : l'itinéraire en place n'est pas recalculé depuis ce recalage, il va être remplacé.
+      // teleport (décision produit) : la place vient de la balade 3D, un saut et non un pas de terrain (Carnet).
       if (typeof window.recalerTrackerSurPoint === "function") {
         window.recalerTrackerSurPoint(v3.x, v3.y, Number.isInteger(v3.niveau) ? v3.niveau : undefined,
-                                      { sansReplan: true });
+                                      { sansReplan: true, teleport: true });
       }
       window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(v3.x, v3.y, v3.niveau) }));
     } else if (c === "derniere") {

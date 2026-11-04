@@ -506,7 +506,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **En haut**, une seule ligne : **✕**, **≡** collé à lui, **🚨**, **❓** (l'aide de la vue 3D) et **⚙️**. Les messages de l'app s'affichent sous cette rangée.
 - **Le tracker ne bouge pas** pendant que tu te déplaces en 3D, ni le niveau affiché sur la carte.
 - **Fermer** : ✕ (en haut à droite) ou Échap. Échap ferme d'abord un réglage, une fiche ou une fenêtre ouverts.
-- À la fermeture, si le suivi tourne et que tu t'es déplacé ou as changé de niveau, **📍 Je suis ici ?** propose de le recaler là où tu t'es arrêté, niveau compris. **Non** ne change rien au tracker.
+- À la fermeture, si le suivi tourne et que tu t'es déplacé ou as changé de niveau, **📍 Je suis ici ?** propose de le recaler là où tu t'es arrêté, niveau compris. **Non** ne change rien au tracker. Ce recalage est un saut : il ne fait pas de ta session une sortie terrain dans 📔 Mon carnet.
 - **En sortant**, la carte se place là où tu étais en 3D : centrée sur ta position, au niveau de la 3D, quelle que soit ta réponse.
 
 #### 🕹️ Se déplacer
@@ -663,7 +663,7 @@ Où et comment un passage se dessine :
 - **🗺️ Voir sur la carte**, en bas de la fiche : la 3D se ferme, la carte se centre sur l'objet, ouvre sa fiche et le surligne quelques secondes.
 - En rendu 🛣️ Galerie, piliers et murs ne sont pas dessinés : toucher une paroi ouvre la fiche du tracé.
 - **🧭 Y aller** : en suivi, l'itinéraire part du tracker. En libre, il part de **l'endroit où tu es en 3D**, niveau compris, sans déplacer le tracker.
-- Tracker arrêté : **D'où pars-tu ?** propose d'abord **Ici** (le tracker est recalé là où tu es en 3D, puis l'itinéraire en part).
+- Tracker arrêté : **D'où pars-tu ?** propose d'abord **Ici** (le tracker est recalé là où tu es en 3D, puis l'itinéraire en part ; comme à la fermeture, ce saut ne compte pas comme une sortie terrain).
 - **Ma dernière position** ou **Me repositionner** : la 3D te place là où le tracker est mis (position et niveau).
 - **📍 Je suis ici** dans la fiche d'un point recale le tracker sur la carte, mais la 3D reste où tu es. En suivi, elle passe alors en **libre** (un message le dit) : le bouton du suivi la ramène au tracker.
 - **Itinéraire** : dessiné au sol en **tirets bleus bordés de sombre**, comme sur la carte, avec un **mât** à chaque étape et un panneau **🏁** à l'arrivée, niveau par niveau.
@@ -708,7 +708,7 @@ Où et comment un passage se dessine :
 - L'objet est **celui de la carte** : même fiche, mêmes couleurs, ⏪ Annuler. Il prend **le niveau de la 3D** ; la carte, elle, ne change pas de niveau.
 - Pendant le dessin, un **trait au sol** montre l'objet ; il apparaît en relief à sa fin.
 - **📐 Mesure** : la distance (et la surface) s'affiche dans un **bandeau en bas de la vue**, mis à jour à chaque point, comme sur la carte ; la longueur de chaque segment et l'angle à chaque point s'affichent aussi dans la 3D, lisibles.
-- **🗺️ Plan au sol** : l'image du plan sous la scène, là où tu regardes, pour dessiner sur le relevé (niveau 0, celui du plan de base).
+- **🗺️ Plan au sol** : l'image du plan sous la scène, là où tu regardes, pour dessiner sur le relevé, à chaque niveau : l'image propre au niveau si le plan en a une, sinon le plan de base.
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
 - **Retoucher l'outil, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
 - En lecture seule, les outils de dessin restent grisés, comme sur la carte ; 📐 Mesure reste permise.

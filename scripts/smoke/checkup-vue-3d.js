@@ -62,7 +62,9 @@
 // la 2D en suivi sans recalcul automatique, repère du niveau du tronçon (KTA_V3D_SEUL=iti : cette section seule ;
 // KTA_V3D_PERF=iti : coût d'un recalcul). Encart « reste » (32) : distance et temps restants à 3 places, niveau de
 // l'arrivée, sans bouton de repli, une ligne avec une destination de 60 caractères (distance et temps entiers), aucun
-// chevauchement à 3 tailles (yeux, vue d'édition).
+// chevauchement à 3 tailles (yeux, vue d'édition). Recalage venu de la 3D (33) : « Oui » après 50 m et « Ici » = saut,
+// ni validation ni distance, Carnet « bureau » ; « Je suis ici » d'une fiche = validation (KTA_V3D_SEUL=saut). Plan au
+// sol à tous les niveaux (34) : base au −1, calque du +1, pixels lus, refait au changement de niveau (=solniveaux).
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -3018,6 +3020,228 @@ async function sectionColonneEtJeu(page, MX) {
 // tuiles V2 (tuiles du relevé fabriquées en mémoire, RUNTIME_ASSETS, niveau z0). 🩸 Sous WebKit sans anticrénelage
 // (pixels denses), la première image d'une texture tirée d'un canvas la montrait absente : rien ne redessinant une
 // vue immobile, le plan restait invisible (vu sur un relevé réel au téléphone). Pixels lus sans redessiner d'office.
+// ── 33. Recalage venu de la 3D = saut (tracking.js > recalerTrackerSurPoint, opts.teleport) ─────────────────────
+// Balade de 50 m en 3D, fermeture « Oui » à « Je suis ici ? » ; « Ici » de « D'où pars-tu ? » : tracker recalé, ancre
+// `tp`, ni validation ni distance estimée, sortie du Carnet (journal.js > _classer) toujours « bureau ». Le
+// « 📍 Je suis ici » d'une fiche ouverte depuis la 3D reste un geste de terrain : une validation, sortie « terrain ».
+async function sectionSautCarnet(page) {
+  const prep = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    window.__v3dSaut = { ml: C.multiLevel, acc: window.ktaEstAccessible, r: window.getAllEmbeddedRoads,
+      z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures,
+      id: window._currentLoadedPlanId };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-saut";
+    window.ktaEstAccessible = function () { return true; };
+    C.multiLevel = false;
+    window.setPlanRenduVue3D(null, "structures");
+    window.setStructures([]); window.setZones([]);
+    window.setRoads([{ uid: "rd_saut", type: "principal", points: [P(-70, 0), P(70, 0)] }]);
+    window.setEditorPoints([Object.assign({ id: "Repère saut fictif", nom: "Repère saut fictif", uid: "pt_saut",
+      tags: ["salle"] }, P(36, -1))]);
+    window.KtaGalerie.invalider();
+    window.startTracking();
+    window.recalerTrackerSurPoint(P(-30, 0).x, P(-30, 0).y);
+    // Sortie neuve : son point de départ compte les validations et la distance déjà là (journal.js > _ouvrir).
+    await window.Journal.cloturer();
+    return { ox: ox, oz: oz, sc: sc };
+  });
+  const releve = function () {
+    return page.evaluate(function () {
+      const tl = window.getTrackingTimeline(), der = tl[tl.length - 1] || {}, j = window.Journal.getCurrent();
+      return { v: window.getTrackingValidations(), est: +window.getTrackingDistanceEstimeeM().toFixed(2),
+        tp: der.type === "recalage" ? der.tp === 1 : null, tr: window.getTrackingPosition(),
+        carnet: j ? { type: j.type, validations: j.validations, distM: +(+j.distM).toFixed(2) } : null };
+    });
+  };
+  const r0 = await releve();
+  // Balade de 50 m vers l'est, puis ✕ → « Oui ».
+  const balade = await page.evaluate(async function () {
+    const K = window.KtaVue3D, t = window.getTrackingPosition();
+    await K.ouvrir({ depart: { x: t.x, y: t.y, cap: 90 }, commandes: "pave" });
+    K.placer(t.x, t.y, 90);
+    for (let i = 0; i < 50; i++) K.avancer(1);
+    const p = K.etat().pos;
+    window.__v3dFerme = K.fermer();
+    return { x: p.x, y: p.y, m: +(Math.hypot(p.x - t.x, p.y - t.y) / window.APP_CONFIG.scale).toFixed(1) };
+  });
+  await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 3000).catch(function () {});
+  const question = await page.locator("#kta-confirm-oui").count();
+  if (question) await page.locator("#kta-confirm-oui").click();
+  await page.evaluate(function () { return window.__v3dFerme; });
+  await page.waitForTimeout(300);
+  const r1 = await releve();
+  console.log("§ 33 — recalage venu de la 3D : un saut, pas un pas de terrain (Carnet)");
+  verifier(question && balade.m >= 49 && Math.hypot(r1.tr.x - balade.x, r1.tr.y - balade.y) < 0.01,
+    "balade de " + balade.m + " m, « Oui » : le tracker est recalé à la place 3D", { balade: balade, tr: r1.tr });
+  verifier(r1.tp === true && r1.v === r0.v && r1.est === r0.est,
+    "« Oui » : ancre de saut (tp), validations et distance estimée inchangées", { avant: r0, apres: r1 });
+  verifier(r1.carnet && r1.carnet.type === "bureau" && r1.carnet.validations === 0 && r1.carnet.distM === 0,
+    "« Oui » : la sortie du Carnet reste « bureau » (0 validation, 0 m)", r1.carnet);
+
+  // « Ici » de « D'où pars-tu ? » (tracker arrêté, 3D en libre) : même règle.
+  await page.evaluate(async function (a) {
+    const K = window.KtaVue3D, x = (a.ox + 10) * a.sc, y = a.oz * a.sc;
+    window.stopTracking();
+    await K.ouvrir({ depart: { x: x, y: y, cap: 90 }, commandes: "pave" });
+    for (let i = 0; i < 5; i++) K.avancer(1);
+    window.itineraireYAller((a.ox + 36) * a.sc, (a.oz - 1) * a.sc, "Repère saut fictif");
+  }, prep);
+  await attendre(page, function () { return !!document.getElementById("kta-iti-depart"); }, 3000).catch(function () {});
+  const ici = await page.locator('#kta-iti-depart [data-kta-confirm-choix="ici"]').count();
+  if (ici) {
+    await page.locator('#kta-iti-depart [data-kta-confirm-choix="ici"]').check();
+    await page.locator("#kta-iti-depart #kta-confirm-oui").click();
+  }
+  await page.waitForTimeout(600);
+  const pos3 = await page.evaluate(function () { return window.KtaVue3D.etat().pos; });
+  const r2 = await releve();
+  verifier(ici && Math.hypot(r2.tr.x - pos3.x, r2.tr.y - pos3.y) < 0.01, "« Ici » : le tracker est recalé à la place 3D",
+    { tr: r2.tr, pos: pos3 });
+  verifier(r2.tp === true && r2.v === r0.v && r2.est === r0.est && r2.carnet && r2.carnet.type === "bureau" &&
+    r2.carnet.validations === 0 && r2.carnet.distM === 0,
+  "« Ici » : saut (tp), ni validation ni distance estimée, sortie « bureau »", r2);
+
+  // « 📍 Je suis ici » de la fiche d'un POI ouverte depuis la 3D : geste de terrain, une validation.
+  await page.evaluate(function (a) {
+    window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
+    window.KtaVue3D.placer((a.ox + 32) * a.sc, (a.oz - 1) * a.sc, 90);
+  }, prep);
+  await page.waitForTimeout(500);
+  const vise = await page.evaluate(function () {
+    const q = window.KtaVue3D.etat().panneaux.filter(function (p) { return p.nom === "Repère saut fictif" && p.visible; })[0];
+    return q ? q.ecran : null;
+  });
+  if (vise) await page.mouse.click(vise.x, vise.y);
+  await page.waitForTimeout(300);
+  const bouton = await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-here").count();
+  if (bouton) await page.locator("#kta-vue3d .kta-v3d-fiche .kta-popup-btn-here").click();
+  await page.waitForTimeout(300);
+  const r3 = await releve();
+  verifier(!!vise && bouton > 0 && r3.tp === false && r3.v === r0.v + 1 && r3.carnet && r3.carnet.validations === 1 &&
+    r3.carnet.type === "terrain", "« Je suis ici » d'une fiche en 3D : une validation, sortie « terrain »",
+  { vise: vise, bouton: bouton, r3: r3 });
+
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, s = window.__v3dSaut, C = window.APP_CONFIG;
+    if (K.etat().ouvert !== false) {
+      const f = K.fermer();
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+      const non = document.getElementById("kta-confirm-non");
+      if (non) non.click();
+      await f;
+    }
+    if (window.getTrackingActif()) window.stopTracking();
+    C.multiLevel = s.ml; window.ktaEstAccessible = s.acc;
+    window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
+    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
+    window.KtaGalerie.invalider();
+  });
+}
+
+// ── 34. Plan au sol 🗺️ à tous les niveaux (vue3d.js > _majPlanSol, _calquesNiveauSol) ───────────────────────────
+// Plan à trois niveaux, calque image FICTIF (rouge uni, en mémoire) au +1 seulement, jamais posé sur la carte : au −1
+// le plan de base, au +1 le calque du niveau ; bouton visible aux deux, pixels de la capture lus (sol avec / sans).
+async function sectionPlanSolNiveaux(page) {
+  const prep = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    window.__v3dSolN = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      calques: window._ktaImageOverlays };
+    C.multiLevel = true; C.availableLevels = [-1, 0, 1]; C.visibleLevels = [-1, 0, 1]; C.activeLevel = 0;
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 64;
+    const g = cv.getContext("2d");
+    g.fillStyle = "#ff0000"; g.fillRect(0, 0, 64, 64);
+    const ov = L.imageOverlay(cv.toDataURL("image/png"), [[0, 0], [H, W]]);
+    window._ktaImageOverlays = (window._ktaImageOverlays || []).concat([{ id: "v3d-sol-n1", overlay: ov,
+      label: "Calque fictif +1", level: 1 }]);
+    window.setPlanRenduVue3D(null, "mixte");
+    return { x: W / 2, y: H / 2 };
+  });
+  const moyenne = async function () {
+    await page.waitForTimeout(500);
+    const b64 = (await page.screenshot({ type: "png" })).toString("base64");
+    return page.evaluate(function (b) {
+      return new Promise(function (ok) {
+        const img = new Image();
+        img.onload = function () {
+          const c = document.createElement("canvas"), w = img.width, h = img.height;
+          c.width = w; c.height = h;
+          const g = c.getContext("2d");
+          g.drawImage(img, 0, 0);
+          const d = g.getImageData(Math.round(w * 0.3), Math.round(h * 0.35), Math.round(w * 0.4),
+            Math.round(h * 0.3)).data;
+          let n = 0, sr = 0, sg = 0, sb = 0;
+          for (let i = 0; i < d.length; i += 4 * 7) { n++; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; }
+          ok([Math.round(sr / n), Math.round(sg / n), Math.round(sb / n)]);
+        };
+        img.src = "data:image/png;base64," + b;
+      });
+    }, b64);
+  };
+  const essai = async function (niveau) {
+    await page.evaluate(async function (a) {
+      const K = window.KtaVue3D;
+      if (K.etat().ouvert !== false) await K.fermer();
+      await K.ouvrir({ depart: { x: a.x, y: a.y, cap: 0, niveau: a.n }, commandes: "pave" });
+      K.basculerVue();
+      for (let i = 0; i < 6; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    }, { x: prep.x, y: prep.y, n: niveau });
+    const sans = await moyenne();
+    const avant = await page.evaluate(async function () {
+      const K = window.KtaVue3D, b = document.querySelector('#kta-vue3d [data-v3d="planSol"]');
+      const visible = !!b && !b.hidden && b.offsetParent !== null;
+      if (b) b.click();
+      for (let i = 0; i < 300 && !(K.etat().dessin.planSol && K.etat().dessin.planSol.px); i++) {
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+      }
+      for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      return { visible: visible, niveau: K.etat().niveau, plan: K.etat().dessin.planSol };
+    });
+    const avec = await moyenne();
+    return Object.assign(avant, { sans: sans, avec: avec,
+      ecart: Math.abs(avec[0] - sans[0]) + Math.abs(avec[1] - sans[1]) + Math.abs(avec[2] - sans[2]) });
+  };
+  const m1 = await essai(-1);
+  const p1 = await essai(1);
+  // Changement de niveau la vue ouverte, plan au sol allumé : redessiné pour le nouveau niveau.
+  const bascule = await page.evaluate(async function () {
+    const K = window.KtaVue3D, liste = window.ktaNiveauxOccupes(), change = K.niveauEdition("bas");
+    for (let i = 0; i < 300; i++) {
+      const s = K.etat().dessin.planSol;
+      if (s && s.niveau === K.etat().niveau && s.px) break;
+      await new Promise(function (ok) { requestAnimationFrame(ok); });
+    }
+    return { liste: liste, change: change, niveau: K.etat().niveau, plan: K.etat().dessin.planSol };
+  });
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, s = window.__v3dSolN, C = window.APP_CONFIG;
+    if (K.etat().ouvert !== false) await K.fermer();
+    C.multiLevel = s.ml; C.availableLevels = s.dispo; C.visibleLevels = s.vis; C.activeLevel = s.actif;
+    window._ktaImageOverlays = s.calques;
+  });
+  console.log("§ 34 — plan au sol 🗺️ à tous les niveaux");
+  verifier(m1.visible && m1.niveau === -1 && m1.plan && m1.plan.ok && m1.plan.niveau === -1 && m1.plan.calques === 0 &&
+    m1.ecart > 30, "au −1 : 🗺️ visible, le plan de base dessiné au sol (pixels " + m1.sans + " → " + m1.avec + ")", m1);
+  verifier(p1.visible && p1.niveau === 1 && p1.plan && p1.plan.ok && p1.plan.niveau === 1 && p1.plan.calques === 1 &&
+    p1.avec[0] > p1.avec[1] + 40 && p1.avec[0] > p1.avec[2] + 40 && p1.ecart > 30,
+  "au +1 : 🗺️ visible, le calque image du niveau dessiné au sol (pixels " + p1.sans + " → " + p1.avec + ")", p1);
+  verifier(bascule.change && bascule.plan && bascule.plan.niveau === bascule.niveau && bascule.niveau !== 1 &&
+    bascule.plan.calques === 0,
+    "niveau changé la vue ouverte : le plan au sol est refait pour le nouveau niveau", bascule);
+}
+
 async function sectionPlanSolEcranDense(nav) {
   const ctx = await nav.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, hasTouch: true,
     isMobile: nav.browserType().name() === "chromium", serviceWorkers: "block" });
@@ -3791,9 +4015,9 @@ async function sectionDessin(page) {
     delete window.ktaEditionRefusee;
     window.ktaMajOutilsLectureSeule();
 
-    // ── Plan au sol 🗺️ : caché au −1 (le plan de base est le niveau 0), au 0 une texture du fond, libérée coupée ──
+    // ── Plan au sol 🗺️ : offert au −1 aussi (§ 34), au 0 une texture du fond, libérée coupée ──
     const bSol = function () { return document.querySelector('#kta-vue3d [data-v3d="planSol"]'); };
-    r.solMoins1 = !!bSol() && bSol().hidden;
+    r.solMoins1 = !!bSol() && !bSol().hidden;
     await ouvrir("mixte", 0, 0, 0);
     await images(2);
     const solVisible = !bSol().hidden;
@@ -3804,7 +4028,7 @@ async function sectionDessin(page) {
     const ps = K.etat().dessin.planSol, tex1 = K.etat().dessin.textures;
     bSol().click();
     await images(2);
-    r.planSol = { moins1Cache: r.solMoins1, visible: solVisible, plan: ps, textures: [tex0, tex1, K.etat().dessin.textures],
+    r.planSol = { moins1Visible: r.solMoins1, visible: solVisible, plan: ps, textures: [tex0, tex1, K.etat().dessin.textures],
       presse: bSol().getAttribute("aria-pressed"), coupe: K.etat().dessin.planSol };
 
     // ── Rendu galerie : armer une structure passe en mixte (on voit ce qu'on dessine), toast ──
@@ -3968,10 +4192,10 @@ async function sectionDessin(page) {
     "greffe fiches: false : ni barre ni sommet (outil armé compris) ; retirée, la barre revient", r.greffe);
   verifier(r.lecture.grise && !r.lecture.panneau && !r.lecture.arme,
     "lecture seule : 🏛️ grisé comme sur la carte, pas de panneau, aucun outil armé", r.lecture);
-  verifier(r.planSol.moins1Cache && r.planSol.visible && r.planSol.plan && r.planSol.plan.ok && r.planSol.plan.px >= 1024 &&
+  verifier(r.planSol.moins1Visible && r.planSol.visible && r.planSol.plan && r.planSol.plan.ok && r.planSol.plan.px >= 1024 &&
     r.planSol.textures[1] === r.planSol.textures[0] + 1 && r.planSol.textures[2] === r.planSol.textures[0] &&
     r.planSol.presse === "false" && r.planSol.coupe && r.planSol.coupe.voulu === false,
-    "plan au sol 🗺️ : caché au −1, au 0 une texture du fond (une de plus), libérée une fois coupé", r.planSol);
+    "plan au sol 🗺️ : visible au −1, au 0 une texture du fond (une de plus), libérée une fois coupé", r.planSol);
   verifier(r.parcours.length === 2 && r.parcours.every(function (x) { return x.cree && !x.abandon; }),
     "parcours normal (Galerie puis Mixte) : pilier armé depuis la colonne, 3 sommets, fermé, vue fermée → aucun toast « abandonné »",
     r.parcours);
@@ -4058,6 +4282,11 @@ async function sectionDessin(page) {
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol") {
       ouvert = true;
+    } else if (SEUL === "saut" || SEUL === "solniveaux") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      if (SEUL === "saut") await sectionSautCarnet(page); else await sectionPlanSolNiveaux(page);
     } else if (SEUL === "iti") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -10071,6 +10300,8 @@ async function sectionDessin(page) {
       await sectionEcartItineraire(page);
       await sectionEncartReste(page);
       await sectionCamera(page);
+      await sectionSautCarnet(page);
+      await sectionPlanSolNiveaux(page);
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures

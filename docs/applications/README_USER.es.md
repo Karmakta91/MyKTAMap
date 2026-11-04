@@ -506,7 +506,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **Arriba**, una sola fila: **✕**, **≡** junto a él, **🚨**, **❓** (la ayuda de la vista 3D) y **⚙️**. Los mensajes de la app aparecen debajo de esta fila.
 - **El tracker no se mueve** mientras te desplazas en 3D, ni el nivel mostrado en el mapa.
 - **Cerrar**: ✕ (arriba a la derecha) o Esc. Esc cierra primero un ajuste, una ficha o una ventana abiertos.
-- Al cerrar, si el seguimiento está activo y te has desplazado o has cambiado de nivel, **📍 ¿Estoy aquí?** propone recolocarlo donde te detuviste, nivel incluido. **No** no cambia el tracker.
+- Al cerrar, si el seguimiento está activo y te has desplazado o has cambiado de nivel, **📍 ¿Estoy aquí?** propone recolocarlo donde te detuviste, nivel incluido. **No** no cambia el tracker. Esta recolocación es un salto: no convierte tu sesión en una salida de campo en 📔 Mi cuaderno.
 - **Al salir**, el mapa se coloca donde estabas en 3D: centrado en tu posición, en el nivel de la 3D, sea cual sea tu respuesta.
 
 #### 🕹️ Desplazarse
@@ -663,7 +663,7 @@ Dónde y cómo se dibuja un paso:
 - **🗺️ Ver en el mapa**, al pie de la ficha: la vista 3D se cierra, el mapa se centra en el objeto, abre su ficha y lo resalta unos segundos.
 - En la representación 🛣️ Galería, los pilares y muros no se dibujan: tocar una pared abre la ficha del trazado.
 - **🧭 Ir allí**: en seguimiento, la ruta sale del tracker. En libre, sale de **donde estás en 3D**, nivel incluido, sin mover el tracker.
-- Tracker detenido: **¿Desde dónde sales?** propone primero **Aquí** (el tracker se recoloca donde estás en 3D y la ruta sale de ahí).
+- Tracker detenido: **¿Desde dónde sales?** propone primero **Aquí** (el tracker se recoloca donde estás en 3D y la ruta sale de ahí; como al cerrar, este salto no cuenta como salida de campo).
 - **Mi última posición** o **Recolocarme**: la 3D te lleva donde queda el tracker (posición y nivel).
 - **📍 Estoy aquí** en la ficha de un punto recoloca el tracker en el mapa, pero la 3D se queda donde estás. En seguimiento, pasa entonces a **libre** (un mensaje lo indica): el botón del seguimiento la devuelve al tracker.
 - **Ruta**: dibujada en el suelo en **trazos azules bordeados de oscuro**, como en el mapa, con un **mástil** en cada etapa y un cartel **🏁** a la llegada, nivel por nivel.
@@ -708,7 +708,7 @@ Dónde y cómo se dibuja un paso:
 - El objeto es **el del mapa**: misma ficha, mismos colores, ⏪ Deshacer. Toma **el nivel de la 3D**; el mapa conserva el suyo.
 - Mientras dibujas, una **línea en el suelo** muestra el objeto; aparece en relieve al terminar.
 - **📐 Medición**: la distancia (y la superficie) se muestra en una **franja abajo de la vista**, actualizada en cada punto, como en el mapa; la longitud de cada segmento y el ángulo en cada punto también se muestran en la 3D, legibles.
-- **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, donde miras, para dibujar sobre el levantamiento (nivel 0, el del plano base).
+- **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, donde miras, para dibujar sobre el levantamiento, en cada nivel: la imagen propia del nivel si el plano la tiene; si no, el plano base.
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
 - **Volver a tocar la herramienta, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
 - En solo lectura, las herramientas de dibujo quedan en gris, como en el mapa; 📐 Medición sigue permitida.
