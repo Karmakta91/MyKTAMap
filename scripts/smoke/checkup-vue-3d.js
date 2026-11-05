@@ -11632,11 +11632,14 @@ async function sectionGestesDoigt(nav) {
         r.repos = { sons: joues.filter(function (n) { return /souffl|respir/.test(n); }).join(","),
           respiration: typeof S.respiration, souffle: M().etat().souffle, course: K.etat().greffe.reglage.course,
           endurance: M().etat().endurance, coeur: M().etat().coeur };
-        // Cible atteinte : vague suivante.
+        // Cible atteinte : vague suivante, santé et pile rendues à 100 %.
         const c = M().etat().cible;
+        X.sante(40);
+        X.pile(30);
         K.placer(c.x, c.y, 90);
         for (let k = 0; k < 60 && M().etat().vague < 2; k++) await pause(50);
-        r.vague2 = { vague: M().etat().vague, reussies: M().etat().reussies };
+        r.vague2 = { vague: M().etat().vague, reussies: M().etat().reussies, sante: M().etat().sante,
+          pile: M().etat().pile };
         X.vider();
         // Santé à 0 : fin de partie, meilleure vague retenue, « Rejouer » relance la vague 1.
         X.sante(0);
@@ -11784,7 +11787,8 @@ async function sectionGestesDoigt(nav) {
       verifier(MK.silDos.coeur === 0 && MK.court.coeur === 0 && MK.souffle.coeur > 0.5 && MK.repos.coeur === 0,
         "jeu : battement de cœur seulement à bout de souffle (ni près de la silhouette, ni en courant), éteint au repos",
         { silhouette: MK.silDos.coeur, court: MK.court.coeur, souffle: MK.souffle.coeur, repos: MK.repos.coeur });
-      verifier(MK.vague2.vague === 2 && MK.vague2.reussies === 1, "jeu : cible atteinte → vague 2", MK.vague2);
+      verifier(MK.vague2.vague === 2 && MK.vague2.reussies === 1 && MK.vague2.sante >= 95 && MK.vague2.pile >= 99,
+        "jeu : cible atteinte → vague 2, santé et pile rendues à 100 %", MK.vague2);
       verifier(MK.fin.fin && MK.fin.carte && MK.fin.score === 1 && MK.fin.tirer === true && MK.rejoue.enCours &&
         !MK.rejoue.fin && MK.rejoue.vague === 1 && !MK.rejoue.carte && MK.fin.pave === false && MK.rejoue.pave === true,
         "jeu : santé à 0 → fin, meilleure vague retenue (1), tir coupé, commandes retirées (la carte se touche) ; " +

@@ -177,7 +177,8 @@ embuscades, un monde par niveau), `js/son.js`
   bas ? » avec la difficulté (`ktaConfirm`, `choix`).
 - **Vague** = rejoindre un point B depuis la position de la vue : un POI du niveau dont la distance à vol d'oiseau
   est la plus proche de 40 m + 30 m par vague (10 m au moins), sinon un sommet des tracés ; le premier joignable par
-  `Pathfinder.computeRoute`, sinon le plus proche du voulu, sans trajet. B à 2 m : vague suivante.
+  `Pathfinder.computeRoute`, sinon le plus proche du voulu, sans trajet. B à 2 m : vague suivante, santé, endurance et pile
+  à 100 % (décision produit).
 - **B à un autre niveau** (décision produit) : dès la vague 4, sur un plan multi-niveau (`APP_CONFIG.multiLevel`),
   une fois sur 0,4 et jamais en vague de gardien, B est un POI d'un autre niveau, joint par les jonctions (trajet
   `computeRoute` d'un niveau à l'autre ; sinon repli sur ce niveau). Validé au bout du trajet (la règle du pas d'ici

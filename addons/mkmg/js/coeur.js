@@ -791,7 +791,10 @@
   function _vagueReussie() {
     const p = _p;
     p.reussies++;
+    // Vague réussie (décision produit) : santé, endurance et pile de la lampe à 100 %.
+    p.sante = REGLES.sante;
     p.endurance = REGLES.endurance;
+    p.pile = REGLES.pile.max;
     if (p.souffle) { p.souffle = false; p.ctx.regler({ course: true }); }
     _jouer("vague");
     _message(_t("hud.reussie", { n: p.vague }));
