@@ -790,6 +790,16 @@
   function _murLigne(lot, points, sc, ep, h, col, m) {
     const p0 = points[0];
     let parcouru = m && p0 ? ((p0.x / sc * 0.37 + p0.y / sc * 0.61) % m + m) % m : 0;
+    _pavesLigne(points, sc, ep).forEach(function (q) {
+      _prisme(lot, q.ring, 0, h, col, true, m, m ? parcouru : undefined);
+      parcouru += q.l;
+    });
+  }
+
+  // Pavés d'une structure en ligne (_murLigne) → [{ ring (contour de sens positif, m), l (longueur du segment, m) }].
+  // ⚠️ contrat : les faces que la 3D dessine, relues par _facesStructures (formes posées sur une structure).
+  function _pavesLigne(points, sc, ep) {
+    const out = [];
     for (let i = 0; i + 1 < points.length; i++) {
       const a = points[i], b = points[i + 1];
       if (!a || !b) continue;
@@ -803,10 +813,13 @@
       let aire = 0;
       for (let k = 0, j = 3; k < 4; j = k++) aire += ring[j][0] * ring[k][1] - ring[k][0] * ring[j][1];
       if (aire < 0) ring.reverse();
-      _prisme(lot, ring, 0, h, col, true, m, m ? parcouru : undefined);
-      parcouru += l;
+      out.push({ ring: ring, l: l });
     }
+    return out;
   }
+
+  // Épaisseur (m) d'une structure en ligne : mur en ligne, sinon celle d'un front (fronts, types perso en ligne).
+  function _epaisseurLigne(type) { return type === "mur-ligne" ? EPAISSEUR_MUR_LIGNE : EPAISSEUR_FRONT; }
 
   function _ruban(lot, a, b, sc, larg, y, col) {
     const ax = a.x / sc, az = a.y / sc, bx = b.x / sc, bz = b.y / sc;
@@ -1007,8 +1020,7 @@
       const lot = tex === "roche" ? roche : tex === "parpaing" ? parpaing : _estMur(s.type) ? murs : opaque;
       const hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
       if (_estLigne(s.type)) {
-        const ep = s.type === "mur-ligne" ? EPAISSEUR_MUR_LIGNE : EPAISSEUR_FRONT;
-        _murLigne(lot, s.points, sc, ep, hs, col, m);
+        _murLigne(lot, s.points, sc, _epaisseurLigne(s.type), hs, col, m);
       } else {
         _prisme(lot, _anneau(s.points, sc), 0, hs, col, true, m);
       }
@@ -1661,16 +1673,18 @@
     if (!v) return null;
     const l = v.cases.get(Math.floor(x / v.c) + "," + Math.floor(z / v.c));
     if (!l) return null;
-    for (let i = 0; i < l.length; i++) {
-      const a = l[i];
-      let dedans = false;
-      for (let j = 0, k = a.length - 1; j < a.length; k = j++) {
-        const p = a[j], q = a[k];
-        if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) dedans = !dedans;
-      }
-      if (dedans) return a;
-    }
+    for (let i = 0; i < l.length; i++) { if (_dansRing(l[i], x, z)) return l[i]; }
     return null;
+  }
+
+  // (x, z) (m) dans le contour `a` ([[x, z]], m) ?
+  function _dansRing(a, x, z) {
+    let dedans = false;
+    for (let j = 0, k = a.length - 1; j < a.length; k = j++) {
+      const p = a[j], q = a[k];
+      if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) dedans = !dedans;
+    }
+    return dedans;
   }
 
   // Point du contour le plus proche de (cx, cz), avancé de 8 cm vers lui (devant la face, pas dedans).
@@ -2833,7 +2847,17 @@
 
   function _volumesDuNiveau(d) {
     const e = _e, J = window.KtaPoiJonction, N = e.niveau, out = [];
+    e.msFaces = 0; e.facesStructures = 0;
     if (!J) return out;
+    let F = null;
+    // Faces des structures dessinées, indexées une fois, seulement si une forme murale n'a pas de paroi de tube.
+    const surStructure = function (pl, forme) {
+      const t0 = performance.now();
+      if (!F) { F = _facesStructures(d.structures); e.facesStructures = F.faces.length; }
+      const r = _surStructure(F, pl.x, pl.y, forme);
+      e.msFaces += performance.now() - t0;
+      return r;
+    };
     d.points.forEach(function (p) {
       const src = p._v3dJonction || p, tag = _premierTag(src);
       if (!J.porteNiveaux(tag) && !window.KtaGalerie.ACCES[tag]) return;
@@ -2852,10 +2876,15 @@
       const dim = v.forme === "escalier" ? VOLUME.escalier
         : v.forme === "puits" ? [VOLUME.puits, VOLUME.puits] : [VOLUME.aeration, VOLUME.aeration];
       // Place et axe : KtaGalerie.placePassage, le calcul de l'emprise qui ouvre le tube (une seule règle).
-      const pl = window.KtaGalerie.placePassage(src, N, e.rendu) || { x: p.x, y: p.y, ang: 0, ramene: false };
-      // Forme sur la paroi sans paroi à cette place (structures, chambre, loin de tout axe) : le panneau seul.
-      if (v.surParoi && !pl.paroi) return;
+      let pl = window.KtaGalerie.placePassage(src, N, e.rendu) || { x: p.x, y: p.y, ang: 0, ramene: false };
+      // Forme murale sans paroi de tube à cette place (structures, chambre, loin de tout axe) : sur la face de
+      // structure la plus proche (_surStructure), hors rendu galerie ; aucune : le panneau seul.
+      if (v.surParoi && !pl.paroi) {
+        pl = e.rendu === "galerie" ? null : surStructure(pl, v.forme);
+        if (!pl) return;
+      }
       v.cote = pl.paroi || 0;
+      v.appui = !v.surParoi ? null : pl.structure ? "structure" : "paroi";
       v.point = src;
       v.a = dim[0] / 2; v.b = dim[1] / 2;
       v.x = pl.x; v.y = pl.y; v.ramene = pl.ramene;
@@ -2890,6 +2919,107 @@
         cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, r: Math.hypot(x1 - x0, z1 - z0) / 2 + VOLUME.rampe });
     });
     return out;
+  }
+
+  // ⚠️ contrat (décision produit) : plaque, épure et portail sans paroi de tube (KtaGalerie.placePassage passe
+  // d'abord, sa paroi gagne toujours) se posent à plat sur la face verticale de structure DESSINÉE (filtres de la
+  // carte appliqués : jamais contre un pilier masqué) la plus proche du POI, à FACE_STRUCTURE.portee m au plus, du
+  // côté du POI (la face qui le regarde ; POI dans la structure : sa face la plus proche), en face de lui et gardée
+  // sur la face quand elle est assez longue. Rien à portée : le panneau seul. Pilier, mur, mur en ligne, front et
+  // types perso : les faces des prismes que la 3D dessine (_anneau, _pavesLigne), pas une copie.
+  // 🩸 Une face peut être noyée dans une autre structure (mur sous un pilier, pavés d'un mur en ligne qui se
+  // recouvrent aux coudes) : refusée si un point à `devant` m devant la forme (centre et bouts) tombe dans un contour.
+  // Faces en grille de `cellule` m : seules celles des cases à portée du POI sont lues.
+  const FACE_STRUCTURE = { portee: 3, cellule: 4, devant: 0.05 };
+
+  // Demi-longueur (m) d'une forme murale le long de sa face, la plus grande qu'elle puisse prendre.
+  function _demiForme(forme) {
+    if (forme === "plaque") return PLAQUE.lMax / 2;
+    return forme === "epure" ? EPURE.l / 2 : PORTAIL.l / 2;
+  }
+
+  // Faces verticales des structures (m) → { faces: [{ ax, az, ux, uz, l, r }], rings, gf, gr (grilles), c }.
+  // Contours de sens positif : la normale extérieure d'une face est (uz, −ux), celle de _prisme.
+  function _facesStructures(structures) {
+    const sc = _e.sc, c = FACE_STRUCTURE.cellule, faces = [], rings = [], gf = new Map(), gr = new Map();
+    const poser = function (g, k, x0, z0, x1, z1) {
+      for (let gx = Math.floor(x0 / c); gx <= Math.floor(x1 / c); gx++) {
+        for (let gz = Math.floor(z0 / c); gz <= Math.floor(z1 / c); gz++) {
+          const cle = gx + "," + gz;
+          if (!g.has(cle)) g.set(cle, []);
+          g.get(cle).push(k);
+        }
+      }
+    };
+    structures.forEach(function (s) {
+      if (!s || !Array.isArray(s.points)) return;
+      const anneaux = _estLigne(s.type)
+        ? _pavesLigne(s.points, sc, _epaisseurLigne(s.type)).map(function (q) { return q.ring; })
+        : [_anneau(s.points, sc)];
+      anneaux.forEach(function (ring) {
+        if (ring.length < 3) return;
+        const r = rings.length;
+        rings.push(ring);
+        let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+        for (let i = 0; i < ring.length; i++) {
+          const p = ring[i], q = ring[(i + 1) % ring.length], l = Math.hypot(q[0] - p[0], q[1] - p[1]);
+          x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]);
+          if (l < 1e-6) continue;
+          faces.push({ ax: p[0], az: p[1], ux: (q[0] - p[0]) / l, uz: (q[1] - p[1]) / l, l: l, r: r });
+          poser(gf, faces.length - 1, Math.min(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[0], q[0]),
+            Math.max(p[1], q[1]));
+        }
+        poser(gr, r, x0, z0, x1, z1);
+      });
+    });
+    return { faces: faces, rings: rings, gf: gf, gr: gr, c: c };
+  }
+
+  // (x, z) (m) dans un contour de structure de F ?
+  function _dansStructure(F, x, z) {
+    const l = F.gr.get(Math.floor(x / F.c) + "," + Math.floor(z / F.c));
+    if (!l) return false;
+    for (let i = 0; i < l.length; i++) { if (_dansRing(F.rings[l[i]], x, z)) return true; }
+    return false;
+  }
+
+  // Faces de F à FACE_STRUCTURE.portee m au plus de (px, pz) (m), du côté du point → [{ f, t (abscisse du point le
+  // plus proche sur la face), d }], la plus proche d'abord.
+  function _facesPres(F, px, pz) {
+    const R = FACE_STRUCTURE.portee, c = F.c, vus = new Set(), out = [];
+    for (let gx = Math.floor((px - R) / c); gx <= Math.floor((px + R) / c); gx++) {
+      for (let gz = Math.floor((pz - R) / c); gz <= Math.floor((pz + R) / c); gz++) {
+        const l = F.gf.get(gx + "," + gz) || [];
+        for (let i = 0; i < l.length; i++) {
+          if (vus.has(l[i])) continue;
+          vus.add(l[i]);
+          const f = F.faces[l[i]];
+          const t = Math.max(0, Math.min(f.l, (px - f.ax) * f.ux + (pz - f.az) * f.uz));
+          const qx = f.ax + f.ux * t, qz = f.az + f.uz * t, dist = Math.hypot(px - qx, pz - qz);
+          // Côté du point : devant la face (normale extérieure (uz, −ux)), ou dans la structure.
+          const devant = (px - qx) * f.uz - (pz - qz) * f.ux >= -1e-6;
+          if (dist <= R && (devant || _dansRing(F.rings[f.r], px, pz))) out.push({ f: f, t: t, d: dist });
+        }
+      }
+    }
+    return out.sort(function (a, b) { return a.d - b.d; });
+  }
+
+  // Place d'une forme murale `forme` sur la face de structure la plus proche du POI en (x, y) (px) → place de
+  // KtaGalerie.placePassage ({ x, y px : point de la face, ang : sens de la face, paroi : 1, structure : true }) |
+  // null. ⚠️ contrat : paroi = 1 car la normale extérieure (uz, −ux) est −(−sin ang, cos ang) (_faceParoi).
+  function _surStructure(F, x, y, forme) {
+    const sc = _e.sc, L = _demiForme(forme), D = FACE_STRUCTURE.devant, cands = _facesPres(F, x / sc, y / sc);
+    for (let k = 0; k < cands.length; k++) {
+      const f = cands[k].f, tc = f.l >= 2 * L ? Math.max(L, Math.min(f.l - L, cands[k].t)) : f.l / 2;
+      const libre = [tc - L, tc, tc + L].every(function (s) {
+        return !_dansStructure(F, f.ax + f.ux * s + f.uz * D, f.az + f.uz * s - f.ux * D);
+      });
+      if (!libre) continue;
+      return { x: (f.ax + f.ux * tc) * sc, y: (f.az + f.uz * tc) * sc, ang: Math.atan2(f.uz, f.ux), entree: 0,
+        ramene: true, paroi: 1, structure: true };
+    }
+    return null;
   }
 
   // Volumes à portée construits, lointains libérés : la règle des tuiles (_gererTuiles).
@@ -3720,7 +3850,9 @@
     const porte = maille("porte"), remblais = maille("remblais");
     return Object.assign({ acces: true, ferme: !!v.ferme, bouchee: !!v.bouche, comble: !!v.comble,
       bassin: !!v.bassin, porte: !!v.porte, ouvert: !!v.ouvert, chatiere: !!v.chatiere, surParoi: !!v.surParoi,
-      cote: v.cote || 0, vehicule: !!v.vehicule, roche: n(lots.roche), bois: n(lots.bois),
+      cote: v.cote || 0, appui: v.appui || null,
+      dirParoi: v.surParoi ? +((v.dir || 0) * 180 / Math.PI).toFixed(2) : null, vehicule: !!v.vehicule,
+      roche: n(lots.roche), bois: n(lots.bois),
       remblais: n(lots.remblais),
       eau: n(lots.eau), porteTexturee: !!(porte && porte.material.map), remblaisTexture: !!(remblais &&
       remblais.material.map), familles: g.children.map(function (o) { return o.userData.famille; }) }, v.trace || {});
@@ -4867,7 +4999,7 @@
     };
     const s = meilleur(d.structures, function (q) {
       if (_estLigne(q.type)) {
-        const ep = (q.type === "mur-ligne" ? EPAISSEUR_MUR_LIGNE : EPAISSEUR_FRONT) / 2;
+        const ep = _epaisseurLigne(q.type) / 2;
         const k = _distContour(p, q.points, false) / sc - ep;
         return k <= VISEE.face ? Math.max(0, k) : Infinity;
       }
@@ -8487,7 +8619,8 @@
       ronds: e.listeRonds.map(function (r) { return Object.assign({}, r); }),
       triangles: info.render.triangles, appels: info.render.calls,
       geometries: info.memory.geometries, textures: info.memory.textures,
-      msOuverture: Math.round(e.msOuverture || 0), msIndex: Math.round(e.msIndex), msTuiles: Math.round(e.msTuiles)
+      msOuverture: Math.round(e.msOuverture || 0), msIndex: Math.round(e.msIndex), msTuiles: Math.round(e.msTuiles),
+      msFaces: +(e.msFaces || 0).toFixed(2), facesStructures: e.facesStructures || 0
     };
   }
 

@@ -25,7 +25,9 @@
 // murs, côtés inégaux, porte ouverte ou fermée, rendu galerie inchangé). Escaliers (§ 14 quinquies : esf, eso, jes)
 // en niche latérale, pied contre la paroi. Formes des POI (§ 14 septies : chatiere, plaque, epure, portail,
 // vehicule) : chatière traversée en rampant (libre, suivi), plaque au nom et épure sur la paroi, portail allumé par sa
-// liaison (« Passer au plan », confirmation au-dessus de la vue), véhicule qui bloque, 🧱, mémoire de 50 plaques.
+// liaison (« Passer au plan », confirmation au-dessus de la vue), véhicule qui bloque, 🧱, mémoire de 50 plaques ;
+// sans paroi de tube, sur la face de structure la plus proche à 3 m (pilier, mur en ligne, front ; paroi du tube
+// d'abord en mixte, rien en galerie ; 50 POI parmi 2 025 piliers mesurés).
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
@@ -2176,9 +2178,9 @@ async function sectionConePassage(page) {
 // élargie au nom jusqu'à 1 m puis sur deux lignes, nom jamais coupé), épure (traits sur la paroi), portail (cadre allumé
 // avec une liaison fictive, éteint sans ; fiche « Passer au plan », confirmation au-dessus de la vue, annuler garde
 // la vue, confirmer la ferme ; aucun bouton sans liaison), véhicule (citadine de 3,2 × 1,4 × 1,3 m, dans la galerie, le long de l'axe, arrête le
-// pas, ctx.libre fermé, survol en vue d'édition). Rendu structures : plaque, épure et portail sans paroi = panneau
-// seul ; tag sans forme = aucun volume. Point lié sans le tag portail : « Passer au plan » aussi, et ➜ de sa fiche
-// ferme la vue après la confirmation. 50 plaques : mémoire des textures mesurée.
+// pas, ctx.libre fermé, survol en vue d'édition). Rendu structures : plaque, épure et portail sans paroi ni
+// structure à 3 m = panneau seul (sur une structure : sectionFormesStructures) ; tag sans forme = aucun volume.
+// Point lié sans le tag portail : « Passer au plan » aussi, et ➜ de sa fiche ferme la vue après la confirmation. 50 plaques : mémoire des textures mesurée.
 async function sectionFormesPoi(page) {
   if (CAPTURES) await capturesFormes(page);
   const R = await page.evaluate(async function () {
@@ -2619,7 +2621,8 @@ async function sectionFormesPoi(page) {
   });
   const S = R.structures;
   verifier(!!S.chat && S.chat.construit && !S.plN && !S.ep && !S.poLie && !!S.veh && !S.def,
-    "structures : chatière et véhicule au POI ; plaque, épure et portail sans paroi = panneau seul", S);
+    "structures : chatière et véhicule au POI ; plaque, épure et portail sans paroi ni structure à 3 m = " +
+    "panneau seul", S);
   verifier(S.panPlaques === 4, "structures : plaque sans paroi = son panneau gardé (4 panneaux)", S.panPlaques);
   verifier(!!R.mixte.tapPlaque && R.mixte.tapPlaque.fiche && R.mixte.tapPlaque.nom === "Rue Fictive",
     "toucher la plaque (sans panneau) ouvre la fiche de son POI", R.mixte.tapPlaque);
@@ -2658,6 +2661,235 @@ async function sectionFormesPoi(page) {
     R2.p50meme.textures + " texture (" + (R2.p50meme.octets / 1024).toFixed(0) + " Ko) ; ouverture " +
     R2.p50.ms + " ms",
   { p50: R2.p50, meme: R2.p50meme });
+}
+
+// § 14 septies (suite) — Formes murales sur une structure (vue3d.js > _surStructure ; objets FICTIFS en mémoire) :
+// pilier carré de 4 m au centre, mur en ligne (x = 20) et front (x = 40) nord-sud, galerie principale à z = −30
+// longée d'un mur en ligne dont la face est à 2,9 m d'un POI (axe à 3,1 m : la galerie reste un tube en mixte, un
+// POI à 3 m d'une structure y compte en chambre). Rendu structures : plaque, épure et portail à plat sur la face la plus proche
+// (à 1,5 / 1,5 / 2,5 m), du côté du POI, gardés sur la face au bord (centre à 0,5 m du coin), jamais dans la
+// structure ; à 4 m : panneau seul ; plaque sur structure sans panneau, la toucher ouvre la fiche. Mixte : la paroi
+// du tube passe avant le pilier voisin. Galeries : rien ne change (panneau seul hors tube). Mesure : 50 POI muraux
+// parmi 2 025 piliers fictifs (temps de l'index et de la recherche des faces).
+async function sectionFormesStructures(page) {
+  if (CAPTURES) await capturesFormesStructures(page);
+  await poserFormesStructures(page);
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, G = window.KtaGalerie, sc = window.APP_CONFIG.scale;
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = function (n) {
+      return new Promise(function (ok) {
+        let k = n || 2;
+        const f = function () { if (--k <= 0) ok(); else requestAnimationFrame(f); };
+        requestAnimationFrame(f);
+      });
+    };
+    window.__v3dFormesStructures();
+    const rel = function (v) { return [+(v.x / sc - ox).toFixed(3), +(v.y / sc - oz).toFixed(3)]; };
+    // Volume de la forme `tag` le plus proche du POI (x, z), à 3,2 m au plus ; côté = produit scalaire de la
+    // normale de la face (sens de dirParoi, normale extérieure (uz, −ux)) avec la direction du POI.
+    const vol = function (tag, x, z) {
+      let best = null, d = Infinity;
+      K.etat().volumes.forEach(function (v) {
+        if (v.tag !== tag) return;
+        const q = rel(v), k = Math.hypot(q[0] - x, q[1] - z);
+        if (k < d && k <= 3.2) { d = k; best = v; }
+      });
+      if (!best) return null;
+      const q = rel(best), a = (best.dirParoi || 0) * Math.PI / 180;
+      return { place: q, appui: best.appui, cote: best.cote, construit: best.construit, dir: best.dirParoi,
+        cotePoi: +((x - q[0]) * Math.sin(a) - (z - q[1]) * Math.cos(a)).toFixed(3), d: +d.toFixed(3),
+        familles: best.familles, traits: best.traits, allume: best.allume, texture: best.texture };
+    };
+    const panneaux = function (nom) {
+      return K.etat().panneaux.filter(function (q) { return q.nom === nom; }).length;
+    };
+    const ouvrir = async function (rendu, x, z, cap) {
+      if (K.etat().ouvert !== false) await K.fermer();
+      window.setPlanRenduVue3D(null, rendu);
+      G.invalider();
+      const d = P(x, z);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: cap }, distanceVue: 200, tuiles: false, commandes: "pave" });
+      await pause(80);
+      await images(3);
+    };
+    const r = {};
+    for (const rendu of ["structures", "mixte", "galerie"]) {
+      await ouvrir(rendu, 0, 8, 0);
+      const e = K.etat();
+      r[rendu] = { plPil: vol("plaque", 0, 3.5), plBord: vol("plaque", 1.9, 3), ep: vol("epure", -3.5, 0.5),
+        po: vol("portail", 4.5, -1), pl4: vol("plaque", 0, -6), plLigne: vol("plaque", 18.5, 0),
+        poFront: vol("portail", 41.5, 1), plTube: vol("plaque", 10, -28.8),
+        pan: { pil: panneaux("Plaque pilier fictive"), bord: panneaux("Plaque au bord fictive"),
+          a4: panneaux("Plaque à 4 m fictive"), ligne: panneaux("Plaque mur fictive"),
+          tube: panneaux("Plaque tube fictive") },
+        msFaces: e.msFaces, faces: e.facesStructures };
+      if (rendu === "structures") {
+        // Toucher la plaque du pilier (vraie souris, à hauteur d'yeux, face au pilier) : la fiche du POI s'ouvre.
+        let ctx = null;
+        const deg = K.greffer({ nom: "v3d-formes-st", scene: function (c) { ctx = c; } });
+        if (deg) deg();
+        const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+        const vp = K.etat().volumes.filter(function (v) { return v.tag === "plaque" && v.nom === "Plaque pilier fictive"; })[0];
+        r.tap = null;
+        for (const cap of [0, 180]) {
+          if (!vp || !ctx || (r.tap && r.tap.fiche)) break;
+          K.placer(P(0, 4).x, P(0, 4).y, cap);
+          await images(3);
+          const c = new ctx.THREE.Vector3(vp.x / sc, vp.plaqueY, vp.y / sc).project(ctx.camera);
+          if (Math.abs(c.x) > 0.9 || Math.abs(c.y) > 0.9 || c.z > 1) continue;
+          const ev = { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true,
+            clientX: rc.left + (c.x + 1) / 2 * rc.width, clientY: rc.top + (1 - c.y) / 2 * rc.height, button: 0 };
+          cv.dispatchEvent(new PointerEvent("pointerdown", ev));
+          await pause(40);
+          cv.dispatchEvent(new PointerEvent("pointerup", ev));
+          await pause(150);
+          const f = K.etat().fiche;
+          r.tap = { cap: cap, fiche: !!f, nom: f && f.nom };
+          if (f) document.querySelector('#kta-vue3d [data-v3d="ficheFermer"]').click();
+          await pause(80);
+        }
+      }
+    }
+    await K.fermer();
+    // Mesure : 2 025 piliers fictifs de 2 m (maille de 6 m) et 50 plaques à 1 m d'une face, rendu structures.
+    const st = [], pts = [];
+    for (let i = 0; i < 45; i++) {
+      for (let j = 0; j < 45; j++) {
+        const cx = -130 + i * 6, cz = -130 + j * 6;
+        st.push({ uid: "st_f_m_" + i + "_" + j, type: "pilier-1", level: 0,
+          points: [P(cx - 1, cz - 1), P(cx + 1, cz - 1), P(cx + 1, cz + 1), P(cx - 1, cz + 1)] });
+      }
+    }
+    for (let k = 0; k < 50; k++) {
+      const i = (k * 7) % 45, j = (k * 11) % 45;
+      pts.push(Object.assign({ id: "pt_f_m_" + k, nom: "Plaque mesure " + k, uid: "pt_f_m_" + k, level: 0,
+        tags: [["plaque", "epure", "portail"][k % 3]] }, P(-130 + i * 6, -130 + j * 6 + 2)));
+    }
+    window.setStructures(st);
+    window.setRoads([]);
+    window.setEditorPoints(pts);
+    await ouvrir("structures", 0, 0, 0);
+    const e = K.etat();
+    r.mesure = { structures: st.length, poi: pts.length, faces: e.facesStructures, ms: e.msFaces,
+      poses: e.volumes.filter(function (v) { return v.appui === "structure"; }).length, msIndex: e.msIndex };
+    await K.fermer();
+    return r;
+  });
+  await restaurerFormes(page);
+  console.log("§ 14 septies (suite) — plaque, épure et portail sur la face d'une structure");
+  const pr = function (v, att, tol) { return typeof v === "number" && Math.abs(v - att) <= (tol || 0.02); };
+  const surFace = function (o, x, z) {
+    return !!o && o.appui === "structure" && o.cote === 1 && o.construit && pr(o.place[0], x) && pr(o.place[1], z) &&
+      o.cotePoi > 0;
+  };
+  const S = R.structures;
+  verifier(surFace(S.plPil, 0, 2) && surFace(S.ep, -2, 0.5) && surFace(S.po, 2, -1) && S.ep.traits === 7,
+    "structures : plaque, épure et portail à plat sur la face du pilier la plus proche (1,5 / 1,5 / 2,5 m), du côté " +
+    "du POI", { pl: S.plPil, ep: S.ep, po: S.po });
+  verifier(surFace(S.plBord, 1.5, 2), "structures : plaque près du coin gardée sur la face (centre à 0,5 m du coin, " +
+    "jamais au-delà ni dans le pilier)", S.plBord);
+  verifier(!S.pl4 && S.pan.a4 === 1, "structures : structure à 4 m = panneau seul, aucune forme", { v: S.pl4,
+    pan: S.pan.a4 });
+  verifier(surFace(S.plLigne, 19.8, 0) && surFace(S.poFront, 40.15, 1),
+    "structures : sur la face d'un mur en ligne (0,4 m d'épaisseur) et d'un front (0,3 m), côté du POI",
+    { ligne: S.plLigne, front: S.poFront });
+  verifier(surFace(S.plTube, 10, -25.9), "structures : POI dans une galerie (non dessinée ici) = face du mur en " +
+    "ligne voisin", S.plTube);
+  verifier(S.pan.pil === 0 && S.pan.bord === 0 && S.pan.ligne === 0 && S.pan.tube === 0,
+    "structures : plaque posée sur une structure = aucun panneau flottant", S.pan);
+  verifier(!!R.tap && R.tap.fiche && R.tap.nom === "Plaque pilier fictive",
+    "structures : toucher la plaque du pilier ouvre la fiche de son POI", R.tap);
+  const M = R.mixte;
+  verifier(!!M.plTube && M.plTube.appui === "paroi" && pr(M.plTube.place[1], -28.75) && surFace(M.plPil, 0, 2) &&
+    M.pan.tube === 0, "mixte : paroi du tube prioritaire sur la face du mur en ligne à 2,9 m ; hors tube, face du pilier",
+  { tube: M.plTube, pil: M.plPil });
+  const Ga = R.galerie;
+  verifier(!Ga.plPil && !Ga.ep && !Ga.po && !Ga.plLigne && !Ga.poFront && !!Ga.plTube &&
+    Ga.plTube.appui === "paroi" && Ga.faces === 0,
+  "galerie : rien ne change (aucune face de structure lue, aucune forme hors tube, paroi du tube)", Ga);
+  const Me = R.mesure;
+  verifier(Me.poses === Me.poi && Me.ms < 60,
+    "mesure : " + Me.poi + " POI muraux parmi " + Me.structures + " piliers fictifs (" + Me.faces + " faces) : " +
+    Me.poses + " posés, faces indexées et cherchées en " + Me.ms + " ms (index de la vue " + Me.msIndex + " ms)", Me);
+}
+
+// Scène fictive de sectionFormesStructures, posée en mémoire (embarqués vidés, session remplacée ; restaurerFormes).
+async function poserFormesStructures(page) {
+  await page.evaluate(function () {
+    window.__v3dFormesStructures = function () {
+      const sc = window.APP_CONFIG.scale;
+      const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      if (!window.__v3dFormesSauve) {
+        window.__v3dFormesSauve = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+          p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+          acc: window.ktaEstAccessible, rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
+          roads: window.getRoads().slice(), st: window.getStructures().slice(), zn: window.getZones().slice(),
+          trouve: window.PlanRegistry.findById, charger: window.chargerPlanServeur };
+      }
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = "v3d-checkup-formes";
+      window.ktaEstAccessible = function () { return true; };
+      window.ktaSetActiveLevel(0);
+      if (window.getTrackingActif()) window.stopTracking();
+      window.setVue3DTextures(true);
+      const carre = function (uid, x0, z0, x1, z1) {
+        return { uid: uid, type: "pilier-1", level: 0, points: [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)] };
+      };
+      window.setStructures([carre("st_f_pil", -2, -2, 2, 2),
+        { uid: "st_f_ml", type: "mur-ligne", level: 0, points: [P(20, -5), P(20, 5)] },
+        { uid: "st_f_fr", type: "front-1", level: 0, points: [P(40, -5), P(40, 5)] },
+        { uid: "st_f_ml_tube", type: "mur-ligne", level: 0, points: [P(5, -25.7), P(15, -25.7)] }]);
+      window.setZones([]);
+      window.setRoads([{ uid: "rd_f_st", type: "principal", level: 0, points: [P(-10, -30), P(60, -30)] }]);
+      const poi = function (id, tag, x, z, nom) {
+        return Object.assign({ id: id, nom: nom, uid: id, level: 0, tags: [tag] }, P(x, z));
+      };
+      window.setEditorPoints([poi("pt_f_st_pl", "plaque", 0, 3.5, "Plaque pilier fictive"),
+        poi("pt_f_st_bord", "plaque", 1.9, 3, "Plaque au bord fictive"),
+        poi("pt_f_st_ep", "epure", -3.5, 0.5, "Épure pilier fictive"),
+        poi("pt_f_st_po", "portail", 4.5, -1, "Portail pilier fictif"),
+        poi("pt_f_st_4", "plaque", 0, -6, "Plaque à 4 m fictive"),
+        poi("pt_f_st_ml", "plaque", 18.5, 0, "Plaque mur fictive"),
+        poi("pt_f_st_fr", "portail", 41.5, 1, "Portail front fictif"),
+        poi("pt_f_st_tube", "plaque", 10, -28.8, "Plaque tube fictive")]);
+      window.KtaGalerie.invalider();
+    };
+  });
+}
+
+// Captures de la suite (KTA_V3D_CAPTURES, préfixe KTA_V3D_CAP_PREFIXE) : rendu structures, face au pilier, au mur en
+// ligne et au front.
+async function capturesFormesStructures(page) {
+  await poserFormesStructures(page);
+  const vues = [["struct-pilier", 0, 7, 0], ["struct-pilier-ouest", -6, 0.5, 90],
+    ["struct-mur-ligne", 16, 0, 90], ["struct-front", 44, 1, 270], ["struct-edition", 0, 8, 0, true]];
+  for (const q of vues) {
+    await page.evaluate(async function (c) {
+      const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+      const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+      window.__v3dFormesStructures();
+      window.setPlanRenduVue3D(null, "structures");
+      window.KtaGalerie.invalider();
+      if (K.etat().ouvert !== false) await K.fermer();
+      await K.ouvrir({ depart: { x: (ox + c[1]) * sc, y: (oz + c[2]) * sc, cap: c[3] }, tuiles: false,
+        commandes: "pave" });
+      if (c[4]) K.basculerVue();
+    }, q);
+    await page.waitForTimeout(700);
+    await capture(page, (process.env.KTA_V3D_CAP_PREFIXE || "apres") + "-" + q[0]);
+  }
+  await page.evaluate(function () {
+    const K = window.KtaVue3D;
+    if (K.etat().vue === "plongee") K.basculerVue();
+    return K.fermer();
+  });
+  await restaurerFormes(page);
 }
 
 // Captures de § 14 septies (KTA_V3D_CAPTURES) : la même scène fictive, vue de près à hauteur d'yeux et en vue
@@ -6587,6 +6819,7 @@ async function sectionGestesDoigt(nav) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionFormesPoi(page);
+      await sectionFormesStructures(page);
     } else if (SEUL === "type") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -9975,6 +10208,7 @@ async function sectionGestesDoigt(nav) {
         [AC.mixte.ms, AC.galerie.ms, AC.structures.ms].join(" / ") + " ms");
       await sectionConePassage(page);
       await sectionFormesPoi(page);
+      await sectionFormesStructures(page);
 
       // ── 14 sexies. Cavage comblé : galerie de 4 m entre deux murs, porte de la largeur du tracé (fictifs) ─────────
       // Principal (porte de 2,5 m) entre deux murs dont la face est à ±2 m de l'axe : de chaque côté, 0,75 m de pierre

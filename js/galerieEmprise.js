@@ -86,7 +86,7 @@
   // fermés en haut ; pb bouché au ras du plafond ; pc / psf comblés (cône d'éboulis au sol) ; ps puits d'extraction
   // rond ouvert ; pe bassin creusé dans le sol, contre la paroi ; cao / caf cavage, porte à deux battants en travers
   // de la galerie ; chatiere : roche en travers de la galerie percée d'un trou où l'on rampe (rien n'arrête le pas) ;
-  // plaque, epure, portail : à plat sur la paroi la plus proche (PAROI, _surParoi) ; vehicule : voiture simplifiée
+  // plaque, epure, portail : à plat sur la paroi (PAROI, _surParoi) ou une structure ; vehicule : voiture simplifiée
   // dans la galerie, le long de l'axe, qui arrête le pas comme un pilier.
   // ⚠️ contrat : aucune emprise de galerie (pas de pièce, d'où versGalerie et le recalage inchangés), sauf la niche
   // d'un esf (_niche, comme eso ; versGalerie l'ignore) ; seuls les obstacles (BLOQUE) comptent, pour la règle du pas
@@ -95,7 +95,8 @@
     cao: "porte", caf: "porte", chatiere: "chatiere", plaque: "plaque", epure: "epure", portail: "portail",
     vehicule: "vehicule" };
   // Formes posées à plat sur la paroi du côté du POI (_surParoi). Sans tube à cette place (rendu structures,
-  // chambre, aucun axe à PROCHE_M), aucune paroi où les poser : le POI garde son seul panneau (vue3d.js).
+  // chambre, aucun axe à PROCHE_M), placePassage rend le point tel quel, sans `paroi` : vue3d.js > _surStructure
+  // pose alors la forme sur la face de structure la plus proche, sinon le POI garde son seul panneau.
   const PAROI = { plaque: true, epure: true, portail: true };
   // Obstacles d'un accès (décision produit) : cône d'éboulis d'un puits comblé, porte fermée ; cavage ouvert : son
   // comblement seul (comblementPorte), l'ouverture du cadre laisse passer. Le bassin (pe) n'arrête pas : posé contre
