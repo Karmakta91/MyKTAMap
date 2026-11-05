@@ -143,6 +143,11 @@
 
 ## Entrant
 
+- **Niveaux qui s'entremêlent en 3D** — un niveau peut commencer DANS la hauteur d'un autre (ex. le −2 de 2 m au-dessus
+  du sol du −1 jusqu'à x m : grande galerie dont un étage s'ouvre à mi-hauteur). Il faut une altitude par niveau (sol,
+  hauteur) et une vue 3D qui montre plusieurs niveaux à la fois, avec leurs liaisons. Demande KARMA 06/11/2026.
+  `qui: Claude · action: topo puis QCM (données par niveau, Générateur, rendu multi-niveaux, règle du pas, itinéraire)
+  · depuis: 06/11/2026 · taille: L`
 - **Position précise d'un POI (« Augmenter la précision »)** — un POI est souvent décalé pour la lisibilité (secteur dense
   en icônes). Dans sa fiche, un bouton pose un 2ᵉ point = l'endroit réel (mur de la plaque…), relié au POI par un pointillé
   jaune et marqué d'un carré jaune ; la 3D pose la forme là. Toutes les icônes ; chatière : point de début et de fin.
