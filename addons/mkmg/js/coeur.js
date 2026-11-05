@@ -128,7 +128,7 @@
 
   // Réglages du jeu (m, points, par seconde, ms) : premiers essais, à revoir au jeu.
   const REGLES = {
-    departM: 40, pasM: 30, minM: 10, candidats: 8, arriveeM: 2, sante: 100, endurance: 100,
+    departM: 40, pasM: 30, minM: 10, candidats: 8, horsTraceM: 8, arriveeM: 2, sante: 100, endurance: 100,
     videParS: 22, repriseParS: 14, souffleReprise: 30, coeurSous: 5, regardM: 5, majHudMs: 150, messageMs: 2200,
     cartouches: { canon: 2, reserve: 6 }, eclairMs: 90, imageMs: 33, blesseMs: 600, coupMs: 250, tapeMs: 250,
     tapePx: 6,
@@ -729,12 +729,18 @@
       for (let i = 0; i < listes[l].length && !route; i++) {
         route = await _route(pos, listes[l][i], niv, listes[l][i].niveau);
         if (_p !== p || jeton !== p.calcul) return;
+        // 🩸 Le trajet s'accroche au tracé le plus proche, même loin : un POI à plus de horsTraceM m de tout tracé
+        // (relevé dans la roche, salle isolée) donnait un B qu'on ne rejoint pas. Écarté, au suivant.
+        if (route) {
+          const b = route[route.length - 1];
+          if (Math.hypot(b.x - listes[l][i].x, b.y - listes[l][i].y) / sc > REGLES.horsTraceM) route = null;
+        }
         if (route) cible = listes[l][i];
       }
     }
-    // Aucun trajet (plan sans tracés) : la cible la plus proche du voulu, sans itinéraire.
-    if (!cible) cible = cands[0] || null;
-    // ⚠️ contrat (décision produit) : un POI relevé hors de la galerie (dans la roche, une salle sans tracé) est
+    // Aucun trajet (plan sans tracés, réseau coupé) : un point des tracés plutôt qu'un POI, sans itinéraire.
+    if (!cible) cible = repli || cands[0] || null;
+    // ⚠️ contrat (décision produit) : un POI relevé hors de la galerie (à horsTraceM m au plus d'un tracé) est
     // validé DANS la galerie, au bout du trajet sur les tracés ; et jamais dans une structure (pilier, mur, front) :
     // la place libre la plus proche de ce point (règle du pas de la vue, hors remblais, effondrement, inaccessible).
     // B à un autre niveau : le bout du trajet (sur les tracés de ce niveau-là ; la règle du pas d'ici n'y vaut rien).

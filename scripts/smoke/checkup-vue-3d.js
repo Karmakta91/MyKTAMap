@@ -9786,8 +9786,10 @@ async function sectionFichesReglage(nav) {
           { uid: "rd_mk", type: "principal", level: 0, points: [P(-80, 0), P(80, 0)] },
           { uid: "rd_mk_iti", type: "itinerary", level: 0, points: [P(-20, 0), P(-10, 0)] }
         ]);
-        // POI relevé à 4 m du tracé (hors galerie) : sa validation doit tomber sur le tracé.
-        window.setEditorPoints([{ id: "mk1", nom: "Salle fictive", x: P(15, 4).x, y: P(15, 4).y, level: 0, tags: [] }]);
+        // POI relevé à 4 m du tracé (hors galerie) : sa validation doit tomber sur le tracé. Un autre, à 20 m de tout
+        // tracé et plus près de la distance voulue, est écarté (B inatteignable).
+        window.setEditorPoints([{ id: "mk1", nom: "Salle fictive", x: P(15, 4).x, y: P(15, 4).y, level: 0, tags: [] },
+          { id: "mk2", nom: "Puits isolé", x: P(10, -20).x, y: P(10, -20).y, level: 0, tags: [] }]);
         window.KtaGalerie.invalider();
         const d = P(-30, 0), r = {};
         const appui = function (b) {
@@ -10184,7 +10186,8 @@ async function sectionFichesReglage(nav) {
         MK.partie.cible === "Salle fictive" && MK.partie.route >= 2 && MK.partie.traits === 4 &&
         MK.partie.chevrons >= 2 && MK.partie.panneau && MK.partie.fleche && /\d/.test(MK.partie.reste || "") &&
         MK.partie.surTrace && MK.partie.horsPilier,
-        "jeu : confirmation à 3 difficultés ; facile → cible (POI fictif à 4 m du tracé, validée près du tracé, hors " +
+        "jeu : confirmation à 3 difficultés ; facile → cible (POI à 20 m de tout tracé écarté ; POI fictif à 4 m du " +
+        "tracé, validée près du tracé, hors " +
         "du pilier et de l'effondrement qui le couvrent), trajet et ses chevrons de sens, balise, panneau, flèche, reste",
         MK.partie);
       verifier(MK.elementsJeu > 0 && MK.chevauche.length === 0,

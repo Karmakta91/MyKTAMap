@@ -188,7 +188,9 @@ embuscades, un monde par niveau), `js/son.js`
 - **Point de validation** (décision produit) : jamais hors de la galerie, ni dans une structure, un remblais, un
   effondrement ou une zone inaccessible — le bout du trajet sur les tracés, puis la place libre la plus proche
   (`monde.js > placeOk` : `ctx.libre` et hors de ces trois zones du niveau ; couronnes de 0,25 m jusqu'à 8 m). La
-  balise est posée là. Même règle pour les menaces, les objets et les embuscades.
+  balise est posée là. Même règle pour les menaces, les objets et les embuscades. Un POI à plus de 8 m de tout
+  tracé (`REGLES.horsTraceM` : le trajet s'accroche au tracé le plus proche, même loin) n'est jamais B ; sans
+  aucun trajet, B est un point des tracés plutôt qu'un POI.
 - **Difficulté** : facile = tracés + trajet du jeu au sol (ruban doré, chevrons sombres tous les 2 m pointés vers
   B) + balise + flèche + reste à parcourir ; moyen = sans la flèche ; difficile = ni tracés
   (`regler({ traces: false })`), ni trajet, ni balise, ni guidage. L'itinéraire et le guidage de l'app sont masqués
