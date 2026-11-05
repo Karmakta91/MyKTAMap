@@ -86,15 +86,20 @@
   // Recul (m) entre la caméra plongeante et le point visé (2 m devant soi, ou celui où le doigt l'a mené : _panner) :
   // zoom de la vue plongeante, borné, retenu tant que la vue est ouverte ; `pas` = facteur d'un cran (molette, + / −,
   // clavier).
-  const RECUL = { defaut: 18.4, min: 6, max: 60, pas: 1.15 };
+  const RECUL = { defaut: 18.4, min: 6, max: 150, pas: 1.15 };
   // Gestes de la caméra libre (vue plongeante) : un doigt ne déplace la vue qu'au-delà de TAPE.bouge px (un toucher
   // qui pose un sommet bouge toujours d'un ou deux px) ; deux doigts tournés de `rot`° = rotation du cap.
   const CAMERA_LIBRE = { rot: 12 };
   // Hauteur minimale à l'écran (px CSS) des lettres d'un panneau en vue plongeante : dézoomé, un panneau à l'échelle de
   // la scène n'avait plus que 3 px de texte.
   const PANNEAU_LETTRE_MIN = 13;
-  // Rayon de scène en plongée : 2,3 m de sol par mètre de recul (au recul par défaut, 1,4 × la portée de 30 m).
+  // Rayon vu en plongée : 2,3 m de sol par mètre de recul (au recul par défaut, 1,4 × la portée de 30 m).
   const SOL_PAR_RECUL = 2.3;
+  // Rayon construit (tuiles, volumes, panneaux) que le recul peut atteindre (m). Au-delà, sol, plan au sol et
+  // brouillard suivent la vue (_rayonVue), la scène non. 🩸 Vue de haut, tout le disque construit est à l'écran : le
+  // coût suit ce rayon, pas le recul. Sans plafond, 150 m de recul = 345 m de tuiles, 50 ms par image et 29 s de
+  // constructions saccadées en iPhone émulé ; à 100 m, ~22 ms et 1,5 s (ETUDE_VUE_3D.md).
+  const RAYON_RECUL_MAX = 100;
   const ROTATION = 90;              // °/s
   const EPAISSEUR_MUR_LIGNE = 0.4;  // m
   const EPAISSEUR_FRONT = 0.3;      // m
@@ -3730,8 +3735,16 @@
   }
 
   // Rayon de scène (m autour de soi) : tuiles, volumes, panneaux. À hauteur d'yeux, la portée ; en plongée, il suit
-  // aussi le recul (vu de plus haut, on voit plus loin : pas de bord de scène en dézoomant).
+  // aussi le recul (vu de plus haut, on voit plus loin), jusqu'à RAYON_RECUL_MAX.
   function _rayonScene() {
+    const e = _e;
+    return e.vue === "plongee" ? Math.max(e.distance * 1.4, Math.min(RAYON_RECUL_MAX, e.recul * SOL_PAR_RECUL))
+      : e.distance;
+  }
+
+  // Rayon vu (m) : sol, plafond, plan au sol et brouillard. Il suit le recul sans plafond (pas de bord noir en
+  // dézoomant) ; entre _rayonScene et lui, le sol nu (et le plan au sol s'il est allumé) sans structures.
+  function _rayonVue() {
     const e = _e;
     return e.vue === "plongee" ? Math.max(e.distance * 1.4, e.recul * SOL_PAR_RECUL) : e.distance;
   }
@@ -3739,7 +3752,7 @@
   // Brouillard, profondeur de la caméra, carré de sol, ambiance et lampe selon la vue, la portée, le recul et le
   // réglage de la lampe. En plongée, le brouillard se compte depuis la caméra : il part du recul.
   function _appliquerPortee() {
-    const e = _e, haut = e.vue === "plongee", l = _lampeEnVigueur(), r = _rayonScene();
+    const e = _e, haut = e.vue === "plongee", l = _lampeEnVigueur(), r = _rayonVue();
     const brume = l.jour ? Math.max(AMBIANCE.brumeJour, l.courbe.brume) : l.courbe.brume;
     e.ambiance.intensity = haut ? AMBIANCE_PLONGEE : l.jour ? AMBIANCE.jour : AMBIANCE.nuit;
     e.scene.fog.near = haut ? e.recul + r * 0.3 : e.distance * brume;
@@ -5236,7 +5249,7 @@
     const e = _e, d = e.dessin;
     const voulu = d.planSol && _dessinPermis();
     if (!voulu) { if (d.sol && d.sol.mesh) _libererPlanSol(); return; }
-    const c = _centreScene(), s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonScene(), px = c.x, pz = c.z;
+    const c = _centreScene(), s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonVue(), px = c.x, pz = c.z;
     if (s.enCours) return;
     if (s.reprises > 0) { s.reprises--; e.sale = true; }
     if (s.mesh && s.niveau === e.niveau && Math.hypot(px - s.cx, pz - s.cz) < s.cote * PLAN_SOL.ecart &&
@@ -7790,7 +7803,8 @@
         }),
         jour: e.boutonJour ? { presse: e.boutonJour.getAttribute("aria-pressed"), grise: e.boutonJour.disabled }
           : null },
-      portee: { distance: e.distance, rayon: +_rayonScene().toFixed(2), recul: +e.recul.toFixed(3),
+      portee: { distance: e.distance, rayon: +_rayonScene().toFixed(2), rayonVue: +_rayonVue().toFixed(2),
+        recul: +e.recul.toFixed(3),
         brume: e.scene ? [+e.scene.fog.near.toFixed(2), +e.scene.fog.far.toFixed(2)] : null,
         far: e.camera ? +e.camera.far.toFixed(2) : null, sol: e.sol ? +e.sol.scale.x.toFixed(2) : null,
         curseur: e.curseurPortee ? { valeur: Number(e.curseurPortee.value), min: Number(e.curseurPortee.min),

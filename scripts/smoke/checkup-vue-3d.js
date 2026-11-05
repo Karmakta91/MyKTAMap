@@ -78,7 +78,9 @@
 //   KTA_V3D_PERF=passages → plan dense, sans puis avec 10 passages entre niveaux et 2 rampes à portée de vue ;
 //   KTA_V3D_PERF=1 → plan dense synthétique (9 000 piliers, 3 000 murs, 1 000 murs en ligne, 700 fronts,
 //   zones, tracés, POI) : temps d'ouverture, triangles, appels, ms par image à 20 / 30 / 50 / 75 / 100 m, sans
-//   tuiles et en vue plongeante dézoomée (recul 60 m) ; marche de 120 m à 30 et 100 m ;
+//   tuiles et en vue plongeante dézoomée (recul 60 et 150 m) ; marche de 120 m à 30 et 100 m ;
+//   KTA_V3D_PERF=zoom → plan dense, vue d'édition : ouverture du zoom de 18,4 à 60 et 150 m (tuiles posées,
+//   images de plus de 33 ms), rendu posé, triangles, tas ;
 //   KTA_V3D_PERF=dessin → plan dense, pilier dessiné au doigt en plongée : coût d'un sommet, délai de fermeture ;
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
 //   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt) ; KTA_V3D_SEUL=dessin → la section 28 seule ; =camera → la 30 ;
@@ -95,7 +97,7 @@ const server = require("./server.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);
 // KTA_V3D_PERF=1 : toutes les mesures ; =galerie ou =mixte : celles de ce rendu seulement.
-const PERF = ["1", "galerie", "mixte", "passages", "dessin", "iti"].indexOf(process.env.KTA_V3D_PERF) >= 0;
+const PERF = ["1", "galerie", "mixte", "passages", "dessin", "iti", "zoom"].indexOf(process.env.KTA_V3D_PERF) >= 0;
 const PERF_DESSIN = process.env.KTA_V3D_PERF === "dessin";
 const PERF_ITI = process.env.KTA_V3D_PERF === "iti";
 const PERF_PASSAGES = process.env.KTA_V3D_PERF === "passages";
@@ -314,7 +316,7 @@ async function mesures(page, depart) {
   const out = {};
   const cas_ = [{ nom: "20 m", d: 20 }, { nom: "30 m", d: 30 }, { nom: "50 m", d: 50 }, { nom: "75 m", d: 75 },
     { nom: "100 m", d: 100 }, { nom: "30 m sans tuiles", d: 30, sansTuiles: true },
-    { nom: "plongée, recul 60 m", d: 30, recul: 60 }];
+    { nom: "plongée, recul 60 m", d: 30, recul: 60 }, { nom: "plongée, recul 150 m", d: 30, recul: 150 }];
   for (const cas of cas_) {
     const r = await page.evaluate(function (c) {
       return window.KtaVue3D.ouvrir({ depart: c.depart, distanceVue: c.d, tuiles: !c.sansTuiles }).then(function () {
@@ -333,6 +335,44 @@ async function mesures(page, depart) {
     console.log("  📏 " + cas.nom + " : " + JSON.stringify(r));
   }
   return out;
+}
+
+// Ouverture du zoom en vue d'édition sur le plan dense (KTA_V3D_PERF=zoom) : de 18,4 m au recul voulu, temps jusqu'à
+// ce que toutes les tuiles à portée soient posées (au plus 3 par image, comme en vrai), images de plus de 33 ms
+// pendant ce temps, puis rendu posé (mesurer, 150 images), triangles, appels et tas JS ; deux passages (le poste
+// partagé fait varier le temps d'une image d'un tiers).
+async function mesuresZoom(page, depart) {
+  for (const recul of [18.4, 60, 100, 150, 60, 100, 150]) {
+    const r = await page.evaluate(async function (c) {
+      const K = window.KtaVue3D;
+      await K.ouvrir({ depart: c.depart, distanceVue: 30 });
+      K.basculerVue();
+      for (let i = 0; i < 400 && K.etat().portee.tuiles.manquantes; i++) {
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+      }
+      const t0 = performance.now(), intervalles = [];
+      let avant = t0;
+      K.zoomer(c.recul / K.etat().portee.recul);
+      for (let i = 0; i < 4000 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+        const t = performance.now();
+        intervalles.push(t - avant);
+        avant = t;
+      }
+      const msZoom = performance.now() - t0, e1 = K.etat();
+      const m = K.mesurer({ images: 150 });
+      const tas = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null;
+      intervalles.sort(function (a, b) { return a - b; });
+      await K.fermer();
+      return { recul: e1.portee.recul, rayon: e1.portee.rayon, rayonVue: e1.portee.rayonVue,
+        msZoom: Math.round(msZoom), images: intervalles.length,
+        plus33ms: intervalles.filter(function (v) { return v > 33.4; }).length,
+        intervalleMax: intervalles.length ? Math.round(intervalles[intervalles.length - 1]) : 0,
+        tuilesMontrees: e1.portee.tuiles.montrees, geometries: m.memoire.geometries, msMed: m.msMed, msP95: m.msP95,
+        msMax: m.msMax, triangles: m.trianglesMax, appels: m.appelsMax, tasMo: tas };
+    }, { depart: depart, recul: recul });
+    console.log("  📏 zoom de l'édition, recul " + recul + " m : " + JSON.stringify(r));
+  }
 }
 
 // Réseau synthétique pour le mode galerie (mémoire seule) : 26 tracés est-ouest et 26 nord-sud tous les 12 m sur
@@ -2743,6 +2783,57 @@ async function sectionCamera(page) {
       transform: getComputedStyle(fiche).transform, nom: K.etat().fiche && K.etat().fiche.nom } : null;
     if (fiche) document.querySelector('#kta-vue3d [data-v3d="ficheFermer"]').click();
 
+    // ── Recul de 150 m (la borne) : le sol vu jusqu'au bord de l'écran est dans la scène construite, sur le carré de
+    // sol (fond simplifié au-delà du rayon construit) ou dans le noir du brouillard (profondeur de vue, comme
+    // THREE.Fog), à l'inclinaison par défaut et rasante ; tuiles posées ; un tap
+    // d'outil armé pose le sommet au sol sous le doigt (5 cm), au centre et en haut de l'écran ──
+    const posees = async function () {
+      for (let i = 0; i < 200 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
+        await images(1);
+      }
+      await images(2);
+    };
+    const bordVu = function () {
+      const eB = K.etat(), rc = cv().getBoundingClientRect(), c0 = eB.camera.centre, T = ctxV.THREE;
+      const near = eB.portee.brume[0], far = eB.portee.brume[1], demiSol = eB.portee.sol / 2;
+      const out = { rayon: eB.portee.rayon, rayonVue: eB.portee.rayonVue, points: [] };
+      ctxV.camera.updateMatrixWorld();
+      for (const fx of [0, 0.5, 1]) {
+        for (const fy of [0, 0.15, 0.3]) {
+          const q = sol({ x: rc.left + fx * (rc.width - 1), y: rc.top + fy * (rc.height - 1) });
+          if (!q) { out.points.push({ fx: fx, fy: fy, ciel: true, ok: true }); continue; }
+          const v = new T.Vector3(q[0] + ox, 0, q[1] + oz).applyMatrix4(ctxV.camera.matrixWorldInverse);
+          const brume = Math.max(0, Math.min(1, (-v.z - near) / (far - near)));
+          const dx = q[0] + ox - c0.x, dz = q[1] + oz - c0.z, dC = Math.hypot(dx, dz);
+          const vu = dC <= eB.portee.rayon + 0.01 ? "scene"
+            : Math.max(Math.abs(dx), Math.abs(dz)) <= demiSol ? "sol" : brume >= 0.97 ? "noir" : null;
+          out.points.push({ fx: fx, fy: fy, dCentre: +dC.toFixed(1), brume: +brume.toFixed(2), vu: vu, ok: !!vu });
+        }
+      }
+      return out;
+    };
+    await posees();
+    r.loin150 = { portee: K.etat().portee, far: K.etat().portee.far, bord: bordVu() };
+    const incl0 = K.etat().inclinaison;
+    K.incliner(-90);
+    await posees();
+    r.loin150.rasant = { inclinaison: K.etat().inclinaison, bord: bordVu() };
+    K.incliner(incl0 - K.etat().inclinaison);
+    await posees();
+    r.loin150.arme = choisir("mesure", "ui.subaction.mesureDistance") && window.modeMesure === true;
+    await images(2);
+    const rc150 = cv().getBoundingClientRect(), ecarts150 = [];
+    for (const pt of [ecran(40, -50), { x: rc150.left + rc150.width * 0.45, y: rc150.top + rc150.height * 0.3 }]) {
+      const attendu = sol(pt);
+      await tap(pt);
+      const mp = window.getMeasurePoints(), q = mp[mp.length - 1];
+      ecarts150.push(q && attendu ? +Math.hypot(rel(q)[0] - attendu[0], rel(q)[1] - attendu[1]).toFixed(3) : null);
+    }
+    r.loin150.taps = { points: window.getMeasurePoints().length, ecarts: ecarts150, recul: K.etat().portee.recul };
+    window._desactiverTousLesModes();
+    if (window.resetMesure) window.resetMesure();
+    await images(2);
+
     // ── Mesure : glisser ne pose rien, le tap qui suit pose sous le doigt ; bandeau, segments, angle droit ──
     await ouvrir("structures", 0, 0, 0);
     r.arme = choisir("mesure", "ui.subaction.mesureDistance") && window.modeMesure === true;
@@ -2940,8 +3031,18 @@ async function sectionCamera(page) {
     proche(r.tuiles.pos, [0, 0], 1e-6) && !!r.tuiles.loin && r.tuiles.loin.visible,
     "tuiles et panneaux construits autour du point visé (68 m plus loin : 2 m devant soi + 60, −30), la place restée",
     r.tuiles);
-  verifier(r.lisible.recul === 60 && r.lisible.visible && r.lisible.lettrePx >= 12.9,
-    "dézoomé (60 m) : lettres d'un panneau à 13 px au moins à l'écran", r.lisible);
+  verifier(r.lisible.recul === 150 && r.lisible.visible && r.lisible.lettrePx >= 12.9,
+    "dézoomé (150 m) : lettres d'un panneau à 13 px au moins à l'écran", r.lisible);
+  const L150 = r.loin150;
+  verifier(L150.portee.recul === 150 && L150.portee.tuiles.manquantes === 0 && L150.portee.tuiles.hors === 0 &&
+    L150.bord.points.every(function (p) { return p.ok; }) && L150.rasant.inclinaison === 15 &&
+    L150.rasant.bord.points.every(function (p) { return p.ok; }),
+    "recul 150 m : tuiles toutes posées ; jusqu'au bord de l'écran, scène construite, sol nu ou noir du brouillard, " +
+    "jamais de trou (inclinaison par défaut et rasante)", L150);
+  verifier(L150.arme && L150.taps.points === 2 && L150.taps.recul === 150 &&
+    L150.taps.ecarts.every(function (v) { return v !== null && v < 0.05; }),
+    "recul 150 m : le tap d'un outil armé pose le sommet au sol sous le doigt (à 5 cm), au centre et en haut",
+    L150.taps);
   verifier(!!r.fiche && r.fiche.ouverte && r.fiche.nom === "Repère lointain" &&
     r.fiche.w >= Math.min(360, r.fiche.vw - 20) - 1 && r.fiche.police === "14px" && r.fiche.transform === "none",
     "fiche d'un POI ouverte de loin : taille normale (360 px ou l'écran, 14 px), pas à l'échelle de la scène", r.fiche);
@@ -3077,6 +3178,25 @@ async function sectionCameraPixels(page) {
   });
   const avecPlan = await mesure();
   await capture(page, "camera-1-plan-au-sol");
+  // Dézoomé à 150 m : le plan au sol est redessiné à la nouvelle emprise (2,4 × le rayon) et reste vu.
+  const loin = await page.evaluate(async function () {
+    const K = window.KtaVue3D, cote0 = K.etat().dessin.planSol.cote;
+    K.zoomer(1000);
+    for (let i = 0; i < 300 && !(K.etat().dessin.planSol && K.etat().dessin.planSol.cote > cote0 * 1.5 &&
+      K.etat().dessin.planSol.px); i++) {
+      await new Promise(function (ok) { requestAnimationFrame(ok); });
+    }
+    const e = K.etat();
+    return { recul: e.portee.recul, rayon: e.portee.rayonVue, cote0: cote0, cote: e.dessin.planSol && e.dessin.planSol.cote };
+  });
+  const avecPlanLoin = await mesure();
+  await capture(page, "camera-1b-plan-au-sol-150m");
+  await page.evaluate(function () { window.KtaVue3D.zoomer(18.4 / window.KtaVue3D.etat().portee.recul); });
+  const ecartLoin = Math.abs(avecPlanLoin.r - sansPlan.r) + Math.abs(avecPlanLoin.g - sansPlan.g) +
+    Math.abs(avecPlanLoin.b - sansPlan.b);
+  verifier(loin.recul === 150 && loin.cote >= 2 * loin.rayon && ecartLoin > 30,
+    "🗺️ plan au sol à 150 m de recul : redessiné sur l'emprise vue (" + Math.round(loin.cote || 0) + " m de côté), " +
+    "visible à l'écran", { loin: loin, pixels: avecPlanLoin, sansPlan: sansPlan });
   await page.evaluate(function () {
     document.querySelector('#kta-vue3d [data-v3d="planSol"]').click();
     window.KtaVue3D.basculerTextures();
@@ -5242,6 +5362,11 @@ async function sectionFichesReglage(nav) {
         } catch (e) { console.log("  ℹ️ ralentissement processeur indisponible : " + e.message); }
       }
       if (PERF_ITI) await mesuresRecalcul(page);
+      if (process.env.KTA_V3D_PERF === "zoom") {
+        await page.evaluate(function () { window.setPlanRenduVue3D(null, "structures"); });
+        const semisZ = await page.evaluate(semerPlanDense);
+        await mesuresZoom(page, semisZ.depart);
+      }
       if (PERF_DESSIN) {
         const semisD = await page.evaluate(semerPlanDense);
         await mesuresDessin(page, semisD.depart);
@@ -11080,7 +11205,7 @@ async function sectionFichesReglage(nav) {
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
         const pose = async function () {
           await pause(100);
-          for (let i = 0; i < 120 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
+          for (let i = 0; i < 400 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
             await pause(50);
           }
         };
@@ -11095,28 +11220,80 @@ async function sectionFichesReglage(nav) {
         r.moins = K.etat().portee.recul / r0;
         r.min = K.zoomer(0.001);
         r.minGrise = K.etat().portee.zoomPlusGrise;
+        appui("zoomPlus");
+        r.minBouton = K.etat().portee.recul;
         r.max = K.zoomer(1000);
+        r.maxGrise = K.etat().portee.zoomMoinsGrise;
+        appui("zoomMoins");
+        r.maxBouton = K.etat().portee.recul;
+        const t0 = performance.now();
         await pose();
+        r.msTuilesLoin = Math.round(performance.now() - t0);
         r.loin = K.etat().portee;
         K.basculerVue();
         r.yeux = K.etat().portee;
         K.basculerVue();
         r.retenu = K.etat().portee.recul;
-        K.zoomer(18.4 / 60);
+        K.zoomer(18.4 / 150);
         await pose();
         r.defaut = K.etat().portee;
         return r;
       });
       const RZL = zB.loin;
       verifier(Math.abs(zB.plus - 1 / 1.3225) < 0.01 && Math.abs(zB.moins - 1) < 0.01 && zB.min === 6 && zB.minGrise &&
-        zB.max === 60 && RZL.zoomMoinsGrise && zB.retenu === 60,
-        "boutons + / − (deux crans), recul borné à 6 / 60 m (bouton grisé à la borne), retenu d'une vue à l'autre", zB);
-      verifier(RZL.rayon === 138 && RZL.tuiles.manquantes === 0 && RZL.tuiles.hors === 0 &&
-        RZL.tuiles.montrees > zB.defaut.tuiles.montrees && RZL.sol >= 2 * RZL.rayon &&
-        RZL.brume[1] === +(60 + 138 + 2).toFixed(2) && zB.yeux.rayon === 30 && zB.defaut.rayon === 42.32 &&
+        zB.minBouton === 6 && zB.max === 150 && zB.maxGrise && zB.maxBouton === 150 && RZL.zoomMoinsGrise &&
+        zB.retenu === 150,
+        "boutons + / − (deux crans), recul borné à 6 / 150 m (bouton grisé et sans effet à la borne), retenu d'une vue " +
+        "à l'autre", zB);
+      verifier(RZL.rayon === 100 && RZL.rayonVue === 345 && RZL.tuiles.manquantes === 0 && RZL.tuiles.hors === 0 &&
+        RZL.tuiles.montrees > zB.defaut.tuiles.montrees && RZL.sol >= 2 * RZL.rayonVue &&
+        RZL.brume[1] === +(150 + 345 + 2).toFixed(2) && RZL.far >= RZL.brume[1] && zB.yeux.rayon === 30 &&
+        zB.defaut.rayon === 42.32 && zB.defaut.rayonVue === 42.32 &&
         Math.abs(zB.defaut.brume[1] - (18.4 + 42.32 + 2)) < 0.02,
-        "dézoomé à 60 m : tuiles jusqu'à 138 m (2,3 m par mètre de recul), sol et brouillard suivent ; 42,3 m au défaut",
+        "dézoomé à 150 m : tuiles jusqu'à 100 m (plafond du rayon construit), sol, brouillard et profondeur sur 345 m " +
+        "(2,3 m par mètre de recul) ; 42,3 m au défaut (tuiles posées en " + zB.msTuilesLoin + " ms)",
         { loin: RZL, defaut: zB.defaut, yeux: zB.yeux.rayon });
+      // Bornes à la molette et au pincement : au-delà de 150 m (et en deçà de 6 m), rien ne bouge.
+      const zBornes = await page.evaluate(function () {
+        const K = window.KtaVue3D, cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+        const ev = function (type, id, x, y) {
+          cv.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: id === 31,
+            clientX: x, clientY: y, bubbles: true }));
+        };
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const pincer = function (de, a) {
+          ev("pointerdown", 31, cx - de, cy); ev("pointerdown", 32, cx + de, cy);
+          for (let k = 1; k <= 10; k++) {
+            const d = de + (a - de) * k / 10;
+            ev("pointermove", 31, cx - d, cy); ev("pointermove", 32, cx + d, cy);
+          }
+          ev("pointerup", 31, cx - a, cy); ev("pointerup", 32, cx + a, cy);
+          return K.etat().portee;
+        };
+        K.zoomer(1000);
+        const loin = pincer(120, 30), out = { pinceLoin: { recul: loin.recul, grise: loin.zoomMoinsGrise } };
+        K.zoomer(0.001);
+        const pres = pincer(30, 120);
+        out.pincePres = { recul: pres.recul, grise: pres.zoomPlusGrise };
+        K.zoomer(18.4 / K.etat().portee.recul);
+        return out;
+      });
+      const cvB = await page.locator("#kta-vue3d canvas").boundingBox();
+      await page.mouse.move(cvB.x + cvB.width / 2, cvB.y + cvB.height / 3);
+      for (let i = 0; i < 16; i++) { await page.mouse.wheel(0, 100); await page.waitForTimeout(30); }
+      zBornes.moletteLoin = await page.evaluate(function () {
+        const p = window.KtaVue3D.etat().portee;
+        return { recul: p.recul, grise: p.zoomMoinsGrise };
+      });
+      for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, 100); await page.waitForTimeout(30); }
+      zBornes.moletteAuDela = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
+      for (let i = 0; i < 30; i++) { await page.mouse.wheel(0, -100); await page.waitForTimeout(30); }
+      zBornes.moletteMin = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
+      await page.evaluate(function () { window.KtaVue3D.zoomer(18.4 / window.KtaVue3D.etat().portee.recul); });
+      verifier(zBornes.pinceLoin.recul === 150 && zBornes.pinceLoin.grise && zBornes.pincePres.recul === 6 &&
+        zBornes.pincePres.grise && zBornes.moletteLoin.recul === 150 && zBornes.moletteLoin.grise &&
+        zBornes.moletteAuDela === 150 && zBornes.moletteMin === 6,
+        "bornes 6 / 150 m au pincement et à la molette (bouton grisé à la borne, rien au-delà)", zBornes);
       // Clavier : = rapproche, - éloigne (vue plongeante seulement).
       await page.keyboard.press("Equal");
       const kPlus = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
@@ -11199,7 +11376,7 @@ async function sectionFichesReglage(nav) {
           window.KtaVue3D.zoomer(1000);
         });
         await page.waitForTimeout(2500);
-        await capture(page, "reglage-plongee-recul-60");
+        await capture(page, "reglage-plongee-recul-150");
         await page.evaluate(function () { window.KtaVue3D.zoomer(0.001); });
         await page.waitForTimeout(800);
         await capture(page, "reglage-plongee-recul-6");
