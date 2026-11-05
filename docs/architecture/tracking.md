@@ -1671,7 +1671,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Rendu en pause** : la boucle `requestAnimationFrame` tourne, mais ne dessine que si quelque chose a bougé
   (`_e.sale`) ; immobile, aucune image (le checkup le mesure, boussole qui tremble comprise).
 - **Vue d'édition** (nom de code `plongee` ; décision produit : comme une carte) : caméra au **recul** `e.recul` du point visé (2 m devant
-  soi), 18,4 m par défaut, de 6 à 60 m (`RECUL`) ; inclinaison 15° à 85° (60° par défaut). **Zoom** (`zoomer(f)`,
+  soi), 18,4 m par défaut, de 6 à 150 m (`RECUL`) ; inclinaison 15° à 85° (60° par défaut). **Zoom** (`zoomer(f)`,
   un cran = × 1,15) : molette (vers l'avant = plus près, un cran par 100 px de défilement, en continu au pavé
   tactile), pincement à deux doigts, boutons + / − (deux crans), touches = et -. **Inclinaison** : Maj + molette
   (🩸 Chrome et Safari envoient alors le défilement en `deltaX`), deux doigts glissés ensemble à la verticale,
@@ -1679,10 +1679,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   de 12 px (`GESTE_SEUIL`) : un pincement ne penche pas, un glisser ne zoome pas. Boutons + − ▲ ▼ en grille en bas à
   droite, montrés dans cette vue seulement (la tuile ⚙️ ouverte ne les recouvre pas). Recul et inclinaison retenus
   tant que la vue est ouverte (repartent du défaut à la réouverture). ⚠️ contrat : une greffe qui interdit la
-  vue d'édition (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Rayon de scène
-  en vue d'édition (`_rayonScene`) : max(1,4 × portée, 2,3 m par mètre de recul) — tuiles, volumes, panneaux de POI, carré
-  de sol (2,4 × le rayon) et brouillard (compté depuis la caméra : du recul + 30 % du rayon au recul + rayon + 2 m)
-  le suivent : pas de bord de scène en dézoomant. À 60 m de recul, 138 m de rayon (mesures : ETUDE_VUE_3D.md).
+  vue d'édition (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Deux rayons
+  en vue d'édition. **Rayon vu** (`_rayonVue`) : max(1,4 × portée, 2,3 m par mètre de recul) — carré de sol et de
+  plafond (2,4 × le rayon), plan au sol 🗺️ (même emprise) et brouillard (compté depuis la caméra : du recul + 30 % du
+  rayon au recul + rayon + 2 m ; `camera.far` = fin du brouillard + 10 m) : pas de bord noir en dézoomant ; 345 m à
+  150 m de recul. **Rayon construit** (`_rayonScene`) : le même, mais la part du recul plafonnée à 100 m
+  (`RAYON_RECUL_MAX`, atteint vers 43 m de recul) — tuiles, volumes, panneaux de POI, lampes des membres. Au-delà,
+  le sol nu (et le plan au sol s'il est allumé), sans structures. 🩸 Vu de haut, tout le disque construit est à
+  l'écran : le coût suit ce rayon, pas le recul. Sans ce plafond, 150 m de recul = 1 526 tuiles, 50 ms par image et
+  29 s de constructions saccadées en iPhone émulé (mesures : ETUDE_VUE_3D.md).
 - **Portée** (curseur 🔭 de la tuile ⚙️, `config.js > getVue3DPortee`, réglage de cet appareil, décision produit) :
   15 à 100 m au mètre près, 30 m par défaut (`V3D_PORTEE`) ; `reglerPortee(m)`. Brouillard noir complet à la portée,
   profondeur de la caméra (portée + 5 m), portée de la lampe et rayon des tuiles suivent à l'image suivante
@@ -2182,8 +2187,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Caméra libre et mesures (§ 30, formes fictives, doigt, téléphone et PC) : pan d'un doigt tracker en marche → point
   visé déplacé, sol pris sous le doigt (à 15 cm), place et tracker immobiles, ⌖ montré ; vue tournée de 90° → même
   règle ; deux doigts tournés de 30° → cap de 30°, recul inchangé ; ⌖, un pas et la hauteur d'yeux ramènent la caméra ;
-  pan de 68 m → tuiles et panneau lointain construits là, place restée ; recul 60 m → lettres ≥ 13 px, fiche ouverte de
-  loin à taille normale ; outil armé : glisser ne pose rien, le tap suivant pose sous le doigt (5 cm) ; bandeau (2
+  pan de 68 m → tuiles et panneau lointain construits là, place restée ; recul 150 m → lettres ≥ 13 px, fiche ouverte de
+  loin à taille normale, tuiles posées, bord de l'écran vu sur la scène, le sol nu ou le noir du brouillard (inclinaison
+  par défaut et rasante), tap d'un outil armé posé au sol à 5 cm (centre et haut de l'écran) ; bornes 6 / 150 m aux
+  boutons (grisés), à la molette et au pincement ; plan au sol redessiné sur 2,4 × le rayon vu à 150 m et vu à l'écran ; outil armé : glisser ne pose rien, le tap suivant pose sous le doigt (5 cm) ; bandeau (2
   sommets, 3e, surface, désarmé caché, sans chevaucher boussole, joystick, pavé ni zoom) ; angle droit → « 90° » comme
   la carte ; survol (pilier, cavage fermé) en édition, bloqué à hauteur d'yeux, place dégagée au retour ; plan au sol
   au point visé et vu à l'écran (pixels d'une capture) ; 🧱 coupé : sol et plafond noirs (trois rendus), plan au sol visible dessus, parois de galerie à la couleur de légende

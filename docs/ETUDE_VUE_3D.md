@@ -421,6 +421,33 @@ sur le pire cas. ⚠️ L'émulation ralentit le processeur, pas le GPU : le GPU
 triangles et les appels (×3,6 et ×4,4 de 30 à 100 m au téléphone, ×5,4 et ×6,6 en plongée 60 m) ; **un vrai iPhone
 n'est pas mesuré** : c'est le chiffre à prendre avant de juger la borne de 100 m.
 
+### Vue d'édition dézoomée à 150 m (rayon construit plafonné)
+
+Le recul maximal de la vue d'édition passe de 60 à 150 m. Le rayon vu suit (2,3 m par mètre de recul : 345 m) ;
+sans plafond, le rayon construit aussi. Mesures `KTA_V3D_PERF=zoom KTA_V3D_TEL=1` (plan dense, Chromium, iPhone
+émulé, processeur × 4, portée 30 m, inclinaison 60°) : zoom de 18,4 m au recul voulu, temps jusqu'à toutes les tuiles
+posées (3 par image), puis rendu posé sur un tour complet. ⚠️ Poste partagé avec d'autres lots pendant les mesures :
+le temps d'une image varie d'un tiers d'un passage à l'autre, le p95 bien plus ; la médiane et les appels sont les
+chiffres fiables.
+
+| Recul · rayon construit | Tuiles montrées | Triangles · appels | ms / image (médiane · p95 · max) | Zoom : tuiles posées · images > 33 ms |
+|---|---|---|---|---|
+| 60 m · 138 m (borne d'avant) | 268 | 9 363 · 134 | 9,9 à 12,4 · 15,2 à 20,9 · 19,9 à 30,8 | 2,5 à 2,7 s · 18 à 23 sur 79 |
+| 150 m · 345 m (sans plafond) | 1 526 | 39 029 · 583 | 50,2 · 75,2 · 89,3 | 28,9 s · 423 sur 498 |
+| 150 m · 138 m | 268 | 25 685 · 356 | 28,1 · 37,6 · 44,3 | 3,1 s · 53 sur 79 |
+| 150 m · 110 m | 171 | 22 815 · 321 | 20,0 · 31,3 · 41,6 | 1,5 s · 14 sur 46 |
+| **150 m · 100 m (retenu)** | **146** | **21 473 à 21 573 · 302** | **21,4 à 26,6 · 33,6 à 57,1 · 43,7 à 91,6** | **1,4 à 1,7 s · 21 à 25 sur 38** |
+| 150 m · 80 m | 94 | 16 505 · 228 | 16,4 à 19,4 · 25,1 à 46,3 · 37,8 à 99,7 | 0,85 s · 10 à 14 sur 21 |
+| 100 m · 100 m | 146 | 14 803 à 14 935 · 213 | 14,4 à 17,0 · 22,2 à 42,0 · 32,7 à 84,9 | 1,2 à 1,4 s · 9 à 18 sur 38 |
+
+Sans plafond, le budget de 33 ms est perdu (médiane 50 ms, 29 s de saccades). **Parade** : rayon construit plafonné
+(`vue3d.js > RAYON_RECUL_MAX`, 100 m) ; au-delà, sol, plafond, plan au sol 🗺️ et brouillard suivent seuls le rayon vu
+(`_rayonVue`) : le sol nu (ou le plan) sans structures. Vue de haut, tout le disque construit est à l'écran : le coût
+suit le rayon construit, pas le recul (appels comptés par objet dans le champ de la caméra : ~2 maillages par tuile,
+les panneaux sont une vingtaine). Médiane à 150 m sous le budget (21 à 27 ms) ; le p95 le frôle ou le dépasse sur un
+poste chargé. 80 m est le repli si un vrai iPhone peine. Tas JS 87 à 111 Mo dans tous les cas (arrondi de Chromium,
+non discriminant). Le plan au sol garde 1 024 px au doigt : à 150 m, 828 m de côté, ~0,8 m par pixel.
+
 ### Mode galerie
 
 Réseau **synthétique** (`KTA_V3D_PERF=galerie`) : 26 tracés est-ouest et 26 nord-sud tous les 12 m sur 300 m, un
@@ -610,7 +637,7 @@ du plan (collecte, grille des volumes, index, empreinte), pas les tuiles. Non me
 | 8 bis | Lampe (QCM du 03/11/2026, revu le même jour) | Réglages ⚙️ retenus sur l'appareil : **intensité** en curseur de 25 à 300 % (100 % = la lampe d'origine ; plus haut, plus loin : force, décroissance, coupure, halo et brouillard suivent ; l'ancienne Forte = 200 %), **faisceau** en curseur de 40 à 160° de cône (71° par défaut ; la pénombre grandit avec la largeur, un faisceau large se fond dans le noir), **☀️ Plein jour** en interrupteur (ambiance de la vue plongeante, brouillard gardé à la portée) ; multiplié au facteur lampe d'une greffe ; une greffe qui le demande (`reglagesFiges`, le jeu) fige portée à 30 m, 100 %, 71° et Plein jour coupé, réglages rendus au retrait |
 | 8 quater | Cavage dans une galerie plus large que son tracé (retour terrain du 03/11/2026) | La porte garde la largeur du tracé ; de la pierre de taille comble, côté par côté, l'espace du cadre à la structure la plus proche (au plus 3 m), du sol au plafond, et bloque le pas comme la porte fermée, porte ouverte comprise (seule son ouverture laisse passer) ; rien en rendu galerie ; itinéraire 2D inchangé |
 | 8 quinquies | Cône d'un puits comblé (bug du 04/11/2026 ; révise la règle du 02/11/2026 « le cône arrête ») | Le cône d'éboulis de `pc` / `psf` **laisse toujours un passage**, comme le bassin : dans un tube, poussé vers la paroi du côté du POI juste assez pour laisser un corps (0,8 m) et 0,1 m de jeu en face ; enfoncé dans sa paroi plutôt que réduit (il garde sa taille, la roche en cache une part), centre au plus sur la paroi, rayon réduit seulement au-delà (galerie de moins de 1,8 m). On bute toujours sur le cône, on passe à côté ; la bouche ne bouge pas. Chambre, Structures, sans axe à 10 m : inchangé ; itinéraire 2D inchangé ; ruban 3D toujours par-dessus le cône quand il y passe |
-| 8 ter | Zoom de la vue plongeante (QCM du 03/11/2026) | Comme une carte : pincer, molette et + / − = zoom (recul de 6 à 60 m, 18,4 m par défaut) ; deux doigts glissés ensemble, Maj + molette et ▲ ▼ = inclinaison ; tuiles qui suivent le recul ; retenu tant que la vue est ouverte |
+| 8 ter | Zoom de la vue plongeante (QCM du 03/11/2026) | Comme une carte : pincer, molette et + / − = zoom (recul de 6 à 150 m, 18,4 m par défaut ; d'abord 60 m) ; deux doigts glissés ensemble, Maj + molette et ▲ ▼ = inclinaison ; tuiles qui suivent le recul ; retenu tant que la vue est ouverte |
 | — | Murs et piliers | Règle ajoutée : un mur est toujours sous un pilier ou un front de son niveau (modèle de scène) |
 | A bis | Mode mixte (QCM du 02/11/2026) | L'interrupteur exclusif devient **trois états Mixte / Structures / Galerie**, mixte par défaut, retenu par plan ; en mixte, structures partout, tubes seulement à plus de 3 m d'une structure, bouts ouverts dans les chambres, collisions des deux règles, zones et POI selon le lieu (tube ou chambre) |
 | A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🏛️ / 🛣️ écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **moellons de calcaire taillés** (assises à joints décalés), sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |

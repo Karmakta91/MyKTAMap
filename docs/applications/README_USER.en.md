@@ -545,7 +545,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 
 - **🧭 Follow / 🕹️ Free**: see above.
 - **✏️ Edit** (formerly bird's-eye view; or the V key): you see yourself from above, and it handles like a map.
-- ✏️ **Zoom** (from 6 to 60 m back): pinch with two fingers, mouse wheel, the **+ / −** buttons at the bottom right or the = / - keys. Zooming out, the scenery spreads with the view.
+- ✏️ **Zoom** (from 6 to 150 m back): pinch with two fingers, mouse wheel, the **+ / −** buttons at the bottom right or the = / - keys. Zooming out, the floor (and the 🗺️ plan on the floor, if on) spreads with the view; pillars, walls and points stay drawn up to 100 m around the centre of the view, to spare the phone.
 - ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or the small ▲ ▼ buttons next to + / −.
 - ✏️ Edit view, its zoom and its tilt are kept for this plan on this device: you find them again when you reopen the 3D view, even after reloading the app (on your place, with no tool chosen). A game that forbids Edit view opens at eye level without erasing this choice.
 - ✏️ **Free camera**: drag one finger (or the mouse) to move the view, like a map; your place, your tracker and your figure do not move. Two fingers turning turn the view (on a computer: right-click or Ctrl + drag, ↶ ↷). **⌖** (bottom right) brings you back to your place; so do walking (joystick, pad, arrows) and going back to eye level. In Edit view, the joystick only takes the bottom left corner.

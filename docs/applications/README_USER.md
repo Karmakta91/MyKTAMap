@@ -545,7 +545,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 
 - **🧭 Suivi / 🕹️ Libre** : voir ci-dessus.
 - **✏️ Édition** (ex-vue plongeante ; ou touche V) : tu te vois d'au-dessus, et elle se manie comme une carte.
-- ✏️ **Zoom** (de 6 à 60 m de recul) : pincer à deux doigts, molette, boutons **+ / −** en bas à droite ou touches = / -. En dézoomant, le décor s'étend avec la vue.
+- ✏️ **Zoom** (de 6 à 150 m de recul) : pincer à deux doigts, molette, boutons **+ / −** en bas à droite ou touches = / -. En dézoomant, le sol (et le plan au sol 🗺️ s'il est allumé) s'étend avec la vue ; piliers, murs et points restent dessinés jusqu'à 100 m autour du centre de la vue, pour ménager le téléphone.
 - ✏️ **Inclinaison** (de presque verticale à rasante) : glisser deux doigts ensemble vers le haut ou le bas, **Maj + molette**, PageUp / PageDown ou les petits boutons ▲ ▼ à côté de + / −.
 - ✏️ L'Édition, son zoom et son inclinaison sont retenus pour ce plan sur cet appareil : tu t'y retrouves en rouvrant la 3D, même après avoir rechargé l'app (sur ta place, sans outil choisi). Un jeu qui interdit l'Édition ouvre à hauteur d'yeux sans effacer ce choix.
 - ✏️ **Caméra libre** : glisse un doigt (ou la souris) pour déplacer la vue, comme une carte ; ta place, ton tracker et ta silhouette ne bougent pas. Deux doigts qui tournent tournent la vue (au PC : clic droit ou Ctrl + glisser, ↶ ↷). **⌖** (en bas à droite) te ramène sur ta place ; marcher (joystick, pavé, flèches) ou revenir à hauteur d'yeux aussi. En Édition, le joystick n'occupe que le coin bas gauche.

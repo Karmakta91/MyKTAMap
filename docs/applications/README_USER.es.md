@@ -545,7 +545,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 
 - **🧭 Seguimiento / 🕹️ Libre**: ver arriba.
 - **✏️ Edición** (antes vista aérea; o la tecla V): te ves desde arriba, y se maneja como un mapa.
-- ✏️ **Zoom** (de 6 a 60 m de distancia): pellizca con dos dedos, rueda del ratón, botones **+ / −** abajo a la derecha o teclas = / -. Al alejar, el decorado se extiende con la vista.
+- ✏️ **Zoom** (de 6 a 150 m de distancia): pellizca con dos dedos, rueda del ratón, botones **+ / −** abajo a la derecha o teclas = / -. Al alejar, el suelo (y el plano en el suelo 🗺️ si está activado) se extiende con la vista; pilares, muros y puntos siguen dibujados hasta 100 m alrededor del centro de la vista, para no cargar el teléfono.
 - ✏️ **Inclinación** (de casi vertical a rasante): desliza dos dedos juntos hacia arriba o abajo, **Mayús + rueda**, RePág / AvPág o los botoncitos ▲ ▼ junto a + / −.
 - ✏️ La Edición, su zoom y su inclinación se conservan para este plano en este dispositivo: los encuentras al volver a abrir la 3D, incluso tras recargar la app (en tu lugar, sin herramienta elegida). Un juego que prohíbe la Edición abre a la altura de los ojos sin borrar esta elección.
 - ✏️ **Cámara libre**: desliza un dedo (o el ratón) para mover la vista, como un mapa; tu lugar, tu tracker y tu silueta no se mueven. Dos dedos que giran giran la vista (en PC: clic derecho o Ctrl + arrastrar, ↶ ↷). **⌖** (abajo a la derecha) te devuelve a tu lugar; también caminar (joystick, teclado, flechas) o volver a la altura de los ojos. En Edición, el joystick solo ocupa la esquina inferior izquierda.
