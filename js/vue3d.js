@@ -245,12 +245,13 @@
   const CHATIERE = { long: 1.8, trou: 0.6, oeil: 0.35, approche: 1, deborde: 0.3 };
   // Profil du trou (part de `trou`, t en travers, y vers le haut) : bas droit, flancs puis voûte cassée.
   const PROFIL_CHATIERE = [[-0.5, 0], [0.5, 0], [0.5, 0.6], [0.36, 0.86], [0, 1], [-0.36, 0.86], [-0.5, 0.6]];
-  // Plaque indicatrice (plaque) : plaque émaillée de `l` × `h` m, `ep` d'épaisseur, centrée à `y` m (et au moins
-  // `plafond` m sous le plafond), à `recul` m de la paroi ; nom du POI dessiné au canvas de `px` px de large (une
-  // texture par nom, au plus `max` vivantes : au-delà, la plaque unie). Couleurs de la scène (plaque de rue
+  // Plaque indicatrice (plaque) : plaque émaillée de `l` × `h` m au moins, élargie au nom jusqu'à `lMax` m puis sur
+  // deux lignes (_mesurePlaque), `ep` d'épaisseur, centrée à `y` m (et au moins `plafond` m sous le plafond), à
+  // `recul` m de la paroi ; nom du POI dessiné au canvas à `pxm` px par mètre, police de `police` × `h` (une texture
+  // par nom, au plus `max` vivantes : au-delà, la plaque unie). Couleurs de la scène (plaque de rue
   // émaillée), pas de la charte de l'UI. Le nom reste avec 🧱 coupé (décision produit : c'est un repère).
-  const PLAQUE = { l: 0.6, h: 0.3, ep: 0.015, y: 1.45, plafond: 0.3, recul: 0.01, px: 256, max: 32,
-    fond: "#1f3d7a", texte: "#f2f4f8", bord: 0.03 };
+  const PLAQUE = { l: 0.6, lMax: 1, h: 0.3, police: 0.42, ep: 0.015, y: 1.45, plafond: 0.3, recul: 0.01, pxm: 400,
+    max: 32, fond: "#1f3d7a", texte: "#f2f4f8", bord: 0.03 };
   // Épure (epure) : trait gravé clair sur la paroi, `larg` m de trait, à `recul` m d'elle, centré à `y` m ; dessin
   // de `l` m (ligne, deux talons, une croix, une flèche). Géométrie seule : rien à couper avec 🧱. Couleur de la
   // scène (trait clair sur la pierre).
@@ -265,7 +266,7 @@
   // de `garde` m au-dessus du sol jusqu'à `caisse` m, habitacle jusqu'au toit (vehiculeH, borné sous le plafond),
   // de `hab` de la longueur, en retrait de `retrait` m sur les côtés ; quatre roues de `roue` m de rayon et
   // `roueL` m de large, à 0,2 m des bouts. Couleurs de la scène, sobres (pas de la charte de l'UI).
-  const VEHICULE = { garde: 0.25, caisse: 0.9, hab: 0.55, retrait: 0.12, roue: 0.32, roueL: 0.22,
+  const VEHICULE = { garde: 0.2, caisse: 0.8, hab: 0.6, retrait: 0.1, roue: 0.28, roueL: 0.18,
     cotes: 12, carrosserie: "#59616b", vitre: "#1d2228", pneu: "#1b1b1b" };
   // Geste d'un passage : fondu noir de `fondu` ms de part et d'autre de la bascule ; descente / montée de `ms` en tout
   // (la moitié dans chaque niveau), la caméra passant `auDela` m sous le sol ou au-dessus du plafond ; bandeau
@@ -1591,7 +1592,10 @@
   // Panneau d'un POI ajouté au groupe d'une tuile, avec le halo au sol d'un danger (anneau et disque pâle, rouge de
   // la charte, non éclairés). Le halo suit la place du panneau (_majPanneaux : face du pilier vue) et reste montré
   // de près, quand le panneau s'efface : on se tient dessus.
-  function _ajouterPanneau(groupe, p, ou) {
+  // ⚠️ contrat (décision produit) : un POI dont la plaque est posée sur une paroi n'a pas de panneau (la plaque porte
+  // son nom, _plaque) ; `force` : le panneau de la plaque unie, au-delà de PLAQUE.max noms.
+  function _ajouterPanneau(groupe, p, ou, force) {
+    if (!force && _e.plaquesParoi && _e.plaquesParoi.has(p._v3dJonction || p)) return null;
     const sp = _panneau(p, ou);
     if (!sp) return null;
     groupe.add(sp);
@@ -2730,6 +2734,8 @@
     (e.volPassages || []).forEach(_libererVolume);
     e.placesPassage = new Map();
     e.volPassages = _volumesDuNiveau(d);
+    e.plaquesParoi = new Set(e.volPassages.filter(function (v) { return v.forme === "plaque" && v.point; })
+      .map(function (v) { return v.point; }));
     e.volumesIti = e.volumesIti.concat(_volumesItiAcces(e.volPassages));
     const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
     e.tuiles = _indexer(Object.assign({}, d, { roads: plan }), e.sc, e.tuilesActives ? TUILE : 0);
@@ -2904,7 +2910,12 @@
     if (v.obj.parent === e.scene) {
       v.obj.traverse(function (o) {
         if (o.geometry && !o.isSprite) o.geometry.dispose();
-        if (o.isSprite && o.material) o.material.dispose();   // texture du ciel : celle de la vue (_e.texCiel)
+        // Texture du ciel : celle de la vue (_e.texCiel) ; un panneau (plaque unie) a la sienne.
+        if (o.isSprite && o.material) {
+          if (o.userData.poi && o.material.map) o.material.map.dispose();
+          o.material.dispose();
+        }
+        if (o.isSprite) e.panneaux.delete(o);
         if (o.userData.plaqueNom !== undefined) _rendrePlaque(o.userData.plaqueNom);   // texture partagée par nom
       });
       e.scene.remove(v.obj);
@@ -3175,7 +3186,7 @@
       v.b = _demiLargeurGalerie(v.cx, v.cz);
       v.a = CHATIERE.long / 2;
     } else if (v.surParoi) {
-      v.a = Math.max(PLAQUE.l, EPURE.l, PORTAIL.l) / 2;
+      v.a = Math.max(PLAQUE.lMax, EPURE.l, PORTAIL.l) / 2;
       v.b = PORTAIL.ep;
     } else if (v.vehicule) {
       v.a = D.vehiculeL / 2;
@@ -3432,24 +3443,28 @@
       uv ? [u0, 0, u1, 0, u1, 1, u0, 1] : undefined);
   }
 
-  // Plaque émaillée : chants (fond de la plaque, uni) et face au nom du POI (_texPlaque, 🧱 allumé ou coupé), unie
-  // à liseré clair au-delà de PLAQUE.max noms vivants.
+  // Plaque émaillée : chants (fond de la plaque, uni) et face au nom du POI (_texPlaque, 🧱 allumé ou coupé), à la
+  // taille du nom (_mesurePlaque) ; unie à liseré clair au-delà de PLAQUE.max noms vivants, son panneau gardé alors
+  // (le nom n'y est plus). ⚠️ contrat (décision produit) : une plaque posée porte le nom, le POI n'a pas de panneau
+  // (_sansPanneau) ; toucher la plaque ouvre sa fiche (_plaqueVisee).
   function _plaque(v, lots, g) {
-    const e = _e, F = _faceParoi(v), L = PLAQUE.l / 2, ep = PLAQUE.ep, r = PLAQUE.recul, B = PLAQUE.bord;
-    const y = Math.min(PLAQUE.y, e.hauteur - PLAQUE.plafond - PLAQUE.h / 2), y0 = y - PLAQUE.h / 2, y1 = y0 + PLAQUE.h;
+    const e = _e, F = _faceParoi(v), ep = PLAQUE.ep, r = PLAQUE.recul, B = PLAQUE.bord;
+    const nom = _nomPlaque(v.point), m = _mesurePlaque(nom), L = m.l / 2, h = m.h;
+    const y = Math.min(PLAQUE.y, e.hauteur - PLAQUE.plafond - h / 2), y0 = y - h / 2, y1 = y0 + h;
     const fond = _couleurFixe(PLAQUE.fond);
     const p = F.Q(-L, r), q = F.Q(L, r), p2 = F.Q(-L, r + ep), q2 = F.Q(L, r + ep);
     [[y1, 1], [y0, -1]].forEach(function (c) {
       lots.opaque.quad([p[0], c[0], p[1]], [q[0], c[0], q[1]], [q2[0], c[0], q2[1]], [p2[0], c[0], p2[1]],
         [0, c[1], 0], fond);
     });
-    const nom = String((v.point && (v.point.nom || v.point.name || v.point.id)) || "").slice(0, 60);
-    const t = _texPlaque(nom);
-    v.trace = { plaqueY: +y.toFixed(3), texture: !!t, nom: nom };
+    const t = _texPlaque(nom, m);
+    v.trace = { plaqueY: +y.toFixed(3), texture: !!t, nom: nom, plaqueL: +m.l.toFixed(3), plaqueH: +h.toFixed(3),
+      lignes: m.lignes.slice(), taillePx: m.taille, coupe: m.lignes.join(" ") !== nom.split(/\s+/).join(" ") };
     if (!t) {
       _rectParoi(lots.opaque, F, -L, L, y0, y1, r + ep, fond);
       _rectParoi(lots.opaque, F, -L + B, L - B, y0 + B, y1 - B, r + ep + 0.002, _couleurFixe(PLAQUE.texte));
       _rectParoi(lots.opaque, F, -L + 1.6 * B, L - 1.6 * B, y0 + 1.6 * B, y1 - 1.6 * B, r + ep + 0.004, fond);
+      if (v.point) _ajouterPanneau(g, v.point, _placePanneau(v.point) || [v.cx, v.cz], true);
       return;
     }
     const face = new Lot();
@@ -3458,36 +3473,61 @@
     me.matrixAutoUpdate = false;
     me.userData.famille = "plaque";
     me.userData.plaqueNom = nom;
+    me.userData.plaquePoint = v.point || null;
     g.add(me);
   }
 
-  // Texture et matériau d'une plaque au nom `nom`, partagés par toutes les plaques de ce nom à portée (compte de
-  // références, rendu par _libererVolume) → { tex, mat, n, octets } | null au-delà de PLAQUE.max noms vivants.
-  function _texPlaque(nom) {
+  // 🩸 Nom entier (le panneau en garde 120 caractères) : une plaque ne coupe jamais le nom, elle s'élargit puis passe
+  // sur deux lignes, puis réduit la police (_mesurePlaque).
+  function _nomPlaque(p) { return String((p && (p.nom || p.name || p.id)) || "").slice(0, 120); }
+
+  // Taille d'une plaque au nom `nom` → { l, h (m), lignes, taille (px de police), W, H (px de texture) }. Police de
+  // PLAQUE.police de la hauteur d'une ligne ; une ligne si le nom tient dans PLAQUE.lMax (plaque élargie de PLAQUE.l
+  // à lMax), sinon deux lignes équilibrées (coupées entre deux mots) ; ce qui dépasse encore réduit la police.
+  function _mesurePlaque(nom) {
+    const e = _e, R = PLAQUE.pxm, B = PLAQUE.bord, marge = 4 * B * R;
+    const ctx = (e.ctxPlaque || (e.ctxPlaque = document.createElement("canvas").getContext("2d")));
+    const police = function (px) { return "700 " + px + "px system-ui, -apple-system, sans-serif"; };
+    let taille = Math.round(PLAQUE.h * PLAQUE.police * R);
+    ctx.font = police(taille);
+    const large = function (t) { return ctx.measureText(t).width; };
+    const utile = PLAQUE.lMax * R - marge;
+    let lignes = [nom];
+    const mots = nom.split(/\s+/).filter(Boolean);
+    if (large(nom) > utile && mots.length > 1) {
+      let mieux = null;
+      for (let k = 1; k < mots.length; k++) {
+        const a = mots.slice(0, k).join(" "), b = mots.slice(k).join(" "), w = Math.max(large(a), large(b));
+        if (!mieux || w < mieux.w) mieux = { w: w, l: [a, b] };
+      }
+      lignes = mieux.l;
+    }
+    const plusLarge = function () { return Math.max.apply(null, lignes.map(large)); };
+    while (taille > 8 && plusLarge() > utile) { taille--; ctx.font = police(taille); }
+    const pasLigne = lignes.length > 1 ? 1.15 * taille : 0;
+    const W = Math.round(Math.min(PLAQUE.lMax * R, Math.max(PLAQUE.l * R, plusLarge() + marge)));
+    const H = Math.round(lignes.length > 1 ? Math.max(PLAQUE.h * R, pasLigne + taille + marge) : PLAQUE.h * R);
+    return { l: W / R, h: H / R, lignes: lignes, taille: taille, W: W, H: H, pas: pasLigne };
+  }
+
+  // Texture et matériau d'une plaque au nom `nom` (mesure `m` : _mesurePlaque), partagés par toutes les plaques de ce
+  // nom à portée (compte de références, rendu par _libererVolume) → { tex, mat, n, octets } | null au-delà de
+  // PLAQUE.max noms vivants.
+  function _texPlaque(nom, m) {
     const e = _e;
     let t = e.plaques.get(nom);
     if (t) { t.n++; return t; }
     if (e.plaques.size >= PLAQUE.max) return null;
-    const W = PLAQUE.px, H = Math.round(W * PLAQUE.h / PLAQUE.l), cv = document.createElement("canvas");
+    const W = m.W, H = m.H, cv = document.createElement("canvas");
     cv.width = W; cv.height = H;
-    const ctx = cv.getContext("2d"), b = Math.round(W * PLAQUE.bord / PLAQUE.l);
+    const ctx = cv.getContext("2d"), b = Math.round(PLAQUE.bord * PLAQUE.pxm);
     ctx.fillStyle = PLAQUE.fond; ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = PLAQUE.texte; ctx.lineWidth = Math.max(2, b / 2);
     ctx.strokeRect(b, b, W - 2 * b, H - 2 * b);
     ctx.fillStyle = PLAQUE.texte; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    // Nom sur une ligne : police réduite jusqu'à tenir (3 crans au plus), puis coupé avec « … ».
-    const largeur = W - 4 * b;
-    const police = function (px) { return "700 " + px + "px system-ui, -apple-system, sans-serif"; };
-    let taille = Math.round(H * 0.42), txt = nom;
-    ctx.font = police(taille);
-    for (let k = 0; k < 3 && ctx.measureText(txt).width > largeur; k++) {
-      taille = Math.round(taille * 0.82);
-      ctx.font = police(taille);
-    }
-    if (ctx.measureText(txt).width > largeur) {
-      while (txt.length > 1 && ctx.measureText(txt + "…").width > largeur) txt = txt.slice(0, -1);
-    }
-    ctx.fillText(txt === nom ? txt : txt + "…", W / 2, H / 2 + 1);
+    ctx.font = "700 " + m.taille + "px system-ui, -apple-system, sans-serif";
+    const y0 = H / 2 - m.pas * (m.lignes.length - 1) / 2 + 1;
+    m.lignes.forEach(function (l, i) { ctx.fillText(l, W / 2, y0 + i * m.pas); });
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
@@ -4720,6 +4760,8 @@
       return true;
     }
     if (hit) return _ouvrirFiche(hit.object.userData.poi.point);
+    const plaque = _plaqueVisee();
+    if (plaque) return _ouvrirFiche(plaque);
     // ⚠️ contrat (décision produit) : réglage ⚙️ coupé, structure, zone ou tracé touchés n'ouvrent rien (le POI, si).
     if (!_fichesObjets()) return false;
     const o = _objetAuPoint(_pointVise());
@@ -4774,6 +4816,19 @@
         sol: o === e.sol || o.userData.famille === "sol" };
     }
     return null;
+  }
+
+  // POI dont la plaque (au nom, sans panneau : _plaque) est sous le rayon, devant toute paroi, ou null.
+  function _plaqueVisee() {
+    const e = _e, cibles = [];
+    (e.volPassages || []).forEach(function (v) {
+      if (!v.obj || v.forme !== "plaque") return;
+      v.obj.children.forEach(function (o) { if (o.userData.plaquePoint && _montreDansScene(o)) cibles.push(o); });
+    });
+    const h = cibles.length ? e.rayon.intersectObjects(cibles, false)[0] : null;
+    if (!h) return null;
+    const devant = _pointVise();
+    return devant && devant.dist < h.distance - 0.05 ? null : h.object.userData.plaquePoint;
   }
 
   // Distance (px) de p au contour (fermé ou non) d'une liste de points.

@@ -2172,9 +2172,10 @@ async function sectionConePassage(page) {
 // § 14 septies — Formes des POI sans passage (formes FICTIVES en mémoire, galerie principale de 2,5 m à z = 0) :
 // chatière (roche en travers, trou de 0,6 m, rien ne bloque, caméra abaissée en la traversant puis remontée, en libre
 // et en suivi, ctx.libre ouvert), plaque (à plat sur la paroi du côté du POI, sur l'axe à gauche du tracé, texture au
-// nom, une par nom, bornée, gardée avec 🧱 coupé), épure (traits sur la paroi), portail (cadre allumé
+// nom, une par nom, bornée, gardée avec 🧱 coupé ; aucun panneau, le toucher de la plaque ouvre la fiche ; plaque
+// élargie au nom jusqu'à 1 m puis sur deux lignes, nom jamais coupé), épure (traits sur la paroi), portail (cadre allumé
 // avec une liaison fictive, éteint sans ; fiche « Passer au plan », confirmation au-dessus de la vue, annuler garde
-// la vue, confirmer la ferme ; aucun bouton sans liaison), véhicule (dans la galerie, le long de l'axe, arrête le
+// la vue, confirmer la ferme ; aucun bouton sans liaison), véhicule (citadine de 3,2 × 1,4 × 1,3 m, dans la galerie, le long de l'axe, arrête le
 // pas, ctx.libre fermé, survol en vue d'édition). Rendu structures : plaque, épure et portail sans paroi = panneau
 // seul ; tag sans forme = aucun volume. Point lié sans le tag portail : « Passer au plan » aussi, et ➜ de sa fiche
 // ferme la vue après la confirmation. 50 plaques : mémoire des textures mesurée.
@@ -2216,7 +2217,8 @@ async function sectionFormesPoi(page) {
       poi("pt_f_pl_axe", "plaque", 5, 0, "Plaque sur l'axe"), poi("pt_f_ep", "epure", 10, 1.5, "Épure fictive"),
       poi("pt_f_def", "default", 12, -1.5, "Sans forme"), poi("pt_f_po_lie", "portail", 20, 1.5, "Portail lié"),
       poi("pt_f_po_seul", "portail", 25, -1.5, "Portail seul"),
-      poi("pt_f_veh", "vehicule", 40, 0.5, "Véhicule fictif")];
+      poi("pt_f_veh", "vehicule", 40, 0.5, "Véhicule fictif"),
+      poi("pt_f_pl_long", "plaque", -11, 2, "Galerie fictive des anciens carriers du moulin")];
     window.setStructures([]); window.setZones([]);
     window.setRoads([{ uid: "rd_f_p", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
     window.setEditorPoints(POIS);
@@ -2268,12 +2270,41 @@ async function sectionFormesPoi(page) {
       const pick = function (v) {
         return v ? { construit: v.construit, place: rel(v), cote: v.cote, trace: { trou: v.trou, hautTrou: v.hautTrou,
           long: v.long, largeur: v.largeur, plaqueY: v.plaqueY, texture: v.texture, nom: v.nom, epureY: v.epureY,
-          traits: v.traits, allume: v.allume, large: v.large, haut: v.haut }, roche: v.roche, familles: v.familles,
+          traits: v.traits, allume: v.allume, large: v.large, haut: v.haut, plaqueL: v.plaqueL, plaqueH: v.plaqueH,
+          lignes: v.lignes, coupe: v.coupe, taillePx: v.taillePx }, roche: v.roche, familles: v.familles,
           triangles: v.triangles } : null;
       };
       o.chat = pick(vol("chatiere"));
       o.plN = pick(vol("plaque", "pt_f_pl_n")); o.plS = pick(vol("plaque", "pt_f_pl_s"));
-      o.plAxe = pick(vol("plaque", "pt_f_pl_axe"));
+      o.plAxe = pick(vol("plaque", "pt_f_pl_axe")); o.plLong = pick(vol("plaque", "pt_f_pl_long"));
+      // Panneaux : aucun pour une plaque posée (elle porte le nom), gardé pour une plaque sans paroi.
+      o.panPlaques = K.etat().panneaux.filter(function (q) {
+        return ["Rue Fictive", "Impasse Fictive", "Plaque sur l'axe", POIS[9].nom].indexOf(q.nom) >= 0;
+      }).length;
+      o.panEpure = K.etat().panneaux.filter(function (q) { return q.nom === "Épure fictive"; }).length;
+      if (rendu === "mixte") {
+        // Toucher la plaque (vraie souris, à hauteur d'yeux, face à la paroi nord) : la fiche du POI s'ouvre.
+        const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+        const vp = vol("plaque", "pt_f_pl_n");
+        o.tapPlaque = null;
+        for (const cap of [0, 180]) {
+          if (!vp || o.tapPlaque) break;
+          K.placer(P(-5, -0.3).x, P(-5, -0.3).y, cap);
+          await images(3);
+          const c = new ctx.THREE.Vector3(vp.x / sc, vp.plaqueY, vp.y / sc).project(ctx.camera);
+          if (Math.abs(c.x) > 0.9 || Math.abs(c.y) > 0.9 || c.z > 1) continue;
+          const ev = { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true,
+            clientX: rc.left + (c.x + 1) / 2 * rc.width, clientY: rc.top + (1 - c.y) / 2 * rc.height, button: 0 };
+          cv.dispatchEvent(new PointerEvent("pointerdown", ev));
+          await pause(40);
+          cv.dispatchEvent(new PointerEvent("pointerup", ev));
+          await pause(150);
+          const f = K.etat().fiche;
+          o.tapPlaque = { cap: cap, fiche: !!f, nom: f && f.nom };
+          if (f) document.querySelector('#kta-vue3d [data-v3d="ficheFermer"]').click();
+          await pause(80);
+        }
+      }
       o.ep = pick(vol("epure")); o.def = !!vol("default");
       o.poLie = pick(vol("portail", "pt_f_po_lie")); o.poSeul = pick(vol("portail", "pt_f_po_seul"));
       o.veh = pick(vol("vehicule"));
@@ -2549,17 +2580,27 @@ async function sectionFormesPoi(page) {
     k + " : plaques à plat sur la paroi du côté du POI (nord, sud ; sur l'axe : à gauche du tracé)",
     [o.plN && o.plN.place, o.plS && o.plS.place, o.plAxe && o.plAxe.place]);
     verifier(o.plN.trace.texture && o.plN.trace.nom === "Rue Fictive" && o.plN.familles.indexOf("plaque") >= 0 &&
-      o.plaques && o.plaques.noms.indexOf("Rue Fictive") >= 0 && o.plaques.n === 3,
-    k + " : plaque à la texture de son nom (3 noms, 3 textures)", o.plaques);
+      o.plaques && o.plaques.noms.indexOf("Rue Fictive") >= 0 && o.plaques.n === 4,
+    k + " : plaque à la texture de son nom (4 noms, 4 textures)", o.plaques);
+    verifier(o.panPlaques === 0, k + " : plaque posée sur la paroi = aucun panneau flottant (elle porte le nom)",
+      o.panPlaques);
+    const lc = o.plN.trace, ll = o.plLong && o.plLong.trace, nomLong = "Galerie fictive des anciens carriers du moulin";
+    verifier(lc.lignes.length === 1 && lc.plaqueL >= 0.6 && lc.plaqueL <= 1 && !lc.coupe &&
+      o.plAxe.trace.plaqueL <= 1.001 && !o.plAxe.trace.coupe && o.plAxe.trace.lignes.join(" ") === "Plaque sur l'axe",
+    k + " : nom court sur une ligne, plaque élargie à " + lc.plaqueL + " m (0,6 à 1 m) ; « Plaque sur l'axe » en " +
+      o.plAxe.trace.lignes.length + " ligne(s), entier", [lc, o.plAxe.trace]);
+    verifier(!!ll && ll.lignes.length === 2 && ll.lignes.join(" ") === nomLong && !ll.coupe && ll.plaqueL <= 1.001 &&
+      ll.plaqueH >= 0.3, k + " : nom long sur deux lignes, jamais coupé (« " + (ll && ll.lignes.join(" / ")) + " », " +
+      (ll && ll.plaqueL) + " × " + (ll && ll.plaqueH) + " m, police " + (ll && ll.taillePx) + " px)", ll);
     verifier(!!o.ep && pr(o.ep.place[1], 1.25) && o.ep.cote === 1 && o.ep.trace.traits === 7 && !o.def,
       k + " : épure tracée sur la paroi du côté du POI ; un POI sans forme n'a aucun volume", { ep: o.ep, def: o.def });
     verifier(!!o.poLie && !!o.poSeul && o.poLie.trace.allume === true && o.poSeul.trace.allume === false &&
       pr(o.poLie.place[1], 1.25) && pr(o.poSeul.place[1], -1.25) && o.poLie.familles.indexOf("cadre") >= 0,
     k + " : portail lié = cadre lumineux, portail sans liaison = cadre éteint, contre la paroi", [o.poLie, o.poSeul]);
-    verifier(!!o.veh && o.veh.construit && pr(o.veh.place[1], 0.35) && pr(o.veh.trace.long, 4) &&
-      pr(o.veh.trace.large, 1.8) && pr(o.veh.trace.haut, 1.5),
-    k + " : véhicule de 4 × 1,8 × 1,5 m dans la galerie, du côté du POI (gardé entre les parois)", o.veh);
-    verifier(o.vehA < 37.7 && o.vehA > 37 && o.vehR > 42.3 && o.vehR < 43 && !o.ctxVeh,
+    verifier(!!o.veh && o.veh.construit && pr(o.veh.place[1], 0.5) && pr(o.veh.trace.long, 3.2) &&
+      pr(o.veh.trace.large, 1.4) && pr(o.veh.trace.haut, 1.3),
+    k + " : véhicule de 3,2 × 1,4 × 1,3 m (citadine) dans la galerie, du côté du POI (gardé entre les parois)", o.veh);
+    verifier(o.vehA < 38.1 && o.vehA > 37.4 && o.vehR > 41.9 && o.vehR < 42.6 && !o.ctxVeh,
       k + " : véhicule bloque le pas (butée à " + o.vehA + " et " + o.vehR + " m) ; ctx.libre fermé",
       { a: o.vehA, r: o.vehR, ctx: o.ctxVeh });
     verifier(o.vehEdition > 41 && o.ramperEdition === 0,
@@ -2569,8 +2610,11 @@ async function sectionFormesPoi(page) {
   const S = R.structures;
   verifier(!!S.chat && S.chat.construit && !S.plN && !S.ep && !S.poLie && !!S.veh && !S.def,
     "structures : chatière et véhicule au POI ; plaque, épure et portail sans paroi = panneau seul", S);
+  verifier(S.panPlaques === 4, "structures : plaque sans paroi = son panneau gardé (4 panneaux)", S.panPlaques);
+  verifier(!!R.mixte.tapPlaque && R.mixte.tapPlaque.fiche && R.mixte.tapPlaque.nom === "Rue Fictive",
+    "toucher la plaque (sans panneau) ouvre la fiche de son POI", R.mixte.tapPlaque);
   const T = R.sansTx;
-  verifier(T.pl === true && T.plNom === "Rue Fictive" && T.plFam.indexOf("plaque") >= 0 && T.plaques.n === 3 &&
+  verifier(T.pl === true && T.plNom === "Rue Fictive" && T.plFam.indexOf("plaque") >= 0 && T.plaques.n === 4 &&
     T.chatRoche === 0 && T.chatTri > 0 && T.ep === 7 && T.po === true && T.veh && R.avecTx.n === T.avant.n,
   "🧱 coupé : la plaque garde son nom (" + T.plaques.n + " textures), chatière unie, épure, portail et véhicule " +
   "gardés ; rallumé, " + R.avecTx.n + " textures", T);
@@ -2610,7 +2654,7 @@ async function sectionFormesPoi(page) {
 // d'édition. Liaison fictive du portail lié, retirée à la fin (restaurerFormes).
 async function capturesFormes(page) {
   const vues = [["formes-chatiere-face", -23.5, 0, 90], ["formes-chatiere-dedans", -20.3, 0, 90],
-    ["formes-plaque", -5, -0.2, 180], ["formes-epure", 10, -0.3, 180], ["formes-portail-lie", 20, -0.9, 180],
+    ["formes-plaque", -5, -0.2, 180], ["formes-plaque-long", -11, -0.2, 180], ["formes-epure", 10, -0.3, 180], ["formes-portail-lie", 20, -0.9, 180],
     ["formes-portail-seul", 25, 0.9, 0], ["formes-vehicule", 33, -0.6, 90], ["formes-edition", -2, 0, 90, true]];
   for (const q of vues) {
     await page.evaluate(async function (c) {
@@ -2638,7 +2682,8 @@ async function capturesFormes(page) {
           poi("pt_f_pl_n", "plaque", -5, 2, "Rue Fictive"), poi("pt_f_ep", "epure", 10, 1.5, "Épure fictive"),
           poi("pt_f_po_lie", "portail", 20, 1.5, "Portail lié"),
           poi("pt_f_po_seul", "portail", 25, -1.5, "Portail seul"),
-          poi("pt_f_veh", "vehicule", 40, 0.5, "Véhicule fictif")];
+          poi("pt_f_veh", "vehicule", 40, 0.5, "Véhicule fictif"),
+          poi("pt_f_pl_long", "plaque", -11, 2, "Galerie fictive des anciens carriers du moulin")];
         window.setEditorPoints(pts);
         const lie = pts[3], L = window.InterPlanLinks;
         if (L) {

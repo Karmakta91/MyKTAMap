@@ -112,8 +112,8 @@
   // vue3d.js > RAYON_CORPS) entre la margelle et la paroi d'en face (_placeVolume) ; voiture de `vehiculeL` de long,
   // `vehiculeW` de large et `vehiculeH` de haut (son emprise au sol est l'obstacle).
   const ACCES_DIM = { rond: 2.5, bassin: 1.6, margelle: 0.2, margelleH: 0.4, eau: 0.8, fond: 1.2, cone: 0.9,
-    coneH: 0.6, porteDefaut: 2, porteEp: 0.2, porteDeborde: 0.4, bassinLibre: 0.8, vehiculeL: 4, vehiculeW: 1.8,
-    vehiculeH: 1.5 };
+    coneH: 0.6, porteDefaut: 2, porteEp: 0.2, porteDeborde: 0.4, bassinLibre: 0.8, vehiculeL: 3.2, vehiculeW: 1.4,
+    vehiculeH: 1.3 };
   const CONE_MIN_M = 0.05;          // rayon de cône plus petit (galerie de moins de 0,95 m) : aucun cône
   // 🩸 Jeu laissé en plus d'un corps à côté d'un cône : un passage de bassinLibre tout juste, le corps touche le cône
   // et la paroi d'en face à la fois, et la règle du pas (rayons de RAYON_CORPS, bord compris) l'arrête.

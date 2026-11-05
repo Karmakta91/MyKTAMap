@@ -1673,9 +1673,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   long de l'axe (`_surParoi` ; sur l'axe à 1 cm près : à gauche du sens du tracé) ; sans tube à cette place
   (rendu structures, chambre, aucun axe à `PROCHE_M`), aucune forme, le panneau seul. 🩸 Un côté de tube ouvert par
   une structure proche (mixte) n'a pas de paroi : la forme y est posée quand même, à w de l'axe. Plaque émaillée
-  0,6 × 0,3 m à 1,45 m, au nom du POI (canvas 256 × 128, **une texture par nom**, partagée et comptée, rendue avec
-  le dernier volume qui la porte, au plus `PLAQUE.max` = 32 vivantes : au-delà, plaque unie ; 50 plaques de noms
-  différents = 32 textures, 4 Mo hors mipmaps ; le nom reste avec 🧱 coupé, décision produit : un repère). Épure :
+  à 1,45 m, au nom du POI, **à la taille du nom** (`_mesurePlaque`, texte mesuré au canvas à 400 px/m, police de
+  0,126 m) : 0,3 m de haut, de 0,6 m élargie jusqu'à 1 m, puis deux lignes équilibrées (coupées entre deux mots),
+  puis police réduite : le nom n'est **jamais coupé** (120 caractères, comme le panneau). **Une texture par nom**,
+  partagée et comptée, rendue avec le dernier volume qui la porte, au plus `PLAQUE.max` = 32 vivantes : au-delà,
+  plaque unie ; 50 plaques de noms différents = 32 textures, ~5 Mo hors mipmaps ; le nom reste avec 🧱 coupé,
+  décision produit : un repère. ⚠️ contrat (décision produit) : **une plaque posée n'a pas de panneau flottant**
+  (`_ajouterPanneau` saute les POI de `e.plaquesParoi`, relu à chaque `_reindexer`) ; toucher la plaque ouvre la
+  fiche du POI comme son panneau (`_toucher` → `_plaqueVisee`, devant toute paroi). Plaque sans paroi (structures,
+  chambre) : le panneau seul ; plaque unie (au-delà de 32 noms) : son panneau revient, posé avec le volume. Épure :
   sept traits clairs
   (géométrie seule, rien à couper). Portail : cadre de porte 1 × 2 m, **lumineux** (matériau `lumineux`, jeton
   sombre `--kta-interaction`) si `InterPlanLinks.liaisonsDuPoint` en rend une, éteint sinon ; relu à
@@ -1686,7 +1692,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   chargement et la vue se ferme sans « Je suis ici ? » (`_fermerPourPlan` : la liaison recale elle-même le
   tracker) ; de même pour ➜ de la section liaisons de la fiche. **Véhicule**
   (`vehicule`) : voiture simplifiée (caisse, habitacle à vitres sombres, quatre roues ; `ACCES_DIM.vehicule*` =
-  4 × 1,8 × 1,5 m), dans le tube du côté du POI gardée entre les parois (demi-emprise 0,9 m), le long de l'axe ;
+  3,2 × 1,4 × 1,3 m, une citadine), dans le tube du côté du POI gardée entre les parois (demi-emprise 0,7 m), le
+  long de l'axe ;
   **arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
   survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes`).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
@@ -2046,8 +2053,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   toucher suivant, avalé sur la scène, ou par Échap) ; sous le minimum, ＋ seul et le toast de la carte. Tout ce qui décide passe par `ajusterSommets.js > KtaAjusterSommets.plan`
   (familles, droits : lecture seule, calque non rapatrié, outil armé sauf 📐 pour la mesure ; aimantation ; une entrée
   ⏪, un rendu au lâcher). La vue ne mène que le geste (`vue3d.js > _ajusterAppui`, `_ajusterBouge`, `_ajusterLacher`).
-- **Ce qui se vise** : ce que la vue montre (`e.vus` : son niveau, ses filtres, pas de structure en rendu Galerie), la
-  mesure toujours ; au sol sous le point d'**appui** (`_pointSol`), rayon de 24 px d'écran converti à la profondeur
+- **Ce qui se vise** : ce que la vue montre (`e.vus` : son niveau, ses filtres, pas de structure en rendu Galerie ; un
+  objet de même `uid` qu'un objet montré compte aussi, 🩸 copies au contenu identique d'une annulation suivie d'un
+  rétablissement : empreinte inchangée, scène non refaite, `e.vus` garde les anciens objets), la mesure toujours ; au sol sous le point d'**appui** (`_pointSol`), rayon de 24 px d'écran converti à la profondeur
   (`_tolerancePlan(dist, RAYON_PX)`) ; aimantation d'un tracé au rayon de `snapDrawPx` à la profondeur du lâcher.
   🩸 Rien au sol : le point du maillage touché (`_pointVise`, hors sol) est essayé au même rayon. Un sommet se vise là
   où on le voit : le coin du dessus d'un pilier est à plus de 24 px au-dessus de son pied en vue d'édition par défaut
