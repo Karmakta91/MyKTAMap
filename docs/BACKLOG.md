@@ -143,11 +143,9 @@
 
 ## Entrant
 
-- **Niveaux qui s'entremêlent en 3D** — un niveau peut commencer DANS la hauteur d'un autre (ex. le −2 de 2 m au-dessus
-  du sol du −1 jusqu'à x m : grande galerie dont un étage s'ouvre à mi-hauteur). Il faut une altitude par niveau (sol,
-  hauteur) et une vue 3D qui montre plusieurs niveaux à la fois, avec leurs liaisons. Idée KARMA : saisir par niveau
-  l'écart (m) avec le niveau supérieur, NÉGATIF = entremêlés d'autant ; part de la table existante
-  (`niveauxProfondeur`, pas ≥ 0,5 au Générateur, repris par plan) + une hauteur par niveau.
+- **Niveaux qui s'entremêlent en 3D** — un niveau commence dans la hauteur d'un autre (étage ouvert à mi-hauteur d'une
+  grande galerie). Idée KARMA : écart (m) avec le niveau supérieur, NÉGATIF = entremêlés d'autant, à partir de
+  `niveauxProfondeur` (pas ≥ 0,5 aujourd'hui) + une hauteur par niveau ; la 3D montre alors plusieurs niveaux à la fois.
   `qui: Claude · action: topo puis QCM (données par niveau, Générateur, rendu multi-niveaux, règle du pas, itinéraire)
   · depuis: 06/11/2026 · taille: L`
 - **Position précise d'un POI (« Augmenter la précision »)** — un POI est souvent décalé pour la lisibilité (secteur dense
