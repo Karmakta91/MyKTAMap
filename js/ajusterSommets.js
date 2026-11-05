@@ -450,10 +450,12 @@ window.KtaAjusterSommets = (function () {
       if (e.isPrimary) _ins.down = { x: e.clientX, y: e.clientY };
       return;
     }
+    // 🩸 Le toucher qui referme ＋ / 🗑️ est avalé (ni fiche, ni outil : _avaler), mais pas son appui long : posé sur
+    // un sommet ou un milieu, il l'ajuste (même règle que vue3d.js > appuiScene). Une souris tenue immobile ouvre ce
+    // menu à coup sûr (moins de GLISSE_PX), et l'appui suivant sur le sommet partait en pan au lieu de le saisir.
     if (_menu && !_dansMenu(e.target)) {
       _fermerMenu();
-      _avalerJusqua = _now() + AVALER_MS;   // le tap qui referme 🗑️ ne fait rien d'autre
-      return;
+      _avalerJusqua = _now() + AVALER_MS;
     }
     if (_g) { if (e.pointerId !== _g.id) annuler(); return; }   // 2e doigt : pinch, rotation
     if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;

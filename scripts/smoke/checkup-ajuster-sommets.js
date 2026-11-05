@@ -11,7 +11,8 @@
 // immobile pendant le glisser, aucune fiche après un appui long et une fiche au tap court, outil armé = rien,
 // lecture seule = rien, ronds dorés aux sommets des mesures (au départ, après ajustement), calque verrouillé = rien
 // et sa copie « 🔄 Modifier » = oui, aimantation d'un tracé, mur de
-// 0,4 m posé coin par coin fermé au 4e coin seulement, et un déplacement carte tournée (rotation manuelle, plan orienté).
+// 0,4 m posé coin par coin fermé au 4e coin seulement, un déplacement carte tournée (rotation manuelle, plan orienté),
+// et ＋ / 🗑️ ouvert : l'appui long suivant sur le sommet l'ajuste, un tap qui referme le menu ne fait rien d'autre.
 // Après chaque geste (déplacer, ajouter, 🗑️, annulé par Échap / molette / 2e doigt, fermé par pointercancel / blur /
 // visibilitychange, lâcher jamais reçu), vue droite puis carte tournée à deux doigts : un pan déplace la carte et le
 // drag Leaflet revient à son état d'avant.
@@ -443,6 +444,40 @@ async function refus(page, ptr, nom, ref) {
   await page.evaluate(function () { window.KtaAjusterSommets.annuler(); });
 }
 
+// 🩸 ＋ / 🗑️ ouvert (appui long immobile, lâché) : l'appui suivant le referme et reste avalé comme toucher, mais son
+// appui long sur le même sommet l'ajuste (souris tenue immobile : le menu s'ouvre à coup sûr). Un tap qui referme
+// le menu ne fait rien d'autre (ni fiche, ni écriture, ni insertion).
+async function menuPuisAppui(page, ptr, nom, ref, i, tolPlan) {
+  const k = await page.evaluate(function () { return window.__as.k; });
+  const o0 = await lireObjet(page, ref);
+  const de = o0.points[i];
+  const g0 = await geste(page, ptr, de, null);
+  verifier(g0.apres.menu || g0.apres.plus, nom + " : appui long immobile → menu ouvert", g0.apres);
+  const e0 = await etat(page);
+  const vers = { x: de.x + 35 * k, y: de.y - 30 * k };
+  const g1 = await geste(page, ptr, de, vers);
+  const o1 = await lireObjet(page, ref);
+  verifier(proche(o1.points[i], vers, tolPlan) && o1.points.length === o0.points.length,
+    nom + " : menu ouvert, puis appui long sur le même sommet et glisser → sommet déplacé",
+    { avant: de, apres: o1.points[i], voulu: vers });
+  verifier(memeCentre(g1.pendant.centre, e0.centre) && memeCentre(g1.apres.centre, e0.centre),
+    nom + " : menu ouvert, puis glisser → la carte ne bouge pas", { avant: e0.centre, apres: g1.apres.centre });
+  verifier(!g1.apres.fiche && !g1.apres.menu, nom + " : ni fiche ni menu au lâcher", g1.apres);
+  // Tap simple qui referme le menu
+  const de2 = o1.points[i];
+  const g2 = await geste(page, ptr, de2, null);
+  verifier(g2.apres.menu || g2.apres.plus, nom + " : menu rouvert", g2.apres);
+  const e2 = await etat(page);
+  await ptr.tap(await ecran(page, de2));
+  await page.waitForTimeout(500);
+  const e3 = await etat(page);
+  const o3 = await lireObjet(page, ref);
+  verifier(!e3.fiche && !e3.menu && !e3.plus && !e3.as.insertion && e3.as.ecritures === e2.as.ecritures &&
+    proche(o3.points[i], de2, 1e-6) && memeCentre(e3.centre, e2.centre),
+  nom + " : un tap qui referme le menu ne fait rien d'autre", { as: e3.as, fiche: e3.fiche, menu: e3.menu });
+  await page.evaluate(function () { window.map.closePopup(); window.KtaAjusterSommets.annuler(); });
+}
+
 // ── Insertion (＋ au sommet) ──
 function centreDe(page, sel) {
   return page.evaluate(function (s) {
@@ -854,6 +889,14 @@ async function jouer(nav, moteur, mode) {
     await ronds(page, "après déplacer, ajouter et supprimer");
     await refus(page, ptr, "tracé de 2 points", "rd_as_r2");
     await refus(page, ptr, "zone de 3 sommets", "zn_as_t");
+
+    // ── Menu ouvert, puis appui long sur le sommet : il s'ajuste ──
+    await page.evaluate(function () { window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false }); });
+    await page.waitForTimeout(300);
+    await menuPuisAppui(page, ptr, "menu → tracé", "rd_as_r1", 0, tol);
+    await menuPuisAppui(page, ptr, "menu → zone", "zn_as_z", 0, tol);
+    await menuPuisAppui(page, ptr, "menu → pilier", "st_as_p", 2, tol);
+    await menuPuisAppui(page, ptr, "menu → mesure distance", "distance", 1, tol);
 
     // ── Insertion (＋) : vue du harnais remise, formes remises à neuf (puis encore pour la suite) ──
     const vueAs = function () {

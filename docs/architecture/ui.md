@@ -2449,7 +2449,9 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
   naît là et se glisse aussitôt ; lâché sans bouger, il reste au milieu.
 - **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point, à côté de **＋**
   (marqueur Leaflet, `htmlMenu` : deux cibles de 44 px dans `.kta-ajuster-boutons`, contre-tourné sous le plan orienté,
-  retiré seul après 6 s ou au premier toucher ailleurs). Sous le minimum de la forme (2 sommets pour une ligne, 3 pour
+  retiré seul après 6 s ou au premier toucher ailleurs ; ce toucher est avalé — ni fiche, ni outil — mais 🩸 pas son
+  appui long : posé sur un sommet ou un milieu, il l'ajuste, même règle qu'en vue 3D ; une souris tenue immobile
+  ouvre ce menu à coup sûr, et l'appui suivant sur le sommet partait en pan). Sous le minimum de la forme (2 sommets pour une ligne, 3 pour
   une surface), ＋ seul : un toast dit pourquoi pas de 🗑️.
 - **Insérer à la suite** (＋, QCM du 05/11/2026) : à partir du sommet X, chaque tap sur la carte insère un sommet
   entre le dernier posé et X + 1 (le premier entre X et X + 1), la forme se redessine à chaque point. Forme fermée,
