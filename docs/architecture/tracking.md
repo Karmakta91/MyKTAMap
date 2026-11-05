@@ -1675,14 +1675,16 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   une structure proche (mixte) n'a pas de paroi : la forme y est posée quand même, à w de l'axe. Plaque émaillée
   0,6 × 0,3 m à 1,45 m, au nom du POI (canvas 256 × 128, **une texture par nom**, partagée et comptée, rendue avec
   le dernier volume qui la porte, au plus `PLAQUE.max` = 32 vivantes : au-delà, plaque unie ; 50 plaques de noms
-  différents = 32 textures, 4 Mo hors mipmaps ; 🧱 coupé : unie, aucune texture). Épure : sept traits clairs
+  différents = 32 textures, 4 Mo hors mipmaps ; le nom reste avec 🧱 coupé, décision produit : un repère). Épure :
+  sept traits clairs
   (géométrie seule, rien à couper). Portail : cadre de porte 1 × 2 m, **lumineux** (matériau `lumineux`, jeton
   sombre `--kta-interaction`) si `InterPlanLinks.liaisonsDuPoint` en rend une, éteint sinon ; relu à
-  `mktm:liaisons-changees` (`_majPortails`). Sa fiche propose **« 🌀 Passer au plan X »** par liaison
-  (`_portailFiche`, plan absent de l'appareil : inactif) → `InterPlanLinks.naviguerVers` : la mini-confirmation de
-  la carte (z-index 99999, ajoutée après la vue) s'affiche **par-dessus** la vue ; confirmée, `goTo` émet
-  `kta:avantChangementPlan` avant tout chargement et la vue se ferme sans « Je suis ici ? » (`_fermerPourPlan` : le
-  portail recale lui-même le tracker) ; vrai aussi pour ➜ de la section liaisons de la fiche. **Véhicule**
+  `mktm:liaisons-changees` (`_majPortails`). La fiche de **tout point lié** (portail ou non, décision produit ; le
+  cadre reste au tag portail) propose **« 🌀 Passer au plan X »** par liaison (`_passerPlanFiche`, plan absent de
+  l'appareil : inactif) → `InterPlanLinks.naviguerVers` : la mini-confirmation de la carte (z-index 99999, ajoutée
+  après la vue) s'affiche **par-dessus** la vue ; confirmée, `goTo` émet `kta:avantChangementPlan` avant tout
+  chargement et la vue se ferme sans « Je suis ici ? » (`_fermerPourPlan` : la liaison recale elle-même le
+  tracker) ; de même pour ➜ de la section liaisons de la fiche. **Véhicule**
   (`vehicule`) : voiture simplifiée (caisse, habitacle à vitres sombres, quatre roues ; `ACCES_DIM.vehicule*` =
   4 × 1,8 × 1,5 m), dans le tube du côté du POI gardée entre les parois (demi-emprise 0,9 m), le long de l'axe ;
   **arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :

@@ -646,9 +646,9 @@ Dónde y cómo se dibuja un paso:
 **Otros puntos con forma**:
 
 - ![](../../icon/chatiere.png) **Gatera**: la galería se estrecha en un agujero de unos 0,6 m en la roca, atravesado en la galería. Nada te detiene: la vista baja para pasar a rastras y luego vuelve a subir (en 🧭 Seguimiento como en 🕹️ Libre). Su longitud es fija (1,8 m): el punto no dice más.
-- ![](../../icon/plaque.png) **Placa de indicación**: una placa esmaltada azul y blanca, plana sobre la pared más cercana, con el nombre del punto. Con 🧱 desactivado, la placa es lisa (el nombre sigue en el panel).
+- ![](../../icon/plaque.png) **Placa de indicación**: una placa esmaltada azul y blanca, plana sobre la pared más cercana, con el nombre del punto. El nombre se mantiene con 🧱 desactivado.
 - ![](../../icon/epure.png) **Croquis**: un trazo claro dibujado en la pared más cercana, a la altura de los ojos.
-- ![](../../icon/portail.png) **Portal (enlace entre mapas)**: un marco de puerta contra la pared, **encendido** cuando el punto tiene un enlace a otro mapa, apagado si no. Su ficha propone **🌀 Pasar al plano…**: la confirmación aparece sobre la vista; si confirmas, la vista se cierra y se abre el otro mapa.
+- ![](../../icon/portail.png) **Portal (enlace entre mapas)**: un marco de puerta contra la pared, **encendido** cuando el punto tiene un enlace a otro mapa, apagado si no. La ficha de **todo punto enlazado** a otro mapa (portal o no) propone **🌀 Pasar al plano…**: la confirmación aparece sobre la vista; si confirmas, la vista se cierra y se abre el otro mapa. El ➜ de los enlaces de la ficha hace lo mismo.
 - ![](../../icon/vehicule.png) **Vehículo**: un coche simplificado en la galería, a lo largo de ella. **Chocas con él**, como con un pilar.
 - Placa, croquis y portal se colocan en la pared de una galería: en una sala o en el modo Estructuras, el punto solo conserva su panel.
 
