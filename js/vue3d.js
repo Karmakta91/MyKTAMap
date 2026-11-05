@@ -25,8 +25,8 @@
 // (ruban plein, chevrons de sens, étapes, 🏁), ronds d'intersection de la carte, POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
 // (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau, passages en
 // volume (_construireVolume) comme les accès de surface sans passage (puits fermés, comblés, bouché, d'extraction,
-// bassin, cavage : _volumeAcces), changement de niveau derrière un fondu (_lancerGeste). Tuiles autour de soi, lampe
-// frontale, rendu au mouvement seul.
+// bassin, cavage) et les formes de POI (chatière, plaque, épure, portail, véhicule) : _volumeAcces ; changement de
+// niveau derrière un fondu (_lancerGeste). Tuiles autour de soi, lampe frontale, rendu au mouvement seul.
 // ⚠️ contrat : filtres = ceux de la carte (window._ktaRuntimeFilters, calques de données, niveaux visibles), lus à
 // chaque construction et suivis par FilterPanel.onChange ; ≡ ouvre le même panneau (filterPanel.js) par-dessus.
 // Masquer ne retire que le dessin : collisions, parois des tubes et passages 🪜 restent ; l'itinéraire, comme en 2D,
@@ -237,6 +237,36 @@
   // `pentures` bandes de fer horizontales (centres en part de la hauteur) cloutées tous les `clou` px.
   const BOIS = { px: 256, couleur: "#5c412b", fer: "#3f3c38", planches: 5, pentures: [0.14, 0.5, 0.86], bande: 0.07,
     clou: 22, relief: 3, graine: 71 };
+  // Chatière (chatiere, décision produit) : roche brute en travers de la galerie sur `long` m, percée au sol d'un
+  // trou de `trou` m de large et de haut ; elle n'arrête rien, la caméra s'y abaisse à `oeil` m (on rampe), en
+  // descendant sur `approche` m avant l'entrée (et remontant d'autant après la sortie). La roche déborde de
+  // `deborde` m dans les parois (aucun jour au bord). 🩸 Aucune longueur n'est relevée sur le POI : 1,8 m est une
+  // chatière courte (un corps allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux.
+  const CHATIERE = { long: 1.8, trou: 0.6, oeil: 0.35, approche: 1, deborde: 0.3 };
+  // Profil du trou (part de `trou`, t en travers, y vers le haut) : bas droit, flancs puis voûte cassée.
+  const PROFIL_CHATIERE = [[-0.5, 0], [0.5, 0], [0.5, 0.6], [0.36, 0.86], [0, 1], [-0.36, 0.86], [-0.5, 0.6]];
+  // Plaque indicatrice (plaque) : plaque émaillée de `l` × `h` m, `ep` d'épaisseur, centrée à `y` m (et au moins
+  // `plafond` m sous le plafond), à `recul` m de la paroi ; nom du POI dessiné au canvas de `px` px de large (une
+  // texture par nom, au plus `max` vivantes : au-delà, la plaque unie). Couleurs de la scène (plaque de rue
+  // émaillée), pas de la charte de l'UI. 🧱 coupé : plaque unie, sans texture (le nom reste sur le panneau).
+  const PLAQUE = { l: 0.6, h: 0.3, ep: 0.015, y: 1.45, plafond: 0.3, recul: 0.01, px: 256, max: 32,
+    fond: "#1f3d7a", texte: "#f2f4f8", bord: 0.03 };
+  // Épure (epure) : trait gravé clair sur la paroi, `larg` m de trait, à `recul` m d'elle, centré à `y` m ; dessin
+  // de `l` m (ligne, deux talons, une croix, une flèche). Géométrie seule : rien à couper avec 🧱. Couleur de la
+  // scène (trait clair sur la pierre).
+  const EPURE = { l: 1.2, y: 1.5, larg: 0.022, recul: 0.012, talon: 0.12, croix: 0.09, fleche: 0.1,
+    couleur: "#d8cfb8" };
+  // Portail (portail, liaison inter-plan) : cadre de porte de `l` × `h` m (au moins `plafond` m sous le plafond),
+  // montants et linteau de `bord` m, `ep` m devant la paroi ; lumineux à --kta-interaction (jetons sombres) si le
+  // point a une liaison, éteint (COULEUR_PORTAIL_ETEINT) sinon.
+  const PORTAIL = { l: 1, h: 2, plafond: 0.1, bord: 0.09, ep: 0.08, recul: 0.005 };
+  const COULEUR_PORTAIL_ETEINT = "#3d4048";   // couleur de la scène : un cadre de fer sombre
+  // Véhicule (vehicule) : voiture simplifiée, dimensions et obstacle dans KtaGalerie (ACCES_DIM.vehicule*) ; caisse
+  // de `garde` m au-dessus du sol jusqu'à `caisse` m, habitacle jusqu'au toit (vehiculeH, borné sous le plafond),
+  // de `hab` de la longueur, en retrait de `retrait` m sur les côtés ; quatre roues de `roue` m de rayon et
+  // `roueL` m de large, à 0,2 m des bouts. Couleurs de la scène, sobres (pas de la charte de l'UI).
+  const VEHICULE = { garde: 0.25, caisse: 0.9, hab: 0.55, retrait: 0.12, roue: 0.32, roueL: 0.22,
+    cotes: 12, carrosserie: "#59616b", vitre: "#1d2228", pneu: "#1b1b1b" };
   // Geste d'un passage : fondu noir de `fondu` ms de part et d'autre de la bascule ; descente / montée de `ms` en tout
   // (la moitié dans chaque niveau), la caméra passant `auDela` m sous le sol ou au-dessus du plafond ; bandeau
   // « Niveau n » `bandeau` ms.
@@ -2354,6 +2384,7 @@
     e.scene.add(e.camera);
     e.mats = _materiaux();
     e.texCiel = null;   // 🩸 refaite avec la scène (reprise du contexte) : jamais celle de l'ancien contexte
+    e.plaques = new Map();   // nom → texture d'une plaque (_texPlaque), de cette scène seulement
     // Sol et plafond : un carré qui suit la position, plus grand que le rayon de scène ; carré unité mis à
     // l'échelle (_appliquerPortee), la répétition du grain suit.
     const plan = new THREE.PlaneGeometry(1, 1, 8, 8);
@@ -2813,6 +2844,10 @@
         : v.forme === "puits" ? [VOLUME.puits, VOLUME.puits] : [VOLUME.aeration, VOLUME.aeration];
       // Place et axe : KtaGalerie.placePassage, le calcul de l'emprise qui ouvre le tube (une seule règle).
       const pl = window.KtaGalerie.placePassage(src, N, e.rendu) || { x: p.x, y: p.y, ang: 0, ramene: false };
+      // Forme sur la paroi sans paroi à cette place (structures, chambre, loin de tout axe) : le panneau seul.
+      if (v.surParoi && !pl.paroi) return;
+      v.cote = pl.paroi || 0;
+      v.point = src;
       v.a = dim[0] / 2; v.b = dim[1] / 2;
       v.x = pl.x; v.y = pl.y; v.ramene = pl.ramene;
       // Escalier : repère retourné quand l'entrée (KtaGalerie, _entree) est du côté +ang, les marches partant de −a ;
@@ -2870,6 +2905,7 @@
       v.obj.traverse(function (o) {
         if (o.geometry && !o.isSprite) o.geometry.dispose();
         if (o.isSprite && o.material) o.material.dispose();   // texture du ciel : celle de la vue (_e.texCiel)
+        if (o.userData.plaqueNom !== undefined) _rendrePlaque(o.userData.plaqueNom);   // texture partagée par nom
       });
       e.scene.remove(v.obj);
       e.sale = true;
@@ -3118,11 +3154,13 @@
 
   // Champs d'un accès, posés sur ceux d'un passage (_volumesDuNiveau) ; dimensions : _dimAcces.
   function _volumeAcces(tag) {
-    const f = window.KtaGalerie.ACCES[tag];
+    const f = window.KtaGalerie.ACCES[tag], paroi = !!window.KtaGalerie.PAROI[f];
     return { acces: true, moyen: null, forme: f, sol: f === "bassin",
-      plafond: tag !== "pb" && f !== "bassin" && f !== "porte", ciel: tag === "ps", grille: false,
-      echelons: tag === "pef", passage: false, ferme: tag === "esf" || tag === "pef", bouche: tag === "pb",
-      comble: tag === "pc" || tag === "psf", bassin: f === "bassin", porte: f === "porte", ouvert: tag === "cao" };
+      plafond: tag !== "pb" && f !== "bassin" && f !== "porte" && f !== "chatiere" && f !== "vehicule" && !paroi,
+      ciel: tag === "ps",
+      grille: false, echelons: tag === "pef", passage: false, ferme: tag === "esf" || tag === "pef",
+      bouche: tag === "pb", comble: tag === "pc" || tag === "psf", bassin: f === "bassin", porte: f === "porte",
+      ouvert: tag === "cao", chatiere: f === "chatiere", surParoi: paroi, vehicule: f === "vehicule" };
   }
 
   // Dimensions d'un accès placé (v.cx, v.cz, v.dir) : rond et bassin d'après DIM_ACCES ; porte de la largeur de la
@@ -3133,7 +3171,16 @@
     const D = DIM_ACCES;
     if (v.forme === "rond") v.a = v.b = D.rond / 2;
     else if (v.bassin) v.a = v.b = D.bassin / 2 + D.margelle;
-    else if (v.porte) {
+    else if (v.chatiere) {
+      v.b = _demiLargeurGalerie(v.cx, v.cz);
+      v.a = CHATIERE.long / 2;
+    } else if (v.surParoi) {
+      v.a = Math.max(PLAQUE.l, EPURE.l, PORTAIL.l) / 2;
+      v.b = PORTAIL.ep;
+    } else if (v.vehicule) {
+      v.a = D.vehiculeL / 2;
+      v.b = D.vehiculeW / 2;
+    } else if (v.porte) {
       v.b = _demiLargeurGalerie(v.cx, v.cz);
       v.a = v.ouvert ? v.b : PORTE.cadre;
       const sc = _e.sc, niv = _e.niveau === null ? undefined : _e.niveau;
@@ -3190,6 +3237,11 @@
     if (v.ferme) { _puits(v, lots, g); _dalleFermee(v, lots); return; }
     if (v.porte) { _porte(v, lots); return; }
     if (v.bassin) { _bassin(v, lots); return; }
+    if (v.chatiere) { _chatiere(v, lots); return; }
+    if (v.forme === "plaque") { _plaque(v, lots, g); return; }
+    if (v.forme === "epure") { _epure(v, lots); return; }
+    if (v.forme === "portail") { _portail(v, lots); return; }
+    if (v.vehicule) { _vehicule(v, lots); return; }
     const ring = v.forme === "rond" ? _cercle(v, v.a) : _carre(v);
     if (v.bouche) _dalleBouchee(v, lots);
     else if (v.comble) { _puitsComble(v, lots, ring); if (_coneMontre(v)) _cone(v, lots); }
@@ -3324,6 +3376,217 @@
       comble: cb.slice(), combleUni: !!uni, tympan: tympan, tympanUni: tympan && !!uni };
   }
 
+  // Chatière : roche de -a à a le long de l'axe, de toute la largeur de la galerie (v.b) plus CHATIERE.deborde dans
+  // les parois, du sol au plafond, percée au sol du trou (PROFIL_CHATIERE × CHATIERE.trou, sur l'axe) : deux faces
+  // trouées, le tour du trou (vu du dedans) et le dessus (vue d'édition, plafond masqué). Roche brute des piliers
+  // avec 🧱 (matériau `roche`, coordonnées de texture en mètres), couleur du pilier sinon. ⚠️ contrat : aucune
+  // emprise ni obstacle (galerieEmprise.js > ACCES) ; seule la caméra s'abaisse (_baisseChatiere).
+  function _chatiere(v, lots) {
+    const e = _e, h = e.hauteur, Q = _repere(v), a = v.a, B = v.b + CHATIERE.deborde, T = CHATIERE.trou;
+    const tx = e.textures === true, lot = tx ? _lot(lots, "roche") : lots.opaque, m = tx ? ROCHE.m : 0;
+    const col = tx ? BLANC : _couleur("structures", "pilier-1");
+    const trou = PROFIL_CHATIERE.map(function (q) { return [q[0] * T, Math.min(q[1] * T, h - 0.05)]; });
+    const bord = [[-B, 0], [B, 0], [B, h], [-B, h]];
+    const V2 = function (q) { return new THREE.Vector2(q[0], q[1]); };
+    let tris = [];
+    try { tris = THREE.ShapeUtils.triangulateShape(bord.map(V2), [trou.map(V2)]); } catch (err) { tris = []; }
+    const tous = bord.concat(trou), ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
+    const P = function (s, q) { const w = Q(s, q[0]); return [w[0], q[1], w[1]]; };
+    const uvF = function (q) { return [q[0] / m, q[1] / m]; };
+    [[-a, -1], [a, 1]].forEach(function (f) {
+      const n = [ux * f[1], 0, uz * f[1]];
+      tris.forEach(function (tr) {
+        const A = tous[tr[0]], Bq = tous[tr[1]], C = tous[tr[2]];
+        lot.tri(P(f[0], A), P(f[0], Bq), P(f[0], C), n, col, m ? uvF(A).concat(uvF(Bq), uvF(C)) : undefined);
+      });
+    });
+    // Tour du trou (sauf le sol) : normales vers l'intérieur du trou.
+    let u = 0;
+    for (let i = 1; i < trou.length; i++) {
+      const p = trou[i], q = trou[(i + 1) % trou.length], dt = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dt, dy);
+      if (l < 1e-6) continue;
+      let nt = dy / l, ny = -dt / l;
+      if (nt * -(p[0] + q[0]) / 2 + ny * (T / 2 - (p[1] + q[1]) / 2) < 0) { nt = -nt; ny = -ny; }
+      lot.quad(P(-a, p), P(a, p), P(a, q), P(-a, q), [-uz * nt, ny, ux * nt], col,
+        m ? [-a / m, u / m, a / m, u / m, a / m, (u + l) / m, -a / m, (u + l) / m] : undefined);
+      u += l;
+    }
+    _dessus(lot, _sensPositif([Q(-a, -B), Q(a, -B), Q(a, B), Q(-a, B)]), h, col, m || undefined);
+    v.trace = { long: +(2 * a).toFixed(3), trou: T, largeur: +(2 * v.b).toFixed(3),
+      hautTrou: +Math.max.apply(null, trou.map(function (q) { return q[1]; })).toFixed(3) };
+  }
+
+  // Repère d'une forme sur la paroi (v.cote : côté de la paroi, galerieEmprise.js > _surParoi) : Q(s, recul) = point
+  // à `recul` m devant la paroi, côté galerie ; n = normale de la face (vers la galerie) ; droite = sens de s qui va
+  // vers la droite de qui regarde la paroi (±1).
+  function _faceParoi(v) {
+    const Q = _repere(v), c = v.cote || -1, ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
+    return { Q: function (s, recul) { return Q(s, -c * recul); }, n: [c * uz, 0, -c * ux], droite: -c };
+  }
+
+  // Rectangle plat sur la paroi, de s0 à s1 (repère du volume) et de y0 à y1, à `recul` m, face vers la galerie ;
+  // `uv` (facultatif) : la texture entière, lue à l'endroit de face.
+  function _rectParoi(lot, F, s0, s1, y0, y1, recul, col, uv) {
+    const a = F.Q(s0, recul), b = F.Q(s1, recul), u0 = F.droite > 0 ? 0 : 1, u1 = 1 - u0;
+    lot.quad([a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]], F.n, col,
+      uv ? [u0, 0, u1, 0, u1, 1, u0, 1] : undefined);
+  }
+
+  // Plaque émaillée : chants (fond de la plaque, uni) et face au nom du POI (_texPlaque, avec 🧱) ou unie, liseré
+  // clair (🧱 coupé, ou plus de PLAQUE.max noms vivants).
+  function _plaque(v, lots, g) {
+    const e = _e, F = _faceParoi(v), L = PLAQUE.l / 2, ep = PLAQUE.ep, r = PLAQUE.recul, B = PLAQUE.bord;
+    const y = Math.min(PLAQUE.y, e.hauteur - PLAQUE.plafond - PLAQUE.h / 2), y0 = y - PLAQUE.h / 2, y1 = y0 + PLAQUE.h;
+    const fond = _couleurFixe(PLAQUE.fond);
+    const p = F.Q(-L, r), q = F.Q(L, r), p2 = F.Q(-L, r + ep), q2 = F.Q(L, r + ep);
+    [[y1, 1], [y0, -1]].forEach(function (c) {
+      lots.opaque.quad([p[0], c[0], p[1]], [q[0], c[0], q[1]], [q2[0], c[0], q2[1]], [p2[0], c[0], p2[1]],
+        [0, c[1], 0], fond);
+    });
+    const nom = String((v.point && (v.point.nom || v.point.name || v.point.id)) || "").slice(0, 60);
+    const t = e.textures === true ? _texPlaque(nom) : null;
+    v.trace = { plaqueY: +y.toFixed(3), texture: !!t, nom: nom };
+    if (!t) {
+      _rectParoi(lots.opaque, F, -L, L, y0, y1, r + ep, fond);
+      _rectParoi(lots.opaque, F, -L + B, L - B, y0 + B, y1 - B, r + ep + 0.002, _couleurFixe(PLAQUE.texte));
+      _rectParoi(lots.opaque, F, -L + 1.6 * B, L - 1.6 * B, y0 + 1.6 * B, y1 - 1.6 * B, r + ep + 0.004, fond);
+      return;
+    }
+    const face = new Lot();
+    _rectParoi(face, F, -L, L, y0, y1, r + ep, BLANC, true);
+    const me = new THREE.Mesh(face.geometrie(), t.mat);
+    me.matrixAutoUpdate = false;
+    me.userData.famille = "plaque";
+    me.userData.plaqueNom = nom;
+    g.add(me);
+  }
+
+  // Texture et matériau d'une plaque au nom `nom`, partagés par toutes les plaques de ce nom à portée (compte de
+  // références, rendu par _libererVolume) → { tex, mat, n, octets } | null au-delà de PLAQUE.max noms vivants.
+  function _texPlaque(nom) {
+    const e = _e;
+    let t = e.plaques.get(nom);
+    if (t) { t.n++; return t; }
+    if (e.plaques.size >= PLAQUE.max) return null;
+    const W = PLAQUE.px, H = Math.round(W * PLAQUE.h / PLAQUE.l), cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d"), b = Math.round(W * PLAQUE.bord / PLAQUE.l);
+    ctx.fillStyle = PLAQUE.fond; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = PLAQUE.texte; ctx.lineWidth = Math.max(2, b / 2);
+    ctx.strokeRect(b, b, W - 2 * b, H - 2 * b);
+    ctx.fillStyle = PLAQUE.texte; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    // Nom sur une ligne : police réduite jusqu'à tenir (3 crans au plus), puis coupé avec « … ».
+    const largeur = W - 4 * b;
+    const police = function (px) { return "700 " + px + "px system-ui, -apple-system, sans-serif"; };
+    let taille = Math.round(H * 0.42), txt = nom;
+    ctx.font = police(taille);
+    for (let k = 0; k < 3 && ctx.measureText(txt).width > largeur; k++) {
+      taille = Math.round(taille * 0.82);
+      ctx.font = police(taille);
+    }
+    if (ctx.measureText(txt).width > largeur) {
+      while (txt.length > 1 && ctx.measureText(txt + "…").width > largeur) txt = txt.slice(0, -1);
+    }
+    ctx.fillText(txt === nom ? txt : txt + "…", W / 2, H / 2 + 1);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    t = { tex: tex, mat: new THREE.MeshLambertMaterial({ map: tex }), n: 1, octets: W * H * 4 };
+    e.plaques.set(nom, t);
+    return t;
+  }
+
+  function _rendrePlaque(nom) {
+    const e = _e, t = e && e.plaques ? e.plaques.get(nom) : null;
+    if (!t || --t.n > 0) return;
+    t.tex.dispose(); t.mat.dispose();
+    e.plaques.delete(nom);
+  }
+
+  // Épure : traits clairs à plat sur la paroi (ligne, talons aux bouts, croix au milieu, flèche vers la droite du
+  // regard), lot opaque, couleur EPURE.couleur.
+  function _epure(v, lots) {
+    const e = _e, F = _faceParoi(v), E = EPURE, w = E.larg / 2, L = E.l / 2, col = _couleurFixe(E.couleur);
+    const y = Math.min(E.y, e.hauteur - 0.3), d = F.droite;
+    const trait = function (s0, y0, s1, y1) {
+      const ds = s1 - s0, dy = y1 - y0, l = Math.hypot(ds, dy);
+      if (l < 1e-6) return;
+      const ns = -dy / l * w, ny = ds / l * w;
+      const A = F.Q(s0 + ns, E.recul), B = F.Q(s1 + ns, E.recul), C = F.Q(s1 - ns, E.recul), D = F.Q(s0 - ns, E.recul);
+      lots.opaque.quad([A[0], y0 + ny, A[1]], [B[0], y1 + ny, B[1]], [C[0], y1 - ny, C[1]], [D[0], y0 - ny, D[1]],
+        F.n, col);
+    };
+    trait(-L, y, L, y);
+    trait(-L, y - E.talon, -L, y + E.talon);
+    trait(L, y - E.talon, L, y + E.talon);
+    trait(-E.croix, y - E.croix, E.croix, y + E.croix);
+    trait(-E.croix, y + E.croix, E.croix, y - E.croix);
+    const bout = d * (L - 0.15);
+    trait(bout, y, bout - d * E.fleche, y + E.fleche * 0.7);
+    trait(bout, y, bout - d * E.fleche, y - E.fleche * 0.7);
+    v.trace = { epureY: +y.toFixed(3), traits: 7 };
+  }
+
+  // Portail : cadre de porte (deux montants, linteau) à plat devant la paroi ; lumineux à la couleur d'interaction
+  // (jetons sombres) si le point a une liaison (_liaisonsPortail), éteint sinon.
+  function _portail(v, lots) {
+    const e = _e, F = _faceParoi(v), L = PORTAIL.l / 2, b = PORTAIL.bord, r = PORTAIL.recul, ep = PORTAIL.ep;
+    const H = Math.min(PORTAIL.h, e.hauteur - PORTAIL.plafond), ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
+    v.allume = _liaisonsPortail(v.point).length > 0;
+    const lot = v.allume ? lots.lumineux : lots.opaque;
+    const col = _couleurFixe(v.allume ? _jetonsSombres().interaction : COULEUR_PORTAIL_ETEINT);
+    const barre = function (s0, s1, y0, y1) {
+      _rectParoi(lot, F, s0, s1, y0, y1, r + ep, col);
+      [[s0, -1], [s1, 1]].forEach(function (q) {
+        const p = F.Q(q[0], r), p2 = F.Q(q[0], r + ep);
+        lot.quad([p[0], y0, p[1]], [p2[0], y0, p2[1]], [p2[0], y1, p2[1]], [p[0], y1, p[1]], [ux * q[1], 0, uz * q[1]],
+          col);
+      });
+    };
+    barre(-L, -L + b, 0, H);
+    barre(L - b, L, 0, H);
+    barre(-L + b, L - b, H - b, H);
+    v.trace = { allume: v.allume, haut: +H.toFixed(3), largeur: PORTAIL.l };
+  }
+
+  // Véhicule : caisse, habitacle (vitres sombres sur les quatre côtés) et quatre roues, le long de l'axe (v.dir),
+  // dans le lot opaque. ⚠️ contrat : l'obstacle est son rectangle au sol (galerieEmprise.js > _obstaclesAcces).
+  function _vehicule(v, lots) {
+    const e = _e, V = VEHICULE, Q = _repere(v), a = v.a, b = v.b, lot = lots.opaque;
+    const haut = Math.min(DIM_ACCES.vehiculeH, e.hauteur - 0.05), caisse = Math.min(V.caisse, haut - 0.2);
+    const ha = a * V.hab, hb = b - V.retrait, verre = 0.012;
+    const corps = _couleurFixe(V.carrosserie), vitre = _couleurFixe(V.vitre), pneu = _couleurFixe(V.pneu);
+    _pave(lot, Q, -a, a, -b, b, V.garde, caisse, corps);
+    _pave(lot, Q, -ha * 0.9, ha, -hb, hb, caisse, haut, corps);
+    const yv0 = caisse + 0.06, yv1 = haut - 0.08;
+    [[-hb - verre, -1], [hb + verre, 1]].forEach(function (c) {
+      const p = Q(-ha * 0.9 + 0.1, c[0]), q = Q(ha - 0.1, c[0]), n = [-Math.sin(v.dir || 0) * c[1], 0,
+        Math.cos(v.dir || 0) * c[1]];
+      lot.quad([p[0], yv0, p[1]], [q[0], yv0, q[1]], [q[0], yv1, q[1]], [p[0], yv1, p[1]], n, vitre);
+    });
+    [[ha + verre, 1], [-ha * 0.9 - verre, -1]].forEach(function (c) {
+      const p = Q(c[0], -hb + 0.1), q = Q(c[0], hb - 0.1), n = [Math.cos(v.dir || 0) * c[1], 0,
+        Math.sin(v.dir || 0) * c[1]];
+      lot.quad([p[0], yv0, p[1]], [q[0], yv0, q[1]], [q[0], yv1, q[1]], [p[0], yv1, p[1]], n, vitre);
+    });
+    // Roues : prismes à V.cotes faces, axe en travers (t), posées au sol.
+    const R = V.roue, ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
+    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(function (r) {
+      const sc = r[0] * (a - R - 0.2), t0 = r[1] * (b - V.roueL), t1 = r[1] * b + r[1] * 0.01;
+      for (let k = 0; k < V.cotes; k++) {
+        const a0 = 2 * Math.PI * k / V.cotes, a1 = 2 * Math.PI * (k + 1) / V.cotes;
+        const s0 = sc + R * Math.cos(a0), y0 = R + R * Math.sin(a0);
+        const s1 = sc + R * Math.cos(a1), y1 = R + R * Math.sin(a1);
+        const nm = (a0 + a1) / 2, n = [ux * Math.cos(nm), Math.sin(nm), uz * Math.cos(nm)];
+        const A = Q(s0, t0), B = Q(s1, t0), C = Q(s1, t1), D = Q(s0, t1);
+        lot.quad([A[0], y0, A[1]], [B[0], y1, B[1]], [C[0], y1, C[1]], [D[0], y0, D[1]], n, pneu);
+        const F = Q(sc, t1), G = Q(s0, t1), H = Q(s1, t1), nf = [-uz * r[1], 0, ux * r[1]];
+        lot.tri([F[0], R, F[1]], [G[0], y0, G[1]], [H[0], y1, H[1]], nf, pneu);
+      }
+    });
+    v.trace = { long: +(2 * a).toFixed(3), large: +(2 * b).toFixed(3), haut: +haut.toFixed(3) };
+  }
+
   // Battant : pavé b = [s0, s1, t0, t1] (repère du volume) de y0 à y1 ; ses deux grandes faces portent le motif
   // entier (u en travers, v vers le haut), les chants et les tranches un coin du motif.
   function _battant(lot, Q, b, y0, y1, col, tx) {
@@ -3399,6 +3662,7 @@
 
   function _ajouterAcces(lots, ajouter) {
     if (lots.bois && lots.bois.p.length) ajouter(lots.bois, _matPorte(), 0, "porte");
+    if (lots.roche && lots.roche.p.length) { _matsTextures(); ajouter(lots.roche, _e.mats.roche, 0, "chatiere"); }
     if (lots.remblais && lots.remblais.p.length) ajouter(lots.remblais, _matZone("remblais"), 0, "remblais");
     if (lots.eau) ajouter(lots.eau, _e.mats.eauGalerie, 2, "eau");
   }
@@ -3409,7 +3673,9 @@
     const maille = function (f) { return g.children.filter(function (o) { return o.userData.famille === f; })[0]; };
     const porte = maille("porte"), remblais = maille("remblais");
     return Object.assign({ acces: true, ferme: !!v.ferme, bouchee: !!v.bouche, comble: !!v.comble,
-      bassin: !!v.bassin, porte: !!v.porte, ouvert: !!v.ouvert, bois: n(lots.bois), remblais: n(lots.remblais),
+      bassin: !!v.bassin, porte: !!v.porte, ouvert: !!v.ouvert, chatiere: !!v.chatiere, surParoi: !!v.surParoi,
+      cote: v.cote || 0, vehicule: !!v.vehicule, roche: n(lots.roche), bois: n(lots.bois),
+      remblais: n(lots.remblais),
       eau: n(lots.eau), porteTexturee: !!(porte && porte.material.map), remblaisTexture: !!(remblais &&
       remblais.material.map), familles: g.children.map(function (o) { return o.userData.famille; }) }, v.trace || {});
   }
@@ -3602,9 +3868,30 @@
     return { manquantes: manquantes, hors: hors, montrees: montrees };
   }
 
+  // Part (0..1) de l'abaissement dans une chatière à la place (x, z) m : 1 dans la roche (de −a à a le long de son
+  // axe, sur la largeur de la galerie), décroissante (_lisse) sur CHATIERE.approche m de part et d'autre, 0 ailleurs.
+  // ⚠️ contrat (décision produit) : la chatière n'arrête jamais le pas ; on la traverse en rampant, en suivi comme en
+  // libre (la place est celle du tracker en suivi), à hauteur d'yeux seulement (la vue d'édition ne s'abaisse pas).
+  function _baisseChatiere(x, z) {
+    const vols = _e.volPassages || [];
+    let k = 0;
+    for (let i = 0; i < vols.length; i++) {
+      const v = vols[i];
+      if (!v.chatiere) continue;
+      const ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0), dx = x - v.cx, dz = z - v.cz;
+      if (Math.abs(-uz * dx + ux * dz) > v.b + CHATIERE.deborde) continue;
+      const d = Math.abs(ux * dx + uz * dz) - v.a;
+      k = Math.max(k, d <= 0 ? 1 : 1 - _lisse(d / CHATIERE.approche));
+    }
+    return k;
+  }
+
   function _placerCamera() {
     const e = _e, x = e.pos.x / e.sc, z = e.pos.y / e.sc, cap = e.cap * Math.PI / 180, c = _centreScene();
-    const dy = e.dy || 0;   // geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume
+    // Chatière (_baisseChatiere) : l'œil descend vers CHATIERE.oeil, jamais plus haut qu'il n'est.
+    e.ramper = e.vue === "plongee" ? 0 : _baisseChatiere(x, z);
+    const baisse = e.ramper * Math.max(0, e.oeil - CHATIERE.oeil);
+    const dy = (e.dy || 0) - baisse;   // geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume
     e.tete.position.set(x, e.oeil + dy, z);
     e.tete.rotation.set(e.tangage, -cap, 0);
     e.sol.position.set(c.x, 0, c.z);
@@ -5845,6 +6132,7 @@
     corps.className = "kta-v3d-fiche-corps";
     corps.innerHTML = html;
     _passagesFiche(boite, p);
+    _portailFiche(boite, p);
     boite.appendChild(corps);
     e.ov.appendChild(boite);
     _ficheNeuve(boite);
@@ -5894,6 +6182,63 @@
       _allerNiveau(Object.assign({ depuis: pas, proche: proche }, c));
     });
     boite.appendChild(zone);
+  }
+
+  // Liaisons inter-plan d'un point (InterPlanLinks.liaisonsDuPoint : registre et liaisons embarquées) → [] sans
+  // module ou sans liaison.
+  function _liaisonsPortail(p) {
+    const L = window.InterPlanLinks;
+    try { return p && L && typeof L.liaisonsDuPoint === "function" ? L.liaisonsDuPoint(p) || [] : []; }
+    catch (err) { return []; }
+  }
+
+  // Fiche d'un portail lié (décision produit) : un bouton « Passer au plan X » par liaison, qui passe par la
+  // mini-confirmation de la carte (InterPlanLinks.naviguerVers), posée au-dessus de la vue ; confirmé, le
+  // changement de plan ferme la vue sans « Je suis ici ? » (kta:avantChangementPlan, _fermerPourPlan : le portail
+  // recale lui-même le tracker à l'arrivée). Plan absent de l'appareil : bouton inactif. Sans liaison : rien.
+  function _portailFiche(boite, p) {
+    if (_premierTag(p) !== "portail") return;
+    const liens = _liaisonsPortail(p);
+    if (!liens.length) return;
+    const zone = document.createElement("div");
+    zone.className = "kta-v3d-fiche-passages kta-v3d-fiche-portail";
+    zone.setAttribute("role", "group");
+    zone.setAttribute("aria-label", _t("vue3d.portail"));
+    liens.forEach(function (l, i) {
+      const txt = _t("vue3d.passerPlan", { plan: l.planName || l.planId || "?" });
+      const b = _bouton(zone, "kta-v3d-btn-mode kta-v3d-fiche-passage", txt, l.dispo ? txt : _t("ipl.popup.planAbsent"),
+        null);
+      b.dataset.v3dPortail = String(i);
+      if (!l.dispo) b.disabled = true;
+    });
+    zone.addEventListener("click", function (ev) {
+      const b = ev.target.closest && ev.target.closest("[data-v3d-portail]");
+      const l = b && !b.disabled ? liens[Number(b.dataset.v3dPortail)] : null;
+      if (!l || !_e || !window.InterPlanLinks) return;
+      window.InterPlanLinks.naviguerVers(l.id, l.cote);
+    });
+    boite.appendChild(zone);
+  }
+
+  // Changement de plan demandé pendant la vue (portail confirmé, liaison d'une fiche) : la vue se ferme sans
+  // question ni carte replacée (le plan change sous elle ; InterPlanLinks recale le tracker à l'arrivée).
+  function _fermerPourPlan() {
+    if (!_e) return;
+    _retenirEdition(true);
+    _demonter("utilisateur");
+    console.log("[Vue3D] fermée : changement de plan");
+  }
+
+  // Liaisons changées pendant la vue : cadres des portails rallumés ou éteints (volume refait à l'image suivante).
+  function _majPortails() {
+    const e = _e;
+    if (!e) return;
+    (e.volPassages || []).forEach(function (v) {
+      if (v.forme !== "portail" || !v.obj) return;
+      if ((_liaisonsPortail(v.point).length > 0) !== !!v.allume) _libererVolume(v);
+    });
+    _gererVolumes();
+    e.sale = true;
   }
 
   // ── Fiche d'une structure, d'une zone ou d'un tracé (la fiche de la carte, utils.js > attacherNotePopup) ─────
@@ -7192,6 +7537,8 @@
       if (crans) zoomer(Math.pow(RECUL.pas, crans));
     }, { passive: false });
     on(window, "kta:northOffsetChange", function () { _lireNord(); });
+    on(window, "kta:avantChangementPlan", function () { _fermerPourPlan(); });
+    on(window, "mktm:liaisons-changees", function () { _majPortails(); });
     // Itinéraire tracé, remplacé ou effacé pendant la vue (🚨, fiche, guidage) : scène refaite à l'image suivante,
     // bandeau et chevrons relus aussitôt.
     on(window, "kta:itineraireChange", function () { e.itiChange = true; e.guidageForce = true; e.apS = undefined; });
@@ -7731,6 +8078,7 @@
       e.tuiles.forEach(_libererTuile);
       (e.volPassages || []).forEach(_libererVolume);
       if (e.texCiel) e.texCiel.dispose();
+      if (e.plaques) e.plaques.forEach(function (t) { t.tex.dispose(); t.mat.dispose(); });
       _libererChevrons();
       _viderGroupe(e.marqueursIti);
       if (e.ronds) e.ronds.geometry.dispose();
@@ -8004,7 +8352,11 @@
           v.stats || {});
       }),
       geste: e.geste ? { sens: e.geste.sens, t: Math.round(e.geste.t), bascule: e.geste.fait } : null,
-      cameraY: +e.camera.position.y.toFixed(3), fondu: +(e.fonduOp || 0).toFixed(2),
+      cameraY: +e.camera.position.y.toFixed(3), ramper: +(e.ramper || 0).toFixed(3),
+      plaques: e.plaques ? { n: e.plaques.size, octets: Array.from(e.plaques.values()).reduce(function (s, t) {
+        return s + t.octets;
+      }, 0), noms: Array.from(e.plaques.keys()) } : null,
+      fondu: +(e.fonduOp || 0).toFixed(2),
       fonduPresent: !!e.fondu && !!e.fondu.parentNode && !e.fondu.hidden,
       bandeauNiveau: e.bandeauNiveau && !e.bandeauNiveau.hidden ? e.bandeauNiveau.textContent : null,
       pos: { x: e.pos.x, y: e.pos.y }, cap: e.cap, butees: e.butees, images: e.images,
