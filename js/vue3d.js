@@ -5279,6 +5279,11 @@
     const cv = document.createElement("canvas");
     cv.width = cv.height = N;
     const ctx = cv.getContext("2d");
+    // 🩸 Plan à canal alpha (PNG / WebP transparents) : le matériau est opaque, donc l'alpha de la texture est ignoré et
+    // WebKit montrait la couleur cachée des pixels transparents (mosaïque multicolore). Fond opaque d'abord, celui de
+    // la carte 2D (--kta-fond).
+    ctx.fillStyle = _jetonsSombres().fond;
+    ctx.fillRect(0, 0, N, N);
     // Région en px plan (origine en haut à gauche de l'image, comme les données) ; echelle = px de texture par px plan.
     const region = { x: (cx - cote / 2) * sc, y: (cz - cote / 2) * sc, w: cote * sc, h: cote * sc };
     const echelle = N / region.w, H = window.APP_CONFIG.imageHeight;

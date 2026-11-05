@@ -2935,9 +2935,24 @@ async function sectionCamera(page) {
     await ouvrir("structures", 0, 0, 0);
     K.panner(20, 0);
     await images(2);
+    // Plan à canal alpha : l'image du fond devient, le temps du contrôle, une image à moitié transparente.
+    const transp = await new Promise(function (res) {
+      const c = document.createElement("canvas");
+      c.width = c.height = 64;
+      const g = c.getContext("2d");
+      g.fillStyle = "#c0c0c0";
+      g.fillRect(0, 0, 64, 32);
+      const im = new Image();
+      im.onload = function () { res(im); };
+      im.src = c.toDataURL("image/png");
+    });
+    const fonds = (window._ktaBaseLayers || []).concat((window._baseTiles || []).map(function (t) { return t && t.overlay; }))
+      .filter(function (o) { return o && o._image; });
+    const imagesAvant = fonds.map(function (o) { const i = o._image; o._image = transp; return i; });
     document.querySelector('#kta-vue3d [data-v3d="planSol"]').click();
     for (let i = 0; i < 200 && !(K.etat().dessin.planSol && K.etat().dessin.planSol.px); i++) await images(1);
     await images(4);
+    fonds.forEach(function (o, i) { o._image = imagesAvant[i]; });
     const scn = ctxV.camera.parent;
     const mPlan = scn.children.filter(function (o) { return o.userData.famille === "planSol"; })[0];
     const solM = scn.children.filter(function (o) {
@@ -2948,6 +2963,19 @@ async function sectionCamera(page) {
       centre: mPlan ? [+(mPlan.position.x - ox).toFixed(1), +(mPlan.position.z - oz).toFixed(1)] : null,
       ordreSol: solM ? solM.renderOrder : null, profondeur: mPlan ? mPlan.material.depthTest : null,
       grainAllume: solM ? !!solM.material.map : null };
+    // Alpha le plus bas de la texture (grille 16 × 16) : le matériau est opaque, une texture transparente montrerait
+    // la couleur cachée des pixels transparents (plan à canal alpha, hors de l'image).
+    const cvP = mPlan && mPlan.material.map && mPlan.material.map.image;
+    if (cvP && cvP.getContext) {
+      const dP = cvP.getContext("2d").getImageData(0, 0, cvP.width, cvP.height).data;
+      let aMin = 255;
+      for (let gy = 0; gy < 16; gy++) for (let gx = 0; gx < 16; gx++) {
+        const px = Math.floor((gx + 0.5) * cvP.width / 16), py = Math.floor((gy + 0.5) * cvP.height / 16);
+        aMin = Math.min(aMin, dP[(py * cvP.width + px) * 4 + 3]);
+      }
+      r.planSol.alphaMin = aMin;
+      r.planSol.fondsRemplaces = fonds.length;
+    }
     document.querySelector('#kta-vue3d [data-v3d="planSol"]').click();
     await images(2);
     K.basculerTextures();
@@ -3081,6 +3109,8 @@ async function sectionCamera(page) {
   verifier(!!r.planSol.etat && r.planSol.etat.ok && proche(r.planSol.centre, [20, -2], 0.5) &&
     r.planSol.ordre > r.planSol.ordreSol && r.planSol.profondeur === false && r.planSol.grainAllume === true,
     "plan au sol centré sur le point visé, posé sur le sol par l'ordre de rendu (sans profondeur)", r.planSol);
+  verifier(r.planSol.alphaMin === 255 && r.planSol.fondsRemplaces > 0, "plan au sol : texture opaque (fond de la carte sous un plan transparent)",
+    { alphaMin: r.planSol.alphaMin, fonds: r.planSol.fondsRemplaces });
   // Couleur d'un sommet (octets linéaires de three.js) → comparée au hex sRGB de la légende (4 près).
   const memeCouleur = function (lineaire, hex) {
     const v = [1, 3, 5].map(function (i) { return parseInt(hex.substr(i, 2), 16); });
