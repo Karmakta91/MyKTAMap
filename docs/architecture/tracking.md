@@ -1675,7 +1675,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (les égarés du jeu la traversent debout, au travers de la roche : limite connue). **Plaque** (`plaque`),
   **épure** (`epure`), **portail** (`portail`) : à plat sur la paroi du tube **du côté du POI**, en face de lui le
   long de l'axe (`_surParoi` ; sur l'axe à 1 cm près : à gauche du sens du tracé) ; sans tube à cette place
-  (rendu structures, chambre, aucun axe à `PROCHE_M`), aucune forme, le panneau seul. 🩸 Un côté de tube ouvert par
+  (rendu structures, chambre, aucun axe à `PROCHE_M`), ⚠️ contrat (décision produit) : **sur la face de structure la
+  plus proche** (`vue3d.js > _surStructure`), hors rendu galerie : face verticale d'un prisme que la 3D dessine
+  (pilier, mur, mur en ligne, front, types perso : `_anneau`, `_pavesLigne`, filtres de la carte appliqués), à
+  `FACE_STRUCTURE.portee` = 3 m au plus du POI, celle qui regarde le POI (POI dans la structure : sa face la plus
+  proche), forme à plat dessus (`paroi` = 1, mêmes hauteurs et reculs), en face du POI, gardée sur la face quand elle
+  est assez longue (demi-longueur la plus grande de la forme : 0,5 / 0,6 / 0,5 m) ; face refusée si un point à 5 cm
+  devant la forme (centre, bouts) tombe dans un contour (mur sous un pilier, coudes d'un mur en ligne). Rien à 3 m :
+  le panneau seul. Faces en grille de 4 m, construites une fois par `_reindexer` et seulement si une forme n'a pas de
+  paroi : 50 POI parmi 2 025 piliers (8 100 faces) en ~6 ms (`etat().msFaces`). En mixte, un POI à 3 m d'une
+  structure compte en chambre (`enChambre`) : il va sur la structure ; la paroi du tube ne gagne que sans structure à
+  3 m (seul cas limite : face d'un mur en ligne à moins de 3 m dont l'axe est au-delà). 🩸 Un côté de tube ouvert par
   une structure proche (mixte) n'a pas de paroi : la forme y est posée quand même, à w de l'axe. Plaque émaillée
   à 1,45 m, au nom du POI, **à la taille du nom** (`_mesurePlaque`, texte mesuré au canvas à 400 px/m, police de
   0,126 m) : 0,3 m de haut, de 0,6 m élargie jusqu'à 1 m, puis deux lignes équilibrées (coupées entre deux mots),
@@ -1684,8 +1694,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   plaque unie ; 50 plaques de noms différents = 32 textures, ~5 Mo hors mipmaps ; le nom reste avec 🧱 coupé,
   décision produit : un repère. ⚠️ contrat (décision produit) : **une plaque posée n'a pas de panneau flottant**
   (`_ajouterPanneau` saute les POI de `e.plaquesParoi`, relu à chaque `_reindexer`) ; toucher la plaque ouvre la
-  fiche du POI comme son panneau (`_toucher` → `_plaqueVisee`, devant toute paroi). Plaque sans paroi (structures,
-  chambre) : le panneau seul ; plaque unie (au-delà de 32 noms) : son panneau revient, posé avec le volume. Épure :
+  fiche du POI comme son panneau (`_toucher` → `_plaqueVisee`, devant toute paroi). Plaque posée sur une structure :
+  même règle, aucun panneau ; plaque unie (au-delà de 32 noms) : son panneau revient, posé avec le volume. Épure :
   sept traits clairs
   (géométrie seule, rien à couper). Portail : cadre de porte 1 × 2 m, **lumineux** (matériau `lumineux`, jeton
   sombre `--kta-interaction`) si `InterPlanLinks.liaisonsDuPoint` en rend une, éteint sinon ; relu à

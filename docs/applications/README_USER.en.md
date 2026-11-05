@@ -650,7 +650,7 @@ Where and how a way through is drawn:
 - ![](../../icon/epure.png) **Survey datum**: a light line drawn on the nearest wall, at eye level.
 - ![](../../icon/portail.png) **Portal (inter-plan link)**: a door frame against the wall, **lit** when the point has a link to another plan, dark otherwise. The card of **any point linked** to another plan (portal or not) offers **🌀 Go to plan…**: the confirmation shows over the view; if you confirm, the view closes and the other plan opens. The card's link ➜ does the same.
 - ![](../../icon/vehicule.png) **Vehicle**: a small simplified car (a city car about 3.2 m long) in the tunnel, along it. **You bump into it**, as into a pillar.
-- Plate, datum and portal go on a tunnel wall: in a chamber or in Structures rendering, the point keeps its sign only.
+- Plate, datum and portal go on a tunnel wall. In a chamber or in Structures rendering, they go on the nearest pillar, wall or working face, if it is 3 m or less from the point; otherwise the point keeps its sign only. In Tunnels rendering, nothing changes.
 
 #### 🪜 Changing level
 
