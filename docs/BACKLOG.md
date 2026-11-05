@@ -146,8 +146,8 @@
 - **Niveaux qui s'entremêlent en 3D** — un niveau commence dans la hauteur d'un autre (étage ouvert à mi-hauteur d'une
   grande galerie). Idée KARMA : écart (m) avec le niveau supérieur, NÉGATIF = entremêlés d'autant, à partir de
   `niveauxProfondeur` (pas ≥ 0,5) + une hauteur PAR NIVEAU (aujourd'hui une seule par plan, `hauteurGalerieM`, hors ZIP).
-  `qui: Claude · action: topo puis QCM (données par niveau, Générateur, rendu multi-niveaux, règle du pas, itinéraire)
-  · depuis: 06/11/2026 · taille: L`
+  `qui: Claude · action: topo puis QCM (données par niveau, Générateur, rendu multi-niveaux, règle du pas, itinéraire,
+  ⛏️ Volume exploité qui lit la hauteur, à revoir en parallèle) · depuis: 06/11/2026 · taille: L`
 - **Position précise d'un POI (« Augmenter la précision »)** — un POI est souvent décalé pour la lisibilité (secteur dense
   en icônes). Dans sa fiche, un bouton pose un 2ᵉ point = l'endroit réel (mur de la plaque…), relié au POI par un pointillé
   jaune et marqué d'un carré jaune ; la 3D pose la forme là. Toutes les icônes ; chatière : point de début et de fin.
