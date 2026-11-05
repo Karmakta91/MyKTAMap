@@ -9,6 +9,7 @@
 // Moteurs : moteurs() lit KTA_MOTEURS (« chromium,webkit » par défaut) ; lancerMoteur(nom[, opts]) → Promise<Browser|null>.
 // WebKit = le moteur de Safari, donc de tout navigateur iPhone : deux bugs iPhone sont passés sous Chromium seul.
 // WebKit absent (pas téléchargé) : null, le harnais le dit et joue le reste — jamais un faux vert silencieux.
+// lancerPersistant(nom, dossier[, opts]) → Promise<BrowserContext|null> : profil persistant (cycle du Service Worker).
 // =====================================================================
 "use strict";
 
@@ -51,6 +52,23 @@ async function lancerMoteur(nom, opts) {
   }
 }
 
+// Profil persistant (Service Worker et caches gardés d'un lancement à l'autre) : mêmes replis que lancerNavigateur.
+// lancerPersistant(nom, dossier[, opts]) → Promise<BrowserContext|null> (null : WebKit absent).
+async function lancerPersistant(nom, dossier, opts) {
+  const pw = require("playwright");
+  const base = opts || {};
+  if (nom === "webkit") {
+    try { return await pw.webkit.launchPersistentContext(dossier, base); }
+    catch (e) { if (!_absent(e)) throw e; console.log("[harnais] ⚠️ WebKit absent : moteur SAUTÉ"); return null; }
+  }
+  const essais = [base, Object.assign({}, base, { channel: "chromium" }), Object.assign({}, base, { channel: "msedge" })];
+  for (let i = 0; i < essais.length; i++) {
+    try { return await pw.chromium.launchPersistentContext(dossier, essais[i]); }
+    catch (e) { if (!_absent(e) || i === essais.length - 1) throw e; }
+  }
+}
+
 module.exports = lancerNavigateur;
 module.exports.moteurs = moteurs;
 module.exports.lancerMoteur = lancerMoteur;
+module.exports.lancerPersistant = lancerPersistant;
