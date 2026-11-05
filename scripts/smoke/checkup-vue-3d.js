@@ -71,7 +71,8 @@
 // ni validation ni distance, Carnet « bureau » ; « Je suis ici » d'une fiche = validation (KTA_V3D_SEUL=saut). Plan au
 // sol à tous les niveaux (34) : base au −1, calque du +1, pixels lus, refait au changement de niveau (=solniveaux).
 // Ajuster une forme en vue d'édition (35, =ajuster) : souris et doigt, pilier, zone, tracé, mesure (déplacer, ajouter,
-// 🗑️, ⏪, caméra immobile, scène refaite), refus, niveau, calque, lecture seule, outil armé, pan, Échap. Ajouter un POI
+// 🗑️, ⏪, caméra immobile, scène refaite), refus, niveau, calque, lecture seule, outil armé, pan, Échap ; à la vraie
+// souris (35 bis : pavé, 1280 × 800, tremblement, coin du dessus d'un pilier, tracé, mesure). Ajouter un POI
 // en vue d'édition (36, =poi) : ✏️ à sa place, un seul outil, fenêtre de nommage, clavier, niveau, ⏪, Échap, lecture seule.
 // Réglage ⚙️ Fiches (37, =fiches) : défaut selon le pointeur, coupé = rien sur pilier, zone, tracé (POI : sa fiche), retenu.
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
@@ -5524,6 +5525,206 @@ async function sectionAjusterSommets(nav, mode) {
     nom + "Échap pendant l'appui long : annulé, rien d'écrit, la vue reste ouverte");
     verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
     await ev(function () { window.KtaVue3D.fermer(); });
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await ctx.close();
+  }
+}
+
+// ── 35 bis. Ajuster à la vraie souris (vue3d.js > _ajusterAppui) ──────────────────────────────────────────────────
+// Ce que fait une main au PC, que § 35 ne jouait pas : fenêtre 1280 × 800, pointeur fin, commandes par défaut (pavé),
+// souris amenée en dix pas, appui, tremblement de 1 à 3 px pendant l'attente, glisser, lâcher (page.mouse : de vrais
+// événements du navigateur, mouseEvents de compatibilité compris). Pilier visé là où on le VOIT, au coin du dessus
+// (plus de RAYON_PX au-dessus de son pied à l'écran), puis au pied ; tracé et mesure (📐 armé) au sol. Pour chacun :
+// armé, caméra immobile pendant l'appui et le glisser, sommet déplacé de ce qu'a parcouru le pointeur au sol, seul.
+async function sectionAjusterSourisReelle(nav) {
+  const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  const nom = "§ 35 bis [vraie souris] ";
+  console.log("§ 35 bis — ajuster à la vraie souris (tremblement, pavé, 1280 × 800)");
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const ouvert = await page.evaluate(async function () {
+      const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+      const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      const images = async function (n) {
+        for (let i = 0; i < (n || 3); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      };
+      window.getPlanEditionVue3D = function () { return null; };
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = "v3d-checkup-souris";
+      C.multiLevel = false;
+      window.setPlanRenduVue3D(null, "structures");
+      window.setStructures([{ uid: "st_vs_p", type: "pilier-1",
+        points: [P(-6, -4), P(-4, -4), P(-4, -2), P(-6, -2)] }]);
+      window.setZones([]);
+      window.setRoads([{ uid: "rd_vs_r", type: "principal", points: [P(-6, 2), P(-4, 2), P(-2, 2)] }]);
+      if (window.resetMesure) window.resetMesure();
+      window.KtaGalerie.invalider();
+      window.HistoryManager.reset();
+      window.__vsU = 0;
+      window.HistoryManager.onChange(function (s) { window.__vsU = s.undoSize; });
+      let ctxV = null;
+      await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 0 } });
+      K.basculerVue();
+      await new Promise(function (ok) { setTimeout(ok, 250); });
+      await images(4);
+      const deg = K.greffer({ nom: "v3d-souris-camera", scene: function (c) { ctxV = c; } });
+      if (deg) deg();
+      await images(2);
+      const cv = function () { return document.querySelector("#kta-vue3d canvas"); };
+      window.__vs = {
+        P: P, sc: sc,
+        ecran: function (p, h) {
+          const rc = cv().getBoundingClientRect();
+          const v = new ctxV.THREE.Vector3(p.x / sc, h || 0, p.y / sc).project(ctxV.camera);
+          return [rc.left + (v.x + 1) / 2 * rc.width, rc.top + (1 - v.y) / 2 * rc.height];
+        },
+        sol: function (cx, cy) {
+          const rc = cv().getBoundingClientRect(), T = ctxV.THREE, r = new T.Raycaster();
+          r.setFromCamera(new T.Vector2((cx - rc.left) / rc.width * 2 - 1, -(cy - rc.top) / rc.height * 2 + 1),
+            ctxV.camera);
+          const q = r.ray.intersectPlane(new T.Plane(new T.Vector3(0, 1, 0), 0), new T.Vector3());
+          return q ? { x: q.x * sc, y: q.z * sc } : null;
+        },
+        pts: function (ref) {
+          if (ref === "distance") return window.getMeasurePoints().map(function (p) { return { x: p.x, y: p.y }; });
+          const o = window.getRoads().concat(window.getStructures()).filter(function (q) { return q.uid === ref; })[0];
+          return o ? o.points.map(function (p) { return { x: p.x, y: p.y }; }) : null;
+        },
+        etat: function () {
+          const e = K.etat();
+          return { cam: [e.camera.visee.x, e.camera.visee.z, e.cap, e.distance], ajuste: e.dessin.ajuste,
+            undo: window.__vsU, attente: e.donnees.attente, refaites: e.donnees.refaites };
+        }
+      };
+      const e = K.etat();
+      return { commandes: e.commandes, vue: e.vue, hauteur: e.hauteur,
+        fin: !!(window.matchMedia && window.matchMedia("(pointer: fine)").matches) };
+    });
+    verifier(ouvert.fin && ouvert.commandes === "pave" && ouvert.vue === "plongee",
+      nom + "pointeur fin, pavé (commandes du PC), vue d'édition", ouvert);
+
+    const ev = function (f, a) { return page.evaluate(f, a); };
+    const etat = function () { return ev(function () { return window.__vs.etat(); }); };
+    const ecran = function (p, h) { return ev(function (a) { return window.__vs.ecran(a[0], a[1]); }, [p, h || 0]); };
+    const pts = function (ref) { return ev(function (r) { return window.__vs.pts(r); }, ref); };
+    const sol = function (p) { return ev(function (p) { return window.__vs.sol(p[0], p[1]); }, p); };
+    const memeCam = function (a, b) { return a.every(function (v, i) { return Math.abs(v - b[i]) < 1e-6; }); };
+    const sc = await ev(function () { return window.__vs.sc; });
+    const attendreScene = async function (n0) {
+      for (let i = 0; i < 50; i++) {
+        const s = await etat();
+        if (!s.attente && s.refaites > n0) return true;
+        await page.waitForTimeout(40);
+      }
+      return false;
+    };
+    // Souris amenée en dix pas, appui, 6 tremblements (1 à 3 px, 100 ms chacun : l'appui long passe pendant), puis
+    // glisser de (dx, dy) en 8 pas et lâcher. Caméra relevée avant, pendant l'appui, pendant le glisser, après.
+    const TREMBLE = [[1, 0], [2, 1], [1, 2], [3, 1], [2, 2], [1, 1]];
+    const geste = async function (de, dx, dy) {
+      await page.mouse.move(de[0] - 60, de[1] - 40);
+      await page.mouse.move(de[0], de[1], { steps: 10 });
+      await page.waitForTimeout(80);
+      const e0 = await etat();
+      await page.mouse.down();
+      const cams = [];
+      for (const t of TREMBLE) {
+        await page.mouse.move(de[0] + t[0], de[1] + t[1]);
+        await page.waitForTimeout(100);
+        cams.push((await etat()).cam);
+      }
+      const arme = await etat();
+      const de2 = [de[0] + 1, de[1] + 1];
+      for (let i = 1; i <= 8; i++) {
+        await page.mouse.move(de2[0] + dx * i / 8, de2[1] + dy * i / 8);
+        await page.waitForTimeout(25);
+        if (i === 6) cams.push((await etat()).cam);
+      }
+      const fin = [de2[0] + dx, de2[1] + dy];
+      await page.mouse.up();
+      await page.waitForTimeout(100);
+      const e1 = await etat();
+      cams.push(e1.cam);
+      return { e0: e0, arme: arme, e1: e1, cams: cams, de: de, fin: fin };
+    };
+    const cas = async function (libelle, ref, s, vise) {
+      const avant = await pts(ref);
+      const g = await geste(vise, 45, 30);
+      const apres = await pts(ref);
+      const a = await sol(g.de), b = await sol(g.fin);
+      const voulu = a && b ? { x: avant[s].x + b.x - a.x, y: avant[s].y + b.y - a.y } : null;
+      const ecart = voulu && apres ? Math.hypot(apres[s].x - voulu.x, apres[s].y - voulu.y) / sc : null;
+      verifier(!!(g.arme.ajuste && g.arme.ajuste.arme), nom + libelle + " : l'appui long tremblé arme l'ajustement",
+        g.arme.ajuste);
+      verifier(g.cams.every(function (c) { return memeCam(g.e0.cam, c); }),
+        nom + libelle + " : caméra immobile pendant l'appui, le glisser et après",
+        { avant: g.e0.cam, apres: g.e1.cam });
+      verifier(apres && apres.length === avant.length && ecart !== null && ecart <= 0.2 &&
+        apres.every(function (p, i) { return i === s || (p.x === avant[i].x && p.y === avant[i].y); }) &&
+        g.e1.undo === g.e0.undo + 1,
+      nom + libelle + " : sommet déplacé de ce qu'a parcouru le pointeur (" +
+        (ecart === null ? "?" : ecart.toFixed(3)) + " m), seul, une entrée ⏪", { ecart: ecart });
+      await ev(function () { window.HistoryManager.undo(); });
+      await page.waitForTimeout(150);
+      await attendreScene((await etat()).refaites - 1);
+    };
+
+    // Pilier : coin arrière vu du dessus (0,2 m vers l'intérieur, juste sous le toit), puis un pied de face.
+    const pil = await pts("st_vs_p");
+    const dedans = { x: pil[0].x + 0.2 * sc, y: pil[0].y + 0.2 * sc };
+    const haut = await ecran(dedans, ouvert.hauteur - 0.05), pied = await ecran(pil[0]);
+    const ecartPx = Math.hypot(haut[0] - pied[0], haut[1] - pied[1]);
+    verifier(ecartPx > 24, nom + "pilier : le coin du dessus est à " + Math.round(ecartPx) + " px de son pied (> " +
+      "RAYON_PX) — l'appui au sol seul le manquait", { ecartPx: ecartPx });
+    await cas("pilier, coin du dessus", "st_vs_p", 0, haut);
+    await cas("pilier, pied", "st_vs_p", 2, await ecran(pil[2]));
+    await cas("tracé", "rd_vs_r", 1, await ecran((await pts("rd_vs_r"))[1]));
+    // 📐 Distance armé depuis la colonne de la vue (l'ajustement de la mesure est une entrée ⏪), 3 points posés.
+    await ev(function () {
+      const b = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="mesure"]');
+      if (b) b.click();
+      const fly = document.querySelector(".kta-group-flyout"), lib = window.I18n.t("ui.subaction.mesureDistance");
+      const btn = fly && Array.prototype.slice.call(fly.querySelectorAll(".kta-group-flyout-btn"))
+        .filter(function (x) { return x.textContent.indexOf(lib) >= 0; })[0];
+      if (btn) btn.click();
+      if (window.ktaOutilsOuverts && window.ktaOutilsOuverts()) window.ktaFermerOutils();
+      window.setMeasurePoints([window.__vs.P(1, 2), window.__vs.P(3, 2), window.__vs.P(5, 3)]);
+    });
+    await page.waitForTimeout(200);
+    await cas("mesure", "distance", 1, await ecran((await pts("distance"))[1]));
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+    await ev(function () { window._desactiverTousLesModes(); window.KtaVue3D.fermer(); });
   } catch (err) {
     pb(nom + "exception du harnais : " + (err && err.message));
   } finally {
@@ -12377,6 +12578,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
     if (!SEUL || SEUL === "ajuster") {
       for (const mode of ["souris", "doigt"]) await sectionAjusterSommets(nav, mode);
+      await sectionAjusterSourisReelle(nav);
     }
     if (!SEUL || SEUL === "poi") await sectionPoi3D(nav);
     if (!SEUL || SEUL === "fiches") await sectionFichesReglage(nav);

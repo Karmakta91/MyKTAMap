@@ -5198,7 +5198,8 @@
   // ⚠️ contrat (décision produit) : une seule prise pour la carte et la vue (ajusterSommets.js > KtaAjusterSommets.plan :
   // familles, droits, minimum et toast, aimantation, une entrée ⏪, un rendu au lâcher). La vue ne mène que le geste :
   // appui long (APPUI_MS) sur un sommet ou au milieu d'un côté de ce qu'elle montre (son niveau, ses filtres : e.vus ;
-  // la mesure toujours), au sol sous le point d'APPUI (_pointSol), RAYON_PX px d'écran convertis à la profondeur ;
+  // la mesure toujours), au sol sous le point d'APPUI (_pointSol), sinon au maillage touché (le dessus d'un pilier :
+  // _pointVise), RAYON_PX px d'écran convertis à la profondeur ;
   // puis glisser (aperçu au sol, ronds dorés, aucune reconstruction : la scène est refaite au lâcher) ou, sans bouger,
   // 🗑️ au sommet. Un outil de dessin armé passe avant (sauf 📐 pour la mesure), comme sur la carte.
   // 🩸 Caméra : plus de BOUGE_PX avant l'appui long = un pan (l'appui est oublié, le pan part à TAPE.bouge) ; armé, le
@@ -5219,7 +5220,15 @@
     const e = _e, A = _ajusteur();
     if (!A || e.ajuste || !_dessinPermis() || !_rayonEcran(ev.clientX, ev.clientY)) return false;
     const v = _pointSol();
-    const c = v ? A.plan.saisir(v.x, v.y, _tolerancePlan(v.dist, A.RAYON_PX), _garderVu) : null;
+    let c = v ? A.plan.saisir(v.x, v.y, _tolerancePlan(v.dist, A.RAYON_PX), _garderVu) : null;
+    // 🩸 Un sommet se vise là où on le VOIT : le coin du dessus d'un pilier, à plus de RAYON_PX au-dessus de son pied à
+    // l'écran en vue d'édition (pied caché ou loin) ; rien au sol, l'appui partait en pan (la souris, précise, vise ce
+    // coin). Rien au sol : le point du maillage touché (_pointVise) est essayé. Le glisser reste mené au sol (depart =
+    // v) : le sommet garde son écart au pointeur, sans saut.
+    if (!c && v) {
+      const m = _pointVise();
+      if (m && !m.sol) c = A.plan.saisir(m.x, m.y, _tolerancePlan(m.dist, A.RAYON_PX), _garderVu);
+    }
     if (!c) return false;
     e.ajuste = { id: ev.pointerId, cx: ev.clientX, cy: ev.clientY, depart: v, dist: v.dist, c: c, arme: false,
       bouge: false, n: 0, timer: setTimeout(_ajusterArmer, A.APPUI_MS) };

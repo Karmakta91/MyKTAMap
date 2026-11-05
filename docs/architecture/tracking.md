@@ -2049,6 +2049,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Ce qui se vise** : ce que la vue montre (`e.vus` : son niveau, ses filtres, pas de structure en rendu Galerie), la
   mesure toujours ; au sol sous le point d'**appui** (`_pointSol`), rayon de 24 px d'écran converti à la profondeur
   (`_tolerancePlan(dist, RAYON_PX)`) ; aimantation d'un tracé au rayon de `snapDrawPx` à la profondeur du lâcher.
+  🩸 Rien au sol : le point du maillage touché (`_pointVise`, hors sol) est essayé au même rayon. Un sommet se vise là
+  où on le voit : le coin du dessus d'un pilier est à plus de 24 px au-dessus de son pied en vue d'édition par défaut
+  (33 px mesurés à 1280 × 800), et la souris, précise, le visait : l'appui partait en pan. Le glisser reste mené au sol
+  (départ = le sol sous l'appui) : le sommet garde son écart au pointeur, sans saut. Checkup § 35 bis (vraie souris).
 - **Caméra** 🩸 : plus de 6 px avant l'appui long = un pan (l'appui est oublié ; le pan part à 8 px, `TAPE.bouge`) ;
   armé, les mouvements du doigt ne vont qu'au sommet (ni pan, ni cap) ; un 2e doigt, la molette, Échap ou la sortie de
   la vue d'édition annulent sans rien écrire. Le lâcher d'un ajustement n'est pas un toucher (pas de fiche).
@@ -2098,7 +2102,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   d'autant que l'objet est haut (jusqu'à 1,3 m mesuré sur un plan dense en vue inclinée), alors que l'aperçu et le plan
   au sol se dessinent au sol, sous le doigt. Aucun maillage requis : hors du carré de sol, au-delà de la portée ou dans
   le noir hors des tubes (rendu Galerie) le point se pose quand même. Hors de l'image du plan : refusé, toast « Hors du plan » (jamais ramené sur le bord, décision produit). La
-  visée des fiches (`_pointVise`, outil désarmé) garde la surface touchée.
+  visée des fiches (`_pointVise`, outil désarmé) garde la surface touchée, comme la saisie d'un sommet à ajuster quand
+  rien n'est au sol (elle ne pose rien : le sommet glisse au sol).
 - **Niveau** ⚠️ contrat : l'objet prend le niveau de la 3D (`e.niveau`, `niveauLibre` compris) : `APP_CONFIG.activeLevel`
   le prend le temps des deux `fire` puis est rendu (`finally`), la règle de la 2D (pilier-2 / front-2 au niveau − 1,
   aimantation au niveau actif) jouant d'elle-même. Rien d'asynchrone de la vue ne lit le niveau pendant ce temps.
