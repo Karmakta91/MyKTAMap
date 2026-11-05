@@ -643,6 +643,15 @@ Où et comment un passage se dessine :
 - ![](../../icon/caf.png) **Cavage fermé** : la même porte, battants fermés. **On bute dessus**, et sur la pierre qui la borde.
 - Bois, pierre et remblais suivent **🧱 Textures**.
 
+**Autres points avec une forme** :
+
+- ![](../../icon/chatiere.png) **Chatière** : la galerie se resserre sur un trou d'environ 0,6 m dans la roche, en travers de la galerie. Rien ne t'arrête : la vue s'abaisse pour la passer en rampant, puis remonte (en 🧭 Suivi comme en 🕹️ Libre). Sa longueur est fixe (1,8 m) : le point n'en dit pas plus.
+- ![](../../icon/plaque.png) **Plaque indication** : une plaque émaillée bleue et blanche, à plat sur la paroi la plus proche, au nom du point. Avec 🧱 coupé, la plaque est unie (le nom reste sur le panneau).
+- ![](../../icon/epure.png) **Épure** : un trait clair tracé sur la paroi la plus proche, à hauteur d'yeux.
+- ![](../../icon/portail.png) **Portail (liaison inter-plan)** : un cadre de porte contre la paroi, **allumé** quand le point a une liaison vers un autre plan, éteint sinon. Sa fiche propose **🌀 Passer au plan…** : la confirmation s'affiche par-dessus la vue ; si tu confirmes, la vue se ferme et l'autre plan s'ouvre.
+- ![](../../icon/vehicule.png) **Véhicule** : une voiture simplifiée dans la galerie, le long de celle-ci. **On bute dessus**, comme sur un pilier.
+- Plaque, épure et portail se posent sur la paroi d'une galerie : dans une salle ou en rendu Structures, le point garde son seul panneau.
+
 #### 🪜 Changer de niveau
 
 - À moins de **2 m** d'un passage entre niveaux (escalier, puits) ou du bout d'un tracé jonction, des boutons nommés (« ▼ -1 · Puits du carrefour (échelle) ») t'emmènent au niveau voisin.

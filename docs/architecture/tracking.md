@@ -1660,6 +1660,33 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   côtés égaux et inégaux, porte fermée et ouverte, rendu galerie identique sans et avec les murs) ; escaliers en niche : § 14 quinquies (POI d'un côté, de
   l'autre, dans le tube, sur l'axe, boucle, bout de cul-de-sac, tracé dans les deux sens, `esf` / `eso` / `jes` vers
   le haut, le bas et entre trois niveaux ; niche marchable, paroi ouverte, fond muré, 2D intacte).
+- **Formes des POI sans passage** (`galerieEmprise.js > ACCES`, `PAROI`, `_surParoi` ; `vue3d.js > _chatiere`,
+  `_plaque`, `_epure`, `_portail`, `_vehicule` ; décision produit) : même règle de place (`placePassage`), panneau
+  au-dessus, construites à portée, sans moyen ni emprise. **Chatière** (`chatiere`) : roche brute des piliers (🧱,
+  couleur du pilier sinon) en travers de la galerie sur `CHATIERE.long` = 1,8 m (aucune longueur relevée sur le POI :
+  une chatière courte), posée sur l'axe comme une porte, largeur de la galerie + 0,3 m dans les parois, percée au
+  sol d'un trou de 0,6 m (profil `PROFIL_CHATIERE`) ; **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
+  en suivi comme en libre, l'œil descend à 0,35 m dans la roche et sur 1 m de part et d'autre en fondu
+  (`_baisseChatiere`, `_placerCamera`), puis remonte ; vue d'édition : rien. `ctx.libre` des add-ons reste ouvert
+  (les égarés du jeu la traversent debout, au travers de la roche : limite connue). **Plaque** (`plaque`),
+  **épure** (`epure`), **portail** (`portail`) : à plat sur la paroi du tube **du côté du POI**, en face de lui le
+  long de l'axe (`_surParoi` ; sur l'axe à 1 cm près : à gauche du sens du tracé) ; sans tube à cette place
+  (rendu structures, chambre, aucun axe à `PROCHE_M`), aucune forme, le panneau seul. 🩸 Un côté de tube ouvert par
+  une structure proche (mixte) n'a pas de paroi : la forme y est posée quand même, à w de l'axe. Plaque émaillée
+  0,6 × 0,3 m à 1,45 m, au nom du POI (canvas 256 × 128, **une texture par nom**, partagée et comptée, rendue avec
+  le dernier volume qui la porte, au plus `PLAQUE.max` = 32 vivantes : au-delà, plaque unie ; 50 plaques de noms
+  différents = 32 textures, 4 Mo hors mipmaps ; 🧱 coupé : unie, aucune texture). Épure : sept traits clairs
+  (géométrie seule, rien à couper). Portail : cadre de porte 1 × 2 m, **lumineux** (matériau `lumineux`, jeton
+  sombre `--kta-interaction`) si `InterPlanLinks.liaisonsDuPoint` en rend une, éteint sinon ; relu à
+  `mktm:liaisons-changees` (`_majPortails`). Sa fiche propose **« 🌀 Passer au plan X »** par liaison
+  (`_portailFiche`, plan absent de l'appareil : inactif) → `InterPlanLinks.naviguerVers` : la mini-confirmation de
+  la carte (z-index 99999, ajoutée après la vue) s'affiche **par-dessus** la vue ; confirmée, `goTo` émet
+  `kta:avantChangementPlan` avant tout chargement et la vue se ferme sans « Je suis ici ? » (`_fermerPourPlan` : le
+  portail recale lui-même le tracker) ; vrai aussi pour ➜ de la section liaisons de la fiche. **Véhicule**
+  (`vehicule`) : voiture simplifiée (caisse, habitacle à vitres sombres, quatre roues ; `ACCES_DIM.vehicule*` =
+  4 × 1,8 × 1,5 m), dans le tube du côté du POI gardée entre les parois (demi-emprise 0,9 m), le long de l'axe ;
+  **arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
+  survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes`).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
