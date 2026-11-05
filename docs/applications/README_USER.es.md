@@ -564,7 +564,6 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **🔦 Haz**: un cursor de 40 a 160° (71° por defecto) ajusta la anchura del haz; cuanto más ancho, más se funde su borde en la oscuridad. Se guarda en este dispositivo.
 - **☀️ Pleno día**: todo iluminado, como una maqueta; la niebla se queda en el alcance. Se guarda en este dispositivo.
 - Durante una partida, el alcance vuelve a 30 m, la lámpara a 100 %, el haz a 71° y Pleno día se apaga (ajustes en gris), y luego vuelven tus ajustes.
-- Un **punto dorado** en ⚙️ indica que un ajuste no es el predeterminado: modo libre, vista de edición, representación distinta de Mixto, texturas desactivadas, brújula oculta, guiado desactivado, alcance distinto de 30 m, lámpara distinta de 100 %, haz distinto de 71°, Pleno día.
 
 #### 🏛️ Las tres representaciones
 

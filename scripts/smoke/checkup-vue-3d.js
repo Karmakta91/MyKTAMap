@@ -6002,8 +6002,7 @@ async function sectionGestesDoigt(nav) {
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer", "vue3d.fichesMontrer",
             "vue3d.lampeJourAide"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
-            return k === "vue3d.reglages" && window.KtaVue3D.etat().reglages.repere ?
-              t + " · " + window.I18n.t("vue3d.reglagesModifies") : t;
+            return t;
           }) };
       });
       verifier(e0.canvas && e0.css, "fenêtre, scène et feuille montées");
@@ -9918,10 +9917,10 @@ async function sectionGestesDoigt(nav) {
         TU.ouverte);
       verifier(TU.reclic === false && TU.ailleurs === false && TU.echap.tuile === false && TU.echap.vue,
         "tuile fermée par ⚙️ à nouveau, par un toucher ailleurs, par Échap (la vue reste)", TU);
-      verifier(TU.libre.mode === "libre" && TU.libre.repere && TU.libre.indic === "🕹️" && TU.libre.indicVisible,
-        "mode libre : repère sur ⚙️, pastille 🕹️ visible hors de la tuile", TU.libre);
+      verifier(TU.libre.mode === "libre" && !TU.libre.repere && TU.libre.indic === "🕹️" && TU.libre.indicVisible,
+        "mode libre : aucun repère sur ⚙️, pastille 🕹️ visible hors de la tuile", TU.libre);
       verifier(TU.masquee.visible === false && TU.masquee.pref === false && TU.masquee.presse === "false" &&
-        TU.masquee.tuile && TU.masquee.rangee && TU.rouverte.visible === false && TU.rouverte.repere,
+        TU.masquee.tuile && TU.masquee.rangee && TU.rouverte.visible === false && !TU.rouverte.repere,
         "boussole masquée par la tuile, retenue sur l'appareil (rouverte masquée), rien d'autre ne bouge", TU);
       await page.evaluate(function () { window.setStructures([]); window.KtaGalerie.invalider(); });
 
@@ -10705,8 +10704,8 @@ async function sectionGestesDoigt(nav) {
         GU.montre.presse === "true" && GU.montre.dansTuile,
         "guidage montré par défaut : bandeau, chevrons et ruban ; interrupteur 🪧 dans la tuile ⚙️", GU.montre);
       verifier(!GU.coupe.bandeau && GU.coupe.chevrons === 0 && GU.coupe.ruban > 0 && !GU.coupe.montre &&
-        GU.coupe.presse === "false" && GU.coupe.repere && GU.coupe.pref === false && GU.coupe.pref2D,
-        "guidage coupé : ni bandeau ni chevrons, le ruban reste ; repère sur ⚙️ ; préférence 2D inchangée", GU.coupe);
+        GU.coupe.presse === "false" && !GU.coupe.repere && GU.coupe.pref === false && GU.coupe.pref2D,
+        "guidage coupé : ni bandeau ni chevrons, le ruban reste ; aucun repère sur ⚙️ ; préférence 2D inchangée", GU.coupe);
       verifier(GU.urgence.bandeau && GU.urgence.urgence && GU.urgence.chevrons > 0 && !GU.urgence.montre,
         "guidage coupé : un guidage d'urgence s'affiche quand même (bandeau et chevrons)", GU.urgence);
       verifier(!GU.rouverte.bandeau && GU.rouverte.chevrons === 0 && GU.rouverte.ruban > 0 && !GU.rouverte.montre &&
@@ -10911,7 +10910,7 @@ async function sectionGestesDoigt(nav) {
       verifier(juste(ech.mur2, ap) && juste(ech.mur40, ap) && juste(ech.verticalesMur, ap) && juste(ech.roche, ar),
         "taille réelle : parpaing " + ap + " et roche " + ar + " de texture par mètre, sur le mur de 2 m comme sur " +
         "celui de 40 m, en hauteur et sur le dessus (aucun étirement)", ech);
-      verifier(!C0.actives && C0.bouton === "false" && TX.coupe.pref === false && TX.coupe.repere && TX.coupe.tuile &&
+      verifier(!C0.actives && C0.bouton === "false" && TX.coupe.pref === false && !TX.coupe.repere && TX.coupe.tuile &&
         TX.coupe.dansTuile && !C0.maillages.roche && !C0.maillages.parpaing && C0.maillages.opaque >= 1 &&
         C0.maillages.murs >= 1 && C0.aretes.every(function (x) { return x.mat === "paroi"; }),
         "🧱 coupé dans la tuile ⚙️ : matériaux d'origine, plus aucune texture ; repère sur ⚙️ ; tuile ouverte",
@@ -10927,7 +10926,7 @@ async function sectionGestesDoigt(nav) {
         TX.remis.greffe.dansScene && TX.remis.journal.length === 1,
         "bascule avec une greffe posée : groupe gardé dans la scène, ni demonter ni scene refaite", TX.coupe.journal);
       verifier(TX.remis.t.actives && TX.remis.t.maillages.roche >= 1 && !R0.actives && R0.bouton === "false" &&
-        TX.rouverte.repere, "réglage retenu sur l'appareil : rouverte, textures toujours coupées",
+        !TX.rouverte.repere, "réglage retenu sur l'appareil : rouverte, textures toujours coupées",
         { remis: TX.remis.t.actives, rouverte: R0.actives });
       verifier(TX.defaut.rendu === "mixte" && TX.defaut.parois && TX.structures.t.maillages.roche >= 1 &&
         TX.structures.t.maillages.parpaing >= 1 && !TX.structures.t.maillages.paroi && !TX.galerie.t.maillages.roche &&
@@ -11441,7 +11440,7 @@ async function sectionGestesDoigt(nav) {
       verifier(RG.p100.retenue === 100 && RG.p100.distance === 100 && RG.p100.tuiles.manquantes === 0 &&
         RG.p100.tuiles.hors === 0 && RG.p100.tuiles.montrees > RP5.tuiles.montrees && RG.p15.retenue === 15 &&
         RG.p15.distance === 15 && RG.p15.tuiles.hors === 0 && RG.p15.tuiles.montrees < RD0.tuiles.montrees &&
-        RG.repere, "portée bornée à 15 / 100 m, tuiles suivies dans les deux sens, repère sur ⚙️",
+        !RG.repere, "portée bornée à 15 / 100 m, tuiles suivies dans les deux sens, aucun repère sur ⚙️",
         { p100: RG.p100, p15: RG.p15 });
       verifier(RG.rouverte.distance === 42 && RG.rouverte.curseur === 42, "portée relue à la réouverture", RG.rouverte);
       // Lampe : chiffres de vue3d.js > _courbeLampe et _coneLampe (100 % = la lampe d'origine, 200 % = l'ancienne
@@ -11480,7 +11479,7 @@ async function sectionGestesDoigt(nav) {
         "160° : le bord se fond dans le noir), retenu", { F6: F6, F4: F4, FC: FC });
       const RJ = RG.jour, RJO = RG.rouverteL, RJC = RG.jourCoupe;
       verifier(act(RJ, 150, 100, true) && RJ.pref.jour && RJ.ambiance === 0.9 && RJ.jour.presse === "true" &&
-        prL(RJ.brume[0], 19.5) && prL(RJ.intensite, 27) && RJ.lampe === 1 && RJ.repere &&
+        prL(RJ.brume[0], 19.5) && prL(RJ.intensite, 27) && RJ.lampe === 1 && !RJ.repere &&
         act(RJO, 150, 100, true) && RJO.curseurs[0].valeur === 150 && RJO.curseurs[1].valeur === 100 &&
         RJO.ambiance === 0.9 && act(RJC, 150, 100, false) && RJC.ambiance === 0.04 && !RJC.pref.jour &&
         RJC.jour.presse === "false",

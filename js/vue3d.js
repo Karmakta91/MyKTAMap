@@ -6687,19 +6687,12 @@
     return oui;
   }
 
-  // Repère sur ⚙️ (un réglage n'est pas celui par défaut : mode libre, vue plongeante, rendu autre que mixte,
-  // boussole masquée, guidage coupé, textures coupées, portée, intensité ou faisceau autres que ceux par défaut,
-  // Plein jour) et pastille du mode, hors de la tuile.
+  // Pastille du mode, hors de la tuile. ⚠️ contrat (décision produit) : aucun repère sur ⚙️, même quand un réglage
+  // n'est pas celui par défaut (le ≡ garde le sien : un filtre actif cache des objets).
   function _majRepere() {
     const e = _e;
     if (!e || !e.boutonReglages) return;
-    const lv = e.lampeVoulue, L = REGLAGE_LAMPE;
-    const modifie = e.mode === "libre" || e.vue === "plongee" || e.rendu !== "mixte" ||
-      (!!e.boussole && e.boussole.hidden) || !_guidageMontre() || !_texturesActives() ||
-      e.porteeVoulue !== PORTEE.defaut || lv.intensite !== L.intensite.defaut || lv.faisceau !== L.faisceau.defaut ||
-      lv.jour;
-    e.boutonReglages.classList.toggle("kta-v3d-modifie", modifie);
-    const titre = _t("vue3d.reglages") + (modifie ? " · " + _t("vue3d.reglagesModifies") : "");
+    const titre = _t("vue3d.reglages");
     e.boutonReglages.title = titre;
     e.boutonReglages.setAttribute("aria-label", titre);
     if (e.indicMode) {

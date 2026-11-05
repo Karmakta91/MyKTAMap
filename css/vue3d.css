@@ -89,14 +89,12 @@
 .kta-vue3d .kta-v3d-haut > .kta-aide-ctx-btn:focus-visible {
   outline: 2px solid var(--kta-interaction); outline-offset: 2px;
 }
-/* ≡ quand un filtre de la carte est actif (FilterPanel.majBadge) et ⚙️ quand un réglage de la tuile n'est pas celui
-   par défaut (vue3d.js > _majRepere) : le repère du ≡ de la carte (liseré doré intérieur, point doré). */
-.kta-v3d-btn.kta-v3d-filtres.kta-filter-ctrl-actif,
-.kta-v3d-btn.kta-v3d-btn-reglages.kta-v3d-modifie {
+/* ≡ quand un filtre de la carte est actif (FilterPanel.majBadge) : le repère du ≡ de la carte (liseré doré intérieur,
+   point doré). */
+.kta-v3d-btn.kta-v3d-filtres.kta-filter-ctrl-actif {
   border-color: var(--kta-accent); box-shadow: inset 0 0 0 1px var(--kta-accent), var(--kta-v3d-ombre);
 }
-.kta-v3d-btn.kta-v3d-filtres.kta-filter-ctrl-actif::after,
-.kta-v3d-btn.kta-v3d-btn-reglages.kta-v3d-modifie::after {
+.kta-v3d-btn.kta-v3d-filtres.kta-filter-ctrl-actif::after {
   content: ""; position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; box-sizing: border-box;
   border-radius: 50%; background: var(--kta-accent); box-shadow: 0 0 0 2px var(--kta-surface); pointer-events: none;
 }

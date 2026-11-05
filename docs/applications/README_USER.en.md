@@ -564,7 +564,6 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
 - **☀️ Daylight**: everything is lit, like a scale model; the fog stays at the range. Kept on this device.
 - During a game, the range goes back to 30 m, the lamp to 100%, the beam to 71° and Daylight is off (settings greyed out), then your settings come back.
-- A **golden dot** on ⚙️ means a setting is not the default one: free mode, edit view, rendering other than Mixed, textures off, compass hidden, guidance off, range other than 30 m, lamp other than 100%, beam other than 71°, Daylight.
 
 #### 🏛️ The three renderings
 

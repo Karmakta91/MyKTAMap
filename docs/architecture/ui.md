@@ -2345,10 +2345,8 @@ icônes.
   La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼)
   sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
-  inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue d'édition. **Repère** : point doré sur ⚙️
-  (`kta-v3d-modifie`, `_majRepere`) en mode libre, en vue d'édition, rendu autre que mixte, textures coupées,
-  boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71° ou Plein
-  jour. **Mode toujours visible** : pastille ronde à la taille des boutons
+  inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue d'édition. **Aucun repère sur ⚙️** (décision
+  produit), même quand un réglage n'est pas celui par défaut ; le ≡ garde le sien (filtre actif). **Mode toujours visible** : pastille ronde à la taille des boutons
   en haut à gauche, à la hauteur de la rangée (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,

@@ -564,7 +564,6 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **🔦 Faisceau** : un curseur de 40 à 160° (71° par défaut) règle la largeur du faisceau ; plus il est large, plus son bord se fond dans le noir. Retenu sur cet appareil.
 - **☀️ Plein jour** : tout est éclairé, comme une maquette ; le brouillard reste à la portée. Retenu sur cet appareil.
 - Pendant une partie de jeu, la portée repasse à 30 m, la lampe à 100 %, le faisceau à 71° et Plein jour est coupé (réglages grisés), puis tes réglages reviennent.
-- Un **point doré** sur ⚙️ signale qu'un réglage n'est pas celui par défaut : mode libre, vue d'édition, autre rendu que Mixte, textures coupées, boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71°, Plein jour.
 
 #### 🏛️ Les trois rendus
 
