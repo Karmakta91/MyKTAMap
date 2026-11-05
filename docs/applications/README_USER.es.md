@@ -758,6 +758,8 @@ Mientras haya un itinerario activo, la barra de abajo muestra **🗺️ distanci
 
 **¿Itinerario ya trazado?** La ventana se abre en navegación: **⏮️ Inicio**, **⏭️ Fin**, **🔁 Recorrido completo**, 🎯 en cada etapa para verla, **🔄 Recalcular la ruta** para retocar las etapas, **❌ Borrar la ruta**.
 
+**Dos trazados que no se tocan** no se unen, aunque estén muy cerca: el itinerario nunca atraviesa el muro entre dos galerías paralelas. Solo el extremo de un trazado se engancha solo a un trazado vecino (a pocos píxeles). Un cruce dibujado sin que los trazados se toquen se corrige con **🔗 Empalmes por revisar**, en el 📊 Editor de datos.
+
 **Salida o etapa fuera de las galerías**: el tramo hasta la galería más cercana se dibuja **en punteado** y se cuenta en la distancia (ida y vuelta para una etapa). Más allá de **50 m**, la app te avisa: no es una galería conocida, comprueba la posición. En un mapa **sin ningún trazado** no se puede calcular un itinerario.
 
 ### 🔄 Itinerario vivo
@@ -2038,6 +2040,7 @@ Si un mapa grande sigue fallando o va lento, abre **⚙️ Ajustes** → **🚀 
   - **Resoluciones** (último recurso): solo si los dos escaneos tienen exactamente el mismo encuadre. Si sus proporciones difieren en más de un 2 %, la app se niega: hacen falta nombres o referencias.
   - **👁️ Vista previa en el mapa**: tus datos recalados se dibujan en discontinuo sobre el mapa antes de descargar; la vista previa desaparece al cerrar la herramienta. Luego obtienes archivos `_conv.json`.
   - Desde la pantalla de inicio (ningún mapa abierto), solo están disponibles las resoluciones y las referencias escritas a mano. Los enlaces entre mapas, la georreferenciación y la escala hay que rehacerlos en el mapa nuevo.
+- **🔗 Empalmes por revisar** (mapa abierto): enumera los lugares donde dos trazados de la red no se tocan, de 1,2 a 6 m de separación en un mismo nivel, cuando unirlos juntaría dos partes de la red hoy separadas (la más corta por par de partes). Toca una línea: la ventana se pliega, el mapa muestra el lugar (los dos puntos rodeados) y una banda abajo te lleva de uno a otro (**◀ Anterior · 3 / 12 · Siguiente ▶**). **🔗 Empalmar** pega el vértice sobre el otro trazado, que gana ahí un vértice: el cruce es exacto, el itinerario y la vista 3D lo siguen, y **Ctrl+Z** lo deshace. Un trazado de una capa de datos del mapa pasa primero a modificación (misma pregunta que **🔄 Modificar**). **Ignorar** guarda en este mapa una separación voluntaria (un muro, una galería tapiada): no vuelve, salvo si redibujas el lugar; **Volver a mostrar los ignorados (N)** los devuelve todos.
 - **🧹 Desduplicar los datos**: elimina los vértices idénticos consecutivos de trazados, zonas, estructuras y medidas, invisibles pero que hacen más pesados los archivos. Obtienes un archivo `_dedup.json` y el recuento de lo eliminado; los puntos nunca se tocan.
 
 Si la fuente contiene varios conjuntos de datos, un selector te deja elegir.

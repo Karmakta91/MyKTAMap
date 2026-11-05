@@ -1876,6 +1876,17 @@ Tuile 🔁 de l'accueil de l'Éditeur : ferme l'accueil et ouvre `window.ktaOuvr
 
 Calcul **pur** exposé sur `window.KtaRecalageScan` (sans DOM), éprouvé par `scripts/check-resolution-convert.js` ; parcours à la souris : `scripts/smoke/checkup-recalage-scan.js`. i18n `recalscan.*` (fr/en/es).
 
+#### 91.5 Raccords à vérifier (`js/raccordsTraces.js`)
+
+Tuile 🔗 de l'accueil de l'Éditeur, **plan affiché seulement** (`ktaPlanAffiche`) : ferme l'accueil et ouvre `window.KtaRaccords.ouvrir()` (module à part ; `tableEditor.js` ne porte que l'appel). Règle de détection, raccord et clé d'un écart ignoré : `multilevel-pathfinding.md` § Raccords à vérifier.
+
+- **Fenêtre** `#kta-racc-modal` (`kta-readme-modal-overlay`) : note des seuils (`formatDistance`), une ligne par écart (niveau sur un plan multi-niveau, sinon « Raccord n », écart en mètres ; sans échelle, en px), triée par niveau puis écart ; « Réafficher les ignorés (N) » quand la pref du plan en contient (vide la liste des ignorés).
+- **Clic sur une ligne** : la fenêtre part, la carte passe au niveau de l'écart (`ktaSetActiveLevel`) et le cadre (`fitBounds`, marge 2 × le seuil haut) ; les deux points sont entourés et reliés en tireté (calque `L.svg` à part, classes `kta-racc-cercle` / `kta-racc-ecart` → `--kta-accent`). **Bandeau** `#kta-racc-bandeau` en bas : « ◀ Précédent · i / N · Suivant ▶ » (circulaire), niveau et écart, **Raccorder** / **Ignorer** / **Fermer**. ⚠️ Le bandeau n'a pas la classe `.kta-iti-floater` : elle armerait le mode « clic carte » (`utils.js > _modeClicCarteActif`) et la carte n'ouvrirait plus de fiche pendant la revue.
+- Raccorder et Ignorer recalculent la liste et passent à l'écart suivant (même rang) ; liste vide → toast `success` et retour à la fenêtre. Fermer (ou Échap, sauf fenêtre ouverte par-dessus) rend la fenêtre de la liste. Données changées pendant la revue (Ctrl+Z, autre outil) : `kta:donneesPlanChange` → liste recalculée (300 ms). `mktm:plan-ferme` ferme tout.
+- Refus : lecture seule (`ktaEditionRefusee`, son toast), outil « clic carte » armé (toast), tracé de calque refusé au rapatriement, géométrie changée depuis le calcul (alerte, liste recalculée). Aucune popup native.
+
+Parcours : `scripts/smoke/checkup-raccords.js` (Chromium et WebKit). i18n `raccords.*`, `tabledit.source.raccords*` (fr/en/es). Aucune nouvelle surface réseau (le seul `fetch` possible est celui du rapatriement d'un calque, déjà fait au chargement du plan).
+
 ---
 
 ### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)
