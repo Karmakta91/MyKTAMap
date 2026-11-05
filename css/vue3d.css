@@ -345,6 +345,19 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin: 0; clear: none; float: none;
 }
 #kta-vue3d .kta-v3d-outils[hidden], #kta-vue3d .kta-v3d-outils a[hidden] { display: none !important; }
+/* ⚠️ contrat (décision produit) : la colonne reste VERTICALE en paysage bas aussi. style.css y met toute .leaflet-bar
+   en ligne (pilules horizontales de la barre 2D) : l'id et !important l'emportent, comme le zoom. Trop haute pour le
+   milieu de l'écran, elle part de sous la rangée du haut et le bandeau (--kta-v3d-sous-haut), à gauche de la grille
+   + − ▲ ▼ et de ⌖ (bord droit), et défile si elle ne tient pas. */
+@media (max-height: 500px) and (orientation: landscape) {
+  #kta-vue3d .kta-v3d-outils {
+    flex-direction: column !important;
+    top: var(--kta-v3d-sous-haut, 80px); transform: none;
+    right: calc(10px + 2 * var(--kta-v3d-taille) + var(--kta-v3d-ecart) + 8px);
+    max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - max(14px, env(safe-area-inset-bottom)));
+    overflow-y: auto;
+  }
+}
 /* Zone de toucher de 44 px (--kta-cible-toucher), comme la rangée du haut : on joue au doigt. Les zones de deux
    boutons voisins se recouvrent de 4 px, au bord commun (la colonne n'a pas de trou). */
 .kta-v3d-outils > a { position: relative; }

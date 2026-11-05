@@ -3281,7 +3281,22 @@ async function sectionColonneEtJeu(page, MX) {
       const c = document.querySelector("#kta-vue3d .kta-v3d-outils");
       const vus = c ? Array.prototype.slice.call(c.children).filter(function (a) { return a.getClientRects().length; })
         : [];
-      return { vue: window.KtaVue3D.etat().vue, colonne: !!c && c.getClientRects().length > 0, boutons: vus.length };
+      // Colonne verticale (décision produit, paysage compris) : boutons à la même abscisse, empilés, dans l'écran, sans
+      // chevaucher une autre commande de la vue.
+      const bs = vus.map(function (x) { return x.getBoundingClientRect(); });
+      const vertical = bs.every(function (r, i) {
+        return Math.abs(r.left - bs[0].left) < 2 && (i === 0 || r.top >= bs[i - 1].bottom - 6);
+      });
+      const dansEcran = bs.every(function (r) { return r.top >= 0 && r.bottom <= window.innerHeight; });
+      const autres = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *, " +
+        "#kta-vue3d .kta-v3d-pad > *, #kta-vue3d .kta-v3d-incl > *, #kta-vue3d .kta-v3d-place, " +
+        "#kta-vue3d .kta-v3d-boussole")).filter(function (el) { return el.getClientRects().length > 0; })
+        .map(function (el) { return el.getBoundingClientRect(); });
+      const chevauche = bs.some(function (r) {
+        return autres.some(function (o) { return r.left < o.right && r.right > o.left && r.top < o.bottom && r.bottom > o.top; });
+      });
+      return { vue: window.KtaVue3D.etat().vue, colonne: !!c && c.getClientRects().length > 0, boutons: vus.length,
+        vertical: vertical, dansEcran: dansEcran, chevauche: chevauche };
     });
   };
   const chevauchements = function () {
@@ -3333,13 +3348,14 @@ async function sectionColonneEtJeu(page, MX) {
     await page.evaluate(function () { window.KtaVue3D.basculerVue(); });
     const retour = await lire();
     if (yeux.vue !== "yeux" || yeux.colonne) fautes.push(nom + " hauteur d'yeux : " + JSON.stringify(yeux));
-    if (edition.vue !== "plongee" || !edition.colonne || edition.boutons < 4) {
+    if (edition.vue !== "plongee" || !edition.colonne || edition.boutons < 4 || !edition.vertical ||
+      !edition.dansEcran || edition.chevauche) {
       fautes.push(nom + " édition : " + JSON.stringify(edition));
     }
     if (retour.vue !== "yeux" || retour.colonne) fautes.push(nom + " retour : " + JSON.stringify(retour));
   }
   verifier(fautes.length === 0, "colonne d'outils en vue d'édition seulement (PC, téléphone, paysage) : absente à " +
-    "hauteur d'yeux, présente en édition, masquée au retour", fautes);
+    "hauteur d'yeux, présente en édition (verticale, dans l'écran, sans chevaucher), masquée au retour", fautes);
   // Jeu : lancé par le code « six vers le bas », facile, sans installation ni tracker.
   const lance = await page.evaluate(async function () {
     const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
