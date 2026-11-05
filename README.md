@@ -431,7 +431,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `homeProfile.js` | Accueil : bandeau profil, rangs, hauts faits, stats, modale « Détails du profil » |
 | `homeConfig.js` | Accueil : modale ⚙️ Configuration, PIN, badges, pastille hors-ligne, Dépannage, audit réseau |
 | `homeDemarrage.js` | Fin du démarrage de l'accueil (sorti d'`index.html` pour la CSP stricte) |
-| `swRegister.js` | Enregistrement du Service Worker, kill switch `?killsw=1`, nettoyage du cache-buster |
+| `swRegister.js` | Inscription du Service Worker après l'entrée dans l'app, réinstallation à chaque déploiement, kill switch `?killsw=1`, nettoyage du cache-buster |
 
 ### 📥 Hors `index.html` (chargés à la demande ou par une autre page)
 
@@ -651,6 +651,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-ouvertures-enchainees.js` | Ouvertures de plan enchaînées sans erreur de page |
 | `smoke/checkup-panneaux-geometrie.js` | Panneaux d'outils du mode plan utilisables au pixel, 4 formats d'écran |
 | `smoke/checkup-pastille-horsligne.js` | Pastille « hors-ligne » de l'accueil : coût et états |
+| `smoke/checkup-cycle-sw.js` | Cycle de vie du Service Worker : inscription après l'entrée, correctif sans bump, « Mettre à jour », poids |
 | `smoke/checkup-pdf-plafond.js` | PDF dont la qualité dépasse la limite de canvas de l'appareil (iPhone simulé) |
 | `smoke/checkup-pdf-legende.js` | Taille de la légende d'un PDF de plan dense (relevé fictif gonflé en mémoire), A4 à A0, trois tailles |
 | `smoke/checkup-photos-danger.js` | Date des photos (EXIF) et POI danger daté |

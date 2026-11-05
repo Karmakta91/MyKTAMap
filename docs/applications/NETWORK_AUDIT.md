@@ -85,7 +85,8 @@ envoyé** (réponse : rien, jamais).
 
 | Endpoint | Méthode | Quand | Pourquoi | Données envoyées |
 |---|---|---|---|---|
-| `<origin>/*` (HTML, JS, CSS, images, JSON) | `GET` | Au boot + cache PWA ; fichiers manquants retéléchargés par la réparation automatique (~5 s après l'accueil) ou d'un appui sur la pastille hors-ligne rouge | Charger l'app | **Aucune** |
+| `<origin>/*` (HTML, JS, CSS, images, JSON) | `GET` | Au boot ; cache PWA rempli **seulement après ton entrée dans l'app** (« Entrer », code d'accès ou connexion : avant, rien n'est stocké que la page), revalidé (un fichier inchangé ne repart pas) ; fichiers manquants retéléchargés par la réparation automatique (~5 s après l'accueil) ou d'un appui sur la pastille hors-ligne rouge | Charger l'app | **Aucune** |
+| `<origin>/deploiement.json` (puis `<origin>/data/deploiement.json` s'il manque) | `GET` (réseau seul, via le Service Worker) | Au boot, une fois entré dans l'app | Lire le commit en ligne, écrit par le déploiement : s'il a changé, le cache de l'app se met à jour au chargement suivant. Absent : rien ne change | **Aucune** |
 | `<origin>/version.json` | `GET` | Au boot, puis check périodique | Détecter une nouvelle version dispo | **Aucune** |
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
 | `<origin>/denylist.json` | `GET` (cache:no-store SW) | Au boot + 1×/24h (cache LS local) | Kill-switch anti-fuite : récupérer la liste publique des empreintes SHA-256 de plans révoqués par l'auteur | **Aucune** (lecture seule d'une liste publique côté serveur ; les empreintes des plans owned ne sont JAMAIS envoyées, comparaison 100% client-side via `crypto.subtle.digest`) |
@@ -130,7 +131,7 @@ L'URL est résolue dynamiquement via `location.origin + "/ping.html"`.
 Le body attendu est exactement `"OK"`.
 
 > 🔎 **Contrôle du 13/09/2026 — aucune URL de service n'est codée en dur.** Tous les
-> appels de l'app (`version.json`, `alert.json`, `denylist.json`, `data/index.json`, `data/reglages.json`,
+> appels de l'app (`version.json`, `alert.json`, `denylist.json`, `deploiement.json`, `data/index.json`, `data/reglages.json`,
 > `lang/*.json`, `ping.html`, licence pro) sont **relatifs à l'origine qui sert l'app** ;
 > la seule cible externe écrite en dur est `tile.openstreetmap.org` (Vue OSM). C'est
 > voulu : une copie de l'app servie ailleurs (self-host, kiosque, ou copie tierce) appelle
