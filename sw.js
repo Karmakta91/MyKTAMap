@@ -16,7 +16,9 @@
 // Jamais précachés : version.json, alert.json, ping.html (lus avec un cache-bust `?_=` : servis par le
 //   cache, ils figeraient la mise à jour, les alertes et la sonde de santé).
 // Réseau seul (handler fetch) : killsw.html, Licence-pro.json, denylist.json (hors ligne : liste vide), ZIP
-//   de plan déclarés par l'index, sondes de fraîcheur, requêtes d'extension ou authentifiées.
+//   de plan déclarés par l'index, sondes de fraîcheur, requêtes d'extension ou authentifiées, repère de
+//   déploiement (deploiement.json, réponse normalisée : cf _repereDeploiement).
+// Installation : précache revalidé (cache "no-cache") ; inscrit par js/swRegister.js après l'entrée dans l'app.
 // Réseau d'abord : docs/applications, lang/*.json, data/index.json, pages et feuilles de style des dossiers
 //   de modules déclarés par l'index (cf _reseauDabordPageExt).
 // Caches gardés à l'activation : CACHE_NAME, plans hors-ligne (PLAN_CACHE_PREFIX), modules greffés et leurs
@@ -1118,7 +1120,9 @@ async function _cacheAddDiag(cache, asset, phase) {
   let resp = null;
   // Étape 1 : fetch
   try {
-    resp = await fetch(new Request(asset, { cache: "reload" }));
+    // "no-cache" : revalidé auprès du serveur (ETag / Last-Modified), jamais servi périmé par le cache HTTP, mais un
+    // fichier inchangé répond 304 et ne repart pas. "reload" retéléchargeait tout le précache à chaque installation.
+    resp = await fetch(new Request(asset, { cache: "no-cache" }));
   } catch (err) {
     const type = (err && err.name === "TypeError") ? "network" : "unknown";
     await _logInstallFailure({
@@ -1165,6 +1169,31 @@ async function _cacheAddDiag(cache, asset, phase) {
     });
     return { ok: false, type: type, message: (err && err.message) || String(err) };
   }
+}
+
+// Repère de déploiement (cf. le handler fetch) : seule l'adresse à la racine du scope est normalisée.
+function _estRepereDeploiement(url) {
+  const scope = self.registration && self.registration.scope;
+  return !!scope && url.split(/[?#]/)[0] === scope + "deploiement.json";
+}
+function _lireRepere(chemin) {
+  return fetch(new URL(chemin, self.registration.scope).href, { cache: "no-store", credentials: "omit" })
+    .then(function(r) {
+      if (!r.ok || !/json/i.test(r.headers.get("Content-Type") || "")) return null;
+      return r.json().then(function(j) {
+        const c = j && j.commit;
+        return typeof c === "string" && /^[0-9a-f]{7,40}$/.test(c) ? c : null;
+      });
+    })
+    .catch(function() { return null; });
+}
+function _repereDeploiement() {
+  return _lireRepere("deploiement.json")
+    .then(function(c) { return c || _lireRepere("data/deploiement.json"); })
+    .then(function(c) {
+      return new Response(JSON.stringify({ commit: c }),
+        { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+    });
 }
 
 // NOTIFICATIONS POUSSÉES (Web Push) — prise NEUTRE, contrat minimal : community-server-line.md §3.
@@ -1333,6 +1362,17 @@ self.addEventListener("fetch", (event) => {
           headers: { "Content-Type": "text/html" }
         }))
     );
+    return;
+  }
+
+  // REPÈRE DE DÉPLOIEMENT : RÉSEAU SEUL, RÉPONSE NORMALISÉE (lu par js/swRegister.js).
+  // `deploiement.json` porte le commit servi (`commit`) ; le script de déploiement l'écrit à la racine, ou sous data/
+  // quand l'installation sert son propre dossier de données. Chaque commit nouveau réinscrit le SW (sw.js?d=<commit>) :
+  // un correctif sans changement de CACHE_NAME arrive au chargement suivant. La page reçoit TOUJOURS 200
+  // { commit: <sha> | null } : ni 404 (installation sans script de déploiement), ni page de l'app (adresse inconnue
+  // servie en 200 par le serveur), ni copie en cache. 🔒 Un repère qui n'est pas un sha hexadécimal vaut null.
+  if (_estRepereDeploiement(reqUrl)) {
+    event.respondWith(_repereDeploiement());
     return;
   }
 

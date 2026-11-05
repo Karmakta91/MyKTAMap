@@ -1935,6 +1935,9 @@ window.proposerRedemarrageLangue = function() {
   if (window.FirstRunFlow && typeof window.FirstRunFlow.notifyBootGatesDone === "function") {
     window.FirstRunFlow.notifyBootGatesDone();
   }
+  // ⚠️ Geste d'adhésion : le Service Worker ne s'inscrit qu'ici (swRegister.js). Avant, l'écran d'entrée ne stocke
+  // rien de plus que la page.
+  if (typeof window.ktaSwAdhesion === "function") window.ktaSwAdhesion();
 
   if (window.PlanRegistry) {
     window.PlanRegistry.init();
