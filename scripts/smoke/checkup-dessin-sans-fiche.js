@@ -16,8 +16,8 @@
 // interrupteur) : panneau de POI, pilier, zone → sommet, aucune fiche ; armé par les vrais boutons (groupe, type) puis
 // le sol ; un seul outil ; ✏️ ajout de point à sa place dans la colonne ; outil armé en 2D puis vue d'édition : le PREMIER
 // toucher pose ; outil armé à hauteur d'yeux : toucher consommé, aucune fiche.
-// Clic lent sous une image lourde, recul 60 m aux 4 coins et 3 inclinaisons (point du plan y = 0 à 5 cm), Galerie
-// hors tube : sommet posé.
+// Clic lent sous une image lourde, recul maximal (150 m) aux 4 coins et 3 inclinaisons (point du plan y = 0 à 5 cm,
+// ramené dans les bornes de l'image hors du plan), Galerie hors tube : sommet posé.
 // Joué au doigt (393 × 852, hasTouch, isMobile) et à la souris (1280 × 800), sous Chromium puis WebKit (KTA_MOTEURS
 // pour un seul).
 // Usage : node scripts/smoke/checkup-dessin-sans-fiche.js (SMOKE_PORT pour une autre copie) · doc : ui.md § Outil armé
@@ -765,6 +765,7 @@ async function section3D(page, entree) {
     "3D, clic de 150 ms traité après une image de 700 ms : sommet posé", { refus: refusLent });
 
   const loin = [];
+  let dansPlan = 0, horsPlan = 0;
   for (const incl of [15, 50, 85]) {
     await armerZone3();
     await page.evaluate(function (incl) {
@@ -805,7 +806,8 @@ async function section3D(page, entree) {
           ctxV.camera);
         const q = r.ray.intersectPlane(new T.Plane(new T.Vector3(0, 1, 0), 0), new T.Vector3());
         return { q: q ? { x: q.x * sc, y: q.z * sc } : null, sc: sc, incl: K.etat().inclinaison,
-          recul: K.etat().portee.recul };
+          recul: K.etat().portee.recul, W: Number(window.PLAN_CONFIG.plan.imageWidth),
+          H: Number(window.APP_CONFIG.imageHeight) };
       }, p);
       const av = await etat3();
       await geste(p);
@@ -819,15 +821,21 @@ async function section3D(page, entree) {
         if (ap.n !== av.n) loin.push(nom + " : au-dessus de l'horizon, un sommet posé quand même");
         continue;
       }
-      const ecart = dernier ? Math.hypot(dernier.x - att.q.x, dernier.y - att.q.y) / att.sc : null;
+      // 🩸 Au recul maximal, le bas de la vue (et un coin haut en paysage) voit le sol AU-DELÀ de l'image du relevé
+      // fictif : le sommet est alors ramené dans ses bornes (vue3d.js > _poserSommet, décision produit), et l'attendu
+      // aussi. Les deux comptes ci-dessous prouvent que les deux cas sont joués.
+      const vx = Math.max(0, Math.min(att.W, att.q.x)), vy = Math.max(0, Math.min(att.H, att.q.y));
+      if (vx === att.q.x && vy === att.q.y) dansPlan++; else horsPlan++;
+      const ecart = dernier ? Math.hypot(dernier.x - vx, dernier.y - vy) / att.sc : null;
       if (ap.n !== av.n + 1 || ecart === null || ecart > 0.05) {
         loin.push(nom + " : " + JSON.stringify({ sommets: ap.n - av.n,
           ecart_m: ecart === null ? null : +ecart.toFixed(3), recul: att.recul, incl: att.incl }));
       }
     }
   }
-  verifier(loin.length === 0, "3D, recul 60 m, inclinaisons 15 / 50 / 85°, 4 coins : sommet au point visé (5 cm)",
-    loin);
+  verifier(loin.length === 0 && dansPlan > 0 && horsPlan > 0,
+    "3D, recul maximal (150 m), inclinaisons 15 / 50 / 85°, 4 coins : sommet au point visé (5 cm), ramené dans "
+    + "l'image hors du plan", { ecarts: loin, dansPlan: dansPlan, horsPlan: horsPlan });
 
   await armerZone3();
   await page.evaluate(function () {
