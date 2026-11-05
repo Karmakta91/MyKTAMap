@@ -23,7 +23,9 @@
 // cadre, blocage (cône, cavage fermé ; bassin contre la paroi, qu'on longe), itinéraire sur le cône, arrivée devant
 // un cavage fermé, 🧱, 2D intacte ; cavage comblé (§ 14 sexies : galerie de 4 m entre deux murs, comblement jusqu'aux
 // murs, côtés inégaux, porte ouverte ou fermée, rendu galerie inchangé). Escaliers (§ 14 quinquies : esf, eso, jes)
-// en niche latérale, pied contre la paroi.
+// en niche latérale, pied contre la paroi. Formes des POI (§ 14 septies : chatiere, plaque, epure, portail,
+// vehicule) : chatière traversée en rampant (libre, suivi), plaque au nom et épure sur la paroi, portail allumé par sa
+// liaison (« Passer au plan », confirmation au-dessus de la vue), véhicule qui bloque, 🧱, mémoire de 50 plaques.
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
@@ -87,7 +89,8 @@
 //   KTA_V3D_PERF=dessin → plan dense, pilier dessiné au doigt en plongée : coût d'un sommet, délai de fermeture ;
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
 //   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt) ; KTA_V3D_SEUL=dessin → la section 28 seule ; =camera → la 30 ;
-//   =sol → plan au sol sur écran dense (image, V1, V2).
+//   =sol → plan au sol sur écran dense (image, V1, V2) ; =formes → § 14 septies (KTA_V3D_CAP_PREFIXE : préfixe des
+//   captures, « apres » par défaut).
 // Usage : node scripts/smoke/checkup-vue-3d.js (SMOKE_PORT pour une autre copie) · doc : docs/ETUDE_VUE_3D.md
 // =====================================================================
 "use strict";
@@ -2163,6 +2166,519 @@ async function sectionConePassage(page) {
   verifier(R.enChambre && !!ch && pr(ch.bx, 3) && pr(ch.bz, 1.5) && pr(ch.cx, 3) && pr(ch.cz, 1.5) && pr(ch.R, 0.9),
     "chambre (mixte, entre deux rangées de piliers) : bouche et cône au POI, 0,9 m (inchangé)",
     { enChambre: R.enChambre, v: ch });
+}
+
+// § 14 septies — Formes des POI sans passage (formes FICTIVES en mémoire, galerie principale de 2,5 m à z = 0) :
+// chatière (roche en travers, trou de 0,6 m, rien ne bloque, caméra abaissée en la traversant puis remontée, en libre
+// et en suivi, ctx.libre ouvert), plaque (à plat sur la paroi du côté du POI, sur l'axe à gauche du tracé, texture au
+// nom, une par nom, bornée, gardée avec 🧱 coupé), épure (traits sur la paroi), portail (cadre allumé
+// avec une liaison fictive, éteint sans ; fiche « Passer au plan », confirmation au-dessus de la vue, annuler garde
+// la vue, confirmer la ferme ; aucun bouton sans liaison), véhicule (dans la galerie, le long de l'axe, arrête le
+// pas, ctx.libre fermé, survol en vue d'édition). Rendu structures : plaque, épure et portail sans paroi = panneau
+// seul ; tag sans forme = aucun volume. Point lié sans le tag portail : « Passer au plan » aussi, et ➜ de sa fiche
+// ferme la vue après la confirmation. 50 plaques : mémoire des textures mesurée.
+async function sectionFormesPoi(page) {
+  if (CAPTURES) await capturesFormes(page);
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, G = window.KtaGalerie, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = function (n) {
+      return new Promise(function (ok) {
+        let k = n || 2;
+        const f = function () { if (--k <= 0) ok(); else requestAnimationFrame(f); };
+        requestAnimationFrame(f);
+      });
+    };
+    window.__v3dFormesSauve = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      acc: window.ktaEstAccessible,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(),
+      trouve: window.PlanRegistry && window.PlanRegistry.findById, charger: window.chargerPlanServeur };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-formes";
+    window.ktaEstAccessible = function () { return true; };
+    window.ktaSetActiveLevel(0);
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    window.setVue3DTextures(true);
+    const poi = function (id, tag, x, z, nom) {
+      return Object.assign({ id: id, nom: nom || id, uid: id, level: 0, tags: [tag] }, P(x, z));
+    };
+    const POIS = [poi("pt_f_chat", "chatiere", -20, 0.5, "Chatière fictive"),
+      poi("pt_f_pl_n", "plaque", -5, 2, "Rue Fictive"), poi("pt_f_pl_s", "plaque", 0, -0.4, "Impasse Fictive"),
+      poi("pt_f_pl_axe", "plaque", 5, 0, "Plaque sur l'axe"), poi("pt_f_ep", "epure", 10, 1.5, "Épure fictive"),
+      poi("pt_f_def", "default", 12, -1.5, "Sans forme"), poi("pt_f_po_lie", "portail", 20, 1.5, "Portail lié"),
+      poi("pt_f_po_seul", "portail", 25, -1.5, "Portail seul"),
+      poi("pt_f_veh", "vehicule", 40, 0.5, "Véhicule fictif")];
+    window.setStructures([]); window.setZones([]);
+    window.setRoads([{ uid: "rd_f_p", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setEditorPoints(POIS);
+    // Liaison fictive du portail lié vers un plan fictif (registre de l'appareil, retirée à la fin).
+    const L = window.InterPlanLinks, lie = POIS[6];
+    const lien = L.createLink({ planId: "v3d-checkup-formes", planName: "Plan de test", pointId: lie.id,
+      pointUid: lie.uid, pointNom: lie.nom, x: lie.x, y: lie.y, level: 0 },
+    { planId: "v3d-plan-fictif-b", planName: "Plan fictif B", pointId: "pt_b", pointNom: "Arrivée fictive",
+      x: 10, y: 10, level: 0 });
+    const lienId = lien && lien.id;
+    // Point lié sans le tag portail (« Sans forme ») : bouton « Passer au plan » aussi, aucun cadre.
+    const def = POIS[5];
+    L.createLink({ planId: "v3d-checkup-formes", planName: "Plan de test", pointId: def.id, pointUid: def.uid,
+      pointNom: def.nom, x: def.x, y: def.y, level: 0 },
+    { planId: "v3d-plan-fictif-b", planName: "Plan fictif B", pointId: "pt_b2", pointNom: "Arrivée fictive 2",
+      x: 20, y: 20, level: 0 });
+    window.PlanRegistry.findById = function (id) {
+      return id === "v3d-plan-fictif-b" ? { id: id, name: "Plan fictif B", type: "server", path: "fictif/" }
+        : window.__v3dFormesSauve.trouve.call(window.PlanRegistry, id);
+    };
+    let ctx = null;
+    const lireCtx = function () {
+      const deg = K.greffer({ nom: "v3d-formes", scene: function (c) { ctx = c; } });
+      if (deg) deg();
+    };
+    const rel = function (q) { return [+(q.x / sc - ox).toFixed(3), +(q.y / sc - oz).toFixed(3)]; };
+    const vol = function (tag, id) {
+      return K.etat().volumes.filter(function (v) {
+        return v.tag === tag && (!id || Math.hypot(v.x - POIS.filter(function (p) { return p.id === id; })[0].x,
+          v.y - POIS.filter(function (p) { return p.id === id; })[0].y) < 4 * sc);
+      })[0] || null;
+    };
+    const ouvrir = async function (rendu, x, z, cap, opts) {
+      if (K.etat().ouvert !== false) await K.fermer();
+      window.setPlanRenduVue3D(null, rendu);
+      G.invalider();
+      const d = P(x, z);
+      await K.ouvrir(Object.assign({ depart: { x: d.x, y: d.y, cap: cap }, distanceVue: 200, tuiles: false,
+        commandes: "pave" }, opts || {}));
+      await pause(80);
+      await images(3);
+    };
+    const r = {};
+    // ── Par rendu : formes, places, chatière traversée en libre, véhicule qui bloque ──
+    for (const rendu of ["mixte", "galerie", "structures"]) {
+      await ouvrir(rendu, -27, 0, 90);
+      lireCtx();
+      const o = r[rendu] = {};
+      const pick = function (v) {
+        return v ? { construit: v.construit, place: rel(v), cote: v.cote, trace: { trou: v.trou, hautTrou: v.hautTrou,
+          long: v.long, largeur: v.largeur, plaqueY: v.plaqueY, texture: v.texture, nom: v.nom, epureY: v.epureY,
+          traits: v.traits, allume: v.allume, large: v.large, haut: v.haut }, roche: v.roche, familles: v.familles,
+          triangles: v.triangles } : null;
+      };
+      o.chat = pick(vol("chatiere"));
+      o.plN = pick(vol("plaque", "pt_f_pl_n")); o.plS = pick(vol("plaque", "pt_f_pl_s"));
+      o.plAxe = pick(vol("plaque", "pt_f_pl_axe"));
+      o.ep = pick(vol("epure")); o.def = !!vol("default");
+      o.poLie = pick(vol("portail", "pt_f_po_lie")); o.poSeul = pick(vol("portail", "pt_f_po_seul"));
+      o.veh = pick(vol("vehicule"));
+      o.plaques = K.etat().plaques;
+      if (rendu !== "structures") {
+        // Chatière en libre : pas de 0,1 m le long de l'axe, de x = −27 à −13 ; hauteur de caméra relue à chaque
+        // image (position et œil).
+        const prof = [];
+        K.placer(P(-27, 0).x, P(-27, 0).y, 90);
+        await images(2);
+        for (let i = 0; i < 140; i++) {
+          K.avancer(0.1);
+          await images(1);
+          const e = K.etat();
+          prof.push([+(e.pos.x / sc - ox).toFixed(2), e.cameraY, e.ramper]);
+        }
+        o.libre = { fin: prof[prof.length - 1][0], avant: prof.filter(function (q) { return q[0] < -23; })
+          .map(function (q) { return q[1]; }), dans: prof.filter(function (q) { return Math.abs(q[0] + 20) < 0.85; })
+          .map(function (q) { return q[1]; }), apres: prof.filter(function (q) { return q[0] > -17; })
+          .map(function (q) { return q[1]; }), min: Math.min.apply(null, prof.map(function (q) { return q[1]; })),
+          oeil: K.etat().oeil,
+          recul: prof.filter(function (q, i) { return i && q[0] < prof[i - 1][0] - 1e-6; }).length };
+        o.ctxChat = !!ctx && ctx.libre(P(-20, 0).x, P(-20, 0).y);
+        // Véhicule : on bute derrière lui (de l'ouest, puis de l'est), ctx.libre fermé en son centre.
+        const marcher = function (x0, cap) {
+          K.placer(P(x0, 0).x, P(x0, 0).y, cap);
+          for (let i = 0; i < 80; i++) K.avancer(0.1);
+          return +(K.etat().pos.x / sc - ox).toFixed(2);
+        };
+        o.vehA = marcher(34, 90); o.vehR = marcher(46, 270);
+        o.ctxVeh = !!ctx && ctx.libre(P(40, 0.35).x, P(40, 0.35).y);
+        // Vue d'édition : le survol passe au-dessus du véhicule (règle existante).
+        K.placer(P(34, 0).x, P(34, 0).y, 90);
+        K.basculerVue();
+        await pause(150);
+        for (let i = 0; i < 80; i++) K.avancer(0.1);
+        o.vehEdition = +(K.etat().pos.x / sc - ox).toFixed(2);
+        o.ramperEdition = K.etat().ramper;
+        K.basculerVue();
+        await pause(150);
+      }
+      await K.fermer();
+    }
+    // ── 🧱 coupé : la plaque garde son nom, chatière unie ; les formes restent ──
+    await ouvrir("mixte", -6, 0, 90);
+    const avantTx = K.etat().plaques;
+    K.basculerTextures();
+    await pause(150); await images(3);
+    r.sansTx = { plaques: K.etat().plaques, pl: (vol("plaque", "pt_f_pl_n") || {}).texture,
+      plNom: (vol("plaque", "pt_f_pl_n") || {}).nom,
+      plFam: (vol("plaque", "pt_f_pl_n") || {}).familles, chatRoche: (vol("chatiere") || {}).roche,
+      chatTri: (vol("chatiere") || {}).triangles, ep: (vol("epure") || {}).traits,
+      po: (vol("portail", "pt_f_po_lie") || {}).allume, veh: !!(vol("vehicule") || {}).construit, avant: avantTx };
+    K.basculerTextures();
+    await pause(150); await images(3);
+    r.avecTx = K.etat().plaques;
+    await K.fermer();
+    // ── Chatière en suivi : le tracker avance pas à pas, la vue suit ──
+    window.setPlanRenduVue3D(null, "mixte");
+    G.invalider();
+    window.startTracking();
+    window.recalerTrackerSurPoint(P(-26, 0).x, P(-26, 0).y, 0);
+    window.__v3dCapF = window.getPlanRelHeading;
+    window.getPlanRelHeading = function () { return 90; };
+    await K.ouvrir({ distanceVue: 200, tuiles: false, commandes: "pave" });
+    await pause(300);
+    const suivi = [];
+    for (let x = -26; x <= -13; x += 0.25) {
+      window.recalerTrackerSurPoint(P(x, 0).x, P(x, 0).y, 0);
+      await pause(60);
+      const e = K.etat();
+      suivi.push([+x.toFixed(2), +(e.pos.x / sc - ox).toFixed(2), e.cameraY, e.mode]);
+      if (Math.abs(x + 20) < 0.13) {
+        await pause(700);
+        const e2 = K.etat();
+        r.suiviDans = { cameraY: e2.cameraY, ramper: e2.ramper, x: +(e2.pos.x / sc - ox).toFixed(2), mode: e2.mode };
+      }
+    }
+    await pause(900);
+    const e3 = K.etat();
+    r.suivi = { modes: Array.from(new Set(suivi.map(function (q) { return q[3]; }))), apres: e3.cameraY,
+      fin: +(e3.pos.x / sc - ox).toFixed(2), oeil: e3.oeil, avant: suivi[0][2] };
+    window.getPlanRelHeading = window.__v3dCapF;
+    window.stopTracking();
+    await K.fermer();
+    // ── Portail : fiche, bouton, confirmation au-dessus de la vue ──
+    window.setPlanRenduVue3D(null, "mixte");
+    await ouvrir("mixte", 17, 0, 90);
+    const fiche = async function (nom) {
+      const sp = K.etat().panneaux.filter(function (q) { return q.nom === nom && q.visible; })[0];
+      if (!sp) return null;
+      const cv = document.querySelector("#kta-vue3d canvas");
+      const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true,
+        clientX: sp.ecran.x, clientY: sp.ecran.y, button: 0 };
+      cv.dispatchEvent(new PointerEvent("pointerdown", o));
+      await pause(40);
+      cv.dispatchEvent(new PointerEvent("pointerup", o));
+      await pause(120);
+      return K.etat().fiche;
+    };
+    const f1 = await fiche("Portail lié");
+    const btn = document.querySelector("#kta-vue3d .kta-v3d-fiche [data-v3d-portail]");
+    r.portailFiche = { ouverte: !!f1, nom: f1 && f1.nom, bouton: btn ? btn.textContent : null,
+      actif: !!btn && !btn.disabled };
+    return r;
+  });
+  // La suite se joue au vrai pointeur (Playwright) : bouton, confirmation, annuler, confirmer.
+  const pageFin = {};
+  const bouton = page.locator("#kta-vue3d .kta-v3d-fiche [data-v3d-portail]").first();
+  if (await bouton.count()) {
+    await bouton.click();
+    await page.waitForTimeout(200);
+    pageFin.confirm = await page.evaluate(function () {
+      const oui = document.getElementById("kta-ipl-nav-yes"), non = document.getElementById("kta-ipl-nav-no");
+      if (!oui || !non) return null;
+      const r = oui.getBoundingClientRect();
+      const dessus = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      const t = oui.closest(".kta-modal");
+      return { dessus: dessus === oui || oui.contains(dessus), texte: t ? t.textContent : "" };
+    });
+    if (pageFin.confirm) await page.locator("#kta-ipl-nav-no").click();
+    await page.waitForTimeout(150);
+    pageFin.apresNon = await page.evaluate(function () {
+      return { ouvert: window.KtaVue3D.etat().ouvert !== false, modale: !!document.getElementById("kta-ipl-nav-yes") };
+    });
+    await bouton.click();
+    await page.waitForTimeout(200);
+    await page.evaluate(function () {
+      window.__v3dChargeF = 0;
+      window.chargerPlanServeur = async function () { window.__v3dChargeF++; };
+    });
+    if (await page.locator("#kta-ipl-nav-yes").count()) await page.locator("#kta-ipl-nav-yes").click();
+    await page.waitForTimeout(300);
+    pageFin.apresOui = await page.evaluate(function () {
+      const e = window.KtaVue3D.etat();
+      return { ouvert: e.ouvert !== false, fermeture: e.fermeture || null, charge: window.__v3dChargeF,
+        question: !!document.querySelector(".kta-readme-modal-overlay .kta-modal"),
+        vueDom: !!document.getElementById("kta-vue3d") };
+    });
+  }
+  // Point lié sans le tag portail : « Passer au plan » aussi ; puis ➜ de la section liaisons de sa fiche : même
+  // confirmation, la vue se ferme.
+  const lieDef = await page.evaluate(async function () {
+    const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const b = document.getElementById("kta-ipl-back-float");
+    if (b) b.remove();
+    if (K.etat().ouvert !== false) await K.fermer();
+    window._currentLoadedPlanId = "v3d-checkup-formes";
+    window.setPlanRenduVue3D(null, "mixte");
+    window.KtaGalerie.invalider();
+    await K.ouvrir({ depart: { x: (ox + 8) * sc, y: oz * sc, cap: 90 }, distanceVue: 200, tuiles: false,
+      commandes: "pave" });
+    await pause(300);
+    const sp = K.etat().panneaux.filter(function (q) { return q.nom === "Sans forme" && q.visible; })[0];
+    if (sp) {
+      const cv = document.querySelector("#kta-vue3d canvas");
+      const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true,
+        clientX: sp.ecran.x, clientY: sp.ecran.y, button: 0 };
+      cv.dispatchEvent(new PointerEvent("pointerdown", o));
+      await pause(40);
+      cv.dispatchEvent(new PointerEvent("pointerup", o));
+      await pause(120);
+    }
+    const f = K.etat().fiche, bt = document.querySelector("#kta-vue3d .kta-v3d-fiche [data-v3d-portail]");
+    return { ouverte: !!f, nom: f && f.nom, bouton: bt ? bt.textContent : null, actif: !!bt && !bt.disabled,
+      fleche: !!document.querySelector('#kta-vue3d .kta-v3d-fiche [data-kta-act="ipl-go"]'),
+      cadre: K.etat().volumes.filter(function (v) { return v.tag === "default"; }).length };
+  });
+  const fleche = page.locator('#kta-vue3d .kta-v3d-fiche [data-kta-act="ipl-go"]').first();
+  if (lieDef.fleche) {
+    await fleche.click();
+    await page.waitForTimeout(200);
+    lieDef.confirm = await page.evaluate(function () {
+      const oui = document.getElementById("kta-ipl-nav-yes");
+      if (!oui) return null;
+      const r = oui.getBoundingClientRect();
+      const dessus = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { dessus: dessus === oui || oui.contains(dessus), ouvert: window.KtaVue3D.etat().ouvert !== false };
+    });
+    if (lieDef.confirm) await page.locator("#kta-ipl-nav-yes").click();
+    await page.waitForTimeout(300);
+    lieDef.apres = await page.evaluate(function () {
+      return { ouvert: window.KtaVue3D.etat().ouvert !== false, vueDom: !!document.getElementById("kta-vue3d"),
+        charge: window.__v3dChargeF, question: !!document.querySelector(".kta-readme-modal-overlay .kta-modal") };
+    });
+  }
+  // Portail sans liaison : aucun bouton ; nettoyage.
+  const R2 = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const b = document.getElementById("kta-ipl-back-float");
+    if (b) b.remove();
+    const r = {};
+    if (K.etat().ouvert !== false) await K.fermer();
+    window._currentLoadedPlanId = "v3d-checkup-formes";
+    window.setPlanRenduVue3D(null, "mixte");
+    window.KtaGalerie.invalider();
+    const d = P(22, 0);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 200, tuiles: false, commandes: "pave" });
+    await pause(300);
+    const sp = K.etat().panneaux.filter(function (q) { return q.nom === "Portail seul" && q.visible; })[0];
+    if (sp) {
+      const cv = document.querySelector("#kta-vue3d canvas");
+      const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true,
+        clientX: sp.ecran.x, clientY: sp.ecran.y, button: 0 };
+      cv.dispatchEvent(new PointerEvent("pointerdown", o));
+      await pause(40);
+      cv.dispatchEvent(new PointerEvent("pointerup", o));
+      await pause(120);
+    }
+    const f = K.etat().fiche;
+    r.seul = { ouverte: !!f, nom: f && f.nom,
+      boutons: document.querySelectorAll("#kta-vue3d .kta-v3d-fiche [data-v3d-portail]").length };
+    // Liaison retirée pendant la vue : le cadre du portail lié s'éteint.
+    const L = window.InterPlanLinks;
+    const liens = L.getLinksForPlan("v3d-checkup-formes");
+    liens.forEach(function (l) { L.removeLink(l.id); });
+    await pause(200);
+    const v = K.etat().volumes.filter(function (q) { return q.tag === "portail" && q.construit; });
+    r.eteints = v.map(function (q) { return q.allume; });
+    await K.fermer();
+    // 50 plaques sur 100 m de galerie, noms tous différents, puis un seul nom pour toutes : textures vivantes.
+    const pts = [];
+    for (let i = 0; i < 50; i++) {
+      pts.push(Object.assign({ id: "pt_f_p50_" + i, nom: "Plaque fictive " + i, uid: "pt_f_p50_" + i, level: 0,
+        tags: ["plaque"] }, P(-50 + i * 2, i % 2 ? 2 : -2)));
+    }
+    window.setEditorPoints(pts);
+    window.KtaGalerie.invalider();
+    const d2 = P(0, 0);
+    const t0 = performance.now();
+    await K.ouvrir({ depart: { x: d2.x, y: d2.y, cap: 90 }, distanceVue: 200, tuiles: false, commandes: "pave" });
+    await pause(200);
+    const e = K.etat();
+    r.p50 = { ms: Math.round(performance.now() - t0), construites: e.volumes.filter(function (q) {
+      return q.tag === "plaque" && q.construit; }).length, textures: e.plaques.n, octets: e.plaques.octets,
+    sansTexture: e.volumes.filter(function (q) { return q.tag === "plaque" && q.construit && !q.texture; }).length };
+    await K.fermer();
+    pts.forEach(function (p) { p.nom = "Plaque commune"; });
+    window.setEditorPoints(pts);
+    window.KtaGalerie.invalider();
+    await K.ouvrir({ depart: { x: d2.x, y: d2.y, cap: 90 }, distanceVue: 200, tuiles: false, commandes: "pave" });
+    await pause(200);
+    const e2 = K.etat();
+    r.p50meme = { textures: e2.plaques.n, octets: e2.plaques.octets };
+    await K.fermer();
+    r.apresFermeture = K.etat().ouvert === false;
+    return r;
+  });
+  await restaurerFormes(page);
+  console.log("§ 14 septies — formes des POI : chatière, plaque, épure, portail, véhicule");
+  const pr = function (v, att, tol) { return typeof v === "number" && Math.abs(v - att) <= (tol || 0.02); };
+  ["mixte", "galerie"].forEach(function (k) {
+    const o = R[k];
+    verifier(!!o.chat && o.chat.construit && pr(o.chat.trace.trou, 0.6) && pr(o.chat.trace.hautTrou, 0.6) &&
+      pr(o.chat.trace.long, 1.8) && pr(o.chat.trace.largeur, 2.5) && o.chat.roche > 0 && pr(o.chat.place[1], 0),
+    k + " : chatière construite sur l'axe, roche brute en travers (2,5 m), trou de 0,6 m, 1,8 m de long", o.chat);
+    verifier(o.libre.fin > -13.2 && o.libre.recul === 0, k + " : chatière jamais bloquante en libre (traversée " +
+      "de −27 à " + o.libre.fin + " m)", o.libre);
+    verifier(o.libre.avant.every(function (y) { return pr(y, o.libre.oeil); }) &&
+      o.libre.dans.every(function (y) { return pr(y, 0.35); }) &&
+      o.libre.apres.every(function (y) { return pr(y, o.libre.oeil); }),
+    k + " : caméra à " + o.libre.oeil + " m avant, abaissée à 0,35 m dans la chatière, remontée après (libre)",
+    { avant: o.libre.avant.slice(-3), dans: o.libre.dans.slice(0, 3), apres: o.libre.apres.slice(0, 3),
+      min: o.libre.min });
+    verifier(o.ctxChat, k + " : ctx.libre (add-ons, égarés du jeu) ouvert dans la chatière", o.ctxChat);
+    verifier(!!o.plN && !!o.plS && !!o.plAxe && pr(o.plN.place[1], 1.25) && pr(o.plS.place[1], -1.25) &&
+      pr(o.plAxe.place[1], -1.25) && o.plN.cote === 1 && o.plS.cote === -1 && o.plAxe.cote === -1,
+    k + " : plaques à plat sur la paroi du côté du POI (nord, sud ; sur l'axe : à gauche du tracé)",
+    [o.plN && o.plN.place, o.plS && o.plS.place, o.plAxe && o.plAxe.place]);
+    verifier(o.plN.trace.texture && o.plN.trace.nom === "Rue Fictive" && o.plN.familles.indexOf("plaque") >= 0 &&
+      o.plaques && o.plaques.noms.indexOf("Rue Fictive") >= 0 && o.plaques.n === 3,
+    k + " : plaque à la texture de son nom (3 noms, 3 textures)", o.plaques);
+    verifier(!!o.ep && pr(o.ep.place[1], 1.25) && o.ep.cote === 1 && o.ep.trace.traits === 7 && !o.def,
+      k + " : épure tracée sur la paroi du côté du POI ; un POI sans forme n'a aucun volume", { ep: o.ep, def: o.def });
+    verifier(!!o.poLie && !!o.poSeul && o.poLie.trace.allume === true && o.poSeul.trace.allume === false &&
+      pr(o.poLie.place[1], 1.25) && pr(o.poSeul.place[1], -1.25) && o.poLie.familles.indexOf("cadre") >= 0,
+    k + " : portail lié = cadre lumineux, portail sans liaison = cadre éteint, contre la paroi", [o.poLie, o.poSeul]);
+    verifier(!!o.veh && o.veh.construit && pr(o.veh.place[1], 0.35) && pr(o.veh.trace.long, 4) &&
+      pr(o.veh.trace.large, 1.8) && pr(o.veh.trace.haut, 1.5),
+    k + " : véhicule de 4 × 1,8 × 1,5 m dans la galerie, du côté du POI (gardé entre les parois)", o.veh);
+    verifier(o.vehA < 37.7 && o.vehA > 37 && o.vehR > 42.3 && o.vehR < 43 && !o.ctxVeh,
+      k + " : véhicule bloque le pas (butée à " + o.vehA + " et " + o.vehR + " m) ; ctx.libre fermé",
+      { a: o.vehA, r: o.vehR, ctx: o.ctxVeh });
+    verifier(o.vehEdition > 41 && o.ramperEdition === 0,
+      k + " : vue d'édition : survol au-dessus du véhicule, aucun abaissement",
+      { x: o.vehEdition, r: o.ramperEdition });
+  });
+  const S = R.structures;
+  verifier(!!S.chat && S.chat.construit && !S.plN && !S.ep && !S.poLie && !!S.veh && !S.def,
+    "structures : chatière et véhicule au POI ; plaque, épure et portail sans paroi = panneau seul", S);
+  const T = R.sansTx;
+  verifier(T.pl === true && T.plNom === "Rue Fictive" && T.plFam.indexOf("plaque") >= 0 && T.plaques.n === 3 &&
+    T.chatRoche === 0 && T.chatTri > 0 && T.ep === 7 && T.po === true && T.veh && R.avecTx.n === T.avant.n,
+  "🧱 coupé : la plaque garde son nom (" + T.plaques.n + " textures), chatière unie, épure, portail et véhicule " +
+  "gardés ; rallumé, " + R.avecTx.n + " textures", T);
+  verifier(R.suivi.modes.length === 1 && R.suivi.modes[0] === "suivi" && !!R.suiviDans &&
+    R.suiviDans.cameraY < 0.45 && pr(R.suivi.apres, R.suivi.oeil) && pr(R.suivi.avant, R.suivi.oeil) &&
+    R.suivi.fin > -13.5, "suivi : caméra abaissée dans la chatière (" + (R.suiviDans && R.suiviDans.cameraY) +
+    " m), remontée après, jamais bloquée", { dans: R.suiviDans, suivi: R.suivi });
+  verifier(R.portailFiche.ouverte && R.portailFiche.actif && /Plan fictif B/.test(R.portailFiche.bouton || ""),
+    "portail lié : sa fiche propose « " + R.portailFiche.bouton + " »", R.portailFiche);
+  verifier(!!pageFin.confirm && pageFin.confirm.dessus && /Plan fictif B/.test(pageFin.confirm.texte),
+    "« Passer au plan » : la confirmation de la carte s'affiche au-dessus de la vue", pageFin.confirm);
+  verifier(!!pageFin.apresNon && pageFin.apresNon.ouvert && !pageFin.apresNon.modale,
+    "Annuler : la vue reste ouverte", pageFin.apresNon);
+  const oui = pageFin.apresOui;
+  verifier(!!oui && !oui.ouvert && !oui.vueDom && oui.charge === 1 && !oui.question,
+    "Confirmer : la vue se ferme sans « Je suis ici ? », le plan se charge", oui);
+  verifier(R2.seul.ouverte && R2.seul.boutons === 0, "portail sans liaison : fiche sans bouton « Passer au plan »",
+    R2.seul);
+  verifier(lieDef.ouverte && lieDef.actif && /Plan fictif B/.test(lieDef.bouton || "") && lieDef.cadre === 0,
+    "point lié sans le tag portail : sa fiche propose « " + lieDef.bouton + " », aucun cadre", lieDef);
+  verifier(!!lieDef.confirm && lieDef.confirm.dessus && lieDef.confirm.ouvert && !!lieDef.apres &&
+    !lieDef.apres.ouvert && !lieDef.apres.vueDom && lieDef.apres.charge === 2 && !lieDef.apres.question,
+  "➜ de la fiche d'un point lié : confirmation au-dessus de la vue, confirmée, la vue se ferme et le plan se charge",
+  { confirm: lieDef.confirm, apres: lieDef.apres });
+  verifier(R2.eteints.length === 2 && R2.eteints.every(function (a) { return a === false; }),
+    "liaison retirée pendant la vue : le cadre s'éteint", R2.eteints);
+  verifier(R2.p50.textures <= 32 && R2.p50.textures === Math.min(32, R2.p50.construites) &&
+    R2.p50.sansTexture === R2.p50.construites - R2.p50.textures && R2.p50meme.textures === 1,
+  "50 plaques : " + R2.p50.construites + " construites, " + R2.p50.textures + " textures (" +
+    (R2.p50.octets / 1048576).toFixed(2) + " Mo hors mipmaps, bornée à 32) ; même nom partout : " +
+    R2.p50meme.textures + " texture (" + (R2.p50meme.octets / 1024).toFixed(0) + " Ko) ; ouverture " +
+    R2.p50.ms + " ms",
+  { p50: R2.p50, meme: R2.p50meme });
+}
+
+// Captures de § 14 septies (KTA_V3D_CAPTURES) : la même scène fictive, vue de près à hauteur d'yeux et en vue
+// d'édition. Liaison fictive du portail lié, retirée à la fin (restaurerFormes).
+async function capturesFormes(page) {
+  const vues = [["formes-chatiere-face", -23.5, 0, 90], ["formes-chatiere-dedans", -20.3, 0, 90],
+    ["formes-plaque", -5, -0.2, 180], ["formes-epure", 10, -0.3, 180], ["formes-portail-lie", 20, -0.9, 180],
+    ["formes-portail-seul", 25, 0.9, 0], ["formes-vehicule", 33, -0.6, 90], ["formes-edition", -2, 0, 90, true]];
+  for (const q of vues) {
+    await page.evaluate(async function (c) {
+      const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+      const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      if (!window.__v3dFormesSauve) {
+        window.__v3dFormesSauve = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+          p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+          acc: window.ktaEstAccessible, rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
+          roads: window.getRoads().slice(), st: window.getStructures().slice(), zn: window.getZones().slice(),
+          trouve: window.PlanRegistry.findById, charger: window.chargerPlanServeur };
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window._currentLoadedPlanId = "v3d-checkup-formes";
+        window.setPlanRenduVue3D(null, "mixte");
+        window.setVue3DTextures(true);
+        window.setStructures([]); window.setZones([]);
+        window.setRoads([{ uid: "rd_f_p", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+        const poi = function (id, tag, x, z, nom) {
+          return Object.assign({ id: id, nom: nom, uid: id, level: 0, tags: [tag] }, P(x, z));
+        };
+        const pts = [poi("pt_f_chat", "chatiere", -20, 0.5, "Chatière fictive"),
+          poi("pt_f_pl_n", "plaque", -5, 2, "Rue Fictive"), poi("pt_f_ep", "epure", 10, 1.5, "Épure fictive"),
+          poi("pt_f_po_lie", "portail", 20, 1.5, "Portail lié"),
+          poi("pt_f_po_seul", "portail", 25, -1.5, "Portail seul"),
+          poi("pt_f_veh", "vehicule", 40, 0.5, "Véhicule fictif")];
+        window.setEditorPoints(pts);
+        const lie = pts[3], L = window.InterPlanLinks;
+        if (L) {
+          L.createLink({ planId: "v3d-checkup-formes", planName: "Plan de test", pointId: lie.id, pointUid: lie.uid,
+            pointNom: lie.nom, x: lie.x, y: lie.y, level: 0 }, { planId: "v3d-plan-fictif-b", planName: "Plan fictif B",
+            pointId: "pt_b", pointNom: "Arrivée fictive", x: 10, y: 10, level: 0 });
+        }
+        window.KtaGalerie.invalider();
+      }
+      if (K.etat().ouvert !== false) await K.fermer();
+      const d = P(c[1], c[2]);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: c[3] }, tuiles: false, commandes: "pave" });
+      if (c[4]) K.basculerVue();
+    }, q);
+    await page.waitForTimeout(700);
+    await capture(page, (process.env.KTA_V3D_CAP_PREFIXE || "apres") + "-" + q[0]);
+  }
+  await page.evaluate(function () {
+    const K = window.KtaVue3D;
+    if (K.etat().vue === "plongee") K.basculerVue();
+    return K.fermer();
+  });
+  await restaurerFormes(page);
+}
+
+// Remet le plan d'avant § 14 septies (registres embarqués, session, rendu, liaisons, registre des plans).
+async function restaurerFormes(page) {
+  await page.evaluate(function () {
+    const s = window.__v3dFormesSauve;
+    if (!s) return;
+    window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
+    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id; window.ktaEstAccessible = s.acc;
+    window.setRoads(s.roads); window.setZones(s.zn); window.setStructures(s.st); window.setEditorPoints(s.pts);
+    window.setPlanRenduVue3D(null, s.rendu);
+    window.PlanRegistry.findById = s.trouve;
+    window.chargerPlanServeur = s.charger;
+    const L = window.InterPlanLinks;
+    L.getLinksForPlan("v3d-checkup-formes").forEach(function (l) { L.removeLink(l.id); });
+    window.KtaGalerie.invalider();
+    window.__v3dFormesSauve = null;
+  });
 }
 
 // § 31 — Écart à l'itinéraire (réseau FICTIF en mémoire : galerie est-ouest au 0, branche nord au milieu, galerie
@@ -5734,6 +6250,11 @@ async function sectionGestesDoigt(nav) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionConePassage(page);
+    } else if (SEUL === "formes") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionFormesPoi(page);
     } else if (SEUL === "type") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -9121,6 +9642,7 @@ async function sectionGestesDoigt(nav) {
         AC.perfAvec.max + " ms ; ouverture par rendu (mixte, galerie, structures) " +
         [AC.mixte.ms, AC.galerie.ms, AC.structures.ms].join(" / ") + " ms");
       await sectionConePassage(page);
+      await sectionFormesPoi(page);
 
       // ── 14 sexies. Cavage comblé : galerie de 4 m entre deux murs, porte de la largeur du tracé (fictifs) ─────────
       // Principal (porte de 2,5 m) entre deux murs dont la face est à ±2 m de l'axe : de chaque côté, 0,75 m de pierre

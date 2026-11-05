@@ -643,6 +643,15 @@ Where and how a way through is drawn:
 - ![](../../icon/caf.png) **Closed quarry access**: the same door, leaves closed. **You bump into it**, and into the stone around it.
 - Wood, stone and backfill follow **🧱 Textures**.
 
+**Other points with a shape**:
+
+- ![](../../icon/chatiere.png) **Crawlway**: the tunnel narrows to a hole of about 0.6 m in the rock, across the tunnel. Nothing stops you: the view goes down so you crawl through, then back up (in 🧭 Follow as in 🕹️ Free). Its length is fixed (1.8 m): the point says no more.
+- ![](../../icon/plaque.png) **Marker plate**: a blue and white enamel plate, flat on the nearest wall, with the point's name. The name stays with 🧱 off.
+- ![](../../icon/epure.png) **Survey datum**: a light line drawn on the nearest wall, at eye level.
+- ![](../../icon/portail.png) **Portal (inter-plan link)**: a door frame against the wall, **lit** when the point has a link to another plan, dark otherwise. The card of **any point linked** to another plan (portal or not) offers **🌀 Go to plan…**: the confirmation shows over the view; if you confirm, the view closes and the other plan opens. The card's link ➜ does the same.
+- ![](../../icon/vehicule.png) **Vehicle**: a simplified car in the tunnel, along it. **You bump into it**, as into a pillar.
+- Plate, datum and portal go on a tunnel wall: in a chamber or in Structures rendering, the point keeps its sign only.
+
 #### 🪜 Changing level
 
 - Within **2 m** of a way between levels (stairs, shaft) or of the end of a junction trace, named buttons ("▼ -1 · Crossroads shaft (ladder)") take you to the next level.
