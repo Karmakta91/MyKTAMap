@@ -4821,6 +4821,15 @@
   // inclinée), alors que l'aperçu et le plan au sol se dessinent au sol, sous le doigt : on pose où l'on voit le trait.
   // Le plan est mathématique, aucun maillage requis : hors galerie (rendu Galerie, fond noir), au-delà du carré de sol
   // ou de la portée, le point visé se pose quand même.
+  // ⚠️ contrat (décision produit) : un sol visé hors de l'image du plan (vue dézoomée : le bas ou un coin de l'écran
+  // déborde) est refusé avec un toast, jamais ramené sur le bord (le sommet partait sans prévenir jusqu'à 100 m du
+  // doigt). Plan sans dimensions connues : tout passe.
+  function _dansPlan(v) {
+    const W = window.PLAN_CONFIG && window.PLAN_CONFIG.plan ? Number(window.PLAN_CONFIG.plan.imageWidth) : 0;
+    const H = window.APP_CONFIG ? Number(window.APP_CONFIG.imageHeight) : 0;
+    return !(W > 0 && (v.x < 0 || v.x > W)) && !(H > 0 && (v.y < 0 || v.y > H));
+  }
+
   function _pointSol() {
     const e = _e;
     const q = e.rayon.ray.intersectPlane(e.planSol0 || (e.planSol0 = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)),
@@ -4856,10 +4865,12 @@
       _toast(_t("vue3d.dessin.horizon"), "info");
       return false;
     }
-    // Point ramené dans le plan : vue dézoomée, le sol visé peut déborder de l'image (rien ne s'y verrait en 2D).
-    const W = window.PLAN_CONFIG && window.PLAN_CONFIG.plan ? Number(window.PLAN_CONFIG.plan.imageWidth) : 0;
-    const H = window.APP_CONFIG ? Number(window.APP_CONFIG.imageHeight) : 0;
-    let x = W > 0 ? Math.max(0, Math.min(W, v.x)) : v.x, y = H > 0 ? Math.max(0, Math.min(H, v.y)) : v.y;
+    if (!_dansPlan(v)) {
+      _refusDessin("sol visé hors de l'image du plan");
+      _toast(_t("vue3d.dessin.horsPlan"), "info");
+      return false;
+    }
+    let x = v.x, y = v.y;
     const cur = _objetEnCours(o.famille);
     const poly = !!cur && (o.famille === "zones" || (o.famille === "structures" && !_estLigne(cur.type)));
     if (poly && cur.points.length >= 3) {
@@ -5045,16 +5056,15 @@
     _ajusterFermerMenu();
     if (A && A.plan.inserer(m.c)) e.ajustements.insertion++;
   }
-  // Un toucher pendant l'insertion : le point du sol sous le doigt (ramené dans le plan), aimanté, et la fin au
+  // Un toucher pendant l'insertion : le point du sol sous le doigt (refusé hors du plan), aimanté, et la fin au
   // sommet suivant, par les règles de la carte ; la scène est refaite sur l'emprise de la forme.
   function _insererAuSol(cx, cy) {
     const e = _e, A = _ajusteur();
     if (!A || !_rayonEcran(cx, cy)) return false;
     const v = _pointSol();
     if (!v) { _toast(_t("vue3d.dessin.horizon"), "info"); return true; }
-    const W = window.PLAN_CONFIG && window.PLAN_CONFIG.plan ? Number(window.PLAN_CONFIG.plan.imageWidth) : 0;
-    const H = window.APP_CONFIG ? Number(window.APP_CONFIG.imageHeight) : 0;
-    const x = W > 0 ? Math.max(0, Math.min(W, v.x)) : v.x, y = H > 0 ? Math.max(0, Math.min(H, v.y)) : v.y;
+    if (!_dansPlan(v)) { _toast(_t("vue3d.dessin.horsPlan"), "info"); return true; }
+    const x = v.x, y = v.y;
     const r = A.plan.poser({ x: x, y: y }, _tolerancePlan(v.dist), _tolerancePlan(v.dist, A.RAYON_PX));
     e.ajustements[r === "ajoute" ? "insere" : r === "fin" ? "insertionFin" : "rien"]++;
     const ins = r === "ajoute" ? A.insertion() : null;

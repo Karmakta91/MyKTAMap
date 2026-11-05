@@ -143,6 +143,11 @@
 
 ## Entrant
 
+- **Position précise d'un POI (« Augmenter la précision »)** — un POI est souvent décalé pour la lisibilité (secteur dense
+  en icônes). Dans sa fiche, un bouton pose un 2ᵉ point = l'endroit réel (mur de la plaque…), relié au POI par un pointillé
+  jaune et marqué d'un carré jaune ; la 3D pose la forme là. Toutes les icônes ; chatière : point de début et de fin.
+  `qui: Claude · action: topo puis QCM (format du point, 2D, 3D, export, itinéraire) · depuis: 05/11/2026 · taille: M`
+
 - **🗺️ Plan au sol hors du niveau 0** — caché aux autres niveaux (`vue3d.js > _planSolPermis`). Question à KARMA :
   le montrer à tous les niveaux (une seule image par plan ?) ou le griser avec un message.
   `qui: KARMA · action: dire a (tous niveaux) ou b (grisé), et si ses plans ont une image par niveau · depuis: 04/11/2026

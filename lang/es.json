@@ -2446,6 +2446,7 @@
   "vue3d.dessin.barre": "Herramientas de dibujo",
   "vue3d.dessin.renduMixte": "Representación cambiada a Mixto: Galería no muestra las estructuras",
   "vue3d.dessin.planSol": "Plano en el suelo (la imagen del plano bajo la escena)",
+  "vue3d.dessin.horsPlan": "Fuera del plano: apunta al suelo dentro de la imagen del plano",
   "vue3d.dessin.horizon": "Nada bajo el puntero: apunta al suelo, bajo el horizonte",
   "vue3d.voirSurCarte": "Ver en el mapa",
   "vue3d.voirSurCarteTitre": "Cerrar la vista 3D y mostrar este objeto en el mapa",

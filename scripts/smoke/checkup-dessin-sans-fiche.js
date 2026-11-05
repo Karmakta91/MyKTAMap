@@ -17,7 +17,7 @@
 // le sol ; un seul outil ; ✏️ ajout de point à sa place dans la colonne ; outil armé en 2D puis vue d'édition : le PREMIER
 // toucher pose ; outil armé à hauteur d'yeux : toucher consommé, aucune fiche.
 // Clic lent sous une image lourde, recul maximal (150 m) aux 4 coins et 3 inclinaisons (point du plan y = 0 à 5 cm,
-// ramené dans les bornes de l'image hors du plan), Galerie hors tube : sommet posé.
+// refusé hors de l'image du plan), Galerie hors tube : sommet posé.
 // Joué au doigt (393 × 852, hasTouch, isMobile) et à la souris (1280 × 800), sous Chromium puis WebKit (KTA_MOTEURS
 // pour un seul).
 // Usage : node scripts/smoke/checkup-dessin-sans-fiche.js (SMOKE_PORT pour une autre copie) · doc : ui.md § Outil armé
@@ -822,10 +822,16 @@ async function section3D(page, entree) {
         continue;
       }
       // 🩸 Au recul maximal, le bas de la vue (et un coin haut en paysage) voit le sol AU-DELÀ de l'image du relevé
-      // fictif : le sommet est alors ramené dans ses bornes (vue3d.js > _poserSommet, décision produit), et l'attendu
-      // aussi. Les deux comptes ci-dessous prouvent que les deux cas sont joués.
-      const vx = Math.max(0, Math.min(att.W, att.q.x)), vy = Math.max(0, Math.min(att.H, att.q.y));
-      if (vx === att.q.x && vy === att.q.y) dansPlan++; else horsPlan++;
+      // fictif : le toucher y est refusé (vue3d.js > _dansPlan, décision produit), aucun sommet. Les deux comptes
+      // ci-dessous prouvent que les deux cas sont joués.
+      const dedans = att.q.x >= 0 && att.q.x <= att.W && att.q.y >= 0 && att.q.y <= att.H;
+      if (!dedans) {
+        horsPlan++;
+        if (ap.n !== av.n) loin.push(nom + " : hors du plan, un sommet posé quand même");
+        continue;
+      }
+      dansPlan++;
+      const vx = att.q.x, vy = att.q.y;
       const ecart = dernier ? Math.hypot(dernier.x - vx, dernier.y - vy) / att.sc : null;
       if (ap.n !== av.n + 1 || ecart === null || ecart > 0.05) {
         loin.push(nom + " : " + JSON.stringify({ sommets: ap.n - av.n,
@@ -834,8 +840,8 @@ async function section3D(page, entree) {
     }
   }
   verifier(loin.length === 0 && dansPlan > 0 && horsPlan > 0,
-    "3D, recul maximal (150 m), inclinaisons 15 / 50 / 85°, 4 coins : sommet au point visé (5 cm), ramené dans "
-    + "l'image hors du plan", { ecarts: loin, dansPlan: dansPlan, horsPlan: horsPlan });
+    "3D, recul maximal (150 m), inclinaisons 15 / 50 / 85°, 4 coins : sommet au point visé (5 cm), refusé "
+    + "hors de l'image du plan", { ecarts: loin, dansPlan: dansPlan, horsPlan: horsPlan });
 
   await armerZone3();
   await page.evaluate(function () {

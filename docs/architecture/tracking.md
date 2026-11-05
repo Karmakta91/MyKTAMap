@@ -2029,7 +2029,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   La mesure a ses ronds dorés en permanence, comme sur la carte.
 - **＋ Insertion** : ＋ ouvre l'insertion de la carte (`KtaAjusterSommets.plan.inserer`) ; chaque toucher bref au sol
   (`_toucher` → `_insererAuSol`, avant l'outil armé et les fiches) passe par `plan.poser(p, tolAimant, tolFin)` : point
-  ramené dans le plan, aimantation à la profondeur, fin au toucher du sommet suivant (24 px d'écran à la profondeur).
+  refusé hors du plan (toast), aimantation à la profondeur, fin au toucher du sommet suivant (24 px d'écran à la profondeur).
   Ronds dorés de la forme dans l'aperçu (ancre plus grosse) ; scène refaite sur l'emprise après chaque point. Le
   bandeau est celui de la carte (posé sur `body`, au-dessus de la vue). Échap le termine (après un ajustement ou son
   menu) ; sortir de la vue d'édition aussi. 🩸 Ctrl / Cmd + Z, Y ne sont plus pris par la vue (Z = avancer) : ils
@@ -2068,7 +2068,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   jamais la surface d'un objet : le dessus d'un pilier ou le haut d'une paroi touchés décalaient le sommet du doigt
   d'autant que l'objet est haut (jusqu'à 1,3 m mesuré sur un plan dense en vue inclinée), alors que l'aperçu et le plan
   au sol se dessinent au sol, sous le doigt. Aucun maillage requis : hors du carré de sol, au-delà de la portée ou dans
-  le noir hors des tubes (rendu Galerie) le point se pose quand même. Point ramené dans les bornes de l'image. La
+  le noir hors des tubes (rendu Galerie) le point se pose quand même. Hors de l'image du plan : refusé, toast « Hors du plan » (jamais ramené sur le bord, décision produit). La
   visée des fiches (`_pointVise`, outil désarmé) garde la surface touchée.
 - **Niveau** ⚠️ contrat : l'objet prend le niveau de la 3D (`e.niveau`, `niveauLibre` compris) : `APP_CONFIG.activeLevel`
   le prend le temps des deux `fire` puis est rendu (`finally`), la règle de la 2D (pilier-2 / front-2 au niveau − 1,
