@@ -713,7 +713,7 @@ Dónde y cómo se dibuja un paso:
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
 - **Volver a tocar la herramienta, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
 - En solo lectura, las herramientas de dibujo quedan en gris, como en el mapa; 📐 Medición sigue permitida.
-- **✋ Ajustar una forma**, como en el mapa: mantén pulsado un punto de un pilar, una zona, un trazado o la medición y arrastra; en el centro de un lado, se añade un punto; sin moverte, **🗑️**. Unos **círculos dorados** marcan los puntos de la forma tocada. Arrastrar enseguida mueve la vista, sin ajustar nada; una herramienta de dibujo elegida va primero (salvo 📐 para la medición).
+- **✋ Ajustar una forma**, como en el mapa: mantén pulsado un punto de un pilar, una zona, un trazado o la medición y arrastra; en el centro de un lado, se añade un punto; sin moverte, **＋** (cada toque en el suelo inserta luego un punto, hasta ✓, Esc o el punto siguiente) y **🗑️**. Unos **círculos dorados** marcan los puntos de la forma tocada. Arrastrar enseguida mueve la vista, sin ajustar nada; una herramienta de dibujo elegida va primero (salvo 📐 para la medición).
 
 > ⚠️ La 3D muestra el **plano**, no la galería real. Formas y alturas vienen del levantamiento (las galerías de los modos Galería y Mixto: anchuras fijas por tipo de trazado), tu posición del tracker, que deriva. No te fíes más que del mapa.
 
@@ -1005,9 +1005,10 @@ Un **trazado**, una **zona**, una **estructura** o una **medida 📐** ya dibuja
 
 - **Mover un punto**: mantén pulsado (medio segundo) un punto de la forma; aparece un círculo dorado: arrástralo, la forma lo sigue en punteado, y suelta.
 - **Añadir un punto**: mantén pulsado el centro de un lado; nace un punto ahí, arrástralo enseguida.
-- **Eliminar un punto**: mantén pulsado un punto sin moverlo y toca **🗑️**. Una línea conserva al menos 2 puntos, una superficie 3: por debajo, un mensaje lo indica y no se quita nada.
+- **Eliminar un punto**: mantén pulsado un punto sin moverlo: aparecen **＋** y **🗑️** encima; toca **🗑️**. Una línea conserva al menos 2 puntos, una superficie 3: por debajo, un mensaje lo indica y solo se ofrece **＋**.
+- **Insertar puntos seguidos**: la misma pulsación larga, y luego **＋**. Aparece una banda «＋ Inserción · N punto(s) · ✓ Terminar»: cada toque en el mapa añade un punto entre el último colocado y el punto siguiente de la forma, que se redibuja enseguida (en una forma cerrada, tras el último punto viene el primero; al final de una línea, esta se prolonga). Mientras tanto, ningún toque abre una ventana ni una herramienta. **✓ Terminar**, **Esc** o un toque en el punto siguiente detienen la inserción; **Ctrl+Z** (o ⏪) quita un punto cada vez, durante y después.
 
-Un toque corto sigue abriendo la ventana del objeto. Un trazado soltado cerca de un punto de otro trazado se engancha a él si la **🧲 Imantación al dibujar** está activada. Cada gesto se deshace con ⏪ (en una medida, solo mientras la herramienta 📐 está encendida). Los objetos de una capa de datos solo se mueven con la capa en **🔄 Modificar**; un mapa compartido en solo lectura no se modifica. Con el ratón, el mismo gesto: botón pulsado medio segundo y arrastrar.
+Un toque corto sigue abriendo la ventana del objeto. Un trazado soltado cerca de un punto de otro trazado se engancha a él si la **🧲 Imantación al dibujar** está activada. Cada gesto (y cada punto insertado) se deshace con ⏪ (en una medida, solo mientras la herramienta 📐 está encendida). Los objetos de una capa de datos solo se mueven con la capa en **🔄 Modificar**; un mapa compartido en solo lectura no se modifica. Con el ratón, el mismo gesto: botón pulsado medio segundo y arrastrar.
 
 **Los círculos dorados**: cada punto de una medición 📐 (distancia y superficie) lleva un círculo dorado, para ver que se puede mover. Las demás formas solo los muestran mientras se ajustan. **En 3D**, vista ✏️ Edición: mismos gestos, mismas reglas, en el suelo bajo el dedo (ver ✏️ Dibujar en vista de edición).
 

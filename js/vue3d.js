@@ -4416,7 +4416,9 @@
   // ⚠️ contrat (utils.js > _modeClicCarteActif) : un outil de la carte armé hors du dessin de la vue (armé en 2D,
   // ✏️ fermé, vue à hauteur d'yeux) n'ouvre aucune fiche non plus ; le toucher est consommé sans rien poser.
   function _toucher(cx, cy) {
-    const e = _e;
+    const e = _e, A = _ajusteur();
+    // Insertion de sommets ouverte (＋ au sommet) : le toucher est un point, rien d'autre (ni fiche, ni outil).
+    if (A && A.insertionEnCours() && _dessinPermis()) return _insererAuSol(cx, cy);
     if (_dessinActif()) return _poserSommet(cx, cy);
     if (_outilArme()) {
       _refusDessin(e.vue !== "plongee" ? "vue à hauteur d'yeux (le dessin se fait en Édition)"
@@ -4617,7 +4619,8 @@
       sol: null, suivi: null };
     e.ajuste = null;
     e.ajusteMenu = null;
-    e.ajustements = { armes: 0, annules: 0, ajoute: 0, deplace: 0, supprime: 0, refus: 0, menu: 0, rien: 0 };
+    e.ajustements = { armes: 0, annules: 0, ajoute: 0, deplace: 0, supprime: 0, refus: 0, menu: 0, rien: 0,
+      insertion: 0, insere: 0, insertionFin: 0 };
     if (!window._groupes) return;
     const barre = document.createElement("div");
     barre.className = "leaflet-bar leaflet-control kta-v3d-outils";
@@ -4722,7 +4725,12 @@
     const e = _e, d = e.dessin;
     if (!d || !d.barre) return;
     _suivrePermisDessin();
-    if (!_dessinPermis()) { _ajusterAnnuler(); _ajusterFermerMenu(); } else _placerMenuAjuster();
+    if (!_dessinPermis()) {
+      _ajusterAnnuler();
+      _ajusterFermerMenu();
+      const A = _ajusteur();
+      if (A && A.insertionEnCours()) A.terminerInsertion();
+    } else _placerMenuAjuster();
     const G = window._groupes || {}, o = _outilArme();
     let sig = (_dessinPermis() ? "1" : "0") + (d.planSol ? "1" : "0") + e.niveau +
       (o ? o.famille + ":" + o.type : "") + "|" +
@@ -4963,7 +4971,7 @@
     const p = g.bouge || g.c.genre === "milieu" ? g.pts[g.idx] : null;
     const r = A.plan.lacher(g.c, p, p ? _tolerancePlan(g.dist) : undefined);
     e.ajustements[r] = (e.ajustements[r] || 0) + 1;
-    if (r === "menu") _ajusterMenu(g);
+    if (r === "menu" || r === "refus") _ajusterMenu(g, r === "refus");
     else if (r === "ajoute" || r === "deplace") _ajusterRefaire(g.avant.concat(g.pts));
     _ajusterFin();
     return true;
@@ -4994,18 +5002,18 @@
     e.sale = true;
   }
 
-  // 🗑️ au sommet (le bouton de la carte, classe kta-ajuster-suppr), suivi à l'écran ; il se retire seul (MENU_MS), au
-  // toucher suivant hors de lui (avalé s'il tombe sur la scène) ou par Échap.
-  function _ajusterMenu(g) {
+  // ＋ et 🗑️ au sommet (les boutons de la carte : ajusterSommets.js > htmlMenu ; ＋ seul sous le minimum), suivis à
+  // l'écran ; ils se retirent seuls (MENU_MS), au toucher suivant hors d'eux (avalé sur la scène) ou par Échap.
+  function _ajusterMenu(g, sansSuppr) {
     const e = _e, A = _ajusteur();
     _ajusterFermerMenu();
-    const b = document.createElement("button"), titre = _t("ajuster.supprimer");
-    b.type = "button";
-    b.className = "kta-ajuster-suppr kta-v3d-ajuster-suppr";
-    b.dataset.v3d = "ajusterSuppr";
-    b.title = titre;
-    b.setAttribute("aria-label", titre);
-    b.textContent = "🗑️";
+    if (!A) return;
+    const boite = document.createElement("div");
+    boite.innerHTML = A.htmlMenu(function (action) {
+      return ' data-v3d="' + (action === "inserer" ? "ajusterInserer" : "ajusterSuppr") + '"';
+    }, sansSuppr);
+    const b = boite.firstChild;
+    b.classList.add("kta-v3d-ajuster-menu");
     e.ov.appendChild(b);
     e.ajusteMenu = { b: b, c: g.c, pts: g.avant, p: g.pts[g.idx],
       timer: setTimeout(_ajusterFermerMenu, A ? A.MENU_MS : 6000) };
@@ -5016,7 +5024,7 @@
     const e = _e, m = e.ajusteMenu;
     if (!m) return;
     const s = _ecran({ x: m.p.x / e.sc, y: DESSIN.y, z: m.p.y / e.sc }), r = e.ov.getBoundingClientRect();
-    const x = Math.round(s.x - r.left - 22) + "px", y = Math.round(s.y - r.top - 58) + "px";
+    const x = Math.round(s.x - r.left - m.b.offsetWidth / 2) + "px", y = Math.round(s.y - r.top - 58) + "px";
     if (m.b.style.left !== x) m.b.style.left = x;
     if (m.b.style.top !== y) m.b.style.top = y;
     m.b.hidden = !s.devant;
@@ -5027,6 +5035,30 @@
     clearTimeout(m.timer);
     if (m.b.parentNode) m.b.parentNode.removeChild(m.b);
     e.ajusteMenu = null;
+    e.sale = true;
+    return true;
+  }
+  // ＋ : l'insertion part de ce sommet ; chaque toucher au sol pose ensuite un point (_toucher → _insererAuSol).
+  function _ajusterInserer() {
+    const e = _e, m = e.ajusteMenu, A = _ajusteur();
+    if (!m) return;
+    _ajusterFermerMenu();
+    if (A && A.plan.inserer(m.c)) e.ajustements.insertion++;
+  }
+  // Un toucher pendant l'insertion : le point du sol sous le doigt (ramené dans le plan), aimanté, et la fin au
+  // sommet suivant, par les règles de la carte ; la scène est refaite sur l'emprise de la forme.
+  function _insererAuSol(cx, cy) {
+    const e = _e, A = _ajusteur();
+    if (!A || !_rayonEcran(cx, cy)) return false;
+    const v = _pointSol();
+    if (!v) { _toast(_t("vue3d.dessin.horizon"), "info"); return true; }
+    const W = window.PLAN_CONFIG && window.PLAN_CONFIG.plan ? Number(window.PLAN_CONFIG.plan.imageWidth) : 0;
+    const H = window.APP_CONFIG ? Number(window.APP_CONFIG.imageHeight) : 0;
+    const x = W > 0 ? Math.max(0, Math.min(W, v.x)) : v.x, y = H > 0 ? Math.max(0, Math.min(H, v.y)) : v.y;
+    const r = A.plan.poser({ x: x, y: y }, _tolerancePlan(v.dist), _tolerancePlan(v.dist, A.RAYON_PX));
+    e.ajustements[r === "ajoute" ? "insere" : r === "fin" ? "insertionFin" : "rien"]++;
+    const ins = r === "ajoute" ? A.insertion() : null;
+    if (ins) _ajusterRefaire(ins.pts);
     e.sale = true;
     return true;
   }
@@ -5060,6 +5092,9 @@
     // Ajustement armé (chaque déplacement compte) ou 🗑️ proposé : ronds dorés de la forme touchée.
     const g = e.ajuste && e.ajuste.arme ? e.ajuste : null;
     parts.push(g ? "a" + g.n + ":" + g.idx : "", e.ajusteMenu ? "m" : "");
+    // Insertion ouverte : ses ronds suivent chaque point posé ou annulé.
+    const A = _ajusteur(), ins = A && A.insertionEnCours() ? A.insertion() : null;
+    parts.push(ins ? "i" + ins.pts.length + ":" + ins.ancre : "");
     return parts.join(",");
   }
 
@@ -5121,7 +5156,13 @@
       mm.pts.forEach(function (p) { disque(p, DESSIN.sommet, accent); });
       disque(mm.p, DESSIN.sommet * 1.6, accent);
     }
-    d.ronds = { mesure: mD.length + mS.length, forme: g ? g.pts.length : mm ? mm.pts.length : 0 };
+    // Insertion ouverte : ronds dorés de la forme, le dernier point posé (l'ancre) plus gros.
+    const A = _ajusteur(), ins = !g && !mm && A && A.insertionEnCours() ? A.insertion() : null;
+    if (ins) {
+      ins.pts.forEach(function (p, i) { disque(p, i === ins.ancre ? DESSIN.sommet * 1.6 : DESSIN.sommet, accent); });
+    }
+    const formeN = g ? g.pts.length : mm ? mm.pts.length : ins ? ins.pts.length : 0;
+    d.ronds = { mesure: mD.length + mS.length, forme: formeN };
     const geo = lot.geometrie();
     if (geo) {
       if (!e.mats.apercu) {
@@ -6894,6 +6935,7 @@
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
       else if (a === "ajusterSuppr") { ev.preventDefault(); _ajusterSupprimer(); }
+      else if (a === "ajusterInserer") { ev.preventDefault(); _ajusterInserer(); }
       else if (a === "place") surPlace();
       else if (a === "guidAction") _actionGuidage(b.dataset.guidAction);
       // Entrée / Espace sur un bouton qui agit au pointerdown (bascules de la tuile, − / +, passages) : le navigateur
@@ -6914,7 +6956,7 @@
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
         a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place" || a === "guidAction" ||
-        a === "ajusterSuppr") return;
+        a === "ajusterSuppr" || a === "ajusterInserer") return;
       // Au doigt, + / − et inclinaison attendent le click : un doigt de pincement posé dessus n'agit pas (_brancher,
       // geste de la scène).
       if (ev.pointerType === "touch" && /^(zoom|incl)(Plus|Moins)$/.test(a)) { e.appui = null; return; }
@@ -6982,10 +7024,10 @@
         a0: Math.atan2(q.y - p.y, q.x - p.x) };
     };
     // Commande que le doigt d'un geste peut traverser : tout ce qui est dans la vue sauf la saisie (curseurs de la
-    // tuile, champs de la fiche), la fiche et le 🗑️ d'un ajustement.
+    // tuile, champs de la fiche), la fiche et le ＋ / 🗑️ d'un ajustement.
     const traversable = function (t) {
       if (!t || t === e.cv || !e.ov.contains(t) || !t.closest) return false;
-      if (t.closest("input, select, textarea, label, .kta-v3d-fiche, .kta-ajuster-suppr")) return false;
+      if (t.closest("input, select, textarea, label, .kta-v3d-fiche, .kta-ajuster-boutons")) return false;
       return !(e.tuileReglages && e.tuileReglages.contains(t));
     };
     const adopter = function (id, p) {
@@ -7178,9 +7220,10 @@
       if (_champFiche(ev) && ev.key !== "Escape" && ev.key !== "Tab") { ev.stopPropagation(); return; }
       if (ev.key === "Escape") {
         ev.stopPropagation(); ev.preventDefault();
-        // Un ajustement en cours ou son 🗑️ passent avant tout le reste.
-        const ajuste = _ajusterAnnuler();
+        // Un ajustement en cours ou son menu passent avant tout le reste, puis l'insertion de sommets ouverte.
+        const ajuste = _ajusterAnnuler(), A = _ajusteur();
         if (_ajusterFermerMenu() || ajuste) return;
+        if (A && A.terminerInsertion()) return;
         // Échap ferme d'abord la tuile des réglages (et la hauteur qu'elle montre), éteint l'outil de dessin armé,
         // ferme une fiche, puis la vue.
         if (e.tuileReglages && !e.tuileReglages.hidden) { _basculerReglages(false); return; }
@@ -7191,6 +7234,8 @@
         return;
       }
       if (ev.key === "Tab") { _tabulation(ev); return; }
+      // Ctrl / Cmd + Z, Y : l'annulation de la carte (historyManager.js, écouteur de document), pas le pas avant de Z.
+      if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && /^[zy]$/i.test(ev.key || "")) return;
       // Curseurs de la tuile au clavier : leurs touches restent les leurs (ni pas, ni inclinaison, ni raccourci de la
       // carte dessous).
       const champ = ev.target === e.curseurPortee || ev.target === e.curseurLampe || ev.target === e.curseurFaisceau;

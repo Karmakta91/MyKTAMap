@@ -2012,9 +2012,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 ### Ajuster une forme en vue d'édition (décision du 04/11/2026)
 
 - **Mêmes gestes, même prise** ⚠️ contrat : appui long (500 ms) sur un sommet d'un pilier, d'une zone, d'un tracé ou de
-  la mesure, puis glisser = déplacer ; au milieu d'un côté = ajouter ; sans bouger = 🗑️ au sommet (bouton de la carte,
-  `.kta-ajuster-suppr`, suivi à l'écran, retiré seul après 6 s, au toucher suivant, avalé sur la scène, ou par Échap) ;
-  sous le minimum, le toast de la carte. Tout ce qui décide passe par `ajusterSommets.js > KtaAjusterSommets.plan`
+  la mesure, puis glisser = déplacer ; au milieu d'un côté = ajouter ; sans bouger = ＋ et 🗑️ au sommet (boutons de la
+  carte, `KtaAjusterSommets.htmlMenu`, boîte `.kta-v3d-ajuster-menu` suivie à l'écran, retirée seule après 6 s, au
+  toucher suivant, avalé sur la scène, ou par Échap) ; sous le minimum, ＋ seul et le toast de la carte. Tout ce qui décide passe par `ajusterSommets.js > KtaAjusterSommets.plan`
   (familles, droits : lecture seule, calque non rapatrié, outil armé sauf 📐 pour la mesure ; aimantation ; une entrée
   ⏪, un rendu au lâcher). La vue ne mène que le geste (`vue3d.js > _ajusterAppui`, `_ajusterBouge`, `_ajusterLacher`).
 - **Ce qui se vise** : ce que la vue montre (`e.vus` : son niveau, ses filtres, pas de structure en rendu Galerie), la
@@ -2027,6 +2027,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_majApercu`, signature : un pas = un recalcul de quelques triangles), aucune reconstruction pendant le glisser ;
   au lâcher, `kta:donneesPlanChange` refait la scène à l'image suivante, sur l'emprise avant / après (`_noterFin`).
   La mesure a ses ronds dorés en permanence, comme sur la carte.
+- **＋ Insertion** : ＋ ouvre l'insertion de la carte (`KtaAjusterSommets.plan.inserer`) ; chaque toucher bref au sol
+  (`_toucher` → `_insererAuSol`, avant l'outil armé et les fiches) passe par `plan.poser(p, tolAimant, tolFin)` : point
+  ramené dans le plan, aimantation à la profondeur, fin au toucher du sommet suivant (24 px d'écran à la profondeur).
+  Ronds dorés de la forme dans l'aperçu (ancre plus grosse) ; scène refaite sur l'emprise après chaque point. Le
+  bandeau est celui de la carte (posé sur `body`, au-dessus de la vue). Échap le termine (après un ajustement ou son
+  menu) ; sortir de la vue d'édition aussi. 🩸 Ctrl / Cmd + Z, Y ne sont plus pris par la vue (Z = avancer) : ils
+  vont à `historyManager.js`, un point inséré à la fois.
 - Garde-fou : `checkup-vue-3d.js` § 35 (`KTA_V3D_SEUL=ajuster`, souris et doigt).
 
 ### Dessiner en vue d'édition (QCM du 03/11 et du 04/11/2026)

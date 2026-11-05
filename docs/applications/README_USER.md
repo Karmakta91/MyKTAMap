@@ -713,7 +713,7 @@ Où et comment un passage se dessine :
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
 - **Retoucher l'outil, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
 - En lecture seule, les outils de dessin restent grisés, comme sur la carte ; 📐 Mesure reste permise.
-- **✋ Ajuster une forme**, comme sur la carte : appui long sur un point d'un pilier, d'une zone, d'un tracé ou de la mesure, puis glisser ; au milieu d'un côté, un point s'ajoute ; sans bouger, **🗑️**. Des **ronds dorés** marquent les points de la forme touchée. Glisser tout de suite bouge la vue, sans rien ajuster ; un outil de dessin choisi passe avant (sauf 📐 pour la mesure).
+- **✋ Ajuster une forme**, comme sur la carte : appui long sur un point d'un pilier, d'une zone, d'un tracé ou de la mesure, puis glisser ; au milieu d'un côté, un point s'ajoute ; sans bouger, **＋** (chaque toucher au sol insère ensuite un point, jusqu'à ✓, Échap ou le point suivant) et **🗑️**. Des **ronds dorés** marquent les points de la forme touchée. Glisser tout de suite bouge la vue, sans rien ajuster ; un outil de dessin choisi passe avant (sauf 📐 pour la mesure).
 
 > ⚠️ La 3D montre le **plan**, pas la galerie réelle. Formes et hauteurs sont celles du relevé (les galeries des modes Galerie et Mixte : des largeurs fixes par type de tracé), ta position celle du tracker, qui dérive. Ne t'y fie pas plus qu'à la carte.
 
@@ -1005,9 +1005,10 @@ Un **tracé**, une **zone**, une **structure** ou une **mesure 📐** déjà des
 
 - **Déplacer un point** : appuie longuement (une demi-seconde) sur un point de la forme ; un rond doré apparaît : glisse-le, la forme suit en pointillé, puis lâche.
 - **Ajouter un point** : appuie longuement au milieu d'un côté ; un point naît là, glisse-le aussitôt.
-- **Supprimer un point** : appuie longuement sur un point sans bouger, puis touche **🗑️**. Une ligne garde au moins 2 points, une surface 3 : en dessous, un message le dit et rien n'est retiré.
+- **Supprimer un point** : appuie longuement sur un point sans bouger : **＋** et **🗑️** apparaissent au-dessus ; touche **🗑️**. Une ligne garde au moins 2 points, une surface 3 : en dessous, un message le dit et seul **＋** est proposé.
+- **Insérer des points à la suite** : même appui long, puis **＋**. Un bandeau « ＋ Insertion · N point(s) · ✓ Terminer » s'affiche : chaque tap sur la carte ajoute un point entre le dernier posé et le point suivant de la forme, qui se redessine aussitôt (sur une forme fermée, après le dernier point vient le premier ; au bout d'une ligne, elle se prolonge). Pendant ce temps, aucun tap n'ouvre de bulle ni d'outil. **✓ Terminer**, **Échap** ou un tap sur le point suivant arrêtent l'insertion ; **Ctrl+Z** (ou ⏪) retire un point à la fois, pendant comme après.
 
-Un tap court ouvre toujours la bulle de l'objet. Un tracé lâché près d'un point d'un autre tracé s'y colle si le **🧲 Magnétisme au dessin** est allumé. Chaque geste s'annule avec ⏪ (sur une mesure, seulement tant que l'outil 📐 est allumé). Les objets d'un calque de données ne bougent qu'une fois le calque en **🔄 Modifier** ; un plan partagé en lecture seule ne se modifie pas. À la souris, même geste : bouton enfoncé une demi-seconde, puis glisser.
+Un tap court ouvre toujours la bulle de l'objet. Un tracé lâché près d'un point d'un autre tracé s'y colle si le **🧲 Magnétisme au dessin** est allumé. Chaque geste (et chaque point inséré) s'annule avec ⏪ (sur une mesure, seulement tant que l'outil 📐 est allumé). Les objets d'un calque de données ne bougent qu'une fois le calque en **🔄 Modifier** ; un plan partagé en lecture seule ne se modifie pas. À la souris, même geste : bouton enfoncé une demi-seconde, puis glisser.
 
 **Les ronds dorés** : chaque point d'une mesure 📐 (distance et surface) porte un rond doré, pour voir qu'il se déplace. Les autres formes n'en montrent que pendant leur ajustement. **En 3D**, vue ✏️ Édition : mêmes gestes, mêmes règles, au sol sous le doigt (voir ✏️ Dessiner en vue d'édition).
 

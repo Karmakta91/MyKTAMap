@@ -4851,10 +4851,11 @@ async function sectionAjusterSommets(nav, mode) {
       // Supprimer : appui long sans bouger → 🗑️, touché.
       const s = await ecran(ajoute[f.mi + 1]);
       const g3 = await geste(s, 0, 0);
-      const menu = await page.locator("#kta-vue3d .kta-v3d-ajuster-suppr").count();
-      verifier(menu === 1 && g3.e1.menu && g3.e1.menu.visible && !g3.e1.fiche,
-        nom + f.nom + " : appui long sans bouger → 🗑️ au sommet, sans fiche", g3.e1.menu);
-      if (menu) await page.locator("#kta-vue3d .kta-v3d-ajuster-suppr").click();
+      const menu = await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-suppr").count();
+      const plus = await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-inserer").count();
+      verifier(menu === 1 && plus === 1 && g3.e1.menu && g3.e1.menu.visible && !g3.e1.fiche,
+        nom + f.nom + " : appui long sans bouger → ＋ et 🗑️ au sommet, sans fiche", g3.e1.menu);
+      if (menu) await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-suppr").click();
       await page.waitForTimeout(150);
       const supprime = await pts(f.ref);
       verifier(JSON.stringify(supprime) === JSON.stringify(avant) && (await etat()).undo === g3.e1.undo + 1,
@@ -4867,6 +4868,72 @@ async function sectionAjusterSommets(nav, mode) {
       }
     }
 
+    // ── ＋ Insertion en vue d'édition : pilier (entre X et X+1, fin au toucher de X+1), tracé (X dernier : prolongé,
+    // fin par Échap) ; Ctrl+Z point par point pendant (le mode reste) et après ──
+    const tap3d = async function (p) {
+      await ptr.down(p);
+      await page.waitForTimeout(40);
+      await ptr.up(p);
+      await page.waitForTimeout(120);
+    };
+    const bandeau = function () {
+      return ev(function () {
+        const b = document.querySelector(".kta-ajuster-bandeau");
+        return { txt: b ? b.textContent : null, ins: window.KtaAjusterSommets.insertionEnCours() };
+      });
+    };
+    const ctrlZ = async function () { await page.keyboard.press("Control+z"); await page.waitForTimeout(150); };
+    const INS3D = [
+      { nom: "pilier", ref: "st_aj_p", x: 1, fin: "suivant", cibles: [[-3, -3.6], [-2.6, -3], [-3, -2.4]] },
+      { nom: "tracé (X dernier)", ref: "rd_aj_r", x: 2, fin: "echap", cibles: [[-1, 2.5], [0, 3], [1, 3.5]] }
+    ];
+    for (const c of INS3D) {
+      await toastsVides();
+      const av = await pts(c.ref), L0 = av.length;
+      const gI = await geste(await ecran(av[c.x]), 0, 0);
+      const plus = await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-inserer").count();
+      verifier(plus === 1 && gI.e1.menu, nom + "＋ " + c.nom + " : appui long sans bouger → ＋ proposé", gI.e1.menu);
+      if (plus) await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-inserer").click();
+      await page.waitForTimeout(150);
+      const b0 = await bandeau();
+      verifier(b0.ins && /0/.test(b0.txt || ""), nom + "＋ " + c.nom + " : insertion ouverte, bandeau « 0 point »", b0);
+      const u0 = (await etat()).undo, voulus = [];
+      for (const q of c.cibles) {
+        const sp = await ev(function (a) { return window.__aj.P(a[0], a[1]); }, q);
+        const e = await ecran(sp);
+        voulus.push(await sol(e));
+        await tap3d(e);
+      }
+      const ap = await pts(c.ref), e1 = await etat(), b1 = await bandeau();
+      const ordre = ap.length === L0 + 3 && voulus.every(function (v, i) {
+        return v && Math.hypot(ap[c.x + 1 + i].x - v.x, ap[c.x + 1 + i].y - v.y) <= tolPlan;
+      }) && av.every(function (p, i) {
+        const q = ap[i <= c.x ? i : i + 3];
+        return q.x === p.x && q.y === p.y;
+      });
+      verifier(ordre && b1.ins && /3/.test(b1.txt || "") && e1.undo === u0 + 3 && !e1.fiche,
+        nom + "＋ " + c.nom + " : 3 touchers au sol → 3 sommets à la suite de X, bandeau « 3 », 3 entrées ⏪, " +
+        "aucune fiche", { L: [L0, ap.length], bandeau: b1, undo: [u0, e1.undo] });
+      await ctrlZ();
+      const z1 = await pts(c.ref), bz = await bandeau();
+      verifier(z1.length === L0 + 2 && bz.ins && /2/.test(bz.txt || ""),
+        nom + "＋ " + c.nom + " : Ctrl+Z pendant le mode retire le dernier point, le mode continue",
+        { L: z1.length, b: bz });
+      if (c.fin === "suivant") await tap3d(await ecran(z1[c.x + 3]));
+      else await page.keyboard.press("Escape");
+      await page.waitForTimeout(150);
+      const bf = await bandeau(), vue = await ev(function () { return !!document.getElementById("kta-vue3d"); });
+      verifier(!bf.ins && bf.txt === null && vue && (await pts(c.ref)).length === L0 + 2,
+        nom + "＋ " + c.nom + " : fin par " + (c.fin === "suivant" ? "un toucher sur X+1" : "Échap (la vue reste)") +
+        ", les points restent", { b: bf, vue: vue });
+      await ctrlZ();
+      await ctrlZ();
+      const z3 = await pts(c.ref);
+      verifier(JSON.stringify(z3) === JSON.stringify(av), nom + "＋ " + c.nom + " : après le mode, Ctrl+Z retire un " +
+        "point à la fois jusqu'à la forme d'origine", { L: z3.length });
+      await attendreScene((await etat()).refaites - 1);
+    }
+
     // ── Refus sous le minimum : tracé de 2 points ──
     await ev(function () {
       const r = window.getRoads().filter(function (q) { return q.uid === "rd_aj_r"; })[0];
@@ -4877,8 +4944,12 @@ async function sectionAjusterSommets(nav, mode) {
     await attendreScene(e0.refaites);
     const r2 = await pts("rd_aj_r");
     const gR = await geste(await ecran(r2[0]), 0, 0);
-    verifier((await pts("rd_aj_r")).length === 2 && gR.e1.n.refus === gR.e0.n.refus + 1 && !gR.e1.menu &&
-      /2/.test(gR.e1.toast), nom + "tracé de 2 points : 🗑️ refusé, un toast le dit", { n: gR.e1.n, toast: gR.e1.toast });
+    const sansSuppr = await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-suppr").count();
+    verifier((await pts("rd_aj_r")).length === 2 && gR.e1.n.refus === gR.e0.n.refus + 1 && gR.e1.menu && !sansSuppr &&
+      /2/.test(gR.e1.toast), nom + "tracé de 2 points : ＋ seul (🗑️ refusé), un toast le dit",
+    { n: gR.e1.n, toast: gR.e1.toast });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(100);
 
     // ── Rien : tracé du niveau 0 (pas montré), pilier d'un calque, lecture seule ──
     const rien = async function (p, libelle) {

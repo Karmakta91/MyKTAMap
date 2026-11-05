@@ -416,7 +416,7 @@ html.kta-vue3d-ouverte .kta-group-flyout, html.kta-vue3d-ouverte .kta-group-flyo
 }
 /* Fiche qui vient de s'ouvrir sous le doigt (vue3d.js > _ficheNeuve) : le click qui suit le toucher la traverse. */
 .kta-v3d-fiche.kta-v3d-fiche-neuve { pointer-events: none; }
-/* 🗑️ d'un ajustement (vue3d.js > _ajusterMenu) : le bouton de la carte (style.css > .kta-ajuster-suppr), posé au
-   sommet à l'écran, au-dessus de la scène et sous les fenêtres. */
-.kta-v3d-ajuster-suppr { position: absolute; z-index: 6; }
-.kta-v3d-ajuster-suppr[hidden] { display: none; }
+/* ＋ / 🗑️ d'un ajustement (vue3d.js > _ajusterMenu) : les boutons de la carte (style.css > .kta-ajuster-boutons),
+   posés au sommet à l'écran, au-dessus de la scène et sous les fenêtres. */
+.kta-v3d-ajuster-menu { position: absolute; z-index: 6; }
+.kta-v3d-ajuster-menu[hidden] { display: none; }
