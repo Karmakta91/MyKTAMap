@@ -5538,6 +5538,7 @@ async function sectionAjusterSommets(nav, mode) {
 // événements du navigateur, mouseEvents de compatibilité compris). Pilier visé là où on le VOIT, au coin du dessus
 // (plus de RAYON_PX au-dessus de son pied à l'écran), puis au pied ; tracé et mesure (📐 armé) au sol. Pour chacun :
 // armé, caméra immobile pendant l'appui et le glisser, sommet déplacé de ce qu'a parcouru le pointeur au sol, seul.
+// Puis objets remplacés par des copies au contenu identique (scène non refaite) : le sommet se saisit encore.
 async function sectionAjusterSourisReelle(nav) {
   const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: "block" });
   const page = await ctx.newPage();
@@ -5710,6 +5711,22 @@ async function sectionAjusterSourisReelle(nav) {
     await cas("pilier, coin du dessus", "st_vs_p", 0, haut);
     await cas("pilier, pied", "st_vs_p", 2, await ecran(pil[2]));
     await cas("tracé", "rd_vs_r", 1, await ecran((await pts("rd_vs_r"))[1]));
+    // Copies au contenu identique (annuler puis rétablir, relecture) : empreinte inchangée, scène non refaite ; le
+    // sommet se saisit quand même (vue3d.js > _garderVu, même uid).
+    const copier = async function () {
+      const r0 = (await etat()).refaites;
+      await ev(function () {
+        window.setStructures(JSON.parse(JSON.stringify(window.getStructures())));
+        window.setRoads(JSON.parse(JSON.stringify(window.getRoads())));
+      });
+      await page.waitForTimeout(900);
+      return [r0, (await etat()).refaites];
+    };
+    const rc = await copier();
+    verifier(rc[0] === rc[1], nom + "copies au contenu identique : la scène n'est pas refaite (empreinte)", rc);
+    await cas("pilier, après copie identique", "st_vs_p", 2, await ecran((await pts("st_vs_p"))[2]));
+    await copier();
+    await cas("tracé, après copie identique", "rd_vs_r", 1, await ecran((await pts("rd_vs_r"))[1]));
     // 📐 Distance armé depuis la colonne de la vue (l'ajustement de la mesure est une entrée ⏪), 3 points posés.
     await ev(function () {
       const b = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="mesure"]');

@@ -5212,7 +5212,11 @@
   function _garderVu(famille, o) {
     if (famille === "mesure") return true;
     const v = _e.vus && _e.vus[famille];
-    return !!v && v.indexOf(o) >= 0;
+    if (!v) return false;
+    if (v.indexOf(o) >= 0) return true;
+    // 🩸 Objets remplacés par des copies au contenu identique (annuler puis rétablir, relecture) : l'empreinte n'a pas
+    // changé, la scène n'est pas refaite et e.vus garde les anciens objets. Même uid = même objet montré.
+    return !!o.uid && v.some(function (q) { return q && q.uid === o.uid; });
   }
 
   // Appui d'un seul pointeur sur la scène (vue d'édition) : un sommet ou un milieu visé → l'appui long est attendu.
