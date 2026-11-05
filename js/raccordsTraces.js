@@ -488,7 +488,7 @@ window.KtaRaccords = (function () {
     ov.addEventListener("click", function (ev) {
       if (ev.target === ov) { _fermerListe(); return; }
       const ligne = ev.target.closest && ev.target.closest("[data-racc-i]");
-      if (ligne) { _ouvrirBandeau(parseInt(ligne.getAttribute("data-racc-i"), 10) || 0); return; }
+      if (ligne) { _ouvrirBandeau(Number.parseInt(ligne.getAttribute("data-racc-i"), 10) || 0); return; }
       const btn = ev.target.closest && ev.target.closest("[data-racc]");
       if (!btn) return;
       const act = btn.getAttribute("data-racc");
