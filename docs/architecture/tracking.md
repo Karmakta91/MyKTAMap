@@ -2050,7 +2050,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Mêmes gestes, même prise** ⚠️ contrat : appui long (500 ms) sur un sommet d'un pilier, d'une zone, d'un tracé ou de
   la mesure, puis glisser = déplacer ; au milieu d'un côté = ajouter ; sans bouger = ＋ et 🗑️ au sommet (boutons de la
   carte, `KtaAjusterSommets.htmlMenu`, boîte `.kta-v3d-ajuster-menu` suivie à l'écran, retirée seule après 6 s, au
-  toucher suivant, avalé sur la scène, ou par Échap) ; sous le minimum, ＋ seul et le toast de la carte. Tout ce qui décide passe par `ajusterSommets.js > KtaAjusterSommets.plan`
+  toucher suivant, avalé sur la scène, ou par Échap ; 🩸 avalé mais pas son appui long : posé sur un sommet, il
+  l'ajuste — une souris tenue immobile ouvre ce menu à coup sûr, et l'appui suivant sur la pastille agrandie partait
+  en pan, checkup § 35 bis) ; sous le minimum, ＋ seul et le toast de la carte. Tout ce qui décide passe par `ajusterSommets.js > KtaAjusterSommets.plan`
   (familles, droits : lecture seule, calque non rapatrié, outil armé sauf 📐 pour la mesure ; aimantation ; une entrée
   ⏪, un rendu au lâcher). La vue ne mène que le geste (`vue3d.js > _ajusterAppui`, `_ajusterBouge`, `_ajusterLacher`).
 - **Ce qui se vise** : ce que la vue montre (`e.vus` : son niveau, ses filtres, pas de structure en rendu Galerie ; un

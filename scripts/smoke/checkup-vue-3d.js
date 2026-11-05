@@ -5584,6 +5584,8 @@ async function sectionAjusterSommets(nav, mode) {
 // (plus de RAYON_PX au-dessus de son pied à l'écran), puis au pied ; tracé et mesure (📐 armé) au sol. Pour chacun :
 // armé, caméra immobile pendant l'appui et le glisser, sommet déplacé de ce qu'a parcouru le pointeur au sol, seul.
 // Puis objets remplacés par des copies au contenu identique (scène non refaite) : le sommet se saisit encore.
+// Mesure de 4 points 📐 non armé, centre d'un rond doré, 7 reculs et inclinaisons ; appui long immobile puis lâché
+// (＋ / 🗑️, pastille agrandie) puis appui long sur la pastille : saisie, pas de pan (mesure, tracé).
 async function sectionAjusterSourisReelle(nav) {
   const ctx = await nav.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: "block" });
   const page = await ctx.newPage();
@@ -5670,7 +5672,8 @@ async function sectionAjusterSourisReelle(nav) {
         etat: function () {
           const e = K.etat();
           return { cam: [e.camera.visee.x, e.camera.visee.z, e.cap, e.distance], ajuste: e.dessin.ajuste,
-            undo: window.__vsU, attente: e.donnees.attente, refaites: e.donnees.refaites };
+            undo: window.__vsU, attente: e.donnees.attente, refaites: e.donnees.refaites, n: e.dessin.ajustements,
+            refus: e.dessin.refus, ronds: e.dessin.ronds, incl: e.inclinaison };
         }
       };
       const e = K.etat();
@@ -5724,7 +5727,9 @@ async function sectionAjusterSourisReelle(nav) {
       cams.push(e1.cam);
       return { e0: e0, arme: arme, e1: e1, cams: cams, de: de, fin: fin };
     };
-    const cas = async function (libelle, ref, s, vise) {
+    // `horsHisto` : mesure sans 📐 armé, ajustée hors historique (measure.js > ktaFormesAjustables.mesure.cat) :
+    // aucune entrée ⏪, la forme est remise à la main.
+    const cas = async function (libelle, ref, s, vise, horsHisto) {
       const avant = await pts(ref);
       const g = await geste(vise, 45, 30);
       const apres = await pts(ref);
@@ -5738,9 +5743,15 @@ async function sectionAjusterSourisReelle(nav) {
         { avant: g.e0.cam, apres: g.e1.cam });
       verifier(apres && apres.length === avant.length && ecart !== null && ecart <= 0.2 &&
         apres.every(function (p, i) { return i === s || (p.x === avant[i].x && p.y === avant[i].y); }) &&
-        g.e1.undo === g.e0.undo + 1,
+        g.e1.undo === g.e0.undo + (horsHisto ? 0 : 1),
       nom + libelle + " : sommet déplacé de ce qu'a parcouru le pointeur (" +
-        (ecart === null ? "?" : ecart.toFixed(3)) + " m), seul, une entrée ⏪", { ecart: ecart });
+        (ecart === null ? "?" : ecart.toFixed(3)) + " m), seul, " + (horsHisto ? "hors historique" : "une entrée ⏪"),
+      { ecart: ecart, pendant: { ajuste: g.arme.ajuste, n: g.arme.n, refus: g.arme.refus, ronds: g.arme.ronds } });
+      if (horsHisto) {
+        await ev(function (a) { window.setMeasurePoints(a); }, avant);
+        await page.waitForTimeout(150);
+        return;
+      }
       await ev(function () { window.HistoryManager.undo(); });
       await page.waitForTimeout(150);
       await attendreScene((await etat()).refaites - 1);
@@ -5772,6 +5783,54 @@ async function sectionAjusterSourisReelle(nav) {
     await cas("pilier, après copie identique", "st_vs_p", 2, await ecran((await pts("st_vs_p"))[2]));
     await copier();
     await cas("tracé, après copie identique", "rd_vs_r", 1, await ecran((await pts("rd_vs_r"))[1]));
+    // Mesure de 4 points, RIEN d'armé : appui long au centre d'un rond doré (toujours montré, _majApercu), à plusieurs
+    // reculs et inclinaisons (de près, par défaut, dézoomé loin ; rasante, verticale).
+    await ev(function () {
+      window._desactiverTousLesModes();
+      window.setMeasurePoints([window.__vs.P(1, 2), window.__vs.P(3, 2), window.__vs.P(5, 3), window.__vs.P(6, 5)]);
+    });
+    await page.waitForTimeout(250);
+    const libre = await ev(function () {
+      return { arme: !!(window.ktaMesureAnnulable && window.ktaMesureAnnulable()), mode: !!window.modeMesure,
+        ronds: window.KtaVue3D.etat().dessin.ronds, permis: window.KtaAjusterSommets.etat() };
+    });
+    verifier(!libre.arme && libre.ronds && libre.ronds.mesure === 4,
+      nom + "mesure de 4 points, 📐 non armé : 4 ronds dorés montrés", libre);
+    const VUES = [["par défaut", 18.4, 60], ["de près", 6, 60], ["dézoomé", 60, 60], ["dézoomé loin", 150, 60],
+      ["rasante", 18.4, 20], ["verticale", 18.4, 85], ["dézoomé loin, rasante", 150, 25]];
+    const vue0 = await ev(function () { const K = window.KtaVue3D; return [K.zoomer(1), K.etat().inclinaison]; });
+    const regler = function (recul, incl) {
+      return ev(function (a) {
+        const K = window.KtaVue3D, r = K.zoomer(1);
+        K.zoomer(a[0] / r);
+        K.incliner(a[1] - K.etat().inclinaison);
+        return [K.zoomer(1), K.etat().inclinaison];
+      }, [recul, incl]);
+    };
+    for (const vu of VUES) {
+      const got = await regler(vu[1], vu[2]);
+      // Place sur le sommet visé : il reste à l'écran de près (recul 6 m).
+      await ev(function (q) { window.KtaVue3D.placer(q.x, q.y, 0); }, (await pts("distance"))[2]);
+      await page.waitForTimeout(1200);   // tuiles de la nouvelle portée posées avant l'appui
+      const m = await pts("distance");
+      await cas("mesure 📐 non armé, " + vu[0] + " (recul " + got[0].toFixed(1) + " m, " + got[1] + "°)",
+        "distance", 2, await ecran(m[2], 0.09), true);
+    }
+    await regler(vue0[0], vue0[1]);
+    await page.waitForTimeout(800);
+    // Le geste d'une souris : appui long tenu immobile puis lâché → ＋ / 🗑️ et la pastille du sommet agrandie ; puis
+    // appui long SUR cette pastille pour la glisser : il saisit le sommet (il était avalé et partait en pan).
+    for (const c of [["mesure 📐 non armé", "distance", 1, 0.09], ["tracé", "rd_vs_r", 1, 0]]) {
+      const q = (await pts(c[1]))[c[2]], de = await ecran(q, c[3]);
+      await page.mouse.move(de[0], de[1], { steps: 5 });
+      await page.mouse.down();
+      await page.waitForTimeout(700);
+      await page.mouse.up();
+      await page.waitForTimeout(150);
+      const menu = await ev(function () { const m = window.KtaVue3D.etat().dessin.ajusteMenu; return m || null; });
+      verifier(!!menu, nom + c[0] + " : appui long immobile puis lâché → ＋ / 🗑️ au sommet, pastille agrandie", menu);
+      await cas(c[0] + ", appui long sur la pastille du menu ouvert", c[1], c[2], de, c[1] === "distance");
+    }
     // 📐 Distance armé depuis la colonne de la vue (l'ajustement de la mesure est une entrée ⏪), 3 points posés.
     await ev(function () {
       const b = document.querySelector('#kta-vue3d .kta-v3d-outils [data-groupe="mesure"]');

@@ -7398,7 +7398,8 @@
       if (!t || t.hidden || t.contains(ev.target) || e.boutonReglages.contains(ev.target)) return;
       _basculerReglages(false);
     }, true);
-    // 🗑️ d'un ajustement ouvert : le toucher suivant hors de lui le retire ; sur la scène, il ne fait rien d'autre.
+    // 🗑️ d'un ajustement ouvert : le toucher suivant hors de lui le retire ; sur la scène, il ne fait rien d'autre
+    // (sauf un appui long sur un sommet : appuiScene).
     on(e.ov, "pointerdown", function (ev) {
       if (!e.ajusteMenu || e.ajusteMenu.b.contains(ev.target)) return;
       _ajusterFermerMenu();
@@ -7476,8 +7477,12 @@
       }
       try { e.cv.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur déjà relâché */ }
       // Ajustement (_ajusterAppui) : un seul pointeur, bouton principal, vue d'édition ; un 2e doigt l'annule.
-      if (e.ajusteAvale === ev.pointerId) { e.ajusteAvale = null; tape = null; }
-      else if (e.ajuste) _ajusterAnnuler();
+      // 🩸 Le toucher qui referme ＋ / 🗑️ est avalé (ni fiche, ni sommet posé), mais pas l'appui long : posé sur un
+      // sommet, il l'ajuste. Une souris tenue immobile ouvre ce menu à coup sûr (moins de GLISSE_PX), et l'appui
+      // suivant sur la pastille agrandie, avalé, partait en pan au lieu de la saisir.
+      const avale = e.ajusteAvale === ev.pointerId;
+      if (avale) { e.ajusteAvale = null; tape = null; }
+      if (e.ajuste) _ajusterAnnuler();
       else if (doigts.size === 1 && e.vue === "plongee" && glisse && !glisse.cap &&
         (ev.pointerType !== "mouse" || ev.button === 0)) _ajusterAppui(ev);
     };
