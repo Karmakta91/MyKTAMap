@@ -1665,7 +1665,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   au-dessus, construites à portée, sans moyen ni emprise. **Chatière** (`chatiere`) : roche brute des piliers (🧱,
   couleur du pilier sinon) en travers de la galerie sur `CHATIERE.long` = 1,8 m (aucune longueur relevée sur le POI :
   une chatière courte), posée sur l'axe comme une porte, largeur de la galerie + 0,3 m dans les parois, percée au
-  sol d'un trou de 0,6 m (profil `PROFIL_CHATIERE`) ; **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
+  ras du sol d'un passage **bas** de `CHATIERE.trou` = 0,6 m de haut sur `CHATIERE.large` = 0,9 m de large
+  (centré, au plus la galerie moins 0,2 m ; profil `PROFIL_CHATIERE`, voûte surbaissée), roche au-dessus jusqu'au
+  plafond et sur les côtés ; axe long le long de la galerie (`dir` = sens de l'axe, `placePassage`), le trou se
+  traverse dans le sens de la marche (🩸 l'ancien trou de 0,6 × 0,6 m à voûte pointue se lisait, du dedans et au
+  téléphone, comme une fente verticale) ; **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
   en suivi comme en libre, l'œil descend à 0,35 m dans la roche et sur 1 m de part et d'autre en fondu
   (`_baisseChatiere`, `_placerCamera`), puis remonte ; vue d'édition : rien. `ctx.libre` des add-ons reste ouvert
   (les égarés du jeu la traversent debout, au travers de la roche : limite connue). **Plaque** (`plaque`),

@@ -237,14 +237,17 @@
   // `pentures` bandes de fer horizontales (centres en part de la hauteur) cloutées tous les `clou` px.
   const BOIS = { px: 256, couleur: "#5c412b", fer: "#3f3c38", planches: 5, pentures: [0.14, 0.5, 0.86], bande: 0.07,
     clou: 22, relief: 3, graine: 71 };
-  // Chatière (chatiere, décision produit) : roche brute en travers de la galerie sur `long` m, percée au sol d'un
-  // trou de `trou` m de large et de haut ; elle n'arrête rien, la caméra s'y abaisse à `oeil` m (on rampe), en
+  // Chatière (chatiere, décision produit) : roche brute en travers de la galerie sur `long` m, percée au ras du sol
+  // d'un passage BAS de `trou` m de haut sur `large` m de large (centré ; au plus la galerie moins `jeu` m), roche
+  // au-dessus jusqu'au plafond et sur les côtés ; elle n'arrête rien, la caméra s'y abaisse à `oeil` m (on rampe), en
   // descendant sur `approche` m avant l'entrée (et remontant d'autant après la sortie). La roche déborde de
   // `deborde` m dans les parois (aucun jour au bord). 🩸 Aucune longueur n'est relevée sur le POI : 1,8 m est une
   // chatière courte (un corps allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux.
-  const CHATIERE = { long: 1.8, trou: 0.6, oeil: 0.35, approche: 1, deborde: 0.3 };
-  // Profil du trou (part de `trou`, t en travers, y vers le haut) : bas droit, flancs puis voûte cassée.
-  const PROFIL_CHATIERE = [[-0.5, 0], [0.5, 0], [0.5, 0.6], [0.36, 0.86], [0, 1], [-0.36, 0.86], [-0.5, 0.6]];
+  const CHATIERE = { long: 1.8, trou: 0.6, large: 0.9, jeu: 0.2, oeil: 0.35, approche: 1, deborde: 0.3 };
+  // Profil du trou (t en part de `large`, y en part de `trou`, vers le haut) : sol droit, flancs bas, voûte surbaissée
+  // (plus large que haut : on y passe en rampant, pas debout).
+  const PROFIL_CHATIERE = [[-0.5, 0], [0.5, 0], [0.5, 0.7], [0.4, 0.9], [0.18, 1], [-0.18, 1], [-0.4, 0.9],
+    [-0.5, 0.7]];
   // Plaque indicatrice (plaque) : plaque émaillée de `l` × `h` m au moins, élargie au nom jusqu'à `lMax` m puis sur
   // deux lignes (_mesurePlaque), `ep` d'épaisseur, centrée à `y` m (et au moins `plafond` m sous le plafond), à
   // `recul` m de la paroi ; nom du POI dessiné au canvas à `pxm` px par mètre, police de `police` × `h` (une texture
@@ -3388,15 +3391,17 @@
   }
 
   // Chatière : roche de -a à a le long de l'axe, de toute la largeur de la galerie (v.b) plus CHATIERE.deborde dans
-  // les parois, du sol au plafond, percée au sol du trou (PROFIL_CHATIERE × CHATIERE.trou, sur l'axe) : deux faces
+  // les parois, du sol au plafond, percée au sol du trou (PROFIL_CHATIERE : CHATIERE.large × CHATIERE.trou, sur
+  // l'axe, axe long de la roche le long de la galerie : le trou se traverse dans le sens de la marche) : deux faces
   // trouées, le tour du trou (vu du dedans) et le dessus (vue d'édition, plafond masqué). Roche brute des piliers
   // avec 🧱 (matériau `roche`, coordonnées de texture en mètres), couleur du pilier sinon. ⚠️ contrat : aucune
   // emprise ni obstacle (galerieEmprise.js > ACCES) ; seule la caméra s'abaisse (_baisseChatiere).
   function _chatiere(v, lots) {
     const e = _e, h = e.hauteur, Q = _repere(v), a = v.a, B = v.b + CHATIERE.deborde, T = CHATIERE.trou;
+    const Wt = Math.max(0.5, Math.min(CHATIERE.large, 2 * v.b - CHATIERE.jeu));
     const tx = e.textures === true, lot = tx ? _lot(lots, "roche") : lots.opaque, m = tx ? ROCHE.m : 0;
     const col = tx ? BLANC : _couleur("structures", "pilier-1");
-    const trou = PROFIL_CHATIERE.map(function (q) { return [q[0] * T, Math.min(q[1] * T, h - 0.05)]; });
+    const trou = PROFIL_CHATIERE.map(function (q) { return [q[0] * Wt, Math.min(q[1] * T, h - 0.05)]; });
     const bord = [[-B, 0], [B, 0], [B, h], [-B, h]];
     const V2 = function (q) { return new THREE.Vector2(q[0], q[1]); };
     let tris = [];
@@ -3423,8 +3428,9 @@
       u += l;
     }
     _dessus(lot, _sensPositif([Q(-a, -B), Q(a, -B), Q(a, B), Q(-a, B)]), h, col, m || undefined);
-    v.trace = { long: +(2 * a).toFixed(3), trou: T, largeur: +(2 * v.b).toFixed(3),
-      hautTrou: +Math.max.apply(null, trou.map(function (q) { return q[1]; })).toFixed(3) };
+    v.trace = { long: +(2 * a).toFixed(3), trou: T, largeur: +(2 * v.b).toFixed(3), largeTrou: +Wt.toFixed(3),
+      hautTrou: +Math.max.apply(null, trou.map(function (q) { return q[1]; })).toFixed(3),
+      dir: +((v.dir || 0) * 180 / Math.PI).toFixed(2) };
   }
 
   // Repère d'une forme sur la paroi (v.cote : côté de la paroi, galerieEmprise.js > _surParoi) : Q(s, recul) = point

@@ -2218,9 +2218,12 @@ async function sectionFormesPoi(page) {
       poi("pt_f_def", "default", 12, -1.5, "Sans forme"), poi("pt_f_po_lie", "portail", 20, 1.5, "Portail lié"),
       poi("pt_f_po_seul", "portail", 25, -1.5, "Portail seul"),
       poi("pt_f_veh", "vehicule", 40, 0.5, "Véhicule fictif"),
-      poi("pt_f_pl_long", "plaque", -11, 2, "Galerie fictive des anciens carriers du moulin")];
+      poi("pt_f_pl_long", "plaque", -11, 2, "Galerie fictive des anciens carriers du moulin"),
+      poi("pt_f_chat_ob", "chatiere", -30, 30 + 10 * Math.tan(Math.PI / 6), "Chatière oblique fictive")];
     window.setStructures([]); window.setZones([]);
-    window.setRoads([{ uid: "rd_f_p", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    // Galerie oblique (30°) et sa chatière : la roche suit l'axe, le trou se traverse dans le sens de la marche.
+    window.setRoads([{ uid: "rd_f_p", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] },
+      { uid: "rd_f_ob", type: "principal", level: 0, points: [P(-40, 30), P(-20, 30 + 20 * Math.tan(Math.PI / 6))] }]);
     window.setEditorPoints(POIS);
     // Liaison fictive du portail lié vers un plan fictif (registre de l'appareil, retirée à la fin).
     const L = window.InterPlanLinks, lie = POIS[6];
@@ -2269,12 +2272,12 @@ async function sectionFormesPoi(page) {
       const o = r[rendu] = {};
       const pick = function (v) {
         return v ? { construit: v.construit, place: rel(v), cote: v.cote, trace: { trou: v.trou, hautTrou: v.hautTrou,
-          long: v.long, largeur: v.largeur, plaqueY: v.plaqueY, texture: v.texture, nom: v.nom, epureY: v.epureY,
+          long: v.long, largeur: v.largeur, largeTrou: v.largeTrou, dir: v.dir, plaqueY: v.plaqueY, texture: v.texture, nom: v.nom, epureY: v.epureY,
           traits: v.traits, allume: v.allume, large: v.large, haut: v.haut, plaqueL: v.plaqueL, plaqueH: v.plaqueH,
           lignes: v.lignes, coupe: v.coupe, taillePx: v.taillePx }, roche: v.roche, familles: v.familles,
           triangles: v.triangles } : null;
       };
-      o.chat = pick(vol("chatiere"));
+      o.chat = pick(vol("chatiere", "pt_f_chat")); o.chatOb = pick(vol("chatiere", "pt_f_chat_ob"));
       o.plN = pick(vol("plaque", "pt_f_pl_n")); o.plS = pick(vol("plaque", "pt_f_pl_s"));
       o.plAxe = pick(vol("plaque", "pt_f_pl_axe")); o.plLong = pick(vol("plaque", "pt_f_pl_long"));
       // Panneaux : aucun pour une plaque posée (elle porte le nom), gardé pour une plaque sans paroi.
@@ -2355,8 +2358,8 @@ async function sectionFormesPoi(page) {
     await pause(150); await images(3);
     r.sansTx = { plaques: K.etat().plaques, pl: (vol("plaque", "pt_f_pl_n") || {}).texture,
       plNom: (vol("plaque", "pt_f_pl_n") || {}).nom,
-      plFam: (vol("plaque", "pt_f_pl_n") || {}).familles, chatRoche: (vol("chatiere") || {}).roche,
-      chatTri: (vol("chatiere") || {}).triangles, ep: (vol("epure") || {}).traits,
+      plFam: (vol("plaque", "pt_f_pl_n") || {}).familles, chatRoche: (vol("chatiere", "pt_f_chat") || {}).roche,
+      chatTri: (vol("chatiere", "pt_f_chat") || {}).triangles, ep: (vol("epure") || {}).traits,
       po: (vol("portail", "pt_f_po_lie") || {}).allume, veh: !!(vol("vehicule") || {}).construit, avant: avantTx };
     K.basculerTextures();
     await pause(150); await images(3);
@@ -2564,8 +2567,15 @@ async function sectionFormesPoi(page) {
   ["mixte", "galerie"].forEach(function (k) {
     const o = R[k];
     verifier(!!o.chat && o.chat.construit && pr(o.chat.trace.trou, 0.6) && pr(o.chat.trace.hautTrou, 0.6) &&
+      pr(o.chat.trace.largeTrou, 0.9) && o.chat.trace.largeTrou > o.chat.trace.hautTrou &&
       pr(o.chat.trace.long, 1.8) && pr(o.chat.trace.largeur, 2.5) && o.chat.roche > 0 && pr(o.chat.place[1], 0),
-    k + " : chatière construite sur l'axe, roche brute en travers (2,5 m), trou de 0,6 m, 1,8 m de long", o.chat);
+    k + " : chatière sur l'axe, roche en travers (2,5 m) sur 1,8 m de long, passage BAS au ras du sol : " +
+      o.chat.trace.hautTrou + " m de haut, " + o.chat.trace.largeTrou + " m de large, roche au-dessus jusqu'au plafond",
+    o.chat);
+    const dOb = o.chatOb ? ((o.chatOb.trace.dir % 180) + 180) % 180 : null;
+    verifier(!!o.chatOb && o.chatOb.construit && dOb !== null && Math.abs(dOb - 30) < 0.5 && pr(o.chat.trace.dir, 0, 0.5),
+      k + " : chatière d'une galerie à 30° : axe long (1,8 m) le long de la galerie (" + dOb + "°), le trou se " +
+      "traverse dans le sens de la marche", { droite: o.chat.trace.dir, oblique: o.chatOb && o.chatOb.trace.dir });
     verifier(o.libre.fin > -13.2 && o.libre.recul === 0, k + " : chatière jamais bloquante en libre (traversée " +
       "de −27 à " + o.libre.fin + " m)", o.libre);
     verifier(o.libre.avant.every(function (y) { return pr(y, o.libre.oeil); }) &&
