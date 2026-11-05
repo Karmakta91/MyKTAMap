@@ -88,8 +88,11 @@
   // clavier).
   const RECUL = { defaut: 18.4, min: 6, max: 150, pas: 1.15 };
   // Gestes de la caméra libre (vue plongeante) : un doigt ne déplace la vue qu'au-delà de TAPE.bouge px (un toucher
-  // qui pose un sommet bouge toujours d'un ou deux px) ; deux doigts tournés de `rot`° = rotation du cap.
-  const CAMERA_LIBRE = { rot: 12 };
+  // qui pose un sommet bouge toujours d'un ou deux px). Deux doigts : la rotation du cap s'engage à `rot`° de la pose
+  // (arc d'au moins `arc` px, sinon deux doigts serrés tourneraient au moindre tremblement), à `rotPince`° une fois le
+  // pincement engagé (le seuil de la carte, mapBearing.js > SEUIL_ROTATION : un pincement dérive de quelques degrés).
+  // `pasZoom` / `pasCap` : pas le plus grand d'un seul mouvement (filet contre un doigt qui saute).
+  const CAMERA_LIBRE = { rot: 10, rotPince: 15, arc: 12, pasZoom: 1.5, pasCap: 30 };
   // Hauteur minimale à l'écran (px CSS) des lettres d'un panneau en vue plongeante : dézoomé, un panneau à l'échelle de
   // la scène n'avait plus que 3 px de texte.
   const PANNEAU_LETTRE_MIN = 13;
@@ -6902,6 +6905,9 @@
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
         a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place" || a === "guidAction" ||
         a === "ajusterSuppr") return;
+      // Au doigt, + / − et inclinaison attendent le click : un doigt de pincement posé dessus n'agit pas (_brancher,
+      // geste de la scène).
+      if (ev.pointerType === "touch" && /^(zoom|incl)(Plus|Moins)$/.test(a)) { e.appui = null; return; }
       if (_agirBouton(a, b, ev)) return;
       ev.preventDefault();
       _codeBas(a === "ar");
@@ -6937,25 +6943,61 @@
     on(e.curseurFaisceau, "input", function () { reglerFaisceau(e.curseurFaisceau.value); });
     // Glisser sur la scène : à hauteur d'yeux, un doigt tourne (horizontal) et lève / baisse les yeux (vertical). En
     // vue plongeante, comme une carte : un doigt (la souris) déplace le point visé (_panner) au-delà de
-    // TAPE.bouge px ; clic droit ou Ctrl + glisser à la souris = cap. Deux doigts : pincer = zoom (écarter =
-    // plus près), glisser ensemble à la verticale = inclinaison (vers le haut = plus rasante), tourner = cap (comme la
-    // carte qu'on tourne : le décor suit les doigts). Le geste est tranché une fois (deux.mode) dès que l'écart ou le
-    // milieu a bougé de GESTE_SEUIL px, ou l'angle de CAMERA_LIBRE.rot° : un pincement ne penche ni ne tourne la vue.
-    // En suivi, le cap reste celui de l'appareil (aucune rotation au doigt).
+    // TAPE.bouge px ; clic droit ou Ctrl + glisser à la souris = cap. Deux doigts, comme la carte 2D : pincer = zoom
+    // (écarter = plus près), tourner = cap (le décor suit les doigts), les deux ensemble ; glisser ensemble à la
+    // verticale = inclinaison seule (vers le haut = plus rasante). Le geste est tranché une fois (deux.mode) : « incl »
+    // si le milieu a bougé de GESTE_SEUIL px plus que l'écart et l'arc, sinon « pince » dès que l'écart a bougé de
+    // GESTE_SEUIL px ou que l'angle a franchi CAMERA_LIBRE.rot ; la rotation s'engage sans saut (comme
+    // mapBearing.js > _gesteSuivre) puis suit les doigts. En suivi, le cap reste celui de l'appareil.
+    // 🩸 La référence (écart, angle, milieu) est reprise à chaque changement du nombre de doigts : un doigt levé puis
+    // reposé, ou un 3e doigt, ne fait jamais sauter la vue.
+    // 🩸 Un doigt posé sur une commande de la vue (+ / −, colonne d'outils, zone du joystick…) pendant qu'un autre est
+    // sur la scène rejoint le geste de la scène : il n'était pas compté (le pincement devenait un glisser d'un doigt)
+    // et + / − zoomaient d'un coup au milieu d'un dézoom. Même chose pour le doigt posé AVANT sur une commande, quand
+    // le 2e arrive sur la scène (adopter) ; d'où + / − et inclinaison qui agissent au click au doigt (un pincement
+    // n'en produit pas), au pointerdown à la souris.
     const GESTE_SEUIL = 12;
     let glisse = null, deux = null;
     const doigts = new Map();
+    // Doigts posés sur une commande de la vue (pointerId → { x, y, b }), candidats à rejoindre un geste de la scène.
+    const surCommande = new Map();
     // Toucher bref et immobile (< 8 px, < 0,5 s) : un panneau de POI jonction ? (_toucher).
     let tape = null;
-    on(e.cv, "pointerdown", function (ev) {
+    const reprendre = function () {
+      glisse = null;
+      deux = null;
+      if (doigts.size !== 2) return;
+      const it = doigts.values(), p = it.next().value, q = it.next().value;
+      deux = { mode: null, rot: false, d0: Math.hypot(q.x - p.x, q.y - p.y), y0: (p.y + q.y) / 2,
+        a0: Math.atan2(q.y - p.y, q.x - p.x) };
+    };
+    // Commande que le doigt d'un geste peut traverser : tout ce qui est dans la vue sauf la saisie (curseurs de la
+    // tuile, champs de la fiche), la fiche et le 🗑️ d'un ajustement.
+    const traversable = function (t) {
+      if (!t || t === e.cv || !e.ov.contains(t) || !t.closest) return false;
+      if (t.closest("input, select, textarea, label, .kta-v3d-fiche, .kta-ajuster-suppr")) return false;
+      return !(e.tuileReglages && e.tuileReglages.contains(t));
+    };
+    const adopter = function (id, p) {
+      if (e.stick && e.stick.id === id) {
+        if (e.stick.bouge) return;   // le joystick marche déjà : il garde son doigt
+        _lacherStick();
+      }
+      if (p.b) e.appui = { b: p.b, t: performance.now() };   // son click éventuel n'agira pas
+      try { e.cv.setPointerCapture(id); } catch (err) { /* pointeur synthétique ou déjà relâché */ }
+      doigts.set(id, { x: p.x, y: p.y });
+    };
+    const appuiScene = function (ev) {
+      if (ev.pointerType === "touch" && e.vue === "plongee" && surCommande.size) {
+        surCommande.forEach(function (p, id) { if (id !== ev.pointerId) adopter(id, p); });
+        surCommande.clear();
+      }
       tape = doigts.size === 0 ? { id: ev.pointerId, x: ev.clientX, y: ev.clientY, t: ev.timeStamp } : null;
       doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-      glisse = doigts.size === 1 ? { x: ev.clientX, y: ev.clientY, x0: ev.clientX, y0: ev.clientY, parti: false,
-        cap: ev.pointerType === "mouse" && (ev.button === 2 || ev.ctrlKey) } : null;
-      deux = doigts.size === 2 ? { mode: null, d: 0, y: 0 } : null;
-      if (deux) {
-        const it = doigts.values(), p = it.next().value, q = it.next().value;
-        deux.a0 = Math.atan2(q.y - p.y, q.x - p.x);
+      reprendre();
+      if (doigts.size === 1) {
+        glisse = { x: ev.clientX, y: ev.clientY, x0: ev.clientX, y0: ev.clientY, parti: false,
+          cap: ev.pointerType === "mouse" && (ev.button === 2 || ev.ctrlKey) };
       }
       try { e.cv.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur déjà relâché */ }
       // Ajustement (_ajusterAppui) : un seul pointeur, bouton principal, vue d'édition ; un 2e doigt l'annule.
@@ -6963,7 +7005,31 @@
       else if (e.ajuste) _ajusterAnnuler();
       else if (doigts.size === 1 && e.vue === "plongee" && glisse && !glisse.cap &&
         (ev.pointerType !== "mouse" || ev.button === 0)) _ajusterAppui(ev);
-    });
+    };
+    on(e.cv, "pointerdown", appuiScene);
+    // Capture sur la vue : passe avant le bouton, le joystick et l'écouteur des boutons (_agirBouton).
+    on(e.ov, "pointerdown", function (ev) {
+      if (ev.pointerType !== "touch" || e.vue !== "plongee" || !traversable(ev.target)) return;
+      if (doigts.size) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        appuiScene(ev);
+        return;
+      }
+      surCommande.set(ev.pointerId, { x: ev.clientX, y: ev.clientY, b: ev.target.closest("[data-v3d]") });
+    }, true);
+    on(window, "pointermove", function (ev) {
+      const p = surCommande.get(ev.pointerId);
+      if (p) { p.x = ev.clientX; p.y = ev.clientY; }
+    }, true);
+    // Fin lue sur window : un doigt de la scène dont la capture a échoué lève ailleurs que sur le canevas ; resté
+    // compté, chaque doigt suivant passerait pour le 2e d'un pincement.
+    const quitterCommande = function (ev) {
+      surCommande.delete(ev.pointerId);
+      if (ev.target !== e.cv && doigts.delete(ev.pointerId)) reprendre();
+    };
+    on(window, "pointerup", quitterCommande, true);
+    on(window, "pointercancel", quitterCommande, true);
     on(e.cv, "pointermove", function (ev) {
       if (e.ajuste && _ajusterBouge(ev)) return;
       if (doigts.size >= 2 && doigts.has(ev.pointerId)) {
@@ -6971,38 +7037,40 @@
         const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y), y0 = (a0.y + b0.y) / 2;
         const t0 = Math.atan2(b0.y - a0.y, b0.x - a0.x);
         doigts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-        const it1 = doigts.values(), a1 = it1.next().value, b1 = it1.next().value;
-        const d1 = Math.hypot(a1.x - b1.x, a1.y - b1.y), dy = (a1.y + b1.y) / 2 - y0;
-        let da = (Math.atan2(b1.y - a1.y, b1.x - a1.x) - t0) * 180 / Math.PI;
-        da = ((da + 540) % 360) - 180;
         if (e.vue !== "plongee" || !deux) return;
+        const it1 = doigts.values(), a1 = it1.next().value, b1 = it1.next().value;
+        const d1 = Math.hypot(a1.x - b1.x, a1.y - b1.y), ym = (a1.y + b1.y) / 2;
+        const t1 = Math.atan2(b1.y - a1.y, b1.x - a1.x);
+        const norm = function (r) { const v = r * 180 / Math.PI; return ((v + 540) % 360) - 180; };
         // Doigts tournés dans le sens des aiguilles : le décor tourne avec eux, le cap de la vue recule d'autant.
         const tourner = function (deg) {
-          if (deg && e.mode !== "suivi") { e.cap = (e.cap - deg + 360) % 360; e.sale = true; }
+          const v = Math.max(-CAMERA_LIBRE.pasCap, Math.min(CAMERA_LIBRE.pasCap, deg));
+          if (v && e.mode !== "suivi") { e.cap = (e.cap - v + 360) % 360; e.sale = true; }
         };
+        const zoomerPas = function (f) {
+          if (f > 0 && Number.isFinite(f)) zoomer(Math.max(1 / CAMERA_LIBRE.pasZoom, Math.min(CAMERA_LIBRE.pasZoom, f)));
+        };
+        // Depuis la pose : écart, milieu, angle et arc parcouru (px). 🩸 Les doigts arrivent l'un après l'autre (un
+        // événement par doigt) : un seul doigt bougé de 8 px tourne déjà la paire de 15° à 30 px d'écart.
+        const dD = d1 - deux.d0, dY = ym - deux.y0, aT = norm(t1 - deux.a0);
+        const arc = Math.abs(aT) * Math.PI / 180 * d1 / 2;
         if (!deux.mode) {
-          deux.d += d1 - d0; deux.y += dy;
-          // Rotation jugée depuis la pose des deux doigts, en arc parcouru (px) : 🩸 les doigts arrivent l'un après
-          // l'autre (un événement par doigt) ; un seul doigt bougé de 8 px tourne déjà la paire de 15° à 30 px d'écart.
-          let aT = (Math.atan2(b1.y - a1.y, b1.x - a1.x) - deux.a0) * 180 / Math.PI;
-          aT = ((aT + 540) % 360) - 180;
-          const arc = Math.abs(aT) * Math.PI / 180 * d1 / 2;
-          if (Math.abs(aT) > CAMERA_LIBRE.rot && arc > GESTE_SEUIL * 1.5 && arc > 2 * Math.abs(deux.y) &&
-              arc > Math.abs(deux.d)) {
-            deux.mode = "rot";
-            tourner(aT);
-          } else if (Math.abs(deux.d) > GESTE_SEUIL && Math.abs(deux.d) > Math.abs(deux.y)) {
-            deux.mode = "zoom";
-            if (d1 > 1 && d1 - deux.d > 1) zoomer((d1 - deux.d) / d1);
-          } else if (Math.abs(deux.y) > GESTE_SEUIL) {
+          const tourne = Math.abs(aT) >= CAMERA_LIBRE.rot && arc >= CAMERA_LIBRE.arc;
+          if (!tourne && Math.abs(dY) > GESTE_SEUIL && Math.abs(dY) > Math.abs(dD) && Math.abs(dY) > 1.5 * arc) {
             deux.mode = "incl";
-            incliner(deux.y * 0.15);
+            incliner(dY * 0.15);
+          } else if (tourne || Math.abs(dD) > GESTE_SEUIL) {
+            deux.mode = "pince";
+            deux.rot = tourne;
+            // L'écart parcouru avant de trancher est rattrapé : le décor reste sous les doigts.
+            if (deux.d0 > 1 && d1 > 1) zoomerPas(deux.d0 / d1);
           }
           return;
         }
-        if (deux.mode === "zoom" && d0 > 1 && d1 > 1) zoomer(d0 / d1);
-        else if (deux.mode === "incl" && dy) incliner(dy * 0.15);
-        else if (deux.mode === "rot") tourner(da);
+        if (deux.mode === "incl") { if (ym !== y0) incliner((ym - y0) * 0.15); return; }
+        if (d0 > 1 && d1 > 1) zoomerPas(d0 / d1);
+        if (deux.rot) tourner(norm(t1 - t0));
+        else if (Math.abs(aT) >= CAMERA_LIBRE.rotPince && arc >= CAMERA_LIBRE.arc) deux.rot = true;
         return;
       }
       if (!glisse) return;
@@ -7030,9 +7098,7 @@
     const lever = function (ev) {
       const ajuste = ev.type === "pointerup" ? _ajusterLacher(ev)
         : !!(e.ajuste && e.ajuste.id === ev.pointerId && _ajusterAnnuler());
-      doigts.delete(ev.pointerId);
-      glisse = null;
-      if (doigts.size < 2) deux = null;
+      if (doigts.delete(ev.pointerId)) reprendre();
       if (ev.type === "pointerup" && !ajuste) {
         const bouge = tape ? Math.hypot(ev.clientX - tape.x, ev.clientY - tape.y) : 0;
         const duree = tape ? ev.timeStamp - tape.t : 0;

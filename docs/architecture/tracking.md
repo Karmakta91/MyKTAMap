@@ -1675,10 +1675,20 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   un cran = × 1,15) : molette (vers l'avant = plus près, un cran par 100 px de défilement, en continu au pavé
   tactile), pincement à deux doigts, boutons + / − (deux crans), touches = et -. **Inclinaison** : Maj + molette
   (🩸 Chrome et Safari envoient alors le défilement en `deltaX`), deux doigts glissés ensemble à la verticale,
-  PageUp / PageDown, boutons ▲ ▼. Deux doigts : le geste est tranché une fois, dès que l'écart ou le milieu a bougé
-  de 12 px (`GESTE_SEUIL`) : un pincement ne penche pas, un glisser ne zoome pas. Boutons + − ▲ ▼ en grille en bas à
-  droite, montrés dans cette vue seulement (la tuile ⚙️ ouverte ne les recouvre pas). Recul et inclinaison retenus
-  tant que la vue est ouverte (repartent du défaut à la réouverture). ⚠️ contrat : une greffe qui interdit la
+  PageUp / PageDown, boutons ▲ ▼. Deux doigts, réglés sur la carte 2D : le geste est tranché une fois — « incl » si
+  le milieu a bougé de 12 px (`GESTE_SEUIL`) plus que l'écart et l'arc, sinon « pince » (zoom qui suit l'écart, et
+  cap dès que l'angle franchit le seuil, voir la caméra libre) : un pincement ne penche pas, un glisser ne zoome pas.
+  La référence (écart, milieu, angle) est reprise à chaque changement du nombre de doigts ; un mouvement ne zoome pas
+  de plus de × 1,5 ni ne tourne de plus de 30° (`CAMERA_LIBRE.pasZoom` / `pasCap` : filet contre un doigt qui
+  saute). 🩸 **Un doigt posé sur une commande de la vue** (+ / −, colonne d'outils, zone du joystick, en-tête) alors
+  que l'autre est sur la scène — ou posé dessus juste avant — **rejoint le geste de la scène** (`_brancher` >
+  `appuiScene` / `adopter`, capture sur la vue) : il n'était pas compté, le pincement devenait un glisser d'un doigt,
+  et + / − zoomaient d'un coup au milieu d'un dézoom (rapporté au téléphone : « en dézoomant, la vue se met d'un coup
+  à zoomer »). Au doigt, + / − et ▲ ▼ agissent donc au `click` (un pincement n'en produit pas), à la souris au
+  `pointerdown`. Restent hors du geste : curseurs et champs, fiche, 🗑️ d'un ajustement, joystick qui marche déjà.
+  Checkup : `checkup-vue-3d.js` § 38 (`KTA_V3D_SEUL=gestes`, doigts CDP au téléphone). Boutons + − ▲ ▼ en grille en
+  bas à droite, montrés dans cette vue seulement (la tuile ⚙️ ouverte ne les recouvre pas). Recul et inclinaison
+  retenus tant que la vue est ouverte (repartent du défaut à la réouverture). ⚠️ contrat : une greffe qui interdit la
   vue d'édition (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Deux rayons
   en vue d'édition. **Rayon vu** (`_rayonVue`) : max(1,4 × portée, 2,3 m par mètre de recul) — carré de sol et de
   plafond (2,4 × le rayon), plan au sol 🗺️ (même emprise) et brouillard (compté depuis la caméra : du recul + 30 % du
@@ -1733,9 +1743,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   sommet bouge d'un ou deux px), déplace le **point visé** `e.vise` (m), jamais la place : le sol pris sous le doigt
   reste sous le doigt (rayons contre y = 0, un pas borné au recul), dans le repère de l'écran quel que soit le cap.
   ⚠️ contrat : avatar, `e.pos` et tracker ne bougent pas (la 3D ne recale jamais le tracker sans demande). **Cap** :
-  deux doigts tournés (le décor suit les doigts, comme la carte 2D tournée à la main) : tranché en arc parcouru depuis
-  la pose des doigts (plus de 18 px, deux fois le glisser vertical et l'écart du pincement ; 🩸 les doigts arrivent un
-  événement après l'autre : un seul doigt bougé de 8 px tourne déjà la paire de 15° à 30 px d'écart) ; au PC, clic
+  deux doigts tournés (le décor suit les doigts, comme la carte 2D tournée à la main) : engagé à 10° d'angle depuis
+  la pose (`CAMERA_LIBRE.rot`, arc d'au moins 12 px : deux doigts serrés ne tournent pas au moindre tremblement),
+  15° une fois un pincement engagé (le seuil de la carte, `mapBearing.js > SEUIL_ROTATION`), **sans rattraper le
+  seuil** (aucun saut) puis suit les doigts, zoom compris ; un doigt qui tourne autour de l'autre tourne aussi (🩸 il
+  passait pour une inclinaison : son milieu monte). 🩸 Les doigts arrivent un événement après l'autre : un seul doigt
+  bougé de 8 px tourne déjà la paire de 15° à 30 px d'écart. Au PC, clic
   droit ou Ctrl + glisser, pavé ↶ ↷, clavier ; en suivi, le cap reste celui de l'appareil. **Retour sur la place** :
   ⌖ (montré caméra détachée seulement), marcher (joystick, pavé, clavier : `_rattacher` — règle : le doigt déplace la
   caméra, les commandes déplacent la place et la caméra la rejoint) et le retour à hauteur d'yeux. Centre de la scène

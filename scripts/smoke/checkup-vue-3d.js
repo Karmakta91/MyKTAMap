@@ -71,6 +71,8 @@
 // 🗑️, ⏪, caméra immobile, scène refaite), refus, niveau, calque, lecture seule, outil armé, pan, Échap. Ajouter un POI
 // en vue d'édition (36, =poi) : ✏️ à sa place, un seul outil, fenêtre de nommage, clavier, niveau, ⏪, Échap, lecture seule.
 // Réglage ⚙️ Fiches (37, =fiches) : défaut selon le pointeur, coupé = rien sur pilier, zone, tracé (POI : sa fiche), retenu.
+// Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
+// colonne d'outils ou le joystick, doigt levé puis reposé, rotation engagée à 10° sans saut, pas bornés.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
@@ -3021,8 +3023,10 @@ async function sectionCamera(page) {
   verifier(r.tourne.cap === 90 && r.tourne.ecart !== null && r.tourne.ecart < 0.15,
     "vue tournée (cap 90°) : le décor suit le doigt dans le repère de l'écran", r.tourne);
   const dCap = ((r.rotation.cap0 - r.rotation.cap1) % 360 + 360) % 360;
-  verifier(Math.abs(dCap - 30) < 3 && r.rotation.recul === 18.4,
-    "deux doigts tournés de 30° : le cap tourne d'autant (le décor suit les doigts), sans zoom", r.rotation);
+  // Un événement par doigt : l'angle de la paire avance de 1,5° à la fois, le seuil de 10° est franchi à 10,5°.
+  verifier(Math.abs(dCap - 19.5) < 1 && r.rotation.recul === 18.4,
+    "deux doigts tournés de 30° : le cap tourne de 19,5° (30° moins les 10,5° qui franchissent le seuil, sans saut), " +
+    "le décor suit les doigts, sans zoom", r.rotation);
   verifier(r.surPlace.avant && r.surPlace.apres.vise === null && !r.surPlace.apres.place &&
     r.surPlace.cible.texte === "⌖" && !!r.surPlace.cible.label && r.marche.avant && r.marche.apres === null &&
     r.yeux.vise === null, "⌖, marcher et la hauteur d'yeux ramènent la caméra sur la place (⌖ caché ensuite)",
@@ -5240,6 +5244,277 @@ async function sectionFichesReglage(nav) {
   }
 }
 
+// ── 38. Gestes à deux doigts de la vue d'édition (vue3d.js > _brancher, appuiScene / adopter) ─────────────────────────
+// Téléphone 393 × 852 tactile, relevé fictif tel quel, joystick montré. Doigts réels (CDP Input.dispatchTouchEvent) sous
+// Chromium, PointerEvent `touch` synthétiques sous WebKit (posés sur l'élément sous le doigt, suivis sur le canevas
+// comme un pointeur capturé). Relevé après chaque mouvement : recul, cap, inclinaison, place. Dézoom au pincement dont
+// un doigt tombe sur + / −, sur la colonne d'outils, dans la zone du joystick, ou s'y pose AVANT l'autre : le recul ne
+// fait que croître, aucun pas de plus de ×1,25, ni place déplacée ni pas du joystick ; + / − touchés seuls : un cran ;
+// un doigt levé puis reposé : pas de saut ; rotation pure de 12° engagée (seuil 10°), sans saut, 90° suivis à 11° près ;
+// un doigt qui tourne autour de l'autre : rotation, pas d'inclinaison ; pincement qui dérive de 5° : aucun cap ; doigt
+// qui saute de 180 px en un mouvement : pas borné à ×1,5.
+async function sectionGestesDoigt(nav) {
+  const webkit = nav.browserType().name() === "webkit";
+  const nom = "§ 38 ";
+  console.log("§ 38 — gestes à deux doigts de la vue d'édition (téléphone)");
+  const ctx = await nav.newContext(Object.assign({ viewport: { width: 393, height: 852 }, hasTouch: true,
+    serviceWorkers: "block" }, webkit ? {} : { isMobile: true, deviceScaleFactor: 3 }));
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const zones = await page.evaluate(async function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+      window.getPlanEditionVue3D = function () { return null; };
+      const K = window.KtaVue3D, W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      await K.ouvrir({ depart: { x: W / 2, y: H / 2, cap: 90 }, commandes: "joystick" });
+      if (K.etat().vue !== "plongee") K.basculerVue();
+      for (let i = 0; i < 8; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      const q = function (s) { const el = document.querySelector("#kta-vue3d " + s); return el ? el.getBoundingClientRect() : null; };
+      const c = function (r) { return r ? [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)] : null; };
+      const outil = document.querySelector("#kta-vue3d .kta-v3d-outils [data-v3d]");
+      const st = q(".kta-v3d-stick-zone");
+      // Relevé après chaque pointeur (bouillonnement sur document : après le canevas).
+      window.__g38 = [];
+      ["pointerdown", "pointermove", "pointerup"].forEach(function (t) {
+        document.addEventListener(t, function () {
+          const s = K.etat();
+          window.__g38.push({ r: s.portee.recul, c: s.cap, i: s.inclinaison,
+            v: s.camera.vise ? [s.camera.vise.x, s.camera.vise.z] : null, p: [s.pos.x, s.pos.y] });
+        });
+      });
+      return { plus: c(q('[data-v3d="zoomPlus"]')), moins: c(q('[data-v3d="zoomMoins"]')),
+        outil: c(outil && outil.getBoundingClientRect()), stick: st && st.width ? [Math.round(st.left + 40), Math.round(st.top + st.height / 2)] : null,
+        vue: K.etat().vue };
+    });
+    const cdp = webkit ? null : await ctx.newCDPSession(page);
+    // Doigts : liste [[x, y, id], …] des doigts posés APRÈS l'étape (touchStart / touchMove / touchEnd).
+    const actifs = new Map();
+    const synth = function (type, x, y, id, surCible, primaire) {
+      return page.evaluate(function (a) {
+        const cv = document.querySelector("#kta-vue3d canvas");
+        const cible = a[4] ? (document.elementFromPoint(a[1], a[2]) || cv) : cv;
+        cible.dispatchEvent(new PointerEvent(a[0], { bubbles: true, cancelable: true, composed: true, pointerId: a[3],
+          pointerType: "touch", isPrimary: a[5], clientX: a[1], clientY: a[2], button: 0,
+          buttons: a[0] === "pointerup" ? 0 : 1 }));
+      }, [type, x, y, id, surCible, primaire]);
+    };
+    const doigts = async function (type, pts) {
+      if (cdp) {
+        await cdp.send("Input.dispatchTouchEvent", { type: type, touchPoints: pts.map(function (p) {
+          return { x: p[0], y: p[1], id: p[2], radiusX: 8, radiusY: 8, force: 1 };
+        }) });
+        return;
+      }
+      const ids = pts.map(function (p) { return p[2]; });
+      if (type === "touchStart") {
+        for (const p of pts) {
+          if (actifs.has(p[2])) continue;
+          await synth("pointerdown", p[0], p[1], p[2], true, actifs.size === 0);
+          actifs.set(p[2], p);
+        }
+      } else if (type === "touchMove") {
+        for (const p of pts) {
+          const a = actifs.get(p[2]);
+          if (a && (a[0] !== p[0] || a[1] !== p[1])) { await synth("pointermove", p[0], p[1], p[2], false, false); actifs.set(p[2], p); }
+        }
+      } else {
+        for (const id of Array.from(actifs.keys())) {
+          if (ids.indexOf(id) >= 0) continue;
+          const a = actifs.get(id);
+          await synth("pointerup", a[0], a[1], id, false, false);
+          actifs.delete(id);
+        }
+      }
+    };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const remettre = async function (recul) {
+      await page.evaluate(function (r) {
+        const K = window.KtaVue3D;
+        K.zoomer(r / K.etat().portee.recul);
+        window.__g38 = [];
+      }, recul || 18.4);
+      await pause(150);
+      await page.evaluate(function () { window.__g38 = []; });
+    };
+    const releve = function () {
+      return page.evaluate(function () { const t = window.__g38; window.__g38 = []; return t; });
+    };
+    // Deux doigts de p0 → p1 et q0 → q1 en n pas ; ordre "p" / "q" : ce doigt-là posé 80 ms avant l'autre.
+    const geste = async function (p0, p1, q0, q1, n, ordre) {
+      const P = function (p, id) { return [p[0], p[1], id]; };
+      if (ordre === "p") { await doigts("touchStart", [P(p0, 1)]); await pause(80); }
+      if (ordre === "q") { await doigts("touchStart", [P(q0, 2)]); await pause(80); }
+      await doigts("touchStart", [P(p0, 1), P(q0, 2)]);
+      for (let k = 1; k <= n; k++) {
+        const f = k / n;
+        await doigts("touchMove", [[p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f, 1],
+          [q0[0] + (q1[0] - q0[0]) * f, q0[1] + (q1[1] - q0[1]) * f, 2]]);
+        await pause(16);
+      }
+      await doigts("touchEnd", []);
+      await pause(250);
+      return releve();
+    };
+    // Synthèse d'un relevé : recul début / fin, plus grand pas (facteur), recul qui a reculé (dézoom attendu), cap.
+    const bilan = function (t) {
+      let pas = 1, baisse = 1, capMax = 0;
+      for (let i = 1; i < t.length; i++) {
+        const f = t[i].r / t[i - 1].r;
+        pas = Math.max(pas, f, 1 / f);
+        baisse = Math.min(baisse, f);
+        let dc = Math.abs(t[i].c - t[i - 1].c); if (dc > 180) dc = 360 - dc;
+        capMax = Math.max(capMax, dc);
+      }
+      const a = t[0] || {}, z = t[t.length - 1] || {};
+      return { r: [a.r, z.r], pas: +pas.toFixed(3), baisse: +baisse.toFixed(4), cap: [a.c, z.c], capMax: +capMax.toFixed(2),
+        incl: [a.i, z.i], vise: [a.v, z.v], pos: [a.p, z.p], n: t.length };
+    };
+    const dezoome = function (b) {
+      return b.n > 10 && b.r[1] > b.r[0] * 2.5 && b.pas <= 1.25 && b.baisse >= 0.999 && b.cap[0] === b.cap[1] &&
+        JSON.stringify(b.vise[0]) === JSON.stringify(b.vise[1]) && JSON.stringify(b.pos[0]) === JSON.stringify(b.pos[1]);
+    };
+    verifier(zones.vue === "plongee" && zones.plus && zones.moins && zones.outil && zones.stick,
+      nom + "vue d'édition au téléphone : + / −, colonne d'outils, zone du joystick repérés", zones);
+    const autour = function (c, dx, dy) { return [c[0] + dx, c[1] + dy]; };
+    // Dézoom : un doigt part d'une commande et va vers le centre, l'autre part du haut et descend.
+    const cas = [
+      ["2e doigt posé sur +", zones.plus, "p"], ["1er doigt posé sur +", zones.plus, "q"],
+      ["2e doigt posé sur −", zones.moins, "p"], ["2e doigt sur la colonne d'outils", zones.outil, "p"],
+      ["2e doigt dans la zone du joystick", zones.stick, "p"], ["1er doigt dans la zone du joystick", zones.stick, "q"]
+    ];
+    for (const c of cas) {
+      await remettre();
+      const q0 = c[1], cible = [196, 430];
+      const p0 = [2 * cible[0] - q0[0], 2 * cible[1] - q0[1]];
+      const b = bilan(await geste(p0, autour(cible, (p0[0] - cible[0]) * 0.2, (p0[1] - cible[1]) * 0.2), q0,
+        autour(cible, (q0[0] - cible[0]) * 0.2, (q0[1] - cible[1]) * 0.2), 30, c[2]));
+      verifier(dezoome(b), nom + "dézoom au pincement, " + c[0] + " : le recul ne fait que croître (> ×2,5, pas ≤ ×1,25), " +
+        "ni cap, ni place, ni pas du joystick", b);
+    }
+    // + / − touchés seuls : un cran (au click).
+    await remettre();
+    const tapPlus = await (async function () {
+      const r0 = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
+      if (cdp) {
+        await doigts("touchStart", [[zones.plus[0], zones.plus[1], 3]]);
+        await pause(40);
+        await doigts("touchEnd", []);
+      } else {
+        await page.evaluate(function (p) {
+          const b = document.elementFromPoint(p[0], p[1]);
+          ["pointerdown", "pointerup"].forEach(function (t) {
+            b.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 3, pointerType: "touch",
+              isPrimary: true, clientX: p[0], clientY: p[1] }));
+          });
+          b.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, clientX: p[0], clientY: p[1] }));
+        }, zones.plus);
+      }
+      await pause(250);
+      const r1 = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
+      return { avant: r0, apres: r1, rapport: +(r0 / r1).toFixed(4) };
+    })();
+    verifier(Math.abs(tapPlus.rapport - 1.3225) < 0.01, nom + "+ touché seul : un cran (deux pas de 1,15)", tapPlus);
+    // Un doigt levé puis reposé au milieu d'un dézoom : pas de saut.
+    await remettre();
+    await doigts("touchStart", [[70, 280, 1], [330, 280, 2]]);
+    for (let k = 1; k <= 10; k++) { await doigts("touchMove", [[70 + k * 4, 280, 1], [330 - k * 4, 280, 2]]); await pause(16); }
+    await doigts("touchEnd", [[290, 280, 2]]);
+    for (let k = 1; k <= 4; k++) { await doigts("touchMove", [[290 - k * 3, 280, 2]]); await pause(16); }
+    await doigts("touchStart", [[60, 300, 4], [278, 280, 2]]);
+    for (let k = 1; k <= 12; k++) { await doigts("touchMove", [[60 + k * 6, 300, 4], [278 - k * 2, 280, 2]]); await pause(16); }
+    await doigts("touchEnd", []);
+    await pause(250);
+    const reprise = bilan(await releve());
+    verifier(reprise.pas <= 1.1 && reprise.baisse >= 0.999 && reprise.r[1] > reprise.r[0] * 1.3,
+      nom + "un doigt levé puis reposé pendant un dézoom : il continue, sans saut (pas ≤ ×1,1)", reprise);
+    // Rotations (cap libre : mode libre par défaut, tracker arrêté).
+    const tourner = async function (deg, n, demi) {
+      const cx = 196, cy = 430, h = demi || 100;
+      const pt = function (a) {
+        const r = a * Math.PI / 180;
+        return [[cx - h * Math.cos(r), cy - h * Math.sin(r), 1], [cx + h * Math.cos(r), cy + h * Math.sin(r), 2]];
+      };
+      await doigts("touchStart", pt(0));
+      for (let k = 1; k <= n; k++) { await doigts("touchMove", pt(deg * k / n)); await pause(16); }
+      await doigts("touchEnd", []);
+      await pause(250);
+      return bilan(await releve());
+    };
+    await remettre();
+    const r12 = await tourner(12, 24);
+    const ecart = function (b) { let d = Math.abs(b.cap[1] - b.cap[0]); if (d > 180) d = 360 - d; return +d.toFixed(2); };
+    verifier(ecart(r12) >= 1.5 && r12.capMax <= 1.5 && r12.r[0] === r12.r[1],
+      nom + "rotation pure de 12° : engagée (seuil 10°) sans saut (≤ 1,5° par mouvement), sans zoom",
+      { ecart: ecart(r12), b: r12 });
+    const r90 = await tourner(90, 60);
+    verifier(ecart(r90) >= 79 && ecart(r90) <= 81 && r90.capMax <= 3,
+      nom + "rotation de 90° : suivie à 11° près (le seuil), sans saut", { ecart: ecart(r90), b: r90 });
+    const r5 = await (async function () {
+      await doigts("touchStart", [[46, 430, 1], [346, 430, 2]]);
+      for (let k = 1; k <= 30; k++) {
+        const a = 5 * k / 30 * Math.PI / 180, h = 150 - 100 * k / 30;
+        await doigts("touchMove", [[196 - h * Math.cos(a), 430 - h * Math.sin(a), 1], [196 + h * Math.cos(a), 430 + h * Math.sin(a), 2]]);
+        await pause(16);
+      }
+      await doigts("touchEnd", []);
+      await pause(250);
+      return bilan(await releve());
+    })();
+    verifier(r5.cap[0] === r5.cap[1] && r5.r[1] > r5.r[0] * 2, nom + "pincement qui dérive de 5° : zoom, aucun cap", r5);
+    const rk = await (async function () {
+      await doigts("touchStart", [[116, 430, 1], [276, 430, 2]]);
+      for (let k = 1; k <= 30; k++) {
+        const a = 50 * k / 30 * Math.PI / 180;
+        await doigts("touchMove", [[116, 430, 1], [116 + 160 * Math.cos(a), 430 + 160 * Math.sin(a), 2]]);
+        await pause(16);
+      }
+      await doigts("touchEnd", []);
+      await pause(250);
+      return bilan(await releve());
+    })();
+    verifier(ecart(rk) >= 35 && rk.incl[0] === rk.incl[1], nom + "un doigt tourne autour de l'autre : rotation, pas d'inclinaison",
+      { ecart: ecart(rk), b: rk });
+    // Filet : un doigt qui saute de 180 px en un mouvement (écart 200 → 20 px).
+    await remettre();
+    await doigts("touchStart", [[96, 430, 1], [296, 430, 2]]);
+    for (let k = 1; k <= 3; k++) { await doigts("touchMove", [[96 + k * 3, 430, 1], [296 - k * 3, 430, 2]]); await pause(16); }
+    await doigts("touchMove", [[187, 430, 1], [207, 430, 2]]);
+    await pause(16);
+    await doigts("touchEnd", []);
+    await pause(250);
+    const saut = bilan(await releve());
+    verifier(saut.pas <= 1.5 + 1e-3, nom + "doigt qui saute de 180 px : pas borné à ×1,5", saut);
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+    await page.evaluate(function () { window.KtaVue3D.fermer(); });
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await ctx.close();
+  }
+}
+
 (async function main() {
   const lancement = { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] };
   const nav = await lancerNavigateur(chromium, lancement);
@@ -5311,7 +5586,7 @@ async function sectionFichesReglage(nav) {
       await sectionDessin(page);
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" ||
-      SEUL === "fiches") {
+      SEUL === "fiches" || SEUL === "gestes") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -11435,6 +11710,7 @@ async function sectionFichesReglage(nav) {
     }
     if (!SEUL || SEUL === "poi") await sectionPoi3D(nav);
     if (!SEUL || SEUL === "fiches") await sectionFichesReglage(nav);
+    if (!SEUL || SEUL === "gestes") await sectionGestesDoigt(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
