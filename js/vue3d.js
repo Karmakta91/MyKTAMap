@@ -3465,7 +3465,7 @@
     });
     const t = _texPlaque(nom, m);
     v.trace = { plaqueY: +y.toFixed(3), texture: !!t, nom: nom, plaqueL: +m.l.toFixed(3), plaqueH: +h.toFixed(3),
-      lignes: m.lignes.slice(), taillePx: m.taille, coupe: m.lignes.join(" ") !== nom.split(/\s+/).join(" ") };
+      lignes: m.lignes.slice(), taillePx: m.taille, coupe: m.lignes.join(" ") !== nom.replaceAll(/\s+/g, " ") };
     if (!t) {
       _rectParoi(lots.opaque, F, -L, L, y0, y1, r + ep, fond);
       _rectParoi(lots.opaque, F, -L + B, L - B, y0 + B, y1 - B, r + ep + 0.002, _couleurFixe(PLAQUE.texte));
