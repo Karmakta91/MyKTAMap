@@ -758,6 +758,8 @@ While a route is active, the bottom bar shows **🗺️ distance · time · pace
 
 **Route already drawn?** The window opens in navigation: **⏮️ Start**, **⏭️ End**, **🔁 Full tour**, 🎯 on each stop to view it, **🔄 Recompute route** to adjust the stops, **❌ Clear route**.
 
+**Two lines that do not touch** are not connected, even very close: the route never goes through the wall between two parallel galleries. Only the end of a line hooks itself onto a nearby line (within a few pixels). A junction drawn without the lines touching is fixed with **🔗 Connections to check**, in the 📊 Data editor.
+
 **Start or stop away from the galleries**: the stretch to the nearest gallery is drawn **dotted** and counted in the distance (there and back for a stop). Beyond **50 m**, the app warns you: it is not a known gallery, check the position. A map **with no paths at all** cannot have a route computed.
 
 ### 🔄 Living route
@@ -2038,6 +2040,7 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
   - **Resolutions** (last resort): only if both scans have exactly the same framing. If their proportions differ by more than 2%, the app refuses: names or landmarks are needed.
   - **👁️ Preview on the map**: your realigned data is drawn dashed over the map before downloading; the preview disappears when the tool closes. You then get `_conv.json` files.
   - From the home screen (no map open), only resolutions and landmarks typed by hand are available. Inter-map links, georeferencing and scale have to be redone on the new map.
+- **🔗 Connections to check** (map open): lists the places where two lines of the network do not touch, up to 6 m apart on the same level, when joining them would connect two parts of the network that are separate today (the shortest per pair of parts). Tap a row: the window folds away, the map shows the spot (both points circled) and a banner at the bottom takes you from one to the next (**◀ Previous · 3 / 12 · Next ▶**). **🔗 Connect** snaps the vertex onto the other line, which gains a vertex there: the junction is exact, the route and the 3D view follow, and **Ctrl+Z** undoes it. A line from a data layer of the map is first opened for editing (same question as **🔄 Edit**). **Ignore** remembers an intended gap on this map (a wall, a walled-up gallery): it does not come back unless you redraw the spot; **Show ignored again (N)** brings them all back.
 - **🧹 Deduplicate data**: removes consecutive identical vertices from paths, zones, structures and measurements, invisible but making files heavier. You get a `_dedup.json` file and a count of what was removed; points are never touched.
 
 If the source contains several datasets, a selector lets you choose.

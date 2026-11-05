@@ -876,11 +876,12 @@
                           : Math.round(o / 1024) + " ko";
   }
 
+  // → Promise<boolean> : true si le calque est passé en session (raccordsTraces.js attend la réponse).
   function _rapatrierCalque(id) {
     const CS = window.CalqueSession;
-    if (!CS || !id) return;
-    CS.peser(id).then(async function(p) {
-      if (!p) { window.ktaAlerte(window.I18n.t("filter.calque.errPesee"), { type: "erreur" }); return; }
+    if (!CS || !id) return Promise.resolve(false);
+    return CS.peser(id).then(async function(p) {
+      if (!p) { window.ktaAlerte(window.I18n.t("filter.calque.errPesee"), { type: "erreur" }); return false; }
       // Sessions en IndexedDB (js/sessionStore.js) : leur total face à la place accordée au site. Repli
       // localStorage : son occupation, plafond ~5 Mo.
       const mem = window.ktaStockageLocal ? window.ktaStockageLocal.mesurer() : null;
@@ -893,11 +894,11 @@
         occup:  (occ === null) ? "?" : _fmtOctets(occ),
         limite: (idb && mem.limite) ? _fmtOctets(mem.limite) : "?"
       });
-      if (!(await window.ktaConfirm(msg))) return;
-      CS.rapatrier(id).then(function(r) {
+      if (!(await window.ktaConfirm(msg))) return false;
+      return CS.rapatrier(id).then(function(r) {
         if (!r || !r.ok) {
           window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
-          return;
+          return false;
         }
         refreshDataLayers();
         _scheduleRoadsRecalc();
@@ -905,6 +906,7 @@
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(window.I18n.t("filter.calque.okRapatrie", { n: r.total }), "info");
         }
+        return true;
       });
     });
   }
@@ -1150,6 +1152,8 @@
     majBadge:      majBadge,          // pastille sur ≡ (appelée aussi par le polling du footer)
     nbActifs:      _nbFiltresActifs,
     refresh:       refreshDataLayers,
+    // « 🔄 Modifier » d'un calque hors du panneau (raccordsTraces.js) : même pesée, même question → Promise<boolean>
+    rapatrierCalque: _rapatrierCalque,
     ouvrir:        ouvrir,
     fermer:        fermer,
     getState:      getState,

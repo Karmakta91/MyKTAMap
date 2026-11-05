@@ -1119,6 +1119,27 @@ function setPlanHauteurGalerie(planId, value) {
 window.getPlanHauteurGalerie = getPlanHauteurGalerie;
 window.setPlanHauteurGalerie = setPlanHauteurGalerie;
 
+// ── Raccords ignorés (🔗 Raccords à vérifier, js/raccordsTraces.js) ──────────────────────
+// Par plan, pref `raccordsIgnores` = clés d'écart (chaînes) que l'auteur a déclarées voulues ; absente → [].
+// Plafond RACCORDS_IGNORES_MAX (les plus anciennes partent) : la pref vit dans localStorage.
+const RACCORDS_IGNORES_MAX = 2000;
+function getPlanRaccordsIgnores(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _readPlanPrefs(pid).raccordsIgnores;
+  return Array.isArray(v) ? v.filter(function (k) { return typeof k === "string" && k; }) : [];
+}
+function setPlanRaccordsIgnores(planId, cles) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  const liste = Array.isArray(cles) ? cles.filter(function (k) { return typeof k === "string" && k; }) : [];
+  if (liste.length) prefs.raccordsIgnores = liste.slice(-RACCORDS_IGNORES_MAX);
+  else delete prefs.raccordsIgnores;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanRaccordsIgnores = getPlanRaccordsIgnores;
+window.setPlanRaccordsIgnores = setPlanRaccordsIgnores;
+
 // ── Rendu de la vue 3D (js/vue3d.js) : "mixte", "structures" ou "galerie", retenu par plan ──────────────────
 // Par plan, pref `vue3dRendu` ; absente → null (la vue prend le mixte). Autre valeur refusée.
 function getPlanRenduVue3D(planId) {

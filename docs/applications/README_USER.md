@@ -758,6 +758,8 @@ Tant qu'un itinéraire est actif, la barre du bas affiche **🗺️ distance · 
 
 **Itinéraire déjà tracé ?** La fenêtre s'ouvre en navigation : **⏮️ Début**, **⏭️ Fin**, **🔁 Tour complet**, 🎯 sur chaque étape pour la voir, **🔄 Recalculer l'itinéraire** pour retoucher les étapes, **❌ Effacer l'itinéraire**.
 
+**Deux tracés qui ne se touchent pas** ne sont pas reliés, même tout proches : l'itinéraire ne traverse jamais le mur entre deux galeries parallèles. Seul le bout d'un tracé se raccroche tout seul à un tracé voisin (à quelques pixels près). Un carrefour dessiné sans que les tracés se touchent se corrige avec **🔗 Raccords à vérifier**, dans le 📊 Éditeur de données.
+
 **Départ ou étape à côté des galeries** : le bout de trajet jusqu'à la galerie la plus proche est dessiné **en pointillé** et compté dans la distance (aller et retour pour une étape). Au-delà de **50 m**, l'app te prévient : ce n'est pas une galerie connue, vérifie la position. Un plan **sans aucun tracé** ne permet pas de calculer d'itinéraire.
 
 ### 🔄 Itinéraire vivant
@@ -2039,6 +2041,7 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
   - **Résolutions** (dernier recours) : seulement si les deux scans ont exactement le même cadrage. Si leurs proportions diffèrent de plus de 2 %, l'app refuse : il faut des noms ou des repères.
   - **👁️ Aperçu sur le plan** : tes données recalées s'affichent en tireté par-dessus le plan avant le téléchargement ; l'aperçu disparaît à la fermeture de l'outil. Tu récupères ensuite des fichiers `_conv.json`.
   - Depuis l'accueil (aucun plan ouvert), seules les résolutions et des repères saisis à la main sont possibles. Liaisons inter-plans, géoréférencement et échelle restent à refaire sur le nouveau plan.
+- **🔗 Raccords à vérifier** (plan ouvert) : liste les endroits où deux tracés du réseau ne se touchent pas, jusqu'à 6 m d'écart sur un même niveau, quand les relier joindrait deux morceaux du réseau aujourd'hui séparés (le plus court par paire de morceaux). Touche une ligne : la fenêtre se replie, la carte montre l'endroit (les deux points entourés) et un bandeau en bas te fait passer de l'un à l'autre (**◀ Précédent · 3 / 12 · Suivant ▶**). **🔗 Raccorder** colle le sommet sur l'autre tracé, qui y gagne un sommet : le carrefour est exact, l'itinéraire et la vue 3D suivent, et **Ctrl+Z** l'annule. Un tracé d'un calque du plan passe d'abord en modification (même question que **🔄 Modifier**). **Ignorer** retient sur ce plan un écart voulu (un mur, une galerie murée) : il ne revient plus, sauf si tu redessines l'endroit ; **Réafficher les ignorés (N)** les rend tous.
 - **🧹 Dédoublonner les données** : retire les sommets identiques consécutifs des tracés, zones, structures et mesures, invisibles mais qui alourdissent les fichiers. Tu récupères un fichier `_dedup.json` et le compte de ce qui a été retiré ; les points ne sont jamais touchés.
 
 Si la source contient plusieurs jeux de données, un sélecteur te laisse choisir.
