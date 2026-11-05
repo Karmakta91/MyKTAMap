@@ -248,7 +248,7 @@
   // Plaque indicatrice (plaque) : plaque émaillée de `l` × `h` m, `ep` d'épaisseur, centrée à `y` m (et au moins
   // `plafond` m sous le plafond), à `recul` m de la paroi ; nom du POI dessiné au canvas de `px` px de large (une
   // texture par nom, au plus `max` vivantes : au-delà, la plaque unie). Couleurs de la scène (plaque de rue
-  // émaillée), pas de la charte de l'UI. 🧱 coupé : plaque unie, sans texture (le nom reste sur le panneau).
+  // émaillée), pas de la charte de l'UI. Le nom reste avec 🧱 coupé (décision produit : c'est un repère).
   const PLAQUE = { l: 0.6, h: 0.3, ep: 0.015, y: 1.45, plafond: 0.3, recul: 0.01, px: 256, max: 32,
     fond: "#1f3d7a", texte: "#f2f4f8", bord: 0.03 };
   // Épure (epure) : trait gravé clair sur la paroi, `larg` m de trait, à `recul` m d'elle, centré à `y` m ; dessin
@@ -3432,8 +3432,8 @@
       uv ? [u0, 0, u1, 0, u1, 1, u0, 1] : undefined);
   }
 
-  // Plaque émaillée : chants (fond de la plaque, uni) et face au nom du POI (_texPlaque, avec 🧱) ou unie, liseré
-  // clair (🧱 coupé, ou plus de PLAQUE.max noms vivants).
+  // Plaque émaillée : chants (fond de la plaque, uni) et face au nom du POI (_texPlaque, 🧱 allumé ou coupé), unie
+  // à liseré clair au-delà de PLAQUE.max noms vivants.
   function _plaque(v, lots, g) {
     const e = _e, F = _faceParoi(v), L = PLAQUE.l / 2, ep = PLAQUE.ep, r = PLAQUE.recul, B = PLAQUE.bord;
     const y = Math.min(PLAQUE.y, e.hauteur - PLAQUE.plafond - PLAQUE.h / 2), y0 = y - PLAQUE.h / 2, y1 = y0 + PLAQUE.h;
@@ -3444,7 +3444,7 @@
         [0, c[1], 0], fond);
     });
     const nom = String((v.point && (v.point.nom || v.point.name || v.point.id)) || "").slice(0, 60);
-    const t = e.textures === true ? _texPlaque(nom) : null;
+    const t = _texPlaque(nom);
     v.trace = { plaqueY: +y.toFixed(3), texture: !!t, nom: nom };
     if (!t) {
       _rectParoi(lots.opaque, F, -L, L, y0, y1, r + ep, fond);
@@ -6132,7 +6132,7 @@
     corps.className = "kta-v3d-fiche-corps";
     corps.innerHTML = html;
     _passagesFiche(boite, p);
-    _portailFiche(boite, p);
+    _passerPlanFiche(boite, p);
     boite.appendChild(corps);
     e.ov.appendChild(boite);
     _ficheNeuve(boite);
@@ -6192,18 +6192,18 @@
     catch (err) { return []; }
   }
 
-  // Fiche d'un portail lié (décision produit) : un bouton « Passer au plan X » par liaison, qui passe par la
-  // mini-confirmation de la carte (InterPlanLinks.naviguerVers), posée au-dessus de la vue ; confirmé, le
-  // changement de plan ferme la vue sans « Je suis ici ? » (kta:avantChangementPlan, _fermerPourPlan : le portail
-  // recale lui-même le tracker à l'arrivée). Plan absent de l'appareil : bouton inactif. Sans liaison : rien.
-  function _portailFiche(boite, p) {
-    if (_premierTag(p) !== "portail") return;
+  // Fiche de tout point lié à un autre plan (décision produit ; le cadre lumineux reste au tag portail) : un bouton
+  // « Passer au plan X » par liaison, qui passe par la mini-confirmation de la carte (InterPlanLinks.naviguerVers),
+  // posée au-dessus de la vue ; confirmé, le changement de plan ferme la vue sans « Je suis ici ? »
+  // (kta:avantChangementPlan, _fermerPourPlan : la liaison recale elle-même le tracker à l'arrivée). Plan absent de
+  // l'appareil : bouton inactif. Sans liaison : rien.
+  function _passerPlanFiche(boite, p) {
     const liens = _liaisonsPortail(p);
     if (!liens.length) return;
     const zone = document.createElement("div");
     zone.className = "kta-v3d-fiche-passages kta-v3d-fiche-portail";
     zone.setAttribute("role", "group");
-    zone.setAttribute("aria-label", _t("vue3d.portail"));
+    zone.setAttribute("aria-label", _t("vue3d.liaisonsPlan"));
     liens.forEach(function (l, i) {
       const txt = _t("vue3d.passerPlan", { plan: l.planName || l.planId || "?" });
       const b = _bouton(zone, "kta-v3d-btn-mode kta-v3d-fiche-passage", txt, l.dispo ? txt : _t("ipl.popup.planAbsent"),
@@ -6220,7 +6220,7 @@
     boite.appendChild(zone);
   }
 
-  // Changement de plan demandé pendant la vue (portail confirmé, liaison d'une fiche) : la vue se ferme sans
+  // Changement de plan demandé pendant la vue (« Passer au plan » ou ➜ d'une fiche, confirmés) : la vue se ferme sans
   // question ni carte replacée (le plan change sous elle ; InterPlanLinks recale le tracker à l'arrivée).
   function _fermerPourPlan() {
     if (!_e) return;

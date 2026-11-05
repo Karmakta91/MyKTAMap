@@ -2171,11 +2171,12 @@ async function sectionConePassage(page) {
 // § 14 septies — Formes des POI sans passage (formes FICTIVES en mémoire, galerie principale de 2,5 m à z = 0) :
 // chatière (roche en travers, trou de 0,6 m, rien ne bloque, caméra abaissée en la traversant puis remontée, en libre
 // et en suivi, ctx.libre ouvert), plaque (à plat sur la paroi du côté du POI, sur l'axe à gauche du tracé, texture au
-// nom, une par nom, bornée ; 🧱 coupé : unie, textures rendues), épure (traits sur la paroi), portail (cadre allumé
+// nom, une par nom, bornée, gardée avec 🧱 coupé), épure (traits sur la paroi), portail (cadre allumé
 // avec une liaison fictive, éteint sans ; fiche « Passer au plan », confirmation au-dessus de la vue, annuler garde
 // la vue, confirmer la ferme ; aucun bouton sans liaison), véhicule (dans la galerie, le long de l'axe, arrête le
 // pas, ctx.libre fermé, survol en vue d'édition). Rendu structures : plaque, épure et portail sans paroi = panneau
-// seul ; tag sans forme = aucun volume. 50 plaques : mémoire des textures mesurée.
+// seul ; tag sans forme = aucun volume. Point lié sans le tag portail : « Passer au plan » aussi, et ➜ de sa fiche
+// ferme la vue après la confirmation. 50 plaques : mémoire des textures mesurée.
 async function sectionFormesPoi(page) {
   if (CAPTURES) await capturesFormes(page);
   const R = await page.evaluate(async function () {
@@ -2212,7 +2213,7 @@ async function sectionFormesPoi(page) {
     const POIS = [poi("pt_f_chat", "chatiere", -20, 0.5, "Chatière fictive"),
       poi("pt_f_pl_n", "plaque", -5, 2, "Rue Fictive"), poi("pt_f_pl_s", "plaque", 0, -0.4, "Impasse Fictive"),
       poi("pt_f_pl_axe", "plaque", 5, 0, "Plaque sur l'axe"), poi("pt_f_ep", "epure", 10, 1.5, "Épure fictive"),
-      poi("pt_f_def", "default", 12, 1.5, "Sans forme"), poi("pt_f_po_lie", "portail", 20, 1.5, "Portail lié"),
+      poi("pt_f_def", "default", 12, -1.5, "Sans forme"), poi("pt_f_po_lie", "portail", 20, 1.5, "Portail lié"),
       poi("pt_f_po_seul", "portail", 25, -1.5, "Portail seul"),
       poi("pt_f_veh", "vehicule", 40, 0.5, "Véhicule fictif")];
     window.setStructures([]); window.setZones([]);
@@ -2225,6 +2226,12 @@ async function sectionFormesPoi(page) {
     { planId: "v3d-plan-fictif-b", planName: "Plan fictif B", pointId: "pt_b", pointNom: "Arrivée fictive",
       x: 10, y: 10, level: 0 });
     const lienId = lien && lien.id;
+    // Point lié sans le tag portail (« Sans forme ») : bouton « Passer au plan » aussi, aucun cadre.
+    const def = POIS[5];
+    L.createLink({ planId: "v3d-checkup-formes", planName: "Plan de test", pointId: def.id, pointUid: def.uid,
+      pointNom: def.nom, x: def.x, y: def.y, level: 0 },
+    { planId: "v3d-plan-fictif-b", planName: "Plan fictif B", pointId: "pt_b2", pointNom: "Arrivée fictive 2",
+      x: 20, y: 20, level: 0 });
     window.PlanRegistry.findById = function (id) {
       return id === "v3d-plan-fictif-b" ? { id: id, name: "Plan fictif B", type: "server", path: "fictif/" }
         : window.__v3dFormesSauve.trouve.call(window.PlanRegistry, id);
@@ -2309,12 +2316,13 @@ async function sectionFormesPoi(page) {
       }
       await K.fermer();
     }
-    // ── 🧱 coupé : plaque unie, textures rendues ; les formes restent ──
+    // ── 🧱 coupé : la plaque garde son nom, chatière unie ; les formes restent ──
     await ouvrir("mixte", -6, 0, 90);
     const avantTx = K.etat().plaques;
     K.basculerTextures();
     await pause(150); await images(3);
     r.sansTx = { plaques: K.etat().plaques, pl: (vol("plaque", "pt_f_pl_n") || {}).texture,
+      plNom: (vol("plaque", "pt_f_pl_n") || {}).nom,
       plFam: (vol("plaque", "pt_f_pl_n") || {}).familles, chatRoche: (vol("chatiere") || {}).roche,
       chatTri: (vol("chatiere") || {}).triangles, ep: (vol("epure") || {}).traits,
       po: (vol("portail", "pt_f_po_lie") || {}).allume, veh: !!(vol("vehicule") || {}).construit, avant: avantTx };
@@ -2403,6 +2411,54 @@ async function sectionFormesPoi(page) {
       return { ouvert: e.ouvert !== false, fermeture: e.fermeture || null, charge: window.__v3dChargeF,
         question: !!document.querySelector(".kta-readme-modal-overlay .kta-modal"),
         vueDom: !!document.getElementById("kta-vue3d") };
+    });
+  }
+  // Point lié sans le tag portail : « Passer au plan » aussi ; puis ➜ de la section liaisons de sa fiche : même
+  // confirmation, la vue se ferme.
+  const lieDef = await page.evaluate(async function () {
+    const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const b = document.getElementById("kta-ipl-back-float");
+    if (b) b.remove();
+    if (K.etat().ouvert !== false) await K.fermer();
+    window._currentLoadedPlanId = "v3d-checkup-formes";
+    window.setPlanRenduVue3D(null, "mixte");
+    window.KtaGalerie.invalider();
+    await K.ouvrir({ depart: { x: (ox + 8) * sc, y: oz * sc, cap: 90 }, distanceVue: 200, tuiles: false,
+      commandes: "pave" });
+    await pause(300);
+    const sp = K.etat().panneaux.filter(function (q) { return q.nom === "Sans forme" && q.visible; })[0];
+    if (sp) {
+      const cv = document.querySelector("#kta-vue3d canvas");
+      const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: "mouse", isPrimary: true,
+        clientX: sp.ecran.x, clientY: sp.ecran.y, button: 0 };
+      cv.dispatchEvent(new PointerEvent("pointerdown", o));
+      await pause(40);
+      cv.dispatchEvent(new PointerEvent("pointerup", o));
+      await pause(120);
+    }
+    const f = K.etat().fiche, bt = document.querySelector("#kta-vue3d .kta-v3d-fiche [data-v3d-portail]");
+    return { ouverte: !!f, nom: f && f.nom, bouton: bt ? bt.textContent : null, actif: !!bt && !bt.disabled,
+      fleche: !!document.querySelector('#kta-vue3d .kta-v3d-fiche [data-kta-act="ipl-go"]'),
+      cadre: K.etat().volumes.filter(function (v) { return v.tag === "default"; }).length };
+  });
+  const fleche = page.locator('#kta-vue3d .kta-v3d-fiche [data-kta-act="ipl-go"]').first();
+  if (lieDef.fleche) {
+    await fleche.click();
+    await page.waitForTimeout(200);
+    lieDef.confirm = await page.evaluate(function () {
+      const oui = document.getElementById("kta-ipl-nav-yes");
+      if (!oui) return null;
+      const r = oui.getBoundingClientRect();
+      const dessus = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { dessus: dessus === oui || oui.contains(dessus), ouvert: window.KtaVue3D.etat().ouvert !== false };
+    });
+    if (lieDef.confirm) await page.locator("#kta-ipl-nav-yes").click();
+    await page.waitForTimeout(300);
+    lieDef.apres = await page.evaluate(function () {
+      return { ouvert: window.KtaVue3D.etat().ouvert !== false, vueDom: !!document.getElementById("kta-vue3d"),
+        charge: window.__v3dChargeF, question: !!document.querySelector(".kta-readme-modal-overlay .kta-modal") };
     });
   }
   // Portail sans liaison : aucun bouton ; nettoyage.
@@ -2513,10 +2569,10 @@ async function sectionFormesPoi(page) {
   verifier(!!S.chat && S.chat.construit && !S.plN && !S.ep && !S.poLie && !!S.veh && !S.def,
     "structures : chatière et véhicule au POI ; plaque, épure et portail sans paroi = panneau seul", S);
   const T = R.sansTx;
-  verifier(T.pl === false && T.plFam.indexOf("plaque") < 0 && T.plaques.n === 0 && T.chatRoche === 0 &&
-    T.chatTri > 0 && T.ep === 7 && T.po === true && T.veh && R.avecTx.n === T.avant.n,
-  "🧱 coupé : plaque unie (textures rendues : 0), chatière unie, épure, portail et véhicule gardés ; rallumé, " +
-  R.avecTx.n + " textures", T);
+  verifier(T.pl === true && T.plNom === "Rue Fictive" && T.plFam.indexOf("plaque") >= 0 && T.plaques.n === 3 &&
+    T.chatRoche === 0 && T.chatTri > 0 && T.ep === 7 && T.po === true && T.veh && R.avecTx.n === T.avant.n,
+  "🧱 coupé : la plaque garde son nom (" + T.plaques.n + " textures), chatière unie, épure, portail et véhicule " +
+  "gardés ; rallumé, " + R.avecTx.n + " textures", T);
   verifier(R.suivi.modes.length === 1 && R.suivi.modes[0] === "suivi" && !!R.suiviDans &&
     R.suiviDans.cameraY < 0.45 && pr(R.suivi.apres, R.suivi.oeil) && pr(R.suivi.avant, R.suivi.oeil) &&
     R.suivi.fin > -13.5, "suivi : caméra abaissée dans la chatière (" + (R.suiviDans && R.suiviDans.cameraY) +
@@ -2532,6 +2588,12 @@ async function sectionFormesPoi(page) {
     "Confirmer : la vue se ferme sans « Je suis ici ? », le plan se charge", oui);
   verifier(R2.seul.ouverte && R2.seul.boutons === 0, "portail sans liaison : fiche sans bouton « Passer au plan »",
     R2.seul);
+  verifier(lieDef.ouverte && lieDef.actif && /Plan fictif B/.test(lieDef.bouton || "") && lieDef.cadre === 0,
+    "point lié sans le tag portail : sa fiche propose « " + lieDef.bouton + " », aucun cadre", lieDef);
+  verifier(!!lieDef.confirm && lieDef.confirm.dessus && lieDef.confirm.ouvert && !!lieDef.apres &&
+    !lieDef.apres.ouvert && !lieDef.apres.vueDom && lieDef.apres.charge === 2 && !lieDef.apres.question,
+  "➜ de la fiche d'un point lié : confirmation au-dessus de la vue, confirmée, la vue se ferme et le plan se charge",
+  { confirm: lieDef.confirm, apres: lieDef.apres });
   verifier(R2.eteints.length === 2 && R2.eteints.every(function (a) { return a === false; }),
     "liaison retirée pendant la vue : le cadre s'éteint", R2.eteints);
   verifier(R2.p50.textures <= 32 && R2.p50.textures === Math.min(32, R2.p50.construites) &&
