@@ -4,7 +4,7 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// raccordsTraces.js — « 🔗 Raccords à vérifier » (Éditeur de données) : les écarts de MIN_M à MAX_M entre deux morceaux
+// raccordsTraces.js — « 🔗 Raccords à vérifier » (Éditeur de données) : les écarts de MIN_PX à MAX_M entre deux morceaux
 // du réseau de l'itinéraire aujourd'hui séparés, sur un même niveau, un par paire de morceaux (le plus court). Revue
 // sur la carte (bandeau Précédent / Suivant) : Raccorder ou Ignorer. Pourquoi : la règle stricte des jonctions
 // (pathfinder.js, bouts seuls à 15 px, sommets intérieurs à 3 px) ne relie plus deux galeries parallèles à travers un
@@ -25,8 +25,10 @@
 window.KtaRaccords = (function () {
   "use strict";
 
-  const MIN_M = 1.2, MAX_M = 6;        // écarts proposés, en mètres (plan à l'échelle)
-  const MIN_PX = 3, MAX_PX = 15;       // plan sans échelle : seuils des jonctions du graphe
+  const MAX_M = 6;                     // écart le plus grand proposé, en mètres (plan à l'échelle)
+  // Plus petit écart proposé = seuil de fusion : un écart déjà relié par le graphe est dans le même morceau, donc exclu ;
+  // en dessous de 1,5 px, deux sommets sont le même nœud. MAX_PX : plan sans échelle (tolérance des bouts).
+  const MIN_PX = 1.5, MAX_PX = 15;
   const FUSION_PX = 1.5;               // pathfinder.js > SPATIAL_MERGE_THRESHOLD : sous ce seuil, c'est le même nœud
   const EGAL_PX = 1;                   // écarts d'une paire à 1 px près : le bout, puis le petit morceau, gagnent
   const TYPES = ["principal", "secondaire", "chemin"];   // réseau de l'itinéraire par défaut (pathfinder.js)
@@ -50,7 +52,7 @@ window.KtaRaccords = (function () {
 
   function seuilsPx() {
     const s = Number(window.APP_CONFIG && window.APP_CONFIG.scale);
-    return s > 0 ? { min: MIN_M * s, max: MAX_M * s, echelle: s } : { min: MIN_PX, max: MAX_PX, echelle: 0 };
+    return s > 0 ? { min: MIN_PX, max: MAX_M * s, echelle: s } : { min: MIN_PX, max: MAX_PX, echelle: 0 };
   }
 
   function _ecartTexte(px, echelle) {
@@ -520,7 +522,7 @@ window.KtaRaccords = (function () {
     etat: function () {
       return { liste: _liste.length, index: _index, bandeau: !!_bandeau, ignores: _nbIgnores };
     },
-    MIN_M: MIN_M,
+    MIN_PX: MIN_PX,
     MAX_M: MAX_M
   };
 })();
