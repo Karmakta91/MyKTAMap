@@ -39,7 +39,8 @@
 // effondrement texturés (zone de 1 m et de 10 m à la même échelle, chambre, tube, galerie, structures ; eau et zone
 // perso jamais texturées ; couleur de la légende une fois coupé).
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
-// cherchées par rayons, collisions) ; itinéraire en tirets (largeur, liseré, étape, 🏁) ; ronds d'intersection de
+// cherchées par rayons, collisions) ; itinéraire en ruban plein (largeur, liseré, chevrons de sens, niveau, étape,
+// 🏁) ; ronds d'intersection de
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
 // « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Lampe frontale
 // des membres (12 ter, KTA_V3D_SEUL=lampes : cette section seule) : halo hors brouillard jusqu'à la portée, absent
@@ -9498,9 +9499,16 @@ async function sectionGestesDoigt(nav) {
         "collisions (A) : à gauche on bute sur la paroi (" + colA.gauche + " m), à droite sur le pilier (" + colA.droite +
         " m, face à 2 m), plus loin sur la paroi droite gardée (" + colA.droiteLoin + " m)", colA);
 
-      // ── 16. Itinéraire au sol : ruban de 0,35 m en tirets, liseré, étape et arrivée ─────────────────────────
-      const IT = await page.evaluate(function (a) {
-        const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc, level: 0 }; };
+      // ── 16. Itinéraire au sol : ruban plein de 0,3 m, liseré, chevrons de sens, étape et arrivée ─────────────
+      const IT = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z, n) {
+          return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc, level: n === undefined ? 0 : n };
+        };
+        const rel = function (it) {
+          return Object.assign({}, it, { chevronsXZ: (it.chevronsXZ || []).map(function (c) {
+            return [+(c[0] - a.ox).toFixed(2), +(c[1] - a.oz).toFixed(2)];
+          }) });
+        };
         window.setStructures([]);
         window.KtaGalerie.invalider();
         const pts = [P(-20, 0), P(-10, 0), P(0, 0), P(10, 0)];
@@ -9510,26 +9518,50 @@ async function sectionGestesDoigt(nav) {
               { role: "etape", label: "Étape fictive", vers: { x: pts[2].x, y: pts[2].y } },
               { role: "arrivee", label: "Arrivée fictive", vers: { x: pts[3].x, y: pts[3].y } }] }]);
         const d = P(-14, 0.3);
-        return K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false }).then(function () {
-          const e = K.etat();
-          const fin = e.panneaux.filter(function (q) { return q.genre === "arrivee"; })[0] || null;
-          return { iti: e.itineraire,
-            arrivee: fin ? { nom: fin.nom, x: +(fin.x - a.ox).toFixed(2), z: +(fin.z - a.oz).toFixed(2) } : null };
-        });
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
+        const e = K.etat();
+        const fin = e.panneaux.filter(function (q) { return q.genre === "arrivee"; })[0] || null;
+        const r = { iti: rel(e.itineraire),
+          arrivee: fin ? { nom: fin.nom, x: +(fin.x - a.ox).toFixed(2), z: +(fin.z - a.oz).toFixed(2) } : null };
+        return r;   // vue laissée ouverte : capture
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
-      if (CAPTURES) { await page.waitForTimeout(600); await capture(page, "itineraire-tirets"); }
-      await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+      if (CAPTURES) { await page.waitForTimeout(600); await capture(page, "itineraire-ruban"); }
+      // Trajet au niveau affiché (0) de -20 à -10, puis au −1 de -10 à 10 : chevrons sur la part du niveau 0 seule.
+      IT.niveaux = await page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = function (x, z, n) {
+          return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc, level: n === undefined ? 0 : n };
+        };
+        await K.fermer();
+        window.setRoads([{ uid: "rd_it_t", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] },
+          { uid: "rd_it_n", type: "itinerary", level: 0, points: [P(-20, 0), P(-10, 0), P(0, 0, -1), P(10, 0, -1)] }]);
+        const d = P(-14, 0.3);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
+        const it = K.etat().itineraire;
+        await K.fermer();
+        return Object.assign({}, it, { chevronsXZ: (it.chevronsXZ || []).map(function (c) {
+          return [+(c[0] - a.ox).toFixed(2), +(c[1] - a.oz).toFixed(2)];
+        }) });
+      }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       const it = IT.iti;
-      verifier(Math.abs(it.ruban - 0.35) < 0.005 && Math.abs(it.lisere - 0.43) < 0.005 &&
-        Math.abs(it.longueurTiret - 1.2) < 0.01,
-        "itinéraire : ruban de 0,35 m, liseré de 4 cm de chaque côté (0,43 m), tirets de 1,2 m", it);
-      // 30 m de trajet en tirets de 1,2 m tous les 1,8 m : 17 tirets (le dernier commence à 28,8 m).
-      verifier(it.tirets === 17 && /^#8cb4ff$/i.test(it.couleur) && /^#0a0d18$/i.test(it.couleurLisere),
-        "itinéraire : 17 tirets sur 30 m (1,2 m / 0,6 m, « 12 6 » de la carte), --kta-interaction, liseré --kta-fond",
-        it);
+      // Ruban d'un seul tenant : 3 bandes (une par segment), chacune prolongée d'une demi-largeur aux deux bouts.
+      verifier(Math.abs(it.ruban - 0.3) < 0.005 && Math.abs(it.lisere - 0.38) < 0.005 && it.bandes === 3 &&
+        Math.abs(it.longueurRuban - 30.9) < 0.02,
+        "itinéraire : ruban plein de 0,3 m (3 bandes, 30,9 m pour 30 m de trajet), liseré de 4 cm de chaque côté", it);
+      // 30 m de trajet, un chevron tous les 2 m à partir de 1 m : 15 chevrons, de -19 à 9, pointe vers l'arrivée.
+      const xs = it.chevronsXZ.map(function (c) { return c[0]; }).sort(function (p, q) { return p - q; });
+      verifier(it.chevrons === 15 && it.chevronsGeo === 15 && xs[0] === -19 && xs[14] === 9 &&
+        it.chevronsXZ.every(function (c) { return c[1] === 0; }) && it.pointeX > 0,
+        "itinéraire : 15 chevrons de sens sur 30 m (un tous les 2 m, de -19 à 9), pointe vers l'arrivée", it);
+      verifier(/^#8cb4ff$/i.test(it.couleur) && /^#0a0d18$/i.test(it.couleurLisere) &&
+        /^#0a0d18$/i.test(it.couleurChevrons),
+        "itinéraire : ruban --kta-interaction, liseré et chevrons --kta-fond", it);
       verifier(it.etapes === 1 && it.arrivee === true && !!IT.arrivee && IT.arrivee.x === 10 && IT.arrivee.z === 0 &&
         IT.arrivee.nom === "🏁 Arrivée fictive", "itinéraire : un marqueur à l'étape, 🏁 à l'arrivée (panneau)",
         { it: it, arrivee: IT.arrivee });
+      const nv = IT.niveaux;
+      verifier(nv.chevrons === 5 && nv.chevronsGeo === 5 && nv.bandes === 1 &&
+        nv.chevronsXZ.every(function (c) { return c[0] < -10; }),
+        "itinéraire sur deux niveaux : ruban et 5 chevrons sur les 10 m du niveau affiché, rien sur le tronçon du −1", nv);
 
       // ── 17. Ronds d'intersection de la carte, lus en 3D (option 2D, niveau affiché) ─────────────────────────
       const RD = await page.evaluate(async function (a) {

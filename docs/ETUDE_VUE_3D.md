@@ -3,7 +3,7 @@
 > Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01 et du 02/11/2026. Lots 1, 2, 4, 4 bis, 4 ter et
 > 4 quater (passages entre niveaux) livrés : la vue s'ouvre par le bouton cube de la barre de droite (sous ≡ Filtres),
 > avec trois rendus (mixte par défaut, raccord par côté, structures, galerie), joystick au téléphone, les filtres de la
-> carte, l'itinéraire en tirets et le guidage, les ronds d'intersection, la fiche des POI, précachée, textes fr/en/es,
+> carte, l'itinéraire en ruban plein à chevrons et le guidage, les ronds d'intersection, la fiche des POI, précachée, textes fr/en/es,
 > docs. Reste : la mesure sur un vrai iPhone (lot 3) et la question 9. Contrats à jour :
 > `docs/architecture/tracking.md` § Vue 3D ; place dans l'interface : `docs/architecture/ui.md` § Vue 3D.
 
@@ -109,7 +109,7 @@ opposé à un pilier en mixte, ronds d'intersection absents en 3D) :
 | # | Sujet | Décision |
 |---|---|---|
 | 1 | Commandes au téléphone | **Joystick flottant à gauche** : apparaît sous le pouce (zone gauche sous le bandeau, au-dessus de la boussole) ; anneau ≥ 88 px, bouton 44 px, jetons `--kta-surface` / `--kta-accent`, aucune image ; débattement 40 px → 0 à 2,8 m/s, Y avant / arrière, X pas de côté ; **course** = débattement > 85 % tenu 0,6 s ; zone morte 12 px. Regard au glisser sur la moitié droite. Toucher le stick passe en libre ; en suivi, le glisser ne tourne pas. Deux doigts inchangés (le doigt du stick ne compte pas). Clavier inchangé ; pavé au PC (`pointer: fine`) et option « Pavé classique » dans ⚙️ (réglage par appareil) |
-| 2 | Itinéraire au sol | Ruban **0,35 m** à `--kta-interaction`, **liseré sombre** de 4 cm sur chaque bord, **tirets 1,2 m / 0,6 m** comme la 2D (« 12 6 »), chevrons gardés ; **marqueurs** : disque et mât de 0,6 m à chaque étape, 🏁 en panneau à l'arrivée. Itinéraires des membres dorés tiretés, distincts. Pas d'animation |
+| 2 | Itinéraire au sol | Ruban **plein de 0,3 m** à `--kta-interaction`, **liseré sombre** de 4 cm sur chaque bord, **chevrons de sens** sombres tous les 2 m comme le trajet du jeu (révisé le 05/11/2026 : les tirets calqués sur la 2D cédaient la place), chevrons de guidage gardés ; **marqueurs** : disque et mât de 0,6 m à chaque étape, 🏁 en panneau à l'arrivée. Itinéraires des membres dorés tiretés, distincts. Pas d'animation |
 | 3 | Raccord galerie / structures en mixte | **Par côté** : chaque tronçon juge sa paroi gauche et droite séparément (échantillon à axe ± (w + 0,5 m), structure à moins de 3 m − w → côté ouvert) ; la pièce reste entière ; à chaque bout d'un côté ouvert, un **pan de paroi perpendiculaire** vers la structure, borné à 1,5 m, coupé à sa face : ni fente ni bout orphelin ; aux nœuds, le joint garde ses parois sauf sur les branches dont le côté est ouvert. Deux côtés = chambre, structure dans l'axe = bout ouvert. Collisions : parois dessinées seulement, la structure bloque par la règle du tracker |
 | 4 | Ronds d'intersection | `road.js` mémorise sa dernière liste `[{ point, color, level }]` et l'expose (`getRoadIntersections`) ; la 3D la lit si l'option 2D est cochée, au niveau affiché, disque à la couleur donnée au-dessus des rubans ; redessin par `FilterPanel.onChange` ou `kta:intersectionsChange` ; aucun recalcul côté 3D |
 | 5 | Marque « bêta » | Retirée partout (vue, Bienvenue, guides, Aide, AI_CONTEXT, notes, README, docs) ; la phrase « la 3D montre le plan, pas la galerie réelle » reste |
@@ -201,7 +201,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
 - **Rangée du haut** : ✕, ≡ (collé à ✕), 🚨 Sortie d'urgence, ❓ aide, ⚙️ (tuile : suivi / libre, 🦅, ⛏️ hauteur,
   rendu, boussole) ; pastille 🧭 / 🕹️ du mode en haut à gauche ; Échap
   ferme d'abord un réglage, une fiche ou une fenêtre ouverts ; focus dans la vue, rendu au bouton à la fermeture.
-- **Guidage** (QCM du 02/11/2026) : l'itinéraire en tirets bordés de sombre (étapes : mât ; arrivée : 🏁), au niveau de
+- **Guidage** (QCM du 02/11/2026) : l'itinéraire en ruban plein bordé de sombre, chevrons de sens (étapes : mât ; arrivée : 🏁), au niveau de
   chacun de ses points, redessiné dès qu'il
   change (tracé depuis 🚨 pendant la vue compris) ; bandeau compact sous la rangée du haut (consigne réelle en suivi,
   aperçu marqué en libre) ; chevrons dorés au sol vers la prochaine consigne.
@@ -248,8 +248,8 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   (`_hachurer`, une bande sombre tous les 0,6 m, en coordonnées monde) ; types perso = aplat au sol. Remblais,
   effondrement et inaccessible arrêtent le pas dans les trois rendus, en tube comme en chambre (décision de KARMA ;
   l'inaccessible par la seule constante `galerieEmprise.js > INACCESSIBLE_BOUCHE`), en 3D seulement.
-- **Tracés** : rubans de 0,25 m à 3 cm du sol ; **itinéraire** : tirets de 1,2 m tous les 1,8 m, ruban de 0,35 m à
-  `--kta-interaction` sur un liseré `--kta-fond` de 4 cm de chaque côté, à 5 cm du sol, non éclairés et sans
+- **Tracés** : rubans de 0,25 m à 3 cm du sol ; **itinéraire** : ruban plein de 0,3 m à `--kta-interaction` sur un liseré
+  `--kta-fond` de 4 cm de chaque côté, chevrons de sens `--kta-fond` tous les 2 m, à 5 cm du sol, non éclairés et sans
   compression de tons (lisibles hors du faisceau, le brouillard les éteint au loin) ; disque et mât de 0,6 m à chaque
   étape, panneau 🏁 à l'arrivée. **Ronds d'intersection** (option de la carte) : disques de 0,35 m de rayon à 4 cm,
   la liste de la carte (`getRoadIntersections`), niveau affiché.

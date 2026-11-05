@@ -667,7 +667,7 @@ Dónde y cómo se dibuja un paso:
 - Tracker detenido: **¿Desde dónde sales?** propone primero **Aquí** (el tracker se recoloca donde estás en 3D y la ruta sale de ahí; como al cerrar, este salto no cuenta como salida de campo).
 - **Mi última posición** o **Recolocarme**: la 3D te lleva donde queda el tracker (posición y nivel).
 - **📍 Estoy aquí** en la ficha de un punto recoloca el tracker en el mapa, pero la 3D se queda donde estás. En seguimiento, pasa entonces a **libre** (un mensaje lo indica): el botón del seguimiento la devuelve al tracker.
-- **Ruta**: dibujada en el suelo en **trazos azules bordeados de oscuro**, como en el mapa, con un **mástil** en cada etapa y un cartel **🏁** a la llegada, nivel por nivel.
+- **Ruta**: dibujada en el suelo como una **franja azul bordeada de oscuro**, con **chevrones** que indican el sentido, con un **mástil** en cada etapa y un cartel **🏁** a la llegada, nivel por nivel.
 - Donde cruza un **relleno** o un **derrumbe**, sube por su cara y pasa **por encima** (chevrones y etapas también), sin que cambie la ruta del mapa.
 - La vista la vuelve a dibujar en cuanto cambia (trazada desde 🚨 durante la vista 3D incluida).
 - **Guiado**: una **banda** bajo la fila de botones da la misma indicación que en el mapa (« En ~20 m, gira a la derecha »). **Chevrones dorados** en el suelo muestran el camino hasta la próxima maniobra.

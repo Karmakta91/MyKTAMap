@@ -667,7 +667,7 @@ Where and how a way through is drawn:
 - Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there; as when closing, this jump does not count as a field outing).
 - **My last position** or **Set my position**: the 3D view takes you where the tracker is put (position and level).
 - **📍 I am here** in a point's card realigns the tracker on the map, but the 3D view stays where you are. In follow mode it then switches to **free** mode (a message says so): the follow button brings it back to the tracker.
-- **Route**: drawn on the ground in **blue dashes edged in dark**, as on the map, with a **post** at each stop and a **🏁** sign at the end, level by level.
+- **Route**: drawn on the ground as a **blue strip edged in dark**, with **chevrons** showing the way, with a **post** at each stop and a **🏁** sign at the end, level by level.
 - Where it crosses **backfill** or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same.
 - The view redraws it as soon as it changes (drawn from 🚨 during the 3D view included).
 - **Guidance**: a **banner** under the row of buttons gives the same instruction as on the map ("In ~20 m, turn right"). **Golden chevrons** on the ground show the way to the next manoeuvre.

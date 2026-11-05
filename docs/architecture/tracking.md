@@ -1891,10 +1891,16 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 
 ### Guidage, fiche d'un POI et « Y aller » (QCM du 02/11/2026)
 
-- **Itinéraire** (décision produit) : tirets de 1,2 m tous les 1,8 m (`ITI`, le « 12 6 » de la carte), ruban de 0,35 m
-  à `--kta-interaction` sur un liseré `--kta-fond` de 4 cm par bord (`_rubanIti`, jetons du thème sombre,
-  `_couleursIti`), matériau `iti` non éclairé et sans compression de tons ; phase prise sur l'abscisse du trajet
-  (`abscisses` de chaque morceau) : les tirets se suivent d'un segment et d'une tuile à l'autre. ⚠️ contrat (décision
+- **Itinéraire** (décision produit) : ruban **plein** continu de 0,3 m (`LARGEUR_ITI`) à `--kta-interaction` (la
+  couleur de l'itinéraire de la carte ; le doré reste aux itinéraires publiés par l'équipe) sur un liseré `--kta-fond`
+  de 4 cm par bord, gardé parce que le sol est clair (grain calcaire, plan au sol) et que le ruban passe sur le liseré
+  vert d'un tracé ; **chevrons « ^ » de sens** `--kta-fond` (9,3:1 sur le ruban) tous les `ITI.pas` = 2 m à partir
+  de 1 m, pointe vers l'arrivée, branches de 0,26 m sur 6 cm (`_chevronIti`) : le dessin du trajet du jeu
+  (`addons/mkmg`), à la couleur de l'app, sans code partagé. Chaque segment est prolongé d'une demi-largeur à ses bouts
+  (coudes fermés). `_rubanIti`, jetons du thème sombre (`_couleursIti`), matériau `iti` non éclairé et sans compression
+  de tons ; chevrons posés sur l'abscisse du trajet (`abscisses` de chaque morceau, comptée aussi sur les tronçons d'un
+  autre niveau, qui n'en portent aucun) : ils ne glissent pas et se suivent d'un segment et d'une tuile à l'autre. Ils
+  tombent entre les chevrons dorés du guidage (`_majChevrons`, à 0, 2, 4 m…), plus grands et au-dessus. ⚠️ contrat (décision
   produit) : sur un remblais ou un effondrement dessiné (`ITI_SUR`, zones montrées du niveau, `_volumesIti` à chaque
   `_reindexer`), ruban, liseré, chevrons et marqueurs d'étape sont posés sur le dessus du volume (`_dessusIti`,
   HAUTEUR_REMBLAIS de la hauteur) à leur hauteur propre ; chaque segment est coupé aux faces (`_morceauxIti`) et une
@@ -2153,8 +2159,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   retirés, toucher d'un panneau de membre ou de repère n'ouvre aucune fiche. Côtés (§ 15) : pilier à 2 m à droite et
   front de 10 m à droite → paroi gauche gardée, droite ouverte, un pan de retour à chaque bout du bord à la face,
   aucune fente (rayons tous les 10 cm) ; piliers des deux côtés → chambre ; pilier dans l'axe → bout ouvert ; on bute
-  à gauche sur la paroi, à droite sur le pilier. Itinéraire (§ 16) : 0,35 m, liseré 0,43 m, tirets de 1,2 m (17 sur
-  30 m), couleurs des jetons, mât d'étape, 🏁. Ronds (§ 17) : aucun option coupée, ceux de la carte au niveau affiché
+  à gauche sur la paroi, à droite sur le pilier. Itinéraire (§ 16) : ruban plein de 0,3 m (3 bandes, 30,9 m pour
+  30 m), liseré 0,38 m, 15 chevrons de sens sur 30 m (de 1 à 29 m), couleurs des jetons, mât d'étape, 🏁 ; sur deux
+  niveaux, 5 chevrons sur les 10 m du niveau affiché et rien sur le tronçon de l'autre. Ronds (§ 17) : aucun option coupée, ceux de la carte au niveau affiché
   et à leur couleur option cochée. Joystick (§ 18, pointeurs tactiles synthétiques, pointeur grossier simulé) :
   pavé au PC et avec l'option, joystick sinon ; zone sous la rangée et au-dessus de la boussole, anneau sous le doigt,
   toucher bref sans quitter le suivi, libre en sortant de la zone morte, 1,4 puis 2,8 m/s, course à 7 m/s, pas de

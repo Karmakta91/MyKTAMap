@@ -22,7 +22,7 @@
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
 // STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire
-// (tirets, étapes, 🏁), ronds d'intersection de la carte, POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
+// (ruban plein, chevrons de sens, étapes, 🏁), ronds d'intersection de la carte, POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
 // (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau, passages en
 // volume (_construireVolume) comme les accès de surface sans passage (puits fermés, comblés, bouché, d'extraction,
 // bassin, cavage : _volumeAcces), changement de niveau derrière un fondu (_lancerGeste). Tuiles autour de soi, lampe
@@ -107,11 +107,14 @@
   const EPAISSEUR_MUR_LIGNE = 0.4;  // m
   const EPAISSEUR_FRONT = 0.3;      // m
   const LARGEUR_TRACE = 0.25;       // m
-  // Itinéraire au sol (décision produit) : ruban de LARGEUR_ITI à --kta-interaction, liseré sombre (--kta-fond) de
-  // ITI.lisere sur chaque bord, en tirets ITI.tiret / ITI.vide comme la 2D (dashArray « 12 6 » à l'échelle),
-  // posés à des abscisses fixes du trajet (ils ne glissent pas). Non éclairé : lisible hors du faisceau.
-  const LARGEUR_ITI = 0.35;         // m
-  const ITI = { lisere: 0.04, tiret: 1.2, vide: 0.6, y: 0.05 };
+  // Itinéraire au sol (décision produit) : le dessin du trajet du jeu (addons/mkmg), à la couleur de l'itinéraire de
+  // la carte (--kta-interaction ; le doré reste aux itinéraires publiés par l'équipe). Ruban PLEIN continu de
+  // LARGEUR_ITI, liseré sombre (--kta-fond) de ITI.lisere sur chaque bord (le sol peut être clair : grain calcaire,
+  // plan au sol, liseré vert d'un tracé dessous), chevrons « ^ » de sens --kta-fond (9,3:1 sur le ruban) tous les
+  // ITI.pas m à partir de ITI.pas / 2, pointe vers l'arrivée, branches de ITI.chevron sur ITI.ep, ITI.dy au-dessus du
+  // ruban. Posés à des abscisses fixes du trajet (ils ne glissent pas). Non éclairé : lisible hors du faisceau.
+  const LARGEUR_ITI = 0.3;          // m
+  const ITI = { lisere: 0.04, y: 0.05, pas: 2, chevron: 0.26, ep: 0.06, dy: 0.008 };
   // Marqueurs de l'itinéraire : disque et mât à chaque étape, 🏁 en panneau à l'arrivée (m).
   const MARQUEUR = { rayon: 0.25, mat: 0.6, epMat: 0.03, y: 0.055 };
   // Ronds d'intersection (option de la carte) : disque à la couleur du rond 2D, au-dessus des rubans des tracés.
@@ -409,8 +412,8 @@
   // coupe. `sessionRoads` : tracés de la session sans les aperçus.
   // 🩸 L'itinéraire est UN tracé dont chaque point porte son niveau (pathfinder.js) : il est découpé en morceaux
   // du niveau affiché, sinon un itinéraire au −1 (tracé sans `level` = 0) disparaissait tout entier.
-  // Chaque morceau garde l'abscisse (px, depuis le début du trajet) de ses points : tirets continus d'un morceau
-  // et d'une tuile à l'autre.
+  // Chaque morceau garde l'abscisse (px, depuis le début du trajet, tronçons des autres niveaux compris) de ses
+  // points : chevrons de sens réguliers d'un morceau et d'une tuile à l'autre.
   function _itiDuNiveau(sessionRoads, niveau) {
     const itiDuNiveau = [];
     if (!_permisGreffe("itineraire")) return itiDuNiveau;
@@ -789,39 +792,48 @@
     lot.quad([ax + nx, y, az + nz], [bx + nx, y, bz + nz], [bx - nx, y, bz - nz], [ax - nx, y, az - nz], [0, 1, 0], col);
   }
 
-  // Segment d'itinéraire { a, b (px), s0 (abscisse de a, px) } en tirets (ITI) : chaque tiret est une bande claire
-  // posée sur une bande sombre plus large et plus longue de ITI.lisere (le liseré). Phase prise sur l'abscisse du
-  // trajet : les tirets se suivent d'un segment et d'une tuile à l'autre.
-  // Par-dessus un remblais ou un effondrement (_morceauxIti), chaque morceau du tiret est posé sur le dessus du
-  // volume, et une contremarche monte (descend) le long de la face franchie.
+  // Segment d'itinéraire { a, b (px), s0 (abscisse de a, px) } : bande claire pleine posée sur une bande sombre plus
+  // large de 2 × ITI.lisere (le liseré), prolongées d'une demi-largeur aux bouts du segment (coude fermé), puis les
+  // chevrons de sens dont l'abscisse tombe dans [s0, s0 + longueur[ (un raccord n'en porte qu'un).
+  // Par-dessus un remblais ou un effondrement (_morceauxIti), chaque morceau est posé sur le dessus du volume (sans
+  // prolongement contre une face), et une contremarche monte (descend) le long de la face franchie.
   function _rubanIti(lot, r) {
     const e = _e, sc = e.sc, ax = r.a.x / sc, az = r.a.y / sc, bx = r.b.x / sc, bz = r.b.y / sc;
-    const L = Math.hypot(bx - ax, bz - az), s0 = (r.s0 || 0) / sc, P = ITI.tiret + ITI.vide;
+    const L = Math.hypot(bx - ax, bz - az), s0 = (r.s0 || 0) / sc, P = ITI.pas;
     if (L < 1e-6) return;
-    const ux = (bx - ax) / L, uz = (bz - az) / L, cols = _couleursIti(), m = ITI.lisere;
+    const ux = (bx - ax) / L, uz = (bz - az) / L, cols = _couleursIti(), m = ITI.lisere, w = LARGEUR_ITI / 2;
     const mc = _morceauxIti(ax, az, ux, uz, L);
-    for (let k = Math.floor(s0 / P); k * P < s0 + L; k++) {
-      const D0 = k * P - s0, D1 = D0 + ITI.tiret, d0 = Math.max(D0, 0), d1 = Math.min(D1, L);
-      if (d1 - d0 < 0.01) continue;
-      for (let i = 0; i < mc.length; i++) {
-        const q0 = Math.max(d0, mc[i].d0), q1 = Math.min(d1, mc[i].d1), h = mc[i].h;
-        if (q1 - q0 > 1e-4) {
-          // Liseré prolongé de m aux bouts du tiret seulement (ni au raccord de deux segments, ni contre une face).
-          const m0 = q0 === D0 ? m : 0, m1 = q1 === D1 ? m : 0;
-          _bande(lot, ax + ux * (q0 - m0), az + uz * (q0 - m0), ax + ux * (q1 + m1), az + uz * (q1 + m1),
-            LARGEUR_ITI + 2 * m, h + ITI.y - 0.005, cols.lisere);
-          _bande(lot, ax + ux * q0, az + uz * q0, ax + ux * q1, az + uz * q1, LARGEUR_ITI, h + ITI.y, cols.ruban);
-        }
-        if (i > 0 && mc[i].h !== mc[i - 1].h && mc[i].d0 > d0 && mc[i].d0 < d1) {
-          _contremarche(lot, ax + ux * mc[i].d0, az + uz * mc[i].d0, ux, uz, mc[i].face, mc[i - 1].h, mc[i].h, cols);
-        }
+    for (let i = 0; i < mc.length; i++) {
+      const h = mc[i].h, e0 = i === 0 ? w : 0, e1 = i === mc.length - 1 ? w : 0;
+      const q0 = mc[i].d0 - e0, q1 = mc[i].d1 + e1, m0 = e0 ? m : 0, m1 = e1 ? m : 0;
+      _bande(lot, ax + ux * (q0 - m0), az + uz * (q0 - m0), ax + ux * (q1 + m1), az + uz * (q1 + m1),
+        LARGEUR_ITI + 2 * m, h + ITI.y - 0.005, cols.lisere);
+      _bande(lot, ax + ux * q0, az + uz * q0, ax + ux * q1, az + uz * q1, LARGEUR_ITI, h + ITI.y, cols.ruban);
+      if (i > 0 && mc[i].h !== mc[i - 1].h) {
+        _contremarche(lot, ax + ux * mc[i].d0, az + uz * mc[i].d0, ux, uz, mc[i].face, mc[i - 1].h, mc[i].h, cols);
       }
-      if (D0 >= 0) e.itiTirets++;
+    }
+    for (let k = Math.ceil((s0 - P / 2) / P); P / 2 + k * P < s0 + L; k++) {
+      const d = Math.max(0, P / 2 + k * P - s0), cx = ax + ux * d, cz = az + uz * d;
+      _chevronIti(lot, cx, cz, ux, uz, _dessusIti(cx, cz) + ITI.y + ITI.dy, cols.lisere);
+      e.itiChevrons++;
     }
   }
 
+  // Chevron « ^ » de sens au sol en (cx, cz) m, pointe dans le sens (ux, uz) : deux branches, un quadrilatère chacune.
+  // ⚠️ contrat : ses deux quadrilatères se suivent dans le lot (_mesureIti les lit par paire).
+  function _chevronIti(lot, cx, cz, ux, uz, y, col) {
+    const l = ITI.chevron, ep = ITI.ep, nx = -uz, nz = ux, px = cx + ux * l / 2, pz = cz + uz * l / 2;
+    [-1, 1].forEach(function (cote) {
+      const qx = cx - ux * l / 2 + cote * nx * l / 2, qz = cz - uz * l / 2 + cote * nz * l / 2;
+      const bx = qx - px, bz = qz - pz, bl = Math.hypot(bx, bz), ox = -bz / bl * ep / 2, oz = bx / bl * ep / 2;
+      lot.quad([px + ox, y, pz + oz], [qx + ox, y, qz + oz], [qx - ox, y, qz - oz], [px - ox, y, pz - oz], [0, 1, 0],
+        col);
+    });
+  }
+
   // ── Itinéraire par-dessus les volumes (remblais, effondrement) ────────────────────────────────────────
-  // ⚠️ contrat : ruban, tirets, chevrons et marqueurs de l'itinéraire passent PAR-DESSUS un remblais ou un
+  // ⚠️ contrat : ruban, chevrons (de sens et de guidage) et marqueurs de l'itinéraire passent PAR-DESSUS un remblais ou un
   // effondrement dessiné (zones montrées du niveau, _collecter) : posés sur son dessus (HAUTEUR_REMBLAIS de la
   // hauteur) à leur hauteur propre, une contremarche verticale à ITI_FACE devant la face là où le trajet y entre et en
   // sort (ni ruban dans le volume, ni rampe en l'air). Le tracé 2D ne change pas ; les rubans des tracés restent au sol.
@@ -911,7 +923,7 @@
   }
 
   // Couleurs de l'itinéraire, jetons du thème sombre (la scène est noire dans les deux thèmes) : ruban
-  // --kta-interaction, liseré --kta-fond.
+  // --kta-interaction, liseré et chevrons de sens --kta-fond.
   function _couleursIti() {
     const e = _e;
     if (e.itiCouleurs) return e.itiCouleurs;
@@ -1040,7 +1052,7 @@
     _e.sale = true;
   }
 
-  // Tuile de l'itinéraire seul (_poserTuilesIti) : ses tirets, même matériau et même ordre que dans une tuile du plan.
+  // Tuile de l'itinéraire seul (_poserTuilesIti) : son ruban et ses chevrons, même matériau et même ordre que dans une tuile du plan.
   function _construireTuileIti(t) {
     const lumineux = new Lot(), groupe = new THREE.Group();
     for (let i = 0; i < t.r.length; i++) { _compter(_e.rubans, t.r[i].type); _rubanIti(lumineux, t.r[i]); }
@@ -1080,7 +1092,7 @@
     const iti = _itiDuNiveau(sessionRoads, e.niveau);
     if (e.compte) e.compte.roads += iti.length - e.compteIti;
     delete e.rubans.itinerary;
-    e.itiTirets = 0;
+    e.itiChevrons = 0;
     _poserTuilesIti(iti);
     _gererTuiles(true);
     _majMarqueursIti();
@@ -2643,7 +2655,7 @@
   function _razCompteurs() {
     const e = _e;
     e.poiMasques = 0; e.zonesDecoupees = {}; e.rideaux = []; e.facesRemblais = 0; e.facesEboulis = 0; e.rubans = {};
-    e.liseres = {}; e.zonesTube = 0; e.poiTube = 0; e.halos = 0; e.itiTirets = 0;
+    e.liseres = {}; e.zonesTube = 0; e.poiTube = 0; e.halos = 0; e.itiChevrons = 0;
   }
 
   // Tuiles refaites sur place (hauteur, affichage) : même index, position, cap, niveau et rendu gardés.
@@ -7599,7 +7611,7 @@
         publicationDite: false, libreBouge: false,
         commandes: _commandesVoulues(o.commandes), stick: null,
         recalcul: { enCours: false, depuis: 0, dernier: null, n: 0, echecs: 0, ms: null, raison: null },
-        stickLibres: 0, toucheNom: null, itiTirets: 0, nbMarqueurs: { etapes: 0, arrivee: false }, listeRonds: [],
+        stickLibres: 0, toucheNom: null, itiChevrons: 0, nbMarqueurs: { etapes: 0, arrivee: false }, listeRonds: [],
         rondsChange: false, greffe: null, codeBas: { n: 0, t0: 0 }, codesBas: 0,
         retourFocus: o.retourFocus || document.activeElement || null,
         attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
@@ -7986,7 +7998,8 @@
         indic: e.indicMode ? e.indicMode.textContent : "", boussole: !!e.boussole && !e.boussole.hidden,
         guidage: _guidageMontre() },
       itineraire: Object.assign({ largeurVoulue: LARGEUR_ITI, lisereVoulu: ITI.lisere, couleur: _couleursIti().hexRuban,
-        couleurLisere: _couleursIti().hexLisere, tirets: e.itiTirets }, e.nbMarqueurs, _mesureIti(!!(o && o.profilIti))),
+        couleurLisere: _couleursIti().hexLisere, couleurChevrons: _couleursIti().hexLisere, chevrons: e.itiChevrons },
+      e.nbMarqueurs, _mesureIti(!!(o && o.profilIti))),
       ronds: e.listeRonds.map(function (r) { return Object.assign({}, r); }),
       triangles: info.render.triangles, appels: info.render.calls,
       geometries: info.memory.geometries, textures: info.memory.textures,
@@ -8005,10 +8018,12 @@
       libres: e.stickLibres };
   }
 
-  // Ruban de l'itinéraire tel que construit (checkup) : largeur médiane des tirets (bande claire) et du liseré
-  // (bande sombre), longueur médiane d'un tiret, en m, lues dans la géométrie des tuiles construites.
+  // Ruban de l'itinéraire tel que construit (checkup), lu dans la géométrie des tuiles construites (m) : largeur
+  // médiane de la bande claire et du liseré, nombre de bandes claires et leur longueur totale, chevrons de sens
+  // (nombre, centres [x, z], composante de la pointe sur +x du premier). Hauteur des bandes : sol seulement.
   function _mesureIti(profil) {
-    const ruban = [], lisere = [], longueurs = [];
+    const ruban = [], lisere = [], chev = [], centres = [];
+    let bandes = 0, longueur = 0, pointeX = null;
     _e.tuiles.forEach(function (t) {
       if (!t.obj) return;
       t.obj.children.forEach(function (m) {
@@ -8016,10 +8031,22 @@
         const p = m.geometry.attributes.position.array;
         for (let q = 0; q + 17 < p.length; q += 18) {
           const d = function (i, j) { return Math.hypot(p[q + 3 * i] - p[q + 3 * j], p[q + 3 * i + 2] - p[q + 3 * j + 2]); };
-          const l = [d(0, 1), d(1, 2), d(0, 2)].sort(function (a, b) { return a - b; });
-          (Math.abs(p[q + 1] - ITI.y) < 1e-4 ? ruban : lisere).push(l[0]);
-          if (Math.abs(p[q + 1] - ITI.y) < 1e-4) longueurs.push(l[1]);
+          const l = [d(0, 1), d(1, 2), d(0, 2)].sort(function (a, b) { return a - b; }), y = p[q + 1];
+          if (Math.abs(y - ITI.y - ITI.dy) < 1e-4) chev.push(q);
+          else if (Math.abs(y - ITI.y) < 1e-4) { ruban.push(l[0]); bandes++; longueur += l[1]; }
+          else if (Math.abs(y - ITI.y + 0.005) < 1e-4) lisere.push(l[0]);
         }
+        // Chevron = deux quadrilatères consécutifs : centre = moyenne de leurs 12 sommets ; pointe = sommet commun.
+        for (let k = 0; k + 1 < chev.length; k += 2) {
+          let x = 0, z = 0;
+          for (let i = 0; i < 6; i++) {
+            x += (p[chev[k] + 3 * i] + p[chev[k + 1] + 3 * i]) / 12;
+            z += (p[chev[k] + 3 * i + 2] + p[chev[k + 1] + 3 * i + 2]) / 12;
+          }
+          if (pointeX === null) pointeX = +((p[chev[k]] + p[chev[k + 1]]) / 2 - x).toFixed(3);
+          centres.push([+x.toFixed(3), +z.toFixed(3)]);
+        }
+        chev.length = 0;
       });
     });
     const med = function (t) {
@@ -8027,8 +8054,8 @@
       t.sort(function (a, b) { return a - b; });
       return +t[t.length >> 1].toFixed(3);
     };
-    return Object.assign({ ruban: med(ruban), lisere: med(lisere), longueurTiret: med(longueurs) },
-      profil ? _profilIti() : null);
+    return Object.assign({ ruban: med(ruban), lisere: med(lisere), bandes: bandes, longueurRuban: +longueur.toFixed(3),
+      chevronsGeo: centres.length, chevronsXZ: centres, pointeX: pointeX }, profil ? _profilIti() : null);
   }
 
   // Profil de l'itinéraire construit (checkup : par-dessus les volumes) : un quadrilatère par entrée

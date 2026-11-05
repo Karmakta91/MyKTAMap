@@ -667,7 +667,7 @@ Où et comment un passage se dessine :
 - Tracker arrêté : **D'où pars-tu ?** propose d'abord **Ici** (le tracker est recalé là où tu es en 3D, puis l'itinéraire en part ; comme à la fermeture, ce saut ne compte pas comme une sortie terrain).
 - **Ma dernière position** ou **Me repositionner** : la 3D te place là où le tracker est mis (position et niveau).
 - **📍 Je suis ici** dans la fiche d'un point recale le tracker sur la carte, mais la 3D reste où tu es. En suivi, elle passe alors en **libre** (un message le dit) : le bouton du suivi la ramène au tracker.
-- **Itinéraire** : dessiné au sol en **tirets bleus bordés de sombre**, comme sur la carte, avec un **mât** à chaque étape et un panneau **🏁** à l'arrivée, niveau par niveau.
+- **Itinéraire** : dessiné au sol en **ruban bleu bordé de sombre**, avec des **chevrons** qui montrent le sens, avec un **mât** à chaque étape et un panneau **🏁** à l'arrivée, niveau par niveau.
 - Là où il traverse un **remblais** ou un **effondrement**, il monte le long de sa face et passe **par-dessus** (chevrons et étapes aussi), sans que le tracé de la carte change.
 - La vue le redessine dès qu'il change (tracé depuis 🚨 pendant la 3D compris).
 - **Guidage** : un **bandeau** sous la rangée de boutons donne la même consigne que sur la carte (« Dans ~20 m, tourner à droite »). Des **chevrons dorés** au sol montrent le chemin jusqu'à la prochaine manœuvre.
