@@ -148,10 +148,21 @@
   jaune et marqué d'un carré jaune ; la 3D pose la forme là. Toutes les icônes ; chatière : point de début et de fin.
   `qui: Claude · action: topo puis QCM (format du point, 2D, 3D, export, itinéraire) · depuis: 05/11/2026 · taille: M`
 
-- **🗺️ Plan au sol hors du niveau 0** — caché aux autres niveaux (`vue3d.js > _planSolPermis`). Question à KARMA :
-  le montrer à tous les niveaux (une seule image par plan ?) ou le griser avec un message.
-  `qui: KARMA · action: dire a (tous niveaux) ou b (grisé), et si ses plans ont une image par niveau · depuis: 04/11/2026
-  · taille: XS`
+- **Essai sur dev : lots du 05/11 sur téléphone** — prouvés en émulation seulement : ＋ / 🗑️ des sommets (2D, 3D),
+  gestes 3D à deux doigts, colonne d'outils en paysage, plan au sol d'un plan transparent, ruban d'itinéraire 3D,
+  « Hors du plan » en 3D, et un 1er « 🔗 Raccorder » sur un tracé de CALQUE (chemin jamais testé automatiquement).
+  `qui: KARMA · action: après /killsw.html, jouer ces gestes sur iPhone et au PC · fini: vus conformes, ou bugs ouverts
+  · depuis: 05/11/2026 · taille: S`
+- **Seuils des jonctions en mètres** — règle stricte en px plan (bouts 15 px, sommets intérieurs 3 px) : sur un plan
+  détaillé, un écart de moins d'un mètre coupe le réseau. Piste : intérieurs à 1 m (plancher 3 px), bouts à 3 m
+  (plancher 8 px). Deux plans réels testés sont bien raccordés : on attend les essais de KARMA.
+  `qui: KARMA · action: dire si des plans restent coupés après « Raccords à vérifier » · fini: décision prise
+  · depuis: 05/11/2026 · taille: S`
+- **Jonctions qui traversent un mur dessiné** — ✅ vu 05/11 (code) : les liens de jonction imparfaite
+  (pathfinder.js > _enrichirGrapheAvecCroisements) ne testent ni les murs en ligne ni les zones inaccessibles, qui
+  ne bloquent que le long des tracés.
+  `qui: Claude · action: refuser un lien qui croise un obstacle dur, checkup · fini: lien coupé par un mur ligne
+  fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
 
 - **Cap jamais lu si requestPermission répond « prompt »** — ✅ vu 04/11 (lot rotation-manuelle) : la Chromium du
   harnais répond « prompt » à DeviceMotionEvent.requestPermission() : aucun écouteur d'orientation
