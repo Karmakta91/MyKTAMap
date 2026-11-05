@@ -432,6 +432,13 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.resolHint")}</span>
               </span>
             </button>
+            ${planAffiche && window.KtaRaccords ? `<button class="kta-tbl-source-card" id="kta-tbl-src-raccords">
+              <span class="kta-tbl-source-ico">🔗</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.raccords"))}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.raccordsHint")}</span>
+              </span>
+            </button>` : ""}
             <!-- 🧹 v1.77.0 (demande KARMA, suite au bug clic-carte multiplié) :
                  nettoyage des sommets dupliqués accumulés dans les fichiers. -->
             <button class="kta-tbl-source-card" id="kta-tbl-src-dedup">
@@ -456,6 +463,9 @@
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
     document.getElementById("kta-tbl-src-resol").addEventListener("click", function() { fermer(); window.ktaOuvrirRecalageScan(); });
     document.getElementById("kta-tbl-src-dedup").addEventListener("click", _ouvrirDedup);
+    // 🔗 Raccords à vérifier : outil à part (js/raccordsTraces.js), sur le plan affiché seulement.
+    var btnRacc = document.getElementById("kta-tbl-src-raccords");
+    if (btnRacc) btnRacc.addEventListener("click", function() { fermer(); window.KtaRaccords.ouvrir(); });
     // Fusion et conversion : onglets de la modale d'export de session, ouverts en solo.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
       fermer();

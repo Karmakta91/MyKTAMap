@@ -20680,6 +20680,37 @@ button.kta-cfg-ligne-action {
 .kta-ajuster-apercu { stroke: var(--kta-accent); fill: none; }
 .kta-ajuster-poignee { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.35; }
 .kta-ajuster-poignee-attente { fill-opacity: 0; stroke-dasharray: 4 3; }
+/* 🔗 Raccords à vérifier (js/raccordsTraces.js) : liste, bandeau de revue, deux points entourés sur la carte. */
+.kta-racc-boite { max-width: 480px; width: auto; height: auto; max-height: 90vh; max-height: 90dvh; }
+.kta-racc-corps { font-size: 13px; }
+.kta-racc-note { color: var(--kta-texte-3); margin: 0 0 10px; line-height: 1.5; font-size: 12px; }
+.kta-racc-vide { color: var(--kta-texte-2); margin: 8px 0; }
+.kta-racc-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.kta-racc-ligne {
+  display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 8px 10px; min-height: 40px;
+  background: var(--kta-surface); color: var(--kta-texte); border: 1px solid var(--kta-bordure);
+  border-radius: 8px; cursor: pointer; font: inherit; text-align: left;
+}
+.kta-racc-ligne:hover, .kta-racc-ligne:focus-visible { border-color: var(--kta-interaction); }
+.kta-racc-ligne-ecart { color: var(--kta-accent-texte); font-variant-numeric: tabular-nums; }
+.kta-racc-pied { margin-top: 12px; }
+/* Même allure que .kta-iti-floater, sans sa classe : celle-ci arme le mode « clic carte » (utils.js >
+   _modeClicCarteActif), et la revue laisse la carte et ses fiches libres. */
+.kta-racc-bandeau {
+  position: fixed; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  z-index: 100000;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px;
+  width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 10px 12px;
+  background: var(--kta-surface); color: var(--kta-texte-2); font-size: 13px;
+  border: 1px solid var(--kta-bordure); border-left: 3px solid var(--kta-accent); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+.kta-racc-bandeau .kta-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
+.kta-racc-nav, .kta-racc-actions { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.kta-racc-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
+.kta-racc-info { flex: 1 1 140px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
+.kta-racc-ecart { stroke: var(--kta-accent); fill: none; }
+.kta-racc-cercle { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.2; }
 /* Sommets de la mesure 📐 (measure.js > _majSommetsMesure) : rond doré plein, liseré sombre, lisible sur le plan. */
 .kta-mesure-sommet { fill: var(--kta-accent); fill-opacity: 1; stroke: var(--kta-sur-accent); }
 .kta-ajuster-menu { background: none; border: 0; }

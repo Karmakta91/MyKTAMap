@@ -435,6 +435,7 @@ const ASSETS_TO_CACHE = [
   "./js/importMasse.js",
   "./js/tableEditor.js",
   "./js/recalageScan.js",
+  "./js/raccordsTraces.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
   "./js/vuePlan.js",

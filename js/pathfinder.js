@@ -11,7 +11,8 @@
 // getAllEmbeddedRoads()), waypoints calés orthogonalement sur le segment le plus proche.
 // Expose window.Pathfinder : computeRoute (async, 2 passes), computeRouteOnRoads (sync, réseau fourni),
 //   computeReachable (isochrone du Mode Perdu), buildNetworkGraph / snapPointToGraph (roadGraph.js),
-//   resolvePointById, aDesTraces, carrefoursSurChemin, nbObstaclesDurs. Et window.getAvoidableZoneTypes.
+//   resolvePointById, aDesTraces, carrefoursSurChemin, nbObstaclesDurs, grapheDeTraces / collecterTraces
+//   (outil des raccords, raccordsTraces.js). Et window.getAvoidableZoneTypes.
 // ⚠️ Contraintes DURES : zones `inaccessible` et murs en ligne (`mur-ligne`), levées ensemble par
 //   `respecterInaccessibles: false` (case de la modale) ; aucune autre structure ne compte.
 // ⚠️ computeRoute → { path:[{x, y, level}], totalDistance, segmentCount, snappedPoints, raccords, carrefours }.
@@ -368,7 +369,8 @@
       // ["transit"] pour le milieu d'une jonction. Décide des connexions à l'enrichissement.
       nodeLevels: [],   // nodeLevels[i] = Set<number|"transit">
       bouts:      new Set(),  // 1er et dernier sommets des tracés : seuls candidats aux jonctions imparfaites
-      traces:     []          // traces[i] = indices des tracés qui passent par le nœud i (sommets intérieurs voisins)
+      traces:     [],         // traces[i] = indices des tracés qui passent par le nœud i (sommets intérieurs voisins)
+      noeudsTrace: []         // noeudsTrace[r][k] = nœud du k-ième sommet du tracé r (raccordsTraces.js)
     };
   }
 
@@ -513,6 +515,7 @@
       const partsDeniv = isJonction ? _partsDenivJonction(road.points) : null;
 
       let prevIdx = _getOrAddNode(graph, road.points[0].x, road.points[0].y, isJonction ? fromLvl : segLevel);
+      const noeuds = graph.noeudsTrace[r] = [prevIdx];
       graph.bouts.add(prevIdx);
       _noterTrace(graph, prevIdx, r);
       _ajouterNiveauNode(graph, prevIdx, isJonction ? fromLvl : segLevel);
@@ -528,6 +531,7 @@
         _ajouterNiveauNode(graph, idx, nodeLvl);
         if (isLast) graph.bouts.add(idx);
         _noterTrace(graph, idx, r);
+        noeuds.push(idx);
 
         // Segment exclu (nœud sans arête) si une zone inaccessible le traverse ou s'il croise un mur en ligne
         // (DUR, jamais relâché), ou si un point d'évitement est à moins de `avoidRadius` (SOUPLE, passe 2).
@@ -1729,10 +1733,15 @@
   // nav dit où l'utilisateur EST, un obstacle ne change pas la géométrie (opts.includeZones = true pour les
   // respecter).
   function buildNetworkGraph(opts) {
+    return _grapheDeTraces(_collecterToutesLesRoads(), opts);
+  }
+
+  // Même graphe sur une liste de tracés fournie : `graph.noeudsTrace[r]` se lit alors par l'indice r de CETTE liste
+  // (raccordsTraces.js > detecter : morceaux du réseau).
+  function _grapheDeTraces(allRoads, opts) {
     opts = opts || {};
     const allowedTypes = opts.allowedTypes || ["principal", "secondaire", "chemin"];
-    const allRoads = _collecterToutesLesRoads();
-    if (allRoads.length === 0) return _newGraph();
+    if (!allRoads || allRoads.length === 0) return _newGraph();
     const zonesInacc = opts.includeZones ? _collecterObstaclesDurs() : [];
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
     _enrichirGrapheAvecCroisements(graph);
@@ -1779,6 +1788,8 @@
     computeReachable:  computeReachable,
     resolvePointById:  resolvePointById,
     buildNetworkGraph: buildNetworkGraph,
+    grapheDeTraces:    _grapheDeTraces,
+    collecterTraces:   _collecterToutesLesRoads,
     snapPointToGraph:  snapPointToGraph,
     // Carrefours d'un chemin calculé ailleurs (parcours de balayage) : mêmes règles, même guidage.
     carrefoursSurChemin: function(graph, path, echelle) { return _carrefoursSurChemin(graph, path, echelle); }
