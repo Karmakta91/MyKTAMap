@@ -2447,9 +2447,25 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
   écrit au lâcher.
 - **Ajouter** : appui long au milieu d'un segment (segment de fermeture compris pour une forme fermée) ; le sommet
   naît là et se glisse aussitôt ; lâché sans bouger, il reste au milieu.
-- **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point (marqueur Leaflet, cible
-  de 44 px, contre-tourné sous le plan orienté, retiré seul après 6 s ou au premier toucher ailleurs). Sous le
-  minimum de la forme (2 sommets pour une ligne, 3 pour une surface), pas de 🗑️ : un toast le dit.
+- **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point, à côté de **＋**
+  (marqueur Leaflet, `htmlMenu` : deux cibles de 44 px dans `.kta-ajuster-boutons`, contre-tourné sous le plan orienté,
+  retiré seul après 6 s ou au premier toucher ailleurs). Sous le minimum de la forme (2 sommets pour une ligne, 3 pour
+  une surface), ＋ seul : un toast dit pourquoi pas de 🗑️.
+- **Insérer à la suite** (＋, QCM du 05/11/2026) : à partir du sommet X, chaque tap sur la carte insère un sommet
+  entre le dernier posé et X + 1 (le premier entre X et X + 1), la forme se redessine à chaque point. Forme fermée,
+  X dernier : X + 1 = le premier (point ajouté en fin de liste). Ligne, X dernier : la ligne se prolonge. Bandeau
+  `.kta-ajuster-bandeau` (allure de `.kta-racc-bandeau`, sur `body`, z-index 100000) « ＋ Insertion · N point(s) ·
+  ✓ Terminer » ; marques : rond doré au dernier posé, pointillé sur X + 1. Fin : ✓, Échap (`shortcuts.js >
+  _echapCarte`, après fenêtre, panneau et bulle), tap sur X + 1, droit perdu (outil armé, lecture seule : le tap suivant
+  ferme sans écrire), forme disparue.
+  - ⚠️ Un point = une écriture (même contrat que le geste, étiquette `ajouter`) ; **Ctrl+Z** retire un point à la fois,
+    pendant (le mode reste ouvert, N baisse, à 0 aussi) et après. N n'est pas compté : il se relit sur la forme
+    (longueur − longueur à l'ouverture), la forme retrouvée par son uid (type pour la mesure) à chaque tap, car une
+    annulation rend des copies. Raccourcie sous sa longueur d'ouverture : l'insertion se ferme.
+  - 🩸 Pendant l'insertion, `_modeClicCarteActif()` est vrai (`KtaAjusterSommets.insertionEnCours()`) : pas de bulle,
+    plan orienté remis droit comme pour un outil de dessin ; tout clic sur la carte est avalé en capture et devient un
+    point (sauf après un pan de plus de 6 px), le double-clic ne zoome pas, aucun appui long d'ajustement ne part. Les
+    boutons de barre restent cliquables ; armer un outil ferme l'insertion au tap suivant, qui va à l'outil.
 
 Familles : tracés, zones, structures (polygones et lignes), mesures 📐 (distance et surface). Pas les POI
 (« Repositionner »), pas l'itinéraire calculé. Chaque module expose sa **prise**
@@ -2492,7 +2508,8 @@ extension), hors objet en cours de tracé.
   porte aussi.
 - **Hors de la carte** (vue 3D, vue d'édition) : `KtaAjusterSommets.plan` = `{ saisir(x, y, tol, garder), forme(c),
   lacher(c, p, tol), supprimer(c), annule() }`, en coordonnées plan : mêmes familles, droits, minimum, aimantation
-  (`aimanter(…, tol)` : rayon déjà converti par l'appelant) et écriture ; l'appelant mène le geste et l'aperçu
+  (`aimanter(…, tol)` : rayon déjà converti par l'appelant) et écriture, plus `inserer(c)` / `poser(p, tolAimant,
+  tolFin)` pour l'insertion ; l'appelant mène le geste et l'aperçu
   (`tracking.md` § Vue 3D › Ajuster une forme en vue d'édition).
 - Souris (décision) : appui long aussi, pas de glisser direct : un glisser à la souris reste un pan de la carte.
 

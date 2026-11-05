@@ -6,13 +6,14 @@
 
 // ajusterSommets.js — ajuster la suite de points d'une forme déjà dessinée, sur la carte 2D. Appui long (APPUI_MS)
 // sur un sommet puis glisser : il se déplace ; au milieu d'un segment : un sommet naît là et se glisse aussitôt ;
-// sur un sommet sans bouger : 🗑️ au point (refusé sous le minimum de la forme, un toast le dit).
+// sur un sommet sans bouger : ＋ et 🗑️ au point (🗑️ refusé sous le minimum, un toast le dit) ; ＋ ouvre l'insertion
+// (_debuterInsertion : chaque tap insère un sommet après le dernier posé, jusqu'à ✓, Échap ou le sommet suivant).
 // Familles : prises `window.ktaFormesAjustables.<roads|zones|structures|mesure>` = { cat (HistoryManager, null =
 // hors historique, lu à chaque geste), objets() (modifiables ET visibles, hors objet en cours), ferme(o), minimum(o),
 // libelle(o), rendre(), aimanter?(x, y, o, exclus, tol?) → {x, y} | null, etiquette?(action, o) → libellé d'historique
 // } (road.js, zones.js, structures.js, measure.js). Outil 📐 seul armé : seule la mesure s'ajuste (_mesureSeule).
-// Expose : window.KtaAjusterSommets = { enCours(), etat(), annuler(), viser(), plan (vue 3D : _saisirPlan), APPUI_MS… }.
-// ⚠️ contrat : un geste = une écriture : captureState → mutation → KtaUid.touch → rendre() (un seul rendu, donc un
+// Expose : window.KtaAjusterSommets = { enCours(), etat(), annuler(), viser(), insertion*, plan (vue 3D), APPUI_MS… }.
+// ⚠️ contrat : un geste (un point inséré aussi) = une écriture : captureState → mutation → KtaUid.touch → rendre() (un
 // seul `kta:donneesPlanChange`) → record → SessionPersist.save. Pendant le glisser, rien n'est écrit : aperçu seul.
 // 🩸 Écoutes en CAPTURE sur window. Appui en attente puis glisser : pointermove / mousemove / touchmove avalés ; ni
 // le drag de Leaflet, ni le pan manuel, ni la rotation à deux doigts (mapBearing.js > _panSuivre, _rotPointerMove)
@@ -44,7 +45,12 @@ window.KtaAjusterSommets = (function () {
   // suit est avalé (sinon il pose un point de mesure ou ouvre une fiche). Oublié au pointerdown suivant.
   let _lacherAvale = null;
   let _menu = null;            // { marker, timer, c }
-  const _stats = { gestes: 0, ecritures: 0, annules: 0, refus: 0 };
+  // Insertion ouverte par ＋ : { a, f, cle, o, x (sommet de départ), L0 (sommets à l'ouverture), prolonge, ferme,
+  // bandeau, marques, down }. Le compte inséré se relit sur la forme (longueur − L0) : une annulation le fait baisser.
+  let _ins = null;
+  let _permisSoi = false;      // _permis en cours : l'insertion ne compte pas comme mode « clic carte » contre elle
+  const INSERE_PX = 4;         // tap à moins de ça du dernier point posé : rien (pas de sommet en double)
+  const _stats = { gestes: 0, ecritures: 0, annules: 0, refus: 0, inseres: 0 };
 
   function _t(k, p) { return window.I18n && typeof window.I18n.t === "function" ? window.I18n.t(k, p) : k; }
   function _now() { return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now(); }
@@ -61,7 +67,13 @@ window.KtaAjusterSommets = (function () {
 
   // Un outil, un picker ou une sélection armés passent avant (sauf l'outil 📐 pour ses propres sommets) ; lecture
   // seule : rien, en silence (l'appui long n'a rien demandé d'explicite).
+  // 🩸 L'insertion ouverte est elle-même un mode « clic carte » (utils.js > _modeClicCarteActif) : ignorée ici, sinon
+  // elle se refuserait ses propres points.
   function _permis() {
+    _permisSoi = true;
+    try { return _permisBrut(); } finally { _permisSoi = false; }
+  }
+  function _permisBrut() {
     if (!_map()) return false;
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true)) return false;
     if (_mesureSeule()) {
@@ -176,7 +188,7 @@ window.KtaAjusterSommets = (function () {
       : setTimeout(_majApercu, 16);
   }
 
-  // ── Menu 🗑️ au sommet ──
+  // ── Menu ＋ / 🗑️ au sommet ──
   function _fermerMenu() {
     if (!_menu) return;
     clearTimeout(_menu.timer);
@@ -185,20 +197,36 @@ window.KtaAjusterSommets = (function () {
   }
   function _dansMenu(t) { return !!(t && t.closest && t.closest(".kta-ajuster-menu")); }
 
-  function _ouvrirMenu(c) {
+  // Sous le minimum de la forme : ＋ seul (le toast dit pourquoi pas de 🗑️).
+  function _ouvrirMenu(c, sansSuppr) {
     _fermerMenu();
     const m = _map();
     if (!m) return;
-    const titre = _t("ajuster.supprimer");
     const icon = L.divIcon({
       className: "kta-ajuster-menu",
-      html: '<button type="button" class="kta-ajuster-suppr" aria-label="' + window.ktaEsc(titre) +
-        '" title="' + window.ktaEsc(titre) + '">🗑️</button>',
-      iconSize: [44, 44], iconAnchor: [22, 58]
+      html: htmlMenu(null, sansSuppr),
+      iconSize: [sansSuppr ? 44 : MENU_LARGE, 44], iconAnchor: [sansSuppr ? 22 : MENU_LARGE / 2, 58]
     });
     const marker = L.marker(_ll(c), { icon: icon, interactive: true, keyboard: false, zIndexOffset: 1000 }).addTo(m);
-    marker.on("click", function () { _fermerMenu(); _ecrire("supprimer", c, null); });
+    marker.on("click", function (ev) {
+      const t = ev.originalEvent && ev.originalEvent.target, b = t && t.closest && t.closest("button");
+      if (!b) return;
+      _fermerMenu();
+      if (b.classList.contains("kta-ajuster-inserer")) _debuterInsertion(c);
+      else _ecrire("supprimer", c, null);
+    });
     _menu = { marker: marker, c: c, timer: setTimeout(_fermerMenu, MENU_MS) };
+  }
+  // Les deux boutons du menu (carte et vue 3D) ; `attr(action)` = attributs en plus (vue 3D : data-v3d).
+  const MENU_LARGE = 96;       // deux cibles de 44 px et leur écart (style.css > .kta-ajuster-boutons)
+  function htmlMenu(attr, sansSuppr) {
+    const bouton = function (classe, cle, action, icone) {
+      const titre = window.ktaEsc(_t(cle));
+      return '<button type="button" class="' + classe + '"' + (attr ? attr(action) : "") + ' aria-label="' + titre +
+        '" title="' + titre + '">' + icone + '</button>';
+    };
+    return '<div class="kta-ajuster-boutons">' + bouton("kta-ajuster-inserer", "ajuster.inserer", "inserer", "＋") +
+      (sansSuppr ? "" : bouton("kta-ajuster-suppr", "ajuster.supprimer", "supprimer", "🗑️")) + '</div>';
   }
 
   // ── Écriture : un geste = une entrée d'historique, un rendu ──
@@ -235,6 +263,143 @@ window.KtaAjusterSommets = (function () {
     }
     _stats.ecritures++;
     return true;
+  }
+
+  // ── Insertion (＋) : chaque tap insère un sommet entre le dernier posé et le sommet suivant de départ (X + 1) ──
+  // ⚠️ contrat (décision produit) : le n-ième point va à l'indice X + 1 + n (n = longueur − L0) : la suite de la
+  // forme garde son ordre. Forme fermée, X dernier : X + 1 = le premier (le point s'ajoute en fin de liste, sur le
+  // côté de fermeture). Ligne, X dernier : on prolonge au-delà du bout, aucun sommet suivant. Fin : ✓ du bandeau,
+  // Échap (shortcuts.js > _echapCarte, vue3d.js), tap sur X + 1, droit perdu, forme disparue ou raccourcie sous L0
+  // (annulations au-delà du premier point).
+  // 🩸 Une annulation rend des COPIES (HistoryManager > _applyState) : la forme est retrouvée par sa clé (uid ; type
+  // pour la mesure) à chaque tap, jamais gardée par référence.
+  function _cle(o) { return o.uid || "§" + (o.type || ""); }
+  function _retrouver(ins) {
+    let objs = [];
+    try { objs = ins.a.objets() || []; } catch (err) { return null; }
+    for (let k = 0; k < objs.length; k++) if (objs[k] && _cle(objs[k]) === ins.cle) return objs[k];
+    return null;
+  }
+  // État de l'insertion lu sur la forme : { o, n, pose (indice du prochain point), ancre (dernier posé, ou X), cible
+  // (X + 1, null en prolongement) } ; null : forme disparue ou raccourcie.
+  function _etatIns() {
+    const ins = _ins, o = ins && _retrouver(ins);
+    if (!o || !Array.isArray(o.points)) return null;
+    const n = o.points.length - ins.L0;
+    if (n < 0) return null;
+    return { o: o, n: n, pose: ins.x + 1 + n, ancre: ins.x + n,
+      cible: ins.prolonge ? null : (ins.x + 1 < ins.L0 ? ins.x + 1 + n : 0) };
+  }
+
+  function _debuterInsertion(c) {
+    terminerInsertion();
+    if (!c || c.genre !== "sommet" || !_permis() || !_encorePresent(c)) return false;
+    const o = c.o, L0 = o.points.length, ferme = L0 >= 3 && c.a.ferme(o);
+    _abonnerHisto();
+    _ins = { a: c.a, f: c.f, cle: _cle(o), x: c.i, L0: L0, ferme: ferme, prolonge: !ferme && c.i === L0 - 1,
+      bandeau: null, marques: [], down: null };
+    _bandeau();
+    _majInsertion();
+    const m = _map();
+    try { if (m) m.closePopup(); } catch (err) { /* aucune */ }
+    return true;
+  }
+
+  function terminerInsertion() {
+    const ins = _ins;
+    if (!ins) return false;
+    _ins = null;
+    if (ins.bandeau && ins.bandeau.parentNode) ins.bandeau.parentNode.removeChild(ins.bandeau);
+    ins.marques.forEach(function (l) { try { l.remove(); } catch (err) { /* carte détruite */ } });
+    return true;
+  }
+
+  // Bandeau « ＋ Insertion · N point(s) · ✓ Terminer » : hors de la carte (posé sur body, au-dessus de la vue 3D), le
+  // tap qui le touche n'insère rien.
+  function _bandeau() {
+    const b = document.createElement("div");
+    b.className = "kta-ajuster-bandeau";
+    b.setAttribute("role", "status");
+    b.innerHTML = '<span class="kta-ajuster-bandeau-titre">' + window.ktaEsc(_t("ajuster.insertion.titre")) +
+      '</span><span class="kta-ajuster-bandeau-n"></span>' +
+      '<button type="button" class="kta-btn kta-btn-primary" data-ajuster="terminer">' +
+      window.ktaEsc(_t("ajuster.insertion.terminer")) + '</button>';
+    b.addEventListener("click", function (ev) {
+      if (ev.target.closest && ev.target.closest('[data-ajuster="terminer"]')) terminerInsertion();
+    });
+    document.body.appendChild(b);
+    _ins.bandeau = b;
+  }
+
+  // Après chaque point, annulation ou rendu : compte du bandeau et marques (point d'ancrage doré, X + 1 en pointillé :
+  // le toucher termine). Droit perdu, forme disparue : l'insertion se ferme.
+  function _majInsertion() {
+    const ins = _ins;
+    if (!ins) return;
+    const st = _etatIns();
+    if (!st || !_permis()) { terminerInsertion(); return; }
+    const sp = ins.bandeau && ins.bandeau.querySelector(".kta-ajuster-bandeau-n");
+    const txt = _t("ajuster.insertion.points", { n: st.n });
+    if (sp && sp.textContent !== txt) sp.textContent = txt;
+    ins.marques.forEach(function (l) { try { l.remove(); } catch (err) { /* carte détruite */ } });
+    ins.marques = [];
+    const m = _map();
+    if (!m) return;
+    const pose = function (p, classe) {
+      ins.marques.push(L.circleMarker(_ll(p), { renderer: _renderer(m), radius: 10, weight: 3, interactive: false,
+        className: classe }).addTo(m));
+    };
+    pose(st.o.points[st.ancre], "kta-ajuster-poignee");
+    if (st.cible !== null && st.o.points[st.cible]) {
+      pose(st.o.points[st.cible], "kta-ajuster-poignee kta-ajuster-poignee-attente");
+    }
+  }
+
+  // Un tap (px plan) : "ajoute" | "fin" (sommet suivant touché, droit perdu) | "rien" (sur le dernier point posé).
+  // `tolAimant` : rayon d'aimantation déjà converti (vue 3D), sinon celui de la prise ; `tolFin` : rayon du toucher.
+  function _poser(p, tolAimant, tolFin) {
+    if (!_ins) return "rien";
+    const st = _etatIns();
+    if (!st || !_permis() || !p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) {
+      terminerInsertion();
+      return "fin";
+    }
+    const a = _ins.a, o = st.o, pts = o.points, H = window.HistoryManager;
+    if (st.cible !== null && pts[st.cible] && Math.hypot(p.x - pts[st.cible].x, p.y - pts[st.cible].y) <= tolFin) {
+      terminerInsertion();
+      return "fin";
+    }
+    const anc = pts[st.ancre];
+    if (anc && Math.hypot(p.x - anc.x, p.y - anc.y) <= tolFin * INSERE_PX / RAYON_PX) return "rien";
+    let np = { x: p.x, y: p.y };
+    if (typeof a.aimanter === "function") {
+      const s = a.aimanter(np.x, np.y, o, [anc, st.cible !== null ? pts[st.cible] : null].filter(Boolean), tolAimant);
+      if (s) np = { x: s.x, y: s.y };
+    }
+    const avant = (a.cat && H && typeof H.captureState === "function") ? H.captureState(a.cat) : null;
+    pts.splice(st.pose, 0, np);
+    if (o.uid && window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(o);
+    try { a.rendre(); } catch (err) { console.warn("[Ajuster] rendu :", err); }
+    if (avant) {
+      H.record(typeof a.etiquette === "function" ? a.etiquette("ajouter", o)
+        : _t("ajuster.histo.ajouter", { type: a.libelle(o) }), avant, a.cat);
+    }
+    if (a.cat && window.SessionPersist && typeof window.SessionPersist.save === "function") {
+      try { window.SessionPersist.save({ force: true }); } catch (err) { /* le poll de SessionPersist rattrape */ }
+    }
+    _stats.ecritures++;
+    _stats.inseres++;
+    _majInsertion();
+    return "ajoute";
+  }
+
+  // Tap sur la carte pendant l'insertion (click avalé en capture) : un pan (plus de BOUGE_PX depuis l'appui) n'insère
+  // rien.
+  function _tapInsertion(e) {
+    const d = _ins.down, m = _map();
+    _ins.down = null;
+    if (!m || (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > BOUGE_PX)) return;
+    _poser(_plan(m, e), undefined, _pxEnPlan(m, RAYON_PX));
   }
 
   // ── Geste ──
@@ -287,6 +452,11 @@ window.KtaAjusterSommets = (function () {
     // pour lui-même ; sinon les mouvements restaient avalés et la carte ne suivait plus le doigt.
     if (_g && (e.isPrimary || e.pointerId === _g.id)) { _stats.annules++; _nettoyer(); }
     if (!_g) _lacherAvale = null;
+    // Insertion ouverte : un appui ne fait que noter d'où part le tap (seuil du pan, _tapInsertion), aucun ajustement.
+    if (_ins) {
+      if (e.isPrimary) _ins.down = { x: e.clientX, y: e.clientY };
+      return;
+    }
     if (_menu && !_dansMenu(e.target)) {
       _fermerMenu();
       _avalerJusqua = _now() + AVALER_MS;   // le tap qui referme 🗑️ ne fait rien d'autre
@@ -354,6 +524,7 @@ window.KtaAjusterSommets = (function () {
     } else if (c.o.points.length - 1 < c.a.minimum(c.o)) {
       _stats.refus++;
       _toast(_t("ajuster.toast.minimum", { n: c.a.minimum(c.o) }), "warn");
+      _ouvrirMenu(c, true);
     } else {
       _ouvrirMenu(c);
     }
@@ -368,13 +539,25 @@ window.KtaAjusterSommets = (function () {
   }
   function _avaler(e) {
     if (_dansMenu(e.target)) return;
+    // ⚠️ contrat : insertion ouverte, tout clic sur la carte est un point (ni fiche, ni outil, ni double-clic qui
+    // zoome) ; un outil armé entre-temps ferme l'insertion et garde son clic.
+    if (_ins && _surCarte(e.target)) {
+      if (!_permis()) { terminerInsertion(); return; }
+      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
+      if (e.type === "click") _tapInsertion(e);
+      return;
+    }
     if (_g ? _g.arme : (_now() < _avalerJusqua && _surCarte(e.target))) {
       e.stopPropagation();
       if (e.cancelable) e.preventDefault();
     }
   }
   function _onContexte(e) {
-    if (_g || _now() < _avalerJusqua) { e.stopPropagation(); if (e.cancelable) e.preventDefault(); }
+    if (_g || _now() < _avalerJusqua || (_ins && _surCarte(e.target))) {
+      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
+    }
   }
 
   const CAPTURE = { capture: true, passive: false };
@@ -404,6 +587,15 @@ window.KtaAjusterSommets = (function () {
     _fermerMenu();
     if (pris) e.stopPropagation();
   }, true);
+  // Forme rendue (point posé, annulation ⏪ ou ↪, autre écriture) : compte et marques de l'insertion relus.
+  window.addEventListener("kta:donneesPlanChange", function () { if (_ins) _majInsertion(); });
+  let _abonneHisto = false;
+  function _abonnerHisto() {
+    const H = window.HistoryManager;
+    if (_abonneHisto || !H || typeof H.onChange !== "function") return;
+    _abonneHisto = true;
+    H.onChange(function () { if (_ins) _majInsertion(); });
+  }
 
   // ── Le même geste mené hors de la carte (vue 3D : vue3d.js > _ajusterAppui) ──
   // ⚠️ contrat : l'appelant mène appui long, seuils et aperçu ; il donne des coordonnées plan (px image) et une
@@ -412,7 +604,7 @@ window.KtaAjusterSommets = (function () {
   // ceux de la carte. La cible rendue par `saisir` est opaque : repassée telle quelle à forme / lacher / supprimer.
   function _saisirPlan(x, y, tol, garder) {
     const m = _map();
-    if (!m || _g || !_permis() || !Number.isFinite(x) || !Number.isFinite(y) || !(tol > 0)) return null;
+    if (!m || _g || _ins || !_permis() || !Number.isFinite(x) || !Number.isFinite(y) || !(tol > 0)) return null;
     const c = _chercher(m, x, y, tol, garder);
     if (c) _stats.gestes++;
     return c;
@@ -443,8 +635,19 @@ window.KtaAjusterSommets = (function () {
     enCours: function () { return !!_g; },
     etat: function () {
       return { enCours: !!_g, arme: !!(_g && _g.arme), menu: !!_menu, gestes: _stats.gestes,
-        ecritures: _stats.ecritures, annules: _stats.annules, refus: _stats.refus };
+        ecritures: _stats.ecritures, annules: _stats.annules, refus: _stats.refus, inseres: _stats.inseres,
+        insertion: !!_ins };
     },
+    // Drapeau neutre (utils.js > _modeClicCarteActif) : l'insertion prend chaque clic de la carte.
+    insertionEnCours: function () { return !!_ins && !_permisSoi; },
+    // Insertion ouverte : { famille, n, pts (copie), ancre, cible (null : prolongement), ferme } ; sinon null.
+    insertion: function () {
+      const st = _ins && _etatIns();
+      return st ? { famille: _ins.f, n: st.n, ancre: st.ancre, cible: st.cible, ferme: _ins.ferme,
+        pts: st.o.points.map(function (p) { return { x: p.x, y: p.y }; }) } : null;
+    },
+    terminerInsertion: terminerInsertion,
+    htmlMenu: htmlMenu,
     annuler: function () { _fermerMenu(); return annuler(); },
     // Ce qu'un appui viserait au point d'écran (clientX, clientY) : { famille, genre, i, uid } ou null (harnais,
     // diagnostic).
@@ -458,6 +661,9 @@ window.KtaAjusterSommets = (function () {
       forme: _formePlan,
       lacher: _lacherPlan,
       supprimer: function (c) { return !!c && _ecrire("supprimer", c, null); },
+      // ＋ du menu : ouvre l'insertion depuis ce sommet ; puis chaque toucher au sol → poser(x, y, tolAimant, tolFin).
+      inserer: _debuterInsertion,
+      poser: _poser,
       annule: function () { _stats.annules++; }
     },
     APPUI_MS: APPUI_MS,

@@ -742,6 +742,9 @@ window.ktaToleranceFermeture = function(e) {
 window._modeClicCarteActif = function() {
   if (window.modeRoad || window.modeZone || window.modeStructure || window.modeEdition) return true;
   if (window.modeMesure || window.modeRecalage) return true;
+  // insertion de sommets (ajusterSommets.js, ＋ au sommet) : chaque clic de la carte est un point
+  const A = window.KtaAjusterSommets;
+  if (A && typeof A.insertionEnCours === "function" && A.insertionEnCours()) return true;
   try {
     if (document.querySelector(".kta-iti-floater")) return true;
     // mode « clic carte » du Mode perdu

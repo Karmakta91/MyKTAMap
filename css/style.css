@@ -20695,8 +20695,9 @@ button.kta-cfg-ligne-action {
 .kta-racc-ligne-ecart { color: var(--kta-accent-texte); font-variant-numeric: tabular-nums; }
 .kta-racc-pied { margin-top: 12px; }
 /* Même allure que .kta-iti-floater, sans sa classe : celle-ci arme le mode « clic carte » (utils.js >
-   _modeClicCarteActif), et la revue laisse la carte et ses fiches libres. */
-.kta-racc-bandeau {
+   _modeClicCarteActif), et la revue laisse la carte et ses fiches libres. Le bandeau de l'insertion de sommets
+   (ajusterSommets.js > _bandeau) prend la même allure ; au-dessus de la vue 3D (99999). */
+.kta-racc-bandeau, .kta-ajuster-bandeau {
   position: fixed; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
   z-index: 100000;
   display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px;
@@ -20705,7 +20706,9 @@ button.kta-cfg-ligne-action {
   border: 1px solid var(--kta-bordure); border-left: 3px solid var(--kta-accent); border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
-.kta-racc-bandeau .kta-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
+.kta-racc-bandeau .kta-btn, .kta-ajuster-bandeau .kta-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
+.kta-ajuster-bandeau-titre { color: var(--kta-accent-texte); font-weight: 700; }
+.kta-ajuster-bandeau-n { color: var(--kta-texte); font-variant-numeric: tabular-nums; }
 .kta-racc-nav, .kta-racc-actions { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .kta-racc-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
 .kta-racc-info { flex: 1 1 140px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
@@ -20714,10 +20717,15 @@ button.kta-cfg-ligne-action {
 /* Sommets de la mesure 📐 (measure.js > _majSommetsMesure) : rond doré plein, liseré sombre, lisible sur le plan. */
 .kta-mesure-sommet { fill: var(--kta-accent); fill-opacity: 1; stroke: var(--kta-sur-accent); }
 .kta-ajuster-menu { background: none; border: 0; }
-.kta-ajuster-suppr {
+/* ＋ et 🗑️ au sommet : deux cibles de 44 px (largeur totale = ajusterSommets.js > MENU_LARGE). */
+.kta-ajuster-boutons { display: flex; gap: 8px; }
+.kta-ajuster-suppr, .kta-ajuster-inserer {
   width: 44px; height: 44px; padding: 0; border-radius: 22px; cursor: pointer; font-size: 20px; line-height: 1;
   background: var(--kta-surface); color: var(--kta-texte); border: 2px solid var(--kta-erreur);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
-.kta-ajuster-suppr:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
-.kta-bearing-on .kta-ajuster-suppr { transform: rotate(calc(-1 * var(--kta-bearing, 0deg))); }
+.kta-ajuster-inserer { border-color: var(--kta-accent); font-weight: 700; }
+.kta-ajuster-suppr:focus-visible, .kta-ajuster-inserer:focus-visible {
+  outline: 2px solid var(--kta-interaction); outline-offset: 2px;
+}
+.kta-bearing-on .kta-ajuster-boutons { transform: rotate(calc(-1 * var(--kta-bearing, 0deg))); }

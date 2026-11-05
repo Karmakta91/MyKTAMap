@@ -143,7 +143,11 @@ function etat(page) {
     const c = window.map.getCenter();
     return { signaux: window.__as.signaux, annulables: window.__as.annulables, centre: [c.lat, c.lng],
       fiche: !!document.querySelector(".leaflet-popup"), apercu: !!document.querySelector(".kta-ajuster-apercu"),
-      menu: !!document.querySelector(".kta-ajuster-suppr"), as: window.KtaAjusterSommets.etat() };
+      menu: !!document.querySelector(".kta-ajuster-suppr"), plus: !!document.querySelector(".kta-ajuster-inserer"),
+      bandeau: (function () {
+        const b = document.querySelector(".kta-ajuster-bandeau");
+        return b ? b.textContent : null;
+      })(), as: window.KtaAjusterSommets.etat() };
   });
 }
 
@@ -413,7 +417,8 @@ async function famille(page, ptr, nom, ref, iSommet, iMilieu, tolPlan) {
   verifier(!g2.apres.fiche, nom + " : pas de fiche après l'ajout");
   // Supprimer (appui long sans bouger → 🗑️)
   const g3 = await geste(page, ptr, o2.points[iMilieu + 1], null);
-  verifier(g3.apres.menu, nom + " : appui long sans bouger → 🗑️ proposé, sans fiche", g3.apres);
+  verifier(g3.apres.menu && g3.apres.plus && !g3.apres.fiche, nom + " : appui long sans bouger → ＋ et 🗑️ proposés, " +
+    "sans fiche", g3.apres);
   const e3 = await etat(page);
   verifier(await supprimerParMenu(page, ptr), nom + " : 🗑️ touché");
   const o3 = await lireObjet(page, ref);
@@ -432,8 +437,141 @@ async function refus(page, ptr, nom, ref) {
   const o1 = await lireObjet(page, ref);
   const motif = await page.evaluate(function () { return window.I18n.t("ajuster.toast.minimum", { n: 9 }).split("9")[0]; });
   const vu = await toastVu(page, motif);
-  verifier(!g.apres.menu && vu && g.apres.as.refus === r0.as.refus + 1 && o1.points.length === o0.points.length,
-    nom + " : au minimum, pas de 🗑️, un toast le dit, rien ne change", { as: g.apres.as, toast: vu });
+  verifier(!g.apres.menu && g.apres.plus && vu && g.apres.as.refus === r0.as.refus + 1 &&
+    o1.points.length === o0.points.length,
+  nom + " : au minimum, ＋ seul (pas de 🗑️), un toast le dit, rien ne change", { as: g.apres.as, toast: vu });
+  await page.evaluate(function () { window.KtaAjusterSommets.annuler(); });
+}
+
+// ── Insertion (＋ au sommet) ──
+function centreDe(page, sel) {
+  return page.evaluate(function (s) {
+    const b = document.querySelector(s);
+    if (!b) return null;
+    const q = b.getBoundingClientRect();
+    return [q.left + q.width / 2, q.top + q.height / 2];
+  }, sel);
+}
+async function ouvrirInsertion(page, ptr, de) {
+  const g = await geste(page, ptr, de, null);
+  const plus = await centreDe(page, ".kta-ajuster-inserer");
+  if (plus) { await ptr.tap(plus); await page.waitForTimeout(250); }
+  return { menu: g.apres, apres: await etat(page) };
+}
+// Taps successifs (plan) pendant l'insertion ; toasts vidés, rien ne doit s'ouvrir.
+async function taper(page, ptr, pts) {
+  for (const p of pts) {
+    await viderToasts(page);
+    await ptr.tap(await ecran(page, p));
+    await page.waitForTimeout(250);
+  }
+}
+async function ctrlZ(page, n) {
+  for (let i = 0; i < n; i++) {
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(200);
+  }
+  await viderToasts(page);
+}
+
+// Une famille : appui long sur X → ＋ et 🗑️ ; ＋ ; 3 taps → X+1, X+2, X+3 dans l'ordre (ou en fin de liste : fermée
+// qui boucle, ligne prolongée) ; ⏪ point par point pendant (le mode reste, N baisse, à 0 aussi) puis après ; fin par
+// `fin` ("ok" ✓, "echap", "suivant" = tap sur X+1).
+// c : { nom, ref, x, pts: [[u, v]…] (plan du harnais), fin, histo (false : mesure hors outil, pas d'historique) }
+async function insertion(page, ptr, c, tol) {
+  // Une fiche ouverte plus tôt a pu recentrer la carte (autoPan) : vue du harnais remise.
+  await page.evaluate(function () {
+    window.map.closePopup();
+    window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false });
+  });
+  await page.waitForTimeout(250);
+  const o0 = await lireObjet(page, c.ref), L0 = o0.points.length;
+  const e0 = await etat(page);
+  const o = await ouvrirInsertion(page, ptr, o0.points[c.x]);
+  verifier(o.menu.plus && (o.menu.menu || c.sansSuppr) && !o.menu.fiche, c.nom + " : appui long sans bouger → ＋ et 🗑️",
+    o.menu);
+  verifier(o.apres.as.insertion && /0/.test(o.apres.bandeau || "") && !o.apres.plus,
+    c.nom + " : ＋ ouvre l'insertion, bandeau « 0 point »", { bandeau: o.apres.bandeau, as: o.apres.as });
+  const cibles = [];
+  for (const uv of c.pts) cibles.push(await planU(page, uv[0], uv[1]));
+  await taper(page, ptr, cibles);
+  const o1 = await lireObjet(page, c.ref), e1 = await etat(page);
+  const debut = c.x + 1;
+  const place = o1.points.length === L0 + 3 &&
+    cibles.every(function (q, i) { return proche(o1.points[debut + i], q, tol); });
+  const reste = o0.points.every(function (p, i) {
+    return proche(o1.points[i <= c.x ? i : i + 3], p, 1e-9);
+  });
+  verifier(place && reste, c.nom + " : 3 taps → 3 sommets à la suite de X (" + c.genre + "), le reste à sa place",
+    { L: [L0, o1.points.length], pts: o1.points.slice(debut, debut + 3), voulu: cibles });
+  verifier(e1.as.insertion && /3/.test(e1.bandeau || "") && !e1.fiche, c.nom + " : bandeau « 3 points », aucune fiche",
+    { bandeau: e1.bandeau, fiche: e1.fiche });
+  if (c.histo !== false) {
+    verifier(e1.annulables === e0.annulables + 3, c.nom + " : un point = une entrée d'historique",
+      { avant: e0.annulables, apres: e1.annulables });
+    verifier(o1.uid === o0.uid && o1.updatedAt !== o0.updatedAt, c.nom + " : uid gardé, updatedAt changé");
+    await ctrlZ(page, 1);
+    let oz = await lireObjet(page, c.ref), ez = await etat(page);
+    verifier(oz.points.length === L0 + 2 && proche(oz.points[debut + 1], cibles[1], tol) && ez.as.insertion &&
+      /2/.test(ez.bandeau || ""), c.nom + " : Ctrl+Z pendant le mode retire le dernier point, le mode continue (2)",
+    { L: oz.points.length, bandeau: ez.bandeau });
+    await ctrlZ(page, 2);
+    oz = await lireObjet(page, c.ref); ez = await etat(page);
+    verifier(oz.points.length === L0 && ez.as.insertion && /0/.test(ez.bandeau || ""),
+      c.nom + " : Ctrl+Z jusqu'à 0 point, le mode reste ouvert", { L: oz.points.length, bandeau: ez.bandeau });
+    await taper(page, ptr, cibles);
+    oz = await lireObjet(page, c.ref);
+    verifier(oz.points.length === L0 + 3 && proche(oz.points[debut], cibles[0], tol),
+      c.nom + " : les taps reprennent après le Ctrl+Z, au même endroit", { L: oz.points.length });
+  }
+  // Fin
+  if (c.fin === "ok") {
+    const ok = await centreDe(page, ".kta-ajuster-bandeau [data-ajuster]");
+    if (ok) await ptr.tap(ok);
+  } else if (c.fin === "echap") {
+    await page.keyboard.press("Escape");
+  } else {
+    const ox = await lireObjet(page, c.ref);
+    await ptr.tap(await ecran(page, ox.points[c.suivant(ox.points.length)]));
+  }
+  await page.waitForTimeout(300);
+  const of = await lireObjet(page, c.ref), ef = await etat(page);
+  verifier(!ef.as.insertion && ef.bandeau === null && of.points.length === L0 + 3,
+    c.nom + " : fin par " + { ok: "✓", echap: "Échap", suivant: "un tap sur X+1" }[c.fin] + ", les points restent",
+    { as: ef.as, bandeau: ef.bandeau, L: of.points.length });
+  await page.evaluate(function () { window.map.closePopup(); });
+  // Après le mode : un tap ne pose plus rien ; Ctrl+Z retire encore un point à la fois.
+  await taper(page, ptr, [await planU(page, c.pts[0][0] + 15, c.pts[0][1] + 15)]);
+  await page.evaluate(function () { window.map.closePopup(); });
+  verifier((await lireObjet(page, c.ref)).points.length === L0 + 3, c.nom + " : après la fin, un tap ne pose plus rien");
+  if (c.histo !== false) {
+    await ctrlZ(page, 1);
+    const a1 = await lireObjet(page, c.ref);
+    await ctrlZ(page, 2);
+    const a3 = await lireObjet(page, c.ref);
+    verifier(a1.points.length === L0 + 2 && a3.points.length === L0 &&
+      a3.points.every(function (p, i) { return proche(p, o0.points[i], 1e-9); }),
+    c.nom + " : après le mode, Ctrl+Z retire un point à la fois jusqu'à la forme d'origine",
+    { L: [a1.points.length, a3.points.length] });
+  }
+}
+
+async function insertionRefusee(page, ptr) {
+  // Lecture seule : l'appui long n'offre rien ; ouverte puis lecture seule : le tap ferme l'insertion sans rien écrire.
+  await page.evaluate(function () { window.__asRO = window.ktaEditionRefusee; window.ktaEditionRefusee = function () { return true; }; });
+  const z0 = await lireObjet(page, "zn_as_z");
+  const g = await geste(page, ptr, z0.points[1], null);
+  verifier(!g.apres.plus && !g.apres.menu && !g.apres.as.insertion, "lecture seule : ni ＋ ni 🗑️", g.apres);
+  await page.evaluate(function () { window.ktaEditionRefusee = window.__asRO; });
+  await ouvrirInsertion(page, ptr, z0.points[1]);
+  const ouverte = (await etat(page)).as.insertion;
+  await page.evaluate(function () { window.ktaEditionRefusee = function () { return true; }; });
+  await taper(page, ptr, [await planU(page, 75, -380)]);
+  const e = await etat(page);
+  await page.evaluate(function () { window.ktaEditionRefusee = window.__asRO; window.map.closePopup(); });
+  verifier(ouverte && !e.as.insertion && e.bandeau === null &&
+    (await lireObjet(page, "zn_as_z")).points.length === z0.points.length,
+  "insertion ouverte puis lecture seule : le tap la ferme, rien n'est écrit", { ouverte: ouverte, as: e.as });
 }
 
 async function rien(page, ptr, nom, ref) {
@@ -682,6 +820,36 @@ async function jouer(nav, moteur, mode) {
     await ronds(page, "après déplacer, ajouter et supprimer");
     await refus(page, ptr, "tracé de 2 points", "rd_as_r2");
     await refus(page, ptr, "zone de 3 sommets", "zn_as_t");
+
+    // ── Insertion (＋) : vue du harnais remise, formes remises à neuf (puis encore pour la suite) ──
+    const vueAs = function () {
+      return page.evaluate(function () { window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false }); });
+    };
+    await vueAs();
+    await page.waitForTimeout(300);
+    await semer(page);
+    await page.waitForTimeout(300);
+    const INS = [
+      { nom: "＋ tracé", ref: "rd_as_r1", x: 0, genre: "entre X et X+1", fin: "suivant",
+        suivant: function () { return 4; }, pts: [[-412, -270], [-375, -270], [-337, -270]] },
+      { nom: "＋ zone (X dernier)", ref: "zn_as_z", x: 3, genre: "fermée : boucle vers le premier", fin: "suivant",
+        suivant: function () { return 0; }, pts: [[-30, -238], [-30, -275], [-30, -312]] },
+      { nom: "＋ pilier", ref: "st_as_p", x: 1, genre: "entre X et X+1", fin: "ok",
+        pts: [[-270, 37], [-270, 75], [-270, 112]] },
+      { nom: "＋ mur (ligne, X dernier)", ref: "st_as_l", x: 1, genre: "prolongé au-delà du bout", fin: "echap",
+        sansSuppr: true, pts: [[20, -40], [40, -80], [60, -120]] },
+      { nom: "＋ mesure distance (X dernier)", ref: "distance", x: 2, genre: "prolongée au-delà du bout", fin: "ok",
+        histo: false, pts: [[430, 40], [460, 80], [490, 120]] },
+      { nom: "＋ mesure surface (X dernier)", ref: "surface", x: 2, genre: "fermée : boucle vers le premier",
+        fin: "suivant", histo: false, sansSuppr: true, suivant: function () { return 0; },
+        pts: [[191, 283], [154, 246], [116, 208]] }
+    ];
+    for (const c of INS) await insertion(page, ptr, c, tol);
+    await insertionRefusee(page, ptr);
+    await vueAs();
+    await page.waitForTimeout(300);
+    await semer(page);
+    await page.waitForTimeout(300);
 
     // ── Après chaque geste, réussi, annulé ou mal terminé : un pan déplace la carte ──
     await panApresGestes(page, ptr, mode, "vue droite");
