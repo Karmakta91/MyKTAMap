@@ -9,8 +9,8 @@
 // =========================
 // Expose : ouvrirCalibrageEchelle() (produit en croix distance pixel mesurée / distance réelle →
 //   APP_CONFIG.scale) · viderCacheAppli() (ping serveur + double confirmation, puis SW, caches, localStorage,
-//   sessionStorage, TOUTES les bases IDB, reload) · mettreAJourCodeSeul() (purge du cache PWA seulement,
-//   données préservées ; badge version du footer et Configuration) · _pingInternet() / _pingInternetUrl.
+//   sessionStorage, TOUTES les bases IDB, reload) · mettreAJourCodeSeul() (nouveau SW, puis anciens caches de
+//   l'app seulement : données, plans hors ligne et modules gardés ; badge version et Configuration) · _pingInternet() / _pingInternetUrl.
 // Dépend de : UnlockGate, PinLock, KtaInstance, KtaExtensions (avantReinitialisation), afficherToast.
 // Fonctions appelées au runtime : l'ordre de chargement est cosmétique.
 
@@ -196,13 +196,68 @@ window._pingInternet = _pingInternet;
 // URL résolue, pour les messages d'erreur.
 window._pingInternetUrl = PING_URL;
 
-// ── Mise à jour douce : purge du cache PWA seulement ──────────
-// Contrairement à viderCacheAppli(), session, registre de plans, IndexedDB, localStorage, sessionStorage et
-// cookies restent intacts. Étapes : ping (5 s) → reg.update() sans attendre → SKIP_WAITING au SW en
-// attente → purge de TOUS les caches → reload.
-// 🩸 Ne jamais demander le nom du cache au SW COURANT pour l'épargner : c'est l'ANCIEN avant update, son
-// cache préservé ressert l'ancien copyright.js (__MKM__.build figé, badge « ancienne → nouvelle » qui
-// persiste). Le handler GET_CACHE_NAME du SW reste pour le debug.
+// ── Mise à jour douce : nouveau code, données et hors-ligne gardés ──────────
+// Contrairement à viderCacheAppli(), session, registre de plans, IndexedDB, localStorage et cookies restent intacts.
+// Étapes : ping (5 s) → reg.update() et attente du NOUVEAU SW aux commandes (son installation a rempli son cache) →
+// suppression des seuls caches de l'app (myktamap-cache-*) qui ne sont pas le sien → reload.
+// ⚠️ Jamais touchés : plans rendus disponibles hors ligne (myktamap-plan-*), caches des modules (myktamap-ext-*), et le
+// cache du SW aux commandes. 🩸 Tout purger coupe l'installation en cours : cache de l'app incomplet, plans hors ligne
+// perdus. 🩸 Le nom du cache se demande au SW APRÈS la bascule : avant, c'est l'ancien.
+// Les drapeaux de l'auto-réparation (sessionStorage) sont effacés avant le reload : sinon elle ne repassait pas dans
+// la session et un fichier manquant le restait.
+
+// reg.update() puis attente du nouveau SW : "nouveau" (aux commandes), "aucun" (sw.js inchangé), "echec" (installation
+// refusée), "delai". Un SW en attente reçoit SKIP_WAITING (l'installation fait déjà skipWaiting : filet).
+function _attendreNouveauSw(reg, delaiMs, surInstallation) {
+  return new Promise(function(resolve) {
+    const sw = navigator.serviceWorker;
+    const avant = reg.active;
+    let fini = false;
+    function finir(v) {
+      if (fini) return;
+      fini = true;
+      clearTimeout(minuteur);
+      sw.removeEventListener("controllerchange", surBascule);
+      resolve(v);
+    }
+    function surBascule() { finir("nouveau"); }
+    const minuteur = setTimeout(function() { finir("delai"); }, delaiMs);
+    sw.addEventListener("controllerchange", surBascule);
+    function suivre(w) {
+      if (!w) return false;
+      if (surInstallation) surInstallation();
+      if (w.state === "installed") w.postMessage({ type: "SKIP_WAITING" });
+      w.addEventListener("statechange", function() {
+        if (w.state === "installed") w.postMessage({ type: "SKIP_WAITING" });
+        if (w.state === "activated") finir("nouveau");
+        if (w.state === "redundant") finir("echec");
+      });
+      return true;
+    }
+    reg.update().then(function() {
+      if (suivre(reg.installing || reg.waiting)) return;
+      finir(reg.active && reg.active !== avant ? "nouveau" : "aucun");
+    }).catch(function(e) {
+      console.warn("[Soft update] reg.update() :", e);
+      finir("echec");
+    });
+  });
+}
+
+// Nom du cache du SW aux commandes (null : pas de SW, ou muet 3 s).
+function _nomCacheSw() {
+  return new Promise(function(resolve) {
+    const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (!ctrl || typeof MessageChannel !== "function") { resolve(null); return; }
+    const canal = new MessageChannel();
+    const minuteur = setTimeout(function() { resolve(null); }, 3000);
+    canal.port1.onmessage = function(ev) {
+      clearTimeout(minuteur);
+      resolve(ev.data && typeof ev.data.name === "string" ? ev.data.name : null);
+    };
+    ctrl.postMessage({ type: "GET_CACHE_NAME" }, [canal.port2]);
+  });
+}
 
 async function mettreAJourCodeSeul() {
   // Overlay pendant l'opération (1-3 s).
@@ -229,78 +284,50 @@ async function mettreAJourCodeSeul() {
       return;
     }
 
-    // 2. reg.update() FIRE-AND-FORGET : l'attendre bloque 30 s-2 min (install synchrone de ~100 assets en
-    //    cache:'reload'). Le téléchargement se fait pendant « Préparation… » / « Rechargement… ».
-    // 🩸 Puis polling de reg.waiting (200 ms × 25 = 5 s max) : un reload trop tôt trouve waiting = null,
-    //    SKIP_WAITING n'est jamais envoyé et l'ancien SW ressert l'ancienne version. Dès qu'un waiting
-    //    apparaît : SKIP_WAITING puis attente de controllerchange (garde 1,5 s). Timeout sans waiting →
-    //    reload quand même (mode dégradé).
+    // 2. Nouveau SW : installé (précache revalidé, seuls les fichiers changés repartent) puis aux commandes.
     _statusUpdate(window.I18n.t("maint.msg_prep_sw"));
+    let issue = "sans-sw";
     if (navigator.serviceWorker) {
       try {
         const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) {
-          // Sans await : l'install tourne en arrière-plan.
-          reg.update().catch(function(e) {
-            console.warn("[Soft update] reg.update() :", e);
-          });
-          const DEADLINE_MS = Date.now() + 5000;
-          let nouveauSwActive = false;
-          while (Date.now() < DEADLINE_MS) {
-            const reg2 = await navigator.serviceWorker.getRegistration();
-            if (reg2 && reg2.waiting) {
-              _statusUpdate(window.I18n.t("maint.msg_activating_sw"));
-              reg2.waiting.postMessage({ type: "SKIP_WAITING" });
-              // controllerchange (nouveau SW aux commandes) ou garde 1,5 s.
-              await new Promise(function(resolve) {
-                let done = false;
-                function _onChange() { if (!done) { done = true; resolve(); } }
-                navigator.serviceWorker.addEventListener("controllerchange", _onChange, { once: true });
-                setTimeout(function() {
-                  if (!done) {
-                    done = true;
-                    navigator.serviceWorker.removeEventListener("controllerchange", _onChange);
-                    resolve();
-                  }
-                }, 1500);
-              });
-              nouveauSwActive = true;
-              console.log("[Soft update] Nouveau SW actif via SKIP_WAITING");
-              break;
-            }
-            await new Promise(function(r) { setTimeout(r, 200); });
-          }
-          if (!nouveauSwActive) {
-            console.warn("[Soft update] Timeout 5s : pas de reg.waiting détecté, reload sans skip waiting (l'install se finira en background, l'user verra peut-être l'ancienne version au reload — 1 restart manuel nécessaire dans ce cas).");
-          }
-        }
+        if (reg) issue = await _attendreNouveauSw(reg, 45000, function() {
+          _statusUpdate(window.I18n.t("maint.msg_activating_sw"));
+        });
       } catch(e) {
         console.warn("[Soft update] erreur SW :", e);
+        issue = "echec";
       }
     }
+    console.log("[Soft update] SW : " + issue);
 
-    // 3. Purge TOTALE des caches PWA, sans filtre (comme killsw.html) : le nouveau SW repeuple le sien au
-    //    reload. Coût : un re-téléchargement des assets, acceptable pour une action volontaire.
+    // 3. Anciens caches de l'app seulement, et seulement quand le SW aux commandes a dit le sien.
     _statusUpdate(window.I18n.t("maint.msg_cleaning_caches"));
-    if (window.caches) {
+    const garde = (issue === "nouveau" || issue === "aucun") ? await _nomCacheSw() : null;
+    if (garde && window.caches) {
       try {
-        const keys = await caches.keys();
+        const keys = (await caches.keys()).filter(function(k) {
+          return k.indexOf("myktamap-cache-") === 0 && k !== garde;
+        });
         await Promise.all(keys.map(function(k) {
           console.log("[Soft update] suppression cache :", k);
           return caches.delete(k);
         }));
-        console.log("[Soft update] " + keys.length + " cache(s) supprimé(s) (purge totale)");
+        console.log("[Soft update] " + keys.length + " ancien(s) cache(s) de l'app supprimé(s), gardé : " + garde);
       } catch(e) {
         console.warn("[Soft update] purge caches :", e);
       }
     }
+    try {
+      sessionStorage.removeItem("kta_sw_autoheal_done");
+      sessionStorage.removeItem("kta_sw_autoheal_last_failed");
+    } catch(e) { /* stockage de session indisponible : l'auto-réparation repassera au prochain lancement */ }
 
-    // 4. Reload : le nouveau SW prend le contrôle (cache rempli par son install, fini ou en cours) ;
-    //    démarrage un peu plus long, mais la nouvelle version est garantie.
+    // 4. Reload. Délai dépassé (réseau lent) : l'installation se poursuit en arrière-plan, la nouvelle version
+    //    arrive au chargement suivant ; rien n'a été supprimé.
     _statusUpdate(window.I18n.t("maint.msg_reloading"));
     setTimeout(function() {
       window.location.reload();
-    }, 200); // 200ms (au lieu de 400) — postMessage SKIP_WAITING est arrivé
+    }, 200);
 
   } catch(err) {
     overlay.remove();

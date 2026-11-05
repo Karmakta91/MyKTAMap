@@ -1527,7 +1527,7 @@
   "home.loader.planRevoked": "⛔ Mapa revocado por el autor.",
   "home.loader.selectZipFirst": "Selecciona primero un archivo .zip",
   "home.maint.cancel": "Cancelar",
-  "home.maint.forceUpdate.body": "Esta acción <strong>purgará la caché de recursos</strong> (HTML, JS, CSS, iconos) y <strong>recargará la app</strong> para descargar la última versión del servidor.",
+  "home.maint.forceUpdate.body": "Esta acción <strong>descargará la última versión</strong> del servidor (solo los archivos modificados) y luego <strong>recargará la app</strong>.",
   "home.maint.forceUpdate.condInternet": "<strong>Conexión a Internet activa</strong> (verificada justo después)",
   "home.maint.forceUpdate.condReload": "Recarga inmediata — cierra antes tus pestañas / sesiones sensibles",
   "home.maint.forceUpdate.conditions": "⚠️ Condiciones",

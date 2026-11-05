@@ -1527,7 +1527,7 @@
   "home.loader.planRevoked": "⛔ Plan révoqué par l'auteur.",
   "home.loader.selectZipFirst": "Sélectionne d'abord une archive .zip",
   "home.maint.cancel": "Annuler",
-  "home.maint.forceUpdate.body": "Cette action va <strong>purger le cache des assets</strong> (HTML, JS, CSS, icônes) et <strong>recharger l'application</strong> pour télécharger la dernière version depuis le serveur.",
+  "home.maint.forceUpdate.body": "Cette action va <strong>télécharger la dernière version</strong> depuis le serveur (seuls les fichiers modifiés) puis <strong>recharger l'application</strong>.",
   "home.maint.forceUpdate.condInternet": "<strong>Connexion Internet active</strong> (vérifiée juste après)",
   "home.maint.forceUpdate.condReload": "Reload immédiat — ferme bien tes onglets / sessions sensibles avant",
   "home.maint.forceUpdate.conditions": "⚠️ Conditions",

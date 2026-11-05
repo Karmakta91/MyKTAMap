@@ -1527,7 +1527,7 @@
   "home.loader.planRevoked": "⛔ Plan revoked by the author.",
   "home.loader.selectZipFirst": "Select a .zip archive first",
   "home.maint.cancel": "Cancel",
-  "home.maint.forceUpdate.body": "This will <strong>purge the asset cache</strong> (HTML, JS, CSS, icons) and <strong>reload the app</strong> to download the latest version from the server.",
+  "home.maint.forceUpdate.body": "This will <strong>download the latest version</strong> from the server (changed files only), then <strong>reload the app</strong>.",
   "home.maint.forceUpdate.condInternet": "<strong>Active Internet connection</strong> (checked right after)",
   "home.maint.forceUpdate.condReload": "Immediate reload — close your sensitive tabs / sessions first",
   "home.maint.forceUpdate.conditions": "⚠️ Conditions",
