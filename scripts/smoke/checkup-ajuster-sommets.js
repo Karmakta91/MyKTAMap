@@ -485,6 +485,30 @@ async function insertion(page, ptr, c, tol) {
     window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false });
   });
   await page.waitForTimeout(250);
+  if (c.arme) {
+    // Outil 📐 Distance armé (bouton de la barre), mesure remise : l'ajustement de la mesure entre dans l'historique.
+    const arme = await page.evaluate(function (pts) {
+      const g = window._groupes.mesure, lib = window.I18n.t("ui.subaction.mesureDistance");
+      let b = null;
+      if (!g.useFlyout) {
+        if (!g.subActions.some(function (x) { return !x.classList.contains("kta-hidden"); })) g.btnPrincipal.click();
+        b = g.subActions.filter(function (x) { return (x.title || "").indexOf(lib) >= 0; })[0];
+      } else {
+        g.btnPrincipal.click();
+        const fly = document.querySelector(".kta-group-flyout");
+        b = fly && Array.prototype.slice.call(fly.querySelectorAll(".kta-group-flyout-btn")).filter(function (x) {
+          return x.textContent.indexOf(lib) >= 0;
+        })[0];
+      }
+      if (b) b.click();
+      if (window.ktaOutilsOuverts && window.ktaOutilsOuverts()) window.ktaFermerOutils();
+      window.setMeasurePoints(pts.map(function (q) { return window.__as.P(q[0], q[1]); }));
+      window.updateMesure && window.updateMesure();
+      return window.modeMesure === true && window.ktaMesureAnnulable();
+    }, [[100, 0], [250, 0], [400, 0]]);
+    verifier(arme, c.nom + " : outil 📐 Distance armé", arme);
+    await page.waitForTimeout(250);
+  }
   const o0 = await lireObjet(page, c.ref), L0 = o0.points.length;
   const e0 = await etat(page);
   const o = await ouvrirInsertion(page, ptr, o0.points[c.x]);
@@ -509,7 +533,9 @@ async function insertion(page, ptr, c, tol) {
   if (c.histo !== false) {
     verifier(e1.annulables === e0.annulables + 3, c.nom + " : un point = une entrée d'historique",
       { avant: e0.annulables, apres: e1.annulables });
-    verifier(o1.uid === o0.uid && o1.updatedAt !== o0.updatedAt, c.nom + " : uid gardé, updatedAt changé");
+    if (c.ref !== "distance" && c.ref !== "surface") {
+      verifier(o1.uid === o0.uid && o1.updatedAt !== o0.updatedAt, c.nom + " : uid gardé, updatedAt changé");
+    }
     await ctrlZ(page, 1);
     let oz = await lireObjet(page, c.ref), ez = await etat(page);
     verifier(oz.points.length === L0 + 2 && proche(oz.points[debut + 1], cibles[1], tol) && ez.as.insertion &&
@@ -536,14 +562,21 @@ async function insertion(page, ptr, c, tol) {
   }
   await page.waitForTimeout(300);
   const of = await lireObjet(page, c.ref), ef = await etat(page);
+  if (c.arme) {
+    verifier(await page.evaluate(function () { return window.modeMesure === true; }),
+      c.nom + " : Échap termine l'insertion, l'outil 📐 reste armé");
+  }
   verifier(!ef.as.insertion && ef.bandeau === null && of.points.length === L0 + 3,
     c.nom + " : fin par " + { ok: "✓", echap: "Échap", suivant: "un tap sur X+1" }[c.fin] + ", les points restent",
     { as: ef.as, bandeau: ef.bandeau, L: of.points.length });
   await page.evaluate(function () { window.map.closePopup(); });
-  // Après le mode : un tap ne pose plus rien ; Ctrl+Z retire encore un point à la fois.
-  await taper(page, ptr, [await planU(page, c.pts[0][0] + 15, c.pts[0][1] + 15)]);
-  await page.evaluate(function () { window.map.closePopup(); });
-  verifier((await lireObjet(page, c.ref)).points.length === L0 + 3, c.nom + " : après la fin, un tap ne pose plus rien");
+  // Après le mode : un tap ne pose plus rien (outil 📐 armé : il pose un point de mesure, c'est le sien, non joué) ;
+  // Ctrl+Z retire encore un point à la fois.
+  if (!c.arme) {
+    await taper(page, ptr, [await planU(page, c.pts[0][0] + 15, c.pts[0][1] + 15)]);
+    await page.evaluate(function () { window.map.closePopup(); });
+    verifier((await lireObjet(page, c.ref)).points.length === L0 + 3, c.nom + " : après la fin, un tap ne pose plus rien");
+  }
   if (c.histo !== false) {
     await ctrlZ(page, 1);
     const a1 = await lireObjet(page, c.ref);
@@ -554,6 +587,7 @@ async function insertion(page, ptr, c, tol) {
     c.nom + " : après le mode, Ctrl+Z retire un point à la fois jusqu'à la forme d'origine",
     { L: [a1.points.length, a3.points.length] });
   }
+  if (c.arme) await page.evaluate(function () { window._desactiverTousLesModes(); });
 }
 
 async function insertionRefusee(page, ptr) {
@@ -842,7 +876,9 @@ async function jouer(nav, moteur, mode) {
         histo: false, pts: [[430, 40], [460, 80], [490, 120]] },
       { nom: "＋ mesure surface (X dernier)", ref: "surface", x: 2, genre: "fermée : boucle vers le premier",
         fin: "suivant", histo: false, sansSuppr: true, suivant: function () { return 0; },
-        pts: [[191, 283], [154, 246], [116, 208]] }
+        pts: [[191, 283], [154, 246], [116, 208]] },
+      { nom: "＋ mesure distance, 📐 armé", ref: "distance", x: 2, genre: "prolongée au-delà du bout", fin: "echap",
+        arme: true, pts: [[430, 40], [460, 80], [490, 120]] }
     ];
     for (const c of INS) await insertion(page, ptr, c, tol);
     await insertionRefusee(page, ptr);

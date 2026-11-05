@@ -208,13 +208,6 @@ window.KtaAjusterSommets = (function () {
       iconSize: [sansSuppr ? 44 : MENU_LARGE, 44], iconAnchor: [sansSuppr ? 22 : MENU_LARGE / 2, 58]
     });
     const marker = L.marker(_ll(c), { icon: icon, interactive: true, keyboard: false, zIndexOffset: 1000 }).addTo(m);
-    marker.on("click", function (ev) {
-      const t = ev.originalEvent && ev.originalEvent.target, b = t && t.closest && t.closest("button");
-      if (!b) return;
-      _fermerMenu();
-      if (b.classList.contains("kta-ajuster-inserer")) _debuterInsertion(c);
-      else _ecrire("supprimer", c, null);
-    });
     _menu = { marker: marker, c: c, timer: setTimeout(_fermerMenu, MENU_MS) };
   }
   // Les deux boutons du menu (carte et vue 3D) ; `attr(action)` = attributs en plus (vue 3D : data-v3d).
@@ -537,8 +530,21 @@ window.KtaAjusterSommets = (function () {
     const m = _map(), cont = m && m.getContainer();
     return !!(cont && t && cont.contains(t) && !(t.closest && t.closest(".leaflet-control, .leaflet-popup")));
   }
+  // 🩸 Les boutons du menu agissent ici, en capture sur window, pas par le clic du marqueur : outil 📐 armé, map.js >
+  // _ktaPickCaptureClick (capture sur le conteneur) ré-émet le clic à la carte et le marqueur ne le voit jamais (un
+  // point de mesure posait sous ＋ ou 🗑️).
+  function _cliqueMenu(e) {
+    const b = e.target && e.target.closest && e.target.closest(".kta-ajuster-inserer, .kta-ajuster-suppr");
+    e.stopPropagation();
+    if (e.cancelable) e.preventDefault();
+    if (!b || !_menu || e.type !== "click") return;
+    const c = _menu.c;
+    _fermerMenu();
+    if (b.classList.contains("kta-ajuster-inserer")) _debuterInsertion(c);
+    else _ecrire("supprimer", c, null);
+  }
   function _avaler(e) {
-    if (_dansMenu(e.target)) return;
+    if (_dansMenu(e.target)) { _cliqueMenu(e); return; }
     // ⚠️ contrat : insertion ouverte, tout clic sur la carte est un point (ni fiche, ni outil, ni double-clic qui
     // zoome) ; un outil armé entre-temps ferme l'insertion et garde son clic.
     if (_ins && _surCarte(e.target)) {
