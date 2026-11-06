@@ -315,6 +315,8 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 .kta-v3d-btn.kta-v3d-btn-passage { max-width: min(72vw, 340px); overflow: hidden; text-overflow: ellipsis; }
 /* Fiche d'un POI jonction : un bouton par niveau lié (vue3d.js > _passagesFiche), au-dessus de la fiche de la carte. */
 .kta-v3d-fiche-passages { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+/* ✏️ / 📍 / 🎯 viennent après le corps de la fiche (dernier bouton : « Lier à un autre plan ») : même écart. */
+.kta-v3d-fiche-passages.kta-v3d-fiche-edition { margin-top: 10px; }
 .kta-v3d-btn.kta-v3d-fiche-passage {
   height: 44px; border-color: var(--kta-accent); box-shadow: none; white-space: normal; text-align: left;
 }
