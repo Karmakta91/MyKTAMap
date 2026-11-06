@@ -56,8 +56,10 @@
 // greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
 // (molette, Maj + molette, + / −, = / -, pincement, tuiles qui suivent le recul).
 // Colonne d'outils en vue d'édition seulement (PC, téléphone, paysage ; absente pendant le jeu, qui ne chevauche aucune
-// commande à ces trois tailles). Plan au sol sur écran dense, vue immobile (image, V1, V2). Dessin : premier toucher
-// d'un outil armé posé, au sol sous le doigt (jamais sur le dessus d'un pilier), au point d'appui.
+// commande à ces tailles) ; au doigt en paysage bas, contre le bord droit, entre la rangée du haut et ⌖
+// (KTA_V3D_SEUL=colonne : cette vérification seule). Plan au sol sur écran dense, vue immobile (image, V1, V2).
+// Dessin : premier toucher d'un outil armé posé, au sol sous le doigt (jamais sur le dessus d'un pilier), au point
+// d'appui.
 // Données changées pendant la vue (26) ; type changé (26 bis, KTA_V3D_SEUL=type : 1re → 2e masse 🧱 activé ou coupé,
 // zone, tracé, type perso ; session et calque en « Modifier » ; vue ouverte, vue rouverte).
 // Toucher un objet (27) : fiche de la carte d'un pilier, d'un mur, d'une zone,
@@ -4076,7 +4078,8 @@ async function sectionCameraPixels(page) {
 // paysage bas) : absente à hauteur d'yeux, présente en édition, masquée au retour, absente pendant le jeu (greffe
 // `plongee: false`, `fiches: false`). 🩸 En paysage bas, style.css force `.leaflet-bar { display: flex !important }`.
 // Jeu lancé (add-on mkmg) : ses éléments ne chevauchent aucune commande de la vue, à chaque taille (§ 23 au PC seul).
-const TAILLES_COLONNE = [{ width: 1200, height: 800 }, { width: 393, height: 852 }, { width: 852, height: 393 }];
+const TAILLES_COLONNE = [{ width: 1200, height: 800 }, { width: 393, height: 852 }, { width: 852, height: 393 },
+  { width: 1280, height: 480 }, { width: 1440, height: 900 }];
 async function sectionColonneEtJeu(page, MX) {
   const vp0 = page.viewportSize();
   const lire = function () {
@@ -4094,7 +4097,7 @@ async function sectionColonneEtJeu(page, MX) {
       const dansEcran = bs.every(function (r) { return r.top >= 0 && r.bottom <= window.innerHeight; });
       const autres = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *, " +
         "#kta-vue3d .kta-v3d-pad > *, #kta-vue3d .kta-v3d-incl > *, #kta-vue3d .kta-v3d-place, " +
-        "#kta-vue3d .kta-v3d-boussole")).filter(function (el) { return el.getClientRects().length > 0; })
+        "#kta-vue3d .kta-v3d-boussole, #kta-vue3d .kta-v3d-bandeau, #kta-vue3d .kta-v3d-mesure")).filter(function (el) { return el.getClientRects().length > 0; })
         .map(function (el) { return el.getBoundingClientRect(); });
       const chevauche = bs.some(function (r) {
         return autres.some(function (o) { return r.left < o.right && r.right > o.left && r.top < o.bottom && r.bottom > o.top; });
@@ -4206,6 +4209,126 @@ async function sectionColonneEtJeu(page, MX) {
     window.setEditorPoints(window.__v3dPoints || []);
     window.KtaGalerie.invalider();
   });
+}
+
+// Colonne d'outils au DOIGT en paysage bas (css/vue3d.css, bloc `pointer: coarse`) : téléphone couché (852 × 393,
+// 844 × 390 ; sous Chromium aussi avec des safe areas simulées), contexte tactile, joystick. Colonne verticale, à
+// 20 px au plus du bord droit (safe area déduite), dans l'écran, les six boutons visibles sans défiler ; à 14 px au
+// moins de la rangée du haut et de ⌖ (leurs zones de toucher de 44 px ne se mordent pas), sans chevaucher la grille + − ▲ ▼, ⌖, la boussole,
+// le bandeau de guidage ni celui de mesure — ⌖ et les deux bandeaux montrés de force pour le pire cas.
+const TAILLES_COLONNE_DOIGT = [{ width: 852, height: 393 }, { width: 844, height: 390 },
+  { width: 852, height: 393, safe: { top: 0, left: 59, right: 59, bottom: 21 } }];
+async function sectionColonnePaysage(nav) {
+  const chromiumNav = nav.browserType().name() === "chromium";
+  const fautes = [];
+  for (const t of TAILLES_COLONNE_DOIGT) {
+    if (t.safe && !chromiumNav) continue;
+    const nom = t.width + " × " + t.height + (t.safe ? " (safe areas)" : "");
+    const ctx = await nav.newContext({ viewport: { width: t.width, height: t.height }, hasTouch: true,
+      isMobile: chromiumNav, deviceScaleFactor: chromiumNav ? 3 : 1, serviceWorkers: "block" });
+    const page = await ctx.newPage();
+    await page.addInitScript(function (ls) {
+      for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+    }, LS_PREGATES);
+    try {
+      await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+      await attendre(page, function () {
+        return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+          window.PlanRegistry.getAll().length > 0;
+      }, 20000);
+      await page.waitForTimeout(1500);
+      await page.evaluate(function () {
+        const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+        const tous = window.PlanRegistry.getAll();
+        const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+        window.__pret = false;
+        Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+      });
+      await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+      await page.waitForTimeout(1500);
+      await page.evaluate(function () {
+        const m = document.getElementById("kta-session-modal");
+        if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+        if (window.getTrackingActif()) window.stopTracking();
+      });
+      if (t.safe) {
+        const cdp = await ctx.newCDPSession(page);
+        await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: t.safe });
+      }
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(async function () {
+        const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        await K.ouvrir({ depart: { x: (ox - 30) * sc, y: oz * sc, cap: 90 } });
+        if (K.etat().vue !== "plongee") K.basculerVue();
+      });
+      const lire = function () {
+        return page.evaluate(async function () {
+          for (let i = 0; i < 6; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+          const vis = function (s) {
+            return Array.prototype.slice.call(document.querySelectorAll(s))
+              .filter(function (el) { return el.getClientRects().length > 0; })
+              .map(function (el) { return el.getBoundingClientRect(); });
+          };
+          const c = document.querySelector("#kta-vue3d .kta-v3d-outils");
+          if (!c || !c.getClientRects().length) return { colonne: false };
+          const sonde = document.createElement("div");
+          sonde.style.cssText = "position:fixed;padding-right:env(safe-area-inset-right,0px);visibility:hidden";
+          document.body.appendChild(sonde);
+          const droite = parseFloat(getComputedStyle(sonde).paddingRight) || 0;
+          sonde.remove();
+          const col = c.getBoundingClientRect();
+          const bs = vis("#kta-vue3d .kta-v3d-outils > *");
+          const ecart = function (a, b) {
+            return Math.max(b.left - a.right, a.left - b.right, b.top - a.bottom, a.top - b.bottom);
+          };
+          const proches = function (s) {
+            return vis(s).reduce(function (m, o) { return Math.min(m, ecart(col, o)); }, Infinity);
+          };
+          const touche = vis("#kta-vue3d .kta-v3d-incl > *, #kta-vue3d .kta-v3d-place, #kta-vue3d .kta-v3d-boussole, " +
+            "#kta-vue3d .kta-v3d-bandeau, #kta-vue3d .kta-v3d-mesure, #kta-vue3d .kta-v3d-pad > *")
+            .some(function (o) { return ecart(col, o) < 0; });
+          return { colonne: true, coarse: matchMedia("(pointer: coarse)").matches, boutons: bs.length,
+            vertical: bs.every(function (r, i) {
+              return Math.abs(r.left - bs[0].left) < 2 && (i === 0 || r.top >= bs[i - 1].bottom - 6);
+            }),
+            bordDroit: Math.round(window.innerWidth - droite - col.right),
+            dansEcran: col.top >= 0 && col.bottom <= window.innerHeight && col.left >= 0 && col.right <= window.innerWidth,
+            tousVus: bs.every(function (r) { return r.top >= col.top - 1 && r.bottom <= col.bottom + 1; }),
+            ecartHaut: Math.round(proches("#kta-vue3d .kta-v3d-haut > *")),
+            ecartPlace: Math.round(proches("#kta-vue3d .kta-v3d-place")), chevauche: touche };
+        });
+      };
+      const normal = await lire();
+      await capture(page, "colonne-doigt-" + t.width + "x" + t.height + (t.safe ? "-safe" : ""));
+      await page.evaluate(function () {
+        const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+        q(".kta-v3d-place").hidden = false;
+        const me = q(".kta-v3d-mesure"); me.hidden = false; me.textContent = "12,3 m";
+        const ba = q(".kta-v3d-bandeau"); ba.hidden = false;
+        if (!ba.textContent.trim()) ba.textContent = "Dans 20 m, tourner à gauche";
+        window.dispatchEvent(new Event("resize"));
+      });
+      await page.waitForTimeout(300);
+      const pire = await lire();
+      await capture(page, "colonne-doigt-pire-" + t.width + "x" + t.height + (t.safe ? "-safe" : ""));
+      [["normal", normal], ["pire", pire]].forEach(function (x) {
+        const e = x[1];
+        if (!e.colonne || !e.coarse || e.boutons < 6 || !e.vertical || e.bordDroit > 20 || e.bordDroit < 0 ||
+          !e.dansEcran || e.ecartHaut < 14 || e.ecartPlace < 14 || e.chevauche || (x[0] === "normal" && !e.tousVus)) {
+          fautes.push(nom + " " + x[0] + " : " + JSON.stringify(e));
+        }
+      });
+      await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+    } catch (err) {
+      fautes.push(nom + " : exception du harnais : " + (err && err.message));
+    } finally {
+      await ctx.close();
+    }
+  }
+  verifier(fautes.length === 0, "colonne d'outils au doigt en paysage bas : verticale, contre le bord droit (≤ 20 px " +
+    "hors safe area), dans l'écran, six boutons vus, à 14 px au moins de la rangée du haut et de ⌖, sans chevaucher " +
+    "grille, boussole ni bandeaux (guidage, mesure)", fautes);
 }
 
 // Plan au sol 🗺️ sur un écran DENSE (téléphone : 393 × 852, ×3, tactile), vue IMMOBILE après l'interrupteur, pour les
@@ -6784,7 +6907,7 @@ async function sectionGestesDoigt(nav) {
       await sectionDessin(page);
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" ||
-      SEUL === "fiches" || SEUL === "gestes") {
+      SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -12952,6 +13075,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "poi") await sectionPoi3D(nav);
     if (!SEUL || SEUL === "fiches") await sectionFichesReglage(nav);
     if (!SEUL || SEUL === "gestes") await sectionGestesDoigt(nav);
+    if (!SEUL || SEUL === "colonne") await sectionColonnePaysage(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

@@ -346,7 +346,8 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 /* ⚠️ contrat (décision produit) : la colonne reste VERTICALE en paysage bas aussi. style.css y met toute .leaflet-bar
    en ligne (pilules horizontales de la barre 2D) : l'id et !important l'emportent, comme le zoom. Trop haute pour le
    milieu de l'écran, elle part de sous la rangée du haut et le bandeau (--kta-v3d-sous-haut), à gauche de la grille
-   + − ▲ ▼ et de ⌖ (bord droit), et défile si elle ne tient pas. */
+   + − ▲ ▼ et de ⌖ (bord droit), et défile si elle ne tient pas. Ce placement est celui du pointeur fin (fenêtre de
+   PC basse) ; au doigt, le bloc suivant la remet contre le bord droit. */
 @media (max-height: 500px) and (orientation: landscape) {
   #kta-vue3d .kta-v3d-outils {
     flex-direction: column !important;
@@ -354,6 +355,23 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
     right: calc(10px + 2 * var(--kta-v3d-taille) + var(--kta-v3d-ecart) + 8px);
     max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - max(14px, env(safe-area-inset-bottom)));
     overflow-y: auto;
+  }
+}
+/* ⚠️ contrat (décision produit) : au doigt en paysage bas (téléphone couché), la colonne est contre le BORD DROIT,
+   alignée sur ✕ et la grille + − ▲ ▼, entre la rangée du haut et ⌖. Haut : 7 px sous --kta-v3d-sous-haut (lui-même
+   8 px sous la rangée ou le bandeau). Bas : 15 px au-dessus de la place de ⌖, toujours réservée (il apparaît quand
+   la caméra se détache : la colonne ne change pas de taille), liseré compris (border-box). Ces écarts tiennent
+   séparées les zones de toucher de 44 px de la colonne, de la rangée et de ⌖. Boutons à 28 px (au lieu de 30) : les
+   six tiennent sur un iPhone couché (390 px de haut) ; ce qui ne tient pas défile (bandeau de guidage montré, petit
+   téléphone). Les panneaux des POI ne sont pas des commandes : ils peuvent passer dessous. Garde-fou :
+   scripts/smoke/checkup-vue-3d.js > sectionColonnePaysage. */
+@media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  #kta-vue3d .kta-v3d-outils {
+    --kta-barre-bouton: 28px; box-sizing: border-box;
+    top: calc(var(--kta-v3d-sous-haut, 80px) + 7px);
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - 7px - max(14px, env(safe-area-inset-bottom))
+      - 3 * var(--kta-v3d-taille) - 2 * var(--kta-v3d-ecart) - 15px);
   }
 }
 /* Zone de toucher de 44 px (--kta-cible-toucher), comme la rangée du haut : on joue au doigt. Les zones de deux
