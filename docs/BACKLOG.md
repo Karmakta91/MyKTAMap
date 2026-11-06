@@ -119,7 +119,7 @@
   · depuis: 06/11/2026 · taille: S`
 - **☀️ Plein jour avec du contraste** — l'ambiance forte et uniforme efface le relief (la lampe le donne). Validé
   06/11 : lumière « soleil » rasante (suit le nord du plan) + ambiance baissée, brouillard clair qui pâlit le lointain,
-  lampe gardée en option ; ni ombres portées ni occlusion. Avant « Tout le plan ».
+  lampe gardée en option ; ni ombres. En vue d'Édition (éclairage forcé, case sans effet) : case FONCTIONNELLE.
   `qui: Claude · action: coder après l'enquête mémoire · fini: relief lisible en Plein jour, checkup, iPhone tenu
   · depuis: 06/11/2026 · taille: S`
 - **Vue 3D « Tout le plan »** — case dans ⚙️ de la 3D, cochée par défaut (portée 15–100 m, recul 150 m) ; décochée :
