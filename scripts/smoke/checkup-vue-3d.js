@@ -78,6 +78,8 @@
 // 🗑️, ⏪, caméra immobile, scène refaite), refus, niveau, calque, lecture seule, outil armé, pan, Échap ; à la vraie
 // souris (35 bis : pavé, 1280 × 800, tremblement, coin du dessus d'un pilier, tracé, mesure). Ajouter un POI
 // en vue d'édition (36, =poi) : ✏️ à sa place, un seul outil, fenêtre de nommage, clavier, niveau, ⏪, Échap, lecture seule.
+// Fiche d'un POI jonction lu dans un calque ou remplacé par une copie (39 bis, =passagecalque) : boutons de passage,
+// passage effectué, fiche gardée quand la scène est refaite (POI sans uid, pilier du calque), édition d'une copie.
 // Réglage ⚙️ Fiches (37, =fiches) : défaut selon le pointeur, coupé = rien sur pilier, zone, tracé (POI : sa fiche), retenu.
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
 // colonne d'outils ou le joystick, doigt levé puis reposé, rotation engagée à 10° sans saut, pas bornés.
@@ -6768,6 +6770,216 @@ async function sectionPointPrecis3D(nav, mode) {
   }
 }
 
+// ── 39 bis. Fiche d'un POI jonction lu dans un CALQUE, ou remplacé par une copie (vue3d.js > _memeObjet) ──────────
+// Les lectures des calques (utils.js > getAllEmbeddedPoints) rendent des objets neufs à chaque appel : la fiche d'un
+// POI de calque non rapatrié, avec ou sans uid, montre « ▲ Monter… » et passe au niveau ; elle reste ouverte, ses
+// boutons gardés, quand la scène est refaite. Un POI de session remplacé par une copie identique (scène non refaite)
+// garde ses boutons de passage ET d'édition. Une structure de calque garde sa fiche quand la scène est refaite.
+// Le getter réel des calques est joué (calque fictif chargé par ajouterPointsDepuisJSON), jamais un bouchon stable.
+async function sectionPassageFicheCalque(nav) {
+  const nom = "§ 39 bis ";
+  console.log("§ 39 bis — fiche d'un POI jonction de calque ou remplacé par une copie : boutons de passage");
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const pose = await page.evaluate(async function () {
+      const C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      window.__pfP = P;
+      window.getPlanEditionVue3D = function () { return null; };
+      window.ktaEstAccessible = function () { return true; };
+      C.multiLevel = true; C.availableLevels = [0, 1]; C.visibleLevels = [0, 1]; C.activeLevel = 0;
+      window._currentLoadedPlanId = "v3d-checkup-passage-calque";
+      window.setPlanRenduVue3D(null, "mixte");
+      // Lectures du plan réduites au calque du checkup ; le getter des POI reste celui de l'app (objets neufs).
+      const CAL = "v3d_pfc_calque", vrais = { p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures };
+      const duCalque = function (f) {
+        return function () { return (f() || []).filter(function (o) { return o && o.layerId === CAL; }); };
+      };
+      window.getAllEmbeddedPoints = duCalque(vrais.p);
+      window.getAllEmbeddedStructures = duCalque(vrais.s);
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = function () { return []; };
+      window.setStructures([]); window.setZones([]);
+      window.setRoads([{ uid: "rd_pfc_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] },
+        { uid: "rd_pfc_1", type: "principal", level: 1, points: [P(-60, 0), P(60, 0)] }]);
+      window.setEditorPoints([Object.assign({ id: "Passage session pfc", nom: "Passage session pfc", uid: "pt_pfc_ses",
+        level: 0, niveaux: [0, 1], tags: ["jes"], updatedAt: 1000 }, P(20, 0.6))]);
+      const json = { data: [
+        Object.assign({ id: "Passage calque pfc", nom: "Passage calque pfc", uid: "pt_pfc_cal", tags: ["jes"],
+          level: 0, niveaux: [0, 1], description: "" }, P(-20, 0.6)),
+        Object.assign({ id: "Passage ancien pfc", nom: "Passage ancien pfc", tags: ["jpe"], level: 0, niveaux: [0, 1],
+          description: "" }, P(-40, 0.6))],
+      structures: [{ uid: "st_pfc_cal", type: "pilier-1", level: 0,
+        points: [P(-1, 6), P(1, 6), P(1, 8), P(-1, 8)] }] };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(json)], { type: "application/json" }));
+      window.PLAN_CONFIG.dataLayers = (window.PLAN_CONFIG.dataLayers || []).concat([
+        { id: CAL, label: "Calque du checkup v3d (passages)", file: url, visible: true }]);
+      const groupe = L.layerGroup().addTo(window.map);
+      window.dataLayerGroups[CAL] = groupe;
+      window.ajouterPointsDepuisJSON(url, groupe);
+      const charge = function () { return window.getAllEmbeddedPoints().length === 2; };
+      for (let i = 0; i < 60 && !charge(); i++) await pause(50);
+      window.KtaGalerie.invalider();
+      const a = window.getAllEmbeddedPoints(), b = window.getAllEmbeddedPoints();
+      return { charge: charge(), neufs: a.length === 2 && a[0] !== b[0],
+        sansUid: a.filter(function (q) { return !q.uid; }).length };
+    });
+    verifier(pose.charge && pose.neufs && pose.sansUid === 1,
+      nom + "calque fictif chargé : deux POI jonction (un sans uid), getAllEmbeddedPoints rend des objets neufs", pose);
+
+    const ouvrir = function (x, cap, plongee) {
+      return page.evaluate(async function (a) {
+        const K = window.KtaVue3D, d = window.__pfP(a.x, 0);
+        if (K.etat().ouvert) await K.fermer();
+        window.ktaSetActiveLevel(0);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: a.cap }, distanceVue: 200, tuiles: false, commandes: "pave" });
+        if (a.plongee) K.basculerVue();
+        await new Promise(function (ok) { setTimeout(ok, 500); });
+      }, { x: x, cap: cap, plongee: !!plongee });
+    };
+    const lireFiche = function () {
+      return page.evaluate(function () {
+        const e = window.KtaVue3D.etat(), f = e.fiche;
+        return { niveau: e.niveau, fiche: f ? { nom: f.nom || null, famille: f.famille || null, uid: f.uid || null,
+          passages: f.passages || null,
+          edit: Array.prototype.map.call(document.querySelectorAll("#kta-vue3d [data-v3d-edit]"),
+            function (b) { return b.dataset.v3dEdit; }) } : null,
+          attendu: window.I18n.t("vue3d.ficheMonter", { n: window.ktaFormatNiveau(1), moyen: window.I18n.t(
+            "vue3d.moyen." + (f && /ancien/.test(f.nom || "") ? "echelons" : "escalier")) }) };
+      });
+    };
+    const ficheDe = async function (nomPoi) {
+      const sp = await page.evaluate(function (n) {
+        const s = window.KtaVue3D.etat().panneaux.filter(function (q) { return q.nom === n && q.visible; })[0];
+        return s ? [s.ecran.x, s.ecran.y] : null;
+      }, nomPoi);
+      if (!sp) return { vise: false };
+      await page.mouse.click(sp[0], sp[1]);
+      await page.waitForTimeout(550);
+      return Object.assign({ vise: true }, await lireFiche());
+    };
+    const passer = async function () {
+      const b = await page.$("#kta-vue3d [data-v3d-passage]");
+      if (!b) return { bouton: false };
+      await b.click();
+      // Geste de passage (fondu, descente) : attendu jusqu'au niveau d'arrivée.
+      const e = await page.evaluate(async function () {
+        const K = window.KtaVue3D;
+        for (let i = 0; i < 40 && (K.etat().niveau !== 1 || K.etat().geste); i++) {
+          await new Promise(function (ok) { setTimeout(ok, 50); });
+        }
+        const s = K.etat(); return { niveau: s.niveau, fiche: !!s.fiche };
+      });
+      return Object.assign({ bouton: true }, e);
+    };
+    const boutonsOk = function (f) {
+      return f.vise && !!f.fiche && Array.isArray(f.fiche.passages) && f.fiche.passages.length === 1 &&
+        f.fiche.passages[0] === f.attendu;
+    };
+    // Scène refaite (tracé de session ajouté au loin), fiche ouverte : attendue jusqu'à la reconstruction.
+    const refaire = function () {
+      return page.evaluate(async function () {
+        const K = window.KtaVue3D, P = window.__pfP, n0 = K.etat().donnees.refaites;
+        window.setRoads(window.getRoads().concat([{ uid: "rd_pfc_x" + n0, type: "secondaire", level: 0,
+          points: [P(50, 30 + n0), P(55, 30 + n0)] }]));
+        for (let i = 0; i < 40; i++) {
+          await new Promise(function (ok) { setTimeout(ok, 50); });
+          if (!K.etat().donnees.attente && K.etat().donnees.refaites > n0) break;
+        }
+        await new Promise(function (ok) { setTimeout(ok, 100); });
+        return K.etat().donnees.refaites - n0;
+      });
+    };
+
+    // 1. POI de calque (uid) : boutons, passage effectué.
+    await ouvrir(-24, 90);
+    let f = await ficheDe("Passage calque pfc");
+    verifier(boutonsOk(f), nom + "POI jonction d'un calque non rapatrié : fiche avec « ▲ Monter au niveau +1 »", f);
+    let pa = await passer();
+    verifier(pa.bouton && pa.niveau === 1 && !pa.fiche, nom + "bouton de la fiche (calque) : passage au niveau +1", pa);
+    // 2. POI de calque SANS uid : reconnu par id, place et niveau ; fiche gardée, boutons compris, scène refaite.
+    await ouvrir(-44, 90);
+    f = await ficheDe("Passage ancien pfc");
+    verifier(boutonsOk(f), nom + "POI jonction de calque sans uid : fiche avec « ▲ Monter… (échelle) »", f);
+    const n = await refaire();
+    const g = await lireFiche();
+    verifier(n >= 1 && !!g.fiche && g.fiche.nom === "Passage ancien pfc" && Array.isArray(g.fiche.passages) &&
+      g.fiche.passages.length === 1, nom + "scène refaite, fiche ouverte : elle reste, avec son bouton de passage",
+    { refaites: n, g: g });
+    pa = await passer();
+    verifier(pa.bouton && pa.niveau === 1, nom + "bouton gardé après la reconstruction : passage au niveau +1", pa);
+    // 3. POI de session remplacé par une copie identique (empreinte inchangée, scène non refaite), vue d'édition.
+    await ouvrir(16, 90, true);
+    const copie = await page.evaluate(async function () {
+      const K = window.KtaVue3D, n0 = K.etat().donnees.refaites, avant = window.getEditorPoints()[0];
+      window.setEditorPoints(window.getEditorPoints().map(function (p) { return JSON.parse(JSON.stringify(p)); }));
+      await new Promise(function (ok) { setTimeout(ok, 900); });
+      return { refaites: K.etat().donnees.refaites - n0, copie: window.getEditorPoints()[0] !== avant };
+    });
+    f = await ficheDe("Passage session pfc");
+    verifier(copie.copie && boutonsOk(f) && f.fiche.edit.indexOf("modifier") >= 0 &&
+      f.fiche.edit.indexOf("deplacer") >= 0,
+      nom + "POI de session remplacé par une copie identique : boutons de passage ET ✏️ Modifier / 📍 Déplacer",
+      { copie: copie, f: f });
+    pa = await passer();
+    verifier(pa.bouton && pa.niveau === 1, nom + "bouton de la fiche (copie) : passage au niveau +1", pa);
+    // 4. Structure du calque : sa fiche reste quand la scène est refaite (objets neufs du calque). Vue d'édition :
+    // le sol visé tombe dans le pilier.
+    await ouvrir(-4, 90, true);
+    const cible = await page.evaluate(function () {
+      let c = null;
+      const deg = window.KtaVue3D.greffer({ nom: "v3d-pfc-cam", scene: function (q) { c = q; } });
+      if (deg) deg();
+      const P = window.__pfP(0, 7), sc = window.APP_CONFIG.scale;
+      const v = new c.THREE.Vector3(P.x / sc, 0, P.y / sc).project(c.camera);
+      const r = document.querySelector("#kta-vue3d canvas").getBoundingClientRect();
+      return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height];
+    });
+    await page.mouse.click(cible[0], cible[1]);
+    await page.waitForTimeout(550);
+    const s0 = await lireFiche();
+    const ns = await refaire();
+    const s1 = await lireFiche();
+    verifier(!!s0.fiche && s0.fiche.uid === "st_pfc_cal" && ns >= 1 && !!s1.fiche && s1.fiche.uid === "st_pfc_cal",
+      nom + "pilier d'un calque : sa fiche reste ouverte quand la scène est refaite", { s0: s0, refaites: ns, s1: s1 });
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+    await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.stack || err));
+  } finally {
+    await ctx.close();
+  }
+}
+
 // ── 37. Réglage ⚙️ « Fiches » (config.js > getVue3DFichesObjets, vue3d.js > _toucher) ───────────────────────────────
 // Défaut selon le pointeur (fin : ouvert ; grossier, téléphone émulé sous Chromium : coupé) ; coupé : toucher un
 // pilier, une zone ou un tracé n'ouvre rien, un panneau de POI ouvre sa fiche ; ouvert : la fiche du pilier ; bascule
@@ -7262,7 +7474,8 @@ async function sectionGestesDoigt(nav) {
       await sectionDessin(page);
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
-      SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne") {
+      SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" ||
+      SEUL === "passagecalque") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -13431,6 +13644,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "precis") {
       for (const mode of ["souris", "doigt"]) await sectionPointPrecis3D(nav, mode);
     }
+    if (!SEUL || SEUL === "passagecalque") await sectionPassageFicheCalque(nav);
     if (!SEUL || SEUL === "fiches") await sectionFichesReglage(nav);
     if (!SEUL || SEUL === "gestes") await sectionGestesDoigt(nav);
     if (!SEUL || SEUL === "colonne") await sectionColonnePaysage(nav);

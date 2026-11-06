@@ -2807,28 +2807,46 @@
     e.sale = true;
   }
 
-  // Fiche ouverte : son POI retrouvé (même objet, sinon même uid : une annulation rend des copies) est relu s'il a
-  // changé ; disparu (supprimé depuis la fiche elle-même, annulé), la fiche se ferme.
+  // 🩸 Jamais l'identité seule pour reconnaître un POI ou un objet : les lectures des calques (utils.js >
+  // getAllEmbeddedPoints, getAllEmbeddedZones…) rendent des objets NEUFS à chaque appel, une annulation rend des
+  // copies. Même uid ; sans uid (calque ancien), un POI = même id, même place et même niveau, un objet = même type et
+  // même tableau de points (partagé par les copies d'un calque). La copie d'un POI jonction posée sur un autre de ses
+  // niveaux (_collecter, _v3dJonction) est ramenée à son original.
+  function _memeObjet(a, b) {
+    a = a && a._v3dJonction || a; b = b && b._v3dJonction || b;
+    if (a === b) return true;
+    if (!a || !b) return false;
+    if (a.uid || b.uid) return a.uid === b.uid;
+    if (Array.isArray(a.points) || Array.isArray(b.points)) return a.points === b.points && a.type === b.type;
+    return String(a.id || "") === String(b.id || "") && a.x === b.x && a.y === b.y &&
+      (a.level || 0) === (b.level || 0);
+  }
+
+  // L'objet de `liste` qui est `o` (lui-même d'abord, sinon _memeObjet) → null s'il n'y est pas.
+  function _retrouver(liste, o) {
+    if (!o) return null;
+    if (liste.indexOf(o) >= 0) return o;
+    return liste.filter(function (q) { return _memeObjet(q, o); })[0] || null;
+  }
+
+  // Fiche ouverte : son POI retrouvé (_retrouver) est relu s'il a changé ; disparu (supprimé depuis la fiche
+  // elle-même, annulé), la fiche se ferme.
   function _majFicheDonnees() {
     const e = _e, f = e.fiche;
     if (!f) return;
     if (f.objet) { _majFicheObjet(f); return; }
     const avant = f.point._v3dJonction || f.point;
-    const tous = _tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints));
-    let p = tous.indexOf(avant) >= 0 ? avant : null;
-    if (!p && avant.uid) p = tous.filter(function (q) { return q && q.uid === avant.uid; })[0] || null;
+    const p = _retrouver(_tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints)), avant);
     if (!p) { _fermerFiche(); return; }
     if (p !== avant || _htmlFiche(p) !== f.html) _ouvrirFiche(p);
   }
 
-  // Fiche d'un objet : retrouvé (même objet, sinon même uid), elle reste, rouverte sur la copie s'il a été remplacé
-  // (annulation) ; disparu de la scène (supprimé, converti, passé à un autre niveau ou masqué), elle se ferme.
+  // Fiche d'un objet : retrouvé (_retrouver), elle reste, rouverte sur la copie s'il a été remplacé (annulation,
+  // relecture d'un calque) ; disparu de la scène (supprimé, converti, passé à un autre niveau ou masqué), fermée.
   function _majFicheObjet(f) {
-    const e = _e, l = _lecteurs(f.famille), tous = _tab(l[0]).concat(_tab(l[1]));
-    let o = tous.indexOf(f.objet) >= 0 ? f.objet : null;
-    if (!o && f.objet.uid) o = tous.filter(function (q) { return q && q.uid === f.objet.uid; })[0] || null;
-    const vus = (e.vus && e.vus[f.famille]) || [];
-    if (!o || vus.indexOf(o) < 0) { _fermerFiche(); return; }
+    const e = _e, l = _lecteurs(f.famille);
+    const o = _retrouver(_tab(l[0]).concat(_tab(l[1])), f.objet);
+    if (!o || !_retrouver((e.vus && e.vus[f.famille]) || [], o)) { _fermerFiche(); return; }
     if (o !== f.objet) _ouvrirFicheObjet(_objetVu(f.famille, o));
   }
 
@@ -5432,10 +5450,9 @@
     if (famille === "mesure") return true;
     const v = _e.vus && _e.vus[famille];
     if (!v) return false;
-    if (v.indexOf(o) >= 0) return true;
     // 🩸 Objets remplacés par des copies au contenu identique (annuler puis rétablir, relecture) : l'empreinte n'a pas
-    // changé, la scène n'est pas refaite et e.vus garde les anciens objets. Même uid = même objet montré.
-    return !!o.uid && v.some(function (q) { return q && q.uid === o.uid; });
+    // changé, la scène n'est pas refaite et e.vus garde les anciens objets (_memeObjet).
+    return !!_retrouver(v, o);
   }
 
   // Appui d'un seul pointeur sur la scène (vue d'édition) : un sommet ou un milieu visé → l'appui long est attendu.
@@ -6346,8 +6363,12 @@
     return { layerId: id, layerLabel: lc && lc.label ? lc.label : id };
   }
 
+  // POI de session qui est `p` (_retrouver : une copie identique remplace l'objet sans refaire la scène, les panneaux
+  // gardent l'ancien) → null pour un POI de calque.
+  function _pointSession(p) { return _retrouver(_tab(window.getEditorPoints), p); }
+
   function _htmlFiche(p) {
-    const session = _tab(window.getEditorPoints).indexOf(p) >= 0;
+    const session = !!_pointSession(p);
     const info = session ? { layerId: "editor", layerLabel: _t("editor.popup.myAdds") } : _infoCalque(p.layerId);
     return window.buildPointPopupHtml(p, false, info);   // HTML échappé par la fiche elle-même
   }
@@ -6401,9 +6422,9 @@
   // rapatrié n'est pas en session) : ✏️ Modifier ouvre le formulaire de la carte au-dessus de la vue (editor.js >
   // modifierPointEditor ; la scène suit par kta:donneesPlanChange) ; 📍 Déplacer et 🎯 arment le mode de pose de
   // poiPrecis.js (son bandeau, Échap / ✕), le toucher au sol le sert (_poserAuSol). La fiche se ferme d'abord.
-  function _editionFiche(boite, p) {
-    const e = _e, P = window.KtaPoiPrecis;
-    if (e.vue !== "plongee" || !_permisGreffe("fiches") || _tab(window.getEditorPoints).indexOf(p) < 0) return;
+  function _editionFiche(boite, pVu) {
+    const e = _e, P = window.KtaPoiPrecis, p = _pointSession(pVu);
+    if (e.vue !== "plongee" || !_permisGreffe("fiches") || !p) return;
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true)) return;
     const zone = document.createElement("div");
     zone.className = "kta-v3d-fiche-passages kta-v3d-fiche-edition";
@@ -6452,7 +6473,8 @@
   // écouteurs de la vue (_brancher) les ignorent, celui de la fiche les joue.
   function _passagesFiche(boite, p) {
     const e = _e, J = window.KtaPoiJonction;
-    const pas = (e.passages || []).filter(function (q) { return q.poi === p; })[0];
+    // POI de calque : e.passages et le panneau touché viennent de deux lectures (objets distincts, _memeObjet).
+    const pas = (e.passages || []).filter(function (q) { return q.poi && _memeObjet(q.poi, p); })[0];
     if (!pas || !J) return;
     const cibles = pas.cibles.filter(function (c) { return c.niveau !== e.niveau; })
       .sort(function (a, b) { return _auDessus(a.niveau, b.niveau) ? -1 : 1; });

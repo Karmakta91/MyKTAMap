@@ -2040,7 +2040,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   fiche se ferme en armant. Photos par `attachPopupPhotos` sur un marqueur de
   substitution (`on`, `isPopupOpen`). Un **POI jonction** ouvre aussi sa fiche (décision produit, QCM du
   02/11/2026), avec un bouton par niveau lié (`_passagesFiche` : « ▼ Descendre au niveau -1 (échelle) », le plus haut
-  d'abord), d'où que l'on soit ; ces boutons n'ont pas de `data-v3d` (l'écouteur de la fiche les joue).
+  d'abord), d'où que l'on soit, POI de session comme de calque ; ces boutons n'ont pas de `data-v3d` (l'écouteur de
+  la fiche les joue). ⚠️ contrat : un POI ou un objet se reconnaît par `_memeObjet` (même uid ; sans uid, POI = même
+  id, place et niveau, objet = même type et même tableau de points), jamais par l'identité seule : les lectures des
+  calques (`getAllEmbedded*`) rendent des objets neufs à chaque appel, une annulation rend des copies (passages de la
+  fiche, boutons d'édition, fiche gardée à la reconstruction, sommet saisi).
 - **Toucher une structure, une zone ou un tracé** (`_toucher`, décision produit, QCM du 03/11/2026) → **sa fiche de
   la carte** (`_ouvrirFicheObjet`). Priorité au toucher : panneau (POI, membre, repère), puis structure, zone, tracé ;
   rien dessous = rien. ⚠️ contrat (visée, `_rayonEcran` → `_pointVise` → `_objetAuPoint`) : les tuiles fusionnent
