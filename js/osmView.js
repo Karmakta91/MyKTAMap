@@ -718,8 +718,9 @@
     const timeline = _getTrackerTimeline();
     if (timeline.length === 0) {
       // pas de timeline (jamais démarré ou remis à zéro) : nettoyage
-      if (_trackerTrace)  { try { _trackerTrace.remove();  } catch(e) {} _trackerTrace  = null; }
-      if (_trackerMarker) { try { _trackerMarker.remove(); } catch(e) {} _trackerMarker = null; }
+      // Hors du groupe aussi : sinon le calque du suivi, masqué puis réaffiché, remontrait la trace effacée.
+      window.ktaRetirerCalque(_trackerTrace, _trackerLayer);   _trackerTrace  = null;
+      window.ktaRetirerCalque(_trackerMarker, _trackerLayer);  _trackerMarker = null;
       return;
     }
 
@@ -1791,10 +1792,7 @@
   // groupe (et ne faisait rien case 🖼️ Plan décochée) ; recocher Plan reposait alors toutes les tuiles déjà
   // vues, tous niveaux superposés. Garde-fou : scripts/smoke/checkup-osm-empilement.js.
   function _retirerTuile(overlay) {
-    try {
-      if (_planLayer) _planLayer.removeLayer(overlay);
-      else overlay.remove();
-    } catch(e) {}
+    window.ktaRetirerCalque(overlay, _planLayer);
   }
 
   // Retire tous les overlays (changement de niveau, close).

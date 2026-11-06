@@ -17,11 +17,27 @@
 // 🩸 « Un plan est-il affiché ? » = ktaPlanAffiche() : PLAN_CONFIG n'est pas remis à null au retour HOME.
 // 🔒 ktaConfirm insère message/titre en HTML : toute donnée d'utilisateur s'échappe (ktaEsc) chez l'appelant.
 // 🔒 Popups de point : aucune donnée dans un gestionnaire inline, actions par data-kta-act (CSP, XSS).
+// 🩸 Un calque rendu dans un groupe (layerEditor, sous-groupe d'un calque) se retire par ktaRetirerCalque, jamais par
+//    calque.remove() : check-calques-groupe.js.
 // Garde-fous : scripts/check-popups-natives.js, check-xss.js, check-uid.js · Doc : docs/architecture/ui.md.
 
 function convertCoord(x, y) {
   return [APP_CONFIG.imageHeight - y, x];
 }
+
+// 🩸 calque.remove() = map.removeLayer : le calque quitte la CARTE mais reste dans son GROUPE (`_layers`). Chaque rendu
+// de session y laissait une copie entière de ses objets (LatLng, fiche, objet de session) : des dizaines de Mo par
+// modification sur un gros plan, jusqu'au plantage de l'onglet ; et décocher puis recocher le groupe dans ≡ remettait
+// tous ces calques morts sur la carte. Retrait par le groupe qui le tient (layerEditor par défaut), sinon de la carte.
+// ⚠️ contrat : sans effet sur null ou un calque déjà retiré ; ne lève jamais.
+window.ktaRetirerCalque = function(calque, groupe) {
+  if (!calque) return;
+  const g = groupe || window.layerEditor;
+  try {
+    if (g && typeof g.hasLayer === "function" && g.hasLayer(calque)) g.removeLayer(calque);
+    else calque.remove();
+  } catch (e) { /* carte détruite entre-temps */ }
+};
 
 function choisirIcone(p) {
   // tags du point d'abord, puis replis successifs
@@ -869,7 +885,7 @@ window._kta_syncDataLayerNoteGhosts = function() {
         // addTo() est idempotent
         entry.ghost.addTo(entry.parent);
       } else {
-        entry.ghost.remove();
+        window.ktaRetirerCalque(entry.ghost, entry.parent);
       }
     } catch(e) { /* layer parent détaché entre-temps → ignore */ }
   });
@@ -2271,7 +2287,7 @@ window._refreshDataMarkersViewport = function() {
       try { m.addTo(m._ktaLayer); } catch(e) {}
       m._ktaVpHidden = false;
     } else if (!inside && !m._ktaVpHidden) {
-      try { m.remove(); } catch(e) {}
+      window.ktaRetirerCalque(m, m._ktaLayer);
       m._ktaVpHidden = true;
     }
   });

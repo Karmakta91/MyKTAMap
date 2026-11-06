@@ -21,13 +21,11 @@ let listePoints = [];
 // aussi les roads et zones de session : clearLayers les ferait disparaître à la suppression d'UN point).
 let _markersEditor = [];
 
-// 🩸 Retirer du GROUPE, pas seulement de la carte : marker.remove() le laissait dans layerEditor (calque « Ajout »
-// du contrôle des couches) ; masquer puis réafficher ce calque remettait sur la carte les anciens marqueurs (POI
-// repositionné revenu à son ancienne place, doublons) et chaque rendu en gardait un par point en mémoire.
+// 🩸 Retirer du GROUPE (utils.js > ktaRetirerCalque), pas seulement de la carte : marker.remove() le laissait dans
+// layerEditor ; masquer puis réafficher ce calque remettait sur la carte les anciens marqueurs (POI repositionné
+// revenu à son ancienne place, doublons) et chaque rendu en gardait un par point en mémoire.
 function _retirerMarqueursEditor() {
-  _markersEditor.forEach(function(m) {
-    try { if (window.layerEditor) window.layerEditor.removeLayer(m); else m.remove(); } catch(e) { /* déjà retiré */ }
-  });
+  _markersEditor.forEach(function(m) { window.ktaRetirerCalque(m); });
 }
 let _editorClickHandler = null;  // ref stable pour un off idempotent (cf. initEditor / measure.js)
 

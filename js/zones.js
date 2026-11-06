@@ -63,17 +63,11 @@ function initZones() {
   zonesData = [];
   currentZone = null;
 
-  if (zoneLayers && zoneLayers.length) {
-    zoneLayers.forEach(function(l) {
-      try { l.remove(); } catch(e) {}
-    });
-  }
+  zoneLayers.forEach(function(l) { window.ktaRetirerCalque(l); });
   zoneLayers = [];
 
-  if (previewLayer) {
-    try { previewLayer.remove(); } catch(e) {}
-    previewLayer = null;
-  }
+  window.ktaRetirerCalque(previewLayer);
+  previewLayer = null;
 
   window.modeZone = null;
 
@@ -236,13 +230,13 @@ function _zonePasseFiltres(zone) {
 
 function renderZones() {
   if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("zones");
-  zoneLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
+  // 🩸 Retrait par le GROUPE (utils.js > ktaRetirerCalque), jamais l.remove() : chaque rendu laissait dans
+  // layerEditor une copie entière des zones, remises sur la carte par ≡ décoché puis recoché.
+  zoneLayers.forEach(function(l) { window.ktaRetirerCalque(l); });
   zoneLayers = [];
 
-  if (previewLayer) {
-    try { previewLayer.remove(); } catch(e) {}
-    previewLayer = null;
-  }
+  window.ktaRetirerCalque(previewLayer);
+  previewLayer = null;
 
   // Ordre d'empilement : eau, remblais, effondrement, inaccessible au-dessus des autres zones (elle bloque
   // le pathfinder, elle doit se voir), toutes sous les structures (rappel en fin de rendu).
@@ -340,13 +334,11 @@ function resetZones() {
   currentZone = null;
   window.modeZone = null;
 
-  zoneLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
+  zoneLayers.forEach(function(l) { window.ktaRetirerCalque(l); });
   zoneLayers = [];
 
-  if (previewLayer) {
-    try { previewLayer.remove(); } catch(e) {}
-    previewLayer = null;
-  }
+  window.ktaRetirerCalque(previewLayer);
+  previewLayer = null;
 }
 
 // ── Supprimer la zone en cours ou la dernière fermée ──────────────────────────────

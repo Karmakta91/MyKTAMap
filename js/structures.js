@@ -314,17 +314,11 @@ function initStructures() {
   structuresData = [];
   currentStructure = null;
 
-  if (structureLayers && structureLayers.length) {
-    structureLayers.forEach(function(l) {
-      try { l.remove(); } catch(e) {}
-    });
-  }
+  structureLayers.forEach(function(l) { window.ktaRetirerCalque(l); });
   structureLayers = [];
 
-  if (structurePreviewLayer) {
-    try { structurePreviewLayer.remove(); } catch(e) {}
-    structurePreviewLayer = null;
-  }
+  window.ktaRetirerCalque(structurePreviewLayer);
+  structurePreviewLayer = null;
 
   window.modeStructure = null;
 
@@ -514,13 +508,13 @@ function renderStructures() {
   if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("structures");
   // Idempotent (drapeau sur la map) : une closure fraîche par rendu empilerait les écouteurs.
   window.brancherLargeurFronts();
-  structureLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
+  // 🩸 Retrait par le GROUPE (utils.js > ktaRetirerCalque), jamais l.remove() : chaque rendu laissait dans
+  // layerEditor une copie entière des structures (onglet tué au-delà de quelques milliers après N modifications).
+  structureLayers.forEach(function(l) { window.ktaRetirerCalque(l); });
   structureLayers = [];
 
-  if (structurePreviewLayer) {
-    try { structurePreviewLayer.remove(); } catch(e) {}
-    structurePreviewLayer = null;
-  }
+  window.ktaRetirerCalque(structurePreviewLayer);
+  structurePreviewLayer = null;
 
   // Ordre Z (décision produit), de l'arrière à l'avant : mur < mur-ligne < pilier-2 < pilier-1 < front-2 <
   // front-1. Stratigraphie : la 1re masse devant la 2e ; les fronts devant les piliers, sinon l'avancement
@@ -666,13 +660,11 @@ function resetStructures() {
   currentStructure = null;
   window.modeStructure = null;
 
-  structureLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
+  structureLayers.forEach(function(l) { window.ktaRetirerCalque(l); });
   structureLayers = [];
 
-  if (structurePreviewLayer) {
-    try { structurePreviewLayer.remove(); } catch(e) {}
-    structurePreviewLayer = null;
-  }
+  window.ktaRetirerCalque(structurePreviewLayer);
+  structurePreviewLayer = null;
 }
 
 // Supprime la structure EN COURS si elle existe, sinon la dernière fermée (comme removeLastRoad / removeLastZone).
