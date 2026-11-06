@@ -1770,6 +1770,21 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_appliquerPortee`, tuiles construites au plus 3 par image : pas d'à-coup). `ouvrir({ distanceVue })` (mesures,
   checkup) passe avant le réglage sans l'écrire. Clavier : flèches, Origine, Fin sur le curseur (le clavier de la vue
   lui laisse ces touches) ; valeur dite par `aria-valuetext` (`formatDistance`).
+- **🛡️ Limiter la portée (anti-crash mémoire)** (case de la tuile ⚙️, à côté de ☀️, `config.js >
+  getVue3DLimiterPortee`, `myktamap_v3d_limiter_portee_v1`, décision produit) : **cochée par défaut** = les bornes
+  ci-dessus (portée ≤ 100 m, recul ≤ 150 m, rayon construit ≤ `RAYON_RECUL_MAX`). **Décochée** (`limiterPortee(false)`,
+  après une question `ktaConfirm`, « Garder la limite » = rien ne change) : un cran de plus au bout du curseur,
+  **« Tout le plan »** (`reglerPortee("tout")`, retenu à part : `myktamap_v3d_portee_tout_v1` ; la portée en mètres
+  reste celle qui revient case cochée) = la **diagonale de l'emprise** (`_diagPlan` : image du plan et objets
+  indexés, un objet hors image compris) ; recul de la vue d'édition jusqu'à cette diagonale (`_reculMax`) ; rayon
+  construit sans plafond ; brouillard, profondeur et lampe suivent la portée comme d'habitude (nuit et Plein jour).
+  Au-delà de 150 m de recul, le plan proche de la caméra recule (recul / 300) : sinon les rubans au sol scintillent
+  au loin. ⚠️ contrat : au doigt (`ktaAppareilTactile`), la case **revient cochée à chaque ouverture** (réécrite) ;
+  au pointeur fin, décochée reste décochée. Une greffe qui fige les réglages (`reglagesFiges`, jeu) limite la portée
+  (`_limitee`), grise la case et refuse `limiterPortee` / `reglerPortee` sans rien écrire. Recocher ramène recul et
+  portée sous leurs bornes. Version brute : tout le plan est construit en pleine définition (pas d'allègement du
+  lointain) ; mesures : ETUDE_VUE_3D.md § Tout le plan. Checkup : `checkup-vue-3d.js` § 41 (`KTA_V3D_SEUL=limiter`),
+  mesures `KTA_V3D_PERF=toutplan`.
 - **Lampe** (réglages de la tuile ⚙️, cet appareil, décision produit : `config.js > getVue3DLampeIntensite`,
   `getVue3DFaisceau`, `getVue3DPleinJour`) : 💡 **intensité** en curseur, 25 à 300 % par pas de 5, 100 % = la lampe
   d'origine (`reglerLampe(%)`) ; 🔦 **faisceau** en curseur, 40 à 160° de cône total, 71° par défaut = demi-angle de

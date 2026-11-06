@@ -2340,9 +2340,12 @@ icônes.
   pas de 5, 100 % par défaut, valeur en pourcentage de la langue, `myktamap_v3d_lampe_intensite_v1`), 🔦
   **Faisceau** (curseur `#kta-v3d-faisceau`, 40 à 160°, 71° par défaut, `myktamap_v3d_faisceau_v1`) — même ligne
   que la portée (`.kta-v3d-curseur`, nom, curseur, valeur ; noms d'une même largeur, curseurs alignés, mêmes
-  libellé, valeur dite, couleurs et clavier) — et ☀️ **Plein jour** (interrupteur `aria-pressed` pleine largeur,
-  `myktamap_v3d_jour_v1`), tous de cet appareil ; trois curseurs et ☀️ `disabled` quand une greffe fige les réglages
-  (`reglagesFiges`), titre suffixé « indisponible pendant une partie » ; effets : `tracking.md` § Vue 3D › Lampe).
+  libellé, valeur dite, couleurs et clavier) — puis, sur une même ligne, ☀️ **Plein jour** (interrupteur
+  `aria-pressed`, `myktamap_v3d_jour_v1`) et 🛡️ **Limiter la portée** (interrupteur `aria-pressed`, coché par défaut,
+  `myktamap_v3d_limiter_portee_v1`, libellé complet « … (anti-crash mémoire) » dans le titre ; décoché : question
+  `ktaConfirm`, cran « Tout le plan » au bout du curseur de portée ; recoché à chaque ouverture au doigt), tous de cet
+  appareil ; trois curseurs, ☀️ et 🛡️ `disabled` quand une greffe fige les réglages (`reglagesFiges`), titre suffixé
+  « indisponible pendant une partie » ; effets : `tracking.md` § Vue 3D › Lampe et › Limiter la portée).
   La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼)
   sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier

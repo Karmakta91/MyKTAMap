@@ -563,6 +563,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **💡 Lamp**: a slider from 25 to 300% (100% by default) sets the headlamp's strength; the stronger, the farther it reaches. Kept on this device.
 - **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
 - **☀️ Daylight**: a low sun, always from the same side (the north-west of the map, or its top-left corner if north is not calibrated): faces turned towards it are bright, the others darker, so the relief of pillars and joints shows; a light pale haze fades the distance. Your lamp stays on at its setting (turn it down to 25% to make it discreet). Also works in ✏️ Edit (unticked: flat lighting for drawing). Kept on this device.
+- **🛡️ Limit range (prevents memory crashes)**: checked by default (range up to 100 m, ✏️ Edit zoom-out up to 150 m). Uncheck it (a question warns you: on a large map, the phone may crash for lack of memory) to see **the whole map**: a "Whole map" step appears at the end of the 🔭 Range slider, ✏️ Edit zooms out until the whole map shows, and the fog moves back with it. On a phone, the box is checked again each time the view opens; on a computer, it stays unchecked.
 - During a game, the range goes back to 30 m, the lamp to 100%, the beam to 71° and Daylight is off (settings greyed out), then your settings come back.
 
 #### 🏛️ The three renderings

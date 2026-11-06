@@ -448,6 +448,37 @@ les panneaux sont une vingtaine). Médiane à 150 m sous le budget (21 à 27 ms)
 poste chargé. 80 m est le repli si un vrai iPhone peine. Tas JS 87 à 111 Mo dans tous les cas (arrondi de Chromium,
 non discriminant). Le plan au sol garde 1 024 px au doigt : à 150 m, 828 m de côté, ~0,8 m par pixel.
 
+### Tout le plan (case 🛡️ « Limiter la portée » décochée, décision du 06/11/2026)
+
+Ces bornes (portée 100 m, recul 150 m, rayon construit 100 m) sont la case 🛡️ de la tuile ⚙️, cochée par défaut.
+Décochée : portée « Tout le plan » (diagonale de l'emprise), recul jusqu'à cette diagonale, rayon construit sans
+plafond, **version brute** (tout en pleine définition, sans allègement du lointain). Mesures
+`KTA_V3D_PERF=toutplan` (`KTA_V3D_SEUL=toutplan` pour elles seules), Chromium, GPU de bureau récent (RTX 5070) ;
+plans FICTIFS en mémoire. Construction = de la décoche à la dernière tuile posée (3 par image, comme en vrai) ;
+rendu posé = un tour complet (`mesurer`, 120 images, CPU + GPU) ; tas JS après ramasse-miettes (CDP).
+
+| Plan · rendu | Construction · images > 33 ms | Yeux, tout le plan : ms médiane · p95 · appels | Édition au recul max : ms médiane · p95 · appels | Géométries · textures · tas JS |
+|---|---|---|---|---|
+| Relevé fictif · structures / mixte | 0,6 à 0,8 s · 1 à 3 | 1,2 · 1,7 à 2,1 · 66 à 116 | 1,8 à 2,4 · 2,8 à 3,2 · 129 à 226 | 94 à 191 · 31 · 12 à 13 Mo |
+| 2 000 structures + 900 tracés sur 400 × 400 m (× 2 niveaux) · structures | 3,8 s · 3 | 6,9 · 8,8 · 688 | 18,9 · 28,0 · 2 303 | 1 530 · 159 · 54 Mo (44 limitée) |
+| idem · mixte | 3,7 s · 1 | 8,6 · 11,6 · 882 | 22,2 · 30,5 · 2 950 | 2 177 · 161 · 85 Mo (71 limitée) |
+| Plan dense (13 700 structures, 805 m de côté) · structures | 3,1 s · 1 | 12,6 · 16,0 · 864 | **40,7 · 54,7** · 2 803 | 144 · 525 · 59 Mo (53 limitée) |
+
+Même chose en iPhone émulé (`KTA_V3D_TEL=1`, processeur × 4, GPU du PC) : plan de 2 000 structures, construction
+6,6 à 12 s (61 à 185 images > 33 ms), yeux 24,7 à 32,1 ms (p95 37 à 44), **édition au recul max 134 à 158 ms** ;
+plan dense : yeux 47 ms, édition 319 ms. Case cochée, rien ne change (1,7 à 3,2 ms par image). Ouverture directe
+en « Tout le plan » (PC, tout construit d'un coup) : 0,05 à 0,23 s.
+
+**Conclusion.** Au PC, le plan lourd demandé reste sous le budget de 33 ms dans les deux vues (p95 de l'édition à
+28 – 30 ms, au bord) et se construit en moins de 4 s sans saccade : **pas d'allègement du lointain (étape 2) pour
+l'instant**. Le coût de la vue d'édition au recul max suit les **appels** (2 300 à 2 950 : chaque tuile a ses
+maillages et tout est à l'écran), pas les triangles ; c'est là que portera l'étape 2 si elle devient nécessaire
+(tuiles lointaines fusionnées ou simplifiées). Elle le deviendra si : un PC à GPU intégré dépasse 33 ms sur un plan
+réel, ou le plan dense (805 m, 13 700 structures) doit tenir en édition (41 / 55 ms ici). Au téléphone, « Tout le
+plan » est inutilisable sur un gros plan (134 à 319 ms par image en édition) : d'où la case recochée à chaque
+ouverture et la question à la décoche. Non mesuré : mémoire GPU (illisible depuis la page), vrai téléphone, GPU
+intégré.
+
 ### Mode galerie
 
 Réseau **synthétique** (`KTA_V3D_PERF=galerie`) : 26 tracés est-ouest et 26 nord-sud tous les 12 m sur 300 m, un
