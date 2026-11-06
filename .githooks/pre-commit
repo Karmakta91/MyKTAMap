@@ -117,6 +117,9 @@ node scripts/check-constantes-orphelines.js || exit $?
 # Garde anti-doublon d'un listener portee par la map (window.map est remplacee a chaque plan).
 node scripts/check-map-listeners.js || exit $?
 
+# Calque d'un groupe (layerEditor...) retire par le groupe, jamais par calque.remove() (calques morts, OOM).
+node scripts/check-calques-groupe.js || exit $?
+
 # Reglages de podometre recopies en dur qui divergent de config.js > DEFAULT_CONFIG.
 node scripts/check-tracking-defaults.js || exit $?
 

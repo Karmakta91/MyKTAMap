@@ -509,6 +509,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-backlog.js` | Rien : avertit d'un `docs/BACKLOG.md` mal formé (sections, plafond de Maintenant, métadonnées) | pre-commit (consultatif) |
 | `check-calage-projection.js` | Calage A / B (C) faux : plan tangent inexact ou modèle historique modifié, confrontés à une géodésie indépendante | pre-commit |
 | `check-calque-session.js` | Calque rapatrié en session verrouillé sans sa copie, ou copie non défensive | pre-commit |
+| `check-calques-groupe.js` | Calque ajouté à un groupe (`layerEditor`…) retiré par `calque.remove()` : il reste dans le groupe (calques morts, mémoire, fantômes au ≡) | pre-commit |
 | `check-commentaires.js` | Commentaire d'historique (version en tête, « ligne N », garde-fou inexistant) au-delà du cliquet | pre-commit |
 | `check-connexion-serveur.js` | Validation de `serverConnection` divergente entre l'app et ConfAdmin, index injoignable pris pour OFF, requête parasite | pre-commit |
 | `check-constantes-orphelines.js` | Constante MAJUSCULE utilisée dans `js/` mais déclarée nulle part | pre-commit |
@@ -620,6 +621,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-bienvenue.js` | Écran Bienvenue avec ou sans mot de passe d'instance, parcours d'arrivée (téléphone et PC) |
 | `smoke/checkup-calage-projection.js` | Calage en vraie projection sur un relevé fictif calé, par l'interface |
 | `smoke/checkup-calque-effacer.js` | « Effacer la session » rend les calques ouverts à la modification |
+| `smoke/checkup-calques-groupe.js` | Rendus de session (modifications, ⏪ ⏩, Convertir, 🔄 Modifier, vue 3D d'édition) sans calque mort dans `layerEditor`, ≡ sans fantôme, tas stable |
 | `smoke/checkup-calque-modif-source.js` | Un calque en « Modifier » est lu par sa copie seule : itinéraire, graphe, obstacles, comptes, recherche, vue 3D, exports, carte de chaleur |
 | `smoke/checkup-carnet-documents.js` | Un PDF livré dans le ZIP d'un plan remonte au Carnet (onglet Récits) |
 | `smoke/checkup-dossier-hors-ligne.js` | « Tout garder hors ligne » d'un dossier sur plans serveur fictifs (manquant, à jour, plus récent) |
