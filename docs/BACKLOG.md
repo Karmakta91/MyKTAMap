@@ -120,8 +120,9 @@
 - **Vue 3D « Tout le plan »** — case dans ⚙️ de la 3D, cochée par défaut (portée 15–100 m, recul 150 m) ; décochée :
   portée jusqu'au plan entier (cran « Tout le plan »), recul jusqu'à tout voir, scène construite sur tout le plan,
   brouillard qui recule ; message à la décoche, recochée à chaque ouverture au téléphone (pas au PC).
-  `qui: Claude · action: coder APRÈS le correctif de fuite et le Plein jour · fini: gros plan entier vu au PC, mémoire
-  mesurée · depuis: 06/11/2026 · taille: M`
+  `qui: Claude · action: APRÈS la fuite et le Plein jour, 1) version brute (S) mesurée sur les gros plans au PC, 2)
+  allègement du lointain (M) seulement si la mesure l'exige · fini: gros plan entier vu au PC, mémoire mesurée
+  · depuis: 06/11/2026 · taille: M`
 - **Point précis à l'export image / PDF** — pointillé doré + carré (chatière : trait début→fin) dessinés par l'export
   comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
   zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône).
