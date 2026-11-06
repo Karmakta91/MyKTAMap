@@ -22,7 +22,8 @@
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
 // STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire
-// (ruban plein, chevrons de sens, étapes, 🏁), ronds d'intersection de la carte, POI en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
+// (ruban plein, chevrons de sens, étapes, 🏁), ronds d'intersection et surlignage 📏 de la carte (_majDistTot), POI
+// en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
 // (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau, passages en
 // volume (_construireVolume) comme les accès de surface sans passage (puits fermés, comblés, bouché, d'extraction,
 // bassin, cavage) et les formes de POI (chatière, plaque, épure, portail, véhicule) : _volumeAcces ; changement de
@@ -119,6 +120,9 @@
   const MARQUEUR = { rayon: 0.25, mat: 0.6, epMat: 0.03, y: 0.055 };
   // Ronds d'intersection (option de la carte) : disque à la couleur du rond 2D, au-dessus des rubans des tracés.
   const ROND = { rayon: 0.35, cotes: 16, y: 0.04 };
+  // Surlignage 📏 Distance totale (_majDistTot) : ruban plus large que le tracé (LARGEUR_TRACE), juste au-dessus de
+  // son ruban au sol, sous les ronds et l'itinéraire, à la couleur du surlignage de la carte.
+  const SURLIGNE = { larg: 0.5, y: 0.035 };
   // Joystick (téléphone) : débattement en px pour 0 → VITESSE, zone morte, course au-delà de `course` du
   // débattement tenu APPUI_LONG ; tailles de l'anneau et du bouton (px, posées par css/vue3d.css).
   const JOYSTICK = { debattement: 40, morte: 12, course: 0.85 };
@@ -2768,6 +2772,11 @@
     _gererTuiles(true);
     _majMarqueursIti();
     _majRonds();
+    _majDistTot();
+    // Niveau compté par 📏 = celui de la vue : la carte rejoue son surlignage et son panneau (ouvert) sur lui.
+    if (niveauAvant !== e.niveau && typeof window.ktaDistanceTotaleRafraichir === "function") {
+      window.ktaDistanceTotaleRafraichir();
+    }
     _gererVolumes();
     _sceneGreffe();
     _majNiveauEdition();
@@ -6348,6 +6357,47 @@
     e.sale = true;
   }
 
+  // ── Surlignage 📏 Distance totale des tracés (groupe 📐, vue d'édition) ─────────────────────────────────
+  // ⚠️ contrat : la 3D ne compte rien ; elle lit les tronçons COMPTÉS par la carte (interfaceDistanceTotale.js >
+  // ktaDistanceTotaleSurlignage : cases du panneau, niveau de la vue) et pose un ruban au sol par segment, à la
+  // couleur du surlignage 2D, dans un seul maillage hors tuiles. Refait à _reindexer et à `kta:distanceTotaleChange`
+  // (panneau ouvert, case cochée, ❌ Effacer) : jamais de reconstruction de la scène. Au sol comme les rubans des
+  // tracés (pas par-dessus un remblais : c'est le tracé qui est surligné, pas l'itinéraire).
+  function _majDistTot() {
+    const e = _e, sc = e.sc;
+    if (e.distTot) {
+      if (e.distTot.parent) e.distTot.parent.remove(e.distTot);
+      e.distTot.geometry.dispose();
+      e.distTot = null;
+      e.sale = true;
+    }
+    e.listeDistTot = null;
+    const S = typeof window.ktaDistanceTotaleSurlignage === "function" ? window.ktaDistanceTotaleSurlignage() : null;
+    if (!S) return;
+    const col = new THREE.Color();
+    try { col.setStyle(S.couleur); } catch (err) { col.set(0xff4ecb); }
+    const lot = new Lot();
+    let segments = 0;
+    S.troncons.forEach(function (r) {
+      if (!r || !Array.isArray(r.points) || !_surNiveau(r, e.niveau)) return;
+      for (let j = 0; j + 1 < r.points.length; j++) {
+        const a = r.points[j], b = r.points[j + 1];
+        if (!a || !b || !Number.isFinite(a.x) || !Number.isFinite(b.x)) continue;
+        _ruban(lot, a, b, sc, SURLIGNE.larg, SURLIGNE.y, col);
+        segments++;
+      }
+    });
+    e.listeDistTot = { couleur: S.couleur, troncons: S.troncons.length, segments: segments };
+    const geo = lot.geometrie();
+    if (!geo) return;
+    e.distTot = new THREE.Mesh(geo, e.mats.iti);
+    e.distTot.renderOrder = 1;
+    e.distTot.matrixAutoUpdate = false;
+    e.distTot.userData.famille = "distTot";
+    e.scene.add(e.distTot);
+    e.sale = true;
+  }
+
   // ── Fiche d'un POI (la fiche de la carte, utils.js > buildPointPopupHtml) ───────────────────────────────
   // Ouverte par-dessus la scène, dans la vue : ses boutons agissent par l'écouteur unique de la carte
   // (utils.js > _ktaPopupAction, en capture sur document). ⚠️ La fiche de la carte sans ✏️ / Repositionner / 🗑️ ;
@@ -6907,7 +6957,7 @@
       } else if (niv !== e.niveau || (e.filtresChanges && !e.donnees.signal)) {
         // Filtres changés avec des données en attente (annulation, import) : une seule reconstruction, celle de
         // _majDonnees ; données inchangées, faite ici ensuite.
-        e.filtresChanges = false; e.itiChange = false; e.rondsChange = false;
+        e.filtresChanges = false; e.itiChange = false; e.rondsChange = false; e.distTotChange = false;
         _reindexer();
       } else if (e.itiChange && !e.donnees.signal) {
         // Itinéraire seul changé : setRoads annonce aussi les données, leur relecture passe d'abord (elle refait
@@ -6917,6 +6967,7 @@
       }
     }
     if (e.rondsChange) { e.rondsChange = false; _majRonds(); }
+    if (e.distTotChange) { e.distTotChange = false; _majDistTot(); }
     _gererTuiles(false);
     _gererVolumes();
     _majBandeauNiveau(ts);
@@ -7865,6 +7916,7 @@
     on(window, "kta:itineraireChange", function () { e.itiChange = true; e.guidageForce = true; e.apS = undefined; });
     // Ronds d'intersection redessinés par la carte (option, filtres, tracés) : refaits à l'image suivante.
     on(window, "kta:intersectionsChange", function () { e.rondsChange = true; });
+    on(window, "kta:distanceTotaleChange", function () { e.distTotChange = true; });
     // Données du plan peut-être changées (session, calques, légende) : relues après la rafale (_majDonnees).
     on(window, "kta:donneesPlanChange", function () {
       const d = e.donnees, t = performance.now();
@@ -7967,7 +8019,7 @@
       e.reprises++;
       e.tuiles.forEach(function (t) { t.obj = null; });
       e.chevrons = null; e.chevSig = null; e.guidageForce = true;   // même règle : jamais dispose() d'avant la perte
-      e.marqueursIti = null; e.ronds = null; e.geoMarqueur = null;
+      e.marqueursIti = null; e.ronds = null; e.distTot = null; e.geoMarqueur = null;
       if (e.dessin) {   // aperçu et plan au sol refaits à l'image suivante (même règle : rien de l'ancien contexte)
         e.dessin.apercu = null; e.dessin.etiquettes = []; e.dessin.apSig = null;
         e.dessin.sol = e.dessin.sol ? { jeton: e.dessin.sol.jeton + 1 } : null;
@@ -8323,7 +8375,7 @@
         commandes: _commandesVoulues(o.commandes), stick: null,
         recalcul: { enCours: false, depuis: 0, dernier: null, n: 0, echecs: 0, ms: null, raison: null },
         stickLibres: 0, toucheNom: null, itiChevrons: 0, nbMarqueurs: { etapes: 0, arrivee: false }, listeRonds: [],
-        rondsChange: false, greffe: null, codeBas: { n: 0, t0: 0 }, codesBas: 0,
+        rondsChange: false, distTot: null, distTotChange: false, listeDistTot: null, greffe: null, codeBas: { n: 0, t0: 0 }, codesBas: 0,
         retourFocus: o.retourFocus || document.activeElement || null,
         attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
       };
@@ -8403,6 +8455,7 @@
       _libererChevrons();
       _viderGroupe(e.marqueursIti);
       if (e.ronds) e.ronds.geometry.dispose();
+      if (e.distTot) e.distTot.geometry.dispose();
       if (e.sol) e.sol.geometry.dispose();
       if (e.avatar) e.avatar.geometry.dispose();
       if (e.mats) Object.keys(e.mats).forEach(function (k) { e.mats[k].dispose(); });
@@ -8425,6 +8478,8 @@
     }
     if (e.ov && e.ov.parentNode) e.ov.parentNode.removeChild(e.ov);
     _e = null;
+    // 📏 compte de nouveau tous les niveaux sur la carte (niveauVue → undefined).
+    if (typeof window.ktaDistanceTotaleRafraichir === "function") window.ktaDistanceTotaleRafraichir();
     _rendreFocus(e.retourFocus);
   }
 
@@ -8717,6 +8772,12 @@
         couleurLisere: _couleursIti().hexLisere, couleurChevrons: _couleursIti().hexLisere, chevrons: e.itiChevrons },
       e.nbMarqueurs, _mesureIti(!!(o && o.profilIti))),
       ronds: e.listeRonds.map(function (r) { return Object.assign({}, r); }),
+      distanceTotale: e.listeDistTot ? Object.assign({ dansScene: !!(e.distTot && e.distTot.parent === e.scene),
+        largeur: SURLIGNE.larg, y: SURLIGNE.y,
+        emprise: e.distTot ? (e.distTot.geometry.computeBoundingBox(), {
+          x0: +e.distTot.geometry.boundingBox.min.x.toFixed(3), x1: +e.distTot.geometry.boundingBox.max.x.toFixed(3),
+          z0: +e.distTot.geometry.boundingBox.min.z.toFixed(3), z1: +e.distTot.geometry.boundingBox.max.z.toFixed(3),
+          y1: +e.distTot.geometry.boundingBox.max.y.toFixed(3) }) : null }, e.listeDistTot) : null,
       triangles: info.render.triangles, appels: info.render.calls,
       geometries: info.memory.geometries, textures: info.memory.textures,
       msOuverture: Math.round(e.msOuverture || 0), msIndex: Math.round(e.msIndex), msTuiles: Math.round(e.msTuiles),
@@ -8983,6 +9044,9 @@
     charge: function () { return !!THREE; },
     greffer: greffer,
     viser: viser,
+    // Niveau de la scène : undefined vue fermée, null plan à un niveau. Lu par 📏 et ⛏️ (groupe 📐) : la mesure
+    // compte le niveau de la vue, pas forcément le niveau actif de la carte (passage 🪜, suivi).
+    niveauVue: function () { return _e ? _e.niveau : undefined; },
     // Dernier objet montré sur la carte par « Voir sur la carte » (checkup) : { famille, uid, centre, fiche, at }.
     derniereMontre: function () {
       return _derniereMontre ? { famille: _derniereMontre.famille, uid: _derniereMontre.uid,

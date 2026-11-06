@@ -12,7 +12,12 @@
 // `itinerary` (calcul dérivé) et `jonction` (passage entre niveaux, pas une distance en galerie).
 // Expose : ouvrirRoadsDistanceFloater() (bascule ; fermer GARDE le surlignage) · _rdEffacerHighlight()
 //   (main.js, avant changement de plan) · getDistanceTotaleStatus() → null | { totalM, breakdown } (barre
-//   d'état, même modale fermée) · _rdOnRoadsChanged() (road.js > renderRoads, overlayadd/remove).
+//   d'état, même modale fermée) · _rdOnRoadsChanged() (road.js > renderRoads, overlayadd/remove) ·
+//   ktaDistanceTotaleSurlignage() → null | { couleur, troncons } (vue 3D : ruban au sol) ·
+//   ktaDistanceTotaleRafraichir() (vue 3D : niveau changé, vue fermée).
+// ⚠️ contrat : vue 3D ouverte sur un plan multi-niveau, seuls les tracés du niveau de la vue comptent
+//   (KtaVue3D.niveauVue) ; carte seule, tous les niveaux. Tout changement du surlignage émet
+//   `kta:distanceTotaleChange` (la vue 3D refait son ruban sans reconstruire la scène).
 // Dépend de : getRoads, getAllEmbeddedRoads, APP_CONFIG.scale, formatDistance, convertCoord, ktaResolveStyle.
 
 const _RD_TYPES_BUILTIN = ["principal", "secondaire", "chemin"];
@@ -59,13 +64,23 @@ let _rdFloater         = null;
 let _rdHighlightLayer  = null;  // L.layerGroup contenant les polylines magenta
 let _rdFiltres         = { principal: true, secondaire: true, chemin: true };
 
+// Niveau compté : celui de la vue 3D ouverte (plan multi-niveau), sinon null = tous les niveaux.
+function _rdNiveau() {
+  const V = window.KtaVue3D;
+  const n = (V && typeof V.niveauVue === "function") ? V.niveauVue() : null;
+  return Number.isInteger(n) ? n : null;
+}
+
 // Toutes les roads utiles (session + TOUTES les embarquées, masquées comprises). ⚠️ getAllEmbeddedRoads, pas
 // getEmbeddedRoads (comme Pathfinder et la recherche) : masquer un calque ne doit pas fausser le total.
 function _rdRoadsExploitables() {
+  const niveau = _rdNiveau();
   const session  = (window.getRoads             ? window.getRoads()             : []) || [];
   const embedded = (window.getAllEmbeddedRoads  ? window.getAllEmbeddedRoads()  : []) || [];
   return session.concat(embedded).filter(function(r) {
     if (!r || !Array.isArray(r.points) || r.points.length < 2) return false;
+    // Règle de niveau de la vue 3D (vue3d.js > _surNiveau) : sans `level`, niveau 0.
+    if (niveau !== null && (Number.isInteger(r.level) ? r.level : 0) !== niveau) return false;
     // Built-in + tout custom ; exclus : itinerary, jonction.
     return _RD_TYPES_BUILTIN.indexOf(r.type) !== -1 ||
            String(r.type).indexOf("cust-") === 0;
@@ -102,8 +117,13 @@ function _rdCalculerBreakdown() {
 // Surlignage magenta des tronçons inclus.
 // 🩸 UNE SEULE L.polyline multi-segments ([[seg1], [seg2], …] → un seul <path>) : N éléments SVG avec
 // `filter: drop-shadow` font exploser les couches de compositing GPU sur iOS dès une dizaine de routes.
+function _rdSignaler() {
+  try { window.dispatchEvent(new CustomEvent("kta:distanceTotaleChange")); } catch (e) {}
+}
+
 function _rdRedessinerHighlight() {
   if (!window.map) return;
+  _rdSignaler();
   // Ancienne couche (._map devient null après un changement de plan).
   if (_rdHighlightLayer && _rdHighlightLayer._map) {
     _rdHighlightLayer.clearLayers();
@@ -135,6 +155,7 @@ function _rdInternalEffacerHighlight() {
       try { window.map.removeLayer(_rdHighlightLayer); } catch(e) {}
     }
     _rdHighlightLayer = null;
+    _rdSignaler();
   }
 }
 
@@ -184,6 +205,10 @@ window.ouvrirRoadsDistanceFloater = function() {
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
+          (_rdNiveau() !== null
+            ? '<p class="kta-volume-niveau kta-rd-niveau">' + window.ktaEsc(window.I18n.t("disttot.niveau",
+                { lvl: String(_rdNiveau()).replace("-", "−") })) + '</p>'
+            : '') +
           '<p class="kta-rd-help">' +
             window.I18n.t("disttot.help") +
           '</p>' +
@@ -266,4 +291,28 @@ window._rdOnRoadsChanged = function() {
   if (!_rdFloater) return;
   _rdRedessinerHighlight();
   _rdRafraichirAffichage();
+};
+
+// Tronçons surlignés pour la vue 3D : null sans surlignage, sinon { couleur (celle de la carte), troncons (tracés
+// comptés, niveau de la vue compris) }. Calculé à l'appel : un tracé fini depuis la vue y entre aussitôt.
+window.ktaDistanceTotaleSurlignage = function() {
+  if (!_rdHighlightLayer) return null;
+  return {
+    couleur: _rdHighlightHex(),
+    troncons: _rdRoadsExploitables().filter(function(r) { return _rdFiltres[r.type] !== false; })
+  };
+};
+
+// Niveau compté changé (vue 3D ouverte, passée à un autre niveau, ou fermée) : surlignage de la carte et panneau
+// ouvert rejoués sur la règle du moment ; rien sans surlignage.
+window.ktaDistanceTotaleRafraichir = function() {
+  if (!_rdHighlightLayer) return;
+  _rdRedessinerHighlight();
+  if (_rdFloater) {
+    _rdRafraichirAffichage();
+    const lig = _rdFloater.querySelector(".kta-rd-niveau");
+    const n = _rdNiveau();
+    if (lig && n === null) lig.remove();
+    else if (lig) lig.textContent = window.I18n.t("disttot.niveau", { lvl: String(n).replace("-", "−") });
+  }
 };

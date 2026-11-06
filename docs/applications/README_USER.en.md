@@ -719,6 +719,7 @@ Where and how a way through is drawn:
 - The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
 - While drawing, a **line on the ground** shows the object; it stands up in relief when finished.
 - **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.
+- **📏 Total distance** and **⛏️ Mined volume** are in 📐 too: their window opens over the view and counts **the 3D view's level**. The sections counted by 📏 are highlighted in magenta on the ground, as on the map; **❌ Clear highlight** clears it from both. ⛏️ uses the ♦️ Area you drew in the 3D view.
 - **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey, at every level: the level's own image if the plan has one, otherwise the base plan.
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
 - **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
@@ -1132,7 +1133,7 @@ While the tool is on, **⏪** undoes each step of the measurement (point placed,
 
 ### 📏 Total length of paths
 
-In the **📐 Measurement** group, **📏 Total distance** adds up the length of every path on the map — yours and those of the data layers, even hidden ones — with one box per type and, for each, the number of paths and their length. The total updates with each box, and the counted sections are highlighted in magenta. **✓ Close (keep highlight)** leaves the highlight on the map (press 📏 again to reopen, your boxes are kept); **❌ Clear highlight** removes it. This total stays on screen: it is not part of the image export.
+In the **📐 Measurement** group, **📏 Total distance** adds up the length of every path on the map — yours and those of the data layers, even hidden ones — with one box per type and, for each, the number of paths and their length. The total updates with each box, and the counted sections are highlighted in magenta. **✓ Close (keep highlight)** leaves the highlight on the map (press 📏 again to reopen, your boxes are kept); **❌ Clear highlight** removes it.  In the 🧊 3D view (Edit), only the paths of the 3D view's level count, highlighted on the ground; once the 3D view is closed, the map counts every level again.
 
 ### ⛏️ Mined volume (extraction)
 
@@ -1144,7 +1145,7 @@ In the **📐 Measurement** group, **⛏️ Mined volume** works out what was ex
 - the **mined volume**: mined area × **average gallery height**, typed in the window (2 m by default, remembered for this plan, recalculated at once);
 - the **backfill** (“Backfill” zones inside the sector void) in m² and m³, and the **current void** (mined minus backfill).
 
-On a multi-level plan, only the **active level** counts, and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
+On a multi-level plan, only the **active level** counts (in the 🧊 3D view: the view's level), and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
 
 ---
 

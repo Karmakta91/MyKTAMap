@@ -2188,6 +2188,16 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   **Bandeau fixe** (`_majBandeauMesure`, `.kta-v3d-mesure`, `role="status"`) tant que 📐 est armé : les lignes du libellé
   de la carte (`_afficherMesureValeur` : distance `formatDistance(d, 2)`, surface `formatSurface(s, 1)`, ou l'invite du
   mode), la ligne du mode actif marquée ; relu à chaque sommet, caché outil désarmé.
+- **📏 Distance totale et ⛏️ Volume exploité** (panneau 📐, vue d'édition) : les fenêtres de la carte, par-dessus la
+  vue. ⚠️ contrat : le niveau compté est **celui de la vue** (`KtaVue3D.niveauVue()`, pas forcément le niveau actif
+  de la carte : passage 🪜, suivi) — 📏 ne compte que les tracés de ce niveau (carte seule : tous les niveaux), ⛏️ y
+  prend piliers et remblais. 📏 : la 3D ne compte rien, elle lit les tronçons comptés
+  (`interfaceDistanceTotale.js > ktaDistanceTotaleSurlignage`) et pose un ruban au sol de `SURLIGNE.larg` à la couleur
+  du surlignage de la carte (`ktaSwatchColor("traces", "jonction")`), un seul maillage hors tuiles (`_majDistTot`),
+  refait à `kta:distanceTotaleChange` (case, ❌ Effacer, réouverture) et à chaque reconstruction, jamais l'inverse ;
+  au sol comme les rubans des tracés. Niveau de la vue changé ou vue fermée : la carte rejoue son surlignage et son
+  panneau (`ktaDistanceTotaleRafraichir`). ⛏️ lit la surface ♦️ posée dans la vue (rien de neuf à dessiner) ; sans
+  surface, le message de la carte.
 - **Droits** : ceux de la carte (armement refusé en lecture seule, groupe grisé recopié ; 📐 permise). Greffe
   `fiches: false` : ni barre ni sommet (`addons.md`).
 - **🗺️ Plan au sol** (décision produit : livré si la mémoire suit) : interrupteur de la barre, coupé par défaut, gardé
@@ -2299,6 +2309,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   son étiquette ; sortie de la vue d'édition (objet de 2 sommets abandonné), Échap, fermeture (objet de 3 sommets gardé) ;
   greffe `fiches: false` ; lecture seule ; plan au sol (visible au −1, une texture au 0, libérée) ; rendu galerie →
   mixte ; même pilier à la souris sur la carte : mêmes champs, sommets, historique.
+  Mesures 📏 ⛏️ (§ 40, `=mesures`, souris et doigt, tracés fictifs au 0 et au −1, vue au −1, carte au 0) : absentes à
+  hauteur d'yeux, dans 📐 en vue d'édition ; panneau 📏 par-dessus la vue (`elementFromPoint`), niveau de la vue seul
+  compté et dit ; ruban à la couleur du surlignage de la carte sur les 2 tronçons du −1 ; case décochée → ruban et
+  total suivent sans reconstruction ; ✓ garde le ruban, ❌ l'efface des deux vues ; vue fermée → la carte recompte
+  tous les niveaux ; ⛏️ sans surface → message de la carte par-dessus la vue ; surface ♦️ de 4 touchers dans la vue →
+  volume au « Niveau −1 » (pilier du −1 compté, celui du 0 non).
   Caméra libre et mesures (§ 30, formes fictives, doigt, téléphone et PC) : pan d'un doigt tracker en marche → point
   visé déplacé, sol pris sous le doigt (à 15 cm), place et tracker immobiles, ⌖ montré ; vue tournée de 90° → même
   règle ; deux doigts tournés de 30° → cap de 30°, recul inchangé ; ⌖, un pas et la hauteur d'yeux ramènent la caméra ;

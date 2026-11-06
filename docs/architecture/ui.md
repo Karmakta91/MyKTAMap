@@ -2427,8 +2427,11 @@ icônes.
   du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. **🗺️ Plan au sol** :
   interrupteur, `aria-pressed`, à tous les niveaux (calques image du niveau, sinon plan de base : `tracking.md`). Un groupe ouvre **le panneau de la carte**
   (`interface.js > window.ktaOuvrirOutils(groupe, { ancre })` : `_ouvrirFlyout` avec `vue3d: true`, sous-actions
-  `horsVue3D` retirées : 🪜 jonction, 🧹 Effacer — « Sélectionner » et « Par zone » se jouent au clic sur la carte —,
-  📏 et ⛏️), au rang de la vue (`html.kta-vue3d-ouverte .kta-group-flyout` et son fond à 99999, posés après elle) ;
+  `horsVue3D` retirées : 🪜 jonction, 🧹 Effacer — « Sélectionner » et « Par zone » se jouent au clic sur la carte),
+  au rang de la vue (`html.kta-vue3d-ouverte .kta-group-flyout` et son fond à 99999, posés après elle) ;
+  📐 y garde **📏 Distance totale** et **⛏️ Volume exploité** : leurs fenêtres (`.kta-readme-modal-overlay`, 99999,
+  posées sur `<html>` après la vue) s'ouvrent par-dessus elle, au niveau de la vue (ligne « Niveau n de la vue 3D »
+  dans 📏) ; ruban magenta au sol des tronçons comptés : `tracking.md` § Vue 3D › Dessiner en vue d'édition ;
   📐, groupe en accordéon sur la carte, y passe aussi (surbrillance par `isActive`). Le toucher qui ferme le panneau
   ne pose rien (avalé, comme sur la carte). Groupe grisé : le refus de la carte (`ktaEditionRefusee`), pas de panneau.
   Aperçu au sol de l'objet en cours (ruban, sommets, rond doré du 1er sommet) et étiquette de la mesure en panneau

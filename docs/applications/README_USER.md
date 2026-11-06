@@ -719,6 +719,7 @@ Où et comment un passage se dessine :
 - L'objet est **celui de la carte** : même fiche, mêmes couleurs, ⏪ Annuler. Il prend **le niveau de la 3D** ; la carte, elle, ne change pas de niveau.
 - Pendant le dessin, un **trait au sol** montre l'objet ; il apparaît en relief à sa fin.
 - **📐 Mesure** : la distance (et la surface) s'affiche dans un **bandeau en bas de la vue**, mis à jour à chaque point, comme sur la carte ; la longueur de chaque segment et l'angle à chaque point s'affichent aussi dans la 3D, lisibles.
+- **📏 Distance totale** et **⛏️ Volume exploité** sont aussi dans 📐 : leur fenêtre s'ouvre par-dessus la vue et compte **le niveau de la 3D**. Les tronçons comptés par 📏 sont surlignés en magenta au sol, comme sur la carte ; **❌ Effacer le surlignage** l'efface des deux. ⛏️ prend la surface ♦️ que tu as tracée dans la 3D.
 - **🗺️ Plan au sol** : l'image du plan sous la scène, là où tu regardes, pour dessiner sur le relevé, à chaque niveau : l'image propre au niveau si le plan en a une, sinon le plan de base.
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
 - **Retoucher l'outil, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
@@ -1132,7 +1133,7 @@ Tant que l'outil est allumé, **⏪** annule chaque geste sur la mesure (point p
 
 ### 📏 Distance totale des tracés
 
-Dans le groupe **📐 Mesure**, **📏 Distance totale** additionne la longueur de tous les tracés du plan — les tiens et ceux des calques de données, même masqués — avec une case par type et, pour chacun, le nombre de tracés et leur longueur. Le total se met à jour à chaque case, et les tronçons comptés sont surlignés en magenta. **✓ Fermer (garder le surlignage)** laisse le surlignage sur la carte (re-appuie sur 📏 pour rouvrir, tes cases sont gardées) ; **❌ Effacer le surlignage** le retire. Ce total reste à l'écran : il n'entre pas dans l'export image.
+Dans le groupe **📐 Mesure**, **📏 Distance totale** additionne la longueur de tous les tracés du plan — les tiens et ceux des calques de données, même masqués — avec une case par type et, pour chacun, le nombre de tracés et leur longueur. Le total se met à jour à chaque case, et les tronçons comptés sont surlignés en magenta. **✓ Fermer (garder le surlignage)** laisse le surlignage sur la carte (re-appuie sur 📏 pour rouvrir, tes cases sont gardées) ; **❌ Effacer le surlignage** le retire.  Dans la 🧊 Vue 3D (Édition), seuls les tracés du niveau de la 3D comptent, surlignés au sol ; la 3D fermée, la carte recompte tous les niveaux.
 
 ### ⛏️ Volume exploité (défruitement)
 
@@ -1144,7 +1145,7 @@ Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a ét
 - le **volume exploité** : surface exploitée × **hauteur moyenne de galerie**, à saisir dans la fenêtre (2 m par défaut, retenue pour ce plan, recalcul immédiat) ;
 - les **remblais** (zones « Remblais » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins remblais).
 
-Sur un plan à étages, seul le **niveau actif** compte, et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
+Sur un plan à étages, seul le **niveau actif** compte (dans la 🧊 Vue 3D : celui de la 3D), et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
 
 ---
 

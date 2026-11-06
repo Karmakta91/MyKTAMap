@@ -80,6 +80,8 @@
 // en vue d'édition (36, =poi) : ✏️ à sa place, un seul outil, fenêtre de nommage, clavier, niveau, ⏪, Échap, lecture seule.
 // Fiche d'un POI jonction lu dans un calque ou remplacé par une copie (39 bis, =passagecalque) : boutons de passage,
 // passage effectué, fiche gardée quand la scène est refaite (POI sans uid, pilier du calque), édition d'une copie.
+// 📏 Distance totale et ⛏️ Volume exploité du groupe 📐 (40, =mesures ; souris et doigt) : vue d'édition seule,
+// panneaux par-dessus la vue, niveau de la vue compté, ruban magenta au sol suivi des cases et effacé par ❌.
 // Réglage ⚙️ Fiches (37, =fiches) : défaut selon le pointeur, coupé = rien sur pilier, zone, tracé (POI : sa fiche), retenu.
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
 // colonne d'outils ou le joystick, doigt levé puis reposé, rotation engagée à 10° sans saut, pas bornés.
@@ -6415,6 +6417,335 @@ async function sectionPoi3D(nav) {
   }
 }
 
+// ── 40. Mesures 📏 et ⛏️ du groupe 📐 en vue d'édition (js/interfaceDistanceTotale.js, js/volumeExploite.js) ─────────
+// Tracés FICTIFS de session sur deux niveaux (0 et −1), vue ouverte au −1, carte au 0 (le niveau de la vue n'est pas
+// le niveau actif). Par pointeur (souris, doigt) : 📏 et ⛏️ dans le panneau 📐 de la colonne, qui n'existe pas à
+// hauteur d'yeux ; 📏 ouvre son panneau par-dessus la vue (elementFromPoint), compte le niveau de la vue seul ; ruban
+// au sol à la couleur du surlignage de la carte, sur les tronçons comptés, suivi des cases sans reconstruire la scène ;
+// fermer le panneau garde le ruban, ❌ Effacer l'efface dans les deux vues ; vue fermée, la carte recompte tous les
+// niveaux. ⛏️ sans surface : le message de la carte, par-dessus la vue ; surface ♦️ posée au toucher dans la vue :
+// volume calculé sur elle, au niveau de la vue (pilier du −1 compté, celui du 0 non).
+async function sectionMesures3D(nav, mode) {
+  const webkit = nav.browserType().name() === "webkit";
+  const nom = "§ 40 [" + mode + "] ";
+  console.log("§ 40 — 📏 Distance totale et ⛏️ Volume exploité en vue d'édition (" + mode + ")");
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, hasTouch: mode === "doigt",
+    serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const cdp = (mode === "doigt" && !webkit) ? await ctx.newCDPSession(page) : null;
+    // Toucher (ou clic) à un point de l'écran : bouton du DOM ou scène.
+    const tapEcran = async function (p) {
+      if (!p) throw new Error("cible introuvable");
+      if (mode === "souris") { await page.mouse.click(p[0], p[1]); return; }
+      if (cdp) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: p[0], y: p[1] }] });
+        await page.waitForTimeout(60);
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        return;
+      }
+      await page.evaluate(function (a) {
+        const el = document.elementFromPoint(a[0], a[1]) || document.body;
+        const o = { bubbles: true, cancelable: true, composed: true, pointerId: 95, pointerType: "touch",
+          isPrimary: true, clientX: a[0], clientY: a[1], button: 0 };
+        el.dispatchEvent(new PointerEvent("pointerdown", o));
+        el.dispatchEvent(new PointerEvent("pointerup", o));
+        if (el.tagName !== "CANVAS") el.dispatchEvent(new MouseEvent("click", o));
+      }, p);
+    };
+    const centre = async function (sel) {
+      const h = await page.$(sel);
+      const r = h ? await h.boundingBox() : null;
+      return r ? [r.x + r.width / 2, r.y + r.height / 2] : null;
+    };
+    // Bouton du panneau 📐 ouvert dont le libellé contient le texte de la clé `cle` → centre écran.
+    const sousAction = function (cle) {
+      return page.evaluate(function (k) {
+        const fly = document.querySelector(".kta-group-flyout"), lib = window.I18n.t(k);
+        const b = fly && Array.prototype.slice.call(fly.querySelectorAll(".kta-group-flyout-btn")).filter(function (x) {
+          return x.textContent.indexOf(lib) >= 0 || (x.title || "").indexOf(lib) >= 0;
+        })[0];
+        if (!b) return null;
+        const r = b.getBoundingClientRect();
+        return [r.left + r.width / 2, r.top + r.height / 2];
+      }, cle);
+    };
+    const ouvrirPanneauMesure = async function () {
+      await tapEcran(await centre('#kta-vue3d .kta-v3d-outils [data-groupe="mesure"]'));
+      await page.waitForTimeout(250);
+    };
+    // Élément de l'écran près du haut de la boîte de `sel` : dans `sel` (par-dessus la vue) ?
+    const dessus = function (sel) {
+      return page.evaluate(function (s) {
+        const m = document.querySelector(s);
+        if (!m) return null;
+        const b = (m.querySelector(".kta-readme-modal-boite") || m).getBoundingClientRect();
+        const el = document.elementFromPoint(b.left + b.width / 2, b.top + Math.min(30, b.height / 2));
+        return { dessus: !!el && m.contains(el), vue: !!document.getElementById("kta-vue3d") };
+      }, sel);
+    };
+
+    const r0 = await page.evaluate(async function () {
+      const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      window.__m3P = P;
+      window.__m3O = { ox: ox, oz: oz, sc: sc };
+      window.getPlanEditionVue3D = function () { return null; };
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = "v3d-checkup-mesures";
+      C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
+      window.setPlanRenduVue3D(null, "structures");
+      if (window._rdEffacerHighlight) window._rdEffacerHighlight();
+      window.setMeasurePointsSurface([]);
+      window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
+      // −1 : principal de 20 m à z = 6 et secondaire de 8 m à z = 9 ; 0 : principal de 30 m (jamais compté en 3D).
+      window.setRoads([
+        { uid: "rd_m3_p1", type: "principal", level: -1, points: [P(-10, 6), P(10, 6)] },
+        { uid: "rd_m3_s1", type: "secondaire", level: -1, points: [P(-4, 9), P(4, 9)] },
+        { uid: "rd_m3_p0", type: "principal", level: 0, points: [P(-15, -6), P(15, -6)] }
+      ]);
+      window.KtaGalerie.invalider();
+      window.HistoryManager.reset();
+      await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 0, niveau: -1 }, commandes: "joystick" });
+      await new Promise(function (ok) { setTimeout(ok, 250); });
+      const barre = document.querySelector("#kta-vue3d .kta-v3d-outils");
+      const yeux = { vue: K.etat().vue, colonne: !!barre && !barre.hidden && barre.getBoundingClientRect().width > 0 };
+      K.basculerVue();
+      await new Promise(function (ok) { setTimeout(ok, 250); });
+      return { yeux: yeux, niveau: K.niveauVue(), actif: C.activeLevel };
+    });
+    verifier(!r0.yeux.colonne && r0.niveau === -1 && r0.actif === 0,
+      nom + "à hauteur d'yeux, pas de colonne d'outils (ni 📏 ni ⛏️) ; vue au −1, carte au 0", r0);
+    await ouvrirPanneauMesure();
+    const p1 = await page.evaluate(function () {
+      const fly = document.querySelector(".kta-group-flyout");
+      const libs = fly ? Array.prototype.map.call(fly.querySelectorAll(".kta-group-flyout-btn"), function (b) {
+        return b.textContent + "|" + (b.title || ""); }) : [];
+      const a = function (k) { const l = window.I18n.t(k); return libs.some(function (x) { return x.indexOf(l) >= 0; }); };
+      return { ouvert: !!fly, distTot: a("ui.trace.distanceTotale"), volume: a("ui.subaction.mesureVolume"),
+        effacer: a("ui.subaction.mesureEffacer") };
+    });
+    verifier(p1.ouvert && p1.distTot && p1.volume && p1.effacer,
+      nom + "vue d'édition : 📐 offre 📏 Distance totale et ⛏️ Volume exploité", p1);
+
+    // ── 📏 ──
+    const reindex0 = await page.evaluate(function () { return window.KtaVue3D.etat().reindexations; });
+    await tapEcran(await sousAction("ui.trace.distanceTotale"));
+    await page.waitForTimeout(300);
+    const d1 = await page.evaluate(function () {
+      const e = window.KtaVue3D.etat(), m = document.getElementById("kta-rd-modal");
+      const nv = m && m.querySelector(".kta-rd-niveau");
+      return { modale: !!m, total: m ? document.getElementById("kta-rd-total").textContent : null,
+        attendu: window.formatDistance(28, 1), niveau: nv ? nv.textContent : null,
+        attenduNiveau: window.I18n.t("disttot.niveau", { lvl: "−1" }), statut: window.getDistanceTotaleStatus(),
+        ruban: e.distanceTotale, couleur2d: window.ktaSwatchColor("traces", "jonction") };
+    });
+    const dz1 = await dessus("#kta-rd-modal");
+    verifier(d1.modale && dz1 && dz1.dessus && dz1.vue,
+      nom + "📏 : son panneau s'ouvre par-dessus la vue (elementFromPoint dans le panneau)", dz1);
+    verifier(d1.total === d1.attendu && d1.niveau === d1.attenduNiveau && !!d1.statut &&
+      Math.abs(d1.statut.totalM - 28) < 1e-6,
+    nom + "📏 : niveau de la vue seul compté (" + d1.attendu + " au −1, le tracé du 0 exclu), niveau dit", d1);
+    const O = await page.evaluate(function () { return window.__m3O; });
+    const rb = d1.ruban;
+    verifier(!!rb && rb.dansScene && rb.segments === 2 && rb.troncons === 2 && rb.couleur === d1.couleur2d &&
+      !!rb.emprise && Math.abs(rb.emprise.z0 - (O.oz + 6 - rb.largeur / 2)) < 0.02 &&
+      Math.abs(rb.emprise.z1 - (O.oz + 9 + rb.largeur / 2)) < 0.02 && rb.emprise.y1 < 0.05,
+    nom + "📏 : ruban au sol à la couleur du surlignage de la carte (" + (rb && rb.couleur) + "), sur les 2 tronçons " +
+      "comptés du −1, rien sur le 0", rb);
+    // Case « secondaire » décochée : le ruban suit, sans reconstruire la scène.
+    await page.evaluate(function () { document.getElementById("kta-rd-chk-secondaire").click(); });
+    await page.waitForTimeout(250);
+    const d2 = await page.evaluate(function () {
+      const e = window.KtaVue3D.etat();
+      return { ruban: e.distanceTotale, reindex: e.reindexations,
+        total: document.getElementById("kta-rd-total").textContent, attendu: window.formatDistance(20, 1) };
+    });
+    verifier(!!d2.ruban && d2.ruban.segments === 1 && d2.total === d2.attendu && d2.reindex === reindex0,
+      nom + "📏 : case décochée → ruban et total suivent (1 tronçon, " + d2.attendu + "), scène non reconstruite",
+      Object.assign({ reindex0: reindex0 }, d2));
+    await page.evaluate(function () { document.getElementById("kta-rd-chk-secondaire").click(); });
+    await tapEcran(await centre("#kta-rd-done"));
+    await page.waitForTimeout(250);
+    const d3 = await page.evaluate(function () {
+      const e = window.KtaVue3D.etat();
+      return { modale: !!document.getElementById("kta-rd-modal"), ruban: e.distanceTotale, ouvert: e.ouvert };
+    });
+    verifier(!d3.modale && d3.ouvert && !!d3.ruban && d3.ruban.segments === 2,
+      nom + "📏 : ✓ ferme le panneau, la vue reste ouverte, le ruban reste", d3);
+    // ❌ Effacer le surlignage : efface dans les deux vues.
+    await ouvrirPanneauMesure();
+    await tapEcran(await sousAction("ui.trace.distanceTotale"));
+    await page.waitForTimeout(300);
+    await tapEcran(await centre("#kta-rd-erase"));
+    await page.waitForTimeout(250);
+    const d4 = await page.evaluate(function () {
+      const e = window.KtaVue3D.etat();
+      return { modale: !!document.getElementById("kta-rd-modal"), ruban: e.distanceTotale,
+        statut: window.getDistanceTotaleStatus(),
+        calque2d: document.querySelectorAll(".kta-rd-highlight-polyline").length };
+    });
+    verifier(!d4.modale && d4.ruban === null && d4.statut === null && d4.calque2d === 0,
+      nom + "📏 : ❌ Effacer le surlignage → plus de ruban en 3D ni de surlignage sur la carte", d4);
+    // Surlignage laissé, vue fermée : la carte recompte tous les niveaux.
+    await ouvrirPanneauMesure();
+    await tapEcran(await sousAction("ui.trace.distanceTotale"));
+    await page.waitForTimeout(300);
+    if (CAPTURES) await capture(page, "mesures-distance-panneau-" + mode);
+    await tapEcran(await centre("#kta-rd-done"));
+    await page.waitForTimeout(300);
+    if (CAPTURES) await capture(page, "mesures-distance-ruban-" + mode);
+    const d5 = await page.evaluate(async function () {
+      await window.KtaVue3D.fermer();
+      await new Promise(function (ok) { setTimeout(ok, 200); });
+      const s = window.getDistanceTotaleStatus();
+      return { totalM: s ? s.totalM : null, calque2d: document.querySelectorAll(".kta-rd-highlight-polyline").length,
+        niveauVue: window.KtaVue3D.niveauVue() };
+    });
+    verifier(d5.totalM !== null && Math.abs(d5.totalM - 58) < 1e-6 && d5.calque2d === 1 && d5.niveauVue === undefined,
+      nom + "📏 : vue fermée, la carte garde le surlignage et recompte tous les niveaux (58 m)", d5);
+    await page.evaluate(function () { window._rdEffacerHighlight(); });
+
+    // ── ⛏️ ──
+    await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__m3P;
+      window.setStructures([]);
+      window.setMeasurePointsSurface([]);
+      await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 0, niveau: -1 }, commandes: "joystick" });
+      await new Promise(function (ok) { setTimeout(ok, 250); });
+      K.basculerVue();
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+    });
+    await ouvrirPanneauMesure();
+    await tapEcran(await sousAction("ui.subaction.mesureVolume"));
+    await page.waitForTimeout(300);
+    const v1 = await page.evaluate(function () {
+      const b = document.querySelector("#kta-confirm-oui");
+      const m = b && b.closest(".kta-readme-modal-overlay");
+      let dessus = false;
+      if (b) {
+        const r = b.getBoundingClientRect(), el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        dessus = el === b || (!!el && b.contains(el));
+      }
+      return { message: m ? m.textContent.indexOf(window.I18n.t("volume.sansSecteur")) >= 0 : false,
+        modale: !!document.getElementById("kta-volume-modal"), dessus: dessus };
+    });
+    verifier(v1.message && !v1.modale && v1.dessus,
+      nom + "⛏️ sans surface ♦️ : le message de la carte, par-dessus la vue", v1);
+    await tapEcran(await centre("#kta-confirm-oui"));
+    await page.waitForTimeout(800);
+    // Surface ♦️ posée au toucher dans la vue : rectangle de 4 × 3 m autour du point visé ; pilier de 1 m² au −1
+    // dedans (compté), pilier de 1,96 m² au 0 à côté (pas compté : la carte est au 0, la vue au −1).
+    const S = await page.evaluate(function () {
+      const K = window.KtaVue3D, O = window.__m3O, v = K.etat().camera.visee;
+      const cx = +(v.x - O.ox).toFixed(2), cz = +(v.z - O.oz).toFixed(2), P = window.__m3P;
+      const carre = function (x, z, r) { return [P(x - r, z - r), P(x + r, z - r), P(x + r, z + r), P(x - r, z + r)]; };
+      window.setStructures([
+        { uid: "st_m3_m1", type: "pilier-1", level: -1, points: carre(cx - 1, cz, 0.5) },
+        { uid: "st_m3_0", type: "pilier-1", level: 0, points: carre(cx + 0.9, cz, 0.7) }
+      ]);
+      return { cx: cx, cz: cz };
+    });
+    await page.waitForTimeout(900);   // scène refaite (structures changées)
+    await ouvrirPanneauMesure();
+    await tapEcran(await sousAction("ui.subaction.mesureSurface"));
+    await page.waitForTimeout(800);   // le toucher qui ferme le panneau d'un groupe est avalé (DESSIN_AVALER)
+    const coins = [[-2, -1.5], [2, -1.5], [2, 1.5], [-2, 1.5]];
+    for (const c of coins) {
+      const ec = await page.evaluate(function (a) {
+        let q = null;
+        const deg = window.KtaVue3D.greffer({ nom: "v3d-m3-cam", scene: function (x) { q = x; } });
+        if (deg) deg();
+        const P = window.__m3P(a[0], a[1]), sc = window.APP_CONFIG.scale;
+        const v = new q.THREE.Vector3(P.x / sc, 0, P.y / sc).project(q.camera);
+        const r = document.querySelector("#kta-vue3d canvas").getBoundingClientRect();
+        return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height];
+      }, [S.cx + c[0], S.cz + c[1]]);
+      await tapEcran(ec);
+      await page.waitForTimeout(250);
+    }
+    const nSurf = await page.evaluate(function () { return (window.getMeasurePointsSurface() || []).length; });
+    await ouvrirPanneauMesure();
+    await tapEcran(await sousAction("ui.subaction.mesureVolume"));
+    await page.waitForTimeout(400);
+    const v2 = await page.evaluate(function () {
+      const m = document.getElementById("kta-volume-modal"), V = window.KtaVolumeExploite;
+      const pts = window.getMeasurePointsSurface(), sc = window.APP_CONFIG.scale;
+      const calc = function (n) {
+        return V.calculer({ secteur: pts, structures: window.getStructures(), zones: [], niveau: n, scale: sc,
+          hauteur: 2 });
+      };
+      const r = calc(-1), r0 = calc(0);
+      const fmt = function (v) { return window.formatSurface(v, 1); };
+      const td = function (cle) {
+        const lig = Array.prototype.find.call(m ? m.querySelectorAll("tr") : [], function (t) {
+          return t.querySelector("th").textContent === window.I18n.t(cle); });
+        return lig ? lig.querySelector("td").textContent : null;
+      };
+      const nv = m && m.querySelector(".kta-volume-niveau");
+      return { modale: !!m, niveau: nv ? nv.textContent : null,
+        attenduNiveau: window.I18n.t("volume.niveau", { lvl: "−1" }),
+        secteurM2: r.secteurM2, nbPiliers: r.nbPiliers, piliersNiveau0: fmt(r0.piliersM2), exploite: td("volume.exploite"),
+        attenduExploite: fmt(r.exploiteM2), piliers: td("volume.piliers"),
+        attenduPiliers: window.I18n.t("volume.piliersVal", { s: fmt(r.piliersM2), n: r.nbPiliers }) };
+    });
+    const vz2 = await dessus("#kta-volume-modal");
+    verifier(nSurf === 4 && v2.modale && !!vz2 && vz2.dessus,
+      nom + "⛏️ : surface ♦️ de 4 sommets posée dans la vue, panneau du volume par-dessus la vue", { nSurf: nSurf, vz2: vz2 });
+    verifier(Math.abs(v2.secteurM2 - 12) < 0.4 && v2.nbPiliers === 1 &&
+      v2.exploite === v2.attenduExploite && v2.piliers === v2.attenduPiliers && v2.piliers.indexOf(v2.piliersNiveau0) < 0 && v2.niveau === v2.attenduNiveau,
+    nom + "⛏️ : volume sur la surface dessinée en 3D (" + (v2.secteurM2 || 0).toFixed(2) + " m²), au niveau de la vue " +
+      "(« Niveau −1 », pilier du −1 compté, carte au 0)", v2);
+    if (CAPTURES) await capture(page, "mesures-volume-" + mode);
+    await tapEcran(await centre("#kta-volume-close"));
+    await page.waitForTimeout(200);
+    const v3 = await page.evaluate(function () {
+      return { modale: !!document.getElementById("kta-volume-modal"), ouvert: window.KtaVue3D.etat().ouvert };
+    });
+    verifier(!v3.modale && v3.ouvert, nom + "⛏️ : ✕ ferme le panneau du volume, la vue reste ouverte", v3);
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+    await page.evaluate(function () {
+      window.setMeasurePointsSurface([]);
+      window.setStructures([]); window.setRoads([]);
+      return window.KtaVue3D.fermer();
+    });
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await ctx.close();
+  }
+}
+
 // ── 39. Point précis d'un POI (js/poiPrecis.js) et édition d'un POI depuis la fiche 3D ───────────────────────────────
 // POI FICTIFS de session, galerie principale de 2,5 m à z = 0, rendu mixte. Formes : plaque posée au mur le plus
 // proche de son point précis (l'autre mur que celui de son icône), chatière en deux points (longueur et axe des deux
@@ -7475,7 +7806,7 @@ async function sectionGestesDoigt(nav) {
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" ||
-      SEUL === "passagecalque") {
+      SEUL === "passagecalque" || SEUL === "mesures") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -13645,6 +13976,9 @@ async function sectionGestesDoigt(nav) {
       for (const mode of ["souris", "doigt"]) await sectionPointPrecis3D(nav, mode);
     }
     if (!SEUL || SEUL === "passagecalque") await sectionPassageFicheCalque(nav);
+    if (!SEUL || SEUL === "mesures") {
+      for (const mode of ["souris", "doigt"]) await sectionMesures3D(nav, mode);
+    }
     if (!SEUL || SEUL === "fiches") await sectionFichesReglage(nav);
     if (!SEUL || SEUL === "gestes") await sectionGestesDoigt(nav);
     if (!SEUL || SEUL === "colonne") await sectionColonnePaysage(nav);
