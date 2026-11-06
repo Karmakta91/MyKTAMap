@@ -1784,7 +1784,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`_limitee`), grise la case et refuse `limiterPortee` / `reglerPortee` sans rien écrire. Recocher ramène recul et
   portée sous leurs bornes. Version brute : tout le plan est construit en pleine définition (pas d'allègement du
   lointain) ; mesures : ETUDE_VUE_3D.md § Tout le plan. Checkup : `checkup-vue-3d.js` § 41 (`KTA_V3D_SEUL=limiter`),
-  mesures `KTA_V3D_PERF=toutplan`.
+  mesures `KTA_V3D_PERF=toutplan` ; panneaux dézoomés : § 42 (`KTA_V3D_SEUL=panneaux`).
 - **Lampe** (réglages de la tuile ⚙️, cet appareil, décision produit : `config.js > getVue3DLampeIntensite`,
   `getVue3DFaisceau`, `getVue3DPleinJour`) : 💡 **intensité** en curseur, 25 à 300 % par pas de 5, 100 % = la lampe
   d'origine (`reglerLampe(%)`) ; 🔦 **faisceau** en curseur, 40 à 160° de cône total, 71° par défaut = demi-angle de
@@ -1926,7 +1926,20 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   scène compté depuis soi (la portée ; en vue d'édition, `_rayonScene`), échelle 1 → 0,5 et opacité 1 → 0,4 vers la
   limite (`_majPanneaux`). En vue d'édition, jamais de lettres sous 13 px à l'écran (`PANNEAU_LETTRE_MIN`, décision
   produit : dézoomé, un panneau à l'échelle de la scène n'avait plus que 3 px de texte), plafond porté à 60 % de
-  l'écran sur la largeur montrée (`PRES.ecranEdition`). De près
+  l'écran sur la largeur montrée (`PRES.ecranEdition`). ⚠️ contrat (décision produit, comme la carte 2D) : en vue
+  d'édition, un panneau de POI qui couvrirait plus de 12 m de sol à lettres minimales (`PANNEAU_REDUIT.sol` ; il
+  fait toujours ~222 px : vers 31 m de profondeur au PC, 33 m au téléphone) devient son **icône seule**, 28 px à
+  l'écran, dans une pastille sombre cerclée de rouge (danger) ou de la couleur des passages, ⭐ d'un favori
+  (`_iconeReduite`, texture partagée par icône et marque dans `e.icones` ; celle du panneau reste dans
+  `userData.texPanneau`, seule libérée avec la tuile) ; le nom revient sous 9 m (`solNom`, hystérésis : ~23 m de
+  profondeur). Puis **dé-chevauchement** (`_desencombrer`) : les panneaux qui se recouvrent à l'écran (marge 4 px)
+  n'en gardent qu'un, par rang (danger, favori, passage, point lié à un autre plan, puis le plus proche de la
+  caméra, avance de 15 % au panneau déjà montré : pas de clignotement), grille d'écran de 64 px (jamais n²), refait
+  seulement quand la caméra, la vue ou les candidats changent (~0,5 ms pour 1 000 POI au PC). Masqué = `visible`
+  coupé : ni dessiné ni visé. Membres et repères d'une installation ne se réduisent jamais et ne se masquent
+  qu'entre eux (un POI ne cache jamais un membre, un repère non plus) ; mesures et 🏁 jamais. À hauteur d'yeux, aucune icône ; seuls
+  les panneaux à plus de 12 m peuvent être masqués. Une icône réduite (plus petite qu'un doigt) se touche à 22 px
+  près (`_panneauVise`, `PANNEAU_REDUIT.toucher`). De près
   (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un
   panneau remplissait l'écran du téléphone). Toujours aux jetons du thème **sombre** (décision produit : la scène est
   noire dans les deux thèmes), lus dans la règle `:root` des feuilles (`_jetonsSombres`). Un POI
@@ -2345,8 +2358,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Caméra libre et mesures (§ 30, formes fictives, doigt, téléphone et PC) : pan d'un doigt tracker en marche → point
   visé déplacé, sol pris sous le doigt (à 15 cm), place et tracker immobiles, ⌖ montré ; vue tournée de 90° → même
   règle ; deux doigts tournés de 30° → cap de 30°, recul inchangé ; ⌖, un pas et la hauteur d'yeux ramènent la caméra ;
-  pan de 68 m → tuiles et panneau lointain construits là, place restée ; recul 150 m → lettres ≥ 13 px, fiche ouverte de
-  loin à taille normale, tuiles posées, bord de l'écran vu sur la scène, le sol nu ou le noir du brouillard (inclinaison
+  pan de 68 m → tuiles et panneau lointain construits là, place restée ; recul 150 m → panneau réduit à son icône de 28 px, fiche
+  ouverte de loin à taille normale, tuiles posées, bord de l'écran vu sur la scène, le sol nu ou le noir du brouillard (inclinaison
   par défaut et rasante), tap d'un outil armé posé au sol à 5 cm (centre et haut de l'écran) ; bornes 6 / 150 m aux
   boutons (grisés), à la molette et au pincement ; plan au sol redessiné sur 2,4 × le rayon vu à 150 m et vu à l'écran ; outil armé : glisser ne pose rien, le tap suivant pose sous le doigt (5 cm) ; bandeau (2
   sommets, 3e, surface, désarmé caché, sans chevaucher boussole, joystick, pavé ni zoom) ; angle droit → « 90° » comme

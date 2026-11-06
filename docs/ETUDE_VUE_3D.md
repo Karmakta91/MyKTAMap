@@ -469,6 +469,14 @@ Même chose en iPhone émulé (`KTA_V3D_TEL=1`, processeur × 4, GPU du PC) : pl
 plan dense : yeux 47 ms, édition 319 ms. Case cochée, rien ne change (1,7 à 3,2 ms par image). Ouverture directe
 en « Tout le plan » (PC, tout construit d'un coup) : 0,05 à 0,23 s.
 
+**Panneaux de POI dézoomés** (1 000 POI fictifs sur 320 × 320 m, sans structure ; `_majPanneaux`,
+`_desencombrer`). Avant : tous montrés à lettres minimales (222 px), 183 000 à 196 000 paires de panneaux qui se
+recouvrent au recul max, 9 000 à 18 500 à 150 m. Après : icône de 28 px, aucun recouvrement, 35 icônes gardées au
+recul max (965 masquées), 100 à 260 à 150 m. iPhone émulé (processeur × 4) : édition au recul max 61 → 33 ms par
+image (p95 82 → 48), à 150 m 32 → 19 ms (p95 45 → 29) ; dé-chevauchement de 1 000 panneaux 0,3 à 0,5 ms au PC,
+6,5 ms au téléphone émulé (refait seulement quand la caméra bouge). PC : bloqué à la synchro d'écran (16,7 ms)
+avant comme après. Checkup : `checkup-vue-3d.js` § 42.
+
 **Conclusion.** Au PC, le plan lourd demandé reste sous le budget de 33 ms dans les deux vues (p95 de l'édition à
 28 – 30 ms, au bord) et se construit en moins de 4 s sans saccade : **pas d'allègement du lointain (étape 2) pour
 l'instant**. Le coût de la vue d'édition au recul max suit les **appels** (2 300 à 2 950 : chaque tuile a ses
