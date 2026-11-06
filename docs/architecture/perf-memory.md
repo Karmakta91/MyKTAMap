@@ -127,6 +127,16 @@ Optims user-invisibles pour réduire le risque de crash sur smartphone, **sans a
 - **`_libererRessourcesPlanPrecedent(vers)`** dans `main.js` factorise le démontage du plan affiché, au changement de plan (`"plan"`) **et au retour à l'accueil** (`"accueil"`, appelé par `afficherLoader` : fermer un plan le vide, `plans-loader.md` « Fermer un plan ») : session enregistrée, suivi coupé, tuiles (overlay + blob URLs), `map.remove()`, **vide explicitement** `collisionCanvas` (width/height à 0 → libération immédiate des pixels, jusqu'à 64 MB sur plans 4K) puis nullifie ses refs, `resetRuntimeAssets`, reset des flags d'init.
 - **Mesure du retour à l'accueil** (`checkup-retour-accueil.js`, CDP après ramasse-miettes ; `RA_ZIP` pour un autre plan, `RA_PROCESSUS=1` pour la mémoire des processus) : sur un gros plan V2, la carte gardée cachée retenait à l'accueil toutes ses images (tuiles et marqueurs), environ 60 % de nœuds et 75 % d'écouteurs en plus, un tas JS plus lourd de 2,5 à 3 Mo et quelque 400 Mo de mémoire de processus (images décodées ; mesure bruitée) ; démontée, il ne reste rien de la carte. Le relevé fictif, petit, ne montre pas d'écart mesurable.
 - **Ouvertures répétées** : dérive nulle en nœuds et en écouteurs (ramasse-miettes compris) du 2e au 10e aller-retour, mesurée par `checkup-retour-accueil.js` (`RA_N`). Deux pièges y menaient : ce que le header pose hors de lui (écouteurs de `window`, minuterie de 2 s) se retire avec lui (`refonteInterface.js > _refonteInterfacePreUnload`, qui déconnecte aussi l'observateur de la barre d'état — resté armé, il empêchait d'observer la barre suivante) ; l'écouteur Échap de la modale « Session restaurée » part avec elle, quelle que soit la façon de la fermer (`sessionPersist.js > _afficherModaleSession`). Le premier aller-retour amorce une fois pour la page quelques nœuds et écouteurs.
+- **Calques de session retirés par leur groupe** : points, tracés, zones, structures et leurs aperçus de tracé sont
+  rendus dans `window.layerEditor` ; chaque rendu retire les anciens par `utils.js > ktaRetirerCalque` (=
+  `groupe.removeLayer`), jamais par `calque.remove()`, qui ne les ôte que de la carte. Sinon chaque modification
+  laissait dans le groupe une copie entière des objets (LatLng, fiche, objet de session, ~3,6 Ko par calque) :
+  ~70 Mo de tas après GC pour 10 modifications de 1000 murs et 200 zones, l'onglet tué sur un calque de quelques
+  milliers de structures passé en « 🔄 Modifier » ; et décocher puis recocher le calque de session dans ≡ remettait
+  tous ces calques morts sur la carte. Même règle pour le culling (tracés de session, points des calques de
+  données) et les groupes de la Vue OSM. Garde-fou statique : `scripts/check-calques-groupe.js` ; mesure :
+  `scripts/smoke/checkup-calques-groupe.js` (calques du groupe = un par objet, aucun hors carte, tas stable). Piège :
+  `gotchas.md` « `calque.remove()` ne le retire pas de son groupe ».
 - **Listeners device idempotents** : `tracking.js` utilise `_orientationListenerAttached`/`_motionListenerAttached` pour empêcher la duplication des handlers `deviceorientation`/`devicemotion` après plan switch + nouveau Play.
 - **SessionPersist throttle adaptatif** : `save()` mesure le main thread via micro-bench. Si busy → skip (max 6 skips consécutifs ≈ 9s avant force). `beforeunload`/`visibilitychange` appellent `save({force:true})` pour ne jamais perdre les dernières modifs.
 
@@ -926,7 +936,8 @@ function _refreshRoadsViewportOnly() {
       for (const layer of entry.layers) layer.addTo(entry.target);
       entry.inViewport = true;
     } else {
-      for (const layer of entry.layers) layer.remove();
+      // hors du GROUPE aussi : sinon ≡ décoché puis recoché remet sur la carte tout ce qui a été cullé
+      for (const layer of entry.layers) window.ktaRetirerCalque(layer, entry.target);
       entry.inViewport = false;
     }
   }
