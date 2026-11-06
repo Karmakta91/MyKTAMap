@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.23.0 (édition en vue 3D, point précis, Service Worker)
+
+**Un fichier lu de plus, sur le même site ; aucun domaine nouveau.** Une fois entré dans l'app, elle lit `deploiement.json` (le commit en ligne, écrit par le déploiement ; rien n'est envoyé) : s'il a changé, le cache de l'app se met à jour au chargement suivant, sans attendre une nouvelle version. Le cache n'est plus rempli avant ton entrée dans l'app (« Entrer », code d'accès ou connexion) : un visiteur de l'écran Bienvenue ne stocke que la page. À l'installation, les fichiers déjà en cache sont revalidés (un fichier inchangé ne repart pas), et la liste des fichiers à garder hors ligne lit aussi des manifestes du site (`addons/index.json`, `addons/<nom>/addon.json`). L'édition en vue 3D, le point précis, les raccords à vérifier et l'itinéraire se calculent sur l'appareil.
+
 ### v2.22.2 (vue 3D d'édition, carte tournée, formes ajustables)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Dessin en vue 3D, plan au sol (images déjà chargées par la carte), rotation de la carte, ajustement des sommets, guidage et zones multi-niveaux se calculent sur l'appareil ; les icônes du guide viennent de l'app (précache).

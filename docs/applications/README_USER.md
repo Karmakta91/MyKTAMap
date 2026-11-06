@@ -172,7 +172,7 @@ L'écran d'accueil propose :
 
 ### 📡 Utilisation hors connexion
 
-Une fois ouvert avec du réseau, MyKTAMap fonctionne **entièrement hors connexion** : l'app garde sur ton appareil tout ce dont elle a besoin.
+Une fois que tu es entré dans l'app avec du réseau (**Entrer**, ou le code d'accès), MyKTAMap fonctionne **entièrement hors connexion** : l'app garde sur ton appareil tout ce dont elle a besoin.
 
 **Pour préparer une sortie :**
 
@@ -182,7 +182,7 @@ Une fois ouvert avec du réseau, MyKTAMap fonctionne **entièrement hors connexi
 
 La **pastille** à côté du numéro de version, en bas de l'accueil, te dit si l'app est prête : **verte**, tout est enregistré pour le hors-ligne ; **rouge**, des fichiers manquent — touche-la avec du réseau pour tout enregistrer (un **📥** rouge le rappelle aussi en haut de l'accueil). **Orange** : enregistrement en cours, ou pas de réseau pour le terminer ; **grise** : l'état ne peut pas être vérifié (navigation privée, mode incognito, tout premier chargement).
 
-Quand une nouvelle version existe et que tu as du réseau, l'app te propose de la mettre à jour.
+Quand une nouvelle version existe et que tu as du réseau, l'app te propose de la mettre à jour ; tes plans gardés hors ligne restent sur l'appareil.
 
 ---
 

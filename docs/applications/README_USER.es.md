@@ -172,7 +172,7 @@ La pantalla de inicio ofrece:
 
 ### 📡 Uso sin conexión
 
-Una vez abierto con conexión, MyKTAMap funciona **totalmente sin conexión**: la app guarda en tu dispositivo todo lo que necesita.
+Una vez que has entrado en la app con conexión (**Entrar**, o el código de acceso), MyKTAMap funciona **totalmente sin conexión**: la app guarda en tu dispositivo todo lo que necesita.
 
 **Para preparar una salida:**
 
@@ -182,7 +182,7 @@ Una vez abierto con conexión, MyKTAMap funciona **totalmente sin conexión**: l
 
 La **pastilla** junto al número de versión, abajo en la pantalla de inicio, te dice si la app está lista: **verde**, todo está guardado para usar sin conexión; **rojo**, faltan archivos — tócala con conexión para guardarlo todo (un **📥** rojo arriba en la pantalla de inicio también te lo recuerda). **Naranja**: guardado en curso, o sin red para terminarlo; **gris**: el estado no se puede comprobar (navegación privada, modo incógnito, primerísima carga).
 
-Cuando existe una versión nueva y tienes conexión, la app te propone actualizarla.
+Cuando existe una versión nueva y tienes conexión, la app te propone actualizarla; los mapas que guardaste sin conexión se quedan en el dispositivo.
 
 ---
 

@@ -172,7 +172,7 @@ The home screen offers:
 
 ### 📡 Offline use
 
-Once opened with a connection, MyKTAMap works **entirely offline**: the app keeps everything it needs on your device.
+Once you have entered the app with a connection (**Enter**, or the access code), MyKTAMap works **entirely offline**: the app keeps everything it needs on your device.
 
 **To prepare an outing:**
 
@@ -182,7 +182,7 @@ Once opened with a connection, MyKTAMap works **entirely offline**: the app keep
 
 The **dot** next to the version number, at the bottom of the home screen, tells you whether the app is ready: **green**, everything is saved for offline use; **red**, some files are missing — tap it with a connection to save everything (a red **📥** at the top of the home screen also reminds you). **Orange**: saving in progress, or no connection to finish it; **grey**: the status can't be checked (private browsing, incognito mode, very first load).
 
-When a new version exists and you have a connection, the app offers to update.
+When a new version exists and you have a connection, the app offers to update; maps you kept offline stay on the device.
 
 ---
 
