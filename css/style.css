@@ -10455,6 +10455,12 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   -webkit-user-drag: none;
   user-select: none;
 }
+/* 🩸 iOS : un appui long sur une icône (<img>) ouvrait le menu de l'image (Partager, Enregistrer dans Photos,
+   Copier…) au lieu du geste de l'app (ajuster un sommet, fiche). Toutes les icônes de la carte. */
+.leaflet-marker-icon, .leaflet-marker-icon img, .kta-marker-divicon .kta-marker-img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+}
 
 /* Pastille du niveau actif : cercle jaune avec le chiffre, dans le control sous le zoom. */
 .kta-niv-pastille {
