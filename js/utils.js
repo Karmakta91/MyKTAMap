@@ -1420,6 +1420,11 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
         '</button>' +
       '</div>'
     : '';
+  // Point précis (poiPrecis.js) : « 🎯 Augmenter la précision », mêmes droits que ✏️ Modifier.
+  const precisRow = window.KtaPoiPrecis ? window.KtaPoiPrecis.htmlFiche(point, showSessionActions, _act) : "";
+  // « Y aller » / étape visent le point précis s'il existe ; data-kta-x / y restent l'icône (identité du point).
+  const _cib = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(point) : { x: x, y: y };
+  const _cibAttr = 'data-kta-cx="' + _cib.x + '" data-kta-cy="' + _cib.y + '" ';
   const deleteRow = showSessionActions
     ? '<div class="kta-popup-actions kta-popup-actions-danger">' +
         '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' + _act("supprimer") +
@@ -1486,11 +1491,12 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
                window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' + _act("aller") + _niveauIci +
+               _cibAttr +
                'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.goThere") + '">' +
                window.I18n.t("poi.goThereBtn") +
              '</button>' +
-             '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' + _act("etape") +
+             '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' + _act("etape") + _cibAttr +
                'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.addWaypoint") + '">' +
                window.I18n.t("poi.addWaypointBtn") +
@@ -1507,6 +1513,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            '</div>' +
            iplSectionHtml +
            editRow +
+           precisRow +
            deleteRow +
          '</div>';
 }
@@ -1519,6 +1526,8 @@ function _ktaPopupAction(e) {
   if (!b) return;
   e.preventDefault();
   const d = b.dataset, x = Number(d.ktaX) || 0, y = Number(d.ktaY) || 0, id = d.ktaId || "";
+  // Cible de l'itinéraire (point précis, poiPrecis.js > cible) ; absente : le point lui-même.
+  const cx = d.ktaCx !== undefined ? Number(d.ktaCx) : x, cy = d.ktaCy !== undefined ? Number(d.ktaCy) : y;
   const appel = function(nom) {
     const f = window[nom];
     if (typeof f !== "function") { console.warn("[Popup] action indisponible :", nom); return; }
@@ -1539,9 +1548,11 @@ function _ktaPopupAction(e) {
     case "aller": {
       // data-kta-niveau absent (mono-niveau) : pas de niveau de cible, le calcul garde sa règle.
       const n = Number.parseInt(d.ktaNiveau, 10);
-      return appel("itineraireYAller", x, y, d.ktaNom || "", Number.isInteger(n) ? { niveauCible: n } : undefined);
+      return appel("itineraireYAller", cx, cy, d.ktaNom || "", Number.isInteger(n) ? { niveauCible: n } : undefined);
     }
-    case "etape":         return appel("itineraireAjouterWaypoint", x, y, d.ktaNom || "");
+    case "etape":         return appel("itineraireAjouterWaypoint", cx, cy, d.ktaNom || "");
+    case "precis":        return window.KtaPoiPrecis && window.KtaPoiPrecis.armer(id, x, y);
+    case "precis-retirer": return window.KtaPoiPrecis && window.KtaPoiPrecis.retirer(id, x, y);
     case "favori":        return appel("toggleFavoriPoint", id, x, y, d.ktaNom || "", d.ktaTag || "default",
                                        d.ktaCalque || "data", d.ktaCalqueLabel || "", d.favPointuid || "");
   }
@@ -1943,6 +1954,8 @@ window.ktaMasquerMarqueur = function(marker, masque) {
     marker.on("add", _ktaReappliquerInerte);
   }
   _ktaPoserInerte(marker);
+  // Pointillé du point précis (poiPrecis.js) : masqué avec son POI.
+  if (marker._ktaPrecisPoint && window.KtaPoiPrecis) window.KtaPoiPrecis.maj(marker);
 };
 
 // ── Markers des data layers ──────────
@@ -2135,6 +2148,8 @@ window.getAllEmbeddedPoints = function() {
       // Passage entre niveaux (poiJonction.js) : l'itinéraire et les exports lisent ces deux champs.
       if (Array.isArray(m._ktaNiveauxSrc)) item.niveaux = m._ktaNiveauxSrc;
       if (Array.isArray(m._ktaAccroches)) item.accroches = m._ktaAccroches;
+      // Point précis (poiPrecis.js) : la vue 3D et l'itinéraire le lisent, les exports non.
+      if (m._ktaPrecis) item.precis = m._ktaPrecis;
       if (m._ktaDescription) item.description = m._ktaDescription;
       if (m._ktaUid) item.uid = m._ktaUid;
       if (typeof m._ktaUpdatedAt === "number") item.updatedAt = m._ktaUpdatedAt;
@@ -2432,9 +2447,11 @@ function ajouterPointsDepuisJSON(url, layer) {
           // _ktaNiveaux = niveaux où il s'affiche, null pour un point ordinaire.
           if (Array.isArray(p.niveaux)) marker._ktaNiveauxSrc = p.niveaux;
           if (Array.isArray(p.accroches)) marker._ktaAccroches = p.accroches;
+          if (p.precis && typeof p.precis === "object") marker._ktaPrecis = p.precis;
           const _pj = window.KtaPoiJonction;
           marker._ktaNiveaux = (_pj && _pj.estJonction(p)) ? _pj.niveaux(p) : null;
           if (_pj && !_skipPopup) _pj.brancherMarqueur(marker, p);
+          if (window.KtaPoiPrecis) window.KtaPoiPrecis.brancherMarqueur(marker, p);
           // nom, tags, id : les placemarks KML (sinon points anonymes dans le KMZ)
           marker._ktaNom  = p.nom || "";
           marker._ktaId   = p.id  || "";

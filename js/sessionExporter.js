@@ -1698,8 +1698,8 @@
   // ── Anonymisation pour partage public ──────────────
   // Noms POI / roads / zones / structures → codes séquentiels (tag + #N), notes vidées, tracker et profil
   // retirés : partager la structure sans exposer ses repérages.
-  // Gardé : x, y, level, tags, type, niveaux / accroches d'un passage. Retiré : id, nom, label, description,
-  // profondeur, date_update, tracker, user/author. Marqué : session.anonymized + anonymizedAt.
+  // Gardé : x, y, level, tags, type, niveaux / accroches d'un passage, point précis. Retiré : id, nom, label,
+  // description, profondeur, date_update, tracker, user/author. Marqué : session.anonymized + anonymizedAt.
   // 🔒 `photos` (déjà strippées EXIF) : ids renommés `photo-anon-N`, pointId remappé vers le code anonymisé.
   function _anonymiserSession(session, photos) {
     // 1. editorPoints — séquence par tag. 🔒 idMap : id d'origine → code (remappage photos)
@@ -1732,6 +1732,12 @@
         if (Array.isArray(p.accroches)) out.accroches = p.accroches.map(function(a) {
           return { level: a.level, x: a.x, y: a.y };
         });
+        // Point précis (poiPrecis.js) : géométrie seule, copiée champ par champ.
+        if (p.precis && typeof p.precis === "object") {
+          const q = p.precis, pr = { x: q.x, y: q.y };
+          if (q.x2 !== undefined) { pr.x2 = q.x2; pr.y2 = q.y2; }
+          out.precis = pr;
+        }
         return out;
       });
     }

@@ -209,7 +209,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (147 modules)
+## 🟢 L'application : modules JS (148 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -276,6 +276,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 |---|---|
 | `poiJonction.js` | POI qui relient des niveaux (`niveaux`, raccords validés), formulaire et modèle |
 | `poiDanger.js` | POI danger : date de constat et mention de non-certification |
+| `poiPrecis.js` | Point précis d'un POI (le vrai lieu, icône décalée) : pose depuis la fiche, pointillé 2D |
 | `editor.js` | Points de session : formulaire (tags, photos), édition, repositionnement, suppression |
 | `road.js` | Tracés de session : dessin, rendu, intersections, routes embarquées des calques, magnétisme |
 | `zones.js` | Zones polygonales (eau, remblais, effondrement, inaccessible, types custom) |
@@ -660,6 +661,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-plan-folders.js` | Mode Dossiers de « Mes plans » au pixel |
 | `smoke/checkup-plan-oriente.js` | Mode « plan orienté » : la vue tournée affiche tout au bon endroit |
 | `smoke/checkup-poi-jonction.js` | POI entre niveaux : raccords proposés et validés, itinéraire |
+| `smoke/checkup-point-precis.js` | Point précis d'un POI : pose depuis la fiche, pointillé 2D, session, itinéraire |
 | `smoke/checkup-zones-niveaux.js` | Zone reliée à plusieurs niveaux : cases de la fiche, filtre, itinéraire contourné sur chacun, ⏪, KMZ et GeoJSON relus |
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
 | `smoke/checkup-dessin-sans-fiche.js` | Outil armé (dessin, mesure, ajout de point, pickers) : tout toucher pose au point touché, aucune fiche, un seul outil à la fois (2D et 3D, doigt et souris) |

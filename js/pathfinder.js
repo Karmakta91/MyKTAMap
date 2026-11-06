@@ -1534,7 +1534,9 @@
       if (!p) continue;
       if ((p.id   && String(p.id).trim().toLowerCase()   === target) ||
           (p.nom  && String(p.nom).trim().toLowerCase()  === target)) {
-        return { x: p.x, y: p.y, source: "editor", point: p };
+        // Point précis du POI s'il existe (poiPrecis.js > cible) : l'itinéraire vise le vrai lieu.
+        const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(p) : p;
+        return { x: c.x, y: c.y, source: "editor", point: p };
       }
     }
 

@@ -2018,13 +2018,15 @@ window.ouvrirItinerairModal = function() {
       if (!it) return;
       const p = it.point;
       if (typeof p.x !== "number" || typeof p.y !== "number") return;
+      // Point précis du POI s'il existe (poiPrecis.js > cible), sinon le POI.
+      const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(p) : p;
       _itineraryWaypoints.push({
-        x:      p.x,
-        y:      p.y,
+        x:      c.x,
+        y:      c.y,
         source: "search",
         label:  window.I18n.t("iti.wp.searchLabel", { name: (p.nom || p.id || "?"), layer: (it.layerLabel || it.layerId) })
       });
-      _ajouterWaypointVisuel({ x: p.x, y: p.y }, _itineraryWaypoints.length);
+      _ajouterWaypointVisuel({ x: c.x, y: c.y }, _itineraryWaypoints.length);
       _rafraichirListeWaypointsModale();
       _majPanneauFloaterCount();
       searchInput.value    = "";
@@ -2105,7 +2107,8 @@ window.ouvrirItinerairModal = function() {
       window.CrossPlanSearch.ouvrir("", { onSelect: function(plan, pt) {
         const label = pt.nom || pt.id || (pt.x + "," + pt.y);
         if (plan.id === (window._currentLoadedPlanId || null)) {
-          window.itineraireAjouterWaypoint(pt.x, pt.y, label);
+          const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(pt) : pt;
+          window.itineraireAjouterWaypoint(c.x, c.y, label);
           return;
         }
         // Les étapes déjà posées (non validées, hors origine tracker) deviennent des passages

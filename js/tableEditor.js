@@ -864,7 +864,8 @@
       html += '<td class="col-check"><input type="checkbox" data-row-check="' + idx + '"' + (isSel ? " checked" : "") + '></td>';
       _colonnes.forEach(function(col) {
         const v = p[col];
-        const ro = (col === "id" || col === "points" || col === "accroches" || (col === "level" && _sansNiveau(p)));
+        const ro = (col === "id" || col === "points" || col === "accroches" || col === "precis" ||
+                    (col === "level" && _sansNiveau(p)));
         let cls = "";
         if (ro) cls += "col-readonly";
         const typeInconnu = (col === "type" && typesConnus.length > 0 && v != null && v !== "" &&
@@ -882,6 +883,10 @@
         } else if (col === "accroches") {
           // Raccords d'un passage entre niveaux : validés sur la carte (fiche du point), jamais saisis ici.
           contenu = _escapeHtml(window.I18n.t("tabledit.col.accroches", { n: Array.isArray(v) ? v.length : 0 }));
+        } else if (col === "precis" && v && typeof v === "object") {
+          // Point précis (poiPrecis.js) : posé depuis la fiche du POI, jamais saisi ici ; chatière : début → fin.
+          const q = function(n) { return Number.isFinite(n) ? String(Math.round(n * 100) / 100) : "?"; };
+          contenu = _escapeHtml(q(v.x) + ", " + q(v.y) + (v.x2 !== undefined ? " → " + q(v.x2) + ", " + q(v.y2) : ""));
         } else if (col === "niveaux" && Array.isArray(v)) {
           contenu = _escapeHtml(v.map(function(n) { return window.ktaFormatNiveau(n); }).join(", "));
         } else if (col === "level" && niveauxPlan && !_sansNiveau(p) && (v == null || Number.isInteger(v))) {
@@ -939,7 +944,8 @@
       td.addEventListener("click", function(e) {
         if (e.target.closest("input")) return;
         const col = td.dataset.col;
-        if (col === "id" || col === "points" || col === "accroches") return; // lecture seule (id + géométrie)
+        // lecture seule (id + géométrie)
+        if (col === "id" || col === "points" || col === "accroches" || col === "precis") return;
         if (col === "level" && _sansNiveau(_data[Number.parseInt(td.dataset.idx, 10)])) return;
         if (col === "tags") {
           const removeBtn = e.target.closest("[data-tag-remove]");

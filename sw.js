@@ -353,6 +353,7 @@ const ASSETS_TO_CACHE = [
   "./js/tracking.js",
   "./js/poiJonction.js",
   "./js/poiDanger.js",
+  "./js/poiPrecis.js",
   "./js/editor.js",
   "./js/road.js",
   "./js/zones.js",

@@ -142,7 +142,9 @@
       if (!Array.isArray(arr)) return;
       arr.forEach(function(p) {
         if (p && typeof p.x === "number" && typeof p.y === "number" && p.nom) {
-          out.push({ x: p.x, y: p.y, nom: String(p.nom), niveaux: _niveauxRepere(p) });
+          // Repère au vrai lieu (point précis, poiPrecis.js > cible) : la plaque est au mur, pas à son icône.
+          const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(p) : p;
+          out.push({ x: c.x, y: c.y, nom: String(p.nom), niveaux: _niveauxRepere(p) });
         }
       });
     }

@@ -455,7 +455,9 @@
 
           const first = results[0].point || results[0];
           const nom = first.nom || first.id || query;
-          const x = first.x, y = first.y;
+          // Point précis du POI s'il existe (poiPrecis.js > cible).
+          const c = (window.KtaPoiPrecis && typeof first.x === "number") ? window.KtaPoiPrecis.cible(first) : first;
+          const x = c.x, y = c.y;
 
           if (typeof x !== "number" || typeof y !== "number") {
             _updateLive(_t("voice.route.badCoords", { nom: nom }), "error");

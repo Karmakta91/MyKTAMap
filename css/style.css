@@ -20680,6 +20680,14 @@ button.kta-cfg-ligne-action {
 .kta-ajuster-apercu { stroke: var(--kta-accent); fill: none; }
 .kta-ajuster-poignee { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.35; }
 .kta-ajuster-poignee-attente { fill-opacity: 0; stroke-dasharray: 4 3; }
+/* 🎯 Point précis d'un POI (js/poiPrecis.js) : pointillé de l'icône au point, segment d'une chatière, carré au point.
+   Jamais interactifs (le clic passe à la carte). */
+.kta-precis-trait { stroke: var(--kta-accent); fill: none; }
+.kta-precis-segment { stroke: var(--kta-accent); fill: none; }
+.kta-precis-carre {
+  background: var(--kta-accent); border: 1px solid var(--kta-sur-accent); box-sizing: border-box;
+  pointer-events: none;
+}
 /* 🔗 Raccords à vérifier (js/raccordsTraces.js) : liste, bandeau de revue, deux points entourés sur la carte. */
 .kta-racc-boite { max-width: 480px; width: auto; height: auto; max-height: 90vh; max-height: 90dvh; }
 .kta-racc-corps { font-size: 13px; }

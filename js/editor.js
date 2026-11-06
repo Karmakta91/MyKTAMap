@@ -786,6 +786,48 @@ function _repoDesactiver() {
   if (fl) fl.remove();
 }
 window.repositionnerAnnuler = _repoDesactiver;
+// Point de session par id + coordonnées de l'icône (règle de _indexPointSession), ou null : poiPrecis.js le mute en
+// place, vue3d.js y retrouve le point de sa fiche.
+window.ktaPointSession = function(id, x, y) {
+  const i = _indexPointSession(id, x, y);
+  return i === -1 ? null : listePoints[i];
+};
+
+// Déplace un point de session à (nx, ny), px du plan : une écriture, une entrée d'historique. Repositionner (2D) et
+// 📍 Déplacer de la vue 3D (poiPrecis.js > armer, genre « deplacer ») passent par ici.
+function _deplacerPoint(pt, nx, ny, nom) {
+  const avant = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
+  const ancX = pt.x, ancY = pt.y;
+
+  // Mutation EN PLACE : le point garde son `level` (jamais réattribué au niveau affiché : pas de téléportation
+  // d'étage en douce), ses photos, ses tags, son point précis et `_srcCalque` s'il vient d'un calque ouvert à la
+  // modification.
+  pt.x = Math.round(nx * 100) / 100;
+  pt.y = Math.round(ny * 100) / 100;
+  if (window.KtaUid) window.KtaUid.touch(pt);
+
+  // Les liaisons inter-plan stockent les coords du point : sans recalage, le lien partirait de l'ancienne
+  // position à l'export KMZ.
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPointMoved === "function"
+      && window._currentLoadedPlanId) {
+    try { window.InterPlanLinks.onPointMoved(window._currentLoadedPlanId, pt, ancX, ancY); }
+    catch(err) { console.warn("[Editor] recalage liaisons inter-plan :", err); }
+  }
+
+  if (window.renderEditorPoints) window.renderEditorPoints();
+  if (window.HistoryManager && avant) {
+    window.HistoryManager.record(
+      window.I18n.t("editor.undo.movePoint", { nom: nom }), avant, "editorPoints");
+  }
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(window.I18n.t("editor.repo.done", { nom: nom }), "info");
+  }
+}
+window.ktaDeplacerPointSession = function(pt, nx, ny) {
+  if (!pt || listePoints.indexOf(pt) < 0 || !Number.isFinite(nx) || !Number.isFinite(ny)) return false;
+  _deplacerPoint(pt, nx, ny, String(pt.nom || pt.id || ""));
+  return true;
+};
 
 // Bouton « Repositionner » de la popup d'un point de session (utils.js > buildPointPopupHtml).
 window.repositionnerPointEditor = function(id, x, y) {
@@ -831,33 +873,8 @@ window.repositionnerPointEditor = function(id, x, y) {
       _repoDesactiver();
       return;
     }
-    const pt = listePoints[i];
-    const avant = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
-    const ancX = pt.x, ancY = pt.y;
-
-    // Mutation EN PLACE : le point garde son `level` (jamais réattribué au niveau affiché : pas de téléportation
-    // d'étage en douce), ses photos, ses tags et `_srcCalque` s'il vient d'un calque ouvert à la modification.
-    pt.x = Math.round(nx * 100) / 100;
-    pt.y = Math.round(ny * 100) / 100;
-    if (window.KtaUid) window.KtaUid.touch(pt);
-
-    // Les liaisons inter-plan stockent les coords du point : sans recalage, le lien partirait de l'ancienne
-    // position à l'export KMZ.
-    if (window.InterPlanLinks && typeof window.InterPlanLinks.onPointMoved === "function"
-        && window._currentLoadedPlanId) {
-      try { window.InterPlanLinks.onPointMoved(window._currentLoadedPlanId, pt, ancX, ancY); }
-      catch(err) { console.warn("[Editor] recalage liaisons inter-plan :", err); }
-    }
-
-    if (window.renderEditorPoints) window.renderEditorPoints();
-    if (window.HistoryManager && avant) {
-      window.HistoryManager.record(
-        window.I18n.t("editor.undo.movePoint", { nom: nom }), avant, "editorPoints");
-    }
     _repoDesactiver();
-    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-      window.OOMGuard.showToast(window.I18n.t("editor.repo.done", { nom: nom }), "info");
-    }
+    _deplacerPoint(listePoints[i], nx, ny, nom);
   };
   window.map.on("click", _repoHandler);
 
@@ -937,6 +954,8 @@ function _ajouterMarker(point) {
   const _pj = window.KtaPoiJonction;
   marker._ktaNiveaux = (_pj && _pj.estJonction(point)) ? _pj.niveaux(point) : null;
   if (_pj) _pj.brancherMarqueur(marker, point);
+  // Point précis (poiPrecis.js) : pointillé et carré selon le zoom et la fiche ouverte.
+  if (window.KtaPoiPrecis) window.KtaPoiPrecis.brancherMarqueur(marker, point);
   // Tags copiés aussi : le 1er détermine l'icône, c'est le tag de filtrage (comme les marqueurs de calque).
   marker._ktaTags = Array.isArray(point.tags) ? point.tags.slice() : [];
 
