@@ -263,7 +263,7 @@
     } catch(e) {
       console.log("[UpdateChecker] showCurrent fetch échoué :", e.message);
       if (typeof window.afficherModaleAlerteAbsente === "function") {
-        window.afficherModaleAlerteAbsente("offline");
+        window.afficherModaleAlerteAbsente("offline", { version: true });
       }
       return { status: "offline" };
     }
@@ -288,7 +288,7 @@
     if (!remote || !remote.version || _cmpShow <= 0 || _dejaCharge(remote.version)) {
       if (remote && remote.version && _cmpShow > 0) _setKnownVersion(remote.version, remote);
       if (typeof window.afficherModaleAlerteAbsente === "function") {
-        window.afficherModaleAlerteAbsente("up-to-date");
+        window.afficherModaleAlerteAbsente("up-to-date", { version: true });
       } else {
         window.ktaAlerte(window.I18n.t("update.alreadyLatest", { version: (remote && remote.version || known) }));
       }

@@ -8,7 +8,7 @@
 // INTERFACE ALERTS — Modales d'alertes publiques + mise à jour
 // =========================
 // Exposé sur window :
-//   - afficherModaleAlerteAbsente(status) → modale informative compacte « Aucune alerte en cours » / « Déjà à jour »
+//   - afficherModaleAlerteAbsente(status, opts) → modale « Aucune alerte en cours » / « Déjà à jour »
 //     / « Vérification impossible (hors ligne) » (clic sur 🚨 sans alerte, ou sur la version du pied de page sans
 //     mise à jour).
 //   - afficherSelecteurAlertes(alerts, opts) → liste multi-alertes par criticité (emergency > warning > info) ;
@@ -47,7 +47,7 @@ function _ktaPoserLigneNotif(corps, fermer) {
   if (l) corps.appendChild(l);
 }
 
-window.afficherModaleAlerteAbsente = function(status) {
+window.afficherModaleAlerteAbsente = function(status, opts) {
   if (document.getElementById("kta-alert-absent-modal")) return;
 
   const isOffline   = (status === "offline");
@@ -119,7 +119,11 @@ window.afficherModaleAlerteAbsente = function(status) {
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
-  _ktaPoserLigneNotif(modal.querySelector(".kta-alert-absent-corps"), function () { _fermer(); });
+  // ⚠️ contrat : le pied du 🚨 (nouveautés, action d'une extension, notifications) ne vit que dans la fenêtre des
+  // ALERTES ; « Déjà à jour » / hors ligne de la mise à jour (updateChecker.js, `opts.version`) n'en a pas.
+  if (!(opts && opts.version)) {
+    _ktaPoserLigneNotif(modal.querySelector(".kta-alert-absent-corps"), function () { _fermer(); });
+  }
 
   function _fermer() { modal.remove(); }
   document.getElementById("kta-alert-absent-ok").addEventListener("click", _fermer);

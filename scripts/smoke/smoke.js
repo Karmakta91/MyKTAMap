@@ -345,6 +345,27 @@ async function jouer(navigateur) {
     if (repris && repris === idOuvert) ok("« Reprendre » : le plan revient, id de plan courant reposé");
     else pb("accueil", "« Reprendre » n'a pas rouvert le plan quitté");
 
+    // Pied du 🚨 (action d'une extension, ex. « ➕ Lancer une alerte ») : dans « Aucune alerte », jamais dans la
+    // fenêtre « Déjà à jour » de la mise à jour (même gabarit, interfaceAlerts.js > afficherModaleAlerteAbsente).
+    const pied = await page.evaluate(function () {
+      const K = window.KtaExtensions, avant = K.actionAlertes;
+      K.actionAlertes = function () { const b = document.createElement("button"); b.className = "smoke-action"; return b; };
+      const lire = function (status, opts) {
+        window.afficherModaleAlerteAbsente(status, opts);
+        const m = document.getElementById("kta-alert-absent-modal");
+        const n = m ? m.querySelectorAll(".smoke-action").length : -1;
+        if (m) m.remove();
+        return n;
+      };
+      const r = { alertes: lire("no-alert"), version: lire("up-to-date", { version: true }),
+        horsLigne: lire("offline", { version: true }) };
+      K.actionAlertes = avant;
+      return r;
+    });
+    if (pied.alertes === 1 && pied.version === 0 && pied.horsLigne === 0) {
+      ok("« Lancer une alerte » dans la fenêtre des alertes, absent de « Déjà à jour »");
+    } else pb("alertes", "pied du 🚨 mal placé : " + JSON.stringify(pied));
+
     await page.waitForTimeout(800);   // laisser sortir les erreurs asynchrones
   } catch (e) {
     pb("smoke", "exception du scénario : " + String(e).slice(0, 300));
