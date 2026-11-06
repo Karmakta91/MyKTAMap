@@ -112,6 +112,14 @@
 
 ## Entrant
 
+- **Rotation du plan en Vue OSM** — demande KARMA 06/11 : pouvoir tourner la carte en Vue OSM comme le plan 2D
+  (`mapBearing.js` : deux doigts, bouton nord). À cadrer : modale et widget de l'accueil, tuiles OSM, plan calé, cap.
+  `qui: Claude · action: topo (ce que fait la 2D, ce que la Vue OSM permet) · depuis: 06/11/2026 · taille: S`
+- **Accueil pro lent : splash bloquant et connexions IndexedDB** — audit pro
+  `MyKTAMap-pro/docs/audits/2026-11-06_audit-accueil-chiffre-v1.md` : `main.js` attend la fin de l'animation du
+  splash (~4 s) avant la porte du pro ; `planRegistry.js > _openIDB` ouvre une connexion à chaque appel, jamais fermée.
+  `qui: KARMA · action: dire si la porte du pro peut partir pendant l'animation (décision splash) · depuis: 06/11/2026
+  · taille: S`
 - **Rotation 2D : redessin inutile et geste lourd** — enquête du 06/11 (plantage non reproduit) : `mapBearing.js >
   _majPaddingUnRenderer` vide et redessine le canvas des vecteurs 2 fois par rotation sans changement (mémoire qui monte
   sous WebKit) ; au téléphone, ~1 500 couches de POI + `--kta-bearing` sur toute la carte figent le geste (jusqu'à 1,7 s).
