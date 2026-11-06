@@ -499,9 +499,10 @@
   }
   function importAutorise() { return _permission("importAutorise", [], true); }
   // ── Alertes d'une extension (prise d'INFORMATION « alertes ») ──
-  // alertes.lister() → Promise<[{ id, level, title, message, details?, released, source? }]> : mêmes champs
+  // alertes.lister() → Promise<[{ id, level, title, message, details?, released, source?, vue? }]> : mêmes champs
   // que alert.json, affichées par AlertChecker dans la MÊME modale. Nettoyées ici (textes, bornés, niveau
-  // connu sinon « info »), id préfixé « ext_ » (pas de collision). Attente bornée ; erreur, délai ou forme
+  // connu sinon « info »), id préfixé « ext_ » (pas de collision). `vue: true` (strict) = l'extension la sait déjà
+  // vue (autre appareil du même compte) : acquittée comme sur cet appareil. Attente bornée ; erreur, délai ou forme
   // inattendue → []. Changement annoncé par mktm:alertes-changees.
   const ALERTES_DELAI_MS = 3000;
   function alertesExtension() {
@@ -522,7 +523,7 @@
         const title = txt(a.title, 200), message = txt(a.message, 4000);
         if (!id || !released || (!title && !message)) return null;
         return { id: "ext_" + id, level: (["emergency", "warning", "info"].indexOf(a.level) >= 0) ? a.level : "info",
-          title: title, message: message, released: released, source: txt(a.source, 80),
+          title: title, message: message, released: released, source: txt(a.source, 80), vue: a.vue === true,
           details: Array.isArray(a.details) ? a.details.map(function (d) { return txt(d, 500); }).filter(Boolean).slice(0, 20) : [] };
       }).filter(Boolean);
     }).catch(function (e) { clearTimeout(delai); console.warn("[Extensions] alertes.lister a échoué :", e); return []; });

@@ -101,11 +101,15 @@
   }
 
   // ── Filtrage et tri ──────────
-  // Alertes non acquittées, par priorité puis released.
+  // Alertes non acquittées, par priorité puis released. Acquittée = sur cet appareil (localStorage), ou alerte
+  // d'extension que l'extension dit déjà vue (`vue: true`, ce qu'elle sait ailleurs : un autre appareil du même compte).
+  // ⚠️ `vue` n'est cru que pour un id « ext_ » (posé par KtaExtensions.alertesExtension) : alert.json n'en a pas.
+  function _vueParExtension(a) { return a.vue === true && String(a.id || "").indexOf("ext_") === 0; }
   function _filtrerEtTrier(alerts) {
     const prioOrder = { emergency: 0, warning: 1, info: 2 };
     return alerts
       .filter(function(a) {
+        if (_vueParExtension(a)) return false;
         const seen = _getSeenForId(a.id);
         return !(seen && seen === a.released);
       })

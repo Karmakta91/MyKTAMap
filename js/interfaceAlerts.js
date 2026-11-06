@@ -167,8 +167,10 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
     return (b.released || "").localeCompare(a.released || "");
   });
 
-  // Alerte déjà lue (utile au clic sur 🚨) : localStorage["myktamap_alert_seen_<id>"] = released acquitté.
+  // Alerte déjà lue (utile au clic sur 🚨) : localStorage["myktamap_alert_seen_<id>"] = released acquitté, ou
+  // alerte d'extension que l'extension dit déjà vue (`vue`, AlertChecker > _vueParExtension).
   function _isAcquittee(a) {
+    if (a.vue === true && String(a.id || "").indexOf("ext_") === 0) return true;
     if (!a.id || !a.released) return false;
     try {
       const seen = localStorage.getItem("myktamap_alert_seen_" + a.id);
@@ -207,6 +209,12 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
     '</div>';
   document.documentElement.appendChild(modal);
   _ktaPoserLigneNotif(modal.querySelector(".kta-alert-selector-corps"), function () { _fermer(); });
+  // Signal neutre : ces alertes sont À L'ÉCRAN dans la liste (titres lus). Une extension peut en tirer un accusé de
+  // lecture, comme pour le détail (mktm:alerte-affichee) ; sans écouteur, rien — l'acquittement local ne change pas.
+  try {
+    window.dispatchEvent(new CustomEvent("mktm:alertes-listees", { detail: { alertes: sorted.map(function(a) {
+      return { id: String(a.id || ""), released: String(a.released || "") }; }) } }));
+  } catch(e) { /* rien */ }
 
   function _fermer() {
     if (modal.parentNode) modal.remove();
