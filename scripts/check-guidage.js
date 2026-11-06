@@ -673,6 +673,44 @@ async function evacuationBrancard() {
       relie(deuxL(2.5), [200, 300], [200, 700]));
     t("jonction : deux sommets intérieurs à 10 px → pas reliés",
       !relie(deuxL(10), [200, 300], [200, 700]));
+    // Bout DÉJÀ raccordé : la branche C finit sur la galerie A ; B est parallèle à 10 px de l'autre côté de A.
+    // Seul un bout libre a la tolérance : C ne doit pas sauter vers B à travers le mur.
+    const galA = R("principal", [[0, 400], [0, 500], [200, 500], [400, 500], [400, 400]]);
+    const galALisse = R("principal", [[0, 400], [0, 500], [400, 500], [400, 400]]);
+    const galB = R("principal", [[0, 610], [0, 510], [400, 510], [400, 610]]);
+    t("jonction : bout raccordé sur un sommet de A → aucun lien vers B, parallèle à 10 px",
+      !relie([galA, galB, R("principal", [[200, 300], [200, 500]])], [0, 400], [0, 610]));
+    t("jonction : bout raccordé sur un croisement exact avec A → aucun lien vers B",
+      !relie([galALisse, galB, R("principal", [[200, 300], [200, 500]])], [0, 400], [0, 610]));
+    t("jonction : bout fusionné avec le bout d'un autre tracé → aucun lien vers B, à 7 px",
+      !relie([galALisse, galB, R("principal", [[200, 300], [200, 503]]), R("principal", [[200, 503], [300, 300]])],
+             [200, 300], [0, 610]));
+    t("jonction : bout raccordé, la branche reste reliée à A",
+      relie([galA, galB, R("principal", [[200, 300], [200, 500]])], [200, 300], [0, 400]));
+    t("jonction : bout libre à 2,5 px de A (vrai trou) → lien",
+      relie([galALisse, R("principal", [[200, 300], [200, 497.5]])], [200, 300], [0, 400]));
+    // Cul-de-sac qui finit sur le raccord validé d'un puits (POI entre niveaux), à 12 px d'une galerie sans lien.
+    const puits = function(avecPoi) {
+      const w = bac([R("principal", [[0, 500], [400, 500]], { level: 0 }),
+                     R("principal", [[200, 300], [200, 488]], { level: 0 }),
+                     R("principal", [[150, 488], [250, 488]], { level: 1 })], { multiLevel: true });
+      const poi = { x: 200, y: 488, level: 0, tags: ["jes"], niveaux: [0, 1],
+                    accroches: [{ level: 0, x: 200, y: 488 }, { level: 1, x: 200, y: 488 }] };
+      w.KtaPoiJonction = { moyen: () => "escalier", niveaux: p => p.niveaux, accroches: p => p.accroches,
+                           forfaitM: () => 10, pointsJonction: () => (avecPoi ? [poi] : []) };
+      const g = w.Pathfinder.buildNetworkGraph({});
+      const proche = p => g.nodes.reduce((b, n, i) => (Math.hypot(n.x - p[0], n.y - p[1]) <
+        Math.hypot(g.nodes[b].x - p[0], g.nodes[b].y - p[1]) ? i : b), 0);
+      const a = proche([200, 300]), cible = proche([0, 500]), vu = new Set([a]), pile = [a];
+      while (pile.length) {
+        const u = pile.pop();
+        if (u === cible) return true;
+        g.edges[u].forEach(e => { if (!vu.has(e.to)) { vu.add(e.to); pile.push(e.to); } });
+      }
+      return false;
+    };
+    t("jonction : bout libre à 12 px d'une galerie → lien (témoin)", puits(false));
+    t("jonction : bout posé sur le raccord d'un puits → pas de lien vers la galerie à 12 px", !puits(true));
     // Deux branches qui coupent un même long segment (aucun sommet entre elles) : on va de l'une à l'autre le long
     // du segment, sans repasser par son extrémité.
     for (const [nom, bas] of [["croisements", 600], ["T exacts", 500]]) {

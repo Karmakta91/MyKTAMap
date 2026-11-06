@@ -29,9 +29,11 @@
 
   // Jonctions imparfaites (T et extrémité↔extrémité). Plus permissif que les 8 px du DESSIN des cercles
   // d'intersection : les tracés à la main ont 5-10 px de jitter aux jonctions.
-  // ⚠️ contrat (décision produit) : ne s'applique qu'aux BOUTS de tracé (graph.bouts, 1er et dernier sommets) ;
-  // un raté de connexion vient toujours d'un bout. 🩸 Appliquée à tous les sommets, elle reliait deux galeries
-  // parallèles plus proches que la tolérance (15 px ≈ 3 m à 5 px/m) : itinéraire à travers le mur.
+  // ⚠️ contrat (décision produit) : ne s'applique qu'aux BOUTS LIBRES (_boutsLibres : 1er ou dernier sommet d'un
+  // tracé qui ne touche encore aucun autre tracé) ; un raté de connexion vient toujours d'un bout resté en l'air.
+  // 🩸 Appliquée à tous les sommets, elle reliait deux galeries parallèles plus proches que la tolérance (15 px ≈ 6 m
+  // à 2,5 px/m) : itinéraire à travers le mur. Appliquée à un bout déjà raccordé (T, croisement, bout fusionné,
+  // passage de POI), elle le reliait EN PLUS à la galerie parallèle voisine : même saut à travers le mur.
   const PROXIMITY_TOLERANCE = 15;
 
   // Deux sommets INTÉRIEURS de deux tracés différents à ≤ 3 px sont reliés : carrefour dessiné en deux « L » qui se
@@ -368,7 +370,8 @@
       // Set<niveau> par nœud : 1 niveau pour un nœud de route, plusieurs pour un nœud fusionné,
       // ["transit"] pour le milieu d'une jonction. Décide des connexions à l'enrichissement.
       nodeLevels: [],   // nodeLevels[i] = Set<number|"transit">
-      bouts:      new Set(),  // 1er et dernier sommets des tracés : seuls candidats aux jonctions imparfaites
+      bouts:      new Set(),  // 1er et dernier sommets des tracés
+      boutsLibres: new Set(), // ceux qui ne touchent aucun autre tracé (_boutsLibres) : seuls à avoir la tolérance
       traces:     [],         // traces[i] = indices des tracés qui passent par le nœud i (sommets intérieurs voisins)
       noeudsTrace: []         // noeudsTrace[r][k] = nœud du k-ième sommet du tracé r (raccordsTraces.js)
     };
@@ -630,7 +633,42 @@
     return Array.from(vus).sort(function(p, q) { return p - q; });
   }
 
-  function _enrichirGrapheAvecCroisements(graph) {
+  // Bouts LIBRES : 1er ou dernier sommet d'un tracé qui ne touche encore aucun autre tracé. Un bout est raccordé si
+  // son nœud est partagé par un autre tracé (fusion à SPATIAL_MERGE_THRESHOLD, sommet commun, bout de jonction), s'il
+  // a une arête vers le nœud d'un autre tracé (croisement exact posé sur lui par l'étape 1) ou s'il porte le raccord
+  // validé d'un POI entre niveaux (_poiInjectable, même filtre que _injecterJonctionsPoi).
+  // ⚠️ À lire après les croisements stricts, avant toute jonction imparfaite. Un bout raccordé est traité comme un
+  // sommet intérieur (lien seulement à ≤ PROXIMITE_INTERIEURS_PX d'un sommet d'un autre tracé).
+  function _boutsLibres(graph, pois, ctxPois) {
+    const libres = new Set();
+    const accroches = [];
+    if (Array.isArray(pois) && window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+      pois.forEach(function(p) {
+        const inj = _poiInjectable(p, ctxPois);
+        if (inj) inj.acc.forEach(function(a) { accroches.push(a); });
+      });
+    }
+    (graph.bouts || new Set()).forEach(function(idx) {
+      const tr = graph.traces[idx];
+      if (!tr || tr.length !== 1) return;
+      const r = tr[0];
+      const voisins = graph.edges[idx] || [];
+      for (let k = 0; k < voisins.length; k++) {
+        const tv = graph.traces[voisins[k].to];
+        if (tv && tv.indexOf(r) < 0) return;
+      }
+      const n = graph.nodes[idx], niv = graph.nodeLevels[idx];
+      for (let k = 0; k < accroches.length; k++) {
+        const a = accroches[k];
+        if (niv && niv.has(a.level) && Math.hypot(a.x - n.x, a.y - n.y) <= SPATIAL_MERGE_THRESHOLD) return;
+      }
+      libres.add(idx);
+    });
+    return libres;
+  }
+
+  // `pois` / `ctxPois` : ceux passés ensuite à _injecterJonctionsPoi (bouts posés sur un passage entre niveaux).
+  function _enrichirGrapheAvecCroisements(graph, pois, ctxPois) {
     // Snapshot AVANT enrichissement, sinon boucle infinie sur les segments virtuels ajoutés.
     const segs = graph.segments.slice();
     // Deux index : bbox brute (+1 px) pour les croisements, bbox élargie de la tolérance pour les T.
@@ -695,8 +733,9 @@
       }
     }
 
-    // ── 2. T par proximité : BOUT de tracé projeté à l'INTÉRIEUR d'un autre segment, sous la tolérance ──
-    const bouts = graph.bouts || new Set();
+    // ── 2. T par proximité : BOUT LIBRE projeté à l'INTÉRIEUR d'un autre segment, sous la tolérance ──
+    // Lu APRÈS les croisements stricts : un bout posé sur un croisement exact y a gagné ses arêtes.
+    const bouts = graph.boutsLibres = _boutsLibres(graph, pois, ctxPois);   // lu aussi par raccordsTraces.js
     for (let i = 0; i < segs.length; i++) {
       const segA = segs[i];
       if (!bouts.has(segA.a) && !bouts.has(segA.b)) continue;
@@ -747,8 +786,9 @@
       }
     }
 
-    // ── 3. Bout↔sommet : un BOUT décalé de quelques px (jitter) d'un sommet d'un autre tracé, trop loin pour
-    // SPATIAL_MERGE_THRESHOLD au build → arête directe pondérée. Deux sommets intérieurs ne se relient jamais. ──
+    // ── 3. Bout↔sommet : un BOUT LIBRE décalé de quelques px (jitter) d'un sommet d'un autre tracé, trop loin pour
+    // SPATIAL_MERGE_THRESHOLD au build → arête directe pondérée. Deux autres sommets (intérieurs ou bouts déjà
+    // raccordés) ne se relient qu'à ≤ PROXIMITE_INTERIEURS_PX. ──
     const endpointSet = new Set();
     for (let i = 0; i < segs.length; i++) {
       endpointSet.add(segs[i].a);
@@ -791,7 +831,7 @@
 
         const pB = graph.nodes[idxB];
         const d = Math.hypot(pB.x - pA.x, pB.y - pA.y);
-        // Deux sommets intérieurs : seulement très proches, et de deux tracés différents.
+        // Aucun bout libre : seulement très proches, et de deux tracés différents.
         const unBout = bouts.has(idxA) || bouts.has(idxB);
         if (!unBout && (d > PROXIMITE_INTERIEURS_PX || _memeTrace(graph, idxA, idxB))) continue;
         // Au-dessus du seuil de fusion (sinon déjà fusionnés au build).
@@ -961,6 +1001,20 @@
     return _poserNoeudSur(graph, best, bestProj, bestDist);
   }
 
+  // POI réellement injecté comme puits → { tag, moyen, niveaux, acc } ; null sinon (sans moyen, corde non permise,
+  // moins de deux niveaux, aucun raccord validé).
+  function _poiInjectable(p, ctx) {
+    const PJ = window.KtaPoiJonction;
+    if (!PJ || !p) return null;
+    const tag = (Array.isArray(p.tags) && p.tags[0]) || "";
+    const moyen = PJ.moyen(tag);
+    if (!moyen || (moyen === "corde" && !(ctx && ctx.corde))) return null;
+    const niveaux = PJ.niveaux(p);
+    const acc = PJ.accroches(p);
+    if (niveaux.length < 2 || !acc.length) return null;
+    return { tag: tag, moyen: moyen, niveaux: niveaux, acc: acc };
+  }
+
   function _injecterJonctionsPoi(graph, pois, ctx) {
     graph.raccordsPerdus = 0;
     if (!Array.isArray(pois) || !pois.length || !graph.segments.length) return;
@@ -968,13 +1022,10 @@
     const PJ = window.KtaPoiJonction;
     if (!PJ) return;
     pois.forEach(function(p) {
-      const tag = (Array.isArray(p.tags) && p.tags[0]) || "";
-      const moyen = PJ.moyen(tag);
-      if (!moyen || (moyen === "corde" && !(ctx && ctx.corde))) return;
-      const niveaux = PJ.niveaux(p);
-      const acc = PJ.accroches(p);
-      if (niveaux.length < 2 || !acc.length) return;
-      const info = { tag: tag, moyen: moyen, nom: String(p.nom || p.id || "") };
+      const inj = _poiInjectable(p, ctx);
+      if (!inj) return;
+      const tag = inj.tag, niveaux = inj.niveaux, acc = inj.acc;
+      const info = { tag: tag, moyen: inj.moyen, nom: String(p.nom || p.id || "") };
       const puits = {};
       niveaux.forEach(function(n) {
         const idx = _nouveauNode(graph, p.x, p.y);
@@ -1096,9 +1147,9 @@
       e.i18nParams = { types: allowedTypes.join(", ") };
       throw e;
     }
-    _enrichirGrapheAvecCroisements(graph);
-    _injecterJonctionsPoi(graph, jonctions && jonctions.pois,
-                          { echelle: echelle, profondeurs: profondeurs, corde: !!(jonctions && jonctions.corde) });
+    const ctxPuits = { echelle: echelle, profondeurs: profondeurs, corde: !!(jonctions && jonctions.corde) };
+    _enrichirGrapheAvecCroisements(graph, jonctions && jonctions.pois, ctxPuits);
+    _injecterJonctionsPoi(graph, jonctions && jonctions.pois, ctxPuits);
 
     const snapResults = [];
     for (let i = 0; i < waypoints.length; i++) {
@@ -1606,8 +1657,9 @@
 
     // Sans évitements (propres à l'itinéraire).
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
-    _enrichirGrapheAvecCroisements(graph);
-    _injecterJonctionsPoi(graph, _poisJonctionDuPlan(), { corde: !!(opts && opts.corde) });
+    const poisPuits = _poisJonctionDuPlan(), ctxPuits = { corde: !!(opts && opts.corde) };
+    _enrichirGrapheAvecCroisements(graph, poisPuits, ctxPuits);
+    _injecterJonctionsPoi(graph, poisPuits, ctxPuits);
 
     if (graph.nodes.length === 0) {
       return {
@@ -1769,8 +1821,9 @@
     if (!allRoads || allRoads.length === 0) return _newGraph();
     const zonesInacc = opts.includeZones ? _collecterObstaclesDurs() : [];
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
-    _enrichirGrapheAvecCroisements(graph);
-    _injecterJonctionsPoi(graph, _poisJonctionDuPlan(), { corde: opts.corde === true });
+    const poisPuits = _poisJonctionDuPlan(), ctxPuits = { corde: opts.corde === true };
+    _enrichirGrapheAvecCroisements(graph, poisPuits, ctxPuits);
+    _injecterJonctionsPoi(graph, poisPuits, ctxPuits);
     return graph;
   }
 

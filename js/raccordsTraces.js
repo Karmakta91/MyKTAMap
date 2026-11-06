@@ -7,12 +7,15 @@
 // raccordsTraces.js — « 🔗 Raccords à vérifier » (Éditeur de données) : les écarts de MIN_PX à MAX_M entre deux morceaux
 // du réseau de l'itinéraire aujourd'hui séparés, sur un même niveau, un par paire de morceaux (le plus court). Revue
 // sur la carte (bandeau Précédent / Suivant) : Raccorder ou Ignorer. Pourquoi : la règle stricte des jonctions
-// (pathfinder.js, bouts seuls à 15 px, sommets intérieurs à 3 px) ne relie plus deux galeries parallèles à travers un
-// mur, ni un carrefour dessiné avec deux sommets intérieurs écartés ; la distance seule ne les distingue pas.
+// (pathfinder.js, bouts libres seuls à 15 px, sommets intérieurs à 3 px) ne relie plus deux galeries parallèles à
+// travers un mur, ni un carrefour dessiné avec deux sommets intérieurs écartés ; la distance seule ne les distingue
+// pas.
 // Morceaux = composantes connexes du graphe de l'itinéraire (Pathfinder.grapheDeTraces : types par défaut, sans
 // obstacle) ; un écart à l'intérieur d'un morceau n'est jamais proposé.
-// Raccorder : le sommet (un bout de préférence, sinon celui du plus petit morceau) va sur le point le plus proche de
-// l'autre tracé, qui y gagne un sommet s'il n'en a pas (carrefour exact, fusionné par le graphe). Un tracé de calque
+// Raccorder : le sommet (un bout libre de préférence, sinon celui du plus petit morceau) va sur le point le plus proche
+// de l'autre tracé, qui y gagne un sommet s'il n'en a pas (carrefour exact, fusionné par le graphe). 🩸 Un sommet déjà
+// raccordé (partagé avec un autre tracé, bout posé sur une galerie) ne bouge qu'en dernier recours : le déplacer
+// décrocherait l'autre tracé, qui garde son sommet à l'ancienne place. Un tracé de calque
 // passe d'abord en session par la question de « 🔄 Modifier » (FilterPanel.rapatrierCalque).
 // ⚠️ contrat : une écriture = captureState("roads") → mutation → KtaUid.touch → ktaFormesAjustables.roads.rendre() (un
 // `kta:donneesPlanChange`) → record → SessionPersist.save, comme ajusterSommets.js > _ecrire : Ctrl+Z l'annule.
@@ -158,8 +161,10 @@ window.KtaRaccords = (function () {
           if (!e) { e = { ignore: false, cands: [] }; paires.set(pk, e); }
           const b = { x: pr.x, y: pr.y };
           if (ignores.has(_cle(niv, p, b))) e.ignore = true;
-          e.cands.push({ r: r, i: i, s: s, k: k, d: pr.d, b: b, niveau: niv,
-            bout: i === 0 || i === pts.length - 1, taille: cc.taille[cA] });
+          const n = noeuds[i], bout = i === 0 || i === pts.length - 1;
+          const libre = bout && !!(graph.boutsLibres && graph.boutsLibres.has(n));
+          e.cands.push({ r: r, i: i, s: s, k: k, d: pr.d, b: b, niveau: niv, bout: libre,
+            fixe: (graph.traces[n] || []).length > 1 || (bout && !libre), taille: cc.taille[cA] });
         }
       }
     }
@@ -172,6 +177,7 @@ window.KtaRaccords = (function () {
       e.cands.forEach(function (c) { if (c.d < min) min = c.d; });
       const proches = e.cands.filter(function (c) { return c.d <= min + EGAL_PX; });
       proches.sort(function (u, v) {
+        if (u.fixe !== v.fixe) return u.fixe ? 1 : -1;
         if (u.bout !== v.bout) return u.bout ? -1 : 1;
         if (u.taille !== v.taille) return u.taille - v.taille;
         return u.d - v.d;
