@@ -38,25 +38,11 @@
   plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
   `qui: Claude · action: scénario pro de retour à l'accueil, après le lot tests-fiables du pro
   · fini: scénario vert · depuis: 26/10/2026 · taille: S`
-- **Test appareil : écran Bienvenue et iPhone** — en navigation privée, téléphone et PC : tracker du puits, 🚨,
-  liens de documentation, conditions après « Entrer » (Chrome mobile en portrait), installation à mot de passe ;
-  sur iPhone, date de constat modifiable à la CRÉATION d'un POI danger (`3b06dad4`, non reproductible hors iPhone).
-  `qui: KARMA · action: jouer ces écrans sur dev puis en prod · fini: vus conformes, ou bugs ouverts
-  · depuis: 26/10/2026 · taille: XS`
-- **Essai sur dev : v2.22.2 sur vrai téléphone et PC** — tout est prouvé en émulation seulement : vue 3D d'édition
-  (dessin au doigt, caméra libre, sélecteur de niveau, 🗺️ plan au sol sur plan réel), rotation 2D et bouton nord,
-  ajustement des sommets, guidage (encart, repère au bon niveau, recalcul en 3D libre), corrections 3D du 03/11.
-  `qui: KARMA · action: après /killsw.html, jouer ces gestes sur iPhone et au PC ; un sommet 3D refusé →
-  KtaVue3D.etat().dessin.refus · fini: vus conformes, ou bugs ouverts · depuis: 03/11/2026 · taille: S`
 - **Test WebKit « fondu −1 » instable** — `checkup-vue-3d.js` : 1 KO par intermittence sous charge, vu aussi sur la
   base `f62ec4d1` ; 🔬 test instable plutôt que régression. Bloquerait la porte de release.
   `qui: Claude · action: trouver ce qui dépend du temps dans le contrôle du fondu et le rendre déterministe
   · fini: 5 passages WebKit verts de suite · depuis: 03/11/2026 · taille: S`
 
-- **Test appareil : ouverture de plans sur iPhone** — plus de clics répétés ; si le journal montre souvent « copie
-  gardée relue », quelque chose réécrit encore les copies.
-  `qui: KARMA · action: ouvrir plusieurs plans puis envoyer le journal · fini: journal lu, aucune réécriture en boucle
-  · depuis: 14/10/2026 · taille: XS`
 - **Test appareil : Mode Secours sur iPhone** — « Suivre mon parcours » (permission des capteurs dans le geste),
   recalage à la validation d'une étape (question au-delà de 30 m), écran XL avec un long itinéraire, « Retour
   impératif ».
@@ -72,27 +58,10 @@
   · taille: S`
 ## Ensuite
 
-- **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
-  Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
-  `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
-  · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
 - **Aide ❓ de la vue 3D : accès et niches** — ✅ vérifié 04/11 : l'Aide cite le cavage mais ni les accès comblés ni
   l'escalier en niche (le guide, lui, les liste).
   `qui: Claude · action: compléter la section dans les 3 langues · fini: section à jour, check-i18n vert
   · depuis: 03/11/2026 · taille: XS`
-- **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
-  (`security-legal.md` §36.3).
-  `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert
-  · depuis: 13/09/2026 · taille: XS`
-- **Test appareil : chiffres du guide** — repris sans vérification : stockage par appareil (~50 Mo Safari, ~1 Go app
-  installée), chemin d'installation sur Chrome Android.
-  `qui: KARMA · action: relever les deux chiffres et le chemin sur appareil
-  · fini: guide confirmé ou corrigé dans les 3 langues · depuis: 14/10/2026 · taille: XS`
-- **Données des plans (DATA, KARMA seul)** — taguer les vrais accès (`entree_plan`), donner un niveau aux POI d'accès
-  et aux tracés sans niveau, 3ᵉ point de calage GPS ; régénérer les plans d'avant v1.97.9 (pas d'`iconsEmbarquees` →
-  21 sondes 404).
-  `qui: KARMA · action: reprendre les plans dans le Générateur · fini: accès tagués, plans régénérés (0 sonde 404)
-  · depuis: 13/09/2026 · taille: M`
 - **Noms réels restants** — 🟡 le nom du département est neutralisé (`check-noms-reels.js`) ; d'autres noms de lieu ou
   de plan réels restent dans `README.md`, des commentaires `js/` et `docs/architecture/`. Liste remise hors dépôt.
   `qui: KARMA · action: trancher nom par nom sur la liste hors dépôt · fini: chaque nom remplacé ou gardé par décision
