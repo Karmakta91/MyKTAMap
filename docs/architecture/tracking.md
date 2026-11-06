@@ -2190,8 +2190,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   mode), la ligne du mode actif marquée ; relu à chaque sommet, caché outil désarmé.
 - **📏 Distance totale et ⛏️ Volume exploité** (panneau 📐, vue d'édition) : les fenêtres de la carte, par-dessus la
   vue. ⚠️ contrat : le niveau compté est **celui de la vue** (`KtaVue3D.niveauVue()`, pas forcément le niveau actif
-  de la carte : passage 🪜, suivi) — 📏 ne compte que les tracés de ce niveau (carte seule : tous les niveaux), ⛏️ y
-  prend piliers et remblais. 📏 : la 3D ne compte rien, elle lit les tronçons comptés
+  de la carte : passage 🪜, suivi) — 📏 ne compte que les tracés de ce niveau (carte seule : son niveau actif ;
+  case « Tous les niveaux » : tout le plan, ruban au sol du niveau de la vue seul, note dans le panneau ;
+  `multilevel-pathfinding.md` § 15), ⛏️ y prend piliers et remblais. 📏 : la 3D ne compte rien, elle lit les tronçons comptés
   (`interfaceDistanceTotale.js > ktaDistanceTotaleSurlignage`) et pose un ruban au sol de `SURLIGNE.larg` à la couleur
   du surlignage de la carte (`ktaSwatchColor("traces", "jonction")`), un seul maillage hors tuiles (`_majDistTot`),
   refait à `kta:distanceTotaleChange` (case, ❌ Effacer, réouverture) et à chaque reconstruction, jamais l'inverse ;
@@ -2312,8 +2313,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Mesures 📏 ⛏️ (§ 40, `=mesures`, souris et doigt, tracés fictifs au 0 et au −1, vue au −1, carte au 0) : absentes à
   hauteur d'yeux, dans 📐 en vue d'édition ; panneau 📏 par-dessus la vue (`elementFromPoint`), niveau de la vue seul
   compté et dit ; ruban à la couleur du surlignage de la carte sur les 2 tronçons du −1 ; case décochée → ruban et
-  total suivent sans reconstruction ; ✓ garde le ruban, ❌ l'efface des deux vues ; vue fermée → la carte recompte
-  tous les niveaux ; ⛏️ sans surface → message de la carte par-dessus la vue ; surface ♦️ de 4 touchers dans la vue →
+  total suivent sans reconstruction ; « Tous les niveaux » → 58 m, ruban du −1 seul, note ; ✓ garde le ruban, ❌
+  l'efface des deux vues ; vue fermée → la carte, placée au −1, compte son niveau actif ; ⛏️ sans surface → message de la carte par-dessus la vue ; surface ♦️ de 4 touchers dans la vue →
   volume au « Niveau −1 » (pilier du −1 compté, celui du 0 non).
   Caméra libre et mesures (§ 30, formes fictives, doigt, téléphone et PC) : pan d'un doigt tracker en marche → point
   visé déplacé, sol pris sous le doigt (à 15 cm), place et tracker immobiles, ⌖ montré ; vue tournée de 90° → même

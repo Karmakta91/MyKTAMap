@@ -719,7 +719,7 @@ Dónde y cómo se dibuja un paso:
 - El objeto es **el del mapa**: misma ficha, mismos colores, ⏪ Deshacer. Toma **el nivel de la 3D**; el mapa conserva el suyo.
 - Mientras dibujas, una **línea en el suelo** muestra el objeto; aparece en relieve al terminar.
 - **📐 Medición**: la distancia (y la superficie) se muestra en una **franja abajo de la vista**, actualizada en cada punto, como en el mapa; la longitud de cada segmento y el ángulo en cada punto también se muestran en la 3D, legibles.
-- **📏 Distancia total** y **⛏️ Volumen explotado** también están en 📐: su ventana se abre sobre la vista y cuenta **el nivel de la 3D**. Los tramos contados por 📏 se resaltan en magenta en el suelo, como en el mapa; **❌ Borrar el resaltado** lo borra de ambas. ⛏️ usa la superficie ♦️ que trazaste en la 3D.
+- **📏 Distancia total** y **⛏️ Volumen explotado** también están en 📐: su ventana se abre sobre la vista y cuenta **el nivel de la 3D**. Los tramos contados por 📏 se resaltan en magenta en el suelo, como en el mapa (con **Todos los niveles** marcado, 📏 cuenta todo el plano, pero el suelo de la 3D solo muestra su nivel: la ventana lo indica); **❌ Borrar el resaltado** lo borra de ambas. ⛏️ usa la superficie ♦️ que trazaste en la 3D.
 - **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, donde miras, para dibujar sobre el levantamiento, en cada nivel: la imagen propia del nivel si el plano la tiene; si no, el plano base.
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
 - **Volver a tocar la herramienta, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
@@ -1133,7 +1133,7 @@ Mientras la herramienta está encendida, **⏪** deshace cada gesto sobre la med
 
 ### 📏 Distancia total de los trazados
 
-En el grupo **📐 Medición**, **📏 Distancia total** suma la longitud de todos los trazados del mapa — los tuyos y los de las capas de datos, incluso ocultas — con una casilla por tipo y, para cada uno, el número de trazados y su longitud. El total se actualiza con cada casilla, y los tramos contados se resaltan en magenta. **✓ Cerrar (mantener el resaltado)** deja el resaltado en el mapa (vuelve a pulsar 📏 para reabrir, tus casillas se conservan); **❌ Borrar el resaltado** lo quita.  En la 🧊 Vista 3D (Edición), solo cuentan los trazados del nivel de la 3D, resaltados en el suelo; cerrada la 3D, el mapa vuelve a contar todos los niveles.
+En el grupo **📐 Medición**, **📏 Distancia total** suma la longitud de los trazados del mapa — los tuyos y los de las capas de datos, incluso ocultas — con una casilla por tipo y, para cada uno, el número de trazados y su longitud. El total se actualiza con cada casilla, y los tramos contados se resaltan en magenta. **✓ Cerrar (mantener el resaltado)** deja el resaltado en el mapa (vuelve a pulsar 📏 para reabrir, tus casillas se conservan); **❌ Borrar el resaltado** lo quita. En un plano de varios niveles, solo cuenta el **nivel mostrado** (la ventana lo nombra, y cambiar de nivel recalcula); la casilla **Todos los niveles**, guardada para el plano, cuenta y resalta todo el plano. En la 🧊 Vista 3D (Edición), el nivel mostrado es el de la 3D, resaltado en el suelo.
 
 ### ⛏️ Volumen explotado (extracción)
 

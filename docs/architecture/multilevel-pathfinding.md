@@ -52,11 +52,22 @@ Calcul d'un trajet le plus court entre N waypoints en suivant le réseau de poly
 
 ---
 
-### 15. Distance totale des tracés (`interface.js`, depuis 2026-05-09)
+### 15. Distance totale des tracés (`js/interfaceDistanceTotale.js`)
 
-Outil de mesure agrégée : somme des longueurs de tous les tracés Principal / Secondaire / Chemin présents (session `getRoads()` + calques `getAllEmbeddedRoads()` — TOUTES, masquées comprises, sauf un calque en modification, lu par sa copie de session), avec filtrage par type via cases à cocher et surlignage magenta des tronçons inclus.
+Outil de mesure agrégée : somme des longueurs des tracés Principal / Secondaire / Chemin (et types custom) présents (session `getRoads()` + calques `getAllEmbeddedRoads()` — TOUTES, masquées comprises, sauf un calque en modification, lu par sa copie de session), avec filtrage par type via cases à cocher et surlignage magenta des tronçons inclus.
 
 **⚠️ Depuis v146 (2026-05-14)** : `_rdRoadsExploitables()` utilise `getAllEmbeddedRoads()` (et plus `getEmbeddedRoads()` qui filtrait par visibilité). Cohérence avec Pathfinder + Search : l'utilisateur peut masquer le calque routes (dessinées en dur sur le PNG) pour gagner en perf rendu, tout en gardant un total fiable. Le surlignage magenta est aussi appliqué sur les roads masquées (layer séparé qui se voit indépendamment du calque sous-jacent).
+
+**Niveau compté** (⚠️ contrat, plan multi-niveau) : par défaut le **niveau affiché** seul — celui de la vue 3D
+ouverte (`KtaVue3D.niveauVue()`), sinon le niveau actif de la carte (`APP_CONFIG.activeLevel`, la pastille ; pas
+`visibleLevels`, qui montre d'ordinaire tous les niveaux). Une ligne du panneau le nomme (« Niveau n affiché »,
+« Niveau n de la vue 3D », « Tous les niveaux du plan »). Case **Tous les niveaux** (`#kta-rd-tous`, décochée par
+défaut) : pref de plan `distTotTousNiveaux` (`config.js > getPlanDistTotTousNiveaux / setPlanDistTotTousNiveaux`),
+tout le plan compté et surligné sur la carte ; en 3D, le ruban au sol (`ktaDistanceTotaleSurlignage`) reste celui
+du niveau de la vue et une note du panneau le dit. Plan à un niveau : ni ligne ni case, tout compte. Niveau actif
+changé : `interfaceConfig.js > ktaSetActiveLevel` appelle `ktaDistanceTotaleRafraichir` (surlignage, et panneau
+s'il est ouvert, recalculés). Sans tracé sur aucun niveau → alerte ; un niveau affiché vide ouvre le panneau à 0.
+Parcours : `scripts/smoke/checkup-distance-totale.js` (Chromium et WebKit) et § 40 de `checkup-vue-3d.js`.
 
 **Entrée UI** : sous-action **📏 Distance totale (filtres)** dans le groupe accordéon **📐 Mesure** (`interface.js > _creerGroupeAccordeon({id:"mesure"})`, entre ♦️ Surface et ❌ Effacer). Toggle ON/OFF — re-cliquer ferme la modale.
 

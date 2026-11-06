@@ -2431,7 +2431,7 @@ icônes.
   au rang de la vue (`html.kta-vue3d-ouverte .kta-group-flyout` et son fond à 99999, posés après elle) ;
   📐 y garde **📏 Distance totale** et **⛏️ Volume exploité** : leurs fenêtres (`.kta-readme-modal-overlay`, 99999,
   posées sur `<html>` après la vue) s'ouvrent par-dessus elle, au niveau de la vue (ligne « Niveau n de la vue 3D »
-  dans 📏) ; ruban magenta au sol des tronçons comptés : `tracking.md` § Vue 3D › Dessiner en vue d'édition ;
+  dans 📏, case « Tous les niveaux » partagée avec la carte : `multilevel-pathfinding.md` § 15) ; ruban magenta au sol des tronçons comptés : `tracking.md` § Vue 3D › Dessiner en vue d'édition ;
   📐, groupe en accordéon sur la carte, y passe aussi (surbrillance par `isActive`). Le toucher qui ferme le panneau
   ne pose rien (avalé, comme sur la carte). Groupe grisé : le refus de la carte (`ktaEditionRefusee`), pas de panneau.
   Aperçu au sol de l'objet en cours (ruban, sommets, rond doré du 1er sommet) et étiquette de la mesure en panneau
