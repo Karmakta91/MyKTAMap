@@ -557,6 +557,29 @@ async function jouer(nav, moteur, mode) {
     const zch = (z1.s.editorPoints || []).find(function (p) { return p.uid === "pt_pp_ch"; });
     verifier(!!zpl && !!zpl.precis && !!zch && zch.precis && zch.precis.x2 !== undefined,
       "export de session : precis des deux POI (chatière à deux points)", { pl: zpl && zpl.precis, ch: zch && zch.precis });
+    // Tableur : colonne precis en lecture (coordonnées, chatière début → fin), cellule non éditable.
+    await page.evaluate(function () { window.ouvrirTableEditor(); });
+    await page.click("#kta-tbl-src-json");
+    await page.setInputFiles("#kta-tbl-file", { name: "session-pp.json", mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(z1.s), "utf8") });
+    await page.waitForSelector(".kta-tbl-entry");
+    const iT = await page.evaluate(function () {
+      const lib = window.I18n.t("tabledit.kind.editorPoints");
+      return Array.prototype.slice.call(document.querySelectorAll(".kta-tbl-entry")).findIndex(function (b) {
+        const n = b.querySelector(".kta-tbl-entry-count"); return !!n && n.textContent.trim().endsWith(" " + lib);
+      });
+    });
+    await page.click('.kta-tbl-entry[data-i="' + iT + '"]');
+    await page.waitForSelector("#kta-tbl-table thead th");
+    const tb = await page.evaluate(function () {
+      const tds = Array.prototype.slice.call(document.querySelectorAll('#kta-tbl-table td[data-col="precis"]'));
+      return { textes: tds.map(function (t) { return t.textContent.trim(); }),
+        lecture: tds.length > 0 && tds.every(function (t) { return t.classList.contains("col-readonly"); }) };
+    });
+    await page.click("#kta-tbl-close");
+    await page.waitForTimeout(300);
+    verifier(tb.lecture && tb.textes.some(function (t) { return /^[\d.]+, [\d.]+$/.test(t); }) &&
+      tb.textes.some(function (t) { return /→/.test(t); }), "Tableur : colonne precis en lecture (chatière : début → fin)", tb);
     const z2 = await zip(true);
     verifier((z2.s.editorPoints || []).filter(function (p) { return p.precis; }).length === 2,
       "export anonymisé : precis gardé (géométrie seule)");
