@@ -9,7 +9,10 @@
 //   · un carrefour dessiné en deux « L » dont les sommets intérieurs sont à 3 m → proposé ; Raccorder → l'itinéraire
 //     passe ; Ctrl+Z → il ne passe plus et l'écart revient ;
 //   · deux galeries parallèles à 4 m, sans détour → proposé ; Ignorer → disparaît, et reste ignoré au rechargement ;
-//     « Réafficher les ignorés » le rend.
+//     « Réafficher les ignorés » le rend ;
+//   · branches finies sur une galerie (T sur un sommet, T sur un segment, à la main à 0,4 m), parallèle à 4 m de
+//     l'autre côté → aucun saut du bout d'une branche vers la parallèle ; une branche arrêtée à 1 m reste reliée ;
+//   · écart entre une galerie qui porte une branche en T et sa parallèle → Raccorder ne bougerait pas le bout raccordé.
 // Parcours à la souris depuis l'Éditeur de données (liste, bandeau Précédent / Suivant, Fermer), Chromium et WebKit.
 // Usage : node scripts/smoke/checkup-raccords.js (SMOKE_PORT pour une autre copie, KTA_MOTEURS pour un seul moteur)
 // Code : js/raccordsTraces.js, pathfinder.js > _enrichirGrapheAvecCroisements · doc : multilevel-pathfinding.md
@@ -89,7 +92,16 @@ function semer(page) {
       R("rd_rac_l2", [[50, 3], [60, 3], [60, 13]]),
       // Galeries parallèles à 4 m sans détour : un mur.
       R("rd_rac_d", [[100, -8], [100, 0], [120, 0], [120, -8]]),
-      R("rd_rac_e", [[100, 12], [100, 4], [120, 4], [120, 12]])
+      R("rd_rac_e", [[100, 12], [100, 4], [120, 4], [120, 12]]),
+      // Bouts déjà raccordés : galeries parallèles à 4 m (même morceau par le détour), branches qui descendent sur A :
+      // en T sur un sommet, en T sur un segment, finie à la main à 0,4 m ; D s'arrête à 1 m de A sans la toucher.
+      R("rd_rac_ta", [[150, -8], [150, 0], [160, 0], [170, 0], [180, 0], [180, -8]]),
+      R("rd_rac_tb", [[150, 12], [150, 4], [180, 4], [180, 12]]),
+      R("rd_rac_tdet", [[180, -8], [190, -8], [190, 12], [180, 12]]),
+      R("rd_rac_tc1", [[160, -8], [160, 0]]),
+      R("rd_rac_tc2", [[165, -16], [165, 0]]),
+      R("rd_rac_tc3", [[172, -8], [172, -0.4]]),
+      R("rd_rac_td", [[176, -16], [176, -1]])
     ]);
     if (window.SessionPersist && typeof window.SessionPersist.save === "function") {
       try { window.SessionPersist.save({ force: true }); } catch (e) { /* sans effet sur le test */ }
@@ -106,6 +118,28 @@ function itineraire(page, a, b) {
         { allowedTypes: ["principal"] });
       return Math.round(r.totalDistance / window.APP_CONFIG.scale * 10) / 10;
     } catch (e) { return e.code || String(e && e.message); }
+  }, [a, b]);
+}
+
+// Itinéraire (m) et saut éventuel entre A (y = 0) et B (y = 4) des bouts raccordés : un pas du chemin qui passe d'un
+// côté du mur à l'autre, entre x = 150 et 180 m.
+function cheminMur(page, a, b) {
+  return page.evaluate(async function (ab) {
+    const P = window.__rac.P, s = window.APP_CONFIG.scale;
+    try {
+      const r = await window.Pathfinder.computeRoute([P(ab[0][0], ab[0][1]), P(ab[1][0], ab[1][1])],
+        { allowedTypes: ["principal"] });
+      const m = r.path.map(function (q) { return { x: (q.x + 4000) / s, y: (q.y + 4000) / s }; });
+      let saut = null;
+      for (let i = 1; i < m.length; i++) {
+        const u = m[i - 1], v = m[i], bas = Math.min(u.y, v.y), haut = Math.max(u.y, v.y);
+        if (u.x > 149 && u.x < 181 && v.x > 149 && v.x < 181 && bas <= 0.5 && haut >= 3.5) {
+          saut = [[Math.round(u.x * 10) / 10, Math.round(u.y * 10) / 10], [Math.round(v.x * 10) / 10,
+            Math.round(v.y * 10) / 10]];
+        }
+      }
+      return { m: Math.round(r.totalDistance / s * 10) / 10, saut: saut };
+    } catch (e) { return { m: e.code || String(e && e.message), saut: null }; }
   }, [a, b]);
 }
 
@@ -186,6 +220,18 @@ async function jouer(nav, moteur) {
     verifier(l.length === 2, "un seul écart par paire de morceaux (2 attendus)", l.length);
     const dAvant = await itineraire(page, [60, -10], [60, 13]);
     verifier(typeof dAvant !== "number", "carrefour non raccordé : pas d'itinéraire entre les deux « L »", dAvant);
+
+    // ── 1 bis. Bouts déjà raccordés : aucun saut vers la galerie parallèle ──
+    const cBA = await cheminMur(page, [167, 4], [155, 0]);
+    verifier(typeof cBA.m === "number" && cBA.m > 60 && !cBA.saut,
+      "branches finies sur A (T sommet, T segment, à la main à 0,4 m), B à 4 m : de B à A par le détour (" +
+      cBA.m + " m), sans sauter du bout d'une branche vers B", cBA);
+    const dD = await itineraire(page, [176, -16], [155, 0]);
+    verifier(typeof dD === "number" && dD < 45, "branche arrêtée à 1 m de A : toujours reliée (" + dD + " m)", dD);
+    const dC3 = await itineraire(page, [172, -8], [155, 0]);
+    verifier(typeof dC3 === "number" && dC3 < 30, "branche finie à la main à 0,4 m de A : reliée (" + dC3 + " m)", dC3);
+    const dC1 = await itineraire(page, [160, -8], [155, 0]);
+    verifier(typeof dC1 === "number" && dC1 < 15, "branche en T sur un sommet de A : reliée (" + dC1 + " m)", dC1);
 
     // ── 2. Éditeur de données → liste → bandeau ──
     await ouvrirListe(page);
@@ -284,6 +330,27 @@ async function jouer(nav, moteur) {
     await page.waitForTimeout(300);
     l = await nosEcarts(page);
     verifier(aMur(l), "Réafficher : le mur revient dans la liste", l);
+
+    // ── 5. Écart proposé entre une galerie qui porte une branche en T et sa parallèle : le sommet à déplacer n'est
+    // jamais le bout raccordé de la branche (le bouger la décrocherait de A) ──
+    const mobile = await page.evaluate(function (s) {
+      const P = window.__rac.P;
+      const R = function (uid, pts) {
+        return { uid: uid, type: "principal", level: 0, points: pts.map(function (q) { return P(q[0], q[1]); }) };
+      };
+      window.setRoads([
+        R("rd_rac_fa", [[0, -8], [0, 0], [10, 0], [20, 0], [20, -8]]),
+        R("rd_rac_fb", [[0, 12], [0, 4], [20, 4], [20, 12]]),
+        R("rd_rac_fc", [[10, -8], [10, 0]])
+      ]);
+      const e = window.KtaRaccords.detecter().liste.filter(function (q) { return q.a.x < -1000; });
+      return e.map(function (q) {
+        return { uid: q.mobile.road.uid, i: q.mobile.i, ax: Math.round((q.a.x + 4000) / s),
+          ay: Math.round((q.a.y + 4000) / s) };
+      });
+    }, ECHELLE);
+    verifier(mobile.length === 1 && mobile[0].uid !== "rd_rac_fc" && !(mobile[0].ax === 10 && mobile[0].ay === 0),
+      "écart vers la parallèle : ni le bout de la branche ni le sommet qu'elle partage ne bougent", mobile);
     await page.evaluate(function () { window.KtaRaccords.fermer(); });
 
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs);
