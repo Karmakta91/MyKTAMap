@@ -689,6 +689,17 @@ async function evacuationBrancard() {
       relie([galA, galB, R("principal", [[200, 300], [200, 500]])], [200, 300], [0, 400]));
     t("jonction : bout libre à 2,5 px de A (vrai trou) → lien",
       relie([galALisse, R("principal", [[200, 300], [200, 497.5]])], [200, 300], [0, 400]));
+    // Bout libre fini à la main près de A (rien ne l'aimante sur un segment) : relié à A, pas à B derrière.
+    t("jonction : bout libre à 2,5 px de A, B à 12,5 px derrière → relié à A, pas à B",
+      relie([galALisse, galB, R("principal", [[200, 300], [200, 497.5]])], [200, 300], [0, 400]) &&
+      !relie([galALisse, galB, R("principal", [[200, 300], [200, 497.5]])], [200, 300], [0, 610]));
+    t("jonction : bout libre dans un coin, à 6 et 7,8 px de deux galeries → relié aux deux",
+      (function() {
+        const g = [galALisse, R("principal", [[212, 300], [212, 488], [300, 400]]),
+                   R("principal", [[100, 400], [207, 494]])];
+        return relie(g, [100, 400], [0, 400]) && relie(g, [100, 400], [212, 300]) &&
+               !relie([g[0], g[1]], [0, 400], [212, 300]);
+      })());
     // Cul-de-sac qui finit sur le raccord validé d'un puits (POI entre niveaux), à 12 px d'une galerie sans lien.
     const puits = function(avecPoi) {
       const w = bac([R("principal", [[0, 500], [400, 500]], { level: 0 }),

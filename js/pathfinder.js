@@ -42,6 +42,12 @@
   // l'itinéraire repasse à travers le mur (docs/architecture/multilevel-pathfinding.md §14).
   const PROXIMITE_INTERIEURS_PX = 3;
 
+  // Un bout libre ne se relie qu'au plus PROCHE de ses candidats (et à ceux à ≤ 3 px de plus) : coin entre deux
+  // galeries, oui ; galerie parallèle derrière celle qu'il touche presque, non. 🩸 Une branche finie à la main à 1 m
+  // d'une galerie (rien ne l'aimante sur un segment) est un bout libre : sans ce filtre, elle se reliait aussi à la
+  // galerie parallèle à 4 m derrière, à travers le mur.
+  const MARGE_PLUS_PROCHE_PX = 3;
+
   // ── Géométrie ──────────
   function _dist(a, b) {
     return Math.hypot(b.x - a.x, b.y - a.y);
@@ -736,6 +742,19 @@
     // ── 2. T par proximité : BOUT LIBRE projeté à l'INTÉRIEUR d'un autre segment, sous la tolérance ──
     // Lu APRÈS les croisements stricts : un bout posé sur un croisement exact y a gagné ses arêtes.
     const bouts = graph.boutsLibres = _boutsLibres(graph, pois, ctxPois);   // lu aussi par raccordsTraces.js
+    // Liens des étapes 2 et 3 PROPOSÉS d'abord, posés ensuite dans le même ordre : un bout libre ne garde que les
+    // plus proches (MARGE_PLUS_PROCHE_PX). dmin = distance du candidat le plus proche sur un AUTRE tracé.
+    const dmin = new Map();
+    function _noterProche(idx, autre, d) {
+      if (!bouts.has(idx) || autre) return;
+      const v = dmin.get(idx);
+      if (v === undefined || d < v) dmin.set(idx, d);
+    }
+    function _assezProche(idx, d) {
+      const v = dmin.get(idx);
+      return v === undefined || d <= v + MARGE_PLUS_PROCHE_PX;
+    }
+    const propT = [];
     for (let i = 0; i < segs.length; i++) {
       const segA = segs[i];
       if (!bouts.has(segA.a) && !bouts.has(segA.b)) continue;
@@ -774,13 +793,9 @@
 
           // t ∈ ]0,05 ; 0,95[ : évite le double comptage avec les croisements aux extrémités.
           if (proj.dist < PROXIMITY_TOLERANCE && proj.t > 0.05 && proj.t < 0.95) {
-            const projIdx = _getOrAddNode(graph, proj.x, proj.y, segB.level);
-            if (_mlOn) _ajouterNiveauNode(graph, projIdx, segB.level);
-            _addEdge(graph, ep.nodeIdx, projIdx, proj.dist);
-            _addEdge(graph, projIdx, segB.a, Math.hypot(b1.x - proj.x, b1.y - proj.y));
-            _addEdge(graph, projIdx, segB.b, Math.hypot(b2.x - proj.x, b2.y - proj.y));
-            _poser(j, projIdx, proj.t);
-            nbProximites++;
+            propT.push({ ep: ep.nodeIdx, j: j, proj: proj });
+            _noterProche(ep.nodeIdx, _memeTrace(graph, ep.nodeIdx, segB.a) && _memeTrace(graph, ep.nodeIdx, segB.b),
+                         proj.dist);
           }
         }
       }
@@ -796,6 +811,7 @@
     }
     const endpoints = Array.from(endpointSet);
     let nbEndpoints = 0;
+    const propE = [];
     // Pas ≥ tolérance : deux extrémités assez proches sont forcément dans des cellules voisines (3×3).
     const pasExt = Math.max(GRILLE_ENRICH_PX, PROXIMITY_TOLERANCE);
     const grilleExt = new Map();
@@ -836,10 +852,36 @@
         if (!unBout && (d > PROXIMITE_INTERIEURS_PX || _memeTrace(graph, idxA, idxB))) continue;
         // Au-dessus du seuil de fusion (sinon déjà fusionnés au build).
         if (d > SPATIAL_MERGE_THRESHOLD && d < PROXIMITY_TOLERANCE) {
-          _addEdge(graph, idxA, idxB, d);
-          nbEndpoints++;
+          propE.push({ a: idxA, b: idxB, d: d, bout: unBout });
+          if (unBout) {
+            const meme = _memeTrace(graph, idxA, idxB);
+            _noterProche(idxA, meme, d);
+            _noterProche(idxB, meme, d);
+          }
         }
       }
+    }
+
+    // Pose des liens retenus : T d'abord, puis bout↔sommet, chacun dans son ordre de proposition.
+    for (let k = 0; k < propT.length; k++) {
+      const pr = propT[k], proj = pr.proj, segB = segs[pr.j];
+      if (!_assezProche(pr.ep, proj.dist)) continue;
+      const b1 = graph.nodes[segB.a], b2 = graph.nodes[segB.b];
+      const projIdx = _getOrAddNode(graph, proj.x, proj.y, segB.level);
+      if (_mlOn) _ajouterNiveauNode(graph, projIdx, segB.level);
+      _addEdge(graph, pr.ep, projIdx, proj.dist);
+      _addEdge(graph, projIdx, segB.a, Math.hypot(b1.x - proj.x, b1.y - proj.y));
+      _addEdge(graph, projIdx, segB.b, Math.hypot(b2.x - proj.x, b2.y - proj.y));
+      _poser(pr.j, projIdx, proj.t);
+      nbProximites++;
+    }
+    for (let k = 0; k < propE.length; k++) {
+      const pr = propE[k];
+      // Lien d'un bout libre : gardé s'il est parmi les plus proches de l'un de ses bouts libres.
+      if (pr.bout && !((bouts.has(pr.a) && _assezProche(pr.a, pr.d)) ||
+                       (bouts.has(pr.b) && _assezProche(pr.b, pr.d)))) continue;
+      _addEdge(graph, pr.a, pr.b, pr.d);
+      nbEndpoints++;
     }
 
     // ── 4. Chaînage le long d'un segment : ses nœuds posés, reliés de proche en proche (ordre de t) ──
