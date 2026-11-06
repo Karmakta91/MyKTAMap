@@ -38,25 +38,11 @@
   plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
   `qui: Claude · action: scénario pro de retour à l'accueil, après le lot tests-fiables du pro
   · fini: scénario vert · depuis: 26/10/2026 · taille: S`
-- **Test appareil : écran Bienvenue et iPhone** — en navigation privée, téléphone et PC : tracker du puits, 🚨,
-  liens de documentation, conditions après « Entrer » (Chrome mobile en portrait), installation à mot de passe ;
-  sur iPhone, date de constat modifiable à la CRÉATION d'un POI danger (`3b06dad4`, non reproductible hors iPhone).
-  `qui: KARMA · action: jouer ces écrans sur dev puis en prod · fini: vus conformes, ou bugs ouverts
-  · depuis: 26/10/2026 · taille: XS`
-- **Essai sur dev : v2.22.2 sur vrai téléphone et PC** — tout est prouvé en émulation seulement : vue 3D d'édition
-  (dessin au doigt, caméra libre, sélecteur de niveau, 🗺️ plan au sol sur plan réel), rotation 2D et bouton nord,
-  ajustement des sommets, guidage (encart, repère au bon niveau, recalcul en 3D libre), corrections 3D du 03/11.
-  `qui: KARMA · action: après /killsw.html, jouer ces gestes sur iPhone et au PC ; un sommet 3D refusé →
-  KtaVue3D.etat().dessin.refus · fini: vus conformes, ou bugs ouverts · depuis: 03/11/2026 · taille: S`
 - **Test WebKit « fondu −1 » instable** — `checkup-vue-3d.js` : 1 KO par intermittence sous charge, vu aussi sur la
   base `f62ec4d1` ; 🔬 test instable plutôt que régression. Bloquerait la porte de release.
   `qui: Claude · action: trouver ce qui dépend du temps dans le contrôle du fondu et le rendre déterministe
   · fini: 5 passages WebKit verts de suite · depuis: 03/11/2026 · taille: S`
 
-- **Test appareil : ouverture de plans sur iPhone** — plus de clics répétés ; si le journal montre souvent « copie
-  gardée relue », quelque chose réécrit encore les copies.
-  `qui: KARMA · action: ouvrir plusieurs plans puis envoyer le journal · fini: journal lu, aucune réécriture en boucle
-  · depuis: 14/10/2026 · taille: XS`
 - **Test appareil : Mode Secours sur iPhone** — « Suivre mon parcours » (permission des capteurs dans le geste),
   recalage à la validation d'une étape (question au-delà de 30 m), écran XL avec un long itinéraire, « Retour
   impératif ».
@@ -70,44 +56,21 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Test appareil : add-on mkmg sur iPhone et plan dense** — perf (carte des distances, 30 images/s) jamais mesurée
-  sur un vrai téléphone ; difficulté (égarés, chrono, tenailles), bras et fusil, panneau réductible à juger en jouant
-  (`docs/architecture/addons.md`).
-  `qui: KARMA · action: jouer plusieurs vagues sur iPhone, plan dense, avec et sans 🧱 Textures · fini: perf et
-  réglages validés, ou chiffres à ajuster transmis · depuis: 02/11/2026 · taille: S`
 ## Ensuite
 
-- **PR Dependabot en attente** — montées faites à la main le 23/10 (`eac7a077` : setup-node v7, docker/* v4-v7,
-  Playwright 1.64.1) : les 8 PR doivent se fermer seules au prochain passage de Dependabot.
-  `qui: KARMA · action: CI verte, puis vérifier l'onglet Pull requests (fermer à la main ce qui resterait)
-  · fini: 0 PR Dependabot ouverte · depuis: 20/10/2026 · taille: XS`
 - **Aide ❓ de la vue 3D : accès et niches** — ✅ vérifié 04/11 : l'Aide cite le cavage mais ni les accès comblés ni
   l'escalier en niche (le guide, lui, les liste).
   `qui: Claude · action: compléter la section dans les 3 langues · fini: section à jour, check-i18n vert
   · depuis: 03/11/2026 · taille: XS`
-- **Test appareil : lockout temporisé** — PIN et gate : 5 codes faux → compte à rebours → retour du pavé
-  (`security-legal.md` §36.3).
-  `qui: KARMA · action: jouer le parcours sur un téléphone · fini: parcours vu conforme, ou bug ouvert
-  · depuis: 13/09/2026 · taille: XS`
-- **Test appareil : chiffres du guide** — repris sans vérification : stockage par appareil (~50 Mo Safari, ~1 Go app
-  installée), chemin d'installation sur Chrome Android.
-  `qui: KARMA · action: relever les deux chiffres et le chemin sur appareil
-  · fini: guide confirmé ou corrigé dans les 3 langues · depuis: 14/10/2026 · taille: XS`
-- **Données des plans (DATA, KARMA seul)** — taguer les vrais accès (`entree_plan`), donner un niveau aux POI d'accès
-  et aux tracés sans niveau, 3ᵉ point de calage GPS ; régénérer les plans d'avant v1.97.9 (pas d'`iconsEmbarquees` →
-  21 sondes 404).
-  `qui: KARMA · action: reprendre les plans dans le Générateur · fini: accès tagués, plans régénérés (0 sonde 404)
-  · depuis: 13/09/2026 · taille: M`
 - **Noms réels restants** — 🟡 le nom du département est neutralisé (`check-noms-reels.js`) ; d'autres noms de lieu ou
   de plan réels restent dans `README.md`, des commentaires `js/` et `docs/architecture/`. Liste remise hors dépôt.
   `qui: KARMA · action: trancher nom par nom sur la liste hors dépôt · fini: chaque nom remplacé ou gardé par décision
   · depuis: 05/10/2026 · taille: S`
-- **Add-on mkmg : phrase des guides au bump** — décision KARMA : une phrase discrète en dernière ligne de la section
-  Vue 3D des 3 guides (fr/en/es), pas dans l'Aide ; écrite au bump de la prod qui livre le jeu, une fois le jeu
-  validé (texte retenu dans la mémoire du poste).
-  `qui: Claude · action: l'écrire dans les 3 guides au commit de bump · fini: phrase présente dans README_USER{,.en,.es}
-  · depuis: 02/11/2026 · taille: XS`
-
+- **Course i18n au démarrage sous WebKit** — ✅ vu 04/11 : sous WebKit, `checkup-guidage.js` tombe parfois sur
+  `[I18n] Clé manquante : "home.profile.stats.storageTitle"`, alors que la clé existe ; l'appel vient de
+  `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
+  `qui: Claude · action: rendre l'appel de homeProfile.js déterministe (attendre I18n prêt) · fini: checkup-guidage
+  vert sous WebKit sur plusieurs passages, sans clé manquante · depuis: 04/11/2026 · taille: S`
 ## Plus tard
 
 - **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
@@ -128,11 +91,11 @@
   (`docs/architecture/ui.md` §53.3).
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
-- **Système d'add-ons community (`addons/<nom>/`)** — un vrai cadre pour qu'un add-on (ou un dev tiers) s'ajoute
-  sans toucher l'app (`docs/architecture/addons.md`). QCM du 02/11/2026 : manifeste par add-on + liste lus par l'app
-  et le précache, section « Add-ons » des Réglages (secrets absents), cases dans ConfAdmin, add-ons livrés seulement.
-  `qui: Claude · action: coder le lot après l'essai iPhone de mkmg · fini: un add-on ajouté sans toucher js/ ni sw.js,
-  interrupteur dans les Réglages et ConfAdmin · depuis: 02/11/2026 · taille: M`
+- **Système d'add-ons community (`addons/<nom>/`)** — lot A fait (manifestes, registre, précache : `addons.md`).
+  Reste (QCM 02 et 06/11/2026) : section « Add-ons » des Réglages (secrets absents, allumés par défaut), bouton 🧩
+  en vue 3D pour les add-ons visibles, cases dans ConfAdmin (tous les add-ons, secrets compris).
+  `qui: Claude · action: lot B (section Réglages + bouton 🧩), puis lot C (cases ConfAdmin) · fini: interrupteur
+  dans les Réglages et ConfAdmin · depuis: 02/11/2026 · taille: M`
 - **Add-on mkmg : interrupteur par organisation (pro)** — aujourd'hui refusé sur une installation reliée, sauf
   `data/reglages.json > addons.mkmg` posé par l'hébergeur (toute l'installation) ; décision : un admin d'orga
   l'allume. Prise neutre côté community, réglage et case d'admin côté pro.
@@ -149,10 +112,53 @@
 
 ## Entrant
 
-- **🗺️ Plan au sol hors du niveau 0** — caché aux autres niveaux (`vue3d.js > _planSolPermis`). Question à KARMA :
-  le montrer à tous les niveaux (une seule image par plan ?) ou le griser avec un message.
-  `qui: KARMA · action: dire a (tous niveaux) ou b (grisé), et si ses plans ont une image par niveau · depuis: 04/11/2026
+- **Rotation du plan en Vue OSM** — demande KARMA 06/11 : pouvoir tourner la carte en Vue OSM comme le plan 2D
+  (`mapBearing.js` : deux doigts, bouton nord). À cadrer : modale et widget de l'accueil, tuiles OSM, plan calé, cap.
+  `qui: Claude · action: topo (ce que fait la 2D, ce que la Vue OSM permet) · depuis: 06/11/2026 · taille: S`
+- **Accueil pro lent : splash bloquant et connexions IndexedDB** — audit pro
+  `MyKTAMap-pro/docs/audits/2026-11-06_audit-accueil-chiffre-v1.md` : `main.js` attend la fin de l'animation du
+  splash (~4 s) avant la porte du pro ; `planRegistry.js > _openIDB` ouvre une connexion à chaque appel, jamais fermée.
+  `qui: KARMA · action: dire si la porte du pro peut partir pendant l'animation (décision splash) · depuis: 06/11/2026
+  · taille: S`
+- **Rotation 2D : redessin inutile et geste lourd** — enquête du 06/11 (plantage non reproduit) : `mapBearing.js >
+  _majPaddingUnRenderer` vide et redessine le canvas des vecteurs 2 fois par rotation sans changement (mémoire qui monte
+  sous WebKit) ; au téléphone, ~1 500 couches de POI + `--kta-bearing` sur toute la carte figent le geste (jusqu'à 1,7 s).
+  `qui: Claude · action: a) supprimer le redessin inutile (risque faible) ; b) et c) en QCM · depuis: 06/11/2026
+  · taille: S`
+- **`checkup-ultra-traces-plan.js` impossible sur le relevé fictif** — il attend plus de 20 tracés de calque : rouge
+  (délai) sur la base comme sur le lot fuite-calques-2d.
+  `qui: Claude · action: l'adapter au relevé fictif ou le documenter comme checkup sur plan réel · depuis: 06/11/2026
   · taille: XS`
+- **Mode « strict » des jonctions, par plan** — la règle stricte du 05/11 n'a pas réglé l'itinéraire de KARMA qui
+  traverse un mur. Idée KARMA : tolérance 0, deux tracés qui ne se touchent pas = réseau coupé (seuls sommets partagés
+  et croisements exacts). ⚠️ D'abord vérifier si le trajet suit un VRAI tracé à travers le mur (le strict n'y peut rien).
+  `qui: Claude · action: rejouer l'itinéraire réel, puis topo (réglage Générateur + par plan, Raccords à vérifier)
+  · depuis: 06/11/2026 · taille: S`
+- **Point précis à l'export image / PDF** — pointillé doré + carré (chatière : trait début→fin) dessinés par l'export
+  comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
+  zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône).
+  `qui: KARMA · action: valider les 4 recos du topo · fini: décision prise · depuis: 06/11/2026 · taille: S`
+- **Niveaux qui s'entremêlent en 3D** — un niveau commence dans la hauteur d'un autre (étage ouvert à mi-hauteur d'une
+  grande galerie). Idée KARMA : écart (m) avec le niveau supérieur, NÉGATIF = entremêlés d'autant, à partir de
+  `niveauxProfondeur` (pas ≥ 0,5) + une hauteur PAR NIVEAU (aujourd'hui une seule par plan, `hauteurGalerieM`, hors ZIP).
+  `qui: Claude · action: topo puis QCM (données par niveau, Générateur, rendu multi-niveaux, règle du pas, itinéraire,
+  ⛏️ Volume exploité qui lit la hauteur, à revoir en parallèle) · depuis: 06/11/2026 · taille: L`
+
+- **Essai sur dev : lots du 05/11 sur téléphone** — prouvés en émulation seulement : ＋ / 🗑️ des sommets (2D, 3D),
+  gestes 3D à deux doigts, colonne d'outils en paysage, plan au sol d'un plan transparent, ruban d'itinéraire 3D,
+  « Hors du plan » en 3D, et un 1er « 🔗 Raccorder » sur un tracé de CALQUE (chemin jamais testé automatiquement).
+  `qui: KARMA · action: après /killsw.html, jouer ces gestes sur iPhone et au PC · fini: vus conformes, ou bugs ouverts
+  · depuis: 05/11/2026 · taille: S`
+- **Seuils des jonctions en mètres** — règle stricte en px plan (bouts 15 px, sommets intérieurs 3 px) : sur un plan
+  détaillé, un écart de moins d'un mètre coupe le réseau. Piste : intérieurs à 1 m (plancher 3 px), bouts à 3 m
+  (plancher 8 px). Deux plans réels testés sont bien raccordés : on attend les essais de KARMA.
+  `qui: KARMA · action: dire si des plans restent coupés après « Raccords à vérifier » · fini: décision prise
+  · depuis: 05/11/2026 · taille: S`
+- **Jonctions qui traversent un mur dessiné** — ✅ vu 05/11 (code) : les liens de jonction imparfaite
+  (pathfinder.js > _enrichirGrapheAvecCroisements) ne testent ni les murs en ligne ni les zones inaccessibles, qui
+  ne bloquent que le long des tracés.
+  `qui: Claude · action: refuser un lien qui croise un obstacle dur, checkup · fini: lien coupé par un mur ligne
+  fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
 
 - **Cap jamais lu si requestPermission répond « prompt »** — ✅ vu 04/11 (lot rotation-manuelle) : la Chromium du
   harnais répond « prompt » à DeviceMotionEvent.requestPermission() : aucun écouteur d'orientation
@@ -164,11 +170,6 @@
   (`setPlanRenduVue3D`), reste prioritaire. À faire après les lots du 04/11.
   `qui: Claude · action: champ du Générateur (createConf.js) + lecture par vue3d.js > _renduVoulu · fini: plan généré en
   Galerie qui s'ouvre en Galerie, checkup · depuis: 04/11/2026 · taille: S`
-- **Site de doc : la vue 3D dans les capacités** — `MyKTAMap-doc/generateur/accueil.js > CAPACITES` est une liste en dur
-  qui ne cite pas la vue 3D ; à ajouter seulement quand la 3D est en prod (le site public lit community `main`).
-  `qui: Claude · action: ajouter la ligne après le merge main de la 3D, puis relecture de KARMA avant deploy-doc public
-  · depuis: 02/11/2026 · taille: XS`
-
 - **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.

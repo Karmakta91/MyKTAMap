@@ -241,8 +241,18 @@
   const _panDoigts = new Set();
   let _panDepart = null, _panEngage = false, _panCentreAvant = null;
 
+  // 🩸 Un doigt dont la fin n'est jamais vue (lâcher hors de la carte, appui long d'un autre module, appli repliée)
+  // resterait compté : chaque doigt suivant passerait pour le 2e d'un pinch et la carte tournée ne se déplacerait
+  // plus d'un doigt (seul le retour au nord, qui rend le drag de Leaflet, la libère). D'où : un appui primaire
+  // (aucun autre doigt posé, ou la souris) repart de zéro, la fin se lit sur window, l'oubli au repli de l'appli.
+  function _panOublier() {
+    _panDoigts.clear();
+    _panDepart = null; _panEngage = false; _panCentreAvant = null;
+  }
+
   function _panDebut(e) {
     const map = window.map;
+    if (e.isPrimary) _panOublier();
     _panDoigts.add(e.pointerId);
     if (_panDoigts.size > 1) {
       // 🩸 Un pinch commence mal : le premier doigt bouge avant la pose du second, notre pan s'engage et
@@ -282,7 +292,7 @@
   }
 
   function _panFin(e) {
-    _panDoigts.delete(e.pointerId);
+    if (!_panDoigts.delete(e.pointerId)) return;   // lu sur window : un doigt hors de la carte ne compte pas
     _panDepart = null; _panEngage = false; _panCentreAvant = null;
   }
 
@@ -357,6 +367,7 @@
 
   function _rotPointerDown(e) {
     if (!_pointeurDoigt(e)) return;
+    if (e.isPrimary) _rotDoigts.clear();   // même piège que _panDebut : un doigt perdu ne compte plus
     _rotDoigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (_rotDoigts.size === 2) {
       const pts = Array.from(_rotDoigts.values());
@@ -418,15 +429,27 @@
     if (_source === "manuel") setTimeout(_verifierManuel, 0);
   }
 
+  // Appli repliée ou fenêtre quittée doigts posés : aucune fin ne viendra, on oublie tout geste en cours.
+  function _doigtsOublies(e) {
+    if (e && e.type === "visibilitychange" && document.visibilityState === "visible") return;
+    _panOublier();
+    _rotDoigts.clear();
+    _gesteFin();
+  }
+
   function _installerEcouteurs(map) {
     const cont = map && map.getContainer && map.getContainer();
     if (!cont) return;
     const passif = { passive: true };
     cont.addEventListener("pointerdown", _panDebut, passif);
     cont.addEventListener("pointermove", _panSuivre, passif);
-    cont.addEventListener("pointerup", _panFin, passif);
-    cont.addEventListener("pointercancel", _panFin, passif);
+    // Fin d'un doigt lue sur window (lâché hors de la carte, cible retirée du DOM) ; même fonction, même options :
+    // un nouvel appel pour le plan suivant ne l'empile pas.
+    window.addEventListener("pointerup", _panFin, { passive: true, capture: true });
+    window.addEventListener("pointercancel", _panFin, { passive: true, capture: true });
     cont.addEventListener("pointerleave", _panFin, passif);
+    window.addEventListener("blur", _doigtsOublies, passif);
+    document.addEventListener("visibilitychange", _doigtsOublies, passif);
     const tactile = !!(L.Browser && L.Browser.touchNative);
     if (tactile) {
       cont.addEventListener("touchstart", _rotTouchStart, passif);
@@ -436,8 +459,8 @@
     } else {
       cont.addEventListener("pointerdown", _rotPointerDown, passif);
       cont.addEventListener("pointermove", _rotPointerMove, passif);
-      cont.addEventListener("pointerup", _rotPointerFin, passif);
-      cont.addEventListener("pointercancel", _rotPointerFin, passif);
+      window.addEventListener("pointerup", _rotPointerFin, { passive: true, capture: true });
+      window.addEventListener("pointercancel", _rotPointerFin, { passive: true, capture: true });
       cont.addEventListener("pointerleave", _rotPointerFin, passif);
     }
     // Capture : passe avant le zoom à la molette de Leaflet (posé sur le même conteneur).

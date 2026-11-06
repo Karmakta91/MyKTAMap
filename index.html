@@ -259,6 +259,9 @@
        main.js > initApp ; l'overlay s'affiche après le splash. Sans mot de passe d'instance, il charge à la demande
        js/bienvenue.js + css/bienvenue.css (écran Bienvenue, une fois par appareil). -->
   <script src="js/ktaInstance.js"></script>
+  <!-- ktaAddons.js : registre des add-ons livrés (addons/index.json + manifestes), lu à la première demande
+       seulement (code de la vue 3D) ; rien au démarrage. -->
+  <script src="js/ktaAddons.js"></script>
   <script src="js/unlockGate.js"></script>
   <!-- pinLock.js : code d'accès local (PIN + biométrie), couche au-dessus d'unlockGate ; avant main.js, qui
        teste isEnabled() au démarrage. -->
@@ -896,6 +899,9 @@
   <!-- poiDanger.js : date de constat d'un POI danger et mention sur sa fiche ; lu à l'appel par editor.js, utils.js
        et les exports. -->
   <script src="js/poiDanger.js" defer></script>
+  <!-- poiPrecis.js : point précis d'un POI (le vrai lieu, icône décalée), fiche, pointillé 2D ; lu à l'appel par
+       editor.js, utils.js, galerieEmprise.js, vue3d.js et l'itinéraire. -->
+  <script src="js/poiPrecis.js" defer></script>
   <script src="js/editor.js" defer></script>
   <script src="js/road.js" defer></script>
   <script src="js/zones.js" defer></script>
@@ -953,6 +959,7 @@
   <script src="js/pdfExport.js" defer></script>
   <script src="js/tableEditor.js" defer></script>
   <script src="js/recalageScan.js" defer></script>
+  <script src="js/raccordsTraces.js" defer></script>
   <script src="js/searchPoints.js" defer></script>
   <script src="js/sessionExporter.js" defer></script>
   <!-- sessionReport.js : rapport post-mission (PDF / JSON / texte), depuis Stats globales ; dépend de jsPDF. -->

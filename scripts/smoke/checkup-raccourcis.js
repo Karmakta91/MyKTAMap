@@ -699,6 +699,35 @@ async function section3D(page) {
     { droit: g.cap, ctrl: g2.cap });
   joue("v3d.cap");
 
+  // Clic long + glisser sur un sommet de la mesure, vue d'édition : il se déplace (vue3d.js > _ajusterAppui).
+  const somm = await page.evaluate(async function () {
+    const K = window.KtaVue3D, e = K.etat(), sc = window.APP_CONFIG.scale;
+    if (e.vue !== "plongee") K.basculerVue();
+    let ctx = null;
+    const deg = K.greffer({ nom: "rc-sommet", scene: function (c) { ctx = c; } });
+    if (deg) deg();
+    const v = e.camera.visee, p = { x: v.x * sc, y: v.z * sc };
+    window.setMeasurePoints([{ x: p.x - 2 * sc, y: p.y }, { x: p.x, y: p.y + 1.5 * sc }, { x: p.x + 2 * sc, y: p.y }]);
+    await new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); });
+    const cv = document.querySelector("#kta-vue3d canvas"), rc = cv.getBoundingClientRect();
+    const q = new ctx.THREE.Vector3(p.x / sc - 2, 0, p.y / sc).project(ctx.camera);
+    return { a: [rc.left + (q.x + 1) / 2 * rc.width, rc.top + (1 - q.y) / 2 * rc.height], p0: { x: p.x - 2 * sc, y: p.y },
+      sc: sc };
+  });
+  await page.mouse.move(somm.a[0], somm.a[1]);
+  await page.mouse.down();
+  await page.waitForTimeout(650);
+  for (let i = 1; i <= 8; i++) { await page.mouse.move(somm.a[0] + 5 * i, somm.a[1] + 4 * i); await page.waitForTimeout(25); }
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+  const sommApres = await page.evaluate(function () { return window.getMeasurePoints(); });
+  const bougeM = sommApres.length === 3 ? Math.hypot(sommApres[0].x - somm.p0.x, sommApres[0].y - somm.p0.y) / somm.sc : 0;
+  verifier(sommApres.length === 3 && bougeM > 0.3,
+    "3D : clic long + glisser sur un sommet de la mesure → il se déplace (" + bougeM.toFixed(2) + " m)",
+    { avant: somm.p0, apres: sommApres });
+  await page.evaluate(function () { window.resetMesure(); window.HistoryManager.reset(); });
+  joue("v3d.sommet");
+
   // Échap de la vue et de la carte ne se cumulent pas. Vue d'édition, 📐 armé : un Échap le désarme (règle de la
   // vue), la vue reste ouverte. À hauteur d'yeux, 📐 armé : Échap ferme la vue (règle de la vue), 📐 reste armé ;
   // l'Échap suivant, sur la carte, le désarme.

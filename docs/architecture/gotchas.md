@@ -354,6 +354,20 @@ Sites consommateurs (v1.34.16) : `libererTuiles` (tuiles V2) + boucle cleanup
 `_ktaImageOverlays` (calques image). Cf `rendering-leaflet.md §39` + `perf-memory.md
 §88.5.B/C`.
 
+### `calque.remove()` ne le retire pas de son groupe
+
+🩸 Dans le Leaflet embarqué, `calque.remove()` = `map.removeLayer(calque)` : le calque quitte la carte mais reste
+dans le `_layers` du `LayerGroup` où il a été ajouté (`window.layerEditor`, groupe d'un calque de données, groupe
+d'une vue). Effets : chaque re-rendu y empile les calques de l'ancien rendu (mémoire qui grimpe à chaque
+modification jusqu'au plantage de l'onglet sur un gros plan), `eachLayer` du groupe les parcourt (favori ⭐, fiche
+ouverte par une extension), et `map.addLayer(groupe)` (≡ décoché puis recoché) les remet tous sur la carte.
+
+✅ Retirer par le groupe : `window.ktaRetirerCalque(calque, groupe)` (`utils.js` ; groupe par défaut
+`window.layerEditor`, repli sur la carte s'il ne le tient pas) ou `groupe.removeLayer(calque)`. Jamais
+`layerEditor.clearLayers()` : il tient aussi les autres familles de la session. Garde-fou bloquant
+`scripts/check-calques-groupe.js` (un homonyme du DOM s'écarte par l'ancre `🏷️ ancre:calque-hors-groupe`) ;
+mesure `scripts/smoke/checkup-calques-groupe.js`.
+
 ### `URL.createObjectURL` sans `revoke` — fuite à chaque feature qui affiche un blob
 
 ⚠️ Tout `URL.createObjectURL(blob)` doit avoir son `URL.revokeObjectURL(url)`

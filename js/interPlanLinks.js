@@ -22,7 +22,8 @@
 //     `appliquerExterne` pour ce qu'elle dépose, prises liaisonInfo / liaisonActions / liaisonModifiable. Sans
 //     extension : rien n'écoute, rien ne change.
 // API : window.InterPlanLinks = {
-//   getLinksForPoint(planId, point), createLink(a, b), removeLink(id),
+//   getLinksForPoint(planId, point), liaisonsDuPoint(point) (plan courant, liens embarqués compris),
+//   createLink(a, b), removeLink(id),
 //   getLinksForPlan(planId), importLinks(links), buildPopupHtml(point, layerId),
 //   ouvrirCreation(id, x, y, nom, source), naviguerVers(linkId, side),
 //   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges(), onPointMoved / onPointLevelChanged,
@@ -251,12 +252,9 @@
   }
 
   // ── Section popup (utils.js > buildPointPopupHtml) ──────────
-  // Synchrone : liaisons du point (registre + liens EMBARQUÉS `point.interPlanLinks`, dédup par id) + bouton
-  // « Lier à un autre plan ».
-  function buildPopupHtml(point, layerId) {
-    const planId = _currentPlanId();
-    if (!planId) return "";
-
+  // Liaisons d'un point du plan courant : registre + liens EMBARQUÉS `point.interPlanLinks` (dédup par id) →
+  // [{ link, mySide, other, baked? }].
+  function _entreesDuPoint(planId, point) {
     const entries = getLinksForPoint(planId, point);
     if (Array.isArray(point.interPlanLinks)) {
       const seen = {};
@@ -271,6 +269,28 @@
         }
       });
     }
+    return entries;
+  }
+
+  // Liaisons d'un point du plan courant, à jouer par naviguerVers(id, cote) (vue 3D : fiche d'un portail) →
+  // [{ id, cote, planId, planName, pointNom, dispo (plan présent sur l'appareil) }].
+  function liaisonsDuPoint(point) {
+    const planId = _currentPlanId();
+    if (!planId || !point) return [];
+    return _entreesDuPoint(planId, point).map(function(e) {
+      const o = e.other || {};
+      return { id: e.link.id, cote: e.mySide === "b" ? "b" : "a", planId: o.planId, planName: o.planName || "",
+        pointNom: o.pointNom || o.pointId || "",
+        dispo: !!(window.PlanRegistry && window.PlanRegistry.findById(o.planId)) };
+    });
+  }
+
+  // Synchrone : liaisons du point (_entreesDuPoint) + bouton « Lier à un autre plan ».
+  function buildPopupHtml(point, layerId) {
+    const planId = _currentPlanId();
+    if (!planId) return "";
+
+    const entries = _entreesDuPoint(planId, point);
 
     let rows = "";
     entries.forEach(function(e) {
@@ -971,6 +991,7 @@
     const planCharge = _planAffiche();
     if (planCharge && planId === _currentPlanId()) {
       if (!target) return;   // « ouvrir le plan » sans cible → déjà dessus
+      _annoncerDepart();
       if (window.map) try { window.map.closePopup(); } catch(e) {}
       _pendingTarget = { x: target.x, y: target.y, level: target.level,
                          tag: target.tag, zoom: target.zoom, samePlan: true };
@@ -980,6 +1001,7 @@
     }
 
     const doGo = async function() {
+      _annoncerDepart();
       // L'ORIGINE (plan + centre + niveau + zoom) est empilée avant de partir (pile en RAM). Le retour (noStack)
       // ne ré-empile pas (sinon ping-pong infini).
       if (!opts.noStack) _empilerOrigine();
@@ -1041,6 +1063,12 @@
       modal.remove();
       doGo();
     });
+  }
+
+  // ⚠️ contrat : `kta:avantChangementPlan` est émis juste avant d'aller à la cible (confirmée, ou sur le plan courant),
+  // avant tout chargement : une vue posée sur la carte (vue 3D) se ferme alors, sinon le plan changerait sous elle.
+  function _annoncerDepart() {
+    try { window.dispatchEvent(new CustomEvent("kta:avantChangementPlan")); } catch(e) { /* rien */ }
   }
 
   // « Y aller » depuis une liaison (mini-confirmation puis changement).
@@ -1471,6 +1499,7 @@
   // ── Export ──────────
   window.InterPlanLinks = {
     getLinksForPoint:     getLinksForPoint,
+    liaisonsDuPoint:      liaisonsDuPoint,
     getLinksForPlan:      getLinksForPlan,
     getAllLinks:          getAllLinks,
     onPlanExit:           onPlanExit,   // purge flottants sortie/switch

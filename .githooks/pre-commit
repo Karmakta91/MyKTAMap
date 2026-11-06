@@ -117,6 +117,9 @@ node scripts/check-constantes-orphelines.js || exit $?
 # Garde anti-doublon d'un listener portee par la map (window.map est remplacee a chaque plan).
 node scripts/check-map-listeners.js || exit $?
 
+# Calque d'un groupe (layerEditor...) retire par le groupe, jamais par calque.remove() (calques morts, OOM).
+node scripts/check-calques-groupe.js || exit $?
+
 # Reglages de podometre recopies en dur qui divergent de config.js > DEFAULT_CONFIG.
 node scripts/check-tracking-defaults.js || exit $?
 
@@ -275,6 +278,9 @@ node scripts/check-audit-html.js || exit $?
 
 # Photos : reimport ZIP sans effacer les photos du plan, limite de 5 par point.
 node scripts/check-photos.js || exit $?
+
+# Add-ons livres : index, manifestes, fichiers et precache concordent (addons/<nom>/addon.json).
+node scripts/check-addons.js || exit $?
 
 # Architecture du README : modules js/ (ordre d'index.html), css/, scripts/, docs/architecture/ = fichiers reels.
 node scripts/check-readme-modules.js || exit $?

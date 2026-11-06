@@ -1980,6 +1980,10 @@ window.ktaSetActiveLevel = function(newLevel, opts) {
 
   // Propage à tous les modules level-aware ; resynchronise aussi la modale ≡ ouverte (FilterPanel.onLevelChange).
   if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+  // 📏 compte le niveau affiché : surlignage (même fenêtre fermée) et fenêtre recalculés.
+  if (typeof window.ktaDistanceTotaleRafraichir === "function") {
+    try { window.ktaDistanceTotaleRafraichir(); } catch(e) {}
+  }
 
   console.log("[MultiNiveau] Niveau actif →", newLevel,
               "| Visibles :", APP_CONFIG.visibleLevels,

@@ -11,8 +11,9 @@
 //   G3 feuille de route · G4 la consigne change en avançant · G5 écart → « Hors itinéraire ? » + 3 boutons ·
 //   G6 consigne reprise sur l'écran XL · G8 urgence sans croix · G9 suivi arrêté : bandeau gardé si
 //   position confirmée, masqué sinon · G10 tracé jonction, aperçu par niveau · G11 repère au niveau du tronçon
-//   (bandeau 2D, feuille, aperçu 3D ; manœuvre inchangée) · G12 encart « reste » (distance, temps, niveau,
-//   réduit retenu, sans chevauchement à 3 tailles) · zéro erreur console / pageerror / clé i18n manquante.
+//   (bandeau 2D, feuille, aperçu 3D ; manœuvre inchangée) · G12 encart « reste » (distance, temps, niveau, sans
+//   bouton de repli, une ligne avec une destination de 60 caractères, écran XL, sans chevauchement à 3 tailles)
+//   · zéro erreur console / pageerror / clé i18n manquante.
 // Captures : $GUID_SHOTS (défaut : dossier temporaire). Usage : node scripts/smoke/checkup-guidage.js
 "use strict";
 
@@ -30,7 +31,9 @@ const LS_PREGATES = {
   "myktamap_unlock_v1": "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae",
   "myktamap_terms_accepted_v1": "2",
   "myktamap_alert_seen_offline-precache-2026-06": "2026-06-13T12:00:00Z",
-  "myktamap_tutorial_seen_v1": "1"
+  "myktamap_tutorial_seen_v1": "1",
+  // Clé de l'encart repliable d'avant, posée à chaque chargement : G12 vérifie qu'elle est effacée.
+  "myktamap_guidage_encart_v1": "reduit"
 };
 
 function planAOuvrir() {
@@ -339,8 +342,8 @@ function inf(msg) { console.log("  •  " + msg); }
     // G12 — encart « reste » (fictif, en mémoire) : 300 m au 0, passage de 10 m vers le −1, 300 m au −1, raccord
     // d'arrivée de 3 m (613 m). Distance restante à 1 m près à 3 positions (au 0, dans le passage, au −1), niveau de
     // l'arrivée dit seulement depuis un autre niveau, temps = distance / vitesse de l'itinéraire (rien de choisi :
-    // le défaut, « lente », 3 km/h ; « normale » retenue : 5 km/h), réduit / déplié retenu sur l'appareil, aucun
-    // chevauchement à 3 tailles.
+    // le défaut, « lente », 3 km/h ; « normale » retenue : 5 km/h), toujours affiché sans bouton de repli (ancienne
+    // clé effacée), une seule ligne avec une destination de 60 caractères, aucun chevauchement à 3 tailles.
     const g12 = await page.evaluate(async function (a) {
       const e = Number(window.APP_CONFIG.scale) || 1, G = window.ItiGuidage, C = window.APP_CONFIG, r = { pos: [] };
       const P = function (x, y, n) { return { x: a.x + x * e, y: a.y + y * e, level: n }; };
@@ -352,7 +355,6 @@ function inf(msg) { console.log("  •  " + msg); }
       const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, roads: window.getRoads(),
         niv: window.getTrackerLevel, pos: window.__guidPos, etat: window.getTrackingPositionEtat };
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
-      try { localStorage.removeItem("myktamap_guidage_encart_v1"); } catch (err) { /* déplié par défaut */ }
       let niv = 0;
       window.getTrackerLevel = function () { return niv; };
       window.getTrackingPositionEtat = function () { return { confirmee: true, ts: Date.now(), suiviActif: true }; };
@@ -361,7 +363,7 @@ function inf(msg) { console.log("  •  " + msg); }
         niv = n;
         window.__guidPos = P(x, y);
         G.onPosition(window.__guidPos);
-        const st = G.etat(), el = document.querySelector("#kta-guid-bandeau .kta-guid-resume-txt");
+        const st = G.etat(), el = document.querySelector("#kta-guid-bandeau .kta-guid-resume");
         return { resteM: st.resume ? +st.resume.resteM.toFixed(2) : null, tempsMin: st.resume ? st.resume.tempsMin : null,
           niveau: st.resume ? st.resume.niveau : null, texte: el ? el.textContent : "" };
       };
@@ -381,16 +383,19 @@ function inf(msg) { console.log("  •  " + msg); }
       const p450 = G.pointA(g, 450 * e);
       r.retenue = aller((p450.x - a.x) / e, (p450.y - a.y) / e, -1);
       localStorage.removeItem("myktamap_iti_walking_preset");
-      // Réduit, puis une position de plus : toujours réduit ; relu après un rechargement de l'état (réglage retenu).
-      const btn = document.querySelector("#kta-guid-bandeau .kta-guid-resume");
-      btn.click();
-      aller(460, 10, -1);
-      r.reduit = { etat: G.etat().encartReduit, texte: btn.querySelector(".kta-guid-resume-txt").textContent,
-        ls: localStorage.getItem("myktamap_guidage_encart_v1"), lu: G.encartReduit(), h: Math.round(btn.getBoundingClientRect().height) };
-      btn.click();
-      aller(470, 10, -1);
-      r.deplie = { etat: G.etat().encartReduit, texte: btn.querySelector(".kta-guid-resume-txt").textContent,
+      // Rien pour le replier : ni bouton, ni chevron, ni clé retenue (celle d'avant est effacée au chargement).
+      const enc = document.querySelector("#kta-guid-bandeau .kta-guid-resume");
+      r.sansRepli = { tag: enc.tagName, boutons: enc.querySelectorAll("button").length,
+        chevron: !!document.querySelector("#kta-guid-bandeau .kta-guid-resume-chevron"),
+        api: typeof G.reglerEncart + "/" + typeof G.encartReduit, etat: "encartReduit" in G.etat(),
         ls: localStorage.getItem("myktamap_guidage_encart_v1") };
+      // Destination de 60 caractères (fictive) : posée sur la road active, relue par l'encart à la position suivante.
+      const longue = "Cible fictive au fond d'une très longue galerie de test, bis".padEnd(60, "x").slice(0, 60);
+      const act = window.getRoads().find(function (x) { return x.uid === "rd_g12"; });
+      act.raccords[0].label = longue;
+      act.waypoints[act.waypoints.length - 1].label = longue;
+      r.longue = longue;
+      r.longueTexte = aller(460, 10, -1).texte;
       window.__g12 = av;
       return r;
     }, choix.a);
@@ -407,12 +412,32 @@ function inf(msg) { console.log("  •  " + msg); }
     if (g12.pos[0].niveau !== -1 || g12.pos[2].niveau !== null || !/Cible fictive/.test(g12.pos[0].texte)) {
       pb("G12 : niveau de l'arrivée mal dit — " + JSON.stringify([g12.pos[0], g12.pos[2]]));
     } else ok("G12 : niveau de l'arrivée dit depuis le 0, pas depuis le −1");
-    if (!g12.reduit.etat || g12.reduit.texte !== "" || g12.reduit.ls !== "reduit" || !g12.reduit.lu ||
-        g12.deplie.etat || !g12.deplie.texte || g12.deplie.ls !== null) {
-      pb("G12 : réduit / déplié — " + JSON.stringify({ reduit: g12.reduit, deplie: g12.deplie }));
-    } else ok("G12 : réduit (languette de " + g12.reduit.h + " px) puis déplié, retenu sur l'appareil");
-    // Aucun chevauchement : bandeau (encart déplié, puis écart avec ses 3 boutons) contre les contrôles de la carte,
-    // la boussole ouverte, le bouton nord, l'en-tête et la barre du bas, en portrait, en paysage et au PC.
+    const sr = g12.sansRepli;
+    if (sr.tag === "BUTTON" || sr.boutons || sr.chevron || sr.api !== "undefined/undefined" || sr.etat || sr.ls !== null) {
+      pb("G12 : il reste de quoi replier l'encart — " + JSON.stringify(sr));
+    } else ok("G12 : encart sans bouton de repli (ni chevron, ni réglage, ni clé retenue)");
+    if (g12.longueTexte.indexOf(g12.longue) < 0) pb("G12 : destination de 60 caractères absente — « " + g12.longueTexte + " »");
+    // Aucun chevauchement : bandeau (encart, puis écart avec ses 3 boutons) contre les contrôles de la carte, la
+    // boussole ouverte, le bouton nord, l'en-tête et la barre du bas, en portrait, en paysage et au PC. Encart sur
+    // UNE ligne, destination de 60 caractères coupée si besoin, distance et temps entiers et dans l'encart.
+    await page.evaluate(function () {
+      // Encart sur une ligne : destination et reste sur la même ligne, hauteur d'une ligne, reste entier (pas
+      // rogné, dans l'encart et dans la fenêtre), distance et temps présents. `coupe` : destination en ellipse.
+      window.__ktaLigneEncart = function (enc) {
+        if (!enc || enc.style.display === "none" || !enc.offsetParent) return { ok: false, raison: "absent" };
+        const nom = enc.querySelector(".kta-guid-resume-nom"), reste = enc.querySelector(".kta-guid-resume-reste");
+        if (!nom || !reste) return { ok: false, raison: "morceaux", html: enc.innerHTML.slice(0, 200) };
+        const cs = getComputedStyle(enc), re = enc.getBoundingClientRect(), rn = nom.getBoundingClientRect();
+        const rr = reste.getBoundingClientRect(), lh = parseFloat(getComputedStyle(reste).lineHeight) || rr.height;
+        const h = enc.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+        const r = { h: Math.round(h), lh: Math.round(lh), reste: reste.textContent, nom: nom.textContent.length,
+          coupe: nom.scrollWidth > nom.clientWidth + 1 };
+        r.ok = h < 1.6 * lh && Math.abs(rn.top - rr.top) < 2 && reste.scrollWidth <= reste.clientWidth + 1 &&
+          rr.left >= re.left - 0.5 && rr.right <= re.right + 0.5 && rr.right <= window.innerWidth + 0.5 &&
+          /\d/.test(r.reste) && /min/.test(r.reste);
+        return r;
+      };
+    });
     for (const vp of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1280, height: 800 }]) {
       await page.setViewportSize(vp);
       await page.waitForTimeout(400);
@@ -431,11 +456,24 @@ function inf(msg) { console.log("  •  " + msg); }
           const r = x.getBoundingClientRect();
           return r.left < rb.right - 0.5 && r.right > rb.left + 0.5 && r.top < rb.bottom - 0.5 && r.bottom > rb.top + 0.5;
         }).map(function (x) { return (x.id || x.className || x.tagName).toString().slice(0, 60); });
-        return { touche: touche, n: autres.length, bas: Math.round(rb.bottom), h: window.innerHeight };
+        return { touche: touche, n: autres.length, bas: Math.round(rb.bottom), h: window.innerHeight,
+          ligne: window.__ktaLigneEncart(b.querySelector(".kta-guid-resume")) };
       });
+      const li = ch.ligne;
+      if (!li.ok) pb("G12 : " + vp.width + "×" + vp.height + " — encart pas sur une ligne entière — " + JSON.stringify(li));
+      else ok("G12 : " + vp.width + "×" + vp.height + " — encart sur une ligne (" + li.h + " px), « " + li.reste +
+        " » entier" + (li.coupe ? ", destination coupée" : ""));
       if (ch.touche.length) pb("G12 : " + vp.width + "×" + vp.height + " — le bandeau chevauche " + ch.touche.join(", "));
       else ok("G12 : " + vp.width + "×" + vp.height + " — aucun chevauchement (" + ch.n + " éléments, bas du bandeau " +
         ch.bas + "/" + ch.h + " px)");
+      // Écran XL : le même encart, toujours là, sur une ligne.
+      await page.evaluate(function () { window.EmergencyMode.activer(); });
+      await page.waitForTimeout(700);
+      const xl = await page.evaluate(function () { return window.__ktaLigneEncart(document.getElementById("kta-em-guid-resume")); });
+      await page.evaluate(function () { window.EmergencyMode.desactiver(); });
+      await page.waitForTimeout(300);
+      if (!xl.ok) pb("G12 : " + vp.width + "×" + vp.height + " — écran XL, encart pas sur une ligne entière — " + JSON.stringify(xl));
+      else ok("G12 : " + vp.width + "×" + vp.height + " — écran XL, encart sur une ligne, « " + xl.reste + " » entier");
     }
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate(function () {

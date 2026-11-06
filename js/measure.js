@@ -32,6 +32,8 @@ let _activeMode = "distance";  // mode du bouton actif → cible les clics
 // Libellés de segment et d'angle (distance seulement).
 let _segmentLabels = [];
 let _angleLabels   = [];
+// Ronds dorés aux sommets des deux mesures (_majSommetsMesure).
+let _sommetsMesure = null;
 
 // 🩸 Points consécutifs COÏNCIDENTS (sessions restaurées avec doublons, double événement click) : segments de
 // 0 px (« 0.0 m » posé sur le sommet) et angles avalés (len < 1e-6). Ne retire QUE les doublons consécutifs
@@ -83,6 +85,7 @@ function initMeasure() {
     fillOpacity: 0.18,
     interactive: false
   }).addTo(window.map);
+  _sommetsMesure = L.layerGroup().addTo(window.map);
 
   // 🩸 Retirer l'ANCIEN handler de la carte courante avant d'en poser un : sur une carte réutilisée, les
   // map.on('click') s'empilent → 1 clic = N points coïncidents. Toujours un seul handler.
@@ -128,6 +131,22 @@ function updateMesure() {
   _afficherMesureValeur();
   _updateSegmentLabels();
   _updateAngleLabels();
+  _majSommetsMesure();
+}
+
+// ⚠️ contrat (décision produit) : un rond doré à chaque sommet des deux mesures, au-dessus du trait : on voit qu'il se
+// déplace (ajusterSommets.js). Renderer SVG propre (la couleur vient des jetons --kta-* par la classe ; la carte est
+// en canvas, preferCanvas), créé après le canvas des mesures : il passe dessus. Non interactif : l'appui long et le
+// clic qui pose un point le traversent. La vue 3D pose les mêmes ronds (vue3d.js > _majApercu).
+function _majSommetsMesure() {
+  if (!_sommetsMesure || !window.map) return;
+  _sommetsMesure.clearLayers();
+  const m = window.map;
+  if (!m._ktaSommetsMesureRendu) m._ktaSommetsMesureRendu = L.svg({ padding: 0.5 });
+  _pointsDistance.concat(_pointsSurface).forEach(function(p) {
+    L.circleMarker(convertCoord(p.x, p.y), { renderer: m._ktaSommetsMesureRendu, radius: 5, weight: 2,
+      interactive: false, className: "kta-mesure-sommet" }).addTo(_sommetsMesure);
+  });
 }
 
 // ── Longueur par segment (distance) ──
@@ -250,6 +269,7 @@ function resetMesure() {
   _segmentLabels = [];
   _angleLabels.forEach(function(l) { try { l.remove(); } catch(e) {} });
   _angleLabels = [];
+  _majSommetsMesure();
   _afficherMesureValeur();
   _noter("measure.histo.efface", avant);
 }
@@ -272,6 +292,7 @@ function resetMesureMode(mode) {
     resetMesure();
     return;
   }
+  _majSommetsMesure();
   _afficherMesureValeur();
   _noter("measure.histo.efface", avant);
 }

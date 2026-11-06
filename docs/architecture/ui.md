@@ -46,7 +46,8 @@ d'outil commence par `_desactiverTousLesModes()` (`interface.js`, registre `_mod
   (`ajusterSommets.js`, qui l'arrête quand il annule), confirmation (`ktaConfirm`, `stopImmediatePropagation`) ;
 - champ texte au focus, gate / splash / chargement (`_isModaleBloquante`), mode présentation, fenêtre visible
   (`ECHAP_AVANT` : overlays de l'app, fenêtre de nommage d'un point comprise, pickers `.kta-iti-floater`, vue 3D
-  `#kta-vue3d`) : rien, la fenêtre se ferme par son propre écouteur ;
+  `#kta-vue3d`) : rien, la fenêtre se ferme par son propre écouteur (bandeau de 📌 Repositionner : `editor.js >
+  _repoTouche` ; du point précis : `poiPrecis.js`) ;
 - panneau d'un groupe ouvert (`ktaOutilsOuverts`) ou bulle ouverte : fermé ici, l'outil reste armé ;
 - sinon, outil armé (`window.ktaOutilArme()`, registre `_modesActifs`) : désarmé.
 🩸 Pas au bouillonnement : Leaflet (`Keyboard._onKeyDown`) arrête tout Échap tapé carte au focus dès qu'une bulle a
@@ -1876,6 +1877,17 @@ Tuile 🔁 de l'accueil de l'Éditeur : ferme l'accueil et ouvre `window.ktaOuvr
 
 Calcul **pur** exposé sur `window.KtaRecalageScan` (sans DOM), éprouvé par `scripts/check-resolution-convert.js` ; parcours à la souris : `scripts/smoke/checkup-recalage-scan.js`. i18n `recalscan.*` (fr/en/es).
 
+#### 91.5 Raccords à vérifier (`js/raccordsTraces.js`)
+
+Tuile 🔗 de l'accueil de l'Éditeur, **plan affiché seulement** (`ktaPlanAffiche`) : ferme l'accueil et ouvre `window.KtaRaccords.ouvrir()` (module à part ; `tableEditor.js` ne porte que l'appel). Règle de détection, raccord et clé d'un écart ignoré : `multilevel-pathfinding.md` § Raccords à vérifier.
+
+- **Fenêtre** `#kta-racc-modal` (`kta-readme-modal-overlay`) : note des seuils (`formatDistance`), une ligne par écart (niveau sur un plan multi-niveau, sinon « Raccord n », écart en mètres ; sans échelle, en px), triée par niveau puis écart ; « Réafficher les ignorés (N) » quand la pref du plan en contient (vide la liste des ignorés).
+- **Clic sur une ligne** : la fenêtre part, la carte passe au niveau de l'écart (`ktaSetActiveLevel`) et le cadre (`fitBounds`, marge 2 × le seuil haut) ; les deux points sont entourés et reliés en tireté (calque `L.svg` à part, classes `kta-racc-cercle` / `kta-racc-ecart` → `--kta-accent`). **Bandeau** `#kta-racc-bandeau` en bas : « ◀ Précédent · i / N · Suivant ▶ » (circulaire), niveau et écart, **Raccorder** / **Ignorer** / **Fermer**. ⚠️ Le bandeau n'a pas la classe `.kta-iti-floater` : elle armerait le mode « clic carte » (`utils.js > _modeClicCarteActif`) et la carte n'ouvrirait plus de fiche pendant la revue.
+- Raccorder et Ignorer recalculent la liste et passent à l'écart suivant (même rang) ; liste vide → toast `success` et retour à la fenêtre. Fermer (ou Échap, sauf fenêtre ouverte par-dessus) rend la fenêtre de la liste. Données changées pendant la revue (Ctrl+Z, autre outil) : `kta:donneesPlanChange` → liste recalculée (300 ms). `mktm:plan-ferme` ferme tout.
+- Refus : lecture seule (`ktaEditionRefusee`, son toast), outil « clic carte » armé (toast), tracé de calque refusé au rapatriement, géométrie changée depuis le calcul (alerte, liste recalculée). Aucune popup native.
+
+Parcours : `scripts/smoke/checkup-raccords.js` (Chromium et WebKit). i18n `raccords.*`, `tabledit.source.raccords*` (fr/en/es). Aucune nouvelle surface réseau (le seul `fetch` possible est celui du rapatriement d'un calque, déjà fait au chargement du plan).
+
 ---
 
 ### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)
@@ -2311,7 +2323,11 @@ icônes.
   suivant), Boussole (montrée / masquée, `config.js > getVue3DBoussole`, `myktamap_v3d_boussole_v1`, cet appareil,
   montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🪧 Guidage (`getVue3DGuidage`,
   `myktamap_v3d_guidage_v1`, cet appareil, montré par défaut ; coupé : ni bandeau ni chevrons en 3D, ruban, étapes
-  et 🏁 gardés (posés par-dessus un remblais ou un effondrement, `tracking.md` § Vue 3D › Itinéraire), urgence toujours affichée, préférence et état du guidage 2D intacts, `vue3d.js > _lireGuidage`), 🧱
+  et 🏁 gardés (posés par-dessus un remblais ou un effondrement, `tracking.md` § Vue 3D › Itinéraire), urgence toujours affichée, préférence et état du guidage 2D intacts, `vue3d.js > _lireGuidage`), 🗂️ Fiches
+  (`getVue3DFichesObjets`, `myktamap_v3d_fiches_objets_v1`, cet appareil ; absent : coupé au pointeur grossier,
+  `ktaAppareilTactile`, ouvert au pointeur fin ; coupé, `_toucher` n'ouvre la fiche d'aucune structure, zone ni tracé,
+  un panneau de POI ouvre toujours la sienne, l'ajustement par appui long reste permis ; une greffe `fiches: false`
+  l'emporte), 🧱
   Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
   des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),
@@ -2324,16 +2340,17 @@ icônes.
   pas de 5, 100 % par défaut, valeur en pourcentage de la langue, `myktamap_v3d_lampe_intensite_v1`), 🔦
   **Faisceau** (curseur `#kta-v3d-faisceau`, 40 à 160°, 71° par défaut, `myktamap_v3d_faisceau_v1`) — même ligne
   que la portée (`.kta-v3d-curseur`, nom, curseur, valeur ; noms d'une même largeur, curseurs alignés, mêmes
-  libellé, valeur dite, couleurs et clavier) — et ☀️ **Plein jour** (interrupteur `aria-pressed` pleine largeur,
-  `myktamap_v3d_jour_v1`), tous de cet appareil ; trois curseurs et ☀️ `disabled` quand une greffe fige les réglages
-  (`reglagesFiges`), titre suffixé « indisponible pendant une partie » ; effets : `tracking.md` § Vue 3D › Lampe).
+  libellé, valeur dite, couleurs et clavier) — puis, sur une même ligne, ☀️ **Plein jour** (interrupteur
+  `aria-pressed`, `myktamap_v3d_jour_v1`) et 🛡️ **Limiter la portée** (interrupteur `aria-pressed`, coché par défaut,
+  `myktamap_v3d_limiter_portee_v1`, libellé complet « … (anti-crash mémoire) » dans le titre ; décoché : question
+  `ktaConfirm`, cran « Tout le plan » au bout du curseur de portée ; recoché à chaque ouverture au doigt), tous de cet
+  appareil ; trois curseurs, ☀️ et 🛡️ `disabled` quand une greffe fige les réglages (`reglagesFiges`), titre suffixé
+  « indisponible pendant une partie » ; effets : `tracking.md` § Vue 3D › Lampe et › Limiter la portée).
   La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼)
   sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
-  inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue d'édition. **Repère** : point doré sur ⚙️
-  (`kta-v3d-modifie`, `_majRepere`) en mode libre, en vue d'édition, rendu autre que mixte, textures coupées,
-  boussole masquée, guidage coupé, portée autre que 30 m, lampe autre que 100 %, faisceau autre que 71° ou Plein
-  jour. **Mode toujours visible** : pastille ronde à la taille des boutons
+  inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue d'édition. **Aucun repère sur ⚙️** (décision
+  produit), même quand un réglage n'est pas celui par défaut ; le ≡ garde le sien (filtre actif). **Mode toujours visible** : pastille ronde à la taille des boutons
   en haut à gauche, à la hauteur de la rangée (`.kta-v3d-mode-indic`, 🧭 / 🕹️, liseré doré en libre, non touchable). ✕ reste au coin haut droit quand la rangée passe sur
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
@@ -2364,9 +2381,11 @@ icônes.
   appel) ; les toasts et la fiche passent dessous. Ce qu'il dit : `tracking.md` § Vue 3D › Guidage. Il passe à la
   ligne (`flex-wrap`) : boutons d'écart en suivi (`.kta-v3d-guid-actions`, 44 px) puis l'encart « reste » de la 2D
   (`.kta-guid-resume`, `style.css`, même rendu : `ItiGuidage.rendreEncart`), en pleine largeur au bas du bandeau.
-  Bandeau 2D : même encart sous la consigne (12,5 px, `--kta-texte-2`, filet `--kta-bordure`), languette ▾ de 22 px
-  replié ; ni l'un ni l'autre ne chevauche les commandes aux trois tailles (`checkup-guidage.js` G12, `checkup-vue-3d.js`
-  § 32).
+  Bandeau 2D et écran XL : même encart sous la consigne (12,5 px, `--kta-texte-2`, filet `--kta-bordure` en 2D),
+  toujours affiché sur **une ligne**, sans repli (décision produit : une ligne, rien à gagner) — `.kta-guid-resume-ligne`
+  (flex, `nowrap`) : seule la destination (`.kta-guid-resume-nom`) rétrécit en ellipse, distance et temps
+  (`.kta-guid-resume-reste`) gardent leur largeur. Ni l'un ni l'autre ne chevauche les commandes aux trois tailles,
+  une ligne avec une destination de 60 caractères (`checkup-guidage.js` G12, `checkup-vue-3d.js` § 32).
 - **Toasts de la vue** : présence 3D partagée et nom d'un membre, d'un repère ou du 🏁 touché en `success` (décision
   produit : toujours vus, `info` est tu par défaut) ; perte du contexte WebGL en `warn`.
 - **Commandes** : au téléphone, **joystick** (`.kta-v3d-stick-zone`, `.kta-v3d-stick`, `.kta-v3d-stick-bouton`) :
@@ -2387,7 +2406,9 @@ icônes.
   Contrats : `tracking.md` § Vue 3D › Caméra libre, Dessiner en vue d'édition.
 - **Fiche d'un POI** (`.kta-v3d-fiche`) : toucher un panneau de POI (`vue3d.js > _toucher`) ouvre la fiche de la carte
   (`buildPointPopupHtml`) dans un cadre surface à liseré doré, à droite sous le bandeau, défilable, ✕ de 40 px ;
-  Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous. POI jonction : en tête de la fiche,
+  Échap la ferme d'abord. Sans Repositionner ni 🗑️ ; un POI de session en vue d'édition a en bas une rangée
+  **✏️ Modifier · 📍 Déplacer · 🎯 point précis** (`.kta-v3d-fiche-edition`, mêmes boutons que les passages ;
+  `tracking.md` § Vue 3D › Guidage, fiche d'un POI). POI jonction : en tête de la fiche,
   un bouton par niveau lié (`.kta-v3d-fiche-passages`, « ▲ Monter au niveau +1 (escalier) », liseré doré, le plus haut
   d'abord).
 - **Fiche d'une structure, d'une zone ou d'un tracé** (`.kta-v3d-fiche.kta-v3d-fiche-objet`, `role="dialog"`) :
@@ -2403,14 +2424,17 @@ icônes.
   pendant une greffe qui coupe l'édition (jeu). 🩸 En paysage bas, style.css passe toute `.leaflet-bar` en
   `display: flex !important` : le `hidden` de la colonne tient par `#kta-vue3d .kta-v3d-outils[hidden]` en
   `!important` (sinon les outils restaient à hauteur d'yeux et dans le jeu), et la colonne s'y range en ligne, comme
-  les pilules de la barre 2D. Boutons : **📐 🛣️ ⬛ 🏛️**, dans l'ordre de
+  les pilules de la barre 2D. Boutons : **📐 ✏️ 🛣️ ⬛ 🏛️** (✏️ = ajout de point, bouton seul : son geste de la carte), dans l'ordre de
   la barre de droite 2D, sous **🗺️ Plan au sol** (en tête), qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
   mêmes états ; icône, titre, `kta-group-mode-actif` (pastille du type armé) et `kta-outil-lecture-seule` **recopiés
   du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. **🗺️ Plan au sol** :
-  interrupteur, `aria-pressed`, niveau 0 seulement. Un groupe ouvre **le panneau de la carte**
+  interrupteur, `aria-pressed`, à tous les niveaux (calques image du niveau, sinon plan de base : `tracking.md`). Un groupe ouvre **le panneau de la carte**
   (`interface.js > window.ktaOuvrirOutils(groupe, { ancre })` : `_ouvrirFlyout` avec `vue3d: true`, sous-actions
-  `horsVue3D` retirées : 🪜 jonction, 🧹 Effacer — « Sélectionner » et « Par zone » se jouent au clic sur la carte —,
-  📏 et ⛏️), au rang de la vue (`html.kta-vue3d-ouverte .kta-group-flyout` et son fond à 99999, posés après elle) ;
+  `horsVue3D` retirées : 🪜 jonction, 🧹 Effacer — « Sélectionner » et « Par zone » se jouent au clic sur la carte),
+  au rang de la vue (`html.kta-vue3d-ouverte .kta-group-flyout` et son fond à 99999, posés après elle) ;
+  📐 y garde **📏 Distance totale** et **⛏️ Volume exploité** : leurs fenêtres (`.kta-readme-modal-overlay`, 99999,
+  posées sur `<html>` après la vue) s'ouvrent par-dessus elle, au niveau de la vue (ligne « Niveau n de la vue 3D »
+  dans 📏, case « Tous les niveaux » partagée avec la carte : `multilevel-pathfinding.md` § 15) ; ruban magenta au sol des tronçons comptés : `tracking.md` § Vue 3D › Dessiner en vue d'édition ;
   📐, groupe en accordéon sur la carte, y passe aussi (surbrillance par `isActive`). Le toucher qui ferme le panneau
   ne pose rien (avalé, comme sur la carte). Groupe grisé : le refus de la carte (`ktaEditionRefusee`), pas de panneau.
   Aperçu au sol de l'objet en cours (ruban, sommets, rond doré du 1er sommet) et étiquette de la mesure en panneau
@@ -2432,9 +2456,27 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
   écrit au lâcher.
 - **Ajouter** : appui long au milieu d'un segment (segment de fermeture compris pour une forme fermée) ; le sommet
   naît là et se glisse aussitôt ; lâché sans bouger, il reste au milieu.
-- **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point (marqueur Leaflet, cible
-  de 44 px, contre-tourné sous le plan orienté, retiré seul après 6 s ou au premier toucher ailleurs). Sous le
-  minimum de la forme (2 sommets pour une ligne, 3 pour une surface), pas de 🗑️ : un toast le dit.
+- **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point, à côté de **＋**
+  (marqueur Leaflet, `htmlMenu` : deux cibles de 44 px dans `.kta-ajuster-boutons`, contre-tourné sous le plan orienté,
+  retiré seul après 6 s ou au premier toucher ailleurs ; ce toucher est avalé — ni fiche, ni outil — mais 🩸 pas son
+  appui long : posé sur un sommet ou un milieu, il l'ajuste, même règle qu'en vue 3D ; une souris tenue immobile
+  ouvre ce menu à coup sûr, et l'appui suivant sur le sommet partait en pan). Sous le minimum de la forme (2 sommets pour une ligne, 3 pour
+  une surface), ＋ seul : un toast dit pourquoi pas de 🗑️.
+- **Insérer à la suite** (＋, QCM du 05/11/2026) : à partir du sommet X, chaque tap sur la carte insère un sommet
+  entre le dernier posé et X + 1 (le premier entre X et X + 1), la forme se redessine à chaque point. Forme fermée,
+  X dernier : X + 1 = le premier (point ajouté en fin de liste). Ligne, X dernier : la ligne se prolonge. Bandeau
+  `.kta-ajuster-bandeau` (allure de `.kta-racc-bandeau`, sur `body`, z-index 100000) « ＋ Insertion · N point(s) ·
+  ✓ Terminer » ; marques : rond doré au dernier posé, pointillé sur X + 1. Fin : ✓, Échap (`shortcuts.js >
+  _echapCarte`, après fenêtre, panneau et bulle), tap sur X + 1, droit perdu (outil armé, lecture seule : le tap suivant
+  ferme sans écrire), forme disparue.
+  - ⚠️ Un point = une écriture (même contrat que le geste, étiquette `ajouter`) ; **Ctrl+Z** retire un point à la fois,
+    pendant (le mode reste ouvert, N baisse, à 0 aussi) et après. N n'est pas compté : il se relit sur la forme
+    (longueur − longueur à l'ouverture), la forme retrouvée par son uid (type pour la mesure) à chaque tap, car une
+    annulation rend des copies. Raccourcie sous sa longueur d'ouverture : l'insertion se ferme.
+  - 🩸 Pendant l'insertion, `_modeClicCarteActif()` est vrai (`KtaAjusterSommets.insertionEnCours()`) : pas de bulle,
+    plan orienté remis droit comme pour un outil de dessin ; tout clic sur la carte est avalé en capture et devient un
+    point (sauf après un pan de plus de 6 px), le double-clic ne zoome pas, aucun appui long d'ajustement ne part. Les
+    boutons de barre restent cliquables ; armer un outil ferme l'insertion au tap suivant, qui va à l'outil.
 
 Familles : tracés, zones, structures (polygones et lignes), mesures 📐 (distance et surface). Pas les POI
 (« Repositionner »), pas l'itinéraire calculé. Chaque module expose sa **prise**
@@ -2462,10 +2504,64 @@ extension), hors objet en cours de tracé.
   _panSuivre`, ni rotation à deux doigts `_rotPointerMove` / `_rotTouchMove`, tous sur le conteneur), clic suivant sur la carte et menu contextuel avalés (pas de fiche ; un bouton de barre, une fiche ou une fenêtre restent cliquables aussitôt). `pointerup` n'est
   jamais avalé (Leaflet et le pan manuel y referment leur suivi des doigts). Un 2e doigt (pincement, rotation : le geste
   à deux doigts reprend la main), la molette ou Échap annulent. Drapeau neutre pour tout autre geste : `KtaAjusterSommets.enCours()`.
+  ⚠️ Un geste mal terminé se ferme quand même (drag rendu, rien d'écrit) : `pointercancel`, appli repliée
+  (`visibilitychange`, `pagehide`), fenêtre quittée (`blur`), et lâcher jamais reçu — l'appui primaire suivant, ou
+  le même `pointerId` reposé, ferme l'ancien geste au lieu de laisser ses mouvements avalés.
 - 🩸 **Position** : `map.mouseEventToLatLng` (rotation défaite par le patch de `mouseEventToContainerPoint`) ;
   `clientX` ne sert qu'aux seuils. Le sommet garde son décalage au doigt (il ne saute pas sous lui).
 - **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon milieu de segment ; un balayage des
   objets visibles au `pointerdown`, jamais au `pointermove`.
+- **Ronds dorés de la mesure** (décision produit) : chaque sommet des deux mesures 📐 porte un rond doré
+  (`measure.js > _majSommetsMesure`, `.kta-mesure-sommet` : `--kta-accent`, liseré `--kta-sur-accent`, renderer SVG
+  propre créé après le canvas des mesures, donc au-dessus du trait ; non interactif), refait à chaque `updateMesure` :
+  on voit que la mesure se corrige. Les autres formes n'en portent pas en permanence (trop chargé) : seulement la
+  poignée et l'aperçu de leur ajustement. Le contour de la sélection par zone, qui emprunte la mesure surface, les
+  porte aussi.
+- **Hors de la carte** (vue 3D, vue d'édition) : `KtaAjusterSommets.plan` = `{ saisir(x, y, tol, garder), forme(c),
+  lacher(c, p, tol), supprimer(c), annule() }`, en coordonnées plan : mêmes familles, droits, minimum, aimantation
+  (`aimanter(…, tol)` : rayon déjà converti par l'appelant) et écriture, plus `inserer(c)` / `poser(p, tolAimant,
+  tolFin)` pour l'insertion ; l'appelant mène le geste et l'aperçu
+  (`tracking.md` § Vue 3D › Ajuster une forme en vue d'édition).
 - Souris (décision) : appui long aussi, pas de glisser direct : un glisser à la souris reste un pan de la carte.
 
 Preuve : `scripts/smoke/checkup-ajuster-sommets.js` (Chromium et WebKit, souris et doigt).
+
+## 🎯 Point précis d'un POI (`js/poiPrecis.js`)
+
+Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur dense : plaques sur tous les murs). Le
+**point précis** donne le vrai lieu sans bouger l'icône (format : `data-formats.md` § Format point).
+
+- **Saisie : depuis la fiche seulement** (décision KARMA du 06/11/2026, pas d'appui long). Rangée
+  `.kta-popup-precis` sous ✏️ / 📌, mêmes droits (`showSessionActions` : POI de session, pas en lecture seule ; un POI
+  de calque n'est pas en session, sa copie « 🔄 Modifier » l'est) : **🎯 Augmenter la précision**, ou **🎯 Refaire le
+  point précis** et **Retirer la précision** s'il en a un. Aucun bouton pour un passage entre niveaux
+  (`KtaPoiJonction.porteNiveaux`). Le bouton arme le mode pendant la capture de son clic, comme Repositionner : la
+  fiche est exclue du clic ré-émis (`map.js > _ktaPickCaptureClick`).
+- **Mode** : bandeau `.kta-iti-floater` (`#kta-precis-floater`, « « Nom » : touchez le point exact · ✕ Annuler » ;
+  chatière : « touchez le début », puis « la fin », un carré provisoire au début). `_modeClicCarteActif()` le voit :
+  aucune fiche ne s'ouvre, le tap est ré-émis même sur un marqueur, le plan orienté se redresse. Les autres modes
+  « clic carte » tombent à l'armement. Échap (écouteur de `window` en capture : `shortcuts.js > _echapCarte` cède au
+  bandeau, la vue 3D aussi) ou ✕ annulent sans rien écrire. Un outil armé depuis la barre : le tap suivant est à lui.
+- ⚠️ **Écriture** (une pose ou un retrait = une entrée annulable) : `captureState("editorPoints")` → mutation en place
+  → `KtaUid.touch` → `renderEditorPoints` → `record` → `SessionPersist.save({ force: true })`. Le point est recherché au
+  tap (id + coordonnées de l'icône, `editor.js > ktaPointSession`).
+- **Affichage** : pointillé (`.kta-precis-trait`, 2 px, `4 4`) de l'icône au point précis — au milieu des deux
+  points d'une chatière —, segment plein entre eux (`.kta-precis-segment`), petit carré de 9 px à chaque point
+  (`.kta-precis-carre`, divIcon) ; couleurs par classes CSS (`--kta-accent`, liseré `--kta-sur-accent`), renderer SVG
+  propre à la carte (`map._ktaPrecisRendu`) : la carte dessine en canvas, où une classe ne vaut rien. Rien
+  n'est interactif (`pointer-events: none`). ⚠️ Visible si l'échelle donne au moins `SEUIL_PX_PAR_M` = 4 px d'écran par
+  mètre (`scale × 2^zoom` : 100 m sur 400 px de téléphone ; sans échelle : zoom ≥ −1) **ou** si la fiche du POI est
+  ouverte ; masqué avec son POI (filtre de niveau ou de type : `ktaMasquerMarqueur` le relaie), retiré quand le
+  marqueur quitte la carte. Rotation : pointillé et carrés vivent dans les panes de la carte, sous `.kta-rotate-pane` :
+  ils tournent avec le plan, comme les icônes (rien à contre-tourner). Branché par `brancherMarqueur` à la création
+  de chaque marqueur (session et calques), sans coût pour un POI sans point précis.
+- **Ce qui vise le point précis** (`KtaPoiPrecis.cible` : le point, le milieu des deux points d'une chatière) : 🧭 Y
+  aller, ➕ Itinéraire et **📍 Je suis ici** de la fiche (`data-kta-cx` / `data-kta-cy` des trois boutons), carte comme
+  vue 3D, et la bulle de point du mode urgence. « Je suis ici » y applique la règle de la galerie (`tracking.md`
+  § Recalage dans la galerie) depuis le point précis ; une étape ou un portail posés sur l'icône se valident encore
+  (`opts.icone`). Sans point précis, ou passage entre niveaux : l'icône, comme avant.
+- **3D** : en vue d'édition, la fiche 3D d'un POI de session propose aussi 🎯 (et ✏️ Modifier, 📍 Déplacer) ; un
+  toucher au sol y sert le même mode (`tracking.md` § Vue 3D).
+
+Preuve : `scripts/smoke/checkup-point-precis.js` (Chromium et WebKit, souris et doigt) ; 3D : `checkup-vue-3d.js`
+§ 39.

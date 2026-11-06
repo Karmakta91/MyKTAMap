@@ -17,7 +17,7 @@
 //   · texteAction · longueurRaccordsPx · alerteRaccord → {distM, role, label}|null · ouvrirFeuilleDeRoute ·
 //   onPosition(pos) (tracking.js, chaque pas) · rafraichir · etat() · apercu(pos, {cap, sPrec}) (sans toucher
 //   l'état : vue 3D en mode libre) · getPref/setPref("auto"|"jamais") · agir("recalculer"|"ici"|"ignorer"[, {apres}])
-//   · encartReduit / reglerEncart(bool) / rendreEncart(bouton, resume, reduit) (encart « reste » : _resume).
+//   · rendreEncart(conteneur, resume) (encart « reste » : _resume, bandeau 2D, vue 3D, écran XL).
 // ⚠️ Cap : degrés, 0 = haut du plan, sens horaire (= tracking.js) ; écart sortie − entrée > 0 = DROITE.
 // Garde-fou : scripts/check-guidage.js · Doc : docs/architecture/tracking.md §Guidage
 // =========================
@@ -142,7 +142,9 @@
       if (!Array.isArray(arr)) return;
       arr.forEach(function(p) {
         if (p && typeof p.x === "number" && typeof p.y === "number" && p.nom) {
-          out.push({ x: p.x, y: p.y, nom: String(p.nom), niveaux: _niveauxRepere(p) });
+          // Repère au vrai lieu (point précis, poiPrecis.js > cible) : la plaque est au mur, pas à son icône.
+          const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(p) : p;
+          out.push({ x: c.x, y: c.y, nom: String(p.nom), niveaux: _niveauxRepere(p) });
         }
       });
     }
@@ -612,20 +614,10 @@
   // raccords restants compris (étape hors tracé ×2, arrivée ×1, comme _distanceItineraireMeters), plus `horsM`
   // (position hors du trajet, « rejoindre »). Temps = réglage de vitesse et pauses de l'itinéraire
   // (interfaceItineraire.js > getItiTempsMinutes), « ~ » et arrondi à la minute : la marche sous terre varie trop
-  // pour mieux. Réduit (consigne seule) : réglage de l'appareil, partagé par la 2D et la 3D.
-  const LS_ENCART = "myktamap_guidage_encart_v1";   // "reduit" | absent
+  // pour mieux. Toujours affiché, jamais replié : une seule ligne, rien à gagner (décision produit).
   const VITESSE_REPLI_M_MIN = 3000 / 60;             // sans interfaceItineraire.js : son défaut, « lente »
-
-  function encartReduit() {
-    try { return localStorage.getItem(LS_ENCART) === "reduit"; } catch(e) { return false; }
-  }
-  function reglerEncart(reduit) {
-    try {
-      if (reduit) localStorage.setItem(LS_ENCART, "reduit"); else localStorage.removeItem(LS_ENCART);
-    } catch(e) {}
-    _dernierRendu = "";
-    _maj();
-  }
+  // Clé de l'encart repliable d'avant : plus lue, effacée au chargement (idempotent).
+  try { localStorage.removeItem("myktamap_guidage_encart_v1"); } catch(e) {}
 
   function _fmtTemps(min) {
     if (typeof window.ktaFormatTempsItineraire === "function") return window.ktaFormatTempsItineraire(min);
@@ -664,8 +656,12 @@
     const dist = resteM < 1 ? _fmtM(0) : _fmtDirect(resteM);
     // « <1 min » se dit tel quel : « ~<1 min » ne veut rien dire.
     const temps = tempsMin < 1 ? _fmtTemps(tempsMin) : _t("guid.resume.temps", { temps: _fmtTemps(tempsMin) });
+    // `destination` (coupée par une ellipse si trop longue) et `reste` (toujours entier) : deux morceaux d'une ligne ;
+    // `texte` = la ligne entière (titre, lecteur d'écran).
+    const destination = _t("guid.resume.destination", { nom: nom });
+    const reste = _t("guid.resume.reste", { dist: dist, temps: temps });
     return { nom: nom, niveau: niveau, resteM: resteM, tempsMin: tempsMin, etapes: etapes, dist: dist, temps: temps,
-             texte: _t("guid.resume.texte", { nom: nom, dist: dist, temps: temps }) };
+             destination: destination, reste: reste, texte: destination + " " + reste };
   }
 
   function _niveauTracker() {
@@ -700,10 +696,7 @@
         '</button>' +
         '<button type="button" class="kta-guid-fermer">✕</button>' +
       '</div>' +
-      '<button type="button" class="kta-guid-resume">' +
-        '<span class="kta-guid-resume-txt"></span>' +
-        '<span class="kta-guid-resume-chevron" aria-hidden="true"></span>' +
-      '</button>' +
+      '<div class="kta-guid-resume kta-guid-resume-ligne"></div>' +
       '<div class="kta-guid-actions"></div>';
     _el.style.display = "none";
     document.body.appendChild(_el);
@@ -719,24 +712,21 @@
       const b = ev.target.closest && ev.target.closest("[data-guid-action]");
       if (b) _action(b.getAttribute("data-guid-action"));
     });
-    // Toucher l'encart (ou son chevron) le replie sur la consigne seule ; replié, la languette le rouvre.
-    _el.querySelector(".kta-guid-resume").addEventListener("click", function() { reglerEncart(!encartReduit()); });
     return _el;
   }
 
-  // Encart d'un bandeau (2D ici, 3D dans vue3d.js) : texte, chevron, libellé du toucher, selon `reduit`.
-  function _rendreEncart(bouton, resume, reduit) {
-    if (!bouton) return;
-    bouton.style.display = resume ? "" : "none";
-    if (!resume) return;
-    bouton.classList.toggle("kta-guid-resume-reduit", reduit);
-    const txt = bouton.querySelector(".kta-guid-resume-txt");
-    txt.textContent = reduit ? "" : resume.texte;
-    bouton.querySelector(".kta-guid-resume-chevron").textContent = reduit ? "▾" : "▴";
-    const lib = _t(reduit ? "guid.resume.deplier" : "guid.resume.reduire");
-    bouton.title = lib;
-    bouton.setAttribute("aria-label", reduit ? lib : resume.texte + " — " + lib);
-    bouton.setAttribute("aria-expanded", reduit ? "false" : "true");
+  // Encart d'un bandeau (2D ici, 3D dans vue3d.js, écran XL dans emergencyMode.js) : une ligne, destination puis
+  // distance et temps. ⚠️ contrat : `conteneur` porte la classe .kta-guid-resume-ligne (flex, sans retour à la ligne) ;
+  // seule la destination rétrécit (ellipse), le reste garde sa largeur. L'espace entre les deux morceaux est un nœud
+  // texte : invisible en flex (l'écart vient de `gap`), il garde `textContent === resume.texte`. Textes échappés.
+  function _rendreEncart(conteneur, resume) {
+    if (!conteneur) return;
+    conteneur.style.display = resume ? "" : "none";
+    if (!resume) { conteneur.textContent = ""; return; }
+    if (conteneur.title === resume.texte && conteneur.querySelector(".kta-guid-resume-reste")) return;   // inchangé
+    conteneur.innerHTML = '<span class="kta-guid-resume-nom">' + _esc(resume.destination) + '</span> ' +
+      '<span class="kta-guid-resume-reste">' + _esc(resume.reste) + '</span>';
+    conteneur.title = resume.texte;
   }
 
   function _cacher() {
@@ -903,16 +893,15 @@
     const picto = tx.picto;
 
     const resume = _resume(_guide, _road, r.s, r.mode === "rejoindre" ? r.distM : 0, _niveauTracker());
-    const reduit = encartReduit();
 
     // `s` / `sCible` (px le long du trajet) : position et prochaine consigne, pour les chevrons de la vue 3D.
     _etat = {
       visible: true, mode: r.mode, icone: icone, principal: principal, sous: sous, actions: actions,
-      fleche: fleche, urgence: urgence, picto: picto, s: r.s, sCible: r.sCible, resume: resume, encartReduit: reduit
+      fleche: fleche, urgence: urgence, picto: picto, s: r.s, sCible: r.sCible, resume: resume
     };
 
     const cle = [r.mode, icone, principal, sous, fleche, urgence, picto,
-                 actions.map(function(a) { return a.id; }).join(), resume ? resume.texte : "", reduit].join("|");
+                 actions.map(function(a) { return a.id; }).join(), resume ? resume.texte : ""].join("|");
     el.style.display = "";
     if (cle === _dernierRendu) return;
     _dernierRendu = cle;
@@ -933,7 +922,7 @@
     fermer.style.display = urgence ? "none" : "";
     fermer.title = _t("guid.bandeau.fermer");
     fermer.setAttribute("aria-label", _t("guid.bandeau.fermer"));
-    _rendreEncart(el.querySelector(".kta-guid-resume"), resume, reduit);
+    _rendreEncart(el.querySelector(".kta-guid-resume"), resume);
     el.querySelector(".kta-guid-actions").innerHTML = actions.map(function(a, i) {
       return '<button type="button" class="kta-btn ' + (i === 0 ? "kta-btn-primary" : "kta-btn-ghost") +
              ' kta-guid-btn" data-guid-action="' + a.id + '">' + _esc(a.label) + '</button>';
@@ -971,8 +960,8 @@
   // préférée sur un aller-retour (même fenêtre que le guidage) ; `opts.niveau` : niveau de la scène, la position
   // n'est projetée que sur les points du trajet à ce niveau (aucun : visible false, pas de « Rejoindre le tracé »
   // vers un tronçon d'un autre étage). → { visible, masque, apercu, mode, icone, principal, sous, fleche, picto,
-  // urgence, s, sCible, distM, capTrajet, resume, encartReduit } ; `capTrajet` : cap du trajet devant `s` (degrés plan,
-// null au bout) ; `resume` : l'encart « reste » (_resume) depuis cette position.
+  // urgence, s, sCible, distM, capTrajet, resume } ; `capTrajet` : cap du trajet devant `s` (degrés plan,
+  // null au bout) ; `resume` : l'encart « reste » (_resume) depuis cette position.
   // visible false sans itinéraire. `masque` : réglé sur « Jamais » hors urgence (le bandeau 2D ne parlerait pas).
   let _apRoad = null, _apGuide = null;
   function apercu(pos, opts) {
@@ -1009,7 +998,7 @@
       visible: true, masque: !urgence && getPref() !== "auto", apercu: true, mode: r.mode, icone: tx.icone,
       principal: tx.principal, sous: tx.sous, fleche: tx.fleche, picto: tx.picto, urgence: urgence,
       s: pr.s, sCible: c.s, distM: distM, capTrajet: _capEntre(g.ch, pr.s, pr.s + Math.max(3, FENETRE_M * e)),
-      resume: _resume(g, road, pr.s, r.mode === "rejoindre" ? distM : 0, niv), encartReduit: encartReduit()
+      resume: _resume(g, road, pr.s, r.mode === "rejoindre" ? distM : 0, niv)
     };
   }
 
@@ -1047,9 +1036,7 @@
   G.getPref              = getPref;
   G.agir                 = _action;                      // "recalculer" | "ici" | "ignorer" (boutons d'écart)
   G.setPref              = setPref;
-  G.encartReduit         = encartReduit;                 // encart « reste » replié (cet appareil, 2D et 3D)
-  G.reglerEncart         = reglerEncart;
-  G.rendreEncart         = _rendreEncart;                // même rendu dans le bandeau de la vue 3D
+  G.rendreEncart         = _rendreEncart;                // même encart dans la vue 3D et l'écran XL
 
   window.ItiGuidage = G;
   console.log("[ItiGuidage] Module chargé");

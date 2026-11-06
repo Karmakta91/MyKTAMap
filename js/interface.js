@@ -2601,17 +2601,18 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      // Distance totale des tracés : une mesure (lecture), pas un geste de dessin. Hors vue 3D (son panneau vit sur
-      // la carte), comme ⛏️.
-      { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"), horsVue3D: true,
+      // Distance totale des tracés : une mesure (lecture), pas un geste de dessin. Aussi en vue 3D : panneau par-dessus
+      // la vue, tronçons comptés (niveau de la vue) surlignés au sol (vue3d.js > _majDistTot).
+      { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"),
         onClick: function() {
           if (typeof window.ouvrirRoadsDistanceFloater === "function") {
             window.ouvrirRoadsDistanceFloater();
           }
         }
       },
-      // Volume exploité : lit la surface ♦️ comme secteur (lecture, pas un geste de dessin).
-      { id: "mesureVolume", icone: "⛏️", titre: window.I18n.t("ui.subaction.mesureVolume"), horsVue3D: true,
+      // Volume exploité : lit la surface ♦️ comme secteur (lecture, pas un geste de dessin) ; en vue 3D, celle dessinée
+      // dans la vue, au niveau de la vue (volumeExploite.js > _niveauAffiche).
+      { id: "mesureVolume", icone: "⛏️", titre: window.I18n.t("ui.subaction.mesureVolume"),
         onClick: function() {
           if (window.KtaVolumeExploite) window.KtaVolumeExploite.ouvrir();
         }

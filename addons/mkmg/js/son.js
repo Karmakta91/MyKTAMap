@@ -6,8 +6,8 @@
 
 // addons/mkmg/js/son.js — sons de l'add-on « mkmg », fabriqués par WebAudio (aucun fichier, aucun réseau). Expose
 // window.KtaAddons.mkmgSon = { demarrer(), arreter(), reveiller(), jouer(nom, force, angle), coeur(intensite),
-// proximite(intensite), respiration(intensite), ambiance(actif), etat() }. Noms : tir, recharge, vide, ramasse, soin,
-// blesse, grogne, mort, souffle, vague, fin, pas, hurle, rugit, eclabousse, eboulis, goutte, pile.
+// proximite(intensite), ambiance(actif), etat() }. Noms : tir, pompe, recharge, vide, ramasse, soin, blesse, grogne,
+// mort, vague, fin, pas, hurle, rugit, eclabousse, eboulis, goutte, pile.
 // angle (degrés, 0 = devant, 90 = à droite) : le son vient de là (gauche / droite), étouffé quand il vient de derrière.
 // 🩸 Un navigateur ne joue rien avant un geste de l'utilisateur : demarrer() est appelé dans le geste qui lance la
 // partie. iOS suspend (« interrupted ») le son sur une notification, un appel, l'écran verrouillé : reveiller() le
@@ -20,10 +20,10 @@
   "use strict";
 
   let _ac = null, _maitre = null, _bruit = null, _coeur = null, _actif = false, _veille = null;
-  let _dest = null, _souffle = null, _fond = null;   // _dest : sortie du son en cours (situé), sinon _maitre
-  // Fond : gouttes et éboulis lointains au hasard (s) ; respiration du joueur (s entre deux souffles, ± `flou`).
+  let _dest = null, _fond = null;   // _dest : sortie du son en cours (situé), sinon _maitre
+  // Fond : gouttes et éboulis lointains au hasard (s). Pas de respiration du joueur (décision produit).
   // 🩸 Un son répété à intervalle fixe se lit comme un bip ou un métronome : tout ce qui revient est tiré au hasard.
-  const FOND = { goutte: [4, 11], eboulis: [25, 50], respire: [1.4, 0.55], flou: 0.25 };
+  const FOND = { goutte: [4, 11], eboulis: [25, 50] };
   const VEILLE_MS = 1500;   // délai avant de suspendre le son une fois la partie arrêtée
 
   function demarrer() {
@@ -52,7 +52,6 @@
 
   function arreter() {
     coeur(0);
-    respiration(0);
     ambiance(false);
     _actif = false;
     clearTimeout(_veille);
@@ -91,9 +90,20 @@
   }
 
   const SONS = {
+    // Fusil à pompe : détonation grave et longue (claquement, souffle, queue qui roule dans la galerie).
     tir: function (t, k) {
-      _bruite(t, "lowpass", 1800, 0.7, 0.9 * k, 0.003, 0.35);
-      _ton(t, "sine", 120, 40, 0.8 * k, 0.003, 0.25);
+      _bruite(t, "highpass", 2500, 0.7, 0.5 * k, 0.001, 0.04);
+      const f = _bruite(t, "lowpass", 2400, 0.8, 1.0 * k, 0.002, 0.6);
+      f.frequency.exponentialRampToValueAtTime(300, t + 0.5);
+      _ton(t, "sine", 90, 32, 0.9 * k, 0.002, 0.4);
+    },
+    // Pompe : glissière tirée puis renvoyée (« tchk-tchak »), chaque course = frottement + choc métallique.
+    pompe: function (t) {
+      [[0.32, 1900, 0.35], [0.5, 2600, 0.45]].forEach(function (c) {
+        _bruite(t + c[0], "bandpass", 1200, 2, 0.12, 0.005, 0.07);
+        _bruite(t + c[0] + 0.06, "bandpass", c[1], 9, c[2], 0.001, 0.05);
+        _ton(t + c[0] + 0.06, "square", 420, 380, 0.04, 0.001, 0.03);
+      });
     },
     recharge: function (t) {
       _bruite(t, "bandpass", 2500, 8, 0.4, 0.002, 0.05);
@@ -112,7 +122,6 @@
       _ton(t, "sawtooth", 70, 55, 0.08 * k, 0.2, 1.0);
     },
     mort: function (t) { _bruite(t, "lowpass", 400, 2, 0.5, 0.01, 0.7); },
-    souffle: function (t) { _bruite(t, "bandpass", 900, 1.5, 0.25, 0.25, 0.9); },
     vague: function (t) {
       _ton(t, "triangle", 392, 392, 0.2, 0.01, 0.25);
       _ton(t + 0.18, "triangle", 523, 523, 0.22, 0.01, 0.4);
@@ -204,29 +213,6 @@
     _fond.eboulis = setTimeout(eboulis, hasard(FOND.eboulis));
   }
 
-  // Respiration du joueur : intensité 0 (rien) à 1 (haletant), plus forte et plus rapide avec elle.
-  function respiration(p) {
-    if (!(p > 0) || !_ac) {
-      if (_souffle) clearTimeout(_souffle.minuterie);
-      _souffle = null;
-      return;
-    }
-    if (_souffle) { _souffle.p = p; return; }
-    _souffle = { p: p };
-    const souffler = function () {
-      if (!_souffle || !_ac) return;
-      if (_ac.state === "running") {
-        const t = _ac.currentTime, v = 0.05 + 0.2 * _souffle.p;
-        _bruite(t, "bandpass", 600 + Math.random() * 250, 1.2, v, 0.12, 0.4 + Math.random() * 0.15);
-        _bruite(t + 0.45 + Math.random() * 0.1, "bandpass", 900 + Math.random() * 250, 1.5, v * 0.8, 0.08, 0.35);
-      }
-      const R = FOND.respire;
-      const flou = 1 + (Math.random() * 2 - 1) * FOND.flou;
-      _souffle.minuterie = setTimeout(souffler, (R[0] - (R[0] - R[1]) * _souffle.p) * 1000 * flou);
-    };
-    souffler();
-  }
-
   // Battement de cœur : intensité 0 (rien) à 1 (à bout de souffle), rythme et volume montent avec elle.
   function coeur(proximite) {
     clearTimeout(_coeur && _coeur.minuterie);
@@ -250,5 +236,5 @@
 
   window.KtaAddons = window.KtaAddons || {};
   window.KtaAddons.mkmgSon = { demarrer: demarrer, arreter: arreter, reveiller: reveiller, jouer: jouer, coeur: coeur,
-    proximite: proximite, respiration: respiration, ambiance: ambiance, etat: etat };
+    proximite: proximite, ambiance: ambiance, etat: etat };
 })();

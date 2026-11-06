@@ -623,19 +623,10 @@ function _targetLayerForRoad(roadType) {
 // clignoter.
 // ⚠️ Les filtres de niveau et de type sont des MIROIRS de ceux de renderRoads : à garder alignés.
 
-// 🩸 layer.remove() sur un circleMarker le retire de la CARTE mais PAS du FeatureGroup parent (layerEditor) : les
-// cercles s'y accumulent à chaque rendu (des centaines de fantômes). Retrait par le FeatureGroup quand il le tient.
+// 🩸 Retrait par le GROUPE (utils.js > ktaRetirerCalque) : layer.remove() laissait les cercles dans layerEditor, des
+// centaines de fantômes par rendu.
 function _purgeIntersectionLayers() {
-  const grp = window.layerEditor;
-  intersectionLayers.forEach(layer => {
-    try {
-      if (grp && typeof grp.hasLayer === "function" && grp.hasLayer(layer)) {
-        grp.removeLayer(layer);
-      } else {
-        layer.remove();
-      }
-    } catch(e) {}
-  });
+  intersectionLayers.forEach(function(layer) { window.ktaRetirerCalque(layer); });
   intersectionLayers = [];
 }
 
@@ -774,18 +765,8 @@ function renderRoads(opts) {
     console.log("[Road] renderRoads — roadsData :", roadsData.length, "tracés");
   }
 
-  // 🩸 Retrait par le FeatureGroup parent quand il tient le layer (même piège que _purgeIntersectionLayers : les
-  // ronds des jonctions survivaient sinon).
-  const _grpRoad = window.layerEditor;
-  roadLayers.forEach(layer => {
-    try {
-      if (_grpRoad && typeof _grpRoad.hasLayer === "function" && _grpRoad.hasLayer(layer)) {
-        _grpRoad.removeLayer(layer);
-      } else {
-        layer.remove();
-      }
-    } catch(e) {}
-  });
+  // 🩸 Retrait par le groupe (même piège que _purgeIntersectionLayers ; l'itinéraire, posé sur la carte, en sort).
+  roadLayers.forEach(function(layer) { window.ktaRetirerCalque(layer); });
   roadLayers = [];
   // Repeuplé ci-dessous : une entrée par road qui passe les filtres (hors viewport).
   _roadRenderState = [];
@@ -1070,7 +1051,8 @@ function _refreshRoadsViewportOnly() {
       _added++;
     } else {
       for (let j = 0; j < entry.layers.length; j++) {
-        try { entry.layers[j].remove(); } catch(e) {}
+        // 🩸 Hors du groupe aussi : sinon ≡ décoché puis recoché remettait sur la carte tout ce que le culling a ôté.
+        window.ktaRetirerCalque(entry.layers[j], entry.target);
       }
       entry.inViewport = false;
       _removed++;
@@ -1089,7 +1071,7 @@ function resetRoads() {
   currentRoad = null;
   window.modeRoad = null;
 
-  roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
+  roadLayers.forEach(function(layer) { window.ktaRetirerCalque(layer); });
   roadLayers = [];
 
   // Cercles et débounce purgés (sinon cercles orphelins, et un débounce en vol rendrait un état effacé).
@@ -1295,7 +1277,7 @@ window.renderRoads          = renderRoads;
 
 // ── Ajustement des sommets (js/ajusterSommets.js) ──────────────────────
 // ⚠️ contrat : ktaFormesAjustables.<famille> = { cat, objets(), ferme(o), minimum(o), libelle(o), rendre(),
-// aimanter?(x, y, o, exclus) } (en-tête d'ajusterSommets.js). Tracés de session visibles hors tracé en cours et
+// aimanter?(x, y, o, exclus, tol?) } (en-tête d'ajusterSommets.js). Tracés de session visibles hors tracé en cours et
 // itinéraire ; les tracés d'un calque ne sont pas ici (lecture seule tant que le calque n'est pas en « 🔄 Modifier »).
 // 🩸 RoadGraph ne voit pas un sommet déplacé (sa signature compte les sommets) : invalidé au rendu.
 window.ktaFormesAjustables = window.ktaFormesAjustables || {};
@@ -1313,9 +1295,10 @@ window.ktaFormesAjustables.roads = {
     renderRoads();
     if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
   },
-  // Aimantation du dessin (snapDraw, même rayon) ; `exclus` : le sommet déplacé et ses voisins du même tracé.
-  aimanter: function(x, y, r, exclus) {
-    const s = _snapSurSommetProche(x, y, null, { exclus: exclus, niveau: Number.isInteger(r.level) ? r.level : null });
+  // Aimantation du dessin (snapDraw, même rayon) ; `exclus` : le sommet déplacé et ses voisins du même tracé ;
+  // `tol` (px plan) : rayon déjà converti par l'appelant (vue 3D, à la profondeur du point), sinon celui de la carte.
+  aimanter: function(x, y, r, exclus, tol) {
+    const s = _snapSurSommetProche(x, y, tol, { exclus: exclus, niveau: Number.isInteger(r.level) ? r.level : null });
     if (s) _flashSnap(s.x, s.y);
     return s ? { x: s.x, y: s.y } : null;
   }

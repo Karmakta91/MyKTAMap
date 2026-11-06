@@ -9,7 +9,8 @@
 // ⚠️ Ignorés : avec Ctrl/Cmd/Alt (raccourcis navigateur), focus dans un champ, modale / gate /
 //   splash / chargement visibles, mode présentation.
 // Échap désarme l'outil clic-carte armé (_echapCarte), comme son bouton : passe APRÈS tout ce qui le prend avant
-// (fenêtre, bulle, panneau d'un groupe, appui long d'ajustement, choix d'une position, vue 3D, champ texte).
+// (fenêtre, bulle, panneau d'un groupe, appui long d'ajustement, choix d'une position, vue 3D, champ texte) ; une
+// insertion de sommets ouverte se termine avant que l'outil ne soit désarmé.
 // Expose : window.KtaShortcuts { listMapping() (aide-mémoire), trigger(action) }
 
 (function() {
@@ -177,6 +178,12 @@
     if (typeof window.ktaOutilsOuverts === "function" && window.ktaOutilsOuverts()) { window.ktaFermerOutils(); return; }
     const m = window.map;
     if (m && m._popup && m.hasLayer(m._popup)) { m.closePopup(); return; }
+    // Insertion de sommets ouverte (＋ au sommet, ajusterSommets.js) : terminée, les points posés restent.
+    const A = window.KtaAjusterSommets;
+    if (A && typeof A.terminerInsertion === "function" && A.terminerInsertion()) {
+      e.stopPropagation();
+      return;
+    }
     if (typeof window.ktaOutilArme !== "function" || !window.ktaOutilArme()) return;
     if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
     console.log("[Shortcuts] Échap → outil désarmé");

@@ -211,8 +211,8 @@
             '<div class="kta-emergency-guidage-textes">' +
               '<div class="kta-emergency-guidage-principal" id="kta-em-guid-principal"></div>' +
               '<div class="kta-emergency-sub" id="kta-em-guid-sous"></div>' +
-              // Destination, distance et temps restants (itiGuidage.js > _resume), toujours dépliés ici.
-              '<div class="kta-emergency-sub" id="kta-em-guid-resume"></div>' +
+              // Destination, distance et temps restants sur une ligne (itiGuidage.js > _resume, rendreEncart).
+              '<div class="kta-emergency-sub kta-guid-resume-ligne" id="kta-em-guid-resume"></div>' +
             '</div>' +
           '</div>' +
           '<button class="kta-emergency-guidage-choix" id="kta-em-guid-choix" type="button" style="display:none">' +
@@ -430,8 +430,11 @@
     const p = _pointBulle;
     _fermerBulle();
     if (!p || typeof window.recalerTrackerSurPoint !== "function") return;
+    // Point précis (poiPrecis.js > cible) : la règle de la fiche de la carte (utils.js > _ktaPopupAction, « ici »).
+    const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(p) : { x: p.x, y: p.y };
+    const o = (c.x !== p.x || c.y !== p.y) ? { dansGalerie: true, icone: { x: p.x, y: p.y } } : { dansGalerie: true };
     try {
-      window.recalerTrackerSurPoint(p.x, p.y, Number.isInteger(p.level) ? p.level : undefined, { dansGalerie: true });
+      window.recalerTrackerSurPoint(c.x, c.y, Number.isInteger(p.level) ? p.level : undefined, o);
     } catch(e) {
       console.warn("[Emergency] « Je suis ici » échoué :", e);
     }
@@ -575,7 +578,7 @@
     const so = document.getElementById("kta-em-guid-sous");
     if (so) { so.textContent = st.sous || ""; so.style.display = st.sous ? "" : "none"; }
     const re = document.getElementById("kta-em-guid-resume");
-    if (re) { re.textContent = st.resume ? st.resume.texte : ""; re.style.display = st.resume ? "" : "none"; }
+    if (re) window.ItiGuidage.rendreEncart(re, st.resume || null);   // st vient d’ItiGuidage : il est chargé
     const choix = document.getElementById("kta-em-guid-choix");
     if (choix) choix.style.display = alerte ? "" : "none";
   }

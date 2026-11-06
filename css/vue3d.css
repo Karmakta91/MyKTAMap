@@ -89,14 +89,12 @@
 .kta-vue3d .kta-v3d-haut > .kta-aide-ctx-btn:focus-visible {
   outline: 2px solid var(--kta-interaction); outline-offset: 2px;
 }
-/* ≡ quand un filtre de la carte est actif (FilterPanel.majBadge) et ⚙️ quand un réglage de la tuile n'est pas celui
-   par défaut (vue3d.js > _majRepere) : le repère du ≡ de la carte (liseré doré intérieur, point doré). */
-.kta-v3d-btn.kta-v3d-filtres.kta-filter-ctrl-actif,
-.kta-v3d-btn.kta-v3d-btn-reglages.kta-v3d-modifie {
+/* ≡ quand un filtre de la carte est actif (FilterPanel.majBadge) : le repère du ≡ de la carte (liseré doré intérieur,
+   point doré). */
+.kta-v3d-btn.kta-v3d-filtres.kta-filter-ctrl-actif {
   border-color: var(--kta-accent); box-shadow: inset 0 0 0 1px var(--kta-accent), var(--kta-v3d-ombre);
 }
-.kta-v3d-btn.kta-v3d-filtres.kta-filter-ctrl-actif::after,
-.kta-v3d-btn.kta-v3d-btn-reglages.kta-v3d-modifie::after {
+.kta-v3d-btn.kta-v3d-filtres.kta-filter-ctrl-actif::after {
   content: ""; position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; box-sizing: border-box;
   border-radius: 50%; background: var(--kta-accent); box-shadow: 0 0 0 2px var(--kta-surface); pointer-events: none;
 }
@@ -222,7 +220,7 @@ html.kta-theme-light .kta-v3d-mode-indic {
 .kta-v3d-guid-principal { font-size: 16px; font-weight: 600; line-height: 1.3; }
 .kta-v3d-guid-sous { font-size: 13px; line-height: 1.3; color: var(--kta-texte-2); }
 /* Encart « reste » et boutons d'écart en suivi (vue3d.js > _majBandeau) : chacun sur une ligne à part sous la
-   consigne ; l'encart a le rendu du bandeau 2D (itiGuidage.js > rendreEncart, classes .kta-guid-resume). */
+   consigne ; l'encart a le rendu du bandeau 2D (itiGuidage.js > rendreEncart, classes .kta-guid-resume-*). */
 .kta-v3d-bandeau { flex-wrap: wrap; row-gap: 6px; }
 .kta-v3d-guid-textes { flex-basis: calc(100% - 46px); }
 .kta-v3d-bandeau .kta-guid-resume { flex: 0 0 calc(100% + 24px); margin: 0 -12px -8px; }
@@ -317,6 +315,8 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 .kta-v3d-btn.kta-v3d-btn-passage { max-width: min(72vw, 340px); overflow: hidden; text-overflow: ellipsis; }
 /* Fiche d'un POI jonction : un bouton par niveau lié (vue3d.js > _passagesFiche), au-dessus de la fiche de la carte. */
 .kta-v3d-fiche-passages { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+/* ✏️ / 📍 / 🎯 viennent après le corps de la fiche (dernier bouton : « Lier à un autre plan ») : même écart. */
+.kta-v3d-fiche-passages.kta-v3d-fiche-edition { margin-top: 10px; }
 .kta-v3d-btn.kta-v3d-fiche-passage {
   height: 44px; border-color: var(--kta-accent); box-shadow: none; white-space: normal; text-align: left;
 }
@@ -345,6 +345,37 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin: 0; clear: none; float: none;
 }
 #kta-vue3d .kta-v3d-outils[hidden], #kta-vue3d .kta-v3d-outils a[hidden] { display: none !important; }
+/* ⚠️ contrat (décision produit) : la colonne reste VERTICALE en paysage bas aussi. style.css y met toute .leaflet-bar
+   en ligne (pilules horizontales de la barre 2D) : l'id et !important l'emportent, comme le zoom. Trop haute pour le
+   milieu de l'écran, elle part de sous la rangée du haut et le bandeau (--kta-v3d-sous-haut), à gauche de la grille
+   + − ▲ ▼ et de ⌖ (bord droit), et défile si elle ne tient pas. Ce placement est celui du pointeur fin (fenêtre de
+   PC basse) ; au doigt, le bloc suivant la remet contre le bord droit. */
+@media (max-height: 500px) and (orientation: landscape) {
+  #kta-vue3d .kta-v3d-outils {
+    flex-direction: column !important;
+    top: var(--kta-v3d-sous-haut, 80px); transform: none;
+    right: calc(10px + 2 * var(--kta-v3d-taille) + var(--kta-v3d-ecart) + 8px);
+    max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - max(14px, env(safe-area-inset-bottom)));
+    overflow-y: auto;
+  }
+}
+/* ⚠️ contrat (décision produit) : au doigt en paysage bas (téléphone couché), la colonne est contre le BORD DROIT,
+   alignée sur ✕ et la grille + − ▲ ▼, entre la rangée du haut et ⌖. Haut : 7 px sous --kta-v3d-sous-haut (lui-même
+   8 px sous la rangée ou le bandeau). Bas : 15 px au-dessus de la place de ⌖, toujours réservée (il apparaît quand
+   la caméra se détache : la colonne ne change pas de taille), liseré compris (border-box). Ces écarts tiennent
+   séparées les zones de toucher de 44 px de la colonne, de la rangée et de ⌖. Boutons à 28 px (au lieu de 30) : les
+   six tiennent sur un iPhone couché (390 px de haut) ; ce qui ne tient pas défile (bandeau de guidage montré, petit
+   téléphone). Les panneaux des POI ne sont pas des commandes : ils peuvent passer dessous. Garde-fou :
+   scripts/smoke/checkup-vue-3d.js > sectionColonnePaysage. */
+@media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  #kta-vue3d .kta-v3d-outils {
+    --kta-barre-bouton: 28px; box-sizing: border-box;
+    top: calc(var(--kta-v3d-sous-haut, 80px) + 7px);
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - 7px - max(14px, env(safe-area-inset-bottom))
+      - 3 * var(--kta-v3d-taille) - 2 * var(--kta-v3d-ecart) - 15px);
+  }
+}
 /* Zone de toucher de 44 px (--kta-cible-toucher), comme la rangée du haut : on joue au doigt. Les zones de deux
    boutons voisins se recouvrent de 4 px, au bord commun (la colonne n'a pas de trou). */
 .kta-v3d-outils > a { position: relative; }
@@ -405,3 +436,7 @@ html.kta-vue3d-ouverte .kta-group-flyout, html.kta-vue3d-ouverte .kta-group-flyo
 }
 /* Fiche qui vient de s'ouvrir sous le doigt (vue3d.js > _ficheNeuve) : le click qui suit le toucher la traverse. */
 .kta-v3d-fiche.kta-v3d-fiche-neuve { pointer-events: none; }
+/* ＋ / 🗑️ d'un ajustement (vue3d.js > _ajusterMenu) : les boutons de la carte (style.css > .kta-ajuster-boutons),
+   posés au sommet à l'écran, au-dessus de la scène et sous les fenêtres. */
+.kta-v3d-ajuster-menu { position: absolute; z-index: 6; }
+.kta-v3d-ajuster-menu[hidden] { display: none; }

@@ -9626,6 +9626,11 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
   letter-spacing: 0.02em;
 }
 
+/* Case « Tous les niveaux » (plan multi-niveau), séparée des cases de type. */
+.kta-rd-tous {
+  margin-bottom: 12px;
+}
+
 .kta-rd-total-wrap {
   margin-top: 14px;
   padding: 12px 14px;
@@ -10454,6 +10459,12 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   pointer-events: inherit;
   -webkit-user-drag: none;
   user-select: none;
+}
+/* 🩸 iOS : un appui long sur une icône (<img>) ouvrait le menu de l'image (Partager, Enregistrer dans Photos,
+   Copier…) au lieu du geste de l'app (ajuster un sommet, fiche). Toutes les icônes de la carte. */
+.leaflet-marker-icon, .leaflet-marker-icon img, .kta-marker-divicon .kta-marker-img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 
 /* Pastille du niveau actif : cercle jaune avec le chiffre, dans le control sous le zoom. */
@@ -20135,16 +20146,16 @@ html.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
   cursor: pointer;
 }
 .kta-guid-fermer:hover { color: var(--kta-texte); }
-/* Encart « reste » (itiGuidage.js > _rendreEncart) : destination, distance et temps restants sur une ligne sous la
-   consigne ; replié, une languette ▾ seule. Le toucher le replie ou le rouvre (pas la feuille de route). */
+/* Encart « reste » (itiGuidage.js > _rendreEncart) : destination, distance et temps restants sur UNE ligne sous la
+   consigne, toujours affiché (bandeau 2D, vue 3D, écran XL). Seule la destination rétrécit (ellipse) : distance et
+   temps restent entiers, en portrait comme en paysage. */
+.kta-guid-resume-ligne { display: flex; align-items: baseline; gap: 4px; min-width: 0; white-space: nowrap; }
+.kta-guid-resume-nom { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.kta-guid-resume-reste { flex: 0 0 auto; }
 .kta-guid-resume {
-  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 26px; box-sizing: border-box;
-  padding: 3px 10px 5px; background: none; border: 0; border-top: 1px solid var(--kta-bordure);
-  color: var(--kta-texte-2); font: inherit; font-size: 12.5px; line-height: 1.3; text-align: left; cursor: pointer;
+  width: 100%; min-height: 26px; box-sizing: border-box; padding: 3px 10px 5px;
+  border-top: 1px solid var(--kta-bordure); color: var(--kta-texte-2); font-size: 12.5px; line-height: 1.3;
 }
-.kta-guid-resume-txt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kta-guid-resume-chevron { flex: 0 0 auto; color: var(--kta-texte-3); font-size: 12px; }
-.kta-guid-resume.kta-guid-resume-reduit { min-height: 22px; padding: 0 10px 2px; justify-content: center; }
 .kta-guid-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px; }
 .kta-guid-actions:not(:empty) { padding: 0 10px 10px; }
 .kta-guid-btn { flex: 1 1 auto; min-height: 40px; font-size: 13px; }
@@ -20680,11 +20691,60 @@ button.kta-cfg-ligne-action {
 .kta-ajuster-apercu { stroke: var(--kta-accent); fill: none; }
 .kta-ajuster-poignee { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.35; }
 .kta-ajuster-poignee-attente { fill-opacity: 0; stroke-dasharray: 4 3; }
+/* 🎯 Point précis d'un POI (js/poiPrecis.js) : pointillé de l'icône au point, segment d'une chatière, carré au point.
+   Jamais interactifs (le clic passe à la carte). */
+.kta-precis-trait { stroke: var(--kta-accent); fill: none; }
+.kta-precis-segment { stroke: var(--kta-accent); fill: none; }
+.kta-precis-carre {
+  background: var(--kta-accent); border: 1px solid var(--kta-sur-accent); box-sizing: border-box;
+  pointer-events: none;
+}
+/* 🔗 Raccords à vérifier (js/raccordsTraces.js) : liste, bandeau de revue, deux points entourés sur la carte. */
+.kta-racc-boite { max-width: 480px; width: auto; height: auto; max-height: 90vh; max-height: 90dvh; }
+.kta-racc-corps { font-size: 13px; }
+.kta-racc-note { color: var(--kta-texte-3); margin: 0 0 10px; line-height: 1.5; font-size: 12px; }
+.kta-racc-vide { color: var(--kta-texte-2); margin: 8px 0; }
+.kta-racc-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.kta-racc-ligne {
+  display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 8px 10px; min-height: 40px;
+  background: var(--kta-surface); color: var(--kta-texte); border: 1px solid var(--kta-bordure);
+  border-radius: 8px; cursor: pointer; font: inherit; text-align: left;
+}
+.kta-racc-ligne:hover, .kta-racc-ligne:focus-visible { border-color: var(--kta-interaction); }
+.kta-racc-ligne-ecart { color: var(--kta-accent-texte); font-variant-numeric: tabular-nums; }
+.kta-racc-pied { margin-top: 12px; }
+/* Même allure que .kta-iti-floater, sans sa classe : celle-ci arme le mode « clic carte » (utils.js >
+   _modeClicCarteActif), et la revue laisse la carte et ses fiches libres. Le bandeau de l'insertion de sommets
+   (ajusterSommets.js > _bandeau) prend la même allure ; au-dessus de la vue 3D (99999). */
+.kta-racc-bandeau, .kta-ajuster-bandeau {
+  position: fixed; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  z-index: 100000;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px;
+  width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; padding: 10px 12px;
+  background: var(--kta-surface); color: var(--kta-texte-2); font-size: 13px;
+  border: 1px solid var(--kta-bordure); border-left: 3px solid var(--kta-accent); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+.kta-racc-bandeau .kta-btn, .kta-ajuster-bandeau .kta-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
+.kta-ajuster-bandeau-titre { color: var(--kta-accent-texte); font-weight: 700; }
+.kta-ajuster-bandeau-n { color: var(--kta-texte); font-variant-numeric: tabular-nums; }
+.kta-racc-nav, .kta-racc-actions { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.kta-racc-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
+.kta-racc-info { flex: 1 1 140px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
+.kta-racc-ecart { stroke: var(--kta-accent); fill: none; }
+.kta-racc-cercle { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.2; }
+/* Sommets de la mesure 📐 (measure.js > _majSommetsMesure) : rond doré plein, liseré sombre, lisible sur le plan. */
+.kta-mesure-sommet { fill: var(--kta-accent); fill-opacity: 1; stroke: var(--kta-sur-accent); }
 .kta-ajuster-menu { background: none; border: 0; }
-.kta-ajuster-suppr {
+/* ＋ et 🗑️ au sommet : deux cibles de 44 px (largeur totale = ajusterSommets.js > MENU_LARGE). */
+.kta-ajuster-boutons { display: flex; gap: 8px; }
+.kta-ajuster-suppr, .kta-ajuster-inserer {
   width: 44px; height: 44px; padding: 0; border-radius: 22px; cursor: pointer; font-size: 20px; line-height: 1;
   background: var(--kta-surface); color: var(--kta-texte); border: 2px solid var(--kta-erreur);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
-.kta-ajuster-suppr:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
-.kta-bearing-on .kta-ajuster-suppr { transform: rotate(calc(-1 * var(--kta-bearing, 0deg))); }
+.kta-ajuster-inserer { border-color: var(--kta-accent); font-weight: 700; }
+.kta-ajuster-suppr:focus-visible, .kta-ajuster-inserer:focus-visible {
+  outline: 2px solid var(--kta-interaction); outline-offset: 2px;
+}
+.kta-bearing-on .kta-ajuster-boutons { transform: rotate(calc(-1 * var(--kta-bearing, 0deg))); }

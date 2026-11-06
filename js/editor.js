@@ -20,6 +20,13 @@ let listePoints = [];
 // Marqueurs Leaflet créés par _ajouterMarker, pour les retirer SÉLECTIVEMENT au re-rendu (layerEditor contient
 // aussi les roads et zones de session : clearLayers les ferait disparaître à la suppression d'UN point).
 let _markersEditor = [];
+
+// 🩸 Retirer du GROUPE (utils.js > ktaRetirerCalque), pas seulement de la carte : marker.remove() le laissait dans
+// layerEditor ; masquer puis réafficher ce calque remettait sur la carte les anciens marqueurs (POI repositionné
+// revenu à son ancienne place, doublons) et chaque rendu en gardait un par point en mémoire.
+function _retirerMarqueursEditor() {
+  _markersEditor.forEach(function(m) { window.ktaRetirerCalque(m); });
+}
 let _editorClickHandler = null;  // ref stable pour un off idempotent (cf. initEditor / measure.js)
 
 const EDITOR_TAG_LABELS = {
@@ -62,7 +69,7 @@ function initEditor() {
   // polling SessionPersist réenregistre les points de l'ancien plan sous l'ID du nouveau.
   listePoints = [];
   // Nos marqueurs seulement (cf. _markersEditor).
-  _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
+  _retirerMarqueursEditor();
   _markersEditor = [];
 
   // Binding du clic idempotent (cf. measure.js) : l'ancien handler est retiré de la carte avant d'en poser un,
@@ -151,6 +158,10 @@ function afficherFormulaire(x, y, existingPoint) {
   const optionsNiveau = (isEdit && typeof window.ktaOptionsNiveauHtml === "function")
     ? window.ktaOptionsNiveauHtml(niveauInitial) : "";
   const descInitial  = isEdit ? (existingPoint.description || "") : "";
+  // ⚠️ contrat : à l'ajout, le niveau est celui qui est actif À L'OUVERTURE (le clic), pas à l'enregistrement : la vue
+  // 3D pose le point à son niveau en prêtant activeLevel le temps du clic (vue3d.js > _poserSommet).
+  const niveauAjout = (window.APP_CONFIG && Number.isInteger(window.APP_CONFIG.activeLevel))
+    ? window.APP_CONFIG.activeLevel : 0;
 
   // Échappement du préremplissage (une apostrophe casserait l'attribut value).
   function _esc(s) { return window.ktaEsc(s); }
@@ -291,7 +302,7 @@ function afficherFormulaire(x, y, existingPoint) {
     const tagForm = (selectType.value && selectType.value !== "__new__") ? selectType.value : (tagInitial || null);
     let niveau = null;
     if (isEdit) niveau = Number.isInteger(existingPoint.level) ? existingPoint.level : null;
-    else if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) niveau = window.APP_CONFIG.activeLevel || 0;
+    else if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) niveau = niveauAjout;
     return { nom: inputNom.value.trim() || nomInitial, x: x, y: y, niveau: niveau, type: tagForm, maj: Date.now() };
   }
 
@@ -342,7 +353,7 @@ function afficherFormulaire(x, y, existingPoint) {
     level: function() {
       if (selNiveauForm) { const n = Number.parseInt(selNiveauForm.value, 10); if (Number.isInteger(n)) return n; }
       if (isEdit) return niveauInitial;
-      return (window.APP_CONFIG && Number.isInteger(window.APP_CONFIG.activeLevel)) ? window.APP_CONFIG.activeLevel : 0;
+      return niveauAjout;
     }
   }) : null;
   if (_jonction && selNiveauForm) selNiveauForm.addEventListener("change", _jonction.rafraichir);
@@ -720,7 +731,7 @@ function afficherFormulaire(x, y, existingPoint) {
 
         // Multi-niveau actif : le point prend le niveau actif ; sinon aucun champ `level`.
         if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
-          point.level = window.APP_CONFIG.activeLevel || 0;
+          point.level = niveauAjout;
         }
         if (_jonction) window.KtaPoiJonction.appliquer(point, _jonction.lire());
         if (_danger) window.KtaPoiDanger.appliquer(point, _danger.lire());
@@ -730,6 +741,8 @@ function afficherFormulaire(x, y, existingPoint) {
 
         listePoints.push(point);
         _ajouterMarker(point);
+        // Une vue du plan (3D) relit ses points : le marqueur posé ici ne passe pas par renderEditorPoints.
+        if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("points");
         // Les photos prises avant le nom reçoivent la fiche définitive.
         if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.majFichesPoints && _photosAddedThisSession.size) {
           window.MyKTAMapPhotos.majFichesPoints(planId, [point]);
@@ -768,18 +781,69 @@ function _indexPointSession(id, x, y) {
 // clic est réémis en phase CAPTURE (map.js), il porte même sur un autre marqueur, un tracé ou une zone.
 // 🩸 PAS de glisser-déposer : un `touchmove` sur un marqueur deviendrait un drag au lieu d'un pan (POI déplacés
 // par accident, en silence). Ici rien ne bouge tant que le mode n'est pas armé, et le doigt ne cache pas la cible.
+// Échap annule comme ✕, sans rien écrire. 🩸 Le bandeau `.kta-iti-floater` fait reculer shortcuts.js > _echapCarte
+// (ECHAP_AVANT) : sans cet écouteur, Échap ne faisait rien.
 let _repoActif   = false;
 let _repoHandler = null;
+
+function _repoTouche(e) {
+  if (!e || e.key !== "Escape" || !_repoActif) return;
+  e.stopPropagation(); e.preventDefault();
+  _repoDesactiver();
+}
 
 function _repoDesactiver() {
   if (!_repoActif) return;
   _repoActif = false;
   if (window.map && _repoHandler) { try { window.map.off("click", _repoHandler); } catch(e) {} }
   _repoHandler = null;
+  window.removeEventListener("keydown", _repoTouche, true);
   const fl = document.getElementById("kta-repo-floater");
   if (fl) fl.remove();
 }
 window.repositionnerAnnuler = _repoDesactiver;
+// Point de session par id + coordonnées de l'icône (règle de _indexPointSession), ou null : poiPrecis.js le mute en
+// place, vue3d.js y retrouve le point de sa fiche.
+window.ktaPointSession = function(id, x, y) {
+  const i = _indexPointSession(id, x, y);
+  return i === -1 ? null : listePoints[i];
+};
+
+// Déplace un point de session à (nx, ny), px du plan : une écriture, une entrée d'historique. Repositionner (2D) et
+// 📍 Déplacer de la vue 3D (poiPrecis.js > armer, genre « deplacer ») passent par ici.
+function _deplacerPoint(pt, nx, ny, nom) {
+  const avant = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
+  const ancX = pt.x, ancY = pt.y;
+
+  // Mutation EN PLACE : le point garde son `level` (jamais réattribué au niveau affiché : pas de téléportation
+  // d'étage en douce), ses photos, ses tags, son point précis et `_srcCalque` s'il vient d'un calque ouvert à la
+  // modification.
+  pt.x = Math.round(nx * 100) / 100;
+  pt.y = Math.round(ny * 100) / 100;
+  if (window.KtaUid) window.KtaUid.touch(pt);
+
+  // Les liaisons inter-plan stockent les coords du point : sans recalage, le lien partirait de l'ancienne
+  // position à l'export KMZ.
+  if (window.InterPlanLinks && typeof window.InterPlanLinks.onPointMoved === "function"
+      && window._currentLoadedPlanId) {
+    try { window.InterPlanLinks.onPointMoved(window._currentLoadedPlanId, pt, ancX, ancY); }
+    catch(err) { console.warn("[Editor] recalage liaisons inter-plan :", err); }
+  }
+
+  if (window.renderEditorPoints) window.renderEditorPoints();
+  if (window.HistoryManager && avant) {
+    window.HistoryManager.record(
+      window.I18n.t("editor.undo.movePoint", { nom: nom }), avant, "editorPoints");
+  }
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(window.I18n.t("editor.repo.done", { nom: nom }), "info");
+  }
+}
+window.ktaDeplacerPointSession = function(pt, nx, ny) {
+  if (!pt || listePoints.indexOf(pt) < 0 || !Number.isFinite(nx) || !Number.isFinite(ny)) return false;
+  _deplacerPoint(pt, nx, ny, String(pt.nom || pt.id || ""));
+  return true;
+};
 
 // Bouton « Repositionner » de la popup d'un point de session (utils.js > buildPointPopupHtml).
 window.repositionnerPointEditor = function(id, x, y) {
@@ -825,33 +889,8 @@ window.repositionnerPointEditor = function(id, x, y) {
       _repoDesactiver();
       return;
     }
-    const pt = listePoints[i];
-    const avant = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
-    const ancX = pt.x, ancY = pt.y;
-
-    // Mutation EN PLACE : le point garde son `level` (jamais réattribué au niveau affiché : pas de téléportation
-    // d'étage en douce), ses photos, ses tags et `_srcCalque` s'il vient d'un calque ouvert à la modification.
-    pt.x = Math.round(nx * 100) / 100;
-    pt.y = Math.round(ny * 100) / 100;
-    if (window.KtaUid) window.KtaUid.touch(pt);
-
-    // Les liaisons inter-plan stockent les coords du point : sans recalage, le lien partirait de l'ancienne
-    // position à l'export KMZ.
-    if (window.InterPlanLinks && typeof window.InterPlanLinks.onPointMoved === "function"
-        && window._currentLoadedPlanId) {
-      try { window.InterPlanLinks.onPointMoved(window._currentLoadedPlanId, pt, ancX, ancY); }
-      catch(err) { console.warn("[Editor] recalage liaisons inter-plan :", err); }
-    }
-
-    if (window.renderEditorPoints) window.renderEditorPoints();
-    if (window.HistoryManager && avant) {
-      window.HistoryManager.record(
-        window.I18n.t("editor.undo.movePoint", { nom: nom }), avant, "editorPoints");
-    }
     _repoDesactiver();
-    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-      window.OOMGuard.showToast(window.I18n.t("editor.repo.done", { nom: nom }), "info");
-    }
+    _deplacerPoint(listePoints[i], nx, ny, nom);
   };
   window.map.on("click", _repoHandler);
 
@@ -869,6 +908,7 @@ window.repositionnerPointEditor = function(id, x, y) {
   btnAnn.textContent = window.I18n.t("editor.repo.cancel");
   document.body.appendChild(fl);
   btnAnn.addEventListener("click", _repoDesactiver);
+  window.addEventListener("keydown", _repoTouche, true);
 };
 window.modifierPointEditor = function(id, x, y) {
   if (typeof x !== "number" || typeof y !== "number") return;
@@ -931,6 +971,8 @@ function _ajouterMarker(point) {
   const _pj = window.KtaPoiJonction;
   marker._ktaNiveaux = (_pj && _pj.estJonction(point)) ? _pj.niveaux(point) : null;
   if (_pj) _pj.brancherMarqueur(marker, point);
+  // Point précis (poiPrecis.js) : pointillé et carré selon le zoom et la fiche ouverte.
+  if (window.KtaPoiPrecis) window.KtaPoiPrecis.brancherMarqueur(marker, point);
   // Tags copiés aussi : le 1er détermine l'icône, c'est le tag de filtrage (comme les marqueurs de calque).
   marker._ktaTags = Array.isArray(point.tags) ? point.tags.slice() : [];
 
@@ -1021,7 +1063,7 @@ function removeLastEditorPoint() {
 window.renderEditorPoints = function() {
   if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("points");
   if (!window.layerEditor) return;
-  _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
+  _retirerMarqueursEditor();
   _markersEditor = [];
   listePoints.forEach(_ajouterMarker);
 };

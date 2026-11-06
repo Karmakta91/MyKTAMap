@@ -208,10 +208,10 @@ function _repositionnerPuisAller(x, y, nom, opts) {
 }
 
 // Tracker arrêté : « D'où pars-tu ? » (ktaConfirm en mode choix). « Ici » (vue 3D en mode libre seulement) : le
-// tracker est recalé à la position 3D, niveau compris, comme « Je suis ici », puis l'itinéraire en part ; « Ma
-// dernière position (il y a N min) » (position confirmée seulement) : départ de là, sans recalage — vue 3D en
-// libre : sa place vient au tracker, niveau compris, cap gardé (KtaVue3D.placerSurTracker) ; « Me repositionner » :
-// picker. Annuler = pas d'itinéraire. → Promise du choix (null si annulé).
+// tracker est recalé à la position 3D, niveau compris, en saut (ancre `tp`, rien au Carnet), puis l'itinéraire
+// en part ; « Ma dernière position (il y a N min) » (position confirmée seulement) : départ de là, sans recalage —
+// vue 3D en libre : sa place vient au tracker, niveau compris, cap gardé (KtaVue3D.placerSurTracker) ;
+// « Me repositionner » : picker. Annuler = pas d'itinéraire. → Promise du choix (null si annulé).
 function _demanderDepart(x, y, nom, opts, etat, v3) {
   const T = function(k, p) { return window.I18n.t(k, p); }, esc = window.ktaEsc;
   const options = [];
@@ -235,9 +235,10 @@ function _demanderDepart(x, y, nom, opts, etat, v3) {
     const c = o.choix.valeur;
     if (c === "ici") {
       // sansReplan : l'itinéraire en place n'est pas recalculé depuis ce recalage, il va être remplacé.
+      // teleport (décision produit) : la place vient de la balade 3D, un saut et non un pas de terrain (Carnet).
       if (typeof window.recalerTrackerSurPoint === "function") {
         window.recalerTrackerSurPoint(v3.x, v3.y, Number.isInteger(v3.niveau) ? v3.niveau : undefined,
-                                      { sansReplan: true });
+                                      { sansReplan: true, teleport: true });
       }
       window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(v3.x, v3.y, v3.niveau) }));
     } else if (c === "derniere") {
@@ -963,11 +964,13 @@ window._onTrackerRecale = function(x, y, source, opts) {
   const road = _roadItineraireActive();
   if (!road || !Array.isArray(road.waypoints) || road.waypoints.length === 0) return;
 
-  // Validation uniquement au recalage "point" (coords exactes).
+  // Validation uniquement au recalage "point" (coords exactes). POI à point précis : l'étape vise le point précis
+  // (« ➕ », « Y aller ») ; une étape posée sur l'icône (`opts.icone`) se valide aussi.
   if (source === "point") {
+    const ic = opts && opts.icone;
+    const sur = function(w, q) { return Math.round(w.x) === Math.round(q.x) && Math.round(w.y) === Math.round(q.y); };
     const etape = road.waypoints.find(function(w) {
-      return !w.done && w.source !== "tracker" &&
-             Math.round(w.x) === Math.round(x) && Math.round(w.y) === Math.round(y);
+      return !w.done && w.source !== "tracker" && (sur(w, { x: x, y: y }) || (!!ic && sur(w, ic)));
     });
     if (etape) {
       etape.done = true;   // mutation directe : reprise par le rebuild + persistée
@@ -2017,13 +2020,15 @@ window.ouvrirItinerairModal = function() {
       if (!it) return;
       const p = it.point;
       if (typeof p.x !== "number" || typeof p.y !== "number") return;
+      // Point précis du POI s'il existe (poiPrecis.js > cible), sinon le POI.
+      const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(p) : p;
       _itineraryWaypoints.push({
-        x:      p.x,
-        y:      p.y,
+        x:      c.x,
+        y:      c.y,
         source: "search",
         label:  window.I18n.t("iti.wp.searchLabel", { name: (p.nom || p.id || "?"), layer: (it.layerLabel || it.layerId) })
       });
-      _ajouterWaypointVisuel({ x: p.x, y: p.y }, _itineraryWaypoints.length);
+      _ajouterWaypointVisuel({ x: c.x, y: c.y }, _itineraryWaypoints.length);
       _rafraichirListeWaypointsModale();
       _majPanneauFloaterCount();
       searchInput.value    = "";
@@ -2104,7 +2109,8 @@ window.ouvrirItinerairModal = function() {
       window.CrossPlanSearch.ouvrir("", { onSelect: function(plan, pt) {
         const label = pt.nom || pt.id || (pt.x + "," + pt.y);
         if (plan.id === (window._currentLoadedPlanId || null)) {
-          window.itineraireAjouterWaypoint(pt.x, pt.y, label);
+          const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(pt) : pt;
+          window.itineraireAjouterWaypoint(c.x, c.y, label);
           return;
         }
         // Les étapes déjà posées (non validées, hors origine tracker) deviennent des passages

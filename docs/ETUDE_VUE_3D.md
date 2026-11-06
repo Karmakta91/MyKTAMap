@@ -3,7 +3,7 @@
 > Étude de la vue 3D (`js/vue3d.js`), d'après les QCM de KARMA du 01 et du 02/11/2026. Lots 1, 2, 4, 4 bis, 4 ter et
 > 4 quater (passages entre niveaux) livrés : la vue s'ouvre par le bouton cube de la barre de droite (sous ≡ Filtres),
 > avec trois rendus (mixte par défaut, raccord par côté, structures, galerie), joystick au téléphone, les filtres de la
-> carte, l'itinéraire en tirets et le guidage, les ronds d'intersection, la fiche des POI, précachée, textes fr/en/es,
+> carte, l'itinéraire en ruban plein à chevrons et le guidage, les ronds d'intersection, la fiche des POI, précachée, textes fr/en/es,
 > docs. Reste : la mesure sur un vrai iPhone (lot 3) et la question 9. Contrats à jour :
 > `docs/architecture/tracking.md` § Vue 3D ; place dans l'interface : `docs/architecture/ui.md` § Vue 3D.
 
@@ -109,7 +109,7 @@ opposé à un pilier en mixte, ronds d'intersection absents en 3D) :
 | # | Sujet | Décision |
 |---|---|---|
 | 1 | Commandes au téléphone | **Joystick flottant à gauche** : apparaît sous le pouce (zone gauche sous le bandeau, au-dessus de la boussole) ; anneau ≥ 88 px, bouton 44 px, jetons `--kta-surface` / `--kta-accent`, aucune image ; débattement 40 px → 0 à 2,8 m/s, Y avant / arrière, X pas de côté ; **course** = débattement > 85 % tenu 0,6 s ; zone morte 12 px. Regard au glisser sur la moitié droite. Toucher le stick passe en libre ; en suivi, le glisser ne tourne pas. Deux doigts inchangés (le doigt du stick ne compte pas). Clavier inchangé ; pavé au PC (`pointer: fine`) et option « Pavé classique » dans ⚙️ (réglage par appareil) |
-| 2 | Itinéraire au sol | Ruban **0,35 m** à `--kta-interaction`, **liseré sombre** de 4 cm sur chaque bord, **tirets 1,2 m / 0,6 m** comme la 2D (« 12 6 »), chevrons gardés ; **marqueurs** : disque et mât de 0,6 m à chaque étape, 🏁 en panneau à l'arrivée. Itinéraires des membres dorés tiretés, distincts. Pas d'animation |
+| 2 | Itinéraire au sol | Ruban **plein de 0,3 m** à `--kta-interaction`, **liseré sombre** de 4 cm sur chaque bord, **chevrons de sens** sombres tous les 2 m comme le trajet du jeu (révisé le 05/11/2026 : les tirets calqués sur la 2D cédaient la place), chevrons de guidage gardés ; **marqueurs** : disque et mât de 0,6 m à chaque étape, 🏁 en panneau à l'arrivée. Itinéraires des membres dorés tiretés, distincts. Pas d'animation |
 | 3 | Raccord galerie / structures en mixte | **Par côté** : chaque tronçon juge sa paroi gauche et droite séparément (échantillon à axe ± (w + 0,5 m), structure à moins de 3 m − w → côté ouvert) ; la pièce reste entière ; à chaque bout d'un côté ouvert, un **pan de paroi perpendiculaire** vers la structure, borné à 1,5 m, coupé à sa face : ni fente ni bout orphelin ; aux nœuds, le joint garde ses parois sauf sur les branches dont le côté est ouvert. Deux côtés = chambre, structure dans l'axe = bout ouvert. Collisions : parois dessinées seulement, la structure bloque par la règle du tracker |
 | 4 | Ronds d'intersection | `road.js` mémorise sa dernière liste `[{ point, color, level }]` et l'expose (`getRoadIntersections`) ; la 3D la lit si l'option 2D est cochée, au niveau affiché, disque à la couleur donnée au-dessus des rubans ; redessin par `FilterPanel.onChange` ou `kta:intersectionsChange` ; aucun recalcul côté 3D |
 | 5 | Marque « bêta » | Retirée partout (vue, Bienvenue, guides, Aide, AI_CONTEXT, notes, README, docs) ; la phrase « la 3D montre le plan, pas la galerie réelle » reste |
@@ -201,7 +201,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
 - **Rangée du haut** : ✕, ≡ (collé à ✕), 🚨 Sortie d'urgence, ❓ aide, ⚙️ (tuile : suivi / libre, 🦅, ⛏️ hauteur,
   rendu, boussole) ; pastille 🧭 / 🕹️ du mode en haut à gauche ; Échap
   ferme d'abord un réglage, une fiche ou une fenêtre ouverts ; focus dans la vue, rendu au bouton à la fermeture.
-- **Guidage** (QCM du 02/11/2026) : l'itinéraire en tirets bordés de sombre (étapes : mât ; arrivée : 🏁), au niveau de
+- **Guidage** (QCM du 02/11/2026) : l'itinéraire en ruban plein bordé de sombre, chevrons de sens (étapes : mât ; arrivée : 🏁), au niveau de
   chacun de ses points, redessiné dès qu'il
   change (tracé depuis 🚨 pendant la vue compris) ; bandeau compact sous la rangée du haut (consigne réelle en suivi,
   aperçu marqué en libre) ; chevrons dorés au sol vers la prochaine consigne.
@@ -248,8 +248,8 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   (`_hachurer`, une bande sombre tous les 0,6 m, en coordonnées monde) ; types perso = aplat au sol. Remblais,
   effondrement et inaccessible arrêtent le pas dans les trois rendus, en tube comme en chambre (décision de KARMA ;
   l'inaccessible par la seule constante `galerieEmprise.js > INACCESSIBLE_BOUCHE`), en 3D seulement.
-- **Tracés** : rubans de 0,25 m à 3 cm du sol ; **itinéraire** : tirets de 1,2 m tous les 1,8 m, ruban de 0,35 m à
-  `--kta-interaction` sur un liseré `--kta-fond` de 4 cm de chaque côté, à 5 cm du sol, non éclairés et sans
+- **Tracés** : rubans de 0,25 m à 3 cm du sol ; **itinéraire** : ruban plein de 0,3 m à `--kta-interaction` sur un liseré
+  `--kta-fond` de 4 cm de chaque côté, chevrons de sens `--kta-fond` tous les 2 m, à 5 cm du sol, non éclairés et sans
   compression de tons (lisibles hors du faisceau, le brouillard les éteint au loin) ; disque et mât de 0,6 m à chaque
   étape, panneau 🏁 à l'arrivée. **Ronds d'intersection** (option de la carte) : disques de 0,35 m de rayon à 4 cm,
   la liste de la carte (`getRoadIntersections`), niveau affiché.
@@ -421,6 +421,72 @@ sur le pire cas. ⚠️ L'émulation ralentit le processeur, pas le GPU : le GPU
 triangles et les appels (×3,6 et ×4,4 de 30 à 100 m au téléphone, ×5,4 et ×6,6 en plongée 60 m) ; **un vrai iPhone
 n'est pas mesuré** : c'est le chiffre à prendre avant de juger la borne de 100 m.
 
+### Vue d'édition dézoomée à 150 m (rayon construit plafonné)
+
+Le recul maximal de la vue d'édition passe de 60 à 150 m. Le rayon vu suit (2,3 m par mètre de recul : 345 m) ;
+sans plafond, le rayon construit aussi. Mesures `KTA_V3D_PERF=zoom KTA_V3D_TEL=1` (plan dense, Chromium, iPhone
+émulé, processeur × 4, portée 30 m, inclinaison 60°) : zoom de 18,4 m au recul voulu, temps jusqu'à toutes les tuiles
+posées (3 par image), puis rendu posé sur un tour complet. ⚠️ Poste partagé avec d'autres lots pendant les mesures :
+le temps d'une image varie d'un tiers d'un passage à l'autre, le p95 bien plus ; la médiane et les appels sont les
+chiffres fiables.
+
+| Recul · rayon construit | Tuiles montrées | Triangles · appels | ms / image (médiane · p95 · max) | Zoom : tuiles posées · images > 33 ms |
+|---|---|---|---|---|
+| 60 m · 138 m (borne d'avant) | 268 | 9 363 · 134 | 9,9 à 12,4 · 15,2 à 20,9 · 19,9 à 30,8 | 2,5 à 2,7 s · 18 à 23 sur 79 |
+| 150 m · 345 m (sans plafond) | 1 526 | 39 029 · 583 | 50,2 · 75,2 · 89,3 | 28,9 s · 423 sur 498 |
+| 150 m · 138 m | 268 | 25 685 · 356 | 28,1 · 37,6 · 44,3 | 3,1 s · 53 sur 79 |
+| 150 m · 110 m | 171 | 22 815 · 321 | 20,0 · 31,3 · 41,6 | 1,5 s · 14 sur 46 |
+| **150 m · 100 m (retenu)** | **146** | **21 473 à 21 573 · 302** | **21,4 à 26,6 · 33,6 à 57,1 · 43,7 à 91,6** | **1,4 à 1,7 s · 21 à 25 sur 38** |
+| 150 m · 80 m | 94 | 16 505 · 228 | 16,4 à 19,4 · 25,1 à 46,3 · 37,8 à 99,7 | 0,85 s · 10 à 14 sur 21 |
+| 100 m · 100 m | 146 | 14 803 à 14 935 · 213 | 14,4 à 17,0 · 22,2 à 42,0 · 32,7 à 84,9 | 1,2 à 1,4 s · 9 à 18 sur 38 |
+
+Sans plafond, le budget de 33 ms est perdu (médiane 50 ms, 29 s de saccades). **Parade** : rayon construit plafonné
+(`vue3d.js > RAYON_RECUL_MAX`, 100 m) ; au-delà, sol, plafond, plan au sol 🗺️ et brouillard suivent seuls le rayon vu
+(`_rayonVue`) : le sol nu (ou le plan) sans structures. Vue de haut, tout le disque construit est à l'écran : le coût
+suit le rayon construit, pas le recul (appels comptés par objet dans le champ de la caméra : ~2 maillages par tuile,
+les panneaux sont une vingtaine). Médiane à 150 m sous le budget (21 à 27 ms) ; le p95 le frôle ou le dépasse sur un
+poste chargé. 80 m est le repli si un vrai iPhone peine. Tas JS 87 à 111 Mo dans tous les cas (arrondi de Chromium,
+non discriminant). Le plan au sol garde 1 024 px au doigt : à 150 m, 828 m de côté, ~0,8 m par pixel.
+
+### Tout le plan (case 🛡️ « Limiter la portée » décochée, décision du 06/11/2026)
+
+Ces bornes (portée 100 m, recul 150 m, rayon construit 100 m) sont la case 🛡️ de la tuile ⚙️, cochée par défaut.
+Décochée : portée « Tout le plan » (diagonale de l'emprise), recul jusqu'à cette diagonale, rayon construit sans
+plafond, **version brute** (tout en pleine définition, sans allègement du lointain). Mesures
+`KTA_V3D_PERF=toutplan` (`KTA_V3D_SEUL=toutplan` pour elles seules), Chromium, GPU de bureau récent (RTX 5070) ;
+plans FICTIFS en mémoire. Construction = de la décoche à la dernière tuile posée (3 par image, comme en vrai) ;
+rendu posé = un tour complet (`mesurer`, 120 images, CPU + GPU) ; tas JS après ramasse-miettes (CDP).
+
+| Plan · rendu | Construction · images > 33 ms | Yeux, tout le plan : ms médiane · p95 · appels | Édition au recul max : ms médiane · p95 · appels | Géométries · textures · tas JS |
+|---|---|---|---|---|
+| Relevé fictif · structures / mixte | 0,6 à 0,8 s · 1 à 3 | 1,2 · 1,7 à 2,1 · 66 à 116 | 1,8 à 2,4 · 2,8 à 3,2 · 129 à 226 | 94 à 191 · 31 · 12 à 13 Mo |
+| 2 000 structures + 900 tracés sur 400 × 400 m (× 2 niveaux) · structures | 3,8 s · 3 | 6,9 · 8,8 · 688 | 18,9 · 28,0 · 2 303 | 1 530 · 159 · 54 Mo (44 limitée) |
+| idem · mixte | 3,7 s · 1 | 8,6 · 11,6 · 882 | 22,2 · 30,5 · 2 950 | 2 177 · 161 · 85 Mo (71 limitée) |
+| Plan dense (13 700 structures, 805 m de côté) · structures | 3,1 s · 1 | 12,6 · 16,0 · 864 | **40,7 · 54,7** · 2 803 | 144 · 525 · 59 Mo (53 limitée) |
+
+Même chose en iPhone émulé (`KTA_V3D_TEL=1`, processeur × 4, GPU du PC) : plan de 2 000 structures, construction
+6,6 à 12 s (61 à 185 images > 33 ms), yeux 24,7 à 32,1 ms (p95 37 à 44), **édition au recul max 134 à 158 ms** ;
+plan dense : yeux 47 ms, édition 319 ms. Case cochée, rien ne change (1,7 à 3,2 ms par image). Ouverture directe
+en « Tout le plan » (PC, tout construit d'un coup) : 0,05 à 0,23 s.
+
+**Panneaux de POI dézoomés** (1 000 POI fictifs sur 320 × 320 m, sans structure ; `_majPanneaux`,
+`_desencombrer`). Avant : tous montrés à lettres minimales (222 px), 183 000 à 196 000 paires de panneaux qui se
+recouvrent au recul max, 9 000 à 18 500 à 150 m. Après : icône de 28 px, aucun recouvrement, 35 icônes gardées au
+recul max (965 masquées), 100 à 260 à 150 m. iPhone émulé (processeur × 4) : édition au recul max 61 → 33 ms par
+image (p95 82 → 48), à 150 m 32 → 19 ms (p95 45 → 29) ; dé-chevauchement de 1 000 panneaux 0,3 à 0,5 ms au PC,
+6,5 ms au téléphone émulé (refait seulement quand la caméra bouge). PC : bloqué à la synchro d'écran (16,7 ms)
+avant comme après. Checkup : `checkup-vue-3d.js` § 42.
+
+**Conclusion.** Au PC, le plan lourd demandé reste sous le budget de 33 ms dans les deux vues (p95 de l'édition à
+28 – 30 ms, au bord) et se construit en moins de 4 s sans saccade : **pas d'allègement du lointain (étape 2) pour
+l'instant**. Le coût de la vue d'édition au recul max suit les **appels** (2 300 à 2 950 : chaque tuile a ses
+maillages et tout est à l'écran), pas les triangles ; c'est là que portera l'étape 2 si elle devient nécessaire
+(tuiles lointaines fusionnées ou simplifiées). Elle le deviendra si : un PC à GPU intégré dépasse 33 ms sur un plan
+réel, ou le plan dense (805 m, 13 700 structures) doit tenir en édition (41 / 55 ms ici). Au téléphone, « Tout le
+plan » est inutilisable sur un gros plan (134 à 319 ms par image en édition) : d'où la case recochée à chaque
+ouverture et la question à la décoche. Non mesuré : mémoire GPU (illisible depuis la page), vrai téléphone, GPU
+intégré.
+
 ### Mode galerie
 
 Réseau **synthétique** (`KTA_V3D_PERF=galerie`) : 26 tracés est-ouest et 26 nord-sud tous les 12 m sur 300 m, un
@@ -545,9 +611,9 @@ redessins dus au déplacement de la carte (moveend / zoomend sous la décimation
 | Sujet | Décision |
 |---|---|
 | Où | Vue plongeante 🦅 seulement ; ✏️ fait apparaître la barre, rien ne se dessine sans outil armé (règle de la 2D : retoucher l'outil l'éteint) ; à hauteur d'yeux, pas d'édition |
-| Outils | Toutes les structures (types perso compris), zones, tracés, 📐 mesure ; pas les POI ; ni 🪜 jonction (deux niveaux, la 3D en montre un) ni 🧹 Effacer (« Sélectionner » et « Par zone » se jouent sur la carte) |
+| Outils | Toutes les structures (types perso compris), zones, tracés, 📐 mesure ; POI (✏️ ajout de point, décision du 04/11/2026 : toucher au sol, fenêtre de nommage de la carte par-dessus la vue) ; ni 🪜 jonction (deux niveaux, la 3D en montre un) ni 🧹 Effacer (« Sélectionner » et « Par zone » se jouent sur la carte) |
 | Gestes | Ceux de la 2D, rejoués (`map.fire` au point touché) : undo, uid, fiches, styles, sous-menus, droits de la 2D ; caméra inchangée (seul un toucher bref pose) ; outil armé passe avant la fiche |
-| Interface | La barre de droite 2D : mêmes boutons, même ordre (📐 🛣️ ⬛ 🏛️), mêmes panneaux |
+| Interface | La barre de droite 2D : mêmes boutons, même ordre (📐 ✏️ 🛣️ ⬛ 🏛️), mêmes panneaux |
 | Niveau | Celui de la 3D ; la carte garde le sien |
 | Coût | Aperçu au sol pendant l'objet, une reconstruction à sa fin ; tuiles loin de l'objet reprises |
 | Fermeture au doigt | Choix du lot : rond doré de 0,3 m autour du 1er sommet, en mètres (24 px d'écran fermaient un mur de 0,4 m au 4e coin) ; zoomer agrandit la cible |
@@ -607,9 +673,11 @@ du plan (collecte, grille des volumes, index, empreinte), pas les tuiles. Non me
 | 6 | Calques masqués | Comme sur la carte (QCM du 02/11/2026, à la place de « montrés en 3D ») : un calque masqué ne se dessine pas, ses objets bloquent toujours |
 | 7 | Contexte WebGL | **c** : libéré à chaque fermeture + reprise automatique après une perte, fermeture avec message si elle échoue |
 | 8 | Distance de vue | **a** : 30 m fixes ; remplacé (QCM du 03/11/2026) par le réglage ⚙️ **Portée**, curseur de 15 à 100 m, 30 m par défaut, retenu sur l'appareil |
-| 8 bis | Lampe (QCM du 03/11/2026, revu le même jour) | Réglages ⚙️ retenus sur l'appareil : **intensité** en curseur de 25 à 300 % (100 % = la lampe d'origine ; plus haut, plus loin : force, décroissance, coupure, halo et brouillard suivent ; l'ancienne Forte = 200 %), **faisceau** en curseur de 40 à 160° de cône (71° par défaut ; la pénombre grandit avec la largeur, un faisceau large se fond dans le noir), **☀️ Plein jour** en interrupteur (ambiance de la vue plongeante, brouillard gardé à la portée) ; multiplié au facteur lampe d'une greffe ; une greffe qui le demande (`reglagesFiges`, le jeu) fige portée à 30 m, 100 %, 71° et Plein jour coupé, réglages rendus au retrait |
+| 8 bis | Lampe (QCM du 03/11/2026, revu le même jour) | Réglages ⚙️ retenus sur l'appareil : **intensité** en curseur de 25 à 300 % (100 % = la lampe d'origine ; plus haut, plus loin : force, décroissance, coupure, halo et brouillard suivent ; l'ancienne Forte = 200 %), **faisceau** en curseur de 40 à 160° de cône (71° par défaut ; la pénombre grandit avec la largeur, un faisceau large se fond dans le noir), **☀️ Plein jour** en interrupteur (revu le 06/11/2026 : soleil rasant venu du nord-ouest du plan, ambiance baissée, relief lisible, brouillard clair qui pâlit le lointain, ni ombres ni occlusion ; lampe gardée à son réglage ; effectif aussi en vue d'édition, décoché = éclairage plat) ; multiplié au facteur lampe d'une greffe ; une greffe qui le demande (`reglagesFiges`, le jeu) fige portée à 30 m, 100 %, 71° et Plein jour coupé, réglages rendus au retrait |
 | 8 quater | Cavage dans une galerie plus large que son tracé (retour terrain du 03/11/2026) | La porte garde la largeur du tracé ; de la pierre de taille comble, côté par côté, l'espace du cadre à la structure la plus proche (au plus 3 m), du sol au plafond, et bloque le pas comme la porte fermée, porte ouverte comprise (seule son ouverture laisse passer) ; rien en rendu galerie ; itinéraire 2D inchangé |
-| 8 ter | Zoom de la vue plongeante (QCM du 03/11/2026) | Comme une carte : pincer, molette et + / − = zoom (recul de 6 à 60 m, 18,4 m par défaut) ; deux doigts glissés ensemble, Maj + molette et ▲ ▼ = inclinaison ; tuiles qui suivent le recul ; retenu tant que la vue est ouverte |
+| 8 quinquies | Cône d'un puits comblé (bug du 04/11/2026 ; révise la règle du 02/11/2026 « le cône arrête ») | Le cône d'éboulis de `pc` / `psf` **laisse toujours un passage**, comme le bassin : dans un tube, poussé vers la paroi du côté du POI juste assez pour laisser un corps (0,8 m) et 0,1 m de jeu en face ; enfoncé dans sa paroi plutôt que réduit (il garde sa taille, la roche en cache une part), centre au plus sur la paroi, rayon réduit seulement au-delà (galerie de moins de 1,8 m). On bute toujours sur le cône, on passe à côté ; la bouche ne bouge pas. Chambre, Structures, sans axe à 10 m : inchangé ; itinéraire 2D inchangé ; ruban 3D toujours par-dessus le cône quand il y passe |
+| 8 sexies | Formes des POI sans passage (décisions du 05/11/2026) | **Chatière** : roche brute en travers de la galerie la plus proche, percée au ras du sol d'un passage bas (environ 0,6 m de haut sur 0,9 m de large, roche au-dessus et sur les côtés, axe long le long de la galerie) ; ne bloque pas, la caméra s'abaisse en la traversant (suivi et libre) puis remonte ; longueur fixe (1,8 m, aucune donnée sur le POI). **Plaque indication** : plaque émaillée bleu et blanc à plat sur la paroi la plus proche, au nom du POI, sans panneau flottant (toucher la plaque = sa fiche), élargie au nom jusqu'à 1 m puis sur deux lignes, nom jamais coupé ; sans paroi de galerie (rendu Structures, salle), sur la face de structure la plus proche (pilier, mur, mur en ligne, front) à 3 m au plus, du côté du POI, sans panneau non plus (décision du 05/11/2026 ; la paroi de la galerie passe d'abord, rien ne change en rendu Galeries) ; rien à 3 m : le panneau reste. Épure et portail suivent la même règle. **Épure** : trait clair sur la paroi la plus proche, à hauteur d'yeux, sans texte. **Plaque** : le nom reste avec 🧱 coupé (c'est un repère). **Portail** : cadre de porte contre la paroi, lumineux à `--kta-interaction` s'il a une liaison, éteint sinon. **« Passer au plan X »** dans la fiche de **tout point lié** (portail ou non), avec la confirmation de la carte ; plan absent : inactif. **Véhicule** : voiture simplifiée (3,2 × 1,4 × 1,3 m, une citadine) dans la galerie la plus proche, le long d'elle, qui bloque à hauteur d'yeux comme un pilier. Entrée du plan, salle et électricité restent en panneau |
+| 8 ter | Zoom de la vue plongeante (QCM du 03/11/2026) | Comme une carte : pincer, molette et + / − = zoom (recul de 6 à 150 m, 18,4 m par défaut ; d'abord 60 m) ; deux doigts glissés ensemble, Maj + molette et ▲ ▼ = inclinaison ; tuiles qui suivent le recul ; retenu tant que la vue est ouverte |
 | — | Murs et piliers | Règle ajoutée : un mur est toujours sous un pilier ou un front de son niveau (modèle de scène) |
 | A bis | Mode mixte (QCM du 02/11/2026) | L'interrupteur exclusif devient **trois états Mixte / Structures / Galerie**, mixte par défaut, retenu par plan ; en mixte, structures partout, tubes seulement à plus de 3 m d'une structure, bouts ouverts dans les chambres, collisions des deux règles, zones et POI selon le lieu (tube ou chambre) |
 | A | Mode « galerie » (QCM du 01/11/2026) | Interrupteur **exclusif** structures / galerie, bouton 🏛️ / 🛣️ écrit en clair, retenu par plan, défaut d'après les structures du niveau ; **carrefours exacts** (option a : dalle, coupes, onglets bornés, coins reliés, bout fermé) ; largeurs principal 2,5 m, **secondaire 2 m, chemin 1,7 m**, perso 2 m (réglage par type plus tard) ; parois en **moellons de calcaire taillés** (assises à joints décalés), sol et plafond au grain calcaire, **liseré** au sol à la couleur de la légende ; collision contre les parois et les remblais (fonction exposée) ; zones découpées au tube (option a, CPU), rideau en travers pour l'inaccessible ; POI à moins de **3 m**, sinon masqués ; structures masquées et sans collision |

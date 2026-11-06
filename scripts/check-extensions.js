@@ -934,7 +934,27 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const { K: K2 } = nouveauContexte(null);
     K2.register({ nom: "al2", apiVersion: 1, alertes: { lister: () => { throw new Error("x"); } } });
     t("🩸 extension en erreur → aucune alerte, aucune exception", (await K2.alertesExtension()).length === 0);
+    t("sans `vue`, une alerte d'extension n'est pas « déjà vue » (vue: false)", l.every((x) => x.vue === false));
+    const { K: K3 } = nouveauContexte(null);
+    K3.register({ nom: "al3", apiVersion: 1, alertes: { lister: () => [
+      { id: "v1", title: "T", released: "2026-10-13T10:00:00Z", vue: true },
+      { id: "v2", title: "T", released: "2026-10-13T10:00:00Z", vue: "true" },
+      { id: "v3", title: "T", released: "2026-10-13T10:00:00Z", vue: 1 }] } });
+    const l3 = await K3.alertesExtension();
+    t("🩸 « déjà vue » : seul vue === true passe (ni \"true\", ni 1)", l3.length === 3 && l3[0].vue === true &&
+      l3[1].vue === false && l3[2].vue === false, l3.map((x) => x.vue));
     const AC = lire("js/alertChecker.js");
+    t("AlertChecker : une alerte que l'extension dit vue est acquittée (pas rouverte d'office), seulement pour un id ext_",
+      /function _vueParExtension\(a\) \{ return a\.vue === true && String\(a\.id \|\| ""\)\.indexOf\("ext_"\) === 0; \}/.test(AC) &&
+      /\.filter\(function\(a\) \{\s*if \(_vueParExtension\(a\)\) return false;/.test(AC));
+    const IA6 = lire("js/interfaceAlerts.js");
+    const corpsSel = IA6.slice(IA6.indexOf("window.afficherSelecteurAlertes = function"), IA6.indexOf("window.afficherModaleAlerte = function"));
+    t("liste de la fenêtre 🚨 : émet mktm:alertes-listees { alertes: [{ id, released }] } après l'avoir posée ; « acquittée » " +
+      "aussi pour une alerte ext_ dite vue",
+      /appendChild\(modal\);[\s\S]{0,400}mktm:alertes-listees[\s\S]{0,120}id: String\(a\.id \|\| ""\), released: String\(a\.released \|\| ""\)/
+        .test(corpsSel) && /if \(a\.vue === true && String\(a\.id \|\| ""\)\.indexOf\("ext_"\) === 0\) return true;/.test(corpsSel));
+    t("🔒 sans extension, le signal ne change rien : fermer la liste n'acquitte rien sur l'appareil (dismiss sans argument)",
+      /function _fermer\(\) \{[\s\S]{0,300}AlertChecker\.dismiss\(\);/.test(corpsSel));
     t("AlertChecker : liste de l'extension fusionnée (check, bouton 🚨), relue à mktm:alertes-changees, attente bornée",
       /KtaExtensions\.alertesExtension\(\)/.test(AC) && /addEventListener\("mktm:alertes-changees"/.test(AC) &&
       /const ALERTES_DELAI_MS = 3000;/.test(lire("js/ktaExtensions.js")));

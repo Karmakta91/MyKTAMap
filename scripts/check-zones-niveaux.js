@@ -39,6 +39,7 @@ function contexte(cfg) {
     formatDistance: (m) => Math.round(m) + " m",
     getProfondeurNiveau: () => null,
     ktaEsc: KTA_ESC,
+    ktaRetirerCalque: function (l) { if (l) l.remove(); },   // utils.js, non chargé ici
     Blob, Uint8Array, ArrayBuffer, DataView, Math, JSON, Promise, Error, Date, Set, Map,
     isFinite, Number, Array, String, Object, RegExp
   };

@@ -1119,6 +1119,27 @@ function setPlanHauteurGalerie(planId, value) {
 window.getPlanHauteurGalerie = getPlanHauteurGalerie;
 window.setPlanHauteurGalerie = setPlanHauteurGalerie;
 
+// ── Raccords ignorés (🔗 Raccords à vérifier, js/raccordsTraces.js) ──────────────────────
+// Par plan, pref `raccordsIgnores` = clés d'écart (chaînes) que l'auteur a déclarées voulues ; absente → [].
+// Plafond RACCORDS_IGNORES_MAX (les plus anciennes partent) : la pref vit dans localStorage.
+const RACCORDS_IGNORES_MAX = 2000;
+function getPlanRaccordsIgnores(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _readPlanPrefs(pid).raccordsIgnores;
+  return Array.isArray(v) ? v.filter(function (k) { return typeof k === "string" && k; }) : [];
+}
+function setPlanRaccordsIgnores(planId, cles) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  const liste = Array.isArray(cles) ? cles.filter(function (k) { return typeof k === "string" && k; }) : [];
+  if (liste.length) prefs.raccordsIgnores = liste.slice(-RACCORDS_IGNORES_MAX);
+  else delete prefs.raccordsIgnores;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanRaccordsIgnores = getPlanRaccordsIgnores;
+window.setPlanRaccordsIgnores = setPlanRaccordsIgnores;
+
 // ── Rendu de la vue 3D (js/vue3d.js) : "mixte", "structures" ou "galerie", retenu par plan ──────────────────
 // Par plan, pref `vue3dRendu` ; absente → null (la vue prend le mixte). Autre valeur refusée.
 function getPlanRenduVue3D(planId) {
@@ -1136,6 +1157,23 @@ function setPlanRenduVue3D(planId, value) {
 }
 window.getPlanRenduVue3D = getPlanRenduVue3D;
 window.setPlanRenduVue3D = setPlanRenduVue3D;
+
+// ── 📏 Distance totale : case « Tous les niveaux » (js/interfaceDistanceTotale.js), retenue par plan ──────────
+// Par plan, pref `distTotTousNiveaux` ; absente → false (le niveau affiché seul compte).
+function getPlanDistTotTousNiveaux(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  return _readPlanPrefs(pid).distTotTousNiveaux === true;
+}
+function setPlanDistTotTousNiveaux(planId, value) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (value === true) prefs.distTotTousNiveaux = true;
+  else delete prefs.distTotTousNiveaux;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanDistTotTousNiveaux = getPlanDistTotTousNiveaux;
+window.setPlanDistTotTousNiveaux = setPlanDistTotTousNiveaux;
 
 // ── Vue d'édition de la 3D retenue, par plan, sur cet appareil (vue3d.js > _retenirEdition) ──────────────────
 // Pref `vue3dEdition` = { on: bool, recul: m, inclinaison: ° } ; absente ou illisible → null (hauteur d'yeux, zoom et
@@ -1213,6 +1251,25 @@ function setVue3DTextures(oui) {
 window.getVue3DTextures = getVue3DTextures;
 window.setVue3DTextures = setVue3DTextures;
 
+// ── Fiches des objets au toucher dans la vue 3D (structure, zone, tracé), réglage de CET appareil ───────────────
+// localStorage["myktamap_v3d_fiches_objets_v1"] = "0" (coupé) | "1" ; absente → selon le pointeur (décision produit) :
+// coupé au doigt (window.ktaAppareilTactile, pointer: coarse : une fiche ouverte par erreur gêne l'écran), ouvert au
+// pointeur fin. Réglé dans la tuile ⚙️ de la vue (vue3d.js > _basculerFichesObjets). ⚠️ contrat : un panneau de POI
+// ouvre toujours sa fiche ; une greffe `fiches: false` coupe tout, quel que soit ce réglage.
+const V3D_FICHES_CLE = "myktamap_v3d_fiches_objets_v1";
+function getVue3DFichesObjets() {
+  try {
+    const v = localStorage.getItem(V3D_FICHES_CLE);
+    if (v === "1" || v === "0") return v === "1";
+  } catch (e) { /* stockage refusé : le défaut */ }
+  return !(typeof window.ktaAppareilTactile === "function" && window.ktaAppareilTactile());
+}
+function setVue3DFichesObjets(oui) {
+  try { localStorage.setItem(V3D_FICHES_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DFichesObjets = getVue3DFichesObjets;
+window.setVue3DFichesObjets = setVue3DFichesObjets;
+
 // ── Portée de la vue 3D (brouillard, profondeur, lampe, tuiles), réglage de CET appareil ────────────────────────
 // localStorage["myktamap_v3d_portee_v1"] = mètres entiers, bornés à V3D_PORTEE ; absente ou illisible → défaut.
 // Réglée par le curseur de la tuile ⚙️ (vue3d.js > reglerPortee). ⚠️ contrat : la borne haute coûte des tuiles et
@@ -1237,6 +1294,33 @@ function setVue3DPortee(m) {
 window.V3D_PORTEE = V3D_PORTEE;
 window.getVue3DPortee = getVue3DPortee;
 window.setVue3DPortee = setVue3DPortee;
+
+// ── 🛡️ Portée limitée de la vue 3D (anti-crash mémoire), réglage de CET appareil ───────────────────────────────
+// localStorage["myktamap_v3d_limiter_portee_v1"] = "0" (décochée) | "1" ; absente ou illisible → cochée (portée
+// bornée à V3D_PORTEE, recul et scène plafonnés : vue3d.js > _limitee). ["myktamap_v3d_portee_tout_v1"] = "1" : cran
+// « Tout le plan » du curseur de portée, qui ne vaut que décochée. ⚠️ contrat (décision produit) : au doigt
+// (window.ktaAppareilTactile), la vue la recoche à chaque ouverture (vue3d.js > ouvrir) ; au pointeur fin, décochée
+// reste décochée.
+const V3D_LIMITER_PORTEE_CLE = "myktamap_v3d_limiter_portee_v1";
+const V3D_PORTEE_TOUT_CLE = "myktamap_v3d_portee_tout_v1";
+function getVue3DLimiterPortee() {
+  try { return localStorage.getItem(V3D_LIMITER_PORTEE_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DLimiterPortee(oui) {
+  try { localStorage.setItem(V3D_LIMITER_PORTEE_CLE, oui ? "1" : "0"); } catch (e) { /* valeur de la vue seule */ }
+  return !!oui;
+}
+function getVue3DPorteeTout() {
+  try { return localStorage.getItem(V3D_PORTEE_TOUT_CLE) === "1"; } catch (e) { return false; }
+}
+function setVue3DPorteeTout(oui) {
+  try { localStorage.setItem(V3D_PORTEE_TOUT_CLE, oui ? "1" : "0"); } catch (e) { /* valeur de la vue seule */ }
+  return !!oui;
+}
+window.getVue3DLimiterPortee = getVue3DLimiterPortee;
+window.setVue3DLimiterPortee = setVue3DLimiterPortee;
+window.getVue3DPorteeTout = getVue3DPorteeTout;
+window.setVue3DPorteeTout = setVue3DPorteeTout;
 
 // ── Lampe de la vue 3D : intensité, faisceau, Plein jour, réglages de CET appareil ──────────────────────────────
 // localStorage["myktamap_v3d_lampe_intensite_v1"] = % entier (V3D_LAMPE.intensite, 100 = la lampe d'origine),

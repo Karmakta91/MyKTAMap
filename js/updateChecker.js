@@ -7,7 +7,7 @@
 // updateChecker.js — détection de mise à jour via version.json, à chaque ouverture.
 // Version reçue comparée (semver) à la version connue : 1er lancement → notée sans modale ;
 // plus récente → modale « Mise à jour disponible » (afficherModaleUpdateDispo, différée après le
-// splash) ; hors ligne → silencieux.
+// splash), sauf si le code chargé (__MKM__.build) la vaut déjà → notée sans modale ; hors ligne → silencieux.
 // Expose : window.UpdateChecker { check (au boot), notifySplashEnded, showCurrent (badge version),
 //   onCheck(cb), getCurrentVersion, getLastKnownData, compareSemver(a, b) → -1 | 0 | 1 }
 // localStorage : myktamap_known_version · myktamap_last_version_data (notes, hors ligne) ·
@@ -145,6 +145,12 @@
     return 0;
   }
 
+  // Le code chargé (__MKM__.build) vaut-il déjà `version` (ou mieux) ?
+  function _dejaCharge(version) {
+    const charge = window.__MKM__ && window.__MKM__.build;
+    return !!charge && compareSemver(charge, version) >= 0;
+  }
+
   async function check() {
     let remote;
     try {
@@ -185,6 +191,15 @@
       );
       // La version installée reste la référence.
       return { status: "downgrade-detected", local: known, remote };
+    }
+
+    // 🩸 Code déjà à jour (bascule passive : le SW a pris la nouvelle version sans « Mettre à jour ») : notée sans
+    // fenêtre. Sans ça, la fenêtre revenait à chaque ouverture et poussait vers une mise à jour inutile.
+    if (_dejaCharge(remote.version)) {
+      _clearSnooze();
+      _setKnownVersion(remote.version, remote);
+      console.log("[UpdateChecker] Version", remote.version, "déjà chargée : notée sans fenêtre");
+      return { status: "up-to-date", version: remote.version };
     }
 
     if (_isSnoozed()) {
@@ -248,7 +263,7 @@
     } catch(e) {
       console.log("[UpdateChecker] showCurrent fetch échoué :", e.message);
       if (typeof window.afficherModaleAlerteAbsente === "function") {
-        window.afficherModaleAlerteAbsente("offline");
+        window.afficherModaleAlerteAbsente("offline", { version: true });
       }
       return { status: "offline" };
     }
@@ -270,9 +285,10 @@
       if (ok && typeof window.mettreAJourCodeSeul === "function") window.mettreAJourCodeSeul();
       return { status: "pending-reload", remote: remote };
     }
-    if (!remote || !remote.version || _cmpShow <= 0) {
+    if (!remote || !remote.version || _cmpShow <= 0 || _dejaCharge(remote.version)) {
+      if (remote && remote.version && _cmpShow > 0) _setKnownVersion(remote.version, remote);
       if (typeof window.afficherModaleAlerteAbsente === "function") {
-        window.afficherModaleAlerteAbsente("up-to-date");
+        window.afficherModaleAlerteAbsente("up-to-date", { version: true });
       } else {
         window.ktaAlerte(window.I18n.t("update.alreadyLatest", { version: (remote && remote.version || known) }));
       }

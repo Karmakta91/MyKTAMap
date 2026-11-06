@@ -630,6 +630,109 @@ async function evacuationBrancard() {
       ip.includes("abandonnerSuite:     abandonnerSuite,") && ii.includes("window.InterPlanRoute.abandonnerSuite();"));
   }
 
+  // 15) Jonctions imparfaites : seul un BOUT de tracé se raccroche par tolérance (15 px), à n'importe quel point
+  // de l'autre tracé ; un sommet intérieur ne crée jamais de lien (galeries parallèles séparées par un mur).
+  {
+    const relie = function(roads, pA, pB) {
+      const g = bac(roads).Pathfinder.buildNetworkGraph({});
+      const proche = function(p) {
+        let best = -1, bd = Infinity;
+        g.nodes.forEach(function(n, i) { const d = Math.hypot(n.x - p[0], n.y - p[1]); if (d < bd) { bd = d; best = i; } });
+        return best;
+      };
+      const a = proche(pA), b = proche(pB), vu = new Set([a]), pile = [a];
+      while (pile.length) {
+        const u = pile.pop();
+        if (u === b) return true;
+        g.edges[u].forEach(function(e) { if (!vu.has(e.to)) { vu.add(e.to); pile.push(e.to); } });
+      }
+      return false;
+    };
+    // Galerie A coudée : ses sommets intérieurs longent B à 10 px, ses bouts en sont à plus de 100 px.
+    const A = R("principal", [[0, 400], [100, 500], [200, 500], [300, 500], [400, 400]]);
+    const B = R("principal", [[-200, 510], [200, 510], [600, 510]]);
+    t("jonction : deux galeries parallèles à 10 px, sommets intérieurs seuls → aucun lien",
+      !relie([A, B], [200, 500], [-200, 510]));
+    t("jonction : bout à 10 px du MILIEU d'un segment → lien en T",
+      relie([R("principal", [[200, 400], [200, 500]]), R("principal", [[0, 510], [400, 510]])], [200, 400], [0, 510]));
+    t("jonction : bout à 10 px d'un sommet INTÉRIEUR de l'autre tracé → lien",
+      relie([R("principal", [[200, 400], [200, 500]]), R("principal", [[0, 510], [200, 510], [400, 510]])],
+            [200, 400], [0, 510]));
+    t("jonction : bout à 5 px d'un bout → lien",
+      relie([R("principal", [[0, 500], [200, 500]]), R("principal", [[205, 500], [400, 500]])], [0, 500], [400, 500]));
+    t("jonction : bout à 3 px d'une galerie (T imparfait) → lien",
+      relie([R("principal", [[200, 300], [200, 497]]), R("principal", [[0, 500], [400, 500]])], [200, 300], [0, 500]));
+    t("jonction : deux segments qui se croisent sans sommet commun → reliés au croisement",
+      relie([R("principal", [[0, 0], [400, 400]]), R("principal", [[0, 400], [400, 0]])], [0, 0], [0, 400]));
+    // Carrefour dessiné en deux « L » qui se touchent par leurs sommets intérieurs, sans se croiser.
+    const deuxL = function(ecart) {
+      return [R("principal", [[200, 300], [200, 500], [400, 500]]),
+              R("principal", [[0, 500 + ecart], [200, 500 + ecart], [200, 700]])];
+    };
+    t("jonction : deux sommets intérieurs à 2,5 px (carrefour en deux « L ») → reliés",
+      relie(deuxL(2.5), [200, 300], [200, 700]));
+    t("jonction : deux sommets intérieurs à 10 px → pas reliés",
+      !relie(deuxL(10), [200, 300], [200, 700]));
+    // Bout DÉJÀ raccordé : la branche C finit sur la galerie A ; B est parallèle à 10 px de l'autre côté de A.
+    // Seul un bout libre a la tolérance : C ne doit pas sauter vers B à travers le mur.
+    const galA = R("principal", [[0, 400], [0, 500], [200, 500], [400, 500], [400, 400]]);
+    const galALisse = R("principal", [[0, 400], [0, 500], [400, 500], [400, 400]]);
+    const galB = R("principal", [[0, 610], [0, 510], [400, 510], [400, 610]]);
+    t("jonction : bout raccordé sur un sommet de A → aucun lien vers B, parallèle à 10 px",
+      !relie([galA, galB, R("principal", [[200, 300], [200, 500]])], [0, 400], [0, 610]));
+    t("jonction : bout raccordé sur un croisement exact avec A → aucun lien vers B",
+      !relie([galALisse, galB, R("principal", [[200, 300], [200, 500]])], [0, 400], [0, 610]));
+    t("jonction : bout fusionné avec le bout d'un autre tracé → aucun lien vers B, à 7 px",
+      !relie([galALisse, galB, R("principal", [[200, 300], [200, 503]]), R("principal", [[200, 503], [300, 300]])],
+             [200, 300], [0, 610]));
+    t("jonction : bout raccordé, la branche reste reliée à A",
+      relie([galA, galB, R("principal", [[200, 300], [200, 500]])], [200, 300], [0, 400]));
+    t("jonction : bout libre à 2,5 px de A (vrai trou) → lien",
+      relie([galALisse, R("principal", [[200, 300], [200, 497.5]])], [200, 300], [0, 400]));
+    // Bout libre fini à la main près de A (rien ne l'aimante sur un segment) : relié à A, pas à B derrière.
+    t("jonction : bout libre à 2,5 px de A, B à 12,5 px derrière → relié à A, pas à B",
+      relie([galALisse, galB, R("principal", [[200, 300], [200, 497.5]])], [200, 300], [0, 400]) &&
+      !relie([galALisse, galB, R("principal", [[200, 300], [200, 497.5]])], [200, 300], [0, 610]));
+    t("jonction : bout libre dans un coin, à 6 et 7,8 px de deux galeries → relié aux deux",
+      (function() {
+        const g = [galALisse, R("principal", [[212, 300], [212, 488], [300, 400]]),
+                   R("principal", [[100, 400], [207, 494]])];
+        return relie(g, [100, 400], [0, 400]) && relie(g, [100, 400], [212, 300]) &&
+               !relie([g[0], g[1]], [0, 400], [212, 300]);
+      })());
+    // Cul-de-sac qui finit sur le raccord validé d'un puits (POI entre niveaux), à 12 px d'une galerie sans lien.
+    const puits = function(avecPoi) {
+      const w = bac([R("principal", [[0, 500], [400, 500]], { level: 0 }),
+                     R("principal", [[200, 300], [200, 488]], { level: 0 }),
+                     R("principal", [[150, 488], [250, 488]], { level: 1 })], { multiLevel: true });
+      const poi = { x: 200, y: 488, level: 0, tags: ["jes"], niveaux: [0, 1],
+                    accroches: [{ level: 0, x: 200, y: 488 }, { level: 1, x: 200, y: 488 }] };
+      w.KtaPoiJonction = { moyen: () => "escalier", niveaux: p => p.niveaux, accroches: p => p.accroches,
+                           forfaitM: () => 10, pointsJonction: () => (avecPoi ? [poi] : []) };
+      const g = w.Pathfinder.buildNetworkGraph({});
+      const proche = p => g.nodes.reduce((b, n, i) => (Math.hypot(n.x - p[0], n.y - p[1]) <
+        Math.hypot(g.nodes[b].x - p[0], g.nodes[b].y - p[1]) ? i : b), 0);
+      const a = proche([200, 300]), cible = proche([0, 500]), vu = new Set([a]), pile = [a];
+      while (pile.length) {
+        const u = pile.pop();
+        if (u === cible) return true;
+        g.edges[u].forEach(e => { if (!vu.has(e.to)) { vu.add(e.to); pile.push(e.to); } });
+      }
+      return false;
+    };
+    t("jonction : bout libre à 12 px d'une galerie → lien (témoin)", puits(false));
+    t("jonction : bout posé sur le raccord d'un puits → pas de lien vers la galerie à 12 px", !puits(true));
+    // Deux branches qui coupent un même long segment (aucun sommet entre elles) : on va de l'une à l'autre le long
+    // du segment, sans repasser par son extrémité.
+    for (const [nom, bas] of [["croisements", 600], ["T exacts", 500]]) {
+      const w = bac([R("principal", [[0, 500], [800, 500]]), R("principal", [[100, 400], [100, bas]]),
+                     R("principal", [[500, 400], [500, bas]])]);
+      const r = await w.Pathfinder.computeRoute([{ x: 100, y: 400 }, { x: 500, y: 400 }], {});
+      t("jonction : deux " + nom + " sur un même segment → chaînés (" + Math.round(r.totalDistance) + " px, attendu 600)",
+        Math.round(r.totalDistance) === 600);
+    }
+  }
+
   // 11) Bandeau en direct : simulation de marche, faux DOM minimal
   await bandeau();
 

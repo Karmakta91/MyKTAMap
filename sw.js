@@ -12,11 +12,13 @@
 // Définit : CACHE_NAME (version servie) · ASSETS_TO_CACHE (précache) · CRITICAL_APP_SHELL (précache avec retry).
 // Précaché : l'app shell, lang/*.json, LICENSE et les seules docs lues par l'app, toutes sous
 //   docs/applications/ (guides utilisateur, Aide IA, CGU, audit réseau). README.md, CLAUDE.md et le
-//   reste de docs/ ne partent pas dans l'app.
+//   reste de docs/ ne partent pas dans l'app. Add-ons livrés : lus dans leurs manifestes (_assetsAddons).
 // Jamais précachés : version.json, alert.json, ping.html (lus avec un cache-bust `?_=` : servis par le
 //   cache, ils figeraient la mise à jour, les alertes et la sonde de santé).
 // Réseau seul (handler fetch) : killsw.html, Licence-pro.json, denylist.json (hors ligne : liste vide), ZIP
-//   de plan déclarés par l'index, sondes de fraîcheur, requêtes d'extension ou authentifiées.
+//   de plan déclarés par l'index, sondes de fraîcheur, requêtes d'extension ou authentifiées, repère de
+//   déploiement (deploiement.json, réponse normalisée : cf _repereDeploiement).
+// Installation : précache revalidé (cache "no-cache") ; inscrit par js/swRegister.js après l'entrée dans l'app.
 // Réseau d'abord : docs/applications, lang/*.json, data/index.json, pages et feuilles de style des dossiers
 //   de modules déclarés par l'index (cf _reseauDabordPageExt).
 // Caches gardés à l'activation : CACHE_NAME, plans hors-ligne (PLAN_CACHE_PREFIX), modules greffés et leurs
@@ -28,7 +30,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.22.2";
+const CACHE_NAME = "myktamap-cache-v2.23.0";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -252,13 +254,9 @@ const ASSETS_TO_CACHE = [
   "./js/vue3d.js",
   "./lib/three/three.module.js",
   "./lib/three/three.core.js",
-  // Add-on lié au code de la vue 3D (vue3d.js > ADDONS_CODE), chargé par elle seule ; précaché comme tout le JS.
-  "./addons/mkmg/js/coeur.js",
-  "./addons/mkmg/js/son.js",
-  "./addons/mkmg/js/monde.js",
-  "./addons/mkmg/js/joueur.js",
-  "./addons/mkmg/css/coeur.css",
-  "./addons/mkmg/img/fusil.svg",
+  // Add-ons (addons/<nom>/) : jamais listés ici, leurs manifestes disent leurs fichiers (_assetsAddons). Le registre
+  // qui les lit est, lui, de l'app.
+  "./js/ktaAddons.js",
   "./fonts/montserrat-400.woff2",
   "./fonts/montserrat-600.woff2",
   "./fonts/montserrat-800.woff2",
@@ -351,6 +349,7 @@ const ASSETS_TO_CACHE = [
   "./js/tracking.js",
   "./js/poiJonction.js",
   "./js/poiDanger.js",
+  "./js/poiPrecis.js",
   "./js/editor.js",
   "./js/road.js",
   "./js/zones.js",
@@ -433,6 +432,7 @@ const ASSETS_TO_CACHE = [
   "./js/importMasse.js",
   "./js/tableEditor.js",
   "./js/recalageScan.js",
+  "./js/raccordsTraces.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
   "./js/vuePlan.js",
@@ -647,6 +647,38 @@ async function _cacheWithRetry(cache, asset, attempts) {
   return false;
 }
 
+// Fichiers des add-ons livrés : addons/index.json, puis chaque addons/<nom>/addon.json (`fichiers`), tous précachés
+// avec la phase 2. Mêmes règles de nom et de chemin que js/ktaAddons.js ; un manifeste illisible est sauté.
+// 🩸 Réseau d'abord, cache ensuite : l'install lit la version déployée, l'inspecteur hors ligne celle déjà en cache.
+async function _jsonAddons(url) {
+  try {
+    const r = await fetch(url, { cache: "no-store" });
+    if (r.ok) return await r.json();
+  } catch (e) { /* hors ligne : le cache */ }
+  const c = await caches.match(url, { ignoreSearch: true });
+  return c ? c.json() : null;
+}
+
+async function _assetsAddons() {
+  const out = [];
+  try {
+    const idx = await _jsonAddons("./addons/index.json");
+    if (!idx || !Array.isArray(idx.addons)) return out;
+    out.push("./addons/index.json");
+    for (const nom of idx.addons) {
+      if (!/^[a-z0-9-]{1,32}$/.test(nom)) continue;
+      const base = "./addons/" + nom + "/";
+      const m = await _jsonAddons(base + "addon.json").catch(function () { return null; });
+      if (!m || !Array.isArray(m.fichiers)) { console.warn("[SW] manifeste d'add-on illisible :", nom); continue; }
+      out.push(base + "addon.json");
+      m.fichiers.forEach(function (f) {
+        if (typeof f === "string" && /^(js|css|img)\/[A-Za-z0-9_-]+(\.[A-Za-z0-9]+)+$/.test(f)) out.push(base + f);
+      });
+    }
+  } catch (e) { console.warn("[SW] add-ons :", e && e.message); }
+  return out;
+}
+
 self.addEventListener("install", (event) => {
   console.log("[SW] Installation");
 
@@ -677,7 +709,7 @@ self.addEventListener("install", (event) => {
       // `_cacheAddDiag` catch toutes ses propres exceptions et alimente le
       // log IDB d'install — on n'a pas besoin de wrapper try/catch ici.
       const BATCH_SIZE = 10;
-      const phase2Assets = ASSETS_TO_CACHE.filter(function(a) {
+      const phase2Assets = ASSETS_TO_CACHE.concat(await _assetsAddons()).filter(function(a) {
         return CRITICAL_APP_SHELL.indexOf(a) === -1;
       });
       for (let i = 0; i < phase2Assets.length; i += BATCH_SIZE) {
@@ -820,12 +852,16 @@ self.addEventListener("message", (event) => {
 
   if (data.type === "GET_EXPECTED_ASSETS") {
     if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        type:      "EXPECTED_ASSETS",
-        cacheName: CACHE_NAME,
-        assets:    ASSETS_TO_CACHE.slice(),
-        critical:  CRITICAL_APP_SHELL.slice()
+      const port = event.ports[0];
+      const envoi = _assetsAddons().then(function(addons) {
+        port.postMessage({
+          type:      "EXPECTED_ASSETS",
+          cacheName: CACHE_NAME,
+          assets:    ASSETS_TO_CACHE.concat(addons),
+          critical:  CRITICAL_APP_SHELL.slice()
+        });
       });
+      if (event.waitUntil) event.waitUntil(envoi);
     }
     return;
   }
@@ -1118,7 +1154,9 @@ async function _cacheAddDiag(cache, asset, phase) {
   let resp = null;
   // Étape 1 : fetch
   try {
-    resp = await fetch(new Request(asset, { cache: "reload" }));
+    // "no-cache" : revalidé auprès du serveur (ETag / Last-Modified), jamais servi périmé par le cache HTTP, mais un
+    // fichier inchangé répond 304 et ne repart pas. "reload" retéléchargeait tout le précache à chaque installation.
+    resp = await fetch(new Request(asset, { cache: "no-cache" }));
   } catch (err) {
     const type = (err && err.name === "TypeError") ? "network" : "unknown";
     await _logInstallFailure({
@@ -1165,6 +1203,31 @@ async function _cacheAddDiag(cache, asset, phase) {
     });
     return { ok: false, type: type, message: (err && err.message) || String(err) };
   }
+}
+
+// Repère de déploiement (cf. le handler fetch) : seule l'adresse à la racine du scope est normalisée.
+function _estRepereDeploiement(url) {
+  const scope = self.registration && self.registration.scope;
+  return !!scope && url.split(/[?#]/)[0] === scope + "deploiement.json";
+}
+function _lireRepere(chemin) {
+  return fetch(new URL(chemin, self.registration.scope).href, { cache: "no-store", credentials: "omit" })
+    .then(function(r) {
+      if (!r.ok || !/json/i.test(r.headers.get("Content-Type") || "")) return null;
+      return r.json().then(function(j) {
+        const c = j && j.commit;
+        return typeof c === "string" && /^[0-9a-f]{7,40}$/.test(c) ? c : null;
+      });
+    })
+    .catch(function() { return null; });
+}
+function _repereDeploiement() {
+  return _lireRepere("deploiement.json")
+    .then(function(c) { return c || _lireRepere("data/deploiement.json"); })
+    .then(function(c) {
+      return new Response(JSON.stringify({ commit: c }),
+        { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+    });
 }
 
 // NOTIFICATIONS POUSSÉES (Web Push) — prise NEUTRE, contrat minimal : community-server-line.md §3.
@@ -1333,6 +1396,17 @@ self.addEventListener("fetch", (event) => {
           headers: { "Content-Type": "text/html" }
         }))
     );
+    return;
+  }
+
+  // REPÈRE DE DÉPLOIEMENT : RÉSEAU SEUL, RÉPONSE NORMALISÉE (lu par js/swRegister.js).
+  // `deploiement.json` porte le commit servi (`commit`) ; le script de déploiement l'écrit à la racine, ou sous data/
+  // quand l'installation sert son propre dossier de données. Chaque commit nouveau réinscrit le SW (sw.js?d=<commit>) :
+  // un correctif sans changement de CACHE_NAME arrive au chargement suivant. La page reçoit TOUJOURS 200
+  // { commit: <sha> | null } : ni 404 (installation sans script de déploiement), ni page de l'app (adresse inconnue
+  // servie en 200 par le serveur), ni copie en cache. 🔒 Un repère qui n'est pas un sha hexadécimal vaut null.
+  if (_estRepereDeploiement(reqUrl)) {
+    event.respondWith(_repereDeploiement());
     return;
   }
 

@@ -789,6 +789,10 @@ active, et le PDR seul (`_avancerRaster`) partirait de la roche.
 - **Qui** : `recalerTrackerSurPoint(x, y, niveau, { dansGalerie: true })` depuis le « 📍 Je suis ici » d'une fiche de
   point (`utils.js > _ktaPopupAction`, cas `ici` : POI et étape d'itinéraire, carte comme vue 3D) et la bulle de point
   du mode urgence (`emergencyMode.js > _jeSuisIciPoint`).
+- **POI à point précis** (`poiPrecis.js > cible`, décision KARMA du 06/11/2026) : `x`, `y` = le point précis (chatière :
+  le milieu de ses deux points) et la règle ci-dessous part de lui ; `opts.icone` porte l'icône pour que le hook
+  (`_notifierRecalage`) valide aussi une étape ou un portail posés sur elle. Sans point précis, ou passage entre
+  niveaux : l'icône.
 - **Un tap sur la carte est une position voulue** (décision produit) : le clic du 📍 Mode recalage
   (`tracking.js > _recalerSurClic`) et le picker « Où es-tu ? » (`utils.js > ktaDemanderPositionCarte`, qui rend à
   l'appelant le point tapé) posent le tracker au point **exact** du tap, jamais ramené dans la galerie : c'est
@@ -822,7 +826,7 @@ active, et le PDR seul (`_avancerRaster`) partirait de la roche.
   (`interPlanRoute.js > onTrackerRecale`) comparent des coordonnées arrondies à celles du point.
 - Non concernés (coordonnées exactes, sans `dansGalerie`) : clic du Mode recalage et picker « Où es-tu ? » (un tap
   sur la carte est une position voulue), arrivée de portail, Mode Secours, position de fin du Carnet, « Ici » de
-  « D'où pars-tu ? » et « Je suis ici ? » de la vue 3D (position déjà contrainte par le pas).
+  « D'où pars-tu ? » et « Je suis ici ? » de la vue 3D (position déjà contrainte par le pas ; en saut, ancre `tp`).
 - Checkup : `scripts/smoke/checkup-recaler-niveau.js` § 1, 2, 7, 9, 16 et 16 bis ; `checkup-vue-3d.js` § 10b.
 
 ## 🔄 Hook de recalage + recalage à l'arrivée d'un portail (v1.61.0)
@@ -1126,6 +1130,8 @@ Le drag de Leaflet déplace le map-pane d'un offset **écran** ; la rotation viv
 
 🩸 **Le bas-centre de l'écran est un carrefour** : `.kta-ipl-back-float` (« ↩️ Retour » d'un saut de portail, 84 px), `.kta-ipr-next-float` (74 px), `.kta-north-picker-overlay` (80 px) et les floaters d'outils y vivent déjà. 🎯 Recentrer ne fixe donc **aucune hauteur** : il mesure les flottants visibles et se place au-dessus du plus haut, un `MutationObserver` sur les enfants directs de `<html>` le replaçant quand ils vont et viennent. Tout nouveau flottant du bas s'ajoute à `FLOATERS_BAS` dans `mapBearing.js`.
 
+🩸 **Un doigt perdu ne compte plus** (`_panDebut` > `_panOublier`) : le pan manuel compte les doigts posés pour laisser deux doigts au pinch. Un doigt dont la fin n'arrivait jamais restait compté, chaque doigt suivant passait pour le 2e d'un pinch, et la carte tournée ne se déplaçait plus d'un doigt — seul le retour au nord, qui rend le drag de Leaflet, la libérait (vu juste après un ajustement de sommet). Un appui primaire (`isPrimary` : aucun autre doigt posé) repart donc de zéro, la fin se lit sur `window` en capture, et `blur` / `visibilitychange` oublient tout geste en cours ; idem pour les doigts de la rotation (`_rotDoigts`). Checkup : `checkup-ajuster-sommets.js` (carte tournée, lâcher perdu).
+
 🩸 **Piège mobile** : `dragging.disable()` retire la classe `leaflet-touch-drag`, et le conteneur retombe alors en `touch-action: pan-x pan-y` — au doigt, le **navigateur** scrolle la page au lieu de laisser le pan manuel agir. La classe `kta-bearing-lock`, posée pendant le mode, lui rend `touch-action: none`. Invisible au clavier/souris : ça ne se voit qu'au doigt, ou dans le checkup.
 
 Le zoom reste **entièrement celui de Leaflet** : on ne touche plus à ses options.
@@ -1259,9 +1265,11 @@ seulement s'il diffère de celui de la position (tracker en 2D, scène en 3D), d
 `getItiTempsMinutes(reste, 2 + étapes restantes)` (allure et pauses de la fenêtre Itinéraire ; rien de choisi :
 « lente », 3 km/h, `interfaceItineraire.js > DEFAULT_ITI_SPEED`, décision produit), « ~ » + arrondi à la
 minute (`ktaFormatTempsItineraire`). ⚠️ contrat : une seule source, `etat().resume` (bandeau 2D, écran XL) et
-`apercu().resume` (3D en libre), calculée avec la consigne : jamais de chemin. Replié (`encartReduit`,
-`reglerEncart`, `myktamap_guidage_encart_v1`, cet appareil) : une languette ▾ seule, 2D et 3D ensemble ; l'écran XL
-le montre toujours. Contrôles : `checkup-guidage.js` G12, `checkup-vue-3d.js` § 32.
+`apercu().resume` (3D en libre), calculée avec la consigne : jamais de chemin. Rendu `rendreEncart(conteneur,
+resume)` (bandeau 2D, vue 3D, écran XL) : **une ligne, toujours affichée, jamais repliée** (décision produit) ;
+`resume.destination` (« 🏁 nom ») coupée par une ellipse si trop longue, `resume.reste` (« · distance · temps »)
+toujours entier ; `resume.texte` = la ligne entière (titre). La clé de l'ancien repli, `myktamap_guidage_encart_v1`,
+est effacée au chargement d'`itiGuidage.js`. Contrôles : `checkup-guidage.js` G12, `checkup-vue-3d.js` § 32.
 
 **✂️ Coupe derrière** (`interfaceItineraire.js > _couperDerriere`, appelée par `_onTrackerRecale` pour la source
 `"point"` — « Je suis ici », picker « Où es-tu ? », portail ; jamais le clic carte) : si le point est à ≤ `COUPE_SEUIL_M`
@@ -1295,8 +1303,9 @@ demi-tours en 350 m sous 4 m de bruit).
   gardé par la replanification) → pas de croix, affiché même réglé sur « Jamais », « Recalculer » =
   `SortieUrgence.relancerDepuis(pos)`. L'écran XL lit `ItiGuidage.etat()` dans son `_tick`.
 - **Vue 3D** (`vue3d.js`, § Vue 3D › Guidage) : en suivi, elle lit `ItiGuidage.etat()` comme l'écran XL (`s` /
-  `sCible` : abscisses de la position et de la prochaine consigne, pour ses chevrons) ; en libre,
-  `ItiGuidage.apercu(pos, { cap, sPrec, niveau })` : mêmes textes (`_textes`, partagé avec le bandeau), calculés depuis
+  `sCible` : abscisses de la position et de la prochaine consigne, pour ses chevrons) quand le bandeau 2D parle,
+  sinon l'aperçu depuis le tracker ; en libre, `ItiGuidage.apercu(pos, { cap, sPrec, niveau })` : mêmes textes
+  (`_textes`, partagé avec le bandeau), calculés depuis
   une position quelconque **sans toucher l'état** du guidage (ni progression, ni écart, ni demi-tour ; loin du trajet,
   « rejoindre »). `niveau` : la position n'est projetée que sur les points du trajet à ce niveau (chaque point porte le
   sien, `pathfinder.js > computeRoute` ; transit = aucun) ; niveau sans tronçon → `visible: false` (plus de
@@ -1610,8 +1619,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `peo`, fermés par une dalle sombre à 2,5 m au-dessus du plafond (pas de ciel). `pb` : dalle maçonnée (matériau des
   parois) au ras du plafond, plafond non troué. `pc` / `psf` : bouche au plafond (carrée de 1,2 m / ronde de 2,5 m)
   remplie de remblais sur 0,5 m, et **cône d'éboulis** au sol (rayon 0,9 m, 0,6 m de haut, 16 côtés) qui arrête le
-  pas (le cône du `psf` garde ce rayon sous sa bouche plus large) ; l'itinéraire passe par-dessus
-  (`_volumesItiAcces`, comme un remblais, à 0,6 m). `ps` : puits rond maçonné de 2,5 m (`ACCES_DIM.rond`, comme
+  pas (le cône du `psf` garde ce rayon sous sa bouche plus large) mais **ne ferme jamais la galerie** (décision
+  produit, même règle que le bassin) : dans un tube, `placePassage` rend aussi `cone` (`galerieEmprise.js >
+  _coneDans`), centre sous la bouche s'il laisse `bassinLibre` (0,8 m, un corps) plus `CONE_JEU_M` (0,1 m : à
+  0,8 m tout juste, le corps touche cône et paroi à la fois, et la règle du pas l'arrête) jusqu'à la paroi d'en face,
+  sinon poussé vers la paroi du côté du POI juste assez, enfoncé dans sa paroi (la roche en cache une part : il se
+  couche contre elle), centre au plus sur la paroi (galerie de moins de 1,8 m : rayon réduit, hauteur à la même
+  pente ; moins de 0,95 m : aucun cône) ; POI sur l'axe : à gauche du sens du tracé. Principal 2,5 m : centre à
+  0,55 m de l'axe ; secondaire 2 m : 0,8 m ; chemin 1,7 m : sur la paroi, rayon 0,8 m. La bouche ne bouge pas. En
+  chambre, en Structures, sans axe à 10 m : centré sur la place, comme avant. Un seul contour pour l'obstacle
+  (`_obstaclesAcces`), le dessin (`_cone`, `v.cone`), le ruban (`_volumesItiAcces`) et `ctx.libre` des add-ons ;
+  l'itinéraire 2D n'en sait rien. L'itinéraire passe par-dessus (`_volumesItiAcces`, comme un remblais, à 0,6 m). `ps` : puits rond maçonné de 2,5 m (`ACCES_DIM.rond`, comme
   `psf`), sans échelons, ciel au sommet. `pe` : bassin rond de 1,6 m creusé dans le sol (bouche au sol), margelle de
   0,2 × 0,4 m, eau à −0,8 m (couleur de la zone eau, matériau de l'eau des galeries), fond à −1,2 m ; posé **contre
   la paroi** du côté du POI (`_placeVolume`, `contre` : margelle tangente à la paroi, à w − 1 m de l'axe) ; galerie
@@ -1640,10 +1658,74 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (planches, pentures cloutées, `_bois`) et remblais texturés avec 🧱, couleurs unies sinon (bascule = volumes
   refaits). 🩸 Un puits rond dans un tube plus étroit que lui reste sur l'axe et dépasse dans la paroi (pas de
   niche, voulu). Garde-fou : `checkup-vue-3d.js` § 14 quater (3 rendus, blocage, bassin contre la paroi qu'on longe,
-  arrivée devant un cavage fermé, 🧱 coupé, 2D intacte), comblement : § 14 sexies (galerie de 4 m entre deux murs,
+  arrivée devant un cavage fermé, 🧱 coupé, 2D intacte ; suite, `KTA_V3D_SEUL=cone` : cône qui laisse le passage en
+  galerie de 2,5 / 2 / 1,7 m, pc et psf de chaque côté, aller et retour, butée sur le cône, `ctx.libre`, chambre,
+  Structures et POI loin inchangés), comblement : § 14 sexies (galerie de 4 m entre deux murs,
   côtés égaux et inégaux, porte fermée et ouverte, rendu galerie identique sans et avec les murs) ; escaliers en niche : § 14 quinquies (POI d'un côté, de
   l'autre, dans le tube, sur l'axe, boucle, bout de cul-de-sac, tracé dans les deux sens, `esf` / `eso` / `jes` vers
   le haut, le bas et entre trois niveaux ; niche marchable, paroi ouverte, fond muré, 2D intacte).
+- **Point précis d'un POI** (`poiPrecis.js`, décision KARMA du 06/11/2026) : la forme se pose **au point précis**, pas à
+  l'icône. ⚠️ contrat : une seule entrée, `galerieEmprise.js > _departPassage` (son `centre`, après le raccord d'un
+  passage), donc `placePassage` → volume, emprise d'une niche, obstacle (`BLOQUE`), plaque / épure / portail sur la
+  paroi ou la face de structure la plus proche **du point précis** ; véhicule, cavage, puits d'accès placés depuis lui ;
+  chatière en deux points : ci-dessous. Panneau : celui d'un volume le suit déjà (`placesPassage`) ; un POI sans forme
+  y a le sien au point précis, ramené contre la paroi s'il tombe dans la roche (`_volumesDuNiveau`, `_contreParoi`).
+  Ignoré pour les passages entre niveaux (`KtaPoiJonction.porteNiveaux` : jes, jpe, jps, peo, eso, pa) : leurs raccords
+  validés. La signature des emprises (`_signature`) le compte. Limite : le POI reste rangé dans la tuile de son icône
+  (portée de construction comptée de là).
+- **Formes des POI sans passage** (`galerieEmprise.js > ACCES`, `PAROI`, `_surParoi` ; `vue3d.js > _chatiere`,
+  `_plaque`, `_epure`, `_portail`, `_vehicule` ; décision produit) : même règle de place (`placePassage`), panneau
+  au-dessus, construites à portée, sans moyen ni emprise. **Chatière** (`chatiere`) : roche brute des piliers (🧱,
+  couleur du pilier sinon) en travers de la galerie sur `CHATIERE.long` = 1,8 m par défaut (une chatière courte),
+  posée sur l'axe comme une porte, largeur de la galerie + 0,3 m dans les parois, percée au
+  ras du sol d'un passage **bas** de `CHATIERE.trou` = 0,6 m de haut sur `CHATIERE.large` = 0,9 m de large
+  (centré, au plus la galerie moins 0,2 m ; profil `PROFIL_CHATIERE`, voûte surbaissée), roche au-dessus jusqu'au
+  plafond et sur les côtés ; axe long le long de la galerie (`dir` = sens de l'axe, `placePassage`), le trou se
+  traverse dans le sens de la marche (🩸 l'ancien trou de 0,6 × 0,6 m à voûte pointue se lisait, du dedans et au
+  téléphone, comme une fente verticale). Point précis en deux points (`poiPrecis.js`, début → fin) :
+  `_segmentChatiere` lui donne leur longueur (`CHATIERE.court` = 0,4 m au moins) et leur axe, au centre de
+  `placePassage` (le milieu des deux points, ramené sur l'axe de la galerie : la roche en barre toute la largeur) ;
+  un seul point : la règle de 1,8 m à ce point. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
+  en suivi comme en libre, l'œil descend à 0,35 m dans la roche et sur 1 m de part et d'autre en fondu
+  (`_baisseChatiere`, `_placerCamera`), puis remonte ; vue d'édition : rien. `ctx.libre` des add-ons reste ouvert
+  (les égarés du jeu la traversent debout, au travers de la roche : limite connue). **Plaque** (`plaque`),
+  **épure** (`epure`), **portail** (`portail`) : à plat sur la paroi du tube **du côté du POI**, en face de lui le
+  long de l'axe (`_surParoi` ; sur l'axe à 1 cm près : à gauche du sens du tracé) ; sans tube à cette place
+  (rendu structures, chambre, aucun axe à `PROCHE_M`), ⚠️ contrat (décision produit) : **sur la face de structure la
+  plus proche** (`vue3d.js > _surStructure`), hors rendu galerie : face verticale d'un prisme que la 3D dessine
+  (pilier, mur, mur en ligne, front, types perso : `_anneau`, `_pavesLigne`, filtres de la carte appliqués), à
+  `FACE_STRUCTURE.portee` = 3 m au plus du POI, celle qui regarde le POI (POI dans la structure : sa face la plus
+  proche), forme à plat dessus (`paroi` = 1, mêmes hauteurs et reculs), en face du POI, gardée sur la face quand elle
+  est assez longue (demi-longueur la plus grande de la forme : 0,5 / 0,6 / 0,5 m) ; face refusée si un point à 5 cm
+  devant la forme (centre, bouts) tombe dans un contour (mur sous un pilier, coudes d'un mur en ligne). Rien à 3 m :
+  le panneau seul. Faces en grille de 4 m, construites une fois par `_reindexer` et seulement si une forme n'a pas de
+  paroi : 50 POI parmi 2 025 piliers (8 100 faces) en ~6 ms (`etat().msFaces`). En mixte, un POI à 3 m d'une
+  structure compte en chambre (`enChambre`) : il va sur la structure ; la paroi du tube ne gagne que sans structure à
+  3 m (seul cas limite : face d'un mur en ligne à moins de 3 m dont l'axe est au-delà). 🩸 Un côté de tube ouvert par
+  une structure proche (mixte) n'a pas de paroi : la forme y est posée quand même, à w de l'axe. Plaque émaillée
+  à 1,45 m, au nom du POI, **à la taille du nom** (`_mesurePlaque`, texte mesuré au canvas à 400 px/m, police de
+  0,126 m) : 0,3 m de haut, de 0,6 m élargie jusqu'à 1 m, puis deux lignes équilibrées (coupées entre deux mots),
+  puis police réduite : le nom n'est **jamais coupé** (120 caractères, comme le panneau). **Une texture par nom**,
+  partagée et comptée, rendue avec le dernier volume qui la porte, au plus `PLAQUE.max` = 32 vivantes : au-delà,
+  plaque unie ; 50 plaques de noms différents = 32 textures, ~5 Mo hors mipmaps ; le nom reste avec 🧱 coupé,
+  décision produit : un repère. ⚠️ contrat (décision produit) : **une plaque posée n'a pas de panneau flottant**
+  (`_ajouterPanneau` saute les POI de `e.plaquesParoi`, relu à chaque `_reindexer`) ; toucher la plaque ouvre la
+  fiche du POI comme son panneau (`_toucher` → `_plaqueVisee`, devant toute paroi). Plaque posée sur une structure :
+  même règle, aucun panneau ; plaque unie (au-delà de 32 noms) : son panneau revient, posé avec le volume. Épure :
+  sept traits clairs
+  (géométrie seule, rien à couper). Portail : cadre de porte 1 × 2 m, **lumineux** (matériau `lumineux`, jeton
+  sombre `--kta-interaction`) si `InterPlanLinks.liaisonsDuPoint` en rend une, éteint sinon ; relu à
+  `mktm:liaisons-changees` (`_majPortails`). La fiche de **tout point lié** (portail ou non, décision produit ; le
+  cadre reste au tag portail) propose **« 🌀 Passer au plan X »** par liaison (`_passerPlanFiche`, plan absent de
+  l'appareil : inactif) → `InterPlanLinks.naviguerVers` : la mini-confirmation de la carte (z-index 99999, ajoutée
+  après la vue) s'affiche **par-dessus** la vue ; confirmée, `goTo` émet `kta:avantChangementPlan` avant tout
+  chargement et la vue se ferme sans « Je suis ici ? » (`_fermerPourPlan` : la liaison recale elle-même le
+  tracker) ; de même pour ➜ de la section liaisons de la fiche. **Véhicule**
+  (`vehicule`) : voiture simplifiée (caisse, habitacle à vitres sombres, quatre roues ; `ACCES_DIM.vehicule*` =
+  3,2 × 1,4 × 1,3 m, une citadine), dans le tube du côté du POI gardée entre les parois (demi-emprise 0,7 m), le
+  long de l'axe ;
+  **arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
+  survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes`).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
@@ -1655,24 +1737,54 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Rendu en pause** : la boucle `requestAnimationFrame` tourne, mais ne dessine que si quelque chose a bougé
   (`_e.sale`) ; immobile, aucune image (le checkup le mesure, boussole qui tremble comprise).
 - **Vue d'édition** (nom de code `plongee` ; décision produit : comme une carte) : caméra au **recul** `e.recul` du point visé (2 m devant
-  soi), 18,4 m par défaut, de 6 à 60 m (`RECUL`) ; inclinaison 15° à 85° (60° par défaut). **Zoom** (`zoomer(f)`,
+  soi), 18,4 m par défaut, de 6 à 150 m (`RECUL`) ; inclinaison 15° à 85° (60° par défaut). **Zoom** (`zoomer(f)`,
   un cran = × 1,15) : molette (vers l'avant = plus près, un cran par 100 px de défilement, en continu au pavé
   tactile), pincement à deux doigts, boutons + / − (deux crans), touches = et -. **Inclinaison** : Maj + molette
   (🩸 Chrome et Safari envoient alors le défilement en `deltaX`), deux doigts glissés ensemble à la verticale,
-  PageUp / PageDown, boutons ▲ ▼. Deux doigts : le geste est tranché une fois, dès que l'écart ou le milieu a bougé
-  de 12 px (`GESTE_SEUIL`) : un pincement ne penche pas, un glisser ne zoome pas. Boutons + − ▲ ▼ en grille en bas à
-  droite, montrés dans cette vue seulement (la tuile ⚙️ ouverte ne les recouvre pas). Recul et inclinaison retenus
-  tant que la vue est ouverte (repartent du défaut à la réouverture). ⚠️ contrat : une greffe qui interdit la
-  vue d'édition (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Rayon de scène
-  en vue d'édition (`_rayonScene`) : max(1,4 × portée, 2,3 m par mètre de recul) — tuiles, volumes, panneaux de POI, carré
-  de sol (2,4 × le rayon) et brouillard (compté depuis la caméra : du recul + 30 % du rayon au recul + rayon + 2 m)
-  le suivent : pas de bord de scène en dézoomant. À 60 m de recul, 138 m de rayon (mesures : ETUDE_VUE_3D.md).
+  PageUp / PageDown, boutons ▲ ▼. Deux doigts, réglés sur la carte 2D : le geste est tranché une fois — « incl » si
+  le milieu a bougé de 12 px (`GESTE_SEUIL`) plus que l'écart et l'arc, sinon « pince » (zoom qui suit l'écart, et
+  cap dès que l'angle franchit le seuil, voir la caméra libre) : un pincement ne penche pas, un glisser ne zoome pas.
+  La référence (écart, milieu, angle) est reprise à chaque changement du nombre de doigts ; un mouvement ne zoome pas
+  de plus de × 1,5 ni ne tourne de plus de 30° (`CAMERA_LIBRE.pasZoom` / `pasCap` : filet contre un doigt qui
+  saute). 🩸 **Un doigt posé sur une commande de la vue** (+ / −, colonne d'outils, zone du joystick, en-tête) alors
+  que l'autre est sur la scène — ou posé dessus juste avant — **rejoint le geste de la scène** (`_brancher` >
+  `appuiScene` / `adopter`, capture sur la vue) : il n'était pas compté, le pincement devenait un glisser d'un doigt,
+  et + / − zoomaient d'un coup au milieu d'un dézoom (rapporté au téléphone : « en dézoomant, la vue se met d'un coup
+  à zoomer »). Au doigt, + / − et ▲ ▼ agissent donc au `click` (un pincement n'en produit pas), à la souris au
+  `pointerdown`. Restent hors du geste : curseurs et champs, fiche, 🗑️ d'un ajustement, joystick qui marche déjà.
+  Checkup : `checkup-vue-3d.js` § 38 (`KTA_V3D_SEUL=gestes`, doigts CDP au téléphone). Boutons + − ▲ ▼ en grille en
+  bas à droite, montrés dans cette vue seulement (la tuile ⚙️ ouverte ne les recouvre pas). Recul et inclinaison
+  retenus tant que la vue est ouverte (repartent du défaut à la réouverture). ⚠️ contrat : une greffe qui interdit la
+  vue d'édition (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Deux rayons
+  en vue d'édition. **Rayon vu** (`_rayonVue`) : max(1,4 × portée, 2,3 m par mètre de recul) — carré de sol et de
+  plafond (2,4 × le rayon), plan au sol 🗺️ (même emprise) et brouillard (compté depuis la caméra : du recul + 30 % du
+  rayon au recul + rayon + 2 m ; `camera.far` = fin du brouillard + 10 m) : pas de bord noir en dézoomant ; 345 m à
+  150 m de recul. **Rayon construit** (`_rayonScene`) : le même, mais la part du recul plafonnée à 100 m
+  (`RAYON_RECUL_MAX`, atteint vers 43 m de recul) — tuiles, volumes, panneaux de POI, lampes des membres. Au-delà,
+  le sol nu (et le plan au sol s'il est allumé), sans structures. 🩸 Vu de haut, tout le disque construit est à
+  l'écran : le coût suit ce rayon, pas le recul. Sans ce plafond, 150 m de recul = 1 526 tuiles, 50 ms par image et
+  29 s de constructions saccadées en iPhone émulé (mesures : ETUDE_VUE_3D.md).
 - **Portée** (curseur 🔭 de la tuile ⚙️, `config.js > getVue3DPortee`, réglage de cet appareil, décision produit) :
   15 à 100 m au mètre près, 30 m par défaut (`V3D_PORTEE`) ; `reglerPortee(m)`. Brouillard noir complet à la portée,
   profondeur de la caméra (portée + 5 m), portée de la lampe et rayon des tuiles suivent à l'image suivante
   (`_appliquerPortee`, tuiles construites au plus 3 par image : pas d'à-coup). `ouvrir({ distanceVue })` (mesures,
   checkup) passe avant le réglage sans l'écrire. Clavier : flèches, Origine, Fin sur le curseur (le clavier de la vue
   lui laisse ces touches) ; valeur dite par `aria-valuetext` (`formatDistance`).
+- **🛡️ Limiter la portée (anti-crash mémoire)** (case de la tuile ⚙️, à côté de ☀️, `config.js >
+  getVue3DLimiterPortee`, `myktamap_v3d_limiter_portee_v1`, décision produit) : **cochée par défaut** = les bornes
+  ci-dessus (portée ≤ 100 m, recul ≤ 150 m, rayon construit ≤ `RAYON_RECUL_MAX`). **Décochée** (`limiterPortee(false)`,
+  après une question `ktaConfirm`, « Garder la limite » = rien ne change) : un cran de plus au bout du curseur,
+  **« Tout le plan »** (`reglerPortee("tout")`, retenu à part : `myktamap_v3d_portee_tout_v1` ; la portée en mètres
+  reste celle qui revient case cochée) = la **diagonale de l'emprise** (`_diagPlan` : image du plan et objets
+  indexés, un objet hors image compris) ; recul de la vue d'édition jusqu'à cette diagonale (`_reculMax`) ; rayon
+  construit sans plafond ; aucun brouillard (repoussé hors de vue, nuit et Plein jour) et ciel noir, Plein jour compris ; profondeur et lampe suivent la portée.
+  Au-delà de 150 m de recul, le plan proche de la caméra recule (recul / 300) : sinon les rubans au sol scintillent
+  au loin. ⚠️ contrat : au doigt (`ktaAppareilTactile`), la case **revient cochée à chaque ouverture** (réécrite) ;
+  au pointeur fin, décochée reste décochée. Une greffe qui fige les réglages (`reglagesFiges`, jeu) limite la portée
+  (`_limitee`), grise la case et refuse `limiterPortee` / `reglerPortee` sans rien écrire. Recocher ramène recul et
+  portée sous leurs bornes. Version brute : tout le plan est construit en pleine définition (pas d'allègement du
+  lointain) ; mesures : ETUDE_VUE_3D.md § Tout le plan. Checkup : `checkup-vue-3d.js` § 41 (`KTA_V3D_SEUL=limiter`),
+  mesures `KTA_V3D_PERF=toutplan` ; panneaux dézoomés : § 42 (`KTA_V3D_SEUL=panneaux`).
 - **Lampe** (réglages de la tuile ⚙️, cet appareil, décision produit : `config.js > getVue3DLampeIntensite`,
   `getVue3DFaisceau`, `getVue3DPleinJour`) : 💡 **intensité** en curseur, 25 à 300 % par pas de 5, 100 % = la lampe
   d'origine (`reglerLampe(%)`) ; 🔦 **faisceau** en curseur, 40 à 160° de cône total, 71° par défaut = demi-angle de
@@ -1684,9 +1796,20 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   rien ne brûle de près). Sous 100 % : force et halo × k, coupure × √k, décroissance de 1,2 à 1,6, brouillard de 45
   à 25 % (25 % : force × 0,25, portée moitié). Faisceau (`_coneLampe`) : demi-angle = cône / 2 (160° = 80°, sous la
   borne π/2 du SpotLight de three.js), pénombre de 0,4 (40°) à 0,55 (71°), puis jusqu'à 1 (160° : le bord se fond
-  dans le noir au lieu de dessiner un rond net). **Plein jour** = éclairage d'ambiance de la vue d'édition (0,9) à
-  hauteur d'yeux, lampe inchangée, brouillard gardé à la portée (même coût, la portée reste le seul réglage de
-  « jusqu'où l'on voit »), commencé à 65 % au moins. Ancienne clé `myktamap_v3d_lampe_v1` lue tant que les
+  dans le noir au lieu de dessiner un rond net). **☀️ Plein jour** (décision produit, `_appliquerPortee`,
+  `SOLEIL`) : un **soleil rasant**, `DirectionalLight` blanc chaud (constante physique, pas une couleur de la
+  charte) de force 1,8, à 30° au-dessus de l'horizon, venu de 315° du **nord réel du plan** (`_orienterSoleil` :
+  `e.nord` + 315°, relu à `kta:northOffsetChange` ; sans nord calibré, le haut du plan comme la boussole) — le
+  nord-ouest, convention des cartes en relief : faces tournées vers lui claires, les autres dans l'ambiance
+  baissée à 0,25, l'ombre tombe toujours du même côté (repère d'orientation). **Ni ombre portée ni occlusion**
+  (coût iPhone). Brouillard et fond **clairs** (jeton `--kta-texte-3` lu par `_jetonsSombres`), de 40 % à 100 % de la
+  portée à hauteur d'yeux (même coût, la portée reste le seul réglage de « jusqu'où l'on voit »), du point visé
+  (`recul`) à la fin habituelle en vue d'édition : le lointain pâlit, le proche reste net. La lampe garde son réglage
+  et s'ajoute autour de soi (curseurs actifs ; 25 % la rend discrète). ⚠️ contrat : la case vaut dans les **deux
+  vues** — décochée en vue d'édition = l'éclairage plat d'origine (`AMBIANCE_PLONGEE`, 0,9, fond noir), lisible pour
+  dessiner. 🩸 Le soleil reste dans la scène à 0 hors Plein jour : le nombre de lumières entre dans les shaders,
+  l'ajouter au gré de la case recompilerait tout. Coût mesuré (`checkup-vue-3d.js` § 12 quater,
+  `KTA_V3D_SEUL=pleinjour`, iPhone émulé avec `KTA_V3D_TEL=1`) : dans le bruit de la nuit. Ancienne clé `myktamap_v3d_lampe_v1` lue tant que les
   nouvelles manquent : « forte » = 200 %, « jour » = Plein jour ; jamais réécrite. ⚠️ contrat : la lampe se
   **multiplie** au facteur `lampe` d'une greffe (`_lampeGreffe` : force × courbe × k, portée × coupure × max(0,06, k),
   comptée sur la portée réglée et rendue au retrait). ⚠️ contrat : une greffe qui pose
@@ -1712,9 +1835,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   sommet bouge d'un ou deux px), déplace le **point visé** `e.vise` (m), jamais la place : le sol pris sous le doigt
   reste sous le doigt (rayons contre y = 0, un pas borné au recul), dans le repère de l'écran quel que soit le cap.
   ⚠️ contrat : avatar, `e.pos` et tracker ne bougent pas (la 3D ne recale jamais le tracker sans demande). **Cap** :
-  deux doigts tournés (le décor suit les doigts, comme la carte 2D tournée à la main) : tranché en arc parcouru depuis
-  la pose des doigts (plus de 18 px, deux fois le glisser vertical et l'écart du pincement ; 🩸 les doigts arrivent un
-  événement après l'autre : un seul doigt bougé de 8 px tourne déjà la paire de 15° à 30 px d'écart) ; au PC, clic
+  deux doigts tournés (le décor suit les doigts, comme la carte 2D tournée à la main) : engagé à 10° d'angle depuis
+  la pose (`CAMERA_LIBRE.rot`, arc d'au moins 12 px : deux doigts serrés ne tournent pas au moindre tremblement),
+  15° une fois un pincement engagé (le seuil de la carte, `mapBearing.js > SEUIL_ROTATION`), **sans rattraper le
+  seuil** (aucun saut) puis suit les doigts, zoom compris ; un doigt qui tourne autour de l'autre tourne aussi (🩸 il
+  passait pour une inclinaison : son milieu monte). 🩸 Les doigts arrivent un événement après l'autre : un seul doigt
+  bougé de 8 px tourne déjà la paire de 15° à 30 px d'écart. Au PC, clic
   droit ou Ctrl + glisser, pavé ↶ ↷, clavier ; en suivi, le cap reste celui de l'appareil. **Retour sur la place** :
   ⌖ (montré caméra détachée seulement), marcher (joystick, pavé, clavier : `_rattacher` — règle : le doigt déplace la
   caméra, les commandes déplacent la place et la caméra la rejoint) et le retour à hauteur d'yeux. Centre de la scène
@@ -1741,8 +1867,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Le tracker n'est pas déplacé** par la vue (décision produit). `fermer()` (✕, Échap) : si le suivi est actif
   (`getTrackingActif`) et qu'un déplacement en mode libre a écarté la vue d'au moins 0,5 m du tracker, ou l'a menée à
   un autre niveau que le sien (🪜, texte `vue3d.jeSuisIci.texteNiveau`), `ktaConfirm` « 📍 Je suis ici ? » ; Oui =
-  `recalerTrackerSurPoint(x, y, niveau)` (ancre de recalage normale, replanification et validation d'étape
-  comprises), Non = rien. Une fermeture forcée (contexte perdu) ne pose pas la question.
+  `recalerTrackerSurPoint(x, y, niveau, { teleport: true })`, Non = rien. ⚠️ contrat (décision produit) : un recalage
+  venu de la 3D est un **saut**, pas un pas de terrain : ancre `tp` (ni validation `getTrackingValidations`, ni
+  distance estimée), la sortie du Carnet ne devient pas « terrain » par lui (`journal.js > _classer`) ; le hook
+  (replanification, validation d'étape, portail) joue comme pour tout recalage. Même règle pour « Ici » de « D'où
+  pars-tu ? » (`interfaceItineraire.js > _demanderDepart`). Le « 📍 Je suis ici » d'une fiche ouverte depuis la 3D
+  reste un geste de terrain (l'utilisateur dit où il est) : validation comptée. Une fermeture forcée (contexte perdu) ne pose pas la question.
 - **Sortie : la carte se place là où l'on était en 3D** (décision produit, `vue3d.js > _placerCarte`, avant la
   question, quelle que soit la réponse) : niveau de la 3D s'il diffère (`ktaSetActiveLevel`, source `vue3d`), puis
   `map.setView(convertCoord(x, y))` sans animation, zoom gardé (au moins 0). En suivi sans déplacement libre, la place
@@ -1762,12 +1892,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   tracé) ;
   piliers et fronts en **roche brute** (décision produit : la masse calcaire laissée en place, jamais appareillée —
   bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux, traces
-  d'outil ; aucun joint), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
+  d'outil ; aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
+  `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche :
+  sans elle un pilier passé de la 1re à la 2e masse ne changeait rien dans la scène), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
   le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,
   polygone = pilier), un type inconnu garde sa couleur. Couleur et normal map dessinées dans un canvas
   (`_rocheBrute`, `ROCHE` : 256 px, motif de 3 m, plus grand que l'appareil car sans joints la répétition se voit
   plus ; `_appareil`, `PARPAING` : 256 px, motif de 1 m ; normal map commune `_carteNormale`), faits à la première
-  structure texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée. Deux matériaux de plus,
+  structure texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée par la légende. Deux matériaux de plus,
   structures toujours regroupées par matériau (un maillage par tuile et par matériau). Coordonnées de texture en
   mètres posées face par face (`_prisme`) : u = longueur de contour cumulée (l'appareil tourne l'angle), v = hauteur
   depuis le sol, dessus en projection monde (x, z). Normal map plutôt que bump map (une lecture par pixel, pas de
@@ -1794,7 +1926,20 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   scène compté depuis soi (la portée ; en vue d'édition, `_rayonScene`), échelle 1 → 0,5 et opacité 1 → 0,4 vers la
   limite (`_majPanneaux`). En vue d'édition, jamais de lettres sous 13 px à l'écran (`PANNEAU_LETTRE_MIN`, décision
   produit : dézoomé, un panneau à l'échelle de la scène n'avait plus que 3 px de texte), plafond porté à 60 % de
-  l'écran sur la largeur montrée (`PRES.ecranEdition`). De près
+  l'écran sur la largeur montrée (`PRES.ecranEdition`). ⚠️ contrat (décision produit, comme la carte 2D) : en vue
+  d'édition, un panneau de POI qui couvrirait plus de 12 m de sol à lettres minimales (`PANNEAU_REDUIT.sol` ; il
+  fait toujours ~222 px : vers 31 m de profondeur au PC, 33 m au téléphone) devient son **icône seule**, 28 px à
+  l'écran, dans une pastille sombre cerclée de rouge (danger) ou de la couleur des passages, ⭐ d'un favori
+  (`_iconeReduite`, texture partagée par icône et marque dans `e.icones` ; celle du panneau reste dans
+  `userData.texPanneau`, seule libérée avec la tuile) ; le nom revient sous 9 m (`solNom`, hystérésis : ~23 m de
+  profondeur). Puis **dé-chevauchement** (`_desencombrer`) : les panneaux qui se recouvrent à l'écran (marge 4 px)
+  n'en gardent qu'un, par rang (danger, favori, passage, point lié à un autre plan, puis le plus proche de la
+  caméra, avance de 15 % au panneau déjà montré : pas de clignotement), grille d'écran de 64 px (jamais n²), refait
+  seulement quand la caméra, la vue ou les candidats changent (~0,5 ms pour 1 000 POI au PC). Masqué = `visible`
+  coupé : ni dessiné ni visé. Membres et repères d'une installation ne se réduisent jamais et ne se masquent
+  qu'entre eux (un POI ne cache jamais un membre, un repère non plus) ; mesures et 🏁 jamais. À hauteur d'yeux, aucune icône ; seuls
+  les panneaux à plus de 12 m peuvent être masqués. Une icône réduite (plus petite qu'un doigt) se touche à 22 px
+  près (`_panneauVise`, `PANNEAU_REDUIT.toucher`). De près
   (`PRES`) : masqués à moins de 1 m de la caméra, fondu jusqu'à 2,2 m, jamais plus larges que 45 % de l'écran (un
   panneau remplissait l'écran du téléphone). Toujours aux jetons du thème **sombre** (décision produit : la scène est
   noire dans les deux thèmes), lus dans la règle `:root` des feuilles (`_jetonsSombres`). Un POI
@@ -1851,10 +1996,16 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 
 ### Guidage, fiche d'un POI et « Y aller » (QCM du 02/11/2026)
 
-- **Itinéraire** (décision produit) : tirets de 1,2 m tous les 1,8 m (`ITI`, le « 12 6 » de la carte), ruban de 0,35 m
-  à `--kta-interaction` sur un liseré `--kta-fond` de 4 cm par bord (`_rubanIti`, jetons du thème sombre,
-  `_couleursIti`), matériau `iti` non éclairé et sans compression de tons ; phase prise sur l'abscisse du trajet
-  (`abscisses` de chaque morceau) : les tirets se suivent d'un segment et d'une tuile à l'autre. ⚠️ contrat (décision
+- **Itinéraire** (décision produit) : ruban **plein** continu de 0,3 m (`LARGEUR_ITI`) à `--kta-interaction` (la
+  couleur de l'itinéraire de la carte ; le doré reste aux itinéraires publiés par l'équipe) sur un liseré `--kta-fond`
+  de 4 cm par bord, gardé parce que le sol est clair (grain calcaire, plan au sol) et que le ruban passe sur le liseré
+  vert d'un tracé ; **chevrons « ^ » de sens** `--kta-fond` (9,3:1 sur le ruban) tous les `ITI.pas` = 2 m à partir
+  de 1 m, pointe vers l'arrivée, branches de 0,26 m sur 6 cm (`_chevronIti`) : le dessin du trajet du jeu
+  (`addons/mkmg`), à la couleur de l'app, sans code partagé. Chaque segment est prolongé d'une demi-largeur à ses bouts
+  (coudes fermés). `_rubanIti`, jetons du thème sombre (`_couleursIti`), matériau `iti` non éclairé et sans compression
+  de tons ; chevrons posés sur l'abscisse du trajet (`abscisses` de chaque morceau, comptée aussi sur les tronçons d'un
+  autre niveau, qui n'en portent aucun) : ils ne glissent pas et se suivent d'un segment et d'une tuile à l'autre. Ils
+  tombent entre les chevrons dorés du guidage (`_majChevrons`, à 0, 2, 4 m…), plus grands et au-dessus. ⚠️ contrat (décision
   produit) : sur un remblais ou un effondrement dessiné (`ITI_SUR`, zones montrées du niveau, `_volumesIti` à chaque
   `_reindexer`), ruban, liseré, chevrons et marqueurs d'étape sont posés sur le dessus du volume (`_dessusIti`,
   HAUTEUR_REMBLAIS de la hauteur) à leur hauteur propre ; chaque segment est coupé aux faces (`_morceauxIti`) et une
@@ -1875,12 +2026,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`Pathfinder.computeRoute`, 210 à 300 ms) et du rendu de la carte (20 à 40 ms) ; l'itinéraire 3D, 2 à 12 ms.
 - **Bandeau** (`_majBandeau`, dans `_e.bandeau` sous la rangée du haut, `top` posé par `_majSousHaut` sous la rangée
   seule) : icône (ou schéma du carrefour), consigne, ligne « puis… », mêmes textes que le bandeau 2D, relus toutes les
-  250 ms (`_lireGuidage`). ⚠️ contrat (décision produit) : **en suivi**, la consigne réelle (`ItiGuidage.etat()`,
-  comme l'écran XL), rien quand le bandeau 2D ne parle pas (réglage « Jamais », position inconnue) ; **en libre**, un
-  **aperçu** depuis la position 3D (`ItiGuidage.apercu(pos, { cap, sPrec })`, qui ne touche ni la progression ni les
-  alertes du guidage), sans marque à part, masqué en « Jamais » hors urgence. Interrupteur 🪧 Guidage de la tuile ⚙️
-  (`config.js > getVue3DGuidage`, cet appareil) : coupé, ni bandeau ni chevrons, sauf un guidage d'urgence (comme le
-  `masque: !urgence && …` de la 2D) ; il ne touche ni `ItiGuidage.getPref` ni l'état du guidage. Pas de voix (elle
+  250 ms (`_lireGuidage`). ⚠️ contrat (décision produit) : **🪧 Guidage coché dans la tuile ⚙️ suffit** — le bandeau
+  2D réglé sur « Jamais » (sa croix, le bouton de la barre) ou muet (position inconnue) n'éteint pas la 3D. **En
+  suivi**, la consigne réelle (`ItiGuidage.etat()`, comme l'écran XL, boutons d'écart compris) quand le bandeau 2D
+  parle, sinon un **aperçu** depuis la position du tracker (`getTrackingPosition`) ; **en libre**, un **aperçu**
+  depuis la position 3D (`ItiGuidage.apercu(pos, { cap, sPrec })`, qui ne touche ni la progression ni les alertes du
+  guidage ; son `masque` ne vaut que pour la 2D), sans marque à part. 🩸 La 3D ne change jamais le réglage de la 2D :
+  allumer le guidage de l'app depuis 🪧 aurait changé la carte sans le dire. Interrupteur 🪧 (`config.js >
+  getVue3DGuidage`, cet appareil) : coupé, ni bandeau ni chevrons, sauf un guidage d'urgence, toujours montré ; il ne
+  touche ni `ItiGuidage.getPref` ni l'état du guidage. Pas de voix (elle
   n'existe pas en 2D non plus). **Écart en suivi** : les boutons de la 2D (`etat().actions`, même ordre : sans
   navigation intelligente « Je suis ici » d'abord) sur une ligne sous la consigne (`.kta-v3d-guid-actions`, 44 px),
   joués par `_actionGuidage` → `ItiGuidage.agir` ; « Je suis ici » ferme la vue (le picker est sur la carte) et la
@@ -1912,11 +2066,24 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   plan, tracés, niveaux visibles changés sur la carte).
 - **Toucher un panneau de POI** (`_toucher`) → **sa fiche de la carte** (`_ouvrirFiche` :
   `utils.js > buildPointPopupHtml`, ses boutons agissent par `_ktaPopupAction`), dans un cadre sous le bandeau ;
-  ✕ ou Échap la ferment ; « Je suis ici », « Y aller » et « Itinéraire » la ferment après leur action. ⚠️ Sans ✏️ /
-  Repositionner / 🗑️ (ils se jouent sur la carte, cachée dessous). Photos par `attachPopupPhotos` sur un marqueur de
+  ✕ ou Échap la ferment ; « Je suis ici », « Y aller » et « Itinéraire » la ferment après leur action. ⚠️ Le HTML de
+  la fiche est rendu sans ✏️ / Repositionner / 🗑️ ; un **POI de session en vue d'édition** y gagne une rangée
+  (`_editionFiche`, décision KARMA du 06/11/2026) : **✏️ Modifier** (`editor.js > modifierPointEditor`, le formulaire
+  de la carte au-dessus de la vue ; la scène suit par `kta:donneesPlanChange`), **📍 Déplacer** et **🎯 point précis**
+  (`poiPrecis.js > armer(id, x, y, "deplacer" | "precis")`, son bandeau `.kta-iti-floater`, z-index 100000, Échap sur
+  window en capture avant celui de la vue, ✕). Le mode armé, un toucher au sol (`_poserAuSol` : `_pointSol`, refus
+  « hors du plan » et « horizon » du dessin) devient `map.fire("click", { latlng })` : le geste de la carte, une
+  écriture, une entrée ⏪ (`editor.js > ktaDeplacerPointSession` pour 📍, la règle de Repositionner). Aucune
+  aimantation (un POI n'en a pas, ni sur la carte ni en ✏️ depuis la vue). Mêmes droits que la carte : lecture seule
+  (`ktaEditionRefusee(true)`) ou POI de calque (hors `getEditorPoints`) = aucun bouton ; 🗑️ reste sur la carte. La
+  fiche se ferme en armant. Photos par `attachPopupPhotos` sur un marqueur de
   substitution (`on`, `isPopupOpen`). Un **POI jonction** ouvre aussi sa fiche (décision produit, QCM du
   02/11/2026), avec un bouton par niveau lié (`_passagesFiche` : « ▼ Descendre au niveau -1 (échelle) », le plus haut
-  d'abord), d'où que l'on soit ; ces boutons n'ont pas de `data-v3d` (l'écouteur de la fiche les joue).
+  d'abord), d'où que l'on soit, POI de session comme de calque ; ces boutons n'ont pas de `data-v3d` (l'écouteur de
+  la fiche les joue). ⚠️ contrat : un POI ou un objet se reconnaît par `_memeObjet` (même uid ; sans uid, POI = même
+  id, place et niveau, objet = même type et même tableau de points), jamais par l'identité seule : les lectures des
+  calques (`getAllEmbedded*`) rendent des objets neufs à chaque appel, une annulation rend des copies (passages de la
+  fiche, boutons d'édition, fiche gardée à la reconstruction, sommet saisi).
 - **Toucher une structure, une zone ou un tracé** (`_toucher`, décision produit, QCM du 03/11/2026) → **sa fiche de
   la carte** (`_ouvrirFicheObjet`). Priorité au toucher : panneau (POI, membre, repère), puis structure, zone, tracé ;
   rien dessous = rien. ⚠️ contrat (visée, `_rayonEcran` → `_pointVise` → `_objetAuPoint`) : les tuiles fusionnent
@@ -1952,7 +2119,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   à la fermeture tant qu'on n'avance pas).
 - **Un tracker recalé pendant la 3D ne la déplace pas** (`KtaVue3D.trackerRecale(opts)`, appelé par `tracking.js >
   _notifierRecalage` ; décision produit, retour terrain) : « 📍 Je suis ici » d'une fiche ouverte en 3D recale le
-  tracker comme sur la carte (dans la galerie de la 3D, § Recalage dans la galerie), mais la place 3D reste ; `aBouge`
+  tracker comme sur la carte (dans la galerie de la 3D, depuis le point précis d'un POI qui en a un, § Recalage dans
+  la galerie), mais la place 3D reste ; `aBouge`
   est remis à faux (pas de « Je suis ici ? » à la fermeture). **En suivi**, ce « Je suis ici » (`opts.dansGalerie`)
   passe la vue en **libre** à cet instant, avant toute image (elle ne lit donc jamais le tracker recalé), niveau
   affiché tenu (`niveauLibre`), toast success `vue3d.libreApresRecalage` ; le bouton du suivi l'y ramène. Un autre
@@ -1960,8 +2128,48 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`ouvrir({ depart })`) au point et au niveau choisis, cap gardé. En suivi, rien de plus (elle suit déjà) ; vue
   fermée, rien ; jamais de recalage du tracker par la 3D elle-même.
 
+### Ajuster une forme en vue d'édition (décision du 04/11/2026)
+
+- **Mêmes gestes, même prise** ⚠️ contrat : appui long (500 ms) sur un sommet d'un pilier, d'une zone, d'un tracé ou de
+  la mesure, puis glisser = déplacer ; au milieu d'un côté = ajouter ; sans bouger = ＋ et 🗑️ au sommet (boutons de la
+  carte, `KtaAjusterSommets.htmlMenu`, boîte `.kta-v3d-ajuster-menu` suivie à l'écran, retirée seule après 6 s, au
+  toucher suivant, avalé sur la scène, ou par Échap ; 🩸 avalé mais pas son appui long : posé sur un sommet, il
+  l'ajuste — une souris tenue immobile ouvre ce menu à coup sûr, et l'appui suivant sur la pastille agrandie partait
+  en pan, checkup § 35 bis) ; sous le minimum, ＋ seul et le toast de la carte. Tout ce qui décide passe par `ajusterSommets.js > KtaAjusterSommets.plan`
+  (familles, droits : lecture seule, calque non rapatrié, outil armé sauf 📐 pour la mesure ; aimantation ; une entrée
+  ⏪, un rendu au lâcher). La vue ne mène que le geste (`vue3d.js > _ajusterAppui`, `_ajusterBouge`, `_ajusterLacher`).
+- **Ce qui se vise** : ce que la vue montre (`e.vus` : son niveau, ses filtres, pas de structure en rendu Galerie ; un
+  objet de même `uid` qu'un objet montré compte aussi, 🩸 copies au contenu identique d'une annulation suivie d'un
+  rétablissement : empreinte inchangée, scène non refaite, `e.vus` garde les anciens objets), la mesure toujours ; au sol sous le point d'**appui** (`_pointSol`), rayon de 24 px d'écran converti à la profondeur
+  (`_tolerancePlan(dist, RAYON_PX)`) ; aimantation d'un tracé au rayon de `snapDrawPx` à la profondeur du lâcher.
+  🩸 Rien au sol : le point du maillage touché (`_pointVise`, hors sol) est essayé au même rayon. Un sommet se vise là
+  où on le voit : le coin du dessus d'un pilier est à plus de 24 px au-dessus de son pied en vue d'édition par défaut
+  (33 px mesurés à 1280 × 800), et la souris, précise, le visait : l'appui partait en pan. Le glisser reste mené au sol
+  (départ = le sol sous l'appui) : le sommet garde son écart au pointeur, sans saut. Checkup § 35 bis (vraie souris).
+- **Caméra** 🩸 : plus de 6 px avant l'appui long = un pan (l'appui est oublié ; le pan part à 8 px, `TAPE.bouge`) ;
+  armé, les mouvements du doigt ne vont qu'au sommet (ni pan, ni cap) ; un 2e doigt, la molette, Échap ou la sortie de
+  la vue d'édition annulent sans rien écrire. Le lâcher d'un ajustement n'est pas un toucher (pas de fiche).
+- **Aperçu** : ruban doré de la forme et ronds dorés à ses sommets (plus gros au sommet tenu) dans le maillage d'aperçu
+  (`_majApercu`, signature : un pas = un recalcul de quelques triangles), aucune reconstruction pendant le glisser ;
+  au lâcher, `kta:donneesPlanChange` refait la scène à l'image suivante, sur l'emprise avant / après (`_noterFin`).
+  La mesure a ses ronds dorés en permanence, comme sur la carte.
+- **＋ Insertion** : ＋ ouvre l'insertion de la carte (`KtaAjusterSommets.plan.inserer`) ; chaque toucher bref au sol
+  (`_toucher` → `_insererAuSol`, avant l'outil armé et les fiches) passe par `plan.poser(p, tolAimant, tolFin)` : point
+  refusé hors du plan (toast), aimantation à la profondeur, fin au toucher du sommet suivant (24 px d'écran à la profondeur).
+  Ronds dorés de la forme dans l'aperçu (ancre plus grosse) ; scène refaite sur l'emprise après chaque point. Le
+  bandeau est celui de la carte (posé sur `body`, au-dessus de la vue). Échap le termine (après un ajustement ou son
+  menu) ; sortir de la vue d'édition aussi. 🩸 Ctrl / Cmd + Z, Y ne sont plus pris par la vue (Z = avancer) : ils
+  vont à `historyManager.js`, un point inséré à la fois.
+- Garde-fou : `checkup-vue-3d.js` § 35 (`KTA_V3D_SEUL=ajuster`, souris et doigt).
+
 ### Dessiner en vue d'édition (QCM du 03/11 et du 04/11/2026)
 
+- **✏️ Ajouter un point** (décision du 04/11/2026) : le bouton seul de la carte (groupe `edition`, sans panneau),
+  à sa place dans la colonne ; `_outilArme` le compte (`modeEdition`), donc un toucher bref le rejoue comme un sommet
+  (`_poserSommet` : `activeLevel` prêté le temps du clic). La fenêtre de nommage de la carte (`#kta-poi-modal`) s'ouvre
+  par-dessus la vue, qui lui laisse ses touches (`_recouverte`) ; ⚠️ contrat (editor.js > afficherFormulaire) : à
+  l'ajout, le niveau est lu À L'OUVERTURE, pas à l'enregistrement. L'ajout signale `kta:donneesPlanChange` : la scène
+  est refaite, le panneau du POI paraît. Aucune touche propre en 3D (les lettres de la carte y sont arrêtées).
 - **Où** (décision produit) : en ✏️ Édition seulement, la colonne des groupes de la carte est toujours là et active
   (`_monterOutils`, place : `ui.md` § Vue 3D) : aucun interrupteur à ouvrir, armer un outil suffit, le désarmer suffit
   pour arrêter. Rien ne se dessine tant qu'aucun outil n'est armé (`_dessinActif` : vue d'édition, greffe sans
@@ -1986,8 +2194,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   jamais la surface d'un objet : le dessus d'un pilier ou le haut d'une paroi touchés décalaient le sommet du doigt
   d'autant que l'objet est haut (jusqu'à 1,3 m mesuré sur un plan dense en vue inclinée), alors que l'aperçu et le plan
   au sol se dessinent au sol, sous le doigt. Aucun maillage requis : hors du carré de sol, au-delà de la portée ou dans
-  le noir hors des tubes (rendu Galerie) le point se pose quand même. Point ramené dans les bornes de l'image. La
-  visée des fiches (`_pointVise`, outil désarmé) garde la surface touchée.
+  le noir hors des tubes (rendu Galerie) le point se pose quand même. Hors de l'image du plan : refusé, toast « Hors du plan » (jamais ramené sur le bord, décision produit). La
+  visée des fiches (`_pointVise`, outil désarmé) garde la surface touchée, comme la saisie d'un sommet à ajuster quand
+  rien n'est au sol (elle ne pose rien : le sommet glisse au sol).
 - **Niveau** ⚠️ contrat : l'objet prend le niveau de la 3D (`e.niveau`, `niveauLibre` compris) : `APP_CONFIG.activeLevel`
   le prend le temps des deux `fire` puis est rendu (`finally`), la règle de la 2D (pilier-2 / front-2 au niveau − 1,
   aimantation au niveau actif) jouant d'elle-même. Rien d'asynchrone de la vue ne lit le niveau pendant ce temps.
@@ -2018,10 +2227,23 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   **Bandeau fixe** (`_majBandeauMesure`, `.kta-v3d-mesure`, `role="status"`) tant que 📐 est armé : les lignes du libellé
   de la carte (`_afficherMesureValeur` : distance `formatDistance(d, 2)`, surface `formatSurface(s, 1)`, ou l'invite du
   mode), la ligne du mode actif marquée ; relu à chaque sommet, caché outil désarmé.
+- **📏 Distance totale et ⛏️ Volume exploité** (panneau 📐, vue d'édition) : les fenêtres de la carte, par-dessus la
+  vue. ⚠️ contrat : le niveau compté est **celui de la vue** (`KtaVue3D.niveauVue()`, pas forcément le niveau actif
+  de la carte : passage 🪜, suivi) — 📏 ne compte que les tracés de ce niveau (carte seule : son niveau actif ;
+  case « Tous les niveaux » : tout le plan, ruban au sol du niveau de la vue seul, note dans le panneau ;
+  `multilevel-pathfinding.md` § 15), ⛏️ y prend piliers et remblais. 📏 : la 3D ne compte rien, elle lit les tronçons comptés
+  (`interfaceDistanceTotale.js > ktaDistanceTotaleSurlignage`) et pose un ruban au sol de `SURLIGNE.larg` à la couleur
+  du surlignage de la carte (`ktaSwatchColor("traces", "jonction")`), un seul maillage hors tuiles (`_majDistTot`),
+  refait à `kta:distanceTotaleChange` (case, ❌ Effacer, réouverture) et à chaque reconstruction, jamais l'inverse ;
+  au sol comme les rubans des tracés. Niveau de la vue changé ou vue fermée : la carte rejoue son surlignage et son
+  panneau (`ktaDistanceTotaleRafraichir`). ⛏️ lit la surface ♦️ posée dans la vue (rien de neuf à dessiner) ; sans
+  surface, le message de la carte.
 - **Droits** : ceux de la carte (armement refusé en lecture seule, groupe grisé recopié ; 📐 permise). Greffe
   `fiches: false` : ni barre ni sommet (`addons.md`).
 - **🗺️ Plan au sol** (décision produit : livré si la mémoire suit) : interrupteur de la barre, coupé par défaut, gardé
-  tant que la vue est ouverte, niveau 0 seulement (le plan de base, `tiling.js > ktaPlanDeBaseVisible`). Une texture
+  tant que la vue est ouverte, offert à **tous les niveaux** : un niveau ≠ 0 qui a ses calques image
+  (`imageLayers[].level`, `window._ktaImageOverlays`) montre ceux-là (calés comme sur la carte, lus depuis leur URL
+  s'ils ne sont pas posés), sinon le plan de base ; changer de niveau la redessine. Une texture
   carrée (1024 px au doigt, 2048 au pointeur fin) sur le carré de sol, à une place fixe, redessinée à un quart
   d'écart (place ou emprise) ; source : les `<img>` du fond déjà chargés par la carte (direct, tuiles V1), plan V2 :
   `ktaDessinerRegionTuiles` (tuiles du ZIP ou du cache, niveau le moins détaillé qui suffit). Libérée coupée, à la
@@ -2035,7 +2257,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 ### Greffe de la vue 3D (prise des add-ons) et code « six vers le bas »
 
 - La vue 3D prête une **prise neutre** aux add-ons (`KtaVue3D.greffer`, sans effet sans greffon) et lance l'add-on
-  lié à un code (`CODE_BAS`, `ADDONS_CODE`). Contrat complet, connecteurs, règles et add-on `mkmg` :
+  dont le manifeste déclare ce code (`CODE_BAS`, `_lancerAddon`, registre `js/ktaAddons.js`). Contrat complet, connecteurs, règles et add-on `mkmg` :
   **`docs/architecture/addons.md`**.
 
 ### Garde-fous et limites
@@ -2064,7 +2286,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   vue), panneau de POI sombre en thème clair et borné de près, rendu en pause (immobile et boussole qui tremble).
   Interrupteur : mixte par défaut (avec ou sans structure), mixte → structures → galerie en boucle, retenu par plan.
   Guidage (§ 10) : itinéraire tracé pendant la vue montré, bandeau d'aperçu en libre et consigne réelle en
-  suivi, chevrons, bandeau stable au redimensionnement, toucher d'un POI → sa fiche (sans ✏️ / 🗑️), Échap ferme la
+  suivi, chevrons, bandeau 2D réglé sur « Jamais » (bandeau et chevrons quand même en suivi et en libre, rien 🪧
+  décoché), bandeau stable au redimensionnement, toucher d'un POI → sa fiche (sans ✏️ / 🗑️), Échap
+  ferme la
   fiche, « Y aller » en libre depuis la position 3D au niveau 1 sans recaler le tracker, tracker arrêté → « Ici »
   recale et part de la position 3D, la 3D ne bouge pas. La 3D suit un tracker fixé depuis elle (§ 10b) : recalage
   pendant la vue → place sur le tracker à son niveau ; 3D à 10 m sur l'autre niveau, « Y aller » → « Ma dernière
@@ -2080,8 +2304,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   retirés, toucher d'un panneau de membre ou de repère n'ouvre aucune fiche. Côtés (§ 15) : pilier à 2 m à droite et
   front de 10 m à droite → paroi gauche gardée, droite ouverte, un pan de retour à chaque bout du bord à la face,
   aucune fente (rayons tous les 10 cm) ; piliers des deux côtés → chambre ; pilier dans l'axe → bout ouvert ; on bute
-  à gauche sur la paroi, à droite sur le pilier. Itinéraire (§ 16) : 0,35 m, liseré 0,43 m, tirets de 1,2 m (17 sur
-  30 m), couleurs des jetons, mât d'étape, 🏁. Ronds (§ 17) : aucun option coupée, ceux de la carte au niveau affiché
+  à gauche sur la paroi, à droite sur le pilier. Itinéraire (§ 16) : ruban plein de 0,3 m (3 bandes, 30,9 m pour
+  30 m), liseré 0,38 m, 15 chevrons de sens sur 30 m (de 1 à 29 m), couleurs des jetons, mât d'étape, 🏁 ; sur deux
+  niveaux, 5 chevrons sur les 10 m du niveau affiché et rien sur le tronçon de l'autre. Ronds (§ 17) : aucun option coupée, ceux de la carte au niveau affiché
   et à leur couleur option cochée. Joystick (§ 18, pointeurs tactiles synthétiques, pointeur grossier simulé) :
   pavé au PC et avec l'option, joystick sinon ; zone sous la rangée et au-dessus de la boussole, anneau sous le doigt,
   toucher bref sans quitter le suivi, libre en sortant de la zone morte, 1,4 puis 2,8 m/s, course à 7 m/s, pas de
@@ -2122,13 +2347,21 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   au 0, sommets à 3 cm, une reconstruction, visé ; glisser, pincer, deux doigts, molette, Maj + molette → aucun sommet ;
   annulé ; mur fermé par ✅, mur en ligne, zone, tracé (aucune reconstruction pendant), aimantation, mesure de 10 m et
   son étiquette ; sortie de la vue d'édition (objet de 2 sommets abandonné), Échap, fermeture (objet de 3 sommets gardé) ;
-  greffe `fiches: false` ; lecture seule ; plan au sol (caché au −1, une texture au 0, libérée) ; rendu galerie →
+  greffe `fiches: false` ; lecture seule ; plan au sol (visible au −1, une texture au 0, libérée) ; rendu galerie →
   mixte ; même pilier à la souris sur la carte : mêmes champs, sommets, historique.
+  Mesures 📏 ⛏️ (§ 40, `=mesures`, souris et doigt, tracés fictifs au 0 et au −1, vue au −1, carte au 0) : absentes à
+  hauteur d'yeux, dans 📐 en vue d'édition ; panneau 📏 par-dessus la vue (`elementFromPoint`), niveau de la vue seul
+  compté et dit ; ruban à la couleur du surlignage de la carte sur les 2 tronçons du −1 ; case décochée → ruban et
+  total suivent sans reconstruction ; « Tous les niveaux » → 58 m, ruban du −1 seul, note ; ✓ garde le ruban, ❌
+  l'efface des deux vues ; vue fermée → la carte, placée au −1, compte son niveau actif ; ⛏️ sans surface → message de la carte par-dessus la vue ; surface ♦️ de 4 touchers dans la vue →
+  volume au « Niveau −1 » (pilier du −1 compté, celui du 0 non).
   Caméra libre et mesures (§ 30, formes fictives, doigt, téléphone et PC) : pan d'un doigt tracker en marche → point
   visé déplacé, sol pris sous le doigt (à 15 cm), place et tracker immobiles, ⌖ montré ; vue tournée de 90° → même
   règle ; deux doigts tournés de 30° → cap de 30°, recul inchangé ; ⌖, un pas et la hauteur d'yeux ramènent la caméra ;
-  pan de 68 m → tuiles et panneau lointain construits là, place restée ; recul 60 m → lettres ≥ 13 px, fiche ouverte de
-  loin à taille normale ; outil armé : glisser ne pose rien, le tap suivant pose sous le doigt (5 cm) ; bandeau (2
+  pan de 68 m → tuiles et panneau lointain construits là, place restée ; recul 150 m → panneau réduit à son icône de 28 px, fiche
+  ouverte de loin à taille normale, tuiles posées, bord de l'écran vu sur la scène, le sol nu ou le noir du brouillard (inclinaison
+  par défaut et rasante), tap d'un outil armé posé au sol à 5 cm (centre et haut de l'écran) ; bornes 6 / 150 m aux
+  boutons (grisés), à la molette et au pincement ; plan au sol redessiné sur 2,4 × le rayon vu à 150 m et vu à l'écran ; outil armé : glisser ne pose rien, le tap suivant pose sous le doigt (5 cm) ; bandeau (2
   sommets, 3e, surface, désarmé caché, sans chevaucher boussole, joystick, pavé ni zoom) ; angle droit → « 90° » comme
   la carte ; survol (pilier, cavage fermé) en édition, bloqué à hauteur d'yeux, place dégagée au retour ; plan au sol
   au point visé et vu à l'écran (pixels d'une capture) ; 🧱 coupé : sol et plafond noirs (trois rendus), plan au sol visible dessus, parois de galerie à la couleur de légende
@@ -2141,6 +2374,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Jamais coincé (§ 13) : accroche de POI
   jonction à 3 m d'un tube → après ▲, dans le tube et l'on avance (galerie, mixte) ; parti du centre d'un pilier, un
   pas vers la galerie passe.
+  Saut (§ 33, `KTA_V3D_SEUL=saut`) : balade de 50 m puis « Oui », « Ici » de « D'où pars-tu ? » → tracker recalé,
+  ancre `tp`, validations et distance estimée inchangées, sortie du Carnet « bureau » ; « Je suis ici » d'une fiche en
+  3D → une validation, « terrain ». Plan au sol par niveau (§ 34, `=solniveaux`) : 🗺️ visible et dessiné au −1 (plan
+  de base) et au +1 (calque image fictif du niveau), pixels lus ; niveau changé vue ouverte → redessiné.
   `KTA_V3D_PERF=galerie` : réseau synthétique de 3 120 tronçons ; `KTA_V3D_PERF=mixte` : ce réseau sur le plan dense
   gardé à l'est (tubes à l'ouest, chambres à l'est).
   `smoke.js` : rien de la 3D au démarrage.

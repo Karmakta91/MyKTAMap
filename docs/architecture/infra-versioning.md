@@ -48,7 +48,7 @@ Pattern de **fichiers JSON à la racine non cachés par le SW**, fetched live à
 
 | Fichier | Module client | Rôle | Cache SW |
 |---|---|---|---|
-| `version.json` | `js/updateChecker.js` | Détection de mise à jour + popup propose mise à jour douce (purge cache PWA, garde session) ou reset complet | ❌ Non caché |
+| `version.json` | `js/updateChecker.js` | Détection de mise à jour + popup propose mise à jour douce (nouveau SW, anciens caches de l'app seulement, garde session et hors-ligne) ou reset complet | ❌ Non caché |
 | `alert.json` | `js/alertChecker.js` | Diffusion d'alertes publiques en temps réel (incendie, fermeture, etc.) — modale rouge pulsante après splash | ❌ Non caché |
 
 **Pourquoi pas cacher** : on veut TOUJOURS la valeur serveur, sans bypass via le SW cache-first. Le fetch utilise `?_=${Date.now()}` + `cache: "no-store"` pour contourner aussi les caches HTTP intermédiaires. Si offline → fetch échoue silencieusement, pas de popup (comportement normal).
@@ -104,7 +104,41 @@ ci-dessus, `killsw.html`, les ZIP de plan déclarés, les sondes de fraîcheur e
 authentifiées ; **réseau d'abord** (délai court, repli sur la copie hors ligne) pour `docs/applications/`,
 `lang/*.json`, `data/index.json` et, sur une installation qui déclare des modules, les pages et feuilles de style
 de leurs dossiers (contrat : `community-server-line.md` §3) ; **cache d'abord** pour tout le reste, dont l'app
-elle-même — ce qui n'a pas de `?v=` n'y change qu'au bump de `CACHE_NAME`.
+elle-même — ce qui n'a pas de `?v=` n'y change qu'à une nouvelle installation du SW (cf. cycle de vie ci-dessous).
+
+**Cycle de vie du Service Worker** (état actuel ; mesures : `scripts/smoke/checkup-cycle-sw.js`, serveur local qui
+imite le site en ligne, ETag sans gzip) :
+- **Inscription après le geste d'adhésion** (`js/swRegister.js > ktaSwAdhesion`, appelé par `main.js` quand TOUTES
+  les gates sont franchies : conditions + « Entrer » ou code d'accès, gate déléguée d'une extension — la connexion —,
+  PIN). Un visiteur de l'écran Bienvenue (ou de l'écran d'une gate déléguée) ne stocke **rien** de plus que la page :
+  0 SW, 0 cache, 0,01 Mo stockés (contre 23 Mo avant). Une inscription déjà présente (appareil entré une fois) est
+  suivie dès le chargement, gates ou pas : mises à jour et hors-ligne n'en dépendent pas.
+- 🩸 **Le trou** : juste après la première entrée, le précache n'est pas fini (local : ~5 s ; en 4G, la durée du
+  téléchargement de ~7 Mo). Une coupure dans cette fenêtre laisse l'app sans hors-ligne ; la pastille de l'accueil
+  le montre. La promesse hors ligne vaut pour qui est entré une fois en ligne, précache fini.
+- **Installation** : précache en `cache: "no-cache"` (`sw.js > _cacheAddDiag`) — revalidé par ETag, un fichier inchangé
+  répond 304 et ne repart pas. Mesuré, première visite page + SW : 23,8 → 15,8 Mo ; réinstallation après un correctif :
+  15,9 → 1,7 Mo (13 fichiers, 229 réponses 304). Puis `skipWaiting()` + `clients.claim()`.
+- **Correctif sans bump** : la page **contrôlée** lit `deploiement.json` (commit servi, écrit par le script de
+  déploiement à la racine, ou sous `data/` pour une installation qui sert son propre dossier de données) ; le SW
+  répond toujours 200 `{ commit | null }` (réseau seul, jamais de 404 ni de page de l'app). Commit différent de
+  `?d=` de l'inscription → réinscription sous `sw.js?d=<commit 12 car.>` → réinstallation dans le même
+  `CACHE_NAME`, nouvelle page au **2e chargement**, sans fenêtre. Pourquoi ce repère et pas une empreinte dans `sw.js` :
+  une ligne générée par un hook changerait à presque chaque commit (conflit sur chaque fusion ou rebase, empreinte
+  périmée après un rebase que le hook ne voit pas) ; `importScripts` est exclu (`sw.js` n'importe aucun script,
+  `check-extensions.js`) ; le repère existe déjà, écrit par le déploiement. Sans repère (auto-hébergé, Docker) : rien
+  ne change, le bump de `CACHE_NAME` fait foi. Coût : la première inscription se fait sans `?d=`, d'où une
+  réinstallation (presque toute en 304) au chargement suivant.
+- **Bump** : `sw.js` change → le navigateur installe le nouveau SW à la navigation suivante ; l'activation supprime
+  les autres caches de l'app (garde `myktamap-plan-*` et `myktamap-ext-*`). La fenêtre « Mise à jour disponible »
+  ne s'ouvre que si le code chargé (`__MKM__.build`) est plus ancien que `version.json` : après une bascule passive
+  (nouveau code déjà chargé), la version est notée sans fenêtre.
+- **« Mettre à jour »** (`interfaceMaintenance.js > mettreAJourCodeSeul`) : `reg.update()`, attente du nouveau SW
+  aux commandes (45 s au plus), puis suppression des seuls caches `myktamap-cache-*` qui ne sont pas le sien, drapeaux
+  de l'auto-réparation effacés, rechargement. Plans hors ligne et caches des modules gardés, cache de l'app complet.
+  Délai dépassé : rien n'est supprimé, l'installation finit en arrière-plan.
+- **`/killsw.html` et `?killsw=1`** : outils de dépannage, ils suppriment TOUS les caches, plans hors ligne et modules
+  compris (la page le dit) ; localStorage et IndexedDB restent.
 
 ---
 
@@ -758,7 +792,8 @@ documentées ici pour la doctrine.
 - Mise à jour refusée si un fichier du site a été modifié à la main ; 1re installation : ancien site archivé (sans
   `data/`), fichiers hors dépôt listés, jamais supprimés.
 - **Après chaque passage** (audit CD du 09/10/2026, Q3) : `deploiement.json` à la racine du site (`commit`, `branche`,
-  `version`, `date` — la version seule ne dit pas quel commit tourne, on commite sans bump) ; le site est interrogé
+  `version`, `date` — la version seule ne dit pas quel commit tourne, on commite sans bump ; l'app lit `commit` pour
+  réinstaller son Service Worker, cf. cycle de vie au §20) ; le site est interrogé
   comme un navigateur (version, cache du Service Worker, en-têtes `no-cache`, commit, doc interne non servie — en
   lisant le **contenu** : toute adresse inconnue répond 200 avec la page de l'app) ; une ligne au journal
   `/data/www/_sauvegardes/deploiements.log`, refus et abandons compris ; un seul déploiement à la fois par site

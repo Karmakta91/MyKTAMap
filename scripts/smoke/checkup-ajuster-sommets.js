@@ -9,11 +9,16 @@
 // Vérifie : déplacer / ajouter / supprimer un sommet sur les 4 familles, refus sous le minimum (toast), un geste =
 // une entrée d'historique annulable, uid gardé et updatedAt changé, un seul rendu au lâcher (aucun pendant), carte
 // immobile pendant le glisser, aucune fiche après un appui long et une fiche au tap court, outil armé = rien,
-// lecture seule = rien, calque verrouillé = rien et sa copie « 🔄 Modifier » = oui, aimantation d'un tracé, mur de
-// 0,4 m posé coin par coin fermé au 4e coin seulement, et un déplacement carte tournée (rotation manuelle, plan orienté).
+// lecture seule = rien, ronds dorés aux sommets des mesures (au départ, après ajustement), calque verrouillé = rien
+// et sa copie « 🔄 Modifier » = oui, aimantation d'un tracé, mur de
+// 0,4 m posé coin par coin fermé au 4e coin seulement, un déplacement carte tournée (rotation manuelle, plan orienté),
+// et ＋ / 🗑️ ouvert : l'appui long suivant sur le sommet l'ajuste, un tap qui referme le menu ne fait rien d'autre.
+// Après chaque geste (déplacer, ajouter, 🗑️, annulé par Échap / molette / 2e doigt, fermé par pointercancel / blur /
+// visibilitychange, lâcher jamais reçu), vue droite puis carte tournée à deux doigts : un pan déplace la carte et le
+// drag Leaflet revient à son état d'avant.
 // 🩸 Le doigt : Chromium passe par CDP (Input.dispatchTouchEvent : vrais touch + pointer + clic du navigateur) ;
-// WebKit n'a pas de CDP, il reçoit des PointerEvent `touch` synthétiques (la logique du module, pas le pipeline
-// tactile du moteur).
+// WebKit n'a pas de CDP, il reçoit des PointerEvent `touch` synthétiques suivis de leur TouchEvent (la logique du
+// module et du drag Leaflet, pas le pipeline tactile du moteur).
 // Usage : node scripts/smoke/checkup-ajuster-sommets.js (SMOKE_PORT pour une autre copie ; KTA_MODES=souris ou doigt
 // pour un seul pointeur ; KTA_DEBUG=1 dit ce que vise chaque appui) · code :
 // js/ajusterSommets.js · doc : docs/architecture/ui.md § Ajuster une forme
@@ -139,21 +144,40 @@ function etat(page) {
     const c = window.map.getCenter();
     return { signaux: window.__as.signaux, annulables: window.__as.annulables, centre: [c.lat, c.lng],
       fiche: !!document.querySelector(".leaflet-popup"), apercu: !!document.querySelector(".kta-ajuster-apercu"),
-      menu: !!document.querySelector(".kta-ajuster-suppr"), as: window.KtaAjusterSommets.etat() };
+      menu: !!document.querySelector(".kta-ajuster-suppr"), plus: !!document.querySelector(".kta-ajuster-inserer"),
+      bandeau: (function () {
+        const b = document.querySelector(".kta-ajuster-bandeau");
+        return b ? b.textContent : null;
+      })(), as: window.KtaAjusterSommets.etat() };
   });
 }
 
 // ── Pointeurs : souris (Playwright), doigt (CDP sous Chromium, PointerEvent synthétiques sous WebKit) ──
 function Pointeur(page, mode, moteur) {
   let cdp = null;
-  const synth = function (type, x, y) {
+  // Sous WebKit, chaque PointerEvent est suivi de son TouchEvent (Touch n'y est pas constructible : un Event dont
+  // `touches` est posé à la main), sinon le drag de Leaflet, qui écoute touchstart, ne verrait aucun doigt.
+  const synth = function (type, x, y, clic) {
     return page.evaluate(function (a) {
-      const el = document.elementFromPoint(a.x, a.y) || document.body;
+      window.__asCible = (a.type === "pointerdown" || !window.__asCible) ?
+        (document.elementFromPoint(a.x, a.y) || document.body) : window.__asCible;
+      const el = a.type === "pointerdown" ? window.__asCible : (document.elementFromPoint(a.x, a.y) || document.body);
       const o = { bubbles: true, cancelable: true, composed: true, clientX: a.x, clientY: a.y, pointerId: 41,
         pointerType: "touch", isPrimary: true, button: 0, buttons: a.type === "pointerup" ? 0 : 1 };
       el.dispatchEvent(new PointerEvent(a.type, o));
+      const tt = { pointerdown: "touchstart", pointermove: "touchmove", pointerup: "touchend" }[a.type];
+      if (tt) {
+        const t = { identifier: 41, target: window.__asCible, clientX: a.x, clientY: a.y, screenX: a.x,
+          screenY: a.y, pageX: a.x, pageY: a.y };
+        const ev = new Event(tt, { bubbles: true, cancelable: true, composed: true });
+        const liste = tt === "touchend" ? [] : [t];
+        Object.defineProperty(ev, "touches", { value: liste });
+        Object.defineProperty(ev, "targetTouches", { value: liste });
+        Object.defineProperty(ev, "changedTouches", { value: [t] });
+        window.__asCible.dispatchEvent(ev);
+      }
       if (a.type === "pointerup" && a.clic) el.dispatchEvent(new MouseEvent("click", o));
-    }, { type: type, x: x, y: y, clic: arguments[3] === true });
+    }, { type: type, x: x, y: y, clic: clic === true });
   };
   return {
     async init() {
@@ -173,6 +197,78 @@ function Pointeur(page, mode, moteur) {
       if (mode === "souris") { await page.mouse.up(); return; }
       if (cdp) { await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }); return; }
       await synth("pointerup", p[0], p[1], clic === true);
+    },
+    // Rotation à deux doigts autour de `c` (écran), de `deg` degrés, en `n` pas ; les doigts se lèvent l'un après
+    // l'autre, comme à la main.
+    async rotation(c, deg, n) {
+      const R = 120, pts = function (a) {
+        const r = a * Math.PI / 180;
+        return [[c[0] - R * Math.cos(r), c[1] - R * Math.sin(r)], [c[0] + R * Math.cos(r), c[1] + R * Math.sin(r)]];
+      };
+      if (cdp) {
+        const tp = function (q) { return [{ x: q[0][0], y: q[0][1], id: 0 }, { x: q[1][0], y: q[1][1], id: 1 }]; };
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: tp(pts(0)) });
+        for (let i = 1; i <= n; i++) {
+          await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: tp(pts(deg * i / n)) });
+          await page.waitForTimeout(16);
+        }
+        const fin = pts(deg);
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: fin[1][0], y: fin[1][1], id: 1 }] });
+        await page.waitForTimeout(40);
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        return;
+      }
+      await page.evaluate(async function (a) {
+        const pts = function (d) {
+          const r = d * Math.PI / 180;
+          return [[a.c[0] - a.R * Math.cos(r), a.c[1] - a.R * Math.sin(r)], [a.c[0] + a.R * Math.cos(r), a.c[1] + a.R * Math.sin(r)]];
+        };
+        const q0 = pts(0), cibles = q0.map(function (q) { return document.elementFromPoint(q[0], q[1]) || document.body; });
+        const ids = [51, 52];
+        const tch = function (q, i) { return { identifier: ids[i], target: cibles[i], clientX: q[0], clientY: q[1], screenX: q[0], screenY: q[1], pageX: q[0], pageY: q[1] }; };
+        const touch = function (type, liste, chg, cible) {
+          const ev = new Event(type, { bubbles: true, cancelable: true, composed: true });
+          Object.defineProperty(ev, "touches", { value: liste });
+          Object.defineProperty(ev, "targetTouches", { value: liste });
+          Object.defineProperty(ev, "changedTouches", { value: chg });
+          cible.dispatchEvent(ev);
+        };
+        const ptr = function (type, q, i) {
+          const el = document.elementFromPoint(q[0], q[1]) || document.body;
+          el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, clientX: q[0], clientY: q[1],
+            pointerId: ids[i], pointerType: "touch", isPrimary: i === 0, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+        };
+        ptr("pointerdown", q0[0], 0); touch("touchstart", [tch(q0[0], 0)], [tch(q0[0], 0)], cibles[0]);
+        ptr("pointerdown", q0[1], 1); touch("touchstart", [tch(q0[0], 0), tch(q0[1], 1)], [tch(q0[1], 1)], cibles[1]);
+        let q = q0;
+        for (let i = 1; i <= a.n; i++) {
+          q = pts(a.deg * i / a.n);
+          ptr("pointermove", q[0], 0); ptr("pointermove", q[1], 1);
+          touch("touchmove", [tch(q[0], 0), tch(q[1], 1)], [tch(q[0], 0), tch(q[1], 1)], cibles[0]);
+          await new Promise(function (r) { setTimeout(r, 16); });
+        }
+        ptr("pointerup", q[0], 0); touch("touchend", [tch(q[1], 1)], [tch(q[0], 0)], cibles[0]);
+        await new Promise(function (r) { setTimeout(r, 40); });
+        ptr("pointerup", q[1], 1); touch("touchend", [], [tch(q[1], 1)], cibles[1]);
+      }, { c: c, deg: deg, n: n, R: R });
+    },
+    // Deuxième doigt posé pendant que le premier tient, puis les deux levés.
+    async deuxieme(p, q) {
+      if (cdp) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart",
+          touchPoints: [{ x: p[0], y: p[1], id: 0 }, { x: q[0], y: q[1], id: 1 }] });
+        await page.waitForTimeout(60);
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        return;
+      }
+      await page.evaluate(function (a) {
+        const el = document.elementFromPoint(a.q[0], a.q[1]) || document.body;
+        const o = { bubbles: true, cancelable: true, composed: true, clientX: a.q[0], clientY: a.q[1], pointerId: 42,
+          pointerType: "touch", isPrimary: false, button: 0, buttons: 1 };
+        el.dispatchEvent(new PointerEvent("pointerdown", o));
+        el.dispatchEvent(new PointerEvent("pointerup", Object.assign({}, o, { buttons: 0 })));
+      }, { q: q });
+      await synth("pointerup", p[0], p[1]);
     },
     async tap(p) {
       if (mode === "souris") { await page.mouse.click(p[0], p[1]); return; }
@@ -230,6 +326,36 @@ async function geste(page, ptr, de, vers) {
   await ptr.up(b);
   await page.waitForTimeout(400);
   return { pendant: pendant, apres: await etat(page) };
+}
+
+// Ronds dorés de la mesure (measure.js > _majSommetsMesure) : un par sommet des deux mesures, centré dessus (2 px),
+// doré, au-dessus du trait (renderer SVG posé après le canvas des mesures).
+async function ronds(page, quand) {
+  const r = await page.evaluate(function () {
+    const pts = window.getMeasurePoints().concat(window.getMeasurePointsSurface());
+    const els = Array.prototype.slice.call(document.querySelectorAll(".kta-mesure-sommet"));
+    const centres = els.map(function (el) { const b = el.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; });
+    const ecarts = pts.map(function (p) {
+      const a = window.__as.ecran(p.x, p.y);
+      return Math.min.apply(null, centres.map(function (c) { return Math.hypot(c[0] - a[0], c[1] - a[1]); }).concat([1e9]));
+    });
+    const el = els[0], svg = el && el.ownerSVGElement;
+    const canvas = document.querySelector(".leaflet-overlay-pane canvas");
+    return { n: els.length, voulu: pts.length, pire: +Math.max.apply(null, ecarts.concat([0])).toFixed(2),
+      fill: el ? getComputedStyle(el).fill : null, accent: (function () {
+        const t = document.createElement("span");
+        t.style.color = "var(--kta-accent)";
+        document.body.appendChild(t);
+        const c = getComputedStyle(t).color;
+        t.remove();
+        return c;
+      })(),
+      dessus: !!(svg && canvas && (canvas.compareDocumentPosition(svg) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      cliquable: el ? getComputedStyle(el).pointerEvents : null };
+  });
+  const dore = !!r.fill && r.fill === r.accent;
+  verifier(r.n === r.voulu && r.voulu >= 5 && r.pire <= 2 && dore && r.dessus,
+    "ronds dorés aux sommets des deux mesures (" + quand + ") : un par sommet, centrés, au-dessus du trait", r);
 }
 
 function proche(p, q, tol) { return !!p && !!q && Math.hypot(p.x - q.x, p.y - q.y) <= tol; }
@@ -292,7 +418,8 @@ async function famille(page, ptr, nom, ref, iSommet, iMilieu, tolPlan) {
   verifier(!g2.apres.fiche, nom + " : pas de fiche après l'ajout");
   // Supprimer (appui long sans bouger → 🗑️)
   const g3 = await geste(page, ptr, o2.points[iMilieu + 1], null);
-  verifier(g3.apres.menu, nom + " : appui long sans bouger → 🗑️ proposé, sans fiche", g3.apres);
+  verifier(g3.apres.menu && g3.apres.plus && !g3.apres.fiche, nom + " : appui long sans bouger → ＋ et 🗑️ proposés, " +
+    "sans fiche", g3.apres);
   const e3 = await etat(page);
   verifier(await supprimerParMenu(page, ptr), nom + " : 🗑️ touché");
   const o3 = await lireObjet(page, ref);
@@ -311,8 +438,209 @@ async function refus(page, ptr, nom, ref) {
   const o1 = await lireObjet(page, ref);
   const motif = await page.evaluate(function () { return window.I18n.t("ajuster.toast.minimum", { n: 9 }).split("9")[0]; });
   const vu = await toastVu(page, motif);
-  verifier(!g.apres.menu && vu && g.apres.as.refus === r0.as.refus + 1 && o1.points.length === o0.points.length,
-    nom + " : au minimum, pas de 🗑️, un toast le dit, rien ne change", { as: g.apres.as, toast: vu });
+  verifier(!g.apres.menu && g.apres.plus && vu && g.apres.as.refus === r0.as.refus + 1 &&
+    o1.points.length === o0.points.length,
+  nom + " : au minimum, ＋ seul (pas de 🗑️), un toast le dit, rien ne change", { as: g.apres.as, toast: vu });
+  await page.evaluate(function () { window.KtaAjusterSommets.annuler(); });
+}
+
+// 🩸 ＋ / 🗑️ ouvert (appui long immobile, lâché) : l'appui suivant le referme et reste avalé comme toucher, mais son
+// appui long sur le même sommet l'ajuste (souris tenue immobile : le menu s'ouvre à coup sûr). Un tap qui referme
+// le menu ne fait rien d'autre (ni fiche, ni écriture, ni insertion).
+async function menuPuisAppui(page, ptr, nom, ref, i, tolPlan) {
+  const k = await page.evaluate(function () { return window.__as.k; });
+  const o0 = await lireObjet(page, ref);
+  const de = o0.points[i];
+  const g0 = await geste(page, ptr, de, null);
+  verifier(g0.apres.menu || g0.apres.plus, nom + " : appui long immobile → menu ouvert", g0.apres);
+  const e0 = await etat(page);
+  const vers = { x: de.x + 35 * k, y: de.y - 30 * k };
+  const g1 = await geste(page, ptr, de, vers);
+  const o1 = await lireObjet(page, ref);
+  verifier(proche(o1.points[i], vers, tolPlan) && o1.points.length === o0.points.length,
+    nom + " : menu ouvert, puis appui long sur le même sommet et glisser → sommet déplacé",
+    { avant: de, apres: o1.points[i], voulu: vers });
+  verifier(memeCentre(g1.pendant.centre, e0.centre) && memeCentre(g1.apres.centre, e0.centre),
+    nom + " : menu ouvert, puis glisser → la carte ne bouge pas", { avant: e0.centre, apres: g1.apres.centre });
+  verifier(!g1.apres.fiche && !g1.apres.menu, nom + " : ni fiche ni menu au lâcher", g1.apres);
+  // Tap simple qui referme le menu
+  const de2 = o1.points[i];
+  const g2 = await geste(page, ptr, de2, null);
+  verifier(g2.apres.menu || g2.apres.plus, nom + " : menu rouvert", g2.apres);
+  const e2 = await etat(page);
+  await ptr.tap(await ecran(page, de2));
+  await page.waitForTimeout(500);
+  const e3 = await etat(page);
+  const o3 = await lireObjet(page, ref);
+  verifier(!e3.fiche && !e3.menu && !e3.plus && !e3.as.insertion && e3.as.ecritures === e2.as.ecritures &&
+    proche(o3.points[i], de2, 1e-6) && memeCentre(e3.centre, e2.centre),
+  nom + " : un tap qui referme le menu ne fait rien d'autre", { as: e3.as, fiche: e3.fiche, menu: e3.menu });
+  await page.evaluate(function () { window.map.closePopup(); window.KtaAjusterSommets.annuler(); });
+}
+
+// ── Insertion (＋ au sommet) ──
+function centreDe(page, sel) {
+  return page.evaluate(function (s) {
+    const b = document.querySelector(s);
+    if (!b) return null;
+    const q = b.getBoundingClientRect();
+    return [q.left + q.width / 2, q.top + q.height / 2];
+  }, sel);
+}
+async function ouvrirInsertion(page, ptr, de) {
+  const g = await geste(page, ptr, de, null);
+  const plus = await centreDe(page, ".kta-ajuster-inserer");
+  if (plus) { await ptr.tap(plus); await page.waitForTimeout(250); }
+  return { menu: g.apres, apres: await etat(page) };
+}
+// Taps successifs (plan) pendant l'insertion ; toasts vidés, rien ne doit s'ouvrir.
+async function taper(page, ptr, pts) {
+  for (const p of pts) {
+    await viderToasts(page);
+    await ptr.tap(await ecran(page, p));
+    await page.waitForTimeout(250);
+  }
+}
+async function ctrlZ(page, n) {
+  for (let i = 0; i < n; i++) {
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(200);
+  }
+  await viderToasts(page);
+}
+
+// Une famille : appui long sur X → ＋ et 🗑️ ; ＋ ; 3 taps → X+1, X+2, X+3 dans l'ordre (ou en fin de liste : fermée
+// qui boucle, ligne prolongée) ; ⏪ point par point pendant (le mode reste, N baisse, à 0 aussi) puis après ; fin par
+// `fin` ("ok" ✓, "echap", "suivant" = tap sur X+1).
+// c : { nom, ref, x, pts: [[u, v]…] (plan du harnais), fin, histo (false : mesure hors outil, pas d'historique) }
+async function insertion(page, ptr, c, tol) {
+  // Une fiche ouverte plus tôt a pu recentrer la carte (autoPan) : vue du harnais remise.
+  await page.evaluate(function () {
+    window.map.closePopup();
+    window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false });
+  });
+  await page.waitForTimeout(250);
+  if (c.arme) {
+    // Outil 📐 Distance armé (bouton de la barre), mesure remise : l'ajustement de la mesure entre dans l'historique.
+    const arme = await page.evaluate(function (pts) {
+      const g = window._groupes.mesure, lib = window.I18n.t("ui.subaction.mesureDistance");
+      let b = null;
+      if (!g.useFlyout) {
+        if (!g.subActions.some(function (x) { return !x.classList.contains("kta-hidden"); })) g.btnPrincipal.click();
+        b = g.subActions.filter(function (x) { return (x.title || "").indexOf(lib) >= 0; })[0];
+      } else {
+        g.btnPrincipal.click();
+        const fly = document.querySelector(".kta-group-flyout");
+        b = fly && Array.prototype.slice.call(fly.querySelectorAll(".kta-group-flyout-btn")).filter(function (x) {
+          return x.textContent.indexOf(lib) >= 0;
+        })[0];
+      }
+      if (b) b.click();
+      if (window.ktaOutilsOuverts && window.ktaOutilsOuverts()) window.ktaFermerOutils();
+      window.setMeasurePoints(pts.map(function (q) { return window.__as.P(q[0], q[1]); }));
+      window.updateMesure && window.updateMesure();
+      return window.modeMesure === true && window.ktaMesureAnnulable();
+    }, [[100, 0], [250, 0], [400, 0]]);
+    verifier(arme, c.nom + " : outil 📐 Distance armé", arme);
+    await page.waitForTimeout(250);
+  }
+  const o0 = await lireObjet(page, c.ref), L0 = o0.points.length;
+  const e0 = await etat(page);
+  const o = await ouvrirInsertion(page, ptr, o0.points[c.x]);
+  verifier(o.menu.plus && (o.menu.menu || c.sansSuppr) && !o.menu.fiche, c.nom + " : appui long sans bouger → ＋ et 🗑️",
+    o.menu);
+  verifier(o.apres.as.insertion && /0/.test(o.apres.bandeau || "") && !o.apres.plus,
+    c.nom + " : ＋ ouvre l'insertion, bandeau « 0 point »", { bandeau: o.apres.bandeau, as: o.apres.as });
+  const cibles = [];
+  for (const uv of c.pts) cibles.push(await planU(page, uv[0], uv[1]));
+  await taper(page, ptr, cibles);
+  const o1 = await lireObjet(page, c.ref), e1 = await etat(page);
+  const debut = c.x + 1;
+  const place = o1.points.length === L0 + 3 &&
+    cibles.every(function (q, i) { return proche(o1.points[debut + i], q, tol); });
+  const reste = o0.points.every(function (p, i) {
+    return proche(o1.points[i <= c.x ? i : i + 3], p, 1e-9);
+  });
+  verifier(place && reste, c.nom + " : 3 taps → 3 sommets à la suite de X (" + c.genre + "), le reste à sa place",
+    { L: [L0, o1.points.length], pts: o1.points.slice(debut, debut + 3), voulu: cibles });
+  verifier(e1.as.insertion && /3/.test(e1.bandeau || "") && !e1.fiche, c.nom + " : bandeau « 3 points », aucune fiche",
+    { bandeau: e1.bandeau, fiche: e1.fiche });
+  if (c.histo !== false) {
+    verifier(e1.annulables === e0.annulables + 3, c.nom + " : un point = une entrée d'historique",
+      { avant: e0.annulables, apres: e1.annulables });
+    if (c.ref !== "distance" && c.ref !== "surface") {
+      verifier(o1.uid === o0.uid && o1.updatedAt !== o0.updatedAt, c.nom + " : uid gardé, updatedAt changé");
+    }
+    await ctrlZ(page, 1);
+    let oz = await lireObjet(page, c.ref), ez = await etat(page);
+    verifier(oz.points.length === L0 + 2 && proche(oz.points[debut + 1], cibles[1], tol) && ez.as.insertion &&
+      /2/.test(ez.bandeau || ""), c.nom + " : Ctrl+Z pendant le mode retire le dernier point, le mode continue (2)",
+    { L: oz.points.length, bandeau: ez.bandeau });
+    await ctrlZ(page, 2);
+    oz = await lireObjet(page, c.ref); ez = await etat(page);
+    verifier(oz.points.length === L0 && ez.as.insertion && /0/.test(ez.bandeau || ""),
+      c.nom + " : Ctrl+Z jusqu'à 0 point, le mode reste ouvert", { L: oz.points.length, bandeau: ez.bandeau });
+    await taper(page, ptr, cibles);
+    oz = await lireObjet(page, c.ref);
+    verifier(oz.points.length === L0 + 3 && proche(oz.points[debut], cibles[0], tol),
+      c.nom + " : les taps reprennent après le Ctrl+Z, au même endroit", { L: oz.points.length });
+  }
+  // Fin
+  if (c.fin === "ok") {
+    const ok = await centreDe(page, ".kta-ajuster-bandeau [data-ajuster]");
+    if (ok) await ptr.tap(ok);
+  } else if (c.fin === "echap") {
+    await page.keyboard.press("Escape");
+  } else {
+    const ox = await lireObjet(page, c.ref);
+    await ptr.tap(await ecran(page, ox.points[c.suivant(ox.points.length)]));
+  }
+  await page.waitForTimeout(300);
+  const of = await lireObjet(page, c.ref), ef = await etat(page);
+  if (c.arme) {
+    verifier(await page.evaluate(function () { return window.modeMesure === true; }),
+      c.nom + " : Échap termine l'insertion, l'outil 📐 reste armé");
+  }
+  verifier(!ef.as.insertion && ef.bandeau === null && of.points.length === L0 + 3,
+    c.nom + " : fin par " + { ok: "✓", echap: "Échap", suivant: "un tap sur X+1" }[c.fin] + ", les points restent",
+    { as: ef.as, bandeau: ef.bandeau, L: of.points.length });
+  await page.evaluate(function () { window.map.closePopup(); });
+  // Après le mode : un tap ne pose plus rien (outil 📐 armé : il pose un point de mesure, c'est le sien, non joué) ;
+  // Ctrl+Z retire encore un point à la fois.
+  if (!c.arme) {
+    await taper(page, ptr, [await planU(page, c.pts[0][0] + 15, c.pts[0][1] + 15)]);
+    await page.evaluate(function () { window.map.closePopup(); });
+    verifier((await lireObjet(page, c.ref)).points.length === L0 + 3, c.nom + " : après la fin, un tap ne pose plus rien");
+  }
+  if (c.histo !== false) {
+    await ctrlZ(page, 1);
+    const a1 = await lireObjet(page, c.ref);
+    await ctrlZ(page, 2);
+    const a3 = await lireObjet(page, c.ref);
+    verifier(a1.points.length === L0 + 2 && a3.points.length === L0 &&
+      a3.points.every(function (p, i) { return proche(p, o0.points[i], 1e-9); }),
+    c.nom + " : après le mode, Ctrl+Z retire un point à la fois jusqu'à la forme d'origine",
+    { L: [a1.points.length, a3.points.length] });
+  }
+  if (c.arme) await page.evaluate(function () { window._desactiverTousLesModes(); });
+}
+
+async function insertionRefusee(page, ptr) {
+  // Lecture seule : l'appui long n'offre rien ; ouverte puis lecture seule : le tap ferme l'insertion sans rien écrire.
+  await page.evaluate(function () { window.__asRO = window.ktaEditionRefusee; window.ktaEditionRefusee = function () { return true; }; });
+  const z0 = await lireObjet(page, "zn_as_z");
+  const g = await geste(page, ptr, z0.points[1], null);
+  verifier(!g.apres.plus && !g.apres.menu && !g.apres.as.insertion, "lecture seule : ni ＋ ni 🗑️", g.apres);
+  await page.evaluate(function () { window.ktaEditionRefusee = window.__asRO; });
+  await ouvrirInsertion(page, ptr, z0.points[1]);
+  const ouverte = (await etat(page)).as.insertion;
+  await page.evaluate(function () { window.ktaEditionRefusee = function () { return true; }; });
+  await taper(page, ptr, [await planU(page, 75, -380)]);
+  const e = await etat(page);
+  await page.evaluate(function () { window.ktaEditionRefusee = window.__asRO; window.map.closePopup(); });
+  verifier(ouverte && !e.as.insertion && e.bandeau === null &&
+    (await lireObjet(page, "zn_as_z")).points.length === z0.points.length,
+  "insertion ouverte puis lecture seule : le tap la ferme, rien n'est écrit", { ouverte: ouverte, as: e.as });
 }
 
 async function rien(page, ptr, nom, ref) {
@@ -323,6 +651,172 @@ async function rien(page, ptr, nom, ref) {
   const g = await geste(page, ptr, de, { x: de.x + 40 * k, y: de.y + 40 * k });
   const o1 = await lireObjet(page, ref);
   verifier(proche(o1.points[0], de, 1e-6) && g.apres.as.ecritures === e0.as.ecritures, nom, g.apres.as);
+}
+
+// ── Pan d'un doigt (ou de la souris) après un geste : la carte suit, le drag Leaflet revient à son état d'avant ──
+// Le pan part d'un fond nu (rien à viser, ni vecteur, ni marqueur, ni bouton : cherché sur une grille, la carte
+// pouvant être tournée) ; la vue du harnais est remise après.
+function fondNu(page) {
+  return page.evaluate(function () {
+    const cr = window.map.getContainer().getBoundingClientRect();
+    for (let y = 200; y < innerHeight - 200; y += 37) {
+      for (let x = 200; x < innerWidth - 200; x += 41) {
+        const el = document.elementFromPoint(x, y);
+        if (!el || !window.map.getContainer().contains(el) || x < cr.left || y < cr.top) continue;
+        if (el.closest(".leaflet-control, .leaflet-marker-icon, .leaflet-popup") || el.tagName === "path") continue;
+        if (window.KtaAjusterSommets.viser(x, y) || window.KtaAjusterSommets.viser(x + 70, y - 90)) continue;
+        return [x, y];
+      }
+    }
+    return null;
+  });
+}
+async function pan(page, ptr) {
+  const a = await fondNu(page);
+  if (!a) return { px: 0, drag: null, enCours: null, fondNu: false };
+  const b = [a[0] + 70, a[1] - 90];
+  const c0 = await page.evaluate(function () { return window.map.getCenter(); });
+  await ptr.down(a);
+  for (let i = 1; i <= 8; i++) {
+    await ptr.move([a[0] + (b[0] - a[0]) * i / 8, a[1] + (b[1] - a[1]) * i / 8]);
+    await page.waitForTimeout(20);
+  }
+  await ptr.up(b);
+  await page.waitForTimeout(350);
+  const r = await page.evaluate(function (c0) {
+    const m = window.map, p = m.latLngToContainerPoint(c0), q = m.latLngToContainerPoint(m.getCenter());
+    return { px: Math.round(Math.hypot(p.x - q.x, p.y - q.y)), drag: !!(m.dragging && m.dragging.enabled()),
+      enCours: window.KtaAjusterSommets.enCours(), menu: !!document.querySelector(".kta-ajuster-suppr") };
+  }, c0);
+  await page.evaluate(function () { window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false }); });
+  await page.waitForTimeout(250);
+  return r;
+}
+function dragCarte(page) {
+  return page.evaluate(function () { return !!(window.map.dragging && window.map.dragging.enabled()); });
+}
+async function panApres(page, ptr, nom, drag0) {
+  const r = await pan(page, ptr);
+  verifier(r.px >= 60 && !r.enCours, nom + " : puis un pan d'un doigt déplace la carte (" + r.px + " px)", r);
+  verifier(r.drag === drag0, nom + " : drag de la carte rendu à son état d'avant", { avant: drag0, apres: r.drag });
+}
+
+// Appui long armé sur `de`, puis `fin(a)` termine le geste (Échap, molette, 2e doigt, perte de focus…).
+async function appuiArme(page, ptr, de, fin) {
+  await viderToasts(page);
+  const a = await ecran(page, de);
+  await ptr.down(a);
+  await page.waitForTimeout(650);
+  const arme = await page.evaluate(function () { return window.KtaAjusterSommets.etat().arme; });
+  await fin(a);
+  await page.waitForTimeout(300);
+  // La molette a pu zoomer (Leaflet la lit aussi) : vue du harnais remise, sinon le pan bute sur les bords du plan.
+  await page.evaluate(function () { window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false }); });
+  await page.waitForTimeout(200);
+  return arme;
+}
+
+// Fins ratées : le navigateur ne livre pas le lâcher (pointercancel, onglet caché, focus perdu).
+const FINS_RATEES = [
+  ["pointercancel", function () {
+    window.dispatchEvent(new PointerEvent("pointercancel", { pointerId: window.__asId, pointerType: "touch",
+      bubbles: true }));
+  }],
+  ["onglet caché (visibilitychange)", function () {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: function () { return "hidden"; } });
+    document.dispatchEvent(new Event("visibilitychange"));
+    delete document.visibilityState;
+  }],
+  ["focus perdu (blur)", function () { window.dispatchEvent(new Event("blur")); }]
+];
+
+// Chaque fin de geste, réussie, annulée ou ratée, rend la carte à un doigt (au pointeur sous `souris`).
+async function panApresGestes(page, ptr, mode, vue) {
+  const k = await page.evaluate(function () { return window.__as.k; });
+  const z = function () { return lireObjet(page, "zn_as_z"); };
+  const drag0 = await dragCarte(page);
+  const pfx = _prefixe;
+  _prefixe = pfx + "[" + vue + "] ";
+  verifier(drag0 === (vue === "vue droite"), "drag Leaflet de la carte avant les gestes : " +
+    (drag0 ? "actif" : "coupé (pan manuel du plan tourné)"));
+  const r = await pan(page, ptr);
+  verifier(r.px >= 60, "pan témoin, avant tout geste (" + r.px + " px)", r);
+
+  let o = await z();
+  await geste(page, ptr, o.points[1], { x: o.points[1].x + 30 * k, y: o.points[1].y + 25 * k });
+  await panApres(page, ptr, "sommet déplacé", drag0);
+  o = await z();
+  const n = o.points.length;
+  const mil = { x: (o.points[0].x + o.points[1].x) / 2, y: (o.points[0].y + o.points[1].y) / 2 };
+  await geste(page, ptr, mil, { x: mil.x, y: mil.y - 25 * k });
+  verifier((await z()).points.length === n + 1, "sommet ajouté (avant le pan)");
+  await panApres(page, ptr, "sommet ajouté", drag0);
+  o = await z();
+  const g = await geste(page, ptr, o.points[1], null);
+  verifier(g.apres.menu, "appui long sans bouger : 🗑️ proposé (avant le pan)");
+  await panApres(page, ptr, "🗑️ resté ouvert, refermé par le pan", drag0);
+  await geste(page, ptr, o.points[1], null);
+  verifier(await supprimerParMenu(page, ptr) && (await z()).points.length === n, "sommet supprimé par 🗑️ (avant le pan)");
+  await panApres(page, ptr, "sommet supprimé par 🗑️", drag0);
+
+  o = await z();
+  let arme = await appuiArme(page, ptr, o.points[0], async function (a) {
+    await page.keyboard.press("Escape");
+    await ptr.up(a);
+  });
+  verifier(arme, "Échap : l'appui était armé");
+  await panApres(page, ptr, "appui long annulé par Échap", drag0);
+  arme = await appuiArme(page, ptr, o.points[0], async function (a) {
+    await page.evaluate(function (a) {
+      const el = document.elementFromPoint(a[0], a[1]) || window.map.getContainer();
+      el.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, clientX: a[0], clientY: a[1],
+        deltaY: 0.01 }));
+    }, a);
+    await ptr.up(a);
+  });
+  verifier(arme, "molette : l'appui était armé");
+  await panApres(page, ptr, "appui long annulé par la molette", drag0);
+  if (mode === "doigt") {
+    arme = await appuiArme(page, ptr, o.points[0], async function (a) { await ptr.deuxieme(a, [a[0] + 120, a[1] + 60]); });
+    verifier(arme, "2e doigt : l'appui était armé");
+    await panApres(page, ptr, "appui long annulé par un 2e doigt", drag0);
+  }
+
+  for (const f of FINS_RATEES) {
+    await page.evaluate(function () {
+      window.__asId = null;
+      window.addEventListener("pointerdown", function (e) { window.__asId = e.pointerId; }, { capture: true, once: true });
+    });
+    let apres = null;
+    arme = await appuiArme(page, ptr, o.points[0], async function () {
+      await page.evaluate(f[1]);
+      apres = await page.evaluate(function () {
+        return { enCours: window.KtaAjusterSommets.enCours(), drag: !!window.map.dragging.enabled() };
+      });
+    });
+    verifier(arme && apres && !apres.enCours && apres.drag === drag0, f[0] + " pendant l'appui armé : geste fermé, " +
+      "drag rendu aussitôt", { arme: arme, apres: apres });
+    // Le lâcher arrive quand même : sans effet.
+    await ptr.up(await ecran(page, o.points[0]));
+    await page.waitForTimeout(200);
+    verifier(proche((await z()).points[0], o.points[0], 1e-9), f[0] + " : rien n'est écrit");
+    await panApres(page, ptr, "geste fermé par " + f[0], drag0);
+  }
+
+  // Lâcher perdu : un appui armé dont ni pointerup ni pointercancel n'arrive. L'appui suivant est le premier doigt
+  // posé (isPrimary) : l'ancien est parti. Joué avec un pointerId neuf (Chromium) et le même réutilisé (WebKit).
+  for (const id of [77, 41]) {
+    await page.evaluate(function (a) {
+      const el = document.elementFromPoint(a.p[0], a.p[1]) || window.map.getContainer();
+      el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true, composed: true,
+        clientX: a.p[0], clientY: a.p[1], pointerId: a.id, pointerType: "touch", isPrimary: true, button: 0, buttons: 1 }));
+    }, { p: await ecran(page, o.points[0]), id: id });
+    await page.waitForTimeout(650);
+    verifier(await page.evaluate(function () { return window.KtaAjusterSommets.etat().arme; }),
+      "lâcher perdu (pointerId " + id + ") : l'appui fantôme était armé");
+    await panApres(page, ptr, "lâcher perdu (pointerId " + id + "), appui suivant", drag0);
+  }
+  _prefixe = pfx;
 }
 
 // Un glisser sur carte tournée : le sommet suit le pointeur dans le repère du plan ; ni pan manuel, ni rotation
@@ -367,6 +861,7 @@ async function jouer(nav, moteur, mode) {
     await page.waitForTimeout(800);
     const base2 = await page.evaluate(function () { const p = window.__as.P(0, 0); return window.__as.ecran(p.x, p.y).map(Math.round); });
     verifier(Math.hypot(base2[0] - s.base[0], base2[1] - s.base[1]) < 2, "la vue reste où le harnais l'a posée", { avant: s.base, apres: base2 });
+    await ronds(page, "au départ");
     const tol = 2.5 * s.k;   // 2,5 px d'écran
 
     // ── Tap court : la fiche s'ouvre toujours ──
@@ -391,8 +886,66 @@ async function jouer(nav, moteur, mode) {
     await famille(page, ptr, "mur (ligne)", "st_as_l", 1, 0, tol);
     await famille(page, ptr, "mesure distance", "distance", 2, 0, tol);
     await famille(page, ptr, "mesure surface", "surface", 1, 2, tol);
+    await ronds(page, "après déplacer, ajouter et supprimer");
     await refus(page, ptr, "tracé de 2 points", "rd_as_r2");
     await refus(page, ptr, "zone de 3 sommets", "zn_as_t");
+
+    // ── Menu ouvert, puis appui long sur le sommet : il s'ajuste ──
+    await page.evaluate(function () { window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false }); });
+    await page.waitForTimeout(300);
+    await menuPuisAppui(page, ptr, "menu → tracé", "rd_as_r1", 0, tol);
+    await menuPuisAppui(page, ptr, "menu → zone", "zn_as_z", 0, tol);
+    await menuPuisAppui(page, ptr, "menu → pilier", "st_as_p", 2, tol);
+    await menuPuisAppui(page, ptr, "menu → mesure distance", "distance", 1, tol);
+
+    // ── Insertion (＋) : vue du harnais remise, formes remises à neuf (puis encore pour la suite) ──
+    const vueAs = function () {
+      return page.evaluate(function () { window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false }); });
+    };
+    await vueAs();
+    await page.waitForTimeout(300);
+    await semer(page);
+    await page.waitForTimeout(300);
+    const INS = [
+      { nom: "＋ tracé", ref: "rd_as_r1", x: 0, genre: "entre X et X+1", fin: "suivant",
+        suivant: function () { return 4; }, pts: [[-412, -270], [-375, -270], [-337, -270]] },
+      { nom: "＋ zone (X dernier)", ref: "zn_as_z", x: 3, genre: "fermée : boucle vers le premier", fin: "suivant",
+        suivant: function () { return 0; }, pts: [[-30, -238], [-30, -275], [-30, -312]] },
+      { nom: "＋ pilier", ref: "st_as_p", x: 1, genre: "entre X et X+1", fin: "ok",
+        pts: [[-270, 37], [-270, 75], [-270, 112]] },
+      { nom: "＋ mur (ligne, X dernier)", ref: "st_as_l", x: 1, genre: "prolongé au-delà du bout", fin: "echap",
+        sansSuppr: true, pts: [[20, -40], [40, -80], [60, -120]] },
+      { nom: "＋ mesure distance (X dernier)", ref: "distance", x: 2, genre: "prolongée au-delà du bout", fin: "ok",
+        histo: false, pts: [[430, 40], [460, 80], [490, 120]] },
+      { nom: "＋ mesure surface (X dernier)", ref: "surface", x: 2, genre: "fermée : boucle vers le premier",
+        fin: "suivant", histo: false, sansSuppr: true, suivant: function () { return 0; },
+        pts: [[191, 283], [154, 246], [116, 208]] },
+      { nom: "＋ mesure distance, 📐 armé", ref: "distance", x: 2, genre: "prolongée au-delà du bout", fin: "echap",
+        arme: true, pts: [[430, 40], [460, 80], [490, 120]] }
+    ];
+    for (const c of INS) await insertion(page, ptr, c, tol);
+    await insertionRefusee(page, ptr);
+    await vueAs();
+    await page.waitForTimeout(300);
+    await semer(page);
+    await page.waitForTimeout(300);
+
+    // ── Après chaque geste, réussi, annulé ou mal terminé : un pan déplace la carte ──
+    await panApresGestes(page, ptr, mode, "vue droite");
+    // Carte tournée à 60° : à deux doigts au doigt (le geste réel), par MapBearing.setManuel à la souris.
+    if (mode === "doigt") {
+      const f = await fondNu(page);
+      await ptr.rotation([f[0] + 35, f[1] - 45], 60, 15);
+      await page.waitForTimeout(400);
+    } else {
+      await page.evaluate(function () { window.MapBearing.setManuel(60); });
+    }
+    const angle = await page.evaluate(function () { return window.MapBearing.getBearing(); });
+    const tournee = Math.abs(angle) > 20;
+    verifier(tournee, "carte tournée à la main (" + angle.toFixed(0) + "°)");
+    if (tournee) await panApresGestes(page, ptr, mode, "carte tournée");
+    await page.evaluate(function () { window.MapBearing.remettreNord(); });
+    await page.waitForTimeout(700);
 
     // ── Aimantation d'un tracé ──
     const cible = (await lireObjet(page, "rd_as_r2")).points[0];

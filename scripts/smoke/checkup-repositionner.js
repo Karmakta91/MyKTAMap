@@ -4,10 +4,11 @@
 // checkup-repositionner.js — checkup (Playwright, pas un hook pré-commit) : « Repositionner » un POI de session
 // =====================================================================
 // Parcours réel À LA SOURIS : clic sur le marqueur, clic sur « Repositionner » dans sa fiche, puis clic ailleurs
-// sur la carte. 🩸 Le bouton arme le mode pendant la capture de SON clic (écouteur sur document, avant #map) :
-// map.js > _ktaPickCaptureClick prenait ce même clic pour la position choisie (le POI sautait sous le bouton).
+// sur la carte ; Échap et ✕ annulent sans rien écrire. 🩸 Le bouton arme le mode pendant la capture de SON clic
+// (écouteur sur document, avant #map) : map.js > _ktaPickCaptureClick prenait ce même clic pour la position choisie
+// (le POI sautait sous le bouton).
 // check-repositionner.js teste la fonction dans un `vm` ; seul ce parcours voit l'ordre réel des écouteurs.
-// Usage : node scripts/smoke/checkup-repositionner.js
+// Usage : node scripts/smoke/checkup-repositionner.js (KTA_MOTEURS=webkit : sous WebKit)
 // =====================================================================
 "use strict";
 
@@ -130,6 +131,65 @@ function point(page) {
     verifier(p2 && Math.abs(p2.x - cible.x) < 2 && Math.abs(p2.y - cible.y) < 2,
       "clic sur la carte : le POI est posé à cet endroit", { cible: cible, p2: p2 });
     verifier(!encore, "mode repositionnement terminé après le clic");
+
+    // 3 bis. 🩸 Les marqueurs remplacés quittent le GROUPE layerEditor (calque « Ajout »), pas seulement la carte :
+    //    masquer puis réafficher ce calque ne fait revenir aucun ancien marqueur à l'ancienne place.
+    const groupe = await page.evaluate(function () {
+      const L0 = window.L, G = window.layerEditor, n = window.getEditorPoints().length;
+      const marqueurs = function () {
+        return G.getLayers().filter(function (l) { return l instanceof L0.Marker; }).length;
+      };
+      const dansGroupe = marqueurs();
+      window.map.removeLayer(G);
+      window.map.addLayer(G);
+      let surCarte = 0;
+      window.map.eachLayer(function (l) { if (l instanceof L0.Marker && G.hasLayer(l)) surCarte++; });
+      return { points: n, dansGroupe: dansGroupe, surCarte: surCarte };
+    });
+    verifier(groupe.dansGroupe === groupe.points && groupe.surCarte === groupe.points,
+      "après Repositionner : un seul marqueur par POI dans le calque, même masqué puis réaffiché", groupe);
+    // 🩸 iOS : pas de menu de l'image (Partager, Enregistrer…) sur un appui long d'icône. -webkit-touch-callout
+    //    n'existe que sur iOS (ni Chromium ni le WebKit de bureau ne le calculent) : on lit la règle servie.
+    const callout = await page.evaluate(async function () {
+      const css = await (await fetch("css/style.css", { cache: "no-store" })).text();
+      const m = css.match(/\.leaflet-marker-icon,\s*\.leaflet-marker-icon img,[^{]*\{[^}]*-webkit-touch-callout:\s*none/);
+      return { regle: !!m };
+    });
+    verifier(callout.regle, "icône de POI : -webkit-touch-callout: none servi (pas de menu de l'image à l'appui long iOS)",
+      callout);
+
+    // 4. Échap puis ✕ annulent sans rien écrire : bandeau retiré, le clic suivant sur la carte ne déplace rien.
+    //    🩸 Le bandeau `.kta-iti-floater` fait reculer shortcuts.js > _echapCarte : l'Échap est celui d'editor.js.
+    const annuler = async function (geste) {
+      await page.evaluate(function () {
+        window.map.closePopup();
+        // Après le déplacement, le groupe garde un marqueur hors carte : on prend celui qui est affiché.
+        const l = window.layerEditor.getLayers().find(function (q) { return q._map && q.getPopup && q.getPopup(); });
+        if (l) l.openPopup();
+      });
+      await page.waitForTimeout(600);
+      const b = await page.$(".leaflet-popup [data-kta-act=\"repositionner\"]");
+      if (!b) return { bouton: false };
+      const r = await b.boundingBox();
+      await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+      await page.waitForTimeout(400);
+      const avant = await point(page);
+      const arme2 = await page.evaluate(function () { return !!document.getElementById("kta-repo-floater"); });
+      if (geste === "echap") await page.keyboard.press("Escape");
+      else await page.click("#kta-repo-cancel");
+      await page.waitForTimeout(300);
+      const bandeau = await page.evaluate(function () { return !!document.getElementById("kta-repo-floater"); });
+      await page.mouse.click(cible.px + 60, cible.py - 60);
+      await page.waitForTimeout(500);
+      const apres = await point(page);
+      return { arme: arme2, bandeau: bandeau, avant: avant, apres: apres };
+    };
+    let a = await annuler("echap");
+    verifier(a.arme && !a.bandeau && a.apres && a.apres.x === a.avant.x && a.apres.y === a.avant.y,
+      "Échap annule Repositionner : bandeau retiré, le clic suivant ne déplace pas le POI", a);
+    a = await annuler("croix");
+    verifier(a.arme && !a.bandeau && a.apres && a.apres.x === a.avant.x && a.apres.y === a.avant.y,
+      "✕ Annuler : même effet", a);
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {
@@ -145,6 +205,7 @@ function point(page) {
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — « Repositionner » attend le clic sur la carte, puis y pose le POI.");
+  console.log("🎉 CHECKUP VERT — « Repositionner » attend le clic sur la carte, puis y pose le POI ; Échap et ✕ " +
+    "l'annulent.");
   process.exit(0);
 })();

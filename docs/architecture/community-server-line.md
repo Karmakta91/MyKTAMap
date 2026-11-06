@@ -385,7 +385,7 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   langues connues seulement). Gardés à part et refusionnés à chaque chargement du dico (paresseux, `reload`) ; une clé
   de l'app n'est **jamais** écrasée — préfixe propre recommandé (`pro.`). Le texte d'une extension n'entre jamais dans
   `lang/*.json`. Repli comme le reste : langue active → FR → clé humanisée. Décision KARMA 14/10/2026.
-- **Alertes** : `alertes.lister() → Promise<[{ id, level, title, message, details?, released, source? }]>`
+- **Alertes** : `alertes.lister() → Promise<[{ id, level, title, message, details?, released, source?, vue? }]>`
   (information, attente bornée à 3 s, erreur = aucune) — mêmes champs qu'`alert.json`, nettoyés (textes bornés,
   niveau inconnu → `info`, sans `released` ou sans texte écartées), id préfixé `ext_`. `AlertChecker` les fusionne
   avec `alert.json` : même badge 🚨, même sélecteur, même acquittement par id (un `released` changé rouvre
@@ -394,8 +394,13 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   extension fournit des alertes). Aucun appel réseau ajouté par le community : la liste et sa copie hors ligne sont
   à l'extension. Décision KARMA 13/10/2026 (alerte lancée par un admin d'organisation). **Alerte à l'écran** :
   `afficherModaleAlerte` émet **`mktm:alerte-affichee`** `{ id, released }` (id tel qu'affiché, donc `ext_…` pour une
-  alerte d'extension) quand le DÉTAIL d'une alerte est posé à l'écran — pas pour le sélecteur. Signal sortant
-  seulement : une extension en tire un accusé de lecture ; sans écouteur, rien.
+  alerte d'extension) quand le DÉTAIL d'une alerte est posé à l'écran ; **liste à l'écran** : `afficherSelecteurAlertes`
+  émet **`mktm:alertes-listees`** `{ alertes: [{ id, released }] }` (les alertes de la liste, ids tels qu'affichés)
+  quand la liste est posée. Signaux sortants seulement : une extension en tire un accusé de lecture ; sans écouteur,
+  rien (l'acquittement local ne change pas : fermer la liste n'acquitte rien sur l'appareil). **Déjà vue** : `vue:
+  true` (strict) sur une alerte de l'extension = elle la sait vue ailleurs (autre appareil du même compte) —
+  `AlertChecker` la traite comme acquittée (pas d'ouverture d'office, « acquittée » dans la liste), crue seulement pour
+  un id `ext_`. Sans extension, aucune alerte n'a `vue`.
 - **Action dans la fenêtre 🚨** : champ facultatif de la prise `alertes` — `action: { libelle() → string | null,
   lancer() }`. `KtaExtensions.actionAlertes(fermer)` rend un bouton au libellé de l'extension (synchrone, 60 car.,
   posé en texte), posé au pied des trois fenêtres 🚨 (aucune alerte, sélecteur, détail) avant la ligne des

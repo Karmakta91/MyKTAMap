@@ -5,11 +5,12 @@
  */
 
 // addons/mkmg/js/coeur.js — add-on « mkmg » : jeu en vagues dans la vue 3D, sur le plan ouvert. Chargé par la vue 3D
-// seule (vue3d.js > ADDONS_CODE, code « six vers le bas »), jamais au démarrage ; charge à son tour son.js et
-// monde.js et joueur.js (bras et fusil en vue à hauteur d'yeux, silhouette verte en vue plongeante). Expose
+// seule (code « six vers le bas » de son manifeste addons/mkmg/addon.json), jamais au démarrage ; charge à son tour
+// son.js, monde.js et joueur.js (bras et fusil en vue à hauteur d'yeux, silhouette verte en vue plongeante). Expose
 // window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
 // rejoindre un point B (POI de plus en plus loin, sinon un point des tracés) avec des égarés et, dès la vague 2, la
-// silhouette (monde.js) ; fusil à deux coups (rage après 20 égarés : santé pleine, 30 s de tir auto), munitions,
+// silhouette (monde.js) ; fusil à pompe (rage après 20 égarés : santé pleine, 30 s de tir auto, endurance sans fin,
+// dégâts reçus ÷ 2, halo rouge), munitions,
 // piles et champignons ramassés en passant ; viseur à la souris capturée (PC) ; santé à 0 = fin,
 // meilleure vague retenue par difficulté. La pile de la lampe s'use (lampe qui baisse et vacille, à plat = lueur de
 // quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
@@ -127,15 +128,16 @@
 
   // Réglages du jeu (m, points, par seconde, ms) : premiers essais, à revoir au jeu.
   const REGLES = {
-    departM: 40, pasM: 30, minM: 10, candidats: 8, arriveeM: 2, sante: 100, endurance: 100,
+    departM: 40, pasM: 30, minM: 10, candidats: 8, horsTraceM: 8, arriveeM: 2, sante: 100, endurance: 100,
     videParS: 22, repriseParS: 14, souffleReprise: 30, coeurSous: 5, regardM: 5, majHudMs: 150, messageMs: 2200,
     cartouches: { canon: 2, reserve: 6 }, eclairMs: 90, imageMs: 33, blesseMs: 600, coupMs: 250, tapeMs: 250,
     tapePx: 6,
     // Viseur (souris capturée) : px rejoués par px de souris, refus avant de rendre le glisser, Échap ignoré après.
     viseur: { id: 7331, k: 1, refus: 3, echapMs: 300 },
     // Rage (décision produit) : prête après `tues` égarés tués hors rage ; `dureeS` s de tir automatique (un coup
-    // toutes les `cadenceMs` tant que la détente est tenue), munitions illimitées, `chargeur` coups avant recharge.
-    rage: { tues: 20, dureeS: 30, chargeur: 25, cadenceMs: 110 },
+    // toutes les `cadenceMs` tant que la détente est tenue), munitions illimitées, `chargeur` coups avant recharge ;
+    // endurance sans fin et dégâts reçus × `degatsX`.
+    rage: { tues: 20, dureeS: 30, chargeur: 25, cadenceMs: 110, degatsX: 0.5 },
     // Chrono d'une vague (décision produit) : longueur du trajet vers B à `vitesse` m/s (+ `parVague`, `max` au plus)
     // plus une marge qui fond ; sans trajet, la distance à vol d'oiseau × `sansTrajet`. À 0 : horde et santé.
     chrono: { vitesse: 1.4, parVague: 0.08, max: 2.4, marge: 30, margeParVague: 2, margeMin: 10, sansTrajet: 1.4,
@@ -148,7 +150,7 @@
     // Pile (décision produit) : s'use de `parS` % par seconde ; sous `faible` %, la lampe baisse jusqu'à `min` (lueur
     // de quelques mètres, jamais le noir) et vacille (×`vacille`, de plus en plus souvent).
     pile: { max: 100, parS: 0.55, faible: 25, min: 0.08, vacille: 0.35, vacilleHz: 2.5, vacilleMs: [50, 200] },
-    respireSous: 50, eau: { x: 0.6, ploufM: 0.6, testMs: 200 },
+    eau: { x: 0.6, ploufM: 0.6, testMs: 200 },
     eboulis: { rayonM: 15, s: [8, 20], masqueMs: 2500, testMs: 1000 },
     // B à un autre niveau (plan multi-niveau) : dès la vague `des`, une fois sur `1 / chance` ; jamais en vague boss.
     autreNiveau: { des: 4, chance: 0.4 }, gardienTous: 5,
@@ -306,9 +308,12 @@
     const t = performance.now();
     _joueur().image(p, ctx, dt);
     if (p.fin) return;
-    if (ctx.court && !p.souffle) {
+    if (p.rageFin) {
+      p.endurance = REGLES.endurance;
+      if (p.souffle) { p.souffle = false; ctx.regler({ course: true }); }
+    } else if (ctx.court && !p.souffle) {
       p.endurance = Math.max(0, p.endurance - REGLES.videParS * dt);
-      if (p.endurance === 0) { p.souffle = true; ctx.regler({ course: false }); _jouer("souffle"); }
+      if (p.endurance === 0) { p.souffle = true; ctx.regler({ course: false }); }
     } else {
       p.endurance = Math.min(REGLES.endurance, p.endurance + REGLES.repriseParS * dt);
       if (p.souffle && p.endurance >= REGLES.souffleReprise) { p.souffle = false; ctx.regler({ course: true }); }
@@ -332,10 +337,6 @@
       _jouer(s[0], s[1], s[2]);
     });
     if (r.hurle) _message(_t("hud.hurle"));
-    // Respiration seulement en courant (sous respireSous d'endurance) ou à bout de souffle : jamais au repos.
-    const respire = p.souffle ? 1 : ctx.court && p.endurance < REGLES.respireSous ?
-      1 - p.endurance / REGLES.respireSous : 0;
-    _son().respiration(respire);
     // Battement de cœur (décision produit) : seulement à bout de souffle ou sous coeurSous % d'endurance, fort et
     // rapide à sec, de plus en plus lent pendant la reprise, éteint une fois le souffle revenu.
     const seuil = p.souffle ? REGLES.souffleReprise : REGLES.coeurSous;
@@ -360,7 +361,7 @@
       }
     });
     if (r.degats > 0) {
-      p.sante = Math.max(0, p.sante - r.degats);
+      p.sante = Math.max(0, p.sante - r.degats * _degatsX(p));
       if (t - p.blesseT > REGLES.blesseMs) { p.blesseT = t; _jouer("blesse"); _coup(); }
     }
     if (p.sante <= 0) { _finPartie(); return; }
@@ -570,6 +571,8 @@
     // En rage, les cartouches ne sont pas comptées : seul le chargeur de la rage descend.
     if (rage) { p.rageCanon--; p.prochainTir = performance.now() + REGLES.rage.cadenceMs; } else p.canon--;
     _jouer("tir");
+    // Coup de pompe après le tir, sauf en rage (tir automatique) et quand la recharge s'en charge.
+    if (!rage && !(p.canon === 0 && p.reserve > 0)) _jouer("pompe");
     _eclair();
     _joueur().tir(p);
     if (p.hud) {
@@ -615,6 +618,8 @@
     _message(_t("hud.rageActive"));
     _majHud();
   }
+
+  function _degatsX(p) { return p.rageFin ? REGLES.rage.degatsX : 1; }
 
   function _finRage(p) {
     p.rageFin = 0;
@@ -724,12 +729,18 @@
       for (let i = 0; i < listes[l].length && !route; i++) {
         route = await _route(pos, listes[l][i], niv, listes[l][i].niveau);
         if (_p !== p || jeton !== p.calcul) return;
+        // 🩸 Le trajet s'accroche au tracé le plus proche, même loin : un POI à plus de horsTraceM m de tout tracé
+        // (relevé dans la roche, salle isolée) donnait un B qu'on ne rejoint pas. Écarté, au suivant.
+        if (route) {
+          const b = route[route.length - 1];
+          if (Math.hypot(b.x - listes[l][i].x, b.y - listes[l][i].y) / sc > REGLES.horsTraceM) route = null;
+        }
         if (route) cible = listes[l][i];
       }
     }
-    // Aucun trajet (plan sans tracés) : la cible la plus proche du voulu, sans itinéraire.
-    if (!cible) cible = cands[0] || null;
-    // ⚠️ contrat (décision produit) : un POI relevé hors de la galerie (dans la roche, une salle sans tracé) est
+    // Aucun trajet (plan sans tracés, réseau coupé) : un point des tracés plutôt qu'un POI, sans itinéraire.
+    if (!cible) cible = repli || cands[0] || null;
+    // ⚠️ contrat (décision produit) : un POI relevé hors de la galerie (à horsTraceM m au plus d'un tracé) est
     // validé DANS la galerie, au bout du trajet sur les tracés ; et jamais dans une structure (pilier, mur, front) :
     // la place libre la plus proche de ce point (règle du pas de la vue, hors remblais, effondrement, inaccessible).
     // B à un autre niveau : le bout du trajet (sur les tracés de ce niveau-là ; la règle du pas d'ici n'y vaut rien).
@@ -780,7 +791,10 @@
   function _vagueReussie() {
     const p = _p;
     p.reussies++;
+    // Vague réussie (décision produit) : santé, endurance et pile de la lampe à 100 %.
+    p.sante = REGLES.sante;
     p.endurance = REGLES.endurance;
+    p.pile = REGLES.pile.max;
     if (p.souffle) { p.souffle = false; p.ctx.regler({ course: true }); }
     _jouer("vague");
     _message(_t("hud.reussie", { n: p.vague }));
@@ -811,7 +825,7 @@
   function _tropTard(p, ctx) {
     const T = REGLES.tropTard, pos = ctx.pos, n = T.horde + T.parVague * (p.vague - 1);
     p.chronoDepasse = true;
-    p.sante = Math.max(0, p.sante - T.degats);
+    p.sante = Math.max(0, p.sante - T.degats * _degatsX(p));
     // Groupes répartis autour de soi ; un groupe tombé hors du plan (ou dans la roche) est reposé ailleurs.
     const a0 = Math.random() * Math.PI * 2, r = T.rayonM * ctx.sc;
     let poses = 0;
@@ -868,7 +882,6 @@
     // La carte de fin est sous les commandes (calque de la greffe) : joystick et pavé retirés le temps de toucher.
     p.ctx.regler({ course: false, commandes: false });
     _son().proximite(0);
-    _son().respiration(0);
     _son().ambiance(false);
     _jouer("fin");
     const scores = _lireScores(), avant = Number(scores[p.diff]) || 0;
@@ -1051,6 +1064,7 @@
   function _monterHud(ctx) {
     const p = _p, h = {};
     h.coup = _el(ctx.hud, "div", "mkmg-coup");
+    h.halo = _el(ctx.hud, "div", "mkmg-halo-rage");
     // Jauges en haut à gauche, hors du panneau : toujours visibles, même panneau réduit.
     h.jauges = _el(ctx.hud, "div", "mkmg-jauges");
     h.sante = _barre(h.jauges, _t("hud.sante"));
@@ -1174,6 +1188,7 @@
       _t("hud.rageCharge", { n: Math.min(p.rageTues, R.tues), m: R.tues });
     h.rage.setAttribute("aria-label", h.rage.title);
     h.tirer.classList.toggle("mkmg-tirer-rage", rage);
+    h.halo.classList.toggle("mkmg-halo-actif", rage);
     h.tirer.title = _t("hud.tirer") + " — " + _t("hud.cartouches") + " : " + p.canon + " + " + p.reserve +
       (p.rechargeFin ? " (" + _t("hud.recharge") + ")" : "");
     h.stats.textContent = _t("hud.tues") + " : " + p.tues + " · " + _t("hud.tirs") + " : " + p.tirs + " · " +

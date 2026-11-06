@@ -14,10 +14,10 @@
 // Un seul outil armé (POI / mesure / zone / tracé). Échap, 3 sommets posés : même fin que le re-clic du bouton de type
 // (tracé, zone, structure, mesure), ajout de point désarmé. Vue 3D d'édition, outil armé (colonne toujours active, sans
 // interrupteur) : panneau de POI, pilier, zone → sommet, aucune fiche ; armé par les vrais boutons (groupe, type) puis
-// le sol ; un seul outil ; pas d'ajout de point dans la colonne ; outil armé en 2D puis vue d'édition : le PREMIER
+// le sol ; un seul outil ; ✏️ ajout de point à sa place dans la colonne ; outil armé en 2D puis vue d'édition : le PREMIER
 // toucher pose ; outil armé à hauteur d'yeux : toucher consommé, aucune fiche.
-// Clic lent sous une image lourde, recul 60 m aux 4 coins et 3 inclinaisons (point du plan y = 0 à 5 cm), Galerie
-// hors tube : sommet posé.
+// Clic lent sous une image lourde, recul maximal (150 m) aux 4 coins et 3 inclinaisons (point du plan y = 0 à 5 cm,
+// refusé hors de l'image du plan), Galerie hors tube : sommet posé.
 // Joué au doigt (393 × 852, hasTouch, isMobile) et à la souris (1280 × 800), sous Chromium puis WebKit (KTA_MOTEURS
 // pour un seul).
 // Usage : node scripts/smoke/checkup-dessin-sans-fiche.js (SMOKE_PORT pour une autre copie) · doc : ui.md § Outil armé
@@ -582,7 +582,9 @@ async function section3D(page, entree) {
   verifier(!!cibles.poi && cibles.pilier.vise === "structures" && cibles.zone.vise === "zones",
     "3D : panneau de POI, pilier et zone sous le doigt", cibles);
 
-  // Hors outil : la fiche s'ouvre (référence).
+  // Hors outil : la fiche s'ouvre (référence ; réglage ⚙️ Fiches ouvert, sinon coupé par défaut au doigt :
+  // checkup-vue-3d.js § 37).
+  await page.evaluate(function () { window.setVue3DFichesObjets(true); });
   const ref = {};
   for (const k of ["poi", "pilier", "zone"]) {
     if (!cibles[k]) continue;
@@ -630,7 +632,7 @@ async function section3D(page, entree) {
   }
 
   // Un seul outil à la fois dans la vue : POI armé sur la carte avant la vue, puis 📐 de la colonne ; mesure puis
-  // tracé ; tracé puis zone. La colonne ne propose pas l'ajout de point (décision produit).
+  // tracé ; tracé puis zone. La colonne propose ✏️ ajout de point, à sa place de la barre 2D (décision produit).
   const armer3 = function (o) {
     return page.evaluate(function (o) {
       const K = window.KtaVue3D;
@@ -669,7 +671,7 @@ async function section3D(page, entree) {
   });
   verifier(seul3.length === 0, "3D : un seul outil armé (POI de la carte puis 📐, 📐 puis tracé, tracé puis zone)",
     seul3);
-  verifier(barrePoi.indexOf("edition") < 0, "3D : la colonne d'outils ne propose pas l'ajout de point", barrePoi);
+  verifier(barrePoi.indexOf("edition") === 1, "3D : la colonne d'outils propose ✏️ ajout de point, après 📐", barrePoi);
 
   // Armer par les vrais boutons, au pointeur de l'entrée (souris ou doigt) : groupe, type du panneau, puis le sol.
   const reels = [];
@@ -763,6 +765,7 @@ async function section3D(page, entree) {
     "3D, clic de 150 ms traité après une image de 700 ms : sommet posé", { refus: refusLent });
 
   const loin = [];
+  let dansPlan = 0, horsPlan = 0;
   for (const incl of [15, 50, 85]) {
     await armerZone3();
     await page.evaluate(function (incl) {
@@ -803,7 +806,8 @@ async function section3D(page, entree) {
           ctxV.camera);
         const q = r.ray.intersectPlane(new T.Plane(new T.Vector3(0, 1, 0), 0), new T.Vector3());
         return { q: q ? { x: q.x * sc, y: q.z * sc } : null, sc: sc, incl: K.etat().inclinaison,
-          recul: K.etat().portee.recul };
+          recul: K.etat().portee.recul, W: Number(window.PLAN_CONFIG.plan.imageWidth),
+          H: Number(window.APP_CONFIG.imageHeight) };
       }, p);
       const av = await etat3();
       await geste(p);
@@ -817,15 +821,27 @@ async function section3D(page, entree) {
         if (ap.n !== av.n) loin.push(nom + " : au-dessus de l'horizon, un sommet posé quand même");
         continue;
       }
-      const ecart = dernier ? Math.hypot(dernier.x - att.q.x, dernier.y - att.q.y) / att.sc : null;
+      // 🩸 Au recul maximal, le bas de la vue (et un coin haut en paysage) voit le sol AU-DELÀ de l'image du relevé
+      // fictif : le toucher y est refusé (vue3d.js > _dansPlan, décision produit), aucun sommet. Les deux comptes
+      // ci-dessous prouvent que les deux cas sont joués.
+      const dedans = att.q.x >= 0 && att.q.x <= att.W && att.q.y >= 0 && att.q.y <= att.H;
+      if (!dedans) {
+        horsPlan++;
+        if (ap.n !== av.n) loin.push(nom + " : hors du plan, un sommet posé quand même");
+        continue;
+      }
+      dansPlan++;
+      const vx = att.q.x, vy = att.q.y;
+      const ecart = dernier ? Math.hypot(dernier.x - vx, dernier.y - vy) / att.sc : null;
       if (ap.n !== av.n + 1 || ecart === null || ecart > 0.05) {
         loin.push(nom + " : " + JSON.stringify({ sommets: ap.n - av.n,
           ecart_m: ecart === null ? null : +ecart.toFixed(3), recul: att.recul, incl: att.incl }));
       }
     }
   }
-  verifier(loin.length === 0, "3D, recul 60 m, inclinaisons 15 / 50 / 85°, 4 coins : sommet au point visé (5 cm)",
-    loin);
+  verifier(loin.length === 0 && dansPlan > 0 && horsPlan > 0,
+    "3D, recul maximal (150 m), inclinaisons 15 / 50 / 85°, 4 coins : sommet au point visé (5 cm), refusé "
+    + "hors de l'image du plan", { ecarts: loin, dansPlan: dansPlan, horsPlan: horsPlan });
 
   await armerZone3();
   await page.evaluate(function () {

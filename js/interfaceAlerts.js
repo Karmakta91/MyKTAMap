@@ -8,7 +8,7 @@
 // INTERFACE ALERTS — Modales d'alertes publiques + mise à jour
 // =========================
 // Exposé sur window :
-//   - afficherModaleAlerteAbsente(status) → modale informative compacte « Aucune alerte en cours » / « Déjà à jour »
+//   - afficherModaleAlerteAbsente(status, opts) → modale « Aucune alerte en cours » / « Déjà à jour »
 //     / « Vérification impossible (hors ligne) » (clic sur 🚨 sans alerte, ou sur la version du pied de page sans
 //     mise à jour).
 //   - afficherSelecteurAlertes(alerts, opts) → liste multi-alertes par criticité (emergency > warning > info) ;
@@ -47,7 +47,7 @@ function _ktaPoserLigneNotif(corps, fermer) {
   if (l) corps.appendChild(l);
 }
 
-window.afficherModaleAlerteAbsente = function(status) {
+window.afficherModaleAlerteAbsente = function(status, opts) {
   if (document.getElementById("kta-alert-absent-modal")) return;
 
   const isOffline   = (status === "offline");
@@ -119,7 +119,11 @@ window.afficherModaleAlerteAbsente = function(status) {
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
-  _ktaPoserLigneNotif(modal.querySelector(".kta-alert-absent-corps"), function () { _fermer(); });
+  // ⚠️ contrat : le pied du 🚨 (nouveautés, action d'une extension, notifications) ne vit que dans la fenêtre des
+  // ALERTES ; « Déjà à jour » / hors ligne de la mise à jour (updateChecker.js, `opts.version`) n'en a pas.
+  if (!(opts && opts.version)) {
+    _ktaPoserLigneNotif(modal.querySelector(".kta-alert-absent-corps"), function () { _fermer(); });
+  }
 
   function _fermer() { modal.remove(); }
   document.getElementById("kta-alert-absent-ok").addEventListener("click", _fermer);
@@ -167,8 +171,10 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
     return (b.released || "").localeCompare(a.released || "");
   });
 
-  // Alerte déjà lue (utile au clic sur 🚨) : localStorage["myktamap_alert_seen_<id>"] = released acquitté.
+  // Alerte déjà lue (utile au clic sur 🚨) : localStorage["myktamap_alert_seen_<id>"] = released acquitté, ou
+  // alerte d'extension que l'extension dit déjà vue (`vue`, AlertChecker > _vueParExtension).
   function _isAcquittee(a) {
+    if (a.vue === true && String(a.id || "").indexOf("ext_") === 0) return true;
     if (!a.id || !a.released) return false;
     try {
       const seen = localStorage.getItem("myktamap_alert_seen_" + a.id);
@@ -207,6 +213,12 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
     '</div>';
   document.documentElement.appendChild(modal);
   _ktaPoserLigneNotif(modal.querySelector(".kta-alert-selector-corps"), function () { _fermer(); });
+  // Signal neutre : ces alertes sont À L'ÉCRAN dans la liste (titres lus). Une extension peut en tirer un accusé de
+  // lecture, comme pour le détail (mktm:alerte-affichee) ; sans écouteur, rien — l'acquittement local ne change pas.
+  try {
+    window.dispatchEvent(new CustomEvent("mktm:alertes-listees", { detail: { alertes: sorted.map(function(a) {
+      return { id: String(a.id || ""), released: String(a.released || "") }; }) } }));
+  } catch(e) { /* rien */ }
 
   function _fermer() {
     if (modal.parentNode) modal.remove();

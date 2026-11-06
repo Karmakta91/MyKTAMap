@@ -1,0 +1,9 @@
+{
+  "nom": "mkmg",
+  "prise": "vue3d",
+  "secret": true,
+  "code": "bas6",
+  "entree": "js/coeur.js",
+  "fichiers": ["js/coeur.js", "js/son.js", "js/monde.js", "js/joueur.js", "css/coeur.css", "img/fusil.svg"],
+  "titre": { "fr": "Jeu en vagues", "en": "Wave game", "es": "Juego por oleadas" }
+}

@@ -783,7 +783,7 @@ function _notifierRecalage(x, y, source, opts) {
     catch(e) { console.warn("[Tracking] hook recalage échoué :", e); }
   }
   if (window.InterPlanRoute && typeof window.InterPlanRoute.onTrackerRecale === "function") {
-    try { window.InterPlanRoute.onTrackerRecale(x, y, source); }
+    try { window.InterPlanRoute.onTrackerRecale(x, y, source, opts); }
     catch(e) { console.warn("[Tracking] hook recalage portail échoué :", e); }
   }
   if (window.KtaVue3D && typeof window.KtaVue3D.trackerRecale === "function") {
@@ -1386,11 +1386,14 @@ function _positionDansGalerie(x, y, niveau) {
 
 // Recale le tracker sur un point (« Je suis ici » de la popup, utils.js > buildPointPopupHtml ; arrivée de portail ;
 // picker « Où es-tu ? »). Tracé visible et compteur de pas remis à zéro.
-// ⚠️ `opts.teleport` : déplacement NON parcouru (portail) → ancre `tp`, jamais estimée. La source reste "point" pour
-// les consommateurs du hook (validation d'étape comprise). `opts.sansReplan` : voir Mode Secours.
+// ⚠️ `opts.teleport` : déplacement NON parcouru (portail, Secours, place venue de la vue 3D : « Je suis ici ? » à la
+// fermeture, « Ici » de « D'où pars-tu ? ») → ancre `tp`, jamais estimée ni comptée en validation (le Carnet n'en fait
+// pas une sortie terrain). La source reste "point" pour les consommateurs du hook (validation d'étape comprise). `opts.sansReplan` : voir Mode Secours.
 // `opts.dansGalerie` (« Je suis ici » d'un POI) : position ajustée dans la galerie (_positionDansGalerie) ; l'ancre
 // de timeline et la vue portent la position ajustée. Sans lui (portail, picker « Où es-tu ? », Secours, 3D) :
 // coordonnées exactes. La vue 3D ouverte en suivi passe en libre sur un recalage `dansGalerie`.
+// `opts.icone` {x, y} : « Je suis ici » d'un POI à point précis (x, y = le point précis) ; une étape ou un portail
+// posés sur l'icône se valident aussi (interfaceItineraire.js > _onTrackerRecale, interPlanRoute.js).
 // 🩸 Le hook _notifierRecalage reçoit TOUJOURS les coordonnées du point : la validation d'étape et la reprise du
 // portail de sortie comparent des coordonnées arrondies à celles du point.
 window.recalerTrackerSurPoint = function(x, y, level, opts) {

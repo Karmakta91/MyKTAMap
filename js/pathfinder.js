@@ -11,7 +11,8 @@
 // getAllEmbeddedRoads()), waypoints calés orthogonalement sur le segment le plus proche.
 // Expose window.Pathfinder : computeRoute (async, 2 passes), computeRouteOnRoads (sync, réseau fourni),
 //   computeReachable (isochrone du Mode Perdu), buildNetworkGraph / snapPointToGraph (roadGraph.js),
-//   resolvePointById, aDesTraces, carrefoursSurChemin, nbObstaclesDurs. Et window.getAvoidableZoneTypes.
+//   resolvePointById, aDesTraces, carrefoursSurChemin, nbObstaclesDurs, grapheDeTraces / collecterTraces
+//   (outil des raccords, raccordsTraces.js). Et window.getAvoidableZoneTypes.
 // ⚠️ Contraintes DURES : zones `inaccessible` et murs en ligne (`mur-ligne`), levées ensemble par
 //   `respecterInaccessibles: false` (case de la modale) ; aucune autre structure ne compte.
 // ⚠️ computeRoute → { path:[{x, y, level}], totalDistance, segmentCount, snappedPoints, raccords, carrefours }.
@@ -28,7 +29,24 @@
 
   // Jonctions imparfaites (T et extrémité↔extrémité). Plus permissif que les 8 px du DESSIN des cercles
   // d'intersection : les tracés à la main ont 5-10 px de jitter aux jonctions.
+  // ⚠️ contrat (décision produit) : ne s'applique qu'aux BOUTS LIBRES (_boutsLibres : 1er ou dernier sommet d'un
+  // tracé qui ne touche encore aucun autre tracé) ; un raté de connexion vient toujours d'un bout resté en l'air.
+  // 🩸 Appliquée à tous les sommets, elle reliait deux galeries parallèles plus proches que la tolérance (15 px ≈ 6 m
+  // à 2,5 px/m) : itinéraire à travers le mur. Appliquée à un bout déjà raccordé (T, croisement, bout fusionné,
+  // passage de POI), elle le reliait EN PLUS à la galerie parallèle voisine : même saut à travers le mur.
   const PROXIMITY_TOLERANCE = 15;
+
+  // Deux sommets INTÉRIEURS de deux tracés différents à ≤ 3 px sont reliés : carrefour dessiné en deux « L » qui se
+  // touchent sans se croiser (mesuré à 2,5 px sur un relevé réel). Seuil à part de la fusion (SPATIAL_MERGE_THRESHOLD,
+  // qui confond les nœuds) : ici une arête pondérée. ⚠️ Rester sous l'écart de deux galeries parallèles : au-delà,
+  // l'itinéraire repasse à travers le mur (docs/architecture/multilevel-pathfinding.md §14).
+  const PROXIMITE_INTERIEURS_PX = 3;
+
+  // Un bout libre ne se relie qu'au plus PROCHE de ses candidats (et à ceux à ≤ 3 px de plus) : coin entre deux
+  // galeries, oui ; galerie parallèle derrière celle qu'il touche presque, non. 🩸 Une branche finie à la main à 1 m
+  // d'une galerie (rien ne l'aimante sur un segment) est un bout libre : sans ce filtre, elle se reliait aussi à la
+  // galerie parallèle à 4 m derrière, à travers le mur.
+  const MARGE_PLUS_PROCHE_PX = 3;
 
   // ── Géométrie ──────────
   function _dist(a, b) {
@@ -357,7 +375,11 @@
       buckets:    {},   // bucketKey → [nodeIdx, ...]
       // Set<niveau> par nœud : 1 niveau pour un nœud de route, plusieurs pour un nœud fusionné,
       // ["transit"] pour le milieu d'une jonction. Décide des connexions à l'enrichissement.
-      nodeLevels: []    // nodeLevels[i] = Set<number|"transit">
+      nodeLevels: [],   // nodeLevels[i] = Set<number|"transit">
+      bouts:      new Set(),  // 1er et dernier sommets des tracés
+      boutsLibres: new Set(), // ceux qui ne touchent aucun autre tracé (_boutsLibres) : seuls à avoir la tolérance
+      traces:     [],         // traces[i] = indices des tracés qui passent par le nœud i (sommets intérieurs voisins)
+      noeudsTrace: []         // noeudsTrace[r][k] = nœud du k-ième sommet du tracé r (raccordsTraces.js)
     };
   }
 
@@ -402,6 +424,18 @@
     if (!graph.buckets[bk]) graph.buckets[bk] = [];
     graph.buckets[bk].push(idx);
     return idx;
+  }
+
+  function _noterTrace(graph, idx, r) {
+    const l = graph.traces[idx] || (graph.traces[idx] = []);
+    if (l[l.length - 1] !== r) l.push(r);
+  }
+
+  function _memeTrace(graph, a, b) {
+    const la = graph.traces[a], lb = graph.traces[b];
+    if (!la || !lb) return false;
+    for (let i = 0; i < la.length; i++) if (lb.indexOf(la[i]) >= 0) return true;
+    return false;
   }
 
   function _addEdge(graph, a, b, weight) {
@@ -490,6 +524,9 @@
       const partsDeniv = isJonction ? _partsDenivJonction(road.points) : null;
 
       let prevIdx = _getOrAddNode(graph, road.points[0].x, road.points[0].y, isJonction ? fromLvl : segLevel);
+      const noeuds = graph.noeudsTrace[r] = [prevIdx];
+      graph.bouts.add(prevIdx);
+      _noterTrace(graph, prevIdx, r);
       _ajouterNiveauNode(graph, prevIdx, isJonction ? fromLvl : segLevel);
 
       for (let i = 1; i < road.points.length; i++) {
@@ -501,6 +538,9 @@
           : segLevel;
         const idx = _getOrAddNode(graph, p.x, p.y, nodeLvl);
         _ajouterNiveauNode(graph, idx, nodeLvl);
+        if (isLast) graph.bouts.add(idx);
+        _noterTrace(graph, idx, r);
+        noeuds.push(idx);
 
         // Segment exclu (nœud sans arête) si une zone inaccessible le traverse ou s'il croise un mur en ligne
         // (DUR, jamais relâché), ou si un point d'évitement est à moins de `avoidRadius` (SOUPLE, passe 2).
@@ -599,7 +639,42 @@
     return Array.from(vus).sort(function(p, q) { return p - q; });
   }
 
-  function _enrichirGrapheAvecCroisements(graph) {
+  // Bouts LIBRES : 1er ou dernier sommet d'un tracé qui ne touche encore aucun autre tracé. Un bout est raccordé si
+  // son nœud est partagé par un autre tracé (fusion à SPATIAL_MERGE_THRESHOLD, sommet commun, bout de jonction), s'il
+  // a une arête vers le nœud d'un autre tracé (croisement exact posé sur lui par l'étape 1) ou s'il porte le raccord
+  // validé d'un POI entre niveaux (_poiInjectable, même filtre que _injecterJonctionsPoi).
+  // ⚠️ À lire après les croisements stricts, avant toute jonction imparfaite. Un bout raccordé est traité comme un
+  // sommet intérieur (lien seulement à ≤ PROXIMITE_INTERIEURS_PX d'un sommet d'un autre tracé).
+  function _boutsLibres(graph, pois, ctxPois) {
+    const libres = new Set();
+    const accroches = [];
+    if (Array.isArray(pois) && window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+      pois.forEach(function(p) {
+        const inj = _poiInjectable(p, ctxPois);
+        if (inj) inj.acc.forEach(function(a) { accroches.push(a); });
+      });
+    }
+    (graph.bouts || new Set()).forEach(function(idx) {
+      const tr = graph.traces[idx];
+      if (!tr || tr.length !== 1) return;
+      const r = tr[0];
+      const voisins = graph.edges[idx] || [];
+      for (let k = 0; k < voisins.length; k++) {
+        const tv = graph.traces[voisins[k].to];
+        if (tv && tv.indexOf(r) < 0) return;
+      }
+      const n = graph.nodes[idx], niv = graph.nodeLevels[idx];
+      for (let k = 0; k < accroches.length; k++) {
+        const a = accroches[k];
+        if (niv && niv.has(a.level) && Math.hypot(a.x - n.x, a.y - n.y) <= SPATIAL_MERGE_THRESHOLD) return;
+      }
+      libres.add(idx);
+    });
+    return libres;
+  }
+
+  // `pois` / `ctxPois` : ceux passés ensuite à _injecterJonctionsPoi (bouts posés sur un passage entre niveaux).
+  function _enrichirGrapheAvecCroisements(graph, pois, ctxPois) {
     // Snapshot AVANT enrichissement, sinon boucle infinie sur les segments virtuels ajoutés.
     const segs = graph.segments.slice();
     // Deux index : bbox brute (+1 px) pour les croisements, bbox élargie de la tolérance pour les T.
@@ -610,6 +685,15 @@
     // Lu une fois : boucles chaudes sur les gros plans.
     const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     let _nbSkipNiveau = 0;
+    // Nœuds posés à l'intérieur de chaque segment d'origine (croisements, pieds de T) : chaînés à la fin (étape 4).
+    const poses = new Map();   // indice dans segs → [{ idx, t }]
+    function _poser(j, idx, t) {
+      if (idx === segs[j].a || idx === segs[j].b) return;
+      let l = poses.get(j);
+      if (!l) poses.set(j, l = []);
+      for (let k = 0; k < l.length; k++) if (l[k].idx === idx) return;
+      l.push({ idx: idx, t: t });
+    }
 
     // ── 1. Croisements stricts ──
     for (let i = 0; i < segs.length; i++) {
@@ -649,18 +733,37 @@
         _addEdge(graph, newIdx, segA.b, Math.hypot(a2.x - inter.x, a2.y - inter.y));
         _addEdge(graph, newIdx, segB.a, Math.hypot(b1.x - inter.x, b1.y - inter.y));
         _addEdge(graph, newIdx, segB.b, Math.hypot(b2.x - inter.x, b2.y - inter.y));
+        _poser(i, newIdx, _projectOnSegment(inter, a1, a2).t);
+        _poser(j, newIdx, _projectOnSegment(inter, b1, b2).t);
         nbCroisements++;
       }
     }
 
-    // ── 2. T par proximité : extrémité projetée à l'INTÉRIEUR d'un autre segment, sous la tolérance ──
+    // ── 2. T par proximité : BOUT LIBRE projeté à l'INTÉRIEUR d'un autre segment, sous la tolérance ──
+    // Lu APRÈS les croisements stricts : un bout posé sur un croisement exact y a gagné ses arêtes.
+    const bouts = graph.boutsLibres = _boutsLibres(graph, pois, ctxPois);   // lu aussi par raccordsTraces.js
+    // Liens des étapes 2 et 3 PROPOSÉS d'abord, posés ensuite dans le même ordre : un bout libre ne garde que les
+    // plus proches (MARGE_PLUS_PROCHE_PX). dmin = distance du candidat le plus proche sur un AUTRE tracé.
+    const dmin = new Map();
+    // `memeTrace` : candidat sur le tracé du bout lui-même, jamais compté dans dmin.
+    function _noterProche(idx, memeTrace, d) {
+      if (!bouts.has(idx) || memeTrace) return;
+      const v = dmin.get(idx);
+      if (v === undefined || d < v) dmin.set(idx, d);
+    }
+    function _assezProche(idx, d) {
+      const v = dmin.get(idx);
+      return v === undefined || d <= v + MARGE_PLUS_PROCHE_PX;
+    }
+    const propT = [];
     for (let i = 0; i < segs.length; i++) {
       const segA = segs[i];
+      if (!bouts.has(segA.a) && !bouts.has(segA.b)) continue;
+      const pa = graph.nodes[segA.a], pb = graph.nodes[segA.b];
       const endpoints = [
-        { nodeIdx: segA.a, point: graph.nodes[segA.a] },
-        { nodeIdx: segA.b, point: graph.nodes[segA.b] }
-      ];
-      const pa = endpoints[0].point, pb = endpoints[1].point;
+        { nodeIdx: segA.a, point: pa },
+        { nodeIdx: segA.b, point: pb }
+      ].filter(function(ep) { return bouts.has(ep.nodeIdx); });
       const candB = _candidatsGrille(grilleProxi, Math.min(pa.x, pb.x), Math.min(pa.y, pb.y),
                                      Math.max(pa.x, pb.x), Math.max(pa.y, pb.y));
 
@@ -691,19 +794,17 @@
 
           // t ∈ ]0,05 ; 0,95[ : évite le double comptage avec les croisements aux extrémités.
           if (proj.dist < PROXIMITY_TOLERANCE && proj.t > 0.05 && proj.t < 0.95) {
-            const projIdx = _getOrAddNode(graph, proj.x, proj.y, segB.level);
-            if (_mlOn) _ajouterNiveauNode(graph, projIdx, segB.level);
-            _addEdge(graph, ep.nodeIdx, projIdx, proj.dist);
-            _addEdge(graph, projIdx, segB.a, Math.hypot(b1.x - proj.x, b1.y - proj.y));
-            _addEdge(graph, projIdx, segB.b, Math.hypot(b2.x - proj.x, b2.y - proj.y));
-            nbProximites++;
+            propT.push({ ep: ep.nodeIdx, j: j, proj: proj });
+            _noterProche(ep.nodeIdx, _memeTrace(graph, ep.nodeIdx, segB.a) && _memeTrace(graph, ep.nodeIdx, segB.b),
+                         proj.dist);
           }
         }
       }
     }
 
-    // ── 3. Extrémité↔extrémité : derniers points décalés de quelques px (jitter), trop loin pour
-    // SPATIAL_MERGE_THRESHOLD au build → arête directe pondérée ──
+    // ── 3. Bout↔sommet : un BOUT LIBRE décalé de quelques px (jitter) d'un sommet d'un autre tracé, trop loin pour
+    // SPATIAL_MERGE_THRESHOLD au build → arête directe pondérée. Deux autres sommets (intérieurs ou bouts déjà
+    // raccordés) ne se relient qu'à ≤ PROXIMITE_INTERIEURS_PX. ──
     const endpointSet = new Set();
     for (let i = 0; i < segs.length; i++) {
       endpointSet.add(segs[i].a);
@@ -711,6 +812,7 @@
     }
     const endpoints = Array.from(endpointSet);
     let nbEndpoints = 0;
+    const propE = [];
     // Pas ≥ tolérance : deux extrémités assez proches sont forcément dans des cellules voisines (3×3).
     const pasExt = Math.max(GRILLE_ENRICH_PX, PROXIMITY_TOLERANCE);
     const grilleExt = new Map();
@@ -746,13 +848,53 @@
 
         const pB = graph.nodes[idxB];
         const d = Math.hypot(pB.x - pA.x, pB.y - pA.y);
+        // Aucun bout libre : seulement très proches, et de deux tracés différents.
+        const unBout = bouts.has(idxA) || bouts.has(idxB);
+        if (!unBout && (d > PROXIMITE_INTERIEURS_PX || _memeTrace(graph, idxA, idxB))) continue;
         // Au-dessus du seuil de fusion (sinon déjà fusionnés au build).
         if (d > SPATIAL_MERGE_THRESHOLD && d < PROXIMITY_TOLERANCE) {
-          _addEdge(graph, idxA, idxB, d);
-          nbEndpoints++;
+          propE.push({ a: idxA, b: idxB, d: d, bout: unBout });
+          if (unBout) {
+            const meme = _memeTrace(graph, idxA, idxB);
+            _noterProche(idxA, meme, d);
+            _noterProche(idxB, meme, d);
+          }
         }
       }
     }
+
+    // Pose des liens retenus : T d'abord, puis bout↔sommet, chacun dans son ordre de proposition.
+    for (let k = 0; k < propT.length; k++) {
+      const pr = propT[k], proj = pr.proj, segB = segs[pr.j];
+      if (!_assezProche(pr.ep, proj.dist)) continue;
+      const b1 = graph.nodes[segB.a], b2 = graph.nodes[segB.b];
+      const projIdx = _getOrAddNode(graph, proj.x, proj.y, segB.level);
+      if (_mlOn) _ajouterNiveauNode(graph, projIdx, segB.level);
+      _addEdge(graph, pr.ep, projIdx, proj.dist);
+      _addEdge(graph, projIdx, segB.a, Math.hypot(b1.x - proj.x, b1.y - proj.y));
+      _addEdge(graph, projIdx, segB.b, Math.hypot(b2.x - proj.x, b2.y - proj.y));
+      _poser(pr.j, projIdx, proj.t);
+      nbProximites++;
+    }
+    for (let k = 0; k < propE.length; k++) {
+      const pr = propE[k];
+      // Lien d'un bout libre : gardé s'il est parmi les plus proches de l'un de ses bouts libres.
+      if (pr.bout && !((bouts.has(pr.a) && _assezProche(pr.a, pr.d)) ||
+                       (bouts.has(pr.b) && _assezProche(pr.b, pr.d)))) continue;
+      _addEdge(graph, pr.a, pr.b, pr.d);
+      nbEndpoints++;
+    }
+
+    // ── 4. Chaînage le long d'un segment : ses nœuds posés, reliés de proche en proche (ordre de t) ──
+    // 🩸 Chaque nœud posé n'était relié qu'aux DEUX extrémités du segment (l'arête d'origine reste) : entre deux
+    // croisements d'un long segment, l'itinéraire repassait par une extrémité (aller-retour, distance gonflée).
+    poses.forEach(function(l) {
+      if (l.length < 2) return;
+      l.sort(function(p, q) { return (p.t - q.t) || (p.idx - q.idx); });
+      for (let k = 1; k < l.length; k++) {
+        _addEdge(graph, l[k - 1].idx, l[k].idx, _dist(graph.nodes[l[k - 1].idx], graph.nodes[l[k].idx]));
+      }
+    });
 
     if (_mlOn) {
       console.log("[Pathfinder] Multi-niveau : " + _nbSkipNiveau + " paires skip (niveaux incompatibles)");
@@ -902,6 +1044,20 @@
     return _poserNoeudSur(graph, best, bestProj, bestDist);
   }
 
+  // POI réellement injecté comme puits → { tag, moyen, niveaux, acc } ; null sinon (sans moyen, corde non permise,
+  // moins de deux niveaux, aucun raccord validé).
+  function _poiInjectable(p, ctx) {
+    const PJ = window.KtaPoiJonction;
+    if (!PJ || !p) return null;
+    const tag = (Array.isArray(p.tags) && p.tags[0]) || "";
+    const moyen = PJ.moyen(tag);
+    if (!moyen || (moyen === "corde" && !(ctx && ctx.corde))) return null;
+    const niveaux = PJ.niveaux(p);
+    const acc = PJ.accroches(p);
+    if (niveaux.length < 2 || !acc.length) return null;
+    return { tag: tag, moyen: moyen, niveaux: niveaux, acc: acc };
+  }
+
   function _injecterJonctionsPoi(graph, pois, ctx) {
     graph.raccordsPerdus = 0;
     if (!Array.isArray(pois) || !pois.length || !graph.segments.length) return;
@@ -909,13 +1065,10 @@
     const PJ = window.KtaPoiJonction;
     if (!PJ) return;
     pois.forEach(function(p) {
-      const tag = (Array.isArray(p.tags) && p.tags[0]) || "";
-      const moyen = PJ.moyen(tag);
-      if (!moyen || (moyen === "corde" && !(ctx && ctx.corde))) return;
-      const niveaux = PJ.niveaux(p);
-      const acc = PJ.accroches(p);
-      if (niveaux.length < 2 || !acc.length) return;
-      const info = { tag: tag, moyen: moyen, nom: String(p.nom || p.id || "") };
+      const inj = _poiInjectable(p, ctx);
+      if (!inj) return;
+      const tag = inj.tag, niveaux = inj.niveaux, acc = inj.acc;
+      const info = { tag: tag, moyen: inj.moyen, nom: String(p.nom || p.id || "") };
       const puits = {};
       niveaux.forEach(function(n) {
         const idx = _nouveauNode(graph, p.x, p.y);
@@ -1037,9 +1190,9 @@
       e.i18nParams = { types: allowedTypes.join(", ") };
       throw e;
     }
-    _enrichirGrapheAvecCroisements(graph);
-    _injecterJonctionsPoi(graph, jonctions && jonctions.pois,
-                          { echelle: echelle, profondeurs: profondeurs, corde: !!(jonctions && jonctions.corde) });
+    const ctxPuits = { echelle: echelle, profondeurs: profondeurs, corde: !!(jonctions && jonctions.corde) };
+    _enrichirGrapheAvecCroisements(graph, jonctions && jonctions.pois, ctxPuits);
+    _injecterJonctionsPoi(graph, jonctions && jonctions.pois, ctxPuits);
 
     const snapResults = [];
     for (let i = 0; i < waypoints.length; i++) {
@@ -1498,7 +1651,9 @@
       if (!p) continue;
       if ((p.id   && String(p.id).trim().toLowerCase()   === target) ||
           (p.nom  && String(p.nom).trim().toLowerCase()  === target)) {
-        return { x: p.x, y: p.y, source: "editor", point: p };
+        // Point précis du POI s'il existe (poiPrecis.js > cible) : l'itinéraire vise le vrai lieu.
+        const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(p) : p;
+        return { x: c.x, y: c.y, source: "editor", point: p };
       }
     }
 
@@ -1545,8 +1700,9 @@
 
     // Sans évitements (propres à l'itinéraire).
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
-    _enrichirGrapheAvecCroisements(graph);
-    _injecterJonctionsPoi(graph, _poisJonctionDuPlan(), { corde: !!(opts && opts.corde) });
+    const poisPuits = _poisJonctionDuPlan(), ctxPuits = { corde: !!(opts && opts.corde) };
+    _enrichirGrapheAvecCroisements(graph, poisPuits, ctxPuits);
+    _injecterJonctionsPoi(graph, poisPuits, ctxPuits);
 
     if (graph.nodes.length === 0) {
       return {
@@ -1697,14 +1853,20 @@
   // nav dit où l'utilisateur EST, un obstacle ne change pas la géométrie (opts.includeZones = true pour les
   // respecter).
   function buildNetworkGraph(opts) {
+    return _grapheDeTraces(_collecterToutesLesRoads(), opts);
+  }
+
+  // Même graphe sur une liste de tracés fournie : `graph.noeudsTrace[r]` se lit alors par l'indice r de CETTE liste
+  // (raccordsTraces.js > detecter : morceaux du réseau).
+  function _grapheDeTraces(allRoads, opts) {
     opts = opts || {};
     const allowedTypes = opts.allowedTypes || ["principal", "secondaire", "chemin"];
-    const allRoads = _collecterToutesLesRoads();
-    if (allRoads.length === 0) return _newGraph();
+    if (!allRoads || allRoads.length === 0) return _newGraph();
     const zonesInacc = opts.includeZones ? _collecterObstaclesDurs() : [];
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
-    _enrichirGrapheAvecCroisements(graph);
-    _injecterJonctionsPoi(graph, _poisJonctionDuPlan(), { corde: opts.corde === true });
+    const poisPuits = _poisJonctionDuPlan(), ctxPuits = { corde: opts.corde === true };
+    _enrichirGrapheAvecCroisements(graph, poisPuits, ctxPuits);
+    _injecterJonctionsPoi(graph, poisPuits, ctxPuits);
     return graph;
   }
 
@@ -1747,6 +1909,8 @@
     computeReachable:  computeReachable,
     resolvePointById:  resolvePointById,
     buildNetworkGraph: buildNetworkGraph,
+    grapheDeTraces:    _grapheDeTraces,
+    collecterTraces:   _collecterToutesLesRoads,
     snapPointToGraph:  snapPointToGraph,
     // Carrefours d'un chemin calculé ailleurs (parcours de balayage) : mêmes règles, même guidage.
     carrefoursSurChemin: function(graph, path, echelle) { return _carrefoursSurChemin(graph, path, echelle); }
