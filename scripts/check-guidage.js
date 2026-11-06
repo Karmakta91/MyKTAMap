@@ -673,6 +673,15 @@ async function evacuationBrancard() {
       relie(deuxL(2.5), [200, 300], [200, 700]));
     t("jonction : deux sommets intérieurs à 10 px → pas reliés",
       !relie(deuxL(10), [200, 300], [200, 700]));
+    // Deux branches qui coupent un même long segment (aucun sommet entre elles) : on va de l'une à l'autre le long
+    // du segment, sans repasser par son extrémité.
+    for (const [nom, bas] of [["croisements", 600], ["T exacts", 500]]) {
+      const w = bac([R("principal", [[0, 500], [800, 500]]), R("principal", [[100, 400], [100, bas]]),
+                     R("principal", [[500, 400], [500, bas]])]);
+      const r = await w.Pathfinder.computeRoute([{ x: 100, y: 400 }, { x: 500, y: 400 }], {});
+      t("jonction : deux " + nom + " sur un même segment → chaînés (" + Math.round(r.totalDistance) + " px, attendu 600)",
+        Math.round(r.totalDistance) === 600);
+    }
   }
 
   // 11) Bandeau en direct : simulation de marche, faux DOM minimal

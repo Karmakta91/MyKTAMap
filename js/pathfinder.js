@@ -641,6 +641,15 @@
     // Lu une fois : boucles chaudes sur les gros plans.
     const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     let _nbSkipNiveau = 0;
+    // Nœuds posés à l'intérieur de chaque segment d'origine (croisements, pieds de T) : chaînés à la fin (étape 4).
+    const poses = new Map();   // indice dans segs → [{ idx, t }]
+    function _poser(j, idx, t) {
+      if (idx === segs[j].a || idx === segs[j].b) return;
+      let l = poses.get(j);
+      if (!l) poses.set(j, l = []);
+      for (let k = 0; k < l.length; k++) if (l[k].idx === idx) return;
+      l.push({ idx: idx, t: t });
+    }
 
     // ── 1. Croisements stricts ──
     for (let i = 0; i < segs.length; i++) {
@@ -680,6 +689,8 @@
         _addEdge(graph, newIdx, segA.b, Math.hypot(a2.x - inter.x, a2.y - inter.y));
         _addEdge(graph, newIdx, segB.a, Math.hypot(b1.x - inter.x, b1.y - inter.y));
         _addEdge(graph, newIdx, segB.b, Math.hypot(b2.x - inter.x, b2.y - inter.y));
+        _poser(i, newIdx, _projectOnSegment(inter, a1, a2).t);
+        _poser(j, newIdx, _projectOnSegment(inter, b1, b2).t);
         nbCroisements++;
       }
     }
@@ -729,6 +740,7 @@
             _addEdge(graph, ep.nodeIdx, projIdx, proj.dist);
             _addEdge(graph, projIdx, segB.a, Math.hypot(b1.x - proj.x, b1.y - proj.y));
             _addEdge(graph, projIdx, segB.b, Math.hypot(b2.x - proj.x, b2.y - proj.y));
+            _poser(j, projIdx, proj.t);
             nbProximites++;
           }
         }
@@ -789,6 +801,17 @@
         }
       }
     }
+
+    // ── 4. Chaînage le long d'un segment : ses nœuds posés, reliés de proche en proche (ordre de t) ──
+    // 🩸 Chaque nœud posé n'était relié qu'aux DEUX extrémités du segment (l'arête d'origine reste) : entre deux
+    // croisements d'un long segment, l'itinéraire repassait par une extrémité (aller-retour, distance gonflée).
+    poses.forEach(function(l) {
+      if (l.length < 2) return;
+      l.sort(function(p, q) { return (p.t - q.t) || (p.idx - q.idx); });
+      for (let k = 1; k < l.length; k++) {
+        _addEdge(graph, l[k - 1].idx, l[k].idx, _dist(graph.nodes[l[k - 1].idx], graph.nodes[l[k].idx]));
+      }
+    });
 
     if (_mlOn) {
       console.log("[Pathfinder] Multi-niveau : " + _nbSkipNiveau + " paires skip (niveaux incompatibles)");
