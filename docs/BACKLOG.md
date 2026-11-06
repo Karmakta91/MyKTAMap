@@ -112,6 +112,11 @@
 
 ## Entrant
 
+- **Mode « strict » des jonctions, par plan** — la règle stricte du 05/11 n'a pas réglé l'itinéraire de KARMA qui
+  traverse un mur. Idée KARMA : tolérance 0, deux tracés qui ne se touchent pas = réseau coupé (seuls sommets partagés
+  et croisements exacts). ⚠️ D'abord vérifier si le trajet suit un VRAI tracé à travers le mur (le strict n'y peut rien).
+  `qui: Claude · action: rejouer l'itinéraire réel, puis topo (réglage Générateur + par plan, Raccords à vérifier)
+  · depuis: 06/11/2026 · taille: S`
 - **☀️ Plein jour avec du contraste** — l'ambiance forte et uniforme efface le relief (la lampe le donne). Validé
   06/11 : lumière « soleil » rasante (suit le nord du plan) + ambiance baissée, brouillard clair qui pâlit le lointain,
   lampe gardée en option ; ni ombres portées ni occlusion. Avant « Tout le plan ».
