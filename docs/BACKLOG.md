@@ -112,6 +112,10 @@
 
 ## Entrant
 
+- **Point précis à l'export image / PDF** — pointillé doré + carré (chatière : trait début→fin) dessinés par l'export
+  comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
+  zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône).
+  `qui: KARMA · action: valider les 4 recos du topo · fini: décision prise · depuis: 06/11/2026 · taille: S`
 - **Niveaux qui s'entremêlent en 3D** — un niveau commence dans la hauteur d'un autre (étage ouvert à mi-hauteur d'une
   grande galerie). Idée KARMA : écart (m) avec le niveau supérieur, NÉGATIF = entremêlés d'autant, à partir de
   `niveauxProfondeur` (pas ≥ 0,5) + une hauteur PAR NIVEAU (aujourd'hui une seule par plan, `hauteurGalerieM`, hors ZIP).
