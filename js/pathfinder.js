@@ -745,8 +745,9 @@
     // Liens des étapes 2 et 3 PROPOSÉS d'abord, posés ensuite dans le même ordre : un bout libre ne garde que les
     // plus proches (MARGE_PLUS_PROCHE_PX). dmin = distance du candidat le plus proche sur un AUTRE tracé.
     const dmin = new Map();
-    function _noterProche(idx, autre, d) {
-      if (!bouts.has(idx) || autre) return;
+    // `memeTrace` : candidat sur le tracé du bout lui-même, jamais compté dans dmin.
+    function _noterProche(idx, memeTrace, d) {
+      if (!bouts.has(idx) || memeTrace) return;
       const v = dmin.get(idx);
       if (v === undefined || d < v) dmin.set(idx, d);
     }
