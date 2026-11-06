@@ -7952,12 +7952,13 @@ async function sectionLimiterPortee(nav) {
     r.jour = await page.evaluate(function () {
       const K = window.KtaVue3D;
       K.reglerPleinJour(true);
-      const p = K.etat().portee;
+      const p = K.etat().portee, fond = K.etat().eclairage.fond;
       K.reglerPleinJour(false);
-      return { brume: p.brume, distance: p.distance };
+      return { brume: p.brume, distance: p.distance, fond: fond };
     });
-    verifier(r.jour.brume[0] >= 1e6 && r.jour.brume[1] > r.jour.brume[0],
-      nom + "Plein jour : aucun brouillard en portée non limitée (repoussé à " + r.jour.brume[0] + " m)", r.jour);
+    verifier(r.jour.brume[0] >= 1e6 && r.jour.brume[1] > r.jour.brume[0] && r.jour.fond === "#000000",
+      nom + "Plein jour : aucun brouillard en portée non limitée (repoussé à " + r.jour.brume[0] + " m), ciel noir",
+      r.jour);
     // Vue d'édition : recul jusqu'à la diagonale, rayon construit sans plafond, plan proche reculé.
     r.edition = await page.evaluate(function () {
       const K = window.KtaVue3D;

@@ -1777,7 +1777,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   **« Tout le plan »** (`reglerPortee("tout")`, retenu à part : `myktamap_v3d_portee_tout_v1` ; la portée en mètres
   reste celle qui revient case cochée) = la **diagonale de l'emprise** (`_diagPlan` : image du plan et objets
   indexés, un objet hors image compris) ; recul de la vue d'édition jusqu'à cette diagonale (`_reculMax`) ; rayon
-  construit sans plafond ; aucun brouillard (repoussé hors de vue, nuit et Plein jour) ; profondeur et lampe suivent la portée.
+  construit sans plafond ; aucun brouillard (repoussé hors de vue, nuit et Plein jour) et ciel noir, Plein jour compris ; profondeur et lampe suivent la portée.
   Au-delà de 150 m de recul, le plan proche de la caméra recule (recul / 300) : sinon les rubans au sol scintillent
   au loin. ⚠️ contrat : au doigt (`ktaAppareilTactile`), la case **revient cochée à chaque ouverture** (réécrite) ;
   au pointeur fin, décochée reste décochée. Une greffe qui fige les réglages (`reglagesFiges`, jeu) limite la portée

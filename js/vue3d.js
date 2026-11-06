@@ -4564,7 +4564,9 @@
     const brume = l.jour ? AMBIANCE.brumeJour : l.courbe.brume;
     e.ambiance.intensity = l.jour ? AMBIANCE.jour : haut ? AMBIANCE_PLONGEE : AMBIANCE.nuit;
     e.soleil.intensity = l.jour ? SOLEIL.force : 0;
-    const fond = l.jour ? _couleurFixe(_jetonsSombres().neutre) : _couleurFixe("#000000");
+    // Fond clair seulement avec le brouillard clair du Plein jour (il s'y fond) ; sans brouillard (🛡️ décochée), ciel
+    // noir comme la nuit (décision produit).
+    const fond = l.jour && _limitee() ? _couleurFixe(_jetonsSombres().neutre) : _couleurFixe("#000000");
     e.scene.fog.color.copy(fond);
     e.scene.background.copy(fond);
     const loin = haut ? e.recul + r + 2 : e.distance;
