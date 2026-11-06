@@ -86,6 +86,8 @@
 // panneaux par-dessus la vue, niveau de la vue compté (ou tout le plan, case « Tous les niveaux », ruban du niveau de la
 // vue seul), ruban magenta au sol suivi des cases et effacé par ❌.
 // Réglage ⚙️ Fiches (37, =fiches) : défaut selon le pointeur, coupé = rien sur pilier, zone, tracé (POI : sa fiche), retenu.
+// 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
+// brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
 // colonne d'outils ou le joystick, doigt levé puis reposé, rotation engagée à 10° sans saut, pas bornés.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
@@ -99,6 +101,8 @@
 //   KTA_V3D_PERF=zoom → plan dense, vue d'édition : ouverture du zoom de 18,4 à 60 et 150 m (tuiles posées,
 //   images de plus de 33 ms), rendu posé, triangles, tas ;
 //   KTA_V3D_PERF=dessin → plan dense, pilier dessiné au doigt en plongée : coût d'un sommet, délai de fermeture ;
+//   KTA_V3D_PERF=toutplan → case 🛡️ décochée, « Tout le plan » : relevé fictif, 2 000 structures + 900 tracés sur
+//   400 × 400 m (deux niveaux), plan dense ; construction, images de plus de 33 ms, rendu posé, mémoire, tas après GC ;
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
 //   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt) ; KTA_V3D_SEUL=dessin → la section 28 seule ; =camera → la 30 ;
 //   =sol → plan au sol sur écran dense (image, V1, V2) ; =formes → § 14 septies (KTA_V3D_CAP_PREFIXE : préfixe des
@@ -115,7 +119,8 @@ const server = require("./server.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);
 // KTA_V3D_PERF=1 : toutes les mesures ; =galerie ou =mixte : celles de ce rendu seulement.
-const PERF = ["1", "galerie", "mixte", "passages", "dessin", "iti", "zoom"].indexOf(process.env.KTA_V3D_PERF) >= 0;
+const PERF = ["1", "galerie", "mixte", "passages", "dessin", "iti", "zoom", "toutplan"]
+  .indexOf(process.env.KTA_V3D_PERF) >= 0;
 const PERF_DESSIN = process.env.KTA_V3D_PERF === "dessin";
 const PERF_ITI = process.env.KTA_V3D_PERF === "iti";
 const PERF_PASSAGES = process.env.KTA_V3D_PERF === "passages";
@@ -7729,6 +7734,442 @@ async function sectionFichesReglage(nav) {
   }
 }
 
+// ── 41. 🛡️ Limiter la portée (vue3d.js > limiterPortee, _limitee, _diagPlan ; config.js > getVue3DLimiterPortee) ───────
+// Pointeur fin (1200 × 800), relevé fictif vidé, 1 000 piliers fictifs en grille sur 320 × 320 m autour du centre (ils
+// débordent l'image : l'emprise du plan les compte). Case cochée par défaut (portée ≤ 100 m, recul ≤ 150 m, rayon
+// construit ≤ 100 m) ; décocher pose la question (Garder = rien ne change) ; décochée : cran « Tout le plan » au bout
+// du curseur (diagonale de l'emprise), brouillard reculé (nuit et Plein jour), toutes les tuiles posées, recul de la vue
+// d'édition jusqu'à la diagonale (plan proche reculé), rayon sans plafond ; recochée : tout revient sous les bornes ;
+// retenue décochée à la réouverture au PC ; jeu (reglagesFiges) : limitée, case grisée, refus, rendue au retrait.
+// Téléphone émulé (Chromium seul : pointeur grossier) : décochée sur l'appareil, la vue la rouvre cochée et la réécrit.
+async function sectionLimiterPortee(nav) {
+  const chromiumNav = nav.browserType().name() === "chromium";
+  const nom = "§ 41 ";
+  console.log("§ 41 — 🛡️ Limiter la portée (tout le plan)");
+  const ouvrirPage = async function (opts, ls) {
+    const ctx = await nav.newContext(Object.assign({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" },
+      opts || {}));
+    const page = await ctx.newPage();
+    await page.addInitScript(function (l) {
+      for (const k in l) { try { localStorage.setItem(k, l[k]); } catch (e) {} }
+    }, Object.assign({}, LS_PREGATES, ls || {}));
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0 && typeof window.getVue3DLimiterPortee === "function";
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1200);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+      window.getPlanEditionVue3D = function () { return null; };
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    return { ctx: ctx, page: page };
+  };
+  const erreurs = [];
+  if (chromiumNav) {
+    const t = await ouvrirPage({ viewport: { width: 393, height: 852 }, isMobile: true, hasTouch: true },
+      { "myktamap_v3d_limiter_portee_v1": "0", "myktamap_v3d_portee_tout_v1": "1" });
+    const d = await t.page.evaluate(async function () {
+      const K = window.KtaVue3D, avant = localStorage.getItem("myktamap_v3d_limiter_portee_v1");
+      await K.ouvrir({ commandes: "joystick" });
+      const e = K.etat().portee;
+      return { coarse: window.matchMedia("(pointer: coarse)").matches, avant: avant, limitee: e.limitee,
+        tout: e.tout, distance: e.distance, max: e.curseur.max, apres: localStorage.getItem("myktamap_v3d_limiter_portee_v1") };
+    });
+    if (CAPTURES) {
+      await t.page.locator("#kta-vue3d .kta-v3d-btn-reglages").tap();
+      await t.page.waitForTimeout(300);
+      await capture(t.page, "limiter-tuile-telephone");
+    }
+    await t.page.evaluate(function () { return window.KtaVue3D.fermer(); });
+    verifier(d.coarse && d.avant === "0" && d.limitee === true && d.tout === false && d.distance <= 100 &&
+      d.max === 100 && d.apres === "1",
+    nom + "téléphone : décochée sur l'appareil, la vue se rouvre cochée (portée ≤ 100 m) et la réécrit", d);
+    await t.ctx.close();
+  }
+  const o = await ouvrirPage();
+  const page = o.page;
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  const image = function (n) {
+    return page.evaluate(async function (k) {
+      for (let i = 0; i < k; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    }, n || 3);
+  };
+  // Attend que toutes les tuiles à portée soient posées (au plus 3 par image, comme en vrai).
+  const poser = function () {
+    return page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      for (let i = 0; i < 3000 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+      }
+      const e = K.etat();
+      return { tuiles: e.tuiles, montrees: e.portee.tuiles.montrees, manquantes: e.portee.tuiles.manquantes };
+    });
+  };
+  const lire = function () {
+    return page.evaluate(function () {
+      const e = window.KtaVue3D.etat(), p = e.portee;
+      return { limitee: p.limitee, tout: p.tout, distance: p.distance, diag: p.diag, recul: p.recul,
+        reculMax: p.reculMax, rayon: p.rayon, rayonVue: p.rayonVue, brume: p.brume, far: p.far, near: p.near,
+        curseur: p.curseur, limiter: p.limiter, zoomMoinsGrise: p.zoomMoinsGrise, vue: e.vue,
+        pref: localStorage.getItem("myktamap_v3d_limiter_portee_v1"),
+        prefTout: localStorage.getItem("myktamap_v3d_portee_tout_v1") };
+    });
+  };
+  const toucherCase = function () {
+    return page.evaluate(function () {
+      document.querySelector('#kta-vue3d [data-v3d="limiter"]').dispatchEvent(new PointerEvent("pointerdown",
+        { bubbles: true, pointerId: 41 }));
+    });
+  };
+  const question = function (repondre) {
+    return page.evaluate(async function (oui) {
+      for (let i = 0; i < 40 && !document.getElementById("kta-confirm-oui"); i++) {
+        await new Promise(function (ok) { setTimeout(ok, 25); });
+      }
+      const b = document.getElementById(oui ? "kta-confirm-oui" : "kta-confirm-non");
+      if (!b) return null;
+      const boite = b.closest(".kta-readme-modal-boite"), ov = b.closest(".kta-readme-modal-overlay");
+      const r = { texte: boite.textContent, attendu: window.I18n.t("vue3d.limiterTexte").split("\n")[0],
+        z: Number(getComputedStyle(ov).zIndex), ok: document.getElementById("kta-confirm-oui").textContent,
+        okAttendu: window.I18n.t("vue3d.limiterOui") };
+      b.click();
+      await new Promise(function (ok) { setTimeout(ok, 60); });
+      return r;
+    }, repondre);
+  };
+  try {
+    const prep = await page.evaluate(async function () {
+      const C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      ["myktamap_v3d_limiter_portee_v1", "myktamap_v3d_portee_tout_v1"].forEach(function (k) {
+        localStorage.removeItem(k);
+      });
+      window.setVue3DPortee(30);
+      window.setVue3DPleinJour(false);
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = "v3d-checkup-limiter";
+      C.multiLevel = false;
+      window.setPlanRenduVue3D(null, "structures");
+      const liste = [];
+      for (let i = 0; i < 32; i++) {
+        for (let j = 0; j < 32; j++) {
+          if (i === 16 && j === 16) continue;
+          const x = -160 + i * 10 + 5, z = -160 + j * 10 + 5;
+          liste.push({ uid: "st_lim_" + i + "_" + j, type: "pilier-1",
+            points: [P(x - 1.5, z - 1.5), P(x + 1.5, z - 1.5), P(x + 1.5, z + 1.5), P(x - 1.5, z + 1.5)] });
+        }
+      }
+      window.setRoads([]); window.setZones([]); window.setEditorPoints([]);
+      window.setStructures(liste);
+      window.KtaGalerie.invalider();
+      window.__limP = P;
+      const emprise = Math.hypot(Math.max(W / sc, ox + 160) - Math.min(0, ox - 160),
+        Math.max(H / sc, oz + 160) - Math.min(0, oz - 160));
+      const d = P(0, 0);
+      await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+      return { emprise: emprise, piliers: liste.length };
+    });
+    const r = {};
+    r.defaut = await lire();
+    r.defaut.poses = await poser();
+    verifier(r.defaut.limitee === true && r.defaut.limiter && r.defaut.limiter.presse === "true" &&
+      !r.defaut.limiter.grise && r.defaut.curseur.max === 100 && r.defaut.distance === 30 && r.defaut.reculMax === 150 &&
+      r.defaut.pref === null && r.defaut.poses.montrees < r.defaut.poses.tuiles,
+    nom + "case 🛡️ cochée par défaut : curseur jusqu'à 100 m, recul jusqu'à 150 m, scène autour de soi (" +
+      r.defaut.poses.montrees + " / " + r.defaut.poses.tuiles + " tuiles)", r.defaut);
+    r.borne = await page.evaluate(function () {
+      const K = window.KtaVue3D;
+      const v = K.reglerPortee(500), e = K.etat().portee;
+      K.reglerPortee(30);
+      return { v: v, distance: e.distance, tout: e.tout };
+    });
+    verifier(r.borne.v === 100 && r.borne.distance === 100 && r.borne.tout === false,
+      nom + "cochée : une portée de 500 m est bornée à 100 m, pas de cran « Tout le plan »", r.borne);
+    // Décocher : question ; « Garder la limite » = rien ne change.
+    await toucherCase();
+    r.garder = await question(false);
+    r.garderEtat = await lire();
+    verifier(!!r.garder && r.garder.texte.indexOf(r.garder.attendu) >= 0 && r.garder.z > 99999 &&
+      r.garderEtat.limitee === true && r.garderEtat.pref === null,
+    nom + "décocher pose la question (au-dessus de la vue) ; « Garder la limite » : rien ne change", r.garder);
+    await toucherCase();
+    r.retirer = await question(true);
+    r.libre = await lire();
+    verifier(!!r.retirer && r.retirer.ok === r.retirer.okAttendu && r.libre.limitee === false &&
+      r.libre.limiter.presse === "false" && r.libre.pref === "0" && r.libre.curseur.max === 101 &&
+      r.libre.distance === 30 && r.libre.diag >= Math.floor(prep.emprise) && r.libre.reculMax === r.libre.diag,
+    nom + "« Retirer la limite » : décochée et retenue, cran de plus au curseur, recul jusqu'à la diagonale de " +
+      "l'emprise (" + r.libre.diag + " m, objets hors image compris)", { libre: r.libre, emprise: prep.emprise });
+    // Cran « Tout le plan » par le curseur lui-même.
+    await page.evaluate(function () {
+      const c = document.getElementById("kta-v3d-portee");
+      c.value = c.max;
+      c.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await image(2);
+    r.tout = await lire();
+    r.tout.texte = await page.evaluate(function () { return window.I18n.t("vue3d.porteeTout"); });
+    r.tout.poses = await poser();
+    if (CAPTURES) {
+      await page.locator("#kta-vue3d .kta-v3d-btn-reglages").click();
+      await page.waitForTimeout(200);
+      await capture(page, "limiter-tuile-tout");
+      await page.locator("#kta-vue3d .kta-v3d-btn-reglages").click();
+    }
+    verifier(r.tout.tout === true && r.tout.prefTout === "1" && r.tout.distance === Math.max(100, r.tout.diag) &&
+      r.tout.curseur.valeur === 101 && r.tout.curseur.texte === r.tout.texte &&
+      r.tout.poses.montrees === r.tout.poses.tuiles && r.tout.poses.manquantes === 0,
+    nom + "cran « Tout le plan » : portée = la diagonale (" + r.tout.distance + " m), texte du curseur, toutes les " +
+      "tuiles posées (" + r.tout.poses.montrees + " / " + r.tout.poses.tuiles + ")", r.tout);
+    verifier(r.tout.brume[1] === r.tout.distance && Math.abs(r.tout.brume[0] - r.tout.distance * 0.45) < 0.5 &&
+      r.tout.far >= r.tout.distance,
+    nom + "nuit : le brouillard recule avec la portée (" + r.tout.brume.join(" → ") + " m)", r.tout.brume);
+    r.jour = await page.evaluate(function () {
+      const K = window.KtaVue3D;
+      K.reglerPleinJour(true);
+      const p = K.etat().portee;
+      K.reglerPleinJour(false);
+      return { brume: p.brume, distance: p.distance };
+    });
+    verifier(Math.abs(r.jour.brume[0] - r.jour.distance * PJ.brume) < 0.5 && r.jour.brume[1] === r.jour.distance,
+      nom + "Plein jour : brouillard clair de 40 % à 100 % de la portée entière (" + r.jour.brume.join(" → ") + " m)",
+      r.jour);
+    // Vue d'édition : recul jusqu'à la diagonale, rayon construit sans plafond, plan proche reculé.
+    r.edition = await page.evaluate(function () {
+      const K = window.KtaVue3D;
+      K.reglerPortee(30);
+      K.basculerVue();
+      for (let i = 0; i < 60; i++) K.zoomer(1.5);
+      return null;
+    });
+    await image(2);
+    r.edition = await lire();
+    r.edition.poses = await poser();
+    await capture(page, "limiter-edition-tout-le-plan");
+    verifier(r.edition.vue === "plongee" && r.edition.recul === r.edition.diag && r.edition.zoomMoinsGrise &&
+      r.edition.rayon > 100 && r.edition.near > 0.05 && r.edition.poses.montrees === r.edition.poses.tuiles,
+    nom + "vue d'édition décochée : recul jusqu'à " + r.edition.recul + " m (au-delà de 150), rayon construit " +
+      r.edition.rayon + " m (plafond 100 levé), plan proche " + r.edition.near.toFixed(2) + " m, toutes les tuiles",
+    r.edition);
+    // Recocher (sans question) : tout revient sous les bornes.
+    await toucherCase();
+    await image(2);
+    r.recoche = await lire();
+    r.recoche.poses = await poser();
+    verifier(r.recoche.limitee === true && r.recoche.pref === "1" && r.recoche.recul === 150 &&
+      r.recoche.rayon <= 100 && r.recoche.near === 0.05 && r.recoche.curseur.max === 100 &&
+      r.recoche.poses.montrees < r.recoche.poses.tuiles,
+    nom + "recochée : recul ramené à 150 m, rayon ≤ 100 m, curseur jusqu'à 100 m, tuiles lointaines jetées", r.recoche);
+    // Au PC, décochée reste décochée à la réouverture (cran « Tout le plan » compris).
+    r.pc = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__limP;
+      await K.limiterPortee(false, { confirme: true });
+      K.reglerPortee("tout");
+      await K.fermer();
+      await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 90 }, commandes: "pave" });
+      const p = K.etat().portee;
+      return { limitee: p.limitee, tout: p.tout, distance: p.distance, diag: p.diag };
+    });
+    verifier(r.pc.limitee === false && r.pc.tout === true && r.pc.distance === Math.max(100, r.pc.diag),
+      nom + "au PC : décochée et « Tout le plan » retenus à la réouverture", r.pc);
+    // Jeu : la greffe fige la portée ; case grisée, refus ; rendue au retrait.
+    r.jeu = await page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      let c = null;
+      const retirer = K.greffer({ nom: "essai-limiter", scene: function (x) { c = x; } });
+      await new Promise(function (ok) { setTimeout(ok, 50); });
+      c.regler({ reglagesFiges: true });
+      const p = K.etat().portee;
+      const out = { limitee: p.limitee, distance: p.distance, presse: p.limiter.presse, grise: p.limiter.grise,
+        titre: p.limiter.titre, suffixe: window.I18n.t("vue3d.reglageGreffe"), max: p.curseur.max,
+        refus: await K.limiterPortee(true), refusPortee: K.reglerPortee("tout"),
+        pref: localStorage.getItem("myktamap_v3d_limiter_portee_v1") };
+      retirer();
+      await new Promise(function (ok) { setTimeout(ok, 50); });
+      const q = K.etat().portee;
+      out.apres = { limitee: q.limitee, tout: q.tout, grise: q.limiter.grise };
+      return out;
+    });
+    verifier(r.jeu.limitee === true && r.jeu.distance === 30 && r.jeu.presse === "true" && r.jeu.grise &&
+      r.jeu.titre.indexOf(r.jeu.suffixe) >= 0 && r.jeu.max === 100 && r.jeu.refus === false &&
+      r.jeu.refusPortee === false && r.jeu.pref === "0" && r.jeu.apres.limitee === false && r.jeu.apres.tout === true &&
+      !r.jeu.apres.grise,
+    nom + "jeu (réglages figés) : portée par défaut, case cochée grisée, refus sans rien écrire ; rendue au retrait",
+    r.jeu);
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+    await page.evaluate(function () {
+      ["myktamap_v3d_limiter_portee_v1", "myktamap_v3d_portee_tout_v1"].forEach(function (k) {
+        localStorage.removeItem(k);
+      });
+      return window.KtaVue3D.fermer();
+    });
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await o.ctx.close();
+  }
+}
+
+// Plan lourd FICTIF (mémoire seule, KTA_V3D_PERF=toutplan) : 2 000 structures et 900 tracés sur 400 × 400 m autour du
+// centre, sur deux niveaux (le 0 montré ; le −1 = autant d'objets en données), 100 zones, 300 POI.
+function semerToutPlan() {
+  const sc = window.APP_CONFIG.scale, W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+  let graine = 7;
+  const alea = function () { graine = (graine * 16807) % 2147483647; return graine / 2147483647; };
+  const cote = 400, x0 = W / 2 / sc - cote / 2, z0 = H / 2 / sc - cote / 2;
+  const P = function (x, z) { return { x: x * sc, y: z * sc }; };
+  const structures = [], roads = [], zones = [], points = [];
+  const types = ["principal", "secondaire", "chemin"];
+  [0, -1].forEach(function (niv) {
+    for (let k = 0; k < 2000; k++) {
+      const cx = x0 + alea() * cote, cz = z0 + alea() * cote, n = 6 + Math.floor(alea() * 5);
+      const r = 1.5 + alea() * 2.5, pts = [];
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2, rr = r * (0.8 + alea() * 0.35);
+        pts.push(P(cx + Math.cos(a) * rr, cz + Math.sin(a) * rr));
+      }
+      structures.push({ uid: "st_tp_" + niv + "_" + k, type: k % 9 === 0 ? "mur" : "pilier-1", level: niv, points: pts });
+    }
+    for (let k = 0; k < 900; k++) {
+      let x = x0 + alea() * cote, z = z0 + alea() * cote, a = alea() * Math.PI * 2;
+      const pts = [P(x, z)], n = 4 + Math.floor(alea() * 8);
+      for (let i = 0; i < n; i++) {
+        a += (alea() - 0.5) * 0.9;
+        x = Math.max(x0, Math.min(x0 + cote, x + Math.cos(a) * 6));
+        z = Math.max(z0, Math.min(z0 + cote, z + Math.sin(a) * 6));
+        pts.push(P(x, z));
+      }
+      roads.push({ uid: "rd_tp_" + niv + "_" + k, type: types[k % 3], level: niv, points: pts });
+    }
+    for (let k = 0; k < 50; k++) {
+      const cx = x0 + alea() * cote, cz = z0 + alea() * cote, r = 2;
+      zones.push({ uid: "zn_tp_" + niv + "_" + k, type: ["eau", "remblais", "inaccessible", "effondrement"][k % 4],
+        level: niv, points: [P(cx - r, cz - r), P(cx + r, cz - r), P(cx + r, cz + r), P(cx - r, cz + r)] });
+    }
+    for (let k = 0; k < 150; k++) {
+      points.push(Object.assign({ id: "POI tp " + niv + " " + k, uid: "pt_tp_" + niv + "_" + k, level: niv,
+        tags: ["danger"] }, P(x0 + alea() * cote, z0 + alea() * cote)));
+    }
+  });
+  const vide = function () { return []; };
+  window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+  window.getAllEmbeddedStructures = vide;
+  window._currentLoadedPlanId = "v3d-mesure-tout-plan";
+  window.APP_CONFIG.multiLevel = true;
+  window.ktaSetActiveLevel(0);
+  window.setStructures(structures);
+  window.setRoads(roads);
+  window.setZones(zones);
+  window.setEditorPoints(points);
+  window.KtaGalerie.invalider();
+  return { structures: structures.length, roads: roads.length, zones: zones.length, poi: points.length,
+    depart: Object.assign({ cap: 90, niveau: 0 }, P(W / 2 / sc + 0.5, H / 2 / sc + 0.5)) };
+}
+
+// Mesures « tout le plan » (KTA_V3D_PERF=toutplan) : sur le plan déjà semé, case cochée (portée 30 m) puis décochée et
+// cran « Tout le plan » : temps de construction jusqu'à la dernière tuile (3 par image, comme en vrai) et images de plus
+// de 33 ms pendant ce temps, ouverture directe en « Tout le plan » (tout construit d'un coup), rendu posé (mesurer :
+// médiane, p95, appels, triangles), mémoire three.js, tas JS après ramasse-miettes (CDP, Chromium seul) ; puis vue
+// d'édition au recul le plus grand (tout le plan à l'écran).
+async function mesuresToutPlan(page, cdp, nom, depart, rendus) {
+  const tas = async function () {
+    if (!cdp) return null;
+    try {
+      await cdp.send("HeapProfiler.collectGarbage");
+      const u = await cdp.send("Runtime.getHeapUsage");
+      return Math.round(u.usedSize / 1048576);
+    } catch (e) { return null; }
+  };
+  for (const rendu of rendus) {
+    await page.evaluate(function (r) { window.setPlanRenduVue3D(null, r); window.KtaGalerie.invalider(); }, rendu);
+    const tas0 = await tas();
+    const lim = await page.evaluate(async function (d) {
+      const K = window.KtaVue3D;
+      window.setVue3DLimiterPortee(true); window.setVue3DPorteeTout(false); window.setVue3DPortee(30);
+      await K.ouvrir({ depart: d, commandes: "pave" });
+      for (let i = 0; i < 400 && K.etat().portee.tuiles.manquantes; i++) {
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+      }
+      const m = K.mesurer({ images: 120 }), e = K.etat();
+      return { ouverture: Math.round(e.msOuverture), tuiles: e.tuiles, montrees: e.portee.tuiles.montrees,
+        msMed: m.msMed, msP95: m.msP95, appels: m.appelsMax, triangles: m.trianglesMax, memoire: m.memoire };
+    }, depart);
+    lim.tasMo = await tas();
+    console.log("  📏 " + nom + " [" + rendu + "] cochée, 30 m : " + JSON.stringify(lim) + " (tas avant ouverture " +
+      tas0 + " Mo)");
+    const dec = await page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      const t0 = performance.now(), intervalles = [];
+      await K.limiterPortee(false, { confirme: true });
+      K.reglerPortee("tout");
+      let avant = t0;
+      for (let i = 0; i < 6000 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+        const t = performance.now();
+        intervalles.push(t - avant);
+        avant = t;
+      }
+      const ms = performance.now() - t0, e = K.etat();
+      intervalles.sort(function (a, b) { return a - b; });
+      const m = K.mesurer({ images: 120 });
+      return { msConstruction: Math.round(ms), msTuilesCpu: Math.round(e.msTuiles || 0), distance: e.portee.distance,
+        montrees: e.portee.tuiles.montrees, tuiles: e.tuiles, images: intervalles.length,
+        plus33ms: intervalles.filter(function (v) { return v > 33.4; }).length,
+        intervalleMax: intervalles.length ? Math.round(intervalles[intervalles.length - 1]) : 0,
+        msMed: m.msMed, msP95: m.msP95, msMax: m.msMax, appels: m.appelsMax, triangles: m.trianglesMax,
+        memoire: m.memoire };
+    });
+    dec.tasMo = await tas();
+    console.log("  📏 " + nom + " [" + rendu + "] décochée, « Tout le plan » à hauteur d'yeux : " + JSON.stringify(dec));
+    const ed = await page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      K.reglerPortee(30);
+      K.basculerVue();
+      for (let i = 0; i < 60; i++) K.zoomer(1.5);
+      const t0 = performance.now();
+      for (let i = 0; i < 6000 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+      }
+      const ms = performance.now() - t0, e = K.etat(), m = K.mesurer({ images: 120 });
+      return { recul: e.portee.recul, rayon: e.portee.rayon, msPose: Math.round(ms), montrees: e.portee.tuiles.montrees,
+        msMed: m.msMed, msP95: m.msP95, msMax: m.msMax, appels: m.appelsMax, triangles: m.trianglesMax,
+        memoire: m.memoire };
+    });
+    ed.tasMo = await tas();
+    console.log("  📏 " + nom + " [" + rendu + "] décochée, vue d'édition au recul le plus grand : " + JSON.stringify(ed));
+    const direct = await page.evaluate(async function (d) {
+      const K = window.KtaVue3D;
+      K.reglerPortee("tout");
+      await K.fermer();
+      await K.ouvrir({ depart: d, commandes: "pave" });
+      const e = K.etat();
+      await K.fermer();
+      window.setVue3DLimiterPortee(true); window.setVue3DPorteeTout(false); window.setVue3DPortee(30);
+      return { msOuverture: Math.round(e.msOuverture), msIndex: Math.round(e.msIndex), construites: e.construites,
+        tuiles: e.tuiles };
+    }, depart);
+    console.log("  📏 " + nom + " [" + rendu + "] ouverture directe en « Tout le plan » : " + JSON.stringify(direct));
+    console.log("  📏 " + nom + " [" + rendu + "] tas après fermeture : " + (await tas()) + " Mo");
+  }
+}
+
 // ── 38. Gestes à deux doigts de la vue d'édition (vue3d.js > _brancher, appuiScene / adopter) ─────────────────────────
 // Téléphone 393 × 852 tactile, relevé fictif tel quel, joystick montré. Doigts réels (CDP Input.dispatchTouchEvent) sous
 // Chromium, PointerEvent `touch` synthétiques sous WebKit (posés sur l'élément sous le doigt, suivis sur le canevas
@@ -8071,7 +8512,7 @@ async function sectionGestesDoigt(nav) {
       await sectionDessin(page);
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
-      SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" ||
+      SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" ||
       SEUL === "passagecalque" || SEUL === "mesures") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
@@ -8141,6 +8582,25 @@ async function sectionGestesDoigt(nav) {
         } catch (e) { console.log("  ℹ️ ralentissement processeur indisponible : " + e.message); }
       }
       if (PERF_ITI) await mesuresRecalcul(page);
+      if (process.env.KTA_V3D_PERF === "toutplan") {
+        let cdp = null;
+        try { cdp = await contexte.newCDPSession(page); } catch (e) { cdp = null; }
+        const dep0 = await page.evaluate(function () {
+          const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+          return { x: W / 2, y: H / 2, cap: 90 };
+        });
+        await mesuresToutPlan(page, cdp, "relevé fictif", dep0, ["structures", "mixte"]);
+        const semisT = await page.evaluate(semerToutPlan);
+        console.log("  ℹ️ plan lourd fictif : " + JSON.stringify(semisT));
+        await mesuresToutPlan(page, cdp, "2 000 structures + 900 tracés", semisT.depart, ["structures", "mixte"]);
+        await page.evaluate(function () {
+          window.setStructures([]); window.setRoads([]); window.setZones([]); window.setEditorPoints([]);
+          window.setPlanRenduVue3D(null, "structures");
+        });
+        const semisDT = await page.evaluate(semerPlanDense);
+        console.log("  ℹ️ plan dense synthétique : " + JSON.stringify(semisDT));
+        await mesuresToutPlan(page, cdp, "plan dense (13 700 structures)", semisDT.depart, ["structures"]);
+      }
       if (process.env.KTA_V3D_PERF === "zoom") {
         await page.evaluate(function () { window.setPlanRenduVue3D(null, "structures"); });
         const semisZ = await page.evaluate(semerPlanDense);
@@ -8457,7 +8917,7 @@ async function sectionGestesDoigt(nav) {
             "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "vue3d.dessin.planSol", "ui.group.mesure", "ui.group.edition", "ui.group.traces", "ui.group.zones", "ui.group.structures",
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer", "vue3d.fichesMontrer",
-            "vue3d.lampeJourAide"].map(function (k) {
+            "vue3d.lampeJourAide", "vue3d.limiterAide"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
             return t;
           }) };
@@ -14269,6 +14729,7 @@ async function sectionGestesDoigt(nav) {
       for (const mode of ["souris", "doigt"]) await sectionMesures3D(nav, mode);
     }
     if (!SEUL || SEUL === "fiches") await sectionFichesReglage(nav);
+    if (!SEUL || SEUL === "limiter") await sectionLimiterPortee(nav);
     if (!SEUL || SEUL === "gestes") await sectionGestesDoigt(nav);
     if (!SEUL || SEUL === "colonne") await sectionColonnePaysage(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures

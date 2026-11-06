@@ -93,7 +93,7 @@
   const INCLINAISON = { defaut: 60, min: 15, max: 85, pas: 5 };   // ° de la vue plongeante (90 = verticale)
   // Recul (m) entre la caméra plongeante et le point visé (2 m devant soi, ou celui où le doigt l'a mené : _panner) :
   // zoom de la vue plongeante, borné, retenu tant que la vue est ouverte ; `pas` = facteur d'un cran (molette, + / −,
-  // clavier).
+  // clavier). 🛡️ Portée non limitée (_limitee), `max` cède à la diagonale du plan (_reculMax) : tout le plan à l'écran.
   const RECUL = { defaut: 18.4, min: 6, max: 150, pas: 1.15 };
   // Gestes de la caméra libre (vue plongeante) : un doigt ne déplace la vue qu'au-delà de TAPE.bouge px (un toucher
   // qui pose un sommet bouge toujours d'un ou deux px). Deux doigts : la rotation du cap s'engage à `rot`° de la pose
@@ -110,6 +110,9 @@
   // brouillard suivent la vue (_rayonVue), la scène non. 🩸 Vue de haut, tout le disque construit est à l'écran : le
   // coût suit ce rayon, pas le recul. Sans plafond, 150 m de recul = 345 m de tuiles, 50 ms par image et 29 s de
   // constructions saccadées en iPhone émulé ; à 100 m, ~22 ms et 1,5 s (ETUDE_VUE_3D.md).
+  // ⚠️ contrat (décision produit) : ce plafond, PORTEE.max et RECUL.max sont la case 🛡️ « Limiter la portée » de la
+  // tuile ⚙️ (_limitee), cochée par défaut ; décochée, portée jusqu'au plan entier (cran « Tout le plan »), recul
+  // jusqu'à sa diagonale et scène construite sans plafond, au risque de la mémoire (message à la décoche).
   const RAYON_RECUL_MAX = 100;
   const ROTATION = 90;              // °/s
   const EPAISSEUR_MUR_LIGNE = 0.4;  // m
@@ -2781,6 +2784,9 @@
     e.vus = { structures: e.galerie ? [] : d.structures, zones: d.zones,
       roads: d.roads.filter(function (r) { return r.type !== "itinerary" && r.type !== "jonction"; }) };
     e.msIndex = performance.now() - t0;
+    // Emprise relue (un objet ajouté peut déborder) : le cran « Tout le plan » et le recul la suivent.
+    e.diag = _diagPlan();
+    if (e.scene && _distanceEnVigueur() !== e.distance) { e.distance = _distanceEnVigueur(); _appliquerPortee(); }
     _appliquerRendu();
     _gererTuiles(true);
     _majMarqueursIti();
@@ -4278,7 +4284,7 @@
     if (!e) return null;
     const f = Number(facteur);
     if (!(f > 0) || !Number.isFinite(f) || !_permisGreffe("plongee")) return e.recul;
-    const v = Math.max(RECUL.min, Math.min(RECUL.max, e.recul * f));
+    const v = Math.max(RECUL.min, Math.min(_reculMax(), e.recul * f));
     if (v !== e.recul) { e.recul = v; _appliquerPortee(); _retenirEdition(false); }
     _majZoom();
     return e.recul;
@@ -4287,14 +4293,85 @@
   function _majZoom() {
     const e = _e;
     if (e.zoomPlus) e.zoomPlus.disabled = e.recul <= RECUL.min + 1e-6;
-    if (e.zoomMoins) e.zoomMoins.disabled = e.recul >= RECUL.max - 1e-6;
+    if (e.zoomMoins) e.zoomMoins.disabled = e.recul >= _reculMax() - 1e-6;
+  }
+
+  // ── 🛡️ Limiter la portée (anti-crash mémoire) ─────────────────────────────────────────────────────────────
+  // Limitée : la case cochée (préférence de l'appareil, recochée à chaque ouverture au doigt : _limiterVoulu), ou une
+  // greffe qui fige les réglages (_fige : la partie garde la portée par défaut, case grisée, préférence jamais réécrite).
+  function _limitee() {
+    const e = _e;
+    return !e || e.limiter !== false || _fige();
+  }
+
+  // Diagonale (m) de l'emprise du plan : image du plan et objets indexés (un objet peut déborder de l'image). Portée
+  // « Tout le plan » et recul le plus grand : vu de n'importe où sur le plan, tout le plan est dans ce rayon.
+  function _diagPlan() {
+    const e = _e, pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
+    let x0 = 0, z0 = 0, x1 = pc && pc.imageWidth ? pc.imageWidth / e.sc : 0;
+    let z1 = pc && pc.imageHeight ? pc.imageHeight / e.sc : 0;
+    e.tuiles.forEach(function (t) {
+      if (!(t.x1 >= t.x0)) return;
+      x0 = Math.min(x0, t.x0); z0 = Math.min(z0, t.z0); x1 = Math.max(x1, t.x1); z1 = Math.max(z1, t.z1);
+    });
+    return Math.ceil(Math.hypot(x1 - x0, z1 - z0));
+  }
+
+  function _reculMax() {
+    const e = _e;
+    return _limitee() ? RECUL.max : Math.max(RECUL.max, e.diag || 0);
+  }
+
+  // Portée en vigueur : celle de la partie (_fige), sinon le cran « Tout le plan » (case décochée), sinon la portée
+  // voulue. 🩸 Jamais rebornée ici : `ouvrir({ distanceVue })` (mesures, checkup) peut sortir de PORTEE.
+  function _distanceEnVigueur() {
+    const e = _e;
+    if (_fige()) return PORTEE.defaut;
+    if (!_limitee() && e.porteeTout) return Math.max(PORTEE.max, e.diag || 0);
+    return e.porteeVoulue;
+  }
+
+  // Case cochée ou non (retenue sur l'appareil) : portée, recul, rayon construit et brouillard suivent. Décocher pose
+  // d'abord la question (ktaConfirm, comme 🛡️ « Limiter le dézoom sur mobile » de la carte) ; `o.confirme` la
+  // saute (mesures). Rend (Promise) l'état en vigueur (true = limitée), false si une greffe fige les réglages
+  // (refusée, rien d'écrit), null vue fermée.
+  function limiterPortee(oui, o) {
+    const e = _e;
+    if (!e) return Promise.resolve(null);
+    if (_fige()) return Promise.resolve(false);
+    const v = oui !== false;
+    if (v === (e.limiter !== false)) return Promise.resolve(v);
+    const question = v || (o && o.confirme) || typeof window.ktaConfirm !== "function" ? Promise.resolve(true)
+      : window.ktaConfirm(window.ktaEsc(_t("vue3d.limiterTexte")), {
+        titre: window.ktaEsc(_t("vue3d.limiterTitre")),
+        okLabel: window.ktaEsc(_t("vue3d.limiterOui")),
+        cancelLabel: window.ktaEsc(_t("vue3d.limiterNon"))
+      }).then(function (r) { _rendreFocus(e.boutonLimiter); return r; });
+    return question.then(function (accord) {
+      if (_e !== e) return null;
+      if (accord && !_fige()) {
+        e.limiter = typeof window.setVue3DLimiterPortee === "function" ? window.setVue3DLimiterPortee(v) : v;
+        _appliquerGreffeReglages();
+      }
+      return _limitee();
+    });
+  }
+
+  function _majLimiter() {
+    const e = _e, b = e && e.boutonLimiter;
+    if (!b) return;
+    const suffixe = _fige() ? " · " + _t("vue3d.reglageGreffe") : "";
+    b.setAttribute("aria-pressed", _limitee() ? "true" : "false");
+    b.disabled = _fige();
+    b.title = _t("vue3d.limiterAide") + suffixe;
+    b.setAttribute("aria-label", _t("vue3d.limiter") + suffixe);
   }
 
   // Rayon de scène (m autour de soi) : tuiles, volumes, panneaux. À hauteur d'yeux, la portée ; en plongée, il suit
-  // aussi le recul (vu de plus haut, on voit plus loin), jusqu'à RAYON_RECUL_MAX.
+  // aussi le recul (vu de plus haut, on voit plus loin), jusqu'à RAYON_RECUL_MAX (sans plafond, portée non limitée).
   function _rayonScene() {
-    const e = _e;
-    return e.vue === "plongee" ? Math.max(e.distance * 1.4, Math.min(RAYON_RECUL_MAX, e.recul * SOL_PAR_RECUL))
+    const e = _e, plafond = _limitee() ? RAYON_RECUL_MAX : Infinity;
+    return e.vue === "plongee" ? Math.max(e.distance * 1.4, Math.min(plafond, e.recul * SOL_PAR_RECUL))
       : e.distance;
   }
 
@@ -4323,6 +4400,10 @@
     e.scene.fog.near = haut ? e.recul + (l.jour ? 0 : r * 0.3) : e.distance * brume;
     e.scene.fog.far = haut ? e.recul + r + 2 : e.distance;
     e.camera.far = e.scene.fog.far + (haut ? 10 : 5);
+    // 🩸 Au-delà de RECUL.max (portée non limitée), un plan proche de 5 cm ne laisse plus assez de précision de
+    // profondeur au loin (rubans au sol qui scintillent) : il recule avec la caméra, qui reste à plus de
+    // recul · sin(15°) de tout objet.
+    e.camera.near = haut && e.recul > RECUL.max ? e.recul / 300 : 0.05;
     e.camera.updateProjectionMatrix();
     const cote = 2.4 * r;
     e.sol.scale.set(cote, 1, cote);
@@ -4372,44 +4453,66 @@
     return !!gr && gr.reglage.reglagesFiges === true;
   }
 
+  // Aussi après la case 🛡️ (limiterPortee) : portée en vigueur, recul ramené sous sa borne.
   function _appliquerGreffeReglages() {
     const e = _e;
-    const v = _fige() ? PORTEE.defaut : e.porteeVoulue;
+    const v = _distanceEnVigueur();
     if (v !== e.distance) e.distance = v;
+    if (e.recul > _reculMax()) { e.recul = _reculMax(); if (!_fige()) _retenirEdition(false); }
     _appliquerPortee();
     _majPortee();
     _majLampe();
+    _majLimiter();
+    _majZoom();
     _majRepere();
   }
 
   // Portée bornée (config.js > V3D_PORTEE), retenue sur l'appareil ; brouillard, profondeur, lampe et rayon des tuiles
-  // suivent à l'image suivante (_gererTuiles construit au plus TUILES_PAR_IMAGE par image : pas d'à-coup). Rend la
-  // portée retenue, false si une greffe fige les réglages (refusée, rien d'écrit), null vue fermée.
+  // suivent à l'image suivante (_gererTuiles construit au plus TUILES_PAR_IMAGE par image : pas d'à-coup). Case 🛡️
+  // décochée (_limitee), "tout" ou plus que PORTEE.max = le cran « Tout le plan » (diagonale du plan, retenu à part :
+  // la portée en mètres reste celle qui revient case cochée). Rend la portée retenue ("tout" pour le cran), false si
+  // une greffe fige les réglages (refusée, rien d'écrit), null vue fermée.
   function reglerPortee(m) {
     const e = _e;
     if (!e) return null;
     if (_fige()) return false;
-    const n = Math.round(Number(m));
-    if (!Number.isFinite(n)) return e.distance;
-    const v = Math.max(PORTEE.min, Math.min(PORTEE.max, n));
-    if (typeof window.setVue3DPortee === "function") window.setVue3DPortee(v);
-    e.porteeVoulue = v;
-    if (v !== e.distance) { e.distance = v; _appliquerPortee(); }
+    const n = m === "tout" ? Infinity : Math.round(Number(m));
+    if (Number.isNaN(n)) return e.distance;
+    const tout = n > PORTEE.max && !_limitee();
+    if (!tout) {
+      const v = Math.max(PORTEE.min, Math.min(PORTEE.max, n));
+      if (typeof window.setVue3DPortee === "function") window.setVue3DPortee(v);
+      e.porteeVoulue = v;
+    }
+    e.porteeTout = typeof window.setVue3DPorteeTout === "function" ? window.setVue3DPorteeTout(tout) : tout;
+    const d = _distanceEnVigueur();
+    if (d !== e.distance) { e.distance = d; _appliquerPortee(); }
     _majPortee();
     _majRepere();
-    return v;
+    return tout ? "tout" : e.porteeVoulue;
   }
 
   function _porteeVoulue() {
     return typeof window.getVue3DPortee === "function" ? window.getVue3DPortee() : PORTEE.defaut;
   }
 
+  // ⚠️ contrat (décision produit) : au doigt (ktaAppareilTactile), la case 🛡️ revient cochée à chaque ouverture
+  // (réécrite sur l'appareil) ; au pointeur fin, la préférence retenue.
+  function _limiterVoulu() {
+    const tactile = typeof window.ktaAppareilTactile === "function" && window.ktaAppareilTactile();
+    if (tactile && typeof window.setVue3DLimiterPortee === "function") window.setVue3DLimiterPortee(true);
+    return tactile || typeof window.getVue3DLimiterPortee !== "function" || window.getVue3DLimiterPortee() !== false;
+  }
+
+  // Case 🛡️ décochée : un cran de plus au bout du curseur, « Tout le plan ».
   function _majPortee() {
     const e = _e;
     if (!e || !e.curseurPortee) return;
-    const txt = typeof window.formatDistance === "function" ? window.formatDistance(e.distance, 0)
-      : e.distance + " m";
-    _majCurseur(e.curseurPortee, e.porteeValeur, e.distance, "vue3d.porteeAide", txt);
+    const tout = !_limitee() && e.porteeTout;
+    e.curseurPortee.max = String(_limitee() ? PORTEE.max : PORTEE.max + 1);
+    const txt = tout ? _t("vue3d.porteeTout") : typeof window.formatDistance === "function"
+      ? window.formatDistance(e.distance, 0) : e.distance + " m";
+    _majCurseur(e.curseurPortee, e.porteeValeur, tout ? PORTEE.max + 1 : e.distance, "vue3d.porteeAide", txt);
   }
 
   // Lampe selon l'intensité k (part de 1 : 0,25 à 3) → facteurs de force, de coupure (part de la portée) et de halo,
@@ -7259,15 +7362,27 @@
       lv.faisceau);
     e.curseurFaisceau = cc[0]; e.faisceauValeur = cc[1];
     _majPortee();
-    // ☀️ Plein jour : interrupteur (aria-pressed, reglerPleinJour), comme 🧭 ou 🪧.
-    e.boutonJour = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-jour", "", _t("vue3d.lampeJour"), "pleinJour");
+    // ☀️ Plein jour et 🛡️ Limiter la portée : interrupteurs (aria-pressed : reglerPleinJour, limiterPortee), comme
+    // 🧭 ou 🪧, côte à côte (la tuile tient au téléphone en hauteur).
+    const ligneJ = document.createElement("div");
+    ligneJ.className = "kta-v3d-reglages-ligne";
+    tuile.appendChild(ligneJ);
+    e.boutonJour = _bouton(ligneJ, "kta-v3d-btn-mode kta-v3d-btn-jour", "", _t("vue3d.lampeJour"), "pleinJour");
     const icJ = document.createElement("span");
     icJ.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
     icJ.setAttribute("aria-hidden", "true");
     icJ.textContent = "☀️";
     e.boutonJour.appendChild(icJ);
     e.boutonJour.appendChild(document.createTextNode(_t("vue3d.lampeJour")));
+    e.boutonLimiter = _bouton(ligneJ, "kta-v3d-btn-mode kta-v3d-btn-limiter", "", _t("vue3d.limiter"), "limiter");
+    const icL = document.createElement("span");
+    icL.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icL.setAttribute("aria-hidden", "true");
+    icL.textContent = "🛡️";
+    e.boutonLimiter.appendChild(icL);
+    e.boutonLimiter.appendChild(document.createTextNode(_t("vue3d.limiterNom")));
     _majLampe();
+    _majLimiter();
     ov.appendChild(haut);
     e.haut = haut;
     // Mode suivi / libre toujours visible hors de la tuile (c'est ce qui compte en marchant) : pastille discrète en
@@ -7655,6 +7770,7 @@
       return true;
     }
     if (a === "pleinJour") { reglerPleinJour(!_lampeEnVigueur().jour); return true; }
+    if (a === "limiter") { limiterPortee(!_limitee()); return true; }
     return false;
   }
 
@@ -8380,6 +8496,9 @@
         distance: o.distanceVue > 0 ? o.distanceVue : _porteeVoulue(), tuilesActives: o.tuiles !== false,
         recul: RECUL.defaut, lampeVoulue: _lampeVoulue(),
         porteeVoulue: o.distanceVue > 0 ? o.distanceVue : _porteeVoulue(),
+        limiter: _limiterVoulu(), diag: 0,
+        porteeTout: !(o.distanceVue > 0) && typeof window.getVue3DPorteeTout === "function" &&
+          window.getVue3DPorteeTout() === true,
         pos: { x: pos.x, y: pos.y }, cap: cap, tangage: 0, vue: "yeux",
         mode: o.depart || !_trackerActif() ? "libre" : "suivi",
         touches: {}, ecouteurs: [], tuiles: new Map(), couleurs: new Map(), sale: true, images: 0, butees: 0,
@@ -8585,7 +8704,7 @@
   function _lireEdition() {
     const e = _e, v = typeof window.getPlanEditionVue3D === "function" ? window.getPlanEditionVue3D() : null;
     if (!v) return;
-    if (Number.isFinite(v.recul)) e.recul = Math.max(RECUL.min, Math.min(RECUL.max, v.recul));
+    if (Number.isFinite(v.recul)) e.recul = Math.max(RECUL.min, Math.min(_reculMax(), v.recul));
     if (Number.isFinite(v.inclinaison)) {
       e.inclinaison = Math.max(INCLINAISON.min, Math.min(INCLINAISON.max, v.inclinaison));
     }
@@ -8678,7 +8797,10 @@
         jour: e.boutonJour ? { presse: e.boutonJour.getAttribute("aria-pressed"), grise: e.boutonJour.disabled }
           : null },
       portee: { distance: e.distance, rayon: +_rayonScene().toFixed(2), rayonVue: +_rayonVue().toFixed(2),
-        recul: +e.recul.toFixed(3),
+        recul: +e.recul.toFixed(3), limitee: _limitee(), tout: !_limitee() && !!e.porteeTout, diag: e.diag,
+        reculMax: _reculMax(), near: e.camera ? e.camera.near : null,
+        limiter: e.boutonLimiter ? { presse: e.boutonLimiter.getAttribute("aria-pressed"),
+          grise: e.boutonLimiter.disabled, titre: e.boutonLimiter.title } : null,
         brume: e.scene ? [+e.scene.fog.near.toFixed(2), +e.scene.fog.far.toFixed(2)] : null,
         far: e.camera ? +e.camera.far.toFixed(2) : null, sol: e.sol ? +e.sol.scale.x.toFixed(2) : null,
         curseur: e.curseurPortee ? { valeur: Number(e.curseurPortee.value), min: Number(e.curseurPortee.min),
@@ -9068,7 +9190,7 @@
     textures: textures, basculerTextures: function () { return _basculerTextures(); },
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
     reglerPortee: reglerPortee, reglerLampe: reglerLampe, reglerFaisceau: reglerFaisceau,
-    reglerPleinJour: reglerPleinJour, zoomer: zoomer,
+    reglerPleinJour: reglerPleinJour, limiterPortee: limiterPortee, zoomer: zoomer,
     origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, trackerRecale: trackerRecale,
     charge: function () { return !!THREE; },
     greffer: greffer,

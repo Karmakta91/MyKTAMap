@@ -1295,6 +1295,33 @@ window.V3D_PORTEE = V3D_PORTEE;
 window.getVue3DPortee = getVue3DPortee;
 window.setVue3DPortee = setVue3DPortee;
 
+// ── 🛡️ Portée limitée de la vue 3D (anti-crash mémoire), réglage de CET appareil ───────────────────────────────
+// localStorage["myktamap_v3d_limiter_portee_v1"] = "0" (décochée) | "1" ; absente ou illisible → cochée (portée
+// bornée à V3D_PORTEE, recul et scène plafonnés : vue3d.js > _limitee). ["myktamap_v3d_portee_tout_v1"] = "1" : cran
+// « Tout le plan » du curseur de portée, qui ne vaut que décochée. ⚠️ contrat (décision produit) : au doigt
+// (window.ktaAppareilTactile), la vue la recoche à chaque ouverture (vue3d.js > ouvrir) ; au pointeur fin, décochée
+// reste décochée.
+const V3D_LIMITER_PORTEE_CLE = "myktamap_v3d_limiter_portee_v1";
+const V3D_PORTEE_TOUT_CLE = "myktamap_v3d_portee_tout_v1";
+function getVue3DLimiterPortee() {
+  try { return localStorage.getItem(V3D_LIMITER_PORTEE_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DLimiterPortee(oui) {
+  try { localStorage.setItem(V3D_LIMITER_PORTEE_CLE, oui ? "1" : "0"); } catch (e) { /* valeur de la vue seule */ }
+  return !!oui;
+}
+function getVue3DPorteeTout() {
+  try { return localStorage.getItem(V3D_PORTEE_TOUT_CLE) === "1"; } catch (e) { return false; }
+}
+function setVue3DPorteeTout(oui) {
+  try { localStorage.setItem(V3D_PORTEE_TOUT_CLE, oui ? "1" : "0"); } catch (e) { /* valeur de la vue seule */ }
+  return !!oui;
+}
+window.getVue3DLimiterPortee = getVue3DLimiterPortee;
+window.setVue3DLimiterPortee = setVue3DLimiterPortee;
+window.getVue3DPorteeTout = getVue3DPorteeTout;
+window.setVue3DPorteeTout = setVue3DPorteeTout;
+
 // ── Lampe de la vue 3D : intensité, faisceau, Plein jour, réglages de CET appareil ──────────────────────────────
 // localStorage["myktamap_v3d_lampe_intensite_v1"] = % entier (V3D_LAMPE.intensite, 100 = la lampe d'origine),
 // ["myktamap_v3d_faisceau_v1"] = ° entiers de cône total (V3D_LAMPE.faisceau), ["myktamap_v3d_jour_v1"] = "1" | "0" ;
