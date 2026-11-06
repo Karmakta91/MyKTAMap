@@ -88,6 +88,9 @@
 // Réglage ⚙️ Fiches (37, =fiches) : défaut selon le pointeur, coupé = rien sur pilier, zone, tracé (POI : sa fiche), retenu.
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
+// Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
+// recouvrement, priorité danger / favori, coût, toucher une icône, nom revenu en se rapprochant (hystérésis), membres
+// jamais réduits, hauteur d'yeux inchangée.
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
 // colonne d'outils ou le joystick, doigt levé puis reposé, rotation engagée à 10° sans saut, pas bornés.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
@@ -3836,11 +3839,13 @@ async function sectionCamera(page) {
     r.tuiles = { centre: [+(eT.camera.centre.x - ox).toFixed(2), +(eT.camera.centre.z - oz).toFixed(2)],
       ecart: eT.portee.tuiles, rayon: eT.portee.rayon, pos: rel(eT.pos),
       loin: loin ? { visible: loin.visible, lettrePx: loin.lettrePx } : null };
-    // Dézoomé au plus loin : lettres d'un panneau jamais sous 13 px ; fiche ouverte au toucher, à taille normale.
+    // Dézoomé au plus loin : le panneau n'est plus que son icône (vue3d.js > PANNEAU_REDUIT) ; fiche ouverte au
+    // toucher, à taille normale.
     K.zoomer(100);
     await images(4);
     const eZ = K.etat(), pz = eZ.panneaux.filter(function (p) { return p.nom === "Repère lointain"; })[0];
-    r.lisible = { recul: eZ.portee.recul, lettrePx: pz ? pz.lettrePx : null, visible: !!pz && pz.visible };
+    r.lisible = { recul: eZ.portee.recul, icone: !!pz && pz.icone, boite: pz ? pz.boite : null,
+      visible: !!pz && pz.visible };
     if (pz && pz.visible) await tap(pz.ecran);
     await images(2);
     const fiche = document.querySelector("#kta-vue3d .kta-v3d-fiche");
@@ -4127,8 +4132,9 @@ async function sectionCamera(page) {
     proche(r.tuiles.pos, [0, 0], 1e-6) && !!r.tuiles.loin && r.tuiles.loin.visible,
     "tuiles et panneaux construits autour du point visé (68 m plus loin : 2 m devant soi + 60, −30), la place restée",
     r.tuiles);
-  verifier(r.lisible.recul === 150 && r.lisible.visible && r.lisible.lettrePx >= 12.9,
-    "dézoomé (150 m) : lettres d'un panneau à 13 px au moins à l'écran", r.lisible);
+  verifier(r.lisible.recul === 150 && r.lisible.visible && r.lisible.icone && !!r.lisible.boite &&
+    Math.abs(r.lisible.boite[2] - 28) < 1 && Math.abs(r.lisible.boite[3] - 28) < 1,
+  "dézoomé (150 m) : le panneau n'est plus que son icône, 28 px à l'écran", r.lisible);
   const L150 = r.loin150;
   verifier(L150.portee.recul === 150 && L150.portee.tuiles.manquantes === 0 && L150.portee.tuiles.hors === 0 &&
     L150.bord.points.every(function (p) { return p.ok; }) && L150.rasant.inclinaison === 15 &&
@@ -8171,6 +8177,272 @@ async function mesuresToutPlan(page, cdp, nom, depart, rendus) {
   }
 }
 
+// ── 42. Panneaux de POI dézoomés (vue3d.js > _majPanneaux, _iconeReduite, _desencombrer, PANNEAU_REDUIT) ──────────────
+// Pointeur fin (1200 × 800), relevé fictif vidé, 1 000 POI fictifs sur 320 × 320 m (1 sur 25 danger, 1 sur 50 favori),
+// un POI au point visé, deux membres fictifs collés (extension). Case 🛡️ décochée, « Tout le plan », vue d'édition au
+// recul le plus grand : chaque panneau de POI montré n'est que son icône (28 px à l'écran), aucune icône montrée ne
+// recouvre une autre, un POI masqué l'est par un POI de rang égal ou meilleur (danger, puis favori), le calcul ne
+// coûte pas une image ; toucher une icône (au centre, à 15 px) ouvre sa fiche ; en se rapprochant, le nom revient (à
+// un recul plus court qu'à l'aller : hystérésis) ; recul par défaut : panneaux entiers, lettres ≥ 13 px. Membres :
+// jamais réduits ni masqués par un POI, seulement entre eux. Hauteur d'yeux : aucune icône, rien de masqué à 12 m.
+async function sectionPanneauxDezoom(nav) {
+  const nom = "§ 42 ";
+  console.log("§ 42 — Panneaux de POI dézoomés : icône seule, dé-chevauchement");
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  await page.addInitScript(function (l) {
+    for (const k in l) { try { localStorage.setItem(k, l[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1200);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+      window.getPlanEditionVue3D = function () { return null; };
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const prep = await page.evaluate(async function () {
+      const C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      ["myktamap_v3d_limiter_portee_v1", "myktamap_v3d_portee_tout_v1"].forEach(function (k) {
+        localStorage.removeItem(k);
+      });
+      window.setVue3DPortee(30);
+      window.setVue3DPleinJour(false);
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = "v3d-checkup-panneaux";
+      C.multiLevel = false;
+      window.setPlanRenduVue3D(null, "structures");
+      let graine = 11;
+      const alea = function () { graine = (graine * 16807) % 2147483647; return graine / 2147483647; };
+      const tags = ["salle", "puits", "inscription", "carrefour"];
+      const pts = [];
+      for (let i = 0; i < 1000; i++) {
+        let x = 0, z = 0;
+        while (Math.abs(x) < 15 && Math.abs(z) < 15) { x = -160 + alea() * 320; z = -160 + alea() * 320; }
+        const q = P(x, z);
+        pts.push(Object.assign({ id: "POI dz " + i, nom: "POI dézoom " + i, uid: "pt_dz_" + i, level: C.activeLevel,
+          tags: [i % 25 === 0 ? "danger" : tags[i % tags.length]] }, q));
+        if (i % 50 === 7) window.Favoris.add({ pointId: "POI dz " + i, pointUid: "pt_dz_" + i, nom: "POI dézoom " + i,
+          x: q.x, y: q.y });
+      }
+      // Au point visé (2 m devant la place, cap 90° : vers +x), à 15 m au moins des POI semés ; quatre POI proches
+      // qui se recouvrent à hauteur d'yeux.
+      pts.push(Object.assign({ id: "POI dz vise", nom: "POI au point visé", uid: "pt_dz_vise", level: C.activeLevel,
+        tags: ["salle"] }, P(2, 0)));
+      [[6, 1], [6.5, -0.5], [9, 0.5], [10, -1]].forEach(function (q, i) {
+        pts.push(Object.assign({ id: "POI dz proche " + i, nom: "POI proche " + i, uid: "pt_dz_pr_" + i,
+          level: C.activeLevel, tags: ["puits"] }, P(q[0], q[1])));
+      });
+      window.setRoads([]); window.setZones([]); window.setStructures([]);
+      window.setEditorPoints(pts);
+      window.KtaGalerie.invalider();
+      const d = P(0, 0);
+      await window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: C.activeLevel }, commandes: "pave" });
+      // Deux membres fictifs au même endroit, à 40 m (sur des POI) : ils se départagent entre eux seulement.
+      const m = P(40, 10);
+      window.KtaExtensions.afficherPresences([
+        { id: "membre-dz-a", pseudo: "Membre A", x: m.x, y: m.y, niveau: C.activeLevel, couleur: "#3fbf7f" },
+        { id: "membre-dz-b", pseudo: "Membre B", x: m.x + 0.2 * sc, y: m.y, niveau: C.activeLevel, couleur: "#3fbf7f" }
+      ]);
+      await window.KtaVue3D.limiterPortee(false, { confirme: true });
+      window.KtaVue3D.reglerPortee("tout");
+      window.KtaVue3D.basculerVue();
+      return { pois: pts.length };
+    });
+    const images = function (n) {
+      return page.evaluate(async function (k) {
+        for (let i = 0; i < k; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      }, n || 3);
+    };
+    const poser = function () {
+      return page.evaluate(async function () {
+        const K = window.KtaVue3D;
+        for (let i = 0; i < 3000 && (K.etat().portee.tuiles.manquantes || K.etat().portee.tuiles.hors); i++) {
+          await new Promise(function (ok) { requestAnimationFrame(ok); });
+        }
+      });
+    };
+    // État des panneaux : boîtes à l'écran (px de la vue), rangs, recouvrements entre panneaux montrés d'un groupe.
+    const lire = function () {
+      return page.evaluate(function () {
+        const e = window.KtaVue3D.etat(), cv = document.querySelector("#kta-vue3d canvas").getBoundingClientRect();
+        const sc = window.APP_CONFIG.scale;
+        const rang = function (p) { return p.danger ? 0 : p.favori ? 1 : p.passage ? 2 : p.lie ? 3 : 4; };
+        const boite = function (p, m) {
+          const b = p.boite;
+          return [b[0] - b[2] / 2 - m, b[1] - b[3] / 2 - m, b[0] + b[2] / 2 + m, b[1] + b[3] / 2 + m];
+        };
+        const touche = function (a, b) { return a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]; };
+        const dansVue = function (p) {
+          return !!p.boite && p.boite[0] + p.boite[2] / 2 > 0 && p.boite[0] - p.boite[2] / 2 < cv.width &&
+            p.boite[1] + p.boite[3] / 2 > 0 && p.boite[1] - p.boite[3] / 2 < cv.height;
+        };
+        const pois = e.panneaux.filter(function (p) { return p.genre === "poi"; });
+        const montres = pois.filter(function (p) { return p.visible && dansVue(p); });
+        const masques = pois.filter(function (p) { return p.masque; });
+        let recouvrements = 0;
+        for (let i = 0; i < montres.length; i++) {
+          for (let j = i + 1; j < montres.length; j++) {
+            if (touche(boite(montres[i], 0), boite(montres[j], 0))) recouvrements++;
+          }
+        }
+        // Un POI masqué l'est par un POI montré de rang égal ou meilleur qui touche sa boîte (marge 4 px comprise).
+        // 0,5 px de plus que DESENCOMBRE.marge / 2 : les boîtes lues sont arrondies au dixième.
+        const sansCause = masques.filter(function (p) {
+          return !montres.some(function (q) { return rang(q) <= rang(p) && touche(boite(p, 2.5), boite(q, 2.5)); });
+        }).map(function (p) { return p.nom; });
+        const membres = e.panneaux.filter(function (p) { return p.genre === "membre"; });
+        const vise = pois.filter(function (p) { return p.nom === "POI au point visé"; })[0];
+        return { recul: e.portee.recul, tout: e.portee.tout, montres: montres.length, masques: masques.length,
+          icones: montres.filter(function (p) { return p.icone; }).length,
+          tailles: montres.filter(function (p) { return p.icone; }).map(function (p) { return [p.boite[2], p.boite[3]]; })
+            .filter(function (t) { return Math.abs(t[0] - 28) > 1 || Math.abs(t[1] - 28) > 1; }).slice(0, 3),
+          recouvrements: recouvrements, sansCause: sansCause.slice(0, 5), nSansCause: sansCause.length,
+          dangersMontres: montres.filter(function (p) { return p.danger; }).length,
+          dangersMasquesSousAutre: masques.filter(function (p) {
+            return p.danger && !montres.some(function (q) { return q.danger && touche(boite(p, 2.5), boite(q, 2.5)); });
+          }).length,
+          membres: membres.map(function (p) {
+            return { nom: p.nom, visible: p.visible, icone: p.icone, masque: p.masque };
+          }),
+          vise: vise ? { visible: vise.visible, icone: vise.icone, lettrePx: vise.lettrePx, ecran: vise.ecran,
+            boite: vise.boite } : null,
+          desencombre: e.desencombre, pos: e.pos,
+          proches: e.panneaux.filter(function (p) {
+            return p.genre === "poi" && Math.hypot(p.x - e.pos.x / sc, p.z - e.pos.y / sc) <= 12;
+          }).map(function (p) { return { icone: p.icone, masque: p.masque }; }) };
+      });
+    };
+    const r = {};
+    await page.evaluate(function () { for (let i = 0; i < 80; i++) window.KtaVue3D.zoomer(1.5); });
+    await poser();
+    await images(4);
+    r.loin = await lire();
+    await capture(page, "panneaux-tout-le-plan-apres");
+    // Coût du dé-chevauchement : 30 images d'un pan léger (il est refait à chaque image qui bouge).
+    r.cout = await page.evaluate(async function () {
+      const K = window.KtaVue3D, ms = [];
+      for (let i = 0; i < 30; i++) {
+        K.panner(i % 2 ? 0.02 : -0.02, 0);
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+        ms.push(K.etat().desencombre.ms);
+      }
+      const f0 = K.etat().desencombre.fois;
+      for (let i = 0; i < 10; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      return { max: Math.max.apply(null, ms), refaitAuRepos: K.etat().desencombre.fois - f0 };
+    });
+    verifier(r.loin.tout && r.loin.montres > 5 && r.loin.icones === r.loin.montres && r.loin.tailles.length === 0 &&
+      r.loin.recouvrements === 0 && r.loin.masques > 0,
+    nom + "« Tout le plan », recul " + r.loin.recul + " m : " + r.loin.montres + " POI montrés, tous en icône de 28 px, " +
+      "aucun recouvrement (" + r.loin.masques + " masqués)", r.loin);
+    verifier(r.loin.nSansCause === 0 && r.loin.dangersMontres > 0 && r.loin.dangersMasquesSousAutre === 0,
+      nom + "priorité : un POI masqué l'est par un POI de rang égal ou meilleur ; un danger, par un autre danger " +
+      "seulement (" + r.loin.dangersMontres + " dangers montrés)", r.loin);
+    verifier(r.cout.max < 8 && r.cout.refaitAuRepos === 0,
+      nom + "dé-chevauchement de " + prep.pois + " POI : " + r.cout.max.toFixed(1) + " ms au plus par image, " +
+      "rien refait au repos", r.cout);
+    // Membres : jamais réduits, visibles même sur des POI ; collés, un seul des deux montré.
+    const mv = r.loin.membres.filter(function (m) { return m.visible; });
+    verifier(r.loin.membres.length === 2 && r.loin.membres.every(function (m) { return !m.icone; }) && mv.length === 1,
+      nom + "membres : jamais réduits à une icône, ni masqués par un POI ; deux membres collés, un seul montré",
+      r.loin.membres);
+    // Toucher une icône réduite : au centre, puis à 15 px (plus loin que l'icône, dans PANNEAU_REDUIT.toucher).
+    const cible = await page.evaluate(function () {
+      const e = window.KtaVue3D.etat();
+      const libres = e.panneaux.filter(function (p) {
+        return p.genre === "poi" && p.visible && p.icone && p.ecran.x > 300 && p.ecran.x < 900 && p.ecran.y > 200 &&
+          p.ecran.y < 600;
+      });
+      // Une icône sans autre panneau montré à 60 px.
+      const c = libres.filter(function (p) {
+        return !e.panneaux.some(function (q) {
+          return q !== p && q.visible && q.ecran && Math.hypot(q.ecran.x - p.ecran.x, q.ecran.y - p.ecran.y) < 60;
+        });
+      })[0] || libres[0];
+      return c ? { nom: c.nom, x: c.ecran.x, y: c.ecran.y } : null;
+    });
+    const toucher = async function (dx) {
+      await page.mouse.click(cible.x + dx, cible.y);
+      await images(3);
+      const f = await page.evaluate(function () {
+        const e = window.KtaVue3D.etat();
+        const b = document.querySelector('#kta-vue3d [data-v3d="ficheFermer"]');
+        const out = e.fiche ? e.fiche.nom : null;
+        if (b) b.click();
+        return out;
+      });
+      await images(2);
+      return f;
+    };
+    r.toucher = cible ? { nom: cible.nom, centre: await toucher(0), a15: await toucher(15) } : null;
+    verifier(!!r.toucher && r.toucher.centre === r.toucher.nom && r.toucher.a15 === r.toucher.nom,
+      nom + "toucher une icône réduite ouvre sa fiche (au centre et à 15 px)", r.toucher);
+    // Se rapprocher : le nom revient ; repartir : l'icône revient à un recul plus grand (hystérésis).
+    r.aller = await page.evaluate(async function () {
+      const K = window.KtaVue3D, img = function () { return new Promise(function (ok) { requestAnimationFrame(ok); }); };
+      const etatVise = function () {
+        return K.etat().panneaux.filter(function (p) { return p.nom === "POI au point visé"; })[0];
+      };
+      for (let i = 0; i < 80; i++) K.zoomer(1 / 1.5);
+      K.zoomer(18.4 / K.etat().portee.recul);
+      await img(); await img();
+      const out = { defaut: K.etat().portee.recul, iconeDefaut: etatVise().icone, lettre: etatVise().lettrePx };
+      // Aller (on recule) puis retour (on avance), pas de 5 % : reculs où l'icône apparaît, puis où le nom revient.
+      for (let i = 0; i < 40 && !etatVise().icone; i++) { K.zoomer(1.05); await img(); }
+      out.versIcone = K.etat().portee.recul;
+      for (let i = 0; i < 40 && etatVise().icone; i++) { K.zoomer(1 / 1.05); await img(); }
+      out.versNom = K.etat().portee.recul;
+      return out;
+    });
+    await images(2);
+    await capture(page, "panneaux-nom-revenu-apres");
+    verifier(!r.aller.iconeDefaut && r.aller.lettre >= 12.9 && r.aller.versIcone > 20 &&
+      r.aller.versNom < r.aller.versIcone * 0.9,
+    nom + "recul par défaut : panneau entier (lettres " + r.aller.lettre + " px) ; l'icône vient vers " +
+      r.aller.versIcone.toFixed(0) + " m, le nom revient vers " + r.aller.versNom.toFixed(0) + " m (hystérésis)",
+    r.aller);
+    // Hauteur d'yeux : aucune icône, aucun panneau masqué à 12 m ou moins.
+    await page.evaluate(function () { window.KtaVue3D.basculerVue(); });
+    await images(4);
+    r.yeux = await lire();
+    verifier(r.yeux.icones === 0 && r.yeux.proches.length > 0 && r.yeux.proches.every(function (p) {
+      return !p.icone && !p.masque;
+    }), nom + "hauteur d'yeux : aucune icône, aucun des " + r.yeux.proches.length + " panneaux à 12 m masqué",
+    { icones: r.yeux.icones, proches: r.yeux.proches.length, montres: r.yeux.montres, masques: r.yeux.masques });
+    await page.evaluate(function () {
+      window.KtaExtensions.afficherPresences([]);
+      return window.KtaVue3D.fermer();
+    });
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 4));
+  } catch (err) {
+    pb(nom + "exception : " + (err && err.message));
+  } finally {
+    await ctx.close();
+  }
+}
+
 // ── 38. Gestes à deux doigts de la vue d'édition (vue3d.js > _brancher, appuiScene / adopter) ─────────────────────────
 // Téléphone 393 × 852 tactile, relevé fictif tel quel, joystick montré. Doigts réels (CDP Input.dispatchTouchEvent) sous
 // Chromium, PointerEvent `touch` synthétiques sous WebKit (posés sur l'élément sous le doigt, suivis sur le canevas
@@ -8513,7 +8785,7 @@ async function sectionGestesDoigt(nav) {
       await sectionDessin(page);
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
-      SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" ||
+      SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
@@ -14731,6 +15003,7 @@ async function sectionGestesDoigt(nav) {
     }
     if (!SEUL || SEUL === "fiches") await sectionFichesReglage(nav);
     if (!SEUL || SEUL === "limiter") await sectionLimiterPortee(nav);
+    if (!SEUL || SEUL === "panneaux") await sectionPanneauxDezoom(nav);
     if (!SEUL || SEUL === "gestes") await sectionGestesDoigt(nav);
     if (!SEUL || SEUL === "colonne") await sectionColonnePaysage(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures

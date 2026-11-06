@@ -146,6 +146,15 @@
   // `ecranEdition` : plafond en vue plongeante, plus large, pour qu'un panneau à icône garde ses lettres de
   // PANNEAU_LETTRE_MIN px sur un téléphone (393 px : 222 px de large).
   const PRES = { min: 1, net: 2.2, ecran: 0.45, ecranEdition: 0.6 };
+  // Vue plongeante : un panneau de POI à lettres minimales fait toujours ~222 px de large ; dès qu'il couvre plus de
+  // `sol` m de sol (un carrefour : il ne désigne plus un point, et l'écran d'un téléphone n'en tient plus qu'une
+  // poignée — vers 30 m de profondeur), il se réduit à son icône de `px` px CSS (celle de la carte 2D), sans nom ;
+  // le nom revient sous `solNom` m (hystérésis : pas de clignotement au bord). `toucher` : rayon (px) autour d'une
+  // icône réduite qui la prend au doigt (_panneauVise). `opacite` : part perdue au bord de la scène (le panneau : 0,6).
+  const PANNEAU_REDUIT = { sol: 12, solNom: 9, px: 28, toucher: 22, opacite: 0.3 };
+  // Dé-chevauchement des panneaux à l'écran (_desencombrer) : grille de `cellule` px, `marge` px entre deux panneaux.
+  // À hauteur d'yeux, seuls les panneaux à plus de `loinYeux` m peuvent être masqués (ceux de près ne bougent pas).
+  const DESENCOMBRE = { cellule: 64, marge: 4, loinYeux: 12 };
   const BRUIT_CAP = 2;              // ° : en suivi, un écart de cap plus petit (boussole) ne redessine pas
   const HAUTEUR_MUR = 0.98;         // part de la hauteur du plan : un mur passe toujours sous pilier et front
   // Sol et ciel de carrière (plafond, à la hauteur du plan) : même teinte sable calcaire, grain procédural répété
@@ -1170,7 +1179,12 @@
       // 🩸 Un Sprite partage la géométrie de three.js : ne jamais la libérer, seulement sa texture. Un halo de danger
       // partage celle de la vue (userData.partage), libérée à la fermeture.
       if (o.geometry && !o.isSprite && !o.userData.partage) o.geometry.dispose();
-      if (o.isSprite && o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); }
+      // Icône réduite (_iconeReduite) : la texture montrée est partagée, celle du panneau reste la sienne.
+      if (o.isSprite && o.material) {
+        const t = o.userData.texPanneau || o.material.map;
+        if (t) t.dispose();
+        o.material.dispose();
+      }
       if (o.isSprite) _e.panneaux.delete(o);
     });
     _e.scene.remove(t.obj);
@@ -1603,9 +1617,14 @@
     sp.renderOrder = 10;
     const jonction = passage ? (p._v3dJonction || p) : null;
     // `point` : le POI d'origine (celui de la carte), dont la fiche s'ouvre au toucher (_toucher).
+    sp.userData.texPanneau = tex;
+    // `url`, `passage`, `lie` : l'icône réduite et le rang du dé-chevauchement (_majPanneaux, _desencombrer).
     sp.userData.poi = { x: x, z: z, anneau: ou ? null : _volumeContenant(x, z), nom: nom, jonction: jonction,
-      danger: danger, favori: favori, bord: bord, genre: o.genre || "poi", point: p._v3dJonction || p };
+      danger: danger, favori: favori, bord: bord, genre: o.genre || "poi", point: p._v3dJonction || p,
+      url: url, passage: passage, lie: !o.bord && _liaisonsPortail(p._v3dJonction || p).length > 0,
+      icone: false, masque: false };
     _e.panneaux.add(sp);
+    _e.panneauxGen++;
     if (url) {
       const img = new Image();
       img.addEventListener("load", function () {
@@ -1719,11 +1738,17 @@
   // 1 → 0,4 vers la limite. De près (distance à la caméra) : rien sous PRES.min, fondu jusqu'à PRES.net, et jamais plus
   // large que PRES.ecran de l'écran (champ horizontal de la caméra à cette distance). En vue plongeante, jamais de
   // lettres sous PANNEAU_LETTRE_MIN px (décision produit : un panneau lu de loin reste lisible, la scène non).
+  // ⚠️ contrat (décision produit, comme la carte 2D) : en vue plongeante, un panneau de POI qui couvrirait plus de
+  // PANNEAU_REDUIT.sol m de sol devient son icône seule (PANNEAU_REDUIT.px px, _iconeReduite), le nom revient sous
+  // PANNEAU_REDUIT.solNom m ; puis les panneaux qui se recouvrent à l'écran n'en gardent qu'un (_desencombrer). Membres,
+  // repères, mesures et 🏁 ne se réduisent jamais ; membres et repères ne se masquent qu'entre eux (sécurité).
   function _majPanneaux() {
     const e = _e, cam = e.camera.position, c = _centreScene(), px = c.x, pz = c.z;
     const demiV = Math.tan(e.camera.fov * Math.PI / 360), demiChamp = demiV * (e.camera.aspect || 1);
     const hEcran = e.vue === "plongee" && e.cv ? e.cv.clientHeight : 0;
+    const W = e.cv ? e.cv.clientWidth : 0, H = e.cv ? e.cv.clientHeight : 0;
     const v = e.v3 || (e.v3 = new THREE.Vector3());
+    const R = PANNEAU_REDUIT, candidats = [];
     e.camera.updateMatrixWorld();
     e.panneaux.forEach(function (sp) {
       const u = sp.userData.poi;
@@ -1734,26 +1759,163 @@
       const halo = sp.userData.halo;
       if (halo) { halo.visible = k <= 1; halo.position.x = x; halo.position.z = z; }
       const pr = u.jonction ? PRES_PASSAGE : PRES;
+      const avant = u.masque;
+      u.ecran = null;
+      u.masque = false;
       sp.visible = k <= 1 && dc >= pr.min;
       if (!sp.visible) return;
       sp.position.x = x; sp.position.z = z;
       // Profondeur devant la caméra (la largeur à l'écran en dépend) ; derrière elle, la distance suffit.
-      const prof = -v.copy(sp.position).applyMatrix4(e.camera.matrixWorldInverse).z;
-      const ratio = sp.userData.ratio || PANNEAU.h / PANNEAU.l;
+      v.copy(sp.position).applyMatrix4(e.camera.matrixWorldInverse);
+      const prof = -v.z, vx = v.x, vy = v.y;
+      const ratioNom = sp.userData.ratio || PANNEAU.h / PANNEAU.l;
       const f = sp.userData.part || 1;
-      let l0 = PANNEAU.l * (1 - 0.5 * k);
+      const pres = Math.min(1, (dc - pr.min) / (pr.net - pr.min));
+      let l0 = PANNEAU.l * (1 - 0.5 * k), mpp = 0;
       if (hEcran > 0 && prof > 0 && sp.userData.lettre) {
         // Largeur (avant `f`) dont une ligne fait PANNEAU_LETTRE_MIN px à cette profondeur.
-        const mpp = 2 * prof * demiV / hEcran;
-        l0 = Math.max(l0, PANNEAU_LETTRE_MIN * mpp / (sp.userData.lettre * ratio * f));
+        mpp = 2 * prof * demiV / hEcran;
+        l0 = Math.max(l0, PANNEAU_LETTRE_MIN * mpp / (sp.userData.lettre * ratioNom * f));
       }
-      // En plongée, le plafond porte sur la largeur montrée (l × f), celle d'un panneau sans icône comprise.
-      const plafond = hEcran > 0 ? PRES.ecranEdition / f : PRES.ecran;
-      const l = Math.min(l0, plafond * 2 * (prof > 0 ? prof : dc) * demiChamp);
-      sp.scale.set(l * f, l * f * ratio, 1);
-      const pres = Math.min(1, (dc - pr.min) / (pr.net - pr.min));
-      sp.material.opacity = (1 - 0.6 * k) * pres;
+      // Réduit à l'icône : POI seuls, en plongée ; hystérésis sur la largeur de sol du panneau entier.
+      const sol = l0 * f;
+      const icone = u.genre === "poi" && mpp > 0 && (u.icone ? sol > R.solNom : sol > R.sol);
+      if (icone !== u.icone) _iconeReduite(sp, icone);
+      let l, ratio;
+      if (icone) {
+        l = R.px * mpp; ratio = 1;
+        sp.scale.set(l, l, 1);
+        sp.material.opacity = (1 - R.opacite * k) * pres;
+      } else {
+        // En plongée, le plafond porte sur la largeur montrée (l × f), celle d'un panneau sans icône comprise.
+        const plafond = hEcran > 0 ? PRES.ecranEdition / f : PRES.ecran;
+        l = Math.min(l0, plafond * 2 * (prof > 0 ? prof : dc) * demiChamp) * f; ratio = ratioNom;
+        sp.scale.set(l, l * ratio, 1);
+        sp.material.opacity = (1 - 0.6 * k) * pres;
+      }
+      // Place et taille à l'écran (px CSS) pour le dé-chevauchement ; derrière la caméra ou hors champ : rien à
+      // départager.
+      if (prof <= 0 || !W || !H || !_montreDansScene(sp.parent)) return;
+      const w = l / (2 * prof * demiChamp) * W, q = { x: (vx / (prof * demiChamp) + 1) / 2 * W,
+        y: (1 - vy / (prof * demiV)) / 2 * H, w: w, h: w * ratio };
+      if (q.x + w / 2 < 0 || q.x - w / 2 > W || q.y + q.h / 2 < 0 || q.y - q.h / 2 > H) return;
+      u.ecran = q;
+      if (u.genre === "poi" || u.genre === "membre" || u.genre === "repere") {
+        candidats.push({ sp: sp, u: u, dc: dc, avant: avant, fixe: !hEcran && dc <= DESENCOMBRE.loinYeux });
+      }
     });
+    _desencombrer(candidats, W, H);
+  }
+
+  // Dé-chevauchement : par groupe (POI ; membres et repères), du plus prioritaire au moins prioritaire — membre
+  // (un repère ne cache jamais un membre), danger, favori, passage entre niveaux, point lié à un autre plan, puis
+  // le plus proche de la caméra (un panneau déjà
+  // montré garde un peu d'avance : il ne clignote pas quand deux distances se croisent) —, un panneau qui recouvre
+  // un panneau déjà gardé est masqué (visible = false : ni dessiné ni visé). Grille d'écran de DESENCOMBRE.cellule px :
+  // chaque panneau ne se compare qu'aux panneaux gardés de ses cellules (jamais n²). `fixe` (près, à hauteur
+  // d'yeux) : jamais masqué, il prend sa place d'abord.
+  // ⚠️ contrat : refait seulement si la caméra, la taille de la vue ou les panneaux candidats ont changé
+  // (e.sigDesencombre) ; sinon les masques de la fois d'avant sont reposés tels quels.
+  function _desencombrer(candidats, W, H) {
+    const e = _e, m = e.camera.matrixWorld.elements;
+    let sig = W + "x" + H + "|" + e.panneauxGen + "|" + candidats.length;
+    for (let i = 0; i < 16; i++) sig += "|" + m[i].toFixed(3);
+    if (sig === e.sigDesencombre) {
+      candidats.forEach(function (c) { c.u.masque = c.avant; if (c.avant) c.sp.visible = false; });
+      return;
+    }
+    e.sigDesencombre = sig;
+    const t0 = performance.now();
+    const rang = function (u) {
+      return u.genre === "membre" ? -1 : u.danger ? 0 : u.favori ? 1 : u.passage ? 2 : u.lie ? 3 : 4;
+    };
+    candidats.forEach(function (c) { c.r = rang(c.u); c.d = c.avant ? c.dc : c.dc * 0.85; });
+    candidats.sort(function (a, b) {
+      return (b.fixe - a.fixe) || (a.r - b.r) || (a.d - b.d);
+    });
+    const C = DESENCOMBRE.cellule, M = DESENCOMBRE.marge / 2, grilles = [new Map(), new Map()];
+    let masques = 0;
+    candidats.forEach(function (c) {
+      const q = c.u.ecran, g = grilles[c.u.genre === "poi" ? 0 : 1];
+      const x0 = q.x - q.w / 2 - M, x1 = q.x + q.w / 2 + M, y0 = q.y - q.h / 2 - M, y1 = q.y + q.h / 2 + M;
+      const gx0 = Math.floor(x0 / C), gx1 = Math.floor(x1 / C), gy0 = Math.floor(y0 / C), gy1 = Math.floor(y1 / C);
+      let couvre = false;
+      for (let gx = gx0; gx <= gx1 && !couvre; gx++) {
+        for (let gy = gy0; gy <= gy1 && !couvre; gy++) {
+          const l = g.get(gx * 100003 + gy);
+          for (let i = 0; l && i < l.length; i++) {
+            const o = l[i];
+            if (x0 < o[2] && x1 > o[0] && y0 < o[3] && y1 > o[1]) { couvre = true; break; }
+          }
+        }
+      }
+      c.u.masque = couvre && !c.fixe;
+      if (c.u.masque) { c.sp.visible = false; masques++; return; }
+      const boite = [x0, y0, x1, y1];
+      for (let gx = gx0; gx <= gx1; gx++) {
+        for (let gy = gy0; gy <= gy1; gy++) {
+          const k = gx * 100003 + gy, l = g.get(k);
+          if (l) l.push(boite); else g.set(k, [boite]);
+        }
+      }
+    });
+    e.desencombre = { candidats: candidats.length, masques: masques, ms: performance.now() - t0,
+      fois: ((e.desencombre && e.desencombre.fois) || 0) + 1 };
+  }
+
+  // Bascule d'un panneau de POI entre son panneau (texture propre, userData.texPanneau) et son icône réduite (texture
+  // partagée par icône et par marque, e.icones) : icône de la carte dans une pastille sombre (lisible sur le calcaire
+  // clair), cerclée de rouge (danger) ou de la couleur des passages, ⭐ d'un favori ; sans icône connue, la pastille
+  // et un point à la couleur du liseré. 🩸 Une texture partagée n'est jamais libérée avec le panneau (_libererTuile :
+  // texPanneau d'abord).
+  function _iconeReduite(sp, reduite) {
+    const e = _e, u = sp.userData.poi;
+    u.icone = reduite;
+    u.masque = false;
+    if (!reduite) {
+      sp.material.map = sp.userData.texPanneau;
+      sp.material.needsUpdate = true;
+      return;
+    }
+    const cle = (u.url || "") + "|" + (u.danger || u.passage ? u.bord : "") + "|" + (u.favori ? "f" : "") +
+      (u.url ? "" : "|" + u.bord);
+    let tex = e.icones.get(cle);
+    if (!tex) {
+      const N = 96, cv = document.createElement("canvas"), ctx = cv.getContext("2d"), coul = _jetonsSombres();
+      cv.width = cv.height = N;
+      const dessiner = function (img) {
+        ctx.clearRect(0, 0, N, N);
+        ctx.beginPath(); ctx.arc(N / 2, N / 2, N / 2 - 4, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.85; ctx.fillStyle = coul.fond; ctx.fill(); ctx.globalAlpha = 1;
+        if (u.danger || u.passage) { ctx.lineWidth = 6; ctx.strokeStyle = u.bord; ctx.stroke(); }
+        if (img) {
+          try { ctx.drawImage(img, 18, 18, N - 36, N - 36); } catch (err) { /* illisible */ }
+        } else if (!u.url) {
+          ctx.beginPath(); ctx.arc(N / 2, N / 2, 12, 0, Math.PI * 2); ctx.fillStyle = u.bord; ctx.fill();
+        }
+        if (u.favori) {
+          _etoile(ctx, N - 18, 18, 15);
+          ctx.fillStyle = coul.accent; ctx.fill();
+          ctx.lineWidth = 2; ctx.strokeStyle = coul.fond; ctx.stroke();
+        }
+      };
+      dessiner(null);
+      tex = new THREE.CanvasTexture(cv);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      e.icones.set(cle, tex);
+      if (u.url) {
+        const img = new Image();
+        img.addEventListener("load", function () {
+          if (_e !== e) return;
+          dessiner(img);
+          tex.needsUpdate = true;
+          e.sale = true;
+        });
+        img.src = u.url;
+      }
+    }
+    sp.material.map = tex;
+    sp.material.needsUpdate = true;
   }
 
   // ── Scène ──────────────────────────────────────────────────────────────────────────────────────────
@@ -2412,6 +2574,9 @@
   function _monterScene() {
     const e = _e;
     e.panneaux = new Set();
+    e.panneauxGen = 0;
+    e.icones = new Map();
+    e.sigDesencombre = null;
     e.scene = new THREE.Scene();
     e.scene.background = new THREE.Color(0x000000);
     e.scene.fog = new THREE.Fog(0x000000, e.distance * 0.45, e.distance);   // suit la portée : _appliquerPortee
@@ -3103,7 +3268,9 @@
         if (o.geometry && !o.isSprite) o.geometry.dispose();
         // Texture du ciel : celle de la vue (_e.texCiel) ; un panneau (plaque unie) a la sienne.
         if (o.isSprite && o.material) {
-          if (o.userData.poi && o.material.map) o.material.map.dispose();
+          if (o.userData.poi && (o.userData.texPanneau || o.material.map)) {
+            (o.userData.texPanneau || o.material.map).dispose();
+          }
           o.material.dispose();
         }
         if (o.isSprite) e.panneaux.delete(o);
@@ -5114,6 +5281,7 @@
     const e = _e, r = e.cv.getBoundingClientRect();
     if (!r.width || !r.height) return false;
     e.rayon = e.rayon || new THREE.Raycaster();
+    e.viseEcran = { x: cx - r.left, y: cy - r.top };
     e.rayon.setFromCamera(new THREE.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1),
       e.camera);
     return true;
@@ -5124,11 +5292,21 @@
     return true;
   }
 
-  // Panneau (POI, membre, repère) le plus proche sur le rayon, ou null.
+  // Panneau (POI, membre, repère) le plus proche sur le rayon, ou null. Rien sous le rayon : l'icône réduite
+  // (_iconeReduite, PANNEAU_REDUIT.px px, plus petite qu'un doigt) la plus proche du point touché à
+  // PANNEAU_REDUIT.toucher px près, rendue sous la forme d'un résultat de rayon ({ object }).
   function _panneauVise() {
     const e = _e, sprites = [];
     e.panneaux.forEach(function (sp) { if (sp.parent && _montreDansScene(sp)) sprites.push(sp); });
-    return sprites.length ? e.rayon.intersectObjects(sprites, false)[0] || null : null;
+    const hit = sprites.length ? e.rayon.intersectObjects(sprites, false)[0] || null : null;
+    if (hit || !e.viseEcran) return hit;
+    let best = null, d = PANNEAU_REDUIT.toucher;
+    sprites.forEach(function (sp) {
+      const q = sp.userData.poi.icone && sp.userData.poi.ecran;
+      const k = q ? Math.hypot(q.x - e.viseEcran.x, q.y - e.viseEcran.y) : Infinity;
+      if (k <= d) { d = k; best = sp; }
+    });
+    return best ? { object: best } : null;
   }
 
   // Premier maillage montré sur le rayon → { x, y (px plan), h (m au-dessus du sol), dist (m), sol (bool) }, ou null
@@ -8602,6 +8780,7 @@
       e.tuiles.forEach(_libererTuile);
       (e.volPassages || []).forEach(_libererVolume);
       if (e.texCiel) e.texCiel.dispose();
+      if (e.icones) e.icones.forEach(function (t) { t.dispose(); });
       if (e.plaques) e.plaques.forEach(function (t) { t.tex.dispose(); t.mat.dispose(); });
       _libererChevrons();
       _viderGroupe(e.marqueursIti);
@@ -8912,10 +9091,16 @@
           bord: sp.userData.poi.bord, halo: !!sp.userData.halo && sp.userData.halo.visible,
           haloXZ: sp.userData.halo ? [sp.userData.halo.position.x, sp.userData.halo.position.z] : null,
           opacite: +sp.material.opacity.toFixed(2), echelle: +sp.scale.x.toFixed(2), fond: sp.userData.fond,
+          icone: !!sp.userData.poi.icone, masque: !!sp.userData.poi.masque, lie: !!sp.userData.poi.lie,
+          passage: !!sp.userData.poi.passage,
+          boite: sp.userData.poi.ecran ? ["x", "y", "w", "h"].map(function (c) {
+            return +sp.userData.poi.ecran[c].toFixed(1);
+          }) : null,
           largeurEcran: +_largeurEcran(sp).toFixed(3),
           lettrePx: +(_largeurEcran(sp) * (sp.userData.ratio || 0) * (e.camera.aspect || 1) * (sp.userData.lettre || 0) *
             (e.cv.clientHeight || 0)).toFixed(1) };
       }),
+      desencombre: e.desencombre ? Object.assign({}, e.desencombre) : null,
       murDecale: e.mats.murs.polygonOffset === true,
       commandes: e.commandes, pave: !!e.pave && e.pave.isConnected,
       stick: e.stickZone ? _etatStick() : null, toucheNom: e.toucheNom, codesBas: e.codesBas,
