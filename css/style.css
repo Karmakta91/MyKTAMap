@@ -9626,6 +9626,11 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
   letter-spacing: 0.02em;
 }
 
+/* Case « Tous les niveaux » (plan multi-niveau), séparée des cases de type. */
+.kta-rd-tous {
+  margin-bottom: 12px;
+}
+
 .kta-rd-total-wrap {
   margin-top: 14px;
   padding: 12px 14px;

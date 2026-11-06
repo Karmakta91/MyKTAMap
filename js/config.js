@@ -1158,6 +1158,23 @@ function setPlanRenduVue3D(planId, value) {
 window.getPlanRenduVue3D = getPlanRenduVue3D;
 window.setPlanRenduVue3D = setPlanRenduVue3D;
 
+// ── 📏 Distance totale : case « Tous les niveaux » (js/interfaceDistanceTotale.js), retenue par plan ──────────
+// Par plan, pref `distTotTousNiveaux` ; absente → false (le niveau affiché seul compte).
+function getPlanDistTotTousNiveaux(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  return _readPlanPrefs(pid).distTotTousNiveaux === true;
+}
+function setPlanDistTotTousNiveaux(planId, value) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (value === true) prefs.distTotTousNiveaux = true;
+  else delete prefs.distTotTousNiveaux;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanDistTotTousNiveaux = getPlanDistTotTousNiveaux;
+window.setPlanDistTotTousNiveaux = setPlanDistTotTousNiveaux;
+
 // ── Vue d'édition de la 3D retenue, par plan, sur cet appareil (vue3d.js > _retenirEdition) ──────────────────
 // Pref `vue3dEdition` = { on: bool, recul: m, inclinaison: ° } ; absente ou illisible → null (hauteur d'yeux, zoom et
 // inclinaison par défaut). Bornes appliquées par la vue. La place de la caméra libre ne se retient pas.

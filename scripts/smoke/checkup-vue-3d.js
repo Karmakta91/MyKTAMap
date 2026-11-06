@@ -81,7 +81,8 @@
 // Fiche d'un POI jonction lu dans un calque ou remplacé par une copie (39 bis, =passagecalque) : boutons de passage,
 // passage effectué, fiche gardée quand la scène est refaite (POI sans uid, pilier du calque), édition d'une copie.
 // 📏 Distance totale et ⛏️ Volume exploité du groupe 📐 (40, =mesures ; souris et doigt) : vue d'édition seule,
-// panneaux par-dessus la vue, niveau de la vue compté, ruban magenta au sol suivi des cases et effacé par ❌.
+// panneaux par-dessus la vue, niveau de la vue compté (ou tout le plan, case « Tous les niveaux », ruban du niveau de la
+// vue seul), ruban magenta au sol suivi des cases et effacé par ❌.
 // Réglage ⚙️ Fiches (37, =fiches) : défaut selon le pointeur, coupé = rien sur pilier, zone, tracé (POI : sa fiche), retenu.
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
 // colonne d'outils ou le joystick, doigt levé puis reposé, rotation engagée à 10° sans saut, pas bornés.
@@ -6422,9 +6423,10 @@ async function sectionPoi3D(nav) {
 // le niveau actif). Par pointeur (souris, doigt) : 📏 et ⛏️ dans le panneau 📐 de la colonne, qui n'existe pas à
 // hauteur d'yeux ; 📏 ouvre son panneau par-dessus la vue (elementFromPoint), compte le niveau de la vue seul ; ruban
 // au sol à la couleur du surlignage de la carte, sur les tronçons comptés, suivi des cases sans reconstruire la scène ;
-// fermer le panneau garde le ruban, ❌ Effacer l'efface dans les deux vues ; vue fermée, la carte recompte tous les
-// niveaux. ⛏️ sans surface : le message de la carte, par-dessus la vue ; surface ♦️ posée au toucher dans la vue :
-// volume calculé sur elle, au niveau de la vue (pilier du −1 compté, celui du 0 non).
+// case « Tous les niveaux » : tout le plan compté, ruban du niveau de la vue seul, note qui le dit ; fermer le panneau
+// garde le ruban, ❌ Effacer l'efface dans les deux vues ; vue fermée, la carte (placée au niveau de la vue) compte
+// son niveau actif. ⛏️ sans surface : le message de la carte, par-dessus la vue ; surface ♦️ posée au toucher dans la
+// vue : volume calculé sur elle, au niveau de la vue (pilier du −1 compté, celui du 0 non).
 async function sectionMesures3D(nav, mode) {
   const webkit = nav.browserType().name() === "webkit";
   const nom = "§ 40 [" + mode + "] ";
@@ -6523,6 +6525,7 @@ async function sectionMesures3D(nav, mode) {
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
       window._currentLoadedPlanId = "v3d-checkup-mesures";
+      window.setPlanDistTotTousNiveaux(null, false);
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
       window.setPlanRenduVue3D(null, "structures");
       if (window._rdEffacerHighlight) window._rdEffacerHighlight();
@@ -6595,6 +6598,21 @@ async function sectionMesures3D(nav, mode) {
       nom + "📏 : case décochée → ruban et total suivent (1 tronçon, " + d2.attendu + "), scène non reconstruite",
       Object.assign({ reindex0: reindex0 }, d2));
     await page.evaluate(function () { document.getElementById("kta-rd-chk-secondaire").click(); });
+    // Case « Tous les niveaux » : total du plan, ruban du −1 seul, note qui le dit ; décochée ensuite.
+    await tapEcran(await centre("#kta-rd-tous"));
+    await page.waitForTimeout(250);
+    const dT = await page.evaluate(function () {
+      const e = window.KtaVue3D.etat(), m = document.getElementById("kta-rd-modal");
+      const note = m.querySelector(".kta-rd-note3d"), nv = m.querySelector(".kta-rd-niveau");
+      return { ruban: e.distanceTotale, total: document.getElementById("kta-rd-total").textContent,
+        attendu: window.formatDistance(58, 1), niveau: nv.textContent, attenduNiveau: window.I18n.t("disttot.niveauTous"),
+        note: note.hidden ? null : note.textContent, attenduNote: window.I18n.t("disttot.note3d", { lvl: "−1" }) };
+    });
+    verifier(!!dT.ruban && dT.ruban.segments === 2 && dT.ruban.troncons === 2 && dT.total === dT.attendu &&
+      dT.niveau === dT.attenduNiveau && dT.note === dT.attenduNote,
+    nom + "📏 : « Tous les niveaux » → " + dT.attendu + ", ruban du −1 seul (2 tronçons), la note le dit", dT);
+    await tapEcran(await centre("#kta-rd-tous"));
+    await page.waitForTimeout(250);
     await tapEcran(await centre("#kta-rd-done"));
     await page.waitForTimeout(250);
     const d3 = await page.evaluate(function () {
@@ -6630,10 +6648,11 @@ async function sectionMesures3D(nav, mode) {
       await new Promise(function (ok) { setTimeout(ok, 200); });
       const s = window.getDistanceTotaleStatus();
       return { totalM: s ? s.totalM : null, calque2d: document.querySelectorAll(".kta-rd-highlight-polyline").length,
-        niveauVue: window.KtaVue3D.niveauVue() };
+        niveauVue: window.KtaVue3D.niveauVue(), actif: window.APP_CONFIG.activeLevel };
     });
-    verifier(d5.totalM !== null && Math.abs(d5.totalM - 58) < 1e-6 && d5.calque2d === 1 && d5.niveauVue === undefined,
-      nom + "📏 : vue fermée, la carte garde le surlignage et recompte tous les niveaux (58 m)", d5);
+    verifier(d5.totalM !== null && Math.abs(d5.totalM - 28) < 1e-6 && d5.calque2d === 1 && d5.niveauVue === undefined &&
+      d5.actif === -1,
+    nom + "📏 : vue fermée, la carte placée au −1 de la vue garde le surlignage et compte son niveau actif (28 m)", d5);
     await page.evaluate(function () { window._rdEffacerHighlight(); });
 
     // ── ⛏️ ──
