@@ -1781,9 +1781,20 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   rien ne brûle de près). Sous 100 % : force et halo × k, coupure × √k, décroissance de 1,2 à 1,6, brouillard de 45
   à 25 % (25 % : force × 0,25, portée moitié). Faisceau (`_coneLampe`) : demi-angle = cône / 2 (160° = 80°, sous la
   borne π/2 du SpotLight de three.js), pénombre de 0,4 (40°) à 0,55 (71°), puis jusqu'à 1 (160° : le bord se fond
-  dans le noir au lieu de dessiner un rond net). **Plein jour** = éclairage d'ambiance de la vue d'édition (0,9) à
-  hauteur d'yeux, lampe inchangée, brouillard gardé à la portée (même coût, la portée reste le seul réglage de
-  « jusqu'où l'on voit »), commencé à 65 % au moins. Ancienne clé `myktamap_v3d_lampe_v1` lue tant que les
+  dans le noir au lieu de dessiner un rond net). **☀️ Plein jour** (décision produit, `_appliquerPortee`,
+  `SOLEIL`) : un **soleil rasant**, `DirectionalLight` blanc chaud (constante physique, pas une couleur de la
+  charte) de force 1,8, à 30° au-dessus de l'horizon, venu de 315° du **nord réel du plan** (`_orienterSoleil` :
+  `e.nord` + 315°, relu à `kta:northOffsetChange` ; sans nord calibré, le haut du plan comme la boussole) — le
+  nord-ouest, convention des cartes en relief : faces tournées vers lui claires, les autres dans l'ambiance
+  baissée à 0,25, l'ombre tombe toujours du même côté (repère d'orientation). **Ni ombre portée ni occlusion**
+  (coût iPhone). Brouillard et fond **clairs** (jeton `--kta-texte-3` lu par `_jetonsSombres`), de 40 % à 100 % de la
+  portée à hauteur d'yeux (même coût, la portée reste le seul réglage de « jusqu'où l'on voit »), du point visé
+  (`recul`) à la fin habituelle en vue d'édition : le lointain pâlit, le proche reste net. La lampe garde son réglage
+  et s'ajoute autour de soi (curseurs actifs ; 25 % la rend discrète). ⚠️ contrat : la case vaut dans les **deux
+  vues** — décochée en vue d'édition = l'éclairage plat d'origine (`AMBIANCE_PLONGEE`, 0,9, fond noir), lisible pour
+  dessiner. 🩸 Le soleil reste dans la scène à 0 hors Plein jour : le nombre de lumières entre dans les shaders,
+  l'ajouter au gré de la case recompilerait tout. Coût mesuré (`checkup-vue-3d.js` § 12 quater,
+  `KTA_V3D_SEUL=pleinjour`, iPhone émulé avec `KTA_V3D_TEL=1`) : dans le bruit de la nuit. Ancienne clé `myktamap_v3d_lampe_v1` lue tant que les
   nouvelles manquent : « forte » = 200 %, « jour » = Plein jour ; jamais réécrite. ⚠️ contrat : la lampe se
   **multiplie** au facteur `lampe` d'une greffe (`_lampeGreffe` : force × courbe × k, portée × coupure × max(0,06, k),
   comptée sur la portée réglée et rendue au retrait). ⚠️ contrat : une greffe qui pose

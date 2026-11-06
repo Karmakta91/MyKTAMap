@@ -48,7 +48,9 @@
 // la carte ; joystick (pointeurs tactiles synthétiques, pointeur grossier simulé) et pavé (PC, option) ; plus de
 // « bêta », toast de présence en info, nom d'un membre touché, focus rendu après « Je suis ici ? ». Lampe frontale
 // des membres (12 ter, KTA_V3D_SEUL=lampes : cette section seule) : halo hors brouillard jusqu'à la portée, absent
-// au-delà, caché par un pilier, 2 lumières au plus, faisceau avec cap, rien sur notre avatar, coût. Greffe (21) :
+// au-delà, caché par un pilier, 2 lumières au plus, faisceau avec cap, rien sur notre avatar, coût. ☀️ Plein jour
+// (12 quater, =pleinjour) : soleil rasant selon le nord du plan, ambiance baissée, brouillard clair, lampe active,
+// case effective en vue d'édition, greffe figée, coût. Greffe (21) :
 // prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
 // (23) : refus, confirmation, partie en vagues, masquage, endurance, tir, recharge, objets, égaré, silhouette, fin.
 // Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), intensité 25 / 300 %
@@ -130,6 +132,8 @@ const LS_PREGATES = {
   "myktamap_alert_seen_offline-precache-2026-06": "2026-06-13T12:00:00Z",
   "myktamap_tutorial_seen_v1": "1"
 };
+// ☀️ Plein jour (vue3d.js > AMBIANCE.jour, SOLEIL.force, jeton --kta-texte-3 du brouillard et du fond).
+const PJ = { ambiance: 0.25, soleil: 1.8, fond: "#98a1b3", brume: 0.4 };
 const RX_3D = /\/lib\/three\/|\/js\/vue3d\.js|\/css\/vue3d\.css/;
 
 const problemes = [];
@@ -1866,6 +1870,248 @@ async function sectionLampesMembres(page) {
     r.cout.avec.msMed + " (écart " + dc + " ms ; p95 " + r.cout.sans.msP95 + " → " + r.cout.avec.msP95 + ")");
   verifier(r.cout.lumieres && r.cout.lumieres.allumees === 2, "mesure du coût faite avec 2 lumières allumées",
     r.cout.lumieres);
+}
+
+// ☀️ Plein jour (§ 12 quater, KTA_V3D_SEUL=pleinjour ; avec KTA_V3D_TEL=1, processeur ralenti x4) : couloir est-ouest
+// fictif entre deux piliers, regard vers l'est. Soleil rasant venu du nord-ouest du plan (sans nord calibré : le haut
+// du plan) : la face du pilier sud (tournée vers le nord, à droite) claire, celle du pilier nord (à gauche) dans
+// l'ambiance ; nord calibré à 180° : l'inverse. Ambiance baissée, brouillard et fond clairs ; lampe active et
+// réglable ; vue d'édition : la case change l'éclairage (plat décoché) et reste retenue ; greffe figée : soleil
+// éteint, ☀️ grisé, rendu au retrait ; coût par image nuit / Plein jour ; captures (KTA_V3D_CAPTURES).
+async function sectionPleinJour(page) {
+  const lumiere = async function (pts, rayon) {
+    await page.evaluate(async function () {
+      for (let i = 0; i < 10; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    });
+    await page.waitForTimeout(200);
+    const b64 = (await page.screenshot({ type: "png" })).toString("base64");
+    return page.evaluate(function (a) {
+      return new Promise(function (ok) {
+        const img = new Image();
+        img.onload = function () {
+          const c = document.createElement("canvas"), k = img.width / window.innerWidth;
+          c.width = img.width; c.height = img.height;
+          const g = c.getContext("2d");
+          g.drawImage(img, 0, 0);
+          ok(a.pts.map(function (p) {
+            const r = Math.round(a.rayon * k), x = Math.round(p[0] * window.innerWidth * k) - r;
+            const y = Math.round(p[1] * window.innerHeight * k) - r;
+            const d = g.getImageData(x, y, 2 * r + 1, 2 * r + 1).data;
+            let m = 0;
+            for (let i = 0; i < d.length; i += 4) m += (d[i] + d[i + 1] + d[i + 2]) / 3;
+            return Math.round(m / (d.length / 4));
+          }));
+        };
+        img.src = "data:image/png;base64," + a.b;
+      });
+    }, { b: b64, pts: pts, rayon: rayon || 12 });
+  };
+  // Part de l'écran où tombent des points du monde (m, autour du départ) : caméra prêtée par une greffe d'un instant.
+  const projeter = function (pts) {
+    return page.evaluate(async function (a) {
+      const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+      let c = null;
+      const retirer = K.greffer({ nom: "essai-projection", scene: function (x) { c = x; } });
+      await new Promise(function (ok) { setTimeout(ok, 50); });
+      c.camera.updateMatrixWorld();
+      const out = a.pts.map(function (p) {
+        const v = new c.THREE.Vector3(a.d.x / sc + p[0], p[1], a.d.y / sc + p[2]).project(c.camera);
+        return [+((v.x + 1) / 2).toFixed(4), +((1 - v.y) / 2).toFixed(4)];
+      });
+      retirer();
+      await new Promise(function (ok) { setTimeout(ok, 50); });
+      return out;
+    }, { pts: pts, d: ctx.d });
+  };
+  const ctx = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    if (window.getTrackingActif()) window.stopTracking();
+    window.__v3dPJ = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      acc: window.ktaEstAccessible, portee: window.getVue3DPortee ? window.getVue3DPortee() : null,
+      jour: window.getVue3DPleinJour ? window.getVue3DPleinJour() : false,
+      calibre: window.getPlanNorthCalibre, nord: window.getPlanNorthOffset,
+      intensite: window.getVue3DLampeIntensite ? window.getVue3DLampeIntensite() : null };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.ktaEstAccessible = function () { return true; };
+    window._currentLoadedPlanId = "v3d-checkup-plein-jour";
+    window.getPlanNorthCalibre = function () { return false; };
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setPlanRenduVue3D(null, "structures");
+    window.setPlanHauteurGalerie(null, 4);
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    window.setRoads([]); window.setZones([]); window.setEditorPoints([]);
+    window.setStructures([
+      { uid: "st_pj_n", type: "pilier-1", level: C.activeLevel, points: rect(-40, -6, 40, -1.5) },
+      { uid: "st_pj_s", type: "pilier-1", level: C.activeLevel, points: rect(-40, 1.5, 40, 6) }
+    ]);
+    window.KtaGalerie.invalider();
+    const d = P(0, 0);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: C.activeLevel }, commandes: "pave" });
+    K.reglerPortee(30);
+    K.reglerLampe(100);
+    K.reglerPleinJour(false);
+    return { d: d };
+  });
+  const lire = function () {
+    return page.evaluate(function () {
+      const e = window.KtaVue3D.etat();
+      return Object.assign({ brume: e.portee.brume, recul: e.portee.recul, vue: e.vue, nord: e.boussole.nord },
+        e.eclairage);
+    });
+  };
+  // Faces intérieures des piliers nord (à gauche) et sud (à droite), 6 m devant (à l'écran du téléphone aussi).
+  const r = {};
+  r.nuit = await lire();
+  const FACES = await projeter([[6, 2, -1.49], [6, 2, 1.49]]);
+  r.nuit.px = await lumiere(FACES, 4);
+  await page.evaluate(function () { window.KtaVue3D.reglerPleinJour(true); });
+  r.jour = await lire();
+  r.jour.px = await lumiere(FACES, 4);
+  await capture(page, "plein-jour-yeux");
+  // Nord calibré à 180° : le soleil passe de l'autre côté.
+  await page.evaluate(function () {
+    window.getPlanNorthCalibre = function () { return true; };
+    window.getPlanNorthOffset = function () { return 180; };
+    window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
+  });
+  r.sud = await lire();
+  r.sud.px = await lumiere(FACES, 4);
+  // Lampe en Plein jour : active, réglable (25 % = discrète), curseurs actifs.
+  r.lampe = await page.evaluate(function () {
+    const K = window.KtaVue3D, e = K.etat().eclairage;
+    const out = { intensite: e.intensite, grises: e.curseurs.map(function (c) { return c.grise; }),
+      a25: K.reglerLampe(25) };
+    out.i25 = K.etat().eclairage.intensite;
+    K.reglerLampe(100);
+    return out;
+  });
+  // Coût par image (médiane, ms), à hauteur d'yeux puis en vue d'édition, nuit puis Plein jour.
+  r.cout = await page.evaluate(async function () {
+    const K = window.KtaVue3D, out = {};
+    const pause = function () { return new Promise(function (ok) { requestAnimationFrame(ok); }); };
+    for (const vue of ["yeux", "plongee"]) {
+      if (K.etat().vue !== vue) K.basculerVue();
+      for (const jour of [false, true]) {
+        K.reglerPleinJour(jour);
+        await pause(); await pause();
+        const m = K.mesurer({ images: 120 });
+        out[vue + (jour ? "Jour" : "Nuit")] = { med: m.msMed, p95: m.msP95 };
+      }
+    }
+    if (K.etat().vue !== "yeux") K.basculerVue();
+    return out;
+  });
+  // Vue d'édition : décochée = éclairage plat ; cochée = soleil et brouillard clair depuis le point visé ; retenue.
+  await page.evaluate(function () {
+    const K = window.KtaVue3D;
+    K.reglerPleinJour(false);
+    if (K.etat().vue !== "plongee") K.basculerVue();
+  });
+  r.edSans = await lire();
+  // Faces intérieures des piliers nord et sud, 6 m devant, à mi-hauteur (vues d'en haut : minces, rayon de 2 px).
+  // Nord toujours calibré à 180° : le soleil vient du sud-est, la face du pilier nord est la claire.
+  const facesEd = await projeter([[6, 2, -1.49], [6, 2, 1.49]]);
+  r.edSans.px = await lumiere(facesEd, 2);
+  r.edSans.ecran = facesEd;
+  await capture(page, "plein-jour-edition-sans");
+  await page.evaluate(function () {
+    document.querySelector('[data-v3d="pleinJour"]').dispatchEvent(new PointerEvent("pointerdown",
+      { bubbles: true, pointerId: 7 }));
+  });
+  r.edJour = await lire();
+  r.edJour.px = await lumiere(facesEd, 2);
+  await capture(page, "plein-jour-edition");
+  r.retenue = await page.evaluate(async function (d) {
+    const K = window.KtaVue3D;
+    K.basculerVue();
+    const yeux = K.etat().eclairage.soleil.intensite;
+    K.basculerVue();
+    const ed = K.etat().eclairage.soleil.intensite;
+    await K.fermer();
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, commandes: "pave" });
+    const e = K.etat().eclairage;
+    return { yeux: yeux, edition: ed, pref: window.getVue3DPleinJour(), rouverte: e.soleil.intensite,
+      presse: e.jour.presse };
+  }, ctx.d);
+  // Greffe qui fige les réglages : Plein jour coupé (soleil éteint, fond noir), ☀️ grisé ; rendu au retrait.
+  r.fige = await page.evaluate(async function () {
+    const K = window.KtaVue3D;
+    let c = null;
+    const retirer = K.greffer({ nom: "essai-plein-jour", scene: function (x) { c = x; } });
+    await new Promise(function (ok) { setTimeout(ok, 50); });
+    c.regler({ reglagesFiges: true });
+    const e = K.etat().eclairage;
+    const out = { soleil: e.soleil.intensite, ambiance: e.ambiance, fond: e.fond, grise: e.jour.grise,
+      refus: K.reglerPleinJour(true) };
+    retirer();
+    await new Promise(function (ok) { setTimeout(ok, 50); });
+    out.apres = K.etat().eclairage.soleil.intensite;
+    return out;
+  });
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, s = window.__v3dPJ;
+    await K.fermer();
+    if (typeof window.setVue3DPortee === "function" && s.portee) window.setVue3DPortee(s.portee);
+    if (typeof window.setVue3DPleinJour === "function") window.setVue3DPleinJour(!!s.jour);
+    if (typeof window.setVue3DLampeIntensite === "function" && s.intensite) window.setVue3DLampeIntensite(s.intensite);
+    window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
+    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id; window.ktaEstAccessible = s.acc;
+    window.getPlanNorthCalibre = s.calibre; window.getPlanNorthOffset = s.nord;
+    window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
+    window.setRoads([]); window.setZones([]); window.setStructures([]);
+    window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
+    window.KtaGalerie.invalider();
+  });
+  console.log("§ 12 quater — ☀️ Plein jour (soleil rasant, brouillard clair)");
+  const prox = function (a, b) { return a.every(function (v, i) { return Math.abs(v - b[i]) < 0.01; }); };
+  const k = Math.SQRT1_2 * Math.cos(30 * Math.PI / 180), sH = 0.5;
+  const N = r.nuit, J = r.jour, S = r.sud;
+  verifier(N.soleil.intensite === 0 && N.ambiance === 0.04 && N.fond === "#000000" && N.brouillard === "#000000",
+    "nuit : soleil éteint, ambiance 0,04, brouillard et fond noirs", N);
+  verifier(J.soleil.intensite === PJ.soleil && J.ambiance === PJ.ambiance && J.ambiance < 0.9 &&
+    prox(J.soleil.direction, [-k, sH, -k]) && J.nord === 0,
+    "Plein jour : soleil rasant (30°) venu du nord-ouest du plan (sans nord calibré : le haut), ambiance baissée " +
+    "(" + PJ.ambiance + " au lieu de 0,9)", J);
+  verifier(J.fond === PJ.fond && J.brouillard === PJ.fond && Math.abs(J.brume[0] - 30 * PJ.brume) < 0.01 &&
+    J.brume[1] === 30, "Plein jour : brouillard clair (jeton --kta-texte-3) de 40 % à 100 % de la portée, fond pareil",
+    { fond: J.fond, brouillard: J.brouillard, brume: J.brume });
+  verifier(J.px[1] - J.px[0] > 40 && Math.abs(N.px[1] - N.px[0]) < 25,
+    "relief : face au soleil claire, face opposée sombre (gauche / droite " + J.px.join(" / ") + " ; nuit " +
+    N.px.join(" / ") + ")", { jour: J.px, nuit: N.px });
+  verifier(S.nord === 180 && prox(S.soleil.direction, [k, sH, k]) && S.px[0] - S.px[1] > 25,
+    "nord calibré à 180° : le soleil suit le nord du plan, l'ombre change de côté (" + S.px.join(" / ") + ")", S);
+  const L = r.lampe;
+  verifier(L.intensite === N.intensite && L.intensite > 0 && L.grises.every(function (g) { return !g; }) &&
+    L.a25 === 25 && Math.abs(L.i25 - 6) < 0.01,
+    "lampe en Plein jour : active à son réglage (force " + L.intensite + "), curseurs actifs, 25 % = discrète", L);
+  const ES = r.edSans, EJ = r.edJour;
+  verifier(ES.vue === "plongee" && ES.soleil.intensite === 0 && ES.ambiance === 0.9 && ES.fond === "#000000" &&
+    EJ.vue === "plongee" && EJ.soleil.intensite === PJ.soleil && EJ.ambiance === PJ.ambiance &&
+    EJ.fond === PJ.fond && Math.abs(EJ.brume[0] - EJ.recul) < 0.02 && EJ.jour.presse === "true",
+    "vue d'édition : décochée = éclairage plat (0,9) ; cochée (☀️ de la tuile) = soleil, ambiance baissée, " +
+    "brouillard clair depuis le point visé", { sans: ES, jour: EJ });
+  verifier(EJ.px[0] - EJ.px[1] > 25 && Math.abs(ES.px[0] - ES.px[1]) < EJ.px[0] - EJ.px[1],
+    "vue d'édition : la case change bien l'image, relief vu d'en haut (faces nord / sud " + ES.px.join(" / ") +
+    " → " + EJ.px.join(" / ") + ")",
+    { sans: ES.px, jour: EJ.px });
+  verifier(r.retenue.yeux === PJ.soleil && r.retenue.edition === PJ.soleil && r.retenue.pref === true &&
+    r.retenue.rouverte === PJ.soleil && r.retenue.presse === "true",
+    "Plein jour retenu d'une vue à l'autre et à la réouverture", r.retenue);
+  verifier(r.fige.soleil === 0 && r.fige.ambiance === 0.04 && r.fige.fond === "#000000" && r.fige.grise &&
+    r.fige.refus === false && r.fige.apres === PJ.soleil,
+    "greffe qui fige les réglages : Plein jour coupé (soleil éteint), ☀️ grisé, rendu au retrait", r.fige);
+  const C = r.cout;
+  console.log("  📏 coût par image (médiane / p95, ms) : yeux nuit " + C.yeuxNuit.med + " / " + C.yeuxNuit.p95 +
+    " · yeux Plein jour " + C.yeuxJour.med + " / " + C.yeuxJour.p95 + " · édition plate " + C.plongeeNuit.med +
+    " / " + C.plongeeNuit.p95 + " · édition Plein jour " + C.plongeeJour.med + " / " + C.plongeeJour.p95);
+  verifier(C.yeuxJour.med <= C.yeuxNuit.med * 1.5 + 0.5 && C.plongeeJour.med <= C.plongeeNuit.med * 1.5 + 0.5,
+    "Plein jour : coût par image dans le bruit de la nuit (une lumière directionnelle, sans ombre)", C);
 }
 
 async function sectionZonesNiveaux(page) {
@@ -7850,6 +8096,18 @@ async function sectionGestesDoigt(nav) {
         } catch (e) { console.log("  ℹ️ ralentissement processeur indisponible : " + e.message); }
       }
       await sectionLampesMembres(page);
+    } else if (SEUL === "pleinjour") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      if (TEL) {
+        try {
+          const cdp = await contexte.newCDPSession(page);
+          await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+          console.log("  ℹ️ processeur ralenti x4");
+        } catch (e) { console.log("  ℹ️ ralentissement processeur indisponible : " + e.message); }
+      }
+      await sectionPleinJour(page);
     } else if (SEUL === "cone") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -12477,7 +12735,8 @@ async function sectionGestesDoigt(nav) {
         // Commandes de la vue venues après le jeu : colonne d'outils, lampe, faisceau et Plein jour restent fermées.
         const jour = q("#kta-vue3d .kta-v3d-btn-jour");
         r.commandes = { dessin: !!(K.etat().dessin && K.etat().dessin.barre), lampe: K.reglerLampe(40), faisceau: K.reglerFaisceau(30),
-          jour: K.reglerPleinJour(true), boutonJour: !!jour && jour.disabled };
+          jour: K.reglerPleinJour(true), boutonJour: !!jour && jour.disabled,
+          soleil: K.etat().eclairage.soleil.intensite, fond: K.etat().eclairage.fond };
         K.placer(d.x, d.y, 90);
         X.poser("egare", P(-25, 0).x, P(-25, 0).y);
         await pause(50);
@@ -12769,8 +13028,10 @@ async function sectionGestesDoigt(nav) {
       verifier(!!MK.ficheDoigt.cible && !MK.ficheDoigt.fiche && MK.ficheDoigt.reglage === false,
         "jeu : tir au doigt sur un objet de la scène → aucune fiche (regler({ fiches: false }))", MK.ficheDoigt);
       verifier(MK.commandes.dessin === false && MK.commandes.lampe === false && MK.commandes.faisceau === false &&
-        MK.commandes.jour === false && MK.commandes.boutonJour,
-        "jeu : colonne d'outils, lampe, faisceau et Plein jour refusés pendant la partie", MK.commandes);
+        MK.commandes.jour === false && MK.commandes.boutonJour && MK.commandes.soleil === 0 &&
+        MK.commandes.fond === "#000000",
+        "jeu : colonne d'outils, lampe, faisceau et Plein jour refusés pendant la partie (soleil éteint, fond noir)",
+        MK.commandes);
       await sectionColonneEtJeu(page, MX);
       verifier(MK.viseur.cap === 100 && MK.viseur.apres === 90,
         "jeu : viseur à la souris — regard rejoué par la vue (40 px → 10°), glisser clos (pas de doigt resté posé)",
@@ -13689,23 +13950,23 @@ async function sectionGestesDoigt(nav) {
         "faisceau borné à 40 / 160° (demi-angle ≤ π/2), pénombre qui suit (0,4 à 40°, 0,55 à 71°, 0,7 à 100°, 1 à " +
         "160° : le bord se fond dans le noir), retenu", { F6: F6, F4: F4, FC: FC });
       const RJ = RG.jour, RJO = RG.rouverteL, RJC = RG.jourCoupe;
-      verifier(act(RJ, 150, 100, true) && RJ.pref.jour && RJ.ambiance === 0.9 && RJ.jour.presse === "true" &&
-        prL(RJ.brume[0], 19.5) && prL(RJ.intensite, 27) && RJ.lampe === 1 && !RJ.repere &&
+      verifier(act(RJ, 150, 100, true) && RJ.pref.jour && RJ.ambiance === PJ.ambiance && RJ.jour.presse === "true" &&
+        prL(RJ.brume[0], 12) && RJ.soleil.intensite === PJ.soleil && RJ.fond === PJ.fond && prL(RJ.intensite, 27) && RJ.lampe === 1 && !RJ.repere &&
         act(RJO, 150, 100, true) && RJO.curseurs[0].valeur === 150 && RJO.curseurs[1].valeur === 100 &&
-        RJO.ambiance === 0.9 && act(RJC, 150, 100, false) && RJC.ambiance === 0.04 && !RJC.pref.jour &&
+        RJO.ambiance === PJ.ambiance && act(RJC, 150, 100, false) && RJC.ambiance === 0.04 && !RJC.pref.jour &&
         RJC.jour.presse === "false",
-        "☀️ Plein jour : interrupteur à part (ambiance 0,9, brouillard à 65 % au moins, lampe inchangée), les trois " +
+        "☀️ Plein jour : interrupteur à part (soleil, ambiance baissée, brouillard clair à 40 %, lampe inchangée), les trois " +
         "réglages relus à la réouverture, coupé de nouveau", { J: RJ, O: RJO, C: RJC });
       const MF = RG.migreForte, MJ = RG.migreJour;
       verifier(act(MF, 200, 71, false) && MF.pref.intensite === 200 && prL(MF.intensite, 30) && MF.decay === 0.5 &&
-        act(MJ, 100, 71, true) && MJ.ambiance === 0.9 && MJ.apres.pref.jour === false &&
+        act(MJ, 100, 71, true) && MJ.ambiance === PJ.ambiance && MJ.apres.pref.jour === false &&
         MJ.apres.ancienne === "jour" && act(RG.defautRendu, 100, 71, false),
         "ancien réglage retenu : « forte » = 200 %, « jour » = Plein jour (ancienne clé jamais réécrite)",
         { MF: MF, MJ: MJ });
       const GL = RG.greffeLibre, G1 = RG.greffe100;
       const actifs = function (o) { return !o.jour.grise && o.curseurs.every(function (c) { return !c.grise; }); };
       verifier(act(GL, 200, 120, true) && GL.lampe === 0.5 && prL(GL.intensite, 15) && prL(GL.portee, 19.5) &&
-        prL(GL.angle, rad(120), 0.001) && GL.ambiance === 0.9 && actifs(GL) && act(G1, 100, 120, true) &&
+        prL(GL.angle, rad(120), 0.001) && GL.ambiance === PJ.ambiance && actifs(GL) && act(G1, 100, 120, true) &&
         prL(G1.intensite, 12) && prL(G1.portee, 15) && G1.lampe === 0.5 && G1.jourCoupe === false &&
         G1.jourRemis === true,
         "greffe sans reglagesFiges : 200 %, 120° et Plein jour gardés et permis, facteur du jeu multiplié (×0,5 : " +
@@ -13718,7 +13979,7 @@ async function sectionGestesDoigt(nav) {
           o.app.lampe.jour === true;
       };
       verifier(RGA.distance === 100 && act(RGA, 250, 140, true) && pousses(RGA) && RGA.tousActifs &&
-        RGA.brume[1] === 100 && prL(RGA.intensite, 33) && prL(RGA.portee, 145) && RGA.ambiance === 0.9,
+        RGA.brume[1] === 100 && prL(RGA.intensite, 33) && prL(RGA.portee, 145) && RGA.ambiance === PJ.ambiance,
         "avant la greffe : portée 100 m, lampe 250 %, faisceau 140°, Plein jour, retenus, contrôles actifs", RGA);
       const RGS = RG.sansCle, RGF = RG.cleFausse;
       verifier(RGS.distance === 100 && act(RGS, 250, 140, true) && RGS.tousActifs && RGS.lampe === 0.3 &&
@@ -13738,7 +13999,7 @@ async function sectionGestesDoigt(nav) {
         "reglagesFiges : 30 m, 100 %, 71°, Plein jour coupé, lampe du jeu sur 30 m (×0,3), trois curseurs et ☀️ " +
         "grisés, saisies refusées, appareil intact", RGP);
       verifier(RGR.distance === 100 && RGR.brume[1] === 100 && act(RGR, 250, 140, true) && RGR.lampe === 1 &&
-        prL(RGR.portee, 145) && RGR.tousActifs && pousses(RGR) && RGR.ambiance === 0.9,
+        prL(RGR.portee, 145) && RGR.tousActifs && pousses(RGR) && RGR.ambiance === PJ.ambiance,
         "retrait de la greffe : 100 m, 250 %, 140° et Plein jour rendus, contrôles actifs", RGR);
       verifier(RGO.distance === 100 && act(RGO, 250, 140, true),
         "l'appareil garde 100 m, 250 %, 140° et Plein jour (réouverture)", RGO);
@@ -13986,6 +14247,7 @@ async function sectionGestesDoigt(nav) {
       await sectionDessin(page);
       await sectionZonesNiveaux(page);
       await sectionLampesMembres(page);
+      await sectionPleinJour(page);
       await sectionEcartItineraire(page);
       await sectionEncartReste(page);
       await sectionCamera(page);

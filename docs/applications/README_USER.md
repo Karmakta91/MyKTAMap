@@ -562,7 +562,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **🔭 Portée** : un curseur de 15 à 100 m (30 m par défaut) règle jusqu'où tu vois. Le brouillard noir, la lampe et le décor suivent. Plus loin, c'est plus lourd pour le téléphone. Retenu sur cet appareil.
 - **💡 Lampe** : un curseur de 25 à 300 % (100 % par défaut) règle la force de la lampe frontale ; plus elle est forte, plus elle porte loin. Retenu sur cet appareil.
 - **🔦 Faisceau** : un curseur de 40 à 160° (71° par défaut) règle la largeur du faisceau ; plus il est large, plus son bord se fond dans le noir. Retenu sur cet appareil.
-- **☀️ Plein jour** : tout est éclairé, comme une maquette ; le brouillard reste à la portée. Retenu sur cet appareil.
+- **☀️ Plein jour** : un soleil rasant, venu toujours du même côté (le nord-ouest du plan, ou son coin haut gauche si le nord n'est pas calibré) : les faces tournées vers lui sont claires, les autres plus sombres, le relief des piliers et des joints se lit ; un léger brouillard clair pâlit le lointain. Ta lampe reste allumée à son réglage (baisse-la à 25 % pour qu'elle se fasse discrète). Marche aussi en ✏️ Édition (décoché, l'éclairage plat pour dessiner). Retenu sur cet appareil.
 - Pendant une partie de jeu, la portée repasse à 30 m, la lampe à 100 %, le faisceau à 71° et Plein jour est coupé (réglages grisés), puis tes réglages reviennent.
 
 #### 🏛️ Les trois rendus

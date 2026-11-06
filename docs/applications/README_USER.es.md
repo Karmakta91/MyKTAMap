@@ -562,7 +562,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **🔭 Alcance**: un cursor de 15 a 100 m (30 m por defecto) ajusta hasta dónde ves. La niebla negra, la lámpara y el decorado siguen. Más lejos es más pesado para el teléfono. Se guarda en este dispositivo.
 - **💡 Lámpara**: un cursor de 25 a 300 % (100 % por defecto) ajusta la fuerza de la linterna frontal; cuanto más fuerte, más lejos alumbra. Se guarda en este dispositivo.
 - **🔦 Haz**: un cursor de 40 a 160° (71° por defecto) ajusta la anchura del haz; cuanto más ancho, más se funde su borde en la oscuridad. Se guarda en este dispositivo.
-- **☀️ Pleno día**: todo iluminado, como una maqueta; la niebla se queda en el alcance. Se guarda en este dispositivo.
+- **☀️ Pleno día**: un sol rasante, siempre del mismo lado (el noroeste del plano, o su esquina superior izquierda si el norte no está calibrado): las caras vueltas hacia él quedan claras, las demás más oscuras, y se lee el relieve de pilares y juntas; una ligera niebla clara aclara lo lejano. Tu linterna sigue encendida con su ajuste (bájala al 25 % para que sea discreta). Funciona también en ✏️ Edición (sin marcar: la luz plana para dibujar). Se guarda en este dispositivo.
 - Durante una partida, el alcance vuelve a 30 m, la lámpara a 100 %, el haz a 71° y Pleno día se apaga (ajustes en gris), y luego vuelven tus ajustes.
 
 #### 🏛️ Las tres representaciones

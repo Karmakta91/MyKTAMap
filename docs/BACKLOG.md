@@ -126,11 +126,6 @@
   et croisements exacts). ⚠️ D'abord vérifier si le trajet suit un VRAI tracé à travers le mur (le strict n'y peut rien).
   `qui: Claude · action: rejouer l'itinéraire réel, puis topo (réglage Générateur + par plan, Raccords à vérifier)
   · depuis: 06/11/2026 · taille: S`
-- **☀️ Plein jour avec du contraste** — l'ambiance forte et uniforme efface le relief (la lampe le donne). Validé
-  06/11 : lumière « soleil » rasante (suit le nord du plan) + ambiance baissée, brouillard clair qui pâlit le lointain,
-  lampe gardée en option ; ni ombres. En vue d'Édition (éclairage forcé, case sans effet) : case FONCTIONNELLE.
-  `qui: Claude · action: coder après l'enquête mémoire · fini: relief lisible en Plein jour, checkup, iPhone tenu
-  · depuis: 06/11/2026 · taille: S`
 - **Vue 3D « Tout le plan »** — case dans ⚙️ de la 3D, cochée par défaut (portée 15–100 m, recul 150 m) ; décochée :
   portée jusqu'au plan entier (cran « Tout le plan »), recul jusqu'à tout voir, scène construite sur tout le plan,
   brouillard qui recule ; message à la décoche, recochée à chaque ouverture au téléphone (pas au PC).

@@ -562,7 +562,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **🔭 Range**: a slider from 15 to 100 m (30 m by default) sets how far you see. The black fog, the lamp and the scenery follow. Further is heavier for the phone. Kept on this device.
 - **💡 Lamp**: a slider from 25 to 300% (100% by default) sets the headlamp's strength; the stronger, the farther it reaches. Kept on this device.
 - **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
-- **☀️ Daylight**: everything is lit, like a scale model; the fog stays at the range. Kept on this device.
+- **☀️ Daylight**: a low sun, always from the same side (the north-west of the map, or its top-left corner if north is not calibrated): faces turned towards it are bright, the others darker, so the relief of pillars and joints shows; a light pale haze fades the distance. Your lamp stays on at its setting (turn it down to 25% to make it discreet). Also works in ✏️ Edit (unticked: flat lighting for drawing). Kept on this device.
 - During a game, the range goes back to 30 m, the lamp to 100%, the beam to 71° and Daylight is off (settings greyed out), then your settings come back.
 
 #### 🏛️ The three renderings

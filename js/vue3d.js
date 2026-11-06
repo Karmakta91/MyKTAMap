@@ -73,10 +73,17 @@
   // la lampe d'origine), faisceau en ° de cône total (71° ≈ demi-angle de 0,62 rad), Plein jour à part.
   const REGLAGE_LAMPE = window.V3D_LAMPE ||
     { intensite: { min: 25, max: 300, defaut: 100 }, faisceau: { min: 40, max: 160, defaut: 71 } };
-  // Éclairage d'ambiance à hauteur d'yeux : nuit (la lampe seule), Plein jour (celui de la vue plongeante) ; Plein
-  // jour commence le brouillard à 65 % de la portée au moins (plus loin, le fond noir tranche en bande à l'horizon),
-  // la portée restant le seul réglage de « jusqu'où l'on voit » (décision : même coût).
-  const AMBIANCE = { nuit: 0.04, jour: 0.9, brumeJour: 0.65 };
+  // Éclairage d'ambiance : nuit (la lampe seule), Plein jour (fond baissé : c'est le soleil qui éclaire). Plein jour
+  // commence le brouillard clair à 40 % de la portée à hauteur d'yeux (il pâlit le lointain et cache le bord de la
+  // scène construite, fond de la même couleur), la portée restant le seul réglage de « jusqu'où l'on voit ».
+  const AMBIANCE = { nuit: 0.04, jour: 0.25, brumeJour: 0.4 };
+  // ☀️ Soleil du Plein jour (décision produit) : une lumière directionnelle rasante, sans ombre portée ni occlusion
+  // (coût iPhone), qui vient de `azimut`° du nord RÉEL du plan (315 = nord-ouest, la convention des cartes en relief :
+  // un relief éclairé du haut à gauche se lit en bosse) et `hauteur`° au-dessus de l'horizon : faces tournées vers
+  // lui claires, les autres dans l'ambiance, relief et joints lisibles partout ; l'ombre tombe toujours du même côté
+  // (repère d'orientation). Plan sans nord calibré : le haut du plan, comme la boussole. `couleur` = blanc chaud,
+  // constante physique (pas une couleur de la charte).
+  const SOLEIL = { force: 1.8, azimut: 315, hauteur: 30, couleur: 0xfff4e0 };
   // Pénombre du faisceau (part du cône fondue) aux bornes et au défaut : un faisceau large se fond dans le noir au
   // lieu de dessiner un rond net sur les parois ; 0,55 au défaut (la lampe d'origine).
   const PENOMBRE = { min: 0.4, defaut: 0.55, max: 1 };
@@ -2435,6 +2442,12 @@
     _lampeGreffe();
     e.ambiance = new THREE.AmbientLight(0xffffff, AMBIANCE.nuit);
     e.scene.add(e.ambiance);
+    // 🩸 Toujours dans la scène, à 0 hors Plein jour : le nombre de lumières entre dans les shaders de three.js, en
+    // ajouter ou en retirer au gré de la case recompilerait tous les matériaux (à-coup). Cible laissée à l'origine
+    // (hors scène) : la direction est sa seule position (_orienterSoleil).
+    e.soleil = new THREE.DirectionalLight(SOLEIL.couleur, 0);
+    e.scene.add(e.soleil);
+    _orienterSoleil();
     // Membres, repères et itinéraires d'une extension (_majEquipe) ; géométries partagées refaites avec la scène.
     e.equipe = new THREE.Group();
     e.scene.add(e.equipe);
@@ -4231,11 +4244,22 @@
     e.nordCalibre = typeof window.getPlanNorthCalibre === "function" && window.getPlanNorthCalibre() === true;
     const lire = typeof window.getPlanNorthOffset === "function" ? window.getPlanNorthOffset : null;
     e.nord = e.nordCalibre && lire ? Number(lire()) || 0 : 0;
+    _orienterSoleil();
     e.roseAngle = Number.NaN;
     if (e.boussole) {
       const non = e.nordCalibre ? "" : " · " + _t("vue3d.nordNonCalibre");
       e.boussole.setAttribute("aria-label", _t("vue3d.boussole") + non);
     }
+    e.sale = true;
+  }
+
+  // Soleil du Plein jour vers SOLEIL.azimut° du nord réel (e.nord = cap plan du nord ; angle plan 0 = haut de
+  // l'image = −z, 90 = +x), SOLEIL.hauteur° au-dessus de l'horizon. Nord pas encore lu : le haut du plan.
+  function _orienterSoleil() {
+    const e = _e;
+    if (!e || !e.soleil) return;
+    const a = ((Number(e.nord) || 0) + SOLEIL.azimut) * Math.PI / 180, h = SOLEIL.hauteur * Math.PI / 180;
+    e.soleil.position.set(Math.sin(a) * Math.cos(h), Math.sin(h), -Math.cos(a) * Math.cos(h)).multiplyScalar(10);
     e.sale = true;
   }
 
@@ -4283,11 +4307,20 @@
 
   // Brouillard, profondeur de la caméra, carré de sol, ambiance et lampe selon la vue, la portée, le recul et le
   // réglage de la lampe. En plongée, le brouillard se compte depuis la caméra : il part du recul.
+  // ⚠️ contrat (décision produit) : la case ☀️ vaut dans les deux vues. Cochée : soleil rasant (SOLEIL), ambiance
+  // baissée, brouillard et fond clairs (jeton neutre de la charte) ; la lampe garde son réglage et s'ajoute autour de
+  // soi. Décochée : nuit à hauteur d'yeux, éclairage plat en vue d'édition (AMBIANCE_PLONGEE, lisible pour dessiner),
+  // brouillard et fond noirs. En vue d'édition, le brouillard clair part du point visé (au-delà, le lointain pâlit ;
+  // en deçà, net). Une greffe qui fige les réglages coupe Plein jour (_lampeEnVigueur).
   function _appliquerPortee() {
     const e = _e, haut = e.vue === "plongee", l = _lampeEnVigueur(), r = _rayonVue();
-    const brume = l.jour ? Math.max(AMBIANCE.brumeJour, l.courbe.brume) : l.courbe.brume;
-    e.ambiance.intensity = haut ? AMBIANCE_PLONGEE : l.jour ? AMBIANCE.jour : AMBIANCE.nuit;
-    e.scene.fog.near = haut ? e.recul + r * 0.3 : e.distance * brume;
+    const brume = l.jour ? AMBIANCE.brumeJour : l.courbe.brume;
+    e.ambiance.intensity = l.jour ? AMBIANCE.jour : haut ? AMBIANCE_PLONGEE : AMBIANCE.nuit;
+    e.soleil.intensity = l.jour ? SOLEIL.force : 0;
+    const fond = l.jour ? _couleurFixe(_jetonsSombres().neutre) : _couleurFixe("#000000");
+    e.scene.fog.color.copy(fond);
+    e.scene.background.copy(fond);
+    e.scene.fog.near = haut ? e.recul + (l.jour ? 0 : r * 0.3) : e.distance * brume;
     e.scene.fog.far = haut ? e.recul + r + 2 : e.distance;
     e.camera.far = e.scene.fog.far + (haut ? 10 : 5);
     e.camera.updateProjectionMatrix();
@@ -4452,7 +4485,7 @@
     return e.lampeVoulue.faisceau;
   }
 
-  // ☀️ Plein jour (éclairage d'ambiance de la vue plongeante), retenu sur l'appareil. Rend l'état en vigueur ; une
+  // ☀️ Plein jour (soleil rasant, brouillard clair : _appliquerPortee), retenu sur l'appareil. Rend l'état en vigueur ; une
   // greffe qui fige les réglages le refuse (false, rien d'écrit) ; null vue fermée.
   function reglerPleinJour(oui) {
     const e = _e;
@@ -8632,6 +8665,10 @@
         portee: e.lampe ? +e.lampe.distance.toFixed(2) : null, decay: e.lampe ? e.lampe.decay : null,
         angle: e.lampe ? +e.lampe.angle.toFixed(4) : null, penombre: e.lampe ? e.lampe.penumbra : null,
         halo: e.halo ? +e.halo.intensity.toFixed(3) : null, ambiance: e.ambiance ? e.ambiance.intensity : null,
+        soleil: e.soleil ? { intensite: e.soleil.intensity, direction: e.soleil.position.clone().normalize().toArray()
+          .map(function (v) { return +v.toFixed(3); }) } : null,
+        fond: e.scene ? "#" + e.scene.background.getHexString() : null,
+        brouillard: e.scene ? "#" + e.scene.fog.color.getHexString() : null,
         curseurs: [[e.curseurLampe, e.lampeValeur], [e.curseurFaisceau, e.faisceauValeur]].map(function (q) {
           const c = q[0];
           return c ? { id: c.id, valeur: Number(c.value), min: Number(c.min), max: Number(c.max), grise: c.disabled,
