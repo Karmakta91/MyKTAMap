@@ -132,6 +132,32 @@ function point(page) {
       "clic sur la carte : le POI est posé à cet endroit", { cible: cible, p2: p2 });
     verifier(!encore, "mode repositionnement terminé après le clic");
 
+    // 3 bis. 🩸 Les marqueurs remplacés quittent le GROUPE layerEditor (calque « Ajout »), pas seulement la carte :
+    //    masquer puis réafficher ce calque ne fait revenir aucun ancien marqueur à l'ancienne place.
+    const groupe = await page.evaluate(function () {
+      const L0 = window.L, G = window.layerEditor, n = window.getEditorPoints().length;
+      const marqueurs = function () {
+        return G.getLayers().filter(function (l) { return l instanceof L0.Marker; }).length;
+      };
+      const dansGroupe = marqueurs();
+      window.map.removeLayer(G);
+      window.map.addLayer(G);
+      let surCarte = 0;
+      window.map.eachLayer(function (l) { if (l instanceof L0.Marker && G.hasLayer(l)) surCarte++; });
+      return { points: n, dansGroupe: dansGroupe, surCarte: surCarte };
+    });
+    verifier(groupe.dansGroupe === groupe.points && groupe.surCarte === groupe.points,
+      "après Repositionner : un seul marqueur par POI dans le calque, même masqué puis réaffiché", groupe);
+    // 🩸 iOS : pas de menu de l'image (Partager, Enregistrer…) sur un appui long d'icône. -webkit-touch-callout
+    //    n'existe que sur iOS (ni Chromium ni le WebKit de bureau ne le calculent) : on lit la règle servie.
+    const callout = await page.evaluate(async function () {
+      const css = await (await fetch("css/style.css", { cache: "no-store" })).text();
+      const m = css.match(/\.leaflet-marker-icon,\s*\.leaflet-marker-icon img,[^{]*\{[^}]*-webkit-touch-callout:\s*none/);
+      return { regle: !!m };
+    });
+    verifier(callout.regle, "icône de POI : -webkit-touch-callout: none servi (pas de menu de l'image à l'appui long iOS)",
+      callout);
+
     // 4. Échap puis ✕ annulent sans rien écrire : bandeau retiré, le clic suivant sur la carte ne déplace rien.
     //    🩸 Le bandeau `.kta-iti-floater` fait reculer shortcuts.js > _echapCarte : l'Échap est celui d'editor.js.
     const annuler = async function (geste) {

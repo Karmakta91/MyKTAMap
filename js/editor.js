@@ -20,6 +20,15 @@ let listePoints = [];
 // Marqueurs Leaflet créés par _ajouterMarker, pour les retirer SÉLECTIVEMENT au re-rendu (layerEditor contient
 // aussi les roads et zones de session : clearLayers les ferait disparaître à la suppression d'UN point).
 let _markersEditor = [];
+
+// 🩸 Retirer du GROUPE, pas seulement de la carte : marker.remove() le laissait dans layerEditor (calque « Ajout »
+// du contrôle des couches) ; masquer puis réafficher ce calque remettait sur la carte les anciens marqueurs (POI
+// repositionné revenu à son ancienne place, doublons) et chaque rendu en gardait un par point en mémoire.
+function _retirerMarqueursEditor() {
+  _markersEditor.forEach(function(m) {
+    try { if (window.layerEditor) window.layerEditor.removeLayer(m); else m.remove(); } catch(e) { /* déjà retiré */ }
+  });
+}
 let _editorClickHandler = null;  // ref stable pour un off idempotent (cf. initEditor / measure.js)
 
 const EDITOR_TAG_LABELS = {
@@ -62,7 +71,7 @@ function initEditor() {
   // polling SessionPersist réenregistre les points de l'ancien plan sous l'ID du nouveau.
   listePoints = [];
   // Nos marqueurs seulement (cf. _markersEditor).
-  _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
+  _retirerMarqueursEditor();
   _markersEditor = [];
 
   // Binding du clic idempotent (cf. measure.js) : l'ancien handler est retiré de la carte avant d'en poser un,
@@ -1056,7 +1065,7 @@ function removeLastEditorPoint() {
 window.renderEditorPoints = function() {
   if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan("points");
   if (!window.layerEditor) return;
-  _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
+  _retirerMarqueursEditor();
   _markersEditor = [];
   listePoints.forEach(_ajouterMarker);
 };
