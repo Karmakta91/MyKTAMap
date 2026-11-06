@@ -6413,6 +6413,329 @@ async function sectionPoi3D(nav) {
   }
 }
 
+// ── 39. Point précis d'un POI (js/poiPrecis.js) et édition d'un POI depuis la fiche 3D ───────────────────────────────
+// POI FICTIFS de session, galerie principale de 2,5 m à z = 0, rendu mixte. Formes : plaque posée au mur le plus
+// proche de son point précis (l'autre mur que celui de son icône), chatière en deux points (longueur et axe des deux
+// points), chatière sans point précis inchangée (1,8 m, axe de la galerie), puits d'aération (pa, passage entre
+// niveaux) qui ignore son point précis, panneau d'un POI sans forme au point précis. Puis, par pointeur (souris, doigt)
+// dans la vue d'édition : fiche d'un POI de session = ✏️ Modifier (formulaire de la carte au-dessus de la vue, nom
+// changé, scène refaite), 📍 Déplacer (bandeau au-dessus de la vue, toucher au sol, uid gardé, updatedAt changé, une
+// entrée ⏪, Ctrl+Z), Échap et ✕ annulent sans fermer la vue, 🎯 point précis d'une chatière en deux touchers ; POI de
+// calque et lecture seule : aucun bouton.
+async function sectionPointPrecis3D(nav, mode) {
+  const webkit = nav.browserType().name() === "webkit";
+  const nom = "§ 39 [" + mode + "] ";
+  console.log("§ 39 — point précis d'un POI, édition d'un POI depuis la fiche 3D (" + mode + ")");
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, hasTouch: mode === "doigt",
+    serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    // ── Formes au point précis ──
+    const F = await page.evaluate(async function () {
+      const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      const images = async function (n) {
+        for (let i = 0; i < (n || 3); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      };
+      window.__ppP = P;
+      window.__ppRel = function (q) { return [+(q.x / sc - ox).toFixed(3), +(q.y / sc - oz).toFixed(3)]; };
+      window.getPlanEditionVue3D = function () { return null; };
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedStructures = vide;
+      // Un POI de calque (lecture) : sa fiche n'a aucun bouton d'édition.
+      const cq = Object.assign({ id: "cq", nom: "Calque fictif", uid: "pt_pp3_cq", level: 0, tags: ["info"],
+        layerId: "x" }, P(-12, 0.6));
+      window.getAllEmbeddedPoints = function () { return [cq]; };
+      window._currentLoadedPlanId = "v3d-checkup-precis";
+      C.multiLevel = false;
+      window.setPlanRenduVue3D(null, "mixte");
+      const poi = function (id, tag, x, z, pr) {
+        const o = Object.assign({ id: id, nom: "POI " + id, uid: id, level: 0, tags: [tag], updatedAt: 1000 }, P(x, z));
+        if (pr) o.precis = pr;
+        return o;
+      };
+      const Q = function (x, z, x2, z2) {
+        const a = P(x, z), o = { x: a.x, y: a.y };
+        if (x2 !== undefined) { const b = P(x2, z2); o.x2 = b.x; o.y2 = b.y; }
+        return o;
+      };
+      window.setStructures([]); window.setZones([]);
+      window.setRoads([{ uid: "rd_pp3", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+      window.setEditorPoints([poi("pt_pp3_pl0", "plaque", -5, 2), poi("pt_pp3_pl1", "plaque", 5, 2, Q(8, -1.1)),
+        poi("pt_pp3_ch1", "chatiere", -20, 0.5, Q(-22, -0.3, -19, 0.3)), poi("pt_pp3_ch0", "chatiere", -35, 0.5),
+        poi("pt_pp3_pa", "pa", 20, 0.5, Q(25, 0)), poi("pt_pp3_info", "info", 30, 2, Q(34, -0.5))]);
+      window.KtaGalerie.invalider();
+      window.HistoryManager.reset();
+      await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 90 }, distanceVue: 200, tuiles: false,
+        commandes: "pave" });
+      await new Promise(function (ok) { setTimeout(ok, 200); });
+      await images(4);
+      const e = K.etat();
+      const vol = function (tag, x) {
+        return e.volumes.filter(function (v) {
+          return v.tag === tag && Math.abs(window.__ppRel(v)[0] - x) < 4;
+        })[0] || null;
+      };
+      const pick = function (v) { return v ? { place: window.__ppRel(v), cote: v.cote, long: v.long, dir: v.dir } : null; };
+      const info = e.panneaux.filter(function (s) { return s.nom === "POI pt_pp3_info"; })[0];
+      const pa25 = e.volumes.filter(function (v) { return v.tag === "pa" && Math.abs(window.__ppRel(v)[0] - 25) < 1; });
+      return { pl0: pick(vol("plaque", -5)), pl1: pick(vol("plaque", 7)), ch1: pick(vol("chatiere", -20)),
+        ch0: pick(vol("chatiere", -35)), pa: pick(vol("pa", 21)), paPrecis: pa25.length > 0,
+        info: info ? [+(info.x - ox).toFixed(2), +(info.z - oz).toFixed(2)] : null };
+    });
+    verifier(F.pl0 && F.pl1 && F.pl0.place[1] > 1 && F.pl1.place[1] < -1 && Math.abs(F.pl1.place[0] - 8) < 0.3,
+      nom + "plaque : au mur le plus proche de son point précis (l'autre mur que son icône), en face de lui",
+      { pl0: F.pl0, pl1: F.pl1 });
+    const L3 = Math.hypot(3, 0.6), D3 = Math.atan2(0.6, 3) * 180 / Math.PI;
+    verifier(F.ch1 && Math.abs(F.ch1.long - L3) < 0.02 && Math.abs(F.ch1.dir - D3) < 0.2 &&
+      Math.abs(F.ch1.place[0] + 20.5) < 0.1,
+    nom + "chatière en deux points : longueur " + L3.toFixed(2) + " m et axe " + D3.toFixed(1) + "° des deux points, " +
+      "au milieu", F.ch1);
+    verifier(F.ch0 && Math.abs(F.ch0.long - 1.8) < 0.01 && Math.abs(F.ch0.dir) < 0.01,
+      nom + "chatière sans point précis : 1,8 m dans l'axe de la galerie (inchangée)", F.ch0);
+    verifier(F.pa && Math.abs(F.pa.place[0] - 20) < 0.6 && !F.paPrecis,
+      nom + "passage entre niveaux (pa) : son point précis est ignoré, volume à son icône", F);
+    verifier(F.info && Math.abs(F.info[0] - 34) < 0.05 && Math.abs(F.info[1] + 0.5) < 0.05,
+      nom + "POI sans forme : son panneau est au point précis", F.info);
+
+    // ── Édition depuis la fiche 3D (vue d'édition) ──
+    const cdp = (mode === "doigt" && !webkit) ? await ctx.newCDPSession(page) : null;
+    const tapEcran = async function (p) {
+      if (!p) throw new Error("cible introuvable");
+      if (mode === "souris") { await page.mouse.click(p[0], p[1]); return; }
+      if (cdp) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: p[0], y: p[1] }] });
+        await page.waitForTimeout(60);
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        return;
+      }
+      await page.evaluate(function (a) {
+        const el = document.elementFromPoint(a[0], a[1]) || document.body;
+        const o = { bubbles: true, cancelable: true, composed: true, pointerId: 94, pointerType: "touch",
+          isPrimary: true, clientX: a[0], clientY: a[1], button: 0 };
+        el.dispatchEvent(new PointerEvent("pointerdown", o));
+        el.dispatchEvent(new PointerEvent("pointerup", o));
+        if (el.tagName !== "CANVAS") el.dispatchEvent(new MouseEvent("click", o));
+      }, p);
+    };
+    const centre = async function (sel) {
+      const h = await page.$(sel);
+      const r = h ? await h.boundingBox() : null;
+      return r ? [r.x + r.width / 2, r.y + r.height / 2] : null;
+    };
+    // Sol (x, z m) → écran, par la caméra de la vue (greffe le temps de la lire).
+    const sol = function (x, z) {
+      return page.evaluate(function (a) {
+        let c = null;
+        const deg = window.KtaVue3D.greffer({ nom: "v3d-pp-cam", scene: function (q) { c = q; } });
+        if (deg) deg();
+        const P = window.__ppP(a[0], a[1]), sc = window.APP_CONFIG.scale;
+        const v = new c.THREE.Vector3(P.x / sc, 0, P.y / sc).project(c.camera);
+        const r = document.querySelector("#kta-vue3d canvas").getBoundingClientRect();
+        return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height];
+      }, [x, z]);
+    };
+    const point = function (uid) {
+      return page.evaluate(function (u) {
+        const p = window.getEditorPoints().find(function (o) { return o.uid === u; });
+        return p ? JSON.parse(JSON.stringify(p)) : null;
+      }, uid);
+    };
+    const ouvrirFiche = async function (nomPoi) {
+      await page.evaluate(function () {
+        const b = document.querySelector('#kta-vue3d [data-v3d="ficheFermer"]'); if (b) b.click();
+      });
+      await page.waitForTimeout(150);
+      const sp = await page.evaluate(function (n) {
+        const s = window.KtaVue3D.etat().panneaux.filter(function (q) { return q.nom === n && q.visible; })[0];
+        return s ? [s.ecran.x, s.ecran.y] : null;
+      }, nomPoi);
+      if (!sp) return null;
+      await tapEcran(sp);
+      await page.waitForTimeout(550);   // la fiche neuve ignore le pointeur FICHE_NEUVE ms
+      return page.evaluate(function () {
+        const f = window.KtaVue3D.etat().fiche;
+        return f ? { nom: f.nom, edit: Array.prototype.map.call(document.querySelectorAll("#kta-vue3d [data-v3d-edit]"),
+          function (b) { return b.dataset.v3dEdit; }) } : null;
+      });
+    };
+    const bandeau = function () {
+      return page.evaluate(function () {
+        const f = document.getElementById("kta-precis-floater");
+        if (!f) return null;
+        const r = f.getBoundingClientRect(), el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return { texte: f.textContent, dessus: !!el && f.contains(el) };
+      });
+    };
+    const aller = function (x, z) {
+      return page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = window.__ppP;
+        K.placer(P(a[0], a[1]).x, P(a[0], a[1]).y, 90);
+        await new Promise(function (ok) { setTimeout(ok, 500); });
+      }, [x, z]);
+    };
+    await page.evaluate(function () { window.KtaVue3D.basculerVue(); });
+    await aller(30, 0);
+    await page.waitForTimeout(400);
+    let f = await ouvrirFiche("POI pt_pp3_info");
+    verifier(f && ["modifier", "deplacer", "precis", "precis-retirer"].every(function (a) {
+      return f.edit.indexOf(a) >= 0;
+    }), nom + "fiche 3D d'un POI de session : ✏️ Modifier, 📍 Déplacer, 🎯 Refaire, Retirer", f);
+    // 📍 Déplacer
+    const p0 = await point("pt_pp3_info");
+    await tapEcran(await centre('#kta-vue3d [data-v3d-edit="deplacer"]'));
+    await page.waitForTimeout(300);
+    const b0 = await bandeau();
+    const ficheFermee = await page.evaluate(function () { return !window.KtaVue3D.etat().fiche; });
+    verifier(b0 && b0.dessus && /nouvel emplacement/.test(b0.texte) && ficheFermee,
+      nom + "📍 Déplacer : bandeau au-dessus de la vue, fiche fermée", b0);
+    await capture(page, "precis-bandeau-" + mode);
+    await tapEcran(await sol(32, -0.6));
+    await page.waitForTimeout(500);
+    const p1 = await point("pt_pp3_info");
+    const rel1 = await page.evaluate(function (p) { return window.__ppRel(p); }, p1);
+    const undo1 = await page.evaluate(function () { return window.HistoryManager.canUndo(); });
+    verifier(Math.abs(rel1[0] - 32) < 0.15 && Math.abs(rel1[1] + 0.6) < 0.15 && p1.uid === p0.uid &&
+      p1.updatedAt > p0.updatedAt && JSON.stringify(p1.precis) === JSON.stringify(p0.precis) && undo1 &&
+      !(await bandeau()),
+    nom + "toucher au sol : l'icône du POI y est reposée (uid gardé, updatedAt changé, point précis gardé, ⏪)",
+      { rel: rel1, uid: p1.uid, maj: [p0.updatedAt, p1.updatedAt] });
+    await page.evaluate(function () { if (document.activeElement) document.activeElement.blur(); });
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(400);
+    const p2 = await point("pt_pp3_info");
+    verifier(p2.x === p0.x && p2.y === p0.y, nom + "Ctrl+Z dans la vue : le POI revient à sa place", [p0.x, p2.x]);
+    // Échap, ✕
+    await ouvrirFiche("POI pt_pp3_info");
+    await tapEcran(await centre('#kta-vue3d [data-v3d-edit="deplacer"]'));
+    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    const esc = await page.evaluate(function () {
+      return { ouvert: window.KtaVue3D.etat().ouvert, bandeau: !!document.getElementById("kta-precis-floater") };
+    });
+    await tapEcran(await sol(36, 0));
+    await page.waitForTimeout(300);
+    const p3 = await point("pt_pp3_info");
+    verifier(esc.ouvert && !esc.bandeau && p3.x === p0.x, nom + "Échap annule le mode, la vue reste ouverte, rien posé",
+      esc);
+    await ouvrirFiche("POI pt_pp3_info");
+    await tapEcran(await centre('#kta-vue3d [data-v3d-edit="deplacer"]'));
+    await page.waitForTimeout(300);
+    await tapEcran(await centre("#kta-precis-cancel"));
+    await page.waitForTimeout(300);
+    const ann = await page.evaluate(function () {
+      return { ouvert: window.KtaVue3D.etat().ouvert, bandeau: !!document.getElementById("kta-precis-floater") };
+    });
+    verifier(ann.ouvert && !ann.bandeau, nom + "✕ Annuler : mode retiré, vue ouverte", ann);
+    // 🎯 Chatière en deux touchers depuis la fiche 3D
+    await aller(-35, 0);
+    f = await ouvrirFiche("POI pt_pp3_ch0");
+    verifier(f && f.edit.indexOf("precis") >= 0 && f.edit.indexOf("precis-retirer") < 0,
+      nom + "chatière sans point précis : « 🎯 Augmenter la précision »", f);
+    await tapEcran(await centre('#kta-vue3d [data-v3d-edit="precis"]'));
+    await page.waitForTimeout(300);
+    const b1 = await bandeau();
+    await tapEcran(await sol(-36.5, -0.2));
+    await page.waitForTimeout(300);
+    const b2 = await bandeau();
+    await tapEcran(await sol(-33.5, 0.2));
+    await page.waitForTimeout(900);
+    const pc = await point("pt_pp3_ch0");
+    const q = pc && pc.precis;
+    const rq = q ? await page.evaluate(function (o) {
+      return [window.__ppRel(o), window.__ppRel({ x: o.x2, y: o.y2 })];
+    }, q) : null;
+    verifier(b1 && /début/.test(b1.texte) && b2 && /fin/.test(b2.texte) && rq && Math.abs(rq[0][0] + 36.5) < 0.15 &&
+      Math.abs(rq[1][0] + 33.5) < 0.15, nom + "🎯 chatière depuis la fiche 3D : début puis fin au sol touché",
+      { b1: b1, b2: b2, rq: rq });
+    let vch = null;
+    for (let i = 0; i < 20 && vch === null; i++) {
+      await page.waitForTimeout(100);
+      vch = await page.evaluate(function () {
+        const v = window.KtaVue3D.etat().volumes.filter(function (o) {
+          return o.tag === "chatiere" && Math.abs(window.__ppRel(o)[0] + 35) < 2 && Math.abs(o.long - 1.8) > 0.01;
+        })[0];
+        return v ? v.long : null;
+      });
+    }
+    verifier(vch !== null && Math.abs(vch - Math.hypot(3, 0.4)) < 0.05,
+      nom + "scène refaite : la chatière prend la longueur des deux touchers", vch);
+    // ✏️ Modifier : formulaire de la carte au-dessus de la vue
+    await aller(30, 0);
+    await ouvrirFiche("POI pt_pp3_info");
+    await tapEcran(await centre('#kta-vue3d [data-v3d-edit="modifier"]'));
+    await page.waitForTimeout(500);
+    const form = await page.evaluate(function () {
+      const m = document.getElementById("kta-poi-modal");
+      if (!m) return null;
+      const r = m.querySelector(".kta-readme-modal-boite").getBoundingClientRect();
+      const el = document.elementFromPoint(r.left + r.width / 2, r.top + 20);
+      return { dessus: !!el && m.contains(el), nom: document.getElementById("kta-poi-nom").value };
+    });
+    verifier(form && form.dessus && form.nom === "POI pt_pp3_info",
+      nom + "✏️ Modifier : le formulaire de la carte s'ouvre au-dessus de la vue, prérempli", form);
+    if (form) {
+      await page.fill("#kta-poi-nom", "Info renommée fictive");
+      await page.locator("#kta-poi-valider").click();
+      let r = null;
+      for (let i = 0; i < 40; i++) {
+        await page.waitForTimeout(60);
+        r = await page.evaluate(function () {
+          const e = window.KtaVue3D.etat();
+          return { ouvert: e.ouvert, fenetre: !!document.getElementById("kta-poi-modal"),
+            panneau: e.panneaux.some(function (s) { return s.nom === "Info renommée fictive" && s.visible; }) };
+        });
+        if (r.panneau) break;
+      }
+      verifier(r.ouvert && !r.fenetre && r.panneau, nom + "validé : retour à la vue, panneau au nouveau nom", r);
+    }
+    // POI de calque, lecture seule : aucun bouton
+    await aller(-12, -0.5);
+    f = await ouvrirFiche("Calque fictif");
+    verifier(f && f.edit.length === 0, nom + "POI de calque : fiche sans bouton d'édition", f);
+    await page.evaluate(function () { window.__ppRefus = window.ktaEditionRefusee; window.ktaEditionRefusee = function () { return true; }; });
+    await aller(30, 0);
+    f = await ouvrirFiche("Info renommée fictive");
+    await page.evaluate(function () { window.ktaEditionRefusee = window.__ppRefus; });
+    verifier(f && f.edit.length === 0, nom + "lecture seule : fiche sans bouton d'édition", f);
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+    await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.stack || err));
+  } finally {
+    await ctx.close();
+  }
+}
+
 // ── 37. Réglage ⚙️ « Fiches » (config.js > getVue3DFichesObjets, vue3d.js > _toucher) ───────────────────────────────
 // Défaut selon le pointeur (fin : ouvert ; grossier, téléphone émulé sous Chromium : coupé) ; coupé : toucher un
 // pilier, une zone ou un tracé n'ouvre rien, un panneau de POI ouvre sa fiche ; ouvert : la fiche du pilier ; bascule
@@ -6906,7 +7229,7 @@ async function sectionGestesDoigt(nav) {
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionDessin(page);
       if (CAPTURES) await capturesDessin(page);
-    } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" ||
+    } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
@@ -13073,6 +13396,9 @@ async function sectionGestesDoigt(nav) {
       await sectionAjusterSourisReelle(nav);
     }
     if (!SEUL || SEUL === "poi") await sectionPoi3D(nav);
+    if (!SEUL || SEUL === "precis") {
+      for (const mode of ["souris", "doigt"]) await sectionPointPrecis3D(nav, mode);
+    }
     if (!SEUL || SEUL === "fiches") await sectionFichesReglage(nav);
     if (!SEUL || SEUL === "gestes") await sectionGestesDoigt(nav);
     if (!SEUL || SEUL === "colonne") await sectionColonnePaysage(nav);

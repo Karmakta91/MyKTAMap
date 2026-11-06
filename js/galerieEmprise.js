@@ -203,6 +203,8 @@
       (Array.isArray(p.accroches) ? p.accroches : []).forEach(function (a) {
         if (a) { mel(a.level); mel(a.x * 10); mel(a.y * 10); }
       });
+      const q = p.precis;   // point précis (poiPrecis.js) : la forme s'y pose
+      if (q) { mel(q.x * 10); mel(q.y * 10); mel((q.x2 || 0) * 10); mel((q.y2 || 0) * 10); }
     }
     _sig = h + ":" + _echelle();
     _sigT = t;
@@ -736,7 +738,8 @@
   }
 
   // Point de départ du volume de passage de p au niveau donné → { x, y, raccord } (px) | null s'il n'y passe pas :
-  // le raccord validé de ce niveau (celui du niveau du POI compris), sinon le POI lui-même.
+  // le raccord validé de ce niveau (celui du niveau du POI compris), sinon son point précis (poiPrecis.js > centre :
+  // jamais pour un passage entre niveaux), sinon le POI lui-même.
   function _departPassage(p, niveau) {
     const J = window.KtaPoiJonction;
     if (!J || !p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
@@ -745,7 +748,9 @@
       const a = J.accroches(p).filter(function (q) { return q.level === niveau; })[0];
       return a ? { x: a.x, y: a.y, raccord: true } : { x: p.x, y: p.y, raccord: false };
     }
-    return _surNiveau(p, niveau) ? { x: p.x, y: p.y, raccord: false } : null;
+    if (!_surNiveau(p, niveau)) return null;
+    const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.centre(p) : null;
+    return c ? { x: c.x, y: c.y, raccord: false } : { x: p.x, y: p.y, raccord: false };
   }
 
   // Demi-largeur (m) d'une emprise de passage en travers de la galerie, cadre doré compris.

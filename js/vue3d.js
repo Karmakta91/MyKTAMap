@@ -241,9 +241,10 @@
   // d'un passage BAS de `trou` m de haut sur `large` m de large (centré ; au plus la galerie moins `jeu` m), roche
   // au-dessus jusqu'au plafond et sur les côtés ; elle n'arrête rien, la caméra s'y abaisse à `oeil` m (on rampe), en
   // descendant sur `approche` m avant l'entrée (et remontant d'autant après la sortie). La roche déborde de
-  // `deborde` m dans les parois (aucun jour au bord). 🩸 Aucune longueur n'est relevée sur le POI : 1,8 m est une
-  // chatière courte (un corps allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux.
-  const CHATIERE = { long: 1.8, trou: 0.6, large: 0.9, jeu: 0.2, oeil: 0.35, approche: 1, deborde: 0.3 };
+  // `deborde` m dans les parois (aucun jour au bord). Longueur : 1,8 m par défaut, une chatière courte (un corps
+  // allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux ; point précis en deux points
+  // (poiPrecis.js : début et fin) : leur distance, `court` m au moins, et leur axe (_segmentChatiere).
+  const CHATIERE = { long: 1.8, court: 0.4, trou: 0.6, large: 0.9, jeu: 0.2, oeil: 0.35, approche: 1, deborde: 0.3 };
   // Profil du trou (t en part de `large`, y en part de `trou`, vers le haut) : sol droit, flancs bas, voûte surbaissée
   // (plus large que haut : on y passe en rampant, pas debout).
   const PROFIL_CHATIERE = [[-0.5, 0], [0.5, 0], [0.5, 0.7], [0.4, 0.9], [0.18, 1], [-0.18, 1], [-0.4, 0.9],
@@ -2902,6 +2903,17 @@
       if (v.acces) _dimAcces(v);
       out.push(v);
     });
+    // Panneau d'un POI à point précis (poiPrecis.js > centre) que son volume n'a pas déjà placé : au point précis,
+    // ramené contre la paroi s'il tombe dans la roche (_contreParoi, la règle des POI).
+    const P = window.KtaPoiPrecis, mod = e.galerie || e.mixte;
+    if (P) {
+      d.points.forEach(function (p) {
+        const c = e.placesPassage.has(p) ? null : P.centre(p._v3dJonction || p);
+        if (!c) return;
+        const pp = mod ? mod.plusProche(c.x, c.y, POI_GALERIE * e.sc) : null;
+        e.placesPassage.set(p, pp ? _contreParoi(c, pp) : [c.x / e.sc, c.y / e.sc]);
+      });
+    }
     if (N === null || !_typeTraceMontre("jonction")) return out;
     d.jonctions.forEach(function (r) {
       if (!Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel) || r.fromLevel === r.toLevel) return;
@@ -3317,7 +3329,9 @@
     else if (v.bassin) v.a = v.b = D.bassin / 2 + D.margelle;
     else if (v.chatiere) {
       v.b = _demiLargeurGalerie(v.cx, v.cz);
-      v.a = CHATIERE.long / 2;
+      const s = _segmentChatiere(v.point);
+      v.a = s ? Math.max(CHATIERE.court, s.l) / 2 : CHATIERE.long / 2;
+      if (s) v.dir = s.ang;
     } else if (v.surParoi) {
       v.a = Math.max(PLAQUE.lMax, EPURE.l, PORTAIL.l) / 2;
       v.b = PORTAIL.ep;
@@ -3333,6 +3347,17 @@
     const cb = v.comblement ? Math.max(v.comblement[0], v.comblement[1]) : 0;
     v.r = Math.hypot(v.a, v.b + cb) + VOLUME.marge + VOLUME.cadre;
     if (v.cone) v.r = Math.max(v.r, Math.hypot(v.cone.cx - v.cx, v.cone.cz - v.cz) + v.cone.R);
+  }
+
+  // Chatière relevée en deux points (poiPrecis.js > lire : début x, y et fin x2, y2) → { l (m), ang (rad, repère de
+  // KtaGalerie.placePassage) } | null. Le centre reste celui de placePassage (le milieu, ramené sur l'axe de la
+  // galerie : la roche barre toute sa largeur) ; seuls la longueur et l'axe viennent des deux points.
+  function _segmentChatiere(p) {
+    const q = window.KtaPoiPrecis && p ? window.KtaPoiPrecis.lire(p) : null;
+    if (!q || q.x2 === undefined) return null;
+    const dx = q.x2 - q.x, dy = q.y2 - q.y;
+    if (Math.hypot(dx, dy) < 1e-6) return null;
+    return { l: Math.hypot(dx, dy) / _e.sc, ang: Math.atan2(dy, dx) };
   }
 
   // Demi-largeur (m) de la galerie dont l'axe est le plus proche de (x, z) (m) à 10 m, modèle du rendu affiché :
@@ -4889,6 +4914,7 @@
       _refusDessin(e.vue !== "plongee" ? "vue à hauteur d'yeux (le dessin se fait en Édition)"
         : "une greffe coupe le dessin (fiches: false)");
     }
+    if (_permisGreffe("fiches") && _poserAuSol(cx, cy)) return true;
     if (window._modeClicCarteActif && window._modeClicCarteActif()) return true;
     if (!_permisGreffe("fiches") || !_rayonEcran(cx, cy)) return false;
     const hit = _panneauVise();
@@ -6307,8 +6333,9 @@
 
   // ── Fiche d'un POI (la fiche de la carte, utils.js > buildPointPopupHtml) ───────────────────────────────
   // Ouverte par-dessus la scène, dans la vue : ses boutons agissent par l'écouteur unique de la carte
-  // (utils.js > _ktaPopupAction, en capture sur document). ⚠️ Sans ✏️ / Repositionner / 🗑️ : ils se jouent sur la
-  // carte 2D, cachée dessous (décision produit). Photos : utils.js > attachPopupPhotos, branché sur un marqueur
+  // (utils.js > _ktaPopupAction, en capture sur document). ⚠️ La fiche de la carte sans ✏️ / Repositionner / 🗑️ ;
+  // un POI de session dans la vue d'édition y gagne ✏️ Modifier, 📍 Déplacer et 🎯 point précis (_editionFiche),
+  // 🗑️ reste sur la carte (décision produit). Photos : utils.js > attachPopupPhotos, branché sur un marqueur
   // de substitution qui n'offre que on / isPopupOpen (les deux seules méthodes qu'il appelle).
 
   // Calque d'un POI de calque de données : id et libellé (favoris), comme utils.js > ajouterPointsDepuisJSON.
@@ -6350,6 +6377,7 @@
     _passagesFiche(boite, p);
     _passerPlanFiche(boite, p);
     boite.appendChild(corps);
+    _editionFiche(boite, p);
     e.ov.appendChild(boite);
     _ficheNeuve(boite);
     const marqueur = {
@@ -6366,6 +6394,56 @@
       } catch (err) { console.warn("[Vue3D] photos de la fiche :", err && err.message); }
     }
     try { boite.focus({ preventScroll: true }); } catch (err) { /* focus refusé : la fiche reste lisible */ }
+    return true;
+  }
+
+  // Vue d'édition, POI de session, droit de modifier (ktaEditionRefusee : lecture seule ; un POI de calque non
+  // rapatrié n'est pas en session) : ✏️ Modifier ouvre le formulaire de la carte au-dessus de la vue (editor.js >
+  // modifierPointEditor ; la scène suit par kta:donneesPlanChange) ; 📍 Déplacer et 🎯 arment le mode de pose de
+  // poiPrecis.js (son bandeau, Échap / ✕), le toucher au sol le sert (_poserAuSol). La fiche se ferme d'abord.
+  function _editionFiche(boite, p) {
+    const e = _e, P = window.KtaPoiPrecis;
+    if (e.vue !== "plongee" || !_permisGreffe("fiches") || _tab(window.getEditorPoints).indexOf(p) < 0) return;
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true)) return;
+    const zone = document.createElement("div");
+    zone.className = "kta-v3d-fiche-passages kta-v3d-fiche-edition";
+    zone.setAttribute("role", "group");
+    const ajout = function (act, cle, titre) {
+      _bouton(zone, "kta-v3d-btn-mode kta-v3d-fiche-passage", _t(cle), _t(titre), null).dataset.v3dEdit = act;
+    };
+    ajout("modifier", "poi.editBtn", "poi.editPoint");
+    if (P) ajout("deplacer", "poiPrecis.deplacer", "poiPrecis.deplacerTitre");
+    if (P && P.applicable(p)) {
+      const pose = !!P.lire(p);
+      ajout("precis", pose ? "poiPrecis.refaire" : "poiPrecis.augmenter", "poiPrecis.titre");
+      if (pose) ajout("precis-retirer", "poiPrecis.retirer", "poiPrecis.retirerTitre");
+    }
+    zone.addEventListener("click", function (ev) {
+      const b = ev.target.closest && ev.target.closest("[data-v3d-edit]");
+      if (!b || !_e) return;
+      const act = b.dataset.v3dEdit, x = p.x, y = p.y, id = p.id;
+      _fermerFiche();
+      if (act === "modifier" && typeof window.modifierPointEditor === "function") window.modifierPointEditor(id, x, y);
+      else if (act === "deplacer" && P) P.armer(id, x, y, "deplacer");
+      else if (act === "precis" && P) P.armer(id, x, y, "precis");
+      else if (act === "precis-retirer" && P) P.retirer(id, x, y);
+    });
+    boite.appendChild(zone);
+  }
+
+  // Mode de pose de poiPrecis.js armé (📍 Déplacer, 🎯 point précis) : le toucher au sol (_pointSol, refus hors de
+  // l'image du plan comme le dessin) devient un clic de la carte à cet endroit. Pas d'aimantation : un POI n'en a
+  // pas, ni sur la carte ni en dessin depuis la vue. → true si le toucher est pris.
+  function _poserAuSol(cx, cy) {
+    const P = window.KtaPoiPrecis;
+    if (!P || !P.enCours() || !window.map || typeof window.convertCoord !== "function") return false;
+    if (!_rayonEcran(cx, cy)) return true;
+    const v = _pointSol();
+    if (!v) { _toast(_t("vue3d.dessin.horizon"), "info"); return true; }
+    if (!_dansPlan(v)) { _toast(_t("vue3d.dessin.horsPlan"), "info"); return true; }
+    try { window.map.fire("click", { latlng: L.latLng(window.convertCoord(v.x, v.y)), ktaVue3D: true }); }
+    catch (err) { console.warn("[Vue3D] pose au sol :", err && err.message); }
+    _e.sale = true;
     return true;
   }
 
