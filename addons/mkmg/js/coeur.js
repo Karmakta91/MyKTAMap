@@ -5,8 +5,8 @@
  */
 
 // addons/mkmg/js/coeur.js — add-on « mkmg » : jeu en vagues dans la vue 3D, sur le plan ouvert. Chargé par la vue 3D
-// seule (vue3d.js > ADDONS_CODE, code « six vers le bas »), jamais au démarrage ; charge à son tour son.js et
-// monde.js et joueur.js (bras et fusil en vue à hauteur d'yeux, silhouette verte en vue plongeante). Expose
+// seule (code « six vers le bas » de son manifeste addons/mkmg/addon.json), jamais au démarrage ; charge à son tour
+// son.js, monde.js et joueur.js (bras et fusil en vue à hauteur d'yeux, silhouette verte en vue plongeante). Expose
 // window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
 // rejoindre un point B (POI de plus en plus loin, sinon un point des tracés) avec des égarés et, dès la vague 2, la
 // silhouette (monde.js) ; fusil à pompe (rage après 20 égarés : santé pleine, 30 s de tir auto, endurance sans fin,

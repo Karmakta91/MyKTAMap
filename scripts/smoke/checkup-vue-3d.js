@@ -12256,6 +12256,10 @@ async function sectionGestesDoigt(nav) {
         window.removeEventListener("kta:vue3dCode", surCode);
         r.lances = lances;
         window.KtaAddons = addonsAvant;
+        // Registre des add-ons (js/ktaAddons.js) : mkmg lu dans son manifeste, code inconnu → rien.
+        const R = window.KtaRegistreAddons, mk = await R.parCode("bas6");
+        r.registre = { noms: (await R.liste()).map(function (m) { return m.nom; }).join(","),
+          entree: mk && mk.entree, secret: mk && mk.secret, inconnu: await R.parCode("haut6") };
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
         K.basculerRendu(renduAvant);
         await K.fermer();
@@ -12298,7 +12302,10 @@ async function sectionGestesDoigt(nav) {
         "code : 6 coups brefs du joystick vers le bas ; un coup tenu ou vers le côté → rien",
         { six: GR.stick6, tenu: GR.stickTenu, cote: GR.stickCote });
       verifier(GR.lances === GR.pave6.codes.length + GR.clavier + GR.stick6,
-        "code : chaque « bas6 » lance l'add-on lié (" + GR.lances + " lancements)", GR.lances);
+        "code : chaque « bas6 » lance l'add-on dont le manifeste le déclare (" + GR.lances + " lancements)", GR.lances);
+      verifier(GR.registre.noms === "mkmg" && GR.registre.entree === "js/coeur.js" && GR.registre.secret === true &&
+        GR.registre.inconnu === null, "registre : add-ons lus dans addons/index.json et leurs manifestes, code " +
+        "inconnu sans add-on", GR.registre);
 
       // ── 23. Add-on « mkmg » (jeu en vagues) : refus, confirmation, partie, masquage, endurance, cible, sortie ──
       const MK = await page.evaluate(async function (a) {

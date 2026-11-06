@@ -12,7 +12,7 @@
 // Définit : CACHE_NAME (version servie) · ASSETS_TO_CACHE (précache) · CRITICAL_APP_SHELL (précache avec retry).
 // Précaché : l'app shell, lang/*.json, LICENSE et les seules docs lues par l'app, toutes sous
 //   docs/applications/ (guides utilisateur, Aide IA, CGU, audit réseau). README.md, CLAUDE.md et le
-//   reste de docs/ ne partent pas dans l'app.
+//   reste de docs/ ne partent pas dans l'app. Add-ons livrés : lus dans leurs manifestes (_assetsAddons).
 // Jamais précachés : version.json, alert.json, ping.html (lus avec un cache-bust `?_=` : servis par le
 //   cache, ils figeraient la mise à jour, les alertes et la sonde de santé).
 // Réseau seul (handler fetch) : killsw.html, Licence-pro.json, denylist.json (hors ligne : liste vide), ZIP
@@ -254,13 +254,9 @@ const ASSETS_TO_CACHE = [
   "./js/vue3d.js",
   "./lib/three/three.module.js",
   "./lib/three/three.core.js",
-  // Add-on lié au code de la vue 3D (vue3d.js > ADDONS_CODE), chargé par elle seule ; précaché comme tout le JS.
-  "./addons/mkmg/js/coeur.js",
-  "./addons/mkmg/js/son.js",
-  "./addons/mkmg/js/monde.js",
-  "./addons/mkmg/js/joueur.js",
-  "./addons/mkmg/css/coeur.css",
-  "./addons/mkmg/img/fusil.svg",
+  // Add-ons (addons/<nom>/) : jamais listés ici, leurs manifestes disent leurs fichiers (_assetsAddons). Le registre
+  // qui les lit est, lui, de l'app.
+  "./js/ktaAddons.js",
   "./fonts/montserrat-400.woff2",
   "./fonts/montserrat-600.woff2",
   "./fonts/montserrat-800.woff2",
@@ -651,6 +647,38 @@ async function _cacheWithRetry(cache, asset, attempts) {
   return false;
 }
 
+// Fichiers des add-ons livrés : addons/index.json, puis chaque addons/<nom>/addon.json (`fichiers`), tous précachés
+// avec la phase 2. Mêmes règles de nom et de chemin que js/ktaAddons.js ; un manifeste illisible est sauté.
+// 🩸 Réseau d'abord, cache ensuite : l'install lit la version déployée, l'inspecteur hors ligne celle déjà en cache.
+async function _jsonAddons(url) {
+  try {
+    const r = await fetch(url, { cache: "no-store" });
+    if (r.ok) return await r.json();
+  } catch (e) { /* hors ligne : le cache */ }
+  const c = await caches.match(url, { ignoreSearch: true });
+  return c ? c.json() : null;
+}
+
+async function _assetsAddons() {
+  const out = [];
+  try {
+    const idx = await _jsonAddons("./addons/index.json");
+    if (!idx || !Array.isArray(idx.addons)) return out;
+    out.push("./addons/index.json");
+    for (const nom of idx.addons) {
+      if (!/^[a-z0-9-]{1,32}$/.test(nom)) continue;
+      const base = "./addons/" + nom + "/";
+      const m = await _jsonAddons(base + "addon.json").catch(function () { return null; });
+      if (!m || !Array.isArray(m.fichiers)) { console.warn("[SW] manifeste d'add-on illisible :", nom); continue; }
+      out.push(base + "addon.json");
+      m.fichiers.forEach(function (f) {
+        if (typeof f === "string" && /^(js|css|img)\/[A-Za-z0-9_-]+(\.[A-Za-z0-9]+)+$/.test(f)) out.push(base + f);
+      });
+    }
+  } catch (e) { console.warn("[SW] add-ons :", e && e.message); }
+  return out;
+}
+
 self.addEventListener("install", (event) => {
   console.log("[SW] Installation");
 
@@ -681,7 +709,7 @@ self.addEventListener("install", (event) => {
       // `_cacheAddDiag` catch toutes ses propres exceptions et alimente le
       // log IDB d'install — on n'a pas besoin de wrapper try/catch ici.
       const BATCH_SIZE = 10;
-      const phase2Assets = ASSETS_TO_CACHE.filter(function(a) {
+      const phase2Assets = ASSETS_TO_CACHE.concat(await _assetsAddons()).filter(function(a) {
         return CRITICAL_APP_SHELL.indexOf(a) === -1;
       });
       for (let i = 0; i < phase2Assets.length; i += BATCH_SIZE) {
@@ -824,12 +852,16 @@ self.addEventListener("message", (event) => {
 
   if (data.type === "GET_EXPECTED_ASSETS") {
     if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        type:      "EXPECTED_ASSETS",
-        cacheName: CACHE_NAME,
-        assets:    ASSETS_TO_CACHE.slice(),
-        critical:  CRITICAL_APP_SHELL.slice()
+      const port = event.ports[0];
+      const envoi = _assetsAddons().then(function(addons) {
+        port.postMessage({
+          type:      "EXPECTED_ASSETS",
+          cacheName: CACHE_NAME,
+          assets:    ASSETS_TO_CACHE.concat(addons),
+          critical:  CRITICAL_APP_SHELL.slice()
+        });
       });
+      if (event.waitUntil) event.waitUntil(envoi);
     }
     return;
   }

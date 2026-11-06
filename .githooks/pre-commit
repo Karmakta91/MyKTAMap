@@ -276,5 +276,8 @@ node scripts/check-audit-html.js || exit $?
 # Photos : reimport ZIP sans effacer les photos du plan, limite de 5 par point.
 node scripts/check-photos.js || exit $?
 
+# Add-ons livres : index, manifestes, fichiers et precache concordent (addons/<nom>/addon.json).
+node scripts/check-addons.js || exit $?
+
 # Architecture du README : modules js/ (ordre d'index.html), css/, scripts/, docs/architecture/ = fichiers reels.
 node scripts/check-readme-modules.js || exit $?

@@ -209,7 +209,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (148 modules)
+## 🟢 L'application : modules JS (149 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -251,6 +251,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | Module | Rôle |
 |---|---|
 | `ktaInstance.js` | Lit `data/index.json` une seule fois avant les gates (délai 2 s, dernière config connue rejouée) |
+| `ktaAddons.js` | Registre des add-ons livrés : `addons/index.json` et les manifestes, lus à la première demande |
 | `unlockGate.js` | Gate d'accès : écran Bienvenue (chargé à la demande), mot de passe d'instance s'il existe, repli centré |
 | `pinLock.js` | Code d'accès local optionnel (PIN 4-6 chiffres, biométrie WebAuthn), barrière UX |
 | `config.js` | `DEFAULT_CONFIG` / `APP_CONFIG`, préférences globales et par plan, lecture bornée d'un plan-config |
@@ -502,6 +503,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-aide-contextuelle.js` | Bouton ❓ d'une modale sans section d'aide, ou section sans modale (table confrontée au code, deux sens) | pre-commit |
 | `check-aide-sections.js` | Section de l'Aide intégrée inatteignable, mal rangée ou en double, dans une des langues | pre-commit |
 | `check-api-surface.js` | Méthode annoncée par un module IIFE absente au chargement (modules exécutés dans un `vm`) | pre-commit |
+| `check-addons.js` | Add-on hors de `addons/index.json`, manifeste mal formé, fichier non listé (absent hors ligne), code que la vue 3D n'émet pas, add-on listé à la main dans `sw.js` | pre-commit |
 | `check-audit-domaine.js` | Périmètre de garantie de l'audit réseau dérivé de `location.origin` au lieu des deux domaines écrits en dur | pre-commit |
 | `check-audit-html.js` | Page d'audit réseau `.html` qui n'est plus le rendu exact de son `.md` | pre-commit |
 | `check-backlog.js` | Rien : avertit d'un `docs/BACKLOG.md` mal formé (sections, plafond de Maintenant, métadonnées) | pre-commit (consultatif) |

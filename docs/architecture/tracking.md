@@ -2217,7 +2217,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 ### Greffe de la vue 3D (prise des add-ons) et code « six vers le bas »
 
 - La vue 3D prête une **prise neutre** aux add-ons (`KtaVue3D.greffer`, sans effet sans greffon) et lance l'add-on
-  lié à un code (`CODE_BAS`, `ADDONS_CODE`). Contrat complet, connecteurs, règles et add-on `mkmg` :
+  dont le manifeste déclare ce code (`CODE_BAS`, `_lancerAddon`, registre `js/ktaAddons.js`). Contrat complet, connecteurs, règles et add-on `mkmg` :
   **`docs/architecture/addons.md`**.
 
 ### Garde-fous et limites

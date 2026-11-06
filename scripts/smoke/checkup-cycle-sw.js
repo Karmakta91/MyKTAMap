@@ -8,7 +8,7 @@
 // suite : A (dépôt tel quel) · B (correctif SANS bump : index.html et un JS changés, autre commit) · C (bump).
 //   1. visiteur : écran Bienvenue sans « Entrer » → 0 SW, 0 cache, stockage mesuré ; instance à mot de passe sans code
 //      → 0 SW ; « Entrer » + conditions → SW inscrit, précache complet (délai mesuré = le trou) ; coupure réseau :
-//      l'app redémarre et le relevé fictif, rendu disponible hors ligne, s'ouvre ;
+//      l'app redémarre et le relevé fictif, rendu disponible hors ligne, s'ouvre ; add-ons précachés par manifeste ;
 //   2. correctif sans bump (B) : nouvelle page au 2e chargement, aucune fenêtre ;
 //   3. bump (C) + « Mettre à jour » (sw.js retenu jusqu'au clic : le bouton installe le nouveau SW) : plan hors ligne et
 //      cache de module gardés, cache de l'app complet, nouveau code ;
@@ -257,6 +257,15 @@ async function visiteur() {
     return { ouv: window.__ouv, conf: !!window.PLAN_CONFIG, map: !!window.map };
   }));
   if (!plan) p.journal.slice(j0).slice(-40).forEach(function (l) { console.log("     · " + l); });
+  // Add-ons : précachés depuis leurs manifestes (sw.js > _assetsAddons), registre lisible sans réseau.
+  const addons = await page.evaluate(async function () {
+    const f = ["addons/index.json", "addons/mkmg/addon.json", "addons/mkmg/js/coeur.js", "addons/mkmg/img/fusil.svg"];
+    const enCache = await Promise.all(f.map(function (u) { return caches.match(u).then(Boolean); }));
+    const l = await window.KtaRegistreAddons.liste();
+    return { enCache: enCache, noms: l.map(function (m) { return m.nom; }).join(",") };
+  });
+  verifier(addons.enCache.every(Boolean) && addons.noms === "mkmg",
+    "coupure réseau : add-ons précachés depuis leurs manifestes, registre lisible", addons);
   await p.ctx.setOffline(false);
   etat.coupe = false;
   verifier(p.erreurs.length === 0, "aucune erreur de page", p.erreurs.slice(0, 3));

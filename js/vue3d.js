@@ -8110,30 +8110,22 @@
     _lancerAddon("bas6");
   }
 
-  // ⚠️ contrat : un code lance l'add-on qui lui est lié (addons/<nom>/), chargé à la première fois (script classique,
-  // même origine, précaché par sw.js). L'add-on s'inscrit dans window.KtaAddons[<nom>] = { lancer() } ; c'est lui
-  // qui décide s'il démarre (refus, confirmation) puis se greffe (greffer). Rien d'autre ne le charge.
-  const ADDONS_CODE = { bas6: { nom: "mkmg", src: "addons/mkmg/js/coeur.js" } };
+  // ⚠️ contrat : un code lance l'add-on dont le manifeste le déclare (addons/<nom>/addon.json, lu par
+  // js/ktaAddons.js), chargé à la première fois (script classique, même origine, précaché par sw.js). L'add-on
+  // s'inscrit dans window.KtaAddons[<nom>] = { lancer() } ; c'est lui qui décide s'il démarre (refus, confirmation)
+  // puis se greffe (greffer). Un code répété pendant la lecture du manifeste ou le chargement ne lance qu'une fois.
   const _addonsEnCours = {};
   function _lancerAddon(code) {
-    const a = ADDONS_CODE[code];
-    if (!a) return;
-    const lancer = function () {
-      const x = window.KtaAddons && window.KtaAddons[a.nom];
+    const R = window.KtaRegistreAddons;
+    if (!R || _addonsEnCours[code]) return;
+    _addonsEnCours[code] = true;
+    R.parCode(code).then(function (m) {
+      return m ? R.charger(m).then(function (ok) { return ok ? m : null; }) : null;
+    }).then(function (m) {
+      _addonsEnCours[code] = false;
+      const x = m && window.KtaAddons && window.KtaAddons[m.nom];
       if (x && typeof x.lancer === "function" && _e) x.lancer();
-    };
-    if (window.KtaAddons && window.KtaAddons[a.nom]) { lancer(); return; }
-    if (_addonsEnCours[a.nom]) return;
-    _addonsEnCours[a.nom] = true;
-    const s = document.createElement("script");
-    s.src = a.src;
-    s.addEventListener("load", function () { _addonsEnCours[a.nom] = false; lancer(); });
-    s.addEventListener("error", function () {
-      _addonsEnCours[a.nom] = false;
-      if (s.parentNode) s.parentNode.removeChild(s);
-      console.warn("[Vue3D] add-on « " + a.nom + " » introuvable");
-    });
-    document.head.appendChild(s);
+    }, function () { _addonsEnCours[code] = false; });
   }
 
   // ── Greffe : prise NEUTRE pour un add-on (addons/<nom>/), rien sans greffon ──────────────────────────────

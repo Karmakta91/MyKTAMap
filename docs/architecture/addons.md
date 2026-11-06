@@ -2,13 +2,14 @@
 
 > État actuel, pas d'historique. Ce fichier se lit **en entier** avant d'écrire ou de modifier un add-on, par un
 > développeur comme par une IA : il dit ce qu'est un add-on, comment il se lance, à quoi il a le droit de toucher
-> (les connecteurs) et ce qui lui est interdit. Exemple complet : l'add-on `mkmg` (dernière partie). Le cadre
-> d'add-ons définitif (registre, guide public) est au backlog ; ce qui suit est ce qui marche aujourd'hui.
+> (les connecteurs) et ce qui lui est interdit. Exemple complet : l'add-on `mkmg` (dernière partie). Section
+> « Add-ons » des Réglages, bouton 🧩 de la vue 3D et cases de ConfAdmin : à venir (cadre d'add-ons, lots B et C).
 
 ## En une minute
 
 ```
- vue 3D ouverte ──(code « six vers le bas »)──► vue3d.js > ADDONS_CODE["bas6"]
+ vue 3D ouverte ──(code « six vers le bas »)──► KtaRegistreAddons.parCode("bas6")   (js/ktaAddons.js)
+                                                   │ addons/index.json → addons/mkmg/addon.json (code, entrée)
                                                    │ charge une fois addons/mkmg/js/coeur.js (script classique)
                                                    ▼
                                      window.KtaAddons.mkmg.lancer()
@@ -26,13 +27,30 @@ part avec lui.
 
 ## Ce qu'est un add-on
 
-- **Un dossier** `addons/<nom>/` (nom `[a-z0-9-]`, discret : le dépôt est public) : `js/`, `css/`, `img/`. Rien
-  dans `js/`, `css/`, `lang/`, `index.html` : l'app ne le charge pas au démarrage.
+- **Un dossier** `addons/<nom>/` (nom `[a-z0-9-]`, discret : le dépôt est public) : `js/`, `css/`, `img/` et son
+  **manifeste** `addon.json`, listé dans `addons/index.json`. Rien dans `js/`, `css/`, `lang/`, `index.html`, `sw.js` :
+  l'app ne le charge pas au démarrage.
+- **Le manifeste** `addons/<nom>/addon.json` :
+
+  | Champ | Ce que c'est |
+  |---|---|
+  | `nom` | le nom du dossier |
+  | `prise` | où il se greffe : `"vue3d"` seulement (une prise nouvelle vient avec l'add-on qui la justifie) |
+  | `secret` | `true` : absent des Réglages et du bouton 🧩 (à venir), lancé par son code seul (`mkmg`) |
+  | `code` | code de la vue 3D qui le lance (`"bas6"`), émis par `vue3d.js > _lancerAddon` ; un seul add-on par code |
+  | `entree` | script chargé en premier, parmi `fichiers` ; il charge lui-même le reste |
+  | `fichiers` | TOUS ses fichiers, chemins sous `js/`, `css/` ou `img/` : ce que le précache prend |
+  | `titre` | `{ fr, en, es }` (Réglages, ConfAdmin) |
+
+  Lu par le registre de l'app (`js/ktaAddons.js > KtaRegistreAddons` : `liste()`, `parCode(code)`, `charger(m)`, à la
+  première demande seulement) et par le précache (`sw.js > _assetsAddons`). 🔒 Un manifeste mal formé (nom, prise,
+  chemin hors des trois dossiers, entrée hors de ses fichiers) est écarté, jamais chargé.
 - **Community** : gratuit, sans serveur, comme le reste de ce dépôt. Pas de code pro, pas d'appel réseau
   (`community-server-line.md`).
 - **Ses propres textes** fr / en / es dans son code (table + `I18n.getLang()`), jamais dans `lang/*.json`.
 - **Ses propres clés locales**, préfixées `myktamap_<nom>_…` (scores, préférences), jamais la session.
-- **Précaché** comme tout le JS : chaque fichier est listé dans `sw.js > ASSETS_TO_CACHE` (il marche hors ligne).
+- **Précaché** comme tout le JS, sans toucher `sw.js` : l'install lit `addons/index.json` et les `fichiers` de chaque
+  manifeste (il marche hors ligne).
 - **Discret côté utilisateur** (décision produit pour `mkmg`) : absent des guides et de l'Aide ; seule une phrase
   peut y faire allusion. La doc technique (ce fichier) est obligatoire.
 
@@ -42,9 +60,10 @@ part avec lui.
    de 2 s — ▼ du pavé, ↓ ou S (répétition du clavier ignorée), ou coup bref du joystick vers le bas (relâché moins de
    0,5 s après la sortie de la zone morte, toujours à plus de 135° de l'avant), sans autre commande de déplacement
    entre deux (elle remet le compte à 0). `window` reçoit `kta:vue3dCode` (`detail.code = "bas6"`).
-2. **Chargement** : `vue3d.js > ADDONS_CODE` lie un code à un add-on (`bas6` → `{ nom: "mkmg", src:
-   "addons/mkmg/js/coeur.js" }`). Le script est posé une fois (même origine, CSP `script-src 'self'`) ; un add-on
-   absent laisse un avertissement en console, rien d'autre.
+2. **Chargement** : `vue3d.js > _lancerAddon` demande au registre le manifeste qui déclare ce code
+   (`KtaRegistreAddons.parCode`), puis pose une fois son `entree` (même origine, CSP `script-src 'self'`) ; un code
+   répété pendant ce temps ne lance qu'une fois. Un add-on absent ou un manifeste illisible laisse un avertissement
+   en console, rien d'autre.
 3. **Inscription** : le script s'inscrit dans `window.KtaAddons.<nom> = { lancer() }`. La vue appelle `lancer()`
    à chaque code (vue ouverte seulement).
 4. **Décision** : c'est l'add-on qui refuse (avec `ktaAlerte`) ou demande confirmation (`ktaConfirm`), puis se greffe.
@@ -154,8 +173,10 @@ hors du goulot (`check-notifs.js`).
 
 1. Créer `addons/<nom>/js/<fichier>.js` : en-tête de licence, en-tête ≤ 20 lignes (rôle, ce qu'il expose, pièges),
    IIFE, `"use strict"`, inscription `window.KtaAddons.<nom> = { lancer }`, logs préfixés `[<Nom>]`.
-2. Le lier à un code dans `vue3d.js > ADDONS_CODE` (aujourd'hui une table en dur ; registre au backlog).
-3. Lister chaque fichier dans `sw.js > ASSETS_TO_CACHE`.
+2. Écrire `addons/<nom>/addon.json` (table ci-dessus) : prise, code, entrée, TOUS les fichiers, titre fr/en/es.
+3. Ajouter `<nom>` à `addons/index.json`. Rien dans `js/` ni `sw.js` ; `scripts/check-addons.js` (pre-commit)
+   refuse un dossier non listé, un fichier oublié, un code que la vue 3D n'émet pas ou déjà pris. Un code nouveau
+   (autre geste) se code dans la vue 3D, avec l'accord de qui la tient.
 4. Dans `lancer()` : les refus de terrain (ci-dessus), l'activation sur installation, puis `KtaVue3D.greffer`.
 5. Respecter le cycle de vie (reprise du contexte !) et appeler `ctx.sale()` seulement quand quelque chose bouge.
 6. Une section du checkup `scripts/smoke/checkup-vue-3d.js` qui joue l'add-on sur des objets **fictifs** (prévoir un
@@ -278,7 +299,8 @@ embuscades, un monde par niveau), `js/son.js`
 
 > Tu écris un add-on pour MyKTAMap (PWA vanilla JS + Leaflet + three.js, sans bundler, CSP `script-src 'self'`).
 > Lis `docs/architecture/addons.md` en entier. Un add-on vit dans `addons/<nom>/`, s'inscrit dans
-> `window.KtaAddons.<nom> = { lancer }`, est lancé par un code de la vue 3D (`vue3d.js > ADDONS_CODE`) et se greffe
+> `window.KtaAddons.<nom> = { lancer }`, se déclare dans `addons/<nom>/addon.json` (+ `addons/index.json`), est lancé
+> par un code de la vue 3D déclaré dans ce manifeste et se greffe
 > par `KtaVue3D.greffer({ scene, surImage, demonter })` : il dessine dans `ctx.groupe` (mètres) et `ctx.hud`, se
 > déplace avec `ctx.bloque` / `ctx.libre`, demande une image par `ctx.sale()`, règle la vue par `ctx.regler(…)`.
 > Il lit le plan en lecture seule (POI, tracés, zones, `Pathfinder`, `RoadGraph`) et n'écrit jamais la session, le
