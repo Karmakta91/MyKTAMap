@@ -2022,6 +2022,9 @@ KARMA, 05/09/2026 : « pour un POI modifiable de session, un bouton *repositionn
 La fiche d'un point savait déjà changer son **nom**, son **tag**, sa description et ses photos. Sa **position**, non — seul
 le Tableau permettait de retoucher X/Y, en aveugle, hors carte. `window.repositionnerPointEditor(id, x, y)`
 (`js/editor.js`) comble ce trou : la popup se ferme, un floater s'affiche, le prochain clic sur la carte déplace le point.
+**✕ Annuler** ou **Échap** l'abandonnent sans rien écrire (`_repoTouche`, écouteur de `window` en capture posé à
+l'armement : le floater fait reculer `shortcuts.js > _echapCarte`, qui ne l'aurait jamais annulé). Checkup :
+`scripts/smoke/checkup-repositionner.js`.
 
 ### 🩸 Pourquoi `.kta-iti-floater` et pas un floater maison
 

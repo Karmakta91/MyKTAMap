@@ -4,10 +4,11 @@
 // checkup-repositionner.js — checkup (Playwright, pas un hook pré-commit) : « Repositionner » un POI de session
 // =====================================================================
 // Parcours réel À LA SOURIS : clic sur le marqueur, clic sur « Repositionner » dans sa fiche, puis clic ailleurs
-// sur la carte. 🩸 Le bouton arme le mode pendant la capture de SON clic (écouteur sur document, avant #map) :
-// map.js > _ktaPickCaptureClick prenait ce même clic pour la position choisie (le POI sautait sous le bouton).
+// sur la carte ; Échap et ✕ annulent sans rien écrire. 🩸 Le bouton arme le mode pendant la capture de SON clic
+// (écouteur sur document, avant #map) : map.js > _ktaPickCaptureClick prenait ce même clic pour la position choisie
+// (le POI sautait sous le bouton).
 // check-repositionner.js teste la fonction dans un `vm` ; seul ce parcours voit l'ordre réel des écouteurs.
-// Usage : node scripts/smoke/checkup-repositionner.js
+// Usage : node scripts/smoke/checkup-repositionner.js (KTA_MOTEURS=webkit : sous WebKit)
 // =====================================================================
 "use strict";
 
@@ -130,6 +131,39 @@ function point(page) {
     verifier(p2 && Math.abs(p2.x - cible.x) < 2 && Math.abs(p2.y - cible.y) < 2,
       "clic sur la carte : le POI est posé à cet endroit", { cible: cible, p2: p2 });
     verifier(!encore, "mode repositionnement terminé après le clic");
+
+    // 4. Échap puis ✕ annulent sans rien écrire : bandeau retiré, le clic suivant sur la carte ne déplace rien.
+    //    🩸 Le bandeau `.kta-iti-floater` fait reculer shortcuts.js > _echapCarte : l'Échap est celui d'editor.js.
+    const annuler = async function (geste) {
+      await page.evaluate(function () {
+        window.map.closePopup();
+        // Après le déplacement, le groupe garde un marqueur hors carte : on prend celui qui est affiché.
+        const l = window.layerEditor.getLayers().find(function (q) { return q._map && q.getPopup && q.getPopup(); });
+        if (l) l.openPopup();
+      });
+      await page.waitForTimeout(600);
+      const b = await page.$(".leaflet-popup [data-kta-act=\"repositionner\"]");
+      if (!b) return { bouton: false };
+      const r = await b.boundingBox();
+      await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+      await page.waitForTimeout(400);
+      const avant = await point(page);
+      const arme2 = await page.evaluate(function () { return !!document.getElementById("kta-repo-floater"); });
+      if (geste === "echap") await page.keyboard.press("Escape");
+      else await page.click("#kta-repo-cancel");
+      await page.waitForTimeout(300);
+      const bandeau = await page.evaluate(function () { return !!document.getElementById("kta-repo-floater"); });
+      await page.mouse.click(cible.px + 60, cible.py - 60);
+      await page.waitForTimeout(500);
+      const apres = await point(page);
+      return { arme: arme2, bandeau: bandeau, avant: avant, apres: apres };
+    };
+    let a = await annuler("echap");
+    verifier(a.arme && !a.bandeau && a.apres && a.apres.x === a.avant.x && a.apres.y === a.avant.y,
+      "Échap annule Repositionner : bandeau retiré, le clic suivant ne déplace pas le POI", a);
+    a = await annuler("croix");
+    verifier(a.arme && !a.bandeau && a.apres && a.apres.x === a.avant.x && a.apres.y === a.avant.y,
+      "✕ Annuler : même effet", a);
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {
@@ -145,6 +179,7 @@ function point(page) {
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — « Repositionner » attend le clic sur la carte, puis y pose le POI.");
+  console.log("🎉 CHECKUP VERT — « Repositionner » attend le clic sur la carte, puis y pose le POI ; Échap et ✕ " +
+    "l'annulent.");
   process.exit(0);
 })();

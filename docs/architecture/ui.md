@@ -46,7 +46,8 @@ d'outil commence par `_desactiverTousLesModes()` (`interface.js`, registre `_mod
   (`ajusterSommets.js`, qui l'arrête quand il annule), confirmation (`ktaConfirm`, `stopImmediatePropagation`) ;
 - champ texte au focus, gate / splash / chargement (`_isModaleBloquante`), mode présentation, fenêtre visible
   (`ECHAP_AVANT` : overlays de l'app, fenêtre de nommage d'un point comprise, pickers `.kta-iti-floater`, vue 3D
-  `#kta-vue3d`) : rien, la fenêtre se ferme par son propre écouteur ;
+  `#kta-vue3d`) : rien, la fenêtre se ferme par son propre écouteur (bandeau de 📌 Repositionner : `editor.js >
+  _repoTouche` ; du point précis : `poiPrecis.js`) ;
 - panneau d'un groupe ouvert (`ktaOutilsOuverts`) ou bulle ouverte : fermé ici, l'outil reste armé ;
 - sinon, outil armé (`window.ktaOutilArme()`, registre `_modesActifs`) : désarmé.
 🩸 Pas au bouillonnement : Leaflet (`Keyboard._onKeyDown`) arrête tout Échap tapé carte au focus dès qu'une bulle a

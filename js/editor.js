@@ -774,14 +774,23 @@ function _indexPointSession(id, x, y) {
 // clic est réémis en phase CAPTURE (map.js), il porte même sur un autre marqueur, un tracé ou une zone.
 // 🩸 PAS de glisser-déposer : un `touchmove` sur un marqueur deviendrait un drag au lieu d'un pan (POI déplacés
 // par accident, en silence). Ici rien ne bouge tant que le mode n'est pas armé, et le doigt ne cache pas la cible.
+// Échap annule comme ✕, sans rien écrire. 🩸 Le bandeau `.kta-iti-floater` fait reculer shortcuts.js > _echapCarte
+// (ECHAP_AVANT) : sans cet écouteur, Échap ne faisait rien.
 let _repoActif   = false;
 let _repoHandler = null;
+
+function _repoTouche(e) {
+  if (!e || e.key !== "Escape" || !_repoActif) return;
+  e.stopPropagation(); e.preventDefault();
+  _repoDesactiver();
+}
 
 function _repoDesactiver() {
   if (!_repoActif) return;
   _repoActif = false;
   if (window.map && _repoHandler) { try { window.map.off("click", _repoHandler); } catch(e) {} }
   _repoHandler = null;
+  window.removeEventListener("keydown", _repoTouche, true);
   const fl = document.getElementById("kta-repo-floater");
   if (fl) fl.remove();
 }
@@ -892,6 +901,7 @@ window.repositionnerPointEditor = function(id, x, y) {
   btnAnn.textContent = window.I18n.t("editor.repo.cancel");
   document.body.appendChild(fl);
   btnAnn.addEventListener("click", _repoDesactiver);
+  window.addEventListener("keydown", _repoTouche, true);
 };
 window.modifierPointEditor = function(id, x, y) {
   if (typeof x !== "number" || typeof y !== "number") return;

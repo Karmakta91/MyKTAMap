@@ -5320,7 +5320,7 @@
   "cheatsheet.carte.sommet": "Ajuster un sommet d'un tracé, d'une zone, d'une structure ou de la mesure (au milieu d'un côté : en ajouter un)",
   "cheatsheet.carte.zoom": "Zoomer (+ et − une fois la carte touchée)",
   "cheatsheet.carte.deplacer": "Déplacer la carte (une fois la carte touchée)",
-  "cheatsheet.carte.echap": "Fermer la bulle d'un point, annuler un sommet en cours d'ajustement, terminer une insertion de sommets (＋) ou annuler le choix d'une position",
+  "cheatsheet.carte.echap": "Fermer la bulle d'un point, annuler un sommet en cours d'ajustement, terminer une insertion de sommets (＋), annuler le choix d'une position ou un point à repositionner",
   "cheatsheet.carte.desarmer": "Désarmer l'outil armé (tracé, zone, structure, mesure, ajout de point), une fois la fenêtre, la bulle ou l'ajustement en cours fermés",
   "cheatsheet.gestes.tourner": "Tourner la carte (le bouton nord la remet droite)",
   "cheatsheet.gestes.sommet": "Sur un sommet, puis glisser : l'ajuster",

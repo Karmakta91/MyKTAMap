@@ -5320,7 +5320,7 @@
   "cheatsheet.carte.sommet": "Adjust a vertex of a path, zone, structure or measurement (in the middle of a side: add one)",
   "cheatsheet.carte.zoom": "Zoom (+ and − once the map has been clicked)",
   "cheatsheet.carte.deplacer": "Move the map (once the map has been clicked)",
-  "cheatsheet.carte.echap": "Close a point's bubble, cancel a vertex being adjusted, end a vertex insertion (＋) or cancel a position being picked",
+  "cheatsheet.carte.echap": "Close a point's bubble, cancel a vertex being adjusted, end a vertex insertion (＋), cancel a position being picked or a point being repositioned",
   "cheatsheet.carte.desarmer": "Disarm the active tool (path, zone, structure, measurement, adding a point), once the open window, bubble or adjustment is closed",
   "cheatsheet.gestes.tourner": "Rotate the map (the north button puts it back straight)",
   "cheatsheet.gestes.sommet": "On a vertex, then drag: adjust it",

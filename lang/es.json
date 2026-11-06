@@ -5320,7 +5320,7 @@
   "cheatsheet.carte.sommet": "Ajustar un vértice de un trazado, zona, estructura o medición (en medio de un lado: añadir uno)",
   "cheatsheet.carte.zoom": "Hacer zoom (+ y − tras tocar el mapa)",
   "cheatsheet.carte.deplacer": "Mover el mapa (tras tocar el mapa)",
-  "cheatsheet.carte.echap": "Cerrar la burbuja de un punto, cancelar un vértice en ajuste, terminar una inserción de vértices (＋) o cancelar la elección de una posición",
+  "cheatsheet.carte.echap": "Cerrar la burbuja de un punto, cancelar un vértice en ajuste, terminar una inserción de vértices (＋), cancelar la elección de una posición o un punto que se reposiciona",
   "cheatsheet.carte.desarmer": "Desactivar la herramienta activa (trazado, zona, estructura, medición, añadir un punto), una vez cerrados la ventana, la burbuja o el ajuste en curso",
   "cheatsheet.gestes.tourner": "Girar el mapa (el botón norte lo endereza)",
   "cheatsheet.gestes.sommet": "Sobre un vértice, y arrastrar: ajustarlo",
