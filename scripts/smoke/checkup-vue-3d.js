@@ -7738,7 +7738,7 @@ async function sectionFichesReglage(nav) {
 // Pointeur fin (1200 × 800), relevé fictif vidé, 1 000 piliers fictifs en grille sur 320 × 320 m autour du centre (ils
 // débordent l'image : l'emprise du plan les compte). Case cochée par défaut (portée ≤ 100 m, recul ≤ 150 m, rayon
 // construit ≤ 100 m) ; décocher pose la question (Garder = rien ne change) ; décochée : cran « Tout le plan » au bout
-// du curseur (diagonale de l'emprise), brouillard reculé (nuit et Plein jour), toutes les tuiles posées, recul de la vue
+// du curseur (diagonale de l'emprise), aucun brouillard (nuit et Plein jour), toutes les tuiles posées, recul de la vue
 // d'édition jusqu'à la diagonale (plan proche reculé), rayon sans plafond ; recochée : tout revient sous les bornes ;
 // retenue décochée à la réouverture au PC ; jeu (reglagesFiges) : limitée, case grisée, refus, rendue au retrait.
 // Téléphone émulé (Chromium seul : pointeur grossier) : décochée sur l'appareil, la vue la rouvre cochée et la réécrit.
@@ -7914,9 +7914,11 @@ async function sectionLimiterPortee(nav) {
     r.libre = await lire();
     verifier(!!r.retirer && r.retirer.ok === r.retirer.okAttendu && r.libre.limitee === false &&
       r.libre.limiter.presse === "false" && r.libre.pref === "0" && r.libre.curseur.max === 101 &&
-      r.libre.distance === 30 && r.libre.diag >= Math.floor(prep.emprise) && r.libre.reculMax === r.libre.diag,
-    nom + "« Retirer la limite » : décochée et retenue, cran de plus au curseur, recul jusqu'à la diagonale de " +
-      "l'emprise (" + r.libre.diag + " m, objets hors image compris)", { libre: r.libre, emprise: prep.emprise });
+      r.libre.tout === true && r.libre.distance === Math.max(100, r.libre.diag) && r.libre.curseur.valeur === 101 &&
+      r.libre.diag >= Math.floor(prep.emprise) && r.libre.reculMax === r.libre.diag,
+    nom + "« Retirer la limite » : décochée et retenue, curseur aussitôt sur « Tout le plan » (sans le toucher), " +
+      "recul jusqu'à la diagonale de l'emprise (" + r.libre.diag + " m, objets hors image compris)",
+    { libre: r.libre, emprise: prep.emprise });
     // Cran « Tout le plan » par le curseur lui-même.
     await page.evaluate(function () {
       const c = document.getElementById("kta-v3d-portee");
@@ -7938,9 +7940,9 @@ async function sectionLimiterPortee(nav) {
       r.tout.poses.montrees === r.tout.poses.tuiles && r.tout.poses.manquantes === 0,
     nom + "cran « Tout le plan » : portée = la diagonale (" + r.tout.distance + " m), texte du curseur, toutes les " +
       "tuiles posées (" + r.tout.poses.montrees + " / " + r.tout.poses.tuiles + ")", r.tout);
-    verifier(r.tout.brume[1] === r.tout.distance && Math.abs(r.tout.brume[0] - r.tout.distance * 0.45) < 0.5 &&
-      r.tout.far >= r.tout.distance,
-    nom + "nuit : le brouillard recule avec la portée (" + r.tout.brume.join(" → ") + " m)", r.tout.brume);
+    verifier(r.tout.brume[0] >= 1e6 && r.tout.brume[1] > r.tout.brume[0] && r.tout.far >= r.tout.distance,
+    nom + "nuit : aucun brouillard en portée non limitée (repoussé à " + r.tout.brume[0] + " m), caméra jusqu'à la " +
+      "portée", { brume: r.tout.brume, far: r.tout.far });
     r.jour = await page.evaluate(function () {
       const K = window.KtaVue3D;
       K.reglerPleinJour(true);
@@ -7948,9 +7950,8 @@ async function sectionLimiterPortee(nav) {
       K.reglerPleinJour(false);
       return { brume: p.brume, distance: p.distance };
     });
-    verifier(Math.abs(r.jour.brume[0] - r.jour.distance * PJ.brume) < 0.5 && r.jour.brume[1] === r.jour.distance,
-      nom + "Plein jour : brouillard clair de 40 % à 100 % de la portée entière (" + r.jour.brume.join(" → ") + " m)",
-      r.jour);
+    verifier(r.jour.brume[0] >= 1e6 && r.jour.brume[1] > r.jour.brume[0],
+      nom + "Plein jour : aucun brouillard en portée non limitée (repoussé à " + r.jour.brume[0] + " m)", r.jour);
     // Vue d'édition : recul jusqu'à la diagonale, rayon construit sans plafond, plan proche reculé.
     r.edition = await page.evaluate(function () {
       const K = window.KtaVue3D;

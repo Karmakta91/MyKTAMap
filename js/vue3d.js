@@ -4351,6 +4351,9 @@
       if (_e !== e) return null;
       if (accord && !_fige()) {
         e.limiter = typeof window.setVue3DLimiterPortee === "function" ? window.setVue3DLimiterPortee(v) : v;
+        // ⚠️ contrat (décision produit) : décocher, c'est vouloir tout voir : la portée passe aussitôt au cran
+        // « Tout le plan » (sinon le curseur restait sur sa portée en mètres jusqu'au premier toucher).
+        if (!v) e.porteeTout = typeof window.setVue3DPorteeTout === "function" ? window.setVue3DPorteeTout(true) : true;
         _appliquerGreffeReglages();
       }
       return _limitee();
@@ -4397,9 +4400,13 @@
     const fond = l.jour ? _couleurFixe(_jetonsSombres().neutre) : _couleurFixe("#000000");
     e.scene.fog.color.copy(fond);
     e.scene.background.copy(fond);
-    e.scene.fog.near = haut ? e.recul + (l.jour ? 0 : r * 0.3) : e.distance * brume;
-    e.scene.fog.far = haut ? e.recul + r + 2 : e.distance;
-    e.camera.far = e.scene.fog.far + (haut ? 10 : 5);
+    const loin = haut ? e.recul + r + 2 : e.distance;
+    // ⚠️ contrat (décision produit) : portée non limitée (🛡️ décochée), aucun brouillard : on voit tout le plan.
+    // Le brouillard est repoussé hors de vue plutôt que retiré (scene.fog = null recompilerait tous les shaders).
+    const sansBrume = !_limitee();
+    e.scene.fog.near = sansBrume ? 1e7 : haut ? e.recul + (l.jour ? 0 : r * 0.3) : e.distance * brume;
+    e.scene.fog.far = sansBrume ? 1e7 + 1 : loin;
+    e.camera.far = loin + (haut ? 10 : 5);
     // 🩸 Au-delà de RECUL.max (portée non limitée), un plan proche de 5 cm ne laisse plus assez de précision de
     // profondeur au loin (rubans au sol qui scintillent) : il recule avec la caméra, qui reste à plus de
     // recul · sin(15°) de tout objet.
