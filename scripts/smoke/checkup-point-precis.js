@@ -11,7 +11,8 @@
 // précision » ; pointillé et carré au bon endroit à zoom moyen, carte droite puis tournée, cachés de loin et
 // montrés de loin fiche ouverte ; POI de calque (getAllEmbeddedPoints porte `precis`, son pointillé est dessiné) ;
 // sauvegarde puis rechargement ; export de session (ZIP) et réimport ; anonymisé ; KMZ, GeoJSON et GPX à la place
-// de l'icône ; « Y aller » et ➕ visent le point précis, l'itinéraire y finit.
+// de l'icône ; « Y aller » et ➕ visent le point précis, l'itinéraire y finit ; « 📍 Je suis ici » y recale le
+// tracker (chatière : le milieu ; sans point précis ou passage : l'icône) et valide l'étape.
 // 🩸 Le doigt : Chromium par CDP (vrais touch), WebKit par PointerEvent synthétiques (logique de l'app seulement).
 // Usage : node scripts/smoke/checkup-point-precis.js (SMOKE_PORT pour une autre copie ; KTA_MODES=souris ou doigt ;
 // KTA_PP_CAPTURES=<dossier> pour des captures) · code : js/poiPrecis.js · doc : docs/architecture/ui.md § Point précis
@@ -458,6 +459,86 @@ async function jouer(nav, moteur, mode) {
       it.fin);
     await page.evaluate(function () {
       window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
+    });
+
+    // ── 7 bis. « 📍 Je suis ici » : le tracker va au point précis (chatière : son milieu), étape validée ──
+    // Attendu = la règle de la galerie (tracking.js > _positionDansGalerie) jouée depuis le point précis ; sans point
+    // précis (POI ordinaire, passage peo dont le champ est ignoré) : depuis l'icône.
+    await page.evaluate(function () {
+      const pe = window.getEditorPoints().find(function (o) { return o.uid === "pt_pp_peo"; });
+      pe.precis = window.__pp.P(-100, 260);
+      window.renderEditorPoints();
+      window.__ppAttendu = function (x, y) {
+        const C = window.APP_CONFIG, G = window.KtaGalerie;
+        const r = G.versGalerie(x, y, C.multiLevel === true ? 0 : null);
+        return { x: r.x, y: r.y, etat: r.etat };
+      };
+    });
+    const ici = async function (uid) {
+      if (!(await ouvrirFiche(page, ptr, uid))) return { fiche: false };
+      const b = await centreDe(page, ".leaflet-popup [data-kta-act=\"ici\"]");
+      if (!b) return { bouton: false };
+      await ptr.tap(b);
+      await page.waitForTimeout(700);
+      return page.evaluate(function (u) {
+        const p = window.getEditorPoints().find(function (o) { return o.uid === u; });
+        const c = window.KtaPoiPrecis.centre(p);
+        const t = window.getTrackingPosition();
+        const a = c ? window.__ppAttendu(c.x, c.y) : null, ai = window.__ppAttendu(p.x, p.y);
+        return { tracker: { x: t.x, y: t.y }, attendu: a, depuisIcone: ai, centre: c,
+          ecartIcone: Math.hypot((a ? a.x : ai.x) - ai.x, (a ? a.y : ai.y) - ai.y) };
+      }, uid);
+    };
+    const pres = function (a, b) { return !!a && !!b && Math.abs(a.x - b.x) < 0.01 && Math.abs(a.y - b.y) < 0.01; };
+    let r = await ici("pt_pp_pl");
+    verifier(r.centre && pres(r.tracker, r.attendu) && r.ecartIcone > 1,
+      "« Je suis ici » d'une plaque à point précis : tracker au point précis (règle de la galerie depuis lui)", r);
+    r = await ici("pt_pp_ch");
+    const ch7 = await lirePoint(page, "pt_pp_ch");
+    verifier(r.centre && Math.abs(r.centre.x - (ch7.precis.x + ch7.precis.x2) / 2) < 0.01 &&
+      pres(r.tracker, r.attendu) && r.ecartIcone > 1, "« Je suis ici » d'une chatière à deux points : tracker au milieu", r);
+    r = await ici("pt_pp_info");
+    verifier(!r.centre && pres(r.tracker, r.depuisIcone), "« Je suis ici » d'un POI sans point précis : à son icône",
+      r);
+    r = await ici("pt_pp_peo");
+    verifier(!r.centre && pres(r.tracker, r.depuisIcone),
+      "« Je suis ici » d'un passage (peo, champ précis ignoré) : à son icône", r);
+    // Validation d'étape : une étape au point précis (« ➕ ») et une étape sur l'icône de la chatière (posée avant son
+    // point précis) se valident par « Je suis ici » sur leur POI.
+    const etape = async function (uid, surIcone) {
+      await page.evaluate(function (a) {
+        const P = window.__pp.P, pts = window.getEditorPoints();
+        const p = pts.find(function (o) { return o.uid === a.uid; });
+        const c = a.surIcone ? { x: p.x, y: p.y } : window.KtaPoiPrecis.cible(p);
+        const fin = pts.find(function (o) { return o.uid === "pt_pp_info"; });
+        const o = P(-300, 70);
+        const road = { type: "itinerary", points: [o, c, { x: fin.x, y: fin.y }],
+          waypoints: [{ x: o.x, y: o.y, source: "tracker", label: "départ" },
+            { x: c.x, y: c.y, source: "poi", label: "étape" }, { x: fin.x, y: fin.y, source: "poi", label: "fin" }] };
+        window.setRoads(window.getRoads().filter(function (q) { return q.type !== "itinerary"; }).concat([road]));
+        window.__ppEtape = c;
+      }, { uid: uid, surIcone: surIcone });
+      await ici(uid);
+      return page.evaluate(function () {
+        const road = window.getRoads().find(function (q) { return q.type === "itinerary"; });
+        const c = window.__ppEtape;
+        const w = road && road.waypoints.find(function (q) {
+          return q.source !== "tracker" && Math.round(q.x) === Math.round(c.x) && Math.round(q.y) === Math.round(c.y);
+        });
+        const confirme = !!document.getElementById("kta-confirm-oui");
+        if (confirme) document.getElementById("kta-confirm-non").click();
+        return { etape: w ? !!w.done : null, confirme: confirme };
+      });
+    };
+    r = await etape("pt_pp_pl", false);
+    verifier(r.etape === true, "« Je suis ici » valide l'étape posée au point précis", r);
+    r = await etape("pt_pp_ch", true);
+    verifier(r.etape === true, "« Je suis ici » valide aussi une étape posée sur l'icône du POI", r);
+    await page.evaluate(function () {
+      window.setRoads(window.getRoads().filter(function (q) { return q.type !== "itinerary"; }));
+      const pe = window.getEditorPoints().find(function (o) { return o.uid === "pt_pp_peo"; });
+      delete pe.precis;
+      window.renderEditorPoints();
     });
 
     // ── 8. Exports KMZ, GeoJSON, GPX : la place de l'icône ──

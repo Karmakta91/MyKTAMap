@@ -98,7 +98,8 @@ GeoJSON : `niveaux` seulement (les raccords sont des pixels du plan). Voir `mult
 l'icône. Chatière (tag `chatiere`) : `{ "x", "y", "x2", "y2" }` = début et fin (la 3D en tire longueur et axe). Absent
 = rien ne change. Posé depuis la fiche (uid gardé, `updatedAt` touché). Gardé par la session, les calques (Générateur,
 `getAllEmbeddedPoints`), l'export et l'import de session, l'export anonymisé (géométrie seule) ; Tableur : colonne
-`precis` en lecture. Lu par la vue 3D (forme et panneau) et l'itinéraire (« Y aller », étape, repères du guidage).
+`precis` en lecture. Lu par la vue 3D (forme et panneau), l'itinéraire (« Y aller », étape, repères du guidage) et « 📍 Je suis ici »
+(le tracker va au point précis).
 KMZ / GPX / GeoJSON / PNG / PDF : la place de l'icône seulement (décision produit). Passages (`jes`, `jpe`, `jps`,
 `peo`, `eso`, `pa`) : ignoré, leurs `accroches` jouent ce rôle. Voir `ui.md` § Point précis.
 

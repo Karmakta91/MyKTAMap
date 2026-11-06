@@ -430,8 +430,11 @@
     const p = _pointBulle;
     _fermerBulle();
     if (!p || typeof window.recalerTrackerSurPoint !== "function") return;
+    // Point précis (poiPrecis.js > cible) : la règle de la fiche de la carte (utils.js > _ktaPopupAction, « ici »).
+    const c = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(p) : { x: p.x, y: p.y };
+    const o = (c.x !== p.x || c.y !== p.y) ? { dansGalerie: true, icone: { x: p.x, y: p.y } } : { dansGalerie: true };
     try {
-      window.recalerTrackerSurPoint(p.x, p.y, Number.isInteger(p.level) ? p.level : undefined, { dansGalerie: true });
+      window.recalerTrackerSurPoint(c.x, c.y, Number.isInteger(p.level) ? p.level : undefined, o);
     } catch(e) {
       console.warn("[Emergency] « Je suis ici » échoué :", e);
     }

@@ -789,6 +789,10 @@ active, et le PDR seul (`_avancerRaster`) partirait de la roche.
 - **Qui** : `recalerTrackerSurPoint(x, y, niveau, { dansGalerie: true })` depuis le « 📍 Je suis ici » d'une fiche de
   point (`utils.js > _ktaPopupAction`, cas `ici` : POI et étape d'itinéraire, carte comme vue 3D) et la bulle de point
   du mode urgence (`emergencyMode.js > _jeSuisIciPoint`).
+- **POI à point précis** (`poiPrecis.js > cible`, décision KARMA du 06/11/2026) : `x`, `y` = le point précis (chatière :
+  le milieu de ses deux points) et la règle ci-dessous part de lui ; `opts.icone` porte l'icône pour que le hook
+  (`_notifierRecalage`) valide aussi une étape ou un portail posés sur elle. Sans point précis, ou passage entre
+  niveaux : l'icône.
 - **Un tap sur la carte est une position voulue** (décision produit) : le clic du 📍 Mode recalage
   (`tracking.js > _recalerSurClic`) et le picker « Où es-tu ? » (`utils.js > ktaDemanderPositionCarte`, qui rend à
   l'appelant le point tapé) posent le tracker au point **exact** du tap, jamais ramené dans la galerie : c'est
@@ -2072,7 +2076,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   à la fermeture tant qu'on n'avance pas).
 - **Un tracker recalé pendant la 3D ne la déplace pas** (`KtaVue3D.trackerRecale(opts)`, appelé par `tracking.js >
   _notifierRecalage` ; décision produit, retour terrain) : « 📍 Je suis ici » d'une fiche ouverte en 3D recale le
-  tracker comme sur la carte (dans la galerie de la 3D, § Recalage dans la galerie), mais la place 3D reste ; `aBouge`
+  tracker comme sur la carte (dans la galerie de la 3D, depuis le point précis d'un POI qui en a un, § Recalage dans
+  la galerie), mais la place 3D reste ; `aBouge`
   est remis à faux (pas de « Je suis ici ? » à la fermeture). **En suivi**, ce « Je suis ici » (`opts.dansGalerie`)
   passe la vue en **libre** à cet instant, avant toute image (elle ne lit donc jamais le tracker recalé), niveau
   affiché tenu (`niveauLibre`), toast success `vue3d.libreApresRecalage` ; le bouton du suivi l'y ramène. Un autre

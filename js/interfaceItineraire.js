@@ -964,11 +964,13 @@ window._onTrackerRecale = function(x, y, source, opts) {
   const road = _roadItineraireActive();
   if (!road || !Array.isArray(road.waypoints) || road.waypoints.length === 0) return;
 
-  // Validation uniquement au recalage "point" (coords exactes).
+  // Validation uniquement au recalage "point" (coords exactes). POI à point précis : l'étape vise le point précis
+  // (« ➕ », « Y aller ») ; une étape posée sur l'icône (`opts.icone`) se valide aussi.
   if (source === "point") {
+    const ic = opts && opts.icone;
+    const sur = function(w, q) { return Math.round(w.x) === Math.round(q.x) && Math.round(w.y) === Math.round(q.y); };
     const etape = road.waypoints.find(function(w) {
-      return !w.done && w.source !== "tracker" &&
-             Math.round(w.x) === Math.round(x) && Math.round(w.y) === Math.round(y);
+      return !w.done && w.source !== "tracker" && (sur(w, { x: x, y: y }) || (!!ic && sur(w, ic)));
     });
     if (etape) {
       etape.done = true;   // mutation directe : reprise par le rebuild + persistée

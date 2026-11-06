@@ -2548,6 +2548,11 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
   marqueur quitte la carte. Rotation : pointillé et carrés vivent dans les panes de la carte, sous `.kta-rotate-pane` :
   ils tournent avec le plan, comme les icônes (rien à contre-tourner). Branché par `brancherMarqueur` à la création
   de chaque marqueur (session et calques), sans coût pour un POI sans point précis.
+- **Ce qui vise le point précis** (`KtaPoiPrecis.cible` : le point, le milieu des deux points d'une chatière) : 🧭 Y
+  aller, ➕ Itinéraire et **📍 Je suis ici** de la fiche (`data-kta-cx` / `data-kta-cy` des trois boutons), carte comme
+  vue 3D, et la bulle de point du mode urgence. « Je suis ici » y applique la règle de la galerie (`tracking.md`
+  § Recalage dans la galerie) depuis le point précis ; une étape ou un portail posés sur l'icône se valident encore
+  (`opts.icone`). Sans point précis, ou passage entre niveaux : l'icône, comme avant.
 - **3D** : en vue d'édition, la fiche 3D d'un POI de session propose aussi 🎯 (et ✏️ Modifier, 📍 Déplacer) ; un
   toucher au sol y sert le même mode (`tracking.md` § Vue 3D).
 

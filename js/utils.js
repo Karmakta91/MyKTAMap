@@ -1422,7 +1422,8 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     : '';
   // Point précis (poiPrecis.js) : « 🎯 Augmenter la précision », mêmes droits que ✏️ Modifier.
   const precisRow = window.KtaPoiPrecis ? window.KtaPoiPrecis.htmlFiche(point, showSessionActions, _act) : "";
-  // « Y aller » / étape visent le point précis s'il existe ; data-kta-x / y restent l'icône (identité du point).
+  // « Je suis ici », « Y aller » et étape visent le point précis s'il existe ; data-kta-x / y restent l'icône (identité
+  // du point).
   const _cib = window.KtaPoiPrecis ? window.KtaPoiPrecis.cible(point) : { x: x, y: y };
   const _cibAttr = 'data-kta-cx="' + _cib.x + '" data-kta-cy="' + _cib.y + '" ';
   const deleteRow = showSessionActions
@@ -1486,7 +1487,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            dangerHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
-             '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") + _niveauIci +
+             '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") + _niveauIci + _cibAttr +
                'title="' + window.I18n.t("poi.iAmHere") + '">' +
                window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
@@ -1542,8 +1543,11 @@ function _ktaPopupAction(e) {
     case "ici": {
       // data-kta-niveau absent (mono-niveau, étape posée au clic) : recalerTrackerSurPoint prend le niveau actif.
       // `dansGalerie` : une icône posée à côté du tracé met le tracker dans la galerie, pas dans la roche.
+      // Point précis (poiPrecis.js > cible, chatière : son milieu) : le tracker va là où « Y aller » mène ;
+      // `icone` laisse valider une étape ou un portail posés sur l'icône.
       const n = Number.parseInt(d.ktaNiveau, 10);
-      return appel("recalerTrackerSurPoint", x, y, Number.isInteger(n) ? n : undefined, { dansGalerie: true });
+      const o = (cx !== x || cy !== y) ? { dansGalerie: true, icone: { x: x, y: y } } : { dansGalerie: true };
+      return appel("recalerTrackerSurPoint", cx, cy, Number.isInteger(n) ? n : undefined, o);
     }
     case "aller": {
       // data-kta-niveau absent (mono-niveau) : pas de niveau de cible, le calcul garde sa règle.

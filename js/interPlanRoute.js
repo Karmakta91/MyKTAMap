@@ -820,11 +820,15 @@
 
   // « Je suis ici » sur le point-portail de sortie → traversée reproposée (l'invite a pu être fermée). Appelé par
   // tracking.js > _notifierRecalage, après le hook itinéraire.
-  function onTrackerRecale(x, y, source) {
+  // `opts.icone` : POI à point précis (tracking.js > recalerTrackerSurPoint) ; le portail peut viser l'un ou l'autre.
+  function onTrackerRecale(x, y, source, opts) {
     if (source !== "point" || !_currentPortalOut) return;
     if ((window._currentLoadedPlanId || null) !== _currentPortalOut.planId) return;
     const s = _currentPortalOut.sortie;
-    if (s && Math.round(s.x) === Math.round(x) && Math.round(s.y) === Math.round(y)) {
+    const sur = function(q) {
+      return !!q && Math.round(s.x) === Math.round(q.x) && Math.round(s.y) === Math.round(q.y);
+    };
+    if (s && (sur({ x: x, y: y }) || sur(opts && opts.icone))) {
       _afficherProchainPortail(_currentPortalOut.portalOut, _currentPortalOut.nextDistM);
     }
   }

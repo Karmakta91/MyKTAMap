@@ -10,7 +10,8 @@
 // ⚠️ contrat : les passages entre niveaux (poiJonction.js > porteNiveaux : jes, jpe, jps, peo, eso, pa) n'en ont
 // pas (leurs raccords validés jouent ce rôle) : pas de bouton, champ ignoré partout (lire → null).
 // Lecteurs : vue 3D (galerieEmprise.js > _departPassage, vue3d.js > _dimAcces, panneau), itinéraire (cible : « Y
-// aller », étape, repère du guidage). Exports KMZ / GPX / GeoJSON / PNG / PDF : l'icône (décision produit).
+// aller », étape, repère du guidage), « 📍 Je suis ici » (cible, utils.js > _ktaPopupAction, emergencyMode.js).
+// Exports KMZ / GPX / GeoJSON / PNG / PDF : l'icône (décision produit).
 // Saisie depuis la fiche seulement (utils.js > buildPointPopupHtml, mêmes droits que ✏️ Modifier) : armer() pose un
 // bandeau `.kta-iti-floater` (utils.js > _modeClicCarteActif : aucune fiche, clic ré-émis par map.js), un tap pose le
 // point (chatière : début puis fin), Échap ou ✕ annule. Une écriture = une entrée d'historique (Ctrl+Z).

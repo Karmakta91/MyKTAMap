@@ -6420,8 +6420,9 @@ async function sectionPoi3D(nav) {
 // niveaux) qui ignore son point précis, panneau d'un POI sans forme au point précis. Puis, par pointeur (souris, doigt)
 // dans la vue d'édition : fiche d'un POI de session = ✏️ Modifier (formulaire de la carte au-dessus de la vue, nom
 // changé, scène refaite), 📍 Déplacer (bandeau au-dessus de la vue, toucher au sol, uid gardé, updatedAt changé, une
-// entrée ⏪, Ctrl+Z), Échap et ✕ annulent sans fermer la vue, 🎯 point précis d'une chatière en deux touchers ; POI de
-// calque et lecture seule : aucun bouton.
+// entrée ⏪, Ctrl+Z), Échap et ✕ annulent sans fermer la vue, 🎯 point précis d'une chatière en deux touchers, 📍 Je
+// suis ici au point précis (chatière : le milieu ; sans point précis : depuis l'icône) ; POI de calque et lecture
+// seule : aucun bouton.
 async function sectionPointPrecis3D(nav, mode) {
   const webkit = nav.browserType().name() === "webkit";
   const nom = "§ 39 [" + mode + "] ";
@@ -6718,6 +6719,37 @@ async function sectionPointPrecis3D(nav, mode) {
       }
       verifier(r.ouvert && !r.fenetre && r.panneau, nom + "validé : retour à la vue, panneau au nouveau nom", r);
     }
+    // 📍 Je suis ici de la fiche 3D : le tracker va au point précis (chatière : son milieu), règle de la galerie
+    // (10 m) jouée depuis lui ; le POI ne bouge pas.
+    const ici3D = async function (nomPoi, x) {
+      await aller(x, 0);
+      const fi = await ouvrirFiche(nomPoi);
+      const b = fi ? await centre('#kta-vue3d .kta-popup-point [data-kta-act="ici"]') : null;
+      if (!b) return { fiche: !!fi, bouton: false };
+      await tapEcran(b);
+      await page.waitForTimeout(500);
+      return page.evaluate(function () {
+        const t = window.getTrackingPosition();
+        const e3 = window.KtaVue3D.etat();
+        return { tracker: window.__ppRel(t), fiche: !!e3.fiche, ouvert: e3.ouvert };
+      });
+    };
+    let ic = await ici3D("Info renommée fictive", 32);
+    verifier(ic.tracker && Math.abs(ic.tracker[0] - 34) < 0.05 && Math.abs(ic.tracker[1] + 0.5) < 0.05 && !ic.fiche &&
+      ic.ouvert, nom + "📍 Je suis ici (fiche 3D) d'un POI à point précis : tracker au point précis, fiche fermée", ic);
+    ic = await ici3D("POI pt_pp3_ch1", -20);
+    verifier(ic.tracker && Math.abs(ic.tracker[0] + 20.5) < 0.05 && Math.abs(ic.tracker[1]) < 0.05,
+      nom + "📍 Je suis ici (fiche 3D) d'une chatière à deux points : tracker au milieu", ic);
+    // Sans point précis (retiré) : depuis l'icône (30, 2), hors de la galerie de 2,5 m → ramené dans la galerie.
+    await page.evaluate(async function () {
+      const p = window.getEditorPoints().find(function (o) { return o.uid === "pt_pp3_info"; });
+      delete p.precis;
+      window.renderEditorPoints();
+      await new Promise(function (ok) { setTimeout(ok, 600); });
+    });
+    ic = await ici3D("Info renommée fictive", 30);
+    verifier(ic.tracker && Math.abs(ic.tracker[0] - 30) < 0.3 && Math.abs(ic.tracker[1]) < 1.3,
+      nom + "📍 Je suis ici (fiche 3D) d'un POI sans point précis : ramené dans la galerie depuis son icône", ic);
     // POI de calque, lecture seule : aucun bouton
     await aller(-12, -0.5);
     f = await ouvrirFiche("Calque fictif");
