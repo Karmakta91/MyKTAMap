@@ -91,11 +91,11 @@
   (`docs/architecture/ui.md` §53.3).
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
-- **Système d'add-ons community (`addons/<nom>/`)** — un vrai cadre pour qu'un add-on (ou un dev tiers) s'ajoute
-  sans toucher l'app (`docs/architecture/addons.md`). QCM du 02/11/2026 : manifeste par add-on + liste lus par l'app
-  et le précache, section « Add-ons » des Réglages (secrets absents), cases dans ConfAdmin, add-ons livrés seulement.
-  `qui: Claude · action: coder le lot après l'essai iPhone de mkmg · fini: un add-on ajouté sans toucher js/ ni sw.js,
-  interrupteur dans les Réglages et ConfAdmin · depuis: 02/11/2026 · taille: M`
+- **Système d'add-ons community (`addons/<nom>/`)** — lot A fait (manifestes, registre, précache : `addons.md`).
+  Reste (QCM 02 et 06/11/2026) : section « Add-ons » des Réglages (secrets absents, allumés par défaut), bouton 🧩
+  en vue 3D pour les add-ons visibles, cases dans ConfAdmin (tous les add-ons, secrets compris).
+  `qui: Claude · action: lot B (section Réglages + bouton 🧩), puis lot C (cases ConfAdmin) · fini: interrupteur
+  dans les Réglages et ConfAdmin · depuis: 02/11/2026 · taille: M`
 - **Add-on mkmg : interrupteur par organisation (pro)** — aujourd'hui refusé sur une installation reliée, sauf
   `data/reglages.json > addons.mkmg` posé par l'hébergeur (toute l'installation) ; décision : un admin d'orga
   l'allume. Prise neutre côté community, réglage et case d'admin côté pro.
