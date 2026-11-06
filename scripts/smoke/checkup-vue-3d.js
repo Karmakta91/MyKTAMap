@@ -2110,7 +2110,8 @@ async function sectionPleinJour(page) {
   console.log("  📏 coût par image (médiane / p95, ms) : yeux nuit " + C.yeuxNuit.med + " / " + C.yeuxNuit.p95 +
     " · yeux Plein jour " + C.yeuxJour.med + " / " + C.yeuxJour.p95 + " · édition plate " + C.plongeeNuit.med +
     " / " + C.plongeeNuit.p95 + " · édition Plein jour " + C.plongeeJour.med + " / " + C.plongeeJour.p95);
-  verifier(C.yeuxJour.med <= C.yeuxNuit.med * 1.5 + 0.5 && C.plongeeJour.med <= C.plongeeNuit.med * 1.5 + 0.5,
+  // Marge d'1 ms : WebKit arrondit performance.now() à la milliseconde (0 contre 1 n'est pas un coût).
+  verifier(C.yeuxJour.med <= C.yeuxNuit.med * 1.5 + 1 && C.plongeeJour.med <= C.plongeeNuit.med * 1.5 + 1,
     "Plein jour : coût par image dans le bruit de la nuit (une lumière directionnelle, sans ombre)", C);
 }
 
