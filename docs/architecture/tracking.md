@@ -1660,16 +1660,28 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   côtés égaux et inégaux, porte fermée et ouverte, rendu galerie identique sans et avec les murs) ; escaliers en niche : § 14 quinquies (POI d'un côté, de
   l'autre, dans le tube, sur l'axe, boucle, bout de cul-de-sac, tracé dans les deux sens, `esf` / `eso` / `jes` vers
   le haut, le bas et entre trois niveaux ; niche marchable, paroi ouverte, fond muré, 2D intacte).
+- **Point précis d'un POI** (`poiPrecis.js`, décision KARMA du 06/11/2026) : la forme se pose **au point précis**, pas à
+  l'icône. ⚠️ contrat : une seule entrée, `galerieEmprise.js > _departPassage` (son `centre`, après le raccord d'un
+  passage), donc `placePassage` → volume, emprise d'une niche, obstacle (`BLOQUE`), plaque / épure / portail sur la
+  paroi ou la face de structure la plus proche **du point précis** ; véhicule, cavage, puits d'accès placés depuis lui ;
+  chatière en deux points : ci-dessous. Panneau : celui d'un volume le suit déjà (`placesPassage`) ; un POI sans forme
+  y a le sien au point précis, ramené contre la paroi s'il tombe dans la roche (`_volumesDuNiveau`, `_contreParoi`).
+  Ignoré pour les passages entre niveaux (`KtaPoiJonction.porteNiveaux` : jes, jpe, jps, peo, eso, pa) : leurs raccords
+  validés. La signature des emprises (`_signature`) le compte. Limite : le POI reste rangé dans la tuile de son icône
+  (portée de construction comptée de là).
 - **Formes des POI sans passage** (`galerieEmprise.js > ACCES`, `PAROI`, `_surParoi` ; `vue3d.js > _chatiere`,
   `_plaque`, `_epure`, `_portail`, `_vehicule` ; décision produit) : même règle de place (`placePassage`), panneau
   au-dessus, construites à portée, sans moyen ni emprise. **Chatière** (`chatiere`) : roche brute des piliers (🧱,
-  couleur du pilier sinon) en travers de la galerie sur `CHATIERE.long` = 1,8 m (aucune longueur relevée sur le POI :
-  une chatière courte), posée sur l'axe comme une porte, largeur de la galerie + 0,3 m dans les parois, percée au
+  couleur du pilier sinon) en travers de la galerie sur `CHATIERE.long` = 1,8 m par défaut (une chatière courte),
+  posée sur l'axe comme une porte, largeur de la galerie + 0,3 m dans les parois, percée au
   ras du sol d'un passage **bas** de `CHATIERE.trou` = 0,6 m de haut sur `CHATIERE.large` = 0,9 m de large
   (centré, au plus la galerie moins 0,2 m ; profil `PROFIL_CHATIERE`, voûte surbaissée), roche au-dessus jusqu'au
   plafond et sur les côtés ; axe long le long de la galerie (`dir` = sens de l'axe, `placePassage`), le trou se
   traverse dans le sens de la marche (🩸 l'ancien trou de 0,6 × 0,6 m à voûte pointue se lisait, du dedans et au
-  téléphone, comme une fente verticale) ; **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
+  téléphone, comme une fente verticale). Point précis en deux points (`poiPrecis.js`, début → fin) :
+  `_segmentChatiere` lui donne leur longueur (`CHATIERE.court` = 0,4 m au moins) et leur axe, au centre de
+  `placePassage` (le milieu des deux points, ramené sur l'axe de la galerie : la roche en barre toute la largeur) ;
+  un seul point : la règle de 1,8 m à ce point. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
   en suivi comme en libre, l'œil descend à 0,35 m dans la roche et sur 1 m de part et d'autre en fondu
   (`_baisseChatiere`, `_placerCamera`), puis remonte ; vue d'édition : rien. `ctx.libre` des add-ons reste ouvert
   (les égarés du jeu la traversent debout, au travers de la roche : limite connue). **Plaque** (`plaque`),
@@ -2011,8 +2023,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   plan, tracés, niveaux visibles changés sur la carte).
 - **Toucher un panneau de POI** (`_toucher`) → **sa fiche de la carte** (`_ouvrirFiche` :
   `utils.js > buildPointPopupHtml`, ses boutons agissent par `_ktaPopupAction`), dans un cadre sous le bandeau ;
-  ✕ ou Échap la ferment ; « Je suis ici », « Y aller » et « Itinéraire » la ferment après leur action. ⚠️ Sans ✏️ /
-  Repositionner / 🗑️ (ils se jouent sur la carte, cachée dessous). Photos par `attachPopupPhotos` sur un marqueur de
+  ✕ ou Échap la ferment ; « Je suis ici », « Y aller » et « Itinéraire » la ferment après leur action. ⚠️ Le HTML de
+  la fiche est rendu sans ✏️ / Repositionner / 🗑️ ; un **POI de session en vue d'édition** y gagne une rangée
+  (`_editionFiche`, décision KARMA du 06/11/2026) : **✏️ Modifier** (`editor.js > modifierPointEditor`, le formulaire
+  de la carte au-dessus de la vue ; la scène suit par `kta:donneesPlanChange`), **📍 Déplacer** et **🎯 point précis**
+  (`poiPrecis.js > armer(id, x, y, "deplacer" | "precis")`, son bandeau `.kta-iti-floater`, z-index 100000, Échap sur
+  window en capture avant celui de la vue, ✕). Le mode armé, un toucher au sol (`_poserAuSol` : `_pointSol`, refus
+  « hors du plan » et « horizon » du dessin) devient `map.fire("click", { latlng })` : le geste de la carte, une
+  écriture, une entrée ⏪ (`editor.js > ktaDeplacerPointSession` pour 📍, la règle de Repositionner). Aucune
+  aimantation (un POI n'en a pas, ni sur la carte ni en ✏️ depuis la vue). Mêmes droits que la carte : lecture seule
+  (`ktaEditionRefusee(true)`) ou POI de calque (hors `getEditorPoints`) = aucun bouton ; 🗑️ reste sur la carte. La
+  fiche se ferme en armant. Photos par `attachPopupPhotos` sur un marqueur de
   substitution (`on`, `isPopupOpen`). Un **POI jonction** ouvre aussi sa fiche (décision produit, QCM du
   02/11/2026), avec un bouton par niveau lié (`_passagesFiche` : « ▼ Descendre au niveau -1 (échelle) », le plus haut
   d'abord), d'où que l'on soit ; ces boutons n'ont pas de `data-v3d` (l'écouteur de la fiche les joue).

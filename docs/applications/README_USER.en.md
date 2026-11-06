@@ -645,12 +645,13 @@ Where and how a way through is drawn:
 
 **Other points with a shape**:
 
-- ![](../../icon/chatiere.png) **Crawlway**: the tunnel narrows to a low passage in the rock, at floor level (about 0.6 m high and 0.9 m wide), with rock above and on the sides. Nothing stops you: the view goes down so you crawl through, then back up (in 🧭 Follow as in 🕹️ Free). Its length is fixed (1.8 m): the point says no more.
+- ![](../../icon/chatiere.png) **Crawlway**: the tunnel narrows to a low passage in the rock, at floor level (about 0.6 m high and 0.9 m wide), with rock above and on the sides. Nothing stops you: the view goes down so you crawl through, then back up (in 🧭 Follow as in 🕹️ Free). It is 1.8 m long, unless its precise point has a start and an end: it then takes their length and their axis.
 - ![](../../icon/plaque.png) **Marker plate**: a blue and white enamel plate, flat on the nearest wall, with the point's name: it widens for a long name, then goes onto two lines, never cutting it. The point has no sign above it: tap the plate to open its card. The name stays with 🧱 off.
 - ![](../../icon/epure.png) **Survey datum**: a light line drawn on the nearest wall, at eye level.
 - ![](../../icon/portail.png) **Portal (inter-plan link)**: a door frame against the wall, **lit** when the point has a link to another plan, dark otherwise. The card of **any point linked** to another plan (portal or not) offers **🌀 Go to plan…**: the confirmation shows over the view; if you confirm, the view closes and the other plan opens. The card's link ➜ does the same.
 - ![](../../icon/vehicule.png) **Vehicle**: a small simplified car (a city car about 3.2 m long) in the tunnel, along it. **You bump into it**, as into a pillar.
 - Plate, datum and portal go on a tunnel wall. In a chamber or in Structures rendering, they go on the nearest pillar, wall or working face, if it is 3 m or less from the point; otherwise the point keeps its sign only. In Tunnels rendering, nothing changes.
+- A point that has a **precise point** (🎯 in its popup) has its shape placed there: the plate on the wall nearest to the precise point, the vehicle or the entrance door at that spot. The sign of a point without a shape goes there too. Passages between levels keep their connections.
 
 #### 🪜 Changing level
 
@@ -666,7 +667,7 @@ Where and how a way through is drawn:
 #### 📍 Points, Go there and guidance
 
 - **Touching a point's sign** opens **its card**, the same as on the map (📍 I am here, 🧭 Go there, ➕ Route, favourite, photos), over the view. ✕ or Esc closes it.
-- Editing, moving or deleting the point is done on the map.
+- In **Edit** view, the popup of **your** points also offers **✏️ Edit** (the map's window, above the view), **📍 Move** (a banner "tap the new location": your next tap on the ground puts the icon there) and **🎯 Increase precision** (tap on the ground; crawlway: start, then end). ✕ or Escape gives up, ⏪ undoes. Deleting a point is done on the map. On a data layer or in read-only mode, these buttons do not appear.
 - **Touching a structure, a zone or a trace** (pillar, wall, face, zone, tunnel) opens **its card**, the same as on the map: note, 🔄 Convert, level, 🗑️ Delete. On a data layer it is read-only.
 - A point's sign comes first. Touching empty space does nothing.
 - **🗺️ Show on the map**, at the bottom of the card: the 3D view closes, the map centres on the object, opens its card and highlights it for a few seconds.
@@ -911,8 +912,11 @@ On **your** points, the point's popup offers:
 
 - **✏️ Edit** — reopens the window pre-filled (name, type, description, photos), then **💾 Save**. If you rename a point, its photos follow it.
 - **📌 Reposition** — a banner "Click the new position for …" appears: your next tap moves the point there. The point keeps everything else (name, type, photos, level). **Cancel** in the banner gives up.
+- **🎯 Increase precision** — for a point moved away from its real spot to stay readable (signs on every wall of a junction…). A banner "tap the exact spot" appears: your next tap sets the **precise point** (the wall of the sign…), the icon does not move. **Crawlway**: tap the **start**, then the **end**. The popup then offers **🎯 Redo the precise point** and **Remove precision**. **✕ Cancel** or Escape gives up.
 
-Both can be undone with ⏪ (`Ctrl+Z`). To remove a point: **🗑️ Delete this point**, in its popup (see 🧹 Erase and correct).
+On the map, a gold dotted line links the icon to a small square at the precise point (crawlway: two linked squares). You see it once you zoom in enough (about 100 m across a phone screen), and always while the point's popup is open. **🧭 Go there**, **➕ Route** and the guidance landmarks aim at the precise point; in 3D, the shape is placed there. KMZ, GPX, GeoJSON, PNG and PDF exports keep the icon's position; the session export and the anonymized export carry the precise point. Passages between levels (stairs, shafts) have none: their connections play that role.
+
+Everything can be undone with ⏪ (`Ctrl+Z`). To remove a point: **🗑️ Delete this point**, in its popup (see 🧹 Erase and correct).
 
 ### 📸 Photos attached to points
 
@@ -1052,7 +1056,7 @@ A tap on a **marker** shows its name, type, note and these buttons:
 | **📸 Thumbnails** | The attached photos |
 | **🌀 Links** | The inter-map links starting from this point |
 
-On **your** points, **✏️ Edit**, **📌 Reposition** and, on a red row, **🗑️ Delete this point** are added.
+On **your** points, **✏️ Edit**, **📌 Reposition**, **🎯 Increase precision** and, on a red row, **🗑️ Delete this point** are added.
 
 ### 🔄 Convert — change an object's type, or family
 

@@ -2402,7 +2402,9 @@ icônes.
   Contrats : `tracking.md` § Vue 3D › Caméra libre, Dessiner en vue d'édition.
 - **Fiche d'un POI** (`.kta-v3d-fiche`) : toucher un panneau de POI (`vue3d.js > _toucher`) ouvre la fiche de la carte
   (`buildPointPopupHtml`) dans un cadre surface à liseré doré, à droite sous le bandeau, défilable, ✕ de 40 px ;
-  Échap la ferme d'abord. Sans ✏️ / Repositionner / 🗑️ : la carte est dessous. POI jonction : en tête de la fiche,
+  Échap la ferme d'abord. Sans Repositionner ni 🗑️ ; un POI de session en vue d'édition a en bas une rangée
+  **✏️ Modifier · 📍 Déplacer · 🎯 point précis** (`.kta-v3d-fiche-edition`, mêmes boutons que les passages ;
+  `tracking.md` § Vue 3D › Guidage, fiche d'un POI). POI jonction : en tête de la fiche,
   un bouton par niveau lié (`.kta-v3d-fiche-passages`, « ▲ Monter au niveau +1 (escalier) », liseré doré, le plus haut
   d'abord).
 - **Fiche d'une structure, d'une zone ou d'un tracé** (`.kta-v3d-fiche.kta-v3d-fiche-objet`, `role="dialog"`) :
@@ -2516,3 +2518,38 @@ extension), hors objet en cours de tracé.
 - Souris (décision) : appui long aussi, pas de glisser direct : un glisser à la souris reste un pan de la carte.
 
 Preuve : `scripts/smoke/checkup-ajuster-sommets.js` (Chromium et WebKit, souris et doigt).
+
+## 🎯 Point précis d'un POI (`js/poiPrecis.js`)
+
+Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur dense : plaques sur tous les murs). Le
+**point précis** donne le vrai lieu sans bouger l'icône (format : `data-formats.md` § Format point).
+
+- **Saisie : depuis la fiche seulement** (décision KARMA du 06/11/2026, pas d'appui long). Rangée
+  `.kta-popup-precis` sous ✏️ / 📌, mêmes droits (`showSessionActions` : POI de session, pas en lecture seule ; un POI
+  de calque n'est pas en session, sa copie « 🔄 Modifier » l'est) : **🎯 Augmenter la précision**, ou **🎯 Refaire le
+  point précis** et **Retirer la précision** s'il en a un. Aucun bouton pour un passage entre niveaux
+  (`KtaPoiJonction.porteNiveaux`). Le bouton arme le mode pendant la capture de son clic, comme Repositionner : la
+  fiche est exclue du clic ré-émis (`map.js > _ktaPickCaptureClick`).
+- **Mode** : bandeau `.kta-iti-floater` (`#kta-precis-floater`, « « Nom » : touchez le point exact · ✕ Annuler » ;
+  chatière : « touchez le début », puis « la fin », un carré provisoire au début). `_modeClicCarteActif()` le voit :
+  aucune fiche ne s'ouvre, le tap est ré-émis même sur un marqueur, le plan orienté se redresse. Les autres modes
+  « clic carte » tombent à l'armement. Échap (écouteur de `window` en capture : `shortcuts.js > _echapCarte` cède au
+  bandeau, la vue 3D aussi) ou ✕ annulent sans rien écrire. Un outil armé depuis la barre : le tap suivant est à lui.
+- ⚠️ **Écriture** (une pose ou un retrait = une entrée annulable) : `captureState("editorPoints")` → mutation en place
+  → `KtaUid.touch` → `renderEditorPoints` → `record` → `SessionPersist.save({ force: true })`. Le point est recherché au
+  tap (id + coordonnées de l'icône, `editor.js > ktaPointSession`).
+- **Affichage** : pointillé (`.kta-precis-trait`, 2 px, `4 4`) de l'icône au point précis — au milieu des deux
+  points d'une chatière —, segment plein entre eux (`.kta-precis-segment`), petit carré de 9 px à chaque point
+  (`.kta-precis-carre`, divIcon) ; couleurs par classes CSS (`--kta-accent`, liseré `--kta-sur-accent`), renderer SVG
+  propre à la carte (`map._ktaPrecisRendu`) : la carte dessine en canvas, où une classe ne vaut rien. Rien
+  n'est interactif (`pointer-events: none`). ⚠️ Visible si l'échelle donne au moins `SEUIL_PX_PAR_M` = 4 px d'écran par
+  mètre (`scale × 2^zoom` : 100 m sur 400 px de téléphone ; sans échelle : zoom ≥ −1) **ou** si la fiche du POI est
+  ouverte ; masqué avec son POI (filtre de niveau ou de type : `ktaMasquerMarqueur` le relaie), retiré quand le
+  marqueur quitte la carte. Rotation : pointillé et carrés vivent dans les panes de la carte, sous `.kta-rotate-pane` :
+  ils tournent avec le plan, comme les icônes (rien à contre-tourner). Branché par `brancherMarqueur` à la création
+  de chaque marqueur (session et calques), sans coût pour un POI sans point précis.
+- **3D** : en vue d'édition, la fiche 3D d'un POI de session propose aussi 🎯 (et ✏️ Modifier, 📍 Déplacer) ; un
+  toucher au sol y sert le même mode (`tracking.md` § Vue 3D).
+
+Preuve : `scripts/smoke/checkup-point-precis.js` (Chromium et WebKit, souris et doigt) ; 3D : `checkup-vue-3d.js`
+§ 39.

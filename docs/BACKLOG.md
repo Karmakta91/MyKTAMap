@@ -117,10 +117,6 @@
   `niveauxProfondeur` (pas ≥ 0,5) + une hauteur PAR NIVEAU (aujourd'hui une seule par plan, `hauteurGalerieM`, hors ZIP).
   `qui: Claude · action: topo puis QCM (données par niveau, Générateur, rendu multi-niveaux, règle du pas, itinéraire,
   ⛏️ Volume exploité qui lit la hauteur, à revoir en parallèle) · depuis: 06/11/2026 · taille: L`
-- **Position précise d'un POI (« Augmenter la précision »)** — un POI est souvent décalé pour la lisibilité (secteur dense
-  en icônes). Dans sa fiche, un bouton pose un 2ᵉ point = l'endroit réel (mur de la plaque…), relié au POI par un pointillé
-  jaune et marqué d'un carré jaune ; la 3D pose la forme là. Toutes les icônes ; chatière : point de début et de fin.
-  `qui: Claude · action: topo puis QCM (format du point, 2D, 3D, export, itinéraire) · depuis: 05/11/2026 · taille: M`
 
 - **Essai sur dev : lots du 05/11 sur téléphone** — prouvés en émulation seulement : ＋ / 🗑️ des sommets (2D, 3D),
   gestes 3D à deux doigts, colonne d'outils en paysage, plan au sol d'un plan transparent, ruban d'itinéraire 3D,

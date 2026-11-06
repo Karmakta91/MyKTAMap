@@ -810,4 +810,8 @@ L'**arrivée** suit la même règle quand la cible a un niveau connu : `itinerai
 
 Position jamais confirmée : le picker « Où es-tu ? » relance `itineraireYAller` avec son origine **et les autres options** (`niveauCible` compris).
 
+### Arrivée au point précis d'un POI
+
+Un POI qui a un **point précis** (`data-formats.md` § Format point, `poiPrecis.js`) est visé **là**, pas à son icône (décision KARMA du 06/11/2026) : `KtaPoiPrecis.cible(p)` (point précis, milieu des deux points d'une chatière, sinon le POI). Appelants : « 🧭 Y aller » et « ➕ Itinéraire » de la fiche (`data-kta-cx` / `data-kta-cy` du bouton, `data-kta-x` / `y` restant l'identité du point), la recherche de la modale d'itinéraire, la recherche inter-plans sur le plan courant, la commande vocale, `Pathfinder.resolvePointById` et les repères cités par le guidage (`itiGuidage.js > _poisDeLApp`). Le niveau de la cible ne change pas (même niveau que le POI). Ignoré pour un passage entre niveaux (ses raccords). Exports et graphe inchangés. Checkup : `scripts/smoke/checkup-point-precis.js` § 7.
+
 Plan mono-niveau : aucun `level` posé, calage inchangé. Checkup : `scripts/smoke/checkup-recaler-niveau.js` (tracés superposés 0 et −1 reliés par une jonction — § 10-11 : choix −1 dans « Où es-tu ? » → la route part du −1 ; § 13-14 : tracker au −1, niveau affiché 0 → « Y aller », « Recalculer d'ici » et la sortie d'urgence partent du −1 ; § 15 : sortie du −1 → la route finit sur le −1 ; § 15 bis : « Y aller » de la fiche d'un POI du −1, 0 affiché → la route finit sur le −1).

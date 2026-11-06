@@ -645,12 +645,13 @@ Dónde y cómo se dibuja un paso:
 
 **Otros puntos con forma**:
 
-- ![](../../icon/chatiere.png) **Gatera**: la galería se estrecha en un paso bajo en la roca, a ras de suelo (unos 0,6 m de alto y 0,9 m de ancho), con roca encima y a los lados. Nada te detiene: la vista baja para pasar a rastras y luego vuelve a subir (en 🧭 Seguimiento como en 🕹️ Libre). Su longitud es fija (1,8 m): el punto no dice más.
+- ![](../../icon/chatiere.png) **Gatera**: la galería se estrecha en un paso bajo en la roca, a ras de suelo (unos 0,6 m de alto y 0,9 m de ancho), con roca encima y a los lados. Nada te detiene: la vista baja para pasar a rastras y luego vuelve a subir (en 🧭 Seguimiento como en 🕹️ Libre). Mide 1,8 m, salvo si su punto preciso tiene un inicio y un final: toma entonces su longitud y su eje.
 - ![](../../icon/plaque.png) **Placa de indicación**: una placa esmaltada azul y blanca, plana sobre la pared más cercana, con el nombre del punto: se ensancha para un nombre largo y luego pasa a dos líneas, sin cortarlo nunca. El punto no tiene panel encima: toca la placa para abrir su ficha. El nombre se mantiene con 🧱 desactivado.
 - ![](../../icon/epure.png) **Croquis**: un trazo claro dibujado en la pared más cercana, a la altura de los ojos.
 - ![](../../icon/portail.png) **Portal (enlace entre mapas)**: un marco de puerta contra la pared, **encendido** cuando el punto tiene un enlace a otro mapa, apagado si no. La ficha de **todo punto enlazado** a otro mapa (portal o no) propone **🌀 Pasar al plano…**: la confirmación aparece sobre la vista; si confirmas, la vista se cierra y se abre el otro mapa. El ➜ de los enlaces de la ficha hace lo mismo.
 - ![](../../icon/vehicule.png) **Vehículo**: un coche pequeño simplificado (un urbano de unos 3,2 m) en la galería, a lo largo de ella. **Chocas con él**, como con un pilar.
 - Placa, croquis y portal se colocan en la pared de una galería. En una sala o en el modo Estructuras, se colocan en el pilar, el muro o el frente más cercano, si está a 3 m o menos del punto; si no, el punto solo conserva su panel. En el modo Galerías, nada cambia.
+- Un punto que tiene un **punto preciso** (🎯 en su ventana) coloca allí su forma: la placa en la pared más cercana al punto preciso, el vehículo o la puerta de acceso en ese lugar. El panel de un punto sin forma también se coloca allí. Los pasos entre niveles conservan sus enlaces.
 
 #### 🪜 Cambiar de nivel
 
@@ -666,7 +667,7 @@ Dónde y cómo se dibuja un paso:
 #### 📍 Puntos, Ir allí y guiado
 
 - **Tocar el cartel de un punto** abre **su ficha**, la misma que en el mapa (📍 Estoy aquí, 🧭 Ir allí, ➕ Ruta, favorito, fotos), sobre la vista. ✕ o Esc la cierra.
-- Modificar, mover o borrar el punto se hace en el mapa.
+- En la vista de **Edición**, la ventana de **tus** puntos ofrece también **✏️ Editar** (la ventana del mapa, por encima de la vista), **📍 Mover** (un aviso «toca el nuevo emplazamiento»: tu siguiente toque en el suelo coloca allí el icono) y **🎯 Aumentar la precisión** (toque en el suelo; gatera: inicio y luego final). ✕ o Escape lo abandona, ⏪ lo deshace. Eliminar un punto se hace en el mapa. En una capa de datos o en solo lectura, estos botones no aparecen.
 - **Tocar una estructura, una zona o un trazado** (pilar, muro, frente, zona, galería) abre **su ficha**, la misma que en el mapa: nota, 🔄 Convertir, nivel, 🗑️ Eliminar. En una capa de datos es de solo lectura.
 - El cartel de un punto va primero. Tocar en el vacío no hace nada.
 - **🗺️ Ver en el mapa**, al pie de la ficha: la vista 3D se cierra, el mapa se centra en el objeto, abre su ficha y lo resalta unos segundos.
@@ -911,8 +912,11 @@ En **tus** puntos, la ventana del punto ofrece:
 
 - **✏️ Editar** — vuelve a abrir la ventana ya rellenada (nombre, tipo, descripción, fotos), y luego **💾 Guardar**. Si cambias el nombre de un punto, sus fotos lo siguen.
 - **📌 Reposicionar** — aparece un aviso «Haz clic en la nueva posición de …»: tu siguiente toque mueve el punto allí. El punto conserva todo lo demás (nombre, tipo, fotos, nivel). **Cancelar** en el aviso lo abandona.
+- **🎯 Aumentar la precisión** — para un punto apartado de su lugar real para que se lea bien (placas en todas las paredes de un cruce…). Aparece un aviso «toca el punto exacto»: tu siguiente toque marca el **punto preciso** (la pared de la placa…), el icono no se mueve. **Gatera**: toca el **inicio** y luego el **final**. La ventana ofrece después **🎯 Rehacer el punto preciso** y **Quitar la precisión**. **✕ Cancelar** o Escape lo abandona.
 
-Ambos se deshacen con ⏪ (`Ctrl+Z`). Para quitar un punto: **🗑️ Eliminar este punto**, en su ventana (ver 🧹 Borrar y corregir).
+En el mapa, una línea dorada de puntos une el icono con un pequeño cuadrado en el punto preciso (gatera: dos cuadrados unidos). Se ve en cuanto acercas lo suficiente (unos 100 m en el ancho de un teléfono), y siempre que la ventana del punto está abierta. **🧭 Ir allí**, **➕ Ruta** y las referencias del guiado apuntan al punto preciso; en 3D, la forma se coloca allí. Las exportaciones KMZ, GPX, GeoJSON, PNG y PDF conservan la posición del icono; la exportación de sesión y la anonimizada llevan el punto preciso. Los pasos entre niveles (escaleras, pozos) no lo tienen: sus enlaces cumplen ese papel.
+
+Todo se deshace con ⏪ (`Ctrl+Z`). Para quitar un punto: **🗑️ Eliminar este punto**, en su ventana (ver 🧹 Borrar y corregir).
 
 ### 📸 Fotos adjuntas a los puntos
 
@@ -1052,7 +1056,7 @@ Un toque en un **marcador** muestra su nombre, su tipo, su nota y estos botones:
 | **📸 Miniaturas** | Las fotos adjuntas |
 | **🌀 Enlaces** | Los enlaces entre mapas que salen de este punto |
 
-En **tus** puntos se añaden **✏️ Editar**, **📌 Reposicionar** y, en una línea roja, **🗑️ Eliminar este punto**.
+En **tus** puntos se añaden **✏️ Editar**, **📌 Reposicionar**, **🎯 Aumentar la precisión** y, en una línea roja, **🗑️ Eliminar este punto**.
 
 ### 🔄 Convertir: cambiar un objeto de tipo o de familia
 

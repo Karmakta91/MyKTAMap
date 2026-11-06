@@ -645,12 +645,13 @@ Où et comment un passage se dessine :
 
 **Autres points avec une forme** :
 
-- ![](../../icon/chatiere.png) **Chatière** : la galerie se resserre sur un passage bas dans la roche, au ras du sol (environ 0,6 m de haut sur 0,9 m de large), la roche au-dessus et sur les côtés. Rien ne t'arrête : la vue s'abaisse pour la passer en rampant, puis remonte (en 🧭 Suivi comme en 🕹️ Libre). Sa longueur est fixe (1,8 m) : le point n'en dit pas plus.
+- ![](../../icon/chatiere.png) **Chatière** : la galerie se resserre sur un passage bas dans la roche, au ras du sol (environ 0,6 m de haut sur 0,9 m de large), la roche au-dessus et sur les côtés. Rien ne t'arrête : la vue s'abaisse pour la passer en rampant, puis remonte (en 🧭 Suivi comme en 🕹️ Libre). Elle fait 1,8 m, sauf si son point précis a un début et une fin : elle prend alors leur longueur et leur axe.
 - ![](../../icon/plaque.png) **Plaque indication** : une plaque émaillée bleue et blanche, à plat sur la paroi la plus proche, au nom du point : elle s'élargit pour un nom long, puis passe sur deux lignes, sans jamais le couper. Le point n'a pas de panneau au-dessus : touche la plaque pour ouvrir sa fiche. Le nom reste avec 🧱 coupé.
 - ![](../../icon/epure.png) **Épure** : un trait clair tracé sur la paroi la plus proche, à hauteur d'yeux.
 - ![](../../icon/portail.png) **Portail (liaison inter-plan)** : un cadre de porte contre la paroi, **allumé** quand le point a une liaison vers un autre plan, éteint sinon. La fiche de **tout point lié** à un autre plan (portail ou non) propose **🌀 Passer au plan…** : la confirmation s'affiche par-dessus la vue ; si tu confirmes, la vue se ferme et l'autre plan s'ouvre. Le ➜ des liaisons de la fiche fait de même.
 - ![](../../icon/vehicule.png) **Véhicule** : une petite voiture simplifiée (une citadine d'environ 3,2 m) dans la galerie, le long de celle-ci. **On bute dessus**, comme sur un pilier.
 - Plaque, épure et portail se posent sur la paroi d'une galerie. Dans une salle ou en rendu Structures, ils se posent sur le pilier, le mur ou le front le plus proche, s'il est à 3 m au plus du point ; sinon, le point garde son seul panneau. En rendu Galeries, rien ne change.
+- Un point qui a un **point précis** (🎯 dans sa fiche) a sa forme posée là : la plaque sur la paroi la plus proche du point précis, le véhicule ou le cavage à cet endroit. Le panneau d'un point sans forme s'y place aussi. Les passages entre niveaux gardent leurs raccords.
 
 #### 🪜 Changer de niveau
 
@@ -666,7 +667,7 @@ Où et comment un passage se dessine :
 #### 📍 Points, Y aller et guidage
 
 - **Toucher le panneau d'un point** ouvre **sa fiche**, la même que sur la carte (📍 Je suis ici, 🧭 Y aller, ➕ Itinéraire, favori, photos), au-dessus de la vue. ✕ ou Échap la referme.
-- Modifier, déplacer ou supprimer le point se fait sur la carte.
+- En vue d'**Édition**, la fiche de **tes** points propose aussi **✏️ Modifier** (la fenêtre de la carte, au-dessus de la vue), **📍 Déplacer** (un bandeau « touchez le nouvel emplacement » : le prochain toucher au sol y repose l'icône) et **🎯 Augmenter la précision** (toucher au sol ; chatière : début puis fin). ✕ ou Échap abandonne, ⏪ annule. Supprimer un point se fait sur la carte. Sur un calque de données ou en lecture seule, ces boutons n'apparaissent pas.
 - **Toucher une structure, une zone ou un tracé** (pilier, mur, front, zone, galerie) ouvre **sa fiche**, la même que sur la carte : note, 🔄 Convertir, niveau, 🗑️ Supprimer. Sur un calque de données, elle est en lecture seule.
 - Un panneau de point passe d'abord. Toucher dans le vide ne fait rien.
 - **🗺️ Voir sur la carte**, en bas de la fiche : la 3D se ferme, la carte se centre sur l'objet, ouvre sa fiche et le surligne quelques secondes.
@@ -911,8 +912,11 @@ Sur **tes** points, la bulle du point propose :
 
 - **✏️ Modifier** — rouvre la fenêtre pré-remplie (nom, type, description, photos), puis **💾 Enregistrer**. Si tu renommes un point, ses photos le suivent.
 - **📌 Repositionner** — un bandeau « Clique la nouvelle position de … » s'affiche : le prochain tap y déplace le point. Le point garde tout le reste (nom, type, photos, niveau). **Annuler** dans le bandeau abandonne.
+- **🎯 Augmenter la précision** — pour un point décalé de son vrai lieu afin de rester lisible (des plaques sur tous les murs d'un carrefour…). Un bandeau « touchez le point exact » s'affiche : le prochain tap pose le **point précis** (le mur de la plaque…), l'icône ne bouge pas. **Chatière** : touche le **début**, puis la **fin**. La bulle propose ensuite **🎯 Refaire le point précis** et **Retirer la précision**. **✕ Annuler** ou Échap abandonne.
 
-Les deux s'annulent avec ⏪ (`Ctrl+Z`). Pour retirer un point : **🗑️ Supprimer ce point**, dans sa bulle (voir 🧹 Effacer et corriger).
+Sur la carte, un pointillé doré relie l'icône à un petit carré au point précis (chatière : deux carrés reliés). Tu le vois dès que tu zoomes assez (environ 100 m sur la largeur d'un téléphone), et toujours quand la bulle du point est ouverte. **🧭 Y aller**, **➕ Itinéraire** et les repères du guidage visent le point précis ; en 3D, la forme s'y pose. Les exports KMZ, GPX, GeoJSON, PNG et PDF gardent la place de l'icône ; l'export de session et l'export anonymisé emportent le point précis. Les passages entre niveaux (escaliers, puits) n'en ont pas : leurs raccords jouent ce rôle.
+
+Tout s'annule avec ⏪ (`Ctrl+Z`). Pour retirer un point : **🗑️ Supprimer ce point**, dans sa bulle (voir 🧹 Effacer et corriger).
 
 ### 📸 Photos attachées aux points
 
@@ -1052,7 +1056,7 @@ Un tap sur un **marqueur** affiche son nom, son type, sa note et ces boutons :
 | **📸 Miniatures** | Les photos attachées |
 | **🌀 Liaisons** | Les liaisons inter-plan qui partent de ce point |
 
-Sur **tes** points s'ajoutent **✏️ Modifier**, **📌 Repositionner** et, sur une ligne rouge, **🗑️ Supprimer ce point**.
+Sur **tes** points s'ajoutent **✏️ Modifier**, **📌 Repositionner**, **🎯 Augmenter la précision** et, sur une ligne rouge, **🗑️ Supprimer ce point**.
 
 ### 🔄 Convertir — changer un objet de type, ou de famille
 
