@@ -112,9 +112,11 @@
 
 ## Entrant
 
-- **Rotation du plan en Vue OSM** — demande KARMA 06/11 : pouvoir tourner la carte en Vue OSM comme le plan 2D
-  (`mapBearing.js` : deux doigts, bouton nord). À cadrer : modale et widget de l'accueil, tuiles OSM, plan calé, cap.
-  `qui: Claude · action: topo (ce que fait la 2D, ce que la Vue OSM permet) · depuis: 06/11/2026 · taille: S`
+- **Rotation manuelle en Vue OSM** — décidé 07/11 : manuelle seulement, pas de cap. ✅ vu 07/11 : `mapBearing.js`
+  ne sert que `window.map` → module rattachable (M), puis fenêtre OSM (S-M : coins des tuiles, panes du plan calé,
+  mesure). Widget de l'accueil droit d'abord (S ensuite si voulu).
+  `qui: Claude · action: lot en copie séparée sur go de KARMA · fini: Vue OSM tournée au doigt, rotation du plan
+  inchangée (checkups) · depuis: 06/11/2026 · taille: M`
 - **Accueil pro lent : splash bloquant et connexions IndexedDB** — audit pro
   `MyKTAMap-pro/docs/audits/2026-11-06_audit-accueil-chiffre-v1.md` : `main.js` attend la fin de l'animation du
   splash (~4 s) avant la porte du pro ; `planRegistry.js > _openIDB` ouvre une connexion à chaque appel, jamais fermée.
