@@ -308,10 +308,12 @@ const CALQUE = {
     const monterAjouts = async function (lecture) {
       const m = monter(AVEC_UID, session());
       m.traces = [];
+      m.copies = [];
       m.ctx.KtaUid = {
         touch: (o) => { o.updatedAt = Date.now(); return o; },
         estTransitoire: (o) => !!(o && o.type === "itinerary"),
-        tombstone: (u) => { m.traces.push(u); }, untombstone() {}
+        tombstone: (u) => { m.traces.push(u); }, untombstone() {},
+        tombstoneCopie: (u, c) => { m.copies.push(u + "@" + c); }
       };
       m.ctx.document.addEventListener = function () {};
       m.ctx.ktaEditionRefusee = () => !!m.lecture;
@@ -373,12 +375,13 @@ const CALQUE = {
     t("🧹 export : la marque d'ajout est retirée du fichier",
       ex.stats.data.concat(ex.stats.roads).every((o) => o._srcCalqueAjout === undefined && o._srcCalque === undefined));
 
-    // 🔒 Supprimer un objet intégré ne laisse PAS de trace : exporté, son uid est dans le fichier du calque.
+    // 🔒 Supprimer un objet intégré laisse une trace de COPIE, jamais une trace ordinaire : exporté, son uid est dans
+    // le fichier du calque.
     const avantSuppr = m.ctx.HistoryManager.captureState("editorPoints");
     m.etat.editorPoints = m.etat.editorPoints.filter((o) => o.uid !== "pt_main0001");
     m.ctx.HistoryManager.record("suppr", avantSuppr, "editorPoints");
-    t("🔒 suppression d'un ajout intégré : aucune trace de suppression (elle viserait le fichier du calque)",
-      m.traces.indexOf("pt_main0001") < 0);
+    t("🔒 suppression d'un ajout intégré : trace de copie (synchro), aucune trace ordinaire (elle viserait le fichier du calque)",
+      m.traces.indexOf("pt_main0001") < 0 && m.copies.join() === "pt_main0001@sig");
     m.ctx.HistoryManager.undo();
     t("  -> ⏪ rend le point supprimé, toujours intégré", m.CS.compterAjouts("sig") === 2);
 
@@ -575,6 +578,65 @@ const CALQUE = {
     const c = m6.CS.appliquerRestitutions([{ calque: "sig", avant: 150 }, { calque: 42, avant: 9 }, { calque: "x", avant: -1 }]);
     t("une restitution plus ancienne ou invalide ne change rien", !c.change && m6.etat.roads.length === n &&
       m6.CS.getSessionState().restitutions.sig === 200 && !("x" in m6.CS.getSessionState().restitutions));
+  }
+
+  // ───────── 4 quater. 🔒 COPIE SUPPRIMÉE : trace de copie, jamais dans un fichier, tombée à la restitution ─────────
+  // Le VRAI ktaUid.js et le VRAI historyManager.js dans le même `vm` : la suppression d'une copie part à la synchro
+  // (trace de copie) sans jamais entrer dans getTombstones (lu par les exports), et la restitution la fait tomber.
+  {
+    const AVEC_UID = { roads: [{ uid: "rd_c2aaaaaa", type: "a", points: [] }, { uid: "rd_c2bbbbbb", type: "b", points: [] }] };
+    const monterK = async function () {
+      const m = monter(AVEC_UID);
+      m.ctx.document.addEventListener = function () {};
+      m.ctx._currentLoadedPlanId = "ext_p1";
+      m.ctx.PlanRegistry = { findById: (id) => (id === "ext_p1" ? { id, type: "ext" } : null) };
+      m.ctx.KtaExtensions = { lectureSeule: () => false };
+      vm.runInContext("var document = window.document, console = window.console;", m.ctx);
+      vm.runInContext(fs.readFileSync("js/ktaUid.js", "utf8"), m.ctx, { filename: "ktaUid.js" });
+      vm.runInContext(fs.readFileSync("js/historyManager.js", "utf8"), m.ctx, { filename: "historyManager.js" });
+      await m.CS.rapatrier("sig");
+      m.K = m.ctx.KtaUid; m.H = m.ctx.HistoryManager;
+      m.suppr = function (uid) {
+        const av = m.H.captureState("roads");
+        m.etat.roads = m.etat.roads.filter((o) => o.uid !== uid);
+        m.H.record("suppr", av, "roads");
+      };
+      m.copies = () => m.K.getTracesCopie().map((x) => x.uid + "@" + x.calque).sort().join();
+      return m;
+    };
+    const m = await monterK();
+    m.suppr("rd_c2aaaaaa");
+    t("copie supprimée : trace de COPIE (calque connu), aucune trace « fichier »",
+      m.copies() === "rd_c2aaaaaa@sig" && m.K.getTombstones().length === 0);
+    const ex = m.CS.contenuCalque("sig");
+    t("🔒 export du calque : sans l'objet supprimé, sans trace", ex.ok && ex.total === 1 &&
+      JSON.stringify(ex.payload).indexOf("rd_c2aaaaaa") < 0 && ex.payload.tombstones === undefined);
+    t("calqueDesTraces : une copie marquée d'ici donne son calque, un uid inconnu rien",
+      m.CS.calqueDesTraces()("rd_c2bbbbbb") === "sig" && m.CS.calqueDesTraces()("rd_inconnu") === null);
+    m.ctx._ktaDataMarkers = [{ _ktaUid: "pt_fic00001", _ktaLayerId: "sig" }];
+    m.ctx._ktaDataPolygons = [{ uid: "zn_fic00001", layerId: "sig" }];
+    m.ctx.ktaCalquesDesRoadsEmbarquees = () => [{ uid: "rd_fic00001", calque: "sig" }];
+    const cd = m.CS.calqueDesTraces();
+    t("calqueDesTraces : objets chargés des fichiers de calque (points, zones, tracés) reconnus",
+      cd("pt_fic00001") === "sig" && cd("zn_fic00001") === "sig" && cd("rd_fic00001") === "sig");
+    m.suppr("rd_c2bbbbbb");
+    t("toutes les copies supprimées : le calque RESTE en modification (traces), resynchronisé comme au chargement",
+      m.CS.resynchroniser().rapatries.join() === "sig" && m.CS.appliquerVerrous().liberes.length === 0 && m.surCarte.sig === false);
+    const r = m.CS.restituer("sig");
+    const env = m.CS.restitutionsDepuis(0);
+    t("restitution : les traces de copie tombent, l'original revient", r.ok && m.copies() === "" && m.surCarte.sig === true);
+    t("🔒 restitution partagée : la note porte les uids des copies supprimées (serveur chiffré)",
+      env.length === 1 && ["rd_c2aaaaaa", "rd_c2bbbbbb"].every((u) => env[0].uids.indexOf(u) >= 0));
+    await m.CS.rapatrier("sig");
+    t("nouveau rapatriement : aucune trace de copie ne vise les nouvelles copies", m.copies() === "" && m.CS.compterCopie("sig") === 2);
+
+    const m2 = await monterK();
+    m2.suppr("rd_c2aaaaaa");
+    const d = m2.K.getTracesCopie()[0].deletedAt;
+    m2.CS.appliquerRestitutions([{ calque: "sig", avant: d - 1 }]);
+    t("restitution reçue ANTÉRIEURE à la suppression : la trace de copie reste", m2.copies() === "rd_c2aaaaaa@sig");
+    m2.CS.appliquerRestitutions([{ calque: "sig", avant: d + 1 }]);
+    t("restitution reçue postérieure : la trace de copie tombe", m2.copies() === "");
   }
 
   // ───────── etat corrompu ─────────

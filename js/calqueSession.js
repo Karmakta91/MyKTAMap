@@ -23,10 +23,10 @@
 //   1. « Effacer la session » doit RENDRE le calque : copie et verrou tombent ensemble, sinon plan vide.
 //   2. Au chargement, le verrou ne s'applique QUE SI la copie est là (sauvegarde ratée sur quota → plan vide
 //      sans explication) : appliquerVerrous() vérifie AVANT de masquer, et déverrouille en le disant.
-// 🩸 Plan d'extension (☁️) : la restitution se PARTAGE sans trace de suppression (une trace sur l'uid d'une copie,
-//   exportée puis fusionnée, détruirait l'objet du calque). Un enregistrement par calque « restitué à T »
-//   (restitutionsDepuis → synchro sortante ; appliquerRestitutions ← synchro entrante), gardé dans l'état LOCAL
-//   de la session (jamais dans un fichier de session ni de calque). Règle : docs/architecture/session-data.md.
+// 🩸 Plan d'extension (☁️) : la restitution se PARTAGE par un enregistrement « calque restitué à T »
+//   (restitutionsDepuis → synchro sortante ; appliquerRestitutions ← entrante), état LOCAL de la session. Supprimer
+//   une copie pose une trace de COPIE (KtaUid.tombstoneCopie, 🔒 jamais dans un fichier : exportée puis fusionnée,
+//   elle détruirait l'objet du calque) ; la restitution la fait tomber. Règle : docs/architecture/session-data.md.
 // Ajouts intégrés : un objet dessiné à la main peut rejoindre un calque en modification (integrerAjouts) ; il se
 //   comporte alors en copie (exporté avec le calque, retiré à sa restitution).
 // Nouvelle version du plan (js/majPlan.js) : contenuCalque (le fichier sans téléchargement), retirerIntegres (les
@@ -34,7 +34,8 @@
 // API : window.CalqueSession = { estRapatrie, listeRapatries, peser, occupationLocalStorage, rapatrier, restituer,
 //   exporterCalque, contenuCalque, retirerIntegres, compterCopie, appliquerVerrous, resynchroniser (import de
 //   session, synchro), getSessionState, loadSessionState, restitutionPartagee, libelle, restitutionsDepuis,
-//   appliquerRestitutions, candidatsAjout, integrerAjouts, compterAjouts, CLE_SOURCE, CLE_DEPUIS, CLE_AJOUT }
+//   appliquerRestitutions, calqueDesTraces, candidatsAjout, integrerAjouts, compterAjouts, CLE_SOURCE, CLE_DEPUIS,
+//   CLE_AJOUT }
 // 100 % local (le `fetch` du calque est celui que ajouterPointsDepuisJSON fait déjà). Garde-fou :
 // check-calque-session.js.
 
@@ -177,11 +178,14 @@ window.CalqueSession = (function () {
           // changé depuis » n'en enverrait que les copies retouchées, et un autre appareil masquerait le calque
           // pour n'en montrer que quelques objets.
           const maintenant = Date.now();
+          const K = window.KtaUid;
           const copies = src.map(function (o) {
             const c = JSON.parse(JSON.stringify(o));
             c[CLE_SOURCE] = id;
             c[CLE_DEPUIS] = maintenant;
             c.updatedAt = maintenant;
+            // Nouveau rapatriement : la trace d'une copie supprimée avant (rapatriement précédent) ne vise plus rien.
+            if (K && typeof c.uid === "string" && c.uid) K.untombstone(c.uid);
             return c;
           });
           _ecrire(fam, _lire(fam).concat(copies));   // les setters redessinent
@@ -228,6 +232,9 @@ window.CalqueSession = (function () {
       }
     });
     _rapatries = _rapatries.filter(function (x) { return x !== id; });
+    // Les traces des copies supprimées tombent : l'objet du fichier revient. Leurs uids partent avec la note (le
+    // serveur d'une organisation chiffrée ne lit pas la marque : sans eux, la trace resterait chez lui).
+    uids.push.apply(uids, _oublierTraces(id));
     const partagee = !(opts && opts.local === true) && _restitutionPartagee();
     if (partagee) {
       _restitutions[id] = Math.max(_restitutions[id] || 0, T);
@@ -239,6 +246,40 @@ window.CalqueSession = (function () {
     _log("calque « " + id + " » restitue — " + retires + " objet(s) retire(s) de la session" +
          (partagee ? " (restitution partagee, avant " + T + ")" : ""));
     return { ok: true, retires: retires, partagee: partagee };
+  }
+
+  // Traces de copie du calque `id` (KtaUid), datées au plus tard de `avant` : retirées. → uids.
+  function _oublierTraces(id, avant) {
+    const K = window.KtaUid;
+    return (K && typeof K.oublierTracesCopie === "function") ? K.oublierTracesCopie(id, avant) : [];
+  }
+  function _aDesTraces(id) {
+    const K = window.KtaUid;
+    return !!(K && typeof K.getTracesCopie === "function" && K.getTracesCopie().some(function (t) { return t.calque === id; }));
+  }
+
+  // uid → id du calque dont le fichier contient un objet de cet uid (copie marquée en session, ou objet chargé d'un
+  // calque du plan ouvert), sinon null. Index bâti à l'appel : à rappeler après un changement. Sert à ranger une
+  // trace de suppression (historyManager.js, synchro reçue, import sur plan partagé) : 🔒 une trace sur un tel uid
+  // est une trace de COPIE, jamais dans un fichier.
+  function calqueDesTraces() {
+    const m = new Map();
+    const noter = function (uid, calque) {
+      if (typeof uid === "string" && uid && typeof calque === "string" && calque && !m.has(uid)) m.set(uid, calque);
+    };
+    FAMILLES.forEach(function (fam) {
+      _lire(fam).forEach(function (o) { if (o) noter(o.uid, o[CLE_SOURCE]); });
+    });
+    (Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers : []).forEach(function (mk) {
+      if (mk) noter(mk._ktaUid, mk._ktaLayerId);
+    });
+    [window._ktaDataPolygons, window._ktaDataStructurePolygons].forEach(function (reg) {
+      (Array.isArray(reg) ? reg : []).forEach(function (e) { if (e) noter(e.uid, e.layerId); });
+    });
+    if (typeof window.ktaCalquesDesRoadsEmbarquees === "function") {
+      window.ktaCalquesDesRoadsEmbarquees().forEach(function (e) { noter(e.uid, e.calque); });
+    }
+    return function (uid) { return m.get(uid) || null; };
   }
 
   // Plan d'extension ouvert et modifiable : seul cas où la restitution part aux autres. Notée sur un plan en
@@ -330,8 +371,11 @@ window.CalqueSession = (function () {
       });
       if (change) _ecrire(fam, apres);
     });
+    // Traces de copie antérieures à la restitution de leur calque : tombées (l'objet du fichier est revenu).
+    let traces = 0;
+    Object.keys(_restitutions).forEach(function (L) { traces += _oublierTraces(L, _restitutions[L]).length; });
     const change = retires > 0 || gardes > 0;
-    if (change || nouvelle) _persister();
+    if (change || nouvelle || traces) _persister();
     if (change) _log("restitution recue — " + retires + " copie(s) retiree(s), " + gardes + " gardee(s) en session");
     if (gardes && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       Object.keys(parCalque).forEach(function (L) {
@@ -342,15 +386,16 @@ window.CalqueSession = (function () {
         } catch (e) {}
       });
     }
-    return { retires: retires, gardes: gardes, change: change };
+    // `change` vrai aussi pour une trace tombée : l'appelant resynchronise (calque gardé par ses seules traces libéré).
+    return { retires: retires, gardes: gardes, change: change || traces > 0 };
   }
 
   // ── Intégrer des ajouts : un objet dessiné à la main rejoint un calque en modification ──────────
   // L'objet reçoit la marque ET la date de rapatriement des copies du calque (pas l'instant de l'intégration) : il
   // se comporte en copie retouchée maintenant.
   //   - exporté avec le calque (exporterCalque lit la marque), retiré à sa restitution locale ou reçue ;
-  //   - 🔒 aucune trace de suppression (historyManager.js > _laisseTrace) : une fois exporté, son uid EST dans le
-  //     fichier du calque, une trace le détruirait par la fusion de calques ;
+  //   - 🔒 supprimé, il reçoit une trace de COPIE (historyManager.js > _tracer), jamais dans un fichier : une fois
+  //     exporté, son uid EST dans le fichier du calque, une trace exportée l'y détruirait par la fusion de calques ;
   //   - une restitution reçue postérieure au rapatriement mais antérieure à l'intégration le GARDE en objet
   //     ordinaire sous un uid dérivé (règle des copies modifiées après T) : avec l'instant de l'intégration, il
   //     resterait marqué et laisserait le calque masqué pour lui seul.
@@ -541,7 +586,8 @@ window.CalqueSession = (function () {
   function appliquerVerrous() {
     const perdus = [];
     _rapatries.slice().forEach(function (id) {
-      if (compterCopie(id) > 0) {
+      // Toutes les copies supprimées (leurs traces le disent) : le calque reste en modification, vide.
+      if (compterCopie(id) > 0 || _aDesTraces(id)) {
         _masquer(id);
       } else {
         perdus.push(id);
@@ -598,6 +644,9 @@ window.CalqueSession = (function () {
       });
     });
 
+    // Calque en modification dont toutes les copies ont été supprimées : ses traces de copie le gardent (sinon
+    // l'original reviendrait chez tous, suppression défaite à l'écran).
+    _rapatries.forEach(function (id) { if (connus[id] && presents.indexOf(id) < 0 && _aDesTraces(id)) presents.push(id); });
     const liberes = _rapatries.filter(function (id) { return presents.indexOf(id) < 0; });
     liberes.forEach(_afficher);
     _rapatries = presents;
@@ -680,6 +729,7 @@ window.CalqueSession = (function () {
     libelle:                libelle,
     restitutionsDepuis:     restitutionsDepuis,
     appliquerRestitutions:  appliquerRestitutions,
+    calqueDesTraces:        calqueDesTraces,
     appliquerVerrous:       appliquerVerrous,
     candidatsAjout:         candidatsAjout,
     compterAjouts:          compterAjouts,

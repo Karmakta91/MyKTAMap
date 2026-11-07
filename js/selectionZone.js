@@ -15,8 +15,8 @@
 //   ne sont pas des objets). Objets de calque : jamais touchés, seulement COMPTÉS (le calque passe d'abord en
 //   « 🔄 Modifier » : ses copies sont alors en session et se suppriment comme le reste).
 // 🩸 Suppression = UN instantané, UNE entrée ⏪, une écriture par famille : HistoryManager.record pose les traces
-//   de suppression (KtaUid) par diff des uid, comme pour une suppression unitaire (pas de trace pour une copie de
-//   calque, cf. historyManager.js > _laisseTrace).
+//   de suppression (KtaUid) par diff des uid, comme pour une suppression unitaire (copie de calque : trace de copie,
+//   jamais dans un fichier, cf. historyManager.js > _tracer).
 // 🩸 Photos d'un point supprimé : gardées, « sans point » (comme supprimerPointEditor) ; ⏪ rend le point et son uid,
 //   donc ses photos. Points portails (liaison vers un autre plan) : gardés, la purge des liaisons ne s'annule pas.
 // Expose : window.KtaSelectionZone = { dansZone, commencer, enCours, nbSommets, retirerSommet, terminer,

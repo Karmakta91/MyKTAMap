@@ -756,7 +756,8 @@
   //     toujours celle de la session (le Tableur ne l'édite pas). Objet sans changement : intact (pas de touch).
   //   - uid inconnu ou en double : ajout ; objet de la session absent du tableau : suppression (la trace de
   //     suppression est posée par HistoryManager.record, comme pour toute suppression).
-  //   - 🩸 uid inconnu MAIS tracé comme supprimé (KtaUid.getTombstones) : un réimport ne ressuscite rien. Ligne non
+  //   - 🩸 uid inconnu MAIS tracé comme supprimé (KtaUid.getTombstones, ou getTracesCopie pour une copie de calque) :
+  //     un réimport ne ressuscite rien. Ligne non
   //     touchée → ignorée (comptée dans `ignores`) ; ligne modifiée → réajoutée (geste explicite), sa trace retirée par
   //     HistoryManager.record comme pour toute réapparition.
   //   - itinéraire calculé et aperçus (`_preview`) : jamais pris au tableau, toujours gardés.
@@ -804,6 +805,10 @@
     const traces = new Set();
     if (window.KtaUid && typeof window.KtaUid.getTombstones === "function") {
       (window.KtaUid.getTombstones() || []).forEach(function (t) { if (t && t.uid) traces.add(t.uid); });
+    }
+    // Copie de calque supprimée : ne revient pas non plus par un réimport (trace de copie, KtaUid).
+    if (window.KtaUid && typeof window.KtaUid.getTracesCopie === "function") {
+      window.KtaUid.getTracesCopie().forEach(function (t) { if (t && t.uid) traces.add(t.uid); });
     }
     let ignores = 0;
 

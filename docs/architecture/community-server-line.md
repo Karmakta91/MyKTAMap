@@ -67,7 +67,8 @@ photos restent locales et exportables).
 > autorise(idExt) → bool, publier({ id, blob, nom, progression? }) → Promise }, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
-> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts, planId?) → lot | null` ·
+> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts, planId?) → lot | null`
+> (`lot.tracesCopie` : suppressions de copies de calque, jamais dans un fichier) ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` ·
@@ -325,6 +326,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   « Effacer la session », n'est pas notée. L'extension ne doit ni la changer en traces ni la mettre dans un
   export ; le droit de l'envoyer est celui d'envoyer des objets (« modifier »). Règle complète :
   `session-data.md` §Rapatrier. Garde-fous : `check-extensions.js`, `check-calque-session.js`.
+- **Copie de calque supprimée** : 🔒 trace de COPIE, jamais dans un fichier (même raison : la fusion de calques
+  détruirait l'original). Sortant, `changementsDepuis(ts).tracesCopie = [{ uid, deletedAt }]` (après `ts`), à
+  envoyer au serveur comme des traces (même forme) — ⚠️ jamais dans un fichier écrit par l'extension (fichier de
+  secours compris). Entrant, rien de nouveau : une trace de `lot.tombstones` qui vise une copie marquée d'ici ou
+  un objet d'un fichier de calque du plan est rangée en trace de copie par l'app. Elle tombe à la restitution du
+  calque ; ses uids rejoignent alors la note `uids` de la restitution. Sans extension : clé présente, liste
+  locale seulement. Règle : `session-data.md` §Restitution partagée. Garde-fous : `check-extensions.js`,
+  `check-calque-session.js`, `check-uid.js`.
 - **Présence sur le plan ouvert** (tracking à plusieurs, opt-in) : une extension qui déclare
   `presence: { actif(), basculer() }` fait apparaître la tuile **📡 Partager ma position sur ce plan** dans le
   tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,

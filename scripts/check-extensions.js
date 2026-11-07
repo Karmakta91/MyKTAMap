@@ -1400,6 +1400,49 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🔒 restituer ne crée aucune trace", w.KtaUid.getTombstones().length === 0);
   }
 
+  // ── 6 ter quinquies. COPIE DE CALQUE SUPPRIMÉE (trace de copie, vrais calqueSession.js et ktaUid.js) ──────
+  // Contrat de la prise : changementsDepuis(ts).tracesCopie = [{ uid, deletedAt }] (à envoyer comme des traces,
+  // 🔒 jamais dans un fichier) ; une trace REÇUE sur l'uid d'une copie d'ici est rangée en trace de copie, jamais
+  // rendue par getTombstones (lu par les exports) ; la restitution du calque la fait tomber.
+  {
+    const { K, w } = nouveauContexte(null); K.planCharge();
+    const vm6 = require("vm");
+    const ctx6 = vm6.createContext(w);
+    vm6.runInContext(lire("js/ktaUid.js"), ctx6, { filename: "ktaUid.js" });
+    let roads = [];
+    w.getEditorPoints = () => []; w.setEditorPoints = () => {};
+    w.getRoads = () => roads; w.setRoads = (r) => { roads = r; }; w.getZones = () => []; w.setZones = () => {};
+    w.getStructures = () => []; w.setStructures = () => {};
+    w.SessionPersist = { save() {} };
+    w.PLAN_CONFIG = { dataLayers: [{ id: "c1", file: "c1.json" }] };
+    w.dataLayerGroups = { c1: { __id: "c1" } };
+    const surCarte = { c1: true };
+    w.map = { hasLayer: (g) => !!surCarte[g.__id], removeLayer: (g) => { surCarte[g.__id] = false; },
+      addLayer: (g) => { surCarte[g.__id] = true; } };
+    w.I18n = { t: (k) => k };
+    vm6.runInContext(lire("js/calqueSession.js"), ctx6, { filename: "calqueSession.js" });
+    const copie = (uid) => ({ uid, type: "chemin", points: [], updatedAt: 150, _srcCalque: "c1", _srcCalqueDepuis: 100 });
+    K.appliquerChangements({ roads: [copie("rd_cpA00000"), copie("rd_cpB00000")], tombstones: [] });
+    K.appliquerChangements({ tombstones: [{ uid: "rd_cpA00000", deletedAt: 400 }] });
+    t("trace reçue sur une copie d'ici : copie retirée, trace rangée en trace de COPIE (calque connu)",
+      roads.length === 1 && JSON.stringify(w.KtaUid.getTracesCopie()) === JSON.stringify([{ uid: "rd_cpA00000", deletedAt: 400, calque: "c1" }]));
+    t("🔒 …jamais dans getTombstones (lu par les exports de session)", w.KtaUid.getTombstones().length === 0);
+    K.appliquerChangements({ tombstones: [{ uid: "pt_ordi0000", deletedAt: 410 }] });
+    t("trace reçue sur un uid sans copie ni calque : trace ordinaire, la trace de copie reste",
+      w.KtaUid.getTombstones().length === 1 && w.KtaUid.getTracesCopie().length === 1);
+    K.appliquerChangements({ tombstones: [{ uid: "rd_cpB00000", deletedAt: 420 }] });
+    t("🩸 toutes les copies supprimées : le calque reste en modification (original masqué, pas ressuscité)",
+      roads.length === 0 && w.CalqueSession.estRapatrie("c1") && surCarte.c1 === false);
+    const ch = K.changementsDepuis(0);
+    t("changementsDepuis : tracesCopie { uid, deletedAt } (sans le calque), hors de `tombstones`",
+      JSON.stringify(ch.tracesCopie) === JSON.stringify([{ uid: "rd_cpA00000", deletedAt: 400 }, { uid: "rd_cpB00000", deletedAt: 420 }]) &&
+      !ch.tombstones.some((x) => /^rd_cp/.test(x.uid)));
+    t("…seulement après le seuil", K.changementsDepuis(400).tracesCopie.length === 1);
+    K.appliquerChangements({ tombstones: [], restitutions: [{ calque: "c1", avant: 500 }] });
+    t("restitution reçue : les traces de copie tombent, le calque d'origine revient",
+      w.KtaUid.getTracesCopie().length === 0 && !w.CalqueSession.estRapatrie("c1") && surCarte.c1 === true);
+  }
+
   // ── 6 quater. ACTIONS DU COMPTE ──────
   {
     const { K } = nouveauContexte(null);

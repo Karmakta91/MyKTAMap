@@ -284,6 +284,9 @@
       st.ids().forEach(function(planId) {
         if (!planId) return;
         const parsed = _safeJsonParse(st.lire(planId));
+        // 🔒 Traces des copies de calque supprimées : jamais dans un fichier (ktaUid.js) ; un plan partagé les
+        // reçoit de nouveau de sa synchro.
+        if (parsed && typeof parsed === "object") delete parsed.tracesCopie;
         if (parsed) sessions[planId] = parsed;
       });
       // Ancien slot unique encore présent (jamais migré) : exporté aussi.

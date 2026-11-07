@@ -275,14 +275,48 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
     HM.record("conversion", avant);
     t("🩸 conversion d'un tracé en zone (même uid) : PAS de trace de suppression", traces().length === 0);
 
-    // Itinéraire et objet rapatrié d'un calque → pas de trace
-    raz();
+    // Itinéraire → pas de trace ; copie de calque → trace de COPIE (synchro), jamais une trace « fichier »
+    raz(); KU.setTracesCopie([]);
+    const copies = () => KU.getTracesCopie().map((x) => x.uid + "@" + x.calque);
     store.roads = [{ uid: "rd_i_iiiiii", updatedAt: 1, type: "itinerary", points: [] },
                    { uid: "rd_k_kkkkkk", updatedAt: 1, type: "principal", points: [], _srcCalque: "calque1" }];
     avant = HM.captureState("roads");
     store.roads = [];
     HM.record("effacer", avant, "roads");
-    t("itinéraire calculé et objet rendu à son calque : aucune trace", traces().length === 0);
+    t("🔒 itinéraire et copie de calque supprimés : aucune trace « fichier » (getTombstones)", traces().length === 0);
+    t("copie de calque supprimée : trace de COPIE avec son calque, pas l'itinéraire", copies().join() === "rd_k_kkkkkk@calque1");
+    HM.undo();
+    t("⏪ rend la copie : sa trace de copie est retirée", copies().length === 0 && store.roads.some((o) => o.uid === "rd_k_kkkkkk"));
+    HM.redo();
+    t("↪ la supprime de nouveau : trace de copie, toujours aucune trace « fichier »", copies().length === 1 && traces().length === 0);
+    // Objet sans marque dont l'uid est celui d'un objet d'un fichier de calque (index de CalqueSession) → copie aussi.
+    raz(); KU.setTracesCopie([]);
+    w.CalqueSession = { calqueDesTraces: () => (u) => (u === "zn_f_ffffff" ? "calque2" : null) };
+    store.zones = [{ uid: "zn_f_ffffff", updatedAt: 1, type: "eau", points: [] }, { uid: "zn_o_oooooo", updatedAt: 1, type: "eau", points: [] }];
+    avant = HM.captureState("zones");
+    store.zones = [];
+    HM.record("effacer", avant, "zones");
+    t("🔒 uid d'un fichier de calque sans marque : trace de copie ; objet ordinaire : trace ordinaire",
+      copies().join() === "zn_f_ffffff@calque2" && traces().join() === "zn_o_oooooo");
+    delete w.CalqueSession;
+    // Listes disjointes, rangement d'une liste fusionnée, restitution
+    KU.tombstone("zn_f_ffffff", 77);
+    t("tombstone() sur un uid tracé comme copie : la trace reste une copie (re-datée)",
+      traces().join() === "zn_o_oooooo" && KU.getTracesCopie()[0].deletedAt === 77);
+    KU.setTombstones([{ uid: "zn_f_ffffff", deletedAt: 5 }, { uid: "pt_n_nnnnnn", deletedAt: 5 }]);
+    t("setTombstones : un uid tracé comme copie n'y entre pas", traces().join() === "pt_n_nnnnnn" && copies().length === 1);
+    KU.remplacerTraces([{ uid: "zn_f_ffffff", deletedAt: 9 }, { uid: "rd_r_rrrrrr", deletedAt: 9 }, { uid: "pt_n_nnnnnn", deletedAt: 9 }],
+      (u) => (u === "rd_r_rrrrrr" ? "calque3" : null));
+    t("remplacerTraces : copie déjà connue + uid d'un calque → copies ; le reste ordinaire",
+      copies().sort().join() === "rd_r_rrrrrr@calque3,zn_f_ffffff@calque2" && traces().join() === "pt_n_nnnnnn");
+    t("oublierTracesCopie : seulement le calque visé, au plus tard à `avant`",
+      KU.oublierTracesCopie("calque3", 8).length === 0 && KU.oublierTracesCopie("calque3", 9).join() === "rd_r_rrrrrr" &&
+      copies().join() === "zn_f_ffffff@calque2");
+    KU.setTracesCopie([{ uid: "pt_n_nnnnnn", deletedAt: 3, calque: "c" }, { uid: "x", deletedAt: 1 }, { uid: "pt_v_vvvvvv", deletedAt: 1, calque: "" }]);
+    t("setTracesCopie : entrées sans calque ignorées, l'uid quitte les traces ordinaires",
+      copies().join() === "pt_n_nnnnnn@c" && traces().length === 0);
+    KU.setTracesCopie([{ uid: "pt_w_wwwwww", deletedAt: Date.now() - 91 * 864e5, calque: "c" }]);
+    t("purge : une trace de copie de 91 jours part aussi", KU.purge() === 1 && copies().length === 0);
 
     // Purge à 90 jours
     KU.setTombstones([{ uid: "pt_v_vvvvvv", deletedAt: Date.now() - 91 * 864e5 }, { uid: "pt_r_rrrrrr", deletedAt: Date.now() - 10 * 864e5 }]);
@@ -325,6 +359,20 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
   t("« Effacer la session » vide les traces (décision Q1)", /function _viderEtatCourant\(\) \{[\s\S]{0,400}KtaUid\.setTombstones\(\[\]\)/.test(SPB));
   t("export complet : emporte les traces (décision Q2)", /tombstones: window\.KtaUid \? window\.KtaUid\.getTombstones\(\) : \[\]\n\s+\};/.test(SEB));
   t("export anonymisé : retire les traces", /delete session\.tombstones;/.test(SEB));
+  // 🔒 Traces de copie de calque : jamais dans un fichier. Seuls la sauvegarde locale, la synchro, l'import sur plan
+  // partagé (fusion en mémoire, rangée ensuite), le Tableur (lecture) et CalqueSession les lisent.
+  const LECTEURS_COPIE = ["js/ktaUid.js", "js/sessionPersist.js", "js/ktaExtensions.js", "js/interfaceImportExport.js",
+    "js/convertirObjet.js", "js/calqueSession.js"];
+  const fuites = fs.readdirSync("js").filter((f) => f.endsWith(".js")).map((f) => "js/" + f)
+    .filter((f) => LECTEURS_COPIE.indexOf(f) < 0 && /getTracesCopie|tracesCopie/.test(lire(f).replace("delete parsed.tracesCopie", "")));
+  t("🔒 traces de copie : aucun autre module ne les lit (exports, fichiers)", fuites.length === 0, fuites.join(", "));
+  t("🔒 export de session : jamais les traces de copie", !/TracesCopie|tracesCopie/.test(SEB));
+  t("🔒 export du profil : retire les traces de copie des sessions", /delete parsed\.tracesCopie;/.test(lire("js/profileExportImport.js")));
+  t("persistance : traces de copie sauvegardées LOCALEMENT, rechargées, vidées au changement de plan et à l'effacement",
+    /tracesCopie:\s+state\.tracesCopie \|\| \[\]/.test(SPB) && /setTracesCopie\(payload\.tracesCopie\)/.test(SPB) &&
+    (SPB.match(/setTracesCopie\(\[\]\)/g) || []).length === 2 && /\(state\.tracesCopie \|\| \[\]\)\.length === 0/.test(SPB));
+  t("import sur plan partagé : traces de copie d'ici prises en compte, résultat rangé (remplacerTraces)",
+    /getTracesCopie\(\)/.test(IIE) && /_poserTracesImport\(bilanPartage\.tombstones, calqueDe\)/.test(IIE));
   t("fusion de sessions : par uid (KtaUid.fusionnerCalques)", /const f = window\.KtaUid\.fusionnerCalques\(jsons\);/.test(SEB));
   t("fusion du Générateur : même règle", /window\.KtaUid\.fusionnerCalques\(parsedArr\)/.test(CCB));
   t("import par remplacement : identités préparées et traces du fichier AVANT les setters (2 chemins)",
