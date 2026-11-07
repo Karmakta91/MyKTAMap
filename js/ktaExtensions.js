@@ -1102,6 +1102,9 @@
   // Depuis `ts` (ms) : objets dont updatedAt > ts, traces de suppression postérieures (synchro incrémentale) et
   // restitutions de calque faites ici après ts ([{ calque, avant, uids }], CalqueSession.restitutionsDepuis).
   // ⚠️ Une restitution n'est PAS une trace : l'extension ne doit jamais la changer en suppression des uids.
+  // `tracesCopie` ([{ uid, deletedAt }]) : suppressions de COPIES de calque, à envoyer comme des traces (même forme).
+  // 🔒 Jamais dans un fichier (fichier de secours compris) : une trace sur l'uid d'une copie, passée par la fusion de
+  // calques, détruirait l'objet du calque (KtaUid, traces de copie).
   // `planId` (facultatif) : plan du registre que l'appelant croit ouvert.
   // 🔒 null — et non des listes vides — si aucun plan n'est prêt (chargement en cours, accueil) ou si le plan prêt
   // n'est pas `planId` : la mémoire peut tenir les objets d'un AUTRE plan, et « rien depuis ts » ferait avancer le
@@ -1117,6 +1120,9 @@
       zones:        f(window.getZones && window.getZones()),
       structures:   f(window.getStructures && window.getStructures()),
       tombstones:   (window.KtaUid ? window.KtaUid.getTombstones() : []).filter(function (t) { return t.deletedAt > seuil; }),
+      tracesCopie:  (window.KtaUid && typeof window.KtaUid.getTracesCopie === "function" ? window.KtaUid.getTracesCopie() : [])
+                      .filter(function (t) { return t.deletedAt > seuil; })
+                      .map(function (t) { return { uid: t.uid, deletedAt: t.deletedAt }; }),
       restitutions: (window.CalqueSession && typeof window.CalqueSession.restitutionsDepuis === "function")
                       ? window.CalqueSession.restitutionsDepuis(seuil) : []
     };
@@ -1530,8 +1536,14 @@
       roads: routes.filter(function (r) { return horsFusion.indexOf(r) < 0; }),
       zones: (window.getZones && window.getZones()) || [],
       structures: (window.getStructures && window.getStructures()) || [],
-      tombstones: window.KtaUid.getTombstones()
+      tombstones: window.KtaUid.getTombstones().concat(typeof window.KtaUid.getTracesCopie === "function"
+        ? window.KtaUid.getTracesCopie() : [])
     };
+    // 🔒 Une trace reçue ne dit pas si elle vise une copie de calque : elle en est une si l'uid est celui d'une copie
+    // marquée d'ici ou d'un objet d'un fichier de calque du plan (index lu AVANT la fusion, qui retire la copie). Elle
+    // est alors rangée en trace de copie (jamais dans un fichier), cf. KtaUid.remplacerTraces.
+    const CSx = window.CalqueSession;
+    const calqueDe = (CSx && typeof CSx.calqueDesTraces === "function") ? CSx.calqueDesTraces() : null;
     const distant = {
       data: copie(lot.editorPoints),
       roads: copie(lot.roads).filter(function (r) { return r.type !== "itinerary" && !r._preview; }),
@@ -1559,7 +1571,9 @@
     local.tombstones.concat(distant.tombstones).forEach(function (t) {
       if (t && typeof t.uid === "string" && typeof t.deletedAt === "number") traces.set(t.uid, Math.max(traces.get(t.uid) || 0, t.deletedAt));
     });
-    window.KtaUid.setTombstones(Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; }));
+    const fusionnees = Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; });
+    if (typeof window.KtaUid.remplacerTraces === "function") window.KtaUid.remplacerTraces(fusionnees, calqueDe);
+    else window.KtaUid.setTombstones(fusionnees);
     // L'objet EN COURS de dessin est retrouvé par son uid après réécriture (sinon le clic suivant en démarre
     // un nouveau).
     const enCours = function (getter) { const o = typeof window[getter] === "function" ? window[getter]() : null; return o && o.uid ? o.uid : null; };

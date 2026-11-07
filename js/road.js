@@ -1253,6 +1253,21 @@ window.getAllEmbeddedRoads = function() {
   return out;
 };
 
+// [{ uid, calque }] de CHAQUE route embarquée qui a un uid, calque en modification compris : classement des traces
+// de suppression (calqueSession.js > calqueDesTraces — une trace sur un tel uid ne doit jamais entrer dans un fichier).
+window.ktaCalquesDesRoadsEmbarquees = function() {
+  const groupes = window.dataLayerGroups || {};
+  const parGroupe = new Map();
+  for (const id in groupes) parGroupe.set(groupes[id], id);
+  const out = [];
+  _embeddedRoads.forEach(function(e) {
+    const uid = e.road && e.road.uid;
+    const calque = parGroupe.get(e.layer);
+    if (typeof uid === "string" && uid && calque) out.push({ uid: uid, calque: calque });
+  });
+  return out;
+};
+
 // ── Exports ──────────────────────
 // ⚠️ Intersections pour les exports image (utils.js > telechargerPlan, exporter.js) : roads
 // [{type, points: [{x, y}]}] → [{point: {x, y}, color, level}] en coordonnées image ; rayon = window.ROAD_INTERSECTION_RADIUS.

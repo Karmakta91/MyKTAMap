@@ -90,8 +90,9 @@ le snapshot de 📦 Backups.
   `ktaConfirm` donne le nombre d'objets. L'appareil est vidé comme au premier choix, puis les traces d'avant reviennent
   et chaque objet visé reçoit la sienne (`_tracerEffacement`), datée après sa dernière modification connue (une trace
   plus ancienne perdrait la fusion) ; la session est écrite tout de suite. La relecture complète ramène alors ce qui
-  n'est pas tracé. 🔒 Jamais de trace pour une copie de calque (uid d'un objet du calque), l'itinéraire calculé ou un
-  portail. La case « ↩️ Rendre aussi les calques à l'équipe » remplace le 3e bouton quand des calques sont en
+  n'est pas tracé. 🔒 Ni une copie de calque (elle part par la restitution, case ci-dessous), ni l'itinéraire calculé,
+  ni un portail ne sont visés. Les traces de copie d'avant (suppressions de copies, §Restitution partagée) sont
+  jetées avec le vidage, comme les traces non envoyées. La case « ↩️ Rendre aussi les calques à l'équipe » remplace le 3e bouton quand des calques sont en
   modification (piège 1 ci-dessous). Aucune option (rien en attente, aucun droit) : « Rien à effacer ». Erreur, rejet
   ou réponse au-delà de 8 s : l'annulation seule, sans nombre. Le
   nombre annoncé ne compte que ce que l'appareil a reçu (d'où la promesse : l'extension peut se mettre à jour avant
@@ -1728,9 +1729,10 @@ photos des points (comptées par `MyKTAMapPhotos.listerPlan`), points **portails
 sans retour possible par ⏪), objets de calque ignorés. `supprimerLot({ famille: [obj] })` : 🔒 refusé en lecture seule
 (`ktaEditionRefusee`) ; **un** instantané `captureState()` (quatre familles), listes lues d'un bloc, identité par référence
 puis uid, une écriture par famille touchée, `RoadGraph.invalidate` si tracés, **une** entrée `HistoryManager.record` — qui
-pose les **traces de suppression** par diff des uid (`_tracerDepuis`), exactement comme une suppression unitaire (pas de
-trace pour une copie de calque). Photos : **gardées**, fiche figée (`majFichesPoints`) comme `supprimerPointEditor` ; le ⏪
-rend le point et son uid, donc ses photos. La synchro d'une extension suit par `changementsDepuis(ts).tombstones`.
+pose les **traces de suppression** par diff des uid (`_tracerDepuis`), exactement comme une suppression unitaire (copie
+de calque : trace de copie, jamais dans un fichier). Photos : **gardées**, fiche figée (`majFichesPoints`) comme
+`supprimerPointEditor` ; le ⏪ rend le point et son uid, donc ses photos. La synchro d'une extension suit par
+`changementsDepuis(ts).tombstones` et `.tracesCopie`.
 🔒 Sur un plan d'extension, la prise neutre **`KtaExtensions.suppressionLot(registreId, [{ famille, uid }])`**
 (`community-server-line.md` §3) est consultée **avant** la fenêtre, avec les objets cochés d'emblée, puis relue au clic si
 les cases ont changé : refus = `ktaAlerte` (message de l'extension, sinon `selm.suppr.refuseExtension`) et rien n'est
@@ -1850,17 +1852,30 @@ suppression d'une jonction de la copie, itinéraire et vue 3D passaient encore p
 
 1. **« Effacer la session » RESTITUE les calques.** Le verrou vit dans la session. S'il survivait à l'effacement de la copie, le calque d'origine resterait masqué : l'utilisateur verrait **son relevé disparaître** et croirait le plan cassé. `sessionPersist.js > clear()` restitue d'abord — les deux tombent ensemble, jamais l'un sans l'autre. Là où la restitution se partage (`CalqueSession.restitutionPartagee()` : plan d'extension modifiable) et qu'au moins un calque est en modification, la confirmation propose trois issues (`ktaConfirm`, `opts.autre`) : **« Effacer sur cet appareil seulement »** (`restituer(id, { local: true })` : la relecture complète qui suit ramène les copies du serveur, le calque repasse en modification, et la fenêtre l'annonce), **« Rendre aussi les calques à l'équipe »** (restitution partagée notée AVANT le vidage, car elle porte les uids des copies retirées ; la fenêtre nomme les calques et prévient que les retouches non exportées des autres sur ces copies seront perdues), ou Annuler. Si l'extension répond aussi à `effacerSession` (plan partagé, §9 « Effacer la session »), ce choix
 devient la case « ↩️ Rendre aussi les calques à l'équipe » de la fenêtre à choix, valable pour les trois choix : les copies
-ne reçoivent jamais de trace, elles reviennent du serveur tant que la case n'est pas cochée. 🩸 Même quand le choix
+ne sont jamais visées par l'effacement, elles reviennent du serveur tant que la case n'est pas cochée. 🩸 Même quand le choix
 coché ne vise aucun objet (« mes ajouts » à 0), la case cochée rend les calques (sinon « Aucun objet » l'ignorait en
 silence). Le titre de la fenêtre ne compte pas ces copies : il les annonce à part (`session.confirm.clearCopies`).
 Ailleurs, confirmation inchangée. `clear()` garde les restitutions (`restitutions`, `aEnvoyer`) de l'état du module : celle qui vient d'être notée doit encore partir. Filet : `scripts/smoke/checkup-calque-effacer.js` (plan local, parcours réel : rechargement, fenêtre « session restaurée », effacement, panneau de filtres).
-2. **Au chargement, le verrou ne s'applique QUE SI la copie est là.** Cas mortel : la sauvegarde saute sur quota (1,1 Mo, c'est *exactement* le seuil), on recharge, le verrou masque et la copie manque → **plan vide et muet**. `appliquerVerrous()` vérifie la présence avant de masquer, **libère** sinon, et le dit. Appelée en **fin** de restore (différé 250 ms), après les objets — sans eux elle ne peut pas juger.
+2. **Au chargement, le verrou ne s'applique QUE SI la copie est là.** Cas mortel : la sauvegarde saute sur quota (1,1 Mo, c'est *exactement* le seuil), on recharge, le verrou masque et la copie manque → **plan vide et muet**. `appliquerVerrous()` vérifie la présence avant de masquer, **libère** sinon, et le dit. Appelée en **fin** de restore (différé 250 ms), après les objets — sans eux elle ne peut pas juger. Exception : un calque dont toutes les copies ont été **supprimées** (traces de copie, §Restitution partagée) reste verrouillé — libéré, il ferait revenir à l'écran ce que l'utilisateur a effacé ; `resynchroniser()` applique la même règle.
 
 3. **À l'import d'une session, la liste se DÉDUIT des marques.** Le fichier session emporte les objets marqués `_srcCalque`, **pas** `calquesSession` (propre à la sauvegarde locale). Sans recalage : sur un autre appareil, le calque d'origine se réaffiche par-dessus sa copie (doublon) et « Exporter » refuse (`pasRapatrie`) ; et une session importée SANS la copie d'un calque verrouillé le laisse masqué et vide (`appliquerVerrous` ne tourne qu'au rechargement). `resynchroniser()`, appelée par l'import (`interfaceImportExport.js`, après les setters), reconstruit `_rapatries` depuis les marques présentes **et connues du plan ouvert**, masque / réaffiche en conséquence, et **retire** les marques de calques inconnus (session d'un autre plan → objets « créés à la main », comptés à l'export). Déduire plutôt qu'exporter la liste : une seule source de vérité, et les sessions déjà exportées marchent sans être refaites.
 
 ### ☁️ Restitution partagée (plan d'extension)
 
-Sur un plan ☁️, le calque rapatrié par un compte est vu « en modification » par tous (copies synchronisées, état recalé sur les marques). Sa **restitution** doit donc se propager — mais **jamais par une trace de suppression** : la copie porte l'uid de l'objet du calque, et une trace sur cet uid, emportée par l'export complet puis passée par « Fusion de calques » ou l'import ZIP du Générateur, **détruirait l'objet original** (`historyManager.js > _laisseTrace` n'en émet pas).
+Sur un plan ☁️, le calque rapatrié par un compte est vu « en modification » par tous (copies synchronisées, état recalé sur les marques). Sa **restitution** doit donc se propager — mais **jamais par une trace de suppression** : la copie porte l'uid de l'objet du calque.
+
+🔒 **Règle : jamais de trace dans un FICHIER pour une copie.** Une trace sur l'uid d'une copie, emportée par un export puis passée par « Fusion de calques » ou l'import ZIP du Générateur (`KtaUid.fusionnerCalques`), **détruirait l'objet original**. La suppression d'une copie (ou d'un ajout intégré) doit pourtant tenir chez tous et au redémarrage : elle pose une **trace de COPIE**, tenue à part dans `KtaUid` (`tombstoneCopie`, `getTracesCopie` ; `{ uid, deletedAt, calque }`).
+
+| Trace de copie | Où | Pourquoi |
+|---|---|---|
+| Posée | `historyManager.js > _tracer` : objet marqué `_srcCalque`, ou objet sans marque dont l'uid est celui d'un objet chargé d'un fichier de calque du plan (`CalqueSession.calqueDesTraces`) | toute suppression passe par `record` (gomme, clic, sélection, Tableur) ; ⏪ la retire |
+| Envoyée | `changementsDepuis(ts).tracesCopie` (`[{ uid, deletedAt }]`, envoyée comme une trace) | le serveur la garde comme une trace ; les autres appareils retirent leur copie |
+| Reçue | `appliquerChangements` : une trace dont l'uid est une copie marquée d'ici ou un objet d'un fichier de calque (index lu avant la fusion) est rangée en trace de copie (`KtaUid.remplacerTraces`) | une trace reçue ne dit pas ce qu'elle vise |
+| Gardée | sauvegarde LOCALE de la session (`tracesCopie`) | elle tient au redémarrage |
+| **Jamais** | `getTombstones()` (lu par l'export de session, le fichier « non envoyé » de l'extension, l'import), `exporterCalque`, l'export du profil (`profileExportImport.js` la retire) | fusion de calques = original détruit |
+| Tombe | `restituer(id)` (ses uids rejoignent la note `uids`, pour un serveur qui ne lit pas l'objet chiffré), `appliquerRestitutions` (calque restitué à T, trace ≤ T), « Effacer la session », nouveau rapatriement (uid repris) | l'objet du fichier revient |
+
+Les deux listes de `KtaUid` sont disjointes : un uid tracé comme copie le reste (`tombstone`, `setTombstones` ne l'en sortent pas). Le Tableur et l'import « Ajouter » sur plan partagé la lisent pour ne pas ressusciter la copie. Plan local (sans serveur) : même trace, sans risque (jamais dans un fichier), utile au Tableur et à l'import. Limite : sur un appareil qui n'a jamais eu la copie et dont le fichier de calque ne porte pas l'uid (fichier sans uid, ou ajout intégré jamais exporté), une trace reçue est rangée en trace ordinaire — elle ne vise alors aucun objet de fichier connu.
 
 - **Sortante** : `restituer(id)` note `{ avant: T, uids }` (T ≥ toute copie retirée ; `uids` = copies retirées) quand le plan ouvert est un plan d'extension **modifiable**. `restitutionsDepuis(ts)` les donne à `KtaExtensions.changementsDepuis`. Pas de note sur un plan en lecture seule (elle partirait plus tard, périmée, si le droit change), ni par « Effacer sur cet appareil seulement » (`restituer(id, { local: true })` : la copie du serveur revient, rien ne disparaît chez les autres). « Rendre aussi les calques à l'équipe » passe par la restitution partagée (§piège 1).
 - **Entrante** : `appliquerRestitutions([{ calque, avant }])` retient la plus récente par calque, puis applique toutes les restitutions connues. Pour une copie marquée du calque L restitué à T :
@@ -1907,7 +1922,7 @@ par famille (nom, type, niveau), rien de coché, « Tout cocher », filtre **« 
 | Export du calque | part dans le fichier, marques retirées | il appartient au calque ; « hors calque » diminue d'autant |
 | Restitution locale ou reçue (T ≥ sa date) | retiré (serveur en clair : retiré avec les copies marquées) | même règle que les copies ; **la fenêtre de restitution l'annonce** (`filter.calque.ajoutsRetires`, compte `compterAjouts`) |
 | Restitution reçue postérieure au rapatriement mais **antérieure** à l'intégration | **gardé** en objet ordinaire, uid dérivé, marques retirées | avec l'instant de l'intégration comme date, il resterait marqué et laisserait le calque masqué pour lui seul |
-| Suppression | **aucune trace** (`historyManager.js > _laisseTrace`) | 🔒 une fois exporté, son uid EST dans le fichier du calque : une trace, passée par la fusion de calques, l'y détruirait |
+| Suppression | **trace de copie** (`historyManager.js > _tracer`), synchronisée, jamais dans un fichier | 🔒 une fois exporté, son uid EST dans le fichier du calque : une trace exportée, passée par la fusion de calques, l'y détruirait |
 | ⏪ | une entrée d'historique (toutes catégories) rend les objets sans marque, datés à nouveau par l'historique | annulable comme tout dessin |
 | Lecture seule | boutons « ➕ Intégrer des ajouts » et « 💾 Exporter » **absents** de la ligne (`ktaEditionRefusee(true)`, relu sur les événements de l'extension) ; « ↩️ Restaurer » reste (restitution locale, non partagée) ; appel direct refusé (`ktaEditionRefusee`, qui le dit) | même règle que les outils de dessin grisés ; le refus au clic reste en défense en profondeur |
 
@@ -1938,7 +1953,7 @@ sont restitués et les objets dessinés à la main versés dans le plan quittent
                     "aEnvoyer": { "sig": { "avant": 1760000000000, "uids": ["rd_…"] } } }
 ```
 
-Les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque` (et `_srcCalqueDepuis`, instant du rapatriement ; `_srcCalqueAjout` sur un ajout intégré). `restitutions` / `aEnvoyer` n'existent que sur un plan d'extension (§Restitution partagée) ; chaque clé est omise vide, `null` si tout l'est → **zéro octet** pour qui ne s'en sert pas.
+Les **objets** vivent déjà dans `roads`/`zones`/`structures`/`editorPoints`, marqués `_srcCalque` (et `_srcCalqueDepuis`, instant du rapatriement ; `_srcCalqueAjout` sur un ajout intégré). `restitutions` / `aEnvoyer` n'existent que sur un plan d'extension (§Restitution partagée) ; chaque clé est omise vide, `null` si tout l'est → **zéro octet** pour qui ne s'en sert pas. Les traces de copie vivent à côté, dans la clé `tracesCopie` de la sauvegarde (`[{ uid, deletedAt, calque }]`, tenue par `KtaUid`).
 
 **Garde-fou** : `scripts/check-calque-session.js` (pré-commit bloquant) — le vrai module chargé dans un `vm` (avec le vrai `historyManager.js` pour l'intégration d'ajouts et son annulation), câblage de l'import de session et de la fenêtre d'ajouts compris. Il tient aussi le contrat de `convertirObjet.js` envers les points : jamais convertis, et appliqués par le Tableur seulement par l'accès que l'appelant fournit (`appliquerTableau`, `opts.acces`), en place (`_srcCalque` survit).
 
