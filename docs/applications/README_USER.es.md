@@ -862,7 +862,7 @@ La Vista OSM coloca tus mapas **georreferenciados** sobre el mapa de OpenStreetM
 
 **📏 Medir**: en modo OSM, la herramienta de medición da una distancia y una superficie; no dependen de ninguna calibración del mapa.
 
-**🧭 Girar el mapa**: en la ventana Vista OSM abierta desde un mapa, gira dos dedos sobre el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda del mapa, lo endereza. La ventana siempre se vuelve a abrir con el norte arriba. El mapa de la pantalla de inicio sigue recto.
+**🧭 Girar el mapa**: en la ventana Vista OSM abierta desde un mapa y en el mapa de la pantalla de inicio, gira dos dedos sobre el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda del mapa, lo endereza. La ventana siempre se vuelve a abrir con el norte arriba, y el mapa de la pantalla de inicio también cuando vuelves a ella; elegir otro mapa en su lista conserva el ángulo. En la pantalla de inicio, un solo dedo sigue moviendo el mapa: para desplazar la página, pon el dedo al lado.
 
 **🎯 Coordenadas de superficie**: un clic en el mapa da la latitud y la longitud del punto situado justo encima, con un botón Copiar — es lo que se transmite a un equipo que llega por la superficie. Su exactitud depende de la calibración del mapa.
 

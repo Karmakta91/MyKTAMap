@@ -1136,35 +1136,49 @@ ni ✏️ Modifier, ni bandeau des types orphelins (son « ➕ Lier » écrit da
   l'accueil après redémarrage (plan non chargé), aucun contrôle de modification, avertissement à deux plans,
   légende au premier plan, Échap.
 
-## 13. Tourner la carte de la Vue OSM (rotation manuelle)
+## 13. Tourner les cartes OSM (rotation manuelle)
 
-La carte de la **fenêtre** Vue OSM tourne comme le plan 2D, **à la main seulement** (décision produit) : deux doigts
-au-delà de 15° d'angle entre eux, Maj + molette au PC, bouton nord (coin bas gauche de la fenêtre) pour redresser.
-Aucun cap, aucun plan orienté. Le **widget OSM de l'accueil reste droit**.
+Les deux cartes OSM, la **fenêtre** Vue OSM et le **widget de l'accueil**, tournent comme le plan 2D, **à la main
+seulement** (décision produit) : deux doigts au-delà de 15° d'angle entre eux, Maj + molette au PC, bouton nord
+(classe `.kta-nord-local`, coin bas gauche de SA carte) pour redresser. Aucun cap, aucun plan orienté.
 
-- **Même mécanique que le plan** : `osmView.js > _brancherRotation` crée une fois
-  `MapBearing.creerRotationManuelle({ carte, apresRotation })` (cf `tracking.md` §Rotation manuelle, « Une instance
-  par carte ») et la rattache à chaque nouvelle carte. Mêmes seuils, même pan refait à la main, même patch des
-  gestes, lu **par carte** (`map._ktaRotation`).
-- **Remise à 0** : la vue est redressée à la fermeture (`close` appelle `reset()` APRÈS `map.remove()` : avant, la
-  restitution du padding du canvas lui redemandait un dessin orphelin, TypeError au rAF suivant) ; la fenêtre rouvre
-  nord en haut (décision : un angle gardé d'une ouverture à l'autre surprendrait sur une carte géographique).
+- **Même mécanique que le plan** : chaque module crée une fois `MapBearing.creerRotationManuelle({ carte,
+  apresRotation })` (cf `tracking.md` §Rotation manuelle, « Une instance par carte ») et la rattache à chaque nouvelle
+  carte (`osmView.js > _brancherRotation`, `osmHomePreview.js > _brancherRotation`). Mêmes seuils, même pan refait à
+  la main, même patch des gestes, lu **par carte** (`map._ktaRotation`). Une instance par module : les deux cartes
+  tournent indépendamment.
+- **Remise à 0** : la carte démontée est redressée APRÈS `map.remove()` (carte rendue nulle) : avant, la restitution
+  du padding du canvas lui redemandait un dessin orphelin (TypeError au rAF suivant) et le drag sauvegardé serait
+  rendu à la carte suivante. Fenêtre : rouvre nord en haut. Widget : chaque carte recréée (retour à l'accueil,
+  langue, réglages, `refresh`) repart nord en haut ; choisir un autre plan dans la liste (`selectPlan`) garde l'angle,
+  la carte est la même (décision : un angle gardé d'une ouverture à l'autre surprendrait sur une carte
+  géographique, un angle effacé par un simple changement de plan aussi).
 - **Tuiles OSM** : une `GridLayer` ne demande que les tuiles du rectangle droit de l'écran, coins blancs une fois
   tourné. Pour une carte rattachée (pas celle du plan), `mapBearing.js > _installerPatchGrilles` élargit sa zone à la
   boîte englobante du rectangle tourné, et l'instance relance `_update` des grilles à chaque angle (aucun
   `moveend` ne vient).
-- **Tuiles du plan calé** : le culling de `_renderLevel` lit `_zoneVue(pad)` = `zoneVisible` de la rotation (4 coins
-  dé-tournés), à plat `getBounds()` au bit près ; `_apresRotation` relance le rendu (au plus toutes les 120 ms).
-- **Panes** : le pane `ktaOsmTuiles` (et tout pane créé après le pane de rotation) est **adopté** dans le pane qui
-  tourne au premier angle posé ; rien à faire côté `createPane`.
+- **Tuiles du plan calé** : fenêtre, le culling de `_renderLevel` lit `_zoneVue(pad)` = `zoneVisible` de la rotation
+  (4 coins dé-tournés), à plat `getBounds()` au bit près ; `_apresRotation` relance le rendu (au plus toutes les
+  120 ms). Widget : la vue d'ensemble couvre tout le plan (rien à faire) ; les tuiles hi-res (`_majHiResPlan`) lisent
+  la même `_zoneVue`, et `apresRotation` = `_onCarteBougeHiRes` (débounce 300 ms).
+- **Panes** : tout pane créé après le pane de rotation est **adopté** dans le pane qui tourne au premier angle posé
+  (`ktaOsmTuiles` de la fenêtre, `ktaOsmPlan_<id>` du widget et leurs sous-calques `_tuiles`, qui suivent leur
+  parent). Un pane de plan créé alors que le widget est DÉJÀ tourné (plan ajouté par ≡) est adopté tout de suite
+  (`_panePour` appelle `reappliquer`), sinon il resterait droit jusqu'au prochain déplacement.
+- **Gestes du widget dans une page qui défile** : rien de changé pour un doigt. Leaflet pose `touch-action: none` sur
+  la carte (drag actif) : un doigt déplace la carte, la page défile quand le doigt est posé hors du widget. Pendant
+  une rotation, le drag Leaflet est coupé et `.kta-bearing-lock` garde `touch-action: none` : deux doigts sur le
+  widget ne font ni défiler ni zoomer la page.
 - **Outils** : la mesure (`osmMesure.js`) et le relevé de coordonnées (`osmCoords.js`) restent utilisables sous
   rotation (ils lisent `e.latlng`, juste grâce au patch) ; le libellé de segment est contre-tourné
   (`.kta-bearing-on .kta-osm-mes-seg span`), les bulles des POI aussi (règles communes du plan). Les **tooltips**
-  (couche Mode Secours, au survol) tournent avec la carte, comme sur le plan (limite connue, `tracking.md`).
-- 🛡️ `scripts/smoke/checkup-osm-rotation.js` : vrai geste CDP (8° rien, 50° suit), coins couverts à 45° (tuiles OSM
-  demandées, pixels du plan, deux contre-essais), toucher d'un POI et mesure sous rotation (positions lues sur le
-  rendu), libellé et bulle droits, Maj + molette, bouton nord, réouverture droite, carte du plan et autres cartes
-  jamais tournées. ⚠️ Non vérifié sur un vrai téléphone.
+  (couche Mode Secours de la fenêtre, au survol) tournent avec la carte, comme sur le plan (limite connue,
+  `tracking.md`).
+- 🛡️ `scripts/smoke/checkup-osm-rotation.js` : widget en contexte téléphone (un doigt inchangé avec contre-essai de
+  défilement, geste CDP 8° rien / 50° suit sans défiler ni zoomer la page, coins à 45° pour les tuiles OSM et celles
+  du plan avec contre-essais, bulle droite, Maj + molette, nord, angle gardé au changement de plan, carte recréée
+  droite et tournable) ; fenêtre (geste, coins, toucher et mesure sous rotation, Maj + molette, nord, réouverture) ;
+  carte du plan et minicartes jamais tournées. ⚠️ Non vérifié sur un vrai téléphone.
 
 ## 🗂️ Pile de plans du widget HOME : une seule règle de promotion (14/09/2026)
 

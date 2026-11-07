@@ -10,7 +10,7 @@
 // =========================
 // Une instance par carte (`_creerRotation`). `window.MapBearing` sert la carte du plan (cap + manuel, lit `window.map`,
 // remplacée à chaque plan) ; `MapBearing.creerRotationManuelle({ carte })` fabrique une rotation manuelle seule pour
-// une autre carte (Vue OSM). Manuel : deux doigts au-delà de SEUIL_ROTATION, Maj + molette, bouton nord. Plan : le
+// une autre carte (cartes OSM). Manuel : deux doigts au-delà de SEUIL_ROTATION, Maj + molette, bouton nord. Plan : le
 // cap reprend la main dès qu'il arrive, un outil armé ou un mode plein écran redresse la vue.
 // 🩸 La rotation vit sur un pane INTERCALAIRE (`.kta-rotate-pane`, entre le map-pane et ses enfants), JAMAIS sur le
 //   map-pane : Leaflet le positionne en `transform: translate3d`, une rotation y ferait pivoter la translation.
@@ -1035,7 +1035,7 @@
 
   window.MapBearing = _creerRotation({ carte: function() { return window.map; }, plan: true });
 
-  // Rotation manuelle seule d'une autre carte (Vue OSM) : une instance pour la vie de la page, `attachTo` sur
+  // Rotation manuelle seule d'une autre carte (Vue OSM, widget de l'accueil) : une instance pour la vie de la page, `attachTo` sur
   // chaque nouvelle carte (garde portée par la carte). opts.carte() rend la carte courante (null fermée),
   // opts.apresRotation() est rappelé quand l'angle change (tuiles propres à la carte), opts.bloque() refuse le geste.
   // ⚠️ `reset()` à chaque fermeture, APRÈS `map.remove()` (carte rendue nulle par opts.carte) : avant, la restitution

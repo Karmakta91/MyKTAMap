@@ -9,7 +9,9 @@
 // =====================================================================
 // Mini-carte du HOME (plein écran au ⛶, Échap pour réduire), sans charger le plan en mode carte. Un plan
 // principal (liste déroulante) + d'autres empilés (modale « Plans & filtres » : ordre, opacité, filtres).
-// Expose : window.OsmHomePreview = { mount, refresh, selectPlan, openFullScreen }.
+// Expose : window.OsmHomePreview = { mount, refresh, selectPlan, openFullScreen, getRotation }.
+// Rotation manuelle (deux doigts, Maj + molette, bouton nord ; pas de cap) : _brancherRotation, nord en haut à
+// chaque carte recréée.
 // Données : plans de PlanRegistry, géoréf par KmzExport.getCalibration puis registre (p.georef) ; contenu
 // (POI, tracés, zones, structures, tuiles) lu dans le ZIP, ou en HTTP pour un plan serveur, via
 // _loadPlanDataForPreview, isolé de window.PLAN_CONFIG, mis en cache RAM par plan.
@@ -58,6 +60,10 @@
   // session HOME (rien en localStorage).
   const _planDataCache = {};
   let _tilesLayer     = null;   // tuiles du plan projetées
+  // Rotation manuelle (mapBearing.js > creerRotationManuelle) : une instance pour la page, rattachée à chaque
+  // nouvelle carte (_brancherRotation). Une carte recréée (retour à l'accueil, langue, ⚙️) repart nord en haut ;
+  // changer de plan dans la liste garde l'angle (voulu : la carte reste la même).
+  let _rotation       = null;
   let _planOpacity    = 0.5;    // opacité du plan principal (50 % : compromis lecture OSM + plan)
 
   // ── Multi-plans ──────────
@@ -691,6 +697,9 @@
       _retirerToutHiRes(); // URLs hi-res éphémères : révoquées ici
       try { _mapInstance.remove(); } catch(e) {}
       _mapInstance = null;
+      // 🩸 Vue redressée APRÈS le démontage (carte rendue nulle) : avant, la restitution du padding du canvas lui
+      // redemande un dessin que la destruction laisse orphelin, et le drag sauvegardé irait sur la carte suivante.
+      if (_rotation) { try { _rotation.reset(); } catch(e) {} }
       _panesParPlan = {};   // les panes appartiennent à la carte détruite
       _markerLayer = null;
       // Les plans AJOUTÉS (« + ») appartenaient à la carte détruite : on les sort de la pile plutôt que de lister
@@ -719,6 +728,7 @@
       preferCanvas: true
     }).setView([46.5, 2.5], 5);
     if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_mapInstance);
+    _brancherRotation();
 
     L.tileLayer(OSM_TILE_URL, {
       maxZoom: OSM_MAX_ZOOM,
@@ -782,6 +792,30 @@
         _appliquerVisibilites();
       });
     }
+  }
+
+  // Deux doigts (seuil du plan), Maj + molette, bouton nord dans le coin bas gauche ; pas de cap. Tournent : fond
+  // OSM (grilles élargies par mapBearing), panes des plans (adoptés au premier angle, cf _panePour), tuiles hi-res
+  // relues sur la zone dé-tournée (_zoneVue). Restent droits : contrôles, bulles, libellé de mesure (CSS
+  // `.kta-bearing-on`).
+  // ⚠️ Un doigt garde le comportement d'avant : il déplace la carte (Leaflet pose `touch-action: none`), la page
+  // défile hors du widget ; pendant la rotation, `.kta-bearing-lock` garde `touch-action: none`.
+  function _brancherRotation() {
+    if (!_rotation && window.MapBearing && typeof window.MapBearing.creerRotationManuelle === "function") {
+      _rotation = window.MapBearing.creerRotationManuelle({
+        carte: function() { return _mapInstance; },
+        apresRotation: _onCarteBougeHiRes   // angle changé sans moveend : les tuiles hi-res des coins
+      });
+    }
+    if (!_rotation) return;
+    try { _rotation.reset(); _rotation.attachTo(_mapInstance); }
+    catch(e) { console.warn("[OsmHomePreview] rotation :", e); }
+  }
+
+  // Zone que l'écran montre VRAIMENT : sous rotation, boîte englobante des 4 coins dé-tournés ; à plat, getBounds().
+  function _zoneVue(pad) {
+    const z = _rotation ? _rotation.zoneVisible(pad) : null;
+    return z || _mapInstance.getBounds().pad(pad);
   }
 
   function _renderGeorefMarkers(georef) {
@@ -1991,7 +2025,7 @@
     }
 
     // budget dépassé dans la vue : un cran de moins
-    const vue = _mapInstance.getBounds().pad(0.15);
+    const vue = _zoneVue(0.15);
     let choix = null;
     for (let z = zCible; z > tv.z; z--) {
       const scale = Math.pow(2, -z);
@@ -2094,7 +2128,11 @@
     }
     const nom = "ktaOsmPlan_" + String(planId).replace(/[^a-zA-Z0-9_-]/g, "_");
     let pane = _mapInstance.getPane(nom);
-    if (!pane) pane = _mapInstance.createPane(nom);
+    if (!pane) {
+      pane = _mapInstance.createPane(nom);
+      // posé dans le map-pane, hors rotation : adopté tout de suite si la vue est déjà tournée (plan ajouté)
+      if (_rotation && _rotation.getBearing()) _rotation.reappliquer();
+    }
     pane.style.zIndex = String(_zIndexPour(planId));
     e = { nom: nom, pane: pane, renderer: L.svg({ pane: nom }), map: _mapInstance };
     _panesParPlan[planId] = e;
@@ -3229,7 +3267,9 @@
     mount:          mount,
     refresh:        refresh,
     selectPlan:     selectPlan,
-    openFullScreen: openFullScreen
+    openFullScreen: openFullScreen,
+    // rotation manuelle de la mini-carte (null avant la première carte) : harnais
+    getRotation:    function() { return _rotation; }
   };
 
   console.log("[OsmHomePreview] Module chargé (v1.40.16).");

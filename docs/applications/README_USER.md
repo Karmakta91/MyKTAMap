@@ -862,7 +862,7 @@ La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec
 
 **📏 Mesurer** : en mode OSM, l'outil de mesure donne une distance et une surface ; elles ne dépendent d'aucun calibrage de plan.
 
-**🧭 Tourner la carte** : dans la fenêtre Vue OSM ouverte depuis un plan, tourne deux doigts posés sur la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche de la carte, la remet droite. La fenêtre rouvre toujours nord en haut. La carte de l'accueil, elle, reste droite.
+**🧭 Tourner la carte** : dans la fenêtre Vue OSM ouverte depuis un plan et sur la carte de l'accueil, tourne deux doigts posés sur la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche de la carte, la remet droite. La fenêtre rouvre toujours nord en haut, la carte de l'accueil aussi quand tu y reviens ; choisir un autre plan dans sa liste garde l'angle. Sur l'accueil, un seul doigt déplace toujours la carte : pour faire défiler la page, pose le doigt à côté.
 
 **🎯 Coordonnées de surface** : un clic sur la carte donne la latitude et la longitude du point juste au-dessus, avec un bouton Copier — c'est ce qu'on transmet à une équipe qui arrive par la surface. Leur justesse dépend du calage du plan.
 

@@ -862,7 +862,7 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 
 **📏 Measuring**: in OSM mode, the measurement tool gives a distance and an area; they do not depend on any map calibration.
 
-**🧭 Turning the map**: in the OSM View window opened from a map, twist two fingers on the map (Shift + wheel on a computer); the **north** button, at the bottom left of the map, straightens it. The window always reopens north up. The home screen map stays straight.
+**🧭 Turning the map**: in the OSM View window opened from a map and on the home screen map, twist two fingers on the map (Shift + wheel on a computer); the **north** button, at the bottom left of the map, straightens it. The window always reopens north up, and so does the home screen map when you come back to it; picking another map in its list keeps the angle. On the home screen, one finger still moves the map: to scroll the page, put your finger beside it.
 
 **🎯 Surface coordinates**: a click on the map gives the latitude and longitude of the point right above, with a Copy button — that is what you pass on to a team arriving from the surface. Their accuracy depends on the map's alignment.
 
