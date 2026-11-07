@@ -1120,7 +1120,7 @@ Leaflet convertit un geste sans connaître l'angle : jusqu'à **200 px d'écart 
 
 Le premier essai patchait `containerPointToLayerPoint` — plus général, et **faux** : `L.Renderer._update()` s'en sert pour calculer le coin de son canvas, que le patch faisait alors *tourner* au lieu de l'agrandir. Les coins de l'écran cessaient d'être peints. Le checkup l'a vu (T9 au rouge) ; à l'œil, ça n'aurait été qu'un tracé qui s'arrête bizarrement, à cent lieues de sa cause.
 
-⚠️ Le patch vit sur le **prototype de `L.Map`**, donc il est vu par les 5 autres cartes de l'app (Vue OSM, minimap d'urgence, Secours, picker de calage, aperçu HOME). Il se retire de lui-même : hors carte principale, ou dès que l'angle est nul, il rend exactement ce que rendait Leaflet. Vérifié par le checkup (T12).
+⚠️ Le patch vit sur le **prototype de `L.Map`**, donc il est vu par toutes les cartes de l'app. Il lit l'angle **de la carte qui reçoit le geste** (`map._ktaRotation`, posé par `attachTo`) : une carte sans rotation (minimap d'urgence, Secours, picker de calage, aperçu HOME) ou à angle nul reçoit exactement ce que rendait Leaflet. Vérifié par les checkups (T12 ; O8 de `checkup-osm-rotation.js`).
 
 `latLngToContainerPoint` n'est **pas** patché : seul l'`autoPan` des popups s'en sert, et le décalage y est sans conséquence.
 
@@ -1162,6 +1162,8 @@ Le redressement est **immédiat** (pas animé) quand le mode devient inapplicabl
 
 Sans tracker, la carte 2D tourne aussi **à la main**, avec le même pane, le même patch des gestes, le même pan manuel, le même canvas élargi et le même culling. `MapBearing` sait qui tient l'angle : `getSource()` rend `null` (vue droite), `"manuel"` ou `"cap"`.
 
+**Une instance par carte.** Tout l'état (angle, doigts, pan, bouton nord) vit dans une instance fabriquée par `mapBearing.js > _creerRotation(cfg)`. `window.MapBearing` est celle de la carte du plan (`cfg.plan` : cap, préférence, `window._ktaRotatePane`, tuiles V2 du plan, outils et modes plein écran qui redressent, 🎯 Recentrer). `MapBearing.creerRotationManuelle({ carte, apresRotation, bloque })` en fabrique une **manuelle seule** pour une autre carte : la Vue OSM s'en sert (cf `vue-osm.md` §13) ; le widget OSM de l'accueil reste droit. Une telle instance adopte les panes créés après le sien, élargit la zone chargée par ses `GridLayer` au rectangle tourné et pose son bouton nord dans le coin de **sa** carte (`.kta-nord-local`).
+
 | | Règle |
 |---|---|
 | Geste | deux doigts : le pinch-zoom reste celui de Leaflet ; la vue ne tourne qu'au-delà de **`SEUIL_ROTATION` = 15°** d'angle entre les doigts (un pincement en fait 5 à 10), puis suit les doigts **sans rattraper le seuil** (aucun saut) et sans lissage. Zoom et rotation se combinent ensuite |
@@ -1178,7 +1180,7 @@ Sans tracker, la carte 2D tourne aussi **à la main**, avec le même pane, le m�
 
 🩸 **Même famille d'événements que le pinch-zoom de Leaflet** : `L.Browser.touchNative` (vrai dès que le navigateur expose `TouchEvent`, **Chrome de bureau compris**) → `touch*`, sinon pointeurs. Nos écouteurs, posés sur le conteneur, passent avant ceux de Leaflet (sur `document`) : il recentre le pincement avec l'angle déjà à jour, et le contenu reste sous les doigts (dérive mesurée < 1 px). Un harnais qui simule des doigts dans l'autre famille ne voit ni zoom ni rotation.
 
-🩸 **Le div `#map` est persistant** d'un plan à l'autre (`cleanupExistingMap` ne vide que son contenu) : les écouteurs du conteneur (pan manuel, rotation, molette) sont des fonctions du module, qui lisent `window.map` — un nouvel `addEventListener` de la même fonction ne s'empile pas (checkup R12 : un geste ne tourne pas deux fois après un changement de plan).
+🩸 **Le div `#map` est persistant** d'un plan à l'autre (`cleanupExistingMap` ne vide que son contenu) : les écouteurs du conteneur (pan manuel, rotation, molette) sont des fonctions de l'instance, qui lisent `window.map` — un nouvel `addEventListener` de la même fonction ne s'empile pas (checkup R12 : un geste ne tourne pas deux fois après un changement de plan).
 
 Filet : `scripts/smoke/checkup-rotation-manuelle.js` (Chromium et WebKit, plus un vrai geste CDP sous Chromium). ⚠️ Non vérifié sur un vrai téléphone.
 
