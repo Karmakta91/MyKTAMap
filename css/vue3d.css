@@ -123,6 +123,9 @@ html.kta-theme-light .kta-v3d-mode-indic {
   overscroll-behavior: contain;
 }
 .kta-v3d-reglages > * { flex-shrink: 0; }
+/* 🩸 Les lignes sont des .kta-v3d-btn (`touch-action: none`) et remplissent la tuile : sans ce retour au défilement
+   vertical, le doigt posé sur une ligne ne fait pas défiler, et le bas de la tuile reste hors d'atteinte en paysage. */
+.kta-v3d-reglages .kta-v3d-btn { touch-action: pan-y; }
 .kta-v3d-reglages[hidden] { display: none; }
 .kta-v3d-reglages-ligne { display: flex; gap: 4px; }
 /* Ligne de réglage : celle de la fenêtre ⚙️ Réglages (13 px, gras, rayon 6, liseré discret, survol bleu). */

@@ -60,6 +60,7 @@
 // Colonne d'outils en vue d'édition seulement (PC, téléphone, paysage ; absente pendant le jeu, qui ne chevauche aucune
 // commande à ces tailles) ; au doigt en paysage bas, contre le bord droit, entre la rangée du haut et ⌖
 // (KTA_V3D_SEUL=colonne : cette vérification seule). Plan au sol sur écran dense, vue immobile (image, V1, V2).
+// Tuile ⚙️ au doigt en paysage bas : un glisser posé sur une ligne la fait défiler (KTA_V3D_SEUL=tuile).
 // Dessin : premier toucher d'un outil armé posé, au sol sous le doigt (jamais sur le dessus d'un pilier), au point
 // d'appui.
 // Données changées pendant la vue (26) ; type changé (26 bis, KTA_V3D_SEUL=type : 1re → 2e masse 🧱 activé ou coupé,
@@ -4997,6 +4998,85 @@ async function sectionTuileColonne(page) {
     "curseurs entières", r);
 }
 
+// Tuile ⚙️ en paysage bas, au doigt : un glisser commencé SUR une ligne de réglage fait défiler la tuile (les lignes
+// la remplissent : seul le liseré de 10 px restait au doigt). Téléphone émulé (Chromium : geste tactile par CDP).
+async function sectionTuileDefile(nav) {
+  if (nav.browserType().name() !== "chromium") return;
+  const ctx = await nav.newContext({ viewport: { width: 852, height: 393 }, hasTouch: true, isMobile: true,
+    deviceScaleFactor: 3, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const cdp = await ctx.newCDPSession(page);
+    // Doigt posé en (x, y), remonté de 120 px en 12 pas, levé : le navigateur fait défiler ce qui défile sous lui.
+    const glisser = async function (x, y) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: x, y: y }] });
+      for (let i = 1; i <= 12; i++) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x, y: y - i * 10 }] });
+        await page.waitForTimeout(16);
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    };
+    const mesurer = async function () {
+      const p0 = await page.evaluate(function () {
+        const t = document.getElementById("kta-v3d-reglages");
+        t.scrollTop = 0;
+        const rt = t.getBoundingClientRect();
+        // Point de départ dans le bas de la tuile (le doigt remonte de 120 px sans en sortir).
+        const lignes = Array.prototype.map.call(t.querySelectorAll(".kta-v3d-btn-mode"), function (el) {
+          return el.getBoundingClientRect();
+        }).filter(function (r) { const c = r.top + r.height / 2; return c > rt.top + 150 && c < rt.bottom - 10; });
+        const b = lignes[0];
+        const x = b.left + b.width / 2, y = b.top + b.height / 2;
+        const sous = document.elementFromPoint(x, y);
+        return { x: x, y: y, deborde: t.scrollHeight > t.clientHeight + 4,
+          surLigne: !!(sous && sous.closest(".kta-v3d-btn-mode")) };
+      });
+      await glisser(Math.round(p0.x), Math.round(p0.y));
+      await page.waitForTimeout(300);
+      p0.defile = await page.evaluate(function () { return document.getElementById("kta-v3d-reglages").scrollTop; });
+      return p0;
+    };
+    await page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      await K.ouvrir({ depart: { x: W / 2, y: H / 2, cap: 0, niveau: 0 }, commandes: "joystick" });
+      if (K.etat().vue !== "plongee") K.basculerVue();
+      await new Promise(function (ok) { setTimeout(ok, 200); });
+      document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
+      await new Promise(function (ok) { setTimeout(ok, 100); });
+    });
+    const ligne = await mesurer();
+    verifier(ligne.deborde && ligne.surLigne && ligne.defile > 20, "tuile ⚙️ en paysage bas (852 × 393), au doigt : " +
+      "un glisser commencé sur une ligne de réglage la fait défiler (" + ligne.defile + " px)", ligne);
+  } finally {
+    await ctx.close();
+  }
+}
+
 // Niveau choisi en vue d'édition (▲ niveau ▼, sans passage) : scène du niveau construite, place et caméra gardées,
 // carte et tracker immobiles, un tracé dessiné prend le niveau de la 3D ; retour à hauteur d'yeux dégagé.
 async function sectionNiveauEdition(page) {
@@ -8787,7 +8867,7 @@ async function sectionGestesDoigt(nav) {
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
-      SEUL === "passagecalque" || SEUL === "mesures") {
+      SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -15007,6 +15087,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "panneaux") await sectionPanneauxDezoom(nav);
     if (!SEUL || SEUL === "gestes") await sectionGestesDoigt(nav);
     if (!SEUL || SEUL === "colonne") await sectionColonnePaysage(nav);
+    if (!SEUL || SEUL === "tuile") await sectionTuileDefile(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
