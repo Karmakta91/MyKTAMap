@@ -112,11 +112,6 @@
 
 ## Entrant
 
-- **Rotation manuelle en Vue OSM** — décidé 07/11 : manuelle seulement, pas de cap. ✅ vu 07/11 : `mapBearing.js`
-  ne sert que `window.map` → module rattachable (M), puis fenêtre OSM (S-M : coins des tuiles, panes du plan calé,
-  mesure). Widget de l'accueil droit d'abord (S ensuite si voulu).
-  `qui: Claude · action: lot en copie séparée sur go de KARMA · fini: Vue OSM tournée au doigt, rotation du plan
-  inchangée (checkups) · depuis: 06/11/2026 · taille: M`
 - **Accueil pro lent : splash bloquant et connexions IndexedDB** — audit pro
   `MyKTAMap-pro/docs/audits/2026-11-06_audit-accueil-chiffre-v1.md` : `main.js` attend la fin de l'animation du
   splash (~4 s) avant la porte du pro ; `planRegistry.js > _openIDB` ouvre une connexion à chaque appel, jamais fermée.
@@ -162,11 +157,11 @@
   `qui: Claude · action: refuser un lien qui croise un obstacle dur, checkup · fini: lien coupé par un mur ligne
   fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
 
-- **Cap jamais lu si requestPermission répond « prompt »** — ✅ vu 04/11 (lot rotation-manuelle) : la Chromium du
-  harnais répond « prompt » à DeviceMotionEvent.requestPermission() : aucun écouteur d'orientation
-  (tracking.js > requestPermission ; checkup-plan-oriente 5 KO). 🔬 un Chrome Android récent ferait pareil.
-  `qui: KARMA · action: vérifier sur un Android que la boussole et le plan orienté tournent · fini: vu conforme, ou
-  correctif (demander la permission dans le geste) · depuis: 04/11/2026 · taille: S`
+- **Essai Android : boussole et plan orienté** — le Chromium récent du harnais n'accorde pas les capteurs hors geste
+  (checkup-plan-oriente : capteurs accordés au test, vert le 07/11). 🔬 un Chrome Android récent pourrait demander
+  la permission : l'app la demande dans le geste (« J'ai compris »), jamais vérifié sur un vrai Android.
+  `qui: KARMA · action: sur un Android, boussole et plan orienté tournent · fini: vu conforme, ou correctif ·
+  depuis: 04/11/2026 · taille: S`
 - **Générateur : rendu 3D par défaut du plan** — demande KARMA 04/11 : choisir à la génération le rendu de la vue 3D
   par défaut (Mixte / Structures / Galerie), au lieu de Mixte pour tous ; le choix de l'utilisateur, retenu par plan
   (`setPlanRenduVue3D`), reste prioritaire. À faire après les lots du 04/11.
