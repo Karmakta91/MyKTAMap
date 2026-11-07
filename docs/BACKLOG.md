@@ -135,12 +135,11 @@
   comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
   zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône).
   `qui: KARMA · action: valider les 4 recos du topo · fini: décision prise · depuis: 06/11/2026 · taille: S`
-- **Niveaux qui s'entremêlent en 3D** — un niveau commence dans la hauteur d'un autre (étage ouvert à mi-hauteur d'une
-  grande galerie). Idée KARMA : écart (m) avec le niveau supérieur, NÉGATIF = entremêlés d'autant, à partir de
-  `niveauxProfondeur` (pas ≥ 0,5) + une hauteur PAR NIVEAU (aujourd'hui une seule par plan, `hauteurGalerieM`, hors ZIP).
-  `qui: Claude · action: topo puis QCM (données par niveau, Générateur, rendu multi-niveaux, règle du pas, itinéraire,
-  ⛏️ Volume exploité qui lit la hauteur, à revoir en parallèle) · depuis: 06/11/2026 · taille: L`
-
+- **Multi-niveau en 3D : niveaux voisins, entremêlés, jonction en pente douce** — QCM 07/11 : voisins (⚙️ Tous /
+  le mien), pente bout à bout, écart (m, négatif = entremêlé) et hauteur par niveau au Générateur + réglages, niveau
+  actif d'abord. Lots A données → B pente douce → C niveaux affichés (mémoire) → D entremêlement.
+  `qui: Claude · action: lot A en copie séparée sur go de KARMA · fini: lots A à D livrés · depuis: 06/11/2026 ·
+  taille: L`
 - **Essai sur dev : lots du 05/11 sur téléphone** — prouvés en émulation seulement : ＋ / 🗑️ des sommets (2D, 3D),
   gestes 3D à deux doigts, colonne d'outils en paysage, plan au sol d'un plan transparent, ruban d'itinéraire 3D,
   « Hors du plan » en 3D, et un 1er « 🔗 Raccorder » sur un tracé de CALQUE (chemin jamais testé automatiquement).
