@@ -48,6 +48,11 @@
   const PANE_TUILES    = "ktaOsmTuiles";
   let _tilesByPath     = {};   // path → { overlay, tl, tr, bl } (cull rapide)
   let _moveEndHandler  = null; // pour le nettoyage au close()
+  // Rotation manuelle de la carte (mapBearing.js > creerRotationManuelle) : une instance pour la page, rattachée à
+  // chaque nouvelle carte, remise droite à chaque fermeture (décision : la fenêtre rouvre nord en haut).
+  let _rotation        = null;
+  let _rotationTuilesT = null; // minuterie : tuiles du plan relues pendant la rotation
+  const ROTATION_TUILES_MS = 120;
   let _poiLayer   = null;
   let _planTilesVisible = true; // tuiles V2 du plan
   let _poiVisible = true;
@@ -1839,7 +1844,7 @@
     const cols     = Math.ceil(Math.ceil(planW / scale) / tileSize);
     const rows     = Math.ceil(Math.ceil(planH / scale) / tileSize);
 
-    const mapBounds = _osmMap.getBounds().pad(VIEWPORT_PADDING);
+    const mapBounds = _zoneVue(VIEWPORT_PADDING);
 
     // phase 1 : tuiles visibles à ajouter
     const aAjouter = [];
@@ -1918,6 +1923,35 @@
     }
   }
 
+  // Zone que l'écran montre VRAIMENT : sous rotation, boîte englobante des 4 coins dé-tournés (le rectangle droit
+  // laisserait les coins sans tuiles du plan) ; à plat, getBounds() au bit près.
+  function _zoneVue(pad) {
+    const z = _rotation ? _rotation.zoneVisible(pad) : null;
+    return z || _osmMap.getBounds().pad(pad);
+  }
+
+  // Angle changé sans déplacement (aucun moveend) : les tuiles du plan qui entrent dans les coins sont posées.
+  function _apresRotation() {
+    if (_rotationTuilesT) return;
+    _rotationTuilesT = setTimeout(function() {
+      _rotationTuilesT = null;
+      if (!_osmMap || !_proj || !_osmMap._loaded) return;
+      const tiling = window.PLAN_CONFIG && window.PLAN_CONFIG.tiling;
+      if (tiling) _renderLevel(_targetLevelForZoom(_osmMap.getZoom(), tiling));
+    }, ROTATION_TUILES_MS);
+  }
+
+  function _brancherRotation() {
+    if (!_rotation && window.MapBearing && typeof window.MapBearing.creerRotationManuelle === "function") {
+      _rotation = window.MapBearing.creerRotationManuelle({
+        carte: function() { return _osmMap; },
+        apresRotation: _apresRotation
+      });
+    }
+    if (!_rotation) return;
+    try { _rotation.reset(); _rotation.attachTo(_osmMap); } catch(e) { console.warn("[OsmView] rotation :", e); }
+  }
+
   // zoomend / moveend : niveau cible réévalué, rendu ou cull (Leaflet émet une fois par cran).
   function _onMoveEnd() {
     if (!_osmMap) return;
@@ -1942,6 +1976,7 @@
       preferCanvas: true
     }).setView([46.5, 2.5], 6);
     if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_osmMap);
+    _brancherRotation();
     L.tileLayer(OSM_TILE_URL, {
       maxZoom: OSM_MAX_ZOOM,
       attribution: OSM_ATTR,
@@ -2214,7 +2249,11 @@
     if (_myGpsMarker)         { try { _myGpsMarker.remove();         } catch(e) {} _myGpsMarker = null; }
     if (_myGpsAccuracyCircle) { try { _myGpsAccuracyCircle.remove(); } catch(e) {} _myGpsAccuracyCircle = null; }
 
+    if (_rotationTuilesT) { clearTimeout(_rotationTuilesT); _rotationTuilesT = null; }
     if (_osmMap) { try { _osmMap.remove(); } catch(e) {} _osmMap = null; }
+    // 🩸 Vue redressée APRÈS le démontage (l'instance survit à la fenêtre) : avant, la restitution du padding du canvas
+    // lui redemande un dessin que la destruction de la carte laisse orphelin (TypeError « save » au rAF suivant).
+    if (_rotation) { try { _rotation.reset(); } catch(e) {} }
     _planLayer = null;
     if (_modalEl && _modalEl.parentNode) {
       try { _modalEl.parentNode.removeChild(_modalEl); } catch(e) {}
@@ -2232,7 +2271,9 @@
     getPlanGpsBbox: _getPlanGpsBbox,
     // rafraîchit _planHasCachedTiles (lue par isAvailable) : main.js au boot, osmHomePreview après cache,
     // secoursMode au besoin
-    recheckOfflineCache: _recheckCachedForCurrentPlan
+    recheckOfflineCache: _recheckCachedForCurrentPlan,
+    // rotation manuelle de la carte ouverte (null avant la première ouverture) : harnais
+    getRotation: function() { return _rotation; }
   };
 
   // Recheck du cache différé : OsmTilesCache et PLAN_CONFIG doivent être prêts (~1 s après le boot).

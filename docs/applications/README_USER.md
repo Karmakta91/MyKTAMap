@@ -862,6 +862,8 @@ La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec
 
 **📏 Mesurer** : en mode OSM, l'outil de mesure donne une distance et une surface ; elles ne dépendent d'aucun calibrage de plan.
 
+**🧭 Tourner la carte** : dans la fenêtre Vue OSM ouverte depuis un plan, tourne deux doigts posés sur la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche de la carte, la remet droite. La fenêtre rouvre toujours nord en haut. La carte de l'accueil, elle, reste droite.
+
 **🎯 Coordonnées de surface** : un clic sur la carte donne la latitude et la longitude du point juste au-dessus, avec un bouton Copier — c'est ce qu'on transmet à une équipe qui arrive par la surface. Leur justesse dépend du calage du plan.
 
 **🗺️ Légende** : sur un plan, le bouton **🗺️ Légende** de la Vue OSM ; sur l'accueil, le bouton **🗺️** du bandeau. La légende est celle du plan, avec tes noms, tes couleurs et tes types personnels, en **lecture seule** : elle se modifie depuis le plan (🗺️ Légende → ✏️ Modifier). Sur l'accueil, c'est la légende du plan que tu viens de quitter, sinon celle du plan affiché que tu as ouvert le plus récemment ; si plusieurs plans sont affichés, un message te rappelle que les autres ont la leur.

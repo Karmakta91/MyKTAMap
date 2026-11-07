@@ -127,6 +127,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | Fonctionnalité | Module(s) clé(s) |
 |---|---|
 | Modale OSM : plan projeté sur fond OpenStreetMap via géoréférencement 2 points | `osmView.js` |
+| Carte de la modale tournée à la main (deux doigts, Maj + molette, bouton nord), rouverte nord en haut | `osmView.js`, `mapBearing.js` |
 | Widget aperçu OSM sur la home | `osmHomePreview.js` |
 | Légende du plan en lecture seule depuis les deux cartes OSM (avertissement si plusieurs plans) | `interfaceLegende.js` |
 | Cache de tuiles OSM (IndexedDB) | `osmTilesCache.js` |
@@ -267,7 +268,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `tiling.js` | Rendu du fond de plan : image directe, tuiles runtime V1 ou tuiles V2 du Générateur |
 | `imageLayerCalibration.js` | Calage d'un calque image par 2 ancres (similitude 2D) |
 | `imageLayerCalibrationPicker.js` | Modale de calage 2 ancres (deux mini-cartes source / plan) |
-| `mapBearing.js` | Rotation de la carte 2D : plan orienté pendant le suivi, rotation manuelle à deux doigts et bouton nord (pane intercalaire `.kta-rotate-pane`) |
+| `mapBearing.js` | Rotation d'une carte Leaflet, une instance par carte : plan orienté pendant le suivi et rotation manuelle à deux doigts avec bouton nord sur la carte 2D, rotation manuelle seule pour la Vue OSM (`creerRotationManuelle`) ; pane intercalaire `.kta-rotate-pane` |
 | `map.js` | Carte Leaflet du plan (CRS.Simple), catalogue `TAGS_BUILTIN`, `_iconMap`, calques, filtre de niveau |
 | `tracking.js` | Tracker podométrique sans GPS : position, cap, recalage, map-matching, timeline du parcours |
 
@@ -654,6 +655,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
+| `smoke/checkup-osm-rotation.js` | Rotation manuelle de la Vue OSM : vrai geste CDP, coins couverts à 45° (tuiles OSM et du plan), toucher et mesure sous rotation, Maj + molette, bouton nord, réouverture droite, autres cartes droites |
 | `smoke/checkup-osm-taille-icones.js` | « Adapter la taille des icônes au zoom » sur les deux cartes OSM, coût du zoom |
 | `smoke/checkup-ouvertures-enchainees.js` | Ouvertures de plan enchaînées sans erreur de page |
 | `smoke/checkup-panneaux-geometrie.js` | Panneaux d'outils du mode plan utilisables au pixel, 4 formats d'écran |

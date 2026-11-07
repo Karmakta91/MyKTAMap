@@ -862,6 +862,8 @@ La Vista OSM coloca tus mapas **georreferenciados** sobre el mapa de OpenStreetM
 
 **📏 Medir**: en modo OSM, la herramienta de medición da una distancia y una superficie; no dependen de ninguna calibración del mapa.
 
+**🧭 Girar el mapa**: en la ventana Vista OSM abierta desde un mapa, gira dos dedos sobre el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda del mapa, lo endereza. La ventana siempre se vuelve a abrir con el norte arriba. El mapa de la pantalla de inicio sigue recto.
+
 **🎯 Coordenadas de superficie**: un clic en el mapa da la latitud y la longitud del punto situado justo encima, con un botón Copiar — es lo que se transmite a un equipo que llega por la superficie. Su exactitud depende de la calibración del mapa.
 
 **🗺️ Leyenda**: en un mapa, el botón **🗺️ Leyenda** de la Vista OSM; en la pantalla de inicio, el botón **🗺️** del encabezado. Es la leyenda del mapa, con tus nombres, tus colores y tus tipos propios, en **solo lectura**: se modifica desde el mapa (🗺️ Leyenda → ✏️ Modificar). En la pantalla de inicio, es la leyenda del mapa que acabas de dejar; si no, la del mapa mostrado que abriste más recientemente. Si se muestran varios mapas, un mensaje te recuerda que los demás tienen la suya.

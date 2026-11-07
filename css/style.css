@@ -19514,6 +19514,10 @@ body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
   border: 1px solid rgba(244, 197, 66, 0.5);
   color: #f4c542; font-size: 11px; font-weight: 600; white-space: nowrap;
 }
+/* Vue OSM tournée à la main : le libellé reste droit (contre-rotation de l'enfant du divIcon, cf .kta-rotate-pane). */
+.kta-bearing-on .kta-osm-mes-seg span {
+  transform: translate(-50%, -50%) rotate(calc(-1 * var(--kta-bearing, 0deg)));
+}
 /* Relevé de coordonnées GPS de surface : même gabarit et emplacement que la mesure (outils exclusifs). */
 #kta-osm-coord-floater {
   position: fixed; left: 50%; transform: translateX(-50%);
@@ -20042,6 +20046,15 @@ body.kta-theme-light .kta-nord-btn { box-shadow: 0 6px 20px var(--kta-light-shad
 }
 .kta-nord-pointe { fill: var(--kta-accent-texte); }
 .kta-nord-queue  { fill: var(--kta-texte-3); }
+/* Bouton nord d'une autre carte (Vue OSM, mapBearing.js > creerRotationManuelle) : dans le coin bas gauche de SA
+   carte, flux normal des contrôles Leaflet. La place fixe ci-dessus vise l'écran du plan, elle tomberait hors de la
+   fenêtre. Spécificité au-dessus de toutes les variantes (boussole, Présentation, paysage bas). */
+.leaflet-container .leaflet-control.kta-nord-ctrl.kta-nord-local {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transition: none;
+}
 
 /* ── Guidage de l'itinéraire (js/itiGuidage.js, décisions docs/ETUDE_GUIDAGE.md) ── */
 
