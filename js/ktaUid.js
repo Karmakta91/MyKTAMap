@@ -170,7 +170,7 @@
   }
   function tombstone(uid, ts) {
     if (typeof uid !== "string" || !uid) return;
-    const d = (typeof ts === "number" && isFinite(ts)) ? ts : Date.now();
+    const d = (typeof ts === "number" && Number.isFinite(ts)) ? ts : Date.now();
     const c = _tracesCopie.get(uid);
     if (c) { c.d = d; return; }
     _traces.set(uid, d);
@@ -178,7 +178,7 @@
   function tombstoneCopie(uid, calque, ts) {
     if (typeof uid !== "string" || !uid || typeof calque !== "string" || !calque) return;
     _traces.delete(uid);
-    _tracesCopie.set(uid, { d: (typeof ts === "number" && isFinite(ts)) ? ts : Date.now(), calque: calque });
+    _tracesCopie.set(uid, { d: (typeof ts === "number" && Number.isFinite(ts)) ? ts : Date.now(), calque: calque });
   }
   function untombstone(uid) { _traces.delete(uid); _tracesCopie.delete(uid); }
   function estTraceCopie(uid) { return _tracesCopie.has(uid); }
