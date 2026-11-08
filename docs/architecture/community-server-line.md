@@ -312,6 +312,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan
   (décision produit). Un rapatriement date ses copies du moment (`updatedAt`), sinon une synchro incrémentale n'en
   enverrait que les copies retouchées.
+- **Relire la synchro maintenant** : prise `relireChangements(planId) → Promise<boolean>` — l'extension reçoit et
+  applique (`appliquerChangements`) ce qui a changé sur son serveur pour ce plan, puis rend `true` ; `false` si elle
+  n'a pas pu. Côté app : `KtaExtensions.relireChangements(planId)` → `true`, `false` (échec, erreur, forme
+  inattendue, délai de 15 s dépassé) ou `null` (aucune extension n'a la prise, ou pas de plan : rien à relire).
+  Appelée par `CalqueSession.rapatrier` sur un plan d'extension sans copie du calque ici : ses copies peuvent exister
+  ailleurs, et un calque recopié du fichier ferait revenir les objets supprimés par les autres. `false` = « Modifier »
+  refusé (décision produit) ; `null` = comportement local. Règle : `session-data.md` §Restitution partagée
+  (« Repasser en modification »). Garde-fous : `check-extensions.js` §6 bis, `check-calque-session.js`.
 - **Restitution d'un calque** (plan d'extension modifiable) : ⚠️ **jamais une trace de suppression** — une copie
   porte l'uid de l'objet du calque, une trace sur elle (exportée, puis passée par « Fusion de calques » ou l'import
   ZIP du Générateur) détruirait l'original. À la place, UN enregistrement par calque « restitué à T » :

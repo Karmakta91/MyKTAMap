@@ -1306,6 +1306,26 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /X\.aPrise\("itineraire"\)/.test(lire("js/interfaceItineraire.js")));
   }
 
+  // ── 6 bis. RELIRE LA SYNCHRO MAINTENANT (avant de passer un calque en modification) ──────
+  {
+    const { K } = nouveauContexte(null);
+    t("relireChangements sans extension : null (rien à relire, l'appelant reste local)", (await K.relireChangements("ext_1")) === null);
+    let vu = null;
+    K.register({ nom: "r1", apiVersion: 1, relireChangements: (p) => { vu = p; return Promise.resolve(true); } });
+    t("relireChangements : la prise reçoit le plan, true rendu", (await K.relireChangements("ext_1")) === true && vu === "ext_1");
+    t("relireChangements sans plan : null, prise non appelée", (await K.relireChangements("")) === null);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "r2", apiVersion: 1, relireChangements: () => Promise.reject(new Error("x")) });
+    const { K: K3 } = nouveauContexte(null);
+    K3.register({ nom: "r3", apiVersion: 1, relireChangements: () => "oui" });
+    t("🩸 relireChangements en erreur ou forme inattendue : false (jamais « relu » par défaut)",
+      (await K2.relireChangements("ext_1")) === false && (await K3.relireChangements("ext_1")) === false);
+    t("relireChangements : délai borné (une extension muette ne bloque pas « Modifier »)",
+      /RELIRE_DELAI_MS\s*=\s*\d+/.test(lire("js/ktaExtensions.js")));
+    t("CalqueSession.rapatrier relit la synchro d'un plan d'extension avant de copier",
+      /X\.relireChangements\(planId\)/.test(lire("js/calqueSession.js")));
+  }
+
   // ── 6 ter. CHANGEMENTS REÇUS (synchro entrante) ──────
   {
     const { K, w } = nouveauContexte(null);

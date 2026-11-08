@@ -346,7 +346,7 @@
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     if (ext.etatObjet) setTimeout(rafraichirEtats, 0);
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut", "suppressionLot"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut", "suppressionLot", "relireChangements"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -1636,6 +1636,26 @@
     return { fusionnes: r.fusionnes, supprimes: r.supprimes,
       calques: { retires: rest ? rest.retires : 0, gardes: rest ? rest.gardes : 0 } };
   }
+
+  // ── Relire la synchro maintenant ──
+  // Prise `relireChangements(planId) → Promise<boolean>` : l'extension reçoit et applique (appliquerChangements) ce
+  // qui a changé sur son serveur pour ce plan, puis rend true ; false si elle n'a pas pu (hors ligne, refus).
+  // Appelée avant de passer un calque en modification (CalqueSession.rapatrier) : ses copies peuvent déjà exister
+  // ailleurs. → Promise : true, false (échec, délai dépassé, forme inattendue), null (aucune extension n'a la prise,
+  // ou plan absent : rien à relire, l'appelant reste 100 % local).
+  const RELIRE_DELAI_MS = 15000;
+  function relireChangements(planId) {
+    const ext = _prise("relireChangements");
+    if (!ext || typeof ext.relireChangements !== "function" || !planId) return Promise.resolve(null);
+    let delai;
+    return Promise.race([
+      Promise.resolve().then(function () { return ext.relireChangements(String(planId)); })
+        .then(function (r) { return r === true; }, function (e) { console.warn("[Extensions] relireChangements :", e); return false; }),
+      new Promise(function (r) {
+        delai = setTimeout(function () { console.warn("[Extensions] relireChangements : délai dépassé"); r(false); }, RELIRE_DELAI_MS);
+      })
+    ]).finally(function () { clearTimeout(delai); });
+  }
   // uid reçus d'une installation reliée (la fiche d'édition s'en sert pour signaler un conflit).
   const _recusADistance = new Set();
   function recuADistance(uid) { return !!uid && _recusADistance.has(uid); }
@@ -2538,6 +2558,7 @@
     compte: compte,
     notifierCompte: notifierCompte,
     appliquerChangements: appliquerChangements,
+    relireChangements: relireChangements,
     actionsCompte: actionsCompte,
     presenceActive: presenceActive,
     basculerPresence: basculerPresence,
