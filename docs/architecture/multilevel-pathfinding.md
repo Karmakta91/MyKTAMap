@@ -185,6 +185,11 @@ Type spécial `"jonction"` :
 - Marqueurs aux endpoints : `L.circleMarker` ∅14 (radius 7) bord magenta + intérieur blanc weight 3
 - Toujours visible si **au moins un** de `fromLevel`/`toLevel` ∈ `visibleLevels` (sinon cachée)
 - Exclue du calcul des cercles d'intersection (les middle points sont en transit vertical, pas des croisements physiques)
+- **Vue 3D** : une **galerie inclinée** qu'on marche, du sol du niveau de départ au sol du niveau d'arrivée, pente
+  répartie sur la longueur 2D du tracé (`galerieEmprise.js > pente` : dénivelé = différence des sols de
+  `getNiveauVertical`, sinon une hauteur de galerie par niveau franchi ; détail : `tracking.md` § Vue 3D, galerie
+  inclinée). Guidage : « descendre / monter la pente vers le niveau n », dit à l'entrée du tracé (`itiGuidage.js`,
+  moyen `pente`).
 - **Effacement** : aucun comportement spécial, traitée comme un tracé normal par tous les modes de 🧹 (sélection au clic, dernier tracé, tous les tracés). `resetRoads()` purge aussi les jonctions car même structure de données.
 - **Fiche au clic** (jonction de session, hors dessin) : `road.js` lui pose la polyline « ghost » des tracés et
   `utils.js > attacherNotePopup` avec `opts.jonction`. Titre « 🪜 Jonction N0 ↔ N+1 » (`jonctionFiche.titre`) ;
@@ -772,8 +777,9 @@ Hauteur / Écart / Sans :
 - **Vue 3D** et **⛏️ Volume exploité** : `setHauteurNiveau(niveau, m)` pour le niveau affiché / mesuré.
 
 **Consommateurs** : la vue 3D prend la hauteur du niveau affiché à l'ouverture et à chaque changement de niveau
-(`vue3d.js > _prendreHauteurDuNiveau`, appelé par `_reindexer`) ; ⛏️ Volume exploité celle du niveau mesuré.
-Preuves : `check-niveaux-verticaux.js` (accès, cascade, saisie de l'écart, sabotage vérifié),
+(`vue3d.js > _prendreHauteurDuNiveau`, appelé par `_reindexer`) ; ⛏️ Volume exploité celle du niveau mesuré ; la
+galerie inclinée d'un tracé jonction (`galerieEmprise.js > pente`, `denivele`) les sols des deux niveaux qu'elle
+relie (repli sans sols : une hauteur de galerie par niveau franchi) et leurs deux hauteurs. Preuves : `check-niveaux-verticaux.js` (accès, cascade, saisie de l'écart, sabotage vérifié),
 `scripts/smoke/checkup-niveaux-verticaux.js` (Générateur, ZIP relu, ⚙️, téléphone).
 
 ### 🩸 Ce que le chantier a corrigé sans qu'on le cherche

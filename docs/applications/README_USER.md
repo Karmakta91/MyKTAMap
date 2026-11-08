@@ -613,7 +613,7 @@ Chaque passage ou accès a son volume, là où il est.
 - ![](../../icon/jes.png) **Escalier entre niveaux** : une cage à marches, dans une niche sur le côté de la galerie.
 - ![](../../icon/jpe.png) **Puits à échelons entre niveaux** : un puits carré en pierre, avec son échelle.
 - ![](../../icon/jps.png) **Puits sans échelon entre niveaux** : un puits nu.
-- ↕️ **Tracé jonction** : une rampe à sa couleur, du sol au plafond vers le niveau du dessus, en tranchée vers le niveau du dessous. 🪜 au bout du tracé.
+- ↕️ **Tracé jonction** : une galerie en pente que tu parcours à pied. Le sol va du sol d'un niveau à celui de l'autre, d'un bout à l'autre du tracé (avec les profondeurs des niveaux si tu les as saisies, sinon une hauteur de galerie par niveau). Un ruban à sa couleur court au milieu du sol.
 
 Où et comment un passage se dessine :
 
@@ -656,7 +656,8 @@ Où et comment un passage se dessine :
 
 #### 🪜 Changer de niveau
 
-- À moins de **2 m** d'un passage entre niveaux (escalier, puits) ou du bout d'un tracé jonction, des boutons nommés (« ▼ -1 · Puits du carrefour (échelle) ») t'emmènent au niveau voisin.
+- À moins de **2 m** d'un passage entre niveaux (escalier, puits), des boutons nommés (« ▼ -1 · Puits du carrefour (échelle) ») t'emmènent au niveau voisin.
+- Un **tracé jonction** n'a pas de bouton : tu y entres et tu marches, la vue suit la pente. À mi-chemin, tu passes à l'autre niveau sans écran noir (**« Niveau -1 »** s'affiche) ; au bout, tu es dans sa galerie. Dans l'autre sens, pareil. L'itinéraire la suit (« descendre la pente vers le niveau -1 »).
 - S'il en dessert plus de deux, une petite liste s'ouvre.
 - La fiche du point fait de même : **▼ Descendre** / **▲ Monter** vers chacun de ses niveaux, d'où que tu sois.
 - Tu descends (ou montes) dans le passage, l'écran passe au noir un instant, puis tu arrives par le plafond (ou le sol) de l'autre niveau. **« Niveau -1 »** s'affiche 2 secondes.

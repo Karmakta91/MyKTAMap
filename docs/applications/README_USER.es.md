@@ -613,7 +613,7 @@ Cada paso o acceso tiene su volumen, donde está.
 - ![](../../icon/jes.png) **Escalera entre niveles**: una caja de escalera con peldaños, en un nicho al lado de la galería.
 - ![](../../icon/jpe.png) **Pozo con peldaños entre niveles**: un pozo cuadrado de piedra, con su escala.
 - ![](../../icon/jps.png) **Pozo sin peldaños entre niveles**: un pozo desnudo.
-- ↕️ **Trazado de unión**: una rampa de su color, del suelo al techo hacia el nivel de arriba, en zanja hacia el nivel de abajo. 🪜 al final del trazado.
+- ↕️ **Trazado de unión**: una galería en pendiente que recorres a pie. El suelo va del suelo de un nivel al del otro, de un extremo al otro del trazado (con las profundidades de los niveles si las has introducido; si no, una altura de galería por nivel). Una cinta de su color recorre el centro del suelo.
 
 Dónde y cómo se dibuja un paso:
 
@@ -656,7 +656,8 @@ Dónde y cómo se dibuja un paso:
 
 #### 🪜 Cambiar de nivel
 
-- A menos de **2 m** de un paso entre niveles (escalera, pozo) o del extremo de un trazado de unión, botones con nombre (« ▼ -1 · Pozo del cruce (escala) ») te llevan al nivel vecino.
+- A menos de **2 m** de un paso entre niveles (escalera, pozo), botones con nombre (« ▼ -1 · Pozo del cruce (escala) ») te llevan al nivel vecino.
+- Un **trazado de unión** no tiene botón: entras y caminas, la vista sigue la pendiente. A mitad de camino pasas al otro nivel sin pantalla negra (aparece **« Nivel -1 »**); al final estás en su galería. En sentido contrario, igual. La ruta la sigue (« bajar la rampa al nivel -1 »).
 - Si da servicio a más de dos, se abre una pequeña lista.
 - La ficha del punto hace lo mismo: **▼ Bajar** / **▲ Subir** hacia cada uno de sus niveles, estés donde estés.
 - Bajas (o subes) por el paso, la pantalla se pone negra un instante y llegas por el techo (o el suelo) del otro nivel. **« Nivel -1 »** se muestra 2 segundos.

@@ -1249,9 +1249,13 @@ cité pour un virage du dessous (bandeau, feuille de route, écran XL et 3D pass
 `ItiGuidage.construire(road)` → consignes (`virage` léger/franc · `branche` · `toutDroit` · `demiTour` ·
 `niveau` · `etape` · `arrivee`), chacune à son abscisse curviligne `s`. 1–2 ms sur un trajet réel.
 ⚠️ contrat (décision produit, QCM du 02/11/2026) : une consigne `niveau` **absorbe** les consignes de carrefour à
-≤ `ZONE_ECART_M` de son `s` et passe devant à `s` égal. 🩸 Par un tracé `jonction`, le changement de niveau tombe sur
-le nœud d'arrivée, au même `s` que son virage, et se triait après lui : la descente n'était jamais dite. Libellé du
-niveau signé (`ktaFormatNiveau` : « vers le niveau +1 »), carte et 3D.
+≤ `ZONE_ECART_M` de son `s` et passe devant à `s` égal. 🩸 Sans cela, le virage du nœud d'arrivée d'un tracé
+`jonction` se disait à la place de la descente. Un changement de niveau **sans moyen** (`via`) passe par un tracé
+`jonction` : moyen `pente`, consigne dite à son **entrée** (dernier point du niveau quitté), « descendre / monter la
+pente vers le niveau −1 » (`guid.act.descendrePente`, `monterPente`) — c'est une galerie inclinée en 3D ; un POI
+jonction garde sa consigne au puits, « … par l'escalier ». Libellé du niveau signé (`ktaFormatNiveau` : « vers le
+niveau +1 »), carte et 3D. L'aperçu filtré par niveau (vue 3D) projette aussi sur les tronçons d'un changement de
+niveau qui touchent ce niveau (`_niveauxSegments`).
 
 `tracking.js > updateMap` → `ItiGuidage.onPosition(position)` à chaque pas / recalage, + un battement d'1 s
 (apparition / disparition). Les consignes ne sont recalculées que si la road change.
@@ -1528,8 +1532,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   u le long de la paroi, v = hauteur depuis le sol, une assise part du sol) ; la taille du motif est la `repeat`
   de la carte (pierre 1/2, moellons 1/1,6 × 1/1), jamais la géométrie : aucun étirement de 1,5 à 20 m de hauteur, et
   la bascule ne remplace que la carte du matériau (aucun matériau de plus) ; liseré au sol de 15 cm, couleur de la
-  légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est pas un tube : c'est une rampe
-  (volumes des passages, ci-dessous). Structures (intégrées et perso)
+  légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est pas un tube : c'est une
+  galerie inclinée qu'on marche (ci-dessous). Structures (intégrées et perso)
   ni dessinées ni bloquantes (sauf en rendu mixte, ci-dessus). Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
   à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais et effondrement à 60 % avec une
   face seulement là où ils donnent sur la galerie (`_remblaisGalerie`), inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
@@ -1538,11 +1542,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   profondeur. Vue d'édition : plafond des pièces masqué, parois vues des deux côtés.
 - **Passages de niveau 🪜** (en libre ; en suivi, le niveau est celui du tracker) : à moins de 2 m d'un POI jonction
   (`KtaPoiJonction` : niveaux liés, raccords validés ; montré sur chacun de ses niveaux, à la place de son volume, ci-dessous ; jamais `pa`,
-  qui n'a pas de moyen) ou d'un bout de tracé `jonction` (pris dans les deux sens), une boîte à gauche : boutons
+  qui n'a pas de moyen), une boîte à gauche : boutons
   **nommés** vers le niveau lié voisin au-dessus ou au-dessous (profondeurs saisies, sinon numéro), « ▼ -1 · Nom (moyen) »
-  (`_textePassage`, nom coupé à 22 signes à l'écran, entier au libellé accessible ; tracé : « ▼ -1 (tracé jonction) »),
+  (`_textePassage`, nom coupé à 22 signes à l'écran, entier au libellé accessible),
   une liste s'il y en a plus d'un de chaque côté. La fiche du POI jonction propose les mêmes niveaux (ci-dessous).
-  Arrivée (`_basculerNiveau`) : raccord validé du niveau, sinon bout opposé du tracé jonction, sinon le point (s'il est
+  Un tracé `jonction` n'a pas de 🪜 : il se marche (galerie inclinée, ci-dessous).
+  Arrivée (`_basculerNiveau`) : raccord validé du niveau, sinon le point (s'il est
   à plus de 2 m) ; ramenée dans le tube si elle tombe à côté (`_degager`) ; cap (`_capArrivee`) le long de
   l'itinéraire s'il passe à moins de 3 m (`apercu > capTrajet`, vers sa prochaine consigne), sinon le long de l'axe de
   galerie le plus proche, du côté où il est le plus long, sinon gardé. ⚠️ contrat (décision produit) : la 3D change
@@ -1550,6 +1555,33 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   le tracker ni la carte 2D ne bougent pendant la 3D. **Ouverture en libre** sur la place d'un tracker recalé
   (`getTrackingPositionEtat().confirmee`) : `niveauLibre` = niveau du **tracker** (un « Je suis ici » sur un POI du −1
   vu depuis le 0 laisse la carte au 0) ; tracker jamais recalé : niveau actif de la carte. `checkup-vue-3d.js` § 14.
+- **Galerie inclinée d'un tracé `jonction`** (décision produit, QCM du 07/11/2026 ; `galerieEmprise.js > pente`,
+  `vue3d.js > _pentesDuNiveau`) : le tracé (fromLevel → toLevel) se **marche**. Pente d'un bout à l'autre du tracé, du
+  sol du niveau de départ au sol du niveau d'arrivée, répartie sur sa longueur 2D (rien à saisir) : dénivelé =
+  `sol(arrivée) − sol(départ)` (`getNiveauVertical`) si les deux sols sont renseignés, sinon **repli** : une hauteur
+  de galerie par niveau franchi (celle du niveau du dessous, écart nul : 2 m par niveau sans réglage). Hauteur sous
+  plafond interpolée de celle du départ à celle de l'arrivée ; largeur 1,6 m (`KtaGalerie.PASSAGE.pente`). Vue d'un
+  niveau, la galerie part toujours de son bout (y = 0) : sol à `dY·t`, plafond à `dY·t + hA + (hB − hA)·t`.
+  **Part ouverte** `tOuvert` : jusqu'où elle recoupe la tranche [0, h] du niveau (en descente, son plafond reste
+  au-dessus du sol ; en montée, son sol sous le plafond) — bouche au sol (descente, tranchée) ou au plafond (montée,
+  talus sous la rampe), emprise du modèle galerie/mixte (`_emprisesPassages`, la paroi des tubes s'ouvre là) ; au-delà
+  elle passe dans la roche, sous le sol ou au-dessus du plafond, couverte (`_pente` : moellons, ruban du canon au
+  milieu du sol ; le bout d'en face reste ouvert). **Marche** : caméra, avatar, ruban et chevrons de l'itinéraire
+  suivent la pente (`_solPlace`, `_surPente`) ; dans la galerie, la règle du pas est **sa largeur** (corps de 0,4 m dans
+  ses parois, jamais plus près du bord qu'au départ ; ni structures ni parois du niveau : on n'est plus à son sol) ; on
+  n'en sort par le côté ou par son bout que là où son sol est à moins de 0,3 m de celui du niveau (`_pas`, `_coince`).
+  **Changement de niveau sans fondu** : à mi-longueur (+ 0,3 m, au plus le quart du tracé : hystérésis), la scène
+  passe au niveau d'en face (`_suivrePente`, `niveauLibre` comme 🪜, bandeau « Niveau n ») ; les deux scènes dessinent
+  la même galerie à la même place autour de la caméra, décalée du dénivelé : altitude continue, rien ne saute (hors
+  le coût d'une reconstruction de scène). En suivi, le tracker change de niveau au bout du tracé
+  (`_basculerNiveauSiTraversee`) : la scène suit sans fondu si la place est à moins d'1 m de la galerie. Masquer le
+  type `jonction` ne retire que le dessin. **Itinéraire** : `_itiDuNiveau` écarte les points de transit (niveau null
+  sans moyen) des morceaux à plat ; le tronçon qui emprunte la jonction est dessiné sur sa pente (`_majItiPentes`,
+  `_rubanPente`) ; chevrons du guidage posés sur la pente (`_penteDuTroncon`) ; aperçu du guidage projeté aussi sur
+  les tronçons de changement de niveau (`itiGuidage.js > _niveauxSegments`) : sur la pente, on reste guidé, jamais
+  « rejoindre » ni recalcul. Consigne « descendre / monter la pente vers le niveau n » (ci-dessous, Guidage).
+  Hors de ce lot : niveaux voisins affichés ensemble, entremêlement (la 3D reste construite pour un niveau à la fois).
+  `checkup-vue-3d.js` § 14 octies (`KTA_V3D_SEUL=pente`).
 - **Geste d'un changement de niveau** (`_lancerGeste`, `_majGeste`, décision produit) : fondu noir (`GESTE.fondu`
   250 ms, `.kta-v3d-fondu` au fond des jetons sombres, sous les boutons) de part et d'autre de la **bascule**, où la
   scène du niveau d'arrivée est construite (au noir). Passage 🪜 ou fiche : la caméra s'enfonce (descente) ou monte
@@ -1592,18 +1624,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   un niveau lié au-dessus, les deux entre trois niveaux ; parois (matériau des galeries) sur 6 m au-delà (le reste se perd dans le
   noir). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
   disque de ciel (sprite clair non éclairé) au sommet de `peo` / `eso`. Cadre doré au sol d'un passage. Un tracé
-  `jonction` (filtre de son type respecté) devient une **rampe** de 1 m à sa couleur du canon : du sol au plafond vers
-  un niveau au-dessus, du sol à −hauteur dans une tranchée ouverte vers un niveau au-dessous. ⚠️ contrat : les
+  `jonction` (filtre de son type respecté) devient une **galerie inclinée** (ci-dessus). ⚠️ contrat : les
   **bouches** marquent le gabarit (stencil, `boucheSol` = 1, `bouchePlafond` = 2, `renderOrder` −1, ni couleur ni
   profondeur) et les matériaux du sol et du plafond (plan unique et pièces des tubes) ne se dessinent pas là
   (`NotEqualStencilFunc`) : on voit dans le puits ; le contexte est créé avec `stencil: true`. Construits à portée
   (`_gererVolumes`, règle des tuiles), libérés au loin ; 🩸 après une perte du contexte, jamais `dispose()` sur un
-  volume de l'ancienne scène. Aucune collision : le pas reste la règle du tracker.
+  volume de l'ancienne scène. Aucune collision : le pas reste la règle du tracker (la galerie inclinée a la sienne).
 - **Aucune paroi de tube dans un passage** (mixte et galerie) : `galerieEmprise.js > _emprisesPassages` rend l'emprise
   de chaque volume du niveau (bouche + cadre doré, mêmes règles que `_volumesDuNiveau`, place et axe par le même
   calcul `_placeVolume`, jugé sur les tubes et joints seuls, dimensions
-  `KtaGalerie.PASSAGE`, que `vue3d.js > VOLUME` lit) et celle de la tranchée d'un tracé jonction (un rectangle par
-  segment). Une emprise qui chevauche un tube devient une **pièce** du modèle : l'emprise étant l'union des pièces,
+  `KtaGalerie.PASSAGE`, que `vue3d.js > VOLUME` lit) et celle de la part ouverte de la galerie inclinée d'un tracé
+  jonction (un rectangle par segment, jusqu'à `tOuvert`). Une emprise qui chevauche un tube devient une **pièce** du modèle : l'emprise étant l'union des pièces,
   bout de cul-de-sac, paroi qui longe la bouche ou la coupe tombent dedans ; ses bords hors des tubes sont des parois :
   le tube s'ouvre sur une **niche** autour de la bouche (bout de cul-de-sac, tube plus étroit que la bouche, raccord
   validé hors du tube, escalier en niche latérale), et l'on peut y marcher (`dedans`, `paroisBloquent`, `ctx.libre`
@@ -2303,7 +2334,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   inaccessible qui arrêtent dans les 4 contextes (§ 24 bis : galerie, tube et chambre du mixte, structures ; départ
   dedans dans chacune, 🧱 coupé ; recalage, itinéraire et pas du tracker 2D inchangés, règles de zones de la 3D
   jamais appelées par la 2D), rideau en travers, POI à 2 m montré et à 5 m masqué,
-  interrupteur retenu par plan ; passages 🪜 (POI jonction ▲ / ▼, tracé jonction dans les deux sens, toucher
+  interrupteur retenu par plan ; passages 🪜 (POI jonction ▲ / ▼, tracé jonction marché dans les deux sens, toucher
   du panneau, suivi sans 🪜, tracker et carte inchangés) ; place libre (extension factice) : rien sans partage ni
   avant un pas, une remise puis rien à l'arrêt, ≤ 1 remise par 0,5 m en marchant, rien sous 10° de rotation,
   `null` en suivi et à la fermeture, tracker inchangé, membre « en 3D » marqué ; sortie : carte au niveau et à la place de la 3D (libre,

@@ -137,8 +137,8 @@
   `qui: KARMA · action: valider les 4 recos du topo · fini: décision prise · depuis: 06/11/2026 · taille: S`
 - **Multi-niveau en 3D : niveaux voisins, entremêlés, jonction en pente douce** — QCM 07/11 : voisins (⚙️ Tous /
   le mien), pente bout à bout, écart (m, négatif = entremêlé) et hauteur par niveau au Générateur + réglages, niveau
-  actif d'abord. Lots A données → B pente douce → C niveaux affichés (mémoire) → D entremêlement.
-  `qui: Claude · action: lot A en copie séparée sur go de KARMA · fini: lots A à D livrés · depuis: 06/11/2026 ·
+  actif d'abord. Lots A données ✅, B pente douce ✅ (galerie inclinée marchée) → C niveaux affichés → D entremêlement.
+  `qui: Claude · action: lot C en copie séparée sur go de KARMA · fini: lots A à D livrés · depuis: 06/11/2026 ·
   taille: L`
 - **Essai sur dev : lots du 05/11 sur téléphone** — prouvés en émulation seulement : ＋ / 🗑️ des sommets (2D, 3D),
   gestes 3D à deux doigts, colonne d'outils en paysage, plan au sol d'un plan transparent, ruban d'itinéraire 3D,

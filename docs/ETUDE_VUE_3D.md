@@ -84,7 +84,7 @@ taisait la descente par un tracé jonction. Tranché :
 
 | # | Sujet | Décision |
 |---|---|---|
-| 1 | Volumes de passage | Par moyen (`KtaPoiJonction.moyen`) : escalier (`jes`, `eso`) = cage de 2,5 × 1,5 m à marches ; échelons (`jpe`, `peo`) = puits carré de 1,2 m en moellons, échelons tous les 0,3 m ; corde (`jps`) = puits nu. Ouvert dans le sol (descente), dans le plafond (montée : il dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface `peo`, `eso` et **`pa`** (qui porte désormais des niveaux, `TAGS_SURFACE_NIVEAUX`) : plafond seulement, sans 🪜 ni passage ; disque de ciel au sommet de `peo` / `eso`, tube de 0,8 m à grille pour `pa`. Panneau au-dessus, cadre doré au sol. Construits avec les objets à portée. Le **tracé `jonction`** devient une **rampe** à la couleur du canon |
+| 1 | Volumes de passage | Par moyen (`KtaPoiJonction.moyen`) : escalier (`jes`, `eso`) = cage de 2,5 × 1,5 m à marches ; échelons (`jpe`, `peo`) = puits carré de 1,2 m en moellons, échelons tous les 0,3 m ; corde (`jps`) = puits nu. Ouvert dans le sol (descente), dans le plafond (montée : il dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface `peo`, `eso` et **`pa`** (qui porte désormais des niveaux, `TAGS_SURFACE_NIVEAUX`) : plafond seulement, sans 🪜 ni passage ; disque de ciel au sommet de `peo` / `eso`, tube de 0,8 m à grille pour `pa`. Panneau au-dessus, cadre doré au sol. Construits avec les objets à portée. Le **tracé `jonction`** devient une galerie inclinée qu'on marche (QCM du 07/11/2026, ci-dessous) |
 | 2 | Panneau d'un POI jonction | Liseré à la couleur du tracé jonction et ↕ ; lisible jusqu'à 1 m (là où 🪜 apparaît) |
 | 3 | Geste | Fondu noir de 250 ms (scène d'arrivée construite pendant le noir), descente ou montée animée d'environ 1 s dans le volume, verticale seulement ; même fondu quand le tracker change de niveau en suivi, et bandeau « Niveau −1 » 2 s |
 | 4 | Arrivée | Raccord validé, sinon POI ; en mixte comme en galerie, une arrivée hors du tube à moins de `smartNavRadiusM` d'un axe est ramenée dans le tube ; cap vers la prochaine consigne si un itinéraire passe là, sinon le long de la galerie, côté le plus long |
@@ -94,12 +94,29 @@ taisait la descente par un tracé jonction. Tranché :
 
 Choix faits à la livraison, à valider : escalier en volée droite le long de la galerie la plus proche (pas en quart
 tournant), marches pleines jusqu'au fond du volume ; une volée par moitié de largeur entre trois niveaux ; échelle
-contre une paroi, montants qui dépassent du sol d'un mètre ; ciel = dégradé clair (couleur de la scène) ; rampe de
-1 m de large, tranchée ouverte vers le bas plutôt qu'une rampe qui traverserait le sol ; aucune collision avec les
-volumes (on ne tombe pas dans un puits, on traverse une marche) ; bandeau « Niveau n » aussi après un passage 🪜, pas
-seulement en suivi ; appareil réglé en « mouvement réduit » : fondu seul ; tracé jonction masqué par les filtres =
-pas de rampe (le 🪜 reste). Un tracé du sol (ruban) qui passe sur une bouche y est coupé (gabarit du sol) plutôt
-que dessiné en passerelle : le plus simple, et rien ne flotte au-dessus du vide.
+contre une paroi, montants qui dépassent du sol d'un mètre ; ciel = dégradé clair (couleur de la scène) ; aucune
+collision avec les volumes (on ne tombe pas dans un puits, on traverse une marche) ; bandeau « Niveau n » aussi après
+un passage 🪜, pas seulement en suivi ; appareil réglé en « mouvement réduit » : fondu seul. Un tracé du sol (ruban)
+qui passe sur une bouche y est coupé (gabarit du sol) plutôt que dessiné en passerelle : le plus simple, et rien ne
+flotte au-dessus du vide. Le tracé jonction n'est plus une rampe avec 🪜 : c'est une galerie inclinée qu'on marche
+(QCM du 07/11/2026, ci-dessous).
+
+## Décisions de KARMA (QCM du 07/11/2026) : tracé jonction en pente douce (lot B du multi-niveau en 3D)
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Forme | Un tracé `jonction` devient une galerie inclinée qu'on parcourt, plus de 🪜 à ses bouts |
+| 2 | Pente | D'un bout à l'autre du tracé : du sol du niveau de départ à celui du niveau d'arrivée, répartie sur la longueur 2D (rien à saisir) ; sols et hauteurs du lot A (`getNiveauVertical`) |
+| 3 | Hors de ce lot | Niveaux voisins affichés ensemble (lot C), entremêlement (lot D) : la 3D reste construite pour un niveau à la fois |
+
+Choix faits à la livraison, à valider : **repli sans sols** = une hauteur de galerie (celle du niveau du dessous) par
+niveau franchi, écart nul (2 m par niveau sans réglage) ; hauteur sous plafond **interpolée** de celle du départ à
+celle de l'arrivée ; largeur 1,6 m ; la scène passe au niveau d'en face **à mi-longueur** (+ 0,3 m d'hystérésis), sans
+fondu : les deux scènes dessinent la même galerie à la même place, l'altitude est continue, et la moitié d'en face
+montre déjà les galeries d'arrivée (au bout seulement, on aurait marché vers un trou noir) ; en suivi, la bascule du
+tracker au bout du tracé se fait sans fondu ; la consigne « descendre / monter la pente vers le niveau n » est dite à
+l'**entrée** du tracé, en 2D comme en 3D (elle tombait sur son bout d'arrivée) ; la galerie est en moellons, ruban du
+canon au milieu du sol. Détail : `docs/architecture/tracking.md` § Vue 3D, galerie inclinée.
 
 ## Décisions de KARMA (QCM du 02/11/2026) : commandes, itinéraire, raccord, ronds (audit n° 2)
 
@@ -187,7 +204,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
 - **Niveau** : celui du tracker en suivi actif, sinon celui pris par un passage 🪜, sinon le niveau actif du
   sélecteur ; lu à chaque image ; quand il change, la scène est refaite derrière un fondu noir, puis « Niveau n » 2 s.
 - **Passages** : chaque POI jonction, puits de surface ou aération montre son volume (cage d'escalier, puits à
-  échelons, puits nu, tube à grille), ouvert dans le sol ou le plafond selon le sens ; un tracé jonction, une rampe.
+  échelons, puits nu, tube à grille), ouvert dans le sol ou le plafond selon le sens ; un tracé jonction, une galerie inclinée qu'on marche.
 - **Passage de niveau 🪜** (question B) : à moins de 2 m d'un POI jonction ou d'un bout de tracé `jonction`,
   « ▼ -1 · nom (moyen) » vers le niveau lié voisin (une liste au-delà d'un de chaque côté) ; la fiche du POI propose
   aussi ses niveaux, d'où que l'on soit. La caméra s'enfonce ou monte dans le volume (~1 s), fondu noir à mi-course.
@@ -328,7 +345,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   sprite clair non éclairé, sans brouillard, au sommet ; cadre doré de 8 cm à 12 cm de la bouche. Rampe : ruban de
   1 m, incliné du sol au plafond (vers le haut) ou du sol à −hauteur dans une tranchée ouverte (vers le bas).
   Construits à portée (`_gererVolumes`, règle des tuiles), libérés au loin ; aucune collision. **Aucune paroi de tube
-  dans un volume** : l'emprise d'un passage (bouche et cadre, tranchée d'une rampe) qui chevauche un tube est une pièce
+  dans un volume** : l'emprise d'un passage (bouche et cadre, part ouverte d'une galerie inclinée) qui chevauche un tube est une pièce
   du modèle de galerie (`galerieEmprise.js > _emprisesPassages`) ; parois coupées à son bord, le tube s'ouvre sur une
   niche autour de la bouche, comme il s'ouvre sur une chambre. Rubans des tracés coupés à la bouche (gabarit du sol).
 - **Halo des dangers** : anneau de 0,45 à 0,7 m et disque pâle au sol, rouge `--kta-erreur` du thème sombre, non

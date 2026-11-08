@@ -69,7 +69,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | Boussole / heading + définition du nord du plan | `compass.js`, `northPicker.js` |
 | ⛑️ **« Je suis perdu »** (isochrone Dijkstra) · 🚨 **Panique** · sortie d'urgence la plus proche | `lostMode.js`, `emergencyMode.js`, `sortieUrgence.js` |
 | 🎤 Commandes vocales (BETA, push-to-talk, ~18 commandes FR) + synthèse vocale | `voiceCommand.js`, `voiceTts.js` |
-| 🧊 **Vue 3D** autour de sa position : plan en relief, déplacement à la règle du pas, 🔍 recherche de la carte qui y emmène en 3D, « Je suis ici ? » à la fermeture | `vue3d.js` (three.js dans `lib/three/`, chargé à la demande) |
+| 🧊 **Vue 3D** autour de sa position : plan en relief, déplacement à la règle du pas, tracés jonction marchés en galerie en pente (changement de niveau sans écran noir), 🔍 recherche de la carte qui y emmène en 3D, « Je suis ici ? » à la fermeture | `vue3d.js` (three.js dans `lib/three/`, chargé à la demande) |
 
 ### 🌀 Multi-plans et inter-plan
 
@@ -364,7 +364,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `computeLoader.js` | Overlay « calcul en cours » avec une image peinte avant un calcul bloquant |
 | `pathfinder.js` | Itinéraire (Dijkstra) sur le réseau de tracés, isochrone du Mode Perdu |
 | `roadGraph.js` | Cache du graphe réseau par signature de contenu et map-matching de la navigation |
-| `galerieEmprise.js` | Emprise des galeries d'un niveau (tracés en couloirs : pièces, carrefours, parois ; en mode mixte, tubes ouverts près des structures) et règles du pas des modes galerie et mixte de la vue 3D |
+| `galerieEmprise.js` | Emprise des galeries d'un niveau (tracés en couloirs : pièces, carrefours, parois ; en mode mixte, tubes ouverts près des structures), règles du pas des modes galerie et mixte de la vue 3D, galerie en pente d'un tracé jonction (dénivelé, part ouverte) |
 
 ### 🔄 Infra boot
 

@@ -613,7 +613,7 @@ Each way through or access has its volume, where it is.
 - ![](../../icon/jes.png) **Stairs between levels**: a stairwell with steps, in a recess on the side of the tunnel.
 - ![](../../icon/jpe.png) **Rung shaft between levels**: a square stone shaft, with its ladder.
 - ![](../../icon/jps.png) **Shaft without rungs between levels**: a bare shaft.
-- ↕️ **Junction trace**: a ramp in its colour, from floor to ceiling towards the level above, in a trench towards the level below. 🪜 at the end of the trace.
+- ↕️ **Junction trace**: a sloping tunnel you walk through. The floor goes from one level's floor to the other's, from one end of the trace to the other (using the level depths if you entered them, otherwise one tunnel height per level). A ribbon in its colour runs along the middle of the floor.
 
 Where and how a way through is drawn:
 
@@ -656,7 +656,8 @@ Where and how a way through is drawn:
 
 #### 🪜 Changing level
 
-- Within **2 m** of a way between levels (stairs, shaft) or of the end of a junction trace, named buttons ("▼ -1 · Crossroads shaft (ladder)") take you to the next level.
+- Within **2 m** of a way between levels (stairs, shaft), named buttons ("▼ -1 · Crossroads shaft (ladder)") take you to the next level.
+- A **junction trace** has no button: you step in and walk, the view follows the slope. Halfway, you move to the other level without a black screen (**"Level -1"** shows); at the end, you are in its tunnel. The other way round works the same. The route follows it ("walk down the slope to level -1").
 - If it serves more than two, a small list opens.
 - The point's card does the same: **▼ Go down** / **▲ Go up** to each of its levels, from wherever you are.
 - You go down (or up) the way, the screen goes black for a moment, then you arrive through the ceiling (or floor) of the other level. **"Level -1"** shows for 2 seconds.
