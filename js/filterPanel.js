@@ -897,14 +897,20 @@
       if (!(await window.ktaConfirm(msg))) return false;
       return CS.rapatrier(id).then(function(r) {
         if (!r || !r.ok) {
-          window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
+          const cle = (r && r.code === "synchroImpossible") ? "filter.calque.errSynchro" : "filter.calque.err";
+          window.ktaAlerte(window.I18n.t(cle, { code: (r && r.code) || "?" }), { type: "erreur" });
           return false;
         }
         refreshDataLayers();
         _scheduleRoadsRecalc();
         _updateStatus();
+        // Copies reprises (calque déjà en modification ailleurs) ou objets supprimés non recréés : à dire, sinon
+        // l'utilisateur croit le calque recopié en entier.
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-          window.OOMGuard.showToast(window.I18n.t("filter.calque.okRapatrie", { n: r.total }), "info");
+          if (r.repris) window.OOMGuard.showToast(window.I18n.t("filter.calque.okRepris", { n: r.total }), "success");
+          else if (r.evites > 0) {
+            window.OOMGuard.showToast(window.I18n.t("filter.calque.okEvites", { n: r.total, e: r.evites }), "success");
+          } else window.OOMGuard.showToast(window.I18n.t("filter.calque.okRapatrie", { n: r.total }), "info");
         }
         return true;
       });

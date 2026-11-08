@@ -639,6 +639,122 @@ const CALQUE = {
     t("restitution reçue postérieure : la trace de copie tombe", m2.copies() === "");
   }
 
+  // ───────── 4 quinquies. 🩸 CALQUE DÉJÀ EN MODIFICATION AILLEURS : rien recopié, une suppression ne revient pas ─────
+  // Le verrou est local : un autre appareil (ou celui-ci après une synchro) peut avoir les copies et les traces du
+  // calque sans l'avoir « rapatrié ». Recopier le fichier daterait chaque copie de maintenant et lèverait les traces :
+  // les objets supprimés par les autres reviendraient chez tous (« le plus récent gagne »).
+  {
+    const FIC = { roads: [{ uid: "rd_c3aaaaaa", type: "a", points: [], updatedAt: 100 },
+                          { uid: "rd_c3bbbbbb", type: "b", points: [], updatedAt: 100 }] };
+    const monterK2 = function (session, opts) {
+      const m = monter(FIC, session);
+      vm.runInContext("var document = window.document, console = window.console;", m.ctx);
+      vm.runInContext(fs.readFileSync("js/ktaUid.js", "utf8"), m.ctx, { filename: "ktaUid.js" });
+      m.K = m.ctx.KtaUid;
+      m.lus = 0;
+      const f0 = m.ctx.fetch;
+      m.ctx.fetch = function (u) { m.lus++; return f0(u); };
+      if (opts && opts.ext) {
+        m.ctx._currentLoadedPlanId = "ext_p1";
+        m.ctx.PlanRegistry = { findById: (id) => (id === "ext_p1" || id === "loc_1" ? { id, type: id === "loc_1" ? "local" : "ext" } : null) };
+        m.ctx.KtaExtensions = { lectureSeule: () => false };
+        if (opts.relire) m.ctx.KtaExtensions.relireChangements = opts.relire(m);
+      }
+      return m;
+    };
+    const copie = (uid, maj, R) => ({ uid, type: "a", points: [], updatedAt: maj, _srcCalque: "sig", _srcCalqueDepuis: R });
+
+    // 1. Copies marquées déjà là (reçues d'une synchro) : reprises, pas de doublon, fichier non relu.
+    const m1 = monterK2({ roads: [copie("rd_c3bbbbbb", 300, 200)] });
+    m1.K.setTracesCopie([{ uid: "rd_c3aaaaaa", deletedAt: 250, calque: "sig" }]);
+    const r1 = await m1.CS.rapatrier("sig");
+    t("🩸 copies déjà là : reprises (repris), rien recopié, fichier non relu",
+      r1.ok && r1.repris === true && r1.total === 1 && m1.lus === 0 && m1.etat.roads.length === 1);
+    t("…la copie reprise garde sa date et sa retouche, la trace reste, le calque est masqué",
+      m1.etat.roads[0].updatedAt === 300 && m1.K.getTracesCopie().length === 1 && m1.CS.estRapatrie("sig") &&
+      m1.surCarte.sig === false);
+
+    // 2. Trace de copie valable, aucune copie : l'objet supprimé n'est pas recréé, sa trace reste.
+    const m2 = monterK2();
+    m2.K.setTracesCopie([{ uid: "rd_c3aaaaaa", deletedAt: 250, calque: "sig" }]);
+    const r2 = await m2.CS.rapatrier("sig");
+    t("🩸 trace de copie présente : l'objet n'est PAS recréé, les autres le sont",
+      r2.ok && r2.total === 1 && r2.evites === 1 && m2.etat.roads.map((o) => o.uid).join() === "rd_c3bbbbbb");
+    t("🔒 …la trace de copie n'est pas levée (elle repart à la synchro et gagne)",
+      m2.K.getTracesCopie().map((x) => x.uid).join() === "rd_c3aaaaaa");
+
+    // 3. Tous supprimés : modification vide (comme chez celui qui les a supprimés), pas « calque vide ».
+    const m3 = monterK2();
+    m3.K.setTracesCopie([{ uid: "rd_c3aaaaaa", deletedAt: 250, calque: "sig" }, { uid: "rd_c3bbbbbb", deletedAt: 260, calque: "sig" }]);
+    const r3 = await m3.CS.rapatrier("sig");
+    t("tous les objets supprimés : le calque passe en modification VIDE, masqué, traces gardées",
+      r3.ok && r3.total === 0 && r3.evites === 2 && m3.CS.estRapatrie("sig") && m3.surCarte.sig === false &&
+      m3.K.getTracesCopie().length === 2);
+
+    // 4. Trace plus ancienne que l'objet du fichier (objet versé depuis dans une nouvelle version) : recréé.
+    const m4 = monterK2();
+    m4.K.setTracesCopie([{ uid: "rd_c3aaaaaa", deletedAt: 99, calque: "sig" }]);
+    const r4 = await m4.CS.rapatrier("sig");
+    t("trace antérieure à l'objet du fichier : il est recréé, la trace tombe",
+      r4.ok && r4.total === 2 && r4.evites === 0 && m4.K.getTracesCopie().length === 0);
+
+    // 5. Trace couverte par une restitution connue : la restitution l'a rendue caduque.
+    const m5 = monterK2();
+    m5.K.setTracesCopie([{ uid: "rd_c3aaaaaa", deletedAt: 250, calque: "sig" }]);
+    m5.CS.loadSessionState({ restitutions: { sig: 300 } });
+    const r5 = await m5.CS.rapatrier("sig");
+    t("trace antérieure à une restitution connue : l'objet revient (la restitution l'emporte)",
+      r5.ok && r5.total === 2 && m5.K.getTracesCopie().length === 0);
+
+    // 6. Restitution puis nouveau passage en modification : tout revient, comme avant.
+    const m6 = monterK2();
+    m6.K.setTracesCopie([{ uid: "rd_c3aaaaaa", deletedAt: 250, calque: "sig" }]);
+    await m6.CS.rapatrier("sig");
+    m6.CS.restituer("sig");
+    t("restitution : les traces tombent", m6.K.getTracesCopie().length === 0 && m6.etat.roads.length === 0);
+    const r6 = await m6.CS.rapatrier("sig");
+    t("🩸 restitution puis « Modifier » : TOUT revient (suppressions comprises, décision produit)",
+      r6.ok && r6.total === 2 && m6.CS.compterCopie("sig") === 2);
+
+    // 7. Plan d'extension : synchro relue AVANT de copier ; copies reçues pendant la relecture = reprises.
+    let relu = 0;
+    const m7 = monterK2(null, { ext: true, relire: (m) => (pid) => {
+      relu++;
+      m.etat.roads = m.etat.roads.concat([copie("rd_c3bbbbbb", 300, 200)]);
+      m.CS.resynchroniser();
+      return Promise.resolve(pid === "ext_p1");
+    } });
+    const r7 = await m7.CS.rapatrier("sig");
+    t("🩸 plan d'extension : la synchro est relue avant, les copies reçues sont reprises, fichier non relu",
+      relu === 1 && r7.ok && r7.repris === true && m7.lus === 0 && m7.etat.roads.length === 1);
+
+    const m8 = monterK2(null, { ext: true, relire: () => () => Promise.resolve(false) });
+    const r8 = await m8.CS.rapatrier("sig");
+    t("plan d'extension, relecture impossible : refus synchroImpossible, rien copié, calque intact",
+      !r8.ok && r8.code === "synchroImpossible" && m8.etat.roads.length === 0 && !m8.CS.estRapatrie("sig") &&
+      m8.surCarte.sig === true);
+
+    let relu12 = 0;
+    const m12 = monterK2({ roads: [copie("rd_c3bbbbbb", 300, 200)] },
+      { ext: true, relire: () => () => { relu12++; return Promise.resolve(false); } });
+    const r12 = await m12.CS.rapatrier("sig");
+    t("plan d'extension, copies déjà là : reprises sans attendre la synchro (même hors ligne)",
+      relu12 === 0 && r12.ok && r12.repris === true && m12.lus === 0);
+
+    const m9 = monterK2(null, { ext: true, relire: () => () => Promise.resolve(true) });
+    const r9 = await m9.CS.rapatrier("sig");
+    t("plan d'extension relu, aucune copie nulle part : recopie du fichier", r9.ok && !r9.repris && r9.total === 2 && m9.lus === 1);
+
+    let relu10 = 0;
+    const m10 = monterK2(null, { ext: true, relire: () => () => { relu10++; return Promise.resolve(false); } });
+    m10.ctx._currentLoadedPlanId = "loc_1";
+    const r10 = await m10.CS.rapatrier("sig");
+    t("plan LOCAL avec une extension : rien relu, comportement local inchangé", relu10 === 0 && r10.ok && r10.total === 2);
+    const m11 = monterK2(null, { ext: true });
+    const r11 = await m11.CS.rapatrier("sig");
+    t("extension sans la prise : comportement local inchangé", r11.ok && r11.total === 2);
+  }
+
   // ───────── etat corrompu ─────────
   {
     const m = monter(CALQUE);
