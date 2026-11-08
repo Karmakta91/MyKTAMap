@@ -3120,11 +3120,12 @@
     const e = _e, f = window._ktaRuntimeFilters || {}, g = window.dataLayerGroups || {}, map = window.map;
     let s = e.rendu + "|" + (e.textures === true) + "|" + (e.donnees ? e.donnees.empreinte : "") + "|" +
       e.tuilesActives + "|" + _permisGreffe("traces") + "|";
-    Object.keys(f).sort().forEach(function (k) {
+    const cmp = function (a, b) { return String(a).localeCompare(String(b)); };
+    Object.keys(f).sort(cmp).forEach(function (k) {
       const v = f[k];
-      s += k + ":" + (v instanceof Set ? Array.from(v).sort().join(",") : String(v)) + ";";
+      s += k + ":" + (v instanceof Set ? Array.from(v).sort(cmp).join(",") : String(v)) + ";";
     });
-    Object.keys(g).sort().forEach(function (k) {
+    Object.keys(g).sort(cmp).forEach(function (k) {
       s += k + (map && typeof map.hasLayer === "function" && map.hasLayer(g[k]) ? "1" : "0");
     });
     return s + "|" + JSON.stringify((window.APP_CONFIG || {}).visibleLevels || []);
