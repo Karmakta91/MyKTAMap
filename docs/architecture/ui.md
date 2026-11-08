@@ -2310,8 +2310,9 @@ icônes.
   boutons. **Mêmes icônes qu'en 2D** : ☰ (le glyphe de `ktaFilterControl`, pas ≡), 🚨 sur la puce rouge de l'en-tête
   (fond `--kta-erreur` à 22 %, liseré à 55 %), ⚙️, ❓. Repère « actif » de ≡ et de ⚙️ : celui du ≡ de la carte
   (liseré doré, point doré de 10 px). Bandeau de guidage et boîte 🪜 : même boîte.
-- **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, ⚙️, sur
-  **une seule ligne** au téléphone (décision produit). ⚙️ ouvre la **tuile Réglages** (`#kta-v3d-reglages`,
+- **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, ⚙️, et
+  🔍 Rechercher à hauteur d'yeux seulement (`vue3d.js > _majRechercheHaut` ; en ✏️ Édition il est en tête de la colonne
+  d'outils), sur **une seule ligne** au téléphone (décision produit ; 390 px et paysage 852 × 393 vérifiés, § 43). ⚙️ ouvre la **tuile Réglages** (`#kta-v3d-reglages`,
   `vue3d.js > _basculerReglages`) : petit panneau ancré sous ⚙️, aligné à droite, au-dessus de tout dans la vue
   (posé en dernier dans le DOM), à la boîte de la fenêtre ⚙️ Réglages (rayon 14 px), chaque réglage sur une **ligne
   de la fenêtre Réglages** (`.kta-perf-ultra-row` : 13 px gras, rayon 6, liseré `--kta-bordure`, survol
@@ -2422,9 +2423,9 @@ icônes.
   Tab passe par ses champs. 🩸 Fiche neuve sans pointeur 400 ms (`_ficheNeuve`) : le click qui suit un toucher tombait sur
   « Voir sur la carte » ouvert sous le doigt et fermait la vue. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
 - **Colonne d'outils** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, au
-  milieu. En tête **🔍 Rechercher** (décision produit : au-dessus de 🗺️), dans les deux vues : à hauteur d'yeux il y
-  est seul, à la même place (🗺️ et les outils n'existent qu'en édition) ; caché pendant une greffe qui coupe les
-  fiches (jeu). Il ouvre la fenêtre de la carte (`window.ouvrirRecherche`, `.kta-readme-modal-overlay` 99999 posée
+  milieu, en ✏️ Édition seulement. En tête **🔍 Rechercher** (décision produit : au-dessus de 🗺️) ; à hauteur
+  d'yeux, 🔍 passe dans la rangée du haut, à gauche de ⚙️, même gabarit (décision produit), et la colonne disparaît ;
+  caché dans les deux places pendant une greffe qui coupe les fiches (jeu). Il ouvre la fenêtre de la carte (`window.ouvrirRecherche`, `.kta-readme-modal-overlay` 99999 posée
   sur `<html>` après la vue : au-dessus d'elle ; Ctrl/Cmd+K de même, la vue ne garde pas la touche K) ; le choix :
   `tracking.md` § Vue 3D › Rechercher. Les outils de dessin, montrés en ✏️ Édition seulement, toujours actifs
   (aucun bouton pour les ouvrir) ; absents à hauteur d'yeux et pendant une greffe qui coupe l'édition (jeu).

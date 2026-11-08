@@ -4743,6 +4743,7 @@
     // Dessin : en vue d'édition seulement ; la quitter éteint l'outil (_suivrePermisDessin).
     _suivrePermisDessin();
     _majBarreDessin();
+    _majRechercheHaut();
     _majZoom();
     e.sale = true;
   }
@@ -5608,9 +5609,9 @@
   const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };
   const COULEUR_MESURE = "#ff0000";   // la mesure de la carte (measure.js : red), pas une couleur de la charte
 
-  // Colonne (dans la vue, posée par _monterDom) : 🔍 Rechercher, 🗺️ puis un bouton par groupe ; 🗺️ et les groupes en
-  // vue d'édition seulement, 🔍 dans les deux vues (seul à hauteur d'yeux, à la même place : décision produit) sauf
-  // pendant une greffe qui coupe les fiches (_rechercheDispo). Sans la barre de droite 2D (interface.js absent), rien.
+  // Colonne (dans la vue, posée par _monterDom) : 🔍 Rechercher, 🗺️ puis un bouton par groupe, en vue d'édition
+  // seulement ; à hauteur d'yeux, 🔍 est dans la rangée du haut (_majRechercheHaut, décision produit). Aucun 🔍 pendant
+  // une greffe qui coupe les fiches (_rechercheDispo). Sans la barre de droite 2D (interface.js absent), pas de colonne.
   function _monterOutils(ov) {
     const e = _e;
     e.dessin = { permis: false, sig: null, apSig: null, apercu: null, etiquettes: [], poses: 0, msPoses: [],
@@ -5709,8 +5710,8 @@
     const e = _e, d = e.dessin;
     if (!d || !d.barre) return;
     const permis = _dessinPermis(), recherche = _rechercheDispo();
-    d.barre.hidden = !permis && !recherche;
-    d.boutonRecherche.hidden = !recherche;
+    d.barre.hidden = !permis;
+    d.boutonRecherche.hidden = !recherche || !permis;
     const ouvert = typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() : null;
     d.outils.forEach(function (b) {
       const g = window._groupes && window._groupes[b.dataset.groupe], src = g && g.btnPrincipal;
@@ -5729,8 +5730,18 @@
 
   // À chaque image, sur signature : barre suivie (outil armé ou éteint par le panneau, une annulation, une modale),
   // outil éteint si le dessin n'est plus permis, rendu galerie quitté pour une structure, aperçu refait.
+  // 🔍 de la rangée du haut : à hauteur d'yeux seulement (en vue d'édition, celui de la colonne), si la recherche est
+  // permise (pas pendant une greffe qui coupe les fiches).
+  function _majRechercheHaut() {
+    const e = _e, b = e && e.boutonRechercheHaut;
+    if (!b) return;
+    const cache = e.vue === "plongee" || !_rechercheDispo();
+    if (b.hidden !== cache) b.hidden = cache;
+  }
+
   function _majDessin() {
     const e = _e, d = e.dessin;
+    _majRechercheHaut();
     if (!d || !d.barre) return;
     _suivrePermisDessin();
     if (!_dessinPermis()) {
@@ -7848,6 +7859,11 @@
     e.boutonReglages = _bouton(haut, "kta-v3d-btn-reglages", "⚙️", _t("vue3d.reglages"), "reglages");
     e.boutonReglages.setAttribute("aria-expanded", "false");
     e.boutonReglages.setAttribute("aria-controls", "kta-v3d-reglages");
+    // 🔍 La recherche de la carte (allerA) à hauteur d'yeux, à gauche de ⚙️ (décision produit) ; en vue d'édition, celle
+    // de la tête de la colonne d'outils (_monterOutils). Montrée par _majRechercheHaut.
+    e.boutonRechercheHaut = _bouton(haut, "kta-v3d-recherche", "🔍", _t("vue3d.recherche"), "recherche");
+    e.boutonRechercheHaut.setAttribute("aria-keyshortcuts", "Control+K Meta+K");
+    e.boutonRechercheHaut.hidden = true;
     // Tuile des réglages (décision produit : la rangée du haut tient sur une ligne au téléphone) : suivi / libre, vue,
     // hauteur et son − / +, rendu, chacun écrit en clair avec son état. Petit panneau ancré sous ⚙️.
     const tuile = document.createElement("div");
@@ -9532,7 +9548,8 @@
       fichesObjets: { voulu: _fichesObjets(), bouton: e.boutonFiches ? e.boutonFiches.getAttribute("aria-pressed") : null },
       // Dernier « Y aller en 3D » (allerA) et 🔍 montré ou non.
       recherche: Object.assign({ bouton: !!(e.dessin && e.dessin.boutonRecherche && !e.dessin.boutonRecherche.hidden &&
-        !e.dessin.barre.hidden), preneur: !!e.rendreRecherche }, e.recherche || { allees: 0 }),
+        !e.dessin.barre.hidden), haut: !!(e.boutonRechercheHaut && !e.boutonRechercheHaut.hidden),
+        preneur: !!e.rendreRecherche }, e.recherche || { allees: 0 }),
       fiche: e.fiche && e.fiche.objet ? { famille: e.fiche.famille, uid: e.fiche.objet.uid || null,
         type: e.fiche.objet.type, session: e.fiche.session, registre: e.fiche.registre,
         note: !!e.fiche.boite.querySelector(".kta-note-popup-textarea"),

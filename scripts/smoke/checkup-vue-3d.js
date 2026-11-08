@@ -169,7 +169,8 @@ async function homogene(page, nom) {
   const r = await page.evaluate(function () {
     const q = function (s) { return document.querySelector(s); };
     const barre = q(".kta-filter-ctrl").getBoundingClientRect();
-    const haut = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > button"));
+    const haut = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > button"))
+      .filter(function (b) { return !b.hidden; });
     const tailles = haut.map(function (b) {
       const rb = b.getBoundingClientRect();
       return { b: b.getAttribute("data-v3d") || "aide", w: +rb.width.toFixed(1), h: +rb.height.toFixed(1) };
@@ -205,7 +206,7 @@ async function homogene(page, nom) {
     return { barre: [+barre.width.toFixed(1), +barre.height.toFixed(1)], tailles: tailles, ecarts: ecarts,
       petits: petits, autres: autres, icones: icones, indic: Math.abs(indic.width - barre.width) <= 1 };
   });
-  verifier(r.ecarts.length === 0 && r.tailles.length === 5,
+  verifier(r.ecarts.length === 0 && (r.tailles.length === 5 || r.tailles.length === 6),
     nom + " : boutons du haut de la 3D à la taille de la barre 2D (" + r.barre.join(" × ") + ", ± 1 px)", r);
   verifier(r.autres.length === 0, nom + " : ☰ 🚨 ⚙️ ❓ de la 3D = icônes de la 2D", r.icones);
   verifier(r.petits.length === 0, nom + " : cibles de toucher ≥ 44 px (rangée du haut, pavé, zoom)", r.petits);
@@ -8309,8 +8310,10 @@ async function sectionFichesReglage(nav) {
 
 // ── 43. 🔍 Recherche depuis la vue 3D (vue3d.js > allerA, _choixRecherche ; searchPoints.js > prendreChoix) ─────────
 // Pointeur fin (1200 × 800), relevé fictif vidé, plan à deux niveaux simulé (0 et −1) : un pilier, une zone, un tracé
-// au 0, un tracé au −1, un POI au 0 avec point précis, un POI au −1 (tous fictifs, en mémoire). 🔍 en tête de colonne :
-// seul à hauteur d'yeux (à droite, au milieu), juste au-dessus de 🗺️ en vue d'édition. Ctrl+K ouvre la fenêtre de la
+// au 0, un tracé au −1, un POI au 0 avec point précis, un POI au −1 (tous fictifs, en mémoire). 🔍 à hauteur d'yeux dans
+// la rangée du haut, à gauche de ⚙️, même gabarit, colonne cachée ; rangée sur une ligne sans débord ni chevauchement au
+// téléphone (390 × 844) et en paysage bas (852 × 393) ; en vue d'édition, en tête de colonne juste au-dessus de 🗺️ (et
+// plus dans la rangée). Ctrl+K ouvre la fenêtre de la
 // carte AU-DESSUS de la vue ; Échap la ferme sans rien changer. Choisir un résultat (vrai clic dans la fenêtre) : vue
 // en libre devant l'objet, face à lui (hauteur d'yeux) ou centrée sur lui (vue d'édition), niveau changé derrière le
 // geste, fiche ouverte (point : son nom ; tracé, zone, structure : sa famille et son uid), tracker, niveau actif et
@@ -8431,25 +8434,68 @@ async function sectionRecherche3D(nav) {
       return (Math.atan2(a[0] - de[0], -(a[1] - de[1])) * 180 / Math.PI + 360) % 360;
     };
 
-    // 1. Bouton : seul à hauteur d'yeux, au-dessus de 🗺️ en vue d'édition.
+    // 1. Bouton : dans la rangée du haut à hauteur d'yeux (à gauche de ⚙️), au-dessus de 🗺️ en vue d'édition.
     await ouvrirVue(false);
-    const b1 = await page.evaluate(function () {
-      const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
-      const r = function (el) {
-        if (!el || el.offsetParent === null) return null;
-        const b = el.getBoundingClientRect();
-        return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) };
-      };
-      const bt = q('[data-v3d="recherche"]');
-      return { recherche: r(bt), sol: r(q('[data-v3d="planSol"]')), outils: Array.prototype.filter.call(
-        document.querySelectorAll('#kta-vue3d [data-v3d="outil"]'), function (x) { return x.offsetParent !== null; })
-        .length, texte: bt && bt.textContent, aria: bt && bt.getAttribute("aria-label"), titre: bt && bt.title,
-      cle: window.I18n.t("vue3d.recherche"), etat: window.KtaVue3D.etat().recherche, vw: innerWidth, vh: innerHeight };
-    });
-    verifier(!!b1.recherche && !b1.sol && b1.outils === 0 && b1.texte === "🔍" && b1.aria === b1.cle &&
-      b1.titre === b1.cle && b1.cle !== "vue3d.recherche" && b1.etat.bouton && b1.etat.preneur &&
-      b1.recherche.x + b1.recherche.w >= b1.vw - 60 && Math.abs(b1.recherche.y + b1.recherche.h / 2 - b1.vh / 2) < 40,
-    nom + "hauteur d'yeux : 🔍 seul, à droite au milieu (🗺️ et outils cachés), libellé du dictionnaire", b1);
+    const rangee = function () {
+      return page.evaluate(function () {
+        const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+        const r = function (el) {
+          if (!el || el.offsetParent === null || el.hidden) return null;
+          const b = el.getBoundingClientRect();
+          return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height),
+            d: Math.round(b.right), bas: Math.round(b.bottom) };
+        };
+        const bt = q('.kta-v3d-haut [data-v3d="recherche"]');
+        const vus = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > *"))
+          .filter(function (b) { return b.offsetParent !== null && !b.hidden; })
+          .map(function (b) { return r(b); });
+        let chevauche = 0;
+        vus.forEach(function (a, i) {
+          vus.forEach(function (b, k) {
+            if (k > i && a.x < b.d - 0.5 && b.x < a.d - 0.5 && a.y < b.bas - 0.5 && b.y < a.bas - 0.5) chevauche++;
+          });
+        });
+        // Rien d'autre de la vue (pastille, bandeau, niveaux, outils, joystick, pavé) sous la rangée.
+        const R = q(".kta-v3d-haut").getBoundingClientRect();
+        const autres = Array.prototype.slice.call(document.querySelectorAll(
+          "#kta-vue3d .kta-v3d-mode-indic, #kta-vue3d .kta-v3d-outils, #kta-vue3d .kta-v3d-pad, " +
+          "#kta-vue3d .kta-v3d-stick-zone, #kta-vue3d .kta-v3d-niveau-edition"))
+          .filter(function (el) { return el.offsetParent !== null && !el.hidden; })
+          .filter(function (el) {
+            const b = el.getBoundingClientRect();
+            return b.width > 0 && b.left < R.right - 0.5 && R.left < b.right - 0.5 && b.top < R.bottom - 0.5 &&
+              R.top < b.bottom - 0.5;
+          }).map(function (el) { return el.className; });
+        const lignes = {};
+        vus.forEach(function (v) { lignes[v.y] = true; });
+        return { recherche: r(bt), reglages: r(q('[data-v3d="reglages"]')), colonne: r(q('.kta-v3d-outils [data-v3d="recherche"]')),
+          sol: r(q('[data-v3d="planSol"]')), outils: Array.prototype.filter.call(
+            document.querySelectorAll('#kta-vue3d [data-v3d="outil"]'), function (x) { return x.offsetParent !== null; })
+            .length, texte: bt && bt.textContent, aria: bt && bt.getAttribute("aria-label"), titre: bt && bt.title,
+          cle: window.I18n.t("vue3d.recherche"), etat: window.KtaVue3D.etat().recherche, vw: innerWidth, vh: innerHeight,
+          lignes: Object.keys(lignes).length, chevauche: chevauche, autres: autres,
+          gauche: Math.min.apply(null, vus.map(function (v) { return v.x; })),
+          droite: Math.max.apply(null, vus.map(function (v) { return v.d; })) };
+      });
+    };
+    const b1 = await rangee();
+    verifier(!!b1.recherche && !b1.colonne && !b1.sol && b1.outils === 0 && b1.texte === "🔍" && b1.aria === b1.cle &&
+      b1.titre === b1.cle && b1.cle !== "vue3d.recherche" && b1.etat.haut && !b1.etat.bouton && b1.etat.preneur &&
+      !!b1.reglages && b1.recherche.d <= b1.reglages.x && b1.reglages.x - b1.recherche.d <= 12 &&
+      b1.recherche.y === b1.reglages.y && b1.recherche.w === b1.reglages.w && b1.recherche.h === b1.reglages.h,
+    nom + "hauteur d'yeux : 🔍 dans la rangée du haut, juste à gauche de ⚙️, même gabarit ; colonne, 🗺️ et outils " +
+      "cachés ; libellé du dictionnaire", b1);
+    for (const vp of [{ width: 390, height: 844 }, { width: 852, height: 393 }]) {
+      await page.setViewportSize(vp);
+      await page.waitForTimeout(300);
+      const t = await rangee();
+      verifier(!!t.recherche && t.lignes === 1 && t.chevauche === 0 && t.autres.length === 0 && t.gauche >= 0 &&
+        t.droite <= t.vw && t.recherche.d <= t.reglages.x,
+      nom + vp.width + " × " + vp.height + " : rangée du haut sur une ligne, dans l'écran, sans chevauchement, 🔍 à " +
+        "gauche de ⚙️", t);
+    }
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.waitForTimeout(300);
     await page.evaluate(async function () {
       window.KtaVue3D.basculerVue();
       for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
@@ -8463,12 +8509,13 @@ async function sectionRecherche3D(nav) {
           bas: Math.round(b.bottom) };
       };
       const sol = document.querySelector('#kta-vue3d [data-v3d="planSol"]');
-      return { recherche: r('[data-v3d="recherche"]'), sol: r('[data-v3d="planSol"]'),
+      return { recherche: r('.kta-v3d-outils [data-v3d="recherche"]'), sol: r('[data-v3d="planSol"]'),
+        haut: r('.kta-v3d-haut [data-v3d="recherche"]'),
         suivant: sol && sol.previousElementSibling && sol.previousElementSibling.dataset.v3d };
     });
-    verifier(!!b2.recherche && !!b2.sol && b2.recherche.x === b2.sol.x && b2.recherche.w === b2.sol.w &&
+    verifier(!!b2.recherche && !!b2.sol && !b2.haut && b2.recherche.x === b2.sol.x && b2.recherche.w === b2.sol.w &&
       b2.recherche.bas <= b2.sol.y + 1 && b2.sol.y - b2.recherche.bas < 12 && b2.suivant === "recherche",
-    nom + "vue d'édition : 🔍 juste au-dessus de 🗺️, même colonne, même taille", b2);
+    nom + "vue d'édition : 🔍 juste au-dessus de 🗺️, même colonne, même taille ; plus dans la rangée du haut", b2);
     await page.evaluate(async function () {
       window.KtaVue3D.basculerVue();
       for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
@@ -8576,8 +8623,8 @@ async function sectionRecherche3D(nav) {
       for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
     });
     const g2 = await page.evaluate(function () { return window.KtaVue3D.etat().recherche; });
-    verifier(!g.bouton && JSON.stringify(g1.pos) === JSON.stringify(g0.pos) && g1.niveau === g0.niveau && !g1.fiche &&
-      JSON.stringify(g1.carte) === JSON.stringify(g0.carte) && g1.recherche.allees === g0.recherche.allees && g2.bouton,
+    verifier(!g.bouton && !g.haut && JSON.stringify(g1.pos) === JSON.stringify(g0.pos) && g1.niveau === g0.niveau && !g1.fiche &&
+      JSON.stringify(g1.carte) === JSON.stringify(g0.carte) && g1.recherche.allees === g0.recherche.allees && g2.haut,
     nom + "greffe sans fiches : 🔍 caché, choix refusé (vue et carte immobiles), 🔍 revenu au retrait",
       { g: g, g0: g0, g1: g1, g2: g2 });
 
@@ -10158,7 +10205,8 @@ async function sectionGestesDoigt(nav) {
       verifier(filtresTel.memeLigne && filtresTel.ecart >= 0 && filtresTel.ecart <= 12 && filtresTel.entre === 0 &&
         filtresTel.largeur === 393, "téléphone (393 px) : ≡ immédiatement à gauche de ✕", filtresTel);
       const tel = await page.evaluate(function () {
-        const bs = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > button"));
+        const bs = Array.prototype.slice.call(document.querySelectorAll("#kta-vue3d .kta-v3d-haut > button"))
+          .filter(function (b) { return !b.hidden; });
         const rs = bs.map(function (b) { return b.getBoundingClientRect(); });
         const x = document.querySelector('#kta-vue3d [data-v3d="fermer"]').getBoundingClientRect();
         const lignes = {};
@@ -14028,8 +14076,9 @@ async function sectionGestesDoigt(nav) {
         await K.fermer();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
-      verifier(JSON.stringify(TU.rangee) === JSON.stringify(["aide", "fermer", "filtres", "reglages", "urgence"]) &&
-        TU.dansTuile.every(Boolean), "rangée du haut : ✕, ≡, 🚨, ❓, ⚙️ ; suivi, vue, hauteur, rendu, boussole et guidage " +
+      verifier(JSON.stringify(TU.rangee) === JSON.stringify(["aide", "fermer", "filtres", "recherche", "reglages",
+        "urgence"]) &&
+        TU.dansTuile.every(Boolean), "rangée du haut : ✕, ≡, 🚨, ❓, ⚙️, 🔍 ; suivi, vue, hauteur, rendu, boussole et guidage " +
         "dans la tuile, écrits en clair", TU);
       verifier(TU.ferme0 === false && TU.ouverte.ouvert && TU.ouverte.sous && TU.ouverte.droite && !TU.ouverte.pleinEcran &&
         TU.ouverte.expanded === "true", "⚙️ ouvre un petit panneau ancré sous lui, à droite (pas une fenêtre plein écran)",

@@ -53,6 +53,7 @@
 .kta-v3d-haut > .kta-v3d-urgence { order: 3; }
 .kta-v3d-haut > .kta-aide-ctx-btn { order: 4; }
 .kta-v3d-haut > .kta-v3d-btn-reglages { order: 5; }
+.kta-v3d-haut > .kta-v3d-recherche { order: 6; }
 
 /* Bouton carré : celui de la barre 2D (surface, liseré --kta-bordure, ombre de la barre). */
 .kta-v3d-btn {
