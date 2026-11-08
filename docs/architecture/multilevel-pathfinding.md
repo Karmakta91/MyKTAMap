@@ -295,7 +295,8 @@ Ce qui suit l'objet :
 - **POI** : `renderEditorPoints` recopie `marker._ktaLevel` et réapplique le filtre ; `MyKTAMapPhotos.majFichesPoints`
   met la fiche des photos au nouveau niveau ; `InterPlanLinks.onPointLevelChanged` recale le snapshot `level` des
   liaisons inter-plan (bascule de niveau à l'arrivée par le portail). Un ⏪ ne recale pas ce snapshot : le resync
-  du chargement (`_resyncSnapshotsForPlan`) le rattrape.
+  du chargement (`_resyncSnapshotsForPlan`) le rattrape, en local seulement (ni `updatedAt`, ni annonce à une
+  extension).
 - 🩸 **Fiche commune** : les écouteurs sont branchés dans la popup ouverte (`evt.popup.getElement()`), pas dans tout
   le document : la popup qu'on quitte reste dans le DOM pendant son fondu et recevait les écouteurs à la place.
 

@@ -26,7 +26,7 @@
 //   createLink(a, b), removeLink(id),
 //   getLinksForPlan(planId), importLinks(links), buildPopupHtml(point, layerId),
 //   ouvrirCreation(id, x, y, nom, source), naviguerVers(linkId, side),
-//   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges(), onPointMoved / onPointLevelChanged,
+//   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges(), onPointMoved / onPointLevelChanged / onPointRenamed,
 //   appliquerExterne({ liens, retirer })
 // };
 // Local, aucune surface réseau nouvelle (fetch same-origin des plans serveur, ZIP locaux en IndexedDB).
@@ -1329,6 +1329,10 @@
   // collectPointsForPlan lit un plan distant. Les snapshots convergent à l'usage.
   // Correspondance par pointId (stable, suit un déplacement), sinon par coords arrondies (seuls nom / level / tag
   // d'un point retrouvé sur place se resynchronisent).
+  // ⚠️ Contrat : remise à jour LOCALE — ni updatedAt touché, ni `mktm:liaisons-changees`. 🩸 Annoncée, elle partait
+  // vers l'extension comme une écriture neuve : deux appareils qui voient le point un peu différemment (calque en
+  // modification ici, calque d'origine là) réécrivaient la liaison à chaque ouverture et défaisaient sa suppression.
+  // Seuls les gestes (onPointMoved, onPointLevelChanged, onPointRenamed) écrivent. Garde-fou : check-extensions.js.
   function _resyncSnapshotsForPlan(planId, pts) {
     if (!planId || !Array.isArray(pts) || pts.length === 0) return 0;
     const byId = {}, byXy = {};
@@ -1341,7 +1345,6 @@
     });
     const reg = _load();
     let changed = 0;
-    const ids = [];
     reg.links.forEach(function(l) {
       ["a", "b"].forEach(function(s) {
         const side = l[s];
@@ -1360,13 +1363,11 @@
           side.level = lvl;
           side.tag = tag;
           changed++;
-          if (ids.indexOf(l.id) < 0) { _toucher(l); ids.push(l.id); }
         }
       });
     });
     if (changed > 0) {
       _save(reg);
-      _annoncer(ids, "modification");
       console.log("[InterPlanLinks] Resync snapshots « " + planId + " » : " + changed + " côté(s) mis à jour");
     }
     return changed;
@@ -1496,6 +1497,40 @@
     }
     return n;
   }
+
+  // Point de session RENOMMÉ ou changé de tag depuis sa fiche (editor.js > afficherFormulaire) : un geste, comme un
+  // déplacement — l'instantané (pointNom, tag, pointId du repli par nom) se réécrit et s'annonce. La resynchro du
+  // chargement, elle, reste locale (_resyncSnapshotsForPlan).
+  // `ancienId` = id AVANT le renommage : seule clé d'un côté sans uid (id === nom) ; ignoré si le côté a un uid.
+  function onPointRenamed(planId, point, ancienId) {
+    if (!planId || !point) return 0;
+    const sonde = { uid: point.uid, id: (ancienId !== undefined) ? ancienId : point.id, x: point.x, y: point.y };
+    const nom = String(point.nom || "");
+    const tag = (Array.isArray(point.tags) && point.tags[0]) || undefined;
+    const id = String(point.id || "");
+    const reg = _load();
+    let n = 0;
+    const ids = [];
+    reg.links.forEach(function(l) {
+      ["a", "b"].forEach(function(cote) {
+        const side = l[cote];
+        if (!_coteDuPoint(side, planId, sonde)) return;
+        const pointId = side.pointId ? id : side.pointId;
+        if (side.pointNom === nom && side.tag === tag && side.pointId === pointId) return;
+        side.pointNom = nom;
+        side.tag = tag;
+        side.pointId = pointId;
+        n++;
+        if (ids.indexOf(l.id) < 0) { _toucher(l); ids.push(l.id); }
+      });
+    });
+    if (n > 0) {
+      _save(reg);
+      _annoncer(ids, "modification");
+      console.log("[InterPlanLinks] " + n + " côté(s) de liaison renommé(s)");
+    }
+    return n;
+  }
   // ── Export ──────────
   window.InterPlanLinks = {
     getLinksForPoint:     getLinksForPoint,
@@ -1520,6 +1555,7 @@
     migrerVersUid:        migrerVersUid,
     onPointMoved:         onPointMoved,   // recale les coords d'un point déplacé
     onPointLevelChanged:  onPointLevelChanged,   // recale le niveau d'un point changé d'étage
+    onPointRenamed:       onPointRenamed,   // réécrit nom / tag d'un point renommé depuis sa fiche
     refreshBadges:        refreshBadges,
     // Navigation générique + lecture des points d'un plan non chargé (aussi pour js/crossPlanSearch.js : un seul
     // lecteur session / ZIP / serveur).

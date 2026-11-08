@@ -675,6 +675,7 @@ function afficherFormulaire(x, y, existingPoint) {
       // 2. Le point : création ou mise à jour.
       if (isEdit) {
         // Mise à jour EN PLACE de l'objet de listePoints.
+        const ancienId = existingPoint.id;   // clé d'un côté de liaison sans uid (id === nom), avant renommage
         existingPoint.nom         = nom;
         existingPoint.id          = nom;  // garde id === nom (rétro-compat)
         existingPoint.tags        = tag ? [tag] : [];
@@ -696,6 +697,11 @@ function afficherFormulaire(x, y, existingPoint) {
         if (niveauChange && window.InterPlanLinks && typeof window.InterPlanLinks.onPointLevelChanged === "function") {
           try { window.InterPlanLinks.onPointLevelChanged(planId, existingPoint); }
           catch(err) { console.warn("[Editor] niveau des liaisons inter-plan :", err); }
+        }
+        if ((nom !== nomInitial || (tag || "") !== tagInitial) && window.InterPlanLinks
+            && typeof window.InterPlanLinks.onPointRenamed === "function") {
+          try { window.InterPlanLinks.onPointRenamed(planId, existingPoint, ancienId); }
+          catch(err) { console.warn("[Editor] nom des liaisons inter-plan :", err); }
         }
         console.log("[Editor] Point modifié :", nom, "à", x, y);
         // Fiche des photos du point remise à jour (nom, type…).
