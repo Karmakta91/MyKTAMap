@@ -6,12 +6,12 @@
 
 // ajusterSommets.js — ajuster la suite de points d'une forme déjà dessinée, sur la carte 2D. Appui long (APPUI_MS)
 // sur un sommet puis glisser : il se déplace ; au milieu d'un segment : un sommet naît là et se glisse aussitôt ;
-// sur un sommet sans bouger : ＋ et 🗑️ au point (🗑️ refusé sous le minimum, un toast le dit) ; ＋ ouvre l'insertion
-// (_debuterInsertion : chaque tap insère un sommet après le dernier posé, jusqu'à ✓, Échap ou le sommet suivant).
+// sur un sommet sans bouger : ＋, ✂️ (sommet intérieur d'un tracé : _couper) et 🗑️ (refusé sous le minimum, un toast
+// le dit) ; ＋ ouvre l'insertion (_debuterInsertion : un sommet par tap, jusqu'à ✓, Échap ou le sommet suivant).
 // Familles : prises `window.ktaFormesAjustables.<roads|zones|structures|mesure>` = { cat (HistoryManager, null =
 // hors historique, lu à chaque geste), objets() (modifiables ET visibles, hors objet en cours), ferme(o), minimum(o),
-// libelle(o), rendre(), aimanter?(x, y, o, exclus, tol?) → {x, y} | null, etiquette?(action, o) → libellé d'historique
-// } (road.js, zones.js, structures.js, measure.js). Outil 📐 seul armé : seule la mesure s'ajuste (_mesureSeule).
+// libelle(o), rendre(), aimanter?(x, y, o, exclus, tol?) → {x, y} | null, etiquette?(action, o), coupable?(o) +
+// ajouterApres?(o, neuf) (✂️) } (road.js, zones.js, structures.js, measure.js). Outil 📐 seul : la mesure seule.
 // Expose : window.KtaAjusterSommets = { enCours(), etat(), annuler(), viser(), insertion*, plan (vue 3D), APPUI_MS… }.
 // ⚠️ contrat : un geste (un point inséré aussi) = une écriture : captureState → mutation → KtaUid.touch → rendre() (un
 // seul `kta:donneesPlanChange`) → record → SessionPersist.save. Pendant le glisser, rien n'est écrit : aperçu seul.
@@ -50,7 +50,7 @@ window.KtaAjusterSommets = (function () {
   let _ins = null;
   let _permisSoi = false;      // _permis en cours : l'insertion ne compte pas comme mode « clic carte » contre elle
   const INSERE_PX = 4;         // tap à moins de ça du dernier point posé : rien (pas de sommet en double)
-  const _stats = { gestes: 0, ecritures: 0, annules: 0, refus: 0, inseres: 0 };
+  const _stats = { gestes: 0, ecritures: 0, annules: 0, refus: 0, inseres: 0, coupes: 0 };
 
   function _t(k, p) { return window.I18n && typeof window.I18n.t === "function" ? window.I18n.t(k, p) : k; }
   function _now() { return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now(); }
@@ -197,29 +197,71 @@ window.KtaAjusterSommets = (function () {
   }
   function _dansMenu(t) { return !!(t && t.closest && t.closest(".kta-ajuster-menu")); }
 
-  // Sous le minimum de la forme : ＋ seul (le toast dit pourquoi pas de 🗑️).
+  // Sous le minimum de la forme : pas de 🗑️ (le toast dit pourquoi) ; ✂️ en plus sur un sommet coupable.
   function _ouvrirMenu(c, sansSuppr) {
     _fermerMenu();
     const m = _map();
     if (!m) return;
+    const coupe = _coupable(c);
+    const large = BOUTON_PX + ((sansSuppr ? 0 : 1) + (coupe ? 1 : 0)) * (BOUTON_PX + ECART_PX);
     const icon = L.divIcon({
       className: "kta-ajuster-menu",
-      html: htmlMenu(null, sansSuppr),
-      iconSize: [sansSuppr ? 44 : MENU_LARGE, 44], iconAnchor: [sansSuppr ? 22 : MENU_LARGE / 2, 58]
+      html: htmlMenu(null, sansSuppr, coupe),
+      iconSize: [large, BOUTON_PX], iconAnchor: [large / 2, 58]
     });
     const marker = L.marker(_ll(c), { icon: icon, interactive: true, keyboard: false, zIndexOffset: 1000 }).addTo(m);
     _menu = { marker: marker, c: c, timer: setTimeout(_fermerMenu, MENU_MS) };
   }
-  // Les deux boutons du menu (carte et vue 3D) ; `attr(action)` = attributs en plus (vue 3D : data-v3d).
-  const MENU_LARGE = 96;       // deux cibles de 44 px et leur écart (style.css > .kta-ajuster-boutons)
-  function htmlMenu(attr, sansSuppr) {
+  // Les boutons du menu (carte et vue 3D) ; `attr(action)` = attributs en plus (vue 3D : data-v3d).
+  const BOUTON_PX = 44, ECART_PX = 8;   // cibles et écart (style.css > .kta-ajuster-boutons)
+  function htmlMenu(attr, sansSuppr, avecCouper) {
     const bouton = function (classe, cle, action, icone) {
       const titre = window.ktaEsc(_t(cle));
       return '<button type="button" class="' + classe + '"' + (attr ? attr(action) : "") + ' aria-label="' + titre +
         '" title="' + titre + '">' + icone + '</button>';
     };
     return '<div class="kta-ajuster-boutons">' + bouton("kta-ajuster-inserer", "ajuster.inserer", "inserer", "＋") +
+      (avecCouper ? bouton("kta-ajuster-couper", "ajuster.couper", "couper", "✂️") : "") +
       (sansSuppr ? "" : bouton("kta-ajuster-suppr", "ajuster.supprimer", "supprimer", "🗑️")) + '</div>';
+  }
+
+  // ── ✂️ Couper : deux formes à un sommet intérieur ──
+  // ⚠️ contrat (décision produit) : sommet existant seulement (au milieu d'un segment, on ajoute d'abord un sommet) ;
+  // jamais un bout (chaque morceau garde au moins 2 points) ; la prise dit quels objets se coupent (`coupable` ;
+  // objets de session seulement : un calque n'est pas dans `objets()`). Le premier morceau GARDE l'objet (uid, champs)
+  // et finit au sommet coupé ; le second, copie à uid neuf (KtaUid.cloneNeuf : type, niveau, note suivent), commence
+  // à ce même sommet, dupliqué : l'itinéraire passe toujours par là. Une écriture, une entrée ⏪.
+  function _coupable(c) {
+    const a = c && c.a, o = c && c.o, n = o && o.points ? o.points.length : 0;
+    return !!(c && c.genre === "sommet" && a && typeof a.coupable === "function" &&
+      typeof a.ajouterApres === "function" && a.coupable(o) && c.i > 0 && c.i < n - 1);
+  }
+  function _couper(c) {
+    if (!_permis() || !_encorePresent(c)) return false;
+    if (!_coupable(c)) { _stats.refus++; return false; }
+    const a = c.a, o = c.o, H = window.HistoryManager, U = window.KtaUid;
+    const avant = (a.cat && H && typeof H.captureState === "function") ? H.captureState(a.cat) : null;
+    let neuf;
+    if (U && typeof U.cloneNeuf === "function") {
+      neuf = U.cloneNeuf(o, "rd");
+    } else {
+      neuf = JSON.parse(JSON.stringify(o));
+      delete neuf.uid;
+    }
+    neuf.points = o.points.slice(c.i).map(function (p) { return Object.assign({}, p); });
+    if (!a.ajouterApres(o, neuf)) return false;
+    // En place : `o.points` garde sa référence (l'objet visé reste retrouvable, _encorePresent).
+    o.points.splice(c.i + 1);
+    if (o.uid && U && typeof U.touch === "function") U.touch(o);
+    try { a.rendre(); } catch (err) { console.warn("[Ajuster] rendu :", err); }
+    if (avant) H.record(_t("ajuster.histo.couper", { type: a.libelle(o) }), avant, a.cat);
+    if (a.cat && window.SessionPersist && typeof window.SessionPersist.save === "function") {
+      try { window.SessionPersist.save({ force: true }); } catch (err) { /* le poll de SessionPersist rattrape */ }
+    }
+    _stats.ecritures++;
+    _stats.coupes++;
+    _toast(_t("ajuster.toast.coupe"), "success");
+    return true;
   }
 
   // ── Écriture : un geste = une entrée d'historique, un rendu ──
@@ -536,13 +578,15 @@ window.KtaAjusterSommets = (function () {
   // _ktaPickCaptureClick (capture sur le conteneur) ré-émet le clic à la carte et le marqueur ne le voit jamais (un
   // point de mesure posait sous ＋ ou 🗑️).
   function _cliqueMenu(e) {
-    const b = e.target && e.target.closest && e.target.closest(".kta-ajuster-inserer, .kta-ajuster-suppr");
+    const b = e.target && e.target.closest &&
+      e.target.closest(".kta-ajuster-inserer, .kta-ajuster-suppr, .kta-ajuster-couper");
     e.stopPropagation();
     if (e.cancelable) e.preventDefault();
     if (!b || !_menu || e.type !== "click") return;
     const c = _menu.c;
     _fermerMenu();
     if (b.classList.contains("kta-ajuster-inserer")) _debuterInsertion(c);
+    else if (b.classList.contains("kta-ajuster-couper")) _couper(c);
     else _ecrire("supprimer", c, null);
   }
   function _avaler(e) {
@@ -644,7 +688,7 @@ window.KtaAjusterSommets = (function () {
     etat: function () {
       return { enCours: !!_g, arme: !!(_g && _g.arme), menu: !!_menu, gestes: _stats.gestes,
         ecritures: _stats.ecritures, annules: _stats.annules, refus: _stats.refus, inseres: _stats.inseres,
-        insertion: !!_ins };
+        coupes: _stats.coupes, insertion: !!_ins };
     },
     // Drapeau neutre (utils.js > _modeClicCarteActif) : l'insertion prend chaque clic de la carte.
     insertionEnCours: function () { return !!_ins && !_permisSoi; },
@@ -669,6 +713,9 @@ window.KtaAjusterSommets = (function () {
       forme: _formePlan,
       lacher: _lacherPlan,
       supprimer: function (c) { return !!c && _ecrire("supprimer", c, null); },
+      // ✂️ du menu : proposé si `coupable(c)`, puis `couper(c)` → true si la forme est coupée.
+      coupable: _coupable,
+      couper: function (c) { return !!c && _couper(c); },
       // ＋ du menu : ouvre l'insertion depuis ce sommet ; puis chaque toucher au sol → poser(x, y, tolAimant, tolFin).
       inserer: _debuterInsertion,
       poser: _poser,

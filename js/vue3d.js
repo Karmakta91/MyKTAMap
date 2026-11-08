@@ -6242,7 +6242,7 @@
     e.ajuste = null;
     e.ajusteMenu = null;
     e.ajustements = { armes: 0, annules: 0, ajoute: 0, deplace: 0, supprime: 0, refus: 0, menu: 0, rien: 0,
-      insertion: 0, insere: 0, insertionFin: 0 };
+      insertion: 0, insere: 0, insertionFin: 0, coupe: 0 };
     if (!window._groupes) return;
     const barre = document.createElement("div");
     barre.className = "leaflet-bar leaflet-control kta-v3d-outils";
@@ -6717,16 +6717,18 @@
     e.sale = true;
   }
 
-  // ＋ et 🗑️ au sommet (les boutons de la carte : ajusterSommets.js > htmlMenu ; ＋ seul sous le minimum), suivis à
-  // l'écran ; ils se retirent seuls (MENU_MS), au toucher suivant hors d'eux (avalé sur la scène) ou par Échap.
+  // ＋, ✂️ et 🗑️ au sommet (les boutons de la carte : ajusterSommets.js > htmlMenu ; pas de 🗑️ sous le minimum, ✂️
+  // sur un sommet coupable), suivis à l'écran ; ils se retirent seuls (MENU_MS), au toucher suivant hors d'eux (avalé
+  // sur la scène) ou par Échap.
   function _ajusterMenu(g, sansSuppr) {
     const e = _e, A = _ajusteur();
     _ajusterFermerMenu();
     if (!A) return;
     const boite = document.createElement("div");
+    const V3D = { inserer: "ajusterInserer", couper: "ajusterCouper", supprimer: "ajusterSuppr" };
     boite.innerHTML = A.htmlMenu(function (action) {
-      return ' data-v3d="' + (action === "inserer" ? "ajusterInserer" : "ajusterSuppr") + '"';
-    }, sansSuppr);
+      return ' data-v3d="' + V3D[action] + '"';
+    }, sansSuppr, !!(A.plan.coupable && A.plan.coupable(g.c)));
     const b = boite.firstChild;
     b.classList.add("kta-v3d-ajuster-menu");
     e.ov.appendChild(b);
@@ -6775,6 +6777,16 @@
     if (ins) _ajusterRefaire(ins.pts);
     e.sale = true;
     return true;
+  }
+  // ✂️ : la forme coupée à ce sommet (règles de la carte : ajusterSommets.js > _couper) ; scène refaite sur son emprise.
+  function _ajusterCouper() {
+    const e = _e, m = e.ajusteMenu, A = _ajusteur();
+    if (!m) return;
+    _ajusterFermerMenu();
+    if (A && A.plan.couper && A.plan.couper(m.c)) {
+      e.ajustements.coupe++;
+      _ajusterRefaire(m.pts);
+    }
   }
   function _ajusterSupprimer() {
     const e = _e, m = e.ajusteMenu, A = _ajusteur();
@@ -9148,6 +9160,7 @@
       } else if (a === "tracker") { ev.preventDefault(); _ouvrirTracker(); }
       else if (a === "ajusterSuppr") { ev.preventDefault(); _ajusterSupprimer(); }
       else if (a === "ajusterInserer") { ev.preventDefault(); _ajusterInserer(); }
+      else if (a === "ajusterCouper") { ev.preventDefault(); _ajusterCouper(); }
       else if (a === "place") surPlace();
       else if (a === "guidAction") _actionGuidage(b.dataset.guidAction);
       else if (a === "addons") { ev.preventDefault(); _choisirAddon(); }
@@ -9169,7 +9182,8 @@
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
         a === "ficheVoir" || a === "outil" || a === "planSol" || a === "recherche" || a === "place" ||
-        a === "guidAction" || a === "ajusterSuppr" || a === "ajusterInserer" || a === "addons" ||
+        a === "guidAction" || a === "ajusterSuppr" || a === "ajusterInserer" || a === "ajusterCouper" ||
+        a === "addons" ||
         a === "outilsPlier" || a === "tracker") return;
       // Au doigt, + / − et inclinaison attendent le click : un doigt de pincement posé dessus n'agit pas (_brancher,
       // geste de la scène).

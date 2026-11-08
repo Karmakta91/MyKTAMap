@@ -286,7 +286,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `convertirObjet.js` | Changer un objet de type ou de famille (ouvert ⇄ fermé), en lot, de niveau ; suppression |
 | `selectionMulti.js` | Sélection de N objets (clic, type, zone) pour une conversion, une suppression ou un changement de niveau en lot |
 | `selectionZone.js` | Sélection par zone dessinée (outil ♦️ Surface), suppression et niveau en lot de la sélection |
-| `ajusterSommets.js` | Ajuster une forme dessinée : déplacer, ajouter ou supprimer un sommet par appui long |
+| `ajusterSommets.js` | Ajuster une forme dessinée : déplacer, ajouter ou supprimer un sommet par appui long, couper un tracé à un sommet |
 | `calqueSession.js` | Rapatrier un calque de données entier dans la session pour le corriger |
 | `profondeurNiveaux.js` | Niveaux en hauteur : table sol / hauteur / écart (⚙️ et Générateur) et profil en long d'un itinéraire |
 | `osmMesure.js` | Mesure de distance et de surface dans la Vue OSM (lat/lng, sans calibrage du plan) |
@@ -584,6 +584,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-secours-balayage.js` | Secteurs ou parcours de balayage du Mode Secours faux sur le graphe d'un réseau fictif | pre-commit |
 | `check-secours-relais.js` | Relais Secours qui écrase l'intervention en cours par le scénario d'un autre appareil | pre-commit |
 | `check-selection-multi.js` | Sélection multiple qui mêle ligne et surface, conversion ou niveau en lot en plusieurs gestes d'annulation, jonction déplacée par le niveau en lot | pre-commit |
+| `check-couper-trace.js` | ✂️ Couper un tracé : morceaux qui ne partagent plus le sommet, second morceau au même uid, coupe à un bout ou d'une jonction, plusieurs gestes d'annulation | pre-commit |
 | `check-session-store.js` | Accès direct à `localStorage["myktamap_session_v1_<planId>"]` au lieu de `KtaSessionStore` | pre-commit |
 | `check-style-canon.js` | Table de style locale qui diverge de `styleResolver.js > CANON` | pre-commit |
 | `check-style-resolver.js` | `ktaResolveStyle` / `ktaSwatchColor` / `ktaTypeSwatchHtml` faux (built-in, motif, customs, couleurs choisies) | pre-commit |

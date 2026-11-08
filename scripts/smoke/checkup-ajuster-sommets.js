@@ -431,6 +431,46 @@ async function famille(page, ptr, nom, ref, iSommet, iMilieu, tolPlan) {
   }
 }
 
+// ✂️ Couper (ajusterSommets.js > _couper) : pas sur un bout ni sur un pilier ; sur un sommet intérieur du tracé, deux
+// tracés qui partagent le sommet (uid neuf pour le second), une entrée d'historique, un ⏪ recolle.
+async function couper(page, ptr) {
+  const ciseaux = function () { return page.evaluate(function () { return !!document.querySelector(".kta-ajuster-couper"); }); };
+  const o0 = await lireObjet(page, "rd_as_r1");
+  await geste(page, ptr, o0.points[0], null);
+  verifier(!(await ciseaux()), "✂️ : pas proposé sur le bout d'un tracé");
+  await page.evaluate(function () { window.KtaAjusterSommets.annuler(); });
+  await geste(page, ptr, (await lireObjet(page, "st_as_p")).points[0], null);
+  verifier(!(await ciseaux()), "✂️ : pas proposé sur un pilier");
+  await page.evaluate(function () { window.KtaAjusterSommets.annuler(); });
+  const nR = await page.evaluate(function () { return window.getRoads().length; });
+  const g = await geste(page, ptr, o0.points[1], null);
+  verifier(await ciseaux() && g.apres.plus && g.apres.menu && !g.apres.fiche,
+    "✂️ : appui long sans bouger sur un sommet intérieur d'un tracé → ＋, ✂️ et 🗑️, sans fiche", g.apres);
+  const e0 = await etat(page);
+  const c = await page.evaluate(function () {
+    const b = document.querySelector(".kta-ajuster-couper");
+    if (!b) return null;
+    const q = b.getBoundingClientRect();
+    return [q.left + q.width / 2, q.top + q.height / 2];
+  });
+  if (c) { await ptr.tap(c); await page.waitForTimeout(400); }
+  const r = await page.evaluate(function () {
+    const R = window.getRoads(), i = R.findIndex(function (x) { return x.uid === "rd_as_r1"; });
+    return { n: R.length, a: JSON.parse(JSON.stringify(R[i])), b: JSON.parse(JSON.stringify(R[i + 1] || null)) };
+  });
+  const e1 = await etat(page);
+  const xy = function (l) { return JSON.stringify((l || []).map(function (p) { return [p.x, p.y]; })); };
+  verifier(r.n === nR + 1 && r.b && xy(r.a.points) === xy(o0.points.slice(0, 2)) &&
+    xy(r.b.points) === xy(o0.points.slice(1)) && r.b.uid !== r.a.uid && r.b.type === r.a.type &&
+    r.b.level === r.a.level && e1.annulables === e0.annulables + 1 && !e1.fiche,
+  "✂️ : deux tracés qui partagent le sommet coupé, uid neuf pour le second, même type et niveau, une entrée ⏪", r);
+  await page.evaluate(function () { window.HistoryManager.undo(); });
+  await page.waitForTimeout(300);
+  const nU = await page.evaluate(function () { return window.getRoads().length; });
+  verifier(nU === nR && xy((await lireObjet(page, "rd_as_r1")).points) === xy(o0.points),
+    "✂️ : un seul ⏪ rend le tracé entier", { n: [nR, nU] });
+}
+
 async function refus(page, ptr, nom, ref) {
   const o0 = await lireObjet(page, ref);
   const r0 = await etat(page);
@@ -889,6 +929,7 @@ async function jouer(nav, moteur, mode) {
     await ronds(page, "après déplacer, ajouter et supprimer");
     await refus(page, ptr, "tracé de 2 points", "rd_as_r2");
     await refus(page, ptr, "zone de 3 sommets", "zn_as_t");
+    await couper(page, ptr);
 
     // ── Menu ouvert, puis appui long sur le sommet : il s'ajuste ──
     await page.evaluate(function () { window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false }); });
