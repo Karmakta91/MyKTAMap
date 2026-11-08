@@ -110,6 +110,10 @@ unique avec les passages : `poiJonction.js > ktaNiveauxObjet`. Gardé par la ses
 `getAllEmbeddedZones`), le Tableur, l'export anonymisé, KMZ (`mkm:niveaux`, une copie par autre niveau marquée
 `mkm:copie`) et GeoJSON (propriété `niveaux`, une entité). Retiré quand la zone devient une structure. Voir
 `multilevel-pathfinding.md` §26.12.
+`"jonction": true` (facultatif, seulement avec au moins deux niveaux) : **zone jonction de niveau**, chambre dont le
+sol suit en 3D la pente du tracé jonction qui la traverse (`galerieEmprise.js > penteDeZone`) ; absent = zone ordinaire
+(rétrocompatible : un lecteur qui l'ignore voit une zone sur plusieurs niveaux). Gardé par la session, l'export
+anonymisé, KMZ (`mkm:jonction` = 1, relu à l'import) et GeoJSON (propriété `jonction`).
 
 → **POI danger** (tag `danger`, `js/poiDanger.js`) : `"dateConstat": "2026-10-03"` = jour **local** où le danger a été
 vu (`AAAA-MM-JJ`, un jour qui existe). Facultatif : pré-rempli au jour même quand un point **devient** danger

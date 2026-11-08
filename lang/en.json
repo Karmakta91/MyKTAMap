@@ -6169,7 +6169,7 @@
   "niveauxZone.histoire": "Zone on levels {liste}",
   "niveauxZone.toast": "🏗️ Zone on levels {liste} — ⏪ to undo",
   "niveauxZone.jonction": "Junction zone: the floor rises from one level to the other (3D view)",
-  "niveauxZone.jonctionSansTrace": "⚠️ No junction track crosses this zone between two of its levels: its floor stays flat in 3D. Draw a junction track across it, from one of its levels to the other: it gives the direction of the slope.",
+  "niveauxZone.jonctionSansTrace": "⚠️ No junction trace crosses this zone between two of its levels: its floor stays flat in 3D. Draw a junction trace across it, from one of its levels to the other: it gives the direction of the slope.",
   "niveauxZone.histoireJonction": "Junction zone on levels {liste}",
   "niveauxZone.histoireSansJonction": "Zone on levels {liste} (no longer a junction)",
   "jonctionFiche.titre": "🪜 Junction L{de} ↔ L{vers}",

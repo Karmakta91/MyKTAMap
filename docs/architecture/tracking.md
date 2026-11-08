@@ -2329,8 +2329,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   n'en lisent rien. Checkup § 47 (`KTA_V3D_SEUL=voisinspassages`).
   🩸 Gabarit : sol, plafond et rubans des voisins prennent des copies sans gabarit (`_matsVoisins`), sinon la bouche
   d'un puits trouerait aussi le fond qu'on voit par elle.
-- **Niveau actif d'abord** : ni la règle du pas, ni la visée (`_pointVise`), ni les fiches, ni les passages, ni le
-  suivi ne lisent les voisins ; ils se voient et cachent ce qui est derrière eux. Le niveau actif ne change que par un
+- **Niveau actif d'abord** : ni la règle du pas (sauf les structures d'un niveau entremêlé, ci-dessous), ni la visée
+  (`_pointVise`), ni les fiches, ni les passages, ni le suivi ne lisent les voisins ; ils se voient et cachent ce qui est derrière eux. Le niveau actif ne change que par un
   passage, une galerie inclinée ou ▲▼. **Vue d'édition** : voisins sans plafond, **estompés** selon le réglage ⚙️
   « 🌫️ Estomper » (`reglerEstomper`, `config.js > getVue3DEstomper`, `myktamap_v3d_estomper_v1`, cet appareil, activé
   par défaut, au doigt comme au pointeur ; un seul réglage pour les deux côtés) : le **dessous assombri**
@@ -2356,6 +2356,59 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (altitude, hauteur, rendu, 🧱, données, filtres) est gardé quand la scène change de niveau (galerie inclinée, ▲▼).
   Mesures : `ETUDE_VUE_3D.md` § Niveaux voisins. Relevé : `etat().voisins` ; checkup `checkup-vue-3d.js` § 44
   (`KTA_V3D_SEUL=voisins`, `KTA_V3D_PERF=voisins` pour le plan lourd).
+
+### Niveaux entremêlés et zones jonction (QCM du 08/11/2026, lot D du multi-niveau en 3D)
+
+Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction » (en-tête de `_entreDe`).
+
+- **Union des vides** (décision produit) : deux niveaux **montrés** (niveau actif et voisins, réglage 🏗️ Niveaux) dont
+  les tranches [sol, plafond] se recoupent (écart négatif, `getNiveauVertical`) : c'est ouvert dès que l'un des deux a
+  un vide ; paroi, sol et plafond seulement là où les deux sont de la roche. Vide d'un niveau (`_videDe`) : ses pièces
+  en galerie, ses pièces et ses chambres (`enChambre`) en mixte, partout en structures. Contexte par niveau construit
+  (`_entreDe` : niveau, sol relatif, tranche commune), relu à chaque `_reindexer`, `_refaireTuiles` et changement des
+  niveaux montrés (`_majEntreActif` : tuiles du niveau actif refaites si le contexte change) ; il entre dans la
+  signature d'un voisin gardé.
+  - **Parois** des tubes (galerie, mixte ; niveau actif et voisins) : `_paroiEntre` coupe chaque paroi aux bords des
+    pièces de l'autre niveau (et tous les `ENTRE.pas` m contre une chambre, sans contour) et retire, morceau par
+    morceau, la tranche commune là où le point juste derrière la paroi est dans le vide de l'autre niveau. Morceaux
+    dessinés relevés dans `t.paroisY` (`KtaVue3D.entremeles().parois`).
+  - **Sols et plafonds** : gabarit (stencil) à **bits** (`GABARIT`) : 1 / 2 sol et plafond du niveau actif (bouches des
+    passages et trous), 4 / 8 sol et plafond des voisins du dessus, 16 / 32 ceux du dessous ; chaque matériau ne lit
+    (`stencilFuncMask`) et n'écrit (`stencilWriteMask`) que son bit, les copies des voisins sont faites par côté
+    (`_matsVoisins("haut" | "bas")`). Une surface d'un niveau prise dans la tranche de l'autre (strictement) n'est pas
+    dessinée au-dessus des pièces de l'autre : trous plats posés dans les tuiles de celui qui a le vide (`_trousEntre`,
+    `renderOrder` −1, famille `trou`, jamais estompés). Rendu structures (vide partout) : la surface n'est pas dessinée du
+    tout (`_plansCaches`, `e.sol` / `e.plafond` / `v.plans`).
+  - 🩸 Limites : entre deux voisins (« Tous »), seules les parois sont coupées (un bit par côté) ; en mixte, le sol d'un
+    seul tenant n'est troué qu'au-dessus des pièces (tubes) de l'autre niveau, pas de ses chambres ; un niveau non
+    montré (« Le mien ») n'ouvre rien (pas de trou vers le noir).
+- **Collision par tranche** (décision produit) : une structure (pilier, mur, front, type perso) d'un autre niveau dont
+  la tranche recoupe la nôtre **arrête le pas** (`_niveauxQuiBloquent` → `_juger`, `ktaSegmentsBloquesParStructure`
+  au niveau de la structure), montrée ou non (masquer ne retire que le dessin) ; au-dessus ou au-dessous sans
+  recouvrement, jamais. Hauteur d'une structure = celle de son niveau. Rendu galerie : rien (les structures n'y bloquent
+  pas). Tout le reste suit le niveau actif (suivi, panneaux, visée, passages, ▲▼).
+- **Zone jonction** (`KtaGalerie.penteDeZone`, décision produit ; mixte et structures, en galerie le tracé reste la
+  galerie inclinée seule) : la galerie inclinée qui la traverse porte ses zones (`_pentesDuNiveau > p.zones`) ; toute
+  place dans la zone est « sur la pente » (`_surPente > zone`), son sol et son plafond = projection sur le tracé
+  (`_surPenteDe`, bout à bout). Dessin (`_zoneJonction`) : sol et plafond en triangles fins (`ENTRE.fin`, matériaux
+  des pièces sans gabarit : `_matsPente`), faces du bord par morceaux de `ENTRE.zoneFace` m là où un seul côté est
+  vide (dedans [sol, plafond] ; dehors la tranche de chacun des deux niveaux là où il a un vide, et la galerie inclinée
+  qui continue), trous du sol et du plafond d'un seul tenant du niveau, et des plans des voisins pris dans sa hauteur.
+  La galerie inclinée n'est pas dessinée dans la zone (`_pente` : stations au bord, morceaux dedans sautés) ; parois de
+  tube et rubans des tracés posés dans la zone non plus. Dessinée par le niveau actif s'il est l'un des siens, avec les
+  structures de l'autre niveau posées dedans (`_structuresEmpruntees`), sinon par le voisin qui la porte
+  (`_horsZonesActives` : jamais en double). **Pas** : dans la zone, structures de ses deux niveaux et zones qui
+  bouchent (`_bloqueEnZone`, ni paroi de tube ni image de collision) ; on la quitte par un bord, ou on y entre, là
+  seulement où son sol est à moins de `PENTE.sortie` de celui du niveau ; à mi-longueur du tracé, la scène passe au
+  niveau d'en face (`_suivrePente`, inchangé). Caméra, avatar, ruban et chevrons suivent le sol (`_solPlace`).
+- **Structures en pente** (`_structurePente`, `_structureSurPente`) : piliers, murs et fronts dont le centre est dans
+  une zone jonction, et murs et fronts (polygones `mur`, lignes) dont tous les sommets sont à moins de `ENTRE.longe`
+  (1 m) du bord d'une galerie inclinée : contour coupé à 1 m, prisme plat puis sommets relevés (`_releverPente` :
+  y = 0 → sol en pente, y = h → plafond en pente, proportionnel ; un mur garde sa part `HAUTEUR_MUR`). Emprise relevée
+  (`entremeles().structures`). La règle du pas reste celle de la 2D (contour au sol).
+- **Relevés** : `KtaVue3D.altitude(x, y)` (sol, plafond, zone, pente au point), `KtaVue3D.entremeles()` (tranches,
+  parois dessinées, trous, plans cachés, niveaux qui bloquent, structures en pente). Checkup `checkup-vue-3d.js` § 50
+  (`KTA_V3D_SEUL=entremeles`) et § 51 (`=zonejonction`).
 
 ### Rechercher et y aller en 3D (QCM du 08/11/2026)
 
