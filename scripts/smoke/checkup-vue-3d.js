@@ -10226,7 +10226,7 @@ async function sectionGestesDoigt(nav) {
           titres: Array.prototype.map.call(document.querySelectorAll("#kta-vue3d [data-v3d]"), function (b) { return b.title; }),
           // ⚙️ : « Réglages de la vue », suivi d'une mention quand un réglage n'est pas celui par défaut.
           attendus: ["vue3d.fermer", window.FilterPanel.nbActifs() > 0 ? "filter.badge.actifs" : "filter.badge.aucun",
-            "ui.refonte.counter_sortie_title", "vue3d.reglages",
+            "ui.refonte.counter_sortie_title", "vue3d.reglages", "vue3d.recherche",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.zoomPlus", "vue3d.inclinaisonPlus", "vue3d.zoomMoins", "vue3d.inclinaisonMoins",
             "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "vue3d.recherche",
