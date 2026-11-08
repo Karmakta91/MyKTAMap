@@ -3326,7 +3326,8 @@
     e.voisins = gardes;
     if (e.matsV) _matsVoisins();
     gardes.forEach(_volumesVoisinAJour);
-    _estomperVoisins();   // côté changé (voisins gardés), originaux changés (🧱)
+    _estomperVoisins();
+    _majSolActif();   // voisin du dessous montré ou non, 🧱 changé (_refaireTuiles)   // côté changé (voisins gardés), originaux changés (🧱)
     e.sale = true;
   }
 
@@ -3409,7 +3410,7 @@
   // Sol et plafond d'un seul tenant des voisins (mixte, structures) : suivent le centre de la scène et la taille du
   // carré du niveau actif (_placerCamera).
   function _placerVoisins(c) {
-    const e = _e, haut = e.vue === "plongee";
+    const e = _e, haut = e.vue === "plongee", solPlein = _maniereSol() === "plein";
     (e.voisins || []).forEach(function (v) {
       if (!v.plans) return;
       const vu = !(haut && v.dessus);
@@ -3417,7 +3418,7 @@
       v.plans.plafond.position.set(c.x, v.dy + v.hauteur, c.z);
       v.plans.sol.scale.copy(e.sol.scale);
       v.plans.plafond.scale.copy(e.plafond.scale);
-      v.plans.sol.visible = vu;
+      v.plans.sol.visible = vu && (solPlein || v.dessus);
       v.plans.plafond.visible = vu && !haut;
     });
   }
@@ -3528,6 +3529,50 @@
 
   function _estomperVoisins() { (_e.voisins || []).forEach(_estomperVoisin); }
 
+  // ⚠️ contrat (décision produit) : sol du niveau actif en vue d'édition, rendus structures et mixte (le carré d'un
+  // seul tenant cachait entièrement les niveaux du dessous) ; 🌫️ activé, plan au sol éteint, niveau actif qui n'est PAS
+  // le plus profond du plan (_niveauxEdition : au plus bas, rien dessous, sol plein) :
+  // 🧱 coupé → sol INVISIBLE (ni couleur ni profondeur : on voit le dessous à travers) ; 🧱 allumé et un voisin du
+  // dessous montré → sol VOILÉ (SOL_VOILE : opacité, sans écriture de profondeur) ; sinon, sol plein. Sol non plein :
+  // le sol d'un seul tenant des voisins du dessous est caché aussi (_placerVoisins) : là où le dessous n'a rien, le
+  // vide (noir), jamais un sol de remplacement. Le maillage du sol actif reste là : la visée (_pointVise, dessin,
+  // touchers au sol) le lit toujours. 🌫️ coupé, 🗺️ plan au sol allumé (le plan est le sol : il se dessine sans
+  // profondeur, le dessous passerait dessus), hauteur d'yeux ou rendu galerie (rien de plein sous les galeries) : sol
+  // plein. 🩸 Copies du matériau du sol (gabarit, recul SOL_RECULE compris), jamais le
+  // matériau lui-même : les copies des voisins (_matsVoisins) en naissent. Le sol garde ORDRE_SOL : voilé, il passe
+  // AVANT l'eau et les zones transparentes (trié par renderOrder dans la liste des transparents).
+  const SOL_VOILE = 0.5;
+
+  function _maniereSol() {
+    const e = _e;
+    if (!e.sol || e.vue !== "plongee" || e.galerie || !_estomper() || (e.dessin && e.dessin.planSol)) return "plein";
+    const l = _niveauxEdition(), i = l.indexOf(e.niveau);
+    if (i < 0 || i === l.length - 1) return "plein";   // plan à un niveau, niveau le plus profond
+    if (e.textures !== true) return "invisible";
+    return (e.voisins || []).some(function (v) { return !v.dessus; }) ? "voile" : "plein";
+  }
+
+  function _majSolActif() {
+    const e = _e;
+    if (!e || !e.sol || !e.mats) return;
+    const m = _maniereSol(), base = e.mats.sol;
+    if (m === "plein") {
+      if (e.sol.material !== base) { e.sol.material = base; e.sale = true; }
+      return;
+    }
+    const cle = m === "voile" ? "solVoile" : "solInvisible";
+    let a = e.mats[cle];
+    if (!a) {
+      a = e.mats[cle] = base.clone();
+      a.depthWrite = false;
+      if (m === "voile") { a.transparent = true; a.opacity = SOL_VOILE; } else a.colorWrite = false;
+    }
+    if (a.map !== base.map || !a.color.equals(base.color)) {
+      a.map = base.map; a.color.copy(base.color); a.needsUpdate = true;
+    }
+    if (e.sol.material !== a) { e.sol.material = a; e.sale = true; }
+  }
+
   // Bouton 🌫️ de la tuile ⚙️ : bascule (ou pose) le réglage de cet appareil. Rend l'état en vigueur, null vue fermée.
   function reglerEstomper(oui) {
     if (!_e) return null;
@@ -3535,6 +3580,7 @@
     if (typeof window.setVue3DEstomper === "function") window.setVue3DEstomper(v);
     _estomperVoisins();
     _gererVoisins(false);
+    _majSolActif();
     _majNiveauxVus();
     return _estomper();
   }
@@ -4920,6 +4966,7 @@
   function _appliquerRendu() {
     const e = _e, gal = !!e.galerie, b = e.boutonRendu;
     e.sol.visible = !gal;
+    _majSolActif();
     e.plafond.visible = !gal && e.vue !== "plongee";
     if (b) {
       const ici = RENDU_UI[e.rendu] || RENDU_UI.structures, apres = RENDU_UI[_renduSuivant(e.rendu)];
@@ -5308,6 +5355,7 @@
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
     });
     _voisinsVue();
+    _majSolActif();
     e.avatar.visible = haut && _permisGreffe("avatar");
     _appliquerPortee();
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
@@ -6939,6 +6987,7 @@
     if (!d) return false;
     d.planSol = oui === undefined ? !d.planSol : !!oui;
     if (!d.planSol) _libererPlanSol();
+    _majSolActif();
     d.sig = null;
     e.sale = true;
     return d.planSol;
@@ -10299,7 +10348,9 @@
           const m = e.mats[k];
           return { mat: k, recule: m.polygonOffset === true && (m.polygonOffsetFactor > 0 || m.polygonOffsetUnits > 0) };
         });
-        return { near: e.camera.near, far: e.camera.far, sol: sol, zones: zones };
+        return { near: e.camera.near, far: e.camera.far, sol: sol, zones: zones, maniereSol: _maniereSol(),
+          solMat: { transparent: e.sol.material.transparent, opacite: e.sol.material.opacity,
+            couleur: e.sol.material.colorWrite, profondeur: e.sol.material.depthWrite, ordre: e.sol.renderOrder } };
       })(),
       commandes: e.commandes, pave: !!e.pave && e.pave.isConnected,
       stick: e.stickZone ? _etatStick() : null, toucheNom: e.toucheNom, codesBas: e.codesBas,

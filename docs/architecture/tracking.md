@@ -2340,6 +2340,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   garde l'original dans `userData.matOrigine`. Coupé : le dessous en rendu d'origine, **rien au-dessus** (il
   couvrirait la scène, comme son plafond qu'elle retire : `_voisinCache`). À hauteur d'yeux, jamais. Checkup § 46
   (`KTA_V3D_SEUL=estomper`), § 48 (`=fantome`).
+- **Sol du niveau actif en vue d'édition** (`_maniereSol`, `_majSolActif`, décision produit ; rendus structures et
+  mixte, dont le sol d'un seul tenant cachait tout le dessous ; pas en galerie, où rien de plein n'est sous les
+  galeries) : 🌫️ activé, 🗺️ plan au sol éteint et niveau actif qui n'est pas le plus profond du plan → 🧱 coupé :
+  sol **invisible** (ni couleur ni profondeur) ; 🧱 allumé et un voisin du dessous montré : sol **voilé**
+  (`SOL_VOILE`, transparent sans écriture de profondeur, `ORDRE_SOL` : dessiné avant l'eau et les zones
+  transparentes). Le sol d'un seul tenant des voisins du dessous est alors caché aussi (`_placerVoisins`) : là où le
+  dessous n'a rien, le vide noir, jamais un sol de remplacement. Sinon (Le mien avec 🧱, niveau le plus profond, 🌫️
+  coupé, plan au sol allumé — il se dessine sans profondeur, le dessous passerait dessus —, hauteur d'yeux) : sol
+  plein. Le maillage reste en place : visée, dessin et touchers au sol le lisent toujours. Copies du matériau du sol
+  (recul `SOL_RECULE` et gabarit compris), jamais le matériau partagé. Checkup § 49 (`KTA_V3D_SEUL=solvoile`) ;
+  § 45 juge la profondeur sol plein (🌫️ coupé).
 - **Mémoire** (décision produit) : seulement les tuiles à portée (même rayon, même 🛡️ que le niveau actif),
   construites quand celles du niveau actif sont toutes posées, `VOISINS_PAR_IMAGE` (2) par image ; un voisin inchangé
   (altitude, hauteur, rendu, 🧱, données, filtres) est gardé quand la scène change de niveau (galerie inclinée, ▲▼).

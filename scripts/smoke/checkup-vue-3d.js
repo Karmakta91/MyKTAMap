@@ -96,6 +96,7 @@
 // Niveau du dessous estompé en vue d'édition (46, =estomper) : par défaut, bouton 🌫️, retenu, hauteur d'yeux intacte.
 // Passages et pentes des voisins (47, =voisinspassages) : coupés à ce qui est montré, jamais en double, arrivées intactes.
 // Niveau du dessus en fantôme en vue d'édition (48, =fantome) : transparent, sans sol, ne capte aucun toucher, 🌫️.
+// Sol actif voilé ou invisible en vue d'édition (49, =solvoile) : 🧱, Voisins / Le mien, niveau le plus profond, yeux.
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
@@ -9451,6 +9452,8 @@ async function sectionSolZones(nav) {
         await K.ouvrir({ depart: { x: P(0, 60).x, y: P(0, 60).y, cap: 0, niveau: 0 }, commandes: "pave" });
         if (K.textures().actives) K.basculerTextures();
         if (K.etat().eclairage.active.jour) K.reglerPleinJour(false);
+        // Sol plein (🌫️ coupé) : le cas où la profondeur départage l'eau et le sol (sol voilé ou invisible : § 49).
+        K.reglerEstomper(false);
         await K.limiterPortee(a.limitee, { confirme: true });
         if (!a.limitee) K.reglerPortee("tout");
         K.reglerNiveauxVus(a.niveauxVus);
@@ -9934,6 +9937,136 @@ async function sectionFantome(nav) {
     verifier(y === null && yeux.vue === "yeux" && yeux.maniere === null && yeux.estompes === 0 &&
       yeux.solsCaches === 0 && yeux.montrees > 0,
       nom + "hauteur d'yeux : le +1 en rendu d'origine (sol rendu, rien de transparent)", yeux);
+    await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); });
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
+// ── 49. Sol du niveau actif voilé ou invisible en vue d'édition (vue3d.js > _maniereSol, _majSolActif,
+// _placerVoisins ; KTA_V3D_SEUL=solvoile) ─────────────────────────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire, rendu structures : au 0, de l'eau à l'ouest (x < −20 m) ; au −1 (4 m dessous), un remblais à
+// l'est (x > 20 m) ; entre les deux, rien sur aucun niveau. Vue d'édition, 🌫️ activé :
+// 🧱 coupé + Voisins : sol invisible, remblais du −1 vu à travers, VIDE noir au milieu (sol du −1 caché aussi), eau
+// visible ; toucher au sol = le sol du 0 ; 🧱 allumé + Voisins : sol voilé (transparent, dessiné avant l'eau) ;
+// 🧱 allumé + Le mien : sol plein ; niveau le plus profond (−1) : sol plein, 🧱 coupé comme allumé ; 🌫️ coupé : sol
+// plein ; hauteur d'yeux : sol plein.
+async function sectionSolVoile(nav) {
+  const nom = "§ 49 ";
+  console.log("§ 49 — sol du niveau actif voilé ou invisible en vue d'édition");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-solvoile", [-1, 0], { "0": -25, "-1": -29 },
+    { "0": 2.5, "-1": 2.5 }, function () {
+      const P = window.__fxP;
+      const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+      window.setZones([
+        { uid: "zn_sv_eau", type: "eau", level: 0, points: rect(-400, -400, -20, 400) },
+        { uid: "zn_sv_rem", type: "remblais", level: -1, points: rect(20, -400, 400, 400) }
+      ]);
+    });
+  const page = t.page;
+  try {
+    // Ouvre au niveau `niveau`, vue d'édition, 🧱 `tex`, réglage des niveaux `vus` ; rend l'état du sol.
+    const poser = function (niveau, tex, vus) {
+      return page.evaluate(async function (a) {
+        const K = window.KtaVue3D;
+        await window.__fxOuvrir(0, 30, 0, a.niveau, "structures");
+        if (K.etat().eclairage.active.jour) K.reglerPleinJour(false);
+        if (K.textures().actives !== a.tex) K.basculerTextures();
+        K.reglerNiveauxVus(a.vus);
+        if (K.etat().vue !== "plongee") K.basculerVue();
+        K.zoomer(40 / K.etat().portee.recul);
+        await window.__fxImages(60);
+        const e = K.etat(), v = e.voisins.niveaux.find(function (q) { return q.niveau !== a.niveau; }) || null;
+        return { niveau: e.niveau, maniere: e.profondeur.maniereSol, mat: e.profondeur.solMat,
+          planVoisin: v && v.plans ? v.plans.vus : null };
+      }, { niveau: niveau, tex: tex, vus: vus });
+    };
+    const regions = async function () {
+      await page.waitForTimeout(300);
+      const b64 = (await page.screenshot({ type: "png" })).toString("base64");
+      return page.evaluate(function (b) {
+        return new Promise(function (ok) {
+          const img = new Image();
+          img.onload = function () {
+            const c = document.createElement("canvas"), w = img.width, h = img.height;
+            c.width = w; c.height = h;
+            const g = c.getContext("2d");
+            g.drawImage(img, 0, 0);
+            const part = function (x0, x1, test) {
+              const d = g.getImageData(Math.round(w * x0), Math.round(h * 0.62), Math.round(w * (x1 - x0)),
+                Math.round(h * 0.18)).data;
+              let n = 0, k = 0;
+              for (let i = 0; i < d.length; i += 4 * 3) { n++; if (test(d[i], d[i + 1], d[i + 2])) k++; }
+              return +(k / n).toFixed(3);
+            };
+            ok({ eauBleue: part(0.06, 0.15, function (r, gg, bb) { return bb > r + 15 && bb > gg; }),
+              videNoir: part(0.44, 0.56, function (r, gg, bb) { return r + gg + bb < 12; }),
+              dessousVu: part(0.72, 0.86, function (r, gg, bb) { return r + gg + bb >= 12; }) });
+          };
+          img.src = "data:image/png;base64," + b;
+        });
+      }, b64);
+    };
+    await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); });
+    // 🧱 coupé + Voisins : invisible.
+    const a = await poser(0, false, "voisins");
+    const pa = await regions();
+    await capture(page, "solvoile-invisible");
+    const vise = await page.evaluate(function () {
+      const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+      const v = window.KtaVue3D.viser(r.left + r.width * 0.8, r.top + r.height * 0.7);
+      return v ? { sol: v.sol, h: +v.h.toFixed(2), x: window.__fxRel(v)[0] } : null;
+    });
+    verifier(a.niveau === 0 && a.maniere === "invisible" && a.mat.couleur === false && a.mat.profondeur === false &&
+      a.planVoisin === false && pa.dessousVu > 0.5 && pa.videNoir > 0.97 && pa.eauBleue > 0.9,
+      nom + "🧱 coupé, Voisins : sol du 0 invisible, remblais du −1 vu à travers (" + pa.dessousVu + "), vide noir là " +
+      "où le −1 n'a rien (" + pa.videNoir + "), eau du 0 visible (" + pa.eauBleue + ")", { etat: a, px: pa });
+    verifier(!!vise && vise.sol === true && Math.abs(vise.h) < 0.05 && vise.x > 20,
+      nom + "toucher au sol au-dessus du remblais du −1 : le sol du 0 (le plan de pose reste là)", vise);
+    // 🧱 allumé + Voisins : voilé ; Le mien : plein.
+    const b = await poser(0, true, "voisins");
+    await capture(page, "solvoile-voile");
+    verifier(b.maniere === "voile" && b.mat.transparent === true && b.mat.opacite === 0.5 &&
+      b.mat.profondeur === false && b.mat.ordre < 0 && b.planVoisin === false,
+      nom + "🧱 allumé, Voisins : sol du 0 voilé (transparent, sans profondeur, dessiné avant l'eau), sol du −1 caché",
+      b);
+    const c = await poser(0, true, "mien");
+    verifier(c.maniere === "plein" && c.mat.transparent === false && c.mat.couleur === true && c.mat.profondeur === true,
+      nom + "🧱 allumé, Le mien : sol plein", c);
+    // Niveau le plus profond : plein, 🧱 coupé comme allumé.
+    const d1 = await poser(-1, false, "voisins");
+    const pd = await regions();
+    const d2 = await poser(-1, true, "voisins");
+    verifier(d1.niveau === -1 && d1.maniere === "plein" && d1.mat.couleur === true && d2.maniere === "plein" &&
+      d2.mat.transparent === false && pd.dessousVu > 0.5,
+      nom + "niveau le plus profond (−1) : sol plein, 🧱 coupé comme allumé (son remblais se voit, posé dessus)",
+      { coupe: d1, allume: d2, px: pd });
+    // 🌫️ coupé, puis hauteur d'yeux : plein.
+    const e = await page.evaluate(async function () {
+      const K = window.KtaVue3D, r = {};
+      await window.__fxOuvrir(0, 30, 0, 0, "structures");
+      if (K.textures().actives) K.basculerTextures();
+      K.reglerNiveauxVus("voisins");
+      if (K.etat().vue !== "plongee") K.basculerVue();
+      await window.__fxImages(30);
+      K.reglerEstomper(false);
+      await window.__fxImages(5);
+      r.coupe = K.etat().profondeur.maniereSol;
+      K.reglerEstomper(true);
+      await window.__fxImages(5);
+      r.remis = K.etat().profondeur.maniereSol;
+      K.basculerVue();
+      await window.__fxImages(10);
+      r.yeux = { vue: K.etat().vue, maniere: K.etat().profondeur.maniereSol,
+        couleur: K.etat().profondeur.solMat.couleur };
+      return r;
+    });
+    verifier(e.coupe === "plein" && e.remis === "invisible" && e.yeux.vue === "yeux" && e.yeux.maniere === "plein" &&
+      e.yeux.couleur === true,
+      nom + "🌫️ coupé : sol plein ; hauteur d'yeux : sol plein", e);
     await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); });
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
   } catch (err) {
@@ -11003,7 +11136,7 @@ async function sectionGestesDoigt(nav) {
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
-      SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome") {
+      SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -17310,6 +17443,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "estomper") await sectionEstomper(nav);
     if (!SEUL || SEUL === "voisinspassages") await sectionVoisinsPassages(nav);
     if (!SEUL || SEUL === "fantome") await sectionFantome(nav);
+    if (!SEUL || SEUL === "solvoile") await sectionSolVoile(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
