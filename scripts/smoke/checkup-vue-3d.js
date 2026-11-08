@@ -11423,7 +11423,7 @@ async function sectionGestesDoigt(nav) {
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer", "vue3d.fichesMontrer",
             "vue3d.lampeJourAide", "vue3d.limiterAide", "vue3d.niveauxVus.voisinsAide", "vue3d.niveauxVus.tousAide",
-            "vue3d.niveauxVus.mienAide", "vue3d.addons"].map(function (k) {
+            "vue3d.niveauxVus.mienAide", "vue3d.estomperAide", "vue3d.addons"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
             return t;
           }) };
