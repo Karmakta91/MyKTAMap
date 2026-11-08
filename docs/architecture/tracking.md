@@ -2331,12 +2331,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   d'un puits trouerait aussi le fond qu'on voit par elle.
 - **Niveau actif d'abord** : ni la règle du pas, ni la visée (`_pointVise`), ni les fiches, ni les passages, ni le
   suivi ne lisent les voisins ; ils se voient et cachent ce qui est derrière eux. Le niveau actif ne change que par un
-  passage, une galerie inclinée ou ▲▼. **Vue d'édition** : rien au-dessus du niveau actif (il couvrirait la scène,
-  comme son plafond qu'elle retire), les voisins du dessous sans plafond et **estompés** (réglage ⚙️ « 🌫️ Estomper »,
-  `reglerEstomper`, `config.js > getVue3DEstomper`, `myktamap_v3d_estomper_v1`, cet appareil, activé par défaut, au
-  doigt comme au pointeur) : copies assombries de leurs matériaux (`_matEstompe`, `ESTOMPE.dessous`), le maillage
-  garde l'original dans `userData.matOrigine` ; coupé, rendu d'origine ; à hauteur d'yeux, jamais. Checkup § 46
-  (`KTA_V3D_SEUL=estomper`).
+  passage, une galerie inclinée ou ▲▼. **Vue d'édition** : voisins sans plafond, **estompés** selon le réglage ⚙️
+  « 🌫️ Estomper » (`reglerEstomper`, `config.js > getVue3DEstomper`, `myktamap_v3d_estomper_v1`, cet appareil, activé
+  par défaut, au doigt comme au pointeur ; un seul réglage pour les deux côtés) : le **dessous assombri**
+  (`ESTOMPE.dessous`), le **dessus en fantôme** (`ESTOMPE.fantome` : transparent, sans écriture de profondeur, sol
+  caché) : on voit où passent ses galeries sans qu'il cache le niveau actif, et il ne capte aucun toucher
+  (`_pointVise` ne lit que les tuiles du niveau actif). Copies des matériaux par manière (`_matEstompe`), le maillage
+  garde l'original dans `userData.matOrigine`. Coupé : le dessous en rendu d'origine, **rien au-dessus** (il
+  couvrirait la scène, comme son plafond qu'elle retire : `_voisinCache`). À hauteur d'yeux, jamais. Checkup § 46
+  (`KTA_V3D_SEUL=estomper`), § 48 (`=fantome`).
 - **Mémoire** (décision produit) : seulement les tuiles à portée (même rayon, même 🛡️ que le niveau actif),
   construites quand celles du niveau actif sont toutes posées, `VOISINS_PAR_IMAGE` (2) par image ; un voisin inchangé
   (altitude, hauteur, rendu, 🧱, données, filtres) est gardé quand la scène change de niveau (galerie inclinée, ▲▼).

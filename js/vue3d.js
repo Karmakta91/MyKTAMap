@@ -3285,7 +3285,7 @@
     }
     vol.obj.position.y = v.dy;
     vol.obj.userData.voisin = v.niveau;
-    if (_voisinEstompe(v)) _estomperObjet(vol.obj, true);
+    if (_voisinEstompe(v)) _estomperObjet(vol.obj, _voisinEstompe(v));
   }
 
   function _voisinNeuf(n, sig) {
@@ -3302,7 +3302,8 @@
       v.plans = { sol: new THREE.Mesh(e.sol.geometry, M.sol), plafond: new THREE.Mesh(e.sol.geometry, M.plafond) };
       v.plans.sol.userData.voisin = v.plans.plafond.userData.voisin = n;
       e.scene.add(v.plans.sol, v.plans.plafond);
-      if (_voisinEstompe(v)) { _estomperObjet(v.plans.sol, true); _estomperObjet(v.plans.plafond, true); }
+      const mode = _voisinEstompe(v);
+      if (mode) { _estomperObjet(v.plans.sol, mode); _estomperObjet(v.plans.plafond, mode); }
     }
     v.ms = performance.now() - t0;
     return v;
@@ -3353,7 +3354,7 @@
     if (e.vue === "plongee") {
       t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = false; });
     }
-    if (_voisinEstompe(v)) _estomperObjet(t.obj, true);
+    if (_voisinEstompe(v)) _estomperObjet(t.obj, _voisinEstompe(v));
   }
 
   // À chaque image (et `tout` pour une mesure) : tuiles des voisins à portée construites, seulement quand celles du
@@ -3361,11 +3362,11 @@
   function _gererVoisins(tout) {
     const e = _e;
     if (!e.voisins || !e.voisins.length) return;
-    const c = _centreScene(), rVue = _rayonScene(), rGarde = rVue + 2 * TUILE, haut = e.vue === "plongee";
+    const c = _centreScene(), rVue = _rayonScene(), rGarde = rVue + 2 * TUILE;
     const t0 = performance.now();
     let n = tout ? 0 : (e.construitesImage ? VOISINS_PAR_IMAGE : 0);
     e.voisins.forEach(function (v) {
-      const cache = haut && v.dessus;
+      const cache = _voisinCache(v);
       v.tuiles.forEach(function (t) {
         const d = _distTuile(t, c.x, c.z);
         if (d <= rVue && !cache) {
@@ -3392,7 +3393,8 @@
     e.msVoisins += performance.now() - t0;
   }
 
-  // Vue changée (yeux / édition) : plafonds des voisins du dessous ; ceux du dessus suivent _gererVoisins.
+  // Vue changée (yeux / édition) : plafonds des voisins (cachés en vue d'édition), manière estompée (_estomperVoisins) ;
+  // montrés ou cachés par _gererVoisins (_voisinCache).
   function _voisinsVue() {
     const e = _e, haut = e.vue === "plongee";
     (e.voisins || []).forEach(function (v) {
@@ -3447,58 +3449,80 @@
   }
 
   // ── Autres niveaux estompés en vue d'édition (réglage ⚙️ 🌫️, config.js > getVue3DEstomper) ─────────────────────
-  // ⚠️ contrat (décision produit) : en vue d'édition, un niveau voisin du DESSOUS (montré sans plafond) est assombri
-  // (ESTOMPE.dessous : part de sa couleur gardée), pour qu'on le lise sous le niveau actif sans le confondre avec lui ;
-  // surtout visible entre les galeries en rendu galerie. Réglage coupé : rendu d'origine. À hauteur d'yeux, jamais.
-  // Copies des matériaux faites à la demande (_matEstompe, une par matériau d'origine), recolorées quand l'original
-  // change (🧱 : carte et couleur du sol), libérées avec la vue ; un maillage garde son matériau d'origine dans
-  // userData.matOrigine. Les voisins ne sont ni visés ni touchés (_pointVise) : rien d'autre ne change.
-  const ESTOMPE = { dessous: 0.35 };
+  // ⚠️ contrat (décision produit) : en vue d'édition, réglage activé (défaut), un voisin du DESSOUS (montré sans
+  // plafond) est assombri (ESTOMPE.dessous : part de sa couleur gardée), pour qu'on le lise sous le niveau actif sans le
+  // confondre avec lui ; un voisin du DESSUS est montré en FANTÔME (ESTOMPE.fantome : opacité, sans écriture de
+  // profondeur, sans sol ni plafond) : on voit où passent ses galeries sans qu'il cache le niveau actif. Réglage coupé :
+  // le dessous en rendu d'origine, le dessus pas montré (il couvrirait la scène). À hauteur d'yeux, jamais.
+  // Copies des matériaux faites à la demande (_matEstompe, une par matériau d'origine et par manière), recolorées quand
+  // l'original change (🧱 : carte et couleur du sol), libérées avec la vue ; un maillage garde son matériau d'origine
+  // dans userData.matOrigine. Les voisins ne sont ni visés ni touchés (_pointVise ne lit que les tuiles du niveau
+  // actif) : un fantôme ne capte aucun toucher.
+  const ESTOMPE = { dessous: 0.35, fantome: 0.16 };
 
   function _estomper() {
     return typeof window.getVue3DEstomper !== "function" || window.getVue3DEstomper() === true;
   }
 
-  function _matEstompe(m) {
+  // Copie du matériau m pour la manière `mode` ("sombre" | "fantome").
+  function _matEstompe(m, mode) {
     const e = _e;
     if (!m || !m.color) return m;
     if (!e.matsEstompes) e.matsEstompes = new Map();
-    let a = e.matsEstompes.get(m);
+    const cle = mode + "|" + m.uuid;
+    let a = e.matsEstompes.get(cle);
     if (!a) {
       a = m.clone();
       // 🩸 clone() ne reprend pas onBeforeCompile (hachures d'une zone inaccessible, _hachurer).
       if (Object.prototype.hasOwnProperty.call(m, "onBeforeCompile")) a.onBeforeCompile = m.onBeforeCompile;
-      e.matsEstompes.set(m, a);
+      if (mode === "fantome") {
+        a.transparent = true;
+        a.opacity = (m.opacity || 1) * ESTOMPE.fantome;
+        a.depthWrite = false;
+        a.side = THREE.DoubleSide;
+      }
+      e.matsEstompes.set(cle, a);
     }
     if (a.map !== m.map || !a.userData.base || !a.userData.base.equals(m.color)) {
       a.map = m.map;
-      a.color.copy(m.color).multiplyScalar(ESTOMPE.dessous);
+      a.color.copy(m.color);
+      if (mode === "sombre") a.color.multiplyScalar(ESTOMPE.dessous);
       a.userData.base = m.color.clone();
       a.needsUpdate = true;
     }
     return a;
   }
 
-  // Matériaux d'un objet d'un voisin : estompés ou d'origine selon `oui`.
-  function _estomperObjet(obj, oui) {
+  // Matériaux d'un objet d'un voisin selon `mode` (false : d'origine). Fantôme : sol caché (le plafond l'est déjà en
+  // vue d'édition), rendu à la sortie.
+  function _estomperObjet(obj, mode) {
     if (!obj) return;
     obj.traverse(function (o) {
       if (!o.isMesh || !o.material || Array.isArray(o.material)) return;
       const base = o.userData.matOrigine || o.material;
-      if (oui) { o.userData.matOrigine = base; o.material = _matEstompe(base); }
+      if (mode) { o.userData.matOrigine = base; o.material = _matEstompe(base, mode); }
       else if (o.userData.matOrigine) { o.material = base; delete o.userData.matOrigine; }
+      if (mode === "fantome" && o.userData.famille === "sol") { o.visible = false; o.userData.solFantome = true; }
+      else if (o.userData.solFantome) { o.visible = true; delete o.userData.solFantome; }
     });
   }
 
+  // Manière d'un voisin : "sombre" (dessous), "fantome" (dessus) en vue d'édition réglage activé, sinon false.
   function _voisinEstompe(v) {
-    return _e.vue === "plongee" && !v.dessus && _estomper();
+    if (_e.vue !== "plongee" || !_estomper()) return false;
+    return v.dessus ? "fantome" : "sombre";
+  }
+
+  // Voisin caché : celui du dessus en vue d'édition, réglage coupé.
+  function _voisinCache(v) {
+    return _e.vue === "plongee" && v.dessus && !_estomper();
   }
 
   function _estomperVoisin(v) {
-    const oui = _voisinEstompe(v);
-    v.tuiles.forEach(function (t) { if (t.obj) _estomperObjet(t.obj, oui); });
-    (v.volumes || []).forEach(function (vol) { if (vol.obj) _estomperObjet(vol.obj, oui); });
-    if (v.plans) { _estomperObjet(v.plans.sol, oui); _estomperObjet(v.plans.plafond, oui); }
+    const mode = _voisinEstompe(v);
+    v.tuiles.forEach(function (t) { if (t.obj) _estomperObjet(t.obj, mode); });
+    (v.volumes || []).forEach(function (vol) { if (vol.obj) _estomperObjet(vol.obj, mode); });
+    if (v.plans) { _estomperObjet(v.plans.sol, mode); _estomperObjet(v.plans.plafond, mode); }
     _e.sale = true;
   }
 
@@ -3510,6 +3534,7 @@
     const v = oui === undefined ? !_estomper() : oui !== false;
     if (typeof window.setVue3DEstomper === "function") window.setVue3DEstomper(v);
     _estomperVoisins();
+    _gererVoisins(false);
     _majNiveauxVus();
     return _estomper();
   }
@@ -3518,7 +3543,7 @@
   function _etatVoisins() {
     const e = _e;
     return { mode: e.niveauxVus, estomper: _estomper(), ms: +(e.msVoisins || 0).toFixed(1), niveaux: (e.voisins || []).map(function (v) {
-      let construites = 0, montrees = 0, sansPlafond = 0, maillages = 0, estompes = 0;
+      let construites = 0, montrees = 0, sansPlafond = 0, maillages = 0, estompes = 0, solsCaches = 0;
       v.tuiles.forEach(function (t) {
         if (!t.obj) return;
         construites++;
@@ -3528,10 +3553,11 @@
           if (!o.isMesh) return;
           maillages++;
           if (o.userData.matOrigine) estompes++;
+          if (o.userData.solFantome && !o.visible) solsCaches++;
         });
       });
       return { niveau: v.niveau, dy: +v.dy.toFixed(3), dessus: v.dessus, hauteur: v.hauteur, tuiles: v.tuiles.size,
-        maillages: maillages, estompes: estompes,
+        maillages: maillages, estompes: estompes, solsCaches: solsCaches, maniere: _voisinEstompe(v) || null,
         volumes: (v.volumes || []).map(function (vol) {
           // Emprise verticale construite (après coupe), repère du voisin.
           let y0 = Infinity, y1 = -Infinity, bouches = 0;

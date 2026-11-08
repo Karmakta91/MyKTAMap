@@ -2351,7 +2351,8 @@ icônes.
   exclusifs côte à côte, Voisins / Tous / Le mien (`aria-pressed`, pastille ronde au lieu de la case,
   `myktamap_v3d_niveaux_vus_v1`, cet appareil ; au doigt, Voisins à chaque ouverture ; effets : `tracking.md` § Vue 3D
   › Niveaux voisins) ; dessous, 🌫️ **Estomper** (interrupteur `aria-pressed`, `myktamap_v3d_estomper_v1`, cet
-  appareil, activé par défaut ; même ligne cachée sur un plan à un niveau).
+  appareil, activé par défaut ; en vue d'édition, dessous assombri et dessus en fantôme ; ligne cachée sur un plan à
+  un niveau).
   La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼)
   sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier

@@ -95,6 +95,7 @@
 // (unités seules), eau sans bandes du sol (structures, mixte ; 150 m et tout le plan), niveau du dessous invisible.
 // Niveau du dessous estompé en vue d'édition (46, =estomper) : par défaut, bouton 🌫️, retenu, hauteur d'yeux intacte.
 // Passages et pentes des voisins (47, =voisinspassages) : coupés à ce qui est montré, jamais en double, arrivées intactes.
+// Niveau du dessus en fantôme en vue d'édition (48, =fantome) : transparent, sans sol, ne capte aucun toucher, 🌫️.
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
@@ -9054,12 +9055,14 @@ async function sectionNiveauxVoisins(nav) {
       K.reglerNiveauxVus("voisins");
       await window.__voImages(40);
       K.basculerVue();
+      K.reglerEstomper(false);   // 🌫️ coupé : le rendu du lot C (le dessus en fantôme : § 48)
       await window.__voImages(40);
       e = K.etat();
       r.edition = e.voisins.niveaux.map(function (v) {
         return { niveau: v.niveau, montrees: v.montrees, plafondsCaches: v.plafondsCaches, construites: v.construites };
       });
       K.basculerVue();
+      K.reglerEstomper(true);
       await window.__voImages(20);
       e = K.etat();
       r.yeux = e.voisins.niveaux.map(function (v) { return { niveau: v.niveau, montrees: v.montrees,
@@ -9095,7 +9098,8 @@ async function sectionNiveauxVoisins(nav) {
     const yem1 = c.yeux.find(function (v) { return v.niveau === -1; }) || {};
     verifier(ed1.montrees === 0 && edm1.montrees > 0 && edm1.plafondsCaches > 0 && ye1.montrees > 0 &&
       yem1.plafondsCaches === 0,
-      nom + "vue d'édition : rien du +1 (au-dessus), le −1 sans plafond ; retour à hauteur d'yeux : tout revient",
+      nom + "vue d'édition (🌫️ coupé) : rien du +1 (au-dessus), le −1 sans plafond ; retour à hauteur d'yeux : tout " +
+      "revient",
       { edition: c.edition, yeux: c.yeux });
     verifier(JSON.stringify(c.pasMien) === JSON.stringify(c.pasVoisins) &&
       JSON.stringify(c.pasMien) === JSON.stringify(c.pasTous) && c.pasMien.sud.ok < 12 && c.pasMien.est.ok === 40 &&
@@ -9836,6 +9840,101 @@ async function sectionVoisinsPassages(nav) {
       nom + "passages et galeries inclinées du niveau actif (arrivées, raccords) identiques dans les trois réglages",
       { mien: R.mien.actifs, voisins: R.voisins.actifs });
     await capture(page, "voisins-passages-tous");
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
+// ── 48. Niveau du dessus en fantôme en vue d'édition (vue3d.js > _voisinEstompe, _voisinCache, _matEstompe ;
+// KTA_V3D_SEUL=fantome) ──────────────────────────────────────────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire, rendu galerie : galerie nord-sud du 0 sous la place, galerie est-ouest du +1 (5 m
+// au-dessus) qui passe au-dessus du point visé. Par défaut (🌫️ activé), en vue d'édition : +1 montré en fantôme
+// (tous ses maillages transparents, sol caché), pixels du +1 visibles ; un toucher au point visé atteint le sol du 0
+// (même résultat qu'en « Le mien ») ; 🌫️ coupé : +1 caché (rendu du lot C) ; hauteur d'yeux : rendu d'origine.
+async function sectionFantome(nav) {
+  const nom = "§ 48 ";
+  console.log("§ 48 — niveau du dessus en fantôme en vue d'édition");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-fantome", [0, 1], { "1": -20, "0": -25 },
+    { "1": 2.5, "0": 2.5 }, function () {
+      const P = window.__fxP;
+      window.setRoads([
+        { uid: "rd_fa_0", type: "principal", level: 0, points: [P(0, -80), P(0, 80)] },
+        { uid: "rd_fa_p1", type: "principal", level: 1, points: [P(-80, 0), P(80, 0)] }
+      ]);
+    });
+  const page = t.page;
+  try {
+    const etatP1 = function () {
+      return page.evaluate(function () {
+        const e = window.KtaVue3D.etat(), v = e.voisins.niveaux.find(function (q) { return q.niveau === 1; }) || {};
+        return { vue: e.vue, mode: e.voisins.mode, maniere: v.maniere, montrees: v.montrees, maillages: v.maillages,
+          estompes: v.estompes, solsCaches: v.solsCaches };
+      });
+    };
+    const viserCentre = function () {
+      return page.evaluate(function () {
+        const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+        const v = window.KtaVue3D.viser(r.left + r.width / 2, r.top + r.height / 2);
+        return v ? { genre: v.genre, sol: v.sol, h: +v.h.toFixed(2), rel: window.__fxRel(v) } : null;
+      });
+    };
+    await page.evaluate(async function () {
+      localStorage.removeItem("myktamap_v3d_estomper_v1");
+      const K = window.KtaVue3D;
+      await window.__fxOuvrir(0, 2, 0, 0, "galerie");
+      if (K.etat().eclairage.active.jour) K.reglerPleinJour(false);
+      K.reglerNiveauxVus("voisins");
+      if (K.etat().vue !== "plongee") K.basculerVue();
+      K.zoomer(30 / K.etat().portee.recul);
+      await window.__fxImages(60);
+    });
+    const a = await etatP1();
+    const visA = await viserCentre();
+    const lumA = await luminanceCapture(page, 0.6, 0.35, 0.95, 0.6);
+    await capture(page, "fantome-defaut");
+    verifier(a.vue === "plongee" && a.maniere === "fantome" && a.montrees > 0 && a.maillages > 0 &&
+      a.estompes === a.maillages && a.solsCaches > 0,
+      nom + "par défaut, vue d'édition : le +1 montré en fantôme (tous ses maillages transparents, sol caché)", a);
+    const b = await page.evaluate(async function () {
+      window.KtaVue3D.reglerNiveauxVus("mien");
+      await window.__fxImages(20);
+      return window.KtaVue3D.etat().voisins.niveaux.length;
+    });
+    const visMien = await viserCentre();
+    verifier(b === 0 && !!visA && Math.abs(visA.h) < 0.05 &&
+      JSON.stringify(visA) === JSON.stringify(visMien),
+      nom + "toucher au point visé, sous le fantôme : la galerie du 0 (au sol, pas à 5 m), comme en « Le mien » (le " +
+      "fantôme ne capte rien)",
+      { fantome: visA, mien: visMien });
+    const c = await page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      K.reglerNiveauxVus("voisins");
+      await window.__fxImages(60);
+      K.reglerEstomper(false);
+      await window.__fxImages(20);
+      return null;
+    });
+    const off = await etatP1();
+    const lumOff = await luminanceCapture(page, 0.6, 0.35, 0.95, 0.6);
+    await capture(page, "fantome-coupe");
+    verifier(c === null && off.maniere === null && off.montrees === 0 && lumA > lumOff + 2,
+      nom + "🌫️ coupé : le +1 caché en vue d'édition (rendu du lot C) ; luminance du fantôme " + lumA + " → " + lumOff,
+      { off: off, lumA: lumA, lumOff: lumOff });
+    const y = await page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      K.reglerEstomper(true);
+      K.basculerVue();
+      await window.__fxImages(30);
+      return null;
+    });
+    const yeux = await etatP1();
+    verifier(y === null && yeux.vue === "yeux" && yeux.maniere === null && yeux.estompes === 0 &&
+      yeux.solsCaches === 0 && yeux.montrees > 0,
+      nom + "hauteur d'yeux : le +1 en rendu d'origine (sol rendu, rien de transparent)", yeux);
+    await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); });
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
   } catch (err) {
     pb(nom + "exception du harnais : " + (err && err.message));
@@ -10904,7 +11003,7 @@ async function sectionGestesDoigt(nav) {
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
-      SEUL === "estomper" || SEUL === "voisinspassages") {
+      SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -17210,6 +17309,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "solzones") await sectionSolZones(nav);
     if (!SEUL || SEUL === "estomper") await sectionEstomper(nav);
     if (!SEUL || SEUL === "voisinspassages") await sectionVoisinsPassages(nav);
+    if (!SEUL || SEUL === "fantome") await sectionFantome(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
