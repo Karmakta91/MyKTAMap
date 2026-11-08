@@ -10,7 +10,7 @@
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(o), parois(),
 //   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
 //   zoomer(facteur), panner(dx, dz), surPlace(), niveauEdition(sens), reglerPortee(m), reglerLampe(%),
-//   reglerFaisceau(°), reglerPleinJour(bool), reglerNiveauxVus("voisins" | "tous" | "mien"),
+//   reglerFaisceau(°), reglerPleinJour(bool), reglerNiveauxVus("voisins" | "tous" | "mien"), reglerEstomper(bool),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
 //   _ctxGreffe), viser(cx, cy) (colonne d'outils de la vue d'édition : outils de la carte, _poserSommet),
@@ -2670,7 +2670,7 @@
     const e = _e;
     // Reprise du contexte : les voisins de l'ancienne scène ne sont jamais libérés sur la nouvelle (_voisinsPreparer
     // les refait au _reindexer qui suit).
-    e.voisins = []; e.matsV = null;
+    e.voisins = []; e.matsV = null; e.matsEstompes = null;
     e.panneaux = new Set();
     e.panneauxGen = 0;
     e.icones = new Map();
@@ -3180,6 +3180,7 @@
       v.plans = { sol: new THREE.Mesh(e.sol.geometry, M.sol), plafond: new THREE.Mesh(e.sol.geometry, M.plafond) };
       v.plans.sol.userData.voisin = v.plans.plafond.userData.voisin = n;
       e.scene.add(v.plans.sol, v.plans.plafond);
+      if (_voisinEstompe(v)) { _estomperObjet(v.plans.sol, true); _estomperObjet(v.plans.plafond, true); }
     }
     v.ms = performance.now() - t0;
     return v;
@@ -3201,6 +3202,7 @@
     });
     e.voisins = gardes;
     if (e.matsV) _matsVoisins();
+    _estomperVoisins();   // côté changé (voisins gardés), originaux changés (🧱)
     e.sale = true;
   }
 
@@ -3228,6 +3230,7 @@
     if (e.vue === "plongee") {
       t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = false; });
     }
+    if (_voisinEstompe(v)) _estomperObjet(t.obj, true);
   }
 
   // À chaque image (et `tout` pour une mesure) : tuiles des voisins à portée construites, seulement quand celles du
@@ -3263,6 +3266,7 @@
         if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
       });
     });
+    _estomperVoisins();
     _gererVoisins(false);
   }
 
@@ -3299,24 +3303,100 @@
   function _majNiveauxVus() {
     const e = _e, l = e && e.ligneNiveauxVus;
     if (!l) return;
-    l.hidden = !((window.APP_CONFIG || {}).multiLevel === true);
+    const multi = (window.APP_CONFIG || {}).multiLevel === true;
+    l.hidden = !multi;
     (e.boutonsNiveauxVus || []).forEach(function (b) {
       b.setAttribute("aria-pressed", b.dataset.niveauxVus === e.niveauxVus ? "true" : "false");
     });
+    if (e.ligneEstomper) e.ligneEstomper.hidden = !multi;
+    if (e.boutonEstomper) e.boutonEstomper.setAttribute("aria-pressed", _estomper() ? "true" : "false");
+  }
+
+  // ── Autres niveaux estompés en vue d'édition (réglage ⚙️ 🌫️, config.js > getVue3DEstomper) ─────────────────────
+  // ⚠️ contrat (décision produit) : en vue d'édition, un niveau voisin du DESSOUS (montré sans plafond) est assombri
+  // (ESTOMPE.dessous : part de sa couleur gardée), pour qu'on le lise sous le niveau actif sans le confondre avec lui ;
+  // surtout visible entre les galeries en rendu galerie. Réglage coupé : rendu d'origine. À hauteur d'yeux, jamais.
+  // Copies des matériaux faites à la demande (_matEstompe, une par matériau d'origine), recolorées quand l'original
+  // change (🧱 : carte et couleur du sol), libérées avec la vue ; un maillage garde son matériau d'origine dans
+  // userData.matOrigine. Les voisins ne sont ni visés ni touchés (_pointVise) : rien d'autre ne change.
+  const ESTOMPE = { dessous: 0.35 };
+
+  function _estomper() {
+    return typeof window.getVue3DEstomper !== "function" || window.getVue3DEstomper() === true;
+  }
+
+  function _matEstompe(m) {
+    const e = _e;
+    if (!m || !m.color) return m;
+    if (!e.matsEstompes) e.matsEstompes = new Map();
+    let a = e.matsEstompes.get(m);
+    if (!a) {
+      a = m.clone();
+      // 🩸 clone() ne reprend pas onBeforeCompile (hachures d'une zone inaccessible, _hachurer).
+      if (Object.prototype.hasOwnProperty.call(m, "onBeforeCompile")) a.onBeforeCompile = m.onBeforeCompile;
+      e.matsEstompes.set(m, a);
+    }
+    if (a.map !== m.map || !a.userData.base || !a.userData.base.equals(m.color)) {
+      a.map = m.map;
+      a.color.copy(m.color).multiplyScalar(ESTOMPE.dessous);
+      a.userData.base = m.color.clone();
+      a.needsUpdate = true;
+    }
+    return a;
+  }
+
+  // Matériaux d'un objet d'un voisin : estompés ou d'origine selon `oui`.
+  function _estomperObjet(obj, oui) {
+    if (!obj) return;
+    obj.traverse(function (o) {
+      if (!o.isMesh || !o.material || Array.isArray(o.material)) return;
+      const base = o.userData.matOrigine || o.material;
+      if (oui) { o.userData.matOrigine = base; o.material = _matEstompe(base); }
+      else if (o.userData.matOrigine) { o.material = base; delete o.userData.matOrigine; }
+    });
+  }
+
+  function _voisinEstompe(v) {
+    return _e.vue === "plongee" && !v.dessus && _estomper();
+  }
+
+  function _estomperVoisin(v) {
+    const oui = _voisinEstompe(v);
+    v.tuiles.forEach(function (t) { if (t.obj) _estomperObjet(t.obj, oui); });
+    if (v.plans) { _estomperObjet(v.plans.sol, oui); _estomperObjet(v.plans.plafond, oui); }
+    _e.sale = true;
+  }
+
+  function _estomperVoisins() { (_e.voisins || []).forEach(_estomperVoisin); }
+
+  // Bouton 🌫️ de la tuile ⚙️ : bascule (ou pose) le réglage de cet appareil. Rend l'état en vigueur, null vue fermée.
+  function reglerEstomper(oui) {
+    if (!_e) return null;
+    const v = oui === undefined ? !_estomper() : oui !== false;
+    if (typeof window.setVue3DEstomper === "function") window.setVue3DEstomper(v);
+    _estomperVoisins();
+    _majNiveauxVus();
+    return _estomper();
   }
 
   // Relevé (checkup) des voisins : niveau, altitude, côté, hauteur, tuiles construites et montrées, plans.
   function _etatVoisins() {
     const e = _e;
-    return { mode: e.niveauxVus, ms: +(e.msVoisins || 0).toFixed(1), niveaux: (e.voisins || []).map(function (v) {
-      let construites = 0, montrees = 0, sansPlafond = 0;
+    return { mode: e.niveauxVus, estomper: _estomper(), ms: +(e.msVoisins || 0).toFixed(1), niveaux: (e.voisins || []).map(function (v) {
+      let construites = 0, montrees = 0, sansPlafond = 0, maillages = 0, estompes = 0;
       v.tuiles.forEach(function (t) {
         if (!t.obj) return;
         construites++;
         if (_montreDansScene(t.obj)) montrees++;
         t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond" && !o.visible) sansPlafond++; });
+        t.obj.traverse(function (o) {
+          if (!o.isMesh) return;
+          maillages++;
+          if (o.userData.matOrigine) estompes++;
+        });
       });
       return { niveau: v.niveau, dy: +v.dy.toFixed(3), dessus: v.dessus, hauteur: v.hauteur, tuiles: v.tuiles.size,
+        maillages: maillages, estompes: estompes,
         construites: construites, montrees: montrees, plafondsCaches: sansPlafond, y: (function () {
           let y = null;
           v.tuiles.forEach(function (t) { if (t.obj && y === null) y = +t.obj.position.y.toFixed(3); });
@@ -8374,6 +8454,18 @@
       b.dataset.niveauxVus = k;
       return b;
     });
+    const ligneE = document.createElement("div");
+    ligneE.className = "kta-v3d-reglages-ligne";
+    tuile.appendChild(ligneE);
+    e.ligneEstomper = ligneE;
+    e.boutonEstomper = _bouton(ligneE, "kta-v3d-btn-mode kta-v3d-btn-estomper", "", _t("vue3d.estomperAide"),
+      "estomper");
+    const icE = document.createElement("span");
+    icE.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icE.setAttribute("aria-hidden", "true");
+    icE.textContent = "🌫️";
+    e.boutonEstomper.appendChild(icE);
+    e.boutonEstomper.appendChild(document.createTextNode(_t("vue3d.estomperNom")));
     _majNiveauxVus();
     ov.appendChild(haut);
     e.haut = haut;
@@ -8793,6 +8885,7 @@
     if (a === "pleinJour") { reglerPleinJour(!_lampeEnVigueur().jour); return true; }
     if (a === "limiter") { limiterPortee(!_limitee()); return true; }
     if (a === "niveauxVus") { reglerNiveauxVus(b.dataset.niveauxVus); return true; }
+    if (a === "estomper") { reglerEstomper(); return true; }
     return false;
   }
 
@@ -9671,6 +9764,7 @@
       (e.volPassages || []).forEach(_libererVolume);
       (e.voisins || []).forEach(_libererVoisin);
       if (e.matsV) Object.keys(e.matsV).forEach(function (k) { e.matsV[k].dispose(); });
+      if (e.matsEstompes) e.matsEstompes.forEach(function (m) { m.dispose(); });
       if (e.texCiel) e.texCiel.dispose();
       if (e.icones) e.icones.forEach(function (t) { t.dispose(); });
       if (e.plaques) e.plaques.forEach(function (t) { t.tex.dispose(); t.mat.dispose(); });
@@ -10307,6 +10401,7 @@
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
     reglerPortee: reglerPortee, reglerLampe: reglerLampe, reglerFaisceau: reglerFaisceau,
     reglerPleinJour: reglerPleinJour, limiterPortee: limiterPortee, zoomer: zoomer, reglerNiveauxVus: reglerNiveauxVus,
+    reglerEstomper: reglerEstomper,
     origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, trackerRecale: trackerRecale,
     charge: function () { return !!THREE; },
     greffer: greffer,

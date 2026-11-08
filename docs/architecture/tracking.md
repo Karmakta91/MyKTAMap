@@ -2324,7 +2324,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Niveau actif d'abord** : ni la règle du pas, ni la visée (`_pointVise`), ni les fiches, ni les passages, ni le
   suivi ne lisent les voisins ; ils se voient et cachent ce qui est derrière eux. Le niveau actif ne change que par un
   passage, une galerie inclinée ou ▲▼. **Vue d'édition** : rien au-dessus du niveau actif (il couvrirait la scène,
-  comme son plafond qu'elle retire), les voisins du dessous sans plafond.
+  comme son plafond qu'elle retire), les voisins du dessous sans plafond et **estompés** (réglage ⚙️ « 🌫️ Estomper »,
+  `reglerEstomper`, `config.js > getVue3DEstomper`, `myktamap_v3d_estomper_v1`, cet appareil, activé par défaut, au
+  doigt comme au pointeur) : copies assombries de leurs matériaux (`_matEstompe`, `ESTOMPE.dessous`), le maillage
+  garde l'original dans `userData.matOrigine` ; coupé, rendu d'origine ; à hauteur d'yeux, jamais. Checkup § 46
+  (`KTA_V3D_SEUL=estomper`).
 - **Mémoire** (décision produit) : seulement les tuiles à portée (même rayon, même 🛡️ que le niveau actif),
   construites quand celles du niveau actif sont toutes posées, `VOISINS_PAR_IMAGE` (2) par image ; un voisin inchangé
   (altitude, hauteur, rendu, 🧱, données, filtres) est gardé quand la scène change de niveau (galerie inclinée, ▲▼).
