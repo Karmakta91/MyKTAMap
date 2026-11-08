@@ -700,7 +700,9 @@
                   total += blobBytes;
                 }
               }
-              if (acc && typeof cur.key === "string" && acc.ids[cur.key]) acc.ext += total - avant;
+              // Morceaux d'une copie (PlanRegistry.rangerEnMorceaux) : clé [idPlan, génération, n].
+              const idCle = Array.isArray(cur.key) ? cur.key[0] : cur.key;
+              if (acc && typeof idCle === "string" && acc.ids[idCle]) acc.ext += total - avant;
               cur.continue();
             };
             req.onerror = function() { resolve(total); };

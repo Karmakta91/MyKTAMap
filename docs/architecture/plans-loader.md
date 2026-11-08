@@ -9,7 +9,12 @@
 
 - **`planRegistry.js`** gère la liste des plans connus.
 - **localStorage** : `myktamap_plans` (registre + lastPlanId)
-- **IndexedDB** : `myktamap_handles` (v2, 2 stores : `handles` pour FS Access API, `blobs` pour ZIPs mémorisés)
+- **IndexedDB** : `myktamap_handles` (v2, 2 stores : `handles` pour FS Access API, `blobs` pour ZIPs mémorisés).
+  Dans `blobs`, la clé `id` porte soit le ZIP d'un seul tenant (`saveBlob` : ZIP local, Générateur, import), soit la
+  fiche d'une **copie en morceaux** (`rangerEnMorceaux`, prise d'une extension qui range un plan tranche par tranche) dont
+  les morceaux vivent sous les clés `[id, gen, i]` ; `getBlob` recompose, `removeBlob` efface tout. Les lecteurs bruts du
+  store (`memInspector` : orphelins sur les clés chaîne ; `homeProfile` : poids, « dont ☁️ » par `clé[0]`) le savent.
+  Contrat et piège WebKit : `community-server-line.md` §3 (copie gardée en morceaux).
 - **Auto-discovery** serveur via `data/index.json` :
   ```json
   { "plans": [{ "id": "test1", "path": "data/test1", "name": "Test 1" }] }
