@@ -97,6 +97,9 @@
 // Passages et pentes des voisins (47, =voisinspassages) : coupés à ce qui est montré, jamais en double, arrivées intactes.
 // Niveau du dessus en fantôme en vue d'édition (48, =fantome) : transparent, sans sol, ne capte aucun toucher, 🌫️.
 // Sol actif voilé ou invisible en vue d'édition (49, =solvoile) : 🧱, Voisins / Le mien, niveau le plus profond, yeux.
+// Niveaux entremêlés (50, =entremeles) : union des vides (parois coupées, trous du gabarit, plans cachés en structures),
+// collision par tranche de hauteur. Zone jonction de niveau (51, =zonejonction) : sol et plafond sur la pente du tracé
+// jonction qui la traverse, piliers et mur en pente, caméra, pilier de l'autre niveau qui arrête, bascule à mi-longueur.
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
@@ -9682,6 +9685,288 @@ async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep) {
   return { ctx: ctx, page: page, erreurs: erreurs };
 }
 
+// ── 50. Niveaux entremêlés : union des vides, collision par tranche (vue3d.js > _entreDe, _paroiEntre, _trousEntre,
+// _plansCaches, _niveauxQuiBloquent ; KTA_V3D_SEUL=entremeles) ────────────────────────────────────────────────────
+// Plan FICTIF en mémoire : niveau 0 (sol −30, 10 m de haut), niveau +1 (sol −25, 5 m : la moitié haute du 0, écart
+// −5 m), niveau +2 (sol −15, 2 m : au-dessus de tout). Au 0, galerie est-ouest ; au +1, galerie nord-sud qui la croise
+// en x = 0. Piliers : un du +1 dans la galerie du 0 (10, 0), un du 0 dans celle du +1 (0, 10), un du +2 en (20, 0).
+// Galerie et mixte : au croisement, aucune paroi du 0 dans la tranche [5, 10] (le +1 y a son vide) et aucune paroi du +1
+// dans la galerie du 0 ; loin du croisement, la paroi du 0 monte à 10 m ; sol du +1 troué au-dessus du 0 (gabarit) ;
+// vu du +1, son sol troué au-dessus du 0. Structures : sol du +1 caché depuis le 0, sol du niveau actif caché depuis le
+// +1. Collision (mixte, structures) : le pilier du +1 arrête au 0, celui du 0 arrête au +1, celui du +2 jamais.
+// « Le mien » : rien ne change (aucun niveau montré, parois entières), mais le pilier du +1 arrête toujours.
+async function sectionEntremeles(nav) {
+  const nom = "§ 50 ";
+  console.log("§ 50 — niveaux entremêlés : union des vides, collision par tranche");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-entremeles", [0, 1, 2], { "0": -30, "1": -25, "2": -15 },
+    { "0": 10, "1": 5, "2": 2 }, function () {
+      const P = window.__fxP;
+      const carre = function (x, z, c) { return [P(x - c, z - c), P(x + c, z - c), P(x + c, z + c), P(x - c, z + c)]; };
+      window.setRoads([
+        { uid: "rd_en_0", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] },
+        { uid: "rd_en_1", type: "principal", level: 1, points: [P(0, -20), P(0, 20)] },
+        { uid: "rd_en_2", type: "principal", level: 2, points: [P(-40, 30), P(40, 30)] }
+      ]);
+      window.setStructures([
+        { uid: "st_en_p1", type: "pilier-1", level: 1, points: carre(10, 0, 0.5) },
+        { uid: "st_en_p0", type: "pilier-1", level: 0, points: carre(0, 10, 0.5) },
+        { uid: "st_en_p2", type: "pilier-1", level: 2, points: carre(20, 0, 0.5) }
+      ]);
+    });
+  const page = t.page;
+  try {
+    const lire = function (a) {
+      return page.evaluate(async function (q) {
+        const K = window.KtaVue3D;
+        await window.__fxOuvrir(q.x, 0, 90, q.niveau, q.rendu);
+        K.reglerNiveauxVus(q.vus);
+        await window.__fxImages(80);
+        const e = K.etat(), r = K.entremeles();
+        return { niveau: e.niveau, hauteur: e.hauteur, entre: r, voisins: e.voisins.niveaux.map(function (v) {
+          return { niveau: v.niveau, dy: v.dy, plans: v.plans };
+        }) };
+      }, a);
+    };
+    // Parois du niveau n dont le milieu tombe dans la boîte (m, repère de la scène), et la plus haute de leurs tranches.
+    const dans = function (r, n, x0, x1, z0, z1) {
+      return r.entre.parois.filter(function (w) {
+        const mx = (w.x0 + w.x1) / 2, mz = (w.z0 + w.z1) / 2;
+        return w.niveau === n && mx >= x0 && mx <= x1 && mz >= z0 && mz <= z1;
+      });
+    };
+    for (const rendu of ["galerie", "mixte"]) {
+      const a = await lire({ x: 5, niveau: 0, rendu: rendu, vus: "voisins" });
+      const centre = await page.evaluate(function () {
+        const sc = window.APP_CONFIG.scale, q = window.__fxP(0, 0);
+        return [q.x / sc, q.y / sc];
+      });
+      const X = function (x) { return centre[0] + x; }, Z = function (z) { return centre[1] + z; };
+      const croise0 = dans(a, 0, X(-1.2), X(1.2), Z(-1.4), Z(1.4));
+      const loin0 = dans(a, 0, X(4), X(30), Z(-1.4), Z(1.4));
+      const croise1 = dans(a, 1, X(-1.4), X(1.4), Z(-1.2), Z(1.2));
+      const loin1 = dans(a, 1, X(-1.4), X(1.4), Z(4), Z(18));
+      const n1 = a.entre.niveaux.find(function (o) { return o.niveau === 1; });
+      verifier(a.niveau === 0 && !!n1 && n1.y0 === 5 && n1.y1 === 10 &&
+        croise0.length > 0 && croise0.every(function (w) { return w.y1 <= 5.001; }) &&
+        loin0.length > 0 && loin0.some(function (w) { return w.y1 >= 9.999; }) &&
+        croise1.every(function (w) { return w.y1 <= 5.001 || w.y0 >= 9.999; }) &&
+        loin1.length > 0 && loin1.every(function (w) { return w.y0 >= 4.999 && w.y1 <= 10.001; }) &&
+        a.entre.trous > 0,
+        nom + rendu + " au 0 : au croisement, parois du 0 coupées à 5 m (le +1 a son vide derrière), aucune paroi du +1 " +
+        "dans la galerie du 0 ; loin du croisement, paroi du 0 jusqu'à 10 m, parois du +1 de 5 à 10 m ; sol du +1 troué " +
+        "au-dessus du 0", { tranche: n1, croise0: croise0.slice(0, 4), loin0: loin0.length, croise1: croise1.slice(0, 4),
+          loin1: loin1.length, trous: a.entre.trous });
+      const b = await lire({ x: 0, niveau: 1, rendu: rendu, vus: "voisins" });
+      const croiseB = dans(b, 1, X(-1.4), X(1.4), Z(-1.2), Z(1.2));
+      const n0 = b.entre.niveaux.find(function (o) { return o.niveau === 0; });
+      verifier(b.niveau === 1 && !!n0 && n0.y0 === 0 && n0.y1 === 5 && croiseB.length === 0 && b.entre.trous > 0,
+        nom + rendu + " au +1 : tranche commune [0, 5] avec le 0, aucune paroi du +1 dans la galerie du 0, sol du +1 " +
+        "troué au-dessus du 0", { tranche: n0, croise: croiseB.slice(0, 4), trous: b.entre.trous });
+      const c = await lire({ x: 5, niveau: 0, rendu: rendu, vus: "mien" });
+      const croiseC = dans(c, 0, X(-1.2), X(1.2), Z(-1.4), Z(1.4));
+      verifier(c.entre.niveaux.length === 0 && croiseC.length > 0 && croiseC.every(function (w) {
+        return w.y0 === 0 && w.y1 === 10;
+      }) && c.entre.trous === 0 &&
+        JSON.stringify(c.entre.autresBloquent) === (rendu === "galerie" ? "[]" : "[1]"),
+      nom + rendu + " « Le mien » : rien d'ouvert (parois entières, aucun trou) ; le pilier du +1 arrête toujours le " +
+        "pas (sauf en galerie, où les structures n'arrêtent rien)",
+      { niveaux: c.entre.niveaux, croise: croiseC.slice(0, 3), trous: c.entre.trous, bloquent: c.entre.autresBloquent });
+      await capture(page, "entremeles-" + rendu);
+      if (CAPTURES) {
+        await page.evaluate(async function () {
+          const K = window.KtaVue3D;
+          await window.__fxOuvrir(-6, 0, 60, 0, document.body ? K.etat().rendu : "galerie");
+          K.reglerNiveauxVus("voisins");
+          if (K.etat().vue !== "plongee") K.basculerVue();
+          K.zoomer(25 / K.etat().portee.recul);
+          await window.__fxImages(60);
+        });
+        await capture(page, "entremeles-" + rendu + "-edition");
+      }
+    }
+    const s0 = await lire({ x: 5, niveau: 0, rendu: "structures", vus: "voisins" });
+    const v1 = s0.entre.voisins.find(function (v) { return v.niveau === 1; });
+    const s1 = await lire({ x: 0, niveau: 1, rendu: "structures", vus: "voisins" });
+    verifier(!!v1 && v1.plansCaches.sol === true && v1.plansVus && v1.plansVus.sol === false &&
+      s0.entre.plansCaches.sol === false && s0.entre.plansCaches.plafond === false &&
+      s1.entre.plansCaches.sol === true && s1.entre.plansVus.sol === false,
+      nom + "structures : vu du 0, sol du +1 non dessiné (dans la tranche du 0, vide partout) ; vu du +1, son propre sol " +
+      "non dessiné ; plafond du 0 gardé (au ras de celui du +1)", { v1: v1, actif0: s0.entre.plansCaches,
+        actif1: s1.entre.plansCaches, vus1: s1.entre.plansVus });
+    // Collision : avancer vers l'est depuis x = 6 au 0 (pilier du +1 en 10), puis depuis x = 16 (pilier du +2 en 20) ;
+    // au +1, vers le sud depuis z = 5 (pilier du 0 en z = 10).
+    for (const rendu of ["mixte", "structures"]) {
+      const r = await page.evaluate(async function (q) {
+        const K = window.KtaVue3D, rel = function () { return window.__fxRel(K.etat().pos)[0]; };
+        const marcher = async function (x, niveau, cap, m, z) {
+          await window.__fxOuvrir(x, z || 0, cap, niveau, q.rendu);
+          for (let i = 0; i < m / 0.1; i++) K.avancer(0.1);
+          await window.__fxImages(4);
+          const p = window.__fxRel(K.etat().pos);
+          return { x: p[0], z: p[1], niveau: K.etat().niveau, bloquent: K.entremeles().autresBloquent };
+        };
+        return { p1: await marcher(6, 0, 90, 6), p2: await marcher(16, 0, 90, 8), p0: await marcher(0, 1, 180, 6, 5),
+          mien: await (async function () {
+            await window.__fxOuvrir(6, 0, 90, 0, q.rendu);
+            K.reglerNiveauxVus("mien");
+            for (let i = 0; i < 60; i++) K.avancer(0.1);
+            return rel();
+          })() };
+      }, { rendu: rendu });
+      verifier(r.p1.niveau === 0 && r.p1.x < 9.15 && r.p1.x > 8.5 && JSON.stringify(r.p1.bloquent) === "[1]" &&
+        r.p2.x > 23.5 && r.p0.niveau === 1 && r.p0.z < 9.15 && r.p0.z > 8.5 && r.mien < 9.15,
+        nom + rendu + " : le pilier du +1 (tranche 5–10 m) arrête au 0, celui du 0 arrête au +1, celui du +2 " +
+        "(au-dessus des deux) jamais ; en « Le mien » aussi (masquer ne retire que le dessin)", r);
+    }
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
+// ── 51. Zone jonction de niveau et structures en pente (galerieEmprise.js > penteDeZone ; vue3d.js > _zoneJonction,
+// _structurePente, _bloqueEnZone ; KTA_V3D_SEUL=zonejonction) ────────────────────────────────────────────────────
+// Plan FICTIF en mémoire : niveaux 0 (sol −25) et −1 (sol −30), 2,5 m chacun. Galerie du 0 de x = −30 à 2, tracé
+// jonction 0 → −1 de x = 0 à 30 (dénivelé −5 m), galerie du −1 de x = 28 à 60. Zone jonction (0 et −1) x ∈ [4, 20],
+// z ∈ [−6, 6] ; pilier du 0 en (6, 3), pilier du −1 en (14, −3), mur en ligne le long du tracé (z = 1,6, x de 22 à
+// 28) ; seconde zone jonction sans tracé qui la traverse. Mixte et structures : sol et plafond de la zone sur la pente
+// (projection sur le tracé, hors de l'axe compris), piliers des deux niveaux posés sur le sol en pente et dessinés par
+// le 0, mur qui suit la pente, galerie inclinée sans paroi dans la zone ; caméra qui descend dans la zone (hors de
+// l'axe aussi), pilier du −1 qui arrête, bord de la zone fermé là où son sol est bas, scène qui passe au −1 à
+// mi-longueur ; zone sans tracé : à plat. Galerie : la zone n'y change rien (galerie inclinée seule).
+async function sectionZoneJonction(nav) {
+  const nom = "§ 51 ";
+  console.log("§ 51 — zone jonction de niveau, structures en pente");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-zonejonction", [-1, 0], { "0": -25, "-1": -30 },
+    { "0": 2.5, "-1": 2.5 }, function () {
+      const P = window.__fxP;
+      const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+      const carre = function (x, z, c) { return rect(x - c, z - c, x + c, z + c); };
+      window.setRoads([
+        { uid: "rd_zj_0", type: "principal", level: 0, points: [P(-30, 0), P(2, 0)] },
+        { uid: "rd_zj_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(0, 0), P(30, 0)] },
+        { uid: "rd_zj_m1", type: "principal", level: -1, points: [P(28, 0), P(60, 0)] }
+      ]);
+      window.setZones([
+        { uid: "zn_zj", type: "eau", level: 0, niveaux: [-1, 0], jonction: true, points: rect(4, -6, 20, 6) },
+        { uid: "zn_zj_seule", type: "eau", level: 0, niveaux: [-1, 0], jonction: true, points: rect(-20, 10, -10, 20) }
+      ]);
+      window.setStructures([
+        { uid: "st_zj_p0", type: "pilier-1", level: 0, points: carre(6, 3, 0.5) },
+        { uid: "st_zj_pm1", type: "pilier-1", level: -1, points: carre(14, -3, 0.5) },
+        { uid: "st_zj_mur", type: "mur-ligne", level: 0, points: [P(22, 1.6), P(28, 1.6)] }
+      ]);
+    });
+  const page = t.page;
+  try {
+    const regle = await page.evaluate(function () {
+      const G = window.KtaGalerie, z = window.getZones();
+      const r = G.penteDeZone(z[0]);
+      return { zone: r ? r.uid : null, seule: G.penteDeZone(z[1]), de: G.zonesDePente(window.getRoads()[1])
+        .map(function (q) { return q.uid; }) };
+    });
+    verifier(regle.zone === "rd_zj_j" && regle.seule === null && JSON.stringify(regle.de) === '["zn_zj"]',
+      nom + "règle : la zone prend la pente du tracé jonction qui la traverse ; sans tracé, aucune", regle);
+    for (const rendu of ["mixte", "structures"]) {
+      const r = await page.evaluate(async function (q) {
+        const K = window.KtaVue3D, P = window.__fxP;
+        await window.__fxOuvrir(-2, 0, 90, 0, q.rendu);
+        K.reglerNiveauxVus("voisins");
+        await window.__fxImages(80);
+        const alt = function (x, z) { const p = P(x, z); return K.altitude(p.x, p.y); };
+        const en = K.entremeles(), e = K.etat();
+        const alts = { a: alt(12, 0), b: alt(12, 5), c: alt(19, -5.5), seule: alt(-15, 15) };
+        const pente = e.volumes.find(function (v) { return v.genre === "pente"; }) || null;
+        const sc = window.APP_CONFIG.scale, c = P(0, 0), cx = c.x / sc;
+        const paroisZone = pente && pente.paroisPente ? pente.paroisPente.filter(function (w) {
+          const mx = (w[0] + w[2]) / 2 - cx;
+          return mx > 4.1 && mx < 19.9;
+        }).length : -1;
+        // Marche : x = 1 → 12 sur l'axe, puis 4,5 m vers le sud (hors de l'axe, dans la zone).
+        await window.__fxOuvrir(1, 0, 90, 0, q.rendu);
+        for (let i = 0; i < 110; i++) { K.avancer(0.1); if (i % 10 === 9) await window.__fxImages(1); }
+        await window.__fxImages(4);
+        const e1 = K.etat();
+        const axe = { x: window.__fxRel(e1.pos)[0], dy: e1.pente.dy, zone: e1.pente.zone, cam: e1.cameraY,
+          niveau: e1.niveau };
+        K.tourner(90);
+        for (let i = 0; i < 45; i++) K.avancer(0.1);
+        await window.__fxImages(4);
+        const e2 = K.etat();
+        const cote = { z: window.__fxRel(e2.pos)[1], dy: e2.pente.dy, zone: e2.pente.zone, cam: e2.cameraY };
+        for (let i = 0; i < 30; i++) K.avancer(0.1);   // bord sud (z = 6) : sol à −2 m, fermé
+        await window.__fxImages(2);
+        const bord = window.__fxRel(K.etat().pos)[1];
+        // Pilier du −1 en (14, −3) : vers l'est depuis (11, −3).
+        const d = P(11, -3);
+        K.placer(d.x, d.y, 90);
+        await window.__fxImages(2);
+        for (let i = 0; i < 40; i++) K.avancer(0.1);
+        const pilier = window.__fxRel(K.etat().pos)[0];
+        // Bascule à mi-longueur : vers l'est depuis (12, 0) jusqu'à x = 17.
+        const f = P(12, 0);
+        K.placer(f.x, f.y, 90);
+        await window.__fxImages(4);
+        for (let i = 0; i < 50; i++) { K.avancer(0.1); if (i % 5 === 4) await window.__fxImages(1); }
+        await window.__fxImages(6);
+        const e3 = K.etat();
+        const bascule = { x: window.__fxRel(e3.pos)[0], niveau: e3.niveau, dy: e3.pente.dy, zone: e3.pente.zone };
+        return { a: alts.a, b: alts.b, c: alts.c, seule: alts.seule, structures: en.structures,
+          zonesPente: en.zonesPente, paroisZone: paroisZone, axe: axe, cote: cote, bord: bord, pilier: pilier,
+          bascule: bascule, hauteur: e.hauteur };
+      }, { rendu: rendu });
+      const st = function (u) { return r.structures.find(function (s) { return s.uid === u; }) || null; };
+      const p0 = st("st_zj_p0"), pm1 = st("st_zj_pm1"), mur = st("st_zj_mur");
+      const proche = function (a, b, tol) { return Math.abs(a - b) <= (tol || 0.02); };
+      verifier(r.a.zone && r.b.zone && proche(r.a.sol, -2) && proche(r.b.sol, -2) && proche(r.b.plafond, 0.5) &&
+        proche(r.c.sol, -19 / 6, 0.03) && !r.seule.pente && r.seule.sol === 0 && r.zonesPente >= 1,
+        nom + rendu + " : sol de la zone sur la pente du tracé (−2 m en x = 12, sur l'axe comme à 5 m de lui ; plafond " +
+        "2,5 m au-dessus), zone sans tracé à plat", { a: r.a, b: r.b, c: r.c, seule: r.seule });
+      verifier(!!p0 && !!pm1 && !!mur && proche(p0.yMin, -6.5 / 6, 0.03) && proche(p0.yMax, -5.5 / 6 + 2.5, 0.03) &&
+        proche(pm1.yMin, -14.5 / 6, 0.03) && proche(pm1.yMax, -13.5 / 6 + 2.5, 0.03) && proche(mur.yMin, -28.2 / 6, 0.03) &&
+        proche(mur.yMax, -21.8 / 6 + 2.5 * 0.98, 0.03),
+        nom + rendu + " : piliers du 0 et du −1 posés sur le sol en pente, jusqu'au plafond en pente ; mur en ligne le " +
+        "long du tracé qui suit la pente", { p0: p0, pm1: pm1, mur: mur });
+      verifier(r.paroisZone === 0, nom + rendu + " : galerie inclinée sans paroi dans la zone (la chambre la remplace)",
+        r.paroisZone);
+      verifier(r.axe.niveau === 0 && r.axe.zone && proche(r.axe.x, 12, 0.05) && proche(r.axe.dy, -2, 0.03) &&
+        r.cote.zone && proche(r.cote.z, 4.5, 0.05) && proche(r.cote.dy, -2, 0.03) && proche(r.cote.cam, r.axe.cam, 0.03) &&
+        r.bord < 6.05 && r.bord > 5.4,
+        nom + rendu + " : caméra qui descend dans la zone (−2 m en x = 12), aussi à 4,5 m de l'axe ; bord de la zone " +
+        "fermé là où son sol est bas", { axe: r.axe, cote: r.cote, bord: r.bord });
+      verifier(r.pilier < 13.15 && r.pilier > 12.5, nom + rendu + " : pilier du −1 dans la zone : il arrête le pas", r.pilier);
+      verifier(r.bascule.niveau === -1 && r.bascule.zone && r.bascule.x > 15.3,
+        nom + rendu + " : à mi-longueur du tracé, la scène passe au −1, toujours dans la zone", r.bascule);
+      await capture(page, "zonejonction-" + rendu);
+      if (CAPTURES) {
+        await page.evaluate(async function () {
+          const K = window.KtaVue3D, d = window.__fxP(12, 0);
+          K.placer(d.x, d.y, 60);
+          if (K.etat().vue !== "plongee") K.basculerVue();
+          K.zoomer(30 / K.etat().portee.recul);
+          await window.__fxImages(60);
+        });
+        await capture(page, "zonejonction-" + rendu + "-edition");
+      }
+    }
+    const g = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP;
+      await window.__fxOuvrir(-2, 0, 90, 0, "galerie");
+      const a = P(12, 5), b = P(12, 0);
+      return { cote: K.altitude(a.x, a.y), axe: K.altitude(b.x, b.y), zones: K.entremeles().zonesPente };
+    });
+    verifier(!g.cote.pente && g.axe.pente && !g.axe.zone && g.zones === 0,
+      nom + "galerie : la zone ne change rien (galerie inclinée seule)", g);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // Luminance moyenne (0 à 765) d'un rectangle de la capture, en parts de la page (x0, y0, x1, y1).
 async function luminanceCapture(page, x0, y0, x1, y1) {
   await page.waitForTimeout(300);
@@ -11176,7 +11461,8 @@ async function sectionGestesDoigt(nav) {
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
-      SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile") {
+      SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
+      SEUL === "entremeles" || SEUL === "zonejonction") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -17484,6 +17770,8 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "voisinspassages") await sectionVoisinsPassages(nav);
     if (!SEUL || SEUL === "fantome") await sectionFantome(nav);
     if (!SEUL || SEUL === "solvoile") await sectionSolVoile(nav);
+    if (!SEUL || SEUL === "entremeles") await sectionEntremeles(nav);
+    if (!SEUL || SEUL === "zonejonction") await sectionZoneJonction(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
