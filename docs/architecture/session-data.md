@@ -1724,7 +1724,7 @@ le contour et **remet la mesure d'avant** (aussi à l'abandon et à la fermeture
   ses copies sont en session.
 
 La zone prend tout ce qu'elle contient, lignes et surfaces mêlées, points compris (cercle de surbrillance) : **✅ Convertir
-(N)** ne passe que `_convertibles()` (vecteurs de l'ouverture de la graine), **🗑️ Supprimer (N)** tout le lot. La règle
+(N)** ne passe que `_convertibles()` (vecteurs de l'ouverture de la graine), **🗑️ Supprimer (N)** et **🏗️ Niveau (N)** tout le lot. La règle
 d'ouverture reste celle du **clic** ; un point se vise au clic (ajout ou retrait), jamais refusé pour son ouverture.
 
 **🗑️ Suppression en lot** : `confirmerEtSupprimer(items, nCalque, { familles? })` ouvre `ktaConfirm` avec une case par famille et son
@@ -1742,9 +1742,23 @@ de calque : trace de copie, jamais dans un fichier). Photos : **gardées**, fich
 les cases ont changé : refus = `ktaAlerte` (message de l'extension, sinon `selm.suppr.refuseExtension`) et rien n'est
 supprimé ; erreur, rejet ou plus de 8 s = refus. Sans extension ou plan local : rien ne change.
 
+**🏗️ Niveau en lot** (décision du 08/11/2026) : bouton `#kta-selm-niveau` à côté de 🗑️, montré seulement si
+`ktaNiveauxProposes` rend une liste (plan à plusieurs niveaux, aucun dessin en cours). `confirmerEtChangerNiveau(items,
+nCalque, nJonctions, { familles? })` ouvre `ktaConfirm` : la liste de la fiche (`ktaOptionsNiveauHtml`, niveau actif
+sélectionné), une case par famille, le bouton compte les objets dont le niveau change (0 = désactivé). Jonctions (tracé
+`jonction`, POI jonction) **jamais** dans le lot : écartées par `preparer` et par `dansZone` (rendues à part,
+`jonctions`), comptées dans la fenêtre avec les objets de calque. Portails gardés dans le lot
+(`preparer(items, true)`) : leur liaison suit par `InterPlanLinks.onPointLevelChanged`. `niveauLot({ famille: [obj] },
+niveau)` : 🔒 lecture seule refusée ; **un** instantané, mutation **en place** par `KtaConvertir.poserNiveau` (règle
+unique de la fiche et du Tableur : zone sur plusieurs niveaux, seul son niveau d'origine est remplacé ; `KtaUid.touch`,
+donc la synchro voit partir), objet déjà au niveau sauté, une écriture par famille touchée, `RoadGraph.invalidate`,
+**une** entrée `HistoryManager.record`. Aucune prise d'extension consultée : c'est une modification, pas une suppression.
+
 **Garde-fou** : `scripts/check-selection-multi.js` — le cœur de la visée (`_choisir`) est exposé et éprouvé **sans
 Leaflet** ; §8 : `dansZone` (dedans, à cheval, autre niveau, jonction, calque compté ou en Modifier) et `supprimerLot`
-(un instantané, une entrée, une écriture par famille, lecture seule). Parcours réel : `scripts/smoke/checkup-suppr-zone.js`. **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
+(un instantané, une entrée, une écriture par famille, lecture seule) ; §9 : niveau en lot (zone sur plusieurs niveaux,
+jonction exclue et comptée, objet de calque annoncé, un ⏪, graphe invalidé, fenêtre). Parcours réel :
+`scripts/smoke/checkup-suppr-zone.js` (§9 : 🏗️ Niveau). **8 sabotages** rougissent. Deux faiblesses du garde-fou lui-même ont été trouvées par cette falsification :
 les assertions déréférençaient `.cible.obj` sans garde (une régression rendant `null` faisait *planter* le script au lieu
 d'échouer lisiblement), et le contrôle `interactive: false` était satisfait par le **commentaire** qui explique la règle.
 

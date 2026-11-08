@@ -2181,7 +2181,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 ### Ajuster une forme en vue d'édition (décision du 04/11/2026)
 
 - **Mêmes gestes, même prise** ⚠️ contrat : appui long (500 ms) sur un sommet d'un pilier, d'une zone, d'un tracé ou de
-  la mesure, puis glisser = déplacer ; au milieu d'un côté = ajouter ; sans bouger = ＋ et 🗑️ au sommet (boutons de la
+  la mesure, puis glisser = déplacer ; au milieu d'un côté = ajouter ; sans bouger = ＋, ✂️ (sommet intérieur d'un
+  tracé : `KtaAjusterSommets.plan.coupable` / `couper`, `vue3d.js > _ajusterCouper`) et 🗑️ au sommet (boutons de la
   carte, `KtaAjusterSommets.htmlMenu`, boîte `.kta-v3d-ajuster-menu` suivie à l'écran, retirée seule après 6 s, au
   toucher suivant, avalé sur la scène, ou par Échap ; 🩸 avalé mais pas son appui long : posé sur un sommet, il
   l'ajuste — une souris tenue immobile ouvre ce menu à coup sûr, et l'appui suivant sur la pastille agrandie partait
