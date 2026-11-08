@@ -16,8 +16,9 @@
 // suivi / libre avec un cap d'appareil simulé, 🧭 grisé tracker arrêté ; POI au centre d'un pilier visible depuis
 // la galerie, collé à la face vue. Mode galerie sur des tracés fictifs (T, X, coudes droit et aigu, cul-de-sac, presque
 // parallèles) : aucune paroi à travers une autre, butées, carrefours, zones coupées au tube, POI à 2 / 5 / 25 m,
-// interrupteur retenu par plan ; passages 🪜 par POI et tracé jonction ; carte 2D placée à la sortie. Passages (14) :
-// volume par moyen, rampe, panneau ↕, 🪜 nommé, fiche, fondu et descente, arrivée dans le tube, cap, guidage, suivi.
+// interrupteur retenu par plan ; passages 🪜 par POI, tracé jonction marché ; carte 2D placée à la sortie.
+// Passages (14) : volume par moyen, galerie inclinée, panneau ↕, 🪜 nommé, fiche, fondu et descente, arrivée dans le
+// tube, cap, guidage, suivi. Galerie inclinée marchée (§ 14 octies, KTA_V3D_SEUL=pente).
 // Aucune paroi de tube dans un passage (§ 14 bis) : bouche ou tranchée coupée par un tracé, cul-de-sac, 3 rendus.
 // Accès de surface sans passage (§ 14 quater : esf, pef, pb, pc, psf, ps, pe, cao, caf) : forme, place, ni 🪜 ni
 // cadre, blocage (cône, cavage fermé ; bassin contre la paroi, qu'on longe), itinéraire sur le cône, arrivée devant
@@ -98,7 +99,7 @@
 //   KTA_V3D_PERF=galerie → réseau de 3 120 tronçons en mode galerie seulement (=1 : tout) ;
 //   KTA_V3D_PERF=mixte → ce réseau sur le plan dense, piliers gardés sur la moitié est seulement (tubes à l'ouest,
 //   chambres à l'est), en mode mixte ;
-//   KTA_V3D_PERF=passages → plan dense, sans puis avec 10 passages entre niveaux et 2 rampes à portée de vue ;
+//   KTA_V3D_PERF=passages → plan dense, sans puis avec 10 passages entre niveaux et 2 galeries inclinées à portée ;
 //   KTA_V3D_PERF=1 → plan dense synthétique (9 000 piliers, 3 000 murs, 1 000 murs en ligne, 700 fronts,
 //   zones, tracés, POI) : temps d'ouverture, triangles, appels, ms par image à 20 / 30 / 50 / 75 / 100 m, sans
 //   tuiles et en vue plongeante dézoomée (recul 60 et 150 m) ; marche de 120 m à 30 et 100 m ;
@@ -2432,6 +2433,318 @@ async function sectionConePassage(page) {
   verifier(R.enChambre && !!ch && pr(ch.bx, 3) && pr(ch.bz, 1.5) && pr(ch.cx, 3) && pr(ch.cz, 1.5) && pr(ch.R, 0.9),
     "chambre (mixte, entre deux rangées de piliers) : bouche et cône au POI, 0,9 m (inchangé)",
     { enChambre: R.enChambre, v: ch });
+}
+
+// § 14 octies — Galerie inclinée d'un tracé jonction (KTA_V3D_SEUL=pente ; réseau FICTIF en mémoire : galerie
+// est-ouest au 0 à z = 0, au −1 à z = 12, tracé jonction de 12 m du 0 au −1 en x = 0). Plan sans sols (repli : une
+// hauteur de galerie, 2 m) puis sols et hauteurs du lot A (0 à −25 m sous 2,5 m, −1 à −30 m sous 3 m : 5 m de
+// dénivelé, part ouverte 2,5 / 4,5). Rendus galerie, structures, mixte : on marche la jonction pas à pas, la caméra
+// descend régulièrement (dénivelé × part de la longueur), la scène passe au −1 à mi-longueur sans geste ni fondu,
+// altitude continue, arrivée à hauteur d'yeux au bout, galerie du −1 marchée, retour au 0 dans l'autre sens ; parois
+// au milieu (pas de côté refusé, petit pas dans la largeur permis) ; volume (bouche au sol en descente, au plafond en
+// montée, bas et haut du volume). Suivi : la caméra suit la pente sous le tracker, bascule de niveau du tracker au bout
+// sans fondu. Itinéraire du 0 au −1 par la jonction : ruban sur la pente, consigne « descendre la pente vers le
+// niveau −1 » avant l'entrée, guidé (jamais « rejoindre ») sur la pente, chevrons posés sur la pente. Plus de 🪜 au
+// bout d'un tracé jonction.
+async function sectionPente(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc, PID = "v3d-checkup-pente";
+    const P = function (x, z, n) {
+      const o = { x: (ox + x) * sc, y: (oz + z) * sc };
+      if (Number.isInteger(n)) o.level = n;
+      return o;
+    };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, acc: window.ktaEstAccessible,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(), pos: window.getTrackingPosition,
+      niv: window.getTrackerLevel, smart: C.smartNav };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = PID;
+    window.ktaEstAccessible = function () { return true; };   // image de collision du relevé fictif ignorée
+    C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
+    C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    try { localStorage.removeItem("myktamap_guidage_v1"); } catch (err) { /* « Auto » par défaut */ }
+    window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
+    const RESEAU = [
+      { uid: "rd_pe_0", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] },
+      { uid: "rd_pe_m1", type: "principal", level: -1, points: [P(-40, 12), P(40, 12)] },
+      { uid: "rd_pe_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(0, 0), P(0, 12)] }
+    ];
+    window.setRoads(RESEAU.slice());
+    window.ktaSetActiveLevel(0);
+    const r = { cas: [] };
+    const e0 = function () { return K.etat(); };
+    // Marche de (0, za) vers (0, zb) au pas de 0,25 m ; relevé après chaque pas (une image) : z (m), niveau,
+    // caméra, sol sous la place, geste, fondu.
+    const marcher = async function (za, zb, niv) {
+      K.placer(P(0, za).x, P(0, za).y, zb > za ? 180 : 0);
+      await pause(150);
+      const rel = [];
+      const n = Math.round(Math.abs(zb - za) / 0.25);
+      for (let i = 0; i < n; i++) {
+        const okPas = K.avancer(0.25);
+        await pause(40);
+        const e = e0();
+        rel.push({ z: +(e.pos.y / sc - oz).toFixed(3), niveau: e.niveau, cam: e.cameraY, oeil: e.oeil,
+          dy: e.pente.dy, sur: e.pente.sur, geste: !!e.geste, fondu: e.fondu, ok: okPas });
+      }
+      return { depart: niv, rel: rel };
+    };
+    const cas = async function (nom, rendu, sols) {
+      await K.fermer();
+      window.effacerReglagesNiveaux(PID);
+      if (sols) {
+        window.setPlanProfondeurs(PID, { "0": -25, "-1": -30 });
+        window.setPlanHauteursNiveaux(PID, { "0": 2.5, "-1": 3 });
+      } else {
+        window.setPlanProfondeurs(PID, { "0": null, "-1": null });
+        window.setPlanHauteursNiveaux(PID, { "0": 2, "-1": 2 });
+      }
+      window.KtaGalerie.invalider();
+      window.setPlanRenduVue3D(null, rendu);
+      await K.ouvrir({ depart: Object.assign(P(0, -3), { cap: 180, niveau: 0 }), commandes: "pave" });
+      await pause(300);
+      const e = e0(), c = { nom: nom, rendu: rendu, sols: sols };
+      c.pentes = e.pentes;
+      c.volume = e.volumes.filter(function (v) { return v.genre === "pente"; })
+        .map(function (v) { return { construit: v.construit, sol: v.bouchesSol, plafond: v.bouchesPlafond, yMin: v.yMin,
+          yMax: v.yMax, pente: v.pente }; })[0] || null;
+      c.passage = e.passage;
+      const f0 = e.changementsNiveau;
+      c.aller = await marcher(0, 12, 0);
+      // Au bout, sur le −1 : un pas dans sa galerie (vers l'est).
+      K.tourner(-90);
+      const pos0 = e0().pos;
+      K.avancer(1);
+      await pause(60);
+      const pos1 = e0().pos;
+      c.galerieM1 = { niveau: e0().niveau, bouge: +(Math.hypot(pos1.x - pos0.x, pos1.y - pos0.y) / sc).toFixed(3) };
+      const eBas = e0();
+      c.volumeBas = eBas.volumes.filter(function (v) { return v.genre === "pente"; })
+        .map(function (v) { return { sol: v.bouchesSol, plafond: v.bouchesPlafond, yMin: v.yMin, yMax: v.yMax,
+          pente: v.pente }; })[0] || null;
+      c.retour = await marcher(12, 0, -1);
+      c.franchies = e0().pente.franchies;
+      c.changements = e0().changementsNiveau - f0;
+      // Au milieu (z = 4, niveau 0) : pas de côté de 1 m refusé (paroi), petit pas de 0,2 m dans la largeur permis.
+      K.placer(P(0, 4).x, P(0, 4).y, 90);
+      await pause(60);
+      const b0 = e0(), refus = !K.avancer(1);
+      await pause(40);
+      const b1 = e0();
+      const petit = K.avancer(0.2);
+      await pause(40);
+      c.paroi = { niveau: b0.niveau, refus: refus, immobile: b1.pos.x === b0.pos.x && b1.pos.y === b0.pos.y,
+        butees: b1.butees - b0.butees, petit: petit, dx: +((e0().pos.x - b1.pos.x) / sc).toFixed(3) };
+      // ctx.libre des add-ons : la même règle (corps entre les parois de la galerie inclinée).
+      let ctx = null;
+      const degreffer = K.greffer({ nom: "v3d-pente", scene: function (x) { ctx = x; } });
+      c.libre = ctx ? { axe: ctx.libre(P(0, 4).x, P(0, 4).y), bord: ctx.libre(P(0.5, 4).x, P(0.5, 4).y) } : null;
+      if (degreffer) degreffer();
+      r.cas.push(c);
+    };
+    await cas("sans sols", "galerie", false);
+    await cas("sans sols", "structures", false);
+    await cas("sols du lot A", "galerie", true);
+    await cas("sols du lot A", "mixte", true);
+
+    // Suivi : tracker simulé le long de la jonction (sans sols), niveau du tracker passé au −1 au bout.
+    await K.fermer();
+    window.effacerReglagesNiveaux(PID);
+    window.setPlanProfondeurs(PID, { "0": null, "-1": null });
+    window.setPlanRenduVue3D(null, "galerie");
+    window.KtaGalerie.invalider();
+    window.startTracking();
+    window.recalerTrackerSurPoint(P(0, -1).x, P(0, -1).y, 0);
+    let nivTr = 0;
+    window.__pePos = P(0, -1);
+    window.getTrackingPosition = function () { return window.__pePos; };
+    window.getTrackerLevel = function () { return nivTr; };
+    await K.ouvrir({ commandes: "pave" });
+    await pause(300);
+    K.suivre();
+    const s = { rel: [] };
+    for (let z = 0; z <= 12.001; z += 1) {
+      window.__pePos = P(0, z);
+      if (z >= 12) nivTr = -1;
+      await pause(500);
+      const e = e0();
+      s.rel.push({ z: z, niveau: e.niveau, mode: e.mode, cam: e.cameraY, oeil: e.oeil, geste: !!e.geste,
+        fondu: e.fondu });
+    }
+    s.franchies = e0().pente.franchies;
+    r.suivi = s;
+    await K.fermer();
+    await pause(300);
+    window.getTrackingPosition = av.pos;
+    window.getTrackerLevel = av.niv;
+    window.stopTracking();
+
+    // Itinéraire du 0 au −1 par la jonction (sans sols, rendu galerie).
+    window.setRoads(RESEAU.slice());
+    window.KtaGalerie.invalider();
+    const res = await window.Pathfinder.computeRoute([P(-20, 0, 0), P(20, 12, -1)], {});
+    window.itineraireActiverRoad({ type: "itinerary", points: res.path,
+      waypoints: [Object.assign({ source: "search", label: "Départ" }, P(-20, 0, 0)),
+        Object.assign({ source: "search", label: "Cible fictive" }, P(20, 12, -1))],
+      raccords: res.raccords || [], carrefours: res.carrefours || [] });
+    await K.ouvrir({ depart: Object.assign(P(-6, 0), { cap: 90, niveau: 0 }), commandes: "pave" });
+    await pause(900);
+    const I = {};
+    const lire = function () {
+      const e = e0();
+      return { niveau: e.niveau, mode: e.bandeau.mode, principal: e.bandeau.principal || "", ecart: e.recalcul.ecartM,
+        chevrons: e.chevrons, iti: e.pente.itineraire, dy: e.pente.dy };
+    };
+    I.avant = lire();
+    const nivM1 = window.I18n.t("guid.niveau", { n: window.ktaFormatNiveau(-1) });
+    I.attendu = window.I18n.t("guid.act.descendrePente", { niveau: nivM1 });
+    K.placer(P(0, 3).x, P(0, 3).y, 180);
+    await pause(900);
+    I.surPente = lire();
+    K.placer(P(0, 9).x, P(0, 9).y, 180);
+    await pause(900);
+    I.apres = lire();
+    I.recalculs = e0().recalcul.n;
+    r.iti = I;
+    // Consigne au tronçon (2D aussi) : abscisse de l'entrée de la jonction, moyen « pente ».
+    const g = window.ItiGuidage.construire(window.getRoads().find(function (x) { return x.type === "itinerary"; }));
+    const cn = g.consignes.filter(function (q) { return q.type === "niveau"; })[0] || null;
+    r.consigne = cn ? { moyen: cn.moyen, x: +(cn.x / sc - ox).toFixed(2), z: +(cn.y / sc - oz).toFixed(2),
+      texte: window.ItiGuidage.texteAction(cn) } : null;
+    await K.fermer();
+
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id; window.ktaEstAccessible = av.acc;
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return r;
+  });
+
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  R.cas.forEach(function (c) {
+    const k = c.nom + ", " + c.rendu;
+    const dY = c.sols ? -5 : -2, tot = 12, base = { "0": 0, "-1": dY };
+    const p = c.pentes[0] || {};
+    verifier(c.pentes.length === 1 && pr(p.dY, dY) && pr(p.tot, tot) && p.autre === -1 &&
+      pr(p.tOuvert, c.sols ? 2.5 / 4.5 : 1, 0.002) && p.sansSols === !c.sols,
+      k + " : galerie inclinée de " + tot + " m, dénivelé " + dY + " m" +
+      (c.sols ? " (sols −25 / −30)" : " (repli : une hauteur de galerie)") + ", part ouverte " + p.tOuvert, c.pentes);
+    verifier(!!c.volume && c.volume.construit && c.volume.sol > 0 && c.volume.plafond === 0 &&
+      pr(c.volume.yMin, dY, 0.02),
+      k + " : volume construit, bouche au sol (descente), bas du volume à " + dY + " m", c.volume);
+    verifier(!c.passage.visible, k + " : plus de 🪜 au bout du tracé jonction", c.passage);
+    // Aller : caméra = œil + dénivelé × part de la longueur, dans le repère du niveau affiché.
+    const al = c.aller.rel, bascule = al.findIndex(function (q) { return q.niveau === -1; });
+    const regulier = al.every(function (q) {
+      const t = Math.max(0, Math.min(1, q.z / tot)), cam = q.cam - q.oeil + base[String(q.niveau)];
+      return pr(cam, dY * t, 0.02);
+    });
+    verifier(regulier, k + " : aller — altitude de la caméra = sol de la pente sous elle, à 2 cm près, à chaque pas (" +
+      al.length + " pas)", al.filter(function (q, i) { return i % 6 === 0; }));
+    const zB = bascule >= 0 ? al[bascule].z : null;
+    verifier(bascule > 0 && zB > 6 && zB <= 6.6 && al.every(function (q) { return !q.geste && q.fondu === 0; }),
+      k + " : la scène passe au −1 à mi-longueur (z = " + zB + " m), sans geste ni fondu", { zB: zB });
+    const fin = al[al.length - 1];
+    verifier(fin.niveau === -1 && pr(fin.cam, fin.oeil, 0.02) && al.every(function (q) { return q.ok; }),
+      k + " : arrivée au bout sur le −1, à hauteur d'yeux, aucun pas refusé", fin);
+    verifier(c.galerieM1.niveau === -1 && c.galerieM1.bouge > 0.9, k + " : un pas dans la galerie du −1", c.galerieM1);
+    verifier(!!c.volumeBas && c.volumeBas.plafond > 0 && c.volumeBas.sol === 0 && pr(c.volumeBas.pente.dY, -dY) &&
+      c.volumeBas.yMax > -dY,
+      k + " : vue du −1, la même galerie monte de " + (-dY) + " m (bouche au plafond, haut du volume " +
+      (c.volumeBas && c.volumeBas.yMax) + " m)", c.volumeBas);
+    const re = c.retour.rel, retOk = re.every(function (q) {
+      const t = Math.max(0, Math.min(1, q.z / tot)), cam = q.cam - q.oeil + base[String(q.niveau)];
+      return pr(cam, dY * t, 0.02) && !q.geste && q.ok;
+    });
+    const rf = re[re.length - 1];
+    verifier(retOk && rf.niveau === 0 && pr(rf.cam, rf.oeil, 0.02) && c.franchies === 2 && c.changements === 2,
+      k + " : retour — la caméra remonte la pente, la scène repasse au 0 à mi-longueur, arrivée à hauteur d'yeux " +
+      "(2 bascules)", { fin: rf, franchies: c.franchies, changements: c.changements });
+    verifier(c.paroi.niveau === 0 && c.paroi.refus && c.paroi.immobile && c.paroi.butees === 1 && c.paroi.petit &&
+      pr(c.paroi.dx, 0.2, 0.005),
+      k + " : au milieu, un pas de côté de 1 m bute sur la paroi ; 0,2 m dans la largeur passe", c.paroi);
+    verifier(!!c.libre && c.libre.axe === true && c.libre.bord === false,
+      k + " : ctx.libre (add-ons) : libre sur l'axe de la galerie inclinée, pas à 0,5 m (corps contre la paroi)", c.libre);
+  });
+  const S = R.suivi.rel;
+  const suiviOk = S.every(function (q) {
+    const base = q.niveau === -1 ? -2 : 0, t = Math.max(0, Math.min(1, q.z / 12));
+    return q.mode === "suivi" && !q.geste && q.fondu === 0 && pr(q.cam - q.oeil + base, -2 * t, 0.03);
+  });
+  verifier(suiviOk && S[S.length - 1].niveau === -1 && S[S.length - 2].niveau === 0 && R.suivi.franchies === 1,
+    "suivi : la caméra suit la pente sous le tracker ; niveau du tracker changé au bout → scène au −1 sans fondu",
+    S.filter(function (q, i) { return i % 3 === 0 || i === S.length - 1; }));
+  const I = R.iti;
+  verifier(I.avant.niveau === 0 && I.avant.iti === 1 && I.avant.mode === "guide" &&
+    I.avant.principal.toLowerCase().indexOf(I.attendu.toLowerCase()) >= 0,
+    "itinéraire : ruban sur la pente ; avant l'entrée, « " + I.avant.principal + " »", I.avant);
+  verifier(I.surPente.niveau === 0 && I.surPente.mode === "guide" && I.surPente.ecart < 0.5 &&
+    I.surPente.chevrons > 0 && pr(I.surPente.dy, -0.5, 0.02),
+    "itinéraire : sur la pente (3 m), guidé à " + I.surPente.ecart + " m du trajet, chevrons posés, jamais " +
+    "« rejoindre »",
+    I.surPente);
+  verifier(I.apres.niveau === -1 && I.apres.mode === "guide" && I.apres.ecart < 0.5 && I.apres.iti === 1 &&
+    I.recalculs === 0, "itinéraire : passé au −1 sur la pente, toujours guidé, aucun recalcul", I.apres);
+  verifier(!!R.consigne && R.consigne.moyen === "pente" && pr(R.consigne.x, 0, 0.05) && pr(R.consigne.z, 0, 0.05) &&
+    R.consigne.texte.toLowerCase().indexOf(I.attendu.toLowerCase()) >= 0,
+    "guidage : consigne de niveau à l'entrée de la jonction, « " + (R.consigne && R.consigne.texte) + " »", R.consigne);
+}
+
+// Captures de la galerie inclinée (KTA_V3D_CAPTURES, hors dépôt) : réseau de § 14 octies, sols du lot A, trois
+// rendus ; entrée vue du 0, dedans, passé au −1, bas vue du −1, vue d'édition.
+async function capturesPente(page) {
+  const vues = [["pente-entree", 0, -3, 180, 0], ["pente-dedans", 0, 3, 180, 0], ["pente-bas", 0, 9, 180, 0],
+    ["pente-du-bas", 0, 15, 0, -1], ["pente-montee", 0, 9, 0, -1], ["pente-edition", 3, -2, 200, 0, true]];
+  for (const rendu of ["galerie", "mixte", "structures"]) {
+    for (const q of vues) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-pente";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window._currentLoadedPlanId = PID;
+        window.ktaEstAccessible = function () { return true; };
+        C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
+        window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
+        window.setRoads([
+          { uid: "rd_pe_0", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] },
+          { uid: "rd_pe_m1", type: "principal", level: -1, points: [P(-40, 12), P(40, 12)] },
+          { uid: "rd_pe_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(0, 0), P(0, 12)] }
+        ]);
+        window.setPlanProfondeurs(PID, { "0": -25, "-1": -30 });
+        window.setPlanHauteursNiveaux(PID, { "0": 2.5, "-1": 3 });
+        window.setPlanRenduVue3D(null, c.rendu);
+        window.ktaSetActiveLevel(0);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        const d = P(c.q[1], c.q[2]);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: c.q[3], niveau: c.q[4] }, commandes: "pave" });
+        if (c.q[5]) K.basculerVue();
+        await new Promise(function (ok) { setTimeout(ok, 700); });
+      }, { q: q, rendu: rendu });
+      await capture(page, q[0] + "-" + rendu);
+    }
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    window.effacerReglagesNiveaux("v3d-checkup-pente");
+  });
 }
 
 // § 14 septies — Formes des POI sans passage (formes FICTIVES en mémoire, galerie principale de 2,5 m à z = 0) :
@@ -9211,6 +9524,12 @@ async function sectionGestesDoigt(nav) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionConePassage(page);
+    } else if (SEUL === "pente") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionPente(page);
+      if (CAPTURES) await capturesPente(page);
     } else if (SEUL === "formes") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -10802,12 +11121,19 @@ async function sectionGestesDoigt(nav) {
           j2.aretes === 2 && j2.bas === 0, "▲ : niveau +1, à l'accroche validée, cap gardé, scène refaite", j2);
         verifier(j2.actif === 0 && j2.trNiveau === 0 && j2.trBouge < 0.01,
           "passage : le tracker et le niveau de la carte 2D ne bougent pas", j2);
-        const j3 = await page.evaluate(function (a) {
+        const j3 = await page.evaluate(async function (a) {
           const K = window.KtaVue3D, r = {};
+          const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
           r.bas = K.changerNiveau("bas"); r.n0 = K.etat().niveau; r.pos0 = K.etat().pos;
+          // Tracé jonction : plus de 🪜 à son bout, il se marche (galerie inclinée, § 14 octies) aller et retour.
           K.placer(a.A.x, a.A.y, 0);
-          r.hautTrace = K.changerNiveau("haut"); r.n1 = K.etat().niveau; r.pos1 = K.etat().pos;
-          r.basTrace = K.changerNiveau("bas"); r.n2 = K.etat().niveau; r.pos2 = K.etat().pos;
+          await pause(60);
+          r.hautTrace = K.changerNiveau("haut");
+          for (let i = 0; i < 24; i++) { K.avancer(0.25); await pause(30); }
+          r.n1 = K.etat().niveau; r.pos1 = K.etat().pos; r.sol1 = K.etat().pente.dy;
+          K.tourner(180);
+          for (let i = 0; i < 24; i++) { K.avancer(0.25); await pause(30); }
+          r.n2 = K.etat().niveau; r.pos2 = K.etat().pos; r.sol2 = K.etat().pente.dy;
           window.__v3dCap2 = window.getPlanRelHeading;
           window.getPlanRelHeading = function () { return 90; };
           K.suivre();
@@ -10822,9 +11148,10 @@ async function sectionGestesDoigt(nav) {
           });
         }, { A: pt(50, 8, 0), B: pt(50, 8, -6) });
         const B = pt(50, 8, -6), A = pt(50, 8, 0);
-        verifier(j3.bas && j3.n0 === 0 && j3.hautTrace && j3.n1 === 1 && Math.hypot(j3.pos1.x - B.x, j3.pos1.y - B.y) < 0.01 &&
-          j3.basTrace && j3.n2 === 0 && Math.hypot(j3.pos2.x - A.x, j3.pos2.y - A.y) < 0.01,
-          "▼ revient ; tracé jonction pris dans les deux sens, d'un bout à l'autre", j3);
+        verifier(j3.bas && j3.n0 === 0 && !j3.hautTrace && j3.n1 === 1 &&
+          Math.hypot(j3.pos1.x - B.x, j3.pos1.y - B.y) < 0.05 * G.sc && Math.abs(j3.sol1) < 0.02 && j3.n2 === 0 &&
+          Math.hypot(j3.pos2.x - A.x, j3.pos2.y - A.y) < 0.05 * G.sc && Math.abs(j3.sol2) < 0.02,
+          "▼ revient ; tracé jonction sans 🪜, marché dans les deux sens d'un bout à l'autre (galerie inclinée)", j3);
         verifier(j3.suivi.mode === "suivi" && j3.suivi.niveau === 0 && !j3.suivi.boite,
           "en suivi : niveau du tracker, pas de 🪜", j3.suivi);
         // Toucher le panneau du POI jonction, à 3,5 m (hors de portée du bouton) : sa fiche, avec le bouton de passage.
@@ -11770,7 +12097,7 @@ async function sectionGestesDoigt(nav) {
         console.log("  ℹ️ plan à un niveau : passage vers une accroche hors du tube non joué");
       }
 
-      // ── 14. Passages entre niveaux (QCM du 02/11/2026) : volumes par moyen, rampe, panneau, fiche, geste, arrivée ──
+      // ── 14. Passages entre niveaux (QCM du 02/11/2026) : volumes par moyen, pente, panneau, fiche, geste, arrivée ──
       // Réseau fictif : une galerie est-ouest aux niveaux −1, 0 et +1 ; sur le 0, un passage par moyen (escalier vers
       // −1, échelons vers +1, corde entre les trois), deux puits de surface (peo, eso), une aération pa (0 et −1), deux
       // tracés jonction (vers −1 et vers +1). Accroches au même endroit sur les autres niveaux.
@@ -11803,7 +12130,8 @@ async function sectionGestesDoigt(nav) {
           const d = P(-46, 0);
           return window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 150 }).then(function () {
             const e = window.KtaVue3D.etat();
-            return { volumes: e.volumes, h: e.hauteur, jonction: (window.ktaResolveStyle("traces", "jonction") || {}).color,
+            return { volumes: e.volumes, h: e.hauteur, pentes: e.pentes, passage: e.passage,
+              jonction: (window.ktaResolveStyle("traces", "jonction") || {}).color,
               panneaux: e.panneaux.filter(function (p) { return /p14/.test(p.nom); }).map(function (p) {
                 return { nom: p.nom, jonction: p.jonction, bord: p.bord };
               }) };
@@ -11828,12 +12156,18 @@ async function sectionGestesDoigt(nav) {
         verifier(pa.forme === "aeration" && pa.plafond && !pa.sol && pa.grille && !pa.ciel && !pa.passage &&
           pa.bouchesSol === 0 && pa.bouchesPlafond > 0,
           "pa (niveaux 0 et −1) : tube d'aération à grille dans le plafond SEUL, sans passage", pa);
-        const rampes = PJ.volumes.filter(function (v) { return v.genre === "rampe"; });
+        // Tracés jonction : galeries inclinées (dénivelé et hauteurs : KtaGalerie.pente ; marche : § 14 octies).
+        const rampes = PJ.volumes.filter(function (v) { return v.genre === "pente"; });
         const rb = rampes.filter(function (v) { return v.monte === false; })[0] || {};
         const rh = rampes.filter(function (v) { return v.monte === true; })[0] || {};
-        verifier(rh.triangles > 0 && pres(rh.yMax, h) && rh.bouchesSol === 0 && rb.triangles > 0 && rb.bouchesSol > 0 &&
-          pres(rb.yMin, -h - 0.1),
-          "tracé jonction en rampe : du sol au plafond vers +1, du sol à −" + h + " m en tranchée vers −1", rampes);
+        const ph = PJ.pentes.filter(function (p) { return p.autre === 1; })[0] || {};
+        const pb0 = PJ.pentes.filter(function (p) { return p.autre === -1; })[0] || {};
+        verifier(rh.triangles > 0 && pres(rh.yMax, ph.dY + ph.hB) && rh.bouchesSol === 0 && rh.bouchesPlafond > 0 &&
+          rb.triangles > 0 && rb.bouchesSol > 0 && rb.bouchesPlafond === 0 && pres(rb.yMin, pb0.dY) && ph.dY > 0 &&
+          pb0.dY < 0 && !PJ.passage.visible,
+          "tracé jonction en galerie inclinée : vers +1, du sol jusqu'au plafond du +1 (" + ph.dY + " m, bouche au " +
+          "plafond) ; vers −1, en tranchée jusqu'à " + pb0.dY + " m (bouche au sol) ; aucun 🪜 à son bout",
+          { rampes: rampes, pentes: PJ.pentes });
         verifier(PJ.panneaux.filter(function (p) { return p.jonction; }).length === 3 &&
           PJ.panneaux.every(function (p) { return p.jonction ? p.bord === PJ.jonction : p.bord !== PJ.jonction; }),
           "panneaux des trois passages au liseré du tracé jonction (canon) ; puits de surface et pa : liseré doré",
@@ -12081,7 +12415,8 @@ async function sectionGestesDoigt(nav) {
       // qui déborde du tube (paroi à 1,25 m, bouche de 0,75 à 2,25 m), escalier au bout d'un cul-de-sac, puits à
       // échelons qui déborde, puits à corde, puits ouvert et aération coupés en diagonale, tracé jonction qui
       // traverse la paroi. Test géométrique : aucun morceau de paroi dessinée (KtaVue3D.parois) dans la bouche de
-      // chaque volume ni dans la tranchée d'une rampe (2 cm de marge), dans les 3 rendus et aux deux niveaux.
+      // chaque volume ni dans la part ouverte d'une galerie inclinée (2 cm de marge), dans les 3 rendus et aux deux
+      // niveaux.
       if (G.multi) {
         const CE = await page.evaluate(async function (a) {
           const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
@@ -12122,8 +12457,11 @@ async function sectionGestesDoigt(nav) {
             }
             return true;
           };
-          const tranchee = function (A, B) {   // rectangle (m) de la tranchée d'une rampe, demi-largeur 0,6 m
-            const l = Math.hypot(B[0] - A[0], B[1] - A[1]), nx = -(B[1] - A[1]) / l * 0.6, nz = (B[0] - A[0]) / l * 0.6;
+          // Rectangle (m) de la part ouverte d'une galerie inclinée (KtaGalerie.pente), de A vers B, demi-largeur
+          // 0,8 m.
+          const tranchee = function (A, B, k) {
+            const l = Math.hypot(B[0] - A[0], B[1] - A[1]), nx = -(B[1] - A[1]) / l * 0.8, nz = (B[0] - A[0]) / l * 0.8;
+            B = [A[0] + (B[0] - A[0]) * k, A[1] + (B[1] - A[1]) * k];
             return [[A[0] - nx, A[1] - nz], [B[0] - nx, B[1] - nz], [B[0] + nx, B[1] + nz], [A[0] + nx, A[1] + nz]];
           };
           const r = { cas: [] };
@@ -12141,7 +12479,11 @@ async function sectionGestesDoigt(nav) {
               e.volumes.forEach(function (v) {
                 if (v.bouche) polys.push({ nom: v.tag + "@" + Math.round(v.x / a.sc - a.ox), poly: v.bouche });
               });
-              if (niv === 0) polys.push({ nom: "rampe", poly: tranchee([a.ox - 30, a.oz], [a.ox - 30, a.oz + 6]) });
+              const pe = e.pentes[0], A0 = [a.ox - 30, a.oz], B0 = [a.ox - 30, a.oz + 6];
+              if (pe) {
+                const poly = niv === 0 ? tranchee(A0, B0, pe.tOuvert) : tranchee(B0, A0, pe.tOuvert);
+                polys.push({ nom: "pente", poly: poly });
+              }
               const dans = polys.map(function (b) {
                 let lg = 0;
                 ps.forEach(function (w) {
@@ -12656,6 +12998,7 @@ async function sectionGestesDoigt(nav) {
         AC.perfAvec.max + " ms ; ouverture par rendu (mixte, galerie, structures) " +
         [AC.mixte.ms, AC.galerie.ms, AC.structures.ms].join(" / ") + " ms");
       await sectionConePassage(page);
+      await sectionPente(page);
       await sectionFormesPoi(page);
       await sectionFormesStructures(page);
 

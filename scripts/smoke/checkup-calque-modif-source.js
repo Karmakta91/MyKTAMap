@@ -147,7 +147,7 @@ async function lire(page, g) {
   }, g);
 }
 
-// Volumes de passage « rampe » (tracé jonction) de la vue 3D au départ de J0, niveau 0 ; null si la 3D n'ouvre pas.
+// Galeries inclinées (tracé jonction) de la vue 3D au départ de J0, niveau 0 ; null si la 3D n'ouvre pas.
 // La vue 3D se charge à la demande : le script est ajouté comme le fait checkup-vue-3d.js.
 async function rampes3d(page, g) {
   if (!(await page.evaluate(function () { return !!window.KtaVue3D; }))) {
@@ -161,7 +161,7 @@ async function rampes3d(page, g) {
       if (!o) return null;
       const e = window.KtaVue3D.etat();
       const n = (e.volumes || []).filter(function (v) {
-        return v.genre === "rampe" && Math.hypot(v.x - g.J0.x, v.y - g.J0.y) < 1.5;
+        return v.genre === "pente" && Math.hypot(v.x - g.J0.x, v.y - g.J0.y) < 1.5;
       }).length;
       return window.KtaVue3D.fermer().then(function () { return n; });
     });
@@ -302,7 +302,7 @@ async function heatmapTraces(page) {
     verifier(e0.route.ok && e0.route.viaJonction, "itinéraire 0 → −1 par la jonction du calque", e0.route);
     const r0 = await rampes3d(page, g);
     if (r0 === null) inf("vue 3D indisponible ici (WebGL ou échelle) : passages 3D non joués");
-    else verifier(r0 === 1, "vue 3D : un passage (rampe) au départ de la jonction", r0);
+    else verifier(r0 === 1, "vue 3D : une galerie inclinée au départ de la jonction", r0);
     const hm0 = await heatmapTraces(page);
     verifier(await recherche(page) === 1, "recherche : le point du calque trouvé une fois");
     const x0 = await exportAvance(page, g, CALQUE);

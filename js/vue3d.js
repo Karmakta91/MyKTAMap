@@ -235,12 +235,12 @@
   const LAMPE_MEMBRE = { couleur: 0xfff1d6, teinte: 0.2, taille: 0.6, pxMin: 7, pxMax: 40, jour: 0.35, devant: 0.2,
     lumieres: 2, portee: 20, force: 4, distance: 7, decay: 1.5, faisceau: 0.6, ouvert: 1.45, penombre: 0.6,
     inclinaison: 0.25, cone: { long: 3, rayon: 0.6, opacite: 0.045 } };
-  const PASSAGE = 2;                // m : distance d'un passage (POI jonction, bout de tracé jonction) qui montre 🪜
+  const PASSAGE = 2;                // m : distance d'un passage (POI jonction) qui montre 🪜
   // Panneau d'un passage (POI jonction) : lisible jusqu'à 1 m (là où 🪜 apparaît), effacé seulement sous 0,8 m.
   const PRES_PASSAGE = { min: 0.8, net: 1 };
   // Volumes des passages (_construireVolume) : `long` m sous le sol ou au-dessus du plafond (le reste se perd dans le
-  // noir), escalier à `marches` marches, échelons tous les 0,3 m. Dimensions (escalier, puits, aération, rampe et sa
-  // tranchée, cadre doré) : KtaGalerie.PASSAGE, d'où le tube s'ouvre sur la même emprise (galerieEmprise.js).
+  // noir), escalier à `marches` marches, échelons tous les 0,3 m. Dimensions (escalier, puits, aération, largeur de la
+  // galerie inclinée, cadre doré) : KtaGalerie.PASSAGE, d'où le tube s'ouvre sur la même emprise (galerieEmprise.js).
   const VOLUME = Object.assign({ long: 6, echelon: 0.3, marches: 10 }, window.KtaGalerie.PASSAGE);
   const COULEUR_FER = "#5e5a52";    // échelons, montants, grille : couleur de la scène, pas de la charte de l'UI
   // Accès de surface sans passage (_volumeAcces) : formes et dimensions dans KtaGalerie (ACCES, ACCES_DIM), d'où
@@ -301,7 +301,13 @@
   // (la moitié dans chaque niveau), la caméra passant `auDela` m sous le sol ou au-dessus du plafond ; bandeau
   // « Niveau n » `bandeau` ms.
   const GESTE = { ms: 1000, fondu: 250, auDela: 0.8, bandeau: 2000 };
-  const PASSAGE_ITI = 3;            // m : itinéraire à moins de cette distance de l'arrivée → cap vers sa consigne
+  // Galerie inclinée d'un tracé jonction (_pentesDuNiveau, KtaGalerie.pente) : la scène passe au niveau d'en face à
+  // mi-longueur, `hyst` m au-delà (au plus le quart du tracé : pas d'aller-retour en restant sur place) ; on n'en sort
+  // par le côté que là où son sol est à moins de `sortie` m de celui du niveau ; en suivi, une bascule du tracker à
+  // moins de `suivi` m de la galerie se fait sans fondu ; talus (sous la rampe qui monte) en retrait de `talus` m des
+  // bords (jamais confondu avec la paroi du modèle galerie).
+  const PENTE = { hyst: 0.3, sortie: 0.3, suivi: 1, talus: 0.03 };
+  const PASSAGE_ITI = 3;           // m : itinéraire à moins de cette distance de l'arrivée → cap vers sa consigne
   const ATTENTE_REPRISE = 8000;     // ms d'écran visible sans contexte avant de renoncer à la reprise
   const SEUIL_RECALAGE = 0.5;       // m d'écart avec le tracker sous lequel « Je suis ici ? » ne se pose pas
   // Chevrons au sol sur l'itinéraire, de sa position vers la prochaine consigne : un tous les `pas` m (posés à des
@@ -433,7 +439,7 @@
   }
 
   // Objets DESSINÉS du niveau (filtres de la carte appliqués ; l'itinéraire n'en suit aucun, comme en 2D) ; les
-  // tracés jonction tous (passages 🪜).
+  // tracés jonction tous (galeries inclinées : _pentesDuNiveau, la règle du pas les suit même masqués).
   function _collecter(niveau) {
     const ok = function (o) { return o && Array.isArray(o.points) && _surNiveau(o, niveau); };
     const type = function (o) { return o.type; };
@@ -488,7 +494,10 @@
       r.points.forEach(function (q) {
         if (q && prec && Number.isFinite(q.x) && Number.isFinite(prec.x)) s += Math.hypot(q.x - prec.x, q.y - prec.y);
         if (q) prec = q;
-        const n = q && Number.isInteger(q.level) ? q.level : defaut;
+        // Milieu d'un tracé jonction (niveau null sans moyen, pathfinder.js) : d'aucun niveau ; la galerie inclinée
+        // porte ce tronçon (_majItiPentes).
+        const transit = !!q && q.level === null && !q.via;
+        const n = q && Number.isInteger(q.level) ? q.level : transit ? null : defaut;
         if (niveau === null || n === niveau) { cur.push(q); abs.push(s); return; }
         fin(niveau);
       });
@@ -563,9 +572,10 @@
     return type === "itinerary" || !(f.roadTypes instanceof Set) || f.roadTypes.has(type);
   }
 
-  // Passages du niveau vers un autre : POI jonction (niveaux liés, raccords validés) et bouts de tracé `jonction`
-  // (pris dans les deux sens). → [{ x, y (px), poi?, cibles: [{ niveau, x, y (NaN = même position) }] }].
-  function _passages(niveau, jonctions) {
+  // Passages 🪜 du niveau vers un autre : POI jonction (niveaux liés, raccords validés). Un tracé `jonction` n'en est
+  // pas un : c'est une galerie inclinée qu'on parcourt (_pentesDuNiveau).
+  // → [{ x, y (px), poi, cibles: [{ niveau, x, y (NaN = même position) }] }].
+  function _passages(niveau) {
     const out = [], J = window.KtaPoiJonction;
     if (niveau === null) return out;
     if (J && typeof J.pointsJonction === "function") {
@@ -587,18 +597,88 @@
         out.push({ x: ici.x, y: ici.y, poi: p, cibles: cibles });
       });
     }
+    return out;
+  }
+
+  // ── Galeries inclinées des tracés jonction (KtaGalerie.pente : dénivelé, hauteurs, part ouverte) ──────────
+  // ⚠️ contrat (décision produit) : un tracé `jonction` qui part du niveau affiché ou y arrive se MARCHE. Le sol suit
+  // la pente d'un bout à l'autre du tracé (caméra, avatar, ruban de l'itinéraire, chevrons) ; au milieu de sa longueur
+  // (plus PENTE.hyst), la scène passe au niveau d'en face SANS fondu (_suivrePente) : les deux scènes dessinent la
+  // même galerie à la même place autour de la caméra, décalée du dénivelé, rien ne saute. Dans la galerie, la règle du
+  // pas est sa largeur (ni structures ni parois du niveau : on n'est plus à son sol) ; on n'en sort par le côté que
+  // près du bout du niveau (_pas). Masquer le type « jonction » ne retire que le dessin. En suivi, le tracker change
+  // de niveau au bout du tracé (tracking.js > _basculerNiveauSiTraversee) : la scène suit sans fondu là aussi.
+  // → [{ ...KtaGalerie.pente, r, ptsM ([[x, z] m]), x0, z0, x1, z1 (m, boîte élargie de la demi-largeur) }].
+  function _pentesDuNiveau(niveau, jonctions) {
+    const e = _e, G = window.KtaGalerie, out = [];
+    if (niveau === null || !G || typeof G.pente !== "function") return out;
     jonctions.forEach(function (r) {
-      const pts = r.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
-      if (pts.length < 2 || !Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel)) return;
-      const A = pts[0], B = pts[pts.length - 1];
-      if (r.fromLevel === niveau && r.toLevel !== niveau) {
-        out.push({ x: A.x, y: A.y, cibles: [{ niveau: r.toLevel, x: B.x, y: B.y }] });
-      }
-      if (r.toLevel === niveau && r.fromLevel !== niveau) {
-        out.push({ x: B.x, y: B.y, cibles: [{ niveau: r.fromLevel, x: A.x, y: A.y }] });
-      }
+      const p = G.pente(r, niveau);
+      if (!p) return;
+      p.r = r;
+      p.ptsM = p.pts.map(function (q) { return [q[0] / e.sc, q[1] / e.sc]; });
+      p.x0 = Infinity; p.z0 = Infinity; p.x1 = -Infinity; p.z1 = -Infinity;
+      p.ptsM.forEach(function (q) {
+        p.x0 = Math.min(p.x0, q[0] - p.demi); p.x1 = Math.max(p.x1, q[0] + p.demi);
+        p.z0 = Math.min(p.z0, q[1] - p.demi); p.z1 = Math.max(p.z1, q[1] + p.demi);
+      });
+      out.push(p);
     });
     return out;
+  }
+
+  // Place (x, z m) projetée sur la galerie inclinée p → { p, s (m depuis notre bout), t, lat (m de l'axe, bouts
+  // compris), dy (sol), plafond (m, au-dessus du sol du niveau) }.
+  function _surPenteDe(p, x, z) {
+    let best = null;
+    for (let i = 0; i + 1 < p.ptsM.length; i++) {
+      const A = p.ptsM[i], B = p.ptsM[i + 1], dx = B[0] - A[0], dz = B[1] - A[1], l2 = dx * dx + dz * dz;
+      const k = l2 > 1e-12 ? Math.max(0, Math.min(1, ((x - A[0]) * dx + (z - A[1]) * dz) / l2)) : 0;
+      const lat = Math.hypot(x - A[0] - dx * k, z - A[1] - dz * k);
+      if (!best || lat < best.lat) best = { lat: lat, s: p.cum[i] + (p.cum[i + 1] - p.cum[i]) * k };
+    }
+    const t = best.s / p.tot, dy = p.dY * t;
+    return { p: p, s: best.s, t: t, lat: best.lat, dy: dy, plafond: dy + p.hA + (p.hB - p.hA) * t };
+  }
+
+  // Galerie inclinée sous la place (x, z m) : la plus proche dont l'axe est à moins de sa demi-largeur + `marge` m,
+  // ou null.
+  function _surPente(x, z, marge) {
+    const l = (_e && _e.pentes) || [], m = marge || 0;
+    let best = null;
+    for (let i = 0; i < l.length; i++) {
+      const p = l[i];
+      if (x < p.x0 - m || x > p.x1 + m || z < p.z0 - m || z > p.z1 + m) continue;
+      const q = _surPenteDe(p, x, z);
+      if (q.lat <= p.demi + m && (!best || q.lat < best.lat)) best = q;
+    }
+    return best;
+  }
+
+  // Sol sous la place : dénivelé de la galerie inclinée qui la porte (m), 0 ailleurs.
+  function _solPlace() {
+    const e = _e, q = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);
+    return q ? q.dy : 0;
+  }
+
+  // Au-delà du milieu d'une galerie inclinée (libre, hauteur d'yeux) : la scène passe au niveau d'en face, à la même
+  // place, sans fondu ni geste (contrat ci-dessus). Le niveau est tenu comme après 🪜 (niveauLibre). → true si basculé.
+  function _suivrePente() {
+    const e = _e;
+    if (e.mode !== "libre" || e.geste || e.vue === "plongee" || !Number.isInteger(e.niveau)) return false;
+    const q = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);
+    if (!q || q.s <= q.p.tot / 2 + Math.min(PENTE.hyst, q.p.tot / 4)) return false;
+    const cfg = window.APP_CONFIG || {};
+    e.niveauLibre = q.p.autre;
+    e.actifVu = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
+    e.changementsNiveau++;
+    e.pentesFranchies++;
+    console.log("[Vue3D] galerie inclinée : passage au niveau " + q.p.autre);
+    _reindexer();
+    _majPassage();
+    _annoncerNiveau();
+    e.sale = true;
+    return true;
   }
 
   function _estLigne(type) {
@@ -1168,6 +1248,7 @@
     _poserTuilesIti(iti);
     _gererTuiles(true);
     _majMarqueursIti();
+    _majItiPentes();
     // ⚠️ contrat de la greffe : scene(ctx, "refaite") après un itinéraire changé aussi (son groupe reste le même).
     _sceneGreffe();
     e.itiRefaits++;
@@ -2935,7 +3016,9 @@
     _razCompteurs();
     if (e.galerie) e.volumes = null; else _grilleVolumes(d.structures);
     e.volumesIti = _volumesIti(d.zones);
-    e.passages = _passages(e.niveau, d.jonctions);
+    e.passages = _passages(e.niveau);
+    e.jonctions = d.jonctions;
+    e.pentes = _pentesDuNiveau(e.niveau, d.jonctions);
     e.passageSig = null;
     (e.volPassages || []).forEach(_libererVolume);
     e.placesPassage = new Map();
@@ -2961,6 +3044,7 @@
     _appliquerRendu();
     _gererTuiles(true);
     _majMarqueursIti();
+    _majItiPentes();
     _majRonds();
     _majDistTot();
     // Niveau compté par 📏 = celui de la vue : la carte rejoue son surlignage et son panneau (ouvert) sur lui.
@@ -3058,10 +3142,11 @@
   // au-dessus (le volume dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface
   // (peo, eso au plus haut de leurs niveaux ; pa partout) : plafond seulement, disque de ciel au sommet (peo, eso) ou
   // tube de 0,8 m à grille (pa, sans moyen : ni 🪜 ni passage). Cadre doré au sol d'un passage, panneau au-dessus.
-  // Un tracé `jonction` devient une rampe à la couleur du canon : du sol au plafond vers un niveau au-dessus, du sol
-  // vers le bas, dans une tranchée ouverte, vers un niveau au-dessous.
+  // Un tracé `jonction` devient une galerie inclinée (_pente, contrat de _pentesDuNiveau) : sol en pente, parois et
+  // plafond là où elle sort de la tranche du niveau, ruban à la couleur du canon au milieu du sol.
   // Construits à portée seulement (_gererVolumes, la règle des tuiles) : rien hors de la distance de vue. Aucune
-  // collision : le pas reste la règle du tracker. Les bouches trouent sol et plafond par le gabarit (_materiaux).
+  // collision : le pas reste la règle du tracker (la galerie inclinée a la sienne : _pas). Les bouches trouent sol et
+  // plafond par le gabarit (_materiaux).
 
   function _volumesDuNiveau(d) {
     const e = _e, J = window.KtaPoiJonction, N = e.niveau, out = [];
@@ -3131,23 +3216,17 @@
         e.placesPassage.set(p, pp ? _contreParoi(c, pp) : [c.x / e.sc, c.y / e.sc]);
       });
     }
-    if (N === null || !_typeTraceMontre("jonction")) return out;
-    d.jonctions.forEach(function (r) {
-      if (!Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel) || r.fromLevel === r.toLevel) return;
-      if (r.fromLevel !== N && r.toLevel !== N) return;
-      let pts = r.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
-      if (pts.length < 2) return;
-      if (r.fromLevel !== N) pts = pts.slice().reverse();   // la rampe part toujours de notre bout
-      let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
-      pts.forEach(function (q) {
-        x0 = Math.min(x0, q.x / e.sc); x1 = Math.max(x1, q.x / e.sc);
-        z0 = Math.min(z0, q.y / e.sc); z1 = Math.max(z1, q.y / e.sc);
-      });
-      const monte = _auDessus(r.fromLevel === N ? r.toLevel : r.fromLevel, N);
-      out.push({ genre: "rampe", pts: pts, monte: monte, sol: !monte, plafond: false, x: pts[0].x, y: pts[0].y,
-        cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, r: Math.hypot(x1 - x0, z1 - z0) / 2 + VOLUME.rampe });
+    return out.concat(_volumesPentes());
+  }
+
+  // Volumes des galeries inclinées du niveau (e.pentes), si le type « jonction » est montré (filtres de la carte).
+  function _volumesPentes() {
+    const e = _e;
+    if (!_typeTraceMontre("jonction")) return [];
+    return (e.pentes || []).map(function (p) {
+      return { genre: "pente", p: p, monte: p.dY > 0, sol: p.dY < 0, plafond: p.dY > 0, x: p.pts[0][0], y: p.pts[0][1],
+        cx: (p.x0 + p.x1) / 2, cz: (p.z0 + p.z1) / 2, r: Math.hypot(p.x1 - p.x0, p.z1 - p.z0) / 2 };
     });
-    return out;
   }
 
   // ⚠️ contrat (décision produit) : plaque, épure et portail sans paroi de tube (KtaGalerie.placePassage passe
@@ -3355,7 +3434,7 @@
       plafond: new Lot() };
     const g = new THREE.Group();
     g.userData.famille = "passage";
-    if (v.genre === "rampe") _rampe(v, lots); else if (v.acces) _acces(v, lots, g); else _puits(v, lots, g);
+    if (v.genre === "pente") _pente(v, lots); else if (v.acces) _acces(v, lots, g); else _puits(v, lots, g);
     const ajouter = function (lot, mat, ordre, famille) {
       const geo = lot.geometrie();
       if (!geo) return;
@@ -3479,32 +3558,76 @@
     _pave(lot, Q, 0.2, 0.25, tw - 0.03, tw + 0.03, yA, yB, col);
   }
 
-  // Rampe d'un tracé jonction : ruban incliné, couleur du canon. Vers un niveau au-dessus, du sol (notre bout) au
-  // plafond (l'autre bout) ; au-dessous, du sol à −hauteur dans une tranchée (bouche au sol, parois des galeries).
-  function _rampe(v, lots) {
-    const e = _e, sc = e.sc, h = e.hauteur, w = VOLUME.rampe / 2, col = _couleur("traces", "jonction", "color");
-    const pts = v.pts.map(function (q) { return [q.x / sc, q.y / sc]; }), cum = [0];
-    for (let i = 1; i < pts.length; i++) {
-      cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  // Galerie inclinée d'un tracé jonction (contrat : _pentesDuNiveau ; géométrie : KtaGalerie.pente), en moellons :
+  // sol en pente sur toute la longueur, ruban à la couleur du canon au milieu ; parois et plafond seulement hors de la
+  // tranche [0, h] du niveau. En descente : tranchée sous le sol (bouche au sol jusqu'à tOuvert), puis galerie couverte
+  // sous lui. En montée : bouche au plafond et talus sous la rampe jusqu'à tOuvert, parois et plafond au-dessus du
+  // plafond du niveau. Le bout d'en face reste ouvert : la scène a basculé avant d'y arriver (_suivrePente).
+  function _pente(v, lots) {
+    const p = v.p, w = p.demi, dY = p.dY, hA = p.hA, tO = p.tOuvert, col = _couleur("traces", "jonction", "color");
+    const ys = function (t) { return dY * t; };
+    const yc = function (t) { return dY * t + hA + (p.hB - hA) * t; };
+    const st = [];   // stations (m) : sommets du tracé et bout de la part ouverte
+    for (let i = 0; i < p.ptsM.length; i++) {
+      const t = p.cum[i] / p.tot;
+      if (i > 0 && st[st.length - 1].t < tO - 1e-6 && t > tO + 1e-6) {
+        const a = p.ptsM[i - 1], b = p.ptsM[i], k = (tO * p.tot - p.cum[i - 1]) / (p.cum[i] - p.cum[i - 1]);
+        st.push({ x: a[0] + (b[0] - a[0]) * k, z: a[1] + (b[1] - a[1]) * k, t: tO });
+      }
+      st.push({ x: p.ptsM[i][0], z: p.ptsM[i][1], t: t });
     }
-    const tot = cum[cum.length - 1] || 1, H = v.monte ? h - 0.05 : -h, wt = w + VOLUME.tranchee;
-    let der = null;
-    for (let i = 0; i + 1 < pts.length; i++) {
-      const A = pts[i], B = pts[i + 1], dx = B[0] - A[0], dz = B[1] - A[1], l = Math.hypot(dx, dz);
+    const norme = function (n) { const l = Math.hypot(n[0], n[1], n[2]); return [n[0] / l, n[1] / l, n[2] / l]; };
+    let pied = null;
+    for (let i = 0; i + 1 < st.length; i++) {
+      const A = st[i], B = st[i + 1], dx = B.x - A.x, dz = B.z - A.z, l = Math.hypot(dx, dz);
       if (l < 1e-6) continue;
-      const nx = -dz / l, nz = dx / l, ya = 0.03 + H * cum[i] / tot, yb = 0.03 + H * cum[i + 1] / tot;
-      lots.opaque.quad([A[0] - nx * w, ya, A[1] - nz * w], [B[0] - nx * w, yb, B[1] - nz * w],
-        [B[0] + nx * w, yb, B[1] + nz * w], [A[0] + nx * w, ya, A[1] + nz * w], [0, 1, 0], col);
-      if (!v.monte) {
-        const g0 = [A[0] - nx * wt, A[1] - nz * wt], g1 = [B[0] - nx * wt, B[1] - nz * wt];
-        const d0 = [A[0] + nx * wt, A[1] + nz * wt], d1 = [B[0] + nx * wt, B[1] + nz * wt];
-        _quadPlat(lots.sol, [g0, g1, d1, d0], 0);
-        _paroiY(lots.parois, g0, g1, -h - 0.1, 0);
-        _paroiY(lots.parois, d0, d1, -h - 0.1, 0);
-        der = [g1, d1];
+      const ux = dx / l, uz = dz / l, nx = -uz, nz = ux, ouvert = B.t <= tO + 1e-6;
+      const G = function (S, c) { return [S.x + nx * c, S.z + nz * c]; };
+      const gA = G(A, -w), dA = G(A, w), gB = G(B, -w), dB = G(B, w);
+      const yA = ys(A.t), yB = ys(B.t), uA = A.t * p.tot, uB = B.t * p.tot, k = (yB - yA) / l;
+      const haut = norme([-ux * k, 1, -uz * k]), bas = norme([ux * k, -1, uz * k]);
+      lots.parois.quad([gA[0], yA, gA[1]], [gB[0], yB, gB[1]], [dB[0], yB, dB[1]], [dA[0], yA, dA[1]], haut, BLANC,
+        [uA, -w, uB, -w, uB, w, uA, w]);
+      const r = LARGEUR_TRACE / 2, rgA = G(A, -r), rdA = G(A, r), rgB = G(B, -r), rdB = G(B, r);
+      lots.opaque.quad([rgA[0], yA + 0.03, rgA[1]], [rgB[0], yB + 0.03, rgB[1]], [rdB[0], yB + 0.03, rdB[1]],
+        [rdA[0], yA + 0.03, rdA[1]], haut, col);
+      if (dY < 0) {
+        _paroiPente(lots.parois, gA, gB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
+        _paroiPente(lots.parois, dA, dB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
+        if (ouvert) _quadPlat(lots.sol, [gA, gB, dB, dA], 0);
+        else {
+          lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
+            [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -w, uB, -w, uB, w, uA, w]);
+        }
+      } else if (dY > 0) {
+        _paroiPente(lots.parois, gA, gB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
+        _paroiPente(lots.parois, dA, dB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
+        lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
+          [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -w, uB, -w, uB, w, uA, w]);
+        if (ouvert) {
+          _quadPlat(lots.plafond, [gA, gB, dB, dA], hA);
+          const wt = w - PENTE.talus;
+          _paroiPente(lots.parois, G(A, -wt), G(B, -wt), 0, yA, 0, yB);
+          _paroiPente(lots.parois, G(A, wt), G(B, wt), 0, yA, 0, yB);
+          if (tO < 1 && Math.abs(B.t - tO) < 1e-6) pied = { B: B, ux: ux, uz: uz, G: G, wt: wt };
+        }
       }
     }
-    if (der) _paroiY(lots.parois, der[0], der[1], -h - 0.1, 0);   // fond de la tranchée
+    // Pied du talus (montée) : face verticale sous le bout de la part ouverte, en retrait (paroi du modèle galerie).
+    if (pied) {
+      const c = { x: pied.B.x - pied.ux * PENTE.talus, z: pied.B.z - pied.uz * PENTE.talus };
+      _paroiPente(lots.parois, pied.G(c, -pied.wt), pied.G(c, pied.wt), 0, hA, 0, hA);
+    }
+  }
+
+  // Paroi verticale de P à Q (m) dont le bas et le haut varient le long du mur (y0p, y1p en P ; y0q, y1q en Q).
+  function _paroiPente(lot, P, Q, y0p, y1p, y0q, y1q) {
+    if (y1p - y0p < 1e-4 && y1q - y0q < 1e-4) return;
+    const dx = Q[0] - P[0], dz = Q[1] - P[1], l = Math.hypot(dx, dz);
+    if (l < 1e-6) return;
+    const u0 = (P[0] * dx + P[1] * dz) / l, u1 = u0 + l;
+    lot.quad([P[0], y0p, P[1]], [Q[0], y0q, Q[1]], [Q[0], y1q, Q[1]], [P[0], y1p, P[1]], [-dz / l, 0, dx / l], BLANC,
+      [u0, y0p, u1, y0q, u1, y1q, u0, y1p]);
   }
 
   // ── Accès de surface sans passage (esf, pef, pb, pc, psf, ps, pe, cao, caf) ──────────────────────────────
@@ -4313,21 +4436,22 @@
     // Chatière (_baisseChatiere) : l'œil descend vers CHATIERE.oeil, jamais plus haut qu'il n'est.
     e.ramper = e.vue === "plongee" ? 0 : _baisseChatiere(x, z);
     const baisse = e.ramper * Math.max(0, e.oeil - CHATIERE.oeil);
-    const dy = (e.dy || 0) - baisse;   // geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume
+    // Geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume ; galerie inclinée : sur sa pente.
+    const sol = _solPlace(), dy = (e.dy || 0) - baisse + sol;
     e.tete.position.set(x, e.oeil + dy, z);
     e.tete.rotation.set(e.tangage, -cap, 0);
     e.sol.position.set(c.x, 0, c.z);
     // Le carré de sol suit le centre de la scène : le motif est décalé d'autant pour rester fixe sous les pieds.
     e.grain.offset.set(c.x / GRAIN_METRES, -c.z / GRAIN_METRES);
     e.plafond.position.set(c.x, e.hauteur, c.z);
-    e.avatar.position.set(x, 0.45, z);
+    e.avatar.position.set(x, 0.45 + sol, z);
     e.avatar.rotation.set(0, -cap, 0);
     _majLampesMembres();
     if (e.vue === "plongee") {
       const fx = Math.sin(cap), fz = -Math.cos(cap), i = e.inclinaison * Math.PI / 180;
-      const v = _viseeCamera(), vx = v.x, vz = v.z, h = e.recul * Math.cos(i);
-      e.camera.position.set(vx - fx * h, e.recul * Math.sin(i), vz - fz * h);
-      e.camera.lookAt(vx, 0, vz);
+      const v = _viseeCamera(), vx = v.x, vz = v.z, h = e.recul * Math.cos(i), y0 = e.vise ? 0 : sol;
+      e.camera.position.set(vx - fx * h, y0 + e.recul * Math.sin(i), vz - fz * h);
+      e.camera.lookAt(vx, y0, vz);
     } else {
       e.camera.position.set(x, e.oeil + dy, z);
       e.camera.rotation.set(e.tangage, -cap, 0);
@@ -4848,17 +4972,28 @@
     const essais = [[dx, dy], [dx, 0], [0, dy]];
     let auDepart = -1;   // rayons bloqués au départ, lus seulement si une arrivée en a
     const depart = function () { if (auDepart < 0) auDepart = _rayonsBloques(e.pos.x, e.pos.y); return auDepart; };
+    // ⚠️ contrat : dans une galerie inclinée (_pentesDuNiveau), la règle est sa largeur : le corps (RAYON_CORPS) reste
+    // dans ses parois, jamais plus près du bord qu'au départ ; en sortir par le côté ou par notre bout n'est permis
+    // que là où son sol est à moins de PENTE.sortie m de celui du niveau (la règle du rendu reprend alors).
+    const pd = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);
     for (let i = 0; i < essais.length; i++) {
       const sx = essais[i][0], sy = essais[i][1], l = Math.hypot(sx, sy);
       if (l < 1e-9) continue;
       const x1 = e.pos.x + sx, y1 = e.pos.y + sy;
+      if (pd) {
+        const pa = _surPenteDe(pd.p, x1 / e.sc, y1 / e.sc);
+        if (pa.lat <= Math.max(pd.p.demi - RAYON_CORPS, pd.lat) + 1e-9) { _poser(x1, y1); return true; }
+        if (Math.abs(pd.dy) >= PENTE.sortie) continue;
+      }
       const n = _balayage(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l);
       if (n < 0 || (n > 0 && n > depart())) continue;
       _poser(x1, y1);
       return true;
     }
     // Jamais coincé : parti d'une place d'où aucun pas n'est possible (dans un pilier, dans la roche de l'image de
-    // collision), tout pas qui rapproche du point libre le plus proche passe (_sortie).
+    // collision), tout pas qui rapproche du point libre le plus proche passe (_sortie). Pas dans une galerie inclinée,
+    // loin du sol du niveau : ses parois tiennent.
+    if (pd && Math.abs(pd.dy) >= PENTE.sortie) { e.butees++; return false; }
     const s = _sortie();
     if (s) {
       const x1 = e.pos.x + dx, y1 = e.pos.y + dy, d0 = Math.hypot(s.x - e.pos.x, s.y - e.pos.y);
@@ -4904,6 +5039,7 @@
   // ignore la structure où l'on est déjà : on en sortirait, mais la place serait dans le pilier), comme ctx.libre.
   function _coince(x, y, volumes) {
     const e = _e, G = window.KtaGalerie, n = _niveauPas();
+    if (_surPente(x / e.sc, y / e.sc, 0)) return false;   // galerie inclinée : sa règle, pas celle du niveau (_pas)
     if (volumes && (_volumeContenant(x / e.sc, y / e.sc) || _rayonsBloques(x, y) > 0)) return true;
     if (G.dansZone(x, y, n, e.rendu) ||
         G.zonesBloquent(_rayons([], x, y, RAYON_CORPS * e.sc), n, undefined, e.rendu).some(Boolean)) return true;
@@ -5036,8 +5172,8 @@
   // ── Changer de niveau par un passage (🪜, mode libre) ─────────────────────────────────────────────────
   // ⚠️ contrat (décision produit) : la 3D change seulement SON niveau ; ni le tracker ni le niveau actif de la
   // carte ne bougent (« Je suis ici ? » recale aussi le niveau à la fermeture). En suivi, le niveau est celui du
-  // tracker : 🪜 n'apparaît qu'en libre. Arrivée au raccord validé du niveau choisi, sinon au bout opposé d'un
-  // tracé jonction, sinon à la même position (au passage touché s'il est à plus de PASSAGE m). Cap conservé.
+  // tracker : 🪜 n'apparaît qu'en libre. Arrivée au raccord validé du niveau choisi, sinon à la même position (au
+  // passage touché s'il est à plus de PASSAGE m). Cap conservé. Un tracé jonction se marche (_suivrePente).
 
   // Niveau a au-dessus de b : d'après les profondeurs saisies si les deux en ont, sinon le plus grand numéro.
   function _auDessus(a, b) {
@@ -5169,7 +5305,7 @@
   }
 
   // Bouton d'un passage, nommé (« ▼ -1 · Nom du puits (échelle) ») : `court` à l'écran (nom coupé à 22 signes),
-  // `long` au titre et au libellé accessible. Tracé jonction : sans nom.
+  // `long` au titre et au libellé accessible. POI sans nom : le moyen seul.
   function _textePassage(c) {
     const poi = c.depuis && c.depuis.poi, J = window.KtaPoiJonction;
     const moyen = _t("vue3d.moyen." + ((poi && J && J.moyen(_premierTag(poi))) || "trace"));
@@ -5191,9 +5327,9 @@
     return true;
   }
 
-  // ⚠️ contrat (décision produit) : arrivée au raccord validé du niveau, sinon au bout opposé du tracé jonction, sinon
-  // au point ; ramenée dans le tube si elle tombe à côté (_degager) ; cap vers la prochaine consigne si un itinéraire
-  // passe là, sinon vers la galerie d'arrivée (_capArrivee).
+  // ⚠️ contrat (décision produit) : arrivée au raccord validé du niveau, sinon au point ; ramenée dans le tube si
+  // elle tombe à côté (_degager) ; cap vers la prochaine consigne si un itinéraire passe là, sinon vers la galerie
+  // d'arrivée (_capArrivee).
   function _basculerNiveau(c) {
     const e = _e;
     if (!e) return false;
@@ -6556,17 +6692,22 @@
       }
       if (i >= pts.length) break;
       const a = pts[i - 1], b = pts[i], d = Math.hypot(b.x - a.x, b.y - a.y);
-      if (d < 1e-6 || !_segmentDuNiveau(road, a, b, e.niveau)) continue;
+      if (d < 1e-6) continue;
+      // Tronçon d'une galerie inclinée du niveau (ses deux bouts sur son axe) : chevrons posés sur sa pente.
+      const pa = _segmentDuNiveau(road, a, b, e.niveau) ? null : _penteDuTroncon(a, b);
+      if (!pa && !_segmentDuNiveau(road, a, b, e.niveau)) continue;
       const t = (s - cum) / d, ux = (b.x - a.x) / d, uz = (b.y - a.y) / d, nx = -uz, nz = ux;
       const cx = (a.x + t * (b.x - a.x)) / sc, cz = (a.y + t * (b.y - a.y)) / sc;
-      const y = CHEVRON.y + _dessusIti(cx, cz);   // par-dessus un remblais ou un effondrement, comme le ruban
+      // Par-dessus un remblais ou un effondrement, comme le ruban.
+      const y0 = CHEVRON.y + (pa ? 0 : _dessusIti(cx, cz));
+      const Y = function (x, z) { return pa ? y0 + _surPenteDe(pa, x, z).dy : y0; };
       // Pointe devant, deux branches vers l'arrière de part et d'autre.
       const px = cx + ux * l / 2, pz = cz + uz * l / 2;
       [-1, 1].forEach(function (cote) {
         const qx = cx - ux * l / 2 + cote * nx * l / 2, qz = cz - uz * l / 2 + cote * nz * l / 2;
         const bx = qx - px, bz = qz - pz, bl = Math.hypot(bx, bz), ox = -bz / bl * ep / 2, oz = bx / bl * ep / 2;
-        lot.quad([px + ox, y, pz + oz], [qx + ox, y, qz + oz], [qx - ox, y, qz - oz], [px - ox, y, pz - oz], haut,
-          col);
+        lot.quad([px + ox, Y(px + ox, pz + oz), pz + oz], [qx + ox, Y(qx + ox, qz + oz), qz + oz],
+          [qx - ox, Y(qx - ox, qz - oz), qz - oz], [px - ox, Y(px - ox, pz - oz), pz - oz], haut, col);
       });
       e.nChevrons++;
     }
@@ -6577,6 +6718,82 @@
     e.chevrons.matrixAutoUpdate = false;
     e.scene.add(e.chevrons);
     e.sale = true;
+  }
+
+  // ── Itinéraire sur une galerie inclinée ───────────────────────────────────────────────────────────────
+  // ⚠️ contrat : le tronçon de l'itinéraire qui emprunte un tracé jonction du niveau affiché (ses deux bouts dans le
+  // trajet, l'un après l'autre) se dessine sur le sol de la galerie inclinée, du même ruban que le reste (liseré,
+  // chevrons de sens dans le sens du trajet) ; _itiDuNiveau l'écarte des morceaux à plat. Refait avec la scène
+  // (_reindexer) et avec l'itinéraire (_refaireIti).
+  const BOUT_ITI = 0.3;   // m : écart toléré entre le bout d'un tracé jonction et le point du trajet (nœuds fusionnés)
+
+  // Galerie inclinée du niveau qui porte le tronçon a → b (px, deux points du trajet), ou null.
+  function _penteDuTroncon(a, b) {
+    const e = _e, qa = _surPente(a.x / e.sc, a.y / e.sc, 0), qb = _surPente(b.x / e.sc, b.y / e.sc, 0);
+    return qa && qb && qa.p === qb.p && qa.lat <= BOUT_ITI && qb.lat <= BOUT_ITI ? qa.p : null;
+  }
+
+  function _majItiPentes() {
+    const e = _e, road = _itineraire();
+    _viderGroupe(e.itiPentes);
+    e.itiPentes = null;
+    e.nItiPentes = 0;
+    if (!road || !e.pentes || !e.pentes.length) return;
+    const pts = road.points, tol = BOUT_ITI * e.sc, lot = new Lot(), cols = _couleursIti();
+    const pres = function (q, P) { return !!q && Math.hypot(q.x - P[0], q.y - P[1]) <= tol; };
+    e.pentes.forEach(function (p) {
+      const A = p.pts[0], B = p.pts[p.pts.length - 1], n = p.pts.length - 1;
+      let sens = 0;
+      for (let i = 0; i < pts.length && !sens; i++) {
+        if (!pres(pts[i], A)) continue;
+        for (let k = Math.max(1, n - 2); k <= n + 2 && !sens; k++) {
+          if (pres(pts[i + k], B)) sens = 1;
+          else if (pres(pts[i - k], B)) sens = -1;
+        }
+      }
+      if (!sens) return;
+      _rubanPente(lot, p, sens, cols);
+      e.nItiPentes++;
+    });
+    const geo = lot.geometrie();
+    if (!geo) return;
+    const g = new THREE.Group(), m = new THREE.Mesh(geo, e.mats.iti);
+    m.renderOrder = 1;
+    m.matrixAutoUpdate = false;
+    m.userData.famille = "itineraire";
+    g.add(m);
+    e.scene.add(g);
+    e.itiPentes = g;
+    e.sale = true;
+  }
+
+  // Ruban de l'itinéraire sur la galerie inclinée p (sens 1 : de notre bout vers l'autre niveau) : liseré, ruban et
+  // chevrons de sens tous les ITI.pas m, chaque sommet à la hauteur de la pente sous lui.
+  function _rubanPente(lot, p, sens, cols) {
+    const Y = function (s, dy) { return p.dY * Math.max(0, Math.min(1, s / p.tot)) + dy; };
+    for (let i = 0; i + 1 < p.ptsM.length; i++) {
+      const A = p.ptsM[i], B = p.ptsM[i + 1], dx = B[0] - A[0], dz = B[1] - A[1], l = Math.hypot(dx, dz);
+      if (l < 1e-6) continue;
+      const nx = -dz / l, nz = dx / l, sA = p.cum[i], sB = p.cum[i + 1];
+      const bandes = [[LARGEUR_ITI + 2 * ITI.lisere, ITI.y - 0.005, cols.lisere], [LARGEUR_ITI, ITI.y, cols.ruban]];
+      bandes.forEach(function (b) {
+        const w = b[0] / 2, yA = Y(sA, b[1]), yB = Y(sB, b[1]);
+        lot.quad([A[0] + nx * w, yA, A[1] + nz * w], [B[0] + nx * w, yB, B[1] + nz * w],
+          [B[0] - nx * w, yB, B[1] - nz * w], [A[0] - nx * w, yA, A[1] - nz * w], [0, 1, 0], b[2]);
+      });
+      for (let s = Math.ceil((sA - ITI.pas / 2) / ITI.pas) * ITI.pas + ITI.pas / 2; s < sB; s += ITI.pas) {
+        if (s < sA) continue;
+        const k = (s - sA) / l, cx = A[0] + dx * k, cz = A[1] + dz * k, ux = dx / l * sens, uz = dz / l * sens;
+        const c = ITI.chevron, ep = ITI.ep, px = cx + ux * c / 2, pz = cz + uz * c / 2;
+        const yv = function (x, z) { return Y(s + ((x - cx) * dx + (z - cz) * dz) / l, ITI.y + ITI.dy); };
+        [-1, 1].forEach(function (cote) {
+          const qx = cx - ux * c / 2 - cote * uz * c / 2, qz = cz - uz * c / 2 + cote * ux * c / 2;
+          const bx = qx - px, bz = qz - pz, bl = Math.hypot(bx, bz), ox = -bz / bl * ep / 2, oz = bx / bl * ep / 2;
+          lot.quad([px + ox, yv(px + ox, pz + oz), pz + oz], [qx + ox, yv(qx + ox, qz + oz), qz + oz],
+            [qx - ox, yv(qx - ox, qz - oz), qz - oz], [px - ox, yv(px - ox, pz - oz), pz - oz], [0, 1, 0], cols.lisere);
+        });
+      }
+    }
   }
 
   // ── Marqueurs de l'itinéraire : étapes (disque et mât) et arrivée (🏁) ──────────────────────────────────
@@ -7448,12 +7665,23 @@
     if (e.geste) _majGeste(dt);
     _majDonnees();
     if (e.dessin) _majDessin();
+    _suivrePente();
     _majPassage();
     const niv = _niveauCourant();
     // Pendant un geste, la scène attend sa bascule (au noir). Niveau changé hors passage (tracker en suivi, niveau
-    // de la carte) : même fondu, sans descente.
+    // de la carte) : même fondu, sans descente ; tracker au bout d'une galerie inclinée vers ce niveau : sans fondu
+    // (la caméra y est déjà à la hauteur de son sol).
     if (!e.geste) {
-      if (niv !== e.niveau && e.niveau !== null && niv !== null && _gesteAnime) {
+      const penteVers = niv !== e.niveau && e.mode === "suivi" && Number.isInteger(niv) &&
+        (function () {
+          const q = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, PENTE.suivi);
+          return !!q && q.p.autre === niv;
+        })();
+      if (penteVers) {
+        e.pentesFranchies++;
+        _reindexer();
+        _annoncerNiveau();
+      } else if (niv !== e.niveau && e.niveau !== null && niv !== null && _gesteAnime) {
         _lancerGeste(0, function () { _reindexer(); _annoncerNiveau(); });
       } else if (niv !== e.niveau || (e.filtresChanges && !e.donnees.signal)) {
         // Filtres changés avec des données en attente (annulation, import) : une seule reconstruction, celle de
@@ -8038,8 +8266,15 @@
     if (v !== e.hauteur) {
       e.hauteur = v;
       e.oeil = _oeil(v);
+      // Galeries inclinées : leur hauteur de départ (et leur dénivelé sans sols) suit celle du niveau.
+      e.pentes = _pentesDuNiveau(e.niveau, e.jonctions || []);
+      e.volPassages = (e.volPassages || []).filter(function (q) {
+        if (q.genre === "pente") _libererVolume(q);
+        return q.genre !== "pente";
+      }).concat(_volumesPentes());
       _refaireTuiles();
       _majMarqueursIti();   // étapes et 🏁 posées sur un volume : elles suivent sa hauteur
+      _majItiPentes();
       e.chevSig = null;
     }
     _majHauteur();
@@ -8554,7 +8789,7 @@
       e.reprises++;
       e.tuiles.forEach(function (t) { t.obj = null; });
       e.chevrons = null; e.chevSig = null; e.guidageForce = true;   // même règle : jamais dispose() d'avant la perte
-      e.marqueursIti = null; e.ronds = null; e.distTot = null; e.geoMarqueur = null;
+      e.marqueursIti = null; e.ronds = null; e.distTot = null; e.geoMarqueur = null; e.itiPentes = null;
       if (e.dessin) {   // aperçu et plan au sol refaits à l'image suivante (même règle : rien de l'ancien contexte)
         e.dessin.apercu = null; e.dessin.etiquettes = []; e.dessin.apSig = null;
         e.dessin.sol = e.dessin.sol ? { jeton: e.dessin.sol.jeton + 1 } : null;
@@ -8754,8 +8989,12 @@
       ligneBloquee: function (x0, y0, x1, y1) { return !!_e && !!_juger([[x0, y0, x1, y1]])[0]; },
       // 🩸 La règle du pas ignore la structure où l'on se trouve déjà (on en sort) : la place est donc aussi
       // testée hors des volumes dessinés et corps dégagé (aucun rayon bloqué).
+      // Dans une galerie inclinée, sa règle : un corps entre ses parois (_pas).
       libre: function (x, y) {
-        return !!_e && !_coince(x, y) && !_volumeContenant(x / _e.sc, y / _e.sc) && _rayonsBloques(x, y) === 0;
+        if (!_e) return false;
+        const q = _surPente(x / _e.sc, y / _e.sc, 0);
+        if (q) return q.lat <= q.p.demi - RAYON_CORPS + 1e-9;
+        return !_coince(x, y) && !_volumeContenant(x / _e.sc, y / _e.sc) && _rayonsBloques(x, y) === 0;
       }
     };
   }
@@ -8892,6 +9131,7 @@
         roseAngle: Number.NaN, rendu: "structures", galerie: null, passages: [], passageSig: null, passageCibles: null,
         volPassages: [], geste: null, dy: 0, fondu: null, fonduOp: 0, bandeauNiveau: null, bandeauNiveauFin: 0,
         niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
+        pentes: [], jonctions: [], pentesFranchies: 0, itiPentes: null, nItiPentes: 0,
         zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, rubans: {}, liseres: {},
         filtresChanges: false, reindexations: 0, itiRefaits: 0, msIti: 0, compteIti: 0,
         donnees: { empreinte: null, signal: 0, premier: 0, signaux: 0, verifs: 0, refaites: 0, degagees: 0, ms: 0,
@@ -8985,6 +9225,7 @@
       if (e.plaques) e.plaques.forEach(function (t) { t.tex.dispose(); t.mat.dispose(); });
       _libererChevrons();
       _viderGroupe(e.marqueursIti);
+      _viderGroupe(e.itiPentes);
       if (e.ronds) e.ronds.geometry.dispose();
       if (e.distTot) e.distTot.geometry.dispose();
       if (e.sol) e.sol.geometry.dispose();
@@ -9265,9 +9506,21 @@
           passage: !!v.passage, monte: v.monte === undefined ? null : v.monte, construit: !!v.obj, x: v.x, y: v.y,
           bouche: v.genre === "poi" ? [[-v.a, -v.b], [v.a, -v.b], [v.a, v.b], [-v.a, v.b]].map(function (q) {
             return _repere(v)(q[0], q[1]);
-          }) : null },
+          }) : null,
+          pente: v.p ? { dY: +v.p.dY.toFixed(3), tOuvert: +v.p.tOuvert.toFixed(3), autre: v.p.autre } : null },
           v.stats || {});
       }),
+      // Galeries inclinées du niveau et celle sous la place (_surPente) : t, s (m), sol (dy, m).
+      pentes: (e.pentes || []).map(function (p) {
+        return { autre: p.autre, dY: +p.dY.toFixed(3), hA: p.hA, hB: p.hB, tot: +p.tot.toFixed(3),
+          tOuvert: +p.tOuvert.toFixed(3), sansSols: p.sansSols };
+      }),
+      pente: (function () {
+        const q = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);
+        return { sur: !!q, t: q ? +q.t.toFixed(4) : null, s: q ? +q.s.toFixed(3) : null, dy: q ? +q.dy.toFixed(3) : 0,
+          plafond: q ? +q.plafond.toFixed(3) : null, autre: q ? q.p.autre : null, franchies: e.pentesFranchies,
+          itineraire: e.nItiPentes };
+      })(),
       geste: e.geste ? { sens: e.geste.sens, t: Math.round(e.geste.t), bascule: e.geste.fait } : null,
       cameraY: +e.camera.position.y.toFixed(3), ramper: +(e.ramper || 0).toFixed(3),
       plaques: e.plaques ? { n: e.plaques.size, octets: Array.from(e.plaques.values()).reduce(function (s, t) {
