@@ -879,7 +879,9 @@
   //   (Blob d'un seul tenant ou morceaux d'une autre génération). Illisible → rien ne change, `code: "illisible"`.
   //   Sans `terminer`, rien n'est visible : `abandonner` efface les morceaux posés.
   function rangerEnMorceaux(id) {
-    const gen = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+    const alea = new Uint32Array(1);
+    crypto.getRandomValues(alea);
+    const gen = Date.now().toString(36) + "-" + alea[0].toString(36);
     let n = 0, taille = 0, clos = false;
     async function abandonner() {
       clos = true;

@@ -2522,7 +2522,8 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       const f = fauxIdb();
       const w = { console: { log() {}, warn() {}, error() {} }, Blob: Blob, ArrayBuffer: ArrayBuffer, setTimeout: setTimeout,
         Promise: Promise, WeakMap: WeakMap, indexedDB: f.idb, IDBKeyRange: { bound: (l, u) => ({ borne: true, l, u }) },
-        localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, navigator: {} };
+        localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, navigator: {},
+        crypto: require("crypto").webcrypto };
       w.window = w;
       const ctx = vm.createContext(w);
       vm.runInContext("var localStorage = window.localStorage, indexedDB = window.indexedDB, IDBKeyRange = window.IDBKeyRange," +
