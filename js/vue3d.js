@@ -628,7 +628,8 @@
   }
 
   // Place (x, z m) projetée sur la galerie inclinée p → { p, s (m depuis notre bout), t, lat (m de l'axe, bouts
-  // compris), dy (sol), plafond (m, au-dessus du sol du niveau) }.
+  // compris), demi (m : demi-largeur de la galerie inclinée à cet endroit, KtaGalerie.demiPente), dy (sol), plafond
+  // (m, au-dessus du sol du niveau) }.
   function _surPenteDe(p, x, z) {
     let best = null;
     for (let i = 0; i + 1 < p.ptsM.length; i++) {
@@ -638,7 +639,8 @@
       if (!best || lat < best.lat) best = { lat: lat, s: p.cum[i] + (p.cum[i + 1] - p.cum[i]) * k };
     }
     const t = best.s / p.tot, dy = p.dY * t;
-    return { p: p, s: best.s, t: t, lat: best.lat, dy: dy, plafond: dy + p.hA + (p.hB - p.hA) * t };
+    return { p: p, s: best.s, t: t, lat: best.lat, demi: window.KtaGalerie.demiPente(p, t), dy: dy,
+      plafond: dy + p.hA + (p.hB - p.hA) * t };
   }
 
   // Galerie inclinée sous la place (x, z m) : la plus proche dont l'axe est à moins de sa demi-largeur + `marge` m,
@@ -650,7 +652,7 @@
       const p = l[i];
       if (x < p.x0 - m || x > p.x1 + m || z < p.z0 - m || z > p.z1 + m) continue;
       const q = _surPenteDe(p, x, z);
-      if (q.lat <= p.demi + m && (!best || q.lat < best.lat)) best = q;
+      if (q.lat <= q.demi + m && (!best || q.lat < best.lat)) best = q;
     }
     return best;
   }
@@ -3564,7 +3566,16 @@
   // sous lui. En montée : bouche au plafond et talus sous la rampe jusqu'à tOuvert, parois et plafond au-dessus du
   // plafond du niveau. Le bout d'en face reste ouvert : la scène a basculé avant d'y arriver (_suivrePente).
   function _pente(v, lots) {
-    const p = v.p, w = p.demi, dY = p.dY, hA = p.hA, tO = p.tOuvert, col = _couleur("traces", "jonction", "color");
+    const p = v.p, dY = p.dY, hA = p.hA, tO = p.tOuvert, col = _couleur("traces", "jonction", "color");
+    const W = function (t) { return window.KtaGalerie.demiPente(p, t); };
+    // Parois verticales posées (m, relevé du checkup : etat().volumes[].paroisPente) : [x0, z0, x1, z1, bas, haut].
+    v.paroisPente = [];
+    const mur = function (P, Q, y0p, y1p, y0q, y1q) {
+      if (y1p - y0p < 1e-3 && y1q - y0q < 1e-3) return;
+      _paroiPente(lots.parois, P, Q, y0p, y1p, y0q, y1q);
+      v.paroisPente.push([+P[0].toFixed(3), +P[1].toFixed(3), +Q[0].toFixed(3), +Q[1].toFixed(3),
+        +Math.min(y0p, y0q).toFixed(3), +Math.max(y1p, y1q).toFixed(3)]);
+    };
     const ys = function (t) { return dY * t; };
     const yc = function (t) { return dY * t + hA + (p.hB - hA) * t; };
     const st = [];   // stations (m) : sommets du tracé et bout de la part ouverte
@@ -3583,32 +3594,33 @@
       if (l < 1e-6) continue;
       const ux = dx / l, uz = dz / l, nx = -uz, nz = ux, ouvert = B.t <= tO + 1e-6;
       const G = function (S, c) { return [S.x + nx * c, S.z + nz * c]; };
-      const gA = G(A, -w), dA = G(A, w), gB = G(B, -w), dB = G(B, w);
+      const wA = W(A.t), wB = W(B.t);
+      const gA = G(A, -wA), dA = G(A, wA), gB = G(B, -wB), dB = G(B, wB);
       const yA = ys(A.t), yB = ys(B.t), uA = A.t * p.tot, uB = B.t * p.tot, k = (yB - yA) / l;
       const haut = norme([-ux * k, 1, -uz * k]), bas = norme([ux * k, -1, uz * k]);
       lots.parois.quad([gA[0], yA, gA[1]], [gB[0], yB, gB[1]], [dB[0], yB, dB[1]], [dA[0], yA, dA[1]], haut, BLANC,
-        [uA, -w, uB, -w, uB, w, uA, w]);
+        [uA, -wA, uB, -wB, uB, wB, uA, wA]);
       const r = LARGEUR_TRACE / 2, rgA = G(A, -r), rdA = G(A, r), rgB = G(B, -r), rdB = G(B, r);
       lots.opaque.quad([rgA[0], yA + 0.03, rgA[1]], [rgB[0], yB + 0.03, rgB[1]], [rdB[0], yB + 0.03, rdB[1]],
         [rdA[0], yA + 0.03, rdA[1]], haut, col);
       if (dY < 0) {
-        _paroiPente(lots.parois, gA, gB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
-        _paroiPente(lots.parois, dA, dB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
+        mur(gA, gB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
+        mur(dA, dB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
         if (ouvert) _quadPlat(lots.sol, [gA, gB, dB, dA], 0);
         else {
           lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
-            [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -w, uB, -w, uB, w, uA, w]);
+            [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -wA, uB, -wB, uB, wB, uA, wA]);
         }
       } else if (dY > 0) {
-        _paroiPente(lots.parois, gA, gB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
-        _paroiPente(lots.parois, dA, dB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
+        mur(gA, gB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
+        mur(dA, dB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
         lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
-          [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -w, uB, -w, uB, w, uA, w]);
+          [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -wA, uB, -wB, uB, wB, uA, wA]);
         if (ouvert) {
           _quadPlat(lots.plafond, [gA, gB, dB, dA], hA);
-          const wt = w - PENTE.talus;
-          _paroiPente(lots.parois, G(A, -wt), G(B, -wt), 0, yA, 0, yB);
-          _paroiPente(lots.parois, G(A, wt), G(B, wt), 0, yA, 0, yB);
+          const wtA = wA - PENTE.talus, wt = wB - PENTE.talus;
+          mur(G(A, -wtA), G(B, -wt), 0, yA, 0, yB);
+          mur(G(A, wtA), G(B, wt), 0, yA, 0, yB);
           if (tO < 1 && Math.abs(B.t - tO) < 1e-6) pied = { B: B, ux: ux, uz: uz, G: G, wt: wt };
         }
       }
@@ -3616,7 +3628,7 @@
     // Pied du talus (montée) : face verticale sous le bout de la part ouverte, en retrait (paroi du modèle galerie).
     if (pied) {
       const c = { x: pied.B.x - pied.ux * PENTE.talus, z: pied.B.z - pied.uz * PENTE.talus };
-      _paroiPente(lots.parois, pied.G(c, -pied.wt), pied.G(c, pied.wt), 0, hA, 0, hA);
+      mur(pied.G(c, -pied.wt), pied.G(c, pied.wt), 0, hA, 0, hA);
     }
   }
 
@@ -4983,7 +4995,7 @@
       const x1 = e.pos.x + sx, y1 = e.pos.y + sy;
       if (pd) {
         const pa = _surPenteDe(pd.p, x1 / e.sc, y1 / e.sc);
-        if (pa.lat <= Math.max(pd.p.demi - RAYON_CORPS, pd.lat) + 1e-9) { _poser(x1, y1); return true; }
+        if (pa.lat <= Math.max(pa.demi - RAYON_CORPS, pd.lat) + 1e-9) { _poser(x1, y1); return true; }
         if (Math.abs(pd.dy) >= PENTE.sortie) continue;
       }
       const n = _balayage(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l);
@@ -9052,7 +9064,7 @@
       libre: function (x, y) {
         if (!_e) return false;
         const q = _surPente(x / _e.sc, y / _e.sc, 0);
-        if (q) return q.lat <= q.p.demi - RAYON_CORPS + 1e-9;
+        if (q) return q.lat <= q.demi - RAYON_CORPS + 1e-9;
         return !_coince(x, y) && !_volumeContenant(x / _e.sc, y / _e.sc) && _rayonsBloques(x, y) === 0;
       }
     };
@@ -9567,13 +9579,15 @@
           bouche: v.genre === "poi" ? [[-v.a, -v.b], [v.a, -v.b], [v.a, v.b], [-v.a, v.b]].map(function (q) {
             return _repere(v)(q[0], q[1]);
           }) : null,
-          pente: v.p ? { dY: +v.p.dY.toFixed(3), tOuvert: +v.p.tOuvert.toFixed(3), autre: v.p.autre } : null },
+          pente: v.p ? { dY: +v.p.dY.toFixed(3), tOuvert: +v.p.tOuvert.toFixed(3), autre: v.p.autre } : null,
+          paroisPente: v.paroisPente || null },
           v.stats || {});
       }),
       // Galeries inclinées du niveau et celle sous la place (_surPente) : t, s (m), sol (dy, m).
       pentes: (e.pentes || []).map(function (p) {
         return { autre: p.autre, dY: +p.dY.toFixed(3), hA: p.hA, hB: p.hB, tot: +p.tot.toFixed(3),
-          tOuvert: +p.tOuvert.toFixed(3), sansSols: p.sansSols };
+          tOuvert: +p.tOuvert.toFixed(3), sansSols: p.sansSols, demiA: +p.demiA.toFixed(3), demiB: +p.demiB.toFixed(3),
+          raccordA: p.raccordA, raccordB: p.raccordB };
       }),
       pente: (function () {
         const q = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);

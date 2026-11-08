@@ -18,7 +18,8 @@
 // parallèles) : aucune paroi à travers une autre, butées, carrefours, zones coupées au tube, POI à 2 / 5 / 25 m,
 // interrupteur retenu par plan ; passages 🪜 par POI, tracé jonction marché ; carte 2D placée à la sortie.
 // Passages (14) : volume par moyen, galerie inclinée, panneau ↕, 🪜 nommé, fiche, fondu et descente, arrivée dans le
-// tube, cap, guidage, suivi. Galerie inclinée marchée (§ 14 octies, KTA_V3D_SEUL=pente).
+// tube, cap, guidage, suivi. Galerie inclinée marchée (§ 14 octies, KTA_V3D_SEUL=pente), à la largeur des galeries
+// raccordées (§ 14 nonies, =pentelargeur).
 // Aucune paroi de tube dans un passage (§ 14 bis) : bouche ou tranchée coupée par un tracé, cul-de-sac, 3 rendus.
 // Accès de surface sans passage (§ 14 quater : esf, pef, pb, pc, psf, ps, pe, cao, caf) : forme, place, ni 🪜 ni
 // cadre, blocage (cône, cavage fermé ; bassin contre la paroi, qu'on longe), itinéraire sur le cône, arrivée devant
@@ -2551,7 +2552,7 @@ async function sectionPente(page) {
       // ctx.libre des add-ons : la même règle (corps entre les parois de la galerie inclinée).
       let ctx = null;
       const degreffer = K.greffer({ nom: "v3d-pente", scene: function (x) { ctx = x; } });
-      c.libre = ctx ? { axe: ctx.libre(P(0, 4).x, P(0, 4).y), bord: ctx.libre(P(0.5, 4).x, P(0.5, 4).y) } : null;
+      c.libre = ctx ? { axe: ctx.libre(P(0, 4).x, P(0, 4).y), bord: ctx.libre(P(1, 4).x, P(1, 4).y) } : null;
       if (degreffer) degreffer();
       r.cas.push(c);
     };
@@ -2681,7 +2682,8 @@ async function sectionPente(page) {
       pr(c.paroi.dx, 0.2, 0.005),
       k + " : au milieu, un pas de côté de 1 m bute sur la paroi ; 0,2 m dans la largeur passe", c.paroi);
     verifier(!!c.libre && c.libre.axe === true && c.libre.bord === false,
-      k + " : ctx.libre (add-ons) : libre sur l'axe de la galerie inclinée, pas à 0,5 m (corps contre la paroi)", c.libre);
+      k + " : ctx.libre (add-ons) : libre sur l'axe de la galerie inclinée, pas à 1 m (corps contre la paroi de la " +
+      "galerie de 2,5 m qu'elle prolonge)", c.libre);
   });
   const S = R.suivi.rel;
   const suiviOk = S.every(function (q) {
@@ -2705,6 +2707,123 @@ async function sectionPente(page) {
   verifier(!!R.consigne && R.consigne.moyen === "pente" && pr(R.consigne.x, 0, 0.05) && pr(R.consigne.z, 0, 0.05) &&
     R.consigne.texte.toLowerCase().indexOf(I.attendu.toLowerCase()) >= 0,
     "guidage : consigne de niveau à l'entrée de la jonction, « " + (R.consigne && R.consigne.texte) + " »", R.consigne);
+}
+
+// § 14 nonies — Largeur de la galerie inclinée = celle des galeries qu'elle relie (KTA_V3D_SEUL=pentelargeur ; réseau
+// FICTIF en mémoire). Galerie principale de 2,5 m au 0 qui se termine en x = 0, tracé jonction dans son prolongement
+// jusqu'en x = 12, galerie secondaire de 2 m au −1 qui en repart. Demi-largeur 1,25 m au bout du 0, 1 m au bout du −1,
+// interpolée ; aucune paroi de la galerie inclinée (talus de la montée compris) dans l'emprise des galeries raccordées,
+// aux deux bouts, vues du 0 (descente) et du −1 (montée), trois rendus ; au bout du −1, un pas de côté de 0,5 m dans la
+// pente passe (le corps tient dans les 2 m) ; marche le long du bord de la galerie du −1 jusque dans la pente sans
+// butée ; tracé jonction raccordé à rien : 1,6 m (repli).
+async function sectionPenteLargeur(page) {
+  console.log("§ 14 nonies — largeur de la galerie inclinée");
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc, PID = "v3d-checkup-pente-largeur";
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, acc: window.ktaEstAccessible,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = PID;
+    window.ktaEstAccessible = function () { return true; };
+    C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
+    window.effacerReglagesNiveaux(PID);
+    window.setPlanProfondeurs(PID, { "0": null, "-1": null });
+    window.setRoads([
+      { uid: "rd_pl_0", type: "principal", level: 0, points: [P(-40, 0), P(0, 0)] },
+      { uid: "rd_pl_m1", type: "secondaire", level: -1, points: [P(12, 0), P(50, 0)] },
+      { uid: "rd_pl_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(0, 0), P(12, 0)] }
+    ]);
+    window.ktaSetActiveLevel(0);
+    const r = { cas: [] };
+    const rel = function (q) { return [+(q.x / sc - ox).toFixed(3), +(q.y / sc - oz).toFixed(3)]; };
+    for (const rendu of ["galerie", "structures", "mixte"]) {
+      for (const niv of [0, -1]) {
+        await K.fermer();
+        window.KtaGalerie.invalider();
+        window.setPlanRenduVue3D(null, rendu);
+        const d = niv === 0 ? P(-3, 0) : P(15, 0);
+        await K.ouvrir({ depart: Object.assign(d, { cap: niv === 0 ? 90 : 270, niveau: niv }), commandes: "pave" });
+        await pause(250);
+        const e = K.etat(), c = { rendu: rendu, niveau: niv, pentes: e.pentes };
+        const v = e.volumes.filter(function (q) { return q.genre === "pente"; })[0] || null;
+        // Parois relevées, en m depuis l'origine du réseau : [x0, z0, x1, z1, bas, haut].
+        c.parois = v && v.paroisPente ? v.paroisPente.map(function (m) {
+          return [+(m[0] - ox).toFixed(3), +(m[1] - oz).toFixed(3), +(m[2] - ox).toFixed(3), +(m[3] - oz).toFixed(3),
+            m[4], m[5]];
+        }) : null;
+        if (niv === -1) {
+          K.placer(P(11.5, 0).x, P(11.5, 0).y, 180);
+          await pause(60);
+          const a0 = K.etat().pos, okCote = K.avancer(0.5);
+          await pause(40);
+          c.cote = { ok: okCote, dz: +(rel(K.etat().pos)[1] - rel(a0)[1]).toFixed(3), sur: K.etat().pente.sur };
+          K.placer(P(16, 0.55).x, P(16, 0.55).y, 270);
+          await pause(60);
+          const b0 = K.etat().butees;
+          let refus = 0;
+          for (let i = 0; i < 24; i++) { if (!K.avancer(0.25)) refus++; await pause(20); }
+          c.bord = { refus: refus, butees: K.etat().butees - b0, fin: rel(K.etat().pos), sur: K.etat().pente.sur,
+            niveau: K.etat().niveau };
+        }
+        r.cas.push(c);
+      }
+    }
+    await K.fermer();
+    window.setRoads([{ uid: "rd_pl_seul", type: "jonction", level: 0, fromLevel: 0, toLevel: -1,
+      points: [P(100, 100), P(112, 100)] }]);
+    window.KtaGalerie.invalider();
+    const ps = window.KtaGalerie.pente(window.getRoads()[0], 0);
+    r.seul = ps ? { demiA: ps.demiA, demiB: ps.demiB, raccordA: ps.raccordA, raccordB: ps.raccordB } : null;
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id; window.ktaEstAccessible = av.acc;
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return r;
+  });
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  R.cas.forEach(function (c) {
+    const k = "§ 14 nonies " + c.rendu + ", vue du " + (c.niveau === 0 ? "0" : "−1");
+    const p = c.pentes[0] || {};
+    // Vu du 0 : notre bout = 0 (1,25 m), en face = −1 (1 m) ; vu du −1, l'inverse.
+    const dA = c.niveau === 0 ? 1.25 : 1, dB = c.niveau === 0 ? 1 : 1.25;
+    verifier(c.pentes.length === 1 && pr(p.demiA, dA) && pr(p.demiB, dB) && p.raccordA && p.raccordB,
+      k + " : demi-largeur " + p.demiA + " m à notre bout, " + p.demiB + " m en face (galeries de 2,5 et 2 m)", p);
+    // Galerie du 0 en x ≤ 0 (demi 1,25 m), du −1 en x ≥ 12 (demi 1 m) : une paroi de la pente à leur bout est sur leur
+    // paroi (talus en retrait de 3 cm), jamais à l'intérieur.
+    const dedans = (c.parois || []).filter(function (m) {
+      return [[m[0], m[1]], [m[2], m[3]]].some(function (q) {
+        const z = Math.abs(q[1]);
+        return (q[0] <= 0.3 && z < 1.2) || (q[0] >= 11.7 && z < 0.95);
+      });
+    });
+    verifier(Array.isArray(c.parois) && dedans.length === 0,
+      k + " : aucune paroi de la galerie inclinée dans l'emprise des galeries raccordées (" +
+      (c.parois ? c.parois.length : 0) + " parois relevées)", { dedans: dedans, parois: c.parois });
+    if (c.niveau === -1) {
+      verifier(c.cote.ok && pr(c.cote.dz, 0.5, 0.01) && c.cote.sur,
+        k + " : un pas de côté de 0,5 m au bout de la pente passe (règle du pas à la largeur de la galerie)", c.cote);
+      verifier(c.bord.refus === 0 && c.bord.butees === 0 && c.bord.sur,
+        k + " : marche le long du bord de la galerie du −1 jusque dans la pente, aucune butée (aucun bloc au milieu)",
+        c.bord);
+    }
+  });
+  verifier(!!R.seul && pr(R.seul.demiA, 0.8) && pr(R.seul.demiB, 0.8) && !R.seul.raccordA && !R.seul.raccordB,
+    "§ 14 nonies tracé jonction raccordé à rien : 1,6 m de large (repli)", R.seul);
 }
 
 // Captures de la galerie inclinée (KTA_V3D_CAPTURES, hors dépôt) : réseau de § 14 octies, sols du lot A, trois
@@ -9744,7 +9863,13 @@ async function sectionGestesDoigt(nav) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionPente(page);
+      await sectionPenteLargeur(page);
       if (CAPTURES) await capturesPente(page);
+    } else if (SEUL === "pentelargeur") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionPenteLargeur(page);
     } else if (SEUL === "formes") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -13215,6 +13340,7 @@ async function sectionGestesDoigt(nav) {
         [AC.mixte.ms, AC.galerie.ms, AC.structures.ms].join(" / ") + " ms");
       await sectionConePassage(page);
       await sectionPente(page);
+      await sectionPenteLargeur(page);
       await sectionFormesPoi(page);
       await sectionFormesStructures(page);
 

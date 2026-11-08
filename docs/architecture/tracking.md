@@ -1560,7 +1560,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   sol du niveau de départ au sol du niveau d'arrivée, répartie sur sa longueur 2D (rien à saisir) : dénivelé =
   `sol(arrivée) − sol(départ)` (`getNiveauVertical`) si les deux sols sont renseignés, sinon **repli** : une hauteur
   de galerie par niveau franchi (celle du niveau du dessous, écart nul : 2 m par niveau sans réglage). Hauteur sous
-  plafond interpolée de celle du départ à celle de l'arrivée ; largeur 1,6 m (`KtaGalerie.PASSAGE.pente`). Vue d'un
+  plafond interpolée de celle du départ à celle de l'arrivée. **Largeur** (décision produit) = celle de la galerie
+  raccordée à chaque bout (axe d'une galerie du niveau à moins de 1,5 m du bout, `RACCORD_PENTE_M` ; largeur du modèle
+  galerie par type ; à égalité la plus large), interpolée d'un bout à l'autre (`KtaGalerie.demiPente(p, t)`) : parois
+  et talus de la pente sur celles des galeries, jamais un pan dans une galerie plus large ; bout raccordé à rien = la
+  largeur de l'autre bout, 1,6 m si aucun (`PASSAGE.pente`). Règle du pas, `ctx.libre` et emprise du modèle suivent
+  cette largeur (`checkup-vue-3d.js` § 14 nonies, `KTA_V3D_SEUL=pentelargeur`). Vue d'un
   niveau, la galerie part toujours de son bout (y = 0) : sol à `dY·t`, plafond à `dY·t + hA + (hB − hA)·t`.
   **Part ouverte** `tOuvert` : jusqu'où elle recoupe la tranche [0, h] du niveau (en descente, son plafond reste
   au-dessus du sol ; en montée, son sol sous le plafond) — bouche au sol (descente, tranchée) ou au plafond (montée,

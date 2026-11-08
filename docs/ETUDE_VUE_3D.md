@@ -111,7 +111,8 @@ flotte au-dessus du vide. Le tracé jonction n'est plus une rampe avec 🪜 : c'
 
 Choix faits à la livraison, à valider : **repli sans sols** = une hauteur de galerie (celle du niveau du dessous) par
 niveau franchi, écart nul (2 m par niveau sans réglage) ; hauteur sous plafond **interpolée** de celle du départ à
-celle de l'arrivée ; largeur 1,6 m ; la scène passe au niveau d'en face **à mi-longueur** (+ 0,3 m d'hystérésis), sans
+celle de l'arrivée ; largeur = celle des galeries raccordées, interpolée d'un bout à l'autre (révisé le 08/11/2026 :
+1,6 m fixes posaient un pan de paroi au milieu d'une galerie plus large ; repli 1,6 m sans galerie raccordée) ; la scène passe au niveau d'en face **à mi-longueur** (+ 0,3 m d'hystérésis), sans
 fondu : les deux scènes dessinent la même galerie à la même place, l'altitude est continue, et la moitié d'en face
 montre déjà les galeries d'arrivée (au bout seulement, on aurait marché vers un trou noir) ; en suivi, la bascule du
 tracker au bout du tracé se fait sans fondu ; la consigne « descendre / monter la pente vers le niveau n » est dite à
