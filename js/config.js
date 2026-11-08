@@ -1500,6 +1500,19 @@ function setVue3DNiveauxVus(v) {
   try { localStorage.setItem(V3D_NIVEAUX_VUS_CLE, ok); } catch (e) { /* valeur de la vue seule */ }
   return ok;
 }
+// localStorage["myktamap_v3d_estomper_v1"] = "1" | "0" ; absente ou illisible → "1" (décision produit : estompés par
+// défaut, retenu sur l'appareil, au doigt comme au pointeur). En vue d'édition seulement, les autres niveaux montrés
+// sont estompés (vue3d.js > _estomperVoisins) ; à hauteur d'yeux, rien ne change.
+const V3D_ESTOMPER_CLE = "myktamap_v3d_estomper_v1";
+function getVue3DEstomper() {
+  try { return localStorage.getItem(V3D_ESTOMPER_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DEstomper(oui) {
+  try { localStorage.setItem(V3D_ESTOMPER_CLE, oui ? "1" : "0"); } catch (e) { /* valeur de la vue seule */ }
+  return !!oui;
+}
+window.getVue3DEstomper = getVue3DEstomper;
+window.setVue3DEstomper = setVue3DEstomper;
 window.V3D_NIVEAUX_VUS = V3D_NIVEAUX_VUS;
 window.getVue3DNiveauxVus = getVue3DNiveauxVus;
 window.setVue3DNiveauxVus = setVue3DNiveauxVus;

@@ -1823,8 +1823,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   reste celle qui revient case cochée) = la **diagonale de l'emprise** (`_diagPlan` : image du plan et objets
   indexés, un objet hors image compris) ; recul de la vue d'édition jusqu'à cette diagonale (`_reculMax`) ; rayon
   construit sans plafond ; aucun brouillard (repoussé hors de vue, nuit et Plein jour) et ciel noir, Plein jour compris ; profondeur et lampe suivent la portée.
-  Au-delà de 150 m de recul, le plan proche de la caméra recule (recul / 300) : sinon les rubans au sol scintillent
-  au loin. ⚠️ contrat : au doigt (`ktaAppareilTactile`), la case **revient cochée à chaque ouverture** (réécrite) ;
+  **Profondeur en vue d'édition** (`_appliquerPortee`, `SOL_RECULE`) : le plan proche de la caméra suit le recul
+  (`PROCHE_PAR_RECUL` = 1/32, 5 cm au moins, sans saut à 150 m) ; le sol (carré qui suit, pièces des galeries, sols
+  des voisins) est reculé de 4 unités de profondeur, **facteur de pente nul** (un facteur de pente vaut un pixel de
+  profondeur, des mètres au loin à angle rasant : le niveau du dessous passerait à travers le sol). Sans cela, au
+  recul de 150 m (cas du téléphone, case recochée à chaque ouverture), l'eau d'un tube (profondeur stricte, 4 cm
+  au-dessus du sol) se hachurait de bandes et de triangles du sol. Checkup § 45 (`KTA_V3D_SEUL=solzones`).
+  ⚠️ contrat : au doigt (`ktaAppareilTactile`), la case **revient cochée à chaque ouverture** (réécrite) ;
   au pointeur fin, décochée reste décochée. Une greffe qui fige les réglages (`reglagesFiges`, jeu) limite la portée
   (`_limitee`), grise la case et refuse `limiterPortee` / `reglerPortee` sans rien écrire. Recocher ramène recul et
   portée sous leurs bornes. Version brute : tout le plan est construit en pleine définition (pas d'allègement du
@@ -2313,13 +2318,39 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   côté, au pire à la
   même altitude). Mixte et structures : sol et plafond d'un seul tenant au voisin aussi (`_placerVoisins`). Sans
   panneaux de POI (dessinés sans test de profondeur pour rester lisibles, ils se liraient à travers la roche et se
-  toucheraient pour un objet hors d'atteinte) ni volumes de passage (le puits du niveau actif descend jusqu'au voisin).
+  toucheraient pour un objet hors d'atteinte). **Passages et galeries inclinées des voisins** (`_volumesVoisin`,
+  `_construireVolumeVoisin`, décision produit) : un passage (POI jonction) ou un tracé jonction qui relie des niveaux
+  montrés sans toucher le niveau actif (celui-là le construit lui-même, son puits descend jusqu'au voisin) est
+  construit par le niveau montré le plus haut qu'il relie (jamais en double), à son altitude, avec son contexte
+  (`_avecVoisin` : niveau, hauteur, modèle, copies sans gabarit), sans bouches (leur gabarit trouerait le sol du
+  niveau actif), et coupé à mi-roche vers chaque niveau relié non montré (`Lot.couper`) : en Voisins au +1, la moitié
+  côté 0 d'une pente 0 ↔ −1 ; en Tous, entier. Même portée et même budget par image que les tuiles des voisins ;
+  refaits quand le niveau actif ou les niveaux montrés changent (`volSig`). Les arrivées (▲▼, raccords, règle du pas)
+  n'en lisent rien. Checkup § 47 (`KTA_V3D_SEUL=voisinspassages`).
   🩸 Gabarit : sol, plafond et rubans des voisins prennent des copies sans gabarit (`_matsVoisins`), sinon la bouche
   d'un puits trouerait aussi le fond qu'on voit par elle.
 - **Niveau actif d'abord** : ni la règle du pas, ni la visée (`_pointVise`), ni les fiches, ni les passages, ni le
   suivi ne lisent les voisins ; ils se voient et cachent ce qui est derrière eux. Le niveau actif ne change que par un
-  passage, une galerie inclinée ou ▲▼. **Vue d'édition** : rien au-dessus du niveau actif (il couvrirait la scène,
-  comme son plafond qu'elle retire), les voisins du dessous sans plafond.
+  passage, une galerie inclinée ou ▲▼. **Vue d'édition** : voisins sans plafond, **estompés** selon le réglage ⚙️
+  « 🌫️ Estomper » (`reglerEstomper`, `config.js > getVue3DEstomper`, `myktamap_v3d_estomper_v1`, cet appareil, activé
+  par défaut, au doigt comme au pointeur ; un seul réglage pour les deux côtés) : le **dessous assombri**
+  (`ESTOMPE.dessous`), le **dessus en fantôme** (`ESTOMPE.fantome` : transparent, sans écriture de profondeur, sol
+  caché) : on voit où passent ses galeries sans qu'il cache le niveau actif, et il ne capte aucun toucher
+  (`_pointVise` ne lit que les tuiles du niveau actif). Copies des matériaux par manière (`_matEstompe`), le maillage
+  garde l'original dans `userData.matOrigine`. Coupé : le dessous en rendu d'origine, **rien au-dessus** (il
+  couvrirait la scène, comme son plafond qu'elle retire : `_voisinCache`). À hauteur d'yeux, jamais. Checkup § 46
+  (`KTA_V3D_SEUL=estomper`), § 48 (`=fantome`).
+- **Sol du niveau actif en vue d'édition** (`_maniereSol`, `_majSolActif`, décision produit ; rendus structures et
+  mixte, dont le sol d'un seul tenant cachait tout le dessous ; pas en galerie, où rien de plein n'est sous les
+  galeries) : 🌫️ activé, 🗺️ plan au sol éteint et niveau actif qui n'est pas le plus profond du plan → 🧱 coupé :
+  sol **invisible** (ni couleur ni profondeur) ; 🧱 allumé et un voisin du dessous montré : sol **voilé**
+  (`SOL_VOILE`, transparent sans écriture de profondeur, `ORDRE_SOL` : dessiné avant l'eau et les zones
+  transparentes). Le sol d'un seul tenant des voisins du dessous est alors caché aussi (`_placerVoisins`) : là où le
+  dessous n'a rien, le vide noir, jamais un sol de remplacement. Sinon (Le mien avec 🧱, niveau le plus profond, 🌫️
+  coupé, plan au sol allumé — il se dessine sans profondeur, le dessous passerait dessus —, hauteur d'yeux) : sol
+  plein. Le maillage reste en place : visée, dessin et touchers au sol le lisent toujours. Copies du matériau du sol
+  (recul `SOL_RECULE` et gabarit compris), jamais le matériau partagé. Checkup § 49 (`KTA_V3D_SEUL=solvoile`) ;
+  § 45 juge la profondeur sol plein (🌫️ coupé).
 - **Mémoire** (décision produit) : seulement les tuiles à portée (même rayon, même 🛡️ que le niveau actif),
   construites quand celles du niveau actif sont toutes posées, `VOISINS_PAR_IMAGE` (2) par image ; un voisin inchangé
   (altitude, hauteur, rendu, 🧱, données, filtres) est gardé quand la scène change de niveau (galerie inclinée, ▲▼).
