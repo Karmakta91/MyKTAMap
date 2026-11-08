@@ -11,6 +11,8 @@
 // C. Itinéraire au −2 (Pathfinder de l'app, zones de la session) : la zone est contournée ; sans elle, direct.
 // D. Annulation (HistoryManager.undo = ⏪) puis rétablissement ; KMZ relu par l'import de l'app (une zone, ses
 //    niveaux, la copie sautée) ; rechargement de la page : `niveaux` restauré par la session.
+// E. Zone jonction : case de la fiche cochée et appliquée par le même bouton (`jonction`), avertissement tant qu'aucun
+//    tracé jonction ne la traverse, plus d'avertissement ensuite (galerieEmprise.js > penteDeZone), KMZ relu, ⏪.
 // Usage : node scripts/smoke/checkup-zones-niveaux.js (SMOKE_PORT pour une autre copie de travail)
 // Garde-fou logique associé : scripts/check-zones-niveaux.js · doc : docs/architecture/multilevel-pathfinding.md
 // =====================================================================
@@ -262,6 +264,78 @@ function longueurAuMoins2(page) {
     await niveaux(page, [-2]);
     v = await surCarte(page, z && z.uid);
     verifier(v.session, "rechargé : visible au −2", v);
+
+    // ── E. Zone jonction de niveau (case de la fiche, avertissement sans tracé jonction, ⏪, KMZ) ──
+    console.log("E. Zone jonction (fiche)");
+    await niveaux(page, [-1], -1);
+    const ouvrirFiche = async function (uid) {
+      await page.evaluate(function (u) {
+        window.map.closePopup();
+        let cible = null;
+        window.map.eachLayer(function (l) {
+          const p = l.getPopup && l.getPopup();
+          const c = p && p.getContent && p.getContent();
+          if (!cible && typeof c === "string" && c.indexOf('data-kta-uid="' + u + '"') >= 0) cible = l;
+        });
+        if (cible) cible.openPopup(cible.getBounds().getCenter());
+      }, uid);
+      await page.waitForTimeout(400);
+      return page.evaluate(function () {
+        const cb = document.querySelector(".leaflet-popup-content .kta-note-popup-zone-jonction-case");
+        const av = document.querySelector(".leaflet-popup-content .kta-note-popup-zone-jonction-avis");
+        return { caseVue: !!cb, cochee: !!(cb && cb.checked), avis: av ? av.textContent : null };
+      });
+    };
+    let f = await ouvrirFiche(z.uid);
+    verifier(f.caseVue && !f.cochee && f.avis === null, "fiche : case « Zone jonction » proposée, décochée", f);
+    await page.check(".leaflet-popup-content .kta-note-popup-zone-jonction-case");
+    await page.click(".leaflet-popup-content .kta-note-popup-niveaux-zone-appliquer");
+    await page.waitForTimeout(500);
+    let zj = await page.evaluate(function (u) {
+      const q = window.getZones().find(function (o) { return o.uid === u; });
+      return q ? { jonction: q.jonction === true, niveaux: q.niveaux } : null;
+    }, z.uid);
+    verifier(!!zj && zj.jonction && JSON.stringify(zj.niveaux) === "[-2,-1]",
+      "appliqué : zone jonction sur [−2, −1] (même bouton, niveaux gardés)", zj);
+    f = await ouvrirFiche(z.uid);
+    verifier(f.cochee && !!f.avis && /jonction/i.test(f.avis),
+      "fiche : sans tracé jonction qui la traverse, avertissement (sol à plat en 3D)", f);
+    await page.evaluate(function () {
+      window.map.closePopup();
+      window.setRoads((window.getRoads() || []).concat([{ uid: "rd_zn_jct", type: "jonction", level: -1, fromLevel: -1,
+        toLevel: -2, points: [{ x: 640, y: 450 }, { x: 760, y: 450 }] }]));
+      if (window.KtaGalerie) window.KtaGalerie.invalider();
+    });
+    await page.waitForTimeout(300);
+    f = await ouvrirFiche(z.uid);
+    const regle = await page.evaluate(function (u) {
+      const q = window.getZones().find(function (o) { return o.uid === u; }), r = window.KtaGalerie.penteDeZone(q);
+      return r ? r.uid : null;
+    }, z.uid);
+    verifier(f.cochee && f.avis === null && regle === "rd_zn_jct",
+      "tracé jonction −1 → −2 qui la traverse : plus d'avertissement, la zone prend sa pente", { f: f, regle: regle });
+    const kj = await page.evaluate(function () {
+      const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight;
+      const tr = window.KmzExport.buildTransformCalib({
+        pointA: { x: 0, y: H, lat: 46.5, lng: 3.0 },
+        pointB: { x: W, y: 0, lat: 46.51, lng: 3.02 },
+        pointC: { x: W, y: H, lat: 46.5, lng: 3.02 }
+      });
+      const kml = window.KmzExport.genererKml({ transform: tr, planName: "Test", include: { zones: true },
+        levels: new Set([-2, -1, 0]), data: { editorPoints: [], roads: [], zones: window.getZones(), structures: [] } });
+      const doc = new DOMParser().parseFromString(kml, "application/xml");
+      const trImp = window.KmzImport.buildTransform({ nw: { lat: 46.51, lng: 3.0 }, ne: { lat: 46.51, lng: 3.02 } }, W, H);
+      const lu = window.KmzImport.ingestPlacemarks(doc, trImp, { pointTag: "info", roadType: "chemin", zoneType: "eau" });
+      return { zones: lu.zones.length, jonction: lu.zones[0] && lu.zones[0].jonction === true };
+    });
+    verifier(kj.zones === 1 && kj.jonction, "KMZ : zone jonction relue avec `jonction`", kj);
+    await page.evaluate(function () { window.map.closePopup(); window.HistoryManager.undo(); });
+    await page.waitForTimeout(300);
+    zj = await page.evaluate(function (u) {
+      const q = window.getZones().find(function (o) { return o.uid === u; });
+      return q ? { jonction: q.jonction === true, niveaux: q.niveaux } : null;
+    }, z.uid);
+    verifier(!!zj && !zj.jonction && JSON.stringify(zj.niveaux) === "[-2,-1]", "⏪ : plus une zone jonction, niveaux gardés", zj);
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {
@@ -275,6 +349,7 @@ function longueurAuMoins2(page) {
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — zone sur plusieurs niveaux : fiche, filtre, itinéraire, annulation, KMZ, rechargement.");
+  console.log("🎉 CHECKUP VERT — zone sur plusieurs niveaux : fiche, filtre, itinéraire, annulation, KMZ, rechargement, " +
+    "zone jonction.");
   process.exit(0);
 })();
