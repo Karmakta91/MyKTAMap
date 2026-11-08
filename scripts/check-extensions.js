@@ -556,6 +556,26 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       L.onPointLevelChanged("p1", Object.assign({}, frais, { level: 2 }));
       t("…mais un geste (point changé d'étage) reste une écriture : updatedAt neuf, « modification » annoncée",
         L.getAllLinks()[0].updatedAt > 1000 && ev().length === avant + 1 && ev()[avant].action === "modification");
+      L.appliquerExterne({ liens: [{ id: "ipl_r", a: cote("p1", "pt_a"), b: cote("p2", "pt_b"), updatedAt: 1000 },
+        { id: "ipl_n", a: { planId: "p1", pointId: "Ancien", pointNom: "Ancien", x: 3, y: 3 }, b: cote("p2", "pt_c"),
+          updatedAt: 1000 }] });
+      const avantNom = ev().length;
+      L.onPointRenamed("p1", Object.assign({}, frais, { nom: "Nouveau", tags: ["escalier"] }));
+      L.onPointRenamed("p1", { id: "Nouveau2", nom: "Nouveau2", x: 3, y: 3, tags: [] }, "Ancien");
+      const rU = L.getAllLinks().find((l) => l.id === "ipl_r"), rN = L.getAllLinks().find((l) => l.id === "ipl_n");
+      t("🩸 point renommé / changé de tag depuis sa fiche : un geste — instantané réécrit (par uid, ou par l'ancien " +
+        "nom pour un côté sans uid), updatedAt neuf, « modification » annoncée",
+        rU.a.pointNom === "Nouveau" && rU.a.tag === "escalier" && rU.updatedAt > 1000 &&
+        rN.a.pointNom === "Nouveau2" && rN.a.pointId === "Nouveau2" && rN.updatedAt > 1000 &&
+        ev().length === avantNom + 2 && ev().slice(avantNom).every((x) => x.action === "modification" && !x.source));
+      const avantRe = ev().length;
+      L.onPointRenamed("p1", Object.assign({}, frais, { nom: "Nouveau", tags: ["escalier"] }));
+      await L.collectPointsForPlan({ id: "p1", type: "local" }, {});
+      t("…rien de neuf : rien d'annoncé ; la resynchro qui suit n'annonce toujours rien", ev().length === avantRe);
+      t("la fiche d'un point appelle la prise quand son nom ou son tag change (ancien id passé)",
+        /const ancienId = existingPoint\.id;/.test(lire("js/editor.js")) &&
+        /nom !== nomInitial \|\| \(tag \|\| ""\) !== tagInitial\)[\s\S]{0,160}onPointRenamed\(planId, existingPoint, ancienId\)/
+          .test(lire("js/editor.js")));
     }
     const IPL = lire("js/interPlanLinks.js");
     t("🩸 suppression confirmée : refusée si l'extension dit la liaison non modifiable (🗑️ masquée aussi)",
