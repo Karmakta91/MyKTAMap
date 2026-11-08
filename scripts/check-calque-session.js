@@ -728,11 +728,37 @@ const CALQUE = {
     t("🩸 plan d'extension : la synchro est relue avant, les copies reçues sont reprises, fichier non relu",
       relu === 1 && r7.ok && r7.repris === true && m7.lus === 0 && m7.etat.roads.length === 1);
 
-    const m8 = monterK2(null, { ext: true, relire: () => () => Promise.resolve(false) });
-    const r8 = await m8.CS.rapatrier("sig");
-    t("plan d'extension, relecture impossible : refus synchroImpossible, rien copié, calque intact",
-      !r8.ok && r8.code === "synchroImpossible" && m8.etat.roads.length === 0 && !m8.CS.estRapatrie("sig") &&
-      m8.surCarte.sig === true);
+    // Relecture impossible (hors réseau) : prévenir sans bloquer — la question décide.
+    const sansSynchro = (oui) => {
+      const m = monterK2(null, { ext: true, relire: () => () => Promise.resolve(false) });
+      m.K.setTracesCopie([{ uid: "rd_c3aaaaaa", deletedAt: 250, calque: "sig" }]);
+      m.questions = 0;
+      m.opts = { confirmerSansSynchro: () => { m.questions++; return Promise.resolve(oui); } };
+      return m;
+    };
+    const m8 = sansSynchro(false);
+    const r8 = await m8.CS.rapatrier("sig", m8.opts);
+    t("plan d'extension, relecture impossible, question REFUSÉE : annule, rien copié, calque intact, trace gardée",
+      m8.questions === 1 && !r8.ok && r8.code === "annule" && m8.etat.roads.length === 0 && !m8.CS.estRapatrie("sig") &&
+      m8.surCarte.sig === true && m8.lus === 0 && m8.K.getTracesCopie().length === 1);
+    const m8b = sansSynchro(true);
+    const r8b = await m8b.CS.rapatrier("sig", m8b.opts);
+    t("🩸 relecture impossible, question ACCEPTÉE : recopie du fichier SANS les objets tracés, trace gardée",
+      m8b.questions === 1 && r8b.ok && r8b.total === 1 && r8b.evites === 1 && m8b.CS.estRapatrie("sig") &&
+      m8b.etat.roads.map((o) => o.uid).join() === "rd_c3bbbbbb" && m8b.K.getTracesCopie().length === 1);
+    const m8c = sansSynchro(true);
+    const r8c = await m8c.CS.rapatrier("sig");
+    t("relecture impossible sans rappel de confirmation : refus synchroImpossible, rien copié",
+      !r8c.ok && r8c.code === "synchroImpossible" && m8c.etat.roads.length === 0 && m8c.questions === 0);
+    const m8d = monterK2(null, { ext: true, relire: (m) => () => Promise.resolve(false) });
+    const r8d = await m8d.CS.rapatrier("sig", { confirmerSansSynchro: () => {
+      m8d.etat.roads = [copie("rd_c3bbbbbb", 300, 200)]; return Promise.resolve(true); } });
+    t("copies arrivées pendant la question : reprises, rien recopié",
+      r8d.ok && r8d.repris === true && m8d.lus === 0 && m8d.etat.roads.length === 1);
+    const m8e = monterK2(null, { ext: true, relire: () => () => Promise.resolve(true) });
+    let q8e = 0;
+    await m8e.CS.rapatrier("sig", { confirmerSansSynchro: () => { q8e++; return Promise.resolve(true); } });
+    t("synchro relue : aucune question", q8e === 0 && m8e.CS.estRapatrie("sig"));
 
     let relu12 = 0;
     const m12 = monterK2({ roads: [copie("rd_c3bbbbbb", 300, 200)] },
@@ -878,6 +904,9 @@ const CALQUE = {
     FP.indexOf("filter.calque.restituerAnnuler") >= 0);
   t("retour : un calque sans objet ne pose aucune question",
     /n <= 0.{0,40}_restituerVraiment/.test(FP));
+  t("cablage : synchro impossible → le panneau demande (ktaConfirm, Recopier / Annuler), « annule » sans alerte",
+    /confirmerSansSynchro:\s*confirmerSansSynchro/.test(FP) && /filter\.calque\.sansSynchroOui/.test(FP) &&
+    /r\.code === "annule"\) return false/.test(FP));
   t("cablage : le panneau annonce le POIDS avant de rapatrier",
     /CS\.peser\(id\)/.test(FP) && /occupationLocalStorage/.test(FP));
   t("cablage : le calque « editor » n'est pas rapatriable (il EST la session)",

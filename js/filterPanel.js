@@ -895,10 +895,18 @@
         limite: (idb && mem.limite) ? _fmtOctets(mem.limite) : "?"
       });
       if (!(await window.ktaConfirm(msg))) return false;
-      return CS.rapatrier(id).then(function(r) {
+      // Synchro impossible à relire (plan partagé hors réseau) : prévenir sans bloquer (décision produit).
+      const confirmerSansSynchro = function () {
+        return window.ktaConfirm(window.I18n.t("filter.calque.sansSynchroMsg"), {
+          titre:       window.I18n.t("filter.calque.sansSynchroTitre"),
+          okLabel:     window.I18n.t("filter.calque.sansSynchroOui"),
+          cancelLabel: window.I18n.t("filter.calque.sansSynchroNon")
+        });
+      };
+      return CS.rapatrier(id, { confirmerSansSynchro: confirmerSansSynchro }).then(function(r) {
+        if (r && r.code === "annule") return false;
         if (!r || !r.ok) {
-          const cle = (r && r.code === "synchroImpossible") ? "filter.calque.errSynchro" : "filter.calque.err";
-          window.ktaAlerte(window.I18n.t(cle, { code: (r && r.code) || "?" }), { type: "erreur" });
+          window.ktaAlerte(window.I18n.t("filter.calque.err", { code: (r && r.code) || "?" }), { type: "erreur" });
           return false;
         }
         refreshDataLayers();

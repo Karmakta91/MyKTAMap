@@ -19,7 +19,8 @@
 // annoncent le coût AVANT (SessionPersist réécrit toute la session à chaque sauvegarde).
 // 🔒 Verrou : un calque rapatrié est MASQUÉ automatiquement ; recocher sa case affiche les deux (comparaison) ;
 // la restitution inverse tout. Le verrou est LOCAL : « rapatrier » reprend les copies déjà là (synchro relue
-// d'abord sur un plan d'extension) et ne recrée jamais un objet qu'une trace de copie valable dit supprimé.
+// d'abord sur un plan d'extension ; impossible à relire : l'utilisateur est prévenu et choisit de recopier) et ne
+// recrée jamais un objet qu'une trace de copie valable dit supprimé.
 // 🩸 Deux pièges :
 //   1. « Effacer la session » doit RENDRE le calque : copie et verrou tombent ensemble, sinon plan vide.
 //   2. Au chargement, le verrou ne s'applique QUE SI la copie est là (sauvegarde ratée sur quota → plan vide
@@ -166,13 +167,14 @@ window.CalqueSession = (function () {
   // maintenant : « le plus récent gagne » ressusciterait chez tous les objets supprimés). D'où, dans l'ordre :
   //   1. des copies marquées de ce calque sont déjà ici → elles sont REPRISES (`repris`), rien n'est recopié ;
   //   2. plan d'extension avec la prise relireChangements → la synchro est relue d'abord (copies reçues = reprises) ;
-  //      relecture impossible (hors ligne, serveur muet) → refus `synchroImpossible` : sans elle, on ne sait pas si
-  //      le calque est en modification ailleurs (décision produit) ;
+  //      relecture impossible (hors ligne, serveur muet) → l'utilisateur est PRÉVENU sans être bloqué (décision
+  //      produit) : `opts.confirmerSansSynchro()` → Promise<bool> (true = recopier, l'étape 3 s'applique ; false =
+  //      `annule`, rien ne change). Sans ce rappel : refus `synchroImpossible` ;
   //   3. sinon recopie du fichier, SAUF les objets qu'une trace de copie encore valable dit supprimés (`evites`) :
   //      la trace reste, l'objet n'est pas recréé. Tous supprimés : le calque passe en modification vide, comme
   //      chez celui qui les a supprimés.
   // Plan local (sans extension) : seuls 1 et 3 jouent, tout reste sur l'appareil.
-  function rapatrier(id) {
+  function rapatrier(id, opts) {
     if (!id) return Promise.resolve({ ok: false, code: "idManquant" });
     if (estRapatrie(id)) return Promise.resolve({ ok: false, code: "dejaRapatrie" });
     const lc = _cfgCalque(id);
@@ -182,10 +184,19 @@ window.CalqueSession = (function () {
     return _relireSiPartage()
       .then(function (lu) {
         if (compterCopie(id) > 0) return _reprendre(id);
-        if (lu === false) return { ok: false, code: "synchroImpossible" };
-        return fetch(lc.file)
-          .then(function (r) { return r.json(); })
-          .then(function (json) { return _copierFichier(id, json); });
+        const copier = function () {
+          return fetch(lc.file)
+            .then(function (r) { return r.json(); })
+            .then(function (json) { return _copierFichier(id, json); });
+        };
+        if (lu !== false) return copier();
+        const confirmer = opts && typeof opts.confirmerSansSynchro === "function" ? opts.confirmerSansSynchro : null;
+        if (!confirmer) return { ok: false, code: "synchroImpossible" };
+        return Promise.resolve().then(confirmer).then(function (oui) {
+          // Pendant la question, une synchro a pu apporter les copies (ou un autre geste rapatrier le calque).
+          if (estRapatrie(id) || compterCopie(id) > 0) return _reprendre(id);
+          return oui === true ? copier() : { ok: false, code: "annule" };
+        }, function () { return { ok: false, code: "annule" }; });
       })
       .catch(function (e) {
         console.warn("[CalqueSession] rapatriement echoue pour « " + id + " » :", e);

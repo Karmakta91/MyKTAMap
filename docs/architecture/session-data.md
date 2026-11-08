@@ -1887,13 +1887,14 @@ gagne »). Règle (décision produit) :
 | Situation au clic « 🔄 Modifier » | Effet |
 |---|---|
 | Copies marquées du calque déjà dans la session (synchro, import) | **reprises** (`repris`), rien recopié, pas de doublon, pas d'attente de synchro ; toast `filter.calque.okRepris` |
-| Plan d'extension, aucune copie ici | synchro **relue d'abord** (`KtaExtensions.relireChangements`, prise neutre) : copies reçues = reprises ; relecture impossible (hors ligne, serveur muet, 15 s) = refus `synchroImpossible` (`filter.calque.errSynchro`) |
+| Plan d'extension, aucune copie ici | synchro **relue d'abord** (`KtaExtensions.relireChangements`, prise neutre) : copies reçues = reprises ; relecture impossible (hors ligne, serveur muet, 15 s) = l'utilisateur est **prévenu sans être bloqué** (`ktaConfirm`, `filter.calque.sansSynchro*`, rappel `confirmerSansSynchro` de `rapatrier`) : « Recopier » = recopie de la ligne suivante (objets tracés ici exclus), « Annuler » = rien ne change (`annule`) ; sans rappel, refus `synchroImpossible` |
 | Aucune copie nulle part | recopie du fichier, **sauf** les objets visés par une trace de copie valable (`deletedAt` ≥ `updatedAt` de l'objet du fichier, et > dernière restitution connue du calque) : non recréés (`evites`), la trace reste et repart à la synchro ; toast `filter.calque.okEvites` |
 | Tous les objets visés par une trace | calque en modification **vide**, comme chez celui qui les a supprimés |
 | Après une restitution (locale ou reçue) | les traces sont tombées : tout revient, suppressions comprises (inchangé) |
 
 Plan local ou extension sans la prise : pas de relecture, le reste s'applique (100 % local). Limites : sur un plan
-d'extension hors ligne, « Modifier » est refusé tant que la synchro n'a pas été relue ; deux appareils qui passent le
+d'extension hors ligne, « Recopier » quand même peut faire revenir des objets supprimés ailleurs dont la trace
+n'est pas encore arrivée ici (la question le dit) ; deux appareils qui passent le
 calque en modification au même instant, chacun avant d'avoir reçu les suppressions de l'autre (les deux hors ligne),
 peuvent encore créer des copies concurrentes — la règle du plus récent s'applique alors à elles. Un appareil qui n'a
 jamais eu de copie voit le calque d'origine tant qu'il ne l'a pas passé en modification, même si toutes ses copies ont
