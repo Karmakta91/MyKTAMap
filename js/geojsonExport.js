@@ -156,6 +156,7 @@
         if (!Array.isArray(z.points) || z.points.length < 3) return;
         const props = proprietes("zone", z.type, _libelle("zones", z.type), z, KE.styleResolu("zones", z.type));
         if (multi) props.niveaux = nv;
+        if (multi && z.jonction === true) props.jonction = true;   // zone jonction de niveau (sol en pente en 3D)
         ajouter(polygone(z.points), props, z.uid);
       });
     }

@@ -15,7 +15,8 @@
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
 //   _ctxGreffe), viser(cx, cy) (colonne d'outils de la vue d'édition : outils de la carte, _poserSommet),
 //   allerA(choix) (« Y aller en 3D » : résultat de la recherche, pris par SearchPoints.prendreChoix),
-//   raccourcis() (touches et gestes, lus par shortcutsCheatsheet.js) } ;
+//   raccourcis() (touches et gestes, lus par shortcutsCheatsheet.js), altitude(x, y) / entremeles() (relevés du
+//   checkup : sol en pente, niveaux entremêlés) } ;
 //   code « six vers le bas » : kta:vue3dCode ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap, niveau}, densiteMax, stats, attenteReprise (ms),
 //   retourFocus,
@@ -632,6 +633,17 @@
         p.x0 = Math.min(p.x0, q[0] - p.demi); p.x1 = Math.max(p.x1, q[0] + p.demi);
         p.z0 = Math.min(p.z0, q[1] - p.demi); p.z1 = Math.max(p.z1, q[1] + p.demi);
       });
+      // Zones jonction qu'il traverse (KtaGalerie.zonesDePente ; contrat : _entreDe plus bas), en mixte et structures.
+      p.zones = e.rendu === "galerie" || typeof G.zonesDePente !== "function" ? [] : G.zonesDePente(r).map(function (z) {
+        const en = { z: z, ring: _anneau(z.points, e.sc), x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity };
+        en.ring.forEach(function (q) {
+          en.x0 = Math.min(en.x0, q[0]); en.x1 = Math.max(en.x1, q[0]);
+          en.z0 = Math.min(en.z0, q[1]); en.z1 = Math.max(en.z1, q[1]);
+        });
+        p.x0 = Math.min(p.x0, en.x0); p.x1 = Math.max(p.x1, en.x1);
+        p.z0 = Math.min(p.z0, en.z0); p.z1 = Math.max(p.z1, en.z1);
+        return en;
+      }).filter(function (en) { return en.ring.length >= 3; });
       out.push(p);
     });
     return out;
@@ -653,16 +665,18 @@
       plafond: dy + p.hA + (p.hB - p.hA) * t };
   }
 
-  // Galerie inclinée sous la place (x, z m) : la plus proche dont l'axe est à moins de sa demi-largeur + `marge` m,
-  // ou null.
+  // Galerie inclinée sous la place (x, z m) : la plus proche dont l'axe est à moins de sa demi-largeur + `marge` m, ou
+  // celle dont une zone jonction contient la place (`zone` posée sur le résultat), ou null.
   function _surPente(x, z, marge) {
     const l = (_e && _e.pentes) || [], m = marge || 0;
     let best = null;
     for (let i = 0; i < l.length; i++) {
       const p = l[i];
       if (x < p.x0 - m || x > p.x1 + m || z < p.z0 - m || z > p.z1 + m) continue;
-      const q = _surPenteDe(p, x, z);
-      if (q.lat <= q.demi + m && (!best || q.lat < best.lat)) best = q;
+      const q = _surPenteDe(p, x, z), en = _zoneDePente(p, x, z);
+      if (en) q.zone = en;
+      // Zone jonction : toute la chambre porte la pente ; la galerie inclinée la plus proche passe d'abord.
+      if ((q.lat <= q.demi + m || en) && (!best || (q.lat <= q.demi + m && q.lat < best.lat))) best = q;
     }
     return best;
   }
@@ -1149,16 +1163,20 @@
     const hachSol = new Lot(), hachRideau = new Lot();
     // Mixte : parois des tubes (pièces de la tuile, bouts ouverts exclus), zones des tubes découpées comme en galerie.
     const parois = new Lot(), paroisUnies = new Lot(), eauTube = new Lot(), remblaisTube = new Lot();
+    // Niveaux entremêlés et zones jonction (_paroiEntre, _trousEntre, _zoneJonction) : coupes, trous du gabarit et
+    // chambres en pente.
+    const trous = {}, solPente = new Lot(), plafondPente = new Lot();
     if (mx) {
-      t.parois = [];
+      t.parois = []; t.paroisY = [];
       for (let i = 0; i < t.g.length; i++) {
         const ps = mx.paroisDe(t.g[i]), col = _couleurParoi(mx.pieces[t.g[i]]);
         for (let k = 0; k < ps.length; k++) {
           const s = ps[k], x0 = s[0] / sc, z0 = s[1] / sc, x1 = s[2] / sc, z1 = s[3] / sc;
-          if (col) _paroiY(paroisUnies, [x0, z0], [x1, z1], 0, h, col); else _paroi(parois, x0, z0, x1, z1, h);
+          _paroiEntre(col ? paroisUnies : parois, x0, z0, x1, z1, h, col, t.paroisY);
           t.parois.push([x0, z0, x1, z1]);
         }
       }
+      _trousEntre(trous, mx, t.g, h);
     }
     // Textures (🧱) : roche et parpaing dans leurs lots, couleur blanche (texture naturelle, jamais teintée par la
     // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine. Remblais et effondrement (deux
@@ -1174,7 +1192,10 @@
       const m = tex ? (tex === "roche" ? ROCHE : PARPAING).m : undefined;
       const lot = tex === "roche" ? roche : tex === "parpaing" ? parpaing : _estMur(s.type) ? murs : opaque;
       const hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
-      if (_estLigne(s.type)) {
+      const pente = _structurePente(s);
+      if (pente) {
+        _structureSurPente(lot, s, pente, hs, col, m);
+      } else if (_estLigne(s.type)) {
         _murLigne(lot, s.points, sc, _epaisseurLigne(s.type), hs, col, m);
       } else {
         _prisme(lot, _anneau(s.points, sc), 0, hs, col, true, m);
@@ -1183,6 +1204,11 @@
     for (let i = 0; i < t.z.length; i++) {
       const z = t.z[i], ring = _anneau(z.points, sc);
       if (ring.length < 3) continue;
+      const pz = _penteDeLaZone(z);
+      if (pz) {
+        _zoneJonction(z, pz, { solPente: solPente, plafondPente: plafondPente, parois: parois, trous: trous });
+        continue;
+      }
       if (mx && _zoneDeTube(z, ring, mx)) { _e.zonesTube++; _zoneGalerie(z, mx, lotsTube); continue; }
       if (z.type === "remblais" && tx) {
         _prisme(remblaisTex, ring, 0, h * HAUTEUR_REMBLAIS, BLANC, true, REMBLAIS.m);
@@ -1206,13 +1232,16 @@
       const r = t.r[i], col = _couleur("traces", r.type, "color");
       _compter(_e.rubans, r.type);
       if (r.type === "itinerary") _rubanIti(lumineux, r);
-      else _ruban(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
+      else if (!_zoneSous((r.a.x + r.b.x) / 2 / sc, (r.a.y + r.b.y) / 2 / sc)) {
+        _ruban(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);   // dans une zone jonction : sous son sol en pente
+      }
     }
     const groupe = new THREE.Group();
     const ajouter = function (lot, mat, ordre, famille) {
       const g = lot.geometrie();
       if (!g) return;
       const m = new THREE.Mesh(g, mat);
+      if (famille === "plafond") m.visible = _e.vue !== "plongee";
       m.renderOrder = ordre;
       m.matrixAutoUpdate = false;
       m.userData.famille = famille;
@@ -1237,6 +1266,12 @@
     if (eboulis.p.length) _matZone("eboulis");
     ajouter(eboulis, _e.mats.eboulis, 0, "effondrement");
     ajouter(eauTube, _e.mats.eauGalerie, 2, "eau");
+    if (solPente.p.length || plafondPente.p.length) {
+      const mp = _matsPente();
+      ajouter(solPente, mp.sol, ORDRE_SOL, "sol");
+      ajouter(plafondPente, mp.plafond, 0, "plafond");
+    }
+    _ajouterTrous(groupe, trous);
     for (let i = 0; i < t.p.length; i++) {
       const p = t.p[i];
       // Mixte : POI dont l'axe le plus proche (10 m au plus) passe en tube → règle de la galerie (contre la paroi) ;
@@ -1378,7 +1413,8 @@
     const sol = new Lot(), plafond = new Lot(), parois = new Lot(), opaque = new Lot(), lumineux = new Lot();
     const rubans = new Lot(), paroisUnies = new Lot();
     const eau = new Lot(), hachSol = new Lot(), hachRideau = new Lot(), remblais = new Lot(), eboulis = new Lot();
-    t.parois = [];
+    t.parois = []; t.paroisY = [];
+    const trous = {};
     for (let i = 0; i < t.g.length; i++) {
       const ring = _metres(m.pieces[t.g[i]].pts, sc);
       _dalleTexturee(sol, ring, 0, true);
@@ -1386,10 +1422,11 @@
       const ps = m.paroisDe(t.g[i]), col = _couleurParoi(m.pieces[t.g[i]]);
       for (let k = 0; k < ps.length; k++) {
         const s = ps[k], x0 = s[0] / sc, z0 = s[1] / sc, x1 = s[2] / sc, z1 = s[3] / sc;
-        if (col) _paroiY(paroisUnies, [x0, z0], [x1, z1], 0, h, col); else _paroi(parois, x0, z0, x1, z1, h);
+        _paroiEntre(col ? paroisUnies : parois, x0, z0, x1, z1, h, col, t.paroisY);
         t.parois.push([x0, z0, x1, z1]);
       }
     }
+    _trousEntre(trous, m, t.g, h);
     // Liseré au sol : la couleur du type de tracé dans la légende.
     for (let i = 0; i < t.a.length; i++) {
       const r = m.aretes[t.a[i]];
@@ -1435,6 +1472,7 @@
     ajouter(eau, e.mats.eauGalerie, 2, "eau");
     ajouter(hachSol, e.mats.hachSol, 0, "inaccessible");
     ajouter(hachRideau, e.mats.hachRideau, 2, "rideau");
+    _ajouterTrous(groupe, trous);
     for (let i = 0; i < t.p.length; i++) {
       const p = t.p[i];
       const pp = m.plusProche(p.x, p.y, POI_GALERIE * sc);
@@ -2676,7 +2714,7 @@
     // ⚠️ Le contexte est créé avec `stencil: true` (ouvrir) ; le gabarit est effacé à chaque image (three.js).
     const bouche = function (ref) {
       return new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide,
-        stencilWrite: true, stencilRef: ref, stencilFunc: THREE.AlwaysStencilFunc,
+        stencilWrite: true, stencilRef: ref, stencilWriteMask: ref, stencilFunc: THREE.AlwaysStencilFunc,
         stencilZPass: THREE.ReplaceStencilOp });
     };
     _grainSol(m, _e.textures);
@@ -2685,6 +2723,7 @@
     [[m.sol, 1], [m.solGalerie, 1], [m.rubans, 1], [m.plafond, 2], [m.plafondGalerie, 2]].forEach(function (x) {
       x[0].stencilWrite = true;   // test du gabarit (opérations « garder » : rien n'y est écrit)
       x[0].stencilRef = x[1];
+      x[0].stencilFuncMask = x[1];   // son bit seul (GABARIT : les voisins et les trous ont les leurs)
       x[0].stencilFunc = THREE.NotEqualStencilFunc;
     });
     return m;
@@ -2707,7 +2746,7 @@
     const e = _e;
     // Reprise du contexte : les voisins de l'ancienne scène ne sont jamais libérés sur la nouvelle (_voisinsPreparer
     // les refait au _reindexer qui suit).
-    e.voisins = []; e.matsV = null; e.matsEstompes = null;
+    e.voisins = []; e.matsV = null; e.matsEstompes = null; e.matsPente = null; e.matsTrous = null; e.entreSig = undefined;
     e.panneaux = new Set();
     e.panneauxGen = 0;
     e.icones = new Map();
@@ -3036,6 +3075,8 @@
     const e = _e;
     e.tuiles.forEach(_libererTuile);
     _razCompteurs();
+    _majEntreActif();
+    e.structPente = new Map(); e.paroisCoupees = 0; e.zonesPente = 0;
     _gererTuiles(true);
     (e.volPassages || []).forEach(_libererVolume);
     _gererVolumes();
@@ -3067,11 +3108,14 @@
       chambres: m ? m.chambres : 0, ouverts: m ? m.ouverts : 0,
       msGalerie: m ? Math.round(m.msConstruction) : 0 };
     _razCompteurs();
+    e.jonctions = d.jonctions;
+    e.pentes = _pentesDuNiveau(e.niveau, d.jonctions);
+    // Zones jonction du niveau : leurs structures des autres niveaux sont dessinées et bloquent avec lui.
+    if (!e.galerie) d.structures = d.structures.concat(_structuresEmpruntees(e.niveau, e.pentes));
+    e.structPente = new Map(); e.paroisCoupees = 0; e.zonesPente = 0;
     if (e.galerie) e.volumes = null; else _grilleVolumes(d.structures);
     e.volumesIti = _volumesIti(d.zones);
     e.passages = _passages(e.niveau);
-    e.jonctions = d.jonctions;
-    e.pentes = _pentesDuNiveau(e.niveau, d.jonctions);
     e.passageSig = null;
     (e.volPassages || []).forEach(_libererVolume);
     e.placesPassage = new Map();
@@ -3094,6 +3138,7 @@
     // Emprise relue (un objet ajouté peut déborder) : le cran « Tout le plan » et le recul la suivent.
     e.diag = _diagPlan();
     if (e.scene && _distanceEnVigueur() !== e.distance) { e.distance = _distanceEnVigueur(); _appliquerPortee(); }
+    _majEntreActif();
     _appliquerRendu();
     _gererTuiles(true);
     _majMarqueursIti();
@@ -3177,23 +3222,28 @@
     return s + "|" + JSON.stringify((window.APP_CONFIG || {}).visibleLevels || []);
   }
 
-  // Copies sans gabarit des matériaux qui en testent un, relues sur l'original (carte, couleur : 🧱 les change).
-  function _matsVoisins() {
-    const e = _e;
-    if (!e.matsV) {
-      e.matsV = {};
+  // Copies des matériaux qui testent le gabarit, relues sur l'original (carte, couleur : 🧱 les change), une par côté
+  // ("haut" | "bas") : elles ne lisent que le bit de leur côté (GABARIT : trous d'un niveau entremêlé, _trousEntre),
+  // jamais les bouches du niveau actif.
+  function _matsVoisins(cote) {
+    const e = _e, k2 = cote === "haut" ? "haut" : "bas", bits = _bitsVoisin(k2 === "haut");
+    if (!e.matsV) e.matsV = {};
+    if (!e.matsV[k2]) {
+      e.matsV[k2] = {};
       MATS_GABARIT.forEach(function (k) {
-        const m = e.mats[k].clone();
-        m.stencilWrite = false;
-        m.stencilFunc = THREE.AlwaysStencilFunc;
-        e.matsV[k] = m;
+        const m = e.mats[k].clone(), bit = /^plafond/.test(k) ? bits.plafond : bits.sol;
+        m.stencilWrite = true;
+        m.stencilRef = bit;
+        m.stencilFuncMask = bit;
+        m.stencilFunc = THREE.NotEqualStencilFunc;
+        e.matsV[k2][k] = m;
       });
     }
     MATS_GABARIT.forEach(function (k) {
-      const a = e.mats[k], b = e.matsV[k];
+      const a = e.mats[k], b = e.matsV[k2][k];
       if (b.map !== a.map || !b.color.equals(a.color)) { b.map = a.map; b.color.copy(a.color); b.needsUpdate = true; }
     });
-    return e.matsV;
+    return e.matsV[k2];
   }
 
   function _libererVoisin(v) {
@@ -3216,7 +3266,7 @@
 
   // Contexte d'un voisin (niveau, hauteur, modèle, galeries inclinées, matériaux sans gabarit) le temps de `fn`.
   function _avecVoisin(v, pentes, fn) {
-    const e = _e, M = _matsVoisins();
+    const e = _e, M = _matsVoisins(v.dessus ? "haut" : "bas");
     const garde = { niveau: e.niveau, hauteur: e.hauteur, galerie: e.galerie, mixte: e.mixte, pentes: e.pentes,
       placesPassage: e.placesPassage, msFaces: e.msFaces, facesStructures: e.facesStructures };
     const mats = {};
@@ -3290,15 +3340,19 @@
 
   function _voisinNeuf(n, sig) {
     const e = _e, t0 = performance.now(), a = _altitudeVoisin(n), h = _hauteurDuNiveau(n), d = _collecter(n);
-    const v = { niveau: n, dy: a.dy, dessus: a.dessus, hauteur: h, sig: sig + "|" + a.dy + "|" + h, galerie: null,
-      mixte: null, plans: null };
+    const entre = _entreDe(n, a.dy, h);
+    const v = { niveau: n, dy: a.dy, dessus: a.dessus, hauteur: h, galerie: null, mixte: null, plans: null,
+      sig: sig + "|" + a.dy + "|" + h + "|" + _sigEntre(entre), entre: entre, plansCaches: _plansCaches(entre, h) };
     if (e.rendu === "galerie") v.galerie = d.galerie = window.KtaGalerie.modele(n);
     if (e.rendu === "mixte") v.mixte = d.mixte = window.KtaGalerie.modele(n, true);
+    // Galeries inclinées du voisin (structures le long d'elles, zones jonction qu'il dessine), vues de son niveau.
+    v.pentes = _avecVoisin(v, null, function () { return _pentesDuNiveau(n, d.jonctions); });
+    _horsZonesActives(d, v.pentes);
     const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
     v.tuiles = _indexer(Object.assign({}, d, { roads: plan, points: [] }), e.sc, e.tuilesActives ? TUILE : 0);
     // Mixte et structures : sol et plafond d'un seul tenant, comme ceux du niveau actif (en galerie, ceux des pièces).
     if (!v.galerie) {
-      const M = _matsVoisins();
+      const M = _matsVoisins(a.dessus ? "haut" : "bas");
       v.plans = { sol: new THREE.Mesh(e.sol.geometry, M.sol), plafond: new THREE.Mesh(e.sol.geometry, M.plafond) };
       v.plans.sol.userData.voisin = v.plans.plafond.userData.voisin = n;
       e.scene.add(v.plans.sol, v.plans.plafond);
@@ -3315,7 +3369,8 @@
     const e = _e, voulus = _niveauxMontres(), sig = _sigVoisins(), gardes = [];
     (e.voisins || []).forEach(function (v) {
       const a = voulus.indexOf(v.niveau) >= 0 ? _altitudeVoisin(v.niveau) : null;
-      if (!tout && a && v.sig === sig + "|" + a.dy + "|" + _hauteurDuNiveau(v.niveau)) {
+      const hv = a ? _hauteurDuNiveau(v.niveau) : 0;
+      if (!tout && a && v.sig === sig + "|" + a.dy + "|" + hv + "|" + _sigEntre(_entreDe(v.niveau, a.dy, hv))) {
         v.dessus = a.dessus;
         gardes.push(v);
       } else _libererVoisin(v);
@@ -3324,7 +3379,14 @@
       if (!gardes.some(function (v) { return v.niveau === n; })) gardes.push(_voisinNeuf(n, sig));
     });
     e.voisins = gardes;
-    if (e.matsV) _matsVoisins();
+    if (e.matsV) { _matsVoisins("haut"); _matsVoisins("bas"); }
+    // Niveaux montrés changés (réglage, côté) : les tuiles du niveau actif portent les trous et coupes de l'union des
+    // vides, refaites si leur contexte a changé (les voisins viennent ensuite, _gererVoisins).
+    if (_majEntreActif()) {
+      e.tuiles.forEach(_libererTuile);
+      _razCompteurs();
+      _gererTuiles(true);
+    }
     gardes.forEach(_volumesVoisinAJour);
     _estomperVoisins();
     _majSolActif();   // voisin du dessous montré ou non, 🧱 changé (_refaireTuiles)   // côté changé (voisins gardés), originaux changés (🧱)
@@ -3334,14 +3396,17 @@
   // Tuile d'un voisin : la fonction du niveau actif, avec le modèle, la hauteur et les matériaux du voisin ; compteurs
   // de la scène (checkup) laissés à ceux du niveau actif.
   function _construireTuileVoisin(v, t) {
-    const e = _e, M = _matsVoisins();
+    const e = _e, M = _matsVoisins(v.dessus ? "haut" : "bas");
     const garde = { galerie: e.galerie, mixte: e.mixte, hauteur: e.hauteur, poiMasques: e.poiMasques,
+      niveau: e.niveau, pentes: e.pentes, entre: e.entre, bitsPlans: e.bitsPlans, dyContexte: e.dyContexte,
       zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux, facesRemblais: e.facesRemblais,
       facesEboulis: e.facesEboulis, rubans: e.rubans, liseres: e.liseres, zonesTube: e.zonesTube,
       poiTube: e.poiTube, halos: e.halos, itiChevrons: e.itiChevrons };
     const mats = {};
     MATS_GABARIT.forEach(function (k) { mats[k] = e.mats[k]; e.mats[k] = M[k]; });
     e.galerie = v.galerie; e.mixte = v.mixte; e.hauteur = v.hauteur;
+    e.niveau = v.niveau; e.pentes = v.pentes || []; e.entre = v.entre || []; e.bitsPlans = _bitsVoisin(v.dessus);
+    e.dyContexte = v.dy;
     _razCompteurs();
     try {
       _construireTuile(t);
@@ -3418,9 +3483,580 @@
       v.plans.plafond.position.set(c.x, v.dy + v.hauteur, c.z);
       v.plans.sol.scale.copy(e.sol.scale);
       v.plans.plafond.scale.copy(e.plafond.scale);
-      v.plans.sol.visible = vu && (solPlein || v.dessus);
-      v.plans.plafond.visible = vu && !haut;
+      const cache = v.plansCaches || {};
+      v.plans.sol.visible = vu && (solPlein || v.dessus) && !cache.sol;
+      v.plans.plafond.visible = vu && !haut && !cache.plafond;
     });
+  }
+
+
+  // ── Niveaux entremêlés et zones jonction (lot D du multi-niveau en 3D) ─────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : deux niveaux MONTRÉS qui occupent la même tranche de hauteur (écart négatif,
+  // getNiveauVertical) suivent l'UNION DES VIDES : c'est ouvert dès que l'un des deux y a un vide ; une paroi, un sol ou
+  // un plafond ne reste que là où les deux sont de la roche. Vide d'un niveau : ses pièces en galerie, ses pièces et ses
+  // chambres en mixte, partout en structures (_videDe). Parois des tubes coupées dans la tranche commune là où l'autre
+  // niveau a un vide derrière elles (_paroiEntre) ; sol et plafond troués par le gabarit au-dessus des pièces de l'autre
+  // (_trousEntre, bits GABARIT) ; en structures, une surface prise dans la tranche de l'autre n'est pas dessinée
+  // (_plansCaches). Les structures (piliers, murs, fronts) restent pleines : celles d'un autre niveau qui montent dans
+  // notre tranche ARRÊTENT le pas (_niveauxQuiBloquent, _juger), quel que soit le réglage « Niveaux » (masquer ne retire
+  // que le dessin) ; tout le reste suit le niveau actif. Plan sans écart négatif : rien ne change ici.
+  // 🩸 Entre deux niveaux montrés autres que le niveau actif (« Tous »), seules les parois sont coupées : le gabarit n'a
+  // qu'un bit par côté pour les sols et plafonds des voisins. En mixte, le sol d'un seul tenant n'est troué qu'au-dessus
+  // des pièces (tubes) de l'autre niveau, pas de ses chambres (sans contour).
+  // ⚠️ contrat (décision produit) : une zone jonction (KtaGalerie.penteDeZone : zone `jonction` sur deux niveaux,
+  // traversée par un tracé jonction) est une chambre dont le sol et le plafond suivent la pente de ce tracé, bout à bout
+  // (_surPenteDe, la règle de la galerie inclinée), en mixte et en structures ; en galerie, le tracé reste la galerie
+  // inclinée seule. Piliers, murs et fronts dessinés dans la zone, et murs et fronts le long d'un tracé jonction (à
+  // ENTRE.longe m du bord de sa galerie inclinée), reposent sur le sol en pente et montent jusqu'au plafond en pente
+  // (_structurePente). La zone est dessinée par le niveau actif s'il est l'un des siens (ses structures des deux niveaux
+  // aussi), sinon par le voisin montré qui la porte : jamais en double. Dans la zone, la règle du pas est celle des
+  // structures de ses deux niveaux (_bloqueEnZone) ; on la quitte par un bord seulement là où son sol est à moins de
+  // PENTE.sortie de celui du niveau ; la scène change de niveau à mi-longueur du tracé, comme dans la galerie inclinée.
+  const ENTRE = { eps: 1e-3, pas: 0.25, zoneFace: 0.5, fin: 1, longe: 1 };
+  // Bits du gabarit (stencil) : bouches et trous du sol et du plafond du niveau actif (1, 2), sols et plafonds des
+  // voisins du dessus (4, 8) et du dessous (16, 32). Chaque matériau ne lit et n'écrit que son bit.
+  const GABARIT = { sol: 1, plafond: 2, vSolHaut: 4, vPlafHaut: 8, vSolBas: 16, vPlafBas: 32 };
+
+  function _bitsVoisin(dessus) {
+    return dessus ? { sol: GABARIT.vSolHaut, plafond: GABARIT.vPlafHaut }
+      : { sol: GABARIT.vSolBas, plafond: GABARIT.vPlafBas };
+  }
+
+  // Vide du niveau n dans le rendu affiché → { m (modèle, null en structures), partout, mixte, vide(x, y px) }.
+  function _videDe(n) {
+    const e = _e, G = window.KtaGalerie;
+    if (e.rendu === "structures" || !G) {
+      return { m: null, partout: true, mixte: false, vide: function () { return true; } };
+    }
+    const mixte = e.rendu === "mixte", m = G.modele(n, mixte);
+    if (!m || !m.pieces.length) return { m: null, partout: false, mixte: mixte, vide: function () { return false; } };
+    return { m: m, partout: false, mixte: mixte, vide: mixte
+      ? function (x, y) { return m.dedans(x, y) || m.enChambre(x, y); }
+      : function (x, y) { return m.dedans(x, y); } };
+  }
+
+  // Niveau actif et niveaux montrés : altitude de leur sol au-dessus de celui du niveau actif, hauteur, côté.
+  function _montresAlt() {
+    const e = _e;
+    return [{ n: e.niveau, dy: 0, h: e.hauteur, actif: true }].concat(_niveauxMontres().map(function (n) {
+      const a = _altitudeVoisin(n);
+      return { n: n, dy: a.dy, h: _hauteurDuNiveau(n), dessus: a.dessus, actif: false };
+    }));
+  }
+
+  // Niveaux montrés entremêlés avec le niveau n (sol à dyN au-dessus du niveau actif, hauteur hN) → [{ niveau, d (sol,
+  // repère de n), h, y0, y1 (tranche commune, repère de n), V (_videDe), bits (trous de son sol et de son plafond faits
+  // de nos pièces : tous depuis le niveau actif ; depuis un voisin, ceux du niveau actif seulement ; null sinon) }].
+  function _entreDe(n, dyN, hN) {
+    const e = _e, out = [];
+    if (!Number.isInteger(n) || !window.KtaGalerie) return out;
+    const actifN = n === e.niveau;
+    _montresAlt().forEach(function (o) {
+      if (o.n === n) return;
+      const d = o.dy - dyN, y0 = Math.max(0, d), y1 = Math.min(hN, d + o.h);
+      if (y1 - y0 <= ENTRE.eps) return;
+      const bits = actifN ? _bitsVoisin(o.dessus) : o.actif ? { sol: GABARIT.sol, plafond: GABARIT.plafond } : null;
+      out.push({ niveau: o.n, d: d, h: o.h, y0: y0, y1: y1, V: _videDe(o.n), bits: bits });
+    });
+    return out;
+  }
+
+  function _sigEntre(l) {
+    return (l || []).map(function (o) { return o.niveau + ":" + o.d.toFixed(3) + ":" + o.h; }).join(",");
+  }
+
+  // Rendu structures : sol ou plafond du niveau (hauteur h) pris dans la tranche d'un niveau entremêlé → non dessiné.
+  function _plansCaches(L, h) {
+    const r = { sol: false, plafond: false };
+    if (_e.rendu !== "structures") return r;
+    (L || []).forEach(function (o) {
+      if (o.d < -ENTRE.eps && o.d + o.h > ENTRE.eps) r.sol = true;
+      if (o.d < h - ENTRE.eps && o.d + o.h > h + ENTRE.eps) r.plafond = true;
+    });
+    return r;
+  }
+
+  // Contexte du niveau actif relu (ouverture, niveau, hauteur, réglage « Niveaux ») → true s'il a changé.
+  function _majEntreActif() {
+    const e = _e, L = _entreDe(e.niveau, 0, e.hauteur), sig = _sigEntre(L) + "|" + e.rendu;
+    e.entre = L;
+    e.plansCaches = _plansCaches(L, e.hauteur);
+    e.autresBloquent = _niveauxQuiBloquent();
+    const change = e.entreSig !== undefined && e.entreSig !== sig;
+    e.entreSig = sig;
+    return change;
+  }
+
+  // Niveaux dont les structures arrêtent le pas au niveau actif : leur tranche [sol, plafond] recoupe la nôtre
+  // (décision produit), montrés ou non. Rendu galerie : aucun (les structures n'y bloquent pas).
+  function _niveauxQuiBloquent() {
+    const e = _e, out = [];
+    if (!Number.isInteger(e.niveau) || e.rendu === "galerie") return out;
+    _niveauxEdition().forEach(function (n) {
+      if (n === e.niveau) return;
+      const a = _altitudeVoisin(n), y0 = Math.max(0, a.dy), y1 = Math.min(e.hauteur, a.dy + _hauteurDuNiveau(n));
+      if (y1 - y0 > ENTRE.eps) out.push(n);
+    });
+    return out;
+  }
+
+  function _dansAnneauM(a, x, z) {
+    let r = false;
+    for (let i = 0, j = a.length - 1; i < a.length; j = i++) {
+      const p = a[i], q = a[j];
+      if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) r = !r;
+    }
+    return r;
+  }
+
+  // Zone jonction de la galerie inclinée p sous (x, z m), ou null.
+  function _zoneDePente(p, x, z) {
+    const l = p.zones || [];
+    for (let i = 0; i < l.length; i++) {
+      const en = l[i];
+      if (x >= en.x0 && x <= en.x1 && z >= en.z0 && z <= en.z1 && _dansAnneauM(en.ring, x, z)) return en;
+    }
+    return null;
+  }
+
+  // Zone jonction de la scène (contexte : e.pentes) sous (x, z m) → { p, en } | null.
+  function _zoneSous(x, z) {
+    const l = (_e && _e.pentes) || [];
+    for (let i = 0; i < l.length; i++) {
+      const en = _zoneDePente(l[i], x, z);
+      if (en) return { p: l[i], en: en };
+    }
+    return null;
+  }
+
+  // Galerie inclinée dont la zone jonction est z (même objet), ou null.
+  function _penteDeLaZone(z) {
+    const l = (_e && _e.pentes) || [];
+    for (let i = 0; i < l.length; i++) {
+      if ((l[i].zones || []).some(function (en) { return en.z === z; })) return l[i];
+    }
+    return null;
+  }
+
+  // Une zone jonction qui touche le niveau actif est dessinée par lui (contrat ci-dessus).
+  function _zoneDuNiveauActif(z) {
+    const N = _e.niveau;
+    return Number.isInteger(N) && typeof window.ktaNiveauxObjet === "function" &&
+      window.ktaNiveauxObjet(z).indexOf(N) >= 0;
+  }
+
+  function _centreM(pts, sc) {
+    let x = 0, z = 0, n = 0;
+    pts.forEach(function (q) { if (q && Number.isFinite(q.x)) { x += q.x / sc; z += q.y / sc; n++; } });
+    return n ? [x / n, z / n] : [Number.NaN, Number.NaN];
+  }
+
+  // Galerie inclinée dont la pente porte la structure s (contrat ci-dessus), ou null.
+  function _structurePente(s) {
+    const e = _e, l = e.pentes || [];
+    if (!l.length || !Array.isArray(s.points)) return null;
+    const c = _centreM(s.points, e.sc), z = _zoneSous(c[0], c[1]);
+    if (z) return z.p;
+    if (!_estLigne(s.type) && !_estMur(s.type)) return null;
+    for (let i = 0; i < l.length; i++) {
+      const p = l[i], b = ENTRE.longe;
+      if (c[0] < p.x0 - b || c[0] > p.x1 + b || c[1] < p.z0 - b || c[1] > p.z1 + b) continue;
+      const longe = s.points.every(function (q) {
+        if (!q || !Number.isFinite(q.x)) return true;
+        const r = _surPenteDe(p, q.x / e.sc, q.y / e.sc);
+        return r.lat <= r.demi + ENTRE.longe;
+      });
+      const m = _surPenteDe(p, c[0], c[1]);
+      if (longe && m.s > 1e-3 && m.s < p.tot - 1e-3) return p;
+    }
+    return null;
+  }
+
+  // Contour (m) aux côtés coupés à `max` m au plus (les faces suivent la pente).
+  function _anneauFin(ring, max) {
+    const out = [];
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / max));
+      for (let k = 0; k < n; k++) out.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
+    }
+    return out;
+  }
+
+  // Sommets du lot posés depuis `debut` relevés sur la pente p : y = 0 → sol en pente, y = h → plafond en pente
+  // (proportionnel entre les deux). Relevé du checkup : emprise verticale dans e.structPente sous `cle`.
+  function _releverPente(lot, debut, p, h, cle) {
+    let y0 = Infinity, y1 = -Infinity;
+    for (let i = debut; i < lot.p.length; i += 3) {
+      const q = _surPenteDe(p, lot.p[i], lot.p[i + 2]), y = lot.p[i + 1];
+      lot.p[i + 1] = q.dy + y * (q.plafond - q.dy) / h;
+      y0 = Math.min(y0, lot.p[i + 1]); y1 = Math.max(y1, lot.p[i + 1]);
+    }
+    if (cle && _e.structPente && Number.isFinite(y0)) {
+      const dy = _e.dyContexte || 0;
+      _e.structPente.set(cle, { yMin: +(y0 + dy).toFixed(3), yMax: +(y1 + dy).toFixed(3), autre: p.autre });
+    }
+  }
+
+  // Structure s posée sur la pente p (piliers, murs, fronts) : la forme plate, contour affiné, puis relevée.
+  function _structureSurPente(lot, s, p, hs, col, m) {
+    const e = _e, debut = lot.p.length;
+    if (_estLigne(s.type)) {
+      const p0 = s.points[0];
+      let parcouru = m && p0 ? ((p0.x / e.sc * 0.37 + p0.y / e.sc * 0.61) % m + m) % m : 0;
+      _pavesLigne(s.points, e.sc, _epaisseurLigne(s.type)).forEach(function (q) {
+        _prisme(lot, _anneauFin(q.ring, ENTRE.fin), 0, hs, col, true, m, m ? parcouru : undefined);
+        parcouru += q.l;
+      });
+    } else {
+      _prisme(lot, _anneauFin(_anneau(s.points, e.sc), ENTRE.fin), 0, hs, col, true, m);
+    }
+    _releverPente(lot, debut, p, e.hauteur, s.uid || null);
+  }
+
+  // Triangles (m) d'un contour, coupés au côté le plus long jusqu'à `max` m (le sol en pente reste fidèle à la
+  // projection sur un tracé coudé ; sur un tracé droit, la pente est plane et aucune couture ne s'ouvre).
+  function _trianglesFins(ring, max) {
+    const v2 = ring.map(function (q) { return new THREE.Vector2(q[0], q[1]); }), out = [];
+    let tris;
+    try { tris = THREE.ShapeUtils.triangulateShape(v2, []); } catch (err) { return out; }
+    const d = function (a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+    const mi = function (a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; };
+    const couper = function (a, b, c, prof) {
+      const ab = d(a, b), bc = d(b, c), ca = d(c, a), lm = Math.max(ab, bc, ca);
+      if (lm <= max || prof > 14) { out.push([a, b, c]); return; }
+      if (lm === ab) { const m = mi(a, b); couper(a, m, c, prof + 1); couper(m, b, c, prof + 1); }
+      else if (lm === bc) { const m = mi(b, c); couper(a, b, m, prof + 1); couper(a, m, c, prof + 1); }
+      else { const m = mi(c, a); couper(a, b, m, prof + 1); couper(m, b, c, prof + 1); }
+    };
+    tris.forEach(function (t) { couper(ring[t[0]], ring[t[1]], ring[t[2]], 0); });
+    return out;
+  }
+
+  function _platFan(lot, ring, y) {
+    for (let i = 1; i + 1 < ring.length; i++) {
+      lot.tri([ring[0][0], y, ring[0][1]], [ring[i][0], y, ring[i][1]], [ring[i + 1][0], y, ring[i + 1][1]],
+        [0, 1, 0], BLANC);
+    }
+  }
+
+  // Trous (lots par bit) du sol et du plafond des niveaux entremêlés (contexte e.entre) au-dessus de nos pièces
+  // `idx` du modèle m, dans notre tranche [0, h].
+  function _trousEntre(trous, m, idx, h) {
+    const e = _e, L = e.entre;
+    if (!L || !L.length || !m) return;
+    L.forEach(function (o) {
+      if (!o.bits) return;
+      [[o.d, o.bits.sol], [o.d + o.h, o.bits.plafond]].forEach(function (q) {
+        if (!(q[0] > ENTRE.eps && q[0] < h - ENTRE.eps)) return;
+        const lot = trous[q[1]] || (trous[q[1]] = new Lot());
+        idx.forEach(function (i) { _platFan(lot, _metres(m.pieces[i].pts, e.sc), q[0]); });
+      });
+    });
+  }
+
+  function _matTrou(bit) {
+    const e = _e;
+    if (bit === GABARIT.sol) return e.mats.boucheSol;
+    if (bit === GABARIT.plafond) return e.mats.bouchePlafond;
+    if (!e.matsTrous) e.matsTrous = {};
+    let m = e.matsTrous[bit];
+    if (!m) {
+      m = e.matsTrous[bit] = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false,
+        side: THREE.DoubleSide, stencilWrite: true, stencilRef: bit, stencilWriteMask: bit,
+        stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp });
+    }
+    return m;
+  }
+
+  // Maillages des trous dans le groupe d'une tuile (dessinés avant tout, sans couleur ni profondeur).
+  function _ajouterTrous(groupe, trous) {
+    Object.keys(trous).forEach(function (b) {
+      const g = trous[b].geometrie();
+      if (!g) return;
+      const me = new THREE.Mesh(g, _matTrou(Number(b)));
+      me.renderOrder = -1;
+      me.matrixAutoUpdate = false;
+      me.userData.famille = "trou";
+      groupe.add(me);
+    });
+  }
+
+  // Paroi de tube (m) du sol au plafond h, sans ses morceaux pris dans la tranche d'un niveau entremêlé là où il a un
+  // vide derrière elle, ni ceux posés dans une zone jonction (sa chambre en pente la remplace). `out` : morceaux
+  // dessinés [x0, z0, x1, z1, y0, y1] (relevé du checkup).
+  function _paroiEntre(lot, x0, z0, x1, z1, h, col, out) {
+    const e = _e, L = e.entre || [];
+    const zones = !e.galerie && (e.pentes || []).some(function (p) { return p.zones && p.zones.length; });
+    if (!L.length && !zones) {
+      _paroiY(lot, [x0, z0], [x1, z1], 0, h, col);
+      if (out) out.push([x0, z0, x1, z1, 0, h]);
+      return;
+    }
+    const sc = e.sc, dx = x1 - x0, dz = z1 - z0, l = Math.hypot(dx, dz);
+    if (l < 1e-6) return;
+    const ts = [0, 1];
+    const couper = function (ax, az, bx, bz) {
+      const ex = bx - ax, ez = bz - az, den = dx * ez - dz * ex;
+      if (Math.abs(den) < 1e-12) return;
+      const t = ((ax - x0) * ez - (az - z0) * ex) / den, u = ((ax - x0) * dz - (az - z0) * dx) / den;
+      if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+    };
+    const bx0 = Math.min(x0, x1) * sc - 1, bx1 = Math.max(x0, x1) * sc + 1;
+    const bz0 = Math.min(z0, z1) * sc - 1, bz1 = Math.max(z0, z1) * sc + 1;
+    L.forEach(function (o) {
+      if (!o.V.m) return;
+      o.V.m.piecesPres(bx0, bz0, bx1, bz1).forEach(function (i) {
+        const Q = o.V.m.pieces[i].pts;
+        for (let k = 0, j = Q.length - 1; k < Q.length; j = k++) {
+          couper(Q[j][0] / sc, Q[j][1] / sc, Q[k][0] / sc, Q[k][1] / sc);
+        }
+      });
+      if (o.V.mixte) { for (let s = ENTRE.pas; s < l; s += ENTRE.pas) ts.push(s / l); }
+    });
+    if (zones) {
+      e.pentes.forEach(function (p) {
+        p.zones.forEach(function (en) {
+          const a = en.ring;
+          for (let k = 0, j = a.length - 1; k < a.length; j = k++) couper(a[j][0], a[j][1], a[k][0], a[k][1]);
+        });
+      });
+    }
+    ts.sort(function (a, b) { return a - b; });
+    const ox = dz / l * 0.02, oz = -dx / l * 0.02;   // vers l'extérieur de la galerie (paroi : intérieur à gauche)
+    let prec = null;
+    const poser = function (m) {
+      m.garde.forEach(function (g) {
+        _paroiY(lot, [x0 + dx * m.t0, z0 + dz * m.t0], [x0 + dx * m.t1, z0 + dz * m.t1], g[0], g[1], col);
+        if (out) out.push([x0 + dx * m.t0, z0 + dz * m.t0, x0 + dx * m.t1, z0 + dz * m.t1, g[0], g[1]]);
+      });
+    };
+    for (let i = 0; i + 1 < ts.length; i++) {
+      const t0 = ts[i], t1 = ts[i + 1];
+      if ((t1 - t0) * l < 1e-6) continue;
+      const tm = (t0 + t1) / 2, mx = x0 + dx * tm, mz = z0 + dz * tm;
+      let garde = zones && _zoneSous(mx, mz) ? [] : [[0, h]];
+      L.forEach(function (o) {
+        if (!garde.length || !(o.V.partout || o.V.vide((mx + ox) * sc, (mz + oz) * sc))) return;
+        const r = [];
+        garde.forEach(function (g) {
+          if (o.y0 > g[0] + ENTRE.eps) r.push([g[0], Math.min(g[1], o.y0)]);
+          if (o.y1 < g[1] - ENTRE.eps) r.push([Math.max(g[0], o.y1), g[1]]);
+        });
+        garde = r.filter(function (g) { return g[1] - g[0] > ENTRE.eps; });
+        e.paroisCoupees = (e.paroisCoupees || 0) + 1;
+      });
+      const cle = JSON.stringify(garde);
+      if (prec && prec.cle === cle && Math.abs(prec.t1 - t0) < 1e-9) { prec.t1 = t1; continue; }
+      if (prec) poser(prec);
+      prec = { t0: t0, t1: t1, garde: garde, cle: cle };
+    }
+    if (prec) poser(prec);
+  }
+
+  // Matériaux du sol et du plafond d'une zone jonction : ceux des pièces des galeries, sans gabarit (le trou du sol
+  // du niveau, posé sur la zone, ne doit pas trouer son sol en pente vu à travers lui).
+  function _matsPente() {
+    const e = _e;
+    if (!e.matsPente) {
+      e.matsPente = { sol: e.mats.solGalerie.clone(), plafond: e.mats.plafondGalerie.clone() };
+      ["sol", "plafond"].forEach(function (k) {
+        e.matsPente[k].stencilWrite = false;
+        e.matsPente[k].stencilFunc = THREE.AlwaysStencilFunc;
+        e.matsPente[k].side = THREE.DoubleSide;
+      });
+    }
+    [["sol", "solGalerie"], ["plafond", "plafondGalerie"]].forEach(function (q) {
+      const a = e.mats[q[1]], b = e.matsPente[q[0]];
+      if (b.map !== a.map || !b.color.equals(a.color)) { b.map = a.map; b.color.copy(a.color); b.needsUpdate = true; }
+    });
+    return e.matsPente;
+  }
+
+  // Intervalles [y0, y1] (triés, disjoints) présents dans un seul des deux ensembles.
+  function _xorIntervalles(A, B) {
+    const bornes = [];
+    A.concat(B).forEach(function (g) { if (g[1] - g[0] > ENTRE.eps) bornes.push(g[0], g[1]); });
+    bornes.sort(function (a, b) { return a - b; });
+    const dans = function (L, y) { return L.some(function (g) { return y > g[0] && y < g[1]; }); };
+    const out = [];
+    for (let i = 0; i + 1 < bornes.length; i++) {
+      const a = bornes[i], b = bornes[i + 1];
+      if (b - a <= ENTRE.eps) continue;
+      const m = (a + b) / 2;
+      if (dans(A, m) === dans(B, m)) continue;
+      const der = out[out.length - 1];
+      if (der && Math.abs(der[1] - a) <= ENTRE.eps) der[1] = b; else out.push([a, b]);
+    }
+    return out;
+  }
+
+  // Zone jonction z sur la pente p, dans les lots L de la tuile (contrat ci-dessus) : sol et plafond en pente
+  // (triangles fins, sommets projetés sur le tracé), faces du bord là où un seul côté est vide (dedans [sol, plafond] ;
+  // dehors, la tranche de chacun des deux niveaux de la pente là où il a un vide), trous du sol et du plafond d'un seul
+  // tenant du niveau (bits du contexte) et, au niveau actif, de ceux des voisins pris dans sa hauteur.
+  function _zoneJonction(z, p, L) {
+    const e = _e, ring = _anneau(z.points, e.sc), h = e.hauteur, g = GRAIN_METRES;
+    if (ring.length < 3) return;
+    let fmin = Infinity, cmax = -Infinity;
+    const haut = function (q) {
+      const r = _surPenteDe(p, q[0], q[1]);
+      fmin = Math.min(fmin, r.dy); cmax = Math.max(cmax, r.plafond);
+      return r;
+    };
+    _trianglesFins(ring, ENTRE.fin).forEach(function (t) {
+      const r = t.map(haut);
+      const P = function (k, y) { return [t[k][0], y, t[k][1]]; };
+      const uv = [t[0][0] / g, t[0][1] / g, t[1][0] / g, t[1][1] / g, t[2][0] / g, t[2][1] / g];
+      L.solPente.tri(P(0, r[0].dy), P(1, r[1].dy), P(2, r[2].dy), [0, 1, 0], BLANC, uv);
+      L.plafondPente.tri(P(0, r[0].plafond), P(1, r[1].plafond), P(2, r[2].plafond), [0, -1, 0], BLANC, uv);
+    });
+    const Vici = _videDe(e.niveau), Vautre = _videDe(p.autre);
+    const dehors = function (x, zz) {
+      const l = [], q = _surPenteDe(p, x, zz);
+      if (Vici.partout || Vici.vide(x * e.sc, zz * e.sc)) l.push([0, h]);
+      if (Vautre.partout || Vautre.vide(x * e.sc, zz * e.sc)) l.push([p.dY, p.dY + p.hB]);
+      if (q.lat <= q.demi) l.push([q.dy, q.plafond]);   // la galerie inclinée continue hors de la zone
+      l.sort(function (a, b) { return a[0] - b[0]; });
+      const u = [];
+      l.forEach(function (q) {
+        const der = u[u.length - 1];
+        if (der && q[0] <= der[1]) der[1] = Math.max(der[1], q[1]); else u.push(q.slice());
+      });
+      return u;
+    };
+    const fin = _anneauFin(ring, ENTRE.zoneFace);
+    for (let i = 0; i < fin.length; i++) {
+      const A = fin[i], B = fin[(i + 1) % fin.length], dx = B[0] - A[0], dz = B[1] - A[1], l = Math.hypot(dx, dz);
+      if (l < 1e-6) continue;
+      const ox = dz / l * 0.02, oz = -dx / l * 0.02;   // vers l'extérieur (contour de sens positif)
+      const ra = haut(A), rb = haut(B);
+      const xa = _xorIntervalles([[ra.dy, ra.plafond]], dehors(A[0] + ox, A[1] + oz));
+      const xb = _xorIntervalles([[rb.dy, rb.plafond]], dehors(B[0] + ox, B[1] + oz));
+      if (xa.length === xb.length) {
+        for (let k = 0; k < xa.length; k++) _paroiPente(L.parois, A, B, xa[k][0], xa[k][1], xb[k][0], xb[k][1]);
+      } else {
+        const M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2], rm = haut(M);
+        _xorIntervalles([[rm.dy, rm.plafond]], dehors(M[0] + ox, M[1] + oz)).forEach(function (q) {
+          _paroiPente(L.parois, A, B, q[0], q[1], q[0], q[1]);
+        });
+      }
+    }
+    const trou = function (bit, y) { _dessus(L.trous[bit] || (L.trous[bit] = new Lot()), ring, y, BLANC); };
+    const bits = e.bitsPlans || { sol: GABARIT.sol, plafond: GABARIT.plafond };
+    trou(bits.sol, 0);
+    trou(bits.plafond, h);
+    if (!e.dyContexte) {
+      (e.voisins || []).forEach(function (v) {
+        if (!v.plans) return;
+        const b = _bitsVoisin(v.dessus), ys = v.dy + v.hauteur;
+        if (v.dy > fmin + ENTRE.eps && v.dy < cmax - ENTRE.eps) trou(b.sol, v.dy);
+        if (ys > fmin + ENTRE.eps && ys < cmax - ENTRE.eps) trou(b.plafond, ys);
+      });
+    }
+    e.zonesPente = (e.zonesPente || 0) + 1;
+  }
+
+  // Structures des autres niveaux des zones jonction du niveau, dans ces zones : dessinées et bloquantes avec lui
+  // (contrat ci-dessus). Filtres de la carte appliqués (_montre).
+  function _structuresEmpruntees(niveau, pentes) {
+    const e = _e, out = [];
+    if (!pentes.some(function (p) { return p.zones.length; })) return out;
+    _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", function (o) {
+      return o.type;
+    }).filter(_horsTrace).forEach(function (s) {
+      if (!s || !Array.isArray(s.points)) return;
+      const lvl = Number.isInteger(s.level) ? s.level : 0;
+      if (lvl === niveau) return;
+      const c = _centreM(s.points, e.sc);
+      if (pentes.some(function (p) { return p.autre === lvl && !!_zoneDePente(p, c[0], c[1]); })) out.push(s);
+    });
+    return out;
+  }
+
+  // Voisin : sans les zones jonction ni les structures que le niveau actif dessine déjà (contrat ci-dessus).
+  function _horsZonesActives(d, pentes) {
+    const e = _e, G = window.KtaGalerie;
+    d.zones = d.zones.filter(function (z) {
+      return !(G.estZoneJonction(z) && _zoneDuNiveauActif(z) && G.penteDeZone(z));
+    });
+    d.structures = d.structures.filter(function (s) {
+      const c = _centreM(s.points, e.sc);
+      return !pentes.some(function (p) {
+        const en = _zoneDePente(p, c[0], c[1]);
+        return !!en && _zoneDuNiveauActif(en.z);
+      });
+    });
+  }
+
+  // Règle du pas dans une zone jonction : structures des deux niveaux de la pente et zones qui bouchent (ni paroi de
+  // tube ni image de collision : on n'est plus au sol du niveau). → -1 (couloir coupé) ou rayons bloqués à l'arrivée.
+  function _bloqueEnZone(x0, y0, x1, y1, ux, uy, autre) {
+    const e = _e, r = RAYON_CORPS * e.sc, fx = x1 + ux * r, fy = y1 + uy * r, segs = [];
+    if (x1 !== x0 || y1 !== y0) {
+      for (let i = 0; i < RAILS.length; i++) {
+        const ox = -uy * r * RAILS[i], oy = ux * r * RAILS[i];
+        segs.push([x0 + ox, y0 + oy, fx + ox, fy + oy]);
+      }
+    }
+    const nRails = segs.length;
+    _rayons(segs, x1, y1, r);
+    const n = _niveauPas(), S = window.ktaSegmentsBloquesParStructure;
+    const z = window.KtaGalerie.zonesBloquent(segs, n, { x: x0, y: y0 }, e.rendu);
+    const a = typeof S === "function" ? S(segs, n, true) : [], b = typeof S === "function" ? S(segs, autre, true) : [];
+    let k = 0;
+    for (let i = 0; i < segs.length; i++) {
+      if (!(z[i] || a[i] || b[i])) continue;
+      if (i < nRails) return -1;
+      k++;
+    }
+    return k;
+  }
+
+  // Altitude du sol et du plafond (m, repère du niveau de la scène) au point (x, y px) : galerie inclinée ou zone
+  // jonction, sinon 0 et la hauteur du niveau (checkup).
+  function altitude(x, y) {
+    if (!_e) return null;
+    const e = _e, q = _surPente(x / e.sc, y / e.sc, 0);
+    return { sol: q ? +q.dy.toFixed(3) : 0, plafond: q ? +q.plafond.toFixed(3) : e.hauteur, zone: !!(q && q.zone),
+      pente: !!q, t: q ? +q.t.toFixed(4) : null };
+  }
+
+  // Relevé (checkup) : contexte entremêlé, parois dessinées (repère du niveau actif, voisins décalés de leur
+  // altitude), trous, plans cachés, structures posées sur une pente.
+  function entremeles() {
+    if (!_e) return null;
+    const e = _e, parois = [];
+    let trous = 0;
+    const lire = function (t, dy, niveau) {
+      (t.paroisY || []).forEach(function (w) {
+        parois.push({ niveau: niveau, x0: +w[0].toFixed(3), z0: +w[1].toFixed(3), x1: +w[2].toFixed(3),
+          z1: +w[3].toFixed(3), y0: +(w[4] + dy).toFixed(3), y1: +(w[5] + dy).toFixed(3) });
+      });
+      t.obj.traverse(function (o) {
+        if (o.isMesh && o.userData.famille === "trou") trous += o.geometry.attributes.position.count / 3;
+      });
+    };
+    e.tuiles.forEach(function (t) { if (t.obj) lire(t, 0, e.niveau); });
+    (e.voisins || []).forEach(function (v) {
+      v.tuiles.forEach(function (t) { if (t.obj) lire(t, v.dy, v.niveau); });
+    });
+    return {
+      niveaux: (e.entre || []).map(function (o) {
+        return { niveau: o.niveau, d: +o.d.toFixed(3), h: o.h, y0: +o.y0.toFixed(3), y1: +o.y1.toFixed(3) };
+      }),
+      voisins: (e.voisins || []).map(function (v) {
+        return { niveau: v.niveau, entre: (v.entre || []).map(function (o) { return o.niveau; }),
+          plansCaches: v.plansCaches || null, plansVus: v.plans ? { sol: v.plans.sol.visible,
+            plafond: v.plans.plafond.visible } : null };
+      }),
+      autresBloquent: (e.autresBloquent || []).slice(), plansCaches: Object.assign({}, e.plansCaches || {}),
+      plansVus: { sol: !!e.sol && e.sol.visible, plafond: !!e.plafond && e.plafond.visible },
+      parois: parois, trous: trous, paroisCoupees: e.paroisCoupees || 0, zonesPente: e.zonesPente || 0,
+      structures: e.structPente ? Array.from(e.structPente.entries()).map(function (q) {
+        return Object.assign({ uid: q[0] }, q[1]);
+      }) : []
+    };
   }
 
   // Réglage ⚙️ « Niveaux » : "voisins", "tous" ou "mien" (retenu sur l'appareil ; au téléphone, « voisins » revient à
@@ -3500,6 +4136,7 @@
     if (!obj) return;
     obj.traverse(function (o) {
       if (!o.isMesh || !o.material || Array.isArray(o.material)) return;
+      if (o.userData.famille === "trou") return;   // gabarit : jamais transparent (dessiné avant tout)
       const base = o.userData.matOrigine || o.material;
       if (mode) { o.userData.matOrigine = base; o.material = _matEstompe(base, mode); }
       else if (o.userData.matOrigine) { o.material = base; delete o.userData.matOrigine; }
@@ -4191,11 +4828,29 @@
       }
       st.push({ x: p.ptsM[i][0], z: p.ptsM[i][1], t: t });
     }
+    // Zone jonction traversée : la chambre en pente remplace la galerie inclinée sur ce qu'elle couvre (_zoneJonction) ;
+    // stations ajoutées là où le tracé franchit son bord.
+    (p.zones || []).forEach(function (en) {
+      for (let i = st.length - 2; i >= 0; i--) {
+        const A = st[i], B = st[i + 1], cps = [];
+        for (let k = 0, j = en.ring.length - 1; k < en.ring.length; j = k++) {
+          const a = en.ring[j], b = en.ring[k], ex = b[0] - a[0], ez = b[1] - a[1];
+          const dx = B.x - A.x, dz = B.z - A.z, den = dx * ez - dz * ex;
+          if (Math.abs(den) < 1e-12) continue;
+          const t = ((a[0] - A.x) * ez - (a[1] - A.z) * ex) / den, u = ((a[0] - A.x) * dz - (a[1] - A.z) * dx) / den;
+          if (t > 1e-6 && t < 1 - 1e-6 && u >= 0 && u <= 1) cps.push(t);
+        }
+        cps.sort(function (a, b) { return b - a; }).forEach(function (t) {
+          st.splice(i + 1, 0, { x: A.x + (B.x - A.x) * t, z: A.z + (B.z - A.z) * t, t: A.t + (B.t - A.t) * t });
+        });
+      }
+    });
     const norme = function (n) { const l = Math.hypot(n[0], n[1], n[2]); return [n[0] / l, n[1] / l, n[2] / l]; };
     let pied = null;
     for (let i = 0; i + 1 < st.length; i++) {
       const A = st[i], B = st[i + 1], dx = B.x - A.x, dz = B.z - A.z, l = Math.hypot(dx, dz);
       if (l < 1e-6) continue;
+      if (_zoneDePente(p, (A.x + B.x) / 2, (A.z + B.z) / 2)) continue;
       const ux = dx / l, uz = dz / l, nx = -uz, nz = ux, ouvert = B.t <= tO + 1e-6;
       const G = function (S, c) { return [S.x + nx * c, S.z + nz * c]; };
       const wA = W(A.t), wB = W(B.t);
@@ -4965,9 +5620,10 @@
   // Sol et plafond d'un seul tenant en mixte et en structures ; en galerie, ceux des pièces (_construireTuileGalerie).
   function _appliquerRendu() {
     const e = _e, gal = !!e.galerie, b = e.boutonRendu;
-    e.sol.visible = !gal;
+    const cache = e.plansCaches || {};
+    e.sol.visible = !gal && !cache.sol;
     _majSolActif();
-    e.plafond.visible = !gal && e.vue !== "plongee";
+    e.plafond.visible = !gal && e.vue !== "plongee" && !cache.plafond;
     if (b) {
       const ici = RENDU_UI[e.rendu] || RENDU_UI.structures, apres = RENDU_UI[_renduSuivant(e.rendu)];
       b.textContent = ici.icone + " " + _t(ici.nom);
@@ -5350,7 +6006,7 @@
     if (e.ov) e.ov.classList.toggle("kta-v3d-edition", haut);
     _majBoutonPlace();
     _majNiveauEdition();
-    e.plafond.visible = !haut && !e.galerie;
+    e.plafond.visible = !haut && !e.galerie && !(e.plansCaches && e.plansCaches.plafond);
     e.tuiles.forEach(function (t) {
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
     });
@@ -5598,14 +6254,31 @@
     // dans ses parois, jamais plus près du bord qu'au départ ; en sortir par le côté ou par notre bout n'est permis
     // que là où son sol est à moins de PENTE.sortie m de celui du niveau (la règle du rendu reprend alors).
     const pd = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);
+    let auDepartZone = -1;
+    const departZone = function () {
+      if (auDepartZone < 0) auDepartZone = Math.max(0, _bloqueEnZone(e.pos.x, e.pos.y, e.pos.x, e.pos.y, 1, 0, pd.p.autre));
+      return auDepartZone;
+    };
     for (let i = 0; i < essais.length; i++) {
       const sx = essais[i][0], sy = essais[i][1], l = Math.hypot(sx, sy);
       if (l < 1e-9) continue;
       const x1 = e.pos.x + sx, y1 = e.pos.y + sy;
       if (pd) {
-        const pa = _surPenteDe(pd.p, x1 / e.sc, y1 / e.sc);
-        if (pa.lat <= Math.max(pa.demi - RAYON_CORPS, pd.lat) + 1e-9) { _poser(x1, y1); return true; }
+        const pa = _surPenteDe(pd.p, x1 / e.sc, y1 / e.sc), za = _zoneDePente(pd.p, x1 / e.sc, y1 / e.sc);
+        // Zone jonction (contrat : _entreDe) : on y reste tant qu'on est dans la zone ou dans la galerie inclinée ;
+        // structures de ses deux niveaux.
+        if (pd.zone || za) {
+          if (za || pa.lat <= pa.demi - RAYON_CORPS + 1e-9) {
+            const nz = _bloqueEnZone(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l, pd.p.autre);
+            if (nz === 0 || (nz > 0 && nz <= departZone())) { _poser(x1, y1); return true; }
+            continue;
+          }
+        } else if (pa.lat <= Math.max(pa.demi - RAYON_CORPS, pd.lat) + 1e-9) { _poser(x1, y1); return true; }
         if (Math.abs(pd.dy) >= PENTE.sortie) continue;
+      } else {
+        // Entrer dans une zone jonction : seulement là où son sol est au niveau du nôtre.
+        const qa = _surPente(x1 / e.sc, y1 / e.sc, 0);
+        if (qa && qa.zone && Math.abs(qa.dy) >= PENTE.sortie) continue;
       }
       const n = _balayage(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l);
       if (n < 0 || (n > 0 && n > depart())) continue;
@@ -5781,6 +6454,12 @@
         const p = window.KtaGalerie.paroisBloquent(segs, n);
         r = r.map(function (b, i) { return b || p[i]; });
       }
+      // Structures d'un niveau entremêlé qui montent dans notre tranche (_niveauxQuiBloquent).
+      (_e.autresBloquent || []).forEach(function (o) {
+        if (typeof window.ktaSegmentsBloquesParStructure !== "function") return;
+        const q = window.ktaSegmentsBloquesParStructure(segs, o, true);
+        r = r.map(function (b, i) { return b || q[i]; });
+      });
     }
     return r.map(function (b, i) { return b || z[i]; });
   }
@@ -7073,7 +7752,7 @@
       const geo = new THREE.PlaneGeometry(cote, cote);
       geo.rotateX(-Math.PI / 2);
       const mat = new THREE.MeshLambertMaterial({ map: tex, depthTest: false, depthWrite: false,
-        stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc });
+        stencilWrite: true, stencilRef: 1, stencilFuncMask: 1, stencilFunc: THREE.NotEqualStencilFunc });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(cx, PLAN_SOL.y, cz);
       mesh.renderOrder = PLAN_SOL.ordre;
@@ -9994,7 +10673,13 @@
       e.tuiles.forEach(_libererTuile);
       (e.volPassages || []).forEach(_libererVolume);
       (e.voisins || []).forEach(_libererVoisin);
-      if (e.matsV) Object.keys(e.matsV).forEach(function (k) { e.matsV[k].dispose(); });
+      if (e.matsV) {
+        Object.keys(e.matsV).forEach(function (c) {
+          Object.keys(e.matsV[c]).forEach(function (k) { e.matsV[c][k].dispose(); });
+        });
+      }
+      if (e.matsPente) { e.matsPente.sol.dispose(); e.matsPente.plafond.dispose(); }
+      if (e.matsTrous) Object.keys(e.matsTrous).forEach(function (k) { e.matsTrous[k].dispose(); });
       if (e.matsEstompes) e.matsEstompes.forEach(function (m) { m.dispose(); });
       if (e.texCiel) e.texCiel.dispose();
       if (e.icones) e.icones.forEach(function (t) { t.dispose(); });
@@ -10297,7 +10982,8 @@
       pente: (function () {
         const q = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);
         return { sur: !!q, t: q ? +q.t.toFixed(4) : null, s: q ? +q.s.toFixed(3) : null, dy: q ? +q.dy.toFixed(3) : 0,
-          plafond: q ? +q.plafond.toFixed(3) : null, autre: q ? q.p.autre : null, franchies: e.pentesFranchies,
+          plafond: q ? +q.plafond.toFixed(3) : null, autre: q ? q.p.autre : null, zone: !!(q && q.zone),
+          franchies: e.pentesFranchies,
           itineraire: e.nItiPentes };
       })(),
       geste: e.geste ? { sens: e.geste.sens, t: Math.round(e.geste.t), bascule: e.geste.fait } : null,
@@ -10343,7 +11029,9 @@
         const d = function (m) {
           return { decale: m.polygonOffset === true, facteur: m.polygonOffsetFactor, unites: m.polygonOffsetUnits };
         };
-        const sol = [e.mats.sol, e.mats.solGalerie].concat(e.matsV ? [e.matsV.sol, e.matsV.solGalerie] : []).map(d);
+        const sol = [e.mats.sol, e.mats.solGalerie].concat(["haut", "bas"].reduce(function (l, k) {
+          return e.matsV && e.matsV[k] ? l.concat([e.matsV[k].sol, e.matsV[k].solGalerie]) : l;
+        }, [])).map(d);
         const zones = ["transp", "hachSol", "opaque", "eauGalerie", "rubans"].map(function (k) {
           const m = e.mats[k];
           return { mat: k, recule: m.polygonOffset === true && (m.polygonOffsetFactor > 0 || m.polygonOffsetUnits > 0) };
@@ -10634,7 +11322,7 @@
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
     reglerPortee: reglerPortee, reglerLampe: reglerLampe, reglerFaisceau: reglerFaisceau,
     reglerPleinJour: reglerPleinJour, limiterPortee: limiterPortee, zoomer: zoomer, reglerNiveauxVus: reglerNiveauxVus,
-    reglerEstomper: reglerEstomper,
+    reglerEstomper: reglerEstomper, altitude: altitude, entremeles: entremeles,
     origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, trackerRecale: trackerRecale,
     charge: function () { return !!THREE; },
     greffer: greffer,

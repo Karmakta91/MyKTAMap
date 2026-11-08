@@ -16,7 +16,8 @@
 //   obstacles des accès de surface, BLOQUE, dans les 3 rendus), ACCES / ACCES_DIM / PAROI (accès sans passage et
 //   formes de POI : formes et dimensions des volumes, formes posées sur la paroi), comblementPorte(x, y, ang, w,
 //   niveau, rendu) (pierre de taille d'un cavage), pente(r, niveau) / denivele(a, b) / demiPente(p, t) (galerie inclinée d'un tracé
-//   jonction vue d'un niveau, lue par vue3d.js).
+//   jonction vue d'un niveau, lue par vue3d.js), estZoneJonction(z) / penteDeZone(z) / zonesDePente(r) (zone jonction
+//   de niveau : sa pente est celle du tracé jonction qui la traverse).
 // Modèle MIXTE (vue 3D par défaut) : chaque côté du tube est jugé à part ; une structure du niveau (intégrée ou
 // perso) proche d'un côté ouvre CE côté (la paroi d'en face reste), un pan de retour relie la paroi gardée à la
 // structure ; proche des deux côtés, le tracé traverse une CHAMBRE, sans parois. Un tube qui débouche dans une
@@ -263,6 +264,60 @@
       demi: Math.max(demiA, demiB), raccordA: lA !== null, raccordB: lB !== null, tOuvert: tOuvert, sansSols: va.sol === null || vb.sol === null };
   }
 
+  // ── Zone jonction de niveau (chambre dont le sol monte d'un niveau à l'autre) ──────────────────────────────
+  // ⚠️ contrat (décision produit) : une zone `jonction: true` posée sur au moins deux niveaux (`niveaux`, règle
+  // poiJonction.js > ktaNiveauxObjet) n'a pas de sens propre : le SENS et la pente sont ceux du tracé jonction qui la
+  // traverse (premier tracé dont les deux niveaux sont parmi ceux de la zone et qui entre dans son contour), sol
+  // projeté sur ce tracé bout à bout (même règle que la galerie inclinée : pente()). Sans tracé qui la traverse, la
+  // zone reste à plat et sa fiche le dit (utils.js > attacherNotePopup). Une seule règle, lue par la fiche et la 3D.
+  function estZoneJonction(z) {
+    if (!z || z.jonction !== true || !Array.isArray(z.points) || z.points.length < 3) return false;
+    const nv = typeof window.ktaNiveauxObjet === "function" ? window.ktaNiveauxObjet(z) : [];
+    return nv.length >= 2;
+  }
+
+  function _coupeSegments(ax, ay, bx, by, cx, cy, dx, dy) {
+    const d = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
+    if (Math.abs(d) < 1e-12) return false;
+    const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / d;
+    const u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / d;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+  }
+
+  // Le tracé r (points px) entre-t-il dans le contour z (un sommet dedans ou un segment qui coupe un bord) ?
+  function _traverse(r, z) {
+    const a = z.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
+    const pts = r.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
+    for (let i = 0; i < pts.length; i++) { if (_dansAnneau(a, pts[i].x, pts[i].y)) return true; }
+    for (let i = 0; i + 1 < pts.length; i++) {
+      for (let k = 0, j = a.length - 1; k < a.length; j = k++) {
+        if (_coupeSegments(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y, a[j].x, a[j].y, a[k].x, a[k].y)) return true;
+      }
+    }
+    return false;
+  }
+
+  // Tracé jonction qui donne sa pente à la zone jonction z, ou null (pas une zone jonction, aucun tracé qui la
+  // traverse entre deux de ses niveaux).
+  function penteDeZone(z) {
+    if (!estZoneJonction(z)) return null;
+    const nv = window.ktaNiveauxObjet(z), routes = _routes();
+    for (let i = 0; i < routes.length; i++) {
+      const r = routes[i];
+      if (!r || r.type !== "jonction" || !Array.isArray(r.points) || r.points.length < 2) continue;
+      if (!Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel) || r.fromLevel === r.toLevel) continue;
+      if (nv.indexOf(r.fromLevel) < 0 || nv.indexOf(r.toLevel) < 0) continue;
+      if (_traverse(r, z)) return r;
+    }
+    return null;
+  }
+
+  // Zones jonction auxquelles le tracé jonction r donne sa pente (penteDeZone(z) === r), filtres ignorés.
+  function zonesDePente(r) {
+    if (!r || r.type !== "jonction") return [];
+    return _zones().filter(function (z) { return estZoneJonction(z) && penteDeZone(z) === r; });
+  }
+
   function _points() { return _tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints)); }
 
   // Toutes les structures, filtres de la carte ignorés (masquer ne retire que le dessin, comme la règle du pas).
@@ -292,6 +347,7 @@
         mel(o.points.length); mel(o.level); mel(ty.length);
         for (let k = 0; k < ty.length; k++) mel(ty.codePointAt(k));
         if (Array.isArray(o.niveaux)) o.niveaux.forEach(mel);   // zone sur plusieurs niveaux
+        if (o.jonction === true) mel(7);   // zone jonction (sol en pente : penteDeZone)
         const p = o.points[0], q = o.points[o.points.length - 1];
         if (p && q) { mel(p.x * 10); mel(p.y * 10); mel(q.x * 10); mel(q.y * 10); }
       }
@@ -1659,6 +1715,7 @@
     PAROI: Object.assign({}, PAROI),
     COTES_CERCLE: COTES_CERCLE, comblementPorte: comblementPorte, COMBLE_MAX_M: COMBLE_MAX_M,
     pente: pente, denivele: denivele, demiPente: demiPente, ROCHE_SANS_SOLS_M: ROCHE_SANS_SOLS_M,
+    estZoneJonction: estZoneJonction, penteDeZone: penteDeZone, zonesDePente: zonesDePente,
     CONE_MIN_M: CONE_MIN_M
   };
 })();

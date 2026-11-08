@@ -133,10 +133,11 @@
   comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
   zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône).
   `qui: KARMA · action: valider les 4 recos du topo · fini: décision prise · depuis: 06/11/2026 · taille: S`
-- **Multi-niveau en 3D : niveaux voisins, entremêlés, jonction en pente douce** — QCM 07/11 (ETUDE_VUE_3D.md). Lots
-  A données ✅, B pente douce ✅, C niveaux voisins ✅ (branche `niveaux-voisins`) → D entremêlement, structures en pente.
-  `qui: Claude · action: lot D sur go de KARMA, après son QCM · fini: lots A à D livrés · depuis: 06/11/2026 ·
-  taille: L`
+- **Multi-niveau en 3D : lots A à D livrés, choix du lot D à valider** — QCM 07 et 08/11 (ETUDE_VUE_3D.md) : D =
+  union des vides, collision par tranche, zone jonction en pente, structures en pente (branche `niveaux-entremeles`).
+  Joué en émulation seulement ; lot E (épaisseur de plancher) seulement si KARMA le veut.
+  `qui: KARMA · action: valider les choix du lot D, le jouer au téléphone, dire si un lot E est voulu · fini: choix
+  validés, lot E ouvert ou écarté · depuis: 06/11/2026 · taille: S`
 - **Essai sur dev : lots du 05/11 sur téléphone** — prouvés en émulation seulement : ＋ / 🗑️ des sommets (2D, 3D),
   gestes 3D à deux doigts, colonne d'outils en paysage, plan au sol d'un plan transparent, ruban d'itinéraire 3D,
   « Hors du plan » en 3D, et un 1er « 🔗 Raccorder » sur un tracé de CALQUE (chemin jamais testé automatiquement).

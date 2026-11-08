@@ -307,7 +307,8 @@
       // ExtendedData MyKTAMap (mkm:level, mkm:fromLevel, mkm:toLevel), symétrique de
       // kmzExport > _emitExtendedDataLevel. Absent (KMZ tiers) → null → niveau 0 côté appelant.
       const _mkmData = (function() {
-        const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false, dateConstat: null };
+        const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false, dateConstat: null,
+          jonction: false };
         const dataEls = pm.querySelectorAll(":scope > ExtendedData > Data");
         for (let j = 0; j < dataEls.length; j++) {
           const el = dataEls[j];
@@ -322,6 +323,7 @@
             continue;
           }
           if (name === "mkm:copie") { out.copie = (valEl.textContent || "").trim() === "1"; continue; }
+          if (name === "mkm:jonction") { out.jonction = (valEl.textContent || "").trim() === "1"; continue; }
           if (name === "mkm:dateConstat") {
             out.dateConstat = window.KtaPoiDanger ? window.KtaPoiDanger.dateValide(valEl.textContent || "") : null;
             continue;
@@ -459,6 +461,7 @@
             };
             if (Number.isInteger(_mkmData.level)) _zn.level = _mkmData.level;
             if (_mkmData.niveaux) _zn.niveaux = _mkmData.niveaux;
+            if (_mkmData.niveaux && _mkmData.jonction) _zn.jonction = true;   // zone jonction de niveau
             out.zones.push(_zn);
           }
           stats.kept++;

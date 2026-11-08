@@ -142,6 +142,29 @@ données incohérentes signalées quand, de deux niveaux qui se suivent dans la 
 dessus n'est pas plus haut, ou quand ils se chevauchent d'au moins la hauteur de l'un. Pas encore joué sur un vrai
 téléphone. Détail : `docs/architecture/tracking.md` § Vue 3D, Niveaux voisins.
 
+## Décisions de KARMA (QCM du 08/11/2026) : niveaux entremêlés et zones jonction (lot D du multi-niveau en 3D)
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Volume commun | Union des vides : ouvert dès que l'un des deux niveaux y a une galerie ; parois, piliers, sols et plafonds seulement là où les deux sont de la roche, aucun mur parasite |
+| 2 | Collision | Une structure de l'autre niveau qui monte dans ta tranche de hauteur te bloque ; tout le reste suit le niveau actif |
+| 3 | Zone jonction | Chambre dont le sol monte d'un niveau à l'autre, niveaux déclarés dans la fiche de la zone ; sens donné par le tracé jonction qui la traverse (règle bout à bout du lot B) ; sans tracé : pente absente et avertissement dans la fiche |
+| 4 | Structures en pente | Piliers, murs, fronts dans une zone jonction, murs et fronts à moins d'1 m d'un tracé jonction : posés sur le sol en pente, jusqu'au plafond en pente |
+| 5 | Hors de ce lot | Épaisseur de plancher (lot E si besoin) ; plan sans écart négatif et plan à un niveau inchangés |
+
+Choix faits à la livraison, à valider : **structures toujours pleines** (décision 1 lue pour l'enveloppe des galeries :
+parois des tubes, sols, plafonds ; un pilier reste un pilier, sinon la décision 2 n'aurait rien à bloquer) ; union
+seulement entre niveaux **montrés** (« Le mien » n'ouvre rien vers le noir), la collision, elle, vaut toujours ; vide
+d'un niveau = ses pièces (galerie), ses pièces et chambres (mixte), partout (structures : un sol pris dans la tranche de
+l'autre disparaît) ; en mixte, le sol d'un seul tenant n'est troué qu'au-dessus des tubes de l'autre niveau ; entre
+deux voisins (« Tous »), seules les parois ; hauteur de collision d'une structure = celle de son niveau ; **zone
+jonction = une zone multi-niveau avec une case** (pas un nouveau type de zone : son type garde sa couleur et son effet,
+la case ne fait que la pente) ; effet en mixte et structures seulement (en galerie, le tracé reste la galerie inclinée) ;
+la zone est dessinée par le niveau actif avec les structures de l'autre niveau posées dedans, qui bloquent ; on la
+quitte par un bord seulement là où son sol est au niveau du nôtre (0,3 m) ; **l'itinéraire passe par le tracé jonction
+qui la traverse** (aucun graphe neuf) ; « le long d'un tracé jonction » = à moins d'1 m du bord de sa galerie inclinée.
+Détail : `docs/architecture/tracking.md` § Niveaux entremêlés et zones jonction.
+
 ## Décisions de KARMA (QCM du 02/11/2026) : commandes, itinéraire, raccord, ronds (audit n° 2)
 
 Après le deuxième audit (pavé peu maniable au pouce, itinéraire trop large et sans repères, paroi disparue du côté

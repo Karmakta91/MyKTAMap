@@ -821,6 +821,8 @@
         parts.push('<Data name="mkm:niveaux"><value>' + extra.niveaux.join(",") + '</value></Data>');
       }
       if (extra && extra.copie) parts.push('<Data name="mkm:copie"><value>1</value></Data>');
+      // Zone jonction de niveau (sol en pente en 3D, galerieEmprise.js > penteDeZone).
+      if (extra && extra.jonction) parts.push('<Data name="mkm:jonction"><value>1</value></Data>');
       // POI danger : jour du constat (« AAAA-MM-JJ », déjà validé par poiDanger.js).
       if (extra && extra.dateConstat) {
         parts.push('<Data name="mkm:dateConstat"><value>' + _xmlEsc(extra.dateConstat) + '</value></Data>');
@@ -883,7 +885,7 @@
       else nom = _nomType(zone.type);
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
       const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null,
-        multi ? { niveaux: multi.niveaux, copie: multi.copie } : null);
+        multi ? { niveaux: multi.niveaux, copie: multi.copie, jonction: zone.jonction === true } : null);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +

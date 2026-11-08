@@ -1043,6 +1043,10 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     const autres = proposes.concat(portes).filter(function(n, i, a) { return n !== lvl && a.indexOf(n) === i; })
       .sort(function(a, b) { return a - b; });
     if (!autres.length) return "";
+    // Zone jonction de niveau (sol en pente en 3D) : case en plus des niveaux ; sans tracé jonction qui la traverse
+    // entre deux de ses niveaux, avertissement (galerieEmprise.js > penteDeZone : une seule règle avec la 3D).
+    const G = window.KtaGalerie, jct = o.jonction === true;
+    const sansTrace = jct && G && typeof G.penteDeZone === "function" && !G.penteDeZone(o);
     return '<div class="kta-note-popup-niveaux-zone">' +
              '<div class="kta-note-popup-niveaux-zone-titre">' + _esc(window.I18n.t("niveauxZone.label")) + '</div>' +
              '<div class="kta-note-popup-niveaux-zone-cases">' +
@@ -1054,6 +1058,12 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                         '</label>';
                }).join("") +
              '</div>' +
+             '<label class="kta-note-popup-niveaux-zone-case kta-note-popup-zone-jonction">' +
+               '<input type="checkbox" class="kta-note-popup-zone-jonction-case"' + (jct ? " checked" : "") + '>' +
+               '<span>' + _esc(window.I18n.t("niveauxZone.jonction")) + '</span>' +
+             '</label>' +
+             (sansTrace ? '<div class="kta-note-popup-zone-jonction-avis" role="status">' +
+               _esc(window.I18n.t("niveauxZone.jonctionSansTrace")) + '</div>' : "") +
              '<div class="kta-popup-actions kta-note-popup-actions">' +
                '<button class="kta-popup-btn kta-note-popup-niveaux-zone-appliquer" type="button">' +
                  _esc(window.I18n.t("niveauxZone.appliquer")) +
@@ -1198,8 +1208,10 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           const autres = Array.prototype.slice.call(
             popupRoot.querySelectorAll(".kta-note-popup-niveaux-zone-cases input:checked"))
             .map(function(cb) { return Number.parseInt(cb.value, 10); });
+          const jctCase = popupRoot.querySelector(".kta-note-popup-zone-jonction-case");
+          const jonction = jctCase ? jctCase.checked : undefined;
           try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
-          if (window.KtaConvertir.changerNiveauxZone(opts.convertir.obj, autres)
+          if (window.KtaConvertir.changerNiveauxZone(opts.convertir.obj, autres, jonction)
               && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
             const nv = window.ktaNiveauxObjet({ level: opts.convertir.obj.level, niveaux: autres });
             window.OOMGuard.showToast(window.I18n.t("niveauxZone.toast",

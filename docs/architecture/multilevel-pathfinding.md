@@ -190,6 +190,7 @@ Type spécial `"jonction"` :
   `getNiveauVertical`, sinon une hauteur de galerie par niveau franchi ; détail : `tracking.md` § Vue 3D, galerie
   inclinée). Guidage : « descendre / monter la pente vers le niveau n », dit à l'entrée du tracé (`itiGuidage.js`,
   moyen `pente`).
+- **Zone jonction** (§ 26.12) : une zone jonction qu'elle traverse prend sa pente (chambre en pente en 3D).
 - **Effacement** : aucun comportement spécial, traitée comme un tracé normal par tous les modes de 🧹 (sélection au clic, dernier tracé, tous les tracés). `resetRoads()` purge aussi les jonctions car même structure de données.
 - **Fiche au clic** (jonction de session, hors dessin) : `road.js` lui pose la polyline « ghost » des tracés et
   `utils.js > attacherNotePopup` avec `opts.jonction`. Titre « 🪜 Jonction N0 ↔ N+1 » (`jonctionFiche.titre`) ;
@@ -381,6 +382,16 @@ Une zone (tout type, `cust-*` compris) peut toucher plusieurs niveaux : un effon
   niveaux occupés (`main.js > ktaNiveauxOccupes`), recherche, niveaux proches d'un recalage
   (`tracking.js`), sélection par zone (`selectionZone.js`), sélection multiple (`selectionMulti.js`) et remblais du
   volume exploité (`volumeExploite.js`) comptent la zone sur chacun de ses niveaux.
+- **Zone jonction de niveau** (décision produit, QCM du 08/11/2026) : une zone sur au moins deux niveaux peut être
+  une chambre dont le sol monte d'un niveau à l'autre : case « Zone jonction » sous « Aussi aux niveaux » dans sa
+  fiche, appliquée par le même bouton (`changerNiveauxZone(obj, autres, jonction)`, une entrée ⏪ ; retirée si la zone
+  ne garde qu'un niveau). Champ `jonction: true`. Elle n'a pas de sens propre : **sa pente et son sens sont ceux du
+  tracé jonction qui la traverse** (premier tracé dont les deux niveaux sont parmi ceux de la zone et qui entre dans son
+  contour), sol projeté sur ce tracé bout à bout comme la galerie inclinée : `galerieEmprise.js > penteDeZone(z)` /
+  `zonesDePente(r)`, une seule règle pour la fiche et la 3D. Sans tracé qui la traverse : sol à plat en 3D et
+  avertissement dans la fiche (« tracez un tracé jonction qui la traverse »). **Itinéraire** : inchangé (choix fait au
+  lot) : il passe par le tracé jonction qui la traverse, aucun graphe neuf ; une zone jonction ⛔ bloque comme toute zone
+  bloquante. Vue 3D : `tracking.md` § Niveaux entremêlés et zones jonction.
 - Garde-fous : `scripts/check-zones-niveaux.js` (pre-commit : règle, rendu, itinéraire, fiche, session, KMZ, GeoJSON,
   règle du pas de la 3D, sélection par zone, volume exploité), § 29 de `scripts/smoke/checkup-vue-3d.js`
   et `scripts/smoke/checkup-zones-niveaux.js` (plan fictif fabriqué dans la page : tracé, fiche, filtre, itinéraire,
@@ -783,7 +794,9 @@ galerie inclinée d'un tracé jonction (`galerieEmprise.js > pente`, `denivele`)
 relie (repli sans sols : une hauteur de galerie et 2 m de roche par niveau franchi, `ROCHE_SANS_SOLS_M` ; avec sols,
 l'écart saisi fait foi, négatif compris) et leurs deux hauteurs ; les **niveaux voisins**
 de la vue 3D (`vue3d.js > _altitudeVoisin`, même dénivelé) et ses puits, escaliers et échelles, dessinés d'un niveau
-à l'autre à leur altitude réelle (`_etenduePassage`). **Données incohérentes** (sol d'un niveau au niveau de celui du
+à l'autre à leur altitude réelle (`_etenduePassage`) ; l'**entremêlement** (écart négatif) : union des vides des
+niveaux montrés dans la tranche commune, structures d'un niveau entremêlé qui arrêtent le pas (`vue3d.js > _entreDe`,
+`_niveauxQuiBloquent` ; `tracking.md` § Niveaux entremêlés et zones jonction). **Données incohérentes** (sol d'un niveau au niveau de celui du
 dessous ou plus bas, ou deux niveaux qui se chevauchent d'au moins la hauteur de l'un) : signalées sous la table
 (`profondeurNiveaux.js > _majIncoherences`, ligne marquée, `role="status"`), jamais bloquantes ; la 3D reste
 dessinable (un voisin n'est jamais posé du mauvais côté, une paroi de puits jamais inversée). Preuves : `check-niveaux-verticaux.js` (accès, cascade, saisie de l'écart, sabotage vérifié),
