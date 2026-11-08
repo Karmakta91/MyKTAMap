@@ -5717,7 +5717,7 @@
   "ui.subaction.mesureDistance": "Medir una DISTANCIA (polilínea)",
   "ui.subaction.mesureEffacer": "Borrar (último punto o todo)",
   "ui.subaction.mesureSurface": "Medir una SUPERFICIE (polígono cerrado)",
-  "ui.subaction.mesureVolume": "Volumen explotado (extracción del sector ♦️)",
+  "ui.subaction.mesureVolume": "Volumen explotado (extracción de la superficie medida)",
   "volume.titre": "⛏️ Volumen explotado",
   "volume.fermer": "Cerrar",
   "volume.niveau": "Nivel {lvl}",

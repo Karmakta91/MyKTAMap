@@ -253,6 +253,9 @@
 
   <!-- ktaPictos.js : pictos au trait partagés (écran Bienvenue, bouton cube de la vue 3D) ; avant unlockGate.js. -->
   <script src="js/ktaPictos.js"></script>
+  <!-- ktaIcones.js : icônes au trait de l'interface (window.ktaIcone, data-kta-ico) et table de la doc ; avant tout
+       module qui pose une icône (interface.js, interfaceDocs.js, accueil). -->
+  <script src="js/ktaIcones.js"></script>
 
   <!-- ⚠️ ktaInstance.js : config d'instance lue UNE fois, avant les gates (partagée par la gate, le kiosque,
        le connecteur et la découverte des plans). unlockGate.js : barrière communautaire, chargée tôt pour
@@ -288,7 +291,8 @@
                    data-i18n-placeholder="home.search.placeholder"
                    placeholder="🔎 Chercher un point dans tous mes plans…" autocomplete="off">
             <button type="button" id="loaderSearchBtn" class="loader-search-btn"
-                    data-i18n-title="home.search.btnTitle" title="Chercher dans tous les plans">🔎</button>
+                    data-i18n-title="home.search.btnTitle" title="Chercher dans tous les plans"
+                    aria-label="Chercher dans tous les plans" data-kta-ico="search"></button>
             <!-- Résultats en direct : position:fixed, calée en JS sur le rect de l'input (même modèle que la recherche
                  OSM). Entrée ou la loupe ouvre la modale complète. -->
             <div class="loader-search-results" id="loaderSearchResults" style="display:none;"></div>
@@ -296,10 +300,10 @@
         </div>
         <div class="loader-header-actions">
           <!-- Visible seulement quand la pastille hors-ligne du pied de page est rouge ; clic = tout récupérer. -->
-          <button class="loader-btn-help kta-offline-hdr" id="loaderOfflineHdrBtn" type="button" hidden>📥</button>
-          <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" data-i18n-title="home.header.alert" title="Voir l'alerte en cours">🚨</button>
-          <button class="loader-btn-help" id="loaderHelpBtn" type="button" data-i18n-title="home.header.help" title="Documentation utilisateur">📖</button>
-          <button class="loader-btn-help" id="loaderConfigBtn" type="button" data-i18n-title="home.header.config" title="Configuration (perf, debug, reset)">⚙️</button>
+          <button class="loader-btn-help kta-offline-hdr" id="loaderOfflineHdrBtn" type="button" hidden data-kta-ico="cloud-download"></button>
+          <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" data-i18n-title="home.header.alert" title="Voir l'alerte en cours" aria-label="Voir l'alerte en cours" data-kta-ico="siren"></button>
+          <button class="loader-btn-help" id="loaderHelpBtn" type="button" data-i18n-title="home.header.help" title="Documentation utilisateur" aria-label="Documentation utilisateur" data-kta-ico="book-open"></button>
+          <button class="loader-btn-help" id="loaderConfigBtn" type="button" data-i18n-title="home.header.config" title="Configuration (perf, debug, reset)" aria-label="Configuration (perf, debug, reset)" data-kta-ico="settings"></button>
         </div>
       </div>
 
@@ -348,8 +352,8 @@
               <!-- Sélecteur Tout / Dossiers toujours visible (sinon impossible de créer le premier dossier) ;
                    « Nouveau dossier » et « Sélectionner » seulement en mode Dossiers. -->
               <div class="kta-plans-head-tools" id="loaderPlansHeadTools">
-                <button type="button" class="kta-plans-head-btn" id="loaderPlansFolderNew" hidden data-i18n-title="home.plans.folders.newTitle" title="Nouveau dossier">➕</button>
-                <button type="button" class="kta-plans-head-btn" id="loaderPlansSelect" hidden data-i18n-title="home.plans.folders.select" title="Sélectionner">☑</button>
+                <button type="button" class="kta-plans-head-btn" id="loaderPlansFolderNew" hidden data-i18n-title="home.plans.folders.newTitle" title="Nouveau dossier" aria-label="Nouveau dossier" data-kta-ico="folder-plus"></button>
+                <button type="button" class="kta-plans-head-btn" id="loaderPlansSelect" hidden data-i18n-title="home.plans.folders.select" title="Sélectionner" aria-label="Sélectionner" data-kta-ico="square-check"></button>
                 <div class="kta-plans-view-switch" id="loaderPlansViewSwitch" role="tablist">
                   <button type="button" class="kta-plans-view-btn" data-view="all" role="tab" data-i18n="home.plans.view.all">Tout</button>
                   <button type="button" class="kta-plans-view-btn" data-view="folders" role="tab" data-i18n="home.plans.view.folders">Dossiers</button>

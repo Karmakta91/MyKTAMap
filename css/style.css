@@ -20775,3 +20775,16 @@ button.kta-cfg-ligne-action {
   outline: 2px solid var(--kta-interaction); outline-offset: 2px;
 }
 .kta-bearing-on .kta-ajuster-boutons { transform: rotate(calc(-1 * var(--kta-bearing, 0deg))); }
+
+/* ── Icônes au trait de l'interface (js/ktaIcones.js) ──
+   Taille relative au texte du parent, trait en currentColor : l'état (actif doré, ouvert bleu, grisé) vient
+   du bouton, jamais de l'icône. Tailles fixes là où le bouton fixe déjà la sienne (barre de la carte, tuiles). */
+.kta-ico { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex-shrink: 0; pointer-events: none; }
+.leaflet-bar a > .kta-ico { width: 18px; height: 18px; vertical-align: middle; }
+.kta-group-flyout-btn-icon > .kta-ico { width: 18px; height: 18px; }
+.kta-tracker-modal-tile-icon > .kta-ico { width: 22px; height: 22px; vertical-align: middle; }
+.kta-tracker-modal-title > span > .kta-ico { width: 20px; height: 20px; }
+.loader-btn-help > .kta-ico, .loader-search-btn > .kta-ico { width: 18px; height: 18px; }
+.kta-plans-head-btn > .kta-ico { width: 14px; height: 14px; }
+/* Dans la Documentation et l'Aide : même icône que le bouton, à la taille du texte. */
+.kta-ico-doc { width: 1.1em; height: 1.1em; vertical-align: -0.18em; }
