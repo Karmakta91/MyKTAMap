@@ -1877,7 +1877,28 @@ Sur un plan ☁️, le calque rapatrié par un compte est vu « en modification 
 | Reçue | `appliquerChangements` : une trace dont l'uid est une copie marquée d'ici ou un objet d'un fichier de calque (index lu avant la fusion) est rangée en trace de copie (`KtaUid.remplacerTraces`) | une trace reçue ne dit pas ce qu'elle vise |
 | Gardée | sauvegarde LOCALE de la session (`tracesCopie`) | elle tient au redémarrage |
 | **Jamais** | `getTombstones()` (lu par l'export de session, le fichier « non envoyé » de l'extension, l'import), `exporterCalque`, l'export du profil (`profileExportImport.js` la retire) | fusion de calques = original détruit |
-| Tombe | `restituer(id)` (ses uids rejoignent la note `uids`, pour un serveur qui ne lit pas l'objet chiffré), `appliquerRestitutions` (calque restitué à T, trace ≤ T), « Effacer la session », nouveau rapatriement (uid repris) | l'objet du fichier revient |
+| Tombe | `restituer(id)` (ses uids rejoignent la note `uids`, pour un serveur qui ne lit pas l'objet chiffré), `appliquerRestitutions` (calque restitué à T, trace ≤ T), « Effacer la session », nouveau rapatriement seulement si elle est **caduque** (antérieure à l'objet du fichier, ou à une restitution connue du calque) | l'objet du fichier revient |
+
+**🔄 Repasser en modification un calque déjà modifié ailleurs** (`rapatrier`). Le verrou est local : un autre appareil
+peut avoir les copies et les traces du calque sans l'avoir rapatrié lui-même. Recopier le fichier daterait chaque copie
+de maintenant et lèverait les traces : les objets supprimés par les autres reviendraient chez tous (« le plus récent
+gagne »). Règle (décision produit) :
+
+| Situation au clic « 🔄 Modifier » | Effet |
+|---|---|
+| Copies marquées du calque déjà dans la session (synchro, import) | **reprises** (`repris`), rien recopié, pas de doublon, pas d'attente de synchro ; toast `filter.calque.okRepris` |
+| Plan d'extension, aucune copie ici | synchro **relue d'abord** (`KtaExtensions.relireChangements`, prise neutre) : copies reçues = reprises ; relecture impossible (hors ligne, serveur muet, 15 s) = l'utilisateur est **prévenu sans être bloqué** (`ktaConfirm`, `filter.calque.sansSynchro*`, rappel `confirmerSansSynchro` de `rapatrier`) : « Recopier » = recopie de la ligne suivante (objets tracés ici exclus), « Annuler » = rien ne change (`annule`) ; sans rappel, refus `synchroImpossible` |
+| Aucune copie nulle part | recopie du fichier, **sauf** les objets visés par une trace de copie valable (`deletedAt` ≥ `updatedAt` de l'objet du fichier, et > dernière restitution connue du calque) : non recréés (`evites`), la trace reste et repart à la synchro ; toast `filter.calque.okEvites` |
+| Tous les objets visés par une trace | calque en modification **vide**, comme chez celui qui les a supprimés |
+| Après une restitution (locale ou reçue) | les traces sont tombées : tout revient, suppressions comprises (inchangé) |
+
+Plan local ou extension sans la prise : pas de relecture, le reste s'applique (100 % local). Limites : sur un plan
+d'extension hors ligne, « Recopier » quand même peut faire revenir des objets supprimés ailleurs dont la trace
+n'est pas encore arrivée ici (la question le dit) ; deux appareils qui passent le
+calque en modification au même instant, chacun avant d'avoir reçu les suppressions de l'autre (les deux hors ligne),
+peuvent encore créer des copies concurrentes — la règle du plus récent s'applique alors à elles. Un appareil qui n'a
+jamais eu de copie voit le calque d'origine tant qu'il ne l'a pas passé en modification, même si toutes ses copies ont
+été supprimées ailleurs. Garde-fou : `check-calque-session.js` §4 quinquies.
 
 Les deux listes de `KtaUid` sont disjointes : un uid tracé comme copie le reste (`tombstone`, `setTombstones` ne l'en sortent pas). Le Tableur et l'import « Ajouter » sur plan partagé la lisent pour ne pas ressusciter la copie. Plan local (sans serveur) : même trace, sans risque (jamais dans un fichier), utile au Tableur et à l'import. Limite : sur un appareil qui n'a jamais eu la copie et dont le fichier de calque ne porte pas l'uid (fichier sans uid, ou ajout intégré jamais exporté), une trace reçue est rangée en trace ordinaire — elle ne vise alors aucun objet de fichier connu.
 

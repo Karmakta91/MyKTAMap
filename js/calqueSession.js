@@ -18,7 +18,9 @@
 // Prix : ~225 octets par objet en session (~1,1 Mo pour 5 000 objets) ; `peser()` et `occupationLocalStorage()`
 // annoncent le coût AVANT (SessionPersist réécrit toute la session à chaque sauvegarde).
 // 🔒 Verrou : un calque rapatrié est MASQUÉ automatiquement ; recocher sa case affiche les deux (comparaison) ;
-// la restitution inverse tout.
+// la restitution inverse tout. Le verrou est LOCAL : « rapatrier » reprend les copies déjà là (synchro relue
+// d'abord sur un plan d'extension ; impossible à relire : l'utilisateur est prévenu et choisit de recopier) et ne
+// recrée jamais un objet qu'une trace de copie valable dit supprimé.
 // 🩸 Deux pièges :
 //   1. « Effacer la session » doit RENDRE le calque : copie et verrou tombent ensemble, sinon plan vide.
 //   2. Au chargement, le verrou ne s'applique QUE SI la copie est là (sauvegarde ratée sur quota → plan vide
@@ -157,54 +159,135 @@ window.CalqueSession = (function () {
   }
 
   // ── Rapatriement ──────────
-  // Rend une promesse : { ok:true, stats, total } ou { ok:false, code }. Le `fetch` est celui du chargement du plan
-  // (aucune surface réseau nouvelle) et la donnée est FRAÎCHE (pas de cache mémoire qui aurait dérivé).
-  function rapatrier(id) {
+  // Rend une promesse : { ok:true, stats, total, evites, repris? } ou { ok:false, code }. Le `fetch` est celui du
+  // chargement du plan (aucune surface réseau nouvelle) et la donnée est FRAÎCHE (pas de cache mémoire qui aurait
+  // dérivé).
+  // 🩸 Le calque peut déjà être en modification AILLEURS (plan d'extension) : ses copies, retouchées ou supprimées
+  // par les autres, vivent dans la session synchronisée. Recopier le fichier les écraserait (copies datées de
+  // maintenant : « le plus récent gagne » ressusciterait chez tous les objets supprimés). D'où, dans l'ordre :
+  //   1. des copies marquées de ce calque sont déjà ici → elles sont REPRISES (`repris`), rien n'est recopié ;
+  //   2. plan d'extension avec la prise relireChangements → la synchro est relue d'abord (copies reçues = reprises) ;
+  //      relecture impossible (hors ligne, serveur muet) → l'utilisateur est PRÉVENU sans être bloqué (décision
+  //      produit) : `opts.confirmerSansSynchro()` → Promise<bool> (true = recopier, l'étape 3 s'applique ; false =
+  //      `annule`, rien ne change). Sans ce rappel : refus `synchroImpossible` ;
+  //   3. sinon recopie du fichier, SAUF les objets qu'une trace de copie encore valable dit supprimés (`evites`) :
+  //      la trace reste, l'objet n'est pas recréé. Tous supprimés : le calque passe en modification vide, comme
+  //      chez celui qui les a supprimés.
+  // Plan local (sans extension) : seuls 1 et 3 jouent, tout reste sur l'appareil.
+  function rapatrier(id, opts) {
     if (!id) return Promise.resolve({ ok: false, code: "idManquant" });
     if (estRapatrie(id)) return Promise.resolve({ ok: false, code: "dejaRapatrie" });
     const lc = _cfgCalque(id);
     if (!lc || !lc.file) return Promise.resolve({ ok: false, code: "calqueInconnu" });
+    if (compterCopie(id) > 0) return Promise.resolve(_reprendre(id));
 
-    return fetch(lc.file)
-      .then(function (r) { return r.json(); })
-      .then(function (json) {
-        const stats = { editorPoints: 0, roads: 0, zones: 0, structures: 0 };
-        FAMILLES.forEach(function (fam) {
-          const src = _depuisCalque(json, fam);
-          if (!src.length) return;
-          // Copie DÉFENSIVE : l'objet du calque n'est pas muté et l'objet de session ne partage aucune référence.
-          // 🩸 `updatedAt` = maintenant (horloge de synchro, pas `date_update` qui reste la date du relevé) : la
-          // copie garde l'uid de l'original et sa date de génération ; une synchro qui n'envoie que « ce qui a
-          // changé depuis » n'en enverrait que les copies retouchées, et un autre appareil masquerait le calque
-          // pour n'en montrer que quelques objets.
-          const maintenant = Date.now();
-          const K = window.KtaUid;
-          const copies = src.map(function (o) {
-            const c = JSON.parse(JSON.stringify(o));
-            c[CLE_SOURCE] = id;
-            c[CLE_DEPUIS] = maintenant;
-            c.updatedAt = maintenant;
-            // Nouveau rapatriement : la trace d'une copie supprimée avant (rapatriement précédent) ne vise plus rien.
-            if (K && typeof c.uid === "string" && c.uid) K.untombstone(c.uid);
-            return c;
-          });
-          _ecrire(fam, _lire(fam).concat(copies));   // les setters redessinent
-          stats[fam.cle] = copies.length;
-        });
-
-        const total = stats.editorPoints + stats.roads + stats.zones + stats.structures;
-        if (total === 0) return { ok: false, code: "calqueVide" };
-
-        _rapatries.push(id);
-        _masquer(id);
-        _persister();
-        _log("calque « " + id + " » rapatrie en session", stats);
-        return { ok: true, stats: stats, total: total };
+    return _relireSiPartage()
+      .then(function (lu) {
+        if (compterCopie(id) > 0) return _reprendre(id);
+        const copier = function () {
+          return fetch(lc.file)
+            .then(function (r) { return r.json(); })
+            .then(function (json) { return _copierFichier(id, json); });
+        };
+        if (lu !== false) return copier();
+        const confirmer = opts && typeof opts.confirmerSansSynchro === "function" ? opts.confirmerSansSynchro : null;
+        if (!confirmer) return { ok: false, code: "synchroImpossible" };
+        return Promise.resolve().then(confirmer).then(function (oui) {
+          // Pendant la question, une synchro a pu apporter les copies (ou un autre geste rapatrier le calque).
+          if (estRapatrie(id) || compterCopie(id) > 0) return _reprendre(id);
+          return oui === true ? copier() : { ok: false, code: "annule" };
+        }, function () { return { ok: false, code: "annule" }; });
       })
       .catch(function (e) {
         console.warn("[CalqueSession] rapatriement echoue pour « " + id + " » :", e);
         return { ok: false, code: "lectureEchouee", detail: e && e.message };
       });
+  }
+
+  function _copierFichier(id, json) {
+    const traces = _tracesValables(id);
+    const K = window.KtaUid;
+    const stats = { editorPoints: 0, roads: 0, zones: 0, structures: 0 };
+    let evites = 0;
+    // 🩸 `updatedAt` = maintenant (horloge de synchro, pas `date_update` qui reste la date du relevé) : la copie
+    // garde l'uid de l'original et sa date de génération ; une synchro qui n'envoie que « ce qui a changé depuis »
+    // n'en enverrait que les copies retouchées, et un autre appareil masquerait le calque pour n'en montrer que
+    // quelques objets.
+    const maintenant = Date.now();
+    FAMILLES.forEach(function (fam) {
+      const src = _depuisCalque(json, fam);
+      if (!src.length) return;
+      const copies = [];
+      src.forEach(function (o) {
+        if (!o || typeof o !== "object") return;
+        const uid = (typeof o.uid === "string" && o.uid) ? o.uid : null;
+        // ⚠️ Trace de copie au moins aussi récente que l'objet du fichier : supprimé en modification (ici ou
+        // ailleurs), la suppression l'emporte quelle que soit l'heure de ce rapatriement.
+        if (uid && traces.has(uid) && traces.get(uid) >= (Number(o.updatedAt) || 0)) { evites++; return; }
+        // Copie DÉFENSIVE : l'objet du calque n'est pas muté et l'objet de session ne partage aucune référence.
+        const c = JSON.parse(JSON.stringify(o));
+        c[CLE_SOURCE] = id;
+        c[CLE_DEPUIS] = maintenant;
+        c.updatedAt = maintenant;
+        // Trace plus ancienne que l'objet du fichier (objet versé depuis dans une nouvelle version du plan,
+        // retirerIntegres) ou trace ordinaire : elle visait une version d'avant, elle tombe.
+        if (K && uid) K.untombstone(uid);
+        copies.push(c);
+      });
+      if (!copies.length) return;
+      _ecrire(fam, _lire(fam).concat(copies));   // les setters redessinent
+      stats[fam.cle] = copies.length;
+    });
+
+    const total = stats.editorPoints + stats.roads + stats.zones + stats.structures;
+    if (total === 0 && evites === 0) return { ok: false, code: "calqueVide" };
+
+    _rapatries.push(id);
+    _masquer(id);
+    _persister();
+    _log("calque « " + id + " » rapatrie en session (" + evites + " objet(s) supprime(s) non recree(s))", stats);
+    return { ok: true, stats: stats, total: total, evites: evites };
+  }
+
+  // Traces de copie du calque `id` encore valables : uid → deletedAt. Une trace antérieure ou égale à la dernière
+  // restitution connue du calque ne vaut plus (l'objet du fichier est revenu).
+  function _tracesValables(id) {
+    const out = new Map();
+    const K = window.KtaUid;
+    if (!K || typeof K.getTracesCopie !== "function") return out;
+    const T = _restitutions[id] || 0;
+    K.getTracesCopie().forEach(function (t) {
+      if (t && t.calque === id && t.deletedAt > T) out.set(t.uid, t.deletedAt);
+    });
+    return out;
+  }
+
+  // Copies déjà là (synchro, import de session) : le calque passe en modification sur elles.
+  function _reprendre(id) {
+    if (!estRapatrie(id)) _rapatries.push(id);
+    _masquer(id);
+    _persister();
+    _log("calque « " + id + " » deja en modification : " + compterCopie(id) + " copie(s) reprise(s), rien recopie");
+    return _resultatRepris(id);
+  }
+  function _resultatRepris(id) {
+    const stats = { editorPoints: 0, roads: 0, zones: 0, structures: 0 };
+    FAMILLES.forEach(function (fam) {
+      _lire(fam).forEach(function (o) { if (o && o[CLE_SOURCE] === id) stats[fam.cle]++; });
+    });
+    const total = stats.editorPoints + stats.roads + stats.zones + stats.structures;
+    return { ok: true, repris: true, stats: stats, total: total, evites: 0 };
+  }
+
+  // Plan d'extension : la synchro est relue avant de copier (KtaExtensions.relireChangements). → Promise : true
+  // (relue), false (impossible), null (rien à relire : plan local, ou extension sans la prise).
+  function _relireSiPartage() {
+    const PR = window.PlanRegistry, planId = window._currentLoadedPlanId;
+    const e = (PR && typeof PR.findById === "function" && planId) ? PR.findById(planId) : null;
+    const X = window.KtaExtensions;
+    if (!e || e.type !== "ext" || !X || typeof X.relireChangements !== "function") return Promise.resolve(null);
+    return Promise.resolve().then(function () { return X.relireChangements(planId); })
+      .then(function (r) { return r === true ? true : (r === null ? null : false); }, function () { return false; });
   }
 
   // ── Restitution ──────────
