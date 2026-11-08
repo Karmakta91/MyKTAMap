@@ -252,6 +252,14 @@ html.kta-theme-light .kta-v3d-mode-indic {
   padding: 12px 12px 10px; border-radius: 12px; border: 1px solid var(--kta-accent);
   background: var(--kta-surface); color: var(--kta-texte); user-select: text; -webkit-user-select: text;
 }
+/* 🩸 La colonne d'outils de la vue d'édition (.kta-v3d-outils, posée avant la fiche) occupe le même bord droit, au
+   rang des contrôles Leaflet (800) : elle recouvrait le bord de la fiche (✕, Favori). La fiche se range à sa gauche
+   et les deux restent utilisables. --kta-v3d-fiche-droite = place de la colonne (bord + largeur) + 8 px ; repris par
+   les deux placements de la colonne en paysage bas (plus bas). Garde-fou : checkup-vue-3d.js > sectionColonneEdition. */
+#kta-vue3d .kta-v3d-outils:not([hidden]) ~ .kta-v3d-fiche {
+  --kta-v3d-fiche-droite: calc(10px + var(--kta-v3d-taille) + 8px);
+  right: var(--kta-v3d-fiche-droite); width: min(360px, calc(100% - 10px - var(--kta-v3d-fiche-droite)));
+}
 .kta-v3d-fiche .kta-v3d-fiche-fermer { position: sticky; top: 0; float: right; margin: 0 0 6px 8px; }
 .kta-v3d-fiche-corps { font-size: 14px; line-height: 1.45; }
 /* Fiche d'un objet (structure, zone, tracé) : la fiche de la carte (utils.js > attacherNotePopup) dans la boîte de la
@@ -381,6 +389,9 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
     max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - max(14px, env(safe-area-inset-bottom)));
     overflow-y: auto;
   }
+  #kta-vue3d .kta-v3d-outils:not([hidden]) ~ .kta-v3d-fiche {
+    --kta-v3d-fiche-droite: calc(10px + 3 * var(--kta-v3d-taille) + var(--kta-v3d-ecart) + 16px);
+  }
 }
 /* ⚠️ contrat (décision produit) : au doigt en paysage bas (téléphone couché), la colonne est contre le BORD DROIT,
    alignée sur ✕ et la grille + − ▲ ▼, entre la rangée du haut et ⌖. Haut : 7 px sous --kta-v3d-sous-haut (lui-même
@@ -402,6 +413,10 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
   /* ▾ / ◂ n'est qu'un chevron : bas (14 px), pour que les huit tiennent ; sa zone de toucher reste à 44 px. */
   #kta-vue3d .kta-v3d-outils > a.kta-v3d-outils-plier {
     height: 14px !important; min-height: 0 !important; line-height: 14px !important; font-size: 11px;
+  }
+  /* Colonne de 25 px + liseré (27 px), contre le bord droit. */
+  #kta-vue3d .kta-v3d-outils:not([hidden]) ~ .kta-v3d-fiche {
+    --kta-v3d-fiche-droite: calc(10px + env(safe-area-inset-right, 0px) + 27px + 8px);
   }
 }
 /* Zone de toucher de 44 px (--kta-cible-toucher), comme la rangée du haut : on joue au doigt. Les zones de deux

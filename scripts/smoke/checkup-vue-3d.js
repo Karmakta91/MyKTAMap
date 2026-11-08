@@ -5325,6 +5325,11 @@ async function sectionColonneEdition(nav) {
         }).map(function (a) { return a.dataset.v3d + (a.dataset.groupe ? ":" + a.dataset.groupe : ""); });
       };
       const out = {};
+      // Un POI fictif juste devant la caméra : son panneau au milieu de l'écran, pour ouvrir une fiche.
+      const niv = window.currentLevel !== undefined ? window.currentLevel : 0;
+      window.setEditorPoints((window.getEditorPoints() || []).concat([{ id: "pt_col_fiche", nom: "POI colonne",
+        uid: "pt_col_fiche", level: niv, tags: ["info"], updatedAt: 1000, x: pc.plan.imageWidth / 2 + 30,
+        y: pc.plan.imageHeight / 2 }]));
       await ouvrir();
       out.ordre = vus().join(",");
       q('[data-v3d="outilsPlier"]').click();
@@ -5337,6 +5342,37 @@ async function sectionColonneEdition(nav) {
       await images();
       out.deplie = { n: vus().length, texte: q('[data-v3d="outilsPlier"]').textContent,
         memoire: localStorage.getItem("myktamap_v3d_outils_plie_v1") };
+      const pan = K.etat().panneaux.filter(function (s) {
+        return s.visible && s.ecran.x > 40 && s.ecran.x < innerWidth - 120 && s.ecran.y > 160 &&
+          s.ecran.y < innerHeight - 120;
+      })[0];
+      out.panneau = pan ? [pan.ecran.x, pan.ecran.y] : null;
+      return out;
+    });
+    // Fiche d'un POI ouverte en vue d'édition : à gauche de la colonne, ✕ et bord droit atteignables.
+    if (r.panneau) {
+      await page.mouse.click(r.panneau[0], r.panneau[1]);
+      await page.waitForTimeout(550);   // la fiche neuve ignore le pointeur FICHE_NEUVE ms
+    }
+    r.fiche = await page.evaluate(function () {
+      const f = document.querySelector("#kta-vue3d .kta-v3d-fiche");
+      const c = document.querySelector("#kta-vue3d .kta-v3d-outils");
+      if (!f || !c) return null;
+      const bf = f.getBoundingClientRect(), bc = c.getBoundingClientRect();
+      const x = f.querySelector('[data-v3d="ficheFermer"]').getBoundingClientRect();
+      const sous = document.elementFromPoint(x.left + x.width / 2, x.top + x.height / 2);
+      const bord = document.elementFromPoint(bf.right - 4, bf.top + Math.min(bf.height / 2, 60));
+      return { droite: Math.round(bf.right), colonne: Math.round(bc.left), gauche: Math.round(bf.left),
+        fermer: !!sous && !!sous.closest('[data-v3d="ficheFermer"]'), bord: !!bord && !!bord.closest(".kta-v3d-fiche") };
+    });
+    await page.evaluate(function () {
+      const b = document.querySelector('#kta-vue3d [data-v3d="ficheFermer"]'); if (b) b.click();
+    });
+    const r2 = await page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+      const out = {};
       // 🧭 : le menu Tracker de la carte, par-dessus la vue.
       q('[data-v3d="tracker"]').click();
       for (let i = 0; i < 20 && !document.querySelector(".kta-tracker-modal-overlay"); i++) await pause(50);
@@ -5355,12 +5391,16 @@ async function sectionColonneEdition(nav) {
       out.apres = { vue3d: K.etat().ouvert, menu: !!document.querySelector(".kta-tracker-modal-overlay") };
       return out;
     });
+    r.menu = r2.menu; r.apres = r2.apres;
     verifier(r.ordre.indexOf("outilsPlier,planSol,tracker,outil:mesure") === 0,
       "colonne d'édition : ▾, 🗺️, 🧭 puis 📐 et les outils", r.ordre);
     verifier(r.plie.vus === "outilsPlier" && r.plie.texte === "◂" && r.plie.memoire === "1" &&
       r.rouvert.vus === "outilsPlier" && r.rouvert.texte === "◂" && r.deplie.n >= 8 && r.deplie.texte === "▾" &&
       r.deplie.memoire === "0",
       "colonne d'édition : ▾ la replie (seul ◂ reste), retenu à la réouverture, ◂ la rouvre", r);
+    verifier(!!r.fiche && r.fiche.droite <= r.fiche.colonne - 4 && r.fiche.gauche >= 0 && r.fiche.fermer && r.fiche.bord,
+      "colonne d'édition : la fiche d'un POI s'ouvre à gauche de la colonne, ✕ et bord droit atteignables",
+      { fiche: r.fiche, panneau: r.panneau });
     // Tuiles de carte : 🧭 boussole, 🗺️ plan orienté, 📍 recalage, 🎯 ma position, ⛑️ perdu (🎬 Replay et 🔥 Heatmap :
     // fonctionnalités optionnelles, éteintes ici).
     verifier(r.menu.ouvert && r.menu.dessus && r.menu.carte === 5 && r.menu.maPos && r.apres.vue3d === false &&
