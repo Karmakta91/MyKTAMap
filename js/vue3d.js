@@ -14,6 +14,7 @@
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
 //   _ctxGreffe), viser(cx, cy) (colonne d'outils de la vue d'édition : outils de la carte, _poserSommet),
+//   allerA(choix) (« Y aller en 3D » : résultat de la recherche, pris par SearchPoints.prendreChoix),
 //   raccourcis() (touches et gestes, lus par shortcutsCheatsheet.js) } ;
 //   code « six vers le bas » : kta:vue3dCode ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap, niveau}, densiteMax, stats, attenteReprise (ms),
@@ -5429,7 +5430,7 @@
   }
 
   // ── Dessin depuis la vue d'édition (plongée) ──────────────────────────────────────────────────────────
-  // ⚠️ contrat (décision produit) : en vue d'édition seulement, et toujours là, la colonne 🗺️ 📐 ✏️ 🛣️ ⬛ 🏛️
+  // ⚠️ contrat (décision produit) : en vue d'édition seulement, et toujours là, la colonne (🔍) 🗺️ 📐 ✏️ 🛣️ ⬛ 🏛️
   // (boutons .leaflet-bar de la barre de droite 2D, dans son ordre, icône et état recopiés de son bouton :
   // _majBarreDessin). Chaque bouton ouvre le panneau de son groupe 2D (interface.js > ktaOuvrirOutils : mêmes types,
   // customs, ➕ et ✅) ; ✏️ (ajout de point, sans panneau) joue le geste de son bouton 2D. Rien ne se dessine
@@ -5466,8 +5467,9 @@
   const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };
   const COULEUR_MESURE = "#ff0000";   // la mesure de la carte (measure.js : red), pas une couleur de la charte
 
-  // Colonne (dans la vue, posée par _monterDom) : un bouton par groupe puis 🗺️, montrée en vue d'édition seulement.
-  // Sans la barre de droite 2D (interface.js absent), rien.
+  // Colonne (dans la vue, posée par _monterDom) : 🔍 Rechercher, 🗺️ puis un bouton par groupe ; 🗺️ et les groupes en
+  // vue d'édition seulement, 🔍 dans les deux vues (seul à hauteur d'yeux, à la même place : décision produit) sauf
+  // pendant une greffe qui coupe les fiches (_rechercheDispo). Sans la barre de droite 2D (interface.js absent), rien.
   function _monterOutils(ov) {
     const e = _e;
     e.dessin = { permis: false, sig: null, apSig: null, apercu: null, etiquettes: [], poses: 0, msPoses: [],
@@ -5494,7 +5496,14 @@
       return a;
     };
     const d = e.dessin;
-    // 🗺️ Plan au sol (_majPlanSol) : interrupteur, en tête de colonne, au-dessus des outils (décision produit).
+    // 🔍 La recherche de la carte (allerA), en tête de colonne, au-dessus de 🗺️ (décision produit).
+    d.boutonRecherche = lien("recherche");
+    d.boutonRecherche.textContent = "🔍";
+    d.boutonRecherche.title = _t("vue3d.recherche");
+    d.boutonRecherche.setAttribute("aria-label", _t("vue3d.recherche"));
+    d.boutonRecherche.setAttribute("aria-keyshortcuts", "Control+K Meta+K");
+    d.boutonRecherche.hidden = true;
+    // 🗺️ Plan au sol (_majPlanSol) : interrupteur, sous 🔍, au-dessus des outils (décision produit).
     d.boutonSol = lien("planSol");
     d.boutonSol.textContent = "🗺️";
     d.boutonSol.title = _t("vue3d.dessin.planSol");
@@ -5558,11 +5567,13 @@
   function _majBarreDessin() {
     const e = _e, d = e.dessin;
     if (!d || !d.barre) return;
-    d.barre.hidden = !_dessinPermis();
+    const permis = _dessinPermis(), recherche = _rechercheDispo();
+    d.barre.hidden = !permis && !recherche;
+    d.boutonRecherche.hidden = !recherche;
     const ouvert = typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() : null;
     d.outils.forEach(function (b) {
       const g = window._groupes && window._groupes[b.dataset.groupe], src = g && g.btnPrincipal;
-      b.hidden = !src;
+      b.hidden = !src || !permis;
       if (!src) return;
       if (b.innerHTML !== src.innerHTML) b.innerHTML = src.innerHTML;
       if (b.title !== src.title) { b.title = src.title; b.setAttribute("aria-label", src.title); }
@@ -5570,7 +5581,7 @@
       b.classList.toggle("kta-outil-lecture-seule", src.classList.contains("kta-outil-lecture-seule"));
       b.classList.toggle("kta-group-open", ouvert === b.dataset.groupe);
     });
-    d.boutonSol.hidden = false;
+    d.boutonSol.hidden = !permis;
     d.boutonSol.classList.toggle("kta-actif", !!d.planSol);
     d.boutonSol.setAttribute("aria-pressed", d.planSol ? "true" : "false");
   }
@@ -5588,7 +5599,7 @@
       if (A && A.insertionEnCours()) A.terminerInsertion();
     } else _placerMenuAjuster();
     const G = window._groupes || {}, o = _outilArme();
-    let sig = (_dessinPermis() ? "1" : "0") + (d.planSol ? "1" : "0") + e.niveau +
+    let sig = (_dessinPermis() ? "1" : "0") + (_rechercheDispo() ? "1" : "0") + (d.planSol ? "1" : "0") + e.niveau +
       (o ? o.famille + ":" + o.type : "") + "|" +
       (typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() || "" : "");
     GROUPES_DESSIN.forEach(function (g) {
@@ -6255,7 +6266,9 @@
     const e = _e, d = e.dessin;
     if (!d) return null;
     const o = _outilArme();
-    return { barre: !!d.barre && !d.barre.hidden, actif: _dessinActif(), outil: o,
+    // barre : les outils de dessin montrés ; colonne : la colonne elle-même (🔍 seul à hauteur d'yeux).
+    const colonne = !!d.barre && !d.barre.hidden;
+    return { barre: colonne && _dessinPermis(), colonne: colonne, actif: _dessinActif(), outil: o,
       boutons: d.outils ? d.outils.filter(function (b) { return !b.hidden; }).map(function (b) {
         return b.dataset.groupe; }) : [],
       poses: d.poses, msPoses: d.msPoses.slice(), fermetures: d.fermetures, msFin: d.msFin, refus: d.refus || null,
@@ -7066,6 +7079,166 @@
     _derniereMontre = { famille: famille, uid: o.uid || null, centre: out.centre, fiche: out.fiche,
       trait: trait, at: Date.now() };
     return out;
+  }
+
+  // ── « Y aller en 3D » : résultat de la recherche (🔍 de la colonne, Ctrl/Cmd+K) ──────────────────────────────
+  // ⚠️ contrat (décision produit) : fenêtre, portée et filtres de la recherche de la carte (searchPoints.js) ;
+  // le résultat choisi est pris par la vue (SearchPoints.prendreChoix, posé à l'ouverture, retiré à la fermeture) : la
+  // carte dessous ne bouge pas. La vue passe en libre (le tracker ne bouge pas), prend le niveau de l'objet s'il n'est
+  // pas sur le sien (niveau de la 3D seul, comme ▲ ▼ de la vue d'édition, derrière le geste d'un passage), se place
+  // devant lui et ouvre sa fiche : fiche du point, ou fiche de l'objet comme un toucher, même réglage 🗂️ coupé (le
+  // choix est explicite). Cible : le point précis d'un POI (KtaPoiPrecis.cible), le milieu d'un tracé ou d'une
+  // structure en ligne (à mi-longueur), le centre des sommets d'une zone ou d'une structure (celui de la carte).
+  // Vue d'édition : la place à ALLER.recul[0] m de la cible, cap gardé, caméra rattachée (elle vise 2 m devant la
+  // place : la cible au centre). Hauteur d'yeux : la première place libre (_coince, structures comprises) à
+  // ALLER.recul m, du côté d'où l'on vient d'abord, face à la cible ; aucune : le point libre le plus proche.
+  // Une greffe qui coupe les fiches (jeu) refuse : 🔍 caché, choix refusé avec un toast, la carte ne bouge pas.
+  const ALLER = { recul: [2, 3.5, 5, 8], directions: 12 };
+  const FAMILLE_RECHERCHE = { road: "roads", zone: "zones", structure: "structures" };
+
+  function _rechercheDispo() { return typeof window.ouvrirRecherche === "function" && _permisGreffe("fiches"); }
+
+  function _ouvrirRecherche() {
+    if (!_e || !_rechercheDispo()) return false;
+    _basculerReglages(false);
+    window.ouvrirRecherche();
+    return true;
+  }
+
+  // Point à mi-longueur d'une ligne (px plan).
+  function _milieuLigne(pts) {
+    const l = [];
+    let tot = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+      l.push(d); tot += d;
+    }
+    let r = tot / 2;
+    for (let i = 1; i < pts.length; i++) {
+      if (l[i - 1] > 0 && r <= l[i - 1]) {
+        const t = r / l[i - 1];
+        return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t };
+      }
+      r -= l[i - 1];
+    }
+    return { x: pts[0].x, y: pts[0].y };
+  }
+
+  // Niveau où aller voir `o` : celui de la vue s'il en est (zone ou POI sur plusieurs niveaux), sinon le sien (un
+  // tracé jonction : son niveau de départ). null : plan à un niveau.
+  function _niveauCible(o) {
+    const e = _e;
+    if (!Number.isInteger(e.niveau)) return null;
+    let l;
+    if (o.type === "jonction" && (Number.isInteger(o.fromLevel) || Number.isInteger(o.toLevel))) {
+      l = [o.fromLevel, o.toLevel].filter(Number.isInteger);
+    } else {
+      const lv = Number.isInteger(o.level) ? o.level : 0;
+      l = typeof window.ktaNiveauxObjet === "function" ? window.ktaNiveauxObjet(o) : [];
+      l = [lv].concat(l.filter(function (n) { return n !== lv; }));
+    }
+    return l.indexOf(e.niveau) >= 0 ? e.niveau : l[0];
+  }
+
+  function _cibleRecherche(c) {
+    const o = c && c.item;
+    if (!o) return null;
+    const ok = function (p) { return !!p && Number.isFinite(p.x) && Number.isFinite(p.y); };
+    if (c.kind === "point") {
+      if (!ok(o)) return null;
+      const P = window.KtaPoiPrecis, q = P && typeof P.cible === "function" ? P.cible(o) : o;
+      return ok(q) ? { x: q.x, y: q.y } : { x: o.x, y: o.y };
+    }
+    const f = FAMILLE_RECHERCHE[c.kind], pts = Array.isArray(o.points) ? o.points.filter(ok) : [];
+    if (!f || !pts.length) return null;
+    if (f === "roads" || (f === "structures" && _estLigne(o.type))) return _milieuLigne(pts);
+    let x = 0, y = 0;
+    pts.forEach(function (p) { x += p.x; y += p.y; });
+    return { x: x / pts.length, y: y / pts.length };
+  }
+
+  // Place devant la cible t (px plan) → { x, y, cap }.
+  function _placeDevant(t) {
+    const e = _e, sc = e.sc;
+    if (e.vue === "plongee") {
+      const a = e.cap * Math.PI / 180, d = ALLER.recul[0] * sc;
+      return { x: t.x - Math.sin(a) * d, y: t.y + Math.cos(a) * d, cap: e.cap };
+    }
+    const face = function (x, y) {
+      return Math.hypot(t.x - x, t.y - y) < 0.05 * sc ? e.cap :
+        (Math.atan2(t.x - x, -(t.y - y)) * 180 / Math.PI + 360) % 360;
+    };
+    const a0 = Math.atan2(e.pos.y - t.y, e.pos.x - t.x);
+    for (let i = 0; i < ALLER.recul.length; i++) {
+      const d = ALLER.recul[i] * sc;
+      for (let k = 0; k < ALLER.directions; k++) {
+        // Du côté d'où l'on vient, puis en s'en écartant de part et d'autre (0, +30°, −30°, +60°…).
+        const pas = Math.ceil(k / 2) * (k % 2 ? 1 : -1), a = a0 + pas * 2 * Math.PI / ALLER.directions;
+        const x = t.x + Math.cos(a) * d, y = t.y + Math.sin(a) * d;
+        if (!_coince(x, y, true)) return { x: x, y: y, cap: face(x, y) };
+      }
+    }
+    const p = _pointLibre(t.x, t.y, true) || { x: t.x, y: t.y };
+    return { x: p.x, y: p.y, cap: face(p.x, p.y) };
+  }
+
+  // Résultat choisi (SearchPoints.prendreChoix) → true : pris (la carte ne le montre pas).
+  function _choixRecherche(c) {
+    if (!_e) return false;
+    if (!_permisGreffe("fiches")) { _toast(_t("vue3d.rechercheGreffe"), "info"); return true; }
+    allerA(c);
+    return true;
+  }
+
+  // c : { kind ("point" | "road" | "zone" | "structure"), item, layerId } (le choix de la recherche). → true si la vue
+  // y va (geste de niveau compris : la fiche s'ouvre à l'arrivée).
+  function allerA(c) {
+    const e = _e;
+    if (!e || !c || !c.item || e.geste) return false;
+    const t = _cibleRecherche(c);
+    if (!t) { _toast(_t("vue3d.rechercheSansPlace"), "info"); return false; }
+    const f = FAMILLE_RECHERCHE[c.kind];
+    let o = c.item;
+    // L'objet tel que la vue le lit (POI d'un calque : la recherche a pu le lire dans le fichier du calque).
+    if (f) o = _retrouver(_tab(_lecteurs(f)[0]).concat(_tab(_lecteurs(f)[1])), o) || o;
+    else {
+      o = _retrouver(_tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints)), o) ||
+        (o.layerId || !c.layerId || c.layerId === "editor" ? o : Object.assign({}, o, { layerId: c.layerId }));
+    }
+    const n = _niveauCible(o), autre = Number.isInteger(n) && n !== e.niveau;
+    _fermerFiche();
+    _ajusterAnnuler();
+    const arriver = function () {
+      if (_e !== e) return;   // vue fermée (ou rouverte) pendant le geste
+      const cfg = window.APP_CONFIG || {};
+      _passerEnLibre();
+      if (Number.isInteger(n)) {
+        e.niveauLibre = n;
+        e.actifVu = Number.isInteger(cfg.activeLevel) ? cfg.activeLevel : 0;
+      }
+      if (autre) {
+        e.changementsNiveau++;
+        console.log("[Vue3D] recherche : niveau " + n);
+        _reindexer();
+      }
+      _rattacher();
+      const p = _placeDevant(t);
+      e.pos.x = p.x; e.pos.y = p.y; e.cap = p.cap;
+      e.aBouge = true; e.libreBouge = true; e.sortie = null;
+      if (autre) { _majPassage(); _annoncerNiveau(); }
+      e.recherche = { allees: (e.recherche ? e.recherche.allees : 0) + 1, kind: c.kind, cible: { x: t.x, y: t.y },
+        niveau: e.niveau, place: { x: p.x, y: p.y }, fiche: false, masque: false };
+      e.sale = true;
+      e.recherche.fiche = !!(f ? _ouvrirFicheObjet(_objetVu(f, o)) : _ouvrirFiche(o));
+      // Objet masqué (filtre, calque, niveau décoché) : la vue y est, sa fiche se fermerait à la première relecture.
+      if (f && !_retrouver((e.vus && e.vus[f]) || [], o)) {
+        e.recherche.masque = true;
+        _toast(_t("vue3d.rechercheMasque"), "info");
+      }
+    };
+    if (autre && _gesteAnime) _lancerGeste(_auDessus(n, e.niveau) ? 1 : -1, arriver);
+    else arriver();
+    return true;
   }
 
   function _fermerFiche() {
@@ -7982,6 +8155,7 @@
       else if (a === "ficheVoir") _voirSurCarte();
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
+      else if (a === "recherche") { ev.preventDefault(); _ouvrirRecherche(); }
       else if (a === "ajusterSuppr") { ev.preventDefault(); _ajusterSupprimer(); }
       else if (a === "ajusterInserer") { ev.preventDefault(); _ajusterInserer(); }
       else if (a === "place") surPlace();
@@ -8003,8 +8177,8 @@
       const a = b.dataset.v3d;
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
-        a === "ficheVoir" || a === "outil" || a === "planSol" || a === "place" || a === "guidAction" ||
-        a === "ajusterSuppr" || a === "ajusterInserer") return;
+        a === "ficheVoir" || a === "outil" || a === "planSol" || a === "recherche" || a === "place" ||
+        a === "guidAction" || a === "ajusterSuppr" || a === "ajusterInserer") return;
       // Au doigt, + / − et inclinaison attendent le click : un doigt de pincement posé dessus n'agit pas (_brancher,
       // geste de la scène).
       if (ev.pointerType === "touch" && /^(zoom|incl)(Plus|Moins)$/.test(a)) { e.appui = null; return; }
@@ -8326,6 +8500,10 @@
     // plusieurs cases changent d'un coup (« Tout masquer »).
     if (window.FilterPanel && typeof window.FilterPanel.onChange === "function") {
       e.desabonner = window.FilterPanel.onChange(function () { if (_e) _e.filtresChanges = true; });
+    }
+    // Recherche (🔍, Ctrl/Cmd+K) : le résultat choisi va à la vue, pas à la carte dessous (allerA).
+    if (window.SearchPoints && typeof window.SearchPoints.prendreChoix === "function") {
+      e.rendreRecherche = window.SearchPoints.prendreChoix(_choixRecherche);
     }
     // 🩸 Contexte perdu (mémoire graphique iOS, onglet longtemps en fond) : preventDefault demande au navigateur de
     // le rendre. On attend ATTENTE_REPRISE d'écran visible (un onglet caché n'est pas rendu avant d'être revu),
@@ -8772,6 +8950,7 @@
     clearTimeout(e.minuterieEdition);
     e.ecouteurs.forEach(function (x) { x[0].removeEventListener(x[1], x[2], x[3]); });
     if (e.desabonner) e.desabonner();
+    if (e.rendreRecherche) e.rendreRecherche();
     // Place libre retirée : l'équipe revoit la position du tracker (ou le partage tel qu'avant la 3D).
     if (e.publiee) { e.publiee = null; _prisePresence(null); }
     _quitterDessin();
@@ -9047,6 +9226,9 @@
           (Number.isFinite(e.ecartLibre) ? +e.ecartLibre.toFixed(2) : -1) },
       dessin: _etatDessin(),
       fichesObjets: { voulu: _fichesObjets(), bouton: e.boutonFiches ? e.boutonFiches.getAttribute("aria-pressed") : null },
+      // Dernier « Y aller en 3D » (allerA) et 🔍 montré ou non.
+      recherche: Object.assign({ bouton: !!(e.dessin && e.dessin.boutonRecherche && !e.dessin.boutonRecherche.hidden &&
+        !e.dessin.barre.hidden), preneur: !!e.rendreRecherche }, e.recherche || { allees: 0 }),
       fiche: e.fiche && e.fiche.objet ? { famille: e.fiche.famille, uid: e.fiche.objet.uid || null,
         type: e.fiche.objet.type, session: e.fiche.session, registre: e.fiche.registre,
         note: !!e.fiche.boite.querySelector(".kta-note-popup-textarea"),
@@ -9389,6 +9571,7 @@
     charge: function () { return !!THREE; },
     greffer: greffer,
     viser: viser,
+    allerA: allerA,
     // Niveau de la scène : undefined vue fermée, null plan à un niveau. Lu par 📏 et ⛏️ (groupe 📐) : la mesure
     // compte le niveau de la vue, pas forcément le niveau actif de la carte (passage 🪜, suivi).
     niveauVue: function () { return _e ? _e.niveau : undefined; },

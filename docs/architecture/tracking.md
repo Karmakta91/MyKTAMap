@@ -2256,6 +2256,33 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Sol et plafond noirs 🧱 coupé** (décision produit, `_grainSol`) : carré qui suit et pièces des galeries noirs,
   sans grain, dans les trois rendus ; allumé, le grain calcaire. Le matériau change, rien n'est reconstruit.
 
+### Rechercher et y aller en 3D (QCM du 08/11/2026)
+
+- **Même fenêtre, même portée** : 🔍 (tête de la colonne d'outils, `ui.md` § Vue 3D) et Ctrl/Cmd+K ouvrent la
+  recherche de la carte (`searchPoints.js` : points, tracés, zones, structures, mêmes filtres), au-dessus de la vue.
+  Échap ou ✕ la ferment sans rien changer (la vue ignore les touches tant qu'une fenêtre la recouvre, `_recouverte`).
+- **Prise neutre** `SearchPoints.prendreChoix(fn)` → fonction qui la retire : pendant que la vue est ouverte
+  (posée par `_brancher`, retirée par `_demonter`), le résultat choisi va à `fn({ kind, item, layerId, label })` ;
+  `true` = pris, la carte dessous ne bouge pas. Sans preneur (vue fermée), la recherche montre le résultat sur la
+  carte comme avant. Un seul preneur.
+- **« Y aller en 3D »** (`vue3d.js > allerA`) : la vue passe en **libre** (le tracker ne bouge pas), prend le niveau
+  de l'objet s'il n'est pas sur le sien (`niveauLibre`, comme ▲ ▼ de la vue d'édition ; derrière le geste d'un
+  passage, `_lancerGeste`) — le niveau de la vue s'il est l'un des siens (zone ou POI sur plusieurs niveaux), le
+  départ d'un tracé jonction —, se place devant la cible et ouvre la fiche : fiche du point (`_ouvrirFiche`) ou de
+  l'objet comme un toucher (`_ouvrirFicheObjet`), même si le réglage 🗂️ Fiches est coupé (le choix est explicite).
+  Cible : le point précis d'un POI (`KtaPoiPrecis.cible`), le milieu d'un tracé ou d'une structure en ligne (à
+  mi-longueur), le centre des sommets d'une zone ou d'une structure (celui de la carte). L'objet est relu tel que la
+  vue le lit (`_retrouver` : un POI de calque lu par la recherche dans le fichier du calque).
+- **Place** (`_placeDevant`) : en vue d'édition, à 2 m de la cible, cap gardé, caméra rattachée (elle vise 2 m devant
+  la place : la cible au centre de l'écran). À hauteur d'yeux, la première place libre (`_coince`, structures
+  comprises) à 2, 3,5, 5 puis 8 m, du côté d'où l'on vient d'abord, face à la cible ; aucune : le point libre le plus
+  proche (`_pointLibre`). La place peut être hors de vue de la cible (pas de test de ligne de vue).
+- Objet masqué (filtre, calque, niveau décoché) : la vue s'y place, un toast le dit, la fiche d'objet se ferme à la
+  première relecture (`_majFicheObjet`). Une greffe qui coupe les fiches (jeu) : 🔍 caché, choix refusé avec un toast.
+  « Je suis ici ? » à la fermeture le propose comme après un déplacement.
+- Garde-fou : `checkup-vue-3d.js > sectionRecherche3D` (`KTA_V3D_SEUL=recherche`) ; la 2D :
+  `checkup-raccourcis.js` (Ctrl+K) et le dernier point de la section (vue fermée, la carte reprend le choix).
+
 ### Greffe de la vue 3D (prise des add-ons) et code « six vers le bas »
 
 - La vue 3D prête une **prise neutre** aux add-ons (`KtaVue3D.greffer`, sans effet sans greffon) et lance l'add-on

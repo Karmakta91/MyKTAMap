@@ -69,7 +69,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | Boussole / heading + définition du nord du plan | `compass.js`, `northPicker.js` |
 | ⛑️ **« Je suis perdu »** (isochrone Dijkstra) · 🚨 **Panique** · sortie d'urgence la plus proche | `lostMode.js`, `emergencyMode.js`, `sortieUrgence.js` |
 | 🎤 Commandes vocales (BETA, push-to-talk, ~18 commandes FR) + synthèse vocale | `voiceCommand.js`, `voiceTts.js` |
-| 🧊 **Vue 3D** autour de sa position : plan en relief, déplacement à la règle du pas, « Je suis ici ? » à la fermeture | `vue3d.js` (three.js dans `lib/three/`, chargé à la demande) |
+| 🧊 **Vue 3D** autour de sa position : plan en relief, déplacement à la règle du pas, 🔍 recherche de la carte qui y emmène en 3D, « Je suis ici ? » à la fermeture | `vue3d.js` (three.js dans `lib/three/`, chargé à la demande) |
 
 ### 🌀 Multi-plans et inter-plan
 
