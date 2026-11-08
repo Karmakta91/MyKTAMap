@@ -104,6 +104,9 @@
 - **Recalcul d'itinéraire sans à-coup** — ✅ mesuré 04/11 : en 3D libre, le calcul du chemin fige une image de
   ~0,3 s au téléphone émulé (accepté par KARMA) ; piste : calcul hors du fil principal (worker).
   `qui: KARMA · action: dire si l'à-coup gêne sur iPhone · fini: décision prise · depuis: 04/11/2026 · taille: M`
+- **Multi-niveau en 3D, lot E : épaisseur de plancher** — sur niveaux entremêlés, le sol d'un niveau qui surplombe le
+  vide d'un autre est une surface sans épaisseur (il « flotte ») ; idée : dalle d'épaisseur fixe, sans valeur à saisir.
+  `qui: KARMA · action: juger le rendu après le lot D · fini: dalle ajoutée ou idée close · depuis: 08/11/2026 · taille: S`
 
 ## Entrant
 
