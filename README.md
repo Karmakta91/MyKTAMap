@@ -210,7 +210,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (149 modules)
+## 🟢 L'application : modules JS (150 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -246,6 +246,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `debug.js` | Capture des logs et modale plein écran « Afficher les logs » |
 | `perfUltra.js` | Optimisations Perf ULTRA par plan (décimation, culling, sauvegarde lente…), jamais actives par défaut |
 | `ktaPictos.js` | Pictos au trait partagés (`window.ktaPicto`) : écran Bienvenue, bouton cube de la vue 3D |
+| `ktaIcones.js` | Icônes au trait de l'interface (`window.ktaIcone`, `data-kta-ico`, Lucide ISC + icônes métier) et table emoji → icône de la Documentation et de l'Aide (`KtaIcones.DOC`, lisible par node) |
 
 ### 🔒 Gates et configuration
 
@@ -523,6 +524,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-doc-sidebar.js` | Tableau des groupes de la barre latérale (3 guides) différent de ce que déclare `interface.js` | pre-commit |
 | `check-doc-vocabulaire.js` | Vocabulaire de la doc démenti par le code (« flyout », nombre de styles de légende) | pre-commit |
 | `check-emoji-vs16.js` | Pictogramme écrit sans U+FE0F (🛣 🗂 👁 ⏸…) : rendu texte noir et blanc sur Windows / Android | pre-commit |
+| `check-icones-ui.js` | Icône de contrôle revenue à l'emoji (barre de la carte, Tracker, export, accueil), nom inconnu de `ktaIcones.js`, emoji de la doc ni substitué ni listé « autre sens » | pre-commit |
 | `check-entete-licence.js` | Script servi (`js/*.js`, `sw.js`) sans en-tête de licence | pre-commit |
 | `check-esc.js` | Copie locale d'un échappeur HTML au lieu de `window.ktaEsc` | pre-commit |
 | `check-etat-visible.js` | État actif invisible depuis la carte (pastille de filtres, toast de restauration, étapes d'itinéraire) | pre-commit |
@@ -641,6 +643,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-recaler-niveau.js` | « Dans quel niveau es-tu ? » au recalage sur la carte et au picker « Où es-tu ? » (plan multi-niveau) |
 | `smoke/checkup-home-scroll.js` | Accueil atteignable en petite fenêtre PC |
 | `smoke/checkup-icone-defaut.js` | Icône d'un point sans tag quand le plan-config déclare l'ancien pin par défaut |
+| `smoke/checkup-icones-ui.js` | Icônes SVG de l'interface (accueil, barre de la carte, Tracker, export) sans emoji ; Documentation et Aide : bonne icône pour 🧭 Tracker / 🧭 Boussole, aucun emoji migré hors « autre sens » |
 | `smoke/checkup-icones-zip.js` | Icônes personnalisées embarquées dans un plan ZIP |
 | `smoke/checkup-import-masse.js` | Copie réelle (lisible) d'un ZIP mémorisé par l'import multiple |
 | `smoke/checkup-plan-morceaux.js` | Copie d'un plan rangée en morceaux dans le registre, relue après rechargement (Chromium et WebKit) |
@@ -808,6 +811,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 - **Prises neutres** (`community-server-line.md` §3) : alertes d'extension « liste à l'écran » et « déjà vue » ; `liaisonsDuPoint` et `kta:avantChangementPlan`. Sans extension, rien ne change.
 - **🔄 Calque repassé en modification** (`js/calqueSession.js > rapatrier`, prise `relireChangements`, `session-data.md` § Restitution partagée) : des copies déjà là (synchro) sont reprises au lieu de recopier le fichier ; sur un plan d'extension, la synchro est relue d'abord (impossible : une question prévient, « Recopier » ou « Annuler ») ; un objet supprimé pendant une modification (trace de copie) n'est plus recréé. Les objets supprimés par un autre compte ne reviennent plus. La restitution rend toujours tout. Garde-fous `check-calque-session.js` §4 quinquies, `check-extensions.js` §6 bis.
 - **🎨 Emoji homogènes, lot 0** (audit des icônes du 08/11/2026) : icônes en double corrigées — 🔃 Plan orienté (🗺️ restait à l'Itinéraire, à côté dans Tracker › Outils), 🔧 Dépannage (🆘 ne désigne plus que l'urgence), 📤 Exporter / 📥 Importer un GPX remis dans le bon sens, 📱 Garder l'écran allumé (🔆 reste à l'Affichage XL) ; 68 pictogrammes complétés par U+FE0F (🛣 🗂 👁 ⏸ ⏹ ⏭ 🗑 🏗), qui s'affichaient en noir et blanc sur Windows et une partie des Android. Garde-fou `check-emoji-vs16.js` (`--corriger`, marque `emoji-texte-ok` pour un glyphe voulu en texte).
+- **🎨 Icônes SVG, lot B** (`js/ktaIcones.js`, `js/interface.js`, `js/interfaceDocs.js`, `index.html`, `ui.md` § Icônes de l'interface) : la barre de la carte (13 groupes, sous-actions, bouton de la vue 3D), la fenêtre Tracker, le lanceur d'export, les boutons de l'en-tête de l'accueil et de « Mes plans » passent aux icônes au trait (Lucide + 5 icônes métier : galerie, zone, pilier, échelle, niveaux), les mêmes sur iPhone, Android et PC, dans la couleur du bouton (doré quand il est actif). La Boussole a enfin sa propre icône, distincte du Tracker. La Documentation et l'Aide montrent la même icône là où leur emoji désigne un de ces boutons (substitution à l'affichage, les guides gardent l'emoji ; un emoji à plusieurs sens se lit avec son libellé). Garde-fou `check-icones-ui.js` (contrôles sans emoji, noms connus, chaque emoji de la doc substitué ou listé « autre sens ») ; `scripts/smoke/checkup-icones-ui.js` (Chromium et WebKit, sombre et clair).
 
 #### v2.22.2 (04/11/2026) — Vue 3D d'édition, carte tournée à la main, formes ajustables (branche `Karma_dev`)
 

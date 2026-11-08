@@ -2585,16 +2585,74 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
 Preuve : `scripts/smoke/checkup-point-precis.js` (Chromium et WebKit, souris et doigt) ; 3D : `checkup-vue-3d.js`
 § 39.
 
-## 🎨 Emoji de l'interface
+## 🎨 Icônes de l'interface
 
-Les icônes hors POI sont des emoji du système : leur dessin change entre iPhone, Android et PC. Règles en vigueur
-en attendant les icônes SVG maison (décision du 08/11/2026 : trait d'une couleur, base Lucide + icônes métier,
-police emoji embarquée pour les textes) :
+Deux familles : les **icônes SVG au trait** (`js/ktaIcones.js`) pour les contrôles migrés, et les **emoji du système**
+pour le reste, dont le dessin change entre iPhone, Android et PC. Décisions du 08/11/2026 : trait d'une couleur, base
+Lucide + icônes métier, planche des 115 notions validée ; police emoji embarquée : pas encore.
 
-- un emoji = un sens par écran : 🗺️ Itinéraire, 🔃 Plan orienté, 🔆 Affichage XL, 📱 Garder l'écran allumé,
-  🔧 Dépannage (🆘 = urgence seulement), 📤 exporter, 📥 importer. Reste à séparer : 🧭 sert au groupe Tracker et à
-  la Boussole (deux SVG distincts au lot B) ;
-- un pictogramme à présentation texte (🛣️ 🗂️ 👁️ ⏸️ ⏹️ ⏭️ 🗑️ 🏗️…) s'écrit avec U+FE0F, sinon Windows et une partie
-  des Android le dessinent en noir et blanc. Flèches, triangles ▶ ◀, ©, ™ et coches restent en texte.
-  🛡️ `scripts/check-emoji-vs16.js` (pré-commit bloquant, donc CI) ; `--corriger` complète ; la marque
-  `emoji-texte-ok` garde un glyphe voulu en texte (clé « ⚠ » de la table des PDF dans `utils.js`).
+### Module `ktaIcones.js`
+
+- `window.ktaIcone(nom[, { classe }])` rend `<svg class="kta-ico kta-ico-<nom>" viewBox="0 0 24 24" … aria-hidden>` :
+  trait `currentColor`, épaisseur 2. L'état (actif doré, groupe ouvert, grisé) vient du bouton, jamais de l'icône.
+  Un nom inconnu rend une chaîne vide et un avertissement console.
+- **Un seul système de noms** : celui de l'icône (Lucide, ex. `navigation`, `compass`, `rotate-cw`), ou `m-…` pour
+  les 5 icônes métier (`m-galerie`, `m-zone`, `m-pilier`, `m-echelle`, `m-niveaux`). Les 113 icônes de la planche
+  sont embarquées, plus `list` (Légende) et `sigma` (Distance totale), absentes de la planche.
+- Élément statique : `data-kta-ico="nom"`, rempli au chargement par `KtaIcones.poser()` (en-tête de l'accueil,
+  « Mes plans »). Le bouton garde son `title` / `aria-label` : le SVG est `aria-hidden`.
+- Chargé en synchrone avant `unlockGate.js` (après `ktaPictos.js`, qui garde les pictos de l'écran Bienvenue) ;
+  lisible par node (`module.exports`) pour le générateur de doc.myktamap.fr. Licence : Lucide ISC (en-tête du module).
+- CSS : `.kta-ico` (1,15 em, `vertical-align`, `flex-shrink: 0`) et tailles fixes dans les conteneurs à taille fixe
+  (fin de `css/style.css`) ; `.kta-ico-doc` dans la Documentation et l'Aide.
+
+### Ce qui est en SVG
+
+- **Barre de la carte** : les 13 boutons de groupe (Tracker `navigation`, Édition `pencil`, Tracés `m-galerie`, Zones
+  `m-zone`, Structures `m-pilier`, Mesure `ruler`, Recherche `search`, Charger `folder-open`, Exporter `save`,
+  Historique `history`, Favoris `star`, Aide `circle-help`, Réglages `settings`) et le bouton de la vue 3D (`box`).
+  La colonne d'outils de la vue 3D recopie ces boutons : elle montre les mêmes SVG.
+- **Sous-actions** : tuiles du Tracker (Boussole `compass` et Plan orienté `rotate-cw` : le 🧭 n'a plus qu'un sens),
+  Mesure (distance, surface, distance totale `sigma`, volume, effacer `eraser`), Valider / Fermer `check`, Effacer
+  `eraser`, Jonction `m-echelle`, Nouveau type `plus`, lanceur d'export (10 tuiles), Historique `undo-2` / `redo-2`,
+  Aide `circle-help` / `book-open` / `list`. Titres des fenêtres Tracker et Exporter.
+- **Accueil** : 🔎 `search`, 📥 `cloud-download`, 🚨 `siren`, 📖 `book-open`, ⚙️ `settings`, « Mes plans » `folder-plus` et
+  `square-check`.
+- Les pastilles de **types** (tracés, zones, structures : `ktaTypeSwatchHtml`) restent des pastilles ; seul leur repli
+  est un emoji (⛔ Inaccessible, qui n'a pas de pastille, compris).
+
+### Documentation et Aide : même icône que le bouton
+
+- La fenêtre Documentation (`interfaceDocs.js > _chargerReadme`) et l'Aide (corps `aide.sec.*.html`, titres, catégories,
+  `aide.intro`) passent leur texte dans `KtaIcones.substituerDoc` : un emoji qui désigne un bouton passé en SVG
+  s'affiche avec ce SVG. Les `.md` et les dicos gardent l'emoji (lisibles sur GitHub, recherche inchangée).
+  Markdown : jeton privé (U+E000 nom U+E001) qui traverse l'échappement, remplacé après le rendu (`jetonsEnSvg`).
+- 🩸 Un emoji a souvent plusieurs sens (🧭 Tracker / Boussole / Y aller, 📍 recalage / points, 🗺️ Itinéraire / Légende /
+  plan au sol…). `KtaIcones.DOC` substitue par **emoji + texte voisin** (motif sur le texte qui suit ou qui précède, en
+  fr, en et es) ; un emoji au sens unique dans la doc a une règle sans motif. `KtaIcones.AUTRE_SENS` liste les emplois
+  voulus en emoji (bouton pas encore migré, autre notion), ciblés ou « tout le reste » pour un emoji dont le bouton
+  n'est qu'un sens minoritaire. Ordre : autre sens ciblé, DOC ciblé, DOC sans motif, autre sens sans motif.
+- Les titres de section du lanceur d'export (🖼️ Image, 💾 Session, 🗺️ Plan, 🌍 Export externe) gardent leur emoji : la
+  doc qui les cite est classée « autre sens ».
+
+### Garde-fous
+
+- 🛡️ `scripts/check-icones-ui.js` (pré-commit bloquant, donc CI) : aucun emoji dans une icône de contrôle de
+  `interface.js` (cliquet 0, pastilles de type exceptées) ni dans les boutons migrés d'`index.html` ; chaque nom passé à
+  `ktaIcone` / `data-kta-ico` existe ; chaque règle de doc pointe vers une icône existante ; **exhaustif** : chaque
+  occurrence d'un emoji migré dans les trois guides et les clés `aide.*` des trois dicos est substituée ou listée
+  « autre sens », sinon échec avec fichier:ligne. `--liste` donne les comptes par emoji et par langue (un écart de SVG
+  entre langues trahit un motif mal traduit).
+- `scripts/smoke/checkup-icones-ui.js` (Chromium et WebKit, sombre et clair) : le rendu réel.
+- Emoji restants : un pictogramme à présentation texte (🛣️ 🗂️ 👁️ ⏸️ ⏹️ ⏭️ 🗑️ 🏗️…) s'écrit avec U+FE0F, sinon Windows et une
+  partie des Android le dessinent en noir et blanc. Flèches, triangles ▶ ◀, ©, ™ et coches restent en texte.
+  🛡️ `scripts/check-emoji-vs16.js` (pré-commit bloquant) ; `--corriger` complète ; la marque `emoji-texte-ok` garde un
+  glyphe voulu en texte (clé « ⚠ » de la table des PDF dans `utils.js`).
+
+### Reste en emoji (lot C)
+
+Réglages et Configuration (contenu des fenêtres), toasts et messages, fiches de point et leurs boutons (🧭 Y aller, ✏️
+Modifier…), boutons propres à la vue 3D, barre du haut de la carte (📖 Mode Histoire, 🚨 Sortie d'urgence), barre du
+bas, Outils et Mes plans de l'accueil (lignes, badges), choix des fenêtres « Effacer », titres de section du lanceur
+d'export. Un emoji = un sens par écran : 🗺️ Itinéraire, 🔃 Plan orienté, 🔆 Affichage XL, 📱 Garder l'écran allumé,
+🔧 Dépannage (🆘 = urgence seulement), 📤 exporter, 📥 importer.
