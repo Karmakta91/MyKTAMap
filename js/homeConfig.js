@@ -23,6 +23,7 @@
         if (configModal) configModal.style.display = "flex";
         // Rubriques repliables comme les Réglages du plan (même balisage, mémoire à part), liées une fois
         // (la fenêtre n'est jamais reconstruite).
+        _peindreAddons();
         if (configModal && !configModal.dataset.groupesLies && typeof window.ktaGroupesRepliables === "function") {
           configModal.dataset.groupesLies = "1";
           window.ktaGroupesRepliables(configModal, "myktamap_home_cfg_groupes_v1");
@@ -46,6 +47,34 @@
       }
       function _fermerLoaderConfig() {
         if (configModal) configModal.style.display = "none";
+      }
+      // Add-ons livrés VISIBLES : un interrupteur d'appareil chacun (KtaRegistreAddons.actif / regler), relus à
+      // chaque ouverture ; la rubrique reste masquée tant qu'aucun add-on visible n'est livré.
+      function _peindreAddons() {
+        const g = document.getElementById("loaderAddonsGroup"), liste = document.getElementById("loaderAddonsListe");
+        const R = window.KtaRegistreAddons;
+        if (!g || !liste || !R) return;
+        R.liste().then(function (ms) {
+          const vis = ms.filter(function (m) { return !m.secret; });
+          g.style.display = vis.length ? "" : "none";
+          liste.textContent = "";
+          vis.forEach(function (m, i) {
+            const l = document.createElement("label");
+            l.className = "kta-net-paranoia-toggle";
+            if (i) l.style.marginTop = "10px";
+            l.dataset.addon = m.nom;
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.checked = R.actif(m);
+            cb.addEventListener("change", function () { R.regler(m.nom, cb.checked); });
+            const s = document.createElement("span"), b = document.createElement("strong");
+            b.textContent = R.titre(m);
+            s.appendChild(b);
+            l.appendChild(cb);
+            l.appendChild(s);
+            liste.appendChild(l);
+          });
+        });
       }
       // Exposés pour les modules externes (pinLock.js…) qui ouvrent/ferment la modale.
       window._ouvrirLoaderConfig = _ouvrirLoaderConfig;

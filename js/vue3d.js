@@ -8073,6 +8073,12 @@
     ov.appendChild(niv);
     e.boiteNiveaux = niv;
     _monterOutils(ov);
+    // 🧩 Add-ons visibles (manifeste sans `secret`, allumés dans Configuration › Add-ons) : dernière ligne de la tuile,
+    // masquée tant qu'il n'y en a aucun (la rangée du haut tient sur une ligne au téléphone, décision produit).
+    e.boutonAddons = _bouton(e.tuileReglages, "kta-v3d-btn-mode kta-v3d-btn-addons", "🧩 " + _t("vue3d.addons"),
+      _t("vue3d.addons"), "addons");
+    e.boutonAddons.hidden = true;
+    _majBoutonAddons();
     ov.appendChild(e.tuileReglages);
     document.body.appendChild(ov);
     e.ov = ov; e.cv = cv;
@@ -8416,6 +8422,7 @@
       else if (a === "ajusterInserer") { ev.preventDefault(); _ajusterInserer(); }
       else if (a === "place") surPlace();
       else if (a === "guidAction") _actionGuidage(b.dataset.guidAction);
+      else if (a === "addons") { ev.preventDefault(); _choisirAddon(); }
       // Entrée / Espace sur un bouton qui agit au pointerdown (bascules de la tuile, − / +, passages) : le navigateur
       // n'envoie qu'un click. 🩸 Un toucher envoie pointerdown PUIS click : ce click-là est ignoré (même bouton,
       // pointerdown récent), sinon la bascule jouerait deux fois.
@@ -8434,7 +8441,7 @@
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
         a === "ficheVoir" || a === "outil" || a === "planSol" || a === "recherche" || a === "place" ||
-        a === "guidAction" || a === "ajusterSuppr" || a === "ajusterInserer") return;
+        a === "guidAction" || a === "ajusterSuppr" || a === "ajusterInserer" || a === "addons") return;
       // Au doigt, + / − et inclinaison attendent le click : un doigt de pincement posé dessus n'agit pas (_brancher,
       // geste de la scène).
       if (ev.pointerType === "touch" && /^(zoom|incl)(Plus|Moins)$/.test(a)) { e.appui = null; return; }
@@ -8884,18 +8891,54 @@
   // js/ktaAddons.js), chargé à la première fois (script classique, même origine, précaché par sw.js). L'add-on
   // s'inscrit dans window.KtaAddons[<nom>] = { lancer() } ; c'est lui qui décide s'il démarre (refus, confirmation)
   // puis se greffe (greffer). Un code répété pendant la lecture du manifeste ou le chargement ne lance qu'une fois.
+  // Un add-on visible éteint dans Configuration › Add-ons ne se lance ni par code ni par 🧩 (KtaRegistreAddons.actif).
   const _addonsEnCours = {};
-  function _lancerAddon(code) {
+  function _lancerManifeste(cle, trouver) {
     const R = window.KtaRegistreAddons;
-    if (!R || _addonsEnCours[code]) return;
-    _addonsEnCours[code] = true;
-    R.parCode(code).then(function (m) {
-      return m ? R.charger(m).then(function (ok) { return ok ? m : null; }) : null;
+    if (!R || _addonsEnCours[cle]) return;
+    _addonsEnCours[cle] = true;
+    trouver(R).then(function (m) {
+      return m && R.actif(m) ? R.charger(m).then(function (ok) { return ok ? m : null; }) : null;
     }).then(function (m) {
-      _addonsEnCours[code] = false;
+      _addonsEnCours[cle] = false;
       const x = m && window.KtaAddons && window.KtaAddons[m.nom];
       if (x && typeof x.lancer === "function" && _e) x.lancer();
-    }, function () { _addonsEnCours[code] = false; });
+    }, function () { _addonsEnCours[cle] = false; });
+  }
+
+  function _lancerAddon(code) {
+    _lancerManifeste("code:" + code, function (R) { return R.parCode(code); });
+  }
+
+  function _addonsVisibles(R) {
+    return R.liste().then(function (ms) { return ms.filter(function (m) { return !m.secret && R.actif(m); }); });
+  }
+
+  function _majBoutonAddons() {
+    const R = window.KtaRegistreAddons, e = _e;
+    if (!R || !e || !e.boutonAddons) return;
+    _addonsVisibles(R).then(function (vis) { if (_e === e) e.boutonAddons.hidden = !vis.length; });
+  }
+
+  // 🧩 : un seul add-on visible se lance tout de suite, plusieurs passent par un choix (boutons radio de ktaConfirm).
+  // Rien pendant une greffe (une à la fois).
+  function _choisirAddon() {
+    const R = window.KtaRegistreAddons, e = _e;
+    if (!R || !e || e.greffe) return;
+    _basculerReglages(false);
+    _addonsVisibles(R).then(function (vis) {
+      if (!vis.length || _e !== e) return null;
+      if (vis.length === 1) return vis[0];
+      const choix = { valeur: vis[0].nom, options: vis.map(function (m) {
+        return { valeur: m.nom, titre: R.titre(m) };
+      }) };
+      return window.ktaConfirm("", { titre: window.ktaEsc(_t("vue3d.addons")),
+        okLabel: window.ktaEsc(_t("vue3d.addonsLancer")), choix: choix }).then(function (oui) {
+        return oui ? vis.filter(function (m) { return m.nom === choix.valeur; })[0] || null : null;
+      });
+    }).then(function (m) {
+      if (m) _lancerManifeste("nom:" + m.nom, function () { return Promise.resolve(m); });
+    });
   }
 
   // ── Greffe : prise NEUTRE pour un add-on (addons/<nom>/), rien sans greffon ──────────────────────────────

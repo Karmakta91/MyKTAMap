@@ -93,6 +93,8 @@
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
 // recouvrement, priorité danger / favori, coût, toucher une icône, nom revenu en se rapprochant (hystérésis), membres
 // jamais réduits, hauteur d'yeux inchangée.
+// Add-ons visibles (page à part, =addons) : deux add-ons fictifs servis par la page, Configuration › Add-ons, 🧩 de la
+// tuile ⚙️ (choix, lancement direct, masqué, add-on éteint).
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
 // colonne d'outils ou le joystick, doigt levé puis reposé, rotation engagée à 10° sans saut, pas bornés.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
@@ -5139,6 +5141,132 @@ async function sectionPlanSolNiveaux(page) {
     "niveau changé la vue ouverte : le plan au sol est refait pour le nouveau niveau", bascule);
 }
 
+// Add-ons VISIBLES (cadre d'add-ons, lot B), page à part : deux add-ons fictifs servis par la page (addons/index.json
+// remplacé, aucun fichier écrit). Configuration › Add-ons : un interrupteur par add-on visible, mkmg (secret) absent ;
+// vue 3D : 🧩 dans la tuile ⚙️, choix entre deux, lancement direct s'il n'en reste qu'un, masqué s'il n'y en a plus,
+// un add-on éteint ne se lance pas (KTA_V3D_SEUL=addons : cette section seule).
+async function sectionAddonsVisibles(nav) {
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+    try { localStorage.removeItem("myktamap_addons_v1"); } catch (e) {}
+  }, LS_PREGATES);
+  const json = function (o) { return { status: 200, contentType: "application/json", body: JSON.stringify(o) }; };
+  const manifeste = function (nom, titre) {
+    return { nom: nom, prise: "vue3d", entree: "js/" + nom + ".js", fichiers: ["js/" + nom + ".js"],
+      titre: { fr: titre, en: titre, es: titre } };
+  };
+  await page.route(/\/addons\/index\.json(\?|$)/, function (r) {
+    r.fulfill(json({ addons: ["mkmg", "essai", "essai2"] }));
+  });
+  for (const [nom, titre] of [["essai", "Essai fictif"], ["essai2", "Second essai"]]) {
+    await page.route(new RegExp("/addons/" + nom + "/addon\\.json(\\?|$)"), function (r) {
+      r.fulfill(json(manifeste(nom, titre)));
+    });
+    await page.route(new RegExp("/addons/" + nom + "/js/" + nom + "\\.js(\\?|$)"), function (r) {
+      r.fulfill({ status: 200, contentType: "application/javascript",
+        body: "window.KtaAddons = window.KtaAddons || {};" +
+        "window.KtaAddons." + nom + " = { lancer: function () { (window.__lances = window.__lances || [])" +
+        ".push('" + nom +
+        "'); } };" });
+    });
+  }
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0 && typeof window._ouvrirLoaderConfig === "function";
+    }, 20000);
+    await page.waitForTimeout(1500);
+    const cfg = await page.evaluate(async function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      window._ouvrirLoaderConfig();
+      for (let i = 0; i < 40 && !document.querySelector("#loaderAddonsListe [data-addon]"); i++) {
+        await new Promise(function (ok) { setTimeout(ok, 50); });
+      }
+      const g = document.getElementById("loaderAddonsGroup");
+      const lignes = Array.prototype.slice.call(document.querySelectorAll("#loaderAddonsListe [data-addon]"));
+      const r = { visible: !!g && g.style.display !== "none" && g.getClientRects().length > 0,
+        noms: lignes.map(function (l) { return l.dataset.addon; }).join(","),
+        titres: lignes.map(function (l) { return l.textContent.trim(); }).join(","),
+        coches: lignes.map(function (l) { return l.querySelector("input").checked; }) };
+      window._fermerLoaderConfig();
+      return r;
+    });
+    verifier(cfg.visible && cfg.noms === "essai,essai2" && cfg.titres === "Essai fictif,Second essai" &&
+      cfg.coches.every(Boolean), "add-ons : Configuration › Add-ons liste les add-ons visibles, allumés par défaut, " +
+      "sans l'add-on secret", cfg);
+    await page.evaluate(function () {
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const r = await page.evaluate(async function () {
+      const K = window.KtaVue3D, R = window.KtaRegistreAddons, pc = window.PLAN_CONFIG;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+      const ouvrir = async function () {
+        if (K.etat().ouvert !== false) await K.fermer();
+        await K.ouvrir({ depart: { x: pc.plan.imageWidth / 2, y: pc.plan.imageHeight / 2, cap: 90 } });
+        await pause(300);
+        q('[data-v3d="reglages"]').click();
+        await pause(50);
+        const b = q('[data-v3d="addons"]');
+        return b && !b.hidden && b.getClientRects().length > 0 ? b : null;
+      };
+      const out = {};
+      window.__lances = [];
+      // Deux visibles : 🧩 ouvre le choix, « Lancer » sur le second.
+      let b = await ouvrir();
+      out.bouton = !!b;
+      if (b) b.click();
+      for (let i = 0; i < 40 && !document.getElementById("kta-confirm-oui"); i++) await pause(50);
+      const radios = Array.prototype.slice.call(document.querySelectorAll('input[name="kta-confirm-choix"]'));
+      out.choix = radios.map(function (x) { return x.value; }).join(",");
+      out.tuileFermee = q(".kta-v3d-reglages").hidden;
+      const r2 = radios.filter(function (x) { return x.value === "essai2"; })[0];
+      if (r2) { r2.checked = true; r2.dispatchEvent(new Event("change", { bubbles: true })); }
+      if (document.getElementById("kta-confirm-oui")) document.getElementById("kta-confirm-oui").click();
+      for (let i = 0; i < 40 && !window.__lances.length; i++) await pause(50);
+      out.choisi = window.__lances.join(",");
+      // essai2 éteint : 🧩 lance essai tout de suite, sans fenêtre.
+      R.regler("essai2", false);
+      window.__lances = [];
+      b = await ouvrir();
+      if (b) b.click();
+      for (let i = 0; i < 40 && !window.__lances.length; i++) await pause(50);
+      out.direct = window.__lances.join(",");
+      out.fenetre = !!document.getElementById("kta-confirm-oui");
+      // Les deux éteints : plus de 🧩.
+      R.regler("essai", false);
+      out.masque = !(await ouvrir());
+      await K.fermer();
+      out.memoire = localStorage.getItem("myktamap_addons_v1");
+      return out;
+    });
+    verifier(r.bouton && r.choix === "essai,essai2" && r.tuileFermee && r.choisi === "essai2",
+      "add-ons : 🧩 dans la tuile ⚙️ de la vue 3D, choix entre les add-ons visibles, « Lancer » lance celui choisi", r);
+    verifier(r.direct === "essai" && !r.fenetre && r.masque &&
+      r.memoire === JSON.stringify({ essai2: false, essai: false }),
+      "add-ons : un seul allumé → lancé sans choix ; aucun → 🧩 masqué ; interrupteurs retenus sur l'appareil", r);
+    verifier(erreurs.length === 0, "add-ons visibles : aucune erreur de page", erreurs.slice(0, 3));
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function sectionPlanSolEcranDense(nav) {
   const ctx = await nav.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, hasTouch: true,
     isMobile: nav.browserType().name() === "chromium", serviceWorkers: "block" });
@@ -9482,7 +9610,8 @@ async function sectionGestesDoigt(nav) {
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
-      SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche") {
+      SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
+      SEUL === "addons") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -9894,7 +10023,7 @@ async function sectionGestesDoigt(nav) {
             "ui.group.structures",
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer", "vue3d.fichesMontrer",
-            "vue3d.lampeJourAide", "vue3d.limiterAide"].map(function (k) {
+            "vue3d.lampeJourAide", "vue3d.limiterAide", "vue3d.addons"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
             return t;
           }) };
@@ -15748,6 +15877,7 @@ async function sectionGestesDoigt(nav) {
       await sectionPlanSolNiveaux(page);
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
+    if (!SEUL || SEUL === "addons") await sectionAddonsVisibles(nav);
     if (!SEUL || SEUL === "ajuster") {
       for (const mode of ["souris", "doigt"]) await sectionAjusterSommets(nav, mode);
       await sectionAjusterSourisReelle(nav);

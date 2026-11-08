@@ -2,8 +2,8 @@
 
 > État actuel, pas d'historique. Ce fichier se lit **en entier** avant d'écrire ou de modifier un add-on, par un
 > développeur comme par une IA : il dit ce qu'est un add-on, comment il se lance, à quoi il a le droit de toucher
-> (les connecteurs) et ce qui lui est interdit. Exemple complet : l'add-on `mkmg` (dernière partie). Section
-> « Add-ons » des Réglages, bouton 🧩 de la vue 3D et cases de ConfAdmin : à venir (cadre d'add-ons, lots B et C).
+> (les connecteurs) et ce qui lui est interdit. Exemple complet : l'add-on `mkmg` (dernière partie). Cases de
+> ConfAdmin pour l'hébergeur : à venir (cadre d'add-ons, lot C).
 
 ## En une minute
 
@@ -36,14 +36,16 @@ part avec lui.
   |---|---|
   | `nom` | le nom du dossier |
   | `prise` | où il se greffe : `"vue3d"` seulement (une prise nouvelle vient avec l'add-on qui la justifie) |
-  | `secret` | `true` : absent des Réglages et du bouton 🧩 (à venir), lancé par son code seul (`mkmg`) |
-  | `code` | code de la vue 3D qui le lance (`"bas6"`), émis par `vue3d.js > _lancerAddon` ; un seul add-on par code |
+  | `secret` | `true` : absent de Configuration › Add-ons et du bouton 🧩, lancé par son code seul (`mkmg`) |
+  | `parDefaut` | add-on visible : `false` pour le livrer éteint (absent = allumé, décision produit) |
+  | `code` | code de la vue 3D qui le lance (`"bas6"`), émis par `vue3d.js > _lancerAddon` ; un seul add-on par code ; obligatoire pour un secret, facultatif pour un visible (🧩 suffit) |
   | `entree` | script chargé en premier, parmi `fichiers` ; il charge lui-même le reste |
   | `fichiers` | TOUS ses fichiers, chemins sous `js/`, `css/` ou `img/` : ce que le précache prend |
   | `titre` | `{ fr, en, es }` (Réglages, ConfAdmin) |
 
-  Lu par le registre de l'app (`js/ktaAddons.js > KtaRegistreAddons` : `liste()`, `parCode(code)`, `charger(m)`, à la
-  première demande seulement) et par le précache (`sw.js > _assetsAddons`). 🔒 Un manifeste mal formé (nom, prise,
+  Lu par le registre de l'app (`js/ktaAddons.js > KtaRegistreAddons` : `liste()`, `parCode(code)`, `charger(m)`,
+  `actif(m)`, `regler(nom, oui)`, `titre(m)`, à la première demande seulement) et par le précache
+  (`sw.js > _assetsAddons`). 🔒 Un manifeste mal formé (nom, prise,
   chemin hors des trois dossiers, entrée hors de ses fichiers) est écarté, jamais chargé.
 - **Community** : gratuit, sans serveur, comme le reste de ce dépôt. Pas de code pro, pas d'appel réseau
   (`community-server-line.md`).
@@ -56,20 +58,27 @@ part avec lui.
 
 ## Comment il se lance
 
-1. **Déclencheur** : un code dans la vue 3D. `vue3d.js > CODE_BAS` (décision produit) : 6 appuis vers le bas en moins
+1. **Déclencheur** : add-on **visible** → bouton **🧩 Add-ons**, dernière ligne de la tuile ⚙️ de la vue 3D (la
+   rangée du haut tient sur une ligne au téléphone), montré seulement s'il y a au moins un add-on visible allumé ; un
+   seul se lance tout de suite, plusieurs passent par un choix (`ktaConfirm`, boutons radio) ; rien pendant une
+   greffe. Add-on **secret** → un code dans la vue 3D. `vue3d.js > CODE_BAS` (décision produit) : 6 appuis vers le bas en moins
    de 2 s — ▼ du pavé, ↓ ou S (répétition du clavier ignorée), ou coup bref du joystick vers le bas (relâché moins de
    0,5 s après la sortie de la zone morte, toujours à plus de 135° de l'avant), sans autre commande de déplacement
    entre deux (elle remet le compte à 0). `window` reçoit `kta:vue3dCode` (`detail.code = "bas6"`).
-2. **Chargement** : `vue3d.js > _lancerAddon` demande au registre le manifeste qui déclare ce code
-   (`KtaRegistreAddons.parCode`), puis pose une fois son `entree` (même origine, CSP `script-src 'self'`) ; un code
-   répété pendant ce temps ne lance qu'une fois. Un add-on absent ou un manifeste illisible laisse un avertissement
+2. **Chargement** : `vue3d.js > _lancerManifeste` (par `_lancerAddon` pour un code, `_choisirAddon` pour 🧩) prend le
+   manifeste au registre, refuse un add-on éteint (`KtaRegistreAddons.actif`), puis pose une fois son `entree` (même
+   origine, CSP `script-src 'self'`) ; un appel répété pendant ce temps ne lance qu'une fois. Un add-on absent ou un manifeste illisible laisse un avertissement
    en console, rien d'autre.
 3. **Inscription** : le script s'inscrit dans `window.KtaAddons.<nom> = { lancer() }`. La vue appelle `lancer()`
-   à chaque code (vue ouverte seulement).
+   à chaque code ou choix 🧩 (vue ouverte seulement).
 4. **Décision** : c'est l'add-on qui refuse (avec `ktaAlerte`) ou demande confirmation (`ktaConfirm`), puis se greffe.
    Il charge lui-même ses autres fichiers et sa feuille de style (`<link>` et `<script>` de même origine).
 
 ## Activation sur une installation
+
+- **Sur l'appareil** : ⚙️ Configuration › **🧩 Add-ons** (accueil, `homeConfig.js > _peindreAddons`) donne un
+  interrupteur à chaque add-on visible (titre du manifeste), retenu sous `myktamap_addons_v1` (`{ <nom>: bool }`) ;
+  rubrique masquée tant qu'aucun add-on visible n'est livré. Un add-on secret n'y est jamais et reste toujours actif.
 
 - **myktamap.fr / instance sans serveur** (`KtaExtensions.etat().etat === "off"`) : permis.
 - **Installation reliée à un serveur** (pro) : refusé par défaut, sauf si son hébergeur l'autorise dans
