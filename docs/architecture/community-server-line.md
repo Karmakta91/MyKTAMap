@@ -126,7 +126,7 @@ photos restent locales et exportables).
 > `css/bienvenue.css` chargée avec ; la hauteur suit `--h-ville` de la page. `null` : aucune extension avec `gate`,
 > ou fichiers absents / trop lents → la page s'affiche sans ville. Sans extension : sans effet (`check-extensions.js`
 > §9).
-> 🆘 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🆘
+> 🔧 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🔧
 > Dépannage de l'accueil : mise à jour forcée, page de secours, tout réinitialiser — `kta-depannage-modal`, z-index
 > 99999 : la gate passe dessous tant qu'elle est ouverte) et `window.afficherReadme({ hideOnboarding: true,
 > overLocker: true })` (Documentation, au-dessus d'un écran plein). Une installation bloquée à la connexion garde

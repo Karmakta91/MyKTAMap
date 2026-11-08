@@ -370,7 +370,7 @@ window.afficherModaleUpdateDispo = function(opts) {
             window.I18n.t("alerts.update.softDesc") +
           '</div>' +
           // 🩸 Pas de « Reset complet » ici : il efface tout (sessions, photos, sauvegardes) sans recours et ne vit que
-          // dans 🆘 Dépannage.
+          // dans 🔧 Dépannage.
           '<div style="color:var(--kta-texte-3); font-size:12px; line-height:1.5;">' + window.I18n.t("alerts.update.depannage") + '</div>' +
         '</div>' +
 

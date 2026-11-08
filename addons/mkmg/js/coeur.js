@@ -1165,6 +1165,7 @@
     const chrono = p.chronoFin ? Math.max(0, (p.chronoFin - performance.now()) / 1000) : null;
     h.chrono.hidden = chrono === null;
     if (chrono !== null) {
+      // emoji-texte-ok (ligne suivante) : checkup-vue-3d.js attend « ⏱ » nu dans le chrono.
       h.chrono.textContent = "⏱ " + Math.floor(chrono / 60) + ":" + String(Math.floor(chrono % 60)).padStart(2, "0");
       h.chrono.classList.toggle("mkmg-chrono-alerte", chrono <= REGLES.chrono.alerteS);
     }

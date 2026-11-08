@@ -130,7 +130,7 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 - **📋 Voir le journal réseau** — toutes les requêtes de l'app en direct, et si elles envoient des données ; à copier, exporter ou vider. Si une requête envoie des données, ou si une adresse extérieure autre qu'OpenStreetMap apparaît (en rouge), **préviens l'auteur** : Instagram **@karma_kta** ou **contact@myktamap.fr**.
 - **📖 Que fait l'app sur le réseau ?** — la liste des adresses que l'app peut contacter et comment vérifier avec ton navigateur (F12, onglet Réseau). La page d'audit complète décrit l'état actuel ; ce qui a changé à chaque version est dans sa page « Historique des versions ».
-- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant. Sur une telle installation : la fiche ℹ️ d'un plan local propose **☁️ Publier ce plan**, puis de **remplacer ta copie locale** par la version ☁️ (tes annotations, photos et favoris suivent) ; le **💾** de la ligne d'un plan ☁️ le garde sur ton appareil (**✅** = gardé et à jour) ; dans le tracker, **📡 Partager ma position sur ce plan** montre ton repère aux autres, seulement si tu le coches (c'est ta position **sur le plan**, celle du suivi : l'app n'utilise pas le GPS). Le bouton **👥 Équipe**, à gauche sur la carte, montre qui est sur le plan, s'il le consulte ou le modifie, et sa position sur le plan s'il la partage (📍 Centrer, 👁 Suivre, 〰 trace) ; à l'accueil, **👥 N** sur un plan ☁️ signale que d'autres l'ont ouvert (**✏️** : en cours de modification). Dans la fenêtre **Itinéraire**, **🧭 Montrer mon itinéraire à l'équipe** le rend visible (en jaune, lecture seule) de ceux qui voient le plan, mis à jour à chaque étape, retiré quand tu l'effaces et au bout de 24 h. Sur un plan que ton accès permet seulement de consulter, les outils de dessin sont grisés : les toucher rappelle que le plan est en lecture seule. Sur l'écran de connexion d'une telle installation, la pastille sous la carte dit si la base de données répond (touche-la pour revérifier), et les icônes 📖 et 🆘 ouvrent la documentation et le dépannage.
+- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant. Sur une telle installation : la fiche ℹ️ d'un plan local propose **☁️ Publier ce plan**, puis de **remplacer ta copie locale** par la version ☁️ (tes annotations, photos et favoris suivent) ; le **💾** de la ligne d'un plan ☁️ le garde sur ton appareil (**✅** = gardé et à jour) ; dans le tracker, **📡 Partager ma position sur ce plan** montre ton repère aux autres, seulement si tu le coches (c'est ta position **sur le plan**, celle du suivi : l'app n'utilise pas le GPS). Le bouton **👥 Équipe**, à gauche sur la carte, montre qui est sur le plan, s'il le consulte ou le modifie, et sa position sur le plan s'il la partage (📍 Centrer, 👁️ Suivre, 〰 trace) ; à l'accueil, **👥 N** sur un plan ☁️ signale que d'autres l'ont ouvert (**✏️** : en cours de modification). Dans la fenêtre **Itinéraire**, **🧭 Montrer mon itinéraire à l'équipe** le rend visible (en jaune, lecture seule) de ceux qui voient le plan, mis à jour à chaque étape, retiré quand tu l'effaces et au bout de 24 h. Sur un plan que ton accès permet seulement de consulter, les outils de dessin sont grisés : les toucher rappelle que le plan est en lecture seule. Sur l'écran de connexion d'une telle installation, la pastille sous la carte dit si la base de données répond (touche-la pour revérifier), et les icônes 📖 et 🆘 ouvrent la documentation et le dépannage.
 
 ---
 
@@ -298,7 +298,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 **En haut**, une barre fixe :
 
 - la **rose des vents** à gauche ramène à l'accueil ;
-- le **nom du plan** ouvre **🗂 Changer de plan** (voir plus bas) ;
+- le **nom du plan** ouvre **🗂️ Changer de plan** (voir plus bas) ;
 - les **compteurs** 📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures · 📸 photos ouvrent **📊 Détails de la session** ;
 - à droite : **📖** Mode Histoire, **🌍** Vue OSM (plan géoréférencé), **🚨** Sortie d'urgence, **🔋** batterie.
 
@@ -347,7 +347,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 ### 🗺️ Lire le plan
 
 - **Pincer** pour zoomer, **glisser** pour te déplacer (ou les boutons **+** / **−** en haut à gauche).
-- **Tourner deux doigts** fait pivoter la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche (au-dessus de la boussole si elle est ouverte), la remet droite. Un outil de dessin, la mesure ou le recalage la redressent ; 🗺️ Plan orienté prend la main pendant le suivi.
+- **Tourner deux doigts** fait pivoter la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche (au-dessus de la boussole si elle est ouverte), la remet droite. Un outil de dessin, la mesure ou le recalage la redressent ; 🔃 Plan orienté prend la main pendant le suivi.
 - **Toucher une icône** ouvre la fiche du point ; **double-toucher** zoome dessus (comme le bouton « Y aller » de la fiche).
 - Les icônes rapetissent au dézoom pour rester à l'échelle du plan, en mode plan comme sur les cartes OSM (Vue OSM et carte de l'accueil). Pour garder une taille fixe : ⚙️ Configuration de l'accueil → 🎨 Affichage → « 📐 Adapter la taille des icônes au zoom ».
 
@@ -357,7 +357,7 @@ Si ton plan est **géoréférencé**, la fiche de chaque point (les tiens comme 
 
 #### 🔄 Changer de plan
 
-Le **nom du plan**, en haut, ouvre **🗂 Changer de plan** : le plan en cours, les plans récents, et **📚 Voir tous mes plans** pour revenir à l'accueil. Au changement, ta session est **sauvegardée automatiquement**. Pour fermer sans rien faire : ✕, clic à côté ou **Échap**.
+Le **nom du plan**, en haut, ouvre **🗂️ Changer de plan** : le plan en cours, les plans récents, et **📚 Voir tous mes plans** pour revenir à l'accueil. Au changement, ta session est **sauvegardée automatiquement**. Pour fermer sans rien faire : ✕, clic à côté ou **Échap**.
 
 ### ≡ Filtres
 
@@ -452,14 +452,14 @@ Le bouton **🧭 Tracker** (ou le voyant 🧭 de la barre du bas) ouvre une **mo
 | Section | Tuiles |
 |---|---|
 | **Suivi** | ▶️ / ⏹️ Démarrer / arrêter · 📍 Mode recalage · 🎯 Ma position (recentre la carte sur toi) · 🔓 Suspendre le verrou sur tracé |
-| **Outils** | 🧭 Boussole · 🗺️ Calculer un itinéraire · 🪧 Guidage de l'itinéraire · 🗺️ Plan orienté |
+| **Outils** | 🧭 Boussole · 🗺️ Calculer un itinéraire · 🪧 Guidage de l'itinéraire · 🔃 Plan orienté |
 | **Urgence** (fond rouge) | ⛑️ Je suis perdu · 🔆 Affichage XL · 🚑 Mode Secours — voir 🆘 En cas d'urgence sous terre |
 
 Navigation intelligente (verrou sur tracé), plan orienté, itinéraire via plusieurs plans, replay et heatmap sont des options désactivées par défaut → 🔭 Pour aller plus loin.
 
 ### ▶️ Démarrer le suivi
 
-1. Touche **▶️**. La première fois après chaque rechargement de l'app, une fenêtre rappelle que le tracker est **expérimental** (il dérive) et propose **🔆 Garder l'écran allumé**, cochée d'office : un écran qui s'éteint, ce sont des pas perdus. Valide avec **J'ai compris — Démarrer**.
+1. Touche **▶️**. La première fois après chaque rechargement de l'app, une fenêtre rappelle que le tracker est **expérimental** (il dérive) et propose **📱 Garder l'écran allumé**, cochée d'office : un écran qui s'éteint, ce sont des pas perdus. Valide avec **J'ai compris — Démarrer**.
 2. Sur téléphone, accepte l'accès aux capteurs de mouvement.
 3. Ton icône (un cône bleu) apparaît au point de départ et pointe dans ta direction de marche (vers le Nord quand le suivi est arrêté) ; un tracé enregistre ton chemin.
 4. **⏹️** arrête le suivi.
@@ -533,7 +533,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 
 #### 🧭 Suivi ou 🕹️ Libre
 
-- **🧭 Suivi** (choisi à l'ouverture quand le tracker tourne) : la vue suit ta position et **tourne avec ton téléphone**, comme 🗺️ Plan orienté.
+- **🧭 Suivi** (choisi à l'ouverture quand le tracker tourne) : la vue suit ta position et **tourne avec ton téléphone**, comme 🔃 Plan orienté.
 - Bouger le joystick ou toucher un bouton de déplacement passe en **🕹️ Libre**. Glisser sur la scène règle seulement le regard haut / bas.
 - Le bouton de la tuile ⚙️, qui affiche le mode en cours, bascule de l'un à l'autre. Une pastille 🧭 / 🕹️ en haut à gauche le montre toujours.
 - Tracker arrêté : 🧭 est grisé et dit pourquoi.
@@ -885,7 +885,7 @@ Le bouton **📖** de la barre du haut (à droite, à côté de 🚨) ouvre ton 
 
 ### 📝 Note libre
 
-Une note par plan, **sauvegardée pendant que tu tapes**. Elle s'affiche mise en forme ; **✏️ Éditer** ouvre le texte, avec une barre d'outils (gras, italique, titres, liste, lien, code, citation), et **👁 Aperçu** revient au rendu. La note accepte le Markdown (`**gras**`, `# Titre`, `- élément`).
+Une note par plan, **sauvegardée pendant que tu tapes**. Elle s'affiche mise en forme ; **✏️ Éditer** ouvre le texte, avec une barre d'outils (gras, italique, titres, liste, lien, code, citation), et **👁️ Aperçu** revient au rendu. La note accepte le Markdown (`**gras**`, `# Titre`, `- élément`).
 
 ### 📚 Documents PDF
 
@@ -1452,7 +1452,7 @@ La mémorisation se règle dans **⚙️ Configuration** (« 💾 Mémoriser le 
 
 - **Ranger** : **☑ Sélectionner** un ou plusieurs plans puis « Déplacer vers… », ou **glisser** la ligne sur un dossier (à la souris, ou au doigt après un appui long).
 - **⋮** sur un dossier : renommer, couleur, ordre, supprimer (ses plans repassent en Non classés, aucun plan n'est supprimé).
-- **📥 Tout garder hors ligne** (dans ⋮, aussi sur « Non classés » pour les plans qu'il affiche) : met tout le dossier à jour sur l'appareil avant de descendre. Les plans absents sont téléchargés, ceux dont une version plus récente existe sont mis à jour, ceux déjà à jour sont sautés (un plan importé et mémorisé est déjà là). Un plan à la fois, avec « 3 / 7 » et le plan en cours ; **⏹ Arrêter** à tout moment. L'app demande confirmation seulement au-delà de 200 Mo estimés ou en données mobiles (quand le navigateur sait le dire). Si l'app passe en arrière-plan ou perd le réseau, le plan en cours reprend au retour, sans retélécharger ce qui est déjà rangé. À la fin, le bilan donne les plans récupérés, mis à jour, déjà à jour et ceux en échec, avec la raison.
+- **📥 Tout garder hors ligne** (dans ⋮, aussi sur « Non classés » pour les plans qu'il affiche) : met tout le dossier à jour sur l'appareil avant de descendre. Les plans absents sont téléchargés, ceux dont une version plus récente existe sont mis à jour, ceux déjà à jour sont sautés (un plan importé et mémorisé est déjà là). Un plan à la fois, avec « 3 / 7 » et le plan en cours ; **⏹️ Arrêter** à tout moment. L'app demande confirmation seulement au-delà de 200 Mo estimés ou en données mobiles (quand le navigateur sait le dire). Si l'app passe en arrière-plan ou perd le réseau, le plan en cours reprend au retour, sans retélécharger ce qui est déjà rangé. À la fin, le bilan donne les plans récupérés, mis à jour, déjà à jour et ceux en échec, avec la raison.
 - **🏷️ Règle par étiquette** (dans ⋮) : le dossier accueille tout seul les plans qui portent ces étiquettes. En mode Tout, des puces cochées proposent **📁 Créer un dossier depuis ces étiquettes**. Un rangement à la main l'emporte sur une règle ; la pastille est **pleine** pour un rangement explicite, **creuse** pour une règle.
 - Les dossiers voyagent avec ton profil. Un serveur peut en proposer : tu ne peux ni les renommer ni les supprimer, mais tu y ranges ce que tu veux. L'import de plusieurs plans propose « Ranger dans : ».
 
@@ -1482,7 +1482,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **🪟 Ancrer les panneaux d'outils au bouton** : les panneaux Tracés, Zones et Structures s'ouvrent collés à leur bouton au lieu d'être centrés (confortable sur grand écran, déconseillé sur téléphone) ;
   - **🧲 Magnétisme au dessin** et sa distance : un clic proche d'un point existant s'y colle, pour que tes galeries se rejoignent vraiment ;
   - **☀️ Thème clair** ;
-  - **🔆 Garder l'écran allumé** tant que l'app est ouverte. Le tracker propose aussi de l'activer à son démarrage.
+  - **📱 Garder l'écran allumé** tant que l'app est ouverte. Le tracker propose aussi de l'activer à son démarrage.
 - **🧩 Fonctionnalités optionnelles** — Replay, Heatmap, batterie et vibration, toutes désactivées au départ : voir « 🔭 Pour aller plus loin ». On y trouve aussi le **🕵️ Mode incognito** : il ouvre une nouvelle fenêtre où rien n'est enregistré (indisponible sur une installation reliée à une base de données, où le serveur enregistre ce que tu fais).
 - **🔒 Confidentialité & sécurité** :
   - **📔 Tenir un carnet de mes sorties** (activé, voir « 📔 Mon carnet ») ;
@@ -1493,7 +1493,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
 - **🛠️ Système & maintenance** :
   - **🛠️ Mode Développeur** (protégé par mot de passe) : voir « 🔭 Pour aller plus loin » ;
   - **📊 Voir l'état mémoire** : ce que l'app occupe sur ton appareil, avec **📋 Copier le rapport** pour signaler un problème ;
-  - **🆘 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🆘 Ouvrir l'outil Kill SW** (SW = *Service Worker*, la partie de l'app qui la garde en mémoire pour le hors-ligne) et **💥 Tout réinitialiser** — voir « 🆘 En cas de problème ».
+  - **🔧 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🔧 Ouvrir l'outil Kill SW** (SW = *Service Worker*, la partie de l'app qui la garde en mémoire pour le hors-ligne) et **💥 Tout réinitialiser** — voir « 🔧 En cas de problème ».
 
 ### ⚙️ Réglages (en mode carte) — ce plan
 
@@ -1554,7 +1554,7 @@ Le fichier ne contient que la documentation, aucune de tes données : tu peux le
 
 ---
 
-## 🆘 En cas de problème
+## 🔧 En cas de problème
 
 ### 💥 L'application s'arrête brusquement
 
@@ -1592,15 +1592,15 @@ Au premier lancement, MyKTAMap présente l'app puis te laisse **Entrer** : aucun
 ### 🔄 L'app ne se met pas à jour, ou reste bloquée
 
 Dans l'ordre, en gardant tes données :
-1. **⚙️ Configuration → 🆘 Dépannage → 🔄 Forcer la mise à jour** : retélécharge l'app sans toucher à tes plans, sessions, préférences ni codes. Une connexion est nécessaire.
-2. Si l'app reste coincée (page blanche, accueil sans mise en forme) : vérifie ta connexion (coupe ton VPN, change de réseau), puis **⚙️ Configuration → 🆘 Dépannage → 🆘 Ouvrir l'outil Kill SW**.
-3. Si l'app ne s'ouvre même plus : ouvre la **page de secours** dans un onglet privé du navigateur (pas l'app installée) : **https://myktamap.fr/killsw.html** (son adresse est aussi rappelée en bas de la fenêtre 🆘 Dépannage). Elle vide le cache de l'app **sans toucher à tes données** (plans, sessions, photos) et propose **🚀 Recharger l'app**.
+1. **⚙️ Configuration → 🔧 Dépannage → 🔄 Forcer la mise à jour** : retélécharge l'app sans toucher à tes plans, sessions, préférences ni codes. Une connexion est nécessaire.
+2. Si l'app reste coincée (page blanche, accueil sans mise en forme) : vérifie ta connexion (coupe ton VPN, change de réseau), puis **⚙️ Configuration → 🔧 Dépannage → 🔧 Ouvrir l'outil Kill SW**.
+3. Si l'app ne s'ouvre même plus : ouvre la **page de secours** dans un onglet privé du navigateur (pas l'app installée) : **https://myktamap.fr/killsw.html** (son adresse est aussi rappelée en bas de la fenêtre 🔧 Dépannage). Elle vide le cache de l'app **sans toucher à tes données** (plans, sessions, photos) et propose **🚀 Recharger l'app**.
 
 Ces outils ne suppriment **aucune** donnée (plans mémorisés, sessions, photos, carnet, préférences). Par précaution, **📤 Exporter mon profil** avant.
 
 ### 💥 Tout réinitialiser
 
-**⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
+**⚙️ Configuration → 🔧 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
 
 - La première fenêtre propose **📤 Exporter mon profil d'abord**.
 - Si ton installation a son propre mot de passe, elle te prévient qu'il sera **redemandé au redémarrage** : assure-toi de le connaître avant de confirmer. Sinon, l'app te présentera de nouveau l'écran **Bienvenue**.
@@ -1639,7 +1639,7 @@ Si la batterie ou la vibration s'affiche **grisée** avec « Capteur refusé par
 
 La tuile **🎬** du menu **🧭 Tracker** ouvre une fenêtre plein écran qui **rejoue ta session de suivi** : le marqueur jaune refait ton trajet et la trace s'allonge au fur et à mesure.
 
-- **Commandes** : curseur de temps, ⏮ ▶️ ⏸ ⏭, vitesse de 0.5× à 10×. Au ▶️, la fenêtre se réduit en bas de l'écran pour laisser voir la carte (bouton **⛶** pour basculer).
+- **Commandes** : curseur de temps, ⏮️ ▶️ ⏸️ ⏭️, vitesse de 0.5× à 10×. Au ▶️, la fenêtre se réduit en bas de l'écran pour laisser voir la carte (bouton **⛶** pour basculer).
 - **Clavier** : Espace = lecture / pause · ← → = reculer / avancer d'une seconde · Échap = fermer.
 - **📤 Exporter CSV** : un tableau horodaté des positions (démarrage, chaque pas, chaque recalage, et le niveau sur un plan multi-niveau), lisible dans un tableur.
 - Un recalage est un saut : aucune ligne n'est dessinée entre l'ancienne et la nouvelle position.
@@ -1695,7 +1695,7 @@ Le tracker estime ta position avec **tes pas et la boussole**, ce qui **dérive*
 
 ### 🗺️ « Plan orienté » — la carte tourne avec toi
 
-Dans le menu 🧭 Tracker, la tuile **🗺️ Plan orienté** fait **tourner la carte** pendant le suivi, pour que ta direction de marche pointe toujours vers le haut de l'écran, comme un GPS de voiture.
+Dans le menu 🧭 Tracker, la tuile **🔃 Plan orienté** fait **tourner la carte** pendant le suivi, pour que ta direction de marche pointe toujours vers le haut de l'écran, comme un GPS de voiture.
 
 - **Désactivé par défaut** ; ton choix est retenu sur cet appareil.
 - La carte ne tourne **que pendant le suivi** et se remet droite à l'arrêt du tracker.
@@ -1893,7 +1893,7 @@ Le bouton **🏗️ Générer un plan** de l'accueil ouvre le **Générateur** (
 
 #### 🧙 Le Générateur
 
-- **🧙 Assistant** : le Générateur avance **étape par étape** (nom, image, calques…). Les étapes optionnelles se passent d'un clic (**⏭ Passer**), et un **✅ Résumé avant génération** montre ce qui est rempli, passé ou manquant, avec des avertissements utiles (par exemple : sans géoréférencement GPS, ni Vue OSM ni export KMZ / GPX). **🗒️ Tout afficher** montre au contraire tout le formulaire d'un coup ; ton choix est mémorisé.
+- **🧙 Assistant** : le Générateur avance **étape par étape** (nom, image, calques…). Les étapes optionnelles se passent d'un clic (**⏭️ Passer**), et un **✅ Résumé avant génération** montre ce qui est rempli, passé ou manquant, avec des avertissements utiles (par exemple : sans géoréférencement GPS, ni Vue OSM ni export KMZ / GPX). **🗒️ Tout afficher** montre au contraire tout le formulaire d'un coup ; ton choix est mémorisé.
 - **🚀 Simple / ⚙️ Avancé** : le mode Simple se limite à l'essentiel (image, nom, version, V2 — l'image découpée en tuiles, voir « 🧱 Convertir en V2 tuilé » —, multi-niveau) et charge les icônes par défaut ; le mode Avancé donne accès à toutes les options.
 - **📂 Charger un fichier** accepte un **ZIP MyKTAMap** (pour le modifier), un **KMZ** ou un **GPX** exporté par MyKTAMap (le GPX donne un fond vierge calé automatiquement), un **export SIG** (`.geojson`, `.kml`) ou un **GeoTIFF**. Sinon, remplis le formulaire pour créer un plan de zéro.
 

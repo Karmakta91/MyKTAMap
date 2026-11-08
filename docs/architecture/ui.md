@@ -2584,3 +2584,17 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
 
 Preuve : `scripts/smoke/checkup-point-precis.js` (Chromium et WebKit, souris et doigt) ; 3D : `checkup-vue-3d.js`
 § 39.
+
+## 🎨 Emoji de l'interface
+
+Les icônes hors POI sont des emoji du système : leur dessin change entre iPhone, Android et PC. Règles en vigueur
+en attendant les icônes SVG maison (décision du 08/11/2026 : trait d'une couleur, base Lucide + icônes métier,
+police emoji embarquée pour les textes) :
+
+- un emoji = un sens par écran : 🗺️ Itinéraire, 🔃 Plan orienté, 🔆 Affichage XL, 📱 Garder l'écran allumé,
+  🔧 Dépannage (🆘 = urgence seulement), 📤 exporter, 📥 importer. Reste à séparer : 🧭 sert au groupe Tracker et à
+  la Boussole (deux SVG distincts au lot B) ;
+- un pictogramme à présentation texte (🛣️ 🗂️ 👁️ ⏸️ ⏹️ ⏭️ 🗑️ 🏗️…) s'écrit avec U+FE0F, sinon Windows et une partie
+  des Android le dessinent en noir et blanc. Flèches, triangles ▶ ◀, ©, ™ et coches restent en texte.
+  🛡️ `scripts/check-emoji-vs16.js` (pré-commit bloquant, donc CI) ; `--corriger` complète ; la marque
+  `emoji-texte-ok` garde un glyphe voulu en texte (clé « ⚠ » de la table des PDF dans `utils.js`).

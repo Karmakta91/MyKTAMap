@@ -96,7 +96,7 @@
           '<span class="kta-refonte-counter-icon">📍</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
         '<span class="kta-refonte-counter" id="kta-refonte-counter-roads" title="' + window.I18n.t("ui.refonte.counter_roads_title") + '">' +
-          '<span class="kta-refonte-counter-icon">🛣</span><span class="kta-refonte-counter-val">0</span>' +
+          '<span class="kta-refonte-counter-icon">🛣️</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
         '<span class="kta-refonte-counter" id="kta-refonte-counter-zones" title="' + window.I18n.t("ui.refonte.counter_zones_title") + '">' +
           '<span class="kta-refonte-counter-icon">⬛</span><span class="kta-refonte-counter-val">0</span>' +
@@ -920,7 +920,7 @@
 
     if (stats.roads.total > 0) {
       h += '<div class="kta-refonte-stats-row">';
-      h += '<span class="kta-refonte-stats-label">🛣 ' + window.I18n.t("ui.refonte.section_roads") + '</span>';
+      h += '<span class="kta-refonte-stats-label">🛣️ ' + window.I18n.t("ui.refonte.section_roads") + '</span>';
       h += '<span class="kta-refonte-stats-val"><strong>' + _fdistStats(stats.roads.distM) + '</strong> ' + window.I18n.t("ui.refonte.stats_on_n_roads", { n: stats.roads.total }) + '</span>';
       h += '</div>';
       const totalRoadDist = stats.roads.distM || 1;
@@ -1033,7 +1033,7 @@
         h += '<span class="kta-refonte-stats-mlvl-lbl">' + window.I18n.t("ui.refonte.label_level_short", { n: lvl }) + '</span>';
         h += '<span class="kta-refonte-stats-mlvl-val">' +
           (b.points     > 0 ? '📍' + b.points + ' ' : '') +
-          (b.roads      > 0 ? '🛣' + b.roads + ' ' : '') +
+          (b.roads      > 0 ? '🛣️' + b.roads + ' ' : '') +
           (b.zones      > 0 ? '⬛' + b.zones + ' ' : '') +
           (b.structures > 0 ? '🏛️' + b.structures : '') +
         '</span>';
@@ -1060,7 +1060,7 @@
     lines.push(window.I18n.t("ui.refonte.export_duration", { duration: _formatDurationStats(stats.session.durationMs) }));
     lines.push("");
     if (stats.roads.total > 0) {
-      lines.push("## 🛣 " + window.I18n.t("ui.refonte.section_roads"));
+      lines.push("## 🛣️ " + window.I18n.t("ui.refonte.section_roads"));
       lines.push(window.I18n.t("ui.refonte.export_total_roads", { dist: _fdistStats(stats.roads.distM), n: stats.roads.total }));
       Object.keys(stats.roads.byType).forEach(function(t) {
         const s = stats.roads.byType[t];
@@ -1258,7 +1258,7 @@
         const tag    = rawTag ? _lcLabel("icones", rawTag, rawTag) : "—";
         const nom    = p.nom || p.id || window.I18n.t("ui.refonte.label_no_name");
         const coord  = Math.round(p.x || 0) + ", " + Math.round(p.y || 0);
-        const level  = multiLevel ? ' · 🏗 N' + (p.level || 0) : '';
+        const level  = multiLevel ? ' · 🏗️ N' + (p.level || 0) : '';
         html += '<li>' +
           '<strong>' + _esc(nom) + '</strong>' +
           '<span class="kta-refonte-session-meta">' + _esc(tag) + ' · ' + coord + level + '</span>' +
@@ -1270,7 +1270,7 @@
 
     const roadsNonIti = roads.filter(function(r) { return r.type !== "itinerary"; });
     const itineraire  = roads.find(function(r) { return r.type === "itinerary"; });
-    html += _debutSection('🛣 ' + window.I18n.t("ui.refonte.section_roads"), roadsNonIti.length, _nbTypes(roadsNonIti));
+    html += _debutSection('🛣️ ' + window.I18n.t("ui.refonte.section_roads"), roadsNonIti.length, _nbTypes(roadsNonIti));
     if (roadsNonIti.length === 0) {
       html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_roads") + '</div>';
     } else {
@@ -1816,7 +1816,7 @@
           if (!p) return window.I18n.t("ui.refonte.label_empty");
           const parts = [];
           if (p.editorPoints   && p.editorPoints.length)   parts.push(p.editorPoints.length + "📍");
-          if (p.roads          && p.roads.length)          parts.push(p.roads.length + "🛣");
+          if (p.roads          && p.roads.length)          parts.push(p.roads.length + "🛣️");
           if (p.zones          && p.zones.length)          parts.push(p.zones.length + "⬛");
           if (p.structures     && p.structures.length)     parts.push(p.structures.length + "🏛️");
           return parts.length ? parts.join(" ") : window.I18n.t("ui.refonte.label_empty");

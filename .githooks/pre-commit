@@ -66,6 +66,9 @@ node scripts/check-pdf-texte.js || exit $?
 # Popups natives : cliquet a 0 (ktaAlerte / ktaConfirm / toast).
 node scripts/check-popups-natives.js || exit $?
 
+# Emoji : un pictogramme a presentation texte porte U+FE0F (sinon noir et blanc sur Windows / Android).
+node scripts/check-emoji-vs16.js || exit $?
+
 # Couleurs en dur dans un style pose par le JS : cliquet (la charte s'ecrit var(--kta-...)).
 node scripts/check-couleurs-inline.js || exit $?
 

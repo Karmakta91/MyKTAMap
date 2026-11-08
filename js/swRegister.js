@@ -46,7 +46,7 @@ if ("serviceWorker" in navigator) {
       const params = new URLSearchParams(window.location.search);
       if (!params.has("killsw")) return;
     } catch (e) { return; }
-    console.warn("[PWA] 🆘 Kill switch SW + caches activé via ?killsw=1");
+    console.warn("[PWA] 🔧 Kill switch SW + caches activé via ?killsw=1");
     const tasks = [];
     if ("serviceWorker" in navigator && navigator.serviceWorker.getRegistrations) {
       tasks.push(
