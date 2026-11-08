@@ -660,8 +660,9 @@ Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#
 - **Chiffres** : secteur, piliers (union, coupée au secteur) et leur nombre (part non nulle dans le secteur),
   exploité = secteur − piliers, taux = exploité ÷ secteur, volume = exploité × hauteur, remblais = part du VIDE
   (secteur − piliers) couverte par un remblai, vide actuel = exploité − remblais. Surfaces par `formatSurface`.
-- **Hauteur moyenne** : 2 m par défaut, par plan dans `myktamap_plan_prefs_<planId>.hauteurGalerieM`
-  (`config.js > get/setPlanHauteurGalerie`) ; recalcul des volumes à chaque frappe, seule une valeur > 0 est retenue.
+- **Hauteur moyenne** : celle **du niveau mesuré** (`config.js > getNiveauVertical(niveau).hauteurM`, 2 m sans
+  réglage ; plan à un niveau : niveau 0), écrite par `setHauteurNiveau` ; recalcul des volumes à chaque frappe,
+  seule une valeur > 0 est retenue. Cascade : `multilevel-pathfinding.md` § Hauteur et écart par niveau.
 - **Géométrie** (`calculerAires`, pure) : découpe en **bandes verticales** aux x de tous les sommets et de tous les
   croisements d'arêtes. Dans une bande, la longueur de la coupe verticale de n'importe quelle combinaison booléenne
   (secteur ∩ ∪piliers, (secteur ∩ ∪remblais) − ∪piliers) est linéaire en x, donc aire = largeur × longueur au

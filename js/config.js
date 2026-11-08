@@ -1100,24 +1100,184 @@ window.setPlanProfondeurs   = setPlanProfondeurs;
 window.getProfondeurNiveau  = getProfondeurNiveau;
 window.proposerProfondeurs  = proposerProfondeurs;
 
-// ── Hauteur moyenne de galerie (⛏️ Volume exploité) ──────────────────────
-// Par plan, pref `hauteurGalerieM` ; absente → null (l'appelant prend sa valeur par défaut). Refus si ≤ 0.
-function getPlanHauteurGalerie(planId) {
-  const pid = planId || window._currentLoadedPlanId || "default";
-  const v = _readPlanPrefs(pid).hauteurGalerieM;
-  return (typeof v === "number" && Number.isFinite(v) && v > 0) ? v : null;
+// ── Géométrie verticale des niveaux : hauteur de galerie, écart avec le niveau du dessus ──────────────────────
+// ⚠️ contrat (vue 3D, ⛏️ Volume exploité, et tout ce qui place un niveau en hauteur) : la position verticale d'un
+// niveau se lit par getNiveauVertical(niveau, planId), jamais en relisant les tables :
+//   { niveau, solM, hauteurM, plafondM, ecartM, sourceHauteur }
+//   solM     = profondeur du sol (= getProfondeurNiveau : null si non renseignée ou « sans profondeur »)
+//   hauteurM = hauteur de galerie, toujours un nombre > 0 (HAUTEUR_GALERIE_DEFAUT sans réglage)
+//   plafondM = solM + hauteurM (null sans sol)
+//   ecartM   = sol du niveau n + 1 − plafond du niveau n (null si l'un des deux sols manque) ; NÉGATIF = entremêlé
+//              d'autant (−1,5 : le plafond monte 1,5 m au-dessus du sol du niveau du dessus)
+//   sourceHauteur = "pref" | "plan" | "defaut"
+// Une seule vérité verticale : le SOL (niveauxProfondeur, que l'itinéraire lit déjà) et la HAUTEUR (niveauxHauteur).
+// L'écart n'est jamais stocké : le garder en plus des sols ferait deux vérités qui se contredisent, le stocker à la
+// place ferait bouger les sols (donc les distances de l'itinéraire) à chaque hauteur changée. Saisir un écart
+// déplace le sol du niveau et ceux du dessous (ecartVersProfondeurs).
+// Cascade de la hauteur d'un niveau : pref du niveau (`niveauxHauteur`) → ancienne pref unique du plan
+// (`hauteurGalerieM`, plus écrite, relue pour ne rien perdre) → plan-config (`plan.niveauxHauteur`) → défaut.
+// 🩸 Plan à un seul niveau : le niveau `null` des appelants se range sous la clé "0".
+// Garde-fou : scripts/check-niveaux-verticaux.js
+const HAUTEUR_GALERIE_DEFAUT = 2;   // m, comme ⛏️ Volume exploité et la vue 3D
+
+function _cleNiveau(niveau) {
+  const n = Number(niveau);
+  return (niveau === null || niveau === undefined || !Number.isInteger(n)) ? "0" : String(n);
 }
-function setPlanHauteurGalerie(planId, value) {
+function _hauteurValide(v) { return typeof v === "number" && Number.isFinite(v) && v > 0; }
+function _tableHauteursPropre(t) {
+  const out = {};
+  if (!t || typeof t !== "object") return out;
+  Object.keys(t).forEach(function (k) {
+    if (!/^-?\d+$/.test(k) || t[k] === null || t[k] === "") return;
+    const v = Number(t[k]);
+    if (_hauteurValide(v)) out[k] = v;
+  });
+  return out;
+}
+function _arrondiMm(v) { return Math.round(v * 1000) / 1000; }
+
+// Hauteurs du plan-config. 🩸 Même limite que getPlanProfondeurs : PLAN_CONFIG ne répond que pour le plan ouvert.
+function _hauteursDuPlan(planId) {
+  if (planId && window._currentLoadedPlanId && planId !== window._currentLoadedPlanId) return {};
+  const p = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
+  return _tableHauteursPropre(p && p.niveauxHauteur);
+}
+
+// Hauteur d'un niveau sans les prefs (plan-config, sinon défaut) : la valeur à laquelle « ↺ » revient.
+function getHauteurNiveauDuPlan(niveau, planId) {
+  const v = _hauteursDuPlan(planId)[_cleNiveau(niveau)];
+  return _hauteurValide(v) ? v : HAUTEUR_GALERIE_DEFAUT;
+}
+
+function _hauteurResolue(niveau, planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const k = _cleNiveau(niveau);
+  const prefs = _readPlanPrefs(pid);
+  const parNiveau = _tableHauteursPropre(prefs.niveauxHauteur)[k];
+  if (_hauteurValide(parNiveau)) return { m: parNiveau, source: "pref" };
+  if (_hauteurValide(prefs.hauteurGalerieM)) return { m: prefs.hauteurGalerieM, source: "pref" };
+  const duPlan = _hauteursDuPlan(planId)[k];
+  if (_hauteurValide(duPlan)) return { m: duPlan, source: "plan" };
+  return { m: HAUTEUR_GALERIE_DEFAUT, source: "defaut" };
+}
+
+function getHauteurNiveau(niveau, planId) { return _hauteurResolue(niveau, planId).m; }
+
+// Calcul pur (ni prefs ni plan) : partagé par l'accès, la saisie de ⚙️ et le Générateur.
+// `profondeurs` = { "<n>": nombre|null } ; `hauteurDe(clé)` = hauteur du niveau de cette clé.
+function calculerNiveauVertical(niveau, profondeurs, hauteurDe) {
+  const k = _cleNiveau(niveau);
+  const t = (profondeurs && typeof profondeurs === "object") ? profondeurs : {};
+  const sol = Number.isFinite(t[k]) ? t[k] : null;
+  const h = hauteurDe(k);
+  const dessus = t[String(Number(k) + 1)];
+  const plafond = sol === null ? null : _arrondiMm(sol + h);
+  return {
+    niveau: Number(k), solM: sol, hauteurM: h, plafondM: plafond,
+    ecartM: (plafond !== null && Number.isFinite(dessus)) ? _arrondiMm(dessus - plafond) : null
+  };
+}
+
+function getNiveauVertical(niveau, planId) {
+  const r = _hauteurResolue(niveau, planId);
+  const out = calculerNiveauVertical(niveau, getPlanProfondeurs(planId), function () { return r.m; });
+  out.sourceHauteur = r.source;
+  return out;
+}
+
+// Tous les niveaux connus du plan (sols, hauteurs, niveaux du plan ouvert), du haut vers le bas.
+function getPlanNiveauxVerticaux(planId, niveaux) {
+  let liste = Array.isArray(niveaux) ? niveaux.slice() : null;
+  if (!liste) {
+    const vus = {};
+    const pid = planId || window._currentLoadedPlanId || "default";
+    const ouvert = !planId || !window._currentLoadedPlanId || planId === window._currentLoadedPlanId;
+    Object.keys(getPlanProfondeurs(planId)).forEach(function (k) { vus[k] = 1; });
+    Object.keys(_hauteursDuPlan(planId)).forEach(function (k) { vus[k] = 1; });
+    Object.keys(_tableHauteursPropre(_readPlanPrefs(pid).niveauxHauteur)).forEach(function (k) { vus[k] = 1; });
+    const lv = window.APP_CONFIG && window.APP_CONFIG.availableLevels;
+    if (ouvert && Array.isArray(lv)) lv.forEach(function (n) { vus[String(n)] = 1; });
+    liste = Object.keys(vus).filter(function (k) { return /^-?\d+$/.test(k); }).map(Number);
+  }
+  return liste.filter(Number.isInteger).sort(function (a, b) { return b - a; })
+    .map(function (n) { return getNiveauVertical(n, planId); });
+}
+
+// Sols après saisie de l'écart du niveau `niveau` : son sol devient sol(n + 1) − hauteur − écart, et les niveaux
+// du dessous qui ont un sol suivent du même déplacement (leurs écarts sont gardés). Rend une NOUVELLE table, ou
+// null si le niveau du dessus n'a pas de sol (l'écart n'a alors aucun point d'appui).
+function ecartVersProfondeurs(profondeurs, hauteurs, niveau, ecart) {
+  const t = Object.assign({}, profondeurs || {});
+  const k = _cleNiveau(niveau);
+  const dessus = t[String(Number(k) + 1)];
+  const hSaisie = Number(hauteurs && hauteurs[k]);
+  const h = _hauteurValide(hSaisie) ? hSaisie : HAUTEUR_GALERIE_DEFAUT;
+  const e = (ecart === null || ecart === "") ? NaN : Number(ecart);
+  if (!Number.isFinite(dessus) || !Number.isFinite(e)) return null;
+  const nouveau = _arrondiMm(dessus - h - e);
+  const ancien = t[k];
+  t[k] = nouveau;
+  if (Number.isFinite(ancien)) {
+    const delta = nouveau - ancien;
+    Object.keys(t).forEach(function (j) {
+      if (Number(j) < Number(k) && Number.isFinite(t[j])) t[j] = _arrondiMm(t[j] + delta);
+    });
+  }
+  return t;
+}
+
+// Correction locale d'UNE hauteur (vue 3D, ⛏️ Volume exploité). Refus si ≤ 0.
+function setHauteurNiveau(niveau, value, planId) {
   const pid = planId || window._currentLoadedPlanId || "default";
   const v = Number(value);
-  if (!Number.isFinite(v) || v <= 0) return false;
+  if (!_hauteurValide(v)) return false;
   const prefs = _readPlanPrefs(pid);
-  prefs.hauteurGalerieM = v;
+  const t = _tableHauteursPropre(prefs.niveauxHauteur);
+  t[_cleNiveau(niveau)] = v;
+  prefs.niveauxHauteur = t;
   _writePlanPrefs(pid, prefs);
   return true;
 }
-window.getPlanHauteurGalerie = getPlanHauteurGalerie;
-window.setPlanHauteurGalerie = setPlanHauteurGalerie;
+
+// Correction de toute la table (⚙️ Réglages du plan) : seule une hauteur qui diffère de celle du plan reste en
+// pref, sinon une mise à jour du plan ne passerait plus. L'ancienne pref unique est remplacée par la table.
+function setPlanHauteursNiveaux(planId, table) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const propre = _tableHauteursPropre(table);
+  const garde = {};
+  Object.keys(propre).forEach(function (k) {
+    if (propre[k] !== getHauteurNiveauDuPlan(Number(k), planId)) garde[k] = propre[k];
+  });
+  const prefs = _readPlanPrefs(pid);
+  delete prefs.hauteurGalerieM;
+  if (Object.keys(garde).length) prefs.niveauxHauteur = garde; else delete prefs.niveauxHauteur;
+  _writePlanPrefs(pid, prefs);
+  console.log("[Config] hauteurs des niveaux (plan " + pid + ") →", garde);
+  return true;
+}
+
+// « ↺ Valeurs du plan » : sols et hauteurs reviennent au plan-config (prefs retirées).
+function effacerReglagesNiveaux(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  delete prefs.niveauxProfondeur;
+  delete prefs.niveauxHauteur;
+  delete prefs.hauteurGalerieM;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+
+window.HAUTEUR_GALERIE_DEFAUT  = HAUTEUR_GALERIE_DEFAUT;
+window.getNiveauVertical       = getNiveauVertical;
+window.getPlanNiveauxVerticaux = getPlanNiveauxVerticaux;
+window.calculerNiveauVertical  = calculerNiveauVertical;
+window.ecartVersProfondeurs    = ecartVersProfondeurs;
+window.getHauteurNiveau        = getHauteurNiveau;
+window.getHauteurNiveauDuPlan  = getHauteurNiveauDuPlan;
+window.setHauteurNiveau        = setHauteurNiveau;
+window.setPlanHauteursNiveaux  = setPlanHauteursNiveaux;
+window.effacerReglagesNiveaux  = effacerReglagesNiveaux;
 
 // ── Raccords ignorés (🔗 Raccords à vérifier, js/raccordsTraces.js) ──────────────────────
 // Par plan, pref `raccordsIgnores` = clés d'écart (chaînes) que l'auteur a déclarées voulues ; absente → [].

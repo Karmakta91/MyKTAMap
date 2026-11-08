@@ -245,6 +245,20 @@ Profondeur **sous la surface**, en mètres, par niveau. **Trois états, et la di
 
 🩸 Le `null` n'est pas un trou de saisie : c'est le niveau que l'import SIG donne au **topo historique**. Ce n'est pas un étage physique au-dessus, c'est une **convention d'empilement** pour séparer deux relevés du même endroit. Lui donner une altitude fausserait tout profil en long qui le traverse.
 
+### `plan.niveauxHauteur` — plan-config.json
+
+```json
+"plan": { "niveauxProfondeur": { "0": -25, "-1": -27 }, "niveauxHauteur": { "0": 3, "-1": 3.5 } }
+```
+
+Hauteur de galerie par niveau, en mètres (> 0 ; autre valeur ignorée). Clé absente = 2 m. Plan à un niveau : clé
+`"0"`, écrite par le Générateur seulement si elle diffère de 2 m. L'**écart** avec le niveau du dessus n'est pas
+un champ : il se calcule (`sol(n + 1) − sol(n) − hauteur(n)`, ici −1,5 m au −1 : entremêlé). Lecture par
+`getNiveauVertical` seulement — contrat et cascade : `multilevel-pathfinding.md` § Hauteur et écart par niveau.
+
+Prefs par plan (`myktamap_plan_prefs_<id>`), qui priment : `niveauxProfondeur` (table entière), `niveauxHauteur`
+(niveau par niveau) ; `hauteurGalerieM` (une hauteur pour tout le plan) n'est plus écrite mais encore relue.
+
 ### `calquesSession` (v1.85.0) — payload de session
 
 ```json

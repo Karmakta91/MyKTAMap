@@ -731,6 +731,51 @@ Et les plans existants restent **non renseignés**, délibérément : on ne peut
 deviner la profondeur d'un plan ancien, et l'inventer changerait ses distances en
 silence (cf. jonctions 3D ci-dessous).
 
+### Hauteur et écart par niveau — la géométrie verticale
+
+Chaque niveau a un **sol** (la profondeur ci-dessus), une **hauteur de galerie** et un **écart** avec le niveau du
+dessus. Ce sont les données que la jonction en pente, les niveaux voisins en 3D et l'entremêlement consomment.
+
+**⚠️ Contrat — un seul accès** : `config.js > getNiveauVertical(niveau, planId)` →
+`{ niveau, solM, hauteurM, plafondM, ecartM, sourceHauteur }`. `getPlanNiveauxVerticaux(planId, niveaux?)` rend la
+liste du haut vers le bas. Personne ne relit `niveauxProfondeur` / `niveauxHauteur` à la main
+(`check-niveaux-verticaux.js` le vérifie pour la hauteur).
+
+| Champ | Sens |
+|---|---|
+| `solM` | profondeur du sol (= `getProfondeurNiveau`), `null` si non renseignée ou « sans profondeur » |
+| `hauteurM` | toujours un nombre > 0 : pref du niveau → ancienne pref unique `hauteurGalerieM` → plan-config → 2 m |
+| `plafondM` | `solM + hauteurM`, `null` sans sol |
+| `ecartM` | `sol(n + 1) − plafond(n)`, `null` si un des deux sols manque ; **négatif = entremêlé** d'autant |
+| `sourceHauteur` | `"pref"`, `"plan"` ou `"defaut"` |
+
+**Une seule vérité verticale : le sol et la hauteur. L'écart n'est jamais stocké** (décision produit). Le
+garder à côté des sols ferait deux vérités qui se contredisent ; le stocker à la place des sols ferait bouger les
+distances de l'itinéraire à chaque hauteur changée. L'écart est donc une **saisie** : `ecartVersProfondeurs(table,
+hauteurs, n, écart)` pose `sol(n) = sol(n + 1) − hauteur(n) − écart` et déplace du même pas les niveaux du dessous
+qui ont un sol (leurs écarts sont gardés). Changer une hauteur garde les sols (l'écart du niveau change). Le niveau
+du dessus est `n + 1` exactement ; sans sol à `n + 1`, l'écart n'a pas d'appui et son champ est grisé.
+
+**Rétrocompatibilité** : un plan sans `niveauxHauteur` donne 2 m partout, comme avant ; un plan sans sols n'a ni
+plafond ni écart ; l'itinéraire lit toujours `getProfondeurNiveau`, inchangé. Plan à un niveau : le niveau `null`
+des appelants est rangé sous la clé `"0"`.
+
+**Saisie** — une seule table (`profondeurNiveaux.js > tableHtml / brancherTable / lireTable`), colonnes Sol /
+Hauteur / Écart / Sans :
+- **Générateur** : sous la case multi-niveau, cinq niveaux proposés (0 à −25 m, 5 m d'un sol au suivant, galeries
+  de 2 m, donc écart 3 m), un plan rouvert repris tel quel (`null` et trous compris). Écrit `niveauxProfondeur` et
+  `niveauxHauteur` ; plan à un niveau : la hauteur seule, écrite seulement si elle diffère de 2 m.
+- **⚙️ Réglages › 📐 Plan › 📉 Niveaux : profondeur et hauteur** (et au bas de la fenêtre 🏗️ Niveaux) : la même
+  table. Valider écrit la table des sols en pref (`setPlanProfondeurs`, table entière comme avant) et les hauteurs
+  par `setPlanHauteursNiveaux` (seules celles qui diffèrent du plan restent en pref, l'ancienne pref unique est
+  retirée). **↺ Valeurs du plan** = `effacerReglagesNiveaux`.
+- **Vue 3D** et **⛏️ Volume exploité** : `setHauteurNiveau(niveau, m)` pour le niveau affiché / mesuré.
+
+**Consommateurs** : la vue 3D prend la hauteur du niveau affiché à l'ouverture et à chaque changement de niveau
+(`vue3d.js > _prendreHauteurDuNiveau`, appelé par `_reindexer`) ; ⛏️ Volume exploité celle du niveau mesuré.
+Preuves : `check-niveaux-verticaux.js` (accès, cascade, saisie de l'écart, sabotage vérifié),
+`scripts/smoke/checkup-niveaux-verticaux.js` (Générateur, ZIP relu, ⚙️, téléphone).
+
 ### 🩸 Ce que le chantier a corrigé sans qu'on le cherche
 
 **1. Les jonctions étaient mesurées à plat.** `_addEdge` recevait `_dist(prevP, p)`

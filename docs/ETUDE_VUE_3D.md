@@ -232,7 +232,8 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
 - **Repère** : mètres. `x` 3D = x image / `APP_CONFIG.scale`, `z` 3D = y image / scale (le haut de l'image est
   devant quand le cap vaut 0), `y` = hauteur. Pas de `convertCoord` ici : la 3D lit les coordonnées plan
   directement ; `convertCoord` reste la règle côté Leaflet.
-- **Hauteur** : `getPlanHauteurGalerie()` (réglée dans ⛏️ Volume exploité), 2 m par défaut.
+- **Hauteur** : celle du niveau affiché (`getNiveauVertical(niveau).hauteurM`, réglée dans ⚙️ › 📉 Niveaux,
+  ⛏️ Volume exploité ou la 3D), 2 m par défaut.
 - **Piliers (1re et 2e masse), murs polygones, types perso fermés** : prismes du sol à la hauteur, dessus
   triangulé (`THREE.ShapeUtils`, contours concaves compris), faces orientées vers l'extérieur.
 - **Murs en ligne** : épaisseur 0,4 m ; **fronts de taille** : 0,3 m. Un pavé par segment, prolongé d'une

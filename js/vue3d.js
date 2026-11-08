@@ -38,7 +38,8 @@
 // (_ouvrirFiche, « Y aller » : origineItineraire). En
 // libre, un tracker choisi comme départ depuis la vue y amène la place (placerSurTracker) ; un tracker recalé (« 📍 Je
 // suis ici ») ne la bouge pas (trackerRecale).
-// ⚠️ contrat : hauteur = celle de ⛏️ Volume exploité (config.js > get/setPlanHauteurGalerie), réglée aussi en 3D.
+// ⚠️ contrat : hauteur = celle DU NIVEAU affiché (config.js > getNiveauVertical / setHauteurNiveau), la même que
+// ⛏️ Volume exploité, réglée aussi en 3D ; un changement de niveau (passage 🪜, suivi) reprend la sienne (_reindexer).
 // ⚠️ contrat : déplacement à hauteur d'yeux = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux, et paroisBloquent ;
 // partout, KtaGalerie.zonesBloquent : zones et obstacles des accès), sur la largeur d'un corps ; vue d'édition :
@@ -2916,8 +2917,9 @@
     e.reprise = null;
     if (!reprise) anciennes.forEach(_libererTuile);
     const t0 = performance.now();
-    const niveauAvant = e.niveau, renduAvant = e.rendu;
+    const niveauAvant = e.niveau, renduAvant = e.rendu, hauteurAvant = e.hauteur;
     e.niveau = _niveauCourant();
+    _prendreHauteurDuNiveau();
     const d = _collecter(e.niveau);
     e.rendu = _renduVoulu();
     e.galerie = e.mixte = null;
@@ -2942,7 +2944,10 @@
     e.volumesIti = e.volumesIti.concat(_volumesItiAcces(e.volPassages));
     const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
     e.tuiles = _indexer(Object.assign({}, d, { roads: plan }), e.sc, e.tuilesActives ? TUILE : 0);
-    if (reprise) _reprendreTuiles(anciennes, reprise, niveauAvant === e.niveau && renduAvant === e.rendu);
+    if (reprise) {
+      _reprendreTuiles(anciennes, reprise,
+        niveauAvant === e.niveau && renduAvant === e.rendu && hauteurAvant === e.hauteur);
+    }
     _poserTuilesIti(d.roads.filter(function (r) { return r.type === "itinerary"; }));
     // Objets dessinés que la visée cherche sous le doigt (_objetAuPoint) : ni structures en galerie (pas dessinées),
     // ni itinéraire (calculé), ni jonction (jamais dessinée).
@@ -7811,6 +7816,22 @@
 
   // ── Hauteur des galeries (même chiffre que ⛏️ Volume exploité) ──────────────────────────────────────
 
+  // Hauteur de galerie d'un niveau (null : plan à un niveau), défaut sans config.js.
+  function _hauteurDuNiveau(niveau) {
+    const v = typeof window.getNiveauVertical === "function" ? window.getNiveauVertical(niveau).hauteurM : null;
+    return v > 0 ? v : HAUTEUR_DEFAUT;
+  }
+
+  // Niveau changé (ou hauteur réglée ailleurs, ⛏️) : la scène prend la hauteur de son niveau avant d'être refaite.
+  function _prendreHauteurDuNiveau() {
+    const e = _e, h = _hauteurDuNiveau(e.niveau);
+    if (h === e.hauteur) return;
+    e.hauteur = h;
+    e.oeil = _oeil(h);
+    e.chevSig = null;
+    if (e.boutonHauteur) _majHauteur();
+  }
+
   function _oeil(h) { return Math.min(OEIL, Math.max(0.4, h * 0.8)); }
 
   function _majHauteur() {
@@ -7840,7 +7861,7 @@
     if (!e) return null;
     const v = Math.round(Math.max(HAUTEUR_REGLAGE.min, Math.min(HAUTEUR_REGLAGE.max, Number(m))) * 10) / 10;
     if (!Number.isFinite(v)) return e.hauteur;
-    if (typeof window.setPlanHauteurGalerie === "function") window.setPlanHauteurGalerie(null, v);
+    if (typeof window.setHauteurNiveau === "function") window.setHauteurNiveau(e.niveau, v);
     if (v !== e.hauteur) {
       e.hauteur = v;
       e.oeil = _oeil(v);
@@ -8671,8 +8692,7 @@
       if (!charges) return false;
       if (_e) return true;
       const sc = _echelle();
-      const hauteur = (typeof window.getPlanHauteurGalerie === "function" && window.getPlanHauteurGalerie()) ||
-        HAUTEUR_DEFAUT;
+      const hauteur = _hauteurDuNiveau(_niveauCourant());
       const pos = o.depart ||
         (typeof window.getTrackingPosition === "function" ? window.getTrackingPosition() : null) ||
         { x: window.PLAN_CONFIG.plan.imageWidth / 2, y: window.PLAN_CONFIG.plan.imageHeight / 2 };

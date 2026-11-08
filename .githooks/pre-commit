@@ -262,6 +262,10 @@ node scripts/check-mur-ligne.js || exit $?
 # garde a l'aller-retour (session, KMZ, GeoJSON).
 node scripts/check-zones-niveaux.js || exit $?
 
+# Niveaux en hauteur : sol, hauteur et ecart par niveau lus par un seul acces (getNiveauVertical), plan sans la
+# donnee inchange, pref locale qui gagne, ecart jamais stocke.
+node scripts/check-niveaux-verticaux.js || exit $?
+
 # Parite des 3 guides utilisateur (memes sections, aucune traduction sous 70 % du FR).
 node scripts/check-doc-langues.js || exit $?
 

@@ -1739,7 +1739,7 @@ async function sectionLampesMembres(page) {
     window._currentLoadedPlanId = "v3d-checkup-lampes";
     if (K.etat().ouvert !== false) await K.fermer();
     window.setPlanRenduVue3D(null, "structures");
-    window.setPlanHauteurGalerie(null, 4);
+    window.setHauteurNiveau(C.multiLevel === true ? C.activeLevel : null, 4);
     const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
     window.setRoads([]); window.setZones([]); window.setEditorPoints([]);
     window.setStructures([
@@ -1952,7 +1952,7 @@ async function sectionPleinJour(page) {
     window.getPlanNorthCalibre = function () { return false; };
     if (K.etat().ouvert !== false) await K.fermer();
     window.setPlanRenduVue3D(null, "structures");
-    window.setPlanHauteurGalerie(null, 4);
+    window.setHauteurNiveau(C.multiLevel === true ? C.activeLevel : null, 4);
     const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
     window.setRoads([]); window.setZones([]); window.setEditorPoints([]);
     window.setStructures([
@@ -9975,7 +9975,7 @@ async function sectionGestesDoigt(nav) {
       await page.locator('#kta-vue3d [data-v3d="hauteurPlus"]').click();
       const h1 = await page.evaluate(function () {
         const e = window.KtaVue3D.etat();
-        return { hauteur: e.hauteur, pref: window.getPlanHauteurGalerie(), reglage: e.reglageHauteur,
+        return { hauteur: e.hauteur, pref: window.getHauteurNiveau(e.niveau), reglage: e.reglageHauteur,
           attendu: window.formatDistance(e.hauteur, 1) };
       });
       verifier(h0.hauteur === 2 && h1.hauteur === 2.1 && h1.pref === 2.1 && h1.reglage.visible &&
@@ -9991,14 +9991,14 @@ async function sectionGestesDoigt(nav) {
         r.v12moins = K.etat().hauteur;
         r.v = K.reglerHauteur(3);
         const e = K.etat();
-        r.hauteur = e.hauteur; r.pref = window.getPlanHauteurGalerie(); r.yMax = e.yMax; r.oeil = e.oeil;
+        r.hauteur = e.hauteur; r.pref = window.getHauteurNiveau(e.niveau); r.yMax = e.yMax; r.oeil = e.oeil;
         r.pos = e.pos; r.cap = e.cap; r.rendu = e.rendu; r.construites = e.construites;
         r.plus = document.querySelector('#kta-vue3d [data-v3d="hauteurPlus"]').disabled;
         return r;
       });
       verifier(h3.haut === 20 && h3.bas === 1.5 && h3.v12 === 12 && h3.v12moins === 11.5 && h3.v === 3 && h3.hauteur === 3 &&
         h3.pref === 3 && !h3.plus,
-        "réglage borné de 1,5 à 20 m (12 m puis − → 11,5 m, pas de 0,5 au-delà de 5 m) ; à 3 m, getPlanHauteurGalerie() vaut 3", h3);
+        "réglage borné de 1,5 à 20 m (12 m puis − → 11,5 m, pas de 0,5 au-delà de 5 m) ; à 3 m, getHauteurNiveau(niveau de la vue) vaut 3", h3);
       verifier(Math.abs(h3.yMax.opaque - 3) < 1e-6 && Math.abs(h3.yMax.murs - 3 * 0.98) < 1e-6 && h3.oeil === 1.6 &&
         h3.construites > 0 && h3.rendu === "mixte" &&
         h3.pos.x === h0.pos.x && h3.pos.y === h0.pos.y && h3.cap === h0.cap,
@@ -10031,13 +10031,44 @@ async function sectionGestesDoigt(nav) {
         }).then(function () {
           const k = "myktamap_plan_prefs_" + (window._currentLoadedPlanId || "default");
           const pr = JSON.parse(localStorage.getItem(k) || "{}");
-          delete pr.hauteurGalerieM;
+          delete pr.hauteurGalerieM; delete pr.niveauxHauteur;
           localStorage.setItem(k, JSON.stringify(pr));
           return r;
         });
       }, prep);
       verifier(h4.rouvert === 3 && h4.bouton.indexOf("3.0") >= 0 && h4.volume === "3" && h4.depuisVolume === 2.5,
         "3 m relus à la réouverture et par ⛏️ Volume exploité ; 2,5 m saisis dans ⛏️ relus par la vue", h4);
+      // ── Hauteur PAR NIVEAU : un changement de niveau actif pendant la vue reprend la hauteur du niveau ──
+      const hn = await page.evaluate(function (p) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, r = { multi: C.multiLevel === true };
+        if (!r.multi) return r;
+        const actif = C.activeLevel || 0, autre = (C.availableLevels || []).filter(function (n) { return n !== actif; })[0];
+        r.autre = autre;
+        window.setHauteurNiveau(actif, 3.2);
+        window.setHauteurNiveau(autre, 2.6);
+        return K.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } }).then(function () {
+          r.h0 = K.etat().hauteur;
+          C.activeLevel = autre;
+          return new Promise(function (ok) { setTimeout(ok, 800); });
+        }).then(function () {
+          const e = K.etat();
+          r.niveau = e.niveau; r.h1 = e.hauteur; r.bouton = e.reglageHauteur.bouton;
+          r.attendu = "⛏️ " + window.formatDistance(2.6, 1);
+          K.reglerHauteur(2.8);
+          r.prefAutre = window.getHauteurNiveau(autre); r.prefActif = window.getHauteurNiveau(actif);
+          C.activeLevel = actif;
+          return K.fermer();
+        }).then(function () {
+          const k = "myktamap_plan_prefs_" + (window._currentLoadedPlanId || "default");
+          const pr = JSON.parse(localStorage.getItem(k) || "{}");
+          delete pr.niveauxHauteur;
+          localStorage.setItem(k, JSON.stringify(pr));
+          return r;
+        });
+      }, prep);
+      verifier(!hn.multi || (hn.h0 === 3.2 && hn.niveau === hn.autre && hn.h1 === 2.6 && hn.bouton === hn.attendu &&
+        hn.prefAutre === 2.8 && hn.prefActif === 3.2),
+        "hauteur par niveau : 3,2 m au niveau actif, 2,6 m repris en passant à l'autre niveau, réglée là pour lui seul", hn);
       await page.evaluate(function () {
         window.setStructures([]);
         window.setEditorPoints(window.__v3dPoints || []);
@@ -10273,7 +10304,7 @@ async function sectionGestesDoigt(nav) {
           const e0 = K.etat();
           r.v = K.reglerHauteur(3);
           const e = K.etat(), b = e.boites;
-          r.rendu = e.rendu; r.hauteur = e.hauteur; r.pref = window.getPlanHauteurGalerie();
+          r.rendu = e.rendu; r.hauteur = e.hauteur; r.pref = window.getHauteurNiveau(e.niveau);
           r.y = { parois: b.parois && b.parois.y1, plafond: b.plafond && b.plafond.y1,
             remblais: b.remblais && b.remblais.y1, rideau: b.rideau && b.rideau.y1 };
           r.rideaux = e.rideaux.length; r.faces = e.facesRemblais;
@@ -10285,7 +10316,7 @@ async function sectionGestesDoigt(nav) {
         }).then(function () {
           const k = "myktamap_plan_prefs_" + window._currentLoadedPlanId;
           const pr = JSON.parse(localStorage.getItem(k) || "{}");
-          delete pr.hauteurGalerieM;
+          delete pr.hauteurGalerieM; delete pr.niveauxHauteur;
           localStorage.setItem(k, JSON.stringify(pr));
           return r;
         });
