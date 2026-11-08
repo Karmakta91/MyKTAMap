@@ -609,9 +609,11 @@
   // ── Niveaux supplémentaires d'une zone (fiche de la zone, cases « Aussi aux niveaux ») ──────
   // `autres` = niveaux cochés EN PLUS du niveau d'origine (`level`, inchangé). Un seul objet, même contour sur tous
   // ses niveaux : rendu, itinéraire et exports lisent `niveaux` (poiJonction.js > ktaNiveauxObjet).
+  // `jonction` (facultatif, booléen) : zone jonction de niveau (`jonction: true`, sol en pente en 3D selon le tracé
+  // jonction qui la traverse : galerieEmprise.js > penteDeZone) ; retiré si la zone ne garde qu'un niveau.
   // 🩸 Même objet muté en place (uid gardé, touch pour la synchro) puis graphe invalidé : une zone inaccessible
   // ajoutée à un niveau y bloque l'itinéraire.
-  function changerNiveauxZone(obj, autres) {
+  function changerNiveauxZone(obj, autres, jonction) {
     // 🔒 lecture seule
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
     if (!obj || !Array.isArray(autres) || !autres.every(Number.isInteger)) return false;
@@ -627,16 +629,20 @@
     const avantNiv = JSON.stringify(window.ktaNiveauxObjet ? window.ktaNiveauxObjet(cible) : []);
     const essai = { level: cible.level, niveaux: autres.slice() };
     const apres = window.ktaNiveauxObjet ? window.ktaNiveauxObjet(essai) : [];
-    if (JSON.stringify(apres) === avantNiv) return false;   // rien à annuler
+    const jctAvant = cible.jonction === true;
+    const jctApres = apres.length >= 2 && (typeof jonction === "boolean" ? jonction : jctAvant);
+    if (JSON.stringify(apres) === avantNiv && jctApres === jctAvant) return false;   // rien à annuler
     const avant = (window.HistoryManager && window.HistoryManager.captureState)
       ? window.HistoryManager.captureState("zones") : null;
+    if (jctApres) cible.jonction = true; else delete cible.jonction;
     cible.niveaux = apres;
     _normaliserNiveaux(cible);
     if (window.KtaUid) window.KtaUid.touch(cible);
     ecrire(liste);
     if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
     if (window.HistoryManager && avant && window.HistoryManager.record) {
-      window.HistoryManager.record(_t("niveauxZone.histoire", {
+      window.HistoryManager.record(_t(jctApres !== jctAvant
+        ? (jctApres ? "niveauxZone.histoireJonction" : "niveauxZone.histoireSansJonction") : "niveauxZone.histoire", {
         liste: apres.map(function (n) { return n > 0 ? "+" + n : String(n); }).join(", ")
       }), avant, "zones");
     }
