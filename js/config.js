@@ -1213,7 +1213,7 @@ function ecartVersProfondeurs(profondeurs, hauteurs, niveau, ecart) {
   const dessus = t[String(Number(k) + 1)];
   const hSaisie = Number(hauteurs && hauteurs[k]);
   const h = _hauteurValide(hSaisie) ? hSaisie : HAUTEUR_GALERIE_DEFAUT;
-  const e = (ecart === null || ecart === "") ? NaN : Number(ecart);
+  const e = (ecart === null || ecart === "") ? Number.NaN : Number(ecart);
   if (!Number.isFinite(dessus) || !Number.isFinite(e)) return null;
   const nouveau = _arrondiMm(dessus - h - e);
   const ancien = t[k];

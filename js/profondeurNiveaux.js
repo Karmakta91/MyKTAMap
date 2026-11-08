@@ -36,7 +36,7 @@
   }
   function _defautH() { return Number(window.HAUTEUR_GALERIE_DEFAUT) > 0 ? Number(window.HAUTEUR_GALERIE_DEFAUT) : 2; }
   function _nombre(el) {
-    const v = parseFloat(String(el && el.value || "").replace(",", "."));
+    const v = Number.parseFloat(String(el && el.value || "").replace(",", "."));
     return Number.isFinite(v) ? v : null;
   }
 
