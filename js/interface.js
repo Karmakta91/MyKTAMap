@@ -2345,7 +2345,7 @@ function initInterface() {
       {
         // Plan orienté : pendant le suivi, la CARTE tourne (marche vers le haut). Réglage d'appareil
         // persisté, OFF par défaut ; se pose à l'avance, ne s'anime que suivi en cours.
-        icone: "🗺️",
+        icone: "🔃",
         titre: window.I18n.t("ui.subaction.planOriente"),
         carte: true,
         section: "outils",

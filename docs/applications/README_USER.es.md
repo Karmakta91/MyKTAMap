@@ -130,7 +130,7 @@ Para comprobarlo tú mismo: ⚙️ Configuración (pantalla de inicio) › **�
 
 - **📋 Ver el registro de red** — todas las peticiones de la app en directo, y si envían datos; se puede copiar, exportar o vaciar. Si una petición envía datos, o aparece una dirección externa distinta de OpenStreetMap (en rojo), **avisa al autor**: Instagram **@karma_kta** o **contact@myktamap.fr**.
 - **📖 ¿Qué hace la app en la red?** — la lista de direcciones que la app puede contactar y cómo comprobarlo con tu navegador (F12, pestaña Red). La página de auditoría completa describe el estado actual; lo que cambió en cada versión está en su página «historial de versiones».
-- **🔌 La pastilla «Base de datos: desactivada»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas está conectada a una base de datos en línea. En myktamap.fr dice «desactivada», y así seguirá: este sitio no tiene ni base de datos ni backend. Una instalación independiente (club, equipo) puede declarar una: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior. En una instalación conectada a una base de datos dice «conectada» o «inaccesible»; si falta el módulo de conexión de esa instalación, la app muestra **«Instalación no disponible»** y permanece cerrada: inténtalo más tarde o avisa a su gestor. Con una cuenta de la instalación, tus acciones (contraseña, cerrar sesión) están arriba en **👤 Mi perfil**, y un administrador gestiona las cuentas desde **⚙️ Configuración**. **Cerrar sesión borra del dispositivo** los datos de esa cuenta (mapas de la instalación, sesiones, fotos): lo que aún no se ha enviado se avisa antes. En una instalación así: la ficha ℹ️ de un mapa local ofrece **☁️ Publicar este mapa** y después **reemplazar tu copia local** por la versión ☁️ (tus anotaciones, fotos y favoritos la acompañan); el **💾** de la fila de un mapa ☁️ lo guarda en tu dispositivo (**✅** = guardado y al día); en el tracker, **📡 Compartir mi posición en este mapa** muestra tu marcador a los demás, solo si lo marcas (es tu posición **en el mapa**, la de tu seguimiento: la app no usa el GPS). El botón **👥 Equipo**, a la izquierda del mapa, muestra quién está en el mapa, si lo consulta o lo modifica, y su posición en el mapa si la comparte (📍 Centrar, 👁 Seguir, 〰 trazo); en la pantalla de inicio, **👥 N** en un mapa ☁️ indica que otros lo tienen abierto (**✏️**: en modificación). En la ventana **Itinerario**, **🧭 Mostrar mi itinerario al equipo** lo hace visible (en amarillo, solo lectura) para quienes ven el mapa, actualizado en cada etapa, retirado cuando lo borras y a las 24 h. En un mapa que tu acceso solo te permite consultar, las herramientas de dibujo aparecen en gris: al tocarlas se recuerda que el mapa es de solo lectura. En la pantalla de conexión de una instalación así, la pastilla bajo la tarjeta indica si la base de datos responde (tócala para comprobarlo de nuevo), y los iconos 📖 y 🆘 abren la documentación y la solución de problemas.
+- **🔌 La pastilla «Base de datos: desactivada»**, abajo en la pantalla de inicio junto al número de versión, indica si la instalación que usas está conectada a una base de datos en línea. En myktamap.fr dice «desactivada», y así seguirá: este sitio no tiene ni base de datos ni backend. Una instalación independiente (club, equipo) puede declarar una: la pastilla cambia entonces de color y de texto. Tócala para leer su estado y abrir la lista anterior. En una instalación conectada a una base de datos dice «conectada» o «inaccesible»; si falta el módulo de conexión de esa instalación, la app muestra **«Instalación no disponible»** y permanece cerrada: inténtalo más tarde o avisa a su gestor. Con una cuenta de la instalación, tus acciones (contraseña, cerrar sesión) están arriba en **👤 Mi perfil**, y un administrador gestiona las cuentas desde **⚙️ Configuración**. **Cerrar sesión borra del dispositivo** los datos de esa cuenta (mapas de la instalación, sesiones, fotos): lo que aún no se ha enviado se avisa antes. En una instalación así: la ficha ℹ️ de un mapa local ofrece **☁️ Publicar este mapa** y después **reemplazar tu copia local** por la versión ☁️ (tus anotaciones, fotos y favoritos la acompañan); el **💾** de la fila de un mapa ☁️ lo guarda en tu dispositivo (**✅** = guardado y al día); en el tracker, **📡 Compartir mi posición en este mapa** muestra tu marcador a los demás, solo si lo marcas (es tu posición **en el mapa**, la de tu seguimiento: la app no usa el GPS). El botón **👥 Equipo**, a la izquierda del mapa, muestra quién está en el mapa, si lo consulta o lo modifica, y su posición en el mapa si la comparte (📍 Centrar, 👁️ Seguir, 〰 trazo); en la pantalla de inicio, **👥 N** en un mapa ☁️ indica que otros lo tienen abierto (**✏️**: en modificación). En la ventana **Itinerario**, **🧭 Mostrar mi itinerario al equipo** lo hace visible (en amarillo, solo lectura) para quienes ven el mapa, actualizado en cada etapa, retirado cuando lo borras y a las 24 h. En un mapa que tu acceso solo te permite consultar, las herramientas de dibujo aparecen en gris: al tocarlas se recuerda que el mapa es de solo lectura. En la pantalla de conexión de una instalación así, la pastilla bajo la tarjeta indica si la base de datos responde (tócala para comprobarlo de nuevo), y los iconos 📖 y 🆘 abren la documentación y la solución de problemas.
 
 ---
 
@@ -298,7 +298,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 **Arriba**, una barra fija:
 
 - la **rosa de los vientos** a la izquierda vuelve a la pantalla de inicio;
-- el **nombre del mapa** abre **🗂 Cambiar de mapa** (ver más abajo);
+- el **nombre del mapa** abre **🗂️ Cambiar de mapa** (ver más abajo);
 - los **contadores** 📍 puntos · 🛣️ trazados · ⬛ zonas · 🏛️ estructuras · 📸 fotos abren **📊 Detalles de la sesión**;
 - a la derecha: **📖** Modo Historia, **🌍** Vista OSM (mapa georreferenciado), **🚨** Salida de emergencia, **🔋** batería.
 
@@ -347,7 +347,7 @@ Un clic en los contadores de arriba abre el **panel de control** del mapa:
 ### 🗺️ Leer el mapa
 
 - **Pellizca** para hacer zoom, **arrastra** para moverte (o usa los botones **+** / **−** arriba a la izquierda).
-- **Girar dos dedos** hace pivotar el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda (encima de la brújula si está abierta), lo endereza. Una herramienta de dibujo, la medición o la recolocación lo enderezan; 🗺️ Mapa orientado toma el control durante el seguimiento.
+- **Girar dos dedos** hace pivotar el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda (encima de la brújula si está abierta), lo endereza. Una herramienta de dibujo, la medición o la recolocación lo enderezan; 🔃 Mapa orientado toma el control durante el seguimiento.
 - **Tocar un icono** abre la ficha del punto; **tocarlo dos veces** hace zoom sobre él (como el botón «Ir» de la ficha).
 - Los iconos se reducen al alejar el zoom para mantenerse a la escala del mapa, en el plano y también en los mapas OSM (Vista OSM y mapa de la pantalla de inicio). Para conservar un tamaño fijo: ⚙️ Configuración de la pantalla de inicio → 🎨 Visualización → «📐 Adaptar el tamaño de los iconos al zoom».
 
@@ -357,7 +357,7 @@ Si tu mapa está **georreferenciado**, la ficha de cada punto (los tuyos y los d
 
 #### 🔄 Cambiar de mapa
 
-El **nombre del mapa**, arriba, abre **🗂 Cambiar de mapa**: el mapa en curso, los mapas recientes y **📚 Ver todos mis mapas** para volver a la pantalla de inicio. Al cambiar, tu sesión se **guarda automáticamente**. Para cerrar sin hacer nada: ✕, clic fuera o **Esc**.
+El **nombre del mapa**, arriba, abre **🗂️ Cambiar de mapa**: el mapa en curso, los mapas recientes y **📚 Ver todos mis mapas** para volver a la pantalla de inicio. Al cambiar, tu sesión se **guarda automáticamente**. Para cerrar sin hacer nada: ✕, clic fuera o **Esc**.
 
 ### ≡ Filtros
 
@@ -452,14 +452,14 @@ El botón **🧭 Tracker** (o el indicador 🧭 de la barra de abajo) abre una *
 | Sección | Fichas |
 |---|---|
 | **Seguimiento** | ▶️ / ⏹️ Iniciar / detener · 📍 Modo recolocación · 🎯 Mi posición (vuelve a centrar el mapa en ti) · 🔓 Suspender el bloqueo en trazado |
-| **Herramientas** | 🧭 Brújula · 🗺️ Calcular una ruta · 🪧 Guiado del itinerario · 🗺️ Mapa orientado |
+| **Herramientas** | 🧭 Brújula · 🗺️ Calcular una ruta · 🪧 Guiado del itinerario · 🔃 Mapa orientado |
 | **Emergencia** (fondo rojo) | ⛑️ Estoy perdido · 🔆 Vista XL · 🚑 Modo Rescate — ver 🆘 En caso de emergencia bajo tierra |
 
 Navegación inteligente (bloqueo en trazado), mapa orientado, itinerario a través de varios mapas, replay y mapa de calor son opciones desactivadas por defecto → 🔭 Para ir más lejos.
 
 ### ▶️ Iniciar el seguimiento
 
-1. Toca **▶️**. La primera vez tras cada recarga de la app, una ventana recuerda que el tracker es **experimental** (deriva) y propone **🔆 Mantener la pantalla encendida**, marcada de entrada: una pantalla que se apaga son pasos perdidos. Confirma con **Entendido — Iniciar**.
+1. Toca **▶️**. La primera vez tras cada recarga de la app, una ventana recuerda que el tracker es **experimental** (deriva) y propone **📱 Mantener la pantalla encendida**, marcada de entrada: una pantalla que se apaga son pasos perdidos. Confirma con **Entendido — Iniciar**.
 2. En el teléfono, acepta el acceso a los sensores de movimiento.
 3. Tu icono (un cono azul) aparece en el punto de partida y apunta en tu dirección de marcha (hacia el Norte cuando el seguimiento está detenido); un trazado registra tu camino.
 4. **⏹️** detiene el seguimiento.
@@ -533,7 +533,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 
 #### 🧭 Seguimiento o 🕹️ Libre
 
-- **🧭 Seguimiento** (elegido al abrir si el tracker está activo): la vista sigue tu posición y **gira con tu teléfono**, como 🗺️ Mapa orientado.
+- **🧭 Seguimiento** (elegido al abrir si el tracker está activo): la vista sigue tu posición y **gira con tu teléfono**, como 🔃 Mapa orientado.
 - Mover el joystick o tocar un botón de desplazamiento pasa a **🕹️ Libre**. Arrastrar sobre la escena solo inclina la mirada arriba / abajo.
 - El botón de la ficha ⚙️, que muestra el modo actual, alterna entre ambos. Una pastilla 🧭 / 🕹️ arriba a la izquierda lo muestra siempre.
 - Tracker detenido: 🧭 aparece en gris y explica por qué.
@@ -885,7 +885,7 @@ El botón **📖** de la barra de arriba (a la derecha, junto a 🚨) abre tu **
 
 ### 📝 Nota libre
 
-Una nota por mapa, **guardada mientras escribes**. Se muestra con formato; **✏️ Editar** abre el texto, con una barra de herramientas (negrita, cursiva, títulos, lista, enlace, código, cita), y **👁 Vista previa** vuelve a la presentación. La nota admite Markdown (`**negrita**`, `# Título`, `- elemento`).
+Una nota por mapa, **guardada mientras escribes**. Se muestra con formato; **✏️ Editar** abre el texto, con una barra de herramientas (negrita, cursiva, títulos, lista, enlace, código, cita), y **👁️ Vista previa** vuelve a la presentación. La nota admite Markdown (`**negrita**`, `# Título`, `- elemento`).
 
 ### 📚 Documentos PDF
 
@@ -1451,7 +1451,7 @@ A la derecha de «📚 Mis mapas», el selector **Todo | Carpetas**. En modo **C
 
 - **Ordenar**: **☑ Seleccionar** uno o varios mapas y luego «Mover a…», o **arrastrar** la fila sobre una carpeta (con el ratón, o con el dedo tras una pulsación larga).
 - **⋮** en una carpeta: renombrar, color, orden, eliminar (sus mapas vuelven a Sin clasificar, nunca se elimina ningún mapa).
-- **📥 Guardar todo sin conexión** (en ⋮, también en «Sin clasificar» para los mapas que muestra): pone al día toda la carpeta en el dispositivo antes de bajar. Los mapas que faltan se descargan, los que tienen una versión más reciente se actualizan y los que ya están al día se saltan (un mapa importado y guardado ya está ahí). Un mapa cada vez, con «3 / 7» y el mapa en curso; **⏹ Detener** en cualquier momento. La app pide confirmación solo por encima de 200 MB estimados o con datos móviles (cuando el navegador puede saberlo). Si la app pasa a segundo plano o pierde la red, el mapa en curso se reanuda al volver, sin volver a descargar lo que ya está guardado. Al final, el resumen da los mapas descargados, actualizados, ya al día y los que fallaron, con el motivo.
+- **📥 Guardar todo sin conexión** (en ⋮, también en «Sin clasificar» para los mapas que muestra): pone al día toda la carpeta en el dispositivo antes de bajar. Los mapas que faltan se descargan, los que tienen una versión más reciente se actualizan y los que ya están al día se saltan (un mapa importado y guardado ya está ahí). Un mapa cada vez, con «3 / 7» y el mapa en curso; **⏹️ Detener** en cualquier momento. La app pide confirmación solo por encima de 200 MB estimados o con datos móviles (cuando el navegador puede saberlo). Si la app pasa a segundo plano o pierde la red, el mapa en curso se reanuda al volver, sin volver a descargar lo que ya está guardado. Al final, el resumen da los mapas descargados, actualizados, ya al día y los que fallaron, con el motivo.
 - **🏷️ Regla por etiqueta** (en ⋮): la carpeta acoge sola los mapas que llevan esas etiquetas. En modo Todo, las etiquetas marcadas proponen **📁 Crear una carpeta desde estas etiquetas**. Una colocación a mano gana sobre una regla; el punto es **lleno** para una colocación explícita, **hueco** para una regla.
 - Las carpetas viajan con tu perfil. Un servidor puede proponer algunas: no puedes renombrarlas ni eliminarlas, pero metes en ellas lo que quieras. La importación de varios mapas propone «Guardar en:».
 
@@ -1481,7 +1481,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
   - **🪟 Anclar los paneles de herramientas a su botón**: los paneles Trazados, Zonas y Estructuras se abren junto a su botón en lugar de centrados (cómodo en pantalla grande, desaconsejado en el teléfono);
   - **🧲 Imantación al dibujar** y su distancia: un clic cerca de un punto existente se engancha a él, para que tus galerías se unan de verdad;
   - **☀️ Tema claro**;
-  - **🔆 Mantener la pantalla encendida** mientras la app está abierta. El tracker también propone activarlo al arrancar.
+  - **📱 Mantener la pantalla encendida** mientras la app está abierta. El tracker también propone activarlo al arrancar.
 - **🧩 Funciones opcionales** — Replay, mapa de calor, batería y vibración, todas desactivadas por defecto: ver «🔭 Para ir más lejos». Aquí está también el **🕵️ Modo incógnito**: abre una ventana nueva donde no se guarda nada (no disponible en una instalación conectada a una base de datos, cuyo servidor registra lo que haces).
 - **🔒 Privacidad y seguridad**:
   - **📔 Llevar un cuaderno de mis salidas** (activado, ver «📔 Mi cuaderno»);
@@ -1492,7 +1492,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
 - **🛠️ Sistema y mantenimiento**:
   - **🛠️ Modo Desarrollador** (protegido con contraseña): ver «🔭 Para ir más lejos»;
   - **📊 Ver el estado de memoria**: lo que ocupa la app en tu dispositivo, con **📋 Copiar el informe** para señalar un problema;
-  - **🆘 Resolución de problemas**: una ventana que ordena, de lo más suave a lo más radical, **🔄 Forzar la actualización**, **🆘 Abrir la herramienta Kill SW** (SW = *Service Worker*, la parte de la app que la guarda para usarla sin conexión) y **💥 Reiniciar todo** — ver «🆘 En caso de problema».
+  - **🔧 Resolución de problemas**: una ventana que ordena, de lo más suave a lo más radical, **🔄 Forzar la actualización**, **🔧 Abrir la herramienta Kill SW** (SW = *Service Worker*, la parte de la app que la guarda para usarla sin conexión) y **💥 Reiniciar todo** — ver «🔧 En caso de problema».
 
 ### ⚙️ Ajustes (en modo mapa) — este mapa
 
@@ -1553,7 +1553,7 @@ El archivo solo contiene la documentación, ninguno de tus datos: puedes compart
 
 ---
 
-## 🆘 En caso de problema
+## 🔧 En caso de problema
 
 ### 💥 La aplicación se cierra bruscamente
 
@@ -1591,15 +1591,15 @@ En el primer arranque, MyKTAMap presenta la app y te deja **Entrar**: no se pide
 ### 🔄 La app no se actualiza, o se queda bloqueada
 
 Por este orden, conservando tus datos:
-1. **⚙️ Configuración → 🆘 Resolución de problemas → 🔄 Forzar la actualización**: vuelve a descargar la app sin tocar tus mapas, sesiones, preferencias ni códigos. Hace falta conexión.
-2. Si la app sigue bloqueada (página en blanco, inicio sin formato): comprueba tu conexión (desactiva tu VPN, cambia de red), y luego **⚙️ Configuración → 🆘 Resolución de problemas → 🆘 Abrir la herramienta Kill SW**.
-3. Si la app ni siquiera se abre: abre la **página de rescate** en una pestaña privada del navegador (no en la app instalada): **https://myktamap.fr/killsw.html** (su dirección también aparece al pie de la ventana 🆘 Resolución de problemas). Vacía la caché de la app **sin tocar tus datos** (mapas, sesiones, fotos) y propone **🚀 Recargar la app**.
+1. **⚙️ Configuración → 🔧 Resolución de problemas → 🔄 Forzar la actualización**: vuelve a descargar la app sin tocar tus mapas, sesiones, preferencias ni códigos. Hace falta conexión.
+2. Si la app sigue bloqueada (página en blanco, inicio sin formato): comprueba tu conexión (desactiva tu VPN, cambia de red), y luego **⚙️ Configuración → 🔧 Resolución de problemas → 🔧 Abrir la herramienta Kill SW**.
+3. Si la app ni siquiera se abre: abre la **página de rescate** en una pestaña privada del navegador (no en la app instalada): **https://myktamap.fr/killsw.html** (su dirección también aparece al pie de la ventana 🔧 Resolución de problemas). Vacía la caché de la app **sin tocar tus datos** (mapas, sesiones, fotos) y propone **🚀 Recargar la app**.
 
 Estas herramientas no borran **ningún** dato (mapas memorizados, sesiones, fotos, cuaderno, preferencias). Por precaución, **📤 Exportar mi perfil** antes.
 
 ### 💥 Reiniciar todo
 
-**⚙️ Configuración → 🆘 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de mapas y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
+**⚙️ Configuración → 🔧 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de mapas y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
 
 - La primera ventana propone **📤 Exportar mi perfil primero**.
 - Si tu instalación tiene su propia contraseña, te avisa de que se **volverá a pedir al reiniciar**: asegúrate de conocerla antes de confirmar. Si no, la app volverá a mostrar la pantalla de **Bienvenida**.
@@ -1638,7 +1638,7 @@ Si la batería o la vibración aparece **en gris** con «Sensor rechazado por iO
 
 El mosaico **🎬** del menú **🧭 Tracker** abre una ventana a pantalla completa que **vuelve a reproducir tu sesión de seguimiento**: el marcador amarillo rehace tu recorrido y el rastro se alarga a medida que avanza.
 
-- **Controles**: barra de tiempo, ⏮ ▶️ ⏸ ⏭, velocidad de 0.5× a 10×. Al pulsar ▶️, la ventana se reduce a la parte inferior de la pantalla para dejar ver el mapa (el botón **⛶** alterna entre ambos).
+- **Controles**: barra de tiempo, ⏮️ ▶️ ⏸️ ⏭️, velocidad de 0.5× a 10×. Al pulsar ▶️, la ventana se reduce a la parte inferior de la pantalla para dejar ver el mapa (el botón **⛶** alterna entre ambos).
 - **Teclado**: Espacio = reproducir / pausar · ← → = retroceder / avanzar un segundo · Esc = cerrar.
 - **📤 Exportar CSV**: una tabla con fecha y hora de las posiciones (inicio, cada paso, cada recalibración, y el nivel en un mapa multinivel), legible en una hoja de cálculo.
 - Una recalibración es un salto: no se dibuja ninguna línea entre la posición antigua y la nueva.
@@ -1694,7 +1694,7 @@ El tracker estima tu posición con **tus pasos y la brújula**, lo que **deriva*
 
 ### 🗺️ «Mapa orientado»: el mapa gira contigo
 
-En el menú 🧭 Tracker, el mosaico **🗺️ Mapa orientado** hace **girar el mapa** durante el seguimiento, para que tu dirección de marcha apunte siempre hacia la parte superior de la pantalla, como un GPS de coche.
+En el menú 🧭 Tracker, el mosaico **🔃 Mapa orientado** hace **girar el mapa** durante el seguimiento, para que tu dirección de marcha apunte siempre hacia la parte superior de la pantalla, como un GPS de coche.
 
 - **Desactivado por defecto**; tu elección se recuerda en este dispositivo.
 - El mapa solo gira **durante el seguimiento** y vuelve a enderezarse al detener el tracker.
@@ -1892,7 +1892,7 @@ El botón **🏗️ Generar un mapa** de la pantalla de inicio abre el **Generad
 
 #### 🧙 El Generador
 
-- **🧙 Asistente**: el Generador avanza **paso a paso** (nombre, imagen, capas…). Los pasos opcionales se saltan con un clic (**⏭ Omitir**), y un **✅ Resumen antes de generar** muestra lo que está completo, omitido o falta, con avisos útiles (por ejemplo: sin georreferenciación GPS, ni Vista OSM ni exportación KMZ / GPX). **🗒️ Mostrar todo** muestra en cambio el formulario entero de una vez; tu elección se recuerda.
+- **🧙 Asistente**: el Generador avanza **paso a paso** (nombre, imagen, capas…). Los pasos opcionales se saltan con un clic (**⏭️ Omitir**), y un **✅ Resumen antes de generar** muestra lo que está completo, omitido o falta, con avisos útiles (por ejemplo: sin georreferenciación GPS, ni Vista OSM ni exportación KMZ / GPX). **🗒️ Mostrar todo** muestra en cambio el formulario entero de una vez; tu elección se recuerda.
 - **🚀 Simple / ⚙️ Avanzado**: el modo Simple se limita a lo esencial (imagen, nombre, versión, V2 — la imagen cortada en teselas, ver «🧱 Convertir a teselas V2» —, multinivel) y carga los iconos por defecto; el modo Avanzado da acceso a todas las opciones.
 - **📂 Cargar un archivo** acepta un **ZIP de MyKTAMap** (para modificarlo), un **KMZ** o un **GPX** exportado por MyKTAMap (el GPX da un fondo en blanco calado automáticamente), una **exportación SIG** (`.geojson`, `.kml`) o un **GeoTIFF**. Si no, rellena el formulario para crear un mapa desde cero.
 

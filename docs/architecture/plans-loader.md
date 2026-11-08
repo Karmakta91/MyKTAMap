@@ -186,7 +186,7 @@ Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + sec
   1. 🖼️ Tiling (segmented 5 presets)
   2. 🚀 ULTRA (7 toggles)
   3. 🛠️ Debug → toggle 🐛 Logs détaillés + bouton **📋 Afficher les logs** *(nouveau, suite KARMA)*
-  4. 🆘 **Dépannage** : un seul bouton, qui ouvre la fenêtre `#kta-depannage-modal` rangeant du plus doux au plus radical 🔄 Force update douce → 🆘 Kill SW → 💥 Tout réinitialiser (+ l'adresse de `killsw.html`)
+  4. 🔧 **Dépannage** : un seul bouton, qui ouvre la fenêtre `#kta-depannage-modal` rangeant du plus doux au plus radical 🔄 Force update douce → 🔧 Kill SW → 💥 Tout réinitialiser (+ l'adresse de `killsw.html`)
 - `🏗️ Générer un plan` reste directement visible dans la home (action de **création**, pas un réglage)
 - `📥 Conf exemple` déplacé en icône dans le modal du Générateur (section "📂 Charger un ZIP existant")
 
@@ -194,12 +194,12 @@ Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + sec
 - Bouton `🗑️ Réinitialiser` retiré de `kta-cfg-actions-bar` (interface.js)
 - Le reset complet n'est désormais accessible que depuis la modale ⚙️ Configuration du loader (home)
 - Raison : limiter les déclenchements accidentels une fois un plan chargé (user perd potentiellement session active + plans mémorisés en 2 clics)
-- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser
+- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 🔧 Dépannage → 💥 Tout réinitialiser
 - Conséquence CSS : `.kta-cfg-actions-bar` passe de `grid-template-columns: 1fr 1fr 1fr 1fr` (4 cols PC) / `1fr 1fr` (2 cols mobile) à `1fr 1fr 1fr` partout (3 boutons : Reset / Appliquer / 🐛 Logs)
 
 #### 39.2 Force update douce — `window.mettreAJourCodeSeul()`
 
-Bouton 🔄 de la fenêtre ⚙️ Configuration → 🆘 Dépannage. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
+Bouton 🔄 de la fenêtre ⚙️ Configuration → 🔧 Dépannage. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
 
 Différences fondamentales avec `viderCacheAppli()` :
 

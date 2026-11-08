@@ -8,7 +8,7 @@
 // HOMECONFIG.JS — modale Config ⚙️ + PIN + badges alertes/paranoïa + thème + réseau
 // =========================
 // Accueil : modale ⚙️ Configuration (réglages GLOBAUX : thème, capteurs, notifications, Carnet, aide…), code
-// d'accès local (PIN), badge d'alerte, version du pied de page, pastille hors-ligne, 🆘 Dépannage, audit réseau.
+// d'accès local (PIN), badge d'alerte, version du pied de page, pastille hors-ligne, 🔧 Dépannage, audit réseau.
 // Expose : window._ouvrirLoaderConfig / _fermerLoaderConfig, ktaOuvrirDepannage.
 // ⚠️ Chargé SANS defer et enveloppé dans window.addEventListener("load") : l'ordre d'enregistrement des
 // listeners (homeLoader → homeProfile → homeConfig) est voulu. Ne pas réordonner.
@@ -519,7 +519,7 @@
 
 
       // ── Dépannage ──────────
-      // Un seul bouton « 🆘 Dépannage » range les trois outils du plus doux au plus radical (confirmations
+      // Un seul bouton « 🔧 Dépannage » range les trois outils du plus doux au plus radical (confirmations
       // comprises).
 
       // Tout réinitialiser : double confirmation portée par viderCacheAppli (js/interfaceMaintenance.js).
@@ -1263,7 +1263,7 @@
                 return;
               }
               window.OOMGuard.showToast(
-                ok ? t("config.display.wakelock.toastOn", "🔆 Écran maintenu allumé tant que l'app est ouverte")
+                ok ? t("config.display.wakelock.toastOn", "📱 Écran maintenu allumé tant que l'app est ouverte")
                    : t("config.display.wakelock.toastKo", "⚠️ Ton navigateur a refusé de garder l'écran allumé"),
                 ok ? "info" : "warn");
             });
@@ -1325,7 +1325,7 @@
           window.ktaCopierTexte(txt).then(function(ok) {
             if (!ok) {
               window.ktaAlerte(_tNL("home.netlog.copyUnavailable",
-                "Clipboard API indisponible. Utilise plutôt 📥 Exporter."));
+                "Clipboard API indisponible. Utilise plutôt 📤 Exporter."));
               return;
             }
             netLogCopy.textContent = _tNL("home.netlog.copied", "✓ Copié");

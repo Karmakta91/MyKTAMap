@@ -169,7 +169,7 @@
         position: relative;
       }
       .kta-tbl td.col-error::after {
-        content: "⚠";
+        content: "⚠"; /* emoji-texte-ok : glyphe texte, coloré par la règle */
         position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
         color: #ff8888; font-size: 12px;
       }

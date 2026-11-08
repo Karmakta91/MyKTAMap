@@ -522,6 +522,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-doc-recherche.js` | Recherche plein texte de la Documentation et de l'Aide qui rate ou double des occurrences | pre-commit |
 | `check-doc-sidebar.js` | Tableau des groupes de la barre latérale (3 guides) différent de ce que déclare `interface.js` | pre-commit |
 | `check-doc-vocabulaire.js` | Vocabulaire de la doc démenti par le code (« flyout », nombre de styles de légende) | pre-commit |
+| `check-emoji-vs16.js` | Pictogramme écrit sans U+FE0F (🛣 🗂 👁 ⏸…) : rendu texte noir et blanc sur Windows / Android | pre-commit |
 | `check-entete-licence.js` | Script servi (`js/*.js`, `sw.js`) sans en-tête de licence | pre-commit |
 | `check-esc.js` | Copie locale d'un échappeur HTML au lieu de `window.ktaEsc` | pre-commit |
 | `check-etat-visible.js` | État actif invisible depuis la carte (pastille de filtres, toast de restauration, étapes d'itinéraire) | pre-commit |
@@ -805,6 +806,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 - **📦 Service Worker** (`js/swRegister.js`, `sw.js`, `infra-versioning.md` § cycle de vie) : inscription **après l'entrée** dans l'app (rien stocké sur l'écran Bienvenue) ; réinstallation à chaque déploiement par le repère `deploiement.json` (un correctif arrive sans bump) ; précache revalidé (`no-cache`, 304 pour un fichier inchangé) ; « ⬇️ Mettre à jour » garde les plans hors ligne et laisse un cache complet. `checkup-cycle-sw.js`. Audit réseau à jour.
 - **🧠 Mémoire** (`utils.js > ktaRetirerCalque`, garde-fou `check-calques-groupe.js`) : les calques de session se retirent par leur groupe — plus de calques morts (mémoire qui grimpait à chaque modification, POI ou structures fantômes au ≡ décoché puis recoché, POI en double après Repositionner).
 - **Prises neutres** (`community-server-line.md` §3) : alertes d'extension « liste à l'écran » et « déjà vue » ; `liaisonsDuPoint` et `kta:avantChangementPlan`. Sans extension, rien ne change.
+- **🎨 Emoji homogènes, lot 0** (audit des icônes du 08/11/2026) : icônes en double corrigées — 🔃 Plan orienté (🗺️ restait à l'Itinéraire, à côté dans Tracker › Outils), 🔧 Dépannage (🆘 ne désigne plus que l'urgence), 📤 Exporter / 📥 Importer un GPX remis dans le bon sens, 📱 Garder l'écran allumé (🔆 reste à l'Affichage XL) ; 68 pictogrammes complétés par U+FE0F (🛣 🗂 👁 ⏸ ⏹ ⏭ 🗑 🏗), qui s'affichaient en noir et blanc sur Windows et une partie des Android. Garde-fou `check-emoji-vs16.js` (`--corriger`, marque `emoji-texte-ok` pour un glyphe voulu en texte).
 
 #### v2.22.2 (04/11/2026) — Vue 3D d'édition, carte tournée à la main, formes ajustables (branche `Karma_dev`)
 

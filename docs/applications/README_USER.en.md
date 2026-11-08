@@ -130,7 +130,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 - **📋 View the network log** — every request the app makes, live, and whether it sends data; can be copied, exported or emptied. If a request sends data, or an outside address other than OpenStreetMap shows up (in red), **tell the author**: Instagram **@karma_kta** or **contact@myktamap.fr**.
 - **📖 What does the app do on the network?** — the list of addresses the app can contact and how to check with your browser (F12, Network tab). The full audit page describes the current state; what changed in each version is on its "version history" page.
-- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first. On such an installation: the ℹ️ sheet of a local map offers **☁️ Publish this map**, then to **replace your local copy** with the ☁️ version (your annotations, photos and favourites follow); the **💾** on a ☁️ map's row keeps it on your device (**✅** = kept and up to date); in the tracker, **📡 Share my position on this map** shows your marker to others, only if you tick it (it is your position **on the map**, your tracker's: the app does not use GPS). The **👥 Team** button, on the left of the map, shows who is on the map, whether they are viewing or editing it, and their position on the map if they share it (📍 Centre, 👁 Follow, 〰 trail); on the home screen, **👥 N** on a ☁️ map means others have it open (**✏️**: being edited). In the **Route** window, **🧭 Show my route to the team** makes it visible (in yellow, read-only) to those who can see the map, updated at each step, removed when you erase it and after 24 h. On a map your access only lets you view, the drawing tools are greyed out: tapping one reminds you the map is read-only. On the sign-in screen of such an installation, the badge below the card tells you whether the database responds (tap it to check again), and the 📖 and 🆘 icons open the documentation and troubleshooting.
+- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first. On such an installation: the ℹ️ sheet of a local map offers **☁️ Publish this map**, then to **replace your local copy** with the ☁️ version (your annotations, photos and favourites follow); the **💾** on a ☁️ map's row keeps it on your device (**✅** = kept and up to date); in the tracker, **📡 Share my position on this map** shows your marker to others, only if you tick it (it is your position **on the map**, your tracker's: the app does not use GPS). The **👥 Team** button, on the left of the map, shows who is on the map, whether they are viewing or editing it, and their position on the map if they share it (📍 Centre, 👁️ Follow, 〰 trail); on the home screen, **👥 N** on a ☁️ map means others have it open (**✏️**: being edited). In the **Route** window, **🧭 Show my route to the team** makes it visible (in yellow, read-only) to those who can see the map, updated at each step, removed when you erase it and after 24 h. On a map your access only lets you view, the drawing tools are greyed out: tapping one reminds you the map is read-only. On the sign-in screen of such an installation, the badge below the card tells you whether the database responds (tap it to check again), and the 📖 and 🆘 icons open the documentation and troubleshooting.
 
 ---
 
@@ -298,7 +298,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 **At the top**, a fixed bar:
 
 - the **compass rose** on the left takes you back to the home screen;
-- the **map name** opens **🗂 Switch map** (see below);
+- the **map name** opens **🗂️ Switch map** (see below);
 - the **counters** 📍 points · 🛣️ paths · ⬛ zones · 🏛️ structures · 📸 photos open **📊 Session details**;
 - on the right: **📖** Story Mode, **🌍** OSM View (georeferenced map), **🚨** Emergency exit, **🔋** battery.
 
@@ -347,7 +347,7 @@ A click on the top counters opens the map's **dashboard**:
 ### 🗺️ Reading the map
 
 - **Pinch** to zoom, **drag** to move around (or use the **+** / **−** buttons at the top left).
-- **Twisting two fingers** turns the map (Shift + wheel on a computer); the **north** button, at the bottom left (above the compass when it is open), straightens it. A drawing tool, measurement or realignment straighten it; 🗺️ Oriented map takes over while tracking.
+- **Twisting two fingers** turns the map (Shift + wheel on a computer); the **north** button, at the bottom left (above the compass when it is open), straightens it. A drawing tool, measurement or realignment straighten it; 🔃 Oriented map takes over while tracking.
 - **Tapping an icon** opens the point's popup; **double-tapping** zooms onto it (like the popup's “Go” button).
 - Icons shrink as you zoom out to stay at the map's scale, on the plan as well as on the OSM maps (OSM view and the home screen map). To keep a fixed size: home ⚙️ Configuration → 🎨 Display → “📐 Scale icon size with zoom”.
 
@@ -357,7 +357,7 @@ If your map is **georeferenced**, the popup of every point (yours and the map's)
 
 #### 🔄 Switching maps
 
-The **map name** at the top opens **🗂 Switch map**: the current map, the recent maps, and **📚 View all my maps** to go back to the home screen. When you switch, your session is **saved automatically**. To close without doing anything: ✕, click outside or **Esc**.
+The **map name** at the top opens **🗂️ Switch map**: the current map, the recent maps, and **📚 View all my maps** to go back to the home screen. When you switch, your session is **saved automatically**. To close without doing anything: ✕, click outside or **Esc**.
 
 ### ≡ Filters
 
@@ -452,14 +452,14 @@ The **🧭 Tracker** button (or the 🧭 light in the bottom bar) opens a **full
 | Section | Tiles |
 |---|---|
 | **Tracking** | ▶️ / ⏹️ Start / stop · 📍 Realignment mode · 🎯 My position (re-centres the map on you) · 🔓 Suspend trace lock |
-| **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🗺️ Oriented map |
+| **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🔃 Oriented map |
 | **Emergency** (red background) | ⛑️ I'm lost · 🔆 XL display · 🚑 Rescue mode — see 🆘 In an emergency underground |
 
 Smart navigation (trace lock), oriented map, route across multiple plans, replay and heatmap are options turned off by default → 🔭 Going further.
 
 ### ▶️ Starting tracking
 
-1. Tap **▶️**. The first time after each reload of the app, a window reminds you that the tracker is **experimental** (it drifts) and offers **🔆 Keep screen on**, ticked by default: a screen that goes to sleep means lost steps. Confirm with **Got it — Start**.
+1. Tap **▶️**. The first time after each reload of the app, a window reminds you that the tracker is **experimental** (it drifts) and offers **📱 Keep screen on**, ticked by default: a screen that goes to sleep means lost steps. Confirm with **Got it — Start**.
 2. On a phone, allow access to the motion sensors.
 3. Your icon (a blue cone) appears at the starting point and points in your walking direction (North when tracking is stopped); a trail records your path.
 4. **⏹️** stops tracking.
@@ -533,7 +533,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 
 #### 🧭 Follow or 🕹️ Free
 
-- **🧭 Follow** (chosen on opening when the tracker runs): the view follows your position and **turns with your phone**, like 🗺️ Oriented map.
+- **🧭 Follow** (chosen on opening when the tracker runs): the view follows your position and **turns with your phone**, like 🔃 Oriented map.
 - Moving the joystick or touching a move button switches to **🕹️ Free**. Dragging on the scene only tilts your gaze up / down.
 - The button in the ⚙️ tile, which shows the current mode, switches between the two. A 🧭 / 🕹️ badge at the top left always shows it.
 - Tracker stopped: 🧭 is greyed and says why.
@@ -885,7 +885,7 @@ The **📖** button in the top bar (on the right, next to 🚨) opens your **exp
 
 ### 📝 Free note
 
-One note per map, **saved as you type**. It shows formatted; **✏️ Edit** opens the text, with a toolbar (bold, italic, headings, list, link, code, quote), and **👁 Preview** goes back to the rendering. The note accepts Markdown (`**bold**`, `# Heading`, `- item`).
+One note per map, **saved as you type**. It shows formatted; **✏️ Edit** opens the text, with a toolbar (bold, italic, headings, list, link, code, quote), and **👁️ Preview** goes back to the rendering. The note accepts Markdown (`**bold**`, `# Heading`, `- item`).
 
 ### 📚 PDF documents
 
@@ -1451,7 +1451,7 @@ To the right of “📚 My maps”, the **All | Folders** selector. In **Folders
 
 - **Sorting**: **☑ Select** one or more maps then “Move to…”, or **drag** the row onto a folder (with the mouse, or with a finger after a long press).
 - **⋮** on a folder: rename, colour, order, delete (its maps go back to Unsorted, no map is ever deleted).
-- **📥 Keep all offline** (in ⋮, also on “Unsorted” for the maps it shows): brings the whole folder up to date on the device before going underground. Missing maps are downloaded, maps with a newer version are updated, maps already up to date are skipped (an imported, saved map is already there). One map at a time, with “3 / 7” and the current map; **⏹ Stop** at any time. The app asks for confirmation only above an estimated 200 MB or on mobile data (when the browser can tell). If the app goes to the background or loses the network, the current map resumes when it comes back, without downloading again what is already stored. At the end, the summary lists the maps downloaded, updated, already up to date, and those that failed, with the reason.
+- **📥 Keep all offline** (in ⋮, also on “Unsorted” for the maps it shows): brings the whole folder up to date on the device before going underground. Missing maps are downloaded, maps with a newer version are updated, maps already up to date are skipped (an imported, saved map is already there). One map at a time, with “3 / 7” and the current map; **⏹️ Stop** at any time. The app asks for confirmation only above an estimated 200 MB or on mobile data (when the browser can tell). If the app goes to the background or loses the network, the current map resumes when it comes back, without downloading again what is already stored. At the end, the summary lists the maps downloaded, updated, already up to date, and those that failed, with the reason.
 - **🏷️ Tag rule** (in ⋮): the folder takes in by itself the maps carrying those tags. In All mode, ticked chips offer **📁 Create a folder from these tags**. Sorting by hand wins over a rule; the dot is **filled** for an explicit placement, **hollow** for a rule.
 - Folders travel with your profile. A server may offer some: you can neither rename nor delete them, but you can put whatever you like in them. Importing several maps offers “Put in:”.
 
@@ -1481,7 +1481,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **🪟 Anchor tool panels to their button**: the Paths, Zones and Structures panels open next to their button instead of centred (comfortable on a large screen, not recommended on a phone);
   - **🧲 Snap while drawing** and its distance: a click close to an existing point snaps onto it, so that your galleries really join;
   - **☀️ Light theme**;
-  - **🔆 Keep screen on** while the app is open. The tracker also offers to turn it on when it starts.
+  - **📱 Keep screen on** while the app is open. The tracker also offers to turn it on when it starts.
 - **🧩 Optional features** — Replay, Heatmap, battery and vibration, all off by default: see “🔭 Going further”. This is also where **🕵️ Incognito mode** lives: it opens a new window where nothing is saved (not available on an installation linked to a database, whose server records what you do).
 - **🔒 Privacy & security**:
   - **📔 Keep a logbook of my outings** (on, see “📔 My logbook”);
@@ -1492,7 +1492,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
 - **🛠️ System & maintenance**:
   - **🛠️ Developer Mode** (password-protected): see “🔭 Going further”;
   - **📊 View memory state**: what the app takes up on your device, with **📋 Copy the report** to report a problem;
-  - **🆘 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🆘 Open the Kill SW tool** (SW = *Service Worker*, the part of the app that keeps it stored for offline use) and **💥 Reset everything** — see “🆘 Troubleshooting”.
+  - **🔧 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🔧 Open the Kill SW tool** (SW = *Service Worker*, the part of the app that keeps it stored for offline use) and **💥 Reset everything** — see “🔧 Troubleshooting”.
 
 ### ⚙️ Settings (in map mode) — this map
 
@@ -1553,7 +1553,7 @@ The file only contains the documentation, none of your data: you can share it. T
 
 ---
 
-## 🆘 Troubleshooting
+## 🔧 Troubleshooting
 
 ### 💥 The app stops abruptly
 
@@ -1591,15 +1591,15 @@ On first launch, MyKTAMap presents the app, then lets you **Enter**: no code is 
 ### 🔄 The app does not update, or stays stuck
 
 In this order, keeping your data:
-1. **⚙️ Configuration → 🆘 Troubleshooting → 🔄 Force the update**: downloads the app again without touching your maps, sessions, preferences or codes. A connection is needed.
-2. If the app stays stuck (blank page, unformatted home screen): check your connection (turn off your VPN, change network), then **⚙️ Configuration → 🆘 Troubleshooting → 🆘 Open the Kill SW tool**.
-3. If the app does not even open: open the **rescue page** in a private tab of the browser (not the installed app): **https://myktamap.fr/killsw.html** (its address is also shown at the bottom of the 🆘 Troubleshooting window). It clears the app's cache **without touching your data** (maps, sessions, photos) and offers **🚀 Reload the app**.
+1. **⚙️ Configuration → 🔧 Troubleshooting → 🔄 Force the update**: downloads the app again without touching your maps, sessions, preferences or codes. A connection is needed.
+2. If the app stays stuck (blank page, unformatted home screen): check your connection (turn off your VPN, change network), then **⚙️ Configuration → 🔧 Troubleshooting → 🔧 Open the Kill SW tool**.
+3. If the app does not even open: open the **rescue page** in a private tab of the browser (not the installed app): **https://myktamap.fr/killsw.html** (its address is also shown at the bottom of the 🔧 Troubleshooting window). It clears the app's cache **without touching your data** (maps, sessions, photos) and offers **🚀 Reload the app**.
 
 These tools delete **no** data (stored maps, sessions, photos, logbook, preferences). As a precaution, **📤 Export my profile** first.
 
 ### 💥 Reset everything
 
-**⚙️ Configuration → 🆘 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
+**⚙️ Configuration → 🔧 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
 
 - The first window offers **📤 Export my profile first**.
 - If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will show the **Welcome** screen again.
@@ -1638,7 +1638,7 @@ If battery or vibration is **greyed out** with "Sensor refused by iOS" or "by th
 
 The **🎬** tile in the **🧭 Tracker** menu opens a full-screen window that **replays your tracking session**: the yellow marker walks your route again and the trail grows as it goes.
 
-- **Controls**: time slider, ⏮ ▶️ ⏸ ⏭, speed from 0.5× to 10×. On ▶️, the window shrinks to the bottom of the screen so you can see the map (the **⛶** button switches back).
+- **Controls**: time slider, ⏮️ ▶️ ⏸️ ⏭️, speed from 0.5× to 10×. On ▶️, the window shrinks to the bottom of the screen so you can see the map (the **⛶** button switches back).
 - **Keyboard**: Space = play / pause · ← → = back / forward one second · Esc = close.
 - **📤 Export CSV**: a time-stamped table of positions (start, every step, every recalibration, and the level on a multi-level map), readable in a spreadsheet.
 - A recalibration is a jump: no line is drawn between the old and the new position.
@@ -1694,7 +1694,7 @@ The tracker estimates your position from **your steps and the compass**, which *
 
 ### 🗺️ "Oriented map" — the map turns with you
 
-In the 🧭 Tracker menu, the **🗺️ Oriented map** tile makes **the map rotate** while tracking, so that your walking direction always points to the top of the screen, like a car GPS.
+In the 🧭 Tracker menu, the **🔃 Oriented map** tile makes **the map rotate** while tracking, so that your walking direction always points to the top of the screen, like a car GPS.
 
 - **Off by default**; your choice is remembered on this device.
 - The map only turns **while tracking** and straightens up when the tracker stops.
@@ -1892,7 +1892,7 @@ The **🏗️ Generate a map** button on the home screen opens the **Generator**
 
 #### 🧙 The Generator
 
-- **🧙 Wizard**: the Generator moves **step by step** (name, image, layers…). Optional steps are skipped in one click (**⏭ Skip**), and a **✅ Summary before generation** shows what is filled in, skipped or missing, with useful warnings (for example: without GPS georeferencing, no OSM View and no KMZ / GPX export). **🗒️ Show all** instead shows the whole form at once; your choice is remembered.
+- **🧙 Wizard**: the Generator moves **step by step** (name, image, layers…). Optional steps are skipped in one click (**⏭️ Skip**), and a **✅ Summary before generation** shows what is filled in, skipped or missing, with useful warnings (for example: without GPS georeferencing, no OSM View and no KMZ / GPX export). **🗒️ Show all** instead shows the whole form at once; your choice is remembered.
 - **🚀 Simple / ⚙️ Advanced**: Simple mode keeps to the essentials (image, name, version, V2 — the image cut into tiles, see “🧱 Convert to V2 tiles” —, multi-level) and loads the default icons; Advanced mode gives access to every option.
 - **📂 Load a file** accepts a **MyKTAMap ZIP** (to edit it), a **KMZ** or a **GPX** exported by MyKTAMap (the GPX gives a blank background georeferenced automatically), a **GIS export** (`.geojson`, `.kml`) or a **GeoTIFF**. Otherwise, fill in the form to create a map from scratch.
 

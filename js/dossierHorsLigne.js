@@ -258,7 +258,7 @@
     const actions = document.createElement("div"); actions.className = "kta-conv-actions";
     const bArret = document.createElement("button");
     bArret.type = "button"; bArret.className = "kta-btn kta-btn-ghost"; bArret.id = "kta-dhl-arreter";
-    bArret.textContent = "⏹ " + _t("home.plans.dossierHL.arreter");
+    bArret.textContent = "⏹️ " + _t("home.plans.dossierHL.arreter");
     bArret.addEventListener("click", function () { bArret.disabled = true; detail.textContent = _t("home.plans.dossierHL.arretEnCours"); surArret(); });
     actions.appendChild(bArret);
     corps.append(ligne, barre, detail, bilan, actions);
