@@ -4339,7 +4339,7 @@ async function sectionCameraPixels(page) {
 }
 
 // Colonne d'outils (vue3d.js > _monterOutils) visible en vue d'édition SEULEMENT, aux trois tailles (PC, téléphone,
-// paysage bas) : absente à hauteur d'yeux, présente en édition, masquée au retour, absente pendant le jeu (greffe
+// paysage bas) : 🔍 seul à hauteur d'yeux, outils présents en édition, masqués au retour, absente pendant le jeu (greffe
 // `plongee: false`, `fiches: false`). 🩸 En paysage bas, style.css force `.leaflet-bar { display: flex !important }`.
 // Jeu lancé (add-on mkmg) : ses éléments ne chevauchent aucune commande de la vue, à chaque taille (§ 23 au PC seul).
 const TAILLES_COLONNE = [{ width: 1200, height: 800 }, { width: 393, height: 852 }, { width: 852, height: 393 },
@@ -4367,7 +4367,8 @@ async function sectionColonneEtJeu(page, MX) {
         return autres.some(function (o) { return r.left < o.right && r.right > o.left && r.top < o.bottom && r.bottom > o.top; });
       });
       return { vue: window.KtaVue3D.etat().vue, colonne: !!c && c.getClientRects().length > 0, boutons: vus.length,
-        vertical: vertical, dansEcran: dansEcran, chevauche: chevauche };
+        vertical: vertical, dansEcran: dansEcran, chevauche: chevauche,
+        rechercheSeule: vus.length === 1 && vus[0].dataset.v3d === "recherche" };
     });
   };
   const chevauchements = function () {
@@ -4418,15 +4419,17 @@ async function sectionColonneEtJeu(page, MX) {
     const edition = await lire();
     await page.evaluate(function () { window.KtaVue3D.basculerVue(); });
     const retour = await lire();
-    if (yeux.vue !== "yeux" || yeux.colonne) fautes.push(nom + " hauteur d'yeux : " + JSON.stringify(yeux));
+    const seul = function (x) { return x.vue === "yeux" && (!x.colonne || x.rechercheSeule) && !x.chevauche; };
+    if (!seul(yeux)) fautes.push(nom + " hauteur d'yeux : " + JSON.stringify(yeux));
     if (edition.vue !== "plongee" || !edition.colonne || edition.boutons < 4 || !edition.vertical ||
       !edition.dansEcran || edition.chevauche) {
       fautes.push(nom + " édition : " + JSON.stringify(edition));
     }
-    if (retour.vue !== "yeux" || retour.colonne) fautes.push(nom + " retour : " + JSON.stringify(retour));
+    if (!seul(retour)) fautes.push(nom + " retour : " + JSON.stringify(retour));
   }
-  verifier(fautes.length === 0, "colonne d'outils en vue d'édition seulement (PC, téléphone, paysage) : absente à " +
-    "hauteur d'yeux, présente en édition (verticale, dans l'écran, sans chevaucher), masquée au retour", fautes);
+  verifier(fautes.length === 0, "outils de la colonne en vue d'édition seulement (PC, téléphone, paysage) : 🔍 seul à " +
+    "hauteur d'yeux, sans chevaucher ; outils présents en édition (verticale, dans l'écran, sans chevaucher), " +
+    "masqués au retour", fautes);
   // Jeu : lancé par le code « six vers le bas », facile, sans installation ni tracker.
   const lance = await page.evaluate(async function () {
     const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
@@ -4477,7 +4480,8 @@ async function sectionColonneEtJeu(page, MX) {
 
 // Colonne d'outils au DOIGT en paysage bas (css/vue3d.css, bloc `pointer: coarse`) : téléphone couché (852 × 393,
 // 844 × 390 ; sous Chromium aussi avec des safe areas simulées), contexte tactile, joystick. Colonne verticale, à
-// 20 px au plus du bord droit (safe area déduite), dans l'écran, les six boutons visibles sans défiler ; à 14 px au
+// 20 px au plus du bord droit (safe area déduite), dans l'écran, les sept boutons (🔍 compris) visibles sans défiler ;
+// à 14 px au
 // moins de la rangée du haut et de ⌖ (leurs zones de toucher de 44 px ne se mordent pas), sans chevaucher la grille + − ▲ ▼, ⌖, la boussole,
 // le bandeau de guidage ni celui de mesure — ⌖ et les deux bandeaux montrés de force pour le pire cas.
 const TAILLES_COLONNE_DOIGT = [{ width: 852, height: 393 }, { width: 844, height: 390 },
@@ -4578,7 +4582,7 @@ async function sectionColonnePaysage(nav) {
       await capture(page, "colonne-doigt-pire-" + t.width + "x" + t.height + (t.safe ? "-safe" : ""));
       [["normal", normal], ["pire", pire]].forEach(function (x) {
         const e = x[1];
-        if (!e.colonne || !e.coarse || e.boutons < 6 || !e.vertical || e.bordDroit > 20 || e.bordDroit < 0 ||
+        if (!e.colonne || !e.coarse || e.boutons < 7 || !e.vertical || e.bordDroit > 20 || e.bordDroit < 0 ||
           !e.dansEcran || e.ecartHaut < 14 || e.ecartPlace < 14 || e.chevauche || (x[0] === "normal" && !e.tousVus)) {
           fautes.push(nom + " " + x[0] + " : " + JSON.stringify(e));
         }
@@ -4591,7 +4595,7 @@ async function sectionColonnePaysage(nav) {
     }
   }
   verifier(fautes.length === 0, "colonne d'outils au doigt en paysage bas : verticale, contre le bord droit (≤ 20 px " +
-    "hors safe area), dans l'écran, six boutons vus, à 14 px au moins de la rangée du haut et de ⌖, sans chevaucher " +
+    "hors safe area), dans l'écran, sept boutons vus, à 14 px au moins de la rangée du haut et de ⌖, sans chevaucher " +
     "grille, boussole ni bandeaux (guidage, mesure)", fautes);
 }
 
@@ -6880,7 +6884,10 @@ async function sectionMesures3D(nav, mode) {
       await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 0, niveau: -1 }, commandes: "joystick" });
       await new Promise(function (ok) { setTimeout(ok, 250); });
       const barre = document.querySelector("#kta-vue3d .kta-v3d-outils");
-      const yeux = { vue: K.etat().vue, colonne: !!barre && !barre.hidden && barre.getBoundingClientRect().width > 0 };
+      // 🔍 y reste seul : la colonne compte ses outils de dessin montrés.
+      const outils = barre ? Array.prototype.filter.call(barre.querySelectorAll('[data-v3d="outil"]'),
+        function (x) { return x.getClientRects().length > 0; }).length : 0;
+      const yeux = { vue: K.etat().vue, colonne: outils > 0 };
       K.basculerVue();
       await new Promise(function (ok) { setTimeout(ok, 250); });
       return { yeux: yeux, niveau: K.niveauVue(), actif: C.activeLevel };
@@ -7817,6 +7824,301 @@ async function sectionFichesReglage(nav) {
     pb(nom + "exception du harnais : " + (err && err.message));
   } finally {
     await o.ctx.close();
+  }
+}
+
+// ── 43. 🔍 Recherche depuis la vue 3D (vue3d.js > allerA, _choixRecherche ; searchPoints.js > prendreChoix) ─────────
+// Pointeur fin (1200 × 800), relevé fictif vidé, plan à deux niveaux simulé (0 et −1) : un pilier, une zone, un tracé
+// au 0, un tracé au −1, un POI au 0 avec point précis, un POI au −1 (tous fictifs, en mémoire). 🔍 en tête de colonne :
+// seul à hauteur d'yeux (à droite, au milieu), juste au-dessus de 🗺️ en vue d'édition. Ctrl+K ouvre la fenêtre de la
+// carte AU-DESSUS de la vue ; Échap la ferme sans rien changer. Choisir un résultat (vrai clic dans la fenêtre) : vue
+// en libre devant l'objet, face à lui (hauteur d'yeux) ou centrée sur lui (vue d'édition), niveau changé derrière le
+// geste, fiche ouverte (point : son nom ; tracé, zone, structure : sa famille et son uid), tracker, niveau actif et
+// carte immobiles. Greffe qui coupe les fiches : 🔍 caché, choix refusé. Vue fermée : la recherche reprend la carte.
+async function sectionRecherche3D(nav) {
+  const nom = "§ 43 ";
+  console.log("§ 43 — 🔍 recherche depuis la vue 3D (y aller en 3D)");
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.addInitScript(function (ls) {
+      for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+    }, LS_PREGATES);
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0 && typeof window.ouvrirRecherche === "function";
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addStyleTag({ url: BASE + "/css/vue3d.css" });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    await page.evaluate(function () {
+      const C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      window.getPlanEditionVue3D = function () { return null; };
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = "v3d-checkup-recherche";
+      C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
+      if (window.ktaSetActiveLevel) window.ktaSetActiveLevel(0); else C.activeLevel = 0;
+      window.setPlanRenduVue3D(null, "structures");
+      window.setStructures([{ uid: "st_re_p", type: "pilier-1", level: 0, label: "Pilier recherche fictif",
+        points: [P(10, -12), P(14, -12), P(14, -8), P(10, -8)] }]);
+      window.setZones([{ uid: "zn_re_z", type: "eau", level: 0, label: "Zone recherche fictive",
+        points: [P(-14, 8), P(-10, 8), P(-10, 12), P(-14, 12)] }]);
+      window.setRoads([{ uid: "rd_re_0", type: "principal", level: 0, label: "Tracé recherche fictif",
+        points: [P(-20, -20), P(-20, 0)] },
+        { uid: "rd_re_m1", type: "principal", level: -1, points: [P(20, 10), P(20, 20)] }]);
+      window.setEditorPoints([
+        Object.assign({ id: "Repère recherche alpha fictif", nom: "Repère recherche alpha fictif", uid: "pt_re_a",
+          tags: ["salle"], level: 0, precis: P(16, 3) }, P(15, 2)),
+        Object.assign({ id: "Repère recherche beta fictif", nom: "Repère recherche beta fictif", uid: "pt_re_b",
+          tags: ["salle"], level: -1 }, P(-15, -15))]);
+      window.KtaGalerie.invalider();
+      window.__reP = P;
+      window.__reRel = function (q) { return [+(q.x / sc - ox).toFixed(2), +(q.y / sc - oz).toFixed(2)]; };
+    });
+    // Ouvre la vue (tracker en marche au centre, niveau 0), hauteur d'yeux.
+    const ouvrirVue = async function (edition) {
+      await page.evaluate(async function (ed) {
+        const K = window.KtaVue3D, P = window.__reP;
+        if (K.etat().ouvert) { window.stopTracking(); await K.fermer(); }
+        window.startTracking();
+        window.recalerTrackerSurPoint(P(0, 0).x, P(0, 0).y, 0);
+        await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 0, niveau: 0 }, commandes: "pave" });
+        if (ed) K.basculerVue();
+        for (let i = 0; i < 6; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      }, !!edition);
+    };
+    // État lu à chaque étape : place, cap, niveau, mode, fiche, tracker, carte.
+    const lire = function () {
+      return page.evaluate(function () {
+        const K = window.KtaVue3D, e = K.etat(), rel = window.__reRel, tr = window.getTrackingPosition();
+        const c = window.map.getCenter();
+        return { pos: e.pos ? rel(e.pos) : null, cap: e.cap, niveau: e.niveau, mode: e.mode, vue: e.vue, fiche: e.fiche,
+          recherche: e.recherche, actif: window.APP_CONFIG.activeLevel, tracker: tr ? rel(tr) : null,
+          trackerNiveau: window.getTrackerLevel(), carte: [+c.lat.toFixed(3), +c.lng.toFixed(3)],
+          modale: !!document.getElementById("kta-search-modal") };
+      });
+    };
+    // Choix par la fenêtre, au vrai clic : Ctrl+K, saisie, premier résultat de la catégorie voulue.
+    const choisir = async function (texte, kind) {
+      await page.keyboard.press("Control+k");
+      await attendre(page, function () { return !!document.querySelector("#kta-search-results .kta-search-result"); },
+        8000);
+      await page.fill("#kta-search-input", texte);
+      await page.waitForTimeout(450);
+      // Catégorie lue sur l'icône de la ligne (searchPoints.js > _KIND_EMOJI ; un point : son image).
+      const idx = await page.evaluate(function (k) {
+        const emoji = { road: "🛣️", zone: "⬛", structure: "🏛️" }[k];
+        const l = Array.prototype.slice.call(document.querySelectorAll("#kta-search-results .kta-search-result"))
+          .filter(function (r) {
+            const ic = r.querySelector(".kta-search-icon");
+            return k === "point" ? !!ic.querySelector("img") || ic.textContent.trim() === "📍" :
+              ic.textContent.trim() === emoji;
+          })[0];
+        return l ? Number(l.dataset.visibleIdx) : -1;
+      }, kind);
+      if (idx < 0) { await page.keyboard.press("Escape"); return false; }
+      await page.click('#kta-search-results .kta-search-result[data-visible-idx="' + idx + '"]');
+      await page.waitForTimeout(250);
+      return true;
+    };
+    const attendreGeste = async function () {
+      await page.waitForTimeout(1600);   // geste d'un changement de niveau (fondu, descente), puis l'arrivée
+    };
+    const angle = function (a, b) { const d = Math.abs(((a - b) % 360 + 540) % 360 - 180); return d; };
+    const capVers = function (de, a) {
+      return (Math.atan2(a[0] - de[0], -(a[1] - de[1])) * 180 / Math.PI + 360) % 360;
+    };
+
+    // 1. Bouton : seul à hauteur d'yeux, au-dessus de 🗺️ en vue d'édition.
+    await ouvrirVue(false);
+    const b1 = await page.evaluate(function () {
+      const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+      const r = function (el) {
+        if (!el || el.offsetParent === null) return null;
+        const b = el.getBoundingClientRect();
+        return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) };
+      };
+      const bt = q('[data-v3d="recherche"]');
+      return { recherche: r(bt), sol: r(q('[data-v3d="planSol"]')), outils: Array.prototype.filter.call(
+        document.querySelectorAll('#kta-vue3d [data-v3d="outil"]'), function (x) { return x.offsetParent !== null; })
+        .length, texte: bt && bt.textContent, aria: bt && bt.getAttribute("aria-label"), titre: bt && bt.title,
+      cle: window.I18n.t("vue3d.recherche"), etat: window.KtaVue3D.etat().recherche, vw: innerWidth, vh: innerHeight };
+    });
+    verifier(!!b1.recherche && !b1.sol && b1.outils === 0 && b1.texte === "🔍" && b1.aria === b1.cle &&
+      b1.titre === b1.cle && b1.cle !== "vue3d.recherche" && b1.etat.bouton && b1.etat.preneur &&
+      b1.recherche.x + b1.recherche.w >= b1.vw - 60 && Math.abs(b1.recherche.y + b1.recherche.h / 2 - b1.vh / 2) < 40,
+    nom + "hauteur d'yeux : 🔍 seul, à droite au milieu (🗺️ et outils cachés), libellé du dictionnaire", b1);
+    await page.evaluate(async function () {
+      window.KtaVue3D.basculerVue();
+      for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    });
+    const b2 = await page.evaluate(function () {
+      const r = function (s) {
+        const el = document.querySelector("#kta-vue3d " + s);
+        if (!el || el.offsetParent === null) return null;
+        const b = el.getBoundingClientRect();
+        return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height),
+          bas: Math.round(b.bottom) };
+      };
+      const sol = document.querySelector('#kta-vue3d [data-v3d="planSol"]');
+      return { recherche: r('[data-v3d="recherche"]'), sol: r('[data-v3d="planSol"]'),
+        suivant: sol && sol.previousElementSibling && sol.previousElementSibling.dataset.v3d };
+    });
+    verifier(!!b2.recherche && !!b2.sol && b2.recherche.x === b2.sol.x && b2.recherche.w === b2.sol.w &&
+      b2.recherche.bas <= b2.sol.y + 1 && b2.sol.y - b2.recherche.bas < 12 && b2.suivant === "recherche",
+    nom + "vue d'édition : 🔍 juste au-dessus de 🗺️, même colonne, même taille", b2);
+    await page.evaluate(async function () {
+      window.KtaVue3D.basculerVue();
+      for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    });
+
+    // 2. Ctrl+K au-dessus de la vue, Échap sans choix : rien ne change.
+    const av = await lire();
+    await page.keyboard.press("Control+k");
+    await attendre(page, function () { return !!document.getElementById("kta-search-modal"); }, 5000);
+    const dessus = await page.evaluate(function () {
+      const boite = document.querySelector("#kta-search-modal .kta-readme-modal-boite").getBoundingClientRect();
+      const el = document.elementFromPoint(boite.left + boite.width / 2, boite.top + 30);
+      const centre = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+      return { boite: !!el && !!el.closest("#kta-search-modal"),
+        centre: !!centre && !!centre.closest("#kta-search-modal"),
+        vue: !!document.getElementById("kta-vue3d"), focus: document.activeElement && document.activeElement.id };
+    });
+    await page.waitForTimeout(300);
+    const focus = await page.evaluate(function () { return document.activeElement && document.activeElement.id; });
+    // Les flèches tapées dans la fenêtre ne déplacent pas la vue dessous.
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    const ap = await lire();
+    verifier(dessus.boite && dessus.centre && dessus.vue && focus === "kta-search-input",
+      nom + "Ctrl+K vue ouverte : la fenêtre de la carte s'ouvre au-dessus de la vue, saisie prête", { dessus, focus });
+    verifier(!ap.modale && JSON.stringify(ap.pos) === JSON.stringify(av.pos) && ap.cap === av.cap && !ap.fiche &&
+      ap.mode === av.mode && JSON.stringify(ap.carte) === JSON.stringify(av.carte) && ap.recherche.allees === 0,
+    nom + "Échap sans choix : fenêtre fermée, vue, place, mode et carte inchangés, vue toujours ouverte",
+      { av: av, ap: ap, ouverte: await page.evaluate(function () { return window.KtaVue3D.etat().ouvert; }) });
+
+    // 3. POI du même niveau, à point précis : place devant le point précis, face à lui, fiche, tracker immobile.
+    const a0 = await lire();
+    const okA = await choisir("recherche alpha", "point");
+    const a1 = await lire();
+    const dA = Math.hypot(a1.pos[0] - 16, a1.pos[1] - 3);
+    verifier(okA && !a1.modale && a1.mode === "libre" && a1.fiche && a1.fiche.nom === "Repère recherche alpha fictif" &&
+      a1.recherche.kind === "point" && dA >= 1.9 && dA <= 8.1 &&
+      angle(a1.cap, capVers(a1.pos, [16, 3])) < 2 && a1.niveau === 0 &&
+      JSON.stringify(a1.tracker) === JSON.stringify(a0.tracker) && a1.trackerNiveau === 0 &&
+      JSON.stringify(a1.carte) === JSON.stringify(a0.carte),
+    nom + "POI choisi : vue en libre devant son point précis (" + dA.toFixed(1) + " m), face à lui, sa fiche ; " +
+      "tracker et carte immobiles", { a0: a0, a1: a1 });
+
+    // 4. POI d'un autre niveau : geste, niveau de la 3D au −1, fiche ; niveau actif et tracker au 0.
+    const okB = await choisir("recherche beta", "point");
+    await attendreGeste();
+    const bb = await lire();
+    const dB = Math.hypot(bb.pos[0] + 15, bb.pos[1] + 15);
+    verifier(okB && bb.niveau === -1 && bb.fiche && bb.fiche.nom === "Repère recherche beta fictif" && dB <= 8.1 &&
+      bb.actif === 0 && bb.trackerNiveau === 0 && JSON.stringify(bb.tracker) === JSON.stringify(a0.tracker) &&
+      bb.recherche.niveau === -1,
+    nom + "POI du −1 : la 3D passe au −1 (geste), place devant lui, sa fiche ; niveau actif et tracker au 0", bb);
+
+    // 5. Tracé, zone, structure (retour au 0) : fiche de l'objet, comme un toucher.
+    const obj = {};
+    for (const q of [["Tracé recherche fictif", "road"], ["Zone recherche fictive", "zone"],
+      ["Pilier recherche fictif", "structure"]]) {
+      const ok = await choisir(q[0], q[1]);
+      await attendreGeste();
+      const f = await lire();
+      obj[q[1]] = ok && f.fiche ? { famille: f.fiche.famille, uid: f.fiche.uid, niveau: f.niveau, pos: f.pos,
+        cap: f.cap, kind: f.recherche.kind, tracker: f.tracker, carte: f.carte, masque: f.recherche.masque } : null;
+    }
+    const cib = { road: [-20, -10], zone: [-12, 10], structure: [12, -10] };
+    const faceA = function (k) { const o = obj[k]; return !!o && angle(o.cap, capVers(o.pos, cib[k])) < 2; };
+    verifier(!!obj.road && obj.road.famille === "roads" && obj.road.uid === "rd_re_0" && obj.road.niveau === 0 &&
+      obj.road.kind === "road" && faceA("road") && !obj.road.masque &&
+      !!obj.zone && obj.zone.famille === "zones" && obj.zone.uid === "zn_re_z" && faceA("zone") &&
+      !!obj.structure && obj.structure.famille === "structures" && obj.structure.uid === "st_re_p" &&
+      faceA("structure") &&
+      JSON.stringify(obj.structure.tracker) === JSON.stringify(a0.tracker) &&
+      JSON.stringify(obj.structure.carte) === JSON.stringify(a0.carte),
+    nom + "tracé (retour au 0), zone, pilier : fiche de l'objet, place face à son milieu, tracker et carte immobiles",
+      obj);
+    // Pilier : place hors du pilier (première place libre), à 2 m au moins de son centre.
+    const dS = obj.structure ? Math.hypot(obj.structure.pos[0] - 12, obj.structure.pos[1] + 10) : 0;
+    verifier(dS >= 2.9, nom + "pilier : la place n'est pas dans le pilier (" + dS.toFixed(1) + " m de son centre)", dS);
+
+    // 6. Vue d'édition : place à 2 m de la cible, cap gardé (la caméra vise la cible).
+    await ouvrirVue(true);
+    const e0 = await lire();
+    await choisir("recherche alpha", "point");
+    const e1 = await lire();
+    const ecart = e1.pos ? [+(e1.pos[0] - 16).toFixed(2), +(e1.pos[1] - 3).toFixed(2)] : null;
+    const vise = await page.evaluate(function () { return window.KtaVue3D.etat().camera.vise; });
+    verifier(e1.vue === "plongee" && e1.cap === e0.cap && e1.fiche &&
+      e1.fiche.nom === "Repère recherche alpha fictif" &&
+      Math.abs(Math.hypot(ecart[0], ecart[1]) - 2) < 0.05 && vise === null,
+    nom + "vue d'édition : place à 2 m devant le point précis, cap gardé, caméra rattachée, fiche", { e0, e1, vise });
+
+    // 7. Greffe qui coupe les fiches (jeu) : 🔍 caché, choix refusé (vue et carte immobiles).
+    const g = await page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      if (K.etat().vue === "plongee") K.basculerVue();
+      window.__reDeg = K.greffer({ nom: "v3d-recherche", scene: function (c) { c.regler({ fiches: false }); } });
+      for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      return K.etat().recherche;
+    });
+    const g0 = await lire();
+    await choisir("recherche beta", "point");
+    const g1 = await lire();
+    await page.evaluate(async function () {
+      if (window.__reDeg) window.__reDeg();
+      for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    });
+    const g2 = await page.evaluate(function () { return window.KtaVue3D.etat().recherche; });
+    verifier(!g.bouton && JSON.stringify(g1.pos) === JSON.stringify(g0.pos) && g1.niveau === g0.niveau && !g1.fiche &&
+      JSON.stringify(g1.carte) === JSON.stringify(g0.carte) && g1.recherche.allees === g0.recherche.allees && g2.bouton,
+    nom + "greffe sans fiches : 🔍 caché, choix refusé (vue et carte immobiles), 🔍 revenu au retrait",
+      { g: g, g0: g0, g1: g1, g2: g2 });
+
+    // 8. Vue fermée : la recherche montre de nouveau le résultat sur la carte (2D inchangée).
+    await page.evaluate(async function () { window.stopTracking(); await window.KtaVue3D.fermer(); });
+    const c0 = await lire();
+    await choisir("recherche alpha", "point");
+    const c1 = await page.evaluate(function () {
+      const c = window.map.getCenter(), P = window.__reP(15, 2), ll = window.convertCoord(P.x, P.y);
+      return { carte: [+c.lat.toFixed(3), +c.lng.toFixed(3)], poi: [+ll[0].toFixed(3), +ll[1].toFixed(3)],
+        vue: window.KtaVue3D.etat().ouvert };
+    });
+    // La bulle ouverte décale la carte vers le haut (autoPan) : centrée en x, déplacée en y.
+    verifier(!c1.vue && Math.abs(c1.carte[1] - c1.poi[1]) < 1 && JSON.stringify(c1.carte) !== JSON.stringify(c0.carte),
+      nom + "vue fermée : choisir un résultat déplace de nouveau la carte sur lui (comportement 2D)",
+      { c0: c0.carte, c1 });
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await ctx.close();
   }
 }
 
@@ -8867,7 +9169,7 @@ async function sectionGestesDoigt(nav) {
       if (CAPTURES) await capturesDessin(page);
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
-      SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile") {
+      SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -9268,7 +9570,9 @@ async function sectionGestesDoigt(nav) {
             "ui.refonte.counter_sortie_title", "vue3d.reglages",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.zoomPlus", "vue3d.inclinaisonPlus", "vue3d.zoomMoins", "vue3d.inclinaisonMoins",
-            "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "vue3d.dessin.planSol", "ui.group.mesure", "ui.group.edition", "ui.group.traces", "ui.group.zones", "ui.group.structures",
+            "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "vue3d.recherche",
+            "vue3d.dessin.planSol", "ui.group.mesure", "ui.group.edition", "ui.group.traces", "ui.group.zones",
+            "ui.group.structures",
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer", "vue3d.fichesMontrer",
             "vue3d.lampeJourAide", "vue3d.limiterAide"].map(function (k) {
@@ -15119,6 +15423,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "gestes") await sectionGestesDoigt(nav);
     if (!SEUL || SEUL === "colonne") await sectionColonnePaysage(nav);
     if (!SEUL || SEUL === "tuile") await sectionTuileDefile(nav);
+    if (!SEUL || SEUL === "recherche") await sectionRecherche3D(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

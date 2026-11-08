@@ -672,6 +672,7 @@ Where and how a way through is drawn:
 - **Touching a structure, a zone or a trace** (pillar, wall, face, zone, tunnel) opens **its card**, the same as on the map: note, 🔄 Convert, level, 🗑️ Delete. On a data layer it is read-only.
 - A point's sign comes first. Touching empty space does nothing.
 - **🗺️ Show on the map**, at the bottom of the card: the 3D view closes, the map centres on the object, opens its card and highlights it for a few seconds.
+- **🔍 Search**, on the right in the middle (above 🗺️ in ✏️ Edit), or **Ctrl+K** (⌘K on Mac): the same window as on the map (points, paths, zones, structures, same filters), above the view. Choosing a result takes you there **in 3D**: the view switches to free mode (the tracker does not move), changes level if needed, stands in front of the object (the precise spot of a point that has one) and opens its card. The map underneath does not move. Closing the window without choosing changes nothing. During a game, search is not offered.
 - In the 🛣️ Tunnels rendering, pillars and walls are not drawn: touching a tunnel wall opens the trace's card.
 - **🧭 Go there**: in follow mode the route starts from the tracker. In free mode it starts from **where you are in 3D**, level included, without moving the tracker.
 - Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there; as when closing, this jump does not count as a field outing).
@@ -722,6 +723,7 @@ Where and how a way through is drawn:
 - **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.
 - **📏 Total distance** and **⛏️ Mined volume** are in 📐 too: their window opens over the view and counts **the 3D view's level**. The sections counted by 📏 are highlighted in magenta on the ground, as on the map (with **All levels** ticked, 📏 counts the whole map, but the 3D ground only shows its own level: the window says so); **❌ Clear highlight** clears it from both. ⛏️ uses the ♦️ Area you drew in the 3D view.
 - **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey, at every level: the level's own image if the plan has one, otherwise the base plan.
+- **🔍 Search** heads the column, above 🗺️; at eye level it stays there alone.
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
 - **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
 - In read-only mode, the drawing tools stay greyed out, as on the map; 📐 Measurement stays allowed.
