@@ -11932,7 +11932,8 @@ async function sectionGestesDoigt(nav) {
       const aide = await page.evaluate(function () {
         const sm = document.getElementById("kta-aide-submodal");
         return { ouverte: !!sm, texte: sm ? sm.textContent.slice(0, 300) : "", recouverte: window.KtaVue3D.etat().recouverte,
-          attendu: window.I18n.t("aide.sec.vue-3d.titre") };
+          // Titre sans son emoji : l'Aide montre l'icône SVG du bouton à sa place (js/ktaIcones.js > DOC).
+          attendu: window.I18n.t("aide.sec.vue-3d.titre").replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "").trim() };
       });
       verifier(aide.ouverte && aide.recouverte && aide.texte.indexOf(aide.attendu) >= 0,
         "❓ ouvre l'aide « Vue 3D » au-dessus de la vue", aide);
