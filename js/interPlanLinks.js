@@ -1329,6 +1329,10 @@
   // collectPointsForPlan lit un plan distant. Les snapshots convergent à l'usage.
   // Correspondance par pointId (stable, suit un déplacement), sinon par coords arrondies (seuls nom / level / tag
   // d'un point retrouvé sur place se resynchronisent).
+  // ⚠️ Contrat : remise à jour LOCALE — ni updatedAt touché, ni `mktm:liaisons-changees`. 🩸 Annoncée, elle partait
+  // vers l'extension comme une écriture neuve : deux appareils qui voient le point un peu différemment (calque en
+  // modification ici, calque d'origine là) réécrivaient la liaison à chaque ouverture et défaisaient sa suppression.
+  // Seuls les gestes (onPointMoved, onPointLevelChanged…) écrivent. Garde-fou : check-extensions.js.
   function _resyncSnapshotsForPlan(planId, pts) {
     if (!planId || !Array.isArray(pts) || pts.length === 0) return 0;
     const byId = {}, byXy = {};
@@ -1341,7 +1345,6 @@
     });
     const reg = _load();
     let changed = 0;
-    const ids = [];
     reg.links.forEach(function(l) {
       ["a", "b"].forEach(function(s) {
         const side = l[s];
@@ -1360,13 +1363,11 @@
           side.level = lvl;
           side.tag = tag;
           changed++;
-          if (ids.indexOf(l.id) < 0) { _toucher(l); ids.push(l.id); }
         }
       });
     });
     if (changed > 0) {
       _save(reg);
-      _annoncer(ids, "modification");
       console.log("[InterPlanLinks] Resync snapshots « " + planId + " » : " + changed + " côté(s) mis à jour");
     }
     return changed;

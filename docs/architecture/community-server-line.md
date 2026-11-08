@@ -642,7 +642,10 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
 - **Liaisons inter-plan** (`js/interPlanLinks.js`, registre de l'appareil) : **sortant**, événement
   `mktm:liaisons-changees` sur `window`, `detail = { ids, action, source? }`, `action` ∈ `creation` | `modification` |
   `suppression`, émis APRÈS l'écriture du registre (création, suppression, point déplacé / changé de niveau / supprimé,
-  resynchro des snapshots, rattachement à l'uid, plan transféré). Chaque liaison écrite porte `updatedAt` (ms).
+  rattachement à l'uid, plan transféré). Chaque liaison écrite porte `updatedAt` (ms). 🩸 La **resynchro automatique
+  des snapshots** (ouverture d'un plan, lecture d'un plan distant) reste **locale** : ni `updatedAt` touché, ni
+  événement — annoncée, elle repartait comme une écriture neuve et deux appareils qui voient le point un peu
+  différemment défaisaient la suppression d'une liaison partagée à chaque ouverture.
   `source: "import"` = fusion d'un export (session, ZIP, profil), pas un geste ; `source: "extension"` = déposé par
   l'extension. **Entrant** : `InterPlanLinks.appliquerExterne({ liens, retirer })` (remplace ou ajoute par id, retire
   les ids donnés ; annonce seulement avec `source: "extension"`) → `{ ecrites, retirees }`. **Prise** `liaisons: {

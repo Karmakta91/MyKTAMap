@@ -482,15 +482,15 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 l'extension reçoit une COPIE du lien (elle ne réécrit pas le registre)", vu && L0.id === "ipl_x");
 
     // Vrai module, faux navigateur : registre, événements émis (avec leur détail), extension facultative.
-    const ipl = (ext) => {
+    const ipl = (ext, plus) => {
       const store = {}, emis = [];
-      const w = {
+      const w = Object.assign({
         console: { log() {}, warn() {}, error() {} },
         localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } },
         CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; },
         dispatchEvent(e) { emis.push(e); return true; }, addEventListener() {}, removeEventListener() {},
         KtaExtensions: ext || undefined, setTimeout: setTimeout
-      };
+      }, plus || {});
       w.window = w;
       const ctx = vm.createContext(w);
       vm.runInContext("var localStorage = window.localStorage, CustomEvent = window.CustomEvent, console = window.console;", ctx);
@@ -529,6 +529,33 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       L.onPointDeleted("p1", { uid: "pt_a", id: "pt_a" });
       t("🩸 liaison que l'extension dit non modifiable : gardée quand son point est supprimé, rien d'annoncé",
         L.getAllLinks().length === 1 && ev().length === avant);
+    }
+    {
+      // Resync automatique des instantanés : LOCAL. Annoncé, il repartait vers l'extension comme une écriture neuve
+      // (updatedAt = maintenant) et deux appareils qui voient le point un peu différemment réécrivaient la liaison
+      // à chaque ouverture du plan, jusqu'à défaire sa suppression.
+      const ext = { liaisonModifiable: () => true, liaisonInfo: () => "", liaisonActions: () => [] };
+      const frais = { uid: "pt_a", id: "pt_a", nom: "renomme", x: 7, y: 8, level: 1, tags: ["puits"] };
+      const { L, ev } = ipl(ext, {
+        setTimeout: (fn) => { fn(); return 0; },
+        _currentLoadedPlanId: "p1",
+        SearchPoints: { getAllPoints: () => Promise.resolve([{ point: frais, layerId: "editor" }]) },
+        KtaSessionStore: { lire: () => JSON.stringify({ editorPoints: [Object.assign({}, frais, { nom: "autre" })] }) }
+      });
+      L.appliquerExterne({ liens: [{ id: "ipl_r", a: cote("p1", "pt_a"), b: cote("p2", "pt_b"), updatedAt: 1000 }] });
+      const avant = ev().length;
+      L.onPlanLoaded();
+      await new Promise((r) => setTimeout(r, 20));
+      const apresOuverture = L.getAllLinks()[0];
+      await L.collectPointsForPlan({ id: "p1", type: "local" }, {});
+      const apresLecture = L.getAllLinks()[0];
+      t("🩸 resync des instantanés (ouverture du plan, lecture d'un plan distant) : instantané à jour, updatedAt " +
+        "INCHANGÉ, rien d'annoncé à l'extension",
+        apresOuverture.a.pointNom === "renomme" && apresOuverture.a.x === 7 && apresOuverture.a.level === 1 &&
+        apresLecture.a.pointNom === "autre" && apresLecture.updatedAt === 1000 && ev().length === avant);
+      L.onPointLevelChanged("p1", Object.assign({}, frais, { level: 2 }));
+      t("…mais un geste (point changé d'étage) reste une écriture : updatedAt neuf, « modification » annoncée",
+        L.getAllLinks()[0].updatedAt > 1000 && ev().length === avant + 1 && ev()[avant].action === "modification");
     }
     const IPL = lire("js/interPlanLinks.js");
     t("🩸 suppression confirmée : refusée si l'extension dit la liaison non modifiable (🗑️ masquée aussi)",
