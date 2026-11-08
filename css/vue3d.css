@@ -127,6 +127,9 @@ html.kta-theme-light .kta-v3d-mode-indic {
    vertical, le doigt posé sur une ligne ne fait pas défiler, et le bas de la tuile reste hors d'atteinte en paysage. */
 .kta-v3d-reglages .kta-v3d-btn { touch-action: pan-y; }
 .kta-v3d-reglages[hidden] { display: none; }
+/* 🩸 Un bouton de la tuile masqué par `hidden` (🎮 Add-ons sans add-on visible) : le `display: flex` ci-dessous
+   l'emporterait sur l'attribut (même spécificité, plus loin : d'où l'identifiant). */
+#kta-vue3d .kta-v3d-reglages .kta-v3d-btn[hidden] { display: none; }
 .kta-v3d-reglages-ligne { display: flex; gap: 4px; }
 /* Ligne de réglage : celle de la fenêtre ⚙️ Réglages (13 px, gras, rayon 6, liseré discret, survol bleu). */
 .kta-v3d-reglages .kta-v3d-btn.kta-v3d-btn-mode {

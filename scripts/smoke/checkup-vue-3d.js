@@ -5224,7 +5224,8 @@ async function sectionAddonsVisibles(nav) {
         q('[data-v3d="reglages"]').click();
         await pause(50);
         const b = q('[data-v3d="addons"]');
-        return b && !b.hidden && b.getClientRects().length > 0 ? b : null;
+        // Affiché à l'écran, pas seulement sans `hidden` : une règle display de la tuile l'emportait sur l'attribut.
+        return b && b.getClientRects().length > 0 ? b : null;
       };
       const out = {};
       window.__lances = [];
@@ -10180,7 +10181,9 @@ async function sectionGestesDoigt(nav) {
         const ouverte = !t.hidden;
         if (!ouverte) document.querySelector('#kta-vue3d [data-v3d="reglages"]').click();
         await new Promise(function (r) { setTimeout(r, 100); });
-        const dernier = t.lastElementChild;
+        // Dernier réglage AFFICHÉ (🎮 Add-ons, masqué sans add-on visible, n'a pas de boîte).
+        const vus = Array.prototype.filter.call(t.children, function (c) { return c.getClientRects().length > 0; });
+        const dernier = vus[vus.length - 1];
         dernier.scrollIntoView({ block: "nearest" });
         await new Promise(function (r) { setTimeout(r, 100); });
         const rt = t.getBoundingClientRect(), rd = dernier.getBoundingClientRect();
