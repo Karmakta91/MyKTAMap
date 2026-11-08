@@ -400,11 +400,14 @@ Listener global `keydown` au top du module IIFE (donc actif dès le chargement).
   - Popup info adapté : label + type FR + niveau + nb points + layer
   - Auto-cleanup après **4 sec** (vs 3 sec pour les points — donne plus de temps de visualiser un polygone qu'un cercle)
 
-#### 46.7 API publique inchangée
+#### 46.7 API publique
 
 Pour ne pas casser Pathfinder + Itinéraire :
 - `window.SearchPoints.getAllPoints()` → toujours `[{point, layerId, layerLabel}]` (format point-only)
 - `window.SearchPoints.findByQuery(q)` → idem
+- `window.SearchPoints.prendreChoix(fn)` → fonction qui retire le preneur : pendant qu'un module recouvre la carte
+  (vue 3D), `_aller` donne le résultat choisi à `fn({ kind, item, layerId, label })` au lieu de déplacer la carte ;
+  `true` = pris. Fenêtre, portée et filtres inchangés. Usage : `tracking.md` § Vue 3D › Rechercher.
 
 Le format unifié (avec `kind`) est strictement INTERNE au module pour le rendu UI.
 

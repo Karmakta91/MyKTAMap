@@ -7,7 +7,8 @@
 // searchPoints.js — recherche dans le plan ouvert (Ctrl/Cmd+K) : points (calques + session), tracés,
 //   zones, structures (session + embarqués) ; saisie « lat, lng » sur un plan géoréférencé.
 //   Résultats groupés par catégorie ; un clic centre la carte, ouvre le popup et fait clignoter l'objet.
-// Expose : window.ouvrirRecherche, window.SearchPoints (getAllPoints, findByQuery : points seuls).
+// Expose : window.ouvrirRecherche, window.SearchPoints (getAllPoints, findByQuery : points seuls ;
+//   prendreChoix(fn) : le choix d'un résultat va à fn au lieu de la carte, vue 3D ouverte : vue3d.js > _allerA).
 
 (function() {
   "use strict";
@@ -18,6 +19,7 @@
   let _filtreTimer = null;
   let _visibles    = [];            // liste actuellement affichée (référence pour les clics)
   let _flashLayer  = null;          // pour l'animation visuelle
+  let _preneur     = null;          // SearchPoints.prendreChoix : qui reçoit le résultat choisi (sinon la carte)
 
   // Filtres remis à zéro à chaque ouverture. Set vide = tout.
   let _filterLayers = new Set();    // Set<layerId> — vide = tous les calques
@@ -288,6 +290,15 @@
         if (Array.isArray(p.tags) && p.tags.some(function(t) { return _normalize(t).indexOf(q) >= 0; })) return true;
         return false;
       });
+    },
+    // ⚠️ contrat : pendant qu'un module recouvre la carte (vue 3D), le résultat choisi lui est donné au lieu de
+    // déplacer la carte dessous : fn({ kind: "point"|"road"|"zone"|"structure", item (l'objet lui-même), layerId,
+    // label }) → true s'il l'a pris (false : la carte le montre, comme sans preneur). Un seul preneur (le dernier) ;
+    // rend la fonction qui le retire (sans effet si un autre a pris la place). Fenêtre, portée et filtres inchangés.
+    prendreChoix: function(fn) {
+      if (typeof fn !== "function") return function() {};
+      _preneur = fn;
+      return function() { if (_preneur === fn) _preneur = null; };
     }
   };
 
@@ -1264,6 +1275,15 @@
     if (_modal) _modal.remove();
     _modal = null;
     if (_filtreTimer) { clearTimeout(_filtreTimer); _filtreTimer = null; }
+
+    if (_preneur) {
+      let pris = false;
+      try {
+        pris = _preneur({ kind: item.kind, item: item.item || item.point, layerId: item.layerId,
+          label: item.label }) === true;
+      } catch (err) { console.warn("[SearchPoints] preneur du choix :", err && err.message); }
+      if (pris) return;
+    }
 
     if (item.kind === "point") {
       _allerVersPoint(item);
