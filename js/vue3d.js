@@ -109,6 +109,9 @@
   const PANNEAU_LETTRE_MIN = 13;
   // Rayon vu en plongée : 2,3 m de sol par mètre de recul (au recul par défaut, 1,4 × la portée de 30 m).
   const SOL_PAR_RECUL = 2.3;
+  // Plan proche de la caméra plongeante par mètre de recul (_appliquerPortee) : 1/32 = un huitième de la hauteur de
+  // la caméra à l'inclinaison la plus faible (recul · sin 15°), au-dessus de tout volume dès quelques mètres de recul.
+  const PROCHE_PAR_RECUL = 1 / 32;
   // Rayon construit (tuiles, volumes, panneaux) que le recul peut atteindre (m). Au-delà, sol, plan au sol et
   // brouillard suivent la vue (_rayonVue), la scène non. 🩸 Vue de haut, tout le disque construit est à l'écran : le
   // coût suit ce rayon, pas le recul. Sans plafond, 150 m de recul = 345 m de tuiles, 50 ms par image et 29 s de
@@ -169,6 +172,12 @@
   // Ordre de rendu du sol (carré qui suit et sol des galeries) : avant tout le reste, pour que le plan au sol
   // (PLAN_SOL.ordre) se pose dessus sans dépendre de la profondeur.
   const ORDRE_SOL = -0.6;
+  // 🩸 Sol (carré qui suit, pièces des galeries, sols des voisins : copies) reculé de quelques unités de profondeur :
+  // eau (4 cm, profondeur stricte en tube), hachures, rubans et liserés posés dessus gagnent toujours, même quand la
+  // profondeur ne sépare plus quelques centimètres (vue d'édition dézoomée : bandes et triangles du sol dans l'eau).
+  // ⚠️ Facteur de pente NUL : il vaut un pixel de profondeur, des mètres au loin à angle rasant, et laissait passer
+  // les volumes du niveau du dessous à travers le sol.
+  const SOL_RECULE = { polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: 4 };
   // Mode galerie : parois des galeries et des tubes en pierre de taille (🧱 Textures activé, PIERRE ci-dessous) ou
   // en moellons de calcaire taillés (🧱 coupé : assises horizontales à joints décalés, dessinées dans un canvas comme
   // le grain du sol), liseré au sol de la couleur du tracé, POI proches seulement. Pierre plus claire et plus grise
@@ -2613,10 +2622,10 @@
       hachSol: _hachurer(new THREE.MeshLambertMaterial({ vertexColors: true })),
       hachRideau: _hachurer(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.55,
         depthWrite: false, side: THREE.DoubleSide })),
-      sol: new THREE.MeshLambertMaterial({ map: grain }),
+      sol: new THREE.MeshLambertMaterial(Object.assign({ map: grain }, SOL_RECULE)),
       plafond: new THREE.MeshLambertMaterial({ map: grain, side: THREE.BackSide }),
       avatar: new THREE.MeshBasicMaterial({ color: 0xf4c542 }),
-      solGalerie: new THREE.MeshLambertMaterial({ map: monde }),
+      solGalerie: new THREE.MeshLambertMaterial(Object.assign({ map: monde }, SOL_RECULE)),
       plafondGalerie: new THREE.MeshLambertMaterial({ map: monde }),
       paroi: new THREE.MeshLambertMaterial({ map: _e.moellons, side: THREE.DoubleSide }),
       paroiUnie: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
@@ -5007,10 +5016,10 @@
     e.scene.fog.near = sansBrume ? 1e7 : haut ? e.recul + (l.jour ? 0 : r * 0.3) : e.distance * brume;
     e.scene.fog.far = sansBrume ? 1e7 + 1 : loin;
     e.camera.far = loin + (haut ? 10 : 5);
-    // 🩸 Au-delà de RECUL.max (portée non limitée), un plan proche de 5 cm ne laisse plus assez de précision de
-    // profondeur au loin (rubans au sol qui scintillent) : il recule avec la caméra, qui reste à plus de
-    // recul · sin(15°) de tout objet.
-    e.camera.near = haut && e.recul > RECUL.max ? e.recul / 300 : 0.05;
+    // 🩸 En vue d'édition, le plan proche suit le recul (PROCHE_PAR_RECUL), sans saut : à 5 cm pour 150 m de recul
+    // (cas du téléphone, 🛡️ recochée à chaque ouverture), la profondeur ne séparait plus l'eau du sol (10 cm d'écart
+    // minimal en haut de l'écran). La caméra reste à plus de recul · sin(15°) du point visé, au-dessus des volumes.
+    e.camera.near = haut ? Math.max(0.05, e.recul * PROCHE_PAR_RECUL) : 0.05;
     e.camera.updateProjectionMatrix();
     const cote = 2.4 * r;
     e.sol.scale.set(cote, 1, cote);
@@ -10004,6 +10013,18 @@
       }),
       desencombre: e.desencombre ? Object.assign({}, e.desencombre) : null,
       murDecale: e.mats.murs.polygonOffset === true,
+      // Recul en profondeur du sol (SOL_RECULE) et des matériaux posés dessus, plans de la caméra (checkup § 45).
+      profondeur: (function () {
+        const d = function (m) {
+          return { decale: m.polygonOffset === true, facteur: m.polygonOffsetFactor, unites: m.polygonOffsetUnits };
+        };
+        const sol = [e.mats.sol, e.mats.solGalerie].concat(e.matsV ? [e.matsV.sol, e.matsV.solGalerie] : []).map(d);
+        const zones = ["transp", "hachSol", "opaque", "eauGalerie", "rubans"].map(function (k) {
+          const m = e.mats[k];
+          return { mat: k, recule: m.polygonOffset === true && (m.polygonOffsetFactor > 0 || m.polygonOffsetUnits > 0) };
+        });
+        return { near: e.camera.near, far: e.camera.far, sol: sol, zones: zones };
+      })(),
       commandes: e.commandes, pave: !!e.pave && e.pave.isConnected,
       stick: e.stickZone ? _etatStick() : null, toucheNom: e.toucheNom, codesBas: e.codesBas,
       greffe: e.greffe ? { nom: e.greffe.nom, appels: Object.assign({}, e.greffe.appels),

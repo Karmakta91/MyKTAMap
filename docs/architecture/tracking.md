@@ -1823,8 +1823,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   reste celle qui revient case cochée) = la **diagonale de l'emprise** (`_diagPlan` : image du plan et objets
   indexés, un objet hors image compris) ; recul de la vue d'édition jusqu'à cette diagonale (`_reculMax`) ; rayon
   construit sans plafond ; aucun brouillard (repoussé hors de vue, nuit et Plein jour) et ciel noir, Plein jour compris ; profondeur et lampe suivent la portée.
-  Au-delà de 150 m de recul, le plan proche de la caméra recule (recul / 300) : sinon les rubans au sol scintillent
-  au loin. ⚠️ contrat : au doigt (`ktaAppareilTactile`), la case **revient cochée à chaque ouverture** (réécrite) ;
+  **Profondeur en vue d'édition** (`_appliquerPortee`, `SOL_RECULE`) : le plan proche de la caméra suit le recul
+  (`PROCHE_PAR_RECUL` = 1/32, 5 cm au moins, sans saut à 150 m) ; le sol (carré qui suit, pièces des galeries, sols
+  des voisins) est reculé de 4 unités de profondeur, **facteur de pente nul** (un facteur de pente vaut un pixel de
+  profondeur, des mètres au loin à angle rasant : le niveau du dessous passerait à travers le sol). Sans cela, au
+  recul de 150 m (cas du téléphone, case recochée à chaque ouverture), l'eau d'un tube (profondeur stricte, 4 cm
+  au-dessus du sol) se hachurait de bandes et de triangles du sol. Checkup § 45 (`KTA_V3D_SEUL=solzones`).
+  ⚠️ contrat : au doigt (`ktaAppareilTactile`), la case **revient cochée à chaque ouverture** (réécrite) ;
   au pointeur fin, décochée reste décochée. Une greffe qui fige les réglages (`reglagesFiges`, jeu) limite la portée
   (`_limitee`), grise la case et refuse `limiterPortee` / `reglerPortee` sans rien écrire. Recocher ramène recul et
   portée sous leurs bornes. Version brute : tout le plan est construit en pleine définition (pas d'allègement du

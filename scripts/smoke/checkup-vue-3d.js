@@ -91,6 +91,8 @@
 // Réglage ⚙️ Fiches (37, =fiches) : défaut selon le pointeur, coupé = rien sur pilier, zone, tracé (POI : sa fiche), retenu.
 // Niveaux voisins (44, =voisins) : voisins / tous / le mien à leur altitude, tuile ⚙️, vue d'édition, pas jamais capté,
 // passages entre les altitudes réelles et arrivée inchangée, galerie inclinée, données incohérentes, téléphone, coût.
+// Sol et zones en vue d'édition dézoomée (45, =solzones) : plan proche qui suit le recul, sol reculé en profondeur
+// (unités seules), eau sans bandes du sol (structures, mixte ; 150 m et tout le plan), niveau du dessous invisible.
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
@@ -9358,6 +9360,209 @@ async function sectionNiveauxVoisins(nav) {
   }
 }
 
+// ── 45. Sol et zones en vue d'édition dézoomée (vue3d.js > _appliquerPortee, _materiaux ; KTA_V3D_SEUL=solzones) ────
+// Plan multi-niveau FICTIF en mémoire (relevé fictif vidé), rendu structures, 🧱 coupé (sol noir opaque) : au 0, une
+// grande zone d'eau à l'ouest (4 cm au-dessus du sol), sol nu à l'est ; au −1 (4 m dessous), un grand remblais sous
+// ce sol nu. Vue d'édition au recul le plus grand (150 m cochée, diagonale du plan décochée).
+// Grandeurs déterministes (le scintillement dépend du GPU) : plan proche proportionnel au recul (précision de
+// profondeur au point visé ≤ 1 cm, quatre fois moins que l'écart de l'eau), sans saut à 150 m ; sol du niveau actif et
+// des voisins reculé en profondeur (polygonOffset), zones posées au sol jamais reculées. Pixels lus (Chromium et
+// WebKit) : eau sans trous noirs du sol, aucun pixel du −1 à travers le sol opaque (« Voisins » = « Le mien »).
+async function sectionSolZones(nav) {
+  const nom = "§ 45 ";
+  console.log("§ 45 — sol et zones en vue d'édition dézoomée");
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.addInitScript(function (l) {
+      for (const k in l) { try { localStorage.setItem(k, l[k]); } catch (e) {} }
+    }, LS_PREGATES);
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1200);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+      window.getPlanEditionVue3D = function () { return null; };
+    });
+    await page.addStyleTag({ url: BASE + "/css/vue3d.css" });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    await page.evaluate(function () {
+      const C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-solzones";
+      const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+      const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = PID;
+      window.ktaEstAccessible = function () { return true; };
+      C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
+      window.ktaSetActiveLevel(0);
+      window.setStructures([]); window.setEditorPoints([]);
+      // Tubes nord-sud jointifs (2,5 m de large tous les 2,5 m) à l'ouest : en mixte, l'eau y est découpée (matériau
+      // de l'eau des galeries) ; en structures, l'eau est entière (matériau transparent des chambres).
+      const tubes = [];
+      for (let x = -300; x <= -4; x += 2.5) {
+        tubes.push({ uid: "rd_sz_" + tubes.length, type: "principal", level: 0, points: [P(x, -400), P(x, 400)] });
+      }
+      window.setRoads(tubes);
+      window.setZones([
+        { uid: "zn_sz_eau", type: "eau", level: 0, points: rect(-400, -400, -2, 400) },
+        { uid: "zn_sz_rem", type: "remblais", level: -1, points: rect(2, -400, 400, 400) }
+      ]);
+      window.effacerReglagesNiveaux(PID);
+      window.setPlanProfondeurs(PID, { "0": -25, "-1": -29 });
+      window.setPlanHauteursNiveaux(PID, { "0": 2.5, "-1": 2.5 });
+      window.KtaGalerie.invalider();
+      window.__szP = P;
+      window.__szImages = async function (n) {
+        for (let i = 0; i < n; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      };
+    });
+    // Ouvre (rendu structures, 🧱 coupé), passe en vue d'édition au recul le plus grand ; rend la portée de l'état.
+    const ouvrir = async function (limitee, niveauxVus, rendu) {
+      return page.evaluate(async function (a) {
+        const K = window.KtaVue3D, P = window.__szP;
+        if (K.etat().ouvert) await K.fermer();
+        window.KtaGalerie.invalider();
+        window.setPlanRenduVue3D(null, a.rendu);
+        await K.ouvrir({ depart: { x: P(0, 60).x, y: P(0, 60).y, cap: 0, niveau: 0 }, commandes: "pave" });
+        if (K.textures().actives) K.basculerTextures();
+        if (K.etat().eclairage.active.jour) K.reglerPleinJour(false);
+        await K.limiterPortee(a.limitee, { confirme: true });
+        if (!a.limitee) K.reglerPortee("tout");
+        K.reglerNiveauxVus(a.niveauxVus);
+        if (K.etat().vue !== "plongee") K.basculerVue();
+        for (let i = 0; i < 80; i++) K.zoomer(1.5);
+        await window.__szImages(60);
+        const e = K.etat();
+        return { portee: e.portee, profondeur: e.profondeur, inclinaison: e.inclinaison,
+          voisins: e.voisins.niveaux.map(function (v) { return { niveau: v.niveau, montrees: v.montrees }; }) };
+      }, { limitee: limitee, niveauxVus: niveauxVus, rendu: rendu });
+    };
+    // Pixels de la capture : moitié gauche (eau) = part de pixels noirs (le sol gagne) ; moitié droite (sol nu) =
+    // part de pixels non noirs (le −1 se voit à travers). Bandes centrales seulement (hors commandes et brouillard).
+    const pixels = async function () {
+      await page.waitForTimeout(300);
+      const b64 = (await page.screenshot({ type: "png" })).toString("base64");
+      return page.evaluate(function (b) {
+        return new Promise(function (ok) {
+          const img = new Image();
+          img.onload = function () {
+            const c = document.createElement("canvas"), w = img.width, h = img.height;
+            c.width = w; c.height = h;
+            const g = c.getContext("2d");
+            g.drawImage(img, 0, 0);
+            const lum = function (d, i) { return d[i] + d[i + 1] + d[i + 2]; };
+            // Eau (moitié gauche) : sur chaque ligne, entre le premier et le dernier pixel bleu, part des pixels noirs
+            // ou d'un bleu terni (sous 85 % du bleu le plus franc) : le sol gagne sur tout ou partie des échantillons
+            // du pixel (anticrénelage). Parois et rubans (ni noirs ni bleus) ignorés.
+            const y0 = Math.round(h * 0.3), hb = Math.round(h * 0.5), xg = Math.round(w * 0.06), lg = Math.round(w * 0.42);
+            const eau = g.getImageData(xg, y0, lg, hb).data;
+            const bleu = function (i) { return eau[i + 2] > eau[i] + 15 && eau[i + 2] > eau[i + 1]; };
+            let bMax = 0;
+            for (let i = 0; i < eau.length; i += 4) if (bleu(i)) bMax = Math.max(bMax, eau[i + 2]);
+            let ternes = 0, pleins = 0;
+            for (let y = 0; y < hb; y += 2) {
+              let a = -1, b = -1;
+              for (let x = 0; x < lg; x++) if (bleu((y * lg + x) * 4)) { if (a < 0) a = x; b = x; }
+              for (let x = a; a >= 0 && x <= b; x++) {
+                const i = (y * lg + x) * 4;
+                if (lum(eau, i) < 12 || (bleu(i) && eau[i + 2] < 0.85 * bMax)) ternes++;
+                else if (bleu(i)) pleins++;
+              }
+            }
+            // Sol nu : part de pixels non noirs dans la moitié droite (hors colonne d'outils).
+            const sol = g.getImageData(Math.round(w * 0.52), Math.round(h * 0.45), Math.round(w * 0.38),
+              Math.round(h * 0.35)).data;
+            let n = 0, k = 0;
+            for (let i = 0; i < sol.length; i += 4 * 3) { n++; if (lum(sol, i) >= 12) k++; }
+            ok({ eauTrouee: ternes + pleins ? +(ternes / (ternes + pleins)).toFixed(4) : 1, eauPx: ternes + pleins,
+              solColore: +(k / n).toFixed(4) });
+          };
+          img.src = "data:image/png;base64," + b;
+        });
+      }, b64);
+    };
+    // Précision de profondeur (m) à la distance d : écart minimal entre deux profondeurs sur 24 bits.
+    const precision = function (p, d) { return d * d * (1 / p.near - 1 / p.far) / 16777216; };
+    const R = {};
+    for (const cas of [{ k: "coche", limitee: true }, { k: "decoche", limitee: false }]) {
+      for (const rendu of ["structures", "mixte"]) {
+        const lib = nom + (cas.limitee ? "cochée" : "décochée") + ", " + rendu + " : ";
+        const mien = await ouvrir(cas.limitee, "mien", rendu);
+        const pxMien = await pixels();
+        await capture(page, "solzones-" + cas.k + "-" + rendu + "-mien");
+        const vois = await ouvrir(cas.limitee, "voisins", rendu);
+        const pxVois = await pixels();
+        await capture(page, "solzones-" + cas.k + "-" + rendu + "-voisins");
+        R[cas.k] = { mien: mien, vois: vois, pxMien: pxMien, pxVois: pxVois };
+        const p = vois.portee, prec = precision(p, 2 * p.recul);
+        // Cochée (150 m au plus), précision sous le centimètre jusqu'à deux fois le recul (haut de l'écran à
+        // l'inclinaison par défaut) ; décochée, le recul suit la diagonale du plan et le recul du sol (ci-dessous)
+        // garantit l'eau au-dessus.
+        if (rendu === "structures") {
+          verifier(p.recul === p.reculMax && (!cas.limitee || prec <= 0.01),
+            lib + "recul de " + p.recul + " m, plan proche " + p.near + " m, précision de profondeur à deux fois le " +
+            "recul " + (prec * 100).toFixed(2) + " cm" + (cas.limitee ? " (≤ 1 cm, eau à 4 cm)" : ""),
+            { near: p.near, far: p.far, recul: p.recul, precision: prec });
+        }
+        const m1 = vois.voisins.find(function (v) { return v.niveau === -1; }) || {};
+        verifier(m1.montrees > 0 && pxVois.solColore <= pxMien.solColore + 0.002 && pxVois.solColore < 0.01,
+          lib + "le −1 (remblais 4 m dessous) ne se voit pas à travers le sol opaque du 0 (pixels colorés sur le " +
+          "sol nu : « Le mien » " + pxMien.solColore + ", « Voisins » " + pxVois.solColore + ")",
+          { m1: m1, mien: pxMien, voisins: pxVois });
+        verifier(pxMien.eauPx > (cas.limitee ? 5000 : 500) && pxMien.eauTrouee < 0.03 && pxVois.eauTrouee < 0.03,
+          lib + "eau du 0 sans trou du sol (part de pixels d'eau ternis ou noirs, ≤ 3 % : « Le mien » " + pxMien.eauTrouee +
+          ", « Voisins » " + pxVois.eauTrouee + ")", { mien: pxMien, voisins: pxVois });
+      }
+    }
+    const pr = R.coche.vois.profondeur || {};
+    verifier(!!pr.sol && pr.sol.every(function (s) { return s.decale && s.facteur === 0 && s.unites > 0; }) &&
+      pr.sol.length >= 2 && !!pr.zones && pr.zones.every(function (z) { return !z.recule; }),
+      nom + "sol du niveau actif et des voisins reculé en profondeur (polygonOffset, unités seules : sans facteur de " +
+      "pente, rien du dessous ne passe au loin), zones posées au sol jamais reculées : une zone gagne sur le sol", pr);
+    // Plan proche continu : pas de saut au passage de 150 m (cochée → décochée au même recul).
+    const continu = await page.evaluate(async function () {
+      const K = window.KtaVue3D, r = [];
+      await K.limiterPortee(false, { confirme: true });
+      for (const v of [6, 18.4, 60, 149, 151, 300]) {
+        K.zoomer(v / K.etat().portee.recul);
+        await window.__szImages(2);
+        const p = K.etat().portee;
+        r.push({ recul: p.recul, near: p.near, far: p.far });
+      }
+      return r;
+    });
+    const i149 = continu.find(function (q) { return Math.abs(q.recul - 149) < 0.5; }) || {};
+    const i151 = continu.find(function (q) { return Math.abs(q.recul - 151) < 0.5; }) || {};
+    verifier(continu.length === 6 && i149.near > 0 && i151.near / i149.near < 1.1 &&
+      continu.every(function (q) { return precision(q, q.recul) <= 0.01 && q.near >= 0.05; }),
+      nom + "plan proche sans saut autour de 150 m, précision au point visé ≤ 1 cm de 6 à 300 m de recul", continu);
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await ctx.close();
+  }
+}
+
 // ── 41. 🛡️ Limiter la portée (vue3d.js > limiterPortee, _limitee, _diagPlan ; config.js > getVue3DLimiterPortee) ───────
 // Pointeur fin (1200 × 800), relevé fictif vidé, 1 000 piliers fictifs en grille sur 320 × 320 m autour du centre (ils
 // débordent l'image : l'emprise du plan les compte). Case cochée par défaut (portée ≤ 100 m, recul ≤ 150 m, rayon
@@ -9600,7 +9805,7 @@ async function sectionLimiterPortee(nav) {
     r.recoche = await lire();
     r.recoche.poses = await poser();
     verifier(r.recoche.limitee === true && r.recoche.pref === "1" && r.recoche.recul === 150 &&
-      r.recoche.rayon <= 100 && r.recoche.near === 0.05 && r.recoche.curseur.max === 100 &&
+      r.recoche.rayon <= 100 && Math.abs(r.recoche.near - 150 / 32) < 1e-6 && r.recoche.curseur.max === 100 &&
       r.recoche.poses.montrees < r.recoche.poses.tuiles,
     nom + "recochée : recul ramené à 150 m, rayon ≤ 100 m, curseur jusqu'à 100 m, tuiles lointaines jetées", r.recoche);
     // Au PC, décochée reste décochée à la réouverture (cran « Tout le plan » compris).
@@ -10417,7 +10622,7 @@ async function sectionGestesDoigt(nav) {
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
-      SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit") {
+      SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -16720,6 +16925,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "tuile") await sectionTuileDefile(nav);
     if (!SEUL || SEUL === "recherche") await sectionRecherche3D(nav);
     if (!SEUL || SEUL === "voisins") await sectionNiveauxVoisins(nav);
+    if (!SEUL || SEUL === "solzones") await sectionSolZones(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
