@@ -614,11 +614,11 @@ Chaque passage ou accès a son volume, là où il est.
 - ![](../../icon/jes.png) **Escalier entre niveaux** : une cage à marches, dans une niche sur le côté de la galerie.
 - ![](../../icon/jpe.png) **Puits à échelons entre niveaux** : un puits carré en pierre, avec son échelle.
 - ![](../../icon/jps.png) **Puits sans échelon entre niveaux** : un puits nu.
-- ↕️ **Tracé jonction** : une galerie en pente que tu parcours à pied. Le sol va du sol d'un niveau à celui de l'autre, d'un bout à l'autre du tracé (avec les profondeurs des niveaux si tu les as saisies, sinon une hauteur de galerie par niveau). Un ruban à sa couleur court au milieu du sol.
+- ↕️ **Tracé jonction** : une galerie en pente que tu parcours à pied. Le sol va du sol d'un niveau à celui de l'autre, d'un bout à l'autre du tracé (avec les profondeurs des niveaux si tu les as saisies, sinon une hauteur de galerie et 2 m de roche par niveau). Un ruban à sa couleur court au milieu du sol.
 
 Où et comment un passage se dessine :
 
-- Il s'ouvre **dans le sol** vers un niveau du dessous, **dans le plafond** vers un niveau du dessus, les deux pour un passage entre trois niveaux, avec un cadre doré au sol. Il va d'un niveau à l'autre à leur **vraie profondeur** (📉 Niveaux) : l'escalier monte ou descend jusqu'au sol de l'autre niveau, le puits traverse la roche entre les deux. Sans profondeurs saisies, les niveaux se touchent : le passage s'ouvre directement sur l'autre niveau.
+- Il s'ouvre **dans le sol** vers un niveau du dessous, **dans le plafond** vers un niveau du dessus, les deux pour un passage entre trois niveaux, avec un cadre doré au sol. Il va d'un niveau à l'autre à leur **vraie profondeur** (📉 Niveaux) : l'escalier monte ou descend jusqu'au sol de l'autre niveau, le puits traverse la roche entre les deux. Sans profondeurs saisies, 2 m de roche séparent deux niveaux.
 - Son panneau a un liseré à la couleur des jonctions et la marque **↕**. Il reste lisible jusqu'à 1 m.
 - Il se dessine **dans la galerie** de chaque niveau, du côté de son point, même si le point est posé à côté pour la lisibilité de la carte (galerie à moins de 10 m).
 - Un raccord validé de ce niveau donne l'endroit exact. Près d'un carrefour, c'est la galerie la plus proche qui l'emporte ; un raccord validé tranche.

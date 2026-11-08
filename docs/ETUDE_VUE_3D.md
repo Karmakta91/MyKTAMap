@@ -110,7 +110,7 @@ flotte au-dessus du vide. Le tracé jonction n'est plus une rampe avec 🪜 : c'
 | 3 | Hors de ce lot | Niveaux voisins affichés ensemble (lot C, ci-dessous), entremêlement (lot D) |
 
 Choix faits à la livraison, à valider : **repli sans sols** = une hauteur de galerie (celle du niveau du dessous) par
-niveau franchi, écart nul (2 m par niveau sans réglage) ; hauteur sous plafond **interpolée** de celle du départ à
+niveau franchi (révisé le 08/11/2026 : plus 2 m de roche, soit 4 m par niveau sans réglage) ; hauteur sous plafond **interpolée** de celle du départ à
 celle de l'arrivée ; largeur = celle des galeries raccordées, interpolée d'un bout à l'autre (révisé le 08/11/2026 :
 1,6 m fixes posaient un pan de paroi au milieu d'une galerie plus large ; repli 1,6 m sans galerie raccordée) ; la scène passe au niveau d'en face **à mi-longueur** (+ 0,3 m d'hystérésis), sans
 fondu : les deux scènes dessinent la même galerie à la même place, l'altitude est continue, et la moitié d'en face
@@ -137,7 +137,7 @@ et se toucherait pour un point hors d'atteinte) ; volumes de passage des voisins
 actif descend jusqu'à eux) ; **vue d'édition** : rien au-dessus du niveau actif (il couvrirait la scène), voisins du
 dessous sans plafond ; en mixte et structures, les voisins ont leur sol et leur plafond d'un seul tenant ; un niveau
 masqué au ≡ n'est pas montré ; parois d'un puits de notre sol au plafond du niveau relié (sans réglage de sols :
-écart nul, donc bouche ouverte directement sur le niveau du dessous), escalier jusqu'au sol du niveau relié ;
+2 m de roche par niveau, décision du 08/11/2026 : la bouche ne s'ouvre plus directement sur le niveau du dessous), escalier jusqu'au sol du niveau relié ;
 données incohérentes signalées quand, de deux niveaux qui se suivent dans la table avec un sol chacun, celui du
 dessus n'est pas plus haut, ou quand ils se chevauchent d'au moins la hauteur de l'un. Pas encore joué sur un vrai
 téléphone. Détail : `docs/architecture/tracking.md` § Vue 3D, Niveaux voisins.

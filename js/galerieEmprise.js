@@ -164,14 +164,20 @@
   // ⚠️ contrat (décision produit) : un tracé `jonction` (fromLevel → toLevel) est une galerie inclinée qu'on parcourt
   // en 3D ; la pente va du sol du niveau de départ au sol du niveau d'arrivée, répartie sur la longueur 2D du tracé
   // (rien à saisir). Dénivelé = sol(arrivée) − sol(départ) (config.js > getNiveauVertical) quand les deux sols sont
-  // renseignés ; sinon une hauteur de galerie par niveau franchi (celle du niveau du dessous : plafond du dessous =
-  // sol du dessus, écart nul), dans le sens des numéros (plan sans réglage : 2 m par niveau). Hauteur sous plafond :
+  // renseignés (l'écart saisi fait foi, négatif compris) ; sinon, par niveau franchi, la hauteur de galerie du niveau
+  // du dessous plus ROCHE_SANS_SOLS_M de roche, dans le sens des numéros (plan sans réglage : 4 m par niveau).
+  // Hauteur sous plafond :
   // interpolée de celle du niveau de départ à celle du niveau d'arrivée. Vue d'un niveau, la galerie part
   // TOUJOURS de son bout (y = 0 au sol du niveau) : t ∈ [0, 1] le long du tracé, sol à dY·t, plafond à
   // dY·t + hA + (hB − hA)·t. `tOuvert` : jusqu'où la galerie inclinée recoupe la tranche [0, hA] du niveau (plafond
   // au-dessus du sol en descente, sol sous le plafond en montée) : la bouche ouverte dans le sol ou le plafond, et
   // l'emprise du modèle (_emprisesPassages) ; au-delà, elle passe sous le sol ou au-dessus du plafond, dans la roche.
   // Lue par vue3d.js (volume, caméra, pas, itinéraire) : une seule règle.
+  // m : épaisseur de roche entre deux niveaux quand leurs sols manquent (décision produit) : sans elle, la bouche
+  // d'un puits s'ouvrait directement sur le niveau du dessous (trou noir en « Le mien », aucune paroi). Une seule
+  // règle pour la galerie inclinée, les niveaux voisins et les passages de la 3D (tous lisent denivele).
+  const ROCHE_SANS_SOLS_M = 2;
+
   function _vertical(n) {
     const f = window.getNiveauVertical;
     const v = typeof f === "function" ? f(n) : null;
@@ -217,7 +223,7 @@
     const va = _vertical(a), vb = _vertical(b);
     if (va.sol !== null && vb.sol !== null) return vb.sol - va.sol;
     let d = 0;
-    for (let n = Math.min(a, b); n < Math.max(a, b); n++) d += _vertical(n).h;
+    for (let n = Math.min(a, b); n < Math.max(a, b); n++) d += _vertical(n).h + ROCHE_SANS_SOLS_M;
     return b > a ? d : -d;
   }
 
@@ -1652,7 +1658,7 @@
     ACCES: Object.assign({}, ACCES), BLOQUE: Object.assign({}, BLOQUE), ACCES_DIM: Object.assign({}, ACCES_DIM),
     PAROI: Object.assign({}, PAROI),
     COTES_CERCLE: COTES_CERCLE, comblementPorte: comblementPorte, COMBLE_MAX_M: COMBLE_MAX_M,
-    pente: pente, denivele: denivele, demiPente: demiPente,
+    pente: pente, denivele: denivele, demiPente: demiPente, ROCHE_SANS_SOLS_M: ROCHE_SANS_SOLS_M,
     CONE_MIN_M: CONE_MIN_M
   };
 })();

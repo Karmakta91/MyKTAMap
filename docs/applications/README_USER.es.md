@@ -614,11 +614,11 @@ Cada paso o acceso tiene su volumen, donde está.
 - ![](../../icon/jes.png) **Escalera entre niveles**: una caja de escalera con peldaños, en un nicho al lado de la galería.
 - ![](../../icon/jpe.png) **Pozo con peldaños entre niveles**: un pozo cuadrado de piedra, con su escala.
 - ![](../../icon/jps.png) **Pozo sin peldaños entre niveles**: un pozo desnudo.
-- ↕️ **Trazado de unión**: una galería en pendiente que recorres a pie. El suelo va del suelo de un nivel al del otro, de un extremo al otro del trazado (con las profundidades de los niveles si las has introducido; si no, una altura de galería por nivel). Una cinta de su color recorre el centro del suelo.
+- ↕️ **Trazado de unión**: una galería en pendiente que recorres a pie. El suelo va del suelo de un nivel al del otro, de un extremo al otro del trazado (con las profundidades de los niveles si las has introducido; si no, una altura de galería y 2 m de roca por nivel). Una cinta de su color recorre el centro del suelo.
 
 Dónde y cómo se dibuja un paso:
 
-- Se abre **en el suelo** hacia un nivel de abajo, **en el techo** hacia un nivel de arriba, ambos para un paso entre tres niveles, con un marco dorado en el suelo. Va de un nivel a otro a su **profundidad real** (📉 Niveles): la escalera sube o baja hasta el suelo del otro nivel, el pozo atraviesa la roca entre los dos. Sin profundidades indicadas, los niveles se tocan: el paso se abre directamente sobre el otro nivel.
+- Se abre **en el suelo** hacia un nivel de abajo, **en el techo** hacia un nivel de arriba, ambos para un paso entre tres niveles, con un marco dorado en el suelo. Va de un nivel a otro a su **profundidad real** (📉 Niveles): la escalera sube o baja hasta el suelo del otro nivel, el pozo atraviesa la roca entre los dos. Sin profundidades indicadas, 2 m de roca separan dos niveles.
 - Su cartel tiene un borde del color de las uniones y la marca **↕**. Sigue legible hasta 1 m.
 - Se dibuja **en la galería** de cada nivel, del lado de su punto, aunque el punto esté al lado para que el mapa se lea bien (galería a menos de 10 m).
 - Una conexión validada de ese nivel da el lugar exacto. Cerca de un cruce gana la galería más cercana; una conexión validada lo decide.

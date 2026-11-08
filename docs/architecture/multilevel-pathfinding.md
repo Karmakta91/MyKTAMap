@@ -779,7 +779,8 @@ Hauteur / Écart / Sans :
 **Consommateurs** : la vue 3D prend la hauteur du niveau affiché à l'ouverture et à chaque changement de niveau
 (`vue3d.js > _prendreHauteurDuNiveau`, appelé par `_reindexer`) ; ⛏️ Volume exploité celle du niveau mesuré ; la
 galerie inclinée d'un tracé jonction (`galerieEmprise.js > pente`, `denivele`) les sols des deux niveaux qu'elle
-relie (repli sans sols : une hauteur de galerie par niveau franchi) et leurs deux hauteurs ; les **niveaux voisins**
+relie (repli sans sols : une hauteur de galerie et 2 m de roche par niveau franchi, `ROCHE_SANS_SOLS_M` ; avec sols,
+l'écart saisi fait foi, négatif compris) et leurs deux hauteurs ; les **niveaux voisins**
 de la vue 3D (`vue3d.js > _altitudeVoisin`, même dénivelé) et ses puits, escaliers et échelles, dessinés d'un niveau
 à l'autre à leur altitude réelle (`_etenduePassage`). **Données incohérentes** (sol d'un niveau au niveau de celui du
 dessous ou plus bas, ou deux niveaux qui se chevauchent d'au moins la hauteur de l'un) : signalées sous la table

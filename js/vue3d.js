@@ -3070,7 +3070,7 @@
   // celui juste au-dessus et celui juste au-dessous parmi ceux qui portent quelque chose, ordre de _niveauxEdition ;
   // « tous » ; « le mien » : aucun) sont construits par les MÊMES fonctions de tuile (même rendu, mêmes filtres de la
   // carte : un niveau masqué au ≡ n'est pas montré), décalés de leur altitude (KtaGalerie.denivele : sols et hauteurs
-  // de config.js > getNiveauVertical, repli sans sols d'une hauteur de galerie par niveau franchi, comme la galerie
+  // de config.js > getNiveauVertical, repli sans sols d'une hauteur de galerie et 2 m de roche par niveau, comme la galerie
   // inclinée). Ils se VOIENT et cachent ce qui est derrière eux, rien de plus : ni la règle du pas, ni la visée
   // (_pointVise), ni les passages, ni le suivi ne les lisent ; le niveau actif ne change que par un passage, une galerie
   // inclinée ou ▲▼. Sans panneaux de POI (décision produit : un panneau est dessiné par-dessus tout, sans profondeur,

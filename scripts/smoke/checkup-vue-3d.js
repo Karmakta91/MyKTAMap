@@ -2444,7 +2444,7 @@ async function sectionConePassage(page) {
 
 // § 14 octies — Galerie inclinée d'un tracé jonction (KTA_V3D_SEUL=pente ; réseau FICTIF en mémoire : galerie
 // est-ouest au 0 à z = 0, au −1 à z = 12, tracé jonction de 12 m du 0 au −1 en x = 0). Plan sans sols (repli : une
-// hauteur de galerie, 2 m) puis sols et hauteurs du lot A (0 à −25 m sous 2,5 m, −1 à −30 m sous 3 m : 5 m de
+// hauteur de galerie et 2 m de roche, 4 m) puis sols et hauteurs du lot A (0 à −25 m sous 2,5 m, −1 à −30 m sous 3 m : 5 m de
 // dénivelé, part ouverte 2,5 / 4,5). Rendus galerie, structures, mixte : on marche la jonction pas à pas, la caméra
 // descend régulièrement (dénivelé × part de la longueur), la scène passe au −1 à mi-longueur sans geste ni fondu,
 // altitude continue, arrivée à hauteur d'yeux au bout, galerie du −1 marchée, retour au 0 dans l'autre sens ; parois
@@ -2644,12 +2644,13 @@ async function sectionPente(page) {
   const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
   R.cas.forEach(function (c) {
     const k = c.nom + ", " + c.rendu;
-    const dY = c.sols ? -5 : -2, tot = 12, base = { "0": 0, "-1": dY };
+    const dY = c.sols ? -5 : -4, tot = 12, base = { "0": 0, "-1": dY };
     const p = c.pentes[0] || {};
     verifier(c.pentes.length === 1 && pr(p.dY, dY) && pr(p.tot, tot) && p.autre === -1 &&
-      pr(p.tOuvert, c.sols ? 2.5 / 4.5 : 1, 0.002) && p.sansSols === !c.sols,
+      pr(p.tOuvert, c.sols ? 2.5 / 4.5 : 0.5, 0.002) && p.sansSols === !c.sols,
       k + " : galerie inclinée de " + tot + " m, dénivelé " + dY + " m" +
-      (c.sols ? " (sols −25 / −30)" : " (repli : une hauteur de galerie)") + ", part ouverte " + p.tOuvert, c.pentes);
+      (c.sols ? " (sols −25 / −30)" : " (repli : une hauteur de galerie et 2 m de roche)") + ", part ouverte " +
+      p.tOuvert, c.pentes);
     verifier(!!c.volume && c.volume.construit && c.volume.sol > 0 && c.volume.plafond === 0 &&
       pr(c.volume.yMin, dY, 0.02),
       k + " : volume construit, bouche au sol (descente), bas du volume à " + dY + " m", c.volume);
@@ -2690,8 +2691,8 @@ async function sectionPente(page) {
   });
   const S = R.suivi.rel;
   const suiviOk = S.every(function (q) {
-    const base = q.niveau === -1 ? -2 : 0, t = Math.max(0, Math.min(1, q.z / 12));
-    return q.mode === "suivi" && !q.geste && q.fondu === 0 && pr(q.cam - q.oeil + base, -2 * t, 0.03);
+    const base = q.niveau === -1 ? -4 : 0, t = Math.max(0, Math.min(1, q.z / 12));
+    return q.mode === "suivi" && !q.geste && q.fondu === 0 && pr(q.cam - q.oeil + base, -4 * t, 0.03);
   });
   verifier(suiviOk && S[S.length - 1].niveau === -1 && S[S.length - 2].niveau === 0 && R.suivi.franchies === 1,
     "suivi : la caméra suit la pente sous le tracker ; niveau du tracker changé au bout → scène au −1 sans fondu",
@@ -2701,7 +2702,7 @@ async function sectionPente(page) {
     I.avant.principal.toLowerCase().indexOf(I.attendu.toLowerCase()) >= 0,
     "itinéraire : ruban sur la pente ; avant l'entrée, « " + I.avant.principal + " »", I.avant);
   verifier(I.surPente.niveau === 0 && I.surPente.mode === "guide" && I.surPente.ecart < 0.5 &&
-    I.surPente.chevrons > 0 && pr(I.surPente.dy, -0.5, 0.02),
+    I.surPente.chevrons > 0 && pr(I.surPente.dy, -1, 0.02),
     "itinéraire : sur la pente (3 m), guidé à " + I.surPente.ecart + " m du trajet, chevrons posés, jamais " +
     "« rejoindre »",
     I.surPente);
@@ -8778,7 +8779,8 @@ async function sectionRecherche3D(nav) {
 // embranchement nord-sud, puits nu (jps) 0 ↔ −1 avec raccord validé au −1, escalier (jes) 0 ↔ +1. Pointeur fin :
 // « Voisins » par défaut = +1 à +5 m et −1 à −5 m (pas le −2), sol et plafond d'un seul tenant à leur altitude en mixte ;
 // « Tous » = le −2 en plus à −11 m ; « Le mien » = aucun ; boutons de la tuile ⚙️ ; vue d'édition : rien au-dessus, pas
-// de plafond dessous ; sans sols : une hauteur de galerie par niveau ; plan à un niveau : rien, ligne cachée. Le pas ne
+// de plafond dessous ; sans sols : une hauteur de galerie et 2 m de roche par niveau (puits muré) ; plan à un niveau :
+// rien, ligne cachée. Le pas ne
 // bute jamais sur un autre niveau (même butées qu'en « Le mien ») ; puits et escalier entre les altitudes réelles ;
 // arrivée d'un passage identique quel que soit le réglage ; galerie inclinée : l'autre niveau se voit au-delà du
 // milieu (pixels lus) ; données incohérentes : avertissement dans la table ⚙️, rendu sans erreur, rien d'inversé ;
@@ -9068,19 +9070,24 @@ async function sectionNiveauxVoisins(nav) {
       pente.voisins.lum > pente.mien.lum + 3,
       nom + "galerie inclinée vue du 0 avant le milieu : le −1 se voit au-delà (luminance " + pente.mien.lum + " → " +
       pente.voisins.lum + "), plus de noir", pente);
-    // 6. Sans sols : repli d'une hauteur de galerie par niveau franchi.
+    // 6. Sans sols : repli d'une hauteur de galerie et 2 m de roche par niveau franchi ; puits muré sur ces 2 m.
     const s = await page.evaluate(async function () {
       const K = window.KtaVue3D, PID = window.__voPID;
       window.setPlanProfondeurs(PID, { "1": null, "0": null, "-1": null, "-2": null });
       window.setPlanHauteursNiveaux(PID, { "1": 2, "0": 2.5, "-1": 3, "-2": 2 });
       K.reglerNiveauxVus("tous");
-      const e = await window.__voOuvrir(-20, 0, 90, 0, "galerie");
+      const e = await window.__voOuvrir(-11, 0, 270, 0, "galerie");
       K.reglerNiveauxVus("voisins");
-      return e.voisins.niveaux.map(function (v) { return [v.niveau, v.dy]; });
+      const v = e.volumes.filter(function (q) { return q.tag === "jps"; })[0] || {};
+      return { dy: e.voisins.niveaux.map(function (q) { return [q.niveau, q.dy]; }),
+        jps: { construit: v.construit, yMin: v.yMin, triangles: v.triangles, bouchesSol: v.bouchesSol } };
     });
-    verifier(JSON.stringify(s) === JSON.stringify([[1, 2.5], [-1, -3], [-2, -5]]),
-      nom + "sans sols : +1 à une hauteur du 0 (2,5 m), −1 à la sienne (−3 m), −2 à −5 m (repli de la galerie " +
-      "inclinée)", s);
+    verifier(JSON.stringify(s.dy) === JSON.stringify([[1, 4.5], [-1, -5], [-2, -9]]),
+      nom + "sans sols : +1 à une hauteur du 0 et 2 m de roche (4,5 m), −1 à −5 m, −2 à −9 m (repli de la galerie " +
+      "inclinée)", s.dy);
+    verifier(s.jps.construit && pr(s.jps.yMin, -2, 0.02) && s.jps.triangles > 0 && s.jps.bouchesSol > 0,
+      nom + "sans sols : puits 0 ↔ −1 muré sur 2 m de roche (paroi jusqu'à −2 m), plus de bouche ouverte sur le −1",
+      s.jps);
     // 7. Données incohérentes : avertissement dans la table ⚙️, vue dessinable, rien du mauvais côté.
     const inc = await page.evaluate(async function () {
       const K = window.KtaVue3D, PID = window.__voPID, r = {};
@@ -12952,13 +12959,14 @@ async function sectionGestesDoigt(nav) {
         const vol = function (tag) { return PJ.volumes.filter(function (v) { return v.tag === tag; })[0] || {}; };
         const h = PJ.h, pres = function (a, b) { return typeof a === "number" && Math.abs(a - b) < 0.15; };
         const jes = vol("jes"), jpe = vol("jpe"), jps = vol("jps"), peo = vol("peo"), eso = vol("eso"), pa = vol("pa");
-        // Altitudes réelles (§ 44) ; plan sans sols : une hauteur de galerie par niveau (2 m), écart nul.
+        // Altitudes réelles (§ 44) ; plan sans sols : une hauteur de galerie (2 m) et 2 m de roche par niveau.
         verifier(jes.forme === "escalier" && jes.sol && !jes.plafond && jes.triangles > 0 && jes.bouchesSol > 0 &&
-          jes.bouchesPlafond === 0 && jes.cadre && pres(jes.yMin, -2),
-          "jes (vers −1) : cage d'escalier ouverte dans le sol, marches jusqu'au sol du −1 (−2 m), cadre doré", jes);
+          jes.bouchesPlafond === 0 && jes.cadre && pres(jes.yMin, -4),
+          "jes (vers −1) : cage d'escalier ouverte dans le sol, marches jusqu'au sol du −1 (−4 m), cadre doré", jes);
         verifier(jpe.forme === "puits" && jpe.plafond && !jpe.sol && jpe.echelons && jpe.bouchesPlafond > 0 &&
-          jpe.bouchesSol === 0 && pres(jpe.yMax, h + 1) && jpe.cadre,
-          "jpe (vers +1) : puits à échelons ouvert dans le plafond, échelle jusqu'au sol du +1 et un mètre au-delà", jpe);
+          jpe.bouchesSol === 0 && pres(jpe.yMax, h + 3) && jpe.cadre,
+          "jpe (vers +1) : puits à échelons dans le plafond, 2 m de roche, échelle jusqu'au sol du +1 et un mètre au-delà",
+          jpe);
         verifier(jps.forme === "puits" && jps.sol && jps.plafond && !jps.echelons && jps.bouchesSol > 0 &&
           jps.bouchesPlafond > 0 && jps.triangles > 0,
           "jps (−1, 0, +1) : puits nu ouvert dans le sol ET le plafond", jps);

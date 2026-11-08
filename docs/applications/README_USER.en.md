@@ -614,11 +614,11 @@ Each way through or access has its volume, where it is.
 - ![](../../icon/jes.png) **Stairs between levels**: a stairwell with steps, in a recess on the side of the tunnel.
 - ![](../../icon/jpe.png) **Rung shaft between levels**: a square stone shaft, with its ladder.
 - ![](../../icon/jps.png) **Shaft without rungs between levels**: a bare shaft.
-- ↕️ **Junction trace**: a sloping tunnel you walk through. The floor goes from one level's floor to the other's, from one end of the trace to the other (using the level depths if you entered them, otherwise one tunnel height per level). A ribbon in its colour runs along the middle of the floor.
+- ↕️ **Junction trace**: a sloping tunnel you walk through. The floor goes from one level's floor to the other's, from one end of the trace to the other (using the level depths if you entered them, otherwise one tunnel height and 2 m of rock per level). A ribbon in its colour runs along the middle of the floor.
 
 Where and how a way through is drawn:
 
-- It opens **in the floor** towards a level below, **in the ceiling** towards a level above, both for a way between three levels, with a golden frame on the floor. It goes from one level to the other at their **real depth** (📉 Levels): the stairs climb or go down to the other level's floor, the shaft crosses the rock between them. With no depths filled in, the levels touch: the way opens straight onto the other level.
+- It opens **in the floor** towards a level below, **in the ceiling** towards a level above, both for a way between three levels, with a golden frame on the floor. It goes from one level to the other at their **real depth** (📉 Levels): the stairs climb or go down to the other level's floor, the shaft crosses the rock between them. With no depths filled in, 2 m of rock separate two levels.
 - Its sign has a border in the junction colour and the **↕** mark. It stays readable down to 1 m.
 - It is drawn **in the tunnel** of each level, on its point's side, even when the point is placed beside it for the map's readability (tunnel within 10 m).
 - A validated connection on that level gives the exact spot. Near a crossing, the nearest tunnel wins; a validated connection settles it.

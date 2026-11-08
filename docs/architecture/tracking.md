@@ -1559,7 +1559,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `vue3d.js > _pentesDuNiveau`) : le tracé (fromLevel → toLevel) se **marche**. Pente d'un bout à l'autre du tracé, du
   sol du niveau de départ au sol du niveau d'arrivée, répartie sur sa longueur 2D (rien à saisir) : dénivelé =
   `sol(arrivée) − sol(départ)` (`getNiveauVertical`) si les deux sols sont renseignés, sinon **repli** : une hauteur
-  de galerie par niveau franchi (celle du niveau du dessous, écart nul : 2 m par niveau sans réglage). Hauteur sous
+  de galerie par niveau franchi (celle du niveau du dessous) plus 2 m de roche (`ROCHE_SANS_SOLS_M` : 4 m par niveau
+  sans réglage ; décision produit, sans elle un puits s'ouvrait sur le niveau du dessous sans paroi). Hauteur sous
   plafond interpolée de celle du départ à celle de l'arrivée. **Largeur** (décision produit) = celle de la galerie
   raccordée à chaque bout (axe d'une galerie du niveau à moins de 1,5 m du bout, `RACCORD_PENTE_M` ; largeur du modèle
   galerie par type ; à égalité la plus large), interpolée d'un bout à l'autre (`KtaGalerie.demiPente(p, t)`) : parois
@@ -2308,7 +2309,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Construction** (`_voisinsPreparer`, `_voisinNeuf`, `_gererVoisins`, `_construireTuileVoisin`) : mêmes fonctions de
   tuile que le niveau actif (même rendu, mêmes filtres : un niveau masqué au ≡ ne se montre pas), modèle et hauteur du
   voisin, groupe décalé de son **altitude** (`_altitudeVoisin` : `KtaGalerie.denivele`, sols et hauteurs du lot A, repli
-  sans sols d'une hauteur de galerie par niveau franchi comme la galerie inclinée ; jamais du mauvais côté, au pire à la
+  sans sols d'une hauteur de galerie et 2 m de roche par niveau franchi, comme la galerie inclinée ; jamais du mauvais
+  côté, au pire à la
   même altitude). Mixte et structures : sol et plafond d'un seul tenant au voisin aussi (`_placerVoisins`). Sans
   panneaux de POI (dessinés sans test de profondeur pour rester lisibles, ils se liraient à travers la roche et se
   toucheraient pour un objet hors d'atteinte) ni volumes de passage (le puits du niveau actif descend jusqu'au voisin).
