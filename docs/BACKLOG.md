@@ -91,11 +91,6 @@
   (`docs/architecture/ui.md` §53.3).
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
-- **Système d'add-ons community (`addons/<nom>/`)** — lots A (manifestes, registre, précache) et B (Configuration ›
-  Add-ons, 🎮 de la tuile ⚙️ en vue 3D) faits (`addons.md`). Reste le lot C : cases dans ConfAdmin pour l'hébergeur
-  (tous les add-ons, secrets compris ; QCM 06/11/2026).
-  `qui: Claude · action: lot C (cases ConfAdmin) · fini: l'hébergeur autorise un add-on depuis ConfAdmin
-  · depuis: 02/11/2026 · taille: S`
 - **Add-on mkmg : interrupteur par organisation (pro)** — aujourd'hui refusé sur une installation reliée, sauf
   `data/reglages.json > addons.mkmg` posé par l'hébergeur (toute l'installation) ; décision : un admin d'orga
   l'allume. Prise neutre côté community, réglage et case d'admin côté pro.

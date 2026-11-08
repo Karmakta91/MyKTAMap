@@ -94,7 +94,7 @@
 // recouvrement, priorité danger / favori, coût, toucher une icône, nom revenu en se rapprochant (hystérésis), membres
 // jamais réduits, hauteur d'yeux inchangée.
 // Add-ons visibles (page à part, =addons) : deux add-ons fictifs servis par la page, Configuration › Add-ons, 🎮 de la
-// tuile ⚙️ (choix, lancement direct, masqué, add-on éteint).
+// tuile ⚙️ (choix, lancement direct, masqué, add-on éteint), cases de ConfAdmin (reglages.json téléchargé et repris).
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
 // colonne d'outils ou le joystick, doigt levé puis reposé, rotation engagée à 10° sans saut, pas bornés.
 // Mesures (facultatives, objets FICTIFS générés en mémoire, jamais écrits) :
@@ -5261,6 +5261,45 @@ async function sectionAddonsVisibles(nav) {
     verifier(r.direct === "essai" && !r.fenetre && r.masque &&
       r.memoire === JSON.stringify({ essai2: false, essai: false }),
       "add-ons : un seul allumé → lancé sans choix ; aucun → 🎮 masqué ; interrupteurs retenus sur l'appareil", r);
+    // ConfAdmin (même page, mêmes add-ons fictifs) : une case par add-on livré, secret compris ; reglages.json
+    // téléchargé avec les cochés ; « Reprendre » coche ceux du fichier, un nom absent de la version gardé.
+    await page.goto(BASE + "/confadmin.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return document.querySelectorAll("#caAddonsListe [data-addon]").length >= 3;
+    }, 15000).catch(function () {});
+    const lireCa = function () {
+      return page.evaluate(function () {
+        return Array.prototype.map.call(document.querySelectorAll("#caAddonsListe [data-addon]"), function (l) {
+          return { nom: l.dataset.addon, coche: l.querySelector("input").checked, texte: l.textContent };
+        });
+      });
+    };
+    const telecharger = async function () {
+      const [dl] = await Promise.all([page.waitForEvent("download"), page.click("#caReglagesDownload")]);
+      return JSON.parse(require("fs").readFileSync(await dl.path(), "utf8"));
+    };
+    const ca0 = await lireCa();
+    await page.check('#caAddonsListe [data-addon="mkmg"] input');
+    await page.check('#caAddonsListe [data-addon="essai2"] input');
+    const fichier1 = await telecharger();
+    await page.setInputFiles("#caReglagesInput", { name: "reglages.json", mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify({ subtitle: "Club", addons: { essai: true, ancien: true, essai2: false } })) });
+    await attendre(page, function () {
+      return !!document.querySelector('#caAddonsListe [data-addon="ancien"]');
+    }, 5000).catch(function () {});
+    const ca1 = await lireCa();
+    const fichier2 = await telecharger();
+    const ca = { avant: ca0.map(function (x) { return x.nom + (x.coche ? "+" : ""); }).join(","),
+      secretNote: (ca0.filter(function (x) { return x.nom === "mkmg"; })[0] || {}).texte,
+      fichier1: fichier1.addons, repris: ca1.map(function (x) { return x.nom + (x.coche ? "+" : ""); }).join(","),
+      fichier2: fichier2 };
+    verifier(ca.avant === "mkmg,essai,essai2" && /caché/.test(ca.secretNote || "") &&
+      JSON.stringify(ca.fichier1) === '{"mkmg":true,"essai2":true}',
+      "ConfAdmin : une case par add-on livré (secret compris, signalé), reglages.json téléchargé avec les cochés", ca);
+    verifier(ca.repris === "mkmg,essai+,essai2,ancien+" && fichier2.subtitle === "Club" &&
+      JSON.stringify(fichier2.addons) === '{"essai":true,"ancien":true}',
+      "ConfAdmin : « Reprendre un reglages.json » coche ses add-ons, un nom absent de la version reste coché et exporté",
+      ca);
     verifier(erreurs.length === 0, "add-ons visibles : aucune erreur de page", erreurs.slice(0, 3));
   } finally {
     await ctx.close();

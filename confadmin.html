@@ -227,11 +227,19 @@
         <label class="kta-ca-champ-ligne">🇪🇸 Description (espagnol)
           <textarea id="caAccueilDescEs" class="kta-ca-champ" rows="3" maxlength="400"></textarea></label>
       </details>
-      <!-- 📄 reglages.json : ces textes et le sous-titre SEULS, dans un fichier à part que les mises à jour ne touchent
-           pas (js/ktaInstance.js > filtrerReglages ne lit rien d'autre). -->
+      <!-- 🎮 Add-ons autorisés sur une installation reliée (reglages.json > addons) : tous les add-ons livrés, secrets
+           compris, peints par js/confadmin.js > _peindreAddons (registre js/ktaAddons.js). -->
+      <div id="caAddons">
+        <span><strong>🎮 Add-ons</strong> — autorisés sur une installation reliée à un serveur (pro)<br>
+        <small>Sans serveur, les add-ons livrés avec l'app sont déjà permis : ces cases ne servent qu'à une
+        installation reliée, où ils sont refusés par défaut. Enregistrées dans <code>reglages.json</code>.</small></span>
+        <div id="caAddonsListe"></div>
+      </div>
+      <!-- 📄 reglages.json : ces textes, le sous-titre et les add-ons autorisés SEULS, dans un fichier à part que les
+           mises à jour ne touchent pas (js/ktaInstance.js > filtrerReglages ne lit rien d'autre). -->
       <small><strong>Recommandé : <code>reglages.json</code></strong> — un fichier à toi, que les mises à jour de
       l'app ne touchent jamais, et qui passe avant <code>index.json</code>. Il ne porte que ce titre, cette
-      description et le sous-titre. Où le déposer : installation community, à côté de <code>index.json</code> dans
+      description, le sous-titre et les add-ons autorisés. Où le déposer : installation community, à côté de <code>index.json</code> dans
       <code>data/</code> ; installation pro, <code>instance/data/reglages.json</code> (Docker) ou le dossier
       <code>data/</code> du site servi (sans Docker).</small>
       <div class="kta-ca-actions">
@@ -317,6 +325,7 @@
   </div>
 </div>
 
+<script src="js/ktaAddons.js"></script>
 <script src="js/confadmin.js"></script>
 </body>
 </html>

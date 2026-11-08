@@ -310,14 +310,17 @@ t("ConfAdmin refuse l'export tant que le champ est invalide",
   if (codeR && codeF && exp) {
     const c4 = vm.createContext({});
     vm.runInContext(codeR + codeF + "; R = ktaReglagesExport; F = filtrerReglages;", c4);
-    const plein = c4.R(exp(CAS_ACCUEIL[2][1]), "  Sous-titre  ");
-    const vide = c4.R(null, " ");
-    t("reglages.json exporté : accueil + subtitle seuls, relus à l'identique par l'app ; tout vide → {}",
-      JSON.stringify(Object.keys(plein)) === '["accueil","subtitle"]' && plein.subtitle === "Sous-titre" &&
+    const plein = c4.R(exp(CAS_ACCUEIL[2][1]), "  Sous-titre  ", { mkmg: true, "Nom Faux": true, autre: false });
+    const vide = c4.R(null, " ", {});
+    t("reglages.json exporté : accueil + subtitle + addons (cochés, noms valides) seuls, relus à l'identique par " +
+      "l'app ; tout vide → {}",
+      JSON.stringify(Object.keys(plein)) === '["accueil","subtitle","addons"]' && plein.subtitle === "Sous-titre" &&
+      JSON.stringify(plein.addons) === '{"mkmg":true}' &&
       JSON.stringify(c4.F(plein)) === JSON.stringify(plein) && JSON.stringify(vide) === "{}" && c4.F(vide) === null);
   }
-  t("ConfAdmin : télécharger et reprendre un reglages.json",
-    /a\.download = "reglages\.json";/.test(CA) && /id="caReglagesInput"/.test(CA) && /_poserAccueil\(d\.accueil\);/.test(CA));
+  t("ConfAdmin : télécharger et reprendre un reglages.json (add-ons cochés compris)",
+    /a\.download = "reglages\.json";/.test(CA) && /id="caReglagesInput"/.test(CA) && /_poserAccueil\(d\.accueil\);/.test(CA) &&
+    /ktaReglagesExport\([^;]*_addonsCoches\)/.test(CA) && /<script src="js\/ktaAddons\.js"><\/script>/.test(CA));
 }
 
 // ── 7. Textes : un libellé et une explication par état, 3 langues ────

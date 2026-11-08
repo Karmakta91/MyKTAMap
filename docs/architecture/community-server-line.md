@@ -787,7 +787,8 @@ navigateur.
 - **ConfAdmin** n'écrit le champ que si `state: "on"` (l'absence vaut OFF), avec la même validation que l'app.
 - **Lecture unique de l'index** avant les gates (`js/ktaInstance.js`, mémoire `myktamap_instance_config_v1` =
   section `config` seule) ; une config **mémorisée** ne révoque jamais rien (`revaliderInstance(…, false)`). Lu en
-  même temps : `data/reglages.json` (`accueil`, `subtitle` seuls ; mémoire `myktamap_instance_reglages_v1`).
+  même temps : `data/reglages.json` (`accueil`, `subtitle`, `addons` seuls ; mémoire `myktamap_instance_reglages_v1`),
+  écrit par ConfAdmin (titre, description, sous-titre, cases des add-ons livrés).
 - **Identifiants stables** (`js/ktaUid.js`) et **points d'extension** : `window.KtaExtensions.register()`, gate
   déléguée, chargeur de modules (règle E), garde des requêtes, permissions import/export, plans d'extension
   (`type: "ext"`, ☁️), publication depuis le Générateur, journal des changements, effacement à la déconnexion

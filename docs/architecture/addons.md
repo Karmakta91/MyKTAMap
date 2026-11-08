@@ -2,8 +2,7 @@
 
 > État actuel, pas d'historique. Ce fichier se lit **en entier** avant d'écrire ou de modifier un add-on, par un
 > développeur comme par une IA : il dit ce qu'est un add-on, comment il se lance, à quoi il a le droit de toucher
-> (les connecteurs) et ce qui lui est interdit. Exemple complet : l'add-on `mkmg` (dernière partie). Cases de
-> ConfAdmin pour l'hébergeur : à venir (cadre d'add-ons, lot C).
+> (les connecteurs) et ce qui lui est interdit. Exemple complet : l'add-on `mkmg` (dernière partie).
 
 ## En une minute
 
@@ -82,7 +81,9 @@ part avec lui.
 
 - **myktamap.fr / instance sans serveur** (`KtaExtensions.etat().etat === "off"`) : permis.
 - **Installation reliée à un serveur** (pro) : refusé par défaut, sauf si son hébergeur l'autorise dans
-  `data/reglages.json` : `{ "addons": { "<nom>": true } }`. `KtaInstance.filtrerReglages` ne garde de `addons` que des
+  `data/reglages.json` : `{ "addons": { "<nom>": true } }`, écrit à la main ou par **ConfAdmin** (rubrique 🎮 Add-ons :
+  une case par add-on livré, secrets compris — outil de l'hébergeur, décision produit ; relue par « Reprendre un
+  reglages.json », un nom absent de la version gardé à l'export ; `js/confadmin.js > ktaReglagesExport`). `KtaInstance.filtrerReglages` ne garde de `addons` que des
   noms `[a-z0-9-]{1,32}` à `true` (`check-gate-instance.js`, piège compris) ; ce réglage autorise un add-on déjà livré,
   il n'en charge aucun. Lecture côté add-on : `KtaInstance.etat().reglages.addons.<nom> === true`. Un interrupteur par
   organisation (pro) est au backlog.
