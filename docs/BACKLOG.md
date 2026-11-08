@@ -73,6 +73,16 @@
   vert sous WebKit sur plusieurs passages, sans clé manquante · depuis: 04/11/2026 · taille: S`
 ## Plus tard
 
+- **Calque : copie jamais retouchée contre trace de copie** — deux appareils hors ligne qui passent le même calque
+  en modification gardent des copies concurrentes (le plus récent gagne). Règle à la réception, cf
+  `docs/architecture/session-data.md` (limites de « Repasser en modification »).
+  `qui: Claude · action: marquer la date de l'objet du fichier sur chaque copie, la trace l'emporte sur une copie
+  intacte · fini: scénario deux appareils hors ligne vert · depuis: 08/11/2026 · taille: M`
+- **Calque d'origine sur un appareil neuf** — toutes les copies supprimées ailleurs : il ne reçoit que des traces,
+  voit le calque d'origine tant qu'il n'a pas cliqué « Modifier » (qui donne alors un calque vide).
+  `qui: Claude · action: masquer le calque si des traces de copie le vident (vérification asynchrone du fichier)
+  · fini: appareil neuf sans calque fantôme · depuis: 08/11/2026 · taille: S`
+
 - **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
   compte comme absent pour les outils de réputation.
   `qui: Claude · action: repousser Expires d'un an (moins d'un an d'avance) · fini: fichier servi, date à jour
