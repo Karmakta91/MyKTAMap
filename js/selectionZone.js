@@ -5,7 +5,7 @@
  */
 
 // =====================================================================
-// selectionZone.js — sélection par zone dessinée et suppression en lot (sélection multiple 🎯)
+// selectionZone.js — sélection par zone dessinée, suppression et niveau en lot (sélection multiple 🎯)
 // =====================================================================
 // La zone se dessine avec l'outil ♦️ Surface (measure.js) : la mesure en cours est mise de côté, la zone tracée
 // à sa place, puis la mesure est rendue telle quelle (commencer / terminer / abandonner).
@@ -19,8 +19,11 @@
 //   jamais dans un fichier, cf. historyManager.js > _tracer).
 // 🩸 Photos d'un point supprimé : gardées, « sans point » (comme supprimerPointEditor) ; ⏪ rend le point et son uid,
 //   donc ses photos. Points portails (liaison vers un autre plan) : gardés, la purge des liaisons ne s'annule pas.
+// 🏗️ Niveau en lot (niveauLot) : mêmes règles d'un instantané et d'une écriture par famille ; le niveau se pose par
+//   KtaConvertir.poserNiveau (zone sur plusieurs niveaux : seul son niveau d'origine est remplacé). Jonctions (tracé,
+//   POI) jamais touchées, comptées dans la fenêtre comme les objets de calque.
 // Expose : window.KtaSelectionZone = { dansZone, commencer, enCours, nbSommets, retirerSommet, terminer,
-//   abandonner, preparer, supprimerLot, confirmerEtSupprimer, FAMILLES }.
+//   abandonner, preparer, supprimerLot, confirmerEtSupprimer, niveauLot, confirmerEtChangerNiveau, FAMILLES }.
 // Garde-fou : scripts/check-selection-multi.js · checkup : scripts/smoke/checkup-suppr-zone.js
 (function () {
   "use strict";
@@ -89,17 +92,24 @@
 
   // Objets de session entièrement dans `poly` (coordonnées plan), au niveau actif, et objets de calque qui le
   // seraient (jamais touchés : rendus pour être comptés, sans doublon d'une zone à l'autre).
-  // → { items: [{ famille, obj }], calque: [{ famille, ref }] } (`ref` = marqueur ou entrée du registre du calque).
+  // → { items: [{ famille, obj }], calque: [{ famille, ref }], jonctions: [obj] } (`ref` = marqueur ou entrée du
+  // registre du calque ; `jonctions` = tracés jonction et POI jonction de session dedans, écartés, comptés).
   function dansZone(poly) {
-    const res = { items: [], calque: [] };
+    const res = { items: [], calque: [], jonctions: [] };
     if (!Array.isArray(poly) || poly.length < 3) return res;
     const b = _boite(poly), niveau = _niveauActif();
     FAMILLES.forEach(function (famille) {
       _lire(famille).forEach(function (obj) {
-        if (!obj || obj._preview || EXCLUS[obj.type]) return;
+        if (!obj || obj._preview || obj.type === "itinerary") return;
+        if (obj.type === "jonction") {
+          const dansNiv = niveau === null || obj.fromLevel === niveau || obj.toLevel === niveau;
+          if (dansNiv && _toutDedans(obj.points, poly, b)) res.jonctions.push(obj);
+          return;
+        }
         if (!(famille === "zones" ? _zoneAuNiveau(obj, niveau) : _auNiveau(obj.level, niveau))) return;
         if (famille === "editorPoints") {
-          if (_estPoiJonction(obj) || !_toutDedans([obj], poly, b)) return;
+          if (!_toutDedans([obj], poly, b)) return;
+          if (_estPoiJonction(obj)) { res.jonctions.push(obj); return; }
         } else if (!_toutDedans(obj.points, poly, b)) {
           return;
         }
@@ -182,13 +192,18 @@
     try { return IPL.getLinksForPoint(_planId(), p).length > 0; } catch (e) { return false; }
   }
 
-  // Lot → { parFamille: { famille: [obj] }, portails } (portails gardés, exclus déjà écartés).
-  function preparer(items) {
-    const out = { parFamille: { editorPoints: [], roads: [], zones: [], structures: [] }, portails: 0 };
+  // Lot → { parFamille: { famille: [obj] }, portails, jonctions } (portails gardés, exclus écartés, jonctions
+  // comptées). `garderPortails` (niveau en lot) : un portail reste dans le lot, sa liaison suit son niveau.
+  function preparer(items, garderPortails) {
+    const out = { parFamille: { editorPoints: [], roads: [], zones: [], structures: [] }, portails: 0, jonctions: 0 };
     (items || []).forEach(function (it) {
-      if (!it || !it.obj || !out.parFamille[it.famille] || it.obj._preview || EXCLUS[it.obj.type]) return;
-      if (it.famille === "editorPoints" && _estPoiJonction(it.obj)) return;
-      if (it.famille === "editorPoints" && _estPortail(it.obj)) { out.portails++; return; }
+      if (!it || !it.obj || !out.parFamille[it.famille] || it.obj._preview) return;
+      if (it.obj.type === "jonction" || (it.famille === "editorPoints" && _estPoiJonction(it.obj))) {
+        out.jonctions++;
+        return;
+      }
+      if (EXCLUS[it.obj.type]) return;
+      if (!garderPortails && it.famille === "editorPoints" && _estPortail(it.obj)) { out.portails++; return; }
       out.parFamille[it.famille].push(it.obj);
     });
     return out;
@@ -372,6 +387,145 @@
     });
   }
 
+  // ── Niveau en lot ──
+  function _niv(o) { return Number.isInteger(o.level) ? o.level : 0; }
+
+  // `parFamille` = { famille: [obj] } → { changes, deja, echecs, parFamille }. Un objet déjà au niveau est sauté (ni
+  // échec, ni écriture). Jonctions et itinéraire refusés même glissés dans le lot (ils n'ont pas de `level`).
+  // ⚠️ Mutation EN PLACE (même uid, KtaUid.touch par poserNiveau) : une installation reliée voit le changement partir.
+  // 🩸 Graphe de navigation invalidé : un changement de niveau ne change ni le nombre de tracés ni celui des sommets.
+  function niveauLot(parFamille, niveau) {
+    const bilan = { changes: 0, deja: 0, echecs: 0, parFamille: { editorPoints: 0, roads: 0, zones: 0, structures: 0 } };
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return bilan;   // 🔒 lecture seule
+    const CV = window.KtaConvertir;
+    if (!Number.isInteger(niveau) || !CV || typeof CV.poserNiveau !== "function") return bilan;
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState() : null;
+    const listes = {}, portes = [];
+    FAMILLES.forEach(function (f) { listes[f] = _lire(f).slice(); });
+    FAMILLES.forEach(function (f) {
+      const objs = (parFamille && Array.isArray(parFamille[f])) ? parFamille[f] : [];
+      if (!objs.length) return;
+      if (typeof window[SET[f]] !== "function") { bilan.echecs += objs.length; return; }
+      objs.forEach(function (o) {
+        const i = _indexDe(listes[f], o);
+        if (i < 0) { bilan.echecs++; return; }
+        const cible = listes[f][i];
+        if (EXCLUS[cible.type] || (f === "editorPoints" && _estPoiJonction(cible))) { bilan.echecs++; return; }
+        if (_niv(cible) === niveau) { bilan.deja++; return; }
+        CV.poserNiveau(cible, niveau);
+        if (f === "editorPoints") portes.push(cible);
+        bilan.parFamille[f]++;
+        bilan.changes++;
+      });
+    });
+    if (!bilan.changes) return bilan;   // rien écrit, rien à annuler
+    FAMILLES.forEach(function (f) { if (bilan.parFamille[f]) window[SET[f]](listes[f]); });
+    // Liaisons inter-plans d'un point déplacé : suivent son niveau (comme le formulaire d'un point, editor.js).
+    const IPL = window.InterPlanLinks;
+    if (portes.length && _planId() && IPL && typeof IPL.onPointLevelChanged === "function") {
+      portes.forEach(function (p) {
+        try { IPL.onPointLevelChanged(_planId(), p); } catch (e) { console.warn("[SelectionZone] liaison :", e); }
+      });
+    }
+    if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      window.HistoryManager.record(_t("selm.niveau.histoire",
+        { n: bilan.changes, niveau: window.ktaFormatNiveau ? window.ktaFormatNiveau(niveau) : String(niveau) }), avant);
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    try { if (window.map && window.map.closePopup) window.map.closePopup(); } catch (e) {}
+    return bilan;
+  }
+
+  // Fenêtre du niveau en lot : la liste des niveaux du plan (celle de la fiche, ktaOptionsNiveauHtml), une case par
+  // famille ; le bouton dit combien d'objets changent (ceux déjà au niveau choisi ne comptent pas). Jonctions et
+  // objets de calque annoncés, jamais touchés. → Promise<bilan | null> (null = annulé, rien à changer, hors
+  // multi-niveau). 🩸 Liste et cases vivent dans le message de ktaConfirm (HTML voulu) : lues par leurs écouteurs.
+  // `opts.familles` : familles cochées d'emblée (absent = toutes celles du lot).
+  function confirmerEtChangerNiveau(items, nCalque, nJonctions, opts) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(null);
+    const c = window.APP_CONFIG || {};
+    const actif = Number.isInteger(c.activeLevel) ? c.activeLevel : 0;
+    const options = typeof window.ktaOptionsNiveauHtml === "function" ? window.ktaOptionsNiveauHtml(actif) : "";
+    if (!options) return Promise.resolve(null);
+    const prep = preparer(items, true);
+    const pf = prep.parFamille;
+    const jonctions = prep.jonctions + (nJonctions || 0);
+    if (!FAMILLES.some(function (f) { return pf[f].length; })) {
+      if (typeof window.ktaAlerte === "function") window.ktaAlerte(_t("selm.niveau.rien", { n: jonctions }));
+      return Promise.resolve(null);
+    }
+    const familles = (opts && Array.isArray(opts.familles)) ? opts.familles : null;
+    const coches = {};
+    FAMILLES.forEach(function (f) { coches[f] = pf[f].length > 0 && (!familles || familles.indexOf(f) >= 0); });
+    let choisi = actif;
+    const total = function () {
+      return FAMILLES.reduce(function (s, f) {
+        return s + (coches[f] ? pf[f].filter(function (o) { return _niv(o) !== choisi; }).length : 0);
+      }, 0);
+    };
+    let cases = "";
+    FAMILLES.forEach(function (f) {
+      const n = pf[f].length;
+      cases += '<label class="kta-selm-case"><input type="checkbox" data-kta-selm-niv-fam="' + f + '"' +
+        (coches[f] ? " checked" : "") + (n ? "" : " disabled") + '> ' +
+        _esc(_t("selm.suppr.fam." + f, { n: n })) + '</label>';
+    });
+    const notes = [];
+    if (jonctions) notes.push(_t("selm.niveau.jonctions", { n: jonctions }));
+    if (nCalque) notes.push(_t("selm.niveau.calques", { n: nCalque }));
+    notes.push(_t("selm.niveau.multi"));
+    notes.push(_t("selm.niveau.annuler"));
+    const message = _esc(_t("selm.niveau.question")) +
+      '<label class="kta-selm-niveau-liste"><span>' + _esc(_t("niveauObjet.label")) + '</span>' +
+      '<select class="kta-cfg-input" data-kta-selm-niv>' + options + '</select></label>' +
+      '<span class="kta-selm-cases">' + cases + '</span>' +
+      notes.map(function (n) { return _esc(n); }).join("\n");
+    const p = window.ktaConfirm(message, {
+      titre: _esc(_t("selm.niveau.titre")),
+      okLabel: _esc(_t("selm.niveau.ok", { n: total() }))
+    });
+    const ov = Array.prototype.slice.call(document.querySelectorAll(".kta-readme-modal-overlay")).filter(function (o) {
+      return !!o.querySelector("[data-kta-selm-niv]");
+    }).pop();
+    if (ov) {
+      const oui = ov.querySelector("#kta-confirm-oui");
+      const maj = function () {
+        const n = total();
+        if (oui) { oui.textContent = _t("selm.niveau.ok", { n: n }); oui.disabled = n === 0; }
+      };
+      maj();
+      const sel = ov.querySelector("[data-kta-selm-niv]");
+      if (sel) {
+        sel.addEventListener("change", function () {
+          const v = Number.parseInt(sel.value, 10);
+          if (Number.isInteger(v)) choisi = v;
+          maj();
+        });
+      }
+      ov.querySelectorAll("[data-kta-selm-niv-fam]").forEach(function (cb) {
+        cb.addEventListener("change", function () {
+          coches[cb.getAttribute("data-kta-selm-niv-fam")] = cb.checked;
+          maj();
+        });
+      });
+    }
+    return p.then(function (oui) {
+      if (!oui || !total()) return null;
+      const lot = {};
+      FAMILLES.forEach(function (f) { lot[f] = coches[f] ? pf[f] : []; });
+      const bilan = niveauLot(lot, choisi);
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(_t("selm.niveau.bilan", {
+          changes: bilan.changes, echecs: bilan.echecs,
+          niveau: window.ktaFormatNiveau ? window.ktaFormatNiveau(choisi) : String(choisi)
+        }), bilan.changes ? "success" : "warn");
+      }
+      return bilan;
+    });
+  }
+
   window.KtaSelectionZone = {
     FAMILLES: FAMILLES,
     dansZone: dansZone,
@@ -383,6 +537,8 @@
     abandonner: abandonner,
     preparer: preparer,
     supprimerLot: supprimerLot,
-    confirmerEtSupprimer: confirmerEtSupprimer
+    confirmerEtSupprimer: confirmerEtSupprimer,
+    niveauLot: niveauLot,
+    confirmerEtChangerNiveau: confirmerEtChangerNiveau
   };
 })();

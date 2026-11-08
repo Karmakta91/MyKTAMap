@@ -19587,6 +19587,9 @@ body.kta-theme-light #kta-osm-mes-floater {
 .kta-selm-cases { display: block; margin: 10px 0; white-space: normal; }
 .kta-selm-case { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: var(--kta-texte); cursor: pointer; }
 
+.kta-selm-niveau-liste { display: flex; gap: 8px; align-items: center; margin: 10px 0 0; white-space: normal;
+  color: var(--kta-texte); }
+.kta-selm-niveau-liste select { flex: 1 1 auto; min-width: 0; }
 /* Le bouton d'entrée en sélection multiple, dans la modale de conversion. */
 .kta-convert-multi { display: block; width: 100%; margin: 4px 0 12px; }
 /* Case « seulement les contours fermés » d'un lot : grisée (disabled) quand le lot n'en a aucun. */
