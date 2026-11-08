@@ -2328,8 +2328,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 
 ### Rechercher et y aller en 3D (QCM du 08/11/2026)
 
-- **Même fenêtre, même portée** : 🔍 (rangée du haut à hauteur d'yeux, tête de la colonne d'outils en édition, `ui.md`
-  § Vue 3D) et Ctrl/Cmd+K ouvrent la
+- **Même fenêtre, même portée** : 🔍 (rangée du haut, dans les deux vues, `ui.md` § Vue 3D) et Ctrl/Cmd+K ouvrent la
   recherche de la carte (`searchPoints.js` : points, tracés, zones, structures, mêmes filtres), au-dessus de la vue.
   Échap ou ✕ la ferment sans rien changer (la vue ignore les touches tant qu'une fenêtre la recouvre, `_recouverte`).
 - **Prise neutre** `SearchPoints.prendreChoix(fn)` → fonction qui la retire : pendant que la vue est ouverte

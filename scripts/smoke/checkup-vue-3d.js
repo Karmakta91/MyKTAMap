@@ -96,6 +96,8 @@
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
 // recouvrement, priorité danger / favori, coût, toucher une icône, nom revenu en se rapprochant (hystérésis), membres
 // jamais réduits, hauteur d'yeux inchangée.
+// Colonne de la vue d'édition (page à part, =colonneedit) : ▾ / ◂ replie (retenu), 🧭 menu Tracker par-dessus la vue,
+// tuile de carte qui ferme la 3D.
 // Add-ons visibles (page à part, =addons) : deux add-ons fictifs servis par la page, Configuration › Add-ons, 🎮 de la
 // tuile ⚙️ (choix, lancement direct, masqué, add-on éteint), cases de ConfAdmin (reglages.json téléchargé et repris).
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
@@ -5021,7 +5023,7 @@ async function sectionColonnePaysage(nav) {
       await capture(page, "colonne-doigt-pire-" + t.width + "x" + t.height + (t.safe ? "-safe" : ""));
       [["normal", normal], ["pire", pire]].forEach(function (x) {
         const e = x[1];
-        if (!e.colonne || !e.coarse || e.boutons < 7 || !e.vertical || e.bordDroit > 20 || e.bordDroit < 0 ||
+        if (!e.colonne || !e.coarse || e.boutons < 8 || !e.vertical || e.bordDroit > 20 || e.bordDroit < 0 ||
           !e.dansEcran || e.ecartHaut < 14 || e.ecartPlace < 14 || e.chevauche || (x[0] === "normal" && !e.tousVus)) {
           fautes.push(nom + " " + x[0] + " : " + JSON.stringify(e));
         }
@@ -5034,7 +5036,7 @@ async function sectionColonnePaysage(nav) {
     }
   }
   verifier(fautes.length === 0, "colonne d'outils au doigt en paysage bas : verticale, contre le bord droit (≤ 20 px " +
-    "hors safe area), dans l'écran, sept boutons vus, à 14 px au moins de la rangée du haut et de ⌖, sans chevaucher " +
+    "hors safe area), dans l'écran, huit boutons vus (▾ 🗺️ 🧭 et les cinq outils), à 14 px au moins de la rangée du haut et de ⌖, sans chevaucher " +
     "grille, boussole ni bandeaux (guidage, mesure)", fautes);
 }
 
@@ -5269,6 +5271,108 @@ async function sectionPlanSolNiveaux(page) {
 // remplacé, aucun fichier écrit). Configuration › Add-ons : un interrupteur par add-on visible, mkmg (secret) absent ;
 // vue 3D : 🎮 dans la tuile ⚙️, choix entre deux, lancement direct s'il n'en reste qu'un, masqué s'il n'y en a plus,
 // un add-on éteint ne se lance pas (KTA_V3D_SEUL=addons : cette section seule).
+// Colonne de la vue d'édition (=colonneedit), page à part : ▾ replie (seul ▾ / ◂ reste), retenu à la réouverture,
+// ◂ rouvre ; 🧭 ouvre le menu Tracker de la carte par-dessus la vue, ses tuiles qui agissent sur la carte marquées,
+// 🎯 Ma position (l'une d'elles) ferme la 3D.
+async function sectionColonneEdition(nav) {
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+    try { localStorage.removeItem("myktamap_v3d_outils_plie_v1"); } catch (e) {}
+  }, LS_PREGATES);
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const r = await page.evaluate(async function () {
+      const K = window.KtaVue3D, pc = window.PLAN_CONFIG;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const images = async function () {
+        for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      };
+      const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+      const ouvrir = async function () {
+        if (K.etat().ouvert !== false) await K.fermer();
+        await K.ouvrir({ depart: { x: pc.plan.imageWidth / 2, y: pc.plan.imageHeight / 2, cap: 90 } });
+        if (K.etat().vue !== "plongee") K.basculerVue();
+        await images();
+        await pause(100);
+      };
+      const vus = function () {
+        return Array.prototype.filter.call(document.querySelectorAll("#kta-vue3d .kta-v3d-outils > a"), function (a) {
+          return a.getClientRects().length > 0;
+        }).map(function (a) { return a.dataset.v3d + (a.dataset.groupe ? ":" + a.dataset.groupe : ""); });
+      };
+      const out = {};
+      await ouvrir();
+      out.ordre = vus().join(",");
+      q('[data-v3d="outilsPlier"]').click();
+      await images();
+      out.plie = { vus: vus().join(","), texte: q('[data-v3d="outilsPlier"]').textContent,
+        memoire: localStorage.getItem("myktamap_v3d_outils_plie_v1") };
+      await ouvrir();
+      out.rouvert = { vus: vus().join(","), texte: q('[data-v3d="outilsPlier"]').textContent };
+      q('[data-v3d="outilsPlier"]').click();
+      await images();
+      out.deplie = { n: vus().length, texte: q('[data-v3d="outilsPlier"]').textContent,
+        memoire: localStorage.getItem("myktamap_v3d_outils_plie_v1") };
+      // 🧭 : le menu Tracker de la carte, par-dessus la vue.
+      q('[data-v3d="tracker"]').click();
+      for (let i = 0; i < 20 && !document.querySelector(".kta-tracker-modal-overlay"); i++) await pause(50);
+      const ov = document.querySelector(".kta-tracker-modal-overlay");
+      const boite = ov && ov.querySelector(".kta-tracker-modal-box").getBoundingClientRect();
+      const dessus = boite && document.elementFromPoint(boite.left + boite.width / 2, boite.top + boite.height / 2);
+      const carte = ov ? Array.prototype.map.call(ov.querySelectorAll(".kta-tracker-modal-tile[data-carte]"),
+        function (t) { return t.querySelector(".kta-tracker-modal-tile-label").textContent; }) : [];
+      const maPos = window.I18n.t("ui.subaction.maPosition");
+      out.menu = { ouvert: !!ov, dessus: !!dessus && !!dessus.closest(".kta-tracker-modal-overlay"),
+        carte: carte.length, maPos: carte.indexOf(maPos) >= 0 };
+      const tuile = ov && Array.prototype.filter.call(ov.querySelectorAll(".kta-tracker-modal-tile[data-carte]"),
+        function (t) { return t.querySelector(".kta-tracker-modal-tile-label").textContent === maPos; })[0];
+      if (tuile) tuile.click();
+      for (let i = 0; i < 40 && K.etat().ouvert !== false; i++) await pause(50);
+      out.apres = { vue3d: K.etat().ouvert, menu: !!document.querySelector(".kta-tracker-modal-overlay") };
+      return out;
+    });
+    verifier(r.ordre.indexOf("outilsPlier,planSol,tracker,outil:mesure") === 0,
+      "colonne d'édition : ▾, 🗺️, 🧭 puis 📐 et les outils", r.ordre);
+    verifier(r.plie.vus === "outilsPlier" && r.plie.texte === "◂" && r.plie.memoire === "1" &&
+      r.rouvert.vus === "outilsPlier" && r.rouvert.texte === "◂" && r.deplie.n >= 8 && r.deplie.texte === "▾" &&
+      r.deplie.memoire === "0",
+      "colonne d'édition : ▾ la replie (seul ◂ reste), retenu à la réouverture, ◂ la rouvre", r);
+    // Tuiles de carte : 🧭 boussole, 🗺️ plan orienté, 📍 recalage, 🎯 ma position, ⛑️ perdu (🎬 Replay et 🔥 Heatmap :
+    // fonctionnalités optionnelles, éteintes ici).
+    verifier(r.menu.ouvert && r.menu.dessus && r.menu.carte === 5 && r.menu.maPos && r.apres.vue3d === false &&
+      !r.apres.menu,
+      "colonne d'édition : 🧭 ouvre le menu Tracker par-dessus la vue (5 tuiles de carte marquées) ; 🎯 Ma position " +
+      "ferme la 3D", r);
+    verifier(erreurs.length === 0, "colonne d'édition : aucune erreur de page", erreurs.slice(0, 3));
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function sectionAddonsVisibles(nav) {
   const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
   const page = await ctx.newPage();
@@ -8604,7 +8708,7 @@ async function sectionRecherche3D(nav) {
     };
     const b1 = await rangee();
     verifier(!!b1.recherche && !b1.colonne && !b1.sol && b1.outils === 0 && b1.texte === "🔍" && b1.aria === b1.cle &&
-      b1.titre === b1.cle && b1.cle !== "vue3d.recherche" && b1.etat.haut && !b1.etat.bouton && b1.etat.preneur &&
+      b1.titre === b1.cle && b1.cle !== "vue3d.recherche" && b1.etat.haut && b1.etat.preneur &&
       !!b1.reglages && b1.recherche.d <= b1.reglages.x && b1.reglages.x - b1.recherche.d <= 12 &&
       b1.recherche.y === b1.reglages.y && b1.recherche.w === b1.reglages.w && b1.recherche.h === b1.reglages.h,
     nom + "hauteur d'yeux : 🔍 dans la rangée du haut, juste à gauche de ⚙️, même gabarit ; colonne, 🗺️ et outils " +
@@ -8630,16 +8734,24 @@ async function sectionRecherche3D(nav) {
         if (!el || el.offsetParent === null) return null;
         const b = el.getBoundingClientRect();
         return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height),
-          bas: Math.round(b.bottom) };
+          bas: Math.round(b.bottom), d: Math.round(b.right) };
       };
       const sol = document.querySelector('#kta-vue3d [data-v3d="planSol"]');
+      const trk = document.querySelector('#kta-vue3d [data-v3d="tracker"]');
+      const rangee = document.querySelector("#kta-vue3d .kta-v3d-haut").getBoundingClientRect();
       return { recherche: r('.kta-v3d-outils [data-v3d="recherche"]'), sol: r('[data-v3d="planSol"]'),
-        haut: r('.kta-v3d-haut [data-v3d="recherche"]'),
-        suivant: sol && sol.previousElementSibling && sol.previousElementSibling.dataset.v3d };
+        haut: r('.kta-v3d-haut [data-v3d="recherche"]'), reglages: r('[data-v3d="reglages"]'),
+        colonne: r(".kta-v3d-outils"), rangeeBas: Math.round(rangee.bottom),
+        avant: sol && sol.previousElementSibling && sol.previousElementSibling.dataset.v3d,
+        apres: sol && sol.nextElementSibling && sol.nextElementSibling.dataset.v3d,
+        apresTracker: trk && trk.nextElementSibling && trk.nextElementSibling.dataset.groupe };
     });
-    verifier(!!b2.recherche && !!b2.sol && !b2.haut && b2.recherche.x === b2.sol.x && b2.recherche.w === b2.sol.w &&
-      b2.recherche.bas <= b2.sol.y + 1 && b2.sol.y - b2.recherche.bas < 12 && b2.suivant === "recherche",
-    nom + "vue d'édition : 🔍 juste au-dessus de 🗺️, même colonne, même taille ; plus dans la rangée du haut", b2);
+    // Vue d'édition (décision produit) : 🔍 reste dans la rangée du haut ; la colonne part de sous la rangée : ▾, 🗺️, 🧭,
+    // puis 📐 et les autres outils.
+    verifier(!b2.recherche && !!b2.haut && !!b2.reglages && b2.haut.d <= b2.reglages.x && b2.haut.y === b2.reglages.y &&
+      !!b2.colonne && b2.colonne.y >= b2.rangeeBas && b2.colonne.y - b2.rangeeBas < 60 && b2.avant === "outilsPlier" &&
+      b2.apres === "tracker" && b2.apresTracker === "mesure",
+    nom + "vue d'édition : 🔍 dans la rangée du haut (à gauche de ⚙️), colonne sous la rangée : ▾, 🗺️, 🧭 puis 📐", b2);
     await page.evaluate(async function () {
       window.KtaVue3D.basculerVue();
       for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
@@ -10112,8 +10224,19 @@ async function sectionGestesDoigt(nav) {
     ];
     for (const c of cas) {
       await remettre();
-      const q0 = c[1], cible = [196, 430];
-      const p0 = [2 * cible[0] - q0[0], 2 * cible[1] - q0[1]];
+      // L'autre doigt part du symétrique de la commande par rapport au point visé : sur la scène, jamais sur une autre
+      // commande (la colonne, sous la rangée du haut, est sur le symétrique du joystick) — point visé descendu sinon.
+      const q0 = c[1];
+      let cible = [196, 430], p0 = null;
+      for (let k = 0; k < 8; k++) {
+        p0 = [2 * cible[0] - q0[0], 2 * cible[1] - q0[1]];
+        const surScene = await page.evaluate(function (p) {
+          const el = document.elementFromPoint(p[0], p[1]);
+          return !!el && el === document.querySelector("#kta-vue3d canvas");
+        }, p0);
+        if (surScene) break;
+        cible = [cible[0], cible[1] + 30];
+      }
       const b = bilan(await geste(p0, autour(cible, (p0[0] - cible[0]) * 0.2, (p0[1] - cible[1]) * 0.2), q0,
         autour(cible, (q0[0] - cible[0]) * 0.2, (q0[1] - cible[1]) * 0.2), 30, c[2]));
       verifier(dezoome(b), nom + "dézoom au pincement, " + c[0] + " : le recul ne fait que croître (> ×2,5, pas ≤ ×1,25), " +
@@ -10294,7 +10417,7 @@ async function sectionGestesDoigt(nav) {
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
-      SEUL === "addons" || SEUL === "voisins") {
+      SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -10707,8 +10830,9 @@ async function sectionGestesDoigt(nav) {
             "ui.refonte.counter_sortie_title", "vue3d.reglages", "vue3d.recherche",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.zoomPlus", "vue3d.inclinaisonPlus", "vue3d.zoomMoins", "vue3d.inclinaisonMoins",
-            "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "vue3d.recherche",
-            "vue3d.dessin.planSol", "ui.group.mesure", "ui.group.edition", "ui.group.traces", "ui.group.zones",
+            "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "ui.refonte.btn_sidebar_collapse",
+            "vue3d.dessin.planSol", "ui.group.tracker", "ui.group.mesure", "ui.group.edition", "ui.group.traces",
+            "ui.group.zones",
             "ui.group.structures",
             "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer", "vue3d.fichesMontrer",
@@ -16575,6 +16699,7 @@ async function sectionGestesDoigt(nav) {
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
     if (!SEUL || SEUL === "addons") await sectionAddonsVisibles(nav);
+    if (!SEUL || SEUL === "colonneedit") await sectionColonneEdition(nav);
     if (!SEUL || SEUL === "ajuster") {
       for (const mode of ["souris", "doigt"]) await sectionAjusterSommets(nav, mode);
       await sectionAjusterSourisReelle(nav);

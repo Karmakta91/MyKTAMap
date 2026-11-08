@@ -5911,9 +5911,10 @@
   const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };
   const COULEUR_MESURE = "#ff0000";   // la mesure de la carte (measure.js : red), pas une couleur de la charte
 
-  // Colonne (dans la vue, posée par _monterDom) : 🔍 Rechercher, 🗺️ puis un bouton par groupe, en vue d'édition
-  // seulement ; à hauteur d'yeux, 🔍 est dans la rangée du haut (_majRechercheHaut, décision produit). Aucun 🔍 pendant
-  // une greffe qui coupe les fiches (_rechercheDispo). Sans la barre de droite 2D (interface.js absent), pas de colonne.
+  // Colonne (dans la vue, posée par _monterDom), en vue d'édition seulement, sous la rangée du haut : ▾ / ◂ la replie
+  // (retenu sur l'appareil, LS_OUTILS_PLIE), 🗺️ plan au sol, 🧭 menu Tracker de la carte, puis un bouton par groupe.
+  // 🔍 est dans la rangée du haut dans les deux vues (_majRechercheHaut, décision produit), sauf pendant une greffe qui
+  // coupe les fiches (_rechercheDispo). Sans la barre de droite 2D (interface.js absent), pas de colonne.
   function _monterOutils(ov) {
     const e = _e;
     e.dessin = { permis: false, sig: null, apSig: null, apercu: null, etiquettes: [], poses: 0, msPoses: [],
@@ -5940,23 +5941,63 @@
       return a;
     };
     const d = e.dessin;
-    // 🔍 La recherche de la carte (allerA), en tête de colonne, au-dessus de 🗺️ (décision produit).
-    d.boutonRecherche = lien("recherche");
-    d.boutonRecherche.textContent = "🔍";
-    d.boutonRecherche.title = _t("vue3d.recherche");
-    d.boutonRecherche.setAttribute("aria-label", _t("vue3d.recherche"));
-    d.boutonRecherche.setAttribute("aria-keyshortcuts", "Control+K Meta+K");
-    d.boutonRecherche.hidden = true;
-    // 🗺️ Plan au sol (_majPlanSol) : interrupteur, sous 🔍, au-dessus des outils (décision produit).
+    // ▾ / ◂ En tête : replie la colonne comme le bouton de la barre 2D (refonteInterface.js > _creerBoutonReduction),
+    // le mode en cours continue ; ici retenu sur l'appareil (décision produit).
+    d.boutonPlier = lien("outilsPlier");
+    d.boutonPlier.classList.add("kta-v3d-outils-plier");
+    // 🗺️ Plan au sol (_majPlanSol) : interrupteur, au-dessus des outils (décision produit).
     d.boutonSol = lien("planSol");
     d.boutonSol.textContent = "🗺️";
     d.boutonSol.title = _t("vue3d.dessin.planSol");
     d.boutonSol.setAttribute("aria-label", _t("vue3d.dessin.planSol"));
     d.boutonSol.setAttribute("aria-pressed", "false");
     d.boutonSol.hidden = true;
+    // 🧭 Menu Tracker de la carte, entre 🗺️ et 📐 (décision produit) : le même, complet (_ouvrirTracker).
+    d.boutonTracker = lien("tracker");
+    d.boutonTracker.hidden = true;
     d.outils = GROUPES_DESSIN.map(function (g) { const b = lien("outil", g); b.hidden = true; return b; });
     ov.appendChild(barre);
     d.barre = barre;
+    _plierOutils(_lireOutilsPlie());
+  }
+
+  const LS_OUTILS_PLIE = "myktamap_v3d_outils_plie_v1";
+  function _lireOutilsPlie() {
+    try { return localStorage.getItem(LS_OUTILS_PLIE) === "1"; } catch (err) { return false; }
+  }
+
+  // Colonne repliée : seul ▾ / ◂ reste ; un panneau de groupe ouvert se ferme (il se rouvrirait au dépliage).
+  function _plierOutils(plie, retenir) {
+    const d = _e && _e.dessin;
+    if (!d || !d.barre) return;
+    d.barre.classList.toggle("kta-v3d-outils-plie", plie);
+    d.boutonPlier.textContent = plie ? "◂" : "▾";
+    const titre = _t(plie ? "ui.refonte.btn_sidebar_expand" : "ui.refonte.btn_sidebar_collapse");
+    d.boutonPlier.title = titre;
+    d.boutonPlier.setAttribute("aria-label", titre);
+    d.boutonPlier.setAttribute("aria-pressed", plie ? "true" : "false");
+    if (plie && typeof window.ktaOutilsOuverts === "function" && window.ktaOutilsOuverts()) window.ktaFermerOutils();
+    if (retenir) {
+      try { localStorage.setItem(LS_OUTILS_PLIE, plie ? "1" : "0"); } catch (err) { /* stockage refusé : non retenu */ }
+    }
+  }
+
+  // 🧭 Le menu Tracker de la carte, par son bouton de la barre 2D. Une tuile qui agit sur la carte (`data-carte`,
+  // interface.js > _creerTuileTracker) ferme d'abord la vue 3D ; les autres (suivi, itinéraire, guidage, verrou)
+  // agissent dans la vue (décision produit).
+  function _ouvrirTracker() {
+    const g = window._groupes && window._groupes.tracker;
+    if (!g || !g.btnPrincipal) return false;
+    if (typeof window.ktaOutilsOuverts === "function" && window.ktaOutilsOuverts()) window.ktaFermerOutils();
+    g.btnPrincipal.click();
+    const ov = document.querySelector(".kta-tracker-modal-overlay");
+    if (ov) {
+      ov.addEventListener("click", function (ev) {
+        const t = ev.target.closest && ev.target.closest(".kta-tracker-modal-tile[data-carte]");
+        if (t && _e) fermer();
+      }, true);
+    }
+    return !!ov;
   }
 
   function _outilArme() {
@@ -6011,9 +6052,8 @@
   function _majBarreDessin() {
     const e = _e, d = e.dessin;
     if (!d || !d.barre) return;
-    const permis = _dessinPermis(), recherche = _rechercheDispo();
+    const permis = _dessinPermis();
     d.barre.hidden = !permis;
-    d.boutonRecherche.hidden = !recherche || !permis;
     const ouvert = typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() : null;
     d.outils.forEach(function (b) {
       const g = window._groupes && window._groupes[b.dataset.groupe], src = g && g.btnPrincipal;
@@ -6025,6 +6065,16 @@
       b.classList.toggle("kta-outil-lecture-seule", src.classList.contains("kta-outil-lecture-seule"));
       b.classList.toggle("kta-group-open", ouvert === b.dataset.groupe);
     });
+    const trk = window._groupes && window._groupes.tracker && window._groupes.tracker.btnPrincipal;
+    d.boutonTracker.hidden = !trk || !permis;
+    if (trk) {
+      if (d.boutonTracker.innerHTML !== trk.innerHTML) d.boutonTracker.innerHTML = trk.innerHTML;
+      if (d.boutonTracker.title !== trk.title) {
+        d.boutonTracker.title = trk.title;
+        d.boutonTracker.setAttribute("aria-label", trk.title);
+      }
+      d.boutonTracker.classList.toggle("kta-group-mode-actif", trk.classList.contains("kta-group-mode-actif"));
+    }
     d.boutonSol.hidden = !permis;
     d.boutonSol.classList.toggle("kta-actif", !!d.planSol);
     d.boutonSol.setAttribute("aria-pressed", d.planSol ? "true" : "false");
@@ -6032,12 +6082,12 @@
 
   // À chaque image, sur signature : barre suivie (outil armé ou éteint par le panneau, une annulation, une modale),
   // outil éteint si le dessin n'est plus permis, rendu galerie quitté pour une structure, aperçu refait.
-  // 🔍 de la rangée du haut : à hauteur d'yeux seulement (en vue d'édition, celui de la colonne), si la recherche est
-  // permise (pas pendant une greffe qui coupe les fiches).
+  // 🔍 de la rangée du haut, dans les deux vues (décision produit), si la recherche est permise (pas pendant une greffe
+  // qui coupe les fiches).
   function _majRechercheHaut() {
     const e = _e, b = e && e.boutonRechercheHaut;
     if (!b) return;
-    const cache = e.vue === "plongee" || !_rechercheDispo();
+    const cache = !_rechercheDispo();
     if (b.hidden !== cache) b.hidden = cache;
   }
 
@@ -6053,7 +6103,9 @@
       if (A && A.insertionEnCours()) A.terminerInsertion();
     } else _placerMenuAjuster();
     const G = window._groupes || {}, o = _outilArme();
-    let sig = (_dessinPermis() ? "1" : "0") + (_rechercheDispo() ? "1" : "0") + (d.planSol ? "1" : "0") + e.niveau +
+    const trk = window._groupes && window._groupes.tracker && window._groupes.tracker.btnPrincipal;
+    let sig = (_dessinPermis() ? "1" : "0") + (d.planSol ? "1" : "0") + e.niveau +
+      (trk ? trk.className + trk.innerHTML : "") +
       (o ? o.famille + ":" + o.type : "") + "|" +
       (typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() || "" : "");
     GROUPES_DESSIN.forEach(function (g) {
@@ -8757,6 +8809,10 @@
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
       else if (a === "recherche") { ev.preventDefault(); _ouvrirRecherche(); }
+      else if (a === "outilsPlier") {
+        ev.preventDefault();
+        _plierOutils(!_e.dessin.barre.classList.contains("kta-v3d-outils-plie"), true);
+      } else if (a === "tracker") { ev.preventDefault(); _ouvrirTracker(); }
       else if (a === "ajusterSuppr") { ev.preventDefault(); _ajusterSupprimer(); }
       else if (a === "ajusterInserer") { ev.preventDefault(); _ajusterInserer(); }
       else if (a === "place") surPlace();
@@ -8780,7 +8836,8 @@
       e.appui = { b: b, t: performance.now() };
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
         a === "ficheVoir" || a === "outil" || a === "planSol" || a === "recherche" || a === "place" ||
-        a === "guidAction" || a === "ajusterSuppr" || a === "ajusterInserer" || a === "addons") return;
+        a === "guidAction" || a === "ajusterSuppr" || a === "ajusterInserer" || a === "addons" ||
+        a === "outilsPlier" || a === "tracker") return;
       // Au doigt, + / − et inclinaison attendent le click : un doigt de pincement posé dessus n'agit pas (_brancher,
       // geste de la scène).
       if (ev.pointerType === "touch" && /^(zoom|incl)(Plus|Moins)$/.test(a)) { e.appui = null; return; }
@@ -9872,9 +9929,8 @@
           (Number.isFinite(e.ecartLibre) ? +e.ecartLibre.toFixed(2) : -1) },
       dessin: _etatDessin(),
       fichesObjets: { voulu: _fichesObjets(), bouton: e.boutonFiches ? e.boutonFiches.getAttribute("aria-pressed") : null },
-      // Dernier « Y aller en 3D » (allerA) et 🔍 montré ou non.
-      recherche: Object.assign({ bouton: !!(e.dessin && e.dessin.boutonRecherche && !e.dessin.boutonRecherche.hidden &&
-        !e.dessin.barre.hidden), haut: !!(e.boutonRechercheHaut && !e.boutonRechercheHaut.hidden),
+      // Dernier « Y aller en 3D » (allerA) et 🔍 de la rangée du haut montré ou non.
+      recherche: Object.assign({ haut: !!(e.boutonRechercheHaut && !e.boutonRechercheHaut.hidden),
         preneur: !!e.rendreRecherche }, e.recherche || { allees: 0 }),
       fiche: e.fiche && e.fiche.objet ? { famille: e.fiche.famille, uid: e.fiche.objet.uid || null,
         type: e.fiche.objet.type, session: e.fiche.session, registre: e.fiche.registre,

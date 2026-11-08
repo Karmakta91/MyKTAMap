@@ -2311,8 +2311,7 @@ icônes.
   (fond `--kta-erreur` à 22 %, liseré à 55 %), ⚙️, ❓. Repère « actif » de ≡ et de ⚙️ : celui du ≡ de la carte
   (liseré doré, point doré de 10 px). Bandeau de guidage et boîte 🪜 : même boîte.
 - **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, ⚙️, et
-  🔍 Rechercher à hauteur d'yeux seulement (`vue3d.js > _majRechercheHaut` ; en ✏️ Édition il est en tête de la colonne
-  d'outils), sur **une seule ligne** au téléphone (décision produit ; 390 px et paysage 852 × 393 vérifiés, § 43).
+  🔍 Rechercher dans les deux vues (`vue3d.js > _majRechercheHaut`, décision produit), sur **une seule ligne** au téléphone (décision produit ; 390 px et paysage 852 × 393 vérifiés, § 43).
   ⚙️ ouvre la **tuile Réglages** (`#kta-v3d-reglages`,
   `vue3d.js > _basculerReglages`) : petit panneau ancré sous ⚙️, aligné à droite, au-dessus de tout dans la vue
   (posé en dernier dans le DOM), à la boîte de la fenêtre ⚙️ Réglages (rayon 14 px), chaque réglage sur une **ligne
@@ -2427,10 +2426,14 @@ icônes.
   5 s). La fiche prend le focus (anneau `--kta-interaction` au clavier), Échap la ferme et rend le focus à la vue ;
   Tab passe par ses champs. 🩸 Fiche neuve sans pointeur 400 ms (`_ficheNeuve`) : le click qui suit un toucher tombait sur
   « Voir sur la carte » ouvert sous le doigt et fermait la vue. Contrats : `tracking.md` § Vue 3D › Toucher une structure.
-- **Colonne d'outils** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, au
-  milieu, en ✏️ Édition seulement. En tête **🔍 Rechercher** (décision produit : au-dessus de 🗺️) ; à hauteur
-  d'yeux, 🔍 passe dans la rangée du haut, à gauche de ⚙️, même gabarit (décision produit), et la colonne disparaît ;
-  caché dans les deux places pendant une greffe qui coupe les fiches (jeu). Il ouvre la fenêtre de la carte (`window.ouvrirRecherche`, `.kta-readme-modal-overlay` 99999 posée
+- **Colonne d'outils** (`.kta-v3d-outils`, `vue3d.js > _monterOutils`) : colonne `.leaflet-bar` à droite, **sous la
+  rangée du haut** (`--kta-v3d-sous-haut`, défile si elle ne tient pas), en ✏️ Édition seulement (décision produit).
+  En tête **▾** replie la colonne (seul **◂** reste, `_plierOutils`), comme le bouton de la barre 2D ; retenu sur
+  l'appareil (`myktamap_v3d_outils_plie_v1`) ; un panneau de groupe ouvert se ferme. Puis **🗺️ Plan au sol**, **🧭**
+  (menu Tracker de la carte, complet, par le bouton de la barre 2D : `_ouvrirTracker` ; une tuile `carte: true`,
+  `data-carte` — boussole, plan orienté, recalage, ma position, replay, heatmap, perdu — ferme d'abord la 3D) et les
+  outils. **🔍 Rechercher** est dans la rangée du haut dans les deux vues, à gauche de ⚙️, même gabarit (décision
+  produit) ; caché pendant une greffe qui coupe les fiches (jeu). Il ouvre la fenêtre de la carte (`window.ouvrirRecherche`, `.kta-readme-modal-overlay` 99999 posée
   sur `<html>` après la vue : au-dessus d'elle ; Ctrl/Cmd+K de même, la vue ne garde pas la touche K) ; le choix :
   `tracking.md` § Vue 3D › Rechercher. Les outils de dessin, montrés en ✏️ Édition seulement, toujours actifs
   (aucun bouton pour les ouvrir) ; absents à hauteur d'yeux et pendant une greffe qui coupe l'édition (jeu).
@@ -2438,7 +2441,8 @@ icônes.
   `display: flex !important` : le `hidden` de la colonne tient par `#kta-vue3d .kta-v3d-outils[hidden]` en
   `!important` (sinon les outils restaient à hauteur d'yeux et dans le jeu), et la colonne s'y range en ligne, comme
   les pilules de la barre 2D. Boutons : **📐 ✏️ 🛣️ ⬛ 🏛️** (✏️ = ajout de point, bouton seul : son geste de la carte), dans l'ordre de
-  la barre de droite 2D, sous **🔍** et **🗺️ Plan au sol**, qui sont des `a.kta-group-toggle` comme les siens : même taille (`--kta-barre-bouton`),
+  la barre de droite 2D, sous **▾**, **🗺️ Plan au sol** et **🧭**, qui sont des `a.kta-group-toggle` comme les siens
+  (▾ en chevron de 14 px au doigt en paysage bas, pour que les huit tiennent) : même taille (`--kta-barre-bouton`),
   mêmes états ; icône, titre, `kta-group-mode-actif` (pastille du type armé) et `kta-outil-lecture-seule` **recopiés
   du bouton de la carte** à chaque changement (`_majBarreDessin`), jamais recalculés. **🗺️ Plan au sol** :
   interrupteur, `aria-pressed`, à tous les niveaux (calques image du niveau, sinon plan de base : `tracking.md`). Un groupe ouvre **le panneau de la carte**

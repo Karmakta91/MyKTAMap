@@ -1041,6 +1041,9 @@ function _creerTuileTracker(sub) {
   tile.type = "button";
   tile.className = "kta-tracker-modal-tile";
   if (sub.cssClass) tile.classList.add(sub.cssClass);
+  // ⚠️ contrat : `carte: true` = la tuile agit sur la carte 2D ; ouverte depuis la vue 3D (bouton 🧭 de sa colonne),
+  // elle ferme d'abord la 3D (vue3d.js > _ouvrirTracker).
+  if (sub.carte) tile.dataset.carte = "1";
   if (typeof sub.isActive === "function") {
     try { if (sub.isActive()) tile.classList.add("kta-actif"); } catch(e) {}
   }
@@ -2322,6 +2325,7 @@ function initInterface() {
       {
         icone: "🧭",
         titre: window.I18n.t("ui.subaction.compass"),
+        carte: true,
         section: "outils",
         isActive: function() {
           return !!(window.CompassWidget && typeof window.CompassWidget.isVisible === "function"
@@ -2343,6 +2347,7 @@ function initInterface() {
         // persisté, OFF par défaut ; se pose à l'avance, ne s'anime que suivi en cours.
         icone: "🗺️",
         titre: window.I18n.t("ui.subaction.planOriente"),
+        carte: true,
         section: "outils",
         isActive: function() {
           return !!(window.MapBearing && window.MapBearing.isEnabled());
@@ -2382,6 +2387,7 @@ function initInterface() {
       {
         icone: "📍",
         titre: window.I18n.t("ui.subaction.recalage"),
+        carte: true,
         section: "suivi",
         isActive: function() { return window.modeRecalage === true; },
         onClick: function(btnSub) {
@@ -2416,6 +2422,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "🎯",
         titre: window.I18n.t("ui.subaction.maPosition"),
+        carte: true,
         section: "suivi",
         onClick: function() { _centrerSurMaPosition(); }
       },
@@ -2447,6 +2454,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "🎬",
         titre: window.I18n.t("ui.subaction.replay"),
+        carte: true,
         section: "outils",
         optionnel: "replayEnabled",
         onClick: function() {
@@ -2461,6 +2469,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "🔥",
         titre: window.I18n.t("ui.subaction.heatmap"),
+        carte: true,
         section: "outils",
         // ⚠️ Seule la TUILE est optionnelle : le module reste chargé, le Mode
         // Secours garde son bloc « Heatmap d'activité » quel que soit ce réglage.
@@ -2477,6 +2486,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       {
         icone: "⛑️",
         titre: window.I18n.t("ui.subaction.lost"),
+        carte: true,
         cssClass: "kta-sous-action-urgence",
         onClick: function() {
           if (window.LostMode && typeof window.LostMode.open === "function") {

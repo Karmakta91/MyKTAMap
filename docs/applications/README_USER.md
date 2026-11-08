@@ -674,7 +674,7 @@ Où et comment un passage se dessine :
 - **Toucher une structure, une zone ou un tracé** (pilier, mur, front, zone, galerie) ouvre **sa fiche**, la même que sur la carte : note, 🔄 Convertir, niveau, 🗑️ Supprimer. Sur un calque de données, elle est en lecture seule.
 - Un panneau de point passe d'abord. Toucher dans le vide ne fait rien.
 - **🗺️ Voir sur la carte**, en bas de la fiche : la 3D se ferme, la carte se centre sur l'objet, ouvre sa fiche et le surligne quelques secondes.
-- **🔍 Rechercher**, en haut à gauche de ⚙️ (en ✏️ Édition : en tête de la colonne de droite, au-dessus de 🗺️), ou **Ctrl+K** (⌘K sur Mac) : la même fenêtre que sur la carte (points, tracés, zones, structures, mêmes filtres), au-dessus de la vue. Choisir un résultat t'y emmène **en 3D** : la vue passe en libre (le tracker ne bouge pas), change de niveau s'il le faut, se place devant l'objet (le point précis d'un point qui en a un) et ouvre sa fiche. La carte, dessous, ne bouge pas. Fermer la fenêtre sans choisir ne change rien. Pendant une partie du jeu, la recherche n'est pas proposée.
+- **🔍 Rechercher**, en haut à gauche de ⚙️ (dans les deux vues), ou **Ctrl+K** (⌘K sur Mac) : la même fenêtre que sur la carte (points, tracés, zones, structures, mêmes filtres), au-dessus de la vue. Choisir un résultat t'y emmène **en 3D** : la vue passe en libre (le tracker ne bouge pas), change de niveau s'il le faut, se place devant l'objet (le point précis d'un point qui en a un) et ouvre sa fiche. La carte, dessous, ne bouge pas. Fermer la fenêtre sans choisir ne change rien. Pendant une partie du jeu, la recherche n'est pas proposée.
 - En rendu 🛣️ Galerie, piliers et murs ne sont pas dessinés : toucher une paroi ouvre la fiche du tracé.
 - **🧭 Y aller** : en suivi, l'itinéraire part du tracker. En libre, il part de **l'endroit où tu es en 3D**, niveau compris, sans déplacer le tracker.
 - Tracker arrêté : **D'où pars-tu ?** propose d'abord **Ici** (le tracker est recalé là où tu es en 3D, puis l'itinéraire en part ; comme à la fermeture, ce saut ne compte pas comme une sortie terrain).
@@ -714,7 +714,7 @@ Où et comment un passage se dessine :
 
 #### ✏️ Dessiner en vue d'édition
 
-- En vue **✏️ Édition**, les outils de la carte sont toujours là, à droite au milieu, dans le même ordre : **📐 Mesure**, **✏️ Ajouter un point**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. À hauteur d'yeux, pas de dessin.
+- En vue **✏️ Édition**, les outils de la carte sont toujours là, dans une colonne à droite sous les boutons du haut, dans le même ordre : **📐 Mesure**, **✏️ Ajouter un point**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. Au-dessus : **🗺️ Plan au sol** et **🧭 Tracker**, le menu Tracker de la carte (une tuile qui agit sur la carte, comme 📍 Mode recalage ou 🎯 Ma position, ferme d'abord la 3D). **▾** en tête replie la colonne (**◂** la rouvre) ; l'app s'en souvient. À hauteur d'yeux, pas de dessin.
 - Chaque bouton ouvre **le même menu que sur la carte** : piliers, murs, fronts de taille, tes types perso, ➕ nouveau type, ✅ Fermer / Valider.
 - Rien ne se dessine tant qu'aucun outil n'est choisi. **Choisir un outil suffit** : un toucher pose un point là où tu touches. Glisser, pincer et la molette bougent toujours la vue, sans poser de point.
 - **Fermer un pilier, un mur ou une zone** : touche le **rond doré** du premier point, ou ✅ dans le menu. Pour un mur fin, zoome d'abord : le rond grandit avec la vue.
@@ -725,7 +725,6 @@ Où et comment un passage se dessine :
 - **📐 Mesure** : la distance (et la surface) s'affiche dans un **bandeau en bas de la vue**, mis à jour à chaque point, comme sur la carte ; la longueur de chaque segment et l'angle à chaque point s'affichent aussi dans la 3D, lisibles.
 - **📏 Distance totale** et **⛏️ Volume exploité** sont aussi dans 📐 : leur fenêtre s'ouvre par-dessus la vue et compte **le niveau de la 3D**. Les tronçons comptés par 📏 sont surlignés en magenta au sol, comme sur la carte (avec **Tous les niveaux** coché, 📏 compte tout le plan, mais le sol de la 3D ne montre que son niveau : la fenêtre le dit) ; **❌ Effacer le surlignage** l'efface des deux. ⛏️ prend la surface ♦️ que tu as tracée dans la 3D.
 - **🗺️ Plan au sol** : l'image du plan sous la scène, là où tu regardes, pour dessiner sur le relevé, à chaque niveau : l'image propre au niveau si le plan en a une, sinon le plan de base.
-- **🔍 Rechercher** est en tête de colonne, au-dessus de 🗺️ ; à hauteur d'yeux, il passe dans la rangée du haut, à gauche de ⚙️.
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
 - **Retoucher l'outil, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
 - En lecture seule, les outils de dessin restent grisés, comme sur la carte ; 📐 Mesure reste permise.
