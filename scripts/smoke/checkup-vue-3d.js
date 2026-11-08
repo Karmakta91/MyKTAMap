@@ -94,6 +94,7 @@
 // Sol et zones en vue d'édition dézoomée (45, =solzones) : plan proche qui suit le recul, sol reculé en profondeur
 // (unités seules), eau sans bandes du sol (structures, mixte ; 150 m et tout le plan), niveau du dessous invisible.
 // Niveau du dessous estompé en vue d'édition (46, =estomper) : par défaut, bouton 🌫️, retenu, hauteur d'yeux intacte.
+// Passages et pentes des voisins (47, =voisinspassages) : coupés à ce qui est montré, jamais en double, arrivées intactes.
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
@@ -9764,6 +9765,85 @@ async function sectionEstomper(nav) {
   }
 }
 
+// ── 47. Passages et galeries inclinées des niveaux voisins (vue3d.js > _volumesVoisin, _construireVolumeVoisin,
+// Lot.couper ; KTA_V3D_SEUL=voisinspassages) ──────────────────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire : galeries est-ouest au +1, 0 et −1 (sols −20, −25, −30 ; 2,5 m), au 0 une galerie inclinée
+// 0 ↔ −1 et un puits nu (jps) 0 ↔ −1, un escalier (jes) +1 ↔ 0. Vue au +1 :
+// « Voisins » (le 0 seul montré dessous) : pente et puits 0 ↔ −1 construits par le 0, à son altitude, coupés à
+// mi-roche vers le −1 (rien sous −1,25 m dans le repère du 0), sans bouches ; l'escalier +1 ↔ 0 reste au niveau actif
+// (pas en double) ; « Tous » : entiers, construits par le 0 seul (pas par le −1) ; « Le mien » : rien. Passages et
+// galeries inclinées du niveau actif identiques dans les trois réglages (arrivées inchangées).
+async function sectionVoisinsPassages(nav) {
+  const nom = "§ 47 ";
+  console.log("§ 47 — passages et galeries inclinées des niveaux voisins");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-voisinspassages", [-1, 0, 1],
+    { "1": -20, "0": -25, "-1": -30 }, { "1": 2.5, "0": 2.5, "-1": 2.5 }, function () {
+      const P = window.__fxP;
+      window.setRoads([
+        { uid: "rd_vp_p1", type: "principal", level: 1, points: [P(-30, 0), P(30, 0)] },
+        { uid: "rd_vp_0", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] },
+        { uid: "rd_vp_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(30, 0), P(42, 0)] },
+        { uid: "rd_vp_m1", type: "principal", level: -1, points: [P(-30, 0), P(80, 0)] }
+      ]);
+      const acc = P(-12, 0.3);
+      window.setEditorPoints([
+        Object.assign({ id: "Puits voisins passages fictif", uid: "pt_vp_puits", level: 0, niveaux: [0, -1],
+          tags: ["jps"], accroches: [{ level: -1, x: acc.x, y: acc.y }] }, P(-10, 0)),
+        Object.assign({ id: "Escalier voisins passages fictif", uid: "pt_vp_esc", level: 1, niveaux: [1, 0],
+          tags: ["jes"] }, P(5, 0.4))
+      ]);
+    });
+  const page = t.page;
+  try {
+    const lire = function (mode) {
+      return page.evaluate(async function (m) {
+        const K = window.KtaVue3D;
+        await window.__fxOuvrir(0, 0, 90, 1, "galerie");
+        K.reglerNiveauxVus(m);
+        await window.__fxImages(80);
+        const e = K.etat();
+        return { niveau: e.niveau, voisins: e.voisins.niveaux.map(function (v) {
+          return { niveau: v.niveau, dy: v.dy, volumes: v.volumes };
+        }), actifs: { volumes: e.volumes, pentes: e.pentes } };
+      }, mode);
+    };
+    const R = {};
+    for (const m of ["voisins", "tous", "mien"]) R[m] = await lire(m);
+    const v0 = function (r) { return (r.voisins.find(function (v) { return v.niveau === 0; }) || {}).volumes || []; };
+    const vm1 = (R.tous.voisins.find(function (v) { return v.niveau === -1; }) || {}).volumes || [];
+    const pv = v0(R.voisins), pt = v0(R.tous);
+    const pente = function (l) { return l.find(function (q) { return q.genre === "pente"; }) || null; };
+    const puits = function (l) { return l.find(function (q) { return q.genre === "poi"; }) || null; };
+    const a = pente(pv), b = puits(pv);
+    verifier(R.voisins.niveau === 1 && pv.length === 2 && !!a && !!b &&
+      JSON.stringify(a.relie) === "[0,-1]" && JSON.stringify(b.relie) === "[0,-1]" &&
+      a.construit && a.montre && b.construit && b.montre && a.y === -5 && b.y === -5 &&
+      a.coupe[0] === -1.25 && a.coupe[1] === null && a.yMin >= -1.26 && b.yMin >= -1.26 &&
+      a.bouches === 0 && b.bouches === 0 && a.maillages > 0,
+      nom + "« Voisins » au +1 : pente et puits 0 ↔ −1 construits par le 0 (à −5 m), coupés à mi-roche vers le −1 " +
+      "(rien sous −1,25 m), sans bouches ; l'escalier +1 ↔ 0 n'y est pas en double", pv);
+    const c = pente(pt), d = puits(pt);
+    verifier(pt.length === 2 && !!c && !!d && c.coupe[0] === null && c.coupe[1] === null && c.montre && d.montre &&
+      c.yMin <= -4.99 && d.yMin <= -2.49 && vm1.length === 0,
+      nom + "« Tous » : pente et puits 0 ↔ −1 entiers (sol du −1, plafond du −1), construits par le 0 seul (aucun " +
+      "par le −1)",
+      { zero: pt, moinsUn: vm1 });
+    verifier(R.mien.voisins.length === 0,
+      nom + "« Le mien » : aucun voisin, aucun de leurs passages", R.mien.voisins);
+    verifier(JSON.stringify(R.voisins.actifs) === JSON.stringify(R.mien.actifs) &&
+      JSON.stringify(R.tous.actifs) === JSON.stringify(R.mien.actifs) &&
+      R.mien.actifs.volumes.length > 0,
+      nom + "passages et galeries inclinées du niveau actif (arrivées, raccords) identiques dans les trois réglages",
+      { mien: R.mien.actifs, voisins: R.voisins.actifs });
+    await capture(page, "voisins-passages-tous");
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 41. 🛡️ Limiter la portée (vue3d.js > limiterPortee, _limitee, _diagPlan ; config.js > getVue3DLimiterPortee) ───────
 // Pointeur fin (1200 × 800), relevé fictif vidé, 1 000 piliers fictifs en grille sur 320 × 320 m autour du centre (ils
 // débordent l'image : l'emprise du plan les compte). Case cochée par défaut (portée ≤ 100 m, recul ≤ 150 m, rayon
@@ -10824,7 +10904,7 @@ async function sectionGestesDoigt(nav) {
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
-      SEUL === "estomper") {
+      SEUL === "estomper" || SEUL === "voisinspassages") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -17129,6 +17209,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "voisins") await sectionNiveauxVoisins(nav);
     if (!SEUL || SEUL === "solzones") await sectionSolZones(nav);
     if (!SEUL || SEUL === "estomper") await sectionEstomper(nav);
+    if (!SEUL || SEUL === "voisinspassages") await sectionVoisinsPassages(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

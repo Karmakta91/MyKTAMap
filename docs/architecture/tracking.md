@@ -2318,7 +2318,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   côté, au pire à la
   même altitude). Mixte et structures : sol et plafond d'un seul tenant au voisin aussi (`_placerVoisins`). Sans
   panneaux de POI (dessinés sans test de profondeur pour rester lisibles, ils se liraient à travers la roche et se
-  toucheraient pour un objet hors d'atteinte) ni volumes de passage (le puits du niveau actif descend jusqu'au voisin).
+  toucheraient pour un objet hors d'atteinte). **Passages et galeries inclinées des voisins** (`_volumesVoisin`,
+  `_construireVolumeVoisin`, décision produit) : un passage (POI jonction) ou un tracé jonction qui relie des niveaux
+  montrés sans toucher le niveau actif (celui-là le construit lui-même, son puits descend jusqu'au voisin) est
+  construit par le niveau montré le plus haut qu'il relie (jamais en double), à son altitude, avec son contexte
+  (`_avecVoisin` : niveau, hauteur, modèle, copies sans gabarit), sans bouches (leur gabarit trouerait le sol du
+  niveau actif), et coupé à mi-roche vers chaque niveau relié non montré (`Lot.couper`) : en Voisins au +1, la moitié
+  côté 0 d'une pente 0 ↔ −1 ; en Tous, entier. Même portée et même budget par image que les tuiles des voisins ;
+  refaits quand le niveau actif ou les niveaux montrés changent (`volSig`). Les arrivées (▲▼, raccords, règle du pas)
+  n'en lisent rien. Checkup § 47 (`KTA_V3D_SEUL=voisinspassages`).
   🩸 Gabarit : sol, plafond et rubans des voisins prennent des copies sans gabarit (`_matsVoisins`), sinon la bouche
   d'un puits trouerait aussi le fond qu'on voit par elle.
 - **Niveau actif d'abord** : ni la règle du pas, ni la visée (`_pointVise`), ni les fiches, ni les passages, ni le

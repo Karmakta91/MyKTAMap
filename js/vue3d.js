@@ -837,6 +837,43 @@
     this.tri(a, c, d, n, col, uv && [uv[0], uv[1], uv[4], uv[5], uv[6], uv[7]]);
   };
 
+  // Lot coupé à la tranche y0 ≤ y ≤ y1 (m ; ±Infinity : pas de coupe de ce côté) : chaque triangle rogné aux deux
+  // plans (coordonnées de texture interpolées), sa normale et sa couleur gardées, le sens des sommets aussi.
+  // Volumes de passage d'un niveau voisin tronqués à ce qui est montré (_volumesVoisin).
+  Lot.prototype.couper = function (y0, y1) {
+    const out = new Lot(), p = this.p, uv = this.uv, avecUv = uv.length > 0;
+    const rogner = function (poly, y, sens) {
+      if (!Number.isFinite(y)) return poly;
+      const r = [];
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length], da = sens * (a[1] - y), db = sens * (b[1] - y);
+        if (da >= 0) r.push(a);
+        if ((da >= 0) !== (db >= 0)) {
+          const k = da / (da - db);
+          r.push(a.map(function (v, j) { return v + (b[j] - v) * k; }));
+        }
+      }
+      return r;
+    };
+    for (let t = 0; t < p.length / 9; t++) {
+      let poly = [];
+      for (let k = 0; k < 3; k++) {
+        const i = t * 3 + k;
+        poly.push([p[i * 3], p[i * 3 + 1], p[i * 3 + 2], avecUv ? uv[i * 2] : 0, avecUv ? uv[i * 2 + 1] : 0]);
+      }
+      poly = rogner(rogner(poly, y0, 1), y1, -1);
+      for (let k = 1; k + 1 < poly.length; k++) {
+        [poly[0], poly[k], poly[k + 1]].forEach(function (q) {
+          out.p.push(q[0], q[1], q[2]);
+          if (avecUv) out.uv.push(q[3], q[4]);
+          out.n.push(this.n[t * 9], this.n[t * 9 + 1], this.n[t * 9 + 2]);
+          out.c.push(this.c[t * 9], this.c[t * 9 + 1], this.c[t * 9 + 2]);
+        }, this);
+      }
+    }
+    return out;
+  };
+
   Lot.prototype.geometrie = function () {
     if (!this.p.length) return null;
     const g = new THREE.BufferGeometry();
@@ -3163,7 +3200,92 @@
     const e = _e;
     v.tuiles.forEach(function (t) { if (t.obj && t.obj.parent === e.scene) _libererTuile(t); t.obj = null; });
     if (v.plans) { e.scene.remove(v.plans.sol, v.plans.plafond); v.plans = null; }   // géométrie : celle de e.sol
+    (v.volumes || []).forEach(_libererVolume);
+    v.volumes = []; v.volSig = null;
     e.sale = true;
+  }
+
+  // ── Passages et galeries inclinées des niveaux voisins ──────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : un passage (POI jonction : puits, escalier, échelle) ou une galerie inclinée
+  // (tracé jonction) qui relie des niveaux montrés SANS toucher le niveau actif (celui-là les construit lui-même) est
+  // construit par le niveau montré le plus haut qu'il relie, à l'altitude de ce voisin, et COUPÉ à mi-roche vers
+  // chaque niveau qu'il relie et qui n'est pas montré (Lot.couper) : en « Voisins » au +1, la moitié côté 0 d'une
+  // pente 0 ↔ −1 ; en « Tous », entier. Mêmes règles que les voisins (portée, VOISINS_PAR_IMAGE, côté caché en vue
+  // d'édition), sans bouches ni panneau. Les passages du niveau actif (▲▼, arrivées, raccords, règle du pas) n'en
+  // lisent rien.
+
+  // Contexte d'un voisin (niveau, hauteur, modèle, galeries inclinées, matériaux sans gabarit) le temps de `fn`.
+  function _avecVoisin(v, pentes, fn) {
+    const e = _e, M = _matsVoisins();
+    const garde = { niveau: e.niveau, hauteur: e.hauteur, galerie: e.galerie, mixte: e.mixte, pentes: e.pentes,
+      placesPassage: e.placesPassage, msFaces: e.msFaces, facesStructures: e.facesStructures };
+    const mats = {};
+    MATS_GABARIT.forEach(function (k) { mats[k] = e.mats[k]; e.mats[k] = M[k]; });
+    e.niveau = v.niveau; e.hauteur = v.hauteur; e.galerie = v.galerie; e.mixte = v.mixte;
+    if (pentes) e.pentes = pentes;
+    e.placesPassage = new Map();
+    try {
+      return fn();
+    } finally {
+      MATS_GABARIT.forEach(function (k) { e.mats[k] = mats[k]; });
+      Object.keys(garde).forEach(function (k) { e[k] = garde[k]; });
+    }
+  }
+
+  // Volumes que le voisin v construit (contrat ci-dessus), chacun avec sa tranche `coupe` [y0, y1] (m, repère du
+  // voisin) et ses niveaux `relie`.
+  function _volumesVoisin(v) {
+    const e = _e, J = window.KtaPoiJonction, G = window.KtaGalerie, N0 = e.niveau;
+    if (!J || !G || N0 === null) return [];
+    const montres = [N0].concat(_niveauxMontres()), d = _collecter(v.niveau);
+    const vols = _avecVoisin(v, _pentesDuNiveau(v.niveau, d.jonctions), function () { return _volumesDuNiveau(d); });
+    const out = [];
+    vols.forEach(function (vol) {
+      let relie = null;
+      if (vol.genre === "pente") relie = [vol.p.r.fromLevel, vol.p.r.toLevel];
+      else if (vol.point && J.estJonction(vol.point) && !vol.acces) relie = J.niveaux(vol.point);
+      if (!relie || relie.indexOf(N0) >= 0) return;
+      const vus = relie.filter(function (n) { return montres.indexOf(n) >= 0; });
+      if (!vus.length || Math.max.apply(null, vus) !== v.niveau) return;
+      let y0 = -Infinity, y1 = Infinity;
+      relie.forEach(function (m) {
+        if (m === v.niveau || montres.indexOf(m) >= 0) return;
+        const a = G.denivele(v.niveau, m);
+        if (!Number.isFinite(a)) return;
+        if (a < 0) y0 = Math.max(y0, (a + _hauteurDuNiveau(m)) / 2);
+        else y1 = Math.min(y1, (v.hauteur + a) / 2);
+      });
+      vol.coupe = [y0, y1];
+      vol.relie = relie.slice().sort(function (a, b) { return b - a; });
+      out.push(vol);
+    });
+    return out;
+  }
+
+  // Volumes du voisin refaits si le niveau actif ou les niveaux montrés ont changé (un voisin gardé les garde sinon).
+  function _volumesVoisinAJour(v) {
+    const e = _e, cle = e.niveau + "|" + _niveauxMontres().join(",") + "|" + _typeTraceMontre("jonction");
+    if (v.volSig === cle) return;
+    (v.volumes || []).forEach(_libererVolume);
+    v.volSig = cle;
+    v.volumes = _volumesVoisin(v);
+  }
+
+  function _construireVolumeVoisin(v, vol) {
+    const e = _e;
+    _avecVoisin(v, null, function () {
+      e.volumeVoisin = { coupe: vol.coupe };
+      try { _construireVolume(vol); } finally { e.volumeVoisin = null; }
+    });
+    if (!vol.obj) return;
+    // Disque de ciel (puits de surface) : jamais au-dessus d'une coupe.
+    if (Number.isFinite(vol.coupe[1])) {
+      vol.obj.children.filter(function (o) { return o.userData.famille === "ciel"; })
+        .forEach(function (o) { vol.obj.remove(o); if (o.material) o.material.dispose(); });
+    }
+    vol.obj.position.y = v.dy;
+    vol.obj.userData.voisin = v.niveau;
+    if (_voisinEstompe(v)) _estomperObjet(vol.obj, true);
   }
 
   function _voisinNeuf(n, sig) {
@@ -3202,6 +3324,7 @@
     });
     e.voisins = gardes;
     if (e.matsV) _matsVoisins();
+    gardes.forEach(_volumesVoisinAJour);
     _estomperVoisins();   // côté changé (voisins gardés), originaux changés (🧱)
     e.sale = true;
   }
@@ -3252,6 +3375,17 @@
           if (t.obj) { _libererTuile(t); e.sale = true; }
         } else if (t.obj && t.obj.visible) {
           t.obj.visible = false; e.sale = true;
+        }
+      });
+      (v.volumes || []).forEach(function (vol) {
+        const d = Math.max(0, Math.hypot(vol.cx - c.x, vol.cz - c.z) - vol.r);
+        if (d <= rVue && !cache) {
+          if (!vol.obj && (tout || n < VOISINS_PAR_IMAGE)) { _construireVolumeVoisin(v, vol); n++; }
+          if (vol.obj && !vol.obj.visible) { vol.obj.visible = true; e.sale = true; }
+        } else if (d > rGarde) {
+          if (vol.obj) _libererVolume(vol);
+        } else if (vol.obj && vol.obj.visible) {
+          vol.obj.visible = false; e.sale = true;
         }
       });
     });
@@ -3363,6 +3497,7 @@
   function _estomperVoisin(v) {
     const oui = _voisinEstompe(v);
     v.tuiles.forEach(function (t) { if (t.obj) _estomperObjet(t.obj, oui); });
+    (v.volumes || []).forEach(function (vol) { if (vol.obj) _estomperObjet(vol.obj, oui); });
     if (v.plans) { _estomperObjet(v.plans.sol, oui); _estomperObjet(v.plans.plafond, oui); }
     _e.sale = true;
   }
@@ -3397,6 +3532,23 @@
       });
       return { niveau: v.niveau, dy: +v.dy.toFixed(3), dessus: v.dessus, hauteur: v.hauteur, tuiles: v.tuiles.size,
         maillages: maillages, estompes: estompes,
+        volumes: (v.volumes || []).map(function (vol) {
+          // Emprise verticale construite (après coupe), repère du voisin.
+          let y0 = Infinity, y1 = -Infinity, bouches = 0;
+          if (vol.obj) {
+            vol.obj.children.forEach(function (o) {
+              if (/^bouche/.test(o.userData.famille || "")) bouches++;
+              if (!o.geometry) return;
+              if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+              y0 = Math.min(y0, o.geometry.boundingBox.min.y); y1 = Math.max(y1, o.geometry.boundingBox.max.y);
+            });
+          }
+          const r = function (y) { return Number.isFinite(y) ? +y.toFixed(2) : null; };
+          return { genre: vol.genre, forme: vol.forme || null, relie: vol.relie, coupe: vol.coupe.map(r),
+            construit: !!vol.obj, montre: !!vol.obj && _montreDansScene(vol.obj),
+            y: vol.obj ? +vol.obj.position.y.toFixed(3) : null, yMin: r(y0), yMax: r(y1), bouches: bouches,
+            maillages: vol.obj ? vol.obj.children.length : 0 };
+        }),
         construites: construites, montrees: montrees, plafondsCaches: sansPlafond, y: (function () {
           let y = null;
           v.tuiles.forEach(function (t) { if (t.obj && y === null) y = +t.obj.position.y.toFixed(3); });
@@ -3800,8 +3952,12 @@
     const g = new THREE.Group();
     g.userData.famille = "passage";
     if (v.genre === "pente") _pente(v, lots); else if (v.acces) _acces(v, lots, g); else _puits(v, lots, g);
+    // Volume d'un voisin (_construireVolumeVoisin) : sans bouches (le gabarit trouerait le sol du niveau actif, que
+    // rien ne masque encore quand elles se dessinent), coupé à la tranche montrée.
+    const vv = e.volumeVoisin;
     const ajouter = function (lot, mat, ordre, famille) {
-      const geo = lot.geometrie();
+      if (vv && (famille === "boucheSol" || famille === "bouchePlafond")) return;
+      const geo = (vv && vv.coupe ? lot.couper(vv.coupe[0], vv.coupe[1]) : lot).geometrie();
       if (!geo) return;
       const me = new THREE.Mesh(geo, mat);
       me.renderOrder = ordre;
