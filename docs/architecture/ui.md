@@ -2355,7 +2355,7 @@ icônes.
   deux lignes (téléphone), **≡ collé à sa gauche** au téléphone comme au PC (décision produit) ; l'ordre du DOM suit
   (Tab : ✕, ≡, 🚨…). ❓ est posé par l'aide contextuelle (`interfaceDocs.js > AIDE_PAR_MODALE`,
   `kta-vue3d` → section `vue-3d`) dans la rangée marquée `kta-aide-ctx-entete`, avant la croix `data-aide-croix`.
-- **🧩 Add-ons** : dernière ligne de la tuile ⚙️, montrée seulement s'il y a un add-on visible allumé (aucun n'est
+- **🎮 Add-ons** : dernière ligne de la tuile ⚙️, montrée seulement s'il y a un add-on visible allumé (aucun n'est
   livré aujourd'hui : mkmg est secret) ; contrat dans `addons.md` § Comment il se lance.
 - **Filtres partagés** (décision produit) : ≡ ouvre **le** ≡ Filtres de la carte (`FilterPanel.ouvrir`), un seul
   état ; `FilterPanel.onChange` est appelé à tout changement (types, tags, calque coché, niveaux, plan de base) et la

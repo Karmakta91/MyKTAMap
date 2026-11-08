@@ -92,7 +92,7 @@
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
 - **Système d'add-ons community (`addons/<nom>/`)** — lots A (manifestes, registre, précache) et B (Configuration ›
-  Add-ons, 🧩 de la tuile ⚙️ en vue 3D) faits (`addons.md`). Reste le lot C : cases dans ConfAdmin pour l'hébergeur
+  Add-ons, 🎮 de la tuile ⚙️ en vue 3D) faits (`addons.md`). Reste le lot C : cases dans ConfAdmin pour l'hébergeur
   (tous les add-ons, secrets compris ; QCM 06/11/2026).
   `qui: Claude · action: lot C (cases ConfAdmin) · fini: l'hébergeur autorise un add-on depuis ConfAdmin
   · depuis: 02/11/2026 · taille: S`

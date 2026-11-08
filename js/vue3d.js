@@ -8073,9 +8073,9 @@
     ov.appendChild(niv);
     e.boiteNiveaux = niv;
     _monterOutils(ov);
-    // 🧩 Add-ons visibles (manifeste sans `secret`, allumés dans Configuration › Add-ons) : dernière ligne de la tuile,
+    // 🎮 Add-ons visibles (manifeste sans `secret`, allumés dans Configuration › Add-ons) : dernière ligne de la tuile,
     // masquée tant qu'il n'y en a aucun (la rangée du haut tient sur une ligne au téléphone, décision produit).
-    e.boutonAddons = _bouton(e.tuileReglages, "kta-v3d-btn-mode kta-v3d-btn-addons", "🧩 " + _t("vue3d.addons"),
+    e.boutonAddons = _bouton(e.tuileReglages, "kta-v3d-btn-mode kta-v3d-btn-addons", "🎮 " + _t("vue3d.addons"),
       _t("vue3d.addons"), "addons");
     e.boutonAddons.hidden = true;
     _majBoutonAddons();
@@ -8891,7 +8891,7 @@
   // js/ktaAddons.js), chargé à la première fois (script classique, même origine, précaché par sw.js). L'add-on
   // s'inscrit dans window.KtaAddons[<nom>] = { lancer() } ; c'est lui qui décide s'il démarre (refus, confirmation)
   // puis se greffe (greffer). Un code répété pendant la lecture du manifeste ou le chargement ne lance qu'une fois.
-  // Un add-on visible éteint dans Configuration › Add-ons ne se lance ni par code ni par 🧩 (KtaRegistreAddons.actif).
+  // Un add-on visible éteint dans Configuration › Add-ons ne se lance ni par code ni par 🎮 (KtaRegistreAddons.actif).
   const _addonsEnCours = {};
   function _lancerManifeste(cle, trouver) {
     const R = window.KtaRegistreAddons;
@@ -8920,7 +8920,7 @@
     _addonsVisibles(R).then(function (vis) { if (_e === e) e.boutonAddons.hidden = !vis.length; });
   }
 
-  // 🧩 : un seul add-on visible se lance tout de suite, plusieurs passent par un choix (boutons radio de ktaConfirm).
+  // 🎮 : un seul add-on visible se lance tout de suite, plusieurs passent par un choix (boutons radio de ktaConfirm).
   // Rien pendant une greffe (une à la fois).
   function _choisirAddon() {
     const R = window.KtaRegistreAddons, e = _e;

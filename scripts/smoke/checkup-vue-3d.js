@@ -93,7 +93,7 @@
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
 // recouvrement, priorité danger / favori, coût, toucher une icône, nom revenu en se rapprochant (hystérésis), membres
 // jamais réduits, hauteur d'yeux inchangée.
-// Add-ons visibles (page à part, =addons) : deux add-ons fictifs servis par la page, Configuration › Add-ons, 🧩 de la
+// Add-ons visibles (page à part, =addons) : deux add-ons fictifs servis par la page, Configuration › Add-ons, 🎮 de la
 // tuile ⚙️ (choix, lancement direct, masqué, add-on éteint).
 // Gestes à deux doigts au téléphone (38, =gestes ; CDP sous Chromium) : pincement dont un doigt tombe sur + / −, la
 // colonne d'outils ou le joystick, doigt levé puis reposé, rotation engagée à 10° sans saut, pas bornés.
@@ -5143,7 +5143,7 @@ async function sectionPlanSolNiveaux(page) {
 
 // Add-ons VISIBLES (cadre d'add-ons, lot B), page à part : deux add-ons fictifs servis par la page (addons/index.json
 // remplacé, aucun fichier écrit). Configuration › Add-ons : un interrupteur par add-on visible, mkmg (secret) absent ;
-// vue 3D : 🧩 dans la tuile ⚙️, choix entre deux, lancement direct s'il n'en reste qu'un, masqué s'il n'y en a plus,
+// vue 3D : 🎮 dans la tuile ⚙️, choix entre deux, lancement direct s'il n'en reste qu'un, masqué s'il n'y en a plus,
 // un add-on éteint ne se lance pas (KTA_V3D_SEUL=addons : cette section seule).
 async function sectionAddonsVisibles(nav) {
   const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
@@ -5228,7 +5228,7 @@ async function sectionAddonsVisibles(nav) {
       };
       const out = {};
       window.__lances = [];
-      // Deux visibles : 🧩 ouvre le choix, « Lancer » sur le second.
+      // Deux visibles : 🎮 ouvre le choix, « Lancer » sur le second.
       let b = await ouvrir();
       out.bouton = !!b;
       if (b) b.click();
@@ -5241,7 +5241,7 @@ async function sectionAddonsVisibles(nav) {
       if (document.getElementById("kta-confirm-oui")) document.getElementById("kta-confirm-oui").click();
       for (let i = 0; i < 40 && !window.__lances.length; i++) await pause(50);
       out.choisi = window.__lances.join(",");
-      // essai2 éteint : 🧩 lance essai tout de suite, sans fenêtre.
+      // essai2 éteint : 🎮 lance essai tout de suite, sans fenêtre.
       R.regler("essai2", false);
       window.__lances = [];
       b = await ouvrir();
@@ -5249,7 +5249,7 @@ async function sectionAddonsVisibles(nav) {
       for (let i = 0; i < 40 && !window.__lances.length; i++) await pause(50);
       out.direct = window.__lances.join(",");
       out.fenetre = !!document.getElementById("kta-confirm-oui");
-      // Les deux éteints : plus de 🧩.
+      // Les deux éteints : plus de 🎮.
       R.regler("essai", false);
       out.masque = !(await ouvrir());
       await K.fermer();
@@ -5257,10 +5257,10 @@ async function sectionAddonsVisibles(nav) {
       return out;
     });
     verifier(r.bouton && r.choix === "essai,essai2" && r.tuileFermee && r.choisi === "essai2",
-      "add-ons : 🧩 dans la tuile ⚙️ de la vue 3D, choix entre les add-ons visibles, « Lancer » lance celui choisi", r);
+      "add-ons : 🎮 dans la tuile ⚙️ de la vue 3D, choix entre les add-ons visibles, « Lancer » lance celui choisi", r);
     verifier(r.direct === "essai" && !r.fenetre && r.masque &&
       r.memoire === JSON.stringify({ essai2: false, essai: false }),
-      "add-ons : un seul allumé → lancé sans choix ; aucun → 🧩 masqué ; interrupteurs retenus sur l'appareil", r);
+      "add-ons : un seul allumé → lancé sans choix ; aucun → 🎮 masqué ; interrupteurs retenus sur l'appareil", r);
     verifier(erreurs.length === 0, "add-ons visibles : aucune erreur de page", erreurs.slice(0, 3));
   } finally {
     await ctx.close();

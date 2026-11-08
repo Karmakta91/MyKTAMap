@@ -78,7 +78,7 @@ for (const nom of noms) {
     fichiers.includes(m.entree), m.entree);
   t(nom + " : titre en " + LANGUES.join(", "), !!m.titre && LANGUES.every((l) => typeof m.titre[l] === "string" &&
     m.titre[l].trim()), JSON.stringify(m.titre));
-  // Un add-on secret n'est pas dans 🧩 : son code est son seul lancement, obligatoire. Un visible peut s'en passer.
+  // Un add-on secret n'est pas dans 🎮 : son code est son seul lancement, obligatoire. Un visible peut s'en passer.
   if (m.secret === true || m.code !== undefined) {
     t(nom + " : code de la vue 3D émis par vue3d.js", typeof m.code === "string" && RX_CODE.test(m.code) &&
       codesVue.has(m.code), m.code + " (codes émis : " + Array.from(codesVue).join(", ") + ")");
