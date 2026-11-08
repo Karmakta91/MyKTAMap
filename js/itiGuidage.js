@@ -82,16 +82,17 @@
     return { x: pts[lo].x + t * (pts[hi].x - pts[lo].x), y: pts[lo].y + t * (pts[hi].y - pts[lo].y) };
   }
 
-  // `niveau` (entier, facultatif) : seuls les segments dont les deux bouts sont à ce niveau comptent (ch.niv).
+  // `niveau` (entier, facultatif) : seuls les segments de ce niveau comptent (ch.nivSeg : ses deux bouts à ce niveau,
+  // ou un changement de niveau qui le touche — la galerie inclinée d'un tracé jonction se marche en vue 3D).
   function _projeter(ch, p, sMin, sMax, niveau) {
     const pts = ch.pts, cum = ch.cum;
     const lo = (typeof sMin === "number") ? sMin : -Infinity;
     const hi = (typeof sMax === "number") ? sMax : Infinity;
-    const filtre = Number.isInteger(niveau) && Array.isArray(ch.niv);
+    const filtre = Number.isInteger(niveau) && Array.isArray(ch.nivSeg);
     let best = null;
     for (let i = 1; i < pts.length; i++) {
       if (cum[i] < lo || cum[i - 1] > hi) continue;
-      if (filtre && (ch.niv[i - 1] !== niveau || ch.niv[i] !== niveau)) continue;
+      if (filtre && ch.nivSeg[i].indexOf(niveau) < 0) continue;
       const a = pts[i - 1], b = pts[i];
       const dx = b.x - a.x, dy = b.y - a.y;
       const l2 = dx * dx + dy * dy;
@@ -102,6 +103,21 @@
       if (!best || d < best.dist) best = { s: cum[i - 1] + t * (cum[i] - cum[i - 1]), dist: d, x: x, y: y };
     }
     return best;
+  }
+
+  // Niveaux de chaque segment i (de i − 1 à i ; index 0 inutilisé) : [n] si ses deux bouts sont au niveau n ; dans un
+  // changement de niveau (bouts différents ou en transit), les niveaux du dernier point situé avant et du premier
+  // point situé après.
+  function _niveauxSegments(niv) {
+    const out = [[]];
+    for (let i = 1; i < niv.length; i++) {
+      if (Number.isInteger(niv[i - 1]) && niv[i - 1] === niv[i]) { out.push([niv[i]]); continue; }
+      let a = null, b = null;
+      for (let k = i - 1; k >= 0 && a === null; k--) if (Number.isInteger(niv[k])) a = niv[k];
+      for (let k = i; k < niv.length && b === null; k++) if (Number.isInteger(niv[k])) b = niv[k];
+      out.push([a, b].filter(function (n, j, l) { return n !== null && l.indexOf(n) === j; }));
+    }
+    return out;
   }
 
   // Niveau du trajet à l'abscisse s (null : transit entre niveaux ou niveau inconnu) : celui du segment qui la porte.
@@ -189,6 +205,7 @@
       if (q && Number.isInteger(q.level)) return q.level;
       return (q && q.level === undefined && !q.via) ? nivDefaut : null;
     });
+    ch.nivSeg = _niveauxSegments(ch.niv);
     const L = ch.total;
     const W = Math.max(3, FENETRE_M * e);
     const ecartPx = ZONE_ECART_M * e;
@@ -294,20 +311,23 @@
     });
 
     // 3) Changements de niveau (le trajet porte le niveau de chaque point).
-    // `via` (pathfinder.js) : moyen d'un passage entre niveaux traversé (escalier, echelons, corde).
-    let dernier = null, sTransit = null, via = null;
+    // `via` (pathfinder.js) : moyen d'un passage entre niveaux traversé (escalier, echelons, corde). Sans moyen, le
+    // trajet a pris un tracé `jonction` : une pente (galerie inclinée en vue 3D), dite à son entrée, au dernier point
+    // du niveau quitté (« descendre la pente vers le niveau −1 »).
+    let dernier = null, iDernier = -1, sTransit = null, via = null;
     for (let i = 0; i < road.points.length; i++) {
       const lv = road.points[i].level;
       if (Number.isInteger(lv)) {
         if (dernier !== null && lv !== dernier) {
-          const sN = (sTransit !== null) ? sTransit : ch.cum[i];
+          const sN = !via ? ch.cum[iDernier] : (sTransit !== null) ? sTransit : ch.cum[i];
           const pt = _pointA(ch, sN);
           consignes.push({
             s: sN, x: pt.x, y: pt.y, type: "niveau", de: dernier, vers: lv,
-            sens: _sensNiveau(dernier, lv), repere: _repereProche(pois, pt, repPx, dernier), moyen: via
+            sens: _sensNiveau(dernier, lv), repere: _repereProche(pois, pt, repPx, dernier), moyen: via || "pente"
           });
         }
         dernier = lv;
+        iDernier = i;
         sTransit = null;
         via = null;
       } else {
@@ -395,7 +415,9 @@
       case "toutDroit": txt = _t("guid.act.toutDroit"); break;
       case "demiTour":  txt = _t("guid.act.demiTour"); break;
       case "niveau":
-        txt = _t(c.sens === "monter" ? "guid.act.monter" : "guid.act.descendre",
+        // Par un tracé jonction : « monter / descendre la pente vers le niveau … ».
+        txt = _t(c.moyen === "pente" ? (c.sens === "monter" ? "guid.act.monterPente" : "guid.act.descendrePente")
+                 : (c.sens === "monter" ? "guid.act.monter" : "guid.act.descendre"),
                  { niveau: _t("guid.niveau", { n: _fmtNiv(c.vers) }) });
         // Passage entre niveaux : « … par l'escalier / par l'échelle / à la corde ».
         if (PAR_MOYEN[c.moyen]) txt += _t(PAR_MOYEN[c.moyen]);

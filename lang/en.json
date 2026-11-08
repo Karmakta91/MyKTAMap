@@ -2375,6 +2375,8 @@
   "guid.act.demiTour": "turn back",
   "guid.act.monter": "go up to {niveau}",
   "guid.act.descendre": "go down to {niveau}",
+  "guid.act.monterPente": "walk up the slope to {niveau}",
+  "guid.act.descendrePente": "walk down the slope to {niveau}",
   "guid.act.etape": "stop reached",
   "guid.act.etapeNom": "stop: {nom}",
   "guid.act.arrivee": "arrival",

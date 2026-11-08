@@ -2375,6 +2375,8 @@
   "guid.act.demiTour": "dar media vuelta",
   "guid.act.monter": "subir al {niveau}",
   "guid.act.descendre": "bajar al {niveau}",
+  "guid.act.monterPente": "subir la rampa al {niveau}",
+  "guid.act.descendrePente": "bajar la rampa al {niveau}",
   "guid.act.etape": "etapa alcanzada",
   "guid.act.etapeNom": "etapa: {nom}",
   "guid.act.arrivee": "llegada",

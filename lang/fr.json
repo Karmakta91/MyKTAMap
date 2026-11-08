@@ -2375,6 +2375,8 @@
   "guid.act.demiTour": "faire demi-tour",
   "guid.act.monter": "monter vers le {niveau}",
   "guid.act.descendre": "descendre vers le {niveau}",
+  "guid.act.monterPente": "monter la pente vers le {niveau}",
+  "guid.act.descendrePente": "descendre la pente vers le {niveau}",
   "guid.act.etape": "étape atteinte",
   "guid.act.etapeNom": "étape : {nom}",
   "guid.act.arrivee": "arrivée",
