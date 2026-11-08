@@ -113,6 +113,50 @@
         }).ecartM : null;
       el.value = v === null || el.disabled ? "" : String(v);
     });
+    _majIncoherences(racine, lu);
+  }
+
+  // Données incohérentes de la table (signalées, jamais bloquantes : la vue 3D reste dessinable, vue3d.js >
+  // _altitudeVoisin) : de deux niveaux qui se suivent dans la table avec un sol chacun, celui du dessus a son sol au
+  // niveau de celui du dessous ou plus bas ; ou ils se chevauchent d'au moins la hauteur de l'un des deux (un niveau
+  // noyé dans l'autre). → [{ k (niveau du dessus), texte }].
+  function _incoherences(racine, lu) {
+    const cles = Array.prototype.map.call(racine.querySelectorAll(".kta-prof-ligne[data-ligne]"), function (l) {
+      return l.getAttribute("data-ligne");
+    });
+    const nom = function (k) { return Number(k) > 0 ? "+" + k : String(k); };
+    const m = function (v) {
+      return typeof window.formatDistance === "function" ? window.formatDistance(v, 1) : v.toFixed(1) + " m";
+    };
+    const out = [];
+    for (let i = 0; i + 1 < cles.length; i++) {
+      const kh = cles[i], kb = cles[i + 1], sh = lu.profondeurs[kh], sb = lu.profondeurs[kb];
+      if (!Number.isFinite(sh) || !Number.isFinite(sb)) continue;
+      const hh = lu.hauteurs[kh] || _defautH(), hb = lu.hauteurs[kb] || _defautH(), chev = sb + hb - sh;
+      if (sh <= sb) out.push({ k: kh, texte: _t("prof.incoherent.ordre", { haut: nom(kh), bas: nom(kb) }) });
+      else if (chev >= Math.min(hh, hb)) {
+        out.push({ k: kh, texte: _t("prof.incoherent.noye", { haut: nom(kh), bas: nom(kb), m: m(chev) }) });
+      }
+    }
+    return out;
+  }
+
+  // Avertissement sous la table (role="status") et lignes marquées ; rien quand tout est cohérent.
+  function _majIncoherences(racine, lu) {
+    const l = _incoherences(racine, lu);
+    racine.querySelectorAll(".kta-prof-ligne[data-ligne]").forEach(function (ligne) {
+      const k = ligne.getAttribute("data-ligne");
+      ligne.classList.toggle("kta-prof-incoherent", l.some(function (x) { return x.k === k; }));
+    });
+    let p = racine.querySelector(".kta-prof-incoherence");
+    if (!l.length) { if (p) p.remove(); return; }
+    if (!p) {
+      p = document.createElement("p");
+      p.className = "kta-prof-hint kta-prof-incoherence";
+      p.setAttribute("role", "status");
+      racine.appendChild(p);
+    }
+    p.textContent = "⚠️ " + l.map(function (x) { return x.texte; }).join(" · ") + " " + _t("prof.incoherent.suite");
   }
 
   function brancherTable(racine) {

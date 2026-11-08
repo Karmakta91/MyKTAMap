@@ -53,6 +53,7 @@
 .kta-v3d-haut > .kta-v3d-urgence { order: 3; }
 .kta-v3d-haut > .kta-aide-ctx-btn { order: 4; }
 .kta-v3d-haut > .kta-v3d-btn-reglages { order: 5; }
+.kta-v3d-haut > .kta-v3d-recherche { order: 6; }
 
 /* Bouton carré : celui de la barre 2D (surface, liseré --kta-bordure, ombre de la barre). */
 .kta-v3d-btn {
@@ -159,6 +160,17 @@ html.kta-theme-light .kta-v3d-mode-indic {
   content: "›"; margin-left: auto; padding-left: 6px; font-size: 18px; line-height: 1; color: var(--kta-texte-3);
 }
 .kta-v3d-reglages .kta-v3d-btn-hauteur[aria-expanded="true"]::after { content: "▾"; font-size: 14px; }
+/* 🏗️ Niveaux montrés : nom sur sa ligne, trois choix exclusifs dessous, en pastilles rondes (un seul pressé). */
+.kta-v3d-reglages-ligne.kta-v3d-niveaux-vus { flex-wrap: wrap; }
+.kta-v3d-reglages-ligne.kta-v3d-niveaux-vus[hidden] { display: none; }
+.kta-v3d-niveaux-vus-nom {
+  flex: 1 0 100%; padding: 2px 2px 0; font-size: 13px; font-weight: 600; color: var(--kta-texte);
+}
+.kta-v3d-reglages .kta-v3d-btn-niveaux { padding: 6px 8px; gap: 6px; }
+.kta-v3d-reglages .kta-v3d-btn-niveaux[aria-pressed]::before { border-radius: 50%; }
+.kta-v3d-reglages .kta-v3d-btn-niveaux[aria-pressed="true"]::before {
+  content: ""; box-shadow: inset 0 0 0 3px var(--kta-surface);
+}
 .kta-v3d-btn-icone { width: 18px; height: 18px; flex: 0 0 auto; vertical-align: middle; }
 /* Portée, intensité et faisceau de la lampe : nom, curseur, valeur (vue3d.js > _majCurseur) sur une ligne ; noms
    d'une même largeur, les trois curseurs alignés. */

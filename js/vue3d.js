@@ -10,7 +10,7 @@
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(o), parois(),
 //   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
 //   zoomer(facteur), panner(dx, dz), surPlace(), niveauEdition(sens), reglerPortee(m), reglerLampe(%),
-//   reglerFaisceau(°), reglerPleinJour(bool),
+//   reglerFaisceau(°), reglerPleinJour(bool), reglerNiveauxVus("voisins" | "tous" | "mien"),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
 //   placerSurTracker(), trackerRecale(), charge(), gesteAnime(bool), greffer(g) (prise neutre d'un add-on,
 //   _ctxGreffe), viser(cx, cy) (colonne d'outils de la vue d'édition : outils de la carte, _poserSommet),
@@ -25,7 +25,8 @@
 // STRUCTURES seules (tracés au sol) ou GALERIE seule (tracés en tubes, js/galerieEmprise.js) ; zones, itinéraire
 // (ruban plein, chevrons de sens, étapes, 🏁), ronds d'intersection et surlignage 📏 de la carte (_majDistTot), POI
 // en panneaux (danger : halo rouge au sol ; favori : ⭐) ; membres, repères et itinéraires d'une extension
-// (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau, passages en
+// (KtaPresences ; ma place libre leur est montrée, _publierPosition ; rien sans extension) ; un niveau actif et ses
+// voisins à leur altitude (réglage ⚙️ Niveaux, _voisinsPreparer, sans pas ni panneaux), passages en
 // volume (_construireVolume) comme les accès de surface sans passage (puits fermés, comblés, bouché, d'extraction,
 // bassin, cavage) et les formes de POI (chatière, plaque, épure, portail, véhicule) : _volumeAcces ; changement de
 // niveau derrière un fondu (_lancerGeste). Tuiles autour de soi, lampe frontale, rendu au mouvement seul.
@@ -628,7 +629,8 @@
   }
 
   // Place (x, z m) projetée sur la galerie inclinée p → { p, s (m depuis notre bout), t, lat (m de l'axe, bouts
-  // compris), dy (sol), plafond (m, au-dessus du sol du niveau) }.
+  // compris), demi (m : demi-largeur de la galerie inclinée à cet endroit, KtaGalerie.demiPente), dy (sol), plafond
+  // (m, au-dessus du sol du niveau) }.
   function _surPenteDe(p, x, z) {
     let best = null;
     for (let i = 0; i + 1 < p.ptsM.length; i++) {
@@ -638,7 +640,8 @@
       if (!best || lat < best.lat) best = { lat: lat, s: p.cum[i] + (p.cum[i + 1] - p.cum[i]) * k };
     }
     const t = best.s / p.tot, dy = p.dY * t;
-    return { p: p, s: best.s, t: t, lat: best.lat, dy: dy, plafond: dy + p.hA + (p.hB - p.hA) * t };
+    return { p: p, s: best.s, t: t, lat: best.lat, demi: window.KtaGalerie.demiPente(p, t), dy: dy,
+      plafond: dy + p.hA + (p.hB - p.hA) * t };
   }
 
   // Galerie inclinée sous la place (x, z m) : la plus proche dont l'axe est à moins de sa demi-largeur + `marge` m,
@@ -650,7 +653,7 @@
       const p = l[i];
       if (x < p.x0 - m || x > p.x1 + m || z < p.z0 - m || z > p.z1 + m) continue;
       const q = _surPenteDe(p, x, z);
-      if (q.lat <= p.demi + m && (!best || q.lat < best.lat)) best = q;
+      if (q.lat <= q.demi + m && (!best || q.lat < best.lat)) best = q;
     }
     return best;
   }
@@ -2656,6 +2659,9 @@
 
   function _monterScene() {
     const e = _e;
+    // Reprise du contexte : les voisins de l'ancienne scène ne sont jamais libérés sur la nouvelle (_voisinsPreparer
+    // les refait au _reindexer qui suit).
+    e.voisins = []; e.matsV = null;
     e.panneaux = new Set();
     e.panneauxGen = 0;
     e.icones = new Map();
@@ -2987,6 +2993,7 @@
     _gererTuiles(true);
     (e.volPassages || []).forEach(_libererVolume);
     _gererVolumes();
+    _voisinsPreparer(true);
     e.sale = true;
   }
 
@@ -3054,6 +3061,259 @@
     _gererVolumes();
     _sceneGreffe();
     _majNiveauEdition();
+    _voisinsPreparer(false);
+    _gererVoisins(false);
+  }
+
+  // ── Niveaux voisins : les autres niveaux à leur altitude (tuile ⚙️ « Niveaux » : voisins, tous, le mien) ─────
+  // ⚠️ contrat (décision produit) : la scène est celle du niveau ACTIF de la 3D ; les autres niveaux montrés (« voisins » :
+  // celui juste au-dessus et celui juste au-dessous parmi ceux qui portent quelque chose, ordre de _niveauxEdition ;
+  // « tous » ; « le mien » : aucun) sont construits par les MÊMES fonctions de tuile (même rendu, mêmes filtres de la
+  // carte : un niveau masqué au ≡ n'est pas montré), décalés de leur altitude (KtaGalerie.denivele : sols et hauteurs
+  // de config.js > getNiveauVertical, repli sans sols d'une hauteur de galerie et 2 m de roche par niveau, comme la galerie
+  // inclinée). Ils se VOIENT et cachent ce qui est derrière eux, rien de plus : ni la règle du pas, ni la visée
+  // (_pointVise), ni les passages, ni le suivi ne les lisent ; le niveau actif ne change que par un passage, une galerie
+  // inclinée ou ▲▼. Sans panneaux de POI (décision produit : un panneau est dessiné par-dessus tout, sans profondeur,
+  // pour rester lisible ; celui d'un autre niveau se lirait à travers la roche et se toucherait pour un objet qu'on ne
+  // peut pas atteindre d'ici), sans volumes de passage (le puits du niveau actif descend jusqu'au niveau qu'il relie,
+  // _etenduePassage). Vue d'édition : rien de ce qui est au-dessus du niveau actif (il couvrirait la scène, comme son
+  // plafond qu'elle retire), ceux du dessous sans leur plafond.
+  // Coût (décision produit, mesures : ETUDE_VUE_3D.md § Niveaux voisins) : seulement les tuiles à portée (même rayon et
+  // même 🛡️ que le niveau actif), construites après les siennes, VOISINS_PAR_IMAGE par image au plus ; un voisin
+  // inchangé (altitude, hauteur, rendu, textures, données, filtres) est gardé quand la scène change de niveau.
+  // 🩸 Gabarit (stencil) : sol, plafond et rubans du niveau actif ne se dessinent pas dans la bouche d'un puits ; ceux
+  // d'un voisin, vus par cette bouche, prennent des copies de ces matériaux SANS gabarit (_matsVoisins), sinon le
+  // fond du puits serait troué lui aussi.
+  const VOISINS_PAR_IMAGE = 2;
+  const MATS_GABARIT = ["sol", "plafond", "solGalerie", "plafondGalerie", "rubans"];
+
+  // Réglage à l'ouverture : au doigt, « voisins » à chaque fois (réécrit sur l'appareil) ; au pointeur fin, retenu.
+  function _niveauxVusVoulu() {
+    const tactile = typeof window.ktaAppareilTactile === "function" && window.ktaAppareilTactile();
+    if (tactile) {
+      if (typeof window.setVue3DNiveauxVus === "function") window.setVue3DNiveauxVus("voisins");
+      return "voisins";
+    }
+    return typeof window.getVue3DNiveauxVus === "function" ? window.getVue3DNiveauxVus() : "voisins";
+  }
+
+  // Niveaux montrés en plus de celui de la scène (du plus haut au plus bas).
+  function _niveauxMontres() {
+    const e = _e, l = _niveauxEdition(), i = l.indexOf(e.niveau);
+    if (e.niveauxVus === "mien" || i < 0) return [];
+    if (e.niveauxVus === "tous") return l.filter(function (n) { return n !== e.niveau; });
+    return [l[i - 1], l[i + 1]].filter(Number.isInteger);
+  }
+
+  // Altitude (m) du sol du niveau n au-dessus de celui de la scène, et son côté (_auDessus : l'ordre de ▲▼).
+  // 🩸 Données incohérentes (deux sols égaux, sol du dessus plus bas que celui du dessous : signalées dans la table des
+  // niveaux, profondeurNiveaux.js) : jamais du mauvais côté, au pire à la même altitude ; rien ne s'inverse.
+  function _altitudeVoisin(n) {
+    const G = window.KtaGalerie, N = _e.niveau, dessus = _auDessus(n, N);
+    let dy = G && typeof G.denivele === "function" ? G.denivele(N, n) : 0;
+    if (!Number.isFinite(dy) || (dessus && dy < 0) || (!dessus && dy > 0)) dy = 0;
+    return { dy: dy, dessus: dessus };
+  }
+
+  // Ce qui, hors du niveau, fait refaire un voisin : rendu, textures, données, filtres de la carte, greffe.
+  function _sigVoisins() {
+    const e = _e, f = window._ktaRuntimeFilters || {}, g = window.dataLayerGroups || {}, map = window.map;
+    let s = e.rendu + "|" + (e.textures === true) + "|" + (e.donnees ? e.donnees.empreinte : "") + "|" +
+      e.tuilesActives + "|" + _permisGreffe("traces") + "|";
+    Object.keys(f).sort().forEach(function (k) {
+      const v = f[k];
+      s += k + ":" + (v instanceof Set ? Array.from(v).sort().join(",") : String(v)) + ";";
+    });
+    Object.keys(g).sort().forEach(function (k) {
+      s += k + (map && typeof map.hasLayer === "function" && map.hasLayer(g[k]) ? "1" : "0");
+    });
+    return s + "|" + JSON.stringify((window.APP_CONFIG || {}).visibleLevels || []);
+  }
+
+  // Copies sans gabarit des matériaux qui en testent un, relues sur l'original (carte, couleur : 🧱 les change).
+  function _matsVoisins() {
+    const e = _e;
+    if (!e.matsV) {
+      e.matsV = {};
+      MATS_GABARIT.forEach(function (k) {
+        const m = e.mats[k].clone();
+        m.stencilWrite = false;
+        m.stencilFunc = THREE.AlwaysStencilFunc;
+        e.matsV[k] = m;
+      });
+    }
+    MATS_GABARIT.forEach(function (k) {
+      const a = e.mats[k], b = e.matsV[k];
+      if (b.map !== a.map || !b.color.equals(a.color)) { b.map = a.map; b.color.copy(a.color); b.needsUpdate = true; }
+    });
+    return e.matsV;
+  }
+
+  function _libererVoisin(v) {
+    const e = _e;
+    v.tuiles.forEach(function (t) { if (t.obj && t.obj.parent === e.scene) _libererTuile(t); t.obj = null; });
+    if (v.plans) { e.scene.remove(v.plans.sol, v.plans.plafond); v.plans = null; }   // géométrie : celle de e.sol
+    e.sale = true;
+  }
+
+  function _voisinNeuf(n, sig) {
+    const e = _e, t0 = performance.now(), a = _altitudeVoisin(n), h = _hauteurDuNiveau(n), d = _collecter(n);
+    const v = { niveau: n, dy: a.dy, dessus: a.dessus, hauteur: h, sig: sig + "|" + a.dy + "|" + h, galerie: null,
+      mixte: null, plans: null };
+    if (e.rendu === "galerie") v.galerie = d.galerie = window.KtaGalerie.modele(n);
+    if (e.rendu === "mixte") v.mixte = d.mixte = window.KtaGalerie.modele(n, true);
+    const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
+    v.tuiles = _indexer(Object.assign({}, d, { roads: plan, points: [] }), e.sc, e.tuilesActives ? TUILE : 0);
+    // Mixte et structures : sol et plafond d'un seul tenant, comme ceux du niveau actif (en galerie, ceux des pièces).
+    if (!v.galerie) {
+      const M = _matsVoisins();
+      v.plans = { sol: new THREE.Mesh(e.sol.geometry, M.sol), plafond: new THREE.Mesh(e.sol.geometry, M.plafond) };
+      v.plans.sol.userData.voisin = v.plans.plafond.userData.voisin = n;
+      e.scene.add(v.plans.sol, v.plans.plafond);
+    }
+    v.ms = performance.now() - t0;
+    return v;
+  }
+
+  // Voisins voulus (réglage, niveau de la scène) : gardés s'ils n'ont pas changé, sinon refaits. `tout` : tous refaits
+  // (hauteur, 🧱 : _refaireTuiles). Appelé par _reindexer et _refaireTuiles ; les tuiles viennent ensuite (_gererVoisins).
+  function _voisinsPreparer(tout) {
+    const e = _e, voulus = _niveauxMontres(), sig = _sigVoisins(), gardes = [];
+    (e.voisins || []).forEach(function (v) {
+      const a = voulus.indexOf(v.niveau) >= 0 ? _altitudeVoisin(v.niveau) : null;
+      if (!tout && a && v.sig === sig + "|" + a.dy + "|" + _hauteurDuNiveau(v.niveau)) {
+        v.dessus = a.dessus;
+        gardes.push(v);
+      } else _libererVoisin(v);
+    });
+    voulus.forEach(function (n) {
+      if (!gardes.some(function (v) { return v.niveau === n; })) gardes.push(_voisinNeuf(n, sig));
+    });
+    e.voisins = gardes;
+    if (e.matsV) _matsVoisins();
+    e.sale = true;
+  }
+
+  // Tuile d'un voisin : la fonction du niveau actif, avec le modèle, la hauteur et les matériaux du voisin ; compteurs
+  // de la scène (checkup) laissés à ceux du niveau actif.
+  function _construireTuileVoisin(v, t) {
+    const e = _e, M = _matsVoisins();
+    const garde = { galerie: e.galerie, mixte: e.mixte, hauteur: e.hauteur, poiMasques: e.poiMasques,
+      zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux, facesRemblais: e.facesRemblais,
+      facesEboulis: e.facesEboulis, rubans: e.rubans, liseres: e.liseres, zonesTube: e.zonesTube,
+      poiTube: e.poiTube, halos: e.halos, itiChevrons: e.itiChevrons };
+    const mats = {};
+    MATS_GABARIT.forEach(function (k) { mats[k] = e.mats[k]; e.mats[k] = M[k]; });
+    e.galerie = v.galerie; e.mixte = v.mixte; e.hauteur = v.hauteur;
+    _razCompteurs();
+    try {
+      _construireTuile(t);
+    } finally {
+      MATS_GABARIT.forEach(function (k) { e.mats[k] = mats[k]; });
+      Object.keys(garde).forEach(function (k) { e[k] = garde[k]; });
+    }
+    if (!t.obj) return;
+    t.obj.position.y = v.dy;
+    t.obj.userData.voisin = v.niveau;
+    if (e.vue === "plongee") {
+      t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = false; });
+    }
+  }
+
+  // À chaque image (et `tout` pour une mesure) : tuiles des voisins à portée construites, seulement quand celles du
+  // niveau actif sont toutes posées (e.construitesImage), montrées, cachées ou jetées comme les siennes.
+  function _gererVoisins(tout) {
+    const e = _e;
+    if (!e.voisins || !e.voisins.length) return;
+    const c = _centreScene(), rVue = _rayonScene(), rGarde = rVue + 2 * TUILE, haut = e.vue === "plongee";
+    const t0 = performance.now();
+    let n = tout ? 0 : (e.construitesImage ? VOISINS_PAR_IMAGE : 0);
+    e.voisins.forEach(function (v) {
+      const cache = haut && v.dessus;
+      v.tuiles.forEach(function (t) {
+        const d = _distTuile(t, c.x, c.z);
+        if (d <= rVue && !cache) {
+          if (!t.obj && (tout || n < VOISINS_PAR_IMAGE)) { _construireTuileVoisin(v, t); n++; }
+          if (t.obj && !t.obj.visible) { t.obj.visible = true; e.sale = true; }
+        } else if (d > rGarde) {
+          if (t.obj) { _libererTuile(t); e.sale = true; }
+        } else if (t.obj && t.obj.visible) {
+          t.obj.visible = false; e.sale = true;
+        }
+      });
+    });
+    e.msVoisins += performance.now() - t0;
+  }
+
+  // Vue changée (yeux / édition) : plafonds des voisins du dessous ; ceux du dessus suivent _gererVoisins.
+  function _voisinsVue() {
+    const e = _e, haut = e.vue === "plongee";
+    (e.voisins || []).forEach(function (v) {
+      v.tuiles.forEach(function (t) {
+        if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
+      });
+    });
+    _gererVoisins(false);
+  }
+
+  // Sol et plafond d'un seul tenant des voisins (mixte, structures) : suivent le centre de la scène et la taille du
+  // carré du niveau actif (_placerCamera).
+  function _placerVoisins(c) {
+    const e = _e, haut = e.vue === "plongee";
+    (e.voisins || []).forEach(function (v) {
+      if (!v.plans) return;
+      const vu = !(haut && v.dessus);
+      v.plans.sol.position.set(c.x, v.dy, c.z);
+      v.plans.plafond.position.set(c.x, v.dy + v.hauteur, c.z);
+      v.plans.sol.scale.copy(e.sol.scale);
+      v.plans.plafond.scale.copy(e.plafond.scale);
+      v.plans.sol.visible = vu;
+      v.plans.plafond.visible = vu && !haut;
+    });
+  }
+
+  // Réglage ⚙️ « Niveaux » : "voisins", "tous" ou "mien" (retenu sur l'appareil ; au téléphone, « voisins » revient à
+  // l'ouverture). Rend le réglage en vigueur, null vue fermée.
+  function reglerNiveauxVus(v) {
+    const e = _e;
+    if (!e) return null;
+    const ok = ["voisins", "tous", "mien"].indexOf(v) >= 0 ? v : "voisins";
+    e.niveauxVus = typeof window.setVue3DNiveauxVus === "function" ? window.setVue3DNiveauxVus(ok) : ok;
+    _voisinsPreparer(false);
+    _gererVoisins(false);
+    _majNiveauxVus();
+    return e.niveauxVus;
+  }
+
+  // Ligne « Niveaux » de la tuile : plan multi-niveau seulement ; le réglage en vigueur pressé.
+  function _majNiveauxVus() {
+    const e = _e, l = e && e.ligneNiveauxVus;
+    if (!l) return;
+    l.hidden = !((window.APP_CONFIG || {}).multiLevel === true);
+    (e.boutonsNiveauxVus || []).forEach(function (b) {
+      b.setAttribute("aria-pressed", b.dataset.niveauxVus === e.niveauxVus ? "true" : "false");
+    });
+  }
+
+  // Relevé (checkup) des voisins : niveau, altitude, côté, hauteur, tuiles construites et montrées, plans.
+  function _etatVoisins() {
+    const e = _e;
+    return { mode: e.niveauxVus, ms: +(e.msVoisins || 0).toFixed(1), niveaux: (e.voisins || []).map(function (v) {
+      let construites = 0, montrees = 0, sansPlafond = 0;
+      v.tuiles.forEach(function (t) {
+        if (!t.obj) return;
+        construites++;
+        if (_montreDansScene(t.obj)) montrees++;
+        t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond" && !o.visible) sansPlafond++; });
+      });
+      return { niveau: v.niveau, dy: +v.dy.toFixed(3), dessus: v.dessus, hauteur: v.hauteur, tuiles: v.tuiles.size,
+        construites: construites, montrees: montrees, plafondsCaches: sansPlafond, y: (function () {
+          let y = null;
+          v.tuiles.forEach(function (t) { if (t.obj && y === null) y = +t.obj.position.y.toFixed(3); });
+          return y;
+        })(), plans: v.plans ? { sol: +v.plans.sol.position.y.toFixed(3), plafond: +v.plans.plafond.position.y.toFixed(3),
+          vus: v.plans.sol.visible } : null, ms: +(v.ms || 0).toFixed(1) };
+    }) };
   }
 
   // Données du plan changées pendant la vue (signal `kta:donneesPlanChange`, utils.js > ktaSignalerDonneesPlan) :
@@ -3170,7 +3430,7 @@
       const dessus = autres.some(function (n) { return _auDessus(n, N); });
       const dessous = autres.some(function (n) { return !_auDessus(n, N); });
       const surface = J.TAGS_SURFACE_NIVEAUX.indexOf(tag) >= 0 && !dessus;
-      const v = { genre: "poi", tag: tag, moyen: moyen, x: p.x, y: p.y,
+      const v = { genre: "poi", tag: tag, moyen: moyen, x: p.x, y: p.y, ext: _etenduePassage(autres),
         forme: !moyen ? "aeration" : moyen === "escalier" ? "escalier" : "puits",
         sol: !!moyen && dessous, plafond: !moyen || dessus || surface, ciel: !!moyen && surface, grille: !moyen,
         echelons: moyen === "echelons", passage: !!moyen && autres.length > 0 };
@@ -3217,6 +3477,21 @@
       });
     }
     return out.concat(_volumesPentes());
+  }
+
+  // Étendue verticale (m, repère du niveau de la scène) d'un passage vers les niveaux qu'il relie : `bas` = sol du niveau
+  // lié le plus proche au-dessous, `basParoi` = son plafond, `haut` = sol du niveau lié le plus proche au-dessus (null
+  // sans niveau de ce côté). ⚠️ contrat (décision produit) : puits, escalier et échelle vont d'un niveau à l'autre à
+  // leur altitude réelle (_altitudeVoisin : la même que les niveaux voisins montrés), parois dans la roche entre les
+  // deux ; jamais une géométrie inversée sur des données incohérentes (niveaux qui se chevauchent : pas de paroi).
+  function _etenduePassage(autres) {
+    const out = { bas: null, basParoi: null, haut: null };
+    autres.forEach(function (n) {
+      const a = _altitudeVoisin(n);
+      if (a.dessus) { if (out.haut === null || a.dy < out.haut) out.haut = a.dy; }
+      else if (out.bas === null || a.dy > out.bas) { out.bas = a.dy; out.basParoi = a.dy + _hauteurDuNiveau(n); }
+    });
+    return out;
   }
 
   // Volumes des galeries inclinées du niveau (e.pentes), si le type « jonction » est montré (filtres de la carte).
@@ -3468,13 +3743,17 @@
   }
 
   function _puits(v, lots, g) {
-    const e = _e, h = e.hauteur, L = VOLUME.long, Q = _repere(v), a = v.a, b = v.b;
+    const e = _e, h = e.hauteur, L = VOLUME.long, Q = _repere(v), a = v.a, b = v.b, X = v.ext || {};
     const ring = _sensPositif([Q(-a, -b), Q(a, -b), Q(a, b), Q(-a, b)]);
     const murs = function (y0, y1) {
       for (let k = 0; k < 4; k++) _paroiY(lots.parois, ring[k], ring[(k + 1) % 4], y0, y1);
     };
-    if (v.sol) { murs(-L, 0); _quadPlat(lots.sol, ring, 0); }
-    if (v.plafond) { murs(h, h + L); _quadPlat(lots.plafond, ring, h); }
+    // Parois de notre sol au plafond du niveau lié dessous, de notre plafond au sol du niveau lié dessus ; sans niveau
+    // lié de ce côté (puits de surface, aération), VOLUME.long qui se perd dans le noir.
+    const fond = Number.isFinite(X.basParoi) ? Math.min(X.basParoi, 0) : -L;
+    const cime = Number.isFinite(X.haut) ? Math.max(X.haut, h) : h + L;
+    if (v.sol) { murs(fond, 0); _quadPlat(lots.sol, ring, 0); }
+    if (v.plafond) { murs(h, cime); _quadPlat(lots.plafond, ring, h); }
     if (v.forme === "escalier") _marches(v, lots.opaque, Q, _couleurFixe(COULEUR_CALCAIRE));
     if (v.echelons) _echellePuits(v, lots.opaque, Q, _couleurFixe(COULEUR_FER));
     if (v.grille) {
@@ -3491,7 +3770,7 @@
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: e.texCiel, fog: false, depthWrite: false,
         toneMapped: false, transparent: true }));
       const c = Q(0, 0), r = 2 * Math.min(a, b) * 0.95;
-      sp.position.set(c[0], h + L - 0.05, c[1]);
+      sp.position.set(c[0], cime - 0.05, c[1]);
       sp.scale.set(r, r, 1);
       sp.renderOrder = 2;
       sp.userData.famille = "ciel";
@@ -3513,8 +3792,13 @@
   // côte entre trois niveaux) ; _volumesDuNiveau oriente le repère pour que −a soit le côté d'entrée de la place
   // (KtaGalerie.placePassage > entree : la paroi d'une niche ; dans l'axe, où la galerie continue le plus longtemps,
   // égalité : sens du tracé).
+  // Volée qui monte : jusqu'au sol du niveau lié dessus ; qui descend : jusqu'au sol du niveau lié dessous
+  // (_etenduePassage, au moins 0,3 m) ; sans ce niveau, à 0,4 m au-delà du plafond ou du sol.
   function _marches(v, lot, Q, col) {
-    const h = _e.hauteur, n = VOLUME.marches, a = v.a, b = v.b, pas = 2 * a / n, haut = (h + 0.4) / n;
+    const h = _e.hauteur, n = VOLUME.marches, a = v.a, b = v.b, pas = 2 * a / n, X = v.ext || {};
+    const haut = (Number.isFinite(X.haut) ? Math.max(X.haut, 0.3) : h + 0.4) / n;
+    const bas = (Number.isFinite(X.bas) ? Math.max(-X.bas, 0.3) : h + 0.4) / n;
+    const pied = -Math.max(n * bas, Number.isFinite(X.bas) ? 0 : VOLUME.long);
     const monte = v.plafond && !v.grille, deux = monte && v.sol;
     // Relevé (etat().volumes, checkup) : centre [x, z] des sommets les plus hauts posés depuis l'indice i0.
     const plusHaut = function (i0) {
@@ -3539,7 +3823,7 @@
     if (v.sol) {
       for (let k = 0; k < n; k++) {
         const s0 = -a + k * pas;
-        _pave(lot, Q, s0, s0 + pas, -b, deux ? 0 : b, -VOLUME.long, -(k + 1) * haut, col);
+        if (-(k + 1) * bas - pied > 1e-3) _pave(lot, Q, s0, s0 + pas, -b, deux ? 0 : b, pied, -(k + 1) * bas, col);
       }
       rel.entreeBas = plusHaut(i0);
     }
@@ -3549,8 +3833,12 @@
   // Échelle scellée contre une paroi : échelons tous les VOLUME.echelon m et deux montants ; vers le bas, les montants
   // dépassent du sol d'un mètre (la sortie).
   function _echellePuits(v, lot, Q, col) {
-    const h = _e.hauteur, L = VOLUME.long, tw = -v.b + 0.12;
-    const yA = v.sol ? -L : 0, yB = v.plafond ? h + L : 1, yR = v.plafond ? h + L : 0;
+    const h = _e.hauteur, L = VOLUME.long, tw = -v.b + 0.12, X = v.ext || {};
+    // Du sol du niveau lié dessous au sol du niveau lié dessus (montants d'un mètre au-delà : la sortie) ; sans
+    // niveau de ce côté, VOLUME.long.
+    const cime = Number.isFinite(X.haut) ? Math.max(X.haut, h) : h + L;
+    const yA = v.sol ? (Number.isFinite(X.bas) ? Math.min(X.bas, 0) : -L) : 0;
+    const yB = v.plafond ? cime + (Number.isFinite(X.haut) ? 1 : 0) : 1, yR = v.plafond ? cime : 0;
     for (let y = yA + VOLUME.echelon / 2; y <= yR; y += VOLUME.echelon) {
       _pave(lot, Q, -0.2, 0.2, tw - 0.02, tw + 0.02, y - 0.02, y + 0.02, col);
     }
@@ -3564,7 +3852,16 @@
   // sous lui. En montée : bouche au plafond et talus sous la rampe jusqu'à tOuvert, parois et plafond au-dessus du
   // plafond du niveau. Le bout d'en face reste ouvert : la scène a basculé avant d'y arriver (_suivrePente).
   function _pente(v, lots) {
-    const p = v.p, w = p.demi, dY = p.dY, hA = p.hA, tO = p.tOuvert, col = _couleur("traces", "jonction", "color");
+    const p = v.p, dY = p.dY, hA = p.hA, tO = p.tOuvert, col = _couleur("traces", "jonction", "color");
+    const W = function (t) { return window.KtaGalerie.demiPente(p, t); };
+    // Parois verticales posées (m, relevé du checkup : etat().volumes[].paroisPente) : [x0, z0, x1, z1, bas, haut].
+    v.paroisPente = [];
+    const mur = function (P, Q, y0p, y1p, y0q, y1q) {
+      if (y1p - y0p < 1e-3 && y1q - y0q < 1e-3) return;
+      _paroiPente(lots.parois, P, Q, y0p, y1p, y0q, y1q);
+      v.paroisPente.push([+P[0].toFixed(3), +P[1].toFixed(3), +Q[0].toFixed(3), +Q[1].toFixed(3),
+        +Math.min(y0p, y0q).toFixed(3), +Math.max(y1p, y1q).toFixed(3)]);
+    };
     const ys = function (t) { return dY * t; };
     const yc = function (t) { return dY * t + hA + (p.hB - hA) * t; };
     const st = [];   // stations (m) : sommets du tracé et bout de la part ouverte
@@ -3583,32 +3880,33 @@
       if (l < 1e-6) continue;
       const ux = dx / l, uz = dz / l, nx = -uz, nz = ux, ouvert = B.t <= tO + 1e-6;
       const G = function (S, c) { return [S.x + nx * c, S.z + nz * c]; };
-      const gA = G(A, -w), dA = G(A, w), gB = G(B, -w), dB = G(B, w);
+      const wA = W(A.t), wB = W(B.t);
+      const gA = G(A, -wA), dA = G(A, wA), gB = G(B, -wB), dB = G(B, wB);
       const yA = ys(A.t), yB = ys(B.t), uA = A.t * p.tot, uB = B.t * p.tot, k = (yB - yA) / l;
       const haut = norme([-ux * k, 1, -uz * k]), bas = norme([ux * k, -1, uz * k]);
       lots.parois.quad([gA[0], yA, gA[1]], [gB[0], yB, gB[1]], [dB[0], yB, dB[1]], [dA[0], yA, dA[1]], haut, BLANC,
-        [uA, -w, uB, -w, uB, w, uA, w]);
+        [uA, -wA, uB, -wB, uB, wB, uA, wA]);
       const r = LARGEUR_TRACE / 2, rgA = G(A, -r), rdA = G(A, r), rgB = G(B, -r), rdB = G(B, r);
       lots.opaque.quad([rgA[0], yA + 0.03, rgA[1]], [rgB[0], yB + 0.03, rgB[1]], [rdB[0], yB + 0.03, rdB[1]],
         [rdA[0], yA + 0.03, rdA[1]], haut, col);
       if (dY < 0) {
-        _paroiPente(lots.parois, gA, gB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
-        _paroiPente(lots.parois, dA, dB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
+        mur(gA, gB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
+        mur(dA, dB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
         if (ouvert) _quadPlat(lots.sol, [gA, gB, dB, dA], 0);
         else {
           lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
-            [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -w, uB, -w, uB, w, uA, w]);
+            [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -wA, uB, -wB, uB, wB, uA, wA]);
         }
       } else if (dY > 0) {
-        _paroiPente(lots.parois, gA, gB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
-        _paroiPente(lots.parois, dA, dB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
+        mur(gA, gB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
+        mur(dA, dB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
         lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
-          [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -w, uB, -w, uB, w, uA, w]);
+          [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -wA, uB, -wB, uB, wB, uA, wA]);
         if (ouvert) {
           _quadPlat(lots.plafond, [gA, gB, dB, dA], hA);
-          const wt = w - PENTE.talus;
-          _paroiPente(lots.parois, G(A, -wt), G(B, -wt), 0, yA, 0, yB);
-          _paroiPente(lots.parois, G(A, wt), G(B, wt), 0, yA, 0, yB);
+          const wtA = wA - PENTE.talus, wt = wB - PENTE.talus;
+          mur(G(A, -wtA), G(B, -wt), 0, yA, 0, yB);
+          mur(G(A, wtA), G(B, wt), 0, yA, 0, yB);
           if (tO < 1 && Math.abs(B.t - tO) < 1e-6) pied = { B: B, ux: ux, uz: uz, G: G, wt: wt };
         }
       }
@@ -3616,7 +3914,7 @@
     // Pied du talus (montée) : face verticale sous le bout de la part ouverte, en retrait (paroi du modèle galerie).
     if (pied) {
       const c = { x: pied.B.x - pied.ux * PENTE.talus, z: pied.B.z - pied.uz * PENTE.talus };
-      _paroiPente(lots.parois, pied.G(c, -pied.wt), pied.G(c, pied.wt), 0, hA, 0, hA);
+      mur(pied.G(c, -pied.wt), pied.G(c, pied.wt), 0, hA, 0, hA);
     }
   }
 
@@ -4393,6 +4691,7 @@
       }
     });
     if (construites) e.msTuiles += performance.now() - t0;
+    e.construitesImage = construites;
   }
 
   // Distance (m) de (px, pz) au carré d'une tuile (0 dedans).
@@ -4444,6 +4743,7 @@
     // Le carré de sol suit le centre de la scène : le motif est décalé d'autant pour rester fixe sous les pieds.
     e.grain.offset.set(c.x / GRAIN_METRES, -c.z / GRAIN_METRES);
     e.plafond.position.set(c.x, e.hauteur, c.z);
+    _placerVoisins(c);
     e.avatar.position.set(x, 0.45 + sol, z);
     e.avatar.rotation.set(0, -cap, 0);
     _majLampesMembres();
@@ -4735,6 +5035,7 @@
     e.tuiles.forEach(function (t) {
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
     });
+    _voisinsVue();
     e.avatar.visible = haut && _permisGreffe("avatar");
     _appliquerPortee();
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
@@ -4743,6 +5044,7 @@
     // Dessin : en vue d'édition seulement ; la quitter éteint l'outil (_suivrePermisDessin).
     _suivrePermisDessin();
     _majBarreDessin();
+    _majRechercheHaut();
     _majZoom();
     e.sale = true;
   }
@@ -4982,7 +5284,7 @@
       const x1 = e.pos.x + sx, y1 = e.pos.y + sy;
       if (pd) {
         const pa = _surPenteDe(pd.p, x1 / e.sc, y1 / e.sc);
-        if (pa.lat <= Math.max(pd.p.demi - RAYON_CORPS, pd.lat) + 1e-9) { _poser(x1, y1); return true; }
+        if (pa.lat <= Math.max(pa.demi - RAYON_CORPS, pd.lat) + 1e-9) { _poser(x1, y1); return true; }
         if (Math.abs(pd.dy) >= PENTE.sortie) continue;
       }
       const n = _balayage(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l);
@@ -5608,9 +5910,9 @@
   const CAT_DESSIN = { structures: "structures", zones: "zones", roads: "traces" };
   const COULEUR_MESURE = "#ff0000";   // la mesure de la carte (measure.js : red), pas une couleur de la charte
 
-  // Colonne (dans la vue, posée par _monterDom) : 🔍 Rechercher, 🗺️ puis un bouton par groupe ; 🗺️ et les groupes en
-  // vue d'édition seulement, 🔍 dans les deux vues (seul à hauteur d'yeux, à la même place : décision produit) sauf
-  // pendant une greffe qui coupe les fiches (_rechercheDispo). Sans la barre de droite 2D (interface.js absent), rien.
+  // Colonne (dans la vue, posée par _monterDom) : 🔍 Rechercher, 🗺️ puis un bouton par groupe, en vue d'édition
+  // seulement ; à hauteur d'yeux, 🔍 est dans la rangée du haut (_majRechercheHaut, décision produit). Aucun 🔍 pendant
+  // une greffe qui coupe les fiches (_rechercheDispo). Sans la barre de droite 2D (interface.js absent), pas de colonne.
   function _monterOutils(ov) {
     const e = _e;
     e.dessin = { permis: false, sig: null, apSig: null, apercu: null, etiquettes: [], poses: 0, msPoses: [],
@@ -5709,8 +6011,8 @@
     const e = _e, d = e.dessin;
     if (!d || !d.barre) return;
     const permis = _dessinPermis(), recherche = _rechercheDispo();
-    d.barre.hidden = !permis && !recherche;
-    d.boutonRecherche.hidden = !recherche;
+    d.barre.hidden = !permis;
+    d.boutonRecherche.hidden = !recherche || !permis;
     const ouvert = typeof window.ktaOutilsOuverts === "function" ? window.ktaOutilsOuverts() : null;
     d.outils.forEach(function (b) {
       const g = window._groupes && window._groupes[b.dataset.groupe], src = g && g.btnPrincipal;
@@ -5729,8 +6031,18 @@
 
   // À chaque image, sur signature : barre suivie (outil armé ou éteint par le panneau, une annulation, une modale),
   // outil éteint si le dessin n'est plus permis, rendu galerie quitté pour une structure, aperçu refait.
+  // 🔍 de la rangée du haut : à hauteur d'yeux seulement (en vue d'édition, celui de la colonne), si la recherche est
+  // permise (pas pendant une greffe qui coupe les fiches).
+  function _majRechercheHaut() {
+    const e = _e, b = e && e.boutonRechercheHaut;
+    if (!b) return;
+    const cache = e.vue === "plongee" || !_rechercheDispo();
+    if (b.hidden !== cache) b.hidden = cache;
+  }
+
   function _majDessin() {
     const e = _e, d = e.dessin;
+    _majRechercheHaut();
     if (!d || !d.barre) return;
     _suivrePermisDessin();
     if (!_dessinPermis()) {
@@ -7698,6 +8010,7 @@
     if (e.rondsChange) { e.rondsChange = false; _majRonds(); }
     if (e.distTotChange) { e.distTotChange = false; _majDistTot(); }
     _gererTuiles(false);
+    _gererVoisins(false);
     _gererVolumes();
     _majBandeauNiveau(ts);
     _majEquipe();
@@ -7848,6 +8161,11 @@
     e.boutonReglages = _bouton(haut, "kta-v3d-btn-reglages", "⚙️", _t("vue3d.reglages"), "reglages");
     e.boutonReglages.setAttribute("aria-expanded", "false");
     e.boutonReglages.setAttribute("aria-controls", "kta-v3d-reglages");
+    // 🔍 La recherche de la carte (allerA) à hauteur d'yeux, à gauche de ⚙️ (décision produit) ; en vue d'édition, celle
+    // de la tête de la colonne d'outils (_monterOutils). Montrée par _majRechercheHaut.
+    e.boutonRechercheHaut = _bouton(haut, "kta-v3d-recherche", "🔍", _t("vue3d.recherche"), "recherche");
+    e.boutonRechercheHaut.setAttribute("aria-keyshortcuts", "Control+K Meta+K");
+    e.boutonRechercheHaut.hidden = true;
     // Tuile des réglages (décision produit : la rangée du haut tient sur une ligne au téléphone) : suivi / libre, vue,
     // hauteur et son − / +, rendu, chacun écrit en clair avec son état. Petit panneau ancré sous ⚙️.
     const tuile = document.createElement("div");
@@ -7976,6 +8294,25 @@
     e.boutonLimiter.appendChild(document.createTextNode(_t("vue3d.limiterNom")));
     _majLampe();
     _majLimiter();
+    // 🏗️ Niveaux montrés (reglerNiveauxVus) : trois choix côte à côte, plan multi-niveau seulement (_majNiveauxVus).
+    const ligneN = document.createElement("div");
+    ligneN.className = "kta-v3d-reglages-ligne kta-v3d-niveaux-vus";
+    ligneN.setAttribute("role", "group");
+    ligneN.setAttribute("aria-label", _t("vue3d.niveauxVusTitre"));
+    tuile.appendChild(ligneN);
+    const nomN = document.createElement("span");
+    nomN.className = "kta-v3d-niveaux-vus-nom";
+    nomN.setAttribute("aria-hidden", "true");
+    nomN.textContent = "🏗️ " + _t("vue3d.niveauxVusNom");
+    ligneN.appendChild(nomN);
+    e.ligneNiveauxVus = ligneN;
+    e.boutonsNiveauxVus = ["voisins", "tous", "mien"].map(function (k) {
+      const b = _bouton(ligneN, "kta-v3d-btn-mode kta-v3d-btn-niveaux", _t("vue3d.niveauxVus." + k),
+        _t("vue3d.niveauxVus." + k + "Aide"), "niveauxVus");
+      b.dataset.niveauxVus = k;
+      return b;
+    });
+    _majNiveauxVus();
     ov.appendChild(haut);
     e.haut = haut;
     // Mode suivi / libre toujours visible hors de la tuile (c'est ce qui compte en marchant) : pastille discrète en
@@ -8393,6 +8730,7 @@
     }
     if (a === "pleinJour") { reglerPleinJour(!_lampeEnVigueur().jour); return true; }
     if (a === "limiter") { limiterPortee(!_limitee()); return true; }
+    if (a === "niveauxVus") { reglerNiveauxVus(b.dataset.niveauxVus); return true; }
     return false;
   }
 
@@ -9036,7 +9374,7 @@
       libre: function (x, y) {
         if (!_e) return false;
         const q = _surPente(x / _e.sc, y / _e.sc, 0);
-        if (q) return q.lat <= q.p.demi - RAYON_CORPS + 1e-9;
+        if (q) return q.lat <= q.demi - RAYON_CORPS + 1e-9;
         return !_coince(x, y) && !_volumeContenant(x / _e.sc, y / _e.sc) && _rayonsBloques(x, y) === 0;
       }
     };
@@ -9163,7 +9501,8 @@
         distance: o.distanceVue > 0 ? o.distanceVue : _porteeVoulue(), tuilesActives: o.tuiles !== false,
         recul: RECUL.defaut, lampeVoulue: _lampeVoulue(),
         porteeVoulue: o.distanceVue > 0 ? o.distanceVue : _porteeVoulue(),
-        limiter: _limiterVoulu(), diag: 0,
+        limiter: _limiterVoulu(), diag: 0, niveauxVus: _niveauxVusVoulu(), voisins: [], matsV: null, msVoisins: 0,
+        construitesImage: 0,
         porteeTout: !(o.distanceVue > 0) && typeof window.getVue3DPorteeTout === "function" &&
           window.getVue3DPorteeTout() === true,
         pos: { x: pos.x, y: pos.y }, cap: cap, tangage: 0, vue: "yeux",
@@ -9263,6 +9602,8 @@
     if (e.renderer) {
       e.tuiles.forEach(_libererTuile);
       (e.volPassages || []).forEach(_libererVolume);
+      (e.voisins || []).forEach(_libererVoisin);
+      if (e.matsV) Object.keys(e.matsV).forEach(function (k) { e.matsV[k].dispose(); });
       if (e.texCiel) e.texCiel.dispose();
       if (e.icones) e.icones.forEach(function (t) { t.dispose(); });
       if (e.plaques) e.plaques.forEach(function (t) { t.tex.dispose(); t.mat.dispose(); });
@@ -9532,7 +9873,8 @@
       fichesObjets: { voulu: _fichesObjets(), bouton: e.boutonFiches ? e.boutonFiches.getAttribute("aria-pressed") : null },
       // Dernier « Y aller en 3D » (allerA) et 🔍 montré ou non.
       recherche: Object.assign({ bouton: !!(e.dessin && e.dessin.boutonRecherche && !e.dessin.boutonRecherche.hidden &&
-        !e.dessin.barre.hidden), preneur: !!e.rendreRecherche }, e.recherche || { allees: 0 }),
+        !e.dessin.barre.hidden), haut: !!(e.boutonRechercheHaut && !e.boutonRechercheHaut.hidden),
+        preneur: !!e.rendreRecherche }, e.recherche || { allees: 0 }),
       fiche: e.fiche && e.fiche.objet ? { famille: e.fiche.famille, uid: e.fiche.objet.uid || null,
         type: e.fiche.objet.type, session: e.fiche.session, registre: e.fiche.registre,
         note: !!e.fiche.boite.querySelector(".kta-note-popup-textarea"),
@@ -9550,13 +9892,16 @@
           bouche: v.genre === "poi" ? [[-v.a, -v.b], [v.a, -v.b], [v.a, v.b], [-v.a, v.b]].map(function (q) {
             return _repere(v)(q[0], q[1]);
           }) : null,
-          pente: v.p ? { dY: +v.p.dY.toFixed(3), tOuvert: +v.p.tOuvert.toFixed(3), autre: v.p.autre } : null },
+          pente: v.p ? { dY: +v.p.dY.toFixed(3), tOuvert: +v.p.tOuvert.toFixed(3), autre: v.p.autre } : null,
+          paroisPente: v.paroisPente || null },
           v.stats || {});
       }),
+      voisins: _etatVoisins(),
       // Galeries inclinées du niveau et celle sous la place (_surPente) : t, s (m), sol (dy, m).
       pentes: (e.pentes || []).map(function (p) {
         return { autre: p.autre, dY: +p.dY.toFixed(3), hA: p.hA, hB: p.hB, tot: +p.tot.toFixed(3),
-          tOuvert: +p.tOuvert.toFixed(3), sansSols: p.sansSols };
+          tOuvert: +p.tOuvert.toFixed(3), sansSols: p.sansSols, demiA: +p.demiA.toFixed(3), demiB: +p.demiB.toFixed(3),
+          raccordA: p.raccordA, raccordB: p.raccordB };
       }),
       pente: (function () {
         const q = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);
@@ -9843,6 +10188,7 @@
     const px = new Uint8Array(4), temps = [];
     const cap0 = e.cap;
     _gererTuiles(true);
+    _gererVoisins(true);
     let tri = 0, appels = 0;
     const t00 = performance.now();
     for (let i = 0; i < 12; i++) {
@@ -9882,7 +10228,7 @@
     textures: textures, basculerTextures: function () { return _basculerTextures(); },
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
     reglerPortee: reglerPortee, reglerLampe: reglerLampe, reglerFaisceau: reglerFaisceau,
-    reglerPleinJour: reglerPleinJour, limiterPortee: limiterPortee, zoomer: zoomer,
+    reglerPleinJour: reglerPleinJour, limiterPortee: limiterPortee, zoomer: zoomer, reglerNiveauxVus: reglerNiveauxVus,
     origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, trackerRecale: trackerRecale,
     charge: function () { return !!THREE; },
     greffer: greffer,

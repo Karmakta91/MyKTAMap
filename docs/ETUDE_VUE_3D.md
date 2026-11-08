@@ -107,16 +107,40 @@ flotte au-dessus du vide. Le tracé jonction n'est plus une rampe avec 🪜 : c'
 |---|---|---|
 | 1 | Forme | Un tracé `jonction` devient une galerie inclinée qu'on parcourt, plus de 🪜 à ses bouts |
 | 2 | Pente | D'un bout à l'autre du tracé : du sol du niveau de départ à celui du niveau d'arrivée, répartie sur la longueur 2D (rien à saisir) ; sols et hauteurs du lot A (`getNiveauVertical`) |
-| 3 | Hors de ce lot | Niveaux voisins affichés ensemble (lot C), entremêlement (lot D) : la 3D reste construite pour un niveau à la fois |
+| 3 | Hors de ce lot | Niveaux voisins affichés ensemble (lot C, ci-dessous), entremêlement (lot D) |
 
 Choix faits à la livraison, à valider : **repli sans sols** = une hauteur de galerie (celle du niveau du dessous) par
-niveau franchi, écart nul (2 m par niveau sans réglage) ; hauteur sous plafond **interpolée** de celle du départ à
-celle de l'arrivée ; largeur 1,6 m ; la scène passe au niveau d'en face **à mi-longueur** (+ 0,3 m d'hystérésis), sans
+niveau franchi (révisé le 08/11/2026 : plus 2 m de roche, soit 4 m par niveau sans réglage) ; hauteur sous plafond **interpolée** de celle du départ à
+celle de l'arrivée ; largeur = celle des galeries raccordées, interpolée d'un bout à l'autre (révisé le 08/11/2026 :
+1,6 m fixes posaient un pan de paroi au milieu d'une galerie plus large ; repli 1,6 m sans galerie raccordée) ; la scène passe au niveau d'en face **à mi-longueur** (+ 0,3 m d'hystérésis), sans
 fondu : les deux scènes dessinent la même galerie à la même place, l'altitude est continue, et la moitié d'en face
 montre déjà les galeries d'arrivée (au bout seulement, on aurait marché vers un trou noir) ; en suivi, la bascule du
 tracker au bout du tracé se fait sans fondu ; la consigne « descendre / monter la pente vers le niveau n » est dite à
 l'**entrée** du tracé, en 2D comme en 3D (elle tombait sur son bout d'arrivée) ; la galerie est en moellons, ruban du
 canon au milieu du sol. Détail : `docs/architecture/tracking.md` § Vue 3D, galerie inclinée.
+
+## Décisions de KARMA (QCM du 07/11/2026) : niveaux voisins (lot C du multi-niveau en 3D)
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Affichage | Avec le niveau actif, les niveaux voisins (dessus et dessous) à leur vraie altitude (sols et hauteurs du lot A) |
+| 2 | Réglage | Tuile ⚙️ : « Voisins » (défaut) / « Tous » / « Seulement le mien » ; au téléphone, retour à « Voisins » à chaque ouverture, au PC retenu |
+| 3 | Niveau actif d'abord | Les autres niveaux se voient, ne captent jamais le pas ; règle du pas et suivi sur le niveau actif ; le niveau ne change que par un passage, une jonction ou ▲▼ |
+| 4 | Passages | Escaliers et puits dessinés entre les altitudes réelles des niveaux reliés ; l'arrivée d'un passage ne change pas |
+| 5 | Données incohérentes | Avertissement lisible dans la table des niveaux (Générateur, ⚙️), sans bloquer ; la 3D reste dessinable |
+
+Choix faits à la livraison, à valider : **« Voisins »** = le niveau juste au-dessus et celui juste au-dessous parmi
+ceux qui portent quelque chose (l'ordre de ▲▼) ; **portée** : seules les tuiles à portée des voisins sont construites,
+même rayon et même 🛡️ que le niveau actif, après les siennes, deux par image ; **panneaux de POI des autres
+niveaux : non montrés** (un panneau est dessiné par-dessus tout pour rester lisible : il se lirait à travers la roche
+et se toucherait pour un point hors d'atteinte) ; volumes de passage des voisins non construits (le puits du niveau
+actif descend jusqu'à eux) ; **vue d'édition** : rien au-dessus du niveau actif (il couvrirait la scène), voisins du
+dessous sans plafond ; en mixte et structures, les voisins ont leur sol et leur plafond d'un seul tenant ; un niveau
+masqué au ≡ n'est pas montré ; parois d'un puits de notre sol au plafond du niveau relié (sans réglage de sols :
+2 m de roche par niveau, décision du 08/11/2026 : la bouche ne s'ouvre plus directement sur le niveau du dessous), escalier jusqu'au sol du niveau relié ;
+données incohérentes signalées quand, de deux niveaux qui se suivent dans la table avec un sol chacun, celui du
+dessus n'est pas plus haut, ou quand ils se chevauchent d'au moins la hauteur de l'un. Pas encore joué sur un vrai
+téléphone. Détail : `docs/architecture/tracking.md` § Vue 3D, Niveaux voisins.
 
 ## Décisions de KARMA (QCM du 02/11/2026) : commandes, itinéraire, raccord, ronds (audit n° 2)
 
@@ -371,6 +395,14 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   fichiers du site, précachés avec les autres (`NETWORK_AUDIT_HISTORIQUE.md`, note v2.22.0).
 
 ## Mesures
+
+**Niveaux voisins** (`checkup-vue-3d.js` § 44, `KTA_V3D_SEUL=voisins KTA_V3D_PERF=voisins`, PC à carte graphique
+dédiée, Chromium, portée 30 m) : plan fictif de 5 niveaux, chacun avec une grille de galeries tous les 8 m sur 160 m
+et 2 025 piliers. Triangles à l'écran ×3 en « Voisins » et ×5 en « Tous » (galerie : 1 328 → 3 984 → 6 448) ; image
+médiane 0,6 → 1,2 → 1,6 ms ; voisins posés en 0,2 s (« Voisins ») et 0,6 s (« Tous ») après l'ouverture, qui ne
+s'allonge pas ; construction des voisins 6 à 40 ms en tout, étalée sur les images. Tas JS de Chromium inchangé à la
+mesure grossière de `performance.memory`. Non mesuré sur téléphone : « Tous » sur un plan à beaucoup de niveaux
+reste le cas à surveiller (d'où le retour à « Voisins » à chaque ouverture au doigt).
 
 Plan dense **synthétique** (fictif, généré en mémoire par `checkup-vue-3d.js`, `KTA_V3D_PERF=1`) : 9 000 piliers
 de 6 à 12 sommets, 3 000 murs polygones, 1 000 murs en ligne, 700 fronts, 108 zones, 520 POI, sur une maille de

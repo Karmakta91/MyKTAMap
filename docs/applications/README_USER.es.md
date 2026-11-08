@@ -564,6 +564,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **🔦 Haz**: un cursor de 40 a 160° (71° por defecto) ajusta la anchura del haz; cuanto más ancho, más se funde su borde en la oscuridad. Se guarda en este dispositivo.
 - **☀️ Pleno día**: un sol rasante, siempre del mismo lado (el noroeste del plano, o su esquina superior izquierda si el norte no está calibrado): las caras vueltas hacia él quedan claras, las demás más oscuras, y se lee el relieve de pilares y juntas; una ligera niebla clara aclara lo lejano. Tu linterna sigue encendida con su ajuste (bájala al 25 % para que sea discreta). Funciona también en ✏️ Edición (sin marcar: la luz plana para dibujar). Se guarda en este dispositivo.
 - **🛡️ Limitar el alcance (anticaídas de memoria)**: marcada por defecto (alcance hasta 100 m, alejamiento de ✏️ Edición hasta 150 m). Desmárcala (una pregunta te avisa: en un plano grande, el teléfono puede bloquearse por falta de memoria) para ver **todo el plano**: el cursor 🔭 Alcance pasa enseguida a su nuevo paso «Todo el plano», ✏️ Edición se aleja hasta mostrar el plano entero y la niebla desaparece. En el teléfono, la casilla vuelve a marcarse cada vez que se abre la vista; en el ordenador, sigue desmarcada.
+- **🏗️ Niveles** (plano de varios niveles): **Vecinos**, por defecto, muestra también los niveles justo encima y justo debajo del tuyo, a su profundidad real (📉 Niveles); **Todos** muestra todos los niveles (más pesado para el teléfono); **El mío**, solo tu nivel. Los ves por un pozo, al final de una galería en pendiente o en ✏️ Edición (solo los de abajo: los de arriba taparían el tuyo), sin sus carteles. Siempre caminas por tu nivel: otro nivel nunca bloquea el paso, y solo cambias de nivel por un paso, una galería en pendiente o ▲ ▼. En el teléfono, vuelve a Vecinos cada vez que se abre la vista; en el ordenador, tu elección se queda.
 - Durante una partida, el alcance vuelve a 30 m, la lámpara a 100 %, el haz a 71° y Pleno día se apaga (ajustes en gris), y luego vuelven tus ajustes.
 
 #### 🏛️ Las tres representaciones
@@ -613,11 +614,11 @@ Cada paso o acceso tiene su volumen, donde está.
 - ![](../../icon/jes.png) **Escalera entre niveles**: una caja de escalera con peldaños, en un nicho al lado de la galería.
 - ![](../../icon/jpe.png) **Pozo con peldaños entre niveles**: un pozo cuadrado de piedra, con su escala.
 - ![](../../icon/jps.png) **Pozo sin peldaños entre niveles**: un pozo desnudo.
-- ↕️ **Trazado de unión**: una galería en pendiente que recorres a pie. El suelo va del suelo de un nivel al del otro, de un extremo al otro del trazado (con las profundidades de los niveles si las has introducido; si no, una altura de galería por nivel). Una cinta de su color recorre el centro del suelo.
+- ↕️ **Trazado de unión**: una galería en pendiente que recorres a pie. El suelo va del suelo de un nivel al del otro, de un extremo al otro del trazado (con las profundidades de los niveles si las has introducido; si no, una altura de galería y 2 m de roca por nivel). Una cinta de su color recorre el centro del suelo.
 
 Dónde y cómo se dibuja un paso:
 
-- Se abre **en el suelo** hacia un nivel de abajo, **en el techo** hacia un nivel de arriba (sube y se pierde en la oscuridad), ambos para un paso entre tres niveles, con un marco dorado en el suelo.
+- Se abre **en el suelo** hacia un nivel de abajo, **en el techo** hacia un nivel de arriba, ambos para un paso entre tres niveles, con un marco dorado en el suelo. Va de un nivel a otro a su **profundidad real** (📉 Niveles): la escalera sube o baja hasta el suelo del otro nivel, el pozo atraviesa la roca entre los dos. Sin profundidades indicadas, 2 m de roca separan dos niveles.
 - Su cartel tiene un borde del color de las uniones y la marca **↕**. Sigue legible hasta 1 m.
 - Se dibuja **en la galería** de cada nivel, del lado de su punto, aunque el punto esté al lado para que el mapa se lea bien (galería a menos de 10 m).
 - Una conexión validada de ese nivel da el lugar exacto. Cerca de un cruce gana la galería más cercana; una conexión validada lo decide.
@@ -673,7 +674,7 @@ Dónde y cómo se dibuja un paso:
 - **Tocar una estructura, una zona o un trazado** (pilar, muro, frente, zona, galería) abre **su ficha**, la misma que en el mapa: nota, 🔄 Convertir, nivel, 🗑️ Eliminar. En una capa de datos es de solo lectura.
 - El cartel de un punto va primero. Tocar en el vacío no hace nada.
 - **🗺️ Ver en el mapa**, al pie de la ficha: la vista 3D se cierra, el mapa se centra en el objeto, abre su ficha y lo resalta unos segundos.
-- **🔍 Buscar**, a la derecha en el centro (encima de 🗺️ en ✏️ Edición), o **Ctrl+K** (⌘K en Mac): la misma ventana que en el mapa (puntos, trazados, zonas, estructuras, mismos filtros), encima de la vista. Elegir un resultado te lleva allí **en 3D**: la vista pasa a libre (el tracker no se mueve), cambia de nivel si hace falta, se sitúa delante del objeto (el punto preciso de un punto que lo tiene) y abre su ficha. El mapa, debajo, no se mueve. Cerrar la ventana sin elegir no cambia nada. Durante una partida del juego, la búsqueda no se ofrece.
+- **🔍 Buscar**, arriba a la izquierda de ⚙️ (en ✏️ Edición: al principio de la columna de la derecha, encima de 🗺️), o **Ctrl+K** (⌘K en Mac): la misma ventana que en el mapa (puntos, trazados, zonas, estructuras, mismos filtros), encima de la vista. Elegir un resultado te lleva allí **en 3D**: la vista pasa a libre (el tracker no se mueve), cambia de nivel si hace falta, se sitúa delante del objeto (el punto preciso de un punto que lo tiene) y abre su ficha. El mapa, debajo, no se mueve. Cerrar la ventana sin elegir no cambia nada. Durante una partida del juego, la búsqueda no se ofrece.
 - En la representación 🛣️ Galería, los pilares y muros no se dibujan: tocar una pared abre la ficha del trazado.
 - **🧭 Ir allí**: en seguimiento, la ruta sale del tracker. En libre, sale de **donde estás en 3D**, nivel incluido, sin mover el tracker.
 - Tracker detenido: **¿Desde dónde sales?** propone primero **Aquí** (el tracker se recoloca donde estás en 3D y la ruta sale de ahí; como al cerrar, este salto no cuenta como salida de campo).
@@ -724,7 +725,7 @@ Dónde y cómo se dibuja un paso:
 - **📐 Medición**: la distancia (y la superficie) se muestra en una **franja abajo de la vista**, actualizada en cada punto, como en el mapa; la longitud de cada segmento y el ángulo en cada punto también se muestran en la 3D, legibles.
 - **📏 Distancia total** y **⛏️ Volumen explotado** también están en 📐: su ventana se abre sobre la vista y cuenta **el nivel de la 3D**. Los tramos contados por 📏 se resaltan en magenta en el suelo, como en el mapa (con **Todos los niveles** marcado, 📏 cuenta todo el plano, pero el suelo de la 3D solo muestra su nivel: la ventana lo indica); **❌ Borrar el resaltado** lo borra de ambas. ⛏️ usa la superficie ♦️ que trazaste en la 3D.
 - **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, donde miras, para dibujar sobre el levantamiento, en cada nivel: la imagen propia del nivel si el plano la tiene; si no, el plano base.
-- **🔍 Buscar** encabeza la columna, encima de 🗺️; a la altura de los ojos se queda allí solo.
+- **🔍 Buscar** encabeza la columna, encima de 🗺️; a la altura de los ojos pasa a la fila de arriba, a la izquierda de ⚙️.
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
 - **Volver a tocar la herramienta, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
 - En solo lectura, las herramientas de dibujo quedan en gris, como en el mapa; 📐 Medición sigue permitida.
@@ -1219,6 +1220,8 @@ Cada nivel tiene tres cifras, que se ajustan en **⚙️ Ajustes › 📐 Mapa �
 - **Suelo**: su profundidad bajo la superficie, en metros (negativo hacia abajo). Vacío = sin indicar; **Sin** = un nivel que no es una planta (un levantamiento antiguo colocado encima, por ejemplo).
 - **Altura**: la altura de sus galerías (si no, 2 m). La vista 3D y ⛏️ Volumen explotado la usan.
 - **Separación**: el espesor entre el techo del nivel y el suelo del nivel de arriba. **Negativa** cuando los dos niveles se entrelazan: −1,5 = el techo sube 1,5 m por encima del suelo del nivel de arriba. Cambiar la separación desplaza este nivel **y los de debajo**.
+
+Si dos niveles seguidos tienen cifras que no encajan (el suelo del nivel de arriba más bajo que el de abajo, o dos niveles que se solapan al menos la altura de uno de ellos), aparece un aviso ⚠️ debajo de la tabla y la fila queda marcada; nada se bloquea, la vista 3D los coloca uno junto al otro.
 
 El creador del mapa los propone en el Generador; lo que corriges aquí se queda en tu dispositivo y prevalece. **↺ Valores del mapa** vuelve a los del mapa. Indicar los suelos alarga las rutas que pasan por un pozo: su longitud deja de medirse en plano.
 

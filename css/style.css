@@ -19446,6 +19446,9 @@ body.kta-theme-light .kta-convert-choix:hover { background: rgba(60, 110, 200, 0
 .kta-prof-hint { font-size: 12px; color: var(--kta-texte-3); line-height: 1.5; margin: 0 0 10px; }
 .kta-prof-propose { color: var(--kta-interaction); }
 .kta-prof-avert { color: var(--kta-avert); margin-top: 12px; }
+/* Données incohérentes de la table (profondeurNiveaux.js > _majIncoherences) : signalées, jamais bloquantes. */
+.kta-prof-incoherence { color: var(--kta-avert); margin: 8px 0 0; }
+.kta-prof-ligne.kta-prof-incoherent .kta-prof-niv { color: var(--kta-avert); }
 /* Table sol / hauteur / écart (⚙️ et Générateur) : grille pour que les colonnes s'alignent sur l'en-tête. */
 .kta-prof-ligne {
   display: grid; grid-template-columns: 38px repeat(3, minmax(0, 1fr)) 34px; align-items: center; gap: 6px;

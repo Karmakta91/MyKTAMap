@@ -564,6 +564,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
 - **☀️ Daylight**: a low sun, always from the same side (the north-west of the map, or its top-left corner if north is not calibrated): faces turned towards it are bright, the others darker, so the relief of pillars and joints shows; a light pale haze fades the distance. Your lamp stays on at its setting (turn it down to 25% to make it discreet). Also works in ✏️ Edit (unticked: flat lighting for drawing). Kept on this device.
 - **🛡️ Limit range (prevents memory crashes)**: checked by default (range up to 100 m, ✏️ Edit zoom-out up to 150 m). Uncheck it (a question warns you: on a large map, the phone may crash for lack of memory) to see **the whole map**: the 🔭 Range slider jumps straight to its new "Whole map" step, ✏️ Edit zooms out until the whole map shows, and the fog goes away. On a phone, the box is checked again each time the view opens; on a computer, it stays unchecked.
+- **🏗️ Levels** (multi-level map): **Neighbours**, the default, also shows the levels just above and just below yours, at their real depth (📉 Levels); **All** shows every level (heavier for the phone); **Mine**, your level only. You see them through a shaft, at the end of a sloping gallery, or in ✏️ Edit (only the ones below: the ones above would hide yours), without their signs. You always walk on your own level: another level never blocks your steps, and you only change level through a way, a sloping gallery or ▲ ▼. On a phone, back to Neighbours each time the view opens; on a computer, your choice stays.
 - During a game, the range goes back to 30 m, the lamp to 100%, the beam to 71° and Daylight is off (settings greyed out), then your settings come back.
 
 #### 🏛️ The three renderings
@@ -613,11 +614,11 @@ Each way through or access has its volume, where it is.
 - ![](../../icon/jes.png) **Stairs between levels**: a stairwell with steps, in a recess on the side of the tunnel.
 - ![](../../icon/jpe.png) **Rung shaft between levels**: a square stone shaft, with its ladder.
 - ![](../../icon/jps.png) **Shaft without rungs between levels**: a bare shaft.
-- ↕️ **Junction trace**: a sloping tunnel you walk through. The floor goes from one level's floor to the other's, from one end of the trace to the other (using the level depths if you entered them, otherwise one tunnel height per level). A ribbon in its colour runs along the middle of the floor.
+- ↕️ **Junction trace**: a sloping tunnel you walk through. The floor goes from one level's floor to the other's, from one end of the trace to the other (using the level depths if you entered them, otherwise one tunnel height and 2 m of rock per level). A ribbon in its colour runs along the middle of the floor.
 
 Where and how a way through is drawn:
 
-- It opens **in the floor** towards a level below, **in the ceiling** towards a level above (it rises and fades into the dark), both for a way between three levels, with a golden frame on the floor.
+- It opens **in the floor** towards a level below, **in the ceiling** towards a level above, both for a way between three levels, with a golden frame on the floor. It goes from one level to the other at their **real depth** (📉 Levels): the stairs climb or go down to the other level's floor, the shaft crosses the rock between them. With no depths filled in, 2 m of rock separate two levels.
 - Its sign has a border in the junction colour and the **↕** mark. It stays readable down to 1 m.
 - It is drawn **in the tunnel** of each level, on its point's side, even when the point is placed beside it for the map's readability (tunnel within 10 m).
 - A validated connection on that level gives the exact spot. Near a crossing, the nearest tunnel wins; a validated connection settles it.
@@ -673,7 +674,7 @@ Where and how a way through is drawn:
 - **Touching a structure, a zone or a trace** (pillar, wall, face, zone, tunnel) opens **its card**, the same as on the map: note, 🔄 Convert, level, 🗑️ Delete. On a data layer it is read-only.
 - A point's sign comes first. Touching empty space does nothing.
 - **🗺️ Show on the map**, at the bottom of the card: the 3D view closes, the map centres on the object, opens its card and highlights it for a few seconds.
-- **🔍 Search**, on the right in the middle (above 🗺️ in ✏️ Edit), or **Ctrl+K** (⌘K on Mac): the same window as on the map (points, paths, zones, structures, same filters), above the view. Choosing a result takes you there **in 3D**: the view switches to free mode (the tracker does not move), changes level if needed, stands in front of the object (the precise spot of a point that has one) and opens its card. The map underneath does not move. Closing the window without choosing changes nothing. During a game, search is not offered.
+- **🔍 Search**, at the top left of ⚙️ (in ✏️ Edit: at the head of the right-hand column, above 🗺️), or **Ctrl+K** (⌘K on Mac): the same window as on the map (points, paths, zones, structures, same filters), above the view. Choosing a result takes you there **in 3D**: the view switches to free mode (the tracker does not move), changes level if needed, stands in front of the object (the precise spot of a point that has one) and opens its card. The map underneath does not move. Closing the window without choosing changes nothing. During a game, search is not offered.
 - In the 🛣️ Tunnels rendering, pillars and walls are not drawn: touching a tunnel wall opens the trace's card.
 - **🧭 Go there**: in follow mode the route starts from the tracker. In free mode it starts from **where you are in 3D**, level included, without moving the tracker.
 - Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there; as when closing, this jump does not count as a field outing).
@@ -724,7 +725,7 @@ Where and how a way through is drawn:
 - **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.
 - **📏 Total distance** and **⛏️ Mined volume** are in 📐 too: their window opens over the view and counts **the 3D view's level**. The sections counted by 📏 are highlighted in magenta on the ground, as on the map (with **All levels** ticked, 📏 counts the whole map, but the 3D ground only shows its own level: the window says so); **❌ Clear highlight** clears it from both. ⛏️ uses the ♦️ Area you drew in the 3D view.
 - **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey, at every level: the level's own image if the plan has one, otherwise the base plan.
-- **🔍 Search** heads the column, above 🗺️; at eye level it stays there alone.
+- **🔍 Search** heads the column, above 🗺️; at eye level it moves to the top row, left of ⚙️.
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
 - **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
 - In read-only mode, the drawing tools stay greyed out, as on the map; 📐 Measurement stays allowed.
@@ -1219,6 +1220,8 @@ Each level has three figures, set in **⚙️ Settings › 📐 Map › 📉 Lev
 - **Floor**: its depth below the surface, in metres (negative goes down). Empty = not filled in; **None** = a level that is not a floor (an old survey stacked above, for instance).
 - **Height**: the height of its galleries (otherwise 2 m). The 3D view and ⛏️ Mined volume use it.
 - **Gap**: the thickness between the level's ceiling and the floor of the level above. **Negative** when the two levels interlock: −1.5 = the ceiling rises 1.5 m above the floor of the level above. Changing the gap moves this level **and the ones below it**.
+
+If two successive levels have figures that do not fit together (the floor of the upper level lower than the one below, or two levels overlapping by at least the height of one of them), a ⚠️ warning shows under the table and the row is marked; nothing is blocked, the 3D view sets them side by side.
 
 The map creator suggests them in the Generator; what you correct here stays on your device and takes priority. **↺ Map values** goes back to the map's own. Filling in floors lengthens routes that use a shaft: their length is no longer measured flat.
 

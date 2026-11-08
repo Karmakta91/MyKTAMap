@@ -564,6 +564,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **🔦 Faisceau** : un curseur de 40 à 160° (71° par défaut) règle la largeur du faisceau ; plus il est large, plus son bord se fond dans le noir. Retenu sur cet appareil.
 - **☀️ Plein jour** : un soleil rasant, venu toujours du même côté (le nord-ouest du plan, ou son coin haut gauche si le nord n'est pas calibré) : les faces tournées vers lui sont claires, les autres plus sombres, le relief des piliers et des joints se lit ; un léger brouillard clair pâlit le lointain. Ta lampe reste allumée à son réglage (baisse-la à 25 % pour qu'elle se fasse discrète). Marche aussi en ✏️ Édition (décoché, l'éclairage plat pour dessiner). Retenu sur cet appareil.
 - **🛡️ Limiter la portée (anti-crash mémoire)** : cochée par défaut (portée jusqu'à 100 m, recul de ✏️ Édition jusqu'à 150 m). Décoche-la (une question te prévient : sur un gros plan, le téléphone peut planter faute de mémoire) pour voir **tout le plan** : le curseur 🔭 Portée passe aussitôt sur son nouveau cran « Tout le plan », ✏️ Édition recule jusqu'à montrer le plan entier, et le brouillard disparaît. Au téléphone, la case revient cochée à chaque ouverture de la vue ; au PC, elle reste décochée.
+- **🏗️ Niveaux** (plan à plusieurs niveaux) : **Voisins**, par défaut, montre aussi les niveaux juste au-dessus et juste au-dessous du tien, à leur vraie profondeur (📉 Niveaux) ; **Tous** montre tous les niveaux (plus lourd pour le téléphone) ; **Le mien**, ton niveau seul. Tu les vois par un puits, au bout d'une galerie en pente, ou en ✏️ Édition (ceux du dessous seulement : ceux du dessus cacheraient le tien), sans leurs panneaux. Tu marches toujours sur ton niveau : un autre niveau ne bloque jamais le pas, et tu n'en changes que par un passage, une galerie en pente ou ▲ ▼. Au téléphone, revient à Voisins à chaque ouverture ; au PC, ton choix reste.
 - Pendant une partie de jeu, la portée repasse à 30 m, la lampe à 100 %, le faisceau à 71° et Plein jour est coupé (réglages grisés), puis tes réglages reviennent.
 
 #### 🏛️ Les trois rendus
@@ -613,11 +614,11 @@ Chaque passage ou accès a son volume, là où il est.
 - ![](../../icon/jes.png) **Escalier entre niveaux** : une cage à marches, dans une niche sur le côté de la galerie.
 - ![](../../icon/jpe.png) **Puits à échelons entre niveaux** : un puits carré en pierre, avec son échelle.
 - ![](../../icon/jps.png) **Puits sans échelon entre niveaux** : un puits nu.
-- ↕️ **Tracé jonction** : une galerie en pente que tu parcours à pied. Le sol va du sol d'un niveau à celui de l'autre, d'un bout à l'autre du tracé (avec les profondeurs des niveaux si tu les as saisies, sinon une hauteur de galerie par niveau). Un ruban à sa couleur court au milieu du sol.
+- ↕️ **Tracé jonction** : une galerie en pente que tu parcours à pied. Le sol va du sol d'un niveau à celui de l'autre, d'un bout à l'autre du tracé (avec les profondeurs des niveaux si tu les as saisies, sinon une hauteur de galerie et 2 m de roche par niveau). Un ruban à sa couleur court au milieu du sol.
 
 Où et comment un passage se dessine :
 
-- Il s'ouvre **dans le sol** vers un niveau du dessous, **dans le plafond** vers un niveau du dessus (il monte et se perd dans le noir), les deux pour un passage entre trois niveaux, avec un cadre doré au sol.
+- Il s'ouvre **dans le sol** vers un niveau du dessous, **dans le plafond** vers un niveau du dessus, les deux pour un passage entre trois niveaux, avec un cadre doré au sol. Il va d'un niveau à l'autre à leur **vraie profondeur** (📉 Niveaux) : l'escalier monte ou descend jusqu'au sol de l'autre niveau, le puits traverse la roche entre les deux. Sans profondeurs saisies, 2 m de roche séparent deux niveaux.
 - Son panneau a un liseré à la couleur des jonctions et la marque **↕**. Il reste lisible jusqu'à 1 m.
 - Il se dessine **dans la galerie** de chaque niveau, du côté de son point, même si le point est posé à côté pour la lisibilité de la carte (galerie à moins de 10 m).
 - Un raccord validé de ce niveau donne l'endroit exact. Près d'un carrefour, c'est la galerie la plus proche qui l'emporte ; un raccord validé tranche.
@@ -673,7 +674,7 @@ Où et comment un passage se dessine :
 - **Toucher une structure, une zone ou un tracé** (pilier, mur, front, zone, galerie) ouvre **sa fiche**, la même que sur la carte : note, 🔄 Convertir, niveau, 🗑️ Supprimer. Sur un calque de données, elle est en lecture seule.
 - Un panneau de point passe d'abord. Toucher dans le vide ne fait rien.
 - **🗺️ Voir sur la carte**, en bas de la fiche : la 3D se ferme, la carte se centre sur l'objet, ouvre sa fiche et le surligne quelques secondes.
-- **🔍 Rechercher**, à droite au milieu (au-dessus de 🗺️ en ✏️ Édition), ou **Ctrl+K** (⌘K sur Mac) : la même fenêtre que sur la carte (points, tracés, zones, structures, mêmes filtres), au-dessus de la vue. Choisir un résultat t'y emmène **en 3D** : la vue passe en libre (le tracker ne bouge pas), change de niveau s'il le faut, se place devant l'objet (le point précis d'un point qui en a un) et ouvre sa fiche. La carte, dessous, ne bouge pas. Fermer la fenêtre sans choisir ne change rien. Pendant une partie du jeu, la recherche n'est pas proposée.
+- **🔍 Rechercher**, en haut à gauche de ⚙️ (en ✏️ Édition : en tête de la colonne de droite, au-dessus de 🗺️), ou **Ctrl+K** (⌘K sur Mac) : la même fenêtre que sur la carte (points, tracés, zones, structures, mêmes filtres), au-dessus de la vue. Choisir un résultat t'y emmène **en 3D** : la vue passe en libre (le tracker ne bouge pas), change de niveau s'il le faut, se place devant l'objet (le point précis d'un point qui en a un) et ouvre sa fiche. La carte, dessous, ne bouge pas. Fermer la fenêtre sans choisir ne change rien. Pendant une partie du jeu, la recherche n'est pas proposée.
 - En rendu 🛣️ Galerie, piliers et murs ne sont pas dessinés : toucher une paroi ouvre la fiche du tracé.
 - **🧭 Y aller** : en suivi, l'itinéraire part du tracker. En libre, il part de **l'endroit où tu es en 3D**, niveau compris, sans déplacer le tracker.
 - Tracker arrêté : **D'où pars-tu ?** propose d'abord **Ici** (le tracker est recalé là où tu es en 3D, puis l'itinéraire en part ; comme à la fermeture, ce saut ne compte pas comme une sortie terrain).
@@ -724,7 +725,7 @@ Où et comment un passage se dessine :
 - **📐 Mesure** : la distance (et la surface) s'affiche dans un **bandeau en bas de la vue**, mis à jour à chaque point, comme sur la carte ; la longueur de chaque segment et l'angle à chaque point s'affichent aussi dans la 3D, lisibles.
 - **📏 Distance totale** et **⛏️ Volume exploité** sont aussi dans 📐 : leur fenêtre s'ouvre par-dessus la vue et compte **le niveau de la 3D**. Les tronçons comptés par 📏 sont surlignés en magenta au sol, comme sur la carte (avec **Tous les niveaux** coché, 📏 compte tout le plan, mais le sol de la 3D ne montre que son niveau : la fenêtre le dit) ; **❌ Effacer le surlignage** l'efface des deux. ⛏️ prend la surface ♦️ que tu as tracée dans la 3D.
 - **🗺️ Plan au sol** : l'image du plan sous la scène, là où tu regardes, pour dessiner sur le relevé, à chaque niveau : l'image propre au niveau si le plan en a une, sinon le plan de base.
-- **🔍 Rechercher** est en tête de colonne, au-dessus de 🗺️ ; à hauteur d'yeux, il y reste seul.
+- **🔍 Rechercher** est en tête de colonne, au-dessus de 🗺️ ; à hauteur d'yeux, il passe dans la rangée du haut, à gauche de ⚙️.
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
 - **Retoucher l'outil, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
 - En lecture seule, les outils de dessin restent grisés, comme sur la carte ; 📐 Mesure reste permise.
@@ -1220,6 +1221,8 @@ Chaque niveau a trois chiffres, réglés dans **⚙️ Réglages › 📐 Plan �
 - **Sol** : sa profondeur sous la surface, en mètres (négatif vers le bas). Vide = non renseigné ; **Sans** = un niveau qui n'est pas un étage (un relevé ancien rangé au-dessus, par exemple).
 - **Hauteur** : la hauteur de ses galeries (2 m sinon). La vue 3D et ⛏️ Volume exploité s'en servent.
 - **Écart** : l'épaisseur entre le plafond du niveau et le sol du niveau du dessus. **Négatif** quand les deux niveaux s'entremêlent : −1,5 = le plafond monte 1,5 m au-dessus du sol du niveau du dessus. Changer l'écart déplace ce niveau **et ceux du dessous**.
+
+Si deux niveaux qui se suivent ont des chiffres qui ne vont pas ensemble (le sol du niveau du dessus plus bas que celui du dessous, ou deux niveaux qui se chevauchent d'au moins la hauteur de l'un), un avertissement ⚠️ s'affiche sous la table et la ligne est marquée ; rien n'est bloqué, la vue 3D les pose côte à côte.
 
 Le créateur du plan les propose dans le Générateur ; ce que tu corriges ici reste sur ton appareil et prime. **↺ Valeurs du plan** revient à celles du plan. Renseigner les sols allonge les itinéraires qui passent par un puits : leur longueur cesse d'être mesurée à plat.
 

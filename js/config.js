@@ -1482,6 +1482,28 @@ window.setVue3DLimiterPortee = setVue3DLimiterPortee;
 window.getVue3DPorteeTout = getVue3DPorteeTout;
 window.setVue3DPorteeTout = setVue3DPorteeTout;
 
+// ── Niveaux montrés par la vue 3D, réglage de CET appareil ──────────────────────────────────────────────────────
+// localStorage["myktamap_v3d_niveaux_vus_v1"] = "voisins" (le niveau actif et ceux juste au-dessus et au-dessous) |
+// "tous" | "mien" (le niveau actif seul) ; absente ou illisible → "voisins". ⚠️ contrat (décision produit) : au doigt
+// (window.ktaAppareilTactile), la vue revient à « voisins » à chaque ouverture (vue3d.js > _niveauxVusVoulu, la
+// mémoire d'un téléphone) ; au pointeur fin, le choix est retenu.
+const V3D_NIVEAUX_VUS = ["voisins", "tous", "mien"];
+const V3D_NIVEAUX_VUS_CLE = "myktamap_v3d_niveaux_vus_v1";
+function getVue3DNiveauxVus() {
+  try {
+    const v = localStorage.getItem(V3D_NIVEAUX_VUS_CLE);
+    return V3D_NIVEAUX_VUS.indexOf(v) >= 0 ? v : "voisins";
+  } catch (e) { return "voisins"; }
+}
+function setVue3DNiveauxVus(v) {
+  const ok = V3D_NIVEAUX_VUS.indexOf(v) >= 0 ? v : "voisins";
+  try { localStorage.setItem(V3D_NIVEAUX_VUS_CLE, ok); } catch (e) { /* valeur de la vue seule */ }
+  return ok;
+}
+window.V3D_NIVEAUX_VUS = V3D_NIVEAUX_VUS;
+window.getVue3DNiveauxVus = getVue3DNiveauxVus;
+window.setVue3DNiveauxVus = setVue3DNiveauxVus;
+
 // ── Lampe de la vue 3D : intensité, faisceau, Plein jour, réglages de CET appareil ──────────────────────────────
 // localStorage["myktamap_v3d_lampe_intensite_v1"] = % entier (V3D_LAMPE.intensite, 100 = la lampe d'origine),
 // ["myktamap_v3d_faisceau_v1"] = ° entiers de cône total (V3D_LAMPE.faisceau), ["myktamap_v3d_jour_v1"] = "1" | "0" ;
