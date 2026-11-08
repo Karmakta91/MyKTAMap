@@ -718,6 +718,7 @@ const AIDE_PAR_MODALE = {
   "kta-convert-modal":        "corriger",
   "kta-niv-modal":            "multi-niveau",
   "kta-jct-modal":            "multi-niveau",
+  "kta-prof-modal":           "multi-niveau",
   "kta-depannage-modal":      "depannage",
   "kta-vue3d":                "vue-3d"
 };

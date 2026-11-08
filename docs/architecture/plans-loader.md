@@ -377,6 +377,14 @@ Reset `_plannerPlanLegend = null` au boot de chaque ouverture de modale (dans `a
 
 ⚠️ **Pas exposé via API publique** : `_plannerPlanLegend` reste un état module-local. Si on a besoin d'y accéder depuis un autre module (ex: pour debug ou pour un futur "Export/Import légende plan-level seul"), il faudra exposer un getter `window.PlannerLegend = { get, set, reset, isEmpty }` au top du module.
 
+#### 58.5 bis Niveaux en hauteur (sol, hauteur, écart)
+
+Sous la case multi-niveau, la table de `profondeurNiveaux.js` (la même que ⚙️ Réglages) : `_plannerRendreNiveaux`
+la refait quand la case change (table multi-niveau mise de côté dans `_plannerNiveauxGardes`, rendue si on
+recoche), `_preRemplirFormulaire` la remplit d'un plan rouvert, `_genererZip` écrit `plan.niveauxProfondeur` et
+`plan.niveauxHauteur` (`_plannerLireNiveaux`). L'écart n'est jamais écrit. Format : `data-formats.md` ; contrat :
+`multilevel-pathfinding.md` § Hauteur et écart par niveau ; checkup : `checkup-niveaux-verticaux.js`.
+
 #### 58.6 Pour étendre
 
 **Ajouter un nouveau champ "avancé" dans le Générateur** :

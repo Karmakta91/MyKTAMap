@@ -864,6 +864,43 @@ function _bindCfgGeorefLanceur() {
   _cfgRafraichirEtatGeoref();
 }
 
+// Niveaux en hauteur (sol, hauteur de galerie, écart) : un lanceur ici, la table dans sa fenêtre
+// (profondeurNiveaux.js > ouvrirSaisie, la même qu'au bas de la pastille « Niv X »).
+function _renderCfgNiveauxLanceur() {
+  const t = window.I18n.t;
+  return '<div class="kta-aide-section" id="cfg_niveaux_lanceur">' +
+    '<div class="kta-aide-section-titre">📉 ' + t("prof.titre") + '</div>' +
+    '<div class="kta-cfg-georef-etat" id="cfg_niveaux_etat"></div>' +
+    '<button type="button" class="kta-btn" id="cfg_niveaux_open" style="width:100%; margin-top:8px;">' +
+      t("prof.btn.saisir") + '</button>' +
+  '</div>';
+}
+function _cfgRafraichirEtatNiveaux() {
+  const el = document.getElementById("cfg_niveaux_etat");
+  if (!el || typeof window.getPlanNiveauxVerticaux !== "function") return;
+  const t = window.I18n.t;
+  const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  const lv = multi && Array.isArray(window.APP_CONFIG.availableLevels) ? window.APP_CONFIG.availableLevels : [];
+  const niv = window.getPlanNiveauxVerticaux(null, lv.length ? lv : [0]);
+  const hauteurs = niv.map(function (n) { return n.hauteurM; });
+  const une = hauteurs.every(function (h) { return h === hauteurs[0]; });
+  let txt = une ? t("prof.etat.hauteur", { h: window.formatDistance(hauteurs[0], 1) }) : t("prof.etat.hauteurs");
+  if (multi) {
+    const sols = niv.some(function (n) { return n.solM !== null; });
+    txt += " · " + t(sols ? "prof.etat.sols" : "prof.etat.sansSols");
+  }
+  el.textContent = txt;
+}
+function _bindCfgNiveauxLanceur() {
+  const b = document.getElementById("cfg_niveaux_open");
+  if (b) {
+    b.addEventListener("click", function () {
+      if (window.ProfondeurNiveaux) window.ProfondeurNiveaux.ouvrirSaisie({ apres: _cfgRafraichirEtatNiveaux });
+    });
+  }
+  _cfgRafraichirEtatNiveaux();
+}
+
 // ── Application immédiate ──
 // Bornes = celles des champs (et de PODO_BORNES de config.js, qui refuse aussi). PUR : check-reglages-immediats.js
 // l'EXÉCUTE.
@@ -1141,6 +1178,7 @@ function afficherConfig() {
         <!-- 🌐 Géoréférencement GPS — DÉPLACÉ ici depuis la fin de la modale
              (rendu par _renderCfgGeorefSection, ids cfg_kmz_* inchangés). -->
         ${_renderCfgGeorefLanceur()}
+        ${_renderCfgNiveauxLanceur()}
 
         <!-- ════════ 3. 📍 NAVIGATION & TRACKER ════════ -->
         ${_cfgGroupeFin()}
@@ -1439,6 +1477,7 @@ function afficherConfig() {
   _bindCfgGroupes(modal);
   _bindReglagesImmediats();
   _bindCfgGeorefLanceur();
+  _bindCfgNiveauxLanceur();
 
   if (typeof window.attacherBoutonCopierEchelleGps === "function") {
     window.attacherBoutonCopierEchelleGps(modal);

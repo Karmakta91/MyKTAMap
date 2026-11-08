@@ -42,7 +42,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 |---|---|
 | Affichage plan image haute résolution (tiling runtime V1, 5 presets) | `map.js`, `tiling.js`, `config.js` |
 | **Tuiles V2** build-time type Google Maps (4 niveaux de zoom, WebP/PNG si source transparente) | `createConf.js > _genererTuilesV2`, `tiling.js` |
-| **Multi-niveau (M-LVL)** : étages, jonctions interniveau (fiche : note, niveaux reliés, suppression), filtre de niveau, niveau d'un objet modifiable | `interface.js`, `config.js`, `convertirObjet.js` |
+| **Multi-niveau (M-LVL)** : étages, jonctions interniveau (fiche : note, niveaux reliés, suppression), filtre de niveau, niveau d'un objet modifiable, sol / hauteur de galerie / écart par niveau (Générateur, ⚙️ Réglages) | `interface.js`, `config.js`, `convertirObjet.js`, `profondeurNiveaux.js` |
 | Calques image (légende, surimpressions) + calibration 2 points | `map.js`, `imageLayerCalibration*.js` |
 | Calques de données (`devmap-data` JSON) | `utils.js > ajouterPointsDepuisJSON` |
 | Points d'intérêt : tags, notes, photos IDB (ré-encodées sans EXIF) | `editor.js`, `photos.js`, `photoViewer.js` |
@@ -288,7 +288,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `selectionZone.js` | Sélection par zone dessinée (outil ♦️ Surface) et suppression en lot de la sélection |
 | `ajusterSommets.js` | Ajuster une forme dessinée : déplacer, ajouter ou supprimer un sommet par appui long |
 | `calqueSession.js` | Rapatrier un calque de données entier dans la session pour le corriger |
-| `profondeurNiveaux.js` | Profondeur des niveaux (saisie) et profil en long d'un itinéraire |
+| `profondeurNiveaux.js` | Niveaux en hauteur : table sol / hauteur / écart (⚙️ et Générateur) et profil en long d'un itinéraire |
 | `osmMesure.js` | Mesure de distance et de surface dans la Vue OSM (lat/lng, sans calibrage du plan) |
 | `osmCoords.js` | Coordonnées GPS de surface d'un point cliqué dans la Vue OSM |
 | `photos.js` | Photos des POI en IndexedDB (compression, EXIF retiré, 5 par point, fiche de rattachement) |
@@ -569,6 +569,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-plan-tags.js` | Étiquettes de plan normalisées différemment par les écrivains de plan-config | pre-commit |
 | `check-podometre-global.js` | Réglage de podomètre lu dans un plan-config au lieu du réglage global de l'appareil | pre-commit |
 | `check-poi-jonction.js` | POI entre niveaux (`jes` / `jpe` / `jps`) compté comme sortie de surface, jonctions absentes du graphe | pre-commit |
+| `check-niveaux-verticaux.js` | Géométrie verticale des niveaux (sol, hauteur de galerie, écart avec le dessus) : plan sans la donnée changé, pref locale qui ne gagne plus, écart stocké, consommateur qui relit les tables au lieu de `getNiveauVertical` | pre-commit |
 | `check-zones-niveaux.js` | Zone reliée à plusieurs niveaux (`niveaux`) affichée hors de ses niveaux, qui ne bloque plus l'itinéraire sur chacun, ou champ perdu à l'aller-retour session / KMZ / GeoJSON | pre-commit |
 | `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
 | `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |
@@ -686,7 +687,8 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
 | `smoke/checkup-urgence-memoire.js` | Défauts invisibles à l'œil : fuite au changement de plan, console, plan de démonstration |
 | `smoke/checkup-distance-totale.js` | 📏 Distance totale : niveau affiché compté, case « Tous les niveaux » retenue par plan, changement de niveau, 3D, plan à un niveau |
-| `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue par plan |
+| `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue pour le niveau mesuré |
+| `smoke/checkup-niveaux-verticaux.js` | Sol, hauteur et écart par niveau : Générateur (ZIP rouvert puis relu), `getNiveauVertical`, ⚙️ Réglages (écart négatif, pref, ↺), téléphone |
 | `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, tuile grisée sans échelle, ouverture depuis la tuile, scène, mur sous le pilier, butée, vue plongeante, perte et reprise du contexte WebGL, « Je suis ici ? », WebGL absent, collisions (6 obstacles, 12 angles, pas rapides), pas rapide, inclinaison, boussole, modes galerie et mixte (galerie qui débouche sur une chambre), halo des dangers, ⭐ des favoris, membres d'une extension factice, réglages ⚙️ Portée et Lampe (intensité, faisceau, Plein jour), cavage comblé jusqu'aux structures, zoom de la vue plongeante, scène refaite quand les données changent vue ouverte (session, annulation, calque rapatrié puis restitué, légende, rafale, geste), dessin en vue plongeante avec les outils de la carte (§ 28 : pilier, murs, zone, tracé, mesure, niveau de la 3D, gestes, extinction, greffe, lecture seule, plan au sol), zone reliée à plusieurs niveaux (§ 29 : vue et obstacle sur chacun des siens, scène refaite au décochage), vue d'édition (§ 30 : caméra libre au doigt, ⌖, survol, niveau sans passage, bandeau, segments et angles de la mesure, panneaux lisibles, plan au sol au point visé, parois et sol unis 🧱 coupé, vue retenue par plan, tuile ⚙️ sur la colonne 🛠️) ; mesures sur un plan dense synthétique (portée de 20 à 100 m, plongée dézoomée, scène refaite, `KTA_V3D_PERF=dessin`) |
 
 ---
@@ -826,7 +828,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 - **🔄 Contours fermés → zone ou pilier** (`js/convertirObjet.js`) : une ligne fermée (bouts à moins de 1,5 × son plus grand côté, compacité 4πA/P² ≥ 0,2, 3 segments au moins) se convertit en zone ou en pilier depuis sa fiche, en lot (case « Seulement les contours fermés ») ou depuis un calque passé en 🔄 Modifier. Case **« Recoller les lignes qui se touchent »** : un pilier livré en 2 à 4 lignes dont les bouts se touchent (5 px au plus) devient un seul objet ; une ligne dont les deux bouts touchent d'autres lignes (morceau) n'est jamais convertie seule. Un seul ⏪. `checkup-contour-ferme.js`, `checkup-recoller-piliers.js`.
 - **🟦 Mur (ligne)** (`mur-ligne`, `js/structures.js`, `js/styleResolver.js`, `js/pathfinder.js`) : type de structure intégré en ligne, de l'épaisseur d'un front, renommable ; coupe l'itinéraire sur son niveau comme une zone inaccessible (case « Respecter les zones inaccessibles et les murs (ligne) »). `check-mur-ligne.js`, `checkup-mur-ligne.js`.
-- **⛏️ Volume exploité** (`js/volumeExploite.js`) dans 📐 Mesure : secteur ♦️ moins les structures fermées (coupées au bord du secteur), remblais comptés à part, hauteur saisie et retenue par plan (2 m par défaut), niveau actif. `checkup-volume-exploite.js`.
+- **⛏️ Volume exploité** (`js/volumeExploite.js`) dans 📐 Mesure : secteur ♦️ moins les structures fermées (coupées au bord du secteur), remblais comptés à part, hauteur saisie et retenue pour le niveau mesuré (2 m par défaut), niveau actif. `checkup-volume-exploite.js`.
 - **📏 Distance totale des tracés** passe du groupe 🛣️ Tracés au groupe 📐 Mesure.
 - **🧭 Tracker** : un pas hors des tracés ne traverse plus piliers, murs ni fronts de taille.
 - **🧱 Un mur toujours sous les piliers et fronts de son niveau** (`js/structures.js > ktaMursSousPiliers`) : sur la carte, dans les exports PNG / PDF (rapide et avancé), le KMZ, la Vue OSM et l'aperçu OSM de l'accueil, qu'il vienne de la session ou d'un calque et quel que soit l'ordre de chargement (un mur de session passait sur un pilier de calque, un calque rebasculé repassait ses murs dessus). Un type perso garde sa place. `checkup-mur-dessous.js`.

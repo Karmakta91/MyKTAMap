@@ -116,6 +116,38 @@ let _sigPlanLegend = null;
 // le message aussitôt affiché.
 let _sigLegendeReset = false;
 
+// ── Niveaux en hauteur (sol, hauteur, écart) : table partagée avec ⚙️ (profondeurNiveaux.js) ──
+// Niveaux proposés = même plage que le runtime (config.js > availableLevels), plus ceux qu'un plan rouvert porte.
+const _PLANNER_NIVEAUX = [2, 1, 0, -1, -2];
+// Table multi-niveau mise de côté quand la case est décochée : la recocher rend les sols saisis.
+let _plannerNiveauxGardes = null;
+function _plannerLireNiveaux() {
+  const racine = document.getElementById("pl_niveaux_table");
+  if (!racine || !window.ProfondeurNiveaux) return null;
+  if (!racine.querySelector(".kta-prof-ligne[data-ligne]")) return null;
+  return window.ProfondeurNiveaux.lireTable(racine);
+}
+// `etat` = { profondeurs, hauteurs } (null : valeurs proposées ; profondeurs null : sols proposés).
+function _plannerRendreNiveaux(etat) {
+  const racine = document.getElementById("pl_niveaux_table");
+  if (!racine || !window.ProfondeurNiveaux) return;
+  const multi = !!(document.getElementById("pl_multiLevel") || {}).checked;
+  const e = etat || {};
+  const vus = {};
+  const cles = Object.keys(e.profondeurs || {}).concat(Object.keys(e.hauteurs || {}));
+  _PLANNER_NIVEAUX.concat(cles).forEach(function (k) {
+    if (/^-?\d+$/.test(String(k))) vus[String(k)] = Number(k);
+  });
+  const niveaux = Object.keys(vus).map(function (k) { return vus[k]; });
+  // Aucun sol (plan sans table, passage d'un niveau à plusieurs) : les sols proposés.
+  const sols = (e.profondeurs && Object.keys(e.profondeurs).length) ? e.profondeurs
+    : (typeof window.proposerProfondeurs === "function" ? window.proposerProfondeurs(niveaux) : {});
+  // 🩸 Un niveau : aucun sol dans la table (un sol caché serait relu au retour en multi-niveau).
+  racine.innerHTML = window.ProfondeurNiveaux.tableHtml(multi ? niveaux : [0], multi ? sols : {}, e.hauteurs || {},
+    { mono: !multi });
+  window.ProfondeurNiveaux.brancherTable(racine);
+}
+
 // Clé localStorage du mode Simple/Avancé (« simple » par défaut), lue par _lirePlannerMode. Forcé à
 // « avance » en mode Modifier : simplifier l'édition d'un plan existant perdrait customs, calques et icônes.
 // Lit un champ d'étiquettes (virgules) et le normalise par `PlanRegistry.normaliserTags` (trim,
@@ -263,17 +295,13 @@ function afficherPlanner() {
             </span>
           </label>
 
-          <!-- 📉 v1.83.0 (demande KARMA) : profondeur des niveaux, saisie a la
-               generation. Le plan-config porte alors une valeur d'ORIGINE qui
-               voyage avec le ZIP ; l'utilisateur peut la reprendre par plan
-               dans le menu M-LVL (la preference per-plan prime).
-               Visible seulement si multi-niveau est coche : sur un plan a un
-               seul etage, il n'y a rien a echelonner. -->
-          <div class="kta-planner-prof-row" id="pl_prof_row" style="display:none;">
-            <label class="kta-cfg-label">${window.I18n.t("gen.prof.niveau0")}</label>
-            <input class="kta-cfg-input" id="pl_prof0" type="number" step="0.5" value="-25">
-            <label class="kta-cfg-label">${window.I18n.t("gen.prof.pas")}</label>
-            <input class="kta-cfg-input" id="pl_profPas" type="number" step="0.5" min="0.5" value="5">
+          <!-- Niveaux en hauteur : sol, hauteur de galerie, ecart avec le niveau du dessus (la table de
+               profondeurNiveaux.js, la meme que dans les Reglages du plan). Valeurs d'ORIGINE ecrites dans
+               le plan-config ; une correction faite dans l'app prime. Plan a un seul niveau : la hauteur
+               seule. -->
+          <div class="kta-planner-prof-row" id="pl_prof_row">
+            <p class="kta-prof-hint">${window.I18n.t("gen.prof.hint")}</p>
+            <div id="pl_niveaux_table"></div>
           </div>
 
           <!-- Tiling V2 (depuis v149) : opt-in conversion en plan tuile.
@@ -950,13 +978,18 @@ function afficherPlanner() {
 
   // Champs Niveau des calques image : visibles seulement si le plan est multi-niveau.
   const mlCbBind = document.getElementById("pl_multiLevel");
-  // Les champs de profondeur suivent la case multi-niveau.
-  const _majProfRow = function () {
-    const row = document.getElementById("pl_prof_row");
-    if (row) row.style.display = (mlCbBind && mlCbBind.checked) ? "" : "none";
-  };
-  if (mlCbBind) mlCbBind.addEventListener("change", _majProfRow);
-  _majProfRow();
+  // La table des niveaux suit la case multi-niveau (valeurs déjà saisies gardées).
+  _plannerRendreNiveaux(null);
+  _plannerNiveauxGardes = null;
+  if (mlCbBind) {
+    mlCbBind.addEventListener("change", function () {
+      const lu = _plannerLireNiveaux();
+      if (!mlCbBind.checked) { _plannerNiveauxGardes = lu; _plannerRendreNiveaux(lu); return; }
+      const g = _plannerNiveauxGardes;
+      if (g && lu && lu.hauteurs["0"]) g.hauteurs["0"] = lu.hauteurs["0"];
+      _plannerRendreNiveaux(g || { profondeurs: null, hauteurs: lu ? lu.hauteurs : {} });
+    });
+  }
   if (mlCbBind) {
     mlCbBind.addEventListener("change", function() {
       const show = mlCbBind.checked;
@@ -1813,20 +1846,11 @@ function _preRemplirFormulaire(config) {
   // Multi-niveau : coché si `plan.multiLevel: true` (absent = false).
   const mlEl = document.getElementById("pl_multiLevel");
   if (mlEl) mlEl.checked = (plan.multiLevel === true);
-  // Profondeurs d'un plan rouvert : niveau 0 et pas déduits de la table, sinon les défauts écraseraient la saisie.
-  const _tblProf = plan.niveauxProfondeur;
-  if (_tblProf && typeof _tblProf === "object") {
-    const z0 = Number(_tblProf["0"]);
-    const zm1 = Number(_tblProf["-1"]);
-    if (Number.isFinite(z0)) {
-      const e0 = document.getElementById("pl_prof0");
-      if (e0) e0.value = z0;
-      if (Number.isFinite(zm1)) {
-        const ep = document.getElementById("pl_profPas");
-        if (ep) ep.value = Math.abs(z0 - zm1);
-      }
-    }
-  }
+  // Plan rouvert : sols (« sans profondeur » et trous compris) et hauteurs repris tels quels ; sans table de
+  // sols, les valeurs proposées.
+  const _objet = function (v) { return (v && typeof v === "object") ? v : null; };
+  _plannerNiveauxGardes = null;
+  _plannerRendreNiveaux({ profondeurs: _objet(plan.niveauxProfondeur), hauteurs: _objet(plan.niveauxHauteur) });
 
   // Légende du plan reprise de plan.customLegend (sinon null = défaut). _appliquerPlannerMode synchronise
   // l'UI et masque le switcher.
@@ -3793,14 +3817,14 @@ async function _genererZip() {
     if (tags.length)    planObj.tags = tags;
     const _fond = (document.getElementById("pl_fond") || {}).value || "";
     if (["noir", "blanc", "gris"].indexOf(_fond) >= 0) planObj.fondConseille = _fond;
-    // Table des profondeurs (niveau 0 + pas), écrite seulement en multi-niveau.
-    if (multiLevel && typeof window.proposerProfondeurs === "function") {
-      const _z0 = parseFloat((document.getElementById("pl_prof0") || {}).value);
-      const _pas = parseFloat((document.getElementById("pl_profPas") || {}).value);
-      if (Number.isFinite(_z0) && Number.isFinite(_pas) && _pas > 0) {
-        // Même plage par défaut que le runtime (config.js > availableLevels).
-        planObj.niveauxProfondeur = window.proposerProfondeurs([-2, -1, 0, 1, 2], _z0, _pas);
-      }
+    // Niveaux en hauteur (table de la page) : sols en multi-niveau seulement ; hauteurs de chaque niveau en
+    // multi-niveau, et pour un plan à un niveau seulement si elle diffère du défaut (JSON inchangé sinon).
+    const _niv = _plannerLireNiveaux();
+    const _h0 = _niv && _niv.hauteurs["0"];
+    if (_niv && multiLevel && Object.keys(_niv.profondeurs).length) planObj.niveauxProfondeur = _niv.profondeurs;
+    if (_niv && multiLevel && Object.keys(_niv.hauteurs).length) planObj.niveauxHauteur = _niv.hauteurs;
+    if (_niv && !multiLevel && _h0 && _h0 !== window.HAUTEUR_GALERIE_DEFAUT) {
+      planObj.niveauxHauteur = { "0": _niv.hauteurs["0"] };
     }
     if (tilingManifest) planObj.tiledV2    = true;
 

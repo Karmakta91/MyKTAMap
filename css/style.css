@@ -19446,8 +19446,9 @@ body.kta-theme-light .kta-convert-choix:hover { background: rgba(60, 110, 200, 0
 .kta-prof-hint { font-size: 12px; color: var(--kta-texte-3); line-height: 1.5; margin: 0 0 10px; }
 .kta-prof-propose { color: var(--kta-interaction); }
 .kta-prof-avert { color: var(--kta-avert); margin-top: 12px; }
+/* Table sol / hauteur / écart (⚙️ et Générateur) : grille pour que les colonnes s'alignent sur l'en-tête. */
 .kta-prof-ligne {
-  display: flex; align-items: center; gap: 8px;
+  display: grid; grid-template-columns: 38px repeat(3, minmax(0, 1fr)) 34px; align-items: center; gap: 6px;
   padding: 6px 8px; margin-bottom: 5px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--kta-bordure);
@@ -19456,11 +19457,19 @@ body.kta-theme-light .kta-convert-choix:hover { background: rgba(60, 110, 200, 0
 .kta-prof-niv {
   flex: 0 0 44px; font-weight: 700; font-size: 13px; color: var(--kta-accent-texte); text-align: center;
 }
-.kta-prof-val { flex: 0 0 90px; }
-.kta-prof-val:disabled { opacity: 0.35; }
+.kta-prof-val, .kta-prof-h, .kta-prof-ecart { width: 100%; min-width: 0; box-sizing: border-box; }
+.kta-prof-val:disabled, .kta-prof-ecart:disabled { opacity: 0.35; }
+.kta-prof-entete { background: none; border-color: transparent; padding-top: 0; padding-bottom: 0; }
+.kta-prof-col { font-size: 11px; color: var(--kta-texte-3); text-align: center; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; }
+.kta-prof-entete .kta-prof-niv { font-size: 11px; font-weight: 600; color: var(--kta-texte-3); }
+.kta-prof-mono .kta-prof-ligne { grid-template-columns: 38px minmax(0, 140px); }
+.kta-prof-mono .kta-prof-val, .kta-prof-mono .kta-prof-ecart, .kta-prof-mono .kta-prof-sans,
+.kta-prof-mono .kta-prof-col-sol, .kta-prof-mono .kta-prof-col-ecart,
+.kta-prof-mono .kta-prof-col-sans { display: none; }
 .kta-prof-unite { font-size: 12px; color: var(--kta-texte-3); }
 .kta-prof-sans {
-  margin-left: auto; display: flex; align-items: center; gap: 5px;
+  justify-self: center; display: flex; align-items: center; gap: 5px;
   font-size: 11.5px; color: var(--kta-texte-3); cursor: pointer; white-space: nowrap;
 }
 .kta-prof-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
@@ -19483,6 +19492,7 @@ body.kta-theme-light .kta-convert-choix:hover { background: rgba(60, 110, 200, 0
   stroke-linejoin: round; stroke-linecap: round;
 }
 body.kta-theme-light .kta-prof-ligne { background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.10); }
+body.kta-theme-light .kta-prof-entete { background: none; border-color: transparent; }
 body.kta-theme-light .kta-profil-svg { background: rgba(0, 0, 0, 0.05); }
 body.kta-theme-light .kta-profil-grille { stroke: rgba(0, 0, 0, 0.12); }
 body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
@@ -19554,14 +19564,13 @@ body.kta-theme-light #kta-osm-mes-floater {
 
 /* champs de profondeur du Générateur (sous la case multi-niveau) */
 .kta-planner-prof-row {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  display: block;
   margin: 8px 0 4px 26px; padding: 8px 10px;
   background: rgba(255, 255, 255, 0.03);
   border-left: 2px solid rgba(244, 197, 66, 0.35);
   border-radius: 0 6px 6px 0;
 }
-.kta-planner-prof-row .kta-cfg-input { width: 90px; }
-.kta-planner-prof-row .kta-cfg-label { font-size: 12px; margin: 0; }
+.kta-planner-prof-row .kta-prof-hint { margin-bottom: 6px; }
 
 /* Bandeau de sélection multiple : hérite de .kta-iti-floater, seul l'écart de ses 4 boutons change. */
 .kta-selm-floater { gap: 8px; flex-wrap: wrap; max-width: min(94vw, 720px); }
