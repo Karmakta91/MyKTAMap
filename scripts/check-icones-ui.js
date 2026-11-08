@@ -17,7 +17,8 @@
 //   3. chaque règle de la table de doc (KtaIcones.DOC) pointe vers une icône existante ;
 //   4. EXHAUSTIF : chaque occurrence d'un emoji migré dans docs/applications/README_USER{,.en,.es}.md et dans
 //      les clés aide.* de lang/{fr,en,es}.json est soit substituée (DOC), soit listée « autre sens »
-//      (AUTRE_SENS). Sinon : échec avec fichier:ligne et le texte voisin.
+//      (AUTRE_SENS). Sinon : échec avec fichier:ligne et le texte voisin ;
+//   5. CLIQUET : le nombre d'emplois rangés par une règle « tout le reste » est figé par emoji (PLAFOND_RESTE).
 // Usage : node scripts/check-icones-ui.js [--liste]   (--liste : comptes par emoji, substitués / autre sens)
 // =====================================================================
 "use strict";
@@ -133,8 +134,10 @@ const SRC_INTERFACE = lire("js/interface.js");
   SOURCES.forEach((src) => src.morceaux.forEach((mc) => {
     const langue = /\.(en|es)\./.test(src.fichier) ? RegExp.$1 : (/lang\/(\w+)/.test(src.fichier) ? RegExp.$1 : "fr");
     K.classerDoc(mc.texte).forEach((o) => {
-      const c = comptes[o.emoji] || (comptes[o.emoji] = { svg: 0, autre: 0, fr: [0, 0], en: [0, 0], es: [0, 0] });
+      const c = comptes[o.emoji] ||
+        (comptes[o.emoji] = { svg: 0, autre: 0, reste: 0, fr: [0, 0], en: [0, 0], es: [0, 0] });
       if (o.icone || o.sens) c[langue][o.icone ? 0 : 1]++;
+      if (o.reste) c.reste++;
       if (o.icone) { c.svg++; return; }
       if (o.sens) { c.autre++; return; }
       const ligne = mc.cle ? mc.ligne : mc.texte.slice(0, o.debut).split("\n").length;
@@ -144,6 +147,29 @@ const SRC_INTERFACE = lire("js/interface.js");
   }));
   t("4. doc : chaque emoji migré est substitué ou listé « autre sens » (" + orphelins.length + " non classé(s))",
     orphelins.length === 0, orphelins.slice(0, 400).join("\n   "));
+  // 5. CLIQUET « tout le reste » : la règle sans motif d'un emoji (AUTRE_SENS sans a ni b) range aussi une phrase
+  // NOUVELLE qui citerait le bouton par un libellé inconnu — elle resterait en emoji, donc icône périmée. Son
+  // compte (3 guides + aide.* des 3 langues) est figé : une hausse échoue tant que le nouvel emploi n'est pas
+  // classé (règle DOC ciblée = SVG, ou AUTRE_SENS ciblé = autre sens voulu) ; une baisse se reporte ici.
+  // Clés sans U+FE0F (forme rendue par classerDoc). Recalcul : node scripts/check-icones-ui.js --plafond
+  const PLAFOND_RESTE = {
+    "📖": 60, "🔒": 33, "💾": 121, "❌": 33, "🔄": 127, "🧊": 6, "🌍": 66, "🧭": 170, "📍": 210, "🚨": 99, "ℹ": 27,
+    "✅": 81, "📡": 12, "✏": 180, "📥": 51, "▶": 48, "📚": 39, "➕": 72, "🚑": 30, "🪧": 45, "🗺": 138, "🎯": 120,
+    "📊": 105, "⭐": 42, "⬇": 15, "🎨": 54, "🖼": 51, "🔎": 27, "🔓": 6, "❓": 18, "🪜": 39
+  };
+  if (process.argv.indexOf("--plafond") >= 0) {
+    console.log(JSON.stringify(Object.keys(comptes).filter((e) => comptes[e].reste)
+      .reduce((o, e) => { o[e] = comptes[e].reste; return o; }, {})));
+  }
+  const ecartsReste = [];
+  Object.keys(comptes).concat(Object.keys(PLAFOND_RESTE)).filter((e, i, a) => a.indexOf(e) === i).forEach((e) => {
+    const n = comptes[e] ? comptes[e].reste : 0, p = PLAFOND_RESTE[e] || 0;
+    if (n > p) ecartsReste.push(e + " : " + n + " emplois « tout le reste » pour " + p + " figés → classer le nouveau " +
+      "(DOC ciblé ou AUTRE_SENS ciblé)");
+    else if (n < p) ecartsReste.push(e + " : " + n + " < " + p + " figés → reporter " + n + " dans PLAFOND_RESTE");
+  });
+  t("5. doc : emplois « tout le reste » figés (cliquet, aucune phrase nouvelle rangée en silence)",
+    ecartsReste.length === 0, ecartsReste.join("\n   "));
   if (LISTE) {
     // Les trois langues décrivent la même chose : un écart de SVG entre elles trahit un motif mal traduit.
     Object.keys(comptes).forEach((e) => {

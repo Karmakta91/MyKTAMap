@@ -2642,7 +2642,10 @@ Lucide + icônes métier, planche des 115 notions validée ; police emoji embarq
   `ktaIcone` / `data-kta-ico` existe ; chaque règle de doc pointe vers une icône existante ; **exhaustif** : chaque
   occurrence d'un emoji migré dans les trois guides et les clés `aide.*` des trois dicos est substituée ou listée
   « autre sens », sinon échec avec fichier:ligne. `--liste` donne les comptes par emoji et par langue (un écart de SVG
-  entre langues trahit un motif mal traduit).
+  entre langues trahit un motif mal traduit). 🩸 Une règle « tout le reste » (autre sens sans motif) rangerait en
+  silence une phrase NOUVELLE qui cite le bouton par un libellé inconnu : la doc montrerait l'emoji périmé. Son compte
+  est donc figé par emoji (`PLAFOND_RESTE`, cliquet) : toute hausse échoue jusqu'à ce que l'emploi soit classé (règle
+  DOC ciblée, ou autre sens ciblé) ; recalcul `--plafond`.
 - `scripts/smoke/checkup-icones-ui.js` (Chromium et WebKit, sombre et clair) : le rendu réel.
 - Emoji restants : un pictogramme à présentation texte (🛣️ 🗂️ 👁️ ⏸️ ⏹️ ⏭️ 🗑️ 🏗️…) s'écrit avec U+FE0F, sinon Windows et une
   partie des Android le dessinent en noir et blanc. Flèches, triangles ▶ ◀, ©, ™ et coches restent en texte.

@@ -524,7 +524,9 @@
       const apres = t.slice(fin, fin + 160).replace(/<[^>]*$/, "");
       const r = _regle(_PAR_EMOJI[m[1]], _nettoyer(avant).replace(/\s+$/, ""), _nettoyer(apres).replace(/^\s+/, ""));
       const estDoc = !!r && AUTRE_SENS.indexOf(r) < 0;
-      res.push({ debut: debut, fin: fin, emoji: m[1], icone: estDoc ? r.i : null, sens: r && !estDoc ? r.s : null });
+      // reste : rangé par la règle « tout le reste » (AUTRE_SENS sans motif) ; check-icones-ui en fige le compte.
+      res.push({ debut: debut, fin: fin, emoji: m[1], icone: estDoc ? r.i : null, sens: r && !estDoc ? r.s : null,
+        reste: !!r && r === _PAR_EMOJI[m[1]].autreDefaut });
     }
     return res;
   }
