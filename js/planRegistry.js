@@ -5,7 +5,8 @@
  */
 
 // planRegistry.js — registre des plans connus (serveur découverts + ZIP locaux) : localStorage
-//   ["myktamap_plans"], handles et blobs ZIP en IndexedDB, export/import de la liste (.config).
+//   ["myktamap_plans"], handles et blobs ZIP en IndexedDB (copie d'un seul tenant ou en morceaux : rangerEnMorceaux),
+//   export/import de la liste (.config).
 // Expose : window.PlanRegistry.
 // Format : { version, lastPlanId, plans: [
 //   { id, type:"server", path, name, version, author, discovered, lastOpened, addedAt, perfPreset? },
@@ -777,6 +778,61 @@
     } catch(e) { return false; }
   }
 
+  // ── Copie d'un seul tenant ou en morceaux ──────────────────────────────
+  // ⚠️ contrat (prise neutre, docs/architecture/community-server-line.md §3) : la valeur rangée à la clé `id` du
+  //   store `blobs` est soit un Blob (copie d'un seul tenant : ZIP local, Générateur, import), soit une FICHE
+  //   { format: FICHE_MORCEAUX, gen, morceaux, size, type } ; ses morceaux vivent dans le même store sous la clé
+  //   tableau [id, gen, i] (i = 0..morceaux-1), chacun un Blob créé en mémoire. `getBlob` rend alors un Blob composé
+  //   des morceaux relus : rien n'est recopié, place disque = une fois le plan.
+  // 🩸 Pourquoi : un Blob composé de Blobs lus dans une AUTRE base, rangé puis séparé de ses sources (effacées),
+  //   devient illisible sous WebKit (NotFoundError) jusqu'à la relance du navigateur. Ici les morceaux ne sont jamais
+  //   effacés tant que la fiche les désigne ; une nouvelle copie (autre `gen`) ne remplace l'ancienne qu'une fois
+  //   complète et relue, dans la même transaction que l'effacement des anciens morceaux.
+  // 🩸 Les clés tableau sont ignorées par les lecteurs qui ne veulent que les plans (`typeof clé === "string"` :
+  //   memInspector > orphelins) ; une fiche porte `size` pour qui lit la valeur brute.
+  const FICHE_MORCEAUX = "kta-morceaux-v1";
+  const _composes = new WeakMap();   // Blob composé rendu par getBlob → { id, tailles } (sonde, saveBlob)
+  function _estFiche(v) {
+    return !!v && typeof v === "object" && !(v instanceof Blob) && v.format === FICHE_MORCEAUX;
+  }
+  function _plage(id, gen) {
+    return gen == null ? IDBKeyRange.bound([id], [id, []]) : IDBKeyRange.bound([id, gen], [id, gen, []]);
+  }
+  function _erreurTx(tx) {
+    const err = tx.error;
+    if (err && err.name === "QuotaExceededError") return t("planreg.err.quotaExceeded");
+    return (err && err.name) || t("planreg.err.storageRefused");
+  }
+  // Une transaction d'écriture sur `blobs` : fn(store) y pose ses requêtes. → { ok: true } | { ok: false, error }
+  async function _ecrire(fn) {
+    const db = await _openIDB();
+    if (!db) return { ok: false, error: t("planreg.err.idbUnavailable") };
+    return new Promise(function(resolve) {
+      try {
+        const tx = db.transaction(IDB_BLOBS, "readwrite");
+        fn(tx.objectStore(IDB_BLOBS));
+        tx.oncomplete = function() { db.close(); resolve({ ok: true }); };
+        tx.onabort = function() { db.close(); resolve({ ok: false, error: _erreurTx(tx) }); };
+      } catch(e) {
+        db.close();
+        resolve({ ok: false, error: (e && (e.name || e.message)) || t("planreg.err.unexpected") });
+      }
+    });
+  }
+  // Morceaux d'une fiche relus → Blob composé, ou null (morceau manquant, taille fausse).
+  function _composer(st, id, fiche, fin) {
+    const req = st.getAll(_plage(id, fiche.gen));
+    req.onsuccess = function() {
+      const parts = req.result || [];
+      if (parts.length !== fiche.morceaux || !parts.every(function(p) { return p instanceof Blob; })) { fin(null); return; }
+      const b = new Blob(parts, { type: fiche.type || "application/zip" });
+      if (b.size !== fiche.size) { fin(null); return; }
+      _composes.set(b, { id: id, tailles: parts.map(function(p) { return p.size; }) });
+      fin(b);
+    };
+    req.onerror = function() { fin(null); };
+  }
+
   // → { ok: true } | { ok: false, error }
   async function saveBlob(id, blob) {
     if (!blob) return { ok: false, error: t("planreg.err.noFileShort") };
@@ -788,51 +844,141 @@
       try { blob = new Blob([await blob.arrayBuffer()], { type: blob.type || "application/zip" }); }
       catch (e) { return { ok: false, error: (e && e.name) || t("planreg.err.unexpected") }; }
     }
-    const db = await _openIDB();
-    if (!db) return { ok: false, error: t("planreg.err.idbUnavailable") };
+    // 🩸 Blob composé des morceaux rangés : sous son propre id, c'est déjà la copie (le réécrire d'un seul tenant
+    // puis effacer ses morceaux le casserait) ; sous un autre id, recopié morceau par morceau.
+    const compose = _composes.get(blob);
+    if (compose && compose.id === id) return { ok: true };
+    if (compose) return _recopierEnMorceaux(id, blob, compose.tailles);
+    // La copie d'un seul tenant remplace une copie en morceaux : ses morceaux partent dans la même transaction.
+    return _ecrire(function(st) { st.put(blob, id); st.delete(_plage(id)); });
+  }
 
-    return new Promise(function(resolve) {
-      try {
-        const tx = db.transaction(IDB_BLOBS, "readwrite");
-        tx.objectStore(IDB_BLOBS).put(blob, id);
-        tx.oncomplete = function() { resolve({ ok: true }); };
-        tx.onerror = function(e) {
-          resolve({ ok: false, error: (tx.error && tx.error.name) || t("planreg.err.idbError") });
-        };
-        tx.onabort = function() {
-          const err = tx.error;
-          if (err && err.name === "QuotaExceededError") {
-            resolve({ ok: false, error: t("planreg.err.quotaExceeded") });
-          } else {
-            resolve({ ok: false, error: (err && err.name) || t("planreg.err.storageRefused") });
-          }
-        };
-      } catch(e) {
-        resolve({ ok: false, error: e.message || t("planreg.err.unexpected") });
+  async function _recopierEnMorceaux(id, blob, tailles) {
+    const e = rangerEnMorceaux(id);
+    try {
+      let debut = 0;
+      for (let i = 0; i < tailles.length; i++) {
+        await e.ajouter(await blob.slice(debut, debut + tailles[i]).arrayBuffer());
+        debut += tailles[i];
       }
-    });
+    } catch (err) {
+      await e.abandonner();
+      return { ok: false, error: (err && err.message) || t("planreg.err.unexpected") };
+    }
+    const r = await e.terminer({ type: blob.type });
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
+  // Prise : ranger une copie morceau par morceau, sans jamais tenir le plan entier en mémoire.
+  // rangerEnMorceaux(id) → { ajouter(octets) → Promise, terminer({ type?, verifier? }) → Promise<{ ok, blob? ,
+  //   error?, code? }>, abandonner() → Promise }
+  // ⚠️ contrat : `ajouter` ne prend que des octets (ArrayBuffer ou vue) et en fait un Blob EN MÉMOIRE ; un Blob lu
+  //   ailleurs (autre base) est refusé, il ramènerait le défaut WebKit. Échec d'écriture (quota) : morceaux de cette
+  //   copie effacés, erreur `code: "stockage"`. `terminer` relit les morceaux rangés, appelle `verifier(blob)`
+  //   (async → bool, ex. zipLisible), et seulement si tout est lisible bascule la fiche et efface l'ancienne copie
+  //   (Blob d'un seul tenant ou morceaux d'une autre génération). Illisible → rien ne change, `code: "illisible"`.
+  //   Sans `terminer`, rien n'est visible : `abandonner` efface les morceaux posés.
+  function rangerEnMorceaux(id) {
+    const gen = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+    let n = 0, taille = 0, clos = false;
+    async function abandonner() {
+      clos = true;
+      await _ecrire(function(st) { st.delete(_plage(id, gen)); });
+    }
+    async function ajouter(octets) {
+      if (clos) throw new Error(t("planreg.err.unexpected"));
+      const vue = octets instanceof ArrayBuffer || ArrayBuffer.isView(octets);
+      if (!vue) throw new TypeError("rangerEnMorceaux.ajouter : ArrayBuffer ou vue attendu");
+      const b = new Blob([octets]);
+      const r = await _ecrire(function(st) { st.put(b, [id, gen, n]); });
+      if (!r.ok) {
+        await abandonner();
+        throw Object.assign(new Error(r.error), { code: "stockage" });
+      }
+      n++; taille += b.size;
+    }
+    async function terminer(opts) {
+      const o = opts || {};
+      if (clos) return { ok: false, code: "stockage", error: t("planreg.err.unexpected") };
+      clos = true;
+      const fiche = { format: FICHE_MORCEAUX, gen: gen, morceaux: n, size: taille, type: o.type || "application/zip" };
+      const db = await _openIDB();
+      if (!db) { await abandonner(); return { ok: false, code: "stockage", error: t("planreg.err.idbUnavailable") }; }
+      const relu = await new Promise(function(resolve) {
+        let out = null;
+        const tx = db.transaction(IDB_BLOBS, "readonly");
+        _composer(tx.objectStore(IDB_BLOBS), id, fiche, function(b) { out = b; });
+        tx.oncomplete = function() { db.close(); resolve(out); };
+        tx.onabort = function() { db.close(); resolve(null); };
+      });
+      let ok = !!relu;
+      if (ok && typeof o.verifier === "function") {
+        try { ok = (await o.verifier(relu)) === true; } catch (e) { ok = false; }
+      }
+      if (!ok) { await abandonner(); return { ok: false, code: "illisible", error: t("planreg.err.storageRefused") }; }
+      const r = await _ecrire(function(st) {
+        st.put(fiche, id);
+        const cles = st.getAllKeys(_plage(id));
+        cles.onsuccess = function() {
+          (cles.result || []).forEach(function(k) { if (k[1] !== gen) st.delete(k); });
+        };
+      });
+      if (!r.ok) { await abandonner(); return { ok: false, code: "stockage", error: r.error }; }
+      return { ok: true, blob: (await getBlob(id)) || relu };
+    }
+    return { ajouter: ajouter, terminer: terminer, abandonner: abandonner };
   }
 
   async function getBlob(id) {
     const db = await _openIDB();
     if (!db) return null;
     return new Promise(function(resolve) {
+      let out = null;
       const tx = db.transaction(IDB_BLOBS, "readonly");
-      const req = tx.objectStore(IDB_BLOBS).get(id);
-      req.onsuccess = function() { resolve(req.result || null); };
-      req.onerror   = function() { resolve(null); };
+      const st = tx.objectStore(IDB_BLOBS);
+      const req = st.get(id);
+      req.onsuccess = function() {
+        const v = req.result;
+        if (_estFiche(v)) _composer(st, id, v, function(b) { out = b; });
+        else out = v || null;
+      };
+      tx.oncomplete = function() { db.close(); resolve(out); };
+      tx.onabort = function() { db.close(); resolve(null); };
     });
   }
 
+  // Copie et morceaux, toutes générations.
   async function removeBlob(id) {
-    const db = await _openIDB();
-    if (!db) return false;
-    return new Promise(function(resolve) {
-      const tx = db.transaction(IDB_BLOBS, "readwrite");
-      tx.objectStore(IDB_BLOBS).delete(id);
-      tx.oncomplete = function() { resolve(true); };
-      tx.onerror = function() { resolve(false); };
-    });
+    const r = await _ecrire(function(st) { st.delete(id); st.delete(_plage(id)); });
+    return r.ok;
+  }
+
+  // Prise : un ZIP réellement lisible ? Début « PK », enregistrement de fin de répertoire central (0x06054b50) dans
+  // les derniers octets, et un octet relu par morceau (taille des morceaux connue pour un Blob rendu par getBlob,
+  // sinon tous les 4 Mio). Toute erreur de lecture → false. Ne charge jamais le plan entier (64 Kio au plus).
+  const ZIP_FIN_MAX = 22 + 65535;
+  async function zipLisible(blob) {
+    if (!blob || typeof blob.slice !== "function" || blob.size < 22) return false;
+    try {
+      const debut = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (debut[0] !== 0x50 || debut[1] !== 0x4b) return false;
+      const de = Math.max(0, blob.size - ZIP_FIN_MAX);
+      const fin = new Uint8Array(await blob.slice(de, blob.size).arrayBuffer());
+      let eocd = false;
+      for (let i = fin.length - 22; i >= 0 && !eocd; i--) {
+        eocd = fin[i] === 0x50 && fin[i + 1] === 0x4b && fin[i + 2] === 0x05 && fin[i + 3] === 0x06;
+      }
+      if (!eocd) return false;
+      const c = _composes.get(blob);
+      const offsets = [];
+      if (c) { let o = 0; c.tailles.forEach(function(tl) { if (tl > 0) offsets.push(o); o += tl; }); }
+      else { for (let o = 0; o < blob.size; o += 4 * 1024 * 1024) offsets.push(o); }
+      for (let i = 0; i < offsets.length; i++) {
+        const o = await blob.slice(offsets[i], offsets[i] + 1).arrayBuffer();
+        if (o.byteLength !== 1) return false;
+      }
+      return true;
+    } catch (e) { return false; }
   }
 
   async function getStorageEstimate() {
@@ -898,6 +1044,8 @@
     saveBlob:             saveBlob,
     getBlob:              getBlob,
     removeBlob:           removeBlob,
+    rangerEnMorceaux:     rangerEnMorceaux,
+    zipLisible:           zipLisible,
     requestPersistentStorage: requestPersistentStorage,
     getStorageEstimate:   getStorageEstimate
   };

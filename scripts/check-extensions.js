@@ -909,7 +909,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("profil : 💾 compte les bases IDB « kta_ / myktamap » listées par le navigateur (jamais créées) et isole ☁️",
       /indexedDB\.databases\(\)/.test(HP) && /presentes && presentes\.indexOf\(nom\) < 0/.test(HP) &&
       /n\.indexOf\("kta_"\) === 0 \|\| n\.indexOf\("myktamap"\) === 0/.test(HP) &&
-      /acc\.ids\[cur\.key\]\) acc\.ext \+=/.test(HP) && /home\.profile\.stats\.dontExt/.test(HP));
+      /acc\.ids\[idCle\]\) acc\.ext \+=/.test(HP) && /home\.profile\.stats\.dontExt/.test(HP));
     t("profil : cache de stats du plan courant recalculé (2 s) après des changements reçus",
       /dispatchEvent\(new CustomEvent\("mktm:changements-appliques"\)\)/.test(lire("js/ktaExtensions.js")) &&
       /addEventListener\("mktm:changements-appliques"[\s\S]{0,200}_persisterStatsPlanCourant\(\)[\s\S]{0,40}2000/.test(HP));
@@ -2472,6 +2472,142 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       appelantsVille.length === 0);
     t("ville seule de connexion SOUS les fenêtres d'une gate (z 99995 < 100001) : css/bienvenue.css",
       /#kta-unlock-overlay\.kta-bv\.kta-bv-connexion \{ z-index: 99995; \}/.test(lire("css/bienvenue.css")));
+  }
+
+  // ── 10. COPIE EN MORCEAUX (prise PlanRegistry.rangerEnMorceaux, zipLisible) ──────
+  // Le vrai planRegistry.js dans un `vm` avec une petite IndexedDB en mémoire (clés chaîne et tableau, plages,
+  // transactions annulées sur quota) ; le vrai navigateur (Chromium, WebKit) : scripts/smoke/checkup-plan-morceaux.js.
+  {
+    const R = lire("js/planRegistry.js");
+    const cmp = (a, b) => {
+      const rang = (k) => (typeof k === "number" ? 1 : typeof k === "string" ? 2 : 3);
+      if (rang(a) !== rang(b)) return rang(a) - rang(b);
+      if (!Array.isArray(a)) return a < b ? -1 : a > b ? 1 : 0;
+      for (let i = 0; i < Math.min(a.length, b.length); i++) { const c = cmp(a[i], b[i]); if (c) return c; }
+      return a.length - b.length;
+    };
+    const fauxIdb = () => {
+      const bases = {}; const etat = { quota: false };
+      const plage = (q) => (q && q.borne ? (k) => cmp(k, q.l) >= 0 && cmp(k, q.u) <= 0 : (k) => cmp(k, q) === 0);
+      const base = (nom) => {
+        const stores = bases[nom] = bases[nom] || {};
+        return { objectStoreNames: { contains: (s) => s in stores }, createObjectStore: (s) => { stores[s] = []; }, close() {},
+          transaction(s) {
+            const st = stores[s], copie = st.slice(); let enCours = 0, fini = false;
+            const tx = { error: null };
+            const req = (fn) => { const r = {}; enCours++; setTimeout(() => {
+              if (fini) return;
+              try { r.result = fn(); } catch (e) { tx.error = e; fini = true; st.splice(0, st.length, ...copie);
+                setTimeout(() => tx.onabort && tx.onabort()); return; }
+              if (r.onsuccess) r.onsuccess();
+              if (--enCours === 0) setTimeout(() => { if (!fini && enCours === 0) { fini = true; if (tx.oncomplete) tx.oncomplete(); } });
+            }); return r; };
+            const tri = () => st.sort((x, y) => cmp(x[0], y[0]));
+            tx.objectStore = () => ({
+              put: (v, k) => req(() => { if (etat.quota) throw { name: "QuotaExceededError" };
+                const i = st.findIndex((e) => cmp(e[0], k) === 0); if (i >= 0) st[i] = [k, v]; else st.push([k, v]); tri(); }),
+              get: (k) => req(() => { const e = st.find((x) => cmp(x[0], k) === 0); return e ? e[1] : undefined; }),
+              getAll: (q) => req(() => st.filter((e) => plage(q)(e[0])).map((e) => e[1])),
+              getAllKeys: (q) => req(() => st.filter((e) => !q || plage(q)(e[0])).map((e) => e[0])),
+              delete: (q) => req(() => { const f = plage(q); for (let i = st.length - 1; i >= 0; i--) if (f(st[i][0])) st.splice(i, 1); })
+            });
+            return tx;
+          } };
+      };
+      const idb = { open(nom) { const r = {}; setTimeout(() => { const neuve = !bases[nom]; r.result = base(nom);
+        if (neuve && r.onupgradeneeded) r.onupgradeneeded(); r.onsuccess(); }); return r; } };
+      return { idb, etat, cles: () => (bases.myktamap_handles ? bases.myktamap_handles.blobs.map((e) => e[0]) : []) };
+    };
+    const contexte = () => {
+      const f = fauxIdb();
+      const w = { console: { log() {}, warn() {}, error() {} }, Blob: Blob, ArrayBuffer: ArrayBuffer, setTimeout: setTimeout,
+        Promise: Promise, WeakMap: WeakMap, indexedDB: f.idb, IDBKeyRange: { bound: (l, u) => ({ borne: true, l, u }) },
+        localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, navigator: {} };
+      w.window = w;
+      const ctx = vm.createContext(w);
+      vm.runInContext("var localStorage = window.localStorage, indexedDB = window.indexedDB, IDBKeyRange = window.IDBKeyRange," +
+        " navigator = window.navigator;", ctx);
+      vm.runInContext(R, ctx, { filename: "planRegistry.js" });
+      return { PR: w.PlanRegistry, f };
+    };
+    // ZIP minimal (STORE, un fichier) : en-tête local, données, répertoire central, fin de répertoire.
+    const zip = (n) => {
+      const data = Buffer.alloc(n, 7), nom = Buffer.from("a.bin");
+      const loc = Buffer.alloc(30); loc.writeUInt32LE(0x04034b50, 0); loc.writeUInt32LE(n, 18); loc.writeUInt32LE(n, 22);
+      loc.writeUInt16LE(nom.length, 26);
+      const cen = Buffer.alloc(46); cen.writeUInt32LE(0x02014b50, 0); cen.writeUInt32LE(n, 20); cen.writeUInt32LE(n, 24);
+      cen.writeUInt16LE(nom.length, 28);
+      const fin = Buffer.alloc(22); fin.writeUInt32LE(0x06054b50, 0); fin.writeUInt16LE(1, 8); fin.writeUInt16LE(1, 10);
+      fin.writeUInt32LE(46 + nom.length, 12); fin.writeUInt32LE(30 + nom.length + n, 16);
+      return new Uint8Array(Buffer.concat([loc, nom, data, cen, nom, fin]));
+    };
+    const ranger = async (PR, id, octets, pas, opts) => {
+      const e = PR.rangerEnMorceaux(id);
+      for (let d = 0; d < octets.length; d += pas) await e.ajouter(octets.subarray(d, Math.min(octets.length, d + pas)));
+      return e.terminer(Object.assign({ verifier: PR.zipLisible }, opts || {}));
+    };
+    const octetsDe = async (b) => new Uint8Array(await b.arrayBuffer());
+    const morceauxDe = (f, id) => f.cles().filter((k) => Array.isArray(k) && k[0] === id);
+
+    const { PR, f } = contexte();
+    t("prise exposée : PlanRegistry.rangerEnMorceaux, zipLisible (saveBlob/getBlob/removeBlob gardés)",
+      typeof PR.rangerEnMorceaux === "function" && typeof PR.zipLisible === "function" &&
+      typeof PR.saveBlob === "function" && typeof PR.getBlob === "function" && typeof PR.removeBlob === "function");
+    const seul = new Blob([zip(50)]);
+    const s0 = await PR.saveBlob("loc", seul);
+    t("sans copie en morceaux : saveBlob range le Blob tel quel, getBlob le rend (comportement inchangé)",
+      s0.ok && f.cles().length === 1 && (await PR.getBlob("loc")) === seul);
+    const z1 = zip(1000);
+    const r1 = await ranger(PR, "ext_a", z1, 300);
+    const b1 = await PR.getBlob("ext_a");
+    t("rangée en 4 morceaux : fiche + morceaux [id, gen, i], getBlob rend le Blob composé octet pour octet",
+      r1.ok && morceauxDe(f, "ext_a").length === 4 && !!b1 && b1.size === z1.length &&
+      Buffer.compare(Buffer.from(await octetsDe(b1)), Buffer.from(z1)) === 0);
+    t("zipLisible : ZIP entier vrai, tronqué (pas de fin de répertoire) ou sans « PK » faux",
+      (await PR.zipLisible(b1)) && !(await PR.zipLisible(b1.slice(0, b1.size - 10))) &&
+      !(await PR.zipLisible(new Blob([new Uint8Array(40)]))));
+    const refus = await ranger(PR, "ext_a", zip(400), 300, { verifier: async () => false });
+    t("🩸 copie refusée par verifier : code illisible, ses morceaux effacés, l'ancienne copie intacte",
+      !refus.ok && refus.code === "illisible" && morceauxDe(f, "ext_a").length === 4 &&
+      (await PR.getBlob("ext_a")).size === z1.length);
+    f.etat.quota = true;
+    let erreur = null;
+    try { await PR.rangerEnMorceaux("ext_a").ajouter(new Uint8Array(10)); } catch (e) { erreur = e; }
+    f.etat.quota = false;
+    t("quota plein à l'écriture d'un morceau : erreur code « stockage », l'ancienne copie intacte",
+      !!erreur && erreur.code === "stockage" && morceauxDe(f, "ext_a").length === 4 &&
+      (await PR.getBlob("ext_a")).size === z1.length);
+    let refusBlob = false;
+    try { await PR.rangerEnMorceaux("ext_a").ajouter(new Blob(["x"])); } catch (e) { refusBlob = /ArrayBuffer/.test(e.message); }
+    t("🩸 ajouter refuse un Blob (lu ailleurs, il ramènerait le défaut WebKit) : octets seulement", refusBlob);
+    const z2 = zip(500);
+    const r2 = await ranger(PR, "ext_a", z2, 300);
+    const gens = new Set(morceauxDe(f, "ext_a").map((k) => k[1]));
+    t("nouvelle génération complète et relue : bascule, anciens morceaux effacés (une seule génération)",
+      r2.ok && gens.size === 1 && (await PR.getBlob("ext_a")).size === z2.length);
+    const c = await PR.getBlob("ext_a");
+    const n0 = f.cles().length;
+    t("🩸 saveBlob(id, sa propre copie composée) : rien réécrit (sinon ses morceaux partaient sous lui)",
+      (await PR.saveBlob("ext_a", c)).ok && f.cles().length === n0 && (await PR.getBlob("ext_a")).size === z2.length);
+    t("saveBlob(autre id, copie composée) : recopiée en morceaux sous le nouvel id",
+      (await PR.saveBlob("ext_b", c)).ok && morceauxDe(f, "ext_b").length > 0 &&
+      Buffer.compare(Buffer.from(await octetsDe(await PR.getBlob("ext_b"))), Buffer.from(z2)) === 0);
+    t("saveBlob d'un seul tenant sur une copie en morceaux : morceaux effacés dans la même transaction",
+      (await PR.saveBlob("ext_b", seul)).ok && morceauxDe(f, "ext_b").length === 0 && (await PR.getBlob("ext_b")) === seul);
+    const ab = PR.rangerEnMorceaux("ext_c");
+    await ab.ajouter(new Uint8Array(5)); await ab.abandonner();
+    t("abandonner : aucun morceau ni fiche laissés", !f.cles().includes("ext_c") && morceauxDe(f, "ext_c").length === 0);
+    t("removeBlob : fiche et morceaux de toutes générations effacés, rien d'un autre plan",
+      (await PR.removeBlob("ext_a")) && !f.cles().includes("ext_a") && morceauxDe(f, "ext_a").length === 0 &&
+      f.cles().includes("loc") && (await PR.getBlob("ext_a")) === null);
+    t("plan supprimé (PlanRegistry.remove) : removeBlob appelé", /function remove\(id\)[\s\S]{0,400}removeBlob\(id\)/.test(R));
+    const appelants = fs.readdirSync("js").filter((x) => x.endsWith(".js") && x !== "planRegistry.js" &&
+      /rangerEnMorceaux\(/.test(lire("js/" + x)));
+    t("🩸 sans extension : aucun module community n'appelle rangerEnMorceaux (copie d'un seul tenant inchangée)",
+      appelants.length === 0);
+    t("lecteurs bruts du store : orphelins sans clé tableau (memInspector), poids « dont ☁️ » par id de clé (homeProfile)",
+      /typeof id !== "string" \|\| vivants\.has\(id\)/.test(lire("js/memInspector.js")) &&
+      /Array\.isArray\(cur\.key\) \? cur\.key\[0\] : cur\.key/.test(lire("js/homeProfile.js")));
   }
 
   console.log("");

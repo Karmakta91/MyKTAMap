@@ -498,6 +498,22 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   une erreur rejetée porte la raison affichée au bilan, déjà traduite), `taille` (facultatif, 0 si à jour) pour la
   confirmation au-delà de 200 Mo. Côté app : `KtaExtensions.garderHorsLigneExtension(registreId, opts) → { ok, raison }`
   et `tailleHorsLigneExtension(registreId)` ; sans extension : `{ ok: false }` et `null`.
+- **Copie gardée en morceaux** (prise du registre, `js/planRegistry.js`) : `PlanRegistry.rangerEnMorceaux(id) → { ajouter(octets)
+  → Promise, terminer({ type?, verifier? }) → Promise<{ ok, blob?, code?, error? }>, abandonner() → Promise }` range une copie
+  tranche par tranche (une extension qui déchiffre un plan : jamais le plan entier en mémoire). `ajouter` ne prend que des
+  octets (ArrayBuffer ou vue) et en fait un Blob **en mémoire** ; un Blob lu dans une autre base est refusé. Chaque morceau
+  est un enregistrement du store `blobs` sous la clé `[id, gen, i]`, la clé `id` porte une fiche `{ format, gen, morceaux,
+  size, type }` ; `getBlob(id)` rend un Blob composé des morceaux relus (rien recopié, place disque = une fois le plan).
+  `terminer` relit les morceaux, appelle `verifier(blob)` (ex. `zipLisible`) et seulement alors bascule la fiche et efface
+  l'ancienne copie (Blob d'un seul tenant ou autre génération) dans la même transaction : copie illisible → `code:
+  "illisible"`, rien ne change ; quota → `code: "stockage"`, morceaux de la tentative effacés. `removeBlob` / `remove` effacent
+  fiche et morceaux. `saveBlob(id, getBlob(id))` ne réécrit rien (le réécrire d'un seul tenant casserait la copie) ; une copie
+  d'un seul tenant (ZIP local, Générateur, import, ancienne copie) se range et se lit comme avant. 🩸 Pourquoi : sous WebKit,
+  un Blob composé de Blobs d'une **autre** base, rangé puis séparé de ses sources effacées, devient illisible
+  (NotFoundError) jusqu'à la relance du navigateur. `PlanRegistry.zipLisible(blob) → Promise<bool>` : « PK » au début, fin
+  de répertoire central dans les 64 Kio de fin, un octet relu par morceau (tous les 4 Mio pour un Blob d'un seul tenant).
+  Sans extension : aucun module community n'appelle `rangerEnMorceaux` (`check-extensions.js` §10, vrai navigateur :
+  `scripts/smoke/checkup-plan-morceaux.js`, Chromium et WebKit).
   Un plan ☁️ ouvert est gardé selon « Mémoriser le plan dans l'app » ; une copie déjà gardée est toujours mise à jour.
 - **Publier un plan local** (v2.9.0) : la fiche ℹ️ d'un plan local appelle `publierPlan({ blob, nom })` (archive gardée,
   sinon ZIP choisi), puis propose de remplacer la copie locale : `PlanRegistry.transferAssociatedData(ancien, nouveau)`

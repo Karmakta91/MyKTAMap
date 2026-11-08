@@ -642,6 +642,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-icone-defaut.js` | Icône d'un point sans tag quand le plan-config déclare l'ancien pin par défaut |
 | `smoke/checkup-icones-zip.js` | Icônes personnalisées embarquées dans un plan ZIP |
 | `smoke/checkup-import-masse.js` | Copie réelle (lisible) d'un ZIP mémorisé par l'import multiple |
+| `smoke/checkup-plan-morceaux.js` | Copie d'un plan rangée en morceaux dans le registre, relue après rechargement (Chromium et WebKit) |
 | `smoke/checkup-import-session-partage.js` | Import d'un fichier de session sur plan local et plan partagé par une extension simulée |
 | `smoke/checkup-jonction-calque-niveau.js` | Jonction d'un calque de données affichée sur chaque niveau qu'elle relie |
 | `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
