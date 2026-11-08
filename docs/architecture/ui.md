@@ -2312,7 +2312,8 @@ icônes.
   (liseré doré, point doré de 10 px). Bandeau de guidage et boîte 🪜 : même boîte.
 - **Rangée du haut** (row-reverse, place de chaque bouton par `order`, de droite à gauche) : ✕, ≡, 🚨, ❓, ⚙️, et
   🔍 Rechercher à hauteur d'yeux seulement (`vue3d.js > _majRechercheHaut` ; en ✏️ Édition il est en tête de la colonne
-  d'outils), sur **une seule ligne** au téléphone (décision produit ; 390 px et paysage 852 × 393 vérifiés, § 43). ⚙️ ouvre la **tuile Réglages** (`#kta-v3d-reglages`,
+  d'outils), sur **une seule ligne** au téléphone (décision produit ; 390 px et paysage 852 × 393 vérifiés, § 43).
+  ⚙️ ouvre la **tuile Réglages** (`#kta-v3d-reglages`,
   `vue3d.js > _basculerReglages`) : petit panneau ancré sous ⚙️, aligné à droite, au-dessus de tout dans la vue
   (posé en dernier dans le DOM), à la boîte de la fenêtre ⚙️ Réglages (rayon 14 px), chaque réglage sur une **ligne
   de la fenêtre Réglages** (`.kta-perf-ultra-row` : 13 px gras, rayon 6, liseré `--kta-bordure`, survol
@@ -2346,7 +2347,11 @@ icônes.
   `myktamap_v3d_limiter_portee_v1`, libellé complet « … (anti-crash mémoire) » dans le titre ; décoché : question
   `ktaConfirm`, cran « Tout le plan » au bout du curseur de portée ; recoché à chaque ouverture au doigt), tous de cet
   appareil ; trois curseurs, ☀️ et 🛡️ `disabled` quand une greffe fige les réglages (`reglagesFiges`), titre suffixé
-  « indisponible pendant une partie » ; effets : `tracking.md` § Vue 3D › Lampe et › Limiter la portée).
+  « indisponible pendant une partie » ; effets : `tracking.md` § Vue 3D › Lampe et › Limiter la portée), puis
+  🏗️ **Niveaux** (plan multi-niveau seulement, `.kta-v3d-niveaux-vus`) : le nom sur sa ligne, dessous trois choix
+  exclusifs côte à côte, Voisins / Tous / Le mien (`aria-pressed`, pastille ronde au lieu de la case,
+  `myktamap_v3d_niveaux_vus_v1`, cet appareil ; au doigt, Voisins à chaque ouverture ; effets : `tracking.md` § Vue 3D
+  › Niveaux voisins).
   La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼)
   sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier

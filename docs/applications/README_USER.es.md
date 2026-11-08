@@ -564,6 +564,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - **🔦 Haz**: un cursor de 40 a 160° (71° por defecto) ajusta la anchura del haz; cuanto más ancho, más se funde su borde en la oscuridad. Se guarda en este dispositivo.
 - **☀️ Pleno día**: un sol rasante, siempre del mismo lado (el noroeste del plano, o su esquina superior izquierda si el norte no está calibrado): las caras vueltas hacia él quedan claras, las demás más oscuras, y se lee el relieve de pilares y juntas; una ligera niebla clara aclara lo lejano. Tu linterna sigue encendida con su ajuste (bájala al 25 % para que sea discreta). Funciona también en ✏️ Edición (sin marcar: la luz plana para dibujar). Se guarda en este dispositivo.
 - **🛡️ Limitar el alcance (anticaídas de memoria)**: marcada por defecto (alcance hasta 100 m, alejamiento de ✏️ Edición hasta 150 m). Desmárcala (una pregunta te avisa: en un plano grande, el teléfono puede bloquearse por falta de memoria) para ver **todo el plano**: el cursor 🔭 Alcance pasa enseguida a su nuevo paso «Todo el plano», ✏️ Edición se aleja hasta mostrar el plano entero y la niebla desaparece. En el teléfono, la casilla vuelve a marcarse cada vez que se abre la vista; en el ordenador, sigue desmarcada.
+- **🏗️ Niveles** (plano de varios niveles): **Vecinos**, por defecto, muestra también los niveles justo encima y justo debajo del tuyo, a su profundidad real (📉 Niveles); **Todos** muestra todos los niveles (más pesado para el teléfono); **El mío**, solo tu nivel. Los ves por un pozo, al final de una galería en pendiente o en ✏️ Edición (solo los de abajo: los de arriba taparían el tuyo), sin sus carteles. Siempre caminas por tu nivel: otro nivel nunca bloquea el paso, y solo cambias de nivel por un paso, una galería en pendiente o ▲ ▼. En el teléfono, vuelve a Vecinos cada vez que se abre la vista; en el ordenador, tu elección se queda.
 - Durante una partida, el alcance vuelve a 30 m, la lámpara a 100 %, el haz a 71° y Pleno día se apaga (ajustes en gris), y luego vuelven tus ajustes.
 
 #### 🏛️ Las tres representaciones
@@ -617,7 +618,7 @@ Cada paso o acceso tiene su volumen, donde está.
 
 Dónde y cómo se dibuja un paso:
 
-- Se abre **en el suelo** hacia un nivel de abajo, **en el techo** hacia un nivel de arriba (sube y se pierde en la oscuridad), ambos para un paso entre tres niveles, con un marco dorado en el suelo.
+- Se abre **en el suelo** hacia un nivel de abajo, **en el techo** hacia un nivel de arriba, ambos para un paso entre tres niveles, con un marco dorado en el suelo. Va de un nivel a otro a su **profundidad real** (📉 Niveles): la escalera sube o baja hasta el suelo del otro nivel, el pozo atraviesa la roca entre los dos. Sin profundidades indicadas, los niveles se tocan: el paso se abre directamente sobre el otro nivel.
 - Su cartel tiene un borde del color de las uniones y la marca **↕**. Sigue legible hasta 1 m.
 - Se dibuja **en la galería** de cada nivel, del lado de su punto, aunque el punto esté al lado para que el mapa se lea bien (galería a menos de 10 m).
 - Una conexión validada de ese nivel da el lugar exacto. Cerca de un cruce gana la galería más cercana; una conexión validada lo decide.
@@ -1219,6 +1220,8 @@ Cada nivel tiene tres cifras, que se ajustan en **⚙️ Ajustes › 📐 Mapa �
 - **Suelo**: su profundidad bajo la superficie, en metros (negativo hacia abajo). Vacío = sin indicar; **Sin** = un nivel que no es una planta (un levantamiento antiguo colocado encima, por ejemplo).
 - **Altura**: la altura de sus galerías (si no, 2 m). La vista 3D y ⛏️ Volumen explotado la usan.
 - **Separación**: el espesor entre el techo del nivel y el suelo del nivel de arriba. **Negativa** cuando los dos niveles se entrelazan: −1,5 = el techo sube 1,5 m por encima del suelo del nivel de arriba. Cambiar la separación desplaza este nivel **y los de debajo**.
+
+Si dos niveles seguidos tienen cifras que no encajan (el suelo del nivel de arriba más bajo que el de abajo, o dos niveles que se solapan al menos la altura de uno de ellos), aparece un aviso ⚠️ debajo de la tabla y la fila queda marcada; nada se bloquea, la vista 3D los coloca uno junto al otro.
 
 El creador del mapa los propone en el Generador; lo que corriges aquí se queda en tu dispositivo y prevalece. **↺ Valores del mapa** vuelve a los del mapa. Indicar los suelos alarga las rutas que pasan por un pozo: su longitud deja de medirse en plano.
 

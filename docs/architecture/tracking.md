@@ -1585,7 +1585,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `_rubanPente`) ; chevrons du guidage posés sur la pente (`_penteDuTroncon`) ; aperçu du guidage projeté aussi sur
   les tronçons de changement de niveau (`itiGuidage.js > _niveauxSegments`) : sur la pente, on reste guidé, jamais
   « rejoindre » ni recalcul. Consigne « descendre / monter la pente vers le niveau n » (ci-dessous, Guidage).
-  Hors de ce lot : niveaux voisins affichés ensemble, entremêlement (la 3D reste construite pour un niveau à la fois).
+  L'autre niveau, montré en voisin (ci-dessous, Niveaux voisins), se voit au bout de la pente.
   `checkup-vue-3d.js` § 14 octies (`KTA_V3D_SEUL=pente`).
 - **Geste d'un changement de niveau** (`_lancerGeste`, `_majGeste`, décision produit) : fondu noir (`GESTE.fondu`
   250 ms, `.kta-v3d-fondu` au fond des jetons sombres, sous les boutons) de part et d'autre de la **bascule**, où la
@@ -1626,8 +1626,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   est celui du dessin, arbitraire : seul, il mettait le haut de la volée face à qui arrive),
   `jpe` / `peo` puits de 1,2 m à échelons (tous les 0,3 m, deux montants), `jps`
   puits nu, `pa` tube de 0,8 m à grille. Ouvert dans le **sol** vers un niveau lié au-dessous, dans le **plafond** vers
-  un niveau lié au-dessus, les deux entre trois niveaux ; parois (matériau des galeries) sur 6 m au-delà (le reste se perd dans le
-  noir). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
+  un niveau lié au-dessus, les deux entre trois niveaux ; **altitudes réelles** (`_etenduePassage`, décision produit) :
+  parois (matériau des galeries) de notre sol au plafond du niveau lié le plus proche dessous, de notre plafond au sol
+  de celui du dessus (aucune paroi quand les niveaux se chevauchent), escalier jusqu'au sol du niveau lié (au moins
+  0,3 m), échelle d'un sol à l'autre (montants d'un mètre au-delà) — la même altitude que les niveaux voisins montrés ;
+  sans niveau lié de ce côté (surface, aération), 6 m qui se perdent dans le noir. L'arrivée d'un passage (raccord
+  validé, sinon le POI ramené en galerie) n'en dépend pas (§ 44). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
   disque de ciel (sprite clair non éclairé) au sommet de `peo` / `eso`. Cadre doré au sol d'un passage. Un tracé
   `jonction` (filtre de son type respecté) devient une **galerie inclinée** (ci-dessus). ⚠️ contrat : les
   **bouches** marquent le gabarit (stencil, `boucheSol` = 1, `bouchePlafond` = 2, `renderOrder` −1, ni couleur ni
@@ -2293,6 +2297,32 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (🩸 posée 6 mm au-dessus et départagée par la profondeur, elle dépendait de la précision du tampon de profondeur).
 - **Sol et plafond noirs 🧱 coupé** (décision produit, `_grainSol`) : carré qui suit et pièces des galeries noirs,
   sans grain, dans les trois rendus ; allumé, le grain calcaire. Le matériau change, rien n'est reconstruit.
+
+### Niveaux voisins (QCM du 07/11/2026, lot C du multi-niveau en 3D)
+
+- **Réglage** ⚙️ « 🏗️ Niveaux » (`reglerNiveauxVus`, `config.js > getVue3DNiveauxVus`,
+  `myktamap_v3d_niveaux_vus_v1`, réglage de cet appareil) : **Voisins** (défaut : le niveau juste au-dessus et celui
+  juste au-dessous, parmi ceux qui portent quelque chose, dans l'ordre de ▲▼ : `_niveauxEdition`), **Tous**, **Le
+  mien**. ⚠️ contrat (décision produit) : au doigt, retour à Voisins à chaque ouverture (`_niveauxVusVoulu`, réécrit sur
+  l'appareil) ; au pointeur fin, retenu. Ligne cachée sur un plan à un niveau.
+- **Construction** (`_voisinsPreparer`, `_voisinNeuf`, `_gererVoisins`, `_construireTuileVoisin`) : mêmes fonctions de
+  tuile que le niveau actif (même rendu, mêmes filtres : un niveau masqué au ≡ ne se montre pas), modèle et hauteur du
+  voisin, groupe décalé de son **altitude** (`_altitudeVoisin` : `KtaGalerie.denivele`, sols et hauteurs du lot A, repli
+  sans sols d'une hauteur de galerie par niveau franchi comme la galerie inclinée ; jamais du mauvais côté, au pire à la
+  même altitude). Mixte et structures : sol et plafond d'un seul tenant au voisin aussi (`_placerVoisins`). Sans
+  panneaux de POI (dessinés sans test de profondeur pour rester lisibles, ils se liraient à travers la roche et se
+  toucheraient pour un objet hors d'atteinte) ni volumes de passage (le puits du niveau actif descend jusqu'au voisin).
+  🩸 Gabarit : sol, plafond et rubans des voisins prennent des copies sans gabarit (`_matsVoisins`), sinon la bouche
+  d'un puits trouerait aussi le fond qu'on voit par elle.
+- **Niveau actif d'abord** : ni la règle du pas, ni la visée (`_pointVise`), ni les fiches, ni les passages, ni le
+  suivi ne lisent les voisins ; ils se voient et cachent ce qui est derrière eux. Le niveau actif ne change que par un
+  passage, une galerie inclinée ou ▲▼. **Vue d'édition** : rien au-dessus du niveau actif (il couvrirait la scène,
+  comme son plafond qu'elle retire), les voisins du dessous sans plafond.
+- **Mémoire** (décision produit) : seulement les tuiles à portée (même rayon, même 🛡️ que le niveau actif),
+  construites quand celles du niveau actif sont toutes posées, `VOISINS_PAR_IMAGE` (2) par image ; un voisin inchangé
+  (altitude, hauteur, rendu, 🧱, données, filtres) est gardé quand la scène change de niveau (galerie inclinée, ▲▼).
+  Mesures : `ETUDE_VUE_3D.md` § Niveaux voisins. Relevé : `etat().voisins` ; checkup `checkup-vue-3d.js` § 44
+  (`KTA_V3D_SEUL=voisins`, `KTA_V3D_PERF=voisins` pour le plan lourd).
 
 ### Rechercher et y aller en 3D (QCM du 08/11/2026)
 

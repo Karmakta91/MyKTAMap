@@ -564,6 +564,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
 - **☀️ Daylight**: a low sun, always from the same side (the north-west of the map, or its top-left corner if north is not calibrated): faces turned towards it are bright, the others darker, so the relief of pillars and joints shows; a light pale haze fades the distance. Your lamp stays on at its setting (turn it down to 25% to make it discreet). Also works in ✏️ Edit (unticked: flat lighting for drawing). Kept on this device.
 - **🛡️ Limit range (prevents memory crashes)**: checked by default (range up to 100 m, ✏️ Edit zoom-out up to 150 m). Uncheck it (a question warns you: on a large map, the phone may crash for lack of memory) to see **the whole map**: the 🔭 Range slider jumps straight to its new "Whole map" step, ✏️ Edit zooms out until the whole map shows, and the fog goes away. On a phone, the box is checked again each time the view opens; on a computer, it stays unchecked.
+- **🏗️ Levels** (multi-level map): **Neighbours**, the default, also shows the levels just above and just below yours, at their real depth (📉 Levels); **All** shows every level (heavier for the phone); **Mine**, your level only. You see them through a shaft, at the end of a sloping gallery, or in ✏️ Edit (only the ones below: the ones above would hide yours), without their signs. You always walk on your own level: another level never blocks your steps, and you only change level through a way, a sloping gallery or ▲ ▼. On a phone, back to Neighbours each time the view opens; on a computer, your choice stays.
 - During a game, the range goes back to 30 m, the lamp to 100%, the beam to 71° and Daylight is off (settings greyed out), then your settings come back.
 
 #### 🏛️ The three renderings
@@ -617,7 +618,7 @@ Each way through or access has its volume, where it is.
 
 Where and how a way through is drawn:
 
-- It opens **in the floor** towards a level below, **in the ceiling** towards a level above (it rises and fades into the dark), both for a way between three levels, with a golden frame on the floor.
+- It opens **in the floor** towards a level below, **in the ceiling** towards a level above, both for a way between three levels, with a golden frame on the floor. It goes from one level to the other at their **real depth** (📉 Levels): the stairs climb or go down to the other level's floor, the shaft crosses the rock between them. With no depths filled in, the levels touch: the way opens straight onto the other level.
 - Its sign has a border in the junction colour and the **↕** mark. It stays readable down to 1 m.
 - It is drawn **in the tunnel** of each level, on its point's side, even when the point is placed beside it for the map's readability (tunnel within 10 m).
 - A validated connection on that level gives the exact spot. Near a crossing, the nearest tunnel wins; a validated connection settles it.
@@ -1219,6 +1220,8 @@ Each level has three figures, set in **⚙️ Settings › 📐 Map › 📉 Lev
 - **Floor**: its depth below the surface, in metres (negative goes down). Empty = not filled in; **None** = a level that is not a floor (an old survey stacked above, for instance).
 - **Height**: the height of its galleries (otherwise 2 m). The 3D view and ⛏️ Mined volume use it.
 - **Gap**: the thickness between the level's ceiling and the floor of the level above. **Negative** when the two levels interlock: −1.5 = the ceiling rises 1.5 m above the floor of the level above. Changing the gap moves this level **and the ones below it**.
+
+If two successive levels have figures that do not fit together (the floor of the upper level lower than the one below, or two levels overlapping by at least the height of one of them), a ⚠️ warning shows under the table and the row is marked; nothing is blocked, the 3D view sets them side by side.
 
 The map creator suggests them in the Generator; what you correct here stays on your device and takes priority. **↺ Map values** goes back to the map's own. Filling in floors lengthens routes that use a shaft: their length is no longer measured flat.
 
