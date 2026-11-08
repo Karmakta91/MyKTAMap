@@ -162,6 +162,9 @@ node scripts/check-doc-sidebar.js || exit $?
 # Selection multiple et conversion en lot : compatibilite par ouverture, un seul geste annulable.
 node scripts/check-selection-multi.js || exit $?
 
+# Couper un trace a un sommet : sommet partage, uid neuf pour le second morceau, un seul geste annulable.
+node scripts/check-couper-trace.js || exit $?
+
 # Reprise d'une sortie interrompue (closedBy: crash) et fusion manuelle ; WakeLock.init() au boot.
 node scripts/check-journal-reprise.js || exit $?
 

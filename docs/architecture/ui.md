@@ -2476,11 +2476,19 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
 - **Ajouter** : appui long au milieu d'un segment (segment de fermeture compris pour une forme fermée) ; le sommet
   naît là et se glisse aussitôt ; lâché sans bouger, il reste au milieu.
 - **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point, à côté de **＋**
-  (marqueur Leaflet, `htmlMenu` : deux cibles de 44 px dans `.kta-ajuster-boutons`, contre-tourné sous le plan orienté,
+  (marqueur Leaflet, `htmlMenu` : cibles de 44 px dans `.kta-ajuster-boutons`, contre-tourné sous le plan orienté,
   retiré seul après 6 s ou au premier toucher ailleurs ; ce toucher est avalé — ni fiche, ni outil — mais 🩸 pas son
   appui long : posé sur un sommet ou un milieu, il l'ajuste, même règle qu'en vue 3D ; une souris tenue immobile
   ouvre ce menu à coup sûr, et l'appui suivant sur le sommet partait en pan). Sous le minimum de la forme (2 sommets pour une ligne, 3 pour
-  une surface), ＋ seul : un toast dit pourquoi pas de 🗑️.
+  une surface), pas de 🗑️ : un toast dit pourquoi.
+- **✂️ Couper un tracé** (décision du 08/11/2026) : même menu, troisième bouton `.kta-ajuster-couper`, seulement sur un
+  **sommet intérieur** d'une forme dont la prise déclare `coupable(o)` (tracés : ni `jonction` ni `itinerary`) et
+  `ajouterApres(o, neuf)`. Le premier morceau **garde l'objet** (uid, champs) et finit au sommet coupé (`points` tronqué
+  en place) ; le second, `KtaUid.cloneNeuf(o, "rd")` (uid neuf ; type, niveau, note suivent), commence à ce même sommet,
+  **dupliqué** (copie) : les deux tracés se touchent, l'itinéraire passe toujours. Il entre juste après le premier dans
+  `roadsData`. Pas de coupe en milieu de segment (on ajoute d'abord un sommet), jamais un bout (chaque morceau garde
+  2 points), objets de session seulement. Une écriture (contrat ci-dessous, étiquette `ajuster.histo.couper`), un
+  ⏪ recolle. Garde-fou : `scripts/check-couper-trace.js` (prise réelle de road.js extraite, dans un `vm`).
 - **Insérer à la suite** (＋, QCM du 05/11/2026) : à partir du sommet X, chaque tap sur la carte insère un sommet
   entre le dernier posé et X + 1 (le premier entre X et X + 1), la forme se redessine à chaque point. Forme fermée,
   X dernier : X + 1 = le premier (point ajouté en fin de liste). Ligne, X dernier : la ligne se prolonge. Bandeau
@@ -2500,7 +2508,7 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
 Familles : tracés, zones, structures (polygones et lignes), mesures 📐 (distance et surface). Pas les POI
 (« Repositionner »), pas l'itinéraire calculé. Chaque module expose sa **prise**
 `window.ktaFormesAjustables.<roads|zones|structures|mesure>` = `{ cat, objets(), ferme(o), minimum(o), libelle(o),
-rendre(), aimanter?(x, y, o, exclus), etiquette?(action, o) }` (`cat` lu à chaque geste, `etiquette` = libellé d'historique propre à la famille) ; `objets()` ne rend que les objets de session **visibles** (mêmes filtres
+rendre(), aimanter?(x, y, o, exclus), etiquette?(action, o), coupable?(o), ajouterApres?(o, neuf) }` (`cat` lu à chaque geste, `etiquette` = libellé d'historique propre à la famille) ; `objets()` ne rend que les objets de session **visibles** (mêmes filtres
 que le rendu : `_tracePasseFiltres`, `_zonePasseFiltres`, `_structurePasseFiltres` — niveaux, types, état d'une
 extension), hors objet en cours de tracé.
 
@@ -2537,7 +2545,7 @@ extension), hors objet en cours de tracé.
   poignée et l'aperçu de leur ajustement. Le contour de la sélection par zone, qui emprunte la mesure surface, les
   porte aussi.
 - **Hors de la carte** (vue 3D, vue d'édition) : `KtaAjusterSommets.plan` = `{ saisir(x, y, tol, garder), forme(c),
-  lacher(c, p, tol), supprimer(c), annule() }`, en coordonnées plan : mêmes familles, droits, minimum, aimantation
+  lacher(c, p, tol), supprimer(c), coupable(c), couper(c), annule() }`, en coordonnées plan : mêmes familles, droits, minimum, aimantation
   (`aimanter(…, tol)` : rayon déjà converti par l'appelant) et écriture, plus `inserer(c)` / `poser(p, tolAimant,
   tolFin)` pour l'insertion ; l'appelant mène le geste et l'aperçu
   (`tracking.md` § Vue 3D › Ajuster une forme en vue d'édition).

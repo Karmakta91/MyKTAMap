@@ -5,10 +5,11 @@
  */
 
 // =====================================================================
-// selectionMulti.js — sélectionner N objets d'un coup : conversion (KtaConvertir) ou suppression en lot
+// selectionMulti.js — sélectionner N objets d'un coup : conversion (KtaConvertir), suppression ou niveau en lot
 // =====================================================================
 // La modale de conversion ouvre ce mode ; l'utilisateur désigne des objets (clic, « tous du type », ou
-// ✏️ zone dessinée : js/selectionZone.js), puis ✅ Convertir (la modale revient avec le lot) ou 🗑️ Supprimer.
+// ✏️ zone dessinée : js/selectionZone.js), puis ✅ Convertir (la modale revient avec le lot), 🗑️ Supprimer ou
+// 🏗️ Niveau (plan à plusieurs niveaux seulement : tout le lot, jonctions écartées et comptées).
 // Sans graine (ouvrirZone : bouton « ✏️ Par zone » des modes « supprimer au clic ») : aucune ouverture imposée,
 //   ✅ Convertir masqué (pas de modale qui attend le lot), le tracé de la zone démarre tout de suite.
 // 🩸 La compatibilité est l'OUVERTURE, pas la famille : tracés et fronts (lignes) se mêlent ;
@@ -155,6 +156,7 @@
   let _floater = null;
   let _onValide = null;
   let _calque = [];              // objets de calque vus dans les zones (ignorés, comptés à la confirmation)
+  let _jonctions = [];           // jonctions vues dans les zones (jamais dans le lot, comptées par 🏗️ Niveau)
   let _familles = null;          // familles cochées d'emblée dans la confirmation (null = toutes)
 
   function _dansSel(obj) {
@@ -227,6 +229,13 @@
       ok.textContent = _t("selm.valider", { n: nc });
       ok.disabled = nc === 0;
     }
+    const niv = _floater.querySelector("#kta-selm-niveau");
+    if (niv) {
+      // Plan à un niveau (ou liste refusée pendant un dessin) : pas de bouton.
+      if (!_niveauxProposes()) niv.style.display = "none";
+      niv.textContent = _t("selm.niveau.bouton", { n: _sel.length });
+      niv.disabled = _sel.length === 0;
+    }
     const sup = _floater.querySelector("#kta-selm-suppr");
     if (sup) {
       sup.textContent = _t("selm.supprimer", { n: _sel.length });
@@ -277,6 +286,7 @@
       n++;
     });
     let nc = 0;
+    (r.jonctions || []).forEach(function (j) { if (_jonctions.indexOf(j) < 0) _jonctions.push(j); });
     r.calque.forEach(function (c) {
       if (_calque.some(function (x) { return x.ref === c.ref; })) return;
       _calque.push(c);
@@ -299,6 +309,20 @@
     });
   }
 
+  function _niveauxProposes() {
+    const c = window.APP_CONFIG || {};
+    return typeof window.ktaNiveauxProposes === "function" &&
+      !!window.ktaNiveauxProposes(Number.isInteger(c.activeLevel) ? c.activeLevel : 0);
+  }
+
+  function _changerNiveau() {
+    if (!window.KtaSelectionZone || !_sel.length) return;
+    window.KtaSelectionZone.confirmerEtChangerNiveau(_sel.slice(), _calque.length, _jonctions.length,
+      _familles ? { familles: _familles } : undefined).then(function (bilan) {
+      if (bilan && bilan.changes) fermer();
+    });
+  }
+
   // ── Ouverture / fermeture ────────────────────────────
   function fermer() {
     if (!_actif) return;
@@ -315,6 +339,7 @@
     _floater = null;
     _sel = [];
     _calque = [];
+    _jonctions = [];
     _dernier = null;
     _ouvertRef = null;
     _onValide = null;
@@ -389,6 +414,7 @@
       '<button class="kta-btn kta-btn-ghost" id="kta-selm-tous" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-ghost" id="kta-selm-zone" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-primary" id="kta-selm-ok" type="button" data-selm-mode="sel"></button>' +
+      '<button class="kta-btn kta-btn-ghost" id="kta-selm-niveau" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-danger" id="kta-selm-suppr" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-ghost" id="kta-selm-annuler" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-primary" id="kta-selm-zone-ok" type="button" data-selm-mode="zone"></button>' +
@@ -410,6 +436,7 @@
     });
     _floater.querySelector("#kta-selm-zone-annuler").addEventListener("click", _abandonnerZone);
     _floater.querySelector("#kta-selm-suppr").addEventListener("click", _supprimer);
+    _floater.querySelector("#kta-selm-niveau").addEventListener("click", _changerNiveau);
     _floater.querySelector("#kta-selm-ok").addEventListener("click", function () {
       const lot = _convertibles();
       const cb = _onValide;

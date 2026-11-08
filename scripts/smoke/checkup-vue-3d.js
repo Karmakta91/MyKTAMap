@@ -6966,6 +6966,48 @@ async function sectionAjusterSommets(nav, mode) {
       await attendreScene((await etat()).refaites - 1);
     }
 
+    // ── ✂️ Couper en vue d'édition : sommet intérieur d'un tracé → deux tracés qui partagent le sommet (uid neuf pour
+    // le second), une entrée ⏪ ; pas de ✂️ sur un pilier ni sur un bout de tracé (ajusterSommets.js > _couper) ──
+    {
+      const avC = await pts("rd_aj_r"), nR0 = await ev(function () { return window.getRoads().length; });
+      const gB = await geste(await ecran(avC[0]), 0, 0);
+      const ciseauxBout = await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-couper").count();
+      verifier(gB.e1.menu && ciseauxBout === 0, nom + "✂️ : pas proposé sur le bout d'un tracé", gB.e1.menu);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(100);
+      const gP = await geste(await ecran((await pts("st_aj_p"))[1]), 0, 0);
+      const ciseauxPilier = await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-couper").count();
+      verifier(gP.e1.menu && ciseauxPilier === 0, nom + "✂️ : pas proposé sur un pilier", gP.e1.menu);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(100);
+      const gC = await geste(await ecran(avC[1]), 0, 0);
+      const ciseaux = await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-couper").count();
+      verifier(ciseaux === 1 && gC.e1.menu && !gC.e1.fiche,
+        nom + "✂️ : appui long sans bouger sur un sommet intérieur d'un tracé → ＋, ✂️ et 🗑️", gC.e1.menu);
+      if (ciseaux) await page.locator("#kta-vue3d .kta-v3d-ajuster-menu .kta-ajuster-couper").click();
+      await page.waitForTimeout(150);
+      const coupe = await ev(function (a) {
+        const R = window.getRoads(), i = R.findIndex(function (q) { return q.uid === "rd_aj_r"; });
+        const s = R[i + 1];
+        const p = function (o) { return o ? o.points.map(function (q) { return { x: q.x, y: q.y }; }) : null; };
+        return { n: R.length, premier: p(R[i]), second: p(s), uid: s && s.uid, type: s && s.type, level: s && s.level,
+          typeA: R[i].type, levelA: R[i].level, nAvant: a };
+      }, nR0);
+      const e2 = await etat();
+      const eq = function (a, b) { return JSON.stringify(a) === JSON.stringify(b); };
+      verifier(coupe.n === nR0 + 1 && eq(coupe.premier, avC.slice(0, 2)) && eq(coupe.second, avC.slice(1)) &&
+        coupe.uid && coupe.uid !== "rd_aj_r" && coupe.type === coupe.typeA && coupe.level === coupe.levelA &&
+        e2.undo === gC.e1.undo + 1 && e2.n.coupe === gC.e1.n.coupe + 1,
+      nom + "✂️ : deux tracés qui partagent le sommet coupé, uid neuf pour le second, même type et niveau, une entrée ⏪",
+      { coupe: coupe, undo: [gC.e1.undo, e2.undo] });
+      verifier(await attendreScene(gC.e1.refaites), nom + "✂️ : scène refaite");
+      await ctrlZ();
+      const nR1 = await ev(function () { return window.getRoads().length; });
+      verifier(nR1 === nR0 && eq(await pts("rd_aj_r"), avC), nom + "✂️ : un seul ⏪ rend le tracé entier",
+        { n: [nR0, nR1] });
+      await attendreScene((await etat()).refaites - 1);
+    }
+
     // ── Refus sous le minimum : tracé de 2 points ──
     await ev(function () {
       const r = window.getRoads().filter(function (q) { return q.uid === "rd_aj_r"; })[0];

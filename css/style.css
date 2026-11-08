@@ -19585,9 +19585,13 @@ body.kta-theme-light #kta-osm-mes-floater {
 .kta-selm-floater #kta-selm-ok[disabled],
 .kta-selm-floater #kta-selm-suppr[disabled],
 .kta-selm-floater #kta-selm-zone-ok[disabled] { opacity: .45; cursor: not-allowed; }
-/* Confirmation de la suppression en lot : une case par famille, chacune sur sa ligne (message en pre-line). */
+/* Confirmation de la suppression et du niveau en lot : une case par famille, chacune sur sa ligne (message en
+   pre-line) ; la liste des niveaux au-dessus des cases. */
 .kta-selm-cases { display: block; margin: 10px 0; white-space: normal; }
 .kta-selm-case { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: var(--kta-texte); cursor: pointer; }
+.kta-selm-niveau-liste { display: flex; gap: 8px; align-items: center; margin: 10px 0 0; white-space: normal;
+  color: var(--kta-texte); }
+.kta-selm-niveau-liste select { flex: 1 1 auto; min-width: 0; }
 
 /* Le bouton d'entrée en sélection multiple, dans la modale de conversion. */
 .kta-convert-multi { display: block; width: 100%; margin: 4px 0 12px; }
@@ -20763,15 +20767,16 @@ button.kta-cfg-ligne-action {
 /* Sommets de la mesure 📐 (measure.js > _majSommetsMesure) : rond doré plein, liseré sombre, lisible sur le plan. */
 .kta-mesure-sommet { fill: var(--kta-accent); fill-opacity: 1; stroke: var(--kta-sur-accent); }
 .kta-ajuster-menu { background: none; border: 0; }
-/* ＋ et 🗑️ au sommet : deux cibles de 44 px (largeur totale = ajusterSommets.js > MENU_LARGE). */
+/* ＋, ✂️ et 🗑️ au sommet : cibles de 44 px, 8 px d'écart (ajusterSommets.js > BOUTON_PX, ECART_PX). */
 .kta-ajuster-boutons { display: flex; gap: 8px; }
-.kta-ajuster-suppr, .kta-ajuster-inserer {
+.kta-ajuster-suppr, .kta-ajuster-inserer, .kta-ajuster-couper {
   width: 44px; height: 44px; padding: 0; border-radius: 22px; cursor: pointer; font-size: 20px; line-height: 1;
   background: var(--kta-surface); color: var(--kta-texte); border: 2px solid var(--kta-erreur);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 .kta-ajuster-inserer { border-color: var(--kta-accent); font-weight: 700; }
-.kta-ajuster-suppr:focus-visible, .kta-ajuster-inserer:focus-visible {
+.kta-ajuster-couper { border-color: var(--kta-interaction); }
+.kta-ajuster-suppr:focus-visible, .kta-ajuster-inserer:focus-visible, .kta-ajuster-couper:focus-visible {
   outline: 2px solid var(--kta-interaction); outline-offset: 2px;
 }
 .kta-bearing-on .kta-ajuster-boutons { transform: rotate(calc(-1 * var(--kta-bearing, 0deg))); }

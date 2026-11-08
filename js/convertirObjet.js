@@ -451,7 +451,7 @@
     else delete obj.niveaux;
   }
 
-  // Niveau posé EN PLACE (même objet, même uid) : une seule règle pour la fiche et le Tableur.
+  // Niveau posé EN PLACE (même objet, même uid) : une seule règle pour la fiche, le Tableur et le lot de la sélection.
   // ⚠️ Zone sur plusieurs niveaux : le niveau d'origine est REMPLACÉ dans `niveaux` (les autres restent).
   function _poserNiveau(obj, niveau) {
     const ancien = Number.isInteger(obj.level) ? obj.level : 0;
@@ -1132,6 +1132,8 @@
     changerNiveau: changerNiveau,   // liste « Niveau » de la popup (multi-niveau)
     changerNiveauxJonction: changerNiveauxJonction,   // fiche d'une jonction (fromLevel / toLevel)
     changerNiveauxZone: changerNiveauxZone,   // fiche d'une zone (niveaux en plus de `level`)
+    // Règle seule, sans écriture ni historique : niveau en lot de la sélection (selectionZone.js > niveauLot).
+    poserNiveau:   _poserNiveau,
     appliquerTableau: appliquerTableau,   // « Appliquer à la session » du Tableur
     listerCibles:  listerCibles,
     estOuvert:     _estOuvert,
