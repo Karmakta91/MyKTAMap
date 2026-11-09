@@ -104,8 +104,9 @@
 // sous sa roche = parois sur 6 m, rien en travers (rayon vertical), coins fermés, écart +1 m et entremêlé.
 // Jonction de niveaux (53, =jonction-tremie) : zone jonction d'un calque qui porte la pente en mixte et structures, trémie
 // au-dessus de la montée (rayons verticaux à chaque pas, en montant et en descendant, 4 écarts, avec et sans zone).
-// Structures au-dessus d'une trémie (54, =jonction-piliers) : pilier, mur et front du +1 à cheval sur la zone jonction
-// descendus jusqu'au plafond de la zone (à son sol au-dessus de leur base), vus du 0 et du +1, écart +4 m et entremêlé.
+// Structures dans une trémie (54, =jonction-piliers) : pilier, mur et front du +1 à cheval sur la zone jonction
+// descendus jusqu'au plafond de la zone (à son sol au-dessus de leur base), ceux du 0 montés à son plafond, vus du 0
+// et du +1, écart +4 m et entremêlé.
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
@@ -10405,19 +10406,22 @@ async function sectionJonctionTremie(nav) {
   }
 }
 
-// ── 54. Structures au-dessus d'une trémie : jamais suspendues (vue3d.js > _piedSurTremie, rayon ;
+// ── 54. Structures dans une trémie : jamais suspendues (vue3d.js > _structureSurTremie, _prolongerDansZone, rayon ;
 // KTA_V3D_SEUL=jonction-piliers) ─────────────────────────────────────────────────────────────────────────────────────
 // Plan FICTIF en mémoire, réseau du § 53 : niveaux 0 et +1 (2,5 m), tracé jonction 0 → +1 de x = 0 à 30, zone jonction
 // x ∈ [4, 20], z ∈ [−6, 6]. Structures du +1 à cheval sur le bord de la zone (centre dehors : pas posées sur la pente) :
 // pilier sur le bord nord là où le plafond de la zone est sous le sol du +1 (A, x = 10), pilier là où il passe au-dessus
 // (B, x = 19), pilier sur le bout x = 20 (C), mur sur le bord sud (D), front en ligne qui y entre (F) ; pilier du +1
-// tout entier hors de la zone (E). Rayon horizontal depuis la zone vers chacune, entre son appui et sa base (appui :
-// plafond de la zone s'il est sous la base, sinon son sol — K.altitude) : touche d'abord sa face (famille opaque ou
-// murs) à la distance attendue ; vers E, sous sa base, rien d'elle. Mixte et structures ; scène au 0 (+1 en
-// « Voisins », vu d'en dessous) et au +1 (vu d'en haut, la descente) ; écart +4 m puis +1,2 m (entremêlé).
+// tout entier hors de la zone (E). Structures du 0 à cheval sur le bord, sommet sous le plafond de la zone : pilier (G,
+// x = 16) et mur (H, x = 6, garde son retrait sous le plafond) ; pilier du 0 hors de la zone (J). Rayon horizontal
+// depuis la zone vers chacune, entre son appui et sa base (appui : plafond de la zone s'il est sous la base, sinon son
+// sol — K.altitude), ou entre son sommet et le plafond de la zone : touche d'abord sa face (famille opaque ou murs) à
+// la distance attendue ; vers E sous sa base et vers J au-dessus de son sommet, rien d'elles. Mixte et structures ;
+// scène au 0 (+1 en « Voisins », vu d'en dessous) et au +1 (vu d'en haut, la descente) ; écart +4 m puis +1,2 m
+// (entremêlé).
 async function sectionJonctionPiliers(nav) {
   const nom = "§ 54 ";
-  console.log("§ 54 — structures au-dessus d'une trémie : descendues jusqu'à l'appui, jamais suspendues");
+  console.log("§ 54 — structures dans une trémie : descendues jusqu'à l'appui, montées au plafond, jamais suspendues");
   const t = await pageNiveauxFictifs(nav, "v3d-checkup-jonction-piliers", [0, 1], { "0": -25, "1": -21 },
     { "0": 2.5, "1": 2.5 }, function () {
       const P = window.__fxP;
@@ -10433,16 +10437,23 @@ async function sectionJonctionPiliers(nav) {
         { uid: "st_jp_c", type: "pilier-1", level: 1, points: rect(19.5, 2.5, 21.5, 3.5) },
         { uid: "st_jp_d", type: "mur", level: 1, points: rect(9, -6.8, 11, -5.6) },
         { uid: "st_jp_f", type: "front-1", level: 1, points: [P(14, -8), P(14, -5)] },
-        { uid: "st_jp_e", type: "pilier-1", level: 1, points: rect(9.5, 8, 10.5, 9) }
+        { uid: "st_jp_e", type: "pilier-1", level: 1, points: rect(9.5, 8, 10.5, 9) },
+        { uid: "st_jp_g", type: "pilier-1", level: 0, points: rect(15.5, -7.5, 16.5, -5.5) },
+        { uid: "st_jp_h", type: "mur", level: 0, points: rect(5, 5.6, 7, 6.8) },
+        { uid: "st_jp_j", type: "pilier-1", level: 0, points: rect(15.5, -9.5, 16.5, -8.5) }
       ]);
-      // Rayons : départ (x, z) dans la zone, direction, face attendue à `d` m (null : aucune face d'elle avant 1 m).
+      // Rayons : départ (x, z) dans la zone, direction, face attendue à `d` m (null : aucune face d'elle avant 1 m) ;
+      // `tete` : structure du 0, rayon entre son sommet `hs` et le plafond de la zone (moins son retrait).
       window.__fxCibles = [
         { k: "A", x: 10, z: 4.6, dir: [0, 0, 1], d: 0.9 },
         { k: "B", x: 19, z: 4.6, dir: [0, 0, 1], d: 0.9 },
         { k: "C", x: 18, z: 3, dir: [1, 0, 0], d: 1.5 },
         { k: "D", x: 10, z: -4.6, dir: [0, 0, -1], d: 1.0 },
         { k: "F", x: 12.5, z: -5.5, dir: [1, 0, 0], d: 1.35 },
-        { k: "E", x: 10, z: 7.8, dir: [0, 0, 1], d: null, appui: [10, 5.9] }
+        { k: "E", x: 10, z: 7.8, dir: [0, 0, 1], d: null, appui: [10, 5.9] },
+        { k: "G", x: 16, z: -4.6, dir: [0, 0, -1], d: 0.9, tete: true, hs: 2.5 },
+        { k: "H", x: 6, z: 4.6, dir: [0, 0, 1], d: 1.0, tete: true, hs: 2.45 },
+        { k: "J", x: 16, z: -8.3, dir: [0, 0, -1], d: null, tete: true, hs: 2.5, appui: [16, -5.9] }
       ];
     });
   const page = t.page;
@@ -10462,12 +10473,16 @@ async function sectionJonctionPiliers(nav) {
             window.__fxCibles.forEach(function (c) {
               const ap = c.appui || [c.x + c.dir[0] * c.d, c.z + c.dir[2] * c.d];
               const pa = P(ap[0], ap[1]), alt = K.altitude(pa.x, pa.y);
+              // Sommet d'une structure du 0 (repère de la scène) et plafond de la zone moins son retrait.
+              const b0 = q.niveau === 0 ? 0 : -q.ecart, haut = b0 + c.hs, cible = alt.plafond - (2.5 - c.hs);
               const appui = alt.plafond <= base + 1e-3 ? alt.plafond : alt.sol;
-              const y = c.d === null ? base - 0.3 : (appui + base) / 2;
+              const y = c.tete ? (c.d === null ? haut + 0.3 : (haut + cible) / 2)
+                : c.d === null ? base - 0.3 : (appui + base) / 2;
+              const ecartOk = c.tete ? cible - haut > 0.05 : base - appui > 0.05;
               const d = P(c.x, c.z), f = K.rayon(d.x, d.y, y, c.dir).faces;
               const v = f.filter(function (o) { return o.famille === "opaque" || o.famille === "murs"; })[0] || null;
               const juste = c.d === null ? !v || v.dist > 1.0
-                : !!v && Math.abs(v.dist - c.d) < 0.03 && f[0] === v && base - appui > 0.05;
+                : !!v && Math.abs(v.dist - c.d) < 0.03 && f[0] === v && ecartOk;
               out.push({ k: c.k, juste: juste, y: +y.toFixed(3), appui: +appui.toFixed(3),
                 vu: f[0] ? f[0].famille + "@" + f[0].dist : null });
             });
@@ -10477,7 +10492,8 @@ async function sectionJonctionPiliers(nav) {
           verifier(r.niveau === niveau && fausses.length === 0,
             nom + "écart +" + ecart + " m, " + rendu + ", scène au " + (niveau ? "+1 (vu d'en haut)" :
             "0 (+1 vu d'en dessous)") + " : piliers, mur et front du +1 à cheval sur la zone descendus jusqu'au " +
-            "plafond de la zone (à son sol là où il passe au-dessus de leur base) ; pilier hors zone inchangé",
+            "plafond de la zone (à son sol là où il passe au-dessus de leur base) ; pilier et mur du 0 montés jusqu'au " +
+            "plafond de la zone ; piliers hors zone inchangés",
             { niveau: r.niveau, fausses: fausses });
           if (CAPTURES && ecart === 4) await capture(page, "jonction-piliers-" + rendu + "-niveau" + niveau);
         }
