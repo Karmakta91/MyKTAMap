@@ -1166,6 +1166,20 @@
         });
       })();
 
+      // Rotation manuelle bloquée : source de vérité MapBearing (clé dédiée), effet immédiat sur les cartes ouvertes.
+      (function _initRotationBloqueeHome() {
+        const cb = document.getElementById("loaderRotationBloqueeCb");
+        if (!cb) return;
+        const mb = window.MapBearing;
+        if (!mb || typeof mb.setRotationBloquee !== "function") {
+          const row = cb.closest("label");
+          if (row) row.style.display = "none";
+          return;
+        }
+        cb.checked = mb.rotationBloquee();
+        cb.addEventListener("change", function () { mb.setRotationBloquee(!!cb.checked); });
+      })();
+
       // Niveau des notifications (Toutes / Essentielles / Silence) : source de vérité OOMGuard (le goulot). Pas de
       // toast de confirmation.
       (function _initNotifsHome() {

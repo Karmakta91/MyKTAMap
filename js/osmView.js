@@ -1945,7 +1945,8 @@
     if (!_rotation && window.MapBearing && typeof window.MapBearing.creerRotationManuelle === "function") {
       _rotation = window.MapBearing.creerRotationManuelle({
         carte: function() { return _osmMap; },
-        apresRotation: _apresRotation
+        apresRotation: _apresRotation,
+        suitUltra: true   // ouverte depuis un plan : son mode ULTRA bloque aussi la rotation
       });
     }
     if (!_rotation) return;

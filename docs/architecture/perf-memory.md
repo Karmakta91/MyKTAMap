@@ -175,6 +175,7 @@ Module de toggles d'optimisation activables pour gérer les crash mémoire sur t
 - `_bindPerfUltraToggles()` appelé après `documentElement.appendChild(modal)`
 - Master ULTRA → `setUltra(value)` qui applique aux 7 `TOGGLES` d'un coup (dont `viewportCull`) + re-render la modale pour refléter
 - Toggles individuels → `set(key, value)` + sync visuel du master (coché si `isUltra()`)
+- **Rotation manuelle** : tant que `isUltra()` est vrai sur le plan ouvert, `mapBearing.js` bloque la rotation manuelle de la carte du plan et de la Vue OSM ouverte depuis lui (abonné à `onChange` ; activer ULTRA redresse la carte), sans écrire le réglage d'appareil « Bloquer la rotation de la carte » de l'accueil. Le plan orienté tourne toujours. Mention sous la case ULTRA (`config.perfultra.ultra.hint`). Détails : `tracking.md` § Rotation manuelle
 
 **Pattern pour ajouter un toggle** :
 1. Ajouter la clé dans `TOGGLES` array de `perfUltra.js`

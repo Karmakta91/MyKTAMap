@@ -44,7 +44,7 @@ function _renderPerfUltraSection() {
     <div class="kta-aide-section">
       <p class="kta-perf-ultra-hint" style="margin:0 0 10px 0;">${window.I18n.t("config.perfultra.intro")}</p>
       ${row("cfg_perf_ultra", window.ktaIcone("rocket") + " " + window.I18n.t("config.perfultra.ultra.label"), s.ultra,
-            "")}
+            window.I18n.t("config.perfultra.ultra.hint"))}
       <div style="border-top:1px solid var(--kta-bordure); margin:10px 0; padding-top:8px;"></div>
       ${row("cfg_perf_decim", window.I18n.t("config.perfultra.decim.label"), s.decim,
             "")}
@@ -804,7 +804,8 @@ function _renderCfgGlobauxLectureSeule() {
   let langue = "", theme = "";
   try { langue = String(window.I18n.getLang ? window.I18n.getLang() : "").toUpperCase(); } catch (e) {}
   try { theme = (window.ThemeManager && typeof window.ThemeManager.isLight === "function" && window.ThemeManager.isLight()) ? t("theme.name.light") : t("theme.name.dark"); } catch (e) {}
-  let carnet = "";
+  let carnet = "", rotation = "";
+  try { rotation = (window.MapBearing && typeof window.MapBearing.rotationBloquee === "function") ? (window.MapBearing.rotationBloquee() ? on : off) : ""; } catch (e) {}
   try { carnet = (window.Journal && typeof window.Journal.isEnabled === "function") ? (window.Journal.isEnabled() ? on : off) : ""; } catch (e) {}
   const lignes = [
     [t("home.lang.label"), langue],
@@ -813,6 +814,7 @@ function _renderCfgGlobauxLectureSeule() {
     [t("config.display.scaledMarkers.label"), c.scaledMarkers !== false ? on : off],
     [t("config.panneaux.label"), c.panneauxAncres === true ? on : off],
     [t("config.zoomBoutons.label"), c.zoomBoutons === true ? on : off],
+    [t("config.rotationBloquee.label"), rotation],
     [t("config.snapdraw.label"), c.snapDraw === true ? (on + " · " + (Number.isFinite(c.snapDrawPx) ? c.snapDrawPx : 12) + " px") : off]
   ];
   return '<div class="kta-aide-section kta-cfg-globaux">' +
