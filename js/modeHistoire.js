@@ -373,7 +373,7 @@
     _modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-histoire-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + t("histoire.modal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("scroll") + " " + t("histoire.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-histoire-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-histoire-tabs" role="tablist">' +
@@ -385,7 +385,7 @@
           '<div class="kta-histoire-pane" id="kta-histoire-pane-note">' +
             '<div class="kta-histoire-note-header">' +
               '<button class="kta-btn kta-btn-ghost kta-histoire-note-mode-btn" type="button" ' +
-                'id="kta-histoire-note-edit-btn" title="' + t("histoire.note.editBtn.title") + '">' + t("histoire.note.editBtn") + '</button>' +
+                'id="kta-histoire-note-edit-btn" title="' + t("histoire.note.editBtn.title") + '">' + window.ktaIcone("pencil") + " " + t("histoire.note.editBtn") + '</button>' +
               '<button class="kta-btn kta-btn-ghost kta-histoire-note-mode-btn" type="button" ' +
                 'id="kta-histoire-note-view-btn" title="' + t("histoire.note.viewBtn.title") + '" style="display:none;">' + t("histoire.note.viewBtn") + '</button>' +
               '<span class="kta-histoire-note-status" id="kta-histoire-note-status">' + t("histoire.note.status.saved") + '</span>' +

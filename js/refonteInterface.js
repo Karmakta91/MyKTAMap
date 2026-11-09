@@ -17,6 +17,9 @@
 (function() {
   "use strict";
 
+  // Icône SVG de l'interface (ktaIcones.js, chargé avant) ; chaîne vide si le module manque.
+  function _ico(nom) { return typeof window.ktaIcone === "function" ? window.ktaIcone(nom) : ""; }
+
   // ── Configuration ──────────────
   // Nouvelle interface imposée : LS_LEGACY est seulement nettoyé.
   const LS_LEGACY = "myktamap_legacy_interface";
@@ -87,46 +90,47 @@
         '</button>' +
       '</div>' +
       '<button class="kta-refonte-header-btn kta-refonte-header-counters" id="kta-refonte-counters-btn" title="' + window.I18n.t("ui.refonte.btn_summary_title") + '" aria-label="' + window.I18n.t("ui.refonte.btn_summary_aria") + '">' +
-        // Chip résumé 📊 visible UNIQUEMENT en mobile portrait (@media max-width: 480px) ; ailleurs, les 5 chips
+        // Chip résumé visible UNIQUEMENT en mobile portrait (@media max-width: 480px) ; ailleurs, les 5 chips
         // individuels + batterie.
         '<span class="kta-refonte-counter kta-refonte-counter-summary" id="kta-refonte-counter-summary" title="' + window.I18n.t("ui.refonte.counter_summary_title") + '">' +
-          '<span class="kta-refonte-counter-icon">📊</span><span class="kta-refonte-counter-val" id="kta-refonte-counter-summary-val">·</span>' +
+          '<span class="kta-refonte-counter-icon">' + _ico("chart-column") + '</span><span class="kta-refonte-counter-val" id="kta-refonte-counter-summary-val">·</span>' +
         '</span>' +
         '<span class="kta-refonte-counter" id="kta-refonte-counter-points" title="' + window.I18n.t("ui.refonte.counter_points_title") + '">' +
-          '<span class="kta-refonte-counter-icon">📍</span><span class="kta-refonte-counter-val">0</span>' +
+          '<span class="kta-refonte-counter-icon">' + _ico("map-pin") + '</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
         '<span class="kta-refonte-counter" id="kta-refonte-counter-roads" title="' + window.I18n.t("ui.refonte.counter_roads_title") + '">' +
-          '<span class="kta-refonte-counter-icon">🛣️</span><span class="kta-refonte-counter-val">0</span>' +
+          '<span class="kta-refonte-counter-icon">' + _ico("m-galerie") + '</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
         '<span class="kta-refonte-counter" id="kta-refonte-counter-zones" title="' + window.I18n.t("ui.refonte.counter_zones_title") + '">' +
-          '<span class="kta-refonte-counter-icon">⬛</span><span class="kta-refonte-counter-val">0</span>' +
+          '<span class="kta-refonte-counter-icon">' + _ico("m-zone") + '</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
         // Compteur structures (piliers + murs)
         '<span class="kta-refonte-counter" id="kta-refonte-counter-structures" title="' + window.I18n.t("ui.refonte.counter_structures_title") + '">' +
-          '<span class="kta-refonte-counter-icon">🏛️</span><span class="kta-refonte-counter-val">0</span>' +
+          '<span class="kta-refonte-counter-icon">' + _ico("m-pilier") + '</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
         // Compteur photos : lecture async IDB dans updateCompteurs, masqué à 0 comme les autres.
         '<span class="kta-refonte-counter" id="kta-refonte-counter-photos" title="' + window.I18n.t("ui.refonte.counter_photos_title") + '">' +
-          '<span class="kta-refonte-counter-icon">📸</span><span class="kta-refonte-counter-val">0</span>' +
+          '<span class="kta-refonte-counter-icon">' + _ico("camera") + '</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
       '</button>' +
       // Chip batterie HORS du bouton compteurs (n'hérite pas de sa surbrillance). Masqué jusqu'à ce que
       // BatteryGuard confirme l'API ; couleur posée par _refreshBatteryUi.
-      // Bouton 📖 Mode Histoire, à GAUCHE de la batterie, toujours visible (js/modeHistoire.js).
+      // Bouton Mode Histoire (icône scroll : book-open est la Documentation), à GAUCHE de la batterie, toujours
+      // visible (js/modeHistoire.js).
       '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="' + window.I18n.t("ui.refonte.counter_histoire_title") + '" role="button" tabindex="0">' +
-        '<span class="kta-refonte-counter-icon">📖</span>' +
+        '<span class="kta-refonte-counter-icon">' + _ico("scroll") + '</span>' +
       '</span>' +
-      // Bouton 🌍 Vue OSM : visible seulement si le plan a un géoréf GPS valide ET que l'utilisateur a activé la
-      // vue. 🌍 et non 🗺️, déjà pris par Légende et Itinéraire.
+      // Bouton Vue OSM (icône map, celle du widget de l'accueil) : visible seulement si le plan a un géoréf GPS
+      // valide ET que l'utilisateur a activé la vue.
       '<span class="kta-refonte-counter kta-refonte-counter-osm" id="kta-refonte-counter-osm" title="' + window.I18n.t("ui.refonte.counter_osm_title") + '" role="button" tabindex="0" style="display:none;">' +
-        '<span class="kta-refonte-counter-icon">🌍</span>' +
+        '<span class="kta-refonte-counter-icon">' + _ico("map") + '</span>' +
       '</span>' +
-      // Bouton 🚨 Sortie d'urgence (js/sortieUrgence.js)
+      // Bouton Sortie d'urgence (js/sortieUrgence.js) ; ⚠️ contrat : même icône que celui de la vue 3D (vue3d.js).
       '<span class="kta-refonte-counter kta-refonte-counter-sortie" id="kta-refonte-counter-sortie" title="' + window.I18n.t("ui.refonte.counter_sortie_title") + '" role="button" tabindex="0">' +
-        '<span class="kta-refonte-counter-icon">🚨</span>' +
+        '<span class="kta-refonte-counter-icon">' + _ico("siren") + '</span>' +
       '</span>' +
       '<span class="kta-refonte-counter kta-refonte-counter-battery kta-refonte-header-battery" id="kta-refonte-counter-battery" title="' + window.I18n.t("ui.refonte.counter_battery_title") + '" style="display:none;">' +
-        '<span class="kta-refonte-counter-icon" id="kta-refonte-battery-emoji">🔋</span><span class="kta-refonte-counter-val" id="kta-refonte-battery-val">—</span>' +
+        '<span class="kta-refonte-counter-icon" id="kta-refonte-battery-emoji">' + _ico("battery") + '</span><span class="kta-refonte-counter-val" id="kta-refonte-battery-val">—</span>' +
       '</span>';
 
     document.body.appendChild(header);
@@ -364,24 +368,24 @@
     bar.innerHTML =
       '<div class="kta-refonte-statusbar-content" id="kta-refonte-statusbar-content">' +
         '<span class="kta-refonte-stat kta-refonte-stat-empty" id="kta-refonte-stat-mesure">' +
-          '<span class="kta-refonte-stat-icon">📐</span><span class="kta-refonte-stat-val">—</span>' +
+          '<span class="kta-refonte-stat-icon">' + _ico("ruler") + '</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
         '<span class="kta-refonte-stat kta-refonte-stat-empty" id="kta-refonte-stat-dist-totale">' +
-          '<span class="kta-refonte-stat-icon">📏</span><span class="kta-refonte-stat-val">—</span>' +
+          '<span class="kta-refonte-stat-icon">' + _ico("sigma") + '</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
         // Stat itinéraire cliquable : rouvre la modale itinéraire.
         '<span class="kta-refonte-stat kta-refonte-stat-empty kta-refonte-stat-clickable" id="kta-refonte-stat-iti" title="' + window.I18n.t("ui.refonte.stat_iti_title") + '">' +
-          '<span class="kta-refonte-stat-icon">🗺️</span><span class="kta-refonte-stat-val">—</span>' +
+          '<span class="kta-refonte-stat-icon">' + _ico("route") + '</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
-        // Tracker = boussole 🧭 (pas 🚶, confondu avec le badge marche de l'itinéraire), ON vert / OFF rouge.
+        // Tracker = icône du menu Tracker (navigation), ON vert / OFF rouge.
         // Cliquable (menu Tracker) ; suivi actif → pas + distance en direct.
         '<span class="kta-refonte-stat kta-refonte-stat-tracker-off kta-refonte-stat-clickable" id="kta-refonte-stat-tracker">' +
-          '<span class="kta-refonte-stat-icon">🧭</span><span class="kta-refonte-stat-val">OFF</span>' +
+          '<span class="kta-refonte-stat-icon">' + _ico("navigation") + '</span><span class="kta-refonte-stat-val">OFF</span>' +
         '</span>' +
         // Compte à rebours « verrou sur tracé suspendu », caché par défaut, piloté par interface.js
         // (_afficherBadgeVerrou / _majBadgeVerrou / _reactiverVerrou). Clic → réactive le verrou.
         '<span class="kta-refonte-stat kta-refonte-stat-clickable" id="kta-refonte-stat-verrou" style="display:none; color:var(--kta-accent-texte);" title="' + window.I18n.t("tracker.verrou.statTitle") + '">' +
-          '<span class="kta-refonte-stat-icon">🔓</span><span class="kta-refonte-stat-val">—</span>' +
+          '<span class="kta-refonte-stat-icon">' + _ico("lock-open") + '</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
         // Pas de batterie dans le footer : le chip du header suffit (le mode urgence a son propre bloc XL).
       '</div>' +
@@ -531,17 +535,24 @@
     const valS = _fmtSurfaceVal(mesurePointsS);
     const mesureEl = document.getElementById("kta-refonte-stat-mesure");
     const mesureIconEl = mesureEl ? mesureEl.querySelector(".kta-refonte-stat-icon") : null;
+    // Icône de la mesure armée : distance (ruler) ou surface (square-dashed) ; les deux → « distance · surface ».
+    const iconeMesure = function (nom) {
+      if (mesureIconEl && mesureIconEl.getAttribute("data-ico") !== nom) {
+        mesureIconEl.innerHTML = _ico(nom);
+        mesureIconEl.setAttribute("data-ico", nom);
+      }
+    };
     if (valD && valS) {
-      if (mesureIconEl) mesureIconEl.textContent = "📐";
-      _setStat("kta-refonte-stat-mesure", valD + " · ♦️ " + valS);
+      iconeMesure("ruler");
+      _setStat("kta-refonte-stat-mesure", valD + " · " + valS);
     } else if (valS) {
-      if (mesureIconEl) mesureIconEl.textContent = "♦️";
+      iconeMesure("square-dashed");
       _setStat("kta-refonte-stat-mesure", valS);
     } else if (valD) {
-      if (mesureIconEl) mesureIconEl.textContent = "📐";
+      iconeMesure("ruler");
       _setStat("kta-refonte-stat-mesure", valD);
     } else {
-      if (mesureIconEl) mesureIconEl.textContent = "📐";  // reset défaut quand vide
+      iconeMesure("ruler");  // reset défaut quand vide
       _setStat("kta-refonte-stat-mesure", null);
     }
 
@@ -583,14 +594,14 @@
       // Retire une classe "empty" qui traînerait
       trackerEl.classList.remove("kta-refonte-stat-empty");
       if (valEl) {
-        // « ON · 👣 128 · 96 m » : pas et distance en direct.
+        // « ON · 128 pas · 96 m » : pas et distance en direct.
         let txt = trackerActif ? "ON" : "OFF";
         if (trackerActif) {
           try {
             const pas  = (typeof window.getStepCount === "function") ? (window.getStepCount() || 0) : 0;
             const dist = (typeof window.getTrackingDistanceTotaleM === "function") ? (window.getTrackingDistanceTotaleM() || 0) : 0;
             if (pas > 0 || dist > 0) {
-              txt += " · 👣 " + pas + " · " + (window.formatDistance ? window.formatDistance(dist, 0) : Math.round(dist) + " m");
+              txt += " · " + window.I18n.t("ui.refonte.tracker_pas", { n: pas }) + " · " + (window.formatDistance ? window.formatDistance(dist, 0) : Math.round(dist) + " m");
             }
           } catch(e) {}
         }
@@ -645,7 +656,12 @@
       chip.style.display = "flex";
       const emojiEl = document.getElementById("kta-refonte-battery-emoji");
       const valEl   = document.getElementById("kta-refonte-battery-val");
-      if (emojiEl) emojiEl.textContent = state.emoji;
+      // ⚡ en charge, 🪫 sous 30 % (BatteryGuard) → icônes de la planche ; le libellé garde le pourcentage.
+      const ico = state.charging ? "battery-charging" : (state.emoji === "🪫" ? "battery-low" : "battery");
+      if (emojiEl && emojiEl.getAttribute("data-ico") !== ico) {
+        emojiEl.innerHTML = _ico(ico);
+        emojiEl.setAttribute("data-ico", ico);
+      }
       if (valEl)   valEl.textContent   = state.label;
       chip.style.color = state.color;
       chip.title = titleText;
@@ -905,10 +921,10 @@
   // HTML du bloc « 📊 Stats agrégées », en TÊTE de la modale
   function _genererStatsAggregeesHTML(stats, multiLevel) {
     let h = '<div class="kta-refonte-stats-aggr">';
-    h += '<div class="kta-refonte-stats-aggr-titre">📊 ' + window.I18n.t("ui.refonte.stats_aggr_titre") + '</div>';
+    h += '<div class="kta-refonte-stats-aggr-titre">' + _ico("chart-column") + ' ' + window.I18n.t("ui.refonte.stats_aggr_titre") + '</div>';
 
     h += '<div class="kta-refonte-stats-row">';
-    h += '<span class="kta-refonte-stats-label">⏱️ ' + window.I18n.t("ui.refonte.stats_duration") + '</span>';
+    h += '<span class="kta-refonte-stats-label">' + _ico("timer") + ' ' + window.I18n.t("ui.refonte.stats_duration") + '</span>';
     h += '<span class="kta-refonte-stats-val">' + _formatDurationStats(stats.session.durationMs) + '</span>';
     h += '</div>';
 
@@ -920,7 +936,7 @@
 
     if (stats.roads.total > 0) {
       h += '<div class="kta-refonte-stats-row">';
-      h += '<span class="kta-refonte-stats-label">🛣️ ' + window.I18n.t("ui.refonte.section_roads") + '</span>';
+      h += '<span class="kta-refonte-stats-label">' + _ico("m-galerie") + ' ' + window.I18n.t("ui.refonte.section_roads") + '</span>';
       h += '<span class="kta-refonte-stats-val"><strong>' + _fdistStats(stats.roads.distM) + '</strong> ' + window.I18n.t("ui.refonte.stats_on_n_roads", { n: stats.roads.total }) + '</span>';
       h += '</div>';
       const totalRoadDist = stats.roads.distM || 1;
@@ -943,7 +959,7 @@
 
     if (stats.zones.total > 0) {
       h += '<div class="kta-refonte-stats-row" style="margin-top:8px;">';
-      h += '<span class="kta-refonte-stats-label">⬛ ' + window.I18n.t("ui.refonte.section_zones") + '</span>';
+      h += '<span class="kta-refonte-stats-label">' + _ico("m-zone") + ' ' + window.I18n.t("ui.refonte.section_zones") + '</span>';
       h += '<span class="kta-refonte-stats-val"><strong>' + _fsurfStats(stats.zones.areaM2) + '</strong> ' + window.I18n.t("ui.refonte.stats_on_n_zones", { n: stats.zones.total }) + '</span>';
       h += '</div>';
       const totalArea = stats.zones.areaM2 || 1;
@@ -967,7 +983,7 @@
 
     if (stats.structures.total > 0) {
       h += '<div class="kta-refonte-stats-row" style="margin-top:8px;">';
-      h += '<span class="kta-refonte-stats-label">🏛️ ' + window.I18n.t("ui.refonte.section_structures") + '</span>';
+      h += '<span class="kta-refonte-stats-label">' + _ico("m-pilier") + ' ' + window.I18n.t("ui.refonte.section_structures") + '</span>';
       const fronts = stats.structures.fronts_totalM;
       const txt = window.I18n.t("ui.refonte.stats_n_structures", { n: stats.structures.total }) +
                   (fronts > 0 ? window.I18n.t("ui.refonte.stats_fronts_suffix", { dist: _fdistStats(fronts) }) : '');
@@ -995,20 +1011,20 @@
 
     // Photos : hydraté async dans _afficherModaleSessionDetail
     h += '<div class="kta-refonte-stats-row" id="kta-stats-photos-row" style="margin-top:8px; display:none;">';
-    h += '<span class="kta-refonte-stats-label">📸 ' + window.I18n.t("ui.refonte.section_photos") + '</span>';
+    h += '<span class="kta-refonte-stats-label">' + _ico("camera") + ' ' + window.I18n.t("ui.refonte.section_photos") + '</span>';
     h += '<span class="kta-refonte-stats-val" id="kta-stats-photos-val">…</span>';
     h += '</div>';
 
     if (stats.tracker.active) {
       h += '<div class="kta-refonte-stats-row" style="margin-top:8px;">';
-      h += '<span class="kta-refonte-stats-label">🚶 ' + window.I18n.t("ui.refonte.section_tracker") + '</span>';
+      h += '<span class="kta-refonte-stats-label">' + _ico("navigation") + ' ' + window.I18n.t("ui.refonte.section_tracker") + '</span>';
       h += '<span class="kta-refonte-stats-val">' + window.I18n.t("ui.refonte.stats_tracker_active", { dist: _fdistStats(stats.tracker.distM) }) + '</span>';
       h += '</div>';
     }
 
     if (stats.mesure.distance.points >= 2) {
       h += '<div class="kta-refonte-stats-row">';
-      h += '<span class="kta-refonte-stats-label">📐 ' + window.I18n.t("ui.refonte.stats_mesure_distance") + '</span>';
+      h += '<span class="kta-refonte-stats-label">' + _ico("ruler") + ' ' + window.I18n.t("ui.refonte.stats_mesure_distance") + '</span>';
       h += '<span class="kta-refonte-stats-val">' + _fdistStats(stats.mesure.distance.distM) + ' (' + window.I18n.t("ui.refonte.stats_n_pts", { n: stats.mesure.distance.points }) + ')</span>';
       h += '</div>';
     }
@@ -1017,14 +1033,14 @@
         ? window.formatSurface(stats.mesure.surface.areaM2, 1)
         : (stats.mesure.surface.areaM2.toFixed(1) + " m²");
       h += '<div class="kta-refonte-stats-row">';
-      h += '<span class="kta-refonte-stats-label">♦️ ' + window.I18n.t("ui.refonte.stats_mesure_surface") + '</span>';
+      h += '<span class="kta-refonte-stats-label">' + _ico("square-dashed") + ' ' + window.I18n.t("ui.refonte.stats_mesure_surface") + '</span>';
       h += '<span class="kta-refonte-stats-val">' + surfTxt + ' (' + window.I18n.t("ui.refonte.stats_n_pts", { n: stats.mesure.surface.points }) + ')</span>';
       h += '</div>';
     }
 
     if (multiLevel && stats.byLevel) {
       h += '<div class="kta-refonte-stats-mlvl">';
-      h += '<div class="kta-refonte-stats-mlvl-titre">🏗️ ' + window.I18n.t("ui.refonte.stats_mlvl_titre") + '</div>';
+      h += '<div class="kta-refonte-stats-mlvl-titre">' + _ico("m-niveaux") + ' ' + window.I18n.t("ui.refonte.stats_mlvl_titre") + '</div>';
       const levels = Object.keys(stats.byLevel).map(Number).sort(function(a, b) { return a - b; });
       levels.forEach(function(lvl) {
         const b = stats.byLevel[lvl];
@@ -1033,10 +1049,10 @@
         h += '<div class="kta-refonte-stats-mlvl-row">';
         h += '<span class="kta-refonte-stats-mlvl-lbl">' + window.I18n.t("ui.refonte.label_level_short", { n: lvl }) + '</span>';
         h += '<span class="kta-refonte-stats-mlvl-val">' +
-          (b.points     > 0 ? '📍' + b.points + ' ' : '') +
-          (b.roads      > 0 ? '🛣️' + b.roads + ' ' : '') +
-          (b.zones      > 0 ? '⬛' + b.zones + ' ' : '') +
-          (b.structures > 0 ? '🏛️' + b.structures : '') +
+          (b.points     > 0 ? _ico("map-pin") + b.points + ' ' : '') +
+          (b.roads      > 0 ? _ico("m-galerie") + b.roads + ' ' : '') +
+          (b.zones      > 0 ? _ico("m-zone") + b.zones + ' ' : '') +
+          (b.structures > 0 ? _ico("m-pilier") + b.structures : '') +
         '</span>';
         h += '</div>';
       });
@@ -1044,8 +1060,8 @@
     }
 
     h += '<div class="kta-refonte-stats-actions">';
-    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-copier" type="button">📋 ' + window.I18n.t("ui.refonte.btn_copy") + '</button>';
-    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-exporter" type="button">📤 ' + window.I18n.t("ui.refonte.btn_export_txt") + '</button>';
+    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-copier" type="button">' + _ico("copy") + ' ' + window.I18n.t("ui.refonte.btn_copy") + '</button>';
+    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-exporter" type="button">' + _ico("arrow-up-from-line") + ' ' + window.I18n.t("ui.refonte.btn_export_txt") + '</button>';
     h += '</div>';
 
     h += '</div>';  // .kta-refonte-stats-aggr
@@ -1157,7 +1173,7 @@
       return p && p.name ? p.name : window.I18n.t("ui.refonte.memoire_plan_inconnu");
     };
     let h = '<div class="kta-refonte-session-section" id="kta-refonte-session-memoire">';
-    h += '<div class="kta-refonte-session-section-titre">💾 ' + window.I18n.t("ui.refonte.section_memoire") +
+    h += '<div class="kta-refonte-session-section-titre">' + _ico("hard-drive") + ' ' + window.I18n.t("ui.refonte.section_memoire") +
          ' <span class="kta-refonte-session-badge kta-memoire-' + niveau + '">' + pct + ' %</span></div>';
     h += '<div class="kta-memoire-jauge"><div class="kta-memoire-barre kta-memoire-' + niveau +
          '" style="width:' + pct + '%"></div></div>';
@@ -1175,7 +1191,7 @@
       h += '<ul class="kta-memoire-plans">';
       lourds.forEach(function (x) {
         const courant = x.planId === window._currentLoadedPlanId;
-        h += '<li><span>' + (courant ? "📍 " : "") + esc(nomDe(x.planId)) + '</span><b>' + esc(S.mo(x.car)) + '</b></li>';
+        h += '<li><span>' + (courant ? _ico("map-pin") + " " : "") + esc(nomDe(x.planId)) + '</span><b>' + esc(S.mo(x.car)) + '</b></li>';
       });
       h += '</ul>';
     }
@@ -1248,7 +1264,7 @@
     // « Enregistré il y a N s » en tête.
     html += _ligneDerniereSauvegarde();
 
-    html += _debutSection('📍 ' + window.I18n.t("ui.refonte.section_points_added"), points.length, points.length);
+    html += _debutSection(_ico("map-pin") + ' ' + window.I18n.t("ui.refonte.section_points_added"), points.length, points.length);
     if (points.length === 0) {
       html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_points") + '</div>';
     } else {
@@ -1259,7 +1275,7 @@
         const tag    = rawTag ? _lcLabel("icones", rawTag, rawTag) : "—";
         const nom    = p.nom || p.id || window.I18n.t("ui.refonte.label_no_name");
         const coord  = Math.round(p.x || 0) + ", " + Math.round(p.y || 0);
-        const level  = multiLevel ? ' · 🏗️ N' + (p.level || 0) : '';
+        const level  = multiLevel ? ' · ' + _ico("m-niveaux") + ' N' + (p.level || 0) : '';
         html += '<li>' +
           '<strong>' + _esc(nom) + '</strong>' +
           '<span class="kta-refonte-session-meta">' + _esc(tag) + ' · ' + coord + level + '</span>' +
@@ -1271,7 +1287,7 @@
 
     const roadsNonIti = roads.filter(function(r) { return r.type !== "itinerary"; });
     const itineraire  = roads.find(function(r) { return r.type === "itinerary"; });
-    html += _debutSection('🛣️ ' + window.I18n.t("ui.refonte.section_roads"), roadsNonIti.length, _nbTypes(roadsNonIti));
+    html += _debutSection('' + _ico("m-galerie") + ' ' + window.I18n.t("ui.refonte.section_roads"), roadsNonIti.length, _nbTypes(roadsNonIti));
     if (roadsNonIti.length === 0) {
       html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_roads") + '</div>';
     } else {
@@ -1301,7 +1317,7 @@
     }
     html += '</details>';
 
-    html += _debutSection('⬛ ' + window.I18n.t("ui.refonte.section_zones"), zones.length, _nbTypes(zones));
+    html += _debutSection('' + _ico("m-zone") + ' ' + window.I18n.t("ui.refonte.section_zones"), zones.length, _nbTypes(zones));
     if (zones.length === 0) {
       html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_zones") + '</div>';
     } else {
@@ -1334,7 +1350,7 @@
     }
     html += '</details>';
 
-    html += _debutSection('🏛️ ' + window.I18n.t("ui.refonte.section_structures"), structures.length,
+    html += _debutSection('' + _ico("m-pilier") + ' ' + window.I18n.t("ui.refonte.section_structures"), structures.length,
                           _nbTypes(structures));
     if (structures.length === 0) {
       html += '<div class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.empty_structures") + '</div>';
@@ -1372,7 +1388,7 @@
     // Photos : « Chargement… » puis hydratation async (total, taille, détail par point)
     // Ouverte pendant le chargement ; _hydraterPhotosModaleSession la replie au-delà de SEUIL_REPLI_SESSION.
     html += '<details class="kta-refonte-session-section kta-session-repli" id="kta-refonte-session-photos-section" open>';
-    html += '<summary class="kta-refonte-session-section-titre">📸 ' + window.I18n.t("ui.refonte.section_photos") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-photos-badge">…</span></summary>';
+    html += '<summary class="kta-refonte-session-section-titre">' + _ico("camera") + ' ' + window.I18n.t("ui.refonte.section_photos") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-photos-badge">…</span></summary>';
     html += '<div id="kta-refonte-session-photos-body" class="kta-refonte-session-empty">' + window.I18n.t("ui.refonte.loading") + '</div>';
     html += '</details>';
 
@@ -1382,7 +1398,7 @@
     const hasMesureSurf = mesureSurfDetail.length >= 3;
     if (hasMesureDist || hasMesureSurf || itineraire || tFoo) {
       html += '<div class="kta-refonte-session-section">';
-      html += '<div class="kta-refonte-session-section-titre">📊 ' + window.I18n.t("ui.refonte.section_other_measures") + '</div>';
+      html += '<div class="kta-refonte-session-section-titre">' + _ico("chart-column") + ' ' + window.I18n.t("ui.refonte.section_other_measures") + '</div>';
       html += '<ul class="kta-refonte-session-list">';
 
       if (hasMesureDist) {
@@ -1393,7 +1409,7 @@
           total += Math.sqrt(dx*dx + dy*dy);
         }
         html += '<li>' +
-          '<strong>📐 ' + window.I18n.t("ui.refonte.item_mesure_simple") + '</strong>' +
+          '<strong>' + _ico("ruler") + ' ' + window.I18n.t("ui.refonte.item_mesure_simple") + '</strong>' +
           '<span class="kta-refonte-session-meta">' + _formatDist(total / scale) + ' (' + window.I18n.t("ui.refonte.label_n_points", { n: mesure.length }) + ')</span>' +
         '</li>';
       }
@@ -1406,7 +1422,7 @@
           ? window.formatSurface(surfM2, 1)
           : (surfM2 < 10000 ? Math.round(surfM2) + " m²" : (surfM2 / 10000).toFixed(2) + " ha");
         html += '<li>' +
-          '<strong>♦️ ' + window.I18n.t("ui.refonte.item_mesure_surface") + '</strong>' +
+          '<strong>' + _ico("square-dashed") + ' ' + window.I18n.t("ui.refonte.item_mesure_surface") + '</strong>' +
           '<span class="kta-refonte-session-meta">' + surfTxt + ' (' + window.I18n.t("ui.refonte.label_n_vertices", { n: mesureSurfDetail.length }) + ')</span>' +
         '</li>';
       }
@@ -1415,7 +1431,7 @@
         const distIti = _distRoad(itineraire);
         const nbWp = Array.isArray(itineraire.waypoints) ? itineraire.waypoints.length : 0;
         html += '<li>' +
-          '<strong>🗺️ ' + window.I18n.t("ui.refonte.item_iti_active") + '</strong>' +
+          '<strong>' + _ico("route") + ' ' + window.I18n.t("ui.refonte.item_iti_active") + '</strong>' +
           '<span class="kta-refonte-session-meta">' +
             _formatDist(distIti) + (nbWp > 0 ? ' · ' + window.I18n.t("ui.refonte.label_n_waypoints", { n: nbWp }) : '') +
           '</span>' +
@@ -1425,7 +1441,7 @@
       if (tFoo) {
         const pos = window.getTrackingPosition();
         html += '<li>' +
-          '<strong>🚶 ' + window.I18n.t("ui.refonte.section_tracker") + '</strong>' +
+          '<strong>' + _ico("navigation") + ' ' + window.I18n.t("ui.refonte.section_tracker") + '</strong>' +
           '<span class="kta-refonte-session-meta">' +
             window.I18n.t("ui.refonte.item_tracker_pos", { x: Math.round(pos.x), y: Math.round(pos.y) }) +
           '</span>' +
@@ -1443,7 +1459,7 @@
       const cur = (window.Journal && typeof window.Journal.getCurrent === "function")
                     ? window.Journal.getCurrent() : null;
       html += '<div class="kta-refonte-session-section" id="kta-refonte-session-carnet-section">';
-      html += '<div class="kta-refonte-session-section-titre">📔 ' + window.I18n.t("jrn.section.titre") + '</div>';
+      html += '<div class="kta-refonte-session-section-titre">' + _ico("notebook-pen") + ' ' + window.I18n.t("jrn.section.titre") + '</div>';
       if (cur) {
         const a = cur.ajouts || {};
         const nbAj = (a.points || 0) + (a.roads || 0) + (a.zones || 0) + (a.structures || 0) + (a.photos || 0);
@@ -1470,10 +1486,10 @@
                     window.I18n.t("jrn.section.natureLabel") + '</span>' +
                   '<button type="button" class="kta-btn kta-btn-small ' +
                     (terrain ? 'kta-btn-primary' : 'kta-btn-ghost') + '" data-kta-jrn-type="terrain"' +
-                    ' id="kta-refonte-session-carnet-type-terrain">🚶</button>' +
+                    ' id="kta-refonte-session-carnet-type-terrain">' + _ico("footprints") + '</button>' +
                   '<button type="button" class="kta-btn kta-btn-small ' +
                     (terrain ? 'kta-btn-ghost' : 'kta-btn-primary') + '" data-kta-jrn-type="bureau"' +
-                    ' id="kta-refonte-session-carnet-type-bureau">🖥️</button>' +
+                    ' id="kta-refonte-session-carnet-type-bureau">' + _ico("monitor") + '</button>' +
                   (cur.typeManuel
                     ? '<span style="font-size:11px; color:var(--kta-texte-3);">' +
                         window.I18n.t("jrn.section.natureFigee") + '</span>'
@@ -1490,36 +1506,36 @@
       const nbAAffiner = (typeof window.getTrackingTronconsAAffiner === "function")
         ? window.getTrackingTronconsAAffiner() : 0;
       html += '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
-                // Démarrer seulement si rien n'est en cours (sinon 🏁 Clôturer) : pas de sorties empilées.
+                // Démarrer seulement si rien n'est en cours (sinon Clôturer) : pas de sorties empilées.
                 (cur ? '' : '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="kta-refonte-session-carnet-demarrer" ' +
                          'title="' + window.I18n.t("jrn.section.demarrerTitre") + '">' +
-                         '📔 ' + window.I18n.t("jrn.section.demarrer") + '</button>') +
+                         _ico("notebook-pen") + ' ' + window.I18n.t("jrn.section.demarrer") + '</button>') +
                 (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-cloture">' +
-                         '🏁 ' + window.I18n.t("jrn.section.cloturer") + '</button>' : '') +
+                         _ico("flag") + ' ' + window.I18n.t("jrn.section.cloturer") + '</button>' : '') +
                 (cur ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
                          'id="kta-refonte-session-carnet-affiner"' + (nbAAffiner > 0 ? '' : ' disabled') +
                          ' title="' + window.I18n.t(nbAAffiner > 0 ? "jrn.section.affinerTitre"
                                                                   : "jrn.section.affinerRien") + '">' +
-                         '🧭 ' + window.I18n.t("jrn.section.affiner") +
+                         _ico("route") + ' ' + window.I18n.t("jrn.section.affiner") +
                          (nbAAffiner > 0 ? ' (' + nbAAffiner + ')' : '') + '</button>' : '') +
                 '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-carnet-ouvrir">' +
-                  '📔 ' + window.I18n.t("jrn.section.ouvrir") + '</button>' +
+                  _ico("notebook-pen") + ' ' + window.I18n.t("jrn.section.ouvrir") + '</button>' +
               '</div>';
       html += '</div>';
     })();
 
     // ── Favoris : export / import JSON (plan courant ou tous ; import en fusion anti-doublon) ──
     html += '<div class="kta-refonte-session-section" id="kta-refonte-session-favoris-section">';
-    html += '<div class="kta-refonte-session-section-titre">⭐ ' + window.I18n.t("ui.refonte.section_favoris") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-favoris-badge">…</span></div>';
+    html += '<div class="kta-refonte-session-section-titre">' + _ico("star") + ' ' + window.I18n.t("ui.refonte.section_favoris") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-favoris-badge">…</span></div>';
     html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-export-current">' +
-                '📤 ' + window.I18n.t("ui.refonte.btn_fav_export_current") +
+                _ico("arrow-up-from-line") + ' ' + window.I18n.t("ui.refonte.btn_fav_export_current") +
               '</button>' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-export-all">' +
-                '📤 ' + window.I18n.t("ui.refonte.btn_fav_export_all") +
+                _ico("arrow-up-from-line") + ' ' + window.I18n.t("ui.refonte.btn_fav_export_all") +
               '</button>' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-import">' +
-                '📥 ' + window.I18n.t("ui.refonte.btn_fav_import") +
+                _ico("arrow-down-to-line") + ' ' + window.I18n.t("ui.refonte.btn_fav_import") +
               '</button>' +
               '<input type="file" id="kta-refonte-session-favoris-import-file" accept=".json,application/json" style="display:none;">' +
             '</div>';
@@ -1534,16 +1550,16 @@
     // ── Snapshots récents (10 en FIFO, IDB) ──
     // Hydratés async (SessionBackups.listAll) ; boutons « Snapshot maintenant » et « Tout vider ».
     html += '<div class="kta-refonte-session-section" id="kta-refonte-session-backups-section">';
-    html += '<div class="kta-refonte-session-section-titre">📦 ' + window.I18n.t("ui.refonte.section_backups") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-backups-badge">…</span></div>';
+    html += '<div class="kta-refonte-session-section-titre">' + _ico("archive") + ' ' + window.I18n.t("ui.refonte.section_backups") + ' <span class="kta-refonte-session-badge" id="kta-refonte-session-backups-badge">…</span></div>';
     html += '<div style="font-size:12px; color:var(--kta-texte-3); margin-bottom:8px; line-height:1.5;">' +
               window.I18n.t("ui.refonte.backups_desc") +
             '</div>';
     html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-backups-snapshot">' +
-                '📆 ' + window.I18n.t("ui.refonte.btn_snapshot_now") +
+                _ico("calendar") + ' ' + window.I18n.t("ui.refonte.btn_snapshot_now") +
               '</button>' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-backups-clearall">' +
-                '🗑️ ' + window.I18n.t("ui.refonte.btn_clear_all") +
+                _ico("trash-2") + ' ' + window.I18n.t("ui.refonte.btn_clear_all") +
               '</button>' +
             '</div>';
     html += '<div id="kta-refonte-session-backups-list">' +
@@ -1556,7 +1572,7 @@
     const _effacable = !!(window.SessionPersist && typeof window.SessionPersist.demanderEffacement === "function");
     if (_effacable) {
       html += '<div class="kta-refonte-session-section" id="kta-refonte-session-effacer-section">';
-      html += '<div class="kta-refonte-session-section-titre">🗑️ ' + window.I18n.t("ui.refonte.section_effacer") + '</div>';
+      html += '<div class="kta-refonte-session-section-titre">' + _ico("trash-2") + ' ' + window.I18n.t("ui.refonte.section_effacer") + '</div>';
       html += '<div style="font-size:12px; color:var(--kta-texte-3); margin-bottom:8px; line-height:1.5;">' +
                 window.I18n.t("ui.refonte.effacer_desc") +
               '</div>';
@@ -1576,7 +1592,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-refonte-session-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📊 ' + window.I18n.t("ui.refonte.modal_session_titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + _ico("chart-column") + ' ' + window.I18n.t("ui.refonte.modal_session_titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-refonte-session-close" aria-label="' + window.I18n.t("ui.refonte.btn_close_aria") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-refonte-session-corps">' +
@@ -1818,10 +1834,10 @@
         function _countContent(p) {
           if (!p) return window.I18n.t("ui.refonte.label_empty");
           const parts = [];
-          if (p.editorPoints   && p.editorPoints.length)   parts.push(p.editorPoints.length + "📍");
-          if (p.roads          && p.roads.length)          parts.push(p.roads.length + "🛣️");
-          if (p.zones          && p.zones.length)          parts.push(p.zones.length + "⬛");
-          if (p.structures     && p.structures.length)     parts.push(p.structures.length + "🏛️");
+          if (p.editorPoints   && p.editorPoints.length)   parts.push(p.editorPoints.length + _ico("map-pin"));
+          if (p.roads          && p.roads.length)          parts.push(p.roads.length + _ico("m-galerie"));
+          if (p.zones          && p.zones.length)          parts.push(p.zones.length + _ico("m-zone"));
+          if (p.structures     && p.structures.length)     parts.push(p.structures.length + _ico("m-pilier"));
           return parts.length ? parts.join(" ") : window.I18n.t("ui.refonte.label_empty");
         }
         // .kta-backups-list annule le gabarit vertical de .kta-refonte-session-list : une ligne compacte par snapshot.
@@ -1834,7 +1850,7 @@
                    ' <span class="kta-refonte-session-meta">' +
                      _countContent(b.payload) +
                      ' · <em style="opacity:0.7;">' + _esc(b.reason || window.I18n.t("ui.refonte.label_backup_auto")) + '</em>' +
-                     (autreVersion(b) ? ' · <span class="kta-tx-warn">📂 ' + _esc(window.I18n.t("ui.refonte.backup_autre_version")) + '</span>' : "") +
+                     (autreVersion(b) ? ' · <span class="kta-tx-warn">' + _ico("folder-open") + ' ' + _esc(window.I18n.t("ui.refonte.backup_autre_version")) + '</span>' : "") +
                    '</span>' +
                  '</span>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
@@ -1844,7 +1860,7 @@
                  '</button>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
                    'data-backup-remove="' + b.id + '" title="' + window.I18n.t("ui.refonte.btn_remove_snapshot_title") + '">' +
-                   '🗑️' +
+                   _ico("trash-2") +
                  '</button>' +
                '</li>';
         });

@@ -311,7 +311,7 @@
           ((e.baked || !_modifiable(e.link)) ? '' :
             '<button class="kta-popup-btn kta-ipl-del" type="button" data-kta-act="ipl-del" ' +
               'data-kta-lien="' + _esc(e.link.id) + '" ' +
-              'title="' + _esc(_t("ipl.popup.removeTitle")) + '">🗑️</button>') +
+              'title="' + _esc(_t("ipl.popup.removeTitle")) + '">' + window.ktaIcone("trash-2") + '</button>') +
         '</div>' +
         (info ? '<div class="kta-popup-ext-info kta-ipl-ext-info">' + _esc(info) + '</div>' : '');
     });
@@ -329,7 +329,7 @@
         'data-kta-nom="' + _esc(point.nom || "") + '" data-kta-source="' + source + '" data-kta-niveau="' + lvlArg + '" ' +
         'data-kta-tag="' + _esc(tagArg) + '" data-kta-point-uid="' + _esc(point.uid || "") + '" ' +   // pas data-kta-uid : réservé à la fiche (prises d'extension)
         'title="' + _esc(_t("ipl.popup.addTitle")) + '">' +
-        '🌀 ' + _esc(_t("ipl.popup.addBtn")) +
+        window.ktaIcone("waypoints") + ' ' + _esc(_t("ipl.popup.addBtn")) +
       '</button>';
 
     return '<div class="kta-ipl-section">' + rows +
@@ -347,7 +347,7 @@
     modal.style.zIndex = "100002";   // au-dessus du gestionnaire (99999)
     modal.innerHTML =
       '<div class="kta-modal" style="max-width:380px;">' +
-        '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">🌀</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">' + window.ktaIcone("waypoints") + '</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.remove.titre")) + '</div>' +
         '<div class="kta-modal-texte">' + _esc(_t("ipl.remove.texte")) + '</div>' +
         (infoExt ? '<div class="kta-modal-texte kta-popup-ext-info">' + _esc(infoExt) + '</div>' : '') +
@@ -1044,7 +1044,7 @@
     modal.style.display = "flex";
     modal.innerHTML =
       '<div class="kta-modal" style="max-width:400px;">' +
-        '<div class="kta-modal-icon" style="color:var(--kta-interaction);">🌀</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-interaction);">' + window.ktaIcone("waypoints") + '</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.nav.titre")) + '</div>' +
         '<div class="kta-modal-texte">' +
           _esc(_t("ipl.nav.texte", { plan: plan.name || planId,

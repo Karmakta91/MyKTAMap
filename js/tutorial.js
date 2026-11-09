@@ -18,21 +18,22 @@
   const LS_KEY  = "myktamap_tutorial_seen_v1";
   const MODAL_ID = "kta-tutorial-modal";
 
-  // Cartes { cle, emoji, hint? } ; texte dans les dicos : tutorial.card.<cle>.titre / .texte
-  // (HTML autorisé) / .hint. ⚠️ Clés NOMMÉES, jamais numérotées : réordonner = déplacer une ligne,
+  // Cartes { cle, ico, hint? } ; texte dans les dicos : tutorial.card.<cle>.titre / .texte
+  // (HTML autorisé) / .hint. `ico` : icône SVG de la carte (ktaIcones.js). Le texte garde ses emoji dans les dicos :
+  // ceux qui désignent un bouton passé en SVG sont remplacés au rendu (KtaIcones.substituerDoc, comme l'Aide). ⚠️ Clés NOMMÉES, jamais numérotées : réordonner = déplacer une ligne,
   // sans renuméroter les trois dicos. Pas d'image (hors ligne).
   const STRUCTURE = [
-    { cle: "bienvenue",          emoji: "🌟", hint: true },
-    { cle: "avant-de-descendre", emoji: "📱" },
-    { cle: "charger",            emoji: "📦" },
-    { cle: "urgence",            emoji: "🆘", hint: true },
-    { cle: "interface",          emoji: "🗺️" },
-    { cle: "chercher",           emoji: "🔍" },
-    { cle: "suivre",             emoji: "🧭", hint: true },
-    { cle: "itineraire",         emoji: "🪧" },
-    { cle: "annoter",            emoji: "✏️" },
-    { cle: "donnees",            emoji: "📔" },
-    { cle: "reglages",           emoji: "⚙️" },
+    { cle: "bienvenue",          ico: "sparkles", hint: true },
+    { cle: "avant-de-descendre", ico: "smartphone" },
+    { cle: "charger",            ico: "package-plus" },
+    { cle: "urgence",            ico: "siren", hint: true },
+    { cle: "interface",          ico: "map" },
+    { cle: "chercher",           ico: "search" },
+    { cle: "suivre",             ico: "navigation", hint: true },
+    { cle: "itineraire",         ico: "route" },
+    { cle: "annoter",            ico: "pencil" },
+    { cle: "donnees",            ico: "save" },
+    { cle: "reglages",           ico: "settings" },
   ];
 
   // Alias préfixant reconnu par check-i18n : les _t("…") sont vérifiés (clé manquante = rouge).
@@ -48,7 +49,7 @@
     };
     return STRUCTURE.map(function(s) {
       const base = "card." + s.cle;
-      const c = { emoji: s.emoji, titre: t(base + ".titre"), texte: t(base + ".texte") };
+      const c = { ico: s.ico, titre: t(base + ".titre"), texte: t(base + ".texte") };
       if (s.hint) c.hint = t(base + ".hint");
       return c;
     });
@@ -77,7 +78,7 @@
     return ''
       + '<div class="kta-readme-modal-boite kta-tutorial-boite">'
       +   '<div class="kta-readme-modal-header kta-tutorial-header">'
-      +     '<span class="kta-readme-modal-titre" id="kta-tutorial-titre">' + _t("headerTitle") + '</span>'
+      +     '<span class="kta-readme-modal-titre" id="kta-tutorial-titre">' + (window.ktaIcone ? window.ktaIcone("graduation-cap") + " " : "") + _t("headerTitle") + '</span>'
       +     '<button type="button" class="kta-panneau-close" id="kta-tutorial-close" aria-label="' + _t("close") + '">✕</button>'
       +   '</div>'
       +   '<div class="kta-readme-modal-corps kta-tutorial-corps" id="kta-tutorial-corps">'
@@ -103,10 +104,11 @@
     if (!card || !corps) return;
 
     let html = '<div class="kta-tutorial-card">';
-    html += '<div class="kta-tutorial-card-emoji" aria-hidden="true">' + card.emoji + '</div>';
+    const K = window.KtaIcones;
+    html += '<div class="kta-tutorial-card-emoji" aria-hidden="true">' + (K ? K.icone(card.ico) : "") + '</div>';
     html += '<div class="kta-tutorial-card-titre">' + _escapeHtml(card.titre) + '</div>';
     // 🔒 texte = HTML voulu : vient des dicos de l'app, contenu de confiance.
-    html += '<div class="kta-tutorial-card-texte">' + card.texte + '</div>';
+    html += '<div class="kta-tutorial-card-texte">' + (K ? K.substituerDoc(card.texte) : card.texte) + '</div>';
     if (card.hint) {
       html += '<div class="kta-tutorial-card-hint">' + _escapeHtml(card.hint) + '</div>';
     }

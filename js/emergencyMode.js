@@ -288,6 +288,7 @@
           '<div class="kta-em-point-note" id="kta-em-point-note"></div>' +
           '<button class="kta-em-bulle-action" id="kta-em-point-ici" type="button" ' +
                   'title="' + t("poi.iAmHere") + '">' +
+            (typeof window.ktaIcone === "function" ? window.ktaIcone("map-pin-check") + " " : "") +
             t("iti.wp.jeSuisIci") +
           '</button>' +
         '</div>' +

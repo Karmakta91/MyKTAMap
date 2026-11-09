@@ -325,7 +325,93 @@
     "flashlight": '<path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/><line ' +
       'x1="6" x2="18" y1="6" y2="6"/><line x1="12" x2="12" y1="12" y2="12"/>',
     "scissors": '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle ' +
-      'cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>'
+      'cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+    // Fenêtres et barres restantes (hors planche, Lucide).
+    "grid-2x2": '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/>',
+    "power-off": '<path d="M18.36 6.64A9 9 0 0 1 20.77 15"/><path d="M6.16 6.16a9 9 0 1 0 12.68 12.68"/><path ' +
+      'd="M12 2v4"/><path d="m2 2 20 20"/>',
+    "wand-sparkles": '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 ' +
+      '1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path ' +
+      'd="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>',
+    "gem": '<path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>',
+    "scale": '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 ' +
+      '1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+    "bandage": '<path d="M10 10.01h.01"/><path d="M10 14.01h.01"/><path d="M14 10.01h.01"/><path d="M14 ' +
+      '14.01h.01"/><path d="M18 6v11.5"/><path d="M6 6v12"/><rect x="2" y="6" width="20" height="12" rx="2"/>',
+    "snail": '<path d="M2 13a6 6 0 1 0 12 0 4 4 0 1 0-8 0 2 2 0 0 0 4 0"/><circle cx="10" cy="13" r="8"/><path ' +
+      'd="M2 21h12c4.4 0 8-3.6 8-8V7a2 2 0 1 0-4 0v6"/><path d="M18 3 19.1 5.2"/><path d="M22 3 20.9 5.2"/>',
+    "person-standing": '<circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path ' +
+      'd="M12 10v4"/>',
+    "rabbit": '<path d="M13 16a3 3 0 0 1 2.24 5"/><path d="M18 12h.01"/><path d="M18 21h-8a4 4 0 0 1-4-4 7 7 0 0 1 ' +
+      '7-7h.2L9.6 6.4a1 1 0 1 1 2.8-2.8L15.8 7h.2c3.3 0 6 2.7 6 6v1a2 2 0 0 1-2 2h-1a3 3 0 0 0-3 3"/><path d="M20 ' +
+      '8.54V4a2 2 0 1 0-4 0v3"/><path d="M7.612 12.524a3 3 0 1 0-1.6 4.3"/>',
+    "wifi": '<path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path ' +
+      'd="M8.5 16.429a5 5 0 0 1 7 0"/>',
+    "crosshair": '<circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" ' +
+      'y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/>',
+    "pencil-line": '<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 ' +
+      '1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/><path d="m15 5 3 3"/>',
+    "door-open": '<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 ' +
+      '12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 ' +
+      '4.561Z"/>',
+    "chevron-up": '<path d="m18 15-6-6-6 6"/>',
+    "chevron-down": '<path d="m6 9 6 6 6-6"/>',
+    "blend": '<circle cx="9" cy="9" r="7"/><circle cx="15" cy="15" r="7"/>',
+    "scroll": '<path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 ' +
+      '1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
+    "archive": '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 ' +
+      '2-2V8"/><path d="M10 12h4"/>',
+    "megaphone": '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+    "clipboard-list": '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 ' +
+      '0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 ' +
+      '11h.01"/><path d="M8 16h.01"/>',
+    "arrow-right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    "split": '<path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path ' +
+      'd="m15 9 6-6"/>',
+    "zap": '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 ' +
+      '.78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+    "hand": '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 ' +
+      '2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 ' +
+      '8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+    "circle-dashed": '<path d="M10.1 2.182a10 10 0 0 1 3.8 0"/><path d="M13.9 21.818a10 10 0 0 1-3.8 0"/><path ' +
+      'd="M17.609 3.721a10 10 0 0 1 2.69 2.7"/><path d="M2.182 13.9a10 10 0 0 1 0-3.8"/><path d="M20.279 17.609a10 ' +
+      '10 0 0 1-2.7 2.69"/><path d="M21.818 10.1a10 10 0 0 1 0 3.8"/><path d="M3.721 6.391a10 10 0 0 1 ' +
+      '2.7-2.69"/><path d="M6.391 20.279a10 10 0 0 1-2.69-2.7"/>',
+    "arrow-left": '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+    "graduation-cap": '<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 ' +
+      '0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
+    "volume-2": '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 ' +
+      '1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 ' +
+      '0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
+    "brick-wall": '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 9v6"/><path d="M16 15v6"/><path ' +
+      'd="M16 3v6"/><path d="M3 15h18"/><path d="M3 9h18"/><path d="M8 15v6"/><path d="M8 3v6"/>',
+    "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 ' +
+      '1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 ' +
+      '1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+    "cloud-fog": '<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 17H7"/><path ' +
+      'd="M17 21H9"/>',
+    "battery-charging": '<path d="M15 7h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><path d="M6 7H4a2 2 0 0 0-2 2v6a2 2 0 ' +
+      '0 0 2 2h1"/><path d="m11 7-3 5h4l-3 5"/><line x1="22" x2="22" y1="11" y2="13"/>',
+    "telescope": '<path d="m10.065 12.493-6.18 1.318a.934.934 0 0 1-1.108-.702l-.537-2.15a1.07 1.07 0 0 1 ' +
+      '.691-1.265l13.504-4.44"/><path d="m13.56 11.747 4.332-.924"/><path d="m16 21-3.105-6.21"/><path d="M16.485 ' +
+      '5.94a2 2 0 0 1 1.455-2.425l1.09-.272a1 1 0 0 1 1.212.727l1.515 6.06a1 1 0 0 1-.727 1.213l-1.09.272a2 2 0 0 ' +
+      '1-2.425-1.455z"/><path d="m6.158 8.633 1.114 4.456"/><path d="m8 21 3.105-6.21"/><circle cx="12" cy="13" ' +
+      'r="2"/>',
+    "fingerprint": '<path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 ' +
+      '8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 ' +
+      '16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path ' +
+      'd="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>',
+    "minus": '<path d="M5 12h14"/>',
+    "merge": '<path d="m8 6 4-4 4 4"/><path d="M12 2v10.3a4 4 0 0 1-1.172 2.872L4 22"/><path d="m20 22-5-5"/>',
+    "cpu": '<rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path ' +
+      'd="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 ' +
+      '9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
+    "rotate-ccw": '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+    "package": '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 ' +
+      '2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 ' +
+      '7"/><path d="m7.5 4.27 9 5.15"/>',
+    "bot": '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 ' +
+      '14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>'
   };
 
   const ATTRS = ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
@@ -544,13 +630,76 @@
     { e: "🪧", i: "signpost", a: /^(?:Feuille de route|Route sheet|Hoja de ruta)/ },
     { e: "📍", i: "map-pin", a: /^(?:Points · |Puntos · |Points à éviter|Points to avoid|Puntos a evitar)/ },
     { e: "📊", i: "chart-column",
-      a: /^(?:Stats globales|Global stats|Estadísticas globales|Statistiques du plan|Map statistics|Estadísticas del mapa|Voir les statistiques globales|View the map's global statistics|Ver las estadísticas globales)/ }
+      a: /^(?:Stats globales|Global stats|Estadísticas globales|Statistiques du plan|Map statistics|Estadísticas del mapa|Voir les statistiques globales|View the map's global statistics|Ver las estadísticas globales)/ },
+    // Barre du haut, barre du bas, vue 3D, fiches de point, Mode Secours, Générateur, accueil.
+    { e: "❓", i: "circle-help" },
+    { e: "📖", i: "scroll",
+      a: /^(?:Mode Histoire|Story [Mm]ode|History [Mm]ode|Modo Historia|PDF Histoire|History PDF|PDF Historia|de la barre du haut|à droite de la barre|button (?:in|on) the top bar|button on the right|on the right of the top bar|de la barra (?:de arriba|superior)|a la derecha de la barra)/ },
+    { e: "📖", i: "scroll", b: /(?:à côté de|next to|junto a)$/ },
+    { e: "📖", i: "file-text", a: /^(?:Récits|Stories|Relatos|L'onglet Récits|The Stories tab|La pestaña Relatos)/ },
+    { e: "🌍", i: "map", a: /^(?:Vue OSM|OSM [Vv]iew|Vista OSM)\b/ },
+    { e: "🌍", i: "map", a: /^(?:de la barre du haut|in the top bar|on the top bar|de la barra (?:de arriba|superior)|sur un plan|on a map|en un mapa|button (?:in|on) the top bar|button on a map)/ },
+    { e: "🌍", i: "globe",
+      a: /^(?:tous les plans|all (?:the )?(?:maps|plans)|todos los (?:mapas|planos)|selon la ligne|depending on the row|según la (?:fila|línea)|Exporter vers une autre app|Export(?:ing)? to another app|Exportar a otra app|Export KMZ|KMZ export|Geolocated KMZ export|Exportación KMZ|Exportar KMZ)/ },
+    { e: "🌍", i: "globe", b: /\/$/ },
+    { e: "🚨", i: "siren", a: /^(?:Sortie d'urgence|Emergency exit|Salida de emergencia)/i },
+    { e: "🚨", i: "siren",
+      a: /^(?:de la barre du haut|dans la barre du haut|in the top bar|button in the top bar|en la barra superior|de la barra superior|, ❓|, ❓)/ },
+    { e: "🚨", i: "siren", b: /(?:à côté de|next to|junto a|tracé depuis|drawn from|trazada desde)$/ },
+    { e: "🚨", i: "siren", b: /(?:Bouton|The|Botón)$/, a: /^(?:à droite|button on the right|a la derecha)/ },
+    { e: "🚨", i: "users", a: /^(?:Équipes?\b|Field team|Teams?\b|Equipos?\b|Côté équipe|Team side|Lado del equipo)/ },
+    { e: "🚨", i: "hand", a: /^(?:Prendre la main|Take over|Tomar el control)/ },
+    { e: "🧭", i: "route", a: /^(?:Y aller|Go there|Ir allí|Affiner le tracé|Refine the trail|Afinar la traza)/ },
+    // emoji-texte-ok (ligne suivante) : motif comparé au texte nettoyé, sans U+FE0F (_nettoyer).
+    { e: "🧭", i: "navigation", a: /^(?:Suivi\b|Follow\b|Seguimiento\b|\/ 🕹|de la barre du bas|tracker \(ON|light in the bottom|tracker light|de la barra (?:de abajo|inferior)|rastreador \(ON|est grisé|is greyed|aparece en gris|grisé|greyed out|en gris)/ },
+    { e: "🧭", i: "signpost", a: /^(?:Suivre mon parcours|Follow my route|Seguir mi recorrido)/ },
+    { e: "✏️", i: "square-dashed",
+      a: /^(?:Par zone|By area|Por zona|Effacer par zone|Erase by area|Borrar por zona|Sélectionner par zone|Select by area|Seleccionar por zona)/ },
+    { e: "✏️", i: "pencil",
+      a: /^(?:Modifier\b|Edit\b|Editar\b|Modificar\b|Éditer\b|Édition\b|Edición\b|Editing\b|Appliquer à la session|Apply to the current|Aplicar a la sesión|Dessiner|Drawing|Dibujar)/ },
+    { e: "🗺️", i: "map",
+      a: /^(?:Plan au sol|plan au sol|= le plan au sol|Plan on the ground|plan on the (?:ground|floor)|map on the floor|Plano en el suelo|plano en el suelo|= the plan on|= el plano en|Voir sur (?:la )?carte|Show on (?:the )?map|Ver en el mapa|Choisir sur la carte|Pick on the map|Elegir en el mapa|Convertir (?:depuis un|un fichier) SIG|Convert (?:from|a) GIS|Convertir (?:desde|un archivo) SIG|Surligner les galeries|Highlight galleries|Resaltar las galerías)/ },
+    { e: "🗺️", i: "route",
+      a: /^(?:Calc\. (?:itinéraire|route|ruta)|Itinéraire actif|Active route|Ruta activa|Parcours :|Route:|Recorrido:|itinéraire \(distance|route \(distance|itinerario \(distancia|itinéraire et ses étapes|route and its stops|itinerario y sus etapas|distance · temps|distance · time|distancia · tiempo)/ },
+    { e: "🚑", i: "ambulance",
+      a: /^(?:Secouriste libre|Free rescuer|Socorrista libre|secouriste libre|free rescuer|socorrista libre|Évacuer|Evacuate|Evacuar|ouvre cette étape|badge opens that step|abre esa etapa)/ },
+    { e: "🗺️", i: "list", a: /^(?:du bandeau|button of the banner|del encabezado)/ },
+    { e: "⭐", i: "star" },
+    { e: "🎓", i: "graduation-cap" },
+    { e: "🤖", i: "bot" },
+    // Tutoriel (cartes substituées au rendu).
+    { e: "📦", i: "archive", a: /^(?:Backups récents|Recent backups|Backups recientes)/ },
+    // emoji-texte-ok (ligne suivante) : motif comparé au texte nettoyé, sans U+FE0F (_nettoyer).
+    { e: "📸", i: "camera", b: /🏛$/ },
+    // emoji-texte-ok (ligne suivante) : motif comparé au texte nettoyé, sans U+FE0F (_nettoyer).
+    { e: "📍", i: "map-pin", a: /^🛣/ },
+    { e: "📍", i: "map-pin-check", a: /^(?:Je suis ici|I am here|Estoy aquí)(?![\wÀ-ÿ])/ },
+    { e: "▶️", i: "play", a: /^(?:Charger ce plan|Load this map|Cargar este mapa|Reprendre\b|Resume\b|Reanudar\b)/ },
+    { e: "📚", i: "circle-help", a: /^→ (?:Légende|Legend|Leyenda)/ },
+    { e: "🔭", i: "telescope", a: /^(?:Portée|Range|Alcance)\b/ },
+    { e: "🧱", i: "brick-wall", a: /^(?:Textures?|Texturas?)\b/ },
+    { e: "🧱", i: "grid-2x2", a: /^(?:Convertir en V2|Convert to V2|Convertir a teselas)/ },
+    { e: "🌫️", i: "cloud-fog" },
+    { e: "🔦", i: "flashlight" },
+    { e: "📌", i: "move", a: /^(?:Repositionner|Reposition|Reposicionar)\b/ },
+    { e: "📢", i: "megaphone" },
+    { e: "🔊", i: "volume-2" },
+    { e: "⏸️", i: "pause" },
+    { e: "🚒", i: "clipboard-list", a: /^(?:Briefing pompiers|Firefighter briefing|Briefing bomberos)/ },
+    { e: "👤", i: "user", a: /^(?:Opérateur|Surface operator|Operador|Chef\b|Leader\b|Jefe\b|Côté opérateur|Operator side|Lado del operador|Retour Opérateur|Back to Operator|Volver a Operador)/ },
+    { e: "👥", i: "users", a: /^(?:Membres|Members|Miembros|Les équipes|Teams ➕|Los equipos)/ },
   ];
 
   const AUTRE_SENS = [
+    { e: "🔒", s: "données gardées sur l'appareil (tutoriel)", a: /^(?:Tes plans, tes notes|Your maps, notes|Tus mapas, tus notas)/ },
+    { e: "💾", s: "enregistrement automatique (tutoriel)", a: /^(?:Tout s'enregistre|Everything is saved|Todo se guarda)/ },
+    { e: "📸", s: "photos d'un point (tutoriel)", a: /^(?:photos|fotos)\)/ },
+    { e: "📡", s: "première ouverture avec du réseau (tutoriel)", a: /^(?:Ouvre-la une fois|Open it once|Ábrela una vez)/ },
+    { e: "📱", s: "installation sur l'écran d'accueil (tutoriel)", a: /^(?:Installe l'app|Install the app|Instala la app)/ },
+    { e: "🪧", s: "bandeau du guidage (tutoriel)", a: /^(?:En marchant|As you walk|Mientras caminas)/ },
     { e: "🧭", s: "position du tracker (départ d'itinéraire, réglage)", a: /^Tracker (?:start )?position/ },
-    { e: "🧭", s: "Y aller, Suivi de la vue 3D, réglages de navigation, voyant du bas, rose des vents, Dijkstra" },
-    { e: "✏️", s: "Modifier / Éditer / Renommer d'une fiche, vue Édition de la 3D, sélection par zone" },
+    { e: "🧭", s: "réglages de navigation, Tracer l'itinéraire de la Sortie d'urgence, rose des vents, Dijkstra, titres" },
+    { e: "✏️", s: "puces de la vue Édition de la 3D (caméra, zoom, survol…), nom local, renommer" },
     { e: "🛣️", s: "rendu Galerie / Mixte de la 3D", a: /^(?:Galerie|Gallery|Galería|Tunnels|Mixte|Mixed|Mixto)\b/ },
     { e: "🛣️", s: "rendu Mixte de la 3D", b: /🏛️?$/ },
     { e: "🛣️", s: "écran de démarrage", a: /^(?:Grand réseau|Large network|Red grande)/ },
@@ -568,34 +717,23 @@
       a: /^(?:(?:Plan|Map|Mapa|Plano)\b(?! ?:)|Calibr|Point C|Punto C|Coordonnées|Coordinates|Coordenadas)/ },
     { e: "🔍", s: "recherche d'un point dans un formulaire, filtres, analyse, diagnostic",
       a: /^(?:Choisir via|Pick via|Chercher un point|recherche d'un point|recherche ou|Choose via|Search (?:for )?a point|search for an existing|search or|búsqueda de un punto|Elegir mediante|Buscar un punto|búsqueda o|L'image du plan est floue|The map image is blurry|La imagen del mapa|Outils d'analyse|Analysis tools|Herramientas de análisis|Filtres|Filters|Filtros)/ },
-    { e: "🔍", s: "recherche de la vue 3D", a: /^(?:(?:Rechercher|Search|Buscar),? (?:—|en haut|at the top|arriba)|en haut, à gauche|at the top|arriba,? a la izquierda)/ },
     { e: "🔎", s: "champs et filtres (doc, Mes plans, photos, sélection)" },
     { e: "⬇️", s: "télécharger, hors ligne, charger un plan à l'accueil" },
     { e: "⏪", s: "Annuler de la vue 3D (son propre bouton)",
       b: /(?:mêmes couleurs|same colou?rs|mismos colores|Niveau de la 3D|Level of the 3D view|Nivel de la 3D),$/ },
-    { e: "⭐", s: "favori d'un point (bouton, marque, export), épingler un plan" },
     { e: "📚", s: "Bonnes pratiques, documents PDF du plan, Histoire" },
-    { e: "⚙️", s: "mode Avancé du Générateur", a: /^(?:Avancé|Advanced|Avanzado)(?![\wÀ-ÿ])/ },
-    { e: "⚙️", s: "réglages de la vue 3D (son propre bouton)",
-      a: /^(?:ouvre une petite|opens a small|abre una pequeña|Réglages ⚙️?|Settings ⚙️?|Ajustes ⚙️?|Réglages \(en haut|Settings \(at the top|Ajustes \(arriba|, retenu pour ce plan|, remembered|, recordado|, Échap|, Esc|\) mais jamais|\) but never|\) pero nunca|\(dans les deux vues\)|\(in both views\)|\(en las dos vistas\)|, coupé par défaut|, off by default|, desactivad|tile\b)/ },
-    { e: "⚙️", s: "réglages de la vue 3D (son propre bouton)",
-      b: /(?:de la tuile|de la ficha|se ferme par|closes with|se cierra con|vue 3D\) et|3D view\) and|vista 3D\) y)$/ },
-    { e: "▶️", s: "Reprendre, Charger ce plan, lecteur du Replay, pavé de la 3D, Départ du carnet" },
-    { e: "⏹️", s: "fin d'une opération de Secours",
-      a: /^(?:Arrêter à tout|Terminer le plan|Stop at any|End the plan|Detener en cualquier|Finalizar el plan)/ },
+    { e: "▶️", s: "lecteur du Replay, pavé de la 3D, Départ du carnet" },
     { e: "🪧", s: "bandeau et feuille de route du guidage, fiche d'aide Itinéraire et guidage" },
     { e: "📍", s: "points, Je suis ici, clic carte, réglages Navigation & tracker, GPS surface" },
     { e: "🎯", s: "précision d'un point, sélection, calibrage, zone de recherche, recentrer" },
     { e: "🔒", s: "zéro télémétrie, audit réseau, seul écran en ligne, passages interdits" },
-    { e: "🗺️", s: "Légende de la Vue OSM ou posée à l'export",
-      a: /^(?:Légende (?:de la Vue OSM|posée)|Legend (?:of the OSM|in the OSM|placed)|Leyenda (?:de la Vista OSM|colocada)|Legend button of the OSM)/ },
-    { e: "🗺️", s: "carte, plan au sol de la 3D, fiche Itinéraire et guidage, SIG, Plan en cours" },
+    { e: "🗺️", s: "Légende posée à l'export", a: /^(?:Légende posée|Legend placed|Leyenda colocada)/ },
+    { e: "🗺️", s: "carte, fiche Itinéraire et guidage, Plan en cours, mini-carte, Orientation, Utiliser la carte" },
     { e: "🔥", s: "heatmap du Mode Secours",
       a: /^(?:Afficher la heatmap|Show the (?:activity )?heatmap|Mostrar el mapa de calor)/ },
-    { e: "🚑", s: "secouriste libre, victime trouvée, pastille, lancer un plan de secours" },
+    { e: "🚑", s: "victime trouvée (statut), lancer un plan de secours (titre), Mode Secours garde" },
     { e: "📡", s: "hors connexion, export GPS" },
     { e: "📏", s: "marge, outil Mesurer de la Vue OSM", a: /^(?:Marge|Margin|Margen|Mesurer|Measur\w*|Medir)\b/ },
-    { e: "⛏️", s: "hauteur de la vue 3D", a: /^(?:Hauteur|Height|Altura|C'est la hauteur|It is the height|Es la altura)\b/ },
     { e: "❌", s: "ce que l'app n'est pas, refus, effacer un surlignage ou un itinéraire" },
     { e: "🧹", s: "outils du Secours et de maintenance",
       a: /^(?:Découper|Parcours|Dédoublonner|Données orphelines|Split|Route|Deduplicate|Orphan|Dividir|Recorrido|Deduplicar|Datos huérfanos|Desduplicar)/ },
@@ -610,10 +748,9 @@
     { e: "📊", s: "détails de la session, statistiques, calques de données" },
     { e: "🔄", s: "import d'un plan existant", a: /^(?:Mettre à jour le plan —|Update the map —|Actualizar el mapa —)/ },
     { e: "🔄", s: "convertir, modifier un calque, changer de plan, crédits" },
-    { e: "🌍", s: "Vue OSM (bouton de la barre du haut, fenêtre), portée tous les plans, crédits" },
-    { e: "❓", s: "aide de la vue 3D, bouton ❓ dans le titre des fenêtres" },
-    { e: "📖", s: "Mode Histoire, récits, topo, audit réseau, doc d'installation" },
-    { e: "🚨", s: "Sortie d'urgence, alertes de survie, Secours" },
+    { e: "🌍", s: "crédits OpenStreetMap" },
+    { e: "📖", s: "topo, audit réseau, doc d'installation, documentation en ligne" },
+    { e: "🚨", s: "victime trouvée (statut), alertes de survie, catégorie Secours, seuil de batterie, rubrique Urgence" },
     { e: "📥", s: "importer, installer, télécharger" },
     { e: "ℹ️", s: "fiche d'un plan" },
     { e: "🧊", s: "crédits three.js" },
@@ -649,7 +786,13 @@
     { e: "🕹️", s: "joystick et pavé de la vue 3D" },
     { e: "🏷️", s: "tags, étiquettes, légende personnalisée" },
     { e: "🏠", s: "accueil, retour à l'accueil" },
-    { e: "📉", s: "profondeur, pente, niveaux en hauteur hors Réglages" }
+    { e: "📉", s: "profondeur, pente, niveaux en hauteur hors Réglages" },
+    { e: "🔭", s: "titre de doc « Pour aller plus loin », barre de la 3D" },
+    { e: "🧱", s: "état des textures dans une phrase, catégorie Structures, butée de la 3D" },
+    { e: "📌", s: "photo à rattacher, assigner un point" },
+    { e: "🚒", s: "secours extérieurs (étape de procédure)" },
+    { e: "👤", s: "Mon profil (accueil)" },
+    { e: "👥", s: "bouton Équipe d'une installation reliée, encadrants, nombre de personnes" }
   ];
 
   const _PAR_EMOJI = {};

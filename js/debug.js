@@ -113,7 +113,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:680px;">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${window.I18n.t("debug.title")}</span>
+          <span class="kta-readme-modal-titre">${window.ktaIcone("bug") + " " + window.I18n.t("debug.title")}</span>
           <div style="display:flex;gap:8px;align-items:center;">
             <button class="kta-btn kta-btn-ghost" id="kta-debug-vider" style="font-size:11px;padding:4px 10px;">${window.I18n.t("debug.btnClear")}</button>
             <button class="kta-btn kta-btn-primary" id="kta-debug-copier" style="font-size:11px;padding:4px 10px;">${window.I18n.t("debug.btnCopy")}</button>

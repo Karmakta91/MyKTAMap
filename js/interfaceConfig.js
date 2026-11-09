@@ -1074,12 +1074,13 @@ function afficherConfig() {
   const c = APP_CONFIG;
 
   // Métadonnées du preset perf actif (affichage en lecture seule).
+  // `ico` : icône SVG (ktaIcones.js) ; Performance = rocket, comme la rubrique Performance.
   const _PRESET_LABELS = {
-    "off":         { emoji: "💤", label: window.I18n.t("config.preset.off") },
-    "auto":        { emoji: "🔄", label: window.I18n.t("config.preset.auto") },
-    "quality":     { emoji: "🌟", label: window.I18n.t("config.preset.quality") },
-    "balanced":    { emoji: "🎯", label: window.I18n.t("config.preset.balanced") },
-    "performance": { emoji: "⚡", label: window.I18n.t("config.preset.performance") }
+    "off":         { ico: "power-off", label: window.I18n.t("config.preset.off") },
+    "auto":        { ico: "wand-sparkles", label: window.I18n.t("config.preset.auto") },
+    "quality":     { ico: "gem", label: window.I18n.t("config.preset.quality") },
+    "balanced":    { ico: "scale", label: window.I18n.t("config.preset.balanced") },
+    "performance": { ico: "rocket", label: window.I18n.t("config.preset.performance") }
   };
   const presetMeta = _PRESET_LABELS[c.perfPreset] || _PRESET_LABELS.auto;
 
@@ -1457,7 +1458,7 @@ function afficherConfig() {
               <div style="font-size:11px; color:var(--kta-texte-3); margin-top:2px;">${window.I18n.t("config.debug.perfModeHint")}</div>
             </div>
             <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid var(--kta-bordure);">
-              <span style="font-size:22px;">${presetMeta.emoji}</span>
+              <span style="font-size:22px; line-height:0;">${window.ktaIcone(presetMeta.ico)}</span>
               <span style="font-size:15px; font-weight:600; color:var(--kta-texte);">${presetMeta.label}</span>
             </div>
           </div>

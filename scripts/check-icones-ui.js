@@ -15,11 +15,15 @@
 //      index.html : les boutons d'en-tête et de « Mes plans » migrés portent `data-kta-ico` et aucun emoji ;
 //      les libellés migrés de l'accueil et de sa Configuration (CLES_INDEX) suivent une icône `data-kta-ico`,
 //      ceux rendus par un module (APPELS_JS) ont leur ktaIcone() à côté, et leurs clés n'ont plus d'emoji ;
-//      fenêtres d'outils de la carte (CLES_C2, CLES_C2_TEXTE) : même règle, et aucun reflet de mode en emoji ;
+//      fenêtres d'outils de la carte (CLES_C2, CLES_C2_TEXTE) et reste de l'interface (CLES_C3, CLES_C3_TEXTE :
+//      vue 3D, Mode Secours, barres du haut et du bas, fiches, Vue OSM, Générateur, Tableur, inspecteurs…) : même
+//      règle, et aucun reflet de mode en emoji ; boutons de la vue 3D, icônes des confirmations (kta-modal-icon),
+//      compteurs des barres et cartes du tutoriel : jamais un emoji ;
 //   2. chaque nom passé à ktaIcone("…") ou à data-kta-ico="…" (js/*.js, index.html) existe dans le module ;
 //   3. chaque règle de la table de doc (KtaIcones.DOC) pointe vers une icône existante ;
 //   4. EXHAUSTIF : chaque occurrence d'un emoji migré dans docs/applications/README_USER{,.en,.es}.md et dans
-//      les clés aide.* de lang/{fr,en,es}.json est soit substituée (DOC), soit listée « autre sens »
+//      les clés aide.* et tutorial.card.* de lang/{fr,en,es}.json est soit substituée (DOC), soit listée « autre
+//      sens »
 //      (AUTRE_SENS). Sinon : échec avec fichier:ligne et le texte voisin ;
 //   5. CLIQUET : le nombre d'emplois rangés par une règle « tout le reste » est figé par emoji (PLAFOND_RESTE) ;
 //   6. CLIQUET : les trois dicos entiers hors doc (toasts, alertes, titres…) : un emoji de bouton migré n'y reste
@@ -50,7 +54,8 @@ const EMOJI_MIGRES = ["🧭", "✏️", "🛣️", "⬛", "🏛️", "📐", "�
   "▶️", "⏹️", "🔃", "🪧", "📍", "🎯", "🔓", "🔒", "🗺️", "🎬", "🔥", "⛑️", "🔆", "🚑", "📡", "♦️", "📏", "⛏️",
   "❌", "✅", "🧹", "🪜", "➕", "🖼️", "🖨️", "🛰️", "💾", "🎨", "📊", "🔄", "🌍", "❓", "📖", "📥", "🚨", "☑", "ℹ️",
   "🧊", "📦", "🧰", "📔", "🌀", "📸", "🏗️", "🌐", "☁️", "📁", "🧩", "🛠️", "🔔", "🪟", "🧲", "☀️", "📱", "🔋", "📳",
-  "🕵️", "🔐", "🚫", "📋", "📤", "🗑️", "🔧", "🛡️", "📄", "💥", "🐛", "🚀", "👣", "🎤", "🕹️", "🏷️", "🏠", "📉"];
+  "🕵️", "🔐", "🚫", "📋", "📤", "🗑️", "🔧", "🛡️", "📄", "💥", "🐛", "🚀", "👣", "🎤", "🕹️", "🏷️", "🏠", "📉",
+  "🔭", "🧱", "🌫️", "🔦", "📌", "📢", "🔊", "⏸️", "🚒", "👤", "👥", "🎓", "🤖"];
 const BOUTONS_INDEX = ["loaderSearchBtn", "loaderOfflineHdrBtn", "loaderAlertBtn", "loaderHelpBtn", "loaderConfigBtn",
   "loaderPlansFolderNew", "loaderPlansSelect"];
 // Libellés migrés de l'accueil, de sa Configuration et des fenêtres ouvertes depuis là : la clé ne porte plus
@@ -196,6 +201,111 @@ const CLES_C2_TEXTE = ["cheatsheet.tool.edition", "cheatsheet.tool.legende", "ch
   "search.gps.poi.dist", "search.kind.point", "search.kind.road", "search.kind.structure", "search.kind.zone",
   "stats.meta.multiNiveau", "stats.meta.v2Tuile", "tabledit.source.fusion", "ui.subaction.nouveauTypeTitre",
   "utils.scaleCoherence.rowCalibrated"];
+// Reste de l'interface (vue 3D, Mode Secours, barres, fiches de point, Vue OSM, Générateur, Tableur, Mes photos,
+// import de plusieurs plans, logs, inspecteurs, incognito, sélecteur de plan) : même règle que CLES_C2 ; CLES_C3_TEXTE =
+// clés sorties de l'emoji dont l'icône est posée par l'appelant ou un alias de préfixe (_t("titre")), ou absente
+// (<option>, titre d'alerte, attribut title, libellé repris dans une phrase).
+const CLES_C3 = {
+  "js/createConf.js": ["gen.btn.choisir", "gen.btn.genererZip", "gen.calib.calibrerBtn", "gen.dataLayers.importBtn",
+      "gen.dataLayers.importTitre", "gen.dataLayers.titre", "gen.fond.label", "gen.georef.pointA", "gen.georef.pointB",
+      "gen.georef.pointC", "gen.georef.titre", "gen.gpx.fichierTitre", "gen.gpx.titre", "gen.gpx.tracksType",
+      "gen.histoire.retirerBtn", "gen.histoire.titre", "gen.icons.iconeBtn", "gen.icons.svgLabel", "gen.icons.titre",
+      "gen.images.titre", "gen.imgLayers.niveau", "gen.imgLayers.titre", "gen.imp.pointsTag",
+      "gen.imp.telechargeRegenerer", "gen.kmz.fichierTitre", "gen.kmz.lineStringType", "gen.kmz.polygonType",
+      "gen.kmz.titre", "gen.kmzIncompat.sigBtn", "gen.kmzIncompat.titre", "gen.kmzNoImg.titre", "gen.legende.editBtn",
+      "gen.legende.resetBtn", "gen.legende.titre", "gen.modal.titre", "gen.mode.avance", "gen.mode.simple",
+      "gen.photos.label", "gen.sig.titre", "gen.tracking.nord", "gen.tracking.recentrerBtn", "gen.tracking.titre",
+      "gen.v2.label", "gen.v2err.queFaire", "gen.v2warn.mobileTitre", "gen.v2warn.pcTitre", "gen.v2warn.titre",
+      "gen.vierge.genererBtn", "gen.wiz.passer", "gen.wiz.resumeTitre", "gen.wiz.toggleTout", "gen.wiz.toggleWiz",
+      "gen.zip.exempleBtn", "gen.zip.titre"],
+  "js/debug.js": ["debug.title"],
+  "js/importMasse.js": ["impmasse.btn.choisir", "impmasse.btn.lancer", "impmasse.btn.lancerVide", "impmasse.btn.voir",
+      "impmasse.dossier.titre", "impmasse.precharger.label", "impmasse.titre"],
+  "js/incognitoMode.js": ["incognito.badge.label", "incognito.confirm.changes.title", "incognito.confirm.usecases.title",
+      "incognito.confirm.warn.title"],
+  "js/interface.js": ["ui.loadOther.loadBtn", "ui.switcher.currentLabel", "ui.switcher.modalTitle", "ui.switcher.recentTitle"],
+  "js/interPlanLinks.js": ["ipl.popup.addBtn"],
+  "js/interfaceDocs.js": ["aiia.titre"],
+  "js/osmHomePreview.js": ["osm_home.gps.popupTitle", "osm_home.niveaux.titre", "osm_mode.filters.plans", "osm_mode.filters.tags",
+      "osm_mode.multi.addFolder", "osm_mode.multi.tagsTitre"],
+  "js/osmView.js": ["osm.btn.centerPlan", "osm.btn.centerTracker", "osm.btn.mygps", "osm.cache.btn", "osm.gps.popup.title",
+      "osm.legende.btn", "osm.levels.label", "osm.modal.title", "osm.opacity.label", "osm.secours.tooltip.entree",
+      "osm.secours.tooltip.iti", "osm.secours.tooltip.sortie", "osm.secours.tooltip.zone", "osm.tags.label",
+      "osm.toggle.iti", "osm.toggle.plan", "osm.toggle.poi", "osm.toggle.roads", "osm.toggle.secours",
+      "osm.toggle.struct", "osm.toggle.tracker", "osm.toggle.zones"],
+  "js/photosGalerie.js": ["photosgal.action.enregistrer", "photosgal.action.rattacher", "photosgal.action.recreer",
+      "photosgal.action.supprimer", "photosgal.action.voir", "photosgal.avec.titre", "photosgal.ouvrirPlan",
+      "photosgal.pick.carte", "photosgal.sans.titre", "photosgal.titre", "photosgal.verifier.titre"],
+  "js/secoursMode.js": ["secours.assign.equipeLabel", "secours.assign.roleLabel", "secours.assign.titre", "secours.b10.perdu",
+      "secours.b10.sortie", "secours.b10.xl", "secours.b9.chefLabel", "secours.b9.remontesTitre",
+      "secours.balayage.label", "secours.bandeau.arreter", "secours.bandeau.briefing", "secours.bandeau.ctaBtn",
+      "secours.bandeau.ctaTitre", "secours.bandeau.enPause", "secours.bandeau.lanceDepuis", "secours.bandeau.planTermine",
+      "secours.bandeau.rapport", "secours.bandeau.relancer", "secours.bandeau.reprendreLive",
+      "secours.bandeau.voirRapportHisto", "secours.bandeau.vueOsm", "secours.brancard.calculer", "secours.brancard.titre",
+      "secours.briefing.couchesTitre", "secours.briefing.optIti", "secours.briefing.optPlan", "secours.briefing.optPoi",
+      "secours.briefing.optRoad", "secours.briefing.optSecours", "secours.briefing.optStruct",
+      "secours.briefing.optTracker", "secours.briefing.optZone", "secours.btn.annulerCroix", "secours.btn.demarrerPhase",
+      "secours.btn.editer", "secours.btn.genererPdf", "secours.btn.ouvrirScenario", "secours.btn.terminerPlan",
+      "secours.couv.btnMasquer", "secours.couv.btnSurligner", "secours.ctxImport.dernierePosition",
+      "secours.ctxImport.recentrer", "secours.ctxImport.titre", "secours.ctxImport.zoneIncertitude",
+      "secours.debrief.titre", "secours.duree.titre", "secours.edit.autoMlvlBtn", "secours.edit.btnAjouterEquipe",
+      "secours.edit.exportKmz", "secours.edit.exportMkmsec", "secours.edit.exportPdf", "secours.edit.masquer",
+      "secours.edit.voirCarte", "secours.entree.titre", "secours.floater.retourModale", "secours.groupe.btnCalcIti",
+      "secours.groupe.btnDefZone", "secours.groupe.btnPoisZone", "secours.groupe.couleurLabel",
+      "secours.groupe.gpsSurfaceLabel", "secours.groupe.membresLabel", "secours.groupe.niveauMlvl",
+      "secours.groupe.statDistance", "secours.groupe.statDuree", "secours.groupe.statZone", "secours.heatmap.afficher",
+      "secours.heatmap.masquer", "secours.heatmap.regler", "secours.heatmap.titre", "secours.import.chipParcours",
+      "secours.import.chipZone", "secours.import.equipesIncluses", "secours.import.labelDateExport",
+      "secours.import.labelFichier", "secours.import.labelPlanSource", "secours.import.labelVersionApp",
+      "secours.import.membres", "secours.import.previewTitre", "secours.import.resKoTitre", "secours.import.resOkEquipes",
+      "secours.import.resOkSource", "secours.lancer.equipeTitre", "secours.lancer.opTitre", "secours.lancer.secTitre",
+      "secours.lancer.titre", "secours.launchNext.titre", "secours.list.metaEquipes", "secours.live.obsLabel",
+      "secours.live.pause", "secours.live.photoBtn", "secours.live.recentrerBtn", "secours.live.reprendre",
+      "secours.live.retourOperateur", "secours.live.retourSecouriste", "secours.live.saisieRapide",
+      "secours.live.typeEntree", "secours.live.typeEtape", "secours.live.typeSortie", "secours.live.voirEdition",
+      "secours.liveOp.carteGlobale", "secours.liveOp.importRapport", "secours.liveOp.rapportGlobal",
+      "secours.liveOp.titre", "secours.liveSec.ajouterNote", "secours.liveSec.statutAssocie",
+      "secours.liveSec.terminerMission", "secours.liveSec.titre", "secours.mc.titre", "secours.newequipe.levelLabel",
+      "secours.newequipe.nomLabel", "secours.newequipe.titre", "secours.opCard.details", "secours.opCard.importeChip",
+      "secours.opCard.prendreMain", "secours.opDetails.titre", "secours.overlay.dernierePosition",
+      "secours.overlay.dernierePositionLabel", "secours.overlay.entree", "secours.overlay.itineraire",
+      "secours.overlay.sortie", "secours.overlay.zoneIncertitude", "secours.parcours.btnAjouterEtape",
+      "secours.parcours.titre", "secours.phaseModal.equipesLabel", "secours.phaseModal.nivChip",
+      "secours.phaseModal.titreCreate", "secours.phaseModal.titreEdit", "secours.phases.statutDemarree",
+      "secours.pick.cliquerCarte", "secours.pick.favorisTitre", "secours.pick.titre", "secours.poiZone.titre",
+      "secours.rappel.btnEquipe", "secours.rappel.btnGeneral", "secours.rapport.apercuDuree",
+      "secours.rapport.apercuEquipes", "secours.rapport.apercuEtapes", "secours.rapport.apercuNotes",
+      "secours.rapport.inclurePhotos", "secours.rapport.titreDefault", "secours.rapport.titreEquipier",
+      "secours.rapport.titreOperateur", "secours.rapport.titreSecouriste", "secours.rapportPreview.contenuTitre",
+      "secours.rapportPreview.titre", "secours.rapportRes.warningsSummary", "secours.recalage.titre",
+      "secours.retour.btnDepart", "secours.retour.btnRentree", "secours.role.entree", "secours.role.sortie",
+      "secours.secouriste.importTitre", "secours.secteurs.btn", "secours.secteurs.titre", "secours.suivre.actif",
+      "secours.suivre.btn", "secours.victime.evacuer", "secours.victime.preciser", "secours.victime.voir",
+      "secours.zoneMode.polygoneTitre", "secours.zoneMode.roadsTitre", "secours.zoneMode.titre"],
+  "js/tableEditor.js": ["tabledit.editor.dupliquer", "tabledit.editor.sauvegarder", "tabledit.editor.supprimer", "tabledit.editor.titre",
+      "tabledit.editor.voirCarte", "tabledit.preview.banner", "tabledit.preview.retour", "tabledit.save.appliquer",
+      "tabledit.save.telecharger", "tabledit.save.titre", "tabledit.sortie.continuer", "tabledit.sortie.quitter",
+      "tabledit.sortie.sauver"],
+  "js/utils.js": ["poi.addWaypointBtn", "poi.deleteBtn", "poi.favOff", "poi.favOn", "poi.goThereBtn", "poi.moveBtn"]
+};
+const CLES_C3_TEXTE = ["docs.aiiaBtn", "gen.imp.apercu", "gen.imp.configTitre", "gen.imp.genererBtn", "gen.mlvl.label", "gen.sig.famLignes",
+    "gen.sig.famPoints", "gen.sig.famZones", "home.add.load", "impmasse.dossier.nouveau", "iti.wp.jeSuisIci",
+    "meminsp.cache.titre", "meminsp.crash.btn.clearAll", "meminsp.crash.btn.copy",
+    "meminsp.crash.btn.view", "meminsp.crash.detail.titre", "meminsp.crash.titre", "meminsp.idb.titre",
+    "meminsp.ls.titre", "meminsp.orph.titre", "meminsp.runtime.tag.dataLayers", "meminsp.runtime.tag.debugOn",
+    "meminsp.runtime.tag.imageLayers", "meminsp.runtime.tag.itiActive", "meminsp.runtime.tag.legend",
+    "meminsp.runtime.tag.measure", "meminsp.runtime.tag.mlvl", "meminsp.runtime.tag.perf", "meminsp.runtime.tag.tiled",
+    "meminsp.runtime.tag.trackerOff", "meminsp.runtime.tag.trackerOn", "meminsp.runtime.titre", "meminsp.storage.titre",
+    "osm_home.cache.btnTitle", "osm_home.legende.btnTitle", "osm_mode.multi.add",
+    "photosgal.supprimer.ok", "poi.editBtn", "poiPrecis.augmenter", "poiPrecis.deplacer", "poiPrecis.refaire",
+    "secours.groupe.zonePolygone", "secours.groupe.zoneTraces", "secours.live.stepEntree", "secours.live.stepSortie",
+    "secours.rappel.confirmTitre", "secours.retour.rappeleeA", "secours.retour.rentreeA", "secours.roleBandeau.equipe",
+    "secours.roleBandeau.operateur", "secours.roleBandeau.secouriste", "secours.roleLabel.equipe",
+    "secours.roleLabel.operateur", "secours.roleLabel.secouriste", "swinsp.btn.refetch", "swinsp.dynamic.titre",
+    "swinsp.failures.titre", "swinsp.missing.titre", "swinsp.present.titre", "swinsp.refetch.retry", "swinsp.titre",
+    "swinsp.verdict.ko.titre", "swinsp.verdict.ok.titre", "tabledit.source.dedup",
+    "tabledit.source.raccords", "tabledit.source.resol", "tutorial.ui.headerTitle", "ui.suppClic.parZone",
+    "utils.tracePopup.itinerary", "utils.tracePopup.jonction"];
 
 // ── 0. auto-test du classement (chaque sabotage doit rougir) ─────────────────────────────
 {
@@ -277,25 +387,29 @@ const SRC_INTERFACE = lire("js/interface.js");
   t("1. dicos : les " + (CLES_INDEX.length + CLES_JS.length) + " clés migrées n'ont plus d'emoji (fr, en, es)",
     emojiCle.length === 0, emojiCle.join("\n   "));
 
-  // Fenêtres d'outils de la carte : chaque emploi d'une clé migrée a son icône à côté (ligne ou voisine).
+  // Fenêtres d'outils de la carte et reste de l'interface : chaque emploi d'une clé migrée a son icône à côté (ligne
+  // ou voisine).
   const c2Nus = [];
-  Object.keys(CLES_C2).forEach((f) => {
+  const parFichier = {};
+  [CLES_C2, CLES_C3].forEach((tab) => Object.keys(tab).forEach((f) => { parFichier[f] = (parFichier[f] || []).concat(tab[f]); }));
+  Object.keys(parFichier).forEach((f) => {
     const lignes = lire(f).split(/\r?\n/);
-    CLES_C2[f].forEach((cle) => {
+    parFichier[f].forEach((cle) => {
       let n = 0;
       lignes.forEach((l, i) => {
         if (l.indexOf("\"" + cle + "\"") < 0) return;
         n++;
         if (/\{ titre: /.test(l)) return;   // titre d'une alerte (ktaAlerte, texte seul)
         const autour = [lignes[i - 1] || "", l, lignes[i + 1] || ""].join("\n");
-        if (!/ktaIcone\(|\bico: "|_ICO|ICONE|categoryIcon/.test(autour)) c2Nus.push(f + ":" + (i + 1) + " : « " + cle + " » sans icône");
+        if (!/ktaIcone\(|\bico: "|_ICO|ICONE|categoryIcon|_icoFiche\(|_poserIcone\(/.test(autour)) c2Nus.push(f + ":" + (i + 1) + " : « " + cle + " » sans icône");
       });
       if (!n) c2Nus.push(f + " : « " + cle + " » introuvable");
     });
   });
-  t("1. fenêtres d'outils de la carte : libellés migrés rendus avec leur icône SVG", c2Nus.length === 0, c2Nus.join("\n   "));
+  t("1. fenêtres de la carte, vue 3D, Secours, barres, Vue OSM, Générateur… : libellés migrés rendus avec leur icône SVG",
+    c2Nus.length === 0, c2Nus.join("\n   "));
   const c2Emoji = [];
-  const clesC2 = Object.keys(CLES_C2).reduce((a, f) => a.concat(CLES_C2[f]), []).concat(CLES_C2_TEXTE);
+  const clesC2 = Object.keys(parFichier).reduce((a, f) => a.concat(parFichier[f]), []).concat(CLES_C2_TEXTE, CLES_C3_TEXTE);
   ["fr", "en", "es"].forEach((l) => {
     const d = JSON.parse(lire("lang/" + l + ".json"));
     clesC2.forEach((cle) => {
@@ -303,7 +417,8 @@ const SRC_INTERFACE = lire("js/interface.js");
       else if (EMO.test(String(d[cle]).replace(/<[^>]*>/g, ""))) c2Emoji.push(l + " : " + cle + " = " + d[cle]);
     });
   });
-  t("1. dicos : les " + clesC2.length + " clés migrées des fenêtres d'outils n'ont plus d'emoji (fr, en, es)",
+  t("1. dicos : les " + clesC2.length + " clés migrées des fenêtres et du reste de l'interface n'ont plus d'emoji " +
+    "(fr, en, es)",
     c2Emoji.length === 0, c2Emoji.join("\n   "));
   // Reflet d'un mode sur un bouton de groupe (_setGroupeModeActif) : SVG partout, interface.js comme ailleurs.
   const reflets = [];
@@ -314,6 +429,21 @@ const SRC_INTERFACE = lire("js/interface.js");
     });
   });
   t("1. reflet de mode sur un bouton de groupe : jamais un emoji (cliquet 0)", reflets.length === 0, reflets.join("\n   "));
+  // Lot C3 : boutons de la vue 3D (_bouton : flèches et signes du pavé exceptés), icônes génériques des confirmations
+  // (kta-modal-icon, tous les modules), compteurs et voyants des barres du haut et du bas, cartes du tutoriel.
+  const c3Emoji = [];
+  const fautif = (f, re) => lire(f).split(/\r?\n/).forEach((l, i) => {
+    const m = re.exec(l);
+    if (m && EMO.test(m[1].replace(/[◀▶]/g, ""))) c3Emoji.push(f + ":" + (i + 1) + "  " + l.trim().slice(0, 100));
+  });
+  fautif("js/vue3d.js", /_bouton\([^,\n]+,\s*"[^"]*",\s*"([^"]*)"/);
+  fs.readdirSync(path.join(RACINE, "js")).filter((f) => /\.js$/.test(f)).forEach((f) => {
+    fautif("js/" + f, /class="kta-modal-icon"[^>]*>([^<]*)</);
+  });
+  fautif("js/refonteInterface.js", /class="kta-refonte-(?:counter|stat)-icon"[^>]*>([^<]*)</);
+  fautif("js/tutorial.js", /\{ cle: "[^"]+",\s*(?:ico|emoji): "([^"]*)"/);
+  t("1. vue 3D, confirmations, barres du haut et du bas, tutoriel : jamais un emoji d'icône (cliquet 0)",
+    c3Emoji.length === 0, c3Emoji.join("\n   "));
 
   // Lignes de Mes plans : l'icône du type de plan est un SVG (plan du site, d'extension, sur l'appareil).
   const HOME = lire("js/homeLoader.js");
@@ -360,7 +490,8 @@ const SRC_INTERFACE = lire("js/interface.js");
   });
   ["fr", "en", "es"].forEach((l) => {
     const brut = lire("lang/" + l + ".json"), dico = JSON.parse(brut), lignes = brut.split(/\r?\n/);
-    const morceaux = Object.keys(dico).filter((k) => /^aide\./.test(k)).map((k) => {
+    // Aide intégrée et cartes du tutoriel : substituées au rendu (interfaceDocs.js, tutorial.js > _renderCard).
+    const morceaux = Object.keys(dico).filter((k) => /^aide\.|^tutorial\.card\./.test(k)).map((k) => {
       const i = lignes.findIndex((x) => x.indexOf("\"" + k + "\"") >= 0);
       return { texte: String(dico[k]), ligne: i + 1, cle: k };
     });
@@ -389,12 +520,12 @@ const SRC_INTERFACE = lire("js/interface.js");
   // classé (règle DOC ciblée = SVG, ou AUTRE_SENS ciblé = autre sens voulu) ; une baisse se reporte ici.
   // Clés sans U+FE0F (forme rendue par classerDoc). Recalcul : node scripts/check-icones-ui.js --plafond
   const PLAFOND_RESTE = {
-    "📖": 54, "🌐": 27, "🔒": 15, "📦": 59, "💾": 88, "💥": 6, "❌": 33, "🔄": 118, "📤": 77, "📸": 42, "🧊": 6,
-    "🌍": 45, "🧭": 170, "🛡": 27, "🔐": 12, "📍": 186, "🚨": 99, "🔔": 3, "📋": 48, "ℹ": 27, "✅": 81, "📡": 12,
-    "✏": 171, "🚀": 42, "📱": 9, "📥": 51, "▶": 48, "📚": 15, "🏗": 75, "➕": 69, "🚑": 30, "🎤": 11, "🪧": 39,
-    "🗺": 132, "🎯": 120, "🔋": 9, "🗑": 138, "📊": 78, "⭐": 42, "⬇": 15, "📔": 33, "🎨": 39, "🖼": 39, "🏷": 33,
-    "🚫": 21, "🔎": 27, "❓": 15, "🕹": 33, "📉": 24, "🪜": 39, "☀": 9, "🌀": 45, "📁": 21, "🛠": 9, "🔧": 3,
-    "🏠": 3, "📄": 14
+    "📖": 12, "🌐": 27, "🔒": 15, "📦": 50, "💾": 88, "💥": 6, "❌": 33, "🔄": 118, "📤": 77, "📸": 42, "🧊": 6,
+    "🌍": 6, "🧭": 89, "🛡": 27, "🔐": 12, "📍": 122, "🚨": 33, "🔔": 3, "📋": 48, "👤": 18, "ℹ": 27, "✅": 81,
+    "📡": 12, "👥": 15, "✏": 44, "🚀": 42, "🔭": 63, "📱": 8, "📥": 51, "▶": 30, "📚": 15, "🏗": 75, "➕": 69,
+    "🚑": 12, "🎤": 11, "🪧": 39, "🗺": 63, "🎯": 120, "🔋": 9, "🗑": 138, "📊": 78, "⬇": 15, "📔": 33, "🎨": 39,
+    "🖼": 39, "🏷": 33, "🚫": 21, "🔎": 27, "🕹": 33, "📉": 24, "🪜": 39, "🧱": 24, "☀": 9, "🌀": 45, "📁": 21,
+    "📌": 9, "🛠": 9, "🔧": 3, "🏠": 3, "📄": 14, "🚒": 3
   };
   if (process.argv.indexOf("--plafond") >= 0) {
     console.log(JSON.stringify(Object.keys(comptes).filter((e) => comptes[e].reste)
@@ -422,22 +553,21 @@ const SRC_INTERFACE = lire("js/interface.js");
 // ── 6. textes hors doc : pas d'emoji d'un bouton passé en SVG ─────────────────────────────
 // Toasts, encadrés, astuces, alertes, infobulles, titres : un emoji que classerDoc substituerait (icône d'un bouton
 // migré) y montrerait l'ancien dessin ; le texte nomme le bouton sans icône (« Réglages → Géoréférencement GPS »).
-// Balayage des trois dicos ENTIERS, hors aide.* (doc substituée au rendu, § 4) et hors CLES_SORTIE (texte écrit
-// dans un fichier ou un rapport produit, nom donné à un objet créé). Un emploi rangé AUTRE_SENS (autre notion)
-// passe. Ce qui reste (fenêtres et contrôles pas encore migrés) est figé par emoji, trois langues additionnées
-// (PLAFOND_DICOS, cliquet) : toute hausse échoue, une baisse se reporte ici. Recalcul : --plafond.
+// Balayage des trois dicos ENTIERS, hors aide.* et tutorial.card.* (doc substituée au rendu, § 4) et hors CLES_SORTIE
+// (texte écrit dans un fichier ou un rapport produit, nom donné à un objet créé). Un emploi rangé AUTRE_SENS (autre
+// notion) passe. Ce qui reste est figé par emoji, trois langues additionnées (PLAFOND_DICOS, cliquet) : toute hausse
+// échoue, une baisse se reporte ici. Recalcul : --plafond. Reste : ⛑ de lost.alert.confirmOk, qui cite le nom donné
+// au point créé (« ⛑️ Position probable », lost.point.nom).
 {
-  const CLES_SORTIE = /^(?:imgexport\.legSection\.|lost\.report\.|lost\.point\.nom$|secours\.txt\.)/;
+  const CLES_SORTIE = /^(?:imgexport\.legSection\.|lost\.report\.|lost\.point\.nom$|secours\.txt\.|secours\.lost\.notesIntro$)/;
   const PLAFOND_DICOS = {
-    "🐛": 6, "🌐": 3, "🛣": 27, "⚙": 12, "⬛": 24, "📦": 6, "🕵": 6, "⛑": 24, "🔍": 12, "📐": 6, "🧭": 18, "🗺": 6,
-    "📖": 9, "📚": 3, "🏗": 3, "🔆": 6, "🏛": 6, "⏪": 3, "📔": 3, "⬆": 3, "❓": 3, "📸": 3, "⏹": 6, "📏": 3,
-    "🔥": 3, "🪜": 1
+    "⛑": 3
   };
   const parEmoji = {}, detail = {};
   ["fr", "en", "es"].forEach((l) => {
     const d = JSON.parse(lire("lang/" + l + ".json"));
     Object.keys(d).forEach((cle) => {
-      if (/^aide\./.test(cle) || /^_/.test(cle) || CLES_SORTIE.test(cle)) return;
+      if (/^aide\.|^tutorial\.card\./.test(cle) || /^_/.test(cle) || CLES_SORTIE.test(cle)) return;
       K.classerDoc(String(d[cle])).forEach((o) => {
         if (!o.icone) return;
         parEmoji[o.emoji] = (parEmoji[o.emoji] || 0) + 1;

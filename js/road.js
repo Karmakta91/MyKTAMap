@@ -947,7 +947,8 @@ function renderRoads(opts) {
         function() { return _roadPopupTitle(_roadRef.type); },
         // Reclassement depuis la popup (convertirObjet.js) ; une jonction n'a que ses niveaux à changer.
         { convertir: { famille: "roads", obj: _roadRef }, jonction: road.type === "jonction",
-          pastille: road.type === "jonction" ? null : { cat: "traces", cle: road.type } }
+          pastille: road.type === "jonction" ? null : { cat: "traces", cle: road.type },
+          ico: road.type === "jonction" ? "m-echelle" : null }
       );
     }
 

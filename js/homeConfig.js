@@ -554,7 +554,7 @@
         waitOverlay.style.cssText = "z-index:100050;";  // au-dessus de la modale Config
         waitOverlay.innerHTML =
           '<div class="kta-modal" style="max-width:340px;">' +
-            '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
+            '<div class="kta-modal-icon" style="font-size:32px;">' + window.ktaIcone("loader-circle") + '</div>' +
             '<div class="kta-modal-titre">' + (window.I18n ? window.I18n.t("home.connexion.titre") : "Vérification de la connexion…") + '</div>' +
             '<div class="kta-modal-texte kta-tx-muted" style="font-size:13px;">' + (window.I18n ? window.I18n.t("home.connexion.texte") : "") + '</div>' +
           '</div>';
@@ -713,7 +713,7 @@
           overlay.className = "kta-modal-overlay";
           overlay.innerHTML =
             '<div class="kta-modal" style="max-width:380px;">' +
-              '<div class="kta-modal-icon">🔐</div>' +
+              '<div class="kta-modal-icon">' + window.ktaIcone("key-round") + '</div>' +
               '<div class="kta-modal-titre">' + titre + '</div>' +
               '<div class="kta-modal-texte">' + message + '</div>' +
               '<input type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" ' +
@@ -750,13 +750,14 @@
       }
 
       // Question Oui/Non charte (au lieu de « OK/Annuler »). Rend true = oui, false = non (Échap, fond, Non).
+      // `icon` : nom d'icône SVG (ktaIcones.js), circle-help par défaut.
       function _demanderOuiNon(titre, message, ouiLabel, nonLabel, icon) {
         return new Promise(function(resolve) {
           const overlay = document.createElement("div");
           overlay.className = "kta-modal-overlay";
           overlay.innerHTML =
             '<div class="kta-modal" style="max-width:420px;">' +
-              '<div class="kta-modal-icon">' + (icon || "❓") + '</div>' +
+              '<div class="kta-modal-icon">' + window.ktaIcone(icon || "circle-help") + '</div>' +
               '<div class="kta-modal-titre">' + titre + '</div>' +
               '<div class="kta-modal-texte">' + message + '</div>' +
               '<div class="kta-modal-actions" style="margin-top:14px;">' +
@@ -813,7 +814,7 @@
             useBio = await _demanderOuiNon(
               _t("pin.setup.bioAskTitle"),
               _t("pin.setup.bioAskBody"),
-              _t("pin.setup.bioYes"), _t("pin.setup.bioNo"), "🤳"
+              _t("pin.setup.bioYes"), _t("pin.setup.bioNo"), "fingerprint"
             );
           }
         } catch(e) {
@@ -907,7 +908,7 @@
           _t("pin.setup.disableAskTitle"),
           _t("pin.setup.disableAskBody"),
           _t("pin.setup.disableYes"), _t("pin.setup.disableNo"),
-          "🔓"
+          "lock-open"
         );
         if (!okDesact) return;
 

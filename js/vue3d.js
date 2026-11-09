@@ -5980,11 +5980,12 @@
   // structure y est tout en tubes, un niveau sans tracé tout en structures) ; choix retenu du plan
   // (config.js > getPlanRenduVue3D). Sans KtaGalerie : structures seules.
   const RENDUS = ["mixte", "structures", "galerie"];
-  // Icônes de la carte : 🏛️ = les structures, 🛣️ = les tracés (outil de la barre) ; le mixte montre les deux.
+  // Icônes de la barre de la carte (ktaIcones.js) : m-pilier = les structures, m-galerie = les tracés ; le mixte
+  // montre les deux.
   const RENDU_UI = {
-    mixte: { icone: "🏛️🛣️", nom: "vue3d.modeMixte", passer: "vue3d.passerMixte" },
-    structures: { icone: "🏛️", nom: "vue3d.modeStructures", passer: "vue3d.passerStructures" },
-    galerie: { icone: "🛣️", nom: "vue3d.modeGalerie", passer: "vue3d.passerGalerie" }
+    mixte: { icones: ["m-pilier", "m-galerie"], nom: "vue3d.modeMixte", passer: "vue3d.passerMixte" },
+    structures: { icones: ["m-pilier"], nom: "vue3d.modeStructures", passer: "vue3d.passerStructures" },
+    galerie: { icones: ["m-galerie"], nom: "vue3d.modeGalerie", passer: "vue3d.passerGalerie" }
   };
 
   function _renduVoulu() {
@@ -6004,7 +6005,7 @@
     e.plafond.visible = !gal && e.vue !== "plongee" && !cache.plafond;
     if (b) {
       const ici = RENDU_UI[e.rendu] || RENDU_UI.structures, apres = RENDU_UI[_renduSuivant(e.rendu)];
-      b.textContent = ici.icone + " " + _t(ici.nom);
+      _poserIcone(b, ici.icones, _t(ici.nom));
       b.title = _t(apres.passer);
       b.setAttribute("aria-label", _t("vue3d.renduActuel", { mode: _t(ici.nom) }) + " · " + b.title);
       b.dataset.rendu = e.rendu;
@@ -6957,7 +6958,7 @@
     if (!cibles.length) return;
     const marque = document.createElement("span");
     marque.className = "kta-v3d-niveaux-marque";
-    marque.textContent = "🪜";
+    marque.innerHTML = _ico("m-echelle");
     marque.setAttribute("aria-hidden", "true");
     boite.appendChild(marque);
     if (liste) {
@@ -7321,9 +7322,9 @@
     // le mode en cours continue ; ici retenu sur l'appareil (décision produit).
     d.boutonPlier = lien("outilsPlier");
     d.boutonPlier.classList.add("kta-v3d-outils-plier");
-    // 🗺️ Plan au sol (_majPlanSol) : interrupteur, au-dessus des outils (décision produit).
+    // Plan au sol (_majPlanSol) : interrupteur, au-dessus des outils (décision produit).
     d.boutonSol = lien("planSol");
-    d.boutonSol.textContent = "🗺️";
+    d.boutonSol.innerHTML = _ico("map");
     d.boutonSol.title = _t("vue3d.dessin.planSol");
     d.boutonSol.setAttribute("aria-label", _t("vue3d.dessin.planSol"));
     d.boutonSol.setAttribute("aria-pressed", "false");
@@ -7518,16 +7519,16 @@
     if (_dessinActif() && o && o.famille === "mesure") {
       const mD = _tab(window.getMeasurePoints), mS = _tab(window.getMeasurePointsSurface);
       if (mD.length && typeof window.calculDistance === "function" && typeof window.formatDistance === "function") {
-        lignes.push(["distance", "📐", _t("measure.label.distance",
+        lignes.push(["distance", "ruler", _t("measure.label.distance",
           { val: window.formatDistance(window.calculDistance(), 2) })]);
       }
       if (mS.length && typeof window.calculSurface === "function") {
         const m2 = window.calculSurface();
-        lignes.push(["surface", "♦️", _t("measure.label.surface", { val: typeof window.formatSurface === "function"
+        lignes.push(["surface", "square-dashed", _t("measure.label.surface", { val: typeof window.formatSurface === "function"
           ? window.formatSurface(m2, 1) : Math.round(m2) + " m²" })]);
       }
       if (!lignes.length) {
-        lignes.push([o.type, o.type === "surface" ? "♦️" : "📐",
+        lignes.push([o.type, o.type === "surface" ? "square-dashed" : "ruler",
           _t(o.type === "surface" ? "measure.hint.surface" : "measure.hint.distance")]);
       }
     }
@@ -7538,7 +7539,7 @@
     lignes.forEach(function (l) {
       const ligne = document.createElement("div");
       ligne.className = "kta-v3d-mesure-ligne" + (o && l[0] === o.type ? " kta-v3d-mesure-active" : "");
-      ligne.textContent = l[1] + " " + l[2];
+      _poserIcone(ligne, l[1], l[2]);
       b.appendChild(ligne);
     });
     b.hidden = !lignes.length;
@@ -8781,8 +8782,8 @@
   }
 
   // Vue d'édition, POI de session, droit de modifier (ktaEditionRefusee : lecture seule ; un POI de calque non
-  // rapatrié n'est pas en session) : ✏️ Modifier ouvre le formulaire de la carte au-dessus de la vue (editor.js >
-  // modifierPointEditor ; la scène suit par kta:donneesPlanChange) ; 📍 Déplacer et 🎯 arment le mode de pose de
+  // rapatrié n'est pas en session) : Modifier ouvre le formulaire de la carte au-dessus de la vue (editor.js >
+  // modifierPointEditor ; la scène suit par kta:donneesPlanChange) ; Déplacer et la précision arment le mode de pose de
   // poiPrecis.js (son bandeau, Échap / ✕), le toucher au sol le sert (_poserAuSol). La fiche se ferme d'abord.
   function _editionFiche(boite, pVu) {
     const e = _e, P = window.KtaPoiPrecis, p = _pointSession(pVu);
@@ -8791,14 +8792,14 @@
     const zone = document.createElement("div");
     zone.className = "kta-v3d-fiche-passages kta-v3d-fiche-edition";
     zone.setAttribute("role", "group");
-    const ajout = function (act, cle, titre) {
-      _bouton(zone, "kta-v3d-btn-mode kta-v3d-fiche-passage", _t(cle), _t(titre), null).dataset.v3dEdit = act;
+    const ajout = function (act, cle, titre, ico) {
+      _bouton(zone, "kta-v3d-btn-mode kta-v3d-fiche-passage", _t(cle), _t(titre), null, ico).dataset.v3dEdit = act;
     };
-    ajout("modifier", "poi.editBtn", "poi.editPoint");
-    if (P) ajout("deplacer", "poiPrecis.deplacer", "poiPrecis.deplacerTitre");
+    ajout("modifier", "poi.editBtn", "poi.editPoint", "pencil");
+    if (P) ajout("deplacer", "poiPrecis.deplacer", "poiPrecis.deplacerTitre", "move");
     if (P && P.applicable(p)) {
       const pose = !!P.lire(p);
-      ajout("precis", pose ? "poiPrecis.refaire" : "poiPrecis.augmenter", "poiPrecis.titre");
+      ajout("precis", pose ? "poiPrecis.refaire" : "poiPrecis.augmenter", "poiPrecis.titre", "crosshair");
       if (pose) ajout("precis-retirer", "poiPrecis.retirer", "poiPrecis.retirerTitre");
     }
     zone.addEventListener("click", function (ev) {
@@ -8961,7 +8962,7 @@
     const voir = document.createElement("button");
     voir.type = "button";
     voir.className = "kta-popup-btn kta-v3d-fiche-voir";
-    voir.textContent = "🗺️ " + _t("vue3d.voirSurCarte");
+    _poserIcone(voir, "map", _t("vue3d.voirSurCarte"));
     voir.title = _t("vue3d.voirSurCarteTitre");
     voir.dataset.v3d = "ficheVoir";
     ligne.appendChild(voir);
@@ -9302,8 +9303,9 @@
     b.title = t;
     b.setAttribute("aria-label", t);
     // Mode écrit en clair : sans lui, rien ne disait qu'on était passé en libre ni comment revenir au suivi.
-    // 🧭 = le tracker, comme son menu sur la carte (📍 y est le recalage).
-    b.textContent = e.mode === "suivi" ? "🧭 " + _t("vue3d.etatSuivi") : "🕹️ " + _t("vue3d.etatLibre");
+    // navigation = le tracker, comme son menu sur la carte ; joystick = le déplacement à la main.
+    _poserIcone(b, e.mode === "suivi" ? "navigation" : "joystick",
+      _t(e.mode === "suivi" ? "vue3d.etatSuivi" : "vue3d.etatLibre"));
     _majRepere();
   }
 
@@ -9530,11 +9532,33 @@
     ].map(function (r) { return { id: r.id, touches: r.touches, edition: r.edition === true }; });
   }
 
-  function _bouton(parent, cls, txt, titre, action) {
+  // Icône(s) SVG de l'interface (ktaIcones.js) : chaîne vide si le module manque (la vue reste utilisable).
+  function _ico(noms) {
+    if (typeof window.ktaIcone !== "function") return "";
+    return [].concat(noms).map(function (n) { return window.ktaIcone(n); }).join("");
+  }
+  // Icône puis libellé (nœud texte : jamais interprété comme du HTML).
+  function _poserIcone(el, noms, texte) {
+    el.innerHTML = _ico(noms);
+    if (texte) el.appendChild(document.createTextNode(" " + texte));
+  }
+  // Pour etat() (checkups) : « [nom+nom] libellé », icônes SVG lues par leur classe kta-ico-<nom>.
+  function _texteIco(el) {
+    if (!el) return "";
+    const noms = Array.prototype.map.call(el.querySelectorAll("svg.kta-ico"), function (s) {
+      const c = Array.prototype.find.call(s.classList, function (x) { return x.indexOf("kta-ico-") === 0; });
+      return c ? c.slice(8) : "?";
+    });
+    const t = el.textContent.trim();
+    return (noms.length ? "[" + noms.join("+") + "]" + (t ? " " : "") : "") + t;
+  }
+
+  // `ico` : nom(s) d'icône SVG à la place du texte ; `txt` reste le libellé écrit à côté (vide = icône seule).
+  function _bouton(parent, cls, txt, titre, action, ico) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "kta-v3d-btn " + cls;
-    b.textContent = txt;
+    if (ico) _poserIcone(b, ico, txt); else b.textContent = txt;
     b.title = titre;
     b.setAttribute("aria-label", titre);
     if (action) b.dataset.v3d = action;
@@ -9597,17 +9621,18 @@
     e.boutonFiltres = _bouton(haut, "kta-v3d-filtres", "☰", _t("ui.filter.title"), "filtres");
     e.boutonFiltres.setAttribute("aria-label", _t("ui.filter.aria"));
     e.boutonFiltres.setAttribute("data-kta-pastille-filtres", "");
-    const urgence = _bouton(haut, "kta-v3d-urgence", "🚨", _t("ui.refonte.counter_sortie_title"), "urgence");
+    // ⚠️ contrat : même icône que la Sortie d'urgence de la barre du haut de la carte (refonteInterface.js).
+    const urgence = _bouton(haut, "kta-v3d-urgence", "", _t("ui.refonte.counter_sortie_title"), "urgence",
+      "siren");
     urgence.setAttribute("aria-label", _t("ui.refonte.counter_sortie_title"));
     // ⚙️ ouvre la tuile des réglages de la vue (_basculerReglages) ; point doré si l'un n'est pas celui par défaut.
-    e.boutonReglages = _bouton(haut, "kta-v3d-btn-reglages", "⚙️", _t("vue3d.reglages"), "reglages");
-    // ⚠️ contrat : même icône que ⚙️ Réglages de la carte (ktaIcones.js), sinon les deux barres divergent.
-    if (typeof window.ktaIcone === "function") e.boutonReglages.innerHTML = window.ktaIcone("settings");
+    // ⚠️ contrat : même icône que Réglages de la carte (ktaIcones.js), sinon les deux barres divergent.
+    e.boutonReglages = _bouton(haut, "kta-v3d-btn-reglages", "", _t("vue3d.reglages"), "reglages", "settings");
     e.boutonReglages.setAttribute("aria-expanded", "false");
     e.boutonReglages.setAttribute("aria-controls", "kta-v3d-reglages");
     // 🔍 La recherche de la carte (allerA) à hauteur d'yeux, à gauche de ⚙️ (décision produit) ; en vue d'édition, celle
     // de la tête de la colonne d'outils (_monterOutils). Montrée par _majRechercheHaut.
-    e.boutonRechercheHaut = _bouton(haut, "kta-v3d-recherche", "🔍", _t("vue3d.recherche"), "recherche");
+    e.boutonRechercheHaut = _bouton(haut, "kta-v3d-recherche", "", _t("vue3d.recherche"), "recherche", "search");
     e.boutonRechercheHaut.setAttribute("aria-keyshortcuts", "Control+K Meta+K");
     e.boutonRechercheHaut.hidden = true;
     // Tuile des réglages (décision produit : la rangée du haut tient sur une ligne au téléphone) : suivi / libre, vue,
@@ -9619,8 +9644,10 @@
     tuile.setAttribute("aria-label", _t("vue3d.reglages"));
     tuile.hidden = true;
     e.tuileReglages = tuile;
-    e.boutonSuivre = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-suivre", "🧭", _t("vue3d.suivre"), "suivre");
-    e.boutonVue = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-vue", "✏️ " + _t("vue3d.plongee"), _t("vue3d.plongee"), "vue");
+    e.boutonSuivre = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-suivre", "", _t("vue3d.suivre"), "suivre",
+      "navigation");
+    e.boutonVue = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-vue", _t("vue3d.plongee"), _t("vue3d.plongee"), "vue",
+      "pencil");
     e.boutonHauteur = _bouton(tuile, "kta-v3d-btn-mode kta-v3d-btn-hauteur", "", _t("vue3d.hauteur"), "hauteur");
     e.boutonHauteur.setAttribute("aria-expanded", "false");
     // Réglage de la hauteur : − valeur +, dans la tuile sous ⛏️, ouvert par lui.
@@ -9646,9 +9673,9 @@
     e.boutonTextures = _bouton(ligneRendu, "kta-v3d-btn-mode kta-v3d-btn-textures", "", _t("vue3d.texturesMontrer"),
       "textures");
     const icT = document.createElement("span");
-    icT.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icT.className = "kta-v3d-btn-icone";
     icT.setAttribute("aria-hidden", "true");
-    icT.textContent = "🧱";
+    icT.innerHTML = _ico("brick-wall");
     e.boutonTextures.appendChild(icT);
     e.boutonTextures.appendChild(document.createTextNode(_t("vue3d.texturesNom")));
     // Boussole et guidage montrés ou non (réglages de cet appareil, montrés par défaut), côte à côte, même raison.
@@ -9666,9 +9693,9 @@
     e.boutonGuidage = _bouton(ligne, "kta-v3d-btn-mode kta-v3d-btn-guidage", "", _t("vue3d.guidageMontrer"),
       "guidage");
     const icG = document.createElement("span");
-    icG.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icG.className = "kta-v3d-btn-icone";
     icG.setAttribute("aria-hidden", "true");
-    icG.textContent = "🪧";
+    icG.innerHTML = _ico("signpost");
     e.boutonGuidage.appendChild(icG);
     e.boutonGuidage.appendChild(document.createTextNode(_t("vue3d.guidageNom")));
     // Fiches des objets au toucher (structure, zone, tracé ; jamais les POI) : réglage de cet appareil, coupé par
@@ -9679,9 +9706,9 @@
     e.boutonFiches = _bouton(ligneF, "kta-v3d-btn-mode kta-v3d-btn-fiches", "", _t("vue3d.fichesMontrer"),
       "fichesObjets");
     const icF = document.createElement("span");
-    icF.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icF.className = "kta-v3d-btn-icone";
     icF.setAttribute("aria-hidden", "true");
-    icF.textContent = "🗂️";
+    icF.innerHTML = _ico("info");
     e.boutonFiches.appendChild(icF);
     e.boutonFiches.appendChild(document.createTextNode(_t("vue3d.fichesNom")));
     // Portée, intensité et faisceau de la lampe : curseurs libres (réglages de cet appareil : reglerPortee,
@@ -9693,7 +9720,7 @@
       const lab = document.createElement("label");
       lab.className = "kta-v3d-curseur-nom";
       lab.htmlFor = id;
-      lab.textContent = icone + " " + _t(nom);
+      _poserIcone(lab, icone, _t(nom));
       const c = document.createElement("input");
       c.type = "range";
       c.id = id;
@@ -9709,31 +9736,31 @@
       return [c, val];
     };
     const lv = _lampeEnVigueur();
-    let cc = curseur("kta-v3d-portee", "🔭", "vue3d.portee", "vue3d.porteeAide", PORTEE, 1, e.distance);
+    let cc = curseur("kta-v3d-portee", "telescope", "vue3d.portee", "vue3d.porteeAide", PORTEE, 1, e.distance);
     e.curseurPortee = cc[0]; e.porteeValeur = cc[1];
-    cc = curseur("kta-v3d-lampe", "💡", "vue3d.lampe", "vue3d.lampeAide", REGLAGE_LAMPE.intensite, 5, lv.intensite);
+    cc = curseur("kta-v3d-lampe", "lightbulb", "vue3d.lampe", "vue3d.lampeAide", REGLAGE_LAMPE.intensite, 5, lv.intensite);
     e.curseurLampe = cc[0]; e.lampeValeur = cc[1];
-    cc = curseur("kta-v3d-faisceau", "🔦", "vue3d.faisceau", "vue3d.faisceauAide", REGLAGE_LAMPE.faisceau, 1,
+    cc = curseur("kta-v3d-faisceau", "flashlight", "vue3d.faisceau", "vue3d.faisceauAide", REGLAGE_LAMPE.faisceau, 1,
       lv.faisceau);
     e.curseurFaisceau = cc[0]; e.faisceauValeur = cc[1];
     _majPortee();
-    // ☀️ Plein jour et 🛡️ Limiter la portée : interrupteurs (aria-pressed : reglerPleinJour, limiterPortee), comme
-    // 🧭 ou 🪧, côte à côte (la tuile tient au téléphone en hauteur).
+    // Plein jour et Limiter la portée : interrupteurs (aria-pressed : reglerPleinJour, limiterPortee), comme le suivi
+    // ou le guidage, côte à côte (la tuile tient au téléphone en hauteur).
     const ligneJ = document.createElement("div");
     ligneJ.className = "kta-v3d-reglages-ligne";
     tuile.appendChild(ligneJ);
     e.boutonJour = _bouton(ligneJ, "kta-v3d-btn-mode kta-v3d-btn-jour", "", _t("vue3d.lampeJour"), "pleinJour");
     const icJ = document.createElement("span");
-    icJ.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icJ.className = "kta-v3d-btn-icone";
     icJ.setAttribute("aria-hidden", "true");
-    icJ.textContent = "☀️";
+    icJ.innerHTML = _ico("sun");
     e.boutonJour.appendChild(icJ);
     e.boutonJour.appendChild(document.createTextNode(_t("vue3d.lampeJour")));
     e.boutonLimiter = _bouton(ligneJ, "kta-v3d-btn-mode kta-v3d-btn-limiter", "", _t("vue3d.limiter"), "limiter");
     const icL = document.createElement("span");
-    icL.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icL.className = "kta-v3d-btn-icone";
     icL.setAttribute("aria-hidden", "true");
-    icL.textContent = "🛡️";
+    icL.innerHTML = _ico("shield");
     e.boutonLimiter.appendChild(icL);
     e.boutonLimiter.appendChild(document.createTextNode(_t("vue3d.limiterNom")));
     _majLampe();
@@ -9747,7 +9774,7 @@
     const nomN = document.createElement("span");
     nomN.className = "kta-v3d-niveaux-vus-nom";
     nomN.setAttribute("aria-hidden", "true");
-    nomN.textContent = "🏗️ " + _t("vue3d.niveauxVusNom");
+    _poserIcone(nomN, "m-niveaux", _t("vue3d.niveauxVusNom"));
     ligneN.appendChild(nomN);
     e.ligneNiveauxVus = ligneN;
     e.boutonsNiveauxVus = ["voisins", "tous", "mien"].map(function (k) {
@@ -9763,9 +9790,9 @@
     e.boutonEstomper = _bouton(ligneE, "kta-v3d-btn-mode kta-v3d-btn-estomper", "", _t("vue3d.estomperAide"),
       "estomper");
     const icE = document.createElement("span");
-    icE.className = "kta-v3d-btn-icone kta-v3d-btn-emoji";
+    icE.className = "kta-v3d-btn-icone";
     icE.setAttribute("aria-hidden", "true");
-    icE.textContent = "🌫️";
+    icE.innerHTML = _ico("cloud-fog");
     e.boutonEstomper.appendChild(icE);
     e.boutonEstomper.appendChild(document.createTextNode(_t("vue3d.estomperNom")));
     _majNiveauxVus();
@@ -9868,8 +9895,8 @@
     _monterOutils(ov);
     // 🎮 Add-ons visibles (manifeste sans `secret`, allumés dans Configuration › Add-ons) : dernière ligne de la tuile,
     // masquée tant qu'il n'y en a aucun (la rangée du haut tient sur une ligne au téléphone, décision produit).
-    e.boutonAddons = _bouton(e.tuileReglages, "kta-v3d-btn-mode kta-v3d-btn-addons", "🎮 " + _t("vue3d.addons"),
-      _t("vue3d.addons"), "addons");
+    e.boutonAddons = _bouton(e.tuileReglages, "kta-v3d-btn-mode kta-v3d-btn-addons", _t("vue3d.addons"),
+      _t("vue3d.addons"), "addons", "gamepad-2");
     e.boutonAddons.hidden = true;
     _majBoutonAddons();
     ov.appendChild(e.tuileReglages);
@@ -9990,7 +10017,7 @@
     e.boutonReglages.setAttribute("aria-label", titre);
     if (e.indicMode) {
       const suivi = e.mode === "suivi", txt = _t(suivi ? "vue3d.etatSuivi" : "vue3d.etatLibre");
-      e.indicMode.textContent = suivi ? "🧭" : "🕹️";
+      e.indicMode.innerHTML = _ico(suivi ? "navigation" : "joystick");
       e.indicMode.title = txt;
       e.indicMode.setAttribute("aria-label", txt);
       e.indicMode.classList.toggle("kta-v3d-mode-libre", !suivi);
@@ -10037,8 +10064,8 @@
   function _majHauteur() {
     const e = _e, txt = typeof window.formatDistance === "function" ? window.formatDistance(e.hauteur, 1)
       : e.hauteur.toFixed(1) + " m";
-    // ⛏️ comme l'outil Volume exploité, dont c'est le même chiffre (↕ dit déjà « passage entre niveaux » en 2D).
-    if (e.boutonHauteur) e.boutonHauteur.textContent = "⛏️ " + txt;
+    // Icône de l'outil Volume exploité, dont c'est le même chiffre (↕ dit déjà « passage entre niveaux » en 2D).
+    if (e.boutonHauteur) _poserIcone(e.boutonHauteur, "pickaxe", txt);
     if (e.hauteurValeur) e.hauteurValeur.textContent = txt;
     if (e.hauteurMoins) e.hauteurMoins.disabled = e.hauteur <= HAUTEUR_REGLAGE.min;
     if (e.hauteurPlus) e.hauteurPlus.disabled = e.hauteur >= HAUTEUR_REGLAGE.max;
@@ -11305,7 +11332,7 @@
       changementsNiveau: e.changementsNiveau, hauteur: e.hauteur, oeil: e.oeil, distance: e.distance,
       degagements: e.degagements,
       reglageHauteur: { visible: !!e.reglageHauteur && !e.reglageHauteur.hidden,
-        bouton: e.boutonHauteur ? e.boutonHauteur.textContent : "",
+        bouton: _texteIco(e.boutonHauteur),
         valeur: e.hauteurValeur ? e.hauteurValeur.textContent : "" },
       rendu: e.rendu, poiMasques: e.poiMasques, zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux.slice(),
       facesRemblais: e.facesRemblais, facesEboulis: e.facesEboulis, rubans: Object.assign({}, e.rubans),
@@ -11335,7 +11362,7 @@
         haut: e.passageCibles && e.passageCibles.haut ? e.passageCibles.haut.niveau : null,
         bas: e.passageCibles && e.passageCibles.bas ? e.passageCibles.bas.niveau : null,
         liste: e.passageCibles ? e.passageCibles.liste.map(function (c) { return c.niveau; }) : [] },
-      boutonRendu: e.boutonRendu ? e.boutonRendu.textContent : "",
+      boutonRendu: _texteIco(e.boutonRendu),
       bandeau: Object.assign({ affiche: !!e.bandeau && !e.bandeau.hidden }, e.bandeauEtat),
       chevrons: e.nChevrons, chevronsVisibles: !!e.chevrons && !!e.chevrons.parent,
       recalcul: { enCours: e.recalcul.enCours, n: e.recalcul.n, echecs: e.recalcul.echecs, ms: e.recalcul.ms,
@@ -11444,7 +11471,7 @@
         hud: e.greffe.hud.isConnected, reglage: Object.assign({}, e.greffe.reglage) } : null,
       reglages: { ouvert: !!e.tuileReglages && !e.tuileReglages.hidden,
         repere: !!e.boutonReglages && e.boutonReglages.classList.contains("kta-v3d-modifie"),
-        indic: e.indicMode ? e.indicMode.textContent : "", boussole: !!e.boussole && !e.boussole.hidden,
+        indic: _texteIco(e.indicMode), boussole: !!e.boussole && !e.boussole.hidden,
         guidage: _guidageMontre() },
       itineraire: Object.assign({ largeurVoulue: LARGEUR_ITI, lisereVoulu: ITI.lisere, couleur: _couleursIti().hexRuban,
         couleurLisere: _couleursIti().hexLisere, couleurChevrons: _couleursIti().hexLisere, chevrons: e.itiChevrons },

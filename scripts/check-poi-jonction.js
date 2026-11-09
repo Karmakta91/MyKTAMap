@@ -71,7 +71,9 @@ function bac(roads, pois, cfg) {
     getEditorPoints: () => pois,
     getAllEmbeddedPoints: () => [],
     getProfondeurNiveau: () => null,
-    ktaEsc: KTA_ESC
+    ktaEsc: KTA_ESC,
+
+    ktaIcone: () => ""
   };
   win.window = win;
   const ctx = vm.createContext(win);
@@ -246,6 +248,8 @@ async function sortiesProposees(b, de) {
       APP_CONFIG: { multiLevel: true, scale: 4, imageHeight: 3000 },
       getProfondeurNiveau: () => null,
       ktaEsc: KTA_ESC,
+
+      ktaIcone: () => "",
       Blob, Uint8Array, ArrayBuffer, DataView, Math, JSON, Promise, Error, Date, Set, Map,
       isFinite, Number, Array, String, Object, RegExp
     };

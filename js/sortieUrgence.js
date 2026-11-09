@@ -184,7 +184,7 @@
     _modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-sortie-urgence-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + window.I18n.t("sortie.modal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("siren") + " " + window.I18n.t("sortie.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-sortie-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-sortie-urgence-corps">' + html + '</div>' +

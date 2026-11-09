@@ -39,11 +39,11 @@
   let _origines   = new WeakMap();
 
   var _ARRAYS_EDITABLES = [
-    { key: "data",         emoji: "📍", points: true  },
-    { key: "editorPoints", emoji: "📍", points: true  },
-    { key: "roads",        emoji: "🛣️", points: false },
-    { key: "zones",        emoji: "⬛", points: false },
-    { key: "structures",   emoji: "🏗️", points: false }
+    { key: "data",         ico: "map-pin", points: true  },
+    { key: "editorPoints", ico: "map-pin", points: true  },
+    { key: "roads",        ico: "m-galerie", points: false },
+    { key: "zones",        ico: "m-zone", points: false },
+    { key: "structures",   ico: "m-pilier", points: false }
   ];
   function _estPoints()  { return _kind === "data" || _kind === "editorPoints"; }
   // Fichier de session (export « devmap-session », ou porteur de editorPoints) : ses tableaux s'appliquent en direct.
@@ -361,7 +361,7 @@
       var arr = obj[def.key];
       if (Array.isArray(arr) && arr.length > 0) {
         entries.push({
-          kind: def.key, emoji: def.emoji, points: def.points,
+          kind: def.key, ico: def.ico, points: def.points,
           label: baseLabel, count: arr.length,
           fileName: fileName, sourceObj: obj
         });
@@ -388,21 +388,21 @@
           <div id="kta-tbl-accueil-err" class="kta-conv-erreur" style="display:${errMsg ? "block" : "none"}; margin-bottom:12px;">${errMsg ? _escapeHtml(errMsg) : ""}</div>
           <div class="kta-tbl-sources">
             ${planDispo ? `<button class="kta-tbl-source-card" id="kta-tbl-src-plan">
-              <span class="kta-tbl-source-ico">🗺️</span>
+              <span class="kta-tbl-source-ico">${window.ktaIcone("map")}</span>
               <span class="kta-tbl-source-txt">
                 <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.planCourant")}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.planCourantHint")}</span>
               </span>
             </button>` : ""}
             <button class="kta-tbl-source-card" id="kta-tbl-src-zip">
-              <span class="kta-tbl-source-ico">📦</span>
+              <span class="kta-tbl-source-ico">${window.ktaIcone("package")}</span>
               <span class="kta-tbl-source-txt">
                 <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.zip")}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.zipHint")}</span>
               </span>
             </button>
             <button class="kta-tbl-source-card" id="kta-tbl-src-json">
-              <span class="kta-tbl-source-ico">📄</span>
+              <span class="kta-tbl-source-ico">${window.ktaIcone("file-text")}</span>
               <span class="kta-tbl-source-txt">
                 <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.json")}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.jsonHint")}</span>
@@ -413,7 +413,7 @@
                  de données — c'est la même famille d'usage (manipuler des calques
                  JSON hors carte), et ça retire une icône de la home. -->
             <button class="kta-tbl-source-card" id="kta-tbl-src-fusion">
-              <span class="kta-tbl-source-ico">🔗</span>
+              <span class="kta-tbl-source-ico">${window.ktaIcone("merge")}</span>
               <span class="kta-tbl-source-txt">
                 <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.fusion"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.fusionHint")}</span>
@@ -422,7 +422,7 @@
             <!-- 🔄 15/10/2026 (KARMA) : la Conversion session ↔ calques de données quitte la barre
                  d'onglets de l'export et vit ici, comme la Fusion (modale d'export en solo). -->
             <button class="kta-tbl-source-card" id="kta-tbl-src-conv">
-              <span class="kta-tbl-source-ico">🔄</span>
+              <span class="kta-tbl-source-ico">${window.ktaIcone("refresh-cw")}</span>
               <span class="kta-tbl-source-txt">
                 <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.conv"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.convAide")}</span>
@@ -430,14 +430,14 @@
             </button>
             <!-- 🔁 Recaler des données sur un autre scan : outil à part (js/recalageScan.js). -->
             <button class="kta-tbl-source-card" id="kta-tbl-src-resol">
-              <span class="kta-tbl-source-ico">🔁</span>
+              <span class="kta-tbl-source-ico">${window.ktaIcone("repeat")}</span>
               <span class="kta-tbl-source-txt">
                 <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.resol"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.resolHint")}</span>
               </span>
             </button>
             ${planAffiche && window.KtaRaccords ? `<button class="kta-tbl-source-card" id="kta-tbl-src-raccords">
-              <span class="kta-tbl-source-ico">🔗</span>
+              <span class="kta-tbl-source-ico">${window.ktaIcone("link")}</span>
               <span class="kta-tbl-source-txt">
                 <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.raccords"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.raccordsHint")}</span>
@@ -446,7 +446,7 @@
             <!-- 🧹 v1.77.0 (demande KARMA, suite au bug clic-carte multiplié) :
                  nettoyage des sommets dupliqués accumulés dans les fichiers. -->
             <button class="kta-tbl-source-card" id="kta-tbl-src-dedup">
-              <span class="kta-tbl-source-ico">🧹</span>
+              <span class="kta-tbl-source-ico">${window.ktaIcone("eraser")}</span>
               <span class="kta-tbl-source-txt">
                 <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.dedup"))}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.dedupHint")}</span>
@@ -499,7 +499,7 @@
     modal.className = "kta-readme-modal-overlay";
     modal.innerHTML = '<div class="kta-readme-modal-boite" style="max-width:420px; height:auto;">'
       + '<div class="kta-readme-modal-corps" style="padding:30px; text-align:center; color:var(--kta-texte-2);">'
-      + '<div style="font-size:28px;">⏳</div><div style="margin-top:10px;">' + _escapeHtml(msg || "") + '</div>'
+      + '<div style="font-size:28px; line-height:0;">' + window.ktaIcone("loader-circle") + '</div><div style="margin-top:10px;">' + _escapeHtml(msg || "") + '</div>'
       + '</div></div>';
     document.documentElement.appendChild(modal);
     _modal = modal;
@@ -527,8 +527,8 @@
         }
       });
       if (!entries.length) { _afficherAccueil(window.I18n.t("tabledit.err.planVide")); return; }
-      var titre = "🗺️ " + ((config.plan && config.plan.name) ? config.plan.name : window.I18n.t("tabledit.source.planCourant"));
-      _afficherSelecteurCalque(entries, titre);
+      var titre = (config.plan && config.plan.name) ? config.plan.name : window.I18n.t("tabledit.source.planCourant");
+      _afficherSelecteurCalque(entries, titre, "map");
     });
   }
 
@@ -560,7 +560,7 @@
         if (res.obj) _collecterEntreesEditables(res.obj, res.lc.label || res.lc.id || _basename(res.lc.file), _basename(res.lc.file), entries);
       });
       if (!entries.length) { _afficherAccueil(window.I18n.t("tabledit.err.zipVide")); return; }
-      _afficherSelecteurCalque(entries, "📦 " + (file.name || "ZIP"));
+      _afficherSelecteurCalque(entries, file.name || "ZIP", "package");
     }).catch(function(err) {
       console.error("[TableEditor] Import ZIP :", err);
       var key = (err && err.code) ? ("tabledit.err." + err.code) : "tabledit.err.zipInvalide";
@@ -568,12 +568,13 @@
     });
   }
 
-  function _afficherSelecteurCalque(entries, titre) {
+  // `ico` : icône SVG de la source (ktaIcones.js) devant le titre échappé.
+  function _afficherSelecteurCalque(entries, titre, ico) {
     if (_modal) { _modal.remove(); _modal = null; }
     var rows = entries.map(function(e, i) {
       var noun = window.I18n.t("tabledit.kind." + e.kind);
       return '<button class="kta-tbl-entry" data-i="' + i + '">'
-        + '<span class="kta-tbl-entry-ico">' + e.emoji + '</span>'
+        + '<span class="kta-tbl-entry-ico">' + window.ktaIcone(e.ico) + '</span>'
         + '<span class="kta-tbl-entry-label">' + _escapeHtml(e.label || noun) + '</span>'
         + '<span class="kta-tbl-entry-count">' + e.count + ' ' + _escapeHtml(noun) + '</span>'
         + '</button>';
@@ -584,7 +585,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:560px; width:auto; height:auto; max-height:90vh;">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${_escapeHtml(titre || window.I18n.t("tabledit.selecteur.titre"))}</span>
+          <span class="kta-readme-modal-titre">${ico ? window.ktaIcone(ico) + " " : ""}${_escapeHtml(titre || window.I18n.t("tabledit.selecteur.titre"))}</span>
           <button class="kta-panneau-close" id="kta-tbl-sel-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -637,7 +638,7 @@
         </div>
         <div class="kta-readme-modal-corps">
           <div class="kta-tbl-drop" id="kta-tbl-drop">
-            <div style="font-size:32px; opacity:0.6;">📂</div>
+            <div style="font-size:32px; line-height:0;">${window.ktaIcone("folder-open")}</div>
             <div style="margin-top:8px;">${window.I18n.t("tabledit.import.drop.titre")}</div>
             <div style="font-size:11px; opacity:0.6; margin-top:4px;">${window.I18n.t("tabledit.import.drop.sous")}</div>
             <input type="file" id="kta-tbl-file" accept=".json,application/json" style="display:none;">
@@ -693,7 +694,7 @@
         _collecterEntreesEditables(json, _basename(file.name), file.name, entries);
         if (!entries.length) throw new Error(window.I18n.t("tabledit.import.err.noData"));
         if (entries.length === 1) _chargerEntree(entries[0]);
-        else _afficherSelecteurCalque(entries, "📄 " + file.name);
+        else _afficherSelecteurCalque(entries, file.name, "file-text");
       } catch(err) {
         console.error(err);
         _setErreurImport("❌ " + (err.message || err));
@@ -728,7 +729,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.editor.titre", { fichier: _escapeHtml(_sourceMeta.fileName) })}</span>
+          <span class="kta-readme-modal-titre">${window.ktaIcone("table") + " " + window.I18n.t("tabledit.editor.titre", { fichier: _escapeHtml(_sourceMeta.fileName) })}</span>
           <button class="kta-panneau-close" id="kta-tbl-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -738,7 +739,7 @@
           <div class="kta-tbl-toolbar">
             <input type="text" class="kta-cfg-input" id="kta-tbl-search" placeholder="${_escapeAttr(window.I18n.t("tabledit.editor.recherche"))}">
             ${_estPoints() ? `<button class="kta-btn kta-btn-ghost" id="kta-tbl-add">${window.I18n.t("tabledit.editor.ajouterLigne")}</button>
-            <button class="kta-btn kta-btn-ghost" id="kta-tbl-preview">${window.I18n.t("tabledit.editor.voirCarte")}</button>` : ""}
+            <button class="kta-btn kta-btn-ghost" id="kta-tbl-preview">${window.ktaIcone("map-pin") + " " + window.I18n.t("tabledit.editor.voirCarte")}</button>` : ""}
           </div>
 
           ${_estPoints() ? "" : `<div class="kta-tbl-gen-note">${window.I18n.t("tabledit.geom.lecture")}</div>`}
@@ -755,14 +756,14 @@
           <div class="kta-tbl-footer">
             <div class="kta-tbl-selection-info" id="kta-tbl-selection-info">${window.I18n.t("tabledit.selection.zero")}</div>
             <div style="display:flex; gap:8px;">
-              <button class="kta-btn kta-btn-ghost"   id="kta-tbl-duplicate" disabled>${window.I18n.t("tabledit.editor.dupliquer")}</button>
-              <button class="kta-btn kta-btn-danger"  id="kta-tbl-delete"    disabled>${window.I18n.t("tabledit.editor.supprimer")}</button>
+              <button class="kta-btn kta-btn-ghost"   id="kta-tbl-duplicate" disabled>${window.ktaIcone("copy") + " " + window.I18n.t("tabledit.editor.dupliquer")}</button>
+              <button class="kta-btn kta-btn-danger"  id="kta-tbl-delete"    disabled>${window.ktaIcone("trash-2") + " " + window.I18n.t("tabledit.editor.supprimer")}</button>
             </div>
           </div>
 
           <div class="kta-conv-actions" style="border-top:1px solid var(--kta-bordure); padding-top:12px;">
             <button class="kta-btn kta-btn-ghost"   id="kta-tbl-annuler">${window.I18n.t("tabledit.editor.annuler")}</button>
-            <button class="kta-btn kta-btn-primary" id="kta-tbl-save">${window.I18n.t("tabledit.editor.sauvegarder")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-tbl-save">${window.ktaIcone("save") + " " + window.I18n.t("tabledit.editor.sauvegarder")}</button>
           </div>
         </div>
       </div>
@@ -1374,8 +1375,8 @@
     banner.id = "kta-tbl-preview-banner";
     banner.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.92); color:#fff; padding:12px 20px; border-radius:8px; font-size:14px; z-index:9999; box-shadow:0 4px 16px rgba(0,0,0,0.5); border:1px solid rgba(140,180,255,0.5); display:flex; gap:12px; align-items:center;"; // couleur-inline-ok : bandeau flottant, fond noir fixe dans les deux thèmes
     banner.innerHTML = `
-      <span>${window.I18n.t("tabledit.preview.banner", { n: points.length })}</span>
-      <button class="kta-btn kta-btn-primary" id="kta-tbl-preview-back" style="padding:6px 14px;">${window.I18n.t("tabledit.preview.retour")}</button>
+      <span>${window.ktaIcone("map-pin") + " " + window.I18n.t("tabledit.preview.banner", { n: points.length })}</span>
+      <button class="kta-btn kta-btn-primary" id="kta-tbl-preview-back" style="padding:6px 14px;">${window.ktaIcone("arrow-left") + " " + window.I18n.t("tabledit.preview.retour")}</button>
     `;
     document.body.appendChild(banner);
 
@@ -1473,9 +1474,9 @@
             ${window.I18n.t("tabledit.sortie.texte")}
           </p>
           <div style="display:flex; flex-direction:column; gap:8px;">
-            <button class="kta-btn kta-btn-primary" id="conf-save">${window.I18n.t("tabledit.sortie.sauver")}</button>
-            <button class="kta-btn kta-btn-danger"  id="conf-quit">${window.I18n.t("tabledit.sortie.quitter")}</button>
-            <button class="kta-btn kta-btn-ghost"   id="conf-stay">${window.I18n.t("tabledit.sortie.continuer")}</button>
+            <button class="kta-btn kta-btn-primary" id="conf-save">${window.ktaIcone("save") + " " + window.I18n.t("tabledit.sortie.sauver")}</button>
+            <button class="kta-btn kta-btn-danger"  id="conf-quit">${window.ktaIcone("trash-2") + " " + window.I18n.t("tabledit.sortie.quitter")}</button>
+            <button class="kta-btn kta-btn-ghost"   id="conf-stay">${window.ktaIcone("arrow-left") + " " + window.I18n.t("tabledit.sortie.continuer")}</button>
           </div>
         </div>
       </div>
@@ -1507,7 +1508,7 @@
     overlay.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:480px; height:auto;">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.save.titre")}</span>
+          <span class="kta-readme-modal-titre">${window.ktaIcone("save") + " " + window.I18n.t("tabledit.save.titre")}</span>
           <button class="kta-panneau-close" id="save-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -1516,9 +1517,9 @@
           </p>
           <div style="display:flex; flex-direction:column; gap:8px;">
             <button class="kta-btn kta-btn-primary" id="save-dl">
-              ${window.I18n.t("tabledit.save.telecharger")}
+              ${window.ktaIcone("arrow-down-to-line") + " " + window.I18n.t("tabledit.save.telecharger")}
             </button>
-            ${estSession ? `<button class="kta-btn kta-btn-ghost" id="save-session">${window.I18n.t("tabledit.save.appliquer")}</button>` : ""}
+            ${estSession ? `<button class="kta-btn kta-btn-ghost" id="save-session">${window.ktaIcone("pencil") + " " + window.I18n.t("tabledit.save.appliquer")}</button>` : ""}
           </div>
           ${estSession ? "" : `<div class="kta-tbl-gen-note">${window.I18n.t("tabledit.save.datalayerNote")}</div>`}
         </div>
@@ -1700,19 +1701,19 @@
     sub.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:90vh;">
         <div class="kta-readme-modal-entete">
-          <span class="kta-readme-modal-titre">🧹 ${t("tabledit.dedup.titre")}</span>
+          <span class="kta-readme-modal-titre">${window.ktaIcone("eraser")} ${t("tabledit.dedup.titre")}</span>
           <button class="kta-panneau-close" id="kta-tbl-dedup-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps" style="font-size:13px;">
           <p style="color:var(--kta-texte-3); margin:0 0 10px; line-height:1.5; font-size:11.5px;">ℹ️ ${t("tabledit.dedup.note")}</p>
           <div class="kta-cfg-label" style="font-weight:600;">${t("tabledit.dedup.fichiers")}</div>
-          <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">📄 ${t("tabledit.dedup.choisirFichiers")}
+          <label class="kta-btn kta-btn-ghost kta-btn-small" style="margin:4px 0; display:inline-block;">${window.ktaIcone("file-text")} ${t("tabledit.dedup.choisirFichiers")}
             <input type="file" id="kta-tbl-dedup-files" accept=".json,application/json" multiple style="display:none;">
           </label>
           <div id="kta-tbl-dedup-files-liste" style="font-size:12px; color:var(--kta-texte-2); margin:2px 0 6px;">${t("tabledit.dedup.aucunFichier")}</div>
           <div class="kta-conv-actions" style="margin-top:12px;">
             <button class="kta-btn kta-btn-ghost"   id="kta-tbl-dedup-annuler">${t("tabledit.editor.annuler")}</button>
-            <button class="kta-btn kta-btn-primary" id="kta-tbl-dedup-go" disabled>🧹 ${t("tabledit.dedup.nettoyer")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-tbl-dedup-go" disabled>${window.ktaIcone("eraser")} ${t("tabledit.dedup.nettoyer")}</button>
           </div>
         </div>
       </div>`;

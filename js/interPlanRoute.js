@@ -710,7 +710,7 @@
     overlay.style.display = "flex";
     overlay.innerHTML =
       '<div class="kta-modal" style="max-width:440px;">' +
-        '<div class="kta-modal-icon" style="color:var(--kta-interaction);">🧭</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-interaction);">' + window.ktaIcone("route") + '</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipr.result.titre")) + '</div>' +
         '<div class="kta-modal-texte" style="text-align:left;">' +
           stepsHtml +
@@ -776,7 +776,7 @@
     overlay.style.zIndex = "100002";
     overlay.innerHTML =
       '<div class="kta-modal" style="max-width:420px;">' +
-        '<div class="kta-modal-icon" style="color:var(--kta-avert);">🧭</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-avert);">' + window.ktaIcone("route") + '</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipr.err.titre")) + '</div>' +
         '<div class="kta-modal-texte" style="white-space:pre-line;">' + _esc(e.message || String(e)) + '</div>' +
         '<div class="kta-modal-actions">' +

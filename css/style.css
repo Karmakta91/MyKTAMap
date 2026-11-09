@@ -2605,6 +2605,8 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
 .kta-popup-actions .kta-popup-btn-fav.kta-fav-active:hover {
   background: rgba(244, 197, 66, 0.32) !important;
 }
+/* Favori : étoile pleine quand le point est en favori (le libellé est le même dans les deux états). */
+.kta-popup-btn-fav.kta-fav-active .kta-ico { fill: currentColor; }
 
 /* Slot photos, hydraté au popupopen (attachPopupPhotos) ; masqué vide pour ne pas laisser de blanc. */
 .kta-popup-photos:empty {
@@ -19240,6 +19242,8 @@ html.kta-theme-light .kta-plans-swatch.kta-actif { border-color: #1a1f2e; box-sh
 .kta-plan-row-pin { opacity: 0.55; }
 .kta-plan-row-pin.kta-actif,
 .kta-plan-row-pin:hover { opacity: 1; }
+/* Plan épinglé : étoile pleine et dorée (même icône dans les deux états). */
+.kta-plan-row-pin.kta-actif .kta-ico { fill: currentColor; color: var(--kta-accent-texte); }
 .kta-plan-row-pinned { border-left: 2px solid rgba(244, 197, 66, 0.55); }
 
 /* ── Sélecteur de langue de la gate (premier lancement, pilote la langue globale) ── */
