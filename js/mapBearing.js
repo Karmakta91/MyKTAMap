@@ -206,6 +206,7 @@
       cont.classList.toggle("kta-bearing-on", _tournee());
     }
     _cullerTuilesThrottle();
+    _cullerObjetsThrottle();
   }
   // Exposé au même titre que suspend/resume. Idempotent.
   function reappliquer() { _appliquer(); }
@@ -266,6 +267,8 @@
     // `touch-action: none` (cf style.css).
     const cont0 = map.getContainer();
     if (cont0) cont0.classList.add("kta-bearing-lock");
+    // Leviers d'allègement (plan lourd laissé en automatique, case cochée), puis canvas élargi sous son budget.
+    _renfort(true);
     _majPaddingRenderer(map, true);
     // 🩸 On ne touche PAS aux options de zoom (pas de "center") : forcer le zoom au centre fait glisser
     // toute la carte quand on pince ailleurs. Avec `mouseEventToContainerPoint` patché, Leaflet zoome entre
@@ -273,6 +276,7 @@
   }
 
   function _deverrouiller(map) {
+    _renfort(false);
     if (!map || !_interactionsSauvees) { _interactionsSauvees = null; return; }
     try { if (map.dragging && _interactionsSauvees.dragging) map.dragging.enable(); } catch(e) {}
     const cont1 = map.getContainer();
@@ -616,12 +620,44 @@
   }
 
   // ── Canvas des renderers ──
-  // Leaflet dimensionne le canvas au viewport + 10 % (`padding`) : tourné, il ne couvre plus les coins.
-  // Padding pour tous les angles = (diagonale / petit côté − 1)/2, calculé sur la taille RÉELLE (il croît
-  // avec l'allongement de l'écran) et seulement pendant la rotation (canvas ×1,8 à ×3,5 en surface).
+  // Leaflet dimensionne le canvas au viewport élargi de `padding` (0,5 pour le plan, map.js) : tourné, il ne couvre
+  // plus les coins. Padding pour tous les angles = (diagonale / petit côté − 1)/2, calculé sur la taille RÉELLE (il
+  // croît avec l'allongement de l'écran) et seulement pendant la rotation, PLAFONNÉ par un budget en pixels réels
+  // du canvas (`_paddingBudget`) : jamais au-delà de ce que Safari accepte (BUDGET_CANVAS_MAX), et sur un plan lourd
+  // (PerfUltra.planLourd) presque rien de plus qu'à plat (BUDGET_CANVAS_LOURD) — des bandes de quelques pixels
+  // restent alors non peintes dans les coins aux angles proches de 90° (accepté).
   // 🩸 TOUS les renderers, y compris ceux ajoutés pendant la rotation (`_onRendererAjoute`) : l'itinéraire vit
   // dans un renderer SVG à part (halo néon) ; non élargi, il coupe le trajet dans les coins et la coupe
   // change à chaque zoom (le tracé semble avancer).
+  // 🩸 Pixels réels = taille CSS × 2 sur tout écran haute densité, quel que soit devicePixelRatio : Leaflet double
+  // le canvas (`Browser.retina`), il ne le triple pas sur un iPhone 3×.
+  const BUDGET_CANVAS_MAX   = 16777216;   // px réels : surface maximale d'un canvas sous Safari iOS (4096²)
+  const BUDGET_CANVAS_LOURD = 6000000;    // px réels (~24 Mo) : téléphone 393 × 852 à plat = 5,36 M, tourné = 7,71 M
+  function _paddingBudget(s) {
+    const lourd = _plan && window.PerfUltra && typeof window.PerfUltra.planLourd === "function" &&
+      window.PerfUltra.planLourd();
+    const m = (window.L && L.Browser && L.Browser.retina) ? 2 : 1;
+    const k = Math.sqrt((lourd ? BUDGET_CANVAS_LOURD : BUDGET_CANVAS_MAX) / (s.x * s.y * m * m));
+    return Math.floor((k - 1) / 2 * 100) / 100;
+  }
+
+  // Leviers allégés de PerfUltra pendant que la carte du plan est tournée (PerfUltra.renfortRotation décide).
+  function _renfort(actif) {
+    if (!_plan || !window.PerfUltra || typeof window.PerfUltra.renfortRotation !== "function") return;
+    try { window.PerfUltra.renfortRotation(actif); } catch(e) {}
+  }
+
+  // POI et tracés retirés hors écran (viewportCull) : la zone visible change quand l'angle change, sans moveend.
+  let _cullTimer = null;
+  function _cullerObjetsThrottle() {
+    if (!_plan || _cullTimer !== null) return;
+    if (!window.PerfUltra || !window.PerfUltra.get("viewportCull")) return;
+    _cullTimer = setTimeout(function() {
+      _cullTimer = null;
+      if (typeof window._refreshDataMarkersViewport === "function") window._refreshDataMarkersViewport();
+    }, 150);
+  }
+
   function _majPaddingRenderer(map, actif) {
     if (!map) return;
     const vus = [];
@@ -650,9 +686,9 @@
       try { s = map.getSize(); } catch(e) { return; }
       if (!s || !s.x || !s.y) return;
       const requis = (Math.hypot(s.x, s.y) / Math.min(s.x, s.y) - 1) / 2;
-      const cible = Math.ceil(requis * 100) / 100;
+      const cible = Math.max(r._ktaPadOrigine || 0, Math.min(Math.ceil(requis * 100) / 100, _paddingBudget(s)));
       if (r.options.padding === cible) return;
-      r.options.padding = Math.max(r._ktaPadOrigine || 0, cible);
+      r.options.padding = cible;
     } else {
       if (r._ktaPadOrigine == null) return;
       r.options.padding = r._ktaPadOrigine;

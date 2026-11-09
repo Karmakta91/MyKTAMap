@@ -225,6 +225,8 @@
   "config.niveaux.warn": "⚠️ Changer le niveau actif <strong>annule</strong> le tracé en cours.",
   "config.north.statusCalibrated": "✅ Nord calibré à {deg}° du haut du plan (sens horaire).",
   "config.north.statusDefault": "ℹ️ Nord = haut du plan (configuration par défaut).",
+  "config.perfultra.allegerRotation.hint": "Sur un gros plan, tant que la carte est tournée : seuls les points et tracés de l'écran sont dessinés. Les points restent touchables.",
+  "config.perfultra.allegerRotation.label": "Alléger la carte tournée (gros plans)",
   "config.perfultra.animOff.label": "Désactiver animations zoom/pan",
   "config.perfultra.decim.label": "Décimer les tracés au dézoom",
   "config.perfultra.intro": "Les options à <span class=\"kta-tx-warn\">liseré orange</span> prennent effet au rechargement du plan.",

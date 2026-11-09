@@ -225,6 +225,8 @@
   "config.niveaux.warn": "⚠️ Cambiar el nivel activo <strong>anula</strong> el trazado en curso.",
   "config.north.statusCalibrated": "✅ Norte calibrado a {deg}° desde la parte superior del mapa (sentido horario).",
   "config.north.statusDefault": "ℹ️ Norte = parte superior del mapa (configuración por defecto).",
+  "config.perfultra.allegerRotation.hint": "En un mapa grande, mientras el mapa está girado: solo se dibujan los puntos y trazados de la pantalla. Los puntos siguen siendo táctiles.",
+  "config.perfultra.allegerRotation.label": "Aligerar el mapa girado (mapas grandes)",
   "config.perfultra.animOff.label": "Desactivar animaciones zoom/paneo",
   "config.perfultra.decim.label": "Diezmar los trazados al alejar el zoom",
   "config.perfultra.intro": "Las opciones con <span class=\"kta-tx-warn\">borde naranja</span> surten efecto al recargar el mapa.",
