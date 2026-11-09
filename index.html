@@ -749,7 +749,7 @@
         <div class="kta-cfg-group-titre"><span data-kta-ico="monitor-cog"></span><span class="kta-cfg-group-libelle" data-i18n="config.group.system">Système &amp; maintenance</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
-        <!-- Mode Développeur, protégé par mot de passe (hash SHA-256) : logs détaillés et leur affichage, ConfAdmin,
+        <!-- Mode Développeur, activé sans mot de passe (confirmation) : logs détaillés et leur affichage, ConfAdmin,
              inspecteur Service Worker. Peuplé par js/devMode.js > initSection(). -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre"><span data-kta-ico="code-xml"></span> <span data-i18n="devmode.title">Mode Développeur</span></div>
@@ -1004,7 +1004,7 @@
   <script src="js/sortieUrgence.js" defer></script>
   <!-- ⚠️ mdParser.js (Markdown inline, XSS-safe) : AVANT modeHistoire.js. -->
   <script src="js/mdParser.js" defer></script>
-  <!-- Mode Développeur (mot de passe, logs, bibliothèque de docs) -->
+  <!-- Mode Développeur (logs détaillés, ConfAdmin, inspecteur SW) -->
   <script src="js/devMode.js" defer></script>
   <!-- modeHistoire.js : note libre par plan (Markdown) + PDF embarqué (plan-config.json > histoirePdf). -->
   <script src="js/modeHistoire.js" defer></script>

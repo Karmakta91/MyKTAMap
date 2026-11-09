@@ -329,7 +329,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `voiceTts.js` | Lecture à voix haute des notes POI (bouton 🔊) |
 | `sortieUrgence.js` | Sortie d'urgence : sorties classées par distance navigable, itinéraire vers la plus proche |
 | `mdParser.js` | Sous-ensemble Markdown XSS-safe (note libre du Mode Histoire) |
-| `devMode.js` | Mode Développeur protégé par mot de passe : logs détaillés, ConfAdmin, inspecteur SW, outils d'extension |
+| `devMode.js` | Mode Développeur, activé sans mot de passe (confirmation) : logs détaillés, ConfAdmin, inspecteur SW, outils d'extension |
 | `modeHistoire.js` | Mode Histoire : note libre Markdown et documents PDF du plan |
 
 ### 🌍 Interop géo (KMZ / GPX / SIG / OSM)
@@ -654,6 +654,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
+| `smoke/checkup-mode-dev.js` | Mode Développeur sans mot de passe : confirmation chartée, outils rendus, journal affiché et copié, appareil déjà déverrouillé gardé actif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
 | `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
 | `smoke/checkup-raccourcis.js` | Fiche des raccourcis : chaque ligne affichée (carte 2D, actions globales, vue 3D) jouée et son effet vérifié, téléphone compris, Chromium et WebKit |
@@ -831,6 +832,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 - **➕ Boutons de zoom en vue 3D** (`js/vue3d.js > _majBoutonsIncl`, `js/config.js > ktaBoutonsZoomPartout`, `tracking.md` § Vue 3D) : la case « Boutons de zoom +/− sur les cartes et en 3D » de ⚙️ Configuration de l'accueil › Affichage (décochée par défaut) pilote aussi les boutons + / − et ▲ ▼ de la vue d'édition 3D, appliquée aussitôt même vue ouverte ; molette, clavier et doigts zooment et inclinent toujours, le ⌖ reste. `checkup-vue-3d.js` § case des boutons de zoom.
 - **⬛ Menu Zones, libellés courts** (`lang/*.json > ui.zone.*`, `js/interface.js > _infobulleSousAction`, `js/zones.js`, `js/utils.js`) : les quatre types de zone s'appellent Remblais, Effondrement, Eau et Inaccessible, comme dans la légende, les filtres et les exports (en / es : Backfill, Collapse, Water, Inaccessible · Escombros, Derrumbe, Agua, Inaccesible) ; « bloque l'itinéraire » passe dans l'infobulle de ⛔ Inaccessible. Clés des types et formats de données inchangés.
 - **⛏️ Hauteur en 3D grisée sur un plan à plusieurs niveaux** (`js/vue3d.js > _hauteurFigee`, `tracking.md` § Vue 3D) : le bouton ⛏️ de la tuile ⚙️ montre toujours la hauteur du niveau, mais ne l'ouvre plus ; elle se règle pour chaque niveau dans ⚙️ Réglages › Niveaux : profondeur et hauteur (la changer depuis la 3D recalculait les pentes des jonctions qui y arrivent). Plan à un seul niveau : − / + inchangés. Checkup `checkup-vue-3d.js` : ⛏️ grisé et sans effet sur le relevé fictif, réglage d'un niveau contrôlé avec le multi-niveau coupé.
+- **🛠️ Mode Développeur sans mot de passe** (`js/devMode.js`, garde-fou `check-devmode-docs.js`, `infra-versioning.md` § doc technique, guides § Logs détaillés) : il s'active par une confirmation qui dit ce qu'il fait, pour qu'un utilisateur allume les logs détaillés et envoie son journal (Afficher les logs → Copier) sans demander de code ; il ne protégeait plus rien de secret (ConfAdmin et pages d'outils publiques). Hash, essais, temporisation et porte de saisie retirés, clés `devmode.gate.*` remplacées par `devmode.activer.*`, clés locales de l'ancienne porte effacées au chargement (un appareil déjà actif le reste).
 
 #### v2.22.2 (04/11/2026) — Vue 3D d'édition, carte tournée à la main, formes ajustables (branche `Karma_dev`)
 

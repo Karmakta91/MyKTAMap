@@ -81,7 +81,7 @@ const CLES_INDEX = ["home.plans.title", "home.osm.title", "home.add.title", "hom
 const APPELS_JS = {
   "js/homeConfig.js": ['_t("home.cfg.depannage.title")', '_t("home.cfg.forceUpdateBtn")', '_t("home.cfg.killSwBtn")',
     '_t("home.cfg.resetBtn")', '_t("pin.setup.changeBtn")', '_t("pin.setup.disableBtn")', '_t("pin.setup.enableBtn")'],
-  "js/devMode.js": ['t("devmode.gate.titre")', 't("devmode.toggleLabel")', 't("home.debug.logsLabel")',
+  "js/devMode.js": ['t("devmode.activer.titre")', 't("devmode.toggleLabel")', 't("home.debug.logsLabel")',
     't("home.debug.showLogs")', 't("devmode.confadmin")', 't("home.inspector.swBtn")'],
   "js/memInspector.js": ['_t("titre")', '_t("btn.refresh")', '_t("btn.copy")'],
   "js/interface.js": ['"export.lanceur.sectionImage"', '"export.lanceur.sectionSession"', '"export.lanceur.sectionPlan"',
