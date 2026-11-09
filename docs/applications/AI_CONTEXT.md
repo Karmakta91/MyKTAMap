@@ -260,13 +260,14 @@ Pour **chaque** question :
 - ⛔ **Liste de révocation** (kill-switch) : un plan diffusé puis révoqué par l'auteur est bloqué au chargement (vérification 100 % locale par empreinte).
 - 🌀 **Liaisons inter-plan / portails** : lier un point d'un plan à un point d'un autre plan, navigation par portail avec bouton Retour, gestionnaire « Mes liaisons » (liste + vue graphe « réseau de plans »), itinéraire inter-plan et multi-hop (cf recette « Lier deux plans entre eux »).
 
-**Types de zones** (exhaustif — il n'en existe que 4) :
+**Types de zones** (exhaustif — il n'en existe que 5, dont 1 conditionnel) :
 - **Remblais** (gris foncé, ⬛)
 - **Effondrement** (rouge, 🟥)
 - **Eau** (bleu, 🟦)
 - **Inaccessible** (hachures rouge sombre à 45°, ⛔). Zone BLOQUANTE pour le pathfinder **par défaut** : tout segment de route qui la traverse est retiré du graphe → l'itinéraire calculé ne passe pas par cette zone. Relâchable seulement par la case « Respecter les zones inaccessibles » de la modale Itinéraire (cochée d'origine) ; le Mode Secours et « Je suis perdu » la respectent toujours. Multi-niveau : ne bloque que les segments du même niveau.
+- **Jonction** (🪜, plan multi-niveau seulement) : salle dont le sol monte d'un niveau à l'autre, de la couleur du tracé jonction (même libellé, même ligne de légende, même filtre, mêmes exports). Le choisir demande « du niveau … au niveau … » : la zone est posée sur ces deux niveaux. Le sens de la pente est donné par le **tracé jonction qui la traverse** (l'itinéraire passe par ce tracé) ; sans lui, la bulle de la zone le dit et propose **🪜 Tracer la jonction**. En vue 3D, son sol et son plafond suivent la pente. Ne bloque pas l'itinéraire. Une ancienne zone cochée « Zone jonction » devient une zone Jonction à l'ouverture.
 
-→ Il n'y a **PAS** de zone "brûlée", "incendiée", "dangereuse", "fumée", "sèche", "gelée", "humide" ou autre. Strictement Remblais / Effondrement / Eau / Inaccessible (plus les types personnalisés qu'un plan ou une session peut définir dans sa légende).
+→ Il n'y a **PAS** de zone "brûlée", "incendiée", "dangereuse", "fumée", "sèche", "gelée", "humide" ou autre. Strictement Remblais / Effondrement / Eau / Inaccessible / Jonction (plus les types personnalisés qu'un plan ou une session peut définir dans sa légende). Il n'y a plus de case « Zone jonction » dans la bulle d'une zone.
 
 **Types de tracés / routes** (exhaustif — il n'en existe que 5, dont 1 conditionnel) :
 - **Principal** (vert)

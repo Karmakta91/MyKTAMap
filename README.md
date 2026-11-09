@@ -47,7 +47,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | Calques de données (`devmap-data` JSON) | `utils.js > ajouterPointsDepuisJSON` |
 | Points d'intérêt : tags, notes, photos IDB (ré-encodées sans EXIF) | `editor.js`, `photos.js`, `photoViewer.js` |
 | Tracés (Principal / Secondaire / Chemin / Jonction / Itinéraire) | `road.js` |
-| Zones polygonales (eau / remblais / effondrement / inaccessible) | `zones.js` |
+| Zones polygonales (eau / remblais / effondrement / inaccessible / jonction entre deux niveaux) | `zones.js` |
 | Structures (pilier 1ère / 2e masse, mur, mur en ligne qui coupe l'itinéraire, fronts) | `structures.js` |
 | Mesure distance + surface (polygone shoelace) | `measure.js` |
 | **Undo / Redo global** (Ctrl+Z / Ctrl+Y, 50 entrées FIFO) | `historyManager.js` |

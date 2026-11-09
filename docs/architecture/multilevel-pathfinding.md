@@ -190,7 +190,8 @@ Type spécial `"jonction"` :
   `getNiveauVertical`, sinon une hauteur de galerie par niveau franchi ; détail : `tracking.md` § Vue 3D, galerie
   inclinée). Guidage : « descendre / monter la pente vers le niveau n », dit à l'entrée du tracé (`itiGuidage.js`,
   moyen `pente`).
-- **Zone jonction** (§ 26.12) : une zone jonction qu'elle traverse prend sa pente (chambre en pente en 3D).
+- **Zone jonction** (§ 26.12) : une zone jonction qu'elle traverse prend sa pente (chambre en pente en 3D) ; la fiche
+  d'une zone jonction sans tracé arme ce mode, niveaux pré-remplis (`interfaceConfig.js > ktaTracerJonction`).
 - **Effacement** : aucun comportement spécial, traitée comme un tracé normal par tous les modes de 🧹 (sélection au clic, dernier tracé, tous les tracés). `resetRoads()` purge aussi les jonctions car même structure de données.
 - **Fiche au clic** (jonction de session, hors dessin) : `road.js` lui pose la polyline « ghost » des tracés et
   `utils.js > attacherNotePopup` avec `opts.jonction`. Titre « 🪜 Jonction N0 ↔ N+1 » (`jonctionFiche.titre`) ;
@@ -382,16 +383,34 @@ Une zone (tout type, `cust-*` compris) peut toucher plusieurs niveaux : un effon
   niveaux occupés (`main.js > ktaNiveauxOccupes`), recherche, niveaux proches d'un recalage
   (`tracking.js`), sélection par zone (`selectionZone.js`), sélection multiple (`selectionMulti.js`) et remblais du
   volume exploité (`volumeExploite.js`) comptent la zone sur chacun de ses niveaux.
-- **Zone jonction de niveau** (décision produit, QCM du 08/11/2026) : une zone sur au moins deux niveaux peut être
-  une chambre dont le sol monte d'un niveau à l'autre : case « Zone jonction » sous « Aussi aux niveaux » dans sa
-  fiche, appliquée par le même bouton (`changerNiveauxZone(obj, autres, jonction)`, une entrée ⏪ ; retirée si la zone
-  ne garde qu'un niveau). Champ `jonction: true`. Elle n'a pas de sens propre : **sa pente et son sens sont ceux du
-  tracé jonction qui la traverse** (premier tracé dont les deux niveaux sont parmi ceux de la zone et qui entre dans son
-  contour), sol projeté sur ce tracé bout à bout comme la galerie inclinée : `galerieEmprise.js > penteDeZone(z)` /
-  `zonesDePente(r)`, une seule règle pour la fiche et la 3D. Sans tracé qui la traverse : sol à plat en 3D et
-  avertissement dans la fiche (« tracez un tracé jonction qui la traverse »). **Itinéraire** : inchangé (choix fait au
-  lot) : il passe par le tracé jonction qui la traverse, aucun graphe neuf ; une zone jonction ⛔ bloque comme toute zone
-  bloquante. Vue 3D : `tracking.md` § Niveaux entremêlés et zones jonction.
+- **Zone jonction** (décision produit) : un **type de zone** à part, `pente` (« Jonction » du menu Zone, plan
+  multi-niveau, hors vue 3D comme le tracé jonction), pour une chambre dont le sol monte d'un niveau à l'autre.
+  - **Création** : le choix du type ouvre la même modale « du niveau … au niveau … » que le tracé jonction
+    (`interfaceConfig.js > _ouvrirCreationJonction(btn, { zone, onOk })`) ; la zone reçoit seule `level` = départ et
+    `niveaux` = [départ, arrivée] (`zones.js`, `window._zonePenteMeta`, gardé tant que l'outil reste armé). Rien à
+    cocher. **Convertir** vers Jonction (fiche) pose la même question (niveaux de l'objet proposés) ; le lot et le
+    Tableur gardent les niveaux de l'objet (sa fiche les ajuste) ; le Tableur ne change pas le niveau d'une zone
+    jonction (lecture seule, comme une jonction).
+  - **Fiche** : « Du niveau » / « Au niveau » à la place de la liste Niveau et des cases « Aussi aux niveaux »,
+    appliqués ensemble (`KtaConvertir.changerNiveauxPente`, deux niveaux différents, une entrée ⏪). Sans tracé jonction
+    qui la traverse entre ses deux niveaux, elle le dit et propose **🪜 Tracer la jonction** : le mode tracé jonction
+    existant, niveaux pré-remplis (`ktaTracerJonction`).
+  - **Sens et pente** : ceux du tracé jonction qui la traverse (premier tracé dont les deux niveaux sont parmi ceux de
+    la zone et qui entre dans son contour), sol projeté sur ce tracé bout à bout comme la galerie inclinée :
+    `galerieEmprise.js > estZoneJonction(z)` (type `pente`, ≥ 2 niveaux) / `penteDeZone(z)` / `zonesDePente(r)`, une
+    seule règle pour la fiche et la 3D. Sans tracé : sol à plat. **Itinéraire** : inchangé, il passe par le tracé
+    jonction ; la zone elle-même ne bloque rien. Vue 3D : `tracking.md` § Niveaux entremêlés et zones jonction.
+  - **Comme le tracé jonction partout** (décision produit) : même couleur (`styleResolver.js > _couleurDe`), même
+    libellé et même visibilité de légende (`legendCustomization.js > TYPE_LIE` : lus et écrits sous `traces.jonction`,
+    une seule ligne dans l'éditeur), même groupe de légende (ligne de surface juste sous le tracé jonction, ≡ Légende et
+    légende du PNG / PDF), même filtre (puce « Jonction » des types de tracés : `filterPanel.js >
+    _lierZoneJonction` remet `zoneTypes` d'accord avec `roadTypes`, lu tel quel par la carte, les calques, la 3D et la
+    Vue OSM), visible sur chacun de ses deux niveaux, hors des sélections multiple et par zone (`EXCLUS`, comme le
+    tracé : ses niveaux vivent dans sa fiche). Exports : voir `exports.md` § Zone jonction.
+  - **Ancien champ** `jonction: true` (zone cochée « Zone jonction ») : converti en type `pente` à l'entrée, sans
+    toucher `updatedAt` (`data-formats.md`).
+- Parcours réel de la zone jonction : section E de `scripts/smoke/checkup-zones-niveaux.js` (menu, niveaux, fiche,
+  Tracer la jonction, couleur / libellé / filtre, exports comparés au tracé, Convertir, ancienne zone) et F (Générateur).
 - Garde-fous : `scripts/check-zones-niveaux.js` (pre-commit : règle, rendu, itinéraire, fiche, session, KMZ, GeoJSON,
   règle du pas de la 3D, sélection par zone, volume exploité), § 29 de `scripts/smoke/checkup-vue-3d.js`
   et `scripts/smoke/checkup-zones-niveaux.js` (plan fictif fabriqué dans la page : tracé, fiche, filtre, itinéraire,
