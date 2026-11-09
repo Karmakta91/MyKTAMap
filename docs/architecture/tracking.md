@@ -2494,12 +2494,15 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
 - **Rendu** (décision produit) : un canvas 2D dessiné par `vue3d.js` à partir de ce que la scène a déjà lu à
   `_reindexer` (`_donneesMiniCarte` : objets de `_collecter`, donc **mêmes filtres ≡** de la carte, calques cochés et
   niveaux visibles) — jamais une seconde carte Leaflet, une image du plan ni une seconde caméra three.js. **Niveau actif
-  de la 3D seulement** : zones qui bouchent (`KtaGalerie.ZONES_BOUCHENT` : remblais, effondrement, inaccessible),
+  de la 3D** en plein : zones qui bouchent (`KtaGalerie.ZONES_BOUCHENT` : remblais, effondrement, inaccessible),
   structures (polygones remplis, murs en ligne et fronts en trait), tracés (sans les `jonction`, jamais dessinés),
-  POI importants en pastille avec leur icône (`getIconUrlForPoint`) : **passage** vers un autre niveau
-  (`_estPassage`, liseré du tracé jonction et ↕ au coin, la marque du panneau), **danger** (`_estDanger`, liseré
-  `--kta-erreur`), **sortie** (`SortieUrgence.estUneSortie` : la règle de la Sortie d'urgence, jamais une liste de
-  tags recopiée ; liseré `--kta-ok`). Couleurs : `ktaResolveStyle(cat, clé, { flat: true })` (légende personnalisée
+  **tous les POI** montrés par les filtres, en pastille avec leur icône (`getIconUrlForPoint`, liseré
+  `--kta-texte-3`) ; par-dessus eux, liseré propre : **passage** vers un autre niveau (`_estPassage`, liseré du tracé
+  jonction et ↕ au coin, la marque du panneau), **danger** (`_estDanger`, liseré `--kta-erreur`), **sortie**
+  (`SortieUrgence.estUneSortie` : la règle de la Sortie d'urgence, jamais une liste de tags recopiée ; liseré
+  `--kta-ok`). **Niveaux voisins** (celui du dessus et celui du dessous dans l'ordre de ▲▼, `_niveauxEdition`, même
+  `_collecter`) : structures et tracés seulement, en contour estompé (`MINI_CARTE.voisinAlpha`) **sous** le niveau
+  actif, dessus en `--kta-interaction`, dessous en tirets `--kta-texte-3` ; jamais leurs POI ni leurs zones. Couleurs : `ktaResolveStyle(cat, clé, { flat: true })` (légende personnalisée
   comprise), jetons du thème **sombre** (`_jetonsSombres`) comme les panneaux. Par-dessus, à chaque mise à jour :
   **itinéraire** du niveau (`_itiMiniCarte` : ruban à la couleur de celui de la scène sur un liseré `--kta-fond`,
   étapes, arrivée ⚑), **prochaine consigne** du guidage (anneau doré au point que visent les chevrons, `sCible` de

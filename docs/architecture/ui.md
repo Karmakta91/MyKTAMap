@@ -2335,8 +2335,11 @@ icônes.
   des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),
   battants de bois des cavages et remblais des puits comblés ; coupé : parois des galeries et des tubes à la couleur de légende de leur tracé, sol et plafond noirs, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
-  Boussole et Mini-carte sur la suivante, Guidage et Fiches dessous ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
-  sans toucher scène ni greffe), 🔭 **Portée** (curseur natif `input type=range` `#kta-v3d-portee`, 15 à 100 m,
+  Lignes au sol sur la suivante, Boussole et Mini-carte ensuite, Guidage et Fiches dessous ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
+  sans toucher scène ni greffe), **Lignes au sol** (`getVue3DLignesSol`, `myktamap_v3d_lignessol_v1`, cet appareil,
+  montrées par défaut ; coupées, dans les trois rendus : ni rubans des tracés, ni liseré au sol des galeries, ni ronds
+  d'intersection en 3D — l'itinéraire, ses chevrons, les tubes, les filtres ≡, la carte 2D et la mini-carte ne
+  changent pas ; `_basculerLignesSol` > `_refaireTuiles` + `_majRonds`, voisins refaits par `_sigVoisins`), 🔭 **Portée** (curseur natif `input type=range` `#kta-v3d-portee`, 15 à 100 m,
   30 m par défaut, `getVue3DPortee`, `myktamap_v3d_portee_v1`, cet appareil ; libellé `<label for>`, valeur écrite à
   droite et dite par `aria-valuetext`, couleur `accent-color: var(--kta-interaction)` (celle des cases de la fenêtre Réglages), contour de focus
   `--kta-interaction` ; flèches, Origine, Fin au clavier), 💡 **Lampe** (curseur `#kta-v3d-lampe`, 25 à 300 % par

@@ -118,6 +118,7 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `niveau`, `hauteur`, `sc` | niveau affiché, hauteur des galeries (m), échelle (px / m) |
 | `pos`, `cap` | position (px plan, copie) et cap (°, 0 = haut de l'image, 90 = droite) |
 | `rendu`, `mode`, `vue`, `commandes`, `court` | `"mixte"` / `"structures"` / `"galerie"` ; `"suivi"` / `"libre"` ; `"yeux"` / `"plongee"` ; `"joystick"` / `"pave"` ; pas rapide en cours |
+| `miniCarte` | `true` quand le médaillon de la mini-carte est montré en haut à droite : le greffon y libère la place (le jeu `mkmg` passe alors son panneau sous ses jauges, à gauche) |
 | `sale()` | demander une image |
 | `bloque(x0, y0, x1, y1)` | règle du pas **de la vue** (jamais une copie) : un corps de 0,8 m ne passe pas (px plan) |
 | `ligneBloquee(x0, y0, x1, y1)` | une ligne de vue est coupée (pilier, mur, paroi) |

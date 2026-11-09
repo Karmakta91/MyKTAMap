@@ -2495,6 +2495,8 @@
   "vue3d.guidageMontrer": "Montrer ou masquer le guidage en 3D : bandeau et chevrons (cet appareil ; l'urgence reste affichée)",
   "vue3d.texturesNom": "Textures",
   "vue3d.texturesMontrer": "Parois des galeries en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux, effondrements en éboulis ; coupé : couleurs de la légende, parois comprises, sol noir (cet appareil)",
+  "vue3d.lignesSolNom": "Lignes au sol",
+  "vue3d.lignesSolMontrer": "Tracés au sol, liseré des galeries et ronds d'intersection en 3D ; coupé : sol nu, l'itinéraire reste, la carte 2D ne change pas (cet appareil)",
   "vue3d.etatSuivi": "Suivi",
   "vue3d.etatLibre": "Libre",
   "vue3d.libreApresRecalage": "🕹️ Mode libre : la vue 3D reste où tu es, le tracker est recalé",
