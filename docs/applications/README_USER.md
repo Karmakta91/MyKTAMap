@@ -1498,7 +1498,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **🔒 Confidentialité & Audit** : **📋 Voir le journal réseau**, **📖 Que fait l'app sur le réseau ?** et la case **🗺️ Vue OSM** (voir « 🔴 Avertissements importants ») — l'app n'envoie aucune de tes données ; le seul site extérieur qu'elle contacte est OpenStreetMap (fond de carte de la Vue OSM), que cette case coupe, et le journal réseau te le montre ;
   - **📚 Plans du site** : **🚫 Ne pas charger les plans du site au démarrage**, si tu n'utilises que tes propres plans (après rechargement, ils disparaissent de la liste et des statistiques).
 - **🛠️ Système & maintenance** :
-  - **🛠️ Mode Développeur** (protégé par mot de passe) : voir « 🔭 Pour aller plus loin » ;
+  - **🛠️ Mode Développeur** : logs détaillés à copier pour signaler un problème, et outils techniques — voir « 🔭 Pour aller plus loin » ;
   - **📊 Voir l'état mémoire** : ce que l'app occupe sur ton appareil, avec **📋 Copier le rapport** pour signaler un problème ;
   - **🔧 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🔧 Ouvrir l'outil Kill SW** (SW = *Service Worker*, la partie de l'app qui la garde en mémoire pour le hors-ligne) et **💥 Tout réinitialiser** — voir « 🔧 En cas de problème ».
 
@@ -2161,7 +2161,11 @@ Il n'y a rien d'autre à faire.
 
 ### 🐛 Logs détaillés
 
-Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (protégé par mot de passe), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut. Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
+Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (sans mot de passe : une confirmation dit ce qu'il fait), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut.
+
+**Pour envoyer tes journaux** à qui t'aide : **⚙️ Configuration** → **🛠️ Mode Développeur** → active **🐛 Logs détaillés**, refais ce qui pose problème, puis **Afficher les logs** → **Copier**, et colle le texte dans ton message. La fenêtre garde les 300 dernières lignes, même après un plantage. Relis-les avant de les envoyer : elles peuvent citer des noms de plans ou de fichiers.
+
+Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
 
 ### 📖 Toute la documentation en ligne
 

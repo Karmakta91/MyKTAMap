@@ -1497,7 +1497,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
   - **🔒 Privacidad y Auditoría**: **📋 Ver el registro de red**, **📖 ¿Qué hace la app en la red?** y la casilla **🗺️ Vista OSM** (ver «🔴 Advertencias importantes») — la app no envía ninguno de tus datos; el único sitio externo que contacta es OpenStreetMap (fondo de mapa de la Vista OSM), que esta casilla desactiva, y el registro de red te lo muestra;
   - **📚 Mapas del sitio**: **🚫 No cargar los mapas del sitio al arrancar**, si solo usas tus propios mapas (tras recargar, desaparecen de la lista y de las estadísticas).
 - **🛠️ Sistema y mantenimiento**:
-  - **🛠️ Modo Desarrollador** (protegido con contraseña): ver «🔭 Para ir más lejos»;
+  - **🛠️ Modo Desarrollador**: registros detallados para copiar al informar de un problema, y herramientas técnicas — ver «🔭 Para ir más lejos»;
   - **📊 Ver el estado de memoria**: lo que ocupa la app en tu dispositivo, con **📋 Copiar el informe** para señalar un problema;
   - **🔧 Resolución de problemas**: una ventana que ordena, de lo más suave a lo más radical, **🔄 Forzar la actualización**, **🔧 Abrir la herramienta Kill SW** (SW = *Service Worker*, la parte de la app que la guarda para usarla sin conexión) y **💥 Reiniciar todo** — ver «🔧 En caso de problema».
 
@@ -2160,7 +2160,11 @@ No hay nada más que hacer.
 
 ### 🐛 Registros detallados
 
-En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (protegido por contraseña), **🐛 Registros detallados** añade información en la consola del navegador (sensores del tracker, corte de la imagen). Útil para informar de un problema. Desactivado por defecto. El modo desarrollador contiene también **🔧 Ver el estado de la caché (Service Worker)**: el detalle, archivo por archivo, de lo que resume la pastilla sin conexión.
+En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (sin contraseña: una confirmación explica lo que hace), **🐛 Registros detallados** añade información en la consola del navegador (sensores del tracker, corte de la imagen). Útil para informar de un problema. Desactivado por defecto.
+
+**Para enviar tus registros** a quien te ayuda: **⚙️ Configuración** → **🛠️ Modo Desarrollador** → activa **🐛 Registros detallados**, repite lo que falla, luego **Mostrar los registros** → **Copiar**, y pega el texto en tu mensaje. La ventana guarda las 300 últimas líneas, incluso tras un cierre inesperado. Reléelas antes de enviarlas: pueden citar nombres de mapas o de archivos.
+
+El modo desarrollador contiene también **🔧 Ver el estado de la caché (Service Worker)**: el detalle, archivo por archivo, de lo que resume la pastilla sin conexión.
 
 ### 📖 Toda la documentación en línea
 

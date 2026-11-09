@@ -1497,7 +1497,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?** and the **🗺️ OSM view** box (see “🔴 Important warnings”) — the app sends none of your data; the only outside site it contacts is OpenStreetMap (the OSM View's background map), which this box turns off, and the network log shows it to you;
   - **📚 Site maps**: **🚫 Don't load the site's maps on startup**, if you only use your own maps (after a reload, they disappear from the list and the statistics).
 - **🛠️ System & maintenance**:
-  - **🛠️ Developer Mode** (password-protected): see “🔭 Going further”;
+  - **🛠️ Developer Mode**: verbose logs to copy when reporting a problem, plus technical tools — see “🔭 Going further”;
   - **📊 View memory state**: what the app takes up on your device, with **📋 Copy the report** to report a problem;
   - **🔧 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🔧 Open the Kill SW tool** (SW = *Service Worker*, the part of the app that keeps it stored for offline use) and **💥 Reset everything** — see “🔧 Troubleshooting”.
 
@@ -2160,7 +2160,11 @@ There is nothing else to do.
 
 ### 🐛 Detailed logs
 
-In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (password-protected), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default. Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
+In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (no password: a confirmation tells what it does), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default.
+
+**To send your logs** to whoever is helping you: **⚙️ Configuration** → **🛠️ Developer Mode** → turn on **🐛 Verbose logs**, do again what goes wrong, then **Show logs** → **Copy**, and paste the text into your message. The window keeps the last 300 lines, even after a crash. Read them before sending: they may mention map or file names.
+
+Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
 
 ### 📖 All the documentation online
 
