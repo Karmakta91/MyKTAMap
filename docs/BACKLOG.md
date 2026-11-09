@@ -78,6 +78,22 @@
   vu sur plan réel. ✅ vérifié 09/11/2026 : `js/vue3d.js > _sommetPlafond` (🩸).
   `qui: Claude · action: couper les parois de tube des voisins sur l'emprise d'un conduit (bit GABARIT.conduit)
   · fini: checkup § 56 étendu à une galerie à cheval sur l'emprise, vert · depuis: 09/11/2026 · taille: S`
+- **Vue 3D, puits ouvert : disque de ciel coupé vu en biais** — regardé de biais depuis le fond ou depuis un niveau
+  traversé, le disque de ciel du sommet est coupé net par un bord vertical (même sprite que le puits sur son niveau).
+  🔬 vu en capture sur plan réel le 09/11/2026, cause non cherchée.
+  `qui: Claude · action: trouver ce qui tranche le sprite (gabarit, plan de coupe, taille) et le corriger
+  · fini: capture en biais sans bord net, checkup § 56 vert · depuis: 09/11/2026 · taille: S`
+- **Téléchargement de fichier commun, repli partage iPhone** — une vingtaine de modules recopient le même lien Blob
+  + `download` (secoursMode, sessionExporter, refonteInterface…), aucun ne passe par `navigator.share` sur iOS, où le
+  lien d'un Blob est capricieux dans la PWA installée. ✅ vérifié 09/11/2026 (grep) ; modèle : `js/debug.js`.
+  `qui: Claude · action: une fonction commune (Blob, download, partage iOS) et y passer les exports
+  · fini: plus de copie du motif, exports testés Chromium et WebKit · depuis: 09/11/2026 · taille: M`
+- **iPad portrait : canvas de la carte au-delà de la limite de Safari** — marge du renderer 0,5 × écran × densité 2 :
+  ~22 M px réels carte droite, au-delà des 16,8 M px d'un canvas Safari (tracés, zones, structures non peints ou
+  onglet tué). 🔬 calcul du lot rotation-memoire (09/11/2026), pas vu sur un vrai iPad.
+  `qui: KARMA · action: ouvrir un gros plan sur iPad en portrait et dire si tracés et structures s'affichent
+  · fini: vu sur iPad ; si défaut, budget du canvas carte droite (mapBearing.js > _paddingBudget)
+  · depuis: 09/11/2026 · taille: S`
 - **Calque : copie jamais retouchée contre trace de copie** — deux appareils hors ligne qui passent le même calque
   en modification gardent des copies concurrentes (le plus récent gagne). Règle à la réception, cf
   `docs/architecture/session-data.md` (limites de « Repasser en modification »).
