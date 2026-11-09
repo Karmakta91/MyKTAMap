@@ -132,6 +132,13 @@ function _ouvrirPlanSwitcher() {
   }, 0);
 }
 
+// ⚠️ contrat : même icône par type que la liste de l'accueil (homeLoader.js > icône d'une ligne de plan) —
+// serveur, installation reliée (`ext`), fichier local. Deux tables divergentes montraient une disquette pour un plan
+// d'installation.
+function _iconeTypePlan(p) {
+  return window.ktaIcone(p.type === "server" ? "cloud" : p.type === "ext" ? "database" : "hard-drive");
+}
+
 // Modale centrée : reprend .kta-readme-modal-overlay (backdrop, fade-in, safe-area) ;
 // la boîte a son style compact (.kta-plan-switcher-modal-*).
 function _ouvrirPlanSwitcherRefonte(recents, current) {
@@ -142,7 +149,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
   // Plan en cours : affiché, non cliquable (déjà chargé)
   let currentHtml = "";
   if (current) {
-    const icon = current.type === "server" ? "🌐" : "💾";
+    const icon = _iconeTypePlan(current);
     const ver  = current.version
       ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(current.version) + '</span>'
       : '';
@@ -165,7 +172,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
     recentsHtml += '<div class="kta-plan-switcher-section-titre">' + window.ktaIcone("history") + " " + window.I18n.t("ui.switcher.recentTitle") + '</div>';
     recentsHtml += '<div class="kta-switcher-list">';
     recents.forEach(function(p) {
-      const icon = p.type === "server" ? "🌐" : "💾";
+      const icon = _iconeTypePlan(p);
       const sub  = _fmtDateRel(p.lastOpened) || "";
       const ver  = p.version ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(p.version) + '</span>' : '';
       recentsHtml +=
@@ -197,7 +204,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
       '</div>' +
       '<div class="kta-plan-switcher-modal-footer">' +
         '<button class="kta-plan-switcher-cta" id="kta-switcher-tous">' +
-          '<span class="kta-plan-switcher-cta-icon">📚</span>' +
+          '<span class="kta-plan-switcher-cta-icon">' + window.ktaIcone("library") + '</span>' +
           '<span class="kta-plan-switcher-cta-label">' + window.I18n.t("ui.switcher.ctaLabel") + '</span>' +
           '<span class="kta-plan-switcher-cta-sub">' + window.I18n.t("ui.switcher.ctaSub") + '</span>' +
         '</button>' +
