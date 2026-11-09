@@ -393,18 +393,6 @@ body.kta-theme-light .kta-mem-row,
 html.kta-theme-light .kta-mem-row {
   border-bottom-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-mem-lbl,
-html.kta-theme-light .kta-mem-lbl,
-body.kta-theme-light .kta-mem-dim,
-html.kta-theme-light .kta-mem-dim {
-  color: var(--kta-light-text-muted) !important;
-}
-body.kta-theme-light .kta-mem-val,
-html.kta-theme-light .kta-mem-val,
-body.kta-theme-light .kta-mem-num,
-html.kta-theme-light .kta-mem-num {
-  color: var(--kta-light-text) !important;
-}
 body.kta-theme-light .kta-mem-tag,
 html.kta-theme-light .kta-mem-tag {
   background: var(--kta-light-accent-bg) !important;
@@ -417,8 +405,6 @@ html.kta-theme-light .kta-mem-tag-dim {
   color: var(--kta-light-text-muted) !important;
   border-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-mem-table code,
-html.kta-theme-light .kta-mem-table code,
 body.kta-theme-light .kta-mem-cache-row code,
 html.kta-theme-light .kta-mem-cache-row code {
   background: rgba(140, 180, 255, 0.10) !important;
@@ -428,11 +414,6 @@ body.kta-theme-light .kta-mem-db,
 html.kta-theme-light .kta-mem-db {
   background: rgba(140, 180, 255, 0.06) !important;
   border-color: rgba(140, 180, 255, 0.20) !important;
-}
-body.kta-theme-light .kta-mem-db-titre code,
-html.kta-theme-light .kta-mem-db-titre code {
-  color: #1e3a8a !important;
-  background: rgba(140, 180, 255, 0.12) !important;
 }
 body.kta-theme-light .kta-mem-bar-wrap,
 html.kta-theme-light .kta-mem-bar-wrap,
@@ -878,22 +859,6 @@ html.kta-theme-light .kta-profile-footer {
 }
 
 /* Variants thème clair */
-body.kta-theme-light .kta-tutorial-header,
-html.kta-theme-light .kta-tutorial-header {
-  border-bottom-color: var(--kta-light-accent) !important;
-}
-body.kta-theme-light .kta-tutorial-card-titre,
-html.kta-theme-light .kta-tutorial-card-titre {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-tutorial-card-texte,
-html.kta-theme-light .kta-tutorial-card-texte {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-tutorial-card-texte strong,
-html.kta-theme-light .kta-tutorial-card-texte strong {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
 body.kta-theme-light .kta-tutorial-card-texte code,
 html.kta-theme-light .kta-tutorial-card-texte code {
   background: rgba(140, 180, 255, 0.15) !important;
@@ -1060,20 +1025,6 @@ html.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-boite {
   color: var(--kta-light-text, #2a2620) !important;
   border: 1px solid var(--kta-light-border, rgba(0,0,0,0.12)) !important;
 }
-body.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-header,
-html.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-header {
-  background: var(--kta-light-bg-deep, #ebe0c2) !important;
-  color: var(--kta-light-text, #2a2620) !important;
-  border-bottom-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
-}
-body.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-titre,
-html.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-titre {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light #kta-sw-inspector-modal #kta-sw-inspector-close,
-html.kta-theme-light #kta-sw-inspector-modal #kta-sw-inspector-close {
-  color: var(--kta-light-text, #2a2620) !important;
-}
 body.kta-theme-light #kta-sw-inspector-body,
 html.kta-theme-light #kta-sw-inspector-body {
   color: var(--kta-light-text, #2a2620) !important;
@@ -1083,17 +1034,8 @@ html.kta-theme-light #kta-sw-inspector-body code {
   background: var(--kta-light-bg-deep, #ebe0c2) !important;
   color: var(--kta-light-accent-text, #7a5a00) !important;
 }
-body.kta-theme-light #kta-sw-inspector-body .kta-mem-section,
-html.kta-theme-light #kta-sw-inspector-body .kta-mem-section {
-  background: var(--kta-light-bg-deep, #ebe0c2) !important;
-  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
-}
 body.kta-theme-light #kta-sw-inspector-body .kta-mem-section-titre,
 html.kta-theme-light #kta-sw-inspector-body .kta-mem-section-titre {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light #kta-sw-inspector-body .kta-mem-line,
-html.kta-theme-light #kta-sw-inspector-body .kta-mem-line {
   color: var(--kta-light-text, #2a2620) !important;
 }
 body.kta-theme-light #kta-sw-inspector-body .kta-mem-dim,
