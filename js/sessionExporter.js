@@ -1116,11 +1116,11 @@
     return `
       <div class="kta-conv-sens-wrap">
         <button class="kta-conv-sens-btn ${_convDirection === "ed2data" ? "active" : ""}" data-conv-dir="ed2data" type="button">
-          <span class="kta-conv-sens-label">${t("export.conv.dirEd2dataLabel")}</span>
+          <span class="kta-conv-sens-label">${window.ktaIcone("pencil")} → ${window.ktaIcone("layers")} ${t("export.conv.dirEd2dataLabel")}</span>
           <span class="kta-conv-sens-desc">${t("export.conv.dirEd2dataDesc")}</span>
         </button>
         <button class="kta-conv-sens-btn ${_convDirection === "data2ed" ? "active" : ""}" data-conv-dir="data2ed" type="button">
-          <span class="kta-conv-sens-label">${t("export.conv.dirData2edLabel")}</span>
+          <span class="kta-conv-sens-label">${window.ktaIcone("layers")} → ${window.ktaIcone("pencil")} ${t("export.conv.dirData2edLabel")}</span>
           <span class="kta-conv-sens-desc">${t("export.conv.dirData2edDesc")}</span>
         </button>
       </div>
@@ -3120,9 +3120,9 @@
       '<div class="kta-kmz-section"' + (_formatImpose ? ' style="display:none;"' : '') + '>' +
         '<div class="kta-kmz-section-titre">' + window.ktaIcone("arrow-up-from-line") + " " + t("export.extern.outputTitle") + '</div>' +
         '<div class="kta-ses-format-pills" role="tablist">' +
-          '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "kmz" ? "active" : "") + '" data-fmt="kmz" role="tab" aria-selected="' + (fmt === "kmz") + '">🌍 KMZ</button>' +
-          '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "gpx" ? "active" : "") + '" data-fmt="gpx" role="tab" aria-selected="' + (fmt === "gpx") + '">📤 GPX</button>' +
-          '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "geojson" ? "active" : "") + '" data-fmt="geojson" role="tab" aria-selected="' + (fmt === "geojson") + '">🧭 GeoJSON</button>' +
+          '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "kmz" ? "active" : "") + '" data-fmt="kmz" role="tab" aria-selected="' + (fmt === "kmz") + '">' + window.ktaIcone(_ICONES_SOLO.kmz) + ' KMZ</button>' +
+          '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "gpx" ? "active" : "") + '" data-fmt="gpx" role="tab" aria-selected="' + (fmt === "gpx") + '">' + window.ktaIcone(_ICONES_SOLO.gpx) + ' GPX</button>' +
+          '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "geojson" ? "active" : "") + '" data-fmt="geojson" role="tab" aria-selected="' + (fmt === "geojson") + '">' + window.ktaIcone(_ICONES_SOLO.geojson) + ' GeoJSON</button>' +
         '</div>' +
       '</div>' +
       '<p class="kta-ses-fmt-desc" id="kta-extern-fmt-desc">' + introFmt + '</p>' +

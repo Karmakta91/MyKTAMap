@@ -32,7 +32,7 @@ function ouvrirCalibrageEchelle() {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite" style="max-width:420px; height:auto; max-height:90vh;">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">${_t("maint.calib.title")}</span>
+        <span class="kta-readme-modal-titre">${window.ktaIcone("ruler")} ${_t("maint.calib.title")}</span>
         <button class="kta-panneau-close" id="kta-calib-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps">
@@ -56,7 +56,7 @@ function ouvrirCalibrageEchelle() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${_t("maint.calib.sectionResult")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("calculator")} ${_t("maint.calib.sectionResult")}</div>
           <div style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-family:'Courier New',monospace; font-size:13px;">
             <div style="color:var(--kta-texte-3);">${_t("maint.calib.newScale")}</div>
             <div id="calib_resultat" style="font-size:22px; color:var(--kta-interaction); font-weight:600; margin-top:4px;">—</div>
@@ -366,13 +366,13 @@ function _softUpdateOfflineWarning() {
           '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_good_news") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("circle-check") + ' ' + window.I18n.t("maint.section_good_news") + '</div>' +
           '<p>' +
             window.I18n.t("maint.reassurance_no_data_lost") +
           '</p>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_recommendation") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("lightbulb") + ' ' + window.I18n.t("maint.section_recommendation") + '</div>' +
           '<p>' +
             window.I18n.t("maint.recommendation_soft_update", { origin: origin }) +
           '</p>' +
@@ -440,7 +440,7 @@ function _resetFlowOfflineWarning() {
           '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_consequence_reset") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("ban") + ' ' + window.I18n.t("maint.section_consequence_reset") + '</div>' +
           '<ul class="kta-oom-list">' +
             '<li>' + window.I18n.t("maint.consequence_app_unusable") + '</li>' +
             '<li>' + window.I18n.t("maint.consequence_no_splash") + '</li>' +
@@ -448,7 +448,7 @@ function _resetFlowOfflineWarning() {
           '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_recommendation_check") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("circle-check") + ' ' + window.I18n.t("maint.section_recommendation_check") + '</div>' +
           '<p>' +
             window.I18n.t("maint.recommendation_reset", { origin: origin }) +
           '</p>' +
@@ -505,7 +505,7 @@ function _resetFlowConfirmation() {
           <li>${window.I18n.t("maint.reset_item_secours")}</li>
         </ul>
         <div style="margin:6px 0 10px; text-align:left;">
-          <button type="button" class="kta-btn kta-btn-ghost" id="cache-export-profil" style="width:100%;">${window.I18n.t("maint.btn_export_profile_first")}</button>
+          <button type="button" class="kta-btn kta-btn-ghost" id="cache-export-profil" style="width:100%;">${window.ktaIcone("arrow-up-from-line")} ${window.I18n.t("maint.btn_export_profile_first")}</button>
         </div>
         <strong>${window.I18n.t("maint.reset_offline_warning")}</strong>
 
@@ -548,7 +548,7 @@ function _resetFlowConfirmation() {
         </div>
         <div class="kta-modal-actions">
           <button class="kta-btn kta-btn-ghost" id="cache-annuler-2">${window.I18n.t("maint.btn_cancel")}</button>
-          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">${window.I18n.t("maint.btn_clear_now")}</button>
+          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">${window.ktaIcone("trash-2")} ${window.I18n.t("maint.btn_clear_now")}</button>
         </div>
       </div>
     `;

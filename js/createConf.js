@@ -257,7 +257,7 @@ function afficherPlanner() {
 
         <!-- 1. MÉTADONNÉES -->
         <div class="kta-aide-section kta-pl-col-left">
-          <div class="kta-aide-section-titre">${window.I18n.t("gen.infos.titre")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("info")} ${window.I18n.t("gen.infos.titre")}</div>
           <div class="kta-planner-grille">
             <label class="kta-cfg-label">${window.I18n.t("gen.infos.nom")} <span class="kta-planner-req">*</span></label>
             <input class="kta-cfg-input" id="pl_name" type="text" placeholder="${window.I18n.t("gen.infos.nomPlaceholder")}">
@@ -2758,7 +2758,7 @@ function _afficherErreurV2(titre, message) {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-v2-error-boite">' +
       '<div class="kta-readme-modal-header kta-v2-error-header">' +
-        '<span class="kta-readme-modal-titre">❌ ' + (titre || window.I18n.t("gen.v2err.titreDefaut")) + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("circle-x") + ' ' + (titre || window.I18n.t("gen.v2err.titreDefaut")) + '</span>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<p class="kta-v2-error-message">' + safeMessage + '</p>' +

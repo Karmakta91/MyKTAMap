@@ -426,7 +426,7 @@
     overlay.className = "kta-pin-gate-overlay";
     overlay.innerHTML =
       '<div class="kta-pin-gate-box">' +
-        '<div class="kta-pin-gate-icon">🔐</div>' +
+        '<div class="kta-pin-gate-icon">' + window.ktaIcone("lock") + '</div>' +
         '<div class="kta-pin-gate-titre">' + t("pin.gate.titre") + '</div>' +
         '<div class="kta-pin-gate-soustitre">' + t("pin.gate.soustitre") + '</div>' +
         '<div class="kta-pin-gate-dots" id="kta-pin-dots"></div>' +
@@ -434,7 +434,7 @@
         '<div class="kta-pin-gate-attempts" id="kta-pin-attempts">' + t("pin.gate.attempts", { n: remaining }) + '</div>' +
         (useBio
           ? '<button class="kta-pin-gate-bio-btn" id="kta-pin-bio" title="' + t("pin.gate.bioTitle") + '">' +
-              t("pin.gate.bioBtn") +
+              window.ktaIcone("fingerprint") + ' ' + t("pin.gate.bioBtn") +
             '</button>'
           : '') +
         '<div class="kta-pin-gate-keypad">' +
@@ -447,7 +447,7 @@
         '</div>' +
         // Doc lisible depuis la gate ; l'onboarding y est masqué (pas d'accès à l'app).
         '<button type="button" id="kta-pin-readme-btn" class="kta-gate-readme-btn" title="' + t("pin.gate.docTitle") + '">' +
-          t("pin.gate.docBtn") +
+          window.ktaIcone("book-open") + ' ' + t("pin.gate.docBtn") +
         '</button>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -635,7 +635,7 @@
     overlay.className = "kta-pin-gate-overlay kta-pin-gate-overlay-lockout";
     overlay.innerHTML =
       '<div class="kta-pin-gate-box kta-pin-gate-box-lockout">' +
-        '<div class="kta-pin-gate-icon">⏳</div>' +
+        '<div class="kta-pin-gate-icon">' + window.ktaIcone("timer") + '</div>' +
         '<div class="kta-pin-gate-titre">' + t("pin.lockout.titre") + '</div>' +
         '<div class="kta-pin-gate-soustitre">' +
           t("pin.lockout.soustitre") +
@@ -647,7 +647,7 @@
           t("pin.lockout.escalade") + '</p>' +
           // Doc lisible pendant le verrou ; ne change rien au verrouillage.
           '<button type="button" id="kta-pin-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="' + t("pin.gate.docTitle") + '">' +
-            t("pin.gate.docBtn") +
+            window.ktaIcone("book-open") + ' ' + t("pin.gate.docBtn") +
           '</button>' +
         '</div>' +
       '</div>';

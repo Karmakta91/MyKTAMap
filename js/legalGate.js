@@ -122,13 +122,13 @@
     ["garantie", "secours", "contenus"].forEach(function(k) {
       h += '<p class="kta-legal-art">' + _esc(_t("legal.full." + k)) + '</p>';
     });
-    h += '<h3 class="kta-legal-full-h">⚖️ ' + _esc("Arrêté préfectoral du 2 novembre 1955") + '</h3>';
+    h += '<h3 class="kta-legal-full-h">' + window.ktaIcone("scale") + ' ' + _esc("Arrêté préfectoral du 2 novembre 1955") + '</h3>';
     ARRETE_1955.forEach(function(a) {
       h += '<p class="kta-legal-art"><strong>' + _esc(a.art) + '.</strong> ' + _esc(a.txt) + '</p>';
     });
     h += '<p class="kta-legal-sign">' + _esc(ARRETE_1955_SIGN) + '</p>';
     h += '<p class="kta-legal-src">' + _esc(ARRETE_1955_SRC) + '</p>';
-    h += '<h3 class="kta-legal-full-h">🏛️ ' + _esc(SENAT_META.intitule) + '</h3>';
+    h += '<h3 class="kta-legal-full-h">' + window.ktaIcone("landmark") + ' ' + _esc(SENAT_META.intitule) + '</h3>';
     h += '<p class="kta-legal-meta">' + _esc(SENAT_META.num) + '<br>' +
          '<strong>' + _esc("Auteure : ") + '</strong>' + _esc(SENAT_META.auteur) + '<br>' +
          '<strong>' + _esc("Ministre interrogé : ") + '</strong>' + _esc(SENAT_META.ministre) + '</p>';
@@ -140,7 +140,7 @@
     SENAT_REPONSE.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
     h += '<p class="kta-legal-src">' + _esc(SENAT_META.src) + '</p>';
     // Intrusion en lieu privé — Code pénal art. 226-4 + principe de propriété
-    h += '<h3 class="kta-legal-full-h">🏠 ' + _esc("Intrusion en lieu privé") + '</h3>';
+    h += '<h3 class="kta-legal-full-h">' + window.ktaIcone("house") + ' ' + _esc("Intrusion en lieu privé") + '</h3>';
     h += '<h4 class="kta-legal-full-sub">' + _esc("Article 226-4 du Code pénal — violation de domicile") + '</h4>';
     CODE_PENAL_226_4.forEach(function(p) { h += '<p class="kta-legal-art">' + _esc(p) + '</p>'; });
     h += '<p class="kta-legal-art">' + _esc(PROPRIETE_PRIVEE) + '</p>';
@@ -191,7 +191,7 @@
         '<li>' + _esc(_t("legal.gate.pointContenus")) + '</li>' +
         '<li>' + _esc(_t("legal.gate.pointRespect")) + '</li>' +
       '</ul>' +
-      '<button class="kta-legal-readfull" id="kta-legal-readfull" type="button">📜 ' +
+      '<button class="kta-legal-readfull" id="kta-legal-readfull" type="button">' + window.ktaIcone("scroll-text") + ' ' +
         _esc(_t("legal.gate.readFull")) + '</button>'
     );
   }
@@ -215,7 +215,7 @@
       overlay.innerHTML =
         '<div class="kta-readme-modal-boite kta-legal-boite">' +
           '<div class="kta-readme-modal-header">' +
-            '<span class="kta-readme-modal-titre">⚖️ ' + _esc(_t("legal.gate.titre")) + '</span>' +
+            '<span class="kta-readme-modal-titre">' + window.ktaIcone("scale") + ' ' + _esc(_t("legal.gate.titre")) + '</span>' +
           '</div>' +
           '<div class="kta-readme-modal-corps">' +
             _buildBodyHtml() +
@@ -284,7 +284,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-legal-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">⚖️ ' + _esc(_t("legal.gate.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("scale") + ' ' + _esc(_t("legal.gate.titre")) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-legal-consult-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +

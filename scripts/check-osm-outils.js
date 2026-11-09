@@ -272,19 +272,20 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
 }
 
 // ───────── 6. pas DEUX règles dans le bandeau de mesure ─────────
-// Le bandeau porte déjà une icône FIXE 📏 : le texte ne la re-préfixe pas. Le ⬛ de la surface
-// reste (seul repère qui la distingue de la distance).
+// Le bandeau porte déjà une icône FIXE (règle, SVG) : le texte ne la re-préfixe pas. L'icône de zone devant la
+// surface reste (seul repère qui la distingue de la distance).
 {
   const MESJS = fs.readFileSync("js/osmMesure.js", "utf8");
   const iMaj = MESJS.indexOf("function _majFloater");
   const bloc = iMaj < 0 ? null : MESJS.slice(iMaj, iMaj + 900);
   t("la fonction d'affichage du bandeau existe", bloc !== null);
-  t("🐛 mesure : le texte ne re-préfixe PAS l'icône 📏 (elle est déjà dans le bandeau)",
-    bloc !== null && bloc.indexOf('"📏 "') < 0);
-  t("mesure : l'icône fixe du bandeau est bien là, elle", MESJS.indexOf('mes-icone">📏') >= 0);
-  // 🩸 Viser la ligne qui l'ÉCRIT : un commentaire voisin contient le même caractère.
-  t("mesure : le ⬛ de la surface est conservé (rien ne la distingue sinon)",
-    bloc !== null && /txt \+= "\s+⬛ " \+ _fmtS\(/.test(bloc));
+  t("🐛 mesure : le texte ne re-préfixe PAS l'icône de distance (elle est déjà dans le bandeau)",
+    bloc !== null && bloc.indexOf('"📏 "') < 0 && bloc.indexOf('ktaIcone("ruler")') < 0);
+  t("mesure : l'icône fixe du bandeau est bien là, elle",
+    MESJS.indexOf('mes-icone">\' + window.ktaIcone("ruler")') >= 0);
+  // 🩸 Viser la ligne qui l'ÉCRIT : un commentaire voisin parle de la même icône.
+  t("mesure : l'icône de zone devant la surface est conservée (rien ne la distingue sinon)",
+    bloc !== null && /html \+= "[^"]*" \+ window\.ktaIcone\("m-zone"\) \+ " " \+ window\.ktaEsc\(_fmtS\(/.test(bloc));
 }
 
 // ───────── 7. les panneaux d'outils ne passent pas sous le footer ─────────

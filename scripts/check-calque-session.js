@@ -825,7 +825,8 @@ const CALQUE = {
       /CS\.restitutionPartagee\(\)\)\r?\n\s*\? CS\.listeRapatries\(\) : \[\];/.test(h));
     t("cablage : trois issues (cet appareil / rendre à l'équipe / annuler)",
       h.indexOf("autre:       { label: _t(\"session.btn.clearEquipe\"), valeur: \"equipe\" }") > 0 &&
-      h.indexOf("okLabel:     _t(\"session.btn.clearIci\")") > 0 && h.indexOf("go(choix === \"equipe\")") > 0);
+      /okLabel: {5}(?:window\.ktaIcone\("[a-z0-9-]+"\) \+ " " \+ )?_t\("session\.btn\.clearIci"\)/.test(h) &&
+      h.indexOf("go(choix === \"equipe\")") > 0);
     t("🩸 cablage : la restitution partagée est notée AVANT le vidage (elle porte les uids des copies)",
       h.indexOf("CS.restituer(id)") > 0 && h.indexOf("CS.restituer(id)") < h.indexOf("_viderEtatCourant()"));
     t("🔒 cablage : les noms de calques sont échappés avant ktaConfirm (HTML)", h.indexOf("ktaEsc(CS.libelle(id))") > 0);

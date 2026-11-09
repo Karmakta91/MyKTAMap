@@ -48,6 +48,7 @@ function contexte() {
     OOMGuard: { showToast: (m) => { journal.toast = m; } },
     APP_CONFIG: { imageHeight: 1000, multiLevel: false, visibleLevels: [0] },
     isStructurePolylineType: (ty) => (ty === "front-1" || ty === "front-2"),
+    ktaIcone: () => "",   // icônes SVG des fenêtres Supprimer / Niveau (js/ktaIcones.js), sans objet ici
     addEventListener() {}, removeEventListener() {}
   };
   ctx.window = ctx;

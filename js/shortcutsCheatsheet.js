@@ -255,7 +255,7 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-cheatsheet-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + _t("cheatsheet.titre", "⌨️ Raccourcis clavier") + "</span>" +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("keyboard") + " " + _t("cheatsheet.titre", "Raccourcis clavier") + "</span>" +
           '<button class="kta-panneau-close" id="kta-cheatsheet-close" type="button" aria-label="' +
             _esc(_t("ui.btn.close", "Fermer")) + '">✕</button>' +
         "</div>" +

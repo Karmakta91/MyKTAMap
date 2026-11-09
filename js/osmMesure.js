@@ -139,10 +139,11 @@
       info.textContent = _t("osm_mes.poser");
       return;
     }
-    // Pas de 📏 ici (l'icône fixe du bandeau le dit) ; le ⬛ reste, il distingue la surface.
-    let txt = _fmtD(_distanceTotale());
-    if (_pts.length >= 3) txt += "   ⬛ " + _fmtS(_surface());
-    info.textContent = txt;
+    // Pas d'icône de distance ici (celle du bandeau le dit) ; celle de la zone distingue la surface. Chiffres
+    // formatés par l'app : échappés quand même, le libellé passe en HTML pour porter l'icône.
+    let html = window.ktaEsc(_fmtD(_distanceTotale()));
+    if (_pts.length >= 3) html += "&nbsp;&nbsp; " + window.ktaIcone("m-zone") + " " + window.ktaEsc(_fmtS(_surface()));
+    info.innerHTML = html;
   }
 
   function activer(map) {
@@ -156,10 +157,10 @@
     _floater = document.createElement("div");
     _floater.id = "kta-osm-mes-floater";
     _floater.innerHTML =
-      '<span class="kta-osm-mes-icone">📏</span>' +
+      '<span class="kta-osm-mes-icone">' + window.ktaIcone("ruler") + '</span>' +
       '<span class="kta-osm-mes-info"></span>' +
       '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-osm-mes-undo">↩</button>' +
-      '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-osm-mes-clear">🗑️</button>' +
+      '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-osm-mes-clear">' + window.ktaIcone("trash-2") + '</button>' +
       '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-osm-mes-close">✕</button>';
     document.body.appendChild(_floater);
     _placer();

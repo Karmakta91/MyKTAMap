@@ -77,7 +77,7 @@
     const deja = point && estDanger(point);
     const valeur = dateConstat(point) || (deja ? "" : jourLocal());
     return '<div class="kta-poi-danger" id="kta-poi-danger"' + cache + '>' +
-             '<label class="kta-cfg-label" for="kta-poi-constat">' + _esc(_t("poiDanger.constat.label")) + '</label>' +
+             '<label class="kta-cfg-label" for="kta-poi-constat">' + window.ktaIcone("calendar") + ' ' + _esc(_t("poiDanger.constat.label")) + '</label>' +
              '<input class="kta-cfg-input" id="kta-poi-constat" type="date" value="' + _esc(valeur) + '"' +
                ' max="' + jourLocal() + '">' +
              '<p class="kta-poi-danger-aide">' + _esc(_t("poiDanger.constat.aide")) + '</p>' +

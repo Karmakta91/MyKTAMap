@@ -346,7 +346,7 @@
         if (!curLeg) {
           const fromLabel = (ids[i - 1] === "@start")
             ? _t("iti.wp.currentPos", { x: Math.round(nFrom.x), y: Math.round(nFrom.y) })
-            : "🌀 " + ((nFrom.side && nFrom.side.pointNom) || "");
+            : ((nFrom.side && nFrom.side.pointNom) || "");
           curLeg = {
             planId: nTo.planId, planName: ctxs[nTo.planId].planName,
             path: [], distM: 0, usedFallback: false, raccords: [], carrefours: [],
@@ -382,7 +382,7 @@
             pointNom: entree.pointNom || ""
           }
         };
-        curLeg.toWp = { x: nFrom.x, y: nFrom.y, source: "portal", label: "🌀 " + (sortie.pointNom || "") };
+        curLeg.toWp = { x: nFrom.x, y: nFrom.y, source: "portal", label: sortie.pointNom || "" };
         legs.push(curLeg);
         curLeg = null;
       }
@@ -508,7 +508,7 @@
           [{ x: pos.x, y: pos.y, level: pos.level, source: "tracker",
              label: _t("iti.wp.currentPos", { x: Math.round(pos.x), y: Math.round(pos.y) }) }]
             .concat(_viaWps(via))
-            .concat([{ x: c.sortieA.x, y: c.sortieA.y, source: "portal", label: "🌀 " + nomPortail }]),
+            .concat([{ x: c.sortieA.x, y: c.sortieA.y, source: "portal", label: nomPortail }]),
           { avoidPoints: prefsA.points, avoidTags: prefsA.tags,
             avoidZones: prefsA.zones, avoidRadius: prefsA.radius });
       } catch(eA) {
@@ -517,7 +517,7 @@
       }
       try {
         legB = window.Pathfinder.computeRouteOnRoads(
-          [{ x: c.entreeB.x, y: c.entreeB.y, source: "portal", label: "🌀" },
+          [{ x: c.entreeB.x, y: c.entreeB.y, source: "portal", label: c.entreeB.pointNom || "" },
            { x: dest.x, y: dest.y, source: "search", label: dest.label || "" }],
           routingB.roads,
           { zones: routingB.zones, murs: routingB.murs || [], avoidPoints: avoidPtsB,
@@ -613,7 +613,7 @@
           raccords: res.legA.raccords || [], carrefours: res.legA.carrefours || [],
           waypoints: [{ x: 0, y: 0, source: "tracker", label: "" }]
             .concat(_viaWps(via))
-            .concat([{ x: res.portal.sortieA.x, y: res.portal.sortieA.y, source: "portal", label: "🌀 " + res.nomPortail }]),
+            .concat([{ x: res.portal.sortieA.x, y: res.portal.sortieA.y, source: "portal", label: res.nomPortail }]),
           portalOut: {
             nom: res.nomPortail,
             entree: {
@@ -629,7 +629,7 @@
           path: res.legB.path, distM: res.distBM, usedFallback: !!res.legB.usedFallback,
           raccords: res.legB.raccords || [], carrefours: res.legB.carrefours || [],
           waypoints: [
-            { x: res.portal.entreeB.x, y: res.portal.entreeB.y, source: "portal", label: "🌀 " + (res.portal.entreeB.pointNom || "") },
+            { x: res.portal.entreeB.x, y: res.portal.entreeB.y, source: "portal", label: res.portal.entreeB.pointNom || "" },
             { x: res.dest.x, y: res.dest.y, source: "search", label: res.dest.label || "" }
           ],
           portalOut: null
@@ -670,7 +670,7 @@
     div.id = "kta-ipr-next-float";
     div.className = "kta-ipr-next-float";
     div.innerHTML =
-      '<button class="kta-ipr-next-main" type="button">🌀 ' +
+      '<button class="kta-ipr-next-main" type="button">' + window.ktaIcone("waypoints") + ' ' +
         _esc(_t("ipr.next.btn", { plan: portalOut.entree.planName, dist: _fmtDist(distNextM || 0) })) +
       '</button>' +
       '<button class="kta-ipr-next-close" type="button" title="' + _esc(_t("ipr.next.closeTitle")) + '">✕</button>';
@@ -721,7 +721,7 @@
         '</div>' +
         '<div class="kta-modal-actions">' +
           '<button class="kta-btn kta-btn-ghost" id="kta-ipr-close" type="button">' + _esc(_t("ui.btn.cancel")) + '</button>' +
-          '<button class="kta-btn kta-btn-primary" id="kta-ipr-take" type="button">🗺️ ' + _esc(_t("ipr.result.go")) + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-ipr-take" type="button">' + window.ktaIcone("route") + ' ' + _esc(_t("ipr.result.go")) + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);

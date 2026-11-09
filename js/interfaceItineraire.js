@@ -677,9 +677,13 @@ function _rafraichirListeWaypointsModale() {
   }
   cont.innerHTML = _itineraryWaypoints.map(function(p, i) {
     const label = p.label || window.I18n.t("iti.wp.coordShort", { x: Math.round(p.x), y: Math.round(p.y) });
-    // Sources : "search" (point existant), "tracker", "click" (défaut).
+    // Sources : "search" (point existant), "tracker", "portal" (itinéraire entre plans), "click" (défaut).
     let sourceIcon, sourceTitle, sourceClass;
-    if (p.source === "search") {
+    if (p.source === "portal") {
+      sourceIcon  = window.ktaIcone("waypoints");
+      sourceTitle = window.I18n.t("iti.wp.srcPortal");
+      sourceClass = "";
+    } else if (p.source === "search") {
       sourceIcon  = window.ktaIcone("search");
       sourceTitle = window.I18n.t("iti.wp.srcSearch");
       sourceClass = "";

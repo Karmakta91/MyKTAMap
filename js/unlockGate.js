@@ -216,7 +216,7 @@
       '<div class="kta-unlock-box">' +
         // Première gate du parcours : la langue choisie ici est la langue GLOBALE (I18n.setLang).
         '<div class="kta-unlock-langs" role="group" aria-label="Language">' + _langsHtml() + '</div>' +
-        '<div class="kta-unlock-icon">' + (libre ? '🧭' : '🗝️') + '</div>' +
+        '<div class="kta-unlock-icon">' + window.ktaIcone(libre ? "lock-open" : "key-round") + '</div>' +
         '<div class="kta-unlock-titre">' + t(libre ? "gate.libre.titre" : "gate.titre") + '</div>' +
         (libre ? '' : '<p class="kta-unlock-info">' + t("gate.info") + '</p>') +
         // ⚠️ Contacts de l'auteur seulement sur l'écran libre : une instance à mot de passe est gérée par quelqu'un
@@ -234,12 +234,12 @@
               '<input type="password" id="kta-unlock-input" placeholder="' + t("gate.placeholder") + '" ' +
                      'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">' +
               '<button type="submit" id="kta-unlock-btn" class="kta-btn kta-btn-primary">' +
-                t("gate.unlockBtn") +
+                window.ktaIcone("lock-open") + ' ' + t("gate.unlockBtn") +
               '</button>' +
             '</form>') +
         '<div class="kta-unlock-feedback" id="kta-unlock-feedback"></div>' +
         '<button type="button" id="kta-unlock-readme-btn" class="kta-gate-readme-btn" title="' + t("gate.docTitle") + '">' +
-          t("gate.docBtn") +
+          window.ktaIcone("book-open") + ' ' + t("gate.docBtn") +
         '</button>' +
         '<div class="kta-unlock-signature">' +
           '© 2026 Flavien VIDAL (alias KARMA) — CC BY-NC-SA 4.0' +
@@ -291,7 +291,7 @@
           '</div>' +
           // Doc lisible pendant le verrou ; ne change rien au verrouillage.
           '<button type="button" id="kta-unlock-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="' + t("gate.docTitle") + '">' +
-            t("gate.docBtn") +
+            window.ktaIcone("book-open") + ' ' + t("gate.docBtn") +
           '</button>' +
         '</div>';
       const btnDocLockout = overlay.querySelector("#kta-unlock-readme-btn-lockout");

@@ -204,7 +204,7 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite kta-alert-selector-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("alerts.selector.titre", { count: sorted.length }) + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("siren") + ' ' + window.I18n.t("alerts.selector.titre", { count: sorted.length }) + '</span>' +
         '<button class="kta-panneau-close" id="kta-alert-selector-close" type="button" aria-label="' + window.I18n.t("alerts.btn.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps kta-alert-selector-corps">' +
@@ -340,7 +340,7 @@ window.afficherModaleUpdateDispo = function(opts) {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh;">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("alerts.update.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("bell") + ' ' + window.I18n.t("alerts.update.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-update-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +

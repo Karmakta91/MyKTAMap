@@ -16,10 +16,12 @@
 //      les libellés migrés de l'accueil et de sa Configuration (CLES_INDEX) suivent une icône `data-kta-ico`,
 //      ceux rendus par un module (APPELS_JS) ont leur ktaIcone() à côté, et leurs clés n'ont plus d'emoji ;
 //      fenêtres d'outils de la carte (CLES_C2, CLES_C2_TEXTE) et reste de l'interface (CLES_C3, CLES_C3_TEXTE :
-//      vue 3D, Mode Secours, barres du haut et du bas, fiches, Vue OSM, Générateur, Tableur, inspecteurs…) : même
-//      règle, et aucun reflet de mode en emoji ; boutons de la vue 3D, icônes des confirmations (kta-modal-icon),
-//      compteurs des barres et cartes du tutoriel : jamais un emoji ;
-//   2. chaque nom passé à ktaIcone("…") ou à data-kta-ico="…" (js/*.js, index.html) existe dans le module ;
+//      vue 3D, Mode Secours, barres du haut et du bas, fiches, Vue OSM, Générateur, Tableur, inspecteurs…) et fin de
+//      la refonte (CLES_C4, CLES_C4_TEXTE : profil, sélection multiple, portes d'entrée, Aide IA…) : même règle, et
+//      aucun reflet de mode en emoji ; boutons de la vue 3D, icônes des confirmations (kta-modal-icon), compteurs
+//      des barres, cartes du tutoriel, lignes du profil et de son export, pied de page de l'accueil, ConfAdmin :
+//      jamais un emoji ;
+//   2. chaque nom passé à ktaIcone("…") ou à data-kta-ico="…" (js/*.js, index.html, confadmin.html) existe ;
 //   3. chaque règle de la table de doc (KtaIcones.DOC) pointe vers une icône existante ;
 //   4. EXHAUSTIF : chaque occurrence d'un emoji migré dans docs/applications/README_USER{,.en,.es}.md et dans
 //      les clés aide.* et tutorial.card.* de lang/{fr,en,es}.json est soit substituée (DOC), soit listée « autre
@@ -55,7 +57,8 @@ const EMOJI_MIGRES = ["🧭", "✏️", "🛣️", "⬛", "🏛️", "📐", "�
   "❌", "✅", "🧹", "🪜", "➕", "🖼️", "🖨️", "🛰️", "💾", "🎨", "📊", "🔄", "🌍", "❓", "📖", "📥", "🚨", "☑", "ℹ️",
   "🧊", "📦", "🧰", "📔", "🌀", "📸", "🏗️", "🌐", "☁️", "📁", "🧩", "🛠️", "🔔", "🪟", "🧲", "☀️", "📱", "🔋", "📳",
   "🕵️", "🔐", "🚫", "📋", "📤", "🗑️", "🔧", "🛡️", "📄", "💥", "🐛", "🚀", "👣", "🎤", "🕹️", "🏷️", "🏠", "📉",
-  "🔭", "🧱", "🌫️", "🔦", "📌", "📢", "🔊", "⏸️", "🚒", "👤", "👥", "🎓", "🤖"];
+  "🔭", "🧱", "🌫️", "🔦", "📌", "📢", "🔊", "⏸️", "🚒", "👤", "👥", "🎓", "🤖", "🏆", "♻️", "📝", "👁️", "↗️",
+  "⌨️", "🔁", "📅", "↕️"];
 const BOUTONS_INDEX = ["loaderSearchBtn", "loaderOfflineHdrBtn", "loaderAlertBtn", "loaderHelpBtn", "loaderConfigBtn",
   "loaderPlansFolderNew", "loaderPlansSelect"];
 // Libellés migrés de l'accueil, de sa Configuration et des fenêtres ouvertes depuis là : la clé ne porte plus
@@ -306,6 +309,57 @@ const CLES_C3_TEXTE = ["osm_mode.multi.addFolder", "docs.aiiaBtn", "gen.imp.aper
     "swinsp.verdict.ko.titre", "swinsp.verdict.ok.titre", "tabledit.source.dedup",
     "tabledit.source.raccords", "tabledit.source.resol", "tutorial.ui.headerTitle", "ui.suppClic.parZone",
     "utils.tracePopup.itinerary", "utils.tracePopup.jonction"];
+// Fin de la refonte (profil et hauts faits, export / import du profil, statistiques du profil, sélection
+// multiple, itinéraire entre plans, recalage, portes d'entrée, Aide IA, Mode Histoire, maintenance, rapport de
+// session…) : même règle que CLES_C2 ; CLES_C4_TEXTE = clés sorties de l'emoji dont l'icône est posée par
+// l'appelant (paramètre, nœud inséré après coup) ou absente (case d'une confirmation, phrase).
+const CLES_C4 = {
+  "js/bienvenue.js": ["gate.docBtn"],
+  "js/convertirObjet.js": ["convert.titre"],
+  "js/createConf.js": ["gen.infos.titre"],
+  "js/crossPlanSearch.js": ["xps.multihop.label"],
+  "js/homeLoader.js": ["home.dup.btnBoth", "home.dup.btnUpdate"],
+  "js/homeProfile.js": ["home.profile.barStatsHeader", "home.profile.exportBtn", "home.profile.importBtn",
+      "home.profile.photoBtn", "home.profile.photoChange", "home.profile.photoRemove",
+      "home.profile.pies.retrouverNoms", "home.profile.resetBtn", "home.profile.resetConfirm",
+      "home.profile.resetTitle", "home.profile.saveName", "home.profile.statFeats", "home.profile.statPlans",
+      "home.profile.statStorage", "home.profile.statTime", "home.profile.stats.extTitle",
+      "home.profile.stats.lblPhotos", "home.profile.stats.lblPlans", "home.profile.stats.lblSessions",
+      "home.profile.stats.lblSnapshots", "home.profile.stats.lblStorage", "home.profile.stats.plansHeaderEmpty",
+      "home.profile.stats.plansHeaderLoading", "home.profile.statsFinal", "home.profile.statsProgress",
+      "home.profile.title", "home.profile.wallBtn", "home.profile.wallRemove", "home.profile.wallTitle"],
+  "js/imageLayerCalibrationPicker.js": ["imgcal.btn.cancel", "imgcal.btn.validate", "imgcal.titre"],
+  "js/interfaceAlerts.js": ["alerts.selector.titre", "alerts.update.titre"],
+  "js/interfaceDocs.js": ["aiia.btn.copy", "aiia.btn.copyCtx", "aiia.btn.download", "aiia.etat.label",
+      "aiia.note.titre", "aiia.privacy.titre", "aiia.profil.titre", "aiia.prompt.titre"],
+  "js/interfaceImportExport.js": ["impexp.session.dropLabel"],
+  "js/interfaceItineraire.js": ["iti.wp.srcPortal"],
+  "js/interfaceMaintenance.js": ["maint.btn_clear_now", "maint.btn_export_profile_first",
+      "maint.calib.sectionResult", "maint.calib.title", "maint.section_consequence_reset",
+      "maint.section_good_news", "maint.section_recommendation", "maint.section_recommendation_check"],
+  "js/ktaExtensions.js": ["ext.lectureSeuleFenetre.titre"],
+  "js/majPlan.js": ["maj.fin.titre"],
+  "js/modeHistoire.js": ["histoire.md.link.label", "histoire.note.viewBtn", "histoire.pdf.openTab",
+      "histoire.tab.note", "histoire.tab.pdf"],
+  "js/pinLock.js": ["pin.gate.bioBtn", "pin.gate.docBtn"],
+  "js/poiDanger.js": ["poiDanger.constat.label"],
+  "js/poiJonction.js": ["poiJonction.titre"],
+  "js/profileExportImport.js": ["profileio.mode_merge", "profileio.mode_replace"],
+  "js/refonteInterface.js": ["session.btn.clear"],
+  "js/selectionMulti.js": ["selm.niveau.bouton", "selm.supprimer", "selm.tousDuType", "selm.valider"],
+  "js/selectionZone.js": ["selm.niveau.ok", "selm.suppr.ok"],
+  "js/sessionExporter.js": ["export.conv.dirData2edLabel", "export.conv.dirEd2dataLabel"],
+  "js/sessionPersist.js": ["session.banner.exportBtn", "session.btn.clear", "session.btn.clearIci"],
+  "js/shortcutsCheatsheet.js": ["cheatsheet.titre"],
+  "js/sortieUrgence.js": ["sortie.brancard.titre", "sortie.btn.tracer"],
+  "js/unlockGate.js": ["gate.docBtn", "gate.unlockBtn"],
+  "js/utils.js": ["utils.note.save", "utils.popup.aRattacher.btn", "utils.popup.aRattacher.titre",
+      "utils.scaleCoherence.copyBtn"]
+};
+const CLES_C4_TEXTE = ["convert.fermesTitre", "convert.recollerTitre", "histoire.pdf.empty.titre", "home.plans.offline.btnCompleter", "home.plans.offline.btnRetirer",
+  "home.plans.offline.btnTelecharger", "home.profile.compteTitre", "ipr.result.hint", "ipr.result.step1",
+  "profileio.done_sec_perPlanLs", "selm.suppr.fam.editorPoints", "selm.suppr.fam.roads", "selm.suppr.fam.structures",
+  "selm.suppr.fam.zones", "selm.zone.prendre", "selm.zone.retour", "session.btn.clearEquipe"];
 
 // ── 0. auto-test du classement (chaque sabotage doit rougir) ─────────────────────────────
 {
@@ -391,7 +445,7 @@ const SRC_INTERFACE = lire("js/interface.js");
   // ou voisine).
   const c2Nus = [];
   const parFichier = {};
-  [CLES_C2, CLES_C3].forEach((tab) => Object.keys(tab).forEach((f) => { parFichier[f] = (parFichier[f] || []).concat(tab[f]); }));
+  [CLES_C2, CLES_C3, CLES_C4].forEach((tab) => Object.keys(tab).forEach((f) => { parFichier[f] = (parFichier[f] || []).concat(tab[f]); }));
   Object.keys(parFichier).forEach((f) => {
     const lignes = lire(f).split(/\r?\n/);
     parFichier[f].forEach((cle) => {
@@ -409,7 +463,8 @@ const SRC_INTERFACE = lire("js/interface.js");
   t("1. fenêtres de la carte, vue 3D, Secours, barres, Vue OSM, Générateur… : libellés migrés rendus avec leur icône SVG",
     c2Nus.length === 0, c2Nus.join("\n   "));
   const c2Emoji = [];
-  const clesC2 = Object.keys(parFichier).reduce((a, f) => a.concat(parFichier[f]), []).concat(CLES_C2_TEXTE, CLES_C3_TEXTE);
+  const clesC2 = Object.keys(parFichier).reduce((a, f) => a.concat(parFichier[f]), []).concat(CLES_C2_TEXTE, CLES_C3_TEXTE,
+    CLES_C4_TEXTE);
   ["fr", "en", "es"].forEach((l) => {
     const d = JSON.parse(lire("lang/" + l + ".json"));
     clesC2.forEach((cle) => {
@@ -444,6 +499,42 @@ const SRC_INTERFACE = lire("js/interface.js");
   fautif("js/tutorial.js", /\{ cle: "[^"]+",\s*(?:ico|emoji): "([^"]*)"/);
   t("1. vue 3D, confirmations, barres du haut et du bas, tutoriel : jamais un emoji d'icône (cliquet 0)",
     c3Emoji.length === 0, c3Emoji.join("\n   "));
+  // Fin de la refonte : pastilles du bandeau du profil, lignes de l'export / import du profil et du rapport de
+  // session, onglets du recalage, familles des fenêtres de la sélection multiple. Les médailles des rangs et des
+  // hauts faits (profileGamification.js, profileAchievements.js) restent des emoji : récompenses, pas actions.
+  const c4Emoji = [];
+  const fautif4 = (f, re) => lire(f).split(/\r?\n/).forEach((l, i) => {
+    const m = re.exec(l);
+    if (m && EMO.test(m[1])) c4Emoji.push(f + ":" + (i + 1) + "  " + l.trim().slice(0, 100));
+  });
+  fautif4("js/homeProfile.js", /^\s*icon:\s*"([^"]*)"/);
+  fautif4("js/homeProfile.js", /\bico: "([^"]*)"/);
+  fautif4("js/profileExportImport.js", /_render(?:SectionRow|ImportSection)\("[^"]+",\s*"([^"]*)"/);
+  fautif4("js/sessionReport.js", /_checkboxRow\("[^"]+",\s*"([^"]*)/);
+  fautif4("js/recalageScan.js", /onglet\("[a-z]+", "([^"]*)"/);
+  fautif4("js/selectionZone.js", /ICO_FAMILLE = \{([^}]*)\}/);
+  t("1. profil, export / import du profil, rapport de session, recalage, sélection : jamais un emoji d'icône " +
+    "(cliquet 0)", c4Emoji.length === 0, c4Emoji.join("\n   "));
+
+  // Pied de page de l'accueil, crédits du splash, ConfAdmin : icônes posées par data-kta-ico, aucun emoji (les
+  // encadrés et les <option> de ConfAdmin gardent leur texte).
+  const zones = [/<div id="splashLeafletCredit"[^>]*>([\s\S]*?)<\/div>/,
+    /<div class="kta-loader-credits kta-loader-contact">([\s\S]*?)<\/div>/,
+    /<div class="kta-loader-credits">([\s\S]*?)<\/div>/];
+  zones.forEach((re, i) => {
+    const m = re.exec(html);
+    const corps = m ? m[1].replace(/<!--[\s\S]*?-->/g, "") : "";
+    t("1. index.html : pied de page / crédits n° " + (i + 1) + " en SVG (data-kta-ico), sans emoji",
+      !!m && /data-kta-ico="/.test(corps) && !EMO.test(corps), m ? corps.trim().slice(0, 120) : "introuvable");
+  });
+  const CA = lire("confadmin.html");
+  const caFautes = [];
+  CA.split(/\r?\n/).forEach((l, i) => {
+    const m = /<(?:h1|h2|button|th|summary|strong)\b[^>]*>([^<]*)/.exec(l);
+    if (m && EMO.test(m[1])) caFautes.push("confadmin.html:" + (i + 1) + "  " + l.trim().slice(0, 100));
+  });
+  t("1. confadmin.html : titres, boutons, colonnes et rubriques en SVG (data-kta-ico), js/ktaIcones.js chargé",
+    caFautes.length === 0 && /<script src="js\/ktaIcones\.js"><\/script>/.test(CA), caFautes.join("\n   "));
 
   // Lignes de Mes plans : l'icône du type de plan est un SVG (plan du site, d'extension, sur l'appareil).
   const HOME = lire("js/homeLoader.js");
@@ -455,7 +546,7 @@ const SRC_INTERFACE = lire("js/interface.js");
 {
   // Le module lui-même cite `data-kta-ico="nom"` dans son en-tête : hors balayage.
   const sources = fs.readdirSync(path.join(RACINE, "js")).filter((f) => /\.js$/.test(f) && f !== "ktaIcones.js")
-    .map((f) => "js/" + f).concat(["index.html"]);
+    .map((f) => "js/" + f).concat(["index.html", "confadmin.html"]);
   const inconnus = [];
   let n = 0;
   sources.forEach((f) => {
@@ -520,12 +611,12 @@ const SRC_INTERFACE = lire("js/interface.js");
   // classé (règle DOC ciblée = SVG, ou AUTRE_SENS ciblé = autre sens voulu) ; une baisse se reporte ici.
   // Clés sans U+FE0F (forme rendue par classerDoc). Recalcul : node scripts/check-icones-ui.js --plafond
   const PLAFOND_RESTE = {
-    "📖": 12, "🌐": 27, "🔒": 15, "📦": 50, "💾": 88, "💥": 6, "❌": 33, "🔄": 118, "📤": 77, "📸": 42, "🧊": 6,
-    "🌍": 6, "🧭": 89, "🛡": 27, "🔐": 12, "📍": 122, "🚨": 33, "🔔": 3, "📋": 48, "👤": 18, "ℹ": 27, "✅": 81,
-    "📡": 12, "👥": 15, "✏": 44, "🚀": 42, "🔭": 63, "📱": 8, "📥": 51, "▶": 30, "📚": 15, "🏗": 75, "➕": 69,
-    "🚑": 12, "🎤": 11, "🪧": 39, "🗺": 63, "🎯": 120, "🔋": 9, "🗑": 138, "📊": 78, "⬇": 15, "📔": 33, "🎨": 39,
-    "🖼": 39, "🏷": 33, "🚫": 21, "🔎": 27, "🕹": 33, "📉": 24, "🪜": 39, "🧱": 24, "☀": 9, "🌀": 45, "📁": 21,
-    "📌": 9, "🛠": 9, "🔧": 3, "🏠": 3, "📄": 14, "🚒": 3
+    "📖": 12, "🌐": 27, "🔒": 15, "📦": 50, "💾": 83, "💥": 6, "❌": 33, "🔄": 70, "📤": 62, "📸": 42, "🧊": 6,
+    "🌍": 6, "🧭": 80, "🛡": 27, "🔐": 12, "📍": 122, "🚨": 33, "🔔": 3, "📋": 48, "👤": 15, "ℹ": 27, "✅": 71,
+    "📡": 12, "👥": 15, "👁": 24, "✏": 44, "🚀": 42, "🔭": 63, "📱": 8, "📥": 42, "▶": 30, "📚": 15, "🏗": 75,
+    "➕": 61, "🚑": 12, "🎤": 11, "🪧": 39, "🗺": 63, "🎯": 118, "🔋": 9, "🗑": 120, "📊": 78, "⬇": 12, "📔": 33,
+    "🎨": 39, "🖼": 39, "🏷": 33, "🚫": 21, "🔎": 27, "🕹": 33, "📉": 24, "🪜": 39, "🧱": 24, "☀": 9, "↕": 21,
+    "🌀": 37, "🔁": 3, "📁": 21, "📝": 9, "📌": 3, "⌨": 9, "🛠": 9, "🔧": 3, "🏠": 3, "📄": 14, "🚒": 3
   };
   if (process.argv.indexOf("--plafond") >= 0) {
     console.log(JSON.stringify(Object.keys(comptes).filter((e) => comptes[e].reste)

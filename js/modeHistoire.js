@@ -377,8 +377,8 @@
           '<button class="kta-panneau-close" id="kta-histoire-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-histoire-tabs" role="tablist">' +
-          '<button class="kta-histoire-tab" id="kta-histoire-tab-note" role="tab" type="button" data-mode="note">' + t("histoire.tab.note") + '</button>' +
-          '<button class="kta-histoire-tab" id="kta-histoire-tab-pdf" role="tab" type="button" data-mode="pdf">' + t("histoire.tab.pdf") + '</button>' +
+          '<button class="kta-histoire-tab" id="kta-histoire-tab-note" role="tab" type="button" data-mode="note">' + window.ktaIcone("pencil-line") + ' ' + t("histoire.tab.note") + '</button>' +
+          '<button class="kta-histoire-tab" id="kta-histoire-tab-pdf" role="tab" type="button" data-mode="pdf">' + window.ktaIcone("scroll") + ' ' + t("histoire.tab.pdf") + '</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-histoire-corps">' +
           // Onglet note : VIEW (rendu MD, par défaut) / EDIT (textarea + barre d'outils).
@@ -387,7 +387,7 @@
               '<button class="kta-btn kta-btn-ghost kta-histoire-note-mode-btn" type="button" ' +
                 'id="kta-histoire-note-edit-btn" title="' + t("histoire.note.editBtn.title") + '">' + window.ktaIcone("pencil") + " " + t("histoire.note.editBtn") + '</button>' +
               '<button class="kta-btn kta-btn-ghost kta-histoire-note-mode-btn" type="button" ' +
-                'id="kta-histoire-note-view-btn" title="' + t("histoire.note.viewBtn.title") + '" style="display:none;">' + t("histoire.note.viewBtn") + '</button>' +
+                'id="kta-histoire-note-view-btn" title="' + t("histoire.note.viewBtn.title") + '" style="display:none;">' + window.ktaIcone("eye") + ' ' + t("histoire.note.viewBtn") + '</button>' +
               '<span class="kta-histoire-note-status" id="kta-histoire-note-status">' + t("histoire.note.status.saved") + '</span>' +
             '</div>' +
             '<div id="kta-histoire-note-view" class="kta-histoire-note-rendered"></div>' +
@@ -398,7 +398,7 @@
                 '<button type="button" class="kta-md-tb-btn" data-md="h1" title="' + t("histoire.md.h1.title") + '">H1</button>' +
                 '<button type="button" class="kta-md-tb-btn" data-md="h2" title="' + t("histoire.md.h2.title") + '">H2</button>' +
                 '<button type="button" class="kta-md-tb-btn" data-md="ul" title="' + t("histoire.md.ul.title") + '">' + t("histoire.md.ul.label") + '</button>' +
-                '<button type="button" class="kta-md-tb-btn" data-md="link" title="' + t("histoire.md.link.title") + '">' + t("histoire.md.link.label") + '</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="link" title="' + t("histoire.md.link.title") + '">' + window.ktaIcone("link") + ' ' + t("histoire.md.link.label") + '</button>' +
                 '<button type="button" class="kta-md-tb-btn" data-md="code" title="' + t("histoire.md.code.title") + '">&lt;/&gt;</button>' +
                 '<button type="button" class="kta-md-tb-btn" data-md="quote" title="' + t("histoire.md.quote.title") + '">❝</button>' +
               '</div>' +
@@ -789,7 +789,7 @@
           '<a class="kta-btn kta-btn-ghost kta-histoire-pdf-action-open" ' +
              'href="' + url + '" target="_blank" rel="noopener noreferrer" ' +
              'title="' + window.I18n.t("histoire.pdf.openTab.title") + '">' +
-            window.I18n.t("histoire.pdf.openTab") +
+            window.ktaIcone("external-link") + ' ' + window.I18n.t("histoire.pdf.openTab") +
           '</a>' +
         '</div>'
       );

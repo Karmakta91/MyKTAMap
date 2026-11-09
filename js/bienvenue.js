@@ -441,7 +441,7 @@
     return '<div class="kta-bv-actions">' + _boutonEntrer() + decouvrir +
       // Contacts de l'auteur : au pied de page seulement ; ici, la seule porte vers l'édition pro.
       '<a class="kta-bv-pastille-pro" href="https://pro.myktamap.fr/?presentation" target="_blank" ' +
-        'rel="noopener noreferrer">💼 ' + t("home.footer.proLink") + '</a>' +
+        'rel="noopener noreferrer">' + window.ktaIcone("briefcase") + ' ' + t("home.footer.proLink") + '</a>' +
     '</div>';
   }
   // Champ « Code d'accès » et son « Entrer » (zone remplie par ouvrir > rendreZoneCode) : écran complet et ville seule.
@@ -573,9 +573,9 @@
           // pas des contacts de l'auteur).
           '<div class="kta-bv-sortie-docs">' +
             '<button type="button" class="kta-bv-lien-pied" data-bv="doc" title="' + t("gate.docTitle") + '">' +
-              t("gate.docBtn") + '</button>' +
+              window.ktaIcone("book-open") + ' ' + t("gate.docBtn") + '</button>' +
             '<a class="kta-bv-lien-pied" href="https://doc.myktamap.fr/" target="_blank" rel="noopener noreferrer">' +
-              '🌐 doc.myktamap.fr</a>' +
+              window.ktaIcone("globe") + ' doc.myktamap.fr</a>' +
             '<a class="kta-bv-lien-pied kta-bv-github" href="https://github.com/Karmakta91/MyKTAMap" target="_blank" rel="noopener noreferrer">' +
               '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 ' +
               '6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-' +
@@ -599,9 +599,9 @@
         '<div class="kta-bv-pied-credits">' +
           '<img class="kta-bv-signature" src="icon/karma.png" alt="KARMA" height="20"></div>' +
       '</div></footer>' +
-      // Sortie d'urgence (bouton 🚨 de l'app) : remonte en haut, montrée une fois l'en-tête dépassé.
+      // Sortie d'urgence (même icône que le bouton de l'app) : remonte en haut, montrée une fois l'en-tête dépassé.
       '<button type="button" class="kta-bv-sortie-urgence" data-bv="remonter" aria-label="' + t("bienvenue.urgence") +
-        '" title="' + t("bienvenue.urgence") + '"><span aria-hidden="true">🚨</span></button>' +
+        '" title="' + t("bienvenue.urgence") + '"><span aria-hidden="true">' + window.ktaIcone("siren") + '</span></button>' +
       '<div class="kta-bv-voile" aria-hidden="true"></div>' +
     '</div>';
   }
@@ -611,7 +611,7 @@
   // "protege" (champ du code), "connexion" (« Me connecter », gate déléguée : pas de descente, donc ni fil ni tête).
   function _gabaritVille(mode) {
     const doc = '<button type="button" class="kta-bv-btn kta-bv-btn-contour" data-bv="doc" title="' + t("gate.docTitle") +
-      '">' + t("gate.docBtn") + '</button>';
+      '">' + window.ktaIcone("book-open") + ' ' + t("gate.docBtn") + '</button>';
     const actions = mode === "protege"
       ? _formulaireCode() + '<div class="kta-bv-actions">' + doc + '</div>' +
         '<p class="kta-bv-code-note">' + t("gate.info") + '</p>'

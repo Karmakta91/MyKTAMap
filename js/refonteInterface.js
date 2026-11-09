@@ -1580,6 +1580,7 @@
       const _roServeur = typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true);
       html += '<button type="button" class="kta-btn kta-btn-danger kta-btn-small" id="kta-refonte-session-effacer"' +
                 (_roServeur ? ' disabled' : '') + '>' +
+                (_roServeur ? "" : window.ktaIcone("trash-2") + " ") +
                 window.I18n.t(_roServeur ? "session.partage.rienServeur" : "session.btn.clear") +
               '</button>';
       html += '</div>';
@@ -2257,8 +2258,8 @@
       if (existing) existing.remove();
 
       const titre = valueIsNouvelle
-        ? "🎨 " + window.I18n.t("ui.refonte.modal_switch_titre_new")
-        : "📜 " + window.I18n.t("ui.refonte.modal_switch_titre_old");
+        ? window.ktaIcone("palette") + " " + window.I18n.t("ui.refonte.modal_switch_titre_new")
+        : window.ktaIcone("history") + " " + window.I18n.t("ui.refonte.modal_switch_titre_old");
       const labelCible = valueIsNouvelle
         ? window.I18n.t("ui.refonte.modal_switch_label_new")
         : window.I18n.t("ui.refonte.modal_switch_label_old");
@@ -2286,7 +2287,7 @@
               description +
             '</p>' +
             '<div style="background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.22); border-radius:8px; padding:10px 14px; margin-bottom:0;">' +
-              '<div style="font-weight:600; color:var(--kta-accent-texte); margin-bottom:6px;">✅ ' + window.I18n.t("ui.refonte.modal_switch_preserved_titre") + '</div>' +
+              '<div style="font-weight:600; color:var(--kta-accent-texte); margin-bottom:6px;">' + window.ktaIcone("circle-check") + ' ' + window.I18n.t("ui.refonte.modal_switch_preserved_titre") + '</div>' +
               '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
                 '<li>' + window.I18n.t("ui.refonte.modal_switch_preserved_plans") + '</li>' +
                 '<li>' + window.I18n.t("ui.refonte.modal_switch_preserved_sessions") + '</li>' +

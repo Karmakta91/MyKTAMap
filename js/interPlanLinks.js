@@ -299,7 +299,7 @@
       const info = e.baked ? "" : _infoExt(e.link);
       rows +=
         '<div class="kta-ipl-row">' +
-          '<span class="kta-ipl-ico">🌀</span>' +
+          '<span class="kta-ipl-ico">' + window.ktaIcone("waypoints") + '</span>' +
           '<span class="kta-ipl-label" title="' + _esc(o.planName || o.planId) + '">' +
             _esc(o.planName || o.planId) + ' · ' + _esc(o.pointNom || o.pointId || (o.x + "," + o.y)) +
           '</span>' +
@@ -307,7 +307,7 @@
             ? '<button class="kta-popup-btn kta-ipl-go" type="button" data-kta-act="ipl-go" ' +
                 'data-kta-lien="' + _esc(e.link.id) + '" data-kta-cote="' + (e.mySide === "b" ? "b" : "a") + '" ' +
                 'title="' + _esc(_t("ipl.popup.goTitle")) + '">➜</button>'
-            : '<span class="kta-ipl-absent" title="' + _esc(_t("ipl.popup.planAbsent")) + '">⛔</span>') +
+            : '<span class="kta-ipl-absent" title="' + _esc(_t("ipl.popup.planAbsent")) + '">' + window.ktaIcone("ban") + '</span>') +
           ((e.baked || !_modifiable(e.link)) ? '' :
             '<button class="kta-popup-btn kta-ipl-del" type="button" data-kta-act="ipl-del" ' +
               'data-kta-lien="' + _esc(e.link.id) + '" ' +
@@ -429,14 +429,14 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-ipl-boite kta-ipl-mgr-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🌀 ' + _esc(_t("ipl.mgr.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("waypoints") + ' ' + _esc(_t("ipl.mgr.titre")) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-ipl-mgr-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           // Bascule Liste ⇄ Graphe.
           '<div class="kta-ipl-mgr-toggle">' +
-            '<button class="kta-btn kta-btn-primary" id="kta-ipl-mgr-vlist" type="button">📋 ' + _esc(_t("ipl.mgr.viewList")) + '</button>' +
-            '<button class="kta-btn kta-btn-ghost" id="kta-ipl-mgr-vgraph" type="button">🕸️ ' + _esc(_t("ipl.mgr.viewGraph")) + '</button>' +
+            '<button class="kta-btn kta-btn-primary" id="kta-ipl-mgr-vlist" type="button">' + window.ktaIcone("list") + ' ' + _esc(_t("ipl.mgr.viewList")) + '</button>' +
+            '<button class="kta-btn kta-btn-ghost" id="kta-ipl-mgr-vgraph" type="button">' + window.ktaIcone("network") + ' ' + _esc(_t("ipl.mgr.viewGraph")) + '</button>' +
           '</div>' +
           '<p class="kta-ipl-hint" id="kta-ipl-mgr-count"></p>' +
           '<div id="kta-ipl-mgr-filter"></div>' +
@@ -451,7 +451,7 @@
     function _sideHtml(side) {
       const dispo = !!(window.PlanRegistry && window.PlanRegistry.findById(side.planId));
       return '<span class="kta-ipl-mgr-side' + (dispo ? '' : ' kta-ipl-mgr-absent') + '">' +
-               (dispo ? '' : '⛔ ') +
+               (dispo ? '' : window.ktaIcone("ban") + ' ') +
                _esc(side.planName || side.planId) + ' · ' +
                _esc(side.pointNom || side.pointId || (side.x + "," + side.y)) +
              '</span>';
@@ -485,7 +485,7 @@
       if (m === null || !isFinite(m)) return "";
       const txt = window.formatDistance ? window.formatDistance(m, 0) : (Math.round(m) + " m");
       return '<div class="kta-ipl-mgr-ecart" title="' + _esc(_t("ipl.mgr.ecartTitre")) + '">' +
-               '📐 ' + _esc(_t("ipl.mgr.ecart", { d: txt })) +
+               window.ktaIcone("ruler") + ' ' + _esc(_t("ipl.mgr.ecart", { d: txt })) +
              '</div>';
     }
 
@@ -532,7 +532,7 @@
                        _esc(a.libelle) + '</button>';
                    }).join("") +
                    (_modifiable(l) ? '<button class="kta-popup-btn kta-ipl-del" type="button" data-del="1" title="' +
-                     _esc(_t("ipl.popup.removeTitle")) + '">🗑️</button>' : '') +
+                     _esc(_t("ipl.popup.removeTitle")) + '">' + window.ktaIcone("trash-2") + '</button>' : '') +
                  '</div>' +
                '</div>';
       }).join("");
@@ -861,7 +861,7 @@
       plans.forEach(function(p, i) {
         plansHtml +=
           '<button class="kta-ipl-plan-btn" type="button" data-idx="' + i + '">' +
-            '<span class="kta-ipl-plan-ico">' + (p.type === "server" ? "🌐" : "📦") + '</span>' +
+            '<span class="kta-ipl-plan-ico">' + window.ktaIcone(p.type === "server" ? "cloud" : "hard-drive") + '</span>' +
             '<span class="kta-ipl-plan-name">' + _esc(p.name || p.id) + '</span>' +
             (p.version ? '<span class="kta-ipl-plan-ver">' + _esc(p.version) + '</span>' : '') +
           '</button>';
@@ -871,7 +871,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-ipl-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🌀 ' + _esc(_t("ipl.create.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("waypoints") + ' ' + _esc(_t("ipl.create.titre")) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-ipl-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -912,7 +912,7 @@
       }
       box.innerHTML = matches.map(function(p, i) {
         return '<button class="kta-ipl-pt-btn" type="button" data-i="' + i + '">' +
-                 '<span class="kta-ipl-pt-ico">' + (p.source === "session" ? "✏️" : "📄") + '</span>' +
+                 '<span class="kta-ipl-pt-ico">' + window.ktaIcone(p.source === "session" ? "pencil" : "layers") + '</span>' +
                  '<span class="kta-ipl-pt-name">' + _esc(p.nom || p.id || "(" + p.x + "," + p.y + ")") + '</span>' +
                  '<span class="kta-ipl-pt-meta">' + _esc((p.tags || []).slice(0, 2).join(", ")) + '</span>' +
                '</button>';
@@ -1171,7 +1171,7 @@
 
     if (mode === "mini") {
       wrap.innerHTML = '<button type="button" class="kta-ipl-back-minibtn" title="' +
-        _esc(_t("ipl.back.expandTitle")) + '">↩️' +
+        _esc(_t("ipl.back.expandTitle")) + '">' + window.ktaIcone("arrow-left") +
         (_navStack.length > 1 ? '<span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '') +
         '</button>';
       wrap.querySelector(".kta-ipl-back-minibtn").addEventListener("click", function() {
@@ -1184,7 +1184,7 @@
 
     wrap.innerHTML =
       '<button type="button" class="kta-ipl-back-main" title="' + _esc(_t("ipl.back.title")) + '">' +
-        '↩️ ' + _esc(_t("ipl.back.btn", { plan: top.planName || top.planId })) +
+        window.ktaIcone("arrow-left") + ' ' + _esc(_t("ipl.back.btn", { plan: top.planName || top.planId })) +
         (_navStack.length > 1 ? ' <span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '') +
       '</button>' +
       '<button type="button" class="kta-ipl-back-ctrl" data-act="mini" title="' + _esc(_t("ipl.back.miniTitle")) + '">–</button>' +

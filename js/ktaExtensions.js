@@ -249,7 +249,8 @@
           mini = document.createElement("span");
           mini.className = "kta-cnx-mini";
           mini.setAttribute("aria-hidden", "true");
-          mini.textContent = "🔌";
+          // Icône SVG de la connexion (ktaIcones.js) ; le point d'état vient du CSS (::after).
+          if (typeof window.ktaIcone === "function") mini.innerHTML = window.ktaIcone("plug");
           toggle.appendChild(document.createTextNode(" · "));
           toggle.appendChild(mini);
         }
@@ -651,7 +652,9 @@
       return e;
     };
     const bloc = el("div", "kta-alert-neuf");
-    bloc.appendChild(el("div", "kta-alert-neuf-titre", "🆕 " + _t("alerts.neuf.titre")));
+    const titreNeuf = el("div", "kta-alert-neuf-titre", _t("alerts.neuf.titre"));
+    if (typeof window.ktaIcone === "function") titreNeuf.insertAdjacentHTML("afterbegin", window.ktaIcone("sparkles") + " ");
+    bloc.appendChild(titreNeuf);
     const retirer = function () { try { bloc.remove(); } catch (e) { /* déjà retiré */ } };
     let posees = [];   // lignes affichées, retirées à chaque relecture
     // Lit lister() (attente bornée) et (re)dessine les lignes ; rien de valide → le bloc se retire.
@@ -1434,7 +1437,9 @@
     if (carteVisible) {
       const carte = el("div", "kta-ext-compte-carte");
       const ligne = el("div", "kta-ext-compte-qui");
-      ligne.appendChild(el("span", "kta-ext-compte-pseudo", "👤 " + c.pseudo));
+      const pseudo = el("span", "kta-ext-compte-pseudo", c.pseudo);
+      if (typeof window.ktaIcone === "function") pseudo.insertAdjacentHTML("afterbegin", window.ktaIcone("user") + " ");
+      ligne.appendChild(pseudo);
       if (c.libelle) ligne.appendChild(el("span", "kta-ext-compte-role", c.libelle));
       carte.appendChild(ligne);
       if (c.details) carte.appendChild(el("div", "kta-ext-compte-details", c.details));
@@ -2675,6 +2680,7 @@
     const titre = document.createElement("span");
     titre.className = "kta-readme-modal-titre";
     titre.textContent = _t("ext.lectureSeuleFenetre.titre");
+    if (typeof window.ktaIcone === "function") titre.insertAdjacentHTML("afterbegin", window.ktaIcone("lock") + " ");
     entete.appendChild(titre);
     const corps = document.createElement("div");
     corps.className = "kta-readme-modal-corps";

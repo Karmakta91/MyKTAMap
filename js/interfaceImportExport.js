@@ -363,7 +363,7 @@ function ouvrirImportSession(fichierInitial) {
         <div class="kta-conv-champ">
           <label class="kta-conv-label">${window.I18n.t("impexp.session.fileLabel")}</label>
           <div class="kta-conv-drop" id="kta-import-drop">
-            <span id="kta-import-drop-label">${window.I18n.t("impexp.session.dropLabel")}</span>
+            ${window.ktaIcone("folder-open")} <span id="kta-import-drop-label">${window.I18n.t("impexp.session.dropLabel")}</span>
             <input type="file" id="kta-import-file" accept=".json,.zip,application/json,application/zip" style="display:none">
           </div>
         </div>
