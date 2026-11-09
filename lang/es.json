@@ -5746,6 +5746,7 @@
   "volume.fermer": "Cerrar",
   "volume.niveau": "Nivel {lvl}",
   "volume.hauteur": "Altura media de galería (m)",
+  "volume.hauteurReglages": "La altura de cada nivel se ajusta en Ajustes › Profundidad y altura de los niveles: aquí solo sirve para el cálculo.",
   "volume.secteur": "Superficie del sector",
   "volume.piliers": "Pilares descontados",
   "volume.piliersVal": "{s} · {n} pilar(es)",

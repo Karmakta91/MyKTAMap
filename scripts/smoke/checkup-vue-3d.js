@@ -14024,7 +14024,11 @@ async function sectionCaseBoutonsZoom(nav) {
           const e = K.etat();
           r.niveau = e.niveau; r.h1 = e.hauteur; r.bouton = e.reglageHauteur.bouton;
           r.attendu = "[pickaxe] " + window.formatDistance(2.6, 1);
-          K.reglerHauteur(2.8);
+          // Multi-niveau : reglerHauteur ne règle rien (la hauteur d'un niveau se règle dans Réglages).
+          r.regle = K.reglerHauteur(2.8); r.hApres = K.etat().hauteur;
+          r.prefSansEffet = window.getHauteurNiveau(autre);
+          // Réglages écrit par setHauteurNiveau : pour ce niveau seul.
+          window.setHauteurNiveau(autre, 2.8);
           r.prefAutre = window.getHauteurNiveau(autre); r.prefActif = window.getHauteurNiveau(actif);
           C.activeLevel = actif;
           return K.fermer();
@@ -14038,7 +14042,9 @@ async function sectionCaseBoutonsZoom(nav) {
       }, prep);
       verifier(!hn.multi || (hn.h0 === 3.2 && hn.niveau === hn.autre && hn.h1 === 2.6 && hn.bouton === hn.attendu &&
         hn.prefAutre === 2.8 && hn.prefActif === 3.2),
-        "hauteur par niveau : 3,2 m au niveau actif, 2,6 m repris en passant à l'autre niveau, réglée là pour lui seul", hn);
+        "hauteur par niveau : 3,2 m au niveau actif, 2,6 m repris en passant à l'autre niveau, réglée pour lui seul", hn);
+      verifier(!hn.multi || (hn.regle === 2.6 && hn.hApres === 2.6 && hn.prefSansEffet === 2.6),
+        "multi-niveau : reglerHauteur(2,8) sans effet (rend 2,6 m, hauteur et pref du niveau inchangées)", hn);
       await page.evaluate(function () {
         window.setStructures([]);
         window.setEditorPoints(window.__v3dPoints || []);
@@ -14268,9 +14274,13 @@ async function sectionCaseBoutonsZoom(nav) {
       await capture(page, "galerie-zones");
 
       // Hauteur ⛏️ en mode galerie : tubes, plafond, remblais à 60 % et rideaux refaits à 3 m ; relue à la réouverture.
+      // Plan multi-niveau : reglerHauteur ne règle rien ; la hauteur du niveau s'écrit comme Réglages, vue rouverte.
       const hg = await page.evaluate(function (a) {
         const K = window.KtaVue3D, r = {};
         return K.ouvrir({ depart: a.dep }).then(function () {
+          const nv = K.niveauVue();
+          return K.fermer().then(function () { window.setHauteurNiveau(nv, 3); });
+        }).then(function () { return K.ouvrir({ depart: a.dep }); }).then(function () {
           const e0 = K.etat();
           r.v = K.reglerHauteur(3);
           const e = K.etat(), b = e.boites;
@@ -14294,7 +14304,7 @@ async function sectionCaseBoutonsZoom(nav) {
       const pres = function (v, att) { return typeof v === "number" && Math.abs(v - att) < 1e-6; };
       verifier(hg.v === 3 && hg.rendu === "galerie" && hg.pref === 3 && hg.garde && pres(hg.y.parois, 3) &&
         pres(hg.y.plafond, 3) && pres(hg.y.remblais, 1.8) && pres(hg.y.rideau, 3) && hg.rideaux === 2 && hg.faces === 2,
-        "galerie : réglé à 3 m, parois, plafond et rideaux à 3 m, remblais à 1,8 m, position et cap gardés", hg);
+        "galerie : niveau à 3 m, parois, plafond et rideaux à 3 m, remblais à 1,8 m, position et cap gardés", hg);
       verifier(hg.rouvert === 3, "galerie : 3 m relus à la réouverture", hg.rouvert);
 
       // ── Filtres partagés : ≡ ouvre le ≡ Filtres de la carte ; masquer d'un côté masque de l'autre ──────────────
@@ -16450,20 +16460,21 @@ async function sectionCaseBoutonsZoom(nav) {
         const u = vol();
         r.uni = { comble: u && u.comble, combleUni: u && u.combleUni, s16: marcher(-4, -1.5, 80) };
         // Galerie de 3 m : paroi au-dessus du linteau (2,1 m + cadre), même couleur unie que le comblement.
-        const h0 = K.etat().hauteur;
-        K.reglerHauteur(3);
-        await pause(50);
+        // Plan multi-niveau : la hauteur du niveau s'écrit comme Réglages (reglerHauteur n'y règle rien), vue rouverte.
+        const kPrefs = "myktamap_plan_prefs_" + (window._currentLoadedPlanId || "default");
+        const prefs0 = localStorage.getItem(kPrefs), nv = K.niveauVue();
+        await K.fermer();
+        window.setHauteurNiveau(nv, 3);
+        await ouvrir();
         const u3 = vol();
         r.uni.haut = { tympan: u3 && u3.tympan, tympanUni: u3 && u3.tympanUni, combleUni: u3 && u3.combleUni };
         await K.fermer();
         window.setVue3DTextures(true);
         await ouvrir();
-        K.reglerHauteur(3);
-        await pause(50);
         const t3 = vol();
         r.uni.pierre = { tympan: t3 && t3.tympan, tympanUni: t3 && t3.tympanUni, combleUni: t3 && t3.combleUni };
-        K.reglerHauteur(h0);
         await K.fermer();
+        if (prefs0 === null) localStorage.removeItem(kPrefs); else localStorage.setItem(kPrefs, prefs0);
         window.ktaEstAccessible = acc;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -18113,16 +18124,23 @@ async function sectionCaseBoutonsZoom(nav) {
         r.defaut.pref = window.getVue3DTextures();
         r.legende = legendeZ;
         r.legendeTube = window.ktaResolveStyle("traces", "principal", { flat: true }).color;
-        // Parois à deux hauteurs de galerie : même échelle (aucun étirement), puis hauteur rendue.
-        const h0 = K.etat().hauteur;
-        K.reglerHauteur(2.5);
-        await pause(50);
+        // Parois à deux hauteurs de galerie : même échelle (aucun étirement), puis hauteur rendue. Plan multi-niveau :
+        // la hauteur du niveau s'écrit comme Réglages (reglerHauteur n'y règle rien), vue rouverte à chaque fois.
+        const kPrefs = "myktamap_plan_prefs_" + (window._currentLoadedPlanId || "default");
+        const prefs0 = localStorage.getItem(kPrefs), nv = K.niveauVue();
+        const rouvrir = async function (h) {
+          await K.fermer();
+          if (h !== null) window.setHauteurNiveau(nv, h);
+          else if (prefs0 === null) localStorage.removeItem(kPrefs);
+          else localStorage.setItem(kPrefs, prefs0);
+          await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
+          await pause(100);
+        };
+        await rouvrir(2.5);
         r.h25 = lire();
-        K.reglerHauteur(6);
-        await pause(50);
+        await rouvrir(6);
         r.h6 = lire();
-        K.reglerHauteur(h0);
-        await pause(50);
+        await rouvrir(null);
         // Une greffe posée ne doit rien sentir de la bascule (scène et groupe gardés).
         const j = [];
         K.greffer({ nom: "tex", scene: function (ctx, raison) {

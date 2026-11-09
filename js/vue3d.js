@@ -10749,7 +10749,7 @@
 
   // (décision produit) Plan multi-niveau : ⛏️ montre la hauteur du niveau sans la régler. Elle se règle par niveau
   // dans Réglages (profondeurNiveaux.js) : la changer ici recalculerait les pentes des jonctions qui y arrivent.
-  // reglerHauteur (API des checkups) reste ouverte : elle écrit la même préférence que Réglages.
+  // reglerHauteur (API) suit la même règle : sur un tel plan elle rend la hauteur courante sans rien écrire.
   function _hauteurFigee() { return (window.APP_CONFIG || {}).multiLevel === true; }
 
   function _majHauteur() {
@@ -10780,10 +10780,11 @@
   // Hauteur bornée à HAUTEUR_REGLAGE et arrondie à 0,1 m, écrite pour le plan (⛏️ Volume exploité la relit), puis
   // tuiles refaites à cette hauteur (structures, tubes, remblais, murs, rideaux, plafond, œil) ; position, cap, niveau
   // et rendu gardés. Une hauteur saisie hors bornes dans ⛏️ est montrée telle quelle jusqu'au premier − / +.
-  // Rend la hauteur retenue (null : vue fermée).
+  // Rend la hauteur retenue (null : vue fermée). Plan multi-niveau : sans effet, rend la hauteur courante.
   function reglerHauteur(m) {
     const e = _e;
     if (!e) return null;
+    if (_hauteurFigee()) return e.hauteur;
     const v = Math.round(Math.max(HAUTEUR_REGLAGE.min, Math.min(HAUTEUR_REGLAGE.max, Number(m))) * 10) / 10;
     if (!Number.isFinite(v)) return e.hauteur;
     if (typeof window.setHauteurNiveau === "function") window.setHauteurNiveau(e.niveau, v);

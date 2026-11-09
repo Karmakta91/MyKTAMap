@@ -5746,6 +5746,7 @@
   "volume.fermer": "Close",
   "volume.niveau": "Level {lvl}",
   "volume.hauteur": "Average gallery height (m)",
+  "volume.hauteurReglages": "Each level's height is set in Settings › Level depth and height: here it is only used for the calculation.",
   "volume.secteur": "Sector area",
   "volume.piliers": "Pillars deducted",
   "volume.piliersVal": "{s} · {n} pillar(s)",

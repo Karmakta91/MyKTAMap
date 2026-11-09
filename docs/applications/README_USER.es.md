@@ -553,7 +553,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - ✏️ **Nivel** (plano de varios niveles): ▲ / ▼ a la izquierda cambian el nivel que muestra la 3D, sin pasar por una escalera; el mapa y el tracker conservan el suyo.
 - ✏️ Los paneles de los puntos siguen legibles incluso alejados; desde muy lejos, solo conservan su icono (como en el mapa), uno solo donde se superponen (peligro y favoritos primero), y el nombre vuelve al acercarte. Tocar un icono abre la ficha, a tamaño normal.
 - **⛏️ Altura**: el botón muestra la altura actual y abre **−** / **+**, de 1,5 a 20 m (de 0,1 en 0,1 m hasta 5 m, luego 0,5 m). En un plano con varios niveles, el botón está en gris: la altura se ajusta para cada nivel en ⚙️ Ajustes › Niveles: profundidad y altura.
-- ⛏️ Es la altura **del nivel mostrado**, la misma que ⛏️ Volumen explotado y que ⚙️ Ajustes › 📉 Niveles: cambiar una cambia las demás. La escena se rehace en el sitio, sin moverte; al pasar a otro nivel (🪜, seguimiento), la vista toma la altura de ese nivel.
+- ⛏️ Es la altura **del nivel mostrado**, la de ⚙️ Ajustes › 📉 Niveles, que ⛏️ Volumen explotado también propone. En un plano de un solo nivel, cambiarla aquí o en ⛏️ Volumen explotado cambia las demás; en un plano con varios niveles, solo se cambia en ⚙️ Ajustes. La escena se rehace en el sitio, sin moverte; al pasar a otro nivel (🪜, seguimiento), la vista toma la altura de ese nivel.
 - **Representación**: el botón muestra la representación actual y pasa a la siguiente (Mixto, Estructuras, Galería, ver más abajo). Guardada para este plano; por defecto, Mixto.
 - **🧱 Texturas** (activado por defecto): piedra, roca, bloque de hormigón, tierra y escombros a su tamaño real (ver más abajo). Se guarda en este dispositivo.
 - **Brújula**: la ficha la muestra o la oculta, para este dispositivo. Abajo a la izquierda, su **N** indica el norte real, según la calibración del norte del plano, y gira con tu vista. Plano sin norte calibrado: muestra la parte superior del plano y lo indica.
@@ -581,7 +581,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 
 **🏛️ Estructuras**
 
-- Pilares, muros y frentes de explotación levantados a la altura de galería del nivel (⚙️ Ajustes › 📉 Niveles o ⛏️ Volumen explotado, si no 2 m).
+- Pilares, muros y frentes de explotación levantados a la altura de galería del nivel (⚙️ Ajustes › 📉 Niveles, o ⛏️ Volumen explotado en un plano de un solo nivel; si no 2 m).
 - Rellenos y derrumbes en volumen (60 % de esa altura), agua, zonas ⛔ inaccesibles.
 - Trazados e itinerario en el suelo.
 - Puntos en carteles, siempre visibles (un punto levantado dentro de un pilar se muestra contra su cara), más pequeños y pálidos a lo lejos, y difuminados muy cerca de ti para no tapar la vista.
@@ -1152,7 +1152,7 @@ En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se e
 - la **superficie del sector**;
 - los **pilares descontados**: superficie y número. Cuentan los pilares, los muros y las estructuras personalizadas cerradas, las tuyas y las de las capas de datos (incluso ocultas), recortados en el borde del sector. Los frentes de explotación y los muros en línea no cuentan;
 - la **superficie explotada** (sector menos pilares) y la **tasa de extracción** (explotada ÷ sector);
-- el **volumen explotado**: superficie explotada × **altura media de galería**, que se escribe en la ventana (2 m por defecto, guardada para el nivel medido, recalculada al instante);
+- el **volumen explotado**: superficie explotada × **altura media de galería**, que se escribe en la ventana (al principio la del nivel, si no 2 m; recalculada al instante). En un plano de un solo nivel, se guarda para el plano; en un plano con varios niveles, solo sirve para el cálculo: la altura de cada nivel se ajusta en ⚙️ Ajustes › Niveles: profundidad y altura, y una frase lo recuerda bajo el campo;
 - los **escombros** (zonas «Escombros» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos escombros).
 
 En un plano de varios niveles solo cuenta el **nivel activo** (en la 🧊 Vista 3D: el de la 3D), y la ventana lo indica. El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.

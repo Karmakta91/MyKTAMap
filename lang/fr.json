@@ -5746,6 +5746,7 @@
   "volume.fermer": "Fermer",
   "volume.niveau": "Niveau {lvl}",
   "volume.hauteur": "Hauteur moyenne de galerie (m)",
+  "volume.hauteurReglages": "La hauteur de chaque niveau se règle dans Réglages › Profondeur et hauteur des niveaux : ici, elle sert seulement au calcul.",
   "volume.secteur": "Surface du secteur",
   "volume.piliers": "Piliers retranchés",
   "volume.piliersVal": "{s} · {n} pilier(s)",
