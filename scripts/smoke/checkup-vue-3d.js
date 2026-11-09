@@ -12140,11 +12140,14 @@ async function sectionCaseBoutonsZoom(nav) {
       const r = btn.getBoundingClientRect();
       return { cfg: cfg, vue: s.vue, zoom: s.portee.zoomVisible, incl: s.boussole.inclinaisonVisible,
         affiche: incl ? incl.getClientRects().length : -1, placeAvant: placeAvant, placeDetache: placeDetache,
-        placeVu: r.width > 0 && r.height > 0, placeXY: [r.left + r.width / 2, r.top + r.height / 2] };
+        placeVu: r.width > 0 && r.height > 0, placeXY: [r.left + r.width / 2, r.top + r.height / 2],
+        // ⌖ descendu à la place de la grille : son bas à moins de 30 px du bas de la vue.
+        placeBas: Math.round(document.getElementById("kta-vue3d").getBoundingClientRect().bottom - r.bottom) };
     });
     verifier(a.cfg === false && a.vue === "plongee" && !a.zoom && !a.incl && a.affiche === 0,
       nom + "décochée (défaut) : + − ▲ ▼ cachés en vue d'édition", a);
     verifier(!a.placeAvant && a.placeDetache && a.placeVu, nom + "décochée : ⌖ montré caméra détachée", a);
+    verifier(a.placeBas >= 0 && a.placeBas < 30, nom + "décochée : ⌖ descendu à la place de la grille", { bas: a.placeBas });
     if (CAPTURES) await capture(page, "case-zoom-off-edition");
     await page.mouse.click(a.placeXY[0], a.placeXY[1]);
     await page.waitForTimeout(100);

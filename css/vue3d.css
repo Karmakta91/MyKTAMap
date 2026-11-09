@@ -440,6 +440,9 @@ html.kta-vue3d-ouverte .kta-group-flyout, html.kta-vue3d-ouverte .kta-group-flyo
   content: ""; position: absolute; inset: calc((var(--kta-v3d-taille) - 2px - var(--kta-v3d-cible)) / 2);
 }
 .kta-v3d-place[hidden] { display: none; }
+/* Grille cachée (case « Boutons de zoom » décochée, config.js > ktaBoutonsZoom) : ⌖ prend sa place en bas à droite.
+   ⚠️ contrat : ⌖ suit la grille dans le DOM (vue3d.js, construction des boutons du bas), sinon `~` ne l'atteint pas. */
+.kta-v3d-incl[hidden] ~ .kta-v3d-btn.kta-v3d-place { bottom: max(14px, env(safe-area-inset-bottom)); }
 /* Vue plongeante (décision produit) : le joystick n'occupe que le coin bas gauche, au-dessus de la boussole ;
    ailleurs, un doigt déplace la caméra. */
 .kta-vue3d.kta-v3d-edition .kta-v3d-stick-zone { top: auto; height: 180px; width: min(50%, 200px); }
