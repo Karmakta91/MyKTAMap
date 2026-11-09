@@ -9,13 +9,15 @@
 // ktaIcones.js — icônes de l'interface au trait (SVG 24 × 24), les mêmes sur iPhone, Android et PC.
 // Expose : window.ktaIcone(nom[, opts]) → chaîne `<svg class="kta-ico" …>` (vide + avertissement si le nom est
 //   inconnu ; opts.classe ajoute une classe) · window.KtaIcones = { TRACES, noms(), existe(nom), poser(racine),
-//   DOC, AUTRE_SENS, classerDoc(texte), substituerDoc(texte[, opts]), jetonsEnSvg(html) }. Lisible par node.
+//   DOC, AUTRE_SENS, REPERES, GARDE, classerDoc(texte), substituerDoc(texte[, opts]), jetonsEnSvg(html) }.
+//   Lisible par node (générateur de doc.myktamap.fr).
 // ⚠️ contrat : un seul système de noms, celui des icônes (Lucide ou « m-… »), jamais celui des notions. Trait
 //   `currentColor` : l'icône prend la couleur du bouton (doré quand il est actif) ; aria-hidden, le bouton garde
 //   son title / aria-label. `data-kta-ico="nom"` sur un élément statique : rempli par poser() au chargement.
-// Doc : la Documentation et l'Aide affichent la même icône que le bouton là où l'emoji du texte désigne ce
-//   bouton (substitution à l'affichage, les .md gardent l'emoji). 🩸 Un emoji a souvent plusieurs sens
-//   (🧭 Tracker / Boussole) : DOC substitue par emoji + libellé voisin, AUTRE_SENS liste les autres sens voulus.
+// Doc : la Documentation, l'Aide et le tutoriel affichent chaque emoji en SVG (substitution à l'affichage, les
+//   .md et les dicos gardent l'emoji) : l'icône du bouton qu'il désigne (DOC), sinon celle de sa notion
+//   (REPERES) ; seules les exceptions GARDE restent en emoji. 🩸 Un emoji a souvent plusieurs sens
+//   (🧭 Tracker / Boussole) : les règles lisent l'emoji + le libellé voisin, AUTRE_SENS écarte le bouton.
 // Garde-fou : scripts/check-icones-ui.js (noms connus, table de doc exhaustive) · doc : docs/architecture/ui.md
 //   § Icônes de l'interface.
 
@@ -445,7 +447,10 @@
     "mail": '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 ' +
       '7"/>',
     "type": '<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" ' +
-      'y1="4" y2="20"/>'
+      'y1="4" y2="20"/>',
+    "layout-dashboard": '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" ' +
+      'rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+    "toggle-right": '<rect width="20" height="12" x="2" y="6" rx="6" ry="6"/><circle cx="16" cy="12" r="2"/>'
   };
 
   const ATTRS = ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
@@ -480,11 +485,11 @@
 
   // ── Documentation et Aide : emoji du texte → icône du bouton ──────────────────────────────
   // DOC : { e: emoji, i: icône, a: motif du texte qui SUIT, b: motif du texte qui PRÉCÈDE }. Sans a ni b : tout
-  // emploi de cet emoji (sens unique dans la doc). AUTRE_SENS : { e, s: sens, a, b } = emploi voulu, gardé en
-  // emoji (bouton pas encore en SVG, ou autre chose que le bouton). Ordre : AUTRE_SENS ciblé, DOC ciblé, DOC sans
-  // motif, AUTRE_SENS sans motif. Le texte voisin est lu sans balises, sans `**` ni U+FE0F, espaces resserrés ;
-  // les motifs couvrent fr, en et es (les trois guides et les trois dicos). ⚠️ check-icones-ui.js refuse toute
-  // occurrence d'un de ces emoji qui ne tombe sous aucune règle.
+  // emploi de cet emoji (sens unique dans la doc). AUTRE_SENS : { e, s: sens, a, b } = emploi qui ne désigne PAS
+  // le bouton (autre notion) : il prend l'icône de sa notion (REPERES, plus bas). Ordre : AUTRE_SENS ciblé, DOC
+  // ciblé, DOC sans motif, AUTRE_SENS sans motif. Le texte voisin est lu sans balises, sans `**` ni U+FE0F, espaces
+  // resserrés ; les motifs couvrent fr, en et es (les trois guides et les trois dicos). ⚠️ check-icones-ui.js
+  // refuse tout emoji de la doc qui ne tombe sous aucune règle (DOC, REPERES ou GARDE).
   const DOC = [
     // Barre de la carte : boutons de groupe.
     { e: "🧭", i: "navigation", a: /^(?:Menu )?(?:Tracker|Rastreador)\b/ },
@@ -866,77 +871,384 @@
     { e: "👥", s: "bouton Équipe d'une installation reliée, encadrants, nombre de personnes" }
   ];
 
+  // ── Repères de la doc : tout emoji restant → icône de sa NOTION ──────────────────────────────
+  // Un emploi que DOC ne substitue pas (AUTRE_SENS, ou emoji jamais bouton : titre, fil d'Ariane, puce, encadré,
+  // tableau) prend l'icône de la notion qu'il désigne, la même que dans l'interface (📍 points → map-pin, 🗑️ →
+  // trash-2, 💡 conseil → lightbulb). REPERES : { e, i, a, b } comme DOC (sans motif = notion par défaut de
+  // l'emoji). GARDE : { e, s: raison, a, b } = exception affichée en emoji (pastille de couleur, typographie, POI
+  // du catalogue). Ordre complet : GARDE ciblé, AUTRE_SENS ciblé, DOC ciblé, DOC sans motif, REPERES ciblé,
+  // REPERES sans motif, GARDE sans motif. ⚠️ check-icones-ui.js : tout emoji de la doc doit tomber sous une règle,
+  // et le compte des exceptions est figé par emoji (PLAFOND_RESTE).
+  const REPERES = [
+    { e: "🗑️", i: "trash-2" },
+    { e: "📍", i: "navigation",
+      a: /^(?:Tracker de position|Position tracker|Rastreador de posición|Tracker de posición|Se repérer|Finding your way|Orientarse)/ },
+    { e: "📍", i: "map-pin-check",
+      a: /^(?:Recaler sa position|Realign(?:ing)? your position|Recolocar tu posición|Am I here|¿Estoy aquí)/ },
+    { e: "📍", i: "map-pin-check", b: /(?:recalage manuel|[Mm]anual recalibration|recalibración manual) \($/ },
+    { e: "📍", i: "mouse-pointer-click",
+      a: /^(?:(?:Mode )?[Cc]lic carte|Cliquer (?:sur la )?carte|(?:Map )?[Cc]lick (?:on )?(?:the )?map|Map click|(?:Hacer |Haz )?[Cc]lic en el mapa|Modo clic|Préciser sur la carte|Refine on the map|Precisar en el mapa)/ },
+    { e: "📍", i: "move", a: /^(?:Déplacer|Move|Mover)\b/ },
+    { e: "📍", i: "crosshair", a: /^(?:Centrer|Centre|Center|Centrar)\b/ },
+    { e: "📍", i: "map", a: /^(?:ce plan|this map|este mapa|\/🌍|Voir sur la carte|View on (?:the )?map|Ver en el mapa)/ },
+    { e: "📍", i: "globe", a: /^(?:GPS surface|Surface GPS|GPS (?:de )?superficie)/ },
+    { e: "📍", i: "map-pin" },
+    { e: "🎯", i: "circle-dashed",
+      a: /^(?:Estimer la zone|Estimate the (?:area|zone)|Estimar la zona|Calculer la zone|Compute the (?:area|zone)|Calcular la zona)/ },
+    { e: "🎯", i: "route", a: /^(?:Calculer l'itinéraire|Compute (?:the )?route|Calcular la ruta|Calcular el itinerario)/ },
+    { e: "🎯", i: "m-niveaux", a: /^(?:(?:Le n|N)iveau actif|(?:The a|A)ctive level|(?:El n|N)ivel activo)/ },
+    { e: "🎯", i: "refresh-cw", a: /^(?:Convertir plusieurs|Convert several|Convertir varios)/ },
+    { e: "🎯", i: "ruler",
+      a: /^(?:calibrage|calibration|calibración|pour la (?:calibrer|calculer)|to (?:calibrate|compute) it|para (?:calibrarla|calcularla)|ci-dessus|above|más arriba|à côté de l'échelle|next to the scale|junto a la escala|Calibrating the scale|Calibrar la escala)/ },
+    { e: "🎯", i: "circle-dot", a: /^(?:Désactiver cercles|Disable intersection circles|Desactivar círculos)/ },
+    { e: "🎯", i: "crosshair" },
+    { e: "⚠️", i: "triangle-alert" },
+    { e: "💾", i: "hard-drive",
+      // emoji-texte-ok (ligne suivante) : motif comparé au texte nettoyé, sans U+FE0F (_nettoyer).
+      a: /^(?:de la ligne d'un plan|on a ☁ map's row|de la fila de un mapa ☁|on a map's row|of a map's row|de la línea de un mapa|de sa ligne|on its row|of its row|de su línea|de su fila|\((?:plan|map|mapa) 📁|\(📁 map|le garde sans l'ouvrir|keeps it without opening|lo guarda sin abrirlo|Mémoriser les plans|Store (?:the )?maps|Memorizar los mapas|Mémoire des sessions|Session memory|Memoria de (?:las )?sesiones)/ },
+    { e: "💾", i: "cloud-download",
+      a: /^(?:(?:💾 )?(?:Sauvegarder hors-ligne|Save [Oo]ffline|Guardar sin conexión)|Disponibilité hors-ligne|Offline availability|Disponibilidad sin conexión|Rendre un plan serveur disponible|Mak(?:e|ing) a server map available|Hacer (?:que un mapa de servidor esté )?disponible)/ },
+    { e: "💾", i: "archive", a: /^(?:Télécharger le ZIP|Download the ZIP|Descargar el ZIP)/ },
+    { e: "💾", i: "save" },
+    { e: "🧭", i: "layout-dashboard",
+      a: /^(?:Présentation de l'interface|Interface overview|Overview of the interface|Presentación de la interfaz)/ },
+    { e: "🧭", i: "locate-fixed",
+      a: /^(?:Position (?:initiale du )?tracker|Tracker (?:start )?position|Posición (?:inicial )?del tracker|Ma position|[Tt]a position|My position|[Yy]our position|Mi posición|[Tt]u posición)/ },
+    { e: "🧭", i: "magnet",
+      a: /^(?:Navigation intelligente|Smart navigation|Navegación inteligente|Caler la position|Snap (?:the )?position|Ajustar la posición)/ },
+    { e: "🧭", i: "waypoints", a: /^(?:Itinéraire vers un autre plan|Route to another (?:map|plan)|(?:Ruta|Itinerario) hacia otro (?:mapa|plano))/ },
+    { e: "🧭", i: "waypoints", b: /(?:multi-plans|multiplano|multimapa) \((?:bouton|botón)$/ },
+    { e: "🧭", i: "waypoints", b: /multi-map search result \($/ },
+    { e: "🧭", i: "route", a: /^(?:Algorithme de Dijkstra|Algoritmo de Dijkstra|Dijkstra|Montrer mon itinéraire|Show my route|Mostrar mi (?:ruta|itinerario))/ },
+    { e: "🧭", i: "navigation",
+      a: /^(?:suivi\b|tracking\b|seguimiento\b|tracker\b|rastreador\b|démarre|starts|arranca|se inicia|Le tracker dérive|The tracker drifts|El tracker deriva)/ },
+    { e: "🧭", i: "rotate-cw", a: /^(?:Tourner la carte|Rotat(?:e|ing) the map|Turn(?:ing)? the map|Girar el mapa)/ },
+    { e: "🧭", i: "compass" },
+    { e: "📊", i: "layers", a: /^(?:Calques de données|Data layers|Capas de datos)/ },
+    { e: "📊", i: "gauge", a: /^(?:Ouvrir — depuis l'accueil|Open(?:ing it)? — from the home|Abrir(?:lo)? — desde)/ },
+    { e: "📊", i: "chart-column" },
+    { e: "🔄", i: "replace", a: /^(?:Remplacer|Replace|Reemplazar|Sustituir)\b/ },
+    { e: "🔄", i: "pencil", a: /^(?:Modifier|Edit|Editar|Modificar)\b/ },
+    { e: "🔄", i: "library", a: /^(?:Changer de plan|Chang(?:e|ing) (?:the )?map|Switch(?:ing)? (?:the )?map|Cambiar de mapa)/ },
+    { e: "🔄", i: "eye", a: /^(?:Tout afficher|Show all|Mostrar todo)/ },
+    { e: "🔄", i: "refresh-cw" },
+    { e: "🏗️", i: "drafting-compass", a: /^(?:de la barre latérale|(?:button )?(?:of|in|on) the sidebar|de la barra lateral)/ },
+    { e: "🏗️", i: "drafting-compass", b: /(?:Générateur|Generator|Generador)$/ },
+    { e: "🏗️", i: "m-niveaux" },
+    { e: "✅", i: "check",
+      a: /^(?:Ajouter|Add|Añadir|ferme|closes|cierra|ou le re-tap|or (?:the )?re-tap|o (?:el )?(?:nuevo toque|volver a tocar))/ },
+    { e: "✅", i: "circle-check" },
+    { e: "🗺️", i: "route", a: /^(?:Itinéraire|Routes?|Itinerarios?|Rutas?|Parcours, zone|Recorrido, zona)\b/ },
+    { e: "🗺️", i: "compass", a: /^(?:Orientation|Orientación)\b/ },
+    { e: "🗺️", i: "list", a: /^(?:Légende posée|Legend placed|Leyenda colocada)/ },
+    { e: "🗺️", i: "satellite", a: /^(?:Partir d'un GeoTIFF|Start(?:ing)? from a GeoTIFF|Partir de un GeoTIFF)/ },
+    { e: "🗺️", i: "rotate-cw", a: /^(?:« ?Plan orienté|"Oriented map|“Oriented map|« ?Mapa orientado)/ },
+    { e: "🗺️", i: "map" },
+    { e: "🔭", i: "telescope" },
+    { e: "⛔", i: "ban",
+      a: /^(?:« ?Capteur refusé|"Sensor|“Sensor|« ?Sensor|Plan révoqué|(?:Map|Plan) revoked|Revoked (?:map|plan)|Mapa revocado|si un plan manque|if a map is missing|si falta un mapa)/ },
+    { e: "📤", i: "file-text", a: /^\[?jsPDF\b/ },
+    { e: "📤", i: "arrow-up-from-line" },
+    { e: "➕", i: "plus" },
+    { e: "🪜", i: "m-echelle" },
+    { e: "📦", i: "archive", a: /^Backups\b/ },
+    { e: "📦", i: "flag", a: /^(?:PLAN TERMINÉ|PLAN (?:COMPLETED|ENDED|FINISHED)|MAP COMPLETED|PLAN (?:TERMINADO|FINALIZADO)|5\. )/ },
+    { e: "📦", i: "drafting-compass",
+      a: /^(?:Créer \/ Modifier un plan|Create \/ (?:Edit|Modify) a (?:map|plan)|Crear \/ Modificar un (?:mapa|plano))/ },
+    { e: "📦", i: "package" },
+    { e: "📋", i: "list", a: /^(?:Phases|Plusieurs phases|Several phases|Multiple phases|Fases|Varias fases)\b/ },
+    { e: "📋", i: "copy" },
+    { e: "📸", i: "camera" },
+    { e: "✏️", i: "pencil" },
+    { e: "🚀", i: "save", a: /^(?:Full|Completo)\b/ },
+    { e: "🚀", i: "refresh-cw", a: /^(?:Recharger l'app|Reload the app|Recargar la app)/ },
+    { e: "🚀", i: "zap", a: /^(?:Simple \/|Sencillo \/)/ },
+    { e: "🚀", i: "rocket" },
+    { e: "📥", i: "monitor",
+      a: /^(?:Installer l'application sur PC|Install(?:ing)? the app(?:lication)? on (?:a )?(?:PC|computer)|Instalar la aplicación en (?:el )?(?:PC|ordenador))/ },
+    { e: "📥", i: "cloud-download",
+      a: /^(?:Tout garder hors ligne|Keep (?:everything|all) offline|Guardar todo sin conexión|L'app n'est pas prête hors-ligne|The app is not ready offline|La app no está lista sin conexión)/ },
+    { e: "📥", i: "arrow-down-to-line" },
+    { e: "🪧", i: "signpost" },
+    { e: "🏁", i: "flag" },
+    { e: "🖼️", i: "image" },
+    { e: "🎨", i: "sliders-horizontal", a: /^(?:Avancé|Advanced|Avanzad[oa]|Mode avancé|Modo avanzado)(?![\wÀ-ÿ])/ },
+    { e: "🎨", i: "palette" },
+    { e: "↩️", i: "arrow-left", a: /^(?:Retour|Back|Volver|Regresar|QUITTER|EXIT|LEAVE|SALIR)\b/ },
+    { e: "↩️", i: "undo-2" },
+    { e: "🌀", i: "waypoints" },
+    { e: "❌", i: "eraser", a: /^(?:Effacer|Erase|Clear|Borrar)\b/ },
+    { e: "❌", i: "circle-x" },
+    { e: "🚨", i: "battery-low", a: /^5 ?%/ },
+    { e: "🚨", i: "ambulance", a: /^(?:Secours|Rescue|Rescate|Socorro)\b/ },
+    { e: "🚨", i: "siren" },
+    { e: "📔", i: "notebook-pen" },
+    { e: "🕹️", i: "joystick" },
+    { e: "🏷️", i: "tag" },
+    { e: "🗂️", i: "library", a: /^(?:Changer de plan|Chang(?:e|ing) (?:the )?map|Switch(?:ing)? (?:the )?map|Cambiar de mapa)/ },
+    { e: "🗂️", i: "info", a: /^(?:Fiches|Info cards|Cards|Fichas|Popups)\b/ },
+    { e: "🗂️", i: "image", a: /^(?:Calques image|Image layers|Capas (?:de )?imagen)/ },
+    { e: "🗂️", i: "cloud", a: /^(?:Proposer les plans du serveur|Offer(?:ing)? the server's maps|(?:Proponer|Ofrecer) los mapas del servidor)/ },
+    { e: "🗂️", i: "layers" },
+    { e: "▶️", i: "play" },
+    { e: "🔗", i: "link" },
+    { e: "🌐", i: "wifi-off", a: /^(?:100 ?% hors-ligne|100 ?% offline|100 ?% sin conexión)/ },
+    { e: "🌐", i: "globe" },
+    { e: "🛡️", i: "shield" },
+    { e: "ℹ️", i: "info" },
+    { e: "✂️", i: "scissors" },
+    { e: "🔎", i: "search" },
+    { e: "👁️", i: "eye" },
+    { e: "🛣️", i: "m-galerie" },
+    { e: "📉", i: "m-niveaux" },
+    { e: "🧱", i: "m-pilier", a: /^(?:Structures|Estructuras)\b/ },
+    { e: "🧱", i: "brick-wall" },
+    { e: "🔍", i: "search" },
+    { e: "🏛️", i: "m-pilier" },
+    { e: "📂", i: "folder-open" },
+    { e: "🚫", i: "ban" },
+    { e: "↕️", i: "m-echelle" },
+    { e: "📁", i: "folder" },
+    { e: "🔒", i: "lock", a: /^(?:Ces passages|These passages|Estos pasos)/ },
+    { e: "🔒", i: "shield" },
+    { e: "🆘", i: "siren" },
+    { e: "💡", i: "lightbulb" },
+    { e: "🟦", i: "m-zone", a: /^(?:Zones|Areas|Zonas)\b/ },
+    { e: "⚡", i: "battery-charging", a: /^(?:\d+ ?%|en charge|charging|cargando|en carga)/ },
+    { e: "⚡", i: "zap" },
+    { e: "👥", i: "users" },
+    { e: "📡", i: "wifi-off", a: /^(?:Utilisation hors connexion|Using (?:it |the app )?offline|Offline use|Uso sin conexión)/ },
+    { e: "📡", i: "wifi", a: /^(?:Ouvre-la une fois|Open it once|Ábrela una vez)/ },
+    { e: "📡", i: "globe", a: /^(?:Export externe|External export|Exportación externa)/ },
+    { e: "📡", i: "radio" },
+    { e: "📚", i: "lightbulb",
+      a: /^(?:(?:D'abord, les b|B)onnes pratiques|(?:First, g|G)ood practices|(?:First, (?:the )?b|B)est practices|(?:Primero, las b|B)uenas prácticas)/ },
+    { e: "📚", i: "file-text", a: /^(?:Documents PDF|PDF documents|Documentos PDF|Histoire —|Story —|History —|Historia —)/ },
+    { e: "📚", i: "library" },
+    { e: "⏱️", i: "timer" },
+    { e: "🏃", i: "rabbit" },
+    // emoji-texte-ok (ligne suivante) : motif comparé au texte nettoyé, sans U+FE0F (_nettoyer).
+    { e: "🚶", i: "footprints", a: /^(?:Sortie terrain|Terrain|Field|¿?Salida de campo|Salida sobre el terreno|Terreno|Campo\b|\/ 🖥)/ },
+    { e: "🚶", i: "person-standing" },
+    { e: "⬛", i: "m-zone", b: /(?:tracés|paths|trazados) ·$/ },
+    { e: "⬛", i: "m-zone", a: /^(?:Définir zone|Define (?:a )?zone|Definir zona)/ },
+    { e: "📐", i: "map", a: /^(?:Plan|Map|Mapa|Plano)\b/ },
+    { e: "📐", i: "compass", a: /^Calibr/ },
+    { e: "📐", i: "crosshair", a: /^(?:Point C|Punto C)\b/ },
+    { e: "📐", i: "globe", a: /^(?:Coordonnées|Coordinates|Coordenadas)\b/ },
+    { e: "📐", i: "ruler" },
+    { e: "👤", i: "user" },
+    { e: "🪫", i: "battery-low" },
+    { e: "📖", i: "book-open" },
+    { e: "🔐", i: "shield",
+      a: /^(?:Confidentialité des données|Data (?:privacy|confidentiality)|Privacy of (?:your )?data|Privacidad de los datos|Confidencialidad de los datos)/ },
+    { e: "🔐", i: "key-round" },
+    { e: "☁️", i: "cloud" },
+    { e: "📱", i: "smartphone" },
+    { e: "🔮", i: "eye" },
+    { e: "⬇️", i: "folder-open", a: /^(?:Charger|Load|Cargar)\b/ },
+    { e: "⬇️", i: "cloud-download" },
+    { e: "✋", i: "hand" },
+    { e: "⏭️", i: "skip-forward" },
+    { e: "⏮️", i: "skip-back" },
+    { e: "🔴", i: "triangle-alert", a: /^(?:Avertissements importants|Important warnings|Advertencias importantes)/ },
+    { e: "⚪", i: "circle-dot",
+      a: /^(?:Ronds aux intersections|Afficher les ronds|(?:Show )?[Cc]ircles at intersections|Intersection (?:dots|circles)|Show (?:the )?intersection|Círculos en las|Mostrar (?:los )?círculos|Puntos en las intersecciones|Mostrar los puntos)/ },
+    { e: "🖥️", i: "monitor" },
+    { e: "🚑", i: "ambulance" },
+    { e: "🧹", i: "split", a: /^(?:Découper|Split|Dividir)/ },
+    { e: "🧹", i: "route", a: /^(?:Parcours|Route|Recorrido)\b/ },
+    { e: "🧹", i: "merge", a: /^(?:Dédoublonner|Deduplicate|Deduplicar|Desduplicar|Eliminar duplicados)/ },
+    { e: "🧹", i: "trash-2", a: /^(?:Données orphelines|Orphan|Datos huérfanos)/ },
+    { e: "🧹", i: "eraser" },
+    { e: "📄", i: "file-text" },
+    { e: "🧙", i: "wand-sparkles" },
+    { e: "🔌", i: "plug" },
+    { e: "🎤", i: "mic" },
+    { e: "🚪", i: "siren", a: /^(?:Sortie d'urgence|Emergency exit|Salida de emergencia)/ },
+    { e: "🔋", i: "battery" },
+    { e: "☀️", i: "sun" },
+    { e: "📏", i: "ruler" },
+    { e: "🕳️", i: "wifi-off", a: /^(?:Ensuite, tout marche|Then,? everything works|After that, everything works|Después, todo funciona|Luego, todo funciona)/ },
+    { e: "🕳️", i: "map-pin", a: /^(?:Points en forme|Shaped points|Points as shapes|Points with a shape|Puntos con forma|Puntos en forma)/ },
+    { e: "🕳️", i: "arrow-down-to-line" },
+    { e: "⌨️", i: "keyboard" },
+    { e: "🛠️", i: "drafting-compass" },
+    { e: "📝", i: "pencil-line" },
+    { e: "⚖️", i: "scale" },
+    { e: "🍃", i: "leaf" },
+    { e: "🧊", i: "box" },
+    { e: "🌍", i: "globe" },
+    { e: "📜", i: "scroll-text" },
+    { e: "〰️", i: "m-galerie" },
+    { e: "🤕", i: "bandage" },
+    { e: "🐌", i: "snail" },
+    { e: "🐢", i: "snail" },
+    { e: "📆", i: "calendar" },
+    { e: "⏪", i: "undo-2" },
+    { e: "📕", i: "file-text" },
+    { e: "📷", i: "camera" },
+    { e: "🧗", i: "m-echelle" },
+    { e: "💥", i: "circle-x" },
+    { e: "🧰", i: "pocket-knife" },
+    { e: "🗒️", i: "list" },
+    { e: "🫥", i: "blend" },
+    { e: "💼", i: "briefcase" },
+    { e: "📗", i: "book-open" },
+    { e: "🤝", i: "code-xml" },
+    { e: "🙏", i: "heart" },
+    { e: "🔔", i: "bell" },
+    { e: "👋", i: "sparkles" },
+    { e: "🎒", i: "lightbulb" },
+    { e: "🖐️", i: "hand" },
+    { e: "🧘", i: "heart" },
+    { e: "🛑", i: "pause" },
+    { e: "🎉", i: "flag" },
+    { e: "🫧", i: "info" },
+    { e: "🔀", i: "m-niveaux" },
+    { e: "🔁", i: "repeat" },
+    { e: "🔘", i: "toggle-right" },
+    { e: "🔑", i: "key-round" },
+    { e: "✉️", i: "mail" },
+    { e: "🔥", i: "flame" },
+    { e: "📌", i: "users", a: /^(?:assigne|assigns|asigna|button assigns)\b/ },
+    { e: "📌", i: "link" },
+    { e: "✨", i: "sparkles" },
+    { e: "🚒", i: "ambulance" },
+    { e: "💻", i: "monitor" },
+    { e: "🐳", i: "package" },
+    { e: "🏠", i: "house" },
+    { e: "⏳", i: "timer" },
+    { e: "🔧", i: "wrench" },
+    { e: "🧨", i: "trash-2" },
+    { e: "🎚️", i: "sliders-horizontal" }
+  ];
+
+  const GARDE = [
+    { e: "⚠️", s: "type de POI Danger (icône du catalogue)", a: /^(?:(?:Type )?(?:Danger|Peligro)|Tipo Peligro|Danger type)\b/ },
+    { e: "⚠️", s: "point posé par Je suis perdu (icône Danger du catalogue)",
+      b: /(?:pose un point|plac(?:e|es|ing) a point|coloca un punto)$/ },
+    { e: "⚠️", s: "point posé par Je suis perdu (icône Danger du catalogue)", b: /plac(?:e|es|ing) an?$/, a: /^point\b/ },
+    { e: "▶️", s: "flèches du pavé et Précédent / Suivant : glyphes, comme sur les boutons", b: /(?:◀|Suivant|Next|Siguiente)$/ },
+    { e: "◀️", s: "flèches du pavé et Précédent / Suivant : glyphes, comme sur les boutons" },
+    { e: "↔️", s: "flèche typographique entre deux termes (N0 ↔ N+1, session ↔ calques)" },
+    { e: "©", s: "symbole du droit d'auteur dans l'attribution citée telle quelle" },
+    { e: "⛔", s: "type de zone Inaccessible : son repli dans l'interface est ce même emoji" },
+    { e: "⬛", s: "pastille du type Remblais, statut Bloqué du Secours (la couleur est l'information)" },
+    { e: "🚪", s: "tag POI Point d'entrée du plan (icône du catalogue)" },
+    { e: "🟦", s: "pastille de couleur d'un type (la couleur est l'information)" },
+    { e: "🟨", s: "pastille de couleur d'un type" },
+    { e: "🟩", s: "pastille de couleur d'un type" },
+    { e: "🟪", s: "pastille de couleur d'un type" },
+    { e: "🟥", s: "pastille de couleur d'un type" },
+    { e: "🟧", s: "pastille de couleur d'un type" },
+    { e: "🟢", s: "pastille de couleur d'un type ou d'un statut d'étape du Secours (comme dans l'interface)" },
+    { e: "🟡", s: "pastille de couleur d'un type ou d'un statut d'étape du Secours" },
+    { e: "🟠", s: "pastille de couleur d'un type ou d'un statut d'étape du Secours" },
+    { e: "🔵", s: "pastille de couleur d'un type ou d'un statut d'étape du Secours" },
+    { e: "🟣", s: "pastille de couleur d'un statut d'étape du Secours" },
+    { e: "⚪", s: "pastille de couleur d'un statut d'étape du Secours" },
+    { e: "🔴", s: "pastille de couleur d'un statut d'étape du Secours" }
+  ];
+
   const _PAR_EMOJI = {};
-  function _base(e) { return String(e).replace(/\uFE0F/g, ""); }
+  function _base(e) { return String(e).replace(/️/g, ""); }
+  const _famille = function (k) {
+    return _PAR_EMOJI[k] || (_PAR_EMOJI[k] = { cible: [], defaut: null, autreCible: [], autreDefaut: null,
+      repCible: [], repDefaut: null, gardeCible: [], gardeDefaut: null });
+  };
   DOC.concat(AUTRE_SENS).forEach(function (r) {
-    const k = _base(r.e);
-    const p = _PAR_EMOJI[k] || (_PAR_EMOJI[k] = { cible: [], defaut: null, autreCible: [], autreDefaut: null });
+    const p = _famille(_base(r.e));
     const autre = AUTRE_SENS.indexOf(r) >= 0, cible = !!(r.a || r.b);
     if (autre && cible) p.autreCible.push(r);
     else if (autre) p.autreDefaut = r;
     else if (cible) p.cible.push(r);
     else p.defaut = r;
   });
-  const _echapRe = function (s) { return s.replace(/[.*+?^${}()|[\]\\]/g, function (c) { return "\\" + c; }); };
-  // Les plus longs d'abord (aucun n'est préfixe d'un autre aujourd'hui, mais l'ordre le garantit).
-  const _RE_EMOJI = new RegExp("(" + Object.keys(_PAR_EMOJI).sort(function (x, y) { return y.length - x.length; })
-    .map(_echapRe).join("|") + ")\uFE0F?", "gu");
+  REPERES.forEach(function (r) {
+    const p = _famille(_base(r.e));
+    if (r.a || r.b) p.repCible.push(r); else p.repDefaut = r;
+  });
+  GARDE.forEach(function (r) {
+    const p = _famille(_base(r.e));
+    if (r.a || r.b) p.gardeCible.push(r); else p.gardeDefaut = r;
+  });
+  // Tout emoji (pictogramme avec ou sans U+FE0F, teinte, séquence ZWJ, drapeau, touche 1️⃣) : un emoji absent
+  // des tables est relevé « non classé » par classerDoc (check-icones-ui le refuse dans la doc).
+  const _RE_EMOJI = new RegExp("\\p{Regional_Indicator}{2}|[#*0-9]\\uFE0F?\\u20E3|\\p{Extended_Pictographic}" +
+    "(?:\\uFE0F|\\p{Emoji_Modifier})?(?:\\u200D\\p{Extended_Pictographic}(?:\\uFE0F|\\p{Emoji_Modifier})?)*", "gu");
 
   function _nettoyer(s) {
     return s.replace(/<[^>]*>/g, "").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/\*\*|`|\uFE0F/g, "")
+      .replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/\*\*|`|️/g, "")
       .replace(/\s+/g, " ");
   }
+  function _premier(liste, avant, apres) {
+    for (let i = 0; i < liste.length; i++) {
+      const r = liste[i];
+      if ((!r.a || r.a.test(apres)) && (!r.b || r.b.test(avant))) return r;
+    }
+    return null;
+  }
+  // Bouton (DOC) ou autre sens (AUTRE_SENS) : le classement d'avant les repères, inchangé.
   function _regle(p, avant, apres) {
-    const teste = function (r) { return (!r.a || r.a.test(apres)) && (!r.b || r.b.test(avant)); };
-    let i;
-    for (i = 0; i < p.autreCible.length; i++) if (teste(p.autreCible[i])) return p.autreCible[i];
-    for (i = 0; i < p.cible.length; i++) if (teste(p.cible[i])) return p.cible[i];
-    return p.defaut || p.autreDefaut || null;
+    return _premier(p.autreCible, avant, apres) || _premier(p.cible, avant, apres) || p.defaut || p.autreDefaut;
   }
 
-  // → [{ debut, fin, emoji, icone (nom ou null), sens (AUTRE_SENS ou null) }] ; icone et sens nuls = non classé.
+  // → [{ debut, fin, emoji, icone (bouton, DOC), notion (repère, REPERES), garde (raison de l'exception), sens
+  // (AUTRE_SENS) }] ; icone, notion et garde nuls = non classé. Les textes hors doc (check-icones-ui § 6) ne
+  // lisent que `icone` : une notion ou une exception n'y compte pas.
   function classerDoc(texte) {
     const t = String(texte || ""), res = [];
     _RE_EMOJI.lastIndex = 0;
     let m;
     while ((m = _RE_EMOJI.exec(t)) !== null) {
-      const debut = m.index, fin = debut + m[0].length;
+      const debut = m.index, fin = debut + m[0].length, emoji = _base(m[0]);
+      const o = { debut: debut, fin: fin, emoji: emoji, icone: null, notion: null, garde: null, sens: null };
+      res.push(o);
+      const p = _PAR_EMOJI[emoji];
+      if (!p) continue;
       let avant = t.slice(Math.max(0, debut - 160), debut);
       if (avant.indexOf(">") >= 0 && (avant.indexOf("<") < 0 || avant.indexOf(">") < avant.indexOf("<"))) {
         avant = avant.slice(avant.indexOf(">") + 1);
       }
-      const apres = t.slice(fin, fin + 160).replace(/<[^>]*$/, "");
-      const r = _regle(_PAR_EMOJI[m[1]], _nettoyer(avant).replace(/\s+$/, ""), _nettoyer(apres).replace(/^\s+/, ""));
-      const estDoc = !!r && AUTRE_SENS.indexOf(r) < 0;
-      // reste : rangé par la règle « tout le reste » (AUTRE_SENS sans motif) ; check-icones-ui en fige le compte.
-      res.push({ debut: debut, fin: fin, emoji: m[1], icone: estDoc ? r.i : null, sens: r && !estDoc ? r.s : null,
-        reste: !!r && r === _PAR_EMOJI[m[1]].autreDefaut });
+      avant = _nettoyer(avant).replace(/\s+$/, "");
+      const apres = _nettoyer(t.slice(fin, fin + 160).replace(/<[^>]*$/, "")).replace(/^\s+/, "");
+      const g = _premier(p.gardeCible, avant, apres);
+      if (g) { o.garde = g.s; continue; }
+      const r = _regle(p, avant, apres);
+      if (r && AUTRE_SENS.indexOf(r) < 0) { o.icone = r.i; continue; }
+      if (r) o.sens = r.s;
+      const n = _premier(p.repCible, avant, apres) || p.repDefaut;
+      if (n) o.notion = n.i;
+      else if (p.gardeDefaut) o.garde = p.gardeDefaut.s;
     }
     return res;
   }
 
+  // Emoji de la doc → icône du bouton (DOC) ou de la notion (REPERES) ; les exceptions (GARDE) restent en emoji.
   // opts.jeton : marque privée (U+E000 nom U+E001) qui traverse l'échappement du rendu Markdown ; jetonsEnSvg la
   // remplace après coup. Sans jeton : SVG direct (texte déjà HTML, comme les dicos aide.*).
   function substituerDoc(texte, opts) {
     const t = String(texte || "");
     let out = "", pos = 0;
     classerDoc(t).forEach(function (o) {
-      if (!o.icone) return;
+      const nom = o.icone || o.notion;
+      if (!nom) return;
       out += t.slice(pos, o.debut) +
-        (opts && opts.jeton ? "\uE000" + o.icone + "\uE001" : ktaIcone(o.icone, { classe: "kta-ico-doc" }));
+        (opts && opts.jeton ? "" + nom + "" : ktaIcone(nom, { classe: "kta-ico-doc" }));
       pos = o.fin;
     });
     return out + t.slice(pos);
   }
   function jetonsEnSvg(html) {
-    return String(html || "").replace(/\uE000([a-z0-9-]+)\uE001/g, function (_, nom) {
+    return String(html || "").replace(/([a-z0-9-]+)/g, function (_, nom) {
       return ktaIcone(nom, { classe: "kta-ico-doc" });
     });
   }
 
   const api = {
-    SOURCE: SOURCE, TRACES: TRACES, DOC: DOC, AUTRE_SENS: AUTRE_SENS,
+    SOURCE: SOURCE, TRACES: TRACES, DOC: DOC, AUTRE_SENS: AUTRE_SENS, REPERES: REPERES, GARDE: GARDE,
     noms: function () { return Object.keys(TRACES); },
     existe: existe, icone: ktaIcone, poser: poser,
     classerDoc: classerDoc, substituerDoc: substituerDoc, jetonsEnSvg: jetonsEnSvg

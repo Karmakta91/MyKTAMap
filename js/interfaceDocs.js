@@ -609,9 +609,10 @@ function _ouvrirReadmeModal(html, opts) {
       </div>
       <div class="kta-readme-modal-footer">
         <span class="kta-readme-modal-by">Développé par <img src="icon/karma.png" alt="KARMA"></span>
-        <!-- Mêmes crédits que le splash et le pied de l'accueil. &amp;nbsp; entre emoji et nom : la paire ne
-             se coupe jamais. -->
-        <span>— 🍃&nbsp;Leaflet · 🧊&nbsp;three.js · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</span>
+        <!-- Mêmes crédits et mêmes icônes que le splash et le pied de l'accueil. &amp;nbsp; entre icône et nom : la
+             paire ne se coupe jamais. -->
+        <span>— ${window.ktaIcone("leaf")}&nbsp;Leaflet · ${window.ktaIcone("box")}&nbsp;three.js · ${window.ktaIcone("package")}&nbsp;JSZip · ${window.ktaIcone("file-text")}&nbsp;jsPDF ·
+          ${window.ktaIcone("globe")}&nbsp;OSM · ${window.ktaIcone("route")}&nbsp;Dijkstra · ${window.ktaIcone("camera")}&nbsp;html2canvas</span>
       </div>
     </div>
   `;
@@ -819,7 +820,8 @@ function afficherAide() {
   // Contenu des DICOS : l'Aide suit la langue de l'app, sans sélecteur de langue local (la 📖
   // Documentation garde le sien : elle repose sur des fichiers).
 
-  const aideTitre = window.I18n ? window.I18n.t("aide.ui.titre") : "";
+  // 🔒 Titre échappé puis substitué (❓ → circle-help, comme le bouton Aide de la barre).
+  const aideTitre = _aideIcones(window.ktaEsc(window.I18n ? window.I18n.t("aide.ui.titre") : ""));
 
   // HUB de sections (cartes par catégorie + recherche) → sous-modale par section (dicos `aide.sec.*`).
   modal.innerHTML = `
@@ -885,7 +887,7 @@ function _aideRow(section, onClick) {
   const t = document.createElement("span");
   t.className = "kta-aide-row-titre";
   // Section (titre + raccourci) ou simple chaîne (ligne « ⌨️ Raccourcis clavier »).
-  if (typeof section === "string") t.textContent = section;
+  if (typeof section === "string") _aideTexteIcones(t, section);
   else _aidePoserTitre(t, section);
   const chev = document.createElement("span");
   chev.className = "kta-aide-row-chevron";
@@ -1004,7 +1006,7 @@ function _aideRendreHub(corps) {
   if (orphans.length) {
     const ct = document.createElement("div");
     ct.className = "kta-aide-cat-titre";
-    ct.textContent = window.I18n ? window.I18n.t("aide.ui.other") : "";
+    _aideTexteIcones(ct, window.I18n ? window.I18n.t("aide.ui.other") : "");
     hub.appendChild(ct);
     orphans.forEach(function(s) {
       const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });

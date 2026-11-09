@@ -20,14 +20,15 @@
 //      la refonte (CLES_C4, CLES_C4_TEXTE : profil, sélection multiple, portes d'entrée, Aide IA…) : même règle, et
 //      aucun reflet de mode en emoji ; boutons de la vue 3D, icônes des confirmations (kta-modal-icon), compteurs
 //      des barres, cartes du tutoriel, lignes du profil et de son export, pied de page de l'accueil, ConfAdmin :
-//      jamais un emoji ;
+//      jamais un emoji ; 1 bis : fenêtres de la doc, aucune clé aide.* à emoji posée sans substitution, crédits du
+//      pied de la Documentation en SVG ;
 //   2. chaque nom passé à ktaIcone("…") ou à data-kta-ico="…" (js/*.js, index.html, confadmin.html) existe ;
-//   3. chaque règle de la table de doc (KtaIcones.DOC) pointe vers une icône existante ;
-//   4. EXHAUSTIF : chaque occurrence d'un emoji migré dans docs/applications/README_USER{,.en,.es}.md et dans
-//      les clés aide.* et tutorial.card.* de lang/{fr,en,es}.json est soit substituée (DOC), soit listée « autre
-//      sens »
-//      (AUTRE_SENS). Sinon : échec avec fichier:ligne et le texte voisin ;
-//   5. CLIQUET : le nombre d'emplois rangés par une règle « tout le reste » est figé par emoji (PLAFOND_RESTE) ;
+//   3. chaque règle des tables de doc (KtaIcones.DOC, REPERES) pointe vers une icône existante ;
+//   4. EXHAUSTIF : chaque emoji (tous, pas seulement ceux des boutons) de docs/applications/README_USER{,.en,.es}.md
+//      et des clés aide.* et tutorial.card.* de lang/{fr,en,es}.json tombe sous une règle : bouton (DOC),
+//      notion (REPERES) ou exception gardée en emoji (GARDE). Sinon : échec avec fichier:ligne et le texte voisin ;
+//   5. CLIQUET : le nombre d'emoji laissés en emoji dans la doc (exceptions GARDE) est figé par emoji
+//      (PLAFOND_RESTE) ;
 //   6. CLIQUET : les trois dicos entiers hors doc (toasts, alertes, titres…) : un emoji de bouton migré n'y reste
 //      que dans le compte figé par emoji (PLAFOND_DICOS) ; un texte nouveau qui en cite un échoue.
 // Usage : node scripts/check-icones-ui.js [--liste] [--plafond]   (--liste : comptes par emoji ; --plafond :
@@ -367,7 +368,13 @@ const CLES_C4_TEXTE = ["convert.fermesTitre", "convert.recollerTitre", "histoire
   t("auto-test : « 🧭 Tracker » → navigation", un("menu 🧭 Tracker").icone === "navigation");
   t("auto-test : « 🧭 Boussole » → compass", un("la tuile 🧭 Boussole").icone === "compass");
   t("auto-test : la variante U+FE0F est la même occurrence", K.classerDoc("⚙️ Réglages ⚙ Réglages").length === 2);
-  t("auto-test : un emoji non migré n'est pas compté", K.classerDoc("🦄 licorne").length === 0);
+  const licorne = K.classerDoc("🦄 licorne");
+  t("auto-test : un emoji inconnu est relevé, non classé", licorne.length === 1 && !licorne[0].icone &&
+    !licorne[0].notion && !licorne[0].garde);
+  t("auto-test : un repère prend l'icône de sa notion (💡 → lightbulb)", un("💡 Astuces").notion === "lightbulb");
+  t("auto-test : une pastille de couleur reste en emoji", !!un("🟦 Eau").garde &&
+    K.substituerDoc("🟦 Eau") === "🟦 Eau");
+  t("auto-test : séquence ZWJ et drapeau = une occurrence chacun", K.classerDoc("🕵️‍♀️ 🇫🇷").length === 2);
   const sub = K.substituerDoc("menu 🧭 Tracker", { jeton: true });
   t("auto-test : jeton puis SVG", /<svg class="kta-ico kta-ico-navigation kta-ico-doc"/.test(K.jetonsEnSvg(sub)) && !/🧭/.test(sub));
   t("auto-test : nom inconnu → chaîne vide", (() => {
@@ -545,6 +552,26 @@ const SRC_INTERFACE = lire("js/interface.js");
     /let icon = window\.ktaIcone\(plan\.type === "server" \? "cloud"/.test(HOME) && !/let icon = [^\n]*["'][^"'\n]*[\p{Extended_Pictographic}]/u.test(HOME));
 }
 
+// ── 1 bis. fenêtres de la doc : aucun texte d'aide.* posé brut, crédits du pied en SVG ─────────────────────────────
+// Un libellé aide.* posé par textContent échapperait à la substitution (§ 4 le croirait rendu en SVG) : seules les
+// clés sans emoji (fr, en, es) peuvent l'être. Le pied de la fenêtre Documentation recopie les crédits de l'accueil :
+// mêmes icônes, posées par ktaIcone.
+{
+  const DOCS = lire("js/interfaceDocs.js");
+  const dicos = ["fr", "en", "es"].map((l) => JSON.parse(lire("lang/" + l + ".json")));
+  const bruts = [];
+  DOCS.split(/\r?\n/).forEach((l, i) => {
+    const m = /textContent\s*=.*?I18n\.t\("(aide\.[^"]+)"/.exec(l);
+    if (m && dicos.some((d) => EMO.test(String(d[m[1]] || "")))) bruts.push("js/interfaceDocs.js:" + (i + 1) + " " + m[1]);
+  });
+  t("1 bis. Aide : aucune clé aide.* à emoji posée en textContent (substitution obligatoire)", bruts.length === 0,
+    bruts.join("\n   "));
+  const pied = /class="kta-readme-modal-footer">([\s\S]*?)<\/div>/.exec(DOCS);
+  const corpsPied = pied ? pied[1].replace(/<!--[\s\S]*?-->/g, "") : "";
+  t("1 bis. Documentation : crédits du pied de fenêtre en SVG (ktaIcone), sans emoji",
+    !!pied && (corpsPied.match(/ktaIcone\("/g) || []).length === 7 && !EMO.test(corpsPied), corpsPied.trim().slice(0, 120));
+}
+
 // ── 2. noms connus ─────────────────────────────
 {
   // Le module lui-même cite `data-kta-ico="nom"` dans son en-tête : hors balayage.
@@ -567,8 +594,10 @@ const SRC_INTERFACE = lire("js/interface.js");
 
 // ── 3. table de doc saine ─────────────────────────────
 {
-  const mauvais = K.DOC.filter((r) => !r.e || !K.existe(r.i)).map((r) => r.e + " → " + r.i);
-  t("3. chaque règle DOC pointe vers une icône existante", mauvais.length === 0, mauvais.join(", "));
+  const mauvais = K.DOC.concat(K.REPERES).filter((r) => !r.e || !K.existe(r.i)).map((r) => r.e + " → " + r.i);
+  t("3. chaque règle DOC et REPERES pointe vers une icône existante", mauvais.length === 0, mauvais.join(", "));
+  const gardeMuette = K.GARDE.filter((r) => !r.e || !r.s).map((r) => r.e);
+  t("3. chaque exception GARDE dit sa raison", gardeMuette.length === 0, gardeMuette.join(", "));
   const sansSens = K.AUTRE_SENS.filter((r) => !r.e || !r.s).map((r) => r.e);
   t("3. chaque entrée AUTRE_SENS dit son sens", sansSens.length === 0, sansSens.join(", "));
   const cles = new Set(K.DOC.concat(K.AUTRE_SENS).map((r) => r.e.replace(/️/g, "")));
@@ -596,30 +625,27 @@ const SRC_INTERFACE = lire("js/interface.js");
     const langue = /\.(en|es)\./.test(src.fichier) ? RegExp.$1 : (/lang\/(\w+)/.test(src.fichier) ? RegExp.$1 : "fr");
     K.classerDoc(mc.texte).forEach((o) => {
       const c = comptes[o.emoji] ||
-        (comptes[o.emoji] = { svg: 0, autre: 0, reste: 0, fr: [0, 0], en: [0, 0], es: [0, 0] });
-      if (o.icone || o.sens) c[langue][o.icone ? 0 : 1]++;
-      if (o.reste) c.reste++;
+        (comptes[o.emoji] = { svg: 0, notion: 0, reste: 0, fr: [0, 0, 0], en: [0, 0, 0], es: [0, 0, 0] });
+      if (o.icone || o.notion || o.garde) c[langue][o.icone ? 0 : (o.notion ? 1 : 2)]++;
       if (o.icone) { c.svg++; return; }
-      if (o.sens) { c.autre++; return; }
+      if (o.notion) { c.notion++; return; }
+      if (o.garde) { c.reste++; return; }
       const ligne = mc.cle ? mc.ligne : mc.texte.slice(0, o.debut).split("\n").length;
       const voisin = mc.texte.slice(Math.max(0, o.debut - 30), o.fin + 40).replace(/\s+/g, " ");
       orphelins.push(src.fichier + ":" + ligne + (mc.cle ? " (" + mc.cle + ")" : "") + "  …" + voisin + "…");
     });
   }));
-  t("4. doc : chaque emoji migré est substitué ou listé « autre sens » (" + orphelins.length + " non classé(s))",
-    orphelins.length === 0, orphelins.slice(0, 400).join("\n   "));
-  // 5. CLIQUET « tout le reste » : la règle sans motif d'un emoji (AUTRE_SENS sans a ni b) range aussi une phrase
-  // NOUVELLE qui citerait le bouton par un libellé inconnu — elle resterait en emoji, donc icône périmée. Son
-  // compte (3 guides + aide.* des 3 langues) est figé : une hausse échoue tant que le nouvel emploi n'est pas
-  // classé (règle DOC ciblée = SVG, ou AUTRE_SENS ciblé = autre sens voulu) ; une baisse se reporte ici.
-  // Clés sans U+FE0F (forme rendue par classerDoc). Recalcul : node scripts/check-icones-ui.js --plafond
+  t("4. doc : chaque emoji est substitué (bouton ou notion) ou gardé par une exception listée (" +
+    orphelins.length + " non classé(s))", orphelins.length === 0, orphelins.slice(0, 400).join("\n   "));
+  // 5. CLIQUET des exceptions : ce qui reste en emoji dans la doc (GARDE : pastilles de couleur des types et des
+  // statuts du Secours, flèches du pavé, ↔ et ©, POI du catalogue, type Inaccessible) est figé par emoji, trois
+  // guides et aide.* / tutorial.card.* des trois langues additionnés. Une hausse échoue : une phrase nouvelle qui
+  // garderait son emoji doit être voulue (règle REPERES si c'est une notion, sinon plafond relevé ici en connaissance
+  // de cause) ; une baisse se reporte ici. Clés sans U+FE0F (forme rendue par classerDoc).
+  // Recalcul : node scripts/check-icones-ui.js --plafond
   const PLAFOND_RESTE = {
-    "📖": 12, "🌐": 27, "🔒": 15, "📦": 50, "💾": 83, "💥": 6, "❌": 33, "🔄": 70, "📤": 62, "📸": 42, "🧊": 6,
-    "🌍": 6, "🧭": 80, "🛡": 27, "🔐": 12, "📍": 122, "🚨": 33, "🔔": 3, "📋": 48, "👤": 15, "ℹ": 27, "✅": 71,
-    "📡": 12, "👥": 15, "👁": 24, "✏": 44, "🚀": 42, "🔭": 63, "📱": 8, "📥": 42, "▶": 30, "📚": 15, "🏗": 75,
-    "➕": 61, "🚑": 12, "🎤": 11, "🪧": 39, "🗺": 63, "🎯": 118, "🔋": 9, "🗑": 120, "📊": 78, "⬇": 12, "📔": 33,
-    "🎨": 39, "🖼": 39, "🏷": 33, "🚫": 21, "🔎": 27, "🕹": 33, "📉": 24, "🪜": 39, "🧱": 24, "☀": 9, "↕": 21,
-    "🌀": 37, "🔁": 3, "📁": 21, "📝": 9, "📌": 3, "⌨": 9, "🛠": 9, "🔧": 3, "🏠": 3, "📄": 14, "🚒": 3
+    "©": 3, "🚪": 6, "⚠": 12, "◀": 12, "▶": 12, "⛔": 54, "🟦": 15, "🟩": 6, "🟪": 6, "🟨": 12, "⬛": 9, "🟥": 6,
+    "🟡": 9, "🟠": 12, "🔵": 9, "🟧": 6, "↔": 6, "🟢": 3, "🟣": 3, "⚪": 3
   };
   if (process.argv.indexOf("--plafond") >= 0) {
     console.log(JSON.stringify(Object.keys(comptes).filter((e) => comptes[e].reste)
@@ -628,18 +654,19 @@ const SRC_INTERFACE = lire("js/interface.js");
   const ecartsReste = [];
   Object.keys(comptes).concat(Object.keys(PLAFOND_RESTE)).filter((e, i, a) => a.indexOf(e) === i).forEach((e) => {
     const n = comptes[e] ? comptes[e].reste : 0, p = PLAFOND_RESTE[e] || 0;
-    if (n > p) ecartsReste.push(e + " : " + n + " emplois « tout le reste » pour " + p + " figés → classer le nouveau " +
-      "(DOC ciblé ou AUTRE_SENS ciblé)");
+    if (n > p) ecartsReste.push(e + " : " + n + " emplois gardés en emoji pour " + p + " figés → donner une icône " +
+      "au nouvel emploi (règle REPERES ciblée) ou relever le plafond si l'exception est voulue");
     else if (n < p) ecartsReste.push(e + " : " + n + " < " + p + " figés → reporter " + n + " dans PLAFOND_RESTE");
   });
-  t("5. doc : emplois « tout le reste » figés (cliquet, aucune phrase nouvelle rangée en silence)",
+  t("5. doc : emoji gardés en emoji figés (cliquet, aucune exception nouvelle en silence)",
     ecartsReste.length === 0, ecartsReste.join("\n   "));
   if (LISTE) {
     // Les trois langues décrivent la même chose : un écart de SVG entre elles trahit un motif mal traduit.
     Object.keys(comptes).forEach((e) => {
       const c = comptes[e], ecart = c.fr[0] !== c.en[0] || c.fr[0] !== c.es[0];
-      console.log("   " + e + "  SVG " + c.svg + " · autre sens " + c.autre + "   (fr/en/es SVG " + c.fr[0] + "/" +
-        c.en[0] + "/" + c.es[0] + ", autre " + c.fr[1] + "/" + c.en[1] + "/" + c.es[1] + ")" + (ecart ? "  ≠" : ""));
+      console.log("   " + e + "  bouton " + c.svg + " · notion " + c.notion + " · emoji " + c.reste +
+        "   (fr/en/es bouton " + c.fr[0] + "/" + c.en[0] + "/" + c.es[0] + ", notion " + c.fr[1] + "/" + c.en[1] +
+        "/" + c.es[1] + ")" + (ecart ? "  ≠" : ""));
     });
   }
 }
