@@ -2293,7 +2293,9 @@
             endpts.forEach(function(pt) {
               ctx.save();
               ctx.fillStyle   = "#ffffff";
-              ctx.strokeStyle = RS.jonction.color;
+              // 🩸 Couleur résolue (couleur choisie comprise) : l'ancienne table locale `RS` n'existait plus et
+              // faisait échouer tout export avancé d'une session portant un tracé jonction.
+              ctx.strokeStyle = (_styleCanvas("traces", "jonction") || {}).color || "#ff4ecb";
               ctx.lineWidth   = 3 * scale;
               ctx.beginPath();
               ctx.arc(sc(pt.x), sc(pt.y), 7 * scale, 0, Math.PI * 2);
