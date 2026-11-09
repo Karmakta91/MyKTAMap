@@ -198,25 +198,9 @@
 }
 
 /* Thème clair — overrides camemberts */
-body.kta-theme-light .kta-stats-glob-pie-legend-row,
-html.kta-theme-light .kta-stats-glob-pie-legend-row {
-  color: var(--kta-light-text, #2a2620) !important;
-}
 body.kta-theme-light .kta-stats-glob-pie-legend-row:hover,
 html.kta-theme-light .kta-stats-glob-pie-legend-row:hover {
   background: rgba(0, 0, 0, 0.05) !important;
-}
-body.kta-theme-light .kta-stats-glob-pie-legend-lbl,
-html.kta-theme-light .kta-stats-glob-pie-legend-lbl {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light .kta-stats-glob-pie-legend-num,
-html.kta-theme-light .kta-stats-glob-pie-legend-num {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light .kta-stats-glob-pie-legend-pct,
-html.kta-theme-light .kta-stats-glob-pie-legend-pct {
-  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-stats-glob-list-compact,
 html.kta-theme-light .kta-stats-glob-list-compact {
@@ -273,40 +257,12 @@ html.kta-theme-light .kta-stats-glob-header {
   background: var(--kta-light-accent-bg) !important;
   border-color: var(--kta-light-accent) !important;
 }
-body.kta-theme-light .kta-stats-glob-plan-name,
-html.kta-theme-light .kta-stats-glob-plan-name {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-stats-glob-meta,
-html.kta-theme-light .kta-stats-glob-meta,
-body.kta-theme-light .kta-stats-glob-dim,
-html.kta-theme-light .kta-stats-glob-dim,
-body.kta-theme-light .kta-stats-glob-card-sub,
-html.kta-theme-light .kta-stats-glob-card-sub {
-  color: var(--kta-light-text-muted) !important;
-}
 body.kta-theme-light .kta-stats-glob-card,
 html.kta-theme-light .kta-stats-glob-card,
 body.kta-theme-light .kta-stats-glob-section,
 html.kta-theme-light .kta-stats-glob-section {
   background: var(--kta-light-bg-deep) !important;
   border-color: var(--kta-light-border) !important;
-}
-body.kta-theme-light .kta-stats-glob-card-num,
-html.kta-theme-light .kta-stats-glob-card-num,
-body.kta-theme-light .kta-stats-glob-section-titre,
-html.kta-theme-light .kta-stats-glob-section-titre,
-body.kta-theme-light .kta-stats-glob-row-num,
-html.kta-theme-light .kta-stats-glob-row-num {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-stats-glob-card-label,
-html.kta-theme-light .kta-stats-glob-card-label,
-body.kta-theme-light .kta-stats-glob-row,
-html.kta-theme-light .kta-stats-glob-row,
-body.kta-theme-light .kta-stats-glob-row-lbl,
-html.kta-theme-light .kta-stats-glob-row-lbl {
-  color: var(--kta-light-text) !important;
 }
 body.kta-theme-light .kta-stats-glob-total,
 html.kta-theme-light .kta-stats-glob-total {
