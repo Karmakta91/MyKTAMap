@@ -63,6 +63,8 @@
 // commande à ces tailles) ; au doigt en paysage bas, contre le bord droit, entre la rangée du haut et ⌖
 // (KTA_V3D_SEUL=colonne : cette vérification seule). Plan au sol sur écran dense, vue immobile (image, V1, V2).
 // Tuile ⚙️ au doigt en paysage bas : un glisser posé sur une ligne la fait défiler (KTA_V3D_SEUL=tuile).
+// Case « Boutons de zoom » de l'accueil (§ case zoom, KTA_V3D_SEUL=caseZoom) : décochée, + − ▲ ▼ cachés en vue
+// d'édition, ⌖ gardé, molette et clavier zooment ; changée vue ouverte, appliquée aussitôt.
 // Dessin : premier toucher d'un outil armé posé, au sol sous le doigt (jamais sur le dessus d'un pilier), au point
 // d'appui.
 // Données changées pendant la vue (26) ; type changé (26 bis, KTA_V3D_SEUL=type : 1re → 2e masse 🧱 activé ou coupé,
@@ -164,7 +166,10 @@ const LS_PREGATES = {
   "myktamap_unlock_v1": "89e39e7658b8352ab93330b78ccc32db93c90dbc3a5d364ac0c3fbde38b8f4ae",
   "myktamap_terms_accepted_v1": "2",
   "myktamap_alert_seen_offline-precache-2026-06": "2026-06-13T12:00:00Z",
-  "myktamap_tutorial_seen_v1": "1"
+  "myktamap_tutorial_seen_v1": "1",
+  // Case « Boutons de zoom » cochée : les sections existantes attendent + − ▲ ▼ en vue d'édition (décochée par défaut,
+  // ils y sont cachés ; § case zoom la décoche).
+  "app_user_prefs": JSON.stringify({ zoomBoutons: true })
 };
 // ☀️ Plein jour (vue3d.js > AMBIANCE.jour, SOLEIL.force, jeton --kta-texte-3 du brouillard et du fond).
 const PJ = { ambiance: 0.25, soleil: 1.8, fond: "#98a1b3", brume: 0.4 };
@@ -12084,6 +12089,124 @@ async function sectionGestesDoigt(nav) {
   }
 }
 
+// ── Case « Boutons de zoom » de l'accueil (config.js > ktaBoutonsZoom, vue3d.js > _majBoutonsIncl) ───────────────────
+// PC 1200 × 800, relevé fictif, préférence décochée (défaut) : en vue d'édition, + − ▲ ▼ cachés (zoomVisible et
+// inclinaisonVisible faux), ⌖ montré caméra détachée et qui la ramène, molette, = / - et PageUp zooment et inclinent
+// toujours ; case cochée vue ouverte (ktaBoutonsZoomPartout) : grille montrée aussitôt ; décochée : cachée aussitôt ;
+// hauteur d'yeux : cachée même cochée. KTA_V3D_SEUL=caseZoom : cette section seule.
+async function sectionCaseBoutonsZoom(nav) {
+  const nom = "§ case zoom ";
+  console.log("§ case zoom — boutons + − ▲ ▼ de la vue d'édition selon la case de l'accueil");
+  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, Object.assign({}, LS_PREGATES, { app_user_prefs: JSON.stringify({ zoomBoutons: false }) }));
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  try {
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    const a = await page.evaluate(async function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+      window.getPlanEditionVue3D = function () { return null; };
+      const K = window.KtaVue3D, W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const cfg = window.APP_CONFIG.zoomBoutons;
+      await K.ouvrir({ depart: { x: W / 2, y: H / 2, cap: 90 }, commandes: "pave" });
+      if (K.etat().vue !== "plongee") K.basculerVue();
+      for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      const incl = document.querySelector("#kta-vue3d .kta-v3d-incl");
+      const s = K.etat();
+      const placeAvant = s.camera.place;
+      K.panner(6, 4);
+      const placeDetache = K.etat().camera.place;
+      const btn = document.querySelector('#kta-vue3d [data-v3d="place"]');
+      const r = btn.getBoundingClientRect();
+      return { cfg: cfg, vue: s.vue, zoom: s.portee.zoomVisible, incl: s.boussole.inclinaisonVisible,
+        affiche: incl ? incl.getClientRects().length : -1, placeAvant: placeAvant, placeDetache: placeDetache,
+        placeVu: r.width > 0 && r.height > 0, placeXY: [r.left + r.width / 2, r.top + r.height / 2] };
+    });
+    verifier(a.cfg === false && a.vue === "plongee" && !a.zoom && !a.incl && a.affiche === 0,
+      nom + "décochée (défaut) : + − ▲ ▼ cachés en vue d'édition", a);
+    verifier(!a.placeAvant && a.placeDetache && a.placeVu, nom + "décochée : ⌖ montré caméra détachée", a);
+    if (CAPTURES) await capture(page, "case-zoom-off-edition");
+    await page.mouse.click(a.placeXY[0], a.placeXY[1]);
+    await page.waitForTimeout(100);
+    const apresPlace = await page.evaluate(function () { return window.KtaVue3D.etat().camera.place; });
+    verifier(apresPlace === false, nom + "décochée : ⌖ ramène la caméra sur la place", { place: apresPlace });
+    // Molette, clavier et Maj + molette sans les boutons.
+    const cv = await page.locator("#kta-vue3d canvas").boundingBox();
+    await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 3);
+    const e0 = await page.evaluate(function () {
+      const K = window.KtaVue3D; K.zoomer(18.4 / K.etat().portee.recul);
+      return { r: K.etat().portee.recul, i: K.etat().inclinaison };
+    });
+    await page.mouse.wheel(0, 100);
+    await page.waitForTimeout(100);
+    const rMolette = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
+    await page.keyboard.press("Equal");
+    const rEgal = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
+    await page.keyboard.press("Minus");
+    const rMoins = await page.evaluate(function () { return window.KtaVue3D.etat().portee.recul; });
+    await page.keyboard.press("PageUp");
+    const iPage = await page.evaluate(function () { return window.KtaVue3D.etat().inclinaison; });
+    verifier(Math.abs(rMolette - e0.r * 1.15) < 0.01 && Math.abs(rEgal - e0.r) < 0.01 &&
+      Math.abs(rMoins - e0.r * 1.15) < 0.01 && iPage > e0.i,
+      nom + "décochée : molette et = / - zooment, PageUp incline", { e0: e0, rMolette: rMolette, rEgal: rEgal,
+        rMoins: rMoins, iPage: iPage });
+    // Case changée vue ouverte : appliquée aussitôt, dans les deux sens ; hauteur d'yeux : toujours cachée.
+    const b = await page.evaluate(function () {
+      const K = window.KtaVue3D, vis = function () {
+        const s = K.etat();
+        return [s.portee.zoomVisible, s.boussole.inclinaisonVisible];
+      }, r = {};
+      window.APP_CONFIG.zoomBoutons = true; window.ktaBoutonsZoomPartout();
+      r.coche = vis();
+      r.pressePlus = !!document.querySelector('#kta-vue3d [data-v3d="zoomPlus"]').getClientRects().length;
+      K.basculerVue();
+      r.yeux = vis();
+      K.basculerVue();
+      r.retour = vis();
+      window.APP_CONFIG.zoomBoutons = false; window.ktaBoutonsZoomPartout();
+      r.decoche = vis();
+      window.APP_CONFIG.zoomBoutons = true; window.ktaBoutonsZoomPartout();
+      return r;
+    });
+    verifier(b.coche[0] && b.coche[1] && b.pressePlus && !b.yeux[0] && b.retour[0] && b.retour[1] &&
+      !b.decoche[0] && !b.decoche[1],
+      nom + "changée vue ouverte : montrés cochée, cachés décochée, jamais à hauteur d'yeux", b);
+    const zB = await page.evaluate(function () {
+      const K = window.KtaVue3D, r0 = K.etat().portee.recul;
+      document.querySelector('#kta-vue3d [data-v3d="zoomPlus"]').dispatchEvent(new PointerEvent("pointerdown",
+        { bubbles: true, pointerId: 7 }));
+      return K.etat().portee.recul / r0;
+    });
+    verifier(Math.abs(zB - 1 / 1.3225) < 0.01, nom + "cochée : + zoome (deux crans)", { rapport: zB });
+    await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 4));
+  } catch (err) {
+    pb(nom + "exception : " + (err && err.message));
+  } finally {
+    await ctx.close();
+  }
+}
+
 (async function main() {
   const lancement = { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] };
   const nav = await lancerNavigateur(chromium, lancement);
@@ -12160,7 +12283,7 @@ async function sectionGestesDoigt(nav) {
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
       SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "jonction-tremie" ||
-      SEUL === "jonction-piliers") {
+      SEUL === "jonction-piliers" || SEUL === "caseZoom") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -18526,6 +18649,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "puits-dessus") await sectionPuitsDessus(nav);
     if (!SEUL || SEUL === "jonction-tremie") await sectionJonctionTremie(nav);
     if (!SEUL || SEUL === "jonction-piliers") await sectionJonctionPiliers(nav);
+    if (!SEUL || SEUL === "caseZoom") await sectionCaseBoutonsZoom(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

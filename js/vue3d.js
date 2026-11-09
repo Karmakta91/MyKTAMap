@@ -6346,6 +6346,15 @@
     return e.recul;
   }
 
+  // ⚠️ contrat : + − ▲ ▼ de la vue d'édition suivent la case « Boutons de zoom » de l'accueil (config.js >
+  // ktaBoutonsZoom, APP_CONFIG.zoomBoutons, défaut OFF), relue à chaque application et à kta:zoomBoutonsChange
+  // (case changée vue ouverte). Molette, clavier et doigts zooment et inclinent sans eux ; ⌖ n'en dépend pas.
+  function _majBoutonsIncl() {
+    const e = _e;
+    if (!e || !e.boutonsIncl) return;
+    e.boutonsIncl.hidden = e.vue !== "plongee" || !(window.APP_CONFIG && window.APP_CONFIG.zoomBoutons === true);
+  }
+
   function _majZoom() {
     const e = _e;
     if (e.zoomPlus) e.zoomPlus.disabled = e.recul <= RECUL.min + 1e-6;
@@ -6500,7 +6509,7 @@
     _appliquerPortee();
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
     _majRepere();
-    if (e.boutonsIncl) e.boutonsIncl.hidden = !haut;
+    _majBoutonsIncl();
     // Dessin : en vue d'édition seulement ; la quitter éteint l'outil (_suivrePermisDessin).
     _suivrePermisDessin();
     _majBarreDessin();
@@ -10650,6 +10659,7 @@
       if (crans) zoomer(Math.pow(RECUL.pas, crans));
     }, { passive: false });
     on(window, "kta:northOffsetChange", function () { _lireNord(); });
+    on(window, "kta:zoomBoutonsChange", _majBoutonsIncl);
     on(window, "kta:avantChangementPlan", function () { _fermerPourPlan(); });
     on(window, "mktm:liaisons-changees", function () { _majPortails(); });
     // Itinéraire tracé, remplacé ou effacé pendant la vue (🚨, fiche, guidage) : scène refaite à l'image suivante,

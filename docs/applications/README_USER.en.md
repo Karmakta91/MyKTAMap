@@ -545,8 +545,8 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 
 - **🧭 Follow / 🕹️ Free**: see above.
 - **✏️ Edit** (formerly bird's-eye view; or the V key): you see yourself from above, and it handles like a map.
-- ✏️ **Zoom** (from 6 to 150 m back): pinch with two fingers, mouse wheel, the **+ / −** buttons at the bottom right or the = / - keys. Zooming out, the floor (and the 🗺️ plan on the floor, if on) spreads with the view; pillars, walls and points stay drawn up to 100 m around the centre of the view, to spare the phone.
-- ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or the small ▲ ▼ buttons next to + / −.
+- ✏️ **Zoom** (from 6 to 150 m back): pinch with two fingers, mouse wheel, the = / - keys or the **+ / −** buttons at the bottom right (home **Zoom buttons** box, off by default). Zooming out, the floor (and the 🗺️ plan on the floor, if on) spreads with the view; pillars, walls and points stay drawn up to 100 m around the centre of the view, to spare the phone.
+- ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or, with the same box, the small ▲ ▼ buttons next to + / −. The ⌖ always stays.
 - ✏️ Edit view, its zoom and its tilt are kept for this plan on this device: you find them again when you reopen the 3D view, even after reloading the app (on your place, with no tool chosen). A game that forbids Edit view opens at eye level without erasing this choice.
 - ✏️ **Free camera**: drag one finger (or the mouse) to move the view, like a map; your place, your tracker and your figure do not move. Two fingers turning turn the view (on a computer: right-click or Ctrl + drag, ↶ ↷). **⌖** (bottom right) brings you back to your place; so do walking (joystick, pad, arrows) and going back to eye level. In Edit view, the joystick only takes the bottom left corner.
 - ✏️ **Fly-over**: in Edit view, nothing blocks your place (pillars, walls, closed adits). Back at eye level, if you are inside an obstacle, you are moved out of it.
@@ -1483,7 +1483,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **📐 Scale icon size with zoom** (on by default): on the plan, and also in the OSM view and the home screen OSM map;
   - **❓ Help button inside windows** (on): a ❓ in the title of windows that have a help page, which opens the right page directly;
   - **🔔 Notifications**: **All**, **Essential** (default: no more messages confirming something you just did) or **Silence** (only what matters: low battery, sensor refused, errors). Server alerts and windows waiting for a decision are never muted;
-  - **➕ Zoom +/− buttons on maps**: shows the + and − buttons on the plan, the home OSM widget and the OSM view. Off by default: zoom with your fingers (pinch) or the mouse wheel;
+  - **➕ Zoom +/− buttons on maps and in 3D**: shows the + and − buttons on the plan, the home OSM widget and the OSM view, and in the edit view of the 🧊 3D view the + / − and ▲ ▼ (tilt) buttons. Off by default: zoom with your fingers (pinch), the mouse wheel or the keyboard; the 3D ⌖ stays;
   - **Lock map rotation**: two fingers and Shift + wheel no longer turn the plan map, the home OSM widget or the OSM view; turning it on puts open maps back straight. Useful on slow devices. Off by default. The tracker's 🔃 Oriented map still turns, and the 🧊 3D view keeps its gestures;
   - **🪟 Anchor tool panels to their button**: the Paths, Zones and Structures panels open next to their button instead of centred (comfortable on a large screen, not recommended on a phone);
   - **🧲 Snap while drawing** and its distance: a click close to an existing point snaps onto it, so that your galleries really join;

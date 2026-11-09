@@ -2353,8 +2353,8 @@ icônes.
   › Niveaux voisins) ; dessous, 🌫️ **Estomper** (interrupteur `aria-pressed`, `myktamap_v3d_estomper_v1`, cet
   appareil, activé par défaut ; en vue d'édition, dessous assombri et dessus en fantôme ; ligne cachée sur un plan à
   un niveau).
-  La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼)
-  sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
+  La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼, montrés si
+  la case « Boutons de zoom » de l'accueil est cochée, `tracking.md` § Vue 3D) sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
   toucher ailleurs dans la vue (écouteur `pointerdown` en capture : le toucher garde son effet). Raccourcis clavier
   inchangés (V, PageUp / PageDown…), plus = / - pour le zoom en vue d'édition. **Aucun repère sur ⚙️** (décision
   produit), même quand un réglage n'est pas celui par défaut ; le ≡ garde le sien (filtre actif). **Mode toujours visible** : pastille ronde à la taille des boutons
@@ -2406,7 +2406,8 @@ icônes.
   `tracking.md` § Vue 3D › Joystick. En vue d'édition (`.kta-vue3d.kta-v3d-edition`), la zone du joystick se réduit au
   coin bas gauche (200 × 180 px au-dessus de la boussole) : ailleurs, un doigt déplace la caméra.
 - **Vue d'édition, caméra libre** : **⌖** (`.kta-v3d-place`, bouton carré de la vue, cible de 44 px) au-dessus de la
-  grille + − ▲ ▼, montré caméra détachée seulement (`vue3d.surPlace`). **Sélecteur de niveau** (`.kta-v3d-niveau-edition`,
+  grille + − ▲ ▼ (à sa place même quand la case « Boutons de zoom » les cache), montré caméra détachée
+  seulement (`vue3d.surPlace`). **Sélecteur de niveau** (`.kta-v3d-niveau-edition`,
   `role="group"`) : ▲, le niveau en clair (`ktaFormatNiveau`, pastille surface à liseré doré), ▼, en colonne à gauche
   sous la rangée du haut ; plan à un niveau ou hauteur d'yeux : caché. **Bandeau de mesure** (`.kta-v3d-mesure`,
   `role="status"`) : en bas au milieu, entre la boussole et la grille (au-dessus du pavé au PC), charte du libellé de
