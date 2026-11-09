@@ -1747,13 +1747,27 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   paroi : 50 POI parmi 2 025 piliers (8 100 faces) en ~6 ms (`etat().msFaces`). En mixte, un POI à 3 m d'une
   structure compte en chambre (`enChambre`) : il va sur la structure ; la paroi du tube ne gagne que sans structure à
   3 m (seul cas limite : face d'un mur en ligne à moins de 3 m dont l'axe est au-delà). 🩸 Un côté de tube ouvert par
-  une structure proche (mixte) n'a pas de paroi : la forme y est posée quand même, à w de l'axe. Plaque émaillée
-  à 1,45 m, au nom du POI, **à la taille du nom** (`_mesurePlaque`, texte mesuré au canvas à 400 px/m, police de
-  0,126 m) : 0,3 m de haut, de 0,6 m élargie jusqu'à 1 m, puis deux lignes équilibrées (coupées entre deux mots),
-  puis police réduite : le nom n'est **jamais coupé** (120 caractères, comme le panneau). **Une texture par nom**,
-  partagée et comptée, rendue avec le dernier volume qui la porte, au plus `PLAQUE.max` = 32 vivantes : au-delà,
-  plaque unie ; 50 plaques de noms différents = 32 textures, ~5 Mo hors mipmaps ; le nom reste avec 🧱 coupé,
-  décision produit : un repère. ⚠️ contrat (décision produit) : **une plaque posée n'a pas de panneau flottant**
+  une structure proche (mixte) n'a pas de paroi : la forme y est posée quand même, à w de l'axe. Plaque
+  **gravée** (décision produit : style des inscriptions de carrière) à 1,45 m : bloc de pierre de taille dessiné au
+  canvas (`_dessinerPlaque` : calcaire teinté et marbré, grain en motif partagé `_grainPlaque`, joint et chanfrein),
+  nom du POI en capitales Didone noires gravées en creux (ombre en haut, lèvre claire en bas). **2ᵉ ligne**, à 0,55
+  du corps : la 1re ligne de la description, seulement si elle commence par une date (1857, 12/03/1890) ou un sigle
+  de 1 à 4 capitales suivi d'un chiffre ou d'un point (« IGC 1902 », « R. 45 ») — `_secondePlaque`, 40 caractères
+  au plus, aucun champ de données en plus. **Usure** (lettres effacées par endroits, salissures, teinte) : une des
+  `PLAQUE.variantes` = 4, tirée de l'uid du point (repli id, puis nom) par FNV-1a, puis toute la plaque par un
+  générateur à graine (mulberry32, `_aleaGraine`) : ⚠️ contrat, **fixe pour un même point**, jamais `Math.random`.
+  Police **Bodoni Moda** (`lib/bodoni-moda/`, SIL OFL, précachée) chargée par `FontFace` à l'ouverture de la vue
+  (`_chargerPolicePlaques`), jamais attendue : avant elle, serif du système, puis chaque texture vivante est
+  redessinée sur place, même graine, même taille (`_redessinerPlaques`) ; un échec se retente à l'ouverture
+  suivante. Plaque **à la taille du nom** (`_mesurePlaque`, 400 px/m, police de 0,108 m) : 0,3 m de haut (un peu
+  plus avec une 2ᵉ ligne), de 0,6 m élargie jusqu'à 1 m, police resserrée jusqu'à 80 %, puis deux lignes
+  équilibrées (coupées entre deux mots), puis police réduite : le nom n'est **jamais coupé** (120 caractères, comme
+  le panneau). **Une texture par contenu** (nom, 2ᵉ ligne, variante), partagée et comptée, rendue avec le dernier
+  volume qui la porte, au plus `PLAQUE.max` = 32 vivantes : au-delà, plaque unie (pierre, liseré de joint) ; 50
+  plaques de noms différents = 32 textures, ~5 Mo hors mipmaps ; un même nom partout = 4 textures au plus. Contraste
+  lettres / pierre mesuré (texture ≥ 4,5:1 ; à l'écran ≥ 3:1 à la lampe et en ☀️ Plein jour) : `checkup-vue-3d.js`
+  § 14 septies plaques (`KTA_V3D_SEUL=plaques`). Le nom
+  reste avec 🧱 coupé, décision produit : un repère. ⚠️ contrat (décision produit) : **une plaque posée n'a pas de panneau flottant**
   (`_ajouterPanneau` saute les POI de `e.plaquesParoi`, relu à chaque `_reindexer`) ; toucher la plaque ouvre la
   fiche du POI comme son panneau (`_toucher` → `_plaqueVisee`, devant toute paroi). Plaque posée sur une structure :
   même règle, aucun panneau ; plaque unie (au-delà de 32 noms) : son panneau revient, posé avec le volume. Épure :
