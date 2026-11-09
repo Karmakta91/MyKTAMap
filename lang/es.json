@@ -5757,7 +5757,7 @@
   "volume.remblaisVol": "Volumen de escombros",
   "volume.vide": "Vacío actual (superficie)",
   "volume.videVol": "Vacío actual (volumen)",
-  "volume.note": "Sector = la medida Superficie. Descontados: pilares, muros y estructuras cerradas (las tuyas y las de las capas, incluso ocultas), recortados en el borde del sector; los frentes de explotación y los muros en línea no cuentan. Escombros = zonas «Escombros» dentro del vacío del sector. Volumen = superficie × altura media, guardada para este plano.",
+  "volume.note": "Sector = la medida Superficie. Descontados: pilares, muros y estructuras cerradas (las tuyas y las de las capas, incluso ocultas), recortados en el borde del sector; los frentes de explotación y los muros en línea no cuentan. Escombros = zonas «Escombros» dentro del vacío del sector. Volumen = superficie × altura media, guardada para este plano si solo tiene un nivel.",
   "volume.sansSecteur": "Traza primero el sector con la medición Superficie (al menos 3 puntos, siguiendo los frentes de explotación) y vuelve a lanzar Volumen explotado.",
   "volume.sansEchelle": "Este plano no tiene escala: no se pueden dar m² ni m³. Indica la escala del plano en Ajustes y vuelve a lanzar Volumen explotado.",
   "ui.subaction.maPosition": "Mi posición",

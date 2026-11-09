@@ -5757,7 +5757,7 @@
   "volume.remblaisVol": "Volume de remblais",
   "volume.vide": "Vide actuel (surface)",
   "volume.videVol": "Vide actuel (volume)",
-  "volume.note": "Secteur = la mesure Surface. Retranchés : piliers, murs et structures fermées (les tiennes et celles des calques, même masqués), coupés au bord du secteur ; fronts de taille et murs en ligne ne comptent pas. Remblais = zones « remblais » dans le vide du secteur. Volume = surface × hauteur moyenne, retenue pour ce plan.",
+  "volume.note": "Secteur = la mesure Surface. Retranchés : piliers, murs et structures fermées (les tiennes et celles des calques, même masqués), coupés au bord du secteur ; fronts de taille et murs en ligne ne comptent pas. Remblais = zones « remblais » dans le vide du secteur. Volume = surface × hauteur moyenne, retenue pour ce plan s'il n'a qu'un niveau.",
   "volume.sansSecteur": "Trace d'abord le secteur avec la mesure Surface (au moins 3 points, en suivant les fronts de taille), puis relance Volume exploité.",
   "volume.sansEchelle": "Ce plan n'a pas d'échelle : impossible de donner des m² et des m³. Renseigne l'échelle du plan dans Réglages, puis relance Volume exploité.",
   "ui.subaction.maPosition": "Ma position",
