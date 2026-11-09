@@ -104,6 +104,9 @@
 // sous sa roche = parois sur 6 m, rien en travers (rayon vertical), coins fermés, écart +1 m et entremêlé.
 // Jonction de niveaux (53, =jonction-tremie) : zone jonction d'un calque qui porte la pente en mixte et structures, trémie
 // au-dessus de la montée (rayons verticaux à chaque pas, en montant et en descendant, 4 écarts, avec et sans zone).
+// Structures dans une trémie (54, =jonction-piliers) : pilier, mur et front du +1 à cheval sur la zone jonction
+// descendus jusqu'au plafond de la zone (à son sol au-dessus de leur base), ceux du 0 montés à son plafond, vus du 0
+// et du +1, écart +4 m et entremêlé.
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
@@ -10403,6 +10406,107 @@ async function sectionJonctionTremie(nav) {
   }
 }
 
+// ── 54. Structures dans une trémie : jamais suspendues (vue3d.js > _structureSurTremie, _prolongerDansZone, rayon ;
+// KTA_V3D_SEUL=jonction-piliers) ─────────────────────────────────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire, réseau du § 53 : niveaux 0 et +1 (2,5 m), tracé jonction 0 → +1 de x = 0 à 30, zone jonction
+// x ∈ [4, 20], z ∈ [−6, 6]. Structures du +1 à cheval sur le bord de la zone (centre dehors : pas posées sur la pente) :
+// pilier sur le bord nord là où le plafond de la zone est sous le sol du +1 (A, x = 10), pilier là où il passe au-dessus
+// (B, x = 19), pilier sur le bout x = 20 (C), mur sur le bord sud (D), front en ligne qui y entre (F) ; pilier du +1
+// tout entier hors de la zone (E). Structures du 0 à cheval sur le bord, sommet sous le plafond de la zone : pilier (G,
+// x = 16) et mur (H, x = 6, garde son retrait sous le plafond) ; pilier du 0 hors de la zone (J). Rayon horizontal
+// depuis la zone vers chacune, entre son appui et sa base (appui : plafond de la zone s'il est sous la base, sinon son
+// sol — K.altitude), ou entre son sommet et le plafond de la zone : touche d'abord sa face (famille opaque ou murs) à
+// la distance attendue ; vers E sous sa base et vers J au-dessus de son sommet, rien d'elles. Mixte et structures ;
+// scène au 0 (+1 en « Voisins », vu d'en dessous) et au +1 (vu d'en haut, la descente) ; écart +4 m puis +1,2 m
+// (entremêlé).
+async function sectionJonctionPiliers(nav) {
+  const nom = "§ 54 ";
+  console.log("§ 54 — structures dans une trémie : descendues jusqu'à l'appui, montées au plafond, jamais suspendues");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-jonction-piliers", [0, 1], { "0": -25, "1": -21 },
+    { "0": 2.5, "1": 2.5 }, function () {
+      const P = window.__fxP;
+      const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+      window.ktaNiveauxOccupes = function () { return [0, 1]; };
+      window.setRoads([{ uid: "rd_jp_0", type: "principal", level: 0, points: [P(-30, 0), P(2, 0)] },
+        { uid: "rd_jp_1", type: "principal", level: 1, points: [P(28, 0), P(60, 0)] },
+        { uid: "rd_jp_j", type: "jonction", level: 0, fromLevel: 0, toLevel: 1, points: [P(0, 0), P(30, 0)] }]);
+      window.setZones([{ uid: "zn_jp", type: "pente", level: 0, niveaux: [0, 1], points: rect(4, -6, 20, 6) }]);
+      window.setStructures([
+        { uid: "st_jp_a", type: "pilier-1", level: 1, points: rect(9.5, 5.5, 10.5, 7.5) },
+        { uid: "st_jp_b", type: "pilier-1", level: 1, points: rect(18.5, 5.5, 19.5, 7.5) },
+        { uid: "st_jp_c", type: "pilier-1", level: 1, points: rect(19.5, 2.5, 21.5, 3.5) },
+        { uid: "st_jp_d", type: "mur", level: 1, points: rect(9, -6.8, 11, -5.6) },
+        { uid: "st_jp_f", type: "front-1", level: 1, points: [P(14, -8), P(14, -5)] },
+        { uid: "st_jp_e", type: "pilier-1", level: 1, points: rect(9.5, 8, 10.5, 9) },
+        { uid: "st_jp_g", type: "pilier-1", level: 0, points: rect(15.5, -7.5, 16.5, -5.5) },
+        { uid: "st_jp_h", type: "mur", level: 0, points: rect(5, 5.6, 7, 6.8) },
+        { uid: "st_jp_j", type: "pilier-1", level: 0, points: rect(15.5, -9.5, 16.5, -8.5) }
+      ]);
+      // Rayons : départ (x, z) dans la zone, direction, face attendue à `d` m (null : aucune face d'elle avant 1 m) ;
+      // `tete` : structure du 0, rayon entre son sommet `hs` et le plafond de la zone (moins son retrait).
+      window.__fxCibles = [
+        { k: "A", x: 10, z: 4.6, dir: [0, 0, 1], d: 0.9 },
+        { k: "B", x: 19, z: 4.6, dir: [0, 0, 1], d: 0.9 },
+        { k: "C", x: 18, z: 3, dir: [1, 0, 0], d: 1.5 },
+        { k: "D", x: 10, z: -4.6, dir: [0, 0, -1], d: 1.0 },
+        { k: "F", x: 12.5, z: -5.5, dir: [1, 0, 0], d: 1.35 },
+        { k: "E", x: 10, z: 7.8, dir: [0, 0, 1], d: null, appui: [10, 5.9] },
+        { k: "G", x: 16, z: -4.6, dir: [0, 0, -1], d: 0.9, tete: true, hs: 2.5 },
+        { k: "H", x: 6, z: 4.6, dir: [0, 0, 1], d: 1.0, tete: true, hs: 2.45 },
+        { k: "J", x: 16, z: -8.3, dir: [0, 0, -1], d: null, tete: true, hs: 2.5, appui: [16, -5.9] }
+      ];
+    });
+  const page = t.page;
+  try {
+    for (const ecart of [4, 1.2]) {
+      for (const rendu of ["mixte", "structures"]) {
+        for (const niveau of [0, 1]) {
+          const r = await page.evaluate(async function (q) {
+            const K = window.KtaVue3D, P = window.__fxP;
+            window.setPlanProfondeurs(window._currentLoadedPlanId, { "0": -25, "1": -25 + q.ecart });
+            K.reglerNiveauxVus("voisins");
+            if (q.niveau === 0) await window.__fxOuvrir(8, 2, 150, 0, q.rendu);
+            else await window.__fxOuvrir(23, 6, 270, 1, q.rendu);
+            K.reglerNiveauxVus("voisins");
+            await window.__fxImages(30);
+            const base = q.niveau === 0 ? q.ecart : 0, out = [];
+            window.__fxCibles.forEach(function (c) {
+              const ap = c.appui || [c.x + c.dir[0] * c.d, c.z + c.dir[2] * c.d];
+              const pa = P(ap[0], ap[1]), alt = K.altitude(pa.x, pa.y);
+              // Sommet d'une structure du 0 (repère de la scène) et plafond de la zone moins son retrait.
+              const b0 = q.niveau === 0 ? 0 : -q.ecart, haut = b0 + c.hs, cible = alt.plafond - (2.5 - c.hs);
+              const appui = alt.plafond <= base + 1e-3 ? alt.plafond : alt.sol;
+              const y = c.tete ? (c.d === null ? haut + 0.3 : (haut + cible) / 2)
+                : c.d === null ? base - 0.3 : (appui + base) / 2;
+              const ecartOk = c.tete ? cible - haut > 0.05 : base - appui > 0.05;
+              const d = P(c.x, c.z), f = K.rayon(d.x, d.y, y, c.dir).faces;
+              const v = f.filter(function (o) { return o.famille === "opaque" || o.famille === "murs"; })[0] || null;
+              const juste = c.d === null ? !v || v.dist > 1.0
+                : !!v && Math.abs(v.dist - c.d) < 0.03 && f[0] === v && ecartOk;
+              out.push({ k: c.k, juste: juste, y: +y.toFixed(3), appui: +appui.toFixed(3),
+                vu: f[0] ? f[0].famille + "@" + f[0].dist : null });
+            });
+            return { niveau: K.etat().niveau, out: out };
+          }, { ecart: ecart, rendu: rendu, niveau: niveau });
+          const fausses = r.out.filter(function (o) { return !o.juste; });
+          verifier(r.niveau === niveau && fausses.length === 0,
+            nom + "écart +" + ecart + " m, " + rendu + ", scène au " + (niveau ? "+1 (vu d'en haut)" :
+            "0 (+1 vu d'en dessous)") + " : piliers, mur et front du +1 à cheval sur la zone descendus jusqu'au " +
+            "plafond de la zone (à son sol là où il passe au-dessus de leur base) ; pilier et mur du 0 montés jusqu'au " +
+            "plafond de la zone ; piliers hors zone inchangés",
+            { niveau: r.niveau, fausses: fausses });
+          if (CAPTURES && ecart === 4) await capture(page, "jonction-piliers-" + rendu + "-niveau" + niveau);
+        }
+      }
+    }
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 51. Zone jonction de niveau et structures en pente (galerieEmprise.js > penteDeZone ; vue3d.js > _zoneJonction,
 // _structurePente, _bloqueEnZone ; KTA_V3D_SEUL=zonejonction) ────────────────────────────────────────────────────
 // Plan FICTIF en mémoire : niveaux 0 (sol −25) et −1 (sol −30), 2,5 m chacun. Galerie du 0 de x = −30 à 2, tracé
@@ -12050,7 +12154,8 @@ async function sectionGestesDoigt(nav) {
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
       SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
-      SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "jonction-tremie") {
+      SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "jonction-tremie" ||
+      SEUL === "jonction-piliers") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -14856,7 +14961,10 @@ async function sectionGestesDoigt(nav) {
                 const e = K.etat();
                 ech.push({ t: Math.round(performance.now() - t0), y: e.cameraY, f: e.fondu, n: e.niveau, g: !!e.geste,
                   voile: e.fonduPresent, bandeau: e.bandeauNiveau, im: e.images, aretes: e.compte.aretes });
-                if (performance.now() - t0 < 1500) requestAnimationFrame(lire);
+                // Au moins 1,5 s (le repos qui suit attend la fin du bandeau), et jusqu'à la fin du geste : sous
+                // charge (images lentes), il dure plus que GESTE.ms en temps réel. Plafond 6 s.
+                const dt = performance.now() - t0;
+                if (dt < 1500 || (dt < 6000 && (e.geste || e.niveau !== -1))) requestAnimationFrame(lire);
                 else res({ lance: lance, oeil: oeil, ech: ech });
               })();
             });
@@ -14970,9 +15078,12 @@ async function sectionGestesDoigt(nav) {
           const r = { mode: K.etat().mode, avant: K.etat().niveau, ech: [] };
           window.recalerTrackerSurPoint(t.x, t.y, -1);
           const t0 = performance.now();
-          while (performance.now() - t0 < 900) {
-            const e = K.etat();
-            r.ech.push({ t: Math.round(performance.now() - t0), f: e.fondu, n: e.niveau, y: e.cameraY, b: e.bandeauNiveau });
+          // Au moins 0,9 s, et jusqu'à la fin du fondu au −1 (attente sur l'événement, plafond 6 s) : sous charge, le
+          // changement de niveau du tracker arrive plus tard et le fondu dure plus que 2 × GESTE.fondu en temps réel.
+          for (;;) {
+            const e = K.etat(), dt = performance.now() - t0;
+            r.ech.push({ t: Math.round(dt), f: e.fondu, n: e.niveau, y: e.cameraY, b: e.bandeauNiveau });
+            if (dt >= 6000 || (dt >= 900 && e.niveau === -1 && !e.geste)) break;
             await new Promise(function (res) { requestAnimationFrame(res); });
           }
           r.texte = window.I18n.t("vue3d.niveauBandeau", { n: window.ktaFormatNiveau(-1) });
@@ -18390,6 +18501,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "zonejonction") await sectionZoneJonction(nav);
     if (!SEUL || SEUL === "puits-dessus") await sectionPuitsDessus(nav);
     if (!SEUL || SEUL === "jonction-tremie") await sectionJonctionTremie(nav);
+    if (!SEUL || SEUL === "jonction-piliers") await sectionJonctionPiliers(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
