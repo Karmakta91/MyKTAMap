@@ -2,7 +2,7 @@
   "version": "v2.24.0",
   "released": "2026-11-09",
   "notes": [
-    "🎨 Nouvelles icônes partout dans l'app, les mêmes sur iPhone, Android et ordinateur, et des emoji enfin en couleur sur Windows. 🗺️ Vue 3D : une mini-carte nord en haut, l'option Lignes au sol, les niveaux voisins à leur hauteur et des pentes qu'on parcourt d'un niveau à l'autre, une recherche 🔍 qui t'emmène au point.",
-    "✂️ Carte : coupe un tracé en deux, change le niveau de plusieurs objets d'un coup, tourne les cartes OSM à deux doigts, ou bloque la rotation de la carte dans ⚙️ Configuration › Affichage. Le mode développeur s'active sans mot de passe pour envoyer ton journal en cas de souci."
+    "🎨 Nouvelles icônes partout dans l'app, les mêmes sur iPhone, Android et ordinateur.",
+    "🗺️ Vue 3D avec mini-carte et niveaux voisins, ✂️ couper un tracé en deux, et une option pour bloquer la rotation de la carte."
   ]
 }
