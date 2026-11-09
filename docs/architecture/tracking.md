@@ -1646,8 +1646,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   au-delà du plafond (ou du sol lié), qui se perdent dans le noir, et bouche au bit `GABARIT.conduit` (64) que les
   sols et plafonds des voisins du dessus respectent (`_matsVoisins`) : rien de leur niveau en travers du conduit.
   🩸 Les parois des tubes d'un voisin ne lisent pas le gabarit : une galerie du dessus qui ne couvre qu'une partie de
-  la bouche coupe le conduit, fermé. Puits de surface (ciel) et rien au-dessus : 6 m qui se perdent dans le noir
-  (checkup § 52, `KTA_V3D_SEUL=puits-dessus`). L'arrivée d'un passage (raccord
+  la bouche coupe le conduit, fermé (checkup § 52, `KTA_V3D_SEUL=puits-dessus`). **Puits ouvert au jour** (ciel :
+  `peo`, `eso`) sous d'autres niveaux (montrés ou non) : il les **traverse tous**, galerie ou roche, jusqu'à 6 m
+  au-dessus du plafond du plus haut, bouche au bit `GABARIT.conduit` : aucun sol ni plafond du dessus ne ferme le
+  ciel, avec ou sans galerie au droit (checkup § 56, `KTA_V3D_SEUL=puits-ciel`). Rien au-dessus : 6 m qui se perdent
+  dans le noir. L'arrivée d'un passage (raccord
   validé, sinon le POI ramené en galerie) n'en dépend pas (§ 44). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
   disque de ciel (sprite clair non éclairé) au sommet de `peo` / `eso`. Cadre doré au sol d'un passage. Un tracé
   `jonction` (filtre de son type respecté) devient une **galerie inclinée** (ci-dessus). ⚠️ contrat : les

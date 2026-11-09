@@ -4957,15 +4957,29 @@
   // le conduit DÉBOUCHE à son sol (au moins à notre plafond : écart nul ou négatif, rien à traverser). Sinon il
   // traverse sa roche : parois jusqu'à VOLUME.long au-delà de notre plafond (ou du sol lié, s'il est plus haut),
   // qui se perdent dans le noir, et bouche au bit GABARIT.conduit : les sols et plafonds des voisins du dessus ne se
-  // dessinent pas en travers (_matsVoisins). Puits de surface (ciel), accès, rien au-dessus : VOLUME.long.
+  // dessinent pas en travers (_matsVoisins). Accès, rien au-dessus : VOLUME.long.
+  // Puits ouvert au jour (ciel) sous d'autres niveaux (_niveauxEdition, montrés ou non) : il les traverse tous, galerie
+  // ou roche, jusqu'à VOLUME.long au-dessus du plafond du plus haut (le jour est au-delà), bouche au bit
+  // GABARIT.conduit : aucun sol ni plafond du dessus ne ferme le ciel. Sans niveau au-dessus : VOLUME.long.
   // 🩸 Les parois des tubes d'un voisin ne lisent pas le gabarit : une galerie du dessus qui ne couvre qu'une partie
   // de l'emprise reste visible là où elle coupe le conduit (fermé, sans trou).
   function _sommetPlafond(v, ring) {
     const e = _e, h = e.hauteur, L = VOLUME.long, X = v.ext || {};
     const base = Number.isFinite(X.haut) ? Math.max(X.haut, h) : h;
+    if (v.ciel) {
+      const l = _niveauxEdition(), i = l.indexOf(e.niveau);
+      let toit = null, haut = null;
+      l.slice(0, Math.max(i, 0)).forEach(function (m) {
+        const t = _altitudeVoisin(m).dy + _hauteurDuNiveau(m);
+        if (toit === null || t > toit) { toit = t; haut = m; }
+      });
+      const rc = toit === null ? { cime: base + L, roche: false } : { cime: Math.max(toit, base) + L, roche: true };
+      v.conduit = { cime: +rc.cime.toFixed(3), roche: rc.roche, niveau: haut, jour: true };
+      return rc;
+    }
     let n = null, dy = null;
     if (Number.isFinite(X.haut) && Number.isInteger(X.niveauHaut)) { n = X.niveauHaut; dy = X.haut; }
-    else if (!v.ciel && !v.acces) {
+    else if (!v.acces) {
       const l = _niveauxEdition(), i = l.indexOf(e.niveau);
       if (i > 0) { n = l[i - 1]; dy = _altitudeVoisin(n).dy; }
     }
