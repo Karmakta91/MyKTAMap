@@ -488,6 +488,25 @@
     return out;
   }
 
+  // POI montrés par les filtres de la carte (session et calques), tous niveaux.
+  function _pointsMontres() {
+    return _filtrer(_tab(window.getEditorPoints), _tab(window.getAllEmbeddedPoints), "tags", _premierTag);
+  }
+
+  // POI de `montres` posés au niveau : un POI jonction se montre sur chacun de ses niveaux, à son raccord validé de ce
+  // niveau s'il en a un (copie qui garde l'original dans _v3dJonction).
+  function _pointsDuNiveau(montres, niveau) {
+    const J = window.KtaPoiJonction, points = [];
+    montres.forEach(function (p) {
+      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+      if (_surNiveau(p, niveau)) { points.push(p); return; }
+      if (niveau === null || !J || !J.estJonction(p) || J.niveaux(p).indexOf(niveau) < 0) return;
+      const a = J.accroches(p).filter(function (q) { return q.level === niveau; })[0];
+      points.push(Object.assign({}, p, { x: a ? a.x : p.x, y: a ? a.y : p.y, level: niveau, _v3dJonction: p }));
+    });
+    return points;
+  }
+
   // Objets DESSINÉS du niveau (filtres de la carte appliqués ; l'itinéraire n'en suit aucun, comme en 2D) ; les
   // tracés jonction tous (galeries inclinées : _pentesDuNiveau, la règle du pas les suit même masqués).
   function _collecter(niveau) {
@@ -499,16 +518,7 @@
       .concat(!_permisGreffe("traces") ? [] : _filtrer(sessionRoads.filter(function (r) {
         return r.type !== "itinerary";
       }), embRoads, "roadTypes", type));
-    // Un POI jonction se montre sur chacun de ses niveaux, à son raccord validé de ce niveau s'il en a un.
-    const J = window.KtaPoiJonction, points = [];
-    const montres = _filtrer(_tab(window.getEditorPoints), _tab(window.getAllEmbeddedPoints), "tags", _premierTag);
-    montres.forEach(function (p) {
-      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
-      if (_surNiveau(p, niveau)) { points.push(p); return; }
-      if (niveau === null || !J || !J.estJonction(p) || J.niveaux(p).indexOf(niveau) < 0) return;
-      const a = J.accroches(p).filter(function (q) { return q.level === niveau; })[0];
-      points.push(Object.assign({}, p, { x: a ? a.x : p.x, y: a ? a.y : p.y, level: niveau, _v3dJonction: p }));
-    });
+    const points = _pointsDuNiveau(_pointsMontres(), niveau);
     // Objet en cours de dessin depuis la vue : montré par l'aperçu seulement, jusqu'à sa fin (_horsTrace).
     return {
       structures: _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", type)
@@ -3165,7 +3175,7 @@
     e.passageSig = null;
     (e.volPassages || []).forEach(_libererVolume);
     e.placesPassage = new Map();
-    e.volPassages = _volumesDuNiveau(d);
+    e.volPassages = _volumesDuNiveau(d).concat(_puitsTraversants());
     e.plaquesParoi = new Set(e.volPassages.filter(function (v) { return v.forme === "plaque" && v.point; })
       .map(function (v) { return v.point; }));
     e.volumesIti = e.volumesIti.concat(_volumesItiAcces(e.volPassages));
@@ -3445,6 +3455,17 @@
       _gererVolumes();
     }
     gardes.forEach(_volumesVoisinAJour);
+    // Puits ouverts d'un niveau du dessous (_puitsTraversants) : leur pied et les sols troués suivent les niveaux
+    // montrés.
+    const cleTrav = voulus.join(",");
+    if (e.travSig !== undefined && e.travSig !== cleTrav) {
+      e.volPassages = (e.volPassages || []).filter(function (q) {
+        if (Number.isInteger(q.traverse)) _libererVolume(q);
+        return !Number.isInteger(q.traverse);
+      }).concat(_puitsTraversants());
+      _gererVolumes();
+    }
+    e.travSig = cleTrav;
     _estomperVoisins();
     _majSolActif();   // voisin du dessous montré ou non, 🧱 changé (_refaireTuiles)   // côté changé (voisins gardés), originaux changés (🧱)
     e.sale = true;
@@ -4562,7 +4583,8 @@
   // plafond là où elle sort de la tranche du niveau, ruban à la couleur du canon au milieu du sol.
   // Construits à portée seulement (_gererVolumes, la règle des tuiles) : rien hors de la distance de vue. Aucune
   // collision : le pas reste la règle du tracker (la galerie inclinée a la sienne : _pas). Les bouches trouent sol et
-  // plafond par le gabarit (_materiaux).
+  // plafond par le gabarit (_materiaux). Un puits ouvert au jour d'un niveau du dessous traverse le niveau de la
+  // scène (_puitsTraversants).
 
   function _volumesDuNiveau(d) {
     const e = _e, J = window.KtaPoiJonction, N = e.niveau, out = [];
@@ -4646,6 +4668,46 @@
       const a = _altitudeVoisin(n);
       if (a.dessus) { if (out.haut === null || a.dy < out.haut) { out.haut = a.dy; out.niveauHaut = n; } }
       else if (out.bas === null || a.dy > out.bas) { out.bas = a.dy; out.basParoi = a.dy + _hauteurDuNiveau(n); }
+    });
+    return out;
+  }
+
+  // ⚠️ contrat (décision produit) : un puits ouvert au jour (peo, eso au plus haut de leurs niveaux : `ciel` de
+  // _volumesDuNiveau) posé sur un niveau M du dessous traverse tous les niveaux au-dessus de M jusqu'au jour
+  // (_sommetPlafond) ; vu depuis l'un d'eux, il y est un volume `traverse` (= M), M montré ou non, dans les trois
+  // rendus : parois du plafond de M à notre sol et de notre plafond au sommet du conduit, à la place de
+  // KtaGalerie.placePassage sur M ; trou dans notre sol (bouche au bit du sol) et notre plafond (bit GABARIT.conduit
+  // sous un autre niveau, comme sur M) ; échelons (peo) dans les parois ; disque de ciel au sommet ; vers le bas, le
+  // vide jusqu'au sol de M s'il est montré. Sols des niveaux montrés entre M et nous (« Tous ») troués à leur bit sur
+  // l'emprise. Ni cadre, ni panneau, ni 🪜 : ce n'est pas un passage du niveau. Rien n'arrête le pas au-dessus du
+  // trou (aucune bouche ne le fait : _volumesDuNiveau). Plafond de M au-dessus de notre sol (entremêlés) : rien.
+  // 🩸 Les sols montrés entre M et nous ont le même bit que celui de M : en « Tous », le fond du puits est noir.
+  function _puitsTraversants() {
+    const e = _e, J = window.KtaPoiJonction, G = window.KtaGalerie, N = e.niveau, out = [];
+    const l = _niveauxEdition(), i = l.indexOf(N);
+    if (!J || !G || i < 0 || i === l.length - 1) return out;
+    const montres = _pointsMontres(), vus = _niveauxMontres();
+    l.slice(i + 1).forEach(function (M) {
+      const aM = _altitudeVoisin(M).dy, yb = aM + _hauteurDuNiveau(M);
+      if (yb > ENTRE.eps) return;
+      _pointsDuNiveau(montres, M).forEach(function (p) {
+        const src = p._v3dJonction || p, tag = _premierTag(src), moyen = J.moyen(tag);
+        if (!moyen || J.TAGS_SURFACE_NIVEAUX.indexOf(tag) < 0) return;
+        const autres = J.estJonction(src) ? J.niveaux(src).filter(function (n) { return n !== M; }) : [];
+        if (autres.some(function (n) { return _auDessus(n, M); })) return;
+        const forme = moyen === "escalier" ? "escalier" : "puits";
+        const dim = forme === "escalier" ? VOLUME.escalier : [VOLUME.puits, VOLUME.puits];
+        const pl = G.placePassage(src, M, e.rendu) || { x: p.x, y: p.y, ang: 0 };
+        // Sols des niveaux montrés entre M et nous, troués sur l'emprise (contrat ci-dessus).
+        const entre = vus.filter(function (n) { return l.indexOf(n) > i && l.indexOf(n) < l.indexOf(M); })
+          .map(function (n) { return _altitudeVoisin(n).dy; });
+        out.push({ genre: "poi", tag: tag, moyen: moyen, forme: forme, traverse: M, point: src, ext: {},
+          sol: true, plafond: true, ciel: true, grille: false, echelons: moyen === "echelons", passage: false,
+          fond: yb, pied: vus.indexOf(M) >= 0 ? aM : yb, solsEntre: entre, cote: 0, appui: null,
+          a: dim[0] / 2, b: dim[1] / 2, x: pl.x, y: pl.y, ramene: !!pl.ramene,
+          dir: pl.ang + (forme === "escalier" && pl.entree === 1 ? Math.PI : 0),
+          cx: pl.x / e.sc, cz: pl.y / e.sc, r: Math.hypot(dim[0], dim[1]) / 2 + VOLUME.marge + VOLUME.cadre });
+      });
     });
     return out;
   }
@@ -4913,12 +4975,22 @@
       for (let k = 0; k < 4; k++) _paroiY(lots.parois, ring[k], ring[(k + 1) % 4], y0, y1);
     };
     // Parois de notre sol au plafond du niveau lié dessous ; vers le haut, jusqu'au sommet du conduit (_sommetPlafond).
-    const fond = Number.isFinite(X.basParoi) ? Math.min(X.basParoi, 0) : -L;
+    // Puits ouvert d'un niveau du dessous (_puitsTraversants) : de son plafond (v.fond), sans marches.
+    const trav = Number.isInteger(v.traverse);
+    const fond = trav ? v.fond : Number.isFinite(X.basParoi) ? Math.min(X.basParoi, 0) : -L;
     const S = v.plafond ? _sommetPlafond(v, ring) : { cime: h, roche: false }, cime = S.cime;
     if (v.sol) { murs(fond, 0); _quadPlat(lots.sol, ring, 0); }
     if (v.plafond) { murs(h, cime); _quadPlat(S.roche ? lots.plafondConduit : lots.plafond, ring, h); }
-    if (v.forme === "escalier") _marches(v, lots.opaque, Q, _couleurFixe(COULEUR_CALCAIRE));
-    if (v.echelons) _echellePuits(v, lots.opaque, Q, _couleurFixe(COULEUR_FER));
+    if (trav) {
+      (v.solsEntre || []).forEach(function (y) {
+        _quadPlat(lots.trous[GABARIT.vSolBas] || (lots.trous[GABARIT.vSolBas] = new Lot()), ring, y);
+      });
+    } else if (v.forme === "escalier") _marches(v, lots.opaque, Q, _couleurFixe(COULEUR_CALCAIRE));
+    if (v.echelons && trav) {
+      // Dans les parois seulement : rien ne pend dans notre galerie.
+      _echellePuits(v, lots.opaque, Q, _couleurFixe(COULEUR_FER), [v.pied, 0]);
+      _echellePuits(v, lots.opaque, Q, _couleurFixe(COULEUR_FER), [h, cime]);
+    } else if (v.echelons) _echellePuits(v, lots.opaque, Q, _couleurFixe(COULEUR_FER));
     if (v.grille) {
       // Grille au-dessus du plafond : barreaux croisés tous les 15 cm.
       const fer = _couleurFixe(COULEUR_FER), y = h + 0.25;
@@ -4960,7 +5032,8 @@
   // dessinent pas en travers (_matsVoisins). Accès, rien au-dessus : VOLUME.long.
   // Puits ouvert au jour (ciel) sous d'autres niveaux (_niveauxEdition, montrés ou non) : il les traverse tous, galerie
   // ou roche, jusqu'à VOLUME.long au-dessus du plafond du plus haut (le jour est au-delà), bouche au bit
-  // GABARIT.conduit : aucun sol ni plafond du dessus ne ferme le ciel. Sans niveau au-dessus : VOLUME.long.
+  // GABARIT.conduit : aucun sol ni plafond du dessus ne ferme le ciel. Sans niveau au-dessus : VOLUME.long. Même
+  // sommet vu d'un niveau qu'il traverse (_puitsTraversants).
   // 🩸 Les parois des tubes d'un voisin ne lisent pas le gabarit : une galerie du dessus qui ne couvre qu'une partie
   // de l'emprise reste visible là où elle coupe le conduit (fermé, sans trou).
   function _sommetPlafond(v, ring) {
@@ -5049,13 +5122,15 @@
 
   // Échelle scellée contre une paroi : échelons tous les VOLUME.echelon m et deux montants ; vers le bas, les montants
   // dépassent du sol d'un mètre (la sortie).
-  function _echellePuits(v, lot, Q, col) {
+  // `bornes` [bas, haut] (m, facultatif) : échelons et montants entre les deux, sans sortie.
+  function _echellePuits(v, lot, Q, col, bornes) {
     const h = _e.hauteur, L = VOLUME.long, tw = -v.b + 0.12, X = v.ext || {};
     // Du sol du niveau lié dessous au sol du niveau lié dessus (montants d'un mètre au-delà : la sortie) ; sans
     // niveau de ce côté, VOLUME.long.
     const cime = Number.isFinite(X.haut) ? Math.max(X.haut, h) : h + L;
-    const yA = v.sol ? (Number.isFinite(X.bas) ? Math.min(X.bas, 0) : -L) : 0;
-    const yB = v.plafond ? cime + (Number.isFinite(X.haut) ? 1 : 0) : 1, yR = v.plafond ? cime : 0;
+    const yA = bornes ? bornes[0] : v.sol ? (Number.isFinite(X.bas) ? Math.min(X.bas, 0) : -L) : 0;
+    const yB = bornes ? bornes[1] : v.plafond ? cime + (Number.isFinite(X.haut) ? 1 : 0) : 1;
+    const yR = bornes ? bornes[1] : v.plafond ? cime : 0;
     for (let y = yA + VOLUME.echelon / 2; y <= yR; y += VOLUME.echelon) {
       _pave(lot, Q, -0.2, 0.2, tw - 0.02, tw + 0.02, y - 0.02, y + 0.02, col);
     }
@@ -12158,6 +12233,7 @@
         return Object.assign({ genre: v.genre, tag: v.tag || null, forme: v.forme || null, moyen: v.moyen || null,
           sol: !!v.sol, plafond: !!v.plafond, ciel: !!v.ciel, grille: !!v.grille, echelons: !!v.echelons,
           passage: !!v.passage, monte: v.monte === undefined ? null : v.monte, construit: !!v.obj, x: v.x, y: v.y,
+          traverse: Number.isInteger(v.traverse) ? v.traverse : null,
           bouche: v.genre === "poi" ? [[-v.a, -v.b], [v.a, -v.b], [v.a, v.b], [-v.a, v.b]].map(function (q) {
             return _repere(v)(q[0], q[1]);
           }) : null,

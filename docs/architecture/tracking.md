@@ -1649,8 +1649,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   la bouche coupe le conduit, fermé (checkup § 52, `KTA_V3D_SEUL=puits-dessus`). **Puits ouvert au jour** (ciel :
   `peo`, `eso`) sous d'autres niveaux (montrés ou non) : il les **traverse tous**, galerie ou roche, jusqu'à 6 m
   au-dessus du plafond du plus haut, bouche au bit `GABARIT.conduit` : aucun sol ni plafond du dessus ne ferme le
-  ciel, avec ou sans galerie au droit (checkup § 56, `KTA_V3D_SEUL=puits-ciel`). Rien au-dessus : 6 m qui se perdent
-  dans le noir. L'arrivée d'un passage (raccord
+  ciel, avec ou sans galerie au droit. **Vu d'un niveau qu'il traverse** (`_puitsTraversants`, puits du niveau M
+  montré ou non, trois rendus) : volume `traverse` à la place du puits sur M, parois du plafond de M à notre sol et de
+  notre plafond au sommet, trou dans notre sol (bit du sol) et notre plafond (bit `GABARIT.conduit` sous un autre
+  niveau), échelons dans les parois, ciel au sommet ; vers le bas, le vide jusqu'au sol de M s'il est montré. Ni cadre,
+  ni panneau, ni 🪜 ; rien n'arrête le pas au-dessus du trou (aucune bouche ne le fait). 🩸 En « Tous », les sols des
+  niveaux montrés entre M et nous sont troués au même bit que celui de M : fond du puits noir (checkup § 56,
+  `KTA_V3D_SEUL=puits-ciel`). Rien au-dessus : 6 m qui se perdent dans le noir. L'arrivée d'un passage (raccord
   validé, sinon le POI ramené en galerie) n'en dépend pas (§ 44). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
   disque de ciel (sprite clair non éclairé) au sommet de `peo` / `eso`. Cadre doré au sol d'un passage. Un tracé
   `jonction` (filtre de son type respecté) devient une **galerie inclinée** (ci-dessus). ⚠️ contrat : les
