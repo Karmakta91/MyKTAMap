@@ -326,6 +326,39 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 }
 .kta-v3d-rose { width: 56px; height: 56px; }
 
+/* Mini-carte (vue3d.js > _majMiniCarte) : médaillon rond en haut à droite, SOUS la rangée du haut et le bandeau de
+   guidage visible (--kta-v3d-sous-haut, vue3d.js > _majSousHaut) : elle suit le bandeau qui apparaît, grandit ou
+   disparaît, et ne le recouvre jamais. Taille : 30 % du petit côté (96 à 150 px), réduite à la hauteur qui reste
+   au-dessus des commandes du bas (petit téléphone, bandeau haut), 64 px au moins. Agrandie (un toucher) : au centre
+   de la place entre le bandeau et les commandes du bas (96 px), sans recouvrir ni l'un ni les autres. Le fond du canvas est celui de la scène (toujours sombre, comme les panneaux de POI).
+   ⚠️ contrat : `touch-action: none` (un glisser ne fait ni défiler ni zoomer la page) ; ses gestes n'atteignent
+   jamais la scène (vue3d.js > _brancherMiniCarte). */
+.kta-v3d-minicarte {
+  --kta-v3d-mc-reste: calc(100vh - var(--kta-v3d-sous-haut, 80px) - 220px);
+  --kta-v3d-mc: max(64px, min(clamp(96px, 30vmin, 150px), var(--kta-v3d-mc-reste)));
+  position: absolute; top: var(--kta-v3d-sous-haut, 80px); right: 10px;
+  width: var(--kta-v3d-mc); height: var(--kta-v3d-mc); margin: 0; padding: 0; box-sizing: border-box;
+  border-radius: 50%; border: 2px solid color-mix(in srgb, var(--kta-accent) 55%, transparent);
+  background: var(--kta-fond); box-shadow: var(--kta-v3d-ombre); overflow: hidden; cursor: pointer;
+  touch-action: none; -webkit-tap-highlight-color: transparent;
+}
+@supports (height: 100dvh) {
+  .kta-v3d-minicarte { --kta-v3d-mc-reste: calc(100dvh - var(--kta-v3d-sous-haut, 80px) - 220px); }
+}
+.kta-v3d-minicarte[hidden] { display: none; }
+.kta-v3d-minicarte:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
+.kta-v3d-minicarte.kta-v3d-minicarte-grande {
+  --kta-v3d-mc-haut: calc(100vh - var(--kta-v3d-sous-haut, 80px) - 96px);
+  --kta-v3d-mc: max(64px, min(86vw, calc(var(--kta-v3d-mc-haut) - 16px), 480px));
+  top: calc(var(--kta-v3d-sous-haut, 80px) + (var(--kta-v3d-mc-haut) - var(--kta-v3d-mc)) / 2);
+  right: auto; left: 50%; transform: translateX(-50%);
+  border-color: var(--kta-accent);
+}
+@supports (height: 100dvh) {
+  .kta-v3d-minicarte.kta-v3d-minicarte-grande { --kta-v3d-mc-haut: calc(100dvh - var(--kta-v3d-sous-haut, 80px) - 96px); }
+}
+.kta-v3d-minicarte-canvas { display: block; width: 100%; height: 100%; pointer-events: none; }
+
 /* Passage vers un autre niveau (🪜 près d'un POI jonction ou d'un bout de tracé jonction, mode libre) : à gauche, au
    milieu ; ▲ / ▼ ou la liste des niveaux liés, écrits en clair. */
 .kta-v3d-niveaux {

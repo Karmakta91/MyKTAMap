@@ -1370,6 +1370,7 @@
     delete e.rubans.itinerary;
     e.itiChevrons = 0;
     _poserTuilesIti(iti);
+    _itiMiniCarte(iti);
     _gererTuiles(true);
     _majMarqueursIti();
     _majItiPentes();
@@ -3175,6 +3176,8 @@
     _poserTuilesIti(d.roads.filter(function (r) { return r.type === "itinerary"; }));
     // Objets dessinés que la visée cherche sous le doigt (_objetAuPoint) : ni structures en galerie (pas dessinées),
     // ni itinéraire (calculé), ni jonction (jamais dessinée).
+    _donneesMiniCarte(d);
+    _itiMiniCarte(d.roads.filter(function (r) { return r.type === "itinerary"; }));
     e.vus = { structures: e.galerie ? [] : d.structures, zones: d.zones,
       roads: d.roads.filter(function (r) { return r.type !== "itinerary" && r.type !== "jonction"; }) };
     e.msIndex = performance.now() - t0;
@@ -6307,6 +6310,7 @@
     const lire = typeof window.getPlanNorthOffset === "function" ? window.getPlanNorthOffset : null;
     e.nord = e.nordCalibre && lire ? Number(lire()) || 0 : 0;
     _orienterSoleil();
+    if (e.mc) e.mc.sale = true;
     e.roseAngle = Number.NaN;
     if (e.boussole) {
       const non = e.nordCalibre ? "" : " · " + _t("vue3d.nordNonCalibre");
@@ -6501,6 +6505,7 @@
     if (e.boutonVue) e.boutonVue.setAttribute("aria-pressed", haut ? "true" : "false");
     _majRepere();
     if (e.boutonsIncl) e.boutonsIncl.hidden = !haut;
+    _appliquerMiniCarte();
     // Dessin : en vue d'édition seulement ; la quitter éteint l'outil (_suivrePermisDessin).
     _suivrePermisDessin();
     _majBarreDessin();
@@ -8395,6 +8400,8 @@
     const g = _lireGuidage();
     _majBandeau(g.bandeau);
     _majChevrons(g.chevrons);
+    const cible = g.chevrons ? g.chevrons.sCible : null;
+    if (cible !== e.mcCible) { e.mcCible = cible; if (e.mc) e.mc.sale = true; }
     _recalerLibre(ts);
   }
 
@@ -9565,6 +9572,7 @@
     _majEquipe();
     _publierPosition();
     _majGuidage(ts);
+    _majMiniCarte(ts);
     if (e.perdu) return;
     _redimensionner();
     if (e.greffe) { e.greffe.appels.image++; _appelGreffe("surImage", dt); }
@@ -9783,7 +9791,8 @@
     icT.innerHTML = _ico("brick-wall");
     e.boutonTextures.appendChild(icT);
     e.boutonTextures.appendChild(document.createTextNode(_t("vue3d.texturesNom")));
-    // Boussole et guidage montrés ou non (réglages de cet appareil, montrés par défaut), côte à côte, même raison.
+    // Boussole et mini-carte montrées ou non (réglages de cet appareil, montrées par défaut), côte à côte, même
+    // raison ; guidage et fiches sur la ligne suivante.
     const ligne = document.createElement("div");
     ligne.className = "kta-v3d-reglages-ligne";
     tuile.appendChild(ligne);
@@ -9794,8 +9803,21 @@
     ic.src = "icon/compass.svg"; ic.alt = ""; ic.className = "kta-v3d-btn-icone"; ic.draggable = false;
     e.boutonBoussole.appendChild(ic);
     e.boutonBoussole.appendChild(document.createTextNode(_t("vue3d.boussoleNom")));
-    // Guidage : bandeau et chevrons, pas l'itinéraire.
-    e.boutonGuidage = _bouton(ligne, "kta-v3d-btn-mode kta-v3d-btn-guidage", "", _t("vue3d.guidageMontrer"),
+    // Mini-carte : le médaillon en haut à droite (_appliquerMiniCarte).
+    e.boutonMiniCarte = _bouton(ligne, "kta-v3d-btn-mode kta-v3d-btn-minicarte", "", _t("vue3d.miniCarteMontrer"),
+      "miniCarte");
+    const icM = document.createElement("span");
+    icM.className = "kta-v3d-btn-icone";
+    icM.setAttribute("aria-hidden", "true");
+    icM.innerHTML = _ico("map");
+    e.boutonMiniCarte.appendChild(icM);
+    e.boutonMiniCarte.appendChild(document.createTextNode(_t("vue3d.miniCarteNom")));
+    // Fiches des objets au toucher (structure, zone, tracé ; jamais les POI) : réglage de cet appareil, coupé par
+    // défaut au doigt (config.js > getVue3DFichesObjets). Guidage (bandeau et chevrons, pas l'itinéraire) à sa gauche.
+    const ligneF = document.createElement("div");
+    ligneF.className = "kta-v3d-reglages-ligne";
+    tuile.appendChild(ligneF);
+    e.boutonGuidage = _bouton(ligneF, "kta-v3d-btn-mode kta-v3d-btn-guidage", "", _t("vue3d.guidageMontrer"),
       "guidage");
     const icG = document.createElement("span");
     icG.className = "kta-v3d-btn-icone";
@@ -9803,11 +9825,6 @@
     icG.innerHTML = _ico("signpost");
     e.boutonGuidage.appendChild(icG);
     e.boutonGuidage.appendChild(document.createTextNode(_t("vue3d.guidageNom")));
-    // Fiches des objets au toucher (structure, zone, tracé ; jamais les POI) : réglage de cet appareil, coupé par
-    // défaut au doigt (config.js > getVue3DFichesObjets).
-    const ligneF = document.createElement("div");
-    ligneF.className = "kta-v3d-reglages-ligne";
-    tuile.appendChild(ligneF);
     e.boutonFiches = _bouton(ligneF, "kta-v3d-btn-mode kta-v3d-btn-fiches", "", _t("vue3d.fichesMontrer"),
       "fichesObjets");
     const icF = document.createElement("span");
@@ -9981,6 +9998,8 @@
     ov.appendChild(bous);
     e.rose = rose; e.boussole = bous;
     _appliquerBoussole();
+    // Mini-carte : après la zone du joystick dans le document (agrandie au centre, elle passe au-dessus).
+    _monterMiniCarte(ov);
     _appliquerGuidage();
     _appliquerFichesObjets();
     _appliquerTextures();
@@ -10049,6 +10068,491 @@
     if (typeof window.setVue3DBoussole === "function") window.setVue3DBoussole(oui);
     else if (e.boussole) e.boussole.hidden = !oui;
     return _appliquerBoussole();
+  }
+
+  // ── Mini-carte (médaillon en haut à droite) ──────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : un canvas 2D dessiné à partir des objets que la scène a déjà lus (_reindexer :
+  // mêmes filtres ≡ de la carte, niveau ACTIF de la 3D seulement), jamais une seconde carte Leaflet, une image du plan
+  // ni une seconde caméra. Plan FIXE, nord réel en haut (sans nord calibré : le haut du plan, comme la boussole,
+  // _majBoussole) ; la place = une flèche au centre qui tourne avec le cap réel, dans un cône de vue. Zones qui
+  // bouchent (KtaGalerie.ZONES_BOUCHENT), structures, tracés (sans les jonctions, jamais dessinées), POI importants
+  // (passage ↕ vers un autre niveau, danger, sortie : SortieUrgence.estUneSortie), itinéraire (ruban, étapes, arrivée,
+  // prochaine consigne du guidage) et membres d'une extension (KtaPresences). Montrée par défaut (config.js >
+  // getVue3DMiniCarte, tuile ⚙️), jamais en vue d'édition ni quand une greffe la coupe (ctx.regler({ miniCarte:
+  // false })). Toucher = agrandie au centre de l'écran (sous le bandeau), toucher encore = refermée ; pincer ou la molette = rayon
+  // montré (MINI_CARTE.min / max) ; aucun geste posé sur elle n'atteint la scène (_brancherMiniCarte).
+  // ⚠️ contrat (css/vue3d.css) : posée sous --kta-v3d-sous-haut (rangée du haut ET bandeau de guidage visible,
+  // _majSousHaut) ; sa taille cède à la hauteur qui reste, elle ne recouvre jamais le bandeau.
+  // Coût : le FOND (zones, structures, tracés, POI) est dessiné une fois dans un canvas hors écran, une fenêtre de
+  // MINI_CARTE.fenetre rayons autour de la place, à la résolution du médaillon, déjà tourné vers le nord : refait au
+  // changement de niveau, de filtres, de données ou de légende (_reindexer), de nord, de rayon ou de taille, ou quand
+  // la place approche du bord de la fenêtre. Une mise à jour pose ce fond décalé, puis l'itinéraire, les membres et la
+  // flèche : au plus toutes les MINI_CARTE.ms, seulement si la place a bougé de MINI_CARTE.bouge m, tourné de
+  // BRUIT_CAP ou si quelque chose a changé. Jamais un rendu three.js de plus.
+  // 🩸 Pas tout le niveau d'un coup : un réseau de 2 km à la résolution d'un médaillon dépasse ce qu'un téléphone
+  // accepte pour un canvas (iOS : ~16 M pixels) ; la fenêtre est plafonnée à MINI_CARTE.fondMax px de côté.
+  // `rayon` (m) par défaut, bornes ; `grande` : facteur du rayon une fois agrandie ; `fenetre` : demi-côté du fond en
+  // rayons montrés ; `ms` entre deux mises à jour ; `bouge` (m) ; `densite` : pixels par px CSS au plus ; `fondMax` :
+  // côté du fond (px) ; `cone` : demi-angle du cône (°) ; `traitM` : largeur d'un tracé (m), jamais moins de
+  // `traitPx` px CSS ; `poiPx` : rayon d'une pastille de POI (px CSS).
+  const MINI_CARTE = { rayon: 30, min: 10, max: 100, grande: 2, fenetre: 3, ms: 100, bouge: 0.3, densite: 2,
+    fondMax: 2048, cone: 35, traitM: 1, traitPx: 1.5, poiPx: 8 };
+  let _rayonMiniCarte = MINI_CARTE.rayon;   // retenu tant que la page vit (vue refermée puis rouverte)
+  const _iconesMiniCarte = new Map();       // url → Image (icônes des POI, chargées une fois)
+
+  function _monterMiniCarte(ov) {
+    const e = _e;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "kta-v3d-minicarte";
+    b.setAttribute("aria-pressed", "false");
+    const cv = document.createElement("canvas");
+    cv.className = "kta-v3d-minicarte-canvas";
+    cv.setAttribute("aria-hidden", "true");
+    b.appendChild(cv);
+    ov.appendChild(b);
+    e.mc = { el: b, cv: cv, ctx: cv.getContext("2d"), fond: document.createElement("canvas"), fondCtx: null,
+      grande: false, taille: 0, densite: 1, fondSale: true, sale: true, t: 0, x: Number.NaN, z: Number.NaN,
+      cap: Number.NaN, f: null, presences: null, pinces: new Map(), pince: null, tape: null, appui: 0,
+      fonds: 0, majs: 0, msFond: 0, msFondMax: 0, msMaj: 0, msMajMax: 0, msMajSomme: 0, dernieres: [],
+      fleche: 0 };
+    e.mc.fondCtx = e.mc.fond.getContext("2d");
+    _majLibelleMiniCarte();
+  }
+
+  function _majLibelleMiniCarte() {
+    const m = _e && _e.mc;
+    if (!m) return;
+    const t = _t(m.grande ? "vue3d.miniCarteGrande" : "vue3d.miniCarte");
+    m.el.title = t;
+    m.el.setAttribute("aria-label", t);
+    m.el.setAttribute("aria-pressed", m.grande ? "true" : "false");
+  }
+
+  function _miniCarteVoulue() {
+    return typeof window.getVue3DMiniCarte !== "function" || window.getVue3DMiniCarte() === true;
+  }
+
+  // Montrée = réglage de l'appareil, hors vue d'édition, permise par la greffe. Masquée, elle se referme.
+  function _appliquerMiniCarte() {
+    const e = _e;
+    if (!e || !e.mc) return false;
+    const voulue = _miniCarteVoulue(), oui = voulue && e.vue !== "plongee" && _permisGreffe("miniCarte");
+    if (e.boutonMiniCarte) e.boutonMiniCarte.setAttribute("aria-pressed", voulue ? "true" : "false");
+    if (!oui && e.mc.grande) _agrandirMiniCarte(false);
+    e.mc.el.hidden = !oui;
+    e.mc.sale = true;
+    return oui;
+  }
+
+  function _basculerMiniCarte() {
+    const e = _e;
+    if (!e) return null;
+    const oui = !_miniCarteVoulue();
+    if (typeof window.setVue3DMiniCarte === "function") window.setVue3DMiniCarte(oui);
+    _appliquerMiniCarte();
+    return oui;
+  }
+
+  function _agrandirMiniCarte(oui) {
+    const m = _e && _e.mc;
+    if (!m) return false;
+    const v = typeof oui === "boolean" ? oui : !m.grande;
+    m.grande = v;
+    m.el.classList.toggle("kta-v3d-minicarte-grande", v);
+    m.sale = true;
+    _majLibelleMiniCarte();
+    return v;
+  }
+
+  // Rayon montré (m) : borné, retenu pour la page.
+  function _reglerRayonMiniCarte(r) {
+    if (!Number.isFinite(r)) return _rayonMiniCarte;
+    _rayonMiniCarte = Math.max(MINI_CARTE.min, Math.min(MINI_CARTE.max, r));
+    if (_e && _e.mc) _e.mc.sale = true;
+    return _rayonMiniCarte;
+  }
+
+  // Objets du niveau (_reindexer, `d` = _collecter, filtres appliqués) en mètres, avec leur emprise ; fond à refaire.
+  function _donneesMiniCarte(d) {
+    const e = _e, sc = e.sc, B = (window.KtaGalerie && window.KtaGalerie.ZONES_BOUCHENT) || {};
+    const SU = window.SortieUrgence, formes = [], pois = [];
+    const forme = function (o, cat, ferme) {
+      const pts = [];
+      let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+      for (let i = 0; i < o.points.length; i++) {
+        const q = o.points[i];
+        if (!q || !Number.isFinite(q.x) || !Number.isFinite(q.y)) continue;
+        const x = q.x / sc, z = q.y / sc;
+        pts.push(x, z);
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (z < z0) z0 = z;
+        if (z > z1) z1 = z;
+      }
+      if (pts.length < 4) return;
+      formes.push({ cat: cat, cle: o.type, pts: pts, ferme: ferme, x0: x0, z0: z0, x1: x1, z1: z1 });
+    };
+    d.zones.forEach(function (z) { if (B[z.type]) forme(z, "zones", true); });
+    d.structures.forEach(function (s) { forme(s, "structures", !_estLigne(s.type)); });
+    d.roads.forEach(function (r) { if (r.type !== "itinerary" && r.type !== "jonction") forme(r, "traces", false); });
+    d.points.forEach(function (p) {
+      const vrai = p._v3dJonction || p;
+      let genre = null;
+      if (_estPassage(vrai)) genre = "passage";
+      else if (_estDanger(vrai)) genre = "danger";
+      else if (SU && typeof SU.estUneSortie === "function" && SU.estUneSortie(vrai)) genre = "sortie";
+      if (genre) pois.push({ x: p.x / sc, z: p.y / sc, genre: genre, p: vrai });
+    });
+    e.mcDonnees = { formes: formes, pois: pois };
+    if (e.mc) e.mc.fondSale = true;
+  }
+
+  // Itinéraire du niveau (_itiDuNiveau : morceaux avec leurs abscisses en px) et ses marqueurs, en mètres.
+  function _itiMiniCarte(morceaux) {
+    const e = _e, sc = e.sc, road = _itineraire(), marques = [];
+    const auNiveau = function (n) { return e.niveau === null || n === e.niveau; };
+    if (road) {
+      (Array.isArray(road.raccords) ? road.raccords : []).forEach(function (r) {
+        if (!r || r.role !== "etape" || !r.vers || !Number.isFinite(r.vers.x)) return;
+        if (auNiveau(_niveauPointIti(road, r.vers.x, r.vers.y))) {
+          marques.push({ x: r.vers.x / sc, z: r.vers.y / sc, genre: "etape" });
+        }
+      });
+      const pts = road.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
+      const fin = pts[pts.length - 1], defaut = Number.isInteger(road.level) ? road.level : 0;
+      if (fin && auNiveau(Number.isInteger(fin.level) ? fin.level : defaut)) {
+        marques.push({ x: fin.x / sc, z: fin.y / sc, genre: "arrivee" });
+      }
+    }
+    e.mcIti = { morceaux: (morceaux || []).map(function (r) {
+      const pts = [], abs = [];
+      r.points.forEach(function (q, i) {
+        if (!q || !Number.isFinite(q.x) || !Number.isFinite(q.y)) return;
+        pts.push(q.x / sc, q.y / sc);
+        abs.push(r.abscisses ? r.abscisses[i] : 0);
+      });
+      return { pts: pts, abs: abs };
+    }), marques: marques };
+    if (e.mc) e.mc.sale = true;
+  }
+
+  // Point (m) de l'itinéraire du niveau à l'abscisse `s` (px depuis le début du trajet), null hors des morceaux.
+  function _pointItiMiniCarte(s) {
+    const it = _e.mcIti;
+    if (!it || !Number.isFinite(s)) return null;
+    for (let k = 0; k < it.morceaux.length; k++) {
+      const m = it.morceaux[k], a = m.abs;
+      for (let i = 0; i + 1 < a.length; i++) {
+        if (s < a[i] || s > a[i + 1]) continue;
+        const u = a[i + 1] > a[i] ? (s - a[i]) / (a[i + 1] - a[i]) : 0;
+        return { x: m.pts[2 * i] + (m.pts[2 * i + 2] - m.pts[2 * i]) * u,
+          z: m.pts[2 * i + 1] + (m.pts[2 * i + 3] - m.pts[2 * i + 1]) * u };
+      }
+    }
+    return null;
+  }
+
+  function _iconeMiniCarte(p) {
+    let url = null;
+    try {
+      url = typeof window.getIconUrlForPoint === "function" ? window.getIconUrlForPoint(p) : null;
+    } catch (err) { url = null; }
+    if (!url) return null;
+    let img = _iconesMiniCarte.get(url);
+    if (!img) {
+      img = new Image();
+      img.decoding = "async";
+      // Arrivée après le dessin du fond : il est refait à la prochaine mise à jour.
+      img.onload = function () { if (_e && _e.mc) _e.mc.fondSale = true; };
+      img.src = url;
+      _iconesMiniCarte.set(url, img);
+    }
+    return img.complete && img.naturalWidth > 0 ? img : null;
+  }
+
+  function _rayonMontre() { return _rayonMiniCarte * (_e.mc.grande ? MINI_CARTE.grande : 1); }
+
+  // Matrice monde (m) → pixels d'un canvas de côté `cote`, centré sur (cx, cz), nord réel en haut, `k` px / m.
+  function _matriceMiniCarte(cx, cz, k, cote) {
+    const n = -(Number(_e.nord) || 0) * Math.PI / 180, a = k * Math.cos(n), b = k * Math.sin(n);
+    return [a, b, -b, a, cote / 2 - cx * a + cz * b, cote / 2 - cx * b - cz * a];
+  }
+
+  // Fond de la fenêtre autour de la place : zones, structures, tracés (en mètres), puis POI droits (en pixels).
+  function _dessinerFondMiniCarte() {
+    const e = _e, m = e.mc, t0 = performance.now(), D = e.mcDonnees || { formes: [], pois: [] };
+    const k = m.taille / (2 * _rayonMontre());
+    const cote = Math.min(MINI_CARTE.fondMax, Math.ceil(m.taille * MINI_CARTE.fenetre));
+    if (m.fond.width !== cote) { m.fond.width = cote; m.fond.height = cote; }
+    const cx = e.pos.x / e.sc, cz = e.pos.y / e.sc, M = _matriceMiniCarte(cx, cz, k, cote), ctx = m.fondCtx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cote, cote);
+    // Emprise de la fenêtre tournée : son cercle circonscrit, en mètres.
+    const r = cote / 2 / k * Math.SQRT2;
+    const styles = new Map();
+    const style = function (cat, cle) {
+      const c = cat + "|" + cle;
+      if (!styles.has(c)) {
+        styles.set(c, typeof window.ktaResolveStyle === "function" ? window.ktaResolveStyle(cat, cle, { flat: true })
+          : null);
+      }
+      return styles.get(c) || {};
+    };
+    const trait = Math.max(MINI_CARTE.traitM, MINI_CARTE.traitPx * m.densite / k);
+    ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    let n = 0;
+    // Ordre de la carte : zones, puis structures, puis tracés par-dessus.
+    ["zones", "structures", "traces"].forEach(function (cat) {
+      D.formes.forEach(function (f) {
+        if (f.cat !== cat || f.x1 < cx - r || f.x0 > cx + r || f.z1 < cz - r || f.z0 > cz + r) return;
+        const s = style(cat, f.cle), p = f.pts;
+        ctx.beginPath();
+        ctx.moveTo(p[0], p[1]);
+        for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+        if (f.ferme) {
+          ctx.closePath();
+          ctx.globalAlpha = Number.isFinite(s.fillOpacity) ? s.fillOpacity : 0.8;
+          ctx.fillStyle = s.fillColor || s.color || "#888888";
+          ctx.fill();
+        } else {
+          ctx.globalAlpha = Number.isFinite(s.opacity) ? s.opacity : 1;
+          ctx.strokeStyle = s.color || s.fillColor || "#888888";
+          ctx.lineWidth = cat === "traces" ? trait : trait * 0.6;
+          ctx.stroke();
+        }
+        n++;
+      });
+    });
+    ctx.globalAlpha = 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const j = _jetonsSombres(), rp = MINI_CARTE.poiPx * m.densite;
+    const bords = { passage: _couleurJonction(j), danger: j.erreur, sortie: j.ok };
+    D.pois.forEach(function (q) {
+      const u = M[0] * q.x + M[2] * q.z + M[4], v = M[1] * q.x + M[3] * q.z + M[5];
+      if (u < -rp || v < -rp || u > cote + rp || v > cote + rp) return;
+      ctx.beginPath(); ctx.arc(u, v, rp, 0, Math.PI * 2);
+      ctx.fillStyle = j.fond; ctx.fill();
+      ctx.lineWidth = Math.max(1, 1.5 * m.densite); ctx.strokeStyle = bords[q.genre]; ctx.stroke();
+      const img = _iconeMiniCarte(q.p);
+      if (img) {
+        try { ctx.drawImage(img, u - rp * 0.7, v - rp * 0.7, rp * 1.4, rp * 1.4); } catch (err) { /* illisible */ }
+      }
+      if (q.genre === "passage") {
+        // ↕ dans une pastille au coin : le passage vers un autre niveau (même marque que le panneau, _panneau).
+        const bx = u + rp * 0.8, by = v - rp * 0.8, br = rp * 0.55;
+        ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fillStyle = bords.passage; ctx.fill();
+        ctx.fillStyle = j.fond; ctx.font = "700 " + Math.round(br * 1.6) + "px system-ui, -apple-system, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("↕", bx, by + 1);
+      }
+      n++;
+    });
+    m.f = { x: cx, z: cz, k: k, cote: cote, nord: Number(e.nord) || 0, demi: cote / 2 / k, objets: n };
+    m.fondSale = false;
+    m.fonds++;
+    m.msFond = performance.now() - t0;
+    m.msFondMax = Math.max(m.msFondMax, m.msFond);
+  }
+
+  // Mise à jour du médaillon, depuis _image : rien si masquée, trop tôt ou si rien n'a bougé.
+  function _majMiniCarte(ts) {
+    const e = _e, m = e.mc;
+    if (!m || m.el.hidden || e.perdu) return;
+    if (ts - m.t < MINI_CARTE.ms) return;
+    const P = window.KtaPresences, pv = P && typeof P.version === "function" ? P.version() : null;
+    if (pv !== m.presences) { m.presences = pv; m.sale = true; }
+    // Taille du médaillon (CSS, agrandi ou non, réduit par la place qui reste) : canvas à la densité de l'écran.
+    const css = m.el.clientWidth, densite = Math.min(MINI_CARTE.densite, window.devicePixelRatio || 1);
+    const taille = Math.round(css * densite);
+    if (!taille) return;
+    if (taille !== m.taille) {
+      m.taille = taille; m.densite = densite; m.cv.width = taille; m.cv.height = taille;
+      m.fondSale = true; m.sale = true;
+    }
+    const x = e.pos.x / e.sc, z = e.pos.y / e.sc;
+    const dc = Math.abs(((e.cap - m.cap + 540) % 360) - 180);
+    const bouge = !(Math.hypot(x - m.x, z - m.z) < MINI_CARTE.bouge) || !(dc < BRUIT_CAP);
+    if (!bouge && !m.sale && !m.fondSale) return;
+    const t0 = performance.now();
+    m.t = ts;
+    const R = _rayonMontre(), k = taille / (2 * R), f = m.f;
+    // Fond à refaire : signalé, nord ou échelle changés (pas pendant un pincement : le fond est mis à l'échelle), ou
+    // place trop près du bord de la fenêtre pour y tenir le disque montré.
+    if (!f || m.fondSale || f.nord !== (Number(e.nord) || 0) || (!m.pince && Math.abs(f.k / k - 1) > 0.01) ||
+        Math.hypot(x - f.x, z - f.z) > f.demi - R * Math.SQRT2) {
+      _dessinerFondMiniCarte();
+    }
+    _peindreMiniCarte(x, z, k);
+    m.x = x; m.z = z; m.cap = e.cap; m.sale = false;
+    m.majs++;
+    m.msMaj = performance.now() - t0;
+    m.msMajMax = Math.max(m.msMajMax, m.msMaj);
+    m.msMajSomme += m.msMaj;
+    m.dernieres.push(m.msMaj);
+    if (m.dernieres.length > 30) m.dernieres.shift();
+  }
+
+  function _peindreMiniCarte(x, z, k) {
+    const e = _e, m = e.mc, ctx = m.ctx, S = m.taille, f = m.f, j = _jetonsSombres(), d = m.densite;
+    const ruban = _couleursIti().hexRuban;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, S, S);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); ctx.clip();
+    ctx.globalAlpha = 0.9; ctx.fillStyle = j.fond; ctx.fillRect(0, 0, S, S); ctx.globalAlpha = 1;
+    // Fond posé sous la place : son point (x, z) au centre, mis à l'échelle si le rayon a changé depuis.
+    const Mf = _matriceMiniCarte(f.x, f.z, f.k, f.cote), s = k / f.k;
+    const u = Mf[0] * x + Mf[2] * z + Mf[4], v = Mf[1] * x + Mf[3] * z + Mf[5];
+    ctx.setTransform(s, 0, 0, s, S / 2 - u * s, S / 2 - v * s);
+    ctx.drawImage(m.fond, 0, 0);
+    const M = _matriceMiniCarte(x, z, k, S);
+    ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
+    // Itinéraire : ruban de la couleur de celui de la scène, liseré sombre (lisible sur un tracé de même teinte).
+    const it = e.mcIti;
+    if (it && it.morceaux.length) {
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      [[j.fond, 4], [ruban, 2.2]].forEach(function (c) {
+        ctx.strokeStyle = c[0];
+        ctx.lineWidth = c[1] * d / k;
+        ctx.beginPath();
+        it.morceaux.forEach(function (mo) {
+          const p = mo.pts;
+          for (let i = 0; i + 1 < p.length; i += 2) {
+            if (i === 0) ctx.moveTo(p[i], p[i + 1]); else ctx.lineTo(p[i], p[i + 1]);
+          }
+        });
+        ctx.stroke();
+      });
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const rond = function (qx, qz, r, fond, bord, lw) {
+      const px = M[0] * qx + M[2] * qz + M[4], py = M[1] * qx + M[3] * qz + M[5];
+      ctx.beginPath(); ctx.arc(px, py, r * d, 0, Math.PI * 2);
+      if (fond) { ctx.fillStyle = fond; ctx.fill(); }
+      if (bord) { ctx.lineWidth = lw * d; ctx.strokeStyle = bord; ctx.stroke(); }
+      return [px, py];
+    };
+    if (it) {
+      it.marques.forEach(function (q) {
+        const p = rond(q.x, q.z, q.genre === "arrivee" ? 6 : 4.5, ruban, j.fond, 1.5);
+        if (q.genre === "arrivee") {
+          ctx.fillStyle = j.fond; ctx.font = "700 " + Math.round(8 * d) + "px system-ui, -apple-system, sans-serif";
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText("⚑", p[0], p[1] + 0.5);
+        }
+      });
+      // Prochaine consigne du guidage (le point que visent les chevrons) : anneau doré.
+      const c = _pointItiMiniCarte(e.mcCible);
+      if (c) rond(c.x, c.z, 6, null, j.accent, 2.5);
+    }
+    // Membres d'une extension au niveau affiché (place en direct, rien sans extension).
+    const P = window.KtaPresences;
+    if (P && typeof P.liste === "function") {
+      let liste = [];
+      try { liste = P.liste() || []; } catch (err) { liste = []; }
+      liste.forEach(function (p) {
+        if (typeof P.personneMasquee === "function" && P.personneMasquee(p.id)) return;
+        if (e.niveau !== null && Number.isInteger(p.niveau) && p.niveau !== e.niveau) return;
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+        const col = p.couleur || (typeof P.couleurDe === "function" ? P.couleurDe(p.id) : j.interaction);
+        rond(p.x / e.sc, p.y / e.sc, 4.5, col, j.fond, 1.5);
+      });
+    }
+    // Place : cône de vue puis flèche, tournés du cap RÉEL (cap plan − nord, comme la rose).
+    const reel = ((e.cap - (Number(e.nord) || 0)) % 360 + 360) % 360;
+    ctx.translate(S / 2, S / 2);
+    ctx.rotate(reel * Math.PI / 180);
+    const cone = MINI_CARTE.cone * Math.PI / 180, rc = Math.min(S * 0.32, 48 * d);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, rc, -Math.PI / 2 - cone, -Math.PI / 2 + cone); ctx.closePath();
+    ctx.globalAlpha = 0.22; ctx.fillStyle = j.accent; ctx.fill(); ctx.globalAlpha = 1;
+    const L = 10 * d;
+    ctx.beginPath(); ctx.moveTo(0, -L); ctx.lineTo(L * 0.7, L * 0.75); ctx.lineTo(0, L * 0.35);
+    ctx.lineTo(-L * 0.7, L * 0.75); ctx.closePath();
+    ctx.fillStyle = j.accent; ctx.fill();
+    ctx.lineWidth = 1.5 * d; ctx.strokeStyle = j.fond; ctx.stroke();
+    ctx.restore();
+    m.fleche = reel;
+  }
+
+  // Gestes sur le médaillon : un toucher bref l'agrandit ou le referme, deux doigts règlent le rayon, la molette
+  // aussi. ⚠️ contrat : rien n'atteint la scène, le joystick ni les gestes de la vue (propagation arrêtée, touch-action
+  // none) ; un glisser d'un doigt ne fait rien (le plan reste centré sur la place).
+  function _brancherMiniCarte(on) {
+    const e = _e, m = e.mc, el = m.el;
+    const stop = function (ev) { ev.stopPropagation(); };
+    const ecart = function () {
+      const it = m.pinces.values(), p = it.next().value, q = it.next().value;
+      return Math.hypot(q.x - p.x, q.y - p.y);
+    };
+    on(el, "pointerdown", function (ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      m.appui = performance.now();
+      m.tape = m.pinces.size ? null : { id: ev.pointerId, x: ev.clientX, y: ev.clientY, t: ev.timeStamp };
+      m.pinces.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      try { el.setPointerCapture(ev.pointerId); } catch (err) { /* pointeur synthétique ou déjà relâché */ }
+      if (m.pinces.size === 2) m.pince = { d0: ecart(), r0: _rayonMiniCarte };
+    });
+    on(el, "pointermove", function (ev) {
+      ev.stopPropagation();
+      const p = m.pinces.get(ev.pointerId);
+      if (!p) return;
+      p.x = ev.clientX; p.y = ev.clientY;
+      if (m.tape && Math.hypot(ev.clientX - m.tape.x, ev.clientY - m.tape.y) > TAPE.bouge) m.tape = null;
+      if (m.pince && m.pinces.size >= 2) {
+        const d = ecart();
+        if (d > 1) _reglerRayonMiniCarte(m.pince.r0 * m.pince.d0 / d);
+      }
+    });
+    const lever = function (ev) {
+      ev.stopPropagation();
+      if (!m.pinces.delete(ev.pointerId)) return;
+      const t = m.tape;
+      if (ev.type === "pointerup" && t && t.id === ev.pointerId && ev.timeStamp - t.t < TAPE.ms) _agrandirMiniCarte();
+      m.tape = null;
+      if (m.pinces.size < 2 && m.pince) { m.pince = null; m.sale = true; }
+    };
+    on(el, "pointerup", lever);
+    on(el, "pointercancel", lever);
+    // Entrée / Espace (le navigateur n'envoie qu'un click) ; le click qui suit un toucher est ignoré (déjà joué).
+    on(el, "click", function (ev) {
+      ev.stopPropagation();
+      if (performance.now() - m.appui < APPUI_CLIC) return;
+      _agrandirMiniCarte();
+    });
+    on(el, "wheel", function (ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      _reglerRayonMiniCarte(_rayonMiniCarte * (ev.deltaY > 0 ? 1.15 : 1 / 1.15));
+    }, { passive: false });
+    ["touchstart", "touchmove", "contextmenu", "dblclick"].forEach(function (t) { on(el, t, stop); });
+  }
+
+  function _libererMiniCarte() {
+    const m = _e && _e.mc;
+    if (!m) return;
+    // 🩸 iOS ne rend la mémoire d'un canvas qu'à sa remise à 0 × 0, pas quand il quitte le document.
+    m.fond.width = m.fond.height = 0;
+    m.cv.width = m.cv.height = 0;
+  }
+
+  function _etatMiniCarte() {
+    const e = _e, m = e.mc;
+    if (!m) return null;
+    const r = m.el.getBoundingClientRect();
+    return { montree: !m.el.hidden, voulue: _miniCarteVoulue(), grande: m.grande, rayon: _rayonMiniCarte,
+      rayonMontre: _rayonMontre(), nordFond: m.f ? m.f.nord : null, fleche: +m.fleche.toFixed(1),
+      fonds: m.fonds, majs: m.majs, objets: m.f ? m.f.objets : 0, coteFond: m.f ? m.f.cote : 0, taille: m.taille,
+      msFond: +m.msFond.toFixed(2), msFondMax: +m.msFondMax.toFixed(2), msMaj: +m.msMaj.toFixed(2),
+      msMajMax: +m.msMajMax.toFixed(2), msMajMoy: m.majs ? +(m.msMajSomme / m.majs).toFixed(3) : 0,
+      msDernieres: m.dernieres.map(function (v) { return +v.toFixed(2); }),
+      pois: e.mcDonnees ? e.mcDonnees.pois.map(function (q) { return q.genre; }) : [],
+      formes: e.mcDonnees ? e.mcDonnees.formes.length : 0,
+      iti: e.mcIti ? { morceaux: e.mcIti.morceaux.length, marques: e.mcIti.marques.length,
+        cible: !!_pointItiMiniCarte(e.mcCible) } : null,
+      boite: { x: r.left, y: r.top, w: r.width, h: r.height } };
   }
 
   // Guidage montré ou coupé en 3D (config.js > getVue3DGuidage) : relu au prochain passage de _majGuidage.
@@ -10297,6 +10801,7 @@
     const e = _e;
     if (a === "vue") { basculerVue(); return true; }
     if (a === "boussole") { _basculerBoussole(); return true; }
+    if (a === "miniCarte") { _basculerMiniCarte(); return true; }
     if (a === "guidage") { _basculerGuidage(); return true; }
     if (a === "fichesObjets") { _basculerFichesObjets(); return true; }
     if (a === "textures") { _basculerTextures(); return true; }
@@ -10421,6 +10926,7 @@
       if (fly && !dans && e.dessin) e.dessin.avaleJusqua = performance.now() + DESSIN_AVALER;
     }, true);
     if (e.stickZone) _brancherStick(on);
+    if (e.mc) _brancherMiniCarte(on);
     on(e.ov, "pointerout", function (ev) { if (ev.target.dataset && ev.target.dataset.v3d) relacher(); });
     on(e.curseurPortee, "input", function () { reglerPortee(e.curseurPortee.value); });
     on(e.curseurLampe, "input", function () { reglerLampe(e.curseurLampe.value); });
@@ -10983,7 +11489,8 @@
       regler: function (r) {
         if (!_e || _e.greffe !== gr || !r) return;
         const change = {};
-        ["traces", "itineraire", "guidage", "course", "avatar", "commandes", "plongee", "fiches"].forEach(function (k) {
+        ["traces", "itineraire", "guidage", "course", "avatar", "commandes", "plongee", "fiches",
+          "miniCarte"].forEach(function (k) {
           if ((r[k] === true || r[k] === false) && _permisGreffe(k) !== r[k]) { gr.reglage[k] = r[k]; change[k] = true; }
         });
         ["lampe", "vitesse"].forEach(function (k) {
@@ -11001,6 +11508,7 @@
         if (change.commandes) _montrerCommandes(_permisGreffe("commandes"));
         if (change.plongee) _permettrePlongee(_permisGreffe("plongee"));
         if (change.fiches && !_permisGreffe("fiches")) _fermerFiche();
+        if (change.miniCarte) _appliquerMiniCarte();
         _e.sale = true;
       },
       bloque: function (x0, y0, x1, y1) {
@@ -11101,6 +11609,7 @@
     if (gr.reglage.avatar === false && e.avatar) e.avatar.visible = e.vue === "plongee";
     if (gr.reglage.commandes === false) _montrerCommandes(true);
     if (gr.reglage.plongee === false) _permettrePlongee(true);
+    if (gr.reglage.miniCarte === false) _appliquerMiniCarte();
     _appliquerGreffeReglages();   // portée et lampe retenues rendues telles quelles
     e.sale = true;
     console.log("[Vue3D] greffe « " + gr.nom + " » retirée (" + raison + ")");
@@ -11240,6 +11749,7 @@
     if (e.publiee) { e.publiee = null; _prisePresence(null); }
     _quitterDessin();
     _fermerFiche();
+    _libererMiniCarte();
     document.documentElement.classList.remove("kta-vue3d-ouverte");
     document.documentElement.style.removeProperty("--kta-v3d-sous-haut");
     if (e.renderer) {
@@ -11624,6 +12134,7 @@
         repere: !!e.boutonReglages && e.boutonReglages.classList.contains("kta-v3d-modifie"),
         indic: _texteIco(e.indicMode), boussole: !!e.boussole && !e.boussole.hidden,
         guidage: _guidageMontre() },
+      miniCarte: _etatMiniCarte(),
       itineraire: Object.assign({ largeurVoulue: LARGEUR_ITI, lisereVoulu: ITI.lisere, couleur: _couleursIti().hexRuban,
         couleurLisere: _couleursIti().hexLisere, couleurChevrons: _couleursIti().hexLisere, chevrons: e.itiChevrons },
       e.nbMarqueurs, _mesureIti(!!(o && o.profilIti))),

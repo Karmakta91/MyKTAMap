@@ -12,7 +12,8 @@
 //   pour une sortie → distance à vol d'oiseau, affichée comme NON vérifiée, en fin de liste.
 // Vibration : trouvée → medium ; aucune → error.
 // Expose : window.SortieUrgence — declencher(), declencherDepuis(x, y, level, opts), isActive(), relancerDepuis(pos),
-//   demandeLaCarte() (declencher() demandera la position sur la carte : la vue 3D se ferme d'abord)
+//   demandeLaCarte() (declencher() demandera la position sur la carte : la vue 3D se ferme d'abord),
+//   estUneSortie(point) (règle des sorties, lue aussi par la mini-carte de la vue 3D)
 // Garde-fous : scripts/check-guidage.js, scripts/check-position-confirmee.js · Doc : docs/architecture/tracking.md
 
 (function() {
@@ -527,6 +528,8 @@
   SU.declencherDepuis = declencherDepuis;
   SU.demandeLaCarte   = demandeLaCarte;
   SU.isActive         = function() { return !!_modal; };
+  // La même règle pour qui marque les sorties ailleurs (mini-carte de la vue 3D) : jamais une liste de tags recopiée.
+  SU.estUneSortie     = _estUneSortie;
 
   window.SortieUrgence = SU;
 
