@@ -10467,7 +10467,17 @@
       try { e.cv.setPointerCapture(id); } catch (err) { /* pointeur synthétique ou déjà relâché */ }
       doigts.set(id, { x: p.x, y: p.y });
     };
+    // 🩸 Doigt fantôme : iOS perd parfois le lâcher d'un doigt (geste du système, appli repliée) ; resté compté, le
+    // doigt suivant passait pour le 2e d'un pincement (un seul doigt zoomait). Un toucher `isPrimary` est le premier
+    // d'une série, aucun autre doigt n'est posé : tout ce qui reste compté est périmé.
+    const purgerFantomes = function (ev) {
+      if (ev.pointerType !== "touch" || !ev.isPrimary || (!doigts.size && !surCommande.size)) return;
+      doigts.clear();
+      surCommande.clear();
+      reprendre();
+    };
     const appuiScene = function (ev) {
+      purgerFantomes(ev);
       if (ev.pointerType === "touch" && e.vue === "plongee" && surCommande.size) {
         surCommande.forEach(function (p, id) { if (id !== ev.pointerId) adopter(id, p); });
         surCommande.clear();
@@ -10494,6 +10504,7 @@
     // Capture sur la vue : passe avant le bouton, le joystick et l'écouteur des boutons (_agirBouton).
     on(e.ov, "pointerdown", function (ev) {
       if (ev.pointerType !== "touch" || e.vue !== "plongee" || !traversable(ev.target)) return;
+      purgerFantomes(ev);
       if (doigts.size) {
         ev.stopPropagation();
         ev.preventDefault();
