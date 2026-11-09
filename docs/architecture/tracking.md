@@ -2404,7 +2404,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   au niveau de la structure), montrée ou non (masquer ne retire que le dessin) ; au-dessus ou au-dessous sans
   recouvrement, jamais. Hauteur d'une structure = celle de son niveau. Rendu galerie : rien (les structures n'y bloquent
   pas). Tout le reste suit le niveau actif (suivi, panneaux, visée, passages, ▲▼).
-- **Zone jonction** (`KtaGalerie.penteDeZone`, décision produit ; mixte et structures, en galerie le tracé reste la
+- **Zone jonction** (zone de type `pente`, `KtaGalerie.penteDeZone`, décision produit ; mixte et structures, en galerie le tracé reste la
   galerie inclinée seule) : la galerie inclinée qui la traverse porte ses zones (`_pentesDuNiveau > p.zones`) ; toute
   place dans la zone est « sur la pente » (`_surPente > zone`), son sol et son plafond = projection sur le tracé
   (`_surPenteDe`, bout à bout). Dessin (`_zoneJonction`) : sol et plafond en triangles fins (`ENTRE.fin`, matériaux

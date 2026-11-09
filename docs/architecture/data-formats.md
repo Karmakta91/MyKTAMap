@@ -110,10 +110,16 @@ unique avec les passages : `poiJonction.js > ktaNiveauxObjet`. Gardé par la ses
 `getAllEmbeddedZones`), le Tableur, l'export anonymisé, KMZ (`mkm:niveaux`, une copie par autre niveau marquée
 `mkm:copie`) et GeoJSON (propriété `niveaux`, une entité). Retiré quand la zone devient une structure. Voir
 `multilevel-pathfinding.md` §26.12.
-`"jonction": true` (facultatif, seulement avec au moins deux niveaux) : **zone jonction de niveau**, chambre dont le
-sol suit en 3D la pente du tracé jonction qui la traverse (`galerieEmprise.js > penteDeZone`) ; absent = zone ordinaire
-(rétrocompatible : un lecteur qui l'ignore voit une zone sur plusieurs niveaux). Gardé par la session, l'export
-anonymisé, KMZ (`mkm:jonction` = 1, relu à l'import) et GeoJSON (propriété `jonction`).
+→ **Zone jonction** : `"type": "pente"` (« Jonction » du menu Zone, plan multi-niveau), `level` = niveau de départ,
+`niveaux` = [départ, arrivée] (deux niveaux différents, triés). Chambre dont le sol suit en 3D la pente du tracé jonction
+qui la traverse (`galerieEmprise.js > penteDeZone`). Couleur, libellé et visibilité de légende : ceux du tracé jonction
+(`styleResolver.js > _couleurDe`, `legendCustomization.js > TYPE_LIE`, rien d'écrit sous `zones.pente`). KMZ : style
+`#zone_pente`, dossier « 🪜 Jonctions » du niveau de départ, `mkm:niveaux`. GeoJSON : famille `jonction`, type `pente`.
+**Ancien champ toléré** : `"jonction": true` sur une zone d'au moins deux niveaux (session, plan-config ou calque,
+KMZ `mkm:jonction` = 1) est relu en `type: "pente"` à l'entrée (`zones.js > ktaZoneJonctionEnType`, `utils.js >
+ktaZoneLue`, `kmzImport.js`), niveaux et uid gardés, `updatedAt` **inchangé** (une relecture n'est pas une
+modification : elle ne doit pas gagner la fusion contre une modification plus récente faite ailleurs). L'ancien type
+de la zone (eau, remblais…) n'est pas gardé. Plus jamais écrit.
 
 → **POI danger** (tag `danger`, `js/poiDanger.js`) : `"dateConstat": "2026-10-03"` = jour **local** où le danger a été
 vu (`AAAA-MM-JJ`, un jour qui existe). Facultatif : pré-rempli au jour même quand un point **devient** danger

@@ -464,6 +464,8 @@
     { e: "🧹", s: "outils du Secours et de maintenance",
       a: /^(?:Découper|Parcours|Dédoublonner|Données orphelines|Split|Route|Deduplicate|Orphan|Dividir|Recorrido|Deduplicar|Datos huérfanos|Desduplicar)/ },
     { e: "✅", s: "états (gardé, OK, accepté), convertir, rentrée, résumé" },
+    { e: "🪜", s: "boutons de la zone jonction (menu Zone, bulle), affichés en emoji comme les autres types de zones",
+      a: /^\**(?:(?:Nouvelle )?[Zz]one jonction|(?:New )?[Jj]unction zone|(?:Nueva )?[Zz]ona de unión|Tracer la jonction|Draw the junction|Trazar la unión|Changer les niveaux|Change the levels|Cambiar los niveles)/ },
     { e: "🪜", s: "changer de niveau dans la 3D, accès, réglage d'affichage" },
     { e: "➕", s: "ajouter (étape, équipe, phase, PDF, entrée, plan), garder les deux, boutons de zoom" },
     { e: "🖼️", s: "section Image du lanceur, calques d'image, fond d'écran, galerie photo" },

@@ -224,7 +224,16 @@ window.LegendCustomization = (function() {
     return category + "." + key;
   }
 
+  // ⚠️ contrat (décision produit) : la zone jonction (zones `pente`) n'a ni couleur, ni libellé, ni visibilité à
+  // elle : ce sont ceux du tracé jonction (styleResolver.js > `_couleurDe`), lus et écrits sous sa clé. Changer
+  // l'un change l'autre ; listEntries ne la liste pas à part (une seule ligne à éditer).
+  const TYPE_LIE = { "zones.pente": ["traces", "jonction"] };
+  function _lie(category, key) {
+    return TYPE_LIE[_key(category, key)] || [category, key];
+  }
+
   function getDefaultLabel(category, key) {
+    [category, key] = _lie(category, key);
     // i18n au RUNTIME (« legend.label.<cat>.<key> »), repli sur DEFAULT_LABELS (FR), source de vérité des
     // clés built-in — non traduisible au load (I18n pas garanti chargé).
     const i18nKey = "legend.label." + category + "." + key;
@@ -235,6 +244,7 @@ window.LegendCustomization = (function() {
   }
 
   function getLabel(category, key) {
+    [category, key] = _lie(category, key);
     const k = _key(category, key);
     if (_sessionState.labels[k] != null && _sessionState.labels[k] !== "") return _sessionState.labels[k];
     if (_planState.labels[k]    != null && _planState.labels[k]    !== "") return _planState.labels[k];
@@ -242,6 +252,7 @@ window.LegendCustomization = (function() {
   }
 
   function isVisible(category, key) {
+    [category, key] = _lie(category, key);
     const k = _key(category, key);
     // Session prioritaire (true = caché, false = affiché explicite, undefined = niveau suivant).
     if (_sessionState.hidden[k] === true)  return false;
@@ -252,6 +263,7 @@ window.LegendCustomization = (function() {
   }
 
   function getSource(category, key) {
+    [category, key] = _lie(category, key);
     const k = _key(category, key);
     if (_sessionState.labels[k] != null && _sessionState.labels[k] !== "") return "session";
     if (_planState.labels[k]    != null && _planState.labels[k]    !== "") return "plan";
@@ -261,6 +273,7 @@ window.LegendCustomization = (function() {
   // Couleur d'un type BUILT-IN : session > plan > null (le style canonique s'applique).
   // ⚠️ Lecture PURE : appelée par `ktaResolveStyle`, lui-même appelé ici (`_renduDefaut`).
   function getColor(category, key) {
+    [category, key] = _lie(category, key);
     const k = _key(category, key);
     const s = _sessionState.colors[k];
     if (typeof s === "string" && s) return s;
@@ -270,6 +283,7 @@ window.LegendCustomization = (function() {
   }
 
   function setColor(category, key, color) {
+    [category, key] = _lie(category, key);
     const k = _key(category, key);
     if (!color) delete _sessionState.colors[k];
     else _sessionState.colors[k] = String(color);
@@ -315,6 +329,7 @@ window.LegendCustomization = (function() {
   function listEntries(category) {
     const out = [];
     Object.keys(DEFAULT_LABELS[category] || {}).forEach(function(key) {
+      if (TYPE_LIE[_key(category, key)]) return;   // éditée et montrée avec sa source (contrat ci-dessus)
       const r = _renduDefaut(category, key);
       out.push({
         category:     category,
@@ -387,6 +402,7 @@ window.LegendCustomization = (function() {
   }
 
   function setSessionLabel(category, key, label) {
+    [category, key] = _lie(category, key);
     const k = _key(category, key);
     if (label == null) {
       delete _sessionState.labels[k];
@@ -405,6 +421,7 @@ window.LegendCustomization = (function() {
   }
 
   function setSessionVisibility(category, key, visible) {
+    [category, key] = _lie(category, key);
     const k = _key(category, key);
     const wantHidden = (visible === false);
     const planHidden = _planState.hidden[k] === true;

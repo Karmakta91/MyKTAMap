@@ -736,6 +736,19 @@ disparaître de leur session avant d'avoir rouvert le plan.
 
 ---
 
+## 🪜 Zone jonction dans le Générateur
+
+Le type « Jonction » (zones `pente`) est dans les menus de types de zones du Générateur : liste « Polygones → type »
+de l'import KMZ (`createConf.js`, `kta-kmz-imp-zone-type`) et types des polygones (et des lignes, `zone:pente`) de
+l'import SIG (`_SIG_TYPES`, `_SIG_TYPES_SUP`). Le choisir fait paraître « Du niveau » / « Au niveau »
+(`_htmlNiveauxPente`, `_lireNiveauxPente`), comme la création dans l'app ; deux niveaux identiques sont refusés. Les
+zones `pente` importées sans deux niveaux les reçoivent (`zones.js > ktaPoserNiveauxPente`) et le plan devient
+multi-niveau. ⚠️ Les couleurs par niveau de l'import SIG ne la changent pas en type de niveau (`sigImport.js >
+_typeNiveau`) : elle garde sa clé, sa couleur et son libellé sont ceux du tracé jonction (légende du plan comprise,
+`legendCustomization.js > TYPE_LIE`). Écrite dans le calque du ZIP, relue à l'ouverture ; l'ancien `jonction: true`
+d'un calque ou d'un ZIP fusionné est converti à la lecture (`utils.js > ktaZoneLue`). Garde-fou : § F de
+`scripts/smoke/checkup-zones-niveaux.js`.
+
 ## 📏 L'échelle d'un plan importé se DÉDUIT du géoréférencement
 
 **🩸 Piège** : une échelle `tracking.scale` écrite en dur (50 px/m) par `sigImport.js` ou `gpxImport.js` peut être fausse d'un facteur 15 sur un plan importé réel (quelques px/m), et toutes ses distances avec.

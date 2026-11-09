@@ -155,6 +155,28 @@ t("retirer l'override rend la couleur d'origine",
   R("traces", "principal").color === "#00ff00" &&
   R("zones", "eau").fillColor === "#3aa9e8" && R("zones", "eau").color === "#0066aa");
 
+// ── Couleur liée : la zone jonction (`pente`) a la couleur du tracé jonction, override compris ──
+t("zone jonction = trait et fond du tracé jonction", R("zones", "pente").color === R("traces", "jonction").color &&
+  R("zones", "pente").fillColor === R("traces", "jonction").color && R("zones", "pente").dashArray === "10 6");
+_over["traces.jonction"] = "#22aa55";
+t("couleur choisie du tracé jonction → la zone jonction suit (trait et fond)",
+  R("zones", "pente").color === "#22aa55" && R("zones", "pente").fillColor === "#22aa55" &&
+  win.ktaSwatchColor("zones", "pente") === "#22aa55");
+_over["zones.pente"] = "#000000";
+t("aucun override propre à la zone jonction (il vit sous traces.jonction)", R("zones", "pente").fillColor === "#22aa55");
+delete _over["zones.pente"]; delete _over["traces.jonction"];
+t("aucun champ interne ne fuit (_couleurDe)", !("_couleurDe" in R("zones", "pente")));
+{
+  const LCsrc = fs.readFileSync("js/legendCustomization.js", "utf8");
+  const lie = ["getDefaultLabel(category, key)", "getLabel(category, key)", "isVisible(category, key)",
+    "getSource(category, key)", "getColor(category, key)", "setColor(category, key, color)",
+    "setSessionLabel(category, key, label)", "setSessionVisibility(category, key, visible)"];
+  t("legendCustomization : couleur, libellé et visibilité de la zone jonction lus ET écrits sous traces.jonction",
+    /TYPE_LIE = \{ "zones\.pente": \["traces", "jonction"\] \}/.test(LCsrc) &&
+    lie.every(function (s) { return LCsrc.indexOf("function " + s + " {\n    [category, key] = _lie(category, key);") >= 0 ||
+      LCsrc.indexOf("function " + s + " {\r\n    [category, key] = _lie(category, key);") >= 0; }));
+}
+
 win.LegendCustomization = { findCustomEntry() { return null; }, getColor() { throw new Error("boom"); } };
 let crashOver = false;
 try { R("traces", "principal"); } catch (e) { crashOver = true; }
@@ -177,7 +199,7 @@ win.LegendCustomization = {
 t("pastille apres override = la couleur choisie", /#ff0000/.test(H("traces", "principal")));
 delete win.LegendCustomization;
 
-t("ktaStyleBuiltins(zones) = 4 types", win.ktaStyleBuiltins("zones").length === 4);
+t("ktaStyleBuiltins(zones) = 5 types (dont la zone jonction `pente`)", win.ktaStyleBuiltins("zones").length === 5);
 t("ktaStyleBuiltins(bidon) = []", win.ktaStyleBuiltins("bidon").length === 0);
 
 // ── 🩸 Empilement : zones sous les structures, sur le même canvas (parcours réel : checkup-inaccessible-sous-structures) ──

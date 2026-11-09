@@ -818,7 +818,8 @@
       eau:          zones.filter(function(z) { return z.type === "eau";          }).length,
       remblais:     zones.filter(function(z) { return z.type === "remblais";     }).length,
       effondrement: zones.filter(function(z) { return z.type === "effondrement"; }).length,
-      inaccessible: zones.filter(function(z) { return z.type === "inaccessible"; }).length
+      inaccessible: zones.filter(function(z) { return z.type === "inaccessible"; }).length,
+      pente:        zones.filter(function(z) { return z.type === "pente";        }).length
     };
     // Sous-types de structures (fronts compris). Types RÉELLEMENT présents ; les personnalisés affichent le
     // libellé de la légende plutôt que leur nom brut (`cust-sig-…`).
@@ -852,7 +853,7 @@
     const structTypesCustom  = _sS.custom;
     const _sR = _compterEtCustom(roads, ["principal", "secondaire", "chemin"]);
     const roadTypesCustom    = _sR.custom;
-    const _sZ = _compterEtCustom(zones, ["eau", "remblais", "effondrement", "inaccessible"]);
+    const _sZ = _compterEtCustom(zones, ["eau", "remblais", "effondrement", "inaccessible", "pente"]);
     const zoneTypesCustom    = _sZ.custom;
 
     // Tracker : toujours actif (la position courante existe au minimum), tracé inclus si > 1 point.
@@ -1903,16 +1904,19 @@
     }
 
     // ── Zones (avant les tracés) ──
-    if (opts.ann.zones && window.getZones) {
+    // ⚠️ contrat (décision produit) : la zone jonction (`pente`) part avec les tracés jonction, pas avec les cases
+    // de zones : présente si « Tracés » est coché, comme le tracé jonction (qui n'a pas de case à lui).
+    if ((opts.ann.zones || opts.ann.roads) && window.getZones) {
       const zones = window.ktaExportEtatsFiltres(window.getZones());
-      const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+      const ordre = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
       // `inaccessible` en aplat rouge foncé (hachures SVG non portables au canvas) : repli de { flat: true }.
       function _styleZoneExp(type) { return _styleCanvas("zones", type, "remblais"); }
       const triees = [...zones]
         .filter(function(z) {
+          if (z.type === "pente") return !!opts.ann.roads;
           // 🩸 Un type personnalisé a sa case : elle doit compter. `!== false` : une clé absente reste permissive.
-          return filtreZ[z.type] !== false;
+          return !!opts.ann.zones && filtreZ[z.type] !== false;
         })
         .filter(_itemPasseLevels)
         .sort(function(a, b) {
@@ -2132,10 +2136,13 @@
       }
 
       let drawnRoads = embeddedRoads;
+      // Zone jonction d'un calque : gardée exactement quand le tracé jonction du calque l'est (même filtre).
+      let jonctionGardee = true;
       if (typeof _lireRoadTypesCochesCalque === "function") {
         const rs = _lireRoadTypesCochesCalque(layerCfg.id);
         if (!rs.tousActifs) {
           drawnRoads = embeddedRoads.filter(function(r) { return rs.types.has(r.type); });
+          jonctionGardee = rs.types.has("jonction");
         }
       }
 
@@ -2150,17 +2157,18 @@
         }
         if (!zs.tousActifs) {
           drawnZones = embeddedZones.filter(function(z) {
-            return !zs.connus.has(z.type) || zs.types.has(z.type);
+            return z.type === "pente" || !zs.connus.has(z.type) || zs.types.has(z.type);
           });
         }
       }
 
       // Zones embarquées en arrière-plan (eau → remblais → effondrement → inaccessible), filtre de niveaux.
-      const ordreZ = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+      const ordreZ = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       [...drawnZones].sort(function(a, b) {
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
       }).forEach(function(z) {
         if (!_itemPasseLevels(z)) return;
+        if (z.type === "pente" && !jonctionGardee) return;
         _poser(function () { _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais")); });
         _diagAdv.embZones++;
       });
@@ -2293,7 +2301,9 @@
             endpts.forEach(function(pt) {
               ctx.save();
               ctx.fillStyle   = "#ffffff";
-              ctx.strokeStyle = RS.jonction.color;
+              // 🩸 Couleur résolue (couleur choisie comprise) : l'ancienne table locale `RS` n'existait plus et
+              // faisait échouer tout export avancé d'une session portant un tracé jonction.
+              ctx.strokeStyle = (_styleCanvas("traces", "jonction") || {}).color || "#ff4ecb";
               ctx.lineWidth   = 3 * scale;
               ctx.beginPath();
               ctx.arc(sc(pt.x), sc(pt.y), 7 * scale, 0, Math.PI * 2);
@@ -2570,10 +2580,20 @@
     // Tracés. « Jonction interniveau » (magenta) seulement sur un plan multi-niveau.
     if (leg.contenu.traces) {
       const mlvl = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+      // La zone jonction suit la ligne du tracé jonction : même groupe, même libellé, même couleur, pastille de
+      // surface (legendCustomization.js > TYPE_LIE).
       const lignes = LC
         ? LC.listEntries("traces")
             .filter(function(e) { return e.visible && (mlvl || e.key !== "jonction"); })
-            .map(function(e) { return { label: e.label, lineColor: e.lineColor }; })
+            .reduce(function(acc, e) {
+              acc.push({ label: e.label, lineColor: e.lineColor });
+              if (e.key === "jonction") {
+                const z = (typeof window.ktaResolveStyle === "function")
+                  ? window.ktaResolveStyle("zones", "pente", { flat: true }) : null;
+                if (z) acc.push({ label: e.label, fillColor: z.fillColor, borderColor: z.color });
+              }
+              return acc;
+            }, [])
         : [
             { label: window.I18n.t("imgexport.legLabel.routePrincipale"), lineColor: "#00ff00" },
             { label: window.I18n.t("imgexport.legLabel.routeSecondaire"), lineColor: "#b000ff" },
@@ -2590,7 +2610,8 @@
       if (lignes.length > 0) entrees.push({ section: window.I18n.t("imgexport.legSection.traces"), lignes: lignes });
     }
 
-    // Zones, dont « Inaccessible » (aplat rouge foncé, pas de hachures en canvas).
+    // Zones, dont « Inaccessible » (aplat rouge foncé, pas de hachures en canvas). La zone jonction est avec les
+    // tracés, sous le tracé jonction.
     if (leg.contenu.zones) {
       const lignes = LC
         ? LC.listEntries("zones")

@@ -969,6 +969,7 @@ In the **⬛ Zones** group, closed surfaces to annotate the map:
 | 🟥 **Collapse** | red | none |
 | 🟦 **Water** | blue | none |
 | ⛔ **Inaccessible** | dark red / black hatching | **blocks** the way |
+| 🪜 **Junction zone** (multi-level map) | junction trace colour, light veil | none: the route follows the junction trace that crosses it (see 🏗️ Multi-level mode) |
 
 Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
 
@@ -1179,7 +1180,7 @@ An object ended up on the wrong level? In the popup of a path, a zone or a struc
 
 A zone that touches several levels (a collapse between −1 and −2): draw it on the active level, then in its popup tick the other levels under **Also on levels** and tap **🏗️ Apply levels**. It is the same zone, with the same outline, shown on each of its levels: editing or deleting it acts everywhere, and a ⛔ zone blocks the route on each of them. Untick everything to bring it back to its single level. **⏪** undoes it.
 
-A room whose floor rises from one level to the other (a sloping chamber): put the zone on both its levels, tick **Junction zone** in its popup (same **🏗️ Apply levels** button) and draw a junction trace across it, from one level to the other: the trace gives the direction of the slope. In the 3D view, the room's floor and ceiling follow the slope, and so do its pillars and the walls along the trace. With no junction trace across it, the popup says so and the floor stays flat. The route goes through the trace.
+A room whose floor rises from one level to the other (a sloping chamber): **⬛ Zones → 🪜 Junction zone**, choose **from level … to level …** (the same window as for a junction), then draw the room: it is placed on both levels, with nothing to tick. Then draw a junction across it, from one level to the other: it gives the direction of the slope, and the route goes through it. As long as none crosses it, the zone's popup says so and offers **🪜 Draw the junction**: the junction trace starts with the zone's levels, you only place its points. In the popup, **From level** / **To level** and **🪜 Change the levels** edit them (**⏪** undoes). In the 3D view, the room's floor and ceiling follow the slope, and so do its pillars and the walls along the junction; without a junction, the floor stays flat. The junction zone has the colour, name and legend row of the junction trace: changing one changes the other, the **Junction** path filter hides it too, and it goes into the same exports. A zone ticked “Junction zone” in an earlier version becomes a junction zone when the map opens, losing nothing.
 
 A junction has its own card, with its two levels (see below). No list on a layer object (🔄 Edit the layer first) or while a path is being drawn.
 

@@ -951,7 +951,8 @@
         eau:          window.I18n.t("ui.refonte.label_zone_eau"),
         remblais:     window.I18n.t("ui.refonte.label_zone_remblais"),
         effondrement: window.I18n.t("ui.refonte.label_zone_effondrement"),
-        inaccessible: window.I18n.t("ui.refonte.label_zone_inaccessible")
+        inaccessible: window.I18n.t("ui.refonte.label_zone_inaccessible"),
+        pente:        window.I18n.t("ui.refonte.label_zone_pente")
       };
       Object.keys(stats.zones.byType).forEach(function(t) {
         const z = stats.zones.byType[t];
@@ -1315,11 +1316,13 @@
         const fallbackTxt = t === "eau" ? window.I18n.t("ui.refonte.label_zone_eau") :
                             t === "remblais" ? window.I18n.t("ui.refonte.label_zone_remblais") :
                             t === "effondrement" ? window.I18n.t("ui.refonte.label_zone_effondrement") :
-                            t === "inaccessible" ? window.I18n.t("ui.refonte.label_zone_inaccessible") : t;
+                            t === "inaccessible" ? window.I18n.t("ui.refonte.label_zone_inaccessible") :
+                            t === "pente" ? window.I18n.t("ui.refonte.label_zone_pente") : t;
         const emojiSuffix = t === "eau" ? " 🟦" :
                             t === "remblais" ? " ⬛" :
                             t === "effondrement" ? " 🟥" :
-                            t === "inaccessible" ? " ⛔" : "";
+                            t === "inaccessible" ? " ⛔" :
+                            t === "pente" ? " 🪜" : "";
         const tLabel = _lcLabel("zones", t, fallbackTxt) + emojiSuffix;
         const nb = zByType[t];
         html += '<li>' +

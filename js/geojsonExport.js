@@ -145,6 +145,23 @@
         ajouter(ligne(r.points), p, r.uid);
       });
     }
+    // ⚠️ contrat (décision produit) : la zone jonction suit le tracé jonction (même case, même famille, même
+    // libellé et même couleur, rangée par son niveau de départ `level`) ; elle reste un polygone.
+    if (inc.jonctions && mlOn && Array.isArray(data.zones)) {
+      data.zones.forEach(function(z) {
+        if (!z || z.type !== "pente") return;
+        const de = _entierOu(z.level, 0);
+        if (!niveaux.has(de)) return;
+        if (!Array.isArray(z.points) || z.points.length < 3) return;
+        const nv = typeof window.ktaNiveauxObjet === "function" ? window.ktaNiveauxObjet(z) : [de];
+        const autre = nv.filter(function(n) { return n !== de; });
+        const p = proprietes("jonction", "pente", _libelle("zones", "pente"), z, KE.styleResolu("zones", "pente"));
+        p.niveau_depart = de;
+        p.niveau_arrivee = autre.length ? autre[autre.length - 1] : null;
+        p.niveaux = nv;
+        ajouter(polygone(z.points), p, z.uid);
+      });
+    }
 
     if (inc.zones && Array.isArray(data.zones)) {
       data.zones.forEach(function(z) {
@@ -152,11 +169,11 @@
         const nv = (Array.isArray(z && z.niveaux) && typeof window.ktaNiveauxObjet === "function")
           ? window.ktaNiveauxObjet(z) : null;
         const multi = !!(nv && nv.length >= 2);
+        if (z && z.type === "pente") return;   // avec les jonctions (plus haut)
         if (!z || !filtre(inc.zoneTypesSet, z.type) || (multi ? !nv.some(passe) : !passe(z.level))) return;
         if (!Array.isArray(z.points) || z.points.length < 3) return;
         const props = proprietes("zone", z.type, _libelle("zones", z.type), z, KE.styleResolu("zones", z.type));
         if (multi) props.niveaux = nv;
-        if (multi && z.jonction === true) props.jonction = true;   // zone jonction de niveau (sol en pente en 3D)
         ajouter(polygone(z.points), props, z.uid);
       });
     }

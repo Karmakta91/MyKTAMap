@@ -16,8 +16,8 @@
 //   obstacles des accès de surface, BLOQUE, dans les 3 rendus), ACCES / ACCES_DIM / PAROI (accès sans passage et
 //   formes de POI : formes et dimensions des volumes, formes posées sur la paroi), comblementPorte(x, y, ang, w,
 //   niveau, rendu) (pierre de taille d'un cavage), pente(r, niveau) / denivele(a, b) / demiPente(p, t) (galerie inclinée d'un tracé
-//   jonction vue d'un niveau, lue par vue3d.js), estZoneJonction(z) / penteDeZone(z) / zonesDePente(r) (zone jonction
-//   de niveau : sa pente est celle du tracé jonction qui la traverse).
+//   jonction vue d'un niveau, lue par vue3d.js), estZoneJonction(z) / penteDeZone(z) / zonesDePente(r) (zone jonction,
+//   type `pente` : sa pente est celle du tracé jonction qui la traverse).
 // Modèle MIXTE (vue 3D par défaut) : chaque côté du tube est jugé à part ; une structure du niveau (intégrée ou
 // perso) proche d'un côté ouvre CE côté (la paroi d'en face reste), un pan de retour relie la paroi gardée à la
 // structure ; proche des deux côtés, le tracé traverse une CHAMBRE, sans parois. Un tube qui débouche dans une
@@ -265,13 +265,15 @@
   }
 
   // ── Zone jonction de niveau (chambre dont le sol monte d'un niveau à l'autre) ──────────────────────────────
-  // ⚠️ contrat (décision produit) : une zone `jonction: true` posée sur au moins deux niveaux (`niveaux`, règle
-  // poiJonction.js > ktaNiveauxObjet) n'a pas de sens propre : le SENS et la pente sont ceux du tracé jonction qui la
-  // traverse (premier tracé dont les deux niveaux sont parmi ceux de la zone et qui entre dans son contour), sol
-  // projeté sur ce tracé bout à bout (même règle que la galerie inclinée : pente()). Sans tracé qui la traverse, la
-  // zone reste à plat et sa fiche le dit (utils.js > attacherNotePopup). Une seule règle, lue par la fiche et la 3D.
+  // ⚠️ contrat (décision produit) : une zone de type `pente` (« Jonction » du menu Zone) posée sur au moins deux
+  // niveaux (`niveaux`, règle poiJonction.js > ktaNiveauxObjet ; l'ancien marqueur `jonction: true` est converti à
+  // l'entrée : zones.js > ktaZoneJonctionEnType) n'a pas de sens propre : le SENS et la pente sont ceux du tracé
+  // jonction qui la traverse (premier tracé dont les deux niveaux sont parmi ceux de la zone et qui entre dans son
+  // contour), sol projeté sur ce tracé bout à bout (même règle que la galerie inclinée : pente()). Sans tracé qui la
+  // traverse, la zone reste à plat et sa fiche le dit, avec « Tracer la jonction » (utils.js > attacherNotePopup).
+  // Une seule règle, lue par la fiche et la 3D.
   function estZoneJonction(z) {
-    if (!z || z.jonction !== true || !Array.isArray(z.points) || z.points.length < 3) return false;
+    if (!z || z.type !== "pente" || !Array.isArray(z.points) || z.points.length < 3) return false;
     const nv = typeof window.ktaNiveauxObjet === "function" ? window.ktaNiveauxObjet(z) : [];
     return nv.length >= 2;
   }
@@ -347,7 +349,6 @@
         mel(o.points.length); mel(o.level); mel(ty.length);
         for (let k = 0; k < ty.length; k++) mel(ty.codePointAt(k));
         if (Array.isArray(o.niveaux)) o.niveaux.forEach(mel);   // zone sur plusieurs niveaux
-        if (o.jonction === true) mel(7);   // zone jonction (sol en pente : penteDeZone)
         const p = o.points[0], q = o.points[o.points.length - 1];
         if (p && q) { mel(p.x * 10); mel(p.y * 10); mel(q.x * 10); mel(q.y * 10); }
       }

@@ -11,6 +11,7 @@
 //   autres vecteurs : l'ordre d'empilement zones < structures tient). opts.flat = true → aplat de repli
 //   (export bitmap, KMZ, fond OSM, pastilles).
 // · ktaStyleBuiltins(cat) → clés built-in · ktaSwatchColor · ktaTypeSwatchHtml · ktaLabelAvecPastille
+// · Couleur liée : zones.pente (zone jonction) prend le trait de traces.jonction (`_couleurDe`).
 // · ktaAppliquerCouleurChoisie(cat, cle, style) : applique la couleur choisie par l'utilisateur
 //   (Légende → Modifier) à un style déjà construit — réservé aux deux palettes délibérées ci-dessous.
 // 🩸 Aucun consommateur ne recopie une couleur de type : une table locale finit par diverger (zone
@@ -44,6 +45,13 @@
         fillOpacity: 1, weight: 3, opacity: 1,
         _flatFill: "#7a0000", _flatFillOpacity: 0.65,
         _motif: { voile: "#cc0000", voileOpacite: 0.45, raie: "#1a1f2e", largeur: 4, pas: 14 }
+      },
+      // Zone jonction (salle dont le sol monte d'un niveau à l'autre). ⚠️ contrat (décision produit) : sa couleur
+      // EST celle du tracé jonction (`_couleurDe`, couleur choisie comprise) : changer l'une change l'autre. Les
+      // valeurs écrites ici ne servent qu'aux garde-fous qui lisent la table sans l'exécuter.
+      pente: {
+        color: "#ff4ecb", fillColor: "#ff4ecb", fillOpacity: 0.3, weight: 3, opacity: 1, dashArray: "10 6",
+        _couleurDe: ["traces", "jonction"]
       }
     },
     structures: {
@@ -204,6 +212,14 @@
     if (table && Object.prototype.hasOwnProperty.call(table, cle)) {
       const s = _copie(table[cle]);
       const plat = !!(opts && opts.flat);
+      if (s._couleurDe) {
+        // Couleur liée (zone jonction) : le trait résolu de la source, override de la source compris ; aucun
+        // override propre (legendCustomization.js > COULEUR_LIEE écrit sur la source).
+        const src = ktaResolveStyle(s._couleurDe[0], s._couleurDe[1], opts);
+        if (src && src.color) { s.color = src.color; s.fillColor = src.color; }
+        delete s._couleurDe;
+        return s;
+      }
       if (plat && s._flatFill) {
         s.fillColor   = s._flatFill;
         s.fillOpacity = (s._flatFillOpacity !== undefined) ? s._flatFillOpacity : s.fillOpacity;

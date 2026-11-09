@@ -3542,7 +3542,7 @@
   // 🩸 Entre deux niveaux montrés autres que le niveau actif (« Tous »), seules les parois sont coupées : le gabarit n'a
   // qu'un bit par côté pour les sols et plafonds des voisins. En mixte, le sol d'un seul tenant n'est troué qu'au-dessus
   // des pièces (tubes) de l'autre niveau, pas de ses chambres (sans contour).
-  // ⚠️ contrat (décision produit) : une zone jonction (KtaGalerie.penteDeZone : zone `jonction` sur deux niveaux,
+  // ⚠️ contrat (décision produit) : une zone jonction (KtaGalerie.penteDeZone : zone `pente` sur deux niveaux,
   // traversée par un tracé jonction) est une chambre dont le sol et le plafond suivent la pente de ce tracé, bout à bout
   // (_surPenteDe, la règle de la galerie inclinée), en mixte et en structures ; en galerie, le tracé reste la galerie
   // inclinée seule. Piliers, murs et fronts dessinés dans la zone, et murs et fronts le long d'un tracé jonction (à

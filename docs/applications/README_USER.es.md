@@ -969,6 +969,7 @@ En el grupo **⬛ Zonas**, superficies cerradas para anotar el mapa:
 | 🟥 **Derrumbe** | rojo | ninguno |
 | 🟦 **Agua** | azul | ninguno |
 | ⛔ **Inaccesible** | rayado rojo oscuro / negro | **bloquea** el paso |
+| 🪜 **Zona de unión** (mapa multinivel) | color del trazado de unión, velo ligero | ninguno: el itinerario pasa por el trazado de unión que la cruza (ver 🏗️ Modo multinivel) |
 
 Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego los escombros, los derrumbes, y lo inaccesible encima de las demás zonas; las estructuras (pilares, muros, frentes de cantera) quedan siempre por encima de las zonas.
 
@@ -1179,7 +1180,7 @@ Si el mapa contiene elementos en otros niveles, la lista se amplía sola. Los mi
 
 Una zona que toca varios niveles (un derrumbe entre el −1 y el −2): trázala en el nivel activo y luego, en su ventana, marca los demás niveles en **También en los niveles** y toca **🏗️ Aplicar los niveles**. Es la misma zona, con el mismo contorno, mostrada en cada uno de sus niveles: modificarla o eliminarla actúa en todas partes, y una zona ⛔ bloquea el itinerario en cada uno de ellos. Desmarca todo para devolverla a su único nivel. **⏪** lo deshace.
 
-Una sala cuyo suelo sube de un nivel al otro (una cámara en pendiente): pon la zona en sus dos niveles, marca **Zona de unión** en su ventana (mismo botón **🏗️ Aplicar los niveles**) y traza un trazado de unión que la cruce, de un nivel al otro: es él el que da el sentido de la pendiente. En la vista 3D, el suelo y el techo de la sala siguen la pendiente, y también sus pilares y los muros a lo largo del trazado. Sin trazado de unión que la cruce, la ventana lo indica y el suelo queda plano. El itinerario pasa por el trazado.
+Una sala cuyo suelo sube de un nivel al otro (una cámara en pendiente): **⬛ Zonas → 🪜 Zona de unión**, elige **del nivel … al nivel …** (la misma ventana que para una unión) y dibuja la sala: queda puesta en esos dos niveles, sin marcar nada. Luego traza una unión que la cruce, de un nivel al otro: da el sentido de la pendiente y el itinerario pasa por ella. Mientras ninguna la cruce, la ventana de la zona lo indica y propone **🪜 Trazar la unión**: el trazado de unión empieza con los niveles de la zona, solo queda colocar sus puntos. En la ventana, **Del nivel** / **Al nivel** y **🪜 Cambiar los niveles** los modifican (**⏪** deshace). En la vista 3D, el suelo y el techo de la sala siguen la pendiente, y también sus pilares y los muros a lo largo de la unión; sin unión, el suelo queda plano. La zona de unión tiene el color, el nombre y la línea de leyenda del trazado de unión: cambiar uno cambia el otro, el filtro **Unión** de los trazados también la oculta, y sale en las mismas exportaciones. Una zona marcada «Zona de unión» en una versión anterior se convierte en zona de unión al abrir el mapa, sin perder nada.
 
 Una unión tiene su propia ficha, con sus dos niveles (ver más abajo). No hay lista en un objeto de capa (🔄 Modificar la capa antes) ni durante un trazado en curso.
 

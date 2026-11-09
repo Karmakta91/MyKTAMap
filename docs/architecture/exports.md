@@ -11,6 +11,25 @@
 - **La légende voyage** : payload `devmap-data` → champ `customLegend` **restreint aux types référencés** (`sessionExporter.js > _legendePourPayload`) ; lu par `createConf.js > _absorberLegendeCalque` (conflit : **l'existant du plan gagne**, ré-import idempotent, garde-fou `check-legend-roundtrip.js`). ZIP session Avancé → `session_legend.json`. Option KMZ/GPX « Légende personnalisée » → **fusion plan + session** (`_legendeCompleteAExporter`, la session prime).
 - **Granularité fine de la conversion** : le bucket `autres` (types non built-in) est **émis** en `roads_<type>.json` etc. (`_emettreTypesRestants`) — avant, les objets custom étaient silencieusement supprimés de l'export.
 
+### Zone jonction : comme le tracé jonction dans chaque export (décision produit)
+
+La zone `pente` (`multilevel-pathfinding.md` §26.12) suit le tracé jonction : même couleur, même libellé, même groupe de
+légende, même présence ; seule la géométrie diffère (un polygone reste un polygone).
+
+| Export | Tracé jonction | Zone jonction |
+|---|---|---|
+| PNG rapide (`utils.js > telechargerPlan`) | dessiné, filtre de niveaux | dessinée (en dessous des autres zones), filtre de niveaux |
+| PNG avancé / PDF (`exporter.js`) | avec « Tracés », sans case à lui ; calque : gardé si son filtre de types de tracés garde la jonction | avec « Tracés » (pas avec « Zones »), sans case à elle ; calque : `jonctionGardee` |
+| Légende PNG / PDF, ≡ Légende | ligne de trait, plan multi-niveau | ligne de surface juste dessous, même libellé |
+| KMZ (`kmzExport.js`) | case « Jonctions » (multi-niveau), dossier « 🪜 Jonctions » du niveau de départ | même case, même dossier (niveau de départ = `level`), un seul exemplaire, `mkm:niveaux` ; nom « 🪜 Jonction » |
+| GeoJSON (`geojsonExport.js`) | `inc.jonctions`, famille `jonction` | même case, famille `jonction`, type `pente`, `niveau_depart` / `niveau_arrivee` / `niveaux` |
+| Session Avancé / Conversion (`sessionExporter.js`) | toujours gardé (Avancé) ; avec « Tracés » (Conversion) | toujours gardée (Avancé) ; avec « Tracés » (Conversion), fichier `zones_pente.json` en granularité fine |
+| Session complète, anonymisée | gardé | gardée (type `pente`, niveaux) |
+| Tableur | niveau en lecture seule | niveau en lecture seule (sa fiche change ses deux niveaux) |
+| GPX | piste | **absente** (différence voulue : GPX n'a pas de surface) |
+
+Garde-fou de parcours : `scripts/smoke/checkup-zones-niveaux.js` § E6 (KMZ, GeoJSON, PNG / PDF, légendes comparés).
+
 ---
 
 ### 4. Export de session filtré — période et auteur (`js/sessionExporter.js`)

@@ -10161,7 +10161,8 @@ async function sectionEntremeles(nav) {
 // Plan FICTIF en mémoire : niveaux 0 (sol −25) et −1 (sol −30), 2,5 m chacun. Galerie du 0 de x = −30 à 2, tracé
 // jonction 0 → −1 de x = 0 à 30 (dénivelé −5 m), galerie du −1 de x = 28 à 60. Zone jonction (0 et −1) x ∈ [4, 20],
 // z ∈ [−6, 6] ; pilier du 0 en (6, 3), pilier du −1 en (14, −3), mur en ligne le long du tracé (z = 1,6, x de 22 à
-// 28) ; seconde zone jonction sans tracé qui la traverse. Mixte et structures : sol et plafond de la zone sur la pente
+// 28) ; seconde zone jonction sans tracé qui la traverse, posée à l'ANCIENNE (`jonction: true` sur une zone d'eau) :
+// convertie en type `pente` à l'entrée, uid et updatedAt gardés. Mixte et structures : sol et plafond de la zone sur la pente
 // (projection sur le tracé, hors de l'axe compris), piliers des deux niveaux posés sur le sol en pente et dessinés par
 // le 0, mur qui suit la pente, galerie inclinée sans paroi dans la zone ; caméra qui descend dans la zone (hors de
 // l'axe aussi), pilier du −1 qui arrête, bord de la zone fermé là où son sol est bas, scène qui passe au −1 à
@@ -10180,8 +10181,9 @@ async function sectionZoneJonction(nav) {
         { uid: "rd_zj_m1", type: "principal", level: -1, points: [P(28, 0), P(60, 0)] }
       ]);
       window.setZones([
-        { uid: "zn_zj", type: "eau", level: 0, niveaux: [-1, 0], jonction: true, points: rect(4, -6, 20, 6) },
-        { uid: "zn_zj_seule", type: "eau", level: 0, niveaux: [-1, 0], jonction: true, points: rect(-20, 10, -10, 20) }
+        { uid: "zn_zj", type: "pente", level: 0, niveaux: [-1, 0], points: rect(4, -6, 20, 6) },
+        { uid: "zn_zj_seule", type: "eau", level: 0, niveaux: [-1, 0], jonction: true, updatedAt: 1234,
+          points: rect(-20, 10, -10, 20) }
       ]);
       window.setStructures([
         { uid: "st_zj_p0", type: "pilier-1", level: 0, points: carre(6, 3, 0.5) },
@@ -10199,6 +10201,15 @@ async function sectionZoneJonction(nav) {
     });
     verifier(regle.zone === "rd_zj_j" && regle.seule === null && JSON.stringify(regle.de) === '["zn_zj"]',
       nom + "règle : la zone prend la pente du tracé jonction qui la traverse ; sans tracé, aucune", regle);
+    const ancienne = await page.evaluate(function () {
+      const z = window.getZones()[1];
+      return { type: z.type, uid: z.uid, updatedAt: z.updatedAt, jonction: "jonction" in z, niveaux: z.niveaux,
+        est: window.KtaGalerie.estZoneJonction(z) };
+    });
+    verifier(ancienne.type === "pente" && ancienne.uid === "zn_zj_seule" && ancienne.updatedAt === 1234 &&
+      !ancienne.jonction && JSON.stringify(ancienne.niveaux) === "[-1,0]" && ancienne.est,
+      nom + "ancienne zone cochée « Zone jonction » : convertie en type Jonction à l'entrée, niveaux, uid et " +
+      "updatedAt gardés (pas de touch : la fusion garde une modification plus récente)", ancienne);
     for (const rendu of ["mixte", "structures"]) {
       const r = await page.evaluate(async function (q) {
         const K = window.KtaVue3D, P = window.__fxP;

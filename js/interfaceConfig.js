@@ -2106,11 +2106,15 @@ window.appliquerFiltreRuntime = function() {
   }
 };
 
-// Modale fromLevel/toLevel avant d'activer le tracé de jonction.
-function _ouvrirCreationJonction(btnSub) {
+// Modale « du niveau … au niveau … » avant d'activer le tracé de jonction, ou une zone jonction.
+// `opts` (facultatif) : { zone: true } → textes de la zone jonction ; { de, vers } → niveaux proposés ;
+// { onOk(de, vers) } → appelé à la place d'armer le tracé (zone jonction, Convertir vers « Jonction »).
+function _ouvrirCreationJonction(btnSub, opts) {
   if (document.getElementById("kta-jct-modal")) return;
+  opts = opts || {};
+  const cle = opts.zone ? "config.zoneJonction." : "config.jonction.";
 
-  const cur = APP_CONFIG.activeLevel || 0;
+  const cur = Number.isInteger(opts.de) ? opts.de : (APP_CONFIG.activeLevel || 0);
   const levels = Array.isArray(APP_CONFIG.availableLevels) && APP_CONFIG.availableLevels.length
     ? APP_CONFIG.availableLevels.slice()
     : [-2, -1, 0, 1, 2];
@@ -2124,7 +2128,8 @@ function _ouvrirCreationJonction(btnSub) {
   }
 
   // Défaut : du niveau actif vers celui juste au-dessus.
-  const defaultTo = (cur === 0 && levels.indexOf(1) >= 0) ? 1
+  const defaultTo = Number.isInteger(opts.vers) && opts.vers !== cur ? opts.vers
+                  : (cur === 0 && levels.indexOf(1) >= 0) ? 1
                   : (cur + 1 <= Math.max.apply(null, levels) ? cur + 1
                   : Math.max.apply(null, levels));
 
@@ -2134,7 +2139,7 @@ function _ouvrirCreationJonction(btnSub) {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-jct-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("config.jonction.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.I18n.t(cle + "titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-jct-close" type="button" aria-label="' + window.I18n.t("config.jonction.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
@@ -2145,12 +2150,13 @@ function _ouvrirCreationJonction(btnSub) {
           '<select class="kta-cfg-input" id="kta-jct-to">' + _optionsHtml(defaultTo) + '</select>' +
         '</div>' +
         '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:12px 0 0 0; line-height:1.5;">' +
-          window.I18n.t("config.jonction.hint") +
+          window.I18n.t(cle + "hint") +
         '</p>' +
       '</div>' +
       '<div class="kta-tracker-warn-actions">' +
         '<button class="kta-btn kta-btn-ghost"   id="kta-jct-cancel" type="button">' + window.I18n.t("config.jonction.cancel") + '</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-jct-ok"     type="button">' + window.I18n.t("config.jonction.okBtn") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-jct-ok"     type="button">' +
+          window.I18n.t(cle + "okBtn") + '</button>' +
       '</div>' +
     '</div>';
 
@@ -2175,11 +2181,23 @@ function _ouvrirCreationJonction(btnSub) {
       return;
     }
     _cleanup();
+    if (typeof opts.onOk === "function") { opts.onOk(fromLvl, toLvl); return; }
     // Meta lue par road.js > mousedown au premier clic.
     window._jonctionPendingMeta = { fromLevel: fromLvl, toLevel: toLvl };
     _activerJonctionMode(btnSub, fromLvl, toLvl);
   });
 }
+
+// « Tracer la jonction » de la fiche d'une zone jonction : le mode tracé jonction déjà connu, niveaux pré-remplis
+// (pas de modale : ils viennent de la zone). → false si refusé (plan en lecture seule, niveaux invalides).
+window.ktaTracerJonction = function(de, vers) {
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
+  if (!Number.isInteger(de) || !Number.isInteger(vers) || de === vers) return false;
+  _activerJonctionMode(null, de, vers);
+  // Après l'activation : elle éteint d'abord les autres modes, dont un tracé jonction qui remet ce champ à null.
+  window._jonctionPendingMeta = { fromLevel: de, toLevel: vers };
+  return window.modeRoad === "jonction";
+};
 
 // Mode tracé jonction (comme _activerRoute, type "jonction").
 function _activerJonctionMode(btnCible, fromLvl, toLvl) {
