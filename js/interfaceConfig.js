@@ -731,8 +731,15 @@ function _bindCfgTrackerStartHandlers() {
 // Titre de groupe : style dans css/style.css (.kta-cfg-group-titre), partagé avec la Configuration de l'accueil.
 const _CFG_LS_GROUPES  = "myktamap_cfg_groupes_v1";
 
+// Groupes partagés avec la Configuration de l'accueil : même icône SVG des deux côtés (index.html, data-kta-ico).
+// Les autres gardent l'emoji de leur libellé. 🩸 Clés sans le préfixe « config.group. » : check-wakelock.js lit
+// l'ordre des rubriques à la première occurrence de leur clé complète dans ce fichier.
+const _CFG_ICONES_GROUPE = { application: "layout-grid", affichage: "palette", optionnels: "puzzle", system: "monitor-cog" };
+
 function _cfgGroupeDebut(cle, portee, premier) {
   const t = window.I18n.t;
+  const nomIco = _CFG_ICONES_GROUPE[String(cle).replace(/^config\.group\./, "")];
+  const ico = nomIco ? window.ktaIcone(nomIco) : "";
   // « mixte » : la portée change d'une ligne à l'autre, chaque ligne la dit.
   const badge = portee === "plan"   ? '<span class="kta-cfg-scope kta-cfg-scope-plan">'   + t("config.scope.badgePlan")   + '</span>'
               : portee === "global" ? '<span class="kta-cfg-scope kta-cfg-scope-global">' + t("config.scope.badgeGlobal") + '</span>'
@@ -741,7 +748,7 @@ function _cfgGroupeDebut(cle, portee, premier) {
   return '<div class="kta-cfg-group" data-cfg-group="' + cle + '">' +
          '<div class="kta-cfg-group-titre' + (premier ? " kta-cfg-group-titre-premier" : "") +
            '" role="button" tabindex="0" aria-expanded="true">' +
-           '<span class="kta-cfg-group-libelle">' + t(cle) + '</span>' + badge +
+           ico + '<span class="kta-cfg-group-libelle">' + t(cle) + '</span>' + badge +
            '<span class="kta-cfg-group-chevron" aria-hidden="true">▾</span>' +
          '</div>' +
          '<div class="kta-cfg-group-corps">';
@@ -1370,21 +1377,21 @@ function afficherConfig() {
             <label class="kta-perf-ultra-row" id="cfg_replay_row">
               <input type="checkbox" id="cfg_replay" ${c.replayEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">${window.I18n.t("config.replay.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+                <span class="kta-perf-ultra-label">${window.ktaIcone("clapperboard")} ${window.I18n.t("config.replay.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
               </span>
             </label>
 
             <label class="kta-perf-ultra-row" id="cfg_heatmap_row" style="margin-top:8px;">
               <input type="checkbox" id="cfg_heatmap" ${c.heatmapEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">${window.I18n.t("config.heatmap.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+                <span class="kta-perf-ultra-label">${window.ktaIcone("flame")} ${window.I18n.t("config.heatmap.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
               </span>
             </label>
 
             <label class="kta-perf-ultra-row" id="cfg_batterie_row" style="margin-top:8px;">
               <input type="checkbox" id="cfg_batterie" ${c.batterieEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">${window.I18n.t("config.batterie.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+                <span class="kta-perf-ultra-label">${window.ktaIcone("battery")} ${window.I18n.t("config.batterie.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
                 <span class="kta-perf-ultra-hint" id="cfg_batterie_hint"></span>
               </span>
             </label>
@@ -1392,7 +1399,7 @@ function afficherConfig() {
             <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px;">
               <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled === true ? "checked" : ""}>
               <span class="kta-perf-ultra-text">
-                <span class="kta-perf-ultra-label">${window.I18n.t("config.display.vibration.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+                <span class="kta-perf-ultra-label">${window.ktaIcone("vibrate")} ${window.I18n.t("config.display.vibration.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
                 <span class="kta-perf-ultra-hint" id="cfg_vibration_hint"></span>
               </span>
             </label>

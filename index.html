@@ -348,7 +348,7 @@
 
           <div id="myPlansBox" style="display:none; margin-bottom:14px;">
             <div class="loader-section-head">
-              <span data-i18n="home.plans.title">📚 Mes plans</span>
+              <span class="loader-section-titre"><span data-kta-ico="library"></span> <span data-i18n="home.plans.title">Mes plans</span></span>
               <!-- Sélecteur Tout / Dossiers toujours visible (sinon impossible de créer le premier dossier) ;
                    « Nouveau dossier » et « Sélectionner » seulement en mode Dossiers. -->
               <div class="kta-plans-head-tools" id="loaderPlansHeadTools">
@@ -367,7 +367,7 @@
                 <input type="checkbox" id="loaderShowServerPlans" checked>
                 <!-- Un seul bloc texte : la rangée est en flex, une 3e colonne coupait « hors base »
                      sur deux lignes à 390 px. -->
-                <span><span data-i18n="home.plans.showServer">🌐 Afficher les plans du site</span>
+                <span><span data-kta-ico="cloud"></span> <span data-i18n="home.plans.showServer">Afficher les plans du site</span>
                 <span class="kta-hors-base" hidden data-i18n="home.plans.horsBase">(hors base de données)</span></span>
               </label>
             </div>
@@ -389,7 +389,7 @@
         <div class="loader-col loader-col-osm">
           <div id="ktaOsmHomeBox" class="kta-osm-home-box">
             <div class="loader-section-head">
-              <span data-i18n="home.osm.title">🌍 Vue OSM</span>
+              <span class="loader-section-titre"><span data-kta-ico="map"></span> <span data-i18n="home.osm.title">Vue OSM</span></span>
             </div>
             <div id="ktaOsmHomeContent" class="kta-osm-home-content">
               <!-- Rempli dynamiquement par js/osmHomePreview.js -->
@@ -401,12 +401,12 @@
         <div class="loader-col loader-col-actions">
 
           <div class="loader-section-head">
-            <span data-i18n="home.add.title">📦 Ajouter un plan</span>
+            <span class="loader-section-titre"><span data-kta-ico="package-plus"></span> <span data-i18n="home.add.title">Ajouter un plan</span></span>
           </div>
 
           <div class="loader-panel active" id="panelZip">
         <div class="zip-drop-zone" id="zipDropZone">
-          <span class="zip-icon">📦</span>
+          <span class="zip-icon" data-kta-ico="package-plus"></span>
           <span data-i18n="home.add.drop">Glisse un fichier ici</span><br>
           <span class="kta-tx-muted" style="font-size:12px;" data-i18n="home.add.dropSub">ou clique pour sélectionner</span>
           <span class="zip-drop-sig" data-i18n="home.add.dropSig">.zip · .kmz · .gpx · .geojson · .kml · .json · .tif</span>
@@ -424,18 +424,18 @@
 
           <!-- « Générer un plan » est ici, accessible directement : c'est la voie d'entrée pour créer un plan. -->
           <div class="loader-section-head loader-tools-head">
-            <span data-i18n="home.tools.title">🧰 Outils</span>
+            <span class="loader-section-titre"><span data-kta-ico="pocket-knife"></span> <span data-i18n="home.tools.title">Outils</span></span>
           </div>
           <div class="loader-secondary-actions">
-            <button class="loader-btn-secondary" type="button" id="loaderJournalBtn" data-i18n="home.add.journal">📔 Mon carnet</button>
-            <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn" data-i18n="home.add.editData">📊 Éditeur de données</button>
-            <button class="loader-btn-secondary" type="button" id="loaderLinksMgrBtn" data-i18n="home.add.linksMgr">🌀 Mes liaisons</button>
+            <button class="loader-btn-secondary" type="button" id="loaderJournalBtn"><span data-kta-ico="notebook-pen"></span> <span data-i18n="home.add.journal">Mon carnet</span></button>
+            <button class="loader-btn-secondary" type="button" id="loaderTableEditorBtn"><span data-kta-ico="table"></span> <span data-i18n="home.add.editData">Éditeur de données</span></button>
+            <button class="loader-btn-secondary" type="button" id="loaderLinksMgrBtn"><span data-kta-ico="waypoints"></span> <span data-i18n="home.add.linksMgr">Mes liaisons</span></button>
             <!-- Galerie de toutes les photos, rattachées ou non (js/photosGalerie.js) -->
-            <button class="loader-btn-secondary" type="button" id="loaderPhotosBtn" data-i18n="home.add.photos">📸 Mes photos</button>
-            <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn" data-i18n="home.add.generate">🏗️ Générer un plan</button>
+            <button class="loader-btn-secondary" type="button" id="loaderPhotosBtn"><span data-kta-ico="camera"></span> <span data-i18n="home.add.photos">Mes photos</span></button>
+            <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn"><span data-kta-ico="drafting-compass"></span> <span data-i18n="home.add.generate">Générer un plan</span></button>
             <!-- Import multiple : parmi les outils occasionnels, pas dans « Ajouter un plan » entre deux gestes
                  quotidiens (décision produit). -->
-            <button class="loader-btn-secondary" type="button" id="loaderImportMasseBtn" data-i18n="impmasse.btn.ouvrir">📦 Importer plusieurs plans</button>
+            <button class="loader-btn-secondary" type="button" id="loaderImportMasseBtn"><span data-kta-ico="folder-input"></span> <span data-i18n="impmasse.btn.ouvrir">Importer plusieurs plans</span></button>
           </div>
 
         </div><!-- /.loader-col-actions -->
@@ -502,7 +502,7 @@
   <div id="loaderConfigModal" class="kta-readme-modal-overlay" style="display:none;">
     <div class="kta-readme-modal-boite kta-loader-config-boite">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre" data-i18n="home.loader.configTitle">⚙️ Configuration</span>
+        <span class="kta-readme-modal-titre"><span data-kta-ico="settings"></span> <span data-i18n="home.loader.configTitle">Configuration</span></span>
         <button class="kta-panneau-close" id="loaderConfigClose">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-loader-config-corps">
@@ -511,7 +511,7 @@
              clés config.group.* partagées avec elle. -->
 
         <div class="kta-cfg-group" data-cfg-group="config.group.application">
-        <div class="kta-cfg-group-titre kta-cfg-group-titre-premier"><span class="kta-cfg-group-libelle" data-i18n="config.group.application">🌍 Application</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre kta-cfg-group-titre-premier"><span data-kta-ico="layout-grid"></span><span class="kta-cfg-group-libelle" data-i18n="config.group.application">Application</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
         <!-- Langue globale (myktamap_app_lang) : options peuplées par main.js > _initHomeLangSelect() depuis
@@ -527,7 +527,7 @@
         </div></div><!-- /kta-cfg-group -->
 
         <div class="kta-cfg-group" data-cfg-group="config.group.affichage">
-        <div class="kta-cfg-group-titre"><span class="kta-cfg-group-libelle" data-i18n="config.group.affichage">🎨 Affichage</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre"><span data-kta-ico="palette"></span><span class="kta-cfg-group-libelle" data-i18n="config.group.affichage">Affichage</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
         <!-- Réglages GLOBAUX, valables pour tous les plans : ils vivent ici, pas dans la config du mode plan,
@@ -536,7 +536,7 @@
           <label class="kta-perf-ultra-row">
             <input type="checkbox" id="loaderScaledMarkers">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.display.scaledMarkers.label">📐 Adapter la taille des icônes au zoom</span>
+              <span class="kta-perf-ultra-label"><span data-kta-ico="scaling"></span> <span data-i18n="config.display.scaledMarkers.label">Adapter la taille des icônes au zoom</span></span>
             </span>
           </label>
           <!-- Aide contextuelle : activée par défaut (une aide ne sert que si elle se voit) ;
@@ -544,14 +544,14 @@
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderAideCtxCb">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.aidectx.label">❓ Bouton d'aide dans les fenêtres</span>
+              <span class="kta-perf-ultra-label"><span data-kta-ico="circle-help"></span> <span data-i18n="config.aidectx.label">Bouton d'aide dans les fenêtres</span></span>
             </span>
           </label>
           <!-- Niveau des notifications, un seul goulot (OOMGuard.showToast). Les alertes serveur et les fenêtres
                de décision ne sont jamais coupées. -->
           <div class="kta-perf-ultra-row kta-notifs-row" style="margin-top:10px;">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" id="loaderNotifsLabel" data-i18n="config.notifs.label">🔔 Notifications</span>
+              <span class="kta-perf-ultra-label" id="loaderNotifsLabel"><span data-kta-ico="bell"></span> <span data-i18n="config.notifs.label">Notifications</span></span>
             </span>
             <select class="kta-cfg-input kta-notifs-select" id="loaderNotifsSel" aria-labelledby="loaderNotifsLabel">
               <option value="all" data-i18n="config.notifs.all"></option>
@@ -562,19 +562,19 @@
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderPanneauxAncres">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.panneaux.label">🪟 Ancrer les panneaux d'outils au bouton</span>
+              <span class="kta-perf-ultra-label"><span data-kta-ico="panels-top-left"></span> <span data-i18n="config.panneaux.label">Ancrer les panneaux d'outils au bouton</span></span>
             </span>
           </label>
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderZoomBoutons">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.zoomBoutons.label">➕ Boutons de zoom +/− sur les cartes</span>
+              <span class="kta-perf-ultra-label"><span data-kta-ico="zoom-in"></span> <span data-i18n="config.zoomBoutons.label">Boutons de zoom +/− sur les cartes</span></span>
             </span>
           </label>
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderSnapDraw">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.snapdraw.label">🧲 Magnétisme au dessin</span>
+              <span class="kta-perf-ultra-label"><span data-kta-ico="magnet"></span> <span data-i18n="config.snapdraw.label">Magnétisme au dessin</span></span>
             </span>
           </label>
           <div class="kta-cfg-row" style="margin-top:8px;">
@@ -588,13 +588,13 @@
           <!-- Thème clair : même ThemeManager que le réglage du mode carte → un seul réglage persisté. -->
           <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(244, 197, 66, 0.08); border-color: rgba(244, 197, 66, 0.30);">
             <input type="checkbox" id="loaderThemeLightCb">
-            <span data-i18n-html="home.cfg.themeLight"><strong>☀️ Thème clair</strong></span>
+            <span><span data-kta-ico="sun-moon"></span> <span data-i18n-html="home.cfg.themeLight"><strong>Thème clair</strong></span></span>
           </label>
           <!-- Wake Lock : visible seulement si WakeLock.isSupported() (pas Firefox) ; même module que le réglage
                du mode carte. -->
           <label class="kta-net-paranoia-toggle" id="loaderWakeLockRow" style="margin-top:10px; background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22); display:none;">
             <input type="checkbox" id="loaderWakeLockCb">
-            <span data-i18n-html="home.cfg.wakeLock"><strong>📱 Garder l'écran allumé</strong></span>
+            <span><span data-kta-ico="smartphone"></span> <span data-i18n-html="home.cfg.wakeLock"><strong>Garder l'écran allumé</strong></span></span>
           </label>
         </div>
 
@@ -604,32 +604,32 @@
              modale du mode plan (APP_CONFIG + app_user_prefs). Une option dont le capteur manque n'est PAS masquée :
              elle s'affiche désactivée avec sa raison (window.ktaCapteurRefuse). -->
         <div class="kta-cfg-group" data-cfg-group="config.group.optionnels">
-        <div class="kta-cfg-group-titre"><span class="kta-cfg-group-libelle" data-i18n="config.group.optionnels">🧩 Fonctionnalités optionnelles</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre"><span data-kta-ico="puzzle"></span><span class="kta-cfg-group-libelle" data-i18n="config.group.optionnels">Fonctionnalités optionnelles</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
         <div class="kta-aide-section">
           <label class="kta-net-paranoia-toggle" id="loaderReplayRow">
             <input type="checkbox" id="loaderReplayCb">
-            <span><strong data-i18n="config.replay.label">🎬 Replay du tracker</strong></span>
+            <span><span data-kta-ico="clapperboard"></span> <strong data-i18n="config.replay.label">Replay du tracker</strong></span>
           </label>
           <label class="kta-net-paranoia-toggle" id="loaderHeatmapRow" style="margin-top:10px;">
             <input type="checkbox" id="loaderHeatmapCb">
-            <span><strong data-i18n="config.heatmap.label">🔥 Heatmap</strong></span>
+            <span><span data-kta-ico="flame"></span> <strong data-i18n="config.heatmap.label">Heatmap</strong></span>
           </label>
           <label class="kta-net-paranoia-toggle" id="loaderBatterieRow" style="margin-top:10px;">
             <input type="checkbox" id="loaderBatterieCb">
-            <span><strong data-i18n="config.batterie.label">🔋 Niveau de batterie</strong>
+            <span><span data-kta-ico="battery"></span> <strong data-i18n="config.batterie.label">Niveau de batterie</strong>
               <span id="loaderBatterieHint" class="kta-cfg-raison"></span></span>
           </label>
           <label class="kta-net-paranoia-toggle" id="loaderVibrationRow" style="margin-top:10px;">
             <input type="checkbox" id="loaderVibrationCb">
-            <span><strong data-i18n="config.display.vibration.label">📳 Vibration haptique</strong>
+            <span><span data-kta-ico="vibrate"></span> <strong data-i18n="config.display.vibration.label">Vibration haptique</strong>
               <span id="loaderVibrationHint" class="kta-cfg-raison"></span></span>
           </label>
         </div>
         <!-- Mode incognito : grisé sur une installation reliée (IncognitoMode.indisponible). -->
         <div class="kta-aide-section" id="loaderIncognitoSection">
           <button class="kta-cfg-incognito-btn" type="button" id="loaderIncognitoBtn">
-            <span style="font-size:18px;" id="loaderIncognitoIcon">🕵️</span>
+            <span style="font-size:18px;" id="loaderIncognitoIcon" data-kta-ico="venetian-mask"></span>
             <span><strong id="loaderIncognitoLabel">Démarrer en mode incognito</strong></span>
           </button>
           <div id="loaderIncognitoHint" class="kta-cfg-raison" style="margin-top:8px; padding:0 4px;">
@@ -646,7 +646,7 @@
         <!-- Add-ons livrés VISIBLES (manifeste sans `secret`) : un interrupteur d'appareil chacun, peint à l'ouverture
              par homeConfig.js > _peindreAddons ; rubrique masquée tant qu'il n'y en a aucun. -->
         <div class="kta-cfg-group" data-cfg-group="config.group.addons" id="loaderAddonsGroup" style="display:none;">
-        <div class="kta-cfg-group-titre"><span class="kta-cfg-group-libelle" data-i18n="config.group.addons">🎮 Add-ons</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre"><span data-kta-ico="gamepad-2"></span><span class="kta-cfg-group-libelle" data-i18n="config.group.addons">Add-ons</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
         <div class="kta-aide-section">
           <p class="kta-cfg-raison" data-i18n="config.addons.aide"></p>
@@ -655,7 +655,7 @@
         </div></div><!-- /kta-cfg-group -->
 
         <div class="kta-cfg-group" data-cfg-group="config.group.privacy">
-        <div class="kta-cfg-group-titre"><span class="kta-cfg-group-libelle" data-i18n="config.group.privacy">🔒 Confidentialité &amp; sécurité</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre"><span data-kta-ico="shield"></span><span class="kta-cfg-group-libelle" data-i18n="config.group.privacy">Confidentialité &amp; sécurité</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
         <!-- Carnet : réglage GLOBAL (myktamap_journal_enabled), ouvert depuis l'accueil — le régler depuis un plan
@@ -664,7 +664,7 @@
           <label class="kta-perf-ultra-row" id="loaderJournalRow">
             <input type="checkbox" id="loaderJournalCb">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.journal.label">📔 Tenir un carnet de mes sorties</span>
+              <span class="kta-perf-ultra-label"><span data-kta-ico="notebook-pen"></span> <span data-i18n="config.journal.label">Tenir un carnet de mes sorties</span></span>
             </span>
           </label>
           <!-- Mémoriser le plan : activé par défaut. Source de vérité : window.ktaMemoriserPlanActif() (homeLoader.js),
@@ -672,7 +672,7 @@
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderMemoriserCb">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label" data-i18n="config.memoriser.label">💾 Mémoriser le plan dans l'app au premier chargement</span>
+              <span class="kta-perf-ultra-label"><span data-kta-ico="hard-drive"></span> <span data-i18n="config.memoriser.label">Mémoriser le plan dans l'app au premier chargement</span></span>
             </span>
           </label>
         </div>
@@ -683,7 +683,7 @@
              WebAuthn, temporisation après 5 échecs, jamais de verrou définitif) ;
              actions peintes par js/homeConfig.js. -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.cfg.pinTitle">🔐 Code d'accès local</div>
+          <div class="kta-perf-titre"><span data-kta-ico="key-round"></span> <span data-i18n="home.cfg.pinTitle">Code d'accès local</span></div>
           <p class="kta-loader-perf-hint" style="margin-bottom:10px;" data-i18n-html="home.cfg.pinHint">⚠️ <strong>Aucune récupération en cas d'oubli</strong> (il faut tout effacer). Barrière d'usage, pas un chiffrement.</p>
           <div id="loaderPinStatus" class="kta-loader-pin-status">
             <span class="kta-loader-pin-status-icon" id="loaderPinStatusIcon">○</span>
@@ -697,18 +697,14 @@
         <!-- 🔒 Confidentialité : journal réseau, explication réseau, opt-in Vue OSM (seul tiers contacté).
              Doc complète : docs/NETWORK_AUDIT.md. -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.privacy.title">🔒 Confidentialité &amp; Audit</div>
-          <button class="loader-btn-secondary" type="button" id="loaderNetLogBtn" style="width:100%; margin-bottom:6px;" data-i18n="home.privacy.netLogBtn">
-            📋 Voir le journal réseau
-          </button>
-          <button class="loader-btn-secondary" type="button" id="loaderNetDocBtn" style="width:100%; margin-bottom:10px;" data-i18n="home.privacy.netDocBtn">
-            📖 Que fait l'app sur le réseau ?
-          </button>
+          <div class="kta-perf-titre"><span data-kta-ico="shield"></span> <span data-i18n="home.privacy.title">Confidentialité &amp; Audit</span></div>
+          <button class="loader-btn-secondary" type="button" id="loaderNetLogBtn" style="width:100%; margin-bottom:6px;" ><span data-kta-ico="scroll-text"></span> <span data-i18n="home.privacy.netLogBtn">Voir le journal réseau</span></button>
+          <button class="loader-btn-secondary" type="button" id="loaderNetDocBtn" style="width:100%; margin-bottom:10px;" ><span data-kta-ico="book-open"></span> <span data-i18n="home.privacy.netDocBtn">Que fait l'app sur le réseau ?</span></button>
           <!-- Vue OSM (tile.openstreetmap.org) : cochée par défaut ; décochée, ni le widget de l'accueil ni la modale
                ne chargent de tuile (js/osmView.js > isOptedIn). -->
           <label class="kta-net-paranoia-toggle">
             <input type="checkbox" id="loaderOsmOptInCb">
-            <span data-i18n-html="home.privacy.osmToggle"><strong>🗺️ Vue OSM (OpenStreetMap)</strong> — contacte <code>tile.openstreetmap.org</code> quand l'accueil ou la Vue OSM affiche la carte. Activée par défaut.</span>
+            <span data-kta-ico="map"></span><span data-i18n-html="home.privacy.osmToggle"><strong>Vue OSM (OpenStreetMap)</strong> — contacte <code>tile.openstreetmap.org</code> quand l'accueil ou la Vue OSM affiche la carte. Activée par défaut.</span>
           </label>
         </div>
 
@@ -716,33 +712,31 @@
              le filtre « Afficher les plans du site » est masqué, les plans `type === "server"` sortent des stats
              du profil. Effet au rechargement. -->
         <div class="kta-aide-section" id="loaderSitePlansSection">
-          <div class="kta-perf-titre"><span data-i18n="home.cfg.serverPlansTitle">📚 Plans du site</span>
+          <div class="kta-perf-titre"><span data-kta-ico="cloud"></span> <span data-i18n="home.cfg.serverPlansTitle">Plans du site</span>
             <span class="kta-hors-base" hidden data-i18n="home.plans.horsBase">(hors base de données)</span></div>
           <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(180, 140, 255, 0.06); border-color: rgba(180, 140, 255, 0.30);">
             <input type="checkbox" id="loaderSkipServerPlansCb">
-            <span data-i18n-html="home.cfg.skipServerPlans"><strong>🚫 Ne pas charger les plans du site au démarrage</strong> <em>(effet au rechargement)</em></span>
+            <span data-kta-ico="ban"></span><span data-i18n-html="home.cfg.skipServerPlans"><strong>Ne pas charger les plans du site au démarrage</strong> <em>(effet au rechargement)</em></span>
           </label>
         </div>
 
         </div></div><!-- /kta-cfg-group -->
 
         <div class="kta-cfg-group" data-cfg-group="config.group.system">
-        <div class="kta-cfg-group-titre"><span class="kta-cfg-group-libelle" data-i18n="config.group.system">🛠️ Système &amp; maintenance</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
+        <div class="kta-cfg-group-titre"><span data-kta-ico="monitor-cog"></span><span class="kta-cfg-group-libelle" data-i18n="config.group.system">Système &amp; maintenance</span><span class="kta-cfg-group-chevron" aria-hidden="true">▾</span></div>
         <div class="kta-cfg-group-corps">
 
         <!-- Mode Développeur, protégé par mot de passe (hash SHA-256) : logs détaillés et leur affichage, ConfAdmin,
              inspecteur Service Worker. Peuplé par js/devMode.js > initSection(). -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="devmode.title">🛠️ Mode Développeur</div>
+          <div class="kta-perf-titre"><span data-kta-ico="code-xml"></span> <span data-i18n="devmode.title">Mode Développeur</span></div>
           <div id="kta-devmode-wrap"></div>
         </div>
 
         <!-- Inspecteur mémoire : localStorage, IndexedDB, cache PWA, quota, runtime ; rapport copiable. -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre" data-i18n="home.inspector.title">📊 Inspecteur</div>
-          <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;" data-i18n="home.inspector.memBtn">
-            📊 Voir l'état mémoire
-          </button>
+          <div class="kta-perf-titre"><span data-kta-ico="gauge"></span> <span data-i18n="home.inspector.title">Inspecteur</span></div>
+          <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;" ><span data-kta-ico="gauge"></span> <span data-i18n="home.inspector.memBtn">Voir l'état mémoire</span></button>
           <!-- L'inspecteur Service Worker (#loaderSwInspectorBtn) vit dans le Mode Développeur (js/devMode.js).
                L'état du cache hors-ligne est montré à tous par la pastille du pied de page. -->
         </div>
@@ -751,10 +745,8 @@
              range du plus doux au plus radical : Forcer la mise à jour, Kill SW, Tout réinitialiser — boutons
              #loaderForceUpdateBtn, #loaderKillSwBtn, #loaderResetBtn. -->
         <div class="kta-aide-section">
-          <button class="loader-btn-secondary" type="button" id="loaderDepannageBtn" style="width:100%;" data-i18n="home.cfg.depannage.btn"
-                  data-i18n-title="home.cfg.depannage.hint" title="L'app ne se met pas à jour, reste bloquée ou plante">
-            🔧 Dépannage
-          </button>
+          <button class="loader-btn-secondary" type="button" id="loaderDepannageBtn" style="width:100%;"
+                  data-i18n-title="home.cfg.depannage.hint" title="L'app ne se met pas à jour, reste bloquée ou plante"><span data-kta-ico="wrench"></span> <span data-i18n="home.cfg.depannage.btn">Dépannage</span></button>
         </div>
 
         </div></div><!-- /kta-cfg-group -->
@@ -766,11 +758,11 @@
   <div id="loaderNetLogModal" class="kta-readme-modal-overlay" style="display:none;">
     <div class="kta-readme-modal-boite kta-net-log-boite">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre" data-i18n="home.netlog.title">📋 Journal réseau (live)</span>
+        <span class="kta-readme-modal-titre"><span data-kta-ico="scroll-text"></span> <span data-i18n="home.netlog.title">Journal réseau (live)</span></span>
         <div style="display:flex; gap:6px; align-items:center;">
-          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogCopy" data-i18n-title="home.netlog.copyTitle" title="Copier en JSON" data-i18n="home.netlog.copyBtn">📋 Copier</button>
-          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogExport" data-i18n-title="home.netlog.export" title="Télécharger en JSON" data-i18n="home.netlog.exportBtn">📤 Exporter</button>
-          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogClear" data-i18n-title="home.netlog.clearTitle" title="Vider le buffer" data-i18n="home.netlog.clearBtn">🗑️ Vider</button>
+          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogCopy" data-i18n-title="home.netlog.copyTitle" title="Copier en JSON"><span data-kta-ico="copy"></span> <span data-i18n="home.netlog.copyBtn" id="loaderNetLogCopyTxt">Copier</span></button>
+          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogExport" data-i18n-title="home.netlog.export" title="Télécharger en JSON"><span data-kta-ico="arrow-up-from-line"></span> <span data-i18n="home.netlog.exportBtn">Exporter</span></button>
+          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogClear" data-i18n-title="home.netlog.clearTitle" title="Vider le buffer"><span data-kta-ico="trash-2"></span> <span data-i18n="home.netlog.clearBtn">Vider</span></button>
           <button class="kta-panneau-close" id="loaderNetLogClose">✕</button>
         </div>
       </div>
@@ -802,7 +794,7 @@
   <div id="loaderNetDocModal" class="kta-readme-modal-overlay" style="display:none;">
     <div class="kta-readme-modal-boite kta-net-doc-boite">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre" data-i18n="home.netdoc.title">📖 Que fait l'app sur le réseau ?</span>
+        <span class="kta-readme-modal-titre"><span data-kta-ico="book-open"></span> <span data-i18n="home.netdoc.title">Que fait l'app sur le réseau ?</span></span>
         <button class="kta-panneau-close" id="loaderNetDocClose">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-net-doc-corps">
@@ -821,7 +813,7 @@
         </div>
 
         <div class="kta-net-doc-section">
-          <div class="kta-net-doc-section-titre" data-i18n="home.netdoc.whitelistTitle">🌐 Liste blanche des connexions réseau</div>
+          <div class="kta-net-doc-section-titre"><span data-kta-ico="globe"></span> <span data-i18n="home.netdoc.whitelistTitle">Liste blanche des connexions réseau</span></div>
           <p class="kta-net-doc-hint" data-i18n-html="home.netdoc.whitelistIntro">Voici la liste <strong>exhaustive</strong> de toutes les URLs que l'app peut contacter :</p>
           <ul class="kta-net-doc-list" id="loaderNetDocWhitelist">
             <!-- Rempli dynamiquement depuis window.NetworkAudit.WHITELIST_HUMAN -->
@@ -832,7 +824,7 @@
         </div>
 
         <div class="kta-net-doc-section">
-          <div class="kta-net-doc-section-titre" data-i18n="home.netdoc.verifyTitle">🔍 Comment vérifier toi-même</div>
+          <div class="kta-net-doc-section-titre"><span data-kta-ico="search"></span> <span data-i18n="home.netdoc.verifyTitle">Comment vérifier toi-même</span></div>
           <ol class="kta-net-doc-ol">
             <li data-i18n-html="home.netdoc.verify1"><strong>Journal interne</strong> : bouton « 📋 Voir le journal réseau » dans la même section — logue en temps réel toutes les requêtes émises par l'app.</li>
             <li data-i18n-html="home.netdoc.verify2"><strong>DevTools navigateur (F12)</strong> : onglet « Network » / « Réseau » → tu vois <strong>toutes</strong> les requêtes, indépendamment de ce que l'app raconte. Filtre par méthode pour vérifier qu'il n'y a aucun POST/PUT/PATCH/DELETE.</li>
@@ -842,7 +834,7 @@
         </div>
 
         <div class="kta-net-doc-section kta-net-doc-section-domain">
-          <div class="kta-net-doc-section-titre" data-i18n-html="home.netdoc.scopeTitle">🛡️ Périmètre de garantie : <code>myktamap.fr</code></div>
+          <div class="kta-net-doc-section-titre"><span data-kta-ico="shield"></span> <span data-i18n-html="home.netdoc.scopeTitle">Périmètre de garantie : <code>myktamap.fr</code></span></div>
           <p class="kta-net-doc-hint" data-i18n-html="home.netdoc.scope1">
             <strong>Cette garantie de sécurité et de non-télémétrie s'applique UNIQUEMENT au domaine officiel <code>myktamap.fr</code></strong>.
           </p>
@@ -855,12 +847,12 @@
         </div>
 
         <div class="kta-net-doc-section">
-          <div class="kta-net-doc-section-titre" data-i18n="home.netdoc.docTitle">📄 Documentation détaillée</div>
+          <div class="kta-net-doc-section-titre"><span data-kta-ico="file-text"></span> <span data-i18n="home.netdoc.docTitle">Documentation détaillée</span></div>
           <p class="kta-net-doc-hint" data-i18n-html="home.netdoc.docIntro">
             La page complète de transparence (modèle technique, stockage local, position de l'auteur…) est dans <code>docs/NETWORK_AUDIT.md</code> :
           </p>
           <p style="text-align:center; margin:14px 0 4px 0;">
-            <button class="kta-btn kta-btn-primary" type="button" id="loaderNetDocOpenFull" data-i18n="home.netdoc.openFull">📄 Ouvrir la doc complète</button>
+            <button class="kta-btn kta-btn-primary" type="button" id="loaderNetDocOpenFull"><span data-kta-ico="file-text"></span> <span data-i18n="home.netdoc.openFull">Ouvrir la doc complète</span></button>
           </p>
           <p class="kta-net-doc-hint" style="text-align:center;" data-i18n="home.netdoc.docOutro">
             (S'ouvre dans un nouvel onglet — c'est un fichier statique servi par le même Nginx que l'app.)

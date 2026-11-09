@@ -973,10 +973,10 @@ const _MODAL_EXPORT = {
   titreCle: "ui.group.save",
   statut: false,
   sections: [
-    { cle: "image",   titreCle: "export.lanceur.sectionImage", defaut: true },
-    { cle: "session", titreCle: "export.lanceur.sectionSession" },
-    { cle: "plan",    titreCle: "export.lanceur.sectionPlan" },
-    { cle: "externe", titreCle: "export.lanceur.sectionExterne" }
+    { cle: "image",   titreCle: "export.lanceur.sectionImage", ico: "image", defaut: true },
+    { cle: "session", titreCle: "export.lanceur.sectionSession", ico: "save" },
+    { cle: "plan",    titreCle: "export.lanceur.sectionPlan", ico: "map" },
+    { cle: "externe", titreCle: "export.lanceur.sectionExterne", ico: "globe" }
   ]
 };
 
@@ -1176,11 +1176,13 @@ L.control.ktaVue3DControl = function() {
 };
 window.addEventListener("mktm:plan-pret", function() { _majBoutonVue3D(); });
 
-function _ajouterSectionTracker(corps, titre, actions) {
+// ico : nom d'icône SVG posée devant le titre (lanceur d'export) ; sans lui, titre seul.
+function _ajouterSectionTracker(corps, titre, actions, ico) {
   if (!actions || actions.length === 0) return;
   const titreEl = document.createElement("div");
   titreEl.className = "kta-tracker-modal-section-title";
   titreEl.textContent = titre;
+  if (ico) titreEl.insertAdjacentHTML("afterbegin", window.ktaIcone(ico) + " ");
   corps.appendChild(titreEl);
   const grid = document.createElement("div");
   grid.className = "kta-tracker-modal-grid";
@@ -1306,7 +1308,7 @@ function _ouvrirTrackerModal(groupId) {
   const autres = baseActions.filter(function(a) { return !classees.has(a); });
   cfg.sections.forEach(function(s, i) {
     const actions = s.defaut ? parSection[i].concat(autres) : parSection[i];
-    _ajouterSectionTracker(corps, window.I18n.t(s.titreCle), actions);
+    _ajouterSectionTracker(corps, window.I18n.t(s.titreCle), actions, s.ico);
   });
   box.appendChild(corps);
 

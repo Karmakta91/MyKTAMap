@@ -3,9 +3,10 @@
 // =====================================================================
 // checkup-icones-ui.js — checkup (Playwright, pas un hook pré-commit) : icônes SVG de l'interface
 // =====================================================================
-// Dans l'app réelle, Chromium et WebKit, thème sombre puis clair : en-tête de l'accueil, barre de la carte (groupes
-// et sous-actions des accordéons), fenêtre Tracker, lanceur d'export → chaque contrôle migré porte un svg.kta-ico et
-// aucun emoji. Documentation (fr) : « 🧭 Menu Tracker » et « 🧭 Boussole » montrent chacun SA bonne icône, et les
+// Dans l'app réelle, Chromium et WebKit, thème sombre puis clair : en-tête de l'accueil, titres de section, Outils et
+// lignes de Mes plans, Configuration de l'accueil (titres, groupes, réglages) et ses fenêtres Journal réseau, réseau
+// expliqué et Dépannage, barre de la carte (groupes et sous-actions des accordéons), fenêtre Tracker, lanceur
+// d'export (tuiles et titres de section) → chaque contrôle migré porte un svg.kta-ico et aucun emoji. Documentation (fr) : « 🧭 Menu Tracker » et « 🧭 Boussole » montrent chacun SA bonne icône, et les
 // emoji migrés restés dans la page sont exactement ceux listés « autre sens » (KtaIcones.AUTRE_SENS) : reste 0.
 // Aide intégrée : fiche « Menu Tracker », même contrôle Tracker / Boussole.
 // check-icones-ui.js garde le source ; seul ce parcours voit le rendu (substitution, DOM, CSS).
@@ -73,6 +74,86 @@ async function jouer(page, theme) {
   await page.waitForSelector("#splashOverlay", { state: "detached", timeout: 25000 }).catch(function () {});
   await page.waitForTimeout(800);
   await capture(page, "1-accueil");
+
+  // 1 bis. Accueil : titres de section, Outils, lignes de Mes plans, case des plans du site.
+  const accueil = await page.evaluate(function () {
+    const S = window.__ktaSonde;
+    const liste = function (sel) {
+      return Array.prototype.map.call(document.querySelectorAll(sel), function (el) {
+        return Object.assign({ t: (el.textContent || "").trim().slice(0, 30) }, S(el));
+      });
+    };
+    return { titres: liste(".loader-section-head .loader-section-titre"),
+      outils: liste(".loader-secondary-actions > button"), lignes: liste(".plan-row-icon"),
+      siteCase: S(document.querySelector(".loader-plans-filter-row")), zip: S(document.querySelector(".zip-icon")) };
+  });
+  const fA = accueil.titres.concat(accueil.outils, accueil.lignes).filter(function (b) { return !b.svg || b.emoji; });
+  verifier(accueil.titres.length === 4 && accueil.outils.length === 6 && accueil.lignes.length >= 1 && fA.length === 0,
+    "accueil : " + accueil.titres.length + " titres de section, " + accueil.outils.length + " outils, " +
+    accueil.lignes.length + " ligne(s) de plan en SVG, sans emoji", fA);
+  verifier(accueil.siteCase.svg && !accueil.siteCase.emoji && accueil.zip.svg, "accueil : case des plans du site et " +
+    "zone Ajouter un plan en SVG", [accueil.siteCase, accueil.zip]);
+
+  // 1 ter. Configuration de l'accueil : titres, groupes, libellés de réglage, boutons des fenêtres.
+  await page.evaluate(function () { document.getElementById("loaderConfigBtn").click(); });
+  await attendre(page, function () {
+    const m = document.getElementById("loaderConfigModal");
+    return !!m && m.style.display !== "none" && !!m.querySelector("#kta-devmode-toggle svg");
+  }, 8000);
+  const cfg = await page.evaluate(function () {
+    const S = window.__ktaSonde, m = document.getElementById("loaderConfigModal");
+    const sondes = function (sel) {
+      return Array.prototype.map.call(m.querySelectorAll(sel), function (el) {
+        return Object.assign({ t: (el.textContent || "").trim().slice(0, 30) }, S(el));
+      });
+    };
+    // Une icône posée par data-kta-ico, et le libellé qui la suit sans emoji (les indices remplis par l'app,
+    // .kta-cfg-raison, peuvent garder un emoji de message : hors contrôle).
+    const icones = Array.prototype.map.call(m.querySelectorAll("[data-kta-ico]"), function (el) {
+      const suite = el.nextElementSibling;
+      return { nom: el.getAttribute("data-kta-ico"), svg: !!el.querySelector("svg.kta-ico"),
+        emoji: !!suite && /[\p{Extended_Pictographic}☑ℹ]/u.test(suite.textContent || "") };
+    });
+    return { titres: sondes(".kta-readme-modal-titre, .kta-cfg-group-titre, .kta-perf-titre"),
+      boutons: sondes("#loaderNetLogBtn, #loaderNetDocBtn, #loaderMemInspectorBtn, #loaderDepannageBtn, " +
+        "#kta-devmode-toggle, #loaderIncognitoIcon"), icones: icones };
+  });
+  const fC = cfg.titres.concat(cfg.boutons).filter(function (b) { return !b.svg || b.emoji; });
+  const fI = cfg.icones.filter(function (b) { return !b.svg || b.emoji; });
+  verifier(cfg.titres.length >= 12 && cfg.boutons.length === 6 && fC.length === 0, "Configuration : " +
+    cfg.titres.length + " titres et " + cfg.boutons.length + " boutons en SVG, sans emoji", fC);
+  verifier(cfg.icones.length >= 30 && fI.length === 0, "Configuration : " + cfg.icones.length +
+    " icônes posées, libellés sans emoji", fI);
+  await page.waitForTimeout(700);   // fondu d'ouverture de la fenêtre
+  await capture(page, "1b-configuration");
+
+  // Journal réseau, « Que fait l'app sur le réseau ? », Dépannage : titres et boutons.
+  const fenetre = async function (ouvrir, selVisible, selControles, nom, fermer) {
+    await page.evaluate(ouvrir);
+    await page.waitForSelector(selVisible, { state: "visible", timeout: 6000 }).catch(function () {});
+    await page.waitForTimeout(300);
+    const r = await page.evaluate(function (sel) {
+      return Array.prototype.filter.call(document.querySelectorAll(sel), function (el) {
+        return el.offsetParent !== null;
+      }).map(function (el) { return Object.assign({ t: (el.textContent || "").trim().slice(0, 30) }, window.__ktaSonde(el)); });
+    }, selControles);
+    const f = r.filter(function (b) { return !b.svg || b.emoji; });
+    verifier(r.length >= 2 && f.length === 0, nom + " : " + r.length + " titres et boutons en SVG, sans emoji", f);
+    await capture(page, "1c-" + nom.replace(/[^\wé]+/g, "-").toLowerCase());
+    await page.evaluate(fermer);
+    await page.waitForTimeout(300);
+  };
+  await fenetre(function () { document.getElementById("loaderNetLogBtn").click(); }, "#loaderNetLogModal",
+    "#loaderNetLogModal .kta-readme-modal-titre, #loaderNetLogCopy, #loaderNetLogExport, #loaderNetLogClear",
+    "Journal réseau", function () { document.getElementById("loaderNetLogClose").click(); });
+  await fenetre(function () { document.getElementById("loaderNetDocBtn").click(); }, "#loaderNetDocModal",
+    "#loaderNetDocModal .kta-readme-modal-titre, #loaderNetDocModal .kta-net-doc-section-titre:not(.kta-cnx-bloc-titre), " +
+    "#loaderNetDocOpenFull", "Réseau expliqué", function () { document.getElementById("loaderNetDocClose").click(); });
+  await fenetre(function () { window.ktaOuvrirDepannage(); }, "#kta-depannage-modal",
+    "#kta-depannage-modal .kta-readme-modal-titre, #loaderForceUpdateBtn, #loaderKillSwBtn, #loaderResetBtn",
+    "Dépannage", function () { document.getElementById("kta-depannage-close").click(); });
+  await page.evaluate(function () { document.getElementById("loaderConfigClose").click(); });
+  await page.waitForTimeout(300);
 
   // 2. Ouvrir un plan (relevé fictif s'il est proposé, sinon le premier de la liste).
   const choisi = await page.evaluate(function () {
@@ -164,6 +245,13 @@ async function jouer(page, theme) {
   });
   const fE = exp.filter(function (t) { return !t.svg || t.emoji; });
   verifier(exp.length === 10 && fE.length === 0, "export : " + exp.length + " tuiles en SVG, sans emoji", fE);
+  const sections = await page.evaluate(function () {
+    return Array.prototype.map.call(document.querySelectorAll("#kta-export-lanceur .kta-tracker-modal-section-title"),
+      function (t) { return Object.assign({ l: t.textContent.trim() }, window.__ktaSonde(t)); });
+  });
+  const fSec = sections.filter(function (t) { return !t.svg || t.emoji; });
+  verifier(sections.length === 4 && fSec.length === 0, "export : " + sections.length +
+    " titres de section en SVG, sans emoji", fSec);
   await capture(page, "4-export");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);

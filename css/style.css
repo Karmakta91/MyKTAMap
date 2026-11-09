@@ -20791,5 +20791,12 @@ button.kta-cfg-ligne-action {
 .kta-tracker-modal-title > span > .kta-ico { width: 20px; height: 20px; }
 .loader-btn-help > .kta-ico, .loader-search-btn > .kta-ico { width: 18px; height: 18px; }
 .kta-plans-head-btn > .kta-ico { width: 14px; height: 14px; }
+/* Icône posée devant un libellé (span data-kta-ico) dans une rangée flex : elle garde sa taille (la règle
+   `.kta-net-paranoia-toggle span` étire tous les span) ; le gap de la rangée tient lieu d'espace. */
+.kta-net-paranoia-toggle > span[data-kta-ico], .kta-cfg-group-titre > span[data-kta-ico] {
+  flex: 0 0 auto; line-height: 0; margin-top: 2px;
+}
+.loader-secondary-actions .loader-btn-secondary { gap: 6px; }
+.zip-drop-zone .zip-icon > .kta-ico { width: 28px; height: 28px; }
 /* Dans la Documentation et l'Aide : même icône que le bouton, à la taille du texte. */
 .kta-ico-doc { width: 1.1em; height: 1.1em; vertical-align: -0.18em; }

@@ -58,7 +58,7 @@
       ov.innerHTML = '' +
         '<div class="kta-readme-modal-boite" style="max-width:440px; height:auto; max-height:85vh;">' +
           '<div class="kta-readme-modal-entete">' +
-            '<span class="kta-readme-modal-titre">🛠️ ' + t("devmode.gate.titre") + '</span>' +
+            '<span class="kta-readme-modal-titre">' + window.ktaIcone("code-xml") + ' ' + t("devmode.gate.titre") + '</span>' +
             '<button class="kta-panneau-close" id="kta-dev-gate-close">✕</button>' +
           '</div>' +
           '<div class="kta-readme-modal-corps" style="font-size:13px;">' +
@@ -120,15 +120,18 @@
       const actif = isActive();
       wrap.innerHTML = '' +
         '<button class="loader-btn-secondary kta-debug-toggle" type="button" id="kta-devmode-toggle" aria-pressed="' + (actif ? "true" : "false") + '" style="width:100%;">' +
-          '🛠️ ' + t("devmode.toggleLabel") + ' : <strong>' + (actif ? "ON" : "OFF") + '</strong>' +
+          window.ktaIcone("code-xml") + ' ' + t("devmode.toggleLabel") + ' : <strong>' + (actif ? "ON" : "OFF") + '</strong>' +
         '</button>' +
         (actif ? (
           '<button class="loader-btn-secondary kta-debug-toggle" type="button" id="kta-devmode-logs-toggle" style="width:100%; margin-top:8px;">' +
-            '🐛 ' + t("home.debug.logsLabel") + ' <strong>' + ((window.APP_CONFIG && window.APP_CONFIG.debugMode) ? "ON" : "OFF") + '</strong>' +
+            window.ktaIcone("bug") + ' ' + t("home.debug.logsLabel") + ' <strong>' + ((window.APP_CONFIG && window.APP_CONFIG.debugMode) ? "ON" : "OFF") + '</strong>' +
           '</button>' +
-          '<button class="loader-btn-secondary" type="button" id="kta-devmode-logs-show" style="width:100%; margin-top:8px;">' + t("home.debug.showLogs") + '</button>' +
-          '<button class="loader-btn-secondary" type="button" id="kta-devmode-confadmin" style="width:100%; margin-top:8px;">🏗️ ' + t("devmode.confadmin") + '</button>' +
-          '<button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;">' + t("home.inspector.swBtn") + '</button>' +
+          '<button class="loader-btn-secondary" type="button" id="kta-devmode-logs-show" style="width:100%; margin-top:8px;">' +
+            window.ktaIcone("scroll-text") + ' ' + t("home.debug.showLogs") + '</button>' +
+          '<button class="loader-btn-secondary" type="button" id="kta-devmode-confadmin" style="width:100%; margin-top:8px;">' +
+            window.ktaIcone("server-cog") + ' ' + t("devmode.confadmin") + '</button>' +
+          '<button class="loader-btn-secondary" type="button" id="loaderSwInspectorBtn" style="width:100%; margin-top:8px;">' +
+            window.ktaIcone("gauge") + ' ' + t("home.inspector.swBtn") + '</button>' +
           _outilsExt().map(function(o, i) {
             return '<button class="loader-btn-secondary" type="button" data-devmode-outil="' + i + '" style="width:100%; margin-top:8px;"></button>';
           }).join("")
