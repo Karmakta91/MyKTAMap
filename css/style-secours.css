@@ -137,32 +137,16 @@ html.kta-theme-light .kta-secours-context-imported-row strong {
   font-size: 12px;
 }
 /* Thème clair */
-body.kta-theme-light .kta-secours-pause-input-wrap,
-html.kta-theme-light .kta-secours-pause-input-wrap {
-  color: var(--kta-light-text, #2a2620) !important;
-}
 body.kta-theme-light .kta-secours-pause-input-wrap input[type="number"],
 html.kta-theme-light .kta-secours-pause-input-wrap input[type="number"] {
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
   border-color: var(--kta-light-border-strong, rgba(0, 0, 0, 0.22)) !important;
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-secours-pause-unit,
-html.kta-theme-light .kta-secours-pause-unit {
-  color: var(--kta-texte-3) !important;
-}
 body.kta-theme-light .kta-secours-tool-block,
 html.kta-theme-light .kta-secours-tool-block {
   background: rgba(255, 140, 0, 0.10) !important;
   border-color: rgba(255, 140, 0, 0.40) !important;
-}
-body.kta-theme-light .kta-secours-tool-block-titre,
-html.kta-theme-light .kta-secours-tool-block-titre {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-secours-tool-block-desc,
-html.kta-theme-light .kta-secours-tool-block-desc {
-  color: var(--kta-texte-3) !important;
 }
 
 /* 🆕 v1.23.0 Phase 2 / Feature F — Favoris en accès rapide dans la modale
@@ -762,8 +746,6 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
 .kta-secours-groupe-card--repliee .kta-secours-groupe-body { display: none; }
 .kta-secours-groupe-card--repliee .kta-secours-groupe-header { margin-bottom: 0; }
 .kta-secours-groupe-card--repliee .kta-secours-groupe-resume { display: block; }
-body.kta-theme-light .kta-secours-groupe-replier,
-html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, #2a2620) !important; }
 .kta-secours-groupe-nom:focus {
   outline: none;
   border-bottom-color: #f4c542;
@@ -836,10 +818,6 @@ html.kta-theme-light .kta-secours-groupe-replier { color: var(--kta-light-text, 
   padding: 4px 6px;
   font-size: 12px;
 }
-body.kta-theme-light .kta-secours-parcours-mode,
-html.kta-theme-light .kta-secours-parcours-mode { color: #3a4254; }
-body.kta-theme-light .kta-secours-parcours-mode select,
-html.kta-theme-light .kta-secours-parcours-mode select { background: #fff; color: #1a1f2e; border-color: rgba(0,0,0,0.2); }
 .kta-secours-groupe-actions .kta-btn {
   font-size: 11px;
 }
@@ -864,18 +842,8 @@ html.kta-theme-light .kta-secours-list-row {
   background: rgba(255, 70, 70, 0.06) !important;
   border-color: rgba(255, 70, 70, 0.25) !important;
 }
-body.kta-theme-light .kta-secours-list-nom,
-html.kta-theme-light .kta-secours-list-nom {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-secours-list-meta,
-html.kta-theme-light .kta-secours-list-meta,
-body.kta-theme-light .kta-secours-empty,
-html.kta-theme-light .kta-secours-empty,
 body.kta-theme-light .kta-secours-empty-small,
-html.kta-theme-light .kta-secours-empty-small,
-body.kta-theme-light .kta-secours-groupe-stats,
-html.kta-theme-light .kta-secours-groupe-stats {
+html.kta-theme-light .kta-secours-empty-small {
   color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-secours-hint,
@@ -898,30 +866,10 @@ html.kta-theme-light .kta-secours-groupe-row select {
   border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-secours-section,
-html.kta-theme-light .kta-secours-section {
-  background: rgba(244, 197, 66, 0.08) !important;
-  border-color: rgba(154, 135, 84, 0.35) !important;
-}
-body.kta-theme-light .kta-secours-section-titre,
-html.kta-theme-light .kta-secours-section-titre {
-  background: rgba(244, 197, 66, 0.20) !important;
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
 body.kta-theme-light .kta-secours-groupe-card,
 html.kta-theme-light .kta-secours-groupe-card {
   background: var(--kta-light-bg, #f0e8d8) !important;
   border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
-}
-body.kta-theme-light .kta-secours-groupe-stats strong,
-html.kta-theme-light .kta-secours-groupe-stats strong {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light .kta-secours-edit-titre,
-html.kta-theme-light .kta-secours-edit-titre,
-body.kta-theme-light .kta-secours-groupe-nom,
-html.kta-theme-light .kta-secours-groupe-nom {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* Floater compact en bas de l'écran pendant les modes interactifs map
@@ -1432,21 +1380,11 @@ html.kta-theme-light .kta-secours-parcours {
   background: var(--kta-light-bg, #f0e8d8) !important;
   border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
 }
-body.kta-theme-light .kta-secours-parcours-titre,
-html.kta-theme-light .kta-secours-parcours-titre {
-  color: var(--kta-texte-3) !important;
-}
 body.kta-theme-light .kta-secours-parcours-row,
 html.kta-theme-light .kta-secours-parcours-row {
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-secours-parcours-label strong,
-html.kta-theme-light .kta-secours-parcours-label strong {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light .kta-secours-parcours-todo,
-html.kta-theme-light .kta-secours-parcours-todo,
 body.kta-theme-light .kta-secours-pick-meta,
 html.kta-theme-light .kta-secours-pick-meta,
 body.kta-theme-light .kta-secours-pick-hint,
