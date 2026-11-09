@@ -2596,9 +2596,11 @@ Preuve : `scripts/smoke/checkup-point-precis.js` (Chromium et WebKit, souris et 
 ## 🎨 Icônes de l'interface
 
 Deux familles : les **icônes SVG au trait** (`js/ktaIcones.js`) pour tout ce qui joue le rôle d'icône (boutons,
-titres de fenêtre et de section, onglets, badges, compteurs), et les **emoji du système** pour ce qui reste dans les
-textes, dont le dessin change entre iPhone, Android et PC. Décisions du 08/11/2026 : trait d'une couleur, base Lucide +
-icônes métier, planche des 115 notions validée ; police emoji embarquée pour les emoji restants : lot suivant.
+titres de fenêtre et de section, onglets, badges, compteurs, et toute la doc affichée dans l'app : Documentation,
+Aide, tutoriel), et les **emoji du système** pour ce qui reste dans les textes hors doc (toasts, alertes,
+attributs), dont le dessin change entre iPhone, Android et PC. Décisions du 08/11/2026 : trait d'une couleur, base
+Lucide + icônes métier, planche des 115 notions validée ; police emoji embarquée pour les emoji restants : lot suivant.
+Décision du lot D : la doc entière passe en SVG à l'affichage (§ Substitution de la doc).
 
 ### Module `ktaIcones.js`
 
@@ -2607,7 +2609,7 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   Un nom inconnu rend une chaîne vide et un avertissement console.
 - **Un seul système de noms** : celui de l'icône (Lucide, ex. `navigation`, `compass`, `rotate-cw`), ou `m-…` pour
   les 5 icônes métier (`m-galerie`, `m-zone`, `m-pilier`, `m-echelle`, `m-niveaux`). Les 113 icônes de la planche
-  sont embarquées, plus 80 absentes de la planche (Lucide 0.460.0, tracé copié du paquet officiel, à valider une à
+  sont embarquées, plus 82 absentes de la planche (Lucide 0.460.0, tracé copié du paquet officiel, à valider une à
   une) : `list` (Légende), `sigma` (Distance
   totale), `panels-top-left` (panneaux ancrés), `monitor-cog` (Système & maintenance), `unplug` (Kill SW),
   `server-cog` (ConfAdmin), `bug` (logs détaillés), `database` (plan d'une installation reliée) ; pour les fenêtres de
@@ -2632,7 +2634,8 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   `calculator` (résultat du calibrage), `network` (graphe de Mes liaisons), `plug` (connexion serveur : pastille,
   ConfAdmin), `landmark` (texte du Sénat dans les conditions), `external-link` (PDF dans un onglet), `clock` (Plus
   tard), `keyboard` (raccourcis clavier), `type` (recalage par les noms), `leaf` (Leaflet), `instagram` et `mail`
-  (contacts du pied de page).
+  (contacts du pied de page) ; pour la doc seule (lot D) : `layout-dashboard` (Présentation de l'interface) et
+  `toggle-right` (un mode reste actif).
 - Élément statique : `data-kta-ico="nom"`, rempli au chargement par `KtaIcones.poser()` (accueil, Configuration et
   ses fenêtres) ; ailleurs, le gabarit appelle `window.ktaIcone("nom")` devant le libellé. Le bouton garde son `title`
   / `aria-label` : le SVG est `aria-hidden`. Un libellé posé par `textContent` ne peut pas porter l'icône : le module
@@ -2761,26 +2764,73 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
 - Les pastilles de **types** (tracés, zones, structures : `ktaTypeSwatchHtml`) restent des pastilles ; seul leur repli
   est un emoji (⛔ Inaccessible, qui n'a pas de pastille, compris).
 
-### Documentation et Aide : même icône que le bouton
+### Documentation et Aide : la doc entière en SVG
 
-- La fenêtre Documentation (`interfaceDocs.js > _chargerReadme`), l'Aide (corps `aide.sec.*.html`, titres, catégories,
-  `aide.intro`) et les cartes du tutoriel (`tutorial.card.*.texte`) passent leur texte dans `KtaIcones.substituerDoc` :
-  un emoji qui désigne un bouton passé en SVG s'affiche avec ce SVG. Les `.md` et les dicos gardent l'emoji (lisibles
-  sur GitHub, recherche inchangée).
-  Markdown : jeton privé (U+E000 nom U+E001) qui traverse l'échappement, remplacé après le rendu (`jetonsEnSvg`).
-- 🩸 Un emoji a souvent plusieurs sens (🧭 Tracker / Boussole / Y aller, 📍 recalage / points, 🗺️ Itinéraire / Légende /
-  plan au sol…). `KtaIcones.DOC` substitue par **emoji + texte voisin** (motif sur le texte qui suit ou qui précède, en
-  fr, en et es) ; un emoji au sens unique dans la doc a une règle sans motif. `KtaIcones.AUTRE_SENS` liste les emplois
-  voulus en emoji (bouton pas encore migré, autre notion), ciblés ou « tout le reste » pour un emoji dont le bouton
-  n'est qu'un sens minoritaire. Ordre : autre sens ciblé, DOC ciblé, DOC sans motif, autre sens sans motif.
-- Un même emoji vise souvent plusieurs boutons migrés, chacun avec son icône : 🚨 = Sortie d'urgence `siren`, mais
-  « 🚨 Équipes » du Mode Secours `users` ; 📖 = Documentation `book-open`, Mode Histoire `scroll`, Récits `file-text`.
+- La fenêtre Documentation (`interfaceDocs.js > _chargerReadme`, les trois guides et le guide d'une extension),
+  l'Aide (titre de la fenêtre, `aide.intro`, catégories, lignes du hub dont « Raccourcis clavier » et « Autres »,
+  titres et corps des fiches `aide.sec.*`) et les cartes du tutoriel (`tutorial.card.*.texte`) passent leur texte
+  dans `KtaIcones.substituerDoc` : **chaque emoji** s'affiche en SVG, celui du bouton qu'il désigne, sinon celui de sa
+  notion ; seules les exceptions listées restent en emoji. Les `.md` et les dicos gardent l'emoji (lisibles sur
+  GitHub, recherche inchangée). Markdown : jeton privé (U+E000 nom U+E001) qui traverse l'échappement, remplacé après
+  le rendu (`jetonsEnSvg`). Le pied de la fenêtre Documentation recopie les crédits de l'accueil avec les mêmes
+  icônes (`ktaIcone`). L'Aide IA n'affiche pas la doc (elle produit un fichier de contexte) : rien à substituer.
+- 🩸 Un emoji a souvent plusieurs sens (🧭 Tracker / Boussole / Y aller / Présentation de l'interface, 📍 recalage /
+  points / tracker de position, 🗺️ Itinéraire / Légende / carte…) : les tables lisent **emoji + texte voisin** (motif
+  sur le texte qui suit ou qui précède, en fr, en et es). Détail des tables et de l'ordre : § Substitution de la doc.
+- Un même emoji vise souvent plusieurs notions, chacune avec son icône : 🚨 = Sortie d'urgence `siren`, « 🚨 Équipes »
+  du Mode Secours `users`, famille Secours de la légende `ambulance` ; 📖 = Documentation `book-open`, Mode Histoire
+  `scroll`, Récits `file-text`.
+- **Une notion = une icône, doc et interface** : 💡 conseil `lightbulb` (comme les conseils de Je suis perdu), 🗑️
+  `trash-2`, 🔗 fusion / raccords `link`, 🕳️ famille Puits `arrow-down-to-line` (groupe de la légende), 🚶 sortie
+  terrain `footprints` / 🖥️ travail sur plan `monitor` (carnet), 🧙 Assistant `wand-sparkles`, 🎨 export avancé
+  `sliders-horizontal`, 💾 Mémoriser `hard-drive` / hors-ligne `cloud-download`, crédits comme le pied de l'accueil.
 - **Textes hors doc** (toasts, alertes, astuces, infobulles, titres d'alerte) : ils ne sont pas substitués ; un emoji
   de bouton passé en SVG n'y reste pas, le texte nomme le bouton (« Réglages → Géoréférencement GPS », « annulable »,
   « tes plans de l'installation », « touche Favori dans la fiche d'un point »), dans les trois langues. Exceptions :
   texte écrit dans un fichier ou un rapport produit (légende dessinée dans le PNG, rapport de Je suis perdu, rapport du
   Mode Secours, note d'un scénario créé depuis Je suis perdu) et nom donné à un point créé (« ⛑️ Position probable »,
   cité tel quel par l'alerte qui le confirme).
+
+### Substitution de la doc
+
+Référence pour tout moteur qui affiche la doc (l'app, et le générateur de doc.myktamap.fr au merge `main`, qui
+charge `js/ktaIcones.js` sous node : `module.exports` = `window.KtaIcones`). La règle tient en une fonction :
+`KtaIcones.substituerDoc(texte[, { jeton: true }])` ; `KtaIcones.classerDoc(texte)` en donne le détail.
+
+- **Ce qui est un emoji** : tout pictogramme Unicode (`\p{Extended_Pictographic}`, avec ou sans U+FE0F, teinte de
+  peau, séquence ZWJ), paire d'indicateurs régionaux (drapeau), touche (`1️⃣`). La clé de table est l'emoji **sans
+  U+FE0F**. Les glyphes typographiques non pictographiques (→ ✓ ✕ ▲ ▼ ↶ ↷ ↻ ➜ ＋) ne sont pas des emoji : jamais touchés.
+- **Texte voisin** lu par les motifs : 160 caractères avant et après, balises retirées (avant : coupé après le dernier
+  `>` ouvert), entités `&nbsp; &amp; &lt; &gt; &quot; &#39;` décodées, `**`, `` ` `` et U+FE0F retirés, blancs
+  resserrés ; « avant » sans blanc final, « après » sans blanc initial. Motif `a` = sur l'après (ancré `^`), `b` =
+  sur l'avant (ancré `$`) ; une règle à deux motifs exige les deux.
+- **Quatre tables**, entrées `{ e: emoji, a?, b?, … }` :
+  - `DOC` `{ i: icône }` : l'emoji désigne un **bouton** de l'interface → l'icône de ce bouton ;
+  - `AUTRE_SENS` `{ s: sens }` : l'emploi ne désigne PAS ce bouton (autre notion) → passe aux repères ;
+  - `REPERES` `{ i: icône }` : la **notion** désignée (titre, fil d'Ariane, puce, encadré, tableau) → son icône, la
+    même que dans l'interface ;
+  - `GARDE` `{ s: raison }` : **exception**, l'emoji reste affiché tel quel.
+  Une entrée sans `a` ni `b` vaut « tout emploi de cet emoji » (règle par défaut, une seule par table et par emoji).
+- **Ordre**, premier qui répond : GARDE ciblé → AUTRE_SENS ciblé → DOC ciblé → DOC par défaut → AUTRE_SENS par
+  défaut ; si le résultat est une règle DOC : icône du bouton. Sinon (AUTRE_SENS, ou rien) : REPERES ciblé → REPERES
+  par défaut → GARDE par défaut. Rien trouvé = **non classé** : l'emoji reste, et `check-icones-ui` refuse le commit.
+  Dans une table, les règles ciblées se lisent dans l'ordre du fichier.
+- **Rendu** : chaque emoji classé `icone` ou `notion` est remplacé (U+FE0F compris) par
+  `<svg class="kta-ico kta-ico-<nom> kta-ico-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="2" …>` (tracés : `KtaIcones.TRACES`) ; un emoji gardé reste. Texte Markdown : `substituerDoc(md,
+  { jeton: true })` AVANT le rendu (jeton U+E000 nom U+E001, il traverse l'échappement HTML), puis
+  `jetonsEnSvg(html)` APRÈS ; texte déjà HTML (dicos `aide.*`) : `substituerDoc(html)` direct. CSS : `.kta-ico-doc`
+  = 1,1 em de côté, `vertical-align: -0.18em` : proportionnée au titre comme à la puce, couleur du texte (thèmes
+  sombre et clair sans règle propre).
+- **Exceptions** (GARDE, 204 emplois sur les trois langues, figés par `PLAFOND_RESTE`) : pastilles de couleur des
+  types et des statuts d'étape du Secours (🟦 🟨 🟩 🟪 🟥 🟧 🟢 🟡 🟠 🔵 🟣 ⚪ 🔴, ⬛ Remblais et statut Bloqué) — la couleur
+  est l'information, comme dans l'interface ; ⛔ du type Inaccessible (son repli dans l'interface est ce même emoji) ;
+  POI du catalogue (⚠️ type Danger et point posé par Je suis perdu, 🚪 Point d'entrée du plan) ; glyphes du pavé et de
+  Précédent / Suivant (◀ ▶) ; ↔ entre deux termes ; © de l'attribution OpenStreetMap. Une pastille ou un ⛔ qui désigne
+  autre chose prend une icône (🔴 Avertissements importants `triangle-alert`, ⚪ ronds aux intersections `circle-dot`,
+  ⛔ capteur refusé / plan révoqué `ban`, 🟦 famille Zones `m-zone`).
+- Volume (trois guides + `aide.*` + `tutorial.card.*`, trois langues) : ~6 800 emoji, 185 différents ; 221 règles
+  REPERES, 23 GARDE (en plus des 227 DOC et 99 AUTRE_SENS des boutons).
 
 ### Garde-fous
 
@@ -2789,13 +2839,16 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   migrés de l'accueil et de sa Configuration (`CLES_INDEX`) suivent une icône `data-kta-ico`, ceux rendus par un
   module (`APPELS_JS`) ont leur `ktaIcone()` sur la ligne ou la voisine, et leurs clés n'ont d'emoji dans aucune
   langue ; l'icône de type d'une ligne de Mes plans est un SVG ; chaque nom passé à
-  `ktaIcone` / `data-kta-ico` existe ; chaque règle de doc pointe vers une icône existante ; **exhaustif** : chaque
-  occurrence d'un emoji migré dans les trois guides et les clés `aide.*` et `tutorial.card.*` des trois dicos est
-  substituée ou listée « autre sens », sinon échec avec fichier:ligne. `--liste` donne les comptes par emoji et par langue (un écart de SVG
-  entre langues trahit un motif mal traduit). 🩸 Une règle « tout le reste » (autre sens sans motif) rangerait en
-  silence une phrase NOUVELLE qui cite le bouton par un libellé inconnu : la doc montrerait l'emoji périmé. Son compte
-  est donc figé par emoji (`PLAFOND_RESTE`, cliquet) : toute hausse échoue jusqu'à ce que l'emploi soit classé (règle
-  DOC ciblée, ou autre sens ciblé) ; recalcul `--plafond`. Fenêtres de la carte : `CLES_C2` (par fichier, chaque
+  `ktaIcone` / `data-kta-ico` existe ; chaque règle DOC et REPERES pointe vers une icône existante, chaque GARDE dit
+  sa raison ; **exhaustif** : chaque emoji (tous, pas seulement ceux des boutons) des trois guides et des clés
+  `aide.*` et `tutorial.card.*` des trois dicos tombe sous une règle (bouton, notion ou exception), sinon échec avec
+  fichier:ligne ; § 1 bis : aucune clé `aide.*` à emoji posée par `textContent` dans `interfaceDocs.js` (elle
+  échapperait à la substitution), crédits du pied de la Documentation en `ktaIcone`. `--liste` donne les comptes
+  par emoji et par langue (bouton, notion, emoji ; un écart entre langues trahit un motif mal traduit). Ce qui reste en
+  emoji dans la doc (exceptions GARDE) est figé par emoji, trois langues additionnées (`PLAFOND_RESTE`, cliquet) :
+  une hausse échoue jusqu'à ce que le nouvel emploi ait une icône (règle REPERES ciblée) ou que l'exception soit voulue
+  (plafond relevé en connaissance de cause) ; recalcul `--plafond`. Le cliquet « tout le reste » des boutons (2 199
+  emplois figés en emoji) a disparu avec les repères. Fenêtres de la carte : `CLES_C2` (par fichier, chaque
   emploi de la clé a son icône sur la ligne ou la voisine) et `CLES_C2_TEXTE` (clés sorties de l'emoji, icône posée
   par l'appelant ou absente) ; reste de l'interface : `CLES_C3` / `CLES_C3_TEXTE`, fin de la refonte : `CLES_C4` /
   `CLES_C4_TEXTE`, même règle ; aucun reflet de mode
@@ -2810,7 +2863,9 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
 - `scripts/smoke/checkup-icones-ui.js` (Chromium et WebKit, sombre et clair) : le rendu réel (accueil, Configuration,
   Journal réseau, réseau expliqué, Dépannage, carte, Tracker, export, 18 fenêtres d'outils de la carte, barres du haut
   et du bas, fiche d'un point, bouton d'aide d'une fenêtre, Mode Secours en vue opérateur et secouriste, vue 3D,
-  Générateur, Tableur, Mes photos, tutoriel, Vue OSM si le plan est géoréférencé, Documentation, Aide, pied de page,
+  Générateur, Tableur, Mes photos, tutoriel, Vue OSM si le plan est géoréférencé, Documentation (trois guides : SVG
+  posés = emplois classés, emoji restés = exceptions, titres h1 à h5, sommaire, fils d'Ariane et crédits sans emoji,
+  icône proportionnée au h2 et à la puce), Aide (hub et chacune des fiches, même règle), pied de page,
   Profil, export du profil, sélection multiple, recalage, rapport de session, raccourcis, recherche multi-plans, Mes
   liaisons, calibrage de l'échelle, ConfAdmin).
 - Bacs à sable des garde-fous qui exécutent un module : `ktaIcone` simulé (`() => ""`) là où le module rend une icône
@@ -2823,11 +2878,16 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
 
 ### Reste en emoji (lot police emoji embarquée)
 
+- **Dans la doc affichée** (Documentation, Aide, tutoriel) : seulement les exceptions `GARDE` (§ Substitution de la
+  doc) — pastilles de couleur des types et des statuts du Secours, ⛔ Inaccessible, POI du catalogue (⚠️ Danger, 🚪
+  Point d'entrée du plan), ◀ ▶ du pavé et de Précédent / Suivant, ↔, © : 204 emplois sur les trois langues, figés par
+  `PLAFOND_RESTE`. Les sources (`.md`, dicos) gardent tous leurs emoji. Autour du contenu : le placeholder
+  « 🔎 Chercher dans la documentation… » (attribut) et l'état passager « ⏳ Chargement… » de la fenêtre.
 - **Voulu, définitivement** : la légende dessinée dans le PNG exporté et les rapports produits (`CLES_SORTIE`, rapports
   copiés de Je suis perdu et du Mode Secours, export TXT des détails de session), les POI (icônes du catalogue), les
   caractères typographiques (▲ ▼ ◀ ▶ ↶ ↷ ⌖ ↻ ➜ ↔ ✓ ✕), les pastilles de couleur des types et des statuts d'étape du
   Secours (🟢 🟡 🟠 🔵 🟦…, repli ⛔ Inaccessible), le nom donné à un point créé (⛑️ Position probable, 🏁 Arrivée).
-- **Texte** (le lot police les rendra pareils partout) : messages des toasts, alertes, astuces et encadrés (⚠️ ✅ ❌ ⏳
+- **Texte hors doc** (le lot police les rendra pareils partout) : messages des toasts, alertes, astuces et encadrés (⚠️ ✅ ❌ ⏳
   💡 ℹ️ en tête ; lignes des confirmations de la sélection multiple : 📸 🌀 🗂️ 🪜), état passager d'un bouton pendant
   une action (« ⏳ Génération… », « ✅ Copié », « ⏳ Compression… »), libellés en attribut (`title`, `placeholder` :
   « 🔎 Chercher un plan… », 🔒 du champ de code de Bienvenue), `<option>` et `<optgroup>` (📁 dossier, 📦 ZIP / 📂
