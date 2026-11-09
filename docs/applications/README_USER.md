@@ -2163,7 +2163,7 @@ Il n'y a rien d'autre à faire.
 
 Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (sans mot de passe : une confirmation dit ce qu'il fait), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut.
 
-**Pour envoyer tes journaux** à qui t'aide : **⚙️ Configuration** → **🛠️ Mode Développeur** → active **🐛 Logs détaillés**, refais ce qui pose problème, puis **Afficher les logs** → **Copier**, et colle le texte dans ton message. La fenêtre garde les 300 dernières lignes, même après un plantage. Relis-les avant de les envoyer : elles peuvent citer des noms de plans ou de fichiers.
+**Pour envoyer tes journaux** à qui t'aide : **⚙️ Configuration** → **🛠️ Mode Développeur** → active **🐛 Logs détaillés**, refais ce qui pose problème, puis **Afficher les logs** → **Copier** ou **Exporter (.txt)**, et colle le texte dans ton message ou joins-y le fichier. La fenêtre garde les 300 dernières lignes, même après un plantage. Relis-les avant de les envoyer : elles peuvent citer des noms de plans ou de fichiers.
 
 Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
 

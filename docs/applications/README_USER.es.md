@@ -2162,7 +2162,7 @@ No hay nada más que hacer.
 
 En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (sin contraseña: una confirmación explica lo que hace), **🐛 Registros detallados** añade información en la consola del navegador (sensores del tracker, corte de la imagen). Útil para informar de un problema. Desactivado por defecto.
 
-**Para enviar tus registros** a quien te ayuda: **⚙️ Configuración** → **🛠️ Modo Desarrollador** → activa **🐛 Registros detallados**, repite lo que falla, luego **Mostrar los registros** → **Copiar**, y pega el texto en tu mensaje. La ventana guarda las 300 últimas líneas, incluso tras un cierre inesperado. Reléelas antes de enviarlas: pueden citar nombres de mapas o de archivos.
+**Para enviar tus registros** a quien te ayuda: **⚙️ Configuración** → **🛠️ Modo Desarrollador** → activa **🐛 Registros detallados**, repite lo que falla, luego **Mostrar los registros** → **Copiar** o **Exportar (.txt)**, y pega el texto en tu mensaje o adjunta el archivo. La ventana guarda las 300 últimas líneas, incluso tras un cierre inesperado. Reléelas antes de enviarlas: pueden citar nombres de mapas o de archivos.
 
 El modo desarrollador contiene también **🔧 Ver el estado de la caché (Service Worker)**: el detalle, archivo por archivo, de lo que resume la pastilla sin conexión.
 

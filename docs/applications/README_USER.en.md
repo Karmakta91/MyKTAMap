@@ -2162,7 +2162,7 @@ There is nothing else to do.
 
 In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (no password: a confirmation tells what it does), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default.
 
-**To send your logs** to whoever is helping you: **⚙️ Configuration** → **🛠️ Developer Mode** → turn on **🐛 Verbose logs**, do again what goes wrong, then **Show logs** → **Copy**, and paste the text into your message. The window keeps the last 300 lines, even after a crash. Read them before sending: they may mention map or file names.
+**To send your logs** to whoever is helping you: **⚙️ Configuration** → **🛠️ Developer Mode** → turn on **🐛 Verbose logs**, do again what goes wrong, then **Show logs** → **Copy** or **Export (.txt)**, and paste the text into your message or attach the file. The window keeps the last 300 lines, even after a crash. Read them before sending: they may mention map or file names.
 
 Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
 

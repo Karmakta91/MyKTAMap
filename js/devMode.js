@@ -10,8 +10,9 @@
 //   - Activation libre, sans mot de passe (décision produit) : un utilisateur doit pouvoir allumer les logs
 //     détaillés et envoyer son journal sans rien demander. Une confirmation (window.ktaConfirm) dit ce que fait
 //     le mode à chaque passage de OFF à ON ; l'état est mémorisé par appareil (LS_ACTIVE).
-//   - Contenu : logs détaillés (pilote setDebugMode global), « Afficher les logs » (Copier, js/debug.js),
-//     ConfAdmin, inspecteur Service Worker (js/swInspector.js), outils d'extension (prise « outilsDev »).
+//   - Contenu : logs détaillés (pilote setDebugMode global), « Afficher les logs » (Copier, Exporter (.txt),
+//     js/debug.js), ConfAdmin, inspecteur Service Worker (js/swInspector.js), outils d'extension
+//     (prise « outilsDev »).
 //     Rien de secret : confadmin.html et les pages d'outils sont publiques, le reste lit l'appareil lui-même.
 //   - 🩸 PAS de bibliothèque de docs : lire README.md et docs/ sur le serveur obligerait à les DÉPLOYER, donc à les
 //     publier. Les sites ne reçoivent que docs/applications/. Garde-fou : scripts/check-devmode-docs.js.
