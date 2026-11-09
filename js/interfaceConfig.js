@@ -36,14 +36,14 @@ function _renderPerfUltraSection() {
   // « Afficher tous les niveaux au lancement » (lu par main.js) : hors ULTRA, plan multi-niveau seulement.
   const rowNiveaux = (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)
     ? '<div style="border-top:1px solid var(--kta-bordure); margin:10px 0; padding-top:8px;"></div>' +
-      row("cfg_perf_tousNiveaux", window.I18n.t("config.perfultra.tousNiveaux.label"), s.tousNiveaux, "")
+      row("cfg_perf_tousNiveaux", window.ktaIcone("m-niveaux") + " " + window.I18n.t("config.perfultra.tousNiveaux.label"), s.tousNiveaux, "")
     : "";
   // « Ne rendre que les éléments visibles » (viewportCull) n'a pas de case (décision produit) : piloté par le
   // preset ULTRA ; une valeur déjà enregistrée pour le plan est toujours relue.
   return `
     <div class="kta-aide-section">
       <p class="kta-perf-ultra-hint" style="margin:0 0 10px 0;">${window.I18n.t("config.perfultra.intro")}</p>
-      ${row("cfg_perf_ultra", window.I18n.t("config.perfultra.ultra.label"), s.ultra,
+      ${row("cfg_perf_ultra", window.ktaIcone("rocket") + " " + window.I18n.t("config.perfultra.ultra.label"), s.ultra,
             "")}
       <div style="border-top:1px solid var(--kta-bordure); margin:10px 0; padding-top:8px;"></div>
       ${row("cfg_perf_decim", window.I18n.t("config.perfultra.decim.label"), s.decim,
@@ -126,8 +126,8 @@ function _renderCfgGeorefSection() {
         '</div>' +
         '<div class="kta-gps-coords-error" id="cfg_kmz_A_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_search" type="button">' + window.ktaIcone("search") + " " + window.I18n.t("config.georef.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_click" type="button">' + window.ktaIcone("mouse-pointer-click") + " " + window.I18n.t("config.georef.clickBtn") + '</button>' +
         '</div>' +
         '<div id="cfg_kmz_A_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
@@ -145,10 +145,10 @@ function _renderCfgGeorefSection() {
         '</div>' +
         '<div class="kta-gps-coords-error" id="cfg_kmz_B_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">' + window.ktaIcone("search") + " " + window.I18n.t("config.georef.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">' + window.ktaIcone("mouse-pointer-click") + " " + window.I18n.t("config.georef.clickBtn") + '</button>' +
           // B estimé depuis A + échelle + Nord du plan (northOffsetDeg, 0 = nord en haut).
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_estimer" type="button" title="' + window.I18n.t("config.georef.estimerTitle") + '">🧭 ' + window.I18n.t("config.georef.estimerBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_estimer" type="button" title="' + window.I18n.t("config.georef.estimerTitle") + '">' + window.ktaIcone("compass") + ' ' + window.I18n.t("config.georef.estimerBtn") + '</button>' +
         '</div>' +
         '<div id="cfg_kmz_B_estime_badge" class="kta-planner-info" style="display:none; color:var(--kta-accent-texte); margin:4px 0 0;">≈ ' + window.I18n.t("config.georef.estimeBadge") + '</div>' +
         '<div id="cfg_kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
@@ -168,8 +168,8 @@ function _renderCfgGeorefSection() {
         '</div>' +
         '<div class="kta-gps-coords-error" id="cfg_kmz_C_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_C_search" type="button">' + window.I18n.t("config.georef.searchBtn") + '</button>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_C_click" type="button">' + window.I18n.t("config.georef.clickBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_C_search" type="button">' + window.ktaIcone("search") + " " + window.I18n.t("config.georef.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_C_click" type="button">' + window.ktaIcone("mouse-pointer-click") + " " + window.I18n.t("config.georef.clickBtn") + '</button>' +
         '</div>' +
         '<div id="cfg_kmz_C_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
@@ -187,10 +187,10 @@ function _renderCfgGeorefSection() {
 
       '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
         '<button class="kta-btn kta-btn-primary" type="button" id="cfg_kmz_save">' +
-          window.I18n.t("config.georef.saveBtn") +
+          window.ktaIcone("save") + " " + window.I18n.t("config.georef.saveBtn") +
         '</button>' +
         '<button class="kta-btn kta-btn-ghost"   type="button" id="cfg_kmz_clear">' +
-          window.I18n.t("config.georef.clearBtn") +
+          window.ktaIcone("trash-2") + " " + window.I18n.t("config.georef.clearBtn") +
         '</button>' +
       '</div>' +
     '</div>';
@@ -572,7 +572,7 @@ function _cfgActiverModeClicGeoref(letter) {
   fl.id = "kta-cfg-georef-click-floater";
   fl.className = "kta-iti-floater";
   fl.innerHTML =
-    '<span class="kta-iti-floater-icon">📍</span>' +
+    '<span class="kta-iti-floater-icon">' + window.ktaIcone("mouse-pointer-click") + '</span>' +
     '<span class="kta-iti-floater-msg">' + window.I18n.t("config.georef.clickFloater", { letter: letter }) + '</span>' +
     '<button class="kta-btn kta-btn-ghost" id="cfg_kmz_click_cancel" type="button">' + window.I18n.t("config.georef.cancel") + '</button>';
   document.body.appendChild(fl);
@@ -678,7 +678,7 @@ function _cfgActiverModeClicStart() {
   fl.id = "kta-cfg-start-click-floater";
   fl.className = "kta-iti-floater";
   fl.innerHTML =
-    '<span class="kta-iti-floater-icon">🧭</span>' +
+    '<span class="kta-iti-floater-icon">' + window.ktaIcone("mouse-pointer-click") + '</span>' +
     '<span class="kta-iti-floater-msg">' + window.I18n.t("config.tracker.clickFloater") + '</span>' +
     '<button class="kta-btn kta-btn-ghost" id="cfg_start_click_cancel" type="button">' + window.I18n.t("config.tracker.cancel") + '</button>';
   document.body.appendChild(fl);
@@ -731,18 +731,22 @@ function _bindCfgTrackerStartHandlers() {
 // Titre de groupe : style dans css/style.css (.kta-cfg-group-titre), partagé avec la Configuration de l'accueil.
 const _CFG_LS_GROUPES  = "myktamap_cfg_groupes_v1";
 
-// Groupes partagés avec la Configuration de l'accueil : même icône SVG des deux côtés (index.html, data-kta-ico).
-// Les autres gardent l'emoji de leur libellé. 🩸 Clés sans le préfixe « config.group. » : check-wakelock.js lit
-// l'ordre des rubriques à la première occurrence de leur clé complète dans ce fichier.
-const _CFG_ICONES_GROUPE = { application: "layout-grid", affichage: "palette", optionnels: "puzzle", system: "monitor-cog" };
+// Icône SVG de chaque rubrique ; celles partagées avec la Configuration de l'accueil ont la même des deux côtés
+// (index.html, data-kta-ico). 🩸 Clés sans le préfixe « config.group. » : check-wakelock.js lit l'ordre des
+// rubriques à la première occurrence de leur clé complète dans ce fichier.
+const _CFG_ICONES_GROUPE = { application: "layout-grid", planCalib: "map", navTracker: "navigation",
+  affichage: "palette", perf: "rocket", optionnels: "puzzle", system: "monitor-cog" };
 
 function _cfgGroupeDebut(cle, portee, premier) {
   const t = window.I18n.t;
   const nomIco = _CFG_ICONES_GROUPE[String(cle).replace(/^config\.group\./, "")];
   const ico = nomIco ? window.ktaIcone(nomIco) : "";
   // « mixte » : la portée change d'une ligne à l'autre, chaque ligne la dit.
-  const badge = portee === "plan"   ? '<span class="kta-cfg-scope kta-cfg-scope-plan">'   + t("config.scope.badgePlan")   + '</span>'
-              : portee === "global" ? '<span class="kta-cfg-scope kta-cfg-scope-global">' + t("config.scope.badgeGlobal") + '</span>'
+  const badge = portee === "plan"
+                ? '<span class="kta-cfg-scope kta-cfg-scope-plan">' + window.ktaIcone("map") + " " + t("config.scope.badgePlan") + '</span>'
+              : portee === "global"
+                ? '<span class="kta-cfg-scope kta-cfg-scope-global">' + window.ktaIcone("globe") + " " +
+                  t("config.scope.badgeGlobal") + '</span>'
               : portee === "mixte"  ? '<span class="kta-cfg-scope kta-cfg-scope-mixte">'  + t("config.scope.badgeMixte")  + '</span>'
               : "";
   return '<div class="kta-cfg-group" data-cfg-group="' + cle + '">' +
@@ -812,11 +816,11 @@ function _renderCfgGlobauxLectureSeule() {
     [t("config.snapdraw.label"), c.snapDraw === true ? (on + " · " + (Number.isFinite(c.snapDrawPx) ? c.snapDrawPx : 12) + " px") : off]
   ];
   return '<div class="kta-aide-section kta-cfg-globaux">' +
-    '<div class="kta-aide-section-titre">' + t("config.globaux.titre") + '</div>' +
+    '<div class="kta-aide-section-titre">' + window.ktaIcone("house") + " " + t("config.globaux.titre") + '</div>' +
     '<dl class="kta-cfg-globaux-liste">' +
       lignes.map(function (l) { return '<dt>' + l[0] + '</dt><dd>' + l[1] + '</dd>'; }).join("") +
     '</dl>' +
-    '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_globaux_home">' + t("config.globaux.btn") + '</button>' +
+    '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_globaux_home">' + window.ktaIcone("house") + " " + t("config.globaux.btn") + '</button>' +
   '</div>';
 }
 
@@ -824,9 +828,9 @@ function _renderCfgGlobauxLectureSeule() {
 function _renderCfgGeorefLanceur() {
   const t = window.I18n.t;
   return '<div class="kta-aide-section" id="cfg_georef_lanceur">' +
-    '<div class="kta-aide-section-titre">' + t("config.georef.titre") + '</div>' +
+    '<div class="kta-aide-section-titre">' + window.ktaIcone("globe") + " " + t("config.georef.titre") + '</div>' +
     '<div class="kta-cfg-georef-etat" id="cfg_georef_etat"></div>' +
-    '<button type="button" class="kta-btn" id="cfg_georef_open" style="width:100%; margin-top:8px;">' + t("config.georef.openBtn") + '</button>' +
+    '<button type="button" class="kta-btn" id="cfg_georef_open" style="width:100%; margin-top:8px;">' + window.ktaIcone("globe") + " " + t("config.georef.openBtn") + '</button>' +
   '</div>';
 }
 function _cfgRafraichirEtatGeoref() {
@@ -852,7 +856,7 @@ function _ouvrirSousModaleGeoref() {
   sub.innerHTML =
     '<div class="kta-readme-modal-boite kta-cfg-sub-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + t("config.georef.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("globe") + " " + t("config.georef.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-cfg-georef-close" type="button" aria-label="' + t("config.actions.close") + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps kta-cfg-sub-corps">' + _renderCfgGeorefSection() + '</div>' +
@@ -876,7 +880,7 @@ function _bindCfgGeorefLanceur() {
 function _renderCfgNiveauxLanceur() {
   const t = window.I18n.t;
   return '<div class="kta-aide-section" id="cfg_niveaux_lanceur">' +
-    '<div class="kta-aide-section-titre">📉 ' + t("prof.titre") + '</div>' +
+    '<div class="kta-aide-section-titre">' + window.ktaIcone("m-niveaux") + ' ' + t("prof.titre") + '</div>' +
     '<div class="kta-cfg-georef-etat" id="cfg_niveaux_etat"></div>' +
     '<button type="button" class="kta-btn" id="cfg_niveaux_open" style="width:100%; margin-top:8px;">' +
       t("prof.btn.saisir") + '</button>' +
@@ -1087,7 +1091,7 @@ function afficherConfig() {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite kta-cfg-modal-boite">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">${window.I18n.t("config.titre")}</span>
+        <span class="kta-readme-modal-titre">${window.ktaIcone("settings")} ${window.I18n.t("config.titre")}</span>
         <button class="kta-panneau-close" id="kta-cfg-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps kta-cfg-corps">
@@ -1108,7 +1112,7 @@ function afficherConfig() {
              presentationMode.js. -->
         <div class="kta-aide-section">
           <button type="button" class="kta-perf-ultra-row kta-cfg-ligne-action" id="cfg_presentation_btn">
-            <span class="kta-cfg-ligne-action-icone" aria-hidden="true">🎬</span>
+            <span class="kta-cfg-ligne-action-icone" aria-hidden="true">${window.ktaIcone("presentation")}</span>
             <span class="kta-perf-ultra-text">
               <span class="kta-perf-ultra-label">${window.I18n.t("config.presentation.btn")}</span>
               <span class="kta-perf-ultra-hint">${window.I18n.t("config.presentation.hint")}</span>
@@ -1146,7 +1150,7 @@ function afficherConfig() {
             <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}" style="flex:1;">
             <button type="button" class="kta-btn kta-btn-ghost" id="kta-cfg-calib-echelle"
               style="padding:6px 10px; font-size:13px; white-space:nowrap;"
-              title="${window.I18n.t("config.steps.scaleTitle")}">🎯</button>
+              title="${window.I18n.t("config.steps.scaleTitle")}">${window.ktaIcone("ruler")}</button>
           </div>
         </div>
 
@@ -1162,7 +1166,7 @@ function afficherConfig() {
         <div class="kta-aide-section">
           <div id="cfg_north_block" class="kta-perf-ultra-row" style="margin-top:0; display:block; padding:8px; border:1px solid rgba(255,255,255,0.06); border-radius:8px; background:rgba(255,255,255,0.02);">
             <div class="kta-perf-ultra-text" style="margin-bottom:6px;">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.north.label")}</span>
+              <span class="kta-perf-ultra-label">${window.ktaIcone("compass")} ${window.I18n.t("config.display.north.label")}</span>
               <span class="kta-perf-ultra-hint" style="display:block;">
                 ${window.I18n.t("config.display.north.hint")}
               </span>
@@ -1174,7 +1178,7 @@ function afficherConfig() {
                             border:1px solid rgba(255,255,255,0.12); font-weight:600;">
               <span style="color:var(--kta-texte-3); font-size:12px;">°</span>
               <button type="button" id="cfg_north_picker_btn" class="kta-btn"
-                      style="flex:1 1 auto; min-width:140px;">${window.I18n.t("config.display.north.calibrate")}</button>
+                      style="flex:1 1 auto; min-width:140px;">${window.ktaIcone("mouse-pointer-click")} ${window.I18n.t("config.display.north.calibrate")}</button>
               <button type="button" id="cfg_north_reset_btn" class="kta-btn"
                       style="flex:0 0 auto;" title="${window.I18n.t("config.display.north.resetTitle")}">${window.I18n.t("config.display.north.reset")}</button>
             </div>
@@ -1195,7 +1199,7 @@ function afficherConfig() {
              départ, détection de pas et navigation intelligente dépendent tous de
              l'échelle m/px. Bleu (info/prérequis) ≠ ambre (réglages dangereux). -->
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${window.I18n.t("config.tracker.titre")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("locate-fixed")} ${window.I18n.t("config.tracker.titre")}</div>
           <div class="kta-cfg-grille">
             <label class="kta-cfg-label">${window.I18n.t("config.tracker.posX")}</label>
             <input class="kta-cfg-input" id="cfg_startX" type="number" value="${c.startX}">
@@ -1206,8 +1210,8 @@ function afficherConfig() {
                🔍 via un point existant, 📍 au clic sur la carte. Évite la saisie
                manuelle des coordonnées (gros gain de temps). -->
           <div class="kta-kmz-pt-actions" style="margin-top:8px;">
-            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_search" type="button">${window.I18n.t("config.tracker.searchBtn")}</button>
-            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_click" type="button">${window.I18n.t("config.tracker.clickBtn")}</button>
+            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_search" type="button">${window.ktaIcone("search")} ${window.I18n.t("config.tracker.searchBtn")}</button>
+            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_click" type="button">${window.ktaIcone("mouse-pointer-click")} ${window.I18n.t("config.tracker.clickBtn")}</button>
           </div>
           <div id="cfg_start_search_results" class="kta-kmz-search-results" style="display:none;"></div>
         </div>
@@ -1220,8 +1224,8 @@ function afficherConfig() {
                tous les plans, or le groupe dit ce plan ») : le groupe passe en
                « selon la ligne », et cette section porte son badge 🌍. -->
           <div class="kta-aide-section-titre" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-            <span>${window.I18n.t("config.steps.titre")}</span>
-            <span class="kta-cfg-scope kta-cfg-scope-global">${window.I18n.t("config.scope.badgeGlobal")}</span>
+            <span>${window.ktaIcone("footprints")} ${window.I18n.t("config.steps.titre")}</span>
+            <span class="kta-cfg-scope kta-cfg-scope-global">${window.ktaIcone("globe")} ${window.I18n.t("config.scope.badgeGlobal")}</span>
           </div>
           <!-- 🆕 v1.49.0 (Lot C) — avertissement réglages experts (demande KARMA) -->
           <div style="margin:0 0 10px; padding:8px 10px; background:rgba(255,180,80,0.1); border:1px solid rgba(255,180,80,0.3); border-radius:6px; font-size:12px; color:var(--kta-avert); line-height:1.45;">
@@ -1238,7 +1242,7 @@ function afficherConfig() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${window.I18n.t("config.smartnav.titre")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("magnet")} ${window.I18n.t("config.smartnav.titre")}</div>
           <label class="kta-perf-ultra-row" style="margin-top:0;">
             <input type="checkbox" id="cfg_smartNav" ${c.smartNav === true ? "checked" : ""}>
             <span class="kta-perf-ultra-text">
@@ -1281,7 +1285,7 @@ function afficherConfig() {
                avec fallback sur la pref globale historique. Le handler appelle
                window.setPlanShowsIntersections() qui persiste + re-render. -->
           <!-- 🎨 07/10/2026 — Fond sous le plan, PAR PLAN (se voit sous un plan transparent). -->
-          <div class="kta-cfg-label" style="margin-top:4px;">${window.I18n.t("config.fond.label")}</div>
+          <div class="kta-cfg-label" style="margin-top:4px;">${window.ktaIcone("palette")} ${window.I18n.t("config.fond.label")}</div>
           <select class="kta-cfg-input" id="cfg_fond_plan" style="margin-top:4px;">
             <option value="">${(typeof window.getPlanFondConseille === "function" && window.getPlanFondConseille())
               ? window.I18n.t("config.fond.defautConseil", { fond: window.I18n.t("config.fond." + window.getPlanFondConseille()) })
@@ -1294,7 +1298,7 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_show_intersections_row" style="margin-top:8px;">
             <input type="checkbox" id="cfg_show_intersections">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.intersections.label")}</span>
+              <span class="kta-perf-ultra-label">${window.ktaIcone("circle-dot")} ${window.I18n.t("config.display.intersections.label")}</span>
             </span>
           </label>
 
@@ -1323,7 +1327,7 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_wake_lock_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_wake_lock">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.wakelock.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+              <span class="kta-perf-ultra-label">${window.ktaIcone("smartphone")} ${window.I18n.t("config.display.wakelock.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
               <span class="kta-perf-ultra-hint" id="cfg_wake_lock_hint"></span>
             </span>
           </label>
@@ -1337,7 +1341,7 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_voice_row" style="margin-top:8px; display:none;">
             <input type="checkbox" id="cfg_voice">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.voice.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
+              <span class="kta-perf-ultra-label">${window.ktaIcone("mic")} ${window.I18n.t("config.display.voice.label")} <em>${window.I18n.t("config.scope.tousPlans")}</em></span>
               <span class="kta-perf-ultra-hint" id="cfg_voice_hint"></span>
             </span>
           </label>
@@ -1346,7 +1350,7 @@ function afficherConfig() {
           <label class="kta-perf-ultra-row" id="cfg_v3d_pave_row" style="margin-top:8px;">
             <input type="checkbox" id="cfg_v3d_pave">
             <span class="kta-perf-ultra-text">
-              <span class="kta-perf-ultra-label">${window.I18n.t("config.display.v3dPave.label")} <em>${window.I18n.t("config.scope.cetAppareil")}</em></span>
+              <span class="kta-perf-ultra-label">${window.ktaIcone("joystick")} ${window.I18n.t("config.display.v3dPave.label")} <em>${window.I18n.t("config.scope.cetAppareil")}</em></span>
               <span class="kta-perf-ultra-hint">${window.I18n.t("config.display.v3dPave.hint")}</span>
             </span>
           </label>
@@ -1372,7 +1376,7 @@ function afficherConfig() {
                laissait croire que l'option n'existait pas — l'utilisateur ne
                pouvait pas savoir que c'est son système qui refuse. -->
           <div class="kta-aide-section" style="margin-top:16px;">
-            <div class="kta-aide-section-titre">${window.I18n.t("config.optionnels.titre")}</div>
+            <div class="kta-aide-section-titre">${window.ktaIcone("puzzle")} ${window.I18n.t("config.optionnels.titre")}</div>
 
             <label class="kta-perf-ultra-row" id="cfg_replay_row">
               <input type="checkbox" id="cfg_replay" ${c.replayEnabled === true ? "checked" : ""}>
@@ -1414,21 +1418,21 @@ function afficherConfig() {
         ${(window.IncognitoMode && !window.IncognitoMode.active && window.IncognitoMode.indisponible && window.IncognitoMode.indisponible()) ? `
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-indispo" type="button" id="cfg_incognito_btn" disabled>
-            <span style="font-size:18px;">🕵️</span>
+            <span style="font-size:18px;">${window.ktaIcone("venetian-mask")}</span>
             <span><strong>${window.I18n.t("home.privacy.incognitoRelieLabel")}</strong></span>
           </button>
           <div class="kta-cfg-raison" style="margin-top:8px; padding:0 4px;">${window.I18n.t("home.privacy.incognitoRelieHint")}</div>
         </div>` : (window.IncognitoMode && window.IncognitoMode.active) ? `
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
-            <span style="font-size:18px;">✕</span>
+            <span style="font-size:18px;">${window.ktaIcone("x")}</span>
             <span><strong>${window.I18n.t("config.incognito.quit.btn")}</strong></span>
           </button>
           <div class="kta-cfg-raison" style="margin-top:8px; padding:0 4px;">${window.I18n.t("home.privacy.incognitoQuitHint")}</div>
         </div>` : `
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn" type="button" id="cfg_incognito_btn">
-            <span style="font-size:18px;">🕵️</span>
+            <span style="font-size:18px;">${window.ktaIcone("venetian-mask")}</span>
             <span><strong>${window.I18n.t("config.incognito.start.btn")}</strong></span>
           </button>
         </div>`}
@@ -1441,7 +1445,7 @@ function afficherConfig() {
         ${_cfgGroupeDebut("config.group.system", "plan")}
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${window.I18n.t("config.debug.titre")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("bug")} ${window.I18n.t("config.debug.titre")}</div>
           <!-- 🛠️ v1.76.3 (décision KARMA 2:b) : le select debugMode et le
                bouton 📋 Afficher les logs ont été RETIRÉS d'ici — les logs
                se pilotent depuis le Mode Développeur du ⚙️ Configuration
@@ -1850,13 +1854,13 @@ function _ouvrirSelecteurNiveau(btnPastille) {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-niv-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("config.niveaux.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("m-niveaux") + " " + window.I18n.t("config.niveaux.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-niv-close" type="button" aria-label="' + window.I18n.t("config.niveaux.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
 
         '<div class="kta-niv-section">' +
-          '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.active.titre") + '</div>' +
+          '<div class="kta-niv-section-titre">' + window.ktaIcone("pencil") + " " + window.I18n.t("config.niveaux.active.titre") + '</div>' +
           '<div class="kta-niv-segmented">' +
             '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-sub" title="' + window.I18n.t("config.niveaux.addBelow") + '">−</button>' +
             segmented +
@@ -1865,7 +1869,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
         '</div>' +
 
         '<div class="kta-niv-section">' +
-          '<div class="kta-niv-section-titre">' + window.I18n.t("config.niveaux.visible.titre") + '</div>' +
+          '<div class="kta-niv-section-titre">' + window.ktaIcone("eye") + " " + window.I18n.t("config.niveaux.visible.titre") + '</div>' +
           '<div class="kta-niv-vis-grid">' + checkboxes + '</div>' +
           '<div class="kta-niv-vis-actions">' +
             '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-all">' + window.I18n.t("config.niveaux.visible.all") + '</button>' +
@@ -1878,7 +1882,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
         '</p>' +
         // Saisie des profondeurs : une profondeur EST une propriété du niveau, elle vit dans cet écran.
         '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-prof" type="button"' +
-          ' style="margin-top:10px;">📉 ' + window.I18n.t("prof.btn.saisir") + '</button>' +
+          ' style="margin-top:10px;">' + window.ktaIcone("m-niveaux") + ' ' + window.I18n.t("prof.btn.saisir") + '</button>' +
       '</div>' +
     '</div>';
 
@@ -2120,6 +2124,9 @@ function _ouvrirCreationJonction(btnSub, opts) {
   if (document.getElementById("kta-jct-modal")) return;
   opts = opts || {};
   const cle = opts.zone ? "config.zoneJonction." : "config.jonction.";
+  // ⚠️ contrat : clés écrites en entier (check-icones-ui les cherche avec leur icône sur la même ligne).
+  const titreHtml = window.ktaIcone("m-echelle") + " " +
+    window.I18n.t(opts.zone ? "config.zoneJonction.titre" : "config.jonction.titre");
 
   const cur = Number.isInteger(opts.de) ? opts.de : (APP_CONFIG.activeLevel || 0);
   const levels = Array.isArray(APP_CONFIG.availableLevels) && APP_CONFIG.availableLevels.length
@@ -2146,7 +2153,7 @@ function _ouvrirCreationJonction(btnSub, opts) {
   overlay.innerHTML =
     '<div class="kta-readme-modal-boite kta-jct-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t(cle + "titre") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + titreHtml + '</span>' +
         '<button class="kta-panneau-close" id="kta-jct-close" type="button" aria-label="' + window.I18n.t("config.jonction.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
@@ -2225,7 +2232,7 @@ function _activerJonctionMode(btnCible, fromLvl, toLvl) {
       window._jonctionPendingMeta = null;
     }
   };
-  _setGroupeModeActif("traces", true, "🪜");
+  _setGroupeModeActif("traces", true, window.ktaIcone("m-echelle"));
   console.log("[MultiNiveau] Jonction mode activé :", fromLvl, "→", toLvl);
 }
 

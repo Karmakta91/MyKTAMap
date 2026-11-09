@@ -240,7 +240,7 @@ window.MajPlan = (function () {
     _ov.innerHTML =
       '<div class="kta-readme-modal-boite kta-fp-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + esc(t("maj.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("refresh-cw") + ' ' + esc(t("maj.titre")) + '</span>' +
           '<button class="kta-panneau-close" data-maj-fermer type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-fp-corps">' +

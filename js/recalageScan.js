@@ -897,7 +897,7 @@
         fini();
         afficherReperes();
         recap();
-      }, { recaler: false, icone: "📍", texte: t("recalscan.clics.floater", { nom: p.nom }), onCancel: fini });
+      }, { recaler: false, ico: "mouse-pointer-click", texte: t("recalscan.clics.floater", { nom: p.nom }), onCancel: fini });
     });
 
     function afficherReperes() {

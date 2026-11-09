@@ -403,8 +403,8 @@
       return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.empty.points")) + '</div>';
     }
     let html = '<div class="kta-fp-row-actions">' +
-                 '<button class="kta-fp-mini-btn" data-action="show-all" data-set="tags">' + window.I18n.t("filter.action.showAll") + '</button>' +
-                 '<button class="kta-fp-mini-btn" data-action="hide-all" data-set="tags">' + window.I18n.t("filter.action.hideAll") + '</button>' +
+                 '<button class="kta-fp-mini-btn" data-action="show-all" data-set="tags">' + window.ktaIcone("eye") + ' ' + window.I18n.t("filter.action.showAll") + '</button>' +
+                 '<button class="kta-fp-mini-btn" data-action="hide-all" data-set="tags">' + window.ktaIcone("ban") + ' ' + window.I18n.t("filter.action.hideAll") + '</button>' +
                '</div>';
     html += '<div class="kta-fp-chips-grid">';
     tags.forEach(function(t) {
@@ -413,7 +413,7 @@
       const lbl = _lcLabel("icones", t.tag, t.tag);
       const ico = t.iconUrl
                   ? '<img class="kta-fp-chip-ico" src="' + t.iconUrl + '" alt="">'
-                  : '<span class="kta-fp-chip-ico-emoji">🏷️</span>';
+                  : '<span class="kta-fp-chip-ico-emoji">' + window.ktaIcone("tag") + '</span>';
       html += '<label class="kta-fp-chip ' + (visible ? "" : "kta-fp-chip-off") + '">' +
                 '<input type="checkbox" id="' + id + '" data-set="tags" data-type="' + _escAttr(t.tag) + '"' + (visible ? " checked" : "") + '>' +
                 ico +
@@ -440,8 +440,8 @@
             .forEach(function(t) { sortedKeys.push(t); });
 
     let html = '<div class="kta-fp-row-actions">' +
-                 '<button class="kta-fp-mini-btn" data-action="show-all" data-set="' + setName + '">' + window.I18n.t("filter.action.showAll") + '</button>' +
-                 '<button class="kta-fp-mini-btn" data-action="hide-all" data-set="' + setName + '">' + window.I18n.t("filter.action.hideAll") + '</button>' +
+                 '<button class="kta-fp-mini-btn" data-action="show-all" data-set="' + setName + '">' + window.ktaIcone("eye") + ' ' + window.I18n.t("filter.action.showAll") + '</button>' +
+                 '<button class="kta-fp-mini-btn" data-action="hide-all" data-set="' + setName + '">' + window.ktaIcone("ban") + ' ' + window.I18n.t("filter.action.hideAll") + '</button>' +
                '</div>';
     html += '<div class="kta-fp-chips-grid">';
     const lcCat = (category === "roads") ? "traces" : category;
@@ -491,7 +491,7 @@
              '<label class="kta-fp-chip ' + (vis ? "" : "kta-fp-chip-off") + '" title="' +
                _escAttr(window.I18n.t("filter.planDeBaseAide")) + '">' +
                '<input type="checkbox" data-plan-de-base' + (vis ? " checked" : "") + '>' +
-               '<span class="kta-fp-chip-label">' + _escHtml(window.I18n.t("filter.planDeBase")) + '</span>' +
+               '<span class="kta-fp-chip-label">' + window.ktaIcone("image") + ' ' + _escHtml(window.I18n.t("filter.planDeBase")) + '</span>' +
              '</label>' +
            '</div>';
   }
@@ -525,7 +525,7 @@
       const label = lc.label || lc.id || window.I18n.t("filter.layer.default", { idx: idx });
       html += '<label class="kta-fp-row-cb">' +
                 '<input type="checkbox" data-img-layer="' + _escAttr(layerId) + '"' + (visible ? " checked" : "") + '>' +
-                '<span>🖼️ ' + _escHtml(label) + '</span>' +
+                '<span>' + window.ktaIcone("image") + ' ' + _escHtml(label) + '</span>' +
               '</label>';
     });
     html += '</div>';
@@ -553,7 +553,7 @@
     let html = (window.MajPlan && CS && !lectureSeule)
       ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-maj-plan" data-maj-plan ' +
           'title="' + _escAttr(window.I18n.t("filter.majPlanTitle")) + '">' +
-          _escHtml(window.I18n.t("filter.majPlan")) + '</button>'
+          window.ktaIcone("refresh-cw") + ' ' + _escHtml(window.I18n.t("filter.majPlan")) + '</button>'
       : '';
     html += '<div class="kta-fp-list">';
     ids.forEach(function(id) {
@@ -569,7 +569,7 @@
       html += '<div class="kta-fp-calque-ligne">' +
                 '<label class="kta-fp-row-cb">' +
                   '<input type="checkbox" data-data-layer="' + _escAttr(id) + '"' + (visible ? " checked" : "") + '>' +
-                  '<span>📊 ' + _escHtml(label) +
+                  '<span>' + window.ktaIcone("layers") + ' ' + _escHtml(label) +
                     (rapatrie ? ' <em class="kta-fp-calque-remplace">'
                                 + _escHtml(window.I18n.t("filter.calque.remplace")) + '</em>' : '') +
                   '</span>' +
@@ -582,14 +582,14 @@
                   ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
                       'data-calque-integrer="' + _escAttr(id) + '" ' +
                       'title="' + _escAttr(window.I18n.t("filter.calque.integrerTitle")) + '">' +
-                      _escHtml(window.I18n.t("filter.calque.integrer")) +
+                      window.ktaIcone("plus") + ' ' + _escHtml(window.I18n.t("filter.calque.integrer")) +
                     '</button>'
                   : '') +
                 (modifiable
                   ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
                       'data-calque-exporter="' + _escAttr(id) + '" ' +
                       'title="' + _escAttr(window.I18n.t("filter.calque.exporterTitle")) + '">' +
-                      _escHtml(window.I18n.t("filter.calque.exporter")) +
+                      window.ktaIcone("arrow-up-from-line") + ' ' + _escHtml(window.I18n.t("filter.calque.exporter")) +
                     '</button>'
                   : '') +
                 (rapatriable
@@ -597,6 +597,7 @@
                       (rapatrie ? 'data-calque-restituer="' : 'data-calque-rapatrier="') + _escAttr(id) + '" ' +
                       'title="' + _escAttr(window.I18n.t(rapatrie ? "filter.calque.restituerTitle"
                                                                  : "filter.calque.rapatrierTitle")) + '">' +
+                      window.ktaIcone(rapatrie ? "undo-2" : "pencil") + ' ' +
                       _escHtml(window.I18n.t(rapatrie ? "filter.calque.restituer" : "filter.calque.rapatrier")) +
                     '</button>'
                   : '') +
@@ -639,8 +640,8 @@
     html += '<div class="kta-fp-lvl-visible">';
     html += '<span class="kta-fp-sublabel">' + _escHtml(window.I18n.t("filter.levels.visibleLabel")) + '</span>';
     html += '<div class="kta-fp-row-actions">' +
-              '<button class="kta-fp-mini-btn" data-action="lvl-all">' + window.I18n.t("filter.levels.allBtn") + '</button>' +
-              '<button class="kta-fp-mini-btn" data-action="lvl-active-only">' + window.I18n.t("filter.levels.activeOnlyBtn") + '</button>' +
+              '<button class="kta-fp-mini-btn" data-action="lvl-all">' + window.ktaIcone("eye") + ' ' + window.I18n.t("filter.levels.allBtn") + '</button>' +
+              '<button class="kta-fp-mini-btn" data-action="lvl-active-only">' + window.ktaIcone("pencil") + ' ' + window.I18n.t("filter.levels.activeOnlyBtn") + '</button>' +
             '</div>';
     html += '<div class="kta-fp-chips-grid">';
     avail.forEach(function(lvl) {
@@ -674,7 +675,7 @@
           _renderAllSections() +
         '</div>' +
         '<div class="kta-fp-footer">' +
-          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-fp-reset-all">' + window.I18n.t("filter.footer.resetAll") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-fp-reset-all">' + window.ktaIcone("eye") + ' ' + window.I18n.t("filter.footer.resetAll") + '</button>' +
           '<span class="kta-fp-status" id="kta-fp-status"></span>' +
         '</div>' +
       '</div>';
@@ -684,19 +685,24 @@
   }
 
   function _renderAllSections() {
-    return _section(window.I18n.t("filter.section.imageLayers"),  "img",     _renderImageLayersSection()) +
-           _section(window.I18n.t("filter.section.dataLayers"),   "data",    _renderDataLayersSection()) +
-           _section(window.I18n.t("filter.section.levels"),       "lvl",     _renderLevelsSection()) +
-           _section(window.I18n.t("filter.section.tags"),         "tags",    _renderTagsSection()) +
-           _section(window.I18n.t("filter.section.roadTypes"),    "roads",   _renderTypesSection("roads",      "roadTypes",   ["principal", "secondaire", "chemin", "jonction"])) +
-           _section(window.I18n.t("filter.section.zoneTypes"),    "zones",   _renderTypesSection("zones",      "zoneTypes",   ["eau", "remblais", "effondrement", "inaccessible"])) +
-           _section(window.I18n.t("filter.section.structTypes"),  "structs", _renderTypesSection("structures", "structTypes", ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]));
+    // 4e argument : icône SVG du titre (même que le bouton ou l'outil de la carte).
+    return _section(window.I18n.t("filter.section.imageLayers"), "img", _renderImageLayersSection(), "image") +
+           _section(window.I18n.t("filter.section.dataLayers"), "data", _renderDataLayersSection(), "layers") +
+           _section(window.I18n.t("filter.section.levels"), "lvl", _renderLevelsSection(), "m-niveaux") +
+           _section(window.I18n.t("filter.section.tags"), "tags", _renderTagsSection(), "tag") +
+           _section(window.I18n.t("filter.section.roadTypes"), "roads",
+             _renderTypesSection("roads", "roadTypes", ["principal", "secondaire", "chemin", "jonction"]), "m-galerie") +
+           _section(window.I18n.t("filter.section.zoneTypes"), "zones",
+             _renderTypesSection("zones", "zoneTypes", ["eau", "remblais", "effondrement", "inaccessible"]), "m-zone") +
+           _section(window.I18n.t("filter.section.structTypes"), "structs",
+             _renderTypesSection("structures", "structTypes", ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]),
+             "m-pilier");
   }
 
-  function _section(title, id, contentHtml) {
+  function _section(title, id, contentHtml, ico) {
     // Section ouverte par défaut, repliable par son en-tête.
     return '<details class="kta-fp-section" id="kta-fp-sec-' + id + '" open>' +
-             '<summary class="kta-fp-section-titre">' + _escHtml(title) + '</summary>' +
+             '<summary class="kta-fp-section-titre">' + (ico ? window.ktaIcone(ico) + ' ' : '') + _escHtml(title) + '</summary>' +
              '<div class="kta-fp-section-body">' + contentHtml + '</div>' +
            '</details>';
   }
@@ -1105,7 +1111,7 @@
       '<div class="kta-readme-modal-boite kta-fp-boite">' +
         '<div class="kta-readme-modal-header">' +
           '<span class="kta-readme-modal-titre">' +
-            _escHtml(window.I18n.t("filter.ajouts.titre", { calque: nomCalque })) + '</span>' +
+            window.ktaIcone("plus") + ' ' + _escHtml(window.I18n.t("filter.ajouts.titre", { calque: nomCalque })) + '</span>' +
           '<button class="kta-panneau-close" data-ajouts-fermer type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-fp-corps">' +
@@ -1120,7 +1126,7 @@
           '<button type="button" class="kta-btn kta-btn-ghost" data-ajouts-fermer>' +
             _escHtml(window.I18n.t("filter.ajouts.annuler")) + '</button>' +
           '<button type="button" class="kta-btn kta-btn-primary" id="kta-fp-ajouts-ok" disabled>' +
-            _escHtml(window.I18n.t("filter.ajouts.valider", { n: 0 })) + '</button>' +
+            window.ktaIcone("plus") + ' ' + _escHtml(window.I18n.t("filter.ajouts.valider", { n: 0 })) + '</button>' +
         '</div>' +
       '</div>';
 
@@ -1145,7 +1151,8 @@
       const n = v.filter(function (cb) { return cb.checked; }).length;
       const ok = ov.querySelector("#kta-fp-ajouts-ok");
       ok.disabled = n === 0;
-      ok.textContent = window.I18n.t("filter.ajouts.valider", { n: n });
+      // innerHTML : l'icône du bouton revient avec son libellé (texte échappé).
+      ok.innerHTML = window.ktaIcone("plus") + " " + _escHtml(window.I18n.t("filter.ajouts.valider", { n: n }));
       const tout = ov.querySelector("#kta-fp-ajouts-tout");
       if (tout) tout.checked = v.length > 0 && n === v.length;
     }

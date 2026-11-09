@@ -175,7 +175,7 @@
            kta-export-modal-boite pour ajustements ciblés (cf. CSS). -->
       <div class="kta-readme-modal-boite kta-export-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${T("imgexport.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${window.ktaIcone("image")} ${T("imgexport.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-export-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -183,7 +183,7 @@
           <!-- TOGGLE MODE -->
           <div class="kta-conv-sens-wrap">
             <button class="kta-conv-sens-btn ${modeInitial === 'rapide' ? 'active' : ''}" id="kta-export-mode-rapide">
-              <span class="kta-conv-sens-label">${T("imgexport.mode.rapide.label")}</span>
+              <span class="kta-conv-sens-label">${window.ktaIcone("timer")} ${T("imgexport.mode.rapide.label")}</span>
               <span class="kta-conv-sens-desc">
                 ${_mlOn
                   ? T("imgexport.mode.rapide.descMl")
@@ -191,7 +191,7 @@
               </span>
             </button>
             <button class="kta-conv-sens-btn ${modeInitial === 'avance' ? 'active' : ''}" id="kta-export-mode-avance">
-              <span class="kta-conv-sens-label">${T("imgexport.mode.avance.label")}</span>
+              <span class="kta-conv-sens-label">${window.ktaIcone("sliders-horizontal")} ${T("imgexport.mode.avance.label")}</span>
               <span class="kta-conv-sens-desc">${T("imgexport.mode.avance.desc")}</span>
             </button>
           </div>
@@ -199,7 +199,7 @@
           <!-- MODE RAPIDE -->
           <div id="kta-export-rapide" style="display:${modeInitial === 'rapide' ? 'block' : 'none'};">
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">${T("imgexport.rapide.contenu.titre")}</div>
+              <div class="kta-aide-section-titre">${window.ktaIcone("layers")} ${T("imgexport.rapide.contenu.titre")}</div>
               <p style="font-size:13px; color:var(--kta-texte-2); margin:0; line-height:1.7;">
                 ${T("imgexport.rapide.contenu.image")}<br>
                 ${T("imgexport.rapide.contenu.annotations", {
@@ -209,7 +209,7 @@
                     : ''
                 })}<br>
                 ${_niveauxRapideTxt
-                  ? '<span style="color:var(--kta-accent-texte);">🏗️ ' + _niveauxRapideTxt + '</span>' + T("imgexport.rapide.contenu.niveauxAstuce") + '<br>'
+                  ? '<span style="color:var(--kta-accent-texte);">' + window.ktaIcone("m-niveaux") + ' ' + _niveauxRapideTxt + '</span>' + T("imgexport.rapide.contenu.niveauxAstuce") + '<br>'
                   : ''}
                 ${T("imgexport.rapide.contenu.format")}<br>
                 ${nbMesure > 0 ? T("imgexport.rapide.contenu.mesureDist", { count: nbMesure }) + '<br>' : ''}
@@ -230,11 +230,11 @@
                  - noir : fillRect noir pour vue contraste
                  - transparent : pas de fillRect (canvas alpha) -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">${T("imgexport.fond.titre")}</div>
+              <div class="kta-aide-section-titre">${window.ktaIcone("palette")} ${T("imgexport.fond.titre")}</div>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="image" checked>
-                  <span>${T("imgexport.fond.image")} <span style="color:var(--kta-texte-3); font-size:11px;">${T("imgexport.fond.imageNote")}</span></span>
+                  <span>${window.ktaIcone("image")} ${T("imgexport.fond.image")} <span style="color:var(--kta-texte-3); font-size:11px;">${T("imgexport.fond.imageNote")}</span></span>
                 </label>
                 <label class="kta-export-radio-row">
                   <input type="radio" name="export_bg" value="white">
@@ -256,32 +256,32 @@
 
             <!-- Calques d'image -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">${T("imgexport.calquesImage.titre")}</div>
+              <div class="kta-aide-section-titre">${window.ktaIcone("image")} ${T("imgexport.calquesImage.titre")}</div>
               <div id="kta-export-image-layers"></div>
             </div>
 
             <!-- Calques de données -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">${T("imgexport.calquesData.titre")}</div>
+              <div class="kta-aide-section-titre">${window.ktaIcone("layers")} ${T("imgexport.calquesData.titre")}</div>
               <div id="kta-export-data-layers"></div>
             </div>
 
             <!-- Annotations -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">${T("imgexport.annotations.titre")}</div>
+              <div class="kta-aide-section-titre">${window.ktaIcone("pencil")} ${T("imgexport.annotations.titre")}</div>
               <div id="kta-export-annotations"></div>
               ${(window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "")}
             </div>
 
             <!-- 🏗️ Niveaux (depuis v148, conditionnel sur multiLevel ON) -->
             <div class="kta-aide-section" id="kta-export-levels-section" style="display:none;">
-              <div class="kta-aide-section-titre">${T("imgexport.niveaux.titre")}</div>
+              <div class="kta-aide-section-titre">${window.ktaIcone("m-niveaux")} ${T("imgexport.niveaux.titre")}</div>
               <div id="kta-export-levels" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
             </div>
 
             <!-- Légende intégrée -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">${T("imgexport.legende.titre")}</div>
+              <div class="kta-aide-section-titre">${window.ktaIcone("list")} ${T("imgexport.legende.titre")}</div>
               <label class="kta-export-cb-row" style="font-weight:600;">
                 <input type="checkbox" id="kta-export-legende-on">
                 <span>${T("imgexport.legende.inclure")}</span>
@@ -300,7 +300,7 @@
 
                   <div id="kta-export-leg-custom" style="display:none; margin-top:8px;">
                     <button class="kta-btn kta-btn-ghost" id="kta-export-leg-pick" style="width:100%; margin-bottom:6px;">
-                      ${T("imgexport.legende.selectCarte")}
+                      ${window.ktaIcone("mouse-pointer-click")} ${T("imgexport.legende.selectCarte")}
                     </button>
                     <div style="display:grid; grid-template-columns:auto 1fr auto 1fr; gap:6px; align-items:center;">
                       <label class="kta-cfg-label" style="margin:0;">X</label>
@@ -344,17 +344,17 @@
                      collapsible pour pas alourdir la modale au défaut. -->
                 <details class="kta-legend-custom-details" style="margin-top:14px; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:8px;">
                   <summary style="cursor:pointer; font-weight:600; color:var(--kta-texte); padding:4px; user-select:none;">
-                    ${T("imgexport.legende.custom.titre")}
+                    ${window.ktaIcone("pencil")} ${T("imgexport.legende.custom.titre")}
                   </summary>
                   <div id="kta-legend-custom-body" style="margin-top:10px;">
                     <!-- Peuplé dynamiquement par _peuplerLegendCustom() au moment de l'ouverture du modal -->
                   </div>
                   <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
                     <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legend-custom-add">
-                      ${T("imgexport.legende.custom.ajouter")}
+                      ${window.ktaIcone("plus")} ${T("imgexport.legende.custom.ajouter")}
                     </button>
                     <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legend-custom-reset" title="${T("imgexport.legende.custom.resetTitre")}">
-                      ${T("imgexport.legende.custom.reset")}
+                      ${window.ktaIcone("refresh-cw")} ${T("imgexport.legende.custom.reset")}
                     </button>
                   </div>
                 </details>
@@ -364,7 +364,7 @@
 
             <!-- Format & qualité -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">${T("imgexport.format.titre")}</div>
+              <div class="kta-aide-section-titre">${window.ktaIcone("settings")} ${T("imgexport.format.titre")}</div>
               <div style="display:flex; gap:14px; flex-wrap:wrap;">
                 <div>
                   <div class="kta-cfg-label" style="margin-bottom:4px;">${T("imgexport.format.format")}</div>
@@ -383,7 +383,7 @@
 
             <!-- Aperçu -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">${T("imgexport.apercu.titre")}</div>
+              <div class="kta-aide-section-titre">${window.ktaIcone("eye")} ${T("imgexport.apercu.titre")}</div>
               <div style="display:flex; justify-content:center; background:rgba(255,255,255,0.04); border-radius:6px; padding:8px;">
                 <canvas id="kta-export-preview" width="320" height="200" style="max-width:100%; border:1px solid rgba(255,255,255,0.1); border-radius:4px;"></canvas>
               </div>
@@ -395,7 +395,7 @@
           <!-- ACTIONS -->
           <div class="kta-conv-actions" style="margin-top:14px;">
             <button class="kta-btn kta-btn-ghost"   id="kta-export-annuler">${T("imgexport.btn.annuler")}</button>
-            <button class="kta-btn kta-btn-primary" id="kta-export-go">${T("imgexport.btn.telecharger")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-export-go">${window.ktaIcone("arrow-down-to-line")} ${T("imgexport.btn.telecharger")}</button>
           </div>
 
           <div id="kta-export-erreur" class="kta-conv-erreur" style="display:none;"></div>
@@ -606,7 +606,7 @@
         const iconUrl = item.isUntagged ? null : _iconePourTag(item.tag);
         const iconHtml = iconUrl
           ? '<img src="' + iconUrl + '" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
-          : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
+          : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">' + window.ktaIcone("tag") + '</span>');
         const label = item.isUntagged ? "<em>" + window.I18n.t("imgexport.tag.sansTag") + "</em>" : _escapeHtmlExport(item.tag);
         return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
           <input type="checkbox" id="${id}" data-layer-tag-of="${layerCfg.id}" checked>
@@ -873,7 +873,7 @@
         const iconUrl = item.isUntagged ? null : _iconePourTag(item.tag);
         const iconHtml = iconUrl
           ? '<img src="' + iconUrl + '" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
-          : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
+          : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">' + window.ktaIcone("tag") + '</span>');
         const label = item.isUntagged ? "<em>" + window.I18n.t("imgexport.tag.sansTag") + "</em>" : _escapeHtmlExport(item.tag);
         return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
           <input type="checkbox" id="${id}" data-session-tag="1" checked>
@@ -981,8 +981,8 @@
     function _esc(s) { return window.ktaEsc(s); }
 
     function _sourceBadge(source) {
-      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="' + window.I18n.t("imgexport.legende.custom.srcSession") + '">✏️</span>';
-      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="' + window.I18n.t("imgexport.legende.custom.srcPlan") + '">📋</span>';
+      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="' + window.I18n.t("imgexport.legende.custom.srcSession") + '">' + window.ktaIcone("pencil") + '</span>';
+      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="' + window.I18n.t("imgexport.legende.custom.srcPlan") + '">' + window.ktaIcone("map") + '</span>';
       return                          '<span class="kta-legend-src kta-legend-src-default" title="' + window.I18n.t("imgexport.legende.custom.srcDefaut") + '">·</span>';
     }
 
@@ -1015,7 +1015,7 @@
       const value = (e.label === e.defaultLabel && !isCustomEntry) ? "" : _esc(e.label);
 
       const btnRm = isCustomEntry
-        ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("imgexport.legende.custom.supprimerEntree") + '" ' + dataAttrs + '>🗑️</button>'
+        ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("imgexport.legende.custom.supprimerEntree") + '" ' + dataAttrs + '>' + window.ktaIcone("trash-2") + '</button>'
         : '';
 
       return '<div class="kta-legend-row" ' + dataAttrs + '>' +
@@ -1041,7 +1041,7 @@
       const sectionOpen = isIcones ? "" : "open";
 
       html += '<details class="kta-legend-cat" ' + sectionOpen + '>' +
-                '<summary>' + _esc(title) +
+                '<summary>' + (LC.categoryIcon ? LC.categoryIcon(cat) : "") + _esc(title) +
                   ' <span class="kta-legend-count">(' + (entries.length + customs.length) + ')</span>' +
                 '</summary>' +
                 '<div class="kta-legend-cat-body">';
@@ -1261,7 +1261,7 @@
           erreurEl.style.display = "block";
         }
         btnGo.disabled = false;
-        btnGo.textContent = window.I18n.t("imgexport.btn.telecharger");
+        btnGo.innerHTML = window.ktaIcone("arrow-down-to-line") + " " + window.ktaEsc(window.I18n.t("imgexport.btn.telecharger"));
       }
     });
   }
@@ -1463,7 +1463,7 @@
     banner.className = "kta-iti-floater";
     const icone = document.createElement("span");
     icone.className = "kta-iti-floater-icon";
-    icone.textContent = "🎯";
+    icone.innerHTML = window.ktaIcone("mouse-pointer-click");
     const msg = document.createElement("span");
     msg.className = "kta-iti-floater-msg";
     msg.textContent = window.I18n.t("imgexport.pick.floaterMsg");

@@ -45,6 +45,9 @@
   let _fusionInputs = [];
   let _fusionMerged = null;
   // Titre de la modale par onglet (chaque tuile du lanceur ouvre sa fenêtre sur un seul onglet).
+  // Icône SVG du titre : celle de la tuile du lanceur qui ouvre la fenêtre (interface.js > groupe Exporter).
+  const _ICONES_SOLO = { full: "save", advanced: "sliders-horizontal", extern: "globe", conversion: "refresh-cw",
+    fusion: "link", kmz: "globe", gpx: "map-pinned", geojson: "braces" };
   const _TITRES_SOLO = {
     full: "export.solo.full", advanced: "export.solo.advanced", extern: "export.solo.extern",
     conversion: "export.solo.conversion", fusion: "tabledit.source.fusion"
@@ -606,7 +609,7 @@
     }
     const retenus = _filtreActif() ? tous.filter(_garder).length : tous.length;
     return '<div class="kta-ses-filtre" id="kta-ses-filtre">' + (window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "") +
-        '<div class="kta-ses-filtre-titre">🔎 ' + window.ktaEsc(t("export.filtre.titre")) + '</div>' +
+        '<div class="kta-ses-filtre-titre">' + window.ktaIcone("calendar") + ' ' + window.ktaEsc(t("export.filtre.titre")) + '</div>' +
         '<div class="kta-ses-filtre-ligne">' +
           '<label>' + window.ktaEsc(t("export.filtre.du")) + ' <input type="date" id="ses_filtre_du" value="' + window.ktaEsc(_filtre.du) + '"></label>' +
           '<label>' + window.ktaEsc(t("export.filtre.au")) + ' <input type="date" id="ses_filtre_au" value="' + window.ktaEsc(_filtre.au) + '"></label>' +
@@ -770,7 +773,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${t(_formatImpose ? "export.solo." + _formatImpose
+          <span class="kta-readme-modal-titre">${window.ktaIcone(_ICONES_SOLO[_formatImpose || _activeTab] || "save")} ${t(_formatImpose ? "export.solo." + _formatImpose
                                                      : _TITRES_SOLO[_activeTab])}</span>
           <button class="kta-panneau-close" id="kta-ses-close">✕</button>
         </div>
@@ -905,18 +908,18 @@
     // Section Photos : « Chargement… » puis compteur rempli en async (_kta_majCompteurPhotosFull).
     return _htmlFiltre() + `
       <div class="kta-ses-summary">
-        <div>✏️ ${t("export.full.points", { n: d.points.length, s: d.points.length > 1 ? "s" : "" })}</div>
-        <div>🛣️ ${t("export.full.roads", { n: d.roads.length, s: d.roads.length > 1 ? "s" : "" })}</div>
-        <div>⬛ ${t("export.full.zones", { n: d.zones.length, s: d.zones.length > 1 ? "s" : "" })}</div>
-        <div>🏛️ ${t("export.full.structures", { n: (d.structures || []).length, s: (d.structures || []).length > 1 ? "s" : "" })}</div>
-        <div>🧭 ${t("export.full.tracker", { n: (d.trackerTimeline || []).length, s: (d.trackerTimeline || []).length > 1 ? "s" : "" })}</div>
+        <div>${window.ktaIcone("map-pin")} ${t("export.full.points", { n: d.points.length, s: d.points.length > 1 ? "s" : "" })}</div>
+        <div>${window.ktaIcone("m-galerie")} ${t("export.full.roads", { n: d.roads.length, s: d.roads.length > 1 ? "s" : "" })}</div>
+        <div>${window.ktaIcone("m-zone")} ${t("export.full.zones", { n: d.zones.length, s: d.zones.length > 1 ? "s" : "" })}</div>
+        <div>${window.ktaIcone("m-pilier")} ${t("export.full.structures", { n: (d.structures || []).length, s: (d.structures || []).length > 1 ? "s" : "" })}</div>
+        <div>${window.ktaIcone("navigation")} ${t("export.full.tracker", { n: (d.trackerTimeline || []).length, s: (d.trackerTimeline || []).length > 1 ? "s" : "" })}</div>
       </div>
 
       <div class="kta-ses-photos-section" id="full_photos_section" style="display:none;">
         <label class="kta-ses-cb-row" style="margin-top:8px;">
           <input type="checkbox" id="full_photos" checked>
           <span>
-            ${t("export.full.photosLabel")}
+            ${window.ktaIcone("camera")} ${t("export.full.photosLabel")}
             <span class="kta-ses-count" id="full_photos_count">${t("export.loading")}</span>
           </span>
         </label>
@@ -929,7 +932,7 @@
       <div class="kta-ses-anonymize-section" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--kta-bordure);">
         <label class="kta-ses-cb-row">
           <input type="checkbox" id="full_anonymize">
-          <span>${t("export.full.anonymizeLabel")}</span>
+          <span>${window.ktaIcone("shield")} ${t("export.full.anonymizeLabel")}</span>
         </label>
         <p style="font-size:11.5px; color:var(--kta-texte-3); font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
           ${t("export.full.anonymizeHint")}
@@ -973,7 +976,7 @@
       const iconUrl = item.isUntagged ? null : _iconePourTag(item.tag);
       const iconHtml = iconUrl
         ? '<img src="' + iconUrl + '" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
-        : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
+        : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">' + window.ktaIcone("tag") + '</span>');
       const label = item.isUntagged ? t("export.untagged") : _escapeHtml(item.tag);
       return `<label class="kta-ses-cb-row kta-ses-cb-sub">
         <input type="checkbox" id="${id}"${checked}>
@@ -990,23 +993,23 @@
 
     return _htmlFiltre() + `
       <div class="kta-ses-section">
-        <div class="kta-ses-section-title">${t("export.adv.contentTitle")}</div>
+        <div class="kta-ses-section-title">${window.ktaIcone("layers")} ${t("export.adv.contentTitle")}</div>
 
-        ${row("adv_points", t("export.adv.points"), d.points.length, true)}
+        ${row("adv_points", window.ktaIcone("map-pin") + " " + t("export.adv.points"), d.points.length, true)}
         ${pointsTagsHtml}
 
-        ${row("adv_roads", t("export.adv.roads"), d.roads.length, true)}
+        ${row("adv_roads", window.ktaIcone("m-galerie") + " " + t("export.adv.roads"), d.roads.length, true)}
         ${rowSub("adv_roads_principal",  _lp("traces", "principal", t("export.adv.roadsPrincipal")),  roadsByType.principal.length,  true)}
         ${rowSub("adv_roads_secondaire", _lp("traces", "secondaire", t("export.adv.roadsSecondaire")), roadsByType.secondaire.length, true)}
         ${rowSub("adv_roads_chemin",     _lp("traces", "chemin", t("export.adv.roadsChemin")),     roadsByType.chemin.length,     true)}
 
-        ${row("adv_zones", t("export.adv.zones"), d.zones.length, true)}
+        ${row("adv_zones", window.ktaIcone("m-zone") + " " + t("export.adv.zones"), d.zones.length, true)}
         ${rowSub("adv_zones_eau",          _lp("zones", "eau", t("export.adv.zonesEau")),           zonesByType.eau.length,          true)}
         ${rowSub("adv_zones_remblais",     _lp("zones", "remblais", t("export.adv.zonesRemblais")),      zonesByType.remblais.length,     true)}
         ${rowSub("adv_zones_effondrement", _lp("zones", "effondrement", t("export.adv.zonesEffondrement")),  zonesByType.effondrement.length, true)}
         ${rowSub("adv_zones_inaccessible", _lp("zones", "inaccessible", t("export.adv.zonesInaccessible")),  zonesByType.inaccessible.length, true)}
 
-        ${row("adv_structures", t("export.adv.structures"), (d.structures || []).length, true)}
+        ${row("adv_structures", window.ktaIcone("m-pilier") + " " + t("export.adv.structures"), (d.structures || []).length, true)}
         ${rowSub("adv_structures_pilier-1", _lp("structures", "pilier-1", t("export.adv.structPilier1")),     structuresByType["pilier-1"].length, true)}
         ${rowSub("adv_structures_pilier-2", _lp("structures", "pilier-2", t("export.adv.structPilier2")),     structuresByType["pilier-2"].length, true)}
         ${rowSub("adv_structures_mur",      _lp("structures", "mur", t("export.adv.structMur")),         structuresByType["mur"].length,      true)}
@@ -1015,8 +1018,8 @@
         ${rowSub("adv_structures_front-1",  _lp("structures", "front-1", t("export.adv.structFront1")),      structuresByType["front-1"].length,  true)}
         ${rowSub("adv_structures_front-2",  _lp("structures", "front-2", t("export.adv.structFront2")),      structuresByType["front-2"].length,  true)}
 
-        ${row("adv_mesure",        t("export.adv.mesureDistance"), (d.mesure || []).length,        (d.mesure || []).length > 0)}
-        ${row("adv_mesure_surface",t("export.adv.mesureSurface"),  (d.mesureSurface || []).length, (d.mesureSurface || []).length >= 3)}
+        ${row("adv_mesure",        window.ktaIcone("ruler") + " " + t("export.adv.mesureDistance"), (d.mesure || []).length,        (d.mesure || []).length > 0)}
+        ${row("adv_mesure_surface",window.ktaIcone("square-dashed") + " " + t("export.adv.mesureSurface"),  (d.mesureSurface || []).length, (d.mesureSurface || []).length >= 3)}
 
         ${(function() {
           // Tracker activable s'il y a une timeline, un path runtime ou une position courante.
@@ -1029,7 +1032,7 @@
           const detailHtml = parts.length ? '<span class="kta-ses-count">(' + parts.join(" + ") + ')</span>' : '';
           return `<label class="kta-ses-cb-row" style="${trkAvailable ? "" : "opacity:0.4;"}">
             <input type="checkbox" id="adv_tracker" ${trkAvailable ? "" : "disabled"} ${trkAvailable ? "checked" : ""}>
-            <span>${t("export.adv.trackerGps", { detail: detailHtml })}</span>
+            <span>${window.ktaIcone("navigation")} ${t("export.adv.trackerGps", { detail: detailHtml })}</span>
           </label>`;
         })()}
       </div>
@@ -1038,7 +1041,7 @@
            en async via _majCompteurPhotosAdvanced après render). Filtrée
            selon les points effectivement exportés à la save. -->
       <div class="kta-ses-photos-section" id="adv_photos_section" style="display:none;">
-        <div class="kta-ses-section-title">${t("export.adv.photosTitle")}</div>
+        <div class="kta-ses-section-title">${window.ktaIcone("camera")} ${t("export.adv.photosTitle")}</div>
         <label class="kta-ses-cb-row">
           <input type="checkbox" id="adv_photos" checked>
           <span>
@@ -1052,7 +1055,7 @@
       </div>
 
       <div class="kta-ses-section">
-        <div class="kta-ses-section-title">${t("export.adv.outputTitle")}</div>
+        <div class="kta-ses-section-title">${window.ktaIcone("arrow-up-from-line")} ${t("export.adv.outputTitle")}</div>
         <label class="kta-ses-radio-row">
           <input type="radio" name="adv_format" value="single" checked>
           <span>${t("export.adv.outputSingle")} <span class="kta-ses-radio-hint">${t("export.adv.outputSingleHint")}</span></span>
@@ -1163,7 +1166,7 @@
       const iconUrl = item.isUntagged ? null : _iconePourTag(item.tag);
       const iconHtml = iconUrl
         ? '<img src="' + iconUrl + '" style="width:18px;height:18px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
-        : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
+        : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">' + window.ktaIcone("tag") + '</span>');
       const label = item.isUntagged ? t("export.untagged") : _escapeHtml(item.tag);
       return `<label class="kta-ses-cb-row kta-ses-cb-sub">
         <input type="checkbox" id="${id}"${checked}>
@@ -1200,14 +1203,14 @@
 
     return `
       <div class="kta-ses-section">
-        <div class="kta-ses-section-title">${t("export.conv.s2dContentTitle")}</div>
-        ${row("conv_points", t("export.conv.points"),  d.points.length, true)}
+        <div class="kta-ses-section-title">${window.ktaIcone("layers")} ${t("export.conv.s2dContentTitle")}</div>
+        ${row("conv_points", window.ktaIcone("map-pin") + " " + t("export.conv.points"),  d.points.length, true)}
         ${pointsTagsHtml}
-        ${row("conv_roads",  t("export.conv.roads"),          roadsExportables.length,  true)}
+        ${row("conv_roads",  window.ktaIcone("m-galerie") + " " + t("export.conv.roads"),          roadsExportables.length,  true)}
         ${roadsTypesHtml}
-        ${row("conv_zones",  t("export.conv.zones"),            d.zones.length,  true)}
+        ${row("conv_zones",  window.ktaIcone("m-zone") + " " + t("export.conv.zones"),            d.zones.length,  true)}
         ${zonesTypesHtml}
-        ${row("conv_structures", t("export.conv.structures"),  (d.structures || []).length, true)}
+        ${row("conv_structures", window.ktaIcone("m-pilier") + " " + t("export.conv.structures"),  (d.structures || []).length, true)}
         ${structuresTypesHtml}
       </div>
 
@@ -1215,7 +1218,7 @@
            Auto-cachée si 0 photo, peuplée en async via _majCompteurPhotosConvEd2Data.
            Filtrée selon les points effectivement convertis (cf. _exportConvSession2Data). -->
       <div class="kta-ses-photos-section" id="conv_ed2data_photos_section" style="display:none;">
-        <div class="kta-ses-section-title">${t("export.conv.photosTitle")}</div>
+        <div class="kta-ses-section-title">${window.ktaIcone("camera")} ${t("export.conv.photosTitle")}</div>
         <label class="kta-ses-cb-row">
           <input type="checkbox" id="conv_ed2data_photos" checked>
           <span>
@@ -1229,7 +1232,7 @@
       </div>
 
       <div class="kta-ses-section">
-        <div class="kta-ses-section-title">${t("export.conv.granTitle")}</div>
+        <div class="kta-ses-section-title">${window.ktaIcone("sliders-horizontal")} ${t("export.conv.granTitle")}</div>
         <label class="kta-ses-radio-row">
           <input type="radio" name="conv_gran" value="basic" checked>
           <span>${t("export.conv.granBasic")} <span class="kta-ses-radio-hint">${t("export.conv.granBasicHint")}</span></span>
@@ -1262,12 +1265,12 @@
         : '';
       apercu = `
         <div class="kta-ses-section">
-          <div class="kta-ses-section-title">${t("export.conv.d2sApercuTitle")}</div>
+          <div class="kta-ses-section-title">${window.ktaIcone("eye")} ${t("export.conv.d2sApercuTitle")}</div>
           <div class="kta-ses-summary">
-            <div>✏️ ${t("export.conv.d2sPoints", { n: stats.points, s: stats.points > 1 ? "s" : "" })}</div>
-            <div>🛣️ ${t("export.conv.d2sRoads", { n: stats.roads, s: stats.roads > 1 ? "s" : "" })}</div>
-            <div>⬛ ${t("export.conv.d2sZones", { n: stats.zones, s: stats.zones > 1 ? "s" : "" })}</div>
-            <div>🏛️ ${t("export.conv.d2sStructures", { n: stats.structures, s: stats.structures > 1 ? "s" : "" })}</div>
+            <div>${window.ktaIcone("map-pin")} ${t("export.conv.d2sPoints", { n: stats.points, s: stats.points > 1 ? "s" : "" })}</div>
+            <div>${window.ktaIcone("m-galerie")} ${t("export.conv.d2sRoads", { n: stats.roads, s: stats.roads > 1 ? "s" : "" })}</div>
+            <div>${window.ktaIcone("m-zone")} ${t("export.conv.d2sZones", { n: stats.zones, s: stats.zones > 1 ? "s" : "" })}</div>
+            <div>${window.ktaIcone("m-pilier")} ${t("export.conv.d2sStructures", { n: stats.structures, s: stats.structures > 1 ? "s" : "" })}</div>
             ${photosBadge}
           </div>
         </div>
@@ -1276,7 +1279,7 @@
 
     return `
       <div class="kta-ses-section">
-        <div class="kta-ses-section-title">${t("export.conv.d2sSourceTitle")}</div>
+        <div class="kta-ses-section-title">${window.ktaIcone("folder-open")} ${t("export.conv.d2sSourceTitle")}</div>
         <div class="kta-conv-drop" id="kta-conv-d2e-drop">
           <span id="kta-conv-d2e-drop-label">${_convUploadedName ? t("export.conv.d2sDropLoaded", { name: _escapeHtml(_convUploadedName) }) : t("export.conv.d2sDropEmpty")}</span>
           <!-- 🆕 v1.9.3-B1d++ : accepte aussi .zip (data layer avec photos) -->
@@ -2755,10 +2758,10 @@
         const nbZ = Array.isArray(j.zones) ? j.zones.length : 0;
         const nbS = Array.isArray(j.structures) ? j.structures.length : 0;
         const cats = [];
-        if (nbP) cats.push("✏️ " + nbP);
-        if (nbR) cats.push("🛣️ " + nbR);
-        if (nbZ) cats.push("⬛ " + nbZ);
-        if (nbS) cats.push("🏛️ " + nbS);
+        if (nbP) cats.push(window.ktaIcone("map-pin") + " " + nbP);
+        if (nbR) cats.push(window.ktaIcone("m-galerie") + " " + nbR);
+        if (nbZ) cats.push(window.ktaIcone("m-zone") + " " + nbZ);
+        if (nbS) cats.push(window.ktaIcone("m-pilier") + " " + nbS);
         return '<div class="kta-fusion-file"><span class="kta-fusion-file-name">' + _escapeHtml(f.name) +
                '</span><span class="kta-fusion-file-cats">' + (cats.join(" · ") || "∅") + '</span></div>';
       }).join("");
@@ -2780,12 +2783,12 @@
         : "";
       apercuHtml = `
         <div class="kta-ses-section">
-          <div class="kta-ses-section-title">${t("export.fusion.apercuTitle")}</div>
+          <div class="kta-ses-section-title">${window.ktaIcone("eye")} ${t("export.fusion.apercuTitle")}</div>
           <div class="kta-ses-summary">
-            <div>✏️ ${t("export.conv.d2sPoints",     { n: m.data.length,       s: m.data.length > 1 ? "s" : "" })}</div>
-            <div>🛣️ ${t("export.conv.d2sRoads",      { n: m.roads.length,      s: m.roads.length > 1 ? "s" : "" })}</div>
-            <div>⬛ ${t("export.conv.d2sZones",      { n: m.zones.length,      s: m.zones.length > 1 ? "s" : "" })}</div>
-            <div>🏛️ ${t("export.conv.d2sStructures", { n: m.structures.length, s: m.structures.length > 1 ? "s" : "" })}</div>
+            <div>${window.ktaIcone("map-pin")} ${t("export.conv.d2sPoints",     { n: m.data.length,       s: m.data.length > 1 ? "s" : "" })}</div>
+            <div>${window.ktaIcone("m-galerie")} ${t("export.conv.d2sRoads",      { n: m.roads.length,      s: m.roads.length > 1 ? "s" : "" })}</div>
+            <div>${window.ktaIcone("m-zone")} ${t("export.conv.d2sZones",      { n: m.zones.length,      s: m.zones.length > 1 ? "s" : "" })}</div>
+            <div>${window.ktaIcone("m-pilier")} ${t("export.conv.d2sStructures", { n: m.structures.length, s: m.structures.length > 1 ? "s" : "" })}</div>
           </div>
           ${dupHtml}
         </div>`;
@@ -2793,7 +2796,7 @@
 
     return `
       <div class="kta-ses-section">
-        <div class="kta-ses-section-title">${t("export.fusion.sourceTitle")}</div>
+        <div class="kta-ses-section-title">${window.ktaIcone("folder-input")} ${t("export.fusion.sourceTitle")}</div>
         <div class="kta-conv-drop" id="kta-fusion-drop">
           <span>${t("export.fusion.dropEmpty")}</span>
           <input type="file" id="kta-fusion-file" accept=".json,.zip,application/json,application/zip" multiple style="display:none">
@@ -3045,7 +3048,7 @@
 
     return '' +
       '<div class="kta-kmz-section">' +
-        '<div class="kta-kmz-section-titre">' + t("export.calib.pointATitre") + '</div>' +
+        '<div class="kta-kmz-section-titre">' + window.ktaIcone("map-pin") + " " + t("export.calib.pointATitre") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
           '<label class="kta-kmz-lbl">' + t("export.calib.planX") + '</label>' +
           '<input type="number" id="kmz_A_x" value="' + pA.x + '" class="kta-cfg-input kta-kmz-input" step="any">' +
@@ -3056,14 +3059,14 @@
         '</div>' +
         '<div class="kta-gps-coords-error" id="kmz_A_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_A_search" type="button">' + t("export.calib.searchBtn") + '</button>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_A_click" type="button">' + t("export.calib.clickBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_A_search" type="button">' + window.ktaIcone("search") + " " + t("export.calib.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_A_click" type="button">' + window.ktaIcone("mouse-pointer-click") + " " + t("export.calib.clickBtn") + '</button>' +
         '</div>' +
         '<div id="kmz_A_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
       '<div class="kta-kmz-section">' +
-        '<div class="kta-kmz-section-titre">' + t("export.calib.pointBTitre") + '</div>' +
+        '<div class="kta-kmz-section-titre">' + window.ktaIcone("map-pin") + " " + t("export.calib.pointBTitre") + '</div>' +
         '<div class="kta-kmz-pt-grille">' +
           '<label class="kta-kmz-lbl">' + t("export.calib.planX") + '</label>' +
           '<input type="number" id="kmz_B_x" value="' + pB.x + '" class="kta-cfg-input kta-kmz-input" step="any">' +
@@ -3074,14 +3077,14 @@
         '</div>' +
         '<div class="kta-gps-coords-error" id="kmz_B_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_B_search" type="button">' + t("export.calib.searchBtn") + '</button>' +
-          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_B_click" type="button">' + t("export.calib.clickBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_B_search" type="button">' + window.ktaIcone("search") + " " + t("export.calib.searchBtn") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_B_click" type="button">' + window.ktaIcone("mouse-pointer-click") + " " + t("export.calib.clickBtn") + '</button>' +
         '</div>' +
         '<div id="kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
       '<div class="kta-kmz-section">' +
-        '<div class="kta-kmz-section-titre">' + t("export.calib.apercuTitre") + '</div>' +
+        '<div class="kta-kmz-section-titre">' + window.ktaIcone("globe") + " " + t("export.calib.apercuTitre") + '</div>' +
         '<div id="kmz_apercu" class="kta-kmz-apercu">' +
           '<em style="color:var(--kta-texte-3);">' + t("export.calib.apercuPrompt") + '</em>' +
         '</div>' +
@@ -3093,7 +3096,7 @@
     const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     const niveauxBloc = mlOn
       ? '<div class="kta-kmz-section">' +
-          '<div class="kta-kmz-section-titre">' + t("export.kmz.niveauxTitre") + '</div>' +
+          '<div class="kta-kmz-section-titre">' + window.ktaIcone("m-niveaux") + " " + t("export.kmz.niveauxTitre") + '</div>' +
           '<div id="kta-kmz-levels-chips" class="kta-kmz-chips"></div>' +
         '</div>'
       : '';
@@ -3115,7 +3118,7 @@
 
       // Sélecteur de format (absent quand la tuile du lanceur l'a déjà choisi)
       '<div class="kta-kmz-section"' + (_formatImpose ? ' style="display:none;"' : '') + '>' +
-        '<div class="kta-kmz-section-titre">' + t("export.extern.outputTitle") + '</div>' +
+        '<div class="kta-kmz-section-titre">' + window.ktaIcone("arrow-up-from-line") + " " + t("export.extern.outputTitle") + '</div>' +
         '<div class="kta-ses-format-pills" role="tablist">' +
           '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "kmz" ? "active" : "") + '" data-fmt="kmz" role="tab" aria-selected="' + (fmt === "kmz") + '">🌍 KMZ</button>' +
           '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "gpx" ? "active" : "") + '" data-fmt="gpx" role="tab" aria-selected="' + (fmt === "gpx") + '">📤 GPX</button>' +
@@ -3146,7 +3149,7 @@
   // ── Options GeoJSON : la projection (les cases de contenu sont celles du KMZ) ──────────────
   function _renderOptsGeojson() {
     return '<div class="kta-kmz-section">' +
-        '<div class="kta-kmz-section-titre">' + t("export.geojson.projTitre") + '</div>' +
+        '<div class="kta-kmz-section-titre">' + window.ktaIcone("globe") + " " + t("export.geojson.projTitre") + '</div>' +
         '<label class="kta-ses-cb-row"><input type="radio" name="geojson_proj" value="2154">' +
           '<span>' + t("export.geojson.projL93") + '</span></label>' +
         '<label class="kta-ses-cb-row"><input type="radio" name="geojson_proj" value="4326" checked>' +
@@ -3221,7 +3224,7 @@
         const iconUrl = item.isUntagged ? null : _kmzIconePourTag(item.tag);
         const iconHtml = iconUrl
           ? '<img src="' + iconUrl + '" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
-          : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
+          : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">' + window.ktaIcone("tag") + '</span>');
         const label = item.isUntagged ? t("export.untagged") : item.tag;
         return '<label class="kta-ses-cb-row" style="margin-left:24px;font-size:12px;padding:3px 4px;">' +
                  '<input type="checkbox" id="kmz_inc_points_tag_' + safeTag + '" data-tag="' + item.tag + '" checked>' +
@@ -3241,10 +3244,10 @@
                           + (sByT["front-1"] || 0) + (sByT["front-2"] || 0) + (sByT.autres || 0);
 
     return '<div class="kta-kmz-section">' +
-        '<div class="kta-kmz-section-titre">' + t("export.kmz.contentTitle") + '</div>' +
+        '<div class="kta-kmz-section-titre">' + window.ktaIcone("layers") + " " + t("export.kmz.contentTitle") + '</div>' +
 
         '<div data-kmz-seul="1">' +
-        row("kmz_inc_image", t("export.kmz.image"), null, true) +
+        row("kmz_inc_image", window.ktaIcone("image") + " " + t("export.kmz.image"), null, true) +
         '<div class="kta-kmz-opacity-row" id="kmz_opacity_wrap" style="margin-left:24px;">' +
           '<label for="kmz_img_opacity" class="kta-kmz-opacity-lbl">' + t("export.kmz.opacite") + '</label>' +
           '<input type="range" id="kmz_img_opacity" min="0" max="100" step="5" value="60" class="kta-kmz-opacity-slider">' +
@@ -3269,22 +3272,22 @@
           : '') +
         '</div>' +
 
-        row("kmz_inc_points", t("export.kmz.points"), stats.pointsTotal, true) +
+        row("kmz_inc_points", window.ktaIcone("map-pin") + " " + t("export.kmz.points"), stats.pointsTotal, true) +
         pointsTagsHtml +
 
-        row("kmz_inc_roads", t("export.kmz.roads"), roadsTotal, true) +
+        row("kmz_inc_roads", window.ktaIcone("m-galerie") + " " + t("export.kmz.roads"), roadsTotal, true) +
         rowSub("kmz_inc_roads_principal",  _lp("traces", "principal", t("export.kmz.roadsPrincipal")),  rByT.principal,  true) +
         rowSub("kmz_inc_roads_secondaire", _lp("traces", "secondaire", t("export.kmz.roadsSecondaire")), rByT.secondaire, true) +
         rowSub("kmz_inc_roads_chemin",     _lp("traces", "chemin", t("export.kmz.roadsChemin")),     rByT.chemin,     true) +
 
-        row("kmz_inc_zones", t("export.kmz.zones"), zonesTotal, true) +
+        row("kmz_inc_zones", window.ktaIcone("m-zone") + " " + t("export.kmz.zones"), zonesTotal, true) +
         rowSub("kmz_inc_zones_eau",          _lp("zones", "eau", t("export.kmz.zonesEau")),          zByT.eau,          true) +
         rowSub("kmz_inc_zones_remblais",     _lp("zones", "remblais", t("export.kmz.zonesRemblais")),     zByT.remblais,     true) +
         rowSub("kmz_inc_zones_effondrement", _lp("zones", "effondrement", t("export.kmz.zonesEffondrement")), zByT.effondrement, true) +
         rowSub("kmz_inc_zones_inaccessible", _lp("zones", "inaccessible", t("export.kmz.zonesInaccessible")), zByT.inaccessible, true) +
 
         // Structures + 5 sous-types
-        row("kmz_inc_structures", t("export.kmz.structures"), structuresTotal, true) +
+        row("kmz_inc_structures", window.ktaIcone("m-pilier") + " " + t("export.kmz.structures"), structuresTotal, true) +
         rowSub("kmz_inc_structures_pilier-1", _lp("structures", "pilier-1", t("export.kmz.structPilier1")), sByT["pilier-1"], true) +
         rowSub("kmz_inc_structures_pilier-2", _lp("structures", "pilier-2", t("export.kmz.structPilier2")), sByT["pilier-2"], true) +
         rowSub("kmz_inc_structures_mur",      _lp("structures", "mur", t("export.kmz.structMur")),     sByT["mur"],      true) +
@@ -3293,17 +3296,17 @@
         rowSub("kmz_inc_structures_front-1",  _lp("structures", "front-1", t("export.kmz.structFront1")),  sByT["front-1"] || 0, true) +
         rowSub("kmz_inc_structures_front-2",  _lp("structures", "front-2", t("export.kmz.structFront2")),  sByT["front-2"] || 0, true) +
 
-        (mlOn ? row("kmz_inc_jonctions", t("export.kmz.jonctions"), rByT.jonction + (zByT.pente || 0),
-          rByT.jonction + (zByT.pente || 0) > 0) : '') +
+        (mlOn ? row("kmz_inc_jonctions", window.ktaIcone("m-echelle") + " " + t("export.kmz.jonctions"),
+          rByT.jonction + (zByT.pente || 0), rByT.jonction + (zByT.pente || 0) > 0) : '') +
 
-        row("kmz_inc_iti", t("export.kmz.itineraire"), rByT.itinerary, rByT.itinerary > 0) +
+        row("kmz_inc_iti", window.ktaIcone("route") + " " + t("export.kmz.itineraire"), rByT.itinerary, rByT.itinerary > 0) +
 
         // Légende (aller-retour MyKTAMap ↔ MyKTAMap) : cochée si une légende existe, sinon grisée à 0.
         (function() {
           // Plan ET session (cf. _legendeCompleteAExporter) : les types créés depuis ≡ Légende vivent dans la session.
           const hasCustomLegend = !!_legendeCompleteAExporter();
           return '<div data-kmz-seul="1">' + row("kmz_inc_legend",
-                     t("export.kmz.legend"),
+                     window.ktaIcone("list") + " " + t("export.kmz.legend"),
                      hasCustomLegend ? 1 : 0,
                      hasCustomLegend) + '</div>';
         })() +
@@ -3599,7 +3602,7 @@
     const fl = document.createElement("div");
     fl.id = "kta-kmz-click-floater";
     fl.className = "kta-iti-floater";
-    fl.innerHTML = '<span class="kta-iti-floater-icon">📍</span><span class="kta-iti-floater-msg">' + t("export.click.floaterMsg", { letter: letter }) + '</span><button class="kta-btn kta-btn-ghost" id="kmz_click_cancel" type="button">' + t("export.click.cancel") + '</button>';
+    fl.innerHTML = '<span class="kta-iti-floater-icon">' + window.ktaIcone("mouse-pointer-click") + '</span><span class="kta-iti-floater-msg">' + t("export.click.floaterMsg", { letter: letter }) + '</span><button class="kta-btn kta-btn-ghost" id="kmz_click_cancel" type="button">' + t("export.click.cancel") + '</button>';
     document.body.appendChild(fl);
     document.getElementById("kmz_click_cancel").addEventListener("click", function() {
       _kmzDesactiverModeClic();
@@ -4184,22 +4187,22 @@
 
     return (
       '<div class="kta-ses-section">' +
-        '<div class="kta-ses-section-title">' + t("export.gpx.contentTitle") + '</div>' +
+        '<div class="kta-ses-section-title">' + window.ktaIcone("layers") + " " + t("export.gpx.contentTitle") + '</div>' +
         '<label class="kta-ses-cb-row">' +
           '<input type="checkbox" id="gpx_points" checked>' +
-          '<span>' + t("export.gpx.pointsSession") + ' <span class="kta-ses-count">(' + sessionPoints.length + ')</span></span>' +
+          '<span>' + window.ktaIcone("map-pin") + " " + t("export.gpx.pointsSession") + ' <span class="kta-ses-count">(' + sessionPoints.length + ')</span></span>' +
         '</label>' +
         '<label class="kta-ses-cb-row">' +
           '<input type="checkbox" id="gpx_embedded" ' + (embeddedPts.length > 0 ? "checked" : "disabled") + '>' +
-          '<span>' + t("export.gpx.pointsEmbedded") + ' <span class="kta-ses-count">(' + embeddedPts.length + ')</span></span>' +
+          '<span>' + window.ktaIcone("layers") + " " + t("export.gpx.pointsEmbedded") + ' <span class="kta-ses-count">(' + embeddedPts.length + ')</span></span>' +
         '</label>' +
         '<label class="kta-ses-cb-row">' +
           '<input type="checkbox" id="gpx_roads" checked>' +
-          '<span>' + t("export.gpx.roadsSession") + ' <span class="kta-ses-count">(' + tracesNonIti.length + ')</span></span>' +
+          '<span>' + window.ktaIcone("m-galerie") + " " + t("export.gpx.roadsSession") + ' <span class="kta-ses-count">(' + tracesNonIti.length + ')</span></span>' +
         '</label>' +
         '<label class="kta-ses-cb-row" style="' + (itiCount === 0 ? "opacity:0.5;" : "") + '">' +
           '<input type="checkbox" id="gpx_iti" ' + (itiCount === 0 ? "disabled" : "") + '>' +
-          '<span>' + t("export.gpx.itineraire") + ' <span class="kta-ses-count">(' + itiCount + ')</span></span>' +
+          '<span>' + window.ktaIcone("route") + " " + t("export.gpx.itineraire") + ' <span class="kta-ses-count">(' + itiCount + ')</span></span>' +
         '</label>' +
         // Légende (aller-retour via GPX) : <extensions><myktamap:customLegend> sous <metadata>, ignorée par les
         // apps tierces, lue par gpxIO. Cochée si une légende existe, sinon grisée à 0.
@@ -4208,7 +4211,7 @@
           const has = !!_legendeCompleteAExporter();
           return '<label class="kta-ses-cb-row" style="' + (has ? "" : "opacity:0.5;") + '">' +
             '<input type="checkbox" id="gpx_legend" ' + (has ? "checked" : "disabled") + '>' +
-            '<span>' + t("export.gpx.legend") + ' ' +
+            '<span>' + window.ktaIcone("list") + " " + t("export.gpx.legend") + ' ' +
               '<span class="kta-ses-count">(' + (has ? 1 : 0) + ')</span></span>' +
           '</label>';
         })() +

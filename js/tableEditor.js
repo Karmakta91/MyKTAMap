@@ -381,7 +381,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:560px; width:auto; height:auto; max-height:90vh;">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${window.ktaIcone("table")} ${window.I18n.t("tabledit.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-tbl-close-accueil">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -632,7 +632,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:520px; width:auto; height:auto; max-height:90vh;">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${window.I18n.t("tabledit.modal.titre")}</span>
+          <span class="kta-readme-modal-titre">${window.ktaIcone("table")} ${window.I18n.t("tabledit.modal.titre")}</span>
           <button class="kta-panneau-close" id="kta-tbl-close-import">✕</button>
         </div>
         <div class="kta-readme-modal-corps">

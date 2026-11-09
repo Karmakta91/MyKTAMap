@@ -9,6 +9,9 @@
 // d'export (tuiles et titres de section) → chaque contrôle migré porte un svg.kta-ico et aucun emoji. Documentation (fr) : « 🧭 Menu Tracker » et « 🧭 Boussole » montrent chacun SA bonne icône, et les
 // emoji migrés restés dans la page sont exactement ceux listés « autre sens » (KtaIcones.AUTRE_SENS) : reste 0.
 // Aide intégrée : fiche « Menu Tracker », même contrôle Tracker / Boussole.
+// Fenêtres d'outils de la carte (Réglages du plan, Filtres, Légende, Distance totale, Boussole, Heatmap, exports,
+// Recherche, Statistiques, Carnet, Itinéraire, Je suis perdu, Mode Secours, éditeur de point, raccourcis) : titres,
+// sections et boutons migrés en SVG, sans emoji.
 // check-icones-ui.js garde le source ; seul ce parcours voit le rendu (substitution, DOM, CSS).
 // Captures : KTA_CAPTURES=<dossier hors dépôt> (aucune par défaut).
 // Usage : node scripts/smoke/checkup-icones-ui.js   (KTA_MOTEURS=chromium : un seul moteur)
@@ -255,6 +258,82 @@ async function jouer(page, theme) {
   await capture(page, "4-export");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
+
+  // 8. Fenêtres d'outils de la carte : titre, titres de section et boutons migrés portent leur SVG, sans emoji.
+  //    Chaque fenêtre est ouverte par son point d'entrée public, sondée, puis fermée par son ✕ (ou Échap).
+  const OUTILS = [
+    { nom: "Réglages du plan", ouvrir: ["afficherConfig"], fen: "#kta-cfg-modal", min: 8,
+      sel: ".kta-readme-modal-titre, .kta-cfg-group-titre, #cfg_georef_open, #cfg_globaux_home, #kta-cfg-calib-echelle",
+      fermer: "#kta-cfg-close" },
+    { nom: "Filtres", ouvrir: ["FilterPanel.ouvrir"], fen: "#kta-fp-modal", min: 4,
+      sel: ".kta-fp-section-titre, #kta-fp-reset-all", fermer: "#kta-fp-close" },
+    { nom: "Légende", ouvrir: ["afficherLegende"], fen: ".kta-legende-modal-boite", min: 3,
+      sel: ".kta-readme-modal-titre, .kta-aide-section-titre, #kta-legende-modifier", fermer: "#kta-legende-close" },
+    { nom: "Distance totale", ouvrir: ["ouvrirRoadsDistanceFloater"], fen: ".kta-rd-modal-boite", min: 2,
+      sel: ".kta-readme-modal-titre, #kta-rd-erase", fermer: "#kta-rd-close" },
+    { nom: "Boussole", ouvrir: ["CompassWidget.openFull"], fen: ".kta-compass-full-boite", min: 1,
+      sel: ".kta-readme-modal-titre", fermer: "#kta-compass-full-close" },
+    { nom: "Heatmap", ouvrir: ["MyKTAMapHeatmap.ouvrirModale"], fen: "#kta-heatmap-modal", min: 4,
+      sel: ".kta-readme-modal-titre, .kta-heatmap-section-titre, #kta-hm-appliquer, #kta-hm-effacer",
+      fermer: "#kta-heatmap-close" },
+    { nom: "Export PNG", ouvrir: ["ouvrirExportModal"], fen: "#kta-export-modal", min: 3,
+      sel: ".kta-readme-modal-titre, .kta-conv-sens-label, #kta-export-go", fermer: "#kta-export-close" },
+    { nom: "Export PDF", ouvrir: ["MyKTAMapPdfExport.afficherModale"], fen: "#kta-pdf-modal", min: 6,
+      sel: ".kta-readme-modal-titre, .kta-ses-section-title, #kta-pdf-generer", fermer: "#kta-pdf-close" },
+    { nom: "Export GeoTIFF", ouvrir: ["GeotiffExport.afficherModale"], fen: "#kta-geotiff-modal", min: 2,
+      sel: ".kta-readme-modal-titre, #kta-geotiff-go", fermer: "#kta-geotiff-close" },
+    { nom: "Export complet", ouvrir: ["ouvrirExportSessionModal", "full", true], fen: "#kta-ses-close", min: 1,
+      sel: ".kta-readme-modal-titre", fermer: "#kta-ses-close", racine: "body" },
+    { nom: "Recherche", ouvrir: ["ouvrirRecherche"], fen: "#kta-search-close", min: 1,
+      sel: "#kta-search-modal .kta-readme-modal-titre, #kta-search-modal [data-filter-type='kind']",
+      fermer: "#kta-search-close", racine: "body" },
+    { nom: "Statistiques", ouvrir: ["StatsGlobales.ouvrir"], fen: "#kta-stats-glob-close", min: 5,
+      sel: ".kta-readme-modal-titre, #kta-stats-glob-refresh, #kta-stats-glob-csv, #kta-stats-glob-pdf, " +
+        "#kta-stats-glob-copy", fermer: "#kta-stats-glob-close", racine: "body" },
+    { nom: "Carnet", ouvrir: ["JournalUi.ouvrir"], fen: "#kta-jrn-close", min: 3,
+      sel: ".kta-readme-modal-titre, .kta-jrn-onglet", fermer: "#kta-jrn-close", racine: "body" },
+    { nom: "Itinéraire", ouvrir: ["ouvrirItinerairModal"], fen: "#kta-itinerary-modal", min: 6,
+      sel: ".kta-readme-modal-titre, .kta-iti-section-titre, #kta-iti-mode-click, #kta-iti-tracker-pos, #kta-iti-clear, " +
+        "#kta-iti-compute", fermer: "#kta-iti-close" },
+    { nom: "Je suis perdu", ouvrir: ["LostMode.open"], fen: "#kta-lost-modal", min: 2,
+      sel: ".kta-readme-modal-titre, #kta-lost-calc, #kta-lost-fermer", fermer: "#kta-lost-close" },
+    { nom: "Mode Secours", ouvrir: ["SecoursMode.ouvrir"], fen: "#kta-secours-modal", min: 3,
+      sel: ".kta-readme-modal-titre, [data-action='new-scenario'], [data-action='import-mkmsec']",
+      fermer: "#kta-secours-close" },
+    { nom: "Éditeur de point", ouvrir: ["afficherFormulaire", 120, 120], fen: "#kta-poi-modal", min: 4,
+      sel: ".kta-readme-modal-titre, .kta-aide-section-titre:not(:empty), #kta-poi-valider", fermer: "#kta-poi-close",
+      seulsMigres: true },
+    { nom: "Raccourcis", ouvrir: ["ShortcutsCheatsheet.ouvrir"], fen: "#kta-cheatsheet-modal", min: 3,
+      sel: ".kta-cheat-row[data-ligne^='outil.'] .kta-cheat-label", fermer: "#kta-cheatsheet-close", racine: "body" }
+  ];
+  for (const o of OUTILS) {
+    // Point d'entrée résolu sur window (pas d'eval : la CSP de l'app le refuse).
+    await page.evaluate(function (o) {
+      const parts = o[0].split("."), nomFn = parts.pop();
+      const cible = parts.reduce(function (acc, p) { return acc ? acc[p] : null; }, window);
+      try { if (cible && typeof cible[nomFn] === "function") cible[nomFn].apply(cible, o.slice(1)); } catch (e) { /* plan sans données */ }
+    }, o.ouvrir);
+    await page.waitForSelector(o.fen, { state: "attached", timeout: 6000 }).catch(function () {});
+    await page.waitForTimeout(500);
+    const r = await page.evaluate(function (a) {
+      const racine = a.racine === "body" ? document : document.querySelector(a.fen);
+      if (!racine) return null;
+      return Array.prototype.filter.call(racine.querySelectorAll(a.sel), function (el) {
+        return el.offsetParent !== null;
+      }).map(function (el) { return Object.assign({ t: (el.textContent || "").trim().slice(0, 30) }, window.__ktaSonde(el)); });
+    }, { fen: o.fen, sel: o.sel, racine: o.racine });
+    if (!r) { pb(o.nom + " : fenêtre introuvable (" + o.ouvrir[0] + ")"); continue; }
+    // Éditeur : le titre « Description » n'a jamais eu d'emoji ni d'icône (seuls les titres migrés comptent).
+    const vus = o.seulsMigres ? r.filter(function (b) { return b.svg || b.emoji; }) : r;
+    const f = vus.filter(function (b) { return !b.svg || b.emoji; });
+    verifier(vus.length >= o.min && f.length === 0, "carte · " + o.nom + " : " + vus.length +
+      " titre(s) et bouton(s) en SVG, sans emoji", f);
+    await capture(page, "8-" + o.nom.replace(/[^\wéÉè]+/g, "-").toLowerCase());
+    await page.evaluate(function (sel) { const b = document.querySelector(sel); if (b) b.click(); }, o.fermer);
+    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape").catch(function () {});
+    await page.waitForTimeout(200);
+  }
 
   // 6. Documentation (fr) : bonnes icônes, et aucun emoji migré resté hors « autre sens ».
   await page.evaluate(function () { window.afficherReadme(); });

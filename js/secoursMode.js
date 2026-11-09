@@ -7771,7 +7771,7 @@
   function _renderModalHTML() {
     return '<div class="kta-readme-modal-boite kta-secours-modal-boite">' +
              '<div class="kta-readme-modal-header">' +
-               '<span class="kta-readme-modal-titre">' + t("secours.modal.titre") + '</span>' +
+               '<span class="kta-readme-modal-titre">' + window.ktaIcone("ambulance") + " " + t("secours.modal.titre") + '</span>' +
                '<button class="kta-panneau-close" id="kta-secours-close" type="button" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">&times;</button>' +
              '</div>' +
              '<div class="kta-readme-modal-corps kta-secours-corps" id="kta-secours-corps">' +
@@ -7848,16 +7848,16 @@
     let html = '<div class="kta-secours-list-header">' +
                  '<div class="kta-secours-list-header-actions">' +
                    '<button class="kta-btn kta-btn-primary" data-action="new-scenario">' +
-                     t("secours.list.btnNouveau") +
+                     window.ktaIcone("plus") + " " + t("secours.list.btnNouveau") +
                    '</button>' +
                    '<button class="kta-btn kta-btn-secondary" data-action="import-mkmsec" title="' + _escAttr(t("secours.list.btnImporterTitle")) + '">' +
-                     t("secours.list.btnImporter") +
+                     window.ktaIcone("folder-input") + " " + t("secours.list.btnImporter") +
                    '</button>' +
                  '</div>' +
                '</div>';
     if (_scenarios.length === 0) {
       html += '<div class="kta-secours-empty">' +
-                '<div class="kta-secours-empty-icon">🚑</div>' +
+                '<div class="kta-secours-empty-icon">' + window.ktaIcone("ambulance") + '</div>' +
                 '<p>' + t("secours.list.emptyTitre") + '</p>' +
                 '<p class="kta-secours-empty-hint">' + t("secours.list.emptyHint") + '</p>' +
               '</div>';
@@ -7875,13 +7875,13 @@
                     '<div class="kta-secours-list-nom">' + _escHtml(s.nom) + '</div>' +
                     '<div class="kta-secours-list-meta">' +
                       t("secours.list.metaEquipes", { n: nbGroupes }) +
-                      ' · 📅 ' + date +
+                      ' · ' + window.ktaIcone("calendar") + ' ' + date +
                     '</div>' +
                   '</div>' +
                   '<div class="kta-secours-list-actions">' +
-                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="open-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.ouvrirTitle")) + '">' + t("secours.btn.ouvrir") + '</button>' +
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="dup-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.dupliquerTitle")) + '">🗐</button>' +
-                    '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">🗑️</button>' +
+                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="open-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.ouvrirTitle")) + '">' + window.ktaIcone("pencil") + " " + t("secours.btn.ouvrir") + '</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="dup-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.dupliquerTitle")) + '">' + window.ktaIcone("copy") + '</button>' +
+                    '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">' + window.ktaIcone("trash-2") + '</button>' +
                   '</div>' +
                 '</div>';
       });
@@ -7900,7 +7900,7 @@
   // se définissent ensuite dans l'Édition (ils demandent la carte).
   function _renderCreateView() {
     return '<div class="kta-secours-create-form">' +
-             '<h3 class="kta-secours-form-titre">' + t("secours.create.titre") + '</h3>' +
+             '<h3 class="kta-secours-form-titre">' + window.ktaIcone("ambulance") + " " + t("secours.create.titre") + '</h3>' +
              '<div class="kta-secours-form-row">' +
                '<label for="kta-sec-create-nom">' + t("secours.create.nomLabel") + '</label>' +
                '<input type="text" id="kta-sec-create-nom" placeholder="' + _escAttr(t("secours.create.nomPlaceholder")) + '" maxlength="80">' +
@@ -7930,11 +7930,11 @@
     const currentIdx = (s.execution && typeof s.execution.currentPhaseIdx === "number")
                        ? s.execution.currentPhaseIdx : 0;
     let html = '<details class="kta-secours-section"' + (nbPhases >= 2 ? ' open' : '') + '>' +
-                 '<summary class="kta-secours-section-titre">' + t("secours.phases.sectionTitre", { n: nbPhases }) + '</summary>' +
+                 '<summary class="kta-secours-section-titre">' + window.ktaIcone("list") + " " + t("secours.phases.sectionTitre", { n: nbPhases }) + '</summary>' +
                  '<div class="kta-secours-section-body">';
     if (nbPhases <= 1) {
       html += '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
-                t("secours.phases.btnAjouter") +
+                window.ktaIcone("plus") + " " + t("secours.phases.btnAjouter") +
               '</button>';
     } else {
       html += '<div class="kta-secours-phases-list">';
@@ -7976,7 +7976,7 @@
       html += '</div>' +
               '<div style="margin-top:10px;">' +
                 '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
-                  t("secours.phases.btnAjouter") +
+                  window.ktaIcone("plus") + " " + t("secours.phases.btnAjouter") +
                 '</button>' +
               '</div>';
     }
@@ -8340,7 +8340,7 @@
 
     // Section 1 : Contexte.
     html += '<details class="kta-secours-section" open>' +
-              '<summary class="kta-secours-section-titre">' + t("secours.edit.contexteTitre") + '</summary>' +
+              '<summary class="kta-secours-section-titre">' + window.ktaIcone("file-text") + " " + t("secours.edit.contexteTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div class="kta-secours-form-row">' +
                   '<label for="kta-sec-edit-incident">' + t("secours.edit.heureIncident") + '</label>' +
@@ -8375,7 +8375,7 @@
         'title="' + _escAttr(t("secours.secteurs.btnTitle")) + '">' + t("secours.secteurs.btn") + '</button>'
       : '';
     html += '<details class="kta-secours-section" open>' +
-              '<summary class="kta-secours-section-titre">' + t("secours.edit.equipesTitre", { n: s.groupes.length }) + '</summary>' +
+              '<summary class="kta-secours-section-titre">' + window.ktaIcone("users") + " " + t("secours.edit.equipesTitre", { n: s.groupes.length }) + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
                   '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">' + t("secours.edit.btnAjouterEquipe") + '</button>' +
@@ -8395,7 +8395,7 @@
 
     // Couverture : calculée à l'ouverture du bloc (des centaines de tracés).
     html += '<details class="kta-secours-section" id="kta-secours-couverture">' +
-              '<summary class="kta-secours-section-titre">' + t("secours.couv.titre") + '</summary>' +
+              '<summary class="kta-secours-section-titre">' + window.ktaIcone("chart-column") + " " + t("secours.couv.titre") + '</summary>' +
               '<div class="kta-secours-section-body" id="kta-secours-couverture-corps"></div>' +
             '</details>';
 
@@ -8405,7 +8405,7 @@
 
     // Section 3 : Export.
     html += '<details class="kta-secours-section">' +
-              '<summary class="kta-secours-section-titre">' + t("secours.edit.exportTitre") + '</summary>' +
+              '<summary class="kta-secours-section-titre">' + window.ktaIcone("arrow-up-from-line") + " " + t("secours.edit.exportTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div class="kta-secours-export-actions">' +
                   '<button class="kta-btn kta-btn-primary" data-action="export-pdf">' + t("secours.edit.exportPdf") + '</button>' +
@@ -8472,7 +8472,7 @@
                   '<span class="kta-secours-groupe-swatch" style="background:' + couleur.hex + ';"></span>' +
                   '<input type="text" class="kta-secours-groupe-nom" data-action="rename-groupe" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.nom) + '" maxlength="40">' +
                   lvlChip +
-                  '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">🗑️</button>' +
+                  '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">' + window.ktaIcone("trash-2") + '</button>' +
                   '<span class="kta-secours-groupe-resume kta-tx-muted">' + t("secours.groupe.resumeReplie", { n: nbEtapesG }) + '</span>' +
                 '</div>' +
                 '<div class="kta-secours-groupe-body">' +
@@ -9179,7 +9179,7 @@
               '</button>' +
               // Ajout de phase à chaud, sans passer par l'Édition.
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="add-phase" title="' + _escAttr(t("secours.liveOp.ajouterPhaseTitle")) + '">' +
-                t("secours.phases.btnAjouter") +
+                window.ktaIcone("plus") + " " + t("secours.phases.btnAjouter") +
               '</button>' +
               // « Phase terminée » → debrief : multi-phases seulement, vue opérateur seulement (prérogative du PC).
               // Liseré vert si la phase est détectée prête à clore.

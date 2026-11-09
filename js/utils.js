@@ -781,6 +781,8 @@ window._modeClicCarteActif = function() {
 // 🩸 Le floater porte `.kta-iti-floater` : _modeClicCarteActif() le reconnaît, aucune popup ne mange le tap,
 // et map.js le ré-émet en capture — même sur un marqueur, le cas nominal (on vise un repère connu).
 // 🩸 Les autres modes clic-carte tombent AVANT d'armer, sinon le même tap pose un sommet ou ouvre une fiche.
+// ⚠️ Icône du floater : `opts.ico` (nom js/ktaIcones.js, SVG), sinon `opts.icone` (texte, outil pas encore
+// passé en SVG), sinon le clic sur la carte.
 let _posPickHandler = null;
 let _posPickChoixOuvert = false;   // fenêtre de niveau ouverte : un 2e clic n'en ouvre pas une autre
 function _posPickOnKey(e) { if (e && e.key === "Escape") _posPickAnnuler(); }
@@ -855,7 +857,9 @@ window.ktaDemanderPositionCarte = function(onPick, opts) {
     '<span class="kta-iti-floater-icon"></span>' +
     '<span class="kta-iti-floater-msg"></span>' +
     '<button class="kta-btn kta-btn-ghost" id="kta-pos-cancel" type="button"></button>';
-  fl.querySelector(".kta-iti-floater-icon").textContent = opts.icone || "📍";
+  const flIco = fl.querySelector(".kta-iti-floater-icon");
+  if (opts.ico || !opts.icone) flIco.innerHTML = window.ktaIcone(opts.ico || "mouse-pointer-click");
+  else flIco.textContent = opts.icone;
   fl.querySelector(".kta-iti-floater-msg").textContent =
     opts.texte || window.I18n.t("pospick.floater");
   const btnAnn = fl.querySelector("#kta-pos-cancel");

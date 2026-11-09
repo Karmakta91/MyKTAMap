@@ -79,11 +79,12 @@
   function _chipsAjouts(rec) {
     const a = rec.ajouts || {};
     const out = [];
-    if (a.points)     out.push("📍 " + a.points);
-    if (a.roads)      out.push("🛤️ " + a.roads);
-    if (a.zones)      out.push("🔷 " + a.zones);
-    if (a.structures) out.push("🏛️ " + a.structures);
-    if (a.photos)     out.push("📷 " + a.photos);
+    // HTML : icône SVG + compteur (Number : rien d'autre ne passe, la puce n'est plus échappée).
+    if (a.points)     out.push(window.ktaIcone("map-pin") + " " + Number(a.points));
+    if (a.roads)      out.push(window.ktaIcone("m-galerie") + " " + Number(a.roads));
+    if (a.zones)      out.push(window.ktaIcone("m-zone") + " " + Number(a.zones));
+    if (a.structures) out.push(window.ktaIcone("m-pilier") + " " + Number(a.structures));
+    if (a.photos)     out.push(window.ktaIcone("camera") + " " + Number(a.photos));
     return out;
   }
 
@@ -143,18 +144,18 @@
       overlay.innerHTML =
         '<div class="kta-readme-modal-boite kta-jrn-fiche-boite">' +
           '<div class="kta-readme-modal-header">' +
-            '<span class="kta-readme-modal-titre">📔 ' + _esc(rec.planName || "?") + '</span>' +
+            '<span class="kta-readme-modal-titre">' + window.ktaIcone("notebook-pen") + ' ' + _esc(rec.planName || "?") + '</span>' +
             '<button class="kta-readme-modal-close" id="kta-jrn-fiche-close" type="button" aria-label="✕">✕</button>' +
           '</div>' +
           '<div class="kta-readme-modal-corps kta-jrn-fiche-corps">' +
             '<div class="kta-jrn-fiche-date">' + _esc(_fmtDate(rec.startedAtMs)) +
               ' <span class="kta-jrn-tag">' +
-                (_estTerrain(rec) ? '🚶 ' + _esc(_t("jrn.type.terrain")) : '🖥️ ' + _esc(_t("jrn.type.bureau"))) +
+                (_estTerrain(rec) ? window.ktaIcone("footprints") + ' ' + _esc(_t("jrn.type.terrain")) : window.ktaIcone("monitor") + ' ' + _esc(_t("jrn.type.bureau"))) +
               '</span>' +
               (rec.closedBy === "manual" ? ' <span class="kta-jrn-tag">' + _esc(_t("jrn.fiche.manuelle")) + '</span>' : '') +
               // ✏️ Corriger la fin : sinon une sortie non clôturée finit quand iOS a tué l'app.
               ' <button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-jrn-fin-btn" ' +
-                'id="kta-jrn-fin">✏️ ' + _esc(_t("jrn.fin.corriger")) + '</button>' +
+                'id="kta-jrn-fin">' + window.ktaIcone("pencil") + ' ' + _esc(_t("jrn.fin.corriger")) + '</button>' +
             '</div>' +
             '<div class="kta-jrn-metrics">' +
               // Durée de la SORTIE d'abord ; le temps d'usage juste dessous dit ce que vaut la mesure (3 h de
@@ -191,7 +192,7 @@
                 '<span class="kta-jrn-metric-lab">' + _esc(_t("jrn.metric.niveaux")) + '</span></div>' +
             '</div>' +
             (chips.length ? '<div class="kta-jrn-chips">' + chips.map(function(c) {
-              return '<span class="kta-jrn-chip">' + _esc(c) + '</span>';
+              return '<span class="kta-jrn-chip">' + c + '</span>';
             }).join("") + '</div>' : '') +
             (svg ? '<div class="kta-jrn-trace-wrap">' + svg +
                      (traceAffinee
@@ -204,13 +205,13 @@
             '<textarea id="kta-jrn-note" class="kta-jrn-note" rows="4" ' +
               'placeholder="' + _esc(_t("jrn.fiche.notePlaceholder")) + '">' + _esc(rec.note || "") + '</textarea>' +
             '<div class="kta-jrn-fiche-actions">' +
-              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-note-save">💾 ' +
+              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-note-save">' + window.ktaIcone("save") + ' ' +
                 _esc(_t("jrn.fiche.enregistrer")) + '</button>' +
               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-type-toggle" ' +
                 'title="' + _esc(_t("jrn.fiche.reclasserTitre")) + '">' +
-                (_estTerrain(rec) ? '🖥️ ' + _esc(_t("jrn.fiche.versBureau"))
-                                  : '🚶 ' + _esc(_t("jrn.fiche.versTerrain"))) + '</button>' +
-              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-jrn-danger" id="kta-jrn-del">🗑️ ' +
+                (_estTerrain(rec) ? window.ktaIcone("monitor") + ' ' + _esc(_t("jrn.fiche.versBureau"))
+                                  : window.ktaIcone("footprints") + ' ' + _esc(_t("jrn.fiche.versTerrain"))) + '</button>' +
+              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-jrn-danger" id="kta-jrn-del">' + window.ktaIcone("trash-2") + ' ' +
                 _esc(_t("jrn.fiche.supprimer")) + '</button>' +
             '</div>' +
           '</div>' +
@@ -285,7 +286,7 @@
       box.style.display = "none";
       return;
     }
-    box.innerHTML = '<div class="kta-jrn-photos-lab">📷 ' + _esc(_t("jrn.fiche.photos", { n: ids.length })) + '</div>' +
+    box.innerHTML = '<div class="kta-jrn-photos-lab">' + window.ktaIcone("camera") + ' ' + _esc(_t("jrn.fiche.photos", { n: ids.length })) + '</div>' +
                     '<div class="kta-jrn-photos-grid" id="kta-jrn-photos-grid"></div>';
     const grid = document.getElementById("kta-jrn-photos-grid");
     ids.slice(0, 24).forEach(function(pid) {
@@ -299,7 +300,7 @@
           cell.innerHTML = '<img src="' + url + '" alt="" loading="lazy">';
         } else {
           cell.classList.add("kta-jrn-photo-vide");
-          cell.textContent = "🚫";
+          cell.innerHTML = window.ktaIcone("ban");
           cell.title = _t("jrn.fiche.photoManquante");
         }
         grid.appendChild(cell);
@@ -347,12 +348,12 @@
       }
     });
     el.innerHTML =
-      '<span>🚶 ' + _esc(_t("jrn.totaux.sorties", { n: nbT })) + '</span>' +
-      '<span>⏱️ ' + _esc(_dur(ms)) + '</span>' +
-      '<span>📏 ' + _esc(_dist(m)) + '</span>' +
-      '<span>🗺️ ' + _esc(_t("jrn.totaux.plans", { n: Object.keys(plans).length })) + '</span>' +
+      '<span>' + window.ktaIcone("footprints") + ' ' + _esc(_t("jrn.totaux.sorties", { n: nbT })) + '</span>' +
+      '<span>' + window.ktaIcone("timer") + ' ' + _esc(_dur(ms)) + '</span>' +
+      '<span>' + window.ktaIcone("ruler") + ' ' + _esc(_dist(m)) + '</span>' +
+      '<span>' + window.ktaIcone("map") + ' ' + _esc(_t("jrn.totaux.plans", { n: Object.keys(plans).length })) + '</span>' +
       (nbB > 0
-        ? '<span class="kta-jrn-totaux-bureau">🖥️ ' +
+        ? '<span class="kta-jrn-totaux-bureau">' + window.ktaIcone("monitor") + ' ' +
             _esc(_t("jrn.totaux.bureau", { n: nbB, duree: _dur(bureauMs) })) + '</span>'
         : '');
   }
@@ -368,19 +369,19 @@
     const terrain = _estTerrain(r);
     // En mode fusion la ligne coche au lieu d'ouvrir la fiche ; on garde un <button> (cible tactile, style).
     const coche = _modeFusion
-      ? '<span class="kta-jrn-coche">' + (_selFusion[r.id] ? '☑️' : '⬜') + '</span>'
+      ? '<span class="kta-jrn-coche">' + (_selFusion[r.id] ? window.ktaIcone("square-check") : window.ktaIcone("square")) + '</span>'
       : '';
     return '<button type="button" class="kta-jrn-row' + (terrain ? '' : ' kta-jrn-row-bureau') +
              (_modeFusion && _selFusion[r.id] ? ' kta-jrn-row-sel' : '') +
              '" data-i="' + idx + '" data-id="' + _esc(r.id) + '">' +
              coche +
              '<span class="kta-jrn-row-date">' + _esc(_fmtDate(r.startedAtMs)) + '</span>' +
-             '<span class="kta-jrn-row-plan">' + (terrain ? '🚶' : '🖥️') + ' ' +
+             '<span class="kta-jrn-row-plan">' + (terrain ? window.ktaIcone("footprints") : window.ktaIcone("monitor")) + ' ' +
                _esc(r.planName || "?") + '</span>' +
-             '<span class="kta-jrn-row-meta">⏱️ ' + _esc(_dur(_dureeAffichee(r))) +
-               (terrain ? ' · 📏 ' + _esc(_dist(r.distM)) : '') +
-               (chips.length ? ' · ' + _esc(chips.join(" ")) : '') + '</span>' +
-             (r.note ? '<span class="kta-jrn-row-note">📝 ' +
+             '<span class="kta-jrn-row-meta">' + window.ktaIcone("timer") + ' ' + _esc(_dur(_dureeAffichee(r))) +
+               (terrain ? ' · ' + window.ktaIcone("ruler") + ' ' + _esc(_dist(r.distM)) : '') +
+               (chips.length ? ' · ' + chips.join(" ") : '') + '</span>' +
+             (r.note ? '<span class="kta-jrn-row-note">' + window.ktaIcone("pencil") + ' ' +
                _esc(String(r.note).slice(0, 90)) + (r.note.length > 90 ? '…' : '') + '</span>' : '') +
            '</button>';
   }
@@ -409,7 +410,7 @@
 
     if (bureau.length > 0) {
       html += '<button type="button" class="kta-jrn-bureau-toggle" id="kta-jrn-bureau-toggle">' +
-                '🖥️ ' + _esc(_t("jrn.bureau.section", { n: bureau.length })) +
+                window.ktaIcone("monitor") + ' ' + _esc(_t("jrn.bureau.section", { n: bureau.length })) +
                 ' <span id="kta-jrn-bureau-chev">▾</span></button>' +
               '<div class="kta-jrn-bureau-liste" id="kta-jrn-bureau-liste" style="display:none;">' +
                 bureau.map(function(r) { return _ligne(r, rows.indexOf(r)); }).join("") +
@@ -454,7 +455,7 @@
     const n = Object.keys(_selFusion).length;
     if (!_modeFusion) {
       barre.innerHTML = '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
-        'id="kta-jrn-fusion-on">🔗 ' + _esc(_t("jrn.fusion.entrer")) + '</button>';
+        'id="kta-jrn-fusion-on">' + window.ktaIcone("link") + ' ' + _esc(_t("jrn.fusion.entrer")) + '</button>';
       document.getElementById("kta-jrn-fusion-on").addEventListener("click", function () {
         _modeFusion = true; _renderListe();
       });
@@ -463,7 +464,7 @@
     barre.innerHTML =
       '<span class="kta-jrn-fusion-msg">' + _esc(_t("jrn.fusion.compte", { n: n })) + '</span>' +
       '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="kta-jrn-fusion-go"' +
-        (n < 2 ? ' disabled' : '') + '>🔗 ' + _esc(_t("jrn.fusion.valider")) + '</button>' +
+        (n < 2 ? ' disabled' : '') + '>' + window.ktaIcone("link") + ' ' + _esc(_t("jrn.fusion.valider")) + '</button>' +
       '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-fusion-off">' +
         _esc(_t("jrn.fusion.annuler")) + '</button>';
     document.getElementById("kta-jrn-fusion-off").addEventListener("click", function () {
@@ -700,11 +701,11 @@
     el.innerHTML = liste.map(function(r, i) {
       const extrait = String(r.note || "").replace(/[#*_>`\-]/g, " ").replace(/\s+/g, " ").trim();
       return '<button type="button" class="kta-jrn-row kta-jrn-recit-row" data-i="' + i + '">' +
-               '<span class="kta-jrn-row-plan">📦 ' + _esc(r.nom) + '</span>' +
+               '<span class="kta-jrn-row-plan">' + window.ktaIcone("map") + ' ' + _esc(r.nom) + '</span>' +
                '<span class="kta-jrn-row-meta">' +
-                 (r.note ? '📝 ' + _esc(_t("jrn.recits.noteLong", { n: r.note.length })) : '') +
+                 (r.note ? window.ktaIcone("pencil") + ' ' + _esc(_t("jrn.recits.noteLong", { n: r.note.length })) : '') +
                  (r.note && r.docs.length ? ' · ' : '') +
-                 (r.docs.length ? '📄 ' + _esc(_t("jrn.recits.docs", { n: r.docs.length })) : '') +
+                 (r.docs.length ? window.ktaIcone("file-text") + ' ' + _esc(_t("jrn.recits.docs", { n: r.docs.length })) : '') +
                '</span>' +
                (extrait ? '<span class="kta-jrn-row-note">' +
                  _esc(extrait.slice(0, 110)) + (extrait.length > 110 ? '…' : '') + '</span>' : '') +
@@ -744,7 +745,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-jrn-fiche-boite kta-jrn-recit-boite" id="kta-jrn-recit-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📖 ' + _esc(r.nom) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("file-text") + ' ' + _esc(r.nom) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-jrn-recit-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-jrn-fiche-corps kta-jrn-recit-split">' +
@@ -753,10 +754,10 @@
             '<textarea id="kta-jrn-recit-edit" class="kta-jrn-note" rows="8" style="display:none;">' +
               _esc(r.note || "") + '</textarea>' +
             '<div class="kta-jrn-fiche-actions">' +
-              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-recit-mod">✏️ ' +
+              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-recit-mod">' + window.ktaIcone("pencil") + ' ' +
                 _esc(_t("jrn.recits.modifier")) + '</button>' +
               '<input type="file" id="kta-jrn-recit-add" accept="application/pdf,.pdf" style="display:none;">' +
-              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-recit-addbtn">➕ ' +
+              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-jrn-recit-addbtn">' + window.ktaIcone("plus") + ' ' +
                 _esc(_t("jrn.recits.ajouterPdf")) + '</button>' +
             '</div>' +
             '<div class="kta-jrn-recit-docs" id="kta-jrn-recit-docs"></div>' +
@@ -779,7 +780,7 @@
         enEdition = true;
         vue.style.display = "none";
         ta.style.display  = "";
-        btnMod.textContent = "💾 " + _t("jrn.recits.enregistrer");
+        btnMod.innerHTML = window.ktaIcone("save") + " " + _esc(_t("jrn.recits.enregistrer"));
         try { ta.focus(); } catch(e) {}
         return;
       }
@@ -792,7 +793,7 @@
       vue.innerHTML = (typeof window.kta_renderMd === "function" && txt)
         ? window.kta_renderMd(txt)
         : ('<p class="kta-ipl-empty">' + _esc(txt || _t("jrn.recits.noteVide")) + '</p>');
-      btnMod.textContent = "✏️ " + _t("jrn.recits.modifier");
+      btnMod.innerHTML = window.ktaIcone("pencil") + " " + _esc(_t("jrn.recits.modifier"));
       _toast(_t("jrn.toast.noteOk"), "info");
       _chargerRecits();
     });
@@ -836,11 +837,11 @@
     }
     box.innerHTML = r.docs.map(function(d, i) {
       return '<div class="kta-jrn-doc-row">' +
-               '<button type="button" class="kta-jrn-doc-open" data-i="' + i + '">📄 ' +
+               '<button type="button" class="kta-jrn-doc-open" data-i="' + i + '">' + window.ktaIcone("file-text") + ' ' +
                  _esc(d.name) + ' <span class="kta-jrn-doc-ko">' +
                  Math.round((d.size || 0) / 1024) + ' Ko</span></button>' +
                '<button type="button" class="kta-jrn-doc-del kta-jrn-danger" data-del="' + i + '" ' +
-                 'title="' + _esc(_t("jrn.recits.supprimerPdf")) + '">🗑️</button>' +
+                 'title="' + _esc(_t("jrn.recits.supprimerPdf")) + '">' + window.ktaIcone("trash-2") + '</button>' +
              '</div>';
     }).join("");
 
@@ -904,15 +905,15 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-jrn-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📔 ' + _esc(_t("jrn.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("notebook-pen") + ' ' + _esc(_t("jrn.titre")) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-jrn-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           // 2e onglet : les récits, tous plans confondus, éditables sur place.
           '<div class="kta-jrn-onglets">' +
-            '<button type="button" class="kta-jrn-onglet kta-jrn-onglet-actif" data-tab="sorties">📔 ' +
+            '<button type="button" class="kta-jrn-onglet kta-jrn-onglet-actif" data-tab="sorties">' + window.ktaIcone("notebook-pen") + ' ' +
               _esc(_t("jrn.tab.sorties")) + '</button>' +
-            '<button type="button" class="kta-jrn-onglet" data-tab="recits">📖 ' +
+            '<button type="button" class="kta-jrn-onglet" data-tab="recits">' + window.ktaIcone("file-text") + ' ' +
               _esc(_t("jrn.tab.recits")) + '</button>' +
           '</div>' +
           '<div id="kta-jrn-tab-sorties">' +
@@ -1004,7 +1005,7 @@
       _finPickFloater.id = "kta-jrn-fin-pick";
       _finPickFloater.className = "kta-iti-floater";
       _finPickFloater.innerHTML =
-        '<span class="kta-iti-floater-icon">🏁</span>' +
+        '<span class="kta-iti-floater-icon">' + window.ktaIcone("flag") + '</span>' +
         '<span class="kta-iti-floater-msg"></span>' +
         '<button class="kta-btn kta-btn-ghost" id="kta-jrn-fin-skip" type="button"></button>';
       _finPickFloater.querySelector(".kta-iti-floater-msg").textContent = _t("jrn.finPos.invite");

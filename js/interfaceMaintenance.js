@@ -42,7 +42,7 @@ function ouvrirCalibrageEchelle() {
         </p>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${_t("maint.calib.sectionValues")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("ruler")} ${_t("maint.calib.sectionValues")}</div>
           <div class="kta-cfg-grille">
             <label class="kta-cfg-label">${_t("maint.calib.current")}</label>
             <input class="kta-cfg-input" id="calib_actuel" type="number" step="0.01" value="${scaleActuel}" readonly style="opacity:0.6;">

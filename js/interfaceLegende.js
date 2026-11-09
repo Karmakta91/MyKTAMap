@@ -55,12 +55,12 @@ const LEGENDE_LABELS = {
 // Groupes d'icônes de la légende (ordre d'affichage) ; titres traduits au rendu.
 function _ktaLegendeGroupes() {
   const GROUPES = [
-    { titre: window.I18n.t("legendui.group.wells"),   cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
-    { titre: window.I18n.t("legendui.group.access"),  cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-    { titre: window.I18n.t("legendui.group.levels"),  cles: ["jes", "jpe", "jps"] },
-    { titre: window.I18n.t("legendui.group.signage"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
+    { titre: window.I18n.t("legendui.group.wells"),   ico: "arrow-down-to-line", cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
+    { titre: window.I18n.t("legendui.group.access"),  ico: "m-echelle", cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
+    { titre: window.I18n.t("legendui.group.levels"),  ico: "m-niveaux", cles: ["jes", "jpe", "jps"] },
+    { titre: window.I18n.t("legendui.group.signage"), ico: "triangle-alert", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
     // Catégorie Secours (Vue OSM × Mode Secours).
-    { titre: window.I18n.t("legendui.group.rescue"),  cles: ["entree_plan"] }
+    { titre: window.I18n.t("legendui.group.rescue"),  ico: "ambulance", cles: ["entree_plan"] }
   ];
   return GROUPES;
 }
@@ -192,7 +192,7 @@ function _ktaLegendeCorps(src, opts) {
       .filter(Boolean)
       .join("");
     if (entrees) {
-      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${groupe.titre}</div>${entrees}</div>`;
+      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${groupe.ico ? window.ktaIcone(groupe.ico) + " " : ""}${groupe.titre}</div>${entrees}</div>`;
     }
   });
 
@@ -209,7 +209,7 @@ function _ktaLegendeCorps(src, opts) {
     .map(function(cle) { return ligneIcone(cle, src.urlAutre(cle)); })
     .join("");
   if (autresEntrees) {
-    contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.others")}</div>${autresEntrees}</div>`;
+    contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.ktaIcone("tag")} ${window.I18n.t("legendui.group.others")}</div>${autresEntrees}</div>`;
   }
 
   // Entrées custom « icones » (plan + session), si visibles et avec iconUrl.
@@ -223,7 +223,7 @@ function _ktaLegendeCorps(src, opts) {
           <span class="kta-legende-label">${e.label}</span>
         </div>`;
       }).join("");
-      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.group.custom")}</div>${html}</div>`;
+      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.ktaIcone("sparkles")} ${window.I18n.t("legendui.group.custom")}</div>${html}</div>`;
     }
   }
 
@@ -241,7 +241,7 @@ function _ktaLegendeCorps(src, opts) {
     if (!_visible("traces", key)) return "";
     return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurTrait("traces", key)};"></span><span class="kta-legende-label">${_label("traces", key)}</span></div>`;
   }
-  let contenuTraces = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.traces")}</div>`;
+  let contenuTraces = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.ktaIcone("m-galerie")} ${window.I18n.t("legendui.section.traces")}</div>`;
   contenuTraces += _ligneTrace("principal");
   contenuTraces += _ligneTrace("secondaire");
   contenuTraces += _ligneTrace("chemin");
@@ -262,7 +262,7 @@ function _ktaLegendeCorps(src, opts) {
     if (!_visible("zones", key)) return "";
     return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurFond("zones", key)}; opacity:0.7; height:14px; border:2px solid ${_couleurTrait("zones", key)};"></span><span class="kta-legende-label">${_label("zones", key)}</span></div>`;
   }
-  let contenuZones = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.zones")}</div>`;
+  let contenuZones = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.ktaIcone("m-zone")} ${window.I18n.t("legendui.section.zones")}</div>`;
   contenuZones += _ligneZone("eau");
   contenuZones += _ligneZone("remblais");
   contenuZones += _ligneZone("effondrement");
@@ -292,7 +292,7 @@ function _ktaLegendeCorps(src, opts) {
     if (!_visible("structures", key)) return "";
     return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurTrait("structures", key)};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
   }
-  let contenuStructures = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.I18n.t("legendui.section.structures")}</div>`;
+  let contenuStructures = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.ktaIcone("m-pilier")} ${window.I18n.t("legendui.section.structures")}</div>`;
   contenuStructures += _ligneStructPoly("pilier-1");
   contenuStructures += _ligneStructPoly("pilier-2");
   contenuStructures += _ligneStructPoly("mur");
@@ -360,7 +360,7 @@ function _ouvrirLegende(opts) {
 
   // ✏️ Modifier (si LegendCustomization est chargé) : ouvre l'éditeur, dont onChange rafraîchit la modale.
   const btnModifier = (LC && !lectureSeule)
-    ? '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legende-modifier" type="button" style="margin-right:8px;" title="' + window.I18n.t("legendui.edit.title") + '">' + window.I18n.t("legendui.edit.btn") + '</button>'
+    ? '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legende-modifier" type="button" style="margin-right:8px;" title="' + window.I18n.t("legendui.edit.title") + '">' + window.ktaIcone("pencil") + ' ' + window.I18n.t("legendui.edit.btn") + '</button>'
     : '';
   // Texte posé par textContent (nom de plan fourni par l'utilisateur).
   // Hors du corps : celui-ci se répartit en colonnes sur PC (style.css), un bandeau y serait découpé.
@@ -374,7 +374,7 @@ function _ouvrirLegende(opts) {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite kta-legende-modal-boite">
       <div class="kta-readme-modal-header" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-        <span class="kta-readme-modal-titre">${window.I18n.t("legendui.modal.titre")}</span>
+        <span class="kta-readme-modal-titre">${window.ktaIcone("list")} ${window.I18n.t("legendui.modal.titre")}</span>
         <div style="display:flex; align-items:center; gap:4px;">
           ${btnModifier}
           <button class="kta-panneau-close" id="kta-legende-close" type="button" aria-label="${window.ktaEsc(window.I18n.t("legendui.fermer"))}">✕</button>
