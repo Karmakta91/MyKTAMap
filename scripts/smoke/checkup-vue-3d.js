@@ -109,7 +109,8 @@
 // Conduit vers le niveau du dessus (52, =puits-dessus) : aération et puits sous une galerie du dessus = débouche à son sol ;
 // sous sa roche = parois sur 6 m, rien en travers (rayon vertical), coins fermés, écart +1 m et entremêlé.
 // Puits ouvert au jour sous un niveau du dessus (56, =puits-ciel) : conduit jusqu'au-dessus du plus haut niveau, ciel
-// au sommet, rien en travers du rayon vertical, avec et sans galerie au-dessus ; aération et puits relié inchangés.
+// au sommet, rien en travers du rayon vertical, avec et sans galerie au-dessus ; aération et puits relié inchangés ; vu
+// du +1, il le traverse (rayon vers le haut jusqu'au ciel, vers le bas par le trou jusqu'au sol du 0 s'il est montré).
 // Jonction de niveaux (53, =jonction-tremie) : zone jonction d'un calque qui porte la pente en mixte et structures, trémie
 // au-dessus de la montée (rayons verticaux à chaque pas, en montant et en descendant, 4 écarts, avec et sans zone).
 // Structures dans une trémie (54, =jonction-piliers) : pilier, mur et front du +1 à cheval sur la zone jonction
@@ -10292,6 +10293,10 @@ async function sectionPuitsDessus(nav) {
 // GABARIT.conduit, disque de ciel au sommet, et le rayon vertical depuis le fond du puits ne touche rien d'autre que
 // les échelons (ni sol ni plafond du +1 en travers) : le jour se voit avec et sans galerie au-dessus. Témoins : comme
 // § 52 (aération : roche sur 6 m ; puits relié : débouche au sol du +1). Trois rendus, « Voisins » puis « Le mien ».
+// Vu du +1 (_puitsTraversants), scène en (0, 0) : volume `traverse` = 0 des deux puits ouverts, du plafond du 0 (du
+// sol du 0 en « Voisins » : échelons) à 6 m au-dessus du plafond du +1, ciel au sommet ; rayon vers le haut depuis le
+// +1 : rien ; vers le bas : le sol du 0 (ou son ruban) en « Voisins », rien en « Le mien ». Aération : rien au +1 ;
+// puits relié : son volume du +1 inchangé.
 async function sectionPuitsCiel(nav) {
   const nom = "§ 56 ";
   console.log("§ 56 — puits ouvert au jour sous un niveau du dessus : il traverse jusqu'au jour");
@@ -10328,7 +10333,8 @@ async function sectionPuitsCiel(nav) {
               const haut = K.rayon(cx * sc, cz * sc, e.hauteur - 0.3).faces.filter(function (f) {
                 return f.mat !== "opaque";
               });
-              return { construit: v.construit, conduit: v.conduit, cielVu: v.cielVu, haut: haut[0] || null };
+              return { construit: v.construit, conduit: v.conduit, cielVu: v.cielVu, haut: haut[0] || null,
+                c: [cx, cz] };
             };
             const par = function (tag, x) {
               const v = e.volumes.filter(function (o) {
@@ -10359,6 +10365,58 @@ async function sectionPuitsCiel(nav) {
             pr(r.jpeG.conduit.cime, Math.max(dy, h)) && r.jpeG.cielVu === false &&
             (plafond === null ? r.jpeG.haut === null : !!r.jpeG.haut && pr(r.jpeG.haut.y, plafond, 0.02)),
             k + "puits relié sous la galerie du +1 (témoin) : débouche à son sol, sans ciel", r.jpeG);
+          // Vu du +1 : le puits ouvert du 0 le traverse (vue3d.js > _puitsTraversants). Rayons aux centres des
+          // bouches relevées au 0 : rouges sans le volume (plafond et sol du +1 en travers).
+          if (!r.peoG || !r.peoR) continue;
+          const r1 = await page.evaluate(async function (q) {
+            const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+            K.reglerNiveauxVus(q.vus);
+            await window.__fxOuvrir(0, 0, 90, 1, q.rendu);
+            K.reglerNiveauxVus(q.vus);
+            await window.__fxImages(60);
+            const e = K.etat();
+            const vise = function (c, y0, dir) {
+              return K.rayon(c[0] * sc, c[1] * sc, y0, dir).faces.filter(function (f) {
+                return f.mat !== "opaque";
+              })[0] || null;
+            };
+            const pres = function (x, f) {
+              return e.volumes.filter(function (o) {
+                return f(o) && Math.abs(window.__fxRel({ x: o.x, y: o.y })[0] - x) < 1.5;
+              });
+            };
+            const trav = function (o) { return o.traverse !== null && o.traverse !== undefined; };
+            const lire = function (c, x) {
+              const v = pres(x, trav)[0] || null;
+              return { haut: vise(c, e.hauteur - 0.3), bas: vise(c, 0.3, [0, -1, 0]),
+                v: v && { traverse: v.traverse, construit: v.construit, conduit: v.conduit, cielVu: v.cielVu,
+                  passage: v.passage, yMin: v.yMin, yMax: v.yMax } };
+            };
+            const jpe = pres(25, function (o) { return o.tag === "jpe"; })[0] || null;
+            return { niveau: e.niveau, h: e.hauteur, peoG: lire(q.cG, 15), peoR: lire(q.cR, -15),
+              paR: pres(-5, trav).length,
+              jpe: jpe && { construit: jpe.construit, sol: jpe.sol, traverse: jpe.traverse } };
+          }, { rendu: rendu, vus: vus, cG: r.peoG.c, cR: r.peoR.c });
+          const k1 = nom + rendu + " « " + vus + " », écart " + ecart + " m, vu du +1 : ";
+          const fond = -ecart, solM = -dy;
+          const traverse = function (o) {
+            const v = o.v;
+            return r1.niveau === 1 && !!v && v.traverse === 0 && v.construit && v.passage === false && v.cielVu &&
+              !!v.conduit && v.conduit.jour === true && pr(v.conduit.cime, r1.h + 6) && pr(v.yMax, r1.h + 6, 0.02) &&
+              pr(v.yMin, vus === "voisins" ? solM : fond, 0.02) && o.haut === null &&
+              (vus === "voisins" ? !!o.bas && o.bas.voisin === 0 && pr(o.bas.y, solM, 0.05) : o.bas === null);
+          };
+          // Fond vu en « Voisins » : le sol du 0 ou le ruban de sa galerie posé dessus (3 cm).
+          const attenduBas = vus === "voisins" ? "sol du 0 à " + solM + " m" : "rien (0 non montré)";
+          verifier(traverse(r1.peoG),
+            k1 + "puits ouvert sous la galerie : conduit de " + fond + " à " + (r1.h + 6) + " m, rayon vers le haut " +
+            "jusqu'au ciel, vers le bas par le trou : " + attenduBas, r1.peoG);
+          verifier(traverse(r1.peoR),
+            k1 + "puits ouvert sous la roche : conduit de " + fond + " à " + (r1.h + 6) + " m, rayon vers le haut " +
+            "jusqu'au ciel, vers le bas par le trou : " + attenduBas, r1.peoR);
+          verifier(r1.paR === 0, k1 + "aération (témoin) : ne traverse pas le +1", r1.paR);
+          verifier(!!r1.jpe && r1.jpe.construit && r1.jpe.sol && !r1.jpe.traverse,
+            k1 + "puits relié (témoin) : son volume du +1, ouvert au sol, inchangé", r1.jpe);
         }
       }
     }
