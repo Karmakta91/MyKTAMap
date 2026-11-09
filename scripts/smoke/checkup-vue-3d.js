@@ -94,6 +94,9 @@
 // passages entre les altitudes réelles et arrivée inchangée, galerie inclinée, données incohérentes, téléphone, coût.
 // Sol et zones en vue d'édition dézoomée (45, =solzones) : plan proche qui suit le recul, sol reculé en profondeur
 // (unités seules), eau sans bandes du sol (structures, mixte ; 150 m et tout le plan), niveau du dessous invisible.
+// Mini-carte (55, =minicarte) : par défaut en haut à droite, niveau actif, POI importants, nord fixe, filtres, ⚙️
+// retenu, vue d'édition, greffe, gestes (ni cap ni place), agrandie au toucher, guidage (sous le bandeau, PC et
+// téléphones), coût sur 9 000 piliers.
 // Niveau du dessous estompé en vue d'édition (46, =estomper) : par défaut, bouton 🌫️, retenu, hauteur d'yeux intacte.
 // Passages et pentes des voisins (47, =voisinspassages) : coupés à ce qui est montré, jamais en double, arrivées intactes.
 // Niveau du dessus en fantôme en vue d'édition (48, =fantome) : transparent, sans sol, ne capte aucun toucher, 🌫️.
@@ -10688,6 +10691,413 @@ async function luminanceCapture(page, x0, y0, x1, y1) {
   }, { b: b64, x0: x0, y0: y0, x1: x1, y1: y1 });
 }
 
+// ── 55. Mini-carte (vue3d.js > _majMiniCarte, _dessinerFondMiniCarte, _brancherMiniCarte ; KTA_V3D_SEUL=minicarte) ──
+// Plan FICTIF en mémoire, deux niveaux : au 0 une galerie est-ouest et une branche nord, un pilier, un remblais, un
+// POI danger, une entrée (sortie), un puits vers le −1 ; au −1 une galerie (jamais sur la mini-carte du 0). Montrée par
+// défaut en haut à droite sous la rangée du haut ; niveau actif seul, POI importants ; nord fixe (tourner ne refait
+// pas le fond, la flèche suit le cap ; nord calibré : fond tourné une fois, flèche au cap réel) ; filtres ≡ suivis ;
+// interrupteur ⚙️ retenu ; masquée en vue d'édition et par une greffe (ctx.regler({ miniCarte: false })) ; glisser,
+// pincer et toucher sur elle : ni cap ni place changés ; toucher = agrandie au centre, toucher = refermée ; pincer et
+// molette = rayon borné ; guidage actif (PC et téléphone) : sous le bandeau, aucun chevauchement, ruban, arrivée et
+// prochaine consigne lus ; coût du fond et d'une mise à jour sur 9 000 piliers fictifs.
+async function sectionMiniCarte(nav) {
+  const nom = "§ 55 ";
+  console.log("§ 55 — mini-carte de la vue 3D");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-minicarte", [-1, 0], { "0": -25, "-1": -29 },
+    { "0": 2.5, "-1": 2.5 }, function () {
+      const P = window.__fxP;
+      const carre = function (x, z, c) { return [P(x - c, z - c), P(x + c, z - c), P(x + c, z + c), P(x - c, z + c)]; };
+      window.setRoads([
+        { uid: "rd_mc_0", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] },
+        { uid: "rd_mc_n", type: "secondaire", level: 0, points: [P(0, 0), P(0, -30)] },
+        { uid: "rd_mc_m1", type: "principal", level: -1, points: [P(-40, 6), P(40, 6)] }
+      ]);
+      window.setStructures([{ uid: "st_mc_p", type: "pilier-1", level: 0, points: carre(6, 5, 1.5) }]);
+      window.setZones([{ uid: "zn_mc_r", type: "remblais", level: 0, points: carre(-6, 5, 1.5) }]);
+      const acc = P(-14, 6);
+      window.setEditorPoints([
+        Object.assign({ id: "Danger fictif", uid: "pt_mc_d", level: 0, tags: ["danger"] }, P(10, 1)),
+        Object.assign({ id: "Entrée fictive", uid: "pt_mc_e", level: 0, tags: ["entree_plan"] }, P(-10, -1)),
+        Object.assign({ id: "Puits fictif", uid: "pt_mc_j", level: 0, niveaux: [0, -1], tags: ["jps"],
+          accroches: [{ level: -1, x: acc.x, y: acc.y }] }, P(-14, 0.5))
+      ]);
+      localStorage.removeItem("myktamap_v3d_minicarte_v1");
+      window.__mc = function () { return window.KtaVue3D.etat().miniCarte; };
+      window.__mcEl = function () { return document.querySelector("#kta-vue3d .kta-v3d-minicarte"); };
+      // Rectangles qui se chevauchent (px CSS, 0,5 px de tolérance).
+      window.__mcChevauche = function (a, b) {
+        return a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+      };
+      window.__mcPointeur = function (el, type, id, x, y) {
+        el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id, pointerType: "touch",
+          isPrimary: id === 31, clientX: x, clientY: y }));
+      };
+    });
+  const page = t.page;
+  try {
+    // ── Par défaut : montrée, en haut à droite sous la rangée, niveau actif seul, POI importants ──
+    const a = await page.evaluate(async function () {
+      const K = window.KtaVue3D;
+      await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+      await window.__fxImages(20);
+      const m = window.__mc(), el = window.__mcEl(), b = el.getBoundingClientRect();
+      const haut = document.querySelector("#kta-vue3d .kta-v3d-haut").getBoundingClientRect();
+      return { m: m, ls: localStorage.getItem("myktamap_v3d_minicarte_v1"), haut: haut.bottom, top: b.top,
+        droite: window.innerWidth - b.right, w: b.width, h: b.height, rond: getComputedStyle(el).borderRadius,
+        presse: document.querySelector('#kta-vue3d [data-v3d="miniCarte"]').getAttribute("aria-pressed"),
+        aVoisin: document.querySelector('#kta-vue3d [data-v3d="miniCarte"]').previousElementSibling ===
+          document.querySelector('#kta-vue3d [data-v3d="boussole"]'), cap: K.etat().cap };
+    });
+    await capture(page, "minicarte-pc");
+    verifier(a.m.montree && a.m.voulue && a.ls === null && a.presse === "true" && a.aVoisin && a.m.fonds >= 1 &&
+      a.top >= a.haut && Math.abs(a.droite - 10) < 1.5 && a.w >= 96 && Math.abs(a.w - a.h) < 0.5 && a.rond === "50%",
+      nom + "par défaut : médaillon rond en haut à droite, sous la rangée du haut ; 🗺️ à côté de la boussole, pressé",
+      a);
+    verifier(a.m.formes === 4 && a.m.pois.slice().sort().join(",") === "danger,passage,sortie" && a.m.rayon === 30,
+      nom + "niveau actif seul (2 tracés, pilier, remblais ; galerie du −1 absente), passage / danger / sortie, " +
+      "rayon 30 m", a.m);
+    // ── Nord fixe : tourner ne refait pas le fond, la flèche suit ; nord calibré à 30° : fond tourné, cap réel ──
+    const n = await page.evaluate(async function () {
+      const K = window.KtaVue3D, r = {};
+      const m0 = window.__mc();
+      K.tourner(90);
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+      await window.__fxImages(5);
+      const m1 = window.__mc();
+      r.tourne = { fonds: m1.fonds - m0.fonds, nord0: m0.nordFond, nord1: m1.nordFond, fleche0: m0.fleche,
+        fleche1: m1.fleche, majs: m1.majs - m0.majs, cap: K.etat().cap };
+      window.__mcNord = { c: window.getPlanNorthCalibre, o: window.getPlanNorthOffset };
+      window.getPlanNorthCalibre = function () { return true; };
+      window.getPlanNorthOffset = function () { return 30; };
+      window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+      await window.__fxImages(5);
+      const m2 = window.__mc();
+      r.calibre = { fonds: m2.fonds - m1.fonds, nord: m2.nordFond, fleche: m2.fleche, cap: K.etat().cap };
+      K.tourner(-45);
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+      await window.__fxImages(5);
+      const m3 = window.__mc();
+      r.calibreTourne = { fonds: m3.fonds - m2.fonds, fleche: m3.fleche };
+      window.getPlanNorthCalibre = window.__mcNord.c; window.getPlanNorthOffset = window.__mcNord.o;
+      window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
+      K.tourner(-45);
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+      return r;
+    });
+    verifier(n.tourne.fonds === 0 && n.tourne.nord0 === 0 && n.tourne.nord1 === 0 && n.tourne.fleche0 === 90 &&
+      n.tourne.fleche1 === 180 && n.tourne.majs >= 1,
+      nom + "nord fixe : un quart de tour redessine la flèche (90° → 180°), pas le fond (même nord, aucun fond refait)",
+      n.tourne);
+    verifier(n.calibre.fonds === 1 && n.calibre.nord === 30 && n.calibre.fleche === 150 &&
+      n.calibreTourne.fonds === 0 && n.calibreTourne.fleche === 105,
+      nom + "nord calibré à 30° : fond tourné une fois, flèche au cap réel (180 − 30 = 150°, puis 105°)", n);
+    // ── Filtres ≡ : danger et remblais décochés → retirés de la mini-carte ──
+    const f = await page.evaluate(async function () {
+      document.querySelector('#kta-vue3d [data-v3d="filtres"]').click();
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+      ['[data-set="zoneTypes"][data-type="remblais"]', '[data-set="tags"][data-type="danger"]'].forEach(function (q) {
+        document.querySelector("#kta-fp-modal " + q).click();
+      });
+      await new Promise(function (ok) { setTimeout(ok, 400); });
+      await window.__fxImages(5);
+      const m = window.__mc();
+      ['[data-set="zoneTypes"][data-type="remblais"]', '[data-set="tags"][data-type="danger"]'].forEach(function (q) {
+        document.querySelector("#kta-fp-modal " + q).click();
+      });
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      await new Promise(function (ok) { setTimeout(ok, 400); });
+      await window.__fxImages(5);
+      return { avant: m, apres: window.__mc(), panneau: !!document.getElementById("kta-fp-modal") };
+    });
+    verifier(f.avant.formes === 3 && f.avant.pois.indexOf("danger") < 0 && f.apres.formes === 4 &&
+      f.apres.pois.indexOf("danger") >= 0,
+      nom + "filtres ≡ : remblais et danger décochés retirés de la mini-carte, revenus une fois recochés",
+      { avant: [f.avant.formes, f.avant.pois], apres: [f.apres.formes, f.apres.pois] });
+    // ── Interrupteur ⚙️ : masquée, retenue à la réouverture ; vue d'édition : masquée ; greffe ──
+    const s = await page.evaluate(async function () {
+      const K = window.KtaVue3D, q = function (x) { return document.querySelector("#kta-vue3d " + x); }, r = {};
+      if (q("#kta-v3d-reglages").hidden) q('[data-v3d="reglages"]').click();
+      q('[data-v3d="miniCarte"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 9 }));
+      r.coupee = { montree: window.__mc().montree, ls: localStorage.getItem("myktamap_v3d_minicarte_v1"),
+        presse: q('[data-v3d="miniCarte"]').getAttribute("aria-pressed"), boussole: K.etat().reglages.boussole };
+      await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+      r.rouverte = window.__mc().montree;
+      if (q("#kta-v3d-reglages").hidden) q('[data-v3d="reglages"]').click();
+      q('[data-v3d="miniCarte"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 9 }));
+      q('[data-v3d="reglages"]').click();
+      r.remise = { montree: window.__mc().montree, ls: localStorage.getItem("myktamap_v3d_minicarte_v1") };
+      K.basculerVue();
+      await window.__fxImages(5);
+      r.edition = { vue: K.etat().vue, montree: window.__mc().montree };
+      K.basculerVue();
+      await window.__fxImages(5);
+      r.yeux = { vue: K.etat().vue, montree: window.__mc().montree };
+      let ctx = null;
+      const deg = K.greffer({ nom: "v3d-checkup-minicarte", scene: function (c) { ctx = c; } });
+      ctx.regler({ miniCarte: false });
+      r.greffe = window.__mc().montree;
+      deg();
+      r.rendue = window.__mc().montree;
+      return r;
+    });
+    verifier(s.coupee.montree === false && s.coupee.ls === "0" && s.coupee.presse === "false" && s.coupee.boussole &&
+      s.rouverte === false && s.remise.montree && s.remise.ls === "1",
+      nom + "🗺️ de la tuile ⚙️ : masquée, retenue sur l'appareil (rouverte masquée), remontrée ; boussole intacte", s);
+    verifier(s.edition.vue === "plongee" && !s.edition.montree && s.yeux.vue === "yeux" && s.yeux.montree,
+      nom + "vue d'édition : masquée ; retour à hauteur d'yeux : montrée", s);
+    verifier(s.greffe === false && s.rendue === true,
+      nom + "greffe : ctx.regler({ miniCarte: false }) la masque, rendue au retrait", s);
+    // ── Gestes : glisser, pincer, molette, toucher ; ni cap ni place changés ──
+    const g = await page.evaluate(async function () {
+      const K = window.KtaVue3D, el = window.__mcEl(), r = {}, pt = window.__mcPointeur;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const lire = function () { const e = K.etat(); return { cap: e.cap, x: e.pos.x, y: e.pos.y, mode: e.mode }; };
+      const roue = function (cible, dy) {
+        cible.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: dy }));
+      };
+      const b = el.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+      const avant = lire();
+      pt(el, "pointerdown", 31, cx, cy);
+      for (let i = 1; i <= 6; i++) { pt(el, "pointermove", 31, cx - i * 12, cy + i * 4); await pause(16); }
+      pt(el, "pointerup", 31, cx - 72, cy + 24);
+      await pause(100);
+      r.glisse = { avant: avant, apres: lire(), grande: window.__mc().grande };
+      const r0 = window.__mc().rayon;
+      pt(el, "pointerdown", 31, cx - 10, cy);
+      pt(el, "pointerdown", 32, cx + 10, cy);
+      for (let i = 1; i <= 5; i++) {
+        pt(el, "pointermove", 31, cx - 10 - i * 2, cy); pt(el, "pointermove", 32, cx + 10 + i * 2, cy);
+        await pause(16);
+      }
+      pt(el, "pointerup", 32, cx + 20, cy); pt(el, "pointerup", 31, cx - 20, cy);
+      await pause(150);
+      r.pince = { r0: r0, r1: window.__mc().rayon, apres: lire(), grande: window.__mc().grande };
+      for (let i = 0; i < 40; i++) roue(el, 100);
+      r.molette = { max: window.__mc().rayon, apres: lire() };
+      for (let i = 0; i < 40; i++) roue(el, -100);
+      r.molette.min = window.__mc().rayon;
+      // Toucher bref : agrandie au centre ; toucher encore : refermée en haut à droite.
+      pt(el, "pointerdown", 31, cx, cy); pt(el, "pointerup", 31, cx, cy);
+      el.click();
+      await pause(250);
+      const bg = el.getBoundingClientRect();
+      const sous = document.querySelector("#kta-vue3d .kta-v3d-haut").getBoundingClientRect().bottom;
+      r.grande = { grande: window.__mc().grande, cx: bg.left + bg.width / 2 - window.innerWidth / 2,
+        cy: bg.top + bg.height / 2 - (window.innerHeight - 96 + sous + 8) / 2, sous: bg.top >= sous, w: bg.width,
+        petit: b.width,
+        rayonMontre: window.__mc().rayonMontre, pressed: el.getAttribute("aria-pressed"), apres: lire() };
+      await pause(200);
+      r.grandeFonds = window.__mc();
+      const g2 = el.getBoundingClientRect();
+      pt(el, "pointerdown", 31, g2.left + g2.width / 2, g2.top + g2.height / 2);
+      pt(el, "pointerup", 31, g2.left + g2.width / 2, g2.top + g2.height / 2);
+      await pause(250);
+      const bf = el.getBoundingClientRect();
+      r.refermee = { grande: window.__mc().grande, droite: window.innerWidth - bf.right, w: bf.width, apres: lire() };
+      // Clavier : Entrée (un click seul) bascule aussi.
+      await pause(1100);
+      el.click();
+      r.clavier = window.__mc().grande;
+      el.click();
+      r.clavier2 = window.__mc().grande;
+      // Rayon remis vers 30 m pour la suite (10 × 1,15⁸ ≈ 30,6).
+      for (let i = 0; i < 8; i++) roue(el, 100);
+      return r;
+    });
+    const meme = function (u, v) { return u.cap === v.cap && u.x === v.x && u.y === v.y && u.mode === v.mode; };
+    verifier(meme(g.glisse.avant, g.glisse.apres) && !g.glisse.grande,
+      nom + "glisser un doigt sur la mini-carte : ni cap ni place changés, pas agrandie", g.glisse);
+    verifier(Math.abs(g.pince.r1 - g.pince.r0 / 2) < 0.5 && meme(g.glisse.avant, g.pince.apres) && !g.pince.grande,
+      nom + "pincer (écart doublé) : rayon moitié (" + g.pince.r0 + " → " + g.pince.r1.toFixed(1) + " m), vue intacte",
+      g.pince);
+    verifier(g.molette.max === 100 && g.molette.min === 10 && meme(g.glisse.avant, g.molette.apres),
+      nom + "molette : rayon borné à 10 / 100 m, vue intacte", g.molette);
+    verifier(g.grande.grande && Math.abs(g.grande.cx) < 1.5 && Math.abs(g.grande.cy) < 2 && g.grande.sous &&
+      g.grande.w > g.grande.petit * 2 && g.grande.pressed === "true" && meme(g.glisse.avant, g.grande.apres) &&
+      !g.refermee.grande && Math.abs(g.refermee.droite - 10) < 1.5 && Math.abs(g.refermee.w - g.grande.petit) < 0.5 &&
+      meme(g.glisse.avant, g.refermee.apres),
+      nom + "toucher : agrandie au centre de la place sous la rangée (le click qui suit ne rebascule pas), refermée " +
+      "en haut à droite ; vue intacte", { grande: g.grande, refermee: g.refermee });
+    verifier(g.clavier === true && g.clavier2 === false, nom + "Entrée / Espace (click seul) : agrandie puis refermée",
+      g);
+    // Joystick (téléphone) : la mini-carte agrandie couvre la zone du pouce ; un doigt posé sur elle ne le lance pas.
+    const js = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP, pt = window.__mcPointeur;
+      await K.fermer();
+      const d = P(-20, 0);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: 0 }, commandes: "joystick" });
+      await window.__fxImages(10);
+      const el = window.__mcEl();
+      el.click();
+      await new Promise(function (ok) { setTimeout(ok, 200); });
+      const b = el.getBoundingClientRect(), z = document.querySelector("#kta-vue3d .kta-v3d-stick-zone")
+        .getBoundingClientRect();
+      const x = b.left + b.width * 0.3, y = b.top + b.height / 2, avant = K.etat();
+      pt(el, "pointerdown", 31, x, y);
+      for (let i = 1; i <= 5; i++) { pt(el, "pointermove", 31, x, y - i * 15); await window.__fxImages(1); }
+      const actif = document.querySelector("#kta-vue3d .kta-v3d-stick").classList.contains("kta-v3d-stick-actif");
+      pt(el, "pointerup", 31, x, y - 75);
+      await new Promise(function (ok) { setTimeout(ok, 200); });
+      const apres = K.etat();
+      const r = { dansZone: x >= z.left && x <= z.right && y >= z.top && y <= z.bottom, actif: actif,
+        bouge: apres.pos.x !== avant.pos.x || apres.pos.y !== avant.pos.y || apres.cap !== avant.cap };
+      await K.fermer();
+      return r;
+    });
+    verifier(js.dansZone && !js.actif && !js.bouge,
+      nom + "joystick : un glisser sur la mini-carte agrandie, posé dans la zone du pouce, ne le lance pas", js);
+    // ── Guidage actif : sous le bandeau, sans chevauchement, ruban, arrivée et prochaine consigne ──
+    const guid = async function (etiquette) {
+      return page.evaluate(async function (et) {
+        const K = window.KtaVue3D, P = window.__fxP;
+        if (!window.__mcIti) {
+          try { localStorage.removeItem("myktamap_guidage_v1"); } catch (err) { /* réglage par défaut */ }
+          const wps = [Object.assign({ source: "search", label: "Départ" }, P(-20, 0), { level: 0 }),
+            Object.assign({ source: "search", label: "Cible fictive" }, P(0, -25), { level: 0 })];
+          const res = await window.Pathfinder.computeRoute(wps, {});
+          window.itineraireActiverRoad({ type: "itinerary", points: res.path, waypoints: wps,
+            raccords: res.raccords || [], carrefours: res.carrefours || [] });
+          window.__mcIti = true;
+        }
+        await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+        await new Promise(function (ok) { setTimeout(ok, 1500); });
+        await window.__fxImages(10);
+        const q = function (x) { return document.querySelector("#kta-vue3d " + x); };
+        const ba = q(".kta-v3d-bandeau"), mc = window.__mcEl(), rb = ba.getBoundingClientRect();
+        const rm = mc.getBoundingClientRect(), rh = q(".kta-v3d-haut").getBoundingClientRect();
+        const visibles = Array.prototype.filter.call(document.querySelectorAll(
+          "#kta-vue3d .kta-v3d-haut > *, #kta-vue3d .kta-v3d-bandeau, #kta-vue3d .kta-v3d-pad, " +
+          "#kta-vue3d .kta-v3d-boussole, #kta-vue3d .kta-v3d-mode-indic, #kta-vue3d .kta-v3d-niveaux"),
+        function (el) { return el.getClientRects().length > 0; });
+        const touchees = visibles.filter(function (el) {
+          return window.__mcChevauche(rm, el.getBoundingClientRect());
+        }).map(function (el) { return el.className; });
+        return { et: et, bandeau: K.etat().bandeau.affiche, bas: rb.bottom, top: rm.top, haut: rh.bottom,
+          taille: rm.width, touchees: touchees, horsEcran: rm.bottom > window.innerHeight || rm.left < 0,
+          m: window.__mc() };
+      }, etiquette);
+    };
+    const gp = await guid("pc");
+    await capture(page, "minicarte-guidage-pc");
+    verifier(gp.bandeau && gp.top >= gp.bas + 0.5 && gp.touchees.length === 0 && !gp.horsEcran && gp.m.montree,
+      nom + "guidage actif (PC) : bandeau visible, mini-carte dessous, aucun chevauchement (rectangles)", gp);
+    verifier(gp.m.iti && gp.m.iti.morceaux >= 1 && gp.m.iti.marques >= 1 && gp.m.iti.cible,
+      nom + "itinéraire sur la mini-carte : ruban, arrivée, prochaine consigne du guidage", gp.m.iti);
+    for (const vp of [[393, 852, "telephone"], [360, 640, "petit-telephone"]]) {
+      await page.setViewportSize({ width: vp[0], height: vp[1] });
+      const gt = await guid(vp[2]);
+      await capture(page, "minicarte-guidage-" + vp[2]);
+      verifier(gt.bandeau && gt.top >= gt.bas + 0.5 && gt.touchees.length === 0 && !gt.horsEcran && gt.taille >= 64,
+        nom + "guidage actif (" + vp[0] + " × " + vp[1] + ") : sous le bandeau, aucun chevauchement, " +
+        Math.round(gt.taille) + " px", gt);
+    }
+    // Guidage coupé dans ⚙️ : le bandeau disparaît, la mini-carte remonte sous la rangée du haut.
+    const gc = await page.evaluate(async function () {
+      const q = function (x) { return document.querySelector("#kta-vue3d " + x); };
+      const avant = window.__mcEl().getBoundingClientRect().top;
+      if (q("#kta-v3d-reglages").hidden) q('[data-v3d="reglages"]').click();
+      q('[data-v3d="guidage"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 9 }));
+      q('[data-v3d="reglages"]').click();
+      await new Promise(function (ok) { setTimeout(ok, 800); });
+      const r = { avant: avant, apres: window.__mcEl().getBoundingClientRect().top,
+        haut: q(".kta-v3d-haut").getBoundingClientRect().bottom, bandeau: window.KtaVue3D.etat().bandeau.affiche };
+      window.setVue3DGuidage(true);
+      return r;
+    });
+    verifier(!gc.bandeau && gc.apres < gc.avant && gc.apres >= gc.haut,
+      nom + "bandeau retiré : la mini-carte remonte sous la rangée du haut", gc);
+    await page.evaluate(function () { window.__mcEl().click(); });
+    await page.waitForTimeout(400);
+    await capture(page, "minicarte-agrandie-petit-telephone");
+    const ga = await page.evaluate(function () {
+      const rm = window.__mcEl().getBoundingClientRect();
+      const rb = document.querySelector("#kta-vue3d .kta-v3d-bandeau").getBoundingClientRect();
+      const pad = document.querySelector("#kta-vue3d .kta-v3d-pad").getBoundingClientRect();
+      return { grande: window.__mc().grande, chevauche: window.__mcChevauche(rm, rb), bas: rm.bottom,
+        h: window.innerHeight, pave: window.__mcChevauche(rm, pad) };
+    });
+    verifier(ga.grande && !ga.chevauche && !ga.pave && ga.bas <= ga.h,
+      nom + "agrandie sur un petit téléphone, guidage actif : entre le bandeau et le pavé, dans l'écran", ga);
+    await page.evaluate(function () { window.__mcEl().click(); });
+    await page.setViewportSize({ width: 1200, height: 800 });
+    // ── Coût : 9 000 piliers fictifs, fond à 30 m, 100 m et agrandi ; mises à jour en marchant. Chromium : processeur
+    // ralenti x4 (ordre de grandeur d'un téléphone) ──
+    const cdp = nav.browserType().name() === "chromium" ? await t.ctx.newCDPSession(page) : null;
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const c = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP, st = [];
+      await K.fermer();
+      window.itineraireEffacer && window.itineraireEffacer();
+      window.setRoads(window.getRoads().filter(function (r) { return r.type !== "itinerary"; }));
+      for (let i = 0; i < 95; i++) {
+        for (let j = 0; j < 95; j++) {
+          const x = (i - 47) * 7, z = (j - 47) * 7 + 3.5, pts = [];
+          for (let k = 0; k < 8; k++) {
+            const a = k / 8 * Math.PI * 2;
+            pts.push(P(x + Math.cos(a) * 2, z + Math.sin(a) * 2));
+          }
+          st.push({ uid: "st_mc_d" + i + "_" + j, type: "pilier-1", level: 0, points: pts });
+        }
+      }
+      window.setStructures(st);
+      window.KtaGalerie.invalider();
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+      await pause(400);
+      const r = { piliers: st.length };
+      const fond = function (rayon, grande) {
+        const m = window.__mc();
+        return { rayon: rayon, grande: !!grande, msFond: m.msFond, objets: m.objets, cote: m.coteFond,
+          taille: m.taille };
+      };
+      r.f30 = fond(30);
+      for (let i = 0; i < 40; i++) {
+        window.__mcEl().dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 100 }));
+      }
+      await pause(250);
+      r.f100 = fond(100);
+      for (let i = 0; i < 40; i++) {
+        window.__mcEl().dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -100 }));
+      }
+      for (let i = 0; i < 8; i++) {
+        window.__mcEl().dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 100 }));
+      }
+      await pause(250);
+      window.__mcEl().click();
+      await pause(250);
+      r.fGrande = fond(window.__mc().rayonMontre, true);
+      window.__mcEl().click();
+      await pause(250);
+      const m0 = window.__mc();
+      const t0 = performance.now();
+      for (let i = 0; i < 60; i++) { K.avancer(0.5); await pause(40); }
+      const m1 = window.__mc();
+      const n = m1.majs - m0.majs, marche = m1.msDernieres.slice(-Math.min(n, 30));
+      r.marche = { m: 30, ms: Math.round(performance.now() - t0), majs: n, fonds: m1.fonds - m0.fonds,
+        msMajMoy: n ? +((m1.msMajMoy * m1.majs - m0.msMajMoy * m0.majs) / n).toFixed(2) : 0,
+        msMajMax: Math.max.apply(null, marche.concat([0])), msFondMax: m1.msFondMax };
+      await K.fermer();
+      window.setStructures([]);
+      return r;
+    });
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    console.log("  ℹ️ coût mini-carte (" + c.piliers + " piliers" + (cdp ? ", processeur ralenti x4" : "") + ") : fond " + c.f30.msFond + " ms à 30 m (" +
+      c.f30.objets + " objets, " + c.f30.cote + " px), " + c.f100.msFond + " ms à 100 m (" + c.f100.objets +
+      " objets), " + c.fGrande.msFond + " ms agrandie (" + c.fGrande.cote + " px) ; en marchant : " + c.marche.majs +
+      " mises à jour en " + c.marche.ms + " ms, " + c.marche.fonds + " fond(s) refait(s), mise à jour " +
+      c.marche.msMajMoy + " ms en moyenne (max " + c.marche.msMajMax + " ms ; depuis l'ouverture, pincements et " +
+      "agrandissement compris : " + c.marche.msFondMax + " ms au plus pour un fond)");
+    verifier(c.marche.majs >= 5 && c.marche.majs <= Math.ceil(c.marche.ms / 100) + 2 && c.marche.fonds <= 2,
+      nom + "mises à jour bornées à 10 par seconde, fond refait seulement au bord de sa fenêtre", c.marche);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 46. Niveau du dessous estompé en vue d'édition (vue3d.js > _estomperVoisin, reglerEstomper ; config.js >
 // getVue3DEstomper ; KTA_V3D_SEUL=estomper) ──────────────────────────────────────────────────────────────────────────
 // Plan FICTIF en mémoire, rendu galerie : galerie nord-sud du 0 à l'ouest, galerie du −1 (4 m dessous) à l'est,
@@ -12161,7 +12571,7 @@ async function sectionGestesDoigt(nav) {
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
       SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "jonction-tremie" ||
-      SEUL === "jonction-piliers") {
+      SEUL === "jonction-piliers" || SEUL === "minicarte") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -12538,7 +12948,7 @@ async function sectionGestesDoigt(nav) {
         return document.querySelector('#kta-vue3d [data-v3d="suivre"]').textContent.indexOf(window.I18n.t("vue3d.etatSuivi")) >= 0;
       }), "le bouton de mode dit « Suivi » en suivi");
       // Toucher et glisser l'écran en suivi : le suivi reste (le cap est celui de l'appareil).
-      const cv = await page.locator("#kta-vue3d canvas").boundingBox();
+      const cv = await page.locator("#kta-vue3d .kta-v3d-canvas").boundingBox();
       await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2);
       await page.mouse.down();
       await page.mouse.move(cv.x + cv.width / 2 + 40, cv.y + cv.height / 2 + 10, { steps: 4 });
@@ -12586,7 +12996,8 @@ async function sectionGestesDoigt(nav) {
             "vue3d.suivre", "vue3d.plongee",
             window.APP_CONFIG.multiLevel === true ? "vue3d.hauteurNiveaux" : "vue3d.hauteur",
             "vue3d.hauteurMoins", "vue3d.hauteurPlus",
-            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer", "vue3d.fichesMontrer",
+            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.miniCarteMontrer",
+            "vue3d.guidageMontrer", "vue3d.fichesMontrer",
             "vue3d.lampeJourAide", "vue3d.limiterAide", "vue3d.niveauxVus.voisinsAide", "vue3d.niveauxVus.tousAide",
             "vue3d.niveauxVus.mienAide", "vue3d.estomperAide", "vue3d.addons"].map(function (k) {
             const t = window.I18n.t(k, { n: window.FilterPanel.nbActifs() });
@@ -12942,7 +13353,7 @@ async function sectionGestesDoigt(nav) {
       await page.keyboard.press("PageDown");
       await page.keyboard.press("PageDown");
       const iDown = await page.evaluate(function () { return window.KtaVue3D.etat().inclinaison; });
-      const cvBoite = await page.locator("#kta-vue3d canvas").boundingBox();
+      const cvBoite = await page.locator("#kta-vue3d .kta-v3d-canvas").boundingBox();
       await page.mouse.move(cvBoite.x + cvBoite.width / 2, cvBoite.y + cvBoite.height / 3);
       await page.keyboard.down("Shift");
       await page.mouse.wheel(0, -100);
@@ -18288,7 +18699,7 @@ async function sectionGestesDoigt(nav) {
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       await page.waitForTimeout(200);
       const z0 = await page.evaluate(function () { return window.KtaVue3D.etat(); });
-      const cvZ = await page.locator("#kta-vue3d canvas").boundingBox();
+      const cvZ = await page.locator("#kta-vue3d .kta-v3d-canvas").boundingBox();
       await page.mouse.move(cvZ.x + cvZ.width / 2, cvZ.y + cvZ.height / 3);
       await page.mouse.wheel(0, 100);
       await page.waitForTimeout(100);
@@ -18388,7 +18799,7 @@ async function sectionGestesDoigt(nav) {
         K.zoomer(18.4 / K.etat().portee.recul);
         return out;
       });
-      const cvB = await page.locator("#kta-vue3d canvas").boundingBox();
+      const cvB = await page.locator("#kta-vue3d .kta-v3d-canvas").boundingBox();
       await page.mouse.move(cvB.x + cvB.width / 2, cvB.y + cvB.height / 3);
       for (let i = 0; i < 16; i++) { await page.mouse.wheel(0, 100); await page.waitForTimeout(30); }
       zBornes.moletteLoin = await page.evaluate(function () {
@@ -18563,6 +18974,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "puits-dessus") await sectionPuitsDessus(nav);
     if (!SEUL || SEUL === "jonction-tremie") await sectionJonctionTremie(nav);
     if (!SEUL || SEUL === "jonction-piliers") await sectionJonctionPiliers(nav);
+    if (!SEUL || SEUL === "minicarte") await sectionMiniCarte(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
