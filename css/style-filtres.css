@@ -352,16 +352,6 @@
 }
 
 /* ─── Thème clair ─── */
-body.kta-theme-light .kta-fp-section,
-html.kta-theme-light .kta-fp-section {
-  background: rgba(244, 197, 66, 0.08) !important;
-  border-color: rgba(154, 135, 84, 0.35) !important;
-}
-body.kta-theme-light .kta-fp-section-titre,
-html.kta-theme-light .kta-fp-section-titre {
-  background: rgba(244, 197, 66, 0.18) !important;
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
 body.kta-theme-light .kta-fp-section-titre:hover,
 html.kta-theme-light .kta-fp-section-titre:hover {
   background: rgba(244, 197, 66, 0.30) !important;
@@ -369,10 +359,6 @@ html.kta-theme-light .kta-fp-section-titre:hover {
 body.kta-theme-light .kta-fp-section-body,
 html.kta-theme-light .kta-fp-section-body {
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
-}
-body.kta-theme-light .kta-fp-section-empty,
-html.kta-theme-light .kta-fp-section-empty {
-  color: var(--kta-texte-3) !important;
 }
 body.kta-theme-light .kta-fp-chip,
 html.kta-theme-light .kta-fp-chip {
@@ -413,10 +399,6 @@ body.kta-theme-light .kta-fp-mini-btn:hover,
 html.kta-theme-light .kta-fp-mini-btn:hover {
   background: rgba(30, 58, 138, 0.20) !important;
 }
-body.kta-theme-light .kta-fp-sublabel,
-html.kta-theme-light .kta-fp-sublabel {
-  color: var(--kta-texte-3) !important;
-}
 body.kta-theme-light .kta-fp-lvl-btn,
 html.kta-theme-light .kta-fp-lvl-btn {
   background: var(--kta-light-bg, #f0e8d8) !important;
@@ -438,10 +420,6 @@ body.kta-theme-light .kta-fp-footer,
 html.kta-theme-light .kta-fp-footer {
   background: var(--kta-light-bg-deep, #e5dcc5) !important;
   border-top-color: rgba(154, 135, 84, 0.35) !important;
-}
-body.kta-theme-light .kta-fp-status,
-html.kta-theme-light .kta-fp-status {
-  color: var(--kta-texte-3) !important;
 }
 
 /* Intégrer des ajouts : sous-fenêtre au-dessus du panneau (filterPanel.js > _ouvrirAjouts). */
