@@ -11522,7 +11522,8 @@
   // sc (px/m), pos {x, y} (px plan), cap, rendu, mode, vue, commandes, sale() ; règle du pas de la vue, jamais une
   // copie (px plan) : bloque(x0, y0, x1, y1) = un corps ne passe pas, ligneBloquee(x0, y0, x1, y1) = ligne de vue
   // coupée, libre(x, y) = place où un corps tient (hors des structures DESSINÉES : un calque masqué n'y compte pas).
-  // court = pas rapide en cours. regler({ traces, itineraire, guidage, course, avatar, commandes, plongee, fiches }) :
+  // court = pas rapide en cours ; miniCarte = médaillon montré en haut à droite (le greffon y libère la place).
+  // regler({ traces, itineraire, guidage, course, avatar, commandes, plongee, fiches }) :
   // false masque, pour la greffe seulement, les tracés au sol (les tubes des galeries restent), l'itinéraire de l'app
   // (ruban, étapes, 🏁), son guidage (bandeau, chevrons), la silhouette dorée de la vue plongeante, le joystick et le
   // pavé, ou interdit le pas rapide, la vue plongeante (retour à hauteur d'yeux) ou les fiches au toucher (ni POI,
@@ -11564,6 +11565,7 @@
       get vue() { return _e.vue; },
       get commandes() { return _e.commandes; },
       get court() { return !!_e.rapide; },
+      get miniCarte() { return !!(_e.mc && !_e.mc.el.hidden); },
       sale: function () { if (_e) _e.sale = true; },
       regler: function (r) {
         if (!_e || _e.greffe !== gr || !r) return;

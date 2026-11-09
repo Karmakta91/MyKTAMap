@@ -5,7 +5,8 @@
  */
 /* addons/mkmg/css/coeur.css — interface du jeu (addons/mkmg/js/coeur.js), posée dans le calque de la greffe de la
    vue 3D (.kta-v3d-greffe, qui laisse passer le doigt). Panneau en haut à DROITE : la moitié gauche est la zone du
-   joystick au téléphone, posée au-dessus du calque. Couleurs de la charte seulement (jetons --kta-*). */
+   joystick au téléphone, posée au-dessus du calque ; mini-carte de la vue montrée (ctx.miniCarte), il passe sous les
+   jauges, à gauche (.mkmg-colonne). Couleurs de la charte seulement (jetons --kta-*). */
 
 .mkmg-panneau {
   position: absolute; top: 8px; right: 10px; width: min(240px, 46vw); box-sizing: border-box;
@@ -35,8 +36,18 @@
   border-radius: 50%; background: var(--kta-fond); color: var(--kta-accent-texte); font-size: 20px; font-weight: 700;
 }
 /* Jauges en haut à gauche, hors du panneau (toujours visibles) ; le joystick, posé au-dessus, reste touchable. */
+.mkmg-colonne {
+  position: absolute; top: 8px; left: 10px; width: min(220px, 44vw);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.mkmg-colonne .mkmg-panneau { position: static; width: auto; }
+/* Téléphone couché (peu de hauteur) : le panneau à DROITE des jauges, pas dessous, sinon il descend sur la boussole. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mkmg-colonne { flex-direction: row; align-items: flex-start; width: auto; }
+  .mkmg-colonne > * { width: min(220px, 30vw); flex: 0 0 auto; }
+}
 .mkmg-jauges {
-  position: absolute; top: 8px; left: 10px; width: min(220px, 44vw); box-sizing: border-box;
+  box-sizing: border-box;
   display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 12px;
   border: 1px solid var(--kta-texte-3); background: var(--kta-surface); color: var(--kta-texte); font-size: 13px;
 }

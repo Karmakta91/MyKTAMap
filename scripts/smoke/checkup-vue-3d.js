@@ -13159,7 +13159,8 @@ async function sectionCaseBoutonsZoom(nav) {
             "vue3d.suivre", "vue3d.plongee",
             window.APP_CONFIG.multiLevel === true ? "vue3d.hauteurNiveaux" : "vue3d.hauteur",
             "vue3d.hauteurMoins", "vue3d.hauteurPlus",
-            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.miniCarteMontrer",
+            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.lignesSolMontrer",
+            "vue3d.boussoleMontrer", "vue3d.miniCarteMontrer",
             "vue3d.guidageMontrer", "vue3d.fichesMontrer",
             "vue3d.lampeJourAide", "vue3d.limiterAide", "vue3d.niveauxVus.voisinsAide", "vue3d.niveauxVus.tousAide",
             "vue3d.niveauxVus.mienAide", "vue3d.estomperAide", "vue3d.addons"].map(function (k) {
@@ -17824,6 +17825,26 @@ async function sectionCaseBoutonsZoom(nav) {
           q(".mkmg-plier").getAttribute("aria-expanded") === "false";
         q(".mkmg-plier").click();
         r.panneau.rouvert = !M().etat().reduit && corps() > 0;
+        // Mini-carte montrée (ctx.miniCarte) : panneau à gauche, sous les jauges, loin du médaillon ; coupée (⚙️) :
+        // de retour en haut à droite.
+        const place = function () {
+          const pn = q(".mkmg-panneau").getBoundingClientRect(), jg = q(".mkmg-jauges").getBoundingClientRect();
+          const mc = q("#kta-vue3d .kta-v3d-minicarte"), mr = mc.getBoundingClientRect();
+          return { montree: !mc.hidden, colonne: q(".mkmg-panneau").parentNode === q(".mkmg-colonne"),
+            sous: pn.top >= jg.bottom - 0.5, aGauche: Math.abs(pn.left - jg.left) < 1,
+            chevauche: !mc.hidden && pn.left < mr.right && mr.left < pn.right && pn.top < mr.bottom && mr.top < pn.bottom,
+            aDroite: window.innerWidth - pn.right < 20 };
+        };
+        r.placeMc = place();
+        q('#kta-vue3d [data-v3d="miniCarte"]').dispatchEvent(new PointerEvent("pointerdown",
+          { bubbles: true, pointerId: 9 }));
+        await pause(700);
+        r.placeSans = place();
+        q('#kta-vue3d [data-v3d="miniCarte"]').dispatchEvent(new PointerEvent("pointerdown",
+          { bubbles: true, pointerId: 9 }));
+        await pause(700);
+        r.placeRetour = place();
+        localStorage.removeItem("myktamap_v3d_minicarte_v1");
         // Quitter : la greffe part, l'itinéraire de l'app revient.
         q(".mkmg-panneau .mkmg-bouton").click();
         await pause(300);
@@ -17965,6 +17986,11 @@ async function sectionCaseBoutonsZoom(nav) {
         MK.panneau.reduit && MK.panneau.rouvert,
         "jeu : jauges en haut à gauche hors du panneau, cartouches sur le bouton de tir ; panneau réduit puis rouvert " +
         "(vague et chrono gardés)", MK.panneau);
+      verifier(MK.placeMc.montree && MK.placeMc.colonne && MK.placeMc.sous && MK.placeMc.aGauche &&
+        !MK.placeMc.chevauche && !MK.placeSans.montree && !MK.placeSans.colonne && MK.placeSans.aDroite &&
+        MK.placeRetour.montree && MK.placeRetour.colonne,
+        "jeu : mini-carte montrée, panneau des vagues à gauche sous les jauges (hors du médaillon) ; coupée, de retour " +
+        "en haut à droite", { mc: MK.placeMc, sans: MK.placeSans, retour: MK.placeRetour });
       verifier(MK.quitte.enCours === false && MK.quitte.greffe === null && MK.quitte.roads === 2 && !MK.quitte.panneau,
         "jeu : Quitter retire la greffe, l'itinéraire de l'app revient", MK.quitte);
       verifier(MK.difficile.diff === "difficile" && MK.difficile.reglage.traces === false && MK.difficile.roads === 0 &&

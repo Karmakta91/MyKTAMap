@@ -1065,8 +1065,10 @@
     const p = _p, h = {};
     h.coup = _el(ctx.hud, "div", "mkmg-coup");
     h.halo = _el(ctx.hud, "div", "mkmg-halo-rage");
-    // Jauges en haut à gauche, hors du panneau : toujours visibles, même panneau réduit.
-    h.jauges = _el(ctx.hud, "div", "mkmg-jauges");
+    // Colonne en haut à gauche : les jauges, hors du panneau (toujours visibles, même panneau réduit), et le panneau
+    // dessous quand la mini-carte de la vue occupe le haut à droite (_placerPanneau).
+    h.colonne = _el(ctx.hud, "div", "mkmg-colonne");
+    h.jauges = _el(h.colonne, "div", "mkmg-jauges");
     h.sante = _barre(h.jauges, _t("hud.sante"));
     h.endurance = _barre(h.jauges, _t("hud.endurance"));
     h.endurance.parentNode.parentNode.classList.add("mkmg-jauge-endurance");
@@ -1157,10 +1159,18 @@
     p.messageMinuterie = setTimeout(function () { if (p.hud) p.hud.message.hidden = true; }, REGLES.messageMs);
   }
 
+  // Mini-carte montrée (ctx.miniCarte) : le panneau passe sous les jauges, à gauche ; sinon en haut à droite.
+  function _placerPanneau(h, ctx) {
+    const gauche = ctx.miniCarte === true;
+    if (gauche === (h.panneau.parentNode === h.colonne)) return;
+    (gauche ? h.colonne : ctx.hud).appendChild(h.panneau);
+  }
+
   function _majHud() {
     const p = _p;
     if (!p || !p.hud || !p.ctx) return;
     const h = p.hud, ctx = p.ctx;
+    _placerPanneau(h, ctx);
     h.vague.textContent = _t("hud.vague", { n: p.vague }) + " · " + _t("diff." + p.diff);
     const chrono = p.chronoFin ? Math.max(0, (p.chronoFin - performance.now()) / 1000) : null;
     h.chrono.hidden = chrono === null;
