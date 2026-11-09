@@ -20813,5 +20813,7 @@ button.kta-cfg-ligne-action {
 }
 .loader-secondary-actions .loader-btn-secondary { gap: 6px; }
 .zip-drop-zone .zip-icon > .kta-ico { width: 28px; height: 28px; }
+/* Icône de titre sans espace texte derrière (le texte du titre reste le libellé exact) : la marge en tient lieu. */
+.kta-ico-titre { margin-right: 0.3em; }
 /* Dans la Documentation et l'Aide : même icône que le bouton, à la taille du texte. */
 .kta-ico-doc { width: 1.1em; height: 1.1em; vertical-align: -0.18em; }
