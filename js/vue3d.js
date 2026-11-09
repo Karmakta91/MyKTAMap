@@ -285,13 +285,22 @@
   // (plus large que haut : on y passe en rampant, pas debout).
   const PROFIL_CHATIERE = [[-0.5, 0], [0.5, 0], [0.5, 0.7], [0.4, 0.9], [0.18, 1], [-0.18, 1], [-0.4, 0.9],
     [-0.5, 0.7]];
-  // Plaque indicatrice (plaque) : plaque émaillée de `l` × `h` m au moins, élargie au nom jusqu'à `lMax` m puis sur
-  // deux lignes (_mesurePlaque), `ep` d'épaisseur, centrée à `y` m (et au moins `plafond` m sous le plafond), à
-  // `recul` m de la paroi ; nom du POI dessiné au canvas à `pxm` px par mètre, police de `police` × `h` (une texture
-  // par nom, au plus `max` vivantes : au-delà, la plaque unie). Couleurs de la scène (plaque de rue
-  // émaillée), pas de la charte de l'UI. Le nom reste avec 🧱 coupé (décision produit : c'est un repère).
-  const PLAQUE = { l: 0.6, lMax: 1, h: 0.3, police: 0.42, ep: 0.015, y: 1.45, plafond: 0.3, recul: 0.01, pxm: 400,
-    max: 32, fond: "#1f3d7a", texte: "#f2f4f8", bord: 0.03 };
+  // Plaque indicatrice (plaque) : inscription gravée en creux dans un bloc de pierre de taille (décision produit :
+  // le style des inscriptions de carrière, capitales Didone noires), de `l` × `h` m au moins, élargie au nom jusqu'à
+  // `lMax` m puis sur deux lignes (_mesurePlaque), `ep` d'épaisseur, centrée à `y` m (et au moins `plafond` m sous le
+  // plafond), à `recul` m de la paroi ; dessinée au canvas à `pxm` px par mètre, police de `police` × `h`
+  // (resserrée jusqu'à `serre` avant de passer sur deux lignes), 2ᵉ ligne (_secondePlaque) à `corps2` du corps et
+  // `secondeMax` caractères au plus, jamais sous `min2` px (la plaque grandit en hauteur) ; usure en `variantes` tirées du point (_variantePlaque). Une texture par contenu,
+  // au plus `max` vivantes : au-delà, la plaque unie (`pierre`, liseré `joint`). Couleurs de la scène, pas de la
+  // charte de l'UI. Le nom reste avec 🧱 coupé (décision produit : un repère).
+  const PLAQUE = { l: 0.6, lMax: 1, h: 0.3, police: 0.36, serre: 0.8, ep: 0.015, y: 1.45, plafond: 0.3, recul: 0.01,
+    pxm: 400, max: 32, pierre: "#c4b08c", joint: "#5e5140", bord: 0.03, corps2: 0.55, min2: 14, secondeMax: 40,
+    variantes: 4 };
+  // Police des plaques (lib/bodoni-moda, SIL OFL) : chargée à l'ouverture de la 3D (_chargerPolicePlaques), jamais
+  // au démarrage ; tant qu'elle manque, le serif du système, puis les plaques sont redessinées (_redessinerPlaques).
+  const URL_POLICES_PLAQUE = { 600: "lib/bodoni-moda/bodoni-moda-latin-600-normal.woff2",
+    700: "lib/bodoni-moda/bodoni-moda-latin-700-normal.woff2" };
+  const FAMILLE_PLAQUE = "'Bodoni Moda', 'Bodoni 72', Didot, 'Times New Roman', Georgia, serif";
   // Épure (epure) : trait gravé clair sur la paroi, `larg` m de trait, à `recul` m d'elle, centré à `y` m ; dessin
   // de `l` m (ligne, deux talons, une croix, une flèche). Géométrie seule : rien à couper avec 🧱. Couleur de la
   // scène (trait clair sur la pierre).
@@ -344,6 +353,8 @@
   let THREE = null;
   let _import = null;
   let _e = null;                    // état de la vue ouverte (null = fermée)
+  // Police des plaques : etat "absente" | "charge" | "prete" | "echec" | "indisponible" (pas de FontFace).
+  const _police = { etat: "absente", promesse: null };
   let _appareils = {};               // canvas des textures déjà dessinés (_texturesPeintes : structures, parois)
   const _appareilsMs = {};          // ms du premier dessin de chacun (checkup)
   let _dernierGl = null;            // contexte de la dernière vue fermée (checkup : libéré ou non)
@@ -384,6 +395,34 @@
         .catch(function (err) { _import = null; throw err; });
     }
     return _import;
+  }
+
+  // 🔒 Police servie par le site (CSP font-src 'self'), par FontFace : aucune feuille, aucun script en ligne.
+  // Jamais attendue par l'ouverture : les plaques se dessinent au serif du système et se redessinent à l'arrivée.
+  // Un échec (hors ligne sans précache) se retente à l'ouverture suivante.
+  function _chargerPolicePlaques() {
+    if (_police.promesse) return _police.promesse;
+    if (typeof FontFace !== "function" || !document.fonts) {
+      _police.etat = "indisponible";
+      return Promise.resolve(false);
+    }
+    _police.etat = "charge";
+    const faces = [600, 700].map(function (g) {
+      const url = new URL(URL_POLICES_PLAQUE[g], document.baseURI).href;
+      return new FontFace("Bodoni Moda", "url(" + url + ") format('woff2')", { weight: String(g), style: "normal" });
+    });
+    _police.promesse = Promise.all(faces.map(function (f) { return f.load(); })).then(function (ok) {
+      ok.forEach(function (f) { document.fonts.add(f); });
+      _police.etat = "prete";
+      _redessinerPlaques();
+      return true;
+    }).catch(function (err) {
+      console.warn("[Vue3D] police des plaques indisponible, serif du système :", err && err.message);
+      _police.etat = "echec";
+      _police.promesse = null;
+      return false;
+    });
+    return _police.promesse;
   }
 
   function _chargerCss() {
@@ -2759,7 +2798,7 @@
     e.scene.add(e.camera);
     e.mats = _materiaux();
     e.texCiel = null;   // 🩸 refaite avec la scène (reprise du contexte) : jamais celle de l'ancien contexte
-    e.plaques = new Map();   // nom → texture d'une plaque (_texPlaque), de cette scène seulement
+    e.plaques = new Map();   // contenu (nom, 2ᵉ ligne, variante) → texture d'une plaque (_texPlaque), de cette scène
     // Sol et plafond : un carré qui suit la position, plus grand que le rayon de scène ; carré unité mis à
     // l'échelle (_appliquerPortee), la répétition du grain suit.
     const plan = new THREE.PlaneGeometry(1, 1, 8, 8);
@@ -4585,7 +4624,7 @@
           o.material.dispose();
         }
         if (o.isSprite) e.panneaux.delete(o);
-        if (o.userData.plaqueNom !== undefined) _rendrePlaque(o.userData.plaqueNom);   // texture partagée par nom
+        if (o.userData.plaqueCle !== undefined) _rendrePlaque(o.userData.plaqueCle);   // texture partagée par contenu
       });
       e.scene.remove(v.obj);
       e.sale = true;
@@ -5217,27 +5256,29 @@
       uv ? [u0, 0, u1, 0, u1, 1, u0, 1] : undefined);
   }
 
-  // Plaque émaillée : chants (fond de la plaque, uni) et face au nom du POI (_texPlaque, 🧱 allumé ou coupé), à la
-  // taille du nom (_mesurePlaque) ; unie à liseré clair au-delà de PLAQUE.max noms vivants, son panneau gardé alors
-  // (le nom n'y est plus). ⚠️ contrat (décision produit) : une plaque posée porte le nom, le POI n'a pas de panneau
+  // Plaque gravée : chants (pierre unie) et face au nom du POI (_texPlaque, 🧱 allumé ou coupé), à la taille du nom
+  // (_mesurePlaque) ; unie, liseré de joint, au-delà de PLAQUE.max textures vivantes, son panneau gardé alors (le
+  // nom n'y est plus). ⚠️ contrat (décision produit) : une plaque posée porte le nom, le POI n'a pas de panneau
   // (_sansPanneau) ; toucher la plaque ouvre sa fiche (_plaqueVisee).
   function _plaque(v, lots, g) {
     const e = _e, F = _faceParoi(v), ep = PLAQUE.ep, r = PLAQUE.recul, B = PLAQUE.bord;
-    const nom = _nomPlaque(v.point), m = _mesurePlaque(nom), L = m.l / 2, h = m.h;
+    const nom = _nomPlaque(v.point), l2 = _secondePlaque(v.point), m = _mesurePlaque(nom, l2), L = m.l / 2, h = m.h;
     const y = Math.min(PLAQUE.y, e.hauteur - PLAQUE.plafond - h / 2), y0 = y - h / 2, y1 = y0 + h;
-    const fond = _couleurFixe(PLAQUE.fond);
+    const fond = _couleurFixe(PLAQUE.pierre);
     const p = F.Q(-L, r), q = F.Q(L, r), p2 = F.Q(-L, r + ep), q2 = F.Q(L, r + ep);
     [[y1, 1], [y0, -1]].forEach(function (c) {
       lots.opaque.quad([p[0], c[0], p[1]], [q[0], c[0], q[1]], [q2[0], c[0], q2[1]], [p2[0], c[0], p2[1]],
         [0, c[1], 0], fond);
     });
-    const t = _texPlaque(nom, m);
+    const variante = _variantePlaque(v.point), cle = nom + "\u0001" + l2 + "\u0001" + variante;
+    const t = _texPlaque(cle, nom, m);
     v.trace = { plaqueY: +y.toFixed(3), texture: !!t, nom: nom, plaqueL: +m.l.toFixed(3), plaqueH: +h.toFixed(3),
-      lignes: m.lignes.slice(), taillePx: m.taille, coupe: m.lignes.join(" ") !== nom.replaceAll(/\s+/g, " ") };
+      lignes: m.lignes.slice(), taillePx: m.taille, coupe: m.lignes.join(" ") !== nom.replaceAll(/\s+/g, " "),
+      seconde: m.seconde, taille2Px: m.taille2, variante: variante };
     if (!t) {
       _rectParoi(lots.opaque, F, -L, L, y0, y1, r + ep, fond);
-      _rectParoi(lots.opaque, F, -L + B, L - B, y0 + B, y1 - B, r + ep + 0.002, _couleurFixe(PLAQUE.texte));
-      _rectParoi(lots.opaque, F, -L + 1.6 * B, L - 1.6 * B, y0 + 1.6 * B, y1 - 1.6 * B, r + ep + 0.004, fond);
+      _rectParoi(lots.opaque, F, -L + B, L - B, y0 + B, y1 - B, r + ep + 0.002, _couleurFixe(PLAQUE.joint));
+      _rectParoi(lots.opaque, F, -L + 1.3 * B, L - 1.3 * B, y0 + 1.3 * B, y1 - 1.3 * B, r + ep + 0.004, fond);
       if (v.point) _ajouterPanneau(g, v.point, _placePanneau(v.point) || [v.cx, v.cz], true);
       return;
     }
@@ -5246,7 +5287,7 @@
     const me = new THREE.Mesh(face.geometrie(), t.mat);
     me.matrixAutoUpdate = false;
     me.userData.famille = "plaque";
-    me.userData.plaqueNom = nom;
+    me.userData.plaqueCle = cle;
     me.userData.plaquePoint = v.point || null;
     g.add(me);
   }
@@ -5255,20 +5296,94 @@
   // sur deux lignes, puis réduit la police (_mesurePlaque).
   function _nomPlaque(p) { return String((p && (p.nom || p.name || p.id)) || "").slice(0, 120); }
 
-  // Taille d'une plaque au nom `nom` → { l, h (m), lignes, taille (px de police), W, H (px de texture) }. Police de
-  // PLAQUE.police de la hauteur d'une ligne ; une ligne si le nom tient dans PLAQUE.lMax (plaque élargie de PLAQUE.l
-  // à lMax), sinon deux lignes équilibrées (coupées entre deux mots) ; ce qui dépasse encore réduit la police.
-  function _mesurePlaque(nom) {
-    const e = _e, R = PLAQUE.pxm, B = PLAQUE.bord, marge = 4 * B * R;
+  // 2ᵉ ligne gravée, plus petite : la 1re ligne de la description, seulement si elle COMMENCE par une date (1857,
+  // 12/03/1890) ou un sigle de 1 à 4 capitales suivi d'un chiffre ou d'un point (« IGC 1902 », « R. 45 ») ; sinon
+  // rien (décision produit : aucun champ de plus, une description ordinaire ne se grave pas). Au plus
+  // PLAQUE.secondeMax caractères, coupée entre deux mots : la ligne est un millésime, pas un texte.
+  const RX_SECONDE = /^(?:\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4})(?!\d)|^[A-ZÀ-ÖØ-Þ]{1,4}(?:\.|\s*\d)/;
+  function _secondePlaque(p) {
+    const l = String((p && p.description) || "").trim().split(/\r?\n/)[0].trim().replaceAll(/\s+/g, " ");
+    if (!RX_SECONDE.test(l)) return "";
+    if (l.length <= PLAQUE.secondeMax) return l;
+    const c = l.slice(0, PLAQUE.secondeMax), k = c.lastIndexOf(" ");
+    return (k > 4 ? c.slice(0, k) : c).trim();
+  }
+
+  // Usure d'une plaque : une variante sur PLAQUE.variantes, tirée de l'uid du point (repli : id, puis nom).
+  // ⚠️ contrat : FIXE pour un même point (jamais Math.random : graine → _aleaGraine) ; en nombre borné, pour que des
+  // plaques au même texte partagent leurs textures (cache par contenu, _texPlaque).
+  function _variantePlaque(p) {
+    return _hachage(String((p && (p.uid || p.id || p.nom || p.name)) || "")) % PLAQUE.variantes;
+  }
+
+  // FNV-1a 32 bits d'une chaîne → entier non signé.
+  function _hachage(s) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return h >>> 0;
+  }
+
+  // Générateur à graine (mulberry32) → fonction () → [0, 1[ : même graine, même suite, sur tout navigateur.
+  function _aleaGraine(graine) {
+    let a = graine >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Police des plaques sur `ctx` : capitales Didone (Bodoni Moda une fois chargée, _chargerPolicePlaques, sinon le
+  // serif du système), légèrement espacées comme une inscription gravée.
+  function _fontePlaque(ctx, px, poids) {
+    ctx.font = poids + " " + px + "px " + FAMILLE_PLAQUE;
+    if ("letterSpacing" in ctx) ctx.letterSpacing = Math.round(px * 0.06) + "px";
+  }
+
+  function _largeurPlaque(ctx, texte, px, poids) {
+    _fontePlaque(ctx, px, poids);
+    return ctx.measureText(texte.toUpperCase()).width;
+  }
+
+  // Corps des deux lignes réduits jusqu'à tenir dans `utileW` × `utileH` px (jamais agrandis au-delà de m.taille0).
+  // ⚠️ contrat (décision produit) : la 2ᵉ ligne ne réduit jamais le nom en largeur et garde PLAQUE.min2 px ; sous un
+  // nom long (deux lignes ou resserré), c'est la plaque qui grandit en hauteur (_mesurePlaque : utileH infini).
+  function _ajusterPlaque(ctx, m, utileW, utileH) {
+    const plusLarge = function (px) {
+      return Math.max.apply(null, m.lignes.map(function (l) { return _largeurPlaque(ctx, l, px, 700); }));
+    };
+    const corps2 = function (px) { return m.seconde ? Math.max(PLAQUE.min2, Math.round(px * PLAQUE.corps2)) : 0; };
+    const haut = function (px, px2) { return (m.lignes.length - 1) * 1.15 * px + px + (px2 ? 0.35 * px + px2 : 0); };
+    let taille = m.taille0;
+    while (taille > 8 && (plusLarge(taille) > utileW || haut(taille, corps2(taille)) > utileH)) taille--;
+    let t2 = corps2(taille);
+    while (t2 > PLAQUE.min2 && _largeurPlaque(ctx, m.seconde, t2, 600) > utileW) t2--;
+    // Trop large même à PLAQUE.min2 : la ligne perd ses derniers mots plutôt que de devenir illisible.
+    while (t2 && m.seconde.indexOf(" ") > 0 && _largeurPlaque(ctx, m.seconde, t2, 600) > utileW) {
+      m.seconde = m.seconde.slice(0, m.seconde.lastIndexOf(" ")).trim();
+    }
+    m.taille = taille; m.taille2 = t2;
+    m.pas = m.lignes.length > 1 ? 1.15 * taille : 0;
+    m.largeTexte = Math.max(plusLarge(taille), t2 ? _largeurPlaque(ctx, m.seconde, t2, 600) : 0);
+    m.hautTexte = haut(taille, t2);
+    return m;
+  }
+
+  // Taille d'une plaque au nom `nom` et à la 2ᵉ ligne `l2` → { l, h (m), lignes, seconde, taille, taille2 (px de
+  // police), W, H (px de texture) }. Police de PLAQUE.police de la hauteur d'une ligne ; une ligne si le nom tient
+  // dans PLAQUE.lMax (plaque élargie de PLAQUE.l à lMax), au besoin resserré jusqu'à PLAQUE.serre du corps, sinon
+  // deux lignes équilibrées (coupées entre deux mots) ; ce qui dépasse encore réduit la police. La 2ᵉ ligne, à
+  // PLAQUE.corps2 du corps, ajoute sa hauteur.
+  function _mesurePlaque(nom, l2) {
+    const e = _e, R = PLAQUE.pxm, marge = 4 * PLAQUE.bord * R;
     const ctx = (e.ctxPlaque || (e.ctxPlaque = document.createElement("canvas").getContext("2d")));
-    const police = function (px) { return "700 " + px + "px system-ui, -apple-system, sans-serif"; };
-    let taille = Math.round(PLAQUE.h * PLAQUE.police * R);
-    ctx.font = police(taille);
-    const large = function (t) { return ctx.measureText(t).width; };
-    const utile = PLAQUE.lMax * R - marge;
+    const taille0 = Math.round(PLAQUE.h * PLAQUE.police * R), utile = PLAQUE.lMax * R - marge;
+    const large = function (t) { return _largeurPlaque(ctx, t, taille0, 700); };
     let lignes = [nom];
     const mots = nom.split(/\s+/).filter(Boolean);
-    if (large(nom) > utile && mots.length > 1) {
+    if (large(nom) * PLAQUE.serre > utile && mots.length > 1) {
       let mieux = null;
       for (let k = 1; k < mots.length; k++) {
         const a = mots.slice(0, k).join(" "), b = mots.slice(k).join(" "), w = Math.max(large(a), large(b));
@@ -5276,45 +5391,164 @@
       }
       lignes = mieux.l;
     }
-    const plusLarge = function () { return Math.max.apply(null, lignes.map(large)); };
-    while (taille > 8 && plusLarge() > utile) { taille--; ctx.font = police(taille); }
-    const pasLigne = lignes.length > 1 ? 1.15 * taille : 0;
-    const W = Math.round(Math.min(PLAQUE.lMax * R, Math.max(PLAQUE.l * R, plusLarge() + marge)));
-    const H = Math.round(lignes.length > 1 ? Math.max(PLAQUE.h * R, pasLigne + taille + marge) : PLAQUE.h * R);
-    return { l: W / R, h: H / R, lignes: lignes, taille: taille, W: W, H: H, pas: pasLigne };
+    const m = _ajusterPlaque(ctx, { lignes: lignes, seconde: l2 || "", taille0: taille0 }, utile, Infinity);
+    m.W = Math.round(Math.min(PLAQUE.lMax * R, Math.max(PLAQUE.l * R, m.largeTexte + marge)));
+    m.H = Math.round(Math.max(PLAQUE.h * R, m.hautTexte + marge));
+    m.l = m.W / R; m.h = m.H / R;
+    return m;
   }
 
-  // Texture et matériau d'une plaque au nom `nom` (mesure `m` : _mesurePlaque), partagés par toutes les plaques de ce
-  // nom à portée (compte de références, rendu par _libererVolume) → { tex, mat, n, octets } | null au-delà de
-  // PLAQUE.max noms vivants.
-  function _texPlaque(nom, m) {
+  // Texture et matériau d'une plaque de contenu `cle` (nom, 2ᵉ ligne, variante d'usure ; mesure `m` : _mesurePlaque),
+  // partagés par toutes les plaques de ce contenu à portée (compte de références, rendu par _libererVolume) →
+  // { tex, mat, n, octets, nom } | null au-delà de PLAQUE.max textures vivantes.
+  function _texPlaque(cle, nom, m) {
     const e = _e;
-    let t = e.plaques.get(nom);
+    let t = e.plaques.get(cle);
     if (t) { t.n++; return t; }
     if (e.plaques.size >= PLAQUE.max) return null;
-    const W = m.W, H = m.H, cv = document.createElement("canvas");
-    cv.width = W; cv.height = H;
-    const ctx = cv.getContext("2d"), b = Math.round(PLAQUE.bord * PLAQUE.pxm);
-    ctx.fillStyle = PLAQUE.fond; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = PLAQUE.texte; ctx.lineWidth = Math.max(2, b / 2);
-    ctx.strokeRect(b, b, W - 2 * b, H - 2 * b);
-    ctx.fillStyle = PLAQUE.texte; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = "700 " + m.taille + "px system-ui, -apple-system, sans-serif";
-    const y0 = H / 2 - m.pas * (m.lignes.length - 1) / 2 + 1;
-    m.lignes.forEach(function (l, i) { ctx.fillText(l, W / 2, y0 + i * m.pas); });
+    const cv = document.createElement("canvas");
+    cv.width = m.W; cv.height = m.H;
+    t = { nom: nom, m: m, graine: _hachage(cle), n: 1, octets: m.W * m.H * 4, bodoni: false };
+    _dessinerPlaque(cv, t);
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
-    t = { tex: tex, mat: new THREE.MeshLambertMaterial({ map: tex }), n: 1, octets: W * H * 4 };
-    e.plaques.set(nom, t);
+    t.tex = tex;
+    t.mat = new THREE.MeshLambertMaterial({ map: tex });
+    e.plaques.set(cle, t);
     return t;
   }
 
-  function _rendrePlaque(nom) {
-    const e = _e, t = e && e.plaques ? e.plaques.get(nom) : null;
+  // Bloc de pierre de taille gravé (canvas `cv`, texture `t`) : calcaire teinté et marbré, grain, joint et
+  // chanfrein au bord, lettres en creux (fond noir, ombre en haut, lèvre claire en bas), usées par endroits, puis
+  // salissures. ⚠️ contrat : tout le hasard vient de _aleaGraine(t.graine), dans le même ordre d'appels — un même
+  // point redonne la même plaque, à l'octet près (checkup § plaques). Redessiné sur place quand la police arrive
+  // (_redessinerPlaques) : taille de texture inchangée, le texte se réajuste dedans.
+  function _dessinerPlaque(cv, t) {
+    const m = t.m, W = cv.width, H = cv.height, b = Math.round(PLAQUE.bord * PLAQUE.pxm);
+    const alea = _aleaGraine(t.graine), entre = function (a, z) { return a + (z - a) * alea(); };
+    const ctx = cv.getContext("2d");
+    _ajusterPlaque(ctx, m, W - 4 * b, H - 4 * b);
+    t.bodoni = _police.etat === "prete";
+    ctx.save();
+    if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
+    // Pierre : teinte du calcaire (beige à ocre), marbrures larges, puis grain fin au pixel.
+    const teinte = entre(33, 44), sat = entre(20, 36), lum = entre(58, 67);
+    ctx.fillStyle = "hsl(" + teinte.toFixed(1) + "," + sat.toFixed(1) + "%," + lum.toFixed(1) + "%)";
+    ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 9; i++) {
+      const x = entre(0, W), y = entre(0, H), rr = entre(0.15, 0.5) * W, clair = alea() < 0.5;
+      const gr = ctx.createRadialGradient(x, y, 0, x, y, rr);
+      gr.addColorStop(0, clair ? "rgba(255,248,232," + entre(0.05, 0.14).toFixed(3) + ")"
+        : "rgba(92,72,44," + entre(0.04, 0.12).toFixed(3) + ")");
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    }
+    ctx.save();
+    ctx.translate(-Math.floor(entre(0, 256)), -Math.floor(entre(0, 256)));
+    ctx.fillStyle = ctx.createPattern(_grainPlaque(), "repeat");
+    ctx.fillRect(0, 0, W + 256, H + 256);
+    ctx.restore();
+    // Joint de mortier tout autour, puis chanfrein (arête haute éclairée, basse dans l'ombre).
+    ctx.strokeStyle = "rgba(78,66,50,0.9)"; ctx.lineWidth = b * 0.9;
+    ctx.strokeRect(0, 0, W, H);
+    const k = b * 0.6;
+    ctx.lineWidth = Math.max(2, b * 0.25);
+    ctx.strokeStyle = "rgba(255,246,226,0.45)";
+    ctx.beginPath(); ctx.moveTo(k, H - k); ctx.lineTo(k, k); ctx.lineTo(W - k, k); ctx.stroke();
+    ctx.strokeStyle = "rgba(48,36,22,0.4)";
+    ctx.beginPath(); ctx.moveTo(W - k, k); ctx.lineTo(W - k, H - k); ctx.lineTo(k, H - k); ctx.stroke();
+    // Lettres sur un calque (les user sans entamer la pierre) : lèvre claire, ombre du haut, fond noir.
+    const cal = _e.calquePlaque || (_e.calquePlaque = document.createElement("canvas"));
+    cal.width = W; cal.height = H;
+    const c2 = cal.getContext("2d");
+    c2.textAlign = "center"; c2.textBaseline = "middle";
+    const relief = Math.max(1, m.taille * 0.045), encre = "hsl(30,15%," + entre(5, 10).toFixed(1) + "%)";
+    const graver = function (texte, x, y, px, poids) {
+      _fontePlaque(c2, px, poids);
+      const T = texte.toUpperCase();
+      c2.fillStyle = "rgba(255,248,232,0.7)"; c2.fillText(T, x + relief * 0.5, y + relief);
+      c2.fillStyle = "rgba(20,14,8,0.85)"; c2.fillText(T, x - relief * 0.4, y - relief * 0.6);
+      c2.fillStyle = encre; c2.fillText(T, x, y);
+    };
+    const yH = H / 2 - m.hautTexte / 2 + m.taille / 2 + 1;
+    m.lignes.forEach(function (l, i) { graver(l, W / 2, yH + i * m.pas, m.taille, 700); });
+    if (m.seconde) {
+      graver(m.seconde, W / 2, yH + (m.lignes.length - 1) * m.pas + m.taille * 0.85 + m.taille2 / 2, m.taille2, 600);
+    }
+    // Usure : la peinture et l'arête des lettres partent par plaques et par points, jamais au point de ne plus lire.
+    const usure = entre(0.3, 1);
+    c2.globalCompositeOperation = "destination-out";
+    const nTaches = Math.round(4 + 10 * usure);
+    for (let i = 0; i < nTaches; i++) {
+      const x = entre(2 * b, W - 2 * b), y = entre(2 * b, H - 2 * b), rr = entre(0.05, 0.18) * m.taille;
+      const gr = c2.createRadialGradient(x, y, 0, x, y, rr);
+      gr.addColorStop(0, "rgba(0,0,0," + (entre(0.3, 0.6) * usure).toFixed(3) + ")");
+      gr.addColorStop(1, "rgba(0,0,0,0)");
+      c2.fillStyle = gr; c2.fillRect(x - rr, y - rr, 2 * rr, 2 * rr);
+    }
+    c2.fillStyle = "rgba(0,0,0,0.55)";
+    const nPoints = Math.round(150 + 350 * usure);
+    for (let i = 0; i < nPoints; i++) c2.fillRect(entre(0, W), entre(0, H), entre(1, 2.5), entre(1, 2.5));
+    c2.globalCompositeOperation = "source-over";
+    ctx.drawImage(cal, 0, 0);
+    // Salissures : pied du bloc encrassé, coulures depuis le haut, taches.
+    const pied = ctx.createLinearGradient(0, H * 0.45, 0, H);
+    pied.addColorStop(0, "rgba(60,46,30,0)");
+    pied.addColorStop(1, "rgba(60,46,30," + entre(0.1, 0.28).toFixed(3) + ")");
+    ctx.fillStyle = pied; ctx.fillRect(0, 0, W, H);
+    const nCoulures = Math.floor(entre(0, 3));
+    for (let i = 0; i < nCoulures; i++) {
+      const x = entre(b, W - b), l = entre(0.01, 0.03) * W, bas = entre(0.4, 1) * H;
+      const gc = ctx.createLinearGradient(0, 0, 0, bas);
+      gc.addColorStop(0, "rgba(70,54,34," + entre(0.08, 0.16).toFixed(3) + ")");
+      gc.addColorStop(1, "rgba(70,54,34,0)");
+      ctx.fillStyle = gc; ctx.fillRect(x, 0, l, bas);
+    }
+    const nTachesS = Math.round(2 + 4 * usure);
+    for (let i = 0; i < nTachesS; i++) {
+      const x = entre(0, W), y = entre(0, H), rr = entre(0.03, 0.12) * W;
+      const gt = ctx.createRadialGradient(x, y, 0, x, y, rr);
+      gt.addColorStop(0, "rgba(74,58,36," + entre(0.05, 0.14).toFixed(3) + ")");
+      gt.addColorStop(1, "rgba(74,58,36,0)");
+      ctx.fillStyle = gt; ctx.fillRect(x - rr, y - rr, 2 * rr, 2 * rr);
+    }
+    ctx.restore();
+  }
+
+  // Grain de la pierre : tuile de 256 px de points clairs et sombres translucides, faite une fois (graine fixe) et
+  // posée en motif, décalée par plaque. 🩸 Un grain au pixel par plaque (getImageData) coûtait ~5 ms par texture.
+  let _grain = null;
+  function _grainPlaque() {
+    if (_grain) return _grain;
+    const N = 256, cv = document.createElement("canvas"), alea = _aleaGraine(0x5eed);
+    cv.width = N; cv.height = N;
+    const g = cv.getContext("2d"), img = g.createImageData(N, N), d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const n = alea() - 0.5, tache = alea() < 0.006;
+      const v = tache || n < 0 ? 30 : 255;
+      d[i] = v; d[i + 1] = v; d[i + 2] = v - (v > 128 ? 20 : 0);
+      d[i + 3] = tache ? 90 : Math.round(Math.abs(n) * 46);
+    }
+    g.putImageData(img, 0, 0);
+    _grain = cv;
+    return cv;
+  }
+
+  // Police des plaques arrivée (_chargerPolicePlaques) : chaque texture vivante redessinée sur place, avec la même
+  // graine (même usure), au même encombrement.
+  function _redessinerPlaques() {
+    const e = _e;
+    if (!e || !e.plaques || !e.plaques.size) return;
+    e.plaques.forEach(function (t) { _dessinerPlaque(t.tex.image, t); t.tex.needsUpdate = true; });
+    e.sale = true;
+  }
+
+  function _rendrePlaque(cle) {
+    const e = _e, t = e && e.plaques ? e.plaques.get(cle) : null;
     if (!t || --t.n > 0) return;
     t.tex.dispose(); t.mat.dispose();
-    e.plaques.delete(nom);
+    e.plaques.delete(cle);
   }
 
   // Épure : traits clairs à plat sur la paroi (ligne, talons aux bouts, croix au milieu, flèche vers la droite du
@@ -10568,6 +10802,7 @@
       return Promise.resolve(false);
     }
     if (!_echelle()) { _alerte("vue3d.sansEchelle"); return Promise.resolve(false); }
+    _chargerPolicePlaques();
     return Promise.all([_chargerThree(), _chargerCss()]).catch(function (err) {
       console.warn("[Vue3D] three.js introuvable :", err && err.message);
       _alerte("vue3d.chargementImpossible");
@@ -11006,7 +11241,9 @@
       cameraY: +e.camera.position.y.toFixed(3), ramper: +(e.ramper || 0).toFixed(3),
       plaques: e.plaques ? { n: e.plaques.size, octets: Array.from(e.plaques.values()).reduce(function (s, t) {
         return s + t.octets;
-      }, 0), noms: Array.from(e.plaques.keys()) } : null,
+      }, 0), noms: Array.from(e.plaques.values()).map(function (t) { return t.nom; }),
+      bodoni: Array.from(e.plaques.values()).filter(function (t) { return t.bodoni; }).length,
+      police: _police.etat } : null,
       fondu: +(e.fonduOp || 0).toFixed(2),
       fonduPresent: !!e.fondu && !!e.fondu.parentNode && !e.fondu.hidden,
       bandeauNiveau: e.bandeauNiveau && !e.bandeauNiveau.hidden ? e.bandeauNiveau.textContent : null,

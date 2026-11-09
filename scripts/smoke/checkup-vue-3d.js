@@ -128,7 +128,7 @@
 //   KTA_V3D_TEL=1 → fenêtre et densité d'un iPhone (393 × 852, x3), processeur ralenti x4 (Chromium seul) ;
 //   KTA_V3D_CAPTURES=<dossier> → captures (hors dépôt) ; KTA_V3D_SEUL=dessin → la section 28 seule ; =camera → la 30 ;
 //   =sol → plan au sol sur écran dense (image, V1, V2) ; =formes → § 14 septies (KTA_V3D_CAP_PREFIXE : préfixe des
-//   captures, « apres » par défaut).
+//   captures, « apres » par défaut) ; =plaques → plaques gravées (police, 2ᵉ ligne, usure fixe, contraste).
 // Usage : node scripts/smoke/checkup-vue-3d.js (SMOKE_PORT pour une autre copie) · doc : docs/ETUDE_VUE_3D.md
 // =====================================================================
 "use strict";
@@ -3374,12 +3374,294 @@ async function sectionFormesPoi(page) {
   verifier(R2.eteints.length === 2 && R2.eteints.every(function (a) { return a === false; }),
     "liaison retirée pendant la vue : le cadre s'éteint", R2.eteints);
   verifier(R2.p50.textures <= 32 && R2.p50.textures === Math.min(32, R2.p50.construites) &&
-    R2.p50.sansTexture === R2.p50.construites - R2.p50.textures && R2.p50meme.textures === 1,
+    R2.p50.sansTexture === R2.p50.construites - R2.p50.textures && R2.p50meme.textures >= 1 &&
+    R2.p50meme.textures <= 4,
   "50 plaques : " + R2.p50.construites + " construites, " + R2.p50.textures + " textures (" +
     (R2.p50.octets / 1048576).toFixed(2) + " Mo hors mipmaps, bornée à 32) ; même nom partout : " +
-    R2.p50meme.textures + " texture (" + (R2.p50meme.octets / 1024).toFixed(0) + " Ko) ; ouverture " +
+    R2.p50meme.textures + " texture(s), une par variante d'usure, 4 au plus (" + (R2.p50meme.octets / 1024).toFixed(0) + " Ko) ; ouverture " +
     R2.p50.ms + " ms",
   { p50: R2.p50, meme: R2.p50meme });
+}
+
+// § 14 septies (plaques) — Plaques gravées (vue3d.js > _plaque, _secondePlaque, _variantePlaque, _dessinerPlaque,
+// _chargerPolicePlaques ; KTA_V3D_SEUL=plaques ; POI FICTIFS en mémoire, galerie est-ouest) : police Bodoni Moda
+// chargée à l'ouverture et servie par le site (aucune requête externe), textures dessinées avec elle ; 2ᵉ ligne
+// tirée de la description seulement quand elle commence par une date ou un sigle ; même uid = même usure, à l'octet
+// près, d'une ouverture à l'autre ; usure en variantes bornées (textures partagées) ; nom long jamais coupé ;
+// contraste lettres / pierre mesuré à l'écran, à la lampe et en ☀️ Plein jour. KTA_V3D_CAPTURES : captures.
+async function sectionPlaques(page) {
+  const externes = [], polices = [];
+  const surRequete = function (r) {
+    const u = r.url();
+    if (!u.startsWith(BASE) && !/^(data|blob):/.test(u)) externes.push(u.slice(0, 120));
+    if (/bodoni-moda.*\.woff2/.test(u)) polices.push(u.replace(BASE, ""));
+  };
+  page.on("request", surRequete);
+  // Police retardée de 1,5 s : si elle n'est pas encore chargée (section jouée seule), la vue s'ouvre sans elle et
+  // les plaques se redessinent à son arrivée.
+  const retard = async function (route) { await new Promise(function (ok) { setTimeout(ok, 1500); }); await route.continue(); };
+  await page.route(/bodoni-moda.*\.woff2/, retard);
+  const DESC = [
+    ["pt_pg_date", "Plaque datée", "1857 consolidation"],
+    ["pt_pg_jour", "Plaque au jour", "12/03/1890 visite de contrôle\nSuite de la note"],
+    ["pt_pg_sigle", "Plaque au sigle", "IGC 1902"],
+    ["pt_pg_point", "Plaque au point", "R. 45"],
+    ["pt_pg_milieu", "Plaque note", "Ancienne galerie de 1857"],
+    ["pt_pg_vide", "Rue Fictive", ""],
+    ["pt_pg_phrase", "Plaque phrase", "Passage étroit. 12 m"],
+    ["pt_pg_long_sigle", "Plaque sigle long", "ABCDE 12"],
+    ["pt_pg_minus", "Plaque minuscules", "igc 1902"],
+    ["pt_pg_long", "Galerie fictive des anciens carriers du moulin à vent", "1788 R. 12"],
+    ["pt_pg_long_nu", "Galerie fictive des anciens carriers du moulin à vent", ""]
+  ];
+  const R = await page.evaluate(async function (DESC) {
+    const K = window.KtaVue3D, G = window.KtaGalerie, sc = window.APP_CONFIG.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    window.__v3dFormesSauve = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      acc: window.ktaEstAccessible, rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
+      roads: window.getRoads().slice(), st: window.getStructures().slice(), zn: window.getZones().slice(),
+      trouve: window.PlanRegistry && window.PlanRegistry.findById, charger: window.chargerPlanServeur };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window._currentLoadedPlanId = "v3d-checkup-plaques";
+    window.ktaEstAccessible = function () { return true; };
+    window.ktaSetActiveLevel(0);
+    if (K.etat().ouvert !== false) await K.fermer();
+    if (window.getTrackingActif()) window.stopTracking();
+    window.setVue3DTextures(true);
+    // Plaques côté nord (z = +2), tous les 3 m ; jumelles : même nom, uids différents, côté sud.
+    const pts = DESC.map(function (d, i) {
+      return Object.assign({ id: d[0], uid: d[0], nom: d[1], description: d[2], level: 0, tags: ["plaque"] },
+        P(-30 + i * 3, 2));
+    });
+    for (let i = 0; i < 8; i++) {
+      pts.push(Object.assign({ id: "pt_pg_j" + i, uid: "pt_pg_j" + i, nom: "Plaque jumelle", level: 0,
+        tags: ["plaque"] }, P(-30 + i * 3, -2)));
+    }
+    window.setStructures([]); window.setZones([]);
+    window.setRoads([{ uid: "rd_pg", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setEditorPoints(pts);
+    let scene = null;
+    const empreintes = async function () {
+      const deg = K.greffer({ nom: "v3d-plaques", scene: function (c) { scene = c.groupe.parent; } });
+      if (deg) deg();
+      const out = {};
+      if (!scene) return out;
+      scene.traverse(function (o) {
+        if (!o.userData || o.userData.famille !== "plaque" || !o.userData.plaquePoint) return;
+        const cv = o.material.map.image, g = cv.getContext("2d"), d = g.getImageData(0, 0, cv.width, cv.height).data;
+        let h = 0x811c9dc5;
+        for (let i = 0; i < d.length; i++) { h ^= d[i]; h = Math.imul(h, 0x01000193); }
+        // Contraste de la texture : lettres (2 % les plus sombres) / pierre (médiane), luminance relative.
+        const lum = [];
+        for (let i = 0; i < d.length; i += 16) {
+          const c = [d[i], d[i + 1], d[i + 2]].map(function (v) {
+            v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+          });
+          lum.push(0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]);
+        }
+        lum.sort(function (a, b) { return a - b; });
+        const fonce = lum[Math.floor(lum.length * 0.02)], pierre = lum[lum.length >> 1];
+        out[o.userData.plaquePoint.uid] = { h: (h >>> 0).toString(16), W: cv.width, H: cv.height,
+          contraste: +((pierre + 0.05) / (fonce + 0.05)).toFixed(2) };
+      });
+      return out;
+    };
+    const ouvrir = async function () {
+      if (K.etat().ouvert !== false) await K.fermer();
+      window.setPlanRenduVue3D(null, "mixte");
+      G.invalider();
+      const d = P(-30, 0);
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 100, tuiles: false, commandes: "pave" });
+      const pl = K.etat().plaques || {}, aOuverture = { police: pl.police, n: pl.n, bodoni: pl.bodoni };
+      // La police arrive en parallèle de l'ouverture : on l'attend ici (au plus 5 s), jamais l'app.
+      for (let i = 0; i < 50 && (K.etat().plaques || {}).police !== "prete"; i++) await pause(100);
+      await pause(150);
+      return aOuverture;
+    };
+    const r = {};
+    // 1re ouverture : police pas forcément prête (KTA_V3D_SEUL=plaques), les plaques se redessinent à son arrivée.
+    r.policeOuverture = await ouvrir();
+    r.etat0 = K.etat().plaques;
+    await K.fermer();
+    await ouvrir();
+    const e1 = K.etat();
+    r.etat1 = e1.plaques;
+    r.check = document.fonts.check("700 40px 'Bodoni Moda'") && document.fonts.check("600 40px 'Bodoni Moda'");
+    r.faces = Array.from(document.fonts).filter(function (f) { return f.family.replace(/["']/g, "") === "Bodoni Moda"; })
+      .map(function (f) { return f.weight + ":" + f.status; });
+    r.vol = e1.volumes.filter(function (v) { return v.tag === "plaque"; }).map(function (v) {
+      const p = pts.slice().sort(function (a, b) {
+        return Math.hypot(a.x - v.x, a.y - v.y) - Math.hypot(b.x - v.x, b.y - v.y);
+      })[0];
+      return { uid: p && p.uid, texture: v.texture, seconde: v.seconde, taille: v.taillePx, taille2: v.taille2Px,
+        variante: v.variante, lignes: v.lignes, coupe: v.coupe, l: v.plaqueL, h: v.plaqueH, nom: v.nom };
+    });
+    r.emp1 = await empreintes();
+    // Plaques mesurées à l'écran (lampe, puis plein jour) : place de leur face (paroi nord à 1,225 m de l'axe).
+    r.ecran = [];
+    [false, true].forEach(function (jour) {
+      ["pt_pg_date", "pt_pg_long"].forEach(function (uid) {
+        const v = r.vol.filter(function (q) { return q.uid === uid; })[0];
+        const p = pts.filter(function (q) { return q.uid === uid; })[0];
+        const vv = e1.volumes.filter(function (q) { return q.tag === "plaque" && Math.abs(q.x - p.x) < sc &&
+          q.y > p.y - 2 * sc; })[0];
+        r.ecran.push({ jour: jour, uid: uid, l: v.l, h: v.h, x: p.x / sc, z: 1.225, y: vv.plaqueY });
+      });
+    });
+    await K.fermer();
+    await ouvrir();
+    r.emp2 = await empreintes();
+    r.etat2 = K.etat().plaques;
+    await K.fermer();
+    return r;
+  }, DESC);
+  // Contraste à l'écran : les deux plaques, à la lampe puis en plein jour (projection refaite vue ouverte).
+  const ecran = [];
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+    const d = { x: (window.PLAN_CONFIG.plan.imageWidth / 2 / sc - 30) * sc, y: window.PLAN_CONFIG.plan.imageHeight / 2 };
+    window.KtaGalerie.invalider();
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 100, tuiles: false, commandes: "pave" });
+  });
+  for (const q of R.ecran) {
+    const zone = await page.evaluate(async function (q) {
+      const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+      K.reglerPleinJour(q.jour);
+      K.placer(q.x * sc, window.PLAN_CONFIG.plan.imageHeight / 2 - 0.6 * sc, 180);
+      for (let i = 0; i < 6; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      let cam = null;
+      const deg = K.greffer({ nom: "v3d-plaques-cam", scene: function (c) { cam = c; } });
+      const proj = [[-1, -1], [1, 1]].map(function (s) {
+        const v = new cam.THREE.Vector3(q.x + s[0] * q.l / 2 * 0.8, q.y + s[1] * q.h / 2 * 0.7,
+          window.PLAN_CONFIG.plan.imageHeight / 2 / sc + q.z).project(cam.camera);
+        return [(v.x + 1) / 2, (1 - v.y) / 2];
+      });
+      if (deg) deg();
+      for (let i = 0; i < 4; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      return proj;
+    }, q);
+    if (CAPTURES) await capture(page, "plaques-" + (q.jour ? "jour" : "lampe") + "-" + q.uid.replace("pt_pg_", ""));
+    if (CAPTURES && q.uid === "pt_pg_long") {
+      // Enfilade de la paroi nord, en biais : plusieurs plaques, usures différentes.
+      await page.evaluate(async function () {
+        const sc = window.APP_CONFIG.scale;
+        window.KtaVue3D.placer((window.PLAN_CONFIG.plan.imageWidth / 2 / sc - 33) * sc,
+          window.PLAN_CONFIG.plan.imageHeight / 2 - 0.8 * sc, 125);
+        for (let i = 0; i < 8; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      });
+      await capture(page, "plaques-" + (q.jour ? "jour" : "lampe") + "-enfilade");
+    }
+    const b64 = (await page.screenshot({ type: "png" })).toString("base64");
+    const c = await page.evaluate(function (a) {
+      return new Promise(function (ok) {
+        const img = new Image();
+        img.onload = function () {
+          const cv = document.createElement("canvas"), k = img.width / window.innerWidth;
+          cv.width = img.width; cv.height = img.height;
+          const g = cv.getContext("2d");
+          g.drawImage(img, 0, 0);
+          const x0 = Math.round(Math.min(a.z[0][0], a.z[1][0]) * window.innerWidth * k);
+          const x1 = Math.round(Math.max(a.z[0][0], a.z[1][0]) * window.innerWidth * k);
+          const y0 = Math.round(Math.min(a.z[0][1], a.z[1][1]) * window.innerHeight * k);
+          const y1 = Math.round(Math.max(a.z[0][1], a.z[1][1]) * window.innerHeight * k);
+          if (x1 - x0 < 4 || y1 - y0 < 4) { ok(null); return; }
+          const d = g.getImageData(x0, y0, x1 - x0, y1 - y0).data, lum = [];
+          for (let i = 0; i < d.length; i += 4) {
+            const v = [d[i], d[i + 1], d[i + 2]].map(function (t) {
+              t /= 255; return t <= 0.04045 ? t / 12.92 : Math.pow((t + 0.055) / 1.055, 2.4);
+            });
+            lum.push(0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]);
+          }
+          lum.sort(function (p, q) { return p - q; });
+          const fonce = lum[Math.floor(lum.length * 0.03)], pierre = lum[lum.length >> 1];
+          ok({ px: [x1 - x0, y1 - y0], contraste: +((pierre + 0.05) / (fonce + 0.05)).toFixed(2),
+            pierre: +pierre.toFixed(3), fonce: +fonce.toFixed(4) });
+        };
+        img.src = "data:image/png;base64," + a.b64;
+      });
+    }, { b64: b64, z: zone });
+    ecran.push({ jour: q.jour, uid: q.uid, mesure: c });
+  }
+  await page.evaluate(function () { window.KtaVue3D.reglerPleinJour(false); return window.KtaVue3D.fermer(); });
+  page.off("request", surRequete);
+  await page.unroute(/bodoni-moda.*\.woff2/, retard);
+  await restaurerFormes(page);
+  await page.evaluate(function () { window.KtaGalerie.invalider(); });
+
+  console.log("§ 14 septies (plaques) — plaques gravées : police, 2ᵉ ligne, usure fixe, contraste");
+  const e1 = R.etat1 || {};
+  const po = R.policeOuverture || {};
+  verifier(R.etat0 && R.etat0.police === "prete" && R.etat0.bodoni === R.etat0.n && R.etat0.n > 0 &&
+    (po.police === "prete" || (po.police === "charge" && po.n > 0 && po.bodoni === 0)),
+  po.police === "charge" ? "police retardée : la vue s'ouvre sans l'attendre (" + po.n + " plaques au serif du " +
+    "système), redessinées à son arrivée (" + R.etat0.bodoni + "/" + R.etat0.n + ")"
+    : "police déjà chargée par une section précédente : " + (R.etat0 && R.etat0.bodoni) + "/" +
+    (R.etat0 && R.etat0.n) + " plaques dessinées avec elle", { ouverture: po, apres: R.etat0 });
+  verifier(e1.police === "prete" && R.check && e1.n > 0 && e1.bodoni === e1.n,
+    "police Bodoni Moda chargée à l'ouverture (" + R.faces.join(", ") + "), " + e1.n + " textures toutes dessinées " +
+    "avec elle", { etat: e1, check: R.check, faces: R.faces });
+  verifier(externes.length === 0, "aucune requête externe pendant la section (police servie par le site : " +
+    (polices.length ? polices.join(", ") : "déjà chargée") + ")", externes);
+  verifier(polices.every(function (u) { return /^\/lib\/bodoni-moda\//.test(u); }),
+    "polices demandées à lib/bodoni-moda/ seulement", polices);
+  const vol = function (uid) { return R.vol.filter(function (v) { return v.uid === uid; })[0] || {}; };
+  const avec = { pt_pg_date: "1857 consolidation", pt_pg_jour: "12/03/1890 visite de contrôle",
+    pt_pg_sigle: "IGC 1902", pt_pg_point: "R. 45", pt_pg_long: "1788 R. 12" };
+  const sans = ["pt_pg_milieu", "pt_pg_vide", "pt_pg_long_nu", "pt_pg_phrase", "pt_pg_long_sigle", "pt_pg_minus", "pt_pg_j0"];
+  verifier(Object.keys(avec).every(function (u) {
+    return vol(u).seconde === avec[u] && vol(u).taille2 > 0 && vol(u).taille2 < vol(u).taille;
+  }), "2ᵉ ligne gravée (plus petite) quand la description commence par une date ou un sigle : " +
+    Object.keys(avec).map(function (u) { return "« " + vol(u).seconde + " » " + vol(u).taille2 + "/" + vol(u).taille +
+      " px"; }).join(", "), Object.keys(avec).map(vol));
+  verifier(sans.every(function (u) { return vol(u).texture && vol(u).seconde === "" && !vol(u).taille2; }),
+    "aucune 2ᵉ ligne sinon (date au milieu, vide, phrase, sigle de 5 lettres, minuscules, sans description)",
+    sans.map(vol));
+  const vl = vol("pt_pg_long");
+  verifier(vl.lignes && vl.lignes.length === 2 && !vl.coupe && vl.l <= 1.001 && vl.seconde === "1788 R. 12",
+    "nom long sur deux lignes, jamais coupé, avec sa 2ᵉ ligne (" + vl.l + " × " + vl.h + " m, " + vl.taille + " / " +
+    vl.taille2 + " px)", vl);
+  const nu = vol("pt_pg_long_nu");
+  verifier(vl.taille2 >= 14 && vl.taille === nu.taille && vl.h >= nu.h && Math.abs(nu.h - 0.3) < 0.001 &&
+    vl.l <= 1.001, "nom long + 2ᵉ ligne : 2ᵉ ligne à " + vl.taille2 + " px (≥ 14), nom à " + vl.taille + " px comme " +
+    "sans 2ᵉ ligne (" + nu.taille + " px), plaque haute de " + vl.h + " m (" + nu.h + " m sans 2ᵉ ligne ; elle ne " +
+    "grandit que si la 2ᵉ ligne ne tient plus)", { vl: vl, nu: nu });
+  const courte = vol("pt_pg_vide"), datee = vol("pt_pg_date");
+  verifier(courte.lignes.length === 1 && Math.abs(courte.h - 0.3) < 0.001 && datee.lignes.length === 1 &&
+    datee.h > 0.3 && datee.h <= 0.36 && datee.l <= 1.001,
+    "encombrement : nom court sans 2ᵉ ligne à 0,3 m de haut (inchangé), une ligne datée à " + datee.h + " m",
+    [courte, datee]);
+  const u1 = R.emp1, u2 = R.emp2, uids = Object.keys(u1);
+  verifier(uids.length >= 10 && uids.every(function (u) { return u2[u] && u2[u].h === u1[u].h; }),
+    "même uid = même usure : " + uids.length + " textures identiques à l'octet près d'une ouverture à l'autre",
+    { emp1: u1, emp2: u2 });
+  const jum = R.vol.filter(function (v) { return /^pt_pg_j\d$/.test(v.uid); });
+  const parVar = {};
+  jum.forEach(function (v) { (parVar[v.variante] = parVar[v.variante] || []).push(v.uid); });
+  const vars = Object.keys(parVar);
+  const diff = vars.length >= 2 && u1[parVar[vars[0]][0]].h !== u1[parVar[vars[1]][0]].h;
+  const memeVar = vars.every(function (k) {
+    return parVar[k].every(function (u) { return u1[u].h === u1[parVar[k][0]].h; });
+  });
+  const nJum = (R.etat1.noms || []).filter(function (n) { return n === "Plaque jumelle"; }).length;
+  verifier(diff && memeVar && nJum === vars.length && nJum <= 4,
+    "usure qui varie d'une plaque à l'autre : 8 jumelles (même nom) en " + vars.length + " variantes, " + nJum +
+    " textures partagées (au plus 4)", parVar);
+  const tx = uids.map(function (u) { return u1[u].contraste; });
+  verifier(Math.min.apply(null, tx) >= 4.5, "texture : lettres / pierre ≥ 4,5:1 (min " + Math.min.apply(null, tx) +
+    ":1)", tx);
+  verifier(ecran.length === 4 && ecran.every(function (q) { return q.mesure && q.mesure.contraste >= 3; }),
+    "à l'écran, lettres / pierre ≥ 3:1 à la lampe et en Plein jour : " + ecran.map(function (q) {
+      return (q.jour ? "jour " : "lampe ") + q.uid.replace("pt_pg_", "") + " " + (q.mesure && q.mesure.contraste) + ":1";
+    }).join(", "), ecran);
+  verifier(R.etat2 && R.etat2.n === e1.n && R.etat2.octets === e1.octets,
+    "mêmes textures à la réouverture (" + e1.n + ", " + (e1.octets / 1024).toFixed(0) + " Ko hors mipmaps)",
+    { avant: e1, apres: R.etat2 });
 }
 
 // § 14 septies (suite) — Formes murales sur une structure (vue3d.js > _surStructure ; objets FICTIFS en mémoire) :
@@ -11570,6 +11852,11 @@ async function sectionGestesDoigt(nav) {
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionFormesPoi(page);
       await sectionFormesStructures(page);
+    } else if (SEUL === "plaques") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionPlaques(page);
     } else if (SEUL === "type") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -15043,6 +15330,7 @@ async function sectionGestesDoigt(nav) {
       await sectionPente(page);
       await sectionPenteLargeur(page);
       await sectionFormesPoi(page);
+      await sectionPlaques(page);
       await sectionFormesStructures(page);
 
       // ── 14 sexies. Cavage comblé : galerie de 4 m entre deux murs, porte de la largeur du tracé (fictifs) ─────────

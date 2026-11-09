@@ -3,6 +3,7 @@
   "private": true,
   "description": "Manifeste DÉCLARATIF des librairies copiées dans lib/ (rien ne s'installe d'ici) : il sert à la veille Dependabot (avis de sécurité, nouvelles versions). Versions EXACTES = celles des fichiers embarqués, tenues identiques par scripts/check-libs.js et lib/VERSIONS.md.",
   "dependencies": {
+    "@fontsource/bodoni-moda": "5.3.0",
     "html2canvas": "1.4.1",
     "jspdf": "4.2.1",
     "jszip": "3.10.2",
