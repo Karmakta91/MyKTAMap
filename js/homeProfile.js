@@ -426,7 +426,7 @@
                       a.tierRoman + " — " + a.seuilLabel + '">' + a.tierIcon + '</span>';
           });
           html += '<div class="kta-feat-row">' +
-                    '<span class="kta-feat-fam"><span class="kta-feat-emoji">' + f.emoji + '</span>' + PA.nom(f.id) + '</span>' +
+                    '<span class="kta-feat-fam"><span class="kta-feat-emoji">' + window.ktaIcone(f.ico) + '</span>' + PA.nom(f.id) + '</span>' +
                     '<span class="kta-feat-val">' + valTxt + '</span>' +
                     '<span class="kta-feat-badges">' + badges + '</span>' +
                   '</div>';
@@ -438,7 +438,7 @@
                   '<div class="kta-feats-specials">';
           specials.forEach(function(a) {
             html += '<span class="kta-feat-sp' + (a.unlocked ? " kta-feat-unlocked" : "") + '">' +
-                      a.emoji + " " + a.nom + '</span>';
+                      window.ktaIcone(a.ico) + " " + a.nom + '</span>';
           });
           html += '</div>';
         }

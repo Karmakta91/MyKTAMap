@@ -500,8 +500,8 @@ const SRC_INTERFACE = lire("js/interface.js");
   t("1. vue 3D, confirmations, barres du haut et du bas, tutoriel : jamais un emoji d'icône (cliquet 0)",
     c3Emoji.length === 0, c3Emoji.join("\n   "));
   // Fin de la refonte : pastilles du bandeau du profil, lignes de l'export / import du profil et du rapport de
-  // session, onglets du recalage, familles des fenêtres de la sélection multiple. Les médailles des rangs et des
-  // hauts faits (profileGamification.js, profileAchievements.js) restent des emoji : récompenses, pas actions.
+  // session, onglets du recalage, familles des fenêtres de la sélection multiple, familles et spéciaux des hauts
+  // faits. Les médailles des rangs et des paliers (profileGamification.js, TIER_ICONS) restent des emoji : récompenses.
   const c4Emoji = [];
   const fautif4 = (f, re) => lire(f).split(/\r?\n/).forEach((l, i) => {
     const m = re.exec(l);
@@ -513,6 +513,9 @@ const SRC_INTERFACE = lire("js/interface.js");
   fautif4("js/sessionReport.js", /_checkboxRow\("[^"]+",\s*"([^"]*)/);
   fautif4("js/recalageScan.js", /onglet\("[a-z]+", "([^"]*)"/);
   fautif4("js/selectionZone.js", /ICO_FAMILLE = \{([^}]*)\}/);
+  fautif4("js/profileAchievements.js", /\{ id: "[a-z]+",\s*(?:ico|emoji): "([^"]*)"/);
+  t("1. hauts faits : familles et spéciaux portent un nom d'icône SVG (ico)",
+    (lire("js/profileAchievements.js").match(/\{ id: "[a-z]+",\s*ico: "[a-z0-9-]+"/g) || []).length === 14);
   t("1. profil, export / import du profil, rapport de session, recalage, sélection : jamais un emoji d'icône " +
     "(cliquet 0)", c4Emoji.length === 0, c4Emoji.join("\n   "));
 

@@ -2739,7 +2739,9 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   Je suis perdu ; le rapport copié de Je suis perdu garde ses emoji).
 - **Fin de la refonte** : fenêtre **Profil** (`homeProfile.js` : titre `user`, photo `camera`, pseudo `save`, bandeau
   de l'accueil `palette` et ses stats `timer` / `save` / `map` / `star` / `trophy`, cellules des statistiques,
-  tableau et camemberts de Mes plans, fond d'écran `image`, actions exporter `arrow-up-from-line` / importer
+  tableau et camemberts de Mes plans, hauts faits `trophy` (familles : `map`, `globe`, `ruler`, `timer`, `map-pin`,
+  `m-galerie`, `m-zone`, `m-pilier` ; spéciaux : `layers`, `star`, `navigation`, `m-niveaux`, `timer`, `trophy` ;
+  `profileAchievements.js > FAMILIES / SPECIALS.ico`), fond d'écran `image`, actions exporter `arrow-up-from-line` / importer
   `arrow-down-to-line` / réinitialiser `trash-2`, compte d'une installation reliée `user`, avatar vide), **export et
   import du profil** (`profileExportImport.js` : lignes de section, archives `package`, modes `merge` / `replace`,
   bilan), liste de plans à charger, **sélection multiple** (bandeau `crosshair`, Convertir / Prendre la zone `check`,
@@ -2834,9 +2836,9 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   dessinées dans la scène 3D (mesure 📐 ♦️), titre de l'onglet en incognito (🕵️), statistiques du cache OSM (📦),
   pictogrammes fournis par une extension (stats du Profil, panneaux), libellé d'un point évité posé au clic (« 📍 Clic
   carte », gardé dans les préférences).
-- **Récompenses, à trancher** : médailles des rangs (🥉 🥈 🥇 🏅 ⚜️ 👑, `profileGamification.js`) et des paliers de hauts
-  faits, emoji des huit familles et des spéciaux (`profileAchievements.js`) : laissés en emoji, ce sont des
-  récompenses et non des actions ; le toast « 🏆 Haut fait débloqué » reprend la médaille.
+- **Récompenses** (décision produit) : médailles des rangs (🥉 🥈 🥇 🏅 ⚜️ 👑, `profileGamification.js`) et des
+  paliers de hauts faits (`profileAchievements.js > TIER_ICONS`), toast « 🏆 Haut fait débloqué » : emoji colorés,
+  le lot police les uniformise. Les huit familles et les six spéciaux, eux, désignent une notion de l'app : SVG.
 - **Rapports produits** (définitivement, avec `CLES_SORTIE`) : rapport de crash copié (`crashReports.js`), rapport
   texte des Statistiques, rapport texte de session (`sessionReport.js`), export Markdown des détails de session
   (`refonteInterface.js`).

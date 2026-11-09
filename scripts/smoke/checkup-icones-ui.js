@@ -181,13 +181,18 @@ async function jouer(page, theme) {
     if (!m) return null;
     return Array.prototype.filter.call(m.querySelectorAll(".kta-readme-modal-titre, .kta-btn, .kta-profile-stat-lbl, " +
       ".kta-profile-barstats-header, .kta-profile-barstats-cb > span, .kta-profile-details-section-titre, " +
-      ".kta-profile-plansstats-header, .kta-feats-head, .kta-feats-sptitle"), function (el) {
+      ".kta-profile-plansstats-header, .kta-feats-head, .kta-feats-sptitle, .kta-feat-fam, .kta-feat-sp"), function (el) {
       return el.offsetParent !== null && (el.textContent || "").trim();
     }).map(function (el) { return Object.assign({ t: el.textContent.trim().slice(0, 30) }, window.__ktaSonde(el)); });
   });
   const profilFautes = (profil || []).filter(function (b) { return !b.svg || b.emoji; });
   verifier(!!profil && profil.length >= 12 && profilFautes.length === 0, "Profil : " + (profil ? profil.length : 0) +
-    " titres, boutons et libellés en SVG, sans emoji", profilFautes);
+    " titres, boutons, libellés, familles et spéciaux des hauts faits en SVG, sans emoji", profilFautes);
+  // Les médailles des paliers restent des emoji (récompenses colorées, lot police emoji).
+  const medailles = await page.evaluate(function () {
+    return document.querySelectorAll("#kta-profile-details-modal .kta-feat-badge").length;
+  });
+  verifier(medailles >= 32, "Profil : " + medailles + " médailles de palier (emoji gardés)");
   await capture(page, "1d-profil");
   await page.evaluate(function () { const x = document.getElementById("kta-profile-details-close"); if (x) x.click(); });
   await page.waitForTimeout(300);
