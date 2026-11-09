@@ -347,7 +347,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 ### 🗺️ Lire le plan
 
 - **Pincer** pour zoomer, **glisser** pour te déplacer (ou les boutons **+** / **−** en haut à gauche).
-- **Tourner deux doigts** fait pivoter la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche (au-dessus de la boussole si elle est ouverte), la remet droite. Un outil de dessin, la mesure ou le recalage la redressent ; 🔃 Plan orienté prend la main pendant le suivi.
+- **Tourner deux doigts** fait pivoter la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche (au-dessus de la boussole si elle est ouverte), la remet droite. Un outil de dessin, la mesure ou le recalage la redressent ; 🔃 Plan orienté prend la main pendant le suivi. Pour l'empêcher : ⚙️ Configuration de l'accueil › 🎨 Affichage › **Bloquer la rotation de la carte**.
 - **Toucher une icône** ouvre la fiche du point ; **double-toucher** zoome dessus (comme le bouton « Y aller » de la fiche).
 - Les icônes rapetissent au dézoom pour rester à l'échelle du plan, en mode plan comme sur les cartes OSM (Vue OSM et carte de l'accueil). Pour garder une taille fixe : ⚙️ Configuration de l'accueil → 🎨 Affichage → « 📐 Adapter la taille des icônes au zoom ».
 
@@ -866,7 +866,7 @@ La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec
 
 **📏 Mesurer** : en mode OSM, l'outil de mesure donne une distance et une surface ; elles ne dépendent d'aucun calibrage de plan.
 
-**🧭 Tourner la carte** : dans la fenêtre Vue OSM ouverte depuis un plan et sur la carte de l'accueil, tourne deux doigts posés sur la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche de la carte, la remet droite. La fenêtre rouvre toujours nord en haut, la carte de l'accueil aussi quand tu y reviens ; choisir un autre plan dans sa liste garde l'angle. Sur l'accueil, un seul doigt déplace toujours la carte : pour faire défiler la page, pose le doigt à côté.
+**🧭 Tourner la carte** : dans la fenêtre Vue OSM ouverte depuis un plan et sur la carte de l'accueil, tourne deux doigts posés sur la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche de la carte, la remet droite. La fenêtre rouvre toujours nord en haut, la carte de l'accueil aussi quand tu y reviens ; choisir un autre plan dans sa liste garde l'angle. Sur l'accueil, un seul doigt déplace toujours la carte : pour faire défiler la page, pose le doigt à côté. Pour l'empêcher : ⚙️ Configuration de l'accueil › 🎨 Affichage › **Bloquer la rotation de la carte**.
 
 **🎯 Coordonnées de surface** : un clic sur la carte donne la latitude et la longitude du point juste au-dessus, avec un bouton Copier — c'est ce qu'on transmet à une équipe qui arrive par la surface. Leur justesse dépend du calage du plan.
 
@@ -1485,6 +1485,7 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **❓ Bouton d'aide dans les fenêtres** (activé) : un ❓ dans le titre des fenêtres qui ont une page d'aide, qui ouvre directement la bonne page ;
   - **🔔 Notifications** : **Toutes**, **Essentielles** (au départ : plus de message pour confirmer un geste que tu viens de faire) ou **Silence** (seulement l'important : batterie faible, capteur refusé, erreurs). Les alertes du serveur et les fenêtres qui attendent une décision ne sont jamais coupées ;
   - **➕ Boutons de zoom +/− sur les cartes** : affiche les boutons + et − sur le plan, le widget OSM de l'accueil et la Vue OSM. Désactivé par défaut : on zoome au doigt (pincer) ou à la molette ;
+  - **Bloquer la rotation de la carte** : deux doigts et Maj + molette ne font plus tourner la carte du plan, le widget OSM de l'accueil ni la Vue OSM ; en l'activant, les cartes ouvertes se remettent droites. Utile sur les appareils lents. Désactivé par défaut. Le 🔃 Plan orienté du suivi tourne toujours, et la 🧊 Vue 3D garde ses gestes ;
   - **🪟 Ancrer les panneaux d'outils au bouton** : les panneaux Tracés, Zones et Structures s'ouvrent collés à leur bouton au lieu d'être centrés (confortable sur grand écran, déconseillé sur téléphone) ;
   - **🧲 Magnétisme au dessin** et sa distance : un clic proche d'un point existant s'y colle, pour que tes galeries se rejoignent vraiment ;
   - **☀️ Thème clair** ;

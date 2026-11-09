@@ -1173,8 +1173,11 @@ Sans tracker, la carte 2D tourne aussi **à la main**, avec le même pane, le m�
 | Durée | l'angle tient tant qu'on n'y touche pas ; **remis à 0 au changement de plan** (`map.js` appelle `reset()` à chaque carte) |
 | Outil armé | dessin, mesure, recalage, pickers (`_modeClicCarteActif`), mode plein écran ou suspension : la carte se **redresse** et le geste est refusé ; désarmé, elle **reste droite** (choix conservateur : aucun angle ne revient seul) |
 | Plan orienté | dès que le cap arrive (`onHeading` avec le mode actif), il prend la main ; deux doigts ne font plus que zoomer ; à l'arrêt du suivi, la carte revient **au nord**, pas à l'ancien angle manuel (un angle choisi il y a longtemps reviendrait au hasard ; le nord est prévisible) |
+| Rotation bloquée | réglage d'appareil (⚙️ Configuration de l'accueil › Affichage, clé `myktamap_rotation_bloquee_v1`, défaut : permise ; lu dans les Réglages du plan sous « Réglés depuis l'accueil »). `MapBearing.setRotationBloquee(v)` vaut pour **toutes** les instances (carte du plan, Vue OSM, widget de l'accueil) : `_manuelBloque()` répond oui, deux doigts ne font que zoomer, Maj + molette retombe sur Leaflet, `setManuel` est refusé ; à l'activation, chaque instance tenue à la main se redresse aussitôt (bouton nord masqué). Le **cap** du plan orienté reste permis ; la vue 3D n'est pas concernée |
 | 3D | la vue 3D a son propre cap : au retour, la carte 2D a gardé son angle |
 | Exports | PNG / PDF / KMZ se dessinent depuis les données, jamais depuis la vue : le plan sort **droit** (checkup R8 : même canvas, au pixel près, tourné ou non) |
+
+⚠️ **Rotation bloquée = aucun surcoût** (le réglage vise les appareils lents) : l'état est tenu en mémoire (lu une fois au chargement), les écouteurs de rotation (`_rotTouch*`, `_rotPointerDown/Move`, `_rotMolette`) rendent la main à leur première ligne. Le mode manuel n'étant jamais engagé, ni canvas élargi (`_majPaddingRenderer`, ×1,8 à ×3,5 en surface), ni surveillance des outils (`SURVEILLANCE_MS`), ni culling relancé. Restent, comme sans le réglage : le pane intercalaire sans `transform` à angle nul (aucune couche de composition) et le patch de `mouseEventToContainerPoint`, qui rend le point de Leaflet dès que l'angle est nul. Le pan manuel (`_panDebut`) compte toujours les doigts : il sert au plan orienté.
 
 🩸 **Aucun module ne prévient `MapBearing` quand un outil s'arme** (les drapeaux `window.mode*` et les flottants sont posés par chaque outil). Pendant une rotation manuelle, `_modeClicCarteActif` est donc relu toutes les **250 ms**, et juste après un clic dans le conteneur (la barre d'outils y vit) : le redressement précède le premier point posé. Le cap, lui, est relu à chaque événement d'orientation, comme avant.
 
@@ -1182,7 +1185,7 @@ Sans tracker, la carte 2D tourne aussi **à la main**, avec le même pane, le m�
 
 🩸 **Le div `#map` est persistant** d'un plan à l'autre (`cleanupExistingMap` ne vide que son contenu) : les écouteurs du conteneur (pan manuel, rotation, molette) sont des fonctions de l'instance, qui lisent `window.map` — un nouvel `addEventListener` de la même fonction ne s'empile pas (checkup R12 : un geste ne tourne pas deux fois après un changement de plan).
 
-Filet : `scripts/smoke/checkup-rotation-manuelle.js` (Chromium et WebKit, plus un vrai geste CDP sous Chromium). ⚠️ Non vérifié sur un vrai téléphone.
+Filet : `scripts/smoke/checkup-rotation-manuelle.js` (Chromium et WebKit, plus un vrai geste CDP sous Chromium). Rotation bloquée : `scripts/smoke/checkup-rotation-bloquee.js` (Chromium et WebKit : carte du plan, plan orienté, Vue OSM, widget de l'accueil, vue 3D, coût mesuré). ⚠️ Non vérifié sur un vrai téléphone.
 
 #### Culling
 

@@ -12,6 +12,9 @@
 // remplacée à chaque plan) ; `MapBearing.creerRotationManuelle({ carte })` fabrique une rotation manuelle seule pour
 // une autre carte (cartes OSM). Manuel : deux doigts au-delà de SEUIL_ROTATION, Maj + molette, bouton nord. Plan : le
 // cap reprend la main dès qu'il arrive, un outil armé ou un mode plein écran redresse la vue.
+// Réglage d'appareil « rotation bloquée » (`setRotationBloquee`, Configuration de l'accueil) : toutes les instances
+//   refusent la rotation MANUELLE (le cap du plan orienté reste permis) et leurs écouteurs de geste rendent la main
+//   tout de suite, pour qu'un appareil lent ne paie ni canvas élargi ni surveillance des outils.
 // 🩸 La rotation vit sur un pane INTERCALAIRE (`.kta-rotate-pane`, entre le map-pane et ses enfants), JAMAIS sur le
 //   map-pane : Leaflet le positionne en `transform: translate3d`, une rotation y ferait pivoter la translation.
 // ⚠️ `transform-origin` est en layerPoint : il DÉRIVE à chaque pan/zoom → réappliqué sur move/zoom.
@@ -30,6 +33,14 @@
 
   // Préférence d'appareil (pas de plan) → localStorage direct, comme WakeLock.
   const LS_KEY = "myktamap_map_bearing_v1";
+  // Rotation manuelle coupée pour toutes les cartes 2D et OSM de l'appareil (défaut : permise).
+  const LS_BLOQUE = "myktamap_rotation_bloquee_v1";
+  // ⚠️ Lu UNE fois puis tenu en mémoire : les écouteurs de geste le testent à chaque événement, sans localStorage.
+  let _rotationBloquee = (function() {
+    try { return localStorage.getItem(LS_BLOQUE) === "1"; } catch(e) { return false; }
+  })();
+  // Chaque instance s'inscrit ici pour se redresser au moment où le réglage s'allume.
+  const _surBlocage = [];
 
   // Lissage VOLONTAIREMENT plus mou que l'icône tracker (α=0.25) : un plan entier qui frémit donne la nausée.
   const ALPHA       = 0.12;   // lissage exponentiel du cap
@@ -352,7 +363,7 @@
   const _rotDoigts = new Map();   // pointerId → { x, y } (famille pointeurs)
 
   function _manuelBloque() {
-    if (!_carte() || _suspensions.size > 0) return true;
+    if (_rotationBloquee || !_carte() || _suspensions.size > 0) return true;
     if (!_plan) {
       try { return !!(cfg.bloque && cfg.bloque()); } catch(e) { return false; }
     }
@@ -416,7 +427,7 @@
   function _pointeurDoigt(e) { return e.pointerType !== "mouse"; }
 
   function _rotPointerDown(e) {
-    if (!_pointeurDoigt(e)) return;
+    if (_rotationBloquee || !_pointeurDoigt(e)) return;
     if (e.isPrimary) _rotDoigts.clear();   // même piège que _panDebut : un doigt perdu ne compte plus
     _rotDoigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (_rotDoigts.size === 2) {
@@ -427,7 +438,7 @@
     }
   }
   function _rotPointerMove(e) {
-    if (!_rotDoigts.has(e.pointerId)) return;
+    if (_rotationBloquee || !_rotDoigts.has(e.pointerId)) return;
     _rotDoigts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (_rotDoigts.size !== 2 || !_geste) return;
     const pts = Array.from(_rotDoigts.values());
@@ -440,12 +451,12 @@
 
   function _pt(t) { return { x: t.clientX, y: t.clientY }; }
   function _rotTouchStart(e) {
-    if (!e.touches) return;
+    if (_rotationBloquee || !e.touches) return;
     if (e.touches.length === 2) _gesteDebut(_pt(e.touches[0]), _pt(e.touches[1]));
     else if (e.touches.length > 2) _gesteFin();
   }
   function _rotTouchMove(e) {
-    if (!_geste || !e.touches || e.touches.length !== 2) return;
+    if (_rotationBloquee || !_geste || !e.touches || e.touches.length !== 2) return;
     _gesteSuivre(_pt(e.touches[0]), _pt(e.touches[1]));
   }
   function _rotTouchFin(e) {
@@ -457,7 +468,7 @@
   // 🩸 Chrome sous Windows convertit Maj + molette en défilement HORIZONTAL (deltaX) : les deux axes sont lus.
   let _moletteFin = null;
   function _rotMolette(e) {
-    if (!e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (_rotationBloquee || !e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
     if (!_rotationManuellePermise()) return;
     const brut = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
     if (!brut) return;
@@ -1030,10 +1041,28 @@
     SEUIL_ROTATION:   SEUIL_ROTATION
   };
   if (_plan) _enabled = _lireEnabled();
+  // Réglage allumé : un angle manuel en cours est redressé tout de suite (un angle tenu par le cap reste).
+  _surBlocage.push(function() {
+    _geste = null;
+    _rotDoigts.clear();
+    clearTimeout(_moletteFin);
+    if (_source === "manuel") reset();
+  });
   return api;
   }
 
   window.MapBearing = _creerRotation({ carte: function() { return window.map; }, plan: true });
+
+  // Réglage d'appareil, valable pour toutes les instances (carte du plan et cartes OSM) ; jamais la vue 3D.
+  window.MapBearing.rotationBloquee = function() { return _rotationBloquee; };
+  window.MapBearing.setRotationBloquee = function(v) {
+    _rotationBloquee = !!v;
+    try { localStorage.setItem(LS_BLOQUE, _rotationBloquee ? "1" : "0"); } catch(e) {}
+    if (_rotationBloquee) {
+      _surBlocage.forEach(function(f) { try { f(); } catch(e) { console.warn("[MapBearing] blocage :", e); } });
+    }
+    console.log("[MapBearing] Rotation manuelle :", _rotationBloquee ? "bloquée" : "permise");
+  };
 
   // Rotation manuelle seule d'une autre carte (Vue OSM, widget de l'accueil) : une instance pour la vie de la page, `attachTo` sur
   // chaque nouvelle carte (garde portée par la carte). opts.carte() rend la carte courante (null fermée),

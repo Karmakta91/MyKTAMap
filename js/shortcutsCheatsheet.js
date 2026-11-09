@@ -241,11 +241,20 @@
     });
   }
 
+  // Sous les gestes et la carte : le réglage qui coupe Maj + molette et les deux doigts (mapBearing.js), et son état.
+  function _noteRotationBloquee() {
+    const mb = window.MapBearing;
+    const actif = !!(mb && typeof mb.rotationBloquee === "function" && mb.rotationBloquee());
+    return '<p class="kta-cheat-note kta-cheat-rotation">' + _esc(_t("cheatsheet.rotationBloquee.note", "")) +
+      (actif ? " " + _esc(_t("cheatsheet.rotationBloquee.active", "")) : "") + "</p>";
+  }
+
   function ouvrir() {
     if (isOpen()) return;
 
     const secs = lignes().map(function(s) {
-      const contenu = s.id === "vue3d" ? _corpsV3D() : _grille(s.lignes, s.id === "outils");
+      let contenu = s.id === "vue3d" ? _corpsV3D() : _grille(s.lignes, s.id === "outils");
+      if (s.id === "carte" || s.id === "gestes") contenu += _noteRotationBloquee();
       return _section(s.id, _t(s.titre, s.id), contenu, s.ouverte);
     }).join("");
 

@@ -571,6 +571,15 @@
               <span class="kta-perf-ultra-label"><span data-kta-ico="zoom-in"></span> <span data-i18n="config.zoomBoutons.label">Boutons de zoom +/− sur les cartes</span></span>
             </span>
           </label>
+          <!-- Rotation manuelle bloquée : réglage d'appareil, source de vérité MapBearing.rotationBloquee() (mapBearing.js),
+               pour la carte du plan et les deux cartes OSM ; le plan orienté et la vue 3D ne sont pas concernés. -->
+          <label class="kta-perf-ultra-row" style="margin-top:10px;">
+            <input type="checkbox" id="loaderRotationBloqueeCb">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label"><span data-kta-ico="lock"></span> <span data-i18n="config.rotationBloquee.label">Bloquer la rotation de la carte</span></span>
+              <span class="kta-perf-ultra-hint" data-i18n="config.rotationBloquee.hint">Deux doigts et Maj + molette ne font plus tourner la carte du plan ni les cartes OSM. Utile sur les appareils lents.</span>
+            </span>
+          </label>
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderSnapDraw">
             <span class="kta-perf-ultra-text">

@@ -347,7 +347,7 @@ Un clic en los contadores de arriba abre el **panel de control** del mapa:
 ### 🗺️ Leer el mapa
 
 - **Pellizca** para hacer zoom, **arrastra** para moverte (o usa los botones **+** / **−** arriba a la izquierda).
-- **Girar dos dedos** hace pivotar el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda (encima de la brújula si está abierta), lo endereza. Una herramienta de dibujo, la medición o la recolocación lo enderezan; 🔃 Mapa orientado toma el control durante el seguimiento.
+- **Girar dos dedos** hace pivotar el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda (encima de la brújula si está abierta), lo endereza. Una herramienta de dibujo, la medición o la recolocación lo enderezan; 🔃 Mapa orientado toma el control durante el seguimiento. Para impedirlo: ⚙️ Configuración de la pantalla de inicio › 🎨 Visualización › **Bloquear la rotación del mapa**.
 - **Tocar un icono** abre la ficha del punto; **tocarlo dos veces** hace zoom sobre él (como el botón «Ir» de la ficha).
 - Los iconos se reducen al alejar el zoom para mantenerse a la escala del mapa, en el plano y también en los mapas OSM (Vista OSM y mapa de la pantalla de inicio). Para conservar un tamaño fijo: ⚙️ Configuración de la pantalla de inicio → 🎨 Visualización → «📐 Adaptar el tamaño de los iconos al zoom».
 
@@ -866,7 +866,7 @@ La Vista OSM coloca tus mapas **georreferenciados** sobre el mapa de OpenStreetM
 
 **📏 Medir**: en modo OSM, la herramienta de medición da una distancia y una superficie; no dependen de ninguna calibración del mapa.
 
-**🧭 Girar el mapa**: en la ventana Vista OSM abierta desde un mapa y en el mapa de la pantalla de inicio, gira dos dedos sobre el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda del mapa, lo endereza. La ventana siempre se vuelve a abrir con el norte arriba, y el mapa de la pantalla de inicio también cuando vuelves a ella; elegir otro mapa en su lista conserva el ángulo. En la pantalla de inicio, un solo dedo sigue moviendo el mapa: para desplazar la página, pon el dedo al lado.
+**🧭 Girar el mapa**: en la ventana Vista OSM abierta desde un mapa y en el mapa de la pantalla de inicio, gira dos dedos sobre el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda del mapa, lo endereza. La ventana siempre se vuelve a abrir con el norte arriba, y el mapa de la pantalla de inicio también cuando vuelves a ella; elegir otro mapa en su lista conserva el ángulo. En la pantalla de inicio, un solo dedo sigue moviendo el mapa: para desplazar la página, pon el dedo al lado. Para impedirlo: ⚙️ Configuración de la pantalla de inicio › 🎨 Visualización › **Bloquear la rotación del mapa**.
 
 **🎯 Coordenadas de superficie**: un clic en el mapa da la latitud y la longitud del punto situado justo encima, con un botón Copiar — es lo que se transmite a un equipo que llega por la superficie. Su exactitud depende de la calibración del mapa.
 
@@ -1484,6 +1484,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
   - **❓ Botón de ayuda en las ventanas** (activado): un ❓ en el título de las ventanas que tienen página de ayuda, que abre directamente la página correcta;
   - **🔔 Notificaciones**: **Todas**, **Esenciales** (por defecto: ya no hay mensajes que confirman un gesto que acabas de hacer) o **Silencio** (solo lo importante: batería baja, sensor denegado, errores). Las alertas del servidor y las ventanas que esperan una decisión nunca se silencian;
   - **➕ Botones de zoom +/− en los mapas**: muestra los botones + y − en el plano, el widget OSM de la pantalla de inicio y la vista OSM. Desactivado por defecto: se hace zoom con los dedos (pellizcar) o con la rueda del ratón;
+  - **Bloquear la rotación del mapa**: dos dedos y Mayús + rueda ya no giran el mapa del plano, el widget OSM de la pantalla de inicio ni la vista OSM; al activarla, los mapas abiertos vuelven a quedar rectos. Útil en dispositivos lentos. Desactivado por defecto. El 🔃 Plano orientado del seguimiento sigue girando, y la 🧊 Vista 3D conserva sus gestos;
   - **🪟 Anclar los paneles de herramientas a su botón**: los paneles Trazados, Zonas y Estructuras se abren junto a su botón en lugar de centrados (cómodo en pantalla grande, desaconsejado en el teléfono);
   - **🧲 Imantación al dibujar** y su distancia: un clic cerca de un punto existente se engancha a él, para que tus galerías se unan de verdad;
   - **☀️ Tema claro**;

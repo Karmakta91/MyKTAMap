@@ -347,7 +347,7 @@ A click on the top counters opens the map's **dashboard**:
 ### 🗺️ Reading the map
 
 - **Pinch** to zoom, **drag** to move around (or use the **+** / **−** buttons at the top left).
-- **Twisting two fingers** turns the map (Shift + wheel on a computer); the **north** button, at the bottom left (above the compass when it is open), straightens it. A drawing tool, measurement or realignment straighten it; 🔃 Oriented map takes over while tracking.
+- **Twisting two fingers** turns the map (Shift + wheel on a computer); the **north** button, at the bottom left (above the compass when it is open), straightens it. A drawing tool, measurement or realignment straighten it; 🔃 Oriented map takes over while tracking. To prevent it: ⚙️ home screen Configuration › 🎨 Display › **Lock map rotation**.
 - **Tapping an icon** opens the point's popup; **double-tapping** zooms onto it (like the popup's “Go” button).
 - Icons shrink as you zoom out to stay at the map's scale, on the plan as well as on the OSM maps (OSM view and the home screen map). To keep a fixed size: home ⚙️ Configuration → 🎨 Display → “📐 Scale icon size with zoom”.
 
@@ -866,7 +866,7 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 
 **📏 Measuring**: in OSM mode, the measurement tool gives a distance and an area; they do not depend on any map calibration.
 
-**🧭 Turning the map**: in the OSM View window opened from a map and on the home screen map, twist two fingers on the map (Shift + wheel on a computer); the **north** button, at the bottom left of the map, straightens it. The window always reopens north up, and so does the home screen map when you come back to it; picking another map in its list keeps the angle. On the home screen, one finger still moves the map: to scroll the page, put your finger beside it.
+**🧭 Turning the map**: in the OSM View window opened from a map and on the home screen map, twist two fingers on the map (Shift + wheel on a computer); the **north** button, at the bottom left of the map, straightens it. The window always reopens north up, and so does the home screen map when you come back to it; picking another map in its list keeps the angle. On the home screen, one finger still moves the map: to scroll the page, put your finger beside it. To prevent it: ⚙️ home screen Configuration › 🎨 Display › **Lock map rotation**.
 
 **🎯 Surface coordinates**: a click on the map gives the latitude and longitude of the point right above, with a Copy button — that is what you pass on to a team arriving from the surface. Their accuracy depends on the map's alignment.
 
@@ -1484,6 +1484,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **❓ Help button inside windows** (on): a ❓ in the title of windows that have a help page, which opens the right page directly;
   - **🔔 Notifications**: **All**, **Essential** (default: no more messages confirming something you just did) or **Silence** (only what matters: low battery, sensor refused, errors). Server alerts and windows waiting for a decision are never muted;
   - **➕ Zoom +/− buttons on maps**: shows the + and − buttons on the plan, the home OSM widget and the OSM view. Off by default: zoom with your fingers (pinch) or the mouse wheel;
+  - **Lock map rotation**: two fingers and Shift + wheel no longer turn the plan map, the home OSM widget or the OSM view; turning it on puts open maps back straight. Useful on slow devices. Off by default. The tracker's 🔃 Oriented map still turns, and the 🧊 3D view keeps its gestures;
   - **🪟 Anchor tool panels to their button**: the Paths, Zones and Structures panels open next to their button instead of centred (comfortable on a large screen, not recommended on a phone);
   - **🧲 Snap while drawing** and its distance: a click close to an existing point snaps onto it, so that your galleries really join;
   - **☀️ Light theme**;
