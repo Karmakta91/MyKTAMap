@@ -975,7 +975,7 @@ Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone :
 
 ### ⛔ Zone « Inaccessible » — bloque l'itinéraire
 
-Une zone ⛔ interdit son passage à l'itinéraire (effondrement récent, eau profonde…) : le calcul cherche un autre chemin, ou échoue en le disant. Elle ne bloque que **ses niveaux** (une zone peut en toucher plusieurs, voir « 🏗️ Mode multi-niveau »), et reste prise en compte même si tu masques le calque des zones.
+Une zone ⛔ interdit son passage à l'itinéraire (effondrement récent, eau profonde…) : le calcul cherche un autre chemin, ou échoue en le disant. Elle ne bloque que **ses niveaux** (une zone peut en toucher plusieurs, voir « 🏗️ Mode multi-niveau »), et reste prise en compte même si tu masques le calque des zones. Dans le menu ⬛ Zones, l'infobulle de **⛔ Inaccessible** le rappelle.
 
 La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire (cochée d'origine) permet de la relâcher. Le **Mode Secours** et « Je suis perdu » la respectent toujours. Pour « éviter si possible », utilise plutôt les **🚫 Préférences d'évitement** de l'itinéraire.
 

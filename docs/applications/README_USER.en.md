@@ -975,7 +975,7 @@ Press a type, place at least 3 points (dotted), then close the zone: **tap the f
 
 ### ⛔ "Inaccessible" zone — blocks the route
 
-A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its levels** (a zone can touch several, see « 🏗️ Multi-level mode »), and still counts even if you hide the zones layer.
+A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its levels** (a zone can touch several, see « 🏗️ Multi-level mode »), and still counts even if you hide the zones layer. In the ⬛ Zones menu, the tooltip of **⛔ Inaccessible** says so.
 
 The **Respect impassable areas and walls (line)** box in the Route window (ticked by default) lets you relax it. **Rescue Mode** and "I'm lost" always respect it. For "avoid if possible", use the route's **🚫 Avoidance preferences** instead.
 

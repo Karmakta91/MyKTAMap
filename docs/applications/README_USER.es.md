@@ -975,7 +975,7 @@ Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve
 
 ### ⛔ Zona «Inaccesible» — bloquea el itinerario
 
-Una zona ⛔ prohíbe al itinerario atravesarla (derrumbe reciente, agua profunda…): el cálculo busca otro camino, o falla y lo dice. Solo bloquea **sus niveles** (una zona puede tocar varios, ver « 🏗️ Modo multinivel »), y sigue contando aunque ocultes la capa de zonas.
+Una zona ⛔ prohíbe al itinerario atravesarla (derrumbe reciente, agua profunda…): el cálculo busca otro camino, o falla y lo dice. Solo bloquea **sus niveles** (una zona puede tocar varios, ver « 🏗️ Modo multinivel »), y sigue contando aunque ocultes la capa de zonas. En el menú ⬛ Zonas, la información emergente de **⛔ Inaccesible** lo recuerda.
 
 La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario (marcada de origen) permite relajarla. El **Modo Rescate** y «Estoy perdido» la respetan siempre. Para «evitar si es posible», usa mejor las **🚫 Preferencias de evitación** del itinerario.
 

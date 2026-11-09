@@ -321,10 +321,10 @@ function renderZones() {
             if (_zoneEmojis[t]) return window.LegendCustomization.getLabel("zones", t);
           }
           const LBL = {
-            eau:          "💧 Zone Eau",
-            remblais:     "⬛ Zone Remblais",
-            effondrement: "🟥 Zone Effondrement",
-            inaccessible: "⛔ Zone Inaccessible",
+            eau:          "💧 Eau",
+            remblais:     "⬛ Remblais",
+            effondrement: "🟥 Effondrement",
+            inaccessible: "⛔ Inaccessible",
             pente:        "🪜 Zone Jonction"
           };
           return LBL[t] || ("Zone " + t);

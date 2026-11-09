@@ -294,6 +294,24 @@ function longueurAuMoins2(page) {
       return { vu: !!btn, types: fly ? fly.querySelectorAll(".kta-group-flyout-btn").length : 0 };
     });
     verifier(menu.vu, "menu Zone : type « Jonction » proposé à côté des autres (plan multi-niveau)", menu);
+    // Libellés courts des quatre types (sans « Zone ») ; l'effet de ⛔ sur l'itinéraire vit dans son infobulle.
+    const libelles = await page.evaluate(function () {
+      const btns = Array.prototype.slice.call(document.querySelectorAll(".kta-group-flyout .kta-group-flyout-btn"));
+      const lbl = function (b) { const s = b.querySelector(".kta-group-flyout-btn-label"); return s ? s.textContent : ""; };
+      const r = {};
+      ["remblais", "effondrement", "eau", "inaccessible"].forEach(function (k) {
+        const lib = window.I18n.t("ui.zone." + k);
+        const b = btns.filter(function (x) { return lbl(x) === lib; })[0];
+        r[k] = b ? { lib: lib, title: b.title || "" } : null;
+      });
+      r.aide = window.I18n.t("ui.zone.inaccessibleAide");
+      return r;
+    });
+    verifier(["remblais", "effondrement", "eau", "inaccessible"].every(function (k) {
+      return libelles[k] && !/^Zone\b/.test(libelles[k].lib) && libelles[k].lib.indexOf("(") < 0;
+    }), "menu Zone : Remblais, Effondrement, Eau, Inaccessible, sans « Zone » ni parenthèse", libelles);
+    verifier(!!libelles.inaccessible && libelles.inaccessible.title.indexOf(libelles.aide) >= 0,
+      "menu Zone : l'infobulle de ⛔ Inaccessible dit qu'elle bloque l'itinéraire", libelles.inaccessible);
     await capturer("menu");
     await page.evaluate(function () {
       const fly = document.querySelector(".kta-group-flyout");

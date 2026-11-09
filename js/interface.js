@@ -838,9 +838,16 @@ window.ktaMajOutilsLectureSeule = _majOutilsLectureSeule;
   window.addEventListener(ev, function() { try { _majOutilsLectureSeule(); } catch(e) { /* affichage seulement */ } });
 });
 
+// Infobulle d'une sous-action : son libellé, suivi de `sub.infobulleCle` (clé i18n, traduite au rendu) quand le
+// libellé court tait un effet utile (ex. la zone qui bloque l'itinéraire).
+function _infobulleSousAction(sub, libelle) {
+  if (!sub.infobulleCle) return libelle;
+  return (libelle ? libelle + " — " : "") + window.I18n.t(sub.infobulleCle);
+}
+
 // ── Création d'un groupe ──────────────────────────────
 // config = { id, iconePrincipale, titre, soloAction|null, useFlyout, useModal, modal, position,
-//   sousActions: [ { icone, titre, onClick, refClassName?, ... } ], lcCat, customActivator,
+//   sousActions: [ { icone, titre, onClick, refClassName?, infobulleCle?, ... } ], lcCat, customActivator,
 //   dynamicSousActions }
 function _creerGroupeAccordeon(config) {
   // config.position n'est lu que si window._refonteInterfaceActive ; sinon tout en topright.
@@ -908,9 +915,9 @@ function _creerGroupeAccordeon(config) {
                              : sub.icone;
         btnSub.href      = "#";
         btnSub.setAttribute("role", "button");
-        btnSub.title     = (typeof sub.dynamicTitre === "function")
+        btnSub.title     = _infobulleSousAction(sub, (typeof sub.dynamicTitre === "function")
                              ? (sub.dynamicTitre() || sub.titre || "")
-                             : sub.titre;
+                             : sub.titre);
         if (sub.refClassName) btnSub.dataset.refClassName = sub.refClassName;
         // ⚠️ Marque les boutons « type » (activent un mode de dessin) : les customs s'insèrent
         // après eux, avant les outils (Valider, Effacer).
@@ -1558,6 +1565,7 @@ function _ouvrirFlyout(groupId, opts) {
                         : (sub.titre || "");
     btn.appendChild(iconEl);
     btn.appendChild(lblEl);
+    if (sub.infobulleCle) btn.title = _infobulleSousAction(sub, lblEl.textContent);
 
     // Surbrillance : sub.isActive() pour les groupes à plusieurs états parallèles ; sinon
     // currentMode (un seul type actif : tracés/zones/structures).
@@ -2940,8 +2948,9 @@ _setGroupeModeActif("tracker", isTracking, null);
         onClick: function(btn) { _activerZone("effondrement", btn, _iconeType("zones", "effondrement", "🟥")); } },
       { icone: "🟦", dynamicIcon: function() { return _iconeType("zones", "eau", "🟦"); }, titre: window.I18n.t("ui.zone.eau"), dynamicTitre: function() { return _titreType("zones", "eau", window.I18n.t("ui.zone.eau")); }, isTypeAction: true, typeKey: "eau",
         onClick: function(btn) { _activerZone("eau", btn, _iconeType("zones", "eau", "🟦")); } },
-      // Inaccessible : contrainte dure du pathfinder (tout segment qui la traverse est exclu).
-      { icone: "⛔", titre: window.I18n.t("ui.zone.inaccessible"), dynamicTitre: function() { return _titreType("zones", "inaccessible", window.I18n.t("ui.zone.inaccessible")); }, isTypeAction: true, typeKey: "inaccessible",
+      // Inaccessible : contrainte dure du pathfinder (tout segment qui la traverse est exclu). Le libellé reste
+      // court ; l'effet sur l'itinéraire passe par l'infobulle.
+      { icone: "⛔", infobulleCle: "ui.zone.inaccessibleAide", titre: window.I18n.t("ui.zone.inaccessible"), dynamicTitre: function() { return _titreType("zones", "inaccessible", window.I18n.t("ui.zone.inaccessible")); }, isTypeAction: true, typeKey: "inaccessible",
         onClick: function(btn) { _activerZone("inaccessible", btn, "⛔"); } },
       // Jonction (multi-niveau, hors vue 3D comme le tracé jonction) : « du niveau … au niveau … » d'abord, la zone
       // les reçoit seule (zones.js, `_zonePenteMeta`). Re-clic = coupe le mode, comme les autres types.
