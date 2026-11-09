@@ -270,7 +270,27 @@
     "list": '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/>' +
       '<path d="M8 6h13"/>',
     "sigma": '<path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 ' +
-      '1 0 0 0 1-1v-2"/>'
+      '1 0 0 0 1-1v-2"/>',
+    // Hors planche (Configuration de l'accueil, Mes plans) : Lucide 0.460.0.
+    "panels-top-left": '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>',
+    "monitor-cog": '<path d="M12 17v4"/><path d="m15.2 4.9-.9-.4"/><path d="m15.2 7.1-.9.4"/><path d="m16.9 ' +
+      '3.2-.4-.9"/><path d="m16.9 8.8-.4.9"/><path d="m19.5 2.3-.4.9"/><path d="m19.5 9.7-.4-.9"/><path d="m21.7 ' +
+      '4.5-.9.4"/><path d="m21.7 7.5-.9-.4"/><path d="M22 13v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>' +
+      '<path d="M8 21h8"/><circle cx="18" cy="6" r="3"/>',
+    "unplug": '<path d="m19 5 3-3"/><path d="m2 22 3-3"/><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 ' +
+      '2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m12 6 6 6 ' +
+      '2.3-2.3a2.4 2.4 0 0 0 0-3.4l-2.6-2.6a2.4 2.4 0 0 0-3.4 0Z"/>',
+    "server-cog": '<circle cx="12" cy="12" r="3"/><path d="M4.5 10H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 ' +
+      '2v4a2 2 0 0 1-2 2h-.5"/><path d="M4.5 14H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 ' +
+      '0-2-2h-.5"/><path d="M6 6h.01"/><path d="M6 18h.01"/><path d="m15.7 13.4-.9-.3"/><path d="m9.2 ' +
+      '10.9-.9-.3"/><path d="m10.6 15.7.3-.9"/><path d="m13.6 15.7-.4-1"/><path d="m10.8 9.3-.4-1"/><path d="m8.3 ' +
+      '13.6 1-.4"/><path d="m14.7 10.8 1-.4"/><path d="m13.4 8.3-.3.9"/>',
+    "bug": '<path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/>' +
+      '<path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/>' +
+      '<path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path ' +
+      'd="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/>',
+    "database": '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 ' +
+      '0 21 12"/>'
   };
 
   const ATTRS = ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
@@ -387,7 +407,7 @@
     { e: "🪜", i: "m-echelle", b: /(?:re-appuie sur|vuelve a pulsar)$/ },
     { e: "🪜", i: "m-echelle", b: /press$/, a: /^again\b/ },
     { e: "➕", i: "plus", a: /^(?:nouveau type|new type|nuevo tipo)/i },
-    // Lanceur d'export (les titres de section gardent leur emoji : AUTRE_SENS).
+    // Lanceur d'export.
     { e: "🖼️", i: "image", a: /^(?:Image|Imagen) \(PNG/ },
     { e: "🖨️", i: "file-text" },
     { e: "🛰️", i: "satellite" },
@@ -406,7 +426,74 @@
     { e: "📥", i: "cloud-download", b: /\(a red$/ },
     { e: "☑", i: "square-check", a: /^(?:Sélectionner|Select|Seleccionar)\b/ },
     { e: "➕", i: "folder-plus", b: /(?:crée tes dossiers|create your folders|crea tus carpetas) \($/ },
-    { e: "🧊", i: "box", a: /^(?:Vue 3D|3D view|Vista 3D)\b/ }
+    { e: "🧊", i: "box", a: /^(?:Vue 3D|3D view|Vista 3D)\b/ },
+    // Lanceur d'export : titres de section.
+    { e: "🖼️", i: "image", a: /^(?:Image|Imagen)(?: —|,| →)/ },
+    { e: "🖼️", i: "image", a: /^(?:Exporter en image|Export(?:ing)? (?:as an |to an |an )?image|Exportar (?:en|como) imagen)/ },
+    { e: "💾", i: "save", a: /^(?:Session|Sesión)\b(?! memory)/ },
+    { e: "🗺️", i: "map", a: /^(?:Plan|Map|Mapa) \(/ },
+    { e: "🌍", i: "globe", a: /^(?:Export externe|External export|Exportación externa)\b/ },
+    // Accueil : titres, Outils, lignes de plan.
+    { e: "📚", i: "library",
+      a: /^(?:Mes plans|My (?:maps|plans)|Mis (?:mapas|planos)|(?:Voir t|T)ous mes plans|(?:See |Show |View )?[Aa]ll my (?:maps|plans)|(?:Ver t|T)odos mis (?:mapas|planos)|Ta liste de plans|Your (?:map|plan) list|Tu lista de (?:mapas|planos))/ },
+    { e: "📚", i: "cloud", a: /^(?:Plans du site|Site maps|Mapas del sitio)/ },
+    { e: "🌍", i: "map", b: /widget$/, a: /^(?:Vue OSM|OSM [Vv]iew|Vista OSM)/ },
+    { e: "🌍", i: "map", a: /^(?:Vue OSM|OSM [Vv]iew|Vista OSM) (?:de l'accueil|widget|del inicio|de la pantalla de inicio)/ },
+    { e: "📦", i: "package-plus", a: /^(?:Ajouter un plan|Add a (?:map|plan)|Añadir un (?:mapa|plano)|Charger un plan|Load(?:ing)? a (?:map|plan)|Cargar un (?:mapa|plano))/ },
+    { e: "📦", i: "folder-input", a: /^(?:Importer plusieurs plans|Import(?:ing)? (?:several|multiple) (?:maps|plans)|Importar varios (?:mapas|planos))/ },
+    { e: "🧰", i: "pocket-knife" },
+    { e: "📔", i: "notebook-pen", a: /^(?:Mon carnet|My logbook|Mi cuaderno|Tenir un carnet|Keep a logbook|Llevar un cuaderno)/ },
+    { e: "📊", i: "table", a: /^(?:Éditeur de données|Data editor|Editor de datos)/ },
+    { e: "🌀", i: "waypoints", a: /^(?:Mes liaisons|My links|Mis enlaces)/ },
+    { e: "📸", i: "camera", a: /^(?:Mes photos|My photos|Mis fotos)/ },
+    { e: "🏗️", i: "drafting-compass",
+      a: /^(?:Générer un plan|Generate a (?:map|plan)|Generar un (?:mapa|plano)|Créer ou modifier un plan|Creat(?:e|ing) or (?:edit|modify)(?:ing)? a (?:map|plan)|Crear o modificar un (?:mapa|plano)|Générateur|Generator|Generador)\b/ },
+    { e: "🌐", i: "cloud",
+      a: /^(?:🌐 )?(?:Afficher les plans (?:du site|serveur)|Show (?:the )?(?:site|server) (?:maps|plans)|Mostrar (?:los )?(?:mapas|planos) del? (?:sitio|servidor)|\| (?:Plan proposé par le serveur|Map (?:offered|provided) by the server|Mapa (?:propuesto|ofrecido) por el servidor))/ },
+    { e: "🌐", i: "cloud", a: /^(?:serveur|server|servidor) (?:ou|or|o)\b/ },
+    { e: "💾", i: "hard-drive", a: /^(?:local\)|\| (?:Plan ZIP chargé|ZIP map loaded|Mapa ZIP cargado))/ },
+    { e: "💾", i: "hard-drive", a: /^(?:Mémoriser le plan dans l'app|Store the map in the app|Memorizar el mapa en la app)/ },
+    { e: "☁️", i: "database" },
+    { e: "📁", i: "folder",
+      a: /^(?:Ranger tes plans en dossiers|(?:Organi[sz]|Sort)(?:e|ing) your (?:maps|plans) (?:in|into) folders|Ordena(?:r)? tus (?:mapas|planos) en carpetas|(?:Dossiers|Folders|Carpetas) —|Déplacer vers|Move to|Mover a)/ },
+    { e: "📁", i: "folder-plus", a: /^(?:Créer un dossier depuis|Create a folder from|Crear una carpeta desde)/ },
+    // Configuration de l'accueil (groupes partagés avec les Réglages du plan) et ses fenêtres.
+    { e: "🌍", i: "layout-grid", a: /^(?:Application|Aplicación) —/ },
+    { e: "🎨", i: "palette", a: /^(?:Affichage|Display|Visualización)\b/ },
+    { e: "🧩", i: "puzzle" },
+    { e: "🔒", i: "shield",
+      a: /^(?:Confidentialité (?:&|&amp;) (?:sécurité|Audit)|Privacy (?:&|&amp;) (?:security|[Aa]udit|[Nn]etwork audit)|Privacidad y (?:seguridad|[Aa]uditoría)|Confidencialidad y auditoría)/ },
+    { e: "🛠️", i: "monitor-cog", a: /^(?:Système|System|Sistema) (?:&|&amp;|and|y) / },
+    { e: "🛠️", i: "code-xml", a: /^(?:Mode Développeur|Developer [Mm]ode|Modo [Dd]esarrollador)/ },
+    { e: "📐", i: "scaling", a: /^(?:Adapter la taille des icônes|Scale icon size|Adaptar el tamaño de los iconos)/ },
+    { e: "❓", i: "circle-help", a: /^(?:Bouton d'aide dans les fenêtres|Help button inside windows|Botón de ayuda en las ventanas)/ },
+    { e: "🔔", i: "bell", a: /^(?:Notifications|Notificaciones)\b/ },
+    { e: "🪟", i: "panels-top-left" },
+    { e: "➕", i: "zoom-in", a: /^(?:Boutons de zoom|Zoom \+\/− buttons|Botones de zoom)/ },
+    { e: "🧲", i: "magnet" },
+    { e: "☀️", i: "sun-moon", a: /^(?:Thème clair|Light theme|Tema claro)/ },
+    { e: "📱", i: "smartphone", a: /^(?:Garder l'écran allumé|Keep (?:the )?screen on|Mantener la pantalla encendida)/ },
+    { e: "🔋", i: "battery", a: /^(?:Niveau de batterie|Battery level|Nivel de batería)/ },
+    { e: "📳", i: "vibrate" },
+    { e: "🕵️", i: "venetian-mask" },
+    { e: "🔐", i: "key-round",
+      a: /^(?:Code d'accès local|Local access code|Código de acceso local|Activer le code d'accès|Enable access code|Activar código de acceso)/ },
+    { e: "✏️", i: "pencil", a: /^(?:\u270F )?(?:Modifier le code|Change code|Cambiar código)/ },
+    { e: "🔓", i: "lock-open", a: /^(?:Désactiver|Disable|Desactivar)\b/ },
+    { e: "🗺️", i: "map", a: /^(?:Vue OSM|OSM [Vv]iew|Vista OSM)/ },
+    { e: "🚫", i: "ban", a: /^(?:Ne pas charger les plans du site|Don't load the site's maps|No cargar los mapas del sitio)/ },
+    { e: "📋", i: "scroll-text", a: /^(?:Voir le journal réseau|View the network log|Ver el registro de red|Journal réseau|Network log|Registro de red)/ },
+    { e: "📋", i: "copy", b: /(?:ton appareil, avec|your device, with|tu dispositivo, con)$/,
+      a: /^(?:Copier le rapport|Copy the report|Copiar el informe)/ },
+    { e: "📖", i: "book-open", a: /^(?:Que fait l'app sur le réseau|What does the app do on the network|¿?Qué hace la app en la red)/ },
+    { e: "📊", i: "gauge",
+      a: /^(?:Voir l'état mémoire|View memory state|Ver el estado de (?:la )?memoria|État mémoire|Memory state|The app's memory state|Estado de (?:la )?memoria|Inspecteur|Inspector)/ },
+    { e: "🔧", i: "wrench", a: /^(?:Dépannage|Troubleshooting|Resolución de problemas|En cas de problème|En caso de problema)/ },
+    { e: "🔧", i: "gauge", a: /^(?:Voir l'état du cache|View cache state|Ver el estado de la caché)/ },
+    { e: "🔧", i: "unplug", a: /^(?:Ouvrir l'outil Kill SW|Open the Kill SW tool|Abrir la herramienta Kill SW)/ },
+    { e: "🔄", i: "refresh-cw", a: /^(?:Forcer la mise à jour|Force the update|Forzar la actualización)/ },
+    { e: "💥", i: "trash-2", a: /^(?:Tout réinitialiser|Reset everything|Reiniciar(?:lo)? todo)/ },
+    { e: "🐛", i: "bug" }
   ];
 
   const AUTRE_SENS = [
@@ -427,8 +514,8 @@
     { e: "🏛️", s: "tableau des filtres", a: /^(?:Types|Tipos)\b/ },
     { e: "🏛️", s: "rendus de la 3D", a: /^(?:🛣️?|Les trois rendus|The three renderings|Las tres representaciones|Rendu|Render|Renderizado)/ },
     { e: "🏛️", s: "rendu Structures de la 3D", a: /^(?:Structures|Estructuras) ?(?:- |: structures seules|: structures only|: solo estructuras)/ },
-    { e: "📐", s: "réglages (taille des icônes, Plan, calibrage), coordonnées",
-      a: /^(?:Adapter la taille|Scale icon size|Adaptar el tamaño|Plan\b|Map\b|Mapa\b|Plano\b|Calibr|Point C|Punto C|Coordonnées|Coordinates|Coordenadas)/ },
+    { e: "📐", s: "réglages (Plan, calibrage), coordonnées",
+      a: /^(?:Plan\b|Map\b|Mapa\b|Plano\b|Calibr|Point C|Punto C|Coordonnées|Coordinates|Coordenadas)/ },
     { e: "🔍", s: "recherche d'un point dans un formulaire, filtres, analyse, diagnostic",
       a: /^(?:Choisir via|Pick via|Chercher un point|recherche d'un point|recherche ou|Choose via|Search (?:for )?a point|search for an existing|search or|búsqueda de un punto|Elegir mediante|Buscar un punto|búsqueda o|L'image du plan est floue|The map image is blurry|La imagen del mapa|Outils d'analyse|Analysis tools|Herramientas de análisis|Filtres|Filters|Filtros)/ },
     { e: "🔍", s: "recherche de la vue 3D", a: /^(?:(?:Rechercher|Search|Buscar),? (?:—|en haut|at the top|arriba)|en haut, à gauche|at the top|arriba,? a la izquierda)/ },
@@ -437,7 +524,7 @@
     { e: "⏪", s: "Annuler de la vue 3D (son propre bouton)",
       b: /(?:mêmes couleurs|same colou?rs|mismos colores|Niveau de la 3D|Level of the 3D view|Nivel de la 3D),$/ },
     { e: "⭐", s: "favori d'un point (bouton, marque, export), épingler un plan" },
-    { e: "📚", s: "Mes plans, Bonnes pratiques, documents PDF du plan" },
+    { e: "📚", s: "Bonnes pratiques, documents PDF du plan, Histoire" },
     { e: "⚙️", s: "mode Avancé du Générateur", a: /^(?:Avancé|Advanced|Avanzado)(?![\wÀ-ÿ])/ },
     { e: "⚙️", s: "réglages de la vue 3D (son propre bouton)",
       a: /^(?:ouvre une petite|opens a small|abre una pequeña|Réglages ⚙️?|Settings ⚙️?|Ajustes ⚙️?|Réglages \(en haut|Settings \(at the top|Ajustes \(arriba|, retenu pour ce plan|, remembered|, recordado|, Échap|, Esc|\) mais jamais|\) but never|\) pero nunca|\(dans les deux vues\)|\(in both views\)|\(en las dos vistas\)|, coupé par défaut|, off by default|, desactivad|tile\b)/ },
@@ -449,11 +536,10 @@
     { e: "🪧", s: "bandeau et feuille de route du guidage, fiche d'aide Itinéraire et guidage" },
     { e: "📍", s: "points, Je suis ici, clic carte, réglages Navigation & tracker, GPS surface" },
     { e: "🎯", s: "précision d'un point, sélection, calibrage, zone de recherche, recentrer" },
-    { e: "🔓", s: "désactiver le code d'accès" },
-    { e: "🔒", s: "confidentialité, audit réseau" },
+    { e: "🔒", s: "zéro télémétrie, audit réseau, seul écran en ligne, passages interdits" },
     { e: "🗺️", s: "Légende de la Vue OSM ou posée à l'export",
       a: /^(?:Légende (?:de la Vue OSM|posée)|Legend (?:of the OSM|in the OSM|placed)|Leyenda (?:de la Vista OSM|colocada)|Legend button of the OSM)/ },
-    { e: "🗺️", s: "carte, plan au sol de la 3D, fiche Itinéraire et guidage, SIG, sections" },
+    { e: "🗺️", s: "carte, plan au sol de la 3D, fiche Itinéraire et guidage, SIG, Plan en cours" },
     { e: "🔥", s: "heatmap du Mode Secours",
       a: /^(?:Afficher la heatmap|Show the (?:activity )?heatmap|Mostrar el mapa de calor)/ },
     { e: "🚑", s: "secouriste libre, victime trouvée, pastille, lancer un plan de secours" },
@@ -465,20 +551,46 @@
       a: /^(?:Découper|Parcours|Dédoublonner|Données orphelines|Split|Route|Deduplicate|Orphan|Dividir|Recorrido|Deduplicar|Datos huérfanos|Desduplicar)/ },
     { e: "✅", s: "états (gardé, OK, accepté), convertir, rentrée, résumé" },
     { e: "🪜", s: "changer de niveau dans la 3D, accès, réglage d'affichage" },
-    { e: "➕", s: "ajouter (étape, équipe, phase, PDF, entrée, plan), garder les deux, boutons de zoom" },
-    { e: "🖼️", s: "section Image du lanceur, calques d'image, fond d'écran, galerie photo" },
-    { e: "💾", s: "section Session du lanceur, mémorisation des plans, sauvegarde, enregistrer" },
-    { e: "🎨", s: "affichage, légende, couleurs, export avancé de session, image vierge" },
-    { e: "📊", s: "détails de la session, statistiques, calques de données, éditeur de l'accueil" },
+    { e: "➕", s: "ajouter (étape, équipe, phase, PDF, entrée, plan), garder les deux" },
+    { e: "🖼️", s: "calques d'image, image principale, image du KMZ, galerie photo" },
+    { e: "💾", s: "bouton Mémoriser d'une ligne de plan, sauvegarde, enregistrer, hors-ligne" },
+    { e: "🎨", s: "fond sous le plan, légende, couleurs, export avancé de session, image vierge" },
+    { e: "📊", s: "détails de la session, statistiques, calques de données" },
     { e: "🔄", s: "import d'un plan existant", a: /^(?:Mettre à jour le plan —|Update the map —|Actualizar el mapa —)/ },
-    { e: "🔄", s: "convertir, modifier un calque, changer de plan, forcer la mise à jour, crédits" },
-    { e: "🌍", s: "Vue OSM, section Export externe du lanceur, portée tous les plans, crédits" },
-    { e: "❓", s: "aide de la vue 3D, bouton d'aide des fenêtres" },
+    { e: "🔄", s: "convertir, modifier un calque, changer de plan, crédits" },
+    { e: "🌍", s: "Vue OSM (bouton de la barre du haut, fenêtre), portée tous les plans, crédits" },
+    { e: "❓", s: "aide de la vue 3D, bouton ❓ dans le titre des fenêtres" },
     { e: "📖", s: "Mode Histoire, récits, topo, audit réseau, doc d'installation" },
     { e: "🚨", s: "Sortie d'urgence, alertes de survie, Secours" },
     { e: "📥", s: "importer, installer, télécharger" },
     { e: "ℹ️", s: "fiche d'un plan" },
-    { e: "🧊", s: "crédits three.js" }
+    { e: "🧊", s: "crédits three.js" },
+    { e: "🧰", s: "préparer un scénario de Secours", a: /^1\. / },
+    { e: "🧰", s: "section Outils de la fenêtre Tracker (titre sans icône)", a: /^(?:Outils|Tools|Herramientas) —/ },
+    { e: "📦", s: "Backups, Générer le ZIP, JSZip, rapport du Secours, propriété des données" },
+    { e: "📔", s: "Sortie en cours, Démarrer une sortie, rubrique Mes sorties et mes données" },
+    { e: "🌀", s: "liaisons inter-plan, portails, Passer au plan, itinéraire via plusieurs plans" },
+    { e: "📸", s: "photos d'un point, case Photos des exports, compteur, crédits html2canvas" },
+    { e: "🏗️", s: "Niveau (N) de la sélection multiple", a: /^(?:Niveau|Level|Nivel) \(N\)/ },
+    { e: "🏗️", s: "Niveaux, multi-niveau, bouton de la barre latérale du Générateur" },
+    { e: "🌐", s: "géoréférencement, coordonnées GPS, hors-ligne par défaut, crédits GPX" },
+    { e: "☁️", s: "bouton Publier (installation reliée)", a: /^(?:Publier|Publish|Publicar)/ },
+    { e: "📁", s: "plan à re-sélectionner (badge), Re-sélectionner le ZIP, Ranger dans, dossier du Générateur" },
+    { e: "🛠️", s: "conseils aux créateurs de plans" },
+    { e: "🔔", s: "alertes et nouveautés (fenêtre 🚨)" },
+    { e: "☀️", s: "éclairage Plein jour de la vue 3D" },
+    { e: "📱", s: "installation sur mobile, image Max iPhone, choix d'écran allumé de la 3D" },
+    { e: "🔋", s: "indicateur de batterie de la barre d'état, seuils" },
+    { e: "🔐", s: "badge d'accès permanent, confidentialité des données, code désactivé par défaut" },
+    { e: "💥", s: "arrêt brutal de l'application" },
+    { e: "📋", s: "Copier le rapport (perdu, Secours), copier une position, résumé à copier" },
+    { e: "🔧", s: "outils du Secours et de maintenance" },
+    { e: "🚫", s: "interdits, refus, hors-ligne" },
+    { e: "📤", s: "exporter (session, profil, CSV, scénario, TXT)" },
+    { e: "🗑️", s: "supprimer un sommet (menu de sommet d'une forme)", b: /＋ (?:et|and|y)$/ },
+    { e: "🗑️", s: "supprimer, retirer, effacer, tout vider" },
+    { e: "🛡️", s: "anonymiser, limiter le dézoom, plans révoqués" },
+    { e: "📄", s: "documents, PDF, page" }
   ];
 
   const _PAR_EMOJI = {};

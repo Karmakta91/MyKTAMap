@@ -615,15 +615,16 @@
     return ''
       + '<div class="kta-readme-modal-boite kta-mem-inspector-boite">'
       +   '<div class="kta-readme-modal-header">'
-      +     '<span class="kta-readme-modal-titre">' + _t("titre") + '</span>'
+      +     '<span class="kta-readme-modal-titre">' + window.ktaIcone("gauge") + ' ' + _t("titre") + '</span>'
       +     '<button type="button" class="kta-panneau-close" id="kta-mem-close" aria-label="' + _t("close") + '">✕</button>'
       +   '</div>'
       +   '<div class="kta-readme-modal-corps" id="kta-mem-corps">'
       +     '<div class="kta-mem-loading">' + _t("loading") + '</div>'
       +   '</div>'
       +   '<div class="kta-readme-modal-footer kta-mem-footer">'
-      +     '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-mem-refresh">' + _t("btn.refresh") + '</button>'
-      +     '<button type="button" class="kta-btn kta-btn-primary" id="kta-mem-copy">' + _t("btn.copy") + '</button>'
+      +     '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-mem-refresh">' + window.ktaIcone("refresh-cw") + ' ' + _t("btn.refresh") +
+            '</button>'
+      +     '<button type="button" class="kta-btn kta-btn-primary" id="kta-mem-copy">' + window.ktaIcone("copy") + ' ' + _t("btn.copy") + '</button>'
       +   '</div>'
       + '</div>';
   }
@@ -1022,11 +1023,12 @@
       _copyToClipboard(txt).then(function() {
         const btn = document.getElementById("kta-mem-copy");
         if (!btn || !_lc || !_lc.alive) return;
-        const orig = btn.textContent;
+        // innerHTML : l'icône SVG du bouton revient avec son libellé.
+        const orig = btn.innerHTML;
         btn.textContent = _t("btn.copied");
         // Timer suivi : pas d'écriture dans un bouton détaché.
         _lc.setTimeout(function() {
-          if (btn.isConnected) btn.textContent = orig;
+          if (btn.isConnected) btn.innerHTML = orig;
         }, 1800);
       }).catch(function(e) {
         window.ktaAlerte(_t("copy.fail", { detail: (e.message || e) }), { type: "erreur" });

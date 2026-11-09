@@ -1090,7 +1090,8 @@
       }
 
 function planRowHTML(plan) {
-        let icon = plan.type === "server" ? "🌐" : plan.type === "ext" ? "☁️" : "💾";   // ☁️ = plan d'extension
+        // Plan du site, plan d'une extension (base de données de l'installation), plan sur l'appareil.
+        let icon = window.ktaIcone(plan.type === "server" ? "cloud" : plan.type === "ext" ? "database" : "hard-drive");
         // Badge de persistance des plans locaux (blob / fsHandle / pick).
         let badgeStorage = "";
         if (plan.type === "local") {
@@ -1954,7 +1955,8 @@ function planRowHTML(plan) {
             // entrent seuls, les prochains aussi), puis bascule en mode Dossiers.
             ((_plansTagFilter && _plansTagFilter.size)
               ? '<button type="button" class="kta-osm-home-tag-chip kta-plans-chip-folder" id="loaderPlansChipFolder" title="' +
-                escapeHtml(_t("home.plans.folders.fromTags")) + '">📁+</button>' : "");
+                escapeHtml(_t("home.plans.folders.fromTags")) + '" aria-label="' + escapeHtml(_t("home.plans.folders.fromTags")) +
+                '">' + window.ktaIcone("folder-plus") + '</button>' : "");
             const chipDossier = document.getElementById("loaderPlansChipFolder");
             if (chipDossier) chipDossier.addEventListener("click", function() {
               const PR = window.PlanRegistry;
@@ -2089,7 +2091,8 @@ function planRowHTML(plan) {
       function _enteteDossierHTML(f, n, replie) {
         const t = window.I18n.t;
         const verrou = (f && f.src === "index")
-          ? '<span class="kta-plans-folder-lock" title="' + escapeHtml(t("home.plans.folders.lockedIndex")) + '">🌐</span>' : "";
+          ? '<span class="kta-plans-folder-lock" title="' + escapeHtml(t("home.plans.folders.lockedIndex")) + '">' +
+            window.ktaIcone("cloud") + '</span>' : "";
         const nom = f ? escapeHtml(f.name) : escapeHtml(t("home.plans.folders.unfiled"));
         const dot = f ? '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || window.PlanRegistry.FOLDER_COLORS[0]) + '"></span>'
                       : '<span class="kta-plans-folder-dot kta-plans-folder-dot-none"></span>';
@@ -2137,7 +2140,8 @@ function planRowHTML(plan) {
           // Barre de sélection EN TÊTE de liste, collante sous le ☑ : en bas, elle passerait inaperçue.
           html = '<div class="kta-plans-select-bar" id="loaderPlansSelectBar">' +
                    '<span class="kta-plans-select-count">' + escapeHtml(t("home.plans.folders.selected", { n: _plansSelection.size })) + '</span>' +
-                   '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="loaderPlansSelectMove"' + (_plansSelection.size ? "" : " disabled") + '>📁 ' + escapeHtml(t("home.plans.folders.moveTo")) + '</button>' +
+                   '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="loaderPlansSelectMove"' + (_plansSelection.size ? "" : " disabled") + '>' +
+                     window.ktaIcone("folder") + ' ' + escapeHtml(t("home.plans.folders.moveTo")) + '</button>' +
                    '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="loaderPlansSelectDone">' + escapeHtml(t("home.plans.folders.selectDone")) + '</button>' +
                  '</div>' + html;
         }
@@ -2166,8 +2170,9 @@ function planRowHTML(plan) {
           btn.type = "button";
           btn.className = "loader-btn-secondary kta-plans-folder-more";
           const maj = function() {
-            btn.textContent = rows.classList.contains("kta-collapsed")
-              ? "📚 " + t("home.plans.folders.all", { n: n }) : "▴ " + t("home.plans.folders.less");
+            btn.innerHTML = rows.classList.contains("kta-collapsed")
+              ? window.ktaIcone("library") + " " + escapeHtml(t("home.plans.folders.all", { n: n }))
+              : "▴ " + escapeHtml(t("home.plans.folders.less"));
           };
           btn.addEventListener("click", function() {
             rows.classList.toggle("kta-collapsed");
@@ -3177,9 +3182,10 @@ function planRowHTML(plan) {
         btn.className = "loader-btn-secondary";
         function _maj() {
           const replie = list.classList.contains("kta-collapsed");
-          btn.textContent = replie
-            ? "📚 " + _homeT("home.mobile.plansAll", "Tous mes plans") + " (" + rows + ")"
-            : "▴ " + _homeT("home.mobile.plansLess", "Réduire la liste");
+          btn.innerHTML = replie
+            ? window.ktaIcone("library") + " " +
+              window.ktaEsc(_homeT("home.mobile.plansAll", "Tous mes plans") + " (" + rows + ")")
+            : "▴ " + window.ktaEsc(_homeT("home.mobile.plansLess", "Réduire la liste"));
         }
         btn.addEventListener("click", function() {
           list.classList.toggle("kta-collapsed");

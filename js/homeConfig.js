@@ -124,7 +124,7 @@
           btn.classList.toggle("kta-cfg-incognito-btn-indispo", indispo);
           if (indispo) {
             btn.classList.remove("kta-cfg-incognito-btn-quit");
-            icon.textContent  = "🕵️";
+            icon.innerHTML    = window.ktaIcone("venetian-mask");
             label.textContent = _t("home.privacy.incognitoRelieLabel", "Mode incognito indisponible ici");
             hint.textContent  = _t("home.privacy.incognitoRelieHint",
               "Cette installation est reliée à une base de données : ce que tu fais y est enregistré par le serveur.");
@@ -132,13 +132,13 @@
           }
           if (actif) {
             btn.classList.add("kta-cfg-incognito-btn-quit");
-            icon.textContent  = "✕";
+            icon.innerHTML    = window.ktaIcone("x");
             label.textContent = _t("home.privacy.incognitoQuitLabel", "Quitter le mode incognito");
             hint.textContent  = _t("home.privacy.incognitoQuitHint",
               "Les points, le tracker et les notes de cette fenêtre seront perdus.");
           } else {
             btn.classList.remove("kta-cfg-incognito-btn-quit");
-            icon.textContent  = "🕵️";
+            icon.innerHTML    = window.ktaIcone("venetian-mask");
             label.textContent = _t("home.privacy.incognitoStartLabel", "Démarrer en mode incognito");
             // Le libellé suffit (le mode est décrit dans le Guide).
             hint.textContent  = "";
@@ -618,24 +618,25 @@
         overlay.innerHTML =
           '<div class="kta-readme-modal-boite kta-depannage-boite">' +
             '<div class="kta-readme-modal-header">' +
-              '<span class="kta-readme-modal-titre">' + _t("home.cfg.depannage.title") + '</span>' +
+              '<span class="kta-readme-modal-titre">' + window.ktaIcone("wrench") + ' ' + _t("home.cfg.depannage.title") +
+                '</span>' +
               '<button class="kta-panneau-close" type="button" id="kta-depannage-close">✕</button>' +
             '</div>' +
             '<div class="kta-readme-modal-corps kta-depannage-corps">' +
               '<div class="kta-depannage-item">' +
                 '<p class="kta-loader-perf-hint">' + _t("home.cfg.depannage.updateWhen") + '</p>' +
                 '<button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn">' +
-                  _t("home.cfg.forceUpdateBtn") + '</button>' +
+                  window.ktaIcone("refresh-cw") + ' ' + _t("home.cfg.forceUpdateBtn") + '</button>' +
               '</div>' +
               '<div class="kta-depannage-item">' +
                 '<p class="kta-loader-perf-hint">' + _t("home.cfg.depannage.killSwWhen") + '</p>' +
                 '<button class="loader-btn-secondary" type="button" id="loaderKillSwBtn">' +
-                  _t("home.cfg.killSwBtn") + '</button>' +
+                  window.ktaIcone("unplug") + ' ' + _t("home.cfg.killSwBtn") + '</button>' +
               '</div>' +
               '<div class="kta-depannage-item">' +
                 '<p class="kta-loader-perf-hint">' + _t("home.cfg.depannage.resetWhen") + '</p>' +
                 '<button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn">' +
-                  _t("home.cfg.resetBtn") + '</button>' +
+                  window.ktaIcone("trash-2") + ' ' + _t("home.cfg.resetBtn") + '</button>' +
               '</div>' +
               '<p class="kta-depannage-secours kta-tx-muted">' + _t("home.cfg.depannage.killswPage") +
                 ' <code>' + _esc(urlSecours) + '</code></p>' +
@@ -685,10 +686,10 @@
           textEl.innerHTML = _t("pin.setup.statusEnabled") + (hasBio ? _t("pin.setup.statusBioConfigured") : "");
           actionsEl.innerHTML =
             '<button class="loader-btn-secondary kta-loader-pin-btn-modif" type="button" id="loaderPinModifBtn">' +
-              _t("pin.setup.changeBtn") +
+              window.ktaIcone("pencil") + " " + _t("pin.setup.changeBtn") +
             '</button>' +
             '<button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderPinDisableBtn">' +
-              _t("pin.setup.disableBtn") +
+              window.ktaIcone("lock-open") + " " + _t("pin.setup.disableBtn") +
             '</button>';
           document.getElementById("loaderPinModifBtn").addEventListener("click", _lancerModificationPin);
           document.getElementById("loaderPinDisableBtn").addEventListener("click", _lancerDesactivationPin);
@@ -698,7 +699,7 @@
           textEl.innerHTML = _t("pin.setup.statusDisabled");
           actionsEl.innerHTML =
             '<button class="loader-btn-secondary" type="button" id="loaderPinEnableBtn" style="background:rgba(244,197,66,0.15); border-color:rgba(244,197,66,0.4); color:var(--kta-accent-texte);">' +
-              _t("pin.setup.enableBtn") +
+              window.ktaIcone("key-round") + " " + _t("pin.setup.enableBtn") +
             '</button>';
           document.getElementById("loaderPinEnableBtn").addEventListener("click", _lancerActivationPin);
         }
@@ -1328,8 +1329,10 @@
                 "Clipboard API indisponible. Utilise plutôt 📤 Exporter."));
               return;
             }
-            netLogCopy.textContent = _tNL("home.netlog.copied", "✓ Copié");
-            setTimeout(function() { netLogCopy.textContent = _tNL("home.netlog.copyBtn", "📋 Copier"); }, 1500);
+            // Le texte seul change : l'icône du bouton reste (span frère, data-kta-ico).
+            const txtCopie = document.getElementById("loaderNetLogCopyTxt") || netLogCopy;
+            txtCopie.textContent = _tNL("home.netlog.copied", "✓ Copié");
+            setTimeout(function() { txtCopie.textContent = _tNL("home.netlog.copyBtn", "Copier"); }, 1500);
           });
         });
       }
