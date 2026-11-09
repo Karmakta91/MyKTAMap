@@ -329,6 +329,22 @@ async function heatmapTraces(page) {
     const mx = await modaleExport(page, CALQUE);
     verifier(mx.bloc && !!mx.note && mx.cochable && mx.sousCases === 0,
       "modale d'export : case du calque cochable, « exporté par la session », sans sous-cases", mx);
+    // 🩸 « Tout afficher » cochait chaque case de calque : l'original masqué revenait sur la carte à côté de sa copie.
+    const ta = await page.evaluate(function (id) {
+      window.FilterPanel.ouvrir();
+      const cb = document.querySelector('[data-data-layer="' + id + '"]');
+      const verrou = !!(cb && cb.disabled && !cb.checked);
+      cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true }));
+      const apresClic = window.map.hasLayer(window.dataLayerGroups[id]);
+      document.getElementById("kta-fp-reset-all").click();
+      const apresTout = window.map.hasLayer(window.dataLayerGroups[id]);
+      window.FilterPanel.fermer();
+      return { verrou: verrou, apresClic: apresClic, apresTout: apresTout };
+    }, CALQUE);
+    verifier(ta.verrou, "filtre : case du calque en modification verrouillée (décochée, grisée)", ta);
+    verifier(!ta.apresClic && !ta.apresTout, "filtre : ni la case ni « Tout afficher » ne réaffichent l'original", ta);
+    const e1b = await lire(page, g);
+    verifier(e1b.embarquees === 0 && e1b.lecturesJonction === 1, "après « Tout afficher » : toujours sans doublon", e1b);
 
     console.log("\n── 3. Jonction, zone et mur supprimés de la copie ──");
     await page.evaluate(function () {

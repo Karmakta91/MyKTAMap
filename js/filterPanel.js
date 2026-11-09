@@ -568,7 +568,10 @@
       const modifiable  = rapatrie && !lectureSeule;
       html += '<div class="kta-fp-calque-ligne">' +
                 '<label class="kta-fp-row-cb">' +
-                  '<input type="checkbox" data-data-layer="' + _escAttr(id) + '"' + (visible ? " checked" : "") + '>' +
+                  // ⚠️ Calque en modification : l'original reste masqué (sa copie vit dans la session), la case
+                  // est donc verrouillée — sinon « Tout afficher » le ferait revenir en double.
+                  '<input type="checkbox" data-data-layer="' + _escAttr(id) + '"' +
+                    (visible && !rapatrie ? " checked" : "") + (rapatrie ? " disabled" : "") + '>' +
                   '<span>' + window.ktaIcone("layers") + ' ' + _escHtml(label) +
                     (rapatrie ? ' <em class="kta-fp-calque-remplace">'
                                 + _escHtml(window.I18n.t("filter.calque.remplace")) + '</em>' : '') +
@@ -745,6 +748,8 @@
         const id = t.getAttribute("data-data-layer");
         const grp = (window.dataLayerGroups || {})[id];
         if (!grp || !window.map) return;
+        const CSm = window.CalqueSession;
+        if (t.checked && CSm && CSm.estRapatrie(id)) { t.checked = false; return; }   // original masqué
         if (t.checked) { try { window.map.addLayer(grp); } catch(_) {} }
         else           { try { window.map.removeLayer(grp); } catch(_) {} }
         // Roads + cercles d'intersection recalculés (cf. _scheduleRoadsRecalc).
@@ -824,7 +829,7 @@
           if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true })); }
         });
         overlay.querySelectorAll('[data-data-layer]').forEach(function(cb) {
-          if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true })); }
+          if (!cb.checked && !cb.disabled) { cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true })); }
         });
         // Les NIVEAUX aussi (même chemin que « 👁️ Tous ») : sinon des étages restent masqués sous « Aucun filtre
         // actif ».
