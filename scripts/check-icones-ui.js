@@ -15,13 +15,15 @@
 //      index.html : les boutons d'en-tête et de « Mes plans » migrés portent `data-kta-ico` et aucun emoji ;
 //      les libellés migrés de l'accueil et de sa Configuration (CLES_INDEX) suivent une icône `data-kta-ico`,
 //      ceux rendus par un module (APPELS_JS) ont leur ktaIcone() à côté, et leurs clés n'ont plus d'emoji ;
+//      fenêtres d'outils de la carte (CLES_C2, CLES_C2_TEXTE) : même règle, et aucun reflet de mode en emoji ;
 //   2. chaque nom passé à ktaIcone("…") ou à data-kta-ico="…" (js/*.js, index.html) existe dans le module ;
 //   3. chaque règle de la table de doc (KtaIcones.DOC) pointe vers une icône existante ;
 //   4. EXHAUSTIF : chaque occurrence d'un emoji migré dans docs/applications/README_USER{,.en,.es}.md et dans
 //      les clés aide.* de lang/{fr,en,es}.json est soit substituée (DOC), soit listée « autre sens »
 //      (AUTRE_SENS). Sinon : échec avec fichier:ligne et le texte voisin ;
 //   5. CLIQUET : le nombre d'emplois rangés par une règle « tout le reste » est figé par emoji (PLAFOND_RESTE).
-// Usage : node scripts/check-icones-ui.js [--liste]   (--liste : comptes par emoji, substitués / autre sens)
+// Usage : node scripts/check-icones-ui.js [--liste] [--plafond]   (--liste : comptes par emoji ; --plafond :
+//   comptes à reporter dans PLAFOND_RESTE)
 // =====================================================================
 "use strict";
 
@@ -46,7 +48,7 @@ const EMOJI_MIGRES = ["🧭", "✏️", "🛣️", "⬛", "🏛️", "📐", "�
   "▶️", "⏹️", "🔃", "🪧", "📍", "🎯", "🔓", "🔒", "🗺️", "🎬", "🔥", "⛑️", "🔆", "🚑", "📡", "♦️", "📏", "⛏️",
   "❌", "✅", "🧹", "🪜", "➕", "🖼️", "🖨️", "🛰️", "💾", "🎨", "📊", "🔄", "🌍", "❓", "📖", "📥", "🚨", "☑", "ℹ️",
   "🧊", "📦", "🧰", "📔", "🌀", "📸", "🏗️", "🌐", "☁️", "📁", "🧩", "🛠️", "🔔", "🪟", "🧲", "☀️", "📱", "🔋", "📳",
-  "🕵️", "🔐", "🚫", "📋", "📤", "🗑️", "🔧", "🛡️", "📄", "💥", "🐛"];
+  "🕵️", "🔐", "🚫", "📋", "📤", "🗑️", "🔧", "🛡️", "📄", "💥", "🐛", "🚀", "👣", "🎤", "🕹️", "🏷️", "🏠", "📉"];
 const BOUTONS_INDEX = ["loaderSearchBtn", "loaderOfflineHdrBtn", "loaderAlertBtn", "loaderHelpBtn", "loaderConfigBtn",
   "loaderPlansFolderNew", "loaderPlansSelect"];
 // Libellés migrés de l'accueil, de sa Configuration et des fenêtres ouvertes depuis là : la clé ne porte plus
@@ -83,6 +85,115 @@ const CLES_JS = ["home.cfg.depannage.title", "home.cfg.forceUpdateBtn", "home.cf
   "meminsp.titre", "meminsp.btn.refresh", "meminsp.btn.copy", "export.lanceur.sectionImage",
   "export.lanceur.sectionSession", "export.lanceur.sectionPlan", "export.lanceur.sectionExterne",
   "home.plans.folders.fromTags", "pin.setup.enableBtn", "pin.setup.changeBtn", "pin.setup.disableBtn"];
+// Libellés migrés des fenêtres d'outils de la carte : chaque emploi de la clé dans son fichier a son icône SVG sur
+// sa ligne ou la voisine (ktaIcone, `ico:`, une table d'icônes), et la clé n'a d'emoji dans aucune langue.
+const CLES_C2 = {
+  "js/batteryGuard.js": ["battery.critical.btnConfig"],
+  "js/compass.js": ["compass.modal.title"],
+  "js/editor.js": ["editor.photos.btnCamera", "editor.photos.btnGallery", "editor.section.infos",
+    "editor.section.photos", "editor.section.position"],
+  "js/emergencyMode.js": ["emergency.copier", "emergency.exitBtn", "emergency.header.titre", "emergency.label.cap",
+    "emergency.label.gps", "emergency.recentrer"],
+  "js/exporter.js": ["imgexport.annotations.titre", "imgexport.apercu.titre", "imgexport.btn.telecharger",
+    "imgexport.calquesData.titre", "imgexport.calquesImage.titre", "imgexport.fond.image", "imgexport.fond.titre",
+    "imgexport.format.titre", "imgexport.legende.custom.ajouter", "imgexport.legende.custom.reset",
+    "imgexport.legende.custom.titre", "imgexport.legende.selectCarte", "imgexport.legende.titre",
+    "imgexport.modal.titre", "imgexport.mode.avance.label", "imgexport.mode.rapide.label",
+    "imgexport.niveaux.titre", "imgexport.rapide.contenu.titre"],
+  "js/filterPanel.js": ["filter.action.hideAll", "filter.action.showAll", "filter.ajouts.titre",
+    "filter.ajouts.valider", "filter.calque.exporter", "filter.calque.integrer", "filter.calque.rapatrier",
+    "filter.calque.restituer", "filter.footer.resetAll", "filter.levels.activeOnlyBtn", "filter.levels.allBtn",
+    "filter.majPlan", "filter.planDeBase"],
+  "js/geotiffExport.js": ["geotiff.contenu.titre", "geotiff.modal.titre", "geotiff.proj.titre",
+    "imgexport.btn.telecharger"],
+  "js/heatmap.js": ["heatmap.btn.apply", "heatmap.btn.clear", "heatmap.modal.titre", "heatmap.section.data",
+    "heatmap.section.levels", "heatmap.section.session", "heatmap.section.visual", "heatmap.src.dataPoints",
+    "heatmap.src.dataRoads", "heatmap.src.dataStructures", "heatmap.src.dataZones", "heatmap.src.editor",
+    "heatmap.src.roads", "heatmap.src.structures", "heatmap.src.tracker", "heatmap.src.zones"],
+  "js/interface.js": ["ui.changePlan.myPlans", "ui.trackerWarn.wakeLock"],
+  "js/interfaceConfig.js": ["config.debug.titre", "config.display.intersections.label",
+    "config.display.north.calibrate", "config.display.north.label", "config.display.v3dPave.label",
+    "config.display.voice.label", "config.display.wakelock.label", "config.fond.label", "config.georef.clearBtn",
+    "config.georef.clickBtn", "config.georef.openBtn", "config.georef.saveBtn", "config.georef.searchBtn",
+    "config.georef.titre", "config.globaux.btn", "config.globaux.titre", "config.jonction.titre",
+    "config.niveaux.active.titre", "config.niveaux.titre", "config.niveaux.visible.titre",
+    "config.optionnels.titre", "config.perfultra.tousNiveaux.label", "config.perfultra.ultra.label",
+    "config.scope.badgeGlobal", "config.scope.badgePlan", "config.smartnav.titre", "config.steps.titre",
+    "config.titre", "config.tracker.clickBtn", "config.tracker.searchBtn", "config.tracker.titre"],
+  "js/interfaceDistanceTotale.js": ["disttot.btn.erase", "disttot.modal.titre"],
+  "js/interfaceItineraire.js": ["iti.action.titre", "iti.action.titreNav", "iti.avoid.clickMapActive",
+    "iti.avoid.clickMapBtn", "iti.avoid.marginTitle", "iti.avoid.pointsTitle", "iti.avoid.reset",
+    "iti.avoid.tagsTitle", "iti.avoid.title", "iti.avoid.zonesTitle", "iti.btn.clear", "iti.btn.discard",
+    "iti.btn.erase", "iti.btn.modeClick", "iti.btn.modeClickActivate", "iti.btn.myPos", "iti.btn.save",
+    "iti.corde.title", "iti.inacc.title", "iti.nav.end", "iti.nav.start", "iti.nav.tour", "iti.partage.btnOff",
+    "iti.partage.btnOn", "iti.pause.titre", "iti.points.titre", "iti.speed.titre"],
+  "js/interfaceLegende.js": ["legendui.edit.btn", "legendui.group.access", "legendui.group.custom",
+    "legendui.group.levels", "legendui.group.others", "legendui.group.rescue", "legendui.group.signage",
+    "legendui.group.wells", "legendui.modal.titre", "legendui.section.structures", "legendui.section.traces",
+    "legendui.section.zones"],
+  "js/interfaceMaintenance.js": ["maint.calib.sectionValues"],
+  "js/itiGuidage.js": ["guid.feuille.titre"],
+  "js/legendCustomization.js": ["legend.add.ok", "legend.add.title", "legend.editor.add", "legend.editor.done",
+    "legend.editor.reset", "legend.editor.title"],
+  "js/lostMode.js": ["lost.btn.calc", "lost.btn.clickMap", "lost.btn.confirm", "lost.btn.copyReport",
+    "lost.btn.fermer", "lost.btn.recalc", "lost.btn.secours", "lost.btn.tracker", "lost.btn.wipe",
+    "lost.modal.titre", "lost.results.indices.titre", "lost.results.refined.titre", "lost.results.zone.titre",
+    "lost.section.indices", "lost.section.position", "lost.section.temps", "lost.section.vitesse",
+    "lost.tips.attendre.titre", "lost.tips.calme.titre", "lost.tips.comm.titre", "lost.tips.lumiere.titre",
+    "lost.tips.nepas.titre", "lost.tips.orient.titre", "lost.tips.summary"],
+  "js/majPlan.js": ["maj.titre"],
+  "js/northPicker.js": ["north.btn.cancel", "north.btn.validate", "north.titre"],
+  "js/pdfExport.js": ["pdfexport.annotations.points", "pdfexport.annotations.roads",
+    "pdfexport.annotations.structures", "pdfexport.annotations.titre", "pdfexport.annotations.zones",
+    "pdfexport.btn.generer", "pdfexport.data.titre", "pdfexport.image.base", "pdfexport.image.titre",
+    "pdfexport.legende.titre", "pdfexport.miseEnPage.header", "pdfexport.miseEnPage.titre",
+    "pdfexport.modal.titre", "pdfexport.orientation.titre", "pdfexport.qualite.titre", "pdfexport.taille.titre"],
+  "js/searchPoints.js": ["search.gps.noCalib.btn", "search.gps.noPoi.createBtn", "search.gps.poi.goBtn",
+    "search.modal.titre", "search.row.assignTitle"],
+  "js/secoursMode.js": ["secours.btn.ouvrir", "secours.couv.titre", "secours.create.titre",
+    "secours.edit.contexteTitre", "secours.edit.equipesTitre", "secours.edit.exportTitre",
+    "secours.list.btnImporter", "secours.list.btnNouveau", "secours.modal.titre", "secours.phases.btnAjouter",
+    "secours.phases.sectionTitre"],
+  "js/sessionExporter.js": ["export.adv.contentTitle", "export.adv.mesureDistance", "export.adv.mesureSurface",
+    "export.adv.outputTitle", "export.adv.photosTitle", "export.adv.points", "export.adv.roads",
+    "export.adv.structures", "export.adv.trackerGps", "export.adv.zones", "export.calib.apercuTitre",
+    "export.calib.clickBtn", "export.calib.pointATitre", "export.calib.pointBTitre", "export.calib.searchBtn",
+    "export.conv.d2sApercuTitle", "export.conv.d2sSourceTitle", "export.conv.granTitle", "export.conv.photosTitle",
+    "export.conv.points", "export.conv.roads", "export.conv.s2dContentTitle", "export.conv.structures",
+    "export.conv.zones", "export.extern.outputTitle", "export.full.anonymizeLabel", "export.full.photosLabel",
+    "export.fusion.apercuTitle", "export.fusion.sourceTitle", "export.geojson.projTitre",
+    "export.gpx.contentTitle", "export.gpx.itineraire", "export.gpx.legend", "export.gpx.pointsEmbedded",
+    "export.gpx.pointsSession", "export.gpx.roadsSession", "export.kmz.contentTitle", "export.kmz.image",
+    "export.kmz.itineraire", "export.kmz.jonctions", "export.kmz.legend", "export.kmz.niveauxTitre",
+    "export.kmz.points", "export.kmz.roads", "export.kmz.structures", "export.kmz.zones"],
+  "js/tableEditor.js": ["tabledit.modal.titre"],
+  "js/trackerReplay.js": ["replay.export.btn", "replay.modal.titre"],
+  "js/volumeExploite.js": ["volume.titre"]
+};
+// Clés des mêmes fenêtres sorties de l'emoji sans icône à côté : icône posée par l'appelant (titre de modale
+// variable, catégories, sections), libellé sous un titre qui la porte déjà, `<option>`, texte d'état.
+const CLES_C2_TEXTE = ["cheatsheet.tool.edition", "cheatsheet.tool.legende", "cheatsheet.tool.mesure",
+  "cheatsheet.tool.recherche", "cheatsheet.tool.structures", "cheatsheet.tool.traces", "cheatsheet.tool.tracker",
+  "cheatsheet.tool.zones", "config.compteTitre", "config.georef.pointA", "config.georef.pointB",
+  "config.georef.pointC", "config.georef.precisionHistorique", "config.georef.precisionLocal",
+  "config.globaux.carnet", "config.group.navTracker", "config.group.perf", "config.group.planCalib",
+  "config.perfultra.animOff.label", "config.perfultra.decim.label", "config.perfultra.mobileZoomLimit.label",
+  "config.perfultra.noIntersect.label", "config.perfultra.noTooltips.label", "config.perfultra.slowSave.label",
+  "config.smartnav.label", "editor.modal.btnAdd", "editor.modal.btnSave", "editor.modal.titleAdd",
+  "editor.modal.titleEdit", "export.gpx.formatLine", "export.gpx.roundtripLine", "export.solo.advanced",
+  "export.solo.conversion", "export.solo.extern", "export.solo.full", "export.solo.geojson", "export.solo.gpx",
+  "export.solo.kmz", "filter.section.dataLayers", "filter.section.imageLayers", "filter.section.levels",
+  "filter.section.roadTypes", "filter.section.structTypes", "filter.section.tags", "filter.section.zoneTypes",
+  "geotiff.fait", "geotiff.faitPlafonne", "heatmap.toast.info", "heatmap.toast.noData", "heatmap.toast.tooMany",
+  "imgexport.ann.structures", "imgexport.format.resol.max", "imgexport.format.resol.maxIos",
+  "imgexport.legende.contenu.structures", "iti.btn.compute", "iti.btn.recompute", "iti.modal.titreCalc",
+  "iti.modal.titreNav", "iti.result.time", "legend.add.catIcones", "legend.add.catStructures",
+  "legend.add.catTraces", "legend.add.catZones", "legend.cat.icones", "legend.cat.structures", "legend.cat.traces",
+  "legend.cat.zones", "pdfexport.legende.position", "pdfexport.legende.style", "pdfexport.legende.taille",
+  "pdfexport.orientation.paysage", "pdfexport.orientation.portrait", "search.gps.noCalib.toast",
+  "search.gps.poi.dist", "search.kind.point", "search.kind.road", "search.kind.structure", "search.kind.zone",
+  "stats.meta.multiNiveau", "stats.meta.v2Tuile", "tabledit.source.fusion", "ui.subaction.nouveauTypeTitre",
+  "utils.scaleCoherence.rowCalibrated"];
 
 // ── 0. auto-test du classement (chaque sabotage doit rougir) ─────────────────────────────
 {
@@ -164,6 +275,44 @@ const SRC_INTERFACE = lire("js/interface.js");
   t("1. dicos : les " + (CLES_INDEX.length + CLES_JS.length) + " clés migrées n'ont plus d'emoji (fr, en, es)",
     emojiCle.length === 0, emojiCle.join("\n   "));
 
+  // Fenêtres d'outils de la carte : chaque emploi d'une clé migrée a son icône à côté (ligne ou voisine).
+  const c2Nus = [];
+  Object.keys(CLES_C2).forEach((f) => {
+    const lignes = lire(f).split(/\r?\n/);
+    CLES_C2[f].forEach((cle) => {
+      let n = 0;
+      lignes.forEach((l, i) => {
+        if (l.indexOf("\"" + cle + "\"") < 0) return;
+        n++;
+        if (/\{ titre: /.test(l)) return;   // titre d'une alerte (ktaAlerte, texte seul)
+        const autour = [lignes[i - 1] || "", l, lignes[i + 1] || ""].join("\n");
+        if (!/ktaIcone\(|\bico: "|_ICO|ICONE|categoryIcon/.test(autour)) c2Nus.push(f + ":" + (i + 1) + " : « " + cle + " » sans icône");
+      });
+      if (!n) c2Nus.push(f + " : « " + cle + " » introuvable");
+    });
+  });
+  t("1. fenêtres d'outils de la carte : libellés migrés rendus avec leur icône SVG", c2Nus.length === 0, c2Nus.join("\n   "));
+  const c2Emoji = [];
+  const clesC2 = Object.keys(CLES_C2).reduce((a, f) => a.concat(CLES_C2[f]), []).concat(CLES_C2_TEXTE);
+  ["fr", "en", "es"].forEach((l) => {
+    const d = JSON.parse(lire("lang/" + l + ".json"));
+    clesC2.forEach((cle) => {
+      if (d[cle] === undefined) c2Emoji.push(l + " : " + cle + " absente");
+      else if (EMO.test(String(d[cle]).replace(/<[^>]*>/g, ""))) c2Emoji.push(l + " : " + cle + " = " + d[cle]);
+    });
+  });
+  t("1. dicos : les " + clesC2.length + " clés migrées des fenêtres d'outils n'ont plus d'emoji (fr, en, es)",
+    c2Emoji.length === 0, c2Emoji.join("\n   "));
+  // Reflet d'un mode sur un bouton de groupe (_setGroupeModeActif) : SVG partout, interface.js comme ailleurs.
+  const reflets = [];
+  fs.readdirSync(path.join(RACINE, "js")).filter((f) => /\.js$/.test(f)).forEach((f) => {
+    lire("js/" + f).split(/\r?\n/).forEach((l, i) => {
+      const m = /_setGroupeModeActif\([^)\n]*"([^"]*)"/.exec(l);
+      if (m && EMO.test(m[1])) reflets.push("js/" + f + ":" + (i + 1) + "  " + l.trim().slice(0, 100));
+    });
+  });
+  t("1. reflet de mode sur un bouton de groupe : jamais un emoji (cliquet 0)", reflets.length === 0, reflets.join("\n   "));
+
   // Lignes de Mes plans : l'icône du type de plan est un SVG (plan du site, d'extension, sur l'appareil).
   const HOME = lire("js/homeLoader.js");
   t("1. homeLoader.js : icône de type de plan en SVG, sans emoji",
@@ -238,11 +387,12 @@ const SRC_INTERFACE = lire("js/interface.js");
   // classé (règle DOC ciblée = SVG, ou AUTRE_SENS ciblé = autre sens voulu) ; une baisse se reporte ici.
   // Clés sans U+FE0F (forme rendue par classerDoc). Recalcul : node scripts/check-icones-ui.js --plafond
   const PLAFOND_RESTE = {
-    "📖": 54, "🌐": 36, "🔒": 15, "📦": 59, "💾": 88, "💥": 6, "❌": 33, "🔄": 118, "📤": 77, "📸": 42, "🧊": 6,
-    "🌍": 45, "🧭": 170, "🛡": 27, "🔐": 12, "📍": 210, "🚨": 99, "🔔": 3, "📋": 48, "ℹ": 27, "✅": 81, "📡": 12,
-    "✏": 171, "📱": 9, "📥": 51, "▶": 48, "📚": 15, "🏗": 75, "➕": 69, "🚑": 30, "🪧": 45, "🗺": 132, "🎯": 120,
-    "🔋": 9, "🗑": 138, "📊": 84, "⭐": 42, "⬇": 15, "📔": 33, "🎨": 39, "🖼": 39, "🚫": 21, "🔎": 27,
-    "❓": 15, "🪜": 39, "☀": 9, "🌀": 45, "📁": 21, "🛠": 9, "🔧": 3, "📄": 14
+    "📖": 54, "🌐": 27, "🔒": 15, "📦": 59, "💾": 88, "💥": 6, "❌": 33, "🔄": 118, "📤": 77, "📸": 42, "🧊": 6,
+    "🌍": 45, "🧭": 170, "🛡": 27, "🔐": 12, "📍": 186, "🚨": 99, "🔔": 3, "📋": 48, "ℹ": 27, "✅": 81, "📡": 12,
+    "✏": 171, "🚀": 42, "📱": 9, "📥": 51, "▶": 48, "📚": 15, "🏗": 75, "➕": 69, "🚑": 30, "🎤": 11, "🪧": 39,
+    "🗺": 132, "🎯": 120, "🔋": 9, "🗑": 138, "📊": 78, "⭐": 42, "⬇": 15, "📔": 33, "🎨": 39, "🖼": 39, "🏷": 33,
+    "🚫": 21, "🔎": 27, "❓": 15, "🕹": 33, "📉": 24, "🪜": 39, "☀": 9, "🌀": 45, "📁": 21, "🛠": 9, "🔧": 3,
+    "🏠": 3, "📄": 14
   };
   if (process.argv.indexOf("--plafond") >= 0) {
     console.log(JSON.stringify(Object.keys(comptes).filter((e) => comptes[e].reste)

@@ -60,12 +60,12 @@
     _instrEl.className = "kta-north-picker-overlay";
     _instrEl.innerHTML =
       '<div class="kta-north-picker-card">' +
-        '<div class="kta-north-picker-title">' + window.I18n.t("north.titre") + '</div>' +
+        '<div class="kta-north-picker-title">' + window.ktaIcone("compass") + " " + window.I18n.t("north.titre") + '</div>' +
         '<div class="kta-north-picker-step" id="kta-np-step">' + window.I18n.t("north.step.south") + '</div>' +
         '<div class="kta-north-picker-actions">' +
-          '<button type="button" class="kta-btn" id="kta-np-validate" disabled>' + window.I18n.t("north.btn.validate") + '</button>' +
+          '<button type="button" class="kta-btn" id="kta-np-validate" disabled>' + window.ktaIcone("check") + " " + window.I18n.t("north.btn.validate") + '</button>' +
           '<button type="button" class="kta-btn" id="kta-np-restart">' + window.I18n.t("north.btn.restart") + '</button>' +
-          '<button type="button" class="kta-btn" id="kta-np-cancel">' + window.I18n.t("north.btn.cancel") + '</button>' +
+          '<button type="button" class="kta-btn" id="kta-np-cancel">' + window.ktaIcone("x") + " " + window.I18n.t("north.btn.cancel") + '</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(_instrEl);

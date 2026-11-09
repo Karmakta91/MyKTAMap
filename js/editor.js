@@ -202,20 +202,20 @@ function afficherFormulaire(x, y, existingPoint) {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:90vh;">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">${titreModale}</span>
+        <span class="kta-readme-modal-titre">${window.ktaIcone("pencil")} ${titreModale}</span>
         <button class="kta-panneau-close" id="kta-poi-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps">
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${window.I18n.t("editor.section.position")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("map-pin")} ${window.I18n.t("editor.section.position")}</div>
           <div style="font-size:13px; color:var(--kta-texte-3); padding:4px 0;">
             X : <strong style="color:var(--kta-texte);">${x}</strong> — Y : <strong style="color:var(--kta-texte);">${y}</strong>
           </div>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${window.I18n.t("editor.section.infos")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("info")} ${window.I18n.t("editor.section.infos")}</div>
           <div class="kta-cfg-grille">
             <label class="kta-cfg-label">${window.I18n.t("editor.field.name")} <span style="color:var(--kta-erreur);">*</span></label>
             <input class="kta-cfg-input" id="kta-poi-nom" type="text" value="${_esc(nomInitial)}" placeholder="${window.I18n.t("editor.field.namePlaceholder")}" autocomplete="off">
@@ -247,16 +247,16 @@ function afficherFormulaire(x, y, existingPoint) {
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">
-            ${window.I18n.t("editor.section.photos")}
+            ${window.ktaIcone("camera")} ${window.I18n.t("editor.section.photos")}
             <span id="kta-poi-photos-counter" class="kta-poi-photos-counter">${window.I18n.t("editor.photos.counter", { n: 0, max: 5 })}</span>
           </div>
           <div id="kta-poi-photos-grid" class="kta-poi-photos-grid"></div>
           <div id="kta-poi-photos-actions" class="kta-poi-photos-actions">
             <button class="kta-btn kta-btn-ghost kta-poi-photos-btn" id="kta-poi-photos-camera" type="button">
-              ${window.I18n.t("editor.photos.btnCamera")}
+              ${window.ktaIcone("camera")} ${window.I18n.t("editor.photos.btnCamera")}
             </button>
             <button class="kta-btn kta-btn-ghost kta-poi-photos-btn" id="kta-poi-photos-galerie" type="button">
-              ${window.I18n.t("editor.photos.btnGallery")}
+              ${window.ktaIcone("image")} ${window.I18n.t("editor.photos.btnGallery")}
             </button>
           </div>
           <input type="file" accept="image/*" capture="environment" id="kta-poi-photos-input-camera"  style="display:none;">
@@ -270,7 +270,7 @@ function afficherFormulaire(x, y, existingPoint) {
 
         <div class="kta-conv-actions" style="margin-top:14px;">
           <button class="kta-btn kta-btn-ghost"   id="kta-poi-annuler">${window.I18n.t("editor.btn.cancel")}</button>
-          <button class="kta-btn kta-btn-primary" id="kta-poi-valider">${labelBouton}</button>
+          <button class="kta-btn kta-btn-primary" id="kta-poi-valider">${window.ktaIcone(isEdit ? "save" : "check")} ${labelBouton}</button>
         </div>
 
       </div>
@@ -439,7 +439,7 @@ function afficherFormulaire(x, y, existingPoint) {
         }
       } else {
         // Placeholder (compression en cours, cf. _ajouterPhotoBlob).
-        thumb.innerHTML = '<div class="kta-poi-photo-spinner">⏳</div>';
+        thumb.innerHTML = '<div class="kta-poi-photo-spinner">' + window.ktaIcone("loader-circle") + '</div>';
       }
         // ✕ : suppression en attente, appliquée au save.
       const btnDel = document.createElement("button");
@@ -904,7 +904,7 @@ window.repositionnerPointEditor = function(id, x, y) {
   fl.id = "kta-repo-floater";
   fl.className = "kta-iti-floater";
   fl.innerHTML =
-    '<span class="kta-iti-floater-icon">📌</span>' +
+    '<span class="kta-iti-floater-icon">' + window.ktaIcone("move") + '</span>' +
     '<span class="kta-iti-floater-msg"></span>' +
     '<button class="kta-btn kta-btn-ghost" id="kta-repo-cancel" type="button"></button>';
   // Le nom vient de l'utilisateur : injecté en TEXTE, jamais en HTML.

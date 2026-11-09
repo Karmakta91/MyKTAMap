@@ -1240,7 +1240,7 @@
     // Lien vers les Stats globales du plan (session + data layers ; cette modale = session seule)
     html += '<div class="kta-refonte-session-cta-stats-glob">' +
               '<button type="button" class="kta-btn kta-btn-primary" id="kta-refonte-session-open-stats-glob">' +
-                '📊 ' + window.I18n.t("ui.refonte.modal_cta_stats_glob") +
+                window.ktaIcone("chart-column") + ' ' + window.I18n.t("ui.refonte.modal_cta_stats_glob") +
               '</button>' +
             '</div>';
 

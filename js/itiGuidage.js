@@ -492,7 +492,7 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-guid-feuille-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + _esc(_t("guid.feuille.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("signpost") + ' ' + _esc(_t("guid.feuille.titre")) + '</span>' +
           '<button class="kta-panneau-close" id="kta-guid-feuille-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -783,7 +783,7 @@
       if (typeof window.ktaDemanderPositionCarte === "function") {
         window.ktaDemanderPositionCarte(function(p) {
           if (opts && typeof opts.apres === "function") opts.apres(p);
-        }, { icone: "📍", texte: _t("guid.pick") });
+        }, { ico: "mouse-pointer-click", texte: _t("guid.pick") });
       }
     } else if (nom === "ignorer") {
       if (_alerte === "ecart") _ignoreEcart = true;          // F : jusqu'au retour sur le chemin

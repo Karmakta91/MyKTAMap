@@ -362,7 +362,7 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">${window.I18n.t("search.modal.titre")} <span style="font-size:11px; color:var(--kta-texte-3); font-weight:400; margin-left:8px;">Ctrl+K</span></span>
+          <span class="kta-readme-modal-titre">${window.ktaIcone("search")} ${window.I18n.t("search.modal.titre")} <span style="font-size:11px; color:var(--kta-texte-3); font-weight:400; margin-left:8px;">Ctrl+K</span></span>
           <button class="kta-panneau-close" id="kta-search-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -390,7 +390,7 @@
                modale multi-plans (js/crossPlanSearch.js) en reprenant la saisie
                en cours. Affiché seulement si le module est chargé. -->
           <button class="kta-search-crossplan" id="kta-search-crossplan" type="button" style="display:none;">
-            🌐 ${window.I18n.t("search.crossPlanBridge")}
+            ${window.ktaIcone("search")} ${window.I18n.t("search.crossPlanBridge")}
           </button>
 
         </div>
@@ -619,8 +619,8 @@
     return _lcOuI18n("structures", type, keys[type] || null);
   }
 
-  // Emoji pour les catégories sans icône de tag.
-  const _KIND_EMOJI = { point: "📍", road: "🛣️", zone: "⬛", structure: "🏛️" };
+  // Icône SVG des catégories (celle de l'outil de la carte) : puces, en-têtes de groupe, lignes sans icône de tag.
+  const _KIND_ICO = { point: "map-pin", road: "m-galerie", zone: "m-zone", structure: "m-pilier" };
 
   // Session + embarqués → [{ kind, item, layerId, layerLabel, label, searchableText }], libellé auto si absent.
   function _collecterRoads() {
@@ -776,7 +776,7 @@
         const active = _filterKinds.has(k.id);
         html += '<button type="button" class="kta-search-chip' + (active ? " active" : "") + '"'
               + ' data-filter-type="kind" data-filter-value="' + _escapeAttr(k.id) + '">'
-              + _escapeHtml(k.label) + ' (' + kindCount[k.id] + ')</button>';
+              + window.ktaIcone(_KIND_ICO[k.id]) + ' ' + _escapeHtml(k.label) + ' (' + kindCount[k.id] + ')</button>';
       });
       html += '</div></div>';
     }
@@ -911,7 +911,7 @@
       }
       resEl.innerHTML = `
         <div class="kta-search-empty">
-          <div class="empty-icon">🔍</div>
+          <div class="empty-icon">${window.ktaIcone("search")}</div>
           ${msg}
         </div>
       `;
@@ -940,7 +940,7 @@
       const items = groups[kind];
       if (!items || items.length === 0) return;
       html += '<div class="kta-search-group-header" style="padding:8px 6px 4px; font-size:11px; color:var(--kta-interaction); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid rgba(255,255,255,0.04); margin-top:4px;">';
-      html += _escapeHtml(KIND_HEADERS[kind]) + ' <span style="color:var(--kta-texte-3); font-weight:400;">(' + items.length + ')</span>';
+      html += window.ktaIcone(_KIND_ICO[kind]) + ' ' + _escapeHtml(KIND_HEADERS[kind]) + ' <span style="color:var(--kta-texte-3); font-weight:400;">(' + items.length + ')</span>';
       html += '</div>';
       items.forEach(function(it) {
         const isFirst = !firstResultMarked && query;
@@ -991,9 +991,9 @@
     if (it.kind === "point") {
       const iconUrl = _getIconUrl(it.item);
       if (iconUrl) html += '<img src="' + _escapeAttr(iconUrl) + '" alt="">';
-      else         html += '<span style="font-size:18px; opacity:0.4;">📍</span>';
+      else         html += '<span style="font-size:18px; opacity:0.4;">' + window.ktaIcone("map-pin") + '</span>';
     } else {
-      html += '<span style="font-size:22px;">' + _escapeHtml(_KIND_EMOJI[it.kind] || "?") + '</span>';
+      html += '<span style="font-size:22px;">' + (window.ktaIcone(_KIND_ICO[it.kind] || "map-pin")) + '</span>';
     }
     html += '</div>';
 
@@ -1047,7 +1047,7 @@
         && typeof window.SecoursMode.getCurrentScenarioId === "function"
         && window.SecoursMode.getCurrentScenarioId()) {
       html += '<button class="kta-search-result-assign" data-visible-idx="' + visIdx +
-              '" title="' + _escapeAttr(window.I18n.t("search.row.assignTitle")) + '">📌</button>';
+              '" title="' + _escapeAttr(window.I18n.t("search.row.assignTitle")) + '">' + window.ktaIcone("users") + '</button>';
     }
 
     html += '</div>';  // end result
@@ -1145,7 +1145,7 @@
   function _renderGpsCardNoCalib(resEl, gps) {
     resEl.innerHTML =
       '<div class="kta-search-gps-card kta-search-gps-card-warn">' +
-        '<div class="kta-search-gps-card-icon">🌐</div>' +
+        '<div class="kta-search-gps-card-icon">' + window.ktaIcone("globe") + '</div>' +
         '<div class="kta-search-gps-card-content">' +
           '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.noCalib.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
@@ -1154,7 +1154,7 @@
           '</div>' +
           '<div class="kta-search-gps-card-action">' +
             '<button class="kta-btn kta-btn-secondary kta-btn-sm" id="kta-search-gps-go-config">' +
-              _escapeHtml(window.I18n.t("search.gps.noCalib.btn")) +
+              window.ktaIcone("settings") + ' ' + _escapeHtml(window.I18n.t("search.gps.noCalib.btn")) +
             '</button>' +
             '<span class="kta-search-gps-card-hint">' + _escapeHtml(window.I18n.t("search.gps.noCalib.hint")) + '</span>' +
           '</div>' +
@@ -1176,7 +1176,7 @@
   function _renderGpsCardErreur(resEl, gps, msg) {
     resEl.innerHTML =
       '<div class="kta-search-gps-card kta-search-gps-card-error">' +
-        '<div class="kta-search-gps-card-icon">⚠️</div>' +
+        '<div class="kta-search-gps-card-icon">' + window.ktaIcone("triangle-alert") + '</div>' +
         '<div class="kta-search-gps-card-content">' +
           '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.err.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
@@ -1188,7 +1188,7 @@
   function _renderGpsCardHorsPlan(resEl, gps, planCoords, imgW, imgH) {
     resEl.innerHTML =
       '<div class="kta-search-gps-card kta-search-gps-card-error">' +
-        '<div class="kta-search-gps-card-icon">🚫</div>' +
+        '<div class="kta-search-gps-card-icon">' + window.ktaIcone("ban") + '</div>' +
         '<div class="kta-search-gps-card-content">' +
           '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.outOfPlan.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
@@ -1205,7 +1205,7 @@
     const tags = (p.tags && p.tags.length) ? p.tags.join(", ") : "";
     resEl.innerHTML =
       '<div class="kta-search-gps-card kta-search-gps-card-ok">' +
-        '<div class="kta-search-gps-card-icon">📍</div>' +
+        '<div class="kta-search-gps-card-icon">' + window.ktaIcone("map-pin") + '</div>' +
         '<div class="kta-search-gps-card-content">' +
           '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.poi.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) +
@@ -1218,7 +1218,7 @@
           '</div>' +
           '<div class="kta-search-gps-card-action">' +
             '<button class="kta-btn kta-btn-primary kta-btn-sm" id="kta-search-gps-go-poi">' +
-              _escapeHtml(window.I18n.t("search.gps.poi.goBtn")) +
+              window.ktaIcone("locate-fixed") + ' ' + _escapeHtml(window.I18n.t("search.gps.poi.goBtn")) +
             '</button>' +
           '</div>' +
         '</div>' +
@@ -1232,7 +1232,7 @@
   function _renderGpsCardSansPoi(resEl, gps, planCoords) {
     resEl.innerHTML =
       '<div class="kta-search-gps-card kta-search-gps-card-create">' +
-        '<div class="kta-search-gps-card-icon">📍</div>' +
+        '<div class="kta-search-gps-card-icon">' + window.ktaIcone("map-pin") + '</div>' +
         '<div class="kta-search-gps-card-content">' +
           '<div class="kta-search-gps-card-titre">' + _escapeHtml(window.I18n.t("search.gps.noPoi.titre")) + '</div>' +
           '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) +
@@ -1243,7 +1243,7 @@
           '</div>' +
           '<div class="kta-search-gps-card-action">' +
             '<button class="kta-btn kta-btn-primary kta-btn-sm" id="kta-search-gps-create-point">' +
-              _escapeHtml(window.I18n.t("search.gps.noPoi.createBtn")) +
+              window.ktaIcone("plus") + ' ' + _escapeHtml(window.I18n.t("search.gps.noPoi.createBtn")) +
             '</button>' +
           '</div>' +
         '</div>' +

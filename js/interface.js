@@ -436,7 +436,8 @@ function _alertCharte(titre, texte, icone) {
   document.addEventListener("keydown", _onKey);
 }
 
-// Choix multiple : options = [{ label, icon, desc, onClick, danger, ghost }] + Annuler.
+// Choix multiple : options = [{ label, icon, desc, onClick, danger, ghost }] + Annuler. ⚠️ icon = HTML (SVG de
+// window.ktaIcone), posé tel quel devant le libellé.
 function _choixSuppression(titre, texte, options) {
   const overlay = document.createElement("div");
   overlay.className = "kta-modal-overlay";
@@ -452,7 +453,7 @@ function _choixSuppression(titre, texte, options) {
 
   overlay.innerHTML = `
     <div class="kta-modal" style="max-width:420px;">
-      <div class="kta-modal-icon">⚠️</div>
+      <div class="kta-modal-icon">${window.ktaIcone("triangle-alert")}</div>
       <div class="kta-modal-titre">${titre}</div>
       <div class="kta-modal-texte">${texte || ""}</div>
       <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
@@ -493,7 +494,7 @@ function afficherPopupChangerPlan() {
       </div>
       <div class="kta-modal-actions">
         <button class="kta-btn kta-btn-ghost" id="popupResterIci">${window.I18n.t("ui.changePlan.stay")}</button>
-        <button class="kta-btn kta-btn-primary" id="popupChargerPlan">${window.I18n.t("ui.changePlan.myPlans")}</button>
+        <button class="kta-btn kta-btn-primary" id="popupChargerPlan">${window.ktaIcone("library")} ${window.I18n.t("ui.changePlan.myPlans")}</button>
       </div>
     </div>
   `;
@@ -669,7 +670,7 @@ function _afficherAvertissementTracker(onConfirm) {
         ((window.WakeLock && typeof window.WakeLock.isSupported === "function" && window.WakeLock.isSupported()
           && typeof window.WakeLock.isEnabled === "function" && !window.WakeLock.isEnabled())
           ? '<label class="kta-tracker-warn-wake"><input type="checkbox" id="kta-tracker-warn-wake" checked> ' +
-              '<span>' + window.I18n.t("ui.trackerWarn.wakeLock") + '</span></label>'
+              '<span>' + window.ktaIcone("smartphone") + ' ' + window.I18n.t("ui.trackerWarn.wakeLock") + '</span></label>'
           : '') +
       '</div>' +
       '<div class="kta-tracker-warn-actions">' +
@@ -2646,28 +2647,28 @@ _setGroupeModeActif("tracker", isTracking, null);
           const choix = [];
           if (ptsActive.length > 0) {
             choix.push({
-              label: window.I18n.t("ui.mesure.lastPoint", { label: labelActive }), icon: "↩️",
+              label: window.I18n.t("ui.mesure.lastPoint", { label: labelActive }), icon: window.ktaIcone("undo-2"),
               desc: window.I18n.t("ui.mesure.lastPointDesc", { n: ptsActive.length, label: labelActive }),
               onClick: function() { if (window.removeLastMeasurePoint) window.removeLastMeasurePoint(); }
             });
           }
           if (ptsD.length > 0) {
             choix.push({
-              label: window.I18n.t("ui.mesure.allDistance"), icon: "🗑️", danger: true,
+              label: window.I18n.t("ui.mesure.allDistance"), icon: window.ktaIcone("trash-2"), danger: true,
               desc: window.I18n.t("ui.mesure.nPoints", { n: ptsD.length }),
               onClick: function() { if (window.resetMesureMode) window.resetMesureMode("distance"); }
             });
           }
           if (ptsS.length > 0) {
             choix.push({
-              label: window.I18n.t("ui.mesure.allSurface"), icon: "🗑️", danger: true,
+              label: window.I18n.t("ui.mesure.allSurface"), icon: window.ktaIcone("trash-2"), danger: true,
               desc: window.I18n.t("ui.mesure.nPoints", { n: ptsS.length }),
               onClick: function() { if (window.resetMesureMode) window.resetMesureMode("surface"); }
             });
           }
           if (ptsD.length > 0 && ptsS.length > 0) {
             choix.push({
-              label: window.I18n.t("ui.mesure.allBoth"), icon: "🗑️", danger: true,
+              label: window.I18n.t("ui.mesure.allBoth"), icon: window.ktaIcone("trash-2"), danger: true,
               onClick: function() { if (window.resetMesure) window.resetMesure(); }
             });
           }
@@ -2837,7 +2838,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _choixSuppression(
             window.I18n.t("ui.trace.choixTitle"), window.I18n.t("ui.choix.whatErase"),
             [
-              { label: window.I18n.t("ui.trace.eraseLastPoint"), icon: "↩️",
+              { label: window.I18n.t("ui.trace.eraseLastPoint"), icon: window.ktaIcone("undo-2"),
                 desc: window.I18n.t("ui.trace.eraseLastPointDesc", { n: nbPts }),
                 onClick: function() {
                   // 🩸 Tracé en cours vidé → fermer le mode (cf. _fermerModeRoad).
@@ -2846,7 +2847,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
                   if (before && !after) _fermerModeRoad();
                 } },
-              { label: window.I18n.t("ui.trace.eraseLast"), icon: "✂️",
+              { label: window.I18n.t("ui.trace.eraseLast"), icon: window.ktaIcone("scissors"),
                 desc: window.I18n.t("ui.trace.eraseLastDesc", { n: roads.length }),
                 onClick: function() {
                   // 🩸 Tracé en cours capturé AVANT : s'il est supprimé, fermer le mode.
@@ -2855,7 +2856,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
                   if (before && !after) _fermerModeRoad();
                 } },
-              { label: window.I18n.t("ui.trace.eraseSelect"), icon: "🎯",
+              { label: window.I18n.t("ui.trace.eraseSelect"), icon: window.ktaIcone("mouse-pointer-click"),
                 desc: window.I18n.t("ui.trace.eraseSelectDesc", { n: tracesSelectables.length }),
                 onClick: function() {
                   if (typeof window.activerModeSuppressionTraceClic === "function") {
@@ -2863,7 +2864,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   }
                 } },
               _choixEffacerParZone("roads"),
-              { label: window.I18n.t("ui.trace.eraseAll"), icon: "🗑️", danger: true,
+              { label: window.I18n.t("ui.trace.eraseAll"), icon: window.ktaIcone("trash-2"), danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
@@ -2979,7 +2980,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _choixSuppression(
             window.I18n.t("ui.zone.choixTitle"), window.I18n.t("ui.choix.whatErase"),
             [
-              { label: window.I18n.t("ui.zone.eraseLastPoint"), icon: "↩️",
+              { label: window.I18n.t("ui.zone.eraseLastPoint"), icon: window.ktaIcone("undo-2"),
                 desc: window.I18n.t("ui.zone.eraseLastPointDesc"),
                 onClick: function() {
                   // 🩸 Zone en cours vidée → fermer le mode (cf. _fermerModeRoad).
@@ -2989,7 +2990,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   if (before && !after) _fermerModeZone();
                 } },
               // removeLastZone vise la zone en cours si elle existe, sinon la dernière fermée.
-              { label: window.I18n.t("ui.zone.eraseLast"), icon: "✂️",
+              { label: window.I18n.t("ui.zone.eraseLast"), icon: window.ktaIcone("scissors"),
                 desc: window.I18n.t("ui.zone.eraseLastDesc", { n: nbZonesFermees }),
                 onClick: function() {
                   // 🩸 Zone en cours supprimée → fermer le mode.
@@ -2998,7 +2999,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
                   if (before && !after) _fermerModeZone();
                 } },
-              { label: window.I18n.t("ui.zone.eraseSelect"), icon: "🎯",
+              { label: window.I18n.t("ui.zone.eraseSelect"), icon: window.ktaIcone("mouse-pointer-click"),
                 desc: window.I18n.t("ui.zone.eraseSelectDesc", { n: nbSelectables }),
                 onClick: function() {
                   if (typeof window.activerModeSuppressionZoneClic === "function") {
@@ -3006,7 +3007,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   }
                 } },
               _choixEffacerParZone("zones"),
-              { label: window.I18n.t("ui.zone.eraseAll"), icon: "🗑️", danger: true,
+              { label: window.I18n.t("ui.zone.eraseAll"), icon: window.ktaIcone("trash-2"), danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
@@ -3141,7 +3142,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _choixSuppression(
             window.I18n.t("ui.struct.choixTitle"), window.I18n.t("ui.choix.whatErase"),
             [
-              { label: window.I18n.t("ui.struct.eraseLastPoint"), icon: "↩️",
+              { label: window.I18n.t("ui.struct.eraseLastPoint"), icon: window.ktaIcone("undo-2"),
                 desc: window.I18n.t("ui.struct.eraseLastPointDesc"),
                 onClick: function() {
                   // 🩸 Structure en cours vidée → fermer le mode (cf. _fermerModeRoad).
@@ -3151,7 +3152,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   if (before && !after) _fermerModeStructure();
                 } },
               // removeLastStructure vise la structure en cours si elle existe, sinon la dernière fermée.
-              { label: window.I18n.t("ui.struct.eraseLast"), icon: "✂️",
+              { label: window.I18n.t("ui.struct.eraseLast"), icon: window.ktaIcone("scissors"),
                 desc: window.I18n.t("ui.struct.eraseLastDesc", { n: nbStructFermees }),
                 onClick: function() {
                   const before = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
@@ -3159,7 +3160,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (before && !after) _fermerModeStructure();
                 } },
-              { label: window.I18n.t("ui.struct.eraseSelect"), icon: "🎯",
+              { label: window.I18n.t("ui.struct.eraseSelect"), icon: window.ktaIcone("mouse-pointer-click"),
                 desc: window.I18n.t("ui.struct.eraseSelectDesc", { n: nbSelectables }),
                 onClick: function() {
                   if (typeof window.activerModeSuppressionStructureClic === "function") {
@@ -3167,7 +3168,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   }
                 } },
               _choixEffacerParZone("structures"),
-              { label: window.I18n.t("ui.struct.eraseAll"), icon: "🗑️", danger: true,
+              { label: window.I18n.t("ui.struct.eraseAll"), icon: window.ktaIcone("trash-2"), danger: true,
                 desc: window.I18n.t("ui.struct.eraseAllDesc", { n: nbSelectables }),
                 onClick: function() {
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
@@ -3379,7 +3380,7 @@ function _onSuppPopupOpen(e) {
 // Ligne « ✏️ Effacer par zone » de la fenêtre 🧹 Effacer des trois groupes : même chemin que le bouton du bandeau
 // (sélection multiple sans graine, tracé de zone lancé, seule la famille du groupe cochée).
 function _choixEffacerParZone(famille) {
-  return { label: window.I18n.t("ui.choix.eraseZone"), icon: "✏️",
+  return { label: window.I18n.t("ui.choix.eraseZone"), icon: window.ktaIcone("square-dashed"),
     desc: window.I18n.t("ui.choix.eraseZoneDesc"),
     onClick: function() {
       if (window.SelectionMulti && typeof window.SelectionMulti.ouvrirZone === "function") {

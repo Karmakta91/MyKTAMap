@@ -131,13 +131,13 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-pdf-modal-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + T("pdfexport.modal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("file-text") + " " + T("pdfexport.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-pdf-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
 
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">' + T("pdfexport.taille.titre") + '</div>' +
+            '<div class="kta-ses-section-title">' + window.ktaIcone("ruler") + " " + T("pdfexport.taille.titre") + '</div>' +
             '<div class="kta-pdf-radios-inline">' +
               PDF_SIZES.map(function(s, i) {
                 return _radioRowInline("pdf_size", s.key, s.label, T("pdfexport.taille.hint." + s.key), i === 4 /* A4 par défaut */);
@@ -146,7 +146,7 @@
           '</div>' +
 
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">' + T("pdfexport.orientation.titre") + '</div>' +
+            '<div class="kta-ses-section-title">' + window.ktaIcone("ratio") + " " + T("pdfexport.orientation.titre") + '</div>' +
             '<div class="kta-pdf-radios-inline">' +
               _radioRowInline("pdf_orient", "portrait",  T("pdfexport.orientation.portrait"),  "",  false) +
               _radioRowInline("pdf_orient", "landscape", T("pdfexport.orientation.paysage"),   "",  true)  +
@@ -154,30 +154,30 @@
           '</div>' +
 
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">' + T("pdfexport.annotations.titre") + '</div>' +
-            _cbRow("pdf_inc_points",     T("pdfexport.annotations.points"),     points.length,     true) +
-            _cbRow("pdf_inc_roads",      T("pdfexport.annotations.roads"),      roads.length,      true) +
-            _cbRow("pdf_inc_zones",      T("pdfexport.annotations.zones"),      zones.length,      true) +
-            _cbRow("pdf_inc_structures", T("pdfexport.annotations.structures"), structures.length, true) +
+            '<div class="kta-ses-section-title">' + window.ktaIcone("pencil") + " " + T("pdfexport.annotations.titre") + '</div>' +
+            _cbRow("pdf_inc_points",     window.ktaIcone("map-pin") + " " + T("pdfexport.annotations.points"),     points.length,     true) +
+            _cbRow("pdf_inc_roads",      window.ktaIcone("m-galerie") + " " + T("pdfexport.annotations.roads"),      roads.length,      true) +
+            _cbRow("pdf_inc_zones",      window.ktaIcone("m-zone") + " " + T("pdfexport.annotations.zones"),      zones.length,      true) +
+            _cbRow("pdf_inc_structures", window.ktaIcone("m-pilier") + " " + T("pdfexport.annotations.structures"), structures.length, true) +
             (window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "") +
           '</div>' +
 
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">' + T("pdfexport.image.titre") + '</div>' +
-            _cbRow("pdf_inc_baseimage", T("pdfexport.image.base"), null, true) +
+            '<div class="kta-ses-section-title">' + window.ktaIcone("image") + " " + T("pdfexport.image.titre") + '</div>' +
+            _cbRow("pdf_inc_baseimage", window.ktaIcone("map") + " " + T("pdfexport.image.base"), null, true) +
             (imageLayers.length === 0
               ? '<p style="font-size:12px; color:var(--kta-texte-3); margin:6px 0 0 28px;">' + T("pdfexport.image.aucun") + '</p>'
               : '<div class="kta-pdf-layer-block">' +
                   imageLayers.map(function(l) {
                     const checked = visibleImg.indexOf(l.id) >= 0;
-                    return _cbRowSub("pdf_img_layer_" + _slug(l.id), "🗂️ " + (l.label || l.id), null, checked, l.id);
+                    return _cbRowSub("pdf_img_layer_" + _slug(l.id), window.ktaIcone("image") + " " + (l.label || l.id), null, checked, l.id);
                   }).join("") +
                 '</div>'
             ) +
           '</div>' +
 
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">' + T("pdfexport.data.titre") + '</div>' +
+            '<div class="kta-ses-section-title">' + window.ktaIcone("layers") + " " + T("pdfexport.data.titre") + '</div>' +
             (dataLayers.length === 0
               ? '<p style="font-size:12px; color:var(--kta-texte-3); margin:0;">' + T("pdfexport.data.aucun") + '</p>'
               : '<div class="kta-pdf-layer-block">' +
@@ -185,8 +185,8 @@
                     const checked = visibleData.indexOf(l.id) >= 0;
                     const isEditor = l.id === "editor";
                     const label = isEditor
-                      ? "✏️ " + window.ktaLibelleCalque(l) + " " + T("pdfexport.data.calqueSessionSuffixe")
-                      : "📁 " + (l.label || l.id) +
+                      ? window.ktaIcone("pencil") + " " + window.ktaLibelleCalque(l) + " " + T("pdfexport.data.calqueSessionSuffixe")
+                      : window.ktaIcone("layers") + " " + (l.label || l.id) +
                         (_enModification(l.id) ? " " + T("imgexport.calquesData.parSession") : "");
                     return _cbRowSub("pdf_data_layer_" + _slug(l.id), label, null, checked, l.id);
                   }).join("") +
@@ -195,13 +195,13 @@
           '</div>' +
 
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">' + T("pdfexport.miseEnPage.titre") + '</div>' +
+            '<div class="kta-ses-section-title">' + window.ktaIcone("sliders-horizontal") + " " + T("pdfexport.miseEnPage.titre") + '</div>' +
             _cbRow("pdf_inc_header", T("pdfexport.miseEnPage.header"), null, true) +
           '</div>' +
 
           // Légende en overlay dans un coin (comme l'export PNG avancé).
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">' + T("pdfexport.legende.titre") + '</div>' +
+            '<div class="kta-ses-section-title">' + window.ktaIcone("list") + " " + T("pdfexport.legende.titre") + '</div>' +
             _cbRow("pdf_inc_legende", T("pdfexport.legende.inclure"), null, true) +
             '<div id="pdf_leg_options" style="margin-left:28px; margin-top:6px;">' +
               '<div style="font-size:11px; color:var(--kta-texte-3); margin-bottom:6px;">' + T("pdfexport.legende.position") + '</div>' +
@@ -228,7 +228,7 @@
           '</div>' +
 
           '<div class="kta-ses-section">' +
-            '<div class="kta-ses-section-title">' + T("pdfexport.qualite.titre") + '</div>' +
+            '<div class="kta-ses-section-title">' + window.ktaIcone("sparkles") + " " + T("pdfexport.qualite.titre") + '</div>' +
             _radioRow("pdf_scale", "1",   T("pdfexport.qualite.standard"), true) +
             _radioRow("pdf_scale", "2",   T("pdfexport.qualite.hd"), false) +
             _radioRow("pdf_scale", "0.5", T("pdfexport.qualite.brouillon"), false) +
@@ -242,7 +242,7 @@
         '</div>' +
         '<div class="kta-conv-actions" style="padding:14px 24px 18px;">' +
           '<button class="kta-btn kta-btn-ghost"   id="kta-pdf-annuler" type="button">' + T("pdfexport.btn.annuler") + '</button>' +
-          '<button class="kta-btn kta-btn-primary" id="kta-pdf-generer" type="button">' + T("pdfexport.btn.generer") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-pdf-generer" type="button">' + window.ktaIcone("arrow-down-to-line") + " " + T("pdfexport.btn.generer") + '</button>' +
         '</div>' +
       '</div>';
 
@@ -408,7 +408,7 @@
     if (!corps) return;
     corps.innerHTML =
       '<div style="text-align:center; padding:40px 20px;">' +
-        '<div style="font-size:42px; margin-bottom:14px;">⏳</div>' +
+        '<div style="font-size:42px; margin-bottom:14px;">' + window.ktaIcone("loader-circle") + '</div>' +
         '<div style="font-size:15px; color:var(--kta-texte); font-weight:600;">' + msg + '</div>' +
         '<div style="font-size:12.5px; color:var(--kta-texte-3); margin-top:10px;">' + window.I18n.t("pdfexport.progression.patience") + '</div>' +
       '</div>';
@@ -419,7 +419,7 @@
     if (!corps) return;
     corps.innerHTML =
       '<div style="padding:20px;">' +
-        '<div style="font-size:36px; text-align:center; margin-bottom:10px;">❌</div>' +
+        '<div class="kta-tx-err" style="font-size:36px; text-align:center; margin-bottom:10px;">' + window.ktaIcone("circle-x") + '</div>' +
         '<div style="background:rgba(255,107,107,0.1); border:1px solid rgba(255,107,107,0.4); border-radius:6px; padding:12px; color:var(--kta-erreur); font-size:13.5px;">' +
           '<strong>' + window.I18n.t("pdfexport.erreur.titre") + '</strong><br>' + _escHtml(msg) +
         '</div>' +

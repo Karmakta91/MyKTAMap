@@ -90,11 +90,13 @@ window.LegendCustomization = (function() {
 
   const CATEGORIES = ["icones", "traces", "zones", "structures"];
   const CATEGORY_TITLES = {
-    icones:     "🏷️ Icônes",
-    traces:     "🛣️ Tracés",
-    zones:      "⬛ Zones",
-    structures: "🏛️ Structures"
+    icones:     "Icônes",
+    traces:     "Tracés",
+    zones:      "Zones",
+    structures: "Structures"
   };
+  // Icône SVG du titre de catégorie (celle de l'outil de la carte) : posée hors du texte échappé.
+  const CATEGORY_ICONS = { icones: "tag", traces: "m-galerie", zones: "m-zone", structures: "m-pilier" };
 
   // ── États session + plan ──────────
   // `borders` : bordure choisie pour un type built-in polygone, map séparée de `colors` (pas d'objet
@@ -641,6 +643,10 @@ window.LegendCustomization = (function() {
     return CATEGORY_TITLES[category] || category;
   }
 
+  function categoryIcon(category) {
+    return CATEGORY_ICONS[category] ? window.ktaIcone(CATEGORY_ICONS[category]) + " " : "";
+  }
+
   function listCategories() {
     return CATEGORIES.slice();
   }
@@ -663,7 +669,7 @@ window.LegendCustomization = (function() {
     modal.innerHTML =
       '<div class="kta-readme-modal-boite" style="width:auto; max-width:560px; height:auto; max-height:90vh; padding:0; overflow:hidden; display:flex; flex-direction:column;">' +
         '<div class="kta-readme-modal-header" style="padding:14px 16px;">' +
-          '<span class="kta-readme-modal-titre">' + window.I18n.t("legend.editor.title") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("pencil") + ' ' + window.I18n.t("legend.editor.title") + '</span>' +
           '<button class="kta-panneau-close" id="kta-legend-editor-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-legend-editor-body" style="padding:14px 16px; overflow-y:auto; flex:1 1 auto;">' +
@@ -677,14 +683,14 @@ window.LegendCustomization = (function() {
         '<div style="padding:12px 16px; border-top:1px solid var(--kta-bordure); display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between;">' +
           '<div style="display:flex; gap:8px;">' +
             '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-editor-add">' +
-              window.I18n.t("legend.editor.add") +
+              window.ktaIcone("plus") + ' ' + window.I18n.t("legend.editor.add") +
             '</button>' +
             '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-editor-reset" title="' + window.I18n.t("legend.editor.resetTitle") + '">' +
-              window.I18n.t("legend.editor.reset") +
+              window.ktaIcone("refresh-cw") + ' ' + window.I18n.t("legend.editor.reset") +
             '</button>' +
           '</div>' +
           '<button class="kta-btn kta-btn-primary kta-btn-small" type="button" id="kta-legend-editor-done">' +
-            window.I18n.t("legend.editor.done") +
+            window.ktaIcone("check") + ' ' + window.I18n.t("legend.editor.done") +
           '</button>' +
         '</div>' +
       '</div>';
@@ -692,8 +698,8 @@ window.LegendCustomization = (function() {
     document.documentElement.appendChild(modal);
 
     function _sourceBadge(source) {
-      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="' + window.I18n.t("legend.editor.srcSession") + '">✏️</span>';
-      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="' + window.I18n.t("legend.editor.srcPlan") + '">📋</span>';
+      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="' + window.I18n.t("legend.editor.srcSession") + '">' + window.ktaIcone("pencil") + '</span>';
+      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="' + window.I18n.t("legend.editor.srcPlan") + '">' + window.ktaIcone("map") + '</span>';
       return                          '<span class="kta-legend-src kta-legend-src-default" title="' + window.I18n.t("legend.editor.srcDefault") + '">·</span>';
     }
 
@@ -737,7 +743,7 @@ window.LegendCustomization = (function() {
       const value = (e.label === e.defaultLabel && !isCustomEntry) ? "" : _esc(e.label);
 
       const btnRm = isCustomEntry
-        ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("legend.editor.rmCustomTitle") + '" ' + dataAttrs + '>🗑️</button>'
+        ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("legend.editor.rmCustomTitle") + '" ' + dataAttrs + '>' + window.ktaIcone("trash-2") + '</button>'
         : '';
 
       // Sélecteurs de couleur pour les types dessinables, BUILT-IN comme CUSTOM (mêmes carrés, à chaud).
@@ -793,7 +799,7 @@ window.LegendCustomization = (function() {
         const isIcones = (cat === "icones");
         const sectionOpen = isIcones ? "" : "open";
         html += '<details class="kta-legend-cat" ' + sectionOpen + '>' +
-                  '<summary>' + _esc(title) +
+                  '<summary>' + categoryIcon(cat) + _esc(title) +
                     ' <span class="kta-legend-count">(' + (entries.length + customs.length) + ')</span>' +
                   '</summary>' +
                   '<div class="kta-legend-cat-body">';
@@ -936,7 +942,7 @@ window.LegendCustomization = (function() {
       '<div class="kta-readme-modal-boite" style="width:auto; max-width:420px; height:auto; max-height:90vh; padding:20px; overflow-y:auto;">' +
         '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">' +
           '<h3 style="margin:0; font-size:16px; color:var(--kta-texte);">' +
-            ((prefill && prefill.titre) || window.I18n.t("legend.add.title")) + '</h3>' +
+            window.ktaIcone("plus") + ' ' + ((prefill && prefill.titre) || window.I18n.t("legend.add.title")) + '</h3>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-lc-add-close" style="padding:2px 8px;">✕</button>' +
         '</div>' +
         '<div style="margin-bottom:10px;">' +
@@ -998,7 +1004,7 @@ window.LegendCustomization = (function() {
         '</div>' +
         '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">' +
           '<button class="kta-btn kta-btn-ghost"   type="button" id="kta-lc-add-cancel">' + window.I18n.t("legend.add.cancel") + '</button>' +
-          '<button class="kta-btn kta-btn-primary" type="button" id="kta-lc-add-ok">' + window.I18n.t("legend.add.ok") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" type="button" id="kta-lc-add-ok">' + window.ktaIcone("check") + ' ' + window.I18n.t("legend.add.ok") + '</button>' +
         '</div>' +
       '</div>';
 
@@ -1185,6 +1191,7 @@ window.LegendCustomization = (function() {
     onCustomEntriesChange: onCustomEntriesChange,
 
     categoryTitle:         categoryTitle,
+    categoryIcon:          categoryIcon,
     listCategories:        listCategories,
 
     ouvrirEditeur:         ouvrirEditeur

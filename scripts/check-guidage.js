@@ -45,6 +45,7 @@ function bac(roads, cfg) {
     console: { log(){}, warn(){}, error(){} },
     APP_CONFIG: Object.assign({ scale: 4, multiLevel: false, imageHeight: 1000 }, cfg || {}),
     I18n: { t: (k, p) => k + (p ? JSON.stringify(p) : "") },
+    ktaIcone: () => "",
     formatDistance: (m) => Math.round(m) + " m",
     getRoads: () => [],
     getAllEmbeddedRoads: () => roads,

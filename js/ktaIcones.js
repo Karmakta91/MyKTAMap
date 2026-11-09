@@ -290,7 +290,42 @@
       '<path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path ' +
       'd="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/>',
     "database": '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 ' +
-      '0 21 12"/>'
+      '0 21 12"/>',
+    // Fenêtres d'outils de la carte (hors planche, Lucide).
+    "rocket": '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 ' +
+      '0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 ' +
+      '0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 ' +
+      '0-5"/>',
+    "mouse-pointer-click": '<path d="M14 4.1 12 6"/><path d="m5.1 8-2.9-.8"/><path d="m6 12-1.9 2"/><path d="M7.2 ' +
+      '2.2 8 5.1"/><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 ' +
+      '0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"/>',
+    "circle-dot": '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/>',
+    "mic": '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 ' +
+      '0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+    "joystick": '<path d="M21 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2Z"/><path d="M6 ' +
+      '15v-2"/><path d="M12 15V9"/><circle cx="12" cy="6" r="3"/>',
+    "presentation": '<path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 ' +
+      '5"/>',
+    "house": '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 ' +
+      '2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    "skip-back": '<polygon points="19 20 9 12 19 4 19 20"/><line x1="5" x2="5" y1="19" y2="5"/>',
+    "skip-forward": '<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/>',
+    "pause": '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+    "map-pin": '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 ' +
+      '0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+    "ratio": '<rect width="12" height="20" x="6" y="2" rx="2"/><rect width="20" height="12" x="2" y="6" rx="2"/>',
+    "monitor": '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line ' +
+      'x1="12" x2="12" y1="17" y2="21"/>',
+    "flag": '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" ' +
+      'y2="15"/>',
+    "repeat": '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 ' +
+      '13v1a4 4 0 0 1-4 4H3"/>',
+    "heart": '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 ' +
+      '2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+    "flashlight": '<path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/><line ' +
+      'x1="6" x2="18" y1="6" y2="6"/><line x1="12" x2="12" y1="12" y2="12"/>',
+    "scissors": '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle ' +
+      'cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>'
   };
 
   const ATTRS = ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
@@ -451,6 +486,7 @@
     { e: "🌐", i: "cloud",
       a: /^(?:🌐 )?(?:Afficher les plans (?:du site|serveur)|Show (?:the )?(?:site|server) (?:maps|plans)|Mostrar (?:los )?(?:mapas|planos) del? (?:sitio|servidor)|\| (?:Plan proposé par le serveur|Map (?:offered|provided) by the server|Mapa (?:propuesto|ofrecido) por el servidor))/ },
     { e: "🌐", i: "cloud", a: /^(?:serveur|server|servidor) (?:ou|or|o)\b/ },
+    { e: "🌐", i: "globe", a: /^(?:Géoréférencement|GPS georeferencing|Georeferenc|Georreferenc)/ },
     { e: "💾", i: "hard-drive", a: /^(?:local\)|\| (?:Plan ZIP chargé|ZIP map loaded|Mapa ZIP cargado))/ },
     { e: "💾", i: "hard-drive", a: /^(?:Mémoriser le plan dans l'app|Store the map in the app|Memorizar el mapa en la app)/ },
     { e: "☁️", i: "database" },
@@ -493,7 +529,22 @@
     { e: "🔧", i: "unplug", a: /^(?:Ouvrir l'outil Kill SW|Open the Kill SW tool|Abrir la herramienta Kill SW)/ },
     { e: "🔄", i: "refresh-cw", a: /^(?:Forcer la mise à jour|Force the update|Forzar la actualización)/ },
     { e: "💥", i: "trash-2", a: /^(?:Tout réinitialiser|Reset everything|Reiniciar(?:lo)? todo)/ },
-    { e: "🐛", i: "bug" }
+    { e: "🐛", i: "bug" },
+    // Fenêtres d'outils de la carte : rubriques des Réglages du plan, titres de fenêtre et de section.
+    { e: "📐", i: "map", a: /^(?:Plan ?: |Map: |Mapa: |Plano: )/ },
+    { e: "📍", i: "navigation", a: /^(?:Navigation (?:&|&amp;) tracker|Navegación y tracker)/ },
+    { e: "🚀", i: "rocket", a: /^(?:Performance|Rendimiento|Mode (?:Performance )?ULTRA|ULTRA mode|Modo (?:Rendimiento )?ULTRA)\b/ },
+    { e: "👣", i: "footprints", a: /^(?:Détection des pas|Step detection|Detección de pasos)/ },
+    { e: "🎤", i: "mic", a: /^(?:Commandes vocales|Voice commands|Comandos de voz)/ },
+    { e: "🕹️", i: "joystick", a: /^(?:Pavé classique|Classic pad|Pad clásico)/ },
+    { e: "🏷️", i: "tag", a: /^(?:Tags des points|Tags →|Point tags|Tags de los puntos|Tags à éviter|Tags to avoid|Tags a evitar)/ },
+    { e: "🏠", i: "house", a: /^(?:Réglés depuis l'accueil|Set from the home screen|Ajustados desde el inicio)/ },
+    { e: "📉", i: "m-niveaux", a: /^(?:Niveaux ?: profondeur|Levels: depth|Niveles: profundidad|Profil en long|Elevation profile|Perfil longitudinal)/ },
+    { e: "🎬", i: "presentation", a: /^(?:(?:Activer le )?[Mm]ode présentation|(?:Enable )?[Pp]resentation mode|(?:Activar el )?[Mm]odo presentación)/ },
+    { e: "🪧", i: "signpost", a: /^(?:Feuille de route|Route sheet|Hoja de ruta)/ },
+    { e: "📍", i: "map-pin", a: /^(?:Points · |Puntos · |Points à éviter|Points to avoid|Puntos a evitar)/ },
+    { e: "📊", i: "chart-column",
+      a: /^(?:Stats globales|Global stats|Estadísticas globales|Statistiques du plan|Map statistics|Estadísticas del mapa|Voir les statistiques globales|View the map's global statistics|Ver las estadísticas globales)/ }
   ];
 
   const AUTRE_SENS = [
@@ -503,19 +554,18 @@
     { e: "🛣️", s: "rendu Galerie / Mixte de la 3D", a: /^(?:Galerie|Gallery|Galería|Tunnels|Mixte|Mixed|Mixto)\b/ },
     { e: "🛣️", s: "rendu Mixte de la 3D", b: /🏛️?$/ },
     { e: "🛣️", s: "écran de démarrage", a: /^(?:Grand réseau|Large network|Red grande)/ },
-    { e: "🛣️", s: "catégories et compteurs (recherche, carnet)", b: /(?:points?|puntos?) ·$/i },
-    { e: "🛣️", s: "tableau des filtres", a: /^⬛ 🏛️? (?:Types|Tipos)/ },
-    { e: "⬛", s: "catégories et compteurs (recherche, carnet)", b: /(?:tracés|paths|trazados) ·$/i },
-    { e: "⬛", s: "tableau des filtres", b: /\| 🛣️?$/ },
-    { e: "⬛", s: "type Remblais (pastille de type)", a: /^(?:Remblais|Backfill|Escombros)\b/ },
-    { e: "⬛", s: "zones à éviter de l'itinéraire, zone du Secours, POI Bloqué",
-      a: /^(?:Zones à éviter|Zones to avoid|Zonas a evitar|Définir zone|Define (?:a )?zone|Definir zona|Bloqué|Blocked|Bloqueado)/ },
-    { e: "🏛️", s: "catégories et compteurs (recherche, carnet)", b: /(?:zones|zonas) ·$/i },
-    { e: "🏛️", s: "tableau des filtres", a: /^(?:Types|Tipos)\b/ },
+    // Compteurs de la barre du haut (en minuscules) ; les catégories de la Recherche (capitale) sont en SVG.
+    { e: "🛣️", s: "compteurs de la barre du haut", b: /(?:points?|puntos?) ·$/ },
+    { e: "⬛", s: "compteurs de la barre du haut", b: /(?:tracés|paths|trazados) ·$/ },
+    { e: "⬛", s: "type Remblais (pastille de type), fond noir de l'export",
+      a: /^(?:Remblais|Backfill|Rubble|Escombros|Noir|Black|Negro)\b/ },
+    { e: "⬛", s: "zone du Secours, POI Bloqué",
+      a: /^(?:Définir zone|Define (?:a )?zone|Definir zona|Bloqué|Blocked|Bloqueado)/ },
+    { e: "🏛️", s: "compteurs de la barre du haut", b: /(?:zones|zonas) ·$/ },
     { e: "🏛️", s: "rendus de la 3D", a: /^(?:🛣️?|Les trois rendus|The three renderings|Las tres representaciones|Rendu|Render|Renderizado)/ },
     { e: "🏛️", s: "rendu Structures de la 3D", a: /^(?:Structures|Estructuras) ?(?:- |: structures seules|: structures only|: solo estructuras)/ },
-    { e: "📐", s: "réglages (Plan, calibrage), coordonnées",
-      a: /^(?:Plan\b|Map\b|Mapa\b|Plano\b|Calibr|Point C|Punto C|Coordonnées|Coordinates|Coordenadas)/ },
+    { e: "📐", s: "calibrage, coordonnées (la rubrique Plan des Réglages est en SVG)",
+      a: /^(?:(?:Plan|Map|Mapa|Plano)\b(?! ?:)|Calibr|Point C|Punto C|Coordonnées|Coordinates|Coordenadas)/ },
     { e: "🔍", s: "recherche d'un point dans un formulaire, filtres, analyse, diagnostic",
       a: /^(?:Choisir via|Pick via|Chercher un point|recherche d'un point|recherche ou|Choose via|Search (?:for )?a point|search for an existing|search or|búsqueda de un punto|Elegir mediante|Buscar un punto|búsqueda o|L'image du plan est floue|The map image is blurry|La imagen del mapa|Outils d'analyse|Analysis tools|Herramientas de análisis|Filtres|Filters|Filtros)/ },
     { e: "🔍", s: "recherche de la vue 3D", a: /^(?:(?:Rechercher|Search|Buscar),? (?:—|en haut|at the top|arriba)|en haut, à gauche|at the top|arriba,? a la izquierda)/ },
@@ -590,7 +640,14 @@
     { e: "🗑️", s: "supprimer un sommet (menu de sommet d'une forme)", b: /＋ (?:et|and|y)$/ },
     { e: "🗑️", s: "supprimer, retirer, effacer, tout vider" },
     { e: "🛡️", s: "anonymiser, limiter le dézoom, plans révoqués" },
-    { e: "📄", s: "documents, PDF, page" }
+    { e: "📄", s: "documents, PDF, page" },
+    { e: "🚀", s: "mode performance de l'accueil, optimisations, préréglages" },
+    { e: "👣", s: "pas, podomètre" },
+    { e: "🎤", s: "bouton micro, dictée" },
+    { e: "🕹️", s: "joystick et pavé de la vue 3D" },
+    { e: "🏷️", s: "tags, étiquettes, légende personnalisée" },
+    { e: "🏠", s: "accueil, retour à l'accueil" },
+    { e: "📉", s: "profondeur, pente, niveaux en hauteur hors Réglages" }
   ];
 
   const _PAR_EMOJI = {};

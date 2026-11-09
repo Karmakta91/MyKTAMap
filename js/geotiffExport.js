@@ -447,7 +447,7 @@
     m.innerHTML =
       '<div class="kta-readme-modal-boite kta-export-modal-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + t("geotiff.modal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("satellite") + " " + t("geotiff.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-geotiff-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -457,13 +457,13 @@
             '<p id="kta-geotiff-noncale" class="kta-tx-warn" style="font-size:13px; margin:0 0 12px; line-height:1.5;">' +
               t("geotiff.nonCale") + '</p>') +
           '<div class="kta-aide-section">' +
-            '<div class="kta-aide-section-titre">' + t("geotiff.contenu.titre") + '</div>' +
+            '<div class="kta-aide-section-titre">' + window.ktaIcone("image") + " " + t("geotiff.contenu.titre") + '</div>' +
             _radio("geotiff_contenu", "scan", t("geotiff.contenu.scan"), true, false) +
             _radio("geotiff_contenu", "dessins", t("geotiff.contenu.dessins"), false, false) +
             (window.KtaExtensions && typeof window.KtaExtensions.caseExportValides === "function" ? window.KtaExtensions.caseExportValides() : "") +
           '</div>' +
           '<div class="kta-aide-section">' +
-            '<div class="kta-aide-section-titre">' + t("geotiff.proj.titre") + '</div>' +
+            '<div class="kta-aide-section-titre">' + window.ktaIcone("globe") + " " + t("geotiff.proj.titre") + '</div>' +
             _radio("geotiff_proj", String(EPSG_L93), t("geotiff.proj.l93"), false, false) +
             _radio("geotiff_proj", String(EPSG_WGS84), t("geotiff.proj.wgs84"), true, false) +
           '</div>' +
@@ -477,7 +477,7 @@
             // Non calé : bouton secondaire ET désactivé (aucun style « désactivé » commun aux .kta-btn).
             '<button class="kta-btn ' + (cale ? 'kta-btn-primary' : 'kta-btn-ghost') + '" id="kta-geotiff-go" type="button"' +
               (cale ? '' : ' disabled aria-describedby="kta-geotiff-noncale" style="cursor:not-allowed;"') + '>' +
-              t("imgexport.btn.telecharger") + '</button>' +
+              window.ktaIcone("arrow-down-to-line") + " " + t("imgexport.btn.telecharger") + '</button>' +
           '</div>' +
           '<div id="kta-geotiff-erreur" class="kta-conv-erreur" style="display:none;"></div>' +
         '</div>' +
@@ -495,7 +495,8 @@
 
     const go = document.getElementById("kta-geotiff-go");
     go.addEventListener("click", async function() {
-      const texte = go.textContent;
+      // innerHTML : l'icône du bouton revient avec son libellé après la progression.
+      const texte = go.innerHTML;
       go.disabled = true;
       const err = document.getElementById("kta-geotiff-erreur");
       err.style.display = "none";
@@ -504,7 +505,7 @@
           contenu: _val("geotiff_contenu") || "scan",
           epsg: Number.parseInt(_val("geotiff_proj") || String(EPSG_WGS84), 10),
           facteur: Number.parseFloat(_val("geotiff_resol") || "1"),
-          onProgres: function(f) { go.textContent = "⏳ " + Math.round(f * 100) + " %"; }
+          onProgres: function(f) { go.innerHTML = window.ktaIcone("loader-circle") + " " + Math.round(f * 100) + " %"; }
         });
         _telecharger(res);
         _fermer();
@@ -513,7 +514,7 @@
         err.textContent = t("imgexport.erreur.prefixe", { msg: (e && e.message) || e });
         err.style.display = "block";
         go.disabled = false;
-        go.textContent = texte;
+        go.innerHTML = texte;
       }
     });
   }

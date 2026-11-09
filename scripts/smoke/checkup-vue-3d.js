@@ -8735,14 +8735,13 @@ async function sectionRecherche3D(nav) {
         8000);
       await page.fill("#kta-search-input", texte);
       await page.waitForTimeout(450);
-      // Catégorie lue sur l'icône de la ligne (searchPoints.js > _KIND_EMOJI ; un point : son image).
+      // Catégorie lue sur l'icône SVG de la ligne (searchPoints.js > _KIND_ICO ; un point : son image).
       const idx = await page.evaluate(function (k) {
-        const emoji = { road: "🛣️", zone: "⬛", structure: "🏛️" }[k];
+        const ico = { point: "map-pin", road: "m-galerie", zone: "m-zone", structure: "m-pilier" }[k];
         const l = Array.prototype.slice.call(document.querySelectorAll("#kta-search-results .kta-search-result"))
           .filter(function (r) {
             const ic = r.querySelector(".kta-search-icon");
-            return k === "point" ? !!ic.querySelector("img") || ic.textContent.trim() === "📍" :
-              ic.textContent.trim() === emoji;
+            return (k === "point" && !!ic.querySelector("img")) || !!ic.querySelector(".kta-ico-" + ico);
           })[0];
         return l ? Number(l.dataset.visibleIdx) : -1;
       }, kind);

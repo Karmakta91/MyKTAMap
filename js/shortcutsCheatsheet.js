@@ -35,9 +35,10 @@
     "fn:boussole":      "cheatsheet.tool.boussole",
     "fn:recherche":     "cheatsheet.tool.recherche"
   };
-  // Icône en image quand le vrai bouton n'en est pas une (libellé sans émoji) : la boussole = la rose de son widget
-  // (compass.js), comme son bouton dans la vue 3D ; 🧭 reste au Tracker.
-  const ACTION_ICONE = { "fn:boussole": "icon/compass.svg" };
+  // Icône SVG de l'outil (la même que son bouton dans la barre de la carte).
+  const ACTION_ICONE = { "group:edition": "pencil", "group:mesure": "ruler", "group:zones": "m-zone",
+    "group:structures": "m-pilier", "group:tracker": "navigation", "group:traces": "m-galerie", "fn:legende": "list",
+    "fn:boussole": "compass", "fn:recherche": "search" };
 
   // Carte 2D : mapBearing.js > _rotMolette (Maj + molette, bouton nord), ajusterSommets.js (appui long, souris
   // comprise), Leaflet (molette, flèches et + / − quand la carte a le focus, Échap ferme la bulle), utils.js >
@@ -155,8 +156,7 @@
     return '<div class="kta-cheat-row" data-ligne="' + _esc(ligne.id) + '">' +
              '<span class="kta-cheat-keys">' + kbds + "</span>" +
              '<span class="kta-cheat-label">' +
-               (ligne.icone ? '<img class="kta-cheat-icone" src="' + _esc(ligne.icone) +
-                 '" alt="" draggable="false">' : "") +
+               (ligne.icone ? window.ktaIcone(ligne.icone, { classe: "kta-cheat-icone" }) : "") +
                _esc(ligne.label) + "</span>" +
            "</div>";
   }

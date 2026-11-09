@@ -277,7 +277,7 @@
           '<p style="font-size:12.5px; color:var(--kta-texte-3); font-style:italic;">' + t("battery.critical.note") + '</p>' +
         '</div>' +
         '<div class="kta-conv-actions" style="padding:14px 18px 18px; gap:8px;">' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-bat-perf" type="button">' + t("battery.critical.btnConfig") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-bat-perf" type="button">' + window.ktaIcone("settings") + ' ' + t("battery.critical.btnConfig") + '</button>' +
           '<button class="kta-btn kta-btn-primary" id="kta-bat-ok"   type="button">' + t("battery.critical.ok") + '</button>' +
         '</div>' +
       '</div>';
