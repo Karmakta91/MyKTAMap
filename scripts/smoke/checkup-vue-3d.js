@@ -100,6 +100,8 @@
 // Niveaux entremêlés (50, =entremeles) : union des vides (parois coupées, trous du gabarit, plans cachés en structures),
 // collision par tranche de hauteur. Zone jonction de niveau (51, =zonejonction) : sol et plafond sur la pente du tracé
 // jonction qui la traverse, piliers et mur en pente, caméra, pilier de l'autre niveau qui arrête, bascule à mi-longueur.
+// Conduit vers le niveau du dessus (52, =puits-dessus) : aération et puits sous une galerie du dessus = débouche à son sol ;
+// sous sa roche = parois sur 6 m, rien en travers (rayon vertical), coins fermés, écart +1 m et entremêlé.
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
@@ -10155,6 +10157,109 @@ async function sectionEntremeles(nav) {
   }
 }
 
+// ── 52. Conduit vers le niveau du dessus : il débouche dans une galerie au droit, sinon il traverse la roche
+// (vue3d.js > _sommetPlafond, GABARIT.conduit, _matsVoisins, rayon ; KTA_V3D_SEUL=puits-dessus) ───────────────────────
+// Plan FICTIF en mémoire : niveaux 0 et +1 (2 m chacun). Au 0, galerie est-ouest de x = −30 à 30 ; au +1, une galerie
+// décalée (z = 8, x de −30 à 10) et une au droit du 0 (z = 0, x de 15 à 30). Aérations (pa, jamais liées) en (0, 0) sous
+// la roche du +1 et en (20, 0) sous sa galerie ; puits à échelons (jpe, 0 ↔ +1) en (−15, 0) sous la roche et en (25, 0)
+// sous la galerie. Écart du +1 : +1 m (sol à 3 m), puis −1,85 m (entremêlé : son plafond 15 cm au-dessus du nôtre).
+// Sous la roche : parois jusqu'à VOLUME.long au-delà du plafond, rayon vertical depuis le centre qui ne touche rien
+// d'autre que la grille (aucun plafond ni sol du +1 en travers), coins fermés (rayons diagonaux à h + 0,12 et h + 0,5 :
+// paroi à la demi-diagonale). Sous la galerie : le conduit débouche au sol du +1 (au plus bas à notre plafond), le
+// rayon vertical touche le plafond du +1. Trois rendus, « Voisins » puis « Le mien » (même conduit).
+async function sectionPuitsDessus(nav) {
+  const nom = "§ 52 ";
+  console.log("§ 52 — conduit vers le niveau du dessus : débouche dans une galerie, sinon traverse la roche");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-puits-dessus", [0, 1], { "0": -25, "1": -22 },
+    { "0": 2, "1": 2 }, function () {
+      const P = window.__fxP;
+      window.setRoads([
+        { uid: "rd_pd_0", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] },
+        { uid: "rd_pd_1a", type: "principal", level: 1, points: [P(-30, 8), P(10, 8)] },
+        { uid: "rd_pd_1b", type: "principal", level: 1, points: [P(15, 0), P(30, 0)] }
+      ]);
+      window.setEditorPoints([
+        Object.assign({ id: "Aération roche", uid: "pt_pd_pa_r", level: 0, tags: ["pa"] }, P(0, 0)),
+        Object.assign({ id: "Aération galerie", uid: "pt_pd_pa_g", level: 0, tags: ["pa"] }, P(20, 0)),
+        Object.assign({ id: "Puits roche", uid: "pt_pd_jpe_r", level: 0, niveaux: [0, 1], tags: ["jpe"] }, P(-15, 0)),
+        Object.assign({ id: "Puits galerie", uid: "pt_pd_jpe_g", level: 0, niveaux: [0, 1], tags: ["jpe"] }, P(25, 0))
+      ]);
+    });
+  const page = t.page;
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  try {
+    for (const ecart of [1, -1.85]) {
+      for (const rendu of ["mixte", "structures", "galerie"]) {
+        for (const vus of ["voisins", "mien"]) {
+          const r = await page.evaluate(async function (q) {
+            const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+            window.setPlanProfondeurs(window._currentLoadedPlanId, { "0": -25, "1": -25 + 2 + q.ecart });
+            K.reglerNiveauxVus(q.vus);
+            await window.__fxOuvrir(5, 0, 90, 0, q.rendu);
+            K.reglerNiveauxVus(q.vus);
+            await window.__fxImages(60);
+            const e = K.etat();
+            const lire = function (v) {
+              const b = v.bouche, cx = (b[0][0] + b[2][0]) / 2, cz = (b[0][1] + b[2][1]) / 2;
+              const haut = K.rayon(cx * sc, cz * sc, e.hauteur - 0.3).faces.filter(function (f) {
+                return f.mat !== "opaque";
+              });
+              const coins = b.map(function (c) {
+                return [0.12, 0.5].map(function (dh) {
+                  const f = K.rayon(cx * sc, cz * sc, e.hauteur + dh, [c[0] - cx, 0, c[1] - cz]).vu;
+                  return f ? { d: f.dist, mat: f.mat } : null;
+                });
+              });
+              return { construit: v.construit, conduit: v.conduit, yMax: v.yMax, haut: haut[0] || null, coins: coins,
+                demiDiag: Math.hypot(b[0][0] - cx, b[0][1] - cz) };
+            };
+            const par = function (tag, x) {
+              const v = e.volumes.filter(function (o) {
+                return o.tag === tag && Math.abs(window.__fxRel({ x: o.x, y: o.y })[0] - x) < 1.5;
+              })[0];
+              return v ? lire(v) : null;
+            };
+            return { h: e.hauteur, voisins: e.voisins.niveaux.map(function (n) { return [n.niveau, n.dy]; }),
+              paR: par("pa", 0), paG: par("pa", 20), jpeR: par("jpe", -15), jpeG: par("jpe", 25) };
+          }, { ecart: ecart, rendu: rendu, vus: vus });
+          const k = nom + rendu + " « " + vus + " », écart " + ecart + " m : ";
+          const dy = 2 + ecart, h = r.h;
+          const ferme = function (v) {
+            return !!v && v.coins.every(function (c) {
+              return c.every(function (f) { return !!f && f.mat === "paroi" && pr(f.d, v.demiDiag, 0.03); });
+            });
+          };
+          const roche = function (v, base) {
+            return !!v && v.construit && !!v.conduit && v.conduit.roche === true && pr(v.conduit.cime, base + 6) &&
+              v.haut === null && ferme(v);
+          };
+          verifier(roche(r.paR, h),
+            k + "aération sous la roche du +1 : parois jusqu'à 6 m au-dessus du plafond, rien en travers du conduit " +
+            "(ni plafond ni sol du +1), coins fermés", r.paR);
+          verifier(roche(r.jpeR, Math.max(dy, h)),
+            k + "puits 0 ↔ +1 sous la roche du +1 : parois même quand le +1 est entremêlé, conduit perdu dans le " +
+            "noir, coins fermés", r.jpeR);
+          const plafond = vus === "voisins" ? dy + 2 : null;
+          const debouche = function (v) {
+            return !!v && v.construit && !!v.conduit && v.conduit.roche === false &&
+              pr(v.conduit.cime, Math.max(dy, h)) &&
+              (plafond === null ? v.haut === null : !!v.haut && pr(v.haut.y, plafond, 0.02) && v.haut.voisin === 1);
+          };
+          verifier(debouche(r.paG) && debouche(r.jpeG),
+            k + "aération et puits sous la galerie du +1 : le conduit débouche à son sol (" + Math.max(dy, h) +
+            " m), le rayon vertical touche " + (plafond === null ? "rien (+1 non montré)" : "le plafond du +1 (" +
+            plafond + " m)"), { paG: r.paG, jpeG: r.jpeG });
+        }
+      }
+    }
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 51. Zone jonction de niveau et structures en pente (galerieEmprise.js > penteDeZone ; vue3d.js > _zoneJonction,
 // _structurePente, _bloqueEnZone ; KTA_V3D_SEUL=zonejonction) ────────────────────────────────────────────────────
 // Plan FICTIF en mémoire : niveaux 0 (sol −25) et −1 (sol −30), 2,5 m chacun. Galerie du 0 de x = −30 à 2, tracé
@@ -11802,7 +11907,7 @@ async function sectionGestesDoigt(nav) {
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
       SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
-      SEUL === "entremeles" || SEUL === "zonejonction") {
+      SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -18119,6 +18224,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "solvoile") await sectionSolVoile(nav);
     if (!SEUL || SEUL === "entremeles") await sectionEntremeles(nav);
     if (!SEUL || SEUL === "zonejonction") await sectionZoneJonction(nav);
+    if (!SEUL || SEUL === "puits-dessus") await sectionPuitsDessus(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

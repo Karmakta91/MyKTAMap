@@ -2759,6 +2759,9 @@
     _grainSol(m, _e.textures);
     m.boucheSol = bouche(1);
     m.bouchePlafond = bouche(2);
+    // Bouche d'un conduit qui traverse la roche du niveau du dessus (_sommetPlafond) : bit du plafond et bit
+    // GABARIT.conduit, que les sols et plafonds des voisins du dessus respectent (_matsVoisins).
+    m.bouchePlafondConduit = bouche(2 | 64);
     [[m.sol, 1], [m.solGalerie, 1], [m.rubans, 1], [m.plafond, 2], [m.plafondGalerie, 2]].forEach(function (x) {
       x[0].stencilWrite = true;   // test du gabarit (opérations « garder » : rien n'y est écrit)
       x[0].stencilRef = x[1];
@@ -3263,7 +3266,7 @@
 
   // Copies des matériaux qui testent le gabarit, relues sur l'original (carte, couleur : 🧱 les change), une par côté
   // ("haut" | "bas") : elles ne lisent que le bit de leur côté (GABARIT : trous d'un niveau entremêlé, _trousEntre),
-  // jamais les bouches du niveau actif.
+  // jamais les bouches du niveau actif ; celles du dessus lisent en plus GABARIT.conduit (_sommetPlafond).
   function _matsVoisins(cote) {
     const e = _e, k2 = cote === "haut" ? "haut" : "bas", bits = _bitsVoisin(k2 === "haut");
     if (!e.matsV) e.matsV = {};
@@ -3272,9 +3275,16 @@
       MATS_GABARIT.forEach(function (k) {
         const m = e.mats[k].clone(), bit = /^plafond/.test(k) ? bits.plafond : bits.sol;
         m.stencilWrite = true;
-        m.stencilRef = bit;
-        m.stencilFuncMask = bit;
-        m.stencilFunc = THREE.NotEqualStencilFunc;
+        if (k2 === "haut") {
+          // Dessus : caché aussi dans la bouche d'un conduit qui traverse sa roche (dessiné si aucun des deux bits).
+          m.stencilRef = 0;
+          m.stencilFuncMask = bit | GABARIT.conduit;
+          m.stencilFunc = THREE.EqualStencilFunc;
+        } else {
+          m.stencilRef = bit;
+          m.stencilFuncMask = bit;
+          m.stencilFunc = THREE.NotEqualStencilFunc;
+        }
         e.matsV[k2][k] = m;
       });
     }
@@ -3553,8 +3563,9 @@
   // PENTE.sortie de celui du niveau ; la scène change de niveau à mi-longueur du tracé, comme dans la galerie inclinée.
   const ENTRE = { eps: 1e-3, pas: 0.25, zoneFace: 0.5, fin: 1, longe: 1 };
   // Bits du gabarit (stencil) : bouches et trous du sol et du plafond du niveau actif (1, 2), sols et plafonds des
-  // voisins du dessus (4, 8) et du dessous (16, 32). Chaque matériau ne lit et n'écrit que son bit.
-  const GABARIT = { sol: 1, plafond: 2, vSolHaut: 4, vPlafHaut: 8, vSolBas: 16, vPlafBas: 32 };
+  // voisins du dessus (4, 8) et du dessous (16, 32), conduit dans la roche du dessus (64 : bouche d'un passage,
+  // _sommetPlafond). Chaque matériau ne lit et n'écrit que ses bits.
+  const GABARIT = { sol: 1, plafond: 2, vSolHaut: 4, vPlafHaut: 8, vSolBas: 16, vPlafBas: 32, conduit: 64 };
 
   function _bitsVoisin(dessus) {
     return dessus ? { sol: GABARIT.vSolHaut, plafond: GABARIT.vPlafHaut }
@@ -4061,6 +4072,46 @@
       pente: !!q, t: q ? +q.t.toFixed(4) : null };
   }
 
+  // Relevé (checkup) : ce qu'on VOIT le long d'un rayon parti de (x, y px ; y0 m, repère du niveau de la scène) vers
+  // `dir` [dx, dy, dz] (vers le haut par défaut) → { vu: { y, dist, mat, voisin } | null, faces : les 6 premières }.
+  // Le gabarit est rejoué : une bouche ou un trou traversé par le rayon masque, sur lui, les matériaux qui testent son
+  // bit (c'est ce que fait l'écran pour le pixel de ce rayon) ; une face tournée du mauvais côté ne compte pas.
+  function rayon(x, y, y0, dir) {
+    if (!_e) return null;
+    const e = _e, d = dir || [0, 1, 0], mailles = [];
+    e.scene.traverse(function (o) { if (o.isMesh && _montreDansScene(o)) mailles.push(o); });
+    const r = new THREE.Raycaster(new THREE.Vector3(x / e.sc, y0, y / e.sc),
+      new THREE.Vector3(d[0], d[1], d[2]).normalize(), 0, 400);
+    const hits = r.intersectObjects(mailles, false);
+    const nomMat = function (m) {
+      let n = null;
+      Object.keys(e.mats).forEach(function (k) { if (e.mats[k] === m) n = k; });
+      Object.keys(e.matsV || {}).forEach(function (c) {
+        Object.keys(e.matsV[c]).forEach(function (k) { if (e.matsV[c][k] === m) n = k + ":" + c; });
+      });
+      return n;
+    };
+    let bits = 0;
+    hits.forEach(function (h) {
+      const m = h.object.material;
+      if (m.stencilWrite && m.stencilFunc === THREE.AlwaysStencilFunc) bits |= m.stencilRef;
+    });
+    const faces = hits.filter(function (h) {
+      const m = h.object.material;
+      if (m.colorWrite === false) return false;
+      if (!m.stencilWrite) return true;
+      if (m.stencilFunc === THREE.NotEqualStencilFunc) return !(bits & m.stencilFuncMask & m.stencilRef);
+      if (m.stencilFunc === THREE.EqualStencilFunc) return (bits & m.stencilFuncMask) === m.stencilRef;
+      return true;
+    }).map(function (h) {
+      let v = null;
+      for (let q = h.object; q && v === null; q = q.parent) if (q.userData.voisin !== undefined) v = q.userData.voisin;
+      return { y: +h.point.y.toFixed(3), dist: +h.distance.toFixed(3), mat: nomMat(h.object.material),
+        famille: h.object.userData.famille || null, voisin: v };
+    });
+    return { vu: faces[0] || null, faces: faces.slice(0, 6), bits: bits };
+  }
+
   // Relevé (checkup) : contexte entremêlé, parois dessinées (repère du niveau actif, voisins décalés de leur
   // altitude), trous, plans cachés, structures posées sur une pente.
   function entremeles() {
@@ -4470,15 +4521,15 @@
   }
 
   // Étendue verticale (m, repère du niveau de la scène) d'un passage vers les niveaux qu'il relie : `bas` = sol du niveau
-  // lié le plus proche au-dessous, `basParoi` = son plafond, `haut` = sol du niveau lié le plus proche au-dessus (null
-  // sans niveau de ce côté). ⚠️ contrat (décision produit) : puits, escalier et échelle vont d'un niveau à l'autre à
-  // leur altitude réelle (_altitudeVoisin : la même que les niveaux voisins montrés), parois dans la roche entre les
-  // deux ; jamais une géométrie inversée sur des données incohérentes (niveaux qui se chevauchent : pas de paroi).
+  // lié le plus proche au-dessous, `basParoi` = son plafond, `haut` = sol du niveau lié le plus proche au-dessus,
+  // `niveauHaut` = ce niveau (null sans niveau de ce côté). ⚠️ contrat (décision produit) : puits, escalier et échelle
+  // vont d'un niveau à l'autre à leur altitude réelle (_altitudeVoisin : la même que les niveaux voisins montrés) ; vers
+  // le haut, le sommet du conduit suit _sommetPlafond ; jamais une géométrie inversée sur des données incohérentes.
   function _etenduePassage(autres) {
-    const out = { bas: null, basParoi: null, haut: null };
+    const out = { bas: null, basParoi: null, haut: null, niveauHaut: null };
     autres.forEach(function (n) {
       const a = _altitudeVoisin(n);
-      if (a.dessus) { if (out.haut === null || a.dy < out.haut) out.haut = a.dy; }
+      if (a.dessus) { if (out.haut === null || a.dy < out.haut) { out.haut = a.dy; out.niveauHaut = n; } }
       else if (out.bas === null || a.dy > out.bas) { out.bas = a.dy; out.basParoi = a.dy + _hauteurDuNiveau(n); }
     });
     return out;
@@ -4696,7 +4747,7 @@
 
   function _construireVolume(v) {
     const e = _e, lots = { parois: new Lot(), opaque: new Lot(), lumineux: new Lot(), sol: new Lot(),
-      plafond: new Lot() };
+      plafond: new Lot(), plafondConduit: new Lot() };
     const g = new THREE.Group();
     g.userData.famille = "passage";
     if (v.genre === "pente") _pente(v, lots); else if (v.acces) _acces(v, lots, g); else _puits(v, lots, g);
@@ -4715,6 +4766,7 @@
     };
     ajouter(lots.sol, e.mats.boucheSol, -1, "boucheSol");
     ajouter(lots.plafond, e.mats.bouchePlafond, -1, "bouchePlafond");
+    ajouter(lots.plafondConduit, e.mats.bouchePlafondConduit, -1, "bouchePlafond");
     if (lots.parois.p.length) _paroiTexturee();
     ajouter(lots.parois, e.mats.paroi, 0, "paroiPassage");
     ajouter(lots.opaque, e.mats.opaque, 0, "passage");
@@ -4726,7 +4778,8 @@
     });
     const n = function (l) { return l.p.length / 9; };
     v.stats = { triangles: n(lots.parois) + n(lots.opaque) + n(lots.lumineux), bouchesSol: n(lots.sol),
-      bouchesPlafond: n(lots.plafond), cadre: n(lots.lumineux) > 0, yMin: Number.isFinite(y0) ? +y0.toFixed(2) : null,
+      bouchesPlafond: n(lots.plafond) + n(lots.plafondConduit), conduit: v.conduit || null,
+      cadre: n(lots.lumineux) > 0, yMin: Number.isFinite(y0) ? +y0.toFixed(2) : null,
       yMax: Number.isFinite(y1) ? +y1.toFixed(2) : null,
       cielVu: g.children.some(function (o) { return o.userData.famille === "ciel"; }),
       marches: v.relMarches || null };
@@ -4742,12 +4795,11 @@
     const murs = function (y0, y1) {
       for (let k = 0; k < 4; k++) _paroiY(lots.parois, ring[k], ring[(k + 1) % 4], y0, y1);
     };
-    // Parois de notre sol au plafond du niveau lié dessous, de notre plafond au sol du niveau lié dessus ; sans niveau
-    // lié de ce côté (puits de surface, aération), VOLUME.long qui se perd dans le noir.
+    // Parois de notre sol au plafond du niveau lié dessous ; vers le haut, jusqu'au sommet du conduit (_sommetPlafond).
     const fond = Number.isFinite(X.basParoi) ? Math.min(X.basParoi, 0) : -L;
-    const cime = Number.isFinite(X.haut) ? Math.max(X.haut, h) : h + L;
+    const S = v.plafond ? _sommetPlafond(v, ring) : { cime: h, roche: false }, cime = S.cime;
     if (v.sol) { murs(fond, 0); _quadPlat(lots.sol, ring, 0); }
-    if (v.plafond) { murs(h, cime); _quadPlat(lots.plafond, ring, h); }
+    if (v.plafond) { murs(h, cime); _quadPlat(S.roche ? lots.plafondConduit : lots.plafond, ring, h); }
     if (v.forme === "escalier") _marches(v, lots.opaque, Q, _couleurFixe(COULEUR_CALCAIRE));
     if (v.echelons) _echellePuits(v, lots.opaque, Q, _couleurFixe(COULEUR_FER));
     if (v.grille) {
@@ -4778,6 +4830,46 @@
         _quadPlat(lots.lumineux, _sensPositif([Q(r[0], r[2]), Q(r[1], r[2]), Q(r[1], r[3]), Q(r[0], r[3])]), y, or);
       });
     }
+  }
+
+  // Sommet (m) d'un conduit ouvert dans le plafond (contour `ring`, m) → { cime, roche } ; relevé dans v.conduit.
+  // ⚠️ contrat (décision produit) : niveau du dessus = le niveau lié le plus proche au-dessus (_etenduePassage) ; sans
+  // niveau lié (aération d'un seul niveau ; ni accès ni puits de surface), le niveau juste au-dessus
+  // (_niveauxEdition), montré ou non. Toute l'emprise dans son vide (_videDe : galerie au droit du puits ; en
+  // structures, galeries et chambres) :
+  // le conduit DÉBOUCHE à son sol (au moins à notre plafond : écart nul ou négatif, rien à traverser). Sinon il
+  // traverse sa roche : parois jusqu'à VOLUME.long au-delà de notre plafond (ou du sol lié, s'il est plus haut),
+  // qui se perdent dans le noir, et bouche au bit GABARIT.conduit : les sols et plafonds des voisins du dessus ne se
+  // dessinent pas en travers (_matsVoisins). Puits de surface (ciel), accès, rien au-dessus : VOLUME.long.
+  // 🩸 Les parois des tubes d'un voisin ne lisent pas le gabarit : une galerie du dessus qui ne couvre qu'une partie
+  // de l'emprise reste visible là où elle coupe le conduit (fermé, sans trou).
+  function _sommetPlafond(v, ring) {
+    const e = _e, h = e.hauteur, L = VOLUME.long, X = v.ext || {};
+    const base = Number.isFinite(X.haut) ? Math.max(X.haut, h) : h;
+    let n = null, dy = null;
+    if (Number.isFinite(X.haut) && Number.isInteger(X.niveauHaut)) { n = X.niveauHaut; dy = X.haut; }
+    else if (!v.ciel && !v.acces) {
+      const l = _niveauxEdition(), i = l.indexOf(e.niveau);
+      if (i > 0) { n = l[i - 1]; dy = _altitudeVoisin(n).dy; }
+    }
+    let r = { cime: base + L, roche: false };
+    if (n !== null) {
+      // Rendu structures (vide partout pour les sols et les parois) : le vide du modèle mixte, galeries et chambres du
+      // niveau du dessus ; ailleurs, c'est sa roche.
+      const V = e.rendu === "structures" && window.KtaGalerie ? (function () {
+        const m = window.KtaGalerie.modele(n, true);
+        return { partout: false, vide: function (x, y) { return !!m && (m.dedans(x, y) || m.enChambre(x, y)); } };
+      })() : _videDe(n), sc = e.sc;
+      let cx = 0, cz = 0;
+      ring.forEach(function (q) { cx += q[0] / ring.length; cz += q[1] / ring.length; });
+      const pts = [[cx, cz]].concat(ring.map(function (q) {
+        return [cx + (q[0] - cx) * 0.95, cz + (q[1] - cz) * 0.95];
+      }));
+      const debouche = V.partout || pts.every(function (q) { return V.vide(q[0] * sc, q[1] * sc); });
+      r = debouche ? { cime: Math.max(dy, h), roche: false } : { cime: base + L, roche: true };
+    }
+    v.conduit = { cime: +r.cime.toFixed(3), roche: r.roche, niveau: n };
+    return r;
   }
 
   // Marches d'une cage d'escalier, le long de s : vers le haut (du sol, à travers le plafond) et / ou vers le
@@ -11575,7 +11667,7 @@
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
     reglerPortee: reglerPortee, reglerLampe: reglerLampe, reglerFaisceau: reglerFaisceau,
     reglerPleinJour: reglerPleinJour, limiterPortee: limiterPortee, zoomer: zoomer, reglerNiveauxVus: reglerNiveauxVus,
-    reglerEstomper: reglerEstomper, altitude: altitude, entremeles: entremeles,
+    reglerEstomper: reglerEstomper, altitude: altitude, entremeles: entremeles, rayon: rayon,
     origineItineraire: origineItineraire, placerSurTracker: placerSurTracker, trackerRecale: trackerRecale,
     charge: function () { return !!THREE; },
     greffer: greffer,
