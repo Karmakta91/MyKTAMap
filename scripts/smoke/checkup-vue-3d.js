@@ -102,6 +102,8 @@
 // jonction qui la traverse, piliers et mur en pente, caméra, pilier de l'autre niveau qui arrête, bascule à mi-longueur.
 // Conduit vers le niveau du dessus (52, =puits-dessus) : aération et puits sous une galerie du dessus = débouche à son sol ;
 // sous sa roche = parois sur 6 m, rien en travers (rayon vertical), coins fermés, écart +1 m et entremêlé.
+// Jonction de niveaux (53, =jonction-tremie) : zone jonction d'un calque qui porte la pente en mixte et structures, trémie
+// au-dessus de la montée (rayons verticaux à chaque pas, en montant et en descendant, 4 écarts, avec et sans zone).
 // 🛡️ Limiter la portée (41, =limiter) : cochée par défaut, question à la décoche, « Tout le plan » (portée, recul, scène,
 // brouillard), recochée au téléphone à la réouverture, retenue au PC, figée pendant une partie.
 // Panneaux de POI dézoomés (42, =panneaux) : 1 000 POI fictifs, « Tout le plan » : icône seule de 28 px, aucun
@@ -10260,6 +10262,146 @@ async function sectionPuitsDessus(nav) {
   }
 }
 
+// ── 53. Jonction de niveaux : la pente suit le rendu, trémie au-dessus de la montée (galerieEmprise.js > memeObjet ;
+// vue3d.js > _penteDeLaZone, _zoneJonction, _plansTremie, _tremiePente, rayon ; KTA_V3D_SEUL=jonction-tremie) ──────
+// Plan FICTIF en mémoire : niveaux 0 et +1 (2,5 m chacun). Galerie du 0 de x = −30 à 2, tracé jonction 0 → +1 de x = 0
+// à 30, galerie du +1 de x = 28 à 60 ; zone jonction (0 et +1) x ∈ [4, 20], z ∈ [−6, 6]. Tracé et zone en session
+// puis dans un CALQUE (getAllEmbeddedRoads / getAllEmbeddedZones qui rendent des copies à chaque appel, comme road.js
+// et utils.js). (a) Mixte et structures, ouvert directement et après la bascule galerie → structures : la zone porte la
+// pente (une zone en pente dessinée) et la galerie inclinée n'a aucune paroi dans la zone ; galerie : le tracé seul.
+// (b) On monte la jonction pas à pas puis on la redescend : à chaque pas, le rayon vertical vers le haut part de l'œil
+// et touche d'abord une surface du niveau de la scène (plafond fermé, rien du niveau d'arrivée en travers), le rayon
+// vers le bas touche d'abord son sol (jamais le sol du niveau du dessus traversé) ; scène au +1 en haut, au 0 en bas.
+// Écart du +1 : +4 m (1,5 m de roche), +3 m, +2,5 m (roche nulle), +1,2 m (entremêlé) ; avec et sans zone ; trois
+// rendus ; « Voisins », puis « Le mien ».
+async function sectionJonctionTremie(nav) {
+  const nom = "§ 53 ";
+  console.log("§ 53 — jonction de niveaux : pente qui suit le rendu, trémie au-dessus de la montée");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-jonction-tremie", [0, 1], { "0": -25, "1": -21 },
+    { "0": 2.5, "1": 2.5 }, function () {
+      const P = window.__fxP;
+      window.__fxJ = {
+        roads: [{ uid: "rd_jt_0", type: "principal", level: 0, points: [P(-30, 0), P(2, 0)] },
+          { uid: "rd_jt_1", type: "principal", level: 1, points: [P(28, 0), P(60, 0)] },
+          { uid: "rd_jt_j", type: "jonction", level: 0, fromLevel: 0, toLevel: 1, points: [P(0, 0), P(30, 0)] }],
+        zones: [{ uid: "zn_jt", type: "pente", level: 0, niveaux: [0, 1],
+          points: [P(4, -6), P(20, -6), P(20, 6), P(4, 6)] }]
+      };
+      // Données en session ou dans un calque (copies neuves à chaque lecture), avec ou sans la zone. Les deux niveaux
+      // portent quelque chose dans les deux cas (le +1 est montré en « Voisins ») : la liste des niveaux occupés de
+      // l'app ne lit pas ce calque simulé.
+      window.ktaNiveauxOccupes = function () { return [0, 1]; };
+      window.__fxDonnees = function (calque, zone, ecart) {
+        const F = window.__fxJ, zs = zone ? F.zones : [];
+        window.setPlanProfondeurs(window._currentLoadedPlanId, { "0": -25, "1": -25 + ecart });
+        const copies = function (l) {
+          return function () { return l.map(function (o) { return Object.assign({}, o); }); };
+        };
+        if (calque) {
+          window.setRoads([]); window.setZones([]);
+          window.getAllEmbeddedRoads = copies(F.roads); window.getAllEmbeddedZones = copies(zs);
+        } else {
+          window.getAllEmbeddedRoads = window.getAllEmbeddedZones = function () { return []; };
+          window.setRoads(F.roads.slice()); window.setZones(zs.slice());
+        }
+      };
+    });
+  const page = t.page;
+  try {
+    for (const calque of [false, true]) {
+      const r = await page.evaluate(async function (q) {
+        const K = window.KtaVue3D, sc = window.APP_CONFIG.scale, out = {};
+        window.__fxDonnees(q.calque, true, 4);
+        K.reglerNiveauxVus("voisins");
+        const lire = function () {
+          const e = K.etat(), v = e.volumes.filter(function (o) { return o.genre === "pente"; })[0];
+          const dans = (v && v.paroisPente || []).filter(function (w) {
+            const x0 = window.__fxRel({ x: w[0] * sc, y: 0 })[0], x1 = window.__fxRel({ x: w[2] * sc, y: 0 })[0];
+            return Math.max(x0, x1) > 4.05 && Math.min(x0, x1) < 19.95;
+          }).length;
+          return { zones: K.entremeles().zonesPente, paroisDansZone: dans, construit: !!(v && v.construit) };
+        };
+        for (const rendu of ["mixte", "structures", "galerie"]) {
+          await window.__fxOuvrir(2, 0, 90, 0, rendu);
+          out[rendu] = lire();
+        }
+        await window.__fxOuvrir(2, 0, 90, 0, "galerie");
+        K.basculerRendu("structures");
+        await window.__fxImages(40);
+        out.bascule = lire();
+        return out;
+      }, { calque: calque });
+      const k = nom + (calque ? "tracé et zone d'un calque" : "tracé et zone en session") + " : ";
+      const zonePorte = function (o) { return !!o && o.construit && o.zones >= 1 && o.paroisDansZone === 0; };
+      verifier(zonePorte(r.mixte) && zonePorte(r.structures) && zonePorte(r.bascule),
+        k + "mixte, structures et bascule galerie → structures : la zone jonction porte la pente, aucune paroi de " +
+        "galerie inclinée dans la zone", r);
+      verifier(!!r.galerie && r.galerie.zones === 0 && r.galerie.paroisDansZone > 0,
+        k + "rendu galerie : le tracé seul (galerie inclinée en tube, pas de zone)", r.galerie);
+    }
+    const cas = [];
+    for (const zone of [true, false]) {
+      for (const ecart of [4, 3, 2.5, 1.2]) {
+        for (const rendu of ["mixte", "structures", "galerie"]) cas.push({ zone, ecart, rendu, vus: "voisins" });
+      }
+    }
+    cas.push({ zone: true, ecart: 3, rendu: "structures", vus: "mien" });
+    cas.push({ zone: false, ecart: 3, rendu: "mixte", vus: "mien" });
+    for (const c of cas) {
+      const r = await page.evaluate(async function (q) {
+        const K = window.KtaVue3D;
+        window.__fxDonnees(true, q.zone, q.ecart);
+        K.reglerNiveauxVus(q.vus);
+        await window.__fxOuvrir(-1, 0, 90, 0, q.rendu);
+        K.reglerNiveauxVus(q.vus);
+        const montres = K.etat().voisins.niveaux.map(function (n) { return n.niveau; });
+        const fautes = [];
+        let pas = 0;
+        const marcher = async function (sens) {
+          for (let i = 0; i < 200; i++) {
+            const x0 = window.__fxRel(K.etat().pos)[0];
+            if ((sens > 0 && x0 >= 31) || (sens < 0 && x0 <= -1)) return;
+            K.avancer(0.25);
+            await window.__fxImages(2);
+            const e = K.etat(), x = window.__fxRel(e.pos)[0];
+            if (Math.abs(x - x0) < 1e-3) { fautes.push({ bloque: x, niveau: e.niveau }); return; }
+            pas++;
+            // Jugé sur la jonction seulement : hors d'elle, l'union des vides (§ 50) fait du plafond d'un niveau
+            // entremêlé celui de la galerie.
+            if (x < 0.1 || x > 29.9) continue;
+            // Un plan à hauteur d'œil (vu par la tranche, invisible) ne compte pas : première face au-delà de 5 mm.
+            const y = e.cameraY, vu = function (d) {
+              return K.rayon(e.pos.x, e.pos.y, y, d).faces.filter(function (o) { return o.dist > 0.005; })[0] || null;
+            };
+            const h0 = vu([0, 1, 0]), b0 = vu([0, -1, 0]);
+            const f = [];
+            if (!h0) f.push("plafond ouvert"); else if (h0.voisin !== null) f.push("haut " + h0.mat + " @" + h0.y);
+            if (!b0) f.push("sans sol"); else if (b0.voisin !== null) f.push("bas " + b0.mat + " @" + b0.y);
+            if (f.length) fautes.push({ x: x, niveau: e.niveau, oeil: y, f: f.join(", ") });
+          }
+        };
+        await marcher(1);
+        const haut = K.etat().niveau;
+        K.tourner(180);
+        await window.__fxImages(3);
+        await marcher(-1);
+        return { montres: montres, haut: haut, bas: K.etat().niveau, pas: pas, fautes: fautes.length,
+          premieres: fautes.slice(0, 3) };
+      }, c);
+      const vu = c.vus === "voisins" ? r.montres.indexOf(1) >= 0 : r.montres.length === 0;
+      verifier(vu && r.fautes === 0 && r.haut === 1 && r.bas === 0 && r.pas > 100,
+        nom + (c.zone ? "zone jonction" : "galerie inclinée seule") + ", écart +" + c.ecart + " m, " + c.rendu +
+        " « " + c.vus + " » : " + r.pas + " pas en montant puis en descendant, à chaque pas le plafond de la scène " +
+        "au-dessus de l'œil et son sol dessous, rien du niveau voisin (montré) en travers ; +1 en haut, 0 en bas", r);
+    }
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 51. Zone jonction de niveau et structures en pente (galerieEmprise.js > penteDeZone ; vue3d.js > _zoneJonction,
 // _structurePente, _bloqueEnZone ; KTA_V3D_SEUL=zonejonction) ────────────────────────────────────────────────────
 // Plan FICTIF en mémoire : niveaux 0 (sol −25) et −1 (sol −30), 2,5 m chacun. Galerie du 0 de x = −30 à 2, tracé
@@ -11907,7 +12049,7 @@ async function sectionGestesDoigt(nav) {
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
       SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
-      SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus") {
+      SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "jonction-tremie") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -18225,6 +18367,7 @@ async function sectionGestesDoigt(nav) {
     if (!SEUL || SEUL === "entremeles") await sectionEntremeles(nav);
     if (!SEUL || SEUL === "zonejonction") await sectionZoneJonction(nav);
     if (!SEUL || SEUL === "puits-dessus") await sectionPuitsDessus(nav);
+    if (!SEUL || SEUL === "jonction-tremie") await sectionJonctionTremie(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
