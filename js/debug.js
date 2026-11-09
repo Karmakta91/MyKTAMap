@@ -5,7 +5,7 @@
  */
 
 // =========================
-// DEBUG.JS — Capture des logs + modale plein écran (⚙️ → Afficher les logs)
+// DEBUG.JS — Capture des logs + modale plein écran (⚙️ → Afficher les logs : Copier, Exporter (.txt))
 // =========================
 
 (function() {
@@ -99,6 +99,87 @@
     zone.scrollTop = zone.scrollHeight;
   }
 
+  // ── Export du journal en .txt ──────────
+  function _deuxChiffres(n) { return String(n).padStart(2, "0"); }
+
+  // 🔒 Le plan ouvert est désigné par sa provenance et une empreinte de son identifiant, jamais par
+  // l'identifiant lui-même : planRegistry.js > genLocalId / genServerId le fabriquent à partir du nom ou du
+  // chemin du plan. L'empreinte (FNV-1a 32 bits) suffit à dire « même plan / autre plan » entre deux journaux.
+  function _planOuvert() {
+    const id = window._currentLoadedPlanId;
+    if (!id) return "aucun";
+    const s = String(id);
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    const m = /^([a-z]+)_/.exec(s);
+    return (m ? m[1] : "plan") + " #" + h.toString(16).padStart(8, "0");
+  }
+
+  function _contenuExport(d) {
+    const build = (window.__MKM__ && window.__MKM__.build) || "?";
+    let ua = "?";
+    try { ua = navigator.userAgent || "?"; } catch (e) {}
+    return [
+      "MyKTAMap - journal du Mode Développeur",
+      "Version : " + build,
+      "Date : " + d.toISOString() + " (fuseau " + (-d.getTimezoneOffset() / 60) + " h)",
+      "Navigateur : " + ua,
+      "Plan ouvert : " + _planOuvert(),
+      "Lignes : " + _logBuffer.length,
+      "----------------------------------------"
+    ].concat(_logBuffer).join("\n") + "\n";
+  }
+
+  // ⚠️ Appelé dans le geste (clic) : navigator.share et window.open exigent une activation utilisateur, un
+  // .then() avant eux la perdrait sur iOS.
+  // Ordre : iPhone/iPad → feuille de partage avec le fichier (Enregistrer dans Fichiers, Mail…), le lien
+  // `download` d'un Blob étant capricieux dans la PWA posée sur l'écran d'accueil ; ailleurs, lien `download`
+  // comme les autres exports de l'app ; navigateur sans attribut `download` → le texte dans un nouvel onglet.
+  function _exporterJournal() {
+    const d = new Date();
+    const nom = "myktamap-journal-" + d.getFullYear() + _deuxChiffres(d.getMonth() + 1) + _deuxChiffres(d.getDate()) +
+                "-" + _deuxChiffres(d.getHours()) + _deuxChiffres(d.getMinutes()) + ".txt";
+    const texte = _contenuExport(d);
+    const blob = new Blob([texte], { type: "text/plain;charset=utf-8" });
+    const toastOk = function() {
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(window.I18n.t("debug.logsExported", { name: nom }), "success");
+      }
+    };
+
+    let fichier = null;
+    try { fichier = new File([blob], nom, { type: "text/plain" }); } catch (e) { fichier = null; }
+    const ios = typeof window.ktaEstIos === "function" && window.ktaEstIos();
+    let partageable = false;
+    try {
+      partageable = ios && !!fichier && typeof navigator.share === "function" &&
+                    typeof navigator.canShare === "function" && navigator.canShare({ files: [fichier] });
+    } catch (e) { partageable = false; }
+    if (partageable) {
+      navigator.share({ files: [fichier], title: nom }).then(toastOk).catch(function(err) {
+        if (err && err.name === "AbortError") return;   // feuille fermée par l'utilisateur
+        console.warn("[Debug] partage du journal impossible, téléchargement :", err);
+        _telecharger(blob, nom, toastOk);
+      });
+      return;
+    }
+    _telecharger(blob, nom, toastOk);
+  }
+
+  function _telecharger(blob, nom, toastOk) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    if ("download" in a) {
+      a.href = url; a.download = nom; a.style.display = "none";
+      document.body.appendChild(a); a.click(); a.remove();
+      toastOk();
+    } else {
+      window.open(url, "_blank", "noopener");
+    }
+    // Délai large : l'onglet ouvert lit encore l'URL après le retour de window.open.
+    setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+  }
+
   window.afficherLogsDebug = function() {
     // Ferme la modale de configuration si ouverte.
     const cfg = document.getElementById("kta-cfg-modal");
@@ -116,7 +197,9 @@
           <span class="kta-readme-modal-titre">${window.ktaIcone("bug") + " " + window.I18n.t("debug.title")}</span>
           <div style="display:flex;gap:8px;align-items:center;">
             <button class="kta-btn kta-btn-ghost" id="kta-debug-vider" style="font-size:11px;padding:4px 10px;">${window.I18n.t("debug.btnClear")}</button>
-            <button class="kta-btn kta-btn-primary" id="kta-debug-copier" style="font-size:11px;padding:4px 10px;">${window.I18n.t("debug.btnCopy")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-debug-copier" style="font-size:11px;padding:4px 10px;">${window.ktaIcone("copy") + " " + window.I18n.t("debug.btnCopy")}</button>
+            <button class="kta-btn kta-btn-primary" id="kta-debug-exporter" style="font-size:11px;padding:4px 10px;"
+              title="${window.ktaEsc(window.I18n.t("debug.btnExportTitle"))}">${window.ktaIcone("file-text") + " " + window.I18n.t("debug.btnExport")}</button>
             <button class="kta-panneau-close" id="kta-debug-fermer">✕</button>
           </div>
         </div>
@@ -161,6 +244,8 @@
       if (typeof window.ktaCopierTexte !== "function") { _copieManuelle(); return; }
       window.ktaCopierTexte(text).then(function(ok) { if (ok) _toastCopie(); else _copieManuelle(); });
     });
+
+    document.getElementById("kta-debug-exporter").addEventListener("click", _exporterJournal);
   };
 
 })();

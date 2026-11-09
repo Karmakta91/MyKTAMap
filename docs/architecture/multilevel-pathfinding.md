@@ -805,7 +805,9 @@ Hauteur / Écart / Sans :
   table. Valider écrit la table des sols en pref (`setPlanProfondeurs`, table entière comme avant) et les hauteurs
   par `setPlanHauteursNiveaux` (seules celles qui diffèrent du plan restent en pref, l'ancienne pref unique est
   retirée). **↺ Valeurs du plan** = `effacerReglagesNiveaux`.
-- **Vue 3D** et **⛏️ Volume exploité** : `setHauteurNiveau(niveau, m)` pour le niveau affiché / mesuré.
+- **Vue 3D** (⛏️ − / +, `reglerHauteur`) et **⛏️ Volume exploité** : `setHauteurNiveau(niveau, m)` sur un plan à un
+  niveau seulement. Plan à étages : rien d'autre que Réglages n'écrit la hauteur d'un niveau (⛏️ de la 3D grisé,
+  `reglerHauteur` sans effet, champ du Volume exploité de calcul seulement) : la changer recalcule les pentes des jonctions.
 
 **Consommateurs** : la vue 3D prend la hauteur du niveau affiché à l'ouverture et à chaque changement de niveau
 (`vue3d.js > _prendreHauteurDuNiveau`, appelé par `_reindexer`) ; ⛏️ Volume exploité celle du niveau mesuré ; la

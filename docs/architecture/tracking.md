@@ -1446,14 +1446,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   plus) passe en tube à cet endroit et qu'aucune structure n'est à moins de 3 m, règle de la galerie (ramené contre la
   paroi, `_contreParoi`) ; sinon règle des structures (contre la face d'un pilier).
 - **Hauteur** (décision produit) : `HAUTEUR` de la scène = la hauteur **du niveau affiché**
-  (`config.js > getNiveauVertical(niveau).hauteurM`, 2 m sans réglage), **le même chiffre que ⛏️ Volume exploité et
-  ⚙️ › 📉 Niveaux** ; un changement de niveau pendant la vue (🪜, suivi) reprend la sienne (`_reindexer` →
+  (`config.js > getNiveauVertical(niveau).hauteurM`, 2 m sans réglage), **le même chiffre que ⚙️ › 📉 Niveaux et
+  que le champ de ⛏️ Volume exploité à l'ouverture** ; un changement de niveau pendant la vue (🪜, suivi) reprend la sienne (`_reindexer` →
   `_prendreHauteurDuNiveau`). Bouton **⛏️** (hauteur affichée par `formatDistance`) → − / + de 1,5 à
   20 m, par 0,1 m jusqu'à 5 m puis 0,5 m (`reglerHauteur(m)` : borné, arrondi, `setHauteurNiveau` du niveau affiché) ; une valeur
   saisie hors bornes dans ⛏️ est montrée telle quelle jusqu'au premier − / +. **Plan multi-niveau** (`APP_CONFIG.multiLevel`,
   décision produit) : ⛏️ montre la hauteur du niveau, grisé (`disabled`, titre `vue3d.hauteurNiveaux` : réglée par niveau
   dans Réglages › Profondeur et hauteur des niveaux), − / + ne s'ouvre pas et se referme (`_hauteurFigee`) : changée
-  depuis la 3D, elle recalculait les pentes des jonctions. `reglerHauteur` (API des checkups) reste ouverte. Les tuiles sont refaites sur place (`_refaireTuiles` : même
+  depuis la 3D, elle recalculait les pentes des jonctions. `reglerHauteur` (API) suit la même règle : sans effet, rend la
+  hauteur courante ; ⛏️ Volume exploité n'écrit rien non plus (champ de calcul seulement). Les tuiles sont refaites sur place (`_refaireTuiles` : même
   index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais et effondrements à 60 %, rideaux, tubes, plafond, œil
   (`_oeil`) et panneaux suivent.
 - **Filtres = ceux de la carte** (décision produit) : ≡ de la vue ouvre **le** panneau ≡ Filtres (`FilterPanel.ouvrir`),
@@ -1645,8 +1646,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   au-delà du plafond (ou du sol lié), qui se perdent dans le noir, et bouche au bit `GABARIT.conduit` (64) que les
   sols et plafonds des voisins du dessus respectent (`_matsVoisins`) : rien de leur niveau en travers du conduit.
   🩸 Les parois des tubes d'un voisin ne lisent pas le gabarit : une galerie du dessus qui ne couvre qu'une partie de
-  la bouche coupe le conduit, fermé. Puits de surface (ciel) et rien au-dessus : 6 m qui se perdent dans le noir
-  (checkup § 52, `KTA_V3D_SEUL=puits-dessus`). L'arrivée d'un passage (raccord
+  la bouche coupe le conduit, fermé (checkup § 52, `KTA_V3D_SEUL=puits-dessus`). **Puits ouvert au jour** (ciel :
+  `peo`, `eso`) sous d'autres niveaux (montrés ou non) : il les **traverse tous**, galerie ou roche, jusqu'à 6 m
+  au-dessus du plafond du plus haut, bouche au bit `GABARIT.conduit` : aucun sol ni plafond du dessus ne ferme le
+  ciel, avec ou sans galerie au droit (checkup § 56, `KTA_V3D_SEUL=puits-ciel`). Rien au-dessus : 6 m qui se perdent
+  dans le noir. L'arrivée d'un passage (raccord
   validé, sinon le POI ramené en galerie) n'en dépend pas (§ 44). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
   disque de ciel (sprite clair non éclairé) au sommet de `peo` / `eso`. Cadre doré au sol d'un passage. Un tracé
   `jonction` (filtre de son type respecté) devient une **galerie inclinée** (ci-dessus). ⚠️ contrat : les
@@ -2559,8 +2563,10 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   après Non, en suivi), Oui recale aussi le niveau. Hauteur ⛏️ (structures et galerie) : réglée à 3 m → piliers,
   murs à 98 %, parois, plafond et rideaux à 3 m, remblais à 1,8 m, `getHauteurNiveau(niveau de la vue)` = 3, relue à la
   réouverture et par ⛏️ Volume exploité (et l'inverse) ; bornes 1,5 / 20 m ; par niveau : niveau actif changé pendant
-  la vue → hauteur de ce niveau reprise, réglée là pour lui seul ; ⛏️ grisé sur le relevé fictif (multi-niveau),
-  titre, toucher sans effet ; − / + et Échap contrôlés avec `multiLevel` coupé le temps du contrôle. Filtres : ≡ ouvre le ≡ Filtres de la
+  la vue → hauteur de ce niveau reprise, `setHauteurNiveau` (Réglages) pour lui seul, `reglerHauteur` sans effet ;
+  ⛏️ grisé sur le relevé fictif (multi-niveau), titre, toucher sans effet ; − / +, Échap et le réglage à 3 m contrôlés
+  avec `multiLevel` coupé le temps du contrôle ; ailleurs (galerie, tympan, textures) la hauteur du niveau est écrite
+  comme Réglages, vue rouverte. Filtres : ≡ ouvre le ≡ Filtres de la
   carte au-dessus de la vue ; zone, calque, type de tracé et tag décochés → retirés de la 3D et de la carte ; « Tout
   afficher » sur la carte → revenus en 3D ; type de structure masqué depuis la carte → retiré, butée gardée ; niveau
   masqué → rien de dessiné ; pastille ; itinéraire toujours là. 🚨 = Sortie d'urgence, toast sous la rangée, ✕ au

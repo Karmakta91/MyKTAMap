@@ -6,14 +6,18 @@
 // Appareil neuf : ⚙️ Configuration → Mode Développeur → la confirmation chartée s'ouvre (aucun champ de mot de
 // passe), Annuler laisse le mode éteint, Activer l'allume (boutons Logs détaillés, Afficher les logs, ConfAdmin,
 // inspecteur SW) ; Logs détaillés passe APP_CONFIG.debugMode à vrai ; Afficher les logs ouvre la fenêtre du journal,
-// non vide, et Copier met le journal au presse-papier ; un second clic éteint le mode.
+// non vide, Copier met le journal au presse-papier, Exporter (.txt) télécharge myktamap-journal-AAAAMMJJ-HHMM.txt
+// (en-tête version / date / navigateur / plan par empreinte, puis les lignes affichées, aucun nom de plan) et, iPhone
+// simulé, passe par la feuille de partage ; en-tête tenu à 360 px ; un second clic éteint le mode.
 // Appareil déjà déverrouillé par l'ancienne porte : le mode reste allumé sans question et les clés de la porte
 // (déverrouillage, essais) sont effacées. Aucune erreur de page ni clé i18n manquante.
-// Usage : node scripts/smoke/checkup-mode-dev.js (SMOKE_PORT pour une autre copie)
+// Usage : node scripts/smoke/checkup-mode-dev.js (SMOKE_PORT pour une autre copie ; KTA_MOTEURS=webkit : WebKit,
+// où la lecture du presse-papier est sautée, limite du harnais)
 // Doc : infra-versioning.md § doc technique · garde-fou source : scripts/check-devmode-docs.js
 // =====================================================================
 "use strict";
 
+const fs = require("fs");
 const { chromium } = require("playwright");
 const lancerNavigateur = require("./navigateur.js");
 const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
@@ -34,6 +38,10 @@ const LS_ANCIEN = {
   "myktamap_devmode_active_v1": "1"
 };
 
+// Nom fictif : il ne doit jamais apparaître dans le journal exporté.
+const NOM_PLAN_TEMOIN = "secteur_temoin_export";
+let WEBKIT = false;
+
 const problemes = [];
 function pb(msg) { problemes.push(msg); console.log("  ❌ " + msg); }
 function ok(msg) { console.log("  ✅ " + msg); }
@@ -41,7 +49,10 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
 
 async function ouvrirPage(nav, ls) {
   const ctx = await nav.newContext({ viewport: { width: 1200, height: 850 } });
-  try { await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: BASE }); } catch (e) {}
+  // 🩸 Le WebKit de Playwright refuse ces permissions au newPage suivant, même rattrapées ici.
+  if (!WEBKIT) {
+    try { await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: BASE }); } catch (e) {}
+  }
   const page = await ctx.newPage();
   await page.addInitScript(function (v) {
     // Une seule fois par contexte : un rechargement ne doit pas réécrire les clés que l'app vient d'effacer.
@@ -83,6 +94,8 @@ const etat = function () {
 
 (async function main() {
   const nav = await lancerNavigateur(chromium);
+  WEBKIT = nav.browserType().name() === "webkit";
+  console.log("Moteur : " + nav.browserType().name());
   try {
     // ── 1. Appareil neuf ────────────────────────────────────────────
     console.log("Appareil neuf");
@@ -145,8 +158,115 @@ const etat = function () {
     const presse = await p.evaluate(function () {
       return navigator.clipboard.readText().then(function (t) { return t; }, function (er) { return "ERR " + er; });
     });
-    verifier(/ligne témoin du journal/.test(presse), "Copier : le journal est au presse-papier",
-      String(presse).slice(0, 80));
+    if (WEBKIT && !/ligne témoin du journal/.test(presse)) {
+      console.log("  ⚠️ Copier : presse-papier illisible sous le WebKit de Playwright (limite du harnais), SAUTÉ");
+    } else {
+      verifier(/ligne témoin du journal/.test(presse), "Copier : le journal est au presse-papier",
+        String(presse).slice(0, 80));
+    }
+
+    // Exporter (.txt) : un plan témoin « ouvert » dont l'identifiant porte le nom (comme genLocalId) ; ni l'un
+    // ni l'autre ne doit sortir dans le fichier, seule son empreinte.
+    await p.evaluate(function (nom) {
+      window._ktaAvantPlan = { id: window._currentLoadedPlanId };
+      window._currentLoadedPlanId = "local_" + nom + "_v1";
+      window._ktaToasts = [];
+      if (window.OOMGuard && window.OOMGuard.showToast && !window._ktaToastOrig) {
+        window._ktaToastOrig = window.OOMGuard.showToast;
+        window.OOMGuard.showToast = function (m, type) {
+          window._ktaToasts.push({ m: String(m), type: type });
+          return window._ktaToastOrig.apply(this, arguments);
+        };
+      }
+    }, NOM_PLAN_TEMOIN);
+    const bouton = await p.evaluate(function () {
+      const b = document.getElementById("kta-debug-exporter");
+      const c = document.getElementById("kta-debug-copier");
+      return b ? { texte: b.textContent.trim(), title: b.getAttribute("title") || "", svg: !!b.querySelector("svg"),
+        memeStyle: !!c && b.className === c.className && b.getAttribute("style") === c.getAttribute("style"),
+        voisin: !!c && c.nextElementSibling === b } : null;
+    });
+    verifier(!!bouton && bouton.texte === "Exporter (.txt)" && bouton.svg && bouton.memeStyle && bouton.voisin &&
+      bouton.title.length > 10, "bouton « Exporter (.txt) » à côté de Copier : même style, icône SVG, title", bouton);
+
+    const [dl] = await Promise.all([
+      p.waitForEvent("download", { timeout: 8000 }),
+      p.evaluate(function () { document.getElementById("kta-debug-exporter").click(); })
+    ]);
+    const nomFichier = dl.suggestedFilename();
+    const contenu = fs.readFileSync(await dl.path(), "utf8");
+    const attendu = await p.evaluate(function () {
+      return { build: (window.__MKM__ && window.__MKM__.build) || "", ua: navigator.userAgent,
+        lignes: Array.from(document.querySelectorAll("#kta-debug-logzone > div"))
+          .map(function (d) { return d.textContent; }),
+        toasts: window._ktaToasts.slice() };
+    });
+    verifier(/^myktamap-journal-\d{8}-\d{4}\.txt$/.test(nomFichier),
+      "Exporter : nom myktamap-journal-AAAAMMJJ-HHMM.txt", nomFichier);
+    verifier(attendu.build !== "" && contenu.indexOf("Version : " + attendu.build) >= 0 &&
+      contenu.indexOf("Navigateur : " + attendu.ua) >= 0 && /Date : \d{4}-\d\d-\d\dT/.test(contenu) &&
+      /Plan ouvert : local #[0-9a-f]{8}\n/.test(contenu),
+      "Exporter : en-tête version, date, navigateur, plan ouvert par empreinte", contenu.split("\n").slice(0, 7));
+    const corps = contenu.split("----------------------------------------\n")[1] || "";
+    verifier(attendu.lignes.length > 0 && corps.trim() === attendu.lignes.join("\n").trim() &&
+      /ligne témoin du journal/.test(corps), "Exporter : le corps = les lignes affichées du journal",
+      { affichees: attendu.lignes.length, fichier: corps.split("\n").length });
+    verifier(contenu.indexOf(NOM_PLAN_TEMOIN) === -1, "Exporter : aucun nom de plan dans le fichier (ni l'identifiant)");
+    verifier(attendu.toasts.some(function (t) { return t.type === "success" && t.m.indexOf(nomFichier) >= 0; }),
+      "Exporter : toast de réussite en success", attendu.toasts);
+
+    // iPhone simulé : feuille de partage avec le fichier, pas de lien de téléchargement.
+    const partage = await p.evaluate(function () {
+      const sauve = { ios: window.ktaEstIos, share: navigator.share, canShare: navigator.canShare };
+      let recu = null;
+      let telechargement = false;
+      const espion = function (e) {
+        if (e.target && e.target.tagName === "A" && e.target.download) { telechargement = true; e.preventDefault(); }
+      };
+      document.addEventListener("click", espion, true);
+      window.ktaEstIos = function () { return true; };
+      Object.defineProperty(navigator, "canShare",
+        { configurable: true, value: function (d) { return !!(d && d.files); } });
+      Object.defineProperty(navigator, "share",
+        { configurable: true, value: function (d) { recu = d; return Promise.resolve(); } });
+      window._ktaToasts = [];
+      document.getElementById("kta-debug-exporter").click();
+      return new Promise(function (r) { setTimeout(r, 300); }).then(function () {
+        document.removeEventListener("click", espion, true);
+        window.ktaEstIos = sauve.ios;
+        Object.defineProperty(navigator, "canShare", { configurable: true, value: sauve.canShare });
+        Object.defineProperty(navigator, "share", { configurable: true, value: sauve.share });
+        const f = recu && recu.files && recu.files[0];
+        return (f ? f.text() : Promise.resolve("")).then(function (txt) {
+          return { nom: f ? f.name : null, temoin: /ligne témoin du journal/.test(txt), telechargement: telechargement,
+            toast: window._ktaToasts.some(function (t) { return t.type === "success"; }) };
+        });
+      });
+    });
+    verifier(!!partage.nom && /^myktamap-journal-\d{8}-\d{4}\.txt$/.test(partage.nom) && partage.temoin &&
+      !partage.telechargement && partage.toast,
+      "iPhone (simulé) : feuille de partage avec le fichier .txt, sans lien de téléchargement", partage);
+    await p.evaluate(function () {
+      window._currentLoadedPlanId = window._ktaAvantPlan.id;
+      if (window._ktaToastOrig) window.OOMGuard.showToast = window._ktaToastOrig;
+    });
+
+    // Téléphone : les quatre commandes de l'en-tête restent dans l'écran.
+    await p.setViewportSize({ width: 360, height: 740 });
+    await p.waitForTimeout(200);
+    const etroit = await p.evaluate(function () {
+      const ids = ["kta-debug-vider", "kta-debug-copier", "kta-debug-exporter", "kta-debug-fermer"];
+      return {
+        boutons: ids.map(function (id) {
+          const r = document.getElementById(id).getBoundingClientRect();
+          return { id: id, gauche: Math.round(r.left), droite: Math.round(r.right) };
+        }),
+        defile: document.documentElement.scrollWidth > window.innerWidth
+      };
+    });
+    verifier(etroit.boutons.every(function (b) { return b.gauche >= 0 && b.droite <= 360; }) && !etroit.defile,
+      "téléphone (360 px) : Vider, Copier, Exporter et ✕ dans l'écran, sans défilement horizontal", etroit);
+    await p.setViewportSize({ width: 1200, height: 850 });
 
     // Éteindre : fenêtre du journal fermée, Configuration rouverte.
     await p.evaluate(function () {
@@ -181,6 +301,6 @@ const etat = function () {
     console.log("❌ CHECKUP ROUGE — " + problemes.length + " problème(s)");
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — Mode Développeur sans mot de passe, journal affiché et copié.");
+  console.log("🎉 CHECKUP VERT — Mode Développeur sans mot de passe, journal affiché, copié et exporté.");
   process.exit(0);
 })();

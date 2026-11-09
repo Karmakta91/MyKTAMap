@@ -151,9 +151,11 @@ function bac(prefsPlan, planConfig) {
   t("vue 3D : hauteur du niveau affiché par getNiveauVertical, écrite par setHauteurNiveau",
     /getNiveauVertical\(niveau\)\.hauteurM/.test(lire("js/vue3d.js")) &&
     /setHauteurNiveau\(e\.niveau, v\)/.test(lire("js/vue3d.js")));
-  t("⛏️ Volume exploité : hauteur du niveau mesuré",
+  t("⛏️ Volume exploité : hauteur du niveau mesuré, écrite seulement sur un plan à un niveau",
     /getNiveauVertical\(niveau\)\.hauteurM/.test(lire("js/volumeExploite.js")) &&
-    /setHauteurNiveau\(r\.niveau, h\)/.test(lire("js/volumeExploite.js")));
+    /r\.niveau === null && [^\n]*setHauteurNiveau\(null, h\)/.test(lire("js/volumeExploite.js")));
+  t("vue 3D : reglerHauteur sans effet sur un plan multi-niveau",
+    /function reglerHauteur\(m\) \{[\s\S]{0,120}if \(_hauteurFigee\(\)\) return e\.hauteur;/.test(lire("js/vue3d.js")));
   t("l'écart n'est jamais écrit dans un plan-config ni une pref", !/niveauxEcart|ecartM\s*=/.test(
     lire("js/createConf.js") + lire("js/profondeurNiveaux.js")));
 }

@@ -4957,15 +4957,29 @@
   // le conduit DÉBOUCHE à son sol (au moins à notre plafond : écart nul ou négatif, rien à traverser). Sinon il
   // traverse sa roche : parois jusqu'à VOLUME.long au-delà de notre plafond (ou du sol lié, s'il est plus haut),
   // qui se perdent dans le noir, et bouche au bit GABARIT.conduit : les sols et plafonds des voisins du dessus ne se
-  // dessinent pas en travers (_matsVoisins). Puits de surface (ciel), accès, rien au-dessus : VOLUME.long.
+  // dessinent pas en travers (_matsVoisins). Accès, rien au-dessus : VOLUME.long.
+  // Puits ouvert au jour (ciel) sous d'autres niveaux (_niveauxEdition, montrés ou non) : il les traverse tous, galerie
+  // ou roche, jusqu'à VOLUME.long au-dessus du plafond du plus haut (le jour est au-delà), bouche au bit
+  // GABARIT.conduit : aucun sol ni plafond du dessus ne ferme le ciel. Sans niveau au-dessus : VOLUME.long.
   // 🩸 Les parois des tubes d'un voisin ne lisent pas le gabarit : une galerie du dessus qui ne couvre qu'une partie
   // de l'emprise reste visible là où elle coupe le conduit (fermé, sans trou).
   function _sommetPlafond(v, ring) {
     const e = _e, h = e.hauteur, L = VOLUME.long, X = v.ext || {};
     const base = Number.isFinite(X.haut) ? Math.max(X.haut, h) : h;
+    if (v.ciel) {
+      const l = _niveauxEdition(), i = l.indexOf(e.niveau);
+      let toit = null, haut = null;
+      l.slice(0, Math.max(i, 0)).forEach(function (m) {
+        const t = _altitudeVoisin(m).dy + _hauteurDuNiveau(m);
+        if (toit === null || t > toit) { toit = t; haut = m; }
+      });
+      const rc = toit === null ? { cime: base + L, roche: false } : { cime: Math.max(toit, base) + L, roche: true };
+      v.conduit = { cime: +rc.cime.toFixed(3), roche: rc.roche, niveau: haut, jour: true };
+      return rc;
+    }
     let n = null, dy = null;
     if (Number.isFinite(X.haut) && Number.isInteger(X.niveauHaut)) { n = X.niveauHaut; dy = X.haut; }
-    else if (!v.ciel && !v.acces) {
+    else if (!v.acces) {
       const l = _niveauxEdition(), i = l.indexOf(e.niveau);
       if (i > 0) { n = l[i - 1]; dy = _altitudeVoisin(n).dy; }
     }
@@ -10749,7 +10763,7 @@
 
   // (décision produit) Plan multi-niveau : ⛏️ montre la hauteur du niveau sans la régler. Elle se règle par niveau
   // dans Réglages (profondeurNiveaux.js) : la changer ici recalculerait les pentes des jonctions qui y arrivent.
-  // reglerHauteur (API des checkups) reste ouverte : elle écrit la même préférence que Réglages.
+  // reglerHauteur (API) suit la même règle : sur un tel plan elle rend la hauteur courante sans rien écrire.
   function _hauteurFigee() { return (window.APP_CONFIG || {}).multiLevel === true; }
 
   function _majHauteur() {
@@ -10780,10 +10794,11 @@
   // Hauteur bornée à HAUTEUR_REGLAGE et arrondie à 0,1 m, écrite pour le plan (⛏️ Volume exploité la relit), puis
   // tuiles refaites à cette hauteur (structures, tubes, remblais, murs, rideaux, plafond, œil) ; position, cap, niveau
   // et rendu gardés. Une hauteur saisie hors bornes dans ⛏️ est montrée telle quelle jusqu'au premier − / +.
-  // Rend la hauteur retenue (null : vue fermée).
+  // Rend la hauteur retenue (null : vue fermée). Plan multi-niveau : sans effet, rend la hauteur courante.
   function reglerHauteur(m) {
     const e = _e;
     if (!e) return null;
+    if (_hauteurFigee()) return e.hauteur;
     const v = Math.round(Math.max(HAUTEUR_REGLAGE.min, Math.min(HAUTEUR_REGLAGE.max, Number(m))) * 10) / 10;
     if (!Number.isFinite(v)) return e.hauteur;
     if (typeof window.setHauteurNiveau === "function") window.setHauteurNiveau(e.niveau, v);

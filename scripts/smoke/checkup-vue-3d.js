@@ -108,6 +108,8 @@
 // jonction qui la traverse, piliers et mur en pente, caméra, pilier de l'autre niveau qui arrête, bascule à mi-longueur.
 // Conduit vers le niveau du dessus (52, =puits-dessus) : aération et puits sous une galerie du dessus = débouche à son sol ;
 // sous sa roche = parois sur 6 m, rien en travers (rayon vertical), coins fermés, écart +1 m et entremêlé.
+// Puits ouvert au jour sous un niveau du dessus (56, =puits-ciel) : conduit jusqu'au-dessus du plus haut niveau, ciel
+// au sommet, rien en travers du rayon vertical, avec et sans galerie au-dessus ; aération et puits relié inchangés.
 // Jonction de niveaux (53, =jonction-tremie) : zone jonction d'un calque qui porte la pente en mixte et structures, trémie
 // au-dessus de la montée (rayons verticaux à chaque pas, en montant et en descendant, 4 écarts, avec et sans zone).
 // Structures dans une trémie (54, =jonction-piliers) : pilier, mur et front du +1 à cheval sur la zone jonction
@@ -10280,6 +10282,94 @@ async function sectionPuitsDessus(nav) {
   }
 }
 
+// ── 56. Puits ouvert au jour sous un niveau du dessus : il traverse les niveaux jusqu'au jour (vue3d.js >
+// _sommetPlafond, _niveauxAuDessus, GABARIT.conduit, rayon ; KTA_V3D_SEUL=puits-ciel) ─────────────────────────────
+// Plan FICTIF en mémoire : niveaux 0 et +1 (2 m chacun). Au 0, galerie est-ouest de x = −30 à 30 ; au +1, une galerie
+// au droit du 0 de x = 10 à 30. Au 0 seul : puits à échelons ouverts (peo, sans niveau lié) en (15, 0) sous la galerie
+// du +1 et en (−15, 0) sous sa roche. Témoins non ouverts : aération (pa) en (−5, 0) sous la roche, puits à échelons
+// (jpe, 0 ↔ +1) en (25, 0) sous la galerie. Écart du +1 : +1 m (sol à 3 m), puis +4 m (sol à 6 m).
+// Puits ouvert : conduit jusqu'à VOLUME.long au-dessus du plafond du +1 (au moins au-dessus du nôtre), bouche au bit
+// GABARIT.conduit, disque de ciel au sommet, et le rayon vertical depuis le fond du puits ne touche rien d'autre que
+// les échelons (ni sol ni plafond du +1 en travers) : le jour se voit avec et sans galerie au-dessus. Témoins : comme
+// § 52 (aération : roche sur 6 m ; puits relié : débouche au sol du +1). Trois rendus, « Voisins » puis « Le mien ».
+async function sectionPuitsCiel(nav) {
+  const nom = "§ 56 ";
+  console.log("§ 56 — puits ouvert au jour sous un niveau du dessus : il traverse jusqu'au jour");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-puits-ciel", [0, 1], { "0": -25, "1": -22 },
+    { "0": 2, "1": 2 }, function () {
+      const P = window.__fxP;
+      window.setRoads([
+        { uid: "rd_pc_0", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] },
+        { uid: "rd_pc_1", type: "principal", level: 1, points: [P(10, 0), P(30, 0)] }
+      ]);
+      window.setEditorPoints([
+        Object.assign({ id: "Puits ouvert galerie", uid: "pt_pc_peo_g", level: 0, tags: ["peo"] }, P(15, 0)),
+        Object.assign({ id: "Puits ouvert roche", uid: "pt_pc_peo_r", level: 0, tags: ["peo"] }, P(-15, 0)),
+        Object.assign({ id: "Aération roche", uid: "pt_pc_pa_r", level: 0, tags: ["pa"] }, P(-5, 0)),
+        Object.assign({ id: "Puits galerie", uid: "pt_pc_jpe_g", level: 0, niveaux: [0, 1], tags: ["jpe"] }, P(25, 0))
+      ]);
+    });
+  const page = t.page;
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  try {
+    for (const ecart of [1, 4]) {
+      for (const rendu of ["mixte", "structures", "galerie"]) {
+        for (const vus of ["voisins", "mien"]) {
+          const r = await page.evaluate(async function (q) {
+            const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
+            window.setPlanProfondeurs(window._currentLoadedPlanId, { "0": -25, "1": -25 + 2 + q.ecart });
+            K.reglerNiveauxVus(q.vus);
+            await window.__fxOuvrir(5, 0, 90, 0, q.rendu);
+            K.reglerNiveauxVus(q.vus);
+            await window.__fxImages(60);
+            const e = K.etat();
+            const lire = function (v) {
+              const b = v.bouche, cx = (b[0][0] + b[2][0]) / 2, cz = (b[0][1] + b[2][1]) / 2;
+              const haut = K.rayon(cx * sc, cz * sc, e.hauteur - 0.3).faces.filter(function (f) {
+                return f.mat !== "opaque";
+              });
+              return { construit: v.construit, conduit: v.conduit, cielVu: v.cielVu, haut: haut[0] || null };
+            };
+            const par = function (tag, x) {
+              const v = e.volumes.filter(function (o) {
+                return o.tag === tag && Math.abs(window.__fxRel({ x: o.x, y: o.y })[0] - x) < 1.5;
+              })[0];
+              return v ? lire(v) : null;
+            };
+            return { h: e.hauteur, peoG: par("peo", 15), peoR: par("peo", -15), paR: par("pa", -5),
+              jpeG: par("jpe", 25) };
+          }, { ecart: ecart, rendu: rendu, vus: vus });
+          const k = nom + rendu + " « " + vus + " », écart " + ecart + " m : ";
+          const dy = 2 + ecart, h = r.h, cimeJour = Math.max(h, dy + 2) + 6;
+          const jour = function (v) {
+            return !!v && v.construit && !!v.conduit && v.conduit.roche === true && pr(v.conduit.cime, cimeJour) &&
+              v.cielVu === true && v.haut === null;
+          };
+          verifier(jour(r.peoG),
+            k + "puits ouvert sous la galerie du +1 : conduit jusqu'à " + cimeJour + " m, ciel au sommet, rien du +1 " +
+            "en travers du rayon vertical", r.peoG);
+          verifier(jour(r.peoR),
+            k + "puits ouvert sous la roche du +1 : conduit jusqu'à " + cimeJour + " m, ciel au sommet, rien du +1 " +
+            "en travers du rayon vertical", r.peoR);
+          verifier(!!r.paR && r.paR.conduit && r.paR.conduit.roche === true && pr(r.paR.conduit.cime, h + 6) &&
+            r.paR.haut === null && r.paR.cielVu === false,
+            k + "aération sous la roche (témoin) : conduit de 6 m, sans ciel", r.paR);
+          const plafond = vus === "voisins" ? dy + 2 : null;
+          verifier(!!r.jpeG && r.jpeG.conduit && r.jpeG.conduit.roche === false &&
+            pr(r.jpeG.conduit.cime, Math.max(dy, h)) && r.jpeG.cielVu === false &&
+            (plafond === null ? r.jpeG.haut === null : !!r.jpeG.haut && pr(r.jpeG.haut.y, plafond, 0.02)),
+            k + "puits relié sous la galerie du +1 (témoin) : débouche à son sol, sans ciel", r.jpeG);
+        }
+      }
+    }
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 53. Jonction de niveaux : la pente suit le rendu, trémie au-dessus de la montée (galerieEmprise.js > memeObjet ;
 // vue3d.js > _penteDeLaZone, _zoneJonction, _plansTremie, _tremiePente, rayon ; KTA_V3D_SEUL=jonction-tremie) ──────
 // Plan FICTIF en mémoire : niveaux 0 et +1 (2,5 m chacun). Galerie du 0 de x = −30 à 2, tracé jonction 0 → +1 de x = 0
@@ -12732,7 +12822,8 @@ async function sectionCaseBoutonsZoom(nav) {
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
       SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
-      SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "jonction-tremie" ||
+      SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "puits-ciel" ||
+      SEUL === "jonction-tremie" ||
       SEUL === "jonction-piliers" || SEUL === "caseZoom" ||
       SEUL === "minicarte") {
       ouvert = true;
@@ -14024,7 +14115,11 @@ async function sectionCaseBoutonsZoom(nav) {
           const e = K.etat();
           r.niveau = e.niveau; r.h1 = e.hauteur; r.bouton = e.reglageHauteur.bouton;
           r.attendu = "[pickaxe] " + window.formatDistance(2.6, 1);
-          K.reglerHauteur(2.8);
+          // Multi-niveau : reglerHauteur ne règle rien (la hauteur d'un niveau se règle dans Réglages).
+          r.regle = K.reglerHauteur(2.8); r.hApres = K.etat().hauteur;
+          r.prefSansEffet = window.getHauteurNiveau(autre);
+          // Réglages écrit par setHauteurNiveau : pour ce niveau seul.
+          window.setHauteurNiveau(autre, 2.8);
           r.prefAutre = window.getHauteurNiveau(autre); r.prefActif = window.getHauteurNiveau(actif);
           C.activeLevel = actif;
           return K.fermer();
@@ -14038,7 +14133,9 @@ async function sectionCaseBoutonsZoom(nav) {
       }, prep);
       verifier(!hn.multi || (hn.h0 === 3.2 && hn.niveau === hn.autre && hn.h1 === 2.6 && hn.bouton === hn.attendu &&
         hn.prefAutre === 2.8 && hn.prefActif === 3.2),
-        "hauteur par niveau : 3,2 m au niveau actif, 2,6 m repris en passant à l'autre niveau, réglée là pour lui seul", hn);
+        "hauteur par niveau : 3,2 m au niveau actif, 2,6 m repris en passant à l'autre niveau, réglée pour lui seul", hn);
+      verifier(!hn.multi || (hn.regle === 2.6 && hn.hApres === 2.6 && hn.prefSansEffet === 2.6),
+        "multi-niveau : reglerHauteur(2,8) sans effet (rend 2,6 m, hauteur et pref du niveau inchangées)", hn);
       await page.evaluate(function () {
         window.setStructures([]);
         window.setEditorPoints(window.__v3dPoints || []);
@@ -14268,9 +14365,13 @@ async function sectionCaseBoutonsZoom(nav) {
       await capture(page, "galerie-zones");
 
       // Hauteur ⛏️ en mode galerie : tubes, plafond, remblais à 60 % et rideaux refaits à 3 m ; relue à la réouverture.
+      // Plan multi-niveau : reglerHauteur ne règle rien ; la hauteur du niveau s'écrit comme Réglages, vue rouverte.
       const hg = await page.evaluate(function (a) {
         const K = window.KtaVue3D, r = {};
         return K.ouvrir({ depart: a.dep }).then(function () {
+          const nv = K.niveauVue();
+          return K.fermer().then(function () { window.setHauteurNiveau(nv, 3); });
+        }).then(function () { return K.ouvrir({ depart: a.dep }); }).then(function () {
           const e0 = K.etat();
           r.v = K.reglerHauteur(3);
           const e = K.etat(), b = e.boites;
@@ -14294,7 +14395,7 @@ async function sectionCaseBoutonsZoom(nav) {
       const pres = function (v, att) { return typeof v === "number" && Math.abs(v - att) < 1e-6; };
       verifier(hg.v === 3 && hg.rendu === "galerie" && hg.pref === 3 && hg.garde && pres(hg.y.parois, 3) &&
         pres(hg.y.plafond, 3) && pres(hg.y.remblais, 1.8) && pres(hg.y.rideau, 3) && hg.rideaux === 2 && hg.faces === 2,
-        "galerie : réglé à 3 m, parois, plafond et rideaux à 3 m, remblais à 1,8 m, position et cap gardés", hg);
+        "galerie : niveau à 3 m, parois, plafond et rideaux à 3 m, remblais à 1,8 m, position et cap gardés", hg);
       verifier(hg.rouvert === 3, "galerie : 3 m relus à la réouverture", hg.rouvert);
 
       // ── Filtres partagés : ≡ ouvre le ≡ Filtres de la carte ; masquer d'un côté masque de l'autre ──────────────
@@ -16450,20 +16551,21 @@ async function sectionCaseBoutonsZoom(nav) {
         const u = vol();
         r.uni = { comble: u && u.comble, combleUni: u && u.combleUni, s16: marcher(-4, -1.5, 80) };
         // Galerie de 3 m : paroi au-dessus du linteau (2,1 m + cadre), même couleur unie que le comblement.
-        const h0 = K.etat().hauteur;
-        K.reglerHauteur(3);
-        await pause(50);
+        // Plan multi-niveau : la hauteur du niveau s'écrit comme Réglages (reglerHauteur n'y règle rien), vue rouverte.
+        const kPrefs = "myktamap_plan_prefs_" + (window._currentLoadedPlanId || "default");
+        const prefs0 = localStorage.getItem(kPrefs), nv = K.niveauVue();
+        await K.fermer();
+        window.setHauteurNiveau(nv, 3);
+        await ouvrir();
         const u3 = vol();
         r.uni.haut = { tympan: u3 && u3.tympan, tympanUni: u3 && u3.tympanUni, combleUni: u3 && u3.combleUni };
         await K.fermer();
         window.setVue3DTextures(true);
         await ouvrir();
-        K.reglerHauteur(3);
-        await pause(50);
         const t3 = vol();
         r.uni.pierre = { tympan: t3 && t3.tympan, tympanUni: t3 && t3.tympanUni, combleUni: t3 && t3.combleUni };
-        K.reglerHauteur(h0);
         await K.fermer();
+        if (prefs0 === null) localStorage.removeItem(kPrefs); else localStorage.setItem(kPrefs, prefs0);
         window.ktaEstAccessible = acc;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -18113,16 +18215,23 @@ async function sectionCaseBoutonsZoom(nav) {
         r.defaut.pref = window.getVue3DTextures();
         r.legende = legendeZ;
         r.legendeTube = window.ktaResolveStyle("traces", "principal", { flat: true }).color;
-        // Parois à deux hauteurs de galerie : même échelle (aucun étirement), puis hauteur rendue.
-        const h0 = K.etat().hauteur;
-        K.reglerHauteur(2.5);
-        await pause(50);
+        // Parois à deux hauteurs de galerie : même échelle (aucun étirement), puis hauteur rendue. Plan multi-niveau :
+        // la hauteur du niveau s'écrit comme Réglages (reglerHauteur n'y règle rien), vue rouverte à chaque fois.
+        const kPrefs = "myktamap_plan_prefs_" + (window._currentLoadedPlanId || "default");
+        const prefs0 = localStorage.getItem(kPrefs), nv = K.niveauVue();
+        const rouvrir = async function (h) {
+          await K.fermer();
+          if (h !== null) window.setHauteurNiveau(nv, h);
+          else if (prefs0 === null) localStorage.removeItem(kPrefs);
+          else localStorage.setItem(kPrefs, prefs0);
+          await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, tuiles: false });
+          await pause(100);
+        };
+        await rouvrir(2.5);
         r.h25 = lire();
-        K.reglerHauteur(6);
-        await pause(50);
+        await rouvrir(6);
         r.h6 = lire();
-        K.reglerHauteur(h0);
-        await pause(50);
+        await rouvrir(null);
         // Une greffe posée ne doit rien sentir de la bascule (scène et groupe gardés).
         const j = [];
         K.greffer({ nom: "tex", scene: function (ctx, raison) {
@@ -19161,6 +19270,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "entremeles") await sectionEntremeles(nav);
     if (!SEUL || SEUL === "zonejonction") await sectionZoneJonction(nav);
     if (!SEUL || SEUL === "puits-dessus") await sectionPuitsDessus(nav);
+    if (!SEUL || SEUL === "puits-ciel") await sectionPuitsCiel(nav);
     if (!SEUL || SEUL === "jonction-tremie") await sectionJonctionTremie(nav);
     if (!SEUL || SEUL === "jonction-piliers") await sectionJonctionPiliers(nav);
     if (!SEUL || SEUL === "caseZoom") await sectionCaseBoutonsZoom(nav);

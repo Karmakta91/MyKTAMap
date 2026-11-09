@@ -19383,6 +19383,12 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   text-align: right;
 }
 .kta-volume-hauteur input.kta-volume-invalide { border-color: var(--kta-erreur-bord); }
+.kta-volume-reglages {
+  font-size: 12px;
+  color: var(--kta-texte-3);
+  line-height: 1.45;
+  margin: -6px 0 12px;
+}
 .kta-volume-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .kta-volume-table th,
 .kta-volume-table td {
@@ -20814,5 +20820,7 @@ button.kta-cfg-ligne-action {
 }
 .loader-secondary-actions .loader-btn-secondary { gap: 6px; }
 .zip-drop-zone .zip-icon > .kta-ico { width: 28px; height: 28px; }
+/* Icône de titre sans espace texte derrière (le texte du titre reste le libellé exact) : la marge en tient lieu. */
+.kta-ico-titre { margin-right: 0.3em; }
 /* Dans la Documentation et l'Aide : même icône que le bouton, à la taille du texte. */
 .kta-ico-doc { width: 1.1em; height: 1.1em; vertical-align: -0.18em; }

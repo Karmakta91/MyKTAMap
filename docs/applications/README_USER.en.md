@@ -554,7 +554,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - ✏️ **Level** (multi-level plan): ▲ / ▼ on the left change the level shown by the 3D view, without taking a staircase; the map and the tracker keep theirs.
 - ✏️ Point panels stay readable even zoomed out; from very far, they keep only their icon (as on the map), a single one where icons overlap (danger and favourites first), and the name comes back as you get closer. Tapping an icon opens the card, at normal size.
 - **⛏️ Height**: the button shows the current height and opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m). On a map with several levels, the button is greyed out: the height is set for each level in ⚙️ Settings › Levels: depth and height.
-- ⛏️ It is the height **of the level shown**, the same as ⛏️ Mined volume and ⚙️ Settings › 📉 Levels: changing one changes the others. The scene is rebuilt in place, without moving you; when you move to another level (🪜, tracking), the view takes that level's height.
+- ⛏️ It is the height **of the level shown**, the one in ⚙️ Settings › 📉 Levels, which ⛏️ Mined volume also offers. On a single-level map, changing it here or in ⛏️ Mined volume changes the others; on a map with several levels, it can only be changed in ⚙️ Settings. The scene is rebuilt in place, without moving you; when you move to another level (🪜, tracking), the view takes that level's height.
 - **Rendering**: the button shows the current rendering and moves to the next one (Mixed, Structures, Tunnels, see below). Kept for this map; default: Mixed.
 - **🧱 Textures** (on by default): stone, rock, concrete block, earth and rubble at their real size (see below). Kept on this device.
 - **Compass**: the tile shows or hides it, for this device. At the bottom left, its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
@@ -582,7 +582,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 
 **🏛️ Structures**
 
-- Pillars, walls and quarry faces raised to the level's gallery height (⚙️ Settings › 📉 Levels or ⛏️ Mined volume, otherwise 2 m).
+- Pillars, walls and quarry faces raised to the level's gallery height (⚙️ Settings › 📉 Levels, or ⛏️ Mined volume on a single-level map; otherwise 2 m).
 - Backfill and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones.
 - Traces and route on the floor.
 - Points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
@@ -1153,7 +1153,7 @@ In the **📐 Measurement** group, **⛏️ Mined volume** works out what was ex
 - the **sector area**;
 - the **pillars deducted**: area and count. Pillars, walls and closed custom structures count, yours and those of the data layers (even hidden), clipped at the sector edge. Working faces and line walls do not count;
 - the **mined area** (sector minus pillars) and the **extraction ratio** (mined ÷ sector);
-- the **mined volume**: mined area × **average gallery height**, typed in the window (2 m by default, remembered for the measured level, recalculated at once);
+- the **mined volume**: mined area × **average gallery height**, typed in the window (at first the level's height, otherwise 2 m; recalculated at once). On a single-level map, it is remembered for the map; on a map with several levels, it is only used for the calculation: each level's height is set in ⚙️ Settings › Levels: depth and height, and a sentence under the field says so;
 - the **backfill** (“Backfill” zones inside the sector void) in m² and m³, and the **current void** (mined minus backfill).
 
 On a multi-level plan, only the **active level** counts (in the 🧊 3D view: the view's level), and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
@@ -2163,7 +2163,7 @@ There is nothing else to do.
 
 In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (no password: a confirmation tells what it does), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default.
 
-**To send your logs** to whoever is helping you: **⚙️ Configuration** → **🛠️ Developer Mode** → turn on **🐛 Verbose logs**, do again what goes wrong, then **Show logs** → **Copy**, and paste the text into your message. The window keeps the last 300 lines, even after a crash. Read them before sending: they may mention map or file names.
+**To send your logs** to whoever is helping you: **⚙️ Configuration** → **🛠️ Developer Mode** → turn on **🐛 Verbose logs**, do again what goes wrong, then **Show logs** → **Copy** or **Export (.txt)**, and paste the text into your message or attach the file. The window keeps the last 300 lines, even after a crash. Read them before sending: they may mention map or file names.
 
 Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
 
