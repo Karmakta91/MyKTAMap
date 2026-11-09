@@ -2322,7 +2322,9 @@ icônes.
   ignoré). Dedans, écrits en clair avec leur état : 🧭 Suivi / 🕹️ Libre, ✏️ Édition
   (`aria-pressed`), ⛏️ hauteur et son − / +, rendu (🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, un toucher passe au
   suivant), Boussole (montrée / masquée, `config.js > getVue3DBoussole`, `myktamap_v3d_boussole_v1`, cet appareil,
-  montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🪧 Guidage (`getVue3DGuidage`,
+  montrée par défaut ; masquée, joystick et 🪜 restent à leur place), 🗺️ Mini-carte à côté d'elle (montrée / masquée,
+  `getVue3DMiniCarte`, `myktamap_v3d_minicarte_v1`, cet appareil, montrée par défaut ; § Mini-carte ci-dessous),
+  🪧 Guidage (`getVue3DGuidage`,
   `myktamap_v3d_guidage_v1`, cet appareil, montré par défaut ; coupé : ni bandeau ni chevrons en 3D, ruban, étapes
   et 🏁 gardés (posés par-dessus un remblais ou un effondrement, `tracking.md` § Vue 3D › Itinéraire), urgence toujours affichée, préférence et état du guidage 2D intacts, `vue3d.js > _lireGuidage`), 🗂️ Fiches
   (`getVue3DFichesObjets`, `myktamap_v3d_fiches_objets_v1`, cet appareil ; absent : coupé au pointeur grossier,
@@ -2333,7 +2335,7 @@ icônes.
   des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),
   battants de bois des cavages et remblais des puits comblés ; coupé : parois des galeries et des tubes à la couleur de légende de leur tracé, sol et plafond noirs, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
-  Boussole et Guidage sur la suivante ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
+  Boussole et Mini-carte sur la suivante, Guidage et Fiches dessous ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
   sans toucher scène ni greffe), 🔭 **Portée** (curseur natif `input type=range` `#kta-v3d-portee`, 15 à 100 m,
   30 m par défaut, `getVue3DPortee`, `myktamap_v3d_portee_v1`, cet appareil ; libellé `<label for>`, valeur écrite à
   droite et dite par `aria-valuetext`, couleur `accent-color: var(--kta-interaction)` (celle des cases de la fenêtre Réglages), contour de focus
@@ -2395,6 +2397,19 @@ icônes.
   (flex, `nowrap`) : seule la destination (`.kta-guid-resume-nom`) rétrécit en ellipse, distance et temps
   (`.kta-guid-resume-reste`) gardent leur largeur. Ni l'un ni l'autre ne chevauche les commandes aux trois tailles,
   une ligne avec une destination de 60 caractères (`checkup-guidage.js` G12, `checkup-vue-3d.js` § 32).
+- **Mini-carte** (`vue3d.js > _majMiniCarte`, `.kta-v3d-minicarte`) : médaillon rond (`<button>`, canvas 2D, liseré
+  `--kta-accent` à 55 %, fond de la scène) en **haut à droite, sous la rangée du haut et sous le bandeau de guidage
+  visible** : son `top` est `--kta-v3d-sous-haut` (`_majSousHaut`, qui compte le bandeau), elle suit le bandeau qui
+  apparaît, grandit ou disparaît et ne le recouvre jamais. Taille : 30 % du petit côté, 96 à 150 px, **réduite à la
+  hauteur qui reste** au-dessus des commandes du bas (100 vh − `--kta-v3d-sous-haut` − 220 px, 64 px au moins) :
+  118 px à 393 × 852 et 108 px à 360 × 640 avec un bandeau de deux lignes et l'encart « reste », sans chevauchement.
+  Pas de conflit avec la colonne d'outils : la mini-carte est **masquée en vue d'édition**. Contenu, orientation et
+  coût : `tracking.md` § Vue 3D › Mini-carte. **Toucher** = agrandie (`.kta-v3d-minicarte-grande`) au centre de la
+  place entre le bandeau et les commandes du bas (86 vw, 480 px au plus), liseré plein ; toucher encore = refermée ;
+  Entrée / Espace aussi (le `click` qui suit un toucher est ignoré). **Pincer** ou la molette = rayon montré. Ses
+  gestes s'arrêtent sur elle (`_brancherMiniCarte` : propagation arrêtée, `touch-action: none`) : agrandie par-dessus
+  la zone du joystick, un doigt posé sur elle ne le lance pas. Libellé accessible `vue3d.miniCarte` /
+  `vue3d.miniCarteGrande`, `aria-pressed` = agrandie. Une fiche de POI ou un toast passent par-dessus (posés après).
 - **Toasts de la vue** : présence 3D partagée et nom d'un membre, d'un repère ou du 🏁 touché en `success` (décision
   produit : toujours vus, `info` est tu par défaut) ; perte du contexte WebGL en `warn`.
 - **Commandes** : au téléphone, **joystick** (`.kta-v3d-stick-zone`, `.kta-v3d-stick`, `.kta-v3d-stick-bouton`) :

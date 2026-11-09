@@ -2486,6 +2486,47 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
 - Garde-fou : `checkup-vue-3d.js > sectionRecherche3D` (`KTA_V3D_SEUL=recherche`) ; la 2D :
   `checkup-raccourcis.js` (Ctrl+K) et le dernier point de la section (vue fermée, la carte reprend le choix).
 
+### Mini-carte (QCM du 09/11/2026)
+
+- **Rendu** (décision produit) : un canvas 2D dessiné par `vue3d.js` à partir de ce que la scène a déjà lu à
+  `_reindexer` (`_donneesMiniCarte` : objets de `_collecter`, donc **mêmes filtres ≡** de la carte, calques cochés et
+  niveaux visibles) — jamais une seconde carte Leaflet, une image du plan ni une seconde caméra three.js. **Niveau actif
+  de la 3D seulement** : zones qui bouchent (`KtaGalerie.ZONES_BOUCHENT` : remblais, effondrement, inaccessible),
+  structures (polygones remplis, murs en ligne et fronts en trait), tracés (sans les `jonction`, jamais dessinés),
+  POI importants en pastille avec leur icône (`getIconUrlForPoint`) : **passage** vers un autre niveau
+  (`_estPassage`, liseré du tracé jonction et ↕ au coin, la marque du panneau), **danger** (`_estDanger`, liseré
+  `--kta-erreur`), **sortie** (`SortieUrgence.estUneSortie` : la règle de la Sortie d'urgence, jamais une liste de
+  tags recopiée ; liseré `--kta-ok`). Couleurs : `ktaResolveStyle(cat, clé, { flat: true })` (légende personnalisée
+  comprise), jetons du thème **sombre** (`_jetonsSombres`) comme les panneaux. Par-dessus, à chaque mise à jour :
+  **itinéraire** du niveau (`_itiMiniCarte` : ruban à la couleur de celui de la scène sur un liseré `--kta-fond`,
+  étapes, arrivée ⚑), **prochaine consigne** du guidage (anneau doré au point que visent les chevrons, `sCible` de
+  `_lireGuidage` ; rien quand 🪧 Guidage est coupé), **membres** d'une extension au niveau (`KtaPresences.liste`,
+  leur couleur ; rien sans extension).
+- **Orientation** (décision produit) : plan **fixe, nord réel en haut** (cap plan du nord `e.nord`, `_lireNord` ;
+  sans nord calibré, le haut du plan, la convention de la rose `_majBoussole`). La place est au centre : flèche dorée
+  tournée du cap réel (cap − nord), cône de vue de ±35° (`MINI_CARTE.cone`) à 22 % d'opacité.
+- **Échelle** : rayon montré 30 m par défaut ; pincer sur elle ou la molette = 10 à 100 m (`_reglerRayonMiniCarte`,
+  retenu tant que la page vit) ; agrandie, le double du rayon. Un glisser d'un doigt ne fait rien (le plan reste
+  centré sur la place).
+- **Montrée** : par défaut (`config.js > getVue3DMiniCarte`, interrupteur 🗺️ de la tuile ⚙️ à côté de la Boussole,
+  cet appareil) ; **jamais en vue d'édition** (`_appliquerVue` > `_appliquerMiniCarte`) ni quand une greffe la coupe
+  (`ctx.regler({ miniCarte: false })`, rendue au retrait, `addons.md`). ⚠️ contrat : aucun geste posé sur elle ne
+  tourne la vue, ne la déplace ni ne lance le joystick (`_brancherMiniCarte`). Place et taille : `ui.md` § Vue 3D ›
+  Mini-carte.
+- **Coût** (contrainte : plan lourd multi-niveau au téléphone) : le **fond** est dessiné une fois dans un canvas hors
+  écran (`_dessinerFondMiniCarte`), une fenêtre de 3 rayons autour de la place, à la résolution du médaillon
+  (densité plafonnée à 2), déjà tournée vers le nord ; objets coupés à l'emprise de la fenêtre. Il est refait au
+  changement de niveau, de filtres, de données ou de légende (`_reindexer`), de nord, de rayon (à la fin d'un
+  pincement : pendant, le fond est mis à l'échelle), de taille, ou quand la place approche du bord de la fenêtre
+  (environ 1,6 rayon parcouru). 🩸 Pas tout le niveau d'un coup : un réseau de 2 km à cette résolution dépasse ce
+  qu'un téléphone accepte pour un canvas (iOS ~16 M pixels) ; côté plafonné à 2 048 px. Une **mise à jour**
+  (`_majMiniCarte`, depuis `_image`) pose ce fond décalé puis itinéraire, membres et flèche : au plus toutes les
+  100 ms, et seulement si la place a bougé de 0,3 m ou tourné de `BRUIT_CAP` (ou si l'itinéraire, la consigne, les
+  membres ou la taille ont changé). Jamais un rendu three.js de plus. Mesures (`etat().miniCarte`, § 55, 9 025
+  piliers fictifs, Chromium au processeur ralenti x4) : fond 11,6 ms à 30 m (1 412 objets dans la fenêtre), 31,5 ms
+  agrandie, 78 ms à 100 m (tout le plan dans la fenêtre) ; en marchant, 0 fond refait sur 30 m et une mise à jour de
+  ~5 ms en moyenne, 10 par seconde au plus. Sans ralenti : fond 2 à 10 ms, mise à jour < 1 ms.
+
 ### Greffe de la vue 3D (prise des add-ons) et code « six vers le bas »
 
 - La vue 3D prête une **prise neutre** aux add-ons (`KtaVue3D.greffer`, sans effet sans greffon) et lance l'add-on
@@ -2496,7 +2537,8 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
 
 - `scripts/smoke/checkup-vue-3d.js` (Chromium et WebKit) : bouton cube sous ≡ grisé sans échelle (rien chargé),
   plus de tuile au menu Tracker, ouverture par le bouton derrière l'indicateur, focus et `aria-modal`, scène, mur plus bas que le pilier qu'il traverse, butée, pas rapide, collisions (6 obstacles,
-  12 angles, pas rapides et grand pas, départ collé à une face), inclinaison, boussole, clavier, vues, niveau, perte simulée
+  12 angles, pas rapides et grand pas, départ collé à une face), inclinaison, boussole, mini-carte (§ 55,
+  `KTA_V3D_SEUL=minicarte`), clavier, vues, niveau, perte simulée
   (`WEBGL_lose_context`) puis reprise, perte sans reprise, « Je suis ici ? » Non puis Oui, WebGL absent,
   20 ouvertures de suite. Galerie, sur des tracés fictifs (T, X, coude droit, coude aigu, cul-de-sac, presque
   parallèles) : aucune paroi qui en traverse une autre, axes libres, bouts fermés, butée contre une paroi, carrefour et
