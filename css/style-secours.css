@@ -1091,7 +1091,7 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
 .kta-search-gps-card-subtitle {
   font-size: 12px;
   color: var(--kta-texte-3);
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", Consolas, monospace;
 }
 .kta-search-gps-card-subtitle code {
   background: rgba(255, 255, 255, 0.06);
@@ -1726,7 +1726,7 @@ html.kta-theme-light .kta-secours-pick-result strong {
   font-size: 14px;
   font-weight: 600;
   color: var(--kta-accent-texte);
-  font-family: ui-monospace, "Cascadia Mono", "Source Code Pro", monospace;
+  font-family: "KTA Emoji", ui-monospace, "Cascadia Mono", "Source Code Pro", monospace;
   flex-shrink: 0;
 }
 .kta-secours-live-header-timer-icon {
@@ -1829,7 +1829,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 .kta-secours-live-phase-badge-pos {
   opacity: 0.78;
   font-size: 11px;
-  font-family: ui-monospace, "Cascadia Mono", "Source Code Pro", monospace;
+  font-family: "KTA Emoji", ui-monospace, "Cascadia Mono", "Source Code Pro", monospace;
 }
 
 /* 🆕 v1.29.0 C2 — Section "📋 Phases (N)" en vue Edit : liste éditable
@@ -1972,7 +1972,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   background: rgba(244, 197, 66, 0.12);
   padding: 1px 6px;
   border-radius: 3px;
-  font-family: ui-monospace, "Cascadia Mono", monospace;
+  font-family: "KTA Emoji", ui-monospace, "Cascadia Mono", monospace;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -2347,7 +2347,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
   margin-left: auto;
   font-size: 11px;
   color: var(--kta-texte-3);
-  font-family: ui-monospace, monospace;
+  font-family: "KTA Emoji", ui-monospace, monospace;
 }
 .kta-secours-live-note-del {
   background: transparent;
@@ -2388,7 +2388,7 @@ html.kta-theme-light .kta-btn-phase-end-ready {
 }
 .kta-secours-op-details-ts {
   color: var(--kta-texte-3);
-  font-family: ui-monospace, monospace;
+  font-family: "KTA Emoji", ui-monospace, monospace;
   font-size: 11px;
 }
 .kta-secours-op-details-obs {

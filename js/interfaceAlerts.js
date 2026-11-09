@@ -349,12 +349,12 @@ window.afficherModaleUpdateDispo = function(opts) {
           '<div style="display:flex; align-items:center; gap:14px; padding:10px 14px; background:var(--kta-info-fond); border-radius:8px; border:1px solid var(--kta-info-bord);">' +
             '<div style="font-size:12px; color:var(--kta-texte-3);">' +
               window.I18n.t("alerts.update.installed") + '<br>' +
-              '<strong style="font-size:18px; color:var(--kta-texte-2); font-family:ui-monospace,monospace;">' + localVersion + '</strong>' +
+              '<strong style="font-size:18px; color:var(--kta-texte-2); font-family:KTA Emoji, ui-monospace,monospace;">' + localVersion + '</strong>' +
             '</div>' +
             '<div style="font-size:20px; color:var(--kta-interaction);">→</div>' +
             '<div style="font-size:12px; color:var(--kta-texte-3);">' +
               window.I18n.t("alerts.update.available") + (released ? ' (' + released + ')' : '') + '<br>' +
-              '<strong style="font-size:18px; color:var(--kta-accent-texte); font-family:ui-monospace,monospace;">' + remoteVersion + '</strong>' +
+              '<strong style="font-size:18px; color:var(--kta-accent-texte); font-family:KTA Emoji, ui-monospace,monospace;">' + remoteVersion + '</strong>' +
             '</div>' +
           '</div>' +
         '</div>' +

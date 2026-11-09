@@ -52,7 +52,7 @@
 html, body {
   /* Police de la charte posée à la base : sans elle, tout élément sans police explicite (fenêtres posées sur
      <html>, textes d'aide) retombe sur la police à empattements du navigateur. Aucune police propre aux titres. */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   /* 🩸 iOS PWA (viewport-fit=cover) : sans 100dvh, le body s'arrête au-dessus du home indicator (bande sombre).
      100vh d'abord = repli iOS ≤ 15, écrasé par dvh quand il est supporté. */
   min-height: 100vh;
@@ -66,6 +66,13 @@ html, body {
   -webkit-text-size-adjust: 100%;
      -moz-text-size-adjust: 100%;
           text-size-adjust: 100%;
+}
+
+/* Champs, boutons, listes et leurs <option> n'héritent pas la police : sans cette règle, leurs emoji resteraient
+   ceux du système. :where() = spécificité nulle, toute règle de module (font-family: inherit…) l'emporte.
+   ⚠️ contrat : « KTA Emoji » ouvre chaque pile (css/kta-emoji.css, check-police-emoji.js). */
+:where(button, input, select, textarea, optgroup, option) {
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 }
 
 #map {
@@ -93,7 +100,7 @@ html, body {
   font-size: 15px;
   font-weight: 700;
   text-align: center;
-  font-family: Arial, sans-serif;
+  font-family: "KTA Emoji", Arial, sans-serif;
   letter-spacing: 0.04em;
 }
 
@@ -325,7 +332,7 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   animation: ktaSwitcherModalIn 0.20s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -646,7 +653,7 @@ html, body {
   box-shadow: 0 4px 16px rgba(0,0,0,0.45) !important;
   border-radius: 10px !important;
   color: var(--kta-texte) !important;
-  font-family: Arial, sans-serif !important;
+  font-family: "KTA Emoji", Arial, sans-serif !important;
   font-size: 13px !important;
 }
 
@@ -681,7 +688,7 @@ html, body {
   color: var(--kta-texte);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07);
-  font-family: Arial, sans-serif;
+  font-family: "KTA Emoji", Arial, sans-serif;
   font-size: 14px;
   animation: kta-fadein 0.15s ease;
 }
@@ -1152,7 +1159,7 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   display: inline-block;
   min-width: 20px;
   padding: 2px 7px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.3;
   text-align: center;
@@ -1411,7 +1418,7 @@ body.kta-theme-light .kta-aide-submodal-back {
 .kta-lost-preset-btn .kta-lost-preset-meta {
   font-size: 10px;
   color: var(--kta-texte-3);
-  font-family: ui-monospace, monospace;
+  font-family: "KTA Emoji", ui-monospace, monospace;
   line-height: 1.25;
 }
 .kta-lost-preset-btn.kta-lost-preset-active {
@@ -1434,7 +1441,7 @@ body.kta-theme-light .kta-aide-submodal-back {
   margin-top: 4px;
   font-size: 11.5px;
   color: var(--kta-texte-3);
-  font-family: ui-monospace, monospace;
+  font-family: "KTA Emoji", ui-monospace, monospace;
 }
 .kta-lost-stat-preset {
   color: #ff8a5c;
@@ -1738,7 +1745,7 @@ body.kta-lost-click-mode .leaflet-container {
   line-height: 1.45;
 }
 .kta-lost-popup-coord {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 11.5px !important;
   color: var(--kta-texte-3) !important;
 }
@@ -1769,7 +1776,7 @@ body.kta-lost-click-mode .leaflet-container {
   color: var(--kta-texte-3);
 }
 .kta-lost-popup-dist {
-  font-family: ui-monospace, monospace;
+  font-family: "KTA Emoji", ui-monospace, monospace;
   font-size: 12.5px;
   color: var(--kta-accent-texte);
   font-weight: 600;
@@ -1794,7 +1801,7 @@ body.kta-lost-click-mode .leaflet-container {
 
 .leaflet-popup-content {
   margin: 12px 14px !important;
-  font-family: Arial, sans-serif !important;
+  font-family: "KTA Emoji", Arial, sans-serif !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
   color: var(--kta-texte) !important;
@@ -2210,7 +2217,7 @@ html.kta-theme-light .kta-sortie-alternatives {
   line-height: 1.5;
   padding: 12px;
   resize: none;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 .kta-histoire-textarea:focus {
   outline: none;
@@ -2325,7 +2332,7 @@ html.kta-theme-light .kta-sortie-alternatives {
   color: var(--kta-accent-texte);
   padding: 1px 5px;
   border-radius: 3px;
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", Consolas, monospace;
   font-size: 0.9em;
 }
 .kta-histoire-note-rendered ul,
@@ -2477,7 +2484,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
 .kta-popup-point .kta-popup-gps-val {
   flex: 1;
   color: #a8c5ff;
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", Consolas, monospace;
   font-size: 11px;
   font-weight: 600;
   user-select: all;
@@ -2690,7 +2697,7 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
   margin-top: 5px;
   font-size: 10.5px;
   color: var(--kta-accent-texte);
-  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-family: "KTA Emoji", "SF Mono", Monaco, Consolas, monospace;
   opacity: 0.85;
 }
 
@@ -2768,7 +2775,7 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
   padding: 24px 22px 20px;
   max-width: 360px;
   width: 100%;
-  font-family: Arial, sans-serif;
+  font-family: "KTA Emoji", Arial, sans-serif;
   text-align: center;
 }
 
@@ -2838,7 +2845,7 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
   max-width: 440px;
   width: 100%;
   text-align: center;
-  font-family: Arial, sans-serif;
+  font-family: "KTA Emoji", Arial, sans-serif;
 }
 
 .kta-unlock-icon {
@@ -2882,7 +2889,7 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
   border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 8px;
   color: var(--kta-texte);
-  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-family: "KTA Emoji", 'SF Mono', Monaco, Consolas, monospace;
   letter-spacing: 0.05em;
   outline: none;
   transition: border-color 0.15s, background 0.15s;
@@ -3303,7 +3310,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
 }
 
 .kta-readme-corps {
-  font-family: Arial, sans-serif;
+  font-family: "KTA Emoji", Arial, sans-serif;
   font-size: 14px;
   line-height: 1.7;
   color: var(--kta-texte-2);
@@ -3373,7 +3380,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   background: #0d1117;
   border-radius: 4px;
   padding: 2px 6px;
-  font-family: 'Courier New', monospace;
+  font-family: "KTA Emoji", 'Courier New', monospace;
   font-size: 12px;
   color: #e06c75;
   border: 1px solid rgba(255,255,255,0.07);
@@ -3671,7 +3678,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   border-radius: 8px;
   padding: 12px 14px;
   color: var(--kta-texte-2);
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 11.5px;
   line-height: 1.55;
   resize: vertical;
@@ -4009,7 +4016,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   cursor: pointer;
   text-align: center;
   transition: all 0.15s;
-  font-family: Arial, sans-serif;
+  font-family: "KTA Emoji", Arial, sans-serif;
 }
 
 .kta-conv-sens-btn.active {
@@ -4034,7 +4041,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   display: block;
   font-size: 11px;
   color: var(--kta-texte-3);
-  font-family: 'Courier New', monospace;
+  font-family: "KTA Emoji", 'Courier New', monospace;
 }
 .kta-conv-sens-btn.active .kta-conv-sens-desc { color: var(--kta-texte-2); }
 
@@ -4337,7 +4344,7 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   color: #f4c542;
   text-shadow: 0 0 10px rgba(244, 197, 66, 0.35);
   letter-spacing: 0.06em;
-  font-family: 'Courier New', monospace;
+  font-family: "KTA Emoji", 'Courier New', monospace;
   pointer-events: none;
 }
 
@@ -4517,7 +4524,7 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   /* safe-area en HAUT seulement (contenu sous l'encoche) ; 4px en bas = minimum pour ne pas coller au bord */
   padding: calc(24px + env(safe-area-inset-top, 0px)) 24px 4px;
   box-sizing: border-box;
-  font-family: Arial, sans-serif;
+  font-family: "KTA Emoji", Arial, sans-serif;
   margin: 0;
   /* 100vh puis 100dvh : repli iOS ≤ 15, dvh = écran physique en PWA cover */
   min-height: 100vh;
@@ -5419,7 +5426,7 @@ html.kta-theme-light .kta-cfg-input option {
   border: 1px solid rgba(108, 226, 138, 0.30);
   border-radius: 10px;
   box-shadow: 0 12px 36px rgba(0,0,0,0.55);
-  font-family: Arial, sans-serif;
+  font-family: "KTA Emoji", Arial, sans-serif;
   overflow: hidden;
 }
 .kta-alert-absent-header {
@@ -5451,7 +5458,7 @@ html.kta-theme-light .kta-cfg-input option {
 }
 .kta-alert-absent-msg strong {
   color: var(--kta-ok);
-  font-family: ui-monospace, monospace;
+  font-family: "KTA Emoji", ui-monospace, monospace;
   font-size: 13px;
 }
 .kta-alert-absent-actions {
@@ -5476,7 +5483,7 @@ html.kta-theme-light .kta-cfg-input option {
 }
 .kta-alert-absent-version-released strong {
   color: var(--kta-texte-2);
-  font-family: ui-monospace, monospace;
+  font-family: "KTA Emoji", ui-monospace, monospace;
   font-size: 12px;
 }
 .kta-alert-absent-version-notes-titre {
@@ -5795,7 +5802,7 @@ html.kta-theme-light .kta-cfg-input option {
 /* Badges de mode V2 / M-LVL / V1 */
 .plan-row-mode {
   display: inline-block;
-  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-family: "KTA Emoji", 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -6248,7 +6255,7 @@ html.kta-theme-light .kta-cfg-input option {
   font-style: italic;
 }
 .kta-planner-dim-val {
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-weight: 600;
   color: var(--kta-interaction);
 }
@@ -6396,7 +6403,7 @@ html.kta-theme-light .kta-cfg-input option {
   border-top: 1px solid var(--kta-bordure);
   font-size: 11.5px;
   color: var(--kta-texte-3);
-  font-family: ui-monospace, monospace;
+  font-family: "KTA Emoji", ui-monospace, monospace;
 }
 /* Ligne « 🔔 notifications » d'une extension (KtaExtensions.ligneNotifications), au pied de la fenêtre 🚨. */
 .kta-alert-notif {
@@ -7112,7 +7119,7 @@ html.kta-theme-light .kta-cfg-input option {
 .kta-emergency-value {
   font-size: 32px;
   font-weight: 700;
-  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-family: "KTA Emoji", "SF Mono", Monaco, Consolas, monospace;
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
@@ -7231,7 +7238,7 @@ html.kta-theme-light .kta-cfg-input option {
 .kta-emergency-light .kta-em-bulle-fermer { border-color: rgba(44, 56, 72, 0.35); }
 /* Coordonnées : lisibles à un mètre, pour les dicter au téléphone. */
 .kta-em-coords-val {
-  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-family: "KTA Emoji", "SF Mono", Monaco, Consolas, monospace;
   font-size: clamp(30px, 10.5vw, 48px);
   font-weight: 800;
   line-height: 1.1;
@@ -8707,7 +8714,7 @@ html.kta-theme-light .kta-xps-plan-badge { color: #2c5faa; }
 }
 
 .kta-oom-tech code {
-  font-family: 'Courier New', monospace;
+  font-family: "KTA Emoji", 'Courier New', monospace;
   font-size: 11px;
   color: var(--kta-interaction);
 }
@@ -9044,7 +9051,7 @@ html.kta-theme-light .kta-toast { box-shadow: 0 4px 16px var(--kta-light-shadow)
 }
 
 .kta-iti-wp-coord {
-  font-family: 'Courier New', monospace;
+  font-family: "KTA Emoji", 'Courier New', monospace;
   font-size: 12px;
   color: var(--kta-texte-3);
 }
@@ -9381,7 +9388,7 @@ html.kta-theme-light .kta-toast { box-shadow: 0 4px 16px var(--kta-light-shadow)
 .kta-iti-speed-btn .kta-iti-speed-kmh {
   font-size: 10.5px;
   color: var(--kta-texte-3);
-  font-family: ui-monospace, monospace;
+  font-family: "KTA Emoji", ui-monospace, monospace;
 }
 .kta-iti-speed-btn.kta-iti-speed-active {
   background: rgba(0, 212, 255, 0.18);
@@ -9538,7 +9545,7 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
   border: 1px solid rgba(244, 197, 66, 0.45);
   border-radius: 4px;
   padding: 2px 7px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
@@ -9556,7 +9563,7 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
   border: 1px solid rgba(200, 208, 224, 0.35);
   border-radius: 3px;
   padding: 1px 5px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   font-size: 10px;
   font-weight: 500;
   white-space: nowrap;
@@ -9705,7 +9712,7 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
   z-index: 200000;
   padding: 12px 14px 14px;
   animation: kta-devtools-popin 0.25s ease-out;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "KTA Emoji", system-ui, -apple-system, sans-serif;
 }
 
 @keyframes kta-devtools-popin {
@@ -9991,7 +9998,7 @@ body.kta-theme-light .kta-loader-copyright-edition-title {
 }
 .kta-profile-pro-hash {
   display: inline-block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "KTA Emoji", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11.5px;
   color: var(--kta-accent-texte);
   background: rgba(244, 197, 66, 0.08);
@@ -10008,7 +10015,7 @@ body.kta-theme-light .kta-loader-copyright-edition-title {
   line-height: 1.6;
 }
 .kta-profile-pro-hint code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "KTA Emoji", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11.5px;
   background: rgba(140, 180, 255, 0.10);
   padding: 1px 5px;
@@ -10079,7 +10086,7 @@ body.kta-theme-light .kta-profile-pro-hint {
   display: inline-block;
   white-space: nowrap;
   cursor: pointer;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   color: var(--kta-texte-3);
   letter-spacing: 0;
@@ -10421,7 +10428,7 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
 .kta-alert-selector-meta {
   font-size: 11.5px;
   color: var(--kta-texte-3);
-  font-family: monospace;
+  font-family: "KTA Emoji", monospace;
 }
 .kta-alert-selector-arrow {
   flex: 0 0 auto;
@@ -10485,7 +10492,7 @@ body.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818
   border-radius: 11px;    /* 50% du height = capsule arrondie (cercle pour 1 char) */
   background: #f4c542;
   color: var(--kta-sur-accent);
-  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-family: "KTA Emoji", 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 12px;        /* legerement reduit pour rester dans le bouton 30×30 */
   font-weight: 800;
   line-height: 1;
@@ -10557,7 +10564,7 @@ a.kta-level-btn {
   flex: 0 0 auto;
   min-width: 44px;
   padding: 10px 14px;
-  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-family: "KTA Emoji", 'SF Mono', Monaco, Consolas, monospace;
   font-size: 15px;
   font-weight: 600;
   color: var(--kta-texte-2);
@@ -10635,7 +10642,7 @@ a.kta-level-btn {
   flex: 0 0 auto;
 }
 .kta-niv-vis-label {
-  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-family: "KTA Emoji", 'SF Mono', Monaco, Consolas, monospace;
   font-size: 13px;
   font-weight: 600;
   color: var(--kta-texte-2);
@@ -11025,7 +11032,7 @@ a.kta-level-btn {
 
 .kta-compass-info {
   margin-top: 6px;
-  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-family: "KTA Emoji", 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 14px;
   font-weight: 600;
   color: var(--kta-accent-texte);              /* jaune accent charte */
@@ -11099,7 +11106,7 @@ body.kta-multilevel-active .kta-compass-widget {
 }
 
 .kta-compass-full-cardinal {
-  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-family: "KTA Emoji", 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 42px;
   font-weight: 800;
   color: var(--kta-accent-texte);
@@ -11108,7 +11115,7 @@ body.kta-multilevel-active .kta-compass-widget {
 }
 
 .kta-compass-full-angle {
-  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-family: "KTA Emoji", 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: 24px;
   font-weight: 600;
   color: var(--kta-texte-2);
@@ -11227,7 +11234,7 @@ body.kta-multilevel-active .kta-compass-widget {
 .kta-net-log-table {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Courier New', monospace;
+  font-family: "KTA Emoji", 'Courier New', monospace;
   font-size: 11px;
   color: var(--kta-texte-2);
 }
@@ -11243,7 +11250,7 @@ body.kta-multilevel-active .kta-compass-widget {
   font-weight: 600;
   color: var(--kta-interaction);
   border-bottom: 2px solid rgba(140, 180, 255, 0.25);
-  font-family: Arial, sans-serif;
+  font-family: "KTA Emoji", Arial, sans-serif;
   font-size: 11px;
   letter-spacing: 0.3px;
   text-transform: uppercase;
@@ -11384,7 +11391,7 @@ html.kta-theme-light .kta-net-doc-section.kta-net-doc-section-domain code {
   color: var(--kta-interaction);
   padding: 1px 6px;
   border-radius: 3px;
-  font-family: 'Courier New', monospace;
+  font-family: "KTA Emoji", 'Courier New', monospace;
   font-size: 12px;
 }
 .kta-net-doc-quote {
@@ -11456,7 +11463,7 @@ body.kta-refonte-v1 .kta-refonte-header {
   padding-right: calc(8px + env(safe-area-inset-right, 0px));
   height: calc(44px + env(safe-area-inset-top, 0px));
   box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   color: var(--kta-texte-2);
   -webkit-user-select: none;
   user-select: none;
@@ -11656,7 +11663,7 @@ body.kta-refonte-v1 .kta-refonte-counter-battery {
 }
 body.kta-refonte-v1 .kta-refonte-counter-battery .kta-refonte-counter-val {
   font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, "SF Mono", monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", monospace;
   color: inherit;
 }
 
@@ -12106,7 +12113,7 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
 .kta-refonte-stats-mlvl-lbl {
   color: var(--kta-texte-2);
   font-weight: 600;
-  font-family: ui-monospace, "SF Mono", monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", monospace;
 }
 .kta-refonte-stats-mlvl-val {
   color: var(--kta-texte);
@@ -12273,7 +12280,7 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
   padding-top: 4px;
   padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   font-size: 13px;
   color: var(--kta-texte-2);
   transition: min-height 0.2s ease-out, padding 0.2s ease-out;
@@ -12511,7 +12518,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   border: 1px solid rgba(244, 197, 66, 0.32);
   border-radius: 10px;
   color: var(--kta-accent-texte);
-  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-family: "KTA Emoji", "SF Mono", Monaco, Consolas, monospace;
   font-size: 11px;
   font-weight: 600;
   vertical-align: middle;
@@ -12774,7 +12781,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
 }
 
 .kta-photo-viewer-counter {
-  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-family: "KTA Emoji", "SF Mono", Monaco, Consolas, monospace;
   font-size: 13px;
   color: #f4c542;
   background: rgba(244, 197, 66, 0.12);
@@ -13589,7 +13596,7 @@ html.kta-theme-light .kta-session-modal-detail {
   min-width: 220px;
   min-height: 80px;
   padding: 8px 10px !important;
-  font-family: Arial, sans-serif !important;
+  font-family: "KTA Emoji", Arial, sans-serif !important;
   font-size: 13px !important;
   line-height: 1.5 !important;
   background: #0d1117 !important;
@@ -16360,7 +16367,7 @@ body.kta-theme-light .kta-feat-sp.kta-feat-unlocked { color: #1a1f2e; background
   justify-content: center;
   font-size: 22px;
   font-weight: 700;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   letter-spacing: 0;
 }
 .kta-loader-profile-avatar-initial.kta-loader-profile-avatar-empty {
@@ -16543,7 +16550,7 @@ html.kta-theme-light .kta-loader-profile-stat-val {
   justify-content: center;
   font-size: 42px;
   font-weight: 700;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 }
 .kta-profile-details-avatar-initial.kta-profile-details-avatar-empty {
   background: #2a2f3e;
@@ -16658,7 +16665,7 @@ html.kta-theme-light .kta-loader-profile-stat-val {
   font-size: 22px;
   font-weight: 700;
   color: var(--kta-accent-texte);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", monospace;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", monospace;
   line-height: 1.1;
 }
 .kta-profile-stat-lbl {
@@ -16924,7 +16931,7 @@ html.kta-theme-light .kta-profile-pies-card-title {
 }
 .kta-profile-plansstats-table .kta-pps-num {
   text-align: center;
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, "SF Mono", Consolas, monospace;
   font-size: 11.5px;
 }
 .kta-pps-version {
@@ -17161,7 +17168,7 @@ body.kta-presentation-mode .kta-compass-widget {
   -webkit-backdrop-filter: blur(6px);
   -webkit-tap-highlight-color: transparent;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   line-height: 1;
 }
 .kta-presentation-exit-btn:hover,
@@ -19563,7 +19570,7 @@ body.kta-theme-light .kta-profil-tick   { fill: #5a6478; }
 .kta-osm-coord-info {
   /* Coupable : sur deux lignes elle reste recopiable, hors de l'écran non. */
   font-weight: 600; white-space: normal; overflow-wrap: anywhere; min-width: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: "KTA Emoji", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12.5px; color: var(--kta-interaction);
   user-select: text; -webkit-user-select: text;
 }
@@ -20145,7 +20152,7 @@ html.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
   border-radius: 12px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
   color: #e8eaf0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 }
 .kta-guid-ligne { display: flex; align-items: stretch; }
 .kta-guid-corps {
@@ -20308,7 +20315,7 @@ body.kta-theme-light .kta-readme-modal-overlay select option,
 html.kta-theme-light .kta-readme-modal-overlay select option { background: var(--kta-surface); color: var(--kta-texte); }
 
 /* Actions du compte d'une installation reliée (KtaExtensions.blocActionsCompte). */
-.kta-ext-compte { margin-bottom: 12px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+.kta-ext-compte { margin-bottom: 12px; font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
 .kta-ext-compte-titre { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--kta-texte-3); margin-bottom: 8px; }
 .kta-ext-compte-carte { padding: 10px 12px; margin-bottom: 4px; border-radius: 10px;
@@ -20466,7 +20473,7 @@ body.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-
 .kta-phg-corps { overflow-x: hidden; }
 /* Fenêtres posées sur <html> (hors <body>) : la police du body ne leur arrive pas. */
 .kta-phg-boite, .kta-phg-pick-boite, .kta-phg-signal, .kta-phg-floater {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-family: "KTA Emoji", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 }
 .kta-phg-total { font-size: 12px; color: var(--kta-texte-3); margin: 0 0 10px 0; }
 .kta-phg-barre { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; margin-bottom: 8px; }

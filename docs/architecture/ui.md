@@ -2613,9 +2613,10 @@ Preuve : `scripts/smoke/checkup-point-precis.js` (Chromium et WebKit, souris et 
 
 Deux familles : les **icônes SVG au trait** (`js/ktaIcones.js`) pour tout ce qui joue le rôle d'icône (boutons,
 titres de fenêtre et de section, onglets, badges, compteurs, et toute la doc affichée dans l'app : Documentation,
-Aide, tutoriel), et les **emoji du système** pour ce qui reste dans les textes hors doc (toasts, alertes,
-attributs), dont le dessin change entre iPhone, Android et PC. Décisions du 08/11/2026 : trait d'une couleur, base
-Lucide + icônes métier, planche des 115 notions validée ; police emoji embarquée pour les emoji restants : lot suivant.
+Aide, tutoriel), et les **emoji** des textes hors doc (toasts, alertes, attributs, médailles…), dessinés par la
+police embarquée **« KTA Emoji »** (Twemoji réduit, § Emoji dessinés par la police KTA Emoji) pour être les mêmes sur
+iPhone, Android et PC. Décisions du 08/11/2026 : trait d'une couleur, base Lucide + icônes métier, planche des 115
+notions validée ; police emoji embarquée (Twemoji COLRv0) pour les emoji restants.
 Décision du lot D : la doc entière passe en SVG à l'affichage (§ Substitution de la doc).
 
 ### Module `ktaIcones.js`
@@ -2892,7 +2893,51 @@ charge `js/ktaIcones.js` sous node : `module.exports` = `window.KtaIcones`). La 
   🛡️ `scripts/check-emoji-vs16.js` (pré-commit bloquant) ; `--corriger` complète ; la marque `emoji-texte-ok` garde un
   glyphe voulu en texte (clé « ⚠ » de la table des PDF dans `utils.js`).
 
-### Reste en emoji (lot police emoji embarquée)
+### Emoji dessinés par la police KTA Emoji
+
+**La police** (`fonts/kta-emoji.woff2`, ~47 Ko ; `css/kta-emoji.css`) : Twemoji Mozilla 0.7.0 (Twemoji 14, format
+COLRv0 : couleur lue par Safari et iOS, Chrome et Android, Firefox, Edge ; dessins CC-BY 4.0, assemblage Apache 2.0,
+`fonts/LICENSE-twemoji.txt`), réduite aux seuls emoji écrits dans le dépôt (229 séquences, 233 points de code :
+`js/`, `lang/`, `css/`, `addons/`, `index.html`, `confadmin.html`, guides et pages de `docs/applications/` lues par
+l'app). Source : 1 474 284 o (TTF de la release), 493 820 o même convertie en WOFF2 ; réduite : 48 068 o. Hors `lib/` :
+c'est un fichier dérivé (sous-ensemble), il ne peut pas être comparé octet par octet au paquet comme l'exige
+`check-libs.js` ; il vit dans `fonts/` avec les autres polices (`lib/VERSIONS.md` § Polices embarquées).
+- **Refaire** : `node scripts/generer-police-emoji.js` (Python 3 + `pip install fonttools==4.60.1 brotli==1.1.0`,
+  `KTA_PYTHON` pour un autre interpréteur) : télécharge la release officielle (empreinte sha256 vérifiée), relève les
+  emoji, réduit, écrit la police, son manifeste `fonts/kta-emoji.json` (source, empreintes, séquences, plage) et la
+  feuille. Même liste = même fichier (horodatage fixe). Un emoji absent de Twemoji 14 (Unicode 15 et plus) fait
+  échouer la génération : choisir un autre emoji ou monter la source.
+- **Où elle s'applique** : `@font-face « KTA Emoji »` avec un `unicode-range` limité aux emoji retenus ; la famille
+  **ouvre** chaque pile `font-family` (charte de `css/style.css`, feuilles chargées à la demande, `vue3d.css` hérite,
+  Bienvenue, ConfAdmin, styles posés par le JS — sans guillemets là : `KTA Emoji, monospace`). Première place voulue :
+  après une police de texte, un glyphe noir et blanc du système (⚠ ℹ ☀ de Segoe UI…) gagnerait. Champs, boutons,
+  listes et `<option>` n'héritent pas la police : règle `:where(button, input, select, textarea, optgroup, option)`
+  de spécificité nulle (une règle de module `font-family: inherit` l'emporte). Canvas : chaque `ctx.font` la nomme
+  (légende du PNG et des PDF, cartes du Mode Secours, panneaux et plaques de la vue 3D) ; 🩸 un canvas dessine avec ce
+  qui est chargé à l'instant, sinon repli silencieux sur l'emoji du système : `window.ktaPoliceEmoji.charger()`
+  (`ktaIcones.js`), amorcé au chargement de la page, attendu par `exporter.js > _dessinerLegende` et par les dessins
+  du Mode Secours ; la vue 3D s'ouvre après le chargement de three.js, la police est déjà là. Précachée par `sw.js`,
+  CSP `font-src 'self'` suffit, aucun appel externe.
+- **Ce qu'elle ne prend jamais** : chiffres, `#`, `*`, lettres, ponctuation, flèches (U+2190–21FF, ➡ ⬅ ⬆ ⬇ ⤴ ⤵),
+  formes géométriques ▶ ◀ ▪ ▫ (U+25A0–25FF), © ® ™ ‼ ⁉ — même suivis de U+FE0F (une touche 1️⃣, un ▶️ restent au
+  système) : `generer-police-emoji.js > texte`.
+- **Limites** : la saisie libre de l'utilisateur (nom de point, note) suit la même pile — un emoji tapé qui est dans
+  la police sort en Twemoji, un autre garde celui du système (deux styles possibles sur une ligne, accepté plutôt
+  qu'une pile à part pour les champs). La liste native d'un `<select>` ouverte sur iPhone est dessinée par iOS, hors
+  page : emoji Apple. Twemoji 14 : un emoji Unicode 15 et plus n'est pas couvert. Les PDF écrits par jsPDF en texte
+  (pas en image) n'ont pas d'emoji (`check-pdf-texte.js`). Mesuré sous Playwright (Chromium, WebKit de Windows), pas
+  sur un vrai iPhone.
+- 🛡️ `scripts/check-police-emoji.js` (pré-commit bloquant, donc CI) : police couvrant chaque emoji du dépôt (cmap du
+  WOFF2 lue en Node), empreinte = manifeste, plage sans caractère de texte ; feuille liée et précachée ; chaque pile
+  `font-family` et chaque `ctx.font` ouverts par la famille ; **cliquet** des emoji écrits en dur dans les gabarits
+  HTML du JS (ligne de code qui porte une balise) et dans `index.html`, par fichier et par emoji (`PLAFOND_HTML`,
+  `--plafond`) : l'emploi nouveau prend une icône SVG (suggestion donnée) ou relève le plafond en connaissance de
+  cause. `scripts/smoke/checkup-police-emoji.js` (Chromium et WebKit) : police chargée ; toast, médaille, `<option>`,
+  légende PNG et panneau 3D dessinés par elle (rendu canvas comparé, police réellement employée par CDP sous
+  Chromium) ; chiffres et lettres jamais ; aucune requête externe.
+
+Classement des emoji qui restent dans les textes (tous dessinés par la police) :
+
 
 - **Dans la doc affichée** (Documentation, Aide, tutoriel) : seulement les exceptions `GARDE` (§ Substitution de la
   doc) — pastilles de couleur des types et des statuts du Secours, ⛔ Inaccessible, POI du catalogue (⚠️ Danger, 🚪
@@ -2903,7 +2948,7 @@ charge `js/ktaIcones.js` sous node : `module.exports` = `window.KtaIcones`). La 
   copiés de Je suis perdu et du Mode Secours, export TXT des détails de session), les POI (icônes du catalogue), les
   caractères typographiques (▲ ▼ ◀ ▶ ↶ ↷ ⌖ ↻ ➜ ↔ ✓ ✕), les pastilles de couleur des types et des statuts d'étape du
   Secours (🟢 🟡 🟠 🔵 🟦…, repli ⛔ Inaccessible), le nom donné à un point créé (⛑️ Position probable, 🏁 Arrivée).
-- **Texte hors doc** (le lot police les rendra pareils partout) : messages des toasts, alertes, astuces et encadrés (⚠️ ✅ ❌ ⏳
+- **Texte hors doc** : messages des toasts, alertes, astuces et encadrés (⚠️ ✅ ❌ ⏳
   💡 ℹ️ en tête ; lignes des confirmations de la sélection multiple : 📸 🌀 🗂️ 🪜), état passager d'un bouton pendant
   une action (« ⏳ Génération… », « ✅ Copié », « ⏳ Compression… »), libellés en attribut (`title`, `placeholder` :
   « 🔎 Chercher un plan… », 🔒 du champ de code de Bienvenue), `<option>` et `<optgroup>` (📁 dossier, 📦 ZIP / 📂
@@ -2914,7 +2959,7 @@ charge `js/ktaIcones.js` sous node : `module.exports` = `window.KtaIcones`). La 
   carte », gardé dans les préférences).
 - **Récompenses** (décision produit) : médailles des rangs (🥉 🥈 🥇 🏅 ⚜️ 👑, `profileGamification.js`) et des
   paliers de hauts faits (`profileAchievements.js > TIER_ICONS`), toast « 🏆 Haut fait débloqué » : emoji colorés,
-  le lot police les uniformise. Les huit familles et les six spéciaux, eux, désignent une notion de l'app : SVG.
+  uniformisés par la police. Les huit familles et les six spéciaux, eux, désignent une notion de l'app : SVG.
 - **Rapports produits** (définitivement, avec `CLES_SORTIE`) : rapport de crash copié (`crashReports.js`), rapport
   texte des Statistiques, rapport texte de session (`sessionReport.js`), export Markdown des détails de session
   (`refonteInterface.js`).

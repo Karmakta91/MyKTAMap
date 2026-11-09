@@ -264,6 +264,9 @@ const ASSETS_TO_CACHE = [
   "./fonts/montserrat-600.woff2",
   "./fonts/montserrat-800.woff2",
   "./fonts/permanent-marker-400.woff2",
+  // Police « KTA Emoji » (Twemoji réduit aux emoji de l'app, ~47 Ko) : chaque pile font-family l'ouvre.
+  "./css/kta-emoji.css",
+  "./fonts/kta-emoji.woff2",
 
   // JS principaux
   // Splash de démarrage : premier script d'index.html (version, fermeture, plafond)

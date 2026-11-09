@@ -34,7 +34,7 @@ html #kta-unlock-overlay.kta-bv {
   --marge-galerie: max(24px, min(66px, calc(66px - (100vw - 1180px) / 2)));
   display: block; padding: 0; background: var(--bv-fond) !important; overflow-x: hidden; overflow-y: auto;
   overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-behavior: auto;
-  font-family: Montserrat, system-ui, sans-serif; color: var(--bv-texte); text-align: left;
+  font-family: "KTA Emoji", Montserrat, system-ui, sans-serif; color: var(--bv-texte); text-align: left;
   animation: kta-bv-apparait 0.3s ease;
 }
 html #kta-unlock-overlay.kta-bv:focus { outline: none; }
@@ -44,7 +44,7 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-page { position: relative; min-height: 100%; overflow: hidden; }
 .kta-bv a { color: var(--bv-bleu); }
 .kta-bv a:focus-visible, .kta-bv button:focus-visible { outline: 3px solid var(--bv-or); outline-offset: 3px; }
-.kta-bv-feutre { font-family: "Permanent Marker", cursive; color: var(--bv-or); font-weight: 400; }
+.kta-bv-feutre { font-family: "KTA Emoji", "Permanent Marker", cursive; color: var(--bv-or); font-weight: 400; }
 
 /* ── Boutons ── */
 .kta-bv-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
@@ -248,7 +248,7 @@ html #kta-unlock-overlay.kta-bv:focus { outline: none; }
 .kta-bv-encart-ambre { border: 1px solid rgba(232, 183, 101, 0.4); background: rgba(232, 183, 101, 0.06); }
 .kta-bv-encart-ambre .kta-bv-picto { stroke: var(--bv-ambre); }
 .kta-bv-illus { flex: 1 1 300px; min-width: 0; max-width: 480px; margin: 0; }
-.kta-bv-illus svg { display: block; width: 100%; height: auto; font-family: Montserrat, sans-serif; }
+.kta-bv-illus svg { display: block; width: 100%; height: auto; font-family: "KTA Emoji", Montserrat, sans-serif; }
 .kta-bv-legende { margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--bv-texte-3); }
 /* Planche « Annoter » : le tracé principal se dessine, reste affiché, puis recommence (pathLength = 100). */
 .kta-bv-trace-anim { stroke-dasharray: 100; animation: kta-bv-trace 8s ease-in-out infinite; }

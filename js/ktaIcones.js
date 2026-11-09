@@ -10,6 +10,7 @@
 // Expose : window.ktaIcone(nom[, opts]) → chaîne `<svg class="kta-ico" …>` (vide + avertissement si le nom est
 //   inconnu ; opts.classe ajoute une classe) · window.KtaIcones = { TRACES, noms(), existe(nom), poser(racine),
 //   DOC, AUTRE_SENS, REPERES, GARDE, classerDoc(texte), substituerDoc(texte[, opts]), jetonsEnSvg(html) }.
+//   window.ktaPoliceEmoji = { famille, charger() → Promise<bool> } : police des emoji, à attendre avant un canvas.
 //   Lisible par node (générateur de doc.myktamap.fr).
 // ⚠️ contrat : un seul système de noms, celui des icônes (Lucide ou « m-… »), jamais celui des notions. Trait
 //   `currentColor` : l'icône prend la couleur du bouton (doré quand il est actif) ; aria-hidden, le bouton garde
@@ -814,7 +815,7 @@
     { e: "➕", s: "ajouter (étape, équipe, phase, PDF, entrée, plan), garder les deux" },
     { e: "🖼️", s: "calques d'image, image principale, image du KMZ, galerie photo" },
     { e: "💾", s: "bouton Mémoriser d'une ligne de plan, sauvegarde, enregistrer, hors-ligne" },
-    { e: "🎨", s: "fond sous le plan, légende, couleurs, export avancé de session, image vierge" },
+    { e: "🎨", s: "fond sous le plan, légende, couleurs, export avancé de session, image vierge, crédits Twemoji" },
     { e: "📊", s: "détails de la session, statistiques, calques de données" },
     { e: "🔄", s: "import d'un plan existant", a: /^(?:Mettre à jour le plan —|Update the map —|Actualizar el mapa —)/ },
     { e: "🔄", s: "modifier un calque, changer de plan, crédits" },
@@ -1247,6 +1248,22 @@
     });
   }
 
+  // Police « KTA Emoji » (css/kta-emoji.css → fonts/kta-emoji.woff2, Twemoji réduit) : les emoji des textes,
+  // dessinés pareil partout. Le DOM la prend seul (elle ouvre chaque pile font-family) ; un canvas dessine avec ce
+  // qui est chargé à l'instant. 🩸 Police pas encore chargée = repli silencieux sur l'emoji du système : charger()
+  // avant tout dessin sur canvas (exports), amorcé au démarrage (vue 3D). → Promise<bool>, jamais rejetée ; un
+  // échec (feuille absente) est retenté au prochain appel.
+  let _policeEmoji = null;
+  function chargerPoliceEmoji() {
+    if (_policeEmoji) return _policeEmoji;
+    if (typeof document === "undefined" || !document.fonts || !document.fonts.load) return Promise.resolve(false);
+    _policeEmoji = document.fonts.load('16px "KTA Emoji"', "⚠️").then(function (faces) {
+      if (!faces.length) _policeEmoji = null;
+      return faces.length > 0;
+    }, function () { _policeEmoji = null; return false; });
+    return _policeEmoji;
+  }
+
   const api = {
     SOURCE: SOURCE, TRACES: TRACES, DOC: DOC, AUTRE_SENS: AUTRE_SENS, REPERES: REPERES, GARDE: GARDE,
     noms: function () { return Object.keys(TRACES); },
@@ -1257,7 +1274,9 @@
   if (typeof window !== "undefined") {
     window.ktaIcone = ktaIcone;
     window.KtaIcones = api;
+    window.ktaPoliceEmoji = { famille: '"KTA Emoji"', charger: chargerPoliceEmoji };
     if (typeof document !== "undefined") {
+      chargerPoliceEmoji();
       // Déjà analysé (crédits du splash, au-dessus de ce script) : posé tout de suite ; le reste à DOMContentLoaded.
       poser();
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { poser(); });

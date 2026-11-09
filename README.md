@@ -184,7 +184,8 @@ js/                     ← Modules de l'app (vanilla, sans bundler) — voir «
 css/                    ← Feuilles de style : style.css (socle + jetons de la charte) + feuilles chargées à la demande
 lang/                   ← Dictionnaires i18n : fr.json (référence et repli universel), en.json, es.json
 icon/                   ← Icônes des tags built-in (PNG transparents), icônes PWA, rose de la boussole ; précachées
-fonts/                  ← Polices de l'écran Bienvenue (Montserrat, Permanent Marker, .woff2) + leurs licences
+fonts/                  ← Polices de l'écran Bienvenue (Montserrat, Permanent Marker, .woff2) + leurs licences ; police
+                          « KTA Emoji » (Twemoji réduit aux emoji de l'app, kta-emoji.woff2 + manifeste + licence CC-BY 4.0)
 lib/                    ← Librairies embarquées (aucun CDN) : Leaflet + leaflet-imageoverlay-rotated, JSZip, jsPDF,
                           html2canvas, three.js et la police Bodoni Moda (vue 3D, chargés à la demande) ; versions tenues par
                           lib/package.json + lib/VERSIONS.md (check-libs.js)
@@ -202,6 +203,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | Fichier | Rôle |
 |---|---|
 | `style.css` | Socle de toute l'app : jetons `--kta-*` de la charte (redéfinis par le thème clair), splash, accueil, carte, modales |
+| `kta-emoji.css` | Police « KTA Emoji » (`@font-face`, `unicode-range` limité aux emoji de l'app), écrite par `scripts/generer-police-emoji.js` ; liée par `index.html` et `confadmin.html` |
 | `bienvenue.css` | Écran Bienvenue, chargé par `unlockGate.js` seulement quand il s'affiche (polices comprises) |
 | `style-filtres.css` | Modale ≡ Filtres, chargée à la demande (`cssLazy.js`) |
 | `style-meminspector.css` | Inspecteur mémoire et rapports de crash, chargé à la demande |
@@ -551,6 +553,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-lambert93.js` | Projection Lambert 93 de l'import SIG fausse (propriétés définitoires, aucune table recopiée) | pre-commit |
 | `check-legend-roundtrip.js` | Aller-retour de la légende personnalisée cassé (type custom → calque → plan régénéré → ouverture) | pre-commit |
 | `check-libs.js` | Librairie de `lib/` dont l'en-tête, `lib/package.json` et `lib/VERSIONS.md` ne disent pas la même version | pre-commit |
+| `check-police-emoji.js` | Emoji ajouté sans régénérer la police « KTA Emoji », police modifiée à la main ou qui prendrait un chiffre ou une flèche, pile `font-family` ou `ctx.font` sans la famille, emoji en dur nouveau dans un gabarit HTML du JS ou dans `index.html` (cliquet par fichier et par emoji) | pre-commit |
 | `check-licence.js` | Licence pro mal vérifiée (signature ECDSA P-256 exécutée) ou clé privée embarquée | pre-commit |
 | `check-livrables-docs.js` | Doc interne (hors `docs/applications/`) ou `README.md` racine livrés sur les sites | pre-commit |
 | `check-maj-plan.js` | « Mettre à jour le plan » qui perd un objet, écrase un calque ou laisse une trace destructrice | pre-commit |
@@ -607,6 +610,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `audit-html.js` | Génère `docs/applications/NETWORK_AUDIT{,_HISTORIQUE}.html` depuis leurs `.md` (seule source) |
 | `ci-commits.sh` | CI : rejoue anti-fuite pro, `data/` hors Git et noms réels commit par commit sur les commits reçus |
 | `garde-fous-tableau.js` | Lance chaque garde-fou du pre-commit et écrit un tableau durée / résultat (résumé de la CI), jamais bloquant |
+| `generer-police-emoji.js` | Refait `fonts/kta-emoji.woff2` (Twemoji Mozilla 0.7.0 réduit aux emoji du dépôt, Python + fontTools), son manifeste et `css/kta-emoji.css` ; à lancer après tout ajout d'emoji |
 | `md-mini.js` | Markdown → HTML sans dépendance, utilisé par `audit-html.js` |
 | `release/etat-sites.ps1` | Lecture seule : version réellement servie par dev et prod, comparée aux branches |
 | `release/merge-main.ps1` | Passage `Karma_dev` → `main` par KARMA : arbre propre, versions, garde-fous, Sonar, CI verte, merge, tag |
@@ -670,6 +674,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-panneaux-geometrie.js` | Panneaux d'outils du mode plan utilisables au pixel, 4 formats d'écran |
 | `smoke/checkup-pastille-horsligne.js` | Pastille « hors-ligne » de l'accueil : coût et états |
 | `smoke/checkup-cycle-sw.js` | Cycle de vie du Service Worker : inscription après l'entrée, correctif sans bump, « Mettre à jour », poids |
+| `smoke/checkup-police-emoji.js` | Police « KTA Emoji » chargée et employée (toast, médaille du Profil, `<option>`, légende du PNG, panneau de la vue 3D), jamais pour un chiffre ou une lettre, sans requête externe ; Chromium et WebKit |
 | `smoke/checkup-pdf-plafond.js` | PDF dont la qualité dépasse la limite de canvas de l'appareil (iPhone simulé) |
 | `smoke/checkup-pdf-legende.js` | Taille de la légende d'un PDF de plan dense (relevé fictif gonflé en mémoire), A4 à A0, trois tailles |
 | `smoke/checkup-photos-danger.js` | Date des photos (EXIF) et POI danger daté |

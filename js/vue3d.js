@@ -300,7 +300,7 @@
   // au démarrage ; tant qu'elle manque, le serif du système, puis les plaques sont redessinées (_redessinerPlaques).
   const URL_POLICES_PLAQUE = { 600: "lib/bodoni-moda/bodoni-moda-latin-600-normal.woff2",
     700: "lib/bodoni-moda/bodoni-moda-latin-700-normal.woff2" };
-  const FAMILLE_PLAQUE = "'Bodoni Moda', 'Bodoni 72', Didot, 'Times New Roman', Georgia, serif";
+  const FAMILLE_PLAQUE = "'KTA Emoji', 'Bodoni Moda', 'Bodoni 72', Didot, 'Times New Roman', Georgia, serif";
   // Épure (epure) : trait gravé clair sur la paroi, `larg` m de trait, à `recul` m d'elle, centré à `y` m ; dessin
   // de `l` m (ligne, deux talons, une croix, une flèche). Géométrie seule : rien à couper avec 🧱. Couleur de la
   // scène (trait clair sur la pierre).
@@ -1731,7 +1731,7 @@
   function _panneau(p, ou, opts) {
     const o = opts || {};
     const W = 512, PAD = 18, ICONE = 76, LIGNE = 38, ETOILE = 40;
-    const POLICE = "600 30px system-ui, -apple-system, sans-serif";
+    const POLICE = "600 30px 'KTA Emoji', system-ui, -apple-system, sans-serif";
     const coul = _jetonsSombres();
     const danger = !o.bord && _estDanger(p), favori = !o.bord && _estFavori(p);
     const passage = !o.bord && _estPassage(p._v3dJonction || p);

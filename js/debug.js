@@ -122,7 +122,7 @@
         </div>
         <div class="kta-readme-modal-corps" style="padding:0;">
           <div id="kta-debug-logzone" style="
-            font-family:'Courier New',monospace;
+            font-family:KTA Emoji, 'Courier New',monospace;
             font-size:11px;
             padding:10px 14px;
             height:100%;

@@ -212,7 +212,7 @@
       }
       .kta-search-coords {
         font-size: 11px; color: var(--kta-texte-3);
-        font-family: 'Courier New', monospace;
+        font-family: KTA Emoji, 'Courier New', monospace;
       }
 
       .kta-search-empty {

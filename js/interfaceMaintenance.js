@@ -57,7 +57,7 @@ function ouvrirCalibrageEchelle() {
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">${window.ktaIcone("calculator")} ${_t("maint.calib.sectionResult")}</div>
-          <div style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-family:'Courier New',monospace; font-size:13px;">
+          <div style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-family:KTA Emoji, 'Courier New',monospace; font-size:13px;">
             <div style="color:var(--kta-texte-3);">${_t("maint.calib.newScale")}</div>
             <div id="calib_resultat" style="font-size:22px; color:var(--kta-interaction); font-weight:600; margin-top:4px;">—</div>
             <div id="calib_formule" style="font-size:11px; color:var(--kta-texte-3); margin-top:6px;"></div>

@@ -223,13 +223,13 @@
               if (fail) {
                 const lab = _failureLabel(fail.type);
                 return '<div>' + _escapeHtml(a) +
-                       ' <span style="color:' + lab.color + '; font-family:sans-serif; font-size:11px;">' +
+                       ' <span style="color:' + lab.color + '; font-family:KTA Emoji, sans-serif; font-size:11px;">' +
                        lab.icon + ' ' + lab.label +
                        (fail.status ? ' (' + fail.status + ')' : '') +
                        '</span></div>';
               }
               return '<div>' + _escapeHtml(a) +
-                     ' <span style="color:var(--kta-texte-3); font-family:sans-serif; font-size:11px;">' + _t("missing.causeUnknown") + '</span></div>';
+                     ' <span style="color:var(--kta-texte-3); font-family:KTA Emoji, sans-serif; font-size:11px;">' + _t("missing.causeUnknown") + '</span></div>';
             }).join('') +
           '</div>' +
         '</div>';

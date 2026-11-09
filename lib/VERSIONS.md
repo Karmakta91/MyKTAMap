@@ -39,10 +39,14 @@
 
 ## 🔤 Polices embarquées (`fonts/`, hors `lib/`)
 
-Pas de paquet npm suivi (pas de veille Dependabot) : des fichiers de police figés, sans code exécutable.
-Utilisées par le seul écran Bienvenue (`css/bienvenue.css`), précachées par `sw.js`.
+Pas de paquet npm suivi (pas de veille Dependabot) : des fichiers de police figés, sans code exécutable, précachés
+par `sw.js`. Montserrat et Permanent Marker servent le seul écran Bienvenue (`css/bienvenue.css`) ; « KTA Emoji »
+dessine les emoji de toute l'app (`css/kta-emoji.css`). Celle-ci n'est pas dans `lib/` : c'est un sous-ensemble
+produit par `scripts/generer-police-emoji.js`, donc jamais identique octet par octet au fichier publié ; sa source
+est épinglée par empreinte dans le script, sa version dans `fonts/kta-emoji.json` (`check-police-emoji.js`).
 
 | Police | Fichiers | Licence (jointe) | Source |
 |---|---|---|---|
 | **Montserrat** 400 / 600 / 800 | `montserrat-{400,600,800}.woff2` | SIL Open Font License 1.1 (`LICENSE-montserrat.txt`) | [JulietaUla/Montserrat](https://github.com/JulietaUla/Montserrat) |
 | **Permanent Marker** 400 | `permanent-marker-400.woff2` | Apache 2.0 (`LICENSE-permanent-marker.txt`) | [Google Fonts](https://fonts.google.com/specimen/Permanent+Marker) |
+| **KTA Emoji** (Twemoji Mozilla **0.7.0**, Twemoji 14, COLRv0, réduite) | `kta-emoji.woff2`, `kta-emoji.json` | dessins CC-BY 4.0, police Apache 2.0 (`LICENSE-twemoji.txt`) | [mozilla/twemoji-colr](https://github.com/mozilla/twemoji-colr/releases/tag/v0.7.0) · [twitter/twemoji](https://github.com/twitter/twemoji) |

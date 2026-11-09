@@ -776,7 +776,7 @@
              ' background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.20);' +
              ' border-radius:6px; cursor:pointer;">' +
              '<input type="checkbox" data-level="' + lvl + '" id="ann_level_' + lvl + '" ' + checked + '>' +
-             '<span style="font-family:monospace; font-weight:600; color:var(--kta-accent-texte); margin-left:6px;">' + window.I18n.t("imgexport.niveau.court", { lvl: lvl }) + '</span>' +
+             '<span style="font-family:KTA Emoji, monospace; font-weight:600; color:var(--kta-accent-texte); margin-left:6px;">' + window.I18n.t("imgexport.niveau.court", { lvl: lvl }) + '</span>' +
              '</label>';
     }).join("");
   }
@@ -2420,6 +2420,8 @@
 
   // ── Dessin de la légende intégrée ──────────
   async function _dessinerLegende(ctx, leg, canvasW, canvasH, scale, iconCache, tagsUtilises) {
+    // Emoji des textes dessinés : police KTA Emoji chargée avant le canvas (ktaIcones.js > chargerPoliceEmoji).
+    if (window.ktaPoliceEmoji) await window.ktaPoliceEmoji.charger();
     const config = window.PLAN_CONFIG;
 
     const TAILLES = {
@@ -2715,12 +2717,12 @@
       let maxW = 0;
       ctx.save();
       sections.forEach(function(sec) {
-        ctx.font = fs + "px sans-serif";
+        ctx.font = fs + "px 'KTA Emoji', sans-serif";
         sec.lignes.forEach(function(l) {
           const w = ctx.measureText(l.label).width;
           if (w > maxW) maxW = w;
         });
-        ctx.font = "bold " + fs + "px sans-serif";
+        ctx.font = "bold " + fs + "px 'KTA Emoji', sans-serif";
         const wt = ctx.measureText(sec.section).width;
         if (wt > maxW) maxW = wt;
       });
@@ -2743,10 +2745,10 @@
 
     ctx.save();
     let titreMetaW = 0;
-    ctx.font = "italic 600 " + tfs + "px Georgia, 'Times New Roman', serif";
+    ctx.font = "italic 600 " + tfs + "px 'KTA Emoji', Georgia, 'Times New Roman', serif";
     const wTitre = ctx.measureText(window.I18n.t("imgexport.legende.titreImg")).width;
     if (wTitre > titreMetaW) titreMetaW = wTitre;
-    ctx.font = "italic " + (fs * 0.92) + "px Georgia, 'Times New Roman', serif";
+    ctx.font = "italic " + (fs * 0.92) + "px 'KTA Emoji', Georgia, 'Times New Roman', serif";
     metaLignes.forEach(function(l) {
       const w = ctx.measureText(l).width;
       if (w > titreMetaW) titreMetaW = w;
@@ -2806,7 +2808,7 @@
     let cy = by + pad;
     ctx.save();
     ctx.fillStyle = S.titrePrincipal;
-    ctx.font = "italic 600 " + tfs + "px Georgia, 'Times New Roman', serif";
+    ctx.font = "italic 600 " + tfs + "px 'KTA Emoji', Georgia, 'Times New Roman', serif";
     ctx.textBaseline = "top";
     ctx.fillText(window.I18n.t("imgexport.legende.titreImg"), bx + pad, cy);
     cy += tfs * 1.2;
@@ -2826,7 +2828,7 @@
     if (metaLignes.length > 0) {
       ctx.save();
       ctx.fillStyle = S.meta;
-      ctx.font = "italic " + (fs * 0.92) + "px Georgia, 'Times New Roman', serif";
+      ctx.font = "italic " + (fs * 0.92) + "px 'KTA Emoji', Georgia, 'Times New Roman', serif";
       ctx.textBaseline = "top";
       metaLignes.forEach(function(l) {
         ctx.fillText(l, bx + pad, cy);
@@ -2845,7 +2847,7 @@
       for (const sec of sections) {
         ctx.save();
         ctx.fillStyle = S.titreSection;
-        ctx.font = "bold " + fs + "px sans-serif";
+        ctx.font = "bold " + fs + "px 'KTA Emoji', sans-serif";
         ctx.textBaseline = "top";
         ctx.fillText(sec.section, xCol, cyLocal);
         cyLocal += lh;
@@ -2893,7 +2895,7 @@
 
           ctx.save();
           ctx.fillStyle = S.text;
-          ctx.font = fs + "px sans-serif";
+          ctx.font = fs + "px 'KTA Emoji', sans-serif";
           ctx.textBaseline = "middle";
           ctx.fillText(l.label, xCol + ic + pad, cyLocal + lh / 2);
           ctx.restore();

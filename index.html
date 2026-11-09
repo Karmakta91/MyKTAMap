@@ -19,6 +19,8 @@
   <meta name="description" content="MyKTAMap — Application de cartographie pour cataphiles. Usage non commercial uniquement.">
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
+  <!-- Police « KTA Emoji » (Twemoji réduit) avant la charte : chaque pile font-family l'ouvre. -->
+  <link rel="stylesheet" href="css/kta-emoji.css">
   <link rel="stylesheet" href="css/style.css">
   <!-- 🩸 Plein écran iPhone (viewport-fit=cover + black-translucent) : échoué deux fois malgré les
        env(safe-area-inset-*). Ne pas retenter sans diagnostic précis du symptôme sur l'appareil. État stable :
@@ -164,7 +166,7 @@
     </div>
 
     <!-- Crédits librairies + algorithme (Dijkstra = pathfinder), en bas à gauche, 2 lignes : le <br> force la
-         coupure ; la 2e (3 noms) s'aligne sur la signature, la 1re (4 noms) passe au-dessus d'elle. -->
+         coupure ; la 2e (4 noms) s'aligne sur la signature, la 1re (4 noms) passe au-dessus d'elle. -->
     <div id="splashLeafletCredit" class="kta-splash-coin">
       <span data-kta-ico="leaf"></span>&nbsp;Leaflet ·
       <span data-kta-ico="box"></span>&nbsp;three.js ·
@@ -172,7 +174,8 @@
       <span data-kta-ico="file-text"></span>&nbsp;jsPDF<br>
       <span data-kta-ico="globe"></span>&nbsp;OSM ·
       <span data-kta-ico="route"></span>&nbsp;Dijkstra ·
-      <span data-kta-ico="camera"></span>&nbsp;html2canvas</div>
+      <span data-kta-ico="camera"></span>&nbsp;html2canvas ·
+      <span data-kta-ico="palette"></span>&nbsp;Twemoji</div>
   </div>
   <!-- ⚠️ ktaSplash.js : SYNCHRONE et juste après le splash (mouvement réduit lu avant la première peinture,
        plafond de sécurité armé dès le début). -->
@@ -505,7 +508,8 @@
           <span data-kta-ico="file-text"></span>&nbsp;jsPDF ·
           <span data-kta-ico="globe"></span>&nbsp;OSM ·
           <span data-kta-ico="route"></span>&nbsp;Dijkstra ·
-          <span data-kta-ico="camera"></span>&nbsp;html2canvas
+          <span data-kta-ico="camera"></span>&nbsp;html2canvas ·
+          <span data-kta-ico="palette"></span>&nbsp;Twemoji
         </div>
       </div>
     </div>

@@ -1397,7 +1397,7 @@ function planRowHTML(plan) {
         }
 
         const tableHtml = rows.map(function(r) {
-          const valStyle = r.mono ? ' style="font-family:monospace; font-size:11.5px; color:var(--kta-texte-2);"' : '';
+          const valStyle = r.mono ? ' style="font-family:KTA Emoji, monospace; font-size:11.5px; color:var(--kta-texte-2);"' : '';
           return '<tr>' +
                    '<td class="kta-info-key">' + escapeHtml(r.label) + '</td>' +
                    '<td class="kta-info-val"' + valStyle + '>' + escapeHtml(r.value) + '</td>' +
@@ -1568,7 +1568,7 @@ function planRowHTML(plan) {
               html += '<div style="font-size:11px; color:var(--kta-texte-3); margin:-4px 0 8px; line-height:1.5;">' +
                         escapeHtml(_t("home.plans.offline.manquantsTitre")) + '<br>' +
                         apercu.map(function (u) {
-                          return '<span style="font-family:monospace; font-size:10.5px; color:var(--kta-texte-2);">' +
+                          return '<span style="font-family:KTA Emoji, monospace; font-size:10.5px; color:var(--kta-texte-2);">' +
                                  escapeHtml(u) + '</span>';
                         }).join('<br>') +
                         (st.manquants.length > apercu.length

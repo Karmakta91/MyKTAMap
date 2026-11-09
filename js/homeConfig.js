@@ -720,7 +720,7 @@
                 'maxlength="6" id="ktaPinPromptInput" ' +
                 'style="display:block; width:100%; margin:14px 0 6px; padding:12px; font-size:22px; ' +
                 'text-align:center; letter-spacing:8px; background:var(--kta-fond); border:2px solid rgba(244,197,66,0.3); ' +
-                'border-radius:8px; color:var(--kta-accent-texte); font-family:monospace; box-sizing:border-box;" placeholder="••••">' +
+                'border-radius:8px; color:var(--kta-accent-texte); font-family:KTA Emoji, monospace; box-sizing:border-box;" placeholder="••••">' +
               '<div class="kta-modal-actions" style="margin-top:10px;">' +
                 '<button class="kta-btn kta-btn-ghost"   id="ktaPinPromptCancel">' + _t("pin.setup.cancel") + '</button>' +
                 '<button class="kta-btn kta-btn-primary" id="ktaPinPromptOk">' + (confirmLabel || _t("pin.setup.validate")) + '</button>' +

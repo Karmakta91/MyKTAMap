@@ -248,7 +248,7 @@
         text-align: right;
       }
       .kta-kmz-input {
-        font-family: monospace;
+        font-family: KTA Emoji, monospace;
         font-size: 12.5px;
         padding: 4px 8px;
       }
@@ -392,7 +392,7 @@
         cursor: pointer;
       }
       .kta-kmz-opacity-val {
-        font-family: monospace;
+        font-family: KTA Emoji, monospace;
         font-size: 12px;
         color: var(--kta-accent-texte);
         min-width: 36px;

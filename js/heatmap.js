@@ -99,7 +99,7 @@
       .kta-heatmap-slider-val {
         min-width: 50px;
         text-align: right;
-        font-family: ui-monospace, monospace;
+        font-family: KTA Emoji, ui-monospace, monospace;
         font-size: 12px;
         color: #ff8a5c;
         font-weight: 600;

@@ -3396,7 +3396,7 @@
     } else {
       const errMsg = (result && result.error) || t("secours.import.erreurInconnue");
       inner += '<p>' + t("secours.import.resKoBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
-               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; font-family:monospace; font-size:13px; word-break:break-word;">' +
+               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; font-family:KTA Emoji, monospace; font-size:13px; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
                '<p style="color:var(--kta-texte-3); font-size:13px;">' +
@@ -5622,7 +5622,7 @@
         "background:" + ovBg, "color:" + ovAccent,
         "display:flex", "align-items:center", "justify-content:center",
         "flex-direction:column", "gap:18px",
-        "font-family:system-ui,-apple-system,sans-serif",
+        "font-family:KTA Emoji, system-ui,-apple-system,sans-serif",
         "font-size:16px"
       ].join(";");
       overlay.innerHTML =
@@ -6049,7 +6049,7 @@
       "position:fixed", "inset:0", "z-index:100001",
       "background:" + pal.backdrop, "backdrop-filter:blur(3px)",
       "display:flex", "align-items:center", "justify-content:center",
-      "padding:20px", "font-family:system-ui,-apple-system,sans-serif"
+      "padding:20px", "font-family:KTA Emoji, system-ui,-apple-system,sans-serif"
     ].join(";");
 
     const box = document.createElement("div");
@@ -6384,6 +6384,8 @@
   // Rendu : le plan recadré sur les accès (+ marge), zones des équipes en filigrane,
   // un repère numéroté par accès (numéros = lignes du tableau).
   async function _canvasAcces(s, acces) {
+    // Emoji des textes dessinés : police KTA Emoji chargée avant le canvas (ktaIcones.js > chargerPoliceEmoji).
+    if (window.ktaPoliceEmoji) await window.ktaPoliceEmoji.charger();
     const xs = acces.map(function(a) { return a.pt.x; }), ys = acces.map(function(a) { return a.pt.y; });
     let x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
     let y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
@@ -6418,7 +6420,7 @@
       ctx.beginPath(); ctx.arc(q.x, q.y, 15 * k, 0, 2 * Math.PI);
       ctx.fillStyle = hex; ctx.fill();
       ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3.5 * k; ctx.stroke();
-      ctx.fillStyle = "#ffffff"; ctx.font = "bold " + Math.round(16 * k) + "px Arial, sans-serif";
+      ctx.fillStyle = "#ffffff"; ctx.font = "bold " + Math.round(16 * k) + "px 'KTA Emoji', Arial, sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 3 * k;
       ctx.strokeText(String(i + 1), q.x, q.y); ctx.fillText(String(i + 1), q.x, q.y);
@@ -6724,7 +6726,7 @@
         ctx.lineWidth   = 3;
         ctx.stroke();
         ctx.fillStyle   = "#1a1f2e";
-        ctx.font        = "bold 14px Arial, sans-serif";
+        ctx.font        = "bold 14px 'KTA Emoji', Arial, sans-serif";
         ctx.textAlign   = "center";
         ctx.textBaseline= "middle";
         ctx.fillText(String(i + 1), c.x, c.y);
@@ -6743,7 +6745,7 @@
       ctx.lineWidth   = 5;
       ctx.stroke();
       ctx.fillStyle   = "#ffffff";
-      ctx.font        = "bold 16px Arial, sans-serif";
+      ctx.font        = "bold 16px 'KTA Emoji', Arial, sans-serif";
       ctx.textAlign   = "center";
       ctx.textBaseline= "middle";
       ctx.fillText("E", c.x, c.y);
@@ -6765,7 +6767,7 @@
       ctx.lineWidth   = 5;
       ctx.stroke();
       ctx.fillStyle   = "#ffffff";
-      ctx.font        = isLoop ? "bold 12px Arial, sans-serif" : "bold 16px Arial, sans-serif";
+      ctx.font        = isLoop ? "bold 12px 'KTA Emoji', Arial, sans-serif" : "bold 16px 'KTA Emoji', Arial, sans-serif";
       ctx.textAlign   = "center";
       ctx.textBaseline= "middle";
       ctx.fillText(isLoop ? "E/S" : "S", cx, cy);
@@ -6781,6 +6783,8 @@
    * @param {object} r  - reportData complet (métadonnées)
    */
   async function _drawRapportPDFEquipeMiniaturePage(pdf, ed, r) {
+    // Emoji des textes dessinés : police KTA Emoji chargée avant le canvas (ktaIcones.js > chargerPoliceEmoji).
+    if (window.ktaPoliceEmoji) await window.ktaPoliceEmoji.charger();
     if (!ed || !ed.equipe) return false;
     // 🩸 `ed.equipe` est la copie ALLÉGÉE du rapport (id, nom, couleur, membres…) : ni entrée, ni étapes, ni
     // zone, ni itinéraire → `_calculerBoundsEquipe` rendrait null et la page serait sautée sans un mot. Le PDF
@@ -7269,6 +7273,8 @@
   }
   // Carte d'une équipe pour le PDF : rendu de son rectangle + l'overlay de l'équipe.
   async function _carteEquipe(g, hexColor) {
+    // Emoji des textes dessinés : police KTA Emoji chargée avant le canvas (ktaIcones.js > chargerPoliceEmoji).
+    if (window.ktaPoliceEmoji) await window.ktaPoliceEmoji.charger();
     const rect = _rectCarteEquipe(g);
     const src = await _rendreRegionPlan(rect, rect && rect.planEntier ? 1200 : 2400);
     return src ? _cropCanvasForTeam(src, g, hexColor) : null;
@@ -7353,7 +7359,7 @@
         const c = _toCanvas(w);
         _drawTeamMarker(ctx, c.x, c.y, 7 * k, "#ffffff", hexColor);
         ctx.fillStyle = "#000";
-        ctx.font = "bold " + Math.round(12 * k) + "px sans-serif";
+        ctx.font = "bold " + Math.round(12 * k) + "px 'KTA Emoji', sans-serif";
         ctx.textAlign = "left"; ctx.textBaseline = "middle";
         ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k; ctx.lineJoin = "round";   // lisible sur plan sombre
         ctx.strokeText(String(i + 1), c.x + 9 * k, c.y);
@@ -7366,7 +7372,7 @@
       const c = _toCanvas(g.entree);
       _drawTeamMarker(ctx, c.x, c.y, 9 * k, "#00cc44", hexColor);
       ctx.fillStyle = "#00cc44";
-      ctx.font = "bold " + Math.round(11 * k) + "px sans-serif";
+      ctx.font = "bold " + Math.round(11 * k) + "px 'KTA Emoji', sans-serif";
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k;
       const lblEntree = t("secours.carte.entree");
@@ -7380,7 +7386,7 @@
       _drawTeamMarker(ctx, c.x, c.y, (isBoucle ? 11 : 9) * k,
                       isBoucle ? "#ffaa00" : "#cc0000", hexColor);
       ctx.fillStyle = isBoucle ? "#ffaa00" : "#cc0000";
-      ctx.font = "bold " + Math.round(11 * k) + "px sans-serif";
+      ctx.font = "bold " + Math.round(11 * k) + "px 'KTA Emoji', sans-serif";
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k;
       const lbl = isBoucle ? t("secours.carte.entreeSortie") : t("secours.carte.sortie");
@@ -7422,7 +7428,7 @@
     }
     if (items.length === 0) return;
 
-    ctx.font = "11px sans-serif";
+    ctx.font = "11px 'KTA Emoji', sans-serif";
     const lineH = 16;
     const swatchW = 16;
     const swatchGap = 6;
