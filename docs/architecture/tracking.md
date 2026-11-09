@@ -2421,7 +2421,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   (`_surPenteDe`, bout à bout). Dessin (`_zoneJonction`) : sol et plafond en triangles fins (`ENTRE.fin`, matériaux
   des pièces sans gabarit : `_matsPente`), faces du bord par morceaux de `ENTRE.zoneFace` m là où un seul côté est
   vide (dedans [sol, plafond] ; dehors la tranche de chacun des deux niveaux là où il a un vide, et la galerie inclinée
-  qui continue), trous du sol et du plafond d'un seul tenant du niveau, et des plans des voisins pris dans sa hauteur (trémie sur toute l'emprise de la zone ; voisins lus à leur source, `_montresAlt` : les tuiles du niveau actif sont construites avant les voisins). Zone et tracé d'un calque comptent comme ceux de la session (`KtaGalerie.memeObjet` : même uid ou mêmes points, `getAllEmbeddedRoads` / `getAllEmbeddedZones` rendant des copies) ; sinon la zone était ignorée et la galerie inclinée passait en tube au travers.
+  qui continue), trous du sol et du plafond d'un seul tenant du niveau, et des plans des voisins pris dans sa hauteur (trémie sur toute l'emprise de la zone ; voisins lus à leur source, `_montresAlt` : les tuiles du niveau actif sont construites avant les voisins). Zone et tracé d'un calque comptent comme ceux de la session (`KtaGalerie.memeObjet` : même uid ou mêmes points, `getAllEmbeddedRoads` / `getAllEmbeddedZones` rendant des copies).
   La galerie inclinée n'est pas dessinée dans la zone (`_pente` : stations au bord, morceaux dedans sautés) ; parois de
   tube et rubans des tracés posés dans la zone non plus. Dessinée par le niveau actif s'il est l'un des siens, avec les
   structures de l'autre niveau posées dedans (`_structuresEmpruntees`), sinon par le voisin qui la porte
@@ -2434,9 +2434,21 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   (1 m) du bord d'une galerie inclinée : contour coupé à 1 m, prisme plat puis sommets relevés (`_releverPente` :
   y = 0 → sol en pente, y = h → plafond en pente, proportionnel ; un mur garde sa part `HAUTEUR_MUR`). Emprise relevée
   (`entremeles().structures`). La règle du pas reste celle de la 2D (contour au sol).
+- **Structures au-dessus d'une trémie** (décision produit, `_piedSurTremie`, `_piedDansZone`) : une structure qui
+  n'est pas posée sur la pente (centre hors de la zone) mais dont l'emprise déborde sur une zone jonction n'est jamais
+  suspendue. La part de son emprise dans la zone descend de sa base (sol de son niveau) jusqu'à l'appui : le plafond
+  de la zone là où il passe sous la base (la roche qui porte), sinon son sol (la base serait dans le vide de la zone) ;
+  rien là où le sol de la zone est déjà au-dessus de la base. Faces latérales seules, coupées aux bords de la zone
+  (dehors, sous la base, c'est la roche ; un pied qui en sortirait passerait sous le sol, dans la tranche d'un niveau
+  entremêlé), tous les `ENTRE.pas` m et là où le plafond de la zone passe la base. Même règle pour le niveau actif
+  (vu d'en haut, la descente) et pour un voisin (vu d'en dessous, la montée : `e.pentes` du voisin dans sa tuile),
+  en mixte et en structures ; même lot, couleur et motif que la structure. Vue d'édition : le plafond de la zone y
+  est retiré comme tout plafond, un pied qui s'y arrête reste coupé à sa hauteur. La règle du pas ne change pas
+  (`_bloqueEnZone` lit déjà les structures des deux niveaux au sol).
 - **Relevés** : `KtaVue3D.altitude(x, y)` (sol, plafond, zone, pente au point), `KtaVue3D.entremeles()` (tranches,
   parois dessinées, trous, plans cachés, niveaux qui bloquent, structures en pente). Checkup `checkup-vue-3d.js` § 50
-  (`KTA_V3D_SEUL=entremeles`) et § 51 (`=zonejonction`).
+  (`KTA_V3D_SEUL=entremeles`), § 51 (`=zonejonction`), § 53 (`=jonction-tremie`) et § 54
+  (`=jonction-piliers` : structures à cheval sur la zone, vues du 0 et du +1).
 
 ### Rechercher et y aller en 3D (QCM du 08/11/2026)
 

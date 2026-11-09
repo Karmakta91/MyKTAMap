@@ -1239,6 +1239,7 @@
       } else {
         _prisme(lot, _anneau(s.points, sc), 0, hs, col, true, m);
       }
+      if (!pente) _piedSurTremie(lot, s, col, m);
     }
     for (let i = 0; i < t.z.length; i++) {
       const z = t.z[i], ring = _anneau(z.points, sc);
@@ -3768,6 +3769,94 @@
       _prisme(lot, _anneauFin(_anneau(s.points, e.sc), ENTRE.fin), 0, hs, col, true, m);
     }
     _releverPente(lot, debut, p, e.hauteur, s.uid || null);
+  }
+
+  // ⚠️ contrat (décision produit) : une structure (pilier, mur, front) qui n'est pas posée sur la pente mais déborde
+  // sur une zone jonction n'est jamais suspendue au-dessus de la trémie. La part de son emprise dans la zone descend
+  // de sa base (sol de son niveau, 0 du contexte) jusqu'à l'appui : le plafond de la zone s'il passe sous la base (la
+  // roche qui porte), sinon son sol (la base serait dans le vide de la zone) ; rien là où le sol de la zone est déjà
+  // au-dessus de la base. Faces latérales seules, coupées aux bords de la zone : au-delà, sous la base, c'est la roche
+  // (un pied hors de la zone sortirait sous le sol, dans la tranche d'un niveau entremêlé). Repère du contexte
+  // (e.pentes : celles du voisin dans sa tuile), même lot, couleur et motif que la structure.
+  function _piedSurTremie(lot, s, col, m) {
+    const e = _e, l = (e.pentes || []).filter(function (p) { return p.zones && p.zones.length; });
+    if (!l.length || !Array.isArray(s.points) || s.points.length < 2) return;
+    let pieces;
+    if (_estLigne(s.type)) {
+      const p0 = s.points[0];
+      let u = m && p0 ? ((p0.x / e.sc * 0.37 + p0.y / e.sc * 0.61) % m + m) % m : 0;
+      pieces = _pavesLigne(s.points, e.sc, _epaisseurLigne(s.type)).map(function (q) {
+        const o = { ring: q.ring, u0: u };
+        u += q.l;
+        return o;
+      });
+    } else {
+      const ring = _anneau(s.points, e.sc);
+      if (ring.length < 3) return;
+      pieces = [{ ring: ring, u0: m ? _origineMotif(ring, m) : 0 }];
+    }
+    pieces.forEach(function (pc) {
+      let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+      pc.ring.forEach(function (q) {
+        x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]);
+      });
+      l.forEach(function (p) {
+        p.zones.forEach(function (en) {
+          if (en.x1 < x0 || en.x0 > x1 || en.z1 < z0 || en.z0 > z1) return;
+          _piedDansZone(lot, pc.ring, pc.u0, p, en, col, m);
+        });
+      });
+    });
+  }
+
+  // Faces du pied de la structure de contour `ring` (sens positif, comme _prisme) dans la zone `en` de la pente p :
+  // chaque côté coupé aux bords de la zone, tous les ENTRE.pas m (l'appui suit la pente) et là où le plafond de la
+  // zone passe la base (l'appui y saute du plafond au sol).
+  function _piedDansZone(lot, ring, u0, p, en, col, m) {
+    let s = u0;
+    for (let i = 0; i < ring.length; i++) {
+      const P = ring[i], Q = ring[(i + 1) % ring.length], dx = Q[0] - P[0], dz = Q[1] - P[1], l = Math.hypot(dx, dz);
+      if (l < 1e-6) continue;
+      const ts = [0, 1], a = en.ring;
+      for (let k = 0, j = a.length - 1; k < a.length; j = k++) {
+        const ex = a[k][0] - a[j][0], ez = a[k][1] - a[j][1], den = dx * ez - dz * ex;
+        if (Math.abs(den) < 1e-12) continue;
+        const t = ((a[j][0] - P[0]) * ez - (a[j][1] - P[1]) * ex) / den;
+        const u = ((a[j][0] - P[0]) * dz - (a[j][1] - P[1]) * dx) / den;
+        if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+      }
+      for (let d = ENTRE.pas; d < l; d += ENTRE.pas) ts.push(d / l);
+      ts.sort(function (x, y) { return x - y; });
+      const pt = function (t) { return [P[0] + dx * t, P[1] + dz * t]; };
+      const plaf = function (t) { const q = pt(t); return _surPenteDe(p, q[0], q[1]).plafond; };
+      const morceaux = [];
+      for (let k = 0; k + 1 < ts.length; k++) {
+        const ta = ts[k], tb = ts[k + 1];
+        if ((tb - ta) * l < 1e-6) continue;
+        const fa = plaf(ta), fb = plaf(tb);
+        if ((fa > ENTRE.eps) !== (fb > ENTRE.eps)) {
+          const tc = ta + (tb - ta) * (fa - ENTRE.eps) / (fa - fb);
+          morceaux.push([ta, tc], [tc, tb]);
+        } else morceaux.push([ta, tb]);
+      }
+      const n = [dz / l, 0, -dx / l];
+      morceaux.forEach(function (mc) {
+        const ta = mc[0], tb = mc[1], tm = (ta + tb) / 2, M = pt(tm);
+        if ((tb - ta) * l < 1e-6 || !_dansAnneauM(a, M[0], M[1])) return;
+        // Appui de chaque bout pris du côté du morceau (un saut plafond → sol tombe sur une borne).
+        const fm = plaf(tm) > ENTRE.eps;
+        const appui = function (t) {
+          const q = pt(t), r = _surPenteDe(p, q[0], q[1]);
+          return !fm ? Math.min(r.plafond, 0) : Math.min(r.dy, 0);
+        };
+        const A = pt(ta), B = pt(tb), ya = appui(ta), yb = appui(tb);
+        if (ya > -ENTRE.eps && yb > -ENTRE.eps) return;
+        const sa = s + ta * l, sb = s + tb * l;
+        lot.quad([A[0], ya, A[1]], [B[0], yb, B[1]], [B[0], 0, B[1]], [A[0], 0, A[1]], n, col,
+          m ? [sa / m, ya / m, sb / m, yb / m, sb / m, 0, sa / m, 0] : undefined);
+      });
+      s += l;
+    }
   }
 
   // Triangles (m) d'un contour, coupés au côté le plus long jusqu'à `max` m (le sol en pente reste fidèle à la
