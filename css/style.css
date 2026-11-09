@@ -19395,7 +19395,8 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
 .kta-note-popup-niveaux-zone-appliquer:hover {
   background: rgba(140, 180, 255, 0.24);
 }
-/* Liste « Niveau » sous Convertir (multi-niveau, objet de session) ; listes Départ / Arrivée d'une jonction. */
+/* Liste « Niveau » sous Convertir (multi-niveau, objet de session) ; listes Départ / Arrivée d'une jonction et
+   Du niveau / Au niveau d'une zone jonction. */
 .kta-note-popup-niveau-ligne {
   display: flex;
   align-items: center;
@@ -19432,8 +19433,7 @@ html.kta-theme-light .kta-note-popup-jct-niveau {
 .kta-note-popup-niveaux-zone-cases { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
 .kta-note-popup-niveaux-zone-case { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .kta-note-popup-niveaux-zone .kta-note-popup-actions { margin-top: 6px; }
-.kta-note-popup-zone-jonction { margin-top: 6px; }
-.kta-note-popup-zone-jonction-avis { margin-top: 4px; color: var(--kta-texte-2); }
+.kta-note-popup-zone-jonction-avis { margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--kta-texte-2); }
 .kta-note-popup-jct-statut { margin-top: 6px; font-size: 12px; line-height: 1.4; }
 body.kta-theme-light .kta-convert-source { color: #1a1f2e; }
 body.kta-theme-light .kta-convert-choix {

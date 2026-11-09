@@ -504,6 +504,8 @@
       return { width: 4, alpha: 1 };
     }
     if (categorie === "zones") {
+      // Zone jonction : voile léger comme sur la carte (une salle où d'autres objets restent lisibles).
+      if (cle === "pente") return { width: 2, fillAlpha: 0.3 };
       return { width: 2, fillAlpha: (cle === "inaccessible") ? 0.65 : 0.6 };
     }
     // Structures : front (polyline) = LineString épaisse SANS remplissage ; pilier/mur = polygone.
@@ -821,8 +823,6 @@
         parts.push('<Data name="mkm:niveaux"><value>' + extra.niveaux.join(",") + '</value></Data>');
       }
       if (extra && extra.copie) parts.push('<Data name="mkm:copie"><value>1</value></Data>');
-      // Zone jonction de niveau (sol en pente en 3D, galerieEmprise.js > penteDeZone).
-      if (extra && extra.jonction) parts.push('<Data name="mkm:jonction"><value>1</value></Data>');
       // POI danger : jour du constat (« AAAA-MM-JJ », déjà validé par poiDanger.js).
       if (extra && extra.dateConstat) {
         parts.push('<Data name="mkm:dateConstat"><value>' + _xmlEsc(extra.dateConstat) + '</value></Data>');
@@ -882,10 +882,11 @@
       if (zone.type === "pilier-1") nom = "Pilier 1ère masse";
       else if (zone.type === "pilier-2") nom = "Pilier 2e masse";
       else if (zone.type === "mur") nom = "Mur";
+      else if (zone.type === "pente") nom = "🪜 Jonction";   // même nom que le tracé jonction (#zone_pente)
       else nom = _nomType(zone.type);
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
       const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null,
-        multi ? { niveaux: multi.niveaux, copie: multi.copie, jonction: zone.jonction === true } : null);
+        multi ? { niveaux: multi.niveaux, copie: multi.copie } : null);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
@@ -1163,16 +1164,25 @@
           body += '</Folder>';
         }
       }
-      if (opts.include.jonctions && mlOn && opts.data.roads) {
-        const jonctions = opts.data.roads.filter(function(r) {
+      if (opts.include.jonctions && mlOn && (opts.data.roads || opts.data.zones)) {
+        const jonctions = (opts.data.roads || []).filter(function(r) {
           if (r.type !== "jonction") return false;
           // Une jonction va dans le folder de son fromLevel.
           const fl = Number.isInteger(r.fromLevel) ? r.fromLevel : 0;
           return fl === level;
         });
-        if (jonctions.length > 0) {
-          body += '<Folder><name>🪜 Jonctions (' + jonctions.length + ')</name>';
+        // ⚠️ contrat (décision produit) : la zone jonction suit le tracé jonction (même case « Jonctions », même
+        // dossier, celui de son niveau de départ `level`, un seul exemplaire), polygone gardé, niveaux en ExtendedData.
+        const zonesJct = (opts.data.zones || []).filter(function(z) {
+          return z && z.type === "pente" && (Number.isInteger(z.level) ? z.level : 0) === level;
+        });
+        if (jonctions.length + zonesJct.length > 0) {
+          body += '<Folder><name>🪜 Jonctions (' + (jonctions.length + zonesJct.length) + ')</name>';
           jonctions.forEach(function(r) { body += _emitLineString(r, "road_jonction"); });
+          zonesJct.forEach(function(z) {
+            body += _emitPolygon(z, _idStyleEtCollecte("zone", "pente"),
+              { niveaux: _niveauxZone(z), niveau: level, copie: false });
+          });
           body += '</Folder>';
         }
       }
@@ -1183,6 +1193,7 @@
           return _niveauxZone(z).filter(function(n) { return !opts.levels || opts.levels.has(n); });
         };
         const zones = opts.data.zones.filter(function(z) {
+          if (z && z.type === "pente") return false;   // avec les jonctions (plus haut)
           if (zoneTypesSet && !zoneTypesSet.has(z.type)) return false;
           if (!mlOn) return _passeLevel(z, Number.isInteger(z.level) ? z.level : 0);
           return zExportes(z).indexOf(level) >= 0;

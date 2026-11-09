@@ -287,6 +287,11 @@
         fill:   z.fillColor || z.color     || "#8892a4"
       };
     }
+    // Zone jonction : la couleur du tracé jonction du plan (styleResolver.js > `_couleurDe`), override compris.
+    if (z && z.type === "pente") {
+      const c = _resolveRoadColorHome({ type: "jonction" }, planId);
+      return { stroke: c, fill: c };
+    }
     // override par plan : remplissage choisi, bordure explicite ou assombrie (même relation que le canon)
     const fillOv   = z && _couleurOverrideDe(planId, "zones", z.type, "colors");
     const borderOv = z && _couleurOverrideDe(planId, "zones", z.type, "borders");

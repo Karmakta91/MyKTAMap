@@ -64,6 +64,26 @@
     _notify();
   }
 
+  // ⚠️ contrat (décision produit) : la zone jonction (zones `pente`) suit le filtre du tracé jonction, comme partout
+  // ailleurs (même couleur, même libellé). Une seule puce « Jonction » dans Types de tracés ; ici, `zoneTypes` est
+  // remis d'accord avec `roadTypes` avant chaque application, si bien que TOUS les lecteurs du filtre de zones
+  // (carte, calques, vue 3D, Vue OSM) la traitent comme le tracé sans rien savoir de ce lien.
+  function _lierZoneJonction() {
+    const f = window._ktaRuntimeFilters;
+    if (!f) return;
+    const jctVisible = !f.roadTypes || f.roadTypes.has("jonction");
+    if (jctVisible) {
+      if (f.zoneTypes) {
+        f.zoneTypes.add("pente");
+        const u = _getUniverse("zoneTypes");
+        if (u.every(function(t) { return f.zoneTypes.has(t); })) f.zoneTypes = null;
+      }
+      return;
+    }
+    if (!f.zoneTypes) f.zoneTypes = new Set(_getUniverse("zoneTypes"));
+    f.zoneTypes.delete("pente");
+  }
+
   function onChange(cb) {
     if (typeof cb !== "function") return function() {};
     _listeners.push(cb);
@@ -122,6 +142,7 @@
   }
 
   function _scheduleApply() {
+    _lierZoneJonction();
     if (_applyTimer) clearTimeout(_applyTimer);
     _applyTimer = setTimeout(function() {
       _applyTimer = null;
@@ -286,6 +307,13 @@
     if (category === "roads") {
       if (typeof window.getRoads === "function") _add(window.getRoads());
       if (typeof window.getAllEmbeddedRoads === "function") _add(window.getAllEmbeddedRoads());
+      // Zones jonction comptées sous la puce « Jonction » (_lierZoneJonction) : un plan qui n'en a que sous forme
+      // de zone garde de quoi les masquer.
+      const zj = []
+        .concat(typeof window.getZones === "function" ? (window.getZones() || []) : [])
+        .concat(typeof window.getAllEmbeddedZones === "function" ? (window.getAllEmbeddedZones() || []) : [])
+        .filter(function(z) { return z && z.type === "pente"; });
+      if (zj.length) counts.jonction = (counts.jonction || 0) + zj.length;
     } else if (category === "zones") {
       if (typeof window.getZones === "function") _add(window.getZones());
       if (typeof window.getAllEmbeddedZones === "function") _add(window.getAllEmbeddedZones());
@@ -399,6 +427,7 @@
 
   function _renderTypesSection(category, setName, builtinOrder) {
     const counts = _enumerateTypes(category);
+    if (category === "zones") delete counts.pente;   // sous la puce « Jonction » des tracés (_lierZoneJonction)
     const universe = Object.keys(counts);
     if (universe.length === 0) {
       return '<div class="kta-fp-section-empty">' + _escHtml(window.I18n.t("filter.empty.items")) + '</div>';
@@ -441,7 +470,7 @@
     }
     if (category === "zones") {
       return ({ eau: "💧", remblais: "⬛", effondrement: "🟥",
-                inaccessible: "⛔" })[type] || "✨";
+                inaccessible: "⛔", pente: "🪜" })[type] || "✨";
     }
     if (category === "structures") {
       return ({ "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",

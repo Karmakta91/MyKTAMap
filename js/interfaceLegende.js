@@ -245,8 +245,9 @@ function _ktaLegendeCorps(src, opts) {
   contenuTraces += _ligneTrace("principal");
   contenuTraces += _ligneTrace("secondaire");
   contenuTraces += _ligneTrace("chemin");
-  // Jonction interniveau : plan multi-niveau seulement.
-  if (src.multiLevel) contenuTraces += _ligneTrace("jonction");
+  // Jonction interniveau : plan multi-niveau seulement. La zone jonction suit, même groupe, même libellé, même
+  // couleur (legendCustomization.js > TYPE_LIE), pastille de surface.
+  if (src.multiLevel) contenuTraces += _ligneTrace("jonction") + _ligneZone("pente");
   // Customs traces (lineColor obligatoire).
   if (LC) {
     LC.listCustomEntries("traces")

@@ -1792,7 +1792,6 @@
         if (typeof z.level === "number") out.level = z.level;
         // Zone sur plusieurs niveaux : géométrie du relevé, rien d'identifiant (même règle que les passages).
         if (Array.isArray(z.niveaux)) out.niveaux = z.niveaux.slice();
-        if (z.jonction === true) out.jonction = true;   // zone jonction de niveau : géométrie du relevé
         return out;
       });
     }
@@ -2087,6 +2086,7 @@
       return roadTypes.indexOf(r.type) >= 0;
     });
     const filteredZones = (d.zones || []).filter(function(z) {
+      if (z.type === "pente")    return true;     // zone jonction : gardée comme le tracé jonction
       if (_isCustom(z.type))     return true;     // bypass customs
       return zoneTypes.indexOf(z.type) >= 0;
     });
@@ -2293,9 +2293,11 @@
       effondrement: document.getElementById("conv_zones_effondrement")?.checked ?? true,
       inaccessible: document.getElementById("conv_zones_inaccessible")?.checked ?? true
     };
-    const filteredZones = incZones
-      ? (d.zones || []).filter(function(z) { return zoneTypesActifs[z.type] !== false; })
-      : [];
+    // Zone jonction : présente exactement quand le tracé jonction l'est (« Tracés » coché), sans case à elle.
+    const filteredZones = (d.zones || []).filter(function(z) {
+      if (z.type === "pente") return !!incRoads;
+      return !!incZones && zoneTypesActifs[z.type] !== false;
+    });
 
     // Structures par type : les 6 sous-types (fronts compris) doivent figurer dans ce dict, sinon
     // `undefined !== false` les inclut quoi qu'on coche.
@@ -2971,7 +2973,9 @@
       remblais:     allZones.filter(function(z) { return z.type === "remblais";     }).length,
       effondrement: allZones.filter(function(z) { return z.type === "effondrement"; }).length,
       inaccessible: allZones.filter(function(z) { return z.type === "inaccessible"; }).length,
-      autres:       _kmzNbAutres(allZones, ["eau", "remblais", "effondrement", "inaccessible"])
+      // Zone jonction : comptée avec les tracés jonction (même case « Jonctions », kmzExport.js).
+      pente:        allZones.filter(function(z) { return z.type === "pente";        }).length,
+      autres:       _kmzNbAutres(allZones, ["eau", "remblais", "effondrement", "inaccessible", "pente"])
     };
 
     const sessionStructures = (window.getStructures ? window.getStructures() : []) || [];
@@ -3289,7 +3293,8 @@
         rowSub("kmz_inc_structures_front-1",  _lp("structures", "front-1", t("export.kmz.structFront1")),  sByT["front-1"] || 0, true) +
         rowSub("kmz_inc_structures_front-2",  _lp("structures", "front-2", t("export.kmz.structFront2")),  sByT["front-2"] || 0, true) +
 
-        (mlOn ? row("kmz_inc_jonctions", t("export.kmz.jonctions"), rByT.jonction, rByT.jonction > 0) : '') +
+        (mlOn ? row("kmz_inc_jonctions", t("export.kmz.jonctions"), rByT.jonction + (zByT.pente || 0),
+          rByT.jonction + (zByT.pente || 0) > 0) : '') +
 
         row("kmz_inc_iti", t("export.kmz.itineraire"), rByT.itinerary, rByT.itinerary > 0) +
 

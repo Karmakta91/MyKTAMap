@@ -71,8 +71,12 @@
       return true;
     }).sort(function(a, b) { return a - b; });
   }
-  // Jonction (fromLevel / toLevel) et itinéraire n'ont pas de niveau unique : cellule en lecture seule.
-  function _sansNiveau(p) { return !_estPoints() && !!p && (p.type === "jonction" || p.type === "itinerary"); }
+  // Jonction (fromLevel / toLevel), zone jonction (ses deux niveaux, changés dans sa fiche) et itinéraire n'ont
+  // pas de niveau unique : cellule en lecture seule.
+  function _sansNiveau(p) {
+    return !_estPoints() && !!p && (p.type === "jonction" || p.type === "itinerary" ||
+      (_kind === "zones" && p.type === "pente"));
+  }
   function _catTypes() { return (_kind === "roads") ? "traces" : _kind; }   // zones / structures = mêmes clés
   // Types connus de la légende (canon + customs) pour la colonne `type`, ou [] (points, légende absente).
   function _typesConnus() {

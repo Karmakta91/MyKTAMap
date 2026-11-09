@@ -518,7 +518,8 @@ window._desactiverTousLesModes = _desactiverTousLesModes;
 function _desactiverTousLesModes() {
   Object.values(_modesActifs).forEach(function(m) {
     try { m.desactiverFn(); } catch(e) {}
-    m.btnEl.classList.remove("kta-actif");
+    // Mode armé sans bouton (« Tracer la jonction » d'une fiche : interfaceConfig.js > ktaTracerJonction).
+    if (m.btnEl) m.btnEl.classList.remove("kta-actif");
   });
   Object.keys(_modesActifs).forEach(function(k) { delete _modesActifs[k]; });
 }
@@ -2931,6 +2932,22 @@ _setGroupeModeActif("tracker", isTracking, null);
       // Inaccessible : contrainte dure du pathfinder (tout segment qui la traverse est exclu).
       { icone: "⛔", titre: window.I18n.t("ui.zone.inaccessible"), dynamicTitre: function() { return _titreType("zones", "inaccessible", window.I18n.t("ui.zone.inaccessible")); }, isTypeAction: true, typeKey: "inaccessible",
         onClick: function(btn) { _activerZone("inaccessible", btn, "⛔"); } },
+      // Jonction (multi-niveau, hors vue 3D comme le tracé jonction) : « du niveau … au niveau … » d'abord, la zone
+      // les reçoit seule (zones.js, `_zonePenteMeta`). Re-clic = coupe le mode, comme les autres types.
+      ...(_isMultiLevel ? [{
+        icone: "🪜", horsVue3D: true, isTypeAction: true, typeKey: "pente",
+        dynamicIcon: function() { return _iconeType("zones", "pente", "🪜"); },
+        titre: window.I18n.t("ui.zone.pente"),
+        dynamicTitre: function() { return _titreType("zones", "pente", window.I18n.t("ui.zone.pente")); },
+        onClick: function(btn) {
+          if (window.modeZone === "pente") { _activerZone("pente", btn, "🪜"); return; }
+          if (typeof window._ouvrirCreationJonction !== "function") return;
+          window._ouvrirCreationJonction(btn, { zone: true, onOk: function(de, vers) {
+            window._zonePenteMeta = { fromLevel: de, toLevel: vers };
+            _activerZone("pente", btn, _iconeType("zones", "pente", "🪜"));
+          } });
+        }
+      }] : []),
       { icone: "✅", titre: window.I18n.t("ui.zone.fermer"),
         onClick: function() {
           if (!window.modeZone) {

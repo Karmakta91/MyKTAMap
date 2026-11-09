@@ -77,7 +77,8 @@
   // ── Lecture des trois familles ───────────────────────
   // `itinerary` = trajet CALCULÉ, pas une donnée du relevé : exclu comme source aussi. `jonction` : ses niveaux
   // reliés ne survivent pas à une conversion (la fiche ne la propose pas ; KtaConvertir.convertirLot la saute aussi).
-  const EXCLUS = { itinerary: true, jonction: true };
+  // `pente` (zone jonction) : traitée comme le tracé jonction (décision produit), ses deux niveaux vivent dans sa fiche.
+  const EXCLUS = { itinerary: true, jonction: true, pente: true };
 
   function _lire(famille) {
     const g = { roads: "getRoads", zones: "getZones", structures: "getStructures" }[famille];

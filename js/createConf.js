@@ -4278,7 +4278,9 @@ function _afficherImporterKmz(prefilledFile) {
               <option value="eau">${window.I18n.t("gen.imp.zoneEau")}</option>
               <option value="effondrement">${window.I18n.t("gen.imp.zoneEffondrement")}</option>
               <option value="inaccessible">${window.I18n.t("gen.imp.zoneInaccessible")}</option>
+              <option value="pente">${window.I18n.t("gen.imp.zonePente")}</option>
             </select>
+            ${_htmlNiveauxPente("kta-kmz-imp")}
           </div>
 
           <!-- v1.14.20-hotfix12 (KARMA « depuis import KMZ on doit pouvoir
@@ -4603,7 +4605,14 @@ async function _kmzImpGenerer() {
   const roadType = document.getElementById("kta-kmz-imp-road-type").value;
   const zoneType = document.getElementById("kta-kmz-imp-zone-type").value;
   const tilingV2On = !!document.getElementById("kta-kmz-imp-v2")?.checked;
-  const multiLevelOn = !!document.getElementById("kta-kmz-imp-mlvl")?.checked;
+  const pente = zoneType === "pente" ? _lireNiveauxPente("kta-kmz-imp") : null;
+  if (zoneType === "pente" && !pente) {
+    status.textContent = window.I18n.t("config.jonction.errSameLevel");
+    status.style.color = "var(--kta-avert)";
+    return;
+  }
+  // Une zone jonction relie deux niveaux : le plan est multi-niveau.
+  const multiLevelOn = !!document.getElementById("kta-kmz-imp-mlvl")?.checked || !!pente;
 
   if (!name) {
     status.textContent = window.I18n.t("gen.imp.nomObligatoire");
@@ -4622,6 +4631,9 @@ async function _kmzImpGenerer() {
       roadType: roadType,
       zoneType: zoneType
     });
+    if (pente && typeof window.ktaPoserNiveauxPente === "function") {
+      window.ktaPoserNiveauxPente(ingested.zones, pente.de, pente.vers);
+    }
 
     const mime = state.overlay.hrefBlob.type || "image/png";
     let ext = "png";
@@ -5149,6 +5161,7 @@ function _afficherImporterSig(prefilledFile) {
                   style="margin-top:8px; display:none;">🏷️ ${T("gen.sig.legendeBtn")}</button>
           <div id="kta-sig-imp-legende-etat" style="font-size:11.5px; color:var(--kta-texte-3); margin-top:4px;"></div>
           <div id="kta-sig-imp-map-tables" style="margin-top:10px;"></div>
+          ${_htmlNiveauxPente("kta-sig-imp")}
         </div>
 
         <div class="kta-aide-section" id="kta-sig-imp-step-config" style="display:none;">
@@ -5475,7 +5488,8 @@ async function _sigImpAnalyserFichier(file) {
 const _SIG_TYPES = {
   points:    ["default", "pa", "pb", "pc", "pe", "ps", "psf", "salle", "chatiere", "passage", "danger", "info"],
   lignes:    ["chemin", "secondaire", "principal"],
-  polygones: ["remblais", "eau", "effondrement", "inaccessible"]
+  // `pente` = zone « Jonction » : niveaux de/à saisis sous la table (_htmlNiveauxPente), plan multi-niveau.
+  polygones: ["remblais", "eau", "effondrement", "inaccessible", "pente"]
 };
 // Structures proposées EN PLUS, par famille. Chaque géométrie peut viser toutes les familles : un polygone
 // peut être une zone, un pilier, un mur ou un front de taille dessiné fermé ; une polyligne peut porter le
@@ -5484,7 +5498,7 @@ const _SIG_TYPES = {
 const _SIG_TYPES_SUP = {
   points:    [],
   lignes:    ["struct:front-1", "struct:front-2", "struct:mur-ligne", "struct:mur",
-              "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible"],
+              "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible", "zone:pente"],
   polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur",
               "struct:front-1", "struct:front-2", "struct:mur-ligne",
               "trace:chemin", "trace:secondaire", "trace:principal"]
@@ -5577,8 +5591,44 @@ function _sigImpRendreTables() {
   box.querySelectorAll("select[data-sig-fam]").forEach(function (s) {
     s.addEventListener("change", function () {
       _sigImpInvaliderLegende(true);
+      _sigImpMajPente();
     });
   });
+  _sigImpMajPente();
+}
+
+// Niveaux de/à de la zone « Jonction », affichés dès qu'une valeur est routée vers elle.
+function _sigImpMajPente() {
+  const bloc = document.getElementById("kta-sig-imp-pente");
+  if (!bloc) return;
+  bloc.hidden = !Array.prototype.some.call(document.querySelectorAll("#kta-sig-imp-map-tables select[data-sig-fam]"),
+    function (s) { return s.value === "pente" || s.value === "zone:pente"; });
+}
+
+// ── Zone « Jonction » dans le Générateur (import KMZ / SIG) ──────────
+// ⚠️ contrat (décision produit) : comme dans l'app, choisir le type Jonction demande « du niveau … au niveau … » :
+// les zones `pente` importées les reçoivent (zones.js > ktaPoserNiveauxPente) et le plan devient multi-niveau.
+// Couleur et libellé : ceux du tracé jonction (legendCustomization.js > TYPE_LIE). `prefixe` : ids du panneau.
+function _htmlNiveauxPente(prefixe) {
+  const T = function(k) { return window.I18n.t(k); };
+  return '<div id="' + prefixe + '-pente" class="kta-planner-grille kta-planner-pente" hidden>' +
+           '<label class="kta-cfg-label" for="' + prefixe + '-pente-de">' + T("zoneJonction.de") + '</label>' +
+           '<input class="kta-cfg-input" id="' + prefixe + '-pente-de" type="number" step="1" value="0">' +
+           '<label class="kta-cfg-label" for="' + prefixe + '-pente-vers">' + T("zoneJonction.vers") + '</label>' +
+           '<input class="kta-cfg-input" id="' + prefixe + '-pente-vers" type="number" step="1" value="-1">' +
+         '</div>';
+}
+// Import KMZ : la ligne de/à suit la liste « Polygones → type » (écouteur délégué : le panneau est re-rendu).
+document.addEventListener("change", function (e) {
+  if (!e.target || e.target.id !== "kta-kmz-imp-zone-type") return;
+  const bloc = document.getElementById("kta-kmz-imp-pente");
+  if (bloc) bloc.hidden = e.target.value !== "pente";
+});
+// → { de, vers } (deux entiers différents) ou null.
+function _lireNiveauxPente(prefixe) {
+  const de = parseInt((document.getElementById(prefixe + "-pente-de") || {}).value, 10);
+  const vers = parseInt((document.getElementById(prefixe + "-pente-vers") || {}).value, 10);
+  return (Number.isInteger(de) && Number.isInteger(vers) && de !== vers) ? { de: de, vers: vers } : null;
 }
 
 function _escHtmlSig(s) { return window.ktaEsc(s); }
@@ -5614,6 +5664,13 @@ async function _sigImpGenerer() {
 
   const _m = _sigImpLireMapping();
   const cle = _m.cle, mapTags = _m.mapTags, mapTraces = _m.mapTraces, mapZones = _m.mapZones;
+  const blocPente = document.getElementById("kta-sig-imp-pente");
+  const penteSig = (blocPente && !blocPente.hidden) ? _lireNiveauxPente("kta-sig-imp") : null;
+  if (blocPente && !blocPente.hidden && !penteSig) {
+    status.style.color = "var(--kta-erreur)";
+    status.textContent = T("config.jonction.errSameLevel");
+    return;
+  }
 
   btnGen.disabled = true;
   btnGen.textContent = T("gen.sig.generation");
@@ -5662,6 +5719,8 @@ async function _sigImpGenerer() {
       multiLevel:   document.getElementById("kta-sig-imp-mlvl").checked,
       layerLabel:   name,
       mapping: { cleType: cle, mapTags: mapTags, mapTraces: mapTraces, mapZones: mapZones,
+                 // Zone « Jonction » routée : ses niveaux de/à (null si aucune valeur n'y va).
+                 pente: penteSig,
                  // La colonne du niveau voyage avec le mapping.
                  cleNiveau: (document.getElementById("kta-sig-imp-niveau") || {}).value || null,
                  // Types de légende par étage (case cochée par défaut).

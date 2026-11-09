@@ -1017,10 +1017,12 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   }
 
   // Ligne « Niveau » sous 🔄 Convertir : objet de session seulement (`opts.convertir`), ni jonction (fromLevel /
-  // toLevel, hors de cette liste) ni itinéraire ; "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes).
+  // toLevel, hors de cette liste) ni itinéraire ni zone jonction (« Du niveau » la remplace) ; "" hors multi-niveau
+  // ou pendant un dessin (ktaNiveauxProposes).
   function _niveauHtml() {
     const o = opts.convertir && opts.convertir.obj;
     if (!o || o.type === "jonction" || o.type === "itinerary") return "";
+    if (opts.convertir.famille === "zones" && o.type === "pente") return "";
     if (typeof window.ktaOptionsNiveauHtml !== "function") return "";
     const options = window.ktaOptionsNiveauHtml(Number.isInteger(o.level) ? o.level : 0);
     if (!options) return "";
@@ -1032,10 +1034,12 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
 
   // Zone de session sur un plan multi-niveau : cases « Aussi aux niveaux » (niveaux du plan hors `level`, plus ceux
   // que la zone porte déjà même hors availableLevels), appliquées par un bouton (un geste, une entrée ⏪).
-  // "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes), comme la liste « Niveau ».
+  // "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes), comme la liste « Niveau ». Zone jonction (type
+  // `pente`) : ses deux niveaux à la place (_niveauxPenteHtml).
   function _niveauxZoneHtml() {
     const o = opts.convertir && opts.convertir.obj;
     if (!o || opts.convertir.famille !== "zones" || typeof window.ktaNiveauxProposes !== "function") return "";
+    if (o.type === "pente") return _niveauxPenteHtml(o);
     const lvl = Number.isInteger(o.level) ? o.level : 0;
     const proposes = window.ktaNiveauxProposes(lvl);
     if (!proposes) return "";
@@ -1043,10 +1047,6 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     const autres = proposes.concat(portes).filter(function(n, i, a) { return n !== lvl && a.indexOf(n) === i; })
       .sort(function(a, b) { return a - b; });
     if (!autres.length) return "";
-    // Zone jonction de niveau (sol en pente en 3D) : case en plus des niveaux ; sans tracé jonction qui la traverse
-    // entre deux de ses niveaux, avertissement (galerieEmprise.js > penteDeZone : une seule règle avec la 3D).
-    const G = window.KtaGalerie, jct = o.jonction === true;
-    const sansTrace = jct && G && typeof G.penteDeZone === "function" && !G.penteDeZone(o);
     return '<div class="kta-note-popup-niveaux-zone">' +
              '<div class="kta-note-popup-niveaux-zone-titre">' + _esc(window.I18n.t("niveauxZone.label")) + '</div>' +
              '<div class="kta-note-popup-niveaux-zone-cases">' +
@@ -1058,17 +1058,53 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                         '</label>';
                }).join("") +
              '</div>' +
-             '<label class="kta-note-popup-niveaux-zone-case kta-note-popup-zone-jonction">' +
-               '<input type="checkbox" class="kta-note-popup-zone-jonction-case"' + (jct ? " checked" : "") + '>' +
-               '<span>' + _esc(window.I18n.t("niveauxZone.jonction")) + '</span>' +
-             '</label>' +
-             (sansTrace ? '<div class="kta-note-popup-zone-jonction-avis" role="status">' +
-               _esc(window.I18n.t("niveauxZone.jonctionSansTrace")) + '</div>' : "") +
              '<div class="kta-popup-actions kta-note-popup-actions">' +
                '<button class="kta-popup-btn kta-note-popup-niveaux-zone-appliquer" type="button">' +
                  _esc(window.I18n.t("niveauxZone.appliquer")) +
                '</button>' +
              '</div>' +
+           '</div>';
+  }
+
+  // Zone jonction (type `pente`) : « Du niveau » (`level`) et « Au niveau » (l'autre), appliqués ensemble par un
+  // bouton (KtaConvertir.changerNiveauxPente : un geste, une entrée ⏪). Sans tracé jonction qui la traverse entre
+  // ses deux niveaux (galerieEmprise.js > penteDeZone : une seule règle avec la 3D), la fiche le dit et propose
+  // « Tracer la jonction » (interfaceConfig.js > ktaTracerJonction, niveaux de la zone pré-remplis).
+  function _niveauxPenteHtml(o) {
+    if (typeof window.ktaOptionsNiveauHtml !== "function") return "";
+    const nv = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(o) : [];
+    const de = Number.isInteger(o.level) ? o.level : 0;
+    const autre = nv.filter(function(n) { return n !== de; });
+    const vers = autre.length ? autre[autre.length - 1] : de;
+    const optDe = window.ktaOptionsNiveauHtml(de), optVers = window.ktaOptionsNiveauHtml(vers);
+    if (!optDe || !optVers) return "";
+    const G = window.KtaGalerie;
+    const sansTrace = autre.length > 0 && !!G && typeof G.penteDeZone === "function" && !G.penteDeZone(o);
+    let avis = "";
+    if (!autre.length) avis = window.I18n.t("zoneJonction.unNiveau");
+    else if (sansTrace) avis = window.I18n.t("zoneJonction.sansTrace");
+    return '<div class="kta-note-popup-jonction kta-note-popup-pente">' +
+             '<label class="kta-note-popup-niveau-ligne">' +
+               '<span>' + _esc(window.I18n.t("zoneJonction.de")) + '</span>' +
+               '<select class="kta-note-popup-jct-niveau kta-note-popup-pente-de">' + optDe + '</select>' +
+             '</label>' +
+             '<label class="kta-note-popup-niveau-ligne">' +
+               '<span>' + _esc(window.I18n.t("zoneJonction.vers")) + '</span>' +
+               '<select class="kta-note-popup-jct-niveau kta-note-popup-pente-vers">' + optVers + '</select>' +
+             '</label>' +
+             '<div class="kta-popup-actions kta-note-popup-actions">' +
+               '<button class="kta-popup-btn kta-note-popup-pente-appliquer" type="button">' +
+                 _esc(window.I18n.t("zoneJonction.appliquer")) +
+               '</button>' +
+             '</div>' +
+             '<div class="kta-note-popup-jct-statut kta-tx-err" hidden></div>' +
+             (avis ? '<div class="kta-note-popup-zone-jonction-avis" role="status">' + _esc(avis) + '</div>' : "") +
+             (sansTrace
+               ? '<div class="kta-popup-actions kta-note-popup-actions">' +
+                   '<button class="kta-popup-btn kta-note-popup-pente-tracer" type="button" data-de="' + de +
+                     '" data-vers="' + vers + '">' + _esc(window.I18n.t("zoneJonction.tracer")) + '</button>' +
+                 '</div>'
+               : "") +
            '</div>';
   }
 
@@ -1208,14 +1244,48 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           const autres = Array.prototype.slice.call(
             popupRoot.querySelectorAll(".kta-note-popup-niveaux-zone-cases input:checked"))
             .map(function(cb) { return Number.parseInt(cb.value, 10); });
-          const jctCase = popupRoot.querySelector(".kta-note-popup-zone-jonction-case");
-          const jonction = jctCase ? jctCase.checked : undefined;
           try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
-          if (window.KtaConvertir.changerNiveauxZone(opts.convertir.obj, autres, jonction)
+          if (window.KtaConvertir.changerNiveauxZone(opts.convertir.obj, autres)
               && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
             const nv = window.ktaNiveauxObjet({ level: opts.convertir.obj.level, niveaux: autres });
             window.OOMGuard.showToast(window.I18n.t("niveauxZone.toast",
               { liste: nv.map(window.ktaFormatNiveau).join(", ") }), "success");
+          }
+        });
+      }
+      // Niveaux d'une zone jonction : deux niveaux identiques refusés DANS la fiche, comme pour un tracé jonction.
+      const penteBtn = popupRoot.querySelector(".kta-note-popup-pente-appliquer");
+      if (penteBtn && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveauxPente) {
+        penteBtn.addEventListener("click", function () {
+          const de = Number.parseInt(popupRoot.querySelector(".kta-note-popup-pente-de").value, 10);
+          const vers = Number.parseInt(popupRoot.querySelector(".kta-note-popup-pente-vers").value, 10);
+          if (de === vers) {
+            const statut = popupRoot.querySelector(".kta-note-popup-jct-statut");
+            if (statut) {
+              statut.textContent = window.I18n.t("zoneJonction.memeNiveau");
+              statut.hidden = false;
+            }
+            return;
+          }
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.changerNiveauxPente(opts.convertir.obj, de, vers)
+              && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("zoneJonction.toast",
+              { de: window.ktaFormatNiveau(de), vers: window.ktaFormatNiveau(vers) }), "success");
+          }
+        });
+      }
+      // « Tracer la jonction » : la fiche se ferme, le mode tracé jonction s'arme avec les niveaux de la zone.
+      const tracerBtn = popupRoot.querySelector(".kta-note-popup-pente-tracer");
+      if (tracerBtn && typeof window.ktaTracerJonction === "function") {
+        tracerBtn.addEventListener("click", function () {
+          const de = Number.parseInt(tracerBtn.getAttribute("data-de"), 10);
+          const vers = Number.parseInt(tracerBtn.getAttribute("data-vers"), 10);
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          const arme = window.ktaTracerJonction(de, vers);
+          if (arme && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("zoneJonction.toastTracer",
+              { de: window.ktaFormatNiveau(de), vers: window.ktaFormatNiveau(vers) }), "success");
           }
         });
       }
@@ -2191,6 +2261,15 @@ window.getAllEmbeddedPoints = function() {
   return out;
 };
 
+// Zone d'un fichier lu (calque, plan-config) : copie convertie si elle porte l'ancien marqueur `jonction: true`
+// (zones.js > ktaZoneJonctionEnType), sinon la zone elle-même ; le JSON lu n'est jamais modifié.
+window.ktaZoneLue = function(z) {
+  if (!z || z.jonction !== true || typeof window.ktaZoneJonctionEnType !== "function") return z;
+  const c = Object.assign({}, z);
+  window.ktaZoneJonctionEnType(c);
+  return c;
+};
+
 // Zones embarquées → [{type, points, level, niveaux?, layerId, description?, uid?, updatedAt?}], même format que
 // window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement la session.
 // Calque en modification exclu.
@@ -2754,22 +2833,22 @@ function ajouterPointsDepuisJSON(url, layer) {
         });
       }
 
-      // Zones embarquées en lecture seule. Ordre : eau (arrière) → remblais → effondrement (avant).
+      // Zones embarquées en lecture seule. Ordre : jonction (arrière) → eau → remblais → effondrement (avant).
       if (Array.isArray(json.zones) && json.zones.length > 0) {
         // `inaccessible` : hachures en CanvasPattern (styleResolver.js), sur le canvas commun comme les autres.
-        const zonesTriees = [...json.zones].sort(function(a, b) {
-          const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
-          return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
+        const zonesTriees = json.zones.map(window.ktaZoneLue).sort(function(a, b) {
+          const ordre = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+          return (ordre[a && a.type] ?? 99) - (ordre[b && b.type] ?? 99);
         });
         zonesTriees.forEach(function(zone) {
-          if (!zone.points || zone.points.length < 3) return;
+          if (!zone || !zone.points || zone.points.length < 3) return;
           const style = _ktaStyleMap("zones", zone.type, "remblais");
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
           const hasNoteROZone = !!(zone.description && String(zone.description).trim());
           const polyOpts = Object.assign({}, style, { interactive: hasNoteROZone });
           const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
           if (hasNoteROZone && typeof window.attacherNotePopup === "function") {
-            const _zoneEmojisRO = { eau: "💧", remblais: "⬛", effondrement: "🟥", inaccessible: "⛔" };
+            const _zoneEmojisRO = { eau: "💧", remblais: "⬛", effondrement: "🟥", inaccessible: "⛔", pente: "🪜" };
             function _zoneROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
@@ -2782,7 +2861,8 @@ function ajouterPointsDepuisJSON(url, layer) {
                 eau:          "💧 Zone Eau",
                 remblais:     "⬛ Zone Remblais",
                 effondrement: "🟥 Zone Effondrement",
-                inaccessible: "⛔ Zone Inaccessible"
+                inaccessible: "⛔ Zone Inaccessible",
+                pente:        "🪜 Zone Jonction"
               };
               return LBL[t] || ("Zone " + t);
             }
@@ -3030,10 +3110,11 @@ async function telechargerPlan() {
 
           // zones embarquées (arrière-plan) : eau → remblais → effondrement → inaccessible ; filtre visibleLevels
           if (Array.isArray(json.zones) && json.zones.length > 0) {
-            const ordreZ = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
-            [...json.zones].sort(function(a, b) {
-              return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
+            const ordreZ = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+            json.zones.map(window.ktaZoneLue).sort(function(a, b) {
+              return (ordreZ[a && a.type] ?? 99) - (ordreZ[b && b.type] ?? 99);
             }).forEach(function(z) {
+              if (!z) return;
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(z)) return;
               _poser(function () { drawPolygon(z.points || [], _ktaStyleCanvas("zones", z.type, "remblais")); });
               _diag.embZones++;
@@ -3109,7 +3190,7 @@ async function telechargerPlan() {
       return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(z);
     });
     for (const zone of [...zones].sort(function(a, b) {
-      const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+      const ordre = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
     })) {
       _poser(function () { drawPolygon(zone.points || [], _ktaStyleCanvas("zones", zone.type, "remblais")); });

@@ -11,9 +11,9 @@
 // à sa place, puis la mesure est rendue telle quelle (commencer / terminer / abandonner).
 // ⚠️ « Dans la zone » = ENTIÈREMENT dedans : tous les sommets (ou le point lui-même). Un objet à cheval n'est ni
 //   pris ni coupé (décision produit). Niveau ACTIF seulement (APP_CONFIG.activeLevel ; plan à un niveau : tout).
-// Exclus : itinéraire calculé, jonctions entre niveaux (tracé `jonction`, POI jonction), aperçus, mesures (elles
-//   ne sont pas des objets). Objets de calque : jamais touchés, seulement COMPTÉS (le calque passe d'abord en
-//   « 🔄 Modifier » : ses copies sont alors en session et se suppriment comme le reste).
+// Exclus : itinéraire calculé, jonctions entre niveaux (tracé `jonction`, zone `pente`, POI jonction), aperçus,
+//   mesures (elles ne sont pas des objets). Objets de calque : jamais touchés, seulement COMPTÉS (le calque passe
+//   d'abord en « 🔄 Modifier » : ses copies sont alors en session et se suppriment comme le reste).
 // 🩸 Suppression = UN instantané, UNE entrée ⏪, une écriture par famille : HistoryManager.record pose les traces
 //   de suppression (KtaUid) par diff des uid, comme pour une suppression unitaire (copie de calque : trace de copie,
 //   jamais dans un fichier, cf. historyManager.js > _tracer).
@@ -28,7 +28,8 @@
   const FAMILLES = ["editorPoints", "roads", "zones", "structures"];
   const GET = { editorPoints: "getEditorPoints", roads: "getRoads", zones: "getZones", structures: "getStructures" };
   const SET = { editorPoints: "setEditorPoints", roads: "setRoads", zones: "setZones", structures: "setStructures" };
-  const EXCLUS = { itinerary: true, jonction: true };
+  // `pente` (zone jonction) : traitée comme le tracé jonction (décision produit).
+  const EXCLUS = { itinerary: true, jonction: true, pente: true };
 
   function _t(k, p) {
     return (window.I18n && window.I18n.t) ? window.I18n.t(k, p) : k;
