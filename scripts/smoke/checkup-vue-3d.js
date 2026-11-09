@@ -16074,7 +16074,8 @@ async function sectionCaseBoutonsZoom(nav) {
       // doit tomber dans le tube (bouche ET cadre doré dans l'emprise : visible), sur CHAQUE niveau sans raccord ; un
       // raccord validé reste au point exact ; panneau au-dessus du volume, 🪜 montré au volume. Près du carrefour, le
       // POI va à la galerie dont l'emprise est la plus proche (la branche) ; un raccord validé sur son niveau tranche.
-      // Rendu structures : le point tel quel. Les POI enregistrés ne bougent pas.
+      // Rendu structures : le point tel quel. Les POI enregistrés ne bougent pas. Un puits ouvert du 0 vu du +1
+      // (volume `traverse`, à sa place du 0 : vue3d.js > _puitsTraversants) n'est pas un volume du niveau : hors compte.
       if (G.multi) {
         const DC = await page.evaluate(async function (a) {
           const K = window.KtaVue3D, sc = a.sc, P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
@@ -16122,7 +16123,7 @@ async function sectionCaseBoutonsZoom(nav) {
               await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 }, distanceVue: 200 });
               const e = K.etat(), m = rendu === "structures" ? null : window.KtaGalerie.modele(niv, rendu === "mixte");
               for (const v of e.volumes) {
-                if (v.genre !== "poi") continue;
+                if (v.genre !== "poi" || Number.isInteger(v.traverse)) continue;
                 const c = C.filter(function (q) { return Math.abs((a.ox + q[1]) * sc - v.x) < 3.5 * sc; })[0];
                 if (!c) continue;
                 const cx = v.x / sc, cz = v.y / sc, ux = Math.cos(Math.atan2(v.bouche[1][1] - v.bouche[0][1],
