@@ -266,9 +266,11 @@ async function jouer(nav, moteur, mode) {
       "passage entre niveaux (peo) : pas de « 🎯 Augmenter la précision » (ses raccords jouent ce rôle)");
     verifier(await ouvrirFiche(page, ptr, "pt_pp_pl"), "fiche de la plaque ouverte par un tap sur son icône");
     const btnTxt = await page.evaluate(function () {
-      const b = document.querySelector(".leaflet-popup [data-kta-act=\"precis\"]"); return b ? b.textContent : null;
+      // Icône SVG de la précision (ktaIcones.js) devant le libellé.
+      const b = document.querySelector(".leaflet-popup [data-kta-act=\"precis\"]");
+      return b ? (b.querySelector("svg.kta-ico-crosshair") ? "[crosshair] " : "") + b.textContent.trim() : null;
     });
-    verifier(!!btnTxt && /🎯/.test(btnTxt), "fiche : bouton « 🎯 Augmenter la précision »", btnTxt);
+    verifier(!!btnTxt && btnTxt.indexOf("[crosshair] ") === 0, "fiche : bouton « 🎯 Augmenter la précision » (icône crosshair)", btnTxt);
     const ro = await page.evaluate(function () {
       window.map.closePopup();
       window.__ppRefus = window.ktaEditionRefusee;
