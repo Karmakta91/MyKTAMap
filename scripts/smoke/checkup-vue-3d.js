@@ -14961,7 +14961,10 @@ async function sectionGestesDoigt(nav) {
                 const e = K.etat();
                 ech.push({ t: Math.round(performance.now() - t0), y: e.cameraY, f: e.fondu, n: e.niveau, g: !!e.geste,
                   voile: e.fonduPresent, bandeau: e.bandeauNiveau, im: e.images, aretes: e.compte.aretes });
-                if (performance.now() - t0 < 1500) requestAnimationFrame(lire);
+                // Au moins 1,5 s (le repos qui suit attend la fin du bandeau), et jusqu'à la fin du geste : sous
+                // charge (images lentes), il dure plus que GESTE.ms en temps réel. Plafond 6 s.
+                const dt = performance.now() - t0;
+                if (dt < 1500 || (dt < 6000 && (e.geste || e.niveau !== -1))) requestAnimationFrame(lire);
                 else res({ lance: lance, oeil: oeil, ech: ech });
               })();
             });
@@ -15075,9 +15078,12 @@ async function sectionGestesDoigt(nav) {
           const r = { mode: K.etat().mode, avant: K.etat().niveau, ech: [] };
           window.recalerTrackerSurPoint(t.x, t.y, -1);
           const t0 = performance.now();
-          while (performance.now() - t0 < 900) {
-            const e = K.etat();
-            r.ech.push({ t: Math.round(performance.now() - t0), f: e.fondu, n: e.niveau, y: e.cameraY, b: e.bandeauNiveau });
+          // Au moins 0,9 s, et jusqu'à la fin du fondu au −1 (attente sur l'événement, plafond 6 s) : sous charge, le
+          // changement de niveau du tracker arrive plus tard et le fondu dure plus que 2 × GESTE.fondu en temps réel.
+          for (;;) {
+            const e = K.etat(), dt = performance.now() - t0;
+            r.ech.push({ t: Math.round(dt), f: e.fondu, n: e.niveau, y: e.cameraY, b: e.bandeauNiveau });
+            if (dt >= 6000 || (dt >= 900 && e.niveau === -1 && !e.geste)) break;
             await new Promise(function (res) { requestAnimationFrame(res); });
           }
           r.texte = window.I18n.t("vue3d.niveauBandeau", { n: window.ktaFormatNiveau(-1) });
