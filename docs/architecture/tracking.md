@@ -1914,7 +1914,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   15° une fois un pincement engagé (le seuil de la carte, `mapBearing.js > SEUIL_ROTATION`), **sans rattraper le
   seuil** (aucun saut) puis suit les doigts, zoom compris ; un doigt qui tourne autour de l'autre tourne aussi (🩸 il
   passait pour une inclinaison : son milieu monte). 🩸 Les doigts arrivent un événement après l'autre : un seul doigt
-  bougé de 8 px tourne déjà la paire de 15° à 30 px d'écart. Au PC, clic
+  bougé de 8 px tourne déjà la paire de 15° à 30 px d'écart ; sur une scène lourde (plan chargé, multi-niveau), les
+  mouvements arrivent par paquets et un doigt a 20 à 40 px d'avance : le geste n'est donc tranché que quand les deux
+  doigts ont bougé (`DEUX_DOIGTS.immobile` = 4 px), ou quand un doigt seul a parcouru `DEUX_DOIGTS.seul` = 40 px ; deux
+  doigts qui montent ou descendent ensemble inclinent. Au PC, clic
   droit ou Ctrl + glisser, pavé ↶ ↷, clavier ; en suivi, le cap reste celui de l'appareil. **Retour sur la place** :
   ⌖ (montré caméra détachée seulement), marcher (joystick, pavé, clavier : `_rattacher` — règle : le doigt déplace la
   caméra, les commandes déplacent la place et la caméra la rejoint) et le retour à hauteur d'yeux. Centre de la scène

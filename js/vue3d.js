@@ -10297,6 +10297,13 @@
     // le 2e arrive sur la scène (adopter) ; d'où + / − et inclinaison qui agissent au click au doigt (un pincement
     // n'en produit pas), au pointerdown à la souris.
     const GESTE_SEUIL = 12;
+    // Deux doigts : en deçà de `immobile` px depuis sa pose, un doigt n'a pas bougé ; un doigt seul tranche le geste
+    // à `seul` px (l'autre resté à sa pose).
+    const DEUX_DOIGTS = { immobile: 4, seul: 40 };
+    const _ecartPose = function (a, b) {
+      if (!a || !b) return { x: 0, y: 0, l: 0 };
+      return { x: b.x - a.x, y: b.y - a.y, l: Math.hypot(b.x - a.x, b.y - a.y) };
+    };
     let glisse = null, deux = null;
     const doigts = new Map();
     // Doigts posés sur une commande de la vue (pointerId → { x, y, b }), candidats à rejoindre un geste de la scène.
@@ -10309,7 +10316,8 @@
       if (doigts.size !== 2) return;
       const it = doigts.values(), p = it.next().value, q = it.next().value;
       deux = { mode: null, rot: false, d0: Math.hypot(q.x - p.x, q.y - p.y), y0: (p.y + q.y) / 2,
-        a0: Math.atan2(q.y - p.y, q.x - p.x) };
+        a0: Math.atan2(q.y - p.y, q.x - p.x), pose: new Map() };
+      doigts.forEach(function (v, id) { deux.pose.set(id, { x: v.x, y: v.y }); });
     };
     // Commande que le doigt d'un geste peut traverser : tout ce qui est dans la vue sauf la saisie (curseurs de la
     // tuile, champs de la fiche), la fiche et le ＋ / 🗑️ d'un ajustement.
@@ -10399,8 +10407,23 @@
         const dD = d1 - deux.d0, dY = ym - deux.y0, aT = norm(t1 - deux.a0);
         const arc = Math.abs(aT) * Math.PI / 180 * d1 / 2;
         if (!deux.mode) {
-          const tourne = Math.abs(aT) >= CAMERA_LIBRE.rot && arc >= CAMERA_LIBRE.arc;
-          if (!tourne && Math.abs(dY) > GESTE_SEUIL && Math.abs(dY) > Math.abs(dD) && Math.abs(dY) > 1.5 * arc) {
+          // 🩸 Scène lourde (multi-niveau) : les mouvements sont livrés moins souvent, un doigt arrive avec 20 à 40 px
+          // d'avance sur l'autre, encore lu à sa pose ; tranché là, un glisser vertical à deux doigts ressemblait à un
+          // doigt qui tourne autour de l'autre (rotation, zoom). On attend que les deux aient bougé
+          // (DEUX_DOIGTS.immobile), sauf un doigt seul qui a parcouru DEUX_DOIGTS.seul px (il tourne autour de l'autre).
+          const ids = Array.from(doigts.keys()).slice(0, 2);
+          const va = _ecartPose(deux.pose.get(ids[0]), doigts.get(ids[0]));
+          const vb = _ecartPose(deux.pose.get(ids[1]), doigts.get(ids[1]));
+          const lents = Math.min(va.l, vb.l), vifs = Math.max(va.l, vb.l);
+          if (lents < DEUX_DOIGTS.immobile && vifs < DEUX_DOIGTS.seul) return;
+          // Les deux montent ou descendent ensemble, chacun plus vertical qu'horizontal : inclinaison.
+          const ensemble = lents >= DEUX_DOIGTS.immobile && va.y * vb.y > 0 &&
+            Math.abs(va.y) > Math.abs(va.x) && Math.abs(vb.y) > Math.abs(vb.x);
+          const tourne = !ensemble && Math.abs(aT) >= CAMERA_LIBRE.rot && arc >= CAMERA_LIBRE.arc;
+          if (ensemble && Math.abs(dY) > GESTE_SEUIL && Math.abs(dY) > Math.abs(dD)) {
+            deux.mode = "incl";
+            incliner(dY * 0.15);
+          } else if (!tourne && Math.abs(dY) > GESTE_SEUIL && Math.abs(dY) > Math.abs(dD) && Math.abs(dY) > 1.5 * arc) {
             deux.mode = "incl";
             incliner(dY * 0.15);
           } else if (tourne || Math.abs(dD) > GESTE_SEUIL) {

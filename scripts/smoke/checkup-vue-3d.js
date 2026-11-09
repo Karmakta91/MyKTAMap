@@ -12841,6 +12841,27 @@ async function sectionGestesDoigt(nav) {
       verifier(iDoigts.inclinaison > iBouton && iDoigts.mode === "libre" && Math.abs(iDoigts.cap - i0.cap) < 0.01,
         "deux doigts glissés à la verticale : inclinaison changée, cap inchangé",
         { avant: iBouton, apres: iDoigts.inclinaison, cap: iDoigts.cap });
+      // Scène lourde (multi-niveau) : un doigt livré avec 30 px d'avance, l'autre encore à sa pose, puis les deux
+      // ensemble — une inclinaison, ni rotation ni zoom (vue3d.js > DEUX_DOIGTS).
+      const iDecale = await page.evaluate(function () {
+        const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+        const avant = window.KtaVue3D.etat();
+        const ev = function (type, id, y) {
+          cv.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: id === 21,
+            clientX: r.left + r.width / 2 + (id === 21 ? -40 : 40), clientY: y, bubbles: true }));
+        };
+        const y0 = r.top + r.height / 2;
+        ev("pointerdown", 21, y0); ev("pointerdown", 22, y0);
+        for (let k = 1; k <= 3; k++) ev("pointermove", 21, y0 - k * 10);
+        for (let k = 1; k <= 6; k++) { ev("pointermove", 22, y0 - k * 10); ev("pointermove", 21, y0 - 30 - k * 10); }
+        ev("pointerup", 21, y0 - 90); ev("pointerup", 22, y0 - 60);
+        const apres = window.KtaVue3D.etat();
+        return { incl: [avant.inclinaison, apres.inclinaison], cap: [avant.cap, apres.cap],
+          recul: [avant.portee.recul, apres.portee.recul] };
+      });
+      verifier(iDecale.incl[1] !== iDecale.incl[0] && Math.abs(iDecale.cap[1] - iDecale.cap[0]) < 0.01 &&
+        iDecale.recul[1] === iDecale.recul[0],
+      "deux doigts vers le haut, l'un livré avec 30 px d'avance : inclinaison, ni rotation ni zoom", iDecale);
       const bornes = await page.evaluate(function () {
         window.KtaVue3D.incliner(500);
         const haut = window.KtaVue3D.etat().inclinaison;
