@@ -10153,9 +10153,25 @@
     m.el.setAttribute("aria-pressed", m.grande ? "true" : "false");
   }
 
-  function _miniCarteVoulue() {
-    return typeof window.getVue3DMiniCarte !== "function" || window.getVue3DMiniCarte() === true;
+  // 🩸 vue3d.js est chargé à la demande, config.js avec la page : une page ouverte avant une mise à jour garde l'ancien
+  // config.js (sans le réglage) et reçoit le nouveau vue3d.js. Sans repli, le bouton se décochait sans effet et le
+  // choix ne restait pas. Repli : la même clé, lue et écrite ici (config.js reste la source quand il l'a).
+  function _reglageAppareil(get, set, cle) {
+    return {
+      lire: function () {
+        if (typeof window[get] === "function") return window[get]() === true;
+        try { return localStorage.getItem(cle) !== "0"; } catch (err) { return true; }
+      },
+      ecrire: function (oui) {
+        if (typeof window[set] === "function") { window[set](oui); return; }
+        try { localStorage.setItem(cle, oui ? "1" : "0"); } catch (err) { /* stockage refusé : la session seule */ }
+      }
+    };
   }
+  const _regMiniCarte = _reglageAppareil("getVue3DMiniCarte", "setVue3DMiniCarte", "myktamap_v3d_minicarte_v1");
+  const _regLignesSol = _reglageAppareil("getVue3DLignesSol", "setVue3DLignesSol", "myktamap_v3d_lignessol_v1");
+
+  function _miniCarteVoulue() { return _regMiniCarte.lire(); }
 
   // Montrée = réglage de l'appareil, hors vue d'édition, permise par la greffe. Masquée, elle se referme.
   function _appliquerMiniCarte() {
@@ -10173,7 +10189,7 @@
     const e = _e;
     if (!e) return null;
     const oui = !_miniCarteVoulue();
-    if (typeof window.setVue3DMiniCarte === "function") window.setVue3DMiniCarte(oui);
+    _regMiniCarte.ecrire(oui);
     _appliquerMiniCarte();
     return oui;
   }
@@ -10665,15 +10681,13 @@
   // Lignes au sol montrées (config.js > getVue3DLignesSol, montrées par défaut). ⚠️ contrat : 3D seulement ; les
   // tracés restent dans les filtres ≡, sur la carte 2D, sur la mini-carte, dans les tubes des galeries et dans le pas.
   // L'itinéraire (ruban, chevrons) n'est jamais masqué par cette option.
-  function _lignesSol() {
-    return typeof window.getVue3DLignesSol !== "function" || window.getVue3DLignesSol() === true;
-  }
+  function _lignesSol() { return _regLignesSol.lire(); }
 
   function _basculerLignesSol() {
     const e = _e;
     if (!e) return null;
     const oui = !_lignesSol();
-    if (typeof window.setVue3DLignesSol === "function") window.setVue3DLignesSol(oui);
+    _regLignesSol.ecrire(oui);
     if (e.boutonLignesSol) e.boutonLignesSol.setAttribute("aria-pressed", oui ? "true" : "false");
     if (e.tuiles) _refaireTuiles();
     _majRonds();
