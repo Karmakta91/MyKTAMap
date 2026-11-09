@@ -72,6 +72,9 @@ node scripts/check-emoji-vs16.js || exit $?
 # Icones de l'interface : controles migres en SVG sans emoji, noms connus, doc alignee (exhaustive).
 node scripts/check-icones-ui.js || exit $?
 
+# Aide IA : lexique des icones en tete d'AI_CONTEXT.md, genere depuis js/ktaIcones.js (chaque bouton cite).
+node scripts/check-lexique-icones.js || exit $?
+
 # Police KTA Emoji : couvre chaque emoji du depot, ouvre chaque pile font-family et ctx.font ; gabarits HTML figes.
 node scripts/check-police-emoji.js || exit $?
 
