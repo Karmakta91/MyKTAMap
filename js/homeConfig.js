@@ -974,7 +974,7 @@
         });
       }
 
-      // Section Debug = MODE DÉVELOPPEUR (mot de passe + logs + bibliothèque docs), peuplée par devMode.js.
+      // Section Debug = MODE DÉVELOPPEUR (logs détaillés, ConfAdmin, inspecteur SW), peuplée par devMode.js.
       if (window.DevMode && typeof window.DevMode.initSection === "function") {
         window.DevMode.initSection();
       }

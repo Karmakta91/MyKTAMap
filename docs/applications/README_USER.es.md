@@ -545,8 +545,8 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 
 - **🧭 Seguimiento / 🕹️ Libre**: ver arriba.
 - **✏️ Edición** (antes vista aérea; o la tecla V): te ves desde arriba, y se maneja como un mapa.
-- ✏️ **Zoom** (de 6 a 150 m de distancia): pellizca con dos dedos, rueda del ratón, botones **+ / −** abajo a la derecha o teclas = / -. Al alejar, el suelo (y el plano en el suelo 🗺️ si está activado) se extiende con la vista; pilares, muros y puntos siguen dibujados hasta 100 m alrededor del centro de la vista, para no cargar el teléfono.
-- ✏️ **Inclinación** (de casi vertical a rasante): desliza dos dedos juntos hacia arriba o abajo, **Mayús + rueda**, RePág / AvPág o los botoncitos ▲ ▼ junto a + / −.
+- ✏️ **Zoom** (de 6 a 150 m de distancia): pellizca con dos dedos, rueda del ratón, teclas = / - o botones **+ / −** abajo a la derecha (casilla **Botones de zoom** de la pantalla de inicio, desactivada por defecto). Al alejar, el suelo (y el plano en el suelo 🗺️ si está activado) se extiende con la vista; pilares, muros y puntos siguen dibujados hasta 100 m alrededor del centro de la vista, para no cargar el teléfono.
+- ✏️ **Inclinación** (de casi vertical a rasante): desliza dos dedos juntos hacia arriba o abajo, **Mayús + rueda**, RePág / AvPág o, con la misma casilla, los botoncitos ▲ ▼ junto a + / −. El ⌖ se queda siempre.
 - ✏️ La Edición, su zoom y su inclinación se conservan para este plano en este dispositivo: los encuentras al volver a abrir la 3D, incluso tras recargar la app (en tu lugar, sin herramienta elegida). Un juego que prohíbe la Edición abre a la altura de los ojos sin borrar esta elección.
 - ✏️ **Cámara libre**: desliza un dedo (o el ratón) para mover la vista, como un mapa; tu lugar, tu tracker y tu silueta no se mueven. Dos dedos que giran giran la vista (en PC: clic derecho o Ctrl + arrastrar, ↶ ↷). **⌖** (abajo a la derecha) te devuelve a tu lugar; también caminar (joystick, teclado, flechas) o volver a la altura de los ojos. En Edición, el joystick solo ocupa la esquina inferior izquierda.
 - ✏️ **Sobrevuelo**: en Edición, nada bloquea tu lugar (pilares, muros, cavas cerradas). Al volver a la altura de los ojos, si estás dentro de un obstáculo, sales de él.
@@ -1483,7 +1483,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
   - **📐 Adaptar el tamaño de los iconos al zoom** (activado por defecto): en el plano, y también en la Vista OSM y el mapa OSM de la pantalla de inicio;
   - **❓ Botón de ayuda en las ventanas** (activado): un ❓ en el título de las ventanas que tienen página de ayuda, que abre directamente la página correcta;
   - **🔔 Notificaciones**: **Todas**, **Esenciales** (por defecto: ya no hay mensajes que confirman un gesto que acabas de hacer) o **Silencio** (solo lo importante: batería baja, sensor denegado, errores). Las alertas del servidor y las ventanas que esperan una decisión nunca se silencian;
-  - **➕ Botones de zoom +/− en los mapas**: muestra los botones + y − en el plano, el widget OSM de la pantalla de inicio y la vista OSM. Desactivado por defecto: se hace zoom con los dedos (pellizcar) o con la rueda del ratón;
+  - **➕ Botones de zoom +/− en los mapas y en 3D**: muestra los botones + y − en el plano, el widget OSM de la pantalla de inicio y la vista OSM, y en la vista de edición de la 🧊 Vista 3D los botones + / − y ▲ ▼ (inclinación). Desactivado por defecto: se hace zoom con los dedos (pellizcar), la rueda del ratón o el teclado; el ⌖ de la 3D se queda;
   - **Bloquear la rotación del mapa**: dos dedos y Mayús + rueda ya no giran el mapa del plano, el widget OSM de la pantalla de inicio ni la vista OSM; al activarla, los mapas abiertos vuelven a quedar rectos. Útil en dispositivos lentos. Desactivado por defecto. El 🔃 Plano orientado del seguimiento sigue girando, y la 🧊 Vista 3D conserva sus gestos;
   - **🪟 Anclar los paneles de herramientas a su botón**: los paneles Trazados, Zonas y Estructuras se abren junto a su botón en lugar de centrados (cómodo en pantalla grande, desaconsejado en el teléfono);
   - **🧲 Imantación al dibujar** y su distancia: un clic cerca de un punto existente se engancha a él, para que tus galerías se unan de verdad;
@@ -1497,7 +1497,7 @@ El botón **⚙️** arriba en la pantalla de inicio abre **⚙️ Configuració
   - **🔒 Privacidad y Auditoría**: **📋 Ver el registro de red**, **📖 ¿Qué hace la app en la red?** y la casilla **🗺️ Vista OSM** (ver «🔴 Advertencias importantes») — la app no envía ninguno de tus datos; el único sitio externo que contacta es OpenStreetMap (fondo de mapa de la Vista OSM), que esta casilla desactiva, y el registro de red te lo muestra;
   - **📚 Mapas del sitio**: **🚫 No cargar los mapas del sitio al arrancar**, si solo usas tus propios mapas (tras recargar, desaparecen de la lista y de las estadísticas).
 - **🛠️ Sistema y mantenimiento**:
-  - **🛠️ Modo Desarrollador** (protegido con contraseña): ver «🔭 Para ir más lejos»;
+  - **🛠️ Modo Desarrollador**: registros detallados para copiar al informar de un problema, y herramientas técnicas — ver «🔭 Para ir más lejos»;
   - **📊 Ver el estado de memoria**: lo que ocupa la app en tu dispositivo, con **📋 Copiar el informe** para señalar un problema;
   - **🔧 Resolución de problemas**: una ventana que ordena, de lo más suave a lo más radical, **🔄 Forzar la actualización**, **🔧 Abrir la herramienta Kill SW** (SW = *Service Worker*, la parte de la app que la guarda para usarla sin conexión) y **💥 Reiniciar todo** — ver «🔧 En caso de problema».
 
@@ -2160,7 +2160,11 @@ No hay nada más que hacer.
 
 ### 🐛 Registros detallados
 
-En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (protegido por contraseña), **🐛 Registros detallados** añade información en la consola del navegador (sensores del tracker, corte de la imagen). Útil para informar de un problema. Desactivado por defecto. El modo desarrollador contiene también **🔧 Ver el estado de la caché (Service Worker)**: el detalle, archivo por archivo, de lo que resume la pastilla sin conexión.
+En **⚙️ Configuración** de la pantalla de inicio → **🛠️ Modo Desarrollador** (sin contraseña: una confirmación explica lo que hace), **🐛 Registros detallados** añade información en la consola del navegador (sensores del tracker, corte de la imagen). Útil para informar de un problema. Desactivado por defecto.
+
+**Para enviar tus registros** a quien te ayuda: **⚙️ Configuración** → **🛠️ Modo Desarrollador** → activa **🐛 Registros detallados**, repite lo que falla, luego **Mostrar los registros** → **Copiar**, y pega el texto en tu mensaje. La ventana guarda las 300 últimas líneas, incluso tras un cierre inesperado. Reléelas antes de enviarlas: pueden citar nombres de mapas o de archivos.
+
+El modo desarrollador contiene también **🔧 Ver el estado de la caché (Service Worker)**: el detalle, archivo por archivo, de lo que resume la pastilla sin conexión.
 
 ### 📖 Toda la documentación en línea
 

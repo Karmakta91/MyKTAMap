@@ -7,104 +7,37 @@
 // =========================
 // DEVMODE.JS — Mode Développeur (section « Debug » de la ⚙️ Configuration de l'accueil)
 // =========================
-//   - 🔒 Activation protégée par MOT DE PASSE à la première fois (hash SHA-256 en dur, jamais le mot de passe ;
-//     5 tentatives puis temporisation de 60 s ; déverrouillage mémorisé par appareil) + avertissement.
-//   - Contenu : logs détaillés (pilote setDebugMode global), « Afficher les logs », ConfAdmin, inspecteur Service
-//     Worker (js/swInspector.js), outils d'extension (prise « outilsDev »).
+//   - Activation libre, sans mot de passe (décision produit) : un utilisateur doit pouvoir allumer les logs
+//     détaillés et envoyer son journal sans rien demander. Une confirmation (window.ktaConfirm) dit ce que fait
+//     le mode à chaque passage de OFF à ON ; l'état est mémorisé par appareil (LS_ACTIVE).
+//   - Contenu : logs détaillés (pilote setDebugMode global), « Afficher les logs » (Copier, js/debug.js),
+//     ConfAdmin, inspecteur Service Worker (js/swInspector.js), outils d'extension (prise « outilsDev »).
+//     Rien de secret : confadmin.html et les pages d'outils sont publiques, le reste lit l'appareil lui-même.
 //   - 🩸 PAS de bibliothèque de docs : lire README.md et docs/ sur le serveur obligerait à les DÉPLOYER, donc à les
-//     publier (le mot de passe ne protège que la liste, pas les fichiers). Les sites ne reçoivent que
-//     docs/applications/. Garde-fou : scripts/check-devmode-docs.js.
+//     publier. Les sites ne reçoivent que docs/applications/. Garde-fou : scripts/check-devmode-docs.js.
 // Accueil seulement : rien en mode carte.
 
 (function() {
   "use strict";
 
-  // 🔒 Hash SHA-256 du mot de passe (le changer : echo -n "<mdp>" | openssl dgst -sha256 ; les appareils déjà
-  // déverrouillés le redemanderont).
-  const DEV_HASH   = "cf54ce09daddca0545b4bf38455cacc2fef9f52379d187e0023228b84077db49";
-  const LS_UNLOCK  = "myktamap_devmode_unlock_v1";   // hash validé
-  const LS_ACTIVE  = "myktamap_devmode_active_v1";   // "1" = mode actif
-  const LS_TRIES   = "myktamap_devmode_tries_v1";    // JSON {n, until}
-  const MAX_TRIES  = 5;
-  const LOCK_MS    = 60000;
+  const LS_ACTIVE = "myktamap_devmode_active_v1";   // "1" = mode actif
+  // Clés de l'ancienne porte à mot de passe : effacées au chargement (un appareil déjà actif le reste).
+  const LS_OBSOLETES = ["myktamap_devmode_unlock_v1", "myktamap_devmode_tries_v1"];
+  try { LS_OBSOLETES.forEach(function(k) { localStorage.removeItem(k); }); } catch(e) {}
 
   function t(k, p) { return (window.I18n && window.I18n.t) ? window.I18n.t(k, p) : k; }
 
-  async function _sha256(s) {
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
-    return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, "0"); }).join("");
-  }
-
-  function isUnlocked() {
-    try { return localStorage.getItem(LS_UNLOCK) === DEV_HASH; } catch(e) { return false; }
-  }
   function isActive() {
-    try { return isUnlocked() && localStorage.getItem(LS_ACTIVE) === "1"; } catch(e) { return false; }
+    try { return localStorage.getItem(LS_ACTIVE) === "1"; } catch(e) { return false; }
   }
 
-  function _lireTries() {
-    try { return JSON.parse(localStorage.getItem(LS_TRIES) || "{}"); } catch(e) { return {}; }
-  }
-  function _ecrireTries(o) {
-    try { localStorage.setItem(LS_TRIES, JSON.stringify(o)); } catch(e) {}
-  }
-
-  // ── Modale mot de passe (1re activation) ──
-  function _demanderMdp() {
-    return new Promise(function(resolve) {
-      const ov = document.createElement("div");
-      ov.className = "kta-readme-modal-overlay";
-      ov.style.zIndex = "100002";
-      ov.innerHTML = '' +
-        '<div class="kta-readme-modal-boite" style="max-width:440px; height:auto; max-height:85vh;">' +
-          '<div class="kta-readme-modal-entete">' +
-            '<span class="kta-readme-modal-titre">' + window.ktaIcone("code-xml") + ' ' + t("devmode.gate.titre") + '</span>' +
-            '<button class="kta-panneau-close" id="kta-dev-gate-close">✕</button>' +
-          '</div>' +
-          '<div class="kta-readme-modal-corps" style="font-size:13px;">' +
-            '<div style="border:1px solid rgba(255,120,80,0.5); background:rgba(255,120,80,0.08); border-radius:8px; padding:10px 12px; margin-bottom:12px; line-height:1.5;">' +
-              '⚠️ ' + t("devmode.gate.avertissement") +
-            '</div>' +
-            '<label class="kta-cfg-label" for="kta-dev-gate-input">' + t("devmode.gate.label") + '</label>' +
-            '<input class="kta-cfg-input" id="kta-dev-gate-input" type="password" autocomplete="off" style="width:100%; margin-top:4px;">' +
-            '<div id="kta-dev-gate-err" style="display:none; color:var(--kta-erreur); font-size:12px; margin-top:6px;"></div>' +
-            '<div class="kta-conv-actions" style="margin-top:14px;">' +
-              '<button class="kta-btn kta-btn-ghost"   id="kta-dev-gate-annuler">' + t("ui.confirm.cancel") + '</button>' +
-              '<button class="kta-btn kta-btn-primary" id="kta-dev-gate-ok">' + t("devmode.gate.btn") + '</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      document.documentElement.appendChild(ov);
-      const input = ov.querySelector("#kta-dev-gate-input");
-      const errEl = ov.querySelector("#kta-dev-gate-err");
-      const finir = function(ok) { ov.remove(); resolve(ok); };
-      ov.querySelector("#kta-dev-gate-close").addEventListener("click", function() { finir(false); });
-      ov.querySelector("#kta-dev-gate-annuler").addEventListener("click", function() { finir(false); });
-      ov.addEventListener("click", function(e) { if (e.target === ov) finir(false); });
-      const valider = async function() {
-        const tries = _lireTries();
-        if (tries.until && Date.now() < tries.until) {
-          errEl.style.display = "";
-          errEl.textContent = t("devmode.gate.lockout", { s: Math.ceil((tries.until - Date.now()) / 1000) });
-          return;
-        }
-        const h = await _sha256(input.value || "");
-        if (h === DEV_HASH) {
-          try { localStorage.setItem(LS_UNLOCK, DEV_HASH); localStorage.removeItem(LS_TRIES); } catch(e) {}
-          finir(true);
-          return;
-        }
-        const n = (tries.until ? 0 : (tries.n || 0)) + 1;
-        _ecrireTries(n >= MAX_TRIES ? { n: 0, until: Date.now() + LOCK_MS } : { n: n });
-        errEl.style.display = "";
-        errEl.textContent = (n >= MAX_TRIES)
-          ? t("devmode.gate.lockout", { s: LOCK_MS / 1000 })
-          : t("devmode.gate.mauvais", { rest: MAX_TRIES - n });
-        input.value = "";
-      };
-      ov.querySelector("#kta-dev-gate-ok").addEventListener("click", valider);
-      input.addEventListener("keydown", function(e) { if (e.key === "Enter") valider(); });
-      setTimeout(function() { try { input.focus(); } catch(e) {} }, 30);
+  // Confirmation d'activation : le texte vient du dico (balisage voulu), aucune donnée d'utilisateur.
+  function _confirmerActivation() {
+    if (typeof window.ktaConfirm !== "function") return Promise.resolve(true);
+    return window.ktaConfirm(t("devmode.activer.avertissement"), {
+      titre: window.ktaIcone("code-xml") + " " + t("devmode.activer.titre"),
+      okLabel: t("devmode.activer.btn"),
+      id: "kta-devmode-confirm"
     });
   }
 
@@ -145,10 +78,7 @@
           rendre();
           return;
         }
-        if (!isUnlocked()) {
-          const ok = await _demanderMdp();
-          if (!ok) return;
-        }
+        if (!(await _confirmerActivation())) return;
         try { localStorage.setItem(LS_ACTIVE, "1"); } catch(e) {}
         rendre();
       });
@@ -200,7 +130,6 @@
 
   window.DevMode = {
     isActive: isActive,
-    isUnlocked: isUnlocked,
     initSection: initSection
   };
 })();

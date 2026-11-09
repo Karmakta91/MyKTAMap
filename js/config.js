@@ -1675,6 +1675,8 @@ window.ktaBoutonsZoomPartout = function () {
   _cartesZoom.slice().forEach(function (c) {
     try { ktaBoutonsZoom(c); } catch (e) { console.warn("[Config] Boutons de zoom :", e); }
   });
+  // La vue 3D (vue3d.js > _majBoutonsIncl) relit le réglage à ce signal.
+  try { window.dispatchEvent(new CustomEvent("kta:zoomBoutonsChange")); } catch (e) { /* vieux navigateur */ }
 };
 window.getPlanShowsIntersections   = getPlanShowsIntersections;
 window.getPlanFond                 = getPlanFond;

@@ -4,12 +4,12 @@
 // check-devmode-docs.js — garde-fou pré-commit BLOQUANT (rejoué en CI)
 // =====================================================================
 // 🔒 Le Mode Développeur (js/devMode.js) ne lit aucune doc technique : pour la
-// lire, il faudrait déployer docs/ et README.md, donc les publier (le mot de
-// passe ne cache que la liste, pas les fichiers). Les sites ne reçoivent que
-// docs/applications/.
+// lire, il faudrait déployer docs/ et README.md, donc les publier. Les sites ne
+// reçoivent que docs/applications/. Le mode s'active sans mot de passe
+// (décision produit) : il ne doit rien contenir de secret.
 // Vérifie : (1) aucun manifest ni lecture de docs/ ou README.md dans le mode ;
-// (2) hash du mot de passe au format SHA-256 ; (3) ConfAdmin et l'inspecteur
-// Service Worker rendus QUE mode actif.
+// (2) activation par la confirmation chartée, sans porte à mot de passe ;
+// (3) ConfAdmin et l'inspecteur Service Worker rendus QUE mode actif.
 // =====================================================================
 
 const fs = require("fs");
@@ -30,9 +30,20 @@ const t = (n, c) => { console.log((c ? "✅" : "❌") + " " + n); if (!c) ko++; 
     code.indexOf("kta-devmode-docs") === -1 && !/ouvrirBibliotheque/.test(code));
 }
 
-// ── 2. Hash du mot de passe ──────────────────────────────────────────
-const h = /DEV_HASH\s*=\s*"([0-9a-f]*)"/.exec(src);
-t("hash du mdp au format SHA-256 (64 hex)", !!h && h[1].length === 64);
+// ── 2. Activation : confirmation chartée, pas de mot de passe ────────
+// Un hash en dur dans un dépôt public ne protège rien : son retour ferait
+// croire le contenu du mode protégé.
+{
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  t("🔒 aucun hash ni champ de mot de passe dans devMode.js",
+    !/DEV_HASH|type="password"|crypto\.subtle/.test(code));
+  t("l'activation passe par window.ktaConfirm (ce que fait le mode)",
+    /window\.ktaConfirm\(t\("devmode\.activer\.avertissement"\)/.test(code) &&
+    /await _confirmerActivation\(\)/.test(code));
+  t("les clés de l'ancienne porte sont effacées au chargement",
+    /"myktamap_devmode_unlock_v1"/.test(code) && /"myktamap_devmode_tries_v1"/.test(code) &&
+    /localStorage\.removeItem\(k\)/.test(code));
+}
 
 
 // ── 3. Bouton ConfAdmin (mode dev uniquement) ────────────────────────
@@ -53,7 +64,7 @@ t("hash du mdp au format SHA-256 (64 hex)", !!h && h[1].length === 64);
 
 // ── 4. Inspecteur Service Worker (mode dev uniquement) ───────────────
 // La pastille « hors-ligne » de l'accueil montre l'état du cache à tous ;
-// l'inspecteur détaillé vit derrière le mot de passe, hors ⚙️ Configuration.
+// l'inspecteur détaillé vit dans le mode Développeur, hors ⚙️ Configuration.
 {
   const ID = 'id="loaderSwInspectorBtn"';
   const html = fs.readFileSync("index.html", "utf8");

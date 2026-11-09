@@ -1829,7 +1829,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   à zoomer »). Au doigt, + / − et ▲ ▼ agissent donc au `click` (un pincement n'en produit pas), à la souris au
   `pointerdown`. Restent hors du geste : curseurs et champs, fiche, 🗑️ d'un ajustement, joystick qui marche déjà.
   Checkup : `checkup-vue-3d.js` § 38 (`KTA_V3D_SEUL=gestes`, doigts CDP au téléphone). Boutons + − ▲ ▼ en grille en
-  bas à droite, montrés dans cette vue seulement (la tuile ⚙️ ouverte ne les recouvre pas). Recul et inclinaison
+  bas à droite, montrés dans cette vue seulement (la tuile ⚙️ ouverte ne les recouvre pas) et seulement si la case
+  « Boutons de zoom » de l'accueil est cochée (`APP_CONFIG.zoomBoutons`, défaut OFF ; `vue3d.js > _majBoutonsIncl`,
+  relue à chaque changement de vue et à `kta:zoomBoutonsChange`, émis par `config.js > ktaBoutonsZoomPartout`) ; ⌖ n'en
+  dépend pas. Checkup : `checkup-vue-3d.js` § case des boutons de zoom. Recul et inclinaison
   retenus tant que la vue est ouverte (repartent du défaut à la réouverture). ⚠️ contrat : une greffe qui interdit la
   vue d'édition (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Deux rayons
   en vue d'édition. **Rayon vu** (`_rayonVue`) : max(1,4 × portée, 2,3 m par mètre de recul) — carré de sol et de

@@ -545,8 +545,8 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 
 - **🧭 Follow / 🕹️ Free**: see above.
 - **✏️ Edit** (formerly bird's-eye view; or the V key): you see yourself from above, and it handles like a map.
-- ✏️ **Zoom** (from 6 to 150 m back): pinch with two fingers, mouse wheel, the **+ / −** buttons at the bottom right or the = / - keys. Zooming out, the floor (and the 🗺️ plan on the floor, if on) spreads with the view; pillars, walls and points stay drawn up to 100 m around the centre of the view, to spare the phone.
-- ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or the small ▲ ▼ buttons next to + / −.
+- ✏️ **Zoom** (from 6 to 150 m back): pinch with two fingers, mouse wheel, the = / - keys or the **+ / −** buttons at the bottom right (home **Zoom buttons** box, off by default). Zooming out, the floor (and the 🗺️ plan on the floor, if on) spreads with the view; pillars, walls and points stay drawn up to 100 m around the centre of the view, to spare the phone.
+- ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or, with the same box, the small ▲ ▼ buttons next to + / −. The ⌖ always stays.
 - ✏️ Edit view, its zoom and its tilt are kept for this plan on this device: you find them again when you reopen the 3D view, even after reloading the app (on your place, with no tool chosen). A game that forbids Edit view opens at eye level without erasing this choice.
 - ✏️ **Free camera**: drag one finger (or the mouse) to move the view, like a map; your place, your tracker and your figure do not move. Two fingers turning turn the view (on a computer: right-click or Ctrl + drag, ↶ ↷). **⌖** (bottom right) brings you back to your place; so do walking (joystick, pad, arrows) and going back to eye level. In Edit view, the joystick only takes the bottom left corner.
 - ✏️ **Fly-over**: in Edit view, nothing blocks your place (pillars, walls, closed adits). Back at eye level, if you are inside an obstacle, you are moved out of it.
@@ -1483,7 +1483,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **📐 Scale icon size with zoom** (on by default): on the plan, and also in the OSM view and the home screen OSM map;
   - **❓ Help button inside windows** (on): a ❓ in the title of windows that have a help page, which opens the right page directly;
   - **🔔 Notifications**: **All**, **Essential** (default: no more messages confirming something you just did) or **Silence** (only what matters: low battery, sensor refused, errors). Server alerts and windows waiting for a decision are never muted;
-  - **➕ Zoom +/− buttons on maps**: shows the + and − buttons on the plan, the home OSM widget and the OSM view. Off by default: zoom with your fingers (pinch) or the mouse wheel;
+  - **➕ Zoom +/− buttons on maps and in 3D**: shows the + and − buttons on the plan, the home OSM widget and the OSM view, and in the edit view of the 🧊 3D view the + / − and ▲ ▼ (tilt) buttons. Off by default: zoom with your fingers (pinch), the mouse wheel or the keyboard; the 3D ⌖ stays;
   - **Lock map rotation**: two fingers and Shift + wheel no longer turn the plan map, the home OSM widget or the OSM view; turning it on puts open maps back straight. Useful on slow devices. Off by default. The tracker's 🔃 Oriented map still turns, and the 🧊 3D view keeps its gestures;
   - **🪟 Anchor tool panels to their button**: the Paths, Zones and Structures panels open next to their button instead of centred (comfortable on a large screen, not recommended on a phone);
   - **🧲 Snap while drawing** and its distance: a click close to an existing point snaps onto it, so that your galleries really join;
@@ -1497,7 +1497,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?** and the **🗺️ OSM view** box (see “🔴 Important warnings”) — the app sends none of your data; the only outside site it contacts is OpenStreetMap (the OSM View's background map), which this box turns off, and the network log shows it to you;
   - **📚 Site maps**: **🚫 Don't load the site's maps on startup**, if you only use your own maps (after a reload, they disappear from the list and the statistics).
 - **🛠️ System & maintenance**:
-  - **🛠️ Developer Mode** (password-protected): see “🔭 Going further”;
+  - **🛠️ Developer Mode**: verbose logs to copy when reporting a problem, plus technical tools — see “🔭 Going further”;
   - **📊 View memory state**: what the app takes up on your device, with **📋 Copy the report** to report a problem;
   - **🔧 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🔧 Open the Kill SW tool** (SW = *Service Worker*, the part of the app that keeps it stored for offline use) and **💥 Reset everything** — see “🔧 Troubleshooting”.
 
@@ -2160,7 +2160,11 @@ There is nothing else to do.
 
 ### 🐛 Detailed logs
 
-In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (password-protected), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default. Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
+In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (no password: a confirmation tells what it does), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default.
+
+**To send your logs** to whoever is helping you: **⚙️ Configuration** → **🛠️ Developer Mode** → turn on **🐛 Verbose logs**, do again what goes wrong, then **Show logs** → **Copy**, and paste the text into your message. The window keeps the last 300 lines, even after a crash. Read them before sending: they may mention map or file names.
+
+Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
 
 ### 📖 All the documentation online
 
