@@ -1819,6 +1819,11 @@ body.kta-lost-click-mode .leaflet-container {
 .leaflet-popup-close-button:hover {
   color: var(--kta-texte) !important;
 }
+/* Titre d'une fiche (1er <b>) : la croix est posée en absolu dans le coin, un titre long passait dessous. */
+.kta-popup-point > b:first-child {
+  display: inline-block;
+  padding-right: 24px;
+}
 
 .leaflet-popup-content input,
 .leaflet-popup-content textarea,
