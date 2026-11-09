@@ -1628,10 +1628,18 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `jpe` / `peo` puits de 1,2 m à échelons (tous les 0,3 m, deux montants), `jps`
   puits nu, `pa` tube de 0,8 m à grille. Ouvert dans le **sol** vers un niveau lié au-dessous, dans le **plafond** vers
   un niveau lié au-dessus, les deux entre trois niveaux ; **altitudes réelles** (`_etenduePassage`, décision produit) :
-  parois (matériau des galeries) de notre sol au plafond du niveau lié le plus proche dessous, de notre plafond au sol
-  de celui du dessus (aucune paroi quand les niveaux se chevauchent), escalier jusqu'au sol du niveau lié (au moins
-  0,3 m), échelle d'un sol à l'autre (montants d'un mètre au-delà) — la même altitude que les niveaux voisins montrés ;
-  sans niveau lié de ce côté (surface, aération), 6 m qui se perdent dans le noir. L'arrivée d'un passage (raccord
+  parois (matériau des galeries) de notre sol au plafond du niveau lié le plus proche dessous, escalier jusqu'au sol du
+  niveau lié (au moins 0,3 m), échelle d'un sol à l'autre (montants d'un mètre au-delà) — la même altitude que les
+  niveaux voisins montrés. **Vers le haut** (`_sommetPlafond`, décision produit), le niveau du dessus est le niveau lié
+  le plus proche au-dessus, ou, sans niveau lié (aération `pa` d'un seul niveau), le niveau juste au-dessus, montré
+  ou non.
+  Toute la bouche sous une galerie de ce niveau (son vide ; en structures, ses galeries et chambres) : le conduit
+  **débouche** à son sol (aucune paroi si les niveaux se chevauchent). Sinon il **traverse sa roche** : parois sur 6 m
+  au-delà du plafond (ou du sol lié), qui se perdent dans le noir, et bouche au bit `GABARIT.conduit` (64) que les
+  sols et plafonds des voisins du dessus respectent (`_matsVoisins`) : rien de leur niveau en travers du conduit.
+  🩸 Les parois des tubes d'un voisin ne lisent pas le gabarit : une galerie du dessus qui ne couvre qu'une partie de
+  la bouche coupe le conduit, fermé. Puits de surface (ciel) et rien au-dessus : 6 m qui se perdent dans le noir
+  (checkup § 52, `KTA_V3D_SEUL=puits-dessus`). L'arrivée d'un passage (raccord
   validé, sinon le POI ramené en galerie) n'en dépend pas (§ 44). Puits de surface (`peo`, `eso` au plus haut de leurs niveaux, `pa` partout) : plafond seulement, sans 🪜 ;
   disque de ciel (sprite clair non éclairé) au sommet de `peo` / `eso`. Cadre doré au sol d'un passage. Un tracé
   `jonction` (filtre de son type respecté) devient une **galerie inclinée** (ci-dessus). ⚠️ contrat : les
