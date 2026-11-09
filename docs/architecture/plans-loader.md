@@ -736,9 +736,9 @@ disparaître de leur session avant d'avoir rouvert le plan.
 
 ---
 
-## 📏 L'échelle d'un plan importé se DÉDUIT du géoréférencement (v1.82.0)
+## 📏 L'échelle d'un plan importé se DÉDUIT du géoréférencement
 
-**Le bug** : `sigImport.js` et `gpxImport.js` écrivaient `tracking.scale = 50` **en dur** dans le plan-config. Sur `Citon_Graves_RD` — 4 000 px pour 1 199 m de terrain — la vraie valeur est **3,34 px/m** : un **facteur 15**. Toute distance affichée sur un plan importé était fausse dans cette proportion, et la mesure de KARMA annonçait 480 m pour 1 644 m réels.
+**🩸 Piège** : une échelle `tracking.scale` écrite en dur (50 px/m) par `sigImport.js` ou `gpxImport.js` peut être fausse d'un facteur 15 sur un plan importé réel (quelques px/m), et toutes ses distances avec.
 
 **La correction ne calcule rien de neuf** : `KmzExport.buildTransform` retournait déjà `metresParPixel`, dont l'échelle est exactement l'inverse.
 
