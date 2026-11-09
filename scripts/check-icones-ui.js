@@ -569,7 +569,7 @@ const SRC_INTERFACE = lire("js/interface.js");
   const pied = /class="kta-readme-modal-footer">([\s\S]*?)<\/div>/.exec(DOCS);
   const corpsPied = pied ? pied[1].replace(/<!--[\s\S]*?-->/g, "") : "";
   t("1 bis. Documentation : crédits du pied de fenêtre en SVG (ktaIcone), sans emoji",
-    !!pied && (corpsPied.match(/ktaIcone\("/g) || []).length === 7 && !EMO.test(corpsPied), corpsPied.trim().slice(0, 120));
+    !!pied && (corpsPied.match(/ktaIcone\("/g) || []).length === 8 && !EMO.test(corpsPied), corpsPied.trim().slice(0, 120));
 }
 
 // ── 2. noms connus ─────────────────────────────

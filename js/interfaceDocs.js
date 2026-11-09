@@ -612,7 +612,7 @@ function _ouvrirReadmeModal(html, opts) {
         <!-- Mêmes crédits et mêmes icônes que le splash et le pied de l'accueil. &amp;nbsp; entre icône et nom : la
              paire ne se coupe jamais. -->
         <span>— ${window.ktaIcone("leaf")}&nbsp;Leaflet · ${window.ktaIcone("box")}&nbsp;three.js · ${window.ktaIcone("package")}&nbsp;JSZip · ${window.ktaIcone("file-text")}&nbsp;jsPDF ·
-          ${window.ktaIcone("globe")}&nbsp;OSM · ${window.ktaIcone("route")}&nbsp;Dijkstra · ${window.ktaIcone("camera")}&nbsp;html2canvas</span>
+          ${window.ktaIcone("globe")}&nbsp;OSM · ${window.ktaIcone("route")}&nbsp;Dijkstra · ${window.ktaIcone("camera")}&nbsp;html2canvas · ${window.ktaIcone("palette")}&nbsp;Twemoji</span>
       </div>
     </div>
   `;

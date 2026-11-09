@@ -190,7 +190,7 @@ async function jouer(page, theme) {
   const profilFautes = (profil || []).filter(function (b) { return !b.svg || b.emoji; });
   verifier(!!profil && profil.length >= 12 && profilFautes.length === 0, "Profil : " + (profil ? profil.length : 0) +
     " titres, boutons, libellés, familles et spéciaux des hauts faits en SVG, sans emoji", profilFautes);
-  // Les médailles des paliers restent des emoji (récompenses colorées, lot police emoji).
+  // Les médailles des paliers restent des emoji (récompenses colorées, police KTA Emoji).
   const medailles = await page.evaluate(function () {
     return document.querySelectorAll("#kta-profile-details-modal .kta-feat-badge").length;
   });
@@ -683,7 +683,7 @@ async function jouer(page, theme) {
       " emoji");
     verifier(doc.fils > 0 && doc.filsEmoji === 0, p + doc.fils + " lignes à fil d'Ariane, " + doc.filsEmoji + " emoji avant le dernier ›");
     verifier(doc.h2Carte === "map", p + "chapitre « Utiliser la carte » → icône map", doc.h2Carte);
-    verifier(doc.pied && doc.pied.emoji === 0 && doc.pied.svg === 7, p + "crédits du pied de fenêtre en SVG", doc.pied);
+    verifier(doc.pied && doc.pied.emoji === 0 && doc.pied.svg === 8, p + "crédits du pied de fenêtre en SVG", doc.pied);
     const t = doc.taille || {};
     verifier(t.h2 && t.li && t.h2.h >= t.h2.fs * 0.95 && t.h2.h <= t.h2.fs * 1.3 && t.li.h >= t.li.fs * 0.95 &&
       t.li.h <= t.li.fs * 1.3 && t.h2.h > t.li.h, p + "icône proportionnée au texte (h2 " + (t.h2 && t.h2.h) + " px pour " +

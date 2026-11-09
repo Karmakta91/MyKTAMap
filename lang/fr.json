@@ -6443,7 +6443,7 @@
   "bienvenue.merci.intro": "MyKTAMap est portée par une seule personne côté développement, mais elle s'appuie sur des communautés, des outils libres et des gens qui ont pris le temps de transmettre.",
   "bienvenue.merci.l1": "À la communauté cataphile : aux anciens qui ont relevé les galeries au crayon, à celles et ceux qui transmettent. Sans vos plans, l'app n'aurait rien à afficher.",
   "bienvenue.merci.l2": "Aux testeurs et testeuses terrain, descendus avec des versions instables, dans le noir et le froid, pour raconter ce qui clochait.",
-  "bienvenue.merci.l3": "Aux outils libres : Leaflet, Leaflet.ImageOverlay.Rotated, three.js, JSZip, jsPDF, html2canvas, OpenStreetMap et ses contributeurs, l'algorithme de Dijkstra.",
+  "bienvenue.merci.l3": "Aux outils libres : Leaflet, Leaflet.ImageOverlay.Rotated, three.js, JSZip, jsPDF, html2canvas, Twemoji (dessins des emoji, CC-BY 4.0), OpenStreetMap et ses contributeurs, l'algorithme de Dijkstra.",
   "bienvenue.merci.l4": "À Claude (Anthropic), assistant de développement : un outil comme les autres, la vision et les décisions restent humaines.",
   "bienvenue.merci.l5": "À toi, pour avoir pris le temps de lire : c'est l'état d'esprit que ces lieux demandent.",
   "bienvenue.surtitre": "Bienvenue",
