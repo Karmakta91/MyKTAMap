@@ -750,8 +750,14 @@ l'interface : leurs `style=` d'interface comptent comme les autres. Diagnostic :
 — enfant de `<html>`, sœur de `<body>` : `body.kta-theme-light .modal` ne les atteint pas. Les jetons, eux,
 cascadent depuis `<html>` : une règle de base écrite en jetons n'a besoin d'aucun des deux.
 
-**`!important` restants** : les règles claires historiques (environ 1 860 sélecteurs `.kta-theme-light`) en
-portent encore beaucoup. On les retire écran par écran, quand la règle de base écrite en jetons suffit.
+**Surcharges claires restantes** : environ 1 060 sélecteurs `.kta-theme-light` dans `css/`, beaucoup en
+`!important`. Une surcharge ne se retire que sur preuve : le style calculé (couleurs, fonds, bordures, ombres,
+opacité, filtre, `display`, `visibility` et toute propriété que déclare une règle claire) de chaque élément
+visible est relevé avant et après, en clair et en sombre, PC et téléphone, et doit rester identique sur chaque
+écran où la règle atteint un élément visible. Une règle qu'aucun écran relevé n'atteint (survol, vue profonde
+du Mode Secours, Vue OSM…) reste. Dans une même règle, `body.kta-theme-light X` à côté de
+`html.kta-theme-light X` ne sert à rien (même spécificité, le second atteint tout ce qu'atteint le premier) :
+une règle claire s'écrit avec le seul préfixe `html.kta-theme-light`.
 
 #### 53.4 Scope final (toute l'app)
 

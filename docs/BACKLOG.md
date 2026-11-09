@@ -120,10 +120,10 @@
   15 lecture, 18 titre de fenêtre, 24 titre d'écran), plancher de 11 px pour tout texte cliquable.
   `qui: Claude · action: proposer en QCM les jetons de taille et l'ordre des écrans, puis les poser écran par écran
   · fini: tailles en jetons, plus aucune valeur hors échelle dans css/ · depuis: 20/10/2026 · taille: L`
-- **Thème clair : nettoyer les surcharges historiques** — ✅ vérifié 20/10 : ~1 780 sélecteurs `.kta-theme-light`
-  dans `css/`, dont beaucoup en `!important`, devenus inutiles là où la règle de base est écrite en jetons
-  (`docs/architecture/ui.md` §53.3).
-  `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
+- **Thème clair : nettoyer les surcharges historiques** — ✅ vérifié 10/11 : 1 792 → 1 061 sélecteurs
+  `.kta-theme-light` (relevé du style calculé avant / après, `docs/architecture/ui.md` §53.3). Restent surtout
+  des règles qu'aucun écran relevé n'atteint (vues profondes du Secours, Vue OSM, survols, sous-fenêtres).
+  `qui: Claude · action: étendre le relevé aux écrans non couverts puis retirer ce qu'il prouve mort
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
 - **Add-on mkmg : interrupteur par organisation (pro)** — aujourd'hui refusé sur une installation reliée, sauf
   `data/reglages.json > addons.mkmg` posé par l'hébergeur (toute l'installation) ; décision : un admin d'orga
