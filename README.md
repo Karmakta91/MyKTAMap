@@ -186,7 +186,8 @@ lang/                   ← Dictionnaires i18n : fr.json (référence et repli u
 icon/                   ← Icônes des tags built-in (PNG transparents), icônes PWA, rose de la boussole ; précachées
 fonts/                  ← Polices de l'écran Bienvenue (Montserrat, Permanent Marker, .woff2) + leurs licences
 lib/                    ← Librairies embarquées (aucun CDN) : Leaflet + leaflet-imageoverlay-rotated, JSZip, jsPDF,
-                          html2canvas, three.js (vue 3D, chargé à la demande) ; versions tenues par lib/package.json + lib/VERSIONS.md (check-libs.js)
+                          html2canvas, three.js et la police Bodoni Moda (vue 3D, chargés à la demande) ; versions tenues par
+                          lib/package.json + lib/VERSIONS.md (check-libs.js)
 data/                   ← DATA pure, hors Git sauf data/index.json (index des plans servis + config d'instance) ;
                           un dossier par plan (plan-config.json, images, calques). Seul le relevé fictif y est livré
 .well-known/            ← security.txt (contact de sécurité)

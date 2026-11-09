@@ -254,6 +254,9 @@ const ASSETS_TO_CACHE = [
   "./js/vue3d.js",
   "./lib/three/three.module.js",
   "./lib/three/three.core.js",
+  // Capitales des plaques gravées, chargées par vue3d.js > _chargerPolicePlaques à l'ouverture de la 3D.
+  "./lib/bodoni-moda/bodoni-moda-latin-600-normal.woff2",
+  "./lib/bodoni-moda/bodoni-moda-latin-700-normal.woff2",
   // Add-ons (addons/<nom>/) : jamais listés ici, leurs manifestes disent leurs fichiers (_assetsAddons). Le registre
   // qui les lit est, lui, de l'app.
   "./js/ktaAddons.js",
