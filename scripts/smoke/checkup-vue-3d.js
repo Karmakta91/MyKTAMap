@@ -10945,6 +10945,39 @@ async function sectionMiniCarte(nav) {
       ls.rendues.rubans === ls.avant.rubans && ls.rendues.presse === "true",
       nom + "⚙️ Lignes au sol coupées : plus de ruban de tracé en 3D, mini-carte et filtres ≡ inchangés ; rendues au " +
       "second toucher", ls);
+    // ── Page ouverte avant la mise à jour : config.js sans le réglage, vue3d.js neuf → l'option marche et reste ──
+    const vieux = await page.evaluate(async function () {
+      const K = window.KtaVue3D, q = function (x) { return document.querySelector("#kta-vue3d " + x); }, r = {};
+      const nRubans = function () {
+        const o = K.etat().rubans || {};
+        return Object.keys(o).filter(function (k) { return k !== "itinerary"; }).reduce(function (s, k) {
+          return s + o[k];
+        }, 0);
+      };
+      const garde = { g: window.getVue3DLignesSol, s: window.setVue3DLignesSol };
+      delete window.getVue3DLignesSol; delete window.setVue3DLignesSol;
+      try {
+        if (q("#kta-v3d-reglages").hidden) q('[data-v3d="reglages"]').click();
+        q('[data-v3d="lignesSol"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 9 }));
+        await new Promise(function (ok) { setTimeout(ok, 400); });
+        await window.__fxImages(10);
+        r.coupees = { rubans: nRubans(), ls: localStorage.getItem("myktamap_v3d_lignessol_v1") };
+        await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+        await window.__fxImages(10);
+        r.rouverte = { rubans: nRubans(), presse: q('[data-v3d="lignesSol"]').getAttribute("aria-pressed") };
+      } finally {
+        window.getVue3DLignesSol = garde.g; window.setVue3DLignesSol = garde.s;
+        localStorage.removeItem("myktamap_v3d_lignessol_v1");
+        await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+        await window.__fxImages(10);
+      }
+      r.rendues = nRubans();
+      return r;
+    });
+    verifier(vieux.coupees.rubans === 0 && vieux.coupees.ls === "0" && vieux.rouverte.rubans === 0 &&
+      vieux.rouverte.presse === "false" && vieux.rendues > 0,
+      nom + "page d'avant la mise à jour (config.js sans le réglage) : Lignes au sol coupées pour de bon, encore " +
+      "coupées à la réouverture", vieux);
     // ── Interrupteur ⚙️ : masquée, retenue à la réouverture ; vue d'édition : masquée ; greffe ──
     const s = await page.evaluate(async function () {
       const K = window.KtaVue3D, q = function (x) { return document.querySelector("#kta-vue3d " + x); }, r = {};
