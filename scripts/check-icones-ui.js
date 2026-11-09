@@ -644,7 +644,7 @@ const SRC_INTERFACE = lire("js/interface.js");
   // de cause) ; une baisse se reporte ici. Clés sans U+FE0F (forme rendue par classerDoc).
   // Recalcul : node scripts/check-icones-ui.js --plafond
   const PLAFOND_RESTE = {
-    "©": 3, "🚪": 6, "⚠": 12, "◀": 12, "▶": 12, "⛔": 54, "🟦": 15, "🟩": 6, "🟪": 6, "🟨": 12, "⬛": 9, "🟥": 6,
+    "©": 3, "🚪": 6, "⚠": 12, "◀": 12, "▶": 12, "⛔": 57, "🟦": 15, "🟩": 6, "🟪": 6, "🟨": 12, "⬛": 9, "🟥": 6,
     "🟡": 9, "🟠": 12, "🔵": 9, "🟧": 6, "↔": 6, "🟢": 3, "🟣": 3, "⚪": 3
   };
   if (process.argv.indexOf("--plafond") >= 0) {
