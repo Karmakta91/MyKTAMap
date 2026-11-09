@@ -235,6 +235,7 @@
   "config.perfultra.slowSave.hint": "Up to 30 s of changes lost if the app crashes.",
   "config.perfultra.slowSave.label": "Slow auto-save (30s)",
   "config.perfultra.ultra.label": "ULTRA mode (enables everything)",
+  "config.perfultra.ultra.hint": "Also locks map rotation (two fingers, Shift + wheel) while this map is open.",
   "config.perfultra.tousNiveaux.label": "Show every level at launch",
   "config.presentation.btn": "Enable presentation mode",
   "config.presentation.hint": "Full screen, map only. To exit: F or Esc key; on a phone, ✕ at the top right.",

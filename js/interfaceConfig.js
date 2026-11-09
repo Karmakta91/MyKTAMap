@@ -44,7 +44,7 @@ function _renderPerfUltraSection() {
     <div class="kta-aide-section">
       <p class="kta-perf-ultra-hint" style="margin:0 0 10px 0;">${window.I18n.t("config.perfultra.intro")}</p>
       ${row("cfg_perf_ultra", window.ktaIcone("rocket") + " " + window.I18n.t("config.perfultra.ultra.label"), s.ultra,
-            "")}
+            window.I18n.t("config.perfultra.ultra.hint"))}
       <div style="border-top:1px solid var(--kta-bordure); margin:10px 0; padding-top:8px;"></div>
       ${row("cfg_perf_decim", window.I18n.t("config.perfultra.decim.label"), s.decim,
             "")}

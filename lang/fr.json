@@ -235,6 +235,7 @@
   "config.perfultra.slowSave.hint": "Jusqu'à 30 s de modifications perdues en cas de plantage.",
   "config.perfultra.slowSave.label": "Auto-save lent (30s)",
   "config.perfultra.ultra.label": "Mode ULTRA (active tout)",
+  "config.perfultra.ultra.hint": "Bloque aussi la rotation de la carte (deux doigts, Maj + molette) tant que ce plan est ouvert.",
   "config.perfultra.tousNiveaux.label": "Afficher tous les niveaux au lancement",
   "config.presentation.btn": "Activer le mode présentation",
   "config.presentation.hint": "Plein écran, carte seule. Pour sortir : touche F ou Échap ; sur téléphone, ✕ en haut à droite.",

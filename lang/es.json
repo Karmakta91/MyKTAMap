@@ -235,6 +235,7 @@
   "config.perfultra.slowSave.hint": "Hasta 30 s de cambios perdidos si la app falla.",
   "config.perfultra.slowSave.label": "Autoguardado lento (30s)",
   "config.perfultra.ultra.label": "Modo ULTRA (activa todo)",
+  "config.perfultra.ultra.hint": "También bloquea la rotación del mapa (dos dedos, Mayús + rueda) mientras este plano esté abierto.",
   "config.perfultra.tousNiveaux.label": "Mostrar todos los niveles al iniciar",
   "config.presentation.btn": "Activar el modo presentación",
   "config.presentation.hint": "Pantalla completa, solo el mapa. Para salir: tecla F o Esc; en el teléfono, ✕ arriba a la derecha.",

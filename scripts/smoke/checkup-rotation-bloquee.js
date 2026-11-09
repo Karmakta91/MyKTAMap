@@ -11,6 +11,8 @@
 //   de style du pane de rotation, surface des canvas, minuteries de surveillance (SURVEILLANCE_MS) · B5 le plan
 //   orienté (cap simulé) tourne encore · B6 « Réglés depuis l'accueil » l'affiche · B7 Vue OSM : tourne coupée, ne
 //   tourne plus active (redressée à l'activation) · B8 vue 3D : deux doigts tournent toujours sa caméra ·
+//   B9 mode ULTRA du plan : redresse et bloque la carte du plan et la Vue OSM, case de l'accueil intacte, plan
+//   orienté actif ; ULTRA coupé, la carte tourne de nouveau ·
 //   A1 widget OSM de l'accueil : tourne coupé, la vraie case le redresse et le fige · A2 réglage gardé au rechargement.
 // 🩸 Les doigts simulés suivent la famille d'événements de Leaflet (`L.Browser.touchNative`) : sinon le pinch-zoom ne
 // voit rien et le « pas de rotation » passe à vide (le contre-essai B1 l'interdit).
@@ -401,6 +403,76 @@ async function suitePlan(nav) {
       verifier(d > 10, "deux doigts tournent toujours la caméra 3D (cap " + Math.round(b8.cap0) + "° → " + Math.round(b8.cap1) + "°)", b8);
       verifier(b8.carte === 0, "la carte 2D reste droite au retour", b8);
     }
+
+    // ── B9 — mode ULTRA du plan ──
+    console.log("— B9 : mode ULTRA du plan (case de l'accueil décochée) —");
+    const b9 = await page.evaluate(async function () {
+      const R = window.__rb, MB = window.MapBearing, map = window.map, cont = map.getContainer();
+      MB.setRotationBloquee(false);
+      MB.setManuel(40);
+      const avant = MB.getBearing();
+      window.PerfUltra.setUltra(true);
+      await R.attente(300);
+      const redressee = MB.getBearing();
+      await R.geste(cont, { d0: 120, d1: 260, a1: 66 });
+      const geste = MB.getBearing();
+      await R.molette(cont, -300);
+      const molette = MB.getBearing();
+      const refus = MB.setManuel(30);
+      const cb = document.getElementById("loaderRotationBloqueeCb");
+      const appareil = { reglage: MB.rotationBloquee(), ls: localStorage.getItem("myktamap_rotation_bloquee_v1"),
+                         caseCochee: cb ? cb.checked : null };
+      // Plan orienté, ULTRA actif.
+      MB.setEnabled(true);
+      if (!window.getTrackingActif()) window.startTracking();
+      for (let i = 0; i < 60; i++) {
+        MB.onStep(map.getCenter());
+        MB.onHeading(90);
+        await R.attente(40);
+        if (Math.abs(MB.getBearing() - 270) < 1) break;
+      }
+      const cap = { b: MB.getBearing(), src: MB.getSource() };
+      window.stopTracking();
+      await R.attente(200);
+      MB.setEnabled(false);
+      return { avant: avant, redressee: redressee, geste: geste, molette: molette, refus: refus,
+               appareil: appareil, cap: cap, ultra: window.PerfUltra.isUltra() };
+    });
+    verifier(b9.ultra && b9.avant === 40 && b9.redressee === 0, "activer ULTRA remet la carte droite", b9);
+    verifier(b9.geste === 0 && b9.molette === 0 && b9.refus === false,
+      "ULTRA : deux doigts, Maj + molette et setManuel ne tournent plus la carte du plan", b9);
+    verifier(b9.appareil.reglage === false && b9.appareil.ls === "0" && b9.appareil.caseCochee === false,
+      "ULTRA n'écrit pas le réglage de l'appareil (case de l'accueil décochée)", b9.appareil);
+    verifier(Math.abs(b9.cap.b - 270) < 1.5 && b9.cap.src === "cap", "ULTRA : le plan orienté tourne toujours (" + b9.cap.b.toFixed(1) + "°)", b9.cap);
+    // Vue OSM ouverte depuis le plan en ULTRA.
+    await page.evaluate(function () { window.__osmCarte = null; window.OsmView.open(); });
+    let osmUltra = true;
+    try { await attendre(page, function () { return !!window.__osmCarte && !!window.__osmCarte._loaded && !!window.OsmView.getRotation(); }, 30000); }
+    catch (e) { osmUltra = false; }
+    if (!osmUltra) pb("ULTRA : la Vue OSM ne s'est pas ouverte");
+    else {
+      await page.waitForTimeout(1000);
+      const o9 = await page.evaluate(async function () {
+        const R = window.__rb, rot = window.OsmView.getRotation(), cont = window.__osmCarte.getContainer();
+        await R.geste(cont, { d0: 200, d1: 220, a1: 66 });
+        const geste = rot.getBearing();
+        await R.molette(cont, -300);
+        return { geste: geste, molette: rot.getBearing(), refus: rot.setManuel(30) };
+      });
+      verifier(o9.geste === 0 && o9.molette === 0 && o9.refus === false, "ULTRA : la Vue OSM ouverte depuis le plan ne tourne pas", o9);
+      await page.evaluate(function () { if (window.OsmView.close) window.OsmView.close(); });
+      await page.waitForTimeout(600);
+    }
+    const b9off = await page.evaluate(async function () {
+      const R = window.__rb, MB = window.MapBearing, cont = window.map.getContainer();
+      window.PerfUltra.setUltra(false);
+      await R.attente(300);
+      await R.geste(cont, { d0: 200, d1: 220, a1: 66 });
+      const geste = R.norm(MB.getBearing());
+      MB.reset();
+      return { geste: geste, ultra: window.PerfUltra.isUltra() };
+    });
+    verifier(!b9off.ultra && Math.abs(b9off.geste) > 20, "ULTRA coupé : deux doigts tournent de nouveau la carte (" + b9off.geste.toFixed(1) + "°)", b9off);
     verifier(t.erreurs.length === 0, "aucune erreur de page (carte)", t.erreurs.slice(0, 3));
   } finally {
     await t.ctx.close();

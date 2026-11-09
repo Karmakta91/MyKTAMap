@@ -2044,7 +2044,7 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
 | 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30 s | Jusqu'à 30 s perdues en cas de plantage |
 | 🛡️ **Limiter le dézoom sur mobile** | Plafonne le dézoom sur téléphone. **Cochée par défaut** | Pas de vue d'ensemble complète sur mobile ; rechargement requis |
 
-- ULTRA coche tout ; le décocher décoche tout. En plus des options ci-dessus, il ne dessine que les tracés et points proches de l'écran (léger temps d'apparition en déplaçant la carte). Tu peux aussi n'activer que certaines options, par exemple **🐢** pour un bon gain sans perte visible.
+- ULTRA coche tout ; le décocher décoche tout. En plus des options ci-dessus, il ne dessine que les tracés et points proches de l'écran (léger temps d'apparition en déplaçant la carte) et bloque la rotation de la carte à deux doigts ou à Maj + molette sur ce plan (et dans la Vue OSM ouverte depuis lui), sans toucher à l'option de l'accueil ; le 🔃 Plan orienté du suivi tourne toujours. Tu peux aussi n'activer que certaines options, par exemple **🐢** pour un bon gain sans perte visible.
 - **Tes points de session restent toujours affichés**, quelles que soient les options.
 - Quand des optimisations sont actives, un message te le rappelle à l'ouverture du plan : un affichage allégé n'est pas un bug.
 - Sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement** (même groupe, hors ULTRA, coché par défaut) peut être décoché pour n'ouvrir que les niveaux -1, 0 et +1.
