@@ -5628,8 +5628,8 @@ document.addEventListener("change", function (e) {
 });
 // → { de, vers } (deux entiers différents) ou null.
 function _lireNiveauxPente(prefixe) {
-  const de = parseInt((document.getElementById(prefixe + "-pente-de") || {}).value, 10);
-  const vers = parseInt((document.getElementById(prefixe + "-pente-vers") || {}).value, 10);
+  const de = Number.parseInt((document.getElementById(prefixe + "-pente-de") || {}).value, 10);
+  const vers = Number.parseInt((document.getElementById(prefixe + "-pente-vers") || {}).value, 10);
   return (Number.isInteger(de) && Number.isInteger(vers) && de !== vers) ? { de: de, vers: vers } : null;
 }
 

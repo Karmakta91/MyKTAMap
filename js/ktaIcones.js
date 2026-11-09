@@ -1153,7 +1153,7 @@
   ];
 
   const _PAR_EMOJI = {};
-  function _base(e) { return String(e).replace(/️/g, ""); }
+  function _base(e) { return String(e).replaceAll("\uFE0F", ""); }
   const _famille = function (k) {
     return _PAR_EMOJI[k] || (_PAR_EMOJI[k] = { cible: [], defaut: null, autreCible: [], autreDefaut: null,
       repCible: [], repDefaut: null, gardeCible: [], gardeDefaut: null });
@@ -1179,10 +1179,25 @@
   const _RE_EMOJI = new RegExp("\\p{Regional_Indicator}{2}|[#*0-9]\\uFE0F?\\u20E3|\\p{Extended_Pictographic}" +
     "(?:\\uFE0F|\\p{Emoji_Modifier})?(?:\\u200D\\p{Extended_Pictographic}(?:\\uFE0F|\\p{Emoji_Modifier})?)*", "gu");
 
+  // Balises retirées sans expression régulière (une regex `<[^>]*>` recule en temps quadratique sur un « < » sans
+  // « > ») ; un « < » sans « > » reste du texte.
+  function _sansBalises(s) {
+    let out = "", i = 0;
+    while (i < s.length) {
+      const o = s.indexOf("<", i);
+      if (o < 0) { out += s.slice(i); break; }
+      out += s.slice(i, o);
+      const f = s.indexOf(">", o);
+      if (f < 0) { out += s.slice(o); break; }
+      i = f + 1;
+    }
+    return out;
+  }
+  // Entit\u00E9s lues dans le texte voisin d'un emoji (D\u00C9codage pour comparer aux motifs, pas un \u00E9chappement).
+  const _ENTITES = { nbsp: " ", "#160": " ", amp: "&", lt: "<", gt: ">", quot: "\"", "#39": "'" };
   function _nettoyer(s) {
-    return s.replace(/<[^>]*>/g, "").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/\*\*|`|️/g, "")
-      .replace(/\s+/g, " ");
+    return _sansBalises(s).replaceAll(/&(nbsp|#160|amp|lt|gt|quot|#39);/g, function (_, n) { return _ENTITES[n]; })
+      .replaceAll("**", "").replaceAll("`", "").replaceAll("\uFE0F", "").replaceAll(/\s+/g, " ");
   }
   function _premier(liste, avant, apres) {
     for (let i = 0; i < liste.length; i++) {
@@ -1213,8 +1228,12 @@
       if (avant.indexOf(">") >= 0 && (avant.indexOf("<") < 0 || avant.indexOf(">") < avant.indexOf("<"))) {
         avant = avant.slice(avant.indexOf(">") + 1);
       }
-      avant = _nettoyer(avant).replace(/\s+$/, "");
-      const apres = _nettoyer(t.slice(fin, fin + 160).replace(/<[^>]*$/, "")).replace(/^\s+/, "");
+      avant = _nettoyer(avant).trimEnd();
+      // Balise coupée par la fenêtre de 160 caractères : on la retire.
+      let apresBrut = t.slice(fin, fin + 160);
+      const ouv = apresBrut.lastIndexOf("<");
+      if (ouv > apresBrut.lastIndexOf(">")) apresBrut = apresBrut.slice(0, ouv);
+      const apres = _nettoyer(apresBrut).trimStart();
       const g = _premier(p.gardeCible, avant, apres);
       if (g) { o.garde = g.s; continue; }
       const r = _regle(p, avant, apres);

@@ -110,7 +110,7 @@
     if (!id) return "aucun";
     const s = String(id);
     let h = 0x811c9dc5;
-    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
     const m = /^([a-z]+)_/.exec(s);
     return (m ? m[1] : "plan") + " #" + h.toString(16).padStart(8, "0");
   }

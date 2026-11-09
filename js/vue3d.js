@@ -5658,7 +5658,7 @@
   // FNV-1a 32 bits d'une chaîne → entier non signé.
   function _hachage(s) {
     let h = 0x811c9dc5;
-    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    for (const c of s) { h ^= c.codePointAt(0); h = Math.imul(h, 0x01000193); }
     return h >>> 0;
   }
 
@@ -5700,8 +5700,10 @@
     let t2 = corps2(taille);
     while (t2 > PLAQUE.min2 && _largeurPlaque(ctx, m.seconde, t2, 600) > utileW) t2--;
     // Trop large même à PLAQUE.min2 : la ligne perd ses derniers mots plutôt que de devenir illisible.
-    while (t2 && m.seconde.indexOf(" ") > 0 && _largeurPlaque(ctx, m.seconde, t2, 600) > utileW) {
-      m.seconde = m.seconde.slice(0, m.seconde.lastIndexOf(" ")).trim();
+    if (t2) {
+      while (m.seconde.indexOf(" ") > 0 && _largeurPlaque(ctx, m.seconde, t2, 600) > utileW) {
+        m.seconde = m.seconde.slice(0, m.seconde.lastIndexOf(" ")).trim();
+      }
     }
     m.taille = taille; m.taille2 = t2;
     m.pas = m.lignes.length > 1 ? 1.15 * taille : 0;
