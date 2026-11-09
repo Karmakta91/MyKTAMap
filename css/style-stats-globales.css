@@ -198,15 +198,12 @@
 }
 
 /* Thème clair — overrides camemberts */
-body.kta-theme-light .kta-stats-glob-pie-legend-row:hover,
 html.kta-theme-light .kta-stats-glob-pie-legend-row:hover {
   background: rgba(0, 0, 0, 0.05) !important;
 }
-body.kta-theme-light .kta-stats-glob-list-compact,
 html.kta-theme-light .kta-stats-glob-list-compact {
   border-top-color: rgba(154, 135, 84, 0.30) !important;
 }
-body.kta-theme-light .kta-stats-glob-pie-svg,
 html.kta-theme-light .kta-stats-glob-pie-svg {
   filter: drop-shadow(0 2px 6px rgba(80, 60, 30, 0.18)) !important;
 }
@@ -252,24 +249,19 @@ html.kta-theme-light .kta-stats-glob-pie-svg {
 }
 
 /* Variants thème clair */
-body.kta-theme-light .kta-stats-glob-header,
 html.kta-theme-light .kta-stats-glob-header {
   background: var(--kta-light-accent-bg) !important;
   border-color: var(--kta-light-accent) !important;
 }
-body.kta-theme-light .kta-stats-glob-card,
 html.kta-theme-light .kta-stats-glob-card,
-body.kta-theme-light .kta-stats-glob-section,
 html.kta-theme-light .kta-stats-glob-section {
   background: var(--kta-light-bg-deep) !important;
   border-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-stats-glob-total,
 html.kta-theme-light .kta-stats-glob-total {
   background: rgba(140, 180, 255, 0.15) !important;
   color: var(--kta-light-text) !important;
   border-color: rgba(140, 180, 255, 0.35) !important;
 }
-body.kta-theme-light .kta-stats-glob-footer,
 html.kta-theme-light .kta-stats-glob-footer {
   border-top-color: var(--kta-light-border) !important;

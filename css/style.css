@@ -1505,13 +1505,11 @@ body.kta-theme-light .kta-aide-submodal-back {
   border: 1px solid rgba(255, 107, 53, 0.45);
   color: #ffb088;
 }
-body.kta-theme-light .kta-lost-warn-overflow,
 html.kta-theme-light .kta-lost-warn-overflow {
   background: rgba(220, 80, 30, 0.10) !important;
   border-color: rgba(220, 80, 30, 0.45) !important;
   color: #b04a1a !important;
 }
-body.kta-theme-light .kta-lost-warn-overflow strong,
 html.kta-theme-light .kta-lost-warn-overflow strong {
   color: #8a3611 !important;
 }
@@ -1875,8 +1873,8 @@ body.kta-lost-click-mode .leaflet-container {
 .kta-equipe-pos { font-size: 12px; margin-top: 2px; }
 .kta-equipe-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .kta-equipe-vide { color: var(--kta-texte-3); }
-body.kta-theme-light .kta-equipe-nom, html.kta-theme-light .kta-equipe-nom { color: var(--kta-light-text) !important; }
-body.kta-theme-light .kta-equipe-moi, html.kta-theme-light .kta-equipe-moi { color: var(--kta-light-text) !important; }
+html.kta-theme-light .kta-equipe-nom { color: var(--kta-light-text) !important; }
+html.kta-theme-light .kta-equipe-moi { color: var(--kta-light-text) !important; }
 /* Ligne fournie par une extension (prise infoObjet). */
 .kta-popup-ext-info {
   margin-top: 6px;
@@ -2114,35 +2112,28 @@ body.kta-refonte-v1 .kta-refonte-counter-histoire .kta-refonte-counter-icon {
 }
 
 /* Thème clair */
-body.kta-theme-light .kta-sortie-principal,
 html.kta-theme-light .kta-sortie-principal {
   background: rgba(220, 38, 38, 0.08) !important;
   border-color: rgba(220, 38, 38, 0.35) !important;
 }
-body.kta-theme-light .kta-sortie-nom,
 html.kta-theme-light .kta-sortie-nom {
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-sortie-dist,
 html.kta-theme-light .kta-sortie-dist {
   color: #b35309 !important;
 }
-body.kta-theme-light .kta-sortie-niveau,
 html.kta-theme-light .kta-sortie-niveau {
   color: #1d4ed8 !important;
   background: rgba(29, 78, 216, 0.10) !important;
 }
-body.kta-theme-light .kta-sortie-alt-toggle,
 html.kta-theme-light .kta-sortie-alt-toggle {
   color: #1d4ed8 !important;
 }
-body.kta-theme-light .kta-sortie-alt-item,
 html.kta-theme-light .kta-sortie-alt-item {
   background: rgba(161, 110, 16, 0.08) !important;
   border-color: rgba(161, 110, 16, 0.30) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-sortie-alternatives,
 html.kta-theme-light .kta-sortie-alternatives {
   border-top-color: var(--kta-light-border) !important;
 }
@@ -2410,13 +2401,11 @@ html.kta-theme-light .kta-sortie-alternatives {
   background: rgba(26, 31, 46, 1);
   border-color: rgba(244, 197, 66, 0.7);
 }
-body.kta-theme-light .kta-histoire-pdf-action-open,
 html.kta-theme-light .kta-histoire-pdf-action-open {
   background: var(--kta-light-bg-elevated);
   color: var(--kta-avert);
   border-color: rgba(217, 119, 6, 0.5);
 }
-body.kta-theme-light .kta-histoire-pdf-action-open:hover,
 html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   background: var(--kta-light-bg-deep);
   border-color: #d97706;
@@ -2683,10 +2672,8 @@ img.kta-popup-photo-mini:focus-visible {
   font-size: 11px;
   text-align: left;
 }
-html.kta-theme-light .kta-popup-photo-mini.kta-popup-photo-arattacher,
-body.kta-theme-light .kta-popup-photo-mini.kta-popup-photo-arattacher { outline-color: #8b3a00; }
-html.kta-theme-light .kta-popup-photos-arattacher-titre,
-body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert); }
+html.kta-theme-light .kta-popup-photo-mini.kta-popup-photo-arattacher { outline-color: #8b3a00; }
+html.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert); }
 .kta-popup-photos-count {
   margin-top: 5px;
   font-size: 10.5px;
@@ -3099,13 +3086,11 @@ body.kta-theme-light .kta-popup-photos-arattacher-titre { color: var(--kta-avert
   border-color: rgba(244, 197, 66, 0.55);
   transform: scale(1.05);
 }
-body.kta-theme-light .kta-readme-tutorial-btn,
 html.kta-theme-light .kta-readme-tutorial-btn {
   background: rgba(161, 110, 16, 0.10) !important;
   border-color: rgba(161, 110, 16, 0.45) !important;
   color: #6b4d10 !important;
 }
-body.kta-theme-light .kta-readme-tutorial-btn:hover,
 html.kta-theme-light .kta-readme-tutorial-btn:hover {
   background: rgba(161, 110, 16, 0.22) !important;
 }
@@ -3129,7 +3114,6 @@ html.kta-theme-light .kta-readme-tutorial-btn:hover {
   border-color: rgba(140, 180, 255, 0.70);
 }
 .kta-readme-lang-select option { background: var(--kta-surface); color: var(--kta-texte); }
-body.kta-theme-light .kta-readme-lang-select option,
 html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color: #0f3d66; }
 
 /* Layout : sommaire + corps (+ bouton retour-haut en absolute) */
@@ -4818,13 +4802,11 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   border-color: rgba(244, 197, 66, 0.55);
   color: var(--kta-accent-texte);
 }
-body.kta-theme-light .kta-osm-home-tag-chip,
 html.kta-theme-light .kta-osm-home-tag-chip {
   background: rgba(255, 255, 255, 0.5) !important;
   border-color: rgba(0, 0, 0, 0.15) !important;
   color: var(--kta-light-text-secondary, #5a4f40) !important;
 }
-body.kta-theme-light .kta-osm-home-tag-chip.active,
 html.kta-theme-light .kta-osm-home-tag-chip.active {
   background: rgba(244, 197, 66, 0.25) !important;
   border-color: rgba(180, 130, 30, 0.6) !important;
@@ -4872,25 +4854,20 @@ html.kta-theme-light .kta-osm-home-tag-chip.active {
   background: transparent;
 }
 /* Thème clair : fond beige, accent or sombre */
-body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content-wrapper,
 html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content-wrapper {
   background: var(--kta-light-bg-elevated, #f5ecd6) !important;
   color: var(--kta-light-text, #2a2620) !important;
   border-color: rgba(180, 130, 30, 0.4) !important;
 }
-body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content,
 html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content {
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content b,
 html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content b {
   color: #8b6a14 !important;
 }
-body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content span,
 html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content span {
   color: var(--kta-light-text-secondary, #5a4f40) !important;
 }
-body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-tip,
 html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-tip {
   background: var(--kta-light-bg-elevated, #f5ecd6) !important;
   border-left-color: rgba(180, 130, 30, 0.4) !important;
@@ -4903,36 +4880,30 @@ html.kta-theme-light .kta-osm-home-content {
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
   border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
 }
-body.kta-theme-light .kta-osm-home-bandeau,
 html.kta-theme-light .kta-osm-home-bandeau {
   background: rgba(140, 180, 255, 0.10) !important;
   color: var(--kta-light-text, #2a2620) !important;
   border-bottom-color: rgba(140, 180, 255, 0.30) !important;
 }
-body.kta-theme-light .kta-osm-home-bandeau select,
 html.kta-theme-light .kta-osm-home-bandeau select {
   background: var(--kta-light-bg, #fffaee) !important;
   color: var(--kta-light-text, #2a2620) !important;
   border-color: var(--kta-light-border, rgba(0,0,0,0.18)) !important;
 }
-body.kta-theme-light .kta-osm-home-bandeau select option,
 html.kta-theme-light .kta-osm-home-bandeau select option {
   background: var(--kta-light-bg, #fffaee) !important;
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-osm-home-bandeau .kta-osm-home-fullscreen,
 html.kta-theme-light .kta-osm-home-bandeau .kta-osm-home-fullscreen {
   /* bouton plein écran : ambre lisible sur les deux thèmes */
   background: rgba(244, 197, 66, 0.25) !important;
   color: #8a6a14 !important; /* version assombrie du jaune charte pour lisibilité */
   border-color: rgba(244, 197, 66, 0.55) !important;
 }
-body.kta-theme-light .kta-osm-home-footer,
 html.kta-theme-light .kta-osm-home-footer {
   color: var(--kta-light-text, #5a4a30) !important;
   border-top-color: var(--kta-light-border, rgba(0,0,0,0.10)) !important;
 }
-body.kta-theme-light .kta-osm-home-loading,
 html.kta-theme-light .kta-osm-home-loading {
   color: var(--kta-light-text, #5a4a30) !important;
 }
@@ -5003,21 +4974,17 @@ html.kta-theme-light .kta-osm-home-empty strong {
   background: rgba(255, 255, 255, 0.08);
   color: var(--kta-texte);
 }
-html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn,
-body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn { color: var(--kta-texte-2); }
-html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover,
-body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover {
+html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn { color: var(--kta-texte-2); }
+html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active #ktaOsmHomeFullBtn:hover {
   background: rgba(0, 0, 0, 0.06);
   color: #1a1f2e;
 }
 /* sinon la molette de Leaflet fait défiler la page derrière */
 body.kta-osm-home-fs-lock { overflow: hidden; }
 
-body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active,
 html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active {
   background: var(--kta-light-bg, #fffaee) !important;
 }
-body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-section-head,
 html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-section-head {
   background: rgba(255, 255, 255, 0.65) !important;
   color: var(--kta-light-text, #2a2620) !important;
@@ -5189,7 +5156,6 @@ html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-se
 }
 .kta-cfg-raison:empty,
 .kta-perf-ultra-hint:empty { display: none; }
-body.kta-theme-light .kta-cfg-raison,
 html.kta-theme-light .kta-cfg-raison { color: var(--kta-texte-3); }
 /* 🩸 Options du menu de langue (HOME et plan) : le popup natif hérite d'un fond quasi transparent, texte
    clair sur fond clair. Fond solide imposé (sombre + variante claire). */
@@ -5198,9 +5164,7 @@ html.kta-theme-light .kta-cfg-raison { color: var(--kta-texte-3); }
   background: var(--kta-surface);
   color: var(--kta-texte);
 }
-body.kta-theme-light .kta-cfg-lang-select option,
 html.kta-theme-light .kta-cfg-lang-select option,
-body.kta-theme-light .kta-cfg-input option,
 html.kta-theme-light .kta-cfg-input option {
   background: #f5edda;
   color: #2a2118;
@@ -9864,8 +9828,7 @@ body.kta-instance-pro .kta-titre-suffix-pro {
 
 /* Thème clair : même jaune #f4c542 qu'en sombre (décision produit). ⚠️ Règle nécessaire pour
    battre body.kta-theme-light #planLoaderBox *, qui écraserait la couleur. */
-html.kta-theme-light .kta-titre-suffix-pro,
-body.kta-theme-light .kta-titre-suffix-pro {
+html.kta-theme-light .kta-titre-suffix-pro {
   color: #f4c542;
 }
 
@@ -9888,8 +9851,7 @@ html.kta-theme-light body .kta-loader-copyright .kta-loader-copyright-pro-badge,
 body.kta-theme-light .kta-loader-copyright .kta-loader-copyright-pro-badge {
   color: #1d8a3a !important;
 }
-html.kta-theme-light .kta-loader-copyright-edition-title,
-body.kta-theme-light .kta-loader-copyright-edition-title {
+html.kta-theme-light .kta-loader-copyright-edition-title {
   color: var(--kta-accent-texte);
 }
 
@@ -9992,42 +9954,34 @@ body.kta-theme-light .kta-loader-copyright-edition-title {
 }
 
 /* Thème clair */
-html.kta-theme-light .kta-profile-pro-section,
-body.kta-theme-light .kta-profile-pro-section {
+html.kta-theme-light .kta-profile-pro-section {
   background: rgba(184, 134, 11, 0.08);
   border-color: rgba(184, 134, 11, 0.32);
 }
-html.kta-theme-light .kta-profile-pro-header,
-body.kta-theme-light .kta-profile-pro-header {
+html.kta-theme-light .kta-profile-pro-header {
   color: var(--kta-accent-texte);
 }
-html.kta-theme-light .kta-profile-pro-body,
-body.kta-theme-light .kta-profile-pro-body {
+html.kta-theme-light .kta-profile-pro-body {
   color: var(--kta-texte);
 }
-html.kta-theme-light .kta-profile-pro-meta-label,
-body.kta-theme-light .kta-profile-pro-meta-label {
+html.kta-theme-light .kta-profile-pro-meta-label {
   color: var(--kta-texte-3);
 }
-html.kta-theme-light .kta-profile-pro-hash,
-body.kta-theme-light .kta-profile-pro-hash {
+html.kta-theme-light .kta-profile-pro-hash {
   color: var(--kta-accent-texte);
   background: rgba(184, 134, 11, 0.10);
   border-color: rgba(184, 134, 11, 0.30);
 }
-html.kta-theme-light .kta-profile-pro-status,
-body.kta-theme-light .kta-profile-pro-status {
+html.kta-theme-light .kta-profile-pro-status {
   background: rgba(29, 138, 58, 0.08);
   border-color: rgba(29, 138, 58, 0.32);
 }
-html.kta-theme-light .kta-profile-pro-badge,
-body.kta-theme-light .kta-profile-pro-badge {
+html.kta-theme-light .kta-profile-pro-badge {
   color: #1d8a3a;
   background: rgba(29, 138, 58, 0.12);
   border-color: rgba(29, 138, 58, 0.38);
 }
-html.kta-theme-light .kta-profile-pro-hint,
-body.kta-theme-light .kta-profile-pro-hint {
+html.kta-theme-light .kta-profile-pro-hint {
   color: var(--kta-texte-3);
 }
 
@@ -10142,12 +10096,9 @@ body.kta-theme-light .kta-profile-pro-hint {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
-html.kta-theme-light .kta-offline-dot.kta-offline-ok::before,
-body.kta-theme-light .kta-offline-dot.kta-offline-ok::before   { background: #1e7a3a; }
-html.kta-theme-light .kta-offline-dot.kta-offline-ko::before,
-body.kta-theme-light .kta-offline-dot.kta-offline-ko::before   { background: #a01818; box-shadow: none; }
-html.kta-theme-light .kta-offline-dot.kta-offline-wait::before,
-body.kta-theme-light .kta-offline-dot.kta-offline-wait::before { background: #8b3a00; }
+html.kta-theme-light .kta-offline-dot.kta-offline-ok::before   { background: #1e7a3a; }
+html.kta-theme-light .kta-offline-dot.kta-offline-ko::before   { background: #a01818; box-shadow: none; }
+html.kta-theme-light .kta-offline-dot.kta-offline-wait::before { background: #8b3a00; }
 html.kta-theme-light .kta-offline-dot.kta-offline-off::before  { background: #6b6354; }
 
 /* Indicateur d'en-tête : même rouge que l'alerte « emergency », sans pulsation. */
@@ -10190,8 +10141,7 @@ html.kta-theme-light .kta-offline-msg {
   background: #ffffff;
   color: #2a2620;
 }
-html.kta-theme-light .kta-offline-msg.kta-offline-msg-ok,
-body.kta-theme-light .kta-offline-msg.kta-offline-msg-ok { border-color: #1e7a3a; }
+html.kta-theme-light .kta-offline-msg.kta-offline-msg-ok { border-color: #1e7a3a; }
 html.kta-theme-light .kta-offline-msg.kta-offline-msg-ko { border-color: #a01818; }
 
 /* « Installation indisponible » (module de connexion absent ou gate
@@ -12981,7 +12931,6 @@ html.kta-theme-light .leaflet-bar a {
   color: var(--kta-light-text) !important;
   border-bottom: 1px solid var(--kta-light-bg-bar-border) !important;
 }
-body.kta-theme-light .leaflet-bar a:hover,
 html.kta-theme-light .leaflet-bar a:hover {
   background: var(--kta-light-bg-bar-deep) !important;
   color: #1a1612 !important;
@@ -13093,17 +13042,14 @@ body.kta-theme-light .leaflet-bar {
 }
 
 /* Bouton des calques : même fond que les autres boutons .leaflet-bar a. */
-body.kta-theme-light .leaflet-control-layers-toggle,
 html.kta-theme-light .leaflet-control-layers-toggle {
   background-color: var(--kta-light-bg-bar) !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath fill='%232a2620' d='M1 1h16v2H1zm0 4h16v2H1zm0 4h16v2H1zm0 4h16v2H1z'/%3E%3C/svg%3E") !important;
   border-bottom: 1px solid var(--kta-light-bg-bar-border) !important;
 }
-body.kta-theme-light .leaflet-control-layers-toggle:hover,
 html.kta-theme-light .leaflet-control-layers-toggle:hover {
   background-color: var(--kta-light-bg-bar-deep) !important;
 }
-body.kta-theme-light .leaflet-control-layers,
 html.kta-theme-light .leaflet-control-layers {
   background: var(--kta-light-bg-elevated) !important;
   color: var(--kta-light-text) !important;
@@ -13124,38 +13070,28 @@ body.kta-theme-light .kta-readme-modal-corps * {
 
 /* Résultats de recherche de la modale Itinéraire. Double sélecteur body/html :
    la modale peut être insérée dans <html>. */
-body.kta-theme-light .kta-iti-search-results,
 html.kta-theme-light .kta-iti-search-results {
   background: var(--kta-light-bg-elevated);
   border-color: var(--kta-light-border);
   box-shadow: 0 8px 24px var(--kta-light-shadow);
 }
-body.kta-theme-light .kta-iti-search-item,
 html.kta-theme-light .kta-iti-search-item,
-body.kta-theme-light .kta-iti-search-result,
 html.kta-theme-light .kta-iti-search-result,
-body.kta-theme-light .kta-iti-search-result-empty,
 html.kta-theme-light .kta-iti-search-result-empty {
   border-bottom-color: rgba(0, 0, 0, 0.05);
   background: var(--kta-light-bg-elevated);
 }
-body.kta-theme-light .kta-iti-search-item:hover,
 html.kta-theme-light .kta-iti-search-item:hover,
-body.kta-theme-light .kta-iti-search-result:hover,
 html.kta-theme-light .kta-iti-search-result:hover {
   background: rgba(244, 197, 66, 0.12);
 }
-body.kta-theme-light .kta-iti-search-name,
 html.kta-theme-light .kta-iti-search-name {
   color: var(--kta-light-text);
 }
-body.kta-theme-light .kta-iti-search-meta,
 html.kta-theme-light .kta-iti-search-meta {
   color: var(--kta-texte-3);
 }
-body.kta-theme-light .kta-iti-search-empty,
 html.kta-theme-light .kta-iti-search-empty,
-body.kta-theme-light .kta-iti-search-more,
 html.kta-theme-light .kta-iti-search-more {
   color: var(--kta-texte-3);
 }
@@ -13163,17 +13099,14 @@ html.kta-theme-light .kta-iti-search-more {
 /* Mode Histoire. 🩸 Double sélecteur obligatoire : la modale est insérée dans
    <html> (sœur de body), body.kta-theme-light seul ne la matche pas. */
 
-body.kta-theme-light .kta-histoire-tabs,
 html.kta-theme-light .kta-histoire-tabs {
   background: var(--kta-light-bg-deep);
   border-bottom-color: var(--kta-light-border);
 }
-body.kta-theme-light .kta-histoire-tab:hover,
 html.kta-theme-light .kta-histoire-tab:hover {
   color: var(--kta-light-text);
   background: rgba(244, 197, 66, 0.12);
 }
-body.kta-theme-light .kta-histoire-tab-active,
 html.kta-theme-light .kta-histoire-tab-active {
   color: var(--kta-avert);  /* accent jaune-charte rendu sur fond clair */
   background: var(--kta-light-bg-elevated);
@@ -13181,95 +13114,73 @@ html.kta-theme-light .kta-histoire-tab-active {
   border-bottom-color: var(--kta-light-bg-elevated);
 }
 /* Textarea note libre */
-body.kta-theme-light .kta-histoire-textarea:focus,
 html.kta-theme-light .kta-histoire-textarea:focus {
   border-color: #d97706;  /* accent jaune-orange focus */
 }
 /* Éditeur Markdown de la note libre */
-body.kta-theme-light .kta-histoire-md-toolbar,
 html.kta-theme-light .kta-histoire-md-toolbar {
   background: rgba(217, 119, 6, 0.05);
   border-color: var(--kta-light-border);
 }
-body.kta-theme-light .kta-md-tb-btn:hover,
 html.kta-theme-light .kta-md-tb-btn:hover {
   background: rgba(217, 119, 6, 0.12);
   border-color: var(--kta-light-border);
 }
-body.kta-theme-light .kta-md-tb-btn:active,
 html.kta-theme-light .kta-md-tb-btn:active {
   background: rgba(217, 119, 6, 0.22);
 }
-body.kta-theme-light .kta-histoire-note-rendered,
 html.kta-theme-light .kta-histoire-note-rendered {
   background: var(--kta-light-bg-deep);
   border-color: var(--kta-light-border);
   color: var(--kta-light-text);
 }
-body.kta-theme-light .kta-histoire-note-rendered h1,
-body.kta-theme-light .kta-histoire-note-rendered h2,
-body.kta-theme-light .kta-histoire-note-rendered h3,
 html.kta-theme-light .kta-histoire-note-rendered h1,
 html.kta-theme-light .kta-histoire-note-rendered h2,
 html.kta-theme-light .kta-histoire-note-rendered h3 {
   color: #b35309;  /* accent orange foncé (lisible sur fond clair) */
 }
-body.kta-theme-light .kta-histoire-note-rendered strong,
 html.kta-theme-light .kta-histoire-note-rendered strong {
   color: var(--kta-light-text);
 }
-body.kta-theme-light .kta-histoire-note-rendered a,
 html.kta-theme-light .kta-histoire-note-rendered a {
   color: #1d4ed8;  /* lien bleu lisible sur fond clair */
 }
-body.kta-theme-light .kta-histoire-note-rendered a:hover,
 html.kta-theme-light .kta-histoire-note-rendered a:hover {
   color: #1e40af;
 }
-body.kta-theme-light .kta-histoire-note-rendered code,
 html.kta-theme-light .kta-histoire-note-rendered code {
   background: rgba(217, 119, 6, 0.10);
   color: #b35309;
 }
-body.kta-theme-light .kta-histoire-note-rendered blockquote,
 html.kta-theme-light .kta-histoire-note-rendered blockquote {
   border-left-color: #d97706;
   background: rgba(217, 119, 6, 0.08);
   color: var(--kta-light-text);
 }
-body.kta-theme-light .kta-histoire-note-empty,
 html.kta-theme-light .kta-histoire-note-empty {
   color: var(--kta-light-text-muted, #777);
 }
 /* PDF wrap + placeholders */
-body.kta-theme-light .kta-histoire-pdf-wrap,
 html.kta-theme-light .kta-histoire-pdf-wrap {
   background: var(--kta-light-bg-deep);
   border-color: var(--kta-light-border);
 }
-body.kta-theme-light .kta-histoire-pdf-empty,
 html.kta-theme-light .kta-histoire-pdf-empty,
-body.kta-theme-light .kta-histoire-pdf-fallback,
 html.kta-theme-light .kta-histoire-pdf-fallback {
   color: var(--kta-light-text);
 }
-body.kta-theme-light .kta-histoire-pdf-empty p,
 html.kta-theme-light .kta-histoire-pdf-empty p,
-body.kta-theme-light .kta-histoire-pdf-fallback p,
 html.kta-theme-light .kta-histoire-pdf-fallback p {
   color: var(--kta-light-text);
 }
-body.kta-theme-light .kta-histoire-pdf-empty p code,
 html.kta-theme-light .kta-histoire-pdf-empty p code {
   background: rgba(0,0,0,0.06);
   color: var(--kta-avert);
 }
-body.kta-theme-light .kta-histoire-pdf-toolbar,
 html.kta-theme-light .kta-histoire-pdf-toolbar {
   background: rgba(244, 197, 66, 0.08);
   border-color: var(--kta-light-border);
 }
-body.kta-theme-light .kta-histoire-pdf-meta,
 html.kta-theme-light .kta-histoire-pdf-meta {
   color: var(--kta-light-text);
 }
@@ -13420,11 +13331,9 @@ body.kta-theme-light .kta-measure-angle-label {
   outline-offset: 2px;
 }
 
-body.kta-theme-light .kta-theme-confirm-overlay,
 html.kta-theme-light .kta-theme-confirm-overlay {
   background: rgba(40, 32, 20, 0.55) !important;
 }
-body.kta-theme-light .kta-theme-confirm-boite,
 html.kta-theme-light .kta-theme-confirm-boite {
   background: var(--kta-light-bg-elevated) !important;
   color: var(--kta-light-text) !important;
@@ -13432,55 +13341,45 @@ html.kta-theme-light .kta-theme-confirm-boite {
   box-shadow: 0 0 0 1px rgba(161, 110, 16, 0.10),
               0 18px 60px rgba(80, 60, 30, 0.30) !important;
 }
-body.kta-theme-light .kta-theme-confirm-msg,
 html.kta-theme-light .kta-theme-confirm-msg {
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-theme-confirm-hint,
 html.kta-theme-light .kta-theme-confirm-hint {
   color: var(--kta-light-text-muted) !important;
   background: rgba(244, 197, 66, 0.18) !important;
   border-left-color: rgba(161, 110, 16, 0.55) !important;
 }
-body.kta-theme-light .kta-theme-confirm-actions,
 html.kta-theme-light .kta-theme-confirm-actions {
   border-top-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok,
 html.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok {
   background: linear-gradient(180deg, #f4c542, #d9a82e) !important;
   border-color: #c99a1f !important;
   color: #3a2f15 !important;
   box-shadow: 0 2px 8px rgba(161, 110, 16, 0.25) !important;
 }
-body.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok:hover,
 html.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok:hover {
   background: linear-gradient(180deg, #ffd866, #e8b537) !important;
 }
 
 /* Modale « Session précédente restaurée » (.kta-session-modal-*). */
-body.kta-theme-light .kta-session-modal-boite,
 html.kta-theme-light .kta-session-modal-boite {
   background: var(--kta-light-bg-elevated) !important;
   color: var(--kta-light-text) !important;
   border-color: rgba(161, 110, 16, 0.45) !important;
   box-shadow: 0 16px 48px rgba(80, 60, 30, 0.30) !important;
 }
-body.kta-theme-light .kta-session-modal-icon,
 html.kta-theme-light .kta-session-modal-icon {
   background: rgba(244, 197, 66, 0.30) !important;
   border-color: rgba(161, 110, 16, 0.55) !important;
   color: #a16e10 !important;
 }
-body.kta-theme-light .kta-session-modal-titre,
 html.kta-theme-light .kta-session-modal-titre {
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-session-modal-plan,
 html.kta-theme-light .kta-session-modal-plan {
   color: #a16e10 !important;
 }
-body.kta-theme-light .kta-session-modal-detail,
 html.kta-theme-light .kta-session-modal-detail {
   color: var(--kta-light-text-muted) !important;
 }
@@ -13522,13 +13421,11 @@ html.kta-theme-light .kta-session-modal-detail {
   font-weight: 600;
 }
 
-body.kta-theme-light .kta-note-popup-textarea,
 html.kta-theme-light .kta-note-popup-textarea {
   background: var(--kta-light-bg) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-note-popup-textarea:focus,
 html.kta-theme-light .kta-note-popup-textarea:focus {
   border-color: var(--kta-light-accent) !important;
   box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.20) !important;
@@ -13564,11 +13461,9 @@ html.kta-theme-light .kta-note-popup-textarea:focus {
   margin: 8px 0;
 }
 
-body.kta-theme-light .kta-note-popup-readonly-label,
 html.kta-theme-light .kta-note-popup-readonly-label {
   color: var(--kta-light-text-muted) !important;
 }
-body.kta-theme-light .kta-note-popup-readonly-text,
 html.kta-theme-light .kta-note-popup-readonly-text {
   color: var(--kta-light-text) !important;
   background: rgba(244, 197, 66, 0.12) !important;
@@ -13580,117 +13475,91 @@ html.kta-theme-light .kta-note-popup-readonly-text {
 
 /* Popups Leaflet. 🩸 Les règles sombres sont en !important : les overrides
    clairs doivent l'être aussi, sinon le popup reste sombre. */
-body.kta-theme-light .leaflet-popup-content-wrapper,
 html.kta-theme-light .leaflet-popup-content-wrapper {
   background: var(--kta-light-bg-elevated) !important;
   color: var(--kta-light-text) !important;
   border: 1px solid var(--kta-light-border) !important;
   box-shadow: 0 3px 14px var(--kta-light-shadow) !important;
 }
-body.kta-theme-light .leaflet-popup-tip,
 html.kta-theme-light .leaflet-popup-tip,
-body.kta-theme-light .leaflet-popup-tip-container .leaflet-popup-tip,
 html.kta-theme-light .leaflet-popup-tip-container .leaflet-popup-tip {
   background: var(--kta-light-bg-elevated) !important;
   box-shadow: none !important;
 }
-body.kta-theme-light .leaflet-popup-content,
 html.kta-theme-light .leaflet-popup-content {
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .leaflet-popup-close-button,
 html.kta-theme-light .leaflet-popup-close-button {
   color: var(--kta-light-text-muted) !important;
 }
-body.kta-theme-light .leaflet-popup-close-button:hover,
 html.kta-theme-light .leaflet-popup-close-button:hover {
   color: var(--kta-light-text) !important;
 }
 /* Description point dans popup (.kta-popup-point .kta-popup-desc) */
-body.kta-theme-light .kta-popup-point .kta-popup-desc,
 html.kta-theme-light .kta-popup-point .kta-popup-desc {
   color: var(--kta-light-text-muted) !important;
 }
-body.kta-theme-light .kta-popup-ext-info,
 html.kta-theme-light .kta-popup-ext-info {
   color: var(--kta-light-text-muted) !important;
 }
-body.kta-theme-light .kta-popup-point .kta-popup-gps,
 html.kta-theme-light .kta-popup-point .kta-popup-gps {
   background: rgba(40, 80, 160, 0.08) !important;
   border-color: rgba(40, 80, 160, 0.30) !important;
 }
-body.kta-theme-light .kta-popup-point .kta-popup-gps-val,
 html.kta-theme-light .kta-popup-point .kta-popup-gps-val {
   color: #1a4a9e !important;
 }
-body.kta-theme-light .kta-popup-actions,
 html.kta-theme-light .kta-popup-actions {
   border-top: 1px solid var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-popup-actions .kta-popup-btn,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn {
   background: rgba(161, 110, 16, 0.10) !important;
   border-color: rgba(161, 110, 16, 0.40) !important;
   color: #6b4d10 !important;
 }
-body.kta-theme-light .kta-popup-actions .kta-popup-btn:hover,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn:hover {
   background: rgba(161, 110, 16, 0.22) !important;
 }
 /* Je suis ici : vert */
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-here,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-here {
   background: rgba(56, 142, 60, 0.12) !important;
   border-color: rgba(56, 142, 60, 0.45) !important;
   color: #2e7032 !important;
 }
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-here:hover,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-here:hover {
   background: rgba(56, 142, 60, 0.25) !important;
 }
 /* Aller : jaune */
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-aller,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-aller {
   background: var(--kta-light-accent) !important;
   border-color: #c99a1f !important;
   color: #3a2f15 !important;
 }
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-aller:hover,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-aller:hover {
   background: #e8b537 !important;
 }
 /* Supprimer : rouge */
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-delete,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-delete {
   background: rgba(180, 30, 30, 0.10) !important;
   border-color: rgba(180, 30, 30, 0.45) !important;
   color: var(--kta-erreur) !important;
 }
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-delete:hover,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-delete:hover {
   background: rgba(180, 30, 30, 0.22) !important;
 }
 /* Éditer / Ajouter */
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-edit,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-edit,
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-add,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-add {
   background: rgba(161, 110, 16, 0.10) !important;
   border-color: rgba(161, 110, 16, 0.40) !important;
   color: #6b4d10 !important;
 }
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-edit:hover,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-edit:hover,
-body.kta-theme-light .kta-popup-actions .kta-popup-btn-add:hover,
 html.kta-theme-light .kta-popup-actions .kta-popup-btn-add:hover {
   background: rgba(161, 110, 16, 0.22) !important;
 }
-body.kta-theme-light .leaflet-popup-content input,
 html.kta-theme-light .leaflet-popup-content input,
-body.kta-theme-light .leaflet-popup-content textarea,
 html.kta-theme-light .leaflet-popup-content textarea,
-body.kta-theme-light .leaflet-popup-content select,
 html.kta-theme-light .leaflet-popup-content select {
   background: var(--kta-light-bg) !important;
   border: 1px solid var(--kta-light-border) !important;
@@ -15584,19 +15453,16 @@ body.kta-theme-light .kta-legend-label:focus {
 
 /* ── Générateur : thème clair ── */
 
-body.kta-theme-light .kta-planner-mode-switcher,
 html.kta-theme-light .kta-planner-mode-switcher {
   background: var(--kta-light-bg-deep) !important;
   border-color: var(--kta-light-border-strong) !important;
 }
-body.kta-theme-light .kta-planner-mode-btn:hover,
 html.kta-theme-light .kta-planner-mode-btn:hover {
   background: var(--kta-light-accent-bg) !important;
   color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 /* Bouton de mode actif en thème clair : sélecteur très spécifique (#kta-planner-corps, body ET html) et
    HEX en dur, pour gagner la cascade sans dépendre d'une variable. */
-body.kta-theme-light .kta-planner-mode-btn.kta-actif,
 html.kta-theme-light .kta-planner-mode-btn.kta-actif {
   background: #9a5a00 !important;            /* orange brûlé : texte blanc ≥ 4,5:1 sur tout le dégradé */
   background-image: linear-gradient(180deg, #a86200 0%, #8a4f00 100%) !important;
@@ -15611,13 +15477,11 @@ html.kta-theme-light .kta-planner-mode-btn.kta-actif {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.30);
 }
 
-body.kta-theme-light .kta-planner-legend-status,
 html.kta-theme-light .kta-planner-legend-status {
   background: var(--kta-light-bg-deep) !important;
   border-color: var(--kta-light-border) !important;
   color: var(--kta-light-text-muted) !important;
 }
-body.kta-theme-light .kta-planner-legend-status-actif,
 html.kta-theme-light .kta-planner-legend-status-actif {
   background: var(--kta-light-accent-bg) !important;
   border-color: var(--kta-light-accent) !important;
@@ -15637,27 +15501,22 @@ html.kta-theme-light .kta-planner-legend-status-actif {
 .kta-debug-log-line.kta-debug-log-crash { color: #888; }
 
 /* Overrides thème clair — fond zone logs + couleurs lignes */
-body.kta-theme-light #kta-debug-logzone,
 html.kta-theme-light #kta-debug-logzone {
   background: var(--kta-light-bg-deep) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-debug-log-line,
 html.kta-theme-light .kta-debug-log-line {
   color: var(--kta-light-text) !important;
   border-bottom-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-debug-log-line.kta-debug-log-error,
 html.kta-theme-light .kta-debug-log-line.kta-debug-log-error {
   /* Rouge plus saturé pour rester lisible sur fond clair */
   color: #b91c1c !important;
 }
-body.kta-theme-light .kta-debug-log-line.kta-debug-log-warn,
 html.kta-theme-light .kta-debug-log-line.kta-debug-log-warn {
   /* Orange ambré pour contraste sur fond clair (le jaune clair ne marche pas) */
   color: #b45309 !important;
 }
-body.kta-theme-light .kta-debug-log-line.kta-debug-log-crash,
 html.kta-theme-light .kta-debug-log-line.kta-debug-log-crash {
   color: var(--kta-light-text-muted) !important;
 }
@@ -15674,7 +15533,6 @@ html.kta-theme-light .kta-net-log-table-wrap {
 html.kta-theme-light .kta-net-log-table thead {
   background: var(--kta-light-bg-bar) !important;
 }
-body.kta-theme-light .kta-net-log-table tbody tr:hover,
 html.kta-theme-light .kta-net-log-table tbody tr:hover {
   background: rgba(140, 180, 255, 0.10) !important;
 }
@@ -16347,17 +16205,14 @@ html.kta-theme-light .kta-loader-profile-stat {
   }
 }
 /* Thème clair */
-body.kta-theme-light .kta-profile-barstats,
 html.kta-theme-light .kta-profile-barstats {
   border-top-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-profile-barstats-cb,
 html.kta-theme-light .kta-profile-barstats-cb {
   background: rgba(0, 0, 0, 0.03) !important;
   border-color: var(--kta-light-border) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-profile-barstats-cb:hover,
 html.kta-theme-light .kta-profile-barstats-cb:hover {
   background: rgba(0, 0, 0, 0.05) !important;
   border-color: rgba(161, 110, 16, 0.40) !important;
@@ -16466,11 +16321,9 @@ html.kta-theme-light .kta-profile-barstats-cb:hover {
   margin-bottom: 6px;
 }
 /* Thème clair — section camemberts */
-body.kta-theme-light .kta-profile-pies-wrap,
 html.kta-theme-light .kta-profile-pies-wrap {
   border-top-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-profile-pies-card,
 html.kta-theme-light .kta-profile-pies-card {
   background: rgba(0, 0, 0, 0.02) !important;
   border-color: var(--kta-light-border) !important;
@@ -16566,16 +16419,13 @@ html.kta-theme-light .kta-profile-pies-card {
 .kta-profile-plansstats-table tfoot th:first-child { text-align: left; }
 
 /* Thème clair — section plans stats */
-body.kta-theme-light .kta-profile-plansstats,
 html.kta-theme-light .kta-profile-plansstats {
   border-top-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-profile-plansstats-wrap,
 html.kta-theme-light .kta-profile-plansstats-wrap {
   background: rgba(0, 0, 0, 0.02) !important;
   border-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-profile-plansstats-table tbody tr,
 html.kta-theme-light .kta-profile-plansstats-table tbody tr {
   border-bottom-color: var(--kta-light-border) !important;
 }
@@ -16730,16 +16580,13 @@ body.kta-presentation-mode .kta-compass-widget {
 }
 
 /* Variant thème clair */
-body.kta-theme-light .kta-presentation-exit-btn,
 html.kta-theme-light .kta-presentation-exit-btn {
   background: rgba(253, 248, 235, 0.75) !important;
   color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: var(--kta-light-accent-hover, #d9a82e) !important;
   box-shadow: 0 2px 8px rgba(80, 60, 30, 0.20) !important;
 }
-body.kta-theme-light .kta-presentation-exit-btn:hover,
 html.kta-theme-light .kta-presentation-exit-btn:hover,
-body.kta-theme-light .kta-presentation-exit-btn:focus-visible,
 html.kta-theme-light .kta-presentation-exit-btn:focus-visible {
   background: rgba(253, 248, 235, 0.95) !important;
 }
@@ -16797,27 +16644,21 @@ html.kta-theme-light .kta-presentation-exit-btn:focus-visible {
 }
 
 /* Variants thème clair pour le picker */
-body.kta-theme-light .kta-kmz-search-results,
 html.kta-theme-light .kta-kmz-search-results {
   background: rgba(0,0,0,0.06) !important;
   border-color: var(--kta-light-border-strong, rgba(0,0,0,0.22)) !important;
 }
-body.kta-theme-light .kta-kmz-search-item,
 html.kta-theme-light .kta-kmz-search-item {
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-kmz-search-item:hover,
 html.kta-theme-light .kta-kmz-search-item:hover {
   background: rgba(244,197,66,0.18) !important;
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-kmz-search-item strong,
 html.kta-theme-light .kta-kmz-search-item strong {
   color: var(--kta-light-accent-text, #7a5a00) !important;
 }
-body.kta-theme-light .kta-kmz-search-empty,
 html.kta-theme-light .kta-kmz-search-empty,
-body.kta-theme-light .kta-kmz-search-item .kta-kmz-search-meta,
 html.kta-theme-light .kta-kmz-search-item .kta-kmz-search-meta {
   color: var(--kta-texte-3) !important;
 }
@@ -16940,57 +16781,44 @@ html.kta-theme-light .kta-kmz-search-item .kta-kmz-search-meta {
 }
 
 /* === Variants thème clair === */
-body.kta-theme-light .kta-scale-coherence-banner p,
 html.kta-theme-light .kta-scale-coherence-banner p {
   color: var(--kta-texte);
 }
-body.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-table td:first-child,
 html.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-table td:first-child {
   color: var(--kta-texte-3);
 }
-body.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-table code,
 html.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-table code {
   background: rgba(0, 0, 0, 0.08);
   color: #c8801a;
 }
-body.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-hint,
 html.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-hint {
   color: var(--kta-texte-3);
 }
-body.kta-theme-light .kta-scale-coherence-warn,
 html.kta-theme-light .kta-scale-coherence-warn {
   background: rgba(200, 140, 30, 0.10);
   border-color: rgba(200, 140, 30, 0.40);
   border-left-color: #c88c1e;
 }
-body.kta-theme-light .kta-scale-coherence-warn .kta-scale-coherence-titre,
 html.kta-theme-light .kta-scale-coherence-warn .kta-scale-coherence-titre,
-body.kta-theme-light .kta-scale-coherence-warn .kta-scale-coherence-delta,
 html.kta-theme-light .kta-scale-coherence-warn .kta-scale-coherence-delta {
   color: #b07000;
 }
-body.kta-theme-light .kta-scale-coherence-alert,
 html.kta-theme-light .kta-scale-coherence-alert {
   background: rgba(193, 69, 69, 0.10);
   border-color: rgba(193, 69, 69, 0.45);
   border-left-color: #c14545;
 }
-body.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-titre,
 html.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-titre,
-body.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-delta,
 html.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-delta {
   color: #a32020;
 }
 /* Critical thème clair : rouge clair translucide, les textes sombres restent lisibles sans override. */
-body.kta-theme-light .kta-scale-coherence-critical,
 html.kta-theme-light .kta-scale-coherence-critical {
   background: rgba(220, 30, 30, 0.13);
   border-color: #d01818;
   border-left-color: #ff0000;
 }
-body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-titre,
 html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-titre,
-body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta,
 html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
   color: #b01010;
 }
@@ -17265,13 +17093,11 @@ html.kta-theme-light.kta-incognito .kta-incognito-badge {
 }
 
 /* Variante thème clair */
-body.kta-theme-light .kta-report-date,
 html.kta-theme-light .kta-report-date {
   background: #ffffff;
   color: #1a1f2e;
   border-color: rgba(0, 0, 0, 0.18);
 }
-body.kta-theme-light .kta-report-preview,
 html.kta-theme-light .kta-report-preview {
   background: rgba(140, 180, 255, 0.10);
   color: #1a1f2e;
@@ -17422,22 +17248,18 @@ html.kta-theme-light .kta-report-preview {
 }
 
 /* Variante thème clair */
-body.kta-theme-light .kta-voice-live,
 html.kta-theme-light .kta-voice-live {
   background: rgba(255, 255, 255, 0.95);
   color: #1a1f2e;
   border-color: rgba(124, 58, 237, 0.4);
 }
-body.kta-theme-light .kta-voice-live-close,
 html.kta-theme-light .kta-voice-live-close {
   color: #555;
 }
-body.kta-theme-light .kta-voice-aide-list li,
 html.kta-theme-light .kta-voice-aide-list li {
   background: rgba(140, 180, 255, 0.12);
   color: #1a1f2e;
 }
-body.kta-theme-light .kta-voice-aide-list li strong,
 html.kta-theme-light .kta-voice-aide-list li strong {
   color: var(--kta-accent-texte);
 }
@@ -17535,22 +17357,18 @@ html.kta-theme-light .kta-voice-aide-list li strong {
   font-size: 14px;
 }
 /* Variant thème clair */
-body.kta-theme-light .kta-north-picker-card,
 html.kta-theme-light .kta-north-picker-card {
   background: rgba(255, 252, 240, 0.97) !important;
   color: var(--kta-light-text) !important;
   border-color: var(--kta-light-accent-hover) !important;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18) !important;
 }
-body.kta-theme-light .kta-north-picker-title,
 html.kta-theme-light .kta-north-picker-title {
   color: var(--kta-light-accent-text, #7a5a00) !important;
 }
-body.kta-theme-light .kta-north-picker-step,
 html.kta-theme-light .kta-north-picker-step {
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-north-picker-step strong,
 html.kta-theme-light .kta-north-picker-step strong {
   color: var(--kta-light-accent-text, #7a5a00) !important;
 }
@@ -18811,13 +18629,11 @@ html.kta-theme-light .kta-plans-swatch.kta-actif { border-color: #1a1f2e; box-sh
   background: rgba(244, 197, 66, 0.10);
   color: var(--kta-accent-texte);
 }
-body.kta-theme-light .kta-unlock-lang-btn,
 html.kta-theme-light .kta-unlock-lang-btn {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.15);
   color: #5a5245;
 }
-body.kta-theme-light .kta-unlock-lang-btn.kta-actif,
 html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   border-color: rgba(160, 120, 20, 0.55);
   background: rgba(244, 197, 66, 0.18);
@@ -18965,13 +18781,9 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   padding: 4px 6px;
   font-size: 12px;
 }
-body.kta-theme-light .kta-note-popup-niveau-ligne,
 html.kta-theme-light .kta-note-popup-niveau-ligne,
-body.kta-theme-light .kta-note-popup-niveaux-zone,
 html.kta-theme-light .kta-note-popup-niveaux-zone { color: #24304a; }
-body.kta-theme-light .kta-note-popup-niveau,
 html.kta-theme-light .kta-note-popup-niveau,
-body.kta-theme-light .kta-note-popup-jct-niveau,
 html.kta-theme-light .kta-note-popup-jct-niveau {
   background: var(--kta-light-bg);
   border-color: var(--kta-light-border-strong);
@@ -19173,16 +18985,12 @@ body.kta-theme-light #kta-osm-mes-floater {
 .plan-row-btn.kta-plan-row-dl[disabled] { opacity: 0.45; cursor: progress; }
 
 /* Thème clair de la Sortie d'urgence : body ET html, la modale est sur documentElement (ui.md §90.4). */
-body.kta-theme-light .kta-sortie-origine,
 body.kta-theme-light .kta-sortie-brancard,
 html.kta-theme-light .kta-sortie-origine,
-body.kta-theme-light .kta-sortie-alt-sep,
 html.kta-theme-light .kta-sortie-alt-sep {
   color: var(--kta-texte-3);
 }
-body.kta-theme-light .kta-sortie-fallback-txt,
 html.kta-theme-light .kta-sortie-fallback-txt,
-body.kta-theme-light .kta-sortie-bandeau,
 html.kta-theme-light .kta-sortie-bandeau {
   color: #b3261e;
 }
@@ -19209,7 +19017,6 @@ html.kta-theme-light .kta-sortie-bandeau {
 }
 .kta-storage-banner-txt { flex: 1; min-width: 0; }
 .kta-storage-banner-btn { flex-shrink: 0; min-height: 40px; }
-body.kta-theme-light .kta-storage-banner,
 html.kta-theme-light .kta-storage-banner {
   background: #fde8e8;
   color: #7a1010;
@@ -19271,7 +19078,6 @@ html.kta-theme-light .leaflet-bar.kta-vue3d-ctrl a.kta-inactif { color: var(--kt
   cursor: pointer;
 }
 .kta-tracker-warn-wake input { margin-top: 3px; flex-shrink: 0; width: 18px; height: 18px; }
-body.kta-theme-light .kta-tracker-warn-wake,
 html.kta-theme-light .kta-tracker-warn-wake { color: #2a3142; }
 
 /* Ligne « enregistré il y a » en tête de Détails de la session. */
@@ -19287,9 +19093,7 @@ html.kta-theme-light .kta-tracker-warn-wake { color: #2a3142; }
 .kta-refonte-save-line.kta-refonte-save-ok    { color: #9be7a7; border-color: rgba(120, 220, 140, 0.35); }
 .kta-refonte-save-line.kta-refonte-save-ko    { color: #ffb3b3; border-color: rgba(255, 80, 80, 0.5); background: rgba(255, 80, 80, 0.12); font-weight: 600; }
 .kta-refonte-save-line.kta-refonte-save-never { color: var(--kta-texte-3); }
-body.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ok,
 html.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ok { color: #1e7a34; }
-body.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ko,
 html.kta-theme-light .kta-refonte-save-line.kta-refonte-save-ko { color: #b3261e; }
 
 /* Recherche plein texte de la modale Documentation. */
@@ -19366,7 +19170,6 @@ input.kta-cfg-ko { border-color: #ff5b45 !important; box-shadow: 0 0 0 2px rgba(
   max-height: 90dvh !important;
 }
 .kta-cfg-sub-corps { columns: 1 !important; }
-body.kta-theme-light .kta-cfg-scope-mixte,
 html.kta-theme-light .kta-cfg-scope-mixte { color: var(--kta-texte-3); border-color: rgba(90, 100, 120, 0.4); }
 
 /* Aide contextuelle : bouton d'aide de l'en-tête des modales, même gabarit que la croix voisine. */
@@ -19462,7 +19265,6 @@ html.kta-theme-light .kta-cfg-scope-mixte { color: var(--kta-texte-3); border-co
 .kta-impm-refus   .kta-impm-act { color: #ff5b45; }
 .kta-impm-refus   .kta-impm-det { color: #ff9b8a; white-space: normal; }
 .kta-impm-prog { margin-top: 10px; font-size: 12.5px; color: var(--kta-interaction); }
-body.kta-theme-light .kta-impm-nom,
 html.kta-theme-light .kta-impm-nom { color: #1a1f2e; }
 
 /* ── Mode « plan orienté » (js/mapBearing.js) ── */
@@ -19522,7 +19324,6 @@ html.kta-theme-light .kta-impm-nom { color: #1a1f2e; }
 }
 .kta-bearing-recentrer:hover { background: rgba(38, 45, 66, 0.96); }
 
-body.kta-theme-light .kta-bearing-recentrer,
 html.kta-theme-light .kta-bearing-recentrer {
   background: rgba(255, 255, 255, 0.96);
   color: #8a6d00;
@@ -19588,8 +19389,7 @@ body.kta-presentation-mode .leaflet-control.kta-nord-ctrl {
   cursor: pointer;
 }
 .kta-nord-btn:hover { border-color: color-mix(in srgb, var(--kta-accent) 55%, transparent); }
-html.kta-theme-light .kta-nord-btn,
-body.kta-theme-light .kta-nord-btn { box-shadow: 0 6px 20px var(--kta-light-shadow); }
+html.kta-theme-light .kta-nord-btn { box-shadow: 0 6px 20px var(--kta-light-shadow); }
 .kta-nord-btn:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
 .kta-nord-picto {
   width: 24px;
@@ -19649,11 +19449,8 @@ body.kta-theme-light .kta-nord-btn { box-shadow: 0 6px 20px var(--kta-light-shad
 .kta-guid-feuille-txt { flex: 1; }
 
 /* Feuille de route ajoutée à <html> : des règles « body » seules resteraient inertes. */
-body.kta-theme-light .kta-guid-feuille-ligne,
 html.kta-theme-light .kta-guid-feuille-ligne { color: #1a1f2e; border-bottom-color: rgba(0, 0, 0, 0.08); }
-body.kta-theme-light .kta-guid-feuille-resume,
 html.kta-theme-light .kta-guid-feuille-resume { color: #3a4254; }
-body.kta-theme-light .kta-guid-feuille-icone,
 html.kta-theme-light .kta-guid-feuille-icone { color: #8a6d00; }
 
 /* Bandeau en direct : sous l'en-tête, entre les colonnes de boutons ; même z-index que « Recentrer »
@@ -19830,7 +19627,6 @@ body.kta-theme-light .kta-guid-picto-centre,
 /* 🩸 <option> ouverte (Windows/Chrome) : texte clair hérité sur fond système BLANC. Couleur fixée pour
    toutes les fenêtres, variante claire incluse. */
 .kta-readme-modal-overlay select option { background: var(--kta-surface); color: var(--kta-texte); }
-body.kta-theme-light .kta-readme-modal-overlay select option,
 html.kta-theme-light .kta-readme-modal-overlay select option { background: var(--kta-surface); color: var(--kta-texte); }
 
 /* Actions du compte d'une installation reliée (KtaExtensions.blocActionsCompte). */
@@ -19964,12 +19760,12 @@ html.kta-theme-light .kta-ext-compte-fin { border-color: rgba(0, 0, 0, 0.15); }
   padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
 .kta-memoire-plans li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kta-memoire-plans li b { font-weight: 600; color: var(--kta-texte); white-space: nowrap; }
-html.kta-theme-light .kta-memoire-jauge, body.kta-theme-light .kta-memoire-jauge { background: rgba(0,0,0,.08); }
-html.kta-theme-light .kta-memoire-barre, body.kta-theme-light .kta-memoire-barre { background: #1e7a3a; }
-html.kta-theme-light .kta-memoire-barre.kta-memoire-presque, body.kta-theme-light .kta-memoire-barre.kta-memoire-presque { background: #b8860b; }
-html.kta-theme-light .kta-memoire-barre.kta-memoire-plein, body.kta-theme-light .kta-memoire-barre.kta-memoire-plein { background: #a01818; }
-html.kta-theme-light .kta-memoire-plans li, body.kta-theme-light .kta-memoire-plans li { color: var(--kta-texte); border-bottom-color: rgba(0,0,0,.08); }
-html.kta-theme-light .kta-memoire-plans li b, body.kta-theme-light .kta-memoire-plans li b { color: var(--kta-texte); }
+html.kta-theme-light .kta-memoire-jauge { background: rgba(0,0,0,.08); }
+html.kta-theme-light .kta-memoire-barre { background: #1e7a3a; }
+html.kta-theme-light .kta-memoire-barre.kta-memoire-presque { background: #b8860b; }
+html.kta-theme-light .kta-memoire-barre.kta-memoire-plein { background: #a01818; }
+html.kta-theme-light .kta-memoire-plans li { color: var(--kta-texte); border-bottom-color: rgba(0,0,0,.08); }
+html.kta-theme-light .kta-memoire-plans li b { color: var(--kta-texte); }
 
 /* Mise à jour acceptée, ancien code encore chargé : ambre SANS clignoter (pris pour une demande répétée). */
 .kta-loader-copyright-version.kta-loader-copyright-version-attente {
@@ -19979,8 +19775,7 @@ html.kta-theme-light .kta-memoire-plans li b, body.kta-theme-light .kta-memoire-
   border-color: rgba(244, 197, 66, 0.45);
   animation: none;
 }
-html.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-attente,
-body.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-attente {
+html.kta-theme-light .kta-loader-copyright-version.kta-loader-copyright-version-attente {
   color: var(--kta-accent-texte);
   background: rgba(184, 134, 11, 0.12);
   border-color: rgba(184, 134, 11, 0.45);
