@@ -815,8 +815,10 @@ Ce que l'app lit encore, et qui doit donc rester déployé : les guides (`README
 (`AI_CONTEXT.md`), l'audit réseau (`NETWORK_AUDIT*`), les CGU et les guides Docker — tous dans `docs/applications/`.
 
 Le mode Développeur s'active **sans mot de passe** (décision produit) : un utilisateur allume les logs détaillés et
-envoie son journal (« Afficher les logs » → Copier) sans rien demander. Une confirmation `ktaConfirm` dit ce que fait
-le mode à chaque passage à ON ; `myktamap_devmode_active_v1` garde l'état par appareil, et les clés de l'ancienne porte
+envoie son journal (« Afficher les logs » → Copier, ou Exporter (.txt) : fichier `myktamap-journal-AAAAMMJJ-HHMM.txt`
+avec un en-tête version, date, navigateur et plan ouvert désigné par une empreinte de son identifiant, car
+l'identifiant contient le nom du plan ; feuille de partage sur iPhone, `debug.js > _exporterJournal`) sans rien
+demander. Une confirmation `ktaConfirm` dit ce que fait le mode à chaque passage à ON ; `myktamap_devmode_active_v1` garde l'état par appareil, et les clés de l'ancienne porte
 (`…_unlock_v1`, `…_tries_v1`) sont effacées au chargement. Rien de ce qu'il ouvre n'est secret (`confadmin.html` et les
 pages de la prise `outilsDev` sont publiques, le reste lit l'appareil) : `check-devmode-docs.js` refuse le retour d'un
 hash ou d'un champ de mot de passe, qui ferait croire le contraire.

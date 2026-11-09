@@ -2130,8 +2130,9 @@ function _ouvrirCreationJonction(btnSub, opts) {
   if (document.getElementById("kta-jct-modal")) return;
   opts = opts || {};
   const cle = opts.zone ? "config.zoneJonction." : "config.jonction.";
-  // ⚠️ contrat : clés écrites en entier (check-icones-ui les cherche avec leur icône sur la même ligne).
-  const titreHtml = window.ktaIcone("m-echelle") + " " +
+  // ⚠️ contrat : clés écrites en entier (check-icones-ui les cherche avec leur icône sur la même ligne). Le texte
+  // du titre est le libellé exact, sans espace devant : l'écart à l'icône est une marge (.kta-ico-titre).
+  const titreHtml = window.ktaIcone("m-echelle", { classe: "kta-ico-titre" }) +
     window.I18n.t(opts.zone ? "config.zoneJonction.titre" : "config.jonction.titre");
 
   const cur = Number.isInteger(opts.de) ? opts.de : (APP_CONFIG.activeLevel || 0);

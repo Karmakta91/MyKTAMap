@@ -553,7 +553,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - ✏️ **Niveau** (plan à plusieurs niveaux) : ▲ / ▼ à gauche changent le niveau montré par la 3D, sans passer par un escalier ; la carte et le tracker gardent le leur.
 - ✏️ Les panneaux des points restent lisibles même dézoomés ; de très loin, ils ne gardent que leur icône (comme sur la carte), une seule là où elles se chevauchent (danger et favoris d'abord), et le nom revient quand tu te rapproches. Toucher une icône ouvre la fiche, à taille normale.
 - **⛏️ Hauteur** : le bouton affiche la hauteur en cours et ouvre **−** / **+**, de 1,5 à 20 m (par 0,1 m jusqu'à 5 m, puis 0,5 m). Sur un plan à plusieurs niveaux, le bouton est grisé : la hauteur se règle pour chaque niveau dans ⚙️ Réglages › Niveaux : profondeur et hauteur.
-- ⛏️ C'est la hauteur **du niveau affiché**, la même que ⛏️ Volume exploité et que ⚙️ Réglages › 📉 Niveaux : changer l'une change les autres. La scène se refait sur place, sans te déplacer ; en passant à un autre niveau (🪜, suivi), la vue prend la hauteur de ce niveau.
+- ⛏️ C'est la hauteur **du niveau affiché**, celle de ⚙️ Réglages › 📉 Niveaux, que ⛏️ Volume exploité propose aussi. Sur un plan à un niveau, la changer ici ou dans ⛏️ Volume exploité change les autres ; sur un plan à plusieurs niveaux, elle ne se change que dans ⚙️ Réglages. La scène se refait sur place, sans te déplacer ; en passant à un autre niveau (🪜, suivi), la vue prend la hauteur de ce niveau.
 - **Rendu** : le bouton affiche le rendu en cours et passe au suivant (Mixte, Structures, Galerie, voir plus bas). Retenu pour ce plan ; par défaut, Mixte.
 - **🧱 Textures** (activé par défaut) : pierre, roche, parpaing, terre et éboulis à leur taille réelle (voir plus bas). Retenu sur cet appareil.
 - **Boussole** : la tuile la montre ou la masque, pour cet appareil. En bas à gauche, son **N** montre le nord réel, d'après la calibration du Nord du plan, et tourne avec ta vue. Plan sans Nord calibré : elle montre le haut du plan et l'écrit.
@@ -581,7 +581,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 
 **🏛️ Structures**
 
-- Piliers, murs et fronts de taille dressés à la hauteur de galerie du niveau (⚙️ Réglages › 📉 Niveaux ou ⛏️ Volume exploité, 2 m sinon).
+- Piliers, murs et fronts de taille dressés à la hauteur de galerie du niveau (⚙️ Réglages › 📉 Niveaux, ou ⛏️ Volume exploité sur un plan à un niveau ; 2 m sinon).
 - Remblais et effondrements en volume (60 % de cette hauteur), eau, zones ⛔ inaccessibles.
 - Tracés et itinéraire au sol.
 - Points en panneaux, toujours visibles (un point relevé dans un pilier s'affiche contre sa face), plus petits et plus pâles au loin, et effacés tout près de toi pour ne pas boucher la vue.
@@ -1152,7 +1152,7 @@ Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a ét
 - la **surface du secteur** ;
 - les **piliers retranchés** : surface et nombre. Comptent les piliers, les murs et les structures personnalisées fermées, les tiens et ceux des calques de données (même masqués), coupés au bord du secteur. Les fronts de taille et les murs en ligne ne comptent pas ;
 - la **surface exploitée** (secteur moins piliers) et le **taux de défruitement** (exploité ÷ secteur) ;
-- le **volume exploité** : surface exploitée × **hauteur moyenne de galerie**, à saisir dans la fenêtre (2 m par défaut, retenue pour le niveau mesuré, recalcul immédiat) ;
+- le **volume exploité** : surface exploitée × **hauteur moyenne de galerie**, à saisir dans la fenêtre (au départ celle du niveau, 2 m sinon ; recalcul immédiat). Sur un plan à un niveau, elle est retenue pour le plan ; sur un plan à plusieurs niveaux, elle sert au calcul seulement : la hauteur de chaque niveau se règle dans ⚙️ Réglages › Niveaux : profondeur et hauteur, et une phrase le rappelle sous le champ ;
 - les **remblais** (zones « Remblais » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins remblais).
 
 Sur un plan à étages, seul le **niveau actif** compte (dans la 🧊 Vue 3D : celui de la 3D), et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
@@ -2163,7 +2163,7 @@ Il n'y a rien d'autre à faire.
 
 Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (sans mot de passe : une confirmation dit ce qu'il fait), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut.
 
-**Pour envoyer tes journaux** à qui t'aide : **⚙️ Configuration** → **🛠️ Mode Développeur** → active **🐛 Logs détaillés**, refais ce qui pose problème, puis **Afficher les logs** → **Copier**, et colle le texte dans ton message. La fenêtre garde les 300 dernières lignes, même après un plantage. Relis-les avant de les envoyer : elles peuvent citer des noms de plans ou de fichiers.
+**Pour envoyer tes journaux** à qui t'aide : **⚙️ Configuration** → **🛠️ Mode Développeur** → active **🐛 Logs détaillés**, refais ce qui pose problème, puis **Afficher les logs** → **Copier** ou **Exporter (.txt)**, et colle le texte dans ton message ou joins-y le fichier. La fenêtre garde les 300 dernières lignes, même après un plantage. Relis-les avant de les envoyer : elles peuvent citer des noms de plans ou de fichiers.
 
 Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
 

@@ -664,8 +664,12 @@ Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#
   exploité = secteur − piliers, taux = exploité ÷ secteur, volume = exploité × hauteur, remblais = part du VIDE
   (secteur − piliers) couverte par un remblai, vide actuel = exploité − remblais. Surfaces par `formatSurface`.
 - **Hauteur moyenne** : celle **du niveau mesuré** (`config.js > getNiveauVertical(niveau).hauteurM`, 2 m sans
-  réglage ; plan à un niveau : niveau 0), écrite par `setHauteurNiveau` ; recalcul des volumes à chaque frappe,
-  seule une valeur > 0 est retenue. Cascade : `multilevel-pathfinding.md` § Hauteur et écart par niveau.
+  réglage ; plan à un niveau : niveau 0), valeur initiale du champ ; recalcul des volumes à chaque frappe. Plan à un
+  niveau : une valeur > 0 est écrite par `setHauteurNiveau`. ⚠️ Plan à étages (décision produit) : le champ sert au
+  calcul seulement et n'écrit rien ; une phrase sous le champ (`volume.hauteurReglages`, `aria-describedby`) renvoie
+  à Réglages › Profondeur et hauteur des niveaux, seul endroit où se règle la hauteur d'un niveau (la changer ailleurs
+  recalculerait les pentes des jonctions ; même règle que ⛏️ de la vue 3D). Cascade : `multilevel-pathfinding.md`
+  § Hauteur et écart par niveau.
 - **Géométrie** (`calculerAires`, pure) : découpe en **bandes verticales** aux x de tous les sommets et de tous les
   croisements d'arêtes. Dans une bande, la longueur de la coupe verticale de n'importe quelle combinaison booléenne
   (secteur ∩ ∪piliers, (secteur ∩ ∪remblais) − ∪piliers) est linéaire en x, donc aire = largeur × longueur au
