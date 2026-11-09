@@ -1239,7 +1239,7 @@
       } else {
         _prisme(lot, _anneau(s.points, sc), 0, hs, col, true, m);
       }
-      if (!pente) _piedSurTremie(lot, s, col, m);
+      if (!pente) _structureSurTremie(lot, s, hs, col, m);
     }
     for (let i = 0; i < t.z.length; i++) {
       const z = t.z[i], ring = _anneau(z.points, sc);
@@ -3772,13 +3772,17 @@
   }
 
   // ⚠️ contrat (décision produit) : une structure (pilier, mur, front) qui n'est pas posée sur la pente mais déborde
-  // sur une zone jonction n'est jamais suspendue au-dessus de la trémie. La part de son emprise dans la zone descend
-  // de sa base (sol de son niveau, 0 du contexte) jusqu'à l'appui : le plafond de la zone s'il passe sous la base (la
-  // roche qui porte), sinon son sol (la base serait dans le vide de la zone) ; rien là où le sol de la zone est déjà
-  // au-dessus de la base. Faces latérales seules, coupées aux bords de la zone : au-delà, sous la base, c'est la roche
-  // (un pied hors de la zone sortirait sous le sol, dans la tranche d'un niveau entremêlé). Repère du contexte
-  // (e.pentes : celles du voisin dans sa tuile), même lot, couleur et motif que la structure.
-  function _piedSurTremie(lot, s, col, m) {
+  // sur une zone jonction n'est jamais suspendue dans la trémie, ni par sa base ni par son sommet. La part de son
+  // emprise dans la zone :
+  // - descend de sa base (sol de son niveau, 0 du contexte) jusqu'à l'appui : le plafond de la zone s'il passe sous la
+  //   base (la roche qui porte), sinon son sol (la base serait dans le vide de la zone) ; rien là où le sol de la zone
+  //   est déjà au-dessus de la base ;
+  // - monte de son sommet (hs) jusqu'au plafond de la zone là où le sommet est dans le vide de la zone (sol de la zone
+  //   dessous, plafond dessus) ; un mur garde son retrait sous le plafond (h − hs, HAUTEUR_MUR : sous un pilier).
+  // Faces latérales seules, coupées aux bords de la zone : au-delà, c'est la roche (un prolongement hors de la zone
+  // sortirait du sol ou du plafond, dans la tranche d'un niveau entremêlé). Repère du contexte (e.pentes : celles du
+  // voisin dans sa tuile), même lot, couleur et motif que la structure.
+  function _structureSurTremie(lot, s, hs, col, m) {
     const e = _e, l = (e.pentes || []).filter(function (p) { return p.zones && p.zones.length; });
     if (!l.length || !Array.isArray(s.points) || s.points.length < 2) return;
     let pieces;
@@ -3803,16 +3807,20 @@
       l.forEach(function (p) {
         p.zones.forEach(function (en) {
           if (en.x1 < x0 || en.x0 > x1 || en.z1 < z0 || en.z0 > z1) return;
-          _piedDansZone(lot, pc.ring, pc.u0, p, en, col, m);
+          _prolongerDansZone(lot, pc.ring, pc.u0, p, en, hs, col, m);
         });
       });
     });
   }
 
-  // Faces du pied de la structure de contour `ring` (sens positif, comme _prisme) dans la zone `en` de la pente p :
-  // chaque côté coupé aux bords de la zone, tous les ENTRE.pas m (l'appui suit la pente) et là où le plafond de la
-  // zone passe la base (l'appui y saute du plafond au sol).
-  function _piedDansZone(lot, ring, u0, p, en, col, m) {
+  // Faces du pied et de la tête de la structure de contour `ring` (sens positif, comme _prisme ; sommet à hs) dans la
+  // zone `en` de la pente p : chaque côté coupé aux bords de la zone, tous les ENTRE.pas m (sol et plafond suivent la
+  // pente) et là où l'une des bornes change de règle (plafond de la zone qui passe la base ou le sommet, sol de la
+  // zone qui passe le sommet) : chaque morceau garde la règle de son milieu.
+  function _prolongerDansZone(lot, ring, u0, p, en, hs, col, m) {
+    const g = _e.hauteur - hs, eps = ENTRE.eps;
+    const bornes = [function (r) { return r.plafond - eps; }, function (r) { return r.plafond - g - hs; },
+      function (r) { return hs - r.dy; }];
     let s = u0;
     for (let i = 0; i < ring.length; i++) {
       const P = ring[i], Q = ring[(i + 1) % ring.length], dx = Q[0] - P[0], dz = Q[1] - P[1], l = Math.hypot(dx, dz);
@@ -3828,32 +3836,36 @@
       for (let d = ENTRE.pas; d < l; d += ENTRE.pas) ts.push(d / l);
       ts.sort(function (x, y) { return x - y; });
       const pt = function (t) { return [P[0] + dx * t, P[1] + dz * t]; };
-      const plaf = function (t) { const q = pt(t); return _surPenteDe(p, q[0], q[1]).plafond; };
+      const R = function (t) { const q = pt(t); return _surPenteDe(p, q[0], q[1]); };
       const morceaux = [];
       for (let k = 0; k + 1 < ts.length; k++) {
         const ta = ts[k], tb = ts[k + 1];
         if ((tb - ta) * l < 1e-6) continue;
-        const fa = plaf(ta), fb = plaf(tb);
-        if ((fa > ENTRE.eps) !== (fb > ENTRE.eps)) {
-          const tc = ta + (tb - ta) * (fa - ENTRE.eps) / (fa - fb);
-          morceaux.push([ta, tc], [tc, tb]);
-        } else morceaux.push([ta, tb]);
+        const ra = R(ta), rb = R(tb), coupes = [ta];
+        bornes.forEach(function (f) {
+          const fa = f(ra), fb = f(rb);
+          if ((fa > 0) !== (fb > 0)) coupes.push(ta + (tb - ta) * fa / (fa - fb));
+        });
+        coupes.sort(function (x, y) { return x - y; }).push(tb);
+        for (let c = 0; c + 1 < coupes.length; c++) morceaux.push([coupes[c], coupes[c + 1]]);
       }
       const n = [dz / l, 0, -dx / l];
+      const quad = function (A, B, ya0, yb0, ya1, yb1, sa, sb) {
+        lot.quad([A[0], ya0, A[1]], [B[0], yb0, B[1]], [B[0], yb1, B[1]], [A[0], ya1, A[1]], n, col,
+          m ? [sa / m, ya0 / m, sb / m, yb0 / m, sb / m, yb1 / m, sa / m, ya1 / m] : undefined);
+      };
       morceaux.forEach(function (mc) {
         const ta = mc[0], tb = mc[1], tm = (ta + tb) / 2, M = pt(tm);
         if ((tb - ta) * l < 1e-6 || !_dansAnneauM(a, M[0], M[1])) return;
-        // Appui de chaque bout pris du côté du morceau (un saut plafond → sol tombe sur une borne).
-        const fm = plaf(tm) > ENTRE.eps;
-        const appui = function (t) {
-          const q = pt(t), r = _surPenteDe(p, q[0], q[1]);
-          return !fm ? Math.min(r.plafond, 0) : Math.min(r.dy, 0);
-        };
-        const A = pt(ta), B = pt(tb), ya = appui(ta), yb = appui(tb);
-        if (ya > -ENTRE.eps && yb > -ENTRE.eps) return;
-        const sa = s + ta * l, sb = s + tb * l;
-        lot.quad([A[0], ya, A[1]], [B[0], yb, B[1]], [B[0], 0, B[1]], [A[0], 0, A[1]], n, col,
-          m ? [sa / m, ya / m, sb / m, yb / m, sb / m, 0, sa / m, 0] : undefined);
+        // Règle du milieu du morceau, valeurs à ses bouts (un saut de règle tombe sur une borne).
+        const rm = R(tm), ra = R(ta), rb = R(tb), A = pt(ta), B = pt(tb), sa = s + ta * l, sb = s + tb * l;
+        const appui = function (r) { return rm.plafond > eps ? Math.min(r.dy, 0) : Math.min(r.plafond, 0); };
+        const ya = appui(ra), yb = appui(rb);
+        if (ya < -eps || yb < -eps) quad(A, B, ya, yb, 0, 0, sa, sb);
+        if (rm.dy < hs && rm.plafond - g > hs) {
+          const ha = Math.max(hs, ra.plafond - g), hb = Math.max(hs, rb.plafond - g);
+          if (ha > hs + eps || hb > hs + eps) quad(A, B, hs, hs, ha, hb, sa, sb);
+        }
       });
       s += l;
     }

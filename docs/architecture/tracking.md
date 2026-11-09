@@ -2434,21 +2434,23 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   (1 m) du bord d'une galerie inclinée : contour coupé à 1 m, prisme plat puis sommets relevés (`_releverPente` :
   y = 0 → sol en pente, y = h → plafond en pente, proportionnel ; un mur garde sa part `HAUTEUR_MUR`). Emprise relevée
   (`entremeles().structures`). La règle du pas reste celle de la 2D (contour au sol).
-- **Structures au-dessus d'une trémie** (décision produit, `_piedSurTremie`, `_piedDansZone`) : une structure qui
+- **Structures dans une trémie** (décision produit, `_structureSurTremie`, `_prolongerDansZone`) : une structure qui
   n'est pas posée sur la pente (centre hors de la zone) mais dont l'emprise déborde sur une zone jonction n'est jamais
-  suspendue. La part de son emprise dans la zone descend de sa base (sol de son niveau) jusqu'à l'appui : le plafond
-  de la zone là où il passe sous la base (la roche qui porte), sinon son sol (la base serait dans le vide de la zone) ;
-  rien là où le sol de la zone est déjà au-dessus de la base. Faces latérales seules, coupées aux bords de la zone
-  (dehors, sous la base, c'est la roche ; un pied qui en sortirait passerait sous le sol, dans la tranche d'un niveau
-  entremêlé), tous les `ENTRE.pas` m et là où le plafond de la zone passe la base. Même règle pour le niveau actif
-  (vu d'en haut, la descente) et pour un voisin (vu d'en dessous, la montée : `e.pentes` du voisin dans sa tuile),
-  en mixte et en structures ; même lot, couleur et motif que la structure. Vue d'édition : le plafond de la zone y
-  est retiré comme tout plafond, un pied qui s'y arrête reste coupé à sa hauteur. La règle du pas ne change pas
-  (`_bloqueEnZone` lit déjà les structures des deux niveaux au sol).
+  suspendue, ni par sa base ni par son sommet. La part de son emprise dans la zone **descend** de sa base (sol de son
+  niveau) jusqu'à l'appui : le plafond de la zone là où il passe sous la base (la roche qui porte), sinon son sol (la
+  base serait dans le vide de la zone) ; rien là où le sol de la zone est déjà au-dessus de la base. Elle **monte** de
+  son sommet jusqu'au plafond de la zone là où ce sommet est dans le vide de la zone (sol dessous, plafond dessus) :
+  le niveau du bas vu en montant ; un mur garde son retrait sous le plafond (`HAUTEUR_MUR`). Faces latérales seules,
+  coupées aux bords de la zone (dehors, c'est la roche ; un prolongement qui en sortirait passerait sous le sol ou
+  au-dessus du plafond, dans la tranche d'un niveau entremêlé), tous les `ENTRE.pas` m et là où une borne change de
+  règle. Même règle pour le niveau actif et pour un voisin (`e.pentes` du voisin dans sa tuile), en mixte et en
+  structures ; même lot, couleur et motif que la structure. Vue d'édition : le plafond de la zone y est retiré comme
+  tout plafond, un pied qui s'y arrête reste coupé à sa hauteur. La règle du pas ne change pas (`_bloqueEnZone` lit
+  déjà les structures des deux niveaux au sol).
 - **Relevés** : `KtaVue3D.altitude(x, y)` (sol, plafond, zone, pente au point), `KtaVue3D.entremeles()` (tranches,
   parois dessinées, trous, plans cachés, niveaux qui bloquent, structures en pente). Checkup `checkup-vue-3d.js` § 50
   (`KTA_V3D_SEUL=entremeles`), § 51 (`=zonejonction`), § 53 (`=jonction-tremie`) et § 54
-  (`=jonction-piliers` : structures à cheval sur la zone, vues du 0 et du +1).
+  (`=jonction-piliers` : structures des deux niveaux à cheval sur la zone, vues du 0 et du +1).
 
 ### Rechercher et y aller en 3D (QCM du 08/11/2026)
 
