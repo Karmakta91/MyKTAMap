@@ -225,6 +225,8 @@
   "config.niveaux.warn": "⚠️ Changing the active level <strong>cancels</strong> the path in progress.",
   "config.north.statusCalibrated": "✅ North calibrated at {deg}° from the top of the map (clockwise).",
   "config.north.statusDefault": "ℹ️ North = top of the map (default configuration).",
+  "config.perfultra.allegerRotation.hint": "On a large map, while the map is rotated: only the points and paths on screen are drawn. Points stay tappable.",
+  "config.perfultra.allegerRotation.label": "Lighten the rotated map (large maps)",
   "config.perfultra.animOff.label": "Disable zoom/pan animations",
   "config.perfultra.decim.label": "Decimate paths when zooming out",
   "config.perfultra.intro": "Options with an <span class=\"kta-tx-warn\">orange border</span> take effect when the map is reloaded.",

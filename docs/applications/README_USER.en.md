@@ -2046,6 +2046,7 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
 - ULTRA ticks everything; unticking it unticks everything. On top of the options above, it only draws the paths and points near the screen (slight pop-in when moving the map) and locks map rotation with two fingers or Shift + wheel on this map (and in the OSM view opened from it), without changing the home screen option; the tracker's 🔃 Oriented map still turns. You can also enable only some options, for example **🐢** for a good gain with no visible loss.
 - **Your session points are always shown**, whatever the options.
 - When optimizations are active, a message reminds you when the map opens: a lightened display is not a bug.
+- **Lighten the rotated map (large maps)** (same group, outside ULTRA, ticked by default): on a large map, while you rotate the map with two fingers, only the points and paths on screen are drawn, which keeps the phone from running out of memory; everything comes back once the map points north again. Points stay tappable. Untick it if you prefer to see everything while rotating.
 - On a multi-level map, **🏗️ Show every level at launch** (same group, outside ULTRA, ticked by default) can be unticked to open only levels -1, 0 and +1.
 
 #### 📱 On mobile

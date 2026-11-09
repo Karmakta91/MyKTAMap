@@ -4472,9 +4472,14 @@ async function sectionCamera(page) {
       return q ? [q.x - ox, q.z - oz] : null;
     };
     let idDoigt = 300;
+    // isPrimary comme un navigateur : seul le doigt posé quand aucun autre ne l'est (vue3d.js > purgerFantomes).
+    const posesEvt = new Map();
     const evt = function (type, id, x, y) {
+      if (type === "pointerdown") posesEvt.set(id, posesEvt.size === 0);
+      const prim = posesEvt.has(id) ? posesEvt.get(id) : true;
+      if (type === "pointerup" || type === "pointercancel") posesEvt.delete(id);
       return new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id, pointerType: "touch",
-        isPrimary: true, clientX: x, clientY: y, button: 0 });
+        isPrimary: prim, clientX: x, clientY: y, button: 0 });
     };
     const glisser = async function (a, b, n) {
       const id = ++idDoigt, c = cv(), k = n || 8;
@@ -12968,6 +12973,25 @@ async function sectionGestesDoigt(nav) {
       verifier(iDecale.incl[1] !== iDecale.incl[0] && Math.abs(iDecale.cap[1] - iDecale.cap[0]) < 0.01 &&
         iDecale.recul[1] === iDecale.recul[0],
       "deux doigts vers le haut, l'un livré avec 30 px d'avance : inclinaison, ni rotation ni zoom", iDecale);
+      // Doigt fantôme (lâcher perdu par iOS) puis un seul doigt qui s'écarte : un glisser, pas un pincement
+      // (vue3d.js > purgerFantomes, sur le toucher isPrimary).
+      const iFantome = await page.evaluate(function () {
+        const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+        const avant = window.KtaVue3D.etat();
+        const ev = function (type, id, x, y, prim) {
+          cv.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: prim,
+            clientX: x, clientY: y, bubbles: true }));
+        };
+        const x0 = r.left + r.width / 2, y0 = r.top + r.height / 2;
+        ev("pointerdown", 41, x0 - 60, y0, true);   // son pointerup ne viendra jamais
+        ev("pointerdown", 42, x0, y0, true);        // nouvelle série : premier toucher
+        for (let k = 1; k <= 8; k++) ev("pointermove", 42, x0 + k * 15, y0, true);
+        ev("pointerup", 42, x0 + 120, y0, true);
+        const apres = window.KtaVue3D.etat();
+        return { recul: [avant.portee.recul, apres.portee.recul], incl: [avant.inclinaison, apres.inclinaison] };
+      });
+      verifier(iFantome.recul[1] === iFantome.recul[0] && iFantome.incl[1] === iFantome.incl[0],
+        "doigt fantôme resté compté, puis un seul doigt : ni zoom ni inclinaison (pas un pincement)", iFantome);
       const bornes = await page.evaluate(function () {
         window.KtaVue3D.incliner(500);
         const haut = window.KtaVue3D.etat().inclinaison;

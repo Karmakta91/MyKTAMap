@@ -148,11 +148,33 @@ Module de toggles d'optimisation activables pour gérer les crash mémoire sur t
 
 **Singleton `window.PerfUltra`** (`js/perfUltra.js`, ~150 lignes) :
 - `get(key)` / `set(key, value, opts?)` / `setUltra(bool)` / `getAll()` / `isUltra()` / `onChange(callback)`
-- 7 toggles (`TOGGLES`) : `decim`, `animOff`, `noIntersect`, `noTooltips`, `slowSave`, `viewportCull`, `mobileZoomLimit` (ce dernier ON par défaut) ; `tousNiveaux` vit à part, **hors ULTRA**
+- 7 toggles (`TOGGLES`) : `decim`, `animOff`, `noIntersect`, `noTooltips`, `slowSave`, `viewportCull`, `mobileZoomLimit` (ce dernier ON par défaut) ; `tousNiveaux` et `allegerRotation` vivent à part, **hors ULTRA**, ON par défaut
 - `ultra` = méta-toggle calculé (true si les 7 sont ON)
 - Persistance **par plan** `localStorage["myktamap_perf_toggles_v2_<planId>"]` ; au HOME, defaults purs non persistés
 - Defaults all `false` (sauf `mobileZoomLimit`) → comportement existant strictement préservé
 - `viewportCull` **n'a plus de case** (décision KARMA 10/10/2026) : il n'est piloté que par le méta-toggle ULTRA. Une valeur déjà enregistrée pour un plan reste relue et appliquée ; elle redevient modifiable en cochant/décochant ULTRA.
+- **Renfort de rotation** (`renfortRotation(actif)`, appelé par `mapBearing.js > _verrouiller / _deverrouiller`), permis
+  par la case **« Alléger la carte tournée (gros plans) »** (`allegerRotation`, par plan, cochée par défaut) : tant que
+  la carte du plan est tournée, un plan **lourd** (`planLourd()` : `poidsPlan()` = POI + tracés + zones + structures des
+  calques ≥ **2 000**) resté en **automatique** (preset `auto` et aucun levier ULTRA écarté de son défaut) voit
+  `viewportCull`, `decim` et `noIntersect` forcés **en mémoire** : `get()` les rend vrais, `getAll()` / `isUltra()` et le
+  stockage gardent le choix de l'utilisateur (la modale n'affiche rien de forcé), rien n'est écrit. Carte remise droite
+  (ou changement de plan) : leviers rendus, abonnés `onChange` prévenus dans les deux sens. Aucun message.
+  - ⚠️ **Jamais `noTooltips`** (décision produit) : les POI restent touchables pendant la rotation. Ni `animOff` ni
+    `mobileZoomLimit` (lus à l'init de la carte), ni `slowSave` (sans rapport avec le rendu).
+  - Un choix de l'utilisateur, même un seul levier, ou la case décochée, coupe le renfort (`_relacherRenfortSiRefuse` :
+    tout de suite, même carte tournée) : rien n'est complété ni écrasé. Le plafond du canvas, lui, n'a pas de case.
+  - **Pourquoi ces leviers** (mesuré en émulation téléphone 393 × 852, Chromium, arbre des calques composités par CDP) :
+    chaque POI posé en DOM est un calque composité ; sur un relevé réel, carte tournée, `viewportCull` les ramène à ceux
+    de l'écran (÷ 25), surface composée −30 %, chemins du canvas ÷ 5,5. Le canvas lui-même ne dépend d'aucun levier
+    ULTRA : il est plafonné à part (§ ci-dessous, « Marges de rendu »).
+  - **Seuil sur les objets, pas sur l'image** : sur un plan tuilé, les tuiles posées dépendent de l'écran (12 à plat,
+    25 tournées, quel que soit le plan) ; le coût de la rotation suit le nombre d'objets.
+  - `utils.js` : un changement de `viewportCull` (renfort ou case) rafraîchit aussi les POI des calques
+    (`_refreshDataMarkersViewport`) ; sous rotation, la zone visible change sans `moveend` : `mapBearing.js >
+    _cullerObjetsThrottle` la relit (150 ms) quand `viewportCull` est actif.
+  - Tenu par `scripts/smoke/checkup-rotation-memoire.js` (plan lourd fabriqué dans la page : 3 000 POI, 10 000
+    structures ; Chromium et WebKit).
 
 **Modules consommateurs** (lecture via `window.PerfUltra.get()`) :
 
@@ -170,7 +192,7 @@ Module de toggles d'optimisation activables pour gérer les crash mémoire sur t
 
 **UI dans `js/interfaceConfig.js > afficherConfig`** :
 - `_renderPerfUltraSection()` génère le HTML — section dédiée après "Debug", avant les boutons d'action
-- 1 toggle master ULTRA (accent jaune `#f4c542`) + 6 cases individuelles (tous les `TOGGLES` sauf `viewportCull`) + `tousNiveaux` sur un plan multi-niveau
+- 1 toggle master ULTRA (accent jaune `#f4c542`) + 6 cases individuelles (tous les `TOGGLES` sauf `viewportCull`) + `allegerRotation` + `tousNiveaux` sur un plan multi-niveau
 - Hint italique sous chaque toggle explicitant le trade-off perf/visuel
 - `_bindPerfUltraToggles()` appelé après `documentElement.appendChild(modal)`
 - Master ULTRA → `setUltra(value)` qui applique aux 7 `TOGGLES` d'un coup (dont `viewportCull`) + re-render la modale pour refléter
@@ -187,9 +209,13 @@ Module de toggles d'optimisation activables pour gérer les crash mémoire sur t
 `viewportCull` superflue. Pendant un glissé, Leaflet ne redessine rien : seul ce qui est déjà posé autour de l'écran
 apparaît, le reste arrive au relâcher. Deux marges le décident :
 - **Renderer canvas des vecteurs** (`map.js`) : `L.canvas({ padding: 0.5 })` passé en option `renderer` **et** posé
-  en `map._renderer` (un seul renderer canvas ; Leaflet par défaut : 0,1). Le mode « plan orienté » (`mapBearing.js >
-  _majPaddingUnRenderer`) l'élargit encore pendant la rotation par `Math.max(padding d'origine, requis)` puis rend la
-  valeur d'origine.
+  en `map._renderer` (un seul renderer canvas ; Leaflet par défaut : 0,1). Pendant la rotation (`mapBearing.js >
+  _majPaddingUnRenderer`), il vaut `max(padding d'origine, min(requis, budget))` puis revient à la valeur d'origine :
+  `requis` couvre les coins à tout angle, `budget` (`_paddingBudget`) borne la surface en **pixels réels** du canvas
+  (taille CSS × 2 sur écran haute densité : Leaflet double le canvas, il ne le triple pas sur un iPhone 3×) :
+  **16 777 216** partout (surface maximale d'un canvas sous Safari iOS), **6 000 000** sur un plan lourd. Téléphone
+  393 × 852 : 5,36 M à plat, 7,71 M tourné sans plafond, **5,90 M** plafonné sur plan lourd (padding 0,55) — une bande
+  de quelques pixels peut rester non peinte dans un coin à 90° (accepté). Plan normal : inchangé.
 - **Tuiles V2 posées autour de l'écran** (`tiling.js > MARGE_TUILES_V2`) : **0,6** (0,15 avant). Mesuré sur un relevé
   tuilé lourd, grand glissé : trous du fond **36 % → 0-1 %** ; 0,30 n'apportait rien (tuiles de 512 px, la marge doit
   dépasser une tuile pour changer quoi que ce soit).

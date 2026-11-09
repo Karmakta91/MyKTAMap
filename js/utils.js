@@ -2477,10 +2477,10 @@ window._refreshDataPolylinesUltra = function() {
     if (fait) return;
     if (!window.PerfUltra || typeof window.PerfUltra.onChange !== "function") return;
     fait = true;
+    // viewportCull touche aussi les POI des calques (sans quoi ils attendraient le prochain moveend).
     window.PerfUltra.onChange(function(cles) {
-      if (cles.some(function(k) { return k === "decim" || k === "viewportCull"; })) {
-        window._refreshDataPolylinesUltra();
-      }
+      if (cles.indexOf("viewportCull") >= 0) window._refreshDataMarkersViewport();
+      else if (cles.indexOf("decim") >= 0) window._refreshDataPolylinesUltra();
     });
   }
   essayer();

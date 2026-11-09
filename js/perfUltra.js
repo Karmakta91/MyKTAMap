@@ -15,7 +15,11 @@
 // noTooltips (pas de bindPopup sur les points des calques ; ceux de session restent interactifs) · slowSave
 // (SessionPersist toutes les 30 s au lieu de 1,5 s) · viewportCull (routes hors écran non rendues, piloté par
 // ULTRA seul).
-// Expose window.PerfUltra : get(key), set(key, value, opts?), setUltra(bool), getAll(), onChange(cb), isUltra().
+// Renfort de rotation (option allegerRotation, ON) : sur un plan lourd laissé en automatique, la carte tournée
+// force en mémoire RENFORT_ROTATION (mapBearing.js > _verrouiller), jamais persisté ni montré dans les réglages :
+// `get` le voit, `getAll` / `isUltra` rendent le choix de l'utilisateur seul.
+// Expose window.PerfUltra : get(key), set(key, value, opts?), setUltra(bool), getAll(), onChange(cb), isUltra(),
+// poidsPlan(), planLourd(), renfortRotation(actif).
 // Doc : docs/architecture/perf-memory.md
 // =========================
 
@@ -32,12 +36,26 @@
   // carte peint), ON par défaut.
   // ⚠️ VOLONTAIREMENT HORS DE `TOGGLES`, donc hors d'ULTRA : « activer toutes les optimisations » qui
   // afficherait plus de niveaux ALOURDIRAIT l'app.
-  const HORS_ULTRA = ["tousNiveaux"];
-  const HORS_ULTRA_DEFAUT_TRUE = ["tousNiveaux"];
+  // « Alléger la carte tournée » (allegerRotation) : autorise le renfort de rotation, ON par défaut ; hors ULTRA
+  // (ULTRA force déjà ces leviers en permanence).
+  const HORS_ULTRA = ["tousNiveaux", "allegerRotation"];
+  const HORS_ULTRA_DEFAUT_TRUE = ["tousNiveaux", "allegerRotation"];
 
   // Réglages de sécurité ON par défaut : `mobileZoomLimit` (plancher de dézoom mobile anti-OOM). Décocher =
   // l'utilisateur assume le risque et le mobile est traité comme un PC.
   const DEFAULTS_TRUE = ["mobileZoomLimit"];
+
+  // Leviers que la rotation force sur un plan lourd. Mesuré sous rotation (téléphone 393 × 852) : chaque POI
+  // posé en DOM est un calque composité ; viewportCull ne garde que ceux de l'écran (÷ 25 sur un relevé réel),
+  // tracés compris. decim et noIntersect allègent le dessin du canvas à chaque zoom.
+  // ⚠️ Jamais noTooltips (décision produit) : les POI restent touchables pendant la rotation. Ni animOff ni
+  // mobileZoomLimit (lus à l'init de la carte), ni slowSave (sans rapport avec le rendu).
+  const RENFORT_ROTATION = ["viewportCull", "decim", "noIntersect"];
+  // Objets du plan (POI, tracés, zones, structures des calques) à partir desquels il est lourd. Le coût de la
+  // rotation suit le nombre d'objets, pas la taille de l'image : sur un plan tuilé, les tuiles posées dépendent
+  // de l'écran (12 à plat, 25 tournées, quel que soit le plan).
+  const SEUIL_PLAN_LOURD = 2000;
+  let _renfort = [];
 
   // Défauts : tout OFF sauf DEFAULTS_TRUE.
   function _defaults() {
@@ -84,6 +102,7 @@
     if (pid === _cachePlanId) return;
     _cachePlanId = pid;
     _state = _loadFor(pid);
+    _renfort = [];   // nouvelle carte : la rotation repart droite
     const actifs = TOGGLES.filter(function(k) { return _state[k] && DEFAULTS_TRUE.indexOf(k) < 0; });
     if (actifs.length > 0) {
       console.log("[PerfUltra] Slot plan « " + pid + " » : toggles actifs :", actifs.join(", "));
@@ -113,7 +132,7 @@
 
   function get(key) {
     _resolve();
-    return !!_state[key];
+    return !!_state[key] || _renfort.indexOf(key) >= 0;
   }
 
   function getAll() {
@@ -138,6 +157,7 @@
     _state[key] = v;
     _persist();
     if (!opts || !opts.silent) _notify([key]);
+    _relacherRenfortSiRefuse();
     return true;
   }
 
@@ -155,6 +175,46 @@
     if (changed.length === 0) return;
     _persist();
     _notify(changed);
+    _relacherRenfortSiRefuse();
+  }
+
+  // Choix fait carte tournée (option coupée, levier coché) : le renfort se retire sans attendre le retour au nord.
+  function _relacherRenfortSiRefuse() {
+    if (!_renfort.length || (_state.allegerRotation && _choixAutomatique())) return;
+    const rendus = _renfort;
+    _renfort = [];
+    _notify(rendus);
+  }
+
+  function poidsPlan() {
+    let n = 0;
+    ["_ktaDataMarkers", "_ktaDataPolylines", "_ktaDataPolygons", "_ktaDataStructurePolygons"].forEach(function(k) {
+      if (Array.isArray(window[k])) n += window[k].length;
+    });
+    return n;
+  }
+
+  function planLourd() { return poidsPlan() >= SEUIL_PLAN_LOURD; }
+
+  // Automatique = preset du plan laissé à « auto » ET aucun levier ULTRA écarté de son défaut. Un choix de
+  // l'utilisateur (même un seul levier) n'est jamais complété ni écrasé.
+  function _choixAutomatique() {
+    const preset = (typeof APP_CONFIG !== "undefined" && APP_CONFIG) ? APP_CONFIG.perfPreset : "auto";
+    if (preset && preset !== "auto") return false;
+    return TOGGLES.every(function(k) { return _state[k] === (DEFAULTS_TRUE.indexOf(k) >= 0); });
+  }
+
+  // actif = carte tournée. Rend true si des leviers sont forcés. Les abonnés reçoivent les clés basculées.
+  function renfortRotation(actif) {
+    _resolve();
+    const voulu = (actif && window._currentLoadedPlanId && _state.allegerRotation && _choixAutomatique() &&
+                   planLourd())
+      ? RENFORT_ROTATION.filter(function(k) { return !_state[k]; }) : [];
+    const bascules = voulu.filter(function(k) { return _renfort.indexOf(k) < 0; })
+      .concat(_renfort.filter(function(k) { return voulu.indexOf(k) < 0; }));
+    _renfort = voulu;
+    if (bascules.length) _notify(bascules);
+    return _renfort.length > 0;
   }
 
   function onChange(fn) {
@@ -170,6 +230,9 @@
     getAll: getAll,
     isUltra: isUltra,
     onChange: onChange,
+    poidsPlan: poidsPlan,
+    planLourd: planLourd,
+    renfortRotation: renfortRotation,
     TOGGLES: TOGGLES.slice()  // exposé en lecture pour l'UI
   };
 })();

@@ -58,6 +58,8 @@ function _renderPerfUltraSection() {
             window.I18n.t("config.perfultra.slowSave.hint"))}
       ${row("cfg_perf_mobileZoomLimit", window.I18n.t("config.perfultra.mobileZoomLimit.label"), s.mobileZoomLimit,
             window.I18n.t("config.perfultra.mobileZoomLimit.hint"), true)}
+      ${row("cfg_perf_allegerRotation", window.I18n.t("config.perfultra.allegerRotation.label"), s.allegerRotation,
+            window.I18n.t("config.perfultra.allegerRotation.hint"))}
       ${rowNiveaux}
     </div>`;
 }
@@ -80,6 +82,7 @@ function _bindPerfUltraToggles() {
     "cfg_perf_noTooltips":      "noTooltips",
     "cfg_perf_slowSave":        "slowSave",
     "cfg_perf_mobileZoomLimit": "mobileZoomLimit",
+    "cfg_perf_allegerRotation": "allegerRotation", // hors ULTRA
     "cfg_perf_tousNiveaux":     "tousNiveaux"      // hors ULTRA (PerfUltra.set l'accepte)
   };
   Object.keys(map).forEach(function(id) {

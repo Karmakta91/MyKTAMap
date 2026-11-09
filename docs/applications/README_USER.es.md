@@ -2046,6 +2046,7 @@ Si un mapa grande sigue fallando o va lento, abre **⚙️ Ajustes** → **🚀 
 - ULTRA lo marca todo; desmarcarlo lo desmarca todo. Además de las opciones anteriores, solo dibuja los trazados y puntos cercanos a la pantalla (ligero retardo de aparición al desplazar el mapa) y bloquea la rotación del mapa con dos dedos o Mayús + rueda en este plano (y en la vista OSM abierta desde él), sin cambiar la opción de la pantalla de inicio; el 🔃 Plano orientado del seguimiento sigue girando. También puedes activar solo algunas opciones, por ejemplo **🐢** para una buena ganancia sin pérdida visible.
 - **Tus puntos de sesión se muestran siempre**, sean cuales sean las opciones.
 - Cuando hay optimizaciones activas, un mensaje te lo recuerda al abrir el mapa: una visualización aligerada no es un error.
+- **Aligerar el mapa girado (mapas grandes)** (mismo grupo, fuera de ULTRA, marcada por defecto): en un mapa grande, mientras giras el mapa con dos dedos, solo se dibujan los puntos y trazados de la pantalla, lo que evita que el teléfono se quede sin memoria; todo vuelve cuando el mapa apunta de nuevo al norte. Los puntos siguen siendo táctiles. Desmárcala si prefieres verlo todo al girar.
 - En un mapa multinivel, **🏗️ Mostrar todos los niveles al iniciar** (mismo grupo, fuera de ULTRA, marcada por defecto) puede desmarcarse para abrir solo los niveles -1, 0 y +1.
 
 #### 📱 En el móvil
