@@ -21,9 +21,11 @@
 //   4. EXHAUSTIF : chaque occurrence d'un emoji migré dans docs/applications/README_USER{,.en,.es}.md et dans
 //      les clés aide.* de lang/{fr,en,es}.json est soit substituée (DOC), soit listée « autre sens »
 //      (AUTRE_SENS). Sinon : échec avec fichier:ligne et le texte voisin ;
-//   5. CLIQUET : le nombre d'emplois rangés par une règle « tout le reste » est figé par emoji (PLAFOND_RESTE).
+//   5. CLIQUET : le nombre d'emplois rangés par une règle « tout le reste » est figé par emoji (PLAFOND_RESTE) ;
+//   6. CLIQUET : les trois dicos entiers hors doc (toasts, alertes, titres…) : un emoji de bouton migré n'y reste
+//      que dans le compte figé par emoji (PLAFOND_DICOS) ; un texte nouveau qui en cite un échoue.
 // Usage : node scripts/check-icones-ui.js [--liste] [--plafond]   (--liste : comptes par emoji ; --plafond :
-//   comptes à reporter dans PLAFOND_RESTE)
+//   comptes à reporter dans PLAFOND_RESTE puis PLAFOND_DICOS)
 // =====================================================================
 "use strict";
 
@@ -415,6 +417,44 @@ const SRC_INTERFACE = lire("js/interface.js");
         c.en[0] + "/" + c.es[0] + ", autre " + c.fr[1] + "/" + c.en[1] + "/" + c.es[1] + ")" + (ecart ? "  ≠" : ""));
     });
   }
+}
+
+// ── 6. textes hors doc : pas d'emoji d'un bouton passé en SVG ─────────────────────────────
+// Toasts, encadrés, astuces, alertes, infobulles, titres : un emoji que classerDoc substituerait (icône d'un bouton
+// migré) y montrerait l'ancien dessin ; le texte nomme le bouton sans icône (« Réglages → Géoréférencement GPS »).
+// Balayage des trois dicos ENTIERS, hors aide.* (doc substituée au rendu, § 4) et hors CLES_SORTIE (texte écrit
+// dans un fichier ou un rapport produit, nom donné à un objet créé). Un emploi rangé AUTRE_SENS (autre notion)
+// passe. Ce qui reste (fenêtres et contrôles pas encore migrés) est figé par emoji, trois langues additionnées
+// (PLAFOND_DICOS, cliquet) : toute hausse échoue, une baisse se reporte ici. Recalcul : --plafond.
+{
+  const CLES_SORTIE = /^(?:imgexport\.legSection\.|lost\.report\.|lost\.point\.nom$|secours\.txt\.)/;
+  const PLAFOND_DICOS = {
+    "🐛": 6, "🌐": 3, "🛣": 27, "⚙": 12, "⬛": 24, "📦": 6, "🕵": 6, "⛑": 24, "🔍": 12, "📐": 6, "🧭": 18, "🗺": 6,
+    "📖": 9, "📚": 3, "🏗": 3, "🔆": 6, "🏛": 6, "⏪": 3, "📔": 3, "⬆": 3, "❓": 3, "📸": 3, "⏹": 6, "📏": 3,
+    "🔥": 3, "🪜": 1
+  };
+  const parEmoji = {}, detail = {};
+  ["fr", "en", "es"].forEach((l) => {
+    const d = JSON.parse(lire("lang/" + l + ".json"));
+    Object.keys(d).forEach((cle) => {
+      if (/^aide\./.test(cle) || /^_/.test(cle) || CLES_SORTIE.test(cle)) return;
+      K.classerDoc(String(d[cle])).forEach((o) => {
+        if (!o.icone) return;
+        parEmoji[o.emoji] = (parEmoji[o.emoji] || 0) + 1;
+        (detail[o.emoji] = detail[o.emoji] || []).push(l + " " + cle);
+      });
+    });
+  });
+  if (process.argv.indexOf("--plafond") >= 0) console.log(JSON.stringify(parEmoji));
+  const ecarts = [];
+  Object.keys(parEmoji).concat(Object.keys(PLAFOND_DICOS)).filter((e, i, a) => a.indexOf(e) === i).forEach((e) => {
+    const n = parEmoji[e] || 0, p = PLAFOND_DICOS[e] || 0;
+    if (n > p) ecarts.push(e + " : " + n + " emplois pour " + p + " figés → réécrire le texte sans l'icône (ou classer " +
+      "AUTRE_SENS si c'est une autre notion) : " + detail[e].join(", "));
+    else if (n < p) ecarts.push(e + " : " + n + " < " + p + " figés → reporter " + n + " dans PLAFOND_DICOS");
+  });
+  t("6. dicos hors doc : aucun emoji de bouton migré en plus du reste figé (cliquet)", ecarts.length === 0,
+    ecarts.join("\n   "));
 }
 
 console.log(ko === 0 ? "🎉 icônes de l'interface : SVG partout où migré, doc alignée" : "⚠️ " + ko + " échec(s)");
