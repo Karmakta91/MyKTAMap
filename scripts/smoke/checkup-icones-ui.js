@@ -6,9 +6,11 @@
 // Dans l'app réelle, Chromium et WebKit, thème sombre puis clair : en-tête de l'accueil, titres de section, Outils et
 // lignes de Mes plans, Configuration de l'accueil (titres, groupes, réglages) et ses fenêtres Journal réseau, réseau
 // expliqué et Dépannage, barre de la carte (groupes et sous-actions des accordéons), fenêtre Tracker, lanceur
-// d'export (tuiles et titres de section) → chaque contrôle migré porte un svg.kta-ico et aucun emoji. Documentation (fr) : « 🧭 Menu Tracker » et « 🧭 Boussole » montrent chacun SA bonne icône, et les
-// emoji migrés restés dans la page sont exactement ceux listés « autre sens » (KtaIcones.AUTRE_SENS) : reste 0.
-// Aide intégrée : fiche « Menu Tracker », même contrôle Tracker / Boussole.
+// d'export (tuiles et titres de section) → chaque contrôle migré porte un svg.kta-ico et aucun emoji. Documentation
+// (guides fr, en, es) : chaque emoji rendu en SVG (bouton ou notion), les emoji restés = exactement les exceptions
+// KtaIcones.GARDE, titres h1 à h5, sommaire et fils d'Ariane sans emoji hors exception, icône proportionnée au titre
+// et à la puce. Aide intégrée : hub (titres, catégories, lignes) et chaque fiche, même règle ; fiche « Menu
+// Tracker » : Tracker / Boussole chacun SA bonne icône.
 // Fenêtres d'outils de la carte (Réglages du plan, Filtres, Légende, Distance totale, Boussole, Heatmap, exports,
 // Recherche, Statistiques, Carnet, Itinéraire, Je suis perdu, Mode Secours, éditeur de point, raccourcis) : titres,
 // sections et boutons migrés en SVG, sans emoji. Reste de l'interface (lot C3) : barres du haut et du bas, fiche d'un
@@ -515,7 +517,7 @@ async function jouer(page, theme) {
     await page.waitForTimeout(200);
   }
 
-  // Tutoriel : icône de carte en SVG ; dans le texte, les emoji de bouton migré sont des SVG, les autres listés.
+  // Tutoriel : icône de carte en SVG ; dans le texte, chaque emoji est un SVG (bouton ou notion), sauf exception.
   await page.evaluate(function () { window.Tutorial.ouvrir(); });
   await page.waitForTimeout(600);
   const tuto = [];
@@ -525,7 +527,7 @@ async function jouer(page, theme) {
       if (!carte) return null;
       const texte = carte.querySelector(".kta-tutorial-card-texte");
       const t = texte.textContent.replace(/\uFE0F/g, "");
-      const migres = K.classerDoc(t).filter(function (o) { return o.icone; }).length;   // reste d'emoji substituable
+      const migres = K.classerDoc(t).filter(function (o) { return o.icone || o.notion; }).length;   // emoji substituable resté
       return { ico: !!carte.querySelector(".kta-tutorial-card-emoji svg.kta-ico"), svg: texte.querySelectorAll("svg.kta-ico-doc").length,
         reste: migres };
     }));
@@ -536,8 +538,8 @@ async function jouer(page, theme) {
   const tv = tuto.filter(Boolean);
   verifier(tv.length >= 10 && tv.every(function (c) { return c.ico; }), "tutoriel : " + tv.length + " cartes, icône de carte en SVG");
   const tSvg = tv.reduce(function (a, c) { return a + c.svg; }, 0), tReste = tv.reduce(function (a, c) { return a + c.reste; }, 0);
-  verifier(tSvg >= 20 && tReste === 0, "tutoriel : " + tSvg + " icônes de bouton en SVG dans le texte, " + tReste +
-    " emoji de bouton migré restant");
+  verifier(tSvg >= 20 && tReste === 0, "tutoriel : " + tSvg + " icônes SVG dans le texte, " + tReste +
+    " emoji substituable restant");
   await page.evaluate(function () { window.Tutorial.fermer(); });
   await page.waitForTimeout(300);
 
@@ -600,46 +602,151 @@ async function jouer(page, theme) {
   await page.evaluate(function () { const x = document.getElementById("kta-calib-close"); if (x) x.click(); });
   await page.waitForTimeout(300);
 
-  // 6. Documentation (fr) : bonnes icônes, et aucun emoji migré resté hors « autre sens ».
-  await page.evaluate(function () { window.afficherReadme(); });
-  await attendre(page, function () {
-    return !!document.querySelector("#kta-readme-modal .kta-readme-corps h2");
-  }, 15000);
-  const doc = await page.evaluate(async function () {
-    const K = window.KtaIcones, corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
-    const md = await (await fetch("docs/applications/README_USER.md", { cache: "no-store" })).text();
-    const occ = K.classerDoc(md);
-    const attenduSvg = occ.filter(function (o) { return o.icone; }).length;
-    const attenduAutre = occ.filter(function (o) { return o.sens; }).length;
-    const nonClasses = occ.filter(function (o) { return !o.icone && !o.sens; }).length;
-    // Emoji migrés restés dans le rendu (sommaire exclu : il recopie les titres).
-    const emojis = {};
-    occ.forEach(function (o) { emojis[o.emoji] = true; });
-    const texte = corps.textContent.replace(/️/g, "");
-    let restants = 0;
-    Object.keys(emojis).forEach(function (e) { restants += texte.split(e).length - 1; });
-    const svgs = corps.querySelectorAll("svg.kta-ico-doc").length;
-    const nomIcone = function (s) { return K.noms().filter(function (n) { return s.classList.contains("kta-ico-" + n); })[0]; };
-    const titre = function (re) {
-      const h = Array.prototype.find.call(corps.querySelectorAll("h3"), function (x) { return re.test(x.textContent); });
-      const s = h && h.querySelector("svg");
-      return s ? nomIcone(s) : null;
-    };
-    return { attenduSvg: attenduSvg, attenduAutre: attenduAutre, nonClasses: nonClasses, restants: restants, svgs: svgs,
-      menuTracker: titre(/^\s*Menu Tracker/), boussole: titre(/^\s*Boussole/) };
+  // 6. Documentation, trois guides : chaque emoji rendu en SVG (bouton ou notion), sauf les exceptions GARDE ;
+  //    titres (h1 à h5, sommaire compris) et fils d'Ariane : SVG, aucun emoji hors exception.
+  for (const langue of ["fr", "en", "es"]) {
+    await page.evaluate(function (l) {
+      try { localStorage.setItem("myktamap_readme_lang", l); } catch (e) { /* stockage refusé */ }
+      const m = document.getElementById("kta-readme-modal"); if (m) m.remove();
+      window.afficherReadme();
+    }, langue);
+    await attendre(page, function () {
+      return !!document.querySelector("#kta-readme-modal .kta-readme-corps h2 svg");
+    }, 15000).catch(function () {});
+    const doc = await page.evaluate(async function (l) {
+      const K = window.KtaIcones, corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
+      const toc = document.getElementById("kta-readme-toc-sidebar");
+      if (!corps) return { absent: true };
+      const fichier = "docs/applications/README_USER" + (l === "fr" ? "" : "." + l) + ".md";
+      const md = await (await fetch(fichier, { cache: "no-store" })).text();
+      const occ = K.classerDoc(md);
+      const EMO = /\p{Extended_Pictographic}/gu;
+      const compte = function (t) { return (String(t).match(EMO) || []).length; };
+      const titresMd = md.split(/\r?\n/).filter(function (x) { return /^#{1,5} /.test(x); }).join("\n");
+      const gardesTitres = K.classerDoc(titresMd).filter(function (o) { return o.garde; }).length;
+      const titres = corps.querySelectorAll("h1, h2, h3, h4, h5");
+      let emoTitres = 0, titresSvg = 0, titresAvecRepere = 0;
+      titres.forEach(function (h) {
+        emoTitres += compte(h.textContent);
+        if (h.querySelector("svg.kta-ico-doc")) titresSvg++;
+      });
+      titresAvecRepere = K.classerDoc(titresMd).filter(function (o) { return o.icone || o.notion; }).length;
+      // Fil d'Ariane : « Documentation › … › … » ou « Pour aller plus loin › … » rendu en texte.
+      let filsEmoji = 0, fils = 0;
+      corps.querySelectorAll("p, li, td, blockquote").forEach(function (el) {
+        if (el.textContent.indexOf("›") < 0) return;
+        fils++;
+        const t = el.textContent.split("›").slice(0, -1).join("›");
+        filsEmoji += compte(t.replace(/[⛔🟦🟩🟪🟨🟥🟧🟢🟡🟠🔵🟣⚪⬛▶◀↔©🚪⚠]/gu, ""));
+      });
+      return {
+        svgs: corps.querySelectorAll("svg.kta-ico-doc").length,
+        attenduSvg: occ.filter(function (o) { return o.icone || o.notion; }).length,
+        restants: compte(corps.textContent),
+        attenduGarde: occ.filter(function (o) { return o.garde; }).length,
+        nonClasses: occ.filter(function (o) { return !o.icone && !o.notion && !o.garde; }).length,
+        emoTitres: emoTitres, gardesTitres: gardesTitres, titresSvg: titresSvg, titresAvecRepere: titresAvecRepere,
+        tocEmoji: toc ? compte(toc.textContent) : -1, tocSvg: toc ? toc.querySelectorAll("svg").length : 0,
+        pied: (function () {
+          const f = document.querySelector("#kta-readme-modal .kta-readme-modal-footer");
+          return f ? { emoji: compte(f.textContent), svg: f.querySelectorAll("svg.kta-ico").length } : null;
+        })(),
+        fils: fils, filsEmoji: filsEmoji,
+        h2Carte: (function () {
+          const h = Array.prototype.find.call(corps.querySelectorAll("h2"), function (x) {
+            return /Utiliser la carte|Using the map|Usar el mapa/.test(x.textContent);
+          });
+          const s = h && h.querySelector("svg");
+          return s ? K.noms().filter(function (n) { return s.classList.contains("kta-ico-" + n); })[0] : null;
+        })(),
+        taille: (function () {
+          const h = corps.querySelector("h2 svg.kta-ico-doc"), li = corps.querySelector("li svg.kta-ico-doc");
+          const r = function (s) {
+            if (!s) return null;
+            const b = s.getBoundingClientRect(), p = s.parentElement.getBoundingClientRect();
+            const fs = parseFloat(getComputedStyle(s.parentElement).fontSize);
+            return { h: Math.round(b.height * 10) / 10, fs: fs, haut: Math.round(b.top - p.top), bas: Math.round(p.bottom - b.bottom),
+              couleur: getComputedStyle(s).color };
+          };
+          return { h2: r(h), li: r(li) };
+        })()
+      };
+    }, langue);
+    const p = "Documentation (" + langue + ") : ";
+    verifier(!doc.absent && doc.nonClasses === 0, p + "aucun emoji non classé dans le guide", doc.nonClasses);
+    verifier(doc.svgs === doc.attenduSvg, p + doc.svgs + " icônes SVG posées = " + doc.attenduSvg + " emplois classés");
+    verifier(doc.restants === doc.attenduGarde, p + doc.restants + " emoji restés dans le rendu = " + doc.attenduGarde +
+      " exceptions listées (GARDE)");
+    verifier(doc.emoTitres === doc.gardesTitres && doc.titresSvg >= doc.titresAvecRepere * 0.9,
+      p + "titres h1 à h5 : " + doc.titresSvg + " avec SVG, " + doc.emoTitres + " emoji (exceptions " + doc.gardesTitres + ")");
+    verifier(doc.tocSvg > 20 && doc.tocEmoji <= doc.gardesTitres, p + "sommaire : " + doc.tocSvg + " SVG, " + doc.tocEmoji +
+      " emoji");
+    verifier(doc.fils > 0 && doc.filsEmoji === 0, p + doc.fils + " lignes à fil d'Ariane, " + doc.filsEmoji + " emoji avant le dernier ›");
+    verifier(doc.h2Carte === "map", p + "chapitre « Utiliser la carte » → icône map", doc.h2Carte);
+    verifier(doc.pied && doc.pied.emoji === 0 && doc.pied.svg === 7, p + "crédits du pied de fenêtre en SVG", doc.pied);
+    const t = doc.taille || {};
+    verifier(t.h2 && t.li && t.h2.h >= t.h2.fs * 0.95 && t.h2.h <= t.h2.fs * 1.3 && t.li.h >= t.li.fs * 0.95 &&
+      t.li.h <= t.li.fs * 1.3 && t.h2.h > t.li.h, p + "icône proportionnée au texte (h2 " + (t.h2 && t.h2.h) + " px pour " +
+      (t.h2 && t.h2.fs) + ", puce " + (t.li && t.li.h) + " px pour " + (t.li && t.li.fs) + ")", t);
+    if (langue === "fr") {
+      await capture(page, "5-documentation");
+      // Chapitre avec sous-titres : « Utiliser la carte ».
+      await page.evaluate(function () {
+        const sc = document.getElementById("kta-readme-corps-scroll");
+        const h = Array.prototype.find.call(document.querySelectorAll("#kta-readme-modal .kta-readme-corps h2"), function (x) {
+          return /Utiliser la carte/.test(x.textContent);
+        });
+        if (sc && h) sc.scrollTop = h.offsetTop - 10;
+      });
+      await page.waitForTimeout(300);
+      await capture(page, "5-documentation-chapitre");
+    }
+  }
+  await page.evaluate(function () {
+    try { localStorage.setItem("myktamap_readme_lang", "fr"); } catch (e) { /* stockage refusé */ }
+    const m = document.getElementById("kta-readme-modal"); if (m) m.remove();
   });
-  verifier(doc.menuTracker === "navigation", "Documentation : « 🧭 Menu Tracker » → icône navigation", doc.menuTracker);
-  verifier(doc.boussole === "compass", "Documentation : « 🧭 Boussole » → icône compass", doc.boussole);
-  verifier(doc.svgs === doc.attenduSvg, "Documentation : " + doc.svgs + " icônes SVG posées = " + doc.attenduSvg +
-    " emploi(s) substitués du guide");
-  verifier(doc.nonClasses === 0 && doc.restants - doc.attenduAutre === 0, "Documentation : emoji migrés restants hors « autre sens » = " +
-    (doc.restants - doc.attenduAutre) + " (restants " + doc.restants + ", listés " + doc.attenduAutre + ")");
-  await capture(page, "5-documentation");
-  await page.evaluate(function () { const m = document.getElementById("kta-readme-modal"); if (m) m.remove(); });
 
-  // 7. Aide intégrée : fiche « Menu Tracker ».
+  // 7. Aide intégrée : hub (intro, catégories, lignes, raccourcis, « Autres ») puis chaque fiche : SVG partout,
+  //    emoji restants = exceptions GARDE ; fiche « Menu Tracker » : Tracker / Boussole chacun SA bonne icône.
   await page.evaluate(function () { window.afficherAide(); });
   await attendre(page, function () { return !!document.querySelector("#kta-aide-modal .kta-aide-row"); }, 8000);
+  const hub = await page.evaluate(function () {
+    const m = document.getElementById("kta-aide-modal");
+    const EMO = /\p{Extended_Pictographic}/u;
+    const els = m.querySelectorAll(".kta-readme-modal-titre, .kta-aide-intro, .kta-aide-cat-titre, .kta-aide-row-titre");
+    let emo = 0, svg = 0;
+    els.forEach(function (el) { if (EMO.test(el.textContent)) emo++; if (el.querySelector("svg.kta-ico-doc")) svg++; });
+    return { n: els.length, emo: emo, svg: svg };
+  });
+  verifier(hub.n >= 40 && hub.emo === 0 && hub.svg >= 40, "Aide (hub) : " + hub.n + " titres, " + hub.svg + " avec SVG, " +
+    hub.emo + " avec emoji", hub);
+  await page.waitForTimeout(500);   // fin du fondu d'ouverture avant la capture
+  await capture(page, "6-aide-hub");
+  const fiches = await page.evaluate(async function () {
+    const K = window.KtaIcones, d = await (await fetch("lang/fr.json", { cache: "no-store" })).json();
+    const slugs = Object.keys(d).filter(function (k) { return /^aide\.sec\.[^.]+\.titre$/.test(k); })
+      .map(function (k) { return k.split(".")[2]; });
+    const res = [];
+    for (const slug of slugs) {
+      if (!window.ktaOuvrirAideSection(slug)) continue;
+      await new Promise(function (r) { setTimeout(r, 30); });
+      const zone = document.querySelector("#kta-aide-submodal") || document.querySelector("#kta-aide-modal .kta-aide-fiche-vue");
+      const texte = (d["aide.sec." + slug + ".titre"] || "") + "\n" + (d["aide.sec." + slug + ".html"] || "") + "\n" +
+        (d["aide.sec." + slug + ".raccourci"] || "");
+      const occ = K.classerDoc(texte);
+      const rendu = zone ? (zone.textContent.match(/\p{Extended_Pictographic}/gu) || []).length : -1;
+      res.push({ slug: slug, rendu: rendu, garde: occ.filter(function (o) { return o.garde; }).length,
+        svg: zone ? zone.querySelectorAll("svg.kta-ico-doc").length : 0,
+        attendu: occ.filter(function (o) { return o.icone || o.notion; }).length });
+      const x = document.getElementById("kta-aide-sub-close"); if (x) x.click();
+    }
+    return res;
+  });
+  const fFautes = fiches.filter(function (f) { return f.rendu !== f.garde || f.svg < f.attendu; });
+  verifier(fiches.length >= 40 && fFautes.length === 0, "Aide (fiches) : " + fiches.length + " fiches, " +
+    fiches.reduce(function (a, f) { return a + f.svg; }, 0) + " SVG, emoji restants = exceptions (" +
+    fiches.reduce(function (a, f) { return a + f.rendu; }, 0) + ")", fFautes);
   await page.evaluate(function () { window.ktaOuvrirAideSection("menu-tracker"); });
   await page.waitForTimeout(600);
   const aide = await page.evaluate(function () {
@@ -657,11 +764,13 @@ async function jouer(page, theme) {
     };
     const cat = Array.prototype.some.call(document.querySelectorAll("#kta-aide-modal .kta-aide-cat-titre svg.kta-ico-doc"),
       function (s) { return nom(s) === "settings"; });
-    return { zone: true, tracker: suivi(/^\s*Tracker/), boussole: suivi(/^\s*Boussole/), cat: cat };
+    return { zone: true, tracker: suivi(/^\s*Tracker/), boussole: suivi(/^\s*Boussole/), cat: cat,
+      fil: suivi(/^\s*Tracker de position/) };
   });
   verifier(aide.zone && aide.tracker === "navigation", "Aide : « 🧭 Tracker » → icône navigation", aide);
   verifier(aide.boussole === "compass", "Aide : « 🧭 Boussole » → icône compass", aide.boussole);
   verifier(aide.cat, "Aide : titre de catégorie « ⚙️ Réglages… » avec l'icône settings");
+  verifier(aide.fil === "navigation", "Aide : fil d'Ariane « › 📍 Tracker de position » → icône navigation", aide.fil);
   await capture(page, "6-aide");
 
   // 11. ConfAdmin (page à part) : titres, boutons, colonnes et rubriques en SVG, sans emoji.

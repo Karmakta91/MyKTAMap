@@ -567,7 +567,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 **Cas d'usage** : tu veux qu'un calcul d'itinéraire ne passe pas par une certaine zone (effondrement récent, eau profonde, passage dangereux non balisé, etc.). C'est une contrainte **dure par défaut**, relâchable par la case « Respecter les zones inaccessibles et les murs (ligne) » (modale Itinéraire, cochée d'origine) ; le Mode Secours et « Perdu » la gardent en toutes circonstances. Pour fermer un passage par un **trait** plutôt qu'une surface, une structure **🟦 Mur (ligne)** fait le même effet (même niveau, même case).
 
 1. Dans la barre latérale, ouvre le groupe **⬛ Zones**.
-2. Clique la sous-action **⛔ Zone inaccessible**.
+2. Clique la sous-action **⛔ Inaccessible** (son infobulle rappelle qu'elle bloque l'itinéraire).
 3. Clique sur la carte pour poser les sommets du polygone (au moins 3).
 4. Re-clique sur le 1er point ou appuie sur ✅ Fermer pour clôturer.
 
