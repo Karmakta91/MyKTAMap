@@ -1753,7 +1753,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   nom du POI en capitales Didone noires gravées en creux (ombre en haut, lèvre claire en bas). **2ᵉ ligne**, à 0,55
   du corps : la 1re ligne de la description, seulement si elle commence par une date (1857, 12/03/1890) ou un sigle
   de 1 à 4 capitales suivi d'un chiffre ou d'un point (« IGC 1902 », « R. 45 ») — `_secondePlaque`, 40 caractères
-  au plus, aucun champ de données en plus. **Usure** (lettres effacées par endroits, salissures, teinte) : une des
+  au plus, aucun champ de données en plus ; ⚠️ contrat (décision produit) : jamais sous 14 px de texture
+  (`PLAQUE.min2`, derniers mots retirés si elle ne tient pas), et elle ne réduit jamais le nom : sous un nom long, la
+  plaque grandit en hauteur si besoin. **Usure** (lettres effacées par endroits, salissures, teinte) : une des
   `PLAQUE.variantes` = 4, tirée de l'uid du point (repli id, puis nom) par FNV-1a, puis toute la plaque par un
   générateur à graine (mulberry32, `_aleaGraine`) : ⚠️ contrat, **fixe pour un même point**, jamais `Math.random`.
   Police **Bodoni Moda** (`lib/bodoni-moda/`, SIL OFL, précachée) chargée par `FontFace` à l'ouverture de la vue

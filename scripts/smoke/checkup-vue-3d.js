@@ -3405,7 +3405,8 @@ async function sectionPlaques(page) {
     ["pt_pg_phrase", "Plaque phrase", "Passage étroit. 12 m"],
     ["pt_pg_long_sigle", "Plaque sigle long", "ABCDE 12"],
     ["pt_pg_minus", "Plaque minuscules", "igc 1902"],
-    ["pt_pg_long", "Galerie fictive des anciens carriers du moulin à vent", "1788 R. 12"]
+    ["pt_pg_long", "Galerie fictive des anciens carriers du moulin à vent", "1788 R. 12"],
+    ["pt_pg_long_nu", "Galerie fictive des anciens carriers du moulin à vent", ""]
   ];
   const R = await page.evaluate(async function (DESC) {
     const K = window.KtaVue3D, G = window.KtaGalerie, sc = window.APP_CONFIG.scale;
@@ -3606,7 +3607,7 @@ async function sectionPlaques(page) {
   const vol = function (uid) { return R.vol.filter(function (v) { return v.uid === uid; })[0] || {}; };
   const avec = { pt_pg_date: "1857 consolidation", pt_pg_jour: "12/03/1890 visite de contrôle",
     pt_pg_sigle: "IGC 1902", pt_pg_point: "R. 45", pt_pg_long: "1788 R. 12" };
-  const sans = ["pt_pg_milieu", "pt_pg_vide", "pt_pg_phrase", "pt_pg_long_sigle", "pt_pg_minus", "pt_pg_j0"];
+  const sans = ["pt_pg_milieu", "pt_pg_vide", "pt_pg_long_nu", "pt_pg_phrase", "pt_pg_long_sigle", "pt_pg_minus", "pt_pg_j0"];
   verifier(Object.keys(avec).every(function (u) {
     return vol(u).seconde === avec[u] && vol(u).taille2 > 0 && vol(u).taille2 < vol(u).taille;
   }), "2ᵉ ligne gravée (plus petite) quand la description commence par une date ou un sigle : " +
@@ -3619,6 +3620,11 @@ async function sectionPlaques(page) {
   verifier(vl.lignes && vl.lignes.length === 2 && !vl.coupe && vl.l <= 1.001 && vl.seconde === "1788 R. 12",
     "nom long sur deux lignes, jamais coupé, avec sa 2ᵉ ligne (" + vl.l + " × " + vl.h + " m, " + vl.taille + " / " +
     vl.taille2 + " px)", vl);
+  const nu = vol("pt_pg_long_nu");
+  verifier(vl.taille2 >= 14 && vl.taille === nu.taille && vl.h >= nu.h && Math.abs(nu.h - 0.3) < 0.001 &&
+    vl.l <= 1.001, "nom long + 2ᵉ ligne : 2ᵉ ligne à " + vl.taille2 + " px (≥ 14), nom à " + vl.taille + " px comme " +
+    "sans 2ᵉ ligne (" + nu.taille + " px), plaque haute de " + vl.h + " m (" + nu.h + " m sans 2ᵉ ligne ; elle ne " +
+    "grandit que si la 2ᵉ ligne ne tient plus)", { vl: vl, nu: nu });
   const courte = vol("pt_pg_vide"), datee = vol("pt_pg_date");
   verifier(courte.lignes.length === 1 && Math.abs(courte.h - 0.3) < 0.001 && datee.lignes.length === 1 &&
     datee.h > 0.3 && datee.h <= 0.36 && datee.l <= 1.001,

@@ -290,11 +290,12 @@
   // `lMax` m puis sur deux lignes (_mesurePlaque), `ep` d'épaisseur, centrée à `y` m (et au moins `plafond` m sous le
   // plafond), à `recul` m de la paroi ; dessinée au canvas à `pxm` px par mètre, police de `police` × `h`
   // (resserrée jusqu'à `serre` avant de passer sur deux lignes), 2ᵉ ligne (_secondePlaque) à `corps2` du corps et
-  // `secondeMax` caractères au plus ; usure en `variantes` tirées du point (_variantePlaque). Une texture par contenu,
+  // `secondeMax` caractères au plus, jamais sous `min2` px (la plaque grandit en hauteur) ; usure en `variantes` tirées du point (_variantePlaque). Une texture par contenu,
   // au plus `max` vivantes : au-delà, la plaque unie (`pierre`, liseré `joint`). Couleurs de la scène, pas de la
   // charte de l'UI. Le nom reste avec 🧱 coupé (décision produit : un repère).
   const PLAQUE = { l: 0.6, lMax: 1, h: 0.3, police: 0.36, serre: 0.8, ep: 0.015, y: 1.45, plafond: 0.3, recul: 0.01,
-    pxm: 400, max: 32, pierre: "#c4b08c", joint: "#5e5140", bord: 0.03, corps2: 0.55, secondeMax: 40, variantes: 4 };
+    pxm: 400, max: 32, pierre: "#c4b08c", joint: "#5e5140", bord: 0.03, corps2: 0.55, min2: 14, secondeMax: 40,
+    variantes: 4 };
   // Police des plaques (lib/bodoni-moda, SIL OFL) : chargée à l'ouverture de la 3D (_chargerPolicePlaques), jamais
   // au démarrage ; tant qu'elle manque, le serif du système, puis les plaques sont redessinées (_redessinerPlaques).
   const URL_POLICES_PLAQUE = { 600: "lib/bodoni-moda/bodoni-moda-latin-600-normal.woff2",
@@ -5273,7 +5274,7 @@
     const t = _texPlaque(cle, nom, m);
     v.trace = { plaqueY: +y.toFixed(3), texture: !!t, nom: nom, plaqueL: +m.l.toFixed(3), plaqueH: +h.toFixed(3),
       lignes: m.lignes.slice(), taillePx: m.taille, coupe: m.lignes.join(" ") !== nom.replaceAll(/\s+/g, " "),
-      seconde: l2, taille2Px: m.taille2, variante: variante };
+      seconde: m.seconde, taille2Px: m.taille2, variante: variante };
     if (!t) {
       _rectParoi(lots.opaque, F, -L, L, y0, y1, r + ep, fond);
       _rectParoi(lots.opaque, F, -L + B, L - B, y0 + B, y1 - B, r + ep + 0.002, _couleurFixe(PLAQUE.joint));
@@ -5347,16 +5348,22 @@
   }
 
   // Corps des deux lignes réduits jusqu'à tenir dans `utileW` × `utileH` px (jamais agrandis au-delà de m.taille0).
+  // ⚠️ contrat (décision produit) : la 2ᵉ ligne ne réduit jamais le nom en largeur et garde PLAQUE.min2 px ; sous un
+  // nom long (deux lignes ou resserré), c'est la plaque qui grandit en hauteur (_mesurePlaque : utileH infini).
   function _ajusterPlaque(ctx, m, utileW, utileH) {
     const plusLarge = function (px) {
       return Math.max.apply(null, m.lignes.map(function (l) { return _largeurPlaque(ctx, l, px, 700); }));
     };
-    const corps2 = function (px) { return m.seconde ? Math.round(px * PLAQUE.corps2) : 0; };
+    const corps2 = function (px) { return m.seconde ? Math.max(PLAQUE.min2, Math.round(px * PLAQUE.corps2)) : 0; };
     const haut = function (px, px2) { return (m.lignes.length - 1) * 1.15 * px + px + (px2 ? 0.35 * px + px2 : 0); };
     let taille = m.taille0;
     while (taille > 8 && (plusLarge(taille) > utileW || haut(taille, corps2(taille)) > utileH)) taille--;
     let t2 = corps2(taille);
-    while (t2 > 8 && _largeurPlaque(ctx, m.seconde, t2, 600) > utileW) t2--;
+    while (t2 > PLAQUE.min2 && _largeurPlaque(ctx, m.seconde, t2, 600) > utileW) t2--;
+    // Trop large même à PLAQUE.min2 : la ligne perd ses derniers mots plutôt que de devenir illisible.
+    while (t2 && m.seconde.indexOf(" ") > 0 && _largeurPlaque(ctx, m.seconde, t2, 600) > utileW) {
+      m.seconde = m.seconde.slice(0, m.seconde.lastIndexOf(" ")).trim();
+    }
     m.taille = taille; m.taille2 = t2;
     m.pas = m.lignes.length > 1 ? 1.15 * taille : 0;
     m.largeTexte = Math.max(plusLarge(taille), t2 ? _largeurPlaque(ctx, m.seconde, t2, 600) : 0);
