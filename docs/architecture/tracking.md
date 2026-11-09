@@ -1572,7 +1572,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   au-dessus du sol ; en montée, son sol sous le plafond) — bouche au sol (descente, tranchée) ou au plafond (montée,
   talus sous la rampe), emprise du modèle galerie/mixte (`_emprisesPassages`, la paroi des tubes s'ouvre là) ; au-delà
   elle passe dans la roche, sous le sol ou au-dessus du plafond, couverte (`_pente` : moellons, ruban du canon au
-  milieu du sol ; le bout d'en face reste ouvert). **Marche** : caméra, avatar, ruban et chevrons de l'itinéraire
+  milieu du sol ; le bout d'en face reste ouvert). **Trémie** (décision produit, `_plansTremie`, `_tremiePente`) : sol et plafond d'un niveau voisin montré qui passent dans la galerie, strictement entre son sol et son plafond, ne s'y dessinent pas (trou plat du gabarit au bit du voisin sur la bande de la galerie, là seulement où le plan est dans sa section) ; plafond et parois de la galerie restent : en montant comme en descendant, rien ne coupe la vue ni la tête et rien ne s'ouvre sur le noir. Niveaux montrés lus à leur source (`_montresAlt`), refaits quand le réglage 🏗️ Niveaux change (`_majEntreActif`). **Marche** : caméra, avatar, ruban et chevrons de l'itinéraire
   suivent la pente (`_solPlace`, `_surPente`) ; dans la galerie, la règle du pas est **sa largeur** (corps de 0,4 m dans
   ses parois, jamais plus près du bord qu'au départ ; ni structures ni parois du niveau : on n'est plus à son sol) ; on
   n'en sort par le côté ou par son bout que là où son sol est à moins de 0,3 m de celui du niveau (`_pas`, `_coince`).
@@ -2418,7 +2418,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   (`_surPenteDe`, bout à bout). Dessin (`_zoneJonction`) : sol et plafond en triangles fins (`ENTRE.fin`, matériaux
   des pièces sans gabarit : `_matsPente`), faces du bord par morceaux de `ENTRE.zoneFace` m là où un seul côté est
   vide (dedans [sol, plafond] ; dehors la tranche de chacun des deux niveaux là où il a un vide, et la galerie inclinée
-  qui continue), trous du sol et du plafond d'un seul tenant du niveau, et des plans des voisins pris dans sa hauteur.
+  qui continue), trous du sol et du plafond d'un seul tenant du niveau, et des plans des voisins pris dans sa hauteur (trémie sur toute l'emprise de la zone ; voisins lus à leur source, `_montresAlt` : les tuiles du niveau actif sont construites avant les voisins). Zone et tracé d'un calque comptent comme ceux de la session (`KtaGalerie.memeObjet` : même uid ou mêmes points, `getAllEmbeddedRoads` / `getAllEmbeddedZones` rendant des copies) ; sinon la zone était ignorée et la galerie inclinée passait en tube au travers.
   La galerie inclinée n'est pas dessinée dans la zone (`_pente` : stations au bord, morceaux dedans sautés) ; parois de
   tube et rubans des tracés posés dans la zone non plus. Dessinée par le niveau actif s'il est l'un des siens, avec les
   structures de l'autre niveau posées dedans (`_structuresEmpruntees`), sinon par le voisin qui la porte

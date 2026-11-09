@@ -3435,6 +3435,8 @@
       e.tuiles.forEach(_libererTuile);
       _razCompteurs();
       _gererTuiles(true);
+      (e.volPassages || []).forEach(function (v) { if (v.genre === "pente") _libererVolume(v); });
+      _gererVolumes();
     }
     gardes.forEach(_volumesVoisinAJour);
     _estomperVoisins();
@@ -3628,7 +3630,11 @@
 
   // Contexte du niveau actif relu (ouverture, niveau, hauteur, réglage « Niveaux ») → true s'il a changé.
   function _majEntreActif() {
-    const e = _e, L = _entreDe(e.niveau, 0, e.hauteur), sig = _sigEntre(L) + "|" + e.rendu;
+    const e = _e, L = _entreDe(e.niveau, 0, e.hauteur);
+    // Galeries inclinées du niveau : leurs trémies (_plansTremie, _zoneJonction) suivent les niveaux montrés.
+    const tremie = !(e.pentes || []).length ? ""
+      : _montresAlt().map(function (o) { return o.n + ":" + o.dy; }).join(",");
+    const sig = _sigEntre(L) + "|" + e.rendu + "|" + tremie;
     e.entre = L;
     e.plansCaches = _plansCaches(L, e.hauteur);
     e.autresBloquent = _niveauxQuiBloquent();
@@ -3679,11 +3685,11 @@
     return null;
   }
 
-  // Galerie inclinée dont la zone jonction est z (même objet), ou null.
+  // Galerie inclinée dont la zone jonction est z (KtaGalerie.memeObjet : copie d'un calque comprise), ou null.
   function _penteDeLaZone(z) {
     const l = (_e && _e.pentes) || [];
     for (let i = 0; i < l.length; i++) {
-      if ((l[i].zones || []).some(function (en) { return en.z === z; })) return l[i];
+      if ((l[i].zones || []).some(function (en) { return window.KtaGalerie.memeObjet(en.z, z); })) return l[i];
     }
     return null;
   }
@@ -3996,10 +4002,13 @@
     const bits = e.bitsPlans || { sol: GABARIT.sol, plafond: GABARIT.plafond };
     trou(bits.sol, 0);
     trou(bits.plafond, h);
+    // 🩸 Voisins lus à leur source (_montresAlt), jamais e.voisins : les tuiles du niveau actif sont construites AVANT
+    // _voisinsPreparer (_reindexer) ; à l'ouverture e.voisins est vide, après une galerie inclinée ce sont ceux de
+    // l'ancien niveau, et le sol du niveau d'arrivée passait en travers de la zone pendant la montée.
     if (!e.dyContexte) {
-      (e.voisins || []).forEach(function (v) {
-        if (!v.plans) return;
-        const b = _bitsVoisin(v.dessus), ys = v.dy + v.hauteur;
+      _montresAlt().forEach(function (v) {
+        if (v.actif) return;
+        const b = _bitsVoisin(v.dessus), ys = v.dy + v.h;
         if (v.dy > fmin + ENTRE.eps && v.dy < cmax - ENTRE.eps) trou(b.sol, v.dy);
         if (ys > fmin + ENTRE.eps && ys < cmax - ENTRE.eps) trou(b.plafond, ys);
       });
@@ -4747,7 +4756,7 @@
 
   function _construireVolume(v) {
     const e = _e, lots = { parois: new Lot(), opaque: new Lot(), lumineux: new Lot(), sol: new Lot(),
-      plafond: new Lot(), plafondConduit: new Lot() };
+      plafond: new Lot(), plafondConduit: new Lot(), trous: {} };
     const g = new THREE.Group();
     g.userData.famille = "passage";
     if (v.genre === "pente") _pente(v, lots); else if (v.acces) _acces(v, lots, g); else _puits(v, lots, g);
@@ -4767,6 +4776,8 @@
     ajouter(lots.sol, e.mats.boucheSol, -1, "boucheSol");
     ajouter(lots.plafond, e.mats.bouchePlafond, -1, "bouchePlafond");
     ajouter(lots.plafondConduit, e.mats.bouchePlafondConduit, -1, "bouchePlafond");
+    // Trémie d'une galerie inclinée (_tremiePente) ; jamais sur un volume de voisin (gabarit du niveau actif).
+    if (!vv) Object.keys(lots.trous).forEach(function (b) { ajouter(lots.trous[b], _matTrou(Number(b)), -1, "trou"); });
     if (lots.parois.p.length) _paroiTexturee();
     ajouter(lots.parois, e.mats.paroi, 0, "paroiPassage");
     ajouter(lots.opaque, e.mats.opaque, 0, "passage");
@@ -4950,6 +4961,7 @@
     };
     const ys = function (t) { return dY * t; };
     const yc = function (t) { return dY * t + hA + (p.hB - hA) * t; };
+    const plans = _e.volumeVoisin ? [] : _plansTremie(p);
     const st = [];   // stations (m) : sommets du tracé et bout de la part ouverte
     for (let i = 0; i < p.ptsM.length; i++) {
       const t = p.cum[i] / p.tot;
@@ -4987,6 +4999,7 @@
       const wA = W(A.t), wB = W(B.t);
       const gA = G(A, -wA), dA = G(A, wA), gB = G(B, -wB), dB = G(B, wB);
       const yA = ys(A.t), yB = ys(B.t), uA = A.t * p.tot, uB = B.t * p.tot, k = (yB - yA) / l;
+      plans.forEach(function (q) { _tremiePente(lots.trous, q, A, B, wA, wB, ys, yc, G); });
       const haut = norme([-ux * k, 1, -uz * k]), bas = norme([ux * k, -1, uz * k]);
       lots.parois.quad([gA[0], yA, gA[1]], [gB[0], yB, gB[1]], [dB[0], yB, dB[1]], [dA[0], yA, dA[1]], haut, BLANC,
         [uA, -wA, uB, -wB, uB, wB, uA, wA]);
@@ -5020,6 +5033,45 @@
       const c = { x: pied.B.x - pied.ux * PENTE.talus, z: pied.B.z - pied.uz * PENTE.talus };
       mur(pied.G(c, -pied.wt), pied.G(c, pied.wt), 0, hA, 0, hA);
     }
+  }
+
+  // ⚠️ contrat (décision produit) : trémie d'une galerie inclinée. Sol et plafond d'un niveau voisin montré
+  // (_montresAlt, lus à leur source comme _zoneJonction) qui passent DANS la galerie, strictement entre son sol et son
+  // plafond, ne s'y dessinent pas : trou plat du gabarit à leur bit (_matTrou, _matsVoisins) sur la bande de la
+  // galerie, là seulement où le plan est dans sa section. En montant comme en descendant, rien ne coupe la vue ni la
+  // tête ; plafond et parois de la galerie restent (sans gabarit) : rien d'ouvert sur le noir. Galerie d'un voisin
+  // (_construireVolumeVoisin) : aucun trou. La zone jonction traversée pose les siens sur toute son emprise.
+  // → [{ bit, y }] (m, repère du niveau de la scène) des plans qui recoupent la hauteur de la galerie p.
+  function _plansTremie(p) {
+    const out = [], bas = Math.min(0, p.dY), haut = Math.max(p.hA, p.dY + p.hB);
+    _montresAlt().forEach(function (v) {
+      if (v.actif) return;
+      const b = _bitsVoisin(v.dessus);
+      [[b.sol, v.dy], [b.plafond, v.dy + v.h]].forEach(function (q) {
+        if (q[1] > bas + ENTRE.eps && q[1] < haut - ENTRE.eps) out.push({ bit: q[0], y: q[1] });
+      });
+    });
+    return out;
+  }
+
+  // Trou du plan q sur le tronçon A → B de la galerie inclinée (demi-largeurs wA, wB ; sol ys(t), plafond yc(t) ;
+  // G(station, décalage) : point latéral), sur la part où ys < q.y < yc (deux fonctions affines de la part du tronçon).
+  function _tremiePente(trous, q, A, B, wA, wB, ys, yc, G) {
+    let lo = 0, hi = 1;
+    const borner = function (fa, fb) {   // garder où f > 0, f affine de fa (k = 0) à fb (k = 1)
+      if (fa > ENTRE.eps && fb > ENTRE.eps) return;
+      if (fa <= ENTRE.eps && fb <= ENTRE.eps) { hi = -1; return; }
+      const k0 = (fa - ENTRE.eps) / (fa - fb);
+      if (fa > fb) hi = Math.min(hi, k0); else lo = Math.max(lo, k0);
+    };
+    borner(q.y - ys(A.t), q.y - ys(B.t));
+    borner(yc(A.t) - q.y, yc(B.t) - q.y);
+    if (hi - lo < 1e-6) return;
+    const S = function (k) {
+      return { x: A.x + (B.x - A.x) * k, z: A.z + (B.z - A.z) * k };
+    };
+    const a = S(lo), b = S(hi), wa = wA + (wB - wA) * lo, wb = wA + (wB - wA) * hi;
+    _quadPlat(trous[q.bit] || (trous[q.bit] = new Lot()), [G(a, -wa), G(b, -wb), G(b, wb), G(a, wa)], q.y);
   }
 
   // Paroi verticale de P à Q (m) dont le bas et le haut varient le long du mur (y0p, y1p en P ; y0q, y1q en Q).

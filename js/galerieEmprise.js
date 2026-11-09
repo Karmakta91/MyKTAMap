@@ -17,7 +17,8 @@
 //   formes de POI : formes et dimensions des volumes, formes posées sur la paroi), comblementPorte(x, y, ang, w,
 //   niveau, rendu) (pierre de taille d'un cavage), pente(r, niveau) / denivele(a, b) / demiPente(p, t) (galerie inclinée d'un tracé
 //   jonction vue d'un niveau, lue par vue3d.js), estZoneJonction(z) / penteDeZone(z) / zonesDePente(r) (zone jonction,
-//   type `pente` : sa pente est celle du tracé jonction qui la traverse).
+//   type `pente` : sa pente est celle du tracé jonction qui la traverse), memeObjet(a, b) (même tracé ou même zone,
+//   copies des calques comprises).
 // Modèle MIXTE (vue 3D par défaut) : chaque côté du tube est jugé à part ; une structure du niveau (intégrée ou
 // perso) proche d'un côté ouvre CE côté (la paroi d'en face reste), un pan de retour relie la paroi gardée à la
 // structure ; proche des deux côtés, le tracé traverse une CHAMBRE, sans parois. Un tube qui débouche dans une
@@ -314,10 +315,21 @@
     return null;
   }
 
-  // Zones jonction auxquelles le tracé jonction r donne sa pente (penteDeZone(z) === r), filtres ignorés.
+  // Même tracé ou même zone du relevé. 🩸 getAllEmbeddedRoads et getAllEmbeddedZones rendent des COPIES à chaque
+  // appel (road.js, utils.js) : comparés par ===, un tracé ou une zone d'un calque n'était jamais le même d'un appel
+  // à l'autre (zone jonction d'un calque ignorée, galerie inclinée en tube au travers). Même uid, sinon même tableau
+  // de points (les copies le partagent).
+  function memeObjet(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (a.uid && b.uid) return a.uid === b.uid;
+    return Array.isArray(a.points) && a.points === b.points;
+  }
+
+  // Zones jonction auxquelles le tracé jonction r donne sa pente (penteDeZone(z), memeObjet), filtres ignorés.
   function zonesDePente(r) {
     if (!r || r.type !== "jonction") return [];
-    return _zones().filter(function (z) { return estZoneJonction(z) && penteDeZone(z) === r; });
+    return _zones().filter(function (z) { return estZoneJonction(z) && memeObjet(penteDeZone(z), r); });
   }
 
   function _points() { return _tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints)); }
@@ -1716,7 +1728,7 @@
     PAROI: Object.assign({}, PAROI),
     COTES_CERCLE: COTES_CERCLE, comblementPorte: comblementPorte, COMBLE_MAX_M: COMBLE_MAX_M,
     pente: pente, denivele: denivele, demiPente: demiPente, ROCHE_SANS_SOLS_M: ROCHE_SANS_SOLS_M,
-    estZoneJonction: estZoneJonction, penteDeZone: penteDeZone, zonesDePente: zonesDePente,
+    estZoneJonction: estZoneJonction, penteDeZone: penteDeZone, zonesDePente: zonesDePente, memeObjet: memeObjet,
     CONE_MIN_M: CONE_MIN_M
   };
 })();
