@@ -6019,17 +6019,21 @@
   function _majGeste(dt) {
     const e = _e, g = e.geste, F = GESTE.fondu, T = g.sens ? GESTE.ms : 2 * F, M = T / 2;
     g.t += dt * 1000;
+    // 🩸 Bascule à l'image où le temps passe M, et le temps repart de M : sur une image lente (dt jusqu'à 0,1 s), il
+    // dépassait M et la scène d'arrivée apparaissait sous un voile déjà levé de moitié (WebKit sous charge). L'image
+    // de la bascule est noire ; le voile se lève ensuite.
+    if (!g.fait && g.t >= M) {
+      g.t = M;
+      g.fait = true;
+      try { g.bascule(); } catch (err) { console.warn("[Vue3D] bascule de niveau :", err && err.message); }
+      if (!_e) return;
+    }
     const t = Math.min(g.t, T);
     let op;
     if (t < M) {
       e.dy = g.sens * g.d1 * _lisse(t / M);
       op = (t - (M - F)) / F;
     } else {
-      if (!g.fait) {
-        g.fait = true;
-        try { g.bascule(); } catch (err) { console.warn("[Vue3D] bascule de niveau :", err && err.message); }
-        if (!_e) return;
-      }
       e.dy = -g.sens * g.d2 * (1 - _lisse((t - M) / M));
       op = 1 - (t - M) / F;
     }

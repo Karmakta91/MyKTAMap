@@ -1590,7 +1590,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `checkup-vue-3d.js` § 14 octies (`KTA_V3D_SEUL=pente`).
 - **Geste d'un changement de niveau** (`_lancerGeste`, `_majGeste`, décision produit) : fondu noir (`GESTE.fondu`
   250 ms, `.kta-v3d-fondu` au fond des jetons sombres, sous les boutons) de part et d'autre de la **bascule**, où la
-  scène du niveau d'arrivée est construite (au noir). Passage 🪜 ou fiche : la caméra s'enfonce (descente) ou monte
+  scène du niveau d'arrivée est construite (au noir : l'image de la bascule est toujours à voile plein, le temps du
+  geste repart de la mi-course même si une image lente l'a dépassée). Passage 🪜 ou fiche : la caméra s'enfonce (descente) ou monte
   dans le volume pendant la première moitié de `GESTE.ms` (1 s), jusqu'à 0,8 m sous le sol ou au-dessus du plafond,
   puis arrive du plafond (ou du sol) du niveau d'arrivée ; vertical seul, sans rotation, tenu par `dt` dans la boucle
   d'image (`_image`), rendu continu seulement pendant le geste ; un second passage pendant le geste est refusé.
