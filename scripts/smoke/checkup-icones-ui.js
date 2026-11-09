@@ -11,7 +11,9 @@
 // Aide intégrée : fiche « Menu Tracker », même contrôle Tracker / Boussole.
 // Fenêtres d'outils de la carte (Réglages du plan, Filtres, Légende, Distance totale, Boussole, Heatmap, exports,
 // Recherche, Statistiques, Carnet, Itinéraire, Je suis perdu, Mode Secours, éditeur de point, raccourcis) : titres,
-// sections et boutons migrés en SVG, sans emoji.
+// sections et boutons migrés en SVG, sans emoji. Reste de l'interface (lot C3) : barres du haut et du bas, fiche d'un
+// point, bouton d'aide des fenêtres, Mode Secours (vues opérateur et secouriste), vue 3D, Générateur, Tableur, Mes
+// photos, tutoriel (icônes de carte et emoji de bouton substitués), Vue OSM si le plan est géoréférencé.
 // check-icones-ui.js garde le source ; seul ce parcours voit le rendu (substitution, DOM, CSS).
 // Captures : KTA_CAPTURES=<dossier hors dépôt> (aucune par défaut).
 // Usage : node scripts/smoke/checkup-icones-ui.js   (KTA_MOTEURS=chromium : un seul moteur)
@@ -334,6 +336,170 @@ async function jouer(page, theme) {
     await page.keyboard.press("Escape").catch(function () {});
     await page.waitForTimeout(200);
   }
+
+  // 9. Lot C3 : barres du haut et du bas, fiche d'un point, bouton d'aide des fenêtres, confirmations, Mode Secours
+  //    (vue opérateur et secouriste), vue 3D, Vue OSM, Générateur, Tableur, Mes photos, tutoriel.
+  const sonder = function (sel, racine) {
+    return page.evaluate(function (a) {
+      const r = a.racine ? document.querySelector(a.racine) : document;
+      if (!r) return null;
+      return Array.prototype.filter.call(r.querySelectorAll(a.sel), function (el) {
+        return el.offsetParent !== null || el.closest("#kta-refonte-header, #kta-refonte-statusbar");
+      }).map(function (el) { return Object.assign({ t: (el.textContent || "").trim().slice(0, 30) }, window.__ktaSonde(el)); });
+    }, { sel: sel, racine: racine || null });
+  };
+  const exiger = function (nom, r, min) {
+    if (!r) { pb(nom + " : introuvable"); return; }
+    const f = r.filter(function (b) { return !b.svg || b.emoji; });
+    verifier(r.length >= min && f.length === 0, nom + " : " + r.length + " icône(s) en SVG, sans emoji", f);
+  };
+  exiger("barre du haut", await sonder("#kta-refonte-header .kta-refonte-counter-icon"), 7);
+  exiger("barre du bas", await sonder("#kta-refonte-statusbar .kta-refonte-stat-icon"), 4);
+  const urgence = await page.evaluate(function () {
+    const s = document.querySelector("#kta-refonte-counter-sortie svg");
+    return !!s && s.classList.contains("kta-ico-siren");
+  });
+  verifier(urgence, "barre du haut : Sortie d'urgence = siren (la même que la vue 3D)");
+  await capture(page, "9-barres");
+
+  // Fiche d'un point de session, rendue par l'app (utils.js > buildPointPopupHtml).
+  const fiche = await page.evaluate(function () {
+    const d = document.createElement("div");
+    d.id = "kta-sonde-fiche";
+    d.className = "leaflet-popup-content";
+    d.innerHTML = window.buildPointPopupHtml({ uid: "pt_sonde", id: "sonde", nom: "Sonde", x: 10, y: 10, tags: [] }, true,
+      { layerId: "editor", layerLabel: "x" });
+    document.body.appendChild(d);
+    const r = Array.prototype.map.call(d.querySelectorAll(".kta-popup-btn"), function (b) {
+      return Object.assign({ t: b.textContent.trim().slice(0, 20) }, window.__ktaSonde(b));
+    });
+    d.remove();
+    return r;
+  });
+  exiger("fiche d'un point (boutons)", fiche, 6);
+
+  // Bouton d'aide des fenêtres (circle-help) et icône d'une confirmation.
+  await page.evaluate(function () { window.ouvrirItinerairModal(); });
+  await page.waitForTimeout(500);
+  const aideBtn = await page.evaluate(function () {
+    const b = document.querySelector("#kta-itinerary-modal .kta-aide-ctx-btn");
+    return b ? Object.assign({ circle: !!b.querySelector("svg.kta-ico-circle-help") }, window.__ktaSonde(b)) : null;
+  });
+  verifier(!!aideBtn && aideBtn.circle && !aideBtn.emoji, "bouton d'aide d'une fenêtre : icône circle-help, sans emoji", aideBtn);
+  await page.evaluate(function () { const b = document.getElementById("kta-iti-close"); if (b) b.click(); });
+  await page.waitForTimeout(300);
+
+  // Mode Secours : vue opérateur puis secouriste (bandeau, barre d'outils, titres).
+  const secours = async function (role, nom) {
+    const id = await page.evaluate(function (role) {
+      const S = window.SecoursMode;
+      const s = S.create("Sonde " + role);
+      S.addGroupe(s.id, "Équipe 1");
+      S.rejoindre(s.id, { role: role });
+      S.ouvrir(s.id);
+      return s.id;
+    }, role);
+    await page.waitForTimeout(900);
+    const r = await sonder("#kta-secours-modal .kta-readme-modal-titre, #kta-secours-modal button.kta-btn:not([data-action^='statut'])" +
+      ":not(.kta-secours-live-step), #kta-secours-modal .kta-secours-tool-block-titre");
+    const f = (r || []).filter(function (b) { return b.emoji; });
+    verifier(!!r && r.length >= 4 && f.length === 0, "Mode Secours (" + nom + ") : " + (r ? r.length : 0) +
+      " titres et boutons sans emoji", f);
+    const svg = (r || []).filter(function (b) { return b.svg; }).length;
+    verifier(svg >= 4, "Mode Secours (" + nom + ") : " + svg + " icônes SVG");
+    await capture(page, "9-secours-" + role);
+    await page.evaluate(function (id) { window.SecoursMode.fermer(); try { window.SecoursMode.delete(id); } catch (e) { /* déjà retiré */ } }, id);
+    await page.waitForTimeout(400);
+  };
+  await secours("operateur", "opérateur");
+  await secours("secouriste", "secouriste");
+
+  // Vue 3D : rangée du haut, tuile des réglages (hors Boussole, image de la rose de la carte, et choix de niveaux en
+  // texte), pastille de mode.
+  // Par le bouton de la carte (le même chemin que l'utilisateur ; la vue choisit sa place de départ).
+  await page.evaluate(function () { const a = document.querySelector(".kta-vue3d-ctrl a"); if (a) a.click(); });
+  const ouvre3d = await page.waitForSelector("#kta-vue3d .kta-v3d-haut", { state: "attached", timeout: 20000 })
+    .then(function () { return true; }, function () { return false; });
+  if (ouvre3d) {
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () { const b = document.querySelector('#kta-vue3d [data-v3d="reglages"]'); if (b) b.click(); });
+    await page.waitForTimeout(400);
+    exiger("vue 3D : rangée du haut", await sonder("#kta-vue3d .kta-v3d-haut > button:not(.kta-v3d-fermer):not(.kta-v3d-filtres)"), 4);
+    exiger("vue 3D : tuile des réglages", await sonder("#kta-vue3d .kta-v3d-reglages button.kta-v3d-btn-mode:not(.kta-v3d-btn-boussole):not(.kta-v3d-btn-niveaux), " +
+      "#kta-vue3d .kta-v3d-curseur-nom"), 8);
+    exiger("vue 3D : pastille de mode", await sonder("#kta-vue3d .kta-v3d-mode-indic"), 1);
+    await capture(page, "9-vue3d");
+    await page.evaluate(function () { window.KtaVue3D.fermer(); });
+    await page.waitForTimeout(600);
+  } else pb("vue 3D : ouverture impossible");
+
+  // Générateur, Tableur, Mes photos, tutoriel.
+  const FEN = [
+    { nom: "Générateur", ouvrir: ["afficherPlanner"], fen: "#kta-planner-modal", min: 4,
+      sel: ".kta-readme-modal-titre, .kta-aide-section-titre, .kta-planner-mode-btn", fermer: "#kta-planner-close" },
+    { nom: "Tableur", ouvrir: ["ouvrirTableEditor"], fen: "#kta-tbl-modal", min: 4,
+      sel: ".kta-tbl-source-ico, .kta-readme-modal-titre", fermer: "#kta-tbl-close", racine: "body" },
+    { nom: "Mes photos", ouvrir: ["KtaPhotosGalerie.ouvrir"], fen: "#kta-phg-modal", min: 1,
+      sel: "#kta-phg-modal .kta-readme-modal-titre", fermer: "[data-phg='fermer']", racine: "body" }
+  ];
+  for (const o of FEN) {
+    await page.evaluate(function (o) {
+      const parts = o[0].split("."), nomFn = parts.pop();
+      const cible = parts.reduce(function (acc, p) { return acc ? acc[p] : null; }, window);
+      try { if (cible && typeof cible[nomFn] === "function") cible[nomFn].apply(cible, o.slice(1)); } catch (e) { /* hors sujet */ }
+    }, o.ouvrir);
+    await page.waitForSelector(o.fen, { state: "attached", timeout: 6000 }).catch(function () {});
+    await page.waitForTimeout(600);
+    exiger(o.nom, await sonder(o.sel, o.racine === "body" ? null : o.fen), o.min);
+    await capture(page, "9-" + o.nom.replace(/[^\wéÉè]+/g, "-").toLowerCase());
+    await page.evaluate(function (sel) { const b = document.querySelector(sel); if (b) b.click(); }, o.fermer);
+    await page.waitForTimeout(300);
+    // Générateur : « Quitter le générateur ? » (saisie en cours) — on quitte.
+    await page.evaluate(function () { const b = document.getElementById("kta-confirm-oui"); if (b) b.click(); });
+    await page.waitForTimeout(200);
+    await page.keyboard.press("Escape").catch(function () {});
+    await page.waitForTimeout(200);
+  }
+
+  // Tutoriel : icône de carte en SVG ; dans le texte, les emoji de bouton migré sont des SVG, les autres listés.
+  await page.evaluate(function () { window.Tutorial.ouvrir(); });
+  await page.waitForTimeout(600);
+  const tuto = [];
+  for (let i = 0; i < 11; i++) {
+    tuto.push(await page.evaluate(function () {
+      const K = window.KtaIcones, carte = document.querySelector("#kta-tutorial-corps .kta-tutorial-card");
+      if (!carte) return null;
+      const texte = carte.querySelector(".kta-tutorial-card-texte");
+      const t = texte.textContent.replace(/\uFE0F/g, "");
+      const migres = K.classerDoc(t).filter(function (o) { return o.icone; }).length;   // reste d'emoji substituable
+      return { ico: !!carte.querySelector(".kta-tutorial-card-emoji svg.kta-ico"), svg: texte.querySelectorAll("svg.kta-ico-doc").length,
+        reste: migres };
+    }));
+    if (i === 4) await capture(page, "9-tutoriel");
+    await page.evaluate(function () { const b = document.getElementById("kta-tutorial-next"); if (b) b.click(); });
+    await page.waitForTimeout(250);
+  }
+  const tv = tuto.filter(Boolean);
+  verifier(tv.length >= 10 && tv.every(function (c) { return c.ico; }), "tutoriel : " + tv.length + " cartes, icône de carte en SVG");
+  const tSvg = tv.reduce(function (a, c) { return a + c.svg; }, 0), tReste = tv.reduce(function (a, c) { return a + c.reste; }, 0);
+  verifier(tSvg >= 20 && tReste === 0, "tutoriel : " + tSvg + " icônes de bouton en SVG dans le texte, " + tReste +
+    " emoji de bouton migré restant");
+  await page.evaluate(function () { window.Tutorial.fermer(); });
+  await page.waitForTimeout(300);
+
+  // Vue OSM (plan géoréférencé seulement) : contrôles en SVG.
+  const osm = await page.evaluate(function () {
+    try { if (window.OsmView && window.OsmView.setOptedIn) window.OsmView.setOptedIn(true); } catch (e) { /* option */ }
+    if (!window.OsmView || !window.OsmView.isAvailable || !window.OsmView.isAvailable()) return false;
+    try { window.OsmView.open(); return true; } catch (e) { return false; }
+  });
+  if (osm) {
+    await page.waitForTimeout(2500);
+    exiger("Vue OSM", await sonder("#kta-osm-view-overlay .kta-readme-modal-titre, #kta-osm-view-overlay button.kta-btn"), 3);
+    await capture(page, "9-vue-osm");
+    await page.evaluate(function () { try { window.OsmView.close(); } catch (e) { /* déjà fermée */ } });
+    await page.waitForTimeout(400);
+  } else console.log("  ℹ️ Vue OSM : plan non géoréférencé ou vue indisponible, sondage sauté");
 
   // 6. Documentation (fr) : bonnes icônes, et aucun emoji migré resté hors « autre sens ».
   await page.evaluate(function () { window.afficherReadme(); });
