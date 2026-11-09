@@ -2513,6 +2513,8 @@
   "vue3d.guidageMontrer": "Mostrar u ocultar el guiado en 3D: banda y chevrones (este dispositivo; el de emergencia sigue visible)",
   "vue3d.texturesNom": "Texturas",
   "vue3d.texturesMontrer": "Paredes de las galerías de sillería, pilares y frentes de roca bruta, muros de bloque de hormigón, escombros de tierra y piedras, derrumbes de bloques caídos; desactivado: colores de la leyenda, paredes incluidas, suelo negro (este dispositivo)",
+  "vue3d.lignesSolNom": "Líneas en el suelo",
+  "vue3d.lignesSolMontrer": "Trazados en el suelo, línea central de las galerías y círculos de intersección en 3D; desactivado: suelo limpio, el itinerario se mantiene, el mapa 2D no cambia (este dispositivo)",
   "vue3d.inclinaisonPlus": "Vista más vertical",
   "vue3d.inclinaisonMoins": "Vista más rasante",
   "vue3d.portee": "Alcance",

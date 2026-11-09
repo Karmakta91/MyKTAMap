@@ -2513,6 +2513,8 @@
   "vue3d.guidageMontrer": "Show or hide guidance in 3D: banner and chevrons (this device; emergency guidance stays shown)",
   "vue3d.texturesNom": "Textures",
   "vue3d.texturesMontrer": "Tunnel walls in dressed stone, pillars and faces in raw rock, walls in concrete block, backfill in earth and stones, collapses in rubble; off: legend colours, tunnel walls included, black floor (this device)",
+  "vue3d.lignesSolNom": "Floor lines",
+  "vue3d.lignesSolMontrer": "Paths on the floor, tunnel centre lines and intersection rings in 3D; off: bare floor, the route stays, the 2D map is unchanged (this device)",
   "vue3d.inclinaisonPlus": "Steeper view",
   "vue3d.inclinaisonMoins": "Lower view",
   "vue3d.portee": "Range",

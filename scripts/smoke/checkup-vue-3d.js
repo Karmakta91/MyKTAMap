@@ -10723,6 +10723,7 @@ async function sectionMiniCarte(nav) {
       window.setEditorPoints([
         Object.assign({ id: "Danger fictif", uid: "pt_mc_d", level: 0, tags: ["danger"] }, P(10, 1)),
         Object.assign({ id: "Entrée fictive", uid: "pt_mc_e", level: 0, tags: ["entree_plan"] }, P(-10, -1)),
+        Object.assign({ id: "Salle fictive", uid: "pt_mc_s", level: 0, tags: ["salle"] }, P(4, -4)),
         Object.assign({ id: "Puits fictif", uid: "pt_mc_j", level: 0, niveaux: [0, -1], tags: ["jps"],
           accroches: [{ level: -1, x: acc.x, y: acc.y }] }, P(-14, 0.5))
       ]);
@@ -10758,9 +10759,12 @@ async function sectionMiniCarte(nav) {
       a.top >= a.haut && Math.abs(a.droite - 10) < 1.5 && a.w >= 96 && Math.abs(a.w - a.h) < 0.5 && a.rond === "50%",
       nom + "par défaut : médaillon rond en haut à droite, sous la rangée du haut ; 🗺️ à côté de la boussole, pressé",
       a);
-    verifier(a.m.formes === 4 && a.m.pois.slice().sort().join(",") === "danger,passage,sortie" && a.m.rayon === 30,
-      nom + "niveau actif seul (2 tracés, pilier, remblais ; galerie du −1 absente), passage / danger / sortie, " +
+    verifier(a.m.formes === 4 && a.m.pois.slice().sort().join(",") === "autre,danger,passage,sortie" &&
+      a.m.pois[0] === "autre" && a.m.rayon === 30,
+      nom + "niveau actif plein (2 tracés, pilier, remblais), tous les POI (la salle sous passage / danger / sortie), " +
       "rayon 30 m", a.m);
+    verifier(a.m.voisins.join(",") === "dessous",
+      nom + "niveau voisin : la galerie du −1 en contour estompé (dessous), aucun niveau au-dessus du 0", a.m.voisins);
     // ── Nord fixe : tourner ne refait pas le fond, la flèche suit ; nord calibré à 30° : fond tourné, cap réel ──
     const n = await page.evaluate(async function () {
       const K = window.KtaVue3D, r = {};
@@ -10819,6 +10823,38 @@ async function sectionMiniCarte(nav) {
       f.apres.pois.indexOf("danger") >= 0,
       nom + "filtres ≡ : remblais et danger décochés retirés de la mini-carte, revenus une fois recochés",
       { avant: [f.avant.formes, f.avant.pois], apres: [f.apres.formes, f.apres.pois] });
+    // ── ⚙️ Lignes au sol : coupées, plus de ruban de tracé en 3D ; carte 2D, filtres et mini-carte inchangés ──
+    const ls = await page.evaluate(async function () {
+      const K = window.KtaVue3D, q = function (x) { return document.querySelector("#kta-vue3d " + x); }, r = {};
+      const nRubans = function () {
+        const o = K.etat().rubans || {};
+        return Object.keys(o).filter(function (k) { return k !== "itinerary"; }).reduce(function (s, k) {
+          return s + o[k];
+        }, 0);
+      };
+      const filtres = function () { return JSON.stringify(Array.from((window._ktaRuntimeFilters || {}).roadTypes || [])); };
+      r.avant = { rubans: nRubans(), formes: window.__mc().formes, filtres: filtres() };
+      if (q("#kta-v3d-reglages").hidden) q('[data-v3d="reglages"]').click();
+      const b = q('[data-v3d="lignesSol"]');
+      r.presse0 = b.getAttribute("aria-pressed");
+      b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 9 }));
+      await new Promise(function (ok) { setTimeout(ok, 400); });
+      await window.__fxImages(10);
+      r.coupees = { rubans: nRubans(), formes: window.__mc().formes, filtres: filtres(),
+        presse: b.getAttribute("aria-pressed"), ls: localStorage.getItem("myktamap_v3d_lignessol_v1") };
+      b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 9 }));
+      await new Promise(function (ok) { setTimeout(ok, 400); });
+      await window.__fxImages(10);
+      r.rendues = { rubans: nRubans(), presse: b.getAttribute("aria-pressed") };
+      localStorage.removeItem("myktamap_v3d_lignessol_v1");
+      if (!q("#kta-v3d-reglages").hidden) q('[data-v3d="reglages"]').click();
+      return r;
+    });
+    verifier(ls.avant.rubans > 0 && ls.presse0 === "true" && ls.coupees.rubans === 0 && ls.coupees.presse === "false" &&
+      ls.coupees.ls === "0" && ls.coupees.formes === ls.avant.formes && ls.coupees.filtres === ls.avant.filtres &&
+      ls.rendues.rubans === ls.avant.rubans && ls.rendues.presse === "true",
+      nom + "⚙️ Lignes au sol coupées : plus de ruban de tracé en 3D, mini-carte et filtres ≡ inchangés ; rendues au " +
+      "second toucher", ls);
     // ── Interrupteur ⚙️ : masquée, retenue à la réouverture ; vue d'édition : masquée ; greffe ──
     const s = await page.evaluate(async function () {
       const K = window.KtaVue3D, q = function (x) { return document.querySelector("#kta-vue3d " + x); }, r = {};
@@ -12565,7 +12601,7 @@ async function sectionCaseBoutonsZoom(nav) {
     const apresPlace = await page.evaluate(function () { return window.KtaVue3D.etat().camera.place; });
     verifier(apresPlace === false, nom + "décochée : ⌖ ramène la caméra sur la place", { place: apresPlace });
     // Molette, clavier et Maj + molette sans les boutons.
-    const cv = await page.locator("#kta-vue3d canvas").boundingBox();
+    const cv = await page.locator("#kta-vue3d canvas.kta-v3d-canvas").boundingBox();
     await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 3);
     const e0 = await page.evaluate(function () {
       const K = window.KtaVue3D; K.zoomer(18.4 / K.etat().portee.recul);

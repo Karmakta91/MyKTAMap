@@ -1270,6 +1270,7 @@
     }
     for (let i = 0; i < t.r.length; i++) {
       const r = t.r[i], col = _couleur("traces", r.type, "color");
+      if (r.type !== "itinerary" && !_lignesSol()) continue;
       _compter(_e.rubans, r.type);
       if (r.type === "itinerary") _rubanIti(lumineux, r);
       else if (!_zoneSous((r.a.x + r.b.x) / 2 / sc, (r.a.y + r.b.y) / 2 / sc)) {
@@ -1471,7 +1472,7 @@
     // Liseré au sol : la couleur du type de tracé dans la légende.
     for (let i = 0; i < t.a.length; i++) {
       const r = m.aretes[t.a[i]];
-      if (!_typeTraceMontre(r.type)) continue;
+      if (!_lignesSol() || !_typeTraceMontre(r.type)) continue;
       const col = _couleur("traces", r.type, "color");
       _compter(e.liseres, r.type);
       _ruban(rubans, { x: r.ax, y: r.ay }, { x: r.bx, y: r.by }, sc, LISERE, 0.015, col);
@@ -1483,6 +1484,7 @@
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
     for (let i = 0; i < t.r.length; i++) {
       const r = t.r[i], col = _couleur("traces", r.type, "color");
+      if (r.type !== "itinerary" && !_lignesSol()) continue;
       _compter(_e.rubans, r.type);
       if (r.type === "itinerary") _rubanIti(lumineux, r);
       else _ruban(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
@@ -3256,7 +3258,7 @@
   function _sigVoisins() {
     const e = _e, f = window._ktaRuntimeFilters || {}, g = window.dataLayerGroups || {}, map = window.map;
     let s = e.rendu + "|" + (e.textures === true) + "|" + (e.donnees ? e.donnees.empreinte : "") + "|" +
-      e.tuilesActives + "|" + _permisGreffe("traces") + "|";
+      e.tuilesActives + "|" + _permisGreffe("traces") + "|" + _lignesSol() + "|";
     const cmp = function (a, b) { return String(a).localeCompare(String(b)); };
     Object.keys(f).sort(cmp).forEach(function (k) {
       const v = f[k];
@@ -8765,7 +8767,7 @@
     }
     e.listeRonds = [];
     const montre = typeof window.getPlanShowsIntersections === "function" && window.getPlanShowsIntersections();
-    if (!montre || typeof window.getRoadIntersections !== "function") return;
+    if (!montre || !_lignesSol() || typeof window.getRoadIntersections !== "function") return;
     let liste = [];
     try { liste = window.getRoadIntersections() || []; } catch (err) { liste = []; }
     const lot = new Lot(), haut = [0, 1, 0], n = ROND.cotes;
@@ -9800,6 +9802,19 @@
     icT.innerHTML = _ico("brick-wall");
     e.boutonTextures.appendChild(icT);
     e.boutonTextures.appendChild(document.createTextNode(_t("vue3d.texturesNom")));
+    // Lignes au sol (rubans des tracés, liseré des galeries, ronds) : 3D seulement, l'itinéraire reste.
+    const ligneSol = document.createElement("div");
+    ligneSol.className = "kta-v3d-reglages-ligne";
+    tuile.appendChild(ligneSol);
+    e.boutonLignesSol = _bouton(ligneSol, "kta-v3d-btn-mode kta-v3d-btn-lignessol", "", _t("vue3d.lignesSolMontrer"),
+      "lignesSol");
+    const icLs = document.createElement("span");
+    icLs.className = "kta-v3d-btn-icone";
+    icLs.setAttribute("aria-hidden", "true");
+    icLs.innerHTML = _ico("route");
+    e.boutonLignesSol.appendChild(icLs);
+    e.boutonLignesSol.appendChild(document.createTextNode(_t("vue3d.lignesSolNom")));
+    e.boutonLignesSol.setAttribute("aria-pressed", _lignesSol() ? "true" : "false");
     // Boussole et mini-carte montrées ou non (réglages de cet appareil, montrées par défaut), côte à côte, même
     // raison ; guidage et fiches sur la ligne suivante.
     const ligne = document.createElement("div");
@@ -10105,7 +10120,7 @@
   // côté du fond (px) ; `cone` : demi-angle du cône (°) ; `traitM` : largeur d'un tracé (m), jamais moins de
   // `traitPx` px CSS ; `poiPx` : rayon d'une pastille de POI (px CSS).
   const MINI_CARTE = { rayon: 30, min: 10, max: 100, grande: 2, fenetre: 3, ms: 100, bouge: 0.3, densite: 2,
-    fondMax: 2048, cone: 35, traitM: 1, traitPx: 1.5, poiPx: 8 };
+    fondMax: 2048, cone: 35, traitM: 1, traitPx: 1.5, poiPx: 8, voisinAlpha: 0.35 };
   let _rayonMiniCarte = MINI_CARTE.rayon;   // retenu tant que la page vit (vue refermée puis rouverte)
   const _iconesMiniCarte = new Map();       // url → Image (icônes des POI, chargées une fois)
 
@@ -10186,7 +10201,7 @@
   function _donneesMiniCarte(d) {
     const e = _e, sc = e.sc, B = (window.KtaGalerie && window.KtaGalerie.ZONES_BOUCHENT) || {};
     const SU = window.SortieUrgence, formes = [], pois = [];
-    const forme = function (o, cat, ferme) {
+    const forme = function (o, cat, ferme, voisin) {
       const pts = [];
       let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
       for (let i = 0; i < o.points.length; i++) {
@@ -10200,8 +10215,22 @@
         if (z > z1) z1 = z;
       }
       if (pts.length < 4) return;
-      formes.push({ cat: cat, cle: o.type, pts: pts, ferme: ferme, x0: x0, z0: z0, x1: x1, z1: z1 });
+      formes.push({ cat: cat, cle: o.type, pts: pts, ferme: ferme, x0: x0, z0: z0, x1: x1, z1: z1,
+        voisin: voisin || null });
     };
+    // Niveaux voisins (celui du dessus et celui du dessous, ordre de ▲▼ : _niveauxEdition), mêmes filtres que la
+    // carte : structures et tracés seulement, dessinés estompés SOUS le niveau actif (_dessinerFondMiniCarte).
+    const ln = _niveauxEdition(), iN = ln.indexOf(e.niveau);
+    if (iN >= 0) {
+      [[ln[iN - 1], "dessus"], [ln[iN + 1], "dessous"]].forEach(function (v) {
+        if (!Number.isInteger(v[0])) return;
+        const dv = _collecter(v[0]);
+        dv.structures.forEach(function (o) { forme(o, "structures", !_estLigne(o.type), v[1]); });
+        dv.roads.forEach(function (r) {
+          if (r.type !== "itinerary" && r.type !== "jonction") forme(r, "traces", false, v[1]);
+        });
+      });
+    }
     d.zones.forEach(function (z) { if (B[z.type]) forme(z, "zones", true); });
     d.structures.forEach(function (s) { forme(s, "structures", !_estLigne(s.type)); });
     d.roads.forEach(function (r) { if (r.type !== "itinerary" && r.type !== "jonction") forme(r, "traces", false); });
@@ -10211,8 +10240,10 @@
       if (_estPassage(vrai)) genre = "passage";
       else if (_estDanger(vrai)) genre = "danger";
       else if (SU && typeof SU.estUneSortie === "function" && SU.estUneSortie(vrai)) genre = "sortie";
-      if (genre) pois.push({ x: p.x / sc, z: p.y / sc, genre: genre, p: vrai });
+      pois.push({ x: p.x / sc, z: p.y / sc, genre: genre || "autre", p: vrai });
     });
+    // Les POI ordinaires d'abord : passages, dangers et sorties sont dessinés par-dessus.
+    pois.sort(function (a, b) { return (a.genre === "autre" ? 0 : 1) - (b.genre === "autre" ? 0 : 1); });
     e.mcDonnees = { formes: formes, pois: pois };
     if (e.mc) e.mc.fondSale = true;
   }
@@ -10312,10 +10343,27 @@
     ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     let n = 0;
+    // Niveaux voisins d'abord, en contour estompé (dessous en tirets) : le niveau actif se lit par-dessus.
+    const jv = _jetonsSombres();
+    D.formes.forEach(function (f) {
+      if (!f.voisin || f.x1 < cx - r || f.x0 > cx + r || f.z1 < cz - r || f.z0 > cz + r) return;
+      const p = f.pts;
+      ctx.beginPath();
+      ctx.moveTo(p[0], p[1]);
+      for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+      if (f.ferme) ctx.closePath();
+      ctx.globalAlpha = MINI_CARTE.voisinAlpha;
+      ctx.strokeStyle = f.voisin === "dessus" ? jv.interaction : jv.neutre;
+      ctx.lineWidth = trait * 0.6;
+      ctx.setLineDash(f.voisin === "dessous" ? [trait * 1.5, trait * 1.5] : []);
+      ctx.stroke();
+      n++;
+    });
+    ctx.setLineDash([]);
     // Ordre de la carte : zones, puis structures, puis tracés par-dessus.
     ["zones", "structures", "traces"].forEach(function (cat) {
       D.formes.forEach(function (f) {
-        if (f.cat !== cat || f.x1 < cx - r || f.x0 > cx + r || f.z1 < cz - r || f.z0 > cz + r) return;
+        if (f.voisin || f.cat !== cat || f.x1 < cx - r || f.x0 > cx + r || f.z1 < cz - r || f.z0 > cz + r) return;
         const s = style(cat, f.cle), p = f.pts;
         ctx.beginPath();
         ctx.moveTo(p[0], p[1]);
@@ -10337,7 +10385,7 @@
     ctx.globalAlpha = 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const j = _jetonsSombres(), rp = MINI_CARTE.poiPx * m.densite;
-    const bords = { passage: _couleurJonction(j), danger: j.erreur, sortie: j.ok };
+    const bords = { passage: _couleurJonction(j), danger: j.erreur, sortie: j.ok, autre: j.neutre };
     D.pois.forEach(function (q) {
       const u = M[0] * q.x + M[2] * q.z + M[4], v = M[1] * q.x + M[3] * q.z + M[5];
       if (u < -rp || v < -rp || u > cote + rp || v > cote + rp) return;
@@ -10550,7 +10598,7 @@
   function _etatMiniCarte() {
     const e = _e, m = e.mc;
     if (!m) return null;
-    const r = m.el.getBoundingClientRect();
+    const r = m.el.getBoundingClientRect(), fm = e.mcDonnees ? e.mcDonnees.formes : [];
     return { montree: !m.el.hidden, voulue: _miniCarteVoulue(), grande: m.grande, rayon: _rayonMiniCarte,
       rayonMontre: _rayonMontre(), nordFond: m.f ? m.f.nord : null, fleche: +m.fleche.toFixed(1),
       fonds: m.fonds, majs: m.majs, objets: m.f ? m.f.objets : 0, coteFond: m.f ? m.f.cote : 0, taille: m.taille,
@@ -10558,7 +10606,8 @@
       msMajMax: +m.msMajMax.toFixed(2), msMajMoy: m.majs ? +(m.msMajSomme / m.majs).toFixed(3) : 0,
       msDernieres: m.dernieres.map(function (v) { return +v.toFixed(2); }),
       pois: e.mcDonnees ? e.mcDonnees.pois.map(function (q) { return q.genre; }) : [],
-      formes: e.mcDonnees ? e.mcDonnees.formes.length : 0,
+      formes: fm.filter(function (f) { return !f.voisin; }).length,
+      voisins: fm.filter(function (f) { return f.voisin; }).map(function (f) { return f.voisin; }),
       iti: e.mcIti ? { morceaux: e.mcIti.morceaux.length, marques: e.mcIti.marques.length,
         cible: !!_pointItiMiniCarte(e.mcCible) } : null,
       boite: { x: r.left, y: r.top, w: r.width, h: r.height } };
@@ -10613,6 +10662,25 @@
   }
 
   // Bascule : retenue sur l'appareil, tuiles refaites sur place (la scène, la greffe et la position ne bougent pas).
+  // Lignes au sol montrées (config.js > getVue3DLignesSol, montrées par défaut). ⚠️ contrat : 3D seulement ; les
+  // tracés restent dans les filtres ≡, sur la carte 2D, sur la mini-carte, dans les tubes des galeries et dans le pas.
+  // L'itinéraire (ruban, chevrons) n'est jamais masqué par cette option.
+  function _lignesSol() {
+    return typeof window.getVue3DLignesSol !== "function" || window.getVue3DLignesSol() === true;
+  }
+
+  function _basculerLignesSol() {
+    const e = _e;
+    if (!e) return null;
+    const oui = !_lignesSol();
+    if (typeof window.setVue3DLignesSol === "function") window.setVue3DLignesSol(oui);
+    if (e.boutonLignesSol) e.boutonLignesSol.setAttribute("aria-pressed", oui ? "true" : "false");
+    if (e.tuiles) _refaireTuiles();
+    _majRonds();
+    e.sale = true;
+    return oui;
+  }
+
   function _basculerTextures() {
     const e = _e;
     if (!e) return null;
@@ -10814,6 +10882,7 @@
     if (a === "guidage") { _basculerGuidage(); return true; }
     if (a === "fichesObjets") { _basculerFichesObjets(); return true; }
     if (a === "textures") { _basculerTextures(); return true; }
+    if (a === "lignesSol") { _basculerLignesSol(); return true; }
     if (a === "rendu") { basculerRendu(); return true; }
     if (a === "hauteur") { _basculerReglageHauteur(); return true; }
     if (a === "hauteurMoins" || a === "hauteurPlus") {

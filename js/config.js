@@ -1396,6 +1396,19 @@ function setVue3DMiniCarte(oui) {
 window.getVue3DMiniCarte = getVue3DMiniCarte;
 window.setVue3DMiniCarte = setVue3DMiniCarte;
 
+// ── Lignes au sol de la vue 3D (rubans des tracés, liseré des galeries, ronds d'intersection) : réglage de CET appareil
+// localStorage["myktamap_v3d_lignessol_v1"] = "0" (masquées) | "1" ; absente → montrées. Réglée dans la tuile ⚙️ de la
+// vue (vue3d.js > _basculerLignesSol) ; la carte 2D n'en sait rien (ses filtres ≡ restent la seule règle des tracés).
+const V3D_LIGNES_SOL_CLE = "myktamap_v3d_lignessol_v1";
+function getVue3DLignesSol() {
+  try { return localStorage.getItem(V3D_LIGNES_SOL_CLE) !== "0"; } catch (e) { return true; }
+}
+function setVue3DLignesSol(oui) {
+  try { localStorage.setItem(V3D_LIGNES_SOL_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DLignesSol = getVue3DLignesSol;
+window.setVue3DLignesSol = setVue3DLignesSol;
+
 // ── Guidage dans la vue 3D (bandeau de consigne, chevrons au sol) : montré ou non, réglage de CET appareil ────────
 // localStorage["myktamap_v3d_guidage_v1"] = "0" (coupé) | "1" ; absente → montré. Réglé dans la tuile ⚙️ de la vue
 // (vue3d.js > _basculerGuidage). ⚠️ contrat : ne masque qu'en 3D ; la préférence du guidage 2D (ItiGuidage) et son
