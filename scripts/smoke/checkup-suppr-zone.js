@@ -400,14 +400,15 @@ async function lireFenetre(page) {
         const lignes = Array.from(document.querySelectorAll('.kta-modal-overlay button[id^="_choix-"]'));
         const b = lignes.find(function (x) { return /Effacer par zone/.test(x.textContent); });
         if (!b) return { effacer: subs.length, ligne: false, lignes: lignes.map(function (x) { return x.textContent.trim().slice(0, 30); }) };
-        const icones = b.textContent.split("✏️").length - 1;
+        // Icône de l'option : un SVG (ktaIcones.js), plus un emoji dans le libellé.
+        const icones = b.querySelectorAll("svg.kta-ico").length + (/[\p{Extended_Pictographic}]/u.test(b.textContent) ? 1 : 0);
         b.click();
         return { ligne: true, icones: icones, actif: window.SelectionMulti.estActif(), vide: window.SelectionMulti.liste().length === 0,
           trace: window.KtaSelectionZone.enCours() };
       }, i);
       verifier(r.ligne && r.actif && r.vide && r.trace,
         fam + " : 🧹 Effacer → « ✏️ Effacer par zone » ouvre la sélection sans graine, tracé lancé", r);
-      verifier(r.icones === 1, fam + " : une seule icône ✏️ sur la ligne", r.icones);
+      verifier(r.icones === 1, fam + " : une seule icône (SVG, sans emoji) sur la ligne", r.icones);
       if (!r.ligne) continue;
       await zoneDirecte(page);
       await page.evaluate(function () { document.getElementById("kta-selm-suppr").click(); });
