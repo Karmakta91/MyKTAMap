@@ -2046,6 +2046,7 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
 - ULTRA coche tout ; le décocher décoche tout. En plus des options ci-dessus, il ne dessine que les tracés et points proches de l'écran (léger temps d'apparition en déplaçant la carte). Tu peux aussi n'activer que certaines options, par exemple **🐢** pour un bon gain sans perte visible.
 - **Tes points de session restent toujours affichés**, quelles que soient les options.
 - Quand des optimisations sont actives, un message te le rappelle à l'ouverture du plan : un affichage allégé n'est pas un bug.
+- **Alléger la carte tournée (gros plans)** (même groupe, hors ULTRA, cochée par défaut) : sur un gros plan, tant que tu tournes la carte à deux doigts, seuls les points et tracés de l'écran sont dessinés, ce qui évite au téléphone de manquer de mémoire ; tout revient carte remise au nord. Les points restent touchables. Décoche-la si tu préfères tout voir en tournant.
 - Sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement** (même groupe, hors ULTRA, coché par défaut) peut être décoché pour n'ouvrir que les niveaux -1, 0 et +1.
 
 #### 📱 Sur mobile
