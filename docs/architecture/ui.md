@@ -2606,9 +2606,13 @@ Lucide + icônes métier, planche des 115 notions validée ; police emoji embarq
   Un nom inconnu rend une chaîne vide et un avertissement console.
 - **Un seul système de noms** : celui de l'icône (Lucide, ex. `navigation`, `compass`, `rotate-cw`), ou `m-…` pour
   les 5 icônes métier (`m-galerie`, `m-zone`, `m-pilier`, `m-echelle`, `m-niveaux`). Les 113 icônes de la planche
-  sont embarquées, plus `list` (Légende) et `sigma` (Distance totale), absentes de la planche.
-- Élément statique : `data-kta-ico="nom"`, rempli au chargement par `KtaIcones.poser()` (en-tête de l'accueil,
-  « Mes plans »). Le bouton garde son `title` / `aria-label` : le SVG est `aria-hidden`.
+  sont embarquées, plus 8 absentes de la planche (Lucide) : `list` (Légende), `sigma` (Distance totale),
+  `panels-top-left` (panneaux ancrés), `monitor-cog` (Système & maintenance), `unplug` (Kill SW), `server-cog`
+  (ConfAdmin), `bug` (logs détaillés), `database` (plan d'une installation reliée).
+- Élément statique : `data-kta-ico="nom"`, rempli au chargement par `KtaIcones.poser()` (accueil, Configuration et
+  ses fenêtres). Le bouton garde son `title` / `aria-label` : le SVG est `aria-hidden`. Devant un libellé traduit,
+  l'icône est un `span` FRÈRE de l'élément `data-i18n` (qui réécrit tout son contenu) ; une clé `data-i18n-html` ne
+  porte jamais l'emoji ni le SVG.
 - Chargé en synchrone avant `unlockGate.js` (après `ktaPictos.js`, qui garde les pictos de l'écran Bienvenue) ;
   lisible par node (`module.exports`) pour le générateur de doc.myktamap.fr. Licence : Lucide ISC (en-tête du module).
 - CSS : `.kta-ico` (1,15 em, `vertical-align`, `flex-shrink: 0`) et tailles fixes dans les conteneurs à taille fixe
@@ -2624,8 +2628,28 @@ Lucide + icônes métier, planche des 115 notions validée ; police emoji embarq
   Mesure (distance, surface, distance totale `sigma`, volume, effacer `eraser`), Valider / Fermer `check`, Effacer
   `eraser`, Jonction `m-echelle`, Nouveau type `plus`, lanceur d'export (10 tuiles), Historique `undo-2` / `redo-2`,
   Aide `circle-help` / `book-open` / `list`. Titres des fenêtres Tracker et Exporter.
+- **Lanceur d'export** : titres de section Image `image`, Session `save`, Plan `map`, Export externe `globe`.
 - **Accueil** : 🔎 `search`, 📥 `cloud-download`, 🚨 `siren`, 📖 `book-open`, ⚙️ `settings`, « Mes plans » `folder-plus` et
-  `square-check`.
+  `square-check` ; titres Mes plans `library` (et « Tous mes plans »), Vue OSM `map`, Ajouter un plan `package-plus`
+  (zone de dépôt comprise), Outils `pocket-knife` ; Outils : Mon carnet `notebook-pen`, Éditeur de données `table`,
+  Mes liaisons `waypoints`, Mes photos `camera`, Générer un plan `drafting-compass`, Importer plusieurs plans
+  `folder-input` ; lignes de plan : plan du site `cloud` (aussi « Afficher les plans du site » et le verrou d'un
+  dossier du site), plan d'une installation reliée `database`, plan sur l'appareil `hard-drive` ; Déplacer vers
+  `folder`, dossier depuis les étiquettes `folder-plus`.
+- **Configuration de l'accueil** : titre `settings` ; rubriques Application `layout-grid`, Affichage `palette`,
+  Fonctionnalités optionnelles `puzzle`, Add-ons `gamepad-2`, Confidentialité `shield`, Système & maintenance
+  `monitor-cog` (les quatre rubriques partagées avec les Réglages du plan y ont la même icône, `interfaceConfig.js >
+  _CFG_ICONES_GROUPE`) ; réglages taille des icônes `scaling`, aide des fenêtres `circle-help`, notifications `bell`,
+  panneaux ancrés `panels-top-left`, boutons de zoom `zoom-in`, magnétisme `magnet`, thème `sun-moon`, écran allumé
+  `smartphone`, Replay `clapperboard`, Heatmap `flame`, batterie `battery`, vibration `vibrate` (ces quatre aussi dans
+  les Réglages du plan), incognito `venetian-mask`, carnet `notebook-pen`, mémoriser `hard-drive`, code d'accès
+  `key-round` (Activer `key-round`, Modifier `pencil`, Désactiver `lock-open`), Vue OSM `map`, plans du site `cloud`,
+  ne pas les charger `ban`, Mode développeur `code-xml`, Inspecteur `gauge`, Dépannage `wrench`.
+- **Fenêtres de la Configuration** : Journal réseau `scroll-text` (Copier `copy`, Exporter `arrow-up-from-line`, Vider
+  `trash-2`) ; « Que fait l'app sur le réseau ? » `book-open` (titres `globe`, `search`, `shield`, `file-text`) ;
+  Dépannage `wrench` (Forcer la mise à jour `refresh-cw`, Kill SW `unplug`, Tout réinitialiser `trash-2`) ; Inspecteur
+  `gauge` (Rafraîchir `refresh-cw`, Copier le rapport `copy`) ; Mode développeur `code-xml` (logs `bug`, afficher les
+  logs `scroll-text`, ConfAdmin `server-cog`, état du cache `gauge`).
 - Les pastilles de **types** (tracés, zones, structures : `ktaTypeSwatchHtml`) restent des pastilles ; seul leur repli
   est un emoji (⛔ Inaccessible, qui n'a pas de pastille, compris).
 
@@ -2640,13 +2664,16 @@ Lucide + icônes métier, planche des 115 notions validée ; police emoji embarq
   fr, en et es) ; un emoji au sens unique dans la doc a une règle sans motif. `KtaIcones.AUTRE_SENS` liste les emplois
   voulus en emoji (bouton pas encore migré, autre notion), ciblés ou « tout le reste » pour un emoji dont le bouton
   n'est qu'un sens minoritaire. Ordre : autre sens ciblé, DOC ciblé, DOC sans motif, autre sens sans motif.
-- Les titres de section du lanceur d'export (🖼️ Image, 💾 Session, 🗺️ Plan, 🌍 Export externe) gardent leur emoji : la
-  doc qui les cite est classée « autre sens ».
+- Un même emoji peut viser un bouton migré et un bouton resté en emoji : 🌍 Vue OSM est SVG quand la doc cite le
+  widget de l'accueil, emoji pour le bouton de la barre du haut et la fenêtre Vue OSM (pas encore migrés).
 
 ### Garde-fous
 
 - 🛡️ `scripts/check-icones-ui.js` (pré-commit bloquant, donc CI) : aucun emoji dans une icône de contrôle de
-  `interface.js` (cliquet 0, pastilles de type exceptées) ni dans les boutons migrés d'`index.html` ; chaque nom passé à
+  `interface.js` (cliquet 0, pastilles de type exceptées) ni dans les boutons migrés d'`index.html` ; les libellés
+  migrés de l'accueil et de sa Configuration (`CLES_INDEX`) suivent une icône `data-kta-ico`, ceux rendus par un
+  module (`APPELS_JS`) ont leur `ktaIcone()` sur la ligne ou la voisine, et leurs clés n'ont d'emoji dans aucune
+  langue ; l'icône de type d'une ligne de Mes plans est un SVG ; chaque nom passé à
   `ktaIcone` / `data-kta-ico` existe ; chaque règle de doc pointe vers une icône existante ; **exhaustif** : chaque
   occurrence d'un emoji migré dans les trois guides et les clés `aide.*` des trois dicos est substituée ou listée
   « autre sens », sinon échec avec fichier:ligne. `--liste` donne les comptes par emoji et par langue (un écart de SVG
@@ -2654,16 +2681,20 @@ Lucide + icônes métier, planche des 115 notions validée ; police emoji embarq
   silence une phrase NOUVELLE qui cite le bouton par un libellé inconnu : la doc montrerait l'emoji périmé. Son compte
   est donc figé par emoji (`PLAFOND_RESTE`, cliquet) : toute hausse échoue jusqu'à ce que l'emploi soit classé (règle
   DOC ciblée, ou autre sens ciblé) ; recalcul `--plafond`.
-- `scripts/smoke/checkup-icones-ui.js` (Chromium et WebKit, sombre et clair) : le rendu réel.
+- `scripts/smoke/checkup-icones-ui.js` (Chromium et WebKit, sombre et clair) : le rendu réel (accueil, Configuration,
+  Journal réseau, réseau expliqué, Dépannage, carte, Tracker, export, Documentation, Aide).
 - Emoji restants : un pictogramme à présentation texte (🛣️ 🗂️ 👁️ ⏸️ ⏹️ ⏭️ 🗑️ 🏗️…) s'écrit avec U+FE0F, sinon Windows et une
   partie des Android le dessinent en noir et blanc. Flèches, triangles ▶ ◀, ©, ™ et coches restent en texte.
   🛡️ `scripts/check-emoji-vs16.js` (pré-commit bloquant) ; `--corriger` complète ; la marque `emoji-texte-ok` garde un
   glyphe voulu en texte (clé « ⚠ » de la table des PDF dans `utils.js`).
 
-### Reste en emoji (lot C)
+### Reste en emoji (lots C2 et C3)
 
-Réglages et Configuration (contenu des fenêtres), toasts et messages, fiches de point et leurs boutons (🧭 Y aller, ✏️
-Modifier…), boutons propres à la vue 3D, barre du haut de la carte (📖 Mode Histoire, 🚨 Sortie d'urgence), barre du
-bas, Outils et Mes plans de l'accueil (lignes, badges), choix des fenêtres « Effacer », titres de section du lanceur
-d'export. Un emoji = un sens par écran : 🗺️ Itinéraire, 🔃 Plan orienté, 🔆 Affichage XL, 📱 Garder l'écran allumé,
-🔧 Dépannage (🆘 = urgence seulement), 📤 exporter, 📥 importer.
+Réglages du plan (sauf les rubriques et options partagées avec l'accueil), fenêtres d'outils de la carte, toasts et
+messages (et les phrases d'explication, dont celles de « Que fait l'app sur le réseau ? »), fiches de point et leurs
+boutons (🧭 Y aller, ✏️ Modifier…), boutons propres à la vue 3D, barre du haut de la carte (📖 Mode Histoire, 🌍 Vue
+OSM, 🚨 Sortie d'urgence), barre du bas, à l'accueil : ▶️ Reprendre et ▶️ Charger ce plan, boutons et badges d'une
+ligne de plan (⭐, 💾, ⏳, ℹ️, ✅ 🔐 📁), widget Vue OSM (contenu), champs de recherche (placeholder), pied de page
+(liens et crédits), titres de section de l'Inspecteur ; choix des fenêtres « Effacer ». Un emoji = un sens par
+écran : 🗺️ Itinéraire, 🔃 Plan orienté, 🔆 Affichage XL, 📱 Garder l'écran allumé, 🔧 Dépannage (🆘 = urgence
+seulement), 📤 exporter, 📥 importer.
