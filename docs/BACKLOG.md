@@ -71,6 +71,11 @@
   `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
   `qui: Claude · action: rendre l'appel de homeProfile.js déterministe (attendre I18n prêt) · fini: checkup-guidage
   vert sous WebKit sur plusieurs passages, sans clé manquante · depuis: 04/11/2026 · taille: S`
+- **Retirer l'image de collision** — ✅ vérifié 09/11 : retrait décidé le 08/09 (audit serveur, P1a), jamais fait ; le
+  Générateur la propose encore, l'app la charge (`map.js > initCollisionMap`). Lot A puis B : `audit-serveur-2026-09.md`
+  § Nettoyage code collision. Après le gel du bump (choix KARMA 09/11).
+  `qui: Claude · action: lot A (Générateur, chargement, précache, clé i18n) puis lot B (code du tracker,
+  check-tracking-defaults) · fini: plus de collisionImage écrite ni lue, tracker vert · depuis: 09/11/2026 · taille: M`
 ## Plus tard
 
 - **Vue 3D, puits ouvert : galerie du dessus qui coupe le conduit** — une galerie du dessus qui ne couvre qu'une

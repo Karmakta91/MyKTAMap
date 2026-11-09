@@ -243,7 +243,7 @@ APP_CONFIG.multiLevel ←
   false
 ```
 
-Fonctions `_renderMultiLevelSection` / `_bindMultiLevelToggle` (interface.js) restent définies en **dead code propre** avec commentaire explicatif. Si retour terrain demande à ré-exposer le toggle (cas marginal), il suffit de re-appeler les 2 fonctions dans `afficherConfig`.
+Aucune bascule du multi-niveau dans ⚙️ Réglages (décision produit) : le plan le déclare.
 
 #### 39.5 Footer copyright
 
