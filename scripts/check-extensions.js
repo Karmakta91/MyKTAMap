@@ -1121,7 +1121,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const bn = cn.K.blocNouveautes(() => { tn.push("fermer"); });
     await new Promise((r) => setTimeout(r, 10));
     t("bloc : un titre puis une ligne par sujet valide (sans texte, sans ouvrir() ou nul : écartés)",
-      !!bn && bn.enfants.length === 3 && bn.enfants[0].textContent === "🆕 alerts.neuf.titre" && !bn.retire);
+      !!bn && bn.enfants.length === 3 && bn.enfants[0].textContent === "alerts.neuf.titre" && !bn.retire);
     const l1n = bn.enfants[1];
     t("ligne : texte et bouton posés en texte", l1n.enfants[0].textContent === "Plan « Secteur A » — 2 nouveautés" &&
       l1n.enfants[1].textContent === "Ouvrir" && !("innerHTML" in l1n.enfants[1]));

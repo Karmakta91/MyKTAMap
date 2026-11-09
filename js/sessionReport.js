@@ -655,11 +655,11 @@
 
   // ── Modale ───────────────────────────────────────────────────────────────
 
-  function _checkboxRow(id, label, defaultChecked) {
+  function _checkboxRow(id, label, defaultChecked, ico) {
     const chk = defaultChecked ? " checked" : "";
     return '<label class="kta-report-cb-row">' +
              '<input type="checkbox" id="' + id + '"' + chk + '>' +
-             '<span>' + label + '</span>' +
+             '<span>' + (ico ? window.ktaIcone(ico) + ' ' : '') + label + '</span>' +
            '</label>';
   }
 
@@ -683,13 +683,13 @@
     const T = window.I18n.t.bind(window.I18n);
     modal.innerHTML = '<div class="kta-readme-modal-boite kta-report-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">📋 ' + T("report.title") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("clipboard-list") + ' ' + T("report.title") + '</span>' +
         '<button class="kta-panneau-close" id="kta-report-close" type="button" aria-label="' + T("report.close") + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📅 ' + T("report.period_title") + '</div>' +
+          '<div class="kta-aide-section-titre">' + window.ktaIcone("calendar") + ' ' + T("report.period_title") + '</div>' +
           '<div class="kta-report-period">' +
             '<label>' + T("report.period_from") + ' <input class="kta-report-date" id="kta-report-start" type="date" value="' + startDateStr + '"></label>' +
             '<label>' + T("report.period_to") + ' <input class="kta-report-date" id="kta-report-end"   type="date" value="' + endDateStr   + '"></label>' +
@@ -700,32 +700,32 @@
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">👁️ ' + T("report.preview_title") + '</div>' +
+          '<div class="kta-aide-section-titre">' + window.ktaIcone("eye") + ' ' + T("report.preview_title") + '</div>' +
           '<div id="kta-report-preview" class="kta-report-preview">⏳ ' + T("report.preview_computing") + '</div>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📦 ' + T("report.sections_title") + '</div>' +
-          _checkboxRow("kta-report-inc-points",  "📍 " + T("report.sec_points"),  true) +
-          _checkboxRow("kta-report-inc-roads",   "🛣️ " + T("report.sec_roads"),   true) +
-          _checkboxRow("kta-report-inc-zones",   "⬛ " + T("report.sec_zones"),    true) +
-          _checkboxRow("kta-report-inc-struct",  "🏛️ " + T("report.sec_structures"), true) +
-          _checkboxRow("kta-report-inc-tracker", "🧭 " + T("report.sec_tracker"),  true) +
-          _checkboxRow("kta-report-inc-photos",  "📸 " + T("report.sec_photos"),   true) +
-          _checkboxRow("kta-report-inc-mapmini", "🗺️ " + T("report.sec_mapmini"),  true) +
-          _checkboxRow("kta-report-inc-heatmap", "🔥 " + T("report.sec_heatmap"),  true) +
+          '<div class="kta-aide-section-titre">' + window.ktaIcone("list") + ' ' + T("report.sections_title") + '</div>' +
+          _checkboxRow("kta-report-inc-points",  T("report.sec_points"),  true, "map-pin") +
+          _checkboxRow("kta-report-inc-roads",   T("report.sec_roads"),   true, "m-galerie") +
+          _checkboxRow("kta-report-inc-zones",   T("report.sec_zones"),    true, "m-zone") +
+          _checkboxRow("kta-report-inc-struct",  T("report.sec_structures"), true, "m-pilier") +
+          _checkboxRow("kta-report-inc-tracker", T("report.sec_tracker"),  true, "navigation") +
+          _checkboxRow("kta-report-inc-photos",  T("report.sec_photos"),   true, "camera") +
+          _checkboxRow("kta-report-inc-mapmini", T("report.sec_mapmini"),  true, "map") +
+          _checkboxRow("kta-report-inc-heatmap", T("report.sec_heatmap"),  true, "flame") +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">📝 ' + T("report.note_title") + '</div>' +
+          '<div class="kta-aide-section-titre">' + window.ktaIcone("pencil-line") + ' ' + T("report.note_title") + '</div>' +
           '<textarea id="kta-report-note" class="kta-report-note" rows="4" ' +
             'placeholder="' + T("report.note_placeholder") + '"></textarea>' +
         '</div>' +
 
         '<div class="kta-report-actions">' +
-          '<button class="kta-btn kta-btn-primary" id="kta-report-btn-pdf"  type="button">📑 ' + T("report.btn_pdf") + '</button>' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-json" type="button">📄 ' + T("report.btn_json") + '</button>' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-text" type="button">📝 ' + T("report.btn_text") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-report-btn-pdf"  type="button">' + window.ktaIcone("file-text") + ' ' + T("report.btn_pdf") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-json" type="button">' + window.ktaIcone("braces") + ' ' + T("report.btn_json") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-report-btn-text" type="button">' + window.ktaIcone("copy") + ' ' + T("report.btn_text") + '</button>' +
         '</div>' +
         '<div id="kta-report-status" class="kta-report-status"></div>' +
 
@@ -785,14 +785,14 @@
         const T = window.I18n.t.bind(window.I18n);
         preview.innerHTML =
           '<div class="kta-report-preview-row">' +
-            '📍 <strong>' + filtered.points.length + '</strong> ' + T("report.preview_poi") +
-            ' · 🛣️ <strong>' + baseData.roads.length + '</strong> ' + T("report.preview_roads") +
-            ' · ⬛ <strong>' + baseData.zones.length + '</strong> ' + T("report.preview_zones") +
-            (baseData.structures.length > 0 ? ' · 🏛️ <strong>' + baseData.structures.length + '</strong>' : '') +
+            window.ktaIcone("map-pin") + ' <strong>' + filtered.points.length + '</strong> ' + T("report.preview_poi") +
+            ' · ' + window.ktaIcone("m-galerie") + ' <strong>' + baseData.roads.length + '</strong> ' + T("report.preview_roads") +
+            ' · ' + window.ktaIcone("m-zone") + ' <strong>' + baseData.zones.length + '</strong> ' + T("report.preview_zones") +
+            (baseData.structures.length > 0 ? ' · ' + window.ktaIcone("m-pilier") + ' <strong>' + baseData.structures.length + '</strong>' : '') +
           '</div>' +
           (filtered.tracker.timeline.length > 0 ?
             '<div class="kta-report-preview-row">' +
-              '🧭 ' + T("report.preview_tracker", { dist: _formatDistance(distM), duree: _formatDuree(duree), count: filtered.tracker.timeline.length }) +
+              window.ktaIcone("navigation") + ' ' + T("report.preview_tracker", { dist: _formatDistance(distM), duree: _formatDuree(duree), count: filtered.tracker.timeline.length }) +
             '</div>' :
             '<div class="kta-report-preview-row kta-report-preview-dim">' + T("report.preview_no_tracker") + '</div>'
           );

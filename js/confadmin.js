@@ -458,7 +458,7 @@
       row.className = "kta-ca-link-row" + (ok ? "" : " kta-ca-off");
       row.innerHTML = '<input type="checkbox" class="kta-ca-check" data-lk="' + _esc(l.id) + '"' +
         (ok && _linkSel[l.id] ? " checked" : "") + (ok ? "" : " disabled") + ">" +
-        "<span>🌀 " + _coteLabel(l.a) + " ⇄ " + _coteLabel(l.b) +
+        "<span>" + window.ktaIcone("waypoints") + " " + _coteLabel(l.a) + " ⇄ " + _coteLabel(l.b) +
         (ok ? "" : ' <em style="color:var(--kta-texte-3);">(plan non mappé)</em>') + "</span>";
       box.appendChild(row);
     });
@@ -765,11 +765,16 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
   });
+  // Libellé du bouton (icône SVG posée par ktaIcones.js, chargé avant) : remis après la confirmation « Copié ».
+  const _libelleCopier = $("caCopy").innerHTML;
   $("caCopy").addEventListener("click", function() {
     if (!_connexionSaisie().valide) return;
     const txt = JSON.stringify(_construire(), null, 2);
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(txt).then(function() { $("caCopy").textContent = "✅ Copié"; setTimeout(function() { $("caCopy").textContent = "📋 Copier"; }, 1500); });
+      navigator.clipboard.writeText(txt).then(function() {
+        $("caCopy").textContent = "✅ Copié";
+        setTimeout(function() { $("caCopy").innerHTML = _libelleCopier; }, 1500);
+      });
     } else {
       const ta = document.createElement("textarea");
       ta.value = txt; document.body.appendChild(ta); ta.select();

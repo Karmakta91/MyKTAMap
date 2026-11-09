@@ -29,6 +29,8 @@
   "use strict";
 
   const FAMILLES = ["editorPoints", "roads", "zones", "structures"];
+  // Icône SVG de chaque famille dans les cases des fenêtres Supprimer et Niveau (ktaIcones.js).
+  const ICO_FAMILLE = { editorPoints: "map-pin", roads: "m-galerie", zones: "m-zone", structures: "m-pilier" };
   const GET = { editorPoints: "getEditorPoints", roads: "getRoads", zones: "getZones", structures: "getStructures" };
   const SET = { editorPoints: "setEditorPoints", roads: "setRoads", zones: "setZones", structures: "setStructures" };
   // `pente` (zone jonction) : traitée comme le tracé jonction (décision produit).
@@ -339,7 +341,7 @@
     FAMILLES.forEach(function (f) {
       const n = pf[f].length;
       cases += '<label class="kta-selm-case"><input type="checkbox" data-kta-selm-fam="' + f + '"' +
-        (coches[f] ? " checked" : "") + (n ? "" : " disabled") + '> ' +
+        (coches[f] ? " checked" : "") + (n ? "" : " disabled") + '> ' + window.ktaIcone(ICO_FAMILLE[f]) + ' ' +
         _esc(_t("selm.suppr.fam." + f, { n: n })) + '</label>';
     });
     const niveau = _niveauActif();
@@ -354,7 +356,7 @@
       notes.map(function (n) { return _esc(n); }).join("\n");
     const p = window.ktaConfirm(message, {
       titre: _esc(_t("selm.suppr.titre")),
-      okLabel: _esc(_t("selm.suppr.ok", { n: total(coches) }))
+      okLabel: window.ktaIcone("trash-2") + " " + _esc(_t("selm.suppr.ok", { n: total(coches) }))
     });
     // ktaConfirm a monté sa fenêtre de façon synchrone : on branche les cases de CETTE fenêtre.
     const ov = Array.prototype.slice.call(document.querySelectorAll(".kta-readme-modal-overlay")).filter(function (o) {
@@ -367,7 +369,7 @@
         cb.addEventListener("change", function () {
           coches[cb.getAttribute("data-kta-selm-fam")] = cb.checked;
           const n = total(coches);
-          if (oui) { oui.textContent = _t("selm.suppr.ok", { n: n }); oui.disabled = n === 0; }
+          if (oui) { oui.innerHTML = window.ktaIcone("trash-2") + " " + _esc(_t("selm.suppr.ok", { n: n })); oui.disabled = n === 0; }
         });
       });
     }
@@ -470,7 +472,7 @@
     FAMILLES.forEach(function (f) {
       const n = pf[f].length;
       cases += '<label class="kta-selm-case"><input type="checkbox" data-kta-selm-niv-fam="' + f + '"' +
-        (coches[f] ? " checked" : "") + (n ? "" : " disabled") + '> ' +
+        (coches[f] ? " checked" : "") + (n ? "" : " disabled") + '> ' + window.ktaIcone(ICO_FAMILLE[f]) + ' ' +
         _esc(_t("selm.suppr.fam." + f, { n: n })) + '</label>';
     });
     const notes = [];
@@ -485,7 +487,7 @@
       notes.map(function (n) { return _esc(n); }).join("\n");
     const p = window.ktaConfirm(message, {
       titre: _esc(_t("selm.niveau.titre")),
-      okLabel: _esc(_t("selm.niveau.ok", { n: total() }))
+      okLabel: window.ktaIcone("m-niveaux") + " " + _esc(_t("selm.niveau.ok", { n: total() }))
     });
     const ov = Array.prototype.slice.call(document.querySelectorAll(".kta-readme-modal-overlay")).filter(function (o) {
       return !!o.querySelector("[data-kta-selm-niv]");
@@ -494,7 +496,7 @@
       const oui = ov.querySelector("#kta-confirm-oui");
       const maj = function () {
         const n = total();
-        if (oui) { oui.textContent = _t("selm.niveau.ok", { n: n }); oui.disabled = n === 0; }
+        if (oui) { oui.innerHTML = window.ktaIcone("m-niveaux") + " " + _esc(_t("selm.niveau.ok", { n: n })); oui.disabled = n === 0; }
       };
       maj();
       const sel = ov.querySelector("[data-kta-selm-niv]");

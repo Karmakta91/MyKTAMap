@@ -227,25 +227,26 @@
     if (ok && !_onValide) ok.style.display = "none";
     if (ok) {
       const nc = _convertibles().length;
-      ok.textContent = _t("selm.valider", { n: nc });
+      ok.innerHTML = window.ktaIcone("check") + " " + window.ktaEsc(_t("selm.valider", { n: nc }));
       ok.disabled = nc === 0;
     }
     const niv = _floater.querySelector("#kta-selm-niveau");
     if (niv) {
       // Plan à un niveau (ou liste refusée pendant un dessin) : pas de bouton.
       if (!_niveauxProposes()) niv.style.display = "none";
-      niv.textContent = _t("selm.niveau.bouton", { n: _sel.length });
+      niv.innerHTML = window.ktaIcone("m-niveaux") + " " + window.ktaEsc(_t("selm.niveau.bouton", { n: _sel.length }));
       niv.disabled = _sel.length === 0;
     }
     const sup = _floater.querySelector("#kta-selm-suppr");
     if (sup) {
-      sup.textContent = _t("selm.supprimer", { n: _sel.length });
+      sup.innerHTML = window.ktaIcone("trash-2") + " " + window.ktaEsc(_t("selm.supprimer", { n: _sel.length }));
       sup.disabled = _sel.length === 0;
     }
     const tous = _floater.querySelector("#kta-selm-tous");
     if (tous) {
       if (_dernier) {
-        tous.textContent = _t("selm.tousDuType", { type: _libelleType(_dernier.famille, _dernier.obj.type) });
+        tous.innerHTML = window.ktaIcone("plus") + " " +
+          window.ktaEsc(_t("selm.tousDuType", { type: _libelleType(_dernier.famille, _dernier.obj.type) }));
       } else {
         tous.style.display = "none";
       }
@@ -410,7 +411,7 @@
     // (pas de popup d'annotation, clic ré-émis en capture même sur un layer interactif).
     _floater.className = "kta-iti-floater kta-selm-floater";
     _floater.innerHTML =
-      '<span class="kta-iti-floater-icon">🎯</span>' +
+      '<span class="kta-iti-floater-icon">' + window.ktaIcone("crosshair") + '</span>' +
       '<span class="kta-iti-floater-msg kta-selm-msg"></span>' +
       '<button class="kta-btn kta-btn-ghost" id="kta-selm-tous" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-ghost" id="kta-selm-zone" type="button" data-selm-mode="sel"></button>' +
@@ -427,8 +428,11 @@
      ["#kta-selm-zone-annuler", "selm.zone.annuler"]].forEach(function (b) {
       _floater.querySelector(b[0]).textContent = _t(b[1]);
     });
-    // Sélectionner par zone : icône SVG de la notion (ktaIcones.js), la même que « Par zone » des outils d'effacement.
+    // Icônes SVG (ktaIcones.js) devant les libellés posés en texte : Sélectionner par zone (la même que « Par zone »
+    // des outils d'effacement), Prendre la zone, Dernier sommet.
     _floater.querySelector("#kta-selm-zone").insertAdjacentHTML("afterbegin", window.ktaIcone("square-dashed") + " ");
+    _floater.querySelector("#kta-selm-zone-ok").insertAdjacentHTML("afterbegin", window.ktaIcone("check") + " ");
+    _floater.querySelector("#kta-selm-zone-retour").insertAdjacentHTML("afterbegin", window.ktaIcone("undo-2") + " ");
     _floater.querySelector("#kta-selm-tous").addEventListener("click", _ajouterTousDuType);
     _floater.querySelector("#kta-selm-annuler").addEventListener("click", fermer);
     _floater.querySelector("#kta-selm-zone").addEventListener("click", _commencerZone);

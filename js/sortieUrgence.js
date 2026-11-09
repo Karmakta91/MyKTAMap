@@ -251,7 +251,7 @@
       parts.push(window.I18n.t("sortie.brancard.evite", { liste: c.avoidZones.map(lab).join(", ") }));
     }
     if (c.respecterInaccessibles === false) parts.push(window.I18n.t("sortie.brancard.inaccLeve"));
-    let html = '<div class="kta-sortie-brancard">' + window.I18n.t("sortie.brancard.titre") + " " +
+    let html = '<div class="kta-sortie-brancard">' + window.ktaIcone("ambulance") + " " + window.I18n.t("sortie.brancard.titre") + " " +
                (parts.length ? parts.join(" · ") : window.I18n.t("sortie.brancard.aucune")) + '</div>';
     if (meilleure && meilleure.contourne) {
       html += '<div class="kta-sortie-fallback-txt">⚠️ ' + window.I18n.t("sortie.brancard.contourne") + '</div>';
@@ -315,7 +315,7 @@
       _htmlContraintes(meta, meilleure) +
       '<div class="kta-sortie-actions">' +
         '<button type="button" class="kta-btn kta-btn-primary kta-sortie-btn-tracer" data-sortie-action="tracer">' +
-          window.I18n.t("sortie.btn.tracer") +
+          window.ktaIcone("route") + " " + window.I18n.t("sortie.btn.tracer") +
         '</button>' +
       '</div>';
 

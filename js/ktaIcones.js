@@ -411,7 +411,41 @@
       '2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 ' +
       '7"/><path d="m7.5 4.27 9 5.15"/>',
     "bot": '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 ' +
-      '14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>'
+      '14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+    // Profil, ConfAdmin, pied de page de l'accueil, portes d'entrée et fenêtres restantes (hors planche, Lucide).
+"briefcase": '<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" ' +
+      'rx="2"/>',
+    "building-2": '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 ' +
+      '2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path ' +
+      'd="M10 14h4"/><path d="M10 18h4"/>',
+    "replace": '<path d="M14 4a2 2 0 0 1 2-2"/><path d="M16 10a2 2 0 0 1-2-2"/><path d="M20 2a2 2 0 0 1 2 ' +
+      '2"/><path d="M22 8a2 2 0 0 1-2 2"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a3 3 0 0 1 3-3h1"/><rect x="2" ' +
+      'y="14" width="8" height="8" rx="2"/>',
+    "calculator": '<rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line ' +
+      'x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path ' +
+      'd="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/>',
+    "network": '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" ' +
+      'rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 ' +
+      '1v3"/><path d="M12 12V8"/>',
+    "plug": '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 ' +
+      '1-4-4V8Z"/>',
+    "landmark": '<line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" ' +
+      'y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon ' +
+      'points="12 2 20 7 4 7"/>',
+    "external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 ' +
+      '1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    "clock": '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    "keyboard": '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path ' +
+      'd="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" ' +
+      'x="2" y="4" rx="2"/>',
+    "leaf": '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path ' +
+      'd="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>',
+    "instagram": '<rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 ' +
+      '0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>',
+    "mail": '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 ' +
+      '7"/>',
+    "type": '<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" ' +
+      'y1="4" y2="20"/>'
   };
 
   const ATTRS = ' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
@@ -688,6 +722,37 @@
     { e: "🚒", i: "clipboard-list", a: /^(?:Briefing pompiers|Firefighter briefing|Briefing bomberos)/ },
     { e: "👤", i: "user", a: /^(?:Opérateur|Surface operator|Operador|Chef\b|Leader\b|Jefe\b|Côté opérateur|Operator side|Lado del operador|Retour Opérateur|Back to Operator|Volver a Operador)/ },
     { e: "👥", i: "users", a: /^(?:Membres|Members|Miembros|Les équipes|Teams ➕|Los equipos)/ },
+    // Fin de la refonte : profil et son export, sélection multiple, Sortie d'urgence, Mode Histoire, recalage,
+    // doublon d'import, hors ligne d'un plan, maintenance, Aide IA, fiche d'un point.
+    { e: "🏆", i: "trophy" },
+    { e: "📅", i: "calendar", a: /^(?:Date de constat|date de constat|Date observed|date observed|Fecha de constatación|fecha de constatación)/ },
+    { e: "↗️", i: "external-link", a: /^(?:Ouvrir dans un onglet|Open in a tab|Abrir en una pestaña)/ },
+    { e: "👤", i: "user", a: /^(?:Mon profil|My profile|Mi perfil)\b/ },
+    { e: "📤", i: "arrow-up-from-line", a: /^(?:Exporter mon profil|Export my profile|Exportar mi perfil)/ },
+    { e: "📥", i: "arrow-down-to-line",
+      a: /^(?:Importer un profil|Import a profile|Importar un perfil|Télécharger le contexte|Download the context|Descargar el contexto)/ },
+    { e: "🔄", i: "merge", a: /^Merge\b/ },
+    { e: "♻️", i: "replace", a: /^Replace\b/ },
+    { e: "♻️", i: "rotate-ccw", a: /^(?:Recréer|recréer|Recreate|recreate|Recrear|recrear)\b/ },
+    { e: "🔄", i: "refresh-cw", a: /^(?:Mettre à jour|Update|Actualizar) (?:—|\()/ },
+    { e: "🔄", i: "refresh-cw", a: /^(?:Convertir|Convert|Conversion|Conversión)\b/ },
+    { e: "💾", i: "save", a: /^(?:Sauver la note|Save the note|Guardar la nota)/ },
+    { e: "➕", i: "plus", a: /^(?:Garder les deux|Keep both|Conservar ambos|Tous les « type »|All “type”|Todos los «)/ },
+    { e: "⬇️", i: "cloud-download", a: /^(?:Rendre disponible hors-ligne|Make available offline|Hacer disponible sin conexión)/ },
+    { e: "🧭", i: "route", a: /^(?:Tracer l'itinéraire|Plot the route|Trazar la ruta)/ },
+    { e: "🌀", i: "waypoints", a: /^(?:Portail suivant|Next portal|Portal siguiente|Itinéraire via plusieurs plans|Route across multiple plans|Ruta a través de varios planos|Ruta por varios planos)/ },
+    { e: "🗑️", i: "trash-2",
+      a: /^(?:Effacer la session|Clear the session|Borrar la sesión|Supprimer \(N\)|Delete \(N\)|Eliminar \(N\))/ },
+    { e: "🏗️", i: "m-niveaux", a: /^(?:Niveau|Level|Nivel) \(N\)/ },
+    { e: "✅", i: "check",
+      a: /^(?:Convertir \(N\)|Convert \(N\)|Prendre la zone|Use this area|Usar esta zona|Tomar la zona)/ },
+    { e: "📝", i: "pencil-line", a: /^(?:Note libre|Free note|Nota libre)/ },
+    { e: "👁️", i: "eye", a: /^(?:Aperçu|Preview|Vista previa|Tout|All|Todo)\b/ },
+    { e: "↕️", i: "m-niveaux", a: /^(?:Niveaux desservis|Levels served|Niveles servidos)/ },
+    { e: "📌", i: "link", a: /^(?:Photo|Foto)\b/ },
+    { e: "🎯", i: "ruler", a: /^(?:Calibrer l'échelle|Calibrate the scale|Calibrar la escala)/ },
+    { e: "🔁", i: "repeat", a: /^(?:Recaler des données|Realign data|Recalar datos|Tour complet|Full tour|Recorrido completo)/ },
+    { e: "⌨️", i: "keyboard", a: /^(?:Raccourcis clavier|Keyboard shortcuts|Atajos de teclado)/ },
   ];
 
   const AUTRE_SENS = [
@@ -698,7 +763,7 @@
     { e: "📱", s: "installation sur l'écran d'accueil (tutoriel)", a: /^(?:Installe l'app|Install the app|Instala la app)/ },
     { e: "🪧", s: "bandeau du guidage (tutoriel)", a: /^(?:En marchant|As you walk|Mientras caminas)/ },
     { e: "🧭", s: "position du tracker (départ d'itinéraire, réglage)", a: /^Tracker (?:start )?position/ },
-    { e: "🧭", s: "réglages de navigation, Tracer l'itinéraire de la Sortie d'urgence, rose des vents, Dijkstra, titres" },
+    { e: "🧭", s: "réglages de navigation, rose des vents, Dijkstra, titres" },
     { e: "✏️", s: "puces de la vue Édition de la 3D (caméra, zoom, survol…), nom local, renommer" },
     { e: "🛣️", s: "rendu Galerie / Mixte de la 3D", a: /^(?:Galerie|Gallery|Galería|Tunnels|Mixte|Mixed|Mixto)\b/ },
     { e: "🛣️", s: "rendu Mixte de la 3D", b: /🏛️?$/ },
@@ -737,7 +802,7 @@
     { e: "❌", s: "ce que l'app n'est pas, refus, effacer un surlignage ou un itinéraire" },
     { e: "🧹", s: "outils du Secours et de maintenance",
       a: /^(?:Découper|Parcours|Dédoublonner|Données orphelines|Split|Route|Deduplicate|Orphan|Dividir|Recorrido|Deduplicar|Datos huérfanos|Desduplicar)/ },
-    { e: "✅", s: "états (gardé, OK, accepté), convertir, rentrée, résumé" },
+    { e: "✅", s: "états (gardé, OK, accepté), rentrée, résumé" },
     { e: "🪜", s: "boutons de la zone jonction (menu Zone, bulle), affichés en emoji comme les autres types de zones",
       a: /^\**(?:(?:Nouvelle )?[Zz]one jonction|(?:New )?[Jj]unction zone|(?:Nueva )?[Zz]ona de unión|Tracer la jonction|Draw the junction|Trazar la unión|Changer les niveaux|Change the levels|Cambiar los niveles)/ },
     { e: "🪜", s: "changer de niveau dans la 3D, accès, réglage d'affichage" },
@@ -747,7 +812,7 @@
     { e: "🎨", s: "fond sous le plan, légende, couleurs, export avancé de session, image vierge" },
     { e: "📊", s: "détails de la session, statistiques, calques de données" },
     { e: "🔄", s: "import d'un plan existant", a: /^(?:Mettre à jour le plan —|Update the map —|Actualizar el mapa —)/ },
-    { e: "🔄", s: "convertir, modifier un calque, changer de plan, crédits" },
+    { e: "🔄", s: "modifier un calque, changer de plan, crédits" },
     { e: "🌍", s: "crédits OpenStreetMap" },
     { e: "📖", s: "topo, audit réseau, doc d'installation, documentation en ligne" },
     { e: "🚨", s: "victime trouvée (statut), alertes de survie, catégorie Secours, seuil de batterie, rubrique Urgence" },
@@ -758,9 +823,8 @@
     { e: "🧰", s: "section Outils de la fenêtre Tracker (titre sans icône)", a: /^(?:Outils|Tools|Herramientas) —/ },
     { e: "📦", s: "Backups, Générer le ZIP, JSZip, rapport du Secours, propriété des données" },
     { e: "📔", s: "Sortie en cours, Démarrer une sortie, rubrique Mes sorties et mes données" },
-    { e: "🌀", s: "liaisons inter-plan, portails, Passer au plan, itinéraire via plusieurs plans" },
+    { e: "🌀", s: "liaisons inter-plan, portails, Passer au plan" },
     { e: "📸", s: "photos d'un point, case Photos des exports, compteur, crédits html2canvas" },
-    { e: "🏗️", s: "Niveau (N) de la sélection multiple", a: /^(?:Niveau|Level|Nivel) \(N\)/ },
     { e: "🏗️", s: "Niveaux, multi-niveau, bouton de la barre latérale du Générateur" },
     { e: "🌐", s: "géoréférencement, coordonnées GPS, hors-ligne par défaut, crédits GPX" },
     { e: "☁️", s: "bouton Publier (installation reliée)", a: /^(?:Publier|Publish|Publicar)/ },
@@ -775,7 +839,7 @@
     { e: "📋", s: "Copier le rapport (perdu, Secours), copier une position, résumé à copier" },
     { e: "🔧", s: "outils du Secours et de maintenance" },
     { e: "🚫", s: "interdits, refus, hors-ligne" },
-    { e: "📤", s: "exporter (session, profil, CSV, scénario, TXT)" },
+    { e: "📤", s: "exporter (session, CSV, scénario, TXT), titre « Exporter et importer ton profil »" },
     { e: "🗑️", s: "supprimer un sommet (menu de sommet d'une forme)", b: /＋ (?:et|and|y)$/ },
     { e: "🗑️", s: "supprimer, retirer, effacer, tout vider" },
     { e: "🛡️", s: "anonymiser, limiter le dézoom, plans révoqués" },
@@ -791,7 +855,14 @@
     { e: "🧱", s: "état des textures dans une phrase, catégorie Structures, butée de la 3D" },
     { e: "📌", s: "photo à rattacher, assigner un point" },
     { e: "🚒", s: "secours extérieurs (étape de procédure)" },
-    { e: "👤", s: "Mon profil (accueil)" },
+    { e: "📝", s: "scénario du Mode Secours (titre, contexte), observations d'une étape" },
+    { e: "👁️", s: "suivre une position, fermer, masquer une entrée, niveaux visibles, détails d'une équipe" },
+    { e: "↕️", s: "passages entre niveaux (escalier, puits, tracé jonction, marque du panneau de la 3D)" },
+    { e: "🔁", s: "titre « Sortie interrompue : reprise et fusion »" },
+    { e: "⌨️", s: "encadrés Clavier / Au PC (raccourcis par écran)" },
+    { e: "📅", s: "dates (rapports, horodatages, durée d'une sortie)" },
+    { e: "↗️", s: "coin haut-droit (calage, légende du PDF)" },
+    { e: "👤", s: "profil de l'accueil hors titre, pseudo" },
     { e: "👥", s: "bouton Équipe d'une installation reliée, encadrants, nombre de personnes" }
   ];
 
@@ -875,8 +946,9 @@
     window.ktaIcone = ktaIcone;
     window.KtaIcones = api;
     if (typeof document !== "undefined") {
+      // Déjà analysé (crédits du splash, au-dessus de ce script) : posé tout de suite ; le reste à DOMContentLoaded.
+      poser();
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { poser(); });
-      else poser();
     }
   }
   if (typeof module !== "undefined" && module.exports) module.exports = api;

@@ -2607,7 +2607,7 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   Un nom inconnu rend une chaîne vide et un avertissement console.
 - **Un seul système de noms** : celui de l'icône (Lucide, ex. `navigation`, `compass`, `rotate-cw`), ou `m-…` pour
   les 5 icônes métier (`m-galerie`, `m-zone`, `m-pilier`, `m-echelle`, `m-niveaux`). Les 113 icônes de la planche
-  sont embarquées, plus 66 absentes de la planche (Lucide 0.460.0, tracé copié du paquet officiel, à valider une à
+  sont embarquées, plus 80 absentes de la planche (Lucide 0.460.0, tracé copié du paquet officiel, à valider une à
   une) : `list` (Légende), `sigma` (Distance
   totale), `panels-top-left` (panneaux ancrés), `monitor-cog` (Système & maintenance), `unplug` (Kill SW),
   `server-cog` (ConfAdmin), `bug` (logs détaillés), `database` (plan d'une installation reliée) ; pour les fenêtres de
@@ -2627,7 +2627,12 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   photo), `graduation-cap` (tutoriel), `bot` (Aide IA), `fingerprint` (biométrie du code d'accès) ; vue 3D : `brick-wall` (textures),
   `telescope` (portée), `sun` (plein jour), `cloud-fog` (estomper) ; vitesses de marche : `bandage` (blessé), `snail`
   (lente), `person-standing` (normale), `rabbit` (rapide) ; préréglage de performance : `power-off`, `wand-sparkles`,
-  `gem`, `scale` (et `rocket` pour Performance).
+  `gem`, `scale` (et `rocket` pour Performance) ; fin de la refonte : `briefcase` (édition pro, lien Licence pro),
+  `building-2` (installation reliée dans le Profil), `replace` (Remplacer une liste, mode Replace de l'import),
+  `calculator` (résultat du calibrage), `network` (graphe de Mes liaisons), `plug` (connexion serveur : pastille,
+  ConfAdmin), `landmark` (texte du Sénat dans les conditions), `external-link` (PDF dans un onglet), `clock` (Plus
+  tard), `keyboard` (raccourcis clavier), `type` (recalage par les noms), `leaf` (Leaflet), `instagram` et `mail`
+  (contacts du pied de page).
 - Élément statique : `data-kta-ico="nom"`, rempli au chargement par `KtaIcones.poser()` (accueil, Configuration et
   ses fenêtres) ; ailleurs, le gabarit appelle `window.ktaIcone("nom")` devant le libellé. Le bouton garde son `title`
   / `aria-label` : le SVG est `aria-hidden`. Un libellé posé par `textContent` ne peut pas porter l'icône : le module
@@ -2732,6 +2737,27 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   **Inspecteur** et **Inspecteur Service Worker** (sections, étiquettes du runtime, boutons), **badge INCOGNITO**
   `venetian-mask` et sa fenêtre, **carte d'état du préréglage de performance**, **vitesses de marche** (itinéraire et
   Je suis perdu ; le rapport copié de Je suis perdu garde ses emoji).
+- **Fin de la refonte** : fenêtre **Profil** (`homeProfile.js` : titre `user`, photo `camera`, pseudo `save`, bandeau
+  de l'accueil `palette` et ses stats `timer` / `save` / `map` / `star` / `trophy`, cellules des statistiques,
+  tableau et camemberts de Mes plans, hauts faits `trophy` (familles : `map`, `globe`, `ruler`, `timer`, `map-pin`,
+  `m-galerie`, `m-zone`, `m-pilier` ; spéciaux : `layers`, `star`, `navigation`, `m-niveaux`, `timer`, `trophy` ;
+  `profileAchievements.js > FAMILIES / SPECIALS.ico`), fond d'écran `image`, actions exporter `arrow-up-from-line` / importer
+  `arrow-down-to-line` / réinitialiser `trash-2`, compte d'une installation reliée `user`, avatar vide), **export et
+  import du profil** (`profileExportImport.js` : lignes de section, archives `package`, modes `merge` / `replace`,
+  bilan), liste de plans à charger, **sélection multiple** (bandeau `crosshair`, Convertir / Prendre la zone `check`,
+  Niveau `m-niveaux`, Supprimer `trash-2`, Tous les « type » `plus`, Dernier sommet `undo-2` ; familles des fenêtres
+  Supprimer et Niveau et leur bouton OK), **itinéraire entre plans** (Portail suivant `waypoints`, étape portail de la
+  liste : source `portal` de `interfaceItineraire.js`), **recalage sur un autre scan** (titre `repeat` comme sa tuile
+  du Tableur, onglets, fichiers, aperçu, télécharger), **pied de page de l'accueil** et crédits du splash
+  (`data-kta-ico`, posés dès le chargement de `ktaIcones.js`), pastille de connexion `plug`, **ConfAdmin**
+  (`confadmin.html` charge `ktaIcones.js` : titres, boutons, colonne Rangement, rubriques), bascule d'interface héritée,
+  **portes d'entrée** (déverrouillage, code d'accès, Bienvenue : icône d'écran, Déverrouiller, Lire la documentation,
+  biométrie, Sortie d'urgence `siren`), **conditions d'utilisation** (`scale`), **Aide IA** (sections, boutons),
+  **rapport de session**, **Mode Histoire** (onglets, aperçu, lien, PDF dans un onglet), **maintenance** et calibrage
+  de l'échelle, recherche multi-plans, Mes liaisons et création d'une liaison, profondeur et profil en long, raccords,
+  conversion d'un objet, doublon d'import, hors ligne d'un plan, mesure de la Vue OSM, alertes et mise à jour
+  disponible, calibrage d'un calque image, Sortie d'urgence (Tracer l'itinéraire, Brancard), boutons Sauver la note,
+  Convertir, Supprimer et lecture de la fiche d'un objet (la lecture garde son SVG après un clic).
 - Les pastilles de **types** (tracés, zones, structures : `ktaTypeSwatchHtml`) restent des pastilles ; seul leur repli
   est un emoji (⛔ Inaccessible, qui n'a pas de pastille, compris).
 
@@ -2771,19 +2797,25 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   est donc figé par emoji (`PLAFOND_RESTE`, cliquet) : toute hausse échoue jusqu'à ce que l'emploi soit classé (règle
   DOC ciblée, ou autre sens ciblé) ; recalcul `--plafond`. Fenêtres de la carte : `CLES_C2` (par fichier, chaque
   emploi de la clé a son icône sur la ligne ou la voisine) et `CLES_C2_TEXTE` (clés sorties de l'emoji, icône posée
-  par l'appelant ou absente) ; reste de l'interface : `CLES_C3` / `CLES_C3_TEXTE`, même règle ; aucun reflet de mode
+  par l'appelant ou absente) ; reste de l'interface : `CLES_C3` / `CLES_C3_TEXTE`, fin de la refonte : `CLES_C4` /
+  `CLES_C4_TEXTE`, même règle ; aucun reflet de mode
   en emoji (`_setGroupeModeActif`, tous les modules) ; jamais un emoji dans un bouton de la vue 3D (`_bouton`, flèches
   du pavé exceptées), une icône de confirmation (`kta-modal-icon`, tous les modules), un compteur ou voyant des barres du
-  haut et du bas, une carte du tutoriel. § 6 : les trois dicos **entiers** hors `aide.*` et `tutorial.card.*` — un
+  haut et du bas, une carte du tutoriel, une ligne du profil, de son export ou du rapport de session, un onglet du
+  recalage, une famille de la sélection ; pied de page de l'accueil, crédits du splash et ConfAdmin en `data-kta-ico`
+  sans emoji. § 6 : les trois dicos **entiers** hors `aide.*` et `tutorial.card.*` — un
   emoji que `classerDoc` substituerait (bouton migré) dans un texte hors doc échoue, sauf `CLES_SORTIE` ; le reste est
   figé par emoji, trois langues additionnées (`PLAFOND_DICOS`, cliquet, recalcul `--plafond`) : seul ⛑ de
   `lost.alert.confirmOk` (nom du point créé) y reste.
 - `scripts/smoke/checkup-icones-ui.js` (Chromium et WebKit, sombre et clair) : le rendu réel (accueil, Configuration,
   Journal réseau, réseau expliqué, Dépannage, carte, Tracker, export, 18 fenêtres d'outils de la carte, barres du haut
   et du bas, fiche d'un point, bouton d'aide d'une fenêtre, Mode Secours en vue opérateur et secouriste, vue 3D,
-  Générateur, Tableur, Mes photos, tutoriel, Vue OSM si le plan est géoréférencé, Documentation, Aide).
+  Générateur, Tableur, Mes photos, tutoriel, Vue OSM si le plan est géoréférencé, Documentation, Aide, pied de page,
+  Profil, export du profil, sélection multiple, recalage, rapport de session, raccourcis, recherche multi-plans, Mes
+  liaisons, calibrage de l'échelle, ConfAdmin).
 - Bacs à sable des garde-fous qui exécutent un module : `ktaIcone` simulé (`() => ""`) là où le module rend une icône
-  (`check-osm-outils`, `check-osm-defaut`, `check-poi-jonction`, `check-extensions` pour `_icoFiche`).
+  (`check-osm-outils`, `check-osm-defaut`, `check-poi-jonction`, `check-extensions` pour `_icoFiche`,
+  `check-selection-multi`, `check-kiosque-serveur`).
 - Emoji restants : un pictogramme à présentation texte (🛣️ 🗂️ 👁️ ⏸️ ⏹️ ⏭️ 🗑️ 🏗️…) s'écrit avec U+FE0F, sinon Windows et une
   partie des Android le dessinent en noir et blanc. Flèches, triangles ▶ ◀, ©, ™ et coches restent en texte.
   🛡️ `scripts/check-emoji-vs16.js` (pré-commit bloquant) ; `--corriger` complète ; la marque `emoji-texte-ok` garde un
@@ -2796,13 +2828,19 @@ icônes métier, planche des 115 notions validée ; police emoji embarquée pour
   caractères typographiques (▲ ▼ ◀ ▶ ↶ ↷ ⌖ ↻ ➜ ↔ ✓ ✕), les pastilles de couleur des types et des statuts d'étape du
   Secours (🟢 🟡 🟠 🔵 🟦…, repli ⛔ Inaccessible), le nom donné à un point créé (⛑️ Position probable, 🏁 Arrivée).
 - **Texte** (le lot police les rendra pareils partout) : messages des toasts, alertes, astuces et encadrés (⚠️ ✅ ❌ ⏳
-  💡 ℹ️ en tête), libellés en attribut (`title`, `placeholder` : « 🔎 Chercher un plan… »), `<option>` et `<optgroup>`
-  (📁 dossier), titres de `ktaConfirm` qui en portent, nom de fichier choisi (« ✅ plan.zip », 📄 📦), étiquettes
-  dessinées dans la scène 3D (mesure 📐 ♦️), titre de l'onglet en incognito (🕵️), statistiques du cache OSM (📦).
-- **Fenêtres hors périmètre de la refonte** (rôle d'icône, pas encore migrées) : fenêtre Profil et ses Hauts faits
-  (`homeProfile.js`, `profileAchievements.js`, `profileGamification.js`), export / import du profil
-  (`profileExportImport.js`), Statistiques globales (lignes de détail), ConfAdmin, rapports de crash, itinéraire entre
-  plans (`interPlanRoute.js`), recalage sur un autre scan (`recalageScan.js`), menu de zone (types de zones en emoji),
-  pied de page de l'accueil (liens et crédits), modale de bascule d'interface héritée (`refonteInterface.js`).
+  💡 ℹ️ en tête ; lignes des confirmations de la sélection multiple : 📸 🌀 🗂️ 🪜), état passager d'un bouton pendant
+  une action (« ⏳ Génération… », « ✅ Copié », « ⏳ Compression… »), libellés en attribut (`title`, `placeholder` :
+  « 🔎 Chercher un plan… », 🔒 du champ de code de Bienvenue), `<option>` et `<optgroup>` (📁 dossier, 📦 ZIP / 📂
+  Dossier de ConfAdmin), titres de `ktaConfirm` et d'alerte qui en portent (🗑️ Supprimer la sélection, 🏗️ Changer le
+  niveau, ⚠️ Plan introuvable, 🚫 Trop de tentatives…), nom de fichier choisi (« ✅ plan.zip », 📄 📦), étiquettes
+  dessinées dans la scène 3D (mesure 📐 ♦️), titre de l'onglet en incognito (🕵️), statistiques du cache OSM (📦),
+  pictogrammes fournis par une extension (stats du Profil, panneaux), libellé d'un point évité posé au clic (« 📍 Clic
+  carte », gardé dans les préférences).
+- **Récompenses** (décision produit) : médailles des rangs (🥉 🥈 🥇 🏅 ⚜️ 👑, `profileGamification.js`) et des
+  paliers de hauts faits (`profileAchievements.js > TIER_ICONS`), toast « 🏆 Haut fait débloqué » : emoji colorés,
+  le lot police les uniformise. Les huit familles et les six spéciaux, eux, désignent une notion de l'app : SVG.
+- **Rapports produits** (définitivement, avec `CLES_SORTIE`) : rapport de crash copié (`crashReports.js`), rapport
+  texte des Statistiques, rapport texte de session (`sessionReport.js`), export Markdown des détails de session
+  (`refonteInterface.js`).
 - Un emoji = un sens par écran : 🗺️ Itinéraire, 🔃 Plan orienté, 🔆 Affichage XL, 📱 Garder l'écran allumé, 🔧 Dépannage
   (🆘 = urgence seulement), 📤 exporter, 📥 importer.

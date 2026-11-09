@@ -13,7 +13,9 @@
 // Recherche, Statistiques, Carnet, Itinéraire, Je suis perdu, Mode Secours, éditeur de point, raccourcis) : titres,
 // sections et boutons migrés en SVG, sans emoji. Reste de l'interface (lot C3) : barres du haut et du bas, fiche d'un
 // point, bouton d'aide des fenêtres, Mode Secours (vues opérateur et secouriste), vue 3D, Générateur, Tableur, Mes
-// photos, tutoriel (icônes de carte et emoji de bouton substitués), Vue OSM si le plan est géoréférencé.
+// photos, tutoriel (icônes de carte et emoji de bouton substitués), Vue OSM si le plan est géoréférencé. Fin de la
+// refonte (lot C4) : pied de page de l'accueil, Profil et export du profil, sélection multiple, recalage, rapport de
+// session, raccourcis, recherche multi-plans, Mes liaisons, calibrer l'échelle, ConfAdmin.
 // check-icones-ui.js garde le source ; seul ce parcours voit le rendu (substitution, DOM, CSS).
 // Captures : KTA_CAPTURES=<dossier hors dépôt> (aucune par défaut).
 // Usage : node scripts/smoke/checkup-icones-ui.js   (KTA_MOTEURS=chromium : un seul moteur)
@@ -158,6 +160,58 @@ async function jouer(page, theme) {
     "#kta-depannage-modal .kta-readme-modal-titre, #loaderForceUpdateBtn, #loaderKillSwBtn, #loaderResetBtn",
     "Dépannage", function () { document.getElementById("kta-depannage-close").click(); });
   await page.evaluate(function () { document.getElementById("loaderConfigClose").click(); });
+  await page.waitForTimeout(300);
+
+  // 1d. Fin de la refonte (accueil) : pied de page et crédits, fenêtre Profil (stats, bandeau, actions), export du
+  //     profil (lignes de section, boutons). Les médailles des rangs et des hauts faits restent des emoji.
+  const pied = await page.evaluate(function () {
+    return [".kta-loader-contact", ".kta-loader-credits:not(.kta-loader-contact)", "#loaderCnxChip"].map(function (s) {
+      const el = document.querySelector(s);
+      return el ? Object.assign({ s: s, n: el.querySelectorAll("svg.kta-ico").length }, window.__ktaSonde(el)) : { s: s, absent: true };
+    });
+  });
+  const piedFautes = pied.filter(function (p) { return p.absent || p.emoji || (p.s !== "#loaderCnxChip" && p.n < 3); });
+  verifier(piedFautes.length === 0, "accueil : pied de page (contacts, crédits) et pastille de connexion en SVG, sans emoji",
+    piedFautes);
+  await page.evaluate(function () { const b = document.getElementById("kta-loader-profile-bar"); if (b) b.click(); });
+  await attendre(page, function () { return !!document.querySelector("#kta-profile-details-modal .kta-profile-stat-cell"); }, 10000);
+  await page.waitForTimeout(800);
+  const profil = await page.evaluate(function () {
+    const m = document.getElementById("kta-profile-details-modal");
+    if (!m) return null;
+    return Array.prototype.filter.call(m.querySelectorAll(".kta-readme-modal-titre, .kta-btn, .kta-profile-stat-lbl, " +
+      ".kta-profile-barstats-header, .kta-profile-barstats-cb > span, .kta-profile-details-section-titre, " +
+      ".kta-profile-plansstats-header, .kta-feats-head, .kta-feats-sptitle, .kta-feat-fam, .kta-feat-sp"), function (el) {
+      return el.offsetParent !== null && (el.textContent || "").trim();
+    }).map(function (el) { return Object.assign({ t: el.textContent.trim().slice(0, 30) }, window.__ktaSonde(el)); });
+  });
+  const profilFautes = (profil || []).filter(function (b) { return !b.svg || b.emoji; });
+  verifier(!!profil && profil.length >= 12 && profilFautes.length === 0, "Profil : " + (profil ? profil.length : 0) +
+    " titres, boutons, libellés, familles et spéciaux des hauts faits en SVG, sans emoji", profilFautes);
+  // Les médailles des paliers restent des emoji (récompenses colorées, lot police emoji).
+  const medailles = await page.evaluate(function () {
+    return document.querySelectorAll("#kta-profile-details-modal .kta-feat-badge").length;
+  });
+  verifier(medailles >= 32, "Profil : " + medailles + " médailles de palier (emoji gardés)");
+  await capture(page, "1d-profil");
+  await page.evaluate(function () { const x = document.getElementById("kta-profile-details-close"); if (x) x.click(); });
+  await page.waitForTimeout(300);
+  await page.evaluate(function () { window.ProfileExportImport.ouvrirExportModale(); });
+  await attendre(page, function () { return !!document.querySelector("#kta-profile-export-modal .kta-profile-row"); }, 15000);
+  const exportProfil = await page.evaluate(function () {
+    const m = document.getElementById("kta-profile-export-modal");
+    const lignes = Array.prototype.map.call(m.querySelectorAll(".kta-profile-row-emoji"), function (el) {
+      return window.__ktaSonde(el);
+    });
+    const autres = Array.prototype.map.call(m.querySelectorAll(".kta-readme-modal-titre, #kta-profile-export-go"),
+      function (el) { return window.__ktaSonde(el); });
+    return lignes.concat(autres);
+  });
+  const expFautes = exportProfil.filter(function (b) { return !b.svg || b.emoji; });
+  verifier(exportProfil.length >= 12 && expFautes.length === 0, "Exporter mon profil : " + exportProfil.length +
+    " lignes, titre et bouton en SVG, sans emoji", expFautes);
+  await capture(page, "1d-export-profil");
+  await page.evaluate(function () { const x = document.getElementById("kta-profile-export-close"); if (x) x.click(); });
   await page.waitForTimeout(300);
 
   // 2. Ouvrir un plan (relevé fictif s'il est proposé, sinon le premier de la liste).
@@ -501,6 +555,51 @@ async function jouer(page, theme) {
     await page.waitForTimeout(400);
   } else console.log("  ℹ️ Vue OSM : plan non géoréférencé ou vue indisponible, sondage sauté");
 
+  // 10. Fin de la refonte (carte) : sélection multiple (bandeau), recalage sur un autre scan (titre, onglets,
+  //     boutons), rapport de session, raccourcis clavier, recherche multi-plans, Mes liaisons, calibrer l'échelle.
+  const fenetreC4 = async function (ouvrir, selRacine, selControles, nom, min) {
+    await page.evaluate(ouvrir);
+    await attendre(page, new Function("return !!document.querySelector(" + JSON.stringify(selRacine) + ");"), 8000)
+      .catch(function () {});
+    await page.waitForTimeout(500);
+    exiger(nom, await sonder(selControles), min);
+    await capture(page, "10-" + nom.replace(/[^\wé]+/g, "-").toLowerCase());
+  };
+  const fermerOverlay = function (sel) {
+    return page.evaluate(function (s) { const o = document.querySelector(s); if (o) o.remove(); }, sel);
+  };
+  await page.evaluate(function () { window.SelectionMulti.ouvrir(); });
+  await page.waitForTimeout(500);
+  exiger("sélection multiple (bandeau)", await sonder("#kta-selm-floater .kta-iti-floater-icon, #kta-selm-zone, " +
+    "#kta-selm-niveau, #kta-selm-suppr"), 2);
+  await page.evaluate(function () { window.SelectionMulti.fermer(); });
+  await fenetreC4(function () { window.ktaOuvrirRecalageScan(); }, ".kta-recal-boite",
+    ".kta-recal-boite .kta-readme-modal-titre, .kta-recal-boite .kta-recal-onglet, .kta-recal-boite .kta-recal-fichier, " +
+    "#kta-recal-go, #kta-recal-apercu", "recalage sur un autre scan", 4);
+  await page.evaluate(function () { const x = document.getElementById("kta-recal-close"); if (x) x.click(); });
+  await fenetreC4(function () { window.SessionReport.ouvrirModal(); }, "#kta-report-modal",
+    "#kta-report-modal .kta-readme-modal-titre, #kta-report-modal .kta-aide-section-titre, " +
+    "#kta-report-modal .kta-report-cb-row, #kta-report-modal .kta-report-actions .kta-btn", "rapport de session", 12);
+  await fermerOverlay("#kta-report-modal");
+  await fenetreC4(function () { window.ShortcutsCheatsheet.ouvrir(); }, "#kta-cheatsheet-close",
+    ".kta-readme-modal-titre", "raccourcis clavier", 1);
+  await page.evaluate(function () { const x = document.getElementById("kta-cheatsheet-close"); if (x) x.click(); });
+  await fenetreC4(function () { window.CrossPlanSearch.ouvrir(); }, ".kta-xps-multihop, .kta-readme-modal-titre",
+    ".kta-readme-modal-overlay:last-of-type .kta-readme-modal-titre, .kta-xps-multihop > span", "recherche multi-plans", 1);
+  await page.evaluate(function () {
+    document.querySelectorAll(".kta-readme-modal-overlay").forEach(function (o) { o.remove(); });
+  });
+  await fenetreC4(function () { window.InterPlanLinks.ouvrirGestionnaire(); }, "#kta-ipl-mgr-vlist",
+    ".kta-readme-modal-overlay .kta-readme-modal-titre, #kta-ipl-mgr-vlist, #kta-ipl-mgr-vgraph", "Mes liaisons", 3);
+  await page.evaluate(function () {
+    document.querySelectorAll(".kta-readme-modal-overlay").forEach(function (o) { o.remove(); });
+  });
+  await fenetreC4(function () { window.ouvrirCalibrageEchelle(); }, "#kta-calib-close",
+    ".kta-readme-modal-overlay .kta-readme-modal-titre, .kta-readme-modal-overlay .kta-aide-section-titre",
+    "calibrer l'échelle", 2);
+  await page.evaluate(function () { const x = document.getElementById("kta-calib-close"); if (x) x.click(); });
+  await page.waitForTimeout(300);
+
   // 6. Documentation (fr) : bonnes icônes, et aucun emoji migré resté hors « autre sens ».
   await page.evaluate(function () { window.afficherReadme(); });
   await attendre(page, function () {
@@ -564,6 +663,21 @@ async function jouer(page, theme) {
   verifier(aide.boussole === "compass", "Aide : « 🧭 Boussole » → icône compass", aide.boussole);
   verifier(aide.cat, "Aide : titre de catégorie « ⚙️ Réglages… » avec l'icône settings");
   await capture(page, "6-aide");
+
+  // 11. ConfAdmin (page à part) : titres, boutons, colonnes et rubriques en SVG, sans emoji.
+  await page.goto(BASE + "/confadmin.html", { waitUntil: "domcontentloaded" });
+  await attendre(page, function () { return !!document.querySelector("h1 svg.kta-ico"); }, 10000).catch(function () {});
+  await page.evaluate(SONDE);
+  const ca = await page.evaluate(function () {
+    return Array.prototype.filter.call(document.querySelectorAll("h1, h2, button.kta-ca-btn, th, summary strong, " +
+      ".kta-ca-accueil > span > strong, #caAddons > span > strong"), function (el) {
+      return /[\p{Extended_Pictographic}]/u.test(el.textContent) || !!el.querySelector("[data-kta-ico]");
+    }).map(function (el) { return Object.assign({ t: el.textContent.trim().slice(0, 30) }, window.__ktaSonde(el)); });
+  });
+  const caFautes = ca.filter(function (b) { return !b.svg || b.emoji; });
+  verifier(ca.length >= 15 && caFautes.length === 0, "ConfAdmin : " + ca.length + " titres, boutons et rubriques en SVG, " +
+    "sans emoji", caFautes);
+  await capture(page, "11-confadmin");
 }
 
 (async function main() {

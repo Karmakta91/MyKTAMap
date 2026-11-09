@@ -115,40 +115,42 @@
   .kta-ca-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
   ol.kta-ca-deploy { margin: 8px 0 0; padding-left: 20px; color: #c8d0e0; font-size: 12.5px; line-height: 1.6; }
   ol.kta-ca-deploy code { color: #f4c542; }
+  /* Icônes SVG au trait (js/ktaIcones.js, posées par data-kta-ico) : même règle que l'app (css/style.css). */
+  .kta-ico { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex-shrink: 0; pointer-events: none; }
 </style>
 </head>
 <body>
 <div class="kta-ca-wrap">
-  <h1>🛠️ ConfAdmin — index.json kiosque</h1>
+  <h1><span data-kta-ico="server-cog"></span> ConfAdmin — index.json kiosque</h1>
   <p class="kta-ca-sub">Générateur de <code>data/index.json</code> pour une instance MyKTAMap auto-hébergée (plans pré-installés sur le serveur).</p>
 
   <div class="kta-ca-warn">
-    🔒 <strong>Tout se passe dans ce navigateur</strong> — aucun fichier n'est envoyé nulle part.
+    <span data-kta-ico="lock"></span> <strong>Tout se passe dans ce navigateur</strong> — aucun fichier n'est envoyé nulle part.
     Les ZIPs sont lus localement pour en extraire les métadonnées ; le résultat est un fichier
     <code>index.json</code> à télécharger puis déposer toi-même sur ton serveur.
   </div>
 
   <!-- ═══ 1. PLANS ═══ -->
   <div class="kta-ca-card">
-    <h2>📦 1. Plans du kiosque</h2>
+    <h2><span data-kta-ico="package"></span> 1. Plans du kiosque</h2>
     <p class="kta-ca-hint">Dépose les ZIPs générés par MyKTAMap (Générateur ou export). L'outil lit le
     <code>plan-config.json</code> de chacun pour pré-remplir id / nom / version / badges. L'<strong>id</strong>
     identifie le plan (minuscules sans espace). <strong>Format</strong> : 📦 <strong>ZIP</strong> (recommandé) — le
     ZIP est servi tel quel (<code>data/plan.zip</code>), téléchargé à l'ouverture et gardé sur l'appareil pour le
     hors-ligne ; 📂 <strong>Dossier</strong> — le ZIP décompressé dans <code>data/&lt;id&gt;/</code>.</p>
-    <div class="kta-ca-drop" id="caDrop">📥 Glisse tes ZIPs ici — ou clique pour choisir</div>
+    <div class="kta-ca-drop" id="caDrop"><span data-kta-ico="arrow-down-to-line"></span> Glisse tes ZIPs ici — ou clique pour choisir</div>
     <input type="file" id="caZipInput" accept=".zip" multiple style="display:none">
     <div id="caPlansStatus"></div>
     <table class="kta-ca-table" id="caPlansTable" style="display:none;">
-      <thead><tr><th></th><th>id</th><th>Format · chemin</th><th>Nom affiché</th><th>Version</th><th>Auteur</th><th>📁 Rangement</th><th>Tags</th><th>Badges</th><th></th></tr></thead>
+      <thead><tr><th></th><th>id</th><th>Format · chemin</th><th>Nom affiché</th><th>Version</th><th>Auteur</th><th><span data-kta-ico="folder"></span> Rangement</th><th>Tags</th><th>Badges</th><th></th></tr></thead>
       <tbody id="caPlansBody"></tbody>
     </table>
     <div class="kta-ca-actions">
-      <button class="kta-ca-btn" id="caAddManual" type="button">➕ Ajouter une entrée à la main</button>
+      <button class="kta-ca-btn" id="caAddManual" type="button"><span data-kta-ico="plus"></span> Ajouter une entrée à la main</button>
       <!-- 🩸 Sans ce bouton, éditer les tags d'un parc déjà en ligne obligeait à
            REDÉPOSER tous les ZIPs et à retaper chaque nom : la page ne savait que
            créer un index, jamais en reprendre un. -->
-      <button class="kta-ca-btn" id="caLoadIndex" type="button">📂 Reprendre un index.json existant</button>
+      <button class="kta-ca-btn" id="caLoadIndex" type="button"><span data-kta-ico="folder-open"></span> Reprendre un index.json existant</button>
       <input type="file" id="caIndexInput" accept=".json,application/json" style="display:none">
     </div>
   </div>
@@ -160,29 +162,29 @@
          kiosque, un dossier déclaré est verrouillé (ni renommé ni supprimé par
          l'utilisateur) tant qu'il l'est, et l'utilisateur garde le droit de
          déplacer un plan — l'index propose, l'utilisateur dispose. -->
-    <h2>📁 1 bis. Dossiers de la liste</h2>
-    <p class="kta-ca-sub">Sections de « Mes plans » sur le kiosque. Chaque plan ci-dessus peut en rejoindre une (colonne « 📁 Dossier »).
+    <h2><span data-kta-ico="folder"></span> 1 bis. Dossiers de la liste</h2>
+    <p class="kta-ca-sub">Sections de « Mes plans » sur le kiosque. Chaque plan ci-dessus peut en rejoindre une (colonne « Rangement »).
       Un utilisateur peut toujours déplacer un plan ; il ne peut pas renommer ni supprimer un dossier tant que l'index le déclare.</p>
     <table class="kta-ca-table" id="caFoldersTable" style="display:none;">
       <thead><tr><th></th><th>id</th><th>Nom</th><th>Couleur</th><th></th></tr></thead>
       <tbody id="caFoldersBody"></tbody>
     </table>
     <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-      <button class="kta-ca-btn" id="caFolderAdd" type="button">➕ Ajouter un dossier</button>
+      <button class="kta-ca-btn" id="caFolderAdd" type="button"><span data-kta-ico="plus"></span> Ajouter un dossier</button>
       <label class="kta-ca-flag" style="margin:0;"><input type="checkbox" id="caFlagFoldersDefault">
         <span>Ouvrir « Mes plans » en mode <strong>Dossiers</strong> par défaut <small>(seulement tant que l'utilisateur n'a pas choisi lui-même)</small></span></label>
       <label class="kta-ca-flag" style="margin:0;"><input type="checkbox" id="caFlagSitePlansHidden">
         <span>Ne pas charger les <strong>plans du site</strong> (cette liste) au démarrage, par défaut <small>(installation où les plans vivent en base de données ; l'utilisateur peut les réafficher dans ⚙️ Configuration ; sans effet si « plans serveur uniquement »)</small></span></label>
     </div>
 
-    <h2>🌀 2. Liaisons inter-plan (portails)</h2>
+    <h2><span data-kta-ico="waypoints"></span> 2. Liaisons inter-plan (portails)</h2>
     <p class="kta-ca-hint">Récupère tes liaisons depuis le profil de <strong>ce navigateur</strong> (ouvre cette page
     depuis ton instance MyKTAMap — même adresse — sinon le profil est introuvable) ou depuis un
     <strong>export de profil</strong> (.json). Ensuite, fais correspondre chaque plan d'origine à un plan du kiosque :
     les ids locaux sont remappés vers les ids serveur.</p>
     <div class="kta-ca-actions">
-      <button class="kta-ca-btn" id="caReadLocal" type="button">📥 Lire les liaisons de CE navigateur</button>
-      <button class="kta-ca-btn" id="caLoadProfile" type="button">📂 Charger un export de profil (.json)</button>
+      <button class="kta-ca-btn" id="caReadLocal" type="button"><span data-kta-ico="arrow-down-to-line"></span> Lire les liaisons de CE navigateur</button>
+      <button class="kta-ca-btn" id="caLoadProfile" type="button"><span data-kta-ico="folder-open"></span> Charger un export de profil (.json)</button>
       <input type="file" id="caProfileInput" accept=".json,application/json" style="display:none">
     </div>
     <div id="caLinksStatus"></div>
@@ -196,7 +198,7 @@
 
   <!-- ═══ 3. CONFIG KIOSQUE ═══ -->
   <div class="kta-ca-card">
-    <h2>⚙️ 3. Réglages kiosque</h2>
+    <h2><span data-kta-ico="settings"></span> 3. Réglages kiosque</h2>
     <label class="kta-ca-flag" style="flex-direction:column; align-items:stretch; gap:4px; cursor:default;">
       <span><strong>Sous-titre personnalisé</strong> — remplace « Cartographie souterraine » (écran de démarrage + en-tête de l'accueil)<br>
       <small>Vide = sous-titre standard traduit selon la langue du visiteur. Le nom MyKTAMap reste affiché.</small></span>
@@ -207,7 +209,7 @@
          reliée). Texte seul, mêmes bornes que l'app (80 / 400 : js/ktaExtensions.js > normaliserAccueil), exporté par
          js/confadmin.js > ktaAccueilExport en `config.accueil` (scripts/check-connexion-serveur.js). -->
     <div class="kta-ca-accueil" id="caAccueil">
-      <span><strong>🏙️ Écran d'accueil</strong> — titre et texte montrés à l'arrivée sur ton installation<br>
+      <span><strong><span data-kta-ico="house"></span> Écran d'accueil</strong> — titre et texte montrés à l'arrivée sur ton installation<br>
       <small>Vide : « MyKTAMap » en titre ; en texte, le sous-titre ci-dessus, sinon « Cartographie souterraine »
       traduit. Texte simple (pas de mise en forme), retours à la ligne gardés.</small></span>
       <label class="kta-ca-champ-ligne">Titre de l'accueil
@@ -230,7 +232,7 @@
       <!-- 🎮 Add-ons autorisés sur une installation reliée (reglages.json > addons) : tous les add-ons livrés, secrets
            compris, peints par js/confadmin.js > _peindreAddons (registre js/ktaAddons.js). -->
       <div id="caAddons">
-        <span><strong>🎮 Add-ons</strong> — autorisés sur une installation reliée à un serveur (pro)<br>
+        <span><strong><span data-kta-ico="gamepad-2"></span> Add-ons</strong> — autorisés sur une installation reliée à un serveur (pro)<br>
         <small>Sans serveur, les add-ons livrés avec l'app sont déjà permis : ces cases ne servent qu'à une
         installation reliée, où ils sont refusés par défaut. Enregistrées dans <code>reglages.json</code>.</small></span>
         <div id="caAddonsListe"></div>
@@ -243,8 +245,8 @@
       <code>data/</code> ; installation pro, <code>instance/data/reglages.json</code> (Docker) ou le dossier
       <code>data/</code> du site servi (sans Docker).</small>
       <div class="kta-ca-actions">
-        <button class="kta-ca-btn kta-ca-btn-gold" id="caReglagesDownload" type="button">💾 Télécharger reglages.json</button>
-        <button class="kta-ca-btn" id="caReglagesLoad" type="button">📂 Reprendre un reglages.json</button>
+        <button class="kta-ca-btn kta-ca-btn-gold" id="caReglagesDownload" type="button"><span data-kta-ico="save"></span> Télécharger reglages.json</button>
+        <button class="kta-ca-btn" id="caReglagesLoad" type="button"><span data-kta-ico="folder-open"></span> Reprendre un reglages.json</button>
         <input type="file" id="caReglagesInput" accept=".json,application/json" style="display:none">
       </div>
       <div id="caReglagesEtat"></div>
@@ -259,7 +261,7 @@
          index existant — on ne peut pas retrouver un mot de passe depuis son
          hash, et faire semblant du contraire serait pire que rien. -->
     <label class="kta-ca-flag" style="flex-direction:column; align-items:stretch; gap:4px; cursor:default;">
-      <span><strong>🔑 Mot de passe d'accès de cette instance</strong> — optionnel<br>
+      <span><strong><span data-kta-ico="key-round"></span> Mot de passe d'accès de cette instance</strong> — optionnel<br>
       <small>Tes visiteurs pourront ouvrir l'app avec CE mot de passe <strong>ou</strong> avec le code communautaire.
       Seul le <strong>hash SHA-256</strong> part dans <code>index.json</code> : le mot de passe lui-même ne quitte pas ce navigateur.<br>
       ⚠️ <strong>Barrière sociale, pas une authentification</strong> — <code>index.json</code> est public, donc le hash aussi,
@@ -279,7 +281,7 @@
          est « on » (absent = désactivé). Mêmes règles que js/ktaExtensions.js >
          valider(), vérifiées par scripts/check-connexion-serveur.js. -->
     <details class="kta-ca-flag" id="caCnx" style="flex-direction:column; align-items:stretch; gap:6px;">
-      <summary style="cursor:pointer;"><strong>🔌 Connexion serveur</strong> — réservé aux instances qui greffent des modules de connexion</summary>
+      <summary style="cursor:pointer;"><strong><span data-kta-ico="plug"></span> Connexion serveur</strong> — réservé aux instances qui greffent des modules de connexion</summary>
       <small>Laisse sur « désactivée » pour un kiosque : rien n'est écrit dans <code>index.json</code>, et l'app affiche
       « Base de données : désactivée ». « Activée » ne charge rien tant qu'une <strong>licence pro</strong> n'est pas posée sur
       l'instance et qu'aucun module n'est installé ; l'état est toujours affiché aux visiteurs. Contrat :
@@ -307,25 +309,26 @@
 
   <!-- ═══ 4. SORTIE ═══ -->
   <div class="kta-ca-card">
-    <h2>📤 4. index.json</h2>
+    <h2><span data-kta-ico="arrow-up-from-line"></span> 4. index.json</h2>
     <pre class="kta-ca-out" id="caOut">{ "plans": [] }</pre>
     <div class="kta-ca-actions">
-      <button class="kta-ca-btn kta-ca-btn-gold" id="caDownload" type="button">💾 Télécharger index.json</button>
-      <button class="kta-ca-btn" id="caCopy" type="button">📋 Copier</button>
+      <button class="kta-ca-btn kta-ca-btn-gold" id="caDownload" type="button"><span data-kta-ico="save"></span> Télécharger index.json</button>
+      <button class="kta-ca-btn" id="caCopy" type="button"><span data-kta-ico="copy"></span> Copier</button>
     </div>
     <p class="kta-ca-hint" style="margin-top:14px;"><strong>Déploiement :</strong></p>
     <ol class="kta-ca-deploy">
       <li>📦 Plan <strong>ZIP</strong> : dépose le fichier au chemin indiqué (ex. <code>data/plan.zip</code>), sans le décompresser.
         📂 Plan <strong>Dossier</strong> : décompresse le ZIP dans <code>data/&lt;id&gt;/</code> (<code>plan-config.json</code> à sa racine).</li>
       <li>Dépose ce fichier en <code>data/index.json</code>.</li>
-      <li>Sers le site en statique (aucun backend) — les plans apparaissent dans « 📚 Mes plans » avec le badge 🌐.</li>
+      <li>Sers le site en statique (aucun backend) — les plans apparaissent dans « Mes plans » avec le badge des plans du site.</li>
       <li>Hors-ligne : un plan ZIP ouvert une fois est gardé sur l'appareil (selon le réglage « Mémoriser ») ; un plan
-        Dossier se télécharge par le bouton ⬇️ de sa ligne.</li>
+        Dossier se télécharge par le bouton hors-ligne de sa ligne.</li>
     </ol>
   </div>
 </div>
 
 <script src="js/ktaAddons.js"></script>
+<script src="js/ktaIcones.js"></script>
 <script src="js/confadmin.js"></script>
 </body>
 </html>

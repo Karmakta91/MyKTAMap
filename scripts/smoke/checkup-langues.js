@@ -120,7 +120,9 @@ const TEMOIN_EN = /User Guide|This guide is intended/i;
       [["profil", "bug du conteneur oublié"], ["bibliotheque-plans", "section qui n'existait même pas en EN"]].forEach(function (c) {
         const tEs = ES["aide.sec." + c[0] + ".titre"] || "";
         const tFr = FR["aide.sec." + c[0] + ".titre"] || "";
-        if (tEs && tEs !== tFr && lignes.some(function (l) { return l.indexOf(tEs) >= 0; })) ok("fiche « " + tEs + " » présente et traduite (" + c[1] + ")");
+        // L'emoji d'un bouton migré s'affiche en SVG dans le hub (KtaIcones.substituerDoc) : comparé sans emoji.
+        const nu = function (s) { return String(s).replace(/[\p{Extended_Pictographic}️]/gu, "").trim(); };
+        if (tEs && tEs !== tFr && lignes.some(function (l) { return nu(l).indexOf(nu(tEs)) >= 0; })) ok("fiche « " + tEs + " » présente et traduite (" + c[1] + ")");
         else pb("fiche « " + c[0] + " » absente du hub ou non traduite (« " + tEs + " »)");
       });
       const residusFr = lignes.filter(function (t) { return /Réglages|Recherche unifiée|Mon carnet|Astuces/i.test(t); });

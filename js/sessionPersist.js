@@ -423,7 +423,7 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "kta-btn kta-btn-primary kta-storage-banner-btn";
-      btn.textContent = _trModule("session.banner.exportBtn");
+      btn.innerHTML = window.ktaIcone("save") + " " + window.ktaEsc(_trModule("session.banner.exportBtn"));
       btn.addEventListener("click", function() {
         if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal("full", true);
       });
@@ -709,7 +709,7 @@
       if (!options.length) { window.ktaAlerte(_t("session.partage.rien")); return null; }
       // « Annuler » ferme sans rien effacer ; le bouton d'action dit ce que fait le choix coché (okLabel).
       const choix = { options: options, valeur: null, aucunParDefaut: true };
-      const opts = { titre: _t("session.confirm.clearTitle"), okLabel: _t("session.btn.clear"),
+      const opts = { titre: _t("session.confirm.clearTitle"), okLabel: window.ktaIcone("trash-2") + " " + _t("session.btn.clear"),
         cancelLabel: _t("ui.confirm.cancel"), choix: choix };
       let texte = msg + "\n\n" + _t("session.partage.intro");
       if (calques.length) {
@@ -809,14 +809,14 @@
         const noms = calques.map(function(id) { return window.ktaEsc(CS.libelle(id)); }).join(", ");
         window.ktaConfirm(msg + "\n\n" + _trModule("session.confirm.calquesEquipe", { calques: noms }), {
           titre:       _t("session.confirm.clearTitle"),
-          okLabel:     _t("session.btn.clearIci"),
+          okLabel:     window.ktaIcone("trash-2") + " " + _t("session.btn.clearIci"),
           cancelLabel: _t("ui.confirm.cancel"),
           autre:       { label: _t("session.btn.clearEquipe"), valeur: "equipe" }
         }).then(function(choix) { if (choix) go(choix === "equipe"); });
       } else {
         window.ktaConfirm(msg, {
           titre:       _t("session.confirm.clearTitle"),
-          okLabel:     _t("session.btn.clear"),
+          okLabel:     window.ktaIcone("trash-2") + " " + _t("session.btn.clear"),
           cancelLabel: _t("ui.confirm.cancel")
         }).then(function(ok) { if (ok) go(false); });
       }
@@ -868,7 +868,7 @@
         planLine +
         '<div class="kta-session-modal-detail">' + parts.join(" · ") + '</div>' +
         '<div class="kta-session-modal-actions">' +
-          '<button class="kta-btn kta-btn-ghost"   type="button" data-action="clear">' + _t("session.btn.clear") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   type="button" data-action="clear">' + window.ktaIcone("trash-2") + ' ' + _t("session.btn.clear") + '</button>' +
           '<button class="kta-btn kta-btn-primary" type="button" data-action="keep">' + _t("session.btn.keep") + '</button>' +
         '</div>' +
       '</div>';

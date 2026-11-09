@@ -18,28 +18,29 @@
   const TIER_ICONS = ["🥉", "🥈", "🥇", "👑"];  // I · II · III · IV (couronne = IV)
   const TIER_ROMAN = ["I", "II", "III", "IV"];
 
-  // metric = clé de _collectGamifMetrics (index.html) ; unit = format d'affichage.
+  // metric = clé de _collectGamifMetrics (index.html) ; unit = format d'affichage ; ico = icône SVG de la notion
+  // (js/ktaIcones.js). Les médailles des paliers (TIER_ICONS) restent des emoji : récompenses colorées.
   const FAMILIES = [
-    { id: "cartographe", emoji: "🗺️", metric: "plans",       unit: "plans", seuils: [1, 10, 20, 30] },
-    { id: "geometre",    emoji: "🌐", metric: "plansGeoref", unit: "plans", seuils: [1, 5, 7, 15] },
-    { id: "marcheur",    emoji: "📏", metric: "km",          unit: "km",    seuils: [10, 75, 150, 250] },
-    { id: "ratcave",     emoji: "⏱️", metric: "hours",       unit: "h",     seuils: [1, 20, 50, 100] },
-    { id: "pointilleux", emoji: "📍", metric: "pois",        unit: "",      seuils: [50, 500, 1000, 2000] },
-    { id: "traceur",     emoji: "🛣️", metric: "roads",       unit: "",      seuils: [25, 200, 500, 1000] },
-    { id: "zoneur",      emoji: "⬛", metric: "zones",       unit: "",      seuils: [10, 50, 100, 200] },
-    { id: "batisseur",   emoji: "🏛️", metric: "structures",  unit: "",      seuils: [20, 150, 400, 600] }
+    { id: "cartographe", ico: "map",        metric: "plans",       unit: "plans", seuils: [1, 10, 20, 30] },
+    { id: "geometre",    ico: "globe",      metric: "plansGeoref", unit: "plans", seuils: [1, 5, 7, 15] },
+    { id: "marcheur",    ico: "ruler",      metric: "km",          unit: "km",    seuils: [10, 75, 150, 250] },
+    { id: "ratcave",     ico: "timer",      metric: "hours",       unit: "h",     seuils: [1, 20, 50, 100] },
+    { id: "pointilleux", ico: "map-pin",    metric: "pois",        unit: "",      seuils: [50, 500, 1000, 2000] },
+    { id: "traceur",     ico: "m-galerie",  metric: "roads",       unit: "",      seuils: [25, 200, 500, 1000] },
+    { id: "zoneur",      ico: "m-zone",     metric: "zones",       unit: "",      seuils: [10, 50, 100, 200] },
+    { id: "batisseur",   ico: "m-pilier",   metric: "structures",  unit: "",      seuils: [20, 150, 400, 600] }
   ];
 
   // Spéciaux : mêmes métriques (+ hasTracked / maxLevels / maxTrackerH / score) ; `completiste` reçoit
   // { tieredUnlocked }.
   const TIERED_TOTAL = FAMILIES.length * 4;  // 32
   const SPECIALS = [
-    { id: "toucheatout", emoji: "🎨", check: function(m)      { return (m.pois||0)>=1 && (m.roads||0)>=1 && (m.zones||0)>=1 && (m.structures||0)>=1; } },
-    { id: "centurion",   emoji: "💯", check: function(m)      { return (Number(m.score)||0) >= 100; } },
-    { id: "taupe",       emoji: "🦇", check: function(m)      { return !!m.hasTracked; } },
-    { id: "multiniveau", emoji: "🧭", check: function(m)      { return (Number(m.maxLevels)||0) >= 2; } },
-    { id: "marathon",    emoji: "🌃", check: function(m)      { return (Number(m.maxTrackerH)||0) >= 4; } },
-    { id: "completiste", emoji: "🏆", check: function(m, ctx) { return !!ctx && ctx.tieredUnlocked >= TIERED_TOTAL; } }
+    { id: "toucheatout", ico: "layers",     check: function(m)      { return (m.pois||0)>=1 && (m.roads||0)>=1 && (m.zones||0)>=1 && (m.structures||0)>=1; } },
+    { id: "centurion",   ico: "star",       check: function(m)      { return (Number(m.score)||0) >= 100; } },
+    { id: "taupe",       ico: "navigation", check: function(m)      { return !!m.hasTracked; } },
+    { id: "multiniveau", ico: "m-niveaux",  check: function(m)      { return (Number(m.maxLevels)||0) >= 2; } },
+    { id: "marathon",    ico: "timer",      check: function(m)      { return (Number(m.maxTrackerH)||0) >= 4; } },
+    { id: "completiste", ico: "trophy",     check: function(m, ctx) { return !!ctx && ctx.tieredUnlocked >= TIERED_TOTAL; } }
   ];
 
   // has() : t() ne rend jamais la clé brute
@@ -73,7 +74,7 @@
           id:         f.id + ".t" + i,
           group:      "family",
           familyId:   f.id,
-          emoji:      f.emoji,
+          ico:        f.ico,
           tier:       i + 1,
           tierIcon:   TIER_ICONS[i] || "🏆",
           tierRoman:  TIER_ROMAN[i] || String(i + 1),
@@ -95,7 +96,7 @@
       out.push({
         id:       "special." + s.id,
         group:    "special",
-        emoji:    s.emoji,
+        ico:      s.ico,
         unlocked: ok,
         pct:      ok ? 100 : 0,
         nom:      nomSpecial(s.id)
@@ -116,8 +117,9 @@
 
   function label(ach) {
     if (!ach) return "";
-    if (ach.group === "special") return (ach.emoji ? ach.emoji + " " : "") + ach.nom;
-    return ach.emoji + " " + ach.nom + " " + ach.tierRoman;
+    // Texte seul : l'icône SVG de la notion (ach.ico) est posée par l'appelant qui rend du HTML.
+    if (ach.group === "special") return ach.nom;
+    return ach.nom + " " + ach.tierRoman;
   }
 
   const TOTAL = TIERED_TOTAL + SPECIALS.length;  // 32 + 6 = 38

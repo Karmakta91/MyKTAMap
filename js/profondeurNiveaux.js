@@ -215,7 +215,7 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-prof-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📉 ' + _esc(_t("prof.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("m-niveaux") + ' ' + _esc(_t("prof.titre")) + '</span>' +
           '<button class="kta-panneau-close" id="kta-prof-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -348,7 +348,7 @@
     } else if (p.connus < 2) {
       // Aucune profondeur saisie : explication + bouton de saisie.
       corps = '<p class="kta-prof-hint">' + _esc(_t("prof.profil.vide")) + '</p>' +
-              '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-profil-saisir" type="button">📉 ' +
+              '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-profil-saisir" type="button">' + window.ktaIcone("pencil") + ' ' +
                 _esc(_t("prof.btn.saisir")) + '</button>';
     } else {
       const W = 640, H = 220, MG = 44, MB = 28;
@@ -393,7 +393,7 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-profil-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📉 ' + _esc(_t("prof.profil.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("m-niveaux") + ' ' + _esc(_t("prof.profil.titre")) + '</span>' +
           '<button class="kta-panneau-close" id="kta-profil-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' + corps + '</div>' +

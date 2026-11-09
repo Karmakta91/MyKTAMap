@@ -597,7 +597,7 @@
           <label class="kta-cfg-label" for="${id}_h">${t("recalscan.resol.hauteur")}</label>
           <input class="kta-cfg-input" id="${id}_h" type="number" min="1" step="1" value="${h}">
         </div>
-        <label class="kta-btn kta-btn-ghost kta-btn-small kta-recal-fichier">📷 ${t("recalscan.resol.depuisImage")}
+        <label class="kta-btn kta-btn-ghost kta-btn-small kta-recal-fichier">${window.ktaIcone("image")} ${t("recalscan.resol.depuisImage")}
           <input type="file" id="${id}_img" accept="image/*" hidden>
         </label>`;
     };
@@ -612,12 +612,12 @@
     };
     const onglet = function (m, ico) {
       return `<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-recal-onglet" data-recal-methode="${m}"
-        aria-pressed="false">${ico} ${t("recalscan.methode." + m)}</button>`;
+        aria-pressed="false">${window.ktaIcone(ico)} ${t("recalscan.methode." + m)}</button>`;
     };
     sub.innerHTML = `
       <div class="kta-readme-modal-boite kta-recal-boite">
         <div class="kta-readme-modal-entete">
-          <span class="kta-readme-modal-titre">🔁 ${t("recalscan.titre")}</span>
+          <span class="kta-readme-modal-titre">${window.ktaIcone("repeat")} ${t("recalscan.titre")}</span>
           <button class="kta-panneau-close" id="kta-recal-close" aria-label="${t("recalscan.fermer")}">✕</button>
         </div>
         <div class="kta-readme-modal-corps kta-recal-corps">
@@ -625,14 +625,14 @@
           <p class="kta-recal-note kta-recal-petit">ℹ️ ${t("recalscan.nonTransforme")}</p>
 
           <div class="kta-cfg-label kta-recal-titre-section">1. ${t("recalscan.fichiers")}</div>
-          <label class="kta-btn kta-btn-ghost kta-btn-small kta-recal-fichier">📄 ${t("recalscan.choisirFichiers")}
+          <label class="kta-btn kta-btn-ghost kta-btn-small kta-recal-fichier">${window.ktaIcone("folder-open")} ${t("recalscan.choisirFichiers")}
             <input type="file" id="kta-recal-files" accept=".json,application/json" multiple hidden>
           </label>
           <div id="kta-recal-files-liste" class="kta-recal-liste-fichiers">${t("recalscan.aucunFichier")}</div>
 
           <div class="kta-cfg-label kta-recal-titre-section">2. ${t("recalscan.methodeTitre")}</div>
           ${planOuvert ? `<div class="kta-recal-onglets" role="group">
-            ${onglet("noms", "🔤")}${onglet("clics", "📍")}${onglet("resol", "📐")}
+            ${onglet("noms", "type")}${onglet("clics", "map-pin")}${onglet("resol", "ruler")}
           </div>` : `<p class="kta-recal-note kta-recal-petit">${t("recalscan.sansPlan")}</p>`}
 
           <div id="kta-recal-p-noms" class="kta-recal-panneau" hidden>
@@ -646,7 +646,7 @@
             <p class="kta-recal-note kta-recal-petit">${t("recalscan.clics.aide")}</p>
             <div class="kta-recal-clic-choix">
               <select class="kta-cfg-input" id="kta-recal-clic-point" aria-label="${t("recalscan.clics.choisir")}"></select>
-              <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-recal-clic-go">📍 ${t("recalscan.clics.pointer")}</button>
+              <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-recal-clic-go">${window.ktaIcone("mouse-pointer-click")} ${t("recalscan.clics.pointer")}</button>
             </div>
             <div id="kta-recal-clic-liste" class="kta-recal-liste-reperes"></div>
           </div>
@@ -658,7 +658,7 @@
             <div class="kta-cfg-label kta-recal-sous-titre">${t("recalscan.resol.dest")}</div>
             ${champRes("kta-recal-dst", w0, h0)}
             <details class="kta-recal-details">
-              <summary>🎯 ${t("recalscan.resol.saisieTitre")}</summary>
+              <summary>${window.ktaIcone("crosshair")} ${t("recalscan.resol.saisieTitre")}</summary>
               <p class="kta-recal-note kta-recal-petit">${t("recalscan.resol.saisieIntro")}</p>
               ${champPaire("kta-recal-p1", t("recalscan.resol.paire1"))}
               <div class="kta-planner-grille kta-recal-grille">
@@ -677,8 +677,8 @@
           </div>
           <div class="kta-conv-actions kta-recal-actions">
             <button class="kta-btn kta-btn-ghost"   id="kta-recal-annuler">${t("recalscan.annuler")}</button>
-            ${planOuvert ? `<button class="kta-btn kta-btn-ghost" id="kta-recal-apercu" disabled>👁️ ${t("recalscan.apercu")}</button>` : ""}
-            <button class="kta-btn kta-btn-primary" id="kta-recal-go" disabled>⬇️ ${t("recalscan.telecharger")}</button>
+            ${planOuvert ? `<button class="kta-btn kta-btn-ghost" id="kta-recal-apercu" disabled>${window.ktaIcone("eye")} ${t("recalscan.apercu")}</button>` : ""}
+            <button class="kta-btn kta-btn-primary" id="kta-recal-go" disabled>${window.ktaIcone("arrow-down-to-line")} ${t("recalscan.telecharger")}</button>
           </div>
         </div>
       </div>`;
@@ -742,7 +742,8 @@
         '<button type="button" class="kta-btn kta-btn-primary" id="kta-recal-barre-go"></button>';
       barre.querySelector(".kta-recal-barre-msg").textContent = t("recalscan.apercuBarre", { n: n });
       barre.querySelector("#kta-recal-barre-retour").textContent = "↩ " + t("recalscan.apercuRetour");
-      barre.querySelector("#kta-recal-barre-go").textContent = "⬇️ " + t("recalscan.telecharger");
+      barre.querySelector("#kta-recal-barre-go").innerHTML = window.ktaIcone("arrow-down-to-line") + " " +
+        window.ktaEsc(t("recalscan.telecharger"));
       document.body.appendChild(barre);
       barre.querySelector("#kta-recal-barre-retour").addEventListener("click", revenir);
       barre.querySelector("#kta-recal-barre-go").addEventListener("click", telecharger);

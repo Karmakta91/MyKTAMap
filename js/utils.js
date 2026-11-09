@@ -394,7 +394,7 @@ function renderBannerCoherenceEchelle(planId, opts) {
           '<tr>' +
             '<td>' + t("utils.scaleCoherence.rowGps") + '</td>' +
             '<td><code>' + gpsStr + '</code> px/m ' +
-              '<button class="kta-scale-coherence-copy-btn" data-action="copy-scale-gps" data-value="' + gpsStr + '" type="button" title="' + t("utils.scaleCoherence.copyTitle") + '">' + t("utils.scaleCoherence.copyBtn") + '</button>' +
+              '<button class="kta-scale-coherence-copy-btn" data-action="copy-scale-gps" data-value="' + gpsStr + '" type="button" title="' + t("utils.scaleCoherence.copyTitle") + '">' + window.ktaIcone("copy") + ' ' + t("utils.scaleCoherence.copyBtn") + '</button>' +
             '</td>' +
           '</tr>' +
         '</table>' +
@@ -1025,7 +1025,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     return ico + pastille + _esc(_titreTexte());
   }
 
-  // Ligne « Niveau » sous 🔄 Convertir : objet de session seulement (`opts.convertir`), ni jonction (fromLevel /
+  // Ligne « Niveau » sous Convertir : objet de session seulement (`opts.convertir`), ni jonction (fromLevel /
   // toLevel, hors de cette liste) ni itinéraire ni zone jonction (« Du niveau » la remplace) ; "" hors multi-niveau
   // ou pendant un dessin (ktaNiveauxProposes).
   function _niveauHtml() {
@@ -1169,14 +1169,14 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                '</textarea>' +
                '<div class="kta-popup-actions kta-note-popup-actions">' +
                  '<button class="kta-popup-btn kta-popup-btn-aller kta-note-popup-save" type="button">' +
-                   _esc(window.I18n ? window.I18n.t("utils.note.save") : "💾 Sauver la note") +
+                   window.ktaIcone("save") + " " + _esc(window.I18n ? window.I18n.t("utils.note.save") : "Sauver la note") +
                  '</button>' +
                  // Reclasser l'objet : un vecteur SIG mal rangé (un front qui est une galerie) n'entre pas dans le graphe
                  // d'itinéraire, le Pathfinder ne lit que les tracés. La popup tient une référence directe sur l'objet.
                  // Jamais pour une jonction (décision produit) : ses niveaux se changent dans sa fiche.
                  (opts.convertir && !opts.jonction
                    ? '<button class="kta-popup-btn kta-note-popup-convertir" type="button">' +
-                       '🔄 ' + window.I18n.t("convert.btn") +
+                       window.ktaIcone("refresh-cw") + ' ' + window.I18n.t("convert.btn") +
                      '</button>'
                    : '') +
                '</div>' +
@@ -1186,7 +1186,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                (opts.convertir
                  ? '<div class="kta-popup-actions kta-popup-actions-danger kta-note-popup-actions">' +
                      '<button class="kta-popup-btn kta-popup-btn-delete kta-note-popup-supprimer" type="button">' +
-                       '🗑️ ' + window.I18n.t("convert.btnSuppr") +
+                       window.ktaIcone("trash-2") + ' ' + window.I18n.t("convert.btnSuppr") +
                      '</button>' +
                    '</div>'
                  : '') +
@@ -1731,7 +1731,7 @@ window.kta_lireNotePopup = function(btn) {
   // même bouton pendant la lecture → arrêt
   if (_kta_currentTtsBtn === btn && window.VoiceTts.isSpeaking()) {
     window.VoiceTts.cancel();
-    btn.textContent = "🔊";
+    btn.innerHTML = window.ktaIcone("volume-2");
     btn.title = window.I18n.t("poi.readNote");
     _kta_currentTtsBtn = null;
     return;
@@ -1739,21 +1739,21 @@ window.kta_lireNotePopup = function(btn) {
 
   // sinon : coupe la lecture d'un autre bouton, lance celle-ci
   if (_kta_currentTtsBtn && _kta_currentTtsBtn !== btn) {
-    _kta_currentTtsBtn.textContent = "🔊";
+    _kta_currentTtsBtn.innerHTML = window.ktaIcone("volume-2");
     _kta_currentTtsBtn.title = window.I18n.t("poi.readNote");
   }
   _kta_currentTtsBtn = btn;
-  btn.textContent = "⏹️";
+  btn.innerHTML = window.ktaIcone("square");
   btn.title = window.I18n.t("poi.stopReading");
   window.VoiceTts.speak(text);
 };
 
-// Remet l'icône à 🔊 en fin de lecture ou sur erreur (sinon le bouton reste sur ⏹️).
+// Remet l'icône de lecture en fin de lecture ou sur erreur (sinon le bouton reste sur l'icône d'arrêt).
 if (window.VoiceTts && typeof window.VoiceTts.onStateChange === "function") {
   window.VoiceTts.onStateChange(function(state) {
     if (state === "ended" || state === "error" || state === "canceled") {
       if (_kta_currentTtsBtn) {
-        _kta_currentTtsBtn.textContent = "🔊";
+        _kta_currentTtsBtn.innerHTML = window.ktaIcone("volume-2");
         _kta_currentTtsBtn.title = window.I18n.t("poi.readNote");
         _kta_currentTtsBtn = null;
       }
@@ -1887,7 +1887,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
       // bleu. L'img est forcée en display:block en CSS pour remplir le cadre.
       slot.innerHTML =
         '<div class="kta-popup-photos-row"></div>' +
-        '<div class="kta-popup-photos-count">📸 ' + photosWithUrl.length + ' photo' + (photosWithUrl.length > 1 ? "s" : "") + '</div>';
+        '<div class="kta-popup-photos-count">' + window.ktaIcone("camera") + ' ' + photosWithUrl.length + ' photo' + (photosWithUrl.length > 1 ? "s" : "") + '</div>';
       const rowEl = slot.querySelector(".kta-popup-photos-row");
       photosWithUrl.forEach(function(p, idx) {
         const img = document.createElement("img");
@@ -1914,14 +1914,14 @@ function attachPopupPhotos(marker, pointId, pointUid) {
         box.className = "kta-popup-photos-arattacher";
         const titre = document.createElement("div");
         titre.className = "kta-popup-photos-arattacher-titre";
-        titre.textContent = window.I18n.t("utils.popup.aRattacher.titre", { n: aRattacher.length });
+        titre.innerHTML = window.ktaIcone("link") + " " + window.ktaEsc(window.I18n.t("utils.popup.aRattacher.titre", { n: aRattacher.length }));
         box.appendChild(titre);
         aRattacher.forEach(function(p) {
           const idx = photosWithUrl.indexOf(p);
           const b = document.createElement("button");
           b.type = "button";
           b.className = "kta-popup-btn kta-popup-photos-arattacher-btn";
-          b.textContent = window.I18n.t("utils.popup.aRattacher.btn", { n: idx + 1 });
+          b.innerHTML = window.ktaIcone("link") + " " + window.ktaEsc(window.I18n.t("utils.popup.aRattacher.btn", { n: idx + 1 }));
           b.addEventListener("click", function(ev) {
             ev.stopPropagation();
             b.disabled = true;

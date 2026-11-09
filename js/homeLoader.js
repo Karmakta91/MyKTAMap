@@ -424,8 +424,8 @@
               '</div>' +
               '<div class="kta-modal-actions" style="flex-wrap:wrap;">' +
                 '<button class="kta-btn kta-btn-ghost" id="kta-dup-cancel" type="button">' + esc(t("ui.btn.cancel")) + '</button>' +
-                '<button class="kta-btn kta-btn-ghost" id="kta-dup-both" type="button">' + esc(t("home.dup.btnBoth")) + '</button>' +
-                '<button class="kta-btn kta-btn-primary" id="kta-dup-update" type="button">' + esc(t("home.dup.btnUpdate")) + '</button>' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-dup-both" type="button">' + window.ktaIcone("plus") + ' ' + esc(t("home.dup.btnBoth")) + '</button>' +
+                '<button class="kta-btn kta-btn-primary" id="kta-dup-update" type="button">' + window.ktaIcone("refresh-cw") + ' ' + esc(t("home.dup.btnUpdate")) + '</button>' +
               '</div>' +
             '</div>';
           document.documentElement.appendChild(ov);
@@ -1530,9 +1530,9 @@ function planRowHTML(plan) {
           const _fmtQuand = function (iso) {
             try { return new Date(iso).toLocaleString(); } catch (e) { return ""; }
           };
-          const _bouton = function (id, cls, label) {
+          const _bouton = function (id, cls, label, ico) {
             return '<button class="kta-btn ' + cls + ' kta-btn-small" id="' + id + '" ' +
-                   'style="margin:0 8px 6px 0;">' + escapeHtml(label) + '</button>';
+                   'style="margin:0 8px 6px 0;">' + (ico ? window.ktaIcone(ico) + ' ' : '') + escapeHtml(label) + '</button>';
           };
 
           const rendreOffline = async function () {
@@ -1580,15 +1580,15 @@ function planRowHTML(plan) {
 
             if (st.etat === "complet") {
               html += _bouton("kta-offline-maj", "kta-btn-ghost",  _t("home.plans.offline.btnMaj"));
-              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"));
+              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"), "trash-2");
             } else if (st.etat === "partiel") {
               html += _bouton("kta-offline-maj", "kta-btn-ghost",  _t("home.plans.offline.btnReessayer"));
-              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"));
+              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"), "trash-2");
             } else if (st.etat === "incomplet") {
-              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnCompleter"));
-              html += _bouton("kta-offline-del", "kta-btn-danger",  _t("home.plans.offline.btnRetirer"));
+              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnCompleter"), "cloud-download");
+              html += _bouton("kta-offline-del", "kta-btn-danger",  _t("home.plans.offline.btnRetirer"), "trash-2");
             } else {
-              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnTelecharger"));
+              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnTelecharger"), "cloud-download");
             }
             zone.innerHTML = html;
 
@@ -1618,7 +1618,7 @@ function planRowHTML(plan) {
             if (bMaj) bMaj.addEventListener("click", lancer);
             if (bDel) bDel.addEventListener("click", function () {
               const msg = _t("home.plans.offline.confirmRetirer");
-              const confirmer = window.ktaConfirm(msg, { okLabel: _t("home.plans.offline.btnRetirer") });
+              const confirmer = window.ktaConfirm(msg, { okLabel: window.ktaIcone("trash-2") + " " + escapeHtml(_t("home.plans.offline.btnRetirer")) });
               confirmer.then(function (okc) {
                 if (!okc) return;
                 window.PlanOffline.supprimer(plan.id).then(rendreOffline);

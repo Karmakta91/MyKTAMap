@@ -1016,7 +1016,7 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-convert-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + _esc(o.titre || _t("convert.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("refresh-cw") + ' ' + _esc(o.titre || _t("convert.titre")) + '</span>' +
           '<button class="kta-panneau-close" id="kta-convert-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +

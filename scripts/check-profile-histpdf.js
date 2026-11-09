@@ -67,7 +67,7 @@ const POINTS = [
   ["collecte",          /profile\.sections\.histoirePdfs\s*=\s*await _collectHistoirePdfs\((?:estExt)?\)/],
   ["estimation taille", /sizes\.histoirePdfs\s*=\s*\{/],
   ["ligne d'export",    /_renderSectionRow\("histoirePdfs"/],
-  ["récap final",       /histoirePdfs:\s*"📄/],
+  ["récap final",       /histoirePdfs:\s*T\("profileio\.done_sec_histpdf"\)/],
   ["aperçu d'import",   /_renderImportSection\("histoirePdfs"/]
 ];
 POINTS.forEach(function (p) {
