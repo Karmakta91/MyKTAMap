@@ -2451,14 +2451,14 @@
           '<div class="kta-osm-qualite" id="ktaOsmPortailsQualite"></div>' +
           // chips de niveau : masqués sur un plan mono-niveau (« niveau 0 » seul n'apprend rien)
           '<div class="kta-osm-filters-sect" id="ktaOsmFiltersNivSect" style="display:none;">' +
-            _window.ktaIcone("m-niveaux") + " " + escapeHtml(window.I18n.t("osm_home.niveaux.titre")) + '</div>' +
+            window.ktaIcone("m-niveaux") + " " + _escapeHtml(window.I18n.t("osm_home.niveaux.titre")) + '</div>' +
           '<div class="kta-osm-home-tagchips" id="ktaOsmFiltersNiveaux"></div>' +
-          '<div class="kta-osm-filters-sect">' + _window.ktaIcone("tag") + " " + escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
+          '<div class="kta-osm-filters-sect">' + window.ktaIcone("tag") + " " + _escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
           '<div class="kta-osm-home-tagchips kta-osm-filters-tags" id="ktaOsmFiltersTags"></div>' +
-          '<div class="kta-osm-filters-sect">' + _window.ktaIcone("layers") + " " + escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
+          '<div class="kta-osm-filters-sect">' + window.ktaIcone("layers") + " " + _escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
           // ajout par étiquette de plan : masqué tant qu'aucune étiquette ne porte au moins deux plans
           '<div class="kta-osm-filters-sect" id="ktaOsmMultiTagsSect" style="display:none;">' +
-            _window.ktaIcone("tag") + " " + escapeHtml(window.I18n.t("osm_mode.multi.tagsTitre")) + '</div>' +
+            window.ktaIcone("tag") + " " + _escapeHtml(window.I18n.t("osm_mode.multi.tagsTitre")) + '</div>' +
           '<div class="kta-osm-home-tagchips" id="ktaOsmMultiTags"></div>' +
           '<select id="ktaOsmMultiAdd" class="kta-osm-filters-add"></select>' +
           '<div id="ktaOsmMultiRows"></div>' +
@@ -2723,7 +2723,7 @@
       corps = groupes.filter(function(g) { return g.plans.length; }).map(function(g) {
         return '<optgroup label="📁 ' + _escapeHtml(g.f.name) + '">' +
           (g.plans.length >= 2 ? '<option value="dossier:' + _escapeHtml(g.f.id) + '">' +
-            _window.ktaIcone("folder") + " " + escapeHtml(window.I18n.t("osm_mode.multi.addFolder", { n: g.plans.length })) + '</option>' : "") +
+            _escapeHtml(window.I18n.t("osm_mode.multi.addFolder", { n: g.plans.length })) + '</option>' : "") +
           g.plans.map(opt).join("") + '</optgroup>';
       }).join("") + (autres.length ? '<optgroup label="' + _escapeHtml(window.I18n.t("home.plans.folders.unfiled")) + '">' +
         autres.map(opt).join("") + '</optgroup>' : "");

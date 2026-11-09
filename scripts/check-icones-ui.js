@@ -227,7 +227,7 @@ const CLES_C3 = {
   "js/interPlanLinks.js": ["ipl.popup.addBtn"],
   "js/interfaceDocs.js": ["aiia.titre"],
   "js/osmHomePreview.js": ["osm_home.gps.popupTitle", "osm_home.niveaux.titre", "osm_mode.filters.plans", "osm_mode.filters.tags",
-      "osm_mode.multi.addFolder", "osm_mode.multi.tagsTitre"],
+      "osm_mode.multi.tagsTitre"],
   "js/osmView.js": ["osm.btn.centerPlan", "osm.btn.centerTracker", "osm.btn.mygps", "osm.cache.btn", "osm.gps.popup.title",
       "osm.legende.btn", "osm.levels.label", "osm.modal.title", "osm.opacity.label", "osm.secours.tooltip.entree",
       "osm.secours.tooltip.iti", "osm.secours.tooltip.sortie", "osm.secours.tooltip.zone", "osm.tags.label",
@@ -288,7 +288,7 @@ const CLES_C3 = {
       "tabledit.sortie.sauver"],
   "js/utils.js": ["poi.addWaypointBtn", "poi.deleteBtn", "poi.favOff", "poi.favOn", "poi.goThereBtn", "poi.moveBtn"]
 };
-const CLES_C3_TEXTE = ["docs.aiiaBtn", "gen.imp.apercu", "gen.imp.configTitre", "gen.imp.genererBtn", "gen.mlvl.label", "gen.sig.famLignes",
+const CLES_C3_TEXTE = ["osm_mode.multi.addFolder", "docs.aiiaBtn", "gen.imp.apercu", "gen.imp.configTitre", "gen.imp.genererBtn", "gen.mlvl.label", "gen.sig.famLignes",
     "gen.sig.famPoints", "gen.sig.famZones", "home.add.load", "impmasse.dossier.nouveau", "iti.wp.jeSuisIci",
     "meminsp.cache.titre", "meminsp.crash.btn.clearAll", "meminsp.crash.btn.copy",
     "meminsp.crash.btn.view", "meminsp.crash.detail.titre", "meminsp.crash.titre", "meminsp.idb.titre",
