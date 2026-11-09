@@ -767,6 +767,8 @@ html.kta-theme-light .kta-profile-footer {
   line-height: 1.1;
   margin-bottom: 8px;
 }
+/* Icône SVG de la carte (tutorial.js > STRUCTURE.ico), dorée comme le titre. */
+.kta-tutorial-card-emoji > .kta-ico { width: 48px; height: 48px; color: var(--kta-accent-texte); }
 .kta-tutorial-card-titre {
   font-size: 18px;
   font-weight: 700;

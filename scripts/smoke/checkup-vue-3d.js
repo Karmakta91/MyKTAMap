@@ -224,7 +224,7 @@ async function homogene(page, nom) {
       urgence: [texte(q('#kta-vue3d [data-v3d="urgence"]')),
         texte(q("#kta-refonte-counter-sortie .kta-refonte-counter-icon"))],
       reglages: [texte(q('#kta-vue3d [data-v3d="reglages"]')), gauche.indexOf("kta-ico-settings") >= 0 ? "kta-ico-settings" : gauche.join("")],
-      aide: [texte(q("#kta-vue3d .kta-v3d-haut > .kta-aide-ctx-btn")), "❓"]
+      aide: [texte(q("#kta-vue3d .kta-v3d-haut > .kta-aide-ctx-btn")), "kta-ico-circle-help"]
     };
     const autres = Object.keys(icones).filter(function (k) { return icones[k][0] !== icones[k][1]; });
     const indic = q("#kta-vue3d .kta-v3d-mode-indic").getBoundingClientRect();
@@ -9081,7 +9081,8 @@ async function sectionRecherche3D(nav) {
         return { recherche: r(bt), reglages: r(q('[data-v3d="reglages"]')), colonne: r(q('.kta-v3d-outils [data-v3d="recherche"]')),
           sol: r(q('[data-v3d="planSol"]')), outils: Array.prototype.filter.call(
             document.querySelectorAll('#kta-vue3d [data-v3d="outil"]'), function (x) { return x.offsetParent !== null; })
-            .length, texte: bt && bt.textContent, aria: bt && bt.getAttribute("aria-label"), titre: bt && bt.title,
+            .length, texte: bt && bt.textContent.trim(), svg: bt && bt.querySelector("svg.kta-ico-search") ? "search" : null,
+          aria: bt && bt.getAttribute("aria-label"), titre: bt && bt.title,
           cle: window.I18n.t("vue3d.recherche"), etat: window.KtaVue3D.etat().recherche, vw: innerWidth, vh: innerHeight,
           lignes: Object.keys(lignes).length, chevauche: chevauche, autres: autres,
           gauche: Math.min.apply(null, vus.map(function (v) { return v.x; })),
@@ -9089,7 +9090,7 @@ async function sectionRecherche3D(nav) {
       });
     };
     const b1 = await rangee();
-    verifier(!!b1.recherche && !b1.colonne && !b1.sol && b1.outils === 0 && b1.texte === "🔍" && b1.aria === b1.cle &&
+    verifier(!!b1.recherche && !b1.colonne && !b1.sol && b1.outils === 0 && b1.texte === "" && b1.svg === "search" && b1.aria === b1.cle &&
       b1.titre === b1.cle && b1.cle !== "vue3d.recherche" && b1.etat.haut && b1.etat.preneur &&
       !!b1.reglages && b1.recherche.d <= b1.reglages.x && b1.reglages.x - b1.recherche.d <= 12 &&
       b1.recherche.y === b1.reglages.y && b1.recherche.w === b1.reglages.w && b1.recherche.h === b1.reglages.h,
@@ -13207,7 +13208,7 @@ async function sectionGestesDoigt(nav) {
           attendu: window.formatDistance(e.hauteur, 1) };
       });
       verifier(h0.hauteur === 2 && h1.hauteur === 2.1 && h1.pref === 2.1 && h1.reglage.visible &&
-        h1.reglage.valeur === h1.attendu && h1.reglage.bouton === "⛏️ " + h1.attendu,
+        h1.reglage.valeur === h1.attendu && h1.reglage.bouton === "[pickaxe] " + h1.attendu,
         "⛏️ puis + : 2 m → 2,1 m, écrit pour le plan, montré sur le bouton et dans le réglage", { h0: h0.hauteur, h1: h1 });
       await capture(page, "hauteur-reglage");
       const h3 = await page.evaluate(function () {
@@ -13281,7 +13282,7 @@ async function sectionGestesDoigt(nav) {
         }).then(function () {
           const e = K.etat();
           r.niveau = e.niveau; r.h1 = e.hauteur; r.bouton = e.reglageHauteur.bouton;
-          r.attendu = "⛏️ " + window.formatDistance(2.6, 1);
+          r.attendu = "[pickaxe] " + window.formatDistance(2.6, 1);
           K.reglerHauteur(2.8);
           r.prefAutre = window.getHauteurNiveau(autre); r.prefActif = window.getHauteurNiveau(actif);
           C.activeLevel = actif;
@@ -13406,14 +13407,14 @@ async function sectionGestesDoigt(nav) {
       }, { dep: pt(0, -8, 0, 90), avant: pt(0, -8, 0), sc: G.sc,
         pilier: [pt(0, -4.5, -0.5), pt(0, -3.5, -0.5), pt(0, -3.5, 0.5), pt(0, -4.5, 0.5)] });
       verifier(inter.sans === "mixte" && inter.avec === "mixte" && inter.prefAvant === null && inter.paroisSans > 0 &&
-        inter.bouton.indexOf("🏛️🛣️ " + inter.libelles.m) === 0,
+        inter.bouton.indexOf("[m-pilier+m-galerie] " + inter.libelles.m) === 0,
         "défaut : mixte, avec ou sans structure au niveau (sans structure : tout en tubes), bouton 🏛️🛣️ Mixte", inter);
       verifier(inter.paroisMixte > 0 && Math.abs(inter.yMaxMixte - 2) < 1e-6 && inter.traverseMixte < 3.5,
         "mixte : pilier posé sur le tube dessiné et bloquant, parois des tubes ailleurs", inter);
-      verifier(inter.c1.rendu === "structures" && inter.c1.bouton.indexOf("🏛️ " + inter.libelles.s) === 0 &&
+      verifier(inter.c1.rendu === "structures" && inter.c1.bouton.indexOf("[m-pilier] " + inter.libelles.s) === 0 &&
         inter.c1.pref === "structures" && inter.c1.parois === 0 && inter.traverseStructures < 3.5,
         "bouton : mixte → 🏛️ Structures (retenu pour le plan) : aucune paroi, le pilier arrête", inter.c1);
-      verifier(inter.c2.rendu === "galerie" && inter.c2.bouton.indexOf("🛣️ " + inter.libelles.g) === 0 &&
+      verifier(inter.c2.rendu === "galerie" && inter.c2.bouton.indexOf("[m-galerie] " + inter.libelles.g) === 0 &&
         inter.c2.pref === "galerie" && inter.c2.parois > 0 && inter.c2.yMax < 0.1 && inter.traverseGalerie > 5,
         "→ 🛣️ Galerie (retenu) : tubes, ni pilier dessiné ni butée contre lui", { c2: inter.c2, t: inter.traverseGalerie });
       verifier(inter.rouvert === "galerie" && inter.autrePlan === null && inter.c3.rendu === "mixte" &&
@@ -16478,7 +16479,7 @@ async function sectionGestesDoigt(nav) {
         TU.ouverte);
       verifier(TU.reclic === false && TU.ailleurs === false && TU.echap.tuile === false && TU.echap.vue,
         "tuile fermée par ⚙️ à nouveau, par un toucher ailleurs, par Échap (la vue reste)", TU);
-      verifier(TU.libre.mode === "libre" && !TU.libre.repere && TU.libre.indic === "🕹️" && TU.libre.indicVisible,
+      verifier(TU.libre.mode === "libre" && !TU.libre.repere && TU.libre.indic === "[joystick]" && TU.libre.indicVisible,
         "mode libre : aucun repère sur ⚙️, pastille 🕹️ visible hors de la tuile", TU.libre);
       verifier(TU.masquee.visible === false && TU.masquee.pref === false && TU.masquee.presse === "false" &&
         TU.masquee.tuile && TU.masquee.rangee && TU.rouverte.visible === false && !TU.rouverte.repere,

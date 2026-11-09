@@ -643,7 +643,7 @@
     html += '</div>';
 
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">' + _t("runtime.titre") + '</div>';
+    html += '<div class="kta-mem-section-titre">' + window.ktaIcone("cpu") + " " + _t("runtime.titre") + '</div>';
     if (r.planLoaded) {
       const p = r.planLoaded;
       html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.plan") + '</span>';
@@ -651,11 +651,11 @@
               ' <span class="kta-mem-dim">(' + (p.imageW || "?") + '×' + (p.imageH || "?") + ' px)</span></span></div>';
       html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.author") + '</span><span class="kta-mem-val">' + _escapeHtml(p.author) + '</span></div>';
       const flags = [];
-      if (p.multiLevel) flags.push('<span class="kta-mem-tag">' + _t("runtime.tag.mlvl") + '</span>');
-      if (p.tiledV2)    flags.push('<span class="kta-mem-tag">' + _t("runtime.tag.tiled") + '</span>');
-      if (p.hasCustomLegend) flags.push('<span class="kta-mem-tag">' + _t("runtime.tag.legend") + '</span>');
-      flags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.imageLayers", { count: p.imageLayersCount }) + '</span>');
-      flags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.dataLayers", { count: p.dataLayersCount }) + '</span>');
+      if (p.multiLevel) flags.push('<span class="kta-mem-tag">' + window.ktaIcone("m-niveaux") + " " + _t("runtime.tag.mlvl") + '</span>');
+      if (p.tiledV2)    flags.push('<span class="kta-mem-tag">' + window.ktaIcone("grid-2x2") + " " + _t("runtime.tag.tiled") + '</span>');
+      if (p.hasCustomLegend) flags.push('<span class="kta-mem-tag">' + window.ktaIcone("list") + " " + _t("runtime.tag.legend") + '</span>');
+      flags.push('<span class="kta-mem-tag-dim">' + window.ktaIcone("image") + " " + _t("runtime.tag.imageLayers", { count: p.imageLayersCount }) + '</span>');
+      flags.push('<span class="kta-mem-tag-dim">' + window.ktaIcone("layers") + " " + _t("runtime.tag.dataLayers", { count: p.dataLayersCount }) + '</span>');
       html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.flags") + '</span><span class="kta-mem-val kta-mem-flags">' + flags.join(" ") + '</span></div>';
     } else {
       html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.plan") + '</span><span class="kta-mem-val kta-mem-dim">' + _t("runtime.plan.none") + '</span></div>';
@@ -665,20 +665,21 @@
       const s = r.sessionStats;
       html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.session") + '</span>';
       html += '<span class="kta-mem-val">' +
-                '📍 ' + s.editorPoints + ' · 🛣️ ' + s.roads + ' · ⬛ ' + s.zones + ' · 🏛️ ' + s.structures +
+                window.ktaIcone("map-pin") + ' ' + s.editorPoints + ' · ' + window.ktaIcone("m-galerie") + ' ' + s.roads + ' · ' +
+          window.ktaIcone("m-zone") + ' ' + s.zones + ' · ' + window.ktaIcone("m-pilier") + ' ' + s.structures +
                 ' <span class="kta-mem-dim">' + _t("runtime.session.hint") + '</span></span></div>';
       const liveTags = [];
-      if (s.measurePoints > 0) liveTags.push('<span class="kta-mem-tag">' + _t("runtime.tag.measure", { count: s.measurePoints }) + '</span>');
-      if (s.trackingActif)     liveTags.push('<span class="kta-mem-tag kta-mem-tag-on">' + _t("runtime.tag.trackerOn") + '</span>');
-      else                     liveTags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.trackerOff") + '</span>');
-      if (s.itineraireActif)   liveTags.push('<span class="kta-mem-tag kta-mem-tag-on">' + _t("runtime.tag.itiActive") + '</span>');
+      if (s.measurePoints > 0) liveTags.push('<span class="kta-mem-tag">' + window.ktaIcone("ruler") + " " + _t("runtime.tag.measure", { count: s.measurePoints }) + '</span>');
+      if (s.trackingActif)     liveTags.push('<span class="kta-mem-tag kta-mem-tag-on">' + window.ktaIcone("navigation") + " " + _t("runtime.tag.trackerOn") + '</span>');
+      else                     liveTags.push('<span class="kta-mem-tag-dim">' + window.ktaIcone("navigation") + " " + _t("runtime.tag.trackerOff") + '</span>');
+      if (s.itineraireActif)   liveTags.push('<span class="kta-mem-tag kta-mem-tag-on">' + window.ktaIcone("route") + " " + _t("runtime.tag.itiActive") + '</span>');
       html += '<div class="kta-mem-row"><span class="kta-mem-lbl">' + _t("runtime.live") + '</span><span class="kta-mem-val kta-mem-flags">' + liveTags.join(" ") + '</span></div>';
     }
 
     const ac = r.appConfig;
     const cfgTags = [];
-    if (ac.debugMode) cfgTags.push('<span class="kta-mem-tag kta-mem-tag-warn">' + _t("runtime.tag.debugOn") + '</span>');
-    cfgTags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.perf", { preset: _escapeHtml(ac.perfPreset) }) + '</span>');
+    if (ac.debugMode) cfgTags.push('<span class="kta-mem-tag kta-mem-tag-warn">' + window.ktaIcone("bug") + " " + _t("runtime.tag.debugOn") + '</span>');
+    cfgTags.push('<span class="kta-mem-tag-dim">' + window.ktaIcone("zap") + " " + _t("runtime.tag.perf", { preset: _escapeHtml(ac.perfPreset) }) + '</span>');
     if (!ac.scaledMarkers)         cfgTags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.scaledOff") + '</span>');
     if (!ac.showRoadIntersections) cfgTags.push('<span class="kta-mem-tag-dim">' + _t("runtime.tag.intersectionsOff") + '</span>');
     if (ac.multiLevel)             cfgTags.push('<span class="kta-mem-tag">' + _t("runtime.tag.mlvlActive", { level: (ac.activeLevel != null ? ac.activeLevel : "?") }) + '</span>');
@@ -693,7 +694,7 @@
     html += '</div>';
 
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">' + _t("ls.titre") + ' <span class="kta-mem-total">' +
+    html += '<div class="kta-mem-section-titre">' + window.ktaIcone("folder") + " " + _t("ls.titre") + ' <span class="kta-mem-total">' +
               _t("ls.count", { count: ls.keys.length, size: _formatBytes(ls.totalBytes) }) +
             '</span></div>';
     if (ls.error) {
@@ -718,7 +719,7 @@
 
     html += '<div class="kta-mem-section">';
     const totalIdbEntries = idb.databases.reduce(function(acc, d) { return acc + (d.totalEntries || 0); }, 0);
-    html += '<div class="kta-mem-section-titre">' + _t("idb.titre") + ' <span class="kta-mem-total">' +
+    html += '<div class="kta-mem-section-titre">' + window.ktaIcone("database") + " " + _t("idb.titre") + ' <span class="kta-mem-total">' +
               _t("idb.count", { dbs: idb.databases.length, entries: totalIdbEntries }) +
             '</span></div>';
     if (idb.scanError) {
@@ -753,7 +754,7 @@
     html += '</div>';
 
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">' + _t("cache.titre");
+    html += '<div class="kta-mem-section-titre">' + window.ktaIcone("package") + " " + _t("cache.titre");
     if (cp.activeCache) {
       html += ' <span class="kta-mem-total">' + _t("cache.assets", { count: cp.activeCache.assetCount }) + '</span>';
     }
@@ -786,7 +787,7 @@
     html += '</div>';
 
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">' + _t("storage.titre") + '</div>';
+    html += '<div class="kta-mem-section-titre">' + window.ktaIcone("chart-column") + " " + _t("storage.titre") + '</div>';
     if (se.error) {
       html += '<div class="kta-mem-warn">⚠️ ' + _escapeHtml(se.error) + '</div>';
     } else {
@@ -802,7 +803,7 @@
 
     const orph = rep.orphelins || { plans: [], totalBytes: 0, error: null };
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">' + _t("orph.titre");
+    html += '<div class="kta-mem-section-titre">' + window.ktaIcone("eraser") + " " + _t("orph.titre");
     if (orph.plans.length > 0) html += ' <span class="kta-mem-total">' + orph.plans.length + ' · ' + _formatBytes(orph.totalBytes) + '</span>';
     html += '</div>';
     if (orph.error) {
@@ -826,7 +827,7 @@
                 '</span><span class="kta-mem-val">' + _escapeHtml(parts.join(" · ") || "—") + '</span></div>';
       });
       html += '<div style="margin-top:8px;">' +
-              '<button type="button" class="kta-btn kta-btn-danger kta-btn-small" id="kta-mem-orph-clean">🧹 ' + _t("orph.btnClean") + '</button>' +
+              '<button type="button" class="kta-btn kta-btn-danger kta-btn-small" id="kta-mem-orph-clean">' + window.ktaIcone("eraser") + ' ' + _t("orph.btnClean") + '</button>' +
               '</div>';
       html += '<div class="kta-mem-dim" style="margin-top:6px;">' + _t("orph.note") + '</div>';
     }
@@ -834,7 +835,7 @@
 
     const cr = rep.crashReports || { reports: [], error: null };
     html += '<div class="kta-mem-section">';
-    html += '<div class="kta-mem-section-titre">' + _t("crash.titre");
+    html += '<div class="kta-mem-section-titre">' + window.ktaIcone("copy") + " " + _t("crash.titre");
     if (cr.reports.length > 0) {
       html += ' <span class="kta-mem-total">' + cr.reports.length + ' / 5</span>';
     }
@@ -851,25 +852,25 @@
         const logsCount = (entry.logs || []).length;
         html += '<div class="kta-mem-crash-row" data-crash-id="' + entry.id + '">';
         html += '<div class="kta-mem-crash-head">';
-        html += '<span class="kta-mem-crash-icon">💥</span>';
+        html += '<span class="kta-mem-crash-icon">' + window.ktaIcone("bug") + '</span>';
         html += '<span class="kta-mem-crash-date">' + _escapeHtml(dateTxt) + '</span>';
         if (entry.appVersion) html += ' <span class="kta-mem-tag-dim">' + _escapeHtml(entry.appVersion) + '</span>';
         html += '</div>';
         html += '<div class="kta-mem-crash-meta">';
-        html += '🗂️ ' + _escapeHtml(planTxt);
+        html += window.ktaIcone("map") + ' ' + _escapeHtml(planTxt);
         if (ageSec != null) html += ' &middot; ' + _t("crash.meta.age", { sec: ageSec });
         html += ' &middot; ' + _t("crash.meta.logs", { count: logsCount });
         if (entry.sessionSnapMeta) html += ' &middot; ' + _t("crash.meta.snap");
         html += '</div>';
         html += '<div class="kta-mem-crash-actions">';
-        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-view" data-crash-id="' + entry.id + '">' + _t("crash.btn.view") + '</button>';
-        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-copy" data-crash-id="' + entry.id + '">' + _t("crash.btn.copy") + '</button>';
-        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-del"  data-crash-id="' + entry.id + '" title="' + _t("crash.btn.del") + '">🗑️</button>';
+        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-view" data-crash-id="' + entry.id + '">' + window.ktaIcone("copy") + " " + _t("crash.btn.view") + '</button>';
+        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-copy" data-crash-id="' + entry.id + '">' + window.ktaIcone("copy") + " " + _t("crash.btn.copy") + '</button>';
+        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-del"  data-crash-id="' + entry.id + '" title="' + _t("crash.btn.del") + '">' + window.ktaIcone("trash-2") + '</button>';
         html += '</div>';
         html += '</div>';
       });
       html += '<div style="margin-top:10px; text-align:right;">';
-      html += '<button type="button" class="kta-btn kta-btn-ghost" id="kta-mem-crash-clear-all" style="font-size:11px;">' + _t("crash.btn.clearAll") + '</button>';
+      html += '<button type="button" class="kta-btn kta-btn-ghost" id="kta-mem-crash-clear-all" style="font-size:11px;">' + window.ktaIcone("trash-2") + " " + _t("crash.btn.clearAll") + '</button>';
       html += '</div>';
     }
     html += '</div>';
@@ -895,7 +896,7 @@
       const msg = _t("orph.confirm", { n: plans.length, taille: _formatBytes(rep.orphelins.totalBytes) });
       const ok = await window.ktaConfirm(msg, { okLabel: _t("orph.btnClean") });
       if (!ok) return;
-      btn.disabled = true; btn.textContent = "⏳";
+      btn.disabled = true; btn.innerHTML = window.ktaIcone("loader-circle");
       for (const e of plans) {
         try { await _purgerOrphelin(e.id); } catch(err) { console.warn("[MemInspector] purge orphelin " + e.id + " :", err); }
       }
@@ -937,7 +938,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:760px; height:auto; max-height:88vh;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + _t("crash.detail.titre", { id: id }) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("copy") + " " + _t("crash.detail.titre", { id: id }) + '</span>' +
           '<button type="button" class="kta-panneau-close kta-mem-crash-detail-close" aria-label="' + _t("close") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +

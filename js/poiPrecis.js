@@ -63,14 +63,16 @@
   function htmlFiche(point, editable, act) {
     if (!editable || !applicable(point) || typeof act !== "function") return "";
     const a = lire(point);
-    const bouton = function (action, cle, titre) {
+    // `ico` : icône SVG devant le libellé (ktaIcones.js), comme les autres boutons de la fiche.
+    const bouton = function (action, cle, titre, ico) {
+      const svg = ico && typeof window.ktaIcone === "function" ? window.ktaIcone(ico) + " " : "";
       return '<button class="kta-popup-btn kta-popup-btn-precis" type="button" ' + act(action) +
-        'title="' + window.ktaEsc(_t(titre)) + '">' + window.ktaEsc(_t(cle)) + '</button>';
+        'title="' + window.ktaEsc(_t(titre)) + '">' + svg + window.ktaEsc(_t(cle)) + '</button>';
     };
     return '<div class="kta-popup-actions kta-popup-precis">' +
-      (a ? bouton("precis", "poiPrecis.refaire", "poiPrecis.titre") + bouton("precis-retirer", "poiPrecis.retirer",
+      (a ? bouton("precis", "poiPrecis.refaire", "poiPrecis.titre", "crosshair") + bouton("precis-retirer", "poiPrecis.retirer",
         "poiPrecis.retirerTitre")
-        : bouton("precis", "poiPrecis.augmenter", "poiPrecis.titre")) +
+        : bouton("precis", "poiPrecis.augmenter", "poiPrecis.titre", "crosshair")) +
       '</div>';
   }
 

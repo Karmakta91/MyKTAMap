@@ -427,6 +427,8 @@
      ["#kta-selm-zone-annuler", "selm.zone.annuler"]].forEach(function (b) {
       _floater.querySelector(b[0]).textContent = _t(b[1]);
     });
+    // Sélectionner par zone : icône SVG de la notion (ktaIcones.js), la même que « Par zone » des outils d'effacement.
+    _floater.querySelector("#kta-selm-zone").insertAdjacentHTML("afterbegin", window.ktaIcone("square-dashed") + " ");
     _floater.querySelector("#kta-selm-tous").addEventListener("click", _ajouterTousDuType);
     _floater.querySelector("#kta-selm-annuler").addEventListener("click", fermer);
     _floater.querySelector("#kta-selm-zone").addEventListener("click", _commencerZone);

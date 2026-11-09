@@ -155,15 +155,17 @@ function _choisirGuide(ext, opts) {
     b.type = "button";
     b.id = id;
     b.className = "kta-btn kta-btn-primary";
-    b.textContent = libelle;
+    // Icône de la Documentation (ktaIcones.js) puis libellé en nœud texte.
+    b.innerHTML = window.ktaIcone("book-open") + " ";
+    b.appendChild(document.createTextNode(libelle));
     b.addEventListener("click", function () {
       ov.remove();
       afficherReadme(Object.assign({}, opts, { guide: guide }));
     });
     return b;
   };
-  corps.append(bouton("kta-readme-choix-classique", "📖 " + t("docs.choix.classique"), "classique"),
-    bouton("kta-readme-choix-extension", "📖 " + ext.titre, "extension"));
+  corps.append(bouton("kta-readme-choix-classique", t("docs.choix.classique"), "classique"),
+    bouton("kta-readme-choix-extension", ext.titre, "extension"));
   boite.append(entete, corps);
   ov.appendChild(boite);
   fermer.addEventListener("click", function () { ov.remove(); });
@@ -198,7 +200,7 @@ function _construireSommaireReadme(corpsEl) {
     return { h2: h2, children: children };
   });
 
-  let html = '<div class="kta-readme-toc-title">📚 Sommaire</div>';
+  let html = '<div class="kta-readme-toc-title">' + window.ktaIcone("list") + ' Sommaire</div>';
   html += '<ul class="kta-readme-toc-list">';
 
   tree.forEach(function(node) {
@@ -563,14 +565,14 @@ function _ouvrirReadmeModal(html, opts) {
   const btnOnboarding = opts.hideOnboarding
     ? ''
     : '<button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="' + _docTxt("docs.tutorielBtn") +
-      '" title="🎓 ' + _docTxt("docs.tutorielBtn") + '">🎓</button>';
+      '" title="' + _docTxt("docs.tutorielBtn") + '">' + window.ktaIcone("graduation-cap") + '</button>';
   // Une langue par fichier réellement disponible (DOC_AVAILABLE_LANGS), méta de I18n.available().
   const _docCurrentLang = _getReadmeLang();
   const _docLangMeta = (window.I18n && window.I18n.available) ? window.I18n.available() : [
     { code: "fr", label: "Français", flag: "🇫🇷" },
     { code: "en", label: "English",  flag: "🇬🇧" }
   ];
-  // Menu déroulant (un seul contrôle quel que soit le nombre de langues) ; la place libérée accueille 🤖.
+  // Menu déroulant (un seul contrôle quel que soit le nombre de langues) ; la place libérée accueille l'aide de l'IA.
   const btnLang = '<select class="kta-readme-lang-select" id="kta-readme-lang-select" ' +
     'aria-label="' + _docTxt("docs.langSelect") + '" title="' + _docTxt("docs.langSelect") + '">' +
     DOC_AVAILABLE_LANGS.map(function(code) {
@@ -581,12 +583,12 @@ function _ouvrirReadmeModal(html, opts) {
     }).join("") + '</select>';
   const btnAiia = (typeof window.afficherModaleAideIA === "function")
     ? '<button class="kta-readme-tutorial-btn" id="kta-readme-aiia-btn" type="button" ' +
-      'aria-label="' + _docTxt("docs.aiiaBtn") + '" title="' + _docTxt("docs.aiiaBtn") + '">🤖</button>'
+      'aria-label="' + _docTxt("docs.aiiaBtn") + '" title="' + _docTxt("docs.aiiaBtn") + '">' + window.ktaIcone("bot") + '</button>'
     : "";
   modal.innerHTML = `
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
-        <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="${_docTxt("docs.tocToggle")}" title="${_docTxt("docs.tocToggle")}">📚</button>
+        <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="${_docTxt("docs.tocToggle")}" title="${_docTxt("docs.tocToggle")}">${window.ktaIcone("list")}</button>
         <span class="kta-readme-modal-titre">Documentation${opts.titreGuide ? " · " + window.ktaEsc(opts.titreGuide) : ""}</span>
         ${btnLang}
         ${btnAiia}
@@ -753,14 +755,15 @@ function _aidePoserBouton(modal) {
   if (!modal || !modal.id) return;
   const slug = AIDE_PAR_MODALE[modal.id];
   if (!slug || !ktaAideContextuelleActive()) return;
-  // Deux familles d'en-tête (modales de contenu, menu Tracker) : ❓ au même endroit, avant la croix. Une fenêtre
+  // Deux familles d'en-tête (modales de contenu, menu Tracker) : l'aide au même endroit, avant la croix. Une fenêtre
   // sans en-tête de modale (vue 3D) marque sa rangée de boutons kta-aide-ctx-entete et sa croix data-aide-croix.
   const head = modal.querySelector(".kta-readme-modal-header, .kta-tracker-modal-header, .kta-aide-ctx-entete");
   if (!head || head.querySelector(".kta-aide-ctx-btn")) return;
   const b = document.createElement("button");
   b.type = "button";
   b.className = "kta-aide-ctx-btn";
-  b.textContent = "❓";
+  // Même icône que le bouton Aide de la barre de la carte (ktaIcones.js) ; « ? » si le module manque.
+  if (typeof window.ktaIcone === "function") b.innerHTML = window.ktaIcone("circle-help"); else b.textContent = "?";
   const t = (window.I18n && window.I18n.t) ? window.I18n.t("aide.ctx.btn") : "Aide";
   b.title = t; b.setAttribute("aria-label", t);
   b.addEventListener("click", function(e) {
@@ -771,7 +774,7 @@ function _aidePoserBouton(modal) {
     "[data-aide-croix]");
   // 🩸 `querySelector` cherche en PROFONDEUR : la croix est parfois imbriquée dans un conteneur d'actions,
   // et insérer dans `head` lève un NotFoundError — depuis un MutationObserver, donc hors de tout try, et la
-  // modale reste sans ❓. On insère dans le parent RÉEL de la croix.
+  // modale reste sans bouton d'aide. On insère dans le parent RÉEL de la croix.
   if (croix && croix.parentNode) croix.parentNode.insertBefore(b, croix);
   else head.appendChild(b);
 }
@@ -1276,7 +1279,7 @@ window.afficherModaleAideIA = function() {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:600px; height:auto; max-height:90vh;">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("aiia.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("bot") + " " + window.I18n.t("aiia.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-aide-ia-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +

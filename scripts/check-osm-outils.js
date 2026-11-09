@@ -53,7 +53,8 @@ function contexte() {
     navigator: {},
     // Un navigateur a TOUJOURS ces méthodes : sans elles, faux échec du module.
     addEventListener() {}, removeEventListener() {},
-    formatGpsCoords: (a, b) => a.toFixed(6) + ", " + b.toFixed(6)
+    formatGpsCoords: (a, b) => a.toFixed(6) + ", " + b.toFixed(6),
+    ktaIcone: () => ""                              // ktaIcones.js (icônes SVG), hors sujet ici
   };
   ctx.window = ctx;
   vm.createContext(ctx);
@@ -208,18 +209,18 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     /OsmMesure\.activer\(_osmMap\)/.test(VIEW) && /OsmCoords\.activer\(_osmMap\)/.test(VIEW));
 
   // L'infobulle avertit : la coordonnée est exacte pour la carte, pas pour un plan mal calé.
-  // 🩸 Deux boutons voisins ne partagent pas une icône : « Ma position » garde 📍, le relevé de
-  // coordonnées a 🎯 (on vérifie les DEUX côtés, une collision peut changer de camp).
+  // 🩸 Deux boutons voisins ne partagent pas une icône SVG (ktaIcones.js) : « Ma position » a locate-fixed, le relevé
+  // de coordonnées crosshair (on vérifie les DEUX côtés, une collision peut changer de camp).
   const FR = JSON.parse(fs.readFileSync("lang/fr.json", "utf8"));
-  const ICONE_MOI = "📍", ICONE_COORD = "🎯";
+  const ICONE_MOI = "locate-fixed", ICONE_COORD = "crosshair";
+  const avec = (id, nom) => new RegExp(id + "[\\s\\S]{0,300}?ktaIcone\\(\"" + nom + "\"\\)");
   t("🩸 icones : « Ma position » garde la sienne (" + ICONE_MOI + ")",
-    (FR["osm.btn.mygps"] || "").indexOf(ICONE_MOI) >= 0);
-  t("🩸 icones : le releve de coordonnees a la SIENNE (" + ICONE_COORD + ")",
-    (FR["osm.coords.btnTitle"] || "").indexOf(ICONE_COORD) === 0);
-  t("🩸 icones : les deux boutons du HOME sont distincts",
-    /ktaOsmHomeMyGpsBtn[\s\S]{0,300}?📍/.test(HOME) && /ktaOsmHomeCoordBtn[\s\S]{0,300}?🎯/.test(HOME));
-  t("🩸 icones : le bouton du mode plan porte celle des coordonnees",
-    /kta-osm-coords[\s\S]{0,300}?🎯/.test(VIEW));
+    /ktaIcone\("locate-fixed"\) \+ " " \+ window\.I18n\.t\("osm\.btn\.mygps"\)/.test(VIEW));
+  t("🩸 icones : le releve de coordonnees a la SIENNE (" + ICONE_COORD + ")", avec("kta-osm-coords", ICONE_COORD).test(VIEW));
+  t("🩸 icones : les deux boutons du HOME sont distincts", ICONE_MOI !== ICONE_COORD &&
+    avec("ktaOsmHomeMyGpsBtn", ICONE_MOI).test(HOME) && avec("ktaOsmHomeCoordBtn", ICONE_COORD).test(HOME));
+  t("🩸 icones : les libellés n'ont plus d'emoji (l'icône vient du gabarit)",
+    !/[\p{Extended_Pictographic}]/u.test(FR["osm.btn.mygps"] || "") && !/^[\p{Extended_Pictographic}]/u.test(FR["osm.coords.btnTitle"] || ""));
   t("honnetete : l'infobulle dit que la justesse depend du calage du plan",
     /calage du plan/i.test(FR["osm.coords.btnTitle"] || ""));
   ["osm.coords.invite", "osm.coords.copier", "osm.coords.copie", "osm.coords.copieKo"]

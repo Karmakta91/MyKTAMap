@@ -124,7 +124,7 @@
     _floater = document.createElement("div");
     _floater.id = "kta-osm-coord-floater";
     _floater.innerHTML =
-      '<span class="kta-osm-coord-icone">🎯</span>' +
+      '<span class="kta-osm-coord-icone">' + window.ktaIcone("crosshair") + '</span>' +
       '<span class="kta-osm-coord-info"></span>' +
       '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-osm-coord-copy" disabled>' +
         _t("osm.coords.copier") + '</button>' +

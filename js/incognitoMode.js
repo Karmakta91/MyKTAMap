@@ -102,7 +102,7 @@
           '<div class="kta-readme-modal-corps">' +
 
             '<div class="kta-aide-section">' +
-              '<div class="kta-aide-section-titre">' + t("incognito.confirm.changes.title") + '</div>' +
+              '<div class="kta-aide-section-titre">' + window.ktaIcone("list") + ' ' + t("incognito.confirm.changes.title") + '</div>' +
               '<ul style="margin:8px 0 0 0; padding-left:22px; color:var(--kta-texte-2); font-size:13px; line-height:1.7;">' +
                 '<li>' + t("incognito.confirm.changes.b1") + '</li>' +
                 '<li>' + t("incognito.confirm.changes.b2") + '</li>' +
@@ -112,7 +112,7 @@
             '</div>' +
 
             '<div class="kta-aide-section">' +
-              '<div class="kta-aide-section-titre">' + t("incognito.confirm.warn.title") + '</div>' +
+              '<div class="kta-aide-section-titre">' + window.ktaIcone("triangle-alert") + ' ' + t("incognito.confirm.warn.title") + '</div>' +
               '<div style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.25); border-radius:8px; padding:10px 12px;">' +
                 '<div style="color:var(--kta-texte-2); font-size:12.5px; line-height:1.55;">' +
                   t("incognito.confirm.warn.body") +
@@ -121,7 +121,7 @@
             '</div>' +
 
             '<div class="kta-aide-section">' +
-              '<div class="kta-aide-section-titre">' + t("incognito.confirm.usecases.title") + '</div>' +
+              '<div class="kta-aide-section-titre">' + window.ktaIcone("circle-check") + ' ' + t("incognito.confirm.usecases.title") + '</div>' +
               '<ul style="margin:8px 0 0 0; padding-left:22px; color:var(--kta-texte-2); font-size:13px; line-height:1.7;">' +
                 '<li>' + t("incognito.confirm.usecases.b1") + '</li>' +
                 '<li>' + t("incognito.confirm.usecases.b2") + '</li>' +
@@ -133,7 +133,7 @@
             '<div style="display:flex; gap:10px; margin-top:14px;">' +
               '<button class="kta-btn kta-btn-ghost"   id="kta-incog-confirm-cancel" type="button" style="flex:1;">' + t("incognito.confirm.cancel") + '</button>' +
               '<button class="kta-cfg-incognito-btn"   id="kta-incog-confirm-accept" type="button" style="flex:2; margin:0;">' +
-                '<span style="font-size:16px;">🕵️</span>' +
+                '<span style="font-size:16px; line-height:0;">' + window.ktaIcone("venetian-mask") + '</span>' +
                 '<span><strong>' + t("incognito.confirm.accept") + '</strong></span>' +
               '</button>' +
             '</div>' +
@@ -364,7 +364,9 @@
         }
         var badge = document.createElement("div");
         badge.className = "kta-incognito-badge";
-        badge.textContent = _t("incognito.badge.label", "🕵️ INCOGNITO");
+        // Icône SVG de l'incognito (ktaIcones.js, chargé avant) + libellé en nœud texte.
+        if (typeof window.ktaIcone === "function") badge.innerHTML = window.ktaIcone("venetian-mask") + " ";
+        badge.appendChild(document.createTextNode(_t("incognito.badge.label", "INCOGNITO")));
         badge.title = _t("incognito.badge.tooltip", "Mode incognito actif — aucune donnée n'est sauvegardée");
         return badge;
       }

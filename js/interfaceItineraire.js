@@ -399,11 +399,12 @@ let _itiDistanceCtrl = null;
 
 // ── Presets de vitesse ──────────
 // Persistés en localStorage. Libellés résolus au rendu (_presetLabel/_presetHint), jamais au load.
+// `ico` : icône SVG de l'interface (ktaIcones.js), la même que Je suis perdu (lostMode.js > LOST_MODE_PRESETS).
 const ITI_SPEED_PRESETS = {
-  blesse:  { kmh: 2, icon: "🤕" },
-  lente:   { kmh: 3, icon: "🐌" },
-  normale: { kmh: 5, icon: "🚶" },
-  rapide:  { kmh: 7, icon: "🏃" }
+  blesse:  { kmh: 2, ico: "bandage" },
+  lente:   { kmh: 3, ico: "snail" },
+  normale: { kmh: 5, ico: "person-standing" },
+  rapide:  { kmh: 7, ico: "rabbit" }
 };
 function _presetLabel(key) { return window.I18n.t("iti.speed." + key + ".label"); }
 function _presetHint(key)  { return window.I18n.t("iti.speed." + key + ".hint"); }
@@ -538,7 +539,7 @@ function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
       '<span class="kta-iti-distance-sep">·</span>' +
       '<span class="kta-iti-distance-speed" title="' +
         window.I18n.t("iti.label.speedTitle", { label: presetLabel, kmh: preset.kmh }) + '">' +
-        preset.icon + ' ' + presetLabel +
+        window.ktaIcone(preset.ico) + ' ' + presetLabel +
       '</span>';
     const pauseActive = _getItiPauseEnabled();
     const pauseMin    = _getItiPauseMinutes();
@@ -636,7 +637,7 @@ function _ajouterWaypointVisuel(p, num) {
           '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
             'data-kta-act="ici" data-kta-x="' + (Number(p.x) || 0) + '" data-kta-y="' + (Number(p.y) || 0) + '" ' +
             'title="' + window.I18n.t("poi.iAmHere") + '">' +
-            window.I18n.t("iti.wp.jeSuisIci") +
+            window.ktaIcone("map-pin-check") + " " + window.I18n.t("iti.wp.jeSuisIci") +
           '</button>' +
         '</div></div>');
   }
@@ -1724,7 +1725,7 @@ window.ouvrirItinerairModal = function() {
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.distance") + '</strong> ' + window.formatDistance(distActMeters, 1) + '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.time") + '</strong> ' +
           '<span id="kta-iti-temps-val">' + _formatTempsMinutes(tempsActMin) + '</span> ' +
-          '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + currentPreset.icon + ' ' + _presetLabel(currentPresetKey) + ')</span>' +
+          '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + window.ktaIcone(currentPreset.ico) + ' ' + _presetLabel(currentPresetKey) + ')</span>' +
         '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.segments") + '</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
         // Profil en long : `existingItinerary.points` porte déjà le niveau de chaque point.
@@ -1790,7 +1791,7 @@ window.ouvrirItinerairModal = function() {
       '<button type="button" class="kta-iti-speed-btn' + (active ? " kta-iti-speed-active" : "") + '" ' +
         'data-speed="' + key + '" ' +
         'title="' + window.I18n.t("iti.speed.btnTitle", { label: pLabel, kmh: p.kmh, hint: _presetHint(key) }) + '">' +
-        '<span class="kta-iti-speed-icon">' + p.icon + '</span>' +
+        '<span class="kta-iti-speed-icon">' + window.ktaIcone(p.ico) + '</span>' +
         '<span class="kta-iti-speed-label">' + pLabel + '</span>' +
         '<span class="kta-iti-speed-kmh">' + window.I18n.t("iti.speed.kmh", { kmh: p.kmh }) + '</span>' +
       '</button>';
@@ -1920,7 +1921,7 @@ window.ouvrirItinerairModal = function() {
     const tEl   = document.getElementById("kta-iti-temps-val");
     const hEl   = document.getElementById("kta-iti-temps-speed-hint");
     if (tEl) tEl.textContent = _formatTempsMinutes(tMin);
-    if (hEl) hEl.textContent = "(" + p.icon + " " + _presetLabel(pKey) + ")";
+    if (hEl) hEl.innerHTML = "(" + window.ktaIcone(p.ico) + " " + window.ktaEsc(_presetLabel(pKey)) + ")";
   }
 
   function fermer() {

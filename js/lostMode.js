@@ -26,11 +26,12 @@
 
   // Presets alignés sur ceux de l'itinéraire (mêmes km/h, mêmes libellés) ; libellés résolus AU RENDU
   // (_presetLabel/_presetHint → lost.preset.<key>.*).
+  // `ico` : icône SVG de la fenêtre (celle de l'itinéraire) ; `icon` : emoji du rapport copié (texte produit).
   const LOST_MODE_PRESETS = {
-    blesse:  { kmh: 2, icon: "🤕" },
-    lente:   { kmh: 3, icon: "🐌" },
-    normale: { kmh: 5, icon: "🚶" },
-    rapide:  { kmh: 7, icon: "🏃" }
+    blesse:  { kmh: 2, icon: "🤕", ico: "bandage" },
+    lente:   { kmh: 3, icon: "🐌", ico: "snail" },
+    normale: { kmh: 5, icon: "🚶", ico: "person-standing" },
+    rapide:  { kmh: 7, icon: "🏃", ico: "rabbit" }
   };
   const DEFAULT_LOST_PRESET     = "lente";
   const LOST_PRESET_STORAGE_KEY = "myktamap_lost_preset";
@@ -847,7 +848,7 @@
                   '<button type="button" class="kta-lost-preset-btn' + (active ? " kta-lost-preset-active" : "") + '" ' +
                     'data-preset="' + key + '" ' +
                     'title="' + lbl + ' — ' + p.kmh + ' km/h. ' + _presetHint(key) + '">' +
-                    '<span class="kta-lost-preset-icon">' + p.icon + '</span>' +
+                    '<span class="kta-lost-preset-icon">' + window.ktaIcone(p.ico) + '</span>' +
                     '<span class="kta-lost-preset-label">' + lbl + '</span>' +
                     '<span class="kta-lost-preset-meta">' + p.kmh + ' km/h</span>' +
                   '</button>';
@@ -1039,11 +1040,11 @@
 
     let html = '<div class="kta-lost-section">';
     html += '<div class="kta-lost-section-titre">' + window.ktaIcone("square-dashed") + " " + _t("lost.results.zone.titre") + '</div>';
-    const pres = LOST_MODE_PRESETS[_currentPreset] || { icon: "?" };
+    const pres = LOST_MODE_PRESETS[_currentPreset] || LOST_MODE_PRESETS[DEFAULT_LOST_PRESET];
     html += '<div class="kta-lost-stat">' +
             _t("lost.results.zone.rayon", { radius: _formatDist(_radiusPx) }) + ' ' +
             '<span class="kta-lost-stat-detail">' +
-              '<span class="kta-lost-stat-preset">' + pres.icon + ' ' + _presetLabel(_currentPreset) + '</span> ' +
+              '<span class="kta-lost-stat-preset">' + window.ktaIcone(pres.ico) + ' ' + _presetLabel(_currentPreset) + '</span> ' +
               '· ' + _t("lost.results.zone.detail", { speed: _speedKmH, m: _elapsedMinutes }) +
             '</span></div>';
     if (_zoneOverflow) {

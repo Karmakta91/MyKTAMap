@@ -713,10 +713,14 @@ function attacherBoutonCopierEchelleGps(container) {
 }
 window.attacherBoutonCopierEchelleGps = attacherBoutonCopierEchelleGps;
 
+// Icône SVG d'un bouton ou d'un titre de fiche (ktaIcones.js), suivie d'une espace ; vide si le module manque.
+function _icoFiche(nom) { return typeof window.ktaIcone === "function" ? window.ktaIcone(nom) + " " : ""; }
+
 // ── Popups de note (zones / tracés / structures) : window.attacherNotePopup, plus bas ──────────
 // ⚠️ attacherNotePopup(layer, getDescr, setDescr, titreType, opts) ; opts.mode = "edit" (défaut) | "readonly".
 // titreType : texte, ou fonction relue à CHAQUE ouverture (un type renommé dans la légende ne redessine pas la carte) ;
-// opts.pastille = { cat, cle } : pastille de la couleur résolue devant le titre (ktaTypeSwatchHtml).
+// opts.pastille = { cat, cle } : pastille de la couleur résolue devant le titre (ktaTypeSwatchHtml) ; opts.ico : nom
+// d'icône SVG devant le titre (types sans pastille : jonction, itinéraire).
 // edit (session) : textarea + 💾, s'ouvre même note vide ; le save déclenche HistoryManager + SessionPersist.
 // readonly (data layer) : texte seul, setDescr peut être null. À ne binder QUE si une note existe (c'est à
 // l'appelant de tester `description`), sinon un clic sur un data layer muet ouvrirait une popup vide.
@@ -1017,7 +1021,8 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   function _titreHtml() {
     const p = opts.pastille;
     const pastille = (p && typeof window.ktaTypeSwatchHtml === "function") ? (window.ktaTypeSwatchHtml(p.cat, p.cle) || "") : "";
-    return pastille + _esc(_titreTexte());
+    const ico = opts.ico ? _icoFiche(opts.ico) : "";
+    return ico + pastille + _esc(_titreTexte());
   }
 
   // Ligne « Niveau » sous 🔄 Convertir : objet de session seulement (`opts.convertir`), ni jonction (fromLevel /
@@ -1503,26 +1508,26 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   function _escAttr(s) { return window.ktaEsc(s); }
   const isFav = !!(window.Favoris && window.Favoris.isFav(point.id, point.uid));
 
-  // Actions de session (✏️ Modifier, ligne séparée 🗑️ Supprimer) seulement si isEditorSession === true,
+  // Actions de session (Modifier, ligne séparée Supprimer) seulement si isEditorSession === true,
   // passé par l'appelant (editor.js → true, ajouterPointsDepuisJSON → false).
   // 🩸 Pas de test sur point.source === "editor" : un point converti session → data garde ce champ, le bouton
   // s'afficherait et supprimerPointEditor ne trouverait rien (échec muet).
   const showSessionActions = isEditorSession === true &&
-    !(typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true));   // droit « lire » : ni ✏️ ni 🗑️
+    !(typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true));   // droit « lire » : ni modifier ni supprimer
   const editRow = showSessionActions
     ? '<div class="kta-popup-actions">' +
         '<button class="kta-popup-btn kta-popup-btn-edit" type="button" ' + _act("modifier") +
           'title="' + window.I18n.t("poi.editPoint") + '">' +
-          window.I18n.t("poi.editBtn") +
+          _icoFiche("pencil") + window.I18n.t("poi.editBtn") +
         '</button>' +
         // Repositionner : arme le picker clic-carte d'editor.js ; classe générique (ce n'est pas l'édition).
         '<button class="kta-popup-btn" type="button" ' + _act("repositionner") +
           'title="' + window.I18n.t("poi.movePoint") + '">' +
-          window.I18n.t("poi.moveBtn") +
+          _icoFiche("move") + window.I18n.t("poi.moveBtn") +
         '</button>' +
       '</div>'
     : '';
-  // Point précis (poiPrecis.js) : « 🎯 Augmenter la précision », mêmes droits que ✏️ Modifier.
+  // Point précis (poiPrecis.js) : « Augmenter la précision », mêmes droits que Modifier.
   const precisRow = window.KtaPoiPrecis ? window.KtaPoiPrecis.htmlFiche(point, showSessionActions, _act) : "";
   // « Je suis ici », « Y aller » et étape visent le point précis s'il existe ; data-kta-x / y restent l'icône (identité
   // du point).
@@ -1532,7 +1537,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     ? '<div class="kta-popup-actions kta-popup-actions-danger">' +
         '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' + _act("supprimer") +
           'title="' + window.I18n.t("poi.deletePoint") + '">' +
-          window.I18n.t("poi.deleteBtn") +
+          _icoFiche("trash-2") + window.I18n.t("poi.deleteBtn") +
         '</button>' +
       '</div>'
     : '';
@@ -1540,7 +1545,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   // Photos hydratées en async au popupopen (window.attachPopupPhotos) ; vide → masqué en CSS (:empty).
   const photosSlot = '<div class="kta-popup-photos" data-pointid="' + _escAttr(id) + '"></div>';
 
-  // Ligne GPS si le plan est calibré, pour tout point (session et data layer) ; 📋 copie.
+  // Ligne GPS si le plan est calibré, pour tout point (session et data layer) ; bouton de copie.
   let gpsLineHtml = "";
   // Passage entre niveaux : niveaux desservis et raccords validés (poiJonction.js).
   const jonctionHtml = window.KtaPoiJonction ? window.KtaPoiJonction.htmlFiche(point) : "";
@@ -1552,21 +1557,21 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     const gpsAttr = _escAttr(gpsStr);
     gpsLineHtml =
       '<div class="kta-popup-gps" title="' + window.I18n.t("poi.gpsComputed") + '">' +
-        '<span class="kta-popup-gps-icon">🌐</span>' +
+        '<span class="kta-popup-gps-icon">' + _icoFiche("globe") + '</span>' +
         '<code class="kta-popup-gps-val">' + window.ktaEsc(gpsStr) + '</code>' +
         '<button class="kta-popup-gps-copy" type="button" data-kta-act="gps" data-kta-gps="' + gpsAttr + '" ' +
-          'title="' + window.I18n.t("poi.copyGps") + '">📋</button>' +
+          'title="' + window.I18n.t("poi.copyGps") + '">' + _icoFiche("copy") + '</button>' +
       '</div>';
   }
 
-  // 🔊 Lecture de la description (VoiceTts) si elle existe et si Speech Synthesis est dispo. Jamais
+  // Lecture de la description (VoiceTts) si elle existe et si Speech Synthesis est dispo. Jamais
   // d'auto-lecture. Texte passé en data-tts-text (robuste aux sauts de ligne et apostrophes).
   let ttsBtnHtml = "";
   if (safeDesc && window.VoiceTts && typeof window.VoiceTts.isSupported === "function" && window.VoiceTts.isSupported()) {
     ttsBtnHtml = '<button class="kta-popup-tts-btn" type="button" ' +
                    'data-tts-text="' + _escAttr(desc) + '" data-kta-act="tts" ' +
                    'title="' + window.I18n.t("poi.readNote") + '">' +
-                   '🔊' +
+                   _icoFiche("volume-2") +
                  '</button>';
   }
 
@@ -1591,18 +1596,18 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            '<div class="kta-popup-actions">' +
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") + _niveauIci + _cibAttr +
                'title="' + window.I18n.t("poi.iAmHere") + '">' +
-               window.I18n.t("iti.wp.jeSuisIci") +
+               _icoFiche("map-pin-check") + window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' + _act("aller") + _niveauIci +
                _cibAttr +
                'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.goThere") + '">' +
-               window.I18n.t("poi.goThereBtn") +
+               _icoFiche("route") + window.I18n.t("poi.goThereBtn") +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' + _act("etape") + _cibAttr +
                'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.addWaypoint") + '">' +
-               window.I18n.t("poi.addWaypointBtn") +
+               _icoFiche("plus") + window.I18n.t("poi.addWaypointBtn") +
              '</button>' +
              // Favori : window.toggleFavoriPoint met à jour le libellé en place (pas de re-rendu de la popup).
              '<button class="kta-popup-btn kta-popup-btn-fav' + (isFav ? ' kta-fav-active' : '') + '" type="button" ' +
@@ -1611,7 +1616,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
                'data-kta-nom="' + _escAttr(nom) + '" data-kta-tag="' + _escAttr(_firstTag) + '" ' +
                'data-kta-calque="' + _escAttr(_layerId) + '" data-kta-calque-label="' + _escAttr(_layerLabel) + '" ' +
                'title="' + (isFav ? window.I18n.t("poi.favRemoveTitle") : window.I18n.t("poi.favAddTitle")) + '">' +
-               (isFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff")) +
+               _icoFiche("star") + (isFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff")) +
              '</button>' +
            '</div>' +
            iplSectionHtml +
@@ -1776,7 +1781,7 @@ window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel
     // le bouton de CE point (uid), pas celui d'un homonyme
     const bu = btn.getAttribute("data-fav-pointuid") || "";
     if (pointUid ? bu === pointUid : btn.getAttribute("data-fav-pointid") === pointId) {
-      btn.textContent = nowFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff");
+      btn.innerHTML = _icoFiche("star") + window.ktaEsc(nowFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff"));
       btn.classList.toggle("kta-fav-active", nowFav);
       btn.title = nowFav ? window.I18n.t("poi.favRemoveTitle") : window.I18n.t("poi.favAddTitle");
     }
@@ -2628,6 +2633,7 @@ function ajouterPointsDepuisJSON(url, layer) {
           const polyline = L.polyline(latlngs, Object.assign({}, style, { interactive: false })).addTo(layer);
           if (hasNoteRO && typeof window.attacherNotePopup === "function") {
             const _roadEmojisRO = { principal: "🟩", secondaire: "🟪", chemin: "🟨", jonction: "🪜", itinerary: "🗺️" };
+            const _icoTypeRO = { jonction: "m-echelle", itinerary: "route" };
             function _roadROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
@@ -2661,7 +2667,8 @@ function ajouterPointsDepuisJSON(url, layer) {
               function() { return road.description; },
               null,
               function() { return _roadROTitle(road.type); },
-              { mode: "readonly", pastille: { cat: "traces", cle: road.type }, objet: road }
+              { mode: "readonly", objet: road, ico: _icoTypeRO[road.type] || null,
+                pastille: _icoTypeRO[road.type] ? null : { cat: "traces", cle: road.type } }
             );
           }
           // registre du filtre multi-niveau (level absent → 0) ; type, points et description pour

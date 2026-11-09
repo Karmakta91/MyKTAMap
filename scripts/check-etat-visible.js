@@ -106,7 +106,7 @@ function bloc(src, debut, fin) {
   verif(/id="kta-refonte-stat-tracker"/.test(s) && /kta-refonte-stat-tracker-off kta-refonte-stat-clickable/.test(s), "chip 🧭 du footer cliquable");
   verif(/trackerStat\.addEventListener\("click"/.test(s) && /window\.ouvrirMenuTracker\(\)/.test(s), "🩸 tap sur le chip 🧭 → menu Tracker");
   const rs = bloc(s, 'const trackerEl = document.getElementById("kta-refonte-stat-tracker");', "function _setStat");
-  verif(rs.includes("getStepCount") && rs.includes("getTrackingDistanceTotaleM") && rs.includes("👣"), "🩸 le chip affiche pas + distance quand le suivi est actif");
+  verif(rs.includes("getStepCount") && rs.includes("getTrackingDistanceTotaleM") && rs.includes("ui.refonte.tracker_pas"), "🩸 le chip affiche pas + distance quand le suivi est actif (« 128 pas »)");
   verif(rs.includes("FilterPanel.majBadge"), "🩸 le polling du footer rafraîchit la pastille de filtres (changements de niveau externes)");
   verif(/function _ligneDerniereSauvegarde\(\)/.test(s) && /html \+= _ligneDerniereSauvegarde\(\);/.test(s), "🩸 📊 Détails : ligne « enregistré il y a » en tête");
 }

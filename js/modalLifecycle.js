@@ -204,7 +204,8 @@
         if (!btn) return function noop() {};
         lockOpts = lockOpts || {};
         const originalDisabled = btn.disabled;
-        const originalText     = btn.textContent;
+        // Contenu d'origine en HTML : une icône SVG (ktaIcones.js) revient avec le libellé.
+        const originalHtml     = btn.innerHTML;
         btn.disabled = true;
         if (lockOpts.text) btn.textContent = lockOpts.text;
         let released = false;
@@ -214,8 +215,8 @@
           // Bouton peut-être détaché si la modale a fermé : restauration inoffensive, sous try/catch.
           try {
             btn.disabled = originalDisabled;
-            const restoreText = (releaseOpts && releaseOpts.text) || originalText;
-            if (restoreText != null) btn.textContent = restoreText;
+            if (releaseOpts && releaseOpts.text) btn.textContent = releaseOpts.text;
+            else btn.innerHTML = originalHtml;
           } catch(_) {}
         };
       },

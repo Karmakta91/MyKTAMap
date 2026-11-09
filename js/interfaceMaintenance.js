@@ -265,7 +265,7 @@ async function mettreAJourCodeSeul() {
   overlay.className = "kta-modal-overlay";
   overlay.innerHTML =
     '<div class="kta-modal">' +
-      '<div class="kta-modal-icon">⏳</div>' +
+      '<div class="kta-modal-icon">' + window.ktaIcone("loader-circle") + '</div>' +
       '<div class="kta-modal-titre">' + window.I18n.t("maint.title_soft_update") + '</div>' +
       '<div class="kta-modal-texte" id="kta-soft-update-status">' + window.I18n.t("maint.msg_checking_connection") + '</div>' +
     '</div>';
@@ -358,7 +358,7 @@ function _softUpdateOfflineWarning() {
           window.I18n.t("maint.intro_soft_update_offline", { origin: origin }) +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_causes") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("search") + " " + window.I18n.t("maint.section_causes") + '</div>' +
           '<ul class="kta-oom-list">' +
             '<li>' + window.I18n.t("maint.reason_no_internet") + '</li>' +
             '<li>' + window.I18n.t("maint.reason_server_down", { origin: origin }) + '</li>' +
@@ -397,7 +397,7 @@ function viderCacheAppli() {
   // Connexion vérifiée AVANT toute confirmation, avec un « Vérification… » (pas de gel muet de 5 s).
   const overlayPing = document.createElement("div");
   overlayPing.className = "kta-modal-overlay";
-  overlayPing.innerHTML = '<div class="kta-modal"><div class="kta-modal-icon">📶</div><div class="kta-modal-titre">' + window.I18n.t("maint.ping_title") + '</div><div class="kta-modal-texte">' + window.I18n.t("maint.ping_text") + '</div></div>';
+  overlayPing.innerHTML = '<div class="kta-modal"><div class="kta-modal-icon">' + window.ktaIcone("wifi") + '</div><div class="kta-modal-titre">' + window.I18n.t("maint.ping_title") + '</div><div class="kta-modal-texte">' + window.I18n.t("maint.ping_text") + '</div></div>';
   document.documentElement.appendChild(overlayPing);
 
   _pingInternet().then(function(online) {
@@ -432,7 +432,7 @@ function _resetFlowOfflineWarning() {
           window.I18n.t("maint.intro_reset_offline", { origin: origin }) +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_causes") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("search") + " " + window.I18n.t("maint.section_causes") + '</div>' +
           '<ul class="kta-oom-list">' +
             '<li>' + window.I18n.t("maint.reason_no_internet") + '</li>' +
             '<li>' + window.I18n.t("maint.reason_server_down", { origin: origin }) + '</li>' +
@@ -489,7 +489,7 @@ function _resetFlowConfirmation() {
   overlay1.className = "kta-modal-overlay";
   overlay1.innerHTML = `
     <div class="kta-modal">
-      <div class="kta-modal-icon">⚠️</div>
+      <div class="kta-modal-icon">${window.ktaIcone("triangle-alert")}</div>
       <div class="kta-modal-titre">${window.I18n.t("maint.title_reset_confirm")}</div>
       <div class="kta-modal-texte">
         ${window.I18n.t("maint.reset_intro")}
@@ -538,7 +538,7 @@ function _resetFlowConfirmation() {
     overlay2.className = "kta-modal-overlay";
     overlay2.innerHTML = `
       <div class="kta-modal kta-modal-danger">
-        <div class="kta-modal-icon">🚨</div>
+        <div class="kta-modal-icon">${window.ktaIcone("triangle-alert")}</div>
         <div class="kta-modal-titre">${window.I18n.t("maint.title_final_confirm")}</div>
         <div class="kta-modal-texte">
           ⚠️ <strong>${window.I18n.t("maint.final_warning_label")}</strong> ⚠️<br><br>
@@ -564,7 +564,7 @@ function _resetFlowConfirmation() {
       overlay2.remove();
       const overlayWait = document.createElement("div");
       overlayWait.className = "kta-modal-overlay";
-      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">${window.I18n.t("maint.title_cleaning")}</div><div class="kta-modal-texte">${window.I18n.t("maint.cleaning_text")}</div></div>`;
+      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">${window.ktaIcone("loader-circle")}</div><div class="kta-modal-titre">${window.I18n.t("maint.title_cleaning")}</div><div class="kta-modal-texte">${window.I18n.t("maint.cleaning_text")}</div></div>`;
       document.documentElement.appendChild(overlayWait);
 
       try {
@@ -630,7 +630,7 @@ function _resetFlowConfirmation() {
         overlayWait.remove();
         const overlayErr = document.createElement("div");
         overlayErr.className = "kta-modal-overlay";
-        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">${window.I18n.t("maint.title_error")}</div><div class="kta-modal-texte">${window.I18n.t("maint.error_clear_cache", { detail: (err.message || err) })}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">${window.I18n.t("maint.btn_ok")}</button></div></div>`;
+        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">${window.ktaIcone("circle-x")}</div><div class="kta-modal-titre">${window.I18n.t("maint.title_error")}</div><div class="kta-modal-texte">${window.I18n.t("maint.error_clear_cache", { detail: (err.message || err) })}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">${window.I18n.t("maint.btn_ok")}</button></div></div>`;
         document.documentElement.appendChild(overlayErr);
         document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
       }

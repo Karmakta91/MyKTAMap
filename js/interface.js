@@ -151,7 +151,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
       : window.I18n.t("ui.switcher.currentPlan");
     currentHtml =
       '<div class="kta-plan-switcher-current">' +
-        '<div class="kta-plan-switcher-current-label">' + window.I18n.t("ui.switcher.currentLabel") + '</div>' +
+        '<div class="kta-plan-switcher-current-label">' + window.ktaIcone("map-pin") + " " + window.I18n.t("ui.switcher.currentLabel") + '</div>' +
         '<div class="kta-plan-switcher-current-name">' +
           '<span class="kta-plan-switcher-current-icon">' + icon + '</span>' +
           '<span>' + escapeHtmlSwitcher(window.PlanRegistry.displayName(current)) + '</span>' + ver +
@@ -162,7 +162,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
 
   let recentsHtml = "";
   if (recents.length > 0) {
-    recentsHtml += '<div class="kta-plan-switcher-section-titre">' + window.I18n.t("ui.switcher.recentTitle") + '</div>';
+    recentsHtml += '<div class="kta-plan-switcher-section-titre">' + window.ktaIcone("history") + " " + window.I18n.t("ui.switcher.recentTitle") + '</div>';
     recentsHtml += '<div class="kta-switcher-list">';
     recents.forEach(function(p) {
       const icon = p.type === "server" ? "🌐" : "💾";
@@ -181,14 +181,14 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
     recentsHtml += '</div>';
   } else {
     recentsHtml +=
-      '<div class="kta-plan-switcher-section-titre">' + window.I18n.t("ui.switcher.recentTitle") + '</div>' +
+      '<div class="kta-plan-switcher-section-titre">' + window.ktaIcone("history") + " " + window.I18n.t("ui.switcher.recentTitle") + '</div>' +
       '<div class="kta-switcher-empty">' + window.I18n.t("ui.switcher.empty") + '</div>';
   }
 
   overlay.innerHTML =
     '<div class="kta-plan-switcher-modal-boite" id="kta-plan-switcher">' +
       '<div class="kta-plan-switcher-modal-header">' +
-        '<span class="kta-plan-switcher-modal-titre">' + window.I18n.t("ui.switcher.modalTitle") + '</span>' +
+        '<span class="kta-plan-switcher-modal-titre">' + window.ktaIcone("library") + " " + window.I18n.t("ui.switcher.modalTitle") + '</span>' +
         '<button class="kta-panneau-close" id="kta-plan-switcher-close" aria-label="' + window.I18n.t("ui.btn.close") + '">✕</button>' +
       '</div>' +
       '<div class="kta-plan-switcher-modal-corps">' +
@@ -298,7 +298,7 @@ function _confirmEtChargerPlan(planId) {
   overlay.className = "kta-modal-overlay";
   overlay.innerHTML =
     '<div class="kta-modal">' +
-      '<div class="kta-modal-icon">🗂️</div>' +
+      '<div class="kta-modal-icon">' + window.ktaIcone("library") + '</div>' +
       '<div class="kta-modal-titre">' + window.I18n.t("ui.loadOther.title") + '</div>' +
       '<div class="kta-modal-texte">' +
         window.I18n.t("ui.loadOther.activeIntro") +
@@ -313,7 +313,7 @@ function _confirmEtChargerPlan(planId) {
       '</div>' +
       '<div class="kta-modal-actions">' +
         '<button class="kta-btn kta-btn-ghost"   id="kta-switch-annuler">' + window.I18n.t("ui.btn.cancel") + '</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-switch-confirmer">' + window.I18n.t("ui.loadOther.loadBtn") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-switch-confirmer">' + window.ktaIcone("folder-open") + " " + window.I18n.t("ui.loadOther.loadBtn") + '</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(overlay);
@@ -403,7 +403,8 @@ function escapeHtmlSwitcher(s) { return window.ktaEsc(s); }
 // Alerte charte à un bouton OK, sans callback (info, pas de décision).
 // ⚠️ `texte` et `titre` sont injectés en HTML : l'appelant échappe ce qui vient de l'utilisateur.
 function _alertCharte(titre, texte, icone) {
-  const ic = icone || "⚠️";
+  // `icone` : nom d'icône SVG (ktaIcones.js), triangle-alert par défaut.
+  const ic = window.ktaIcone(icone || "triangle-alert");
   const existing = document.getElementById("kta-alert-charte");
   if (existing) existing.remove();
 
@@ -487,7 +488,7 @@ function afficherPopupChangerPlan() {
 
   overlay.innerHTML = `
     <div class="kta-modal" style="max-width:440px;">
-      <div class="kta-modal-icon">🗂️</div>
+      <div class="kta-modal-icon">${window.ktaIcone("library")}</div>
       <div class="kta-modal-titre">${window.I18n.t("ui.changePlan.title")}</div>
       <div class="kta-modal-texte">
         ${window.I18n.t("ui.changePlan.body")}
@@ -2263,7 +2264,7 @@ function initInterface() {
       Promise.resolve(perm).then(function(ok) {
         if (ok === false) {
           _alertCharte(window.I18n.t("ui.trackerWarn.refusTitre"),
-                       window.I18n.t("ui.trackerWarn.refusTexte"), "🚫");
+                       window.I18n.t("ui.trackerWarn.refusTexte"), "ban");
           return;
         }
         _doStartSuite();
@@ -2818,7 +2819,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _alertCharte(
             window.I18n.t("ui.trace.noneTitle"),
             window.I18n.t("ui.trace.noneBody"),
-            "🛣️"
+            "m-galerie"
           );
           return;
         }
@@ -2957,7 +2958,7 @@ _setGroupeModeActif("tracker", isTracking, null);
             _alertCharte(
               window.I18n.t("ui.zone.noneTitle"),
               window.I18n.t("ui.zone.noneBody"),
-              "⛔"
+              "ban"
             );
             return;
           }
@@ -2976,7 +2977,7 @@ _setGroupeModeActif("tracker", isTracking, null);
               _alertCharte(
                 window.I18n.t("ui.zone.tooFewTitle"),
                 window.I18n.t("ui.zone.tooFewBody"),
-                "📐"
+                "ruler"
               );
             }
           }
@@ -3108,7 +3109,7 @@ _setGroupeModeActif("tracker", isTracking, null);
             _alertCharte(
               window.I18n.t("ui.struct.noneTitle"),
               window.I18n.t("ui.struct.noneBody"),
-              "🏛️"
+              "m-pilier"
             );
             return;
           }
@@ -3132,13 +3133,13 @@ _setGroupeModeActif("tracker", isTracking, null);
                 _alertCharte(
                   window.I18n.t("ui.struct.tooFewTitle"),
                   window.I18n.t("ui.struct.tooFewLineBody"),
-                  "📐"
+                  "ruler"
                 );
               } else {
                 _alertCharte(
                   window.I18n.t("ui.struct.tooFewTitle"),
                   window.I18n.t("ui.struct.tooFewPolyBody"),
-                  "📐"
+                  "ruler"
                 );
               }
             }

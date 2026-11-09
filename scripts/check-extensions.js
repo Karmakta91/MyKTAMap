@@ -439,7 +439,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     // Fiche d'un point rendue pour de vrai (fonction extraite de utils.js, dépendances simulées).
     const src = U.slice(U.indexOf("function buildPointPopupHtml("), U.indexOf("window.buildPointPopupHtml = buildPointPopupHtml;"));
     const cf = vm.createContext({ window: { ktaEsc: (s) => String(s).replace(/[&<>"']/g, (c) => "&#" + c.charCodeAt(0) + ";"),
-      I18n: { t: (k) => k } }, _planXyToGps: () => null, _formatGps: () => "" });
+      I18n: { t: (k) => k } }, _planXyToGps: () => null, _formatGps: () => "", _icoFiche: () => "" });
     vm.runInContext(src + ";window.f = buildPointPopupHtml;", cf);
     const fiche = (pt, session) => cf.window.f(pt, session, { layerId: session ? "editor" : "c1", layerLabel: "x" });
     const fCalque = fiche({ uid: "pt_calque1", nom: "P", x: 1, y: 2, tags: ["puits"] }, false);
