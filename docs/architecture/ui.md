@@ -2606,9 +2606,15 @@ Lucide + icônes métier, planche des 115 notions validée ; police emoji embarq
   Un nom inconnu rend une chaîne vide et un avertissement console.
 - **Un seul système de noms** : celui de l'icône (Lucide, ex. `navigation`, `compass`, `rotate-cw`), ou `m-…` pour
   les 5 icônes métier (`m-galerie`, `m-zone`, `m-pilier`, `m-echelle`, `m-niveaux`). Les 113 icônes de la planche
-  sont embarquées, plus 8 absentes de la planche (Lucide) : `list` (Légende), `sigma` (Distance totale),
-  `panels-top-left` (panneaux ancrés), `monitor-cog` (Système & maintenance), `unplug` (Kill SW), `server-cog`
-  (ConfAdmin), `bug` (logs détaillés), `database` (plan d'une installation reliée).
+  sont embarquées, plus 26 absentes de la planche (Lucide, à valider une à une) : `list` (Légende), `sigma` (Distance
+  totale), `panels-top-left` (panneaux ancrés), `monitor-cog` (Système & maintenance), `unplug` (Kill SW),
+  `server-cog` (ConfAdmin), `bug` (logs détaillés), `database` (plan d'une installation reliée) ; pour les fenêtres de
+  la carte : `rocket` (Performance, Mode ULTRA), `mouse-pointer-click` (cliquer sur la carte), `map-pin` (points),
+  `circle-dot` (ronds aux intersections), `mic` (commandes vocales), `joystick` (pavé de la vue 3D), `presentation`
+  (mode présentation), `house` (réglés depuis l'accueil), `skip-back` / `skip-forward` / `pause` (lecteur du Replay,
+  Début / Fin de l'itinéraire), `repeat` (tour complet), `ratio` (orientation du PDF), `monitor` (travail sur plan du
+  carnet), `flag` (fin de sortie), `heart` / `flashlight` (conseils de Je suis perdu), `scissors` (effacer le dernier
+  tracé).
 - Élément statique : `data-kta-ico="nom"`, rempli au chargement par `KtaIcones.poser()` (accueil, Configuration et
   ses fenêtres). Le bouton garde son `title` / `aria-label` : le SVG est `aria-hidden`. Devant un libellé traduit,
   l'icône est un `span` FRÈRE de l'élément `data-i18n` (qui réécrit tout son contenu) ; une clé `data-i18n-html` ne
@@ -2650,6 +2656,27 @@ Lucide + icônes métier, planche des 115 notions validée ; police emoji embarq
   Dépannage `wrench` (Forcer la mise à jour `refresh-cw`, Kill SW `unplug`, Tout réinitialiser `trash-2`) ; Inspecteur
   `gauge` (Rafraîchir `refresh-cw`, Copier le rapport `copy`) ; Mode développeur `code-xml` (logs `bug`, afficher les
   logs `scroll-text`, ConfAdmin `server-cog`, état du cache `gauge`).
+- **Réglages du plan** : titre `settings` ; sept rubriques (`interfaceConfig.js > _CFG_ICONES_GROUPE` : Plan `map`,
+  Navigation & tracker `navigation`, Performance `rocket` en plus des quatre partagées) et leurs badges de portée
+  (ce plan `map`, tous les plans `globe`) ; sections Position initiale du tracker `locate-fixed`, Détection des pas
+  `footprints`, Navigation intelligente `magnet`, Calibration du Nord `compass`, Géoréférencement GPS `globe`,
+  Niveaux `m-niveaux`, Réglés depuis l'accueil `house`, Debug `bug` ; boutons Chercher un point `search`, Cliquer sur
+  la carte `mouse-pointer-click` (et le bandeau du clic), Sauvegarder `save`, Effacer `trash-2`, calibrer l'échelle
+  `ruler`, mode présentation `presentation`, incognito `venetian-mask`, Mode ULTRA `rocket` (ses sous-options : texte).
+  Fenêtres Niveaux et Nouvelle jonction ; reflet du bouton Tracés en mode jonction `m-echelle`.
+- **Fenêtres d'outils de la carte** (titre, sections, boutons) : Filtres (sections Calques d'image `image`, de données
+  `layers`, Niveaux, Tags `tag`, Types de tracés / zones / structures ; Tout / Aucun `eye` / `ban`), Légende `list` et
+  son éditeur `pencil` (catégories : `CATEGORY_ICONS`, `categoryIcon()` pour l'export), Distance totale `sigma`,
+  Boussole et calibration du Nord `compass`, Volume exploité `pickaxe`, Heatmap `flame`, Replay `clapperboard` (lecteur
+  `skip-back` / `play` / `pause` / `skip-forward`), exports PNG `image`, PDF `file-text`, GeoTIFF `satellite`, complet /
+  avancé / externe / KMZ / GPX / GeoJSON (titre = icône de la tuile, `sessionExporter.js > _ICONES_SOLO`, sections et
+  cases de contenu), Mettre à jour le plan `refresh-cw`, Éditeur de données `table`, Recherche (catégories `map-pin`,
+  `m-galerie`, `m-zone`, `m-pilier`), Statistiques `chart-column`, Carnet `notebook-pen` (Récits `file-text`),
+  Itinéraire `route` et Feuille de route `signpost`, Je suis perdu `life-buoy`, Affichage XL `maximize`, Mode Secours
+  `ambulance` (liste, création, sections), éditeur de point `pencil`, fenêtre Effacer de la Mesure et des outils de
+  dessin (`_choixSuppression` : l'icône d'option est du HTML), raccourcis clavier (outils : même icône que leur bouton).
+  Bandeau « Où es-tu ? » : `utils.js > ktaDemanderPositionCarte({ ico })`, nom d'icône SVG (`icone` texte : outil pas
+  encore migré).
 - Les pastilles de **types** (tracés, zones, structures : `ktaTypeSwatchHtml`) restent des pastilles ; seul leur repli
   est un emoji (⛔ Inaccessible, qui n'a pas de pastille, compris).
 
@@ -2666,6 +2693,10 @@ Lucide + icônes métier, planche des 115 notions validée ; police emoji embarq
   n'est qu'un sens minoritaire. Ordre : autre sens ciblé, DOC ciblé, DOC sans motif, autre sens sans motif.
 - Un même emoji peut viser un bouton migré et un bouton resté en emoji : 🌍 Vue OSM est SVG quand la doc cite le
   widget de l'accueil, emoji pour le bouton de la barre du haut et la fenêtre Vue OSM (pas encore migrés).
+- **Textes hors doc** (toasts, alertes, astuces, infobulles, titres d'alerte) : ils ne sont pas substitués ; un emoji
+  de bouton passé en SVG n'y reste pas, le texte nomme le bouton (« Réglages → Géoréférencement GPS », « annulable »,
+  « tes plans de l'installation »), dans les trois langues. Exceptions : texte écrit dans un fichier ou un rapport
+  produit (légende dessinée dans le PNG, rapport de Je suis perdu, rapport du Mode Secours) et nom donné à un point créé.
 
 ### Garde-fous
 
@@ -2680,21 +2711,29 @@ Lucide + icônes métier, planche des 115 notions validée ; police emoji embarq
   entre langues trahit un motif mal traduit). 🩸 Une règle « tout le reste » (autre sens sans motif) rangerait en
   silence une phrase NOUVELLE qui cite le bouton par un libellé inconnu : la doc montrerait l'emoji périmé. Son compte
   est donc figé par emoji (`PLAFOND_RESTE`, cliquet) : toute hausse échoue jusqu'à ce que l'emploi soit classé (règle
-  DOC ciblée, ou autre sens ciblé) ; recalcul `--plafond`.
+  DOC ciblée, ou autre sens ciblé) ; recalcul `--plafond`. Fenêtres de la carte : `CLES_C2` (par fichier, chaque
+  emploi de la clé a son icône sur la ligne ou la voisine) et `CLES_C2_TEXTE` (clés sorties de l'emoji, icône posée
+  par l'appelant ou absente) ; aucun reflet de mode en emoji (`_setGroupeModeActif`, tous les modules). § 6 : les
+  trois dicos **entiers** hors `aide.*` — un emoji que `classerDoc` substituerait (bouton migré) dans un texte hors doc
+  échoue, sauf `CLES_SORTIE` ; ce qui reste (lot C3) est figé par emoji, trois langues additionnées (`PLAFOND_DICOS`,
+  cliquet, recalcul `--plafond`).
 - `scripts/smoke/checkup-icones-ui.js` (Chromium et WebKit, sombre et clair) : le rendu réel (accueil, Configuration,
-  Journal réseau, réseau expliqué, Dépannage, carte, Tracker, export, Documentation, Aide).
+  Journal réseau, réseau expliqué, Dépannage, carte, Tracker, export, 18 fenêtres d'outils de la carte, Documentation,
+  Aide).
 - Emoji restants : un pictogramme à présentation texte (🛣️ 🗂️ 👁️ ⏸️ ⏹️ ⏭️ 🗑️ 🏗️…) s'écrit avec U+FE0F, sinon Windows et une
   partie des Android le dessinent en noir et blanc. Flèches, triangles ▶ ◀, ©, ™ et coches restent en texte.
   🛡️ `scripts/check-emoji-vs16.js` (pré-commit bloquant) ; `--corriger` complète ; la marque `emoji-texte-ok` garde un
   glyphe voulu en texte (clé « ⚠ » de la table des PDF dans `utils.js`).
 
-### Reste en emoji (lots C2 et C3)
+### Reste en emoji (lot C3)
 
-Réglages du plan (sauf les rubriques et options partagées avec l'accueil), fenêtres d'outils de la carte, toasts et
-messages (et les phrases d'explication, dont celles de « Que fait l'app sur le réseau ? »), fiches de point et leurs
-boutons (🧭 Y aller, ✏️ Modifier…), boutons propres à la vue 3D, barre du haut de la carte (📖 Mode Histoire, 🌍 Vue
-OSM, 🚨 Sortie d'urgence), barre du bas, à l'accueil : ▶️ Reprendre et ▶️ Charger ce plan, boutons et badges d'une
-ligne de plan (⭐, 💾, ⏳, ℹ️, ✅ 🔐 📁), widget Vue OSM (contenu), champs de recherche (placeholder), pied de page
-(liens et crédits), titres de section de l'Inspecteur ; choix des fenêtres « Effacer ». Un emoji = un sens par
-écran : 🗺️ Itinéraire, 🔃 Plan orienté, 🔆 Affichage XL, 📱 Garder l'écran allumé, 🔧 Dépannage (🆘 = urgence
-seulement), 📤 exporter, 📥 importer.
+Bouton ❓ d'aide des fenêtres (partagé avec la vue 3D), fiches de point et leurs boutons (🧭 Y aller, ✏️ Modifier…),
+boutons propres à la vue 3D, barre du haut de la carte (📖 Mode Histoire, 🌍 Vue OSM, 🚨 Sortie d'urgence, compteurs),
+barre du bas, Vue OSM (fenêtre, widget), Générateur, Tableur (sauf son titre), Mes photos, Importer plusieurs plans,
+logs, Inspecteur (titres de section, étiquettes), tutoriel de bienvenue, à l'accueil : ▶️ Reprendre et ▶️ Charger ce
+plan, boutons et badges d'une ligne de plan (⭐, 💾, ⏳, ℹ️, ✅ 🔐 📁), pied de page (liens et crédits) ; dans les
+fenêtres de la carte : sous-fenêtres et vue terrain du Mode Secours, conseils et repères de Je suis perdu, vitesses de
+marche (🤕 🐌 🚶 🏃), carte d'état du préréglage de performance, bandeau du guidage (flèches), icônes génériques des
+confirmations (`kta-modal-icon` hors fenêtre Effacer), badge 🕵️ INCOGNITO. Un emoji = un sens par écran : 🗺️
+Itinéraire, 🔃 Plan orienté, 🔆 Affichage XL, 📱 Garder l'écran allumé, 🔧 Dépannage (🆘 = urgence seulement),
+📤 exporter, 📥 importer.
