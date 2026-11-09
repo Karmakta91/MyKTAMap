@@ -10166,11 +10166,23 @@
 
   function _oeil(h) { return Math.min(OEIL, Math.max(0.4, h * 0.8)); }
 
+  // (décision produit) Plan multi-niveau : ⛏️ montre la hauteur du niveau sans la régler. Elle se règle par niveau
+  // dans Réglages (profondeurNiveaux.js) : la changer ici recalculerait les pentes des jonctions qui y arrivent.
+  // reglerHauteur (API des checkups) reste ouverte : elle écrit la même préférence que Réglages.
+  function _hauteurFigee() { return (window.APP_CONFIG || {}).multiLevel === true; }
+
   function _majHauteur() {
     const e = _e, txt = typeof window.formatDistance === "function" ? window.formatDistance(e.hauteur, 1)
       : e.hauteur.toFixed(1) + " m";
     // Icône de l'outil Volume exploité, dont c'est le même chiffre (↕ dit déjà « passage entre niveaux » en 2D).
-    if (e.boutonHauteur) _poserIcone(e.boutonHauteur, "pickaxe", txt);
+    if (e.boutonHauteur) {
+      _poserIcone(e.boutonHauteur, "pickaxe", txt);
+      const fige = _hauteurFigee(), titre = _t(fige ? "vue3d.hauteurNiveaux" : "vue3d.hauteur");
+      e.boutonHauteur.disabled = fige;
+      e.boutonHauteur.title = titre;
+      e.boutonHauteur.setAttribute("aria-label", titre);
+      if (fige && e.reglageHauteur && !e.reglageHauteur.hidden) _basculerReglageHauteur();
+    }
     if (e.hauteurValeur) e.hauteurValeur.textContent = txt;
     if (e.hauteurMoins) e.hauteurMoins.disabled = e.hauteur <= HAUTEUR_REGLAGE.min;
     if (e.hauteurPlus) e.hauteurPlus.disabled = e.hauteur >= HAUTEUR_REGLAGE.max;
@@ -10178,7 +10190,7 @@
 
   function _basculerReglageHauteur() {
     const e = _e, r = e.reglageHauteur;
-    if (!r) return;
+    if (!r || (r.hidden && _hauteurFigee())) return;   // multi-niveau : se referme, ne s'ouvre pas
     r.hidden = !r.hidden;
     e.boutonHauteur.setAttribute("aria-expanded", r.hidden ? "false" : "true");
     _majSousHaut();

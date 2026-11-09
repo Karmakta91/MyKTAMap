@@ -33,7 +33,8 @@
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
-// Échap ferme le réglage puis la vue ; panneau de POI sombre en thème clair, borné de près ; rendu en pause.
+// ⛏️ grisé si multi-niveau ; Échap : tuile puis vue ; panneau de POI sombre en thème clair, borné de près ;
+// rendu en pause.
 // Homogène à la 2D (PC, téléphone, paysage) : boutons du haut à la taille du ≡ de la barre 2D (± 1 px), mêmes
 // icônes (☰ 🚨 ⚙️ ❓), cibles ≥ 44 px, pastille de mode ; interrupteurs de la tuile à Entrée et Espace, focus visible.
 // Interrupteur 🪧 Guidage (§ 22) : bandeau et chevrons masqués, ruban gardé, urgence affichée, retenu ; coché, il
@@ -12582,7 +12583,9 @@ async function sectionGestesDoigt(nav) {
             "vue3d.dessin.planSol", "ui.group.tracker", "ui.group.mesure", "ui.group.edition", "ui.group.traces",
             "ui.group.zones",
             "ui.group.structures",
-            "vue3d.suivre", "vue3d.plongee", "vue3d.hauteur", "vue3d.hauteurMoins", "vue3d.hauteurPlus",
+            "vue3d.suivre", "vue3d.plongee",
+            window.APP_CONFIG.multiLevel === true ? "vue3d.hauteurNiveaux" : "vue3d.hauteur",
+            "vue3d.hauteurMoins", "vue3d.hauteurPlus",
             "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.boussoleMontrer", "vue3d.guidageMontrer", "vue3d.fichesMontrer",
             "vue3d.lampeJourAide", "vue3d.limiterAide", "vue3d.niveauxVus.voisinsAide", "vue3d.niveauxVus.tousAide",
             "vue3d.niveauxVus.mienAide", "vue3d.estomperAide", "vue3d.addons"].map(function (k) {
@@ -12646,15 +12649,30 @@ async function sectionGestesDoigt(nav) {
         return { aide: !!document.getElementById("kta-aide-submodal"), vue: window.KtaVue3D.etat().ouvert };
       });
       verifier(!aideFermee.aide && aideFermee.vue, "Échap avec l'aide ouverte : l'aide se ferme, la vue reste", aideFermee);
-      // Échap : d'abord le réglage de hauteur ouvert, puis (plus loin, § 4) la vue.
+      // ⛏️ sur un plan multi-niveau (le relevé fictif l'est) : grisé, la hauteur du niveau affichée, le titre renvoie
+      // à Réglages ; un toucher n'ouvre pas − / + et ne change rien (décision produit). Le cas à un niveau : § Hauteur.
       await reglages(page);
-      await page.locator('#kta-vue3d [data-v3d="hauteur"]').click();
+      const hMulti = await page.evaluate(function () {
+        const K = window.KtaVue3D, b = document.querySelector('#kta-vue3d [data-v3d="hauteur"]'), avant = K.etat();
+        b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));
+        b.click();
+        const e = K.etat();
+        return { multi: window.APP_CONFIG.multiLevel === true, disabled: b.disabled, title: b.title,
+          aria: b.getAttribute("aria-label"), attendu: window.I18n.t("vue3d.hauteurNiveaux"),
+          bouton: e.reglageHauteur.bouton, chiffre: "[pickaxe] " + window.formatDistance(e.hauteur, 1),
+          reglage: e.reglageHauteur.visible, h0: avant.hauteur, h1: e.hauteur,
+          pref0: window.getHauteurNiveau(avant.niveau), niveau: e.niveau };
+      });
+      verifier(hMulti.multi && hMulti.disabled && hMulti.title === hMulti.attendu && hMulti.aria === hMulti.attendu &&
+        hMulti.bouton === hMulti.chiffre && !hMulti.reglage && hMulti.h1 === hMulti.h0 && hMulti.pref0 === hMulti.h0,
+        "multi-niveau : ⛏️ grisé, hauteur du niveau affichée, titre « Réglages », toucher sans effet", hMulti);
+      // Échap ferme la tuile, la vue reste (Échap sur le réglage ouvert : § Hauteur, plan à un niveau).
       await page.keyboard.press("Escape");
       const echap = await page.evaluate(function () {
         const e = window.KtaVue3D.etat();
-        return { ouvert: e.ouvert, reglage: e.reglageHauteur.visible };
+        return { ouvert: e.ouvert, tuile: !document.getElementById("kta-v3d-reglages").hidden };
       });
-      verifier(echap.ouvert && !echap.reglage, "Échap ferme d'abord le réglage ouvert, la vue reste", echap);
+      verifier(echap.ouvert && !echap.tuile, "Échap ferme d'abord la tuile des réglages, la vue reste", echap);
       // ≡ juste à gauche de ✕, côte à côte en haut à droite (rangée en row-reverse, `order`), au PC puis au téléphone.
       const filtresAColle = function () {
         const x = document.querySelector('#kta-vue3d [data-v3d="fermer"]').getBoundingClientRect();
@@ -13324,9 +13342,26 @@ async function sectionGestesDoigt(nav) {
       verifier(apres === true, "21e ouverture : la vue a un contexte vivant");
 
       // ── Hauteur ⛏️ (structures) : le chiffre de ⛏️ Volume exploité, scène refaite, relu à la réouverture ──
+      // Plan à un seul niveau : le réglage − / + n'existe que là (multi-niveau : ⛏️ grisé, contrôlé plus haut avec
+      // Échap). Le relevé fictif est multi-niveau : multiLevel coupé avant l'ouverture, rendu à la fin de h4, vue fermée.
       await page.evaluate(function (p) {
+        window.__v3dMulti = window.APP_CONFIG.multiLevel;
+        window.APP_CONFIG.multiLevel = false;
         return window.KtaVue3D.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } });
       }, prep);
+      await reglages(page);
+      await page.locator('#kta-vue3d [data-v3d="hauteur"]').click();
+      const echapH = { ouvert: await page.evaluate(function () {
+        return window.KtaVue3D.etat().reglageHauteur.visible;
+      }) };
+      await page.keyboard.press("Escape");
+      Object.assign(echapH, await page.evaluate(function () {
+        const e = window.KtaVue3D.etat();
+        return { vue: e.ouvert, apres: e.reglageHauteur.visible,
+          disabled: document.querySelector('#kta-vue3d [data-v3d="hauteur"]').disabled };
+      }));
+      verifier(echapH.ouvert && echapH.vue && !echapH.apres && !echapH.disabled,
+        "un niveau : ⛏️ actif, ouvre − / + ; Échap le ferme d'abord, la vue reste", echapH);
       const h0 = await page.evaluate(function () { return window.KtaVue3D.etat(); });
       await reglages(page);
       await page.locator('#kta-vue3d [data-v3d="hauteur"]').click();
@@ -13391,6 +13426,8 @@ async function sectionGestesDoigt(nav) {
           const pr = JSON.parse(localStorage.getItem(k) || "{}");
           delete pr.hauteurGalerieM; delete pr.niveauxHauteur;
           localStorage.setItem(k, JSON.stringify(pr));
+          window.APP_CONFIG.multiLevel = window.__v3dMulti;
+          delete window.__v3dMulti;
           return r;
         });
       }, prep);

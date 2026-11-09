@@ -552,7 +552,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - ✏️ **Survol** : en Édition, rien ne bloque ta place (piliers, murs, cavages fermés). En revenant à hauteur d'yeux, si tu es dans un obstacle, tu en es sorti.
 - ✏️ **Niveau** (plan à plusieurs niveaux) : ▲ / ▼ à gauche changent le niveau montré par la 3D, sans passer par un escalier ; la carte et le tracker gardent le leur.
 - ✏️ Les panneaux des points restent lisibles même dézoomés ; de très loin, ils ne gardent que leur icône (comme sur la carte), une seule là où elles se chevauchent (danger et favoris d'abord), et le nom revient quand tu te rapproches. Toucher une icône ouvre la fiche, à taille normale.
-- **⛏️ Hauteur** : le bouton affiche la hauteur en cours et ouvre **−** / **+**, de 1,5 à 20 m (par 0,1 m jusqu'à 5 m, puis 0,5 m).
+- **⛏️ Hauteur** : le bouton affiche la hauteur en cours et ouvre **−** / **+**, de 1,5 à 20 m (par 0,1 m jusqu'à 5 m, puis 0,5 m). Sur un plan à plusieurs niveaux, le bouton est grisé : la hauteur se règle pour chaque niveau dans ⚙️ Réglages › Niveaux : profondeur et hauteur.
 - ⛏️ C'est la hauteur **du niveau affiché**, la même que ⛏️ Volume exploité et que ⚙️ Réglages › 📉 Niveaux : changer l'une change les autres. La scène se refait sur place, sans te déplacer ; en passant à un autre niveau (🪜, suivi), la vue prend la hauteur de ce niveau.
 - **Rendu** : le bouton affiche le rendu en cours et passe au suivant (Mixte, Structures, Galerie, voir plus bas). Retenu pour ce plan ; par défaut, Mixte.
 - **🧱 Textures** (activé par défaut) : pierre, roche, parpaing, terre et éboulis à leur taille réelle (voir plus bas). Retenu sur cet appareil.

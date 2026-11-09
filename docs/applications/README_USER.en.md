@@ -552,7 +552,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - ✏️ **Fly-over**: in Edit view, nothing blocks your place (pillars, walls, closed adits). Back at eye level, if you are inside an obstacle, you are moved out of it.
 - ✏️ **Level** (multi-level plan): ▲ / ▼ on the left change the level shown by the 3D view, without taking a staircase; the map and the tracker keep theirs.
 - ✏️ Point panels stay readable even zoomed out; from very far, they keep only their icon (as on the map), a single one where icons overlap (danger and favourites first), and the name comes back as you get closer. Tapping an icon opens the card, at normal size.
-- **⛏️ Height**: the button shows the current height and opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m).
+- **⛏️ Height**: the button shows the current height and opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m). On a map with several levels, the button is greyed out: the height is set for each level in ⚙️ Settings › Levels: depth and height.
 - ⛏️ It is the height **of the level shown**, the same as ⛏️ Mined volume and ⚙️ Settings › 📉 Levels: changing one changes the others. The scene is rebuilt in place, without moving you; when you move to another level (🪜, tracking), the view takes that level's height.
 - **Rendering**: the button shows the current rendering and moves to the next one (Mixed, Structures, Tunnels, see below). Kept for this map; default: Mixed.
 - **🧱 Textures** (on by default): stone, rock, concrete block, earth and rubble at their real size (see below). Kept on this device.
