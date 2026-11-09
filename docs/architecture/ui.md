@@ -2932,7 +2932,11 @@ c'est un fichier dérivé (sous-ensemble), il ne peut pas être comparé octet p
   `font-family` et chaque `ctx.font` ouverts par la famille ; **cliquet** des emoji écrits en dur dans les gabarits
   HTML du JS (ligne de code qui porte une balise) et dans `index.html`, par fichier et par emoji (`PLAFOND_HTML`,
   `--plafond`) : l'emploi nouveau prend une icône SVG (suggestion donnée) ou relève le plafond en connaissance de
-  cause. `scripts/smoke/checkup-police-emoji.js` (Chromium et WebKit) : police chargée ; toast, médaille, `<option>`,
+  cause. Revus : la Mesure (distance `ruler`, surface `square-dashed`) et le résumé de l'import SIG du Générateur
+  (Lambert 93 converti, `globe`) sont passés en SVG ; ⬛ des choix de couleur du Générateur (pastille « Noir »,
+  pas le bouton Zones) et ⭐ d'une `<option>` restent ; hors cliquet (`SORTIES`, raison écrite) : les noms de
+  dossiers du KML produit par `kmzExport.js` (⬛ 🛣️ 🏛️ 📍 🗺️…), lus dans Google Earth, jamais par l'app.
+  `scripts/smoke/checkup-police-emoji.js` (Chromium et WebKit) : police chargée ; toast, médaille, `<option>`,
   légende PNG et panneau 3D dessinés par elle (rendu canvas comparé, police réellement employée par CDP sous
   Chromium) ; chiffres et lettres jamais ; aucune requête externe.
 

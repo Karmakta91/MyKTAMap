@@ -5374,7 +5374,7 @@ async function _sigImpAnalyserFichier(file) {
     if (_sigReproj > 0) {
       html += '<div style="color:var(--kta-interaction); font-size:12px; margin-top:6px; padding:6px 8px;'
             + ' background:rgba(140,180,255,0.08); border-left:3px solid rgba(140,180,255,0.5);'
-            + ' border-radius:3px;">📐 ' + T("gen.sig.l93Converti", { n: _sigReproj }) + '</div>';
+            + ' border-radius:3px;">' + window.ktaIcone("globe") + ' ' + T("gen.sig.l93Converti", { n: _sigReproj }) + '</div>';
     }
     (data.avertissements || []).forEach(function(a) {
       html += '<div style="color:var(--kta-avert); font-size:12px; margin-top:4px;">⚠️ ' + T(a) + '</div>';

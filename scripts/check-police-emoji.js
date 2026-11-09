@@ -20,7 +20,8 @@
 //   3. CLIQUET : emoji écrits en dur dans les gabarits HTML du JS (ligne de code qui porte une balise) et dans
 //      index.html, figés par fichier et par emoji (PLAFOND_HTML). Une hausse échoue : l'emploi nouveau prend une
 //      icône SVG (ktaIcone, la suggestion est donnée quand le bouton existe) ou, voulu en emoji, relève le plafond en
-//      connaissance de cause ; une baisse se reporte. Recalcul : --plafond.
+//      connaissance de cause ; une baisse se reporte. Recalcul : --plafond. Hors cliquet : SORTIES, texte écrit
+//      dans un fichier produit (noms des dossiers du KML), avec sa raison.
 // Usage : node scripts/check-police-emoji.js [--plafond]   · doc : docs/architecture/ui.md § Emoji dessinés par la
 //   police KTA Emoji
 // =====================================================================
@@ -141,11 +142,18 @@ if (man) {
 // ── 3. CLIQUET : emoji en dur dans les gabarits HTML du JS et dans index.html ──────────
 // Figés par fichier et par emoji (forme sans U+FE0F). Ce qui est là est classé « reste voulu » (ui.md § Emoji
 // dessinés par la police KTA Emoji) : toast, alerte, option, pastille de type… Recalcul : --plafond.
+// Revus un à un : createConf.js ⬛ = pastille de la couleur « Noir » à côté de ⬜ ▫️ 📜 (pas le bouton Zones que
+// la doc lui associe) ; ⭐ = texte d'une <option> (une option ne porte pas de SVG).
+// Sortie voulue, hors cliquet : texte écrit dans un fichier produit, jamais affiché par l'app.
+const SORTIES = [
+  { fichier: "js/kmzExport.js", ligne: /<name>/,
+    raison: "noms des dossiers et repères du KML produit, lus dans Google Earth ou un SIG" }
+];
 const PLAFOND_HTML = {
   "index.html": { "🔎": 2, "⏳": 1, "⚠": 1, "📋": 1, "🗺": 1 },
   "js/ajusterSommets.js": { "🗑": 1 },
   "js/confadmin.js": { "📦": 1, "📂": 1 },
-  "js/createConf.js": { "📄": 1, "⬜": 3, "▫": 3, "⬛": 3, "📜": 3, "🫥": 1, "⚠": 5, "✅": 1, "📐": 1, "⭐": 1 },
+  "js/createConf.js": { "📄": 1, "⬜": 3, "▫": 3, "⬛": 3, "📜": 3, "🫥": 1, "⚠": 5, "✅": 1, "⭐": 1 },
   "js/homeLoader.js": { "💾": 1 },
   "js/homeProfile.js": { "⏳": 1, "⚠": 1 },
   "js/interface.js": { "🎯": 3 },
@@ -154,10 +162,8 @@ const PLAFOND_HTML = {
   "js/interfaceItineraire.js": { "⚠": 1 },
   "js/interfaceMaintenance.js": { "⚠": 6, "🗝": 1 },
   "js/itiGuidage.js": { "⚠": 1 },
-  "js/kmzExport.js": { "🚑": 1, "🚨": 1, "📍": 3, "⬛": 3, "🛣": 2, "🗺": 3, "🪜": 1, "🏛": 1 },
   "js/lostMode.js": { "📍": 1 },
   "js/majPlan.js": { "📊": 1 },
-  "js/measure.js": { "📐": 1, "♦": 1 },
   "js/memInspector.js": { "⚠": 8, "ℹ": 1 },
   "js/oomGuard.js": { "⚠": 2 },
   "js/osmHomePreview.js": { "📦": 1, "📁": 1 },
@@ -188,6 +194,7 @@ const PLAFOND_HTML = {
     src.split("\n").forEach((l, i) => {
       const tl = l.trim();
       if (/^(\/\/|\*|\/\*)/.test(tl)) return;
+      if (SORTIES.some((s) => s.fichier === f && s.ligne.test(l))) return;
       if (/\.js$/.test(f) && !TAG.test(l)) return;
       let classes = null;
       for (const x of l.matchAll(RE)) {
