@@ -5720,7 +5720,7 @@
   "ui.subaction.mesureDistance": "Mesurer une DISTANCE (polyline)",
   "ui.subaction.mesureEffacer": "Effacer (dernier point ou tout)",
   "ui.subaction.mesureSurface": "Mesurer une SURFACE (polygone fermé)",
-  "ui.subaction.mesureVolume": "Volume exploité (défruitement du secteur ♦️)",
+  "ui.subaction.mesureVolume": "Volume exploité (défruitement de la surface mesurée)",
   "volume.titre": "⛏️ Volume exploité",
   "volume.fermer": "Fermer",
   "volume.niveau": "Niveau {lvl}",

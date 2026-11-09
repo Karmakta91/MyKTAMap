@@ -211,13 +211,14 @@ function _construireSommaireReadme(corpsEl) {
       html += '<span class="kta-readme-toc-bullet">•</span>';
     }
     html += '<a href="#' + node.h2.id + '" class="kta-readme-toc-link kta-readme-toc-link-h2">';
-    html += node.h2.textContent;
+    // innerHTML (déjà échappé par _renderMarkdown) : garde l'icône SVG d'un titre, que textContent perdrait.
+    html += node.h2.innerHTML;
     html += '</a>';
     html += '</div>';
     if (hasChildren) {
       html += '<ul class="kta-readme-toc-sublist">';
       node.children.forEach(function(h3) {
-        html += '<li><a href="#' + h3.id + '" class="kta-readme-toc-link kta-readme-toc-link-h3">' + h3.textContent + '</a></li>';
+        html += '<li><a href="#' + h3.id + '" class="kta-readme-toc-link kta-readme-toc-link-h3">' + h3.innerHTML + '</a></li>';
       });
       html += '</ul>';
     }
@@ -402,7 +403,9 @@ function _chargerReadme(fichier, opts) {
   fetch(fichier)
     .then(function(res) { if (!res.ok) throw new Error("HTTP " + res.status + " — " + fichier); return res.text(); })
     .then(function(md) {
-      const html = _renderMarkdown(md);
+      // Emoji qui désigne un bouton passé en SVG → la même icône (KtaIcones.DOC) ; jeton privé à travers l'échappement.
+      const K = window.KtaIcones;
+      const html = K ? K.jetonsEnSvg(_renderMarkdown(K.substituerDoc(md, { jeton: true }))) : _renderMarkdown(md);
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
       if (!corps) return;
       corps.innerHTML = html;
@@ -890,11 +893,21 @@ function _aideRow(section, onClick) {
   return r;
 }
 
+// Emoji de l'Aide qui désigne un bouton passé en SVG → la même icône (js/ktaIcones.js > KtaIcones.DOC).
+function _aideIcones(html) {
+  return window.KtaIcones ? window.KtaIcones.substituerDoc(html) : html;
+}
+// 🔒 Texte (titre, catégorie) : échappé AVANT la substitution, qui n'ajoute que des SVG fixes du module.
+function _aideTexteIcones(el, texte) {
+  if (window.KtaIcones && typeof window.ktaEsc === "function") el.innerHTML = _aideIcones(window.ktaEsc(texte));
+  else el.textContent = texte;
+}
+
 // Section depuis les DICOS. Le corps contient du HTML VOULU (documentation mise en forme, classes CSS) ;
 // le titre est du texte.
 function _aideSection(slug) {
   const t = window.I18n ? window.I18n.t("aide.sec." + slug + ".titre") : slug;
-  const h = window.I18n ? window.I18n.t("aide.sec." + slug + ".html") : "";
+  const h = _aideIcones(window.I18n ? window.I18n.t("aide.sec." + slug + ".html") : "");
   // Raccourci clavier : clé PROPRE et facultative. Jamais dans le titre (posé en textContent, le
   // balisage s'afficherait en clair).
   const r = (window.I18n && window.I18n.has && window.I18n.has("aide.sec." + slug + ".raccourci"))
@@ -905,7 +918,7 @@ function _aideSection(slug) {
 // Un seul endroit pour poser un titre (hub ET fiche), sinon deux rendus divergent.
 function _aidePoserTitre(el, section) {
   if (!el || !section) return;
-  el.textContent = section.titre || "";
+  _aideTexteIcones(el, section.titre || "");
   if (!section.raccourci) return;
   const s = document.createElement("span");
   s.className = "kta-aide-mini";
@@ -918,7 +931,7 @@ function _aideRendreHub(corps) {
 
   const intro = document.createElement("p");
   intro.className = "kta-aide-intro";
-  intro.innerHTML = window.I18n ? window.I18n.t("aide.intro") : "";
+  intro.innerHTML = _aideIcones(window.I18n ? window.I18n.t("aide.intro") : "");
   corps.appendChild(intro);
 
   const search = document.createElement("input");
@@ -971,7 +984,7 @@ function _aideRendreHub(corps) {
     if (!rows.length) return;
     const ct = document.createElement("div");
     ct.className = "kta-aide-cat-titre";
-    ct.textContent = window.I18n ? window.I18n.t("aide.cat." + cat.cle) : cat.cle;
+    _aideTexteIcones(ct, window.I18n ? window.I18n.t("aide.cat." + cat.cle) : cat.cle);
     hub.appendChild(ct);
     rows.forEach(function(s) {
       const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });

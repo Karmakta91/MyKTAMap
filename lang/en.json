@@ -5720,7 +5720,7 @@
   "ui.subaction.mesureDistance": "Measure a DISTANCE (polyline)",
   "ui.subaction.mesureEffacer": "Erase (last point or all)",
   "ui.subaction.mesureSurface": "Measure a SURFACE (closed polygon)",
-  "ui.subaction.mesureVolume": "Mined volume (extraction of the ♦️ sector)",
+  "ui.subaction.mesureVolume": "Mined volume (extraction of the measured area)",
   "volume.titre": "⛏️ Mined volume",
   "volume.fermer": "Close",
   "volume.niveau": "Level {lvl}",

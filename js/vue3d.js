@@ -9223,6 +9223,8 @@
     urgence.setAttribute("aria-label", _t("ui.refonte.counter_sortie_title"));
     // ⚙️ ouvre la tuile des réglages de la vue (_basculerReglages) ; point doré si l'un n'est pas celui par défaut.
     e.boutonReglages = _bouton(haut, "kta-v3d-btn-reglages", "⚙️", _t("vue3d.reglages"), "reglages");
+    // ⚠️ contrat : même icône que ⚙️ Réglages de la carte (ktaIcones.js), sinon les deux barres divergent.
+    if (typeof window.ktaIcone === "function") e.boutonReglages.innerHTML = window.ktaIcone("settings");
     e.boutonReglages.setAttribute("aria-expanded", "false");
     e.boutonReglages.setAttribute("aria-controls", "kta-v3d-reglages");
     // 🔍 La recherche de la carte (allerA) à hauteur d'yeux, à gauche de ⚙️ (décision produit) ; en vue d'édition, celle

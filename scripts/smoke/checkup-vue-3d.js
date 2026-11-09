@@ -206,14 +206,20 @@ async function homogene(page, nom) {
       document.querySelectorAll("#kta-vue3d .kta-v3d-pad > button, #kta-vue3d .kta-v3d-incl:not([hidden]) > button")));
     const petits = flottants.filter(function (b) { return b.offsetParent !== null && !sonder(b); })
       .map(function (b) { return b.getAttribute("data-v3d") || "aide"; });
-    const texte = function (el) { return el ? el.textContent.trim() : null; };
+    // Icône SVG (ktaIcones.js) : comparée par son nom (classe kta-ico-<nom>) ; sinon par le glyphe affiché.
+    const texte = function (el) {
+      if (!el) return null;
+      const s = el.querySelector("svg.kta-ico");
+      if (s) return Array.prototype.find.call(s.classList, function (c) { return c.indexOf("kta-ico-") === 0; }) || "svg";
+      return el.textContent.trim();
+    };
     const gauche = Array.prototype.slice.call(document.querySelectorAll(".leaflet-top.leaflet-left .leaflet-bar a"))
       .map(texte);
     const icones = {
       filtres: [texte(q('#kta-vue3d [data-v3d="filtres"]')), texte(q(".kta-filter-ctrl a"))],
       urgence: [texte(q('#kta-vue3d [data-v3d="urgence"]')),
         texte(q("#kta-refonte-counter-sortie .kta-refonte-counter-icon"))],
-      reglages: [texte(q('#kta-vue3d [data-v3d="reglages"]')), gauche.indexOf("⚙️") >= 0 ? "⚙️" : gauche.join("")],
+      reglages: [texte(q('#kta-vue3d [data-v3d="reglages"]')), gauche.indexOf("kta-ico-settings") >= 0 ? "kta-ico-settings" : gauche.join("")],
       aide: [texte(q("#kta-vue3d .kta-v3d-haut > .kta-aide-ctx-btn")), "❓"]
     };
     const autres = Object.keys(icones).filter(function (k) { return icones[k][0] !== icones[k][1]; });
@@ -11974,7 +11980,8 @@ async function sectionGestesDoigt(nav) {
       const aide = await page.evaluate(function () {
         const sm = document.getElementById("kta-aide-submodal");
         return { ouverte: !!sm, texte: sm ? sm.textContent.slice(0, 300) : "", recouverte: window.KtaVue3D.etat().recouverte,
-          attendu: window.I18n.t("aide.sec.vue-3d.titre") };
+          // Titre sans son emoji : l'Aide montre l'icône SVG du bouton à sa place (js/ktaIcones.js > DOC).
+          attendu: window.I18n.t("aide.sec.vue-3d.titre").replace(/[\p{Extended_Pictographic}\uFE0F]/gu, "").trim() };
       });
       verifier(aide.ouverte && aide.recouverte && aide.texte.indexOf(aide.attendu) >= 0,
         "❓ ouvre l'aide « Vue 3D » au-dessus de la vue", aide);
