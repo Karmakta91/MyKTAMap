@@ -697,6 +697,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-rotation-memoire.js` | Carte tournée sur un plan lourd : canvas sous son budget, leviers ULTRA forcés puis rendus au nord, POI touchables, choix de l'utilisateur et case « Alléger la carte tournée » respectés |
 | `smoke/checkup-secours-une-intervention.js` | Une seule intervention Secours active à la fois sur un plan |
 | `smoke/checkup-session-repli.js` | Sections repliables de la modale Détails de la session sur une grosse session |
+| `smoke/checkup-sans-collision.js` | Image de collision : ni champ ni écriture au Générateur, ancien plan-config qui la porte ouvert sans la charger ni la demander (Chromium et WebKit) |
 | `smoke/checkup-splash.js` | Splash de démarrage au téléphone et au PC |
 | `smoke/checkup-suppression-plan-docs.js` | Supprimer un plan et, sur demande, ses documents d'histoire |
 | `smoke/checkup-tableur-session.js` | L'Éditeur de données applique un fichier de session à la session (multi-niveau) |
