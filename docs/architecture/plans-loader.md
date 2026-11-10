@@ -615,7 +615,7 @@ urgence et Mode Histoire ne ramènent pas à l'accueil d'eux-mêmes.
   `_libererRessourcesPlanPrecedent("accueil")` : le démontage d'un changement de plan, dans le même ordre
   (session enregistrée et persistance figée, sortie du carnet suspendue, extension prévenue
   `KtaExtensions.quitterPlan("accueil")` → `mktm:plan-ferme { vers: "accueil" }` **une seule fois**, suivi coupé
-  avant le démontage, puis tuiles, calques, carte, canvas de collision, blobs du ZIP). Pile de retour et chaîne
+  avant le démontage, puis tuiles, calques, carte, blobs du ZIP). Pile de retour et chaîne
   multi-plans abandonnées (`onPlanExit("home")`).
 - Pas de carte (démarrage, accueil déjà affiché) → seulement la purge de navigation et `quitterPlan("accueil")`.
 - Après : `window.map === null`, `PLAN_CONFIG === null`, `#map` vide, `_currentLoadedPlanId === null` (remis à null

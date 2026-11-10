@@ -69,8 +69,8 @@ initApp() dans main.js
 ```
 
 L'ouverture d'un plan attend **une image** à deux endroits : `lancerApplication()` avant `initMapFromConfig()` (le
-message « mapInit » s'affiche d'abord) et `initMapFromConfig()` après `cleanupExistingMap()` (l'image de collision
-n'est plus chargée : `plan.collisionImage` est ignoré, cf `data-formats.md`). 🩸 Onglet en arrière-plan ou
+message « mapInit » s'affiche d'abord) et `initMapFromConfig()` après `cleanupExistingMap()` (aucune image de
+collision : `plan.collisionImage` est ignoré, cf `data-formats.md`). 🩸 Onglet en arrière-plan ou
 navigateur sans écran : `requestAnimationFrame`
 peut ne jamais venir (ouverture figée sur « Chargement en cours… ») ; ces attentes passent donc toutes par
 `utils.js > ktaAttendreImage()` : un minuteur de 1 s prend le relais, le premier des deux reprend seul (pas de double

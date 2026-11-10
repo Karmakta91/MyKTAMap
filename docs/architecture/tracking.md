@@ -45,7 +45,7 @@ Choix du listener au boot : `if ("ondeviceorientationabsolute" in window)` → `
 
 **À NE PAS TOUCHER** quand on intervient sur tracking.js :
 - `requestPermission()` — iOS gesture flow. Pre-existing bug : ne demande que `DeviceMotionEvent.requestPermission`, pas `DeviceOrientationEvent.requestPermission`. Sur iOS 13+, certaines versions auto-grantent l'orientation avec la motion permission ; d'autres pas. À corriger dans un fix séparé si retour terrain iOS confirme un problème.
-- `initMotion`, `avancer`, `estAccessible`, `initCollisionCache` — détection de pas + collision, indépendants du heading.
+- `initMotion`, `avancer`, `_pasBloqueParStructure` — détection de pas + collision, indépendants du heading.
 - Flags idempotents `_orientationListenerAttached` / `_motionListenerAttached` — protection plan switch.
 
 ---
@@ -550,7 +550,7 @@ session — chaque clic de point re-rendait tout l'univers. Cf. fil RAM (history
 #### 75.3 📐 Conception navigation intelligente (non implémenté)
 
 Doc `docs/DESIGN_NAV_INTELLIGENTE.md` (archivé : tag Git `archive-docs-2026-09-30`) ajoutée : future nav qui calera la position estimée sur le réseau de
-tracés (**map-matching**), en complément **réversible** du PDR + raster collision actuel (toggle `smartNav`,
+tracés (**map-matching**), en complément **réversible** du PDR + collision actuel (toggle `smartNav`,
 défaut OFF). Découverte clé : le **graphe topologique existe déjà** dans `pathfinder.js > _buildGraph`
 (nodes/edges/buckets + enrichissement aux croisements), construit à la volée → à rendre réutilisable/caché.
 Décisions verrouillées : off-network **hybride**, magnétisme edit-time **inclus** (lot C5). Découpage C1→C6.
@@ -590,8 +590,8 @@ latérale est annulée et on tourne correctement aux croisements. **Réversible*
   avancer()` devient un **dispatcher** : le corps historique est extrait dans `_avancerRaster()` (inchangé),
   branche ON → `_avancerSurGraphe()`.
 - **C3 — map-matching greedy** : `RoadGraph.matchPosition(rawX, rawY, prevSegIdx, headingDeg)`. Stickiness
-  (hystérésis) pour éviter les sauts entre galeries parallèles + repli **off-network HYBRIDE** (retour PDR
-  raster quand on s'éloigne du réseau, re-snapping au retour). Rayon = `max(25px, échelle × smartNavRadiusM)`,
+  (hystérésis) pour éviter les sauts entre galeries parallèles + repli **off-network HYBRIDE** (retour au PDR
+  seul quand on s'éloigne du réseau, re-snapping au retour). Rayon = `max(25px, échelle × smartNavRadiusM)`,
   `smartNavRadiusM` réglable à chaud (défaut 6 m).
 - **C4 — choix d'arête au cap** : la stickiness ne s'applique que MID-SEGMENT (`T_EDGE < t < 1-T_EDGE`) ;
   dès qu'on dépasse un nœud, on relâche → scan scoré `distance + désalignement_cap×poids − bonus_continuité`.
@@ -703,15 +703,12 @@ Aucune nouvelle surface réseau ni permission. Tout local (état runtime + `app_
 ## 🧱 Collision du pas : structures
 
 Un pas PDR **hors réseau** (`_avancerRaster`, aussi repli de `_avancerSurGraphe` quand la position n'est calée sur
-aucun tracé) n'est appliqué que s'il passe deux tests ; refusé, la position ne bouge pas et rien n'entre dans la
-timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests ne s'applique.
+aucun tracé) n'est appliqué que s'il passe la règle des structures ; refusé, la position ne bouge pas et rien
+n'entre dans la timeline. Sur le réseau, le map-matching suit le tracé et cette règle ne s'applique pas. Il n'y a
+pas d'image de collision : le champ `plan.collisionImage` d'un ancien plan-config est ignoré (ni chargé, ni lu ;
+`data-formats.md`, `scripts/smoke/checkup-sans-collision.js`).
 
-1. **`estAccessible(x, y)`** — test de l'image de collision, **toujours vrai** : l'image n'est plus produite par
-   le Générateur ni chargée à l'ouverture (`plan.collisionImage` est ignoré), le cache `_collisionData` reste
-   `null` et `estAccessible` rend `true` sans données. Le code (`map.js > initCollisionMap`, `tracking.js >
-   initCollisionCache`, `estAccessible`, `_pointAccessibleProche`) est mort et attend son retrait (`docs/BACKLOG.md`,
-   « Retirer l'image de collision »).
-2. **`_pasBloqueParStructure(x0, y0, x1, y1)`** — structures de session (`getStructures`) et du plan
+- **`_pasBloqueParStructure(x0, y0, x1, y1)`** — structures de session (`getStructures`) et du plan
    (`_ktaDataStructurePolygons`) : le pas est refusé s'il **entre** dans un pilier 1re/2e masse ou un mur fermé, ou
    s'il **coupe** une arête d'un de ces polygones (coin de pilier) ou un front de taille 1re/2e masse ou un mur
    (ligne). Les autres types (zones, types `cust-…`) ne comptent pas pour le tracker ; le 6e paramètre
@@ -731,8 +728,7 @@ timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests n
    - **Exposée** : `window.ktaPasBloqueParStructure(x0, y0, x1, y1[, niveau[, avecPerso]])` (true = refusé),
      `niveau` remplaçant celui du tracker ; `window.ktaSegmentsBloquesParStructure(segments[, niveau[, avecPerso]])`
      juge un lot de segments en relisant l'index une seule fois (la signature parcourt toutes les structures : quinze
-     appels par pas coûtaient 3,5 ms au PC dans un plan dense, le lot 0,2 ms) ; le premier test l'est aussi
-     (`window.ktaEstAccessible(x, y)`). Consommateur : la vue 3D (`js/vue3d.js`), qui s'en sert pour ses déplacements à
+     appels par pas coûtaient 3,5 ms au PC dans un plan dense, le lot 0,2 ms). Consommateur : la vue 3D (`js/vue3d.js`), qui s'en sert pour ses déplacements à
      l'écran et au clavier sans recopier la géométrie ni déplacer le tracker.
 
 Le Pathfinder garde ses propres règles (seuls `mur-ligne` et la zone `inaccessible` coupent l'itinéraire,
@@ -807,9 +803,8 @@ active, et le PDR seul (`_avancerRaster`) partirait de la roche.
      la plus proche** (pièce la plus proche ; tube : projection sur son axe ; joint ou passage : axe le plus proche du
      bord atteint) ;
   3. **niveau sans aucun tracé** (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont ; décision
-     produit) : on reste sur le point. Le repli sur l'image de collision (`_pointAccessibleProche`) ne s'active plus,
-     l'image n'étant plus chargée (§🧱 Collision du pas) ;
-  4. un niveau qui a des tracés, tous à plus de `PROCHE_M` : on reste sur le point (le tracé fait foi, pas l'image).
+     produit) : on reste sur le point ;
+  4. un niveau qui a des tracés, tous à plus de `PROCHE_M` : on reste sur le point (le tracé fait foi).
 - ⚠️ contrat **jamais à travers la roche** : dedans, on ne bouge pas (l'axe le plus proche peut être celui de la
   galerie d'à côté, derrière la paroi) ; dehors, le segment du point au bord de l'emprise la plus proche ne traverse
   aucune autre emprise, sinon elle serait plus proche : la seule roche franchie est celle qui sépare le point de sa
@@ -1379,7 +1374,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 
 ### Contrats
 
-- **Déplacement** = règle du pas du tracker (`ktaEstAccessible`, `ktaSegmentsBloquesParStructure(…, niveau, true)`,
+- **Déplacement** = règle du pas du tracker (`ktaSegmentsBloquesParStructure(…, niveau, true)`,
   plus haut), jamais une copie, appliquée à un **corps de 0,8 m** : chaque pas est balayé par trois segments
   parallèles (axe et ± 0,4 m) prolongés de 0,4 m devant, puis douze rayons de 0,4 m autour de l'arrivée doivent
   rester libres (pas plus de rayons bloqués qu'au départ, pour ne pas rester collé si l'on s'ouvre contre un mur).
@@ -2453,7 +2448,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   tube et rubans des tracés posés dans la zone non plus. Dessinée par le niveau actif s'il est l'un des siens, avec les
   structures de l'autre niveau posées dedans (`_structuresEmpruntees`), sinon par le voisin qui la porte
   (`_horsZonesActives` : jamais en double). **Pas** : dans la zone, structures de ses deux niveaux et zones qui
-  bouchent (`_bloqueEnZone`, ni paroi de tube ni image de collision) ; on la quitte par un bord, ou on y entre, là
+  bouchent (`_bloqueEnZone`, pas de paroi de tube) ; on la quitte par un bord, ou on y entre, là
   seulement où son sol est à moins de `PENTE.sortie` de celui du niveau ; à mi-longueur du tracé, la scène passe au
   niveau d'en face (`_suivrePente`, inchangé). Caméra, avatar, ruban et chevrons suivent le sol (`_solPlace`).
 - **Structures en pente** (`_structurePente`, `_structureSurPente`) : piliers, murs et fronts dont le centre est dans

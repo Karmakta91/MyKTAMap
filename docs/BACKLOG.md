@@ -71,11 +71,6 @@
   `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
   `qui: Claude · action: rendre l'appel de homeProfile.js déterministe (attendre I18n prêt) · fini: checkup-guidage
   vert sous WebKit sur plusieurs passages, sans clé manquante · depuis: 04/11/2026 · taille: S`
-- **Retirer l'image de collision** — ✅ vérifié 10/11 : lot A fait (Générateur, chargement, hors ligne, clé i18n ;
-  `checkup-sans-collision.js`). Reste le lot B, code mort du traceur : `tracking.md` § Collision du pas (`map.js >
-  initCollisionMap`, `tracking.js > initCollisionCache` / `estAccessible`, reset du canvas dans `main.js`).
-  `qui: Claude · action: lot B (code du tracker et de la vue 3D qui lit estAccessible, check-tracking-defaults)
-  · fini: plus aucun code de collision raster, tracker et vue 3D verts · depuis: 09/11/2026 · taille: S`
 ## Plus tard
 
 - **AI_CONTEXT : remplacer les ~540 emoji de bouton par le nom du bouton dans tout le fichier** — le lexique en tête
