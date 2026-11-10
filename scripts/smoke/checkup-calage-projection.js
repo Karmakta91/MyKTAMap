@@ -44,7 +44,7 @@ async function ouvrirFictif(page) {
     if (!srv || !srv.path) return { ok: false, raison: "relevé fictif absent de l'index" };
     const cfg = JSON.parse(await (await fetch(srv.path + "/plan-config.json")).text());
     const zip = new JSZip();
-    const chemins = [cfg.plan.baseImage, cfg.plan.collisionImage]
+    const chemins = [cfg.plan.baseImage]
       .concat((cfg.imageLayers || []).map(function (l) { return l.file; }), (cfg.dataLayers || []).map(function (l) { return l.file; }))
       .filter(function (p) { return typeof p === "string" && p && !/^(data:|blob:|https?:)/.test(p); });
     for (const p of Array.from(new Set(chemins))) {
@@ -219,7 +219,7 @@ async function scenarioGenerateur(page) {
     if (!srv || !srv.path) return { ok: false, raison: "relevé fictif absent de l'index" };
     const cfg = JSON.parse(await (await fetch(srv.path + "/plan-config.json")).text());
     const zip = new JSZip();
-    const chemins = [cfg.plan.baseImage, cfg.plan.collisionImage]
+    const chemins = [cfg.plan.baseImage]
       .concat((cfg.imageLayers || []).map(function (l) { return l.file; }), (cfg.dataLayers || []).map(function (l) { return l.file; }))
       .filter(function (p) { return typeof p === "string" && p && !/^(data:|blob:|https?:)/.test(p); });
     for (const p of Array.from(new Set(chemins))) {

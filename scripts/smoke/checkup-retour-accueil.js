@@ -4,8 +4,8 @@
 // checkup-retour-accueil.js — checkup (Playwright) : fermer un plan le vide, « Reprendre » le retrouve
 // =====================================================================
 // Parcours : le relevé fictif est ouvert, on y dessine (point, tracé) et on lance le suivi ; retour à l'accueil
-// par le bouton 🏠 de l'en-tête (fenêtre « Changer de plan ») → carte démontée (window.map, PLAN_CONFIG, canvas de
-// collision, tuiles), session enregistrée, suivi coupé, extension prévenue une fois (mktm:plan-ferme « accueil »),
+// par le bouton 🏠 de l'en-tête (fenêtre « Changer de plan ») → carte démontée (window.map, PLAN_CONFIG, tuiles),
+// session enregistrée, suivi coupé, extension prévenue une fois (mktm:plan-ferme « accueil »),
 // aucune erreur pendant l'attente à l'accueil (minuteries, pas compté). « Reprendre » recharge le plan avec les
 // objets dessinés. Puis RA_N allers-retours (10) : ni le tas JS, ni les nœuds, ni les écouteurs ne grimpent ; la barre
 // d'état d'un plan rouvert suit encore sa hauteur. Vue retrouvée (js/vuePlan.js) : centre, zoom et niveau après
@@ -80,14 +80,12 @@ function verifier(c, msg, detail) {
     const m = (await cdp.send("Performance.getMetrics")).metrics;
     const v = function (n) { const x = m.find(function (e) { return e.name === n; }); return x ? x.value : null; };
     const dom = await page.evaluate(function () {
-      const c = window.collisionCanvas;
       return {
         carte: !!(window.L && window.map instanceof window.L.Map),
         noeudsDocument: document.getElementsByTagName("*").length,
         imagesCarte: document.querySelectorAll("#map img").length,
         canvasCarte: document.querySelectorAll("#map canvas").length,
-        marqueurs: document.querySelectorAll("#map .leaflet-marker-icon").length,
-        collisionMo: c && c.width ? Math.round(c.width * c.height * 4 / 1048576) : 0
+        marqueurs: document.querySelectorAll("#map .leaflet-marker-icon").length
       };
     });
     const r = Object.assign({ tasMo: Math.round(v("JSHeapUsedSize") / 104857.6) / 10, noeuds: v("Nodes"),
@@ -176,7 +174,6 @@ function verifier(c, msg, detail) {
         carte: window.map === null,
         planConfig: window.PLAN_CONFIG === null,
         divVide: document.getElementById("map").children.length === 0,
-        collision: !window.collisionCanvas,
         suivi: window.getTrackingActif(),
         affiche: window.ktaPlanAffiche(),
         pt: a("editorPoints").some(function (o) { return o.uid === u.pt; }),
@@ -187,8 +184,8 @@ function verifier(c, msg, detail) {
         reprendre: (document.getElementById("resumeBox") || {}).dataset ? document.getElementById("resumeBox").dataset.planId : null
       };
     }, uids);
-    verifier(apres.carte && apres.planConfig && apres.divVide && apres.collision && !apres.affiche,
-      "accueil : carte démontée (window.map, PLAN_CONFIG, conteneur vide, canvas de collision)", apres);
+    verifier(apres.carte && apres.planConfig && apres.divVide && !apres.affiche,
+      "accueil : carte démontée (window.map, PLAN_CONFIG, conteneur vide)", apres);
     verifier(apres.pt && apres.rd, "session enregistrée avec le point et le tracé dessinés", apres);
     verifier(apres.suivi === false, "suivi coupé à la fermeture");
     verifier(apres.fermes.length === 1 && apres.fermes[0] === "accueil", "extension prévenue une fois : mktm:plan-ferme « accueil »", apres.fermes);
@@ -408,8 +405,7 @@ function verifier(c, msg, detail) {
     verifier(erreurs.length === 0, "aucune erreur de page sur tout le parcours", erreurs);
 
     console.log("\n  Bilan : plan ouvert " + m1.tasMo + " Mo · accueil après fermeture " + m2.tasMo + " Mo · accueil au démarrage " +
-      m0.tasMo + " Mo (tas JS) ; nœuds " + m1.noeuds + " → " + m2.noeuds + " ; canvas de collision " + m1.collisionMo +
-      " Mo → " + m2.collisionMo + " Mo");
+      m0.tasMo + " Mo (tas JS) ; nœuds " + m1.noeuds + " → " + m2.noeuds);
   } catch (e) {
     pb("exception : " + (e && e.message));
   } finally {

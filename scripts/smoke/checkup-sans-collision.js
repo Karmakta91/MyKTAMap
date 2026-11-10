@@ -8,7 +8,8 @@
 // du traceur) et nommée pour passer avant l'image du plan dans l'ordre alphabétique. Attendu :
 //   1. Générateur : plus de champ d'image de collision ; l'ancien ZIP repris en mode Modifier produit un ZIP sans
 //      `collisionImage` ni image de collision, avec la bonne image de base ; ce ZIP s'ouvre ;
-//   2. l'ancien ZIP s'ouvre : initCollisionMap jamais appelé, aucun canvas, image non résolue, tout pas accessible ;
+//   2. l'ancien ZIP s'ouvre : aucun chargement de collision (initCollisionMap ni canvas), image non résolue, et le
+//      traceur n'a plus de test d'image (ktaEstAccessible absent : le pas n'est arrêté que par les structures) ;
 //   3. le plan serveur dont le plan-config porte `collisionImage` s'ouvre sans aucune requête vers l'image, et le
 //      manifeste hors ligne (PlanOffline.listerUrls) ne la liste pas ;
 // et aucune erreur console ni JavaScript. 🩸 Le plan-config du site est modifié en vol (page.route), jamais sur disque.
@@ -55,14 +56,12 @@ async function accueil(page) {
 
 async function etatPlan(page) {
   return page.evaluate(function (chemin) {
-    const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight;
-    const pas = [[W / 2, H / 2], [W / 4, H / 4], [3 * W / 4, 3 * H / 4]];
     return {
       ouvert: !!window.PLAN_CONFIG && !!window.map,
       appels: window.__ckAppels,
       canvas: !!window.collisionCanvas,
       resolue: !!window.getRuntimeAssetUrl(chemin),
-      accessible: pas.every(function (p) { return window.ktaEstAccessible(p[0], p[1]) === true; })
+      sansTestImage: typeof window.ktaEstAccessible === "undefined" && typeof window.initCollisionMap === "undefined"
     };
   }, CHEMIN_COLL);
 }
@@ -180,7 +179,7 @@ async function ouvrirZip(page, b64, nom) {
     verifier(old.ouvert, "ancien ZIP (collisionImage dans le plan-config) : le plan s'ouvre", old);
     verifier(old.appels === 0 && !old.canvas && !old.resolue,
       "ancien ZIP : initCollisionMap jamais appelé, aucun canvas, image non résolue", old);
-    verifier(old.accessible, "ancien ZIP : le traceur ne lit pas l'image rouge (tout pas accessible)", old);
+    verifier(old.sansTestImage, "ancien ZIP : le traceur ne lit pas l'image rouge (aucun test d'image exposé)", old);
 
     // ── 3. Plan serveur dont le plan-config porte collisionImage (modifié en vol) ──
     await page.route("**/plan-config.json", async function (route) {

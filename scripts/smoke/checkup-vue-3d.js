@@ -1774,12 +1774,11 @@ async function sectionLampesMembres(page) {
     if (window.getTrackingActif()) window.stopTracking();
     window.__v3dLampes = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
       p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
-      acc: window.ktaEstAccessible, portee: window.getVue3DPortee ? window.getVue3DPortee() : null,
+      portee: window.getVue3DPortee ? window.getVue3DPortee() : null,
       jour: window.getVue3DPleinJour ? window.getVue3DPleinJour() : false };
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
-    window.ktaEstAccessible = function () { return true; };
     window._currentLoadedPlanId = "v3d-checkup-lampes";
     if (K.etat().ouvert !== false) await K.fermer();
     window.setPlanRenduVue3D(null, "structures");
@@ -1881,7 +1880,7 @@ async function sectionLampesMembres(page) {
     if (typeof window.setVue3DPleinJour === "function") window.setVue3DPleinJour(!!s.jour);
     await K.fermer();
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
-    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id; window.ktaEstAccessible = s.acc;
+    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -1984,14 +1983,13 @@ async function sectionPleinJour(page) {
     if (window.getTrackingActif()) window.stopTracking();
     window.__v3dPJ = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
       p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
-      acc: window.ktaEstAccessible, portee: window.getVue3DPortee ? window.getVue3DPortee() : null,
+      portee: window.getVue3DPortee ? window.getVue3DPortee() : null,
       jour: window.getVue3DPleinJour ? window.getVue3DPleinJour() : false,
       calibre: window.getPlanNorthCalibre, nord: window.getPlanNorthOffset,
       intensite: window.getVue3DLampeIntensite ? window.getVue3DLampeIntensite() : null };
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
-    window.ktaEstAccessible = function () { return true; };
     window._currentLoadedPlanId = "v3d-checkup-plein-jour";
     window.getPlanNorthCalibre = function () { return false; };
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2114,7 +2112,7 @@ async function sectionPleinJour(page) {
     if (typeof window.setVue3DPleinJour === "function") window.setVue3DPleinJour(!!s.jour);
     if (typeof window.setVue3DLampeIntensite === "function" && s.intensite) window.setVue3DLampeIntensite(s.intensite);
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
-    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id; window.ktaEstAccessible = s.acc;
+    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
     window.getPlanNorthCalibre = s.calibre; window.getPlanNorthOffset = s.nord;
     window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
     window.setRoads([]); window.setZones([]); window.setStructures([]);
@@ -2270,15 +2268,13 @@ async function sectionConePassage(page) {
     const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
     const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
       r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
-      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, acc: window.ktaEstAccessible,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
       rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
       st: window.getStructures().slice(), zn: window.getZones().slice() };
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
     window._currentLoadedPlanId = "v3d-checkup-cone";
-    // Image de collision du relevé fictif ignorée (comme § 14 quater) : seules les formes posées ici arrêtent le pas.
-    window.ktaEstAccessible = function () { return true; };
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
     if (window.getTrackingActif()) window.stopTracking();
@@ -2388,7 +2384,7 @@ async function sectionConePassage(page) {
     await K.fermer();
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
-    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id; window.ktaEstAccessible = av.acc;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
     window.setRoads(av.roads); window.setZones(av.zn); window.setStructures(av.st); window.setEditorPoints(av.pts);
     window.setPlanRenduVue3D(null, av.rendu);
     G.invalider();
@@ -2502,7 +2498,7 @@ async function sectionPente(page) {
     const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
     const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
       r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
-      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, acc: window.ktaEstAccessible,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
       rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
       st: window.getStructures().slice(), zn: window.getZones().slice(), pos: window.getTrackingPosition,
       niv: window.getTrackerLevel, smart: C.smartNav };
@@ -2510,7 +2506,6 @@ async function sectionPente(page) {
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
     window._currentLoadedPlanId = PID;
-    window.ktaEstAccessible = function () { return true; };   // image de collision du relevé fictif ignorée
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
     C.smartNav = false;
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2668,7 +2663,7 @@ async function sectionPente(page) {
 
     window.effacerReglagesNiveaux(PID);
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
-    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id; window.ktaEstAccessible = av.acc;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     C.smartNav = av.smart;
     window.setPlanRenduVue3D(null, av.rendu);
@@ -2766,14 +2761,13 @@ async function sectionPenteLargeur(page) {
     const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
     const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
       r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
-      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, acc: window.ktaEstAccessible,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
       rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
       st: window.getStructures().slice(), zn: window.getZones().slice() };
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
     window._currentLoadedPlanId = PID;
-    window.ktaEstAccessible = function () { return true; };
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
     if (K.etat().ouvert !== false) await K.fermer();
     if (window.getTrackingActif()) window.stopTracking();
@@ -2828,7 +2822,7 @@ async function sectionPenteLargeur(page) {
     r.seul = ps ? { demiA: ps.demiA, demiB: ps.demiB, raccordA: ps.raccordA, raccordB: ps.raccordB } : null;
     window.effacerReglagesNiveaux(PID);
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
-    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id; window.ktaEstAccessible = av.acc;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.setPlanRenduVue3D(null, av.rendu);
     window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
@@ -2881,7 +2875,6 @@ async function capturesPente(page) {
         window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
         window.getAllEmbeddedStructures = vide;
         window._currentLoadedPlanId = PID;
-        window.ktaEstAccessible = function () { return true; };
         C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
         window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
         window.setRoads([
@@ -2936,7 +2929,6 @@ async function sectionFormesPoi(page) {
     };
     window.__v3dFormesSauve = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
       p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
-      acc: window.ktaEstAccessible,
       rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
       st: window.getStructures().slice(), zn: window.getZones().slice(),
       trouve: window.PlanRegistry && window.PlanRegistry.findById, charger: window.chargerPlanServeur };
@@ -2944,7 +2936,6 @@ async function sectionFormesPoi(page) {
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
     window._currentLoadedPlanId = "v3d-checkup-formes";
-    window.ktaEstAccessible = function () { return true; };
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
     if (window.getTrackingActif()) window.stopTracking();
@@ -3441,14 +3432,13 @@ async function sectionPlaques(page) {
     const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
     window.__v3dFormesSauve = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
       p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
-      acc: window.ktaEstAccessible, rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
       roads: window.getRoads().slice(), st: window.getStructures().slice(), zn: window.getZones().slice(),
       trouve: window.PlanRegistry && window.PlanRegistry.findById, charger: window.chargerPlanServeur };
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
     window._currentLoadedPlanId = "v3d-checkup-plaques";
-    window.ktaEstAccessible = function () { return true; };
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
     if (window.getTrackingActif()) window.stopTracking();
@@ -3846,7 +3836,7 @@ async function poserFormesStructures(page) {
       if (!window.__v3dFormesSauve) {
         window.__v3dFormesSauve = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
           p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
-          acc: window.ktaEstAccessible, rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
+          rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
           roads: window.getRoads().slice(), st: window.getStructures().slice(), zn: window.getZones().slice(),
           trouve: window.PlanRegistry.findById, charger: window.chargerPlanServeur };
       }
@@ -3854,7 +3844,6 @@ async function poserFormesStructures(page) {
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
       window._currentLoadedPlanId = "v3d-checkup-formes";
-      window.ktaEstAccessible = function () { return true; };
       window.ktaSetActiveLevel(0);
       if (window.getTrackingActif()) window.stopTracking();
       window.setVue3DTextures(true);
@@ -3926,7 +3915,7 @@ async function capturesFormes(page) {
       if (!window.__v3dFormesSauve) {
         window.__v3dFormesSauve = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
           p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
-          acc: window.ktaEstAccessible, rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
+          rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
           roads: window.getRoads().slice(), st: window.getStructures().slice(), zn: window.getZones().slice(),
           trouve: window.PlanRegistry.findById, charger: window.chargerPlanServeur };
         const vide = function () { return []; };
@@ -3977,7 +3966,7 @@ async function restaurerFormes(page) {
     const s = window.__v3dFormesSauve;
     if (!s) return;
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
-    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id; window.ktaEstAccessible = s.acc;
+    window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
     window.setRoads(s.roads); window.setZones(s.zn); window.setStructures(s.st); window.setEditorPoints(s.pts);
     window.setPlanRenduVue3D(null, s.rendu);
     window.PlanRegistry.findById = s.trouve;
@@ -4451,9 +4440,6 @@ async function sectionCamera(page) {
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
     window._currentLoadedPlanId = "v3d-checkup-camera";
-    // Image de collision du relevé fictif ignorée (comme § 14 quater) : seules les formes posées ici arrêtent le pas.
-    const acc = window.ktaEstAccessible;
-    window.ktaEstAccessible = function () { return true; };
     if (window.ktaSetActiveLevel) window.ktaSetActiveLevel(0); else C.activeLevel = 0;
     const carre = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
     window.setRoads([{ uid: "rd_cam", type: "principal", level: 0, points: [P(-70, 0), P(70, 0)] }]);
@@ -4869,7 +4855,6 @@ async function sectionCamera(page) {
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.setVue3DTextures(av.tx);
-    window.ktaEstAccessible = acc;
     window.KtaGalerie.invalider();
     return r;
   });
@@ -5378,14 +5363,13 @@ async function sectionSautCarnet(page) {
     const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
     if (K.etat().ouvert !== false) await K.fermer();
     if (window.getTrackingActif()) window.stopTracking();
-    window.__v3dSaut = { ml: C.multiLevel, acc: window.ktaEstAccessible, r: window.getAllEmbeddedRoads,
+    window.__v3dSaut = { ml: C.multiLevel, r: window.getAllEmbeddedRoads,
       z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures,
       id: window._currentLoadedPlanId };
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
     window._currentLoadedPlanId = "v3d-checkup-saut";
-    window.ktaEstAccessible = function () { return true; };
     C.multiLevel = false;
     window.setPlanRenduVue3D(null, "structures");
     window.setStructures([]); window.setZones([]);
@@ -5485,7 +5469,7 @@ async function sectionSautCarnet(page) {
       await f;
     }
     if (window.getTrackingActif()) window.stopTracking();
-    C.multiLevel = s.ml; window.ktaEstAccessible = s.acc;
+    C.multiLevel = s.ml;
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
     window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
@@ -8663,7 +8647,6 @@ async function sectionPassageFicheCalque(nav) {
       const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
       window.__pfP = P;
       window.getPlanEditionVue3D = function () { return null; };
-      window.ktaEstAccessible = function () { return true; };
       C.multiLevel = true; C.availableLevels = [0, 1]; C.visibleLevels = [0, 1]; C.activeLevel = 0;
       window._currentLoadedPlanId = "v3d-checkup-passage-calque";
       window.setPlanRenduVue3D(null, "mixte");
@@ -9385,7 +9368,6 @@ async function sectionNiveauxVoisins(nav) {
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
       window._currentLoadedPlanId = PID;
-      window.ktaEstAccessible = function () { return true; };
       C.multiLevel = true; C.availableLevels = [-2, -1, 0, 1]; C.visibleLevels = [-2, -1, 0, 1];
       window.ktaSetActiveLevel(0);
       window.setStructures([]); window.setZones([]);
@@ -9855,7 +9837,6 @@ async function sectionSolZones(nav) {
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
       window._currentLoadedPlanId = PID;
-      window.ktaEstAccessible = function () { return true; };
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
       window.ktaSetActiveLevel(0);
       window.setStructures([]); window.setEditorPoints([]);
@@ -10050,7 +10031,6 @@ async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep) {
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
     window._currentLoadedPlanId = a.pid;
-    window.ktaEstAccessible = function () { return true; };
     C.multiLevel = true; C.availableLevels = a.niveaux.slice(); C.visibleLevels = a.niveaux.slice();
     window.ktaSetActiveLevel(0);
     window.setStructures([]); window.setRoads([]); window.setZones([]); window.setEditorPoints([]);
@@ -13107,9 +13087,6 @@ async function sectionCaseBoutonsZoom(nav) {
       }
       // Coût d'un pas balayé (corps de 0,8 m : 3 couloirs + 12 rayons) dans le plan dense, buttées comprises.
       const coutPas = await page.evaluate(function (d) {
-        // Image de collision du plan fictif mise de côté : seules les structures synthétiques sont jugées.
-        const acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };
         // Départ DANS l'image du plan (le semis la déborde : un pas hors du plan est refusé), dans une galerie.
         const sc = window.APP_CONFIG.scale, m = 7 * sc, W = window.PLAN_CONFIG.plan.imageWidth;
         const H = window.PLAN_CONFIG.plan.imageHeight, x0 = Math.max(0, W / 2 - 57.5 * m), y0 = Math.max(0, H / 2 - 57.5 * m);
@@ -13123,7 +13100,6 @@ async function sectionCaseBoutonsZoom(nav) {
             if (!ok) window.KtaVue3D.tourner(23);
           }
           window.KtaVue3D.fermer();
-          window.ktaEstAccessible = acc;
           const st = function (t) {
             if (!t.length) return null;
             t.sort(function (a, b) { return a - b; });
@@ -13222,14 +13198,11 @@ async function sectionCaseBoutonsZoom(nav) {
       const prep = await page.evaluate(function () {
         const sc = window.APP_CONFIG.scale;
         if (window.APP_CONFIG.multiLevel === true) window.APP_CONFIG.activeLevel = 0;
-        // Départ : le point le plus proche du centre dont la bande nord-sud de -4 m à +2 m est accessible selon
-        // l'image de collision du plan (le pilier est posé dedans).
+        // Départ : le point le plus proche du centre assez loin des bords pour la bande nord-sud de -4 m à +2 m.
         const c = window.map.getCenter();
         const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
         const cx = Math.round(c.lng), cy = Math.round(H - c.lat);
-        const acc = window.ktaEstAccessible;
         const libre = function (px, py) {
-          for (let k = -40; k <= 20; k++) { if (!acc(px, py + k * sc / 10)) return false; }
           return px > 5 * sc && px < W - 5 * sc && py > 6 * sc && py < H - 4 * sc;
         };
         let x = cx, y = cy;
@@ -13887,10 +13860,9 @@ async function sectionCaseBoutonsZoom(nav) {
       }
 
       // ── Collisions : jamais à travers un pilier, un mur, un mur en ligne, un front ou un pilier perso ──────
-      // Obstacles fictifs posés loin du départ (image de collision du plan mise de côté le temps du test : seule
-      // la règle des structures est jugée). Chaque pas est vérifié par une géométrie propre au checkup (pas celle
-      // de l'app) : le segment parcouru ne coupe aucune arête, l'arrivée n'est dans aucun polygone, et le corps
-      // garde au moins 0,2 m du bord.
+      // Obstacles fictifs posés loin du départ : seule la règle des structures est jugée. Chaque pas est vérifié par
+      // une géométrie propre au checkup (pas celle de l'app) : le segment parcouru ne coupe aucune arête, l'arrivée
+      // n'est dans aucun polygone, et le corps garde au moins 0,2 m du bord.
       const coll = await page.evaluate(function (p) {
         const sc = p.sc, ox = p.x, oy = p.y + 30 * sc;
         const carre = function (cx, cy, dx, dy) {
@@ -13908,8 +13880,6 @@ async function sectionCaseBoutonsZoom(nav) {
         ];
         const avant = window.getStructures().slice();
         window.setStructures(avant.concat(obstacles.map(function (o) { return o.s; })));
-        const accVrai = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };
         const coupe = function (ax, ay, bx, by, cx, cy, dx, dy) {
           const o = function (px, py, qx, qy, rx, ry) { return (qx - px) * (ry - py) - (qy - py) * (rx - px); };
           const d1 = o(cx, cy, dx, dy, ax, ay), d2 = o(cx, cy, dx, dy, bx, by);
@@ -13990,7 +13960,6 @@ async function sectionCaseBoutonsZoom(nav) {
         const t0 = window.KtaVue3D.etat().pos;
         window.KtaVue3D.avancer(3);
         juger(T, t0, window.KtaVue3D.etat().pos, "pas de 3 m sur un pilier de 0,4 m");
-        window.ktaEstAccessible = accVrai;
         window.setStructures(avant);
         window.KtaVue3D.placer(p.x, p.y - 1 * sc, 0);   // à 2 m du pilier du départ, écarté du tracker
         return { echecs: echecs.slice(0, 6), nEchecs: echecs.length, pas: pas, butees: butees,
@@ -14335,8 +14304,7 @@ async function sectionCaseBoutonsZoom(nav) {
       // retenu par plan. Un pilier posé sur le T : dessiné et bloquant en mixte et en structures, absent en galerie.
       // La suite de la partie 8 se joue en galerie (choix retenu pour le plan de test).
       const inter = await page.evaluate(async function (a) {
-        const K = window.KtaVue3D, r = {}, acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };   // image du plan : seule la structure juge
+        const K = window.KtaVue3D, r = {};
         const traverser = function () {
           K.placer(a.avant.x, a.avant.y, 90);
           for (let i = 0; i < 30; i++) K.avancer(0.2);
@@ -14369,7 +14337,6 @@ async function sectionCaseBoutonsZoom(nav) {
         r.c3 = clic(); r.c4 = clic(); r.c5 = clic();
         await K.fermer();
         window.setStructures([]);
-        window.ktaEstAccessible = acc;
         r.libelles = { m: window.I18n.t("vue3d.modeMixte"), s: window.I18n.t("vue3d.modeStructures"),
           g: window.I18n.t("vue3d.modeGalerie") };
         return r;
@@ -14620,8 +14587,7 @@ async function sectionCaseBoutonsZoom(nav) {
         "« Tout afficher » sur la carte : zone, calque, liseré et POI reviennent en 3D, pastille éteinte", f4);
       // Structures : un type masqué depuis la carte (FilterPanel.setFilters) disparaît de la 3D, la butée reste.
       const f5 = await page.evaluate(function (a) {
-        const K = window.KtaVue3D, r = {}, acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };   // image de collision du plan hors jeu ici
+        const K = window.KtaVue3D, r = {};
         K.basculerRendu("structures");
         r.rendu = K.etat().rendu;
         r.avant = K.etat().compte.structures;
@@ -14636,7 +14602,6 @@ async function sectionCaseBoutonsZoom(nav) {
         }).then(function () {
           r.retour = K.etat().compte.structures;
           K.basculerRendu("galerie");
-          window.ktaEstAccessible = acc;
           return r;
         });
       }, { dep: pt(200, 6.5, -2.5), sc: G.sc });
@@ -15409,8 +15374,7 @@ async function sectionCaseBoutonsZoom(nav) {
       }
       // Collisions : paroi du tube, entrée dans la chambre, pilier ; dans la chambre, aucune paroi n'arrête.
       const mc = await page.evaluate(function (a) {
-        const K = window.KtaVue3D, acc = window.ktaEstAccessible, r = {};
-        window.ktaEstAccessible = function () { return true; };   // image de collision du plan hors jeu ici
+        const K = window.KtaVue3D, r = {};
         const rel = function () { const p = K.etat().pos; return [+(p.x / a.sc - a.ox).toFixed(2), +(p.y / a.sc - a.oz).toFixed(2)]; };
         const marcher = function (n) { for (let i = 0; i < n; i++) K.avancer(0.2); };
         return K.fermer().then(function () { return K.ouvrir({ depart: a.t }); }).then(function () {
@@ -15419,7 +15383,6 @@ async function sectionCaseBoutonsZoom(nav) {
           K.placer(a.c.x, a.c.y, 0); marcher(25); r.pilier = rel();
           K.placer(a.l.x, a.l.y, 0); marcher(30); r.libre = rel();
           r.butees = K.etat().butees;
-          window.ktaEstAccessible = acc;
           return K.fermer();
         }).then(function () { return r; });
       }, { t: mq(-10, 0), c: mq(6, 0), l: mq(2, 0), sc: MX.sc, ox: MX.ox, oz: MX.oz });
@@ -15621,10 +15584,9 @@ async function sectionCaseBoutonsZoom(nav) {
       // pilier (aucun pas possible), un pas qui rapproche de la galerie passe.
       if (G.multi) {
         const nc = await page.evaluate(async function (a) {
-          const K = window.KtaVue3D, acc = window.ktaEstAccessible, P = function (x, z) {
+          const K = window.KtaVue3D, P = function (x, z) {
             return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc };
           };
-          window.ktaEstAccessible = function () { return true; };
           window.ktaSetActiveLevel(0);
           window.setRoads([
             { uid: "rd_nc_0", type: "principal", level: 0, points: [P(-20, 0), P(0, 0)] },
@@ -15660,7 +15622,6 @@ async function sectionCaseBoutonsZoom(nav) {
             await K.fermer();
           }
           window.setPlanRenduVue3D(null, "mixte");
-          window.ktaEstAccessible = acc;
           window.setStructures([]); window.setEditorPoints([]);
           return r;
         }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -15683,8 +15644,6 @@ async function sectionCaseBoutonsZoom(nav) {
       if (G.multi) {
         const PJ = await page.evaluate(function (a) {
           const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
-          window.__v3dAcc14 = window.ktaEstAccessible;
-          window.ktaEstAccessible = function () { return true; };
           window.setStructures([]);
           window.setRoads([-1, 0, 1].map(function (n) {
             return { uid: "rd_p14_" + (n + 1), type: "principal", level: n, points: [P(-70, 0), P(70, 0)] };
@@ -15988,7 +15947,6 @@ async function sectionCaseBoutonsZoom(nav) {
         verifier(ji.mode === "libre" && ji.niveau === -1 && ji.actif === 0 && ji.niveau0 === 0,
           "tracker arrêté recalé au −1, carte au 0 : la vue s'ouvre au niveau du tracker, la carte reste au 0", ji);
         await page.evaluate(function () {
-          window.ktaEstAccessible = window.__v3dAcc14;
           if (window.KtaVue3D.gesteAnime) window.KtaVue3D.gesteAnime(false);
           window.setStructures([]); window.setEditorPoints([]); window.setRoads([]);
           window.ktaSetActiveLevel(0);
@@ -16007,8 +15965,6 @@ async function sectionCaseBoutonsZoom(nav) {
       if (G.multi) {
         const CE = await page.evaluate(async function (a) {
           const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
-          const acc = window.ktaEstAccessible;
-          window.ktaEstAccessible = function () { return true; };
           window.setStructures([]); window.setZones([]);
           window.setRoads([-1, 0].map(function (n) {
             return { uid: "rd_ce_" + (n + 1), type: "principal", level: n, points: [P(-60, 0), P(60, 0)] };
@@ -16092,7 +16048,6 @@ async function sectionCaseBoutonsZoom(nav) {
           }
           await K.fermer();
           window.setPlanRenduVue3D(null, "mixte");
-          window.ktaEstAccessible = acc;
           window.setStructures([]); window.setEditorPoints([]); window.setRoads([]);
           window.ktaSetActiveLevel(0);
           return r;
@@ -16119,8 +16074,6 @@ async function sectionCaseBoutonsZoom(nav) {
       if (G.multi) {
         const DC = await page.evaluate(async function (a) {
           const K = window.KtaVue3D, sc = a.sc, P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
-          const acc = window.ktaEstAccessible;
-          window.ktaEstAccessible = function () { return true; };
           window.setStructures([]); window.setZones([]);
           window.setRoads([-1, 0, 1].map(function (n) {
             return { uid: "rd_dc_" + (n + 1), type: "principal", level: n, points: [P(-80, 0), P(80, 0)] };
@@ -16204,7 +16157,6 @@ async function sectionCaseBoutonsZoom(nav) {
           r.inchanges = JSON.stringify(window.getEditorPoints()) === avant;
           await K.fermer();
           window.setPlanRenduVue3D(null, "mixte");
-          window.ktaEstAccessible = acc;
           window.setStructures([]); window.setEditorPoints([]); window.setRoads([]);
           window.ktaSetActiveLevel(0);
           window.KtaGalerie.invalider();
@@ -16266,8 +16218,6 @@ async function sectionCaseBoutonsZoom(nav) {
         const K = window.KtaVue3D, G = window.KtaGalerie, sc = a.sc;
         const P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
-        const acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };
         window.ktaSetActiveLevel(0);
         window.setVue3DTextures(true);
         window.setStructures([]); window.setZones([]);
@@ -16468,7 +16418,6 @@ async function sectionCaseBoutonsZoom(nav) {
         window.setEditorPoints(pois);
         r.perfAvec = await mesure();
         r.inchanges = JSON.stringify(window.getEditorPoints()) === avantPts;
-        window.ktaEstAccessible = acc;
         r.T = T;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -16601,8 +16550,6 @@ async function sectionCaseBoutonsZoom(nav) {
         const K = window.KtaVue3D, G = window.KtaGalerie, sc = a.sc;
         const P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
-        const acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };
         window.ktaSetActiveLevel(0);
         window.setVue3DTextures(true);
         window.setZones([]);
@@ -16698,7 +16645,6 @@ async function sectionCaseBoutonsZoom(nav) {
         r.uni.pierre = { tympan: t3 && t3.tympan, tympanUni: t3 && t3.tympanUni, combleUni: t3 && t3.combleUni };
         await K.fermer();
         if (prefs0 === null) localStorage.removeItem(kPrefs); else localStorage.setItem(kPrefs, prefs0);
-        window.ktaEstAccessible = acc;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       if (CAPTURES) {
@@ -16784,8 +16730,6 @@ async function sectionCaseBoutonsZoom(nav) {
       const MS = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, G = window.KtaGalerie, sc = a.sc;
         const P = function (x, z) { return { x: (a.ox + x) * sc, y: (a.oz + z) * sc }; };
-        const acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };
         window.ktaSetActiveLevel(0);
         window.setStructures([]); window.setZones([]);
         // [nom, tag, niveaux, x0 → x1 du tracé, POI (x, z), côté de la niche (+1 / −1 ; "gauche" : sens du tracé ;
@@ -16910,7 +16854,6 @@ async function sectionCaseBoutonsZoom(nav) {
         r.inchanges = JSON.stringify(window.getEditorPoints()) === avantPts;
         window.setEditorPoints([]); window.setRoads([]); G.invalider();
         window.setPlanRenduVue3D(null, "mixte");
-        window.ktaEstAccessible = acc;
         r.roads = roads; r.pois = tous;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, multi: G.multi });
@@ -17059,10 +17002,9 @@ async function sectionCaseBoutonsZoom(nav) {
       enTraversD.slice(0, 3));
       // Collisions du cas A : on bute à gauche sur la paroi, à droite sur le pilier (corps de 0,8 m).
       const colA = await page.evaluate(function (a) {
-        const K = window.KtaVue3D, acc = window.ktaEstAccessible, P = function (x, z) {
+        const K = window.KtaVue3D, P = function (x, z) {
           return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc };
         };
-        window.ktaEstAccessible = function () { return true; };
         window.setStructures([{ uid: "st_rc_a", type: "pilier-1", level: 0,
           points: [P(-1, 2), P(1, 2), P(1, 4), P(-1, 4)] }]);
         window.KtaGalerie.invalider();
@@ -17077,7 +17019,6 @@ async function sectionCaseBoutonsZoom(nav) {
           K.placer(P(-6, 0).x, d.y, 180);
           for (let i = 0; i < 20; i++) K.avancer(0.2);
           r.droiteLoin = z();
-          window.ktaEstAccessible = acc;
           return K.fermer();
         }).then(function () { return r; });
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -17198,8 +17139,7 @@ async function sectionCaseBoutonsZoom(nav) {
       const JS = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
-        const acc = window.ktaEstAccessible, mm = window.matchMedia;
-        window.ktaEstAccessible = function () { return true; };
+        const mm = window.matchMedia;
         window.setRoads([{ uid: "rd_js", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] }]);
         window.KtaGalerie.invalider();
         const r = {}, d = P(-30, 0);
@@ -17227,7 +17167,7 @@ async function sectionCaseBoutonsZoom(nav) {
           barre: document.querySelector("#kta-vue3d .kta-v3d-haut").getBoundingClientRect().bottom,
           boussole: document.querySelector("#kta-vue3d .kta-v3d-boussole").getBoundingClientRect().top,
           largeur: document.getElementById("kta-vue3d").getBoundingClientRect().width };
-        if (!z) { window.stopTracking(); await K.fermer(); window.matchMedia = mm; window.ktaEstAccessible = acc; return r; }
+        if (!z) { window.stopTracking(); await K.fermer(); window.matchMedia = mm; return r; }
         const zr = z.getBoundingClientRect(), x0 = zr.left + 100, y0 = zr.top + zr.height / 2;
         const ev = function (type, id, x, y, cible) {
           (cible || z).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: id,
@@ -17285,7 +17225,6 @@ async function sectionCaseBoutonsZoom(nav) {
         await K.fermer();
         if (trackerAvant) window.startTracking();
         window.matchMedia = mm;
-        window.ktaEstAccessible = acc;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       verifier(JS.pc.commandes === (JS.finPc ? "pave" : "joystick") && JS.pc.pave === JS.finPc &&
@@ -17367,8 +17306,7 @@ async function sectionCaseBoutonsZoom(nav) {
       const FO = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
-        const acc = window.ktaEstAccessible, r = {};
-        window.ktaEstAccessible = function () { return true; };
+        const r = {};
         const trackerAvant = window.getTrackingActif();
         if (!trackerAvant) window.startTracking();
         const d = P(-30, 0);
@@ -17390,7 +17328,6 @@ async function sectionCaseBoutonsZoom(nav) {
         r.actif = document.activeElement ? (document.activeElement.className || document.activeElement.tagName) : null;
         window.stopTracking();
         if (trackerAvant) window.startTracking();
-        window.ktaEstAccessible = acc;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
       verifier(FO.question && FO.focus, "focus rendu au bouton cube après « Je suis ici ? » (Non)", FO);
@@ -17473,8 +17410,6 @@ async function sectionCaseBoutonsZoom(nav) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
         const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
-        const acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };
         window.setRoads([{ uid: "rd_gr", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] }]);
         window.setStructures([{ uid: "st_gr", type: "pilier-2", level: 0,
           points: [P(-1, -1), P(1, -1), P(1, 1), P(-1, 1)] }]);
@@ -17625,7 +17560,6 @@ async function sectionCaseBoutonsZoom(nav) {
         await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90 } });
         K.basculerRendu(renduAvant);
         await K.fermer();
-        window.ktaEstAccessible = acc;
         window.setStructures([]); window.setRoads([]); window.KtaGalerie.invalider();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -17674,8 +17608,7 @@ async function sectionCaseBoutonsZoom(nav) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
         const q = function (s) { return document.querySelector(s); };
-        const acc = window.ktaEstAccessible, ext = window.KtaExtensions.etat, poisAvant = window.getEditorPoints();
-        window.ktaEstAccessible = function () { return true; };
+        const ext = window.KtaExtensions.etat, poisAvant = window.getEditorPoints();
         const tracker = window.getTrackingActif();
         if (tracker) window.stopTracking();
         // Pilier fictif sur le tracé, au droit du POI : la validation ne doit tomber ni hors galerie, ni dedans.
@@ -18096,7 +18029,6 @@ async function sectionCaseBoutonsZoom(nav) {
         // Fermer la vue termine la partie.
         await K.fermer();
         r.ferme = M().etat().enCours;
-        window.ktaEstAccessible = acc;
         window.setEditorPoints(poisAvant || []);
         window.setStructures([]); window.setZones([]); window.setRoads([]); window.KtaGalerie.invalider();
         if (tracker) window.startTracking();
@@ -18237,8 +18169,6 @@ async function sectionCaseBoutonsZoom(nav) {
         const K = window.KtaVue3D, P = function (x, z) { return Object.assign({ level: 0 }, { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }); };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
         const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
-        const acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };
         window.setVue3DGuidage(true);
         let pref2D = null;
         try { pref2D = localStorage.getItem("myktamap_guidage_v1"); } catch (err) { /* lecture seule */ }
@@ -18278,7 +18208,6 @@ async function sectionCaseBoutonsZoom(nav) {
         r.rouverte = lire();
         window.setVue3DGuidage(true);
         await K.fermer();
-        window.ktaEstAccessible = acc;
         window.setRoads([]); window.KtaGalerie.invalider();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -18298,8 +18227,7 @@ async function sectionCaseBoutonsZoom(nav) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
         const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
-        const acc = window.ktaEstAccessible, LC = window.LegendCustomization, trouver = LC.findCustomEntry;
-        window.ktaEstAccessible = function () { return true; };
+        const LC = window.LegendCustomization, trouver = LC.findCustomEntry;
         // Type perso fictif (polygone, couleur choisie) : sa base est la géométrie de son entrée de légende.
         LC.findCustomEntry = function (id) {
           if (id === "cust-v3d-zone") return { id: id, category: "zones", geometry: "polygon", fillColor: "#7d3cff" };
@@ -18408,7 +18336,6 @@ async function sectionCaseBoutonsZoom(nav) {
         await K.fermer();
         r.libere = K.textures() === null;
         LC.findCustomEntry = trouver;
-        window.ktaEstAccessible = acc;
         window.setStructures([]); window.setRoads([]); window.setZones([]); window.KtaGalerie.invalider();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
@@ -18597,8 +18524,6 @@ async function sectionCaseBoutonsZoom(nav) {
         const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
         const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
-        const acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };
         window.setVue3DTextures(true);
         window.setRoads([{ uid: "rd_ef", type: "principal", level: 0, points: [P(-40, 0), P(44, 0)] }]);
         // Faces des piliers sur des x entiers, atteints par les pas de 0,1 m : un rayon du corps aligné sur une
@@ -18710,7 +18635,6 @@ async function sectionCaseBoutonsZoom(nav) {
         await K.fermer();
         window.setVue3DTextures(true);
         window.setPlanRenduVue3D(null, "mixte");
-        window.ktaEstAccessible = acc;
         window.setStructures([]); window.setRoads([]); window.setZones([]); G.invalider();
         r.Z = Z;
         return r;
@@ -18764,8 +18688,6 @@ async function sectionCaseBoutonsZoom(nav) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc, level: 0 }; };
         const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
-        const acc = window.ktaEstAccessible;
-        window.ktaEstAccessible = function () { return true; };
         window.setVue3DGuidage(true);
         window.setStructures([]);
         const pts = [P(-23.5, 0), P(-14, 0), P(-4, 0)];
@@ -18791,14 +18713,12 @@ async function sectionCaseBoutonsZoom(nav) {
           if (rendu === "mixte" && a.captures) {
             await pause(300);
             r.capture = true;
-            window.ktaEstAccessible = acc;
             return r;   // captures prises par le harnais, la vue reste ouverte
           }
           await K.fermer();
         }
         r.apres2D = JSON.stringify(window.getRoads().filter(function (r) { return r.type === "itinerary"; }));
         r.avant2D = avant2D;
-        window.ktaEstAccessible = acc;
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc, captures: !!CAPTURES });
       if (IV.capture) {

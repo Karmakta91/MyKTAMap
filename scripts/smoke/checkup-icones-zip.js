@@ -58,7 +58,7 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
       const zip = new JSZip();
       zip.file("plan-config.json", JSON.stringify(cfg));
       zip.file("icon/perso-checkup.png", png);
-      const chemins = [cfg.plan.baseImage, cfg.plan.collisionImage]
+      const chemins = [cfg.plan.baseImage]
         .concat((cfg.imageLayers || []).map(function (l) { return l.file; }), (cfg.dataLayers || []).map(function (l) { return l.file; }))
         .filter(function (p) { return typeof p === "string" && p && !/^(data:|blob:|https?:)/.test(p); });
       for (const p of Array.from(new Set(chemins))) {

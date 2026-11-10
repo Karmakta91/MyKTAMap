@@ -71,7 +71,7 @@ async function cliquerOuiConfirm(page) {
       const cfg = JSON.parse(cfgTxt);
       const zip = new JSZip();
       zip.file("plan-config.json", cfgTxt);
-      const chemins = [cfg.plan.baseImage, cfg.plan.collisionImage]
+      const chemins = [cfg.plan.baseImage]
         .concat((cfg.imageLayers || []).map(function (l) { return l.file; }), (cfg.dataLayers || []).map(function (l) { return l.file; }))
         .concat(Object.keys(cfg.icons || {}).map(function (k) { return cfg.icons[k]; }))
         .filter(function (p) { return typeof p === "string" && p && !/^(data:|blob:|https?:)/.test(p); });
