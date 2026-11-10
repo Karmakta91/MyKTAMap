@@ -1035,7 +1035,6 @@
   "gen.icons.videApresSuppr": "No icon — click + Add a tag",
   "gen.icons.videDefinie": "No icon defined",
   "gen.icons.videHint": "Click \"↺ Load defaults\" or \"+ Add a tag\"",
-  "gen.images.collision": "Collision map",
   "gen.images.imagePlan": "Map image",
   "gen.images.modeUpload": "From an image",
   "gen.images.modeUploadHint": "(PNG / JPG, or an already-aligned GeoTIFF .tif)",

@@ -1035,7 +1035,6 @@
   "gen.icons.videApresSuppr": "Aucune icône — cliquez sur + Ajouter un tag",
   "gen.icons.videDefinie": "Aucune icône définie",
   "gen.icons.videHint": "Cliquez sur \"↺ Charger défauts\" ou \"+ Ajouter un tag\"",
-  "gen.images.collision": "Carte de collision",
   "gen.images.imagePlan": "Image du plan",
   "gen.images.modeUpload": "Depuis une image",
   "gen.images.modeUploadHint": "(PNG / JPG, ou GeoTIFF .tif déjà calé)",

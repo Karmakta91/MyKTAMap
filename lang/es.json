@@ -1035,7 +1035,6 @@
   "gen.icons.videApresSuppr": "Ningún icono — haz clic en + Añadir un tag",
   "gen.icons.videDefinie": "Ningún icono definido",
   "gen.icons.videHint": "Haz clic en \"↺ Cargar predeterminados\" o \"+ Añadir un tag\"",
-  "gen.images.collision": "Mapa de colisión",
   "gen.images.imagePlan": "Imagen del mapa",
   "gen.images.modeUpload": "Desde una imagen",
   "gen.images.modeUploadHint": "(PNG / JPG, o un GeoTIFF .tif ya ajustado)",
