@@ -1735,10 +1735,17 @@
         if (Array.isArray(p.accroches)) out.accroches = p.accroches.map(function(a) {
           return { level: a.level, x: a.x, y: a.y };
         });
-        // Point précis (poiPrecis.js) : géométrie seule, copiée champ par champ.
+        // Point précis (poiPrecis.js) : géométrie seule, copiée champ par champ (chatière : `pts`, ou l'ancienne
+        // forme x2, y2 gardée telle quelle).
         if (p.precis && typeof p.precis === "object") {
-          const q = p.precis, pr = { x: q.x, y: q.y };
-          if (q.x2 !== undefined) { pr.x2 = q.x2; pr.y2 = q.y2; }
+          const q = p.precis;
+          let pr;
+          if (Array.isArray(q.pts)) {
+            pr = { pts: q.pts.filter(Boolean).map(function(a) { return { x: a.x, y: a.y }; }) };
+          } else {
+            pr = { x: q.x, y: q.y };
+            if (q.x2 !== undefined) { pr.x2 = q.x2; pr.y2 = q.y2; }
+          }
           out.precis = pr;
         }
         return out;

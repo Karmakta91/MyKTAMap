@@ -889,9 +889,12 @@
           // Raccords d'un passage entre niveaux : validés sur la carte (fiche du point), jamais saisis ici.
           contenu = _escapeHtml(window.I18n.t("tabledit.col.accroches", { n: Array.isArray(v) ? v.length : 0 }));
         } else if (col === "precis" && v && typeof v === "object") {
-          // Point précis (poiPrecis.js) : posé depuis la fiche du POI, jamais saisi ici ; chatière : début → fin.
+          // Point précis (poiPrecis.js) : posé depuis la fiche du POI, jamais saisi ici ; chatière : ses points du
+          // début à la fin (`pts`, ou l'ancienne forme x, y → x2, y2 : le Tableur lit un fichier tel quel).
           const q = function(n) { return Number.isFinite(n) ? String(Math.round(n * 100) / 100) : "?"; };
-          contenu = _escapeHtml(q(v.x) + ", " + q(v.y) + (v.x2 !== undefined ? " → " + q(v.x2) + ", " + q(v.y2) : ""));
+          const pts = Array.isArray(v.pts) ? v.pts.filter(Boolean)
+            : [{ x: v.x, y: v.y }].concat(v.x2 !== undefined ? [{ x: v.x2, y: v.y2 }] : []);
+          contenu = _escapeHtml(pts.map(function(a) { return q(a.x) + ", " + q(a.y); }).join(" → "));
         } else if (col === "niveaux" && Array.isArray(v)) {
           contenu = _escapeHtml(v.map(function(n) { return window.ktaFormatNiveau(n); }).join(", "));
         } else if (col === "level" && niveauxPlan && !_sansNiveau(p) && (v == null || Number.isInteger(v))) {

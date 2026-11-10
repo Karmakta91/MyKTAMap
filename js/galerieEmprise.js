@@ -389,7 +389,10 @@
         if (a) { mel(a.level); mel(a.x * 10); mel(a.y * 10); }
       });
       const q = p.precis;   // point précis (poiPrecis.js) : la forme s'y pose
-      if (q) { mel(q.x * 10); mel(q.y * 10); mel((q.x2 || 0) * 10); mel((q.y2 || 0) * 10); }
+      if (q && Array.isArray(q.pts)) {
+        mel(q.pts.length);
+        q.pts.forEach(function (a) { if (a) { mel(a.x * 10); mel(a.y * 10); } });
+      } else if (q) { mel(q.x * 10); mel(q.y * 10); mel((q.x2 || 0) * 10); mel((q.y2 || 0) * 10); }
     }
     _sig = h + ":" + _echelle();
     _sigT = t;

@@ -7,12 +7,14 @@
 // chaque moteur (KTA_MOTEURS, Chromium et WebKit par défaut), à la souris puis au doigt.
 // Vérifie : « 🎯 Augmenter la précision » dans la fiche (pas pour un passage peo, ni en lecture seule, ni pour un POI
 // de calque) ; le bouton arme le bandeau sans rien poser, un tap pose le point (uid gardé, updatedAt changé, une
-// entrée d'historique) ; chatière en deux taps (début, fin) ; Échap et ✕ annulent ; Ctrl+Z retire ; « Retirer la
+// entrée d'historique) ; chatière en trois taps puis « Terminer » / Entrée (une entrée d'historique ; Échap avec des
+// points posés n'écrit rien) ; ancienne chatière { x, y, x2, y2 } lue sans migration ; Échap et ✕ annulent ; Ctrl+Z
+// retire ; « Retirer la
 // précision » ; pointillé et carré au bon endroit à zoom moyen, carte droite puis tournée, cachés de loin et
 // montrés de loin fiche ouverte ; POI de calque (getAllEmbeddedPoints porte `precis`, son pointillé est dessiné) ;
 // sauvegarde puis rechargement ; export de session (ZIP) et réimport ; anonymisé ; KMZ, GeoJSON et GPX à la place
 // de l'icône ; « Y aller » et ➕ visent le point précis, l'itinéraire y finit ; « 📍 Je suis ici » y recale le
-// tracker (chatière : le milieu ; sans point précis ou passage : l'icône) et valide l'étape.
+// tracker (chatière : le milieu de son tracé en longueur ; sans point précis ou passage : l'icône) et valide l'étape.
 // 🩸 Le doigt : Chromium par CDP (vrais touch), WebKit par PointerEvent synthétiques (logique de l'app seulement).
 // Usage : node scripts/smoke/checkup-point-precis.js (SMOKE_PORT pour une autre copie ; KTA_MODES=souris ou doigt ;
 // KTA_PP_CAPTURES=<dossier> pour des captures) · code : js/poiPrecis.js · doc : docs/architecture/ui.md § Point précis
@@ -214,10 +216,26 @@ function guides(page) {
       }),
       traits: Array.from(document.querySelectorAll("path.kta-precis-trait")).map(rc),
       segments: Array.from(document.querySelectorAll("path.kta-precis-segment")).map(rc),
+      // Sommets de chaque polyligne (commandes M / L du chemin SVG de Leaflet).
+      sommets: Array.from(document.querySelectorAll("path.kta-precis-segment")).map(function (el) {
+        return (String(el.getAttribute("d") || "").match(/[ML]/g) || []).length;
+      }),
       interactif: Array.from(document.querySelectorAll(".kta-precis-trait, .kta-precis-segment, .kta-precis-carre"))
         .some(function (el) { return getComputedStyle(el).pointerEvents !== "none"; })
     };
   });
+}
+// Point d'une polyligne à mi-longueur (règle attendue de poiPrecis.js > milieu, recalculée ici).
+function milieuNode(pts) {
+  let tot = 0;
+  for (let i = 1; i < pts.length; i++) tot += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  let r = tot / 2;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], l = Math.hypot(b.x - a.x, b.y - a.y);
+    if (l > 0 && r <= l) return { x: a.x + (b.x - a.x) * r / l, y: a.y + (b.y - a.y) * r / l };
+    r -= l;
+  }
+  return { x: pts[0].x, y: pts[0].y };
 }
 function proche(a, b, tol) { return !!a && !!b && Math.hypot(a[0] - b[0], a[1] - b[1]) <= tol; }
 // Un trait (ses deux bouts à l'écran) relie p et q, dans un sens ou dans l'autre.
@@ -406,33 +424,113 @@ async function jouer(nav, moteur, mode) {
     await page.waitForTimeout(500);
     verifier(!!(await lirePoint(page, "pt_pp_pl")).precis, "Ctrl+Z après « Retirer » : le point revient");
 
-    // ── 6. Chatière : début puis fin ──
+    // ── 6. Chatière : un tap par point, « Terminer » (ou Entrée) à partir de 2 ──
     await viderToasts(page);
-    await ouvrirFiche(page, ptr, "pt_pp_ch");
-    await ptr.tap(await centreDe(page, ".leaflet-popup [data-kta-act=\"precis\"]"));
+    const bandeauCh = function () {
+      return page.evaluate(function () {
+        const f = document.getElementById("kta-precis-floater");
+        if (!f) return null;
+        const b = document.getElementById("kta-precis-terminer");
+        return { texte: f.querySelector(".kta-iti-floater-msg").textContent, fin: b ? !b.disabled : null,
+          ico: !!f.querySelector(".kta-iti-floater-icon svg"), icoFin: !!(b && b.querySelector("svg.kta-ico-check")),
+          mode: window.KtaPoiPrecis.enCours() };
+      });
+    };
+    const armerCh = async function () {
+      await ouvrirFiche(page, ptr, "pt_pp_ch");
+      await ptr.tap(await centreDe(page, ".leaflet-popup [data-kta-act=\"precis\"]"));
+      await page.waitForTimeout(300);
+    };
+    const A = await planU(page, 100, -60), B = await planU(page, 180, -10), C = await planU(page, 260, -50);
+    // Échap avec deux points posés : rien n'est écrit.
+    await armerCh();
+    await ptr.tap(await ecran(page, A));
+    await page.waitForTimeout(250);
+    await ptr.tap(await ecran(page, B));
+    await page.waitForTimeout(250);
+    const avEsc = await bandeauCh();
+    await page.keyboard.press("Escape");
     await page.waitForTimeout(300);
-    const t1 = await page.evaluate(function () { return document.getElementById("kta-precis-floater").textContent; });
-    const A = await planU(page, 100, -60), B = await planU(page, 220, -40);
+    verifier(avEsc && avEsc.fin === true && !(await bandeauCh()) && !(await lirePoint(page, "pt_pp_ch")).precis,
+      "chatière : Échap avec deux points posés annule, rien d'écrit", avEsc);
+    const und0 = await page.evaluate(function () { return window.__pp.undo; });
+    await armerCh();
+    const t1 = await bandeauCh();
     await ptr.tap(await ecran(page, A));
     await page.waitForTimeout(300);
-    const t2 = await page.evaluate(function () {
-      const f = document.getElementById("kta-precis-floater"); return f ? f.textContent : null;
-    });
-    verifier(/début/.test(t1) && /fin/.test(t2 || ""), "chatière : bandeau « début » puis « fin »", [t1, t2]);
+    const t2 = await bandeauCh();
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(250);
+    const t2b = await bandeauCh();
     await ptr.tap(await ecran(page, B));
+    await page.waitForTimeout(300);
+    const t3 = await bandeauCh();
+    await ptr.tap(await ecran(page, C));
+    await page.waitForTimeout(300);
+    const t4 = await bandeauCh();
+    const gTemp = await guides(page);
+    verifier(t1 && /début/.test(t1.texte) && t1.fin === false && t1.ico && t1.icoFin && t2 && /suivant/.test(t2.texte) &&
+      t2.fin === false && t2b && t2b.mode.points === 1 && t3 && /2 points/.test(t3.texte) && t3.fin === true &&
+      t4 && /3 points/.test(t4.texte) && gTemp.carres.length >= 4,
+    "chatière : bandeau « début », « suivant », puis « n points … Terminer » ; Terminer actif à partir de 2 points, " +
+      "Entrée sans effet à 1 point, carrés provisoires", { t1: t1, t2: t2, t2b: t2b, t3: t3, t4: t4 });
+    // Terminer : Entrée à la souris, le bouton au doigt.
+    if (mode === "souris") await page.keyboard.press("Enter");
+    else await ptr.tap(await centreDe(page, "#kta-precis-terminer"));
     await page.waitForTimeout(500);
     const ch = await lirePoint(page, "pt_pp_ch");
-    const q = ch.precis || {};
-    verifier(Math.abs(q.x - A.x) < 2 * o.k && Math.abs(q.y - A.y) < 2 * o.k && Math.abs(q.x2 - B.x) < 2 * o.k &&
-      Math.abs(q.y2 - B.y) < 2 * o.k, "chatière : début et fin posés en deux taps", { A: A, B: B, lu: q });
-    g = await guides(page);
-    const eA = await ecran(page, { x: q.x, y: q.y }), eB = await ecran(page, { x: q.x2, y: q.y2 });
-    verifier(g.carres.length === 3 && g.segments.length === 1 && boiteRelie(g.segments[0], eA, eB, tol) &&
-      g.carres.some(function (c) { return proche(c, eA, tol); }) && g.carres.some(function (c) { return proche(c, eB, tol); }),
-    "chatière : un carré au début, un à la fin, reliés", g);
+    const q = ch.precis || {}, qp = Array.isArray(q.pts) ? q.pts : [];
+    const pres2 = function (a, b) { return !!a && Math.abs(a.x - b.x) < 2 * o.k && Math.abs(a.y - b.y) < 2 * o.k; };
+    verifier(!(await bandeauCh()) && qp.length === 3 && pres2(qp[0], A) && pres2(qp[1], B) && pres2(qp[2], C) &&
+      q.x2 === undefined, "chatière : trois points posés puis " + (mode === "souris" ? "Entrée" : "« Terminer »") +
+      " → precis.pts dans l'ordre", { A: A, B: B, C: C, lu: q });
     const und = await page.evaluate(function () { return window.__pp.undo; });
-    inf("historique : " + und + " entrée(s)");
+    verifier(und === und0 + 1, "chatière : une seule entrée d'historique pour les trois points", [und0, und]);
+    g = await guides(page);
+    const eP = [];
+    for (const a of qp) eP.push(await ecran(page, a));
+    const mil = milieuNode(qp), eMil = await ecran(page, mil), eChIc = await ecran(page, ch);
+    verifier(g.carres.length === 4 && g.segments.length === 1 && boiteRelie(g.segments[0], eP[0], eP[2], tol) &&
+      g.sommets[0] === 3 && eP.every(function (e) { return g.carres.some(function (c) { return proche(c, e, tol); }); }),
+    "chatière : un carré à chacun des trois points, reliés par une polyligne à trois sommets", g);
+    verifier(g.traits.some(function (t) { return boiteRelie(t, eChIc, eMil, tol); }),
+      "chatière : pointillé de l'icône au milieu du tracé (mi-longueur)", { traits: g.traits, eChIc: eChIc, eMil: eMil });
+    const cen = await page.evaluate(function () {
+      const p = window.getEditorPoints().find(function (o) { return o.uid === "pt_pp_ch"; });
+      return { centre: window.KtaPoiPrecis.centre(p), cible: window.KtaPoiPrecis.cible(p) };
+    });
+    verifier(Math.abs(cen.centre.x - mil.x) < 1e-6 && Math.abs(cen.centre.y - mil.y) < 1e-6 &&
+      cen.cible.x === cen.centre.x && cen.cible.y === cen.centre.y,
+    "chatière : centre et cible = le point à mi-longueur du tracé (pas la moyenne des points)", { cen: cen, mil: mil });
     await capture(page, "4-chatiere");
+
+    // ── 6 bis. Ancienne chatière { x, y, x2, y2 } : lue telle quelle, sans migration ──
+    const vieille = await page.evaluate(function () {
+      const P = window.__pp.P, a = P(-260, 120), b = P(-180, 160);
+      const o = Object.assign({ id: "pt_pp_old", nom: "POI pt_pp_old", uid: "pt_pp_old", level: 0, tags: ["chatiere"],
+        etat: "Non inspectée", description: "", source: "editor", updatedAt: 1000,
+        precis: { x: a.x, y: a.y, x2: b.x, y2: b.y } }, P(-220, 60));
+      window.setEditorPoints(window.getEditorPoints().concat([o]));
+      window.renderEditorPoints();
+      const p = window.getEditorPoints().find(function (x) { return x.uid === "pt_pp_old"; });
+      return { brut: JSON.parse(JSON.stringify(p.precis)), lu: window.KtaPoiPrecis.lire(p),
+        centre: window.KtaPoiPrecis.centre(p), a: a, b: b };
+    });
+    await page.waitForTimeout(400);
+    g = await guides(page);
+    const eOa = await ecran(page, vieille.a), eOb = await ecran(page, vieille.b);
+    verifier(vieille.lu && vieille.lu.pts && vieille.lu.pts.length === 2 && vieille.lu.pts[1].x === vieille.b.x &&
+      Math.abs(vieille.centre.x - (vieille.a.x + vieille.b.x) / 2) < 1e-6 && vieille.brut.x2 === vieille.b.x &&
+      !vieille.brut.pts, "ancienne chatière (x, y, x2, y2) : lue en deux points, milieu au centre, champ non réécrit",
+    vieille);
+    verifier(g.segments.some(function (s) { return boiteRelie(s, eOa, eOb, tol); }) &&
+      g.carres.some(function (c) { return proche(c, eOa, tol); }) && g.carres.some(function (c) { return proche(c, eOb, tol); }),
+    "ancienne chatière : deux carrés reliés à l'écran", g);
+    await page.evaluate(function () {
+      window.setEditorPoints(window.getEditorPoints().filter(function (x) { return x.uid !== "pt_pp_old"; }));
+      window.renderEditorPoints();
+    });
+    await page.waitForTimeout(300);
 
     // ── 7. Itinéraire : « Y aller » et ➕ visent le point précis ──
     const it = await page.evaluate(async function () {
@@ -497,8 +595,10 @@ async function jouer(nav, moteur, mode) {
       "« Je suis ici » d'une plaque à point précis : tracker au point précis (règle de la galerie depuis lui)", r);
     r = await ici("pt_pp_ch");
     const ch7 = await lirePoint(page, "pt_pp_ch");
-    verifier(r.centre && Math.abs(r.centre.x - (ch7.precis.x + ch7.precis.x2) / 2) < 0.01 &&
-      pres(r.tracker, r.attendu) && r.ecartIcone > 1, "« Je suis ici » d'une chatière à deux points : tracker au milieu", r);
+    const mil7 = milieuNode(ch7.precis.pts);
+    verifier(r.centre && Math.abs(r.centre.x - mil7.x) < 0.01 && Math.abs(r.centre.y - mil7.y) < 0.01 &&
+      pres(r.tracker, r.attendu) && r.ecartIcone > 1,
+    "« Je suis ici » d'une chatière à trois points : tracker au milieu du tracé (mi-longueur)", r);
     r = await ici("pt_pp_info");
     verifier(!r.centre && pres(r.tracker, r.depuisIcone), "« Je suis ici » d'un POI sans point précis : à son icône",
       r);
@@ -638,13 +738,17 @@ async function jouer(nav, moteur, mode) {
     const z1 = await zip(false);
     const zpl = (z1.s.editorPoints || []).find(function (p) { return p.uid === "pt_pp_pl"; });
     const zch = (z1.s.editorPoints || []).find(function (p) { return p.uid === "pt_pp_ch"; });
-    verifier(!!zpl && !!zpl.precis && !!zch && zch.precis && zch.precis.x2 !== undefined,
-      "export de session : precis des deux POI (chatière à deux points)", { pl: zpl && zpl.precis, ch: zch && zch.precis });
-    // Tableur : colonne precis en lecture (coordonnées, chatière début → fin), cellule non éditable.
+    verifier(!!zpl && !!zpl.precis && !!zch && zch.precis && Array.isArray(zch.precis.pts) && zch.precis.pts.length === 3,
+      "export de session : precis des deux POI (chatière : ses trois points)", { pl: zpl && zpl.precis, ch: zch && zch.precis });
+    // Tableur : colonne precis en lecture (coordonnées, chatière : tous ses points), cellule non éditable ; une
+    // ancienne chatière (x2, y2) ajoutée au fichier y est lue aussi.
+    const sTab = JSON.parse(JSON.stringify(z1.s));
+    sTab.editorPoints.push(Object.assign({}, zch, { id: "pt_pp_old", uid: "pt_pp_old", nom: "POI pt_pp_old",
+      precis: { x: 10, y: 20, x2: 30, y2: 40 } }));
     await page.evaluate(function () { window.ouvrirTableEditor(); });
     await page.click("#kta-tbl-src-json");
     await page.setInputFiles("#kta-tbl-file", { name: "session-pp.json", mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(z1.s), "utf8") });
+      buffer: Buffer.from(JSON.stringify(sTab), "utf8") });
     await page.waitForSelector(".kta-tbl-entry");
     const iT = await page.evaluate(function () {
       const lib = window.I18n.t("tabledit.kind.editorPoints");
@@ -662,10 +766,16 @@ async function jouer(nav, moteur, mode) {
     await page.click("#kta-tbl-close");
     await page.waitForTimeout(300);
     verifier(tb.lecture && tb.textes.some(function (t) { return /^[\d.]+, [\d.]+$/.test(t); }) &&
-      tb.textes.some(function (t) { return /→/.test(t); }), "Tableur : colonne precis en lecture (chatière : début → fin)", tb);
+      tb.textes.some(function (t) { return /^[\d.]+, [\d.]+( → [\d.]+, [\d.]+){2}$/.test(t); }) &&
+      tb.textes.indexOf("10, 20 → 30, 40") >= 0,
+    "Tableur : colonne precis en lecture (chatière : ses trois points ; ancienne chatière : début → fin)", tb);
     const z2 = await zip(true);
-    verifier((z2.s.editorPoints || []).filter(function (p) { return p.precis; }).length === 2,
-      "export anonymisé : precis gardé (géométrie seule)");
+    const anCh = (z2.s.editorPoints || []).filter(function (p) {
+      return p.precis && Array.isArray(p.precis.pts);
+    })[0];
+    verifier((z2.s.editorPoints || []).filter(function (p) { return p.precis; }).length === 2 && !!anCh &&
+      anCh.precis.pts.length === 3 && JSON.stringify(anCh.precis.pts) === JSON.stringify(zch.precis.pts),
+    "export anonymisé : precis gardé (géométrie seule ; chatière : ses trois points)", anCh && anCh.precis);
     const avantImp = await page.evaluate(function () {
       return window.getEditorPoints().map(function (p) { return p.uid + ":" + JSON.stringify(p.precis || null); }).sort();
     });
@@ -698,7 +808,8 @@ async function jouer(nav, moteur, mode) {
       const p = window.getEditorPoints().find(function (o) { return o.uid === "pt_pp_ch"; });
       return p ? p.precis : null;
     });
-    verifier(!!recharge && recharge.x2 !== undefined, "rechargement : le point précis de la chatière est relu", recharge);
+    verifier(!!recharge && Array.isArray(recharge.pts) && recharge.pts.length === 3,
+      "rechargement : les trois points de la chatière sont relus", recharge);
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 4));
     // Nettoyage de la session du plan fictif (rien ne reste pour le run suivant).
     await page.evaluate(function () {
@@ -733,7 +844,7 @@ async function jouer(nav, moteur, mode) {
     problemes.forEach(function (p) { console.log("   " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — le point précis se pose depuis la fiche (chatière en deux points), s'annule, se " +
+  console.log("🎉 CHECKUP VERT — le point précis se pose depuis la fiche (chatière en plusieurs points), s'annule, se " +
     "dessine au bon endroit, voyage avec la session et sert l'itinéraire ; les exports gardent l'icône.");
   process.exit(0);
 })();

@@ -8301,6 +8301,7 @@ async function sectionPointPrecis3D(nav, mode) {
       window.setRoads([{ uid: "rd_pp3", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
       window.setEditorPoints([poi("pt_pp3_pl0", "plaque", -5, 2), poi("pt_pp3_pl1", "plaque", 5, 2, Q(8, -1.1)),
         poi("pt_pp3_ch1", "chatiere", -20, 0.5, Q(-22, -0.3, -19, 0.3)), poi("pt_pp3_ch0", "chatiere", -35, 0.5),
+        poi("pt_pp3_ch3", "chatiere", -49, 0.5, { pts: [P(-51, -0.3), P(-49, 0.3), P(-47, -0.3)] }),
         poi("pt_pp3_pa", "pa", 20, 0.5, Q(25, 0)), poi("pt_pp3_info", "info", 30, 2, Q(34, -0.5))]);
       window.KtaGalerie.invalider();
       window.HistoryManager.reset();
@@ -8317,7 +8318,28 @@ async function sectionPointPrecis3D(nav, mode) {
       const pick = function (v) { return v ? { place: window.__ppRel(v), cote: v.cote, long: v.long, dir: v.dir } : null; };
       const info = e.panneaux.filter(function (s) { return s.nom === "POI pt_pp3_info"; })[0];
       const pa25 = e.volumes.filter(function (v) { return v.tag === "pa" && Math.abs(window.__ppRel(v)[0] - 25) < 1; });
-      return { pl0: pick(vol("plaque", -5)), pl1: pick(vol("plaque", 7)), ch1: pick(vol("chatiere", -20)),
+      // Chatière en trois points : ses volumes (un par segment), puis une marche de 0,1 m au travers, de x = −53 à −43.
+      const ch3 = e.volumes.filter(function (v) { return v.tag === "chatiere" && window.__ppRel(v)[0] < -45; })
+        .map(function (v) {
+          return { place: window.__ppRel(v), long: v.long, dir: v.dir, faces: v.faces, segment: v.segment,
+            onglet: v.onglet, largeTrou: v.largeTrou, construit: v.construit, roche: v.roche };
+        }).sort(function (a, b) { return a.place[0] - b.place[0]; });
+      const prof = [];
+      K.placer(P(-53, 0).x, P(-53, 0).y, 90);
+      await images(2);
+      for (let i = 0; i < 100; i++) {
+        K.avancer(0.1);
+        await images(1);
+        const et = K.etat();
+        prof.push([window.__ppRel(et.pos)[0], et.ramper]);
+      }
+      K.placer(P(0, 0).x, P(0, 0).y, 90);
+      await images(2);
+      const dans = prof.filter(function (q) { return q[0] > -50.9 && q[0] < -47.1; });
+      return { ch3: ch3, marche: { fin: prof[prof.length - 1][0], n: dans.length,
+        minDans: Math.min.apply(null, dans.map(function (q) { return q[1]; })),
+        recul: prof.filter(function (q, i) { return i && q[0] < prof[i - 1][0] - 1e-6; }).length },
+      pl0: pick(vol("plaque", -5)), pl1: pick(vol("plaque", 7)), ch1: pick(vol("chatiere", -20)),
         ch0: pick(vol("chatiere", -35)), pa: pick(vol("pa", 21)), paPrecis: pa25.length > 0,
         info: info ? [+(info.x - ox).toFixed(2), +(info.z - oz).toFixed(2)] : null };
     });
@@ -8327,8 +8349,22 @@ async function sectionPointPrecis3D(nav, mode) {
     const L3 = Math.hypot(3, 0.6), D3 = Math.atan2(0.6, 3) * 180 / Math.PI;
     verifier(F.ch1 && Math.abs(F.ch1.long - L3) < 0.02 && Math.abs(F.ch1.dir - D3) < 0.2 &&
       Math.abs(F.ch1.place[0] + 20.5) < 0.1,
-    nom + "chatière en deux points : longueur " + L3.toFixed(2) + " m et axe " + D3.toFixed(1) + "° des deux points, " +
-      "au milieu", F.ch1);
+    nom + "ancienne chatière (x, y, x2, y2) : longueur " + L3.toFixed(2) + " m et axe " + D3.toFixed(1) +
+      "° des deux points, au milieu", F.ch1);
+    // Trois points (−51, −0,3), (−49, 0,3), (−47, −0,3) sur une galerie droite : deux segments de √(2² + 0,6²) m à
+    // ±16,7°, une face trouée à chaque bout du tracé, coupe en onglet tan(−16,7°) au coude, même trou partout.
+    const c3 = F.ch3 || [], L2 = Math.hypot(2, 0.6), D2 = Math.atan2(0.6, 2) * 180 / Math.PI, K2 = Math.tan(-D2 * Math.PI / 180);
+    verifier(c3.length === 2 && c3.every(function (s) { return Math.abs(s.long - L2) < 0.02; }) &&
+      Math.abs(c3[0].dir - D2) < 0.2 && Math.abs(c3[1].dir + D2) < 0.2 && Math.abs(c3[0].place[0] + 50) < 0.1 &&
+      Math.abs(c3[1].place[0] + 48) < 0.1 && c3[0].faces === 1 && c3[1].faces === 1 &&
+      c3[0].segment[0] === 0 && c3[1].segment[0] === 1 && c3[0].segment[1] === 2 &&
+      Math.abs(c3[0].onglet[0]) < 1e-6 && Math.abs(c3[0].onglet[1] - K2) < 0.01 && Math.abs(c3[1].onglet[0] - K2) < 0.01 &&
+      Math.abs(c3[1].onglet[1]) < 1e-6 && c3[0].largeTrou === c3[1].largeTrou && c3.every(function (s) { return s.roche > 0; }),
+    nom + "chatière en trois points : une roche par segment (" + L2.toFixed(2) + " m, ±" + D2.toFixed(1) + "°), " +
+      "faces aux deux bouts seulement, onglet au coude, même trou", c3);
+    verifier(F.marche && F.marche.recul === 0 && F.marche.fin > -43.5 && F.marche.n >= 30 && F.marche.minDans > 0.999,
+      nom + "chatière en trois points : on la traverse sans être arrêté, à plat ventre tout du long (coude compris)",
+      F.marche);
     verifier(F.ch0 && Math.abs(F.ch0.long - 1.8) < 0.01 && Math.abs(F.ch0.dir) < 0.01,
       nom + "chatière sans point précis : 1,8 m dans l'axe de la galerie (inchangée)", F.ch0);
     verifier(F.pa && Math.abs(F.pa.place[0] - 20) < 0.6 && !F.paPrecis,
@@ -8478,15 +8514,19 @@ async function sectionPointPrecis3D(nav, mode) {
     await page.waitForTimeout(300);
     const b2 = await bandeau();
     await tapEcran(await sol(-33.5, 0.2));
+    await page.waitForTimeout(300);
+    const b3 = await bandeau();
+    await tapEcran(await centre("#kta-precis-terminer"));
     await page.waitForTimeout(900);
     const pc = await point("pt_pp3_ch0");
     const q = pc && pc.precis;
-    const rq = q ? await page.evaluate(function (o) {
-      return [window.__ppRel(o), window.__ppRel({ x: o.x2, y: o.y2 })];
-    }, q) : null;
-    verifier(b1 && /début/.test(b1.texte) && b2 && /fin/.test(b2.texte) && rq && Math.abs(rq[0][0] + 36.5) < 0.15 &&
-      Math.abs(rq[1][0] + 33.5) < 0.15, nom + "🎯 chatière depuis la fiche 3D : début puis fin au sol touché",
-      { b1: b1, b2: b2, rq: rq });
+    const rq = q && Array.isArray(q.pts) ? await page.evaluate(function (l) {
+      return l.map(function (o) { return window.__ppRel(o); });
+    }, q.pts) : null;
+    verifier(b1 && /début/.test(b1.texte) && b2 && /suivant/.test(b2.texte) && b3 && b3.dessus && /2 points/.test(b3.texte) &&
+      rq && rq.length === 2 && Math.abs(rq[0][0] + 36.5) < 0.15 && Math.abs(rq[1][0] + 33.5) < 0.15,
+    nom + "🎯 chatière depuis la fiche 3D : un toucher au sol par point, « Terminer » au-dessus de la vue",
+    { b1: b1, b2: b2, b3: b3, rq: rq });
     let vch = null;
     for (let i = 0; i < 20 && vch === null; i++) {
       await page.waitForTimeout(100);

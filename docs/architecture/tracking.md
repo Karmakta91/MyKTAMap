@@ -790,7 +790,7 @@ active, et le PDR seul (`_avancerRaster`) partirait de la roche.
   point (`utils.js > _ktaPopupAction`, cas `ici` : POI et étape d'itinéraire, carte comme vue 3D) et la bulle de point
   du mode urgence (`emergencyMode.js > _jeSuisIciPoint`).
 - **POI à point précis** (`poiPrecis.js > cible`, décision KARMA du 06/11/2026) : `x`, `y` = le point précis (chatière :
-  le milieu de ses deux points) et la règle ci-dessous part de lui ; `opts.icone` porte l'icône pour que le hook
+  le point de son tracé à mi-longueur) et la règle ci-dessous part de lui ; `opts.icone` porte l'icône pour que le hook
   (`_notifierRecalage`) valide aussi une étape ou un portail posés sur elle. Sans point précis, ou passage entre
   niveaux : l'icône.
 - **Un tap sur la carte est une position voulue** (décision produit) : le clic du 📍 Mode recalage
@@ -1737,7 +1737,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   l'icône. ⚠️ contrat : une seule entrée, `galerieEmprise.js > _departPassage` (son `centre`, après le raccord d'un
   passage), donc `placePassage` → volume, emprise d'une niche, obstacle (`BLOQUE`), plaque / épure / portail sur la
   paroi ou la face de structure la plus proche **du point précis** ; véhicule, cavage, puits d'accès placés depuis lui ;
-  chatière en deux points : ci-dessous. Panneau : celui d'un volume le suit déjà (`placesPassage`) ; un POI sans forme
+  chatière en plusieurs points : ci-dessous. Panneau : celui d'un volume le suit déjà (`placesPassage`) ; un POI sans forme
   y a le sien au point précis, ramené contre la paroi s'il tombe dans la roche (`_volumesDuNiveau`, `_contreParoi`).
   Ignoré pour les passages entre niveaux (`KtaPoiJonction.porteNiveaux` : jes, jpe, jps, peo, eso, pa) : leurs raccords
   validés. La signature des emprises (`_signature`) le compte. Limite : le POI reste rangé dans la tuile de son icône
@@ -1751,11 +1751,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (centré, au plus la galerie moins 0,2 m ; profil `PROFIL_CHATIERE`, voûte surbaissée), roche au-dessus jusqu'au
   plafond et sur les côtés ; axe long le long de la galerie (`dir` = sens de l'axe, `placePassage`), le trou se
   traverse dans le sens de la marche (🩸 l'ancien trou de 0,6 × 0,6 m à voûte pointue se lisait, du dedans et au
-  téléphone, comme une fente verticale). Point précis en deux points (`poiPrecis.js`, début → fin) :
-  `_segmentChatiere` lui donne leur longueur (`CHATIERE.court` = 0,4 m au moins) et leur axe, au centre de
-  `placePassage` (le milieu des deux points, ramené sur l'axe de la galerie : la roche en barre toute la largeur) ;
-  un seul point : la règle de 1,8 m à ce point. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
-  en suivi comme en libre, l'œil descend à 0,35 m dans la roche et sur 1 m de part et d'autre en fondu
+  téléphone, comme une fente verticale). Point précis en plusieurs points (`poiPrecis.js`, `pts` du début à la fin ;
+  décision KARMA du 10/11/2026) : **une roche par segment** (`_segmentsChatiere`), chaque segment décalé comme son
+  milieu par `placePassage` (ramené sur l'axe de la galerie : la roche en barre toute la largeur), un point intérieur
+  décalé de la moyenne de ses deux segments pour qu'ils se touchent ; `_joindreChatiere` coupe les bouts en onglet à
+  chaque coude (pente tan(virage / 2), bornée pour qu'aucun segment ne se retourne sur la largeur de sa roche) et donne
+  à tous le trou de la galerie la plus étroite ; face trouée au début et à la fin du tracé seulement : le boyau suit les
+  coudes. Deux points : longueur (`CHATIERE.court` = 0,4 m au moins) et axe des deux points, au centre de
+  `placePassage` du milieu (ancienne forme `x2`, `y2` comprise). Un seul point : la règle de 1,8 m à ce point. Panneau
+  au segment qui porte le milieu du tracé. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
+  en suivi comme en libre, l'œil descend à 0,35 m dans la roche (tout du long, coudes compris) et sur 1 m de part et
+  d'autre en fondu
   (`_baisseChatiere`, `_placerCamera`), puis remonte ; vue d'édition : rien. `ctx.libre` des add-ons reste ouvert
   (les égarés du jeu la traversent debout, au travers de la roche : limite connue). **Plaque** (`plaque`),
   **épure** (`epure`), **portail** (`portail`) : à plat sur la paroi du tube **du côté du POI**, en face de lui le

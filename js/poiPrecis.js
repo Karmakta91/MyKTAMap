@@ -5,19 +5,23 @@
  */
 
 // poiPrecis.js — point précis d'un POI : le vrai lieu (le mur de la plaque…) quand l'icône est décalée pour lire.
-// Modèle : `precis: { x, y }` (px du plan, même niveau que le POI) ; chatière (tag `chatiere`) : `{ x, y, x2, y2 }` =
-// début et fin. `x`, `y` du POI restent la place de l'icône. Absent = rien ne change nulle part.
+// Modèle : `precis: { x, y }` (px du plan, même niveau que le POI) ; chatière (tag `chatiere`) : `{ pts: [{ x, y },
+// …] }`, 2 points au moins, du début à la fin. 🩸 L'ancienne chatière `{ x, y, x2, y2 }` se lit telle quelle (lire()
+// normalise, aucune migration) : tout lecteur passe par lire(), jamais par `precis` brut. `x`, `y` du POI restent la
+// place de l'icône. Absent = rien ne change nulle part.
 // ⚠️ contrat : les passages entre niveaux (poiJonction.js > porteNiveaux : jes, jpe, jps, peo, eso, pa) n'en ont
 // pas (leurs raccords validés jouent ce rôle) : pas de bouton, champ ignoré partout (lire → null).
-// Lecteurs : vue 3D (galerieEmprise.js > _departPassage, vue3d.js > _dimAcces, panneau), itinéraire (cible : « Y
-// aller », étape, repère du guidage), « 📍 Je suis ici » (cible, utils.js > _ktaPopupAction, emergencyMode.js).
-// Exports KMZ / GPX / GeoJSON / PNG / PDF : l'icône (décision produit).
+// Lecteurs : vue 3D (galerieEmprise.js > _departPassage, vue3d.js > _segmentsChatiere, panneau), itinéraire (cible :
+// « Y aller », étape, repère du guidage), « 📍 Je suis ici » (cible, utils.js > _ktaPopupAction, emergencyMode.js) ;
+// cible d'une chatière = le milieu de son tracé mesuré en longueur (centre). Exports KMZ / GPX / GeoJSON / PNG / PDF :
+// l'icône (décision produit).
 // Saisie depuis la fiche seulement (utils.js > buildPointPopupHtml, mêmes droits que ✏️ Modifier) : armer() pose un
 // bandeau `.kta-iti-floater` (utils.js > _modeClicCarteActif : aucune fiche, clic ré-émis par map.js), un tap pose le
-// point (chatière : début puis fin), Échap ou ✕ annule. Une écriture = une entrée d'historique (Ctrl+Z).
-// Affichage 2D : pointillé de l'icône au point et petit carré (chatière : deux carrés reliés, pointillé vers le
-// milieu), jeton --kta-accent par classe CSS (renderer SVG), jamais interactif ; visible à partir de SEUIL_PX_PAR_M
-// px d'écran par mètre (sans échelle : ZOOM_SANS_ECHELLE) et toujours pendant que la fiche du POI est ouverte.
+// point ; chatière : un tap par point, « Terminer » (ou Entrée) à partir de 2. Échap ou ✕ annule. Une écriture = une
+// entrée d'historique (Ctrl+Z).
+// Affichage 2D : pointillé de l'icône au point et petit carré (chatière : un carré par point reliés par la
+// polyligne, pointillé vers le milieu), jeton --kta-accent par classe CSS (renderer SVG), jamais interactif ; visible
+// à partir de SEUIL_PX_PAR_M px d'écran par mètre (sans échelle : ZOOM_SANS_ECHELLE) et toujours fiche ouverte.
 // Expose window.KtaPoiPrecis. Garde-fou : scripts/smoke/checkup-point-precis.js · Doc : data-formats.md § Format
 // point, ui.md § Point précis.
 
@@ -38,20 +42,49 @@
     const J = window.KtaPoiJonction;
     return !!p && !(J && J.porteNiveaux(_tag(p)));
   }
-  function deuxPoints(p) { return _tag(p) === "chatiere"; }
+  function multiPoints(p) { return _tag(p) === "chatiere"; }
 
-  // Point précis lisible du POI → { x, y } ou { x, y, x2, y2 } (chatière à deux points) | null.
+  // Points rangés dans `precis`, quelle que soit sa forme : { pts } ou l'ancienne { x, y[, x2, y2] }.
+  function _ptsBruts(q) {
+    if (Array.isArray(q.pts)) {
+      return q.pts.filter(function (a) { return a && _num(a.x) && _num(a.y); })
+        .map(function (a) { return { x: a.x, y: a.y }; });
+    }
+    if (!_num(q.x) || !_num(q.y)) return [];
+    const out = [{ x: q.x, y: q.y }];
+    if (_num(q.x2) && _num(q.y2)) out.push({ x: q.x2, y: q.y2 });
+    return out;
+  }
+
+  // Point précis lisible du POI → { x, y } ou { x, y, pts } (chatière à 2 points ou plus ; x, y = le début) | null.
+  // Un POI qui n'est plus une chatière garde son premier point.
   function lire(p) {
     const q = p && p.precis;
-    if (!q || !applicable(p) || !_num(q.x) || !_num(q.y)) return null;
-    if (deuxPoints(p) && _num(q.x2) && _num(q.y2)) return { x: q.x, y: q.y, x2: q.x2, y2: q.y2 };
-    return { x: q.x, y: q.y };
+    if (!q || typeof q !== "object" || !applicable(p)) return null;
+    const pts = _ptsBruts(q);
+    if (!pts.length) return null;
+    if (multiPoints(p) && pts.length >= 2) return { x: pts[0].x, y: pts[0].y, pts: pts };
+    return { x: pts[0].x, y: pts[0].y };
   }
-  // Centre du point précis (chatière à deux points : le milieu) | null.
+
+  // Point de la polyligne à mi-longueur (le premier point si elle est de longueur nulle).
+  function milieu(pts) {
+    let tot = 0;
+    for (let i = 1; i < pts.length; i++) tot += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    let reste = tot / 2;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], l = Math.hypot(b.x - a.x, b.y - a.y);
+      if (l > 0 && reste <= l) return { x: a.x + (b.x - a.x) * reste / l, y: a.y + (b.y - a.y) * reste / l };
+      reste -= l;
+    }
+    return { x: pts[0].x, y: pts[0].y };
+  }
+
+  // Centre du point précis (chatière : le milieu de son tracé mesuré en longueur) | null.
   function centre(p) {
     const q = lire(p);
     if (!q) return null;
-    return q.x2 === undefined ? { x: q.x, y: q.y } : { x: (q.x + q.x2) / 2, y: (q.y + q.y2) / 2 };
+    return q.pts ? milieu(q.pts) : { x: q.x, y: q.y };
   }
   // Où vise l'itinéraire : le point précis s'il existe, sinon le POI.
   function cible(p) {
@@ -111,19 +144,22 @@
   // ── Mode « Touchez le point exact » (genre « precis ») ou « Touchez le nouvel emplacement » (« deplacer ») ──────
   // 📍 Déplacer (fiche de la vue 3D) repose l'ICÔNE par editor.js > ktaDeplacerPointSession (la règle de
   // Repositionner) ; la vue 3D change son toucher au sol en clic de la carte (vue3d.js > _poserAuSol).
-  let _mode = null;   // { genre, id, x, y, nom, deux, debut, carte, handler, temp }
+  let _mode = null;   // { genre, id, x, y, nom, multi, pts, carte, handler, temp }
 
   function enCours() {
     if (!_mode) return null;
-    return { genre: _mode.genre, deux: _mode.deux,
-      etape: _mode.debut ? "fin" : (_mode.deux ? "debut" : "point") };
+    return { genre: _mode.genre, multi: _mode.multi, points: _mode.pts.length,
+      etape: !_mode.multi ? "point" : _mode.pts.length ? "suivant" : "debut" };
   }
 
   // 🩸 Sur window en capture : avant l'écouteur de document de la vue 3D, qui fermerait la fiche ou la vue.
+  // Entrée termine une chatière qui a ses 2 points (sinon elle ne fait rien de plus que d'habitude).
   function _surTouche(e) {
-    if (!e || e.key !== "Escape" || !_mode) return;
-    e.stopPropagation(); e.preventDefault();
-    annuler();
+    if (!e || !_mode) return;
+    if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); annuler(); return; }
+    if (e.key === "Enter" && _mode.multi && _mode.pts.length >= 2) {
+      e.stopPropagation(); e.preventDefault(); terminer();
+    }
   }
 
   function annuler() {
@@ -138,9 +174,41 @@
   }
 
   function _texteBandeau() {
-    const k = _mode.genre === "deplacer" ? "poiPrecis.bandeauDeplacer" : !_mode.deux ? "poiPrecis.bandeau"
-      : _mode.debut ? "poiPrecis.bandeauFin" : "poiPrecis.bandeauDebut";
-    return _t(k, { nom: _mode.nom });
+    const n = _mode.pts.length;
+    const k = _mode.genre === "deplacer" ? "poiPrecis.bandeauDeplacer" : !_mode.multi ? "poiPrecis.bandeau"
+      : n === 0 ? "poiPrecis.bandeauDebut" : n === 1 ? "poiPrecis.bandeauSuivant" : "poiPrecis.bandeauSuite";
+    return _t(k, { nom: _mode.nom, n: n });
+  }
+
+  // Bandeau et bouton « Terminer » (présent dès le début d'une chatière, actif à partir de 2 points).
+  function _majBandeau() {
+    if (!_mode) return;
+    const msg = document.querySelector("#kta-precis-floater .kta-iti-floater-msg");
+    if (msg) msg.textContent = _texteBandeau();
+    const fin = document.getElementById("kta-precis-terminer");
+    if (fin) fin.disabled = _mode.pts.length < 2;
+  }
+
+  // 🩸 Le POI est recherché à l'écriture : la session a pu changer depuis l'armement (annulation, suppression, plan
+  // rechargé).
+  function _poser(valeur, px, py) {
+    const cible = _point(_mode.id, _mode.x, _mode.y);
+    const g = _mode.genre, nom = _mode.nom;
+    annuler();
+    if (!cible || _refuse()) return false;
+    if (g === "deplacer") {
+      if (typeof window.ktaDeplacerPointSession === "function") window.ktaDeplacerPointSession(cible, px, py);
+      return true;
+    }
+    _ecrire(cible, valeur, "poiPrecis.undo.pose");
+    _toast(_t("poiPrecis.toast.pose", { nom: nom }), "success");
+    return true;
+  }
+
+  // Chatière : écrit les points posés (2 au moins) en une seule entrée d'historique. → true si écrit.
+  function terminer() {
+    if (!_mode || !_mode.multi || _mode.pts.length < 2) return false;
+    return _poser({ pts: _mode.pts.slice() });
   }
 
   // `genre` : "precis" (défaut) | "deplacer". → true si le mode est armé.
@@ -160,7 +228,7 @@
 
     const carte = window.map;
     _mode = { genre: genre, id: id, x: Number(x), y: Number(y), nom: String(pt.nom || id || ""),
-      deux: genre === "precis" && deuxPoints(pt), debut: null, carte: carte, temp: null };
+      multi: genre === "precis" && multiPoints(pt), pts: [], carte: carte, temp: null };
     _mode.handler = function (e) {
       if (!_mode || !e || !e.latlng) return;
       // Un outil armé depuis (bouton de la barre) : il garde ses clics, le mode tombe.
@@ -170,25 +238,14 @@
       const H = window.APP_CONFIG && window.APP_CONFIG.imageHeight;
       // Chemin INVERSE de convertCoord(x, y) = [imageHeight - y, x].
       const px = _r(e.latlng.lng), py = _r(H ? H - e.latlng.lat : e.latlng.lat);
-      if (_mode.deux && !_mode.debut) {
-        _mode.debut = { x: px, y: py };
-        _mode.temp = _calqueTemp(carte, px, py);
-        const msg = document.querySelector("#kta-precis-floater .kta-iti-floater-msg");
-        if (msg) msg.textContent = _texteBandeau();
+      if (_mode.multi) {
+        _mode.pts.push({ x: px, y: py });
+        if (_mode.temp) { try { _mode.temp.remove(); } catch (err) { /* carte remplacée */ } }
+        _mode.temp = _calqueTemp(carte, _mode.pts);
+        _majBandeau();
         return;
       }
-      // 🩸 Recherché AU TAP : la session a pu changer depuis l'armement (annulation, suppression, plan rechargé).
-      const cible = _point(_mode.id, _mode.x, _mode.y);
-      const g = _mode.genre, nom = _mode.nom;
-      const valeur = _mode.debut ? { x: _mode.debut.x, y: _mode.debut.y, x2: px, y2: py } : { x: px, y: py };
-      annuler();
-      if (!cible || _refuse()) return;
-      if (g === "deplacer") {
-        if (typeof window.ktaDeplacerPointSession === "function") window.ktaDeplacerPointSession(cible, px, py);
-        return;
-      }
-      _ecrire(cible, valeur, "poiPrecis.undo.pose");
-      _toast(_t("poiPrecis.toast.pose", { nom: nom }), "success");
+      _poser({ x: px, y: py }, px, py);
     };
     carte.on("click", _mode.handler);
 
@@ -196,10 +253,23 @@
     fl.id = "kta-precis-floater";
     fl.className = "kta-iti-floater kta-precis-floater";
     fl.innerHTML = '<span class="kta-iti-floater-icon"></span><span class="kta-iti-floater-msg"></span>' +
+      (_mode.multi ? '<button class="kta-btn kta-btn-primary" id="kta-precis-terminer" type="button"></button>' : "") +
       '<button class="kta-btn kta-btn-ghost" id="kta-precis-cancel" type="button"></button>';
-    fl.querySelector(".kta-iti-floater-icon").textContent = genre === "deplacer" ? "📍" : "🎯";
+    // Icône SVG figée (ktaIcones.js), jamais une donnée de l'utilisateur.
+    if (typeof window.ktaIcone === "function") {
+      const ico = genre === "deplacer" ? "map-pin" : "crosshair";
+      fl.querySelector(".kta-iti-floater-icon").innerHTML = window.ktaIcone(ico);
+    }
     // Le nom vient de l'utilisateur : en TEXTE, jamais en HTML.
     fl.querySelector(".kta-iti-floater-msg").textContent = _texteBandeau();
+    const fin = fl.querySelector("#kta-precis-terminer");
+    if (fin) {
+      fin.innerHTML = (typeof window.ktaIcone === "function" ? window.ktaIcone("check") + " " : "") +
+        window.ktaEsc(_t("poiPrecis.terminer"));
+      fin.title = _t("poiPrecis.terminerTitre");
+      fin.disabled = true;
+      fin.addEventListener("click", terminer);
+    }
     const b = fl.querySelector("#kta-precis-cancel");
     b.textContent = _t("poiPrecis.annuler");
     b.addEventListener("click", annuler);
@@ -217,8 +287,17 @@
     return L.marker(ll, { interactive: false, keyboard: false,
       icon: L.divIcon({ className: "kta-precis-carre", iconSize: [CARRE_PX, CARRE_PX] }) });
   }
-  function _calqueTemp(m, x, y) {
-    try { return _carre(window.convertCoord(x, y)).addTo(m); } catch (e) { return null; }
+  // Carré à chaque point et polyligne qui les relie (affichage et points provisoires de la saisie).
+  function _trace(g, pts, rd) {
+    const cv = window.convertCoord, ll = pts.map(function (a) { return cv(a.x, a.y); });
+    if (ll.length > 1) {
+      L.polyline(ll, { renderer: rd, weight: 3, interactive: false, className: "kta-precis-segment" }).addTo(g);
+    }
+    ll.forEach(function (c) { _carre(c).addTo(g); });
+    return g;
+  }
+  function _calqueTemp(m, pts) {
+    try { return _trace(L.layerGroup(), pts, _renderer(m)).addTo(m); } catch (e) { return null; }
   }
 
   function zoomSuffit(m) {
@@ -239,13 +318,7 @@
     const c = centre(point);
     L.polyline([cv(point.x, point.y), cv(c.x, c.y)], { renderer: rd, weight: 2, dashArray: "4 4",
       interactive: false, className: "kta-precis-trait" }).addTo(g);
-    if (q.x2 !== undefined) {
-      L.polyline([cv(q.x, q.y), cv(q.x2, q.y2)], { renderer: rd, weight: 3, interactive: false,
-        className: "kta-precis-segment" }).addTo(g);
-      _carre(cv(q.x2, q.y2)).addTo(g);
-    }
-    _carre(cv(q.x, q.y)).addTo(g);
-    return g;
+    return _trace(g, q.pts || [{ x: q.x, y: q.y }], rd);
   }
 
   function maj(marker) {
@@ -297,12 +370,14 @@
     SEUIL_PX_PAR_M: SEUIL_PX_PAR_M,
     ZOOM_SANS_ECHELLE: ZOOM_SANS_ECHELLE,
     applicable: applicable,
-    deuxPoints: deuxPoints,
+    multiPoints: multiPoints,
     lire: lire,
+    milieu: milieu,
     centre: centre,
     cible: cible,
     htmlFiche: htmlFiche,
     armer: armer,
+    terminer: terminer,
     annuler: annuler,
     retirer: retirer,
     enCours: enCours,
