@@ -2593,16 +2593,23 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
   point précis** et **Retirer la précision** s'il en a un. Aucun bouton pour un passage entre niveaux
   (`KtaPoiJonction.porteNiveaux`). Le bouton arme le mode pendant la capture de son clic, comme Repositionner : la
   fiche est exclue du clic ré-émis (`map.js > _ktaPickCaptureClick`).
-- **Mode** : bandeau `.kta-iti-floater` (`#kta-precis-floater`, « « Nom » : touchez le point exact · ✕ Annuler » ;
-  chatière : « touchez le début », puis « la fin », un carré provisoire au début). `_modeClicCarteActif()` le voit :
+- **Mode** : bandeau `.kta-iti-floater` (`#kta-precis-floater`, icône `crosshair` — `map-pin` pour 📍 Déplacer —,
+  « « Nom » : touchez le point exact · ✕ Annuler » ; chatière : « touchez le début », « le point suivant », puis
+  « n points — touchez le suivant ou Terminer », bouton **✓ Terminer** (`#kta-precis-terminer`, icône `check`) grisé
+  sous 2 points, Entrée fait de même ; **Retirer le dernier point** (`#kta-precis-retirer-dernier`, icône `undo-2`)
+  grisé sans point, Retour arrière fait de même hors d'un champ de saisie ; carrés et polyligne provisoires redessinés
+  à chaque tap ou retrait). Les points ne sont écrits qu'à
+  Terminer (une seule entrée annulable) ; Échap ou ✕ avec des points posés n'écrit rien.
+  `_modeClicCarteActif()` le voit :
   aucune fiche ne s'ouvre, le tap est ré-émis même sur un marqueur, le plan orienté se redresse. Les autres modes
   « clic carte » tombent à l'armement. Échap (écouteur de `window` en capture : `shortcuts.js > _echapCarte` cède au
   bandeau, la vue 3D aussi) ou ✕ annulent sans rien écrire. Un outil armé depuis la barre : le tap suivant est à lui.
 - ⚠️ **Écriture** (une pose ou un retrait = une entrée annulable) : `captureState("editorPoints")` → mutation en place
   → `KtaUid.touch` → `renderEditorPoints` → `record` → `SessionPersist.save({ force: true })`. Le point est recherché au
   tap (id + coordonnées de l'icône, `editor.js > ktaPointSession`).
-- **Affichage** : pointillé (`.kta-precis-trait`, 2 px, `4 4`) de l'icône au point précis — au milieu des deux
-  points d'une chatière —, segment plein entre eux (`.kta-precis-segment`), petit carré de 9 px à chaque point
+- **Affichage** : pointillé (`.kta-precis-trait`, 2 px, `4 4`) de l'icône au point précis — au milieu du tracé d'une
+  chatière, mesuré en longueur —, polyligne pleine par ses points (`.kta-precis-segment`), petit carré de 9 px à
+  chaque point
   (`.kta-precis-carre`, divIcon) ; couleurs par classes CSS (`--kta-accent`, liseré `--kta-sur-accent`), renderer SVG
   propre à la carte (`map._ktaPrecisRendu`) : la carte dessine en canvas, où une classe ne vaut rien. Rien
   n'est interactif (`pointer-events: none`). ⚠️ Visible si l'échelle donne au moins `SEUIL_PX_PAR_M` = 4 px d'écran par
@@ -2611,7 +2618,8 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
   marqueur quitte la carte. Rotation : pointillé et carrés vivent dans les panes de la carte, sous `.kta-rotate-pane` :
   ils tournent avec le plan, comme les icônes (rien à contre-tourner). Branché par `brancherMarqueur` à la création
   de chaque marqueur (session et calques), sans coût pour un POI sans point précis.
-- **Ce qui vise le point précis** (`KtaPoiPrecis.cible` : le point, le milieu des deux points d'une chatière) : 🧭 Y
+- **Ce qui vise le point précis** (`KtaPoiPrecis.cible` : le point ; chatière : le point de son tracé à mi-longueur,
+  `KtaPoiPrecis.milieu`, pas la moyenne de ses points) : 🧭 Y
   aller, ➕ Itinéraire et **📍 Je suis ici** de la fiche (`data-kta-cx` / `data-kta-cy` des trois boutons), carte comme
   vue 3D, et la bulle de point du mode urgence. « Je suis ici » y applique la règle de la galerie (`tracking.md`
   § Recalage dans la galerie) depuis le point précis ; une étape ou un portail posés sur l'icône se valident encore

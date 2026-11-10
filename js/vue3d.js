@@ -278,8 +278,9 @@
   // au-dessus jusqu'au plafond et sur les côtés ; elle n'arrête rien, la caméra s'y abaisse à `oeil` m (on rampe), en
   // descendant sur `approche` m avant l'entrée (et remontant d'autant après la sortie). La roche déborde de
   // `deborde` m dans les parois (aucun jour au bord). Longueur : 1,8 m par défaut, une chatière courte (un corps
-  // allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux ; point précis en deux points
-  // (poiPrecis.js : début et fin) : leur distance, `court` m au moins, et leur axe (_segmentChatiere).
+  // allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux ; point précis en points (poiPrecis.js :
+  // du début à la fin) : une roche par segment qui suit les coudes (_segmentsChatiere) ; deux points : leur distance,
+  // `court` m au moins, et leur axe.
   const CHATIERE = { long: 1.8, court: 0.4, trou: 0.6, large: 0.9, jeu: 0.2, oeil: 0.35, approche: 1, deborde: 0.3 };
   // Profil du trou (t en part de `large`, y en part de `trou`, vers le haut) : sol droit, flancs bas, voûte surbaissée
   // (plus large que haut : on y passe en rampant, pas debout).
@@ -4599,6 +4600,26 @@
       e.msFaces += performance.now() - t0;
       return r;
     };
+    // Champs de place d'un volume posé en `pl` (px, ang) ; `panneau` : le panneau du POI suit ce volume.
+    const placer = function (v, pl, dim, p, src, panneau) {
+      v.cote = pl.paroi || 0;
+      v.appui = !v.surParoi ? null : pl.structure ? "structure" : "paroi";
+      v.point = src;
+      v.a = dim[0] / 2; v.b = dim[1] / 2;
+      v.x = pl.x; v.y = pl.y; v.ramene = pl.ramene;
+      // Escalier : repère retourné quand l'entrée (KtaGalerie, _entree) est du côté +ang, les marches partant de −a ;
+      // en niche, ang est la normale vers le fond et l'entrée −1 (pied contre la paroi).
+      v.dir = pl.ang + (v.forme === "escalier" && pl.entree === 1 ? Math.PI : 0);
+      v.cx = pl.x / e.sc; v.cz = pl.y / e.sc;
+      v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
+      // Volume ailleurs que le point (recalé, raccord validé) : son panneau le suit (_placePanneau).
+      if (panneau && Math.hypot(pl.x - p.x, pl.y - p.y) > 1e-6) e.placesPassage.set(p, [v.cx, v.cz]);
+      if (v.comble) {
+        v.cone = pl.cone ? { cx: pl.cone.x / e.sc, cz: pl.cone.y / e.sc, R: pl.cone.R }
+          : { cx: v.cx, cz: v.cz, R: DIM_ACCES.cone };
+      }
+      if (v.acces) _dimAcces(v);
+    };
     d.points.forEach(function (p) {
       const src = p._v3dJonction || p, tag = _premierTag(src);
       if (!J.porteNiveaux(tag) && !window.KtaGalerie.ACCES[tag]) return;
@@ -4616,6 +4637,19 @@
       if (!v.sol && !v.plafond && !v.acces) return;   // passage sans autre niveau (plan à un niveau) : rien à ouvrir
       const dim = v.forme === "escalier" ? VOLUME.escalier
         : v.forme === "puits" ? [VOLUME.puits, VOLUME.puits] : [VOLUME.aeration, VOLUME.aeration];
+      // Chatière relevée en points (poiPrecis.js) : un volume par segment, placés et raccordés (_segmentsChatiere,
+      // _joindreChatiere) ; panneau au segment du milieu du tracé.
+      const segs = v.chatiere ? _segmentsChatiere(src, N) : null;
+      if (segs) {
+        const vols = segs.map(function (s) {
+          const w = Object.assign({}, v, { seg: s });
+          placer(w, s.pl, dim, p, src, s.milieu);
+          return w;
+        });
+        _joindreChatiere(vols);
+        vols.forEach(function (w) { out.push(w); });
+        return;
+      }
       // Place et axe : KtaGalerie.placePassage, le calcul de l'emprise qui ouvre le tube (une seule règle).
       let pl = window.KtaGalerie.placePassage(src, N, e.rendu) || { x: p.x, y: p.y, ang: 0, ramene: false };
       // Forme murale sans paroi de tube à cette place (structures, chambre, loin de tout axe) : sur la face de
@@ -4624,23 +4658,7 @@
         pl = e.rendu === "galerie" ? null : surStructure(pl, v.forme);
         if (!pl) return;
       }
-      v.cote = pl.paroi || 0;
-      v.appui = !v.surParoi ? null : pl.structure ? "structure" : "paroi";
-      v.point = src;
-      v.a = dim[0] / 2; v.b = dim[1] / 2;
-      v.x = pl.x; v.y = pl.y; v.ramene = pl.ramene;
-      // Escalier : repère retourné quand l'entrée (KtaGalerie, _entree) est du côté +ang, les marches partant de −a ;
-      // en niche, ang est la normale vers le fond et l'entrée −1 (pied contre la paroi).
-      v.dir = pl.ang + (v.forme === "escalier" && pl.entree === 1 ? Math.PI : 0);
-      v.cx = pl.x / e.sc; v.cz = pl.y / e.sc;
-      v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
-      // Volume ailleurs que le point (recalé, raccord validé) : son panneau le suit (_placePanneau).
-      if (Math.hypot(pl.x - p.x, pl.y - p.y) > 1e-6) e.placesPassage.set(p, [v.cx, v.cz]);
-      if (v.comble) {
-        v.cone = pl.cone ? { cx: pl.cone.x / e.sc, cz: pl.cone.y / e.sc, R: pl.cone.R }
-          : { cx: v.cx, cz: v.cz, R: DIM_ACCES.cone };
-      }
-      if (v.acces) _dimAcces(v);
+      placer(v, pl, dim, p, src, true);
       out.push(v);
     });
     // Panneau d'un POI à point précis (poiPrecis.js > centre) que son volume n'a pas déjà placé : au point précis,
@@ -5320,8 +5338,8 @@
     else if (v.bassin) v.a = v.b = D.bassin / 2 + D.margelle;
     else if (v.chatiere) {
       v.b = _demiLargeurGalerie(v.cx, v.cz);
-      const s = _segmentChatiere(v.point);
-      v.a = s ? Math.max(CHATIERE.court, s.l) / 2 : CHATIERE.long / 2;
+      const s = v.seg;
+      v.a = !s ? CHATIERE.long / 2 : s.n === 1 ? Math.max(CHATIERE.court, s.l) / 2 : s.l / 2;
       if (s) v.dir = s.ang;
     } else if (v.surParoi) {
       v.a = Math.max(PLAQUE.lMax, EPURE.l, PORTAIL.l) / 2;
@@ -5340,15 +5358,68 @@
     if (v.cone) v.r = Math.max(v.r, Math.hypot(v.cone.cx - v.cx, v.cone.cz - v.cz) + v.cone.R);
   }
 
-  // Chatière relevée en deux points (poiPrecis.js > lire : début x, y et fin x2, y2) → { l (m), ang (rad, repère de
-  // KtaGalerie.placePassage) } | null. Le centre reste celui de placePassage (le milieu, ramené sur l'axe de la
-  // galerie : la roche barre toute sa largeur) ; seuls la longueur et l'axe viennent des deux points.
-  function _segmentChatiere(p) {
+  // Segments d'une chatière relevée en points (poiPrecis.js > lire : `pts`, 2 au moins, ancienne forme comprise) au
+  // niveau N → [{ pl (place : x, y px, ang), l (m), ang (rad, repère de KtaGalerie.placePassage), coude0, coude1 (rad,
+  // virage au début et à la fin, 0 aux bouts), i, n, debut, fin, milieu (porte le milieu du tracé en longueur) }] |
+  // null. Chaque segment est décalé comme son milieu par placePassage (ramené sur l'axe de la galerie : la roche barre
+  // toute sa largeur) ; un point intérieur prend la moyenne des décalages de ses deux segments, pour que les segments
+  // se touchent. Deux points : le centre de placePassage, longueur et axe des deux points (la règle d'une chatière
+  // courte). 🩸 Points confondus ignorés : un segment nul n'a pas d'axe.
+  function _segmentsChatiere(p, N) {
     const q = window.KtaPoiPrecis && p ? window.KtaPoiPrecis.lire(p) : null;
-    if (!q || q.x2 === undefined) return null;
-    const dx = q.x2 - q.x, dy = q.y2 - q.y;
-    if (Math.hypot(dx, dy) < 1e-6) return null;
-    return { l: Math.hypot(dx, dy) / _e.sc, ang: Math.atan2(dy, dx) };
+    if (!q || !q.pts) return null;
+    const pts = q.pts.filter(function (a, i, l) {
+      return !i || Math.hypot(a.x - l[i - 1].x, a.y - l[i - 1].y) > 1e-6;
+    });
+    if (pts.length < 2) return null;
+    const e = _e, G = window.KtaGalerie, n = pts.length - 1, dec = [];
+    for (let i = 0; i < n; i++) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2, my = (pts[i].y + pts[i + 1].y) / 2;
+      const faux = Object.assign({}, p, { x: mx, y: my });
+      delete faux.precis;
+      const pl = G.placePassage(faux, N, e.rendu) || { x: mx, y: my, ramene: false };
+      dec.push({ dx: pl.x - mx, dy: pl.y - my, ramene: !!pl.ramene });
+    }
+    const som = pts.map(function (a, k) {
+      const d0 = dec[Math.max(0, k - 1)], d1 = dec[Math.min(n - 1, k)];
+      return { x: a.x + (d0.dx + d1.dx) / 2, y: a.y + (d0.dy + d1.dy) / 2 };
+    });
+    const out = [];
+    let tot = 0;
+    for (let i = 0; i < n; i++) {
+      const a = som[i], b = som[i + 1], dx = b.x - a.x, dy = b.y - a.y, ang = Math.atan2(dy, dx);
+      out.push({ pl: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, ang: ang, ramene: dec[i].ramene },
+        lpx: Math.hypot(dx, dy), l: Math.hypot(dx, dy) / e.sc, ang: ang, coude0: 0, coude1: 0, i: i, n: n,
+        debut: i === 0, fin: i === n - 1, milieu: false });
+      tot += Math.hypot(dx, dy);
+    }
+    let cum = 0;
+    for (let i = 0; i < n; i++) {
+      const s = out[i];
+      if (i > 0) {
+        let d = s.ang - out[i - 1].ang;
+        while (d > Math.PI) d -= 2 * Math.PI;
+        while (d <= -Math.PI) d += 2 * Math.PI;
+        s.coude0 = out[i - 1].coude1 = d;
+      }
+      if (!out.some(function (o) { return o.milieu; }) && cum + s.lpx >= tot / 2) s.milieu = true;
+      cum += s.lpx;
+    }
+    return out;
+  }
+
+  // Raccord des volumes d'une même chatière (_segmentsChatiere), une fois dimensionnés (_dimAcces) : trou de la même
+  // largeur tout du long (la galerie la plus étroite), coupe en onglet à chaque coude (pente k = tan(virage / 2) des
+  // bouts : s = a − k·t à la fin, −a + k·t au début, repère de _repere), bornée pour qu'aucun segment ne se retourne
+  // sur la largeur de sa roche.
+  function _joindreChatiere(vols) {
+    const bTrou = Math.min.apply(null, vols.map(function (v) { return v.b; }));
+    vols.forEach(function (v) { v.bTrou = bTrou; v.k0 = 0; v.k1 = 0; });
+    for (let i = 1; i < vols.length; i++) {
+      const A = vols[i - 1], B = vols[i], larg = Math.max(A.b, B.b) + CHATIERE.deborde;
+      const kMax = 0.9 * Math.min(A.a, B.a) / larg, k = Math.tan(B.seg.coude0 / 2);
+      A.k1 = B.k0 = Math.max(-kMax, Math.min(kMax, k));
+    }
   }
 
   // Demi-largeur (m) de la galerie dont l'axe est le plus proche de (x, z) (m) à 10 m, modèle du rendu affiché :
@@ -5540,11 +5611,18 @@
   // les parois, du sol au plafond, percée au sol du trou (PROFIL_CHATIERE : CHATIERE.large × CHATIERE.trou, sur
   // l'axe, axe long de la roche le long de la galerie : le trou se traverse dans le sens de la marche) : deux faces
   // trouées, le tour du trou (vu du dedans) et le dessus (vue d'édition, plafond masqué). Roche brute des piliers
-  // avec 🧱 (matériau `roche`, coordonnées de texture en mètres), couleur du pilier sinon. ⚠️ contrat : aucune
+  // avec 🧱 (matériau `roche`, coordonnées de texture en mètres), couleur du pilier sinon. Segment d'une chatière en
+  // plusieurs points (v.seg, _joindreChatiere) : face trouée au début et à la fin du tracé seulement, bouts coupés en
+  // onglet aux coudes (v.k0, v.k1) : le boyau et le dessus se raccordent au segment voisin. ⚠️ contrat : aucune
   // emprise ni obstacle (galerieEmprise.js > ACCES) ; seule la caméra s'abaisse (_baisseChatiere).
   function _chatiere(v, lots) {
     const e = _e, h = e.hauteur, Q = _repere(v), a = v.a, B = v.b + CHATIERE.deborde, T = CHATIERE.trou;
-    const Wt = Math.max(0.5, Math.min(CHATIERE.large, 2 * v.b - CHATIERE.jeu));
+    const Wt = Math.max(0.5, Math.min(CHATIERE.large, 2 * (v.bTrou || v.b) - CHATIERE.jeu));
+    const k0 = v.k0 || 0, k1 = v.k1 || 0;
+    const s0 = function (t) { return -a + k0 * t; }, s1 = function (t) { return a - k1 * t; };
+    const faces = [];
+    if (!v.seg || v.seg.debut) faces.push([-a, -1]);
+    if (!v.seg || v.seg.fin) faces.push([a, 1]);
     const tx = e.textures === true, lot = tx ? _lot(lots, "roche") : lots.opaque, m = tx ? ROCHE.m : 0;
     const col = tx ? BLANC : _couleur("structures", "pilier-1");
     const trou = PROFIL_CHATIERE.map(function (q) { return [q[0] * Wt, Math.min(q[1] * T, h - 0.05)]; });
@@ -5555,7 +5633,7 @@
     const tous = bord.concat(trou), ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
     const P = function (s, q) { const w = Q(s, q[0]); return [w[0], q[1], w[1]]; };
     const uvF = function (q) { return [q[0] / m, q[1] / m]; };
-    [[-a, -1], [a, 1]].forEach(function (f) {
+    faces.forEach(function (f) {
       const n = [ux * f[1], 0, uz * f[1]];
       tris.forEach(function (tr) {
         const A = tous[tr[0]], Bq = tous[tr[1]], C = tous[tr[2]];
@@ -5569,14 +5647,16 @@
       if (l < 1e-6) continue;
       let nt = dy / l, ny = -dt / l;
       if (nt * -(p[0] + q[0]) / 2 + ny * (T / 2 - (p[1] + q[1]) / 2) < 0) { nt = -nt; ny = -ny; }
-      lot.quad(P(-a, p), P(a, p), P(a, q), P(-a, q), [-uz * nt, ny, ux * nt], col,
-        m ? [-a / m, u / m, a / m, u / m, a / m, (u + l) / m, -a / m, (u + l) / m] : undefined);
+      const ap = s0(p[0]), bp = s1(p[0]), aq = s0(q[0]), bq = s1(q[0]);
+      lot.quad(P(ap, p), P(bp, p), P(bq, q), P(aq, q), [-uz * nt, ny, ux * nt], col,
+        m ? [ap / m, u / m, bp / m, u / m, bq / m, (u + l) / m, aq / m, (u + l) / m] : undefined);
       u += l;
     }
-    _dessus(lot, _sensPositif([Q(-a, -B), Q(a, -B), Q(a, B), Q(-a, B)]), h, col, m || undefined);
+    _dessus(lot, _sensPositif([Q(s0(-B), -B), Q(s1(-B), -B), Q(s1(B), B), Q(s0(B), B)]), h, col, m || undefined);
     v.trace = { long: +(2 * a).toFixed(3), trou: T, largeur: +(2 * v.b).toFixed(3), largeTrou: +Wt.toFixed(3),
       hautTrou: +Math.max.apply(null, trou.map(function (q) { return q[1]; })).toFixed(3),
-      dir: +((v.dir || 0) * 180 / Math.PI).toFixed(2) };
+      dir: +((v.dir || 0) * 180 / Math.PI).toFixed(2), faces: faces.length,
+      segment: v.seg ? [v.seg.i, v.seg.n] : null, onglet: [+k0.toFixed(4), +k1.toFixed(4)] };
   }
 
   // Repère d'une forme sur la paroi (v.cote : côté de la paroi, galerieEmprise.js > _surParoi) : Q(s, recul) = point
