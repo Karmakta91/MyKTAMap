@@ -223,7 +223,9 @@ span.kta-v3d-btn-icone { display: inline-flex; align-items: center; justify-cont
 /* Bandeau de guidage sous la rangée du haut (vue3d.js > _majBandeau ; `top` posé par _majSousHaut) : compact, une
    icône, la consigne, « puis… » en dessous ; boîte des boutons de la vue. Les toasts passent dessous. */
 .kta-v3d-bandeau {
-  position: absolute; top: 80px; left: 10px; right: 10px;
+/* Largeur bornée et centrée comme le bandeau 2D (.kta-guid-bandeau) : en paysage ou au PC, une consigne de
+   deux lignes n'a rien à faire sur toute la largeur de l'écran. */
+  position: absolute; top: 80px; left: 10px; right: 10px; max-width: 520px; margin: 0 auto;
   display: flex; align-items: center; gap: 10px;
   padding: 8px 12px; border-radius: var(--kta-v3d-rayon); border: 1px solid var(--kta-bordure);
   background: var(--kta-surface); color: var(--kta-texte); box-shadow: var(--kta-v3d-ombre);
