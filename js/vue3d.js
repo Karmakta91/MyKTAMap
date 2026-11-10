@@ -43,7 +43,7 @@
 // suis ici ») ne la bouge pas (trackerRecale).
 // ⚠️ contrat : hauteur = celle DU NIVEAU affiché (config.js > getNiveauVertical / setHauteurNiveau), la même que
 // ⛏️ Volume exploité, réglée aussi en 3D ; un changement de niveau (passage 🪜, suivi) reprend la sienne (_reindexer).
-// ⚠️ contrat : déplacement à hauteur d'yeux = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
+// ⚠️ contrat : déplacement à hauteur d'yeux = règle du pas, jamais une copie (tracking.js >
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux, et paroisBloquent ;
 // partout, KtaGalerie.zonesBloquent : zones et obstacles des accès), sur la largeur d'un corps ; vue d'édition :
 // survol (_pas). Le tracker n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le
@@ -4176,8 +4176,8 @@
     });
   }
 
-  // Règle du pas dans une zone jonction : structures des deux niveaux de la pente et zones qui bouchent (ni paroi de
-  // tube ni image de collision : on n'est plus au sol du niveau). → -1 (couloir coupé) ou rayons bloqués à l'arrivée.
+  // Règle du pas dans une zone jonction : structures des deux niveaux de la pente et zones qui bouchent (pas de
+  // paroi de tube : on n'est plus au sol du niveau). → -1 (couloir coupé) ou rayons bloqués à l'arrivée.
   function _bloqueEnZone(x0, y0, x1, y1, ux, uy, autre) {
     const e = _e, r = RAYON_CORPS * e.sc, fx = x1 + ux * r, fy = y1 + uy * r, segs = [];
     if (x1 !== x0 || y1 !== y0) {
@@ -6956,8 +6956,8 @@
       _poser(x1, y1);
       return true;
     }
-    // Jamais coincé : parti d'une place d'où aucun pas n'est possible (dans un pilier, dans la roche de l'image de
-    // collision), tout pas qui rapproche du point libre le plus proche passe (_sortie). Pas dans une galerie inclinée,
+    // Jamais coincé : parti d'une place d'où aucun pas n'est possible (dans un pilier, dans une zone qui bouche),
+    // tout pas qui rapproche du point libre le plus proche passe (_sortie). Pas dans une galerie inclinée,
     // loin du sol du niveau : ses parois tiennent.
     if (pd && Math.abs(pd.dy) >= PENTE.sortie) { e.butees++; return false; }
     const s = _sortie();
@@ -6977,8 +6977,8 @@
   }
 
   // ── Jamais coincé (ouverture, arrivée d'un passage 🪜) ─────────────────────────────────────────────────
-  // 🩸 Une accroche de POI jonction posée à côté de la galerie, un POI dans un pilier ou un point que l'image de
-  // collision dit dans la roche : la règle du pas refusait tout pas, la vue restait figée. ⚠️ contrat : une place
+  // 🩸 Une accroche de POI jonction posée à côté de la galerie ou un POI dans un pilier : la règle du pas refusait
+  // tout pas, la vue restait figée. ⚠️ contrat : une place
   // hors de l'emprise (galerie) ou d'où aucun pas n'est possible est ramenée au point libre le plus proche :
   // l'axe du tracé le plus proche (modèle KtaGalerie du rendu, plusProche) à moins de smartNavRadiusM (6 m par
   // défaut, le rayon du verrou sur tracé ; pas celui du recalage du tracker, KtaGalerie.PROCHE_M), sinon un point
@@ -7033,7 +7033,6 @@
       const n = Math.max(8, Math.ceil(2 * Math.PI * r / pas));
       for (let k = 0; k < n; k++) {
         const qx = x + r * Math.cos(2 * Math.PI * k / n), qy = y + r * Math.sin(2 * Math.PI * k / n);
-        if (!e.galerie && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(qx, qy)) continue;
         if (!_coince(qx, qy, volumes)) return { x: qx, y: qy };
       }
     }
@@ -7042,8 +7041,7 @@
 
   // Ramène la place au point libre le plus proche si elle est coincée. `volumes` : aussi si son centre est dans une
   // structure dessinée, et le point libre cherché à un corps de toute structure (_coince). 🩸 La place elle-même
-  // n'est jugée que sur son centre : à moins d'un corps d'une face (galerie étroite de l'image de collision), elle
-  // reste où elle est. → true si elle a bougé.
+  // n'est jugée que sur son centre : à moins d'un corps d'une face (galerie étroite), elle reste où elle est. → true si elle a bougé.
   function _degager(volumes) {
     const e = _e;
     const dedans = !!volumes && !!_volumeContenant(e.pos.x / e.sc, e.pos.y / e.sc);
@@ -7074,18 +7072,16 @@
     return cible;
   }
 
-  // → -1 si un couloir est coupé (ou l'arrivée hors plan / hors image de collision), sinon le nombre de rayons
-  // bloqués autour de l'arrivée. Un seul lot de segments par essai (_juger : structures ou galerie).
-  // Mode galerie : on bute contre les parois (KtaGalerie.segmentsBloques) et les zones qui bouchent, l'image de
-  // collision du plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé, dans une zone qui bouche),
-  // on se déplace librement pour y entrer.
-  // Mode mixte : règle des structures (image de collision comprise), parois dessinées des tubes et zones (_juger).
+  // → -1 si un couloir est coupé (ou l'arrivée hors plan), sinon le nombre de rayons bloqués autour de l'arrivée.
+  // Un seul lot de segments par essai (_juger : structures ou galerie).
+  // Mode galerie : on bute contre les parois (KtaGalerie.segmentsBloques) et les zones qui bouchent ; parti d'en
+  // dehors des galeries (tracker hors tracé, dans une zone qui bouche), on se déplace librement pour y entrer.
+  // Mode mixte : règle des structures, parois dessinées des tubes et zones (_juger).
   function _balayage(x0, y0, x1, y1, ux, uy) {
     const r = RAYON_CORPS * _e.sc, fx = x1 + ux * r, fy = y1 + uy * r, gal = !!_e.galerie;
     const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
     if (pc && (fx < 0 || fy < 0 || fx > pc.imageWidth || fy > pc.imageHeight)) return -1;
     if (gal && !window.KtaGalerie.dedans(x0, y0, _niveauPas())) return 0;
-    if (!gal && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(fx, fy)) return -1;
     const segs = [];
     for (let i = 0; i < RAILS.length; i++) {
       const ox = -uy * r * RAILS[i], oy = ux * r * RAILS[i];
