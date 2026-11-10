@@ -17,8 +17,8 @@
 // l'icône (décision produit).
 // Saisie depuis la fiche seulement (utils.js > buildPointPopupHtml, mêmes droits que ✏️ Modifier) : armer() pose un
 // bandeau `.kta-iti-floater` (utils.js > _modeClicCarteActif : aucune fiche, clic ré-émis par map.js), un tap pose le
-// point ; chatière : un tap par point, « Terminer » (ou Entrée) à partir de 2. Échap ou ✕ annule. Une écriture = une
-// entrée d'historique (Ctrl+Z).
+// point ; chatière : un tap par point, « Retirer le dernier point » (ou Retour arrière), « Terminer » (ou Entrée) à
+// partir de 2. Échap ou ✕ annule. Une écriture = une entrée d'historique (Ctrl+Z) ; rien n'est écrit avant Terminer.
 // Affichage 2D : pointillé de l'icône au point et petit carré (chatière : un carré par point reliés par la
 // polyligne, pointillé vers le milieu), jeton --kta-accent par classe CSS (renderer SVG), jamais interactif ; visible
 // à partir de SEUIL_PX_PAR_M px d'écran par mètre (sans échelle : ZOOM_SANS_ECHELLE) et toujours fiche ouverte.
@@ -153,12 +153,17 @@
   }
 
   // 🩸 Sur window en capture : avant l'écouteur de document de la vue 3D, qui fermerait la fiche ou la vue.
-  // Entrée termine une chatière qui a ses 2 points (sinon elle ne fait rien de plus que d'habitude).
+  // Entrée termine une chatière qui a ses 2 points (sinon elle ne fait rien de plus que d'habitude) ; Retour arrière
+  // retire son dernier point. 🩸 Pas dans un champ de saisie : Retour arrière y efface du texte.
   function _surTouche(e) {
     if (!e || !_mode) return;
     if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); annuler(); return; }
     if (e.key === "Enter" && _mode.multi && _mode.pts.length >= 2) {
-      e.stopPropagation(); e.preventDefault(); terminer();
+      e.stopPropagation(); e.preventDefault(); terminer(); return;
+    }
+    const t = e.target, champ = !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ""));
+    if (e.key === "Backspace" && _mode.multi && !champ) {
+      e.stopPropagation(); e.preventDefault(); retirerDernier();
     }
   }
 
@@ -180,13 +185,28 @@
     return _t(k, { nom: _mode.nom, n: n });
   }
 
-  // Bandeau et bouton « Terminer » (présent dès le début d'une chatière, actif à partir de 2 points).
+  // Bandeau, points provisoires et boutons d'une chatière : « Retirer le dernier point » actif dès un point,
+  // « Terminer » à partir de 2.
   function _majBandeau() {
     if (!_mode) return;
+    if (_mode.multi) {
+      if (_mode.temp) { try { _mode.temp.remove(); } catch (err) { /* carte remplacée */ } }
+      _mode.temp = _mode.pts.length ? _calqueTemp(_mode.carte, _mode.pts) : null;
+    }
     const msg = document.querySelector("#kta-precis-floater .kta-iti-floater-msg");
     if (msg) msg.textContent = _texteBandeau();
     const fin = document.getElementById("kta-precis-terminer");
     if (fin) fin.disabled = _mode.pts.length < 2;
+    const ret = document.getElementById("kta-precis-retirer-dernier");
+    if (ret) ret.disabled = _mode.pts.length < 1;
+  }
+
+  // Chatière : retire le dernier point posé, sans rien écrire (seul Terminer écrit). → true si un point est retiré.
+  function retirerDernier() {
+    if (!_mode || !_mode.multi || !_mode.pts.length) return false;
+    _mode.pts.pop();
+    _majBandeau();
+    return true;
   }
 
   // 🩸 Le POI est recherché à l'écriture : la session a pu changer depuis l'armement (annulation, suppression, plan
@@ -240,8 +260,6 @@
       const px = _r(e.latlng.lng), py = _r(H ? H - e.latlng.lat : e.latlng.lat);
       if (_mode.multi) {
         _mode.pts.push({ x: px, y: py });
-        if (_mode.temp) { try { _mode.temp.remove(); } catch (err) { /* carte remplacée */ } }
-        _mode.temp = _calqueTemp(carte, _mode.pts);
         _majBandeau();
         return;
       }
@@ -253,7 +271,8 @@
     fl.id = "kta-precis-floater";
     fl.className = "kta-iti-floater kta-precis-floater";
     fl.innerHTML = '<span class="kta-iti-floater-icon"></span><span class="kta-iti-floater-msg"></span>' +
-      (_mode.multi ? '<button class="kta-btn kta-btn-primary" id="kta-precis-terminer" type="button"></button>' : "") +
+      (_mode.multi ? '<button class="kta-btn kta-btn-ghost" id="kta-precis-retirer-dernier" type="button"></button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-precis-terminer" type="button"></button>' : "") +
       '<button class="kta-btn kta-btn-ghost" id="kta-precis-cancel" type="button"></button>';
     // Icône SVG figée (ktaIcones.js), jamais une donnée de l'utilisateur.
     if (typeof window.ktaIcone === "function") {
@@ -269,6 +288,14 @@
       fin.title = _t("poiPrecis.terminerTitre");
       fin.disabled = true;
       fin.addEventListener("click", terminer);
+    }
+    const ret = fl.querySelector("#kta-precis-retirer-dernier");
+    if (ret) {
+      ret.innerHTML = (typeof window.ktaIcone === "function" ? window.ktaIcone("undo-2") + " " : "") +
+        window.ktaEsc(_t("poiPrecis.retirerDernier"));
+      ret.title = _t("poiPrecis.retirerDernierTitre");
+      ret.disabled = true;
+      ret.addEventListener("click", retirerDernier);
     }
     const b = fl.querySelector("#kta-precis-cancel");
     b.textContent = _t("poiPrecis.annuler");
@@ -378,6 +405,7 @@
     htmlFiche: htmlFiche,
     armer: armer,
     terminer: terminer,
+    retirerDernier: retirerDernier,
     annuler: annuler,
     retirer: retirer,
     enCours: enCours,

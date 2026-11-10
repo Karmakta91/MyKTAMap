@@ -8,7 +8,8 @@
 // Vérifie : « 🎯 Augmenter la précision » dans la fiche (pas pour un passage peo, ni en lecture seule, ni pour un POI
 // de calque) ; le bouton arme le bandeau sans rien poser, un tap pose le point (uid gardé, updatedAt changé, une
 // entrée d'historique) ; chatière en trois taps puis « Terminer » / Entrée (une entrée d'historique ; Échap avec des
-// points posés n'écrit rien) ; ancienne chatière { x, y, x2, y2 } lue sans migration ; Échap et ✕ annulent ; Ctrl+Z
+// points posés n'écrit rien ; « Retirer le dernier point » au doigt, Retour arrière à la souris, jusqu'à 0 puis
+// reprise, sans entrée d'historique) ; ancienne chatière { x, y, x2, y2 } lue sans migration ; Échap et ✕ annulent ; Ctrl+Z
 // retire ; « Retirer la
 // précision » ; pointillé et carré au bon endroit à zoom moyen, carte droite puis tournée, cachés de loin et
 // montrés de loin fiche ouverte ; POI de calque (getAllEmbeddedPoints porte `precis`, son pointillé est dessiné) ;
@@ -431,7 +432,9 @@ async function jouer(nav, moteur, mode) {
         const f = document.getElementById("kta-precis-floater");
         if (!f) return null;
         const b = document.getElementById("kta-precis-terminer");
+        const r = document.getElementById("kta-precis-retirer-dernier");
         return { texte: f.querySelector(".kta-iti-floater-msg").textContent, fin: b ? !b.disabled : null,
+          ret: r ? !r.disabled : null, icoRet: !!(r && r.querySelector("svg.kta-ico-undo-2")),
           ico: !!f.querySelector(".kta-iti-floater-icon svg"), icoFin: !!(b && b.querySelector("svg.kta-ico-check")),
           mode: window.KtaPoiPrecis.enCours() };
       });
@@ -474,6 +477,30 @@ async function jouer(nav, moteur, mode) {
       t4 && /3 points/.test(t4.texte) && gTemp.carres.length >= 4,
     "chatière : bandeau « début », « suivant », puis « n points … Terminer » ; Terminer actif à partir de 2 points, " +
       "Entrée sans effet à 1 point, carrés provisoires", { t1: t1, t2: t2, t2b: t2b, t3: t3, t4: t4 });
+    // Retirer le dernier point : le bouton au doigt, Retour arrière à la souris ; jusqu'à 0, puis reprise.
+    const retirer = async function () {
+      if (mode === "souris") await page.keyboard.press("Backspace");
+      else await ptr.tap(await centreDe(page, "#kta-precis-retirer-dernier"));
+      await page.waitForTimeout(250);
+      const b = await bandeauCh(), gg = await guides(page);
+      return { b: b, carres: gg.carres.length, sommets: gg.sommets.slice() };
+    };
+    const r2 = await retirer(), r1 = await retirer(), r0 = await retirer();
+    const undRet = await page.evaluate(function () { return window.__pp.undo; });
+    verifier(t1.ret === false && t1.icoRet && t4.ret === true &&
+      r2.b && r2.b.mode.points === 2 && r2.b.fin === true && r2.b.ret === true && r2.carres === 1 + 2 &&
+      r1.b && r1.b.mode.points === 1 && r1.b.fin === false && /suivant/.test(r1.b.texte) && r1.carres === 1 + 1 &&
+      r0.b && r0.b.mode.points === 0 && r0.b.fin === false && r0.b.ret === false && /début/.test(r0.b.texte) &&
+      r0.carres === 1 && !(await lirePoint(page, "pt_pp_ch")).precis && undRet === und0,
+    "chatière : « Retirer le dernier point » (" + (mode === "souris" ? "Retour arrière" : "bouton") + ") 3 → 0 : " +
+      "carrés provisoires et Terminer suivent, grisé sans point, rien d'écrit ni d'historique",
+    { t1ret: t1.ret, r2: r2, r1: r1, r0: r0, und: [und0, undRet] });
+    for (const p of [A, B, C]) {
+      await ptr.tap(await ecran(page, p));
+      await page.waitForTimeout(300);
+    }
+    const t5 = await bandeauCh();
+    verifier(t5 && t5.mode.points === 3 && t5.fin === true, "chatière : reprise après retrait jusqu'à 0, trois points", t5);
     // Terminer : Entrée à la souris, le bouton au doigt.
     if (mode === "souris") await page.keyboard.press("Enter");
     else await ptr.tap(await centreDe(page, "#kta-precis-terminer"));

@@ -2596,7 +2596,9 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
 - **Mode** : bandeau `.kta-iti-floater` (`#kta-precis-floater`, icône `crosshair` — `map-pin` pour 📍 Déplacer —,
   « « Nom » : touchez le point exact · ✕ Annuler » ; chatière : « touchez le début », « le point suivant », puis
   « n points — touchez le suivant ou Terminer », bouton **✓ Terminer** (`#kta-precis-terminer`, icône `check`) grisé
-  sous 2 points, Entrée fait de même ; carrés et polyligne provisoires à chaque tap). Les points ne sont écrits qu'à
+  sous 2 points, Entrée fait de même ; **Retirer le dernier point** (`#kta-precis-retirer-dernier`, icône `undo-2`)
+  grisé sans point, Retour arrière fait de même hors d'un champ de saisie ; carrés et polyligne provisoires redessinés
+  à chaque tap ou retrait). Les points ne sont écrits qu'à
   Terminer (une seule entrée annulable) ; Échap ou ✕ avec des points posés n'écrit rien.
   `_modeClicCarteActif()` le voit :
   aucune fiche ne s'ouvre, le tap est ré-émis même sur un marqueur, le plan orienté se redresse. Les autres modes
