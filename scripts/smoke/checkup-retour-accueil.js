@@ -344,6 +344,25 @@ function verifier(c, msg, detail) {
       "suivi actif à la fermeture : vue recentrée sur la dernière position du tracker, à son niveau",
       { pos: pos, suivie: suivie });
     verifier(suivie.suivi === false, "suivi actif à la fermeture : le suivi reste arrêté à la réouverture");
+    // Le tracker restauré garde le niveau de sa dernière position (il repartait au niveau 0), au plan rouvert comme
+    // à la page rechargée.
+    const nivTracker = function () { return page.evaluate(function () { return window.getTrackerLevel(); }); };
+    const nivRouvert = await nivTracker();
+    verifier(nivRouvert === pos.niveau, "plan rouvert : le tracker restauré reste à son niveau",
+      { attendu: pos.niveau, tracker: nivRouvert });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      const b = document.getElementById("resumeBtn");
+      return !!window.PlanRegistry && !!b && document.body.classList.contains("kta-loader-active");
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+    await reprendre();
+    const apresRechargeNiv = await lireVue();
+    const nivRecharge = await nivTracker();
+    verifier(nivRecharge === pos.niveau && apresRechargeNiv.niveau === pos.niveau,
+      "page rechargée : le tracker restauré et la vue restent au niveau de la dernière position",
+      { attendu: pos.niveau, tracker: nivRecharge, vue: apresRechargeNiv.niveau });
 
     // Image du plan changée (empreinte mémorisée différente) : vue mémorisée ignorée, cadrage par défaut.
     const planId = await page.evaluate(function () { return window._currentLoadedPlanId; });

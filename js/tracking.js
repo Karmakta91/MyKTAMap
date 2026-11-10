@@ -1328,6 +1328,11 @@ function _rebuildTrailFromTimeline() {
   const last = _trackingTimeline[_trackingTimeline.length - 1];
   position.x = last.x;
   position.y = last.y;
+  // 🩸 Le niveau suit la position : sans lui, le tracker restauré sur un point du −1 repartait au niveau 0 (filtre de
+  // niveau, vue 3D, itinéraire, vue mémorisée au départ suivant). Ancre d'arrivée = niveau d'arrivée (_pushTimelinePoint).
+  if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true && Number.isInteger(last.level)) {
+    trackerLevel = last.level;
+  }
   // Un recalage dans la timeline prouve que l'utilisateur s'est situé : position confirmée, datée du dernier point.
   if (_trackingTimeline.some(function(e) { return e && e.type === "recalage"; })) {
     _marquerPositionConfirmee(typeof last.t === "number" ? last.t : Date.now());
@@ -1335,6 +1340,7 @@ function _rebuildTrailFromTimeline() {
   try {
     if (polyline) polyline.setLatLngs(segments);
     if (markerPosition) markerPosition.setLatLng(convertCoord(position.x, position.y));
+    _appliquerFiltreNiveauSurTracker();
     if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
       console.log("[Tracking] Tracé restauré :", _trackingTimeline.length, "pts /",
                   segments.length, "segment(s)");
