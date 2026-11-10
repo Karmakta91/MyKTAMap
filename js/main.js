@@ -945,7 +945,7 @@ function _libererRessourcesPlanPrecedent(vers) {
   window._sessionStartTs = null;
 
   // 🩸 Suivi coupé AVANT le démontage : un pas compté à l'accueil ferait avancer le tracker d'une carte détruite
-  // (canvas de collision, marqueur) et écrirait dans la timeline vidée juste après.
+  // (marqueur) et écrirait dans la timeline vidée juste après.
   if (typeof window.stopTracking === "function") {
     try { window.stopTracking(); } catch(e) {}
   }
@@ -1004,16 +1004,6 @@ function _libererRessourcesPlanPrecedent(vers) {
     // 🩸 Zoom animé en cours : sa minuterie de fin survit à remove() (cf map.js > cleanupExistingMap).
     try { window.map._animatingZoom = false; window.map.remove(); } catch(e) {}
     window.map = null;
-  }
-
-  // Canvas de collision (jusqu'à 64 Mo) : width/height à 0 libère les pixels tout de suite, sans attendre le GC.
-  if (window.collisionCanvas) {
-    try {
-      window.collisionCanvas.width  = 0;
-      window.collisionCanvas.height = 0;
-    } catch(e) {}
-    window.collisionCanvas = null;
-    window.collisionCtx    = null;
   }
 
   // Blob URLs des fichiers du ZIP importé.
@@ -1469,7 +1459,7 @@ function _quitterNavigationInterPlans(contexte) {
 
 // ── Retour à l'accueil (loader) ──────────────────────
 // ⚠️ Fermer un plan = le vider (décision produit) : tout retour à l'accueil passe ici et, si une carte existe, la
-// démonte comme un changement de plan (session enregistrée d'abord, puis tuiles, calques, canvas de collision,
+// démonte comme un changement de plan (session enregistrée d'abord, puis tuiles, calques,
 // carte). « Reprendre » recharge le plan et restaure sa session (PlanRegistry). Après ce retour : window.map = null,
 // PLAN_CONFIG = null, _currentLoadedPlanId = null ; le plan quitté reste dans window._ktaDernierPlanId (carte OSM
 // de l'accueil). 🩸 Un id gardé à l'accueil faisait croire le plan ouvert : stats et photos du plan quitté

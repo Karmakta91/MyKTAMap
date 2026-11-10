@@ -5,7 +5,7 @@
  */
 
 // =========================
-// MAP.JS — carte Leaflet du plan (CRS.Simple), icônes, calques, collision
+// MAP.JS — carte Leaflet du plan (CRS.Simple), icônes, calques
 // =========================
 // Expose : initMapFromConfig, cleanupExistingMap, window.map, iconeDefault / iconeTrack, _iconMap (tag →
 //   icône, résolveur unique), _ktaBuiltinIconUrls (= TAGS_BUILTIN, top-level), KTA_POPUP_OPTS,
@@ -14,7 +14,7 @@
 // Garde-fous : scripts/check-icon-catalog.js, scripts/check-map-listeners.js
 // Doc : docs/architecture/rendering-leaflet.md
 
-let map, bounds, collisionCanvas, collisionCtx;
+let map, bounds;
 
 // Handler CAPTURE du mode « clic carte » (cf initMapFromConfig). 🩸 Fonction NOMMÉE de portée module : une
 // closure anonyme recréée à chaque chargement de plan ne se détache jamais (un clic = N clics). Elle lit
@@ -628,49 +628,5 @@ window._applyLevelFilterToImageLayers = function() {
     }
   });
 };
-
-// ── Collision ──────────
-function initCollisionMap(imagePath) {
-  const MAX_CANVAS_DIM = 4096;
-  return new Promise(function(resolve) {
-    if (!imagePath) {
-      window.collisionCtx = null;
-      window.collisionCanvas = null;
-      resolve(); return;
-    }
-    const img = new Image();
-    // 🩸 Jamais un requestAnimationFrame nu ici : sans image, la collision ne se chargeait pas et l'ouverture du plan
-    // ne finissait jamais (cf utils.js > ktaAttendreImage).
-    window.ktaAttendreImage().then(function() { img.src = imagePath; });
-    img.onload = function() {
-      try {
-        let w = img.width, h = img.height;
-        if (w > MAX_CANVAS_DIM || h > MAX_CANVAS_DIM) {
-          const r = Math.min(MAX_CANVAS_DIM / w, MAX_CANVAS_DIM / h);
-          w = Math.round(w * r); h = Math.round(h * r);
-        }
-        collisionCanvas = document.createElement('canvas');
-        collisionCanvas.width  = w;
-        collisionCanvas.height = h;
-        collisionCtx = collisionCanvas.getContext('2d', { willReadFrequently: true });
-        collisionCtx.drawImage(img, 0, 0, w, h);
-        img.src = "";
-        window.collisionCtx    = collisionCtx;
-        window.collisionCanvas = collisionCanvas;
-        resolve();
-      } catch(err) {
-        console.error("[Collision] OOM :", err);
-        window.collisionCtx = null;
-        window.collisionCanvas = null;
-        resolve();
-      }
-    };
-    img.onerror = function() {
-      window.collisionCtx = null;
-      window.collisionCanvas = null;
-      resolve();
-    };
-  });
-}
 
 window.initMapFromConfig = initMapFromConfig;

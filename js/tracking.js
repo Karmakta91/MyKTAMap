@@ -6,8 +6,8 @@
 
 // =========================
 // tracking.js — tracker podométrique (podomètre + boussole, sans GPS) : position en coordonnées plan, cap,
-// recalage, collision (raster + piliers, murs et fronts de taille), map-matching sur les tracés, timeline du
-// parcours (replay, distance).
+// recalage, collision (piliers, murs et fronts de taille), map-matching sur les tracés, timeline du parcours
+// (replay, distance).
 // Expose : initTracking, startTracking/stopTracking, getTrackingPositionEtat, resetTrackingTimeline,
 //          window._applyLevelFilterToTracker…
 // Dépend de : APP_CONFIG (config.js), map.js (convertCoord, iconeTrack), RoadGraph, MapBearing.
@@ -74,15 +74,6 @@ function initTracking() {
   window.modeRecalage = false;
   _positionConfirmee   = false;   // nouveau plan → rien de confirmé
   _positionConfirmeeTs = null;
-
-  // Ancien cache collision vidé (dimensions et échelles peuvent différer).
-  _collisionData   = null;
-  _collisionWidth  = 0;
-  _collisionHeight = 0;
-  _collisionScaleX = 1;
-  _collisionScaleY = 1;
-
-  initCollisionCache();
 
   const iconeTracker = window.iconeTrack;
   const latlng = convertCoord(position.x, position.y);
@@ -267,61 +258,6 @@ let _trackerMasqueParNiveau = false;
 
 // Appelé par interface.js > window.appliquerFiltreNiveau().
 window._applyLevelFilterToTracker = _appliquerFiltreNiveauSurTracker;
-
-// ── Collision raster ──────────────────────
-let _collisionData   = null;
-let _collisionWidth  = 0;
-let _collisionHeight = 0;
-let _collisionScaleX = 1; // ratio coordonnées plan → canvas collision
-let _collisionScaleY = 1;
-
-function initCollisionCache() {
-  if (!window.collisionCtx || !window.collisionCanvas) return;
-  try {
-    _collisionWidth  = window.collisionCanvas.width;
-    _collisionHeight = window.collisionCanvas.height;
-    _collisionData   = window.collisionCtx.getImageData(0, 0, _collisionWidth, _collisionHeight).data;
-
-    // ⚠️ Le canvas de collision peut être réduit (max 4096 px) : ratio coordonnées plan → canvas.
-    _collisionScaleX = _collisionWidth  / APP_CONFIG.imageWidth;
-    _collisionScaleY = _collisionHeight / APP_CONFIG.imageHeight;
-
-    console.log("[Collision] Cache chargé :", _collisionWidth, "x", _collisionHeight,
-                "| Scale:", _collisionScaleX.toFixed(3), "x", _collisionScaleY.toFixed(3));
-  } catch(e) {
-    console.warn("[Collision] Impossible de lire le canvas :", e);
-    _collisionData = null;
-  }
-}
-
-function estAccessible(x, y) {
-  if (!_collisionData) return true;
-
-  const cx = x * _collisionScaleX;
-  const cy = y * _collisionScaleY;
-
-  if (cx < 0 || cy < 0 || cx >= _collisionWidth || cy >= _collisionHeight) return false;
-
-  const rayon = 2;
-  let ok = 0, total = 0;
-
-  for (let dx = -rayon; dx <= rayon; dx++) {
-    for (let dy = -rayon; dy <= rayon; dy++) {
-      total++;
-      const px = Math.round(cx + dx);
-      const py = Math.round(cy + dy);
-      if (px < 0 || py < 0 || px >= _collisionWidth || py >= _collisionHeight) continue;
-
-      const idx = (py * _collisionWidth + px) * 4;
-      const r = _collisionData[idx];
-      const g = _collisionData[idx + 1];
-      const b = _collisionData[idx + 2];
-      if (!(r > 200 && g < 50 && b < 50)) ok++;
-    }
-  }
-
-  return (ok / total) > 0.7;
-}
 
 // ── Obstacles vectoriels : piliers, murs, fronts de taille ──────────────────────
 // Un pas est refusé s'il ENTRE dans un pilier (1re/2e masse) ou un mur fermé, ou s'il CROISE un front de taille ou
@@ -683,7 +619,7 @@ function avancer() {
   }
 }
 
-// Navigation à l'estime (PDR) pure, contrainte par le raster de collision (estAccessible).
+// Navigation à l'estime (PDR) pure, arrêtée seulement par piliers, murs et fronts (_pasBloqueParStructure).
 function _avancerRaster() {
   const scale = APP_CONFIG.scale;
   const pasMetre = APP_CONFIG.stepLength;
@@ -698,15 +634,13 @@ function _avancerRaster() {
   let newY = position.y - distance * Math.cos(rad);
 
   // Point de timeline seulement si le pas est appliqué (sinon doublon).
-  const _horsCarte = !estAccessible(newX, newY);
-  const _contreStructure = !_horsCarte && _pasBloqueParStructure(position.x, position.y, newX, newY);
-  const _stepApplied = !_horsCarte && !_contreStructure;
+  const _stepApplied = !_pasBloqueParStructure(position.x, position.y, newX, newY);
   if (_stepApplied) {
     position.x = newX;
     position.y = newY;
     if (_positionConfirmee) _positionConfirmeeTs = Date.now();   // dernier mouvement connu
   } else {
-    console.log(_contreStructure ? "[Tracking] Collision (structure) !" : "[Tracking] Collision !");
+    console.log("[Tracking] Collision (structure) !");
   }
 
   updateMap();
@@ -977,7 +911,6 @@ window.initTracking = initTracking;
 window.requestPermission = requestPermission;
 window.resetTrackingPosition = resetTrackingPosition;
 window.getStepCount = getStepCount;
-window.initCollisionCache = initCollisionCache;
 
 // ── Lecture pour les autres modules (boussole, exports, recherche) ──────────────────────
 // Cap courant en degrés (0 = N, 90 = E, horaire), corrigé de l'orientation écran. ⚠️ REPÈRE MONDE (Nord vrai) :
@@ -1014,8 +947,6 @@ window.getTrackingActif = function() {
 window.ktaPasBloqueParStructure = _pasBloqueParStructure;
 // Lot de segments, index relu une fois (vue 3D : corps balayé) → tableau de booléens.
 window.ktaSegmentsBloquesParStructure = _segmentsBloquesParStructure;
-// Premier test du même pas : image de collision du plan (true = accessible ; sans image, tout passe).
-window.ktaEstAccessible = estAccessible;
 
 window.getTrackerLevel = function() {
   return trackerLevel;
@@ -1357,37 +1288,20 @@ function _rebuildTrailFromTimeline() {
 //   1) point déjà dans l'emprise d'une galerie → il ne bouge pas ;
 //   2) hors emprise, un axe à moins de PROCHE_M → sur l'axe de la galerie dont l'emprise est la plus proche
 //      (jamais à travers la roche vers celle d'à côté) ;
-//   3) niveau sans aucun tracé (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont) : point
-//      accessible le plus proche de l'image de collision, à moins de PROCHE_M, si le point ne l'est pas.
+//   3) niveau sans aucun tracé (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont) : on reste sur
+//      le point.
 // Au-delà du rayon, on reste sur le point. Rend { x, y } ajusté, ou null (rien à changer).
 // ⚠️ Le POI ne bouge pas, et son niveau reste la réponse. 🩸 Le rayon du verrou sur tracé (smartNavRadiusM) ne
 // sert plus ici : il reste celui de la navigation intelligente (roadGraph.js) et de l'arrivée d'un passage 3D.
 // 🩸 Le modèle de KtaGalerie est mis en cache (signature des données) : premier recalage sur un grand plan = une
 // construction, partagée avec la vue 3D ensuite.
 
-// Anneaux croissants au pas d'un pixel du canvas de collision : le premier point accessible est le plus proche.
-function _pointAccessibleProche(x, y, rayonPx) {
-  if (!_collisionData || estAccessible(x, y)) return null;
-  const pas = 1 / Math.max(_collisionScaleX, _collisionScaleY, 1e-6);
-  for (let r = pas; r <= rayonPx; r += pas) {
-    const n = Math.max(8, Math.ceil(2 * Math.PI * r / pas));
-    for (let k = 0; k < n; k++) {
-      const a = 2 * Math.PI * k / n;
-      const qx = x + r * Math.cos(a), qy = y + r * Math.sin(a);
-      if (estAccessible(qx, qy)) return { x: qx, y: qy };
-    }
-  }
-  return null;
-}
-
 function _positionDansGalerie(x, y, niveau) {
   const echelle = Number(APP_CONFIG.scale);
   const G = window.KtaGalerie;
   if (!(echelle > 0) || !G || typeof G.versGalerie !== "function") return null;
   const r = G.versGalerie(x, y, APP_CONFIG.multiLevel === true ? niveau : null);
-  if (r.etat === "ramene") return { x: r.x, y: r.y };
-  // Le niveau a des tracés (dedans, ou à plus du rayon) : le tracé fait foi, pas l'image.
-  return r.etat === "sans" ? _pointAccessibleProche(x, y, G.PROCHE_M * echelle) : null;
+  return r.etat === "ramene" ? { x: r.x, y: r.y } : null;
 }
 
 // Recale le tracker sur un point (« Je suis ici » de la popup, utils.js > buildPointPopupHtml ; arrivée de portail ;
