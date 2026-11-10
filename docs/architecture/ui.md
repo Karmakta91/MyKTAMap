@@ -640,7 +640,6 @@ Chaque bloc data-layer reçoit fond + bordure subtils pour le matérialiser comm
 
 - **v1.10.x** : accessibilité clavier complète (Tab + raccourcis E/M/Échap)
 - **v1.10.x** : polish micro-interactions (transitions sidebars, badges contextuels)
-- **v2.0.0** : (quand l'ancienne UI sera abandonnée définitivement) retirer le flag `myktamap_legacy_interface`, supprimer le code mort, bumper en MAJOR car retrait d'un comportement publique
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container`
 

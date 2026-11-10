@@ -113,16 +113,10 @@ APP_CONFIG.multiLevel ←
 - Au moment de la création/modification d'un plan via 📦 Générateur → case `🏗️ Plan multi-niveau` → ajoute `plan.multiLevel: true` dans `plan-config.json`
 - Édition manuelle de `plan-config.json` (champ `plan.multiLevel: true`)
 
-> 🔧 **Changement v1.7.3** (KARMA, 19/05/2026) : retrait du toggle ⚙️ Réglages
-> qui permettait d'activer/désactiver le multi-niveau pour un plan déjà chargé.
-> Raison : forcer une déclaration explicite au moment du plan (générateur ou
-> plan-config.json édité), évite les états incohérents où un plan "non
-> multi-niveau" est activé runtime puis réinitialisé au reload. Les fonctions
-> `_renderMultiLevelSection` et `_bindMultiLevelToggle` (`interface.js`) restent
-> définies dans le code (dead code propre) mais ne sont plus appelées dans
-> `afficherConfig`. La cascade `PlanRegistry[id].multiLevel` reste lue pour les
-> users qui avaient toggle via l'ancien UI avant v1.7.3 (leur préférence est
-> persistée et continue de marcher).
+> ⚠️ Pas de bascule dans ⚙️ Réglages (décision produit) : le multi-niveau se déclare dans le plan (Générateur ou
+> `plan-config.json`), jamais à chaud — sinon un plan « non multi-niveau » activé en cours de route repartait à zéro
+> au rechargement. `PlanRegistry[id].multiLevel` reste lu : une préférence posée par une ancienne version continue
+> de marcher.
 
 #### 26.2 Data model
 
