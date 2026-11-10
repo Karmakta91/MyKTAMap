@@ -627,6 +627,8 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/navigateur.js` | Lance le navigateur des harnais avec replis (shell headless, Chromium, Edge) |
 | `smoke/attendre.js` | Attente d'une condition dans la page compatible avec la CSP (remplace `waitForFunction`) |
 | `smoke/repro-import.js` | Reproduction manuelle : l'import d'un profil complet ne reste pas bloqué |
+| `smoke/releve-theme.js` | Outil de mesure : surcharges claires sans effet (CSSOM), relevé du style calculé avant / après, clair et sombre, états forcés |
+| `smoke/releve-theme-ecrans.js` | Écrans parcourus par `releve-theme.js` sur le relevé fictif, dans un ordre reproductible |
 | `smoke/checkup-accueil-hote.js` | Installation hors myktamap.fr : ville seule, textes de `reglages.json` / `index.json`, « Entrer », code d'accès |
 | `smoke/checkup-aide-telephone.js` | Fiche d'Aide sur téléphone : remplace le hub, un seul voile, retour |
 | `smoke/checkup-bienvenue.js` | Écran Bienvenue avec ou sans mot de passe d'instance, parcours d'arrivée (téléphone et PC) |

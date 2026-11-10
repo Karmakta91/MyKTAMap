@@ -750,14 +750,15 @@ l'interface : leurs `style=` d'interface comptent comme les autres. Diagnostic :
 — enfant de `<html>`, sœur de `<body>` : `body.kta-theme-light .modal` ne les atteint pas. Les jetons, eux,
 cascadent depuis `<html>` : une règle de base écrite en jetons n'a besoin d'aucun des deux.
 
-**Surcharges claires restantes** : environ 1 060 sélecteurs `.kta-theme-light` dans `css/`, beaucoup en
-`!important`. Une surcharge ne se retire que sur preuve : le style calculé (couleurs, fonds, bordures, ombres,
-opacité, filtre, `display`, `visibility` et toute propriété que déclare une règle claire) de chaque élément
-visible est relevé avant et après, en clair et en sombre, PC et téléphone, et doit rester identique sur chaque
-écran où la règle atteint un élément visible. Une règle qu'aucun écran relevé n'atteint (survol, vue profonde
-du Mode Secours, Vue OSM…) reste. Dans une même règle, `body.kta-theme-light X` à côté de
-`html.kta-theme-light X` ne sert à rien (même spécificité, le second atteint tout ce qu'atteint le premier) :
-une règle claire s'écrit avec le seul préfixe `html.kta-theme-light`.
+**Surcharges claires restantes** : environ 1 000 sélecteurs `.kta-theme-light` dans `css/`, beaucoup en
+`!important`. Une surcharge ne se retire que sur preuve, avec `scripts/smoke/releve-theme.js` : le style calculé
+(couleurs, fonds, bordures, ombres, opacité, filtre, `display`, `visibility` et toute propriété que déclare une
+règle claire) de chaque élément visible est relevé avant et après, en clair et en sombre, PC et téléphone, survol
+et focus forcés, et doit rester identique sur chaque écran où la règle atteint un élément visible. Une règle
+qu'aucun écran relevé n'atteint reste (écrans parcourus : `scripts/smoke/releve-theme-ecrans.js` ; non couverts
+aujourd'hui : Vue OSM, écran à mot de passe d'instance, sous-fenêtres profondes). Dans une même règle,
+`body.kta-theme-light X` à côté de `html.kta-theme-light X` ne sert à rien (même spécificité, le second atteint
+tout ce qu'atteint le premier) : une règle claire s'écrit avec le seul préfixe `html.kta-theme-light`.
 
 #### 53.4 Scope final (toute l'app)
 
