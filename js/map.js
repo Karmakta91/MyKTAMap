@@ -601,9 +601,6 @@ async function initMapFromConfig() {
 
   // Pas de L.control.layers : le bouton ≡ ouvre le FilterPanel unifié, qui togglera les overlays exposés.
 
-  // Collision
-  await initCollisionMap(config.plan.collisionImage);
-
   window.dataLayerGroups = dataLayerGroups;
   window.layerEditor    = dataLayerGroups.editor;
 

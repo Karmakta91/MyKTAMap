@@ -285,8 +285,6 @@ function cloneAndResolvePlanConfig(rawConfig) {
   ktaAssainirPlanConfig(resolved, "plan importé");   // 🔒 hoisting : défini plus bas
   if (resolved.plan?.baseImage)
     resolved.plan.baseImage = getRuntimeAssetUrl(resolved.plan.baseImage) || resolved.plan.baseImage;
-  if (resolved.plan?.collisionImage)
-    resolved.plan.collisionImage = getRuntimeAssetUrl(resolved.plan.collisionImage) || resolved.plan.collisionImage;
   // PDF(s) du Mode Histoire (`plan.histoirePdf`, `plan.histoirePdfs`) résolus en blob URL (js/modeHistoire.js).
   if (resolved.plan?.histoirePdf)
     resolved.plan.histoirePdf = getRuntimeAssetUrl(resolved.plan.histoirePdf) || resolved.plan.histoirePdf;
@@ -559,8 +557,7 @@ function nettoyerIconesConfig(config, ou) {
 
 function resolveServerPaths(config, baseDir) {
   if (!baseDir || baseDir === "data") return config; // racine = pas de réécriture
-  if (config.plan?.baseImage)      config.plan.baseImage      = resolveServerPath(config.plan.baseImage, baseDir);
-  if (config.plan?.collisionImage) config.plan.collisionImage = resolveServerPath(config.plan.collisionImage, baseDir);
+  if (config.plan?.baseImage) config.plan.baseImage = resolveServerPath(config.plan.baseImage, baseDir);
   (config.imageLayers || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
   (config.dataLayers  || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
   // Icônes : traitées ici aussi (sinon les icônes personnalisées du plan restent cherchées à la racine).

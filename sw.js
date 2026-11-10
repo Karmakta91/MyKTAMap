@@ -545,8 +545,8 @@ const ASSETS_TO_CACHE = [
   // Données JSON
   "./data/index.json",
   // 🩸 LE PLAN DE DÉMO N'EST PAS PRÉ-CACHÉ.
-  // Ses 8 fichiers pèsent ~2 Mo (dont 2,0 Mo pour TestMAP.png +
-  // collision.png), téléchargés à l'INSTALL par tout le monde — y compris
+  // Ses fichiers pèsent ~2 Mo, l'image du plan pour l'essentiel,
+  // téléchargés à l'INSTALL par tout le monde — y compris
   // ceux qui ne l'ouvriront jamais.
   // Et surtout, pré-caché, il serait INÉVINÇABLE (cf _staticAssetUrls
   // et l'éviction LRU) : tester le hors-ligne avec lui donnerait un faux

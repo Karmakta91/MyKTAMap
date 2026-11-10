@@ -1202,7 +1202,6 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   const files = Array.from(assetFiles || []);
   const allLogicalPaths = [];
   if (rawConfig.plan?.baseImage)      allLogicalPaths.push(rawConfig.plan.baseImage);
-  if (rawConfig.plan?.collisionImage) allLogicalPaths.push(rawConfig.plan.collisionImage);
   // PDF embarqué du Mode Histoire.
   if (rawConfig.plan?.histoirePdf)    allLogicalPaths.push(rawConfig.plan.histoirePdf);
   (rawConfig.imageLayers || []).forEach(function(l) { if (l.file) allLogicalPaths.push(l.file); });
