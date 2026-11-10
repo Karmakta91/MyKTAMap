@@ -21,7 +21,8 @@
     "imageWidth": 1044,
     "imageHeight": 610,
     "baseImage": "TestMAP.png",
-    "collisionImage": "collision.png",
+    // "collisionImage" : ni écrit par le Générateur, ni lu par l'app ; présent dans un ancien plan-config, il
+    // est ignoré : le plan s'ouvre, l'image n'est ni chargée, ni demandée au serveur, ni mise hors ligne.
     "georef": {                          // optionnel — calage GPS (Vue OSM, exports KMZ/GPX/GeoJSON/GeoTIFF, Secours)
       "pointA": { "x": 0,    "y": 610, "lat": 46.5,     "lng": 3.0 },
       "pointB": { "x": 1044, "y": 0,   "lat": 46.50137, "lng": 3.00336, "estimated": true },  // estimated : B déduit

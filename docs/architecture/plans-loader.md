@@ -291,7 +291,6 @@ Refonte UX du Générateur 📦 Créer / Modifier un plan (`js/createConf.js`). 
 
 | Section | Type |
 |---|---|
-| Row `pl_collision` (intra Images) | Champ inline |
 | 3. Calques image | Section complète |
 | 4. Calques données | Section complète |
 | 5. Tracking | Section complète |

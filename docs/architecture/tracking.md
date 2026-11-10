@@ -573,7 +573,7 @@ Release **mineure**. Grosse évolution user : la nav intelligente compense l'imp
 #### 76.1 Principe
 
 Sous terre, pas de GPS satellite → le tracker fait du **dead-reckoning piéton (PDR)** : pas (accéléromètre)
-+ cap (boussole), borné par l'image de collision et les structures (§🧱 Collision du pas). La dérive s'accumule. Quand le plan a un **réseau de
++ cap (boussole), borné par les structures (§🧱 Collision du pas). La dérive s'accumule. Quand le plan a un **réseau de
 tracés**, la nav intelligente **cale la position sur la galerie la plus proche** (map-matching) → la dérive
 latérale est annulée et on tourne correctement aux croisements. **Réversible** (toggle `smartNav`, défaut OFF).
 
@@ -700,15 +700,17 @@ Aucune nouvelle surface réseau ni permission. Tout local (état runtime + `app_
 
 ---
 
-## 🧱 Collision du pas : image de collision + structures
+## 🧱 Collision du pas : structures
 
 Un pas PDR **hors réseau** (`_avancerRaster`, aussi repli de `_avancerSurGraphe` quand la position n'est calée sur
 aucun tracé) n'est appliqué que s'il passe deux tests ; refusé, la position ne bouge pas et rien n'entre dans la
 timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests ne s'applique.
 
-1. **`estAccessible(x, y)`** — image de collision du plan (`plan.collisionImage`, chargée par `map.js >
-   initCollisionMap`, réduite à 4096 px) : bloqué si plus de 30 % du carré 5 × 5 autour du point est rouge pur.
-   Sans image de collision, tout passe.
+1. **`estAccessible(x, y)`** — test de l'image de collision, **toujours vrai** : l'image n'est plus produite par
+   le Générateur ni chargée à l'ouverture (`plan.collisionImage` est ignoré), le cache `_collisionData` reste
+   `null` et `estAccessible` rend `true` sans données. Le code (`map.js > initCollisionMap`, `tracking.js >
+   initCollisionCache`, `estAccessible`, `_pointAccessibleProche`) est mort et attend son retrait (`docs/BACKLOG.md`,
+   « Retirer l'image de collision »).
 2. **`_pasBloqueParStructure(x0, y0, x1, y1)`** — structures de session (`getStructures`) et du plan
    (`_ktaDataStructurePolygons`) : le pas est refusé s'il **entre** dans un pilier 1re/2e masse ou un mur fermé, ou
    s'il **coupe** une arête d'un de ces polygones (coin de pilier) ou un front de taille 1re/2e masse ou un mur
@@ -805,8 +807,8 @@ active, et le PDR seul (`_avancerRaster`) partirait de la roche.
      la plus proche** (pièce la plus proche ; tube : projection sur son axe ; joint ou passage : axe le plus proche du
      bord atteint) ;
   3. **niveau sans aucun tracé** (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont ; décision
-     produit), image de collision chargée et point refusé par `estAccessible` : point accessible le plus proche à
-     moins de `PROCHE_M` (anneaux au pas d'un pixel du canvas de collision) ;
+     produit) : on reste sur le point. Le repli sur l'image de collision (`_pointAccessibleProche`) ne s'active plus,
+     l'image n'étant plus chargée (§🧱 Collision du pas) ;
   4. un niveau qui a des tracés, tous à plus de `PROCHE_M` : on reste sur le point (le tracé fait foi, pas l'image).
 - ⚠️ contrat **jamais à travers la roche** : dedans, on ne bouge pas (l'axe le plus proche peut être celui de la
   galerie d'à côté, derrière la paroi) ; dehors, le segment du point au bord de l'emprise la plus proche ne traverse
@@ -1395,8 +1397,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   doigts. `touch-action: none` sur la zone. Un doigt à la fois ; relâché à la perte de focus de la fenêtre. 🩸 Avec le seul axe et une marge devant, on frôlait une face à quelques centimètres
   en biais : la caméra (plan proche à 5 cm) entrait dans le pilier et l'on voyait au travers ; et les types perso,
   dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s. En rendu galerie, la
-  règle est celle de l'emprise (ci-dessous), même corps, même balayage ; l'image de collision du plan n'est pas lue.
-  En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout (image de collision comprise)
+  règle est celle de l'emprise (ci-dessous), même corps, même balayage.
+  En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout
   et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes et leurs pans de retour) ; dans une chambre,
   seules les structures arrêtent. Dans les trois rendus s'y ajoutent les zones qui bouchent (règle ci-dessous).
 - **Zones obstacles de la 3D** (décision produit) : un remblais, un effondrement ou une zone inaccessible du niveau
@@ -1507,8 +1509,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `roadGraph.js` n'est pas réutilisé : c'est un graphe d'itinéraire (croisements en arêtes virtuelles, tronçons non
   coupés, tronçon retiré s'il croise un mur en ligne, types perso exclus).
 - **Jamais coincé** (`vue3d.js > _degager`, `_sortie`) : à l'ouverture en mode libre et à l'arrivée d'un passage 🪜, une
-  place hors de l'emprise (galerie) ou d'où aucun pas de 0,3 m n'est possible (structures, mixte : dans un pilier, dans
-  la roche de l'image de collision) est ramenée au point libre le plus proche : l'axe du tracé le plus proche
+  place hors de l'emprise (galerie) ou d'où aucun pas de 0,3 m n'est possible (structures, mixte : dans un pilier)
+  est ramenée au point libre le plus proche : l'axe du tracé le plus proche
   (`KtaGalerie` du rendu, `plusProche`) à moins de `smartNavRadiusM` (6 m, le rayon du verrou sur tracé ; pas
   celui du recalage, `KtaGalerie.PROCHE_M`), sinon un point libre cherché en couronnes de 0,25 m. 🩸 Une accroche de POI
   jonction posée à côté de la galerie figeait la vue après le passage. ⚠️ contrat (`_coince`) : en **mixte** comme en

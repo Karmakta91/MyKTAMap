@@ -1913,7 +1913,6 @@ Une fois prêt, **📦 Générer le ZIP** télécharge l'archive.
 
 - **Informations** : nom, version, auteur, **🏷️ étiquettes** (séparées par des virgules, 12 au plus). Elles voyagent dans le ZIP et sont **proposées** à qui l'importe, sans remplacer les étiquettes qu'il a déjà posées.
 - **Image principale** (obligatoire) : ses dimensions sont lues automatiquement, avec un avertissement rouge au-delà de 10 000 px de côté ou de 30 Mo.
-- **Carte de collision** (optionnelle).
 - **Position de départ du tracker** : centrée automatiquement sur le plan ; **🎯 Recentrer la position de départ** la remet au centre.
 - **Calques image** (légendes, annotations) et **calques de données** : jusqu'à 10 de chaque. Le calque **Ajouts** est toujours inclus.
 - **Paramètres de tracking** : échelle et orientation du **Nord** (0 si le haut du plan est le Nord ; chacun peut la corriger dans ses Réglages).

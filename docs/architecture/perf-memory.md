@@ -276,7 +276,6 @@ Trade-off : on n'a pas le lazy loading natif de GridLayer. Mais on garde le gain
 plan-config.json
 data/
 ├── TestMAP.png         (image source originale, gardée pour rétrocompat)
-├── collision.png       (inchangé)
 └── tiles/
     ├── z0/             (niveau natif, scale=1)
     │   ├── x0_y-1.jpg  (col=0, leafletY=-1 = tuile la plus basse)

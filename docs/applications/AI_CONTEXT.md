@@ -506,7 +506,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 | Terme | Définition |
 |---|---|
 | **Plan** | Carte d'un site souterrain ou industriel, basée sur une image (PNG/JPEG) + données associées (points, routes, zones). |
-| **Calque** | Couche d'éléments superposable sur le plan : image (légende, collision) ou données (puits, points custom, etc.). Activable/désactivable via la modale ≡ Filtres. |
+| **Calque** | Couche d'éléments superposable sur le plan : image (légende, annotations) ou données (puits, points custom, etc.). Activable/désactivable via la modale ≡ Filtres. |
 | **Annotations du plan** | Calque de la session du plan : points éditeur, tracés (routes), zones, structures ajoutés sur le plan — sur une installation partagée, ceux de toute l'équipe. |
 | **Session** | Ensemble des modifications faites par l'utilisateur sur un plan donné (points ajoutés, tracés, zones, mesures). Auto-sauvegardée localement. |
 | **Tracker (PDR)** | Module expérimental qui estime la position de l'utilisateur via les capteurs inertiels du téléphone (accéléromètre + gyroscope), sans GPS. PDR = Pedestrian Dead Reckoning. |
@@ -627,7 +627,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 2. Solutions par ordre d'impact :
    - **Convertis en V2 tuilé** : 🏗️ Générateur → uploader l'image (ou le ZIP V1 existant) → cocher 🧱 **Convertir en V2 tuile (performance)** → 📦 Générer. Solution la plus efficace pour les gros plans : runtime tuilé Google Maps-like, seules les tuiles proches de l'écran en mémoire au lieu de l'image entière. ⚠️ Génération **lourde** (CPU + RAM), faire la conversion sur PC plutôt que mobile (cf modal d'avertissement à la coche).
    - **Réduis l'image base** (≤ 8000 px, JPEG qualité 85 au lieu de PNG).
-   - **Diminue le nombre de calques image** (fusionne légendes + collision dans l'image base si possible).
+   - **Diminue le nombre de calques image** (fusionne les légendes dans l'image base si possible).
    - **Intègre les routes dans l'image** si tu as > 200 tracés (deviennent statiques, plus interactives mais ne consomment plus de mémoire vive).
    - **Active le 🚀 Mode Performance ULTRA** du plan (⚙️ Réglages → 🚀 Performance).
 3. Regénère le ZIP via 🏗️ Modifier existant.

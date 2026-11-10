@@ -1912,7 +1912,6 @@ Cuando esté listo, **📦 Generar el ZIP** descarga el archivo.
 
 - **Información**: nombre, versión, autor, **🏷️ etiquetas** (separadas por comas, 12 como máximo). Viajan en el ZIP y se **proponen** a quien lo importa, sin sustituir las etiquetas que esa persona ya haya puesto.
 - **Imagen principal** (obligatoria): sus dimensiones se leen automáticamente, con un aviso rojo por encima de 10 000 px de lado o de 30 MB.
-- **Mapa de colisión** (opcional).
 - **Posición de inicio del tracker**: centrada automáticamente en el mapa; **🎯 Recentrar la posición de inicio** la devuelve al centro.
 - **Capas de imagen** (leyendas, anotaciones) y **capas de datos**: hasta 10 de cada. La capa **Añadidos** se incluye siempre.
 - **Parámetros de tracking**: escala y orientación del **Norte** (0 si la parte superior del mapa es el Norte; cada uno puede corregirla en sus Ajustes).

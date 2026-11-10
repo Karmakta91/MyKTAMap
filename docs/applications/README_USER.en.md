@@ -1912,7 +1912,6 @@ When you're ready, **📦 Generate ZIP** downloads the archive.
 
 - **Information**: name, version, author, **🏷️ labels** (comma-separated, 12 at most). They travel inside the ZIP and are **suggested** to whoever imports it, without replacing the labels that person has already set.
 - **Main image** (required): its dimensions are read automatically, with a red warning beyond 10,000 px per side or 30 MB.
-- **Collision map** (optional).
 - **Tracker start position**: centred on the map automatically; **🎯 Recenter the start position** puts it back in the centre.
 - **Image layers** (legends, annotations) and **data layers**: up to 10 of each. The **Additions** layer is always included.
 - **Tracking parameters**: scale and **North** orientation (0 if the top of the map is North; anyone can correct it in their Settings).
