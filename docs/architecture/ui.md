@@ -758,6 +758,10 @@ qu'aucun écran relevé n'atteint reste (écrans parcourus : `scripts/smoke/rele
 aujourd'hui : Vue OSM, écran à mot de passe d'instance, sous-fenêtres profondes). Dans une même règle,
 `body.kta-theme-light X` à côté de `html.kta-theme-light X` ne sert à rien (même spécificité, le second atteint
 tout ce qu'atteint le premier) : une règle claire s'écrit avec le seul préfixe `html.kta-theme-light`.
+🩸 Une copie `body.` posée **ailleurs** dans le fichier n'est pas un doublon neutre : plus bas, elle gagne par l'ordre
+contre une règle de même spécificité placée entre les deux (cas mesuré : le survol `.kta-btn:hover` des boutons d'une
+fenêtre de doc). Le relevé « avant » est donc toujours celui des CSS **d'origine**, survol et focus forcés compris,
+jamais celui de la passe précédente.
 
 #### 53.4 Scope final (toute l'app)
 
