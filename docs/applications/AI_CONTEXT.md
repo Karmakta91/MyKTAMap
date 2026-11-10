@@ -439,7 +439,8 @@ Pour **chaque** question :
 - Puits : `pa` (Puits Aération), `pc` (Puits Comblé), `pb` (Puits Bouché), `pe` (Puits au sol / Bassin), `ps` / `psf` (Puits extraction / Puits d'extraction comblé), `peo` / `pef` (Puits à échelon ouvert / fermé)
 - Accès : `eso` / `esf` (Escalier service ouvert / fermé), `cao` / `caf` (Cavage ouvert / fermé)
 - Passages entre niveaux : `jes` (Escalier entre niveaux), `jpe` (Puits à échelons entre niveaux), `jps` (Puits sans échelon entre niveaux) — **jamais** une sortie de surface ; ils portent `niveaux` et des raccords validés (formulaire du point, bloc « Niveaux desservis ») qui servent à l'itinéraire (10 m par niveau pour un escalier, 20 m pour des échelons, ou la vraie différence de profondeur ; puits sans échelon seulement avec la case « 🧗 Équipe équipée (corde) »)
-- Signalétique et repères : `salle` (Salle), `chatiere` (Chatière), `passage` (Passage), `danger` (Danger), `info` (Information), `elec` (Électricité), `epure` (Épure), `plaque` (Plaque indication — panneau beige sur poteau, pour repérer les plaques et panneaux de direction)
+- Signalétique et repères : `salle` (Salle), `chatiere` (Chatière), `passage` (Passage), `danger` (Danger), `fontis` (Fontis — effondrement du ciel en cloche), `info` (Information), `elec` (Électricité), `epure` (Épure), `plaque` (Plaque indication — panneau beige sur poteau, pour repérer les plaques et panneaux de direction)
+- Patrimoine : `ossuaire` (Ossuaire), `outil` (Outil de carrier) — en Vue 3D, comme `fontis`, aucun volume : le point garde son seul panneau
 - Divers : `vehicule` (Véhicule), `portail` (Portail — liaison inter-plan, icône vortex), `entree_plan` (🚪 Point d'entrée du plan)
 
 → L'utilisateur **peut créer des tags custom** via 🏗️ Générer un plan, mais en sortie de boîte, seuls les 22 tags ci-dessus existent.

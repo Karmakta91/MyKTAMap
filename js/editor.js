@@ -55,6 +55,9 @@ const EDITOR_TAG_LABELS = {
   epure:    "Épure",
   plaque:   "Plaque indication",
   portail:  "Portail (liaison inter-plan)",
+  ossuaire: "Ossuaire",
+  outil:    "Outil de carrier",
+  fontis:   "Fontis (effondrement)",
   // Point d'entrée du plan (Vue OSM × Mode Secours).
   entree_plan: "🚪 Point d'entrée du plan"
 };

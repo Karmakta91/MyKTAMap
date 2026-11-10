@@ -83,6 +83,9 @@ const TAGS_BUILTIN = {
   passage:  "icon/passage.png",
   danger:   "icon/danger.png",
   plaque:   "icon/plaque.png",
+  ossuaire: "icon/ossuaire.png",
+  outil:    "icon/outil.png",
+  fontis:   "icon/fontis.png",
   // « portail » (liaisons inter-plan) : icône vortex. Un point lié garde le tag qu'on veut ; prendre
   // celui-ci signale visuellement le portail (choix de l'utilisateur).
   portail:  "icon/portail.png",

@@ -2497,7 +2497,7 @@
     // renommées ou masquées dans la modale), avec repli si le module manque.
     const LC = window.LegendCustomization;
 
-    // Icônes en 3 sous-groupes (comme la légende d'aide).
+    // Icônes en sous-groupes (comme la légende d'aide).
     if (leg.contenu.icones && config.icons) {
       const exclu = ["default"];
       if (!leg.contenu.track) exclu.push("track");
@@ -2506,7 +2506,8 @@
         { titre: window.I18n.t("imgexport.legGroupe.puits"),        cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
         { titre: window.I18n.t("imgexport.legGroupe.acces"),        cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
         { titre: window.I18n.t("imgexport.legGroupe.niveaux"),      cles: ["jes", "jpe", "jps"] },
-        { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
+        { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "fontis", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
+        { titre: window.I18n.t("imgexport.legGroupe.patrimoine"),   cles: ["ossuaire", "outil"] },
         // Catégorie Secours (Vue OSM × Mode Secours).
         { titre: window.I18n.t("imgexport.legGroupe.secours"),      cles: ["entree_plan"] }
       ];

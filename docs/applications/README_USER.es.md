@@ -655,6 +655,7 @@ Dónde y cómo se dibuja un paso:
 - ![](../../icon/epure.png) **Croquis**: un trazo claro dibujado en la pared más cercana, a la altura de los ojos.
 - ![](../../icon/portail.png) **Portal (enlace entre mapas)**: un marco de puerta contra la pared, **encendido** cuando el punto tiene un enlace a otro mapa, apagado si no. La ficha de **todo punto enlazado** a otro mapa (portal o no) propone **🌀 Pasar al plano…**: la confirmación aparece sobre la vista; si confirmas, la vista se cierra y se abre el otro mapa. El ➜ de los enlaces de la ficha hace lo mismo.
 - ![](../../icon/vehicule.png) **Vehículo**: un coche pequeño simplificado (un urbano de unos 3,2 m) en la galería, a lo largo de ella. **Chocas con él**, como con un pilar.
+- ![](../../icon/ossuaire.png) **Osario**, ![](../../icon/outil.png) **Herramienta de cantero** y ![](../../icon/fontis.png) **Fontis** no tienen forma: el punto conserva solo su panel.
 - Placa, croquis y portal se colocan en la pared de una galería. En una sala o en el modo Estructuras, se colocan en el pilar, el muro o el frente más cercano, si está a 3 m o menos del punto; si no, el punto solo conserva su panel. En el modo Galerías, nada cambia.
 - Un punto que tiene un **punto preciso** (🎯 en su ventana) coloca allí su forma: la placa en la pared más cercana al punto preciso, el vehículo o la puerta de acceso en ese lugar. El panel de un punto sin forma también se coloca allí. Los pasos entre niveles conservan sus enlaces.
 
@@ -913,7 +914,7 @@ El botón **✏️** de la barra lateral activa o desactiva el modo añadir. Act
 2. Rellena el **Nombre** (obligatorio), el **Tipo** y, si quieres, una **Descripción**
 3. Confirma con **✅ Añadir**
 
-**El tipo** da el icono del punto. Los tipos se agrupan por familias — 🕳️ Pozos, 🪜 Acceso (**verde = abierto, rojo = cerrado**), ⚠️ Señalización, 🚨 Rescate — y la 🗺️ Leyenda los muestra todos. **— Sin tag (por defecto) —** conserva el icono por defecto. **➕ Crear un nuevo tag…** añade un tipo a tu sesión: un nombre corto en minúsculas, cifras, `_` o `-` (p. ej. `fuente`); usa el icono por defecto.
+**El tipo** da el icono del punto. Los tipos se agrupan por familias — 🕳️ Pozos, 🪜 Acceso (**verde = abierto, rojo = cerrado**), ⚠️ Señalización (con ![](../../icon/fontis.png) **Fontis**, un hundimiento del techo en campana), ⛏️ Patrimonio (![](../../icon/ossuaire.png) **Osario**, ![](../../icon/outil.png) **Herramienta de cantero**), 🚨 Rescate — y la 🗺️ Leyenda los muestra todos. **— Sin tag (por defecto) —** conserva el icono por defecto. **➕ Crear un nuevo tag…** añade un tipo a tu sesión: un nombre corto en minúsculas, cifras, `_` o `-` (p. ej. `fuente`); usa el icono por defecto.
 
 **⚠️ Tipo Peligro: fecha de constatación.** Un punto de tipo **Peligro** lleva una **📅 Fecha de constatación**, el día en que se vio el peligro: rellenada con hoy, modificable, para vaciar si no la conoces (un punto Peligro más antiguo sigue sin fecha mientras no le pongas una). Su ventana muestra «Constatado el …» y recuerda que **el estado de un sitio no está certificado: un peligro registrado puede haber cambiado desde su fecha de constatación.** La fecha sale con la exportación de sesión, el KMZ, el GPX y el GeoJSON (releída por la importación KMZ y GPX), nunca con la exportación anonimizada.
 

@@ -44,6 +44,9 @@ const LEGENDE_LABELS = {
   danger:   "Danger",
   plaque:   "Plaque indication",
   portail:  "Portail (liaison inter-plan)",
+  ossuaire: "Ossuaire",
+  outil:    "Outil de carrier",
+  fontis:   "Fontis (effondrement)",
   track:    "Position du tracker",
   default:  "Point sans tag (défaut)",
   // Point d'entrée du plan (Vue OSM × Mode Secours).
@@ -58,7 +61,8 @@ function _ktaLegendeGroupes() {
     { titre: window.I18n.t("legendui.group.wells"),   ico: "arrow-down-to-line", cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
     { titre: window.I18n.t("legendui.group.access"),  ico: "m-echelle", cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
     { titre: window.I18n.t("legendui.group.levels"),  ico: "m-niveaux", cles: ["jes", "jpe", "jps"] },
-    { titre: window.I18n.t("legendui.group.signage"), ico: "triangle-alert", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
+    { titre: window.I18n.t("legendui.group.signage"), ico: "triangle-alert", cles: ["salle", "chatiere", "passage", "danger", "fontis", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
+    { titre: window.I18n.t("legendui.group.heritage"), ico: "landmark", cles: ["ossuaire", "outil"] },
     // Catégorie Secours (Vue OSM × Mode Secours).
     { titre: window.I18n.t("legendui.group.rescue"),  ico: "ambulance", cles: ["entree_plan"] }
   ];

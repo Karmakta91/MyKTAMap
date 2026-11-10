@@ -44,6 +44,9 @@ const PLANNER_DEFAULT_ICONS = {
   passage:  "icon/passage.png",
   danger:   "icon/danger.png",
   plaque:   "icon/plaque.png",
+  ossuaire: "icon/ossuaire.png",
+  outil:    "icon/outil.png",
+  fontis:   "icon/fontis.png",
   portail:  "icon/portail.png",   // liaison inter-plan
   // Point d'entrée du plan (Vue OSM × Mode Secours), cf. map.js > TAGS_BUILTIN.
   entree_plan: "icon/entree_plan.png"
@@ -4262,7 +4265,10 @@ function _afficherImporterKmz(prefilledFile) {
               <option value="chatiere">${window.I18n.t("gen.imp.tagChatiere")}</option>
               <option value="passage">${window.I18n.t("gen.imp.tagPassage")}</option>
               <option value="danger">${window.I18n.t("gen.imp.tagDanger")}</option>
+              <option value="fontis">${window.I18n.t("gen.imp.tagFontis")}</option>
               <option value="info">${window.I18n.t("gen.imp.tagInfo")}</option>
+              <option value="ossuaire">${window.I18n.t("gen.imp.tagOssuaire")}</option>
+              <option value="outil">${window.I18n.t("gen.imp.tagOutil")}</option>
             </select>
 
             <label class="kta-cfg-label">${window.ktaIcone("m-galerie") + " " + window.I18n.t("gen.kmz.lineStringType")}</label>
@@ -4836,7 +4842,10 @@ function _afficherImporterGpx(prefilledFile) {
               <option value="chatiere">${window.I18n.t("gen.imp.tagChatiere")}</option>
               <option value="passage">${window.I18n.t("gen.imp.tagPassage")}</option>
               <option value="danger">${window.I18n.t("gen.imp.tagDanger")}</option>
+              <option value="fontis">${window.I18n.t("gen.imp.tagFontis")}</option>
               <option value="info">${window.I18n.t("gen.imp.tagInfo")}</option>
+              <option value="ossuaire">${window.I18n.t("gen.imp.tagOssuaire")}</option>
+              <option value="outil">${window.I18n.t("gen.imp.tagOutil")}</option>
             </select>
 
             <label class="kta-cfg-label">${window.ktaIcone("m-galerie") + " " + window.I18n.t("gen.gpx.tracksType")}</label>
@@ -5486,7 +5495,7 @@ async function _sigImpAnalyserFichier(file) {
 // sont proposées dans le même select, en deux groupes ; le préfixe `struct:` dit à `SigImport.ingest` où
 // ranger l'objet. Idem pour les tracés (front de taille = structure en polyligne).
 const _SIG_TYPES = {
-  points:    ["default", "pa", "pb", "pc", "pe", "ps", "psf", "salle", "chatiere", "passage", "danger", "info"],
+  points:    ["default", "pa", "pb", "pc", "pe", "ps", "psf", "salle", "chatiere", "passage", "danger", "fontis", "info", "ossuaire", "outil"],
   lignes:    ["chemin", "secondaire", "principal"],
   // `pente` = zone « Jonction » : niveaux de/à saisis sous la table (_htmlNiveauxPente), plan multi-niveau.
   polygones: ["remblais", "eau", "effondrement", "inaccessible", "pente"]
