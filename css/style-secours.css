@@ -821,7 +821,6 @@ html.kta-theme-light .kta-secours-list-row {
 html.kta-theme-light .kta-secours-empty-small {
   color: var(--kta-texte-3) !important;
 }
-html.kta-theme-light .kta-secours-hint,
 html.kta-theme-light .kta-secours-form-hint {
   color: var(--kta-light-text, #2a2620) !important;
 }
@@ -2322,15 +2321,6 @@ html.kta-theme-light .kta-secours-lancer-role-row {
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
   border-color: var(--kta-light-border, rgba(0, 0, 0, 0.12)) !important;
 }
-html.kta-theme-light .kta-secours-lancer-role-titre,
-html.kta-theme-light .kta-secours-lancer-role-desc {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-html.kta-theme-light .kta-secours-lancer-equipe-select {
-  background: #fff !important;
-  border-color: var(--kta-light-border-strong, rgba(0, 0, 0, 0.22)) !important;
-  color: var(--kta-light-text, #2a2620) !important;
-}
 html.kta-theme-light .kta-secours-live-header {
   /* 🐛 v1.25.1 — Renforcement (cf v1.25.1 dark mode) : background opaque
      + border-bottom prononcé + box-shadow plus visible. isolation: isolate
@@ -2339,15 +2329,6 @@ html.kta-theme-light .kta-secours-live-header {
   border: 1px solid var(--kta-light-border-strong, rgba(0, 0, 0, 0.22)) !important;
   border-bottom-width: 2px !important;
   box-shadow: 0 6px 14px rgba(80, 60, 30, 0.30) !important;
-}
-html.kta-theme-light .kta-secours-live-header-titre {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-html.kta-theme-light .kta-secours-live-header-meta {
-  color: var(--kta-texte-3) !important;
-}
-html.kta-theme-light .kta-secours-live-header-timer {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 
 /* 🆕 v1.29.0 C2 — Thème clair pour les nouveaux éléments multi-phases */
@@ -2388,9 +2369,6 @@ html.kta-theme-light .kta-secours-phase-equipe-cb {
 html.kta-theme-light .kta-secours-phase-equipe-cb:hover {
   background: rgba(217, 168, 46, 0.18) !important;
 }
-html.kta-theme-light .kta-secours-phase-equipe-nom {
-  color: var(--kta-light-text, #2a2620) !important;
-}
 html.kta-theme-light .kta-secours-phase-equipe-level {
   color: var(--kta-light-accent-text, #7a5a00) !important;
   background: rgba(217, 168, 46, 0.18) !important;
@@ -2421,7 +2399,6 @@ html.kta-theme-light .kta-secours-op-card-obs,
 html.kta-theme-light .kta-secours-live-note-texte {
   color: var(--kta-texte-3) !important;
 }
-html.kta-theme-light .kta-secours-op-card-meta,
 html.kta-theme-light .kta-secours-live-note-ts {
   color: var(--kta-light-text-dim) !important;
 }
@@ -2563,19 +2540,9 @@ html.kta-theme-light .kta-secours-rapport-apercu {
   background: rgba(140, 180, 255, 0.12) !important;
   border-color: rgba(140, 180, 255, 0.45) !important;
 }
-html.kta-theme-light .kta-secours-rapport-apercu-titre,
-html.kta-theme-light .kta-secours-rapport-photos-hint {
-  color: var(--kta-texte-3) !important;
-}
-html.kta-theme-light .kta-secours-rapport-apercu-lines {
-  color: var(--kta-light-text, #2a2620) !important;
-}
 html.kta-theme-light .kta-secours-rapport-checkbox {
   background: rgba(244, 197, 66, 0.20) !important;
   border-color: rgba(244, 197, 66, 0.55) !important;
-}
-html.kta-theme-light .kta-secours-rapport-checkbox > span {
-  color: var(--kta-light-text, #2a2620) !important;
 }
 
 /* =================================================================
@@ -2674,11 +2641,6 @@ html.kta-theme-light .kta-secours-sub-modal input[type="text"],
 html.kta-theme-light .kta-secours-sub-modal textarea {
   background: #fafbfc !important;
   border: 1px solid rgba(20, 30, 50, 0.18) !important;
-  color: #1f2937 !important;
-}
-
-/* Labels strong en blanc → texte foncé pour rester lisibles sur fond clair */
-html.kta-theme-light .kta-secours-sub-modal label strong {
   color: #1f2937 !important;
 }
 
