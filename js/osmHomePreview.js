@@ -344,6 +344,7 @@
     info:     "icon/info.png",
     chatiere: "icon/chatiere.png", passage: "icon/passage.png",
     danger:   "icon/danger.png", plaque: "icon/plaque.png",
+    ossuaire: "icon/ossuaire.png", outil: "icon/outil.png", fontis: "icon/fontis.png",
     portail:  "icon/portail.png",
     entree_plan: "icon/entree_plan.png"
   };

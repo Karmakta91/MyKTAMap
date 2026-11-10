@@ -612,6 +612,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `ci-commits.sh` | CI : rejoue anti-fuite pro, `data/` hors Git et noms réels commit par commit sur les commits reçus |
 | `garde-fous-tableau.js` | Lance chaque garde-fou du pre-commit et écrit un tableau durée / résultat (résumé de la CI), jamais bloquant |
 | `generer-police-emoji.js` | Refait `fonts/kta-emoji.woff2` (Twemoji Mozilla 0.7.0 réduit aux emoji du dépôt, Python + fontTools), son manifeste et `css/kta-emoji.css` ; à lancer après tout ajout d'emoji |
+| `icones/dessiner-icones-poi.py` | Dessine `icon/ossuaire.png`, `outil.png`, `fontis.png` sur la charte des icônes de POI (Python + Pillow, hors app), avec une planche de relecture en option |
 | `md-mini.js` | Markdown → HTML sans dépendance, utilisé par `audit-html.js` |
 | `release/etat-sites.ps1` | Lecture seule : version réellement servie par dev et prod, comparée aux branches |
 | `release/merge-main.ps1` | Passage `Karma_dev` → `main` par KARMA : arbre propre, versions, garde-fous, Sonar, CI verte, merge, tag |
@@ -810,6 +811,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### Pas encore publié (après v2.24.0, branche `Karma_dev`)
+
+- **⛏️ Trois types de points : ossuaire, outil de carrier, fontis** (`icon/ossuaire.png`, `icon/outil.png`, `icon/fontis.png`, `js/map.js > TAGS_BUILTIN` et les 7 autres tables de `check-icon-catalog.js`, `scripts/icones/dessiner-icones-poi.py`) : nouvelle famille **⛏️ Patrimoine** (ossuaire, outil) dans la légende et l'export ; **fontis** (effondrement du ciel en cloche) rejoint la Signalétique à côté de danger. Proposés aussi par les imports KMZ, GPX et SIG du Générateur. En vue 3D, aucun volume : le point garde son seul panneau.
 
 #### v2.24.0 (09/11/2026) — Icônes au trait partout, mini-carte et multi-niveau en vue 3D, couper un tracé, rotation bloquée (branche `Karma_dev`)
 

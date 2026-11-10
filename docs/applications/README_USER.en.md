@@ -655,6 +655,7 @@ Where and how a way through is drawn:
 - ![](../../icon/epure.png) **Survey datum**: a light line drawn on the nearest wall, at eye level.
 - ![](../../icon/portail.png) **Portal (inter-plan link)**: a door frame against the wall, **lit** when the point has a link to another plan, dark otherwise. The card of **any point linked** to another plan (portal or not) offers **🌀 Go to plan…**: the confirmation shows over the view; if you confirm, the view closes and the other plan opens. The card's link ➜ does the same.
 - ![](../../icon/vehicule.png) **Vehicle**: a small simplified car (a city car about 3.2 m long) in the tunnel, along it. **You bump into it**, as into a pillar.
+- ![](../../icon/ossuaire.png) **Ossuary**, ![](../../icon/outil.png) **Quarryman's tool** and ![](../../icon/fontis.png) **Fontis** have no shape: the point keeps its sign only.
 - Plate, datum and portal go on a tunnel wall. In a chamber or in Structures rendering, they go on the nearest pillar, wall or working face, if it is 3 m or less from the point; otherwise the point keeps its sign only. In Tunnels rendering, nothing changes.
 - A point that has a **precise point** (🎯 in its popup) has its shape placed there: the plate on the wall nearest to the precise point, the vehicle or the entrance door at that spot. The sign of a point without a shape goes there too. Passages between levels keep their connections.
 
@@ -913,7 +914,7 @@ The **✏️** button in the sidebar turns add mode on or off. When it is on, ev
 2. Fill in the **Name** (required), the **Type** and, if you like, a **Description**
 3. Confirm with **✅ Add**
 
-**The type** sets the point's icon. Types are grouped into families — 🕳️ Shafts, 🪜 Access (**green = open, red = closed**), ⚠️ Signage, 🚨 Rescue — and the 🗺️ Legend shows them all. **— No tag (default) —** keeps the default icon. **➕ Create a new tag…** adds a type to your session: a short name in lowercase letters, digits, `_` or `-` (e.g. `fountain`); it uses the default icon.
+**The type** sets the point's icon. Types are grouped into families — 🕳️ Shafts, 🪜 Access (**green = open, red = closed**), ⚠️ Signage (including ![](../../icon/fontis.png) **Fontis**, a bell-shaped collapse of the ceiling), ⛏️ Heritage (![](../../icon/ossuaire.png) **Ossuary**, ![](../../icon/outil.png) **Quarryman's tool**), 🚨 Rescue — and the 🗺️ Legend shows them all. **— No tag (default) —** keeps the default icon. **➕ Create a new tag…** adds a type to your session: a short name in lowercase letters, digits, `_` or `-` (e.g. `fountain`); it uses the default icon.
 
 **⚠️ Danger type: date observed.** A point of type **Danger** carries a **📅 Date observed**, the day the hazard was seen: pre-filled with today, editable, to be cleared if you don't know it (an older Danger point stays without a date until you add one). Its popup shows "Observed on …" and reminds you that **the condition of a site is not certified: a recorded hazard may have changed since the date it was observed.** The date goes out with the session export, KMZ, GPX and GeoJSON (read back by the KMZ and GPX import), never with the anonymized export.
 

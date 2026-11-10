@@ -655,6 +655,7 @@ Où et comment un passage se dessine :
 - ![](../../icon/epure.png) **Épure** : un trait clair tracé sur la paroi la plus proche, à hauteur d'yeux.
 - ![](../../icon/portail.png) **Portail (liaison inter-plan)** : un cadre de porte contre la paroi, **allumé** quand le point a une liaison vers un autre plan, éteint sinon. La fiche de **tout point lié** à un autre plan (portail ou non) propose **🌀 Passer au plan…** : la confirmation s'affiche par-dessus la vue ; si tu confirmes, la vue se ferme et l'autre plan s'ouvre. Le ➜ des liaisons de la fiche fait de même.
 - ![](../../icon/vehicule.png) **Véhicule** : une petite voiture simplifiée (une citadine d'environ 3,2 m) dans la galerie, le long de celle-ci. **On bute dessus**, comme sur un pilier.
+- ![](../../icon/ossuaire.png) **Ossuaire**, ![](../../icon/outil.png) **Outil de carrier** et ![](../../icon/fontis.png) **Fontis** n'ont pas de forme : le point garde son seul panneau.
 - Plaque, épure et portail se posent sur la paroi d'une galerie. Dans une salle ou en rendu Structures, ils se posent sur le pilier, le mur ou le front le plus proche, s'il est à 3 m au plus du point ; sinon, le point garde son seul panneau. En rendu Galeries, rien ne change.
 - Un point qui a un **point précis** (🎯 dans sa fiche) a sa forme posée là : la plaque sur la paroi la plus proche du point précis, le véhicule ou le cavage à cet endroit. Le panneau d'un point sans forme s'y place aussi. Les passages entre niveaux gardent leurs raccords.
 
@@ -913,7 +914,7 @@ Le bouton **✏️** de la barre latérale allume ou éteint le mode ajout. Allu
 2. Renseigne le **Nom** (obligatoire), le **Type** et, si tu veux, une **Description**
 3. Valide avec **✅ Ajouter**
 
-**Le type** donne l'icône du point. Les types sont rangés par familles — 🕳️ Puits, 🪜 Accès (**vert = ouvert, rouge = fermé**), ⚠️ Signalétique, 🚨 Secours — et la 🗺️ Légende les montre tous. **— Aucun tag (défaut) —** garde l'icône par défaut. **➕ Créer un nouveau tag…** ajoute un type à ta session : un nom court en minuscules, chiffres, `_` ou `-` (ex. `fontaine`) ; il prend l'icône par défaut.
+**Le type** donne l'icône du point. Les types sont rangés par familles — 🕳️ Puits, 🪜 Accès (**vert = ouvert, rouge = fermé**), ⚠️ Signalétique (dont ![](../../icon/fontis.png) **Fontis**, un effondrement du ciel en cloche), ⛏️ Patrimoine (![](../../icon/ossuaire.png) **Ossuaire**, ![](../../icon/outil.png) **Outil de carrier**), 🚨 Secours — et la 🗺️ Légende les montre tous. **— Aucun tag (défaut) —** garde l'icône par défaut. **➕ Créer un nouveau tag…** ajoute un type à ta session : un nom court en minuscules, chiffres, `_` ou `-` (ex. `fontaine`) ; il prend l'icône par défaut.
 
 **⚠️ Type Danger : date de constat.** Un point de type **Danger** porte une **📅 Date de constat**, le jour où le danger a été vu : pré-remplie à aujourd'hui, modifiable, à vider si tu ne la connais pas (un point Danger plus ancien reste sans date tant que tu n'en mets pas). Sa bulle affiche « Constaté le … » et rappelle que **l'état d'un site n'est pas certifié : un danger relevé peut avoir changé depuis sa date de constat.** La date part avec l'export de session, le KMZ, le GPX et le GeoJSON (relue par l'import KMZ et GPX), jamais avec l'export anonymisé.
 

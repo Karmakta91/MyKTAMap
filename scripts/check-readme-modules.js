@@ -12,7 +12,7 @@
 //   1. « 🟢 Modules JS » : les modules des groupes = les <script src="js/…"> d'index.html, DANS LE MÊME ORDRE ;
 //      la sous-section « Hors index.html » = les autres js/*.js, chacun cité par un fichier du dépôt (sinon code
 //      mort) ; le compte du titre = le nombre de lignes ;
-//   2. table css/ (partie 🟢) = css/*.css ; tables scripts/ (partie 🔧) = scripts/**/*.{js,sh,ps1} ; colonne
+//   2. table css/ (partie 🟢) = css/*.css ; tables scripts/ (partie 🔧) = scripts/**/*.{js,sh,ps1,py} ; colonne
 //      « Branché » des check-*.js = les hooks qui les appellent (.githooks/pre-commit, commit-msg, ci-commits.sh) ;
 //   3. « 📚 Documentation d'architecture » : table = docs/architecture/*.
 // 🩸 Lit des FICHIERS, jamais l'index : passe identique en CI (rien n'y est indexé) et en local.
@@ -196,7 +196,7 @@ if (secApp && secOutil) {
   }
   if (!ssScripts) problemes.push("sous-section « ### 🛠️ `scripts/` » introuvable");
   else {
-    const scr = fichiers(["scripts/*.js", "scripts/*.sh", "scripts/*.ps1"])
+    const scr = fichiers(["scripts/*.js", "scripts/*.sh", "scripts/*.ps1", "scripts/*.py"])
       .filter((f) => f.indexOf("/node_modules/") < 0).map((f) => f.replace(/^scripts\//, ""));
     const rows = lignesDeTable(ssScripts.lignes);
     problemes.push.apply(problemes, comparerEnsembles(scr, rows.map((r) => r.nom), "les tables `scripts/`",
