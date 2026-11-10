@@ -352,9 +352,6 @@
 }
 
 /* ─── Thème clair ─── */
-html.kta-theme-light .kta-fp-section-titre:hover {
-  background: rgba(244, 197, 66, 0.30) !important;
-}
 html.kta-theme-light .kta-fp-section-body {
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
 }
