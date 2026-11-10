@@ -271,7 +271,7 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-trkrepl-modal-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + window.I18n.t("replay.modal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("clapperboard") + " " + window.I18n.t("replay.modal.titre") + '</span>' +
           '<button class="kta-trkrepl-btn-icon" id="kta-trkrepl-fullscreen" type="button" title="' + window.I18n.t("replay.compact.reduce") + '" style="margin-right:8px;">▭</button>' +
           '<button class="kta-panneau-close" id="kta-trkrepl-close" type="button">✕</button>' +
         '</div>' +
@@ -293,9 +293,9 @@
           '<input type="range" class="kta-trkrepl-timeline" id="kta-trkrepl-slider" min="0" max="' + (_timeline.length - 1) + '" value="0" step="1">' +
 
           '<div class="kta-trkrepl-controls">' +
-            '<button class="kta-trkrepl-btn" id="kta-trkrepl-restart" title="' + window.I18n.t("replay.btn.restart") + '">⏮️</button>' +
-            '<button class="kta-trkrepl-btn kta-trkrepl-btn-primary" id="kta-trkrepl-playpause" title="' + window.I18n.t("replay.btn.playpause") + '">▶️</button>' +
-            '<button class="kta-trkrepl-btn" id="kta-trkrepl-end" title="' + window.I18n.t("replay.btn.end") + '">⏭️</button>' +
+            '<button class="kta-trkrepl-btn" id="kta-trkrepl-restart" title="' + window.I18n.t("replay.btn.restart") + '">' + window.ktaIcone("skip-back") + '</button>' +
+            '<button class="kta-trkrepl-btn kta-trkrepl-btn-primary" id="kta-trkrepl-playpause" title="' + window.I18n.t("replay.btn.playpause") + '">' + window.ktaIcone("play") + '</button>' +
+            '<button class="kta-trkrepl-btn" id="kta-trkrepl-end" title="' + window.I18n.t("replay.btn.end") + '">' + window.ktaIcone("skip-forward") + '</button>' +
             '<div class="kta-trkrepl-speed">' +
               '<span class="kta-trkrepl-speed-label">' + window.I18n.t("replay.speed.label") + '</span>' +
               '<select id="kta-trkrepl-speed-sel">' +
@@ -310,7 +310,7 @@
 
           '<div class="kta-trkrepl-export">' +
             '<div class="kta-trkrepl-export-info">' + _exportInfo + '</div>' +
-            '<button class="kta-trkrepl-btn" id="kta-trkrepl-export-csv">' + window.I18n.t("replay.export.btn") + '</button>' +
+            '<button class="kta-trkrepl-btn" id="kta-trkrepl-export-csv">' + window.ktaIcone("arrow-up-from-line") + " " + window.I18n.t("replay.export.btn") + '</button>' +
           '</div>' +
 
         '</div>' +
@@ -465,7 +465,7 @@
       _currentIdx = 0;
     }
     const btn = document.getElementById("kta-trkrepl-playpause");
-    if (btn) btn.textContent = "⏸️";
+    if (btn) btn.innerHTML = window.ktaIcone("pause");
     // Au play : panneau compact en bas, la carte reste visible (bouton ⛶ pour revenir).
     _setCompactMode(true);
     _tickPlay();
@@ -474,7 +474,7 @@
   function _stopPlay() {
     if (_playTimer) { clearTimeout(_playTimer); _playTimer = null; }
     const btn = document.getElementById("kta-trkrepl-playpause");
-    if (btn) btn.textContent = "▶️";
+    if (btn) btn.innerHTML = window.ktaIcone("play");
   }
 
   function _setCompactMode(compact) {

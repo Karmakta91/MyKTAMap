@@ -136,7 +136,7 @@ function _confirmRemplacerItineraire(onConfirm, actif) {
   modal.className = "kta-readme-modal-overlay";
   modal.innerHTML =
     '<div class="kta-modal" style="max-width:420px;">' +
-      '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">⚠️</div>' +
+      '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">' + window.ktaIcone("triangle-alert") + '</div>' +
       '<div class="kta-modal-titre">' + (equipe !== null ? esc(T("iti.replace.secoursTitre")) : T("iti.replace.titre")) + '</div>' +
       '<div class="kta-modal-texte">' +
         (equipe !== null ? esc(T("iti.replace.secoursTexte", { equipe: equipe })) : T("iti.replace.texte")) +
@@ -201,7 +201,7 @@ function _repositionnerPuisAller(x, y, nom, opts) {
       // Les autres options (niveauCible…) suivent : seule l'origine vient du picker.
       window.itineraireYAller(x, y, nom, Object.assign({}, opts, { origine: _origineIti(p.x, p.y, p.niveau) }));
       if (v3 && typeof V.ouvrir === "function") V.ouvrir({ depart: { x: p.x, y: p.y, cap: v3.cap } });
-    }, { icone: "🧭", texte: window.I18n.t("iti.pick.ouEsTu") });
+    }, { ico: "locate-fixed", texte: window.I18n.t("iti.pick.ouEsTu") });
   };
   if (v3 && typeof V.fermer === "function") { V.fermer().then(lancer); return; }
   lancer();
@@ -399,11 +399,12 @@ let _itiDistanceCtrl = null;
 
 // ── Presets de vitesse ──────────
 // Persistés en localStorage. Libellés résolus au rendu (_presetLabel/_presetHint), jamais au load.
+// `ico` : icône SVG de l'interface (ktaIcones.js), la même que Je suis perdu (lostMode.js > LOST_MODE_PRESETS).
 const ITI_SPEED_PRESETS = {
-  blesse:  { kmh: 2, icon: "🤕" },
-  lente:   { kmh: 3, icon: "🐌" },
-  normale: { kmh: 5, icon: "🚶" },
-  rapide:  { kmh: 7, icon: "🏃" }
+  blesse:  { kmh: 2, ico: "bandage" },
+  lente:   { kmh: 3, ico: "snail" },
+  normale: { kmh: 5, ico: "person-standing" },
+  rapide:  { kmh: 7, ico: "rabbit" }
 };
 function _presetLabel(key) { return window.I18n.t("iti.speed." + key + ".label"); }
 function _presetHint(key)  { return window.I18n.t("iti.speed." + key + ".hint"); }
@@ -506,7 +507,7 @@ function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
     _itiDistanceCtrl = L.control({ position: "bottomleft" });
     _itiDistanceCtrl.onAdd = function() {
       const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-iti-distance");
-      div.innerHTML = '<span class="kta-iti-distance-icon">🗺️</span>' + window.I18n.t("iti.label.empty");
+      div.innerHTML = '<span class="kta-iti-distance-icon">' + window.ktaIcone("route") + '</span>' + window.I18n.t("iti.label.empty");
       // Clic → modale itinéraire.
       div.style.cursor = "pointer";
       div.title = window.I18n.t("iti.label.openMenu");
@@ -531,14 +532,14 @@ function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
     const nbPausesInter = Math.max(0, (nbWaypoints || 0) - 2);
     const presetLabel = _presetLabel(presetKey);
     el.innerHTML =
-      '<span class="kta-iti-distance-icon">🗺️</span>' +
+      '<span class="kta-iti-distance-icon">' + window.ktaIcone("route") + '</span>' +
       '<span class="kta-iti-distance-val">' + distFmt + '</span>' +
       '<span class="kta-iti-distance-sep">·</span>' +
-      '<span class="kta-iti-distance-time">⏱️ ' + tempsFmt + '</span>' +
+      '<span class="kta-iti-distance-time">' + window.ktaIcone("timer") + ' ' + tempsFmt + '</span>' +
       '<span class="kta-iti-distance-sep">·</span>' +
       '<span class="kta-iti-distance-speed" title="' +
         window.I18n.t("iti.label.speedTitle", { label: presetLabel, kmh: preset.kmh }) + '">' +
-        preset.icon + ' ' + presetLabel +
+        window.ktaIcone(preset.ico) + ' ' + presetLabel +
       '</span>';
     const pauseActive = _getItiPauseEnabled();
     const pauseMin    = _getItiPauseMinutes();
@@ -636,7 +637,7 @@ function _ajouterWaypointVisuel(p, num) {
           '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
             'data-kta-act="ici" data-kta-x="' + (Number(p.x) || 0) + '" data-kta-y="' + (Number(p.y) || 0) + '" ' +
             'title="' + window.I18n.t("poi.iAmHere") + '">' +
-            window.I18n.t("iti.wp.jeSuisIci") +
+            window.ktaIcone("map-pin-check") + " " + window.I18n.t("iti.wp.jeSuisIci") +
           '</button>' +
         '</div></div>');
   }
@@ -676,18 +677,22 @@ function _rafraichirListeWaypointsModale() {
   }
   cont.innerHTML = _itineraryWaypoints.map(function(p, i) {
     const label = p.label || window.I18n.t("iti.wp.coordShort", { x: Math.round(p.x), y: Math.round(p.y) });
-    // Sources : "search" (point existant), "tracker", "click" (défaut).
+    // Sources : "search" (point existant), "tracker", "portal" (itinéraire entre plans), "click" (défaut).
     let sourceIcon, sourceTitle, sourceClass;
-    if (p.source === "search") {
-      sourceIcon  = "🎯";
+    if (p.source === "portal") {
+      sourceIcon  = window.ktaIcone("waypoints");
+      sourceTitle = window.I18n.t("iti.wp.srcPortal");
+      sourceClass = "";
+    } else if (p.source === "search") {
+      sourceIcon  = window.ktaIcone("search");
       sourceTitle = window.I18n.t("iti.wp.srcSearch");
       sourceClass = "";
     } else if (p.source === "tracker") {
-      sourceIcon  = "📍";
+      sourceIcon  = window.ktaIcone("navigation");
       sourceTitle = window.I18n.t("iti.wp.srcTracker");
       sourceClass = " kta-iti-wp-icon-tracker";
     } else {
-      sourceIcon  = "📍";
+      sourceIcon  = window.ktaIcone("mouse-pointer-click");
       sourceTitle = window.I18n.t("iti.wp.srcClick");
       sourceClass = "";
     }
@@ -697,7 +702,7 @@ function _rafraichirListeWaypointsModale() {
              '<span class="kta-iti-wp-num">' + (done ? "✓" : (i + 1)) + '</span>' +
              '<span class="kta-iti-wp-icon' + sourceClass + '" title="' + sourceTitle + '">' + sourceIcon + '</span>' +
              '<span class="kta-iti-wp-coord">' + _escapeHtml(label) + '</span>' +
-             '<button class="kta-iti-wp-goto"   data-idx="' + i + '" title="' + window.I18n.t("iti.wp.gotoTitle") + '">🎯</button>' +
+             '<button class="kta-iti-wp-goto"   data-idx="' + i + '" title="' + window.I18n.t("iti.wp.gotoTitle") + '">' + window.ktaIcone("locate-fixed") + '</button>' +
              '<button class="kta-iti-wp-remove" data-idx="' + i + '" title="' + window.I18n.t("iti.wp.removeTitle") + '">✕</button>' +
            '</div>';
   }).join("");
@@ -786,7 +791,7 @@ function _afficherPanneauItineraireFlottant(mainModal) {
   panneau.id = "kta-iti-floater";
   panneau.className = "kta-iti-floater";
   panneau.innerHTML =
-    '<span class="kta-iti-floater-icon">📍</span>' +
+    '<span class="kta-iti-floater-icon">' + window.ktaIcone("mouse-pointer-click") + '</span>' +
     '<span class="kta-iti-floater-msg">' +
       window.I18n.t("iti.floater.clickMsg", { count: '<strong id="kta-iti-floater-count">' + _itineraryWaypoints.length + '</strong>' }) +
     '</span>' +
@@ -802,7 +807,7 @@ function _afficherPanneauItineraireFlottant(mainModal) {
       _rafraichirListeWaypointsModale();
       const btn = document.getElementById("kta-iti-mode-click");
       if (btn) {
-        btn.textContent = window.I18n.t("iti.btn.modeClickActivate");
+        btn.innerHTML = window.ktaIcone("mouse-pointer-click") + " " + window.ktaEsc(window.I18n.t("iti.btn.modeClickActivate"));
         btn.classList.remove("kta-actif");
       }
     }
@@ -1315,7 +1320,7 @@ function _activerModeClicAvoid(mainModal) {
   panneau.id = "kta-iti-avoid-floater";
   panneau.className = "kta-iti-floater kta-iti-avoid-floater";
   panneau.innerHTML =
-    '<span class="kta-iti-floater-icon">🚫</span>' +
+    '<span class="kta-iti-floater-icon">' + window.ktaIcone("ban") + '</span>' +
     '<span class="kta-iti-floater-msg">' +
       window.I18n.t("iti.avoid.floaterMsg", { count: '<strong id="kta-iti-avoid-floater-count">' + _getItiAvoidPrefs().points.length + '</strong>' }) +
     '</span>' +
@@ -1330,7 +1335,7 @@ function _activerModeClicAvoid(mainModal) {
       _rafraichirListeAvoidPoints();
       const btn = document.getElementById("kta-iti-avoid-click-map");
       if (btn) {
-        btn.textContent = window.I18n.t("iti.avoid.clickMapBtn");
+        btn.innerHTML = window.ktaIcone("mouse-pointer-click") + " " + window.ktaEsc(window.I18n.t("iti.avoid.clickMapBtn"));
         btn.classList.remove("kta-actif");
       }
     }
@@ -1361,10 +1366,10 @@ function _htmlSectionAvoidItineraire(prefs) {
   return '' +
     '<div class="kta-iti-section">' +
       '<details class="kta-iti-avoid-details">' +
-        '<summary class="kta-iti-section-titre" style="cursor:pointer;">' + window.I18n.t("iti.avoid.title") + '</summary>' +
+        '<summary class="kta-iti-section-titre" style="cursor:pointer;">' + window.ktaIcone("ban") + " " + window.I18n.t("iti.avoid.title") + '</summary>' +
 
         '<div class="kta-iti-avoid-group">' +
-          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.pointsTitle") + '</div>' +
+          '<div class="kta-iti-avoid-group-titre">' + window.ktaIcone("map-pin") + " " + window.I18n.t("iti.avoid.pointsTitle") + '</div>' +
           '<div class="kta-iti-avoid-search-wrap">' +
             '<input type="text" id="kta-iti-avoid-search-input" class="kta-cfg-input" ' +
               'placeholder="' + window.I18n.t("iti.avoid.searchPlaceholder") + '" autocomplete="off">' +
@@ -1375,18 +1380,18 @@ function _htmlSectionAvoidItineraire(prefs) {
               'placeholder="' + window.I18n.t("iti.avoid.byIdPlaceholder") + '" autocomplete="off" style="flex:1;">' +
             '<button id="kta-iti-avoid-byid-add" class="kta-btn kta-btn-ghost kta-btn-small" type="button">' + window.I18n.t("iti.avoid.byIdAdd") + '</button>' +
           '</div>' +
-          '<button id="kta-iti-avoid-click-map" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-bottom:8px;">' + window.I18n.t("iti.avoid.clickMapBtn") + '</button>' +
+          '<button id="kta-iti-avoid-click-map" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-bottom:8px;">' + window.ktaIcone("mouse-pointer-click") + " " + window.I18n.t("iti.avoid.clickMapBtn") + '</button>' +
           '<div id="kta-iti-avoid-points-list" class="kta-iti-avoid-list"></div>' +
         '</div>' +
 
         '<div class="kta-iti-avoid-group">' +
-          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.tagsTitle") + '</div>' +
+          '<div class="kta-iti-avoid-group-titre">' + window.ktaIcone("tag") + " " + window.I18n.t("iti.avoid.tagsTitle") + '</div>' +
           '<div id="kta-iti-avoid-tags-chips" class="kta-iti-avoid-tags-chips"></div>' +
         '</div>' +
 
         // Inaccessibles AVANT les évitements souples : seule contrainte que le moteur ne relâche jamais.
         '<div class="kta-iti-avoid-group">' +
-          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.inacc.title") + '</div>' +
+          '<div class="kta-iti-avoid-group-titre">' + window.ktaIcone("triangle-alert") + " " + window.I18n.t("iti.inacc.title") + '</div>' +
           '<label class="kta-iti-avoid-zone-row">' +
             '<input type="checkbox" id="kta-iti-respect-inacc"' +
               (prefs.respecterInaccessibles === false ? '' : ' checked') + '>' +
@@ -1397,7 +1402,7 @@ function _htmlSectionAvoidItineraire(prefs) {
         // Plan multi-niveau : les puits sans échelon (jps) ne servent qu'à une équipe équipée.
         ((window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)
           ? '<div class="kta-iti-avoid-group">' +
-              '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.corde.title") + '</div>' +
+              '<div class="kta-iti-avoid-group-titre">' + window.ktaIcone("m-echelle") + " " + window.I18n.t("iti.corde.title") + '</div>' +
               '<label class="kta-iti-avoid-zone-row">' +
                 '<input type="checkbox" id="kta-iti-corde"' + (prefs.corde === true ? ' checked' : '') + '>' +
                 '<span>' + window.I18n.t("iti.corde.label") + '</span>' +
@@ -1406,7 +1411,7 @@ function _htmlSectionAvoidItineraire(prefs) {
           : '') +
 
         '<div class="kta-iti-avoid-group">' +
-          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.zonesTitle") + '</div>' +
+          '<div class="kta-iti-avoid-group-titre">' + window.ktaIcone("m-zone") + " " + window.I18n.t("iti.avoid.zonesTitle") + '</div>' +
           '<p class="kta-iti-help" style="margin:2px 0 6px; font-size:11.5px;">' +
             window.I18n.t("iti.avoid.zonesHelp") +
           '</p>' +
@@ -1414,7 +1419,7 @@ function _htmlSectionAvoidItineraire(prefs) {
         '</div>' +
 
         '<div class="kta-iti-avoid-group">' +
-          '<div class="kta-iti-avoid-group-titre">' + window.I18n.t("iti.avoid.marginTitle") + '</div>' +
+          '<div class="kta-iti-avoid-group-titre">' + window.ktaIcone("ruler") + " " + window.I18n.t("iti.avoid.marginTitle") + '</div>' +
           '<div style="display:flex; align-items:center; gap:8px;">' +
             '<input type="number" id="kta-iti-avoid-radius" class="kta-cfg-input" ' +
               'value="' + radiusVal + '" min="0" max="500" step="10" style="width:90px;">' +
@@ -1422,7 +1427,7 @@ function _htmlSectionAvoidItineraire(prefs) {
           '</div>' +
         '</div>' +
 
-        '<button id="kta-iti-avoid-reset" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-top:6px;">' + window.I18n.t("iti.avoid.reset") + '</button>' +
+        '<button id="kta-iti-avoid-reset" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-top:6px;">' + window.ktaIcone("trash-2") + " " + window.I18n.t("iti.avoid.reset") + '</button>' +
       '</details>' +
     '</div>';
 }
@@ -1473,7 +1478,7 @@ async function _rafraichirChipsAvoidTags() {
     const active = prefs.tags.indexOf(tag) >= 0;
     return '<button class="kta-iti-avoid-tag-chip' + (active ? ' kta-iti-avoid-tag-chip-active' : '') + '" ' +
              'data-tag="' + _esc(tag) + '" type="button">' +
-             (active ? '🚫 ' : '') + _esc(tag) +
+             (active ? window.ktaIcone("ban") + ' ' : '') + _esc(tag) +
            '</button>';
   }).join("");
   el2.querySelectorAll(".kta-iti-avoid-tag-chip").forEach(function(btn) {
@@ -1590,7 +1595,7 @@ function _bindAvoidSectionHandlers() {
       const mainModal = document.getElementById("kta-itinerary-modal");
       _activerModeClicAvoid(mainModal);
       clickMapBtn.classList.add("kta-actif");
-      clickMapBtn.textContent = window.I18n.t("iti.avoid.clickMapActive");
+      clickMapBtn.innerHTML = window.ktaIcone("mouse-pointer-click") + " " + window.ktaEsc(window.I18n.t("iti.avoid.clickMapActive"));
     });
   }
 
@@ -1650,8 +1655,9 @@ function _itiPartageDispo() {
   const X = window.KtaExtensions;
   return !!(X && typeof X.aPrise === "function" && X.aPrise("itineraire"));
 }
+// HTML (icône SVG + libellé) : posé par innerHTML.
 function _itiPartageLibelle() {
-  return window.I18n.t(window.KtaExtensions.itinerairePublie() ? "iti.partage.btnOn" : "iti.partage.btnOff");
+  return window.ktaIcone("users") + " " + window.I18n.t(window.KtaExtensions.itinerairePublie() ? "iti.partage.btnOn" : "iti.partage.btnOff");
 }
 
 window.ouvrirItinerairModal = function() {
@@ -1680,9 +1686,9 @@ window.ouvrirItinerairModal = function() {
   // (Début/Fin/Tour) au-dessus de la liste.
   const quickNavHtml = modeNavigation
     ? '<div class="kta-iti-quicknav">' +
-        '<button id="kta-iti-nav-debut" class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.nav.start") + '</button>' +
-        '<button id="kta-iti-nav-fin"   class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.nav.end") + '</button>' +
-        '<button id="kta-iti-nav-tour"  class="kta-btn kta-btn-ghost"   type="button">' + window.I18n.t("iti.nav.tour") + '</button>' +
+        '<button id="kta-iti-nav-debut" class="kta-btn kta-btn-primary" type="button">' + window.ktaIcone("skip-back") + " " + window.I18n.t("iti.nav.start") + '</button>' +
+        '<button id="kta-iti-nav-fin"   class="kta-btn kta-btn-primary" type="button">' + window.ktaIcone("skip-forward") + " " + window.I18n.t("iti.nav.end") + '</button>' +
+        '<button id="kta-iti-nav-tour"  class="kta-btn kta-btn-ghost"   type="button">' + window.ktaIcone("repeat") + " " + window.I18n.t("iti.nav.tour") + '</button>' +
       '</div>'
     : '';
 
@@ -1692,13 +1698,13 @@ window.ouvrirItinerairModal = function() {
 
   const sectionPoints =
     '<div class="kta-iti-section">' +
-      '<div class="kta-iti-section-titre">' + window.I18n.t("iti.points.titre") + '</div>' +
+      '<div class="kta-iti-section-titre">' + window.ktaIcone("map-pin") + " " + window.I18n.t("iti.points.titre") + '</div>' +
       '<p class="kta-iti-help">' + helpText + '</p>' +
       quickNavHtml +
       '<div class="kta-iti-mode-toggle">' +
-        '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.btn.modeClick") + '</button>' +
-        '<button id="kta-iti-tracker-pos" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;" title="' + window.I18n.t("iti.btn.myPosTitle") + '">' + window.I18n.t("iti.btn.myPos") + '</button>' +
-        '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">' + window.I18n.t("iti.btn.clear") + '</button>' +
+        '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">' + window.ktaIcone("mouse-pointer-click") + " " + window.I18n.t("iti.btn.modeClick") + '</button>' +
+        '<button id="kta-iti-tracker-pos" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;" title="' + window.I18n.t("iti.btn.myPosTitle") + '">' + window.ktaIcone("locate-fixed") + " " + window.I18n.t("iti.btn.myPos") + '</button>' +
+        '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">' + window.ktaIcone("trash-2") + " " + window.I18n.t("iti.btn.clear") + '</button>' +
       '</div>' +
       '<div class="kta-iti-search-wrap">' +
         '<input type="text" id="kta-iti-search-input" class="kta-cfg-input" ' +
@@ -1723,15 +1729,15 @@ window.ouvrirItinerairModal = function() {
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.distance") + '</strong> ' + window.formatDistance(distActMeters, 1) + '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.time") + '</strong> ' +
           '<span id="kta-iti-temps-val">' + _formatTempsMinutes(tempsActMin) + '</span> ' +
-          '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + currentPreset.icon + ' ' + _presetLabel(currentPresetKey) + ')</span>' +
+          '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + window.ktaIcone(currentPreset.ico) + ' ' + _presetLabel(currentPresetKey) + ')</span>' +
         '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.segments") + '</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
         // Profil en long : `existingItinerary.points` porte déjà le niveau de chaque point.
         '<button id="kta-iti-profil" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
-          ' style="width:100%; margin-top:6px;">📉 ' + window.I18n.t("prof.profil.btn") + '</button>' +
+          ' style="width:100%; margin-top:6px;">' + window.ktaIcone("m-niveaux") + ' ' + window.I18n.t("prof.profil.btn") + '</button>' +
         (window.ItiGuidage
           ? '<button id="kta-iti-feuille" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
-              ' style="width:100%; margin-top:6px;">🪧 ' + window.I18n.t("guid.feuille.btn") + '</button>'
+              ' style="width:100%; margin-top:6px;">' + window.ktaIcone("signpost") + ' ' + window.I18n.t("guid.feuille.btn") + '</button>'
           : '') +
         // Installation reliée seulement (prise neutre `itineraire`) : montrer l'itinéraire à l'équipe.
         (_itiPartageDispo()
@@ -1748,7 +1754,7 @@ window.ouvrirItinerairModal = function() {
       b.disabled = true;
       window.KtaExtensions.basculerItineraire().then(function (publie) {
         b.disabled = false;
-        b.textContent = _itiPartageLibelle();
+        b.innerHTML = _itiPartageLibelle();
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(window.I18n.t(publie ? "iti.partage.toastOn" : "iti.partage.toastOff"), "info");
         }
@@ -1778,7 +1784,7 @@ window.ouvrirItinerairModal = function() {
   }
 
   const eraseBtn = modeNavigation
-    ? '<button id="kta-iti-erase" class="kta-btn kta-btn-danger" type="button" style="width:100%; margin-top:8px;">' + window.I18n.t("iti.btn.erase") + '</button>'
+    ? '<button id="kta-iti-erase" class="kta-btn kta-btn-danger" type="button" style="width:100%; margin-top:8px;">' + window.ktaIcone("eraser") + " " + window.I18n.t("iti.btn.erase") + '</button>'
     : '';
   let speedButtonsHtml = "";
   Object.keys(ITI_SPEED_PRESETS).forEach(function(key) {
@@ -1789,14 +1795,14 @@ window.ouvrirItinerairModal = function() {
       '<button type="button" class="kta-iti-speed-btn' + (active ? " kta-iti-speed-active" : "") + '" ' +
         'data-speed="' + key + '" ' +
         'title="' + window.I18n.t("iti.speed.btnTitle", { label: pLabel, kmh: p.kmh, hint: _presetHint(key) }) + '">' +
-        '<span class="kta-iti-speed-icon">' + p.icon + '</span>' +
+        '<span class="kta-iti-speed-icon">' + window.ktaIcone(p.ico) + '</span>' +
         '<span class="kta-iti-speed-label">' + pLabel + '</span>' +
         '<span class="kta-iti-speed-kmh">' + window.I18n.t("iti.speed.kmh", { kmh: p.kmh }) + '</span>' +
       '</button>';
   });
   const sectionVitesse =
     '<div class="kta-iti-section">' +
-      '<div class="kta-iti-section-titre">' + window.I18n.t("iti.speed.titre") + '</div>' +
+      '<div class="kta-iti-section-titre">' + window.ktaIcone("footprints") + " " + window.I18n.t("iti.speed.titre") + '</div>' +
       '<div class="kta-iti-speed-segmented" id="kta-iti-speed-segmented">' +
         speedButtonsHtml +
       '</div>' +
@@ -1807,7 +1813,7 @@ window.ouvrirItinerairModal = function() {
   const pauseMin       = _getItiPauseMinutes();
   const sectionPause =
     '<div class="kta-iti-section">' +
-      '<div class="kta-iti-section-titre">' + window.I18n.t("iti.pause.titre") + '</div>' +
+      '<div class="kta-iti-section-titre">' + window.ktaIcone("pause") + " " + window.I18n.t("iti.pause.titre") + '</div>' +
       '<label class="kta-iti-pause-row">' +
         '<input type="checkbox" id="kta-iti-pause-cb"' + (pauseEnabled ? " checked" : "") + '>' +
         '<span>' + window.I18n.t("iti.pause.include") + '</span>' +
@@ -1822,12 +1828,12 @@ window.ouvrirItinerairModal = function() {
 
   const sectionAction =
     '<div class="kta-iti-section">' +
-      '<div class="kta-iti-section-titre">' + (modeNavigation ? window.I18n.t("iti.action.titreNav") : window.I18n.t("iti.action.titre")) + '</div>' +
+      '<div class="kta-iti-section-titre">' + (modeNavigation ? window.ktaIcone("route") + " " + window.I18n.t("iti.action.titreNav") : window.ktaIcone("route") + " " + window.I18n.t("iti.action.titre")) + '</div>' +
       statusActuel +
-      '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">' + computeBtnLabel + '</button>' +
+      '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">' + window.ktaIcone(modeNavigation ? "refresh-cw" : "route") + ' ' + computeBtnLabel + '</button>' +
       // Destination sur un AUTRE plan : recherche multi-plans en mode sélection → itinéraire via portail.
       ((window.CrossPlanSearch && window.InterPlanRoute)
-        ? '<button id="kta-iti-crossplan" class="kta-btn kta-btn-ghost" type="button" style="width:100%; margin-top:8px;">🌐 ' +
+        ? '<button id="kta-iti-crossplan" class="kta-btn kta-btn-ghost" type="button" style="width:100%; margin-top:8px;">' + window.ktaIcone("waypoints") + ' ' +
             window.I18n.t("ipr.btn.fromItiModal") + '</button>'
         : '') +
       eraseBtn +
@@ -1843,7 +1849,7 @@ window.ouvrirItinerairModal = function() {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite kta-iti-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + titre + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("route") + ' ' + titre + '</span>' +
         '<button class="kta-panneau-close" id="kta-iti-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps kta-iti-corps">' +
@@ -1919,7 +1925,7 @@ window.ouvrirItinerairModal = function() {
     const tEl   = document.getElementById("kta-iti-temps-val");
     const hEl   = document.getElementById("kta-iti-temps-speed-hint");
     if (tEl) tEl.textContent = _formatTempsMinutes(tMin);
-    if (hEl) hEl.textContent = "(" + p.icon + " " + _presetLabel(pKey) + ")";
+    if (hEl) hEl.innerHTML = "(" + window.ktaIcone(p.ico) + " " + window.ktaEsc(_presetLabel(pKey)) + ")";
   }
 
   function fermer() {
@@ -2059,7 +2065,7 @@ window.ouvrirItinerairModal = function() {
   btnMode.addEventListener("click", function() {
     if (_itineraryClickActive) {
       _desactiverModeClicCarte();
-      btnMode.textContent = window.I18n.t("iti.btn.modeClickActivate");
+      btnMode.innerHTML = window.ktaIcone("mouse-pointer-click") + " " + window.ktaEsc(window.I18n.t("iti.btn.modeClickActivate"));
       btnMode.classList.remove("kta-actif");
     } else {
       _activerModeClicCarte();
@@ -2156,7 +2162,7 @@ window.ouvrirItinerairModal = function() {
     }
 
     // Bouton désactivé pendant le Dijkstra : un double clic lancerait deux calculs sur le même aperçu.
-    const originalText = btn.textContent;
+    const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = window.I18n.t("iti.btn.computing");
     try {
@@ -2208,11 +2214,11 @@ window.ouvrirItinerairModal = function() {
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.segmentsCrossed") + '</strong> ' + result.segmentCount + '</div>' +
         (window.ItiGuidage
           ? '<button id="kta-iti-feuille-preview" class="kta-btn kta-btn-ghost kta-btn-small" type="button"' +
-              ' style="width:100%; margin-top:6px;">🪧 ' + window.I18n.t("guid.feuille.btn") + '</button>'
+              ' style="width:100%; margin-top:6px;">' + window.ktaIcone("signpost") + ' ' + window.I18n.t("guid.feuille.btn") + '</button>'
           : '') +
         '<div class="kta-iti-result-actions">' +
-          '<button id="kta-iti-save" class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("iti.btn.save") + '</button>' +
-          '<button id="kta-iti-discard" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">' + window.I18n.t("iti.btn.discard") + '</button>' +
+          '<button id="kta-iti-save" class="kta-btn kta-btn-primary" type="button">' + window.ktaIcone("save") + " " + window.I18n.t("iti.btn.save") + '</button>' +
+          '<button id="kta-iti-discard" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">' + window.ktaIcone("eraser") + " " + window.I18n.t("iti.btn.discard") + '</button>' +
         '</div>';
       resEl.style.display = "block";
 
@@ -2259,7 +2265,7 @@ window.ouvrirItinerairModal = function() {
       errEl.style.display = "block";
     } finally {
       btn.disabled = false;
-      btn.textContent = originalText;
+      btn.innerHTML = originalText;
     }
   });
 };

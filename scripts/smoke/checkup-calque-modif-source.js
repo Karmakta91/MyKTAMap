@@ -147,7 +147,7 @@ async function lire(page, g) {
   }, g);
 }
 
-// Volumes de passage « rampe » (tracé jonction) de la vue 3D au départ de J0, niveau 0 ; null si la 3D n'ouvre pas.
+// Galeries inclinées (tracé jonction) de la vue 3D au départ de J0, niveau 0 ; null si la 3D n'ouvre pas.
 // La vue 3D se charge à la demande : le script est ajouté comme le fait checkup-vue-3d.js.
 async function rampes3d(page, g) {
   if (!(await page.evaluate(function () { return !!window.KtaVue3D; }))) {
@@ -161,7 +161,7 @@ async function rampes3d(page, g) {
       if (!o) return null;
       const e = window.KtaVue3D.etat();
       const n = (e.volumes || []).filter(function (v) {
-        return v.genre === "rampe" && Math.hypot(v.x - g.J0.x, v.y - g.J0.y) < 1.5;
+        return v.genre === "pente" && Math.hypot(v.x - g.J0.x, v.y - g.J0.y) < 1.5;
       }).length;
       return window.KtaVue3D.fermer().then(function () { return n; });
     });
@@ -302,7 +302,7 @@ async function heatmapTraces(page) {
     verifier(e0.route.ok && e0.route.viaJonction, "itinéraire 0 → −1 par la jonction du calque", e0.route);
     const r0 = await rampes3d(page, g);
     if (r0 === null) inf("vue 3D indisponible ici (WebGL ou échelle) : passages 3D non joués");
-    else verifier(r0 === 1, "vue 3D : un passage (rampe) au départ de la jonction", r0);
+    else verifier(r0 === 1, "vue 3D : une galerie inclinée au départ de la jonction", r0);
     const hm0 = await heatmapTraces(page);
     verifier(await recherche(page) === 1, "recherche : le point du calque trouvé une fois");
     const x0 = await exportAvance(page, g, CALQUE);
@@ -329,6 +329,22 @@ async function heatmapTraces(page) {
     const mx = await modaleExport(page, CALQUE);
     verifier(mx.bloc && !!mx.note && mx.cochable && mx.sousCases === 0,
       "modale d'export : case du calque cochable, « exporté par la session », sans sous-cases", mx);
+    // 🩸 « Tout afficher » cochait chaque case de calque : l'original masqué revenait sur la carte à côté de sa copie.
+    const ta = await page.evaluate(function (id) {
+      window.FilterPanel.ouvrir();
+      const cb = document.querySelector('[data-data-layer="' + id + '"]');
+      const verrou = !!(cb && cb.disabled && !cb.checked);
+      cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true }));
+      const apresClic = window.map.hasLayer(window.dataLayerGroups[id]);
+      document.getElementById("kta-fp-reset-all").click();
+      const apresTout = window.map.hasLayer(window.dataLayerGroups[id]);
+      window.FilterPanel.fermer();
+      return { verrou: verrou, apresClic: apresClic, apresTout: apresTout };
+    }, CALQUE);
+    verifier(ta.verrou, "filtre : case du calque en modification verrouillée (décochée, grisée)", ta);
+    verifier(!ta.apresClic && !ta.apresTout, "filtre : ni la case ni « Tout afficher » ne réaffichent l'original", ta);
+    const e1b = await lire(page, g);
+    verifier(e1b.embarquees === 0 && e1b.lecturesJonction === 1, "après « Tout afficher » : toujours sans doublon", e1b);
 
     console.log("\n── 3. Jonction, zone et mur supprimés de la copie ──");
     await page.evaluate(function () {

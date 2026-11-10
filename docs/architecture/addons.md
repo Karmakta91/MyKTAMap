@@ -2,8 +2,7 @@
 
 > État actuel, pas d'historique. Ce fichier se lit **en entier** avant d'écrire ou de modifier un add-on, par un
 > développeur comme par une IA : il dit ce qu'est un add-on, comment il se lance, à quoi il a le droit de toucher
-> (les connecteurs) et ce qui lui est interdit. Exemple complet : l'add-on `mkmg` (dernière partie). Section
-> « Add-ons » des Réglages, bouton 🧩 de la vue 3D et cases de ConfAdmin : à venir (cadre d'add-ons, lots B et C).
+> (les connecteurs) et ce qui lui est interdit. Exemple complet : l'add-on `mkmg` (dernière partie).
 
 ## En une minute
 
@@ -36,14 +35,16 @@ part avec lui.
   |---|---|
   | `nom` | le nom du dossier |
   | `prise` | où il se greffe : `"vue3d"` seulement (une prise nouvelle vient avec l'add-on qui la justifie) |
-  | `secret` | `true` : absent des Réglages et du bouton 🧩 (à venir), lancé par son code seul (`mkmg`) |
-  | `code` | code de la vue 3D qui le lance (`"bas6"`), émis par `vue3d.js > _lancerAddon` ; un seul add-on par code |
+  | `secret` | `true` : absent de Configuration › Add-ons et du bouton 🎮, lancé par son code seul (`mkmg`) |
+  | `parDefaut` | add-on visible : `false` pour le livrer éteint (absent = allumé, décision produit) |
+  | `code` | code de la vue 3D qui le lance (`"bas6"`), émis par `vue3d.js > _lancerAddon` ; un seul add-on par code ; obligatoire pour un secret, facultatif pour un visible (🎮 suffit) |
   | `entree` | script chargé en premier, parmi `fichiers` ; il charge lui-même le reste |
   | `fichiers` | TOUS ses fichiers, chemins sous `js/`, `css/` ou `img/` : ce que le précache prend |
   | `titre` | `{ fr, en, es }` (Réglages, ConfAdmin) |
 
-  Lu par le registre de l'app (`js/ktaAddons.js > KtaRegistreAddons` : `liste()`, `parCode(code)`, `charger(m)`, à la
-  première demande seulement) et par le précache (`sw.js > _assetsAddons`). 🔒 Un manifeste mal formé (nom, prise,
+  Lu par le registre de l'app (`js/ktaAddons.js > KtaRegistreAddons` : `liste()`, `parCode(code)`, `charger(m)`,
+  `actif(m)`, `regler(nom, oui)`, `titre(m)`, à la première demande seulement) et par le précache
+  (`sw.js > _assetsAddons`). 🔒 Un manifeste mal formé (nom, prise,
   chemin hors des trois dossiers, entrée hors de ses fichiers) est écarté, jamais chargé.
 - **Community** : gratuit, sans serveur, comme le reste de ce dépôt. Pas de code pro, pas d'appel réseau
   (`community-server-line.md`).
@@ -56,24 +57,33 @@ part avec lui.
 
 ## Comment il se lance
 
-1. **Déclencheur** : un code dans la vue 3D. `vue3d.js > CODE_BAS` (décision produit) : 6 appuis vers le bas en moins
+1. **Déclencheur** : add-on **visible** → bouton **🎮 Add-ons**, dernière ligne de la tuile ⚙️ de la vue 3D (la
+   rangée du haut tient sur une ligne au téléphone), montré seulement s'il y a au moins un add-on visible allumé ; un
+   seul se lance tout de suite, plusieurs passent par un choix (`ktaConfirm`, boutons radio) ; rien pendant une
+   greffe. Add-on **secret** → un code dans la vue 3D. `vue3d.js > CODE_BAS` (décision produit) : 6 appuis vers le bas en moins
    de 2 s — ▼ du pavé, ↓ ou S (répétition du clavier ignorée), ou coup bref du joystick vers le bas (relâché moins de
    0,5 s après la sortie de la zone morte, toujours à plus de 135° de l'avant), sans autre commande de déplacement
    entre deux (elle remet le compte à 0). `window` reçoit `kta:vue3dCode` (`detail.code = "bas6"`).
-2. **Chargement** : `vue3d.js > _lancerAddon` demande au registre le manifeste qui déclare ce code
-   (`KtaRegistreAddons.parCode`), puis pose une fois son `entree` (même origine, CSP `script-src 'self'`) ; un code
-   répété pendant ce temps ne lance qu'une fois. Un add-on absent ou un manifeste illisible laisse un avertissement
+2. **Chargement** : `vue3d.js > _lancerManifeste` (par `_lancerAddon` pour un code, `_choisirAddon` pour 🎮) prend le
+   manifeste au registre, refuse un add-on éteint (`KtaRegistreAddons.actif`), puis pose une fois son `entree` (même
+   origine, CSP `script-src 'self'`) ; un appel répété pendant ce temps ne lance qu'une fois. Un add-on absent ou un manifeste illisible laisse un avertissement
    en console, rien d'autre.
 3. **Inscription** : le script s'inscrit dans `window.KtaAddons.<nom> = { lancer() }`. La vue appelle `lancer()`
-   à chaque code (vue ouverte seulement).
+   à chaque code ou choix 🎮 (vue ouverte seulement).
 4. **Décision** : c'est l'add-on qui refuse (avec `ktaAlerte`) ou demande confirmation (`ktaConfirm`), puis se greffe.
    Il charge lui-même ses autres fichiers et sa feuille de style (`<link>` et `<script>` de même origine).
 
 ## Activation sur une installation
 
+- **Sur l'appareil** : ⚙️ Configuration › **🎮 Add-ons** (accueil, `homeConfig.js > _peindreAddons`) donne un
+  interrupteur à chaque add-on visible (titre du manifeste), retenu sous `myktamap_addons_v1` (`{ <nom>: bool }`) ;
+  rubrique masquée tant qu'aucun add-on visible n'est livré. Un add-on secret n'y est jamais et reste toujours actif.
+
 - **myktamap.fr / instance sans serveur** (`KtaExtensions.etat().etat === "off"`) : permis.
 - **Installation reliée à un serveur** (pro) : refusé par défaut, sauf si son hébergeur l'autorise dans
-  `data/reglages.json` : `{ "addons": { "<nom>": true } }`. `KtaInstance.filtrerReglages` ne garde de `addons` que des
+  `data/reglages.json` : `{ "addons": { "<nom>": true } }`, écrit à la main ou par **ConfAdmin** (rubrique 🎮 Add-ons :
+  une case par add-on livré, secrets compris — outil de l'hébergeur, décision produit ; relue par « Reprendre un
+  reglages.json », un nom absent de la version gardé à l'export ; `js/confadmin.js > ktaReglagesExport`). `KtaInstance.filtrerReglages` ne garde de `addons` que des
   noms `[a-z0-9-]{1,32}` à `true` (`check-gate-instance.js`, piège compris) ; ce réglage autorise un add-on déjà livré,
   il n'en charge aucun. Lecture côté add-on : `KtaInstance.etat().reglages.addons.<nom> === true`. Un interrupteur par
   organisation (pro) est au backlog.
@@ -108,10 +118,11 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `niveau`, `hauteur`, `sc` | niveau affiché, hauteur des galeries (m), échelle (px / m) |
 | `pos`, `cap` | position (px plan, copie) et cap (°, 0 = haut de l'image, 90 = droite) |
 | `rendu`, `mode`, `vue`, `commandes`, `court` | `"mixte"` / `"structures"` / `"galerie"` ; `"suivi"` / `"libre"` ; `"yeux"` / `"plongee"` ; `"joystick"` / `"pave"` ; pas rapide en cours |
+| `miniCarte` | `true` quand le médaillon de la mini-carte est montré en haut à droite : le greffon y libère la place (le jeu `mkmg` passe alors son panneau sous ses jauges, à gauche) |
 | `sale()` | demander une image |
 | `bloque(x0, y0, x1, y1)` | règle du pas **de la vue** (jamais une copie) : un corps de 0,8 m ne passe pas (px plan) |
 | `ligneBloquee(x0, y0, x1, y1)` | une ligne de vue est coupée (pilier, mur, paroi) |
-| `libre(x, y)` | un corps tient là : ni coincé, ni dans une structure **dessinée**, corps dégagé (un calque masqué n'y compte pas), ni dans ou contre un remblais, un effondrement ou une zone inaccessible du niveau (`galerieEmprise.js > ZONES_BOUCHENT`), ni dans ou contre l'obstacle d'un accès de surface : cône d'un puits comblé, cavage fermé, pierre de taille qui comble un cavage (ouvert ou fermé) jusqu'aux structures (`KtaGalerie.BLOQUE`, posé par `placePassage`, `comblementPorte`) |
+| `libre(x, y)` | un corps tient là : ni coincé, ni dans une structure **dessinée**, corps dégagé (un calque masqué n'y compte pas), ni dans ou contre un remblais, un effondrement ou une zone inaccessible du niveau (`galerieEmprise.js > ZONES_BOUCHENT`), ni dans ou contre l'obstacle d'un accès de surface : cône d'un puits comblé, cavage fermé, pierre de taille qui comble un cavage (ouvert ou fermé) jusqu'aux structures (`KtaGalerie.BLOQUE`, posé par `placePassage`, `comblementPorte`) ; dans la galerie inclinée d'un tracé jonction, sa seule règle : le corps entre ses parois |
 | `regler(r)` | réglages de la vue **pour la greffe seulement**, levés au retrait (table ci-dessous) |
 
 `regler({ … })` — `false` masque ou interdit, `true` rend ; les filtres de la carte n'en savent rien :
@@ -125,7 +136,8 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `avatar` | silhouette dorée de la vue d'édition masquée (l'add-on dessine la sienne) |
 | `commandes` | joystick et pavé retirés (une carte à toucher là où est le pouce) ; 🩸 `display` en style, le pavé étant en grille |
 | `plongee` | vue d'édition interdite : bouton ✏️ grisé, `basculerVue` et `zoomer` refusés, retour à hauteur d'yeux si l'on y était |
-| `fiches` | un toucher bref sur la scène n'ouvre plus rien (ni fiche de POI, de structure, de zone ou de tracé, ni nom d'un membre) : il est au greffon (un jeu qui tire au doigt) ; une fiche ouverte se ferme. ⚠️ Coupe aussi le **dessin** depuis la vue plongeante : barre ✏️ masquée, outil éteint, aucun sommet posé même si un outil de la carte était armé (`vue3d.js > _dessinPermis`) ; le jeu `mkmg` n'édite donc jamais le plan |
+| `fiches` | un toucher bref sur la scène n'ouvre plus rien (ni fiche de POI, de structure, de zone ou de tracé, ni nom d'un membre) : il est au greffon (un jeu qui tire au doigt) ; une fiche ouverte se ferme. ⚠️ Coupe aussi le **dessin** depuis la vue plongeante : barre ✏️ masquée, outil éteint, aucun sommet posé même si un outil de la carte était armé (`vue3d.js > _dessinPermis`) ; le jeu `mkmg` n'édite donc jamais le plan. Cache aussi **🔍 Rechercher** de la colonne et refuse « y aller » depuis la recherche (`_rechercheDispo`, toast) |
+| `miniCarte` | mini-carte de la vue masquée (médaillon en haut à droite, refermée si elle était agrandie) ; le réglage 🗺️ de l'appareil n'est pas réécrit et revient au retrait (`vue3d.js > _appliquerMiniCarte`) |
 | `reglagesFiges` (`true` pour l'activer, absent = `false`) | réglages ⚙️ Portée et Lampe de l'utilisateur figés : portée par défaut (30 m), intensité 100 %, faisceau de 71° et Plein jour coupé, trois curseurs et ☀️ grisés ; ce qui est retenu (vue et appareil) n'est jamais réécrit et revient au retrait ou avec la clé à `false`. Sans la clé, la greffe garde la portée et la lampe de l'utilisateur, Plein jour compris |
 
 Deux **facteurs** (nombre de 0 à 1, 1 = normal, rendus au retrait) :

@@ -15,7 +15,10 @@
 //   zonesBloquent(segs, niveau, depart, rendu), dansZone(x, y, niveau, rendu) (zones qui bouchent, ZONES_BOUCHENT, et
 //   obstacles des accès de surface, BLOQUE, dans les 3 rendus), ACCES / ACCES_DIM / PAROI (accès sans passage et
 //   formes de POI : formes et dimensions des volumes, formes posées sur la paroi), comblementPorte(x, y, ang, w,
-//   niveau, rendu) (pierre de taille d'un cavage).
+//   niveau, rendu) (pierre de taille d'un cavage), pente(r, niveau) / denivele(a, b) / demiPente(p, t) (galerie inclinée d'un tracé
+//   jonction vue d'un niveau, lue par vue3d.js), estZoneJonction(z) / penteDeZone(z) / zonesDePente(r) (zone jonction,
+//   type `pente` : sa pente est celle du tracé jonction qui la traverse), memeObjet(a, b) (même tracé ou même zone,
+//   copies des calques comprises).
 // Modèle MIXTE (vue 3D par défaut) : chaque côté du tube est jugé à part ; une structure du niveau (intégrée ou
 // perso) proche d'un côté ouvre CE côté (la paroi d'en face reste), un pan de retour relie la paroi gardée à la
 // structure ; proche des deux côtés, le tracé traverse une CHAMBRE, sans parois. Un tube qui débouche dans une
@@ -77,10 +80,15 @@
   const RETOUR_PAS_M = 0.1;
   // Passages entre niveaux (m) : dimensions des volumes de la vue 3D (vue3d.js > VOLUME les lit ici) : escalier
   // (jes, eso) 2,5 de volée × 1,5, puits carré (jpe, jps, peo) 1,2, aération (pa) 0,8 ; cadre doré au
-  // sol de `cadre` à `marge` de la bouche ; rampe d'un tracé jonction de `rampe`, sa tranchée `tranchee` de plus de
-  // chaque côté. Le volume s'aligne sur l'axe le plus proche à moins de DIR_PASSAGE_M (plusProche, même règle).
-  const PASSAGE = { escalier: [2.5, 1.5], puits: 1.2, aeration: 0.8, rampe: 1, tranchee: 0.1, marge: 0.12, cadre: 0.08 };
+  // sol de `cadre` à `marge` de la bouche ; galerie inclinée d'un tracé jonction de `pente` de large quand un de ses
+  // bouts n'est raccordé à aucune galerie (pente() : sinon la largeur de la galerie raccordée, RACCORD_PENTE_M). Le
+  // volume s'aligne sur l'axe le plus proche à moins de DIR_PASSAGE_M (plusProche, même règle).
+  const PASSAGE = { escalier: [2.5, 1.5], puits: 1.2, aeration: 0.8, pente: 1.6, marge: 0.12, cadre: 0.08 };
   const DIR_PASSAGE_M = 10;
+  // m : un bout de tracé jonction dont l'axe d'une galerie de son niveau passe à moins de cette distance y est raccordé
+  // (pente() prend sa largeur). Un bout posé sur la galerie (accroché par la carte) est à 0 ; 1,5 m tolère un bout
+  // posé à la main au bord d'une galerie large sans attraper la galerie voisine d'un réseau serré.
+  const RACCORD_PENTE_M = 1.5;
   // Accès de surface SANS passage et formes de POI (vue 3D seule) : tag → forme du volume (vue3d.js > _volumeAcces).
   // Aucun n'a de moyen (poiJonction.js > MOYEN) : ni 🪜, ni itinéraire, ni coût vertical. esf / pef = eso / peo
   // fermés en haut ; pb bouché au ras du plafond ; pc / psf comblés (cône d'éboulis au sol) ; ps puits d'extraction
@@ -154,6 +162,176 @@
 
   function _zones() { return _tab(window.getZones).concat(_tab(window.getAllEmbeddedZones)); }
 
+  // ── Galerie inclinée d'un tracé jonction ──────────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit) : un tracé `jonction` (fromLevel → toLevel) est une galerie inclinée qu'on parcourt
+  // en 3D ; la pente va du sol du niveau de départ au sol du niveau d'arrivée, répartie sur la longueur 2D du tracé
+  // (rien à saisir). Dénivelé = sol(arrivée) − sol(départ) (config.js > getNiveauVertical) quand les deux sols sont
+  // renseignés (l'écart saisi fait foi, négatif compris) ; sinon, par niveau franchi, la hauteur de galerie du niveau
+  // du dessous plus ROCHE_SANS_SOLS_M de roche, dans le sens des numéros (plan sans réglage : 4 m par niveau).
+  // Hauteur sous plafond :
+  // interpolée de celle du niveau de départ à celle du niveau d'arrivée. Vue d'un niveau, la galerie part
+  // TOUJOURS de son bout (y = 0 au sol du niveau) : t ∈ [0, 1] le long du tracé, sol à dY·t, plafond à
+  // dY·t + hA + (hB − hA)·t. `tOuvert` : jusqu'où la galerie inclinée recoupe la tranche [0, hA] du niveau (plafond
+  // au-dessus du sol en descente, sol sous le plafond en montée) : la bouche ouverte dans le sol ou le plafond, et
+  // l'emprise du modèle (_emprisesPassages) ; au-delà, elle passe sous le sol ou au-dessus du plafond, dans la roche.
+  // Lue par vue3d.js (volume, caméra, pas, itinéraire) : une seule règle.
+  // m : épaisseur de roche entre deux niveaux quand leurs sols manquent (décision produit) : sans elle, la bouche
+  // d'un puits s'ouvrait directement sur le niveau du dessous (trou noir en « Le mien », aucune paroi). Une seule
+  // règle pour la galerie inclinée, les niveaux voisins et les passages de la 3D (tous lisent denivele).
+  const ROCHE_SANS_SOLS_M = 2;
+
+  function _vertical(n) {
+    const f = window.getNiveauVertical;
+    const v = typeof f === "function" ? f(n) : null;
+    return { sol: v && Number.isFinite(v.solM) ? v.solM : null,
+      h: v && Number.isFinite(v.hauteurM) && v.hauteurM > 0 ? v.hauteurM : 2 };
+  }
+
+  // Largeur (m) de la galerie du niveau `niveau` dont l'axe passe au plus près de (x, y) px, à moins de
+  // RACCORD_PENTE_M ; jonctions, itinéraires, aperçus et types sans tube (SANS_TUBE) ignorés ; aucune : null.
+  function _largeurRaccord(x, y, niveau, sc) {
+    const R = RACCORD_PENTE_M * sc;
+    let best = null, dMin = Infinity;
+    _routes().forEach(function (r) {
+      if (!r || r.type === "jonction" || r.type === "itinerary" || !Array.isArray(r.points)) return;
+      if (!_surNiveau(r, niveau)) return;
+      const l = largeur(r.type);
+      if (!l) return;
+      for (let i = 0; i + 1 < r.points.length; i++) {
+        const a = r.points[i], b = r.points[i + 1];
+        if (!a || !b || !Number.isFinite(a.x) || !Number.isFinite(b.x)) continue;
+        if (Math.min(a.x, b.x) > x + R || Math.max(a.x, b.x) < x - R || Math.min(a.y, b.y) > y + R ||
+          Math.max(a.y, b.y) < y - R) continue;
+        const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+        const k = l2 > 1e-12 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / l2)) : 0;
+        const d = Math.hypot(x - a.x - dx * k, y - a.y - dy * k);
+        // À égalité (bout commun de deux galeries), la plus large : la pente ne se pose jamais dans une galerie.
+        if (d <= R && (d < dMin - 1e-6 || (Math.abs(d - dMin) <= 1e-6 && l > best))) { dMin = d; best = l; }
+      }
+    });
+    return best;
+  }
+
+  // Demi-largeur (m) de la galerie inclinée p à la part t de sa longueur (depuis notre bout).
+  function demiPente(p, t) {
+    if (!p) return PASSAGE.pente / 2;
+    const k = Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0));
+    return p.demiA + (p.demiB - p.demiA) * k;
+  }
+
+  // Dénivelé (m) du sol du niveau a au sol du niveau b (> 0 : b plus haut).
+  function denivele(a, b) {
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a === b) return 0;
+    const va = _vertical(a), vb = _vertical(b);
+    if (va.sol !== null && vb.sol !== null) return vb.sol - va.sol;
+    let d = 0;
+    for (let n = Math.min(a, b); n < Math.max(a, b); n++) d += _vertical(n).h + ROCHE_SANS_SOLS_M;
+    return b > a ? d : -d;
+  }
+
+  // Tracé r vu du niveau `niveau` → { pts: [[x, y] px] depuis le bout du niveau, cum (m), tot (m), dY, hA, hB, autre,
+  // demiA, demiB (m : demi-largeur à notre bout et au bout d'en face), demi (la plus grande des deux : boîtes),
+  // raccordA, raccordB (bout raccordé à une galerie), tOuvert, sansSols } | null (pas une jonction de ce niveau, moins
+  // de 2 points, longueur nulle).
+  // ⚠️ contrat (décision produit) : la galerie inclinée a la LARGEUR DE LA GALERIE qu'elle prolonge à chaque bout
+  // (_largeurRaccord : la largeur du modèle galerie, par type), interpolée de l'une à l'autre le long du tracé : ses
+  // parois se confondent avec celles des galeries raccordées, jamais un pan de mur ni un talus au milieu d'une galerie
+  // plus large. Un bout raccordé à rien prend la largeur de l'autre bout, ou PASSAGE.pente si aucun ne l'est.
+  // Largeur à t : demiPente(p, t), lue par la 3D (parois, règle du pas) et l'emprise du modèle (_emprisesPassages).
+  function pente(r, niveau) {
+    const sc = _echelle();
+    if (!sc || !r || r.type !== "jonction" || !Array.isArray(r.points)) return null;
+    if (!Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel) || r.fromLevel === r.toLevel) return null;
+    if (r.fromLevel !== niveau && r.toLevel !== niveau) return null;
+    let pts = r.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); })
+      .map(function (q) { return [q.x, q.y]; });
+    if (pts.length < 2) return null;
+    if (r.fromLevel !== niveau) pts = pts.reverse();
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) {
+      cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]) / sc);
+    }
+    const tot = cum[cum.length - 1];
+    if (!(tot > 1e-3)) return null;
+    const autre = r.fromLevel === niveau ? r.toLevel : r.fromLevel;
+    const va = _vertical(niveau), vb = _vertical(autre), dY = denivele(niveau, autre), hA = va.h, hB = vb.h;
+    const lA = _largeurRaccord(pts[0][0], pts[0][1], niveau, sc);
+    const lB = _largeurRaccord(pts[pts.length - 1][0], pts[pts.length - 1][1], autre, sc);
+    const demiA = (lA || lB || PASSAGE.pente) / 2, demiB = (lB || lA || PASSAGE.pente) / 2;
+    let tOuvert = 1;
+    if (dY < 0 && hA - hB - dY > 1e-9) tOuvert = Math.min(1, hA / (hA - hB - dY));
+    else if (dY > 0) tOuvert = Math.min(1, hA / dY);
+    return { pts: pts, cum: cum, tot: tot, dY: dY, hA: hA, hB: hB, autre: autre, demiA: demiA, demiB: demiB,
+      demi: Math.max(demiA, demiB), raccordA: lA !== null, raccordB: lB !== null, tOuvert: tOuvert, sansSols: va.sol === null || vb.sol === null };
+  }
+
+  // ── Zone jonction de niveau (chambre dont le sol monte d'un niveau à l'autre) ──────────────────────────────
+  // ⚠️ contrat (décision produit) : une zone de type `pente` (« Jonction » du menu Zone) posée sur au moins deux
+  // niveaux (`niveaux`, règle poiJonction.js > ktaNiveauxObjet ; l'ancien marqueur `jonction: true` est converti à
+  // l'entrée : zones.js > ktaZoneJonctionEnType) n'a pas de sens propre : le SENS et la pente sont ceux du tracé
+  // jonction qui la traverse (premier tracé dont les deux niveaux sont parmi ceux de la zone et qui entre dans son
+  // contour), sol projeté sur ce tracé bout à bout (même règle que la galerie inclinée : pente()). Sans tracé qui la
+  // traverse, la zone reste à plat et sa fiche le dit, avec « Tracer la jonction » (utils.js > attacherNotePopup).
+  // Une seule règle, lue par la fiche et la 3D.
+  function estZoneJonction(z) {
+    if (!z || z.type !== "pente" || !Array.isArray(z.points) || z.points.length < 3) return false;
+    const nv = typeof window.ktaNiveauxObjet === "function" ? window.ktaNiveauxObjet(z) : [];
+    return nv.length >= 2;
+  }
+
+  function _coupeSegments(ax, ay, bx, by, cx, cy, dx, dy) {
+    const d = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx);
+    if (Math.abs(d) < 1e-12) return false;
+    const t = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / d;
+    const u = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / d;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+  }
+
+  // Le tracé r (points px) entre-t-il dans le contour z (un sommet dedans ou un segment qui coupe un bord) ?
+  function _traverse(r, z) {
+    const a = z.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
+    const pts = r.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
+    for (let i = 0; i < pts.length; i++) { if (_dansAnneau(a, pts[i].x, pts[i].y)) return true; }
+    for (let i = 0; i + 1 < pts.length; i++) {
+      for (let k = 0, j = a.length - 1; k < a.length; j = k++) {
+        if (_coupeSegments(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y, a[j].x, a[j].y, a[k].x, a[k].y)) return true;
+      }
+    }
+    return false;
+  }
+
+  // Tracé jonction qui donne sa pente à la zone jonction z, ou null (pas une zone jonction, aucun tracé qui la
+  // traverse entre deux de ses niveaux).
+  function penteDeZone(z) {
+    if (!estZoneJonction(z)) return null;
+    const nv = window.ktaNiveauxObjet(z), routes = _routes();
+    for (let i = 0; i < routes.length; i++) {
+      const r = routes[i];
+      if (!r || r.type !== "jonction" || !Array.isArray(r.points) || r.points.length < 2) continue;
+      if (!Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel) || r.fromLevel === r.toLevel) continue;
+      if (nv.indexOf(r.fromLevel) < 0 || nv.indexOf(r.toLevel) < 0) continue;
+      if (_traverse(r, z)) return r;
+    }
+    return null;
+  }
+
+  // Même tracé ou même zone du relevé. 🩸 getAllEmbeddedRoads et getAllEmbeddedZones rendent des COPIES à chaque
+  // appel (road.js, utils.js) : comparés par ===, un tracé ou une zone d'un calque n'était jamais le même d'un appel
+  // à l'autre (zone jonction d'un calque ignorée, galerie inclinée en tube au travers). Même uid, sinon même tableau
+  // de points (les copies le partagent).
+  function memeObjet(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (a.uid && b.uid) return a.uid === b.uid;
+    return Array.isArray(a.points) && a.points === b.points;
+  }
+
+  // Zones jonction auxquelles le tracé jonction r donne sa pente (penteDeZone(z), memeObjet), filtres ignorés.
+  function zonesDePente(r) {
+    if (!r || r.type !== "jonction") return [];
+    return _zones().filter(function (z) { return estZoneJonction(z) && memeObjet(penteDeZone(z), r); });
+  }
+
   function _points() { return _tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints)); }
 
   // Toutes les structures, filtres de la carte ignorés (masquer ne retire que le dessin, comme la règle du pas).
@@ -187,7 +365,14 @@
         if (p && q) { mel(p.x * 10); mel(p.y * 10); mel(q.x * 10); mel(q.y * 10); }
       }
     };
-    lire(_routes());
+    const routes = _routes();
+    lire(routes);
+    // Jonctions : la part ouverte de leur galerie inclinée suit les sols et hauteurs des niveaux (pente).
+    routes.forEach(function (r) {
+      if (!r || r.type !== "jonction" || !Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel)) return;
+      mel(r.fromLevel); mel(r.toLevel); mel(denivele(r.fromLevel, r.toLevel) * 1000);
+      mel(_vertical(r.fromLevel).h * 1000); mel(_vertical(r.toLevel).h * 1000);
+    });
     lire(_zones());
     lire(_structures());
     const pts = _points();
@@ -981,7 +1166,7 @@
   // par _placeVolume, le même calcul que la 3D ; filtres de la carte ignorés (masquer ne retire que le dessin, comme
   // la règle du pas). jes / jpe / jps seulement s'ils relient un autre niveau ; puits de surface (peo, eso) et
   // aération (pa) toujours. Tracé jonction qui part de ce niveau ou y arrive (plan multi-niveau) : un rectangle par
-  // segment, de la largeur de sa tranchée.
+  // segment, de la largeur de sa galerie inclinée, sur sa part ouverte seulement (pente : tOuvert).
   function _emprisesPassages(niveau, C) {
     const J = window.KtaPoiJonction, out = [], sc = C.sc;
     if (!J || typeof J.porteNiveaux !== "function") return out;
@@ -1008,17 +1193,20 @@
       out.push(e);
     });
     if (!multi) return out;
-    const w = (PASSAGE.rampe / 2 + PASSAGE.tranchee) * sc;
     _routes().forEach(function (r) {
-      if (!r || r.type !== "jonction" || !Array.isArray(r.points)) return;
-      if (!Number.isInteger(r.fromLevel) || !Number.isInteger(r.toLevel) || r.fromLevel === r.toLevel) return;
-      if (r.fromLevel !== niveau && r.toLevel !== niveau) return;
-      const pts = r.points.filter(function (q) { return q && Number.isFinite(q.x) && Number.isFinite(q.y); });
-      for (let i = 0; i + 1 < pts.length; i++) {
-        const A = pts[i], B = pts[i + 1], l = Math.hypot(B.x - A.x, B.y - A.y);
+      const pe = pente(r, niveau);
+      if (!pe) return;
+      const fin = pe.tOuvert * pe.tot;
+      for (let i = 0; i + 1 < pe.pts.length && pe.cum[i] < fin - 1e-6; i++) {
+        const A = pe.pts[i], B0 = pe.pts[i + 1], l = Math.hypot(B0[0] - A[0], B0[1] - A[1]);
         if (l < 1e-9) continue;
-        const nx = -(B.y - A.y) / l * w, ny = (B.x - A.x) / l * w;
-        out.push([[A.x - nx, A.y - ny], [B.x - nx, B.y - ny], [B.x + nx, B.y + ny], [A.x + nx, A.y + ny]]);
+        const k = Math.min(1, (fin - pe.cum[i]) / (pe.cum[i + 1] - pe.cum[i]));
+        const B = [A[0] + (B0[0] - A[0]) * k, A[1] + (B0[1] - A[1]) * k];
+        const sB = pe.cum[i] + (pe.cum[i + 1] - pe.cum[i]) * k;
+        const wA = demiPente(pe, pe.cum[i] / pe.tot) * sc, wB = demiPente(pe, sB / pe.tot) * sc;
+        const ux = -(B0[1] - A[1]) / l, uy = (B0[0] - A[0]) / l;
+        out.push([[A[0] - ux * wA, A[1] - uy * wA], [B[0] - ux * wB, B[1] - uy * wB], [B[0] + ux * wB, B[1] + uy * wB],
+          [A[0] + ux * wA, A[1] + uy * wA]]);
       }
     });
     return out;
@@ -1539,6 +1727,8 @@
     ACCES: Object.assign({}, ACCES), BLOQUE: Object.assign({}, BLOQUE), ACCES_DIM: Object.assign({}, ACCES_DIM),
     PAROI: Object.assign({}, PAROI),
     COTES_CERCLE: COTES_CERCLE, comblementPorte: comblementPorte, COMBLE_MAX_M: COMBLE_MAX_M,
+    pente: pente, denivele: denivele, demiPente: demiPente, ROCHE_SANS_SOLS_M: ROCHE_SANS_SOLS_M,
+    estZoneJonction: estZoneJonction, penteDeZone: penteDeZone, zonesDePente: zonesDePente, memeObjet: memeObjet,
     CONE_MIN_M: CONE_MIN_M
   };
 })();

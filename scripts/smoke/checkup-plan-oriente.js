@@ -52,10 +52,18 @@ function pb(msg) { problemes.push(msg); console.log("  ❌ " + msg); }
 function ok(msg)  { console.log("  ✅ " + msg); }
 function inf(msg) { console.log("  •  " + msg); }
 
+// 🩸 Chromium récent (Playwright ≥ 1.6x) expose DeviceMotionEvent.requestPermission() et ne l'accorde pas hors geste :
+// sans ces permissions, tracking.js > requestPermission ne pose aucun écouteur d'orientation et rien ne tourne.
+// Chaque `nav.newPage` ouvre un contexte neuf : à rappeler pour chaque page.
+async function capteursAutorises(page) {
+  await page.context().grantPermissions(["accelerometer", "gyroscope", "magnetometer"], { origin: BASE });
+}
+
 (async function main() {
   let nav;
   nav = await lancerNavigateur(chromium);
   const page = await nav.newPage({ viewport: { width: 1100, height: 800 } });
+  await capteursAutorises(page);
   await page.addInitScript(function (ls) {
     for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
   }, LS_PREGATES);
@@ -823,6 +831,7 @@ function inf(msg) { console.log("  •  " + msg); }
     // ⚠️ Compter les tuiles retirées ne prouve rien : on mesure la part d'écran sans aucune tuile.
     console.log("— T17 : couverture de l'écran en PORTRAIT (430×932) —");
     const portrait = await nav.newPage({ viewport: { width: 430, height: 932 } });
+    await capteursAutorises(portrait);
     await portrait.addInitScript(function (ls) {
       for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
     }, LS_PREGATES);
@@ -927,6 +936,7 @@ function inf(msg) { console.log("  •  " + msg); }
       viewport: { width: 430, height: 932 }, deviceScaleFactor: 3,
       hasTouch: true, isMobile: true
     });
+    await capteursAutorises(tactile);
     await tactile.addInitScript(function (ls) {
       for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
     }, LS_PREGATES);

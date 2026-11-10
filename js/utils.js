@@ -394,7 +394,7 @@ function renderBannerCoherenceEchelle(planId, opts) {
           '<tr>' +
             '<td>' + t("utils.scaleCoherence.rowGps") + '</td>' +
             '<td><code>' + gpsStr + '</code> px/m ' +
-              '<button class="kta-scale-coherence-copy-btn" data-action="copy-scale-gps" data-value="' + gpsStr + '" type="button" title="' + t("utils.scaleCoherence.copyTitle") + '">' + t("utils.scaleCoherence.copyBtn") + '</button>' +
+              '<button class="kta-scale-coherence-copy-btn" data-action="copy-scale-gps" data-value="' + gpsStr + '" type="button" title="' + t("utils.scaleCoherence.copyTitle") + '">' + window.ktaIcone("copy") + ' ' + t("utils.scaleCoherence.copyBtn") + '</button>' +
             '</td>' +
           '</tr>' +
         '</table>' +
@@ -713,10 +713,14 @@ function attacherBoutonCopierEchelleGps(container) {
 }
 window.attacherBoutonCopierEchelleGps = attacherBoutonCopierEchelleGps;
 
+// Icône SVG d'un bouton ou d'un titre de fiche (ktaIcones.js), suivie d'une espace ; vide si le module manque.
+function _icoFiche(nom) { return typeof window.ktaIcone === "function" ? window.ktaIcone(nom) + " " : ""; }
+
 // ── Popups de note (zones / tracés / structures) : window.attacherNotePopup, plus bas ──────────
 // ⚠️ attacherNotePopup(layer, getDescr, setDescr, titreType, opts) ; opts.mode = "edit" (défaut) | "readonly".
 // titreType : texte, ou fonction relue à CHAQUE ouverture (un type renommé dans la légende ne redessine pas la carte) ;
-// opts.pastille = { cat, cle } : pastille de la couleur résolue devant le titre (ktaTypeSwatchHtml).
+// opts.pastille = { cat, cle } : pastille de la couleur résolue devant le titre (ktaTypeSwatchHtml) ; opts.ico : nom
+// d'icône SVG devant le titre (types sans pastille : jonction, itinéraire).
 // edit (session) : textarea + 💾, s'ouvre même note vide ; le save déclenche HistoryManager + SessionPersist.
 // readonly (data layer) : texte seul, setDescr peut être null. À ne binder QUE si une note existe (c'est à
 // l'appelant de tester `description`), sinon un clic sur un data layer muet ouvrirait une popup vide.
@@ -781,6 +785,8 @@ window._modeClicCarteActif = function() {
 // 🩸 Le floater porte `.kta-iti-floater` : _modeClicCarteActif() le reconnaît, aucune popup ne mange le tap,
 // et map.js le ré-émet en capture — même sur un marqueur, le cas nominal (on vise un repère connu).
 // 🩸 Les autres modes clic-carte tombent AVANT d'armer, sinon le même tap pose un sommet ou ouvre une fiche.
+// ⚠️ Icône du floater : `opts.ico` (nom js/ktaIcones.js, SVG), sinon `opts.icone` (texte, outil pas encore
+// passé en SVG), sinon le clic sur la carte.
 let _posPickHandler = null;
 let _posPickChoixOuvert = false;   // fenêtre de niveau ouverte : un 2e clic n'en ouvre pas une autre
 function _posPickOnKey(e) { if (e && e.key === "Escape") _posPickAnnuler(); }
@@ -855,7 +861,9 @@ window.ktaDemanderPositionCarte = function(onPick, opts) {
     '<span class="kta-iti-floater-icon"></span>' +
     '<span class="kta-iti-floater-msg"></span>' +
     '<button class="kta-btn kta-btn-ghost" id="kta-pos-cancel" type="button"></button>';
-  fl.querySelector(".kta-iti-floater-icon").textContent = opts.icone || "📍";
+  const flIco = fl.querySelector(".kta-iti-floater-icon");
+  if (opts.ico || !opts.icone) flIco.innerHTML = window.ktaIcone(opts.ico || "mouse-pointer-click");
+  else flIco.textContent = opts.icone;
   fl.querySelector(".kta-iti-floater-msg").textContent =
     opts.texte || window.I18n.t("pospick.floater");
   const btnAnn = fl.querySelector("#kta-pos-cancel");
@@ -1013,14 +1021,17 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   function _titreHtml() {
     const p = opts.pastille;
     const pastille = (p && typeof window.ktaTypeSwatchHtml === "function") ? (window.ktaTypeSwatchHtml(p.cat, p.cle) || "") : "";
-    return pastille + _esc(_titreTexte());
+    const ico = opts.ico ? _icoFiche(opts.ico) : "";
+    return ico + pastille + _esc(_titreTexte());
   }
 
-  // Ligne « Niveau » sous 🔄 Convertir : objet de session seulement (`opts.convertir`), ni jonction (fromLevel /
-  // toLevel, hors de cette liste) ni itinéraire ; "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes).
+  // Ligne « Niveau » sous Convertir : objet de session seulement (`opts.convertir`), ni jonction (fromLevel /
+  // toLevel, hors de cette liste) ni itinéraire ni zone jonction (« Du niveau » la remplace) ; "" hors multi-niveau
+  // ou pendant un dessin (ktaNiveauxProposes).
   function _niveauHtml() {
     const o = opts.convertir && opts.convertir.obj;
     if (!o || o.type === "jonction" || o.type === "itinerary") return "";
+    if (opts.convertir.famille === "zones" && o.type === "pente") return "";
     if (typeof window.ktaOptionsNiveauHtml !== "function") return "";
     const options = window.ktaOptionsNiveauHtml(Number.isInteger(o.level) ? o.level : 0);
     if (!options) return "";
@@ -1032,10 +1043,12 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
 
   // Zone de session sur un plan multi-niveau : cases « Aussi aux niveaux » (niveaux du plan hors `level`, plus ceux
   // que la zone porte déjà même hors availableLevels), appliquées par un bouton (un geste, une entrée ⏪).
-  // "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes), comme la liste « Niveau ».
+  // "" hors multi-niveau ou pendant un dessin (ktaNiveauxProposes), comme la liste « Niveau ». Zone jonction (type
+  // `pente`) : ses deux niveaux à la place (_niveauxPenteHtml).
   function _niveauxZoneHtml() {
     const o = opts.convertir && opts.convertir.obj;
     if (!o || opts.convertir.famille !== "zones" || typeof window.ktaNiveauxProposes !== "function") return "";
+    if (o.type === "pente") return _niveauxPenteHtml(o);
     const lvl = Number.isInteger(o.level) ? o.level : 0;
     const proposes = window.ktaNiveauxProposes(lvl);
     if (!proposes) return "";
@@ -1059,6 +1072,48 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                  _esc(window.I18n.t("niveauxZone.appliquer")) +
                '</button>' +
              '</div>' +
+           '</div>';
+  }
+
+  // Zone jonction (type `pente`) : « Du niveau » (`level`) et « Au niveau » (l'autre), appliqués ensemble par un
+  // bouton (KtaConvertir.changerNiveauxPente : un geste, une entrée ⏪). Sans tracé jonction qui la traverse entre
+  // ses deux niveaux (galerieEmprise.js > penteDeZone : une seule règle avec la 3D), la fiche le dit et propose
+  // « Tracer la jonction » (interfaceConfig.js > ktaTracerJonction, niveaux de la zone pré-remplis).
+  function _niveauxPenteHtml(o) {
+    if (typeof window.ktaOptionsNiveauHtml !== "function") return "";
+    const nv = (typeof window.ktaNiveauxObjet === "function") ? window.ktaNiveauxObjet(o) : [];
+    const de = Number.isInteger(o.level) ? o.level : 0;
+    const autre = nv.filter(function(n) { return n !== de; });
+    const vers = autre.length ? autre[autre.length - 1] : de;
+    const optDe = window.ktaOptionsNiveauHtml(de), optVers = window.ktaOptionsNiveauHtml(vers);
+    if (!optDe || !optVers) return "";
+    const G = window.KtaGalerie;
+    const sansTrace = autre.length > 0 && !!G && typeof G.penteDeZone === "function" && !G.penteDeZone(o);
+    let avis = "";
+    if (!autre.length) avis = window.I18n.t("zoneJonction.unNiveau");
+    else if (sansTrace) avis = window.I18n.t("zoneJonction.sansTrace");
+    return '<div class="kta-note-popup-jonction kta-note-popup-pente">' +
+             '<label class="kta-note-popup-niveau-ligne">' +
+               '<span>' + _esc(window.I18n.t("zoneJonction.de")) + '</span>' +
+               '<select class="kta-note-popup-jct-niveau kta-note-popup-pente-de">' + optDe + '</select>' +
+             '</label>' +
+             '<label class="kta-note-popup-niveau-ligne">' +
+               '<span>' + _esc(window.I18n.t("zoneJonction.vers")) + '</span>' +
+               '<select class="kta-note-popup-jct-niveau kta-note-popup-pente-vers">' + optVers + '</select>' +
+             '</label>' +
+             '<div class="kta-popup-actions kta-note-popup-actions">' +
+               '<button class="kta-popup-btn kta-note-popup-pente-appliquer" type="button">' +
+                 _esc(window.I18n.t("zoneJonction.appliquer")) +
+               '</button>' +
+             '</div>' +
+             '<div class="kta-note-popup-jct-statut kta-tx-err" hidden></div>' +
+             (avis ? '<div class="kta-note-popup-zone-jonction-avis" role="status">' + _esc(avis) + '</div>' : "") +
+             (sansTrace
+               ? '<div class="kta-popup-actions kta-note-popup-actions">' +
+                   '<button class="kta-popup-btn kta-note-popup-pente-tracer" type="button" data-de="' + de +
+                     '" data-vers="' + vers + '">' + _esc(window.I18n.t("zoneJonction.tracer")) + '</button>' +
+                 '</div>'
+               : "") +
            '</div>';
   }
 
@@ -1114,14 +1169,14 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                '</textarea>' +
                '<div class="kta-popup-actions kta-note-popup-actions">' +
                  '<button class="kta-popup-btn kta-popup-btn-aller kta-note-popup-save" type="button">' +
-                   _esc(window.I18n ? window.I18n.t("utils.note.save") : "💾 Sauver la note") +
+                   window.ktaIcone("save") + " " + _esc(window.I18n ? window.I18n.t("utils.note.save") : "Sauver la note") +
                  '</button>' +
                  // Reclasser l'objet : un vecteur SIG mal rangé (un front qui est une galerie) n'entre pas dans le graphe
                  // d'itinéraire, le Pathfinder ne lit que les tracés. La popup tient une référence directe sur l'objet.
                  // Jamais pour une jonction (décision produit) : ses niveaux se changent dans sa fiche.
                  (opts.convertir && !opts.jonction
                    ? '<button class="kta-popup-btn kta-note-popup-convertir" type="button">' +
-                       '🔄 ' + window.I18n.t("convert.btn") +
+                       window.ktaIcone("refresh-cw") + ' ' + window.I18n.t("convert.btn") +
                      '</button>'
                    : '') +
                '</div>' +
@@ -1131,7 +1186,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                (opts.convertir
                  ? '<div class="kta-popup-actions kta-popup-actions-danger kta-note-popup-actions">' +
                      '<button class="kta-popup-btn kta-popup-btn-delete kta-note-popup-supprimer" type="button">' +
-                       '🗑️ ' + window.I18n.t("convert.btnSuppr") +
+                       window.ktaIcone("trash-2") + ' ' + window.I18n.t("convert.btnSuppr") +
                      '</button>' +
                    '</div>'
                  : '') +
@@ -1204,6 +1259,42 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
             const nv = window.ktaNiveauxObjet({ level: opts.convertir.obj.level, niveaux: autres });
             window.OOMGuard.showToast(window.I18n.t("niveauxZone.toast",
               { liste: nv.map(window.ktaFormatNiveau).join(", ") }), "success");
+          }
+        });
+      }
+      // Niveaux d'une zone jonction : deux niveaux identiques refusés DANS la fiche, comme pour un tracé jonction.
+      const penteBtn = popupRoot.querySelector(".kta-note-popup-pente-appliquer");
+      if (penteBtn && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveauxPente) {
+        penteBtn.addEventListener("click", function () {
+          const de = Number.parseInt(popupRoot.querySelector(".kta-note-popup-pente-de").value, 10);
+          const vers = Number.parseInt(popupRoot.querySelector(".kta-note-popup-pente-vers").value, 10);
+          if (de === vers) {
+            const statut = popupRoot.querySelector(".kta-note-popup-jct-statut");
+            if (statut) {
+              statut.textContent = window.I18n.t("zoneJonction.memeNiveau");
+              statut.hidden = false;
+            }
+            return;
+          }
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.changerNiveauxPente(opts.convertir.obj, de, vers)
+              && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("zoneJonction.toast",
+              { de: window.ktaFormatNiveau(de), vers: window.ktaFormatNiveau(vers) }), "success");
+          }
+        });
+      }
+      // « Tracer la jonction » : la fiche se ferme, le mode tracé jonction s'arme avec les niveaux de la zone.
+      const tracerBtn = popupRoot.querySelector(".kta-note-popup-pente-tracer");
+      if (tracerBtn && typeof window.ktaTracerJonction === "function") {
+        tracerBtn.addEventListener("click", function () {
+          const de = Number.parseInt(tracerBtn.getAttribute("data-de"), 10);
+          const vers = Number.parseInt(tracerBtn.getAttribute("data-vers"), 10);
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          const arme = window.ktaTracerJonction(de, vers);
+          if (arme && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("zoneJonction.toastTracer",
+              { de: window.ktaFormatNiveau(de), vers: window.ktaFormatNiveau(vers) }), "success");
           }
         });
       }
@@ -1417,26 +1508,26 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   function _escAttr(s) { return window.ktaEsc(s); }
   const isFav = !!(window.Favoris && window.Favoris.isFav(point.id, point.uid));
 
-  // Actions de session (✏️ Modifier, ligne séparée 🗑️ Supprimer) seulement si isEditorSession === true,
+  // Actions de session (Modifier, ligne séparée Supprimer) seulement si isEditorSession === true,
   // passé par l'appelant (editor.js → true, ajouterPointsDepuisJSON → false).
   // 🩸 Pas de test sur point.source === "editor" : un point converti session → data garde ce champ, le bouton
   // s'afficherait et supprimerPointEditor ne trouverait rien (échec muet).
   const showSessionActions = isEditorSession === true &&
-    !(typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true));   // droit « lire » : ni ✏️ ni 🗑️
+    !(typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true));   // droit « lire » : ni modifier ni supprimer
   const editRow = showSessionActions
     ? '<div class="kta-popup-actions">' +
         '<button class="kta-popup-btn kta-popup-btn-edit" type="button" ' + _act("modifier") +
           'title="' + window.I18n.t("poi.editPoint") + '">' +
-          window.I18n.t("poi.editBtn") +
+          _icoFiche("pencil") + window.I18n.t("poi.editBtn") +
         '</button>' +
         // Repositionner : arme le picker clic-carte d'editor.js ; classe générique (ce n'est pas l'édition).
         '<button class="kta-popup-btn" type="button" ' + _act("repositionner") +
           'title="' + window.I18n.t("poi.movePoint") + '">' +
-          window.I18n.t("poi.moveBtn") +
+          _icoFiche("move") + window.I18n.t("poi.moveBtn") +
         '</button>' +
       '</div>'
     : '';
-  // Point précis (poiPrecis.js) : « 🎯 Augmenter la précision », mêmes droits que ✏️ Modifier.
+  // Point précis (poiPrecis.js) : « Augmenter la précision », mêmes droits que Modifier.
   const precisRow = window.KtaPoiPrecis ? window.KtaPoiPrecis.htmlFiche(point, showSessionActions, _act) : "";
   // « Je suis ici », « Y aller » et étape visent le point précis s'il existe ; data-kta-x / y restent l'icône (identité
   // du point).
@@ -1446,7 +1537,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     ? '<div class="kta-popup-actions kta-popup-actions-danger">' +
         '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' + _act("supprimer") +
           'title="' + window.I18n.t("poi.deletePoint") + '">' +
-          window.I18n.t("poi.deleteBtn") +
+          _icoFiche("trash-2") + window.I18n.t("poi.deleteBtn") +
         '</button>' +
       '</div>'
     : '';
@@ -1454,7 +1545,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   // Photos hydratées en async au popupopen (window.attachPopupPhotos) ; vide → masqué en CSS (:empty).
   const photosSlot = '<div class="kta-popup-photos" data-pointid="' + _escAttr(id) + '"></div>';
 
-  // Ligne GPS si le plan est calibré, pour tout point (session et data layer) ; 📋 copie.
+  // Ligne GPS si le plan est calibré, pour tout point (session et data layer) ; bouton de copie.
   let gpsLineHtml = "";
   // Passage entre niveaux : niveaux desservis et raccords validés (poiJonction.js).
   const jonctionHtml = window.KtaPoiJonction ? window.KtaPoiJonction.htmlFiche(point) : "";
@@ -1466,21 +1557,21 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
     const gpsAttr = _escAttr(gpsStr);
     gpsLineHtml =
       '<div class="kta-popup-gps" title="' + window.I18n.t("poi.gpsComputed") + '">' +
-        '<span class="kta-popup-gps-icon">🌐</span>' +
+        '<span class="kta-popup-gps-icon">' + _icoFiche("globe") + '</span>' +
         '<code class="kta-popup-gps-val">' + window.ktaEsc(gpsStr) + '</code>' +
         '<button class="kta-popup-gps-copy" type="button" data-kta-act="gps" data-kta-gps="' + gpsAttr + '" ' +
-          'title="' + window.I18n.t("poi.copyGps") + '">📋</button>' +
+          'title="' + window.I18n.t("poi.copyGps") + '">' + _icoFiche("copy") + '</button>' +
       '</div>';
   }
 
-  // 🔊 Lecture de la description (VoiceTts) si elle existe et si Speech Synthesis est dispo. Jamais
+  // Lecture de la description (VoiceTts) si elle existe et si Speech Synthesis est dispo. Jamais
   // d'auto-lecture. Texte passé en data-tts-text (robuste aux sauts de ligne et apostrophes).
   let ttsBtnHtml = "";
   if (safeDesc && window.VoiceTts && typeof window.VoiceTts.isSupported === "function" && window.VoiceTts.isSupported()) {
     ttsBtnHtml = '<button class="kta-popup-tts-btn" type="button" ' +
                    'data-tts-text="' + _escAttr(desc) + '" data-kta-act="tts" ' +
                    'title="' + window.I18n.t("poi.readNote") + '">' +
-                   '🔊' +
+                   _icoFiche("volume-2") +
                  '</button>';
   }
 
@@ -1505,18 +1596,18 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
            '<div class="kta-popup-actions">' +
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' + _act("ici") + _niveauIci + _cibAttr +
                'title="' + window.I18n.t("poi.iAmHere") + '">' +
-               window.I18n.t("iti.wp.jeSuisIci") +
+               _icoFiche("map-pin-check") + window.I18n.t("iti.wp.jeSuisIci") +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' + _act("aller") + _niveauIci +
                _cibAttr +
                'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.goThere") + '">' +
-               window.I18n.t("poi.goThereBtn") +
+               _icoFiche("route") + window.I18n.t("poi.goThereBtn") +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' + _act("etape") + _cibAttr +
                'data-kta-nom="' + _escAttr(nom) + '" ' +
                'title="' + window.I18n.t("poi.addWaypoint") + '">' +
-               window.I18n.t("poi.addWaypointBtn") +
+               _icoFiche("plus") + window.I18n.t("poi.addWaypointBtn") +
              '</button>' +
              // Favori : window.toggleFavoriPoint met à jour le libellé en place (pas de re-rendu de la popup).
              '<button class="kta-popup-btn kta-popup-btn-fav' + (isFav ? ' kta-fav-active' : '') + '" type="button" ' +
@@ -1525,7 +1616,7 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
                'data-kta-nom="' + _escAttr(nom) + '" data-kta-tag="' + _escAttr(_firstTag) + '" ' +
                'data-kta-calque="' + _escAttr(_layerId) + '" data-kta-calque-label="' + _escAttr(_layerLabel) + '" ' +
                'title="' + (isFav ? window.I18n.t("poi.favRemoveTitle") : window.I18n.t("poi.favAddTitle")) + '">' +
-               (isFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff")) +
+               _icoFiche("star") + (isFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff")) +
              '</button>' +
            '</div>' +
            iplSectionHtml +
@@ -1640,7 +1731,7 @@ window.kta_lireNotePopup = function(btn) {
   // même bouton pendant la lecture → arrêt
   if (_kta_currentTtsBtn === btn && window.VoiceTts.isSpeaking()) {
     window.VoiceTts.cancel();
-    btn.textContent = "🔊";
+    btn.innerHTML = window.ktaIcone("volume-2");
     btn.title = window.I18n.t("poi.readNote");
     _kta_currentTtsBtn = null;
     return;
@@ -1648,21 +1739,21 @@ window.kta_lireNotePopup = function(btn) {
 
   // sinon : coupe la lecture d'un autre bouton, lance celle-ci
   if (_kta_currentTtsBtn && _kta_currentTtsBtn !== btn) {
-    _kta_currentTtsBtn.textContent = "🔊";
+    _kta_currentTtsBtn.innerHTML = window.ktaIcone("volume-2");
     _kta_currentTtsBtn.title = window.I18n.t("poi.readNote");
   }
   _kta_currentTtsBtn = btn;
-  btn.textContent = "⏹️";
+  btn.innerHTML = window.ktaIcone("square");
   btn.title = window.I18n.t("poi.stopReading");
   window.VoiceTts.speak(text);
 };
 
-// Remet l'icône à 🔊 en fin de lecture ou sur erreur (sinon le bouton reste sur ⏹️).
+// Remet l'icône de lecture en fin de lecture ou sur erreur (sinon le bouton reste sur l'icône d'arrêt).
 if (window.VoiceTts && typeof window.VoiceTts.onStateChange === "function") {
   window.VoiceTts.onStateChange(function(state) {
     if (state === "ended" || state === "error" || state === "canceled") {
       if (_kta_currentTtsBtn) {
-        _kta_currentTtsBtn.textContent = "🔊";
+        _kta_currentTtsBtn.innerHTML = window.ktaIcone("volume-2");
         _kta_currentTtsBtn.title = window.I18n.t("poi.readNote");
         _kta_currentTtsBtn = null;
       }
@@ -1690,7 +1781,7 @@ window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel
     // le bouton de CE point (uid), pas celui d'un homonyme
     const bu = btn.getAttribute("data-fav-pointuid") || "";
     if (pointUid ? bu === pointUid : btn.getAttribute("data-fav-pointid") === pointId) {
-      btn.textContent = nowFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff");
+      btn.innerHTML = _icoFiche("star") + window.ktaEsc(nowFav ? window.I18n.t("poi.favOn") : window.I18n.t("poi.favOff"));
       btn.classList.toggle("kta-fav-active", nowFav);
       btn.title = nowFav ? window.I18n.t("poi.favRemoveTitle") : window.I18n.t("poi.favAddTitle");
     }
@@ -1796,7 +1887,7 @@ function attachPopupPhotos(marker, pointId, pointUid) {
       // bleu. L'img est forcée en display:block en CSS pour remplir le cadre.
       slot.innerHTML =
         '<div class="kta-popup-photos-row"></div>' +
-        '<div class="kta-popup-photos-count">📸 ' + photosWithUrl.length + ' photo' + (photosWithUrl.length > 1 ? "s" : "") + '</div>';
+        '<div class="kta-popup-photos-count">' + window.ktaIcone("camera") + ' ' + photosWithUrl.length + ' photo' + (photosWithUrl.length > 1 ? "s" : "") + '</div>';
       const rowEl = slot.querySelector(".kta-popup-photos-row");
       photosWithUrl.forEach(function(p, idx) {
         const img = document.createElement("img");
@@ -1823,14 +1914,14 @@ function attachPopupPhotos(marker, pointId, pointUid) {
         box.className = "kta-popup-photos-arattacher";
         const titre = document.createElement("div");
         titre.className = "kta-popup-photos-arattacher-titre";
-        titre.textContent = window.I18n.t("utils.popup.aRattacher.titre", { n: aRattacher.length });
+        titre.innerHTML = window.ktaIcone("link") + " " + window.ktaEsc(window.I18n.t("utils.popup.aRattacher.titre", { n: aRattacher.length }));
         box.appendChild(titre);
         aRattacher.forEach(function(p) {
           const idx = photosWithUrl.indexOf(p);
           const b = document.createElement("button");
           b.type = "button";
           b.className = "kta-popup-btn kta-popup-photos-arattacher-btn";
-          b.textContent = window.I18n.t("utils.popup.aRattacher.btn", { n: idx + 1 });
+          b.innerHTML = window.ktaIcone("link") + " " + window.ktaEsc(window.I18n.t("utils.popup.aRattacher.btn", { n: idx + 1 }));
           b.addEventListener("click", function(ev) {
             ev.stopPropagation();
             b.disabled = true;
@@ -2179,6 +2270,15 @@ window.getAllEmbeddedPoints = function() {
   return out;
 };
 
+// Zone d'un fichier lu (calque, plan-config) : copie convertie si elle porte l'ancien marqueur `jonction: true`
+// (zones.js > ktaZoneJonctionEnType), sinon la zone elle-même ; le JSON lu n'est jamais modifié.
+window.ktaZoneLue = function(z) {
+  if (!z || z.jonction !== true || typeof window.ktaZoneJonctionEnType !== "function") return z;
+  const c = Object.assign({}, z);
+  window.ktaZoneJonctionEnType(c);
+  return c;
+};
+
 // Zones embarquées → [{type, points, level, niveaux?, layerId, description?, uid?, updatedAt?}], même format que
 // window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement la session.
 // Calque en modification exclu.
@@ -2377,10 +2477,10 @@ window._refreshDataPolylinesUltra = function() {
     if (fait) return;
     if (!window.PerfUltra || typeof window.PerfUltra.onChange !== "function") return;
     fait = true;
+    // viewportCull touche aussi les POI des calques (sans quoi ils attendraient le prochain moveend).
     window.PerfUltra.onChange(function(cles) {
-      if (cles.some(function(k) { return k === "decim" || k === "viewportCull"; })) {
-        window._refreshDataPolylinesUltra();
-      }
+      if (cles.indexOf("viewportCull") >= 0) window._refreshDataMarkersViewport();
+      else if (cles.indexOf("decim") >= 0) window._refreshDataPolylinesUltra();
     });
   }
   essayer();
@@ -2533,6 +2633,7 @@ function ajouterPointsDepuisJSON(url, layer) {
           const polyline = L.polyline(latlngs, Object.assign({}, style, { interactive: false })).addTo(layer);
           if (hasNoteRO && typeof window.attacherNotePopup === "function") {
             const _roadEmojisRO = { principal: "🟩", secondaire: "🟪", chemin: "🟨", jonction: "🪜", itinerary: "🗺️" };
+            const _icoTypeRO = { jonction: "m-echelle", itinerary: "route" };
             function _roadROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
@@ -2566,7 +2667,8 @@ function ajouterPointsDepuisJSON(url, layer) {
               function() { return road.description; },
               null,
               function() { return _roadROTitle(road.type); },
-              { mode: "readonly", pastille: { cat: "traces", cle: road.type }, objet: road }
+              { mode: "readonly", objet: road, ico: _icoTypeRO[road.type] || null,
+                pastille: _icoTypeRO[road.type] ? null : { cat: "traces", cle: road.type } }
             );
           }
           // registre du filtre multi-niveau (level absent → 0) ; type, points et description pour
@@ -2742,22 +2844,22 @@ function ajouterPointsDepuisJSON(url, layer) {
         });
       }
 
-      // Zones embarquées en lecture seule. Ordre : eau (arrière) → remblais → effondrement (avant).
+      // Zones embarquées en lecture seule. Ordre : jonction (arrière) → eau → remblais → effondrement (avant).
       if (Array.isArray(json.zones) && json.zones.length > 0) {
         // `inaccessible` : hachures en CanvasPattern (styleResolver.js), sur le canvas commun comme les autres.
-        const zonesTriees = [...json.zones].sort(function(a, b) {
-          const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
-          return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
+        const zonesTriees = json.zones.map(window.ktaZoneLue).sort(function(a, b) {
+          const ordre = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+          return (ordre[a && a.type] ?? 99) - (ordre[b && b.type] ?? 99);
         });
         zonesTriees.forEach(function(zone) {
-          if (!zone.points || zone.points.length < 3) return;
+          if (!zone || !zone.points || zone.points.length < 3) return;
           const style = _ktaStyleMap("zones", zone.type, "remblais");
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
           const hasNoteROZone = !!(zone.description && String(zone.description).trim());
           const polyOpts = Object.assign({}, style, { interactive: hasNoteROZone });
           const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
           if (hasNoteROZone && typeof window.attacherNotePopup === "function") {
-            const _zoneEmojisRO = { eau: "💧", remblais: "⬛", effondrement: "🟥", inaccessible: "⛔" };
+            const _zoneEmojisRO = { eau: "💧", remblais: "⬛", effondrement: "🟥", inaccessible: "⛔", pente: "🪜" };
             function _zoneROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
@@ -2767,10 +2869,11 @@ function ajouterPointsDepuisJSON(url, layer) {
                 if (_zoneEmojisRO[t]) return window.LegendCustomization.getLabel("zones", t);
               }
               const LBL = {
-                eau:          "💧 Zone Eau",
-                remblais:     "⬛ Zone Remblais",
-                effondrement: "🟥 Zone Effondrement",
-                inaccessible: "⛔ Zone Inaccessible"
+                eau:          "💧 Eau",
+                remblais:     "⬛ Remblais",
+                effondrement: "🟥 Effondrement",
+                inaccessible: "⛔ Inaccessible",
+                pente:        "🪜 Zone Jonction"
               };
               return LBL[t] || ("Zone " + t);
             }
@@ -3018,10 +3121,11 @@ async function telechargerPlan() {
 
           // zones embarquées (arrière-plan) : eau → remblais → effondrement → inaccessible ; filtre visibleLevels
           if (Array.isArray(json.zones) && json.zones.length > 0) {
-            const ordreZ = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
-            [...json.zones].sort(function(a, b) {
-              return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
+            const ordreZ = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+            json.zones.map(window.ktaZoneLue).sort(function(a, b) {
+              return (ordreZ[a && a.type] ?? 99) - (ordreZ[b && b.type] ?? 99);
             }).forEach(function(z) {
+              if (!z) return;
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(z)) return;
               _poser(function () { drawPolygon(z.points || [], _ktaStyleCanvas("zones", z.type, "remblais")); });
               _diag.embZones++;
@@ -3097,7 +3201,7 @@ async function telechargerPlan() {
       return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(z);
     });
     for (const zone of [...zones].sort(function(a, b) {
-      const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+      const ordre = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
     })) {
       _poser(function () { drawPolygon(zone.points || [], _ktaStyleCanvas("zones", zone.type, "remblais")); });
@@ -3391,7 +3495,7 @@ window.telechargerPlan = telechargerPlan;
 (function () {
   const EXTRA = "ŒœŠšŽžŸƒˆ˜–—‘’‚“”„†‡•…‰‹›€™";
   const EQUIV = { "→": "->", "⇒": "=>", "←": "<-", "⇐": "<=", "↔": "<->", "✓": "OK", "✔": "OK",
-                  "✗": "X", "✘": "X", "≥": ">=", "≤": "<=", "≠": "!=", "⚠": "!" };
+                  "✗": "X", "✘": "X", "≥": ">=", "≤": "<=", "≠": "!=", "⚠": "!" }; // emoji-texte-ok : la clé est le caractère nu
   // lettres SANS décomposition Unicode (barre, pas accent) : base à la main
   const BASE = { "Ł": "L", "ł": "l", "Đ": "D", "đ": "d", "Ħ": "H", "ħ": "h", "ı": "i", "Ŧ": "T", "ŧ": "t" };
   const dansPolice = function (c) {

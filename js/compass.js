@@ -91,7 +91,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-compass-full-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + t("compass.modal.title") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("compass") + " " + t("compass.modal.title") + '</span>' +
           '<button class="kta-panneau-close" id="kta-compass-full-close" type="button" aria-label="' + t("compass.modal.closeAria") + '">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-compass-full-corps">' +

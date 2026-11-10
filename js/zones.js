@@ -4,7 +4,7 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// zones.js — tracé des zones polygonales remplies (eau, remblais, effondrement, inaccessible, cust-…).
+// zones.js — tracé des zones polygonales remplies (eau, remblais, effondrement, inaccessible, pente, cust-…).
 // Fermeture : re-clic sur le 1er sommet (≥ 3 sommets) ou bouton « Fermer la zone ».
 // Expose : window.initZones, toggleZoneMode, getZones/setZones, getCurrentZone(Index), …
 // 🩸 La zone INACCESSIBLE bloque le pathfinder (segment qui traverse le polygone retiré du graphe) ; ses
@@ -13,10 +13,13 @@
 //   ktaStructuresAuDessus, rappelé après chaque rendu).
 // ⚠️ Plusieurs niveaux : `niveaux` (⊇ level, poiJonction.js > ktaNiveauxObjet), saisis dans la fiche de la zone
 //   (utils.js > attacherNotePopup) ; un seul polygone, affiché si l'un de ses niveaux est visible.
+// ⚠️ Zone jonction (type `pente`, multi-niveau) : créée « du niveau … au niveau … » (interfaceConfig.js >
+//   _ouvrirCreationJonction, `window._zonePenteMeta`) : `level` = départ, `niveaux` = [départ, arrivée]. L'ancien
+//   marqueur `jonction: true` est converti en type `pente` à l'entrée (ktaZoneJonctionEnType).
 // Styles : window.ktaResolveStyle (styleResolver.js), jamais de table locale.
 // Garde-fou : scripts/check-filets-donnees.js, check-uid.js, check-style-canon.js, check-zones-niveaux.js
 
-window.modeZone = null; // null | "remblais" | "effondrement" | "eau" | "inaccessible"
+window.modeZone = null; // null | "remblais" | "effondrement" | "eau" | "inaccessible" | "pente" | "cust-…"
 
 let zonesData = [];
 let currentZone = null;
@@ -94,6 +97,7 @@ function initZones() {
                   : window.modeZone === "remblais" ? "Remblais"
                   : window.modeZone === "effondrement" ? "Effondrement"
                   : window.modeZone === "inaccessible" ? "Inaccessible"
+                  : window.modeZone === "pente" ? "Jonction"
                   : window.modeZone);
     }
 
@@ -105,6 +109,13 @@ function initZones() {
       // Multi-niveau actif : la zone prend le niveau actif ; sinon aucun champ level.
       if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
         currentZone.level = window.APP_CONFIG.activeLevel || 0;
+        // Zone jonction : les deux niveaux choisis avant d'armer l'outil (gardés tant qu'il reste armé).
+        const meta = window.modeZone === "pente" ? window._zonePenteMeta : null;
+        if (meta && Number.isInteger(meta.fromLevel) && Number.isInteger(meta.toLevel) &&
+            meta.fromLevel !== meta.toLevel) {
+          currentZone.level = meta.fromLevel;
+          currentZone.niveaux = [meta.fromLevel, meta.toLevel].sort(function(a, b) { return a - b; });
+        }
       }
       if (window.KtaUid) window.KtaUid.ensure(currentZone, "zn");
       zonesData.push(currentZone);
@@ -151,6 +162,7 @@ function _labelTypeZone(type) {
         : type === "remblais" ? "Remblais"
         : type === "effondrement" ? "Effondrement"
         : type === "inaccessible" ? "Inaccessible"
+        : type === "pente" ? "Jonction"
         : type);
 }
 function _resoudreZoneEnCours() {
@@ -238,9 +250,10 @@ function renderZones() {
   window.ktaRetirerCalque(previewLayer);
   previewLayer = null;
 
-  // Ordre d'empilement : eau, remblais, effondrement, inaccessible au-dessus des autres zones (elle bloque
-  // le pathfinder, elle doit se voir), toutes sous les structures (rappel en fin de rendu).
-  const ordreType = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+  // Ordre d'empilement : jonction (voile en dessous : une autre zone posée dedans reste lisible), eau, remblais,
+  // effondrement, inaccessible au-dessus des autres zones (elle bloque le pathfinder, elle doit se voir), toutes
+  // sous les structures (rappel en fin de rendu).
+  const ordreType = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
   const zonesAffichage = [...zonesData].sort(function(a, b) {
     const oa = ordreType[a.type] !== undefined ? ordreType[a.type] : 99;
     const ob = ordreType[b.type] !== undefined ? ordreType[b.type] : 99;
@@ -296,7 +309,8 @@ function renderZones() {
           eau:          "💧",
           remblais:     "⬛",
           effondrement: "🟥",
-          inaccessible: "⛔"
+          inaccessible: "⛔",
+          pente:        "🪜"
         };
         function _zonePopupTitle(t) {
           if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
@@ -307,10 +321,11 @@ function renderZones() {
             if (_zoneEmojis[t]) return window.LegendCustomization.getLabel("zones", t);
           }
           const LBL = {
-            eau:          "💧 Zone Eau",
-            remblais:     "⬛ Zone Remblais",
-            effondrement: "🟥 Zone Effondrement",
-            inaccessible: "⛔ Zone Inaccessible"
+            eau:          "💧 Eau",
+            remblais:     "⬛ Remblais",
+            effondrement: "🟥 Effondrement",
+            inaccessible: "⛔ Inaccessible",
+            pente:        "🪜 Zone Jonction"
           };
           return LBL[t] || ("Zone " + t);
         }
@@ -398,8 +413,39 @@ window.getZones = function() {
   return zonesData;
 };
 
+// ── Ancienne zone jonction (`jonction: true`) → type `pente` ──────────────────────────────
+// Lecture tolérante d'une session, d'un plan-config, d'un calque ou d'un fichier d'avant le type dédié : une zone
+// cochée « Zone jonction » sur au moins deux niveaux devient une zone `pente`, niveaux et uid gardés. Mutation en
+// place, → true si l'objet a changé. Sur un seul niveau, le marqueur ne faisait rien : l'objet n'est pas touché.
+// ⚠️ contrat (docs/ETUDE_UID.md) : JAMAIS de touch. C'est une relecture de la même donnée, pas une modification :
+// un updatedAt remis à maintenant ferait gagner cette copie, à la fusion, sur une modification plus récente faite
+// ailleurs (laquelle sera convertie à son tour en entrant).
+function ktaZoneJonctionEnType(z) {
+  if (!z || z.jonction !== true) return false;
+  if (_niveauxZone(z).length < 2) return false;
+  z.type = "pente";
+  delete z.jonction;
+  return true;
+}
+window.ktaZoneJonctionEnType = ktaZoneJonctionEnType;
+
+// Générateur (import KMZ / SIG, type « Jonction » choisi pour des polygones) : les zones `pente` qui n'ont pas
+// encore deux niveaux reçoivent « du niveau … au niveau … » saisis à l'import (`level` = de). → nombre posé.
+window.ktaPoserNiveauxPente = function(zones, de, vers) {
+  if (!Array.isArray(zones) || !Number.isInteger(de) || !Number.isInteger(vers) || de === vers) return 0;
+  let n = 0;
+  zones.forEach(function(z) {
+    if (!z || z.type !== "pente" || _niveauxZone(z).length >= 2) return;
+    z.level = de;
+    z.niveaux = [de, vers].sort(function(a, b) { return a - b; });
+    n++;
+  });
+  return n;
+};
+
 window.setZones = function(zones) {
   zonesData = zones || [];
+  zonesData.forEach(ktaZoneJonctionEnType);
   // Filet : toute zone qui entre ressort avec un uid (ktaUid.js).
   if (window.KtaUid) window.KtaUid.ensureAll(zonesData, "zn");
   currentZone = null;

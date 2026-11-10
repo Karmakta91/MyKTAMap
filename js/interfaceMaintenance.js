@@ -32,7 +32,7 @@ function ouvrirCalibrageEchelle() {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite" style="max-width:420px; height:auto; max-height:90vh;">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">${_t("maint.calib.title")}</span>
+        <span class="kta-readme-modal-titre">${window.ktaIcone("ruler")} ${_t("maint.calib.title")}</span>
         <button class="kta-panneau-close" id="kta-calib-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps">
@@ -42,7 +42,7 @@ function ouvrirCalibrageEchelle() {
         </p>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${_t("maint.calib.sectionValues")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("ruler")} ${_t("maint.calib.sectionValues")}</div>
           <div class="kta-cfg-grille">
             <label class="kta-cfg-label">${_t("maint.calib.current")}</label>
             <input class="kta-cfg-input" id="calib_actuel" type="number" step="0.01" value="${scaleActuel}" readonly style="opacity:0.6;">
@@ -56,8 +56,8 @@ function ouvrirCalibrageEchelle() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">${_t("maint.calib.sectionResult")}</div>
-          <div style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-family:'Courier New',monospace; font-size:13px;">
+          <div class="kta-aide-section-titre">${window.ktaIcone("calculator")} ${_t("maint.calib.sectionResult")}</div>
+          <div style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-family:KTA Emoji, 'Courier New',monospace; font-size:13px;">
             <div style="color:var(--kta-texte-3);">${_t("maint.calib.newScale")}</div>
             <div id="calib_resultat" style="font-size:22px; color:var(--kta-interaction); font-weight:600; margin-top:4px;">—</div>
             <div id="calib_formule" style="font-size:11px; color:var(--kta-texte-3); margin-top:6px;"></div>
@@ -265,7 +265,7 @@ async function mettreAJourCodeSeul() {
   overlay.className = "kta-modal-overlay";
   overlay.innerHTML =
     '<div class="kta-modal">' +
-      '<div class="kta-modal-icon">⏳</div>' +
+      '<div class="kta-modal-icon">' + window.ktaIcone("loader-circle") + '</div>' +
       '<div class="kta-modal-titre">' + window.I18n.t("maint.title_soft_update") + '</div>' +
       '<div class="kta-modal-texte" id="kta-soft-update-status">' + window.I18n.t("maint.msg_checking_connection") + '</div>' +
     '</div>';
@@ -358,7 +358,7 @@ function _softUpdateOfflineWarning() {
           window.I18n.t("maint.intro_soft_update_offline", { origin: origin }) +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_causes") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("search") + " " + window.I18n.t("maint.section_causes") + '</div>' +
           '<ul class="kta-oom-list">' +
             '<li>' + window.I18n.t("maint.reason_no_internet") + '</li>' +
             '<li>' + window.I18n.t("maint.reason_server_down", { origin: origin }) + '</li>' +
@@ -366,13 +366,13 @@ function _softUpdateOfflineWarning() {
           '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_good_news") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("circle-check") + ' ' + window.I18n.t("maint.section_good_news") + '</div>' +
           '<p>' +
             window.I18n.t("maint.reassurance_no_data_lost") +
           '</p>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_recommendation") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("lightbulb") + ' ' + window.I18n.t("maint.section_recommendation") + '</div>' +
           '<p>' +
             window.I18n.t("maint.recommendation_soft_update", { origin: origin }) +
           '</p>' +
@@ -397,7 +397,7 @@ function viderCacheAppli() {
   // Connexion vérifiée AVANT toute confirmation, avec un « Vérification… » (pas de gel muet de 5 s).
   const overlayPing = document.createElement("div");
   overlayPing.className = "kta-modal-overlay";
-  overlayPing.innerHTML = '<div class="kta-modal"><div class="kta-modal-icon">📶</div><div class="kta-modal-titre">' + window.I18n.t("maint.ping_title") + '</div><div class="kta-modal-texte">' + window.I18n.t("maint.ping_text") + '</div></div>';
+  overlayPing.innerHTML = '<div class="kta-modal"><div class="kta-modal-icon">' + window.ktaIcone("wifi") + '</div><div class="kta-modal-titre">' + window.I18n.t("maint.ping_title") + '</div><div class="kta-modal-texte">' + window.I18n.t("maint.ping_text") + '</div></div>';
   document.documentElement.appendChild(overlayPing);
 
   _pingInternet().then(function(online) {
@@ -432,7 +432,7 @@ function _resetFlowOfflineWarning() {
           window.I18n.t("maint.intro_reset_offline", { origin: origin }) +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_causes") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("search") + " " + window.I18n.t("maint.section_causes") + '</div>' +
           '<ul class="kta-oom-list">' +
             '<li>' + window.I18n.t("maint.reason_no_internet") + '</li>' +
             '<li>' + window.I18n.t("maint.reason_server_down", { origin: origin }) + '</li>' +
@@ -440,7 +440,7 @@ function _resetFlowOfflineWarning() {
           '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_consequence_reset") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("ban") + ' ' + window.I18n.t("maint.section_consequence_reset") + '</div>' +
           '<ul class="kta-oom-list">' +
             '<li>' + window.I18n.t("maint.consequence_app_unusable") + '</li>' +
             '<li>' + window.I18n.t("maint.consequence_no_splash") + '</li>' +
@@ -448,7 +448,7 @@ function _resetFlowOfflineWarning() {
           '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
-          '<div class="kta-oom-section-titre">' + window.I18n.t("maint.section_recommendation_check") + '</div>' +
+          '<div class="kta-oom-section-titre">' + window.ktaIcone("circle-check") + ' ' + window.I18n.t("maint.section_recommendation_check") + '</div>' +
           '<p>' +
             window.I18n.t("maint.recommendation_reset", { origin: origin }) +
           '</p>' +
@@ -489,7 +489,7 @@ function _resetFlowConfirmation() {
   overlay1.className = "kta-modal-overlay";
   overlay1.innerHTML = `
     <div class="kta-modal">
-      <div class="kta-modal-icon">⚠️</div>
+      <div class="kta-modal-icon">${window.ktaIcone("triangle-alert")}</div>
       <div class="kta-modal-titre">${window.I18n.t("maint.title_reset_confirm")}</div>
       <div class="kta-modal-texte">
         ${window.I18n.t("maint.reset_intro")}
@@ -505,7 +505,7 @@ function _resetFlowConfirmation() {
           <li>${window.I18n.t("maint.reset_item_secours")}</li>
         </ul>
         <div style="margin:6px 0 10px; text-align:left;">
-          <button type="button" class="kta-btn kta-btn-ghost" id="cache-export-profil" style="width:100%;">${window.I18n.t("maint.btn_export_profile_first")}</button>
+          <button type="button" class="kta-btn kta-btn-ghost" id="cache-export-profil" style="width:100%;">${window.ktaIcone("arrow-up-from-line")} ${window.I18n.t("maint.btn_export_profile_first")}</button>
         </div>
         <strong>${window.I18n.t("maint.reset_offline_warning")}</strong>
 
@@ -538,7 +538,7 @@ function _resetFlowConfirmation() {
     overlay2.className = "kta-modal-overlay";
     overlay2.innerHTML = `
       <div class="kta-modal kta-modal-danger">
-        <div class="kta-modal-icon">🚨</div>
+        <div class="kta-modal-icon">${window.ktaIcone("triangle-alert")}</div>
         <div class="kta-modal-titre">${window.I18n.t("maint.title_final_confirm")}</div>
         <div class="kta-modal-texte">
           ⚠️ <strong>${window.I18n.t("maint.final_warning_label")}</strong> ⚠️<br><br>
@@ -548,7 +548,7 @@ function _resetFlowConfirmation() {
         </div>
         <div class="kta-modal-actions">
           <button class="kta-btn kta-btn-ghost" id="cache-annuler-2">${window.I18n.t("maint.btn_cancel")}</button>
-          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">${window.I18n.t("maint.btn_clear_now")}</button>
+          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">${window.ktaIcone("trash-2")} ${window.I18n.t("maint.btn_clear_now")}</button>
         </div>
       </div>
     `;
@@ -564,7 +564,7 @@ function _resetFlowConfirmation() {
       overlay2.remove();
       const overlayWait = document.createElement("div");
       overlayWait.className = "kta-modal-overlay";
-      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">${window.I18n.t("maint.title_cleaning")}</div><div class="kta-modal-texte">${window.I18n.t("maint.cleaning_text")}</div></div>`;
+      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">${window.ktaIcone("loader-circle")}</div><div class="kta-modal-titre">${window.I18n.t("maint.title_cleaning")}</div><div class="kta-modal-texte">${window.I18n.t("maint.cleaning_text")}</div></div>`;
       document.documentElement.appendChild(overlayWait);
 
       try {
@@ -630,7 +630,7 @@ function _resetFlowConfirmation() {
         overlayWait.remove();
         const overlayErr = document.createElement("div");
         overlayErr.className = "kta-modal-overlay";
-        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">${window.I18n.t("maint.title_error")}</div><div class="kta-modal-texte">${window.I18n.t("maint.error_clear_cache", { detail: (err.message || err) })}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">${window.I18n.t("maint.btn_ok")}</button></div></div>`;
+        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">${window.ktaIcone("circle-x")}</div><div class="kta-modal-titre">${window.I18n.t("maint.title_error")}</div><div class="kta-modal-texte">${window.I18n.t("maint.error_clear_cache", { detail: (err.message || err) })}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">${window.I18n.t("maint.btn_ok")}</button></div></div>`;
         document.documentElement.appendChild(overlayErr);
         document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
       }

@@ -16,6 +16,7 @@
 | **jsPDF** | `jspdf.umd.min.js` | **4.2.1** | exports PDF (plans, fiches Secours, historique) | [parallax/jsPDF](https://github.com/parallax/jsPDF) · [avis](https://github.com/advisories?query=jspdf) |
 | **html2canvas** | `html2canvas.min.js` | **1.4.1** | captures pour les exports image | [niklasvh/html2canvas](https://github.com/niklasvh/html2canvas) · [avis](https://github.com/advisories?query=html2canvas) |
 | **three.js** | `three/three.core.js`, `three/three.module.js`, `three/LICENSE` | **0.186.1** | 🧊 Vue 3D (bouton cube de la barre de droite) : modules ES chargés **à la demande** par `js/vue3d.js` (`import()` dynamique), jamais au démarrage ; paquet livré sans fichier minifié (~2,1 Mo, ~420 Ko compressés) | [threejs.org](https://threejs.org) (MIT) · [avis](https://github.com/mrdoob/three.js/security/advisories) |
+| **Bodoni Moda** | `bodoni-moda/bodoni-moda-latin-{600,700}-normal.woff2`, `LICENSE`, `package.json` | **5.3.0** | 🧊 Vue 3D : capitales Didone des plaques gravées (`js/vue3d.js > _chargerPolicePlaques`), chargées à l'ouverture de la 3D seulement ; sous-ensemble latin, ~15 Ko par graisse. `package.json` est celui du paquet, copié tel quel : il porte la version (une police n'a pas d'en-tête lisible) | [@fontsource/bodoni-moda](https://fontsource.org/fonts/bodoni-moda) (SIL OFL 1.1, `LICENSE` joint) · [avis](https://github.com/advisories?query=fontsource) |
 | **Leaflet.ImageOverlay.Rotated** | `leaflet-imageoverlay-rotated.js` | adaptation **maison** (intégrée en v1.38.0 de l'app), d'après l'original | images et tuiles posées par 3 coins (calques calibrés, Vue OSM) | [IvanSanchez/Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated) (BSD 2) — code réécrit, à relire nous-mêmes |
 
 ## ⚠️ À savoir
@@ -30,15 +31,22 @@
   par `import()` depuis un script classique (aucune *import map*, interdite par la CSP sans script en ligne). Les
   extensions `examples/jsm/*` importent `"three"` par son nom nu : inutilisables sans import map, d'où une fusion
   de géométries faite à la main dans `js/vue3d.js`.
+- **Bodoni Moda** : fichiers `files/*-latin-{600,700}-normal.woff2` du paquet npm `@fontsource/bodoni-moda`,
+  `LICENSE` et `package.json` du même paquet, comparés octet par octet. Une police ne s'exécute pas : la veille sert
+  surtout à suivre les corrections de dessin. Chargée par `FontFace` (CSP `font-src 'self'`), jamais par une feuille.
 - **JSZip** ouvre des archives fournies par l'utilisateur ou par un serveur : toute faille de lecture de ZIP la
   concerne directement.
 
 ## 🔤 Polices embarquées (`fonts/`, hors `lib/`)
 
-Pas de paquet npm suivi (pas de veille Dependabot) : des fichiers de police figés, sans code exécutable.
-Utilisées par le seul écran Bienvenue (`css/bienvenue.css`), précachées par `sw.js`.
+Pas de paquet npm suivi (pas de veille Dependabot) : des fichiers de police figés, sans code exécutable, précachés
+par `sw.js`. Montserrat et Permanent Marker servent le seul écran Bienvenue (`css/bienvenue.css`) ; « KTA Emoji »
+dessine les emoji de toute l'app (`css/kta-emoji.css`). Celle-ci n'est pas dans `lib/` : c'est un sous-ensemble
+produit par `scripts/generer-police-emoji.js`, donc jamais identique octet par octet au fichier publié ; sa source
+est épinglée par empreinte dans le script, sa version dans `fonts/kta-emoji.json` (`check-police-emoji.js`).
 
 | Police | Fichiers | Licence (jointe) | Source |
 |---|---|---|---|
 | **Montserrat** 400 / 600 / 800 | `montserrat-{400,600,800}.woff2` | SIL Open Font License 1.1 (`LICENSE-montserrat.txt`) | [JulietaUla/Montserrat](https://github.com/JulietaUla/Montserrat) |
 | **Permanent Marker** 400 | `permanent-marker-400.woff2` | Apache 2.0 (`LICENSE-permanent-marker.txt`) | [Google Fonts](https://fonts.google.com/specimen/Permanent+Marker) |
+| **KTA Emoji** (Twemoji Mozilla **0.7.0**, Twemoji 14, COLRv0, réduite) | `kta-emoji.woff2`, `kta-emoji.json` | dessins CC-BY 4.0, police Apache 2.0 (`LICENSE-twemoji.txt`) | [mozilla/twemoji-colr](https://github.com/mozilla/twemoji-colr/releases/tag/v0.7.0) · [twitter/twemoji](https://github.com/twitter/twemoji) |

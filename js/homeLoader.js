@@ -412,7 +412,7 @@
           const esc = window.ktaEsc;
           ov.innerHTML =
             '<div class="kta-modal" style="max-width:440px;">' +
-              '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">🔄</div>' +
+              '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">' + window.ktaIcone("refresh-cw") + '</div>' +
               '<div class="kta-modal-titre">' + esc(t("home.dup.titre")) + '</div>' +
               '<div class="kta-modal-texte">' +
                 esc(t("home.dup.texte", {
@@ -424,8 +424,8 @@
               '</div>' +
               '<div class="kta-modal-actions" style="flex-wrap:wrap;">' +
                 '<button class="kta-btn kta-btn-ghost" id="kta-dup-cancel" type="button">' + esc(t("ui.btn.cancel")) + '</button>' +
-                '<button class="kta-btn kta-btn-ghost" id="kta-dup-both" type="button">' + esc(t("home.dup.btnBoth")) + '</button>' +
-                '<button class="kta-btn kta-btn-primary" id="kta-dup-update" type="button">' + esc(t("home.dup.btnUpdate")) + '</button>' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-dup-both" type="button">' + window.ktaIcone("plus") + ' ' + esc(t("home.dup.btnBoth")) + '</button>' +
+                '<button class="kta-btn kta-btn-primary" id="kta-dup-update" type="button">' + window.ktaIcone("refresh-cw") + ' ' + esc(t("home.dup.btnUpdate")) + '</button>' +
               '</div>' +
             '</div>';
           document.documentElement.appendChild(ov);
@@ -758,11 +758,11 @@
           let html = "";
           plansOk.forEach(function(p, i) {
             html += '<button type="button" class="loader-search-row" data-lplan="' + i + '">' +
-                    '🗺️ <b>' + escapeHtml(p.name) + '</b></button>';
+                    window.ktaIcone("map") + ' <b>' + escapeHtml(p.name) + '</b></button>';
           });
           pts.forEach(function(e, i) {
             html += '<button type="button" class="loader-search-row" data-lpt="' + i + '">' +
-                    (e.pt.source === "session" ? "✏️" : "📄") + ' ' +
+                    window.ktaIcone(e.pt.source === "session" ? "pencil" : "map-pin") + ' ' +
                     escapeHtml(e.pt.nom || e.pt.id || (e.pt.x + "," + e.pt.y)) +
                     '<span class="loader-search-badge">' + escapeHtml(window.PlanRegistry.displayName(e.plan)) + '</span>' +
                     '</button>';
@@ -890,17 +890,17 @@
       // qu'une fois l'état connu : cache illisible = bouton absent plutôt que menteur. Un cache purgé fait
       // repasser le bouton en « télécharger ».
       const _ETATS_DL = {
-        absent:    { txt: "⬇️", cle: "home.plans.offline.rowDl",       repli: "Rendre disponible hors-ligne" },
-        incomplet: { txt: "⬇️", cle: "home.plans.offline.rowResume",   repli: "Téléchargement incomplet — compléter" },
+        absent:    { ico: "cloud-download", cle: "home.plans.offline.rowDl",       repli: "Rendre disponible hors-ligne" },
+        incomplet: { ico: "cloud-download", cle: "home.plans.offline.rowResume",   repli: "Téléchargement incomplet — compléter" },
         partiel:   { txt: "↻",  cle: "home.plans.offline.rowRetry",    repli: "Disponible, mais des fichiers manquent — réessayer" },
-        perime:    { txt: "⬇️", cle: "home.plans.offline.rowPerime",   repli: "Nouvelle version sur le serveur — la télécharger" },
+        perime:    { ico: "cloud-download", cle: "home.plans.offline.rowPerime",   repli: "Nouvelle version sur le serveur — la télécharger" },
         complet:   { txt: "↻",  cle: "home.plans.offline.rowUpdate",   repli: "Disponible hors-ligne — mettre à jour" }
       };
 
       function _peindreBoutonDl(btn, etat) {
         const meta = _ETATS_DL[etat];
         if (!meta) { btn.hidden = true; return; }
-        btn.textContent = meta.txt;
+        if (meta.ico) btn.innerHTML = window.ktaIcone(meta.ico); else btn.textContent = meta.txt;
         btn.title       = _homeT(meta.cle, meta.repli);
         btn.dataset.off = etat;
         btn.classList.toggle("kta-dl-ok", etat === "complet" || etat === "extGarde");
@@ -911,10 +911,10 @@
       // Un SEUL caches.keys() pour toute la liste (cf. PlanOffline.statuts).
       // Plans d'une installation reliée : état fourni par l'extension. Gardé = un CONSTAT (✅, sans action).
       const _ETAT_EXT = { garde: "extGarde", perime: "perime", absent: "extAbsent" };
-      _ETATS_DL.extGarde  = { txt: "✅", cle: "home.plans.offline.rowExtGarde",  repli: "Gardé sur l'appareil, à jour" };
-      _ETATS_DL.extAbsent = { txt: "💾", cle: "home.plans.offline.rowExtAbsent", repli: "Garder sur l'appareil (hors ligne)" };
+      _ETATS_DL.extGarde  = { ico: "circle-check", cle: "home.plans.offline.rowExtGarde",  repli: "Gardé sur l'appareil, à jour" };
+      _ETATS_DL.extAbsent = { ico: "hard-drive", cle: "home.plans.offline.rowExtAbsent", repli: "Garder sur l'appareil (hors ligne)" };
       // Plan local sans archive mémorisée : la mémoriser après coup.
-      _ETATS_DL.localPick = { txt: "💾", cle: "home.plans.offline.rowMemoriser", repli: "Mémoriser ce plan dans l'app" };
+      _ETATS_DL.localPick = { ico: "hard-drive", cle: "home.plans.offline.rowMemoriser", repli: "Mémoriser ce plan dans l'app" };
       const _sondesZip = {};
       async function _rafraichirBoutonsHorsLigne() {
         const X = window.KtaExtensions;
@@ -994,7 +994,7 @@
           return;
         }
         if (!plan || plan.type !== "server" || !window.PlanOffline) return;
-        const avant = { txt: btn.textContent, title: btn.title };
+        const avant = { html: btn.innerHTML, title: btn.title };
         btn.disabled = true;
         btn.textContent = "…";
         try {
@@ -1007,7 +1007,7 @@
           }
         } catch (e) {
           console.warn("[Loader] hors-ligne échec :", e && e.message);
-          btn.textContent = avant.txt;
+          btn.innerHTML = avant.html;
           btn.title = avant.title;
         }
         btn.disabled = false;
@@ -1090,16 +1090,17 @@
       }
 
 function planRowHTML(plan) {
-        let icon = plan.type === "server" ? "🌐" : plan.type === "ext" ? "☁️" : "💾";   // ☁️ = plan d'extension
+        // Plan du site, plan d'une extension (base de données de l'installation), plan sur l'appareil.
+        let icon = window.ktaIcone(plan.type === "server" ? "cloud" : plan.type === "ext" ? "database" : "hard-drive");
         // Badge de persistance des plans locaux (blob / fsHandle / pick).
         let badgeStorage = "";
         if (plan.type === "local") {
           if (plan.storedBlob) {
-            badgeStorage = '<span class="plan-row-badge plan-row-badge-stored" title="' + _homeT("home.plans.badge.stored", "Plan mémorisé dans l'app") + '">✅</span>';
+            badgeStorage = '<span class="plan-row-badge plan-row-badge-stored" title="' + _homeT("home.plans.badge.stored", "Plan mémorisé dans l'app") + '">' + window.ktaIcone("hard-drive") + '</span>';
           } else if (plan.fsHandleId) {
-            badgeStorage = '<span class="plan-row-badge plan-row-badge-fs" title="' + _homeT("home.plans.badge.fs", "Accès permanent autorisé") + '">🔐</span>';
+            badgeStorage = '<span class="plan-row-badge plan-row-badge-fs" title="' + _homeT("home.plans.badge.fs", "Accès permanent autorisé") + '">' + window.ktaIcone("key-round") + '</span>';
           } else {
-            badgeStorage = '<span class="plan-row-badge plan-row-badge-pick" title="' + _homeT("home.plans.badge.pick", "Re-sélection requise au chargement") + '">📁</span>';
+            badgeStorage = '<span class="plan-row-badge plan-row-badge-pick" title="' + _homeT("home.plans.badge.pick", "Re-sélection requise au chargement") + '">' + window.ktaIcone("folder-open") + '</span>';
           }
         }
         // Badge fourni par une installation reliée (ex. « 👥 2 »), texte échappé. Emplacement identifié : mis à
@@ -1155,13 +1156,13 @@ function planRowHTML(plan) {
               <div class="plan-row-modes">${badgesMode}${badgeStorage}${tagsHtml}</div>
             </div>
             <div class="plan-row-actions">
-              ${moveBtn}<button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${plan.pinned ? "⭐" : "☆"}</button>
+              ${moveBtn}<button class="plan-row-btn kta-plan-row-pin${plan.pinned ? " kta-actif" : ""}" title="${pinTitle}">${window.ktaIcone("star")}</button>
               ${(plan.type === "local" && !plan.storedBlob) ? `<button class="plan-row-btn kta-plan-row-dl" data-off="localPick"
-                title="${_homeT("home.plans.offline.rowMemoriser", "Mémoriser ce plan dans l'app")}">💾</button>` : ""}
+                title="${_homeT("home.plans.offline.rowMemoriser", "Mémoriser ce plan dans l'app")}">${window.ktaIcone("hard-drive")}</button>` : ""}
               ${plan.type === "server" || (plan.type === "ext" && window.KtaExtensions &&
                 window.KtaExtensions.horsLigneExtensionDisponible()) ? `<button class="plan-row-btn kta-plan-row-dl" data-off="?" hidden
-                title="${_homeT("home.plans.offline.rowWait", "Vérification…")}">⏳</button>` : ""}
-              <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">ℹ️</button>
+                title="${_homeT("home.plans.offline.rowWait", "Vérification…")}">${window.ktaIcone("loader-circle")}</button>` : ""}
+              <button class="plan-row-btn plan-row-info-btn" title="${_homeT("home.plans.infoBtnTitle", "Informations détaillées sur cette archive")}">${window.ktaIcone("info")}</button>
             </div>
           </div>
         `;
@@ -1384,7 +1385,7 @@ function planRowHTML(plan) {
           const _presetCur = (plan.perfPreset === "off") ? "off" : "auto";
           tuilageHtml =
             '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
-              '<div style="font-weight:600; margin-bottom:6px;">🖼️ ' + escapeHtml(_t("home.plans.info.tilingTitle")) + '</div>' +
+              '<div style="font-weight:600; margin-bottom:6px;">' + window.ktaIcone("image") + ' ' + escapeHtml(_t("home.plans.info.tilingTitle")) + '</div>' +
               '<select class="kta-cfg-input" id="kta-plan-tiling-select" style="width:100%;">' +
                 '<option value="auto"' + (_presetCur === "auto" ? " selected" : "") + '>' + escapeHtml(_t("home.perf.presetAuto")) + '</option>' +
                 '<option value="off"'  + (_presetCur === "off"  ? " selected" : "") + '>' + escapeHtml(_t("home.perf.presetOff"))  + '</option>' +
@@ -1396,7 +1397,7 @@ function planRowHTML(plan) {
         }
 
         const tableHtml = rows.map(function(r) {
-          const valStyle = r.mono ? ' style="font-family:monospace; font-size:11.5px; color:var(--kta-texte-2);"' : '';
+          const valStyle = r.mono ? ' style="font-family:KTA Emoji, monospace; font-size:11.5px; color:var(--kta-texte-2);"' : '';
           return '<tr>' +
                    '<td class="kta-info-key">' + escapeHtml(r.label) + '</td>' +
                    '<td class="kta-info-val"' + valStyle + '>' + escapeHtml(r.value) + '</td>' +
@@ -1414,7 +1415,7 @@ function planRowHTML(plan) {
         const _ext = plan.type === "ext";
         const _boutonGrise = function(raison) {
           return '<button class="kta-btn kta-btn-ghost kta-btn-small" disabled ' +
-                 'style="opacity:.5; cursor:not-allowed;">💾 ' + escapeHtml(_t("home.plans.info.dlZip")) +
+                 'style="opacity:.5; cursor:not-allowed;">' + window.ktaIcone("arrow-down-to-line") + ' ' + escapeHtml(_t("home.plans.info.dlZip")) +
                  '</button>' +
                  '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' +
                  escapeHtml(raison) + '</div>';
@@ -1423,18 +1424,18 @@ function planRowHTML(plan) {
           if (!plan.storedBlob) dlHtml = _boutonGrise(_t("home.plans.info.dlZipExtPasCopie"));
           else {
             dlHtml = '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-dl-zip" ' +
-                     'title="' + escapeHtml(_t("home.plans.info.dlZipTitle")) + '">💾 ' +
+                     'title="' + escapeHtml(_t("home.plans.info.dlZipTitle")) + '">' + window.ktaIcone("arrow-down-to-line") + ' ' +
                      escapeHtml(_t("home.plans.info.dlZip")) + '</button>';
           }
         } else if (plan.type === "local") {
           if (plan.storedBlob) {
             dlHtml = '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-dl-zip" ' +
-                     'title="' + escapeHtml(_t("home.plans.info.dlZipTitle")) + '">💾 ' +
+                     'title="' + escapeHtml(_t("home.plans.info.dlZipTitle")) + '">' + window.ktaIcone("arrow-down-to-line") + ' ' +
                      escapeHtml(_t("home.plans.info.dlZip")) + '</button>';
           } else {
             const raison = plan.fsHandleId ? _t("home.plans.info.dlZipFs") : _t("home.plans.info.dlZipPick");
             dlHtml = '<button class="kta-btn kta-btn-ghost kta-btn-small" disabled ' +
-                     'style="opacity:.5; cursor:not-allowed;">💾 ' + escapeHtml(_t("home.plans.info.dlZip")) +
+                     'style="opacity:.5; cursor:not-allowed;">' + window.ktaIcone("arrow-down-to-line") + ' ' + escapeHtml(_t("home.plans.info.dlZip")) +
                      '</button>' +
                      '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' +
                      escapeHtml(raison) + '</div>';
@@ -1451,7 +1452,7 @@ function planRowHTML(plan) {
               '<div style="font-weight:600; margin-bottom:6px;">💾 ' +
                 escapeHtml(_t("home.plans.offline.titre")) + '</div>' +
               '<div id="kta-plan-offline-zone" style="min-height:28px;">' +
-                '<span style="font-size:12px; color:var(--kta-texte-3);">⏳</span>' +
+                '<span style="font-size:12px; color:var(--kta-texte-3);">' + window.ktaIcone("loader-circle") + '</span>' +
               '</div>' +
             '</div>';
         }
@@ -1470,23 +1471,23 @@ function planRowHTML(plan) {
               // Étiquettes (virgules, normalisées par PlanRegistry.setTags). Renommage d'AFFICHAGE seulement :
               // le vrai nom reste intact (re-sélection de ZIP, session et détection de doublon s'y réfèrent).
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
-                '<div style="font-weight:600; margin-bottom:6px;">✏️ ' + escapeHtml(_t("home.plans.info.renameTitle")) + '</div>' +
+                '<div style="font-weight:600; margin-bottom:6px;">' + window.ktaIcone("pencil") + ' ' + escapeHtml(_t("home.plans.info.renameTitle")) + '</div>' +
                 '<input class="kta-cfg-input" id="kta-plan-rename-input" type="text" style="width:100%;" maxlength="40" ' +
                   'placeholder="' + escapeHtml(plan.name || plan.id) + '" ' +
                   'value="' + escapeHtml(plan.displayName || "") + '">' +
                 '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
-                  '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-rename-save">💾 ' + escapeHtml(_t("home.plans.info.renameSave")) + '</button>' +
+                  '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-rename-save">' + window.ktaIcone("save") + ' ' + escapeHtml(_t("home.plans.info.renameSave")) + '</button>' +
                   '<span id="kta-plan-rename-status" style="font-size:12px; color:var(--kta-texte-3);"></span>' +
                 '</div>' +
                 '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.renameHint")) + '</div>' +
               '</div>' +
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
-                '<div style="font-weight:600; margin-bottom:6px;">🏷️ ' + escapeHtml(_t("home.plans.info.tagsTitle")) + '</div>' +
+                '<div style="font-weight:600; margin-bottom:6px;">' + window.ktaIcone("tag") + ' ' + escapeHtml(_t("home.plans.info.tagsTitle")) + '</div>' +
                 '<input class="kta-cfg-input" id="kta-plan-tags-input" type="text" style="width:100%;" ' +
                   'placeholder="' + escapeHtml(_t("home.plans.info.tagsPlaceholder")) + '" ' +
                   'value="' + escapeHtml(Array.isArray(plan.tags) ? plan.tags.join(", ") : "") + '">' +
                 '<div style="display:flex; align-items:center; gap:10px; margin-top:8px;">' +
-                  '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-tags-save">💾 ' + escapeHtml(_t("home.plans.info.tagsSave")) + '</button>' +
+                  '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-tags-save">' + window.ktaIcone("save") + ' ' + escapeHtml(_t("home.plans.info.tagsSave")) + '</button>' +
                   '<span id="kta-plan-tags-status" style="font-size:12px; color:var(--kta-texte-3);"></span>' +
                 '</div>' +
                 '<div style="font-size:11.5px; color:var(--kta-texte-3); margin-top:6px; line-height:1.45;">' + escapeHtml(_t("home.plans.info.tagsHint")) + '</div>' +
@@ -1501,8 +1502,8 @@ function planRowHTML(plan) {
               ((plan.type !== "ext" && plan.type !== "server" && window.KtaExtensions &&
                 typeof window.KtaExtensions.aPrise === "function" && window.KtaExtensions.aPrise("publierPlan"))
                 ? '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
-                    '<div style="font-weight:600; margin-bottom:6px;">☁️ ' + escapeHtml(_t("home.plans.info.publishTitle")) + '</div>' +
-                    '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-publish">☁️ ' +
+                    '<div style="font-weight:600; margin-bottom:6px;">' + window.ktaIcone("database") + ' ' + escapeHtml(_t("home.plans.info.publishTitle")) + '</div>' +
+                    '<button class="kta-btn kta-btn-primary kta-btn-small" id="kta-plan-publish">' + window.ktaIcone("database") + ' ' +
                       escapeHtml(_t("home.plans.info.publishBtn")) + '</button>' +
                     '<div id="kta-plan-publish-status" style="font-size:12px; margin-top:8px; min-height:16px;"></div>' +
                     '<progress id="kta-plan-publish-barre" max="100" hidden style="width:100%; margin-top:6px;"></progress>' +
@@ -1512,7 +1513,7 @@ function planRowHTML(plan) {
                 : '') +
               // Suppression en fin de fiche (pas dans la liste : clic accidentel trop facile).
               '<div style="margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07);">' +
-                '<button class="kta-btn kta-btn-danger kta-btn-small" id="kta-plan-infos-remove">🗑️ ' +
+                '<button class="kta-btn kta-btn-danger kta-btn-small" id="kta-plan-infos-remove">' + window.ktaIcone("trash-2") + ' ' +
                   escapeHtml(_t("home.plans.removeBtnTitle")) + '</button>' +
               '</div>' +
             '</div>' +
@@ -1529,9 +1530,9 @@ function planRowHTML(plan) {
           const _fmtQuand = function (iso) {
             try { return new Date(iso).toLocaleString(); } catch (e) { return ""; }
           };
-          const _bouton = function (id, cls, label) {
+          const _bouton = function (id, cls, label, ico) {
             return '<button class="kta-btn ' + cls + ' kta-btn-small" id="' + id + '" ' +
-                   'style="margin:0 8px 6px 0;">' + escapeHtml(label) + '</button>';
+                   'style="margin:0 8px 6px 0;">' + (ico ? window.ktaIcone(ico) + ' ' : '') + escapeHtml(label) + '</button>';
           };
 
           const rendreOffline = async function () {
@@ -1567,7 +1568,7 @@ function planRowHTML(plan) {
               html += '<div style="font-size:11px; color:var(--kta-texte-3); margin:-4px 0 8px; line-height:1.5;">' +
                         escapeHtml(_t("home.plans.offline.manquantsTitre")) + '<br>' +
                         apercu.map(function (u) {
-                          return '<span style="font-family:monospace; font-size:10.5px; color:var(--kta-texte-2);">' +
+                          return '<span style="font-family:KTA Emoji, monospace; font-size:10.5px; color:var(--kta-texte-2);">' +
                                  escapeHtml(u) + '</span>';
                         }).join('<br>') +
                         (st.manquants.length > apercu.length
@@ -1579,20 +1580,20 @@ function planRowHTML(plan) {
 
             if (st.etat === "complet") {
               html += _bouton("kta-offline-maj", "kta-btn-ghost",  _t("home.plans.offline.btnMaj"));
-              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"));
+              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"), "trash-2");
             } else if (st.etat === "partiel") {
               html += _bouton("kta-offline-maj", "kta-btn-ghost",  _t("home.plans.offline.btnReessayer"));
-              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"));
+              html += _bouton("kta-offline-del", "kta-btn-danger", _t("home.plans.offline.btnRetirer"), "trash-2");
             } else if (st.etat === "incomplet") {
-              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnCompleter"));
-              html += _bouton("kta-offline-del", "kta-btn-danger",  _t("home.plans.offline.btnRetirer"));
+              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnCompleter"), "cloud-download");
+              html += _bouton("kta-offline-del", "kta-btn-danger",  _t("home.plans.offline.btnRetirer"), "trash-2");
             } else {
-              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnTelecharger"));
+              html += _bouton("kta-offline-dl",  "kta-btn-primary", _t("home.plans.offline.btnTelecharger"), "cloud-download");
             }
             zone.innerHTML = html;
 
             const lancer = async function () {
-              zone.innerHTML = '<div style="font-size:12px; color:var(--kta-interaction);" id="kta-offline-prog">⏳</div>';
+              zone.innerHTML = '<div style="font-size:12px; color:var(--kta-interaction);" id="kta-offline-prog">' + window.ktaIcone("loader-circle") + '</div>';
               const prog = document.getElementById("kta-offline-prog");
               try {
                 const r = await window.PlanOffline.precacher(plan, function (p2) {
@@ -1617,7 +1618,7 @@ function planRowHTML(plan) {
             if (bMaj) bMaj.addEventListener("click", lancer);
             if (bDel) bDel.addEventListener("click", function () {
               const msg = _t("home.plans.offline.confirmRetirer");
-              const confirmer = window.ktaConfirm(msg, { okLabel: _t("home.plans.offline.btnRetirer") });
+              const confirmer = window.ktaConfirm(msg, { okLabel: window.ktaIcone("trash-2") + " " + escapeHtml(_t("home.plans.offline.btnRetirer")) });
               confirmer.then(function (okc) {
                 if (!okc) return;
                 window.PlanOffline.supprimer(plan.id).then(rendreOffline);
@@ -1954,7 +1955,8 @@ function planRowHTML(plan) {
             // entrent seuls, les prochains aussi), puis bascule en mode Dossiers.
             ((_plansTagFilter && _plansTagFilter.size)
               ? '<button type="button" class="kta-osm-home-tag-chip kta-plans-chip-folder" id="loaderPlansChipFolder" title="' +
-                escapeHtml(_t("home.plans.folders.fromTags")) + '">📁+</button>' : "");
+                escapeHtml(_t("home.plans.folders.fromTags")) + '" aria-label="' + escapeHtml(_t("home.plans.folders.fromTags")) +
+                '">' + window.ktaIcone("folder-plus") + '</button>' : "");
             const chipDossier = document.getElementById("loaderPlansChipFolder");
             if (chipDossier) chipDossier.addEventListener("click", function() {
               const PR = window.PlanRegistry;
@@ -2089,7 +2091,8 @@ function planRowHTML(plan) {
       function _enteteDossierHTML(f, n, replie) {
         const t = window.I18n.t;
         const verrou = (f && f.src === "index")
-          ? '<span class="kta-plans-folder-lock" title="' + escapeHtml(t("home.plans.folders.lockedIndex")) + '">🌐</span>' : "";
+          ? '<span class="kta-plans-folder-lock" title="' + escapeHtml(t("home.plans.folders.lockedIndex")) + '">' +
+            window.ktaIcone("cloud") + '</span>' : "";
         const nom = f ? escapeHtml(f.name) : escapeHtml(t("home.plans.folders.unfiled"));
         const dot = f ? '<span class="kta-plans-folder-dot" style="background:' + escapeHtml(f.color || window.PlanRegistry.FOLDER_COLORS[0]) + '"></span>'
                       : '<span class="kta-plans-folder-dot kta-plans-folder-dot-none"></span>';
@@ -2137,7 +2140,8 @@ function planRowHTML(plan) {
           // Barre de sélection EN TÊTE de liste, collante sous le ☑ : en bas, elle passerait inaperçue.
           html = '<div class="kta-plans-select-bar" id="loaderPlansSelectBar">' +
                    '<span class="kta-plans-select-count">' + escapeHtml(t("home.plans.folders.selected", { n: _plansSelection.size })) + '</span>' +
-                   '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="loaderPlansSelectMove"' + (_plansSelection.size ? "" : " disabled") + '>📁 ' + escapeHtml(t("home.plans.folders.moveTo")) + '</button>' +
+                   '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="loaderPlansSelectMove"' + (_plansSelection.size ? "" : " disabled") + '>' +
+                     window.ktaIcone("folder") + ' ' + escapeHtml(t("home.plans.folders.moveTo")) + '</button>' +
                    '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="loaderPlansSelectDone">' + escapeHtml(t("home.plans.folders.selectDone")) + '</button>' +
                  '</div>' + html;
         }
@@ -2166,8 +2170,9 @@ function planRowHTML(plan) {
           btn.type = "button";
           btn.className = "loader-btn-secondary kta-plans-folder-more";
           const maj = function() {
-            btn.textContent = rows.classList.contains("kta-collapsed")
-              ? "📚 " + t("home.plans.folders.all", { n: n }) : "▴ " + t("home.plans.folders.less");
+            btn.innerHTML = rows.classList.contains("kta-collapsed")
+              ? window.ktaIcone("library") + " " + escapeHtml(t("home.plans.folders.all", { n: n }))
+              : "▴ " + escapeHtml(t("home.plans.folders.less"));
           };
           btn.addEventListener("click", function() {
             rows.classList.toggle("kta-collapsed");
@@ -2429,7 +2434,7 @@ function planRowHTML(plan) {
         const corps = '<button type="button" class="kta-plans-sheet-item" data-fid=""><span class="kta-plans-folder-dot kta-plans-folder-dot-none"></span>' + escapeHtml(t("home.plans.folders.unfiled")) + '</button>' +
                       lignes +
                       '<div class="kta-plans-sheet-new"><input type="text" class="kta-cfg-input" id="kta-plans-sheet-new-name" maxlength="40" placeholder="' + escapeHtml(t("home.plans.folders.newTitle")) + '">' +
-                      '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="kta-plans-sheet-new-ok">➕</button></div>';
+                      '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" id="kta-plans-sheet-new-ok">' + window.ktaIcone("plus") + '</button></div>';
         _feuille(escapeHtml(t("home.plans.folders.moveTo")) + " · " + ids.length, corps, function(ov, fermer) {
           ov.querySelectorAll("[data-fid]").forEach(function(b) {
             b.addEventListener("click", function() { fermer(); _deplacerPlans(ids, b.dataset.fid || null); });
@@ -2450,7 +2455,7 @@ function planRowHTML(plan) {
         const PR = window.PlanRegistry, t = window.I18n.t;
         const f = fid ? PR.findFolder(fid) : null;
         const verrou = !!(f && f.src === "index");
-        const corps = (verrou ? '<p class="kta-plans-sheet-lock">🌐 ' + escapeHtml(t("home.plans.folders.lockedIndex")) + '</p>' : "") +
+        const corps = (verrou ? '<p class="kta-plans-sheet-lock">' + window.ktaIcone("cloud") + ' ' + escapeHtml(t("home.plans.folders.lockedIndex")) + '</p>' : "") +
           '<label class="kta-cfg-label">' + escapeHtml(t("home.plans.folders.name")) + '</label>' +
           '<input type="text" class="kta-cfg-input" id="kta-plans-folder-name" maxlength="40" value="' + (f ? escapeHtml(f.name) : "") + '"' + (verrou ? " disabled" : "") + '>' +
           '<div class="kta-plans-sheet-err" id="kta-plans-folder-err" hidden></div>' +
@@ -2463,12 +2468,12 @@ function planRowHTML(plan) {
           '<div class="kta-plans-sheet-hint">' + escapeHtml(t("home.plans.folders.ruleHint")) + '</div>' +
           // Tout le dossier sur l'appareil (js/dossierHorsLigne.js) : manquants récupérés, périmés mis à jour.
           (f && window.KtaDossierHorsLigne
-            ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-offline" data-hors-ligne>📥 ' +
+            ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-offline" data-hors-ligne>' + window.ktaIcone("cloud-download") + ' ' +
                 escapeHtml(t("home.plans.dossierHL.bouton")) + '</button>' : "") +
           '<div class="kta-cfg-actions-bar kta-plans-sheet-actions">' +
             (f ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-move="-1" title="' + escapeHtml(t("home.plans.folders.up")) + '">▲</button>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-move="1" title="' + escapeHtml(t("home.plans.folders.down")) + '">▼</button>' +
-                 '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-del" data-del' + (verrou ? " disabled" : "") + '>🗑️ ' + escapeHtml(t("home.plans.folders.delete")) + '</button>' : "") +
+                 '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-del" data-del' + (verrou ? " disabled" : "") + '>' + window.ktaIcone("trash-2") + ' ' + escapeHtml(t("home.plans.folders.delete")) + '</button>' : "") +
             '<span class="kta-plans-sheet-spacer"></span>' +
             (verrou ? "" : '<button type="button" class="kta-btn kta-btn-primary kta-btn-small" data-ok>' + escapeHtml(t(f ? "config.actions.close" : "home.plans.folders.new")) + '</button>') +
           '</div>';
@@ -2534,7 +2539,7 @@ function planRowHTML(plan) {
       // ⋮ de « Non classés » : les plans AFFICHÉS dans ce groupe (filtre par nom et plans du site masqués respectés).
       function _ouvrirMenuNonClasses() {
         const t = window.I18n.t;
-        const corps = '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-offline" data-hors-ligne>📥 ' +
+        const corps = '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-plans-sheet-offline" data-hors-ligne>' + window.ktaIcone("cloud-download") + ' ' +
           escapeHtml(t("home.plans.dossierHL.bouton")) + '</button>';
         _feuille(escapeHtml(t("home.plans.folders.unfiled")), corps, function(ov, fermer) {
           ov.querySelector("[data-hors-ligne]").addEventListener("click", function() {
@@ -3177,9 +3182,10 @@ function planRowHTML(plan) {
         btn.className = "loader-btn-secondary";
         function _maj() {
           const replie = list.classList.contains("kta-collapsed");
-          btn.textContent = replie
-            ? "📚 " + _homeT("home.mobile.plansAll", "Tous mes plans") + " (" + rows + ")"
-            : "▴ " + _homeT("home.mobile.plansLess", "Réduire la liste");
+          btn.innerHTML = replie
+            ? window.ktaIcone("library") + " " +
+              window.ktaEsc(_homeT("home.mobile.plansAll", "Tous mes plans") + " (" + rows + ")")
+            : "▴ " + window.ktaEsc(_homeT("home.mobile.plansLess", "Réduire la liste"));
         }
         btn.addEventListener("click", function() {
           list.classList.toggle("kta-collapsed");

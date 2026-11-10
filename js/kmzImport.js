@@ -307,7 +307,8 @@
       // ExtendedData MyKTAMap (mkm:level, mkm:fromLevel, mkm:toLevel), symétrique de
       // kmzExport > _emitExtendedDataLevel. Absent (KMZ tiers) → null → niveau 0 côté appelant.
       const _mkmData = (function() {
-        const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false, dateConstat: null };
+        const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false, dateConstat: null,
+          jonction: false };
         const dataEls = pm.querySelectorAll(":scope > ExtendedData > Data");
         for (let j = 0; j < dataEls.length; j++) {
           const el = dataEls[j];
@@ -322,6 +323,8 @@
             continue;
           }
           if (name === "mkm:copie") { out.copie = (valEl.textContent || "").trim() === "1"; continue; }
+          // Ancien marqueur de zone jonction (KMZ d'avant le type `pente`) : converti à l'import.
+          if (name === "mkm:jonction") { out.jonction = (valEl.textContent || "").trim() === "1"; continue; }
           if (name === "mkm:dateConstat") {
             out.dateConstat = window.KtaPoiDanger ? window.KtaPoiDanger.dateValide(valEl.textContent || "") : null;
             continue;
@@ -445,7 +448,7 @@
             if (Number.isInteger(_mkmData.level)) _st.level = _mkmData.level;
             out.structures.push(_st);
           } else {
-            const zoneMatch     = _styleUrl.match(/^#zone_(eau|remblais|effondrement|inaccessible)$/);
+            const zoneMatch     = _styleUrl.match(/^#zone_(eau|remblais|effondrement|inaccessible|pente)$/);
             const zoneCustMatch = _styleUrl.match(/^#zone_(cust-[A-Za-z0-9_-]+)$/);
             const zoneType = (zoneMatch && zoneMatch[1])
                              ? zoneMatch[1]
@@ -459,6 +462,7 @@
             };
             if (Number.isInteger(_mkmData.level)) _zn.level = _mkmData.level;
             if (_mkmData.niveaux) _zn.niveaux = _mkmData.niveaux;
+            if (_mkmData.niveaux && _mkmData.jonction && _mkmData.niveaux.length >= 2) _zn.type = "pente";
             out.zones.push(_zn);
           }
           stats.kept++;

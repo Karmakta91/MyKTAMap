@@ -9,7 +9,12 @@
 
 - **`planRegistry.js`** gère la liste des plans connus.
 - **localStorage** : `myktamap_plans` (registre + lastPlanId)
-- **IndexedDB** : `myktamap_handles` (v2, 2 stores : `handles` pour FS Access API, `blobs` pour ZIPs mémorisés)
+- **IndexedDB** : `myktamap_handles` (v2, 2 stores : `handles` pour FS Access API, `blobs` pour ZIPs mémorisés).
+  Dans `blobs`, la clé `id` porte soit le ZIP d'un seul tenant (`saveBlob` : ZIP local, Générateur, import), soit la
+  fiche d'une **copie en morceaux** (`rangerEnMorceaux`, prise d'une extension qui range un plan tranche par tranche) dont
+  les morceaux vivent sous les clés `[id, gen, i]` ; `getBlob` recompose, `removeBlob` efface tout. Les lecteurs bruts du
+  store (`memInspector` : orphelins sur les clés chaîne ; `homeProfile` : poids, « dont ☁️ » par `clé[0]`) le savent.
+  Contrat et piège WebKit : `community-server-line.md` §3 (copie gardée en morceaux).
 - **Auto-discovery** serveur via `data/index.json` :
   ```json
   { "plans": [{ "id": "test1", "path": "data/test1", "name": "Test 1" }] }
@@ -181,7 +186,7 @@ Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + sec
   1. 🖼️ Tiling (segmented 5 presets)
   2. 🚀 ULTRA (7 toggles)
   3. 🛠️ Debug → toggle 🐛 Logs détaillés + bouton **📋 Afficher les logs** *(nouveau, suite KARMA)*
-  4. 🆘 **Dépannage** : un seul bouton, qui ouvre la fenêtre `#kta-depannage-modal` rangeant du plus doux au plus radical 🔄 Force update douce → 🆘 Kill SW → 💥 Tout réinitialiser (+ l'adresse de `killsw.html`)
+  4. 🔧 **Dépannage** : un seul bouton, qui ouvre la fenêtre `#kta-depannage-modal` rangeant du plus doux au plus radical 🔄 Force update douce → 🔧 Kill SW → 💥 Tout réinitialiser (+ l'adresse de `killsw.html`)
 - `🏗️ Générer un plan` reste directement visible dans la home (action de **création**, pas un réglage)
 - `📥 Conf exemple` déplacé en icône dans le modal du Générateur (section "📂 Charger un ZIP existant")
 
@@ -189,12 +194,12 @@ Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + sec
 - Bouton `🗑️ Réinitialiser` retiré de `kta-cfg-actions-bar` (interface.js)
 - Le reset complet n'est désormais accessible que depuis la modale ⚙️ Configuration du loader (home)
 - Raison : limiter les déclenchements accidentels une fois un plan chargé (user perd potentiellement session active + plans mémorisés en 2 clics)
-- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser
+- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 🔧 Dépannage → 💥 Tout réinitialiser
 - Conséquence CSS : `.kta-cfg-actions-bar` passe de `grid-template-columns: 1fr 1fr 1fr 1fr` (4 cols PC) / `1fr 1fr` (2 cols mobile) à `1fr 1fr 1fr` partout (3 boutons : Reset / Appliquer / 🐛 Logs)
 
 #### 39.2 Force update douce — `window.mettreAJourCodeSeul()`
 
-Bouton 🔄 de la fenêtre ⚙️ Configuration → 🆘 Dépannage. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
+Bouton 🔄 de la fenêtre ⚙️ Configuration → 🔧 Dépannage. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
 
 Différences fondamentales avec `viderCacheAppli()` :
 
@@ -376,6 +381,14 @@ Reset `_plannerPlanLegend = null` au boot de chaque ouverture de modale (dans `a
 ⚠️ **Swap session ↔ plan** : si une exception est levée dans `LC.ouvrirEditeur` AVANT le `onClose`, la session reste désynchronisée. Acceptable car l'éditeur est testé et stable depuis v1.16.0, mais à monitorer si on ajoute des features qui peuvent faire planter l'éditeur.
 
 ⚠️ **Pas exposé via API publique** : `_plannerPlanLegend` reste un état module-local. Si on a besoin d'y accéder depuis un autre module (ex: pour debug ou pour un futur "Export/Import légende plan-level seul"), il faudra exposer un getter `window.PlannerLegend = { get, set, reset, isEmpty }` au top du module.
+
+#### 58.5 bis Niveaux en hauteur (sol, hauteur, écart)
+
+Sous la case multi-niveau, la table de `profondeurNiveaux.js` (la même que ⚙️ Réglages) : `_plannerRendreNiveaux`
+la refait quand la case change (table multi-niveau mise de côté dans `_plannerNiveauxGardes`, rendue si on
+recoche), `_preRemplirFormulaire` la remplit d'un plan rouvert, `_genererZip` écrit `plan.niveauxProfondeur` et
+`plan.niveauxHauteur` (`_plannerLireNiveaux`). L'écart n'est jamais écrit. Format : `data-formats.md` ; contrat :
+`multilevel-pathfinding.md` § Hauteur et écart par niveau ; checkup : `checkup-niveaux-verticaux.js`.
 
 #### 58.6 Pour étendre
 
@@ -723,9 +736,22 @@ disparaître de leur session avant d'avoir rouvert le plan.
 
 ---
 
-## 📏 L'échelle d'un plan importé se DÉDUIT du géoréférencement (v1.82.0)
+## 🪜 Zone jonction dans le Générateur
 
-**Le bug** : `sigImport.js` et `gpxImport.js` écrivaient `tracking.scale = 50` **en dur** dans le plan-config. Sur `Citon_Graves_RD` — 4 000 px pour 1 199 m de terrain — la vraie valeur est **3,34 px/m** : un **facteur 15**. Toute distance affichée sur un plan importé était fausse dans cette proportion, et la mesure de KARMA annonçait 480 m pour 1 644 m réels.
+Le type « Jonction » (zones `pente`) est dans les menus de types de zones du Générateur : liste « Polygones → type »
+de l'import KMZ (`createConf.js`, `kta-kmz-imp-zone-type`) et types des polygones (et des lignes, `zone:pente`) de
+l'import SIG (`_SIG_TYPES`, `_SIG_TYPES_SUP`). Le choisir fait paraître « Du niveau » / « Au niveau »
+(`_htmlNiveauxPente`, `_lireNiveauxPente`), comme la création dans l'app ; deux niveaux identiques sont refusés. Les
+zones `pente` importées sans deux niveaux les reçoivent (`zones.js > ktaPoserNiveauxPente`) et le plan devient
+multi-niveau. ⚠️ Les couleurs par niveau de l'import SIG ne la changent pas en type de niveau (`sigImport.js >
+_typeNiveau`) : elle garde sa clé, sa couleur et son libellé sont ceux du tracé jonction (légende du plan comprise,
+`legendCustomization.js > TYPE_LIE`). Écrite dans le calque du ZIP, relue à l'ouverture ; l'ancien `jonction: true`
+d'un calque ou d'un ZIP fusionné est converti à la lecture (`utils.js > ktaZoneLue`). Garde-fou : § F de
+`scripts/smoke/checkup-zones-niveaux.js`.
+
+## 📏 L'échelle d'un plan importé se DÉDUIT du géoréférencement
+
+**🩸 Piège** : une échelle `tracking.scale` écrite en dur (50 px/m) par `sigImport.js` ou `gpxImport.js` peut être fausse d'un facteur 15 sur un plan importé réel (quelques px/m), et toutes ses distances avec.
 
 **La correction ne calcule rien de neuf** : `KmzExport.buildTransform` retournait déjà `metresParPixel`, dont l'échelle est exactement l'inverse.
 

@@ -132,6 +132,13 @@ function _ouvrirPlanSwitcher() {
   }, 0);
 }
 
+// ⚠️ contrat : même icône par type que la liste de l'accueil (homeLoader.js > icône d'une ligne de plan) —
+// serveur, installation reliée (`ext`), fichier local. Deux tables divergentes montraient une disquette pour un plan
+// d'installation.
+function _iconeTypePlan(p) {
+  return window.ktaIcone(p.type === "server" ? "cloud" : p.type === "ext" ? "database" : "hard-drive");
+}
+
 // Modale centrée : reprend .kta-readme-modal-overlay (backdrop, fade-in, safe-area) ;
 // la boîte a son style compact (.kta-plan-switcher-modal-*).
 function _ouvrirPlanSwitcherRefonte(recents, current) {
@@ -142,7 +149,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
   // Plan en cours : affiché, non cliquable (déjà chargé)
   let currentHtml = "";
   if (current) {
-    const icon = current.type === "server" ? "🌐" : "💾";
+    const icon = _iconeTypePlan(current);
     const ver  = current.version
       ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(current.version) + '</span>'
       : '';
@@ -151,7 +158,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
       : window.I18n.t("ui.switcher.currentPlan");
     currentHtml =
       '<div class="kta-plan-switcher-current">' +
-        '<div class="kta-plan-switcher-current-label">' + window.I18n.t("ui.switcher.currentLabel") + '</div>' +
+        '<div class="kta-plan-switcher-current-label">' + window.ktaIcone("map-pin") + " " + window.I18n.t("ui.switcher.currentLabel") + '</div>' +
         '<div class="kta-plan-switcher-current-name">' +
           '<span class="kta-plan-switcher-current-icon">' + icon + '</span>' +
           '<span>' + escapeHtmlSwitcher(window.PlanRegistry.displayName(current)) + '</span>' + ver +
@@ -162,10 +169,10 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
 
   let recentsHtml = "";
   if (recents.length > 0) {
-    recentsHtml += '<div class="kta-plan-switcher-section-titre">' + window.I18n.t("ui.switcher.recentTitle") + '</div>';
+    recentsHtml += '<div class="kta-plan-switcher-section-titre">' + window.ktaIcone("history") + " " + window.I18n.t("ui.switcher.recentTitle") + '</div>';
     recentsHtml += '<div class="kta-switcher-list">';
     recents.forEach(function(p) {
-      const icon = p.type === "server" ? "🌐" : "💾";
+      const icon = _iconeTypePlan(p);
       const sub  = _fmtDateRel(p.lastOpened) || "";
       const ver  = p.version ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(p.version) + '</span>' : '';
       recentsHtml +=
@@ -181,14 +188,14 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
     recentsHtml += '</div>';
   } else {
     recentsHtml +=
-      '<div class="kta-plan-switcher-section-titre">' + window.I18n.t("ui.switcher.recentTitle") + '</div>' +
+      '<div class="kta-plan-switcher-section-titre">' + window.ktaIcone("history") + " " + window.I18n.t("ui.switcher.recentTitle") + '</div>' +
       '<div class="kta-switcher-empty">' + window.I18n.t("ui.switcher.empty") + '</div>';
   }
 
   overlay.innerHTML =
     '<div class="kta-plan-switcher-modal-boite" id="kta-plan-switcher">' +
       '<div class="kta-plan-switcher-modal-header">' +
-        '<span class="kta-plan-switcher-modal-titre">' + window.I18n.t("ui.switcher.modalTitle") + '</span>' +
+        '<span class="kta-plan-switcher-modal-titre">' + window.ktaIcone("library") + " " + window.I18n.t("ui.switcher.modalTitle") + '</span>' +
         '<button class="kta-panneau-close" id="kta-plan-switcher-close" aria-label="' + window.I18n.t("ui.btn.close") + '">✕</button>' +
       '</div>' +
       '<div class="kta-plan-switcher-modal-corps">' +
@@ -197,7 +204,7 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
       '</div>' +
       '<div class="kta-plan-switcher-modal-footer">' +
         '<button class="kta-plan-switcher-cta" id="kta-switcher-tous">' +
-          '<span class="kta-plan-switcher-cta-icon">📚</span>' +
+          '<span class="kta-plan-switcher-cta-icon">' + window.ktaIcone("library") + '</span>' +
           '<span class="kta-plan-switcher-cta-label">' + window.I18n.t("ui.switcher.ctaLabel") + '</span>' +
           '<span class="kta-plan-switcher-cta-sub">' + window.I18n.t("ui.switcher.ctaSub") + '</span>' +
         '</button>' +
@@ -298,7 +305,7 @@ function _confirmEtChargerPlan(planId) {
   overlay.className = "kta-modal-overlay";
   overlay.innerHTML =
     '<div class="kta-modal">' +
-      '<div class="kta-modal-icon">🗂️</div>' +
+      '<div class="kta-modal-icon">' + window.ktaIcone("library") + '</div>' +
       '<div class="kta-modal-titre">' + window.I18n.t("ui.loadOther.title") + '</div>' +
       '<div class="kta-modal-texte">' +
         window.I18n.t("ui.loadOther.activeIntro") +
@@ -313,7 +320,7 @@ function _confirmEtChargerPlan(planId) {
       '</div>' +
       '<div class="kta-modal-actions">' +
         '<button class="kta-btn kta-btn-ghost"   id="kta-switch-annuler">' + window.I18n.t("ui.btn.cancel") + '</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-switch-confirmer">' + window.I18n.t("ui.loadOther.loadBtn") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-switch-confirmer">' + window.ktaIcone("folder-open") + " " + window.I18n.t("ui.loadOther.loadBtn") + '</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(overlay);
@@ -403,7 +410,8 @@ function escapeHtmlSwitcher(s) { return window.ktaEsc(s); }
 // Alerte charte à un bouton OK, sans callback (info, pas de décision).
 // ⚠️ `texte` et `titre` sont injectés en HTML : l'appelant échappe ce qui vient de l'utilisateur.
 function _alertCharte(titre, texte, icone) {
-  const ic = icone || "⚠️";
+  // `icone` : nom d'icône SVG (ktaIcones.js), triangle-alert par défaut.
+  const ic = window.ktaIcone(icone || "triangle-alert");
   const existing = document.getElementById("kta-alert-charte");
   if (existing) existing.remove();
 
@@ -436,7 +444,8 @@ function _alertCharte(titre, texte, icone) {
   document.addEventListener("keydown", _onKey);
 }
 
-// Choix multiple : options = [{ label, icon, desc, onClick, danger, ghost }] + Annuler.
+// Choix multiple : options = [{ label, icon, desc, onClick, danger, ghost }] + Annuler. ⚠️ icon = HTML (SVG de
+// window.ktaIcone), posé tel quel devant le libellé.
 function _choixSuppression(titre, texte, options) {
   const overlay = document.createElement("div");
   overlay.className = "kta-modal-overlay";
@@ -452,7 +461,7 @@ function _choixSuppression(titre, texte, options) {
 
   overlay.innerHTML = `
     <div class="kta-modal" style="max-width:420px;">
-      <div class="kta-modal-icon">⚠️</div>
+      <div class="kta-modal-icon">${window.ktaIcone("triangle-alert")}</div>
       <div class="kta-modal-titre">${titre}</div>
       <div class="kta-modal-texte">${texte || ""}</div>
       <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
@@ -486,14 +495,14 @@ function afficherPopupChangerPlan() {
 
   overlay.innerHTML = `
     <div class="kta-modal" style="max-width:440px;">
-      <div class="kta-modal-icon">🗂️</div>
+      <div class="kta-modal-icon">${window.ktaIcone("library")}</div>
       <div class="kta-modal-titre">${window.I18n.t("ui.changePlan.title")}</div>
       <div class="kta-modal-texte">
         ${window.I18n.t("ui.changePlan.body")}
       </div>
       <div class="kta-modal-actions">
         <button class="kta-btn kta-btn-ghost" id="popupResterIci">${window.I18n.t("ui.changePlan.stay")}</button>
-        <button class="kta-btn kta-btn-primary" id="popupChargerPlan">${window.I18n.t("ui.changePlan.myPlans")}</button>
+        <button class="kta-btn kta-btn-primary" id="popupChargerPlan">${window.ktaIcone("library")} ${window.I18n.t("ui.changePlan.myPlans")}</button>
       </div>
     </div>
   `;
@@ -518,7 +527,8 @@ window._desactiverTousLesModes = _desactiverTousLesModes;
 function _desactiverTousLesModes() {
   Object.values(_modesActifs).forEach(function(m) {
     try { m.desactiverFn(); } catch(e) {}
-    m.btnEl.classList.remove("kta-actif");
+    // Mode armé sans bouton (« Tracer la jonction » d'une fiche : interfaceConfig.js > ktaTracerJonction).
+    if (m.btnEl) m.btnEl.classList.remove("kta-actif");
   });
   Object.keys(_modesActifs).forEach(function(k) { delete _modesActifs[k]; });
 }
@@ -669,7 +679,7 @@ function _afficherAvertissementTracker(onConfirm) {
         ((window.WakeLock && typeof window.WakeLock.isSupported === "function" && window.WakeLock.isSupported()
           && typeof window.WakeLock.isEnabled === "function" && !window.WakeLock.isEnabled())
           ? '<label class="kta-tracker-warn-wake"><input type="checkbox" id="kta-tracker-warn-wake" checked> ' +
-              '<span>' + window.I18n.t("ui.trackerWarn.wakeLock") + '</span></label>'
+              '<span>' + window.ktaIcone("smartphone") + ' ' + window.I18n.t("ui.trackerWarn.wakeLock") + '</span></label>'
           : '') +
       '</div>' +
       '<div class="kta-tracker-warn-actions">' +
@@ -828,9 +838,16 @@ window.ktaMajOutilsLectureSeule = _majOutilsLectureSeule;
   window.addEventListener(ev, function() { try { _majOutilsLectureSeule(); } catch(e) { /* affichage seulement */ } });
 });
 
+// Infobulle d'une sous-action : son libellé, suivi de `sub.infobulleCle` (clé i18n, traduite au rendu) quand le
+// libellé court tait un effet utile (ex. la zone qui bloque l'itinéraire).
+function _infobulleSousAction(sub, libelle) {
+  if (!sub.infobulleCle) return libelle;
+  return (libelle ? libelle + " — " : "") + window.I18n.t(sub.infobulleCle);
+}
+
 // ── Création d'un groupe ──────────────────────────────
 // config = { id, iconePrincipale, titre, soloAction|null, useFlyout, useModal, modal, position,
-//   sousActions: [ { icone, titre, onClick, refClassName?, ... } ], lcCat, customActivator,
+//   sousActions: [ { icone, titre, onClick, refClassName?, infobulleCle?, ... } ], lcCat, customActivator,
 //   dynamicSousActions }
 function _creerGroupeAccordeon(config) {
   // config.position n'est lu que si window._refonteInterfaceActive ; sinon tout en topright.
@@ -898,9 +915,9 @@ function _creerGroupeAccordeon(config) {
                              : sub.icone;
         btnSub.href      = "#";
         btnSub.setAttribute("role", "button");
-        btnSub.title     = (typeof sub.dynamicTitre === "function")
+        btnSub.title     = _infobulleSousAction(sub, (typeof sub.dynamicTitre === "function")
                              ? (sub.dynamicTitre() || sub.titre || "")
-                             : sub.titre;
+                             : sub.titre);
         if (sub.refClassName) btnSub.dataset.refClassName = sub.refClassName;
         // ⚠️ Marque les boutons « type » (activent un mode de dessin) : les customs s'insèrent
         // après eux, avant les outils (Valider, Effacer).
@@ -956,7 +973,7 @@ function _creerGroupeAccordeon(config) {
 // déclare un ; la section `defaut` recueille le reste. Titres = CLÉS, traduites à l'ouverture.
 const _MODAL_TRACKER = {
   id: "kta-tracker-modal",
-  icone: "🧭",
+  icone: window.ktaIcone("navigation"),
   titreCle: "ui.group.tracker",
   statut: true,
   sections: [
@@ -968,14 +985,14 @@ const _MODAL_TRACKER = {
 
 const _MODAL_EXPORT = {
   id: "kta-export-lanceur",
-  icone: "⬆️",
+  icone: window.ktaIcone("save"),
   titreCle: "ui.group.save",
   statut: false,
   sections: [
-    { cle: "image",   titreCle: "export.lanceur.sectionImage", defaut: true },
-    { cle: "session", titreCle: "export.lanceur.sectionSession" },
-    { cle: "plan",    titreCle: "export.lanceur.sectionPlan" },
-    { cle: "externe", titreCle: "export.lanceur.sectionExterne" }
+    { cle: "image",   titreCle: "export.lanceur.sectionImage", ico: "image", defaut: true },
+    { cle: "session", titreCle: "export.lanceur.sectionSession", ico: "save" },
+    { cle: "plan",    titreCle: "export.lanceur.sectionPlan", ico: "map" },
+    { cle: "externe", titreCle: "export.lanceur.sectionExterne", ico: "globe" }
   ]
 };
 
@@ -1041,6 +1058,9 @@ function _creerTuileTracker(sub) {
   tile.type = "button";
   tile.className = "kta-tracker-modal-tile";
   if (sub.cssClass) tile.classList.add(sub.cssClass);
+  // ⚠️ contrat : `carte: true` = la tuile agit sur la carte 2D ; ouverte depuis la vue 3D (bouton 🧭 de sa colonne),
+  // elle ferme d'abord la 3D (vue3d.js > _ouvrirTracker).
+  if (sub.carte) tile.dataset.carte = "1";
   if (typeof sub.isActive === "function") {
     try { if (sub.isActive()) tile.classList.add("kta-actif"); } catch(e) {}
   }
@@ -1158,8 +1178,8 @@ L.control.ktaVue3DControl = function() {
     const a = L.DomUtil.create("a", "", div);
     a.href = "#";   // pas « javascript: » (CSP stricte)
     a.setAttribute("role", "button");
-    // Picto cube de l'écran Bienvenue (js/ktaPictos.js), en currentColor : couleur du thème par .leaflet-bar a.
-    a.innerHTML = typeof window.ktaPicto === "function" ? window.ktaPicto("cube", "kta-vue3d-ctrl-picto") : "3D";
+    // Icône « box » de js/ktaIcones.js, en currentColor : couleur du thème par .leaflet-bar a.
+    a.innerHTML = window.ktaIcone("box", { classe: "kta-vue3d-ctrl-picto" }) || "3D";
     L.DomEvent.disableClickPropagation(div);
     L.DomEvent.on(a, "click", function(e) {
       L.DomEvent.preventDefault(e);
@@ -1172,11 +1192,13 @@ L.control.ktaVue3DControl = function() {
 };
 window.addEventListener("mktm:plan-pret", function() { _majBoutonVue3D(); });
 
-function _ajouterSectionTracker(corps, titre, actions) {
+// ico : nom d'icône SVG posée devant le titre (lanceur d'export) ; sans lui, titre seul.
+function _ajouterSectionTracker(corps, titre, actions, ico) {
   if (!actions || actions.length === 0) return;
   const titreEl = document.createElement("div");
   titreEl.className = "kta-tracker-modal-section-title";
   titreEl.textContent = titre;
+  if (ico) titreEl.insertAdjacentHTML("afterbegin", window.ktaIcone(ico) + " ");
   corps.appendChild(titreEl);
   const grid = document.createElement("div");
   grid.className = "kta-tracker-modal-grid";
@@ -1273,7 +1295,7 @@ function _ouvrirTrackerModal(groupId) {
   const titleWrap = document.createElement("div");
   titleWrap.className = "kta-tracker-modal-title";
   const titleIcon = document.createElement("span");
-  titleIcon.textContent = cfg.icone;
+  titleIcon.innerHTML = cfg.icone;   // SVG de js/ktaIcones.js (chaîne fixe, jamais une donnée)
   const titleTxt = document.createElement("span");
   titleTxt.textContent = window.I18n.t(cfg.titreCle);
   titleWrap.appendChild(titleIcon);
@@ -1302,7 +1324,7 @@ function _ouvrirTrackerModal(groupId) {
   const autres = baseActions.filter(function(a) { return !classees.has(a); });
   cfg.sections.forEach(function(s, i) {
     const actions = s.defaut ? parSection[i].concat(autres) : parSection[i];
-    _ajouterSectionTracker(corps, window.I18n.t(s.titreCle), actions);
+    _ajouterSectionTracker(corps, window.I18n.t(s.titreCle), actions, s.ico);
   });
   box.appendChild(corps);
 
@@ -1490,7 +1512,7 @@ function _ouvrirFlyout(groupId, opts) {
         && typeof grp.customActivator === "function") {
       const idxOutils = allActions.findIndex(function(a) { return !a.isTypeAction; });
       allActions.splice(idxOutils >= 0 ? idxOutils : allActions.length, 0, {
-        icone:        "➕",
+        icone:        window.ktaIcone("plus"),
         titre:        window.I18n.t("ui.subaction.nouveauType"),
         isTypeAction: true,
         onClick:      function() {
@@ -1543,6 +1565,7 @@ function _ouvrirFlyout(groupId, opts) {
                         : (sub.titre || "");
     btn.appendChild(iconEl);
     btn.appendChild(lblEl);
+    if (sub.infobulleCle) btn.title = _infobulleSousAction(sub, lblEl.textContent);
 
     // Surbrillance : sub.isActive() pour les groupes à plusieurs états parallèles ; sinon
     // currentMode (un seul type actif : tracés/zones/structures).
@@ -1971,7 +1994,7 @@ function initInterface() {
     // _allerVersFavori est déclarée plus bas dans initInterface (hoisting).
     _creerGroupeAccordeon({
       id: "favoris",
-      iconePrincipale: "⭐",
+      iconePrincipale: window.ktaIcone("star"),
       titre: window.I18n.t("ui.group.favoris"),
       position: "topleft",
       useFlyout: true,
@@ -1980,7 +2003,7 @@ function initInterface() {
         const favs = window.Favoris.getAll();
         if (favs.length === 0) {
           return [{
-            icone: "ℹ️",
+            icone: window.ktaIcone("info"),
             titre: window.I18n.t("ui.favoris.empty"),
             onClick: function() {}  // no-op
           }];
@@ -2033,15 +2056,15 @@ function initInterface() {
   // Aide / Documentation / Légende
   _creerGroupeAccordeon({
     id: "aide",
-    iconePrincipale: "📚",
+    iconePrincipale: window.ktaIcone("circle-help"),
     titre: window.I18n.t("ui.group.aide"),
     position: "topleft",
     sousActions: [
       // afficherAide / afficherReadme vivent dans interfaceDocs.js : appel via window.
-      { icone: "❓", titre: window.I18n.t("ui.subaction.aide"),          onClick: function() { if (typeof window.afficherAide === "function") window.afficherAide(); } },
-      { icone: "📖", titre: window.I18n.t("ui.subaction.documentation"), onClick: function() { if (typeof window.afficherReadme === "function") window.afficherReadme(); } },
+      { icone: window.ktaIcone("circle-help"), titre: window.I18n.t("ui.subaction.aide"),          onClick: function() { if (typeof window.afficherAide === "function") window.afficherAide(); } },
+      { icone: window.ktaIcone("book-open"), titre: window.I18n.t("ui.subaction.documentation"), onClick: function() { if (typeof window.afficherReadme === "function") window.afficherReadme(); } },
       // Aide IA et tutoriel ne sont pas ici : dans l'en-tête de la Documentation (aussi depuis l'accueil).
-      { icone: "🗺️", titre: window.I18n.t("ui.subaction.legende"),       onClick: afficherLegende }
+      { icone: window.ktaIcone("list"), titre: window.I18n.t("ui.subaction.legende"),       onClick: afficherLegende }
     ]
   });
 
@@ -2050,7 +2073,7 @@ function initInterface() {
   // laisse des modales et le bandeau dans l'ancien thème.
   _creerGroupeAccordeon({
     id: "settings",
-    iconePrincipale: "⚙️",
+    iconePrincipale: window.ktaIcone("settings"),
     titre: window.I18n.t("ui.group.settings"),
     position: "topleft",
     soloAction: function() { if (typeof window.afficherConfig === "function") window.afficherConfig(); }
@@ -2059,7 +2082,7 @@ function initInterface() {
   // Recherche (solo)
   _creerGroupeAccordeon({
     id: "recherche",
-    iconePrincipale: "🔍",
+    iconePrincipale: window.ktaIcone("search"),
     titre: window.I18n.t("ui.group.recherche"),
     soloAction: function() {
       if (window.ouvrirRecherche) window.ouvrirRecherche();
@@ -2072,7 +2095,7 @@ function initInterface() {
   // titre du plan le font déjà ; l'Éditeur de données du plan vit dans ⬆️ Exporter (décision produit).
   _creerGroupeAccordeon({
     id: "charger",
-    iconePrincipale: "⬇️",
+    iconePrincipale: window.ktaIcone("folder-open"),
     titre: window.I18n.t("ui.group.charger"),
     position: "topleft",
     soloAction: function() {
@@ -2093,13 +2116,13 @@ function initInterface() {
   }
   _creerGroupeAccordeon({
     id: "save",
-    iconePrincipale: "⬆️",
+    iconePrincipale: window.ktaIcone("save"),
     titre: window.I18n.t("ui.group.save"),
     position: "topleft",
     useModal: true,
     modal: _MODAL_EXPORT,
     sousActions: [
-      { icone: "🖼️", titreCle: "export.lanceur.image", section: "image", onClick: function() {
+      { icone: window.ktaIcone("image"), titreCle: "export.lanceur.image", section: "image", onClick: function() {
           if (window.ouvrirExportModal) {
             window.ouvrirExportModal();
           } else if (window.telechargerPlan) {
@@ -2110,7 +2133,7 @@ function initInterface() {
             });
           }
         } },
-      { icone: "🖨️", titreCle: "export.lanceur.pdf", section: "image", onClick: function() {
+      { icone: window.ktaIcone("file-text"), titreCle: "export.lanceur.pdf", section: "image", onClick: function() {
           if (window.MyKTAMapPdfExport && window.MyKTAMapPdfExport.afficherModale) {
             window.MyKTAMapPdfExport.afficherModale();
           } else {
@@ -2118,30 +2141,30 @@ function initInterface() {
           }
         } },
       // GeoTIFF : le plan calé en image géoréférencée (js/geotiffExport.js), à côté du PNG et du PDF.
-      { icone: "🛰️", titreCle: "export.lanceur.geotiff", section: "image", onClick: function() {
+      { icone: window.ktaIcone("satellite"), titreCle: "export.lanceur.geotiff", section: "image", onClick: function() {
           if (window.GeotiffExport) window.GeotiffExport.afficherModale();
         } },
-      { icone: "💾", titreCle: "export.lanceur.complet", section: "session", onClick: function() {
+      { icone: window.ktaIcone("save"), titreCle: "export.lanceur.complet", section: "session", onClick: function() {
           _ouvrirExportSession("full");
         } },
-      { icone: "🎨", titreCle: "export.lanceur.avance", section: "session", onClick: function() {
+      { icone: window.ktaIcone("sliders-horizontal"), titreCle: "export.lanceur.avance", section: "session", onClick: function() {
           _ouvrirExportSession("advanced");
         } },
-      { icone: "📊", titreCle: "export.lanceur.editeur", section: "session", onClick: function() {
+      { icone: window.ktaIcone("table"), titreCle: "export.lanceur.editeur", section: "session", onClick: function() {
           if (window.ouvrirTableEditor) window.ouvrirTableEditor();
           else window.ktaAlerte(window.I18n.t("ui.alert.tableEditorIndispo"), { type: "erreur" });
         } },
       // Assistant « Mettre à jour le plan » (js/majPlan.js) : session et calques → Générateur prérempli.
-      { icone: "🔄", titreCle: "export.lanceur.majPlan", section: "plan", onClick: function() {
+      { icone: window.ktaIcone("refresh-cw"), titreCle: "export.lanceur.majPlan", section: "plan", onClick: function() {
           if (window.MajPlan && typeof window.MajPlan.ouvrir === "function") window.MajPlan.ouvrir();
         } },
-      { icone: "🌍", titreCle: "export.lanceur.kmz", section: "externe", onClick: function() {
+      { icone: window.ktaIcone("globe"), titreCle: "export.lanceur.kmz", section: "externe", onClick: function() {
           _ouvrirExportSession("extern", { format: "kmz" });
         } },
-      { icone: "📍", titreCle: "export.lanceur.gpx", section: "externe", onClick: function() {
+      { icone: window.ktaIcone("map-pinned"), titreCle: "export.lanceur.gpx", section: "externe", onClick: function() {
           _ouvrirExportSession("extern", { format: "gpx" });
         } },
-      { icone: "🧭", titreCle: "export.lanceur.geojson", section: "externe", onClick: function() {
+      { icone: window.ktaIcone("braces"), titreCle: "export.lanceur.geojson", section: "externe", onClick: function() {
           _ouvrirExportSession("extern", { format: "geojson" });
         } }
     ]
@@ -2151,12 +2174,12 @@ function initInterface() {
   // dans historyManager.js ; ces boutons servent au mobile, grisés quand la pile est vide.
   _creerGroupeAccordeon({
     id: "history",
-    iconePrincipale: "⏪",
+    iconePrincipale: window.ktaIcone("history"),
     titre: window.I18n.t("ui.group.history"),
     position: "topleft",
     sousActions: [
       {
-        icone: "⏪",
+        icone: window.ktaIcone("undo-2"),
         titre: window.I18n.t("ui.subaction.undo"),
         onClick: function(btnSub) {
           if (!window.HistoryManager) return;
@@ -2170,7 +2193,7 @@ function initInterface() {
         }
       },
       {
-        icone: "⏩",
+        icone: window.ktaIcone("redo-2"),
         titre: window.I18n.t("ui.subaction.redo"),
         onClick: function(btnSub) {
           if (!window.HistoryManager) return;
@@ -2256,7 +2279,7 @@ function initInterface() {
       Promise.resolve(perm).then(function(ok) {
         if (ok === false) {
           _alertCharte(window.I18n.t("ui.trackerWarn.refusTitre"),
-                       window.I18n.t("ui.trackerWarn.refusTexte"), "🚫");
+                       window.I18n.t("ui.trackerWarn.refusTexte"), "ban");
           return;
         }
         _doStartSuite();
@@ -2264,7 +2287,7 @@ function initInterface() {
     };
     const _doStartSuite = function() {
       startTracking();
-      if (btnSub) btnSub.innerHTML = "⏹️";
+      if (btnSub) btnSub.innerHTML = window.ktaIcone("square");
       // L'icône principale reste 🧭 (identité du groupe) ; kta-group-mode-actif signale le suivi.
       _setGroupeModeActif("tracker", true, null);
       isTracking = true;
@@ -2282,7 +2305,7 @@ function initInterface() {
     const X = window.KtaExtensions;
     if (!X || typeof X.aPrise !== "function" || !X.aPrise("presence")) return null;
     return {
-      icone: "📡",
+      icone: window.ktaIcone("radio"),
       titre: window.I18n.t("ui.subaction.presence"),
       section: "suivi",
       isActive: function() { return X.presenceActive() === true; },
@@ -2298,20 +2321,20 @@ function initInterface() {
   }
   _creerGroupeAccordeon({
     id: "tracker",
-    iconePrincipale: "🧭",
+    iconePrincipale: window.ktaIcone("navigation"),
     titre: window.I18n.t("ui.group.tracker"),
     useModal: true,
     sousActions: [
       {
-        icone: "▶️",
+        icone: window.ktaIcone("play"),
         titre: window.I18n.t("ui.subaction.trackToggle"),
         section: "suivi",
-        dynamicIcon: function() { return isTracking ? "⏹️" : "▶️"; },
+        dynamicIcon: function() { return isTracking ? window.ktaIcone("square") : window.ktaIcone("play"); },
         isActive:    function() { return isTracking === true; },
         onClick: function(btnSub) {
           if (isTracking) {
             stopTracking();
-            btnSub.innerHTML = "▶️";
+            btnSub.innerHTML = window.ktaIcone("play");
             _setGroupeModeActif("tracker", false);
             isTracking = false;
             return;
@@ -2320,8 +2343,9 @@ function initInterface() {
         }
       },
       {
-        icone: "🧭",
+        icone: window.ktaIcone("compass"),
         titre: window.I18n.t("ui.subaction.compass"),
+        carte: true,
         section: "outils",
         isActive: function() {
           return !!(window.CompassWidget && typeof window.CompassWidget.isVisible === "function"
@@ -2341,8 +2365,9 @@ function initInterface() {
       {
         // Plan orienté : pendant le suivi, la CARTE tourne (marche vers le haut). Réglage d'appareil
         // persisté, OFF par défaut ; se pose à l'avance, ne s'anime que suivi en cours.
-        icone: "🗺️",
+        icone: window.ktaIcone("rotate-cw"),
         titre: window.I18n.t("ui.subaction.planOriente"),
+        carte: true,
         section: "outils",
         isActive: function() {
           return !!(window.MapBearing && window.MapBearing.isEnabled());
@@ -2362,7 +2387,7 @@ function initInterface() {
         // Guidage : le bandeau s'affiche seul dès qu'un itinéraire coexiste avec le suivi ou une
         // position confirmée. Réglage Auto / Jamais (persisté) ; la croix du bandeau le coupe, cette
         // tuile le rallume. Doc : docs/ETUDE_GUIDAGE.md.
-        icone: "🪧",
+        icone: window.ktaIcone("signpost"),
         titre: window.I18n.t("ui.subaction.guidage"),
         section: "outils",
         isActive: function() {
@@ -2380,8 +2405,9 @@ function initInterface() {
         }
       },
       {
-        icone: "📍",
+        icone: window.ktaIcone("map-pin-check"),
         titre: window.I18n.t("ui.subaction.recalage"),
+        carte: true,
         section: "suivi",
         isActive: function() { return window.modeRecalage === true; },
         onClick: function(btnSub) {
@@ -2410,22 +2436,23 @@ _setGroupeModeActif("tracker", isTracking, null);
           };
           _modesActifs["recalage"] = { btnEl: btnSub, desactiverFn: _desactiverFn };
           window._fermerModeRecalage = _desactiverFn;
-          _setGroupeModeActif("tracker", true, "📍");
+          _setGroupeModeActif("tracker", true, window.ktaIcone("map-pin-check"));
         }
       },
       {
-        icone: "🎯",
+        icone: window.ktaIcone("locate-fixed"),
         titre: window.I18n.t("ui.subaction.maPosition"),
+        carte: true,
         section: "suivi",
         onClick: function() { _centrerSurMaPosition(); }
       },
       // Suspendre le verrou sur tracé sans passer par les Réglages (ex. sortie de galerie hors plan).
       {
-        icone: "🔓",
+        icone: window.ktaIcone("lock-open"),
         titre: window.I18n.t("ui.subaction.verrouSuspend"),
         section: "suivi",
         // Coupé en configuration = grisé · suspendu = orange · en service = vert
-        dynamicIcon: function() { return _verrouSuspendu ? "🔓" : "🔒"; },
+        dynamicIcon: function() { return _verrouSuspendu ? window.ktaIcone("lock-open") : window.ktaIcone("lock"); },
         // ⚠️ La suspension met smartNav à false : elle se teste en premier.
         etat: function() {
           if (_verrouSuspendu) return "pause";
@@ -2434,7 +2461,7 @@ _setGroupeModeActif("tracker", isTracking, null);
         onClick: function() { _gererSuspensionVerrou(); }
       },
       {
-        icone: "🗺️",
+        icone: window.ktaIcone("route"),
         titre: window.I18n.t("ui.subaction.itineraire"),
         section: "outils",
         onClick: function() {
@@ -2445,8 +2472,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       },
       // Replay du parcours (timeline cumulée depuis startTracking, recalages = ancres).
       {
-        icone: "🎬",
+        icone: window.ktaIcone("clapperboard"),
         titre: window.I18n.t("ui.subaction.replay"),
+        carte: true,
         section: "outils",
         optionnel: "replayEnabled",
         onClick: function() {
@@ -2459,8 +2487,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       },
       // Heatmap : cumul multi-session de la timeline (persistée par SessionPersist / SessionBackups).
       {
-        icone: "🔥",
+        icone: window.ktaIcone("flame"),
         titre: window.I18n.t("ui.subaction.heatmap"),
+        carte: true,
         section: "outils",
         // ⚠️ Seule la TUILE est optionnelle : le module reste chargé, le Mode
         // Secours garde son bloc « Heatmap d'activité » quel que soit ce réglage.
@@ -2475,8 +2504,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       },
       // Urgence en fin de liste, fond rouge (kta-sous-action-urgence → section « urgence »).
       {
-        icone: "⛑️",
+        icone: window.ktaIcone("life-buoy"),
         titre: window.I18n.t("ui.subaction.lost"),
+        carte: true,
         cssClass: "kta-sous-action-urgence",
         onClick: function() {
           if (window.LostMode && typeof window.LostMode.open === "function") {
@@ -2489,7 +2519,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       // Affichage XL : position + cap en grand, sans le superflu (≠ Je suis perdu, qui calcule une
       // zone de recherche ; ≠ 🚨 Sortie d'urgence).
       {
-        icone: "🔆",
+        icone: window.ktaIcone("maximize"),
         titre: window.I18n.t("ui.subaction.emergency"),
         cssClass: "kta-sous-action-urgence",
         onClick: function() {
@@ -2502,7 +2532,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       },
       // Mode Secours : assigner des équipes de recherche à des zones du plan.
       {
-        icone: "🚑",
+        icone: window.ktaIcone("ambulance"),
         titre: window.I18n.t("ui.subaction.secours"),
         cssClass: "kta-sous-action-urgence",
         onClick: function() {
@@ -2531,13 +2561,13 @@ _setGroupeModeActif("tracker", isTracking, null);
   // Mesure
   _creerGroupeAccordeon({
     id: "mesure",
-    iconePrincipale: "📐",
+    iconePrincipale: window.ktaIcone("ruler"),
     titre: window.I18n.t("ui.group.mesure"),
     sousActions: [
       // 🩸 Distance et Surface sont deux actions exclusives qui ARMENT modeMesure ET choisissent le
       // sous-mode : changer seulement le sous-mode laisse le clic carte sans effet. Re-clic = coupe.
       {
-        icone: "📐",
+        icone: window.ktaIcone("ruler"),
         titre: window.I18n.t("ui.subaction.mesureDistance"),
         // Surbrillance du panneau (vue 3D, ktaOuvrirOutils) : l'accordéon, lui, garde sa classe kta-actif.
         isActive: function() { return window.modeMesure === true && window.getMeasureMode() !== "surface"; },
@@ -2567,7 +2597,7 @@ _setGroupeModeActif("tracker", isTracking, null);
         }
       },
       {
-        icone: "♦️",
+        icone: window.ktaIcone("square-dashed"),
         titre: window.I18n.t("ui.subaction.mesureSurface"),
         isActive: function() { return window.modeMesure === true && window.getMeasureMode() === "surface"; },
         onClick: function(btnSub) {
@@ -2603,7 +2633,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       },
       // Distance totale des tracés : une mesure (lecture), pas un geste de dessin. Aussi en vue 3D : panneau par-dessus
       // la vue, tronçons comptés (niveau de la vue) surlignés au sol (vue3d.js > _majDistTot).
-      { icone: "📏", titre: window.I18n.t("ui.trace.distanceTotale"),
+      { icone: window.ktaIcone("sigma"), titre: window.I18n.t("ui.trace.distanceTotale"),
         onClick: function() {
           if (typeof window.ouvrirRoadsDistanceFloater === "function") {
             window.ouvrirRoadsDistanceFloater();
@@ -2612,13 +2642,13 @@ _setGroupeModeActif("tracker", isTracking, null);
       },
       // Volume exploité : lit la surface ♦️ comme secteur (lecture, pas un geste de dessin) ; en vue 3D, celle dessinée
       // dans la vue, au niveau de la vue (volumeExploite.js > _niveauAffiche).
-      { id: "mesureVolume", icone: "⛏️", titre: window.I18n.t("ui.subaction.mesureVolume"),
+      { id: "mesureVolume", icone: window.ktaIcone("pickaxe"), titre: window.I18n.t("ui.subaction.mesureVolume"),
         onClick: function() {
           if (window.KtaVolumeExploite) window.KtaVolumeExploite.ouvrir();
         }
       },
       {
-        icone: "❌",
+        icone: window.ktaIcone("eraser"),
         titre: window.I18n.t("ui.subaction.mesureEffacer"),
         onClick: function() {
           // Deux mesures indépendantes : « dernier point » vise le sous-mode actif
@@ -2634,28 +2664,28 @@ _setGroupeModeActif("tracker", isTracking, null);
           const choix = [];
           if (ptsActive.length > 0) {
             choix.push({
-              label: window.I18n.t("ui.mesure.lastPoint", { label: labelActive }), icon: "↩️",
+              label: window.I18n.t("ui.mesure.lastPoint", { label: labelActive }), icon: window.ktaIcone("undo-2"),
               desc: window.I18n.t("ui.mesure.lastPointDesc", { n: ptsActive.length, label: labelActive }),
               onClick: function() { if (window.removeLastMeasurePoint) window.removeLastMeasurePoint(); }
             });
           }
           if (ptsD.length > 0) {
             choix.push({
-              label: window.I18n.t("ui.mesure.allDistance"), icon: "🗑️", danger: true,
+              label: window.I18n.t("ui.mesure.allDistance"), icon: window.ktaIcone("trash-2"), danger: true,
               desc: window.I18n.t("ui.mesure.nPoints", { n: ptsD.length }),
               onClick: function() { if (window.resetMesureMode) window.resetMesureMode("distance"); }
             });
           }
           if (ptsS.length > 0) {
             choix.push({
-              label: window.I18n.t("ui.mesure.allSurface"), icon: "🗑️", danger: true,
+              label: window.I18n.t("ui.mesure.allSurface"), icon: window.ktaIcone("trash-2"), danger: true,
               desc: window.I18n.t("ui.mesure.nPoints", { n: ptsS.length }),
               onClick: function() { if (window.resetMesureMode) window.resetMesureMode("surface"); }
             });
           }
           if (ptsD.length > 0 && ptsS.length > 0) {
             choix.push({
-              label: window.I18n.t("ui.mesure.allBoth"), icon: "🗑️", danger: true,
+              label: window.I18n.t("ui.mesure.allBoth"), icon: window.ktaIcone("trash-2"), danger: true,
               onClick: function() { if (window.resetMesure) window.resetMesure(); }
             });
           }
@@ -2671,7 +2701,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   // groupes à sous-actions).
   _creerGroupeAccordeon({
     id: "edition",
-    iconePrincipale: "✏️",
+    iconePrincipale: window.ktaIcone("pencil"),
     titre: window.I18n.t("ui.group.edition"),
     soloAction: function() {
       const grp = _groupes["edition"];
@@ -2775,7 +2805,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   if (_isMultiLevel) {
     // Hors vue 3D : une jonction relie deux niveaux, la 3D en montre un.
     _sousActionsTraces.push({
-      icone: "🪜",
+      icone: window.ktaIcone("m-echelle"),
       horsVue3D: true,
       titre: window.I18n.t("ui.trace.jonction"),
       dynamicTitre: function() { return _titreType("traces", "jonction", window.I18n.t("ui.trace.jonction")); },
@@ -2798,13 +2828,13 @@ _setGroupeModeActif("tracker", isTracking, null);
   _sousActionsTraces.push(
     // Valider : clôt le tracé en cours, quel que soit son type (custom compris) = re-clic sur le
     // type actif (le tracé reste dans roadsData). Sans isTypeAction → après le séparateur.
-    { icone: "✅", titre: window.I18n.t("ui.trace.valider"),
+    { icone: window.ktaIcone("check"), titre: window.I18n.t("ui.trace.valider"),
       onClick: function() {
         if (!window.modeRoad) {
           _alertCharte(
             window.I18n.t("ui.trace.noneTitle"),
             window.I18n.t("ui.trace.noneBody"),
-            "🛣️"
+            "m-galerie"
           );
           return;
         }
@@ -2812,7 +2842,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       }
     },
       // Hors vue 3D : « Sélectionner » et « Par zone » se jouent au clic sur la carte.
-      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"), horsVue3D: true,
+      { icone: window.ktaIcone("eraser"), titre: window.I18n.t("ui.btn.effacer"), horsVue3D: true,
         onClick: function() {
           const roads = window.getRoads ? window.getRoads() : [];
           if (roads.length === 0) return;
@@ -2825,7 +2855,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _choixSuppression(
             window.I18n.t("ui.trace.choixTitle"), window.I18n.t("ui.choix.whatErase"),
             [
-              { label: window.I18n.t("ui.trace.eraseLastPoint"), icon: "↩️",
+              { label: window.I18n.t("ui.trace.eraseLastPoint"), icon: window.ktaIcone("undo-2"),
                 desc: window.I18n.t("ui.trace.eraseLastPointDesc", { n: nbPts }),
                 onClick: function() {
                   // 🩸 Tracé en cours vidé → fermer le mode (cf. _fermerModeRoad).
@@ -2834,7 +2864,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
                   if (before && !after) _fermerModeRoad();
                 } },
-              { label: window.I18n.t("ui.trace.eraseLast"), icon: "✂️",
+              { label: window.I18n.t("ui.trace.eraseLast"), icon: window.ktaIcone("scissors"),
                 desc: window.I18n.t("ui.trace.eraseLastDesc", { n: roads.length }),
                 onClick: function() {
                   // 🩸 Tracé en cours capturé AVANT : s'il est supprimé, fermer le mode.
@@ -2843,7 +2873,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
                   if (before && !after) _fermerModeRoad();
                 } },
-              { label: window.I18n.t("ui.trace.eraseSelect"), icon: "🎯",
+              { label: window.I18n.t("ui.trace.eraseSelect"), icon: window.ktaIcone("mouse-pointer-click"),
                 desc: window.I18n.t("ui.trace.eraseSelectDesc", { n: tracesSelectables.length }),
                 onClick: function() {
                   if (typeof window.activerModeSuppressionTraceClic === "function") {
@@ -2851,7 +2881,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   }
                 } },
               _choixEffacerParZone("roads"),
-              { label: window.I18n.t("ui.trace.eraseAll"), icon: "🗑️", danger: true,
+              { label: window.I18n.t("ui.trace.eraseAll"), icon: window.ktaIcone("trash-2"), danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
@@ -2870,7 +2900,7 @@ _setGroupeModeActif("tracker", isTracking, null);
 
   _creerGroupeAccordeon({
     id: "traces",
-    iconePrincipale: "🛣️",
+    iconePrincipale: window.ktaIcone("m-galerie"),
     titre: window.I18n.t("ui.group.traces"),
     sousActions: _sousActionsTraces,
     useFlyout: true,
@@ -2906,7 +2936,7 @@ _setGroupeModeActif("tracker", isTracking, null);
 
   _creerGroupeAccordeon({
     id: "zones",
-    iconePrincipale: "⬛",
+    iconePrincipale: window.ktaIcone("m-zone"),
     titre: window.I18n.t("ui.group.zones"),
     useFlyout: true,
     lcCat: "zones",
@@ -2918,16 +2948,33 @@ _setGroupeModeActif("tracker", isTracking, null);
         onClick: function(btn) { _activerZone("effondrement", btn, _iconeType("zones", "effondrement", "🟥")); } },
       { icone: "🟦", dynamicIcon: function() { return _iconeType("zones", "eau", "🟦"); }, titre: window.I18n.t("ui.zone.eau"), dynamicTitre: function() { return _titreType("zones", "eau", window.I18n.t("ui.zone.eau")); }, isTypeAction: true, typeKey: "eau",
         onClick: function(btn) { _activerZone("eau", btn, _iconeType("zones", "eau", "🟦")); } },
-      // Inaccessible : contrainte dure du pathfinder (tout segment qui la traverse est exclu).
-      { icone: "⛔", titre: window.I18n.t("ui.zone.inaccessible"), dynamicTitre: function() { return _titreType("zones", "inaccessible", window.I18n.t("ui.zone.inaccessible")); }, isTypeAction: true, typeKey: "inaccessible",
+      // Inaccessible : contrainte dure du pathfinder (tout segment qui la traverse est exclu). Le libellé reste
+      // court ; l'effet sur l'itinéraire passe par l'infobulle.
+      { icone: "⛔", infobulleCle: "ui.zone.inaccessibleAide", titre: window.I18n.t("ui.zone.inaccessible"), dynamicTitre: function() { return _titreType("zones", "inaccessible", window.I18n.t("ui.zone.inaccessible")); }, isTypeAction: true, typeKey: "inaccessible",
         onClick: function(btn) { _activerZone("inaccessible", btn, "⛔"); } },
-      { icone: "✅", titre: window.I18n.t("ui.zone.fermer"),
+      // Jonction (multi-niveau, hors vue 3D comme le tracé jonction) : « du niveau … au niveau … » d'abord, la zone
+      // les reçoit seule (zones.js, `_zonePenteMeta`). Re-clic = coupe le mode, comme les autres types.
+      ...(_isMultiLevel ? [{
+        icone: "🪜", horsVue3D: true, isTypeAction: true, typeKey: "pente",
+        dynamicIcon: function() { return _iconeType("zones", "pente", "🪜"); },
+        titre: window.I18n.t("ui.zone.pente"),
+        dynamicTitre: function() { return _titreType("zones", "pente", window.I18n.t("ui.zone.pente")); },
+        onClick: function(btn) {
+          if (window.modeZone === "pente") { _activerZone("pente", btn, "🪜"); return; }
+          if (typeof window._ouvrirCreationJonction !== "function") return;
+          window._ouvrirCreationJonction(btn, { zone: true, onOk: function(de, vers) {
+            window._zonePenteMeta = { fromLevel: de, toLevel: vers };
+            _activerZone("pente", btn, _iconeType("zones", "pente", "🪜"));
+          } });
+        }
+      }] : []),
+      { icone: window.ktaIcone("check"), titre: window.I18n.t("ui.zone.fermer"),
         onClick: function() {
           if (!window.modeZone) {
             _alertCharte(
               window.I18n.t("ui.zone.noneTitle"),
               window.I18n.t("ui.zone.noneBody"),
-              "⛔"
+              "ban"
             );
             return;
           }
@@ -2946,14 +2993,14 @@ _setGroupeModeActif("tracker", isTracking, null);
               _alertCharte(
                 window.I18n.t("ui.zone.tooFewTitle"),
                 window.I18n.t("ui.zone.tooFewBody"),
-                "📐"
+                "ruler"
               );
             }
           }
         }
       },
       // Hors vue 3D : « Sélectionner » et « Par zone » se jouent au clic sur la carte.
-      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"), horsVue3D: true,
+      { icone: window.ktaIcone("eraser"), titre: window.I18n.t("ui.btn.effacer"), horsVue3D: true,
         onClick: function() {
           const zones = window.getZones ? window.getZones() : [];
           if (zones.length === 0) return;
@@ -2967,7 +3014,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _choixSuppression(
             window.I18n.t("ui.zone.choixTitle"), window.I18n.t("ui.choix.whatErase"),
             [
-              { label: window.I18n.t("ui.zone.eraseLastPoint"), icon: "↩️",
+              { label: window.I18n.t("ui.zone.eraseLastPoint"), icon: window.ktaIcone("undo-2"),
                 desc: window.I18n.t("ui.zone.eraseLastPointDesc"),
                 onClick: function() {
                   // 🩸 Zone en cours vidée → fermer le mode (cf. _fermerModeRoad).
@@ -2977,7 +3024,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   if (before && !after) _fermerModeZone();
                 } },
               // removeLastZone vise la zone en cours si elle existe, sinon la dernière fermée.
-              { label: window.I18n.t("ui.zone.eraseLast"), icon: "✂️",
+              { label: window.I18n.t("ui.zone.eraseLast"), icon: window.ktaIcone("scissors"),
                 desc: window.I18n.t("ui.zone.eraseLastDesc", { n: nbZonesFermees }),
                 onClick: function() {
                   // 🩸 Zone en cours supprimée → fermer le mode.
@@ -2986,7 +3033,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
                   if (before && !after) _fermerModeZone();
                 } },
-              { label: window.I18n.t("ui.zone.eraseSelect"), icon: "🎯",
+              { label: window.I18n.t("ui.zone.eraseSelect"), icon: window.ktaIcone("mouse-pointer-click"),
                 desc: window.I18n.t("ui.zone.eraseSelectDesc", { n: nbSelectables }),
                 onClick: function() {
                   if (typeof window.activerModeSuppressionZoneClic === "function") {
@@ -2994,7 +3041,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   }
                 } },
               _choixEffacerParZone("zones"),
-              { label: window.I18n.t("ui.zone.eraseAll"), icon: "🗑️", danger: true,
+              { label: window.I18n.t("ui.zone.eraseAll"), icon: window.ktaIcone("trash-2"), danger: true,
                 desc: window.I18n.t("ui.choix.undoableCtrlZ"),
                 onClick: function() {
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
@@ -3047,7 +3094,7 @@ _setGroupeModeActif("tracker", isTracking, null);
   // Déclaré juste après Zones : l'ordre d'ajout fixe sa place dans la sidebar droite.
   _creerGroupeAccordeon({
     id: "structures",
-    iconePrincipale: "🏛️",
+    iconePrincipale: window.ktaIcone("m-pilier"),
     titre: window.I18n.t("ui.group.structures"),
     useFlyout: true,
     lcCat: "structures",
@@ -3072,13 +3119,13 @@ _setGroupeModeActif("tracker", isTracking, null);
         onClick: function(btn) { _activerStructure("front-1", btn, _iconeType("structures", "front-1", "🟨")); } },
       { icone: "🟧", dynamicIcon: function() { return _iconeType("structures", "front-2", "🟧"); }, titre: window.I18n.t("ui.struct.front2"), dynamicTitre: function() { return _titreType("structures", "front-2", window.I18n.t("ui.struct.front2")); }, isTypeAction: true, typeKey: "front-2",
         onClick: function(btn) { _activerStructure("front-2", btn, _iconeType("structures", "front-2", "🟧")); } },
-      { icone: "✅", titre: window.I18n.t("ui.struct.fermer"),
+      { icone: window.ktaIcone("check"), titre: window.I18n.t("ui.struct.fermer"),
         onClick: function() {
           if (!window.modeStructure) {
             _alertCharte(
               window.I18n.t("ui.struct.noneTitle"),
               window.I18n.t("ui.struct.noneBody"),
-              "🏛️"
+              "m-pilier"
             );
             return;
           }
@@ -3102,13 +3149,13 @@ _setGroupeModeActif("tracker", isTracking, null);
                 _alertCharte(
                   window.I18n.t("ui.struct.tooFewTitle"),
                   window.I18n.t("ui.struct.tooFewLineBody"),
-                  "📐"
+                  "ruler"
                 );
               } else {
                 _alertCharte(
                   window.I18n.t("ui.struct.tooFewTitle"),
                   window.I18n.t("ui.struct.tooFewPolyBody"),
-                  "📐"
+                  "ruler"
                 );
               }
             }
@@ -3116,7 +3163,7 @@ _setGroupeModeActif("tracker", isTracking, null);
         }
       },
       // Hors vue 3D : « Sélectionner » et « Par zone » se jouent au clic sur la carte.
-      { icone: "🧹", titre: window.I18n.t("ui.btn.effacer"), horsVue3D: true,
+      { icone: window.ktaIcone("eraser"), titre: window.I18n.t("ui.btn.effacer"), horsVue3D: true,
         onClick: function() {
           const structures = window.getStructures ? window.getStructures() : [];
           if (structures.length === 0) return;
@@ -3129,7 +3176,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _choixSuppression(
             window.I18n.t("ui.struct.choixTitle"), window.I18n.t("ui.choix.whatErase"),
             [
-              { label: window.I18n.t("ui.struct.eraseLastPoint"), icon: "↩️",
+              { label: window.I18n.t("ui.struct.eraseLastPoint"), icon: window.ktaIcone("undo-2"),
                 desc: window.I18n.t("ui.struct.eraseLastPointDesc"),
                 onClick: function() {
                   // 🩸 Structure en cours vidée → fermer le mode (cf. _fermerModeRoad).
@@ -3139,7 +3186,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   if (before && !after) _fermerModeStructure();
                 } },
               // removeLastStructure vise la structure en cours si elle existe, sinon la dernière fermée.
-              { label: window.I18n.t("ui.struct.eraseLast"), icon: "✂️",
+              { label: window.I18n.t("ui.struct.eraseLast"), icon: window.ktaIcone("scissors"),
                 desc: window.I18n.t("ui.struct.eraseLastDesc", { n: nbStructFermees }),
                 onClick: function() {
                   const before = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
@@ -3147,7 +3194,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   const after = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (before && !after) _fermerModeStructure();
                 } },
-              { label: window.I18n.t("ui.struct.eraseSelect"), icon: "🎯",
+              { label: window.I18n.t("ui.struct.eraseSelect"), icon: window.ktaIcone("mouse-pointer-click"),
                 desc: window.I18n.t("ui.struct.eraseSelectDesc", { n: nbSelectables }),
                 onClick: function() {
                   if (typeof window.activerModeSuppressionStructureClic === "function") {
@@ -3155,7 +3202,7 @@ _setGroupeModeActif("tracker", isTracking, null);
                   }
                 } },
               _choixEffacerParZone("structures"),
-              { label: window.I18n.t("ui.struct.eraseAll"), icon: "🗑️", danger: true,
+              { label: window.I18n.t("ui.struct.eraseAll"), icon: window.ktaIcone("trash-2"), danger: true,
                 desc: window.I18n.t("ui.struct.eraseAllDesc", { n: nbSelectables }),
                 onClick: function() {
                   const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
@@ -3367,7 +3414,7 @@ function _onSuppPopupOpen(e) {
 // Ligne « ✏️ Effacer par zone » de la fenêtre 🧹 Effacer des trois groupes : même chemin que le bouton du bandeau
 // (sélection multiple sans graine, tracé de zone lancé, seule la famille du groupe cochée).
 function _choixEffacerParZone(famille) {
-  return { label: window.I18n.t("ui.choix.eraseZone"), icon: "✏️",
+  return { label: window.I18n.t("ui.choix.eraseZone"), icon: window.ktaIcone("square-dashed"),
     desc: window.I18n.t("ui.choix.eraseZoneDesc"),
     onClick: function() {
       if (window.SelectionMulti && typeof window.SelectionMulti.ouvrirZone === "function") {

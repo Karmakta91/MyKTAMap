@@ -73,6 +73,45 @@
   vert sous WebKit sur plusieurs passages, sans clé manquante · depuis: 04/11/2026 · taille: S`
 ## Plus tard
 
+- **AI_CONTEXT : remplacer les ~540 emoji de bouton par le nom du bouton dans tout le fichier** — le lexique en tête
+  (généré par `check-lexique-icones.js`) suffit en attendant ; une fois les noms écrits, le lexique ne garde que
+  les emoji restés.
+  `qui: Claude · action: réécrire les citations de bouton d'AI_CONTEXT.md par leur nom, lexique régénéré
+  · fini: classerDoc ne relève plus d'emoji de bouton hors lexique · depuis: 09/11/2026 · taille: M`
+- **Vue 3D, puits ouvert : galerie du dessus qui coupe le conduit** — une galerie du dessus qui ne couvre qu'une
+  partie de l'emprise du puits coupe le conduit (les parois de tube des voisins ne lisent pas le gabarit) — rare, pas
+  vu sur plan réel. ✅ vérifié 09/11/2026 : `js/vue3d.js > _sommetPlafond` (🩸).
+  `qui: Claude · action: couper les parois de tube des voisins sur l'emprise d'un conduit (bit GABARIT.conduit)
+  · fini: checkup § 56 étendu à une galerie à cheval sur l'emprise, vert · depuis: 09/11/2026 · taille: S`
+- **Vue 3D, puits ouvert : disque de ciel coupé vu en biais** — regardé de biais depuis le fond ou depuis un niveau
+  traversé, le disque de ciel du sommet est coupé net par un bord vertical (même sprite que le puits sur son niveau).
+  🔬 vu en capture sur plan réel le 09/11/2026, cause non cherchée.
+  `qui: Claude · action: trouver ce qui tranche le sprite (gabarit, plan de coupe, taille) et le corriger
+  · fini: capture en biais sans bord net, checkup § 56 vert · depuis: 09/11/2026 · taille: S`
+- **Téléchargement de fichier commun, repli partage iPhone** — une vingtaine de modules recopient le même lien Blob
+  + `download` (secoursMode, sessionExporter, refonteInterface…), aucun ne passe par `navigator.share` sur iOS, où le
+  lien d'un Blob est capricieux dans la PWA installée. ✅ vérifié 09/11/2026 (grep) ; modèle : `js/debug.js`.
+  `qui: Claude · action: une fonction commune (Blob, download, partage iOS) et y passer les exports
+  · fini: plus de copie du motif, exports testés Chromium et WebKit · depuis: 09/11/2026 · taille: M`
+- **iPad portrait : canvas de la carte au-delà de la limite de Safari** — marge du renderer 0,5 × écran × densité 2 :
+  ~22 M px réels carte droite, au-delà des 16,8 M px d'un canvas Safari (tracés, zones, structures non peints ou
+  onglet tué). 🔬 calcul du lot rotation-memoire (09/11/2026), pas vu sur un vrai iPad.
+  `qui: KARMA · action: ouvrir un gros plan sur iPad en portrait et dire si tracés et structures s'affichent
+  · fini: vu sur iPad ; si défaut, budget du canvas carte droite (mapBearing.js > _paddingBudget)
+  · depuis: 09/11/2026 · taille: S`
+- **Calque : copie jamais retouchée contre trace de copie** — deux appareils hors ligne qui passent le même calque
+  en modification gardent des copies concurrentes (le plus récent gagne). Règle à la réception, cf
+  `docs/architecture/session-data.md` (limites de « Repasser en modification »).
+  `qui: Claude · action: marquer la date de l'objet du fichier sur chaque copie, la trace l'emporte sur une copie
+  intacte · fini: scénario deux appareils hors ligne vert · depuis: 08/11/2026 · taille: M`
+- **Calque d'origine sur un appareil neuf** — toutes les copies supprimées ailleurs : il ne reçoit que des traces,
+  voit le calque d'origine tant qu'il n'a pas cliqué « Modifier » (qui donne alors un calque vide).
+  `qui: Claude · action: masquer le calque si des traces de copie le vident (vérification asynchrone du fichier)
+  · fini: appareil neuf sans calque fantôme · depuis: 08/11/2026 · taille: S`
+- **⏪ du niveau en lot et liaisons des portails** — le niveau en lot fait suivre la liaison d'un portail
+  (`InterPlanLinks.onPointLevelChanged`), mais ⏪ ne la remet pas à l'ancien niveau (point remis, liaison non).
+  `qui: Claude · action: inclure les instantanés de liaison dans l'entrée d'historique du lot · fini: ⏪ remet point
+  et liaison, check-selection-multi le prouve · depuis: 08/11/2026 · taille: S`
 - **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
   compte comme absent pour les outils de réputation.
   `qui: Claude · action: repousser Expires d'un an (moins d'un an d'avance) · fini: fichier servi, date à jour
@@ -91,11 +130,6 @@
   (`docs/architecture/ui.md` §53.3).
   `qui: Claude · action: retirer écran par écran la surcharge que le jeton couvre, captures avant et après
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
-- **Système d'add-ons community (`addons/<nom>/`)** — lot A fait (manifestes, registre, précache : `addons.md`).
-  Reste (QCM 02 et 06/11/2026) : section « Add-ons » des Réglages (secrets absents, allumés par défaut), bouton 🧩
-  en vue 3D pour les add-ons visibles, cases dans ConfAdmin (tous les add-ons, secrets compris).
-  `qui: Claude · action: lot B (section Réglages + bouton 🧩), puis lot C (cases ConfAdmin) · fini: interrupteur
-  dans les Réglages et ConfAdmin · depuis: 02/11/2026 · taille: M`
 - **Add-on mkmg : interrupteur par organisation (pro)** — aujourd'hui refusé sur une installation reliée, sauf
   `data/reglages.json > addons.mkmg` posé par l'hébergeur (toute l'installation) ; décision : un admin d'orga
   l'allume. Prise neutre côté community, réglage et case d'admin côté pro.
@@ -109,12 +143,12 @@
 - **Recalcul d'itinéraire sans à-coup** — ✅ mesuré 04/11 : en 3D libre, le calcul du chemin fige une image de
   ~0,3 s au téléphone émulé (accepté par KARMA) ; piste : calcul hors du fil principal (worker).
   `qui: KARMA · action: dire si l'à-coup gêne sur iPhone · fini: décision prise · depuis: 04/11/2026 · taille: M`
+- **Multi-niveau en 3D, lot E : épaisseur de plancher** — sur niveaux entremêlés, le sol d'un niveau qui surplombe le
+  vide d'un autre est une surface sans épaisseur (il « flotte ») ; idée : dalle d'épaisseur fixe, sans valeur à saisir.
+  `qui: KARMA · action: juger le rendu après le lot D · fini: dalle ajoutée ou idée close · depuis: 08/11/2026 · taille: S`
 
 ## Entrant
 
-- **Rotation du plan en Vue OSM** — demande KARMA 06/11 : pouvoir tourner la carte en Vue OSM comme le plan 2D
-  (`mapBearing.js` : deux doigts, bouton nord). À cadrer : modale et widget de l'accueil, tuiles OSM, plan calé, cap.
-  `qui: Claude · action: topo (ce que fait la 2D, ce que la Vue OSM permet) · depuis: 06/11/2026 · taille: S`
 - **Accueil pro lent : splash bloquant et connexions IndexedDB** — audit pro
   `MyKTAMap-pro/docs/audits/2026-11-06_audit-accueil-chiffre-v1.md` : `main.js` attend la fin de l'animation du
   splash (~4 s) avant la porte du pro ; `planRegistry.js > _openIDB` ouvre une connexion à chaque appel, jamais fermée.
@@ -138,12 +172,11 @@
   comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
   zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône).
   `qui: KARMA · action: valider les 4 recos du topo · fini: décision prise · depuis: 06/11/2026 · taille: S`
-- **Niveaux qui s'entremêlent en 3D** — un niveau commence dans la hauteur d'un autre (étage ouvert à mi-hauteur d'une
-  grande galerie). Idée KARMA : écart (m) avec le niveau supérieur, NÉGATIF = entremêlés d'autant, à partir de
-  `niveauxProfondeur` (pas ≥ 0,5) + une hauteur PAR NIVEAU (aujourd'hui une seule par plan, `hauteurGalerieM`, hors ZIP).
-  `qui: Claude · action: topo puis QCM (données par niveau, Générateur, rendu multi-niveaux, règle du pas, itinéraire,
-  ⛏️ Volume exploité qui lit la hauteur, à revoir en parallèle) · depuis: 06/11/2026 · taille: L`
-
+- **Multi-niveau en 3D : lots A à D livrés, choix du lot D à valider** — QCM 07 et 08/11 (ETUDE_VUE_3D.md) : D =
+  union des vides, collision par tranche, zone jonction en pente, structures en pente (branche `niveaux-entremeles`).
+  Joué en émulation seulement ; lot E (épaisseur de plancher) seulement si KARMA le veut.
+  `qui: KARMA · action: valider les choix du lot D, le jouer au téléphone, dire si un lot E est voulu · fini: choix
+  validés, lot E ouvert ou écarté · depuis: 06/11/2026 · taille: S`
 - **Essai sur dev : lots du 05/11 sur téléphone** — prouvés en émulation seulement : ＋ / 🗑️ des sommets (2D, 3D),
   gestes 3D à deux doigts, colonne d'outils en paysage, plan au sol d'un plan transparent, ruban d'itinéraire 3D,
   « Hors du plan » en 3D, et un 1er « 🔗 Raccorder » sur un tracé de CALQUE (chemin jamais testé automatiquement).
@@ -160,11 +193,11 @@
   `qui: Claude · action: refuser un lien qui croise un obstacle dur, checkup · fini: lien coupé par un mur ligne
   fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
 
-- **Cap jamais lu si requestPermission répond « prompt »** — ✅ vu 04/11 (lot rotation-manuelle) : la Chromium du
-  harnais répond « prompt » à DeviceMotionEvent.requestPermission() : aucun écouteur d'orientation
-  (tracking.js > requestPermission ; checkup-plan-oriente 5 KO). 🔬 un Chrome Android récent ferait pareil.
-  `qui: KARMA · action: vérifier sur un Android que la boussole et le plan orienté tournent · fini: vu conforme, ou
-  correctif (demander la permission dans le geste) · depuis: 04/11/2026 · taille: S`
+- **Essai Android : boussole et plan orienté** — le Chromium récent du harnais n'accorde pas les capteurs hors geste
+  (checkup-plan-oriente : capteurs accordés au test, vert le 07/11). 🔬 un Chrome Android récent pourrait demander
+  la permission : l'app la demande dans le geste (« J'ai compris »), jamais vérifié sur un vrai Android.
+  `qui: KARMA · action: sur un Android, boussole et plan orienté tournent · fini: vu conforme, ou correctif ·
+  depuis: 04/11/2026 · taille: S`
 - **Générateur : rendu 3D par défaut du plan** — demande KARMA 04/11 : choisir à la génération le rendu de la vue 3D
   par défaut (Mixte / Structures / Galerie), au lieu de Mixte pour tous ; le choix de l'utilisateur, retenu par plan
   (`setPlanRenduVue3D`), reste prioritaire. À faire après les lots du 04/11.

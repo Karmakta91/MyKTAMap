@@ -84,7 +84,7 @@ taisait la descente par un tracé jonction. Tranché :
 
 | # | Sujet | Décision |
 |---|---|---|
-| 1 | Volumes de passage | Par moyen (`KtaPoiJonction.moyen`) : escalier (`jes`, `eso`) = cage de 2,5 × 1,5 m à marches ; échelons (`jpe`, `peo`) = puits carré de 1,2 m en moellons, échelons tous les 0,3 m ; corde (`jps`) = puits nu. Ouvert dans le sol (descente), dans le plafond (montée : il dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface `peo`, `eso` et **`pa`** (qui porte désormais des niveaux, `TAGS_SURFACE_NIVEAUX`) : plafond seulement, sans 🪜 ni passage ; disque de ciel au sommet de `peo` / `eso`, tube de 0,8 m à grille pour `pa`. Panneau au-dessus, cadre doré au sol. Construits avec les objets à portée. Le **tracé `jonction`** devient une **rampe** à la couleur du canon |
+| 1 | Volumes de passage | Par moyen (`KtaPoiJonction.moyen`) : escalier (`jes`, `eso`) = cage de 2,5 × 1,5 m à marches ; échelons (`jpe`, `peo`) = puits carré de 1,2 m en moellons, échelons tous les 0,3 m ; corde (`jps`) = puits nu. Ouvert dans le sol (descente), dans le plafond (montée : il dépasse la hauteur et se perd dans le noir), les deux entre trois niveaux. Puits de surface `peo`, `eso` et **`pa`** (qui porte désormais des niveaux, `TAGS_SURFACE_NIVEAUX`) : plafond seulement, sans 🪜 ni passage ; disque de ciel au sommet de `peo` / `eso`, tube de 0,8 m à grille pour `pa`. Panneau au-dessus, cadre doré au sol. Construits avec les objets à portée. Le **tracé `jonction`** devient une galerie inclinée qu'on marche (QCM du 07/11/2026, ci-dessous) |
 | 2 | Panneau d'un POI jonction | Liseré à la couleur du tracé jonction et ↕ ; lisible jusqu'à 1 m (là où 🪜 apparaît) |
 | 3 | Geste | Fondu noir de 250 ms (scène d'arrivée construite pendant le noir), descente ou montée animée d'environ 1 s dans le volume, verticale seulement ; même fondu quand le tracker change de niveau en suivi, et bandeau « Niveau −1 » 2 s |
 | 4 | Arrivée | Raccord validé, sinon POI ; en mixte comme en galerie, une arrivée hors du tube à moins de `smartNavRadiusM` d'un axe est ramenée dans le tube ; cap vers la prochaine consigne si un itinéraire passe là, sinon le long de la galerie, côté le plus long |
@@ -94,12 +94,76 @@ taisait la descente par un tracé jonction. Tranché :
 
 Choix faits à la livraison, à valider : escalier en volée droite le long de la galerie la plus proche (pas en quart
 tournant), marches pleines jusqu'au fond du volume ; une volée par moitié de largeur entre trois niveaux ; échelle
-contre une paroi, montants qui dépassent du sol d'un mètre ; ciel = dégradé clair (couleur de la scène) ; rampe de
-1 m de large, tranchée ouverte vers le bas plutôt qu'une rampe qui traverserait le sol ; aucune collision avec les
-volumes (on ne tombe pas dans un puits, on traverse une marche) ; bandeau « Niveau n » aussi après un passage 🪜, pas
-seulement en suivi ; appareil réglé en « mouvement réduit » : fondu seul ; tracé jonction masqué par les filtres =
-pas de rampe (le 🪜 reste). Un tracé du sol (ruban) qui passe sur une bouche y est coupé (gabarit du sol) plutôt
-que dessiné en passerelle : le plus simple, et rien ne flotte au-dessus du vide.
+contre une paroi, montants qui dépassent du sol d'un mètre ; ciel = dégradé clair (couleur de la scène) ; aucune
+collision avec les volumes (on ne tombe pas dans un puits, on traverse une marche) ; bandeau « Niveau n » aussi après
+un passage 🪜, pas seulement en suivi ; appareil réglé en « mouvement réduit » : fondu seul. Un tracé du sol (ruban)
+qui passe sur une bouche y est coupé (gabarit du sol) plutôt que dessiné en passerelle : le plus simple, et rien ne
+flotte au-dessus du vide. Le tracé jonction n'est plus une rampe avec 🪜 : c'est une galerie inclinée qu'on marche
+(QCM du 07/11/2026, ci-dessous).
+
+## Décisions de KARMA (QCM du 07/11/2026) : tracé jonction en pente douce (lot B du multi-niveau en 3D)
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Forme | Un tracé `jonction` devient une galerie inclinée qu'on parcourt, plus de 🪜 à ses bouts |
+| 2 | Pente | D'un bout à l'autre du tracé : du sol du niveau de départ à celui du niveau d'arrivée, répartie sur la longueur 2D (rien à saisir) ; sols et hauteurs du lot A (`getNiveauVertical`) |
+| 3 | Hors de ce lot | Niveaux voisins affichés ensemble (lot C, ci-dessous), entremêlement (lot D) |
+
+Choix faits à la livraison, à valider : **repli sans sols** = une hauteur de galerie (celle du niveau du dessous) par
+niveau franchi (révisé le 08/11/2026 : plus 2 m de roche, soit 4 m par niveau sans réglage) ; hauteur sous plafond **interpolée** de celle du départ à
+celle de l'arrivée ; largeur = celle des galeries raccordées, interpolée d'un bout à l'autre (révisé le 08/11/2026 :
+1,6 m fixes posaient un pan de paroi au milieu d'une galerie plus large ; repli 1,6 m sans galerie raccordée) ; la scène passe au niveau d'en face **à mi-longueur** (+ 0,3 m d'hystérésis), sans
+fondu : les deux scènes dessinent la même galerie à la même place, l'altitude est continue, et la moitié d'en face
+montre déjà les galeries d'arrivée (au bout seulement, on aurait marché vers un trou noir) ; en suivi, la bascule du
+tracker au bout du tracé se fait sans fondu ; la consigne « descendre / monter la pente vers le niveau n » est dite à
+l'**entrée** du tracé, en 2D comme en 3D (elle tombait sur son bout d'arrivée) ; la galerie est en moellons, ruban du
+canon au milieu du sol. Détail : `docs/architecture/tracking.md` § Vue 3D, galerie inclinée.
+
+## Décisions de KARMA (QCM du 07/11/2026) : niveaux voisins (lot C du multi-niveau en 3D)
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Affichage | Avec le niveau actif, les niveaux voisins (dessus et dessous) à leur vraie altitude (sols et hauteurs du lot A) |
+| 2 | Réglage | Tuile ⚙️ : « Voisins » (défaut) / « Tous » / « Seulement le mien » ; au téléphone, retour à « Voisins » à chaque ouverture, au PC retenu |
+| 3 | Niveau actif d'abord | Les autres niveaux se voient, ne captent jamais le pas ; règle du pas et suivi sur le niveau actif ; le niveau ne change que par un passage, une jonction ou ▲▼ |
+| 4 | Passages | Escaliers et puits dessinés entre les altitudes réelles des niveaux reliés ; l'arrivée d'un passage ne change pas |
+| 5 | Données incohérentes | Avertissement lisible dans la table des niveaux (Générateur, ⚙️), sans bloquer ; la 3D reste dessinable |
+
+Choix faits à la livraison, à valider : **« Voisins »** = le niveau juste au-dessus et celui juste au-dessous parmi
+ceux qui portent quelque chose (l'ordre de ▲▼) ; **portée** : seules les tuiles à portée des voisins sont construites,
+même rayon et même 🛡️ que le niveau actif, après les siennes, deux par image ; **panneaux de POI des autres
+niveaux : non montrés** (un panneau est dessiné par-dessus tout pour rester lisible : il se lirait à travers la roche
+et se toucherait pour un point hors d'atteinte) ; volumes de passage des voisins non construits (le puits du niveau
+actif descend jusqu'à eux) ; **vue d'édition** : rien au-dessus du niveau actif (il couvrirait la scène), voisins du
+dessous sans plafond ; en mixte et structures, les voisins ont leur sol et leur plafond d'un seul tenant ; un niveau
+masqué au ≡ n'est pas montré ; parois d'un puits de notre sol au plafond du niveau relié (sans réglage de sols :
+2 m de roche par niveau, décision du 08/11/2026 : la bouche ne s'ouvre plus directement sur le niveau du dessous), escalier jusqu'au sol du niveau relié ;
+données incohérentes signalées quand, de deux niveaux qui se suivent dans la table avec un sol chacun, celui du
+dessus n'est pas plus haut, ou quand ils se chevauchent d'au moins la hauteur de l'un. Pas encore joué sur un vrai
+téléphone. Détail : `docs/architecture/tracking.md` § Vue 3D, Niveaux voisins.
+
+## Décisions de KARMA (QCM du 08/11/2026) : niveaux entremêlés et zones jonction (lot D du multi-niveau en 3D)
+
+| # | Sujet | Décision |
+|---|---|---|
+| 1 | Volume commun | Union des vides : ouvert dès que l'un des deux niveaux y a une galerie ; parois, piliers, sols et plafonds seulement là où les deux sont de la roche, aucun mur parasite |
+| 2 | Collision | Une structure de l'autre niveau qui monte dans ta tranche de hauteur te bloque ; tout le reste suit le niveau actif |
+| 3 | Zone jonction | Chambre dont le sol monte d'un niveau à l'autre, niveaux déclarés dans la fiche de la zone ; sens donné par le tracé jonction qui la traverse (règle bout à bout du lot B) ; sans tracé : pente absente et avertissement dans la fiche |
+| 4 | Structures en pente | Piliers, murs, fronts dans une zone jonction, murs et fronts à moins d'1 m d'un tracé jonction : posés sur le sol en pente, jusqu'au plafond en pente |
+| 5 | Hors de ce lot | Épaisseur de plancher (lot E si besoin) ; plan sans écart négatif et plan à un niveau inchangés |
+
+Choix faits à la livraison, à valider : **structures toujours pleines** (décision 1 lue pour l'enveloppe des galeries :
+parois des tubes, sols, plafonds ; un pilier reste un pilier, sinon la décision 2 n'aurait rien à bloquer) ; union
+seulement entre niveaux **montrés** (« Le mien » n'ouvre rien vers le noir), la collision, elle, vaut toujours ; vide
+d'un niveau = ses pièces (galerie), ses pièces et chambres (mixte), partout (structures : un sol pris dans la tranche de
+l'autre disparaît) ; en mixte, le sol d'un seul tenant n'est troué qu'au-dessus des tubes de l'autre niveau ; entre
+deux voisins (« Tous »), seules les parois ; hauteur de collision d'une structure = celle de son niveau ; **zone
+jonction = une zone multi-niveau avec une case** (pas un nouveau type de zone : son type garde sa couleur et son effet,
+la case ne fait que la pente) ; effet en mixte et structures seulement (en galerie, le tracé reste la galerie inclinée) ;
+la zone est dessinée par le niveau actif avec les structures de l'autre niveau posées dedans, qui bloquent ; on la
+quitte par un bord seulement là où son sol est au niveau du nôtre (0,3 m) ; **l'itinéraire passe par le tracé jonction
+qui la traverse** (aucun graphe neuf) ; « le long d'un tracé jonction » = à moins d'1 m du bord de sa galerie inclinée.
+Détail : `docs/architecture/tracking.md` § Niveaux entremêlés et zones jonction.
 
 ## Décisions de KARMA (QCM du 02/11/2026) : commandes, itinéraire, raccord, ronds (audit n° 2)
 
@@ -187,7 +251,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
 - **Niveau** : celui du tracker en suivi actif, sinon celui pris par un passage 🪜, sinon le niveau actif du
   sélecteur ; lu à chaque image ; quand il change, la scène est refaite derrière un fondu noir, puis « Niveau n » 2 s.
 - **Passages** : chaque POI jonction, puits de surface ou aération montre son volume (cage d'escalier, puits à
-  échelons, puits nu, tube à grille), ouvert dans le sol ou le plafond selon le sens ; un tracé jonction, une rampe.
+  échelons, puits nu, tube à grille), ouvert dans le sol ou le plafond selon le sens ; un tracé jonction, une galerie inclinée qu'on marche.
 - **Passage de niveau 🪜** (question B) : à moins de 2 m d'un POI jonction ou d'un bout de tracé `jonction`,
   « ▼ -1 · nom (moyen) » vers le niveau lié voisin (une liste au-delà d'un de chaque côté) ; la fiche du POI propose
   aussi ses niveaux, d'où que l'on soit. La caméra s'enfonce ou monte dans le volume (~1 s), fondu noir à mi-course.
@@ -232,7 +296,8 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
 - **Repère** : mètres. `x` 3D = x image / `APP_CONFIG.scale`, `z` 3D = y image / scale (le haut de l'image est
   devant quand le cap vaut 0), `y` = hauteur. Pas de `convertCoord` ici : la 3D lit les coordonnées plan
   directement ; `convertCoord` reste la règle côté Leaflet.
-- **Hauteur** : `getPlanHauteurGalerie()` (réglée dans ⛏️ Volume exploité), 2 m par défaut.
+- **Hauteur** : celle du niveau affiché (`getNiveauVertical(niveau).hauteurM`, réglée dans ⚙️ › 📉 Niveaux,
+  ⛏️ Volume exploité ou la 3D), 2 m par défaut.
 - **Piliers (1re et 2e masse), murs polygones, types perso fermés** : prismes du sol à la hauteur, dessus
   triangulé (`THREE.ShapeUtils`, contours concaves compris), faces orientées vers l'extérieur.
 - **Murs en ligne** : épaisseur 0,4 m ; **fronts de taille** : 0,3 m. Un pavé par segment, prolongé d'une
@@ -327,7 +392,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   sprite clair non éclairé, sans brouillard, au sommet ; cadre doré de 8 cm à 12 cm de la bouche. Rampe : ruban de
   1 m, incliné du sol au plafond (vers le haut) ou du sol à −hauteur dans une tranchée ouverte (vers le bas).
   Construits à portée (`_gererVolumes`, règle des tuiles), libérés au loin ; aucune collision. **Aucune paroi de tube
-  dans un volume** : l'emprise d'un passage (bouche et cadre, tranchée d'une rampe) qui chevauche un tube est une pièce
+  dans un volume** : l'emprise d'un passage (bouche et cadre, part ouverte d'une galerie inclinée) qui chevauche un tube est une pièce
   du modèle de galerie (`galerieEmprise.js > _emprisesPassages`) ; parois coupées à son bord, le tube s'ouvre sur une
   niche autour de la bouche, comme il s'ouvre sur une chambre. Rubans des tracés coupés à la bouche (gabarit du sol).
 - **Halo des dangers** : anneau de 0,45 à 0,7 m et disque pâle au sol, rouge `--kta-erreur` du thème sombre, non
@@ -353,6 +418,14 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   fichiers du site, précachés avec les autres (`NETWORK_AUDIT_HISTORIQUE.md`, note v2.22.0).
 
 ## Mesures
+
+**Niveaux voisins** (`checkup-vue-3d.js` § 44, `KTA_V3D_SEUL=voisins KTA_V3D_PERF=voisins`, PC à carte graphique
+dédiée, Chromium, portée 30 m) : plan fictif de 5 niveaux, chacun avec une grille de galeries tous les 8 m sur 160 m
+et 2 025 piliers. Triangles à l'écran ×3 en « Voisins » et ×5 en « Tous » (galerie : 1 328 → 3 984 → 6 448) ; image
+médiane 0,6 → 1,2 → 1,6 ms ; voisins posés en 0,2 s (« Voisins ») et 0,6 s (« Tous ») après l'ouverture, qui ne
+s'allonge pas ; construction des voisins 6 à 40 ms en tout, étalée sur les images. Tas JS de Chromium inchangé à la
+mesure grossière de `performance.memory`. Non mesuré sur téléphone : « Tous » sur un plan à beaucoup de niveaux
+reste le cas à surveiller (d'où le retour à « Voisins » à chaque ouverture au doigt).
 
 Plan dense **synthétique** (fictif, généré en mémoire par `checkup-vue-3d.js`, `KTA_V3D_PERF=1`) : 9 000 piliers
 de 6 à 12 sommets, 3 000 murs polygones, 1 000 murs en ligne, 700 fronts, 108 zones, 520 POI, sur une maille de

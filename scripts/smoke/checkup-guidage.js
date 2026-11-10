@@ -237,9 +237,9 @@ function inf(msg) { console.log("  •  " + msg); }
     if (!g9b) pb("G9 : suivi arrêté, position NON confirmée → bandeau encore visible");
     else ok("G9 : suivi arrêté, position non confirmée → bandeau masqué");
 
-    // G10 — itinéraire par un tracé `jonction` (fictif, en mémoire) : le changement de niveau tombe au même point que
-    // le virage du carrefour d'arrivée ; la consigne « descendre » passe devant et absorbe le virage. Aperçu filtré
-    // par niveau (vue 3D) : rien sur un niveau sans tronçon. Libellé du niveau signé (« +1 »).
+    // G10 — itinéraire par un tracé `jonction` (fictif, en mémoire) : la consigne « descendre la pente » est dite à
+    // l'entrée de la jonction (20 m), à 5 m du virage du carrefour d'arrivée, qu'elle absorbe. Aperçu filtré par
+    // niveau (vue 3D) : rien sur un niveau sans tronçon. Libellé du niveau signé (« +1 »).
     const g10 = await page.evaluate(function (a) {
       const e = Number(window.APP_CONFIG.scale) || 1, G = window.ItiGuidage, r = {};
       const P = function (x, y, n) { return { x: a.x + x * e, y: a.y + y * e, level: n }; };
@@ -249,6 +249,8 @@ function inf(msg) { console.log("  •  " + msg); }
       const g = G.construire(route, { pois: [] });
       r.consignes = g.consignes.map(function (c) { return c.type + "@" + Math.round(c.s / e); });
       r.premier = G.texteAction(g.consignes[0]);
+      r.attendu = window.I18n.t("guid.act.descendrePente",
+        { niveau: window.I18n.t("guid.niveau", { n: window.ktaFormatNiveau(-1) }) });
       r.monter = G.texteAction({ type: "niveau", sens: "monter", vers: 1 });
       r.plus1 = window.ktaFormatNiveau(1);
       const avant = window.getRoads();
@@ -261,7 +263,8 @@ function inf(msg) { console.log("  •  " + msg); }
       r.z0 = { visible: z0.visible, principal: z0.principal };
       return r;
     }, choix.a);
-    if (g10.consignes[0] !== "niveau@25" || g10.consignes.some(function (c) { return /^virage/.test(c); })) {
+    if (g10.consignes[0] !== "niveau@20" || g10.premier !== g10.attendu ||
+      g10.consignes.some(function (c) { return /^virage/.test(c); })) {
       pb("G10 : par tracé jonction, la consigne de niveau n'est pas dite en premier — " + g10.consignes.join(", "));
     } else {
       ok("G10 : par tracé jonction, « " + g10.premier + " » d'abord, virage du nœud absorbé (" +

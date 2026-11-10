@@ -31,6 +31,7 @@ const REFERENCE = {
   zone_remblais:     { line: "#3a3a44", fill: "#5a5a68", fillAlpha: 0.6,  width: 2 },
   zone_effondrement: { line: "#cc0000", fill: "#ff3333", fillAlpha: 0.6,  width: 2 },
   zone_inaccessible: { line: "#5a0a0a", fill: "#7a0000", fillAlpha: 0.65, width: 2 },
+  zone_pente:        { line: "#ff4ecb", fill: "#ff4ecb", fillAlpha: 0.3,  width: 2 },
   "structure_pilier-1": { line: "#000000", fill: "#f4c542", fillAlpha: 0.85, width: 2 },
   "structure_pilier-2": { line: "#000000", fill: "#ff9933", fillAlpha: 0.85, width: 2 },
   "structure_mur":      { line: "#000000", fill: "#1e3a8a", fillAlpha: 0.85, width: 2 },

@@ -48,6 +48,7 @@ function contexte() {
     OOMGuard: { showToast: (m) => { journal.toast = m; } },
     APP_CONFIG: { imageHeight: 1000, multiLevel: false, visibleLevels: [0] },
     isStructurePolylineType: (ty) => (ty === "front-1" || ty === "front-2"),
+    ktaIcone: () => "",   // icônes SVG des fenêtres Supprimer / Niveau (js/ktaIcones.js), sans objet ici
     addEventListener() {}, removeEventListener() {}
   };
   ctx.window = ctx;
@@ -375,6 +376,95 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
   ["selm.supprimer", "ui.suppClic.parZone", "selm.suppr.refuseExtension", "selm.zone.bouton", "selm.zone.trace", "selm.zone.prendre", "selm.suppr.fam.editorPoints",
    "selm.suppr.fam.roads", "selm.suppr.fam.zones", "selm.suppr.fam.structures", "selm.suppr.photos",
    "selm.suppr.calques", "selm.suppr.ok", "selm.suppr.histoire", "selm.suppr.bilan"].forEach(function (k) {
+    ["fr", "en", "es"].forEach(function (l) {
+      const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
+      t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
+    });
+  });
+}
+
+// ── 9. Niveau en lot (🏗️ Niveau du bandeau) ──────
+{
+  const h = contexte();
+  vm.runInContext(fs.readFileSync("js/poiJonction.js", "utf8"), h.ctx, { filename: "poiJonction.js" });
+  const SZ = h.ctx.KtaSelectionZone;
+  t("API : KtaSelectionZone.niveauLot / confirmerEtChangerNiveau, KtaConvertir.poserNiveau",
+    typeof SZ.niveauLot === "function" && typeof SZ.confirmerEtChangerNiveau === "function" &&
+    typeof h.ctx.KtaConvertir.poserNiveau === "function");
+  Object.assign(h.ctx.APP_CONFIG, { multiLevel: true, activeLevel: 0, visibleLevels: [0], availableLevels: [-1, 0] });
+  let touches = 0, graphe = 0;
+  h.ctx.KtaUid = { touch: (o) => { touches++; o.updatedAt = 1; return o; } };
+  h.ctx.RoadGraph = { invalidate: () => { graphe++; } };
+  const tr = { uid: "rd_a", type: "chemin", level: 0, points: ligne(0, 0, 50) };
+  const jonc = { uid: "rd_j", type: "jonction", fromLevel: 0, toLevel: -1, points: ligne(0, 10, 20) };
+  const zMulti = { uid: "zn_m", type: "eau", level: 0, niveaux: [0, 1], points: carre(0, 0, 10) };
+  const pil = { uid: "st_a", type: "pilier-1", level: -1, points: carre(30, 30, 5) };
+  const pt = { uid: "pt_a", id: "A", x: 5, y: 5, level: 0 };
+  const poiJ = { uid: "pt_j", id: "J", x: 6, y: 6, level: 0, niveaux: [0, -1], tags: ["jes"] };
+  h.R = [tr, jonc]; h.Z = [zMulti]; h.S = [pil]; h.P = [pt, poiJ];
+  const prep = SZ.preparer([{ famille: "roads", obj: tr }, { famille: "roads", obj: jonc },
+    { famille: "editorPoints", obj: poiJ }, { famille: "editorPoints", obj: pt }], true);
+  t("🩸 niveau : jonction (tracé) et POI jonction écartés du lot ET comptés",
+    prep.jonctions === 2 && prep.parFamille.roads.length === 1 && prep.parFamille.editorPoints.length === 1);
+  const zoneSel = SZ.dansZone(carre(-1, -1, 100));
+  t("niveau : une zone dessinée rend ses jonctions à part (comptées, jamais dans le lot)",
+    zoneSel.jonctions.length === 2 && !zoneSel.items.some((i) => i.obj === jonc || i.obj === poiJ));
+
+  const snap0 = h.journal.snap, rec0 = h.journal.record.length;
+  const b = SZ.niveauLot({ editorPoints: [pt], roads: [tr, jonc], zones: [zMulti], structures: [pil] }, -1);
+  t("niveau : tout le lot passe au niveau choisi (points compris)",
+    tr.level === -1 && pt.level === -1 && zMulti.level === -1 && b.changes === 3);
+  t("niveau : un objet déjà au niveau est sauté (ni échec, ni écriture)", b.deja === 1 && pil.level === -1);
+  t("🩸 niveau : une jonction glissée dans le lot n'est pas touchée",
+    jonc.level === undefined && jonc.fromLevel === 0 && jonc.toLevel === -1 && b.echecs === 1);
+  t("🩸 niveau : zone sur plusieurs niveaux = seul son niveau d'origine remplacé (les autres restent)",
+    JSON.stringify(zMulti.niveaux) === JSON.stringify([-1, 1]));
+  t("🩸 niveau : UN instantané, UNE entrée ⏪",
+    h.journal.snap === snap0 + 1 && h.journal.record.length === rec0 + 1);
+  t("niveau : une écriture par famille touchée, aucune pour les autres",
+    h.journal.rendus.roads === 1 && h.journal.rendus.zones === 1 && h.journal.rendus.editorPoints === 1 &&
+    h.journal.rendus.structures === undefined);
+  t("niveau : KtaUid.touch sur chaque objet changé (la synchro voit partir), graphe invalidé",
+    touches === 3 && graphe === 1);
+  const b2 = SZ.niveauLot({ roads: [tr] }, -1);
+  t("niveau : rien à changer = rien écrit, rien à annuler",
+    b2.changes === 0 && h.journal.record.length === rec0 + 1);
+  h.ctx.ktaEditionRefusee = () => true;
+  const b3 = SZ.niveauLot({ roads: [tr] }, 0);
+  t("🔒 niveau : plan en lecture seule = rien", b3.changes === 0 && tr.level === -1);
+  delete h.ctx.ktaEditionRefusee;
+
+  // Fenêtre : objets de calque et jonctions annoncés, liste des niveaux de la fiche, bouton qui compte.
+  let msg = null, optsVus = null;
+  h.ctx.ktaOptionsNiveauHtml = () => '<option value="-1">-1</option><option value="0" selected>0</option>';
+  h.ctx.ktaEsc = (s) => String(s);
+  h.ctx.document.querySelectorAll = () => [];
+  h.ctx.ktaConfirm = (m, o) => { msg = m; optsVus = o; return Promise.resolve(false); };
+  SZ.confirmerEtChangerNiveau([{ famille: "roads", obj: tr }, { famille: "roads", obj: jonc }], 4, 1);
+  t("fenêtre : la liste des niveaux du plan est dans le message (ktaConfirm, pas de popup native)",
+    typeof msg === "string" && /data-kta-selm-niv/.test(msg) && /<option value="-1">/.test(msg));
+  t("fenêtre : jonctions comptées (lot + zone) et objets de calque annoncés",
+    /selm\.niveau\.jonctions:\{"n":2\}/.test(msg) && /selm\.niveau\.calques:\{"n":4\}/.test(msg));
+  t("fenêtre : une case par famille", (String(msg).match(/data-kta-selm-niv-fam="/g) || []).length === 4);
+  t("fenêtre : le bouton compte les objets qui changent (le tracé au niveau -1, cible 0 → 1)",
+    !!optsVus && /selm\.niveau\.ok:\{"n":1\}/.test(optsVus.okLabel));
+  h.ctx.APP_CONFIG.multiLevel = false;
+  h.ctx.ktaOptionsNiveauHtml = () => "";
+  msg = null;
+  SZ.confirmerEtChangerNiveau([{ famille: "roads", obj: tr }], 0, 0);
+  t("fenêtre : plan à un niveau = aucune fenêtre", msg === null);
+
+  const SRC = fs.readFileSync("js/selectionMulti.js", "utf8").replace(/\r\n/g, "\n");
+  t("câblage : bouton 🏗️ Niveau dans le bandeau, à côté de 🗑️ Supprimer",
+    /id="kta-selm-niveau"[^\n]*\n[^\n]*id="kta-selm-suppr"/.test(SRC));
+  t("câblage : jonctions et objets de calque des zones passés à la fenêtre",
+    /confirmerEtChangerNiveau\(_sel\.slice\(\), _calque\.length, _jonctions\.length/.test(SRC));
+  const SZSRC = fs.readFileSync("js/selectionZone.js", "utf8");
+  t("🩸 câblage : le niveau se pose par KtaConvertir.poserNiveau (règle unique, pas de copie)",
+    /CV\.poserNiveau\(cible, niveau\)/.test(SZSRC) && !/\.niveaux\.filter/.test(SZSRC));
+  ["selm.niveau.bouton", "selm.niveau.titre", "selm.niveau.question", "selm.niveau.jonctions", "selm.niveau.calques",
+   "selm.niveau.multi", "selm.niveau.annuler", "selm.niveau.ok", "selm.niveau.histoire", "selm.niveau.bilan",
+   "selm.niveau.rien"].forEach(function (k) {
     ["fr", "en", "es"].forEach(function (l) {
       const D = JSON.parse(fs.readFileSync("lang/" + l + ".json", "utf8"));
       t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);

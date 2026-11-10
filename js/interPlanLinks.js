@@ -26,7 +26,7 @@
 //   createLink(a, b), removeLink(id),
 //   getLinksForPlan(planId), importLinks(links), buildPopupHtml(point, layerId),
 //   ouvrirCreation(id, x, y, nom, source), naviguerVers(linkId, side),
-//   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges(), onPointMoved / onPointLevelChanged,
+//   supprimerDepuisPopup(linkId), onPlanLoaded(), refreshBadges(), onPointMoved / onPointLevelChanged / onPointRenamed,
 //   appliquerExterne({ liens, retirer })
 // };
 // Local, aucune surface réseau nouvelle (fetch same-origin des plans serveur, ZIP locaux en IndexedDB).
@@ -299,7 +299,7 @@
       const info = e.baked ? "" : _infoExt(e.link);
       rows +=
         '<div class="kta-ipl-row">' +
-          '<span class="kta-ipl-ico">🌀</span>' +
+          '<span class="kta-ipl-ico">' + window.ktaIcone("waypoints") + '</span>' +
           '<span class="kta-ipl-label" title="' + _esc(o.planName || o.planId) + '">' +
             _esc(o.planName || o.planId) + ' · ' + _esc(o.pointNom || o.pointId || (o.x + "," + o.y)) +
           '</span>' +
@@ -307,11 +307,11 @@
             ? '<button class="kta-popup-btn kta-ipl-go" type="button" data-kta-act="ipl-go" ' +
                 'data-kta-lien="' + _esc(e.link.id) + '" data-kta-cote="' + (e.mySide === "b" ? "b" : "a") + '" ' +
                 'title="' + _esc(_t("ipl.popup.goTitle")) + '">➜</button>'
-            : '<span class="kta-ipl-absent" title="' + _esc(_t("ipl.popup.planAbsent")) + '">⛔</span>') +
+            : '<span class="kta-ipl-absent" title="' + _esc(_t("ipl.popup.planAbsent")) + '">' + window.ktaIcone("ban") + '</span>') +
           ((e.baked || !_modifiable(e.link)) ? '' :
             '<button class="kta-popup-btn kta-ipl-del" type="button" data-kta-act="ipl-del" ' +
               'data-kta-lien="' + _esc(e.link.id) + '" ' +
-              'title="' + _esc(_t("ipl.popup.removeTitle")) + '">🗑️</button>') +
+              'title="' + _esc(_t("ipl.popup.removeTitle")) + '">' + window.ktaIcone("trash-2") + '</button>') +
         '</div>' +
         (info ? '<div class="kta-popup-ext-info kta-ipl-ext-info">' + _esc(info) + '</div>' : '');
     });
@@ -329,7 +329,7 @@
         'data-kta-nom="' + _esc(point.nom || "") + '" data-kta-source="' + source + '" data-kta-niveau="' + lvlArg + '" ' +
         'data-kta-tag="' + _esc(tagArg) + '" data-kta-point-uid="' + _esc(point.uid || "") + '" ' +   // pas data-kta-uid : réservé à la fiche (prises d'extension)
         'title="' + _esc(_t("ipl.popup.addTitle")) + '">' +
-        '🌀 ' + _esc(_t("ipl.popup.addBtn")) +
+        window.ktaIcone("waypoints") + ' ' + _esc(_t("ipl.popup.addBtn")) +
       '</button>';
 
     return '<div class="kta-ipl-section">' + rows +
@@ -347,7 +347,7 @@
     modal.style.zIndex = "100002";   // au-dessus du gestionnaire (99999)
     modal.innerHTML =
       '<div class="kta-modal" style="max-width:380px;">' +
-        '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">🌀</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-accent-texte);">' + window.ktaIcone("waypoints") + '</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.remove.titre")) + '</div>' +
         '<div class="kta-modal-texte">' + _esc(_t("ipl.remove.texte")) + '</div>' +
         (infoExt ? '<div class="kta-modal-texte kta-popup-ext-info">' + _esc(infoExt) + '</div>' : '') +
@@ -429,14 +429,14 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-ipl-boite kta-ipl-mgr-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🌀 ' + _esc(_t("ipl.mgr.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("waypoints") + ' ' + _esc(_t("ipl.mgr.titre")) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-ipl-mgr-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           // Bascule Liste ⇄ Graphe.
           '<div class="kta-ipl-mgr-toggle">' +
-            '<button class="kta-btn kta-btn-primary" id="kta-ipl-mgr-vlist" type="button">📋 ' + _esc(_t("ipl.mgr.viewList")) + '</button>' +
-            '<button class="kta-btn kta-btn-ghost" id="kta-ipl-mgr-vgraph" type="button">🕸️ ' + _esc(_t("ipl.mgr.viewGraph")) + '</button>' +
+            '<button class="kta-btn kta-btn-primary" id="kta-ipl-mgr-vlist" type="button">' + window.ktaIcone("list") + ' ' + _esc(_t("ipl.mgr.viewList")) + '</button>' +
+            '<button class="kta-btn kta-btn-ghost" id="kta-ipl-mgr-vgraph" type="button">' + window.ktaIcone("network") + ' ' + _esc(_t("ipl.mgr.viewGraph")) + '</button>' +
           '</div>' +
           '<p class="kta-ipl-hint" id="kta-ipl-mgr-count"></p>' +
           '<div id="kta-ipl-mgr-filter"></div>' +
@@ -451,7 +451,7 @@
     function _sideHtml(side) {
       const dispo = !!(window.PlanRegistry && window.PlanRegistry.findById(side.planId));
       return '<span class="kta-ipl-mgr-side' + (dispo ? '' : ' kta-ipl-mgr-absent') + '">' +
-               (dispo ? '' : '⛔ ') +
+               (dispo ? '' : window.ktaIcone("ban") + ' ') +
                _esc(side.planName || side.planId) + ' · ' +
                _esc(side.pointNom || side.pointId || (side.x + "," + side.y)) +
              '</span>';
@@ -485,7 +485,7 @@
       if (m === null || !isFinite(m)) return "";
       const txt = window.formatDistance ? window.formatDistance(m, 0) : (Math.round(m) + " m");
       return '<div class="kta-ipl-mgr-ecart" title="' + _esc(_t("ipl.mgr.ecartTitre")) + '">' +
-               '📐 ' + _esc(_t("ipl.mgr.ecart", { d: txt })) +
+               window.ktaIcone("ruler") + ' ' + _esc(_t("ipl.mgr.ecart", { d: txt })) +
              '</div>';
     }
 
@@ -532,7 +532,7 @@
                        _esc(a.libelle) + '</button>';
                    }).join("") +
                    (_modifiable(l) ? '<button class="kta-popup-btn kta-ipl-del" type="button" data-del="1" title="' +
-                     _esc(_t("ipl.popup.removeTitle")) + '">🗑️</button>' : '') +
+                     _esc(_t("ipl.popup.removeTitle")) + '">' + window.ktaIcone("trash-2") + '</button>' : '') +
                  '</div>' +
                '</div>';
       }).join("");
@@ -861,7 +861,7 @@
       plans.forEach(function(p, i) {
         plansHtml +=
           '<button class="kta-ipl-plan-btn" type="button" data-idx="' + i + '">' +
-            '<span class="kta-ipl-plan-ico">' + (p.type === "server" ? "🌐" : "📦") + '</span>' +
+            '<span class="kta-ipl-plan-ico">' + window.ktaIcone(p.type === "server" ? "cloud" : "hard-drive") + '</span>' +
             '<span class="kta-ipl-plan-name">' + _esc(p.name || p.id) + '</span>' +
             (p.version ? '<span class="kta-ipl-plan-ver">' + _esc(p.version) + '</span>' : '') +
           '</button>';
@@ -871,7 +871,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-ipl-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🌀 ' + _esc(_t("ipl.create.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("waypoints") + ' ' + _esc(_t("ipl.create.titre")) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-ipl-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -912,7 +912,7 @@
       }
       box.innerHTML = matches.map(function(p, i) {
         return '<button class="kta-ipl-pt-btn" type="button" data-i="' + i + '">' +
-                 '<span class="kta-ipl-pt-ico">' + (p.source === "session" ? "✏️" : "📄") + '</span>' +
+                 '<span class="kta-ipl-pt-ico">' + window.ktaIcone(p.source === "session" ? "pencil" : "layers") + '</span>' +
                  '<span class="kta-ipl-pt-name">' + _esc(p.nom || p.id || "(" + p.x + "," + p.y + ")") + '</span>' +
                  '<span class="kta-ipl-pt-meta">' + _esc((p.tags || []).slice(0, 2).join(", ")) + '</span>' +
                '</button>';
@@ -1044,7 +1044,7 @@
     modal.style.display = "flex";
     modal.innerHTML =
       '<div class="kta-modal" style="max-width:400px;">' +
-        '<div class="kta-modal-icon" style="color:var(--kta-interaction);">🌀</div>' +
+        '<div class="kta-modal-icon" style="color:var(--kta-interaction);">' + window.ktaIcone("waypoints") + '</div>' +
         '<div class="kta-modal-titre">' + _esc(_t("ipl.nav.titre")) + '</div>' +
         '<div class="kta-modal-texte">' +
           _esc(_t("ipl.nav.texte", { plan: plan.name || planId,
@@ -1171,7 +1171,7 @@
 
     if (mode === "mini") {
       wrap.innerHTML = '<button type="button" class="kta-ipl-back-minibtn" title="' +
-        _esc(_t("ipl.back.expandTitle")) + '">↩️' +
+        _esc(_t("ipl.back.expandTitle")) + '">' + window.ktaIcone("arrow-left") +
         (_navStack.length > 1 ? '<span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '') +
         '</button>';
       wrap.querySelector(".kta-ipl-back-minibtn").addEventListener("click", function() {
@@ -1184,7 +1184,7 @@
 
     wrap.innerHTML =
       '<button type="button" class="kta-ipl-back-main" title="' + _esc(_t("ipl.back.title")) + '">' +
-        '↩️ ' + _esc(_t("ipl.back.btn", { plan: top.planName || top.planId })) +
+        window.ktaIcone("arrow-left") + ' ' + _esc(_t("ipl.back.btn", { plan: top.planName || top.planId })) +
         (_navStack.length > 1 ? ' <span class="kta-ipl-back-depth">' + _navStack.length + '</span>' : '') +
       '</button>' +
       '<button type="button" class="kta-ipl-back-ctrl" data-act="mini" title="' + _esc(_t("ipl.back.miniTitle")) + '">–</button>' +
@@ -1329,6 +1329,10 @@
   // collectPointsForPlan lit un plan distant. Les snapshots convergent à l'usage.
   // Correspondance par pointId (stable, suit un déplacement), sinon par coords arrondies (seuls nom / level / tag
   // d'un point retrouvé sur place se resynchronisent).
+  // ⚠️ Contrat : remise à jour LOCALE — ni updatedAt touché, ni `mktm:liaisons-changees`. 🩸 Annoncée, elle partait
+  // vers l'extension comme une écriture neuve : deux appareils qui voient le point un peu différemment (calque en
+  // modification ici, calque d'origine là) réécrivaient la liaison à chaque ouverture et défaisaient sa suppression.
+  // Seuls les gestes (onPointMoved, onPointLevelChanged, onPointRenamed) écrivent. Garde-fou : check-extensions.js.
   function _resyncSnapshotsForPlan(planId, pts) {
     if (!planId || !Array.isArray(pts) || pts.length === 0) return 0;
     const byId = {}, byXy = {};
@@ -1341,7 +1345,6 @@
     });
     const reg = _load();
     let changed = 0;
-    const ids = [];
     reg.links.forEach(function(l) {
       ["a", "b"].forEach(function(s) {
         const side = l[s];
@@ -1360,13 +1363,11 @@
           side.level = lvl;
           side.tag = tag;
           changed++;
-          if (ids.indexOf(l.id) < 0) { _toucher(l); ids.push(l.id); }
         }
       });
     });
     if (changed > 0) {
       _save(reg);
-      _annoncer(ids, "modification");
       console.log("[InterPlanLinks] Resync snapshots « " + planId + " » : " + changed + " côté(s) mis à jour");
     }
     return changed;
@@ -1496,6 +1497,40 @@
     }
     return n;
   }
+
+  // Point de session RENOMMÉ ou changé de tag depuis sa fiche (editor.js > afficherFormulaire) : un geste, comme un
+  // déplacement — l'instantané (pointNom, tag, pointId du repli par nom) se réécrit et s'annonce. La resynchro du
+  // chargement, elle, reste locale (_resyncSnapshotsForPlan).
+  // `ancienId` = id AVANT le renommage : seule clé d'un côté sans uid (id === nom) ; ignoré si le côté a un uid.
+  function onPointRenamed(planId, point, ancienId) {
+    if (!planId || !point) return 0;
+    const sonde = { uid: point.uid, id: (ancienId !== undefined) ? ancienId : point.id, x: point.x, y: point.y };
+    const nom = String(point.nom || "");
+    const tag = (Array.isArray(point.tags) && point.tags[0]) || undefined;
+    const id = String(point.id || "");
+    const reg = _load();
+    let n = 0;
+    const ids = [];
+    reg.links.forEach(function(l) {
+      ["a", "b"].forEach(function(cote) {
+        const side = l[cote];
+        if (!_coteDuPoint(side, planId, sonde)) return;
+        const pointId = side.pointId ? id : side.pointId;
+        if (side.pointNom === nom && side.tag === tag && side.pointId === pointId) return;
+        side.pointNom = nom;
+        side.tag = tag;
+        side.pointId = pointId;
+        n++;
+        if (ids.indexOf(l.id) < 0) { _toucher(l); ids.push(l.id); }
+      });
+    });
+    if (n > 0) {
+      _save(reg);
+      _annoncer(ids, "modification");
+      console.log("[InterPlanLinks] " + n + " côté(s) de liaison renommé(s)");
+    }
+    return n;
+  }
   // ── Export ──────────
   window.InterPlanLinks = {
     getLinksForPoint:     getLinksForPoint,
@@ -1520,6 +1555,7 @@
     migrerVersUid:        migrerVersUid,
     onPointMoved:         onPointMoved,   // recale les coords d'un point déplacé
     onPointLevelChanged:  onPointLevelChanged,   // recale le niveau d'un point changé d'étage
+    onPointRenamed:       onPointRenamed,   // réécrit nom / tag d'un point renommé depuis sa fiche
     refreshBadges:        refreshBadges,
     // Navigation générique + lecture des points d'un plan non chargé (aussi pour js/crossPlanSearch.js : un seul
     // lecteur session / ZIP / serveur).

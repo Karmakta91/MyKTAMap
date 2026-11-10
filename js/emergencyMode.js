@@ -150,7 +150,7 @@
       if (_timerCopie) clearTimeout(_timerCopie);
       _timerCopie = setTimeout(function () {
         const b = document.getElementById("kta-em-coords-copier");
-        if (b) b.textContent = window.I18n.t("emergency.copier");
+        if (b) b.innerHTML = window.ktaIcone("copy") + " " + window.ktaEsc(window.I18n.t("emergency.copier"));
       }, 2000);
     };
     if (!txt) { dire("emergency.copierRien"); return; }
@@ -188,7 +188,7 @@
         // l'app (`ThemeManager.isLight()` à activer()).
         '<div class="kta-emergency-header">' +
           '<div class="kta-emergency-header-main">' +
-            '<span class="kta-emergency-titre">' + t("emergency.header.titre") + '</span>' +
+            '<span class="kta-emergency-titre">' + window.ktaIcone("maximize") + " " + t("emergency.header.titre") + '</span>' +
             '<span class="kta-emergency-plan-nom" id="kta-em-plan">—</span>' +
           '</div>' +
           // Pas d'échelle px/m ici (chiffre de calibrage, inutile pour se repérer) : seul l'état du matériel reste.
@@ -198,7 +198,7 @@
             '<button class="kta-em-coords-btn" id="kta-em-coords-btn" type="button" hidden ' +
                     'aria-haspopup="dialog" ' +
                     'title="' + t("emergency.coords.ouvrir") + '" ' +
-                    'aria-label="' + t("emergency.coords.ouvrir") + '">📋</button>' +
+                    'aria-label="' + t("emergency.coords.ouvrir") + '">' + window.ktaIcone("copy") + '</button>' +
           '</div>' +
         '</div>' +
 
@@ -232,7 +232,7 @@
             // Disposition : en haut CAP + cardinal, au centre la minimap, en bas les degrés en gros.
             '<div class="kta-emergency-bloc-heading-overlay">' +
               '<div class="kta-emergency-heading-top">' +
-                '<div class="kta-emergency-label">' + t("emergency.label.cap") + '</div>' +
+                '<div class="kta-emergency-label">' + window.ktaIcone("compass") + " " + t("emergency.label.cap") + '</div>' +
                 '<div class="kta-emergency-heading-card" id="kta-em-heading-card">—</div>' +
               '</div>' +
               '<div class="kta-emergency-value kta-emergency-heading-num" id="kta-em-heading-num">—</div>' +
@@ -240,7 +240,7 @@
             // Visible seulement quand l'utilisateur a bougé la carte.
             '<button class="kta-em-recentrer-btn" id="kta-em-recentrer" type="button" hidden ' +
                     'title="' + t("emergency.recentrer.title") + '">' +
-              t("emergency.recentrer") +
+              window.ktaIcone("locate-fixed") + " " + t("emergency.recentrer") +
             '</button>' +
           '</div>' +
 
@@ -249,7 +249,7 @@
         // Pas de conseils au-dessus du bouton de sortie : l'écran doit répondre « où suis-je » en une seconde ;
         // la conduite à tenir vit dans l'aide (Mode Secours).
         '<button class="kta-emergency-exit-btn" id="kta-emergency-exit" type="button">' +
-          t("emergency.exitBtn") +
+          window.ktaIcone("x") + " " + t("emergency.exitBtn") +
         '</button>' +
 
       '</div>' +
@@ -259,7 +259,7 @@
       '<div class="kta-em-bulle-fond" id="kta-em-coords-bulle" hidden>' +
         '<div class="kta-em-bulle" role="dialog" aria-modal="true" aria-labelledby="kta-em-coords-titre">' +
           '<div class="kta-em-bulle-tete">' +
-            '<span class="kta-em-bulle-titre" id="kta-em-coords-titre">' + t("emergency.label.gps") + '</span>' +
+            '<span class="kta-em-bulle-titre" id="kta-em-coords-titre">' + window.ktaIcone("globe") + " " + t("emergency.label.gps") + '</span>' +
             '<button class="kta-em-bulle-fermer" type="button" data-kta-em-fermer="1" ' +
                     'title="' + t("emergency.bulle.fermer") + '" ' +
                     'aria-label="' + t("emergency.bulle.fermer") + '">✕</button>' +
@@ -269,7 +269,7 @@
           '<div class="kta-emergency-sub kta-em-bulle-statut" id="kta-em-coords-statut"></div>' +
           '<button class="kta-em-bulle-action" id="kta-em-coords-copier" type="button" ' +
                   'title="' + t("emergency.copier.title") + '">' +
-            t("emergency.copier") +
+            window.ktaIcone("copy") + " " + t("emergency.copier") +
           '</button>' +
         '</div>' +
       '</div>' +
@@ -288,6 +288,7 @@
           '<div class="kta-em-point-note" id="kta-em-point-note"></div>' +
           '<button class="kta-em-bulle-action" id="kta-em-point-ici" type="button" ' +
                   'title="' + t("poi.iAmHere") + '">' +
+            (typeof window.ktaIcone === "function" ? window.ktaIcone("map-pin-check") + " " : "") +
             t("iti.wp.jeSuisIci") +
           '</button>' +
         '</div>' +

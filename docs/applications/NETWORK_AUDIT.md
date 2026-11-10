@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v2.23.0** (6 novembre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
+> Page de transparence technique. À jour pour la version **v2.24.0** (9 novembre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
@@ -653,7 +653,10 @@ Sinon, la mise en production est bloquée.
 L'app ne télécharge aucune librairie pendant que tu l'utilises. Les
 quelques librairies qu'elle embarque (Leaflet, JSZip, jsPDF, html2canvas,
 three.js pour la vue 3D) sont copiées dans le dépôt, avec leur version et un lien vers leurs avis de
-sécurité. Ces librairies, comme les outils de test et d'intégration
+sécurité. Les polices aussi : la police des emoji (Twemoji réduit aux emoji de l'app,
+`fonts/kta-emoji.woff2` et `css/kta-emoji.css`) et celle des plaques de la vue 3D (Bodoni Moda,
+`lib/bodoni-moda/`) sont des fichiers du site, gardés hors ligne : aucune police n'est demandée à un
+autre domaine. Ces librairies, comme les outils de test et d'intégration
 continue, sont surveillées automatiquement (Dependabot) : une faille connue
 ou une nouvelle version est signalée, et chaque proposition de mise à jour
 est testée par l'intégration continue. Une librairie n'est remplacée que

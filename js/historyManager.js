@@ -15,7 +15,8 @@
 //     pile vide) ; toast discret (OOMGuard.showToast).
 //   - RAM seulement : piles vidées au changement de plan et au rechargement.
 //   - Instantanés (deep clone) par _captureState(), ciblés par catégorie.
-//   - Traces de suppression (uid) tenues ici, pour toutes les suppressions (cf. _tracerDepuis).
+//   - Traces de suppression (uid) tenues ici, pour toutes les suppressions (cf. _tracerDepuis) ; 🔒 copie de calque :
+//     trace de COPIE, jamais dans un fichier (cf. _tracer).
 //   - Catégorie "mesure" (measure.js) : entrées de l'outil 📐, vivantes tant qu'il est armé (cf. purger).
 // API : window.HistoryManager = {
 //   record(label, beforeState?, category?) - ajoute une entrée (beforeState capturé si omis)
@@ -169,11 +170,12 @@
   // GPX…) : toute action passe par record(), et un diff des uid entre « avant » et l'état courant dit ce qui a
   // disparu.
   //   - Diff sur l'UNION des catégories : un objet converti des tracés aux zones n'est pas supprimé.
-  //   - Pas de trace pour l'itinéraire calculé, ni pour un objet rapatrié d'un calque (`_srcCalque`) : le restituer
-  //     le rend à son calque.
-  //     🩸 La copie porte l'uid de l'objet du CALQUE : sa trace, emportée par l'export complet puis passée par la
-  //     fusion de calques ou l'import ZIP du Générateur (KtaUid.fusionnerCalques), supprimerait l'original. Une
-  //     restitution ou une suppression de copie ne se propage donc pas à un autre appareil.
+  //   - Pas de trace pour l'itinéraire calculé.
+  //   - 🔒 Copie de calque (`_srcCalque`, ajout intégré compris) ou objet dont l'uid est celui d'un objet d'un
+  //     fichier de calque du plan : trace de COPIE (KtaUid.tombstoneCopie), jamais une trace ordinaire. Elle part
+  //     à la synchro (la suppression tient chez tous et au redémarrage) mais n'entre dans aucun fichier : emportée
+  //     par un export puis passée par la fusion de calques ou l'import ZIP du Générateur, une trace sur cet uid
+  //     détruirait l'original. Elle tombe à la restitution du calque, qui ramène l'objet du fichier.
   const _CATS = ["editorPoints", "roads", "zones", "structures"];
   const _GETTERS = { editorPoints: "getEditorPoints", roads: "getRoads", zones: "getZones", structures: "getStructures" };
 
@@ -193,15 +195,33 @@
     });
     return out;
   }
-  function _laisseTrace(o) {
-    return !!(o && !o._srcCalque && !(window.KtaUid && window.KtaUid.estTransitoire(o)));
+  // Trace d'un objet disparu : rien (itinéraire), trace de copie, ou trace ordinaire. `ctx.calqueDe` (index des
+  // fichiers de calque, CalqueSession.calqueDesTraces) n'est bâti qu'au premier objet sans marque.
+  function _tracer(o, uid, ctx) {
+    const K = window.KtaUid;
+    if (!o || K.estTransitoire(o)) return;
+    let calque = o._srcCalque;
+    if (calque === undefined && typeof K.tombstoneCopie === "function") {
+      if (ctx.calqueDe === undefined) {
+        const CS = window.CalqueSession;
+        ctx.calqueDe = (CS && typeof CS.calqueDesTraces === "function") ? CS.calqueDesTraces() : null;
+      }
+      calque = ctx.calqueDe ? ctx.calqueDe(uid) : undefined;
+    }
+    if (calque !== undefined && calque !== null) {
+      // 🔒 Une marque illisible ne devient jamais une trace ordinaire : pas de trace du tout.
+      if (typeof calque === "string" && calque && typeof K.tombstoneCopie === "function") K.tombstoneCopie(uid, calque);
+      return;
+    }
+    K.tombstone(uid);
   }
 
   function _tracerDepuis(avant) {
     const K = window.KtaUid;
     if (!K || !avant) return;
     const a = _indexUid(avant), b = _indexUid(_etatCourantPour(avant));
-    a.forEach(function(o, uid) { if (!b.has(uid) && _laisseTrace(o)) K.tombstone(uid); });
+    const ctx = {};
+    a.forEach(function(o, uid) { if (!b.has(uid)) _tracer(o, uid, ctx); });
     b.forEach(function(o, uid) { if (!a.has(uid)) K.untombstone(uid); });
   }
 
@@ -217,7 +237,8 @@
       if (!prec) { K.untombstone(uid); K.touch(o); }
       else if (prec.updatedAt !== o.updatedAt) K.touch(o);
     });
-    a.forEach(function(o, uid) { if (!b.has(uid) && _laisseTrace(o)) K.tombstone(uid); });
+    const ctx = {};
+    a.forEach(function(o, uid) { if (!b.has(uid)) _tracer(o, uid, ctx); });
   }
 
   // ── Record / undo / redo ──────────

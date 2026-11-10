@@ -274,7 +274,7 @@ Ce n'est qu'une description : aucune requête n'est filtrée sur cette liste. (E
 - `clear()` → vide le buffer
 - `onLog(callback)` → subscribe live, retourne unsubscribe (utilisé par la modale 📋 Journal)
 - `WHITELIST_HUMAN` → array readonly de descriptions
-- `exportJson()` → string JSON formaté (utilisé par bouton 📥 Exporter)
+- `exportJson()` → string JSON formaté (utilisé par bouton 📤 Exporter)
 
 **Structure `Entry`** :
 ```js
@@ -292,7 +292,7 @@ Ce n'est qu'une description : aucune requête n'est filtrée sur cette liste. (E
 #### 40.4 UI (uniquement dans la modale ⚙️ Configuration du loader)
 
 Section "🔒 Confidentialité & Audit" dans `#loaderConfigModal` avec :
-- Bouton 📋 Voir le journal réseau → modale `#loaderNetLogModal` (tableau live + sticky header + scroll body + boutons 📋 Copier / 📥 Exporter / 🗑️ Vider)
+- Bouton 📋 Voir le journal réseau → modale `#loaderNetLogModal` (tableau live + sticky header + scroll body + boutons 📋 Copier / 📤 Exporter / 🗑️ Vider)
 - Bouton 📖 Que fait l'app sur le réseau ? → modale `#loaderNetDocModal` (lead + whitelist + comment vérifier + CSP + bouton 📄 Ouvrir doc complète → `docs/NETWORK_AUDIT.md`)
 - Case 🗺️ Vue OSM (`#loaderOsmOptInCb` → `OsmView.setOptedIn`) — seul accès à un tiers
 

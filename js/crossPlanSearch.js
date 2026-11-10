@@ -75,18 +75,18 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-xps-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🌐 ' + _esc(_t("xps.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("search") + ' ' + _esc(_t("xps.titre")) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-xps-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<input type="text" id="kta-xps-input" class="kta-ipl-search" ' +
             'placeholder="' + _esc(_t("xps.placeholder")) + '" autocomplete="off">' +
-          // Case multi-hop (option, désactivée par défaut, persistée par InterPlanRoute) : itinéraire 🧭 par des plans
+          // Case multi-hop (option, désactivée par défaut, persistée par InterPlanRoute) : itinéraire par des plans
           // intermédiaires. Pas rendue à l'accueil : l'itinéraire part de la position du tracker sur un plan chargé.
           (_planAffiche()
             ? '<label class="kta-xps-multihop" title="' + _esc(_t("xps.multihop.hint")) + '">' +
                 '<input type="checkbox" id="kta-xps-multihop-cb">' +
-                '<span>' + _esc(_t("xps.multihop.label")) + '</span>' +
+                '<span>' + window.ktaIcone("waypoints") + ' ' + _esc(_t("xps.multihop.label")) + '</span>' +
               '</label>'
             : '') +
           '<div class="kta-xps-status" id="kta-xps-status"></div>' +
@@ -147,15 +147,15 @@
         const distant = e.plan.id !== _pidCourant;
         return '<div class="kta-xps-rowwrap">' +
                '<button class="kta-ipl-pt-btn kta-xps-row" type="button" data-i="' + i + '">' +
-                 '<span class="kta-ipl-pt-ico">' + (e.pt.source === "session" ? "✏️" : "📄") + '</span>' +
+                 '<span class="kta-ipl-pt-ico">' + window.ktaIcone(e.pt.source === "session" ? "pencil" : "layers") + '</span>' +
                  '<span class="kta-ipl-pt-name">' + _esc(e.pt.nom || e.pt.id || ("(" + e.pt.x + "," + e.pt.y + ")")) + '</span>' +
                  '<span class="kta-xps-plan-badge" title="' + _esc(e.plan.name || e.plan.id) + '">' +
-                   (e.plan.type === "server" ? "🌐" : "📦") + ' ' + _esc(e.plan.name || e.plan.id) +
+                   window.ktaIcone(e.plan.type === "server" ? "cloud" : "hard-drive") + ' ' + _esc(e.plan.name || e.plan.id) +
                  '</span>' +
                '</button>' +
                ((_iprDispo && distant)
                  ? '<button class="kta-popup-btn kta-xps-iti" type="button" data-iti="' + i + '" title="' +
-                     _esc(_t("ipr.btn.routeTitle")) + '">🧭</button>' : '') +
+                     _esc(_t("ipr.btn.routeTitle")) + '">' + window.ktaIcone("route") + '</button>' : '') +
                '</div>';
       }).join("");
 

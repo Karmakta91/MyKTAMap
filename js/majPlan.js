@@ -240,7 +240,7 @@ window.MajPlan = (function () {
     _ov.innerHTML =
       '<div class="kta-readme-modal-boite kta-fp-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + esc(t("maj.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("refresh-cw") + ' ' + esc(t("maj.titre")) + '</span>' +
           '<button class="kta-panneau-close" data-maj-fermer type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-fp-corps">' +
@@ -400,7 +400,7 @@ window.MajPlan = (function () {
     ov.style.zIndex = "100001";
     ov.innerHTML =
       '<div class="kta-readme-modal-boite kta-fp-boite">' +
-        '<div class="kta-readme-modal-header"><span class="kta-readme-modal-titre">' + esc(t("maj.fin.titre")) +
+        '<div class="kta-readme-modal-header"><span class="kta-readme-modal-titre">' + window.ktaIcone("refresh-cw") + ' ' + esc(t("maj.fin.titre")) +
           '</span><button class="kta-panneau-close" data-maj-fin="fermer" type="button">✕</button></div>' +
         '<div class="kta-readme-modal-corps kta-fp-corps">' +
           '<p class="kta-fp-ajouts-intro">' + esc(t("maj.fin.texte", { fichier: nomZip })) + '</p>' +

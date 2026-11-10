@@ -10,7 +10,9 @@
 // photo (photo gardée « sans point », annoncée), re-clic qui retire, mesure ♦️ d'avant rendue, traces de
 // suppression posées puis retirées par le ⏪, une case de famille décochée qui garde sa famille, ✅ Convertir
 // compté sur les seuls convertibles ; entrée directe « ✏️ Par zone » des 3 modes « supprimer au clic » (sans
-// graine, famille du mode seule cochée) ; prise d'extension factice qui refuse (rien supprimé, alerte) puis permet.
+// graine, famille du mode seule cochée) ; prise d'extension factice qui refuse (rien supprimé, alerte) puis permet ;
+// 🏗️ Niveau (N) : liste des niveaux, bouton recompté, jonction et calque annoncés et intacts, un ⏪, masqué hors
+// multi-niveau.
 // 🩸 check-selection-multi.js teste la règle dans un `vm` ; seul ce parcours voit le bandeau, l'outil de mesure,
 // ktaConfirm, l'historique, les traces et le stockage des photos réels.
 // Usage : node scripts/smoke/checkup-suppr-zone.js (SMOKE_PORT pour une autre copie) · code : js/selectionZone.js,
@@ -398,14 +400,15 @@ async function lireFenetre(page) {
         const lignes = Array.from(document.querySelectorAll('.kta-modal-overlay button[id^="_choix-"]'));
         const b = lignes.find(function (x) { return /Effacer par zone/.test(x.textContent); });
         if (!b) return { effacer: subs.length, ligne: false, lignes: lignes.map(function (x) { return x.textContent.trim().slice(0, 30); }) };
-        const icones = b.textContent.split("✏️").length - 1;
+        // Icône de l'option : un SVG (ktaIcones.js), plus un emoji dans le libellé.
+        const icones = b.querySelectorAll("svg.kta-ico").length + (/[\p{Extended_Pictographic}]/u.test(b.textContent) ? 1 : 0);
         b.click();
         return { ligne: true, icones: icones, actif: window.SelectionMulti.estActif(), vide: window.SelectionMulti.liste().length === 0,
           trace: window.KtaSelectionZone.enCours() };
       }, i);
       verifier(r.ligne && r.actif && r.vide && r.trace,
         fam + " : 🧹 Effacer → « ✏️ Effacer par zone » ouvre la sélection sans graine, tracé lancé", r);
-      verifier(r.icones === 1, fam + " : une seule icône ✏️ sur la ligne", r.icones);
+      verifier(r.icones === 1, fam + " : une seule icône (SVG, sans emoji) sur la ligne", r.icones);
       if (!r.ligne) continue;
       await zoneDirecte(page);
       await page.evaluate(function () { document.getElementById("kta-selm-suppr").click(); });
@@ -459,6 +462,83 @@ async function lireFenetre(page) {
       "prise qui permet : les 5 objets sont supprimés", e4.objets);
     await page.evaluate(function () { window.HistoryManager.undo(); window.PlanRegistry.findById = window.__cszFind; });
     await page.waitForTimeout(500);
+
+    // ── 9. 🏗️ Niveau en lot : liste des niveaux, cases, jonction et calque comptés, un ⏪ ──
+    await page.evaluate(function () {
+      const c = window.__csz;
+      window.APP_CONFIG.availableLevels = [-1, 0];
+      window.setRoads(window.getRoads().concat([{ uid: "rd_csz_jonc", type: "jonction", fromLevel: 0, toLevel: -1,
+        points: [{ x: c.x + 20, y: c.y + 80 }, { x: c.x + 80, y: c.y + 80 }] }]));
+    });
+    const niv = function () {
+      return page.evaluate(function () {
+        const r = {};
+        ["getEditorPoints", "getRoads", "getZones", "getStructures"].forEach(function (g) {
+          (window[g]() || []).forEach(function (o) {
+            if (o && o.uid && o.uid.indexOf("_csz_") > 0) {
+              r[o.uid] = o.type === "jonction" ? o.fromLevel + ">" + o.toLevel : (Number.isInteger(o.level) ? o.level : 0);
+            }
+          });
+        });
+        r.calque = window._ktaDataPolylines.filter(function (e) { return e.uid === "rd_csz_calque"; })
+          .map(function (e) { return e.level; })[0];
+        return r;
+      });
+    };
+    const n0 = await niv(), h0 = (await etat(page)).histo;
+    await ouvrirSelection(page);
+    await zone(page);
+    const bouton = await page.evaluate(function () {
+      const b = document.getElementById("kta-selm-niveau"), s = document.getElementById("kta-selm-suppr");
+      return { vu: getComputedStyle(b).display !== "none", txt: b.textContent, voisin: b.nextElementSibling === s };
+    });
+    verifier(bouton.vu && /\(6\)/.test(bouton.txt) && bouton.voisin,
+      "🏗️ Niveau (6) dans le bandeau, à côté de 🗑️ Supprimer", bouton);
+    await page.evaluate(function () { document.getElementById("kta-selm-niveau").click(); });
+    await attendre(page, function () { return !!document.querySelector("[data-kta-selm-niv]"); }, 10000);
+    await page.waitForTimeout(500);   // garde anti-double-clic de ktaConfirm
+    const fen = await page.evaluate(function () {
+      const b = document.getElementById("kta-confirm-oui"), boite = b.closest(".kta-readme-modal-boite");
+      const sel = boite.querySelector("[data-kta-selm-niv]");
+      const r = { texte: boite.textContent, ok0: b.textContent, dis0: b.disabled,
+        niveaux: Array.from(sel.options).map(function (o) { return o.value; }),
+        cases: boite.querySelectorAll("[data-kta-selm-niv-fam]").length };
+      sel.value = "-1";
+      sel.dispatchEvent(new Event("change"));
+      r.ok1 = b.textContent;
+      r.dis1 = b.disabled;
+      return r;
+    });
+    verifier(JSON.stringify(fen.niveaux) === JSON.stringify(["-1", "0"]) && fen.cases === 4,
+      "fenêtre : liste des niveaux du plan et une case par famille", fen);
+    verifier(/\(0\)/.test(fen.ok0) && fen.dis0 && /\(6\)/.test(fen.ok1) && !fen.dis1,
+      "fenêtre : le bouton compte ceux qui changent (0 au niveau actuel, 6 au niveau -1)", fen);
+    verifier(/1 jonction/.test(fen.texte) && /2 objet\(s\) de calque/.test(fen.texte),
+      "fenêtre : la jonction et les 2 objets de calque sont annoncés (jamais touchés)", fen.texte.slice(0, 400));
+    await page.evaluate(function () { document.getElementById("kta-confirm-oui").click(); });
+    await page.waitForTimeout(800);
+    const n1 = await niv(), h1 = (await etat(page)).histo;
+    const lot = ["pt_csz_photo", "pt_csz_in2", "rd_csz_in", "rd_csz_graine", "st_csz_in", "zn_csz_in"];
+    verifier(lot.every(function (u) { return n1[u] === -1; }), "niveau : les 6 objets du lot au niveau -1", n1);
+    verifier(n1.rd_csz_jonc === "0>-1" && n1.calque === n0.calque && n1.rd_csz_cheval === 0 && n1.pt_csz_out === 0,
+      "niveau : jonction, objet de calque et objets hors lot inchangés", n1);
+    verifier(h1 === h0 + 1, "niveau : UNE entrée d'historique", [h0, h1]);
+    verifier(!(await page.evaluate(function () { return window.SelectionMulti.estActif(); })),
+      "niveau : le bandeau se ferme");
+    await page.evaluate(function () { window.HistoryManager.undo(); });
+    await page.waitForTimeout(500);
+    const n2 = await niv();
+    verifier(lot.every(function (u) { return n2[u] === n0[u]; }), "⏪ : un seul retour rend les niveaux d'avant", n2);
+    await page.evaluate(function () { window.APP_CONFIG.multiLevel = false; window.SelectionMulti.ouvrirZone(); });
+    const cache = await page.evaluate(function () {
+      document.getElementById("kta-selm-zone-annuler").click();   // retour au bandeau de sélection
+      const b = document.getElementById("kta-selm-niveau"), s = document.getElementById("kta-selm-suppr");
+      const r = getComputedStyle(b).display === "none" && getComputedStyle(s).display !== "none";
+      window.SelectionMulti.fermer();
+      window.APP_CONFIG.multiLevel = true;
+      return r;
+    });
+    verifier(cache, "plan à un niveau : pas de bouton 🏗️ Niveau");
 
     verifier(erreurs.length === 0, "aucune erreur de page ni clé i18n manquante", erreurs);
   } catch (e) {

@@ -230,7 +230,8 @@ t("🩸 son texte passe par textContent, jamais innerHTML (contenu de dictionnai
     const sb = {
       window: {
         PlanRegistry: { getAll: function () { return sc[1]; } },
-        I18n: { t: function (k) { demandees.push(k); return "[" + k + "]"; } }
+        I18n: { t: function (k) { demandees.push(k); return "[" + k + "]"; } },
+        ktaIcone: function () { return ""; }   // ktaIcones.js (icône SVG), hors sujet ici
       }
     };
     let err = null;

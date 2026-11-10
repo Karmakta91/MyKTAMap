@@ -239,7 +239,7 @@
       "background:" + pal.boxBg,
       "border:2px solid " + pal.bord, "border-radius:14px",
       "box-shadow:0 0 60px rgba(211,47,47,0.55), 0 8px 32px rgba(0,0,0,0.6)",
-      "color:" + pal.txMain, "font-family:system-ui,-apple-system,sans-serif",
+      "color:" + pal.txMain, "font-family:KTA Emoji, system-ui,-apple-system,sans-serif",
       "animation:kta-denylist-pulse 2s ease-in-out infinite"
     ].join(";");
 
@@ -269,7 +269,7 @@
     tech.style.cssText = "font-size:11px;color:" + pal.techCol + ";margin:12px 0 18px;line-height:1.6;";
     tech.innerHTML =
       t("denylist.addedAt") + ' <strong style="color:' + pal.date + ';">' + _escapeHtml(addedAtStr) + '</strong><br>' +
-      t("denylist.fingerprint") + ' <code style="font-family:monospace;color:' + pal.monoCol + ';font-size:11px;">' + _escapeHtml(sha256Short) + '</code>';
+      t("denylist.fingerprint") + ' <code style="font-family:KTA Emoji, monospace;color:' + pal.monoCol + ';font-size:11px;">' + _escapeHtml(sha256Short) + '</code>';
     box.appendChild(tech);
 
     const actions = document.createElement("div");
@@ -507,7 +507,7 @@
       "background:" + pp.boxBg,
       "border:2px solid " + pp.bord, "border-radius:14px",
       "box-shadow:0 0 50px rgba(233,161,59,0.45), 0 8px 32px rgba(0,0,0,0.6)",
-      "color:" + pp.txMain, "font-family:system-ui,-apple-system,sans-serif"
+      "color:" + pp.txMain, "font-family:KTA Emoji, system-ui,-apple-system,sans-serif"
     ].join(";");
 
     const n = purgedList.length;
@@ -540,7 +540,7 @@
         '<div style="font-size:12px;color:' + pp.itemDesc + ';margin-bottom:4px;">' +
           '<strong>' + t("denylist.motifLabel") + '</strong> ' + _escapeHtml(p.reason || t("denylist.purged.reasonNone")) +
         '</div>' +
-        '<div style="font-size:10.5px;color:' + pp.itemMono + ';font-family:monospace;">' +
+        '<div style="font-size:10.5px;color:' + pp.itemMono + ';font-family:KTA Emoji, monospace;">' +
           t("denylist.purged.sha256Label") + ' ' + _escapeHtml(shaShort) + (purgedStr ? ' ' + t("denylist.purged.deletedOn", { date: _escapeHtml(purgedStr) }) : '') +
         '</div>';
       list.appendChild(li);

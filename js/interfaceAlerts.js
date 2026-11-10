@@ -204,7 +204,7 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite kta-alert-selector-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("alerts.selector.titre", { count: sorted.length }) + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("siren") + ' ' + window.I18n.t("alerts.selector.titre", { count: sorted.length }) + '</span>' +
         '<button class="kta-panneau-close" id="kta-alert-selector-close" type="button" aria-label="' + window.I18n.t("alerts.btn.close") + '">&times;</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps kta-alert-selector-corps">' +
@@ -340,7 +340,7 @@ window.afficherModaleUpdateDispo = function(opts) {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh;">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("alerts.update.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("bell") + ' ' + window.I18n.t("alerts.update.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-update-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
@@ -349,12 +349,12 @@ window.afficherModaleUpdateDispo = function(opts) {
           '<div style="display:flex; align-items:center; gap:14px; padding:10px 14px; background:var(--kta-info-fond); border-radius:8px; border:1px solid var(--kta-info-bord);">' +
             '<div style="font-size:12px; color:var(--kta-texte-3);">' +
               window.I18n.t("alerts.update.installed") + '<br>' +
-              '<strong style="font-size:18px; color:var(--kta-texte-2); font-family:ui-monospace,monospace;">' + localVersion + '</strong>' +
+              '<strong style="font-size:18px; color:var(--kta-texte-2); font-family:KTA Emoji, ui-monospace,monospace;">' + localVersion + '</strong>' +
             '</div>' +
             '<div style="font-size:20px; color:var(--kta-interaction);">→</div>' +
             '<div style="font-size:12px; color:var(--kta-texte-3);">' +
               window.I18n.t("alerts.update.available") + (released ? ' (' + released + ')' : '') + '<br>' +
-              '<strong style="font-size:18px; color:var(--kta-accent-texte); font-family:ui-monospace,monospace;">' + remoteVersion + '</strong>' +
+              '<strong style="font-size:18px; color:var(--kta-accent-texte); font-family:KTA Emoji, ui-monospace,monospace;">' + remoteVersion + '</strong>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -370,7 +370,7 @@ window.afficherModaleUpdateDispo = function(opts) {
             window.I18n.t("alerts.update.softDesc") +
           '</div>' +
           // 🩸 Pas de « Reset complet » ici : il efface tout (sessions, photos, sauvegardes) sans recours et ne vit que
-          // dans 🆘 Dépannage.
+          // dans 🔧 Dépannage.
           '<div style="color:var(--kta-texte-3); font-size:12px; line-height:1.5;">' + window.I18n.t("alerts.update.depannage") + '</div>' +
         '</div>' +
 

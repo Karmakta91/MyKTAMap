@@ -135,6 +135,9 @@
                         : null,
       // Traces de suppression { uid, deletedAt } : sans elles, une synchro ressusciterait un objet supprimé.
       tombstones: window.KtaUid ? window.KtaUid.getTombstones() : [],
+      // Traces des copies de calque supprimées { uid, deletedAt, calque } : sauvegarde LOCALE seulement (🔒 jamais un
+      // fichier, cf. ktaUid.js ; profileExportImport.js les retire de l'export du profil).
+      tracesCopie: (window.KtaUid && typeof window.KtaUid.getTracesCopie === "function") ? window.KtaUid.getTracesCopie() : [],
 
       // Timeline du tracker [{x, y, t, deltaMs, type ∈ start|pdr|recalage, level?}] pour stats / heatmap /
       // replay. Le tracé visible (polyline) n'est pas persisté (décision produit : un tracé restauré ferait
@@ -196,6 +199,7 @@
         // Traces seules = contenu : sinon tout supprimer effacerait les traces, et la synchro suivante
         // ressusciterait les objets supprimés.
         && (state.tombstones || []).length === 0
+        && (state.tracesCopie || []).length === 0
         && lcEmpty;
   }
 
@@ -256,6 +260,7 @@
       measureMode:    state.measureMode    || "distance",
       calquesSession: state.calquesSession || null,
       tombstones:     state.tombstones || [],   // purgées à 90 jours avant écriture
+      tracesCopie:    state.tracesCopie || [],
       customLegend:   state.customLegend   || null,
       runtimeFilters:  state.runtimeFilters  || null,
       trackerTimeline: state.trackerTimeline || [],
@@ -418,7 +423,7 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "kta-btn kta-btn-primary kta-storage-banner-btn";
-      btn.textContent = _trModule("session.banner.exportBtn");
+      btn.innerHTML = window.ktaIcone("save") + " " + window.ktaEsc(_trModule("session.banner.exportBtn"));
       btn.addEventListener("click", function() {
         if (typeof window.ouvrirExportSessionModal === "function") window.ouvrirExportSessionModal("full", true);
       });
@@ -462,6 +467,7 @@
                 + window.KtaUid.ensureAll(payload.structures, "st", repli, vus);
         if (n > 0) console.log("[SessionPersist] Identifiants posés sur " + n + " objet(s) (migration v2.1.0)");
         // Traces de suppression du plan (absentes = liste vide), purgées au-delà de 90 jours.
+        if (typeof window.KtaUid.setTracesCopie === "function") window.KtaUid.setTracesCopie(payload.tracesCopie);
         window.KtaUid.setTombstones(payload.tombstones);
         const purgees = window.KtaUid.purge();
         if (purgees > 0) console.log("[SessionPersist] " + purgees + " trace(s) de suppression de plus de 90 jours purgée(s)");
@@ -601,8 +607,10 @@
 
   function _viderEtatCourant() {
     _annulerPhase2();
-    // Remise à zéro locale : les traces de suppression partent aussi (décision produit).
+    // Remise à zéro locale : les traces de suppression partent aussi (décision produit), celles des copies de calque
+    // comprises (les calques sont déjà restitués, cf. clear).
     if (window.KtaUid) window.KtaUid.setTombstones([]);
+    if (window.KtaUid && typeof window.KtaUid.setTracesCopie === "function") window.KtaUid.setTracesCopie([]);
     // 🩸 Un point qui porte une liaison inter-plan (portail) est gardé : la liaison vit dans son propre
     // registre et resterait orpheline. Pour le retirer : supprimer le point (InterPlanLinks.onPointDeleted).
     const portails = (typeof window.getEditorPoints === "function") ? (window.getEditorPoints() || []).filter(_estPortail) : [];
@@ -636,8 +644,8 @@
     return (K && typeof K.effacementPartage === "function") ? K.effacementPartage(window._currentLoadedPlanId) : null;
   }
   // Objets d'une suppression pour toute l'organisation : tous (`tout`), ou ceux dont l'extension dit que le compte
-  // est le créateur. 🔒 Jamais une copie de calque (elle porte l'uid d'un objet du calque : une trace le détruirait
-  // par la fusion de calques, cf. historyManager.js > _laisseTrace), ni l'itinéraire calculé, ni un portail (gardé
+  // est le créateur. 🔒 Jamais une copie de calque (elle porte l'uid d'un objet du calque ; elle part par la
+  // restitution, case « Rendre aussi les calques à l'équipe »), ni l'itinéraire calculé, ni un portail (gardé
   // par _viderEtatCourant). → [{ uid, updatedAt }]
   // `inconnus` : objets dont l'extension ne connaît pas le créateur (auteurObjet null) — jamais comptés comme « mes
   // ajouts » (décision produit : pas de suppression d'un objet d'autrui par erreur) ; seul `tout` les couvre.
@@ -701,7 +709,7 @@
       if (!options.length) { window.ktaAlerte(_t("session.partage.rien")); return null; }
       // « Annuler » ferme sans rien effacer ; le bouton d'action dit ce que fait le choix coché (okLabel).
       const choix = { options: options, valeur: null, aucunParDefaut: true };
-      const opts = { titre: _t("session.confirm.clearTitle"), okLabel: _t("session.btn.clear"),
+      const opts = { titre: _t("session.confirm.clearTitle"), okLabel: window.ktaIcone("trash-2") + " " + _t("session.btn.clear"),
         cancelLabel: _t("ui.confirm.cancel"), choix: choix };
       let texte = msg + "\n\n" + _t("session.partage.intro");
       if (calques.length) {
@@ -801,14 +809,14 @@
         const noms = calques.map(function(id) { return window.ktaEsc(CS.libelle(id)); }).join(", ");
         window.ktaConfirm(msg + "\n\n" + _trModule("session.confirm.calquesEquipe", { calques: noms }), {
           titre:       _t("session.confirm.clearTitle"),
-          okLabel:     _t("session.btn.clearIci"),
+          okLabel:     window.ktaIcone("trash-2") + " " + _t("session.btn.clearIci"),
           cancelLabel: _t("ui.confirm.cancel"),
           autre:       { label: _t("session.btn.clearEquipe"), valeur: "equipe" }
         }).then(function(choix) { if (choix) go(choix === "equipe"); });
       } else {
         window.ktaConfirm(msg, {
           titre:       _t("session.confirm.clearTitle"),
-          okLabel:     _t("session.btn.clear"),
+          okLabel:     window.ktaIcone("trash-2") + " " + _t("session.btn.clear"),
           cancelLabel: _t("ui.confirm.cancel")
         }).then(function(ok) { if (ok) go(false); });
       }
@@ -860,7 +868,7 @@
         planLine +
         '<div class="kta-session-modal-detail">' + parts.join(" · ") + '</div>' +
         '<div class="kta-session-modal-actions">' +
-          '<button class="kta-btn kta-btn-ghost"   type="button" data-action="clear">' + _t("session.btn.clear") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   type="button" data-action="clear">' + window.ktaIcone("trash-2") + ' ' + _t("session.btn.clear") + '</button>' +
           '<button class="kta-btn kta-btn-primary" type="button" data-action="keep">' + _t("session.btn.keep") + '</button>' +
         '</div>' +
       '</div>';
@@ -967,6 +975,7 @@
     // Même piège pour le plan de base masqué à la main (un plan sans session s'ouvrirait sans fond) et pour les
     // traces de suppression du plan précédent.
     if (window._ktaRuntimeFilters) window._ktaRuntimeFilters.planDeBase = null;
+    if (window.KtaUid && typeof window.KtaUid.setTracesCopie === "function") window.KtaUid.setTracesCopie([]);
     if (window.KtaUid) window.KtaUid.setTombstones([]);
 
     const saved = getSaved();

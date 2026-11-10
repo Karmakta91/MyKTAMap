@@ -30,7 +30,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.23.0";
+const CACHE_NAME = "myktamap-cache-v2.24.0";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -254,6 +254,9 @@ const ASSETS_TO_CACHE = [
   "./js/vue3d.js",
   "./lib/three/three.module.js",
   "./lib/three/three.core.js",
+  // Capitales des plaques gravées, chargées par vue3d.js > _chargerPolicePlaques à l'ouverture de la 3D.
+  "./lib/bodoni-moda/bodoni-moda-latin-600-normal.woff2",
+  "./lib/bodoni-moda/bodoni-moda-latin-700-normal.woff2",
   // Add-ons (addons/<nom>/) : jamais listés ici, leurs manifestes disent leurs fichiers (_assetsAddons). Le registre
   // qui les lit est, lui, de l'app.
   "./js/ktaAddons.js",
@@ -261,6 +264,9 @@ const ASSETS_TO_CACHE = [
   "./fonts/montserrat-600.woff2",
   "./fonts/montserrat-800.woff2",
   "./fonts/permanent-marker-400.woff2",
+  // Police « KTA Emoji » (Twemoji réduit aux emoji de l'app, ~47 Ko) : chaque pile font-family l'ouvre.
+  "./css/kta-emoji.css",
+  "./fonts/kta-emoji.woff2",
 
   // JS principaux
   // Splash de démarrage : premier script d'index.html (version, fermeture, plafond)
@@ -325,6 +331,7 @@ const ASSETS_TO_CACHE = [
   "./js/perfUltra.js",
   // pictos au trait partagés (écran Bienvenue, bouton de la vue 3D).
   "./js/ktaPictos.js",
+  "./js/ktaIcones.js",
   // 🎨 Interface refondue. Module no-op si le flag
   // localStorage["myktamap_refonte_v1"] est absent. Précaché pour que le toggle
   // marche aussi hors ligne.

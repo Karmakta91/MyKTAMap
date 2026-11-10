@@ -148,9 +148,13 @@ const capture = async (p, nom) => { if (SHOTS) await p.screenshot({ path: path.j
       const fid = await idDossier(p, "Secteur nord");
       await p.click('.kta-plans-folder-head[data-folder="' + fid + '"] .kta-plans-folder-menu');
       await p.waitForSelector("[data-hors-ligne]", { timeout: 5000 });
-      return p.evaluate(() => document.querySelector("[data-hors-ligne]").textContent);
+      // Icône SVG cloud-download (ktaIcones.js) devant le libellé.
+      return p.evaluate(() => {
+        const el = document.querySelector("[data-hors-ligne]");
+        return (el.querySelector("svg.kta-ico-cloud-download") ? "[cloud-download] " : "") + el.textContent;
+      });
     })();
-    t("menu ⋮ du dossier : bouton « 📥 Tout garder hors ligne »", /📥/.test(bouton) && /hors ligne/.test(bouton));
+    t("menu ⋮ du dossier : bouton « Tout garder hors ligne » (icône cloud-download)", bouton.indexOf("[cloud-download] ") === 0 && /hors ligne/.test(bouton));
     await p.click("[data-hors-ligne]");
     await p.waitForSelector("#kta-dhl-ligne", { timeout: 5000 });
     await capture(p, "dhl-avancement");

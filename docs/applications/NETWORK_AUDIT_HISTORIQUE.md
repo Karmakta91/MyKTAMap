@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.24.0 (icônes au trait, police des emoji, mini-carte en 3D)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Deux polices arrivent avec l'app, comme fichiers du site gardés hors ligne : celle des emoji (`fonts/kta-emoji.woff2`, avec `css/kta-emoji.css`), pour que les emoji aient le même dessin sur tous les appareils, et celle des plaques gravées de la vue 3D (`lib/bodoni-moda/`). Les nouvelles icônes sont dessinées par l'app elle-même. Le journal du mode développeur s'exporte en fichier `.txt` fabriqué sur l'appareil (rien n'est envoyé ; sur iPhone, la feuille de partage du système, c'est toi qui choisis où il va). La mini-carte de la vue 3D, la recherche en 3D, les niveaux voisins et la coupe d'un tracé se calculent sur l'appareil ; les cartes OSM tournées à la main demandent les mêmes tuiles OpenStreetMap, un peu plus nombreuses une fois la carte tournée pour en couvrir les coins.
+
 ### v2.23.0 (édition en vue 3D, point précis, Service Worker)
 
 **Un fichier lu de plus, sur le même site ; aucun domaine nouveau.** Une fois entré dans l'app, elle lit `deploiement.json` (le commit en ligne, écrit par le déploiement ; rien n'est envoyé) : s'il a changé, le cache de l'app se met à jour au chargement suivant, sans attendre une nouvelle version. Le cache n'est plus rempli avant ton entrée dans l'app (« Entrer », code d'accès ou connexion) : un visiteur de l'écran Bienvenue ne stocke que la page. À l'installation, les fichiers déjà en cache sont revalidés (un fichier inchangé ne repart pas), et la liste des fichiers à garder hors ligne lit aussi des manifestes du site (`addons/index.json`, `addons/<nom>/addon.json`). L'édition en vue 3D, le point précis, les raccords à vérifier et l'itinéraire se calculent sur l'appareil.

@@ -41,15 +41,29 @@ function _importPartage() {
   return (K && typeof K.importPartage === "function") ? K.importPartage(window._currentLoadedPlanId) : null;
 }
 
-// Plan partagé : objets d'ici et du fichier au format de KtaUid.preparerImport.
+// Plan partagé : objets d'ici et du fichier au format de KtaUid.preparerImport. Les traces de copie de calque d'ici
+// en font partie (une copie supprimée ici ne revient pas par « Ajouter ») ; _poserTracesImport les range ensuite.
 function _etatImportLocal() {
+  const U = window.KtaUid;
   return {
     data: (window.getEditorPoints && window.getEditorPoints()) || [],
     roads: (window.getRoads && window.getRoads()) || [],
     zones: (window.getZones && window.getZones()) || [],
     structures: (window.getStructures && window.getStructures()) || [],
-    tombstones: window.KtaUid ? window.KtaUid.getTombstones() : []
+    tombstones: U ? U.getTombstones().concat(typeof U.getTracesCopie === "function" ? U.getTracesCopie() : []) : []
   };
+}
+// Traces rendues par preparerImport : 🔒 celle d'un uid de copie de calque (marqué ici AVANT l'import, ou objet d'un
+// fichier de calque du plan) reste une trace de COPIE, jamais dans un fichier — « Remplacer » en pose une sur chaque
+// copie d'ici absente du fichier, que la fusion de calques ferait détruire l'original. `calqueDe` : lu avant l'import.
+function _poserTracesImport(liste, calqueDe) {
+  const U = window.KtaUid;
+  if (typeof U.remplacerTraces === "function") U.remplacerTraces(liste, calqueDe);
+  else U.setTombstones(liste);
+}
+function _calqueDesTracesImport() {
+  const CS = window.CalqueSession;
+  return (CS && typeof CS.calqueDesTraces === "function") ? CS.calqueDesTraces() : null;
 }
 function _etatImportFichier(d) {
   return { data: d.editorPoints || [], roads: d.roads || [], zones: d.zones || [], structures: d.structures || [],
@@ -349,7 +363,7 @@ function ouvrirImportSession(fichierInitial) {
         <div class="kta-conv-champ">
           <label class="kta-conv-label">${window.I18n.t("impexp.session.fileLabel")}</label>
           <div class="kta-conv-drop" id="kta-import-drop">
-            <span id="kta-import-drop-label">${window.I18n.t("impexp.session.dropLabel")}</span>
+            ${window.ktaIcone("folder-open")} <span id="kta-import-drop-label">${window.I18n.t("impexp.session.dropLabel")}</span>
             <input type="file" id="kta-import-file" accept=".json,.zip,application/json,application/zip" style="display:none">
           </div>
         </div>
@@ -693,8 +707,9 @@ function ouvrirImportSession(fichierInitial) {
         let objets = { data: dataParsee.editorPoints || [], roads: dataParsee.roads || [], zones: dataParsee.zones || [],
           structures: dataParsee.structures || [] };
         if (mode) {
+          const calqueDe = _calqueDesTracesImport();
           bilanPartage = window.KtaUid.preparerImport(_etatImportLocal(), _etatImportFichier(dataParsee), mode);
-          window.KtaUid.setTombstones(bilanPartage.tombstones);
+          _poserTracesImport(bilanPartage.tombstones, calqueDe);
           objets = bilanPartage;
         }
         if (window.setEditorPoints)    window.setEditorPoints(objets.data);

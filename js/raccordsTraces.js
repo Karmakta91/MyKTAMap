@@ -481,7 +481,7 @@ window.KtaRaccords = (function () {
     ov.innerHTML =
       '<div class="kta-readme-modal-boite kta-racc-boite" role="dialog" aria-modal="true">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🔗 ' + _esc(_t("raccords.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("link") + ' ' + _esc(_t("raccords.titre")) + '</span>' +
           '<button type="button" class="kta-panneau-close" data-racc="fermer-liste" aria-label="' +
             _esc(_t("raccords.fermer")) + '">✕</button>' +
         '</div>' +

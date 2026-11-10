@@ -108,7 +108,7 @@ const HPR  = fs.readFileSync("js/homeProfile.js", "utf8");
   if (m) {
     const jouer = (kiosque) => {
       const sb = {
-        window: { ktaKiosqueServeurSeul: function () { return kiosque; } },
+        window: { ktaKiosqueServeurSeul: function () { return kiosque; }, ktaIcone: function () { return ""; } },
         _t: function (k) { return k; }
       };
       return vm.runInNewContext("(" + m[0].replace(/\) \+$/, ")") + ")", sb, { filename: "hpr.bouton.js" });

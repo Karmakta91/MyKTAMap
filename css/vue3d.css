@@ -53,6 +53,7 @@
 .kta-v3d-haut > .kta-v3d-urgence { order: 3; }
 .kta-v3d-haut > .kta-aide-ctx-btn { order: 4; }
 .kta-v3d-haut > .kta-v3d-btn-reglages { order: 5; }
+.kta-v3d-haut > .kta-v3d-recherche { order: 6; }
 
 /* Bouton carré : celui de la barre 2D (surface, liseré --kta-bordure, ombre de la barre). */
 .kta-v3d-btn {
@@ -123,7 +124,13 @@ html.kta-theme-light .kta-v3d-mode-indic {
   overscroll-behavior: contain;
 }
 .kta-v3d-reglages > * { flex-shrink: 0; }
+/* 🩸 Les lignes sont des .kta-v3d-btn (`touch-action: none`) et remplissent la tuile : sans ce retour au défilement
+   vertical, le doigt posé sur une ligne ne fait pas défiler, et le bas de la tuile reste hors d'atteinte en paysage. */
+.kta-v3d-reglages .kta-v3d-btn { touch-action: pan-y; }
 .kta-v3d-reglages[hidden] { display: none; }
+/* 🩸 Un bouton de la tuile masqué par `hidden` (🎮 Add-ons sans add-on visible) : le `display: flex` ci-dessous
+   l'emporterait sur l'attribut (même spécificité, plus loin : d'où l'identifiant). */
+#kta-vue3d .kta-v3d-reglages .kta-v3d-btn[hidden] { display: none; }
 .kta-v3d-reglages-ligne { display: flex; gap: 4px; }
 /* Ligne de réglage : celle de la fenêtre ⚙️ Réglages (13 px, gras, rayon 6, liseré discret, survol bleu). */
 .kta-v3d-reglages .kta-v3d-btn.kta-v3d-btn-mode {
@@ -153,7 +160,20 @@ html.kta-theme-light .kta-v3d-mode-indic {
   content: "›"; margin-left: auto; padding-left: 6px; font-size: 18px; line-height: 1; color: var(--kta-texte-3);
 }
 .kta-v3d-reglages .kta-v3d-btn-hauteur[aria-expanded="true"]::after { content: "▾"; font-size: 14px; }
+/* 🏗️ Niveaux montrés : nom sur sa ligne, trois choix exclusifs dessous, en pastilles rondes (un seul pressé). */
+.kta-v3d-reglages-ligne.kta-v3d-niveaux-vus { flex-wrap: wrap; }
+.kta-v3d-reglages-ligne.kta-v3d-niveaux-vus[hidden] { display: none; }
+.kta-v3d-niveaux-vus-nom {
+  flex: 1 0 100%; padding: 2px 2px 0; font-size: 13px; font-weight: 600; color: var(--kta-texte);
+}
+.kta-v3d-reglages .kta-v3d-btn-niveaux { padding: 6px 8px; gap: 6px; }
+.kta-v3d-reglages .kta-v3d-btn-niveaux[aria-pressed]::before { border-radius: 50%; }
+.kta-v3d-reglages .kta-v3d-btn-niveaux[aria-pressed="true"]::before {
+  content: ""; box-shadow: inset 0 0 0 3px var(--kta-surface);
+}
 .kta-v3d-btn-icone { width: 18px; height: 18px; flex: 0 0 auto; vertical-align: middle; }
+span.kta-v3d-btn-icone { display: inline-flex; align-items: center; justify-content: center; }
+.kta-v3d-btn-icone > .kta-ico { width: 18px; height: 18px; }
 /* Portée, intensité et faisceau de la lampe : nom, curseur, valeur (vue3d.js > _majCurseur) sur une ligne ; noms
    d'une même largeur, les trois curseurs alignés. */
 .kta-v3d-curseur { display: flex; align-items: center; gap: 8px; min-height: var(--kta-v3d-cible); padding: 0 10px; }
@@ -163,7 +183,6 @@ html.kta-theme-light .kta-v3d-mode-indic {
 }
 .kta-v3d-curseur-champ:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
 .kta-v3d-curseur-valeur { min-width: 52px; text-align: right; font-size: 13px; font-weight: 600; }
-.kta-v3d-btn-emoji { display: inline-block; font-size: 16px; line-height: 18px; text-align: center; }
 /* Mode suivi / libre, hors de la tuile : pastille discrète en haut à gauche, non touchable, à la taille et à la
    hauteur des boutons de la rangée du haut. */
 .kta-v3d-mode-indic {
@@ -234,6 +253,14 @@ html.kta-theme-light .kta-v3d-mode-indic {
   padding: 12px 12px 10px; border-radius: 12px; border: 1px solid var(--kta-accent);
   background: var(--kta-surface); color: var(--kta-texte); user-select: text; -webkit-user-select: text;
 }
+/* 🩸 La colonne d'outils de la vue d'édition (.kta-v3d-outils, posée avant la fiche) occupe le même bord droit, au
+   rang des contrôles Leaflet (800) : elle recouvrait le bord de la fiche (✕, Favori). La fiche se range à sa gauche
+   et les deux restent utilisables. --kta-v3d-fiche-droite = place de la colonne (bord + largeur) + 8 px ; repris par
+   les deux placements de la colonne en paysage bas (plus bas). Garde-fou : checkup-vue-3d.js > sectionColonneEdition. */
+#kta-vue3d .kta-v3d-outils:not([hidden]) ~ .kta-v3d-fiche {
+  --kta-v3d-fiche-droite: calc(10px + var(--kta-v3d-taille) + 8px);
+  right: var(--kta-v3d-fiche-droite); width: min(360px, calc(100% - 10px - var(--kta-v3d-fiche-droite)));
+}
 .kta-v3d-fiche .kta-v3d-fiche-fermer { position: sticky; top: 0; float: right; margin: 0 0 6px 8px; }
 .kta-v3d-fiche-corps { font-size: 14px; line-height: 1.45; }
 /* Fiche d'un objet (structure, zone, tracé) : la fiche de la carte (utils.js > attacherNotePopup) dans la boîte de la
@@ -299,6 +326,39 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 }
 .kta-v3d-rose { width: 56px; height: 56px; }
 
+/* Mini-carte (vue3d.js > _majMiniCarte) : médaillon rond en haut à droite, SOUS la rangée du haut et le bandeau de
+   guidage visible (--kta-v3d-sous-haut, vue3d.js > _majSousHaut) : elle suit le bandeau qui apparaît, grandit ou
+   disparaît, et ne le recouvre jamais. Taille : 30 % du petit côté (96 à 150 px), réduite à la hauteur qui reste
+   au-dessus des commandes du bas (petit téléphone, bandeau haut), 64 px au moins. Agrandie (un toucher) : au centre
+   de la place entre le bandeau et les commandes du bas (96 px), sans recouvrir ni l'un ni les autres. Le fond du canvas est celui de la scène (toujours sombre, comme les panneaux de POI).
+   ⚠️ contrat : `touch-action: none` (un glisser ne fait ni défiler ni zoomer la page) ; ses gestes n'atteignent
+   jamais la scène (vue3d.js > _brancherMiniCarte). */
+.kta-v3d-minicarte {
+  --kta-v3d-mc-reste: calc(100vh - var(--kta-v3d-sous-haut, 80px) - 220px);
+  --kta-v3d-mc: max(64px, min(clamp(96px, 30vmin, 150px), var(--kta-v3d-mc-reste)));
+  position: absolute; top: var(--kta-v3d-sous-haut, 80px); right: 10px;
+  width: var(--kta-v3d-mc); height: var(--kta-v3d-mc); margin: 0; padding: 0; box-sizing: border-box;
+  border-radius: 50%; border: 2px solid color-mix(in srgb, var(--kta-accent) 55%, transparent);
+  background: var(--kta-fond); box-shadow: var(--kta-v3d-ombre); overflow: hidden; cursor: pointer;
+  touch-action: none; -webkit-tap-highlight-color: transparent;
+}
+@supports (height: 100dvh) {
+  .kta-v3d-minicarte { --kta-v3d-mc-reste: calc(100dvh - var(--kta-v3d-sous-haut, 80px) - 220px); }
+}
+.kta-v3d-minicarte[hidden] { display: none; }
+.kta-v3d-minicarte:focus-visible { outline: 2px solid var(--kta-interaction); outline-offset: 2px; }
+.kta-v3d-minicarte.kta-v3d-minicarte-grande {
+  --kta-v3d-mc-haut: calc(100vh - var(--kta-v3d-sous-haut, 80px) - 96px);
+  --kta-v3d-mc: max(64px, min(86vw, calc(var(--kta-v3d-mc-haut) - 16px), 480px));
+  top: calc(var(--kta-v3d-sous-haut, 80px) + (var(--kta-v3d-mc-haut) - var(--kta-v3d-mc)) / 2);
+  right: auto; left: 50%; transform: translateX(-50%);
+  border-color: var(--kta-accent);
+}
+@supports (height: 100dvh) {
+  .kta-v3d-minicarte.kta-v3d-minicarte-grande { --kta-v3d-mc-haut: calc(100dvh - var(--kta-v3d-sous-haut, 80px) - 96px); }
+}
+.kta-v3d-minicarte-canvas { display: block; width: 100%; height: 100%; pointer-events: none; }
+
 /* Passage vers un autre niveau (🪜 près d'un POI jonction ou d'un bout de tracé jonction, mode libre) : à gauche, au
    milieu ; ▲ / ▼ ou la liste des niveaux liés, écrits en clair. */
 .kta-v3d-niveaux {
@@ -336,14 +396,19 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 }
 .kta-v3d-bandeau-niveau[hidden] { display: none; }
 
-/* Dessin depuis la vue d'édition (vue3d.js > _monterOutils) : 📐 🛣️ ⬛ 🏛️ 🗺️, les boutons de la barre de droite 2D
+/* Dessin depuis la vue d'édition (vue3d.js > _monterOutils) : ▾ 🗺️ 🧭 📐 ✏️ 🛣️ ⬛ 🏛️, les boutons de la barre de droite 2D
    (.leaflet-bar a, leur taille et leurs états : style.css), en colonne à droite, au milieu. Le panneau d'un groupe
    (interface.js > ktaOuvrirOutils) passe au rang de la vue, posé après elle : au-dessus.
    🩸 En paysage bas, style.css passe toute .leaflet-bar en `display: flex !important` (pilules de la barre 2D) : sans
    l'id et !important, `hidden` ne cachait plus la colonne (outils visibles à hauteur d'yeux et pendant le jeu). */
+/* Sous la rangée du haut et le bandeau (décision produit), défile si elle ne tient pas. */
 .kta-v3d-outils {
-  position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin: 0; clear: none; float: none;
+  position: absolute; right: 10px; top: var(--kta-v3d-sous-haut, 80px); margin: 0; clear: none; float: none;
+  max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - max(14px, env(safe-area-inset-bottom)));
+  overflow-y: auto;
 }
+/* Repliée (▾ / ◂, _plierOutils) : seul le bouton de repli reste. */
+#kta-vue3d .kta-v3d-outils.kta-v3d-outils-plie > a:not(.kta-v3d-outils-plier) { display: none !important; }
 #kta-vue3d .kta-v3d-outils[hidden], #kta-vue3d .kta-v3d-outils a[hidden] { display: none !important; }
 /* ⚠️ contrat (décision produit) : la colonne reste VERTICALE en paysage bas aussi. style.css y met toute .leaflet-bar
    en ligne (pilules horizontales de la barre 2D) : l'id et !important l'emportent, comme le zoom. Trop haute pour le
@@ -358,22 +423,34 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
     max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - max(14px, env(safe-area-inset-bottom)));
     overflow-y: auto;
   }
+  #kta-vue3d .kta-v3d-outils:not([hidden]) ~ .kta-v3d-fiche {
+    --kta-v3d-fiche-droite: calc(10px + 3 * var(--kta-v3d-taille) + var(--kta-v3d-ecart) + 16px);
+  }
 }
 /* ⚠️ contrat (décision produit) : au doigt en paysage bas (téléphone couché), la colonne est contre le BORD DROIT,
    alignée sur ✕ et la grille + − ▲ ▼, entre la rangée du haut et ⌖. Haut : 7 px sous --kta-v3d-sous-haut (lui-même
    8 px sous la rangée ou le bandeau). Bas : 15 px au-dessus de la place de ⌖, toujours réservée (il apparaît quand
    la caméra se détache : la colonne ne change pas de taille), liseré compris (border-box). Ces écarts tiennent
-   séparées les zones de toucher de 44 px de la colonne, de la rangée et de ⌖. Boutons à 28 px (au lieu de 30) : les
-   six tiennent sur un iPhone couché (390 px de haut) ; ce qui ne tient pas défile (bandeau de guidage montré, petit
-   téléphone). Les panneaux des POI ne sont pas des commandes : ils peuvent passer dessous. Garde-fou :
+   séparées les zones de toucher de 44 px de la colonne, de la rangée et de ⌖. Boutons à 25 px (au lieu de 30), ▾ à
+   14 px : les huit tiennent sur un iPhone couché (390 px de haut, safe areas comprises) ; ce qui ne tient pas
+   défile (bandeau de guidage montré, petit téléphone). Les panneaux des POI ne sont pas des commandes : ils peuvent
+   passer dessous. Garde-fou :
    scripts/smoke/checkup-vue-3d.js > sectionColonnePaysage. */
 @media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
   #kta-vue3d .kta-v3d-outils {
-    --kta-barre-bouton: 28px; box-sizing: border-box;
+    --kta-barre-bouton: 25px; box-sizing: border-box;
     top: calc(var(--kta-v3d-sous-haut, 80px) + 7px);
     right: calc(10px + env(safe-area-inset-right, 0px));
     max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - 7px - max(14px, env(safe-area-inset-bottom))
       - 3 * var(--kta-v3d-taille) - 2 * var(--kta-v3d-ecart) - 15px);
+  }
+  /* ▾ / ◂ n'est qu'un chevron : bas (14 px), pour que les huit tiennent ; sa zone de toucher reste à 44 px. */
+  #kta-vue3d .kta-v3d-outils > a.kta-v3d-outils-plier {
+    height: 14px !important; min-height: 0 !important; line-height: 14px !important; font-size: 11px;
+  }
+  /* Colonne de 25 px + liseré (27 px), contre le bord droit. */
+  #kta-vue3d .kta-v3d-outils:not([hidden]) ~ .kta-v3d-fiche {
+    --kta-v3d-fiche-droite: calc(10px + env(safe-area-inset-right, 0px) + 27px + 8px);
   }
 }
 /* Zone de toucher de 44 px (--kta-cible-toucher), comme la rangée du haut : on joue au doigt. Les zones de deux
@@ -396,6 +473,9 @@ html.kta-vue3d-ouverte .kta-group-flyout, html.kta-vue3d-ouverte .kta-group-flyo
   content: ""; position: absolute; inset: calc((var(--kta-v3d-taille) - 2px - var(--kta-v3d-cible)) / 2);
 }
 .kta-v3d-place[hidden] { display: none; }
+/* Grille cachée (case « Boutons de zoom » décochée, config.js > ktaBoutonsZoom) : ⌖ prend sa place en bas à droite.
+   ⚠️ contrat : ⌖ suit la grille dans le DOM (vue3d.js, construction des boutons du bas), sinon `~` ne l'atteint pas. */
+.kta-v3d-incl[hidden] ~ .kta-v3d-btn.kta-v3d-place { bottom: max(14px, env(safe-area-inset-bottom)); }
 /* Vue plongeante (décision produit) : le joystick n'occupe que le coin bas gauche, au-dessus de la boussole ;
    ailleurs, un doigt déplace la caméra. */
 .kta-vue3d.kta-v3d-edition .kta-v3d-stick-zone { top: auto; height: 180px; width: min(50%, 200px); }

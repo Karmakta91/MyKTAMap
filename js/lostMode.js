@@ -26,11 +26,12 @@
 
   // Presets alignés sur ceux de l'itinéraire (mêmes km/h, mêmes libellés) ; libellés résolus AU RENDU
   // (_presetLabel/_presetHint → lost.preset.<key>.*).
+  // `ico` : icône SVG de la fenêtre (celle de l'itinéraire) ; `icon` : emoji du rapport copié (texte produit).
   const LOST_MODE_PRESETS = {
-    blesse:  { kmh: 2, icon: "🤕" },
-    lente:   { kmh: 3, icon: "🐌" },
-    normale: { kmh: 5, icon: "🚶" },
-    rapide:  { kmh: 7, icon: "🏃" }
+    blesse:  { kmh: 2, icon: "🤕", ico: "bandage" },
+    lente:   { kmh: 3, icon: "🐌", ico: "snail" },
+    normale: { kmh: 5, icon: "🚶", ico: "person-standing" },
+    rapide:  { kmh: 7, icon: "🏃", ico: "rabbit" }
   };
   const DEFAULT_LOST_PRESET     = "lente";
   const LOST_PRESET_STORAGE_KEY = "myktamap_lost_preset";
@@ -741,7 +742,7 @@
     if (_zoneLayer !== null) {
       _afficherResultats();
       const calc = document.getElementById("kta-lost-calc");
-      if (calc) calc.textContent = _t("lost.btn.recalc");
+      if (calc) calc.innerHTML = window.ktaIcone("refresh-cw") + " " + _esc(_t("lost.btn.recalc"));
     }
   }
 
@@ -756,16 +757,16 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-lost-modal-boite">' +
         '<div class="kta-readme-modal-header kta-lost-header">' +
-          '<span class="kta-readme-modal-titre">' + _t("lost.modal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("life-buoy") + " " + _t("lost.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-lost-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
 
           '<details class="kta-lost-pratiques">' +
-            '<summary class="kta-lost-pratiques-titre">' + _t("lost.tips.summary") + '</summary>' +
+            '<summary class="kta-lost-pratiques-titre">' + window.ktaIcone("lightbulb") + " " + _t("lost.tips.summary") + '</summary>' +
             '<div class="kta-lost-pratiques-corps">' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.calme.titre") + '</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + window.ktaIcone("heart") + " " + _t("lost.tips.calme.titre") + '</div>' +
                 '<ul>' +
                   '<li>' + _t("lost.tips.calme.1") + '</li>' +
                   '<li>' + _t("lost.tips.calme.2") + '</li>' +
@@ -773,7 +774,7 @@
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.orient.titre") + '</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + window.ktaIcone("compass") + " " + _t("lost.tips.orient.titre") + '</div>' +
                 '<ul>' +
                   '<li>' + _t("lost.tips.orient.1") + '</li>' +
                   '<li>' + _t("lost.tips.orient.2") + '</li>' +
@@ -782,7 +783,7 @@
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.lumiere.titre") + '</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + window.ktaIcone("flashlight") + " " + _t("lost.tips.lumiere.titre") + '</div>' +
                 '<ul>' +
                   '<li>' + _t("lost.tips.lumiere.1") + '</li>' +
                   '<li>' + _t("lost.tips.lumiere.2") + '</li>' +
@@ -790,14 +791,14 @@
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.comm.titre") + '</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + window.ktaIcone("radio") + " " + _t("lost.tips.comm.titre") + '</div>' +
                 '<ul>' +
                   '<li>' + _t("lost.tips.comm.1") + '</li>' +
                   '<li>' + _t("lost.tips.comm.2") + '</li>' +
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat">' +
-                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.attendre.titre") + '</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + window.ktaIcone("timer") + " " + _t("lost.tips.attendre.titre") + '</div>' +
                 '<ul>' +
                   '<li>' + _t("lost.tips.attendre.1") + '</li>' +
                   '<li>' + _t("lost.tips.attendre.2") + '</li>' +
@@ -805,7 +806,7 @@
                 '</ul>' +
               '</div>' +
               '<div class="kta-lost-pratique-cat kta-lost-pratique-warn">' +
-                '<div class="kta-lost-pratique-cat-titre">' + _t("lost.tips.nepas.titre") + '</div>' +
+                '<div class="kta-lost-pratique-cat-titre">' + window.ktaIcone("triangle-alert") + " " + _t("lost.tips.nepas.titre") + '</div>' +
                 '<ul>' +
                   '<li>' + _t("lost.tips.nepas.1") + '</li>' +
                   '<li>' + _t("lost.tips.nepas.2") + '</li>' +
@@ -816,18 +817,18 @@
           '</details>' +
 
           '<div class="kta-lost-section">' +
-            '<div class="kta-lost-section-titre">' + _t("lost.section.position") + '</div>' +
+            '<div class="kta-lost-section-titre">' + window.ktaIcone("map-pin") + " " + _t("lost.section.position") + '</div>' +
             '<div class="kta-lost-pos-tabs">' +
               '<input id="kta-lost-search" class="kta-lost-search" type="text" placeholder="' + _t("lost.search.placeholder") + '" autocomplete="off">' +
-              '<button class="kta-btn kta-btn-ghost" id="kta-lost-click-mode" type="button">' + _t("lost.btn.clickMap") + '</button>' +
-              '<button class="kta-btn kta-btn-ghost" id="kta-lost-use-tracker" type="button">' + _t("lost.btn.tracker") + '</button>' +
+              '<button class="kta-btn kta-btn-ghost" id="kta-lost-click-mode" type="button">' + window.ktaIcone("mouse-pointer-click") + " " + _t("lost.btn.clickMap") + '</button>' +
+              '<button class="kta-btn kta-btn-ghost" id="kta-lost-use-tracker" type="button">' + window.ktaIcone("navigation") + " " + _t("lost.btn.tracker") + '</button>' +
             '</div>' +
             '<div class="kta-lost-search-results" id="kta-lost-search-results"></div>' +
             '<div class="kta-lost-pos-display" id="kta-lost-pos-display">' + _t("lost.pos.none") + '</div>' +
           '</div>' +
 
           '<div class="kta-lost-section">' +
-            '<div class="kta-lost-section-titre">' + _t("lost.section.temps") + '</div>' +
+            '<div class="kta-lost-section-titre">' + window.ktaIcone("timer") + " " + _t("lost.section.temps") + '</div>' +
             '<div class="kta-lost-slider-row">' +
               '<input id="kta-lost-elapsed" type="range" min="1" max="' + MAX_ELAPSED_MIN + '" value="' + DEFAULT_ELAPSED_MIN + '" class="kta-lost-slider">' +
               '<input id="kta-lost-elapsed-num" type="number" min="1" max="' + MAX_ELAPSED_MIN + '" value="' + DEFAULT_ELAPSED_MIN + '" class="kta-lost-num"> ' + _t("lost.unit.min") +
@@ -835,7 +836,7 @@
           '</div>' +
 
           '<div class="kta-lost-section">' +
-            '<div class="kta-lost-section-titre">' + _t("lost.section.vitesse") + '</div>' +
+            '<div class="kta-lost-section-titre">' + window.ktaIcone("footprints") + " " + _t("lost.section.vitesse") + '</div>' +
             (function() {
               // 4 presets, mêmes valeurs que l'itinéraire ; rayon = vitesse × temps.
               let html = '<div class="kta-lost-preset-segmented" id="kta-lost-preset-segmented">';
@@ -847,7 +848,7 @@
                   '<button type="button" class="kta-lost-preset-btn' + (active ? " kta-lost-preset-active" : "") + '" ' +
                     'data-preset="' + key + '" ' +
                     'title="' + lbl + ' — ' + p.kmh + ' km/h. ' + _presetHint(key) + '">' +
-                    '<span class="kta-lost-preset-icon">' + p.icon + '</span>' +
+                    '<span class="kta-lost-preset-icon">' + window.ktaIcone(p.ico) + '</span>' +
                     '<span class="kta-lost-preset-label">' + lbl + '</span>' +
                     '<span class="kta-lost-preset-meta">' + p.kmh + ' km/h</span>' +
                   '</button>';
@@ -861,13 +862,13 @@
           '</div>' +
 
           '<div class="kta-lost-section">' +
-            '<div class="kta-lost-section-titre">' + _t("lost.section.indices") + '</div>' +
+            '<div class="kta-lost-section-titre">' + window.ktaIcone("eye") + " " + _t("lost.section.indices") + '</div>' +
             '<textarea id="kta-lost-clues" class="kta-lost-clues" placeholder="' + _t("lost.indices.placeholder") + '"></textarea>' +
           '</div>' +
 
           '<div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">' +
-            '<button class="kta-btn kta-btn-ghost"   id="kta-lost-fermer"   type="button" style="flex:1 1 130px;" title="' + _t("lost.btn.fermerTitle") + '">' + _t("lost.btn.fermer") + '</button>' +
-            '<button class="kta-btn kta-btn-primary" id="kta-lost-calc"     type="button" style="flex:2 1 200px;">' + _t("lost.btn.calc") + '</button>' +
+            '<button class="kta-btn kta-btn-ghost"   id="kta-lost-fermer"   type="button" style="flex:1 1 130px;" title="' + _t("lost.btn.fermerTitle") + '">' + window.ktaIcone("x") + " " + _t("lost.btn.fermer") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" id="kta-lost-calc"     type="button" style="flex:2 1 200px;">' + window.ktaIcone("locate-fixed") + " " + _t("lost.btn.calc") + '</button>' +
           '</div>' +
           '<p style="font-size:11.5px; color:var(--kta-texte-3); margin:8px 0 0; line-height:1.45; font-style:italic;">' +
             _t("lost.fermer.hint") +
@@ -1009,7 +1010,7 @@
         window.ktaAlerte(e.message || e, { type: "erreur" });
       } finally {
         btn.disabled = false;
-        btn.textContent = _t("lost.btn.recalc");
+        btn.innerHTML = window.ktaIcone("refresh-cw") + " " + _esc(_t("lost.btn.recalc"));
       }
     });
 
@@ -1038,12 +1039,12 @@
     box.style.display = "";
 
     let html = '<div class="kta-lost-section">';
-    html += '<div class="kta-lost-section-titre">' + _t("lost.results.zone.titre") + '</div>';
-    const pres = LOST_MODE_PRESETS[_currentPreset] || { icon: "?" };
+    html += '<div class="kta-lost-section-titre">' + window.ktaIcone("square-dashed") + " " + _t("lost.results.zone.titre") + '</div>';
+    const pres = LOST_MODE_PRESETS[_currentPreset] || LOST_MODE_PRESETS[DEFAULT_LOST_PRESET];
     html += '<div class="kta-lost-stat">' +
             _t("lost.results.zone.rayon", { radius: _formatDist(_radiusPx) }) + ' ' +
             '<span class="kta-lost-stat-detail">' +
-              '<span class="kta-lost-stat-preset">' + pres.icon + ' ' + _presetLabel(_currentPreset) + '</span> ' +
+              '<span class="kta-lost-stat-preset">' + window.ktaIcone(pres.ico) + ' ' + _presetLabel(_currentPreset) + '</span> ' +
               '· ' + _t("lost.results.zone.detail", { speed: _speedKmH, m: _elapsedMinutes }) +
             '</span></div>';
     if (_zoneOverflow) {
@@ -1055,7 +1056,7 @@
     html += '</div>';
 
     html += '<div class="kta-lost-section">';
-    html += '<div class="kta-lost-section-titre">' + _t("lost.results.indices.titre", { n: _matches.length }) + '</div>';
+    html += '<div class="kta-lost-section-titre">' + window.ktaIcone("eye") + " " + _t("lost.results.indices.titre", { n: _matches.length }) + '</div>';
     if (_matches.length === 0) {
       const aucunIndiceSaisi = !_lastClues || _lastClues.trim().length === 0;
       if (aucunIndiceSaisi) {
@@ -1088,7 +1089,7 @@
 
     if (_refinedLoc) {
       html += '<div class="kta-lost-section kta-lost-refined-box">';
-      html += '<div class="kta-lost-section-titre">' + _t("lost.results.refined.titre") + '</div>';
+      html += '<div class="kta-lost-section-titre">' + window.ktaIcone("locate-fixed") + " " + _t("lost.results.refined.titre") + '</div>';
       html += '<div class="kta-lost-stat">' +
               _t("lost.results.refined.bary", {
                 n: _refinedLoc.count,
@@ -1099,19 +1100,19 @@
     }
 
     html += '<div class="kta-lost-actions">' +
-              '<button class="kta-btn kta-btn-ghost"   id="kta-lost-copy"    type="button">' + _t("lost.btn.copyReport") + '</button>' +
-              '<button class="kta-btn kta-btn-primary" id="kta-lost-confirm" type="button">' + _t("lost.btn.confirm") + '</button>' +
+              '<button class="kta-btn kta-btn-ghost"   id="kta-lost-copy"    type="button">' + window.ktaIcone("copy") + " " + _t("lost.btn.copyReport") + '</button>' +
+              '<button class="kta-btn kta-btn-primary" id="kta-lost-confirm" type="button">' + window.ktaIcone("check") + " " + _t("lost.btn.confirm") + '</button>' +
             '</div>' +
             // Lancer un plan de secours pré-rempli (dernier point, zone, temps écoulé).
             '<div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,140,140,0.20);">' +
               '<button class="kta-btn kta-btn-danger" id="kta-lost-launch-secours" type="button" ' +
                 'style="background:rgba(255,68,68,0.85); color:#fff; border:1px solid #ff4444;" ' +
                 'title="' + _t("lost.btn.secoursTitle") + '">' +
-                _t("lost.btn.secours") +
+                window.ktaIcone("ambulance") + " " + _t("lost.btn.secours") +
               '</button>' +
             '</div>' +
             '<div style="text-align:center; margin-top:8px;">' +
-              '<button class="kta-btn-link kta-update-link-danger" id="kta-lost-wipe" type="button" title="' + _t("lost.btn.wipeTitle") + '">' + _t("lost.btn.wipe") + '</button>' +
+              '<button class="kta-btn-link kta-update-link-danger" id="kta-lost-wipe" type="button" title="' + _t("lost.btn.wipeTitle") + '">' + window.ktaIcone("trash-2") + " " + _t("lost.btn.wipe") + '</button>' +
             '</div>';
 
     box.innerHTML = html;
@@ -1122,10 +1123,11 @@
       try {
         // utils.js : clipboard puis repli execCommand (HTTP local).
         if (!(await window.ktaCopierTexte(txt))) throw new Error("clipboard + execCommand KO");
-        const original = btn.textContent;
+        // innerHTML : l'icône du bouton revient avec son libellé.
+        const original = btn.innerHTML;
         btn.textContent = _t("lost.btn.copied");
         // setTimeout suivi : annulé si la modale ferme avant 1,5 s.
-        const restoreFn = function() { if (btn.isConnected) btn.textContent = original; };
+        const restoreFn = function() { if (btn.isConnected) btn.innerHTML = original; };
         if (_lc) _lc.setTimeout(restoreFn, 1500);
         else     setTimeout(restoreFn, 1500); // lint-ok-modal-lifecycle (fallback si _lc null)
       } catch(e) {

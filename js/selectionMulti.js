@@ -5,10 +5,11 @@
  */
 
 // =====================================================================
-// selectionMulti.js — sélectionner N objets d'un coup : conversion (KtaConvertir) ou suppression en lot
+// selectionMulti.js — sélectionner N objets d'un coup : conversion (KtaConvertir), suppression ou niveau en lot
 // =====================================================================
 // La modale de conversion ouvre ce mode ; l'utilisateur désigne des objets (clic, « tous du type », ou
-// ✏️ zone dessinée : js/selectionZone.js), puis ✅ Convertir (la modale revient avec le lot) ou 🗑️ Supprimer.
+// ✏️ zone dessinée : js/selectionZone.js), puis ✅ Convertir (la modale revient avec le lot), 🗑️ Supprimer ou
+// 🏗️ Niveau (plan à plusieurs niveaux seulement : tout le lot, jonctions écartées et comptées).
 // Sans graine (ouvrirZone : bouton « ✏️ Par zone » des modes « supprimer au clic ») : aucune ouverture imposée,
 //   ✅ Convertir masqué (pas de modale qui attend le lot), le tracé de la zone démarre tout de suite.
 // 🩸 La compatibilité est l'OUVERTURE, pas la famille : tracés et fronts (lignes) se mêlent ;
@@ -77,7 +78,8 @@
   // ── Lecture des trois familles ───────────────────────
   // `itinerary` = trajet CALCULÉ, pas une donnée du relevé : exclu comme source aussi. `jonction` : ses niveaux
   // reliés ne survivent pas à une conversion (la fiche ne la propose pas ; KtaConvertir.convertirLot la saute aussi).
-  const EXCLUS = { itinerary: true, jonction: true };
+  // `pente` (zone jonction) : traitée comme le tracé jonction (décision produit), ses deux niveaux vivent dans sa fiche.
+  const EXCLUS = { itinerary: true, jonction: true, pente: true };
 
   function _lire(famille) {
     const g = { roads: "getRoads", zones: "getZones", structures: "getStructures" }[famille];
@@ -155,6 +157,7 @@
   let _floater = null;
   let _onValide = null;
   let _calque = [];              // objets de calque vus dans les zones (ignorés, comptés à la confirmation)
+  let _jonctions = [];           // jonctions vues dans les zones (jamais dans le lot, comptées par 🏗️ Niveau)
   let _familles = null;          // familles cochées d'emblée dans la confirmation (null = toutes)
 
   function _dansSel(obj) {
@@ -224,18 +227,26 @@
     if (ok && !_onValide) ok.style.display = "none";
     if (ok) {
       const nc = _convertibles().length;
-      ok.textContent = _t("selm.valider", { n: nc });
+      ok.innerHTML = window.ktaIcone("check") + " " + window.ktaEsc(_t("selm.valider", { n: nc }));
       ok.disabled = nc === 0;
+    }
+    const niv = _floater.querySelector("#kta-selm-niveau");
+    if (niv) {
+      // Plan à un niveau (ou liste refusée pendant un dessin) : pas de bouton.
+      if (!_niveauxProposes()) niv.style.display = "none";
+      niv.innerHTML = window.ktaIcone("m-niveaux") + " " + window.ktaEsc(_t("selm.niveau.bouton", { n: _sel.length }));
+      niv.disabled = _sel.length === 0;
     }
     const sup = _floater.querySelector("#kta-selm-suppr");
     if (sup) {
-      sup.textContent = _t("selm.supprimer", { n: _sel.length });
+      sup.innerHTML = window.ktaIcone("trash-2") + " " + window.ktaEsc(_t("selm.supprimer", { n: _sel.length }));
       sup.disabled = _sel.length === 0;
     }
     const tous = _floater.querySelector("#kta-selm-tous");
     if (tous) {
       if (_dernier) {
-        tous.textContent = _t("selm.tousDuType", { type: _libelleType(_dernier.famille, _dernier.obj.type) });
+        tous.innerHTML = window.ktaIcone("plus") + " " +
+          window.ktaEsc(_t("selm.tousDuType", { type: _libelleType(_dernier.famille, _dernier.obj.type) }));
       } else {
         tous.style.display = "none";
       }
@@ -277,6 +288,7 @@
       n++;
     });
     let nc = 0;
+    (r.jonctions || []).forEach(function (j) { if (_jonctions.indexOf(j) < 0) _jonctions.push(j); });
     r.calque.forEach(function (c) {
       if (_calque.some(function (x) { return x.ref === c.ref; })) return;
       _calque.push(c);
@@ -299,6 +311,20 @@
     });
   }
 
+  function _niveauxProposes() {
+    const c = window.APP_CONFIG || {};
+    return typeof window.ktaNiveauxProposes === "function" &&
+      !!window.ktaNiveauxProposes(Number.isInteger(c.activeLevel) ? c.activeLevel : 0);
+  }
+
+  function _changerNiveau() {
+    if (!window.KtaSelectionZone || !_sel.length) return;
+    window.KtaSelectionZone.confirmerEtChangerNiveau(_sel.slice(), _calque.length, _jonctions.length,
+      _familles ? { familles: _familles } : undefined).then(function (bilan) {
+      if (bilan && bilan.changes) fermer();
+    });
+  }
+
   // ── Ouverture / fermeture ────────────────────────────
   function fermer() {
     if (!_actif) return;
@@ -315,6 +341,7 @@
     _floater = null;
     _sel = [];
     _calque = [];
+    _jonctions = [];
     _dernier = null;
     _ouvertRef = null;
     _onValide = null;
@@ -384,11 +411,12 @@
     // (pas de popup d'annotation, clic ré-émis en capture même sur un layer interactif).
     _floater.className = "kta-iti-floater kta-selm-floater";
     _floater.innerHTML =
-      '<span class="kta-iti-floater-icon">🎯</span>' +
+      '<span class="kta-iti-floater-icon">' + window.ktaIcone("crosshair") + '</span>' +
       '<span class="kta-iti-floater-msg kta-selm-msg"></span>' +
       '<button class="kta-btn kta-btn-ghost" id="kta-selm-tous" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-ghost" id="kta-selm-zone" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-primary" id="kta-selm-ok" type="button" data-selm-mode="sel"></button>' +
+      '<button class="kta-btn kta-btn-ghost" id="kta-selm-niveau" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-danger" id="kta-selm-suppr" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-ghost" id="kta-selm-annuler" type="button" data-selm-mode="sel"></button>' +
       '<button class="kta-btn kta-btn-primary" id="kta-selm-zone-ok" type="button" data-selm-mode="zone"></button>' +
@@ -400,6 +428,11 @@
      ["#kta-selm-zone-annuler", "selm.zone.annuler"]].forEach(function (b) {
       _floater.querySelector(b[0]).textContent = _t(b[1]);
     });
+    // Icônes SVG (ktaIcones.js) devant les libellés posés en texte : Sélectionner par zone (la même que « Par zone »
+    // des outils d'effacement), Prendre la zone, Dernier sommet.
+    _floater.querySelector("#kta-selm-zone").insertAdjacentHTML("afterbegin", window.ktaIcone("square-dashed") + " ");
+    _floater.querySelector("#kta-selm-zone-ok").insertAdjacentHTML("afterbegin", window.ktaIcone("check") + " ");
+    _floater.querySelector("#kta-selm-zone-retour").insertAdjacentHTML("afterbegin", window.ktaIcone("undo-2") + " ");
     _floater.querySelector("#kta-selm-tous").addEventListener("click", _ajouterTousDuType);
     _floater.querySelector("#kta-selm-annuler").addEventListener("click", fermer);
     _floater.querySelector("#kta-selm-zone").addEventListener("click", _commencerZone);
@@ -410,6 +443,7 @@
     });
     _floater.querySelector("#kta-selm-zone-annuler").addEventListener("click", _abandonnerZone);
     _floater.querySelector("#kta-selm-suppr").addEventListener("click", _supprimer);
+    _floater.querySelector("#kta-selm-niveau").addEventListener("click", _changerNiveau);
     _floater.querySelector("#kta-selm-ok").addEventListener("click", function () {
       const lot = _convertibles();
       const cb = _onValide;

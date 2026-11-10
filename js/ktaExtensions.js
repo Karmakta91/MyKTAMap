@@ -249,7 +249,8 @@
           mini = document.createElement("span");
           mini.className = "kta-cnx-mini";
           mini.setAttribute("aria-hidden", "true");
-          mini.textContent = "🔌";
+          // Icône SVG de la connexion (ktaIcones.js) ; le point d'état vient du CSS (::after).
+          if (typeof window.ktaIcone === "function") mini.innerHTML = window.ktaIcone("plug");
           toggle.appendChild(document.createTextNode(" · "));
           toggle.appendChild(mini);
         }
@@ -346,7 +347,7 @@
     if (ext.actionsObjet || ext.infoObjet) _observerFiches();
     if (ext.etatObjet) setTimeout(rafraichirEtats, 0);
     console.log("[Extensions] « " + ext.nom + " » déclarée (prises : " +
-      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut", "suppressionLot"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
+      ["gate", "plans", "importAutorise", "exportAutorise", "publierPlan", "publierVersion", "compte", "presence", "itineraire", "actionsObjet", "outilsDev", "photos", "aide", "outilHome", "profilJeu", "alertes", "profilStats", "pastilleHome", "documentation", "liaisons", "importSession", "notifications", "etatObjet", "exportValidesParDefaut", "suppressionLot", "relireChangements"].filter(function (k) { return !!ext[k]; }).join(", ") + ")");
     return true;
   }
   function _prise(nom) {
@@ -651,7 +652,9 @@
       return e;
     };
     const bloc = el("div", "kta-alert-neuf");
-    bloc.appendChild(el("div", "kta-alert-neuf-titre", "🆕 " + _t("alerts.neuf.titre")));
+    const titreNeuf = el("div", "kta-alert-neuf-titre", _t("alerts.neuf.titre"));
+    if (typeof window.ktaIcone === "function") titreNeuf.insertAdjacentHTML("afterbegin", window.ktaIcone("sparkles") + " ");
+    bloc.appendChild(titreNeuf);
     const retirer = function () { try { bloc.remove(); } catch (e) { /* déjà retiré */ } };
     let posees = [];   // lignes affichées, retirées à chaque relecture
     // Lit lister() (attente bornée) et (re)dessine les lignes ; rien de valide → le bloc se retire.
@@ -1102,6 +1105,9 @@
   // Depuis `ts` (ms) : objets dont updatedAt > ts, traces de suppression postérieures (synchro incrémentale) et
   // restitutions de calque faites ici après ts ([{ calque, avant, uids }], CalqueSession.restitutionsDepuis).
   // ⚠️ Une restitution n'est PAS une trace : l'extension ne doit jamais la changer en suppression des uids.
+  // `tracesCopie` ([{ uid, deletedAt }]) : suppressions de COPIES de calque, à envoyer comme des traces (même forme).
+  // 🔒 Jamais dans un fichier (fichier de secours compris) : une trace sur l'uid d'une copie, passée par la fusion de
+  // calques, détruirait l'objet du calque (KtaUid, traces de copie).
   // `planId` (facultatif) : plan du registre que l'appelant croit ouvert.
   // 🔒 null — et non des listes vides — si aucun plan n'est prêt (chargement en cours, accueil) ou si le plan prêt
   // n'est pas `planId` : la mémoire peut tenir les objets d'un AUTRE plan, et « rien depuis ts » ferait avancer le
@@ -1117,6 +1123,9 @@
       zones:        f(window.getZones && window.getZones()),
       structures:   f(window.getStructures && window.getStructures()),
       tombstones:   (window.KtaUid ? window.KtaUid.getTombstones() : []).filter(function (t) { return t.deletedAt > seuil; }),
+      tracesCopie:  (window.KtaUid && typeof window.KtaUid.getTracesCopie === "function" ? window.KtaUid.getTracesCopie() : [])
+                      .filter(function (t) { return t.deletedAt > seuil; })
+                      .map(function (t) { return { uid: t.uid, deletedAt: t.deletedAt }; }),
       restitutions: (window.CalqueSession && typeof window.CalqueSession.restitutionsDepuis === "function")
                       ? window.CalqueSession.restitutionsDepuis(seuil) : []
     };
@@ -1428,7 +1437,9 @@
     if (carteVisible) {
       const carte = el("div", "kta-ext-compte-carte");
       const ligne = el("div", "kta-ext-compte-qui");
-      ligne.appendChild(el("span", "kta-ext-compte-pseudo", "👤 " + c.pseudo));
+      const pseudo = el("span", "kta-ext-compte-pseudo", c.pseudo);
+      if (typeof window.ktaIcone === "function") pseudo.insertAdjacentHTML("afterbegin", window.ktaIcone("user") + " ");
+      ligne.appendChild(pseudo);
       if (c.libelle) ligne.appendChild(el("span", "kta-ext-compte-role", c.libelle));
       carte.appendChild(ligne);
       if (c.details) carte.appendChild(el("div", "kta-ext-compte-details", c.details));
@@ -1530,8 +1541,14 @@
       roads: routes.filter(function (r) { return horsFusion.indexOf(r) < 0; }),
       zones: (window.getZones && window.getZones()) || [],
       structures: (window.getStructures && window.getStructures()) || [],
-      tombstones: window.KtaUid.getTombstones()
+      tombstones: window.KtaUid.getTombstones().concat(typeof window.KtaUid.getTracesCopie === "function"
+        ? window.KtaUid.getTracesCopie() : [])
     };
+    // 🔒 Une trace reçue ne dit pas si elle vise une copie de calque : elle en est une si l'uid est celui d'une copie
+    // marquée d'ici ou d'un objet d'un fichier de calque du plan (index lu AVANT la fusion, qui retire la copie). Elle
+    // est alors rangée en trace de copie (jamais dans un fichier), cf. KtaUid.remplacerTraces.
+    const CSx = window.CalqueSession;
+    const calqueDe = (CSx && typeof CSx.calqueDesTraces === "function") ? CSx.calqueDesTraces() : null;
     const distant = {
       data: copie(lot.editorPoints),
       roads: copie(lot.roads).filter(function (r) { return r.type !== "itinerary" && !r._preview; }),
@@ -1559,7 +1576,9 @@
     local.tombstones.concat(distant.tombstones).forEach(function (t) {
       if (t && typeof t.uid === "string" && typeof t.deletedAt === "number") traces.set(t.uid, Math.max(traces.get(t.uid) || 0, t.deletedAt));
     });
-    window.KtaUid.setTombstones(Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; }));
+    const fusionnees = Array.from(traces, function (e) { return { uid: e[0], deletedAt: e[1] }; });
+    if (typeof window.KtaUid.remplacerTraces === "function") window.KtaUid.remplacerTraces(fusionnees, calqueDe);
+    else window.KtaUid.setTombstones(fusionnees);
     // L'objet EN COURS de dessin est retrouvé par son uid après réécriture (sinon le clic suivant en démarre
     // un nouveau).
     const enCours = function (getter) { const o = typeof window[getter] === "function" ? window[getter]() : null; return o && o.uid ? o.uid : null; };
@@ -1621,6 +1640,26 @@
     }
     return { fusionnes: r.fusionnes, supprimes: r.supprimes,
       calques: { retires: rest ? rest.retires : 0, gardes: rest ? rest.gardes : 0 } };
+  }
+
+  // ── Relire la synchro maintenant ──
+  // Prise `relireChangements(planId) → Promise<boolean>` : l'extension reçoit et applique (appliquerChangements) ce
+  // qui a changé sur son serveur pour ce plan, puis rend true ; false si elle n'a pas pu (hors ligne, refus).
+  // Appelée avant de passer un calque en modification (CalqueSession.rapatrier) : ses copies peuvent déjà exister
+  // ailleurs. → Promise : true, false (échec, délai dépassé, forme inattendue), null (aucune extension n'a la prise,
+  // ou plan absent : rien à relire, l'appelant reste 100 % local).
+  const RELIRE_DELAI_MS = 15000;
+  function relireChangements(planId) {
+    const ext = _prise("relireChangements");
+    if (!ext || typeof ext.relireChangements !== "function" || !planId) return Promise.resolve(null);
+    let delai;
+    return Promise.race([
+      Promise.resolve().then(function () { return ext.relireChangements(String(planId)); })
+        .then(function (r) { return r === true; }, function (e) { console.warn("[Extensions] relireChangements :", e); return false; }),
+      new Promise(function (r) {
+        delai = setTimeout(function () { console.warn("[Extensions] relireChangements : délai dépassé"); r(false); }, RELIRE_DELAI_MS);
+      })
+    ]).finally(function () { clearTimeout(delai); });
   }
   // uid reçus d'une installation reliée (la fiche d'édition s'en sert pour signaler un conflit).
   const _recusADistance = new Set();
@@ -2524,6 +2563,7 @@
     compte: compte,
     notifierCompte: notifierCompte,
     appliquerChangements: appliquerChangements,
+    relireChangements: relireChangements,
     actionsCompte: actionsCompte,
     presenceActive: presenceActive,
     basculerPresence: basculerPresence,
@@ -2640,6 +2680,7 @@
     const titre = document.createElement("span");
     titre.className = "kta-readme-modal-titre";
     titre.textContent = _t("ext.lectureSeuleFenetre.titre");
+    if (typeof window.ktaIcone === "function") titre.insertAdjacentHTML("afterbegin", window.ktaIcone("lock") + " ");
     entete.appendChild(titre);
     const corps = document.createElement("div");
     corps.className = "kta-readme-modal-corps";

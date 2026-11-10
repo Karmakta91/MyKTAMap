@@ -284,6 +284,9 @@
       st.ids().forEach(function(planId) {
         if (!planId) return;
         const parsed = _safeJsonParse(st.lire(planId));
+        // 🔒 Traces des copies de calque supprimées : jamais dans un fichier (ktaUid.js) ; un plan partagé les
+        // reçoit de nouveau de sa synchro.
+        if (parsed && typeof parsed === "object") delete parsed.tracesCopie;
         if (parsed) sessions[planId] = parsed;
       });
       // Ancien slot unique encore présent (jamais migré) : exporté aussi.
@@ -1209,7 +1212,7 @@ photos: false, histoirePdfs: false, crashes: false
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-profile-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📤 ' + T("profileio.export_title") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("arrow-up-from-line") + ' ' + T("profileio.export_title") + '</span>' +
           '<button type="button" class="kta-panneau-close" id="kta-profile-export-close" aria-label="' + T("profileio.close") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-profile-export-corps">' +
@@ -1217,7 +1220,7 @@ photos: false, histoirePdfs: false, crashes: false
         '</div>' +
         '<div class="kta-profile-footer">' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-export-cancel">' + T("profileio.cancel") + '</button>' +
-          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-export-go" disabled>📤 ' + T("profileio.export_btn") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-export-go" disabled>' + window.ktaIcone("arrow-up-from-line") + ' ' + T("profileio.export_btn") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -1244,25 +1247,25 @@ photos: false, histoirePdfs: false, crashes: false
     const T = window.I18n.t.bind(window.I18n);
     let html = '';
     html += '<p class="kta-profile-intro" style="background: rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.20); padding:8px 10px; border-radius:6px; color:var(--kta-avert);">';
-    html += '🔐 ' + T("profileio.export_security");
+    html += window.ktaIcone("lock") + ' ' + T("profileio.export_security");
     html += '</p>';
     if (sizes.extExclus > 0) {
-      html += '<p class="kta-profile-intro kta-tx-info">☁️ ' + _escHtml(T("profileio.export_ext_exclus", { n: sizes.extExclus })) + '</p>';
+      html += '<p class="kta-profile-intro kta-tx-info">' + window.ktaIcone("cloud") + ' ' + _escHtml(T("profileio.export_ext_exclus", { n: sizes.extExclus })) + '</p>';
     }
 
     html += '<div class="kta-profile-sections">';
-    html += _renderSectionRow("user",        "👤", T("profileio.sec_user_label"),        sizes.user,        true,  "");
-    html += _renderSectionRow("registry",    "🗂️", T("profileio.sec_registry_label"),    sizes.registry,    true,  "");
-    html += _renderSectionRow("preferences", "⚙️", T("profileio.sec_preferences_label"), sizes.preferences, true,  "");
-    html += _renderSectionRow("perPlanLs",   "📍", T("profileio.sec_perplan_label"),     sizes.perPlanLs,   true,  "");
-    html += _renderSectionRow("favoris",     "⭐", T("profileio.sec_favoris_label"),      sizes.favoris,     true,  "");
-    html += _renderSectionRow("sessions",    "💾", T("profileio.sec_sessions_label"),    sizes.sessions,    true,  "");
-    html += _renderSectionRow("carnet",      "📔", T("profileio.sec_carnet_label"),      sizes.carnet,      true,  "");
-    html += _renderSectionRow("backups",     "📦", T("profileio.sec_backups_label"),     sizes.backups,     true,  "");
-    html += _renderSectionRow("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    sizes.tutorial,    true,  "");
-    html += _renderSectionRow("photos",      "📸", T("profileio.sec_photos_label"),      sizes.photos,      false, T("profileio.sec_photos_hint"));
-    html += _renderSectionRow("histoirePdfs", "📄", T("profileio.sec_histpdf_label"),    sizes.histoirePdfs, false, T("profileio.sec_histpdf_hint"));
-    html += _renderSectionRow("crashes",     "📋", T("profileio.sec_crashes_label"),     sizes.crashes,     false, T("profileio.sec_crashes_hint"));
+    html += _renderSectionRow("user",        "user", T("profileio.sec_user_label"),        sizes.user,        true,  "");
+    html += _renderSectionRow("registry",    "library", T("profileio.sec_registry_label"),    sizes.registry,    true,  "");
+    html += _renderSectionRow("preferences", "settings", T("profileio.sec_preferences_label"), sizes.preferences, true,  "");
+    html += _renderSectionRow("perPlanLs",   "map-pin", T("profileio.sec_perplan_label"),     sizes.perPlanLs,   true,  "");
+    html += _renderSectionRow("favoris",     "star", T("profileio.sec_favoris_label"),      sizes.favoris,     true,  "");
+    html += _renderSectionRow("sessions",    "save", T("profileio.sec_sessions_label"),    sizes.sessions,    true,  "");
+    html += _renderSectionRow("carnet",      "notebook-pen", T("profileio.sec_carnet_label"),      sizes.carnet,      true,  "");
+    html += _renderSectionRow("backups",     "archive", T("profileio.sec_backups_label"),     sizes.backups,     true,  "");
+    html += _renderSectionRow("tutorial",    "graduation-cap", T("profileio.sec_tutorial_label"),    sizes.tutorial,    true,  "");
+    html += _renderSectionRow("photos",      "camera", T("profileio.sec_photos_label"),      sizes.photos,      false, T("profileio.sec_photos_hint"));
+    html += _renderSectionRow("histoirePdfs", "scroll", T("profileio.sec_histpdf_label"),    sizes.histoirePdfs, false, T("profileio.sec_histpdf_hint"));
+    html += _renderSectionRow("crashes",     "bug", T("profileio.sec_crashes_label"),     sizes.crashes,     false, T("profileio.sec_crashes_hint"));
     html += '</div>';
 
     // Archives de plans : décochées par défaut (pas de gros fichier surprise, décision produit). Une seule
@@ -1270,7 +1273,7 @@ photos: false, histoirePdfs: false, crashes: false
     const archivables = _listerPlansArchivables();
     if (archivables.length) {
       html += '<div class="kta-profile-sections" style="margin-top:10px;">';
-      html += '<div style="font-weight:600; margin:2px 0 4px;">📦 ' + T("profileio.arch_title") + '</div>';
+      html += '<div style="font-weight:600; margin:2px 0 4px;">' + window.ktaIcone("package") + ' ' + T("profileio.arch_title") + '</div>';
       html += '<label class="kta-profile-row" style="font-size:12px;">' +
                 '<input type="checkbox" id="kta-profile-arch-all">' +
                 '<span class="kta-profile-row-label"><strong>' + T("profileio.arch_all") + '</strong></span>' +
@@ -1278,7 +1281,7 @@ photos: false, histoirePdfs: false, crashes: false
       archivables.forEach(function(p) {
         html += '<label class="kta-profile-row">' +
                   '<input type="checkbox" data-plan-zip="' + _escHtml(p.id) + '" data-bytes="' + p.bytes + '">' +
-                  '<span class="kta-profile-row-emoji">💾</span>' +
+                  '<span class="kta-profile-row-emoji">' + window.ktaIcone("hard-drive") + '</span>' +
                   '<span class="kta-profile-row-label">' +
                     '<strong>' + _escHtml(p.name) + '</strong> ' +
                     '<span class="kta-profile-row-meta">' + _formatBytes(p.bytes) + '</span>' +
@@ -1330,7 +1333,7 @@ photos: false, histoirePdfs: false, crashes: false
         });
 
         const lancer = function() {
-          const origText = btnGo.textContent;
+          const origText = btnGo.innerHTML;
           btnGo.disabled = true; btnGo.textContent = "⏳ " + window.I18n.t("profileio.generating");
           const promesse = planIds.length
             ? exportArchiveToFile({ include: include, planIds: planIds, exclureExtensions: true })
@@ -1352,7 +1355,7 @@ photos: false, histoirePdfs: false, crashes: false
               }
             }, 800); });
           }).catch(function(e) {
-            btnGo.disabled = false; btnGo.textContent = origText;
+            btnGo.disabled = false; btnGo.innerHTML = origText;
             window.ktaAlerte(window.I18n.t("profileio.export_fail", { error: (e.message || e) }), { type: "erreur" });
           });
         };
@@ -1370,14 +1373,14 @@ photos: false, histoirePdfs: false, crashes: false
     }
   }
 
-  function _renderSectionRow(key, emoji, label, sizeObj, checked, hint) {
+  function _renderSectionRow(key, ico, label, sizeObj, checked, hint) {
     const c = sizeObj ? sizeObj.count : 0;
     const b = sizeObj ? sizeObj.bytes : 0;
     const empty = (c === 0);
     return '<label class="kta-profile-row' + (empty ? ' kta-profile-row-empty' : '') + '">' +
              '<input type="checkbox" data-section="' + key + '" data-bytes="' + b + '" ' +
                 (checked && !empty ? 'checked' : '') + (empty ? ' disabled' : '') + '>' +
-             '<span class="kta-profile-row-emoji">' + emoji + '</span>' +
+             '<span class="kta-profile-row-emoji">' + window.ktaIcone(ico) + '</span>' +
              '<span class="kta-profile-row-label">' +
                '<strong>' + _escHtml(label) + '</strong> ' +
                '<span class="kta-profile-row-meta">' + c + ' &middot; ' + _formatBytes(b) + '</span>' +
@@ -1472,7 +1475,7 @@ photos: false, histoirePdfs: false, crashes: false
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-profile-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📥 ' + T("profileio.import_title") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("arrow-down-to-line") + ' ' + T("profileio.import_title") + '</span>' +
           '<button type="button" class="kta-panneau-close" id="kta-profile-import-close" aria-label="' + T("profileio.close") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-profile-import-corps">' +
@@ -1481,7 +1484,7 @@ photos: false, histoirePdfs: false, crashes: false
           (nbArchives ? (
             '<label class="kta-profile-row" style="margin-top:8px;">' +
               '<input type="checkbox" id="kta-profile-import-archives" checked>' +
-              '<span class="kta-profile-row-emoji">📦</span>' +
+              '<span class="kta-profile-row-emoji">' + window.ktaIcone("package") + '</span>' +
               '<span class="kta-profile-row-label">' +
                 '<strong>' + T("profileio.arch_import_label", { n: nbArchives }) + '</strong> ' +
                 '<span class="kta-profile-row-meta">' + _formatBytes(file.size) + '</span>' +
@@ -1490,7 +1493,7 @@ photos: false, histoirePdfs: false, crashes: false
         '</div>' +
         '<div class="kta-profile-footer">' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-import-cancel">' + T("profileio.cancel") + '</button>' +
-          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-import-go">📥 ' + T("profileio.import_btn") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-import-go">' + window.ktaIcone("arrow-down-to-line") + ' ' + T("profileio.import_btn") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -1511,11 +1514,11 @@ photos: false, histoirePdfs: false, crashes: false
         if (!ok) return;
       }
       const btn = document.getElementById("kta-profile-import-go");
-      const orig = btn.textContent;
+      const orig = btn.innerHTML;
       btn.disabled = true; btn.textContent = "⏳ " + window.I18n.t("profileio.importing");
       applyProfile(profile, { mode: mode, include: include, exclureExtensions: true }).then(async function(res) {
         if (!res || !res.ok) {
-          btn.disabled = false; btn.textContent = orig;
+          btn.disabled = false; btn.innerHTML = orig;
           window.ktaAlerte(window.I18n.t("profileio.import_fail",
             { error: (res && res.error) || window.I18n.t("profileio.unknown_reason") }), { type: "erreur" });
           return;
@@ -1538,7 +1541,7 @@ photos: false, histoirePdfs: false, crashes: false
       }).catch(function(e) {
         // 🩸 Filet : sans ce catch, une exception fige le bouton sur « Import en cours » sans un mot.
         console.error("[ProfileExportImport] import échoué :", e);
-        btn.disabled = false; btn.textContent = orig;
+        btn.disabled = false; btn.innerHTML = orig;
         window.ktaAlerte(window.I18n.t("profileio.import_fail", { error: (e && e.message) || String(e) }),
           { type: "erreur" });
       });
@@ -1569,25 +1572,26 @@ photos: false, histoirePdfs: false, crashes: false
     if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
 
     const T = window.I18n.t.bind(window.I18n);
+    const SECTION_ICO = { user: "user", registry: "library", preferences: "settings", perPlanLs: "map-pin", favoris: "star", sessions: "save", carnet: "notebook-pen", backups: "archive", tutorial: "graduation-cap", photos: "camera", histoirePdfs: "scroll", crashes: "bug" };
     const SECTION_LABELS = {
-      user:        "👤 " + T("profileio.done_sec_user"),
-      registry:    "🗂️ " + T("profileio.done_sec_registry"),
-      preferences: "⚙️ " + T("profileio.done_sec_preferences"),
+      user:        T("profileio.done_sec_user"),
+      registry:    T("profileio.done_sec_registry"),
+      preferences: T("profileio.done_sec_preferences"),
       perPlanLs:   T("profileio.done_sec_perPlanLs"),
-      favoris:     "⭐ " + T("profileio.done_sec_favoris"),
-      sessions:    "💾 " + T("profileio.done_sec_sessions"),
-      carnet:      "📔 " + T("profileio.done_sec_carnet"),
-      backups:     "📦 " + T("profileio.done_sec_backups"),
-      tutorial:    "🎓 " + T("profileio.done_sec_tutorial"),
-      photos:      "📸 " + T("profileio.done_sec_photos"),
-      histoirePdfs: "📄 " + T("profileio.done_sec_histpdf"),
-      crashes:     "📋 " + T("profileio.done_sec_crashes")
+      favoris:     T("profileio.done_sec_favoris"),
+      sessions:    T("profileio.done_sec_sessions"),
+      carnet:      T("profileio.done_sec_carnet"),
+      backups:     T("profileio.done_sec_backups"),
+      tutorial:    T("profileio.done_sec_tutorial"),
+      photos:      T("profileio.done_sec_photos"),
+      histoirePdfs: T("profileio.done_sec_histpdf"),
+      crashes:     T("profileio.done_sec_crashes")
     };
     const parts = [];
     Object.keys(res.applied || {}).forEach(function(k) {
       if (res.applied[k] > 0) {
         const lbl = SECTION_LABELS[k] || k;
-        parts.push('<li><strong>' + lbl + '</strong> : ' + res.applied[k] + '</li>');
+        parts.push('<li><strong>' + (SECTION_ICO[k] ? window.ktaIcone(SECTION_ICO[k]) + ' ' : '') + lbl + '</strong> : ' + res.applied[k] + '</li>');
       }
     });
     if (res.archives) {
@@ -1595,7 +1599,7 @@ photos: false, histoirePdfs: false, crashes: false
       let lbl = T("profileio.arch_bilan", { n: a.restaures });
       if (a.conserves) lbl += " · " + T("profileio.arch_bilan_conserves", { n: a.conserves });
       if (a.orphelins) lbl += " · " + T("profileio.arch_bilan_orphelins", { n: a.orphelins });
-      parts.push('<li><strong>📦 ' + lbl + '</strong></li>');
+      parts.push('<li><strong>' + window.ktaIcone("package") + ' ' + lbl + '</strong></li>');
       if (a.echecs.length) {
         parts.push('<li style="color:var(--kta-erreur);"><strong>⚠️ ' +
           T("profileio.arch_bilan_echecs", { n: a.echecs.length }) + '</strong> : ' +
@@ -1607,7 +1611,7 @@ photos: false, histoirePdfs: false, crashes: false
     ((res.archives && res.archives.extIgnores) || []).forEach(function(id) { idsExt.add(id); });
     const nExt = idsExt.size;
     if (nExt > 0) {
-      parts.push('<li class="kta-tx-info">☁️ ' + _escHtml(T("profileio.done_ext_ignores", { n: nExt })) + '</li>');
+      parts.push('<li class="kta-tx-info">' + window.ktaIcone("cloud") + ' ' + _escHtml(T("profileio.done_ext_ignores", { n: nExt })) + '</li>');
     }
     const summaryHtml = parts.length
       ? '<ul style="margin:8px 0 12px 18px; padding:0;">' + parts.join("") + '</ul>'
@@ -1620,7 +1624,7 @@ photos: false, histoirePdfs: false, crashes: false
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto !important; max-height:88vh !important; border-color:rgba(110,226,135,0.55);">' +
         '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(110,226,135,0.25);">' +
-          '<span class="kta-readme-modal-titre" style="color:var(--kta-ok);">✅ ' + T("profileio.done_title") + '</span>' +
+          '<span class="kta-readme-modal-titre" style="color:var(--kta-ok);">' + window.ktaIcone("circle-check") + ' ' + T("profileio.done_title") + '</span>' +
           '<button type="button" class="kta-panneau-close" id="kta-profile-import-done-close" aria-label="' + T("profileio.close") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -1629,15 +1633,15 @@ photos: false, histoirePdfs: false, crashes: false
           '</p>' +
           summaryHtml +
           '<div style="background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; padding:10px 12px; margin:10px 0;">' +
-            '🔄 ' + T("profileio.done_reload_reco") +
+            window.ktaIcone("refresh-cw") + ' ' + T("profileio.done_reload_reco") +
           '</div>' +
           '<p style="font-size:12px; color:var(--kta-texte-3); font-style:italic; margin:8px 0 0;">' +
             T("profileio.done_reload_later") +
           '</p>' +
         '</div>' +
         '<div class="kta-profile-footer" style="display:flex; gap:8px; padding:14px 16px; border-top:1px solid rgba(255,255,255,0.06);">' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-import-done-later"  style="flex:1;">⏱️ ' + T("profileio.done_later") + '</button>' +
-          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-import-done-reload" style="flex:1;">🔄 ' + T("profileio.done_reload_now") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-import-done-later"  style="flex:1;">' + window.ktaIcone("clock") + ' ' + T("profileio.done_later") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-import-done-reload" style="flex:1;">' + window.ktaIcone("refresh-cw") + ' ' + T("profileio.done_reload_now") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -1693,41 +1697,41 @@ photos: false, histoirePdfs: false, crashes: false
     html += '</div>';
 
     html += '<div class="kta-profile-sections">';
-    if (stats.user > 0)    html += _renderImportSection("user",     "👤", T("profileio.sec_user_label"),     stats.user);
-    html += _renderImportSection("registry",    "🗂️", T("profileio.import_sec_registry"),  stats.registry);
-    html += _renderImportSection("preferences", "⚙️", T("profileio.sec_preferences_label"), stats.preferences);
-    if (stats.perPlanLs > 0) html += _renderImportSection("perPlanLs", "📍", T("profileio.sec_perplan_label"), stats.perPlanLs);
-    html += _renderImportSection("favoris",     "⭐", T("profileio.sec_favoris_label"),     stats.favoris);
-    html += _renderImportSection("sessions",    "💾", T("profileio.sec_sessions_label"),    stats.sessions);
-    html += _renderImportSection("carnet",      "📔", T("profileio.import_sec_carnet"),     stats.carnet);
-    html += _renderImportSection("backups",     "📦", T("profileio.import_sec_backups"),    stats.backups);
-    html += _renderImportSection("tutorial",    "🎓", T("profileio.sec_tutorial_label"),    stats.tutorial);
-    if (stats.photos > 0)  html += _renderImportSection("photos",  "📸", T("profileio.sec_photos_label"),    stats.photos);
-    if (stats.histoirePdfs > 0) html += _renderImportSection("histoirePdfs", "📄", T("profileio.sec_histpdf_label"), stats.histoirePdfs);
-    if (stats.crashes > 0) html += _renderImportSection("crashes", "📋", T("profileio.sec_crashes_label"),   stats.crashes);
+    if (stats.user > 0)    html += _renderImportSection("user",     "user", T("profileio.sec_user_label"),     stats.user);
+    html += _renderImportSection("registry",    "library", T("profileio.import_sec_registry"),  stats.registry);
+    html += _renderImportSection("preferences", "settings", T("profileio.sec_preferences_label"), stats.preferences);
+    if (stats.perPlanLs > 0) html += _renderImportSection("perPlanLs", "map-pin", T("profileio.sec_perplan_label"), stats.perPlanLs);
+    html += _renderImportSection("favoris",     "star", T("profileio.sec_favoris_label"),     stats.favoris);
+    html += _renderImportSection("sessions",    "save", T("profileio.sec_sessions_label"),    stats.sessions);
+    html += _renderImportSection("carnet",      "notebook-pen", T("profileio.import_sec_carnet"),     stats.carnet);
+    html += _renderImportSection("backups",     "archive", T("profileio.import_sec_backups"),    stats.backups);
+    html += _renderImportSection("tutorial",    "graduation-cap", T("profileio.sec_tutorial_label"),    stats.tutorial);
+    if (stats.photos > 0)  html += _renderImportSection("photos",  "camera", T("profileio.sec_photos_label"),    stats.photos);
+    if (stats.histoirePdfs > 0) html += _renderImportSection("histoirePdfs", "scroll", T("profileio.sec_histpdf_label"), stats.histoirePdfs);
+    if (stats.crashes > 0) html += _renderImportSection("crashes", "bug", T("profileio.sec_crashes_label"),   stats.crashes);
     html += '</div>';
 
     html += '<div class="kta-profile-mode">';
     html += '<div class="kta-profile-mode-titre">' + T("profileio.mode_title") + '</div>';
     html += '<label class="kta-profile-mode-row">' +
               '<input type="radio" name="kta-profile-import-mode" value="merge" checked>' +
-              '<span>' + T("profileio.mode_merge") + '</span>' +
+              '<span>' + window.ktaIcone("merge") + ' ' + T("profileio.mode_merge") + '</span>' +
             '</label>';
     html += '<label class="kta-profile-mode-row">' +
               '<input type="radio" name="kta-profile-import-mode" value="replace">' +
-              '<span>' + T("profileio.mode_replace") + '</span>' +
+              '<span>' + window.ktaIcone("replace") + ' ' + T("profileio.mode_replace") + '</span>' +
             '</label>';
     html += '</div>';
 
     return html;
   }
 
-  function _renderImportSection(key, emoji, label, count) {
+  function _renderImportSection(key, ico, label, count) {
     const empty = (count === 0);
     return '<label class="kta-profile-row' + (empty ? ' kta-profile-row-empty' : '') + '">' +
              '<input type="checkbox" data-section="' + key + '" ' +
                 (empty ? '' : 'checked') + (empty ? ' disabled' : '') + '>' +
-             '<span class="kta-profile-row-emoji">' + emoji + '</span>' +
+             '<span class="kta-profile-row-emoji">' + window.ktaIcone(ico) + '</span>' +
              '<span class="kta-profile-row-label">' +
                '<strong>' + _escHtml(label) + '</strong> ' +
                '<span class="kta-profile-row-meta">' + window.I18n.t("profileio.elements_count", { count: count }) + '</span>' +

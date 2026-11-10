@@ -664,6 +664,7 @@
         // ⚠️ Catégorie de LÉGENDE : `roads` se dit `traces` côté LegendCustomization.
         const cat = (r.famille === "structures") ? "structures"
                   : (r.famille === "zones")      ? "zones" : "traces";
+        if (cat === "zones" && r.type === "pente") return;   // garde sa clé (_typeNiveau)
         const estLigne = (cat === "traces") || TYPES_POLYLIGNE.indexOf(r.type) >= 0;
         const id = _idNiveau(cat + (estLigne ? "-l" : ""), n);
         if (cles.indexOf(id) >= 0) return;
@@ -758,6 +759,8 @@
       // 🩸 Un mur en ligne garde SA clé : l'itinéraire le lit comme obstacle par `mur-ligne` (pathfinder.js), un
       // type de niveau le confondrait avec les fronts du même étage.
       if (categorie === "structures" && typeBase === "mur-ligne") return typeBase;
+      // Zone jonction : garde SA clé (la 3D et la fiche la lisent par `pente`), couleur du tracé jonction.
+      if (categorie === "zones" && typeBase === "pente") return typeBase;
       const estLigne = (categorie === "traces") || TYPES_POLYLIGNE.indexOf(typeBase) >= 0;
       // Un id par (catégorie, FORME, niveau) : un front (ligne) et un pilier (polygone) ne partagent pas d'entrée.
       const id = _idNiveau(categorie + (estLigne ? "-l" : ""), lvl);
@@ -992,6 +995,11 @@
     }
 
     const ingested = ingest(opts.normalise, transform, opts.mapping || {});
+    // Zones « Jonction » (type `pente`) : niveaux de/à saisis dans le Générateur ; un plan qui en porte est
+    // multi-niveau (une jonction relie deux niveaux).
+    const _pente = opts.mapping && opts.mapping.pente;
+    if (_pente && typeof window.ktaPoserNiveauxPente === "function" &&
+        window.ktaPoserNiveauxPente(ingested.zones, _pente.de, _pente.vers) > 0) opts.multiLevel = true;
 
     // Canvas vierge de gpxImport, réutilisé (un seul générateur de fond).
     const baseBlob = await window.GpxImport.genererCanvasVierge(W, H, opts.canvasColor || "sepia");

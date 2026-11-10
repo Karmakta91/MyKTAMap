@@ -1492,7 +1492,7 @@
     const b = _bilanEngages(s);
     const alerte = b.manquants > 0 || b.inconnus.length > 0;
     return '<div class="kta-secours-bilan ' + (b.manquants > 0 ? 'kta-tx-err' : alerte ? 'kta-tx-warn' : '') + '">' +
-             '👥 ' + _escHtml(t("secours.bilan.ligne", { engages: b.engages, sousTerre: b.sousTerre, manquants: b.manquants })) +
+             window.ktaIcone("users") + ' ' + _escHtml(t("secours.bilan.ligne", { engages: b.engages, sousTerre: b.sousTerre, manquants: b.manquants })) +
              (b.inconnus.length ? ' · ' + _escHtml(t("secours.bilan.inconnus", { n: b.inconnus.length, noms: b.inconnus.join(", ") })) : '') +
            '</div>';
   }
@@ -1555,16 +1555,16 @@
     const e = _etatRetour(s, g);
     const estOp = s.execution && s.execution.role === "operateur";
     return '<div class="kta-secours-retour kta-secours-retour--' + e.etat + '" data-live-retour="' + _escAttr(g.id) + '">' +
-             (e.rappelAt ? '<span class="kta-secours-rappel-badge">' + _escHtml(t("secours.retour.rappeleeA", { h: _heureCourte(e.rappelAt) })) + '</span>' : '') +
+             (e.rappelAt ? '<span class="kta-secours-rappel-badge">' + window.ktaIcone("megaphone") + " " + _escHtml(t("secours.retour.rappeleeA", { h: _heureCourte(e.rappelAt) })) + '</span>' : '') +
              '<span class="kta-secours-retour-txt">' + _escHtml(_texteRetour(s, g)) + '</span>' +
              (e.etat === "manquant"
                ? '<span class="kta-secours-retour-btns"><button class="kta-btn kta-btn-danger kta-btn-xs" data-action="retour-remontes" data-gid="' + _escAttr(g.id) + '">' + t("secours.b9.corriger") + '</button></span>'
                : '') +
              (e.etat !== "rentree" && e.etat !== "manquant"
                ? '<span class="kta-secours-retour-btns">' +
-                   (!e.departExplicite ? '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="retour-depart" data-gid="' + _escAttr(g.id) + '">' + t("secours.retour.btnDepart") + '</button>' : '') +
-                   (estOp && !e.rappelAt ? '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="rappel-equipe" data-gid="' + _escAttr(g.id) + '">' + t("secours.rappel.btnEquipe") + '</button>' : '') +
-                   '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="retour-rentree" data-gid="' + _escAttr(g.id) + '">' + t("secours.retour.btnRentree") + '</button>' +
+                   (!e.departExplicite ? '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="retour-depart" data-gid="' + _escAttr(g.id) + '">' + window.ktaIcone("play") + " " + t("secours.retour.btnDepart") + '</button>' : '') +
+                   (estOp && !e.rappelAt ? '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="rappel-equipe" data-gid="' + _escAttr(g.id) + '">' + window.ktaIcone("megaphone") + " " + t("secours.rappel.btnEquipe") + '</button>' : '') +
+                   '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="retour-rentree" data-gid="' + _escAttr(g.id) + '">' + window.ktaIcone("circle-check") + " " + t("secours.retour.btnRentree") + '</button>' +
                  '</span>'
                : '') +
            '</div>';
@@ -1954,7 +1954,7 @@
     if (cp.sansIti.length) html += '<p class="kta-tx-warn kta-secours-couv-note">' + _escHtml(t("secours.couv.sansIti", { noms: cp.sansIti.join(", ") })) + '</p>';
     cp.alertes.forEach(function(a) { html += '<p class="kta-tx-warn kta-secours-couv-note">⚠️ ' + _escHtml(a) + '</p>'; });
     html += '<p><button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="couv-surligner">' +
-              (_couvCalque ? t("secours.couv.btnMasquer") : t("secours.couv.btnSurligner")) + '</button></p>';
+              (_couvCalque ? window.ktaIcone("map") + " " + t("secours.couv.btnMasquer") : window.ktaIcone("map") + " " + t("secours.couv.btnSurligner")) + '</button></p>';
     html += '<p class="kta-secours-couv-titre">' + t("secours.couv.horsParcoursTitre") + '</p>';
     html += c.horsParcours.length
       ? '<ul class="kta-secours-couv-liste">' + c.horsParcours.map(function(h) {
@@ -2026,7 +2026,7 @@
   function _renderMainCourante(s) {
     const liste = _mcTriee(s).reverse();
     return '<details class="kta-secours-section kta-secours-mc"' + (liste.length ? '' : ' open') + '>' +
-             '<summary class="kta-secours-section-titre">' + t("secours.mc.titre", { n: liste.length }) + '</summary>' +
+             '<summary class="kta-secours-section-titre">' + window.ktaIcone("scroll-text") + " " + t("secours.mc.titre", { n: liste.length }) + '</summary>' +
              '<div class="kta-secours-section-body">' +
                '<div class="kta-secours-mc-saisie">' +
                  '<textarea id="kta-secours-mc-texte" rows="2" maxlength="1000" placeholder="' + _escAttr(t("secours.mc.placeholder")) + '"></textarea>' +
@@ -2164,7 +2164,7 @@
     });
     pastille.classList.toggle("kta-secours-footer-pastille--orange", pire === "orange");
     pastille.classList.toggle("kta-secours-footer-pastille--rouge", pire === "rouge" || pire === "manquant");
-    pastille.innerHTML = '<span class="kta-refonte-stat-icon">🚑</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>' +
+    pastille.innerHTML = '<span class="kta-refonte-stat-icon">' + window.ktaIcone("ambulance") + '</span><span class="kta-refonte-stat-val">' + _escHtml(texte) + '</span>' +
                          '<span class="kta-secours-footer-go" aria-hidden="true">›</span>';
   }
 
@@ -2458,16 +2458,16 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + t("secours.newequipe.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("plus") + " " + t("secours.newequipe.titre") + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<div class="kta-secours-form-row">' +
-            '<label for="kta-sec-newequipe-nom">' + t("secours.newequipe.nomLabel") + '</label>' +
+            '<label for="kta-sec-newequipe-nom">' + window.ktaIcone("users") + " " + t("secours.newequipe.nomLabel") + '</label>' +
             '<input type="text" id="kta-sec-newequipe-nom" placeholder="' + _escAttr(t("secours.newequipe.nomPlaceholder")) + '" maxlength="40">' +
           '</div>' +
           '<div class="kta-secours-form-row">' +
-            '<label for="kta-sec-newequipe-level">' + t("secours.newequipe.levelLabel") + '</label>' +
+            '<label for="kta-sec-newequipe-level">' + window.ktaIcone("m-niveaux") + " " + t("secours.newequipe.levelLabel") + '</label>' +
             '<select id="kta-sec-newequipe-level">' +
               '<option value="">' + t("secours.newequipe.levelNone") + '</option>' +
               levelsHtml +
@@ -2537,7 +2537,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + _escHtml(t("secours.poiZone.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("sparkles") + " " + _escHtml(t("secours.poiZone.titre")) + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -2585,7 +2585,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + _escHtml(t("secours.brancard.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("ambulance") + " " + _escHtml(t("secours.brancard.titre")) + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -2595,7 +2595,7 @@
             _escHtml(t("secours.brancard.inacc", { n: nbInacc })) + '</label>' : '') +
           '<div class="kta-secours-form-actions">' +
             '<button class="kta-btn kta-btn-ghost" data-action="cancel">' + _escHtml(t("secours.btn.annuler")) + '</button>' +
-            '<button class="kta-btn kta-btn-primary" data-action="confirm">' + _escHtml(t("secours.brancard.calculer")) + '</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm">' + window.ktaIcone("ambulance") + " " + _escHtml(t("secours.brancard.calculer")) + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -2648,7 +2648,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-assign-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + t("secours.assign.titre", { point: _escHtml(nomPoint) }) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("map-pin") + " " + t("secours.assign.titre", { point: _escHtml(nomPoint) }) + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -2659,15 +2659,15 @@
             (typeof point.level === "number" ? ' · ' + t("secours.assign.niv", { level: point.level }) : '') + '</small>' +
           '</div>' +
           '<div class="kta-secours-form-row">' +
-            '<label for="kta-sec-assign-equipe">' + t("secours.assign.equipeLabel") + '</label>' +
+            '<label for="kta-sec-assign-equipe">' + window.ktaIcone("users") + " " + t("secours.assign.equipeLabel") + '</label>' +
             '<select id="kta-sec-assign-equipe">' + equipesOptions + '</select>' +
           '</div>' +
           '<div class="kta-secours-form-row">' +
-            '<label>' + t("secours.assign.roleLabel") + '</label>' +
+            '<label>' + window.ktaIcone("map-pin") + " " + t("secours.assign.roleLabel") + '</label>' +
             '<div class="kta-secours-assign-roles">' +
-              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="entree"> ' + t("secours.role.entree") + '</label>' +
+              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="entree"> ' + window.ktaIcone("map-pin") + " " + t("secours.role.entree") + '</label>' +
               '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="intermediaire"> ' + t("secours.role.intermediaire") + '</label>' +
-              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="sortie"> ' + t("secours.role.sortie") + '</label>' +
+              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="sortie"> ' + window.ktaIcone("door-open") + " " + t("secours.role.sortie") + '</label>' +
             '</div>' +
           '</div>' +
           '<div class="kta-secours-form-actions">' +
@@ -3216,15 +3216,15 @@
         const hasZone = g.zoneType === "polygon" || g.zoneType === "roads";
         const hasParcours = g.entree && g.sortie;
         const levelChip = (typeof g.level === "number")
-                          ? ' · 🏗️ ' + _formatLevelShort(g.level)
+                          ? ' · ' + window.ktaIcone("m-niveaux") + ' ' + _formatLevelShort(g.level)
                           : "";
         equipesHtml += '<li>' +
                          '<span class="kta-secours-import-preview-couleur" style="background:' + couleur + ';"></span>' +
                          '<strong>' + _escHtml(g.nom || t("secours.import.sansNom")) + '</strong>' +
                          '<span class="kta-secours-import-preview-meta">' +
-                           ' · ' + t("secours.import.membres", { n: nbMembres }) +
-                           (hasZone ? ' · ' + t("secours.import.chipZone") : '') +
-                           (hasParcours ? ' · ' + t("secours.import.chipParcours") : '') +
+                           ' · ' + window.ktaIcone("users") + " " + t("secours.import.membres", { n: nbMembres }) +
+                           (hasZone ? ' · ' + window.ktaIcone("m-zone") + " " + t("secours.import.chipZone") : '') +
+                           (hasParcours ? ' · ' + window.ktaIcone("route") + " " + t("secours.import.chipParcours") : '') +
                            levelChip +
                          '</span>' +
                        '</li>';
@@ -3270,7 +3270,7 @@
     }
 
     const inner = '<div class="kta-readme-modal-header">' +
-                    '<h2 class="kta-tx-info" style="margin:0; color:var(--kta-interaction);">' + t("secours.import.previewTitre") + '</h2>' +
+                    '<h2 class="kta-tx-info" style="margin:0; color:var(--kta-interaction);">' + window.ktaIcone("arrow-down-to-line") + " " + t("secours.import.previewTitre") + '</h2>' +
                     '<button class="kta-readme-modal-close" data-action="cancel-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
                   '</div>' +
                   '<div class="kta-readme-modal-corps">' +
@@ -3278,13 +3278,13 @@
                     '<div class="kta-secours-import-preview-card">' +
                       '<div class="kta-secours-import-preview-titre">' + _escHtml(sc.nom || t("secours.import.sansNom")) + '</div>' +
                       '<div class="kta-secours-import-preview-grid">' +
-                        '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelFichier") + '</span>' +
+                        '<div><span class="kta-secours-import-preview-label">' + window.ktaIcone("folder-open") + " " + t("secours.import.labelFichier") + '</span>' +
                           '<code>' + _escHtml(sourceFilename || t("secours.import.fichierDefault")) + '</code></div>' +
-                        '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelDateExport") + '</span>' +
+                        '<div><span class="kta-secours-import-preview-label">' + window.ktaIcone("calendar") + " " + t("secours.import.labelDateExport") + '</span>' +
                           _escHtml(dateExport) + '</div>' +
-                        '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelVersionApp") + '</span>' +
+                        '<div><span class="kta-secours-import-preview-label">' + window.ktaIcone("tag") + " " + t("secours.import.labelVersionApp") + '</span>' +
                           '<code>' + _escHtml(appVer) + '</code></div>' +
-                        '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelPlanSource") + '</span>' +
+                        '<div><span class="kta-secours-import-preview-label">' + window.ktaIcone("map") + " " + t("secours.import.labelPlanSource") + '</span>' +
                           _escHtml(planSrc.name || t("secours.import.planInconnu")) +
                           (planSrc.version ? ' <code>' + _escHtml(planSrc.version) + '</code>' : '') +
                         '</div>' +
@@ -3292,7 +3292,7 @@
                     '</div>' +
 
                     '<div class="kta-secours-import-preview-section">' +
-                      '<h3 style="margin:14px 0 6px 0; color:var(--kta-accent-texte);">' + t("secours.import.equipesIncluses", { n: groupes.length }) + '</h3>' +
+                      '<h3 style="margin:14px 0 6px 0; color:var(--kta-accent-texte);">' + window.ktaIcone("users") + " " + t("secours.import.equipesIncluses", { n: groupes.length }) + '</h3>' +
                       equipesHtml +
                     '</div>' +
 
@@ -3302,7 +3302,7 @@
                     existeBlock +
 
                     '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
-                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-preview">' + t("secours.btn.annulerCroix") + '</button>' +
+                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-preview">' + window.ktaIcone("x") + " " + t("secours.btn.annulerCroix") + '</button>' +
                       '<button class="kta-btn kta-btn-primary" data-action="confirm-preview">' + t("secours.btn.importerScenario") + '</button>' +
                     '</div>' +
                   '</div>';
@@ -3369,7 +3369,7 @@
 
     let inner = '<div class="kta-readme-modal-header">' +
                   '<h2 class="' + (ok ? 'kta-tx-ok' : 'kta-tx-err') + '" style="margin:0;">' +
-                    (ok ? t("secours.import.resOkTitre") : t("secours.import.resKoTitre")) +
+                    (ok ? t("secours.import.resOkTitre") : window.ktaIcone("circle-x") + " " + t("secours.import.resKoTitre")) +
                   '</h2>' +
                   '<button class="kta-readme-modal-close" data-action="close-result" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
                 '</div>' +
@@ -3381,8 +3381,8 @@
       inner += '<p>' + t(result.remplace ? "secours.import.resOkRemplace" : "secours.import.resOkBody",
                          { nom: _escHtml(sc.nom || t("secours.import.sansNom")) }) + '</p>' +
                '<p style="color:var(--kta-texte-3); font-size:13px;">' +
-                 t("secours.import.resOkSource", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '<br>' +
-                 t("secours.import.resOkEquipes", { n: nbGroupes }) +
+                 window.ktaIcone("folder-open") + " " + t("secours.import.resOkSource", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '<br>' +
+                 window.ktaIcone("users") + " " + t("secours.import.resOkEquipes", { n: nbGroupes }) +
                '</p>';
       if (result.warning) {
         inner += '<div class="kta-tx-warn" style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.5); border-radius:6px; padding:10px 12px; margin:12px 0; color:var(--kta-avert);">' +
@@ -3391,12 +3391,12 @@
       }
       inner += '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">' +
                  '<button class="kta-btn kta-btn-secondary" data-action="close-result">' + t("secours.btn.fermer") + '</button>' +
-                 '<button class="kta-btn kta-btn-primary" data-action="open-imported">' + t("secours.btn.ouvrirScenario") + '</button>' +
+                 '<button class="kta-btn kta-btn-primary" data-action="open-imported">' + window.ktaIcone("pencil") + " " + t("secours.btn.ouvrirScenario") + '</button>' +
                '</div>';
     } else {
       const errMsg = (result && result.error) || t("secours.import.erreurInconnue");
       inner += '<p>' + t("secours.import.resKoBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
-               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; font-family:monospace; font-size:13px; word-break:break-word;">' +
+               '<div class="kta-tx-err" style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; font-family:KTA Emoji, monospace; font-size:13px; word-break:break-word;">' +
                  _escHtml(errMsg) +
                '</div>' +
                '<p style="color:var(--kta-texte-3); font-size:13px;">' +
@@ -3986,29 +3986,29 @@
 
     const inner =
       '<div class="kta-readme-modal-header">' +
-        '<h2 class="kta-tx-ok" style="margin:0; color:var(--kta-ok);">' + t("secours.rapportPreview.titre") + '</h2>' +
+        '<h2 class="kta-tx-ok" style="margin:0; color:var(--kta-ok);">' + window.ktaIcone("arrow-down-to-line") + " " + t("secours.rapportPreview.titre") + '</h2>' +
         '<button class="kta-readme-modal-close" data-action="cancel-rapport-preview" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<p style="margin:0 0 14px 0;">' + t("secours.rapportPreview.intro") + '</p>' +
 
         '<div class="kta-secours-import-preview-card">' +
-          '<div class="kta-secours-import-preview-titre">🚨 ' + _escHtml(equipeNom) + '</div>' +
+          '<div class="kta-secours-import-preview-titre">' + window.ktaIcone("users") + ' ' + _escHtml(equipeNom) + '</div>' +
           '<div class="kta-secours-import-preview-grid">' +
-            '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelFichier") + '</span>' +
+            '<div><span class="kta-secours-import-preview-label">' + window.ktaIcone("folder-open") + " " + t("secours.import.labelFichier") + '</span>' +
               '<code>' + _escHtml(sourceFilename || t("secours.import.fichierDefault")) + '</code></div>' +
-            '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelDateExport") + '</span>' +
+            '<div><span class="kta-secours-import-preview-label">' + window.ktaIcone("calendar") + " " + t("secours.import.labelDateExport") + '</span>' +
               _escHtml(dateExport) + '</div>' +
-            '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelVersionApp") + '</span>' +
+            '<div><span class="kta-secours-import-preview-label">' + window.ktaIcone("tag") + " " + t("secours.import.labelVersionApp") + '</span>' +
               '<code>' + _escHtml(appVer) + '</code></div>' +
-            '<div><span class="kta-secours-import-preview-label">' + t("secours.import.labelPlanSource") + '</span>' +
+            '<div><span class="kta-secours-import-preview-label">' + window.ktaIcone("map") + " " + t("secours.import.labelPlanSource") + '</span>' +
               _escHtml(planSrc.name || t("secours.import.planInconnu")) +
             '</div>' +
           '</div>' +
         '</div>' +
 
         '<div class="kta-secours-import-preview-section">' +
-          '<h3 style="margin:14px 0 6px 0; color:var(--kta-accent-texte);">' + t("secours.rapportPreview.contenuTitre") + '</h3>' +
+          '<h3 style="margin:14px 0 6px 0; color:var(--kta-accent-texte);">' + window.ktaIcone("list") + " " + t("secours.rapportPreview.contenuTitre") + '</h3>' +
           '<ul style="margin:0; padding-left:20px; line-height:1.7;">' +
             '<li>' + t("secours.rapportPreview.nbEtapes", { n: nbEtapes }) + '</li>' +
             '<li>' + t("secours.rapportPreview.nbPhotos", { n: nbPhotos }) + '</li>' +
@@ -4024,7 +4024,7 @@
         '</div>' +
 
         '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
-          '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport-preview">' + t("secours.btn.annulerCroix") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport-preview">' + window.ktaIcone("x") + " " + t("secours.btn.annulerCroix") + '</button>' +
           '<button class="kta-btn kta-btn-primary" data-action="confirm-rapport-preview">' + t("secours.btn.importerFusionner") + '</button>' +
         '</div>' +
       '</div>';
@@ -4071,7 +4071,7 @@
 
     let inner = '<div class="kta-readme-modal-header">' +
                   '<h2 class="' + (ok ? 'kta-tx-ok' : 'kta-tx-err') + '" style="margin:0;">' +
-                    (ok ? t("secours.rapportRes.okTitre") : t("secours.import.resKoTitre")) +
+                    (ok ? t("secours.rapportRes.okTitre") : window.ktaIcone("circle-x") + " " + t("secours.import.resKoTitre")) +
                   '</h2>' +
                   '<button class="kta-readme-modal-close" data-action="close-rapport-result" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
                 '</div>' +
@@ -4081,10 +4081,10 @@
       const stats = result.stats || {};
       inner += '<p>' + t("secours.rapportRes.okBody", { fichier: _escHtml(sourceFilename || t("secours.import.fichierDefault")) }) + '</p>' +
                '<div style="background:rgba(110, 226, 138, 0.08); border:1px solid rgba(110, 226, 138, 0.35); border-radius:6px; padding:12px 14px; margin:12px 0; font-size:14px; line-height:1.7;">' +
-                 '✅ ' + t("secours.rapportRes.etapesFusionnees", { n: (stats.etapesFusionnees || 0) }) + '<br>' +
-                 '📷 ' + t("secours.rapportRes.photosImportees", { n: (stats.photosImportees || 0) }) +
+                 window.ktaIcone("circle-check") + ' ' + t("secours.rapportRes.etapesFusionnees", { n: (stats.etapesFusionnees || 0) }) + '<br>' +
+                 window.ktaIcone("camera") + ' ' + t("secours.rapportRes.photosImportees", { n: (stats.photosImportees || 0) }) +
                  ((stats.photosDejaPresentes || 0) > 0 ? ' <span style="color:var(--kta-texte-3);">' + t("secours.rapportRes.photosDejaPresentes", { n: stats.photosDejaPresentes }) + '</span>' : '') + '<br>' +
-                 ((stats.etapesSkipped || 0) > 0 ? '⏭️ ' + t("secours.rapportRes.etapesSkipped", { n: stats.etapesSkipped }) + '<br>' : '') +
+                 ((stats.etapesSkipped || 0) > 0 ? window.ktaIcone("skip-forward") + ' ' + t("secours.rapportRes.etapesSkipped", { n: stats.etapesSkipped }) + '<br>' : '') +
                  ((stats.photosSkipped || 0) > 0 ? '⚠️ ' + t("secours.rapportRes.photosSkipped", { n: stats.photosSkipped }) + '<br>' : '') +
                '</div>';
       // Alertes « aide / victime » en clair, avant tout le reste.
@@ -4101,7 +4101,7 @@
       if (Array.isArray(stats.warnings) && stats.warnings.length > 0) {
         const lis = stats.warnings.map(function(w) { return '<li>' + _escHtml(w) + '</li>'; }).join("");
         inner += '<details style="margin:10px 0; font-size:13px;">' +
-                   '<summary style="cursor:pointer; color:var(--kta-accent-texte);">' + t("secours.rapportRes.warningsSummary", { n: stats.warnings.length }) + '</summary>' +
+                   '<summary style="cursor:pointer; color:var(--kta-accent-texte);">' + window.ktaIcone("search") + " " + t("secours.rapportRes.warningsSummary", { n: stats.warnings.length }) + '</summary>' +
                    '<ul style="margin:8px 0 0 20px; padding:0; color:var(--kta-texte-2); line-height:1.6;">' + lis + '</ul>' +
                  '</details>';
       }
@@ -4468,7 +4468,7 @@
       L.marker(_planToLatLng(v.pos), {
         icon: L.divIcon({ className: "kta-secours-victime-marker", html: "<span>✚</span>", iconSize: [30, 30], iconAnchor: [15, 15] }),
         zIndexOffset: 2000, keyboard: false
-      }).bindTooltip("🚨 " + _escHtml(t("secours.victime.titre")) + " — " + _escHtml(v.g.nom), { direction: "top" })
+      }).bindTooltip(window.ktaIcone("siren") + " " + _escHtml(t("secours.victime.titre")) + " — " + _escHtml(v.g.nom), { direction: "top" })
         .addTo(_overlayLayer);
     });
   }
@@ -4543,7 +4543,7 @@
         fillOpacity: 0.10
       });
       circle.bindTooltip(
-        t("secours.overlay.zoneIncertitude", { rayon: Math.round(ctx.zoneIncertitude.radiusMeters) }),
+        window.ktaIcone("life-buoy") + " " + t("secours.overlay.zoneIncertitude", { rayon: Math.round(ctx.zoneIncertitude.radiusMeters) }),
         { permanent: false }
       );
       circle.addTo(_overlayLayer);
@@ -4557,8 +4557,8 @@
         fillOpacity: 0.95
       });
       const lbl = ctx.lastKnownPoint.label
-                  ? t("secours.overlay.dernierePositionLabel", { label: _escHtml(ctx.lastKnownPoint.label) })
-                  : t("secours.overlay.dernierePosition");
+                  ? window.ktaIcone("life-buoy") + " " + t("secours.overlay.dernierePositionLabel", { label: _escHtml(ctx.lastKnownPoint.label) })
+                  : window.ktaIcone("life-buoy") + " " + t("secours.overlay.dernierePosition");
       cm.bindTooltip(lbl, { permanent: false });
       cm.addTo(_overlayLayer);
     }
@@ -4601,7 +4601,7 @@
         fillOpacity: 0.30,
         interactive: true
       });
-      poly.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
+      poly.bindTooltip(window.ktaIcone("users") + " " + _escHtml(g.nom), { permanent: false, direction: "center" });
       poly.addTo(_overlayLayer);
     }
     // Zone « tracés » : un POLYGONE sous tout le secteur (enveloppe des galeries, couleur de l'équipe en
@@ -4613,14 +4613,14 @@
         const poly = L.polygon(env.map(function(r) { return [r.map(_planToLatLng)]; }), {
           color: couleur, weight: 2, opacity: 0.8, fillColor: couleur, fillOpacity: 0.18, interactive: true
         });
-        poly.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
+        poly.bindTooltip(window.ktaIcone("users") + " " + _escHtml(g.nom), { permanent: false, direction: "center" });
         poly.addTo(_overlayLayer);
       }
       if (traces.length) {
         L.polyline(traces.map(function(r) { return r.points.map(_planToLatLng); }), {
           color: _assombrir(couleur, 0.35), weight: 4, opacity: 0.95, lineCap: "round", lineJoin: "round",
           interactive: !env.length
-        }).bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" }).addTo(_overlayLayer);
+        }).bindTooltip(window.ktaIcone("users") + " " + _escHtml(g.nom), { permanent: false, direction: "center" }).addTo(_overlayLayer);
       }
     }
     // Entrée : cercle vert, halo couleur équipe.
@@ -4633,7 +4633,7 @@
         fillColor:   couleur,
         fillOpacity: 0.85
       });
-      cm.bindTooltip(t("secours.overlay.entree", { equipe: _escHtml(g.nom) }), { permanent: false });
+      cm.bindTooltip(window.ktaIcone("map-pin") + " " + t("secours.overlay.entree", { equipe: _escHtml(g.nom) }), { permanent: false });
       cm.addTo(_overlayLayer);
       _addCheckBadgeIfDone(_getEtapeForWaypoint(s, g.id, "entree"), latlng);
     }
@@ -4670,7 +4670,7 @@
       });
       cm.bindTooltip(
         (isBoucle ? t("secours.overlay.boucle", { equipe: _escHtml(g.nom) })
-                  : t("secours.overlay.sortie", { equipe: _escHtml(g.nom) })),
+                  : window.ktaIcone("door-open") + " " + t("secours.overlay.sortie", { equipe: _escHtml(g.nom) })),
         { permanent: false }
       );
       cm.addTo(_overlayLayer);
@@ -4692,7 +4692,7 @@
           lineCap:   "round",
           lineJoin:  "round"
         });
-        ligne.bindTooltip(t("secours.overlay.itineraire", { equipe: _escHtml(g.nom) }), { permanent: false });
+        ligne.bindTooltip(window.ktaIcone("route") + " " + t("secours.overlay.itineraire", { equipe: _escHtml(g.nom) }), { permanent: false });
         ligne.addTo(_overlayLayer);
       };
       let run = [], niv = g.itineraireSuggere[0].level;
@@ -5218,32 +5218,32 @@
         etapes.forEach(function(et) { if (et.completedAt) nbDone++; });
       });
       const pct = nbTotal > 0 ? Math.round((nbDone / nbTotal) * 100) : 0;
-      apercuTitre = t("secours.rapport.titreOperateur");
+      apercuTitre = window.ktaIcone("user") + " " + t("secours.rapport.titreOperateur");
       apercuLines = [
-        t("secours.rapport.apercuEquipes", { n: nbEquipes }),
+        window.ktaIcone("users") + " " + t("secours.rapport.apercuEquipes", { n: nbEquipes }),
         t("secours.rapport.apercuEtapesPct", { done: nbDone, total: nbTotal, pct: pct }),
-        t("secours.rapport.apercuDuree", { duree: dureeStr })
+        window.ktaIcone("timer") + " " + t("secours.rapport.apercuDuree", { duree: dureeStr })
       ];
     } else if (scope === "equipe") {
       const g = (s.groupes || []).find(function(gr) { return gr.id === exec.currentEquipeId; });
       const eqNom = g ? g.nom : t("secours.rapport.equipeInconnue");
       const etapes = g ? _getEtapesEquipe(s, g.id) : [];
       const nbDone = etapes.filter(function(et) { return !!et.completedAt; }).length;
-      apercuTitre = t("secours.rapport.titreEquipier", { equipe: _escHtml(eqNom) });
+      apercuTitre = window.ktaIcone("users") + " " + t("secours.rapport.titreEquipier", { equipe: _escHtml(eqNom) });
       apercuLines = [
-        t("secours.rapport.apercuEtapes", { done: nbDone, total: etapes.length }),
-        t("secours.rapport.apercuDuree", { duree: dureeStr })
+        window.ktaIcone("map-pin") + " " + t("secours.rapport.apercuEtapes", { done: nbDone, total: etapes.length }),
+        window.ktaIcone("timer") + " " + t("secours.rapport.apercuDuree", { duree: dureeStr })
       ];
     } else if (scope === "secouriste") {
       const notes = (exec.etapes && exec.etapes._notes_libres) || [];
-      apercuTitre = t("secours.rapport.titreSecouriste");
+      apercuTitre = window.ktaIcone("ambulance") + " " + t("secours.rapport.titreSecouriste");
       apercuLines = [
-        t("secours.rapport.apercuNotes", { n: notes.length }),
-        t("secours.rapport.apercuDuree", { duree: dureeStr })
+        window.ktaIcone("pencil-line") + " " + t("secours.rapport.apercuNotes", { n: notes.length }),
+        window.ktaIcone("timer") + " " + t("secours.rapport.apercuDuree", { duree: dureeStr })
       ];
     } else {
-      apercuTitre = t("secours.rapport.titreDefault");
-      apercuLines = [t("secours.rapport.apercuDuree", { duree: dureeStr })];
+      apercuTitre = window.ktaIcone("arrow-up-from-line") + " " + t("secours.rapport.titreDefault");
+      apercuLines = [window.ktaIcone("timer") + " " + t("secours.rapport.apercuDuree", { duree: dureeStr })];
     }
 
     // Photos présentes ? (information de la case à cocher)
@@ -5265,7 +5265,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-rapport-boite" style="max-width:540px; height:auto; max-height:90vh; border-left:6px solid var(--kta-interaction);">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 class="kta-tx-info" style="margin:0; color:var(--kta-interaction);">📤 ' + _escHtml(apercuTitre) + '</h2>' +
+          '<h2 class="kta-tx-info" style="margin:0; color:var(--kta-interaction);">' + apercuTitre + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="cancel-rapport" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -5273,13 +5273,13 @@
           '<div class="kta-secours-rapport-apercu">' +
             '<div class="kta-secours-rapport-apercu-titre">' + t("secours.rapport.apercuTitre") + '</div>' +
             '<ul class="kta-secours-rapport-apercu-lines">' +
-              apercuLines.map(function(l) { return '<li>' + _escHtml(l) + '</li>'; }).join('') +
+              apercuLines.map(function(l) { return '<li>' + l + '</li>'; }).join('') +
             '</ul>' +
           '</div>' +
 
           '<label class="kta-secours-rapport-checkbox">' +
             '<input type="checkbox" id="kta-rapport-include-photos" checked>' +
-            ' <span><strong>' + t("secours.rapport.inclurePhotos") + '</strong></span>' +
+            ' <span><strong>' + window.ktaIcone("camera") + " " + t("secours.rapport.inclurePhotos") + '</strong></span>' +
             '<div id="kta-rapport-photos-hint" class="kta-secours-rapport-photos-hint">' + t("secours.rapport.comptagePhotos") + '</div>' +
           '</label>' +
 
@@ -5287,21 +5287,21 @@
           // ligne, un libellé long (« .mkmsec.report.json ») et sa description se chevaucheraient.
           '<div class="kta-secours-rapport-formats">' +
             '<button class="kta-btn kta-btn-primary kta-secours-rapport-fmt-btn" data-action="rapport-export-pdf">' +
-              '<span class="kta-secours-rapport-fmt-icon">📄</span>' +
+              '<span class="kta-secours-rapport-fmt-icon">' + window.ktaIcone("file-text") + '</span>' +
               '<span class="kta-secours-rapport-fmt-content">' +
                 '<span class="kta-secours-rapport-fmt-label">' + t("secours.rapport.fmtPdfLabel") + '</span>' +
                 '<span class="kta-secours-rapport-fmt-sub">' + t("secours.rapport.fmtPdfSub") + '</span>' +
               '</span>' +
             '</button>' +
             '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-export-json">' +
-              '<span class="kta-secours-rapport-fmt-icon">📦</span>' +
+              '<span class="kta-secours-rapport-fmt-icon">' + window.ktaIcone("archive") + '</span>' +
               '<span class="kta-secours-rapport-fmt-content">' +
                 '<span class="kta-secours-rapport-fmt-label">.mkmsec.report.json</span>' +
                 '<span class="kta-secours-rapport-fmt-sub">' + t("secours.rapport.fmtJsonSub") + '</span>' +
               '</span>' +
             '</button>' +
             '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-copy-text">' +
-              '<span class="kta-secours-rapport-fmt-icon">📋</span>' +
+              '<span class="kta-secours-rapport-fmt-icon">' + window.ktaIcone("copy") + '</span>' +
               '<span class="kta-secours-rapport-fmt-content">' +
                 '<span class="kta-secours-rapport-fmt-label">' + t("secours.rapport.fmtTextLabel") + '</span>' +
                 '<span class="kta-secours-rapport-fmt-sub">' + t("secours.rapport.fmtTextSub") + '</span>' +
@@ -5574,9 +5574,9 @@
 
     // Textes de l'overlay selon l'appelant : "briefing" (défaut, bouton Briefing pompiers) ou "rapport".
     const _ctx = (overlayContext === "rapport")
-      ? { icon: "📤", title: t("secours.capture.rapportTitle"),
+      ? { icon: "arrow-up-from-line", title: t("secours.capture.rapportTitle"),
           sub: t("secours.capture.rapportSub") }
-      : { icon: "🚒", title: t("secours.capture.briefingTitle"),
+      : { icon: "clipboard-list", title: t("secours.capture.briefingTitle"),
           sub: t("secours.capture.briefingSub") };
 
     // Ouvrir puis fermer la Vue OSM sous un overlay opaque : la capture du DOM Leaflet a tout (plan orienté,
@@ -5622,12 +5622,12 @@
         "background:" + ovBg, "color:" + ovAccent,
         "display:flex", "align-items:center", "justify-content:center",
         "flex-direction:column", "gap:18px",
-        "font-family:system-ui,-apple-system,sans-serif",
+        "font-family:KTA Emoji, system-ui,-apple-system,sans-serif",
         "font-size:16px"
       ].join(";");
       overlay.innerHTML =
-        '<div class="kta-charge-tourne" style="font-size:42px;animation:kta-spin 1.4s linear infinite;">🛰️</div>' +
-        '<div style="font-weight:700;">' + _ctx.icon + ' ' + _escHtml(_ctx.title) + '</div>' +
+        '<div class="kta-charge-tourne" style="font-size:42px;animation:kta-spin 1.4s linear infinite;line-height:0;">' + window.ktaIcone("loader-circle") + '</div>' +
+        '<div style="font-weight:700;">' + window.ktaIcone(_ctx.icon) + ' ' + _escHtml(_ctx.title) + '</div>' +
         '<div style="font-size:12px;color:' + ovMuted + ';max-width:340px;text-align:center;">' +
           _escHtml(_ctx.sub) +
         '</div>';
@@ -5747,7 +5747,7 @@
         icon: L.divIcon({
           className: "",
           // Couleurs portées par la classe : suit le thème clair (style-secours.css).
-          html: '<div class="kta-secours-osm-etiquette">📍 ' + _escHtml(planName) + '</div>',
+          html: '<div class="kta-secours-osm-etiquette">' + window.ktaIcone("map-pin") + ' ' + _escHtml(planName) + '</div>',
           iconSize: [10, 10],
           iconAnchor: [60, 5]
         }),
@@ -6049,7 +6049,7 @@
       "position:fixed", "inset:0", "z-index:100001",
       "background:" + pal.backdrop, "backdrop-filter:blur(3px)",
       "display:flex", "align-items:center", "justify-content:center",
-      "padding:20px", "font-family:system-ui,-apple-system,sans-serif"
+      "padding:20px", "font-family:KTA Emoji, system-ui,-apple-system,sans-serif"
     ].join(";");
 
     const box = document.createElement("div");
@@ -6063,27 +6063,27 @@
 
     box.innerHTML =
       '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">' +
-        '<div style="font-size:32px;">🚒</div>' +
+        '<div style="font-size:32px; line-height:0;">' + window.ktaIcone("clipboard-list") + '</div>' +
         '<div>' +
           '<div style="font-size:18px;font-weight:700;color:' + pal.accent + ';">' + t("secours.briefing.titre") + '</div>' +
         '</div>' +
       '</div>' +
       '<div style="background:' + pal.sectionBg + ';border-radius:8px;padding:14px 16px;margin-bottom:14px;">' +
-        '<div style="font-size:13px;font-weight:600;color:' + pal.sectionTitle + ';margin-bottom:10px;">' + t("secours.briefing.couchesTitre") + '</div>' +
+        '<div style="font-size:13px;font-weight:600;color:' + pal.sectionTitle + ';margin-bottom:10px;">' + window.ktaIcone("layers") + " " + t("secours.briefing.couchesTitre") + '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px;">' +
-          _renderToggleOpt("opt-plan",    t("secours.briefing.optPlan"),    true) +
-          _renderToggleOpt("opt-poi",     t("secours.briefing.optPoi"),     false) +   // tous les POI : illisible
-          _renderToggleOpt("opt-tracker", t("secours.briefing.optTracker"), true) +
-          _renderToggleOpt("opt-road",    t("secours.briefing.optRoad"),    true) +
-          _renderToggleOpt("opt-iti",     t("secours.briefing.optIti"),     true) +
-          _renderToggleOpt("opt-zone",    t("secours.briefing.optZone"),    true) +
-          _renderToggleOpt("opt-struct",  t("secours.briefing.optStruct"),  true) +
-          _renderToggleOpt("opt-secours", t("secours.briefing.optSecours"), true) +
+          _renderToggleOpt("opt-plan",    window.ktaIcone("image") + " " + t("secours.briefing.optPlan"),    true) +
+          _renderToggleOpt("opt-poi",     window.ktaIcone("map-pin") + " " + t("secours.briefing.optPoi"),     false) +   // tous les POI : illisible
+          _renderToggleOpt("opt-tracker", window.ktaIcone("footprints") + " " + t("secours.briefing.optTracker"), true) +
+          _renderToggleOpt("opt-road",    window.ktaIcone("m-galerie") + " " + t("secours.briefing.optRoad"),    true) +
+          _renderToggleOpt("opt-iti",     window.ktaIcone("route") + " " + t("secours.briefing.optIti"),     true) +
+          _renderToggleOpt("opt-zone",    window.ktaIcone("m-zone") + " " + t("secours.briefing.optZone"),    true) +
+          _renderToggleOpt("opt-struct",  window.ktaIcone("m-pilier") + " " + t("secours.briefing.optStruct"),  true) +
+          _renderToggleOpt("opt-secours", window.ktaIcone("ambulance") + " " + t("secours.briefing.optSecours"), true) +
         '</div>' +
       '</div>' +
       '<div style="display:flex;justify-content:flex-end;gap:10px;">' +
         '<button class="kta-btn kta-btn-ghost" data-act="cancel" style="padding:9px 18px;">' + t("secours.btn.annulerSimple") + '</button>' +
-        '<button class="kta-btn kta-btn-primary" data-act="generate" style="padding:9px 20px;font-weight:700;">' + t("secours.btn.genererPdf") + '</button>' +
+        '<button class="kta-btn kta-btn-primary" data-act="generate" style="padding:9px 20px;font-weight:700;">' + window.ktaIcone("file-text") + " " + t("secours.btn.genererPdf") + '</button>' +
       '</div>';
 
     overlay.appendChild(box);
@@ -6384,6 +6384,8 @@
   // Rendu : le plan recadré sur les accès (+ marge), zones des équipes en filigrane,
   // un repère numéroté par accès (numéros = lignes du tableau).
   async function _canvasAcces(s, acces) {
+    // Emoji des textes dessinés : police KTA Emoji chargée avant le canvas (ktaIcones.js > chargerPoliceEmoji).
+    if (window.ktaPoliceEmoji) await window.ktaPoliceEmoji.charger();
     const xs = acces.map(function(a) { return a.pt.x; }), ys = acces.map(function(a) { return a.pt.y; });
     let x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
     let y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
@@ -6418,7 +6420,7 @@
       ctx.beginPath(); ctx.arc(q.x, q.y, 15 * k, 0, 2 * Math.PI);
       ctx.fillStyle = hex; ctx.fill();
       ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3.5 * k; ctx.stroke();
-      ctx.fillStyle = "#ffffff"; ctx.font = "bold " + Math.round(16 * k) + "px Arial, sans-serif";
+      ctx.fillStyle = "#ffffff"; ctx.font = "bold " + Math.round(16 * k) + "px 'KTA Emoji', Arial, sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 3 * k;
       ctx.strokeText(String(i + 1), q.x, q.y); ctx.fillText(String(i + 1), q.x, q.y);
@@ -6724,7 +6726,7 @@
         ctx.lineWidth   = 3;
         ctx.stroke();
         ctx.fillStyle   = "#1a1f2e";
-        ctx.font        = "bold 14px Arial, sans-serif";
+        ctx.font        = "bold 14px 'KTA Emoji', Arial, sans-serif";
         ctx.textAlign   = "center";
         ctx.textBaseline= "middle";
         ctx.fillText(String(i + 1), c.x, c.y);
@@ -6743,7 +6745,7 @@
       ctx.lineWidth   = 5;
       ctx.stroke();
       ctx.fillStyle   = "#ffffff";
-      ctx.font        = "bold 16px Arial, sans-serif";
+      ctx.font        = "bold 16px 'KTA Emoji', Arial, sans-serif";
       ctx.textAlign   = "center";
       ctx.textBaseline= "middle";
       ctx.fillText("E", c.x, c.y);
@@ -6765,7 +6767,7 @@
       ctx.lineWidth   = 5;
       ctx.stroke();
       ctx.fillStyle   = "#ffffff";
-      ctx.font        = isLoop ? "bold 12px Arial, sans-serif" : "bold 16px Arial, sans-serif";
+      ctx.font        = isLoop ? "bold 12px 'KTA Emoji', Arial, sans-serif" : "bold 16px 'KTA Emoji', Arial, sans-serif";
       ctx.textAlign   = "center";
       ctx.textBaseline= "middle";
       ctx.fillText(isLoop ? "E/S" : "S", cx, cy);
@@ -6781,6 +6783,8 @@
    * @param {object} r  - reportData complet (métadonnées)
    */
   async function _drawRapportPDFEquipeMiniaturePage(pdf, ed, r) {
+    // Emoji des textes dessinés : police KTA Emoji chargée avant le canvas (ktaIcones.js > chargerPoliceEmoji).
+    if (window.ktaPoliceEmoji) await window.ktaPoliceEmoji.charger();
     if (!ed || !ed.equipe) return false;
     // 🩸 `ed.equipe` est la copie ALLÉGÉE du rapport (id, nom, couleur, membres…) : ni entrée, ni étapes, ni
     // zone, ni itinéraire → `_calculerBoundsEquipe` rendrait null et la page serait sautée sans un mot. Le PDF
@@ -7269,6 +7273,8 @@
   }
   // Carte d'une équipe pour le PDF : rendu de son rectangle + l'overlay de l'équipe.
   async function _carteEquipe(g, hexColor) {
+    // Emoji des textes dessinés : police KTA Emoji chargée avant le canvas (ktaIcones.js > chargerPoliceEmoji).
+    if (window.ktaPoliceEmoji) await window.ktaPoliceEmoji.charger();
     const rect = _rectCarteEquipe(g);
     const src = await _rendreRegionPlan(rect, rect && rect.planEntier ? 1200 : 2400);
     return src ? _cropCanvasForTeam(src, g, hexColor) : null;
@@ -7353,7 +7359,7 @@
         const c = _toCanvas(w);
         _drawTeamMarker(ctx, c.x, c.y, 7 * k, "#ffffff", hexColor);
         ctx.fillStyle = "#000";
-        ctx.font = "bold " + Math.round(12 * k) + "px sans-serif";
+        ctx.font = "bold " + Math.round(12 * k) + "px 'KTA Emoji', sans-serif";
         ctx.textAlign = "left"; ctx.textBaseline = "middle";
         ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k; ctx.lineJoin = "round";   // lisible sur plan sombre
         ctx.strokeText(String(i + 1), c.x + 9 * k, c.y);
@@ -7366,7 +7372,7 @@
       const c = _toCanvas(g.entree);
       _drawTeamMarker(ctx, c.x, c.y, 9 * k, "#00cc44", hexColor);
       ctx.fillStyle = "#00cc44";
-      ctx.font = "bold " + Math.round(11 * k) + "px sans-serif";
+      ctx.font = "bold " + Math.round(11 * k) + "px 'KTA Emoji', sans-serif";
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k;
       const lblEntree = t("secours.carte.entree");
@@ -7380,7 +7386,7 @@
       _drawTeamMarker(ctx, c.x, c.y, (isBoucle ? 11 : 9) * k,
                       isBoucle ? "#ffaa00" : "#cc0000", hexColor);
       ctx.fillStyle = isBoucle ? "#ffaa00" : "#cc0000";
-      ctx.font = "bold " + Math.round(11 * k) + "px sans-serif";
+      ctx.font = "bold " + Math.round(11 * k) + "px 'KTA Emoji', sans-serif";
       ctx.textAlign = "left"; ctx.textBaseline = "middle";
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 3 * k;
       const lbl = isBoucle ? t("secours.carte.entreeSortie") : t("secours.carte.sortie");
@@ -7422,7 +7428,7 @@
     }
     if (items.length === 0) return;
 
-    ctx.font = "11px sans-serif";
+    ctx.font = "11px 'KTA Emoji', sans-serif";
     const lineH = 16;
     const swatchW = 16;
     const swatchGap = 6;
@@ -7771,7 +7777,7 @@
   function _renderModalHTML() {
     return '<div class="kta-readme-modal-boite kta-secours-modal-boite">' +
              '<div class="kta-readme-modal-header">' +
-               '<span class="kta-readme-modal-titre">' + t("secours.modal.titre") + '</span>' +
+               '<span class="kta-readme-modal-titre">' + window.ktaIcone("ambulance") + " " + t("secours.modal.titre") + '</span>' +
                '<button class="kta-panneau-close" id="kta-secours-close" type="button" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">&times;</button>' +
              '</div>' +
              '<div class="kta-readme-modal-corps kta-secours-corps" id="kta-secours-corps">' +
@@ -7848,16 +7854,16 @@
     let html = '<div class="kta-secours-list-header">' +
                  '<div class="kta-secours-list-header-actions">' +
                    '<button class="kta-btn kta-btn-primary" data-action="new-scenario">' +
-                     t("secours.list.btnNouveau") +
+                     window.ktaIcone("plus") + " " + t("secours.list.btnNouveau") +
                    '</button>' +
                    '<button class="kta-btn kta-btn-secondary" data-action="import-mkmsec" title="' + _escAttr(t("secours.list.btnImporterTitle")) + '">' +
-                     t("secours.list.btnImporter") +
+                     window.ktaIcone("folder-input") + " " + t("secours.list.btnImporter") +
                    '</button>' +
                  '</div>' +
                '</div>';
     if (_scenarios.length === 0) {
       html += '<div class="kta-secours-empty">' +
-                '<div class="kta-secours-empty-icon">🚑</div>' +
+                '<div class="kta-secours-empty-icon">' + window.ktaIcone("ambulance") + '</div>' +
                 '<p>' + t("secours.list.emptyTitre") + '</p>' +
                 '<p class="kta-secours-empty-hint">' + t("secours.list.emptyHint") + '</p>' +
               '</div>';
@@ -7874,14 +7880,14 @@
                   '<div class="kta-secours-list-info">' +
                     '<div class="kta-secours-list-nom">' + _escHtml(s.nom) + '</div>' +
                     '<div class="kta-secours-list-meta">' +
-                      t("secours.list.metaEquipes", { n: nbGroupes }) +
-                      ' · 📅 ' + date +
+                      window.ktaIcone("users") + " " + t("secours.list.metaEquipes", { n: nbGroupes }) +
+                      ' · ' + window.ktaIcone("calendar") + ' ' + date +
                     '</div>' +
                   '</div>' +
                   '<div class="kta-secours-list-actions">' +
-                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="open-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.ouvrirTitle")) + '">' + t("secours.btn.ouvrir") + '</button>' +
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="dup-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.dupliquerTitle")) + '">🗐</button>' +
-                    '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">🗑️</button>' +
+                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="open-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.ouvrirTitle")) + '">' + window.ktaIcone("pencil") + " " + t("secours.btn.ouvrir") + '</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="dup-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.dupliquerTitle")) + '">' + window.ktaIcone("copy") + '</button>' +
+                    '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-scenario" data-id="' + _escAttr(s.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">' + window.ktaIcone("trash-2") + '</button>' +
                   '</div>' +
                 '</div>';
       });
@@ -7900,7 +7906,7 @@
   // se définissent ensuite dans l'Édition (ils demandent la carte).
   function _renderCreateView() {
     return '<div class="kta-secours-create-form">' +
-             '<h3 class="kta-secours-form-titre">' + t("secours.create.titre") + '</h3>' +
+             '<h3 class="kta-secours-form-titre">' + window.ktaIcone("ambulance") + " " + t("secours.create.titre") + '</h3>' +
              '<div class="kta-secours-form-row">' +
                '<label for="kta-sec-create-nom">' + t("secours.create.nomLabel") + '</label>' +
                '<input type="text" id="kta-sec-create-nom" placeholder="' + _escAttr(t("secours.create.nomPlaceholder")) + '" maxlength="80">' +
@@ -7930,11 +7936,11 @@
     const currentIdx = (s.execution && typeof s.execution.currentPhaseIdx === "number")
                        ? s.execution.currentPhaseIdx : 0;
     let html = '<details class="kta-secours-section"' + (nbPhases >= 2 ? ' open' : '') + '>' +
-                 '<summary class="kta-secours-section-titre">' + t("secours.phases.sectionTitre", { n: nbPhases }) + '</summary>' +
+                 '<summary class="kta-secours-section-titre">' + window.ktaIcone("list") + " " + t("secours.phases.sectionTitre", { n: nbPhases }) + '</summary>' +
                  '<div class="kta-secours-section-body">';
     if (nbPhases <= 1) {
       html += '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
-                t("secours.phases.btnAjouter") +
+                window.ktaIcone("plus") + " " + t("secours.phases.btnAjouter") +
               '</button>';
     } else {
       html += '<div class="kta-secours-phases-list">';
@@ -7946,7 +7952,7 @@
         let statutLabel = '';
         if (isEnded) statutLabel = '<span class="kta-secours-phase-status-end">' + t("secours.phases.statutTerminee") + '</span>';
         else if (isActive) statutLabel = '<span class="kta-secours-phase-status-active">' + t("secours.phases.statutActive") + '</span>';
-        else if (isStarted) statutLabel = '<span class="kta-secours-phase-status-paused">' + t("secours.phases.statutDemarree") + '</span>';
+        else if (isStarted) statutLabel = '<span class="kta-secours-phase-status-paused">' + window.ktaIcone("pause") + " " + t("secours.phases.statutDemarree") + '</span>';
         else statutLabel = '<span class="kta-secours-phase-status-pending">' + t("secours.phases.statutNonDemarree") + '</span>';
         // Suppression désactivée si phase active, démarrée, ou seule.
         const canDelete = !isActive && !isStarted;
@@ -7955,7 +7961,7 @@
                        : t("secours.phases.delTitleDefault");
         html += '<div class="kta-secours-phase-row" data-phase-idx="' + i + '">' +
                   '<div class="kta-secours-phase-row-head">' +
-                    '<span class="kta-secours-phase-row-icon">📋</span>' +
+                    '<span class="kta-secours-phase-row-icon">' + window.ktaIcone("list") + '</span>' +
                     '<span class="kta-secours-phase-row-nom"><strong>' + _escHtml(p.nom) + '</strong></span>' +
                     statutLabel +
                   '</div>' +
@@ -7964,11 +7970,11 @@
                   '</div>' +
                   '<div class="kta-secours-phase-row-actions">' +
                     '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="edit-phase" data-phase-idx="' + i + '" title="' + _escAttr(t("secours.phases.editTitle")) + '">' +
-                      t("secours.btn.editer") +
+                      window.ktaIcone("pencil") + " " + t("secours.btn.editer") +
                     '</button>' +
                     '<button class="kta-btn kta-btn-danger kta-btn-xs" data-action="delete-phase" data-phase-idx="' + i + '"' +
                       (canDelete ? '' : ' disabled') + ' title="' + _escAttr(delTitle) + '">' +
-                      '🗑️' +
+                      window.ktaIcone("trash-2") +
                     '</button>' +
                   '</div>' +
                 '</div>';
@@ -7976,7 +7982,7 @@
       html += '</div>' +
               '<div style="margin-top:10px;">' +
                 '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
-                  t("secours.phases.btnAjouter") +
+                  window.ktaIcone("plus") + " " + t("secours.phases.btnAjouter") +
                 '</button>' +
               '</div>';
     }
@@ -8006,7 +8012,7 @@
     const defaultNom = isEdit ? existingPhase.nom : t("secours.phaseModal.defaultNom", { n: (s.phases.length + 1) });
     const initialGroupeIds = isEdit ? (existingPhase.groupeIds || []).slice() : [];
 
-    const titre = isEdit ? t("secours.phaseModal.titreEdit") : t("secours.phaseModal.titreCreate");
+    const titre = isEdit ? window.ktaIcone("pencil") + " " + t("secours.phaseModal.titreEdit") : window.ktaIcone("plus") + " " + t("secours.phaseModal.titreCreate");
 
     // kta-secours-sub-modal : z-index 100050, au-dessus de la modale principale (99999).
     let html = '<div class="kta-readme-modal-overlay kta-secours-sub-modal" id="kta-secours-phase-modal">' +
@@ -8021,7 +8027,7 @@
                        '<input type="text" id="kta-sec-phase-nom" maxlength="80" value="' + _escAttr(defaultNom) + '" placeholder="' + _escAttr(t("secours.phaseModal.nomPlaceholder")) + '" style="width:100%;">' +
                      '</div>' +
                      '<div style="margin-top:14px;">' +
-                       '<label><strong>' + t("secours.phaseModal.equipesLabel") + '</strong></label>' +
+                       '<label><strong>' + window.ktaIcone("users") + " " + t("secours.phaseModal.equipesLabel") + '</strong></label>' +
                        '<p class="kta-secours-hint" style="margin:4px 0 8px;">' +
                          t("secours.phaseModal.equipesHint") +
                        '</p>';
@@ -8036,7 +8042,7 @@
                   '<input type="checkbox" data-equipe-id="' + g.id + '"' + (checked ? ' checked' : '') + '>' +
                   '<span class="kta-secours-phase-equipe-swatch" style="background:' + couleur.hex + ';"></span>' +
                   '<span class="kta-secours-phase-equipe-nom">' + _escHtml(g.nom) + '</span>' +
-                  (typeof g.level === "number" ? ' <span class="kta-secours-phase-equipe-level">' + t("secours.phaseModal.nivChip", { level: g.level }) + '</span>' : '') +
+                  (typeof g.level === "number" ? ' <span class="kta-secours-phase-equipe-level">' + window.ktaIcone("m-niveaux") + " " + t("secours.phaseModal.nivChip", { level: g.level }) + '</span>' : '') +
                 '</label>';
       });
       html += '</div>';
@@ -8140,7 +8146,7 @@
     let html = '<div class="kta-readme-modal-overlay kta-secours-sub-modal" id="kta-secours-debrief-modal">' +
                  '<div class="kta-readme-modal-boite" style="max-width:600px;height:auto;max-height:90vh;">' +
                    '<div class="kta-readme-modal-header">' +
-                     '<span class="kta-readme-modal-titre">' + t("secours.debrief.titre", { phase: _escHtml(phase.nom) }) + '</span>' +
+                     '<span class="kta-readme-modal-titre">' + window.ktaIcone("flag") + " " + t("secours.debrief.titre", { phase: _escHtml(phase.nom) }) + '</span>' +
                      '<button class="kta-panneau-close" data-action="close-debrief-modal">✕</button>' +
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
@@ -8162,7 +8168,7 @@
     if (aSuivante) {
       html += '<div style="margin-top:10px;padding:10px;background:rgba(140,180,255,0.10);border-left:3px solid rgba(140,180,255,0.55);border-radius:4px;">' +
                 '<div class="kta-tx-info" style="font-size:13px;color:var(--kta-interaction);margin-bottom:4px;">' +
-                  '➡️ <strong>' + t("secours.debrief.phaseSuivante") + '</strong> ' + _escHtml(nextPhase.nom) +
+                  window.ktaIcone("arrow-right") + ' <strong>' + t("secours.debrief.phaseSuivante") + '</strong> ' + _escHtml(nextPhase.nom) +
                 '</div>' +
                 '<div style="font-size:12px;color:var(--kta-texte-3);">' +
                   t("secours.debrief.equipesAssignees", { n: equipesSuivantes.length }) + ' ' +
@@ -8180,7 +8186,7 @@
                    '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--kta-bordure);">' +
                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-debrief-modal">' + t("secours.btn.annulerSimple") + '</button>' +
                      '<button class="kta-btn kta-btn-primary" data-action="confirm-debrief-modal">' +
-                       (aSuivante ? t("secours.btn.terminerPhase") : t("secours.btn.terminerPlan")) +
+                       (aSuivante ? t("secours.btn.terminerPhase") : window.ktaIcone("square") + " " + t("secours.btn.terminerPlan")) +
                      '</button>' +
                    '</div>' +
                  '</div>' +
@@ -8246,7 +8252,7 @@
     let html = '<div class="kta-readme-modal-overlay kta-secours-sub-modal" id="kta-secours-launchnext-modal">' +
                  '<div class="kta-readme-modal-boite" style="max-width:480px;height:auto;max-height:90vh;">' +
                    '<div class="kta-readme-modal-header">' +
-                     '<span class="kta-readme-modal-titre">' + t("secours.launchNext.titre") + '</span>' +
+                     '<span class="kta-readme-modal-titre">' + window.ktaIcone("rocket") + " " + t("secours.launchNext.titre") + '</span>' +
                      '<button class="kta-panneau-close" data-action="close-launchnext">✕</button>' +
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
@@ -8278,7 +8284,7 @@
                    '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--kta-bordure);">' +
                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-launchnext">' + t("secours.btn.plusTard") + '</button>' +
                      '<button class="kta-btn kta-btn-primary" data-action="confirm-launchnext"' + (equipes.length === 0 ? ' disabled' : '') + '>' +
-                       t("secours.btn.demarrerPhase", { phase: _escHtml(nextPhase.nom) }) +
+                       window.ktaIcone("rocket") + " " + t("secours.btn.demarrerPhase", { phase: _escHtml(nextPhase.nom) }) +
                      '</button>' +
                    '</div>' +
                  '</div>' +
@@ -8329,7 +8335,7 @@
                  '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="back-to-list">' + t("secours.btn.liste") + '</button>' +
                  '<input type="text" class="kta-secours-edit-titre" id="kta-sec-edit-nom" value="' + _escAttr(s.nom) + '" maxlength="80">' +
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="toggle-overlay" id="kta-sec-toggle-overlay" title="' + _escAttr(t("secours.edit.toggleOverlayTitle")) + '">' +
-                   (_overlayLayer ? t("secours.edit.masquer") : t("secours.edit.voirCarte")) +
+                   (_overlayLayer ? window.ktaIcone("map") + " " + t("secours.edit.masquer") : window.ktaIcone("map") + " " + t("secours.edit.voirCarte")) +
                  '</button>' +
                '</div>';
 
@@ -8340,7 +8346,7 @@
 
     // Section 1 : Contexte.
     html += '<details class="kta-secours-section" open>' +
-              '<summary class="kta-secours-section-titre">' + t("secours.edit.contexteTitre") + '</summary>' +
+              '<summary class="kta-secours-section-titre">' + window.ktaIcone("file-text") + " " + t("secours.edit.contexteTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div class="kta-secours-form-row">' +
                   '<label for="kta-sec-edit-incident">' + t("secours.edit.heureIncident") + '</label>' +
@@ -8366,19 +8372,19 @@
     const autoMLVLBtn = (mlvlActive && availableLevels.length > 1)
       ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="auto-equipes-mlvl" ' +
         'title="' + _escAttr(t("secours.edit.autoMlvlTitle", { n: availableLevels.length })) + '">' +
-        t("secours.edit.autoMlvlBtn", { n: availableLevels.length }) + '</button>'
+        window.ktaIcone("m-niveaux") + " " + t("secours.edit.autoMlvlBtn", { n: availableLevels.length }) + '</button>'
       : '';
     // Découpage du réseau en secteurs (une équipe par secteur).
     const decoupeBtn = (window.SecoursBalayage && window.Pathfinder && typeof window.Pathfinder.aDesTraces === "function" &&
                         window.Pathfinder.aDesTraces())
       ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="decouper-secteurs" ' +
-        'title="' + _escAttr(t("secours.secteurs.btnTitle")) + '">' + t("secours.secteurs.btn") + '</button>'
+        'title="' + _escAttr(t("secours.secteurs.btnTitle")) + '">' + window.ktaIcone("split") + " " + t("secours.secteurs.btn") + '</button>'
       : '';
     html += '<details class="kta-secours-section" open>' +
-              '<summary class="kta-secours-section-titre">' + t("secours.edit.equipesTitre", { n: s.groupes.length }) + '</summary>' +
+              '<summary class="kta-secours-section-titre">' + window.ktaIcone("users") + " " + t("secours.edit.equipesTitre", { n: s.groupes.length }) + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
-                  '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">' + t("secours.edit.btnAjouterEquipe") + '</button>' +
+                  '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">' + window.ktaIcone("plus") + " " + t("secours.edit.btnAjouterEquipe") + '</button>' +
                   autoMLVLBtn +
                   decoupeBtn +
                   (s.groupes.length > 1
@@ -8395,7 +8401,7 @@
 
     // Couverture : calculée à l'ouverture du bloc (des centaines de tracés).
     html += '<details class="kta-secours-section" id="kta-secours-couverture">' +
-              '<summary class="kta-secours-section-titre">' + t("secours.couv.titre") + '</summary>' +
+              '<summary class="kta-secours-section-titre">' + window.ktaIcone("chart-column") + " " + t("secours.couv.titre") + '</summary>' +
               '<div class="kta-secours-section-body" id="kta-secours-couverture-corps"></div>' +
             '</details>';
 
@@ -8405,12 +8411,12 @@
 
     // Section 3 : Export.
     html += '<details class="kta-secours-section">' +
-              '<summary class="kta-secours-section-titre">' + t("secours.edit.exportTitre") + '</summary>' +
+              '<summary class="kta-secours-section-titre">' + window.ktaIcone("arrow-up-from-line") + " " + t("secours.edit.exportTitre") + '</summary>' +
               '<div class="kta-secours-section-body">' +
                 '<div class="kta-secours-export-actions">' +
-                  '<button class="kta-btn kta-btn-primary" data-action="export-pdf">' + t("secours.edit.exportPdf") + '</button>' +
-                  '<button class="kta-btn kta-btn-primary" data-action="export-kmz">' + t("secours.edit.exportKmz") + '</button>' +
-                  '<button class="kta-btn kta-btn-secondary" data-action="export-mkmsec" title="' + _escAttr(t("secours.edit.exportMkmsecTitle")) + '">' + t("secours.edit.exportMkmsec") + '</button>' +
+                  '<button class="kta-btn kta-btn-primary" data-action="export-pdf">' + window.ktaIcone("file-text") + " " + t("secours.edit.exportPdf") + '</button>' +
+                  '<button class="kta-btn kta-btn-primary" data-action="export-kmz">' + window.ktaIcone("globe") + " " + t("secours.edit.exportKmz") + '</button>' +
+                  '<button class="kta-btn kta-btn-secondary" data-action="export-mkmsec" title="' + _escAttr(t("secours.edit.exportMkmsecTitle")) + '">' + window.ktaIcone("arrow-up-from-line") + " " + t("secours.edit.exportMkmsec") + '</button>' +
                 '</div>' +
               '</div>' +
             '</details>';
@@ -8438,7 +8444,7 @@
       // Puce « Niv X » si g.level est défini (0 → RDC, ±N, null → « Sans niveau »).
       const lvlChip = (typeof g.level === "number")
                       ? '<span class="kta-secours-groupe-level-chip" title="' + _escAttr(t("secours.groupe.levelChipTitle")) + '">' +
-                        '🏗️ ' + _lblNiveau(g.level) +
+                        window.ktaIcone("m-niveaux") + ' ' + _lblNiveau(g.level) +
                         '</span>'
                       : '';
       // Niveau de référence modifiable (multi-niveau avec availableLevels).
@@ -8456,7 +8462,7 @@
                                return '<option value="' + lvl + '"' + sel + '>' + t("secours.level.niveau", { label: lbl }) + _suffixeNiveauVide(lvl) + '</option>';
                              }).join('');
         levelSelectRow = '<div class="kta-secours-groupe-row">' +
-                           '<label>' + t("secours.groupe.niveauMlvl") + '</label>' +
+                           '<label>' + window.ktaIcone("m-niveaux") + " " + t("secours.groupe.niveauMlvl") + '</label>' +
                            '<select data-action="change-level" data-gid="' + _escAttr(g.id) + '">' +
                              levelOptions +
                            '</select>' +
@@ -8472,18 +8478,18 @@
                   '<span class="kta-secours-groupe-swatch" style="background:' + couleur.hex + ';"></span>' +
                   '<input type="text" class="kta-secours-groupe-nom" data-action="rename-groupe" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.nom) + '" maxlength="40">' +
                   lvlChip +
-                  '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">🗑️</button>' +
+                  '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">' + window.ktaIcone("trash-2") + '</button>' +
                   '<span class="kta-secours-groupe-resume kta-tx-muted">' + t("secours.groupe.resumeReplie", { n: nbEtapesG }) + '</span>' +
                 '</div>' +
                 '<div class="kta-secours-groupe-body">' +
                   '<div class="kta-secours-groupe-row">' +
-                    '<label>' + t("secours.groupe.membresLabel") + '</label>' +
+                    '<label>' + window.ktaIcone("users") + " " + t("secours.groupe.membresLabel") + '</label>' +
                     '<input type="text" data-action="edit-membres" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr((g.membres || []).join(", ")) + '" placeholder="' + _escAttr(t("secours.groupe.membresPlaceholder")) + '" maxlength="200">' +
                   '</div>' +
                   // Chef d'équipe (parmi les membres), effectif, retour impératif : une ligne chacun, comme « Membres »
                   // (sur une seule ligne, ils se replient n'importe où sur téléphone).
                   '<div class="kta-secours-groupe-row">' +
-                    '<label>' + t("secours.b9.chefLabel") + '</label>' +
+                    '<label>' + window.ktaIcone("user") + " " + t("secours.b9.chefLabel") + '</label>' +
                     ((g.membres || []).length
                       ? '<select data-action="edit-chef" data-gid="' + _escAttr(g.id) + '">' +
                           (g.membres || []).map(function(m) {
@@ -8506,7 +8512,7 @@
                   // GPS de surface de l'équipe (PC, rendez-vous pompiers…), saisi « lat, lng » (WGS84), stocké
                   // {lat, lng}, facultatif ; utilisé par le briefing pompiers PDF.
                   '<div class="kta-secours-groupe-row">' +
-                    '<label>' + t("secours.groupe.gpsSurfaceLabel") + '</label>' +
+                    '<label>' + window.ktaIcone("globe") + " " + t("secours.groupe.gpsSurfaceLabel") + '</label>' +
                     '<input type="text" data-action="edit-surface-gps" data-gid="' + _escAttr(g.id) + '" ' +
                       'value="' + _escAttr(g.surfaceGps ? (g.surfaceGps.lat + ", " + g.surfaceGps.lng) : "") + '" ' +
                       'placeholder="' + _escAttr(t("secours.groupe.gpsPlaceholder")) + '" ' +
@@ -8514,7 +8520,7 @@
                       'maxlength="50" title="' + _escAttr(t("secours.groupe.gpsTitle")) + '">' +
                   '</div>' +
                   '<div class="kta-secours-groupe-row">' +
-                    '<label>' + t("secours.groupe.couleurLabel") + '</label>' +
+                    '<label>' + window.ktaIcone("palette") + " " + t("secours.groupe.couleurLabel") + '</label>' +
                     '<select data-action="change-couleur" data-gid="' + _escAttr(g.id) + '">' +
                       PALETTE.map(function(c, i) {
                         return '<option value="' + i + '"' + (i === g.couleurIdx ? ' selected' : '') + '>' +
@@ -8524,9 +8530,9 @@
                   '</div>' +
                   levelSelectRow +
                   '<div class="kta-secours-groupe-stats">' +
-                    '<span>' + t("secours.groupe.statZone", { zone: zoneFmt }) + '</span>' +
-                    '<span>' + t("secours.groupe.statDistance", { distance: distFmt }) + '</span>' +
-                    '<span>' + t("secours.groupe.statDuree", { duree: dureeFmt }) + '</span>' +
+                    '<span>' + window.ktaIcone("m-zone") + " " + t("secours.groupe.statZone", { zone: zoneFmt }) + '</span>' +
+                    '<span>' + window.ktaIcone("ruler") + " " + t("secours.groupe.statDistance", { distance: distFmt }) + '</span>' +
+                    '<span>' + window.ktaIcone("timer") + " " + t("secours.groupe.statDuree", { duree: dureeFmt }) + '</span>' +
                   '</div>' +
                   // Niveau de la zone (multi-niveau, zone polygone).
                   ((_mlvlActif() && g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3)
@@ -8546,7 +8552,7 @@
                   _htmlInfoEquipeExt(scenario.id, g.id) +
                   _htmlActionsExt({ scenarioId: scenario.id, vue: "edition", equipeId: g.id }) +
                   // Mode de parcours : plus court chemin ou balayage de la zone.
-                  '<label class="kta-secours-parcours-mode">' + t("secours.balayage.label") + ' ' +
+                  '<label class="kta-secours-parcours-mode">' + window.ktaIcone("route") + " " + t("secours.balayage.label") + ' ' +
                     '<select data-action="parcours-mode" data-gid="' + _escAttr(g.id) + '">' +
                       ['court', 'complet', 'ossature'].map(function(m) {
                         return '<option value="' + m + '"' + ((g.parcoursMode || "court") === m ? ' selected' : '') + '>' +
@@ -8554,10 +8560,10 @@
                       }).join('') +
                     '</select></label>' +
                   '<div class="kta-secours-groupe-actions">' +
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">' + t("secours.groupe.btnDefZone") + '</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">' + window.ktaIcone("m-zone") + " " + t("secours.groupe.btnDefZone") + '</button>' +
                     // Tous les POI de la zone en intermédiaires, triés par proximité.
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="add-pois-zone" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.groupe.btnPoisZoneTitle")) + '">' + t("secours.groupe.btnPoisZone") + '</button>' +
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="calc-iti" data-gid="' + _escAttr(g.id) + '">' + t("secours.groupe.btnCalcIti") + '</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="add-pois-zone" data-gid="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.groupe.btnPoisZoneTitle")) + '">' + window.ktaIcone("sparkles") + " " + t("secours.groupe.btnPoisZone") + '</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="calc-iti" data-gid="' + _escAttr(g.id) + '">' + window.ktaIcone("route") + " " + t("secours.groupe.btnCalcIti") + '</button>' +
                   '</div>' +
                 '</div>' +
               '</div>';
@@ -8577,7 +8583,7 @@
   function _renderLancerBandeau(s) {
     if (!s || !Array.isArray(s.groupes) || s.groupes.length === 0) {
       return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-disabled">' +
-               '<span class="kta-secours-lancer-bandeau-icon">🚀</span>' +
+               '<span class="kta-secours-lancer-bandeau-icon">' + window.ktaIcone("rocket") + '</span>' +
                '<span>' + t("secours.bandeau.ajouteEquipe") + '</span>' +
              '</div>';
     }
@@ -8596,29 +8602,29 @@
                  '</div>' +
                  '<div class="kta-secours-lancer-bandeau-sub">' +
                    // data-live-timer="duree" : _majLiveTimers le rafraîchit chaque seconde (pas seulement au re-rendu).
-                   t("secours.bandeau.lanceDepuis") + ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
-                   (exec.pausedAt ? ' · ' + t("secours.bandeau.enPause") : '') +
+                   window.ktaIcone("timer") + " " + t("secours.bandeau.lanceDepuis") + ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
+                   (exec.pausedAt ? ' · ' + window.ktaIcone("pause") + " " + t("secours.bandeau.enPause") : '') +
                  '</div>' +
                '</div>' +
                '<div class="kta-secours-lancer-bandeau-actions">' +
                  '<button class="kta-btn kta-btn-primary" data-action="reprendre-live">' +
-                   t("secours.bandeau.reprendreLive") +
+                   window.ktaIcone("play") + " " + t("secours.bandeau.reprendreLive") +
                  '</button>' +
                  // Vue OSM depuis le bandeau : le plan géoréférencé sur OpenStreetMap, pour briefer un secours
                  // extérieur (conditions d'accès : cf _ouvrirVueOsmDepuisSecours).
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.bandeau.vueOsmTitle")) + '">' +
-                   t("secours.bandeau.vueOsm") +
+                   window.ktaIcone("map") + " " + t("secours.bandeau.vueOsm") +
                  '</button>' +
                  // Briefing pompiers PDF (vue surface + équipes GPS + POI critiques).
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitle")) + '">' +
-                   t("secours.bandeau.briefing") +
+                   window.ktaIcone("clipboard-list") + " " + t("secours.bandeau.briefing") +
                  '</button>' +
                  // Rapport depuis l'Édition tant que l'exécution est active ; scope = rôle courant.
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="edit-rapport" data-scope="' + _escAttr(exec.role) + '" title="' + _escAttr(t("secours.bandeau.rapportTitle")) + '">' +
-                   t("secours.bandeau.rapport") +
+                   window.ktaIcone("arrow-up-from-line") + " " + t("secours.bandeau.rapport") +
                  '</button>' +
                  '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan" title="' + _escAttr(t("secours.bandeau.arreterTitle")) + '">' +
-                   t("secours.bandeau.arreter") +
+                   window.ktaIcone("square") + " " + t("secours.bandeau.arreter") +
                  '</button>' +
                '</div>' +
              '</div>';
@@ -8632,35 +8638,35 @@
                       : t("secours.roleBandeau.equipe");
       return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-archived">' +
                '<div class="kta-secours-lancer-bandeau-info">' +
-                 '<div class="kta-secours-lancer-bandeau-titre">' + t("secours.bandeau.planTermine", { role: _escHtml(roleLabel) }) + '</div>' +
+                 '<div class="kta-secours-lancer-bandeau-titre">' + window.ktaIcone("flag") + " " + t("secours.bandeau.planTermine", { role: _escHtml(roleLabel) }) + '</div>' +
                  '<div class="kta-secours-lancer-bandeau-sub">' +
                    t("secours.bandeau.dureeFin", { duree: dureeStr, fin: _escHtml(finStr) }) +
                  '</div>' +
                '</div>' +
                '<div class="kta-secours-lancer-bandeau-actions">' +
                  '<button class="kta-btn kta-btn-primary" data-action="edit-rapport" data-scope="' + _escAttr(s.execution.role) + '">' +
-                   t("secours.bandeau.voirRapportHisto") +
+                   window.ktaIcone("arrow-up-from-line") + " " + t("secours.bandeau.voirRapportHisto") +
                  '</button>' +
                  // Vue OSM aussi pour le debrief.
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.bandeau.vueOsmTitleDebrief")) + '">' +
-                   t("secours.bandeau.vueOsm") +
+                   window.ktaIcone("map") + " " + t("secours.bandeau.vueOsm") +
                  '</button>' +
                  // Briefing pompiers aussi après la mission.
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
-                   t("secours.bandeau.briefing") +
+                   window.ktaIcone("clipboard-list") + " " + t("secours.bandeau.briefing") +
                  '</button>' +
                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-lancer-modale" title="' + _escAttr(t("secours.bandeau.relancerTitle")) + '">' +
-                   t("secours.bandeau.relancer") +
+                   window.ktaIcone("rocket") + " " + t("secours.bandeau.relancer") +
                  '</button>' +
                '</div>' +
              '</div>';
     }
     return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-cta">' +
              '<div class="kta-secours-lancer-bandeau-info">' +
-               '<div class="kta-secours-lancer-bandeau-titre">' + t("secours.bandeau.ctaTitre") + '</div>' +
+               '<div class="kta-secours-lancer-bandeau-titre">' + window.ktaIcone("rocket") + " " + t("secours.bandeau.ctaTitre") + '</div>' +
              '</div>' +
              '<button class="kta-btn kta-btn-primary kta-btn-lg" data-action="ouvrir-lancer-modale">' +
-               t("secours.bandeau.ctaBtn") +
+               window.ktaIcone("rocket") + " " + t("secours.bandeau.ctaBtn") +
              '</button>' +
            '</div>';
   }
@@ -8751,7 +8757,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:90vh; border-left:6px solid var(--kta-accent);">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 class="kta-tx-accent" style="margin:0; color:var(--kta-accent-texte);">' + t("secours.lancer.titre") + '</h2>' +
+          '<h2 class="kta-tx-accent" style="margin:0; color:var(--kta-accent-texte);">' + window.ktaIcone("rocket") + " " + t("secours.lancer.titre") + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="cancel-lancer" aria-label="' + _escAttr(t("secours.btn.annulerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -8760,7 +8766,7 @@
             '<label class="kta-secours-lancer-role-row">' +
               '<input type="radio" name="kta-lancer-role" value="operateur"' + coche("operateur") + '>' +
               '<div class="kta-secours-lancer-role-info">' +
-                '<div class="kta-secours-lancer-role-titre">' + t("secours.lancer.opTitre") + '</div>' +
+                '<div class="kta-secours-lancer-role-titre">' + window.ktaIcone("user") + " " + t("secours.lancer.opTitre") + '</div>' +
                 '<div class="kta-secours-lancer-role-desc">' +
                   t("secours.lancer.opDesc") +
                 '</div>' +
@@ -8769,7 +8775,7 @@
             '<label class="kta-secours-lancer-role-row">' +
               '<input type="radio" name="kta-lancer-role" value="equipe"' + coche("equipe") + '>' +
               '<div class="kta-secours-lancer-role-info">' +
-                '<div class="kta-secours-lancer-role-titre">' + t("secours.lancer.equipeTitre") + '</div>' +
+                '<div class="kta-secours-lancer-role-titre">' + window.ktaIcone("users") + " " + t("secours.lancer.equipeTitre") + '</div>' +
                 '<div class="kta-secours-lancer-role-desc">' +
                   t("secours.lancer.equipeDesc") +
                 '</div>' +
@@ -8781,7 +8787,7 @@
             '<label class="kta-secours-lancer-role-row">' +
               '<input type="radio" name="kta-lancer-role" value="secouriste"' + coche("secouriste") + '>' +
               '<div class="kta-secours-lancer-role-info">' +
-                '<div class="kta-secours-lancer-role-titre">' + t("secours.lancer.secTitre") + '</div>' +
+                '<div class="kta-secours-lancer-role-titre">' + window.ktaIcone("ambulance") + " " + t("secours.lancer.secTitre") + '</div>' +
                 '<div class="kta-secours-lancer-role-desc">' +
                   t("secours.lancer.secDesc") +
                 '</div>' +
@@ -8789,7 +8795,7 @@
             '</label>' +
           '</div>' +
           '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
-            '<button class="kta-btn kta-btn-ghost" data-action="cancel-lancer">' + t("secours.btn.annulerCroix") + '</button>' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel-lancer">' + window.ktaIcone("x") + " " + t("secours.btn.annulerCroix") + '</button>' +
             '<button class="kta-btn kta-btn-primary" data-action="confirm-lancer">' + t("secours.btn.demarrerMaintenant") + '</button>' +
           '</div>' +
         '</div>' +
@@ -8871,7 +8877,7 @@
     const nomPhase = phase ? phase.nom : t("secours.phaseModal.defaultNom", { n: (idx + 1) });
     return '<span class="kta-secours-live-phase-badge" title="' +
              _escAttr(t("secours.phaseBadge.title", { nom: nomPhase, n: (idx + 1), total: total })) + '">' +
-             '<span class="kta-secours-live-phase-badge-icon">📋</span>' +
+             '<span class="kta-secours-live-phase-badge-icon">' + window.ktaIcone("list") + '</span>' +
              '<span class="kta-secours-live-phase-badge-label">' +
                _escHtml(nomPhase) + ' <span class="kta-secours-live-phase-badge-pos">' +
                  (idx + 1) + '/' + total +
@@ -8916,9 +8922,9 @@
                 '</span>' +
               '</div>' +
               '<div class="kta-secours-live-header-timer">' +
-                '<span class="kta-secours-live-header-timer-icon">⏱️</span>' +
+                '<span class="kta-secours-live-header-timer-icon">' + window.ktaIcone("timer") + '</span>' +
                 ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
-                (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">⏸️ PAUSE</span>' : '') +
+                (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">' + window.ktaIcone("pause") + ' PAUSE</span>' : '') +
               '</div>' +
             '</div>';
     html += _renderLigneRetour(s, g);   
@@ -8929,14 +8935,14 @@
     if (!relaisSurface && Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
       const suivi = _roadSuiviActive(s.id);
       html += (suivi && suivi.secours.equipeId === g.id)
-        ? '<button class="kta-btn kta-btn-secondary kta-secours-suivre-btn" data-action="suivre-voir-carte">' + t("secours.suivre.actif") + '</button>'
-        : '<button class="kta-btn kta-btn-primary kta-secours-suivre-btn" data-action="suivre-parcours" data-gid="' + _escAttr(g.id) + '">' + t("secours.suivre.btn") + '</button>';
+        ? '<button class="kta-btn kta-btn-secondary kta-secours-suivre-btn" data-action="suivre-voir-carte">' + window.ktaIcone("signpost") + " " + t("secours.suivre.actif") + '</button>'
+        : '<button class="kta-btn kta-btn-primary kta-secours-suivre-btn" data-action="suivre-parcours" data-gid="' + _escAttr(g.id) + '">' + window.ktaIcone("signpost") + " " + t("secours.suivre.btn") + '</button>';
     }
     // Raccourcis de sécurité, à un toucher depuis la vue de l'équipe.
     if (!relaisSurface) html += '<div class="kta-secours-raccourcis">' +
-              '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="raccourci-sortie">' + t("secours.b10.sortie") + '</button>' +
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="raccourci-xl">' + t("secours.b10.xl") + '</button>' +
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="raccourci-perdu">' + t("secours.b10.perdu") + '</button>' +
+              '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="raccourci-sortie">' + window.ktaIcone("siren") + " " + t("secours.b10.sortie") + '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="raccourci-xl">' + window.ktaIcone("maximize") + " " + t("secours.b10.xl") + '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="raccourci-perdu">' + window.ktaIcone("life-buoy") + " " + t("secours.b10.perdu") + '</button>' +
             '</div>';
 
     // ─── Stepper visuel cliquable ───
@@ -8960,9 +8966,9 @@
     html += '</div>';
 
     // ─── Bloc étape courante ───
-    const typeLabel = (etape.type === "entree") ? t("secours.live.typeEntree")
-                    : (etape.type === "sortie") ? t("secours.live.typeSortie")
-                    : t("secours.live.typeEtape", { idx: idx });
+    const typeLabel = (etape.type === "entree") ? window.ktaIcone("door-open") + " " + t("secours.live.typeEntree")
+                    : (etape.type === "sortie") ? window.ktaIcone("door-open") + " " + t("secours.live.typeSortie")
+                    : window.ktaIcone("map-pin") + " " + t("secours.live.typeEtape", { idx: idx });
     html += '<div class="kta-secours-live-etape">' +
               '<div class="kta-secours-live-etape-titre">' +
                 typeLabel +
@@ -8976,7 +8982,7 @@
               '</div>' +
               _renderBlocVictimeEquipe(s, equipeId, idx, etape) +
               '<div class="kta-secours-live-etape-textarea-wrap">' +
-                '<label for="kta-live-obs-' + idx + '">' + t("secours.live.obsLabel") + '</label>' +
+                '<label for="kta-live-obs-' + idx + '">' + window.ktaIcone("pencil-line") + " " + t("secours.live.obsLabel") + '</label>' +
                 '<textarea id="kta-live-obs-' + idx + '" class="kta-secours-live-etape-textarea" ' +
                   'rows="3" maxlength="2000" placeholder="' + _escAttr(t("secours.live.obsPlaceholder")) + '">' +
                   _escHtml(etape.observations || "") +
@@ -8984,7 +8990,7 @@
               '</div>' +
 
               '<div class="kta-secours-live-etape-statuts-rapides">' +
-                '<div class="kta-secours-live-etape-statuts-titre">' + t("secours.live.saisieRapide") + '</div>' +
+                '<div class="kta-secours-live-etape-statuts-titre">' + window.ktaIcone("zap") + " " + t("secours.live.saisieRapide") + '</div>' +
                 '<div class="kta-secours-live-etape-statuts-row">' +
                   TABLEAU_STATUTS.filter(function(st) { return !st.isPending && !st.auto; }).map(function(st) {
                     const isSel = (st.id === etape.statut);
@@ -9002,10 +9008,10 @@
               '<div class="kta-secours-live-etape-actions-row">' +
                 '<button class="kta-btn kta-btn-secondary" data-action="live-photo" ' +
                   'title="' + _escAttr(t("secours.live.photoTitle")) + '">' +
-                  t("secours.live.photoBtn", { n: photosCount }) +
+                  window.ktaIcone("camera") + " " + t("secours.live.photoBtn", { n: photosCount }) +
                 '</button>' +
                 '<button class="kta-btn kta-btn-secondary" data-action="live-recentrer">' +
-                  t("secours.live.recentrerBtn") +
+                  window.ktaIcone("locate-fixed") + " " + t("secours.live.recentrerBtn") +
                 '</button>' +
               '</div>' +
 
@@ -9028,28 +9034,28 @@
     const retourPreviousBtn = previousRole
       ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-retour-previous-role" ' +
         'title="' + _escAttr(previousRole === "operateur" ? t("secours.live.retourPrevTitleOp") : t("secours.live.retourPrevTitleSec")) + '">' +
-          (previousRole === "operateur" ? t("secours.live.retourOperateur") : t("secours.live.retourSecouriste")) +
+          (previousRole === "operateur" ? window.ktaIcone("user") + " " + t("secours.live.retourOperateur") : window.ktaIcone("ambulance") + " " + t("secours.live.retourSecouriste")) +
         '</button>'
       : '';
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
-                (s.execution.pausedAt ? t("secours.live.reprendre") : t("secours.live.pause")) +
+                (s.execution.pausedAt ? window.ktaIcone("play") + " " + t("secours.live.reprendre") : window.ktaIcone("pause") + " " + t("secours.live.pause")) +
               '</button>' +
               retourPreviousBtn +
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="equipe" title="' + _escAttr(t("secours.live.rapportEquipeTitle")) + '">' +
-                t("secours.bandeau.rapport") +
+                window.ktaIcone("arrow-up-from-line") + " " + t("secours.bandeau.rapport") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.live.vueOsmTitle")) + '">' +
-                t("secours.bandeau.vueOsm") +
+                window.ktaIcone("map") + " " + t("secours.bandeau.vueOsm") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
-                t("secours.bandeau.briefing") +
+                window.ktaIcone("clipboard-list") + " " + t("secours.bandeau.briefing") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
-                t("secours.live.voirEdition") +
+                window.ktaIcone("pause") + " " + t("secours.live.voirEdition") +
               '</button>' +
               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan-live">' +
-                t("secours.btn.terminerPlan") +
+                window.ktaIcone("square") + " " + t("secours.btn.terminerPlan") +
               '</button>' +
             '</div>';
 
@@ -9064,11 +9070,11 @@
     if (v < 0) return "";
     const pos = liste[v].pos;
     return '<div class="kta-secours-victime-bloc">' +
-             '<div class="kta-secours-victime-pos">🚨 <strong>' + t("secours.victime.titre") + '</strong> : ' +
+             '<div class="kta-secours-victime-pos">' + window.ktaIcone("siren") + ' <strong>' + t("secours.victime.titre") + '</strong> : ' +
                _escHtml(_lblPos(pos)) + (etape.victimePos ? ' <em>' + t("secours.victime.precisee") + '</em>' : '') + '</div>' +
              '<div class="kta-secours-victime-actions">' +
-               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="victime-preciser" data-v="' + v + '">' + t("secours.victime.preciser") + '</button>' +
-               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="victime-evacuer" data-v="' + v + '">' + t("secours.victime.evacuer") + '</button>' +
+               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="victime-preciser" data-v="' + v + '">' + window.ktaIcone("map-pin") + " " + t("secours.victime.preciser") + '</button>' +
+               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="victime-evacuer" data-v="' + v + '">' + window.ktaIcone("ambulance") + " " + t("secours.victime.evacuer") + '</button>' +
              '</div>' +
            '</div>';
   }
@@ -9078,11 +9084,11 @@
     if (!liste.length) return "";
     return '<div class="kta-secours-victime-bandeau">' + liste.map(function(v, i) {
       return '<div class="kta-secours-victime-ligne">' +
-               '<span>🚨 <strong>' + t("secours.victime.titre") + '</strong> — ' + _escHtml(v.g.nom) + ' · ' +
+               '<span>' + window.ktaIcone("siren") + ' <strong>' + t("secours.victime.titre") + '</strong> — ' + _escHtml(v.g.nom) + ' · ' +
                  _escHtml(_lblEtape(v.et.label) || "?") + ' · ' + _heureCourte(v.et.completedAt) + '</span>' +
                '<span class="kta-secours-victime-actions">' +
-                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="victime-voir" data-v="' + i + '">' + t("secours.victime.voir") + '</button>' +
-                 '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="victime-evacuer" data-v="' + i + '">' + t("secours.victime.evacuer") + '</button>' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="victime-voir" data-v="' + i + '">' + window.ktaIcone("map") + " " + t("secours.victime.voir") + '</button>' +
+                 '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="victime-evacuer" data-v="' + i + '">' + window.ktaIcone("ambulance") + " " + t("secours.victime.evacuer") + '</button>' +
                '</span>' +
              '</div>';
     }).join('') + '</div>';
@@ -9118,7 +9124,7 @@
     let html = '';
     html += '<div class="kta-secours-live-header kta-secours-live-header-op">' +
               '<div class="kta-secours-live-header-titre">' +
-                '<strong>' + t("secours.liveOp.titre") + '</strong>' +
+                '<strong>' + window.ktaIcone("user") + " " + t("secours.liveOp.titre") + '</strong>' +
                 _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
                   ' · ' + _escHtml(s.nom) +
@@ -9126,16 +9132,16 @@
                 '</span>' +
               '</div>' +
               '<div class="kta-secours-live-header-timer">' +
-                '<span class="kta-secours-live-header-timer-icon">⏱️</span>' +
+                '<span class="kta-secours-live-header-timer-icon">' + window.ktaIcone("timer") + '</span>' +
                 ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
-                (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">⏸️ PAUSE</span>' : '') +
+                (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">' + window.ktaIcone("pause") + ' PAUSE</span>' : '') +
               '</div>' +
             '</div>';
     html += _renderBandeauVictimesOp(s);
     html += _renderBilanEngages(s);   // engagés · sous terre · manquants
 
     if (groupes.length === 0) {
-      html += '<div class="kta-secours-empty"><div class="kta-secours-empty-icon">🚨</div>' +
+      html += '<div class="kta-secours-empty"><div class="kta-secours-empty-icon">' + window.ktaIcone("users") + '</div>' +
                 '<p>' + t("secours.liveOp.aucuneEquipe") + '</p></div>';
     } else {
       html += '<div class="kta-secours-live-op-grid">';
@@ -9155,31 +9161,31 @@
 
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
-                (s.execution.pausedAt ? t("secours.live.reprendre") : t("secours.live.pause")) +
+                (s.execution.pausedAt ? window.ktaIcone("play") + " " + t("secours.live.reprendre") : window.ktaIcone("pause") + " " + t("secours.live.pause")) +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-carte-globale">' +
-                t("secours.liveOp.carteGlobale") +
+                window.ktaIcone("map") + " " + t("secours.liveOp.carteGlobale") +
               '</button>' +
               // Rappel général : un état tenu par l'opérateur, pas un message envoyé.
               '<button class="kta-btn kta-btn-rappel kta-btn-sm" data-action="rappel-general" title="' + _escAttr(t("secours.rappel.generalTitle")) + '">' +
-                t("secours.rappel.btnGeneral") +
+                window.ktaIcone("megaphone") + " " + t("secours.rappel.btnGeneral") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.liveOp.vueOsmTitle")) + '">' +
-                t("secours.bandeau.vueOsm") +
+                window.ktaIcone("map") + " " + t("secours.bandeau.vueOsm") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
-                t("secours.bandeau.briefing") +
+                window.ktaIcone("clipboard-list") + " " + t("secours.bandeau.briefing") +
               '</button>' +
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="operateur" title="' + _escAttr(t("secours.liveOp.rapportGlobalTitle")) + '">' +
-                t("secours.liveOp.rapportGlobal") +
+                window.ktaIcone("arrow-up-from-line") + " " + t("secours.liveOp.rapportGlobal") +
               '</button>' +
               // Import d'un rapport d'équipe (consolidation entre appareils).
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-import-rapport" title="' + _escAttr(t("secours.liveOp.importRapportTitle")) + '">' +
-                t("secours.liveOp.importRapport") +
+                window.ktaIcone("arrow-down-to-line") + " " + t("secours.liveOp.importRapport") +
               '</button>' +
               // Ajout de phase à chaud, sans passer par l'Édition.
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="add-phase" title="' + _escAttr(t("secours.liveOp.ajouterPhaseTitle")) + '">' +
-                t("secours.phases.btnAjouter") +
+                window.ktaIcone("plus") + " " + t("secours.phases.btnAjouter") +
               '</button>' +
               // « Phase terminée » → debrief : multi-phases seulement, vue opérateur seulement (prérogative du PC).
               // Liseré vert si la phase est détectée prête à clore.
@@ -9191,10 +9197,10 @@
                   '</button>'
                 : '') +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
-                t("secours.live.voirEdition") +
+                window.ktaIcone("pause") + " " + t("secours.live.voirEdition") +
               '</button>' +
               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan-live">' +
-                t("secours.btn.terminerPlan") +
+                window.ktaIcone("square") + " " + t("secours.btn.terminerPlan") +
               '</button>' +
             '</div>';
     return html;
@@ -9259,7 +9265,7 @@
                    '<span class="kta-secours-op-card-swatch" style="background:' + couleur.hex + ';"></span>' +
                    _escHtml(g.nom) +
                    (isTerminee ? ' <span class="kta-secours-op-card-badge-terminee">' + t("secours.opCard.badgeTerminee") + '</span>' : '') +
-                   (hasImported ? ' <span class="kta-secours-imported-chip" title="' + _escAttr(t("secours.opCard.importeChipTitle")) + '">' + t("secours.opCard.importeChip") + '</span>' : '') +
+                   (hasImported ? ' <span class="kta-secours-imported-chip" title="' + _escAttr(t("secours.opCard.importeChipTitle")) + '">' + window.ktaIcone("arrow-down-to-line") + " " + t("secours.opCard.importeChip") + '</span>' : '') +
                  '</div>' + _htmlInfoEquipeExt(s.id, g.id) +
                  '<div class="kta-secours-op-card-progress">' +
                    '<div class="kta-secours-op-card-progress-bar" style="width:' + pctDone + '%; background:' + couleur.hex + ';"></div>' +
@@ -9273,14 +9279,14 @@
                  (obsSnippet
                    ? '<div class="kta-secours-op-card-obs">« ' + _escHtml(obsSnippet) + ' »</div>'
                    : '<div class="kta-secours-op-card-obs kta-secours-op-card-obs-empty">' + t("secours.opCard.aucuneObs") + '</div>') +
-                 '<div class="kta-secours-op-card-meta">⏱️ ' + lastTsStr + '</div>' +
+                 '<div class="kta-secours-op-card-meta">' + window.ktaIcone("timer") + ' ' + lastTsStr + '</div>' +
                  _renderLigneRetour(s, g) +
                  '<div class="kta-secours-op-card-actions">' +
                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-details" data-equipe-id="' + _escAttr(g.id) + '">' +
-                     t("secours.opCard.details") +
+                     window.ktaIcone("eye") + " " + t("secours.opCard.details") +
                    '</button>' +
                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-op-prendre-main" data-equipe-id="' + _escAttr(g.id) + '" title="' + _escAttr(t("secours.opCard.prendreMainTitle")) + '">' +
-                     t("secours.opCard.prendreMain") +
+                     window.ktaIcone("hand") + " " + t("secours.opCard.prendreMain") +
                    '</button>' +
                  '</div>' +
                '</div>';
@@ -9296,26 +9302,26 @@
     let html = '';
     html += '<div class="kta-secours-live-header kta-secours-live-header-sec">' +
               '<div class="kta-secours-live-header-titre">' +
-                '<strong>' + t("secours.liveSec.titre") + '</strong>' +
+                '<strong>' + window.ktaIcone("ambulance") + " " + t("secours.liveSec.titre") + '</strong>' +
                 _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
                   ' · ' + t("secours.liveSec.notesCompteur", { n: notes.length }) +
                 '</span>' +
               '</div>' +
               '<div class="kta-secours-live-header-timer">' +
-                '<span class="kta-secours-live-header-timer-icon">⏱️</span>' +
+                '<span class="kta-secours-live-header-timer-icon">' + window.ktaIcone("timer") + '</span>' +
                 ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
-                (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">⏸️ PAUSE</span>' : '') +
+                (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">' + window.ktaIcone("pause") + ' PAUSE</span>' : '') +
               '</div>' +
             '</div>';
 
     html += '<div class="kta-secours-live-etape">' +
-              '<div class="kta-secours-live-etape-titre">' + t("secours.liveSec.ajouterNote") + '</div>' +
+              '<div class="kta-secours-live-etape-titre">' + window.ktaIcone("pencil-line") + " " + t("secours.liveSec.ajouterNote") + '</div>' +
               '<div class="kta-secours-live-etape-textarea-wrap">' +
                 '<textarea id="kta-sec-newnote-texte" class="kta-secours-live-etape-textarea" rows="3" maxlength="2000" placeholder="' + _escAttr(t("secours.liveSec.notePlaceholder")) + '"></textarea>' +
               '</div>' +
               '<div class="kta-secours-live-etape-statuts-rapides">' +
-                '<div class="kta-secours-live-etape-statuts-titre">' + t("secours.liveSec.statutAssocie") + '</div>' +
+                '<div class="kta-secours-live-etape-statuts-titre">' + window.ktaIcone("zap") + " " + t("secours.liveSec.statutAssocie") + '</div>' +
                 '<div class="kta-secours-live-etape-statuts-row">' +
                   TABLEAU_STATUTS.filter(function(st) { return !st.isPending && !st.auto; }).map(function(st) {
                     const stLbl = _statutLabel(st.id);
@@ -9344,7 +9350,7 @@
         html += '<div class="kta-secours-live-note" style="border-left:4px solid ' + info.color + ';">' +
                   '<div class="kta-secours-live-note-header">' +
                     '<span style="color:' + info.color + ';"><strong>' + info.emoji + ' ' + _escHtml(_statutLabel(note.statut)) + '</strong></span>' +
-                    '<span class="kta-secours-live-note-ts">⏱️ ' + _escHtml(tsStr) + '</span>' +
+                    '<span class="kta-secours-live-note-ts">' + window.ktaIcone("timer") + ' ' + _escHtml(tsStr) + '</span>' +
                     '<button class="kta-secours-live-note-del" data-action="sec-del-note" data-note-id="' + _escAttr(note.id) + '" title="' + _escAttr(t("secours.list.supprimerTitle")) + '">✕</button>' +
                   '</div>' +
                   (note.texte ? '<div class="kta-secours-live-note-texte">' + _escHtml(note.texte) + '</div>' : '') +
@@ -9355,22 +9361,22 @@
 
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
-                (s.execution.pausedAt ? t("secours.live.reprendre") : t("secours.live.pause")) +
+                (s.execution.pausedAt ? window.ktaIcone("play") + " " + t("secours.live.reprendre") : window.ktaIcone("pause") + " " + t("secours.live.pause")) +
               '</button>' +
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="secouriste" title="' + _escAttr(t("secours.liveSec.rapportTitle")) + '">' +
-                t("secours.bandeau.rapport") +
+                window.ktaIcone("arrow-up-from-line") + " " + t("secours.bandeau.rapport") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-vue-osm" title="' + _escAttr(t("secours.live.vueOsmTitle")) + '">' +
-                t("secours.bandeau.vueOsm") +
+                window.ktaIcone("map") + " " + t("secours.bandeau.vueOsm") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="briefing-pompiers" title="' + _escAttr(t("secours.bandeau.briefingTitlePost")) + '">' +
-                t("secours.bandeau.briefing") +
+                window.ktaIcone("clipboard-list") + " " + t("secours.bandeau.briefing") +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
-                t("secours.live.voirEdition") +
+                window.ktaIcone("pause") + " " + t("secours.live.voirEdition") +
               '</button>' +
               '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan-live">' +
-                t("secours.liveSec.terminerMission") +
+                window.ktaIcone("square") + " " + t("secours.liveSec.terminerMission") +
               '</button>' +
             '</div>';
     return html;
@@ -9385,7 +9391,7 @@
     let html = '<div class="kta-secours-live-photos-grid">';
     etape.photoIds.forEach(function(pid) {
       html += '<div class="kta-secours-live-photo-slot" data-photo-id="' + _escAttr(pid) + '">' +
-                '<div class="kta-secours-live-photo-placeholder" data-photo-id="' + _escAttr(pid) + '">📸</div>' +
+                '<div class="kta-secours-live-photo-placeholder" data-photo-id="' + _escAttr(pid) + '">' + window.ktaIcone("camera") + '</div>' +
                 '<button class="kta-secours-live-photo-del" data-action="live-photo-del" data-photo-id="' + _escAttr(pid) + '" title="' + _escAttr(t("secours.live.supprimerPhoto")) + '">✕</button>' +
               '</div>';
     });
@@ -9403,15 +9409,15 @@
     const isActive = _secoursHeatmapActive && window.MyKTAMapHeatmap.isVisible &&
                      window.MyKTAMapHeatmap.isVisible();
     return '<div class="kta-secours-tool-block">' +
-             '<div class="kta-secours-tool-block-titre">' + t("secours.heatmap.titre") + '</div>' +
+             '<div class="kta-secours-tool-block-titre">' + window.ktaIcone("search") + " " + t("secours.heatmap.titre") + '</div>' +
              '<div class="kta-secours-tool-block-actions">' +
                '<button class="kta-btn kta-btn-' + (isActive ? "primary" : "secondary") +
                  ' kta-btn-sm" data-action="toggle-heatmap-secours">' +
-                 (isActive ? t("secours.heatmap.masquer") : t("secours.heatmap.afficher")) +
+                 (isActive ? window.ktaIcone("flame") + " " + t("secours.heatmap.masquer") : window.ktaIcone("flame") + " " + t("secours.heatmap.afficher")) +
                '</button>' +
                '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="config-heatmap-secours" ' +
                  'title="' + _escAttr(t("secours.heatmap.reglerTitle")) + '">' +
-                 t("secours.heatmap.regler") +
+                 window.ktaIcone("settings") + " " + t("secours.heatmap.regler") +
                '</button>' +
              '</div>' +
            '</div>';
@@ -9422,7 +9428,7 @@
   function _renderPauseToolBlock() {
     const r = _reglagesDuree(get(_currentScenarioId));
     return '<div class="kta-secours-tool-block">' +
-             '<div class="kta-secours-tool-block-titre">' + t("secours.duree.titre") + '</div>' +
+             '<div class="kta-secours-tool-block-titre">' + window.ktaIcone("timer") + " " + t("secours.duree.titre") + '</div>' +
              '<div class="kta-secours-tool-block-desc">' + t("secours.duree.desc") + '</div>' +
              '<div class="kta-secours-pause-row">' +
                '<div class="kta-secours-pause-input-wrap">' +
@@ -9539,12 +9545,12 @@
     const c = s.context || {};
     if (!c.lastKnownPoint && !c.zoneIncertitude) return "";
     let html = '<div class="kta-secours-context-imported">';
-    html += '<div class="kta-secours-context-imported-titre">' + t("secours.ctxImport.titre") + '</div>';
+    html += '<div class="kta-secours-context-imported-titre">' + window.ktaIcone("life-buoy") + " " + t("secours.ctxImport.titre") + '</div>';
     if (c.lastKnownPoint) {
       const lp = c.lastKnownPoint;
       const lbl = lp.label || ("x=" + Math.round(lp.x) + " y=" + Math.round(lp.y));
       html += '<div class="kta-secours-context-imported-row">' +
-                '<span>' + t("secours.ctxImport.dernierePosition") + '</span> <strong>' + _escHtml(lbl) + '</strong>' +
+                '<span>' + window.ktaIcone("map-pin") + " " + t("secours.ctxImport.dernierePosition") + '</span> <strong>' + _escHtml(lbl) + '</strong>' +
                 (typeof lp.level === "number" && window.APP_CONFIG && window.APP_CONFIG.multiLevel
                   ? ' <span class="kta-secours-parcours-lvl">' + t("secours.ctxImport.niv", { level: lp.level }) + '</span>'
                   : '') +
@@ -9552,12 +9558,12 @@
     }
     if (c.zoneIncertitude) {
       html += '<div class="kta-secours-context-imported-row">' +
-                '<span>' + t("secours.ctxImport.zoneIncertitude") + '</span> <strong>' +
+                '<span>' + window.ktaIcone("circle-dashed") + " " + t("secours.ctxImport.zoneIncertitude") + '</span> <strong>' +
                 t("secours.ctxImport.rayon", { rayon: Math.round(c.zoneIncertitude.radiusMeters || 0) }) + '</strong>' +
               '</div>';
     }
     html += '<div class="kta-secours-context-imported-actions">' +
-              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="recentrer-lostpos">' + t("secours.ctxImport.recentrer") + '</button>' +
+              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="recentrer-lostpos">' + window.ktaIcone("locate-fixed") + " " + t("secours.ctxImport.recentrer") + '</button>' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="clear-lostpos" title="' + _escAttr(t("secours.ctxImport.retirerTitle")) + '">' + t("secours.ctxImport.retirer") + '</button>' +
             '</div>';
     html += '</div>';
@@ -9566,18 +9572,18 @@
 
   function _renderParcoursSection(g) {
     let html = '<div class="kta-secours-parcours">';
-    html += '<div class="kta-secours-parcours-titre">' + t("secours.parcours.titre") + '</div>';
+    html += '<div class="kta-secours-parcours-titre">' + window.ktaIcone("route") + " " + t("secours.parcours.titre") + '</div>';
     html += '<div class="kta-secours-parcours-list">';
     // Boucle entrée = sortie : bordure orange sur ces deux lignes (comme le marqueur « Boucle » de la carte).
     const isBoucle = _samePoint(g.entree, g.sortie);
-    html += _renderWaypointRow(g, "entree", g.entree, null, "📍", t("secours.parcours.entree"), isBoucle);
+    html += _renderWaypointRow(g, "entree", g.entree, null, window.ktaIcone("map-pin"), t("secours.parcours.entree"), isBoucle);
     (g.intermediaires || []).forEach(function(w, i) {
       html += _renderWaypointRow(g, "intermediaire", w, i, "▾", t("secours.parcours.etape", { n: (i + 1) }), false);
     });
     html += '<button class="kta-btn kta-btn-ghost kta-btn-sm kta-secours-parcours-add"' +
             ' data-action="add-intermediaire" data-gid="' + _escAttr(g.id) + '">' +
-            t("secours.parcours.btnAjouterEtape") + '</button>';
-    html += _renderWaypointRow(g, "sortie", g.sortie, null, "🚪", t("secours.parcours.sortie"), isBoucle);
+            window.ktaIcone("plus") + " " + t("secours.parcours.btnAjouterEtape") + '</button>';
+    html += _renderWaypointRow(g, "sortie", g.sortie, null, window.ktaIcone("door-open"), t("secours.parcours.sortie"), isBoucle);
     if (g.entree && g.sortie && _samePoint(g.entree, g.sortie)) {
       html += '<div class="kta-secours-parcours-hint">' + t("secours.parcours.boucleHint") + '</div>';
     }
@@ -9612,11 +9618,11 @@
                    '<button class="kta-btn kta-btn-ghost kta-btn-xs" data-action="pick-waypoint"' +
                    ' data-gid="' + gid + '" data-role="' + role + '"' + idxAttr +
                    ' title="' + _escAttr(t("secours.parcours.pickTitle")) + '">' +
-                   (w ? '✏️' : '📍') + '</button>';
+                   window.ktaIcone(w ? "pencil" : "map-pin") + '</button>';
     if (isInter || w) {
       html += '<button class="kta-btn kta-btn-ghost kta-btn-xs" data-action="clear-waypoint"' +
               ' data-gid="' + gid + '" data-role="' + role + '"' + idxAttr +
-              ' title="' + _escAttr(isInter ? t("secours.parcours.retirerEtape") : t("secours.parcours.effacer")) + '">🗑️</button>';
+              ' title="' + _escAttr(isInter ? t("secours.parcours.retirerEtape") : t("secours.parcours.effacer")) + '">' + window.ktaIcone("trash-2") + '</button>';
     }
     html += '</span></div>';
     return html;
@@ -9806,12 +9812,12 @@
             clearOverlay();
             if (_modal) _modal.style.display = "";
             _removeOverlayFloater();
-            btn.textContent = t("secours.edit.voirCarte");
+            btn.innerHTML = window.ktaIcone("map") + " " + _escHtml(t("secours.edit.voirCarte"));
           } else {
             renderOverlay(_currentScenarioId);
             if (_modal) _modal.style.display = "none";
             _showOverlayFloater();
-            btn.textContent = t("secours.edit.masquer");
+            btn.innerHTML = window.ktaIcone("map") + " " + _escHtml(t("secours.edit.masquer"));
           }
         });
       });
@@ -10728,13 +10734,13 @@
                           ? new Date(et._importedFrom.importedAt).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
                           : t("secours.import.dateInconnue");
           const impVer = et._importedFrom.sourceAppVersion || t("secours.import.versionInconnue");
-          importedChip = ' <span class="kta-secours-imported-chip" title="' + _escAttr(t("secours.opDetails.importeChipTitle", { date: impDate, version: impVer })) + '">' + t("secours.opCard.importeChip") + '</span>';
+          importedChip = ' <span class="kta-secours-imported-chip" title="' + _escAttr(t("secours.opDetails.importeChipTitle", { date: impDate, version: impVer })) + '">' + window.ktaIcone("arrow-down-to-line") + " " + t("secours.opCard.importeChip") + '</span>';
         }
         etapesHtml += '<li>' +
                         '<div class="kta-secours-op-details-row">' +
                           '<span style="color:' + info.color + ';">' + info.emoji + ' <strong>' + _escHtml(_statutLabel(et.statut)) + '</strong></span>' +
                           ' · ' + _escHtml(_lblEtape(et.label) || "(?)") +
-                          ' · <span class="kta-secours-op-details-ts">⏱️ ' + _escHtml(tsStr) + '</span>' +
+                          ' · <span class="kta-secours-op-details-ts">' + window.ktaIcone("timer") + ' ' + _escHtml(tsStr) + '</span>' +
                           importedChip +
                         '</div>' +
                         obsHtml +
@@ -10750,7 +10756,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:600px; height:auto; max-height:90vh; border-left:6px solid ' + couleur.hex + ';">' +
         '<div class="kta-readme-modal-header">' +
-          '<h2 class="kta-readme-modal-titre" style="margin:0;">' + t("secours.opDetails.titre", { nom: _escHtml(g.nom), couleur: _escHtml(couleur.nom) }) + '</h2>' +
+          '<h2 class="kta-readme-modal-titre" style="margin:0;">' + window.ktaIcone("eye") + " " + t("secours.opDetails.titre", { nom: _escHtml(g.nom), couleur: _escHtml(couleur.nom) }) + '</h2>' +
           '<button class="kta-readme-modal-close" data-action="close-op-details" aria-label="' + _escAttr(t("secours.btn.fermerAria")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -10993,7 +10999,7 @@
     try { favs = window.Favoris.getAll() || []; } catch(e) { return ""; }
     if (!Array.isArray(favs) || favs.length === 0) return "";
     let html = '<div class="kta-secours-pick-favoris">';
-    html += '<div class="kta-secours-pick-favoris-titre">' + t("secours.pick.favorisTitre", { n: favs.length }) + '</div>';
+    html += '<div class="kta-secours-pick-favoris-titre">' + window.ktaIcone("star") + " " + t("secours.pick.favorisTitre", { n: favs.length }) + '</div>';
     html += '<div class="kta-secours-pick-favoris-grid">';
     // 8 favoris au plus (la recherche couvre les autres).
     favs.slice(0, 8).forEach(function(f) {
@@ -11007,7 +11013,7 @@
                 'data-lvl="' + (typeof f.level === "number" ? f.level : "") + '" ' +
                 'data-nom="' + _escAttr(nom) + '" ' +
                 'title="' + _escAttr(nom + " (x=" + Math.round(f.x) + " y=" + Math.round(f.y) + ")") + '">' +
-                '⭐ ' + _escHtml(nom) +
+                window.ktaIcone("star") + ' ' + _escHtml(nom) +
               '</button>';
     });
     html += '</div>';
@@ -11036,7 +11042,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-pick-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + t("secours.pick.titre", { role: _escHtml(lblRole) }) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("map-pin") + " " + t("secours.pick.titre", { role: _escHtml(lblRole) }) + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -11047,7 +11053,7 @@
           '</div>' +
           '<div class="kta-secours-pick-or">' + t("secours.pick.ou") + '</div>' +
           '<button class="kta-btn kta-btn-primary kta-secours-pick-clic" data-action="clic-carte">' +
-            t("secours.pick.cliquerCarte") + '<br>' +
+            window.ktaIcone("mouse-pointer-click") + " " + t("secours.pick.cliquerCarte") + '<br>' +
             '<small style="opacity:0.85; font-weight:normal;">' + t("secours.pick.snapHint") + '</small>' +
           '</button>' +
         '</div>' +
@@ -11164,18 +11170,18 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:420px;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + t("secours.zoneMode.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("m-zone") + " " + t("secours.zoneMode.titre") + '</span>' +
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
           '<p style="color:var(--kta-texte-2);">' + t("secours.zoneMode.intro") + '</p>' +
           '<div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">' +
             '<button class="kta-btn kta-btn-primary" data-mode="polygon" style="text-align:left;">' +
-              '<strong>' + t("secours.zoneMode.polygoneTitre") + '</strong><br>' +
+              '<strong>' + window.ktaIcone("m-zone") + " " + t("secours.zoneMode.polygoneTitre") + '</strong><br>' +
               '<small style="opacity:0.85;">' + t("secours.zoneMode.polygoneDesc") + '</small>' +
             '</button>' +
             '<button class="kta-btn kta-btn-primary" data-mode="roads" style="text-align:left;">' +
-              '<strong>' + t("secours.zoneMode.roadsTitre") + '</strong><br>' +
+              '<strong>' + window.ktaIcone("m-galerie") + " " + t("secours.zoneMode.roadsTitre") + '</strong><br>' +
               '<small style="opacity:0.85;">' + t("secours.zoneMode.roadsDesc") + '</small>' +
             '</button>' +
           '</div>' +
@@ -11450,11 +11456,11 @@
     const nbGroupes = (s.groupes || []).length;
     fl.innerHTML =
       '<div class="kta-secours-overlay-floater-info">' +
-        '🚑 <strong>' + _escHtml(s.nom) + '</strong>' +
+        window.ktaIcone("ambulance") + ' <strong>' + _escHtml(s.nom) + '</strong>' +
         ' · ' + t("secours.liveOp.equipesCompteur", { n: nbGroupes }) +
       '</div>' +
       '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="reopen-modal">' +
-        t("secours.floater.retourModale") +
+        window.ktaIcone("arrow-left") + " " + t("secours.floater.retourModale") +
       '</button>';
     document.body.appendChild(fl);
     fl.querySelector('[data-action="reopen-modal"]').addEventListener("click", function() {
@@ -12068,7 +12074,7 @@
             plans.map(function(p, i) {
               const nom = R && typeof R.displayName === "function" ? R.displayName(p) : (p.name || p.id);
               return '<button class="kta-btn kta-btn-secondary" style="display:block;width:100%;margin:6px 0;text-align:left" data-i="' + i + '">' +
-                _escHtml(nom + (p.version ? " — " + p.version : "") + " (" + (p.type === "server" ? "☁️" : "📦") + ")") + '</button>';
+                window.ktaIcone(p.type === "server" ? "cloud" : "hard-drive") + " " + _escHtml(nom + (p.version ? " — " + p.version : "")) + '</button>';
             }).join("") +
             '<div class="kta-secours-form-actions"><button class="kta-btn kta-btn-ghost" data-action="cancel">' +
               _escHtml(t("secours.btn.annuler")) + '</button></div>' +

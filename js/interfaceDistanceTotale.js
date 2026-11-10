@@ -265,7 +265,7 @@ window.ouvrirRoadsDistanceFloater = function() {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite kta-rd-modal-boite">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("disttot.modal.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("sigma") + " " + window.I18n.t("disttot.modal.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-rd-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
@@ -290,7 +290,7 @@ window.ouvrirRoadsDistanceFloater = function() {
           '</div>' +
         '</div>' +
         '<div class="kta-rd-actions">' +
-          '<button id="kta-rd-erase" class="kta-btn kta-btn-danger" type="button">' + window.I18n.t("disttot.btn.erase") + '</button>' +
+          '<button id="kta-rd-erase" class="kta-btn kta-btn-danger" type="button">' + window.ktaIcone("eraser") + " " + window.I18n.t("disttot.btn.erase") + '</button>' +
           '<button id="kta-rd-done"  class="kta-btn kta-btn-primary" type="button">' + window.I18n.t("disttot.btn.close") + '</button>' +
         '</div>' +
       '</div>' +

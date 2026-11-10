@@ -66,6 +66,18 @@ node scripts/check-pdf-texte.js || exit $?
 # Popups natives : cliquet a 0 (ktaAlerte / ktaConfirm / toast).
 node scripts/check-popups-natives.js || exit $?
 
+# Emoji : un pictogramme a presentation texte porte U+FE0F (sinon noir et blanc sur Windows / Android).
+node scripts/check-emoji-vs16.js || exit $?
+
+# Icones de l'interface : controles migres en SVG sans emoji, noms connus, doc alignee (exhaustive).
+node scripts/check-icones-ui.js || exit $?
+
+# Aide IA : lexique des icones en tete d'AI_CONTEXT.md, genere depuis js/ktaIcones.js (chaque bouton cite).
+node scripts/check-lexique-icones.js || exit $?
+
+# Police KTA Emoji : couvre chaque emoji du depot, ouvre chaque pile font-family et ctx.font ; gabarits HTML figes.
+node scripts/check-police-emoji.js || exit $?
+
 # Couleurs en dur dans un style pose par le JS : cliquet (la charte s'ecrit var(--kta-...)).
 node scripts/check-couleurs-inline.js || exit $?
 
@@ -158,6 +170,9 @@ node scripts/check-doc-sidebar.js || exit $?
 
 # Selection multiple et conversion en lot : compatibilite par ouverture, un seul geste annulable.
 node scripts/check-selection-multi.js || exit $?
+
+# Couper un trace a un sommet : sommet partage, uid neuf pour le second morceau, un seul geste annulable.
+node scripts/check-couper-trace.js || exit $?
 
 # Reprise d'une sortie interrompue (closedBy: crash) et fusion manuelle ; WakeLock.init() au boot.
 node scripts/check-journal-reprise.js || exit $?
@@ -261,6 +276,10 @@ node scripts/check-mur-ligne.js || exit $?
 # Zones sur plusieurs niveaux : rendu sur leurs niveaux seulement, blocage de l'itinéraire sur chacun, `niveaux`
 # garde a l'aller-retour (session, KMZ, GeoJSON).
 node scripts/check-zones-niveaux.js || exit $?
+
+# Niveaux en hauteur : sol, hauteur et ecart par niveau lus par un seul acces (getNiveauVertical), plan sans la
+# donnee inchange, pref locale qui gagne, ecart jamais stocke.
+node scripts/check-niveaux-verticaux.js || exit $?
 
 # Parite des 3 guides utilisateur (memes sections, aucune traduction sous 70 % du FR).
 node scripts/check-doc-langues.js || exit $?

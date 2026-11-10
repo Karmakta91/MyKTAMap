@@ -110,6 +110,16 @@ unique avec les passages : `poiJonction.js > ktaNiveauxObjet`. Gardé par la ses
 `getAllEmbeddedZones`), le Tableur, l'export anonymisé, KMZ (`mkm:niveaux`, une copie par autre niveau marquée
 `mkm:copie`) et GeoJSON (propriété `niveaux`, une entité). Retiré quand la zone devient une structure. Voir
 `multilevel-pathfinding.md` §26.12.
+→ **Zone jonction** : `"type": "pente"` (« Jonction » du menu Zone, plan multi-niveau), `level` = niveau de départ,
+`niveaux` = [départ, arrivée] (deux niveaux différents, triés). Chambre dont le sol suit en 3D la pente du tracé jonction
+qui la traverse (`galerieEmprise.js > penteDeZone`). Couleur, libellé et visibilité de légende : ceux du tracé jonction
+(`styleResolver.js > _couleurDe`, `legendCustomization.js > TYPE_LIE`, rien d'écrit sous `zones.pente`). KMZ : style
+`#zone_pente`, dossier « 🪜 Jonctions » du niveau de départ, `mkm:niveaux`. GeoJSON : famille `jonction`, type `pente`.
+**Ancien champ toléré** : `"jonction": true` sur une zone d'au moins deux niveaux (session, plan-config ou calque,
+KMZ `mkm:jonction` = 1) est relu en `type: "pente"` à l'entrée (`zones.js > ktaZoneJonctionEnType`, `utils.js >
+ktaZoneLue`, `kmzImport.js`), niveaux et uid gardés, `updatedAt` **inchangé** (une relecture n'est pas une
+modification : elle ne doit pas gagner la fusion contre une modification plus récente faite ailleurs). L'ancien type
+de la zone (eau, remblais…) n'est pas gardé. Plus jamais écrit.
 
 → **POI danger** (tag `danger`, `js/poiDanger.js`) : `"dateConstat": "2026-10-03"` = jour **local** où le danger a été
 vu (`AAAA-MM-JJ`, un jour qui existe). Facultatif : pré-rempli au jour même quand un point **devient** danger
@@ -244,6 +254,20 @@ Profondeur **sous la surface**, en mètres, par niveau. **Trois états, et la di
 | **`null`** | « sans profondeur » — le niveau existe mais n'a pas d'altitude |
 
 🩸 Le `null` n'est pas un trou de saisie : c'est le niveau que l'import SIG donne au **topo historique**. Ce n'est pas un étage physique au-dessus, c'est une **convention d'empilement** pour séparer deux relevés du même endroit. Lui donner une altitude fausserait tout profil en long qui le traverse.
+
+### `plan.niveauxHauteur` — plan-config.json
+
+```json
+"plan": { "niveauxProfondeur": { "0": -25, "-1": -27 }, "niveauxHauteur": { "0": 3, "-1": 3.5 } }
+```
+
+Hauteur de galerie par niveau, en mètres (> 0 ; autre valeur ignorée). Clé absente = 2 m. Plan à un niveau : clé
+`"0"`, écrite par le Générateur seulement si elle diffère de 2 m. L'**écart** avec le niveau du dessus n'est pas
+un champ : il se calcule (`sol(n + 1) − sol(n) − hauteur(n)`, ici −1,5 m au −1 : entremêlé). Lecture par
+`getNiveauVertical` seulement — contrat et cascade : `multilevel-pathfinding.md` § Hauteur et écart par niveau.
+
+Prefs par plan (`myktamap_plan_prefs_<id>`), qui priment : `niveauxProfondeur` (table entière), `niveauxHauteur`
+(niveau par niveau) ; `hauteurGalerieM` (une hauteur pour tout le plan) n'est plus écrite mais encore relue.
 
 ### `calquesSession` (v1.85.0) — payload de session
 

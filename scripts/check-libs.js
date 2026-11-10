@@ -21,16 +21,22 @@ const t = (n, c, info) => {
 // paquet npm → fichiers embarqués + motif de version dans leur en-tête (1er groupe = version).
 // `accord(trouve, declaree)` : comparaison propre au paquet quand l'en-tête ne porte pas la version complète.
 // 🩸 three.js n'écrit que sa révision (« 186 » pour 0.186.x) : le correctif se vérifie octet par octet au paquet.
+// 🩸 Une police (woff2, compressée) n'a pas d'en-tête lisible : sa version se lit dans le package.json du paquet,
+// copié tel quel à côté d'elle ; `presents` = fichiers qui doivent exister (ceux que l'app charge et précache).
 const LIBS = {
   leaflet:     { fichiers: ["lib/leaflet/leaflet.js", "lib/leaflet/leaflet-src.js"], motif: /Leaflet (\d+\.\d+\.\d+)/ },
   jszip:       { fichiers: ["lib/jszip.min.js"],          motif: /JSZip v(\d+\.\d+\.\d+)/ },
   jspdf:       { fichiers: ["lib/jspdf.umd.min.js"],      motif: /jsPDF[\s\S]{0,200}?Version (\d+\.\d+\.\d+)/ },
   html2canvas: { fichiers: ["lib/html2canvas.min.js"],    motif: /html2canvas (\d+\.\d+\.\d+)/ },
   three:       { fichiers: ["lib/three/three.core.js"],   motif: /const REVISION = '(\d+)'/,
-                 accord: (trouve, declaree) => /^0\.\d+\.\d+$/.test(declaree || "") && declaree.split(".")[1] === trouve }
+                 accord: (trouve, declaree) => /^0\.\d+\.\d+$/.test(declaree || "") && declaree.split(".")[1] === trouve },
+  "@fontsource/bodoni-moda": { fichiers: ["lib/bodoni-moda/package.json"], motif: /"version": "(\d+\.\d+\.\d+)"/,
+                 presents: ["lib/bodoni-moda/bodoni-moda-latin-600-normal.woff2",
+                   "lib/bodoni-moda/bodoni-moda-latin-700-normal.woff2", "lib/bodoni-moda/LICENSE"] }
 };
 const LIGNE = {
-  leaflet: "**Leaflet**", jszip: "**JSZip**", jspdf: "**jsPDF**", html2canvas: "**html2canvas**", three: "**three.js**"
+  leaflet: "**Leaflet**", jszip: "**JSZip**", jspdf: "**jsPDF**", html2canvas: "**html2canvas**", three: "**three.js**",
+  "@fontsource/bodoni-moda": "**Bodoni Moda**"
 };
 
 let manifeste = {};
@@ -51,6 +57,7 @@ for (const [nom, def] of Object.entries(LIBS)) {
     const accord = def.accord ? def.accord : (trouve, decl) => trouve === decl;
     t(nom + " : " + f + " embarque " + declaree, !!m && accord(m[1], declaree), m ? "en-tête " + m[1] : "en-tête illisible");
   }
+  for (const f of def.presents || []) t(nom + " : " + f + " présent", fs.existsSync(f));
   const ligne = table.find((l) => l.startsWith("| " + LIGNE[nom] + " "));
   t(nom + " : lib/VERSIONS.md dit " + declaree, !!ligne && ligne.includes("**" + declaree + "**"),
     ligne ? ligne.slice(0, 80) : "ligne absente");

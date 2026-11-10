@@ -947,7 +947,8 @@ function renderRoads(opts) {
         function() { return _roadPopupTitle(_roadRef.type); },
         // Reclassement depuis la popup (convertirObjet.js) ; une jonction n'a que ses niveaux à changer.
         { convertir: { famille: "roads", obj: _roadRef }, jonction: road.type === "jonction",
-          pastille: road.type === "jonction" ? null : { cat: "traces", cle: road.type } }
+          pastille: road.type === "jonction" ? null : { cat: "traces", cle: road.type },
+          ico: road.type === "jonction" ? "m-echelle" : null }
       );
     }
 
@@ -1253,6 +1254,21 @@ window.getAllEmbeddedRoads = function() {
   return out;
 };
 
+// [{ uid, calque }] de CHAQUE route embarquée qui a un uid, calque en modification compris : classement des traces
+// de suppression (calqueSession.js > calqueDesTraces — une trace sur un tel uid ne doit jamais entrer dans un fichier).
+window.ktaCalquesDesRoadsEmbarquees = function() {
+  const groupes = window.dataLayerGroups || {};
+  const parGroupe = new Map();
+  for (const id in groupes) parGroupe.set(groupes[id], id);
+  const out = [];
+  _embeddedRoads.forEach(function(e) {
+    const uid = e.road && e.road.uid;
+    const calque = parGroupe.get(e.layer);
+    if (typeof uid === "string" && uid && calque) out.push({ uid: uid, calque: calque });
+  });
+  return out;
+};
+
 // ── Exports ──────────────────────
 // ⚠️ Intersections pour les exports image (utils.js > telechargerPlan, exporter.js) : roads
 // [{type, points: [{x, y}]}] → [{point: {x, y}, color, level}] en coordonnées image ; rayon = window.ROAD_INTERSECTION_RADIUS.
@@ -1277,7 +1293,8 @@ window.renderRoads          = renderRoads;
 
 // ── Ajustement des sommets (js/ajusterSommets.js) ──────────────────────
 // ⚠️ contrat : ktaFormesAjustables.<famille> = { cat, objets(), ferme(o), minimum(o), libelle(o), rendre(),
-// aimanter?(x, y, o, exclus, tol?) } (en-tête d'ajusterSommets.js). Tracés de session visibles hors tracé en cours et
+// aimanter?(x, y, o, exclus, tol?), coupable?(o), ajouterApres?(o, neuf) } (en-tête d'ajusterSommets.js). Tracés de
+// session visibles hors tracé en cours et
 // itinéraire ; les tracés d'un calque ne sont pas ici (lecture seule tant que le calque n'est pas en « 🔄 Modifier »).
 // 🩸 RoadGraph ne voit pas un sommet déplacé (sa signature compte les sommets) : invalidé au rendu.
 window.ktaFormesAjustables = window.ktaFormesAjustables || {};
@@ -1294,6 +1311,15 @@ window.ktaFormesAjustables.roads = {
   rendre: function() {
     renderRoads();
     if (window.RoadGraph && typeof window.RoadGraph.invalidate === "function") window.RoadGraph.invalidate();
+  },
+  // ✂️ Couper (ajusterSommets.js > _couper) : jamais une jonction (ses deux bouts portent fromLevel / toLevel) ni
+  // l'itinéraire calculé. Le second morceau entre juste après le premier dans la liste.
+  coupable: function(r) { return !!r && r.type !== "jonction" && r.type !== "itinerary"; },
+  ajouterApres: function(r, neuf) {
+    const i = roadsData.indexOf(r);
+    if (i < 0 || !neuf) return false;
+    roadsData.splice(i + 1, 0, neuf);
+    return true;
   },
   // Aimantation du dessin (snapDraw, même rayon) ; `exclus` : le sommet déplacé et ses voisins du même tracé ;
   // `tol` (px plan) : rayon déjà converti par l'appelant (vue 3D, à la profondeur du point), sinon celui de la carte.

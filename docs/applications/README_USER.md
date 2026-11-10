@@ -53,12 +53,13 @@ MyKTAMap repose entièrement sur des **briques open-source**. Sans ces projets, 
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — génération de PDF imprimables (A0 → A4, portrait/paysage, page miniature Mode Secours, embed Mode Histoire).
 - 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — capture du rendu DOM en image (canvas → PNG). Utilisée pour intégrer la **carte OSM Leaflet** dans les PDF **« Briefing pompiers »** du Mode Secours : pile graphique webgl + tiles + overlays + plan projeté, le tout figé en une image embarquée dans le PDF remis aux secours externes. Merci à **Niklas von Hertzen** et aux contributeurs.
 - 🧊 **[three.js](https://threejs.org/)** *(MIT, vendored)* — moteur 3D du navigateur (WebGL). Dessine la **🧊 Vue 3D** : le plan en relief autour de ta position. Chargé seulement à la première ouverture de la vue, puis disponible hors ligne. Merci à **Ricardo Cabello (mrdoob)** et aux contributeurs.
+- 🎨 **[Twemoji](https://github.com/twitter/twemoji)** *(dessins CC-BY 4.0, police [twemoji-colr](https://github.com/mozilla/twemoji-colr) de Mozilla, Apache 2.0, réduite)* — dessine les emoji des textes de l'app (messages, alertes, médailles du profil, légende des exports, panneaux de la vue 3D) : ils s'affichent pareil sur iPhone, Android et PC, hors ligne, sans rien télécharger d'ailleurs. Merci aux auteurs de **Twemoji** et à **Mozilla** pour la version en couleur.
 - 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & ses contributeurs** — sous licence **[ODbL](https://opendatacommons.org/licenses/odbl/)** pour les données et **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** pour la cartographie. Données cartographiques mondiales affichées dans la **Vue OSM** (modale plan + widget HOME) **dès qu'un de tes plans est calibré GPS** (active par défaut, désactivable dans ⚙️ Configuration). L'app affiche l'attribution `© OpenStreetMap contributors` dans le coin de chaque carte OSM, **comme la licence ODbL l'exige**. Hébergement des tuiles : **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (fondation non-commerciale, politique de logs publique, pas de tracking publicitaire). Sans ce bien commun monumental — bâti depuis 2004 par des **milliers de bénévoles** qui cartographient le monde rue par rue — la Vue OSM n'existerait pas.
 - 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés. Edsger W. Dijkstra (1930-2002) : merci pour cette idée vieille de plus de 60 ans qui sous-tend encore Google Maps, OpenStreetMap routing, et chaque GPS du monde.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — format d'échange avec TopoDroid, OsmAnd, Strava, Garmin et l'écosystème outdoor.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.
 
-> 📜 **Conformité licences** : les fichiers vendored (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`, `lib/three/`) conservent leur header de licence d'origine. Pour le détail réseau (quand chaque ressource est contactée), voir l'**[Audit réseau](./NETWORK_AUDIT.md)** (accessible aussi depuis la modale Audit dans l'app).
+> 📜 **Conformité licences** : les fichiers vendored (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`, `lib/three/`) conservent leur header de licence d'origine ; la police des emoji (`fonts/kta-emoji.woff2`, Twemoji réduit) a la sienne à côté d'elle (`fonts/LICENSE-twemoji.txt`). Pour le détail réseau (quand chaque ressource est contactée), voir l'**[Audit réseau](./NETWORK_AUDIT.md)** (accessible aussi depuis la modale Audit dans l'app).
 
 ### À l'écosystème PWA
 
@@ -76,7 +77,7 @@ Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exacte
 
 ---
 
-**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🧊 three.js (Vue 3D) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM désactivable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
+**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 🔄 Leaflet.ImageOverlay.Rotated (calage 2 ancres + projection Vue OSM) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 📸 html2canvas (capture DOM pour PDF Briefing pompiers) · 🧊 three.js (Vue 3D) · 🎨 Twemoji (emoji des textes, CC-BY 4.0) · 🌍 OpenStreetMap & contributeurs (données ODbL, Vue OSM désactivable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
 
 ---
 
@@ -130,7 +131,7 @@ Pour le vérifier toi-même : ⚙️ Configuration (écran d'accueil) › **🔒
 
 - **📋 Voir le journal réseau** — toutes les requêtes de l'app en direct, et si elles envoient des données ; à copier, exporter ou vider. Si une requête envoie des données, ou si une adresse extérieure autre qu'OpenStreetMap apparaît (en rouge), **préviens l'auteur** : Instagram **@karma_kta** ou **contact@myktamap.fr**.
 - **📖 Que fait l'app sur le réseau ?** — la liste des adresses que l'app peut contacter et comment vérifier avec ton navigateur (F12, onglet Réseau). La page d'audit complète décrit l'état actuel ; ce qui a changé à chaque version est dans sa page « Historique des versions ».
-- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant. Sur une telle installation : la fiche ℹ️ d'un plan local propose **☁️ Publier ce plan**, puis de **remplacer ta copie locale** par la version ☁️ (tes annotations, photos et favoris suivent) ; le **💾** de la ligne d'un plan ☁️ le garde sur ton appareil (**✅** = gardé et à jour) ; dans le tracker, **📡 Partager ma position sur ce plan** montre ton repère aux autres, seulement si tu le coches (c'est ta position **sur le plan**, celle du suivi : l'app n'utilise pas le GPS). Le bouton **👥 Équipe**, à gauche sur la carte, montre qui est sur le plan, s'il le consulte ou le modifie, et sa position sur le plan s'il la partage (📍 Centrer, 👁 Suivre, 〰 trace) ; à l'accueil, **👥 N** sur un plan ☁️ signale que d'autres l'ont ouvert (**✏️** : en cours de modification). Dans la fenêtre **Itinéraire**, **🧭 Montrer mon itinéraire à l'équipe** le rend visible (en jaune, lecture seule) de ceux qui voient le plan, mis à jour à chaque étape, retiré quand tu l'effaces et au bout de 24 h. Sur un plan que ton accès permet seulement de consulter, les outils de dessin sont grisés : les toucher rappelle que le plan est en lecture seule. Sur l'écran de connexion d'une telle installation, la pastille sous la carte dit si la base de données répond (touche-la pour revérifier), et les icônes 📖 et 🆘 ouvrent la documentation et le dépannage.
+- **🔌 La pastille « Base de données : désactivée »**, en bas de l'accueil à côté du numéro de version, dit si l'installation que tu utilises est reliée à une base de données en ligne. Sur myktamap.fr, c'est « désactivée », et ça le restera : ce site n'a ni base de données ni backend. Une installation indépendante (club, équipe) peut en déclarer une : la pastille change alors de couleur et de texte. Touche-la pour lire son état et ouvrir la liste ci-dessus. Sur une installation reliée à une base de données, elle dit « connectée » ou « injoignable » ; si le module de connexion de cette installation manque, l'app affiche **« Installation indisponible »** et reste fermée : réessaie plus tard ou préviens son gestionnaire. Connecté à un compte de l'installation, tes actions (mot de passe, déconnexion) sont en tête de **👤 Mon profil**, et un administrateur gère les comptes depuis **⚙️ Configuration**. **Se déconnecter efface de l'appareil** les données de ce compte (plans de l'installation, sessions, photos) : ce qui n'a pas encore été envoyé est signalé avant. Sur une telle installation : la fiche ℹ️ d'un plan local propose **☁️ Publier ce plan**, puis de **remplacer ta copie locale** par la version ☁️ (tes annotations, photos et favoris suivent) ; le **💾** de la ligne d'un plan ☁️ le garde sur ton appareil (**✅** = gardé et à jour) ; dans le tracker, **📡 Partager ma position sur ce plan** montre ton repère aux autres, seulement si tu le coches (c'est ta position **sur le plan**, celle du suivi : l'app n'utilise pas le GPS). Le bouton **👥 Équipe**, à gauche sur la carte, montre qui est sur le plan, s'il le consulte ou le modifie, et sa position sur le plan s'il la partage (📍 Centrer, 👁️ Suivre, 〰 trace) ; à l'accueil, **👥 N** sur un plan ☁️ signale que d'autres l'ont ouvert (**✏️** : en cours de modification). Dans la fenêtre **Itinéraire**, **🧭 Montrer mon itinéraire à l'équipe** le rend visible (en jaune, lecture seule) de ceux qui voient le plan, mis à jour à chaque étape, retiré quand tu l'effaces et au bout de 24 h. Sur un plan que ton accès permet seulement de consulter, les outils de dessin sont grisés : les toucher rappelle que le plan est en lecture seule. Sur l'écran de connexion d'une telle installation, la pastille sous la carte dit si la base de données répond (touche-la pour revérifier), et les icônes 📖 et 🆘 ouvrent la documentation et le dépannage.
 
 ---
 
@@ -298,7 +299,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 **En haut**, une barre fixe :
 
 - la **rose des vents** à gauche ramène à l'accueil ;
-- le **nom du plan** ouvre **🗂 Changer de plan** (voir plus bas) ;
+- le **nom du plan** ouvre **🗂️ Changer de plan** (voir plus bas) ;
 - les **compteurs** 📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures · 📸 photos ouvrent **📊 Détails de la session** ;
 - à droite : **📖** Mode Histoire, **🌍** Vue OSM (plan géoréférencé), **🚨** Sortie d'urgence, **🔋** batterie.
 
@@ -347,7 +348,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 ### 🗺️ Lire le plan
 
 - **Pincer** pour zoomer, **glisser** pour te déplacer (ou les boutons **+** / **−** en haut à gauche).
-- **Tourner deux doigts** fait pivoter la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche (au-dessus de la boussole si elle est ouverte), la remet droite. Un outil de dessin, la mesure ou le recalage la redressent ; 🗺️ Plan orienté prend la main pendant le suivi.
+- **Tourner deux doigts** fait pivoter la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche (au-dessus de la boussole si elle est ouverte), la remet droite. Un outil de dessin, la mesure ou le recalage la redressent ; 🔃 Plan orienté prend la main pendant le suivi. Pour l'empêcher : ⚙️ Configuration de l'accueil › 🎨 Affichage › **Bloquer la rotation de la carte**.
 - **Toucher une icône** ouvre la fiche du point ; **double-toucher** zoome dessus (comme le bouton « Y aller » de la fiche).
 - Les icônes rapetissent au dézoom pour rester à l'échelle du plan, en mode plan comme sur les cartes OSM (Vue OSM et carte de l'accueil). Pour garder une taille fixe : ⚙️ Configuration de l'accueil → 🎨 Affichage → « 📐 Adapter la taille des icônes au zoom ».
 
@@ -357,7 +358,7 @@ Si ton plan est **géoréférencé**, la fiche de chaque point (les tiens comme 
 
 #### 🔄 Changer de plan
 
-Le **nom du plan**, en haut, ouvre **🗂 Changer de plan** : le plan en cours, les plans récents, et **📚 Voir tous mes plans** pour revenir à l'accueil. Au changement, ta session est **sauvegardée automatiquement**. Pour fermer sans rien faire : ✕, clic à côté ou **Échap**.
+Le **nom du plan**, en haut, ouvre **🗂️ Changer de plan** : le plan en cours, les plans récents, et **📚 Voir tous mes plans** pour revenir à l'accueil. Au changement, ta session est **sauvegardée automatiquement**. Pour fermer sans rien faire : ✕, clic à côté ou **Échap**.
 
 ### ≡ Filtres
 
@@ -452,14 +453,14 @@ Le bouton **🧭 Tracker** (ou le voyant 🧭 de la barre du bas) ouvre une **mo
 | Section | Tuiles |
 |---|---|
 | **Suivi** | ▶️ / ⏹️ Démarrer / arrêter · 📍 Mode recalage · 🎯 Ma position (recentre la carte sur toi) · 🔓 Suspendre le verrou sur tracé |
-| **Outils** | 🧭 Boussole · 🗺️ Calculer un itinéraire · 🪧 Guidage de l'itinéraire · 🗺️ Plan orienté |
+| **Outils** | 🧭 Boussole · 🗺️ Calculer un itinéraire · 🪧 Guidage de l'itinéraire · 🔃 Plan orienté |
 | **Urgence** (fond rouge) | ⛑️ Je suis perdu · 🔆 Affichage XL · 🚑 Mode Secours — voir 🆘 En cas d'urgence sous terre |
 
 Navigation intelligente (verrou sur tracé), plan orienté, itinéraire via plusieurs plans, replay et heatmap sont des options désactivées par défaut → 🔭 Pour aller plus loin.
 
 ### ▶️ Démarrer le suivi
 
-1. Touche **▶️**. La première fois après chaque rechargement de l'app, une fenêtre rappelle que le tracker est **expérimental** (il dérive) et propose **🔆 Garder l'écran allumé**, cochée d'office : un écran qui s'éteint, ce sont des pas perdus. Valide avec **J'ai compris — Démarrer**.
+1. Touche **▶️**. La première fois après chaque rechargement de l'app, une fenêtre rappelle que le tracker est **expérimental** (il dérive) et propose **📱 Garder l'écran allumé**, cochée d'office : un écran qui s'éteint, ce sont des pas perdus. Valide avec **J'ai compris — Démarrer**.
 2. Sur téléphone, accepte l'accès aux capteurs de mouvement.
 3. Ton icône (un cône bleu) apparaît au point de départ et pointe dans ta direction de marche (vers le Nord quand le suivi est arrêté) ; un tracé enregistre ton chemin.
 4. **⏹️** arrête le suivi.
@@ -533,7 +534,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 
 #### 🧭 Suivi ou 🕹️ Libre
 
-- **🧭 Suivi** (choisi à l'ouverture quand le tracker tourne) : la vue suit ta position et **tourne avec ton téléphone**, comme 🗺️ Plan orienté.
+- **🧭 Suivi** (choisi à l'ouverture quand le tracker tourne) : la vue suit ta position et **tourne avec ton téléphone**, comme 🔃 Plan orienté.
 - Bouger le joystick ou toucher un bouton de déplacement passe en **🕹️ Libre**. Glisser sur la scène règle seulement le regard haut / bas.
 - Le bouton de la tuile ⚙️, qui affiche le mode en cours, bascule de l'un à l'autre. Une pastille 🧭 / 🕹️ en haut à gauche le montre toujours.
 - Tracker arrêté : 🧭 est grisé et dit pourquoi.
@@ -545,18 +546,20 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 
 - **🧭 Suivi / 🕹️ Libre** : voir ci-dessus.
 - **✏️ Édition** (ex-vue plongeante ; ou touche V) : tu te vois d'au-dessus, et elle se manie comme une carte.
-- ✏️ **Zoom** (de 6 à 150 m de recul) : pincer à deux doigts, molette, boutons **+ / −** en bas à droite ou touches = / -. En dézoomant, le sol (et le plan au sol 🗺️ s'il est allumé) s'étend avec la vue ; piliers, murs et points restent dessinés jusqu'à 100 m autour du centre de la vue, pour ménager le téléphone.
-- ✏️ **Inclinaison** (de presque verticale à rasante) : glisser deux doigts ensemble vers le haut ou le bas, **Maj + molette**, PageUp / PageDown ou les petits boutons ▲ ▼ à côté de + / −.
+- ✏️ **Zoom** (de 6 à 150 m de recul) : pincer à deux doigts, molette, touches = / - ou boutons **+ / −** en bas à droite (case **Boutons de zoom** de l'accueil, décochée par défaut). En dézoomant, le sol (et le plan au sol 🗺️ s'il est allumé) s'étend avec la vue ; piliers, murs et points restent dessinés jusqu'à 100 m autour du centre de la vue, pour ménager le téléphone.
+- ✏️ **Inclinaison** (de presque verticale à rasante) : glisser deux doigts ensemble vers le haut ou le bas, **Maj + molette**, PageUp / PageDown ou, avec la même case, les petits boutons ▲ ▼ à côté de + / −. Le ⌖ reste toujours.
 - ✏️ L'Édition, son zoom et son inclinaison sont retenus pour ce plan sur cet appareil : tu t'y retrouves en rouvrant la 3D, même après avoir rechargé l'app (sur ta place, sans outil choisi). Un jeu qui interdit l'Édition ouvre à hauteur d'yeux sans effacer ce choix.
 - ✏️ **Caméra libre** : glisse un doigt (ou la souris) pour déplacer la vue, comme une carte ; ta place, ton tracker et ta silhouette ne bougent pas. Deux doigts qui tournent tournent la vue (au PC : clic droit ou Ctrl + glisser, ↶ ↷). **⌖** (en bas à droite) te ramène sur ta place ; marcher (joystick, pavé, flèches) ou revenir à hauteur d'yeux aussi. En Édition, le joystick n'occupe que le coin bas gauche.
 - ✏️ **Survol** : en Édition, rien ne bloque ta place (piliers, murs, cavages fermés). En revenant à hauteur d'yeux, si tu es dans un obstacle, tu en es sorti.
 - ✏️ **Niveau** (plan à plusieurs niveaux) : ▲ / ▼ à gauche changent le niveau montré par la 3D, sans passer par un escalier ; la carte et le tracker gardent le leur.
 - ✏️ Les panneaux des points restent lisibles même dézoomés ; de très loin, ils ne gardent que leur icône (comme sur la carte), une seule là où elles se chevauchent (danger et favoris d'abord), et le nom revient quand tu te rapproches. Toucher une icône ouvre la fiche, à taille normale.
-- **⛏️ Hauteur** : le bouton affiche la hauteur en cours et ouvre **−** / **+**, de 1,5 à 20 m (par 0,1 m jusqu'à 5 m, puis 0,5 m).
-- ⛏️ C'est la même hauteur que ⛏️ Volume exploité, retenue pour ce plan : changer l'une change l'autre. La scène se refait sur place, sans te déplacer.
+- **⛏️ Hauteur** : le bouton affiche la hauteur en cours et ouvre **−** / **+**, de 1,5 à 20 m (par 0,1 m jusqu'à 5 m, puis 0,5 m). Sur un plan à plusieurs niveaux, le bouton est grisé : la hauteur se règle pour chaque niveau dans ⚙️ Réglages › Niveaux : profondeur et hauteur.
+- ⛏️ C'est la hauteur **du niveau affiché**, celle de ⚙️ Réglages › 📉 Niveaux, que ⛏️ Volume exploité propose aussi. Sur un plan à un niveau, la changer ici ou dans ⛏️ Volume exploité change les autres ; sur un plan à plusieurs niveaux, elle ne se change que dans ⚙️ Réglages. La scène se refait sur place, sans te déplacer ; en passant à un autre niveau (🪜, suivi), la vue prend la hauteur de ce niveau.
 - **Rendu** : le bouton affiche le rendu en cours et passe au suivant (Mixte, Structures, Galerie, voir plus bas). Retenu pour ce plan ; par défaut, Mixte.
 - **🧱 Textures** (activé par défaut) : pierre, roche, parpaing, terre et éboulis à leur taille réelle (voir plus bas). Retenu sur cet appareil.
+- **Lignes au sol** (activé par défaut) : les tracés dessinés au sol, le liseré des galeries et les ronds des intersections. Décoché, le sol reste nu dans les trois rendus ; ton itinéraire reste dessiné, et la carte, ses filtres et la mini-carte ne changent pas. Retenu sur cet appareil.
 - **Boussole** : la tuile la montre ou la masque, pour cet appareil. En bas à gauche, son **N** montre le nord réel, d'après la calibration du Nord du plan, et tourne avec ta vue. Plan sans Nord calibré : elle montre le haut du plan et l'écrit.
+- **🗺️ Mini-carte** (activée par défaut) : un petit plan rond en haut à droite, **nord en haut**, centré sur toi, avec une flèche qui suit ton regard. Il montre ton niveau avec les mêmes filtres que la carte (zones qui bouchent, piliers et murs, tracés, tous les points montrés, dangers, sorties, passages vers un autre niveau), ton itinéraire et la prochaine consigne, et en contour pâle les niveaux juste au-dessus et au-dessous. **Touche-le** pour l'agrandir (touche encore pour le refermer) ; **pince-le** (ou molette) pour voir plus près ou plus loin. Masqué en ✏️ Édition. Pendant une partie de jeu, le panneau du jeu passe à gauche, sous ses jauges, pour lui laisser la place. Retenu sur cet appareil.
 - **🪧 Guidage** : coché, il suffit : avec un itinéraire, le bandeau et les chevrons s'affichent en 3D même si le guidage de la carte est coupé (sa ✕). Coupé, il masque en 3D le bandeau de consigne et les chevrons au sol. L'itinéraire, ses étapes et 🏁 restent dessinés ; une sortie d'urgence s'affiche toujours ; le guidage de la carte n'est pas touché. Retenu sur cet appareil.
 - **🗂️ Fiches** : coché, toucher un pilier, un mur, une zone ou un tracé ouvre sa fiche ; décoché, rien ne s'ouvre (la vue bouge comme d'habitude, l'appui long ajuste toujours). Un point ouvre toujours la sienne. Décoché par défaut au téléphone, coché au PC ; retenu sur cet appareil.
 - **🔭 Portée** : un curseur de 15 à 100 m (30 m par défaut) règle jusqu'où tu vois. Le brouillard noir, la lampe et le décor suivent. Plus loin, c'est plus lourd pour le téléphone. Retenu sur cet appareil.
@@ -564,6 +567,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - **🔦 Faisceau** : un curseur de 40 à 160° (71° par défaut) règle la largeur du faisceau ; plus il est large, plus son bord se fond dans le noir. Retenu sur cet appareil.
 - **☀️ Plein jour** : un soleil rasant, venu toujours du même côté (le nord-ouest du plan, ou son coin haut gauche si le nord n'est pas calibré) : les faces tournées vers lui sont claires, les autres plus sombres, le relief des piliers et des joints se lit ; un léger brouillard clair pâlit le lointain. Ta lampe reste allumée à son réglage (baisse-la à 25 % pour qu'elle se fasse discrète). Marche aussi en ✏️ Édition (décoché, l'éclairage plat pour dessiner). Retenu sur cet appareil.
 - **🛡️ Limiter la portée (anti-crash mémoire)** : cochée par défaut (portée jusqu'à 100 m, recul de ✏️ Édition jusqu'à 150 m). Décoche-la (une question te prévient : sur un gros plan, le téléphone peut planter faute de mémoire) pour voir **tout le plan** : le curseur 🔭 Portée passe aussitôt sur son nouveau cran « Tout le plan », ✏️ Édition recule jusqu'à montrer le plan entier, et le brouillard disparaît. Au téléphone, la case revient cochée à chaque ouverture de la vue ; au PC, elle reste décochée.
+- **🏗️ Niveaux** (plan à plusieurs niveaux) : **Voisins**, par défaut, montre aussi les niveaux juste au-dessus et juste au-dessous du tien, à leur vraie profondeur (📉 Niveaux) ; **Tous** montre tous les niveaux (plus lourd pour le téléphone) ; **Le mien**, ton niveau seul. Tu les vois par un puits, au bout d'une galerie en pente, ou en ✏️ Édition, sans leurs panneaux. Leurs propres puits et galeries en pente se voient aussi, coupés à mi-chemin vers un niveau que tu ne montres pas. Tu marches toujours sur ton niveau et tu n'en changes que par un passage, une galerie en pente ou ▲ ▼. Deux niveaux qui s'entremêlent (écart négatif, 📉 Niveaux) partagent leur volume : là où l'un des deux a une galerie, c'est ouvert, sans mur entre les deux ; un pilier, un mur ou un front de l'autre niveau qui monte jusque dans ta hauteur te bloque, même s'il n'est pas montré. Au téléphone, revient à Voisins à chaque ouverture ; au PC, ton choix reste. **🌫️ Estomper** (activé par défaut, réglage de cet appareil) : en ✏️ Édition, les niveaux du dessous sont plus sombres que le tien et ceux du dessus en transparence (tu vois où passent leurs galeries, ils ne cachent pas le tien et ne gênent pas tes touchers) ; ton sol devient transparent (🧱 Textures coupées : là où le dessous n'a rien, du noir) ou voilé (🧱 allumées, un niveau du dessous montré) pour voir dessous ; il reste plein au niveau le plus profond, en Le mien avec les textures, ou avec 🗺️ plan au sol. Tu dessines et touches toujours ton propre sol. Coupé, le dessous garde ses couleurs, le dessus n'est pas montré (il cacherait le tien) et ton sol reste plein. À hauteur d'yeux, rien ne change.
 - Pendant une partie de jeu, la portée repasse à 30 m, la lampe à 100 %, le faisceau à 71° et Plein jour est coupé (réglages grisés), puis tes réglages reviennent.
 
 #### 🏛️ Les trois rendus
@@ -580,7 +584,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 
 **🏛️ Structures**
 
-- Piliers, murs et fronts de taille dressés à la hauteur de galerie du plan (⛏️ Volume exploité, 2 m sinon).
+- Piliers, murs et fronts de taille dressés à la hauteur de galerie du niveau (⚙️ Réglages › 📉 Niveaux, ou ⛏️ Volume exploité sur un plan à un niveau ; 2 m sinon).
 - Remblais et effondrements en volume (60 % de cette hauteur), eau, zones ⛔ inaccessibles.
 - Tracés et itinéraire au sol.
 - Points en panneaux, toujours visibles (un point relevé dans un pilier s'affiche contre sa face), plus petits et plus pâles au loin, et effacés tout près de toi pour ne pas boucher la vue.
@@ -613,11 +617,11 @@ Chaque passage ou accès a son volume, là où il est.
 - ![](../../icon/jes.png) **Escalier entre niveaux** : une cage à marches, dans une niche sur le côté de la galerie.
 - ![](../../icon/jpe.png) **Puits à échelons entre niveaux** : un puits carré en pierre, avec son échelle.
 - ![](../../icon/jps.png) **Puits sans échelon entre niveaux** : un puits nu.
-- ↕️ **Tracé jonction** : une rampe à sa couleur, du sol au plafond vers le niveau du dessus, en tranchée vers le niveau du dessous. 🪜 au bout du tracé.
+- ↕️ **Tracé jonction** : une galerie en pente que tu parcours à pied. Le sol va du sol d'un niveau à celui de l'autre, d'un bout à l'autre du tracé (avec les profondeurs des niveaux si tu les as saisies, sinon une hauteur de galerie et 2 m de roche par niveau). Un ruban à sa couleur court au milieu du sol.
 
 Où et comment un passage se dessine :
 
-- Il s'ouvre **dans le sol** vers un niveau du dessous, **dans le plafond** vers un niveau du dessus (il monte et se perd dans le noir), les deux pour un passage entre trois niveaux, avec un cadre doré au sol.
+- Il s'ouvre **dans le sol** vers un niveau du dessous, **dans le plafond** vers un niveau du dessus, les deux pour un passage entre trois niveaux, avec un cadre doré au sol. Il va d'un niveau à l'autre à leur **vraie profondeur** (📉 Niveaux) : l'escalier monte ou descend jusqu'au sol de l'autre niveau, le puits traverse la roche entre les deux. Sans profondeurs saisies, 2 m de roche séparent deux niveaux.
 - Son panneau a un liseré à la couleur des jonctions et la marque **↕**. Il reste lisible jusqu'à 1 m.
 - Il se dessine **dans la galerie** de chaque niveau, du côté de son point, même si le point est posé à côté pour la lisibilité de la carte (galerie à moins de 10 m).
 - Un raccord validé de ce niveau donne l'endroit exact. Près d'un carrefour, c'est la galerie la plus proche qui l'emporte ; un raccord validé tranche.
@@ -647,7 +651,7 @@ Où et comment un passage se dessine :
 **Autres points avec une forme** :
 
 - ![](../../icon/chatiere.png) **Chatière** : la galerie se resserre sur un passage bas dans la roche, au ras du sol (environ 0,6 m de haut sur 0,9 m de large), la roche au-dessus et sur les côtés. Rien ne t'arrête : la vue s'abaisse pour la passer en rampant, puis remonte (en 🧭 Suivi comme en 🕹️ Libre). Elle fait 1,8 m, sauf si son point précis a un début et une fin : elle prend alors leur longueur et leur axe.
-- ![](../../icon/plaque.png) **Plaque indication** : une plaque émaillée bleue et blanche, à plat sur la paroi la plus proche, au nom du point : elle s'élargit pour un nom long, puis passe sur deux lignes, sans jamais le couper. Le point n'a pas de panneau au-dessus : touche la plaque pour ouvrir sa fiche. Le nom reste avec 🧱 coupé.
+- ![](../../icon/plaque.png) **Plaque indication** : une inscription gravée dans un bloc de pierre, à plat sur la paroi la plus proche, au nom du point en capitales ; si la description du point commence par une date ou un sigle (« 1857 », « 12/03/1890 », « IGC 1902 », « R. 45 »), sa première ligne est gravée dessous, plus petite. Chaque plaque a sa propre usure, toujours la même pour un même point. La plaque s'élargit pour un nom long, puis passe sur deux lignes, sans jamais le couper. Le point n'a pas de panneau au-dessus : touche la plaque pour ouvrir sa fiche. Le nom reste avec 🧱 coupé.
 - ![](../../icon/epure.png) **Épure** : un trait clair tracé sur la paroi la plus proche, à hauteur d'yeux.
 - ![](../../icon/portail.png) **Portail (liaison inter-plan)** : un cadre de porte contre la paroi, **allumé** quand le point a une liaison vers un autre plan, éteint sinon. La fiche de **tout point lié** à un autre plan (portail ou non) propose **🌀 Passer au plan…** : la confirmation s'affiche par-dessus la vue ; si tu confirmes, la vue se ferme et l'autre plan s'ouvre. Le ➜ des liaisons de la fiche fait de même.
 - ![](../../icon/vehicule.png) **Véhicule** : une petite voiture simplifiée (une citadine d'environ 3,2 m) dans la galerie, le long de celle-ci. **On bute dessus**, comme sur un pilier.
@@ -656,7 +660,9 @@ Où et comment un passage se dessine :
 
 #### 🪜 Changer de niveau
 
-- À moins de **2 m** d'un passage entre niveaux (escalier, puits) ou du bout d'un tracé jonction, des boutons nommés (« ▼ -1 · Puits du carrefour (échelle) ») t'emmènent au niveau voisin.
+- À moins de **2 m** d'un passage entre niveaux (escalier, puits), des boutons nommés (« ▼ -1 · Puits du carrefour (échelle) ») t'emmènent au niveau voisin.
+- Une **zone jonction** (une salle dont le sol monte d'un niveau à l'autre) se marche comme le tracé jonction qui la traverse : le sol suit la pente partout dans la salle, ses piliers et ses murs aussi, et ceux des deux niveaux te bloquent. Tu n'en sors par un côté que là où son sol est au niveau du tien.
+- Un **tracé jonction** n'a pas de bouton : tu y entres et tu marches, la vue suit la pente. À mi-chemin, tu passes à l'autre niveau sans écran noir (**« Niveau -1 »** s'affiche) ; au bout, tu es dans sa galerie. Dans l'autre sens, pareil. L'itinéraire la suit (« descendre la pente vers le niveau -1 »).
 - S'il en dessert plus de deux, une petite liste s'ouvre.
 - La fiche du point fait de même : **▼ Descendre** / **▲ Monter** vers chacun de ses niveaux, d'où que tu sois.
 - Tu descends (ou montes) dans le passage, l'écran passe au noir un instant, puis tu arrives par le plafond (ou le sol) de l'autre niveau. **« Niveau -1 »** s'affiche 2 secondes.
@@ -672,6 +678,7 @@ Où et comment un passage se dessine :
 - **Toucher une structure, une zone ou un tracé** (pilier, mur, front, zone, galerie) ouvre **sa fiche**, la même que sur la carte : note, 🔄 Convertir, niveau, 🗑️ Supprimer. Sur un calque de données, elle est en lecture seule.
 - Un panneau de point passe d'abord. Toucher dans le vide ne fait rien.
 - **🗺️ Voir sur la carte**, en bas de la fiche : la 3D se ferme, la carte se centre sur l'objet, ouvre sa fiche et le surligne quelques secondes.
+- **🔍 Rechercher**, en haut à gauche de ⚙️ (dans les deux vues), ou **Ctrl+K** (⌘K sur Mac) : la même fenêtre que sur la carte (points, tracés, zones, structures, mêmes filtres), au-dessus de la vue. Choisir un résultat t'y emmène **en 3D** : la vue passe en libre (le tracker ne bouge pas), change de niveau s'il le faut, se place devant l'objet (le point précis d'un point qui en a un) et ouvre sa fiche. La carte, dessous, ne bouge pas. Fermer la fenêtre sans choisir ne change rien. Pendant une partie du jeu, la recherche n'est pas proposée.
 - En rendu 🛣️ Galerie, piliers et murs ne sont pas dessinés : toucher une paroi ouvre la fiche du tracé.
 - **🧭 Y aller** : en suivi, l'itinéraire part du tracker. En libre, il part de **l'endroit où tu es en 3D**, niveau compris, sans déplacer le tracker.
 - Tracker arrêté : **D'où pars-tu ?** propose d'abord **Ici** (le tracker est recalé là où tu es en 3D, puis l'itinéraire en part ; comme à la fermeture, ce saut ne compte pas comme une sortie terrain).
@@ -711,7 +718,7 @@ Où et comment un passage se dessine :
 
 #### ✏️ Dessiner en vue d'édition
 
-- En vue **✏️ Édition**, les outils de la carte sont toujours là, à droite au milieu, dans le même ordre : **📐 Mesure**, **✏️ Ajouter un point**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. À hauteur d'yeux, pas de dessin.
+- En vue **✏️ Édition**, les outils de la carte sont toujours là, dans une colonne à droite sous les boutons du haut, dans le même ordre : **📐 Mesure**, **✏️ Ajouter un point**, **🛣️ Tracés**, **⬛ Zones**, **🏛️ Structures**. Au-dessus : **🗺️ Plan au sol** et **🧭 Tracker**, le menu Tracker de la carte (une tuile qui agit sur la carte, comme 📍 Mode recalage ou 🎯 Ma position, ferme d'abord la 3D). **▾** en tête replie la colonne (**◂** la rouvre) ; l'app s'en souvient. À hauteur d'yeux, pas de dessin.
 - Chaque bouton ouvre **le même menu que sur la carte** : piliers, murs, fronts de taille, tes types perso, ➕ nouveau type, ✅ Fermer / Valider.
 - Rien ne se dessine tant qu'aucun outil n'est choisi. **Choisir un outil suffit** : un toucher pose un point là où tu touches. Glisser, pincer et la molette bougent toujours la vue, sans poser de point.
 - **Fermer un pilier, un mur ou une zone** : touche le **rond doré** du premier point, ou ✅ dans le menu. Pour un mur fin, zoome d'abord : le rond grandit avec la vue.
@@ -725,7 +732,7 @@ Où et comment un passage se dessine :
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
 - **Retoucher l'outil, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
 - En lecture seule, les outils de dessin restent grisés, comme sur la carte ; 📐 Mesure reste permise.
-- **✋ Ajuster une forme**, comme sur la carte : appui long sur un point d'un pilier, d'une zone, d'un tracé ou de la mesure, puis glisser ; au milieu d'un côté, un point s'ajoute ; sans bouger, **＋** (chaque toucher au sol insère ensuite un point, jusqu'à ✓, Échap ou le point suivant) et **🗑️**. Des **ronds dorés** marquent les points de la forme touchée. Glisser tout de suite bouge la vue, sans rien ajuster ; un outil de dessin choisi passe avant (sauf 📐 pour la mesure).
+- **✋ Ajuster une forme**, comme sur la carte : appui long sur un point d'un pilier, d'une zone, d'un tracé ou de la mesure, puis glisser ; au milieu d'un côté, un point s'ajoute ; sans bouger, **＋** (chaque toucher au sol insère ensuite un point, jusqu'à ✓, Échap ou le point suivant), **✂️** (point intérieur d'un tracé : le coupe en deux) et **🗑️**. Des **ronds dorés** marquent les points de la forme touchée. Glisser tout de suite bouge la vue, sans rien ajuster ; un outil de dessin choisi passe avant (sauf 📐 pour la mesure).
 
 > ⚠️ La 3D montre le **plan**, pas la galerie réelle. Formes et hauteurs sont celles du relevé (les galeries des modes Galerie et Mixte : des largeurs fixes par type de tracé), ta position celle du tracker, qui dérive. Ne t'y fie pas plus qu'à la carte.
 
@@ -862,6 +869,8 @@ La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec
 
 **📏 Mesurer** : en mode OSM, l'outil de mesure donne une distance et une surface ; elles ne dépendent d'aucun calibrage de plan.
 
+**🧭 Tourner la carte** : dans la fenêtre Vue OSM ouverte depuis un plan et sur la carte de l'accueil, tourne deux doigts posés sur la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche de la carte, la remet droite. La fenêtre rouvre toujours nord en haut, la carte de l'accueil aussi quand tu y reviens ; choisir un autre plan dans sa liste garde l'angle. Sur l'accueil, un seul doigt déplace toujours la carte : pour faire défiler la page, pose le doigt à côté. Pour l'empêcher : ⚙️ Configuration de l'accueil › 🎨 Affichage › **Bloquer la rotation de la carte**.
+
 **🎯 Coordonnées de surface** : un clic sur la carte donne la latitude et la longitude du point juste au-dessus, avec un bouton Copier — c'est ce qu'on transmet à une équipe qui arrive par la surface. Leur justesse dépend du calage du plan.
 
 **🗺️ Légende** : sur un plan, le bouton **🗺️ Légende** de la Vue OSM ; sur l'accueil, le bouton **🗺️** du bandeau. La légende est celle du plan, avec tes noms, tes couleurs et tes types personnels, en **lecture seule** : elle se modifie depuis le plan (🗺️ Légende → ✏️ Modifier). Sur l'accueil, c'est la légende du plan que tu viens de quitter, sinon celle du plan affiché que tu as ouvert le plus récemment ; si plusieurs plans sont affichés, un message te rappelle que les autres ont la leur.
@@ -880,7 +889,7 @@ Le bouton **📖** de la barre du haut (à droite, à côté de 🚨) ouvre ton 
 
 ### 📝 Note libre
 
-Une note par plan, **sauvegardée pendant que tu tapes**. Elle s'affiche mise en forme ; **✏️ Éditer** ouvre le texte, avec une barre d'outils (gras, italique, titres, liste, lien, code, citation), et **👁 Aperçu** revient au rendu. La note accepte le Markdown (`**gras**`, `# Titre`, `- élément`).
+Une note par plan, **sauvegardée pendant que tu tapes**. Elle s'affiche mise en forme ; **✏️ Éditer** ouvre le texte, avec une barre d'outils (gras, italique, titres, liste, lien, code, citation), et **👁️ Aperçu** revient au rendu. La note accepte le Markdown (`**gras**`, `# Titre`, `- élément`).
 
 ### 📚 Documents PDF
 
@@ -963,12 +972,13 @@ Dans le groupe **⬛ Zones**, des surfaces fermées pour annoter le plan :
 | 🟥 **Effondrement** | rouge | aucun |
 | 🟦 **Eau** | bleu | aucun |
 | ⛔ **Inaccessible** | hachures rouge sombre / noir | **bloque** le passage |
+| 🪜 **Zone jonction** (plan multi-niveau) | couleur du tracé jonction, voile léger | aucun : l'itinéraire passe par le tracé jonction qui la traverse (voir 🏗️ Mode multi-niveau) |
 
 Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone : **re-tape le premier point** (un cercle l'entoure dès le 3e point) ou appuie sur **✅ Fermer la zone en cours**. L'outil reste allumé : tape directement la zone suivante, et re-appuie sur le type pour l'éteindre. Quel que soit l'ordre de tracé, l'eau s'affiche dessous, puis les remblais, les effondrements, et l'inaccessible par-dessus les autres zones ; les structures (piliers, murs, fronts de taille) restent toujours au-dessus des zones.
 
 ### ⛔ Zone « Inaccessible » — bloque l'itinéraire
 
-Une zone ⛔ interdit son passage à l'itinéraire (effondrement récent, eau profonde…) : le calcul cherche un autre chemin, ou échoue en le disant. Elle ne bloque que **ses niveaux** (une zone peut en toucher plusieurs, voir « 🏗️ Mode multi-niveau »), et reste prise en compte même si tu masques le calque des zones.
+Une zone ⛔ interdit son passage à l'itinéraire (effondrement récent, eau profonde…) : le calcul cherche un autre chemin, ou échoue en le disant. Elle ne bloque que **ses niveaux** (une zone peut en toucher plusieurs, voir « 🏗️ Mode multi-niveau »), et reste prise en compte même si tu masques le calque des zones. Dans le menu ⬛ Zones, l'infobulle de **⛔ Inaccessible** le rappelle.
 
 La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire (cochée d'origine) permet de la relâcher. Le **Mode Secours** et « Je suis perdu » la respectent toujours. Pour « éviter si possible », utilise plutôt les **🚫 Préférences d'évitement** de l'itinéraire.
 
@@ -1020,8 +1030,9 @@ Un **tracé**, une **zone**, une **structure** ou une **mesure 📐** déjà des
 
 - **Déplacer un point** : appuie longuement (une demi-seconde) sur un point de la forme ; un rond doré apparaît : glisse-le, la forme suit en pointillé, puis lâche.
 - **Ajouter un point** : appuie longuement au milieu d'un côté ; un point naît là, glisse-le aussitôt.
-- **Supprimer un point** : appuie longuement sur un point sans bouger : **＋** et **🗑️** apparaissent au-dessus ; touche **🗑️**. Une ligne garde au moins 2 points, une surface 3 : en dessous, un message le dit et seul **＋** est proposé.
+- **Supprimer un point** : appuie longuement sur un point sans bouger : **＋** et **🗑️** apparaissent au-dessus (et **✂️** sur un point intérieur d'un tracé) ; touche **🗑️**. Une ligne garde au moins 2 points, une surface 3 : en dessous, un message le dit et seul **＋** est proposé.
 - **Insérer des points à la suite** : même appui long, puis **＋**. Un bandeau « ＋ Insertion · N point(s) · ✓ Terminer » s'affiche : chaque tap sur la carte ajoute un point entre le dernier posé et le point suivant de la forme, qui se redessine aussitôt (sur une forme fermée, après le dernier point vient le premier ; au bout d'une ligne, elle se prolonge). Pendant ce temps, aucun tap n'ouvre de bulle ni d'outil. **✓ Terminer**, **Échap** ou un tap sur le point suivant arrêtent l'insertion ; **Ctrl+Z** (ou ⏪) retire un point à la fois, pendant comme après.
+- **✂️ Couper un tracé** : même appui long sur un point d'un tracé, puis **✂️**. Le tracé devient deux tracés : le premier finit à ce point, le second y commence (les deux partagent le point, l'itinéraire passe toujours). Ils gardent le type, le niveau et la note. Pas sur un bout (chaque morceau garde au moins 2 points), ni sur une jonction entre niveaux ; pour couper au milieu d'un côté, ajoute d'abord un point là. Un seul ⏪ recolle le tracé.
 
 Un tap court ouvre toujours la bulle de l'objet. Un tracé lâché près d'un point d'un autre tracé s'y colle si le **🧲 Magnétisme au dessin** est allumé. Chaque geste (et chaque point inséré) s'annule avec ⏪ (sur une mesure, seulement tant que l'outil 📐 est allumé). Les objets d'un calque de données ne bougent qu'une fois le calque en **🔄 Modifier** ; un plan partagé en lecture seule ne se modifie pas. À la souris, même geste : bouton enfoncé une demi-seconde, puis glisser.
 
@@ -1095,6 +1106,7 @@ Le même bandeau sert à **supprimer** d'un coup, par exemple tout ce qu'un impo
 - La fenêtre annonce aussi : les **photos** des points (elles ne sont pas effacées, elles passent « sans point » dans 🧰 Outils > 📸 Mes photos), les **objets d'un calque de données** vus dans la zone (jamais supprimés : passe le calque en **🔄 Modifier** d'abord), et les **points portails** (liaison vers un autre plan), toujours gardés.
 - Jamais pris : l'itinéraire calculé, les jonctions entre niveaux et les mesures.
 - **Un seul ⏪** rend tout ce qui a été supprimé. Sur une installation reliée, la suppression part vers l'équipe comme une suppression à l'unité ; l'installation peut aussi la **refuser** avant la confirmation (par exemple trop d'objets d'autres membres sans le droit de gérer le plan) : un message le dit et rien n'est supprimé.
+- **🏗️ Niveau (N)** (plan à plusieurs niveaux) : la liste des niveaux du plan, la même que dans la bulle d'un objet, et une case par famille ; le bouton dit combien d'objets changent (ceux déjà au niveau choisi ne comptent pas). Tout le lot change de niveau, points compris. Une zone sur plusieurs niveaux garde les autres : seul son niveau d'origine est remplacé. Les **jonctions entre niveaux** ne changent pas (leurs niveaux se changent dans leur fiche) et les **objets d'un calque de données** non plus : la fenêtre compte les uns et les autres. **Un seul ⏪** annule tout ; sur une installation reliée, le changement part vers l'équipe comme à l'unité.
 
 **✅ Convertir (N)** ne compte que les objets de même forme que le premier (lignes ou surfaces) : une zone qui a aussi pris des points ou des surfaces les laisse de côté pour la conversion.
 
@@ -1143,7 +1155,7 @@ Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a ét
 - la **surface du secteur** ;
 - les **piliers retranchés** : surface et nombre. Comptent les piliers, les murs et les structures personnalisées fermées, les tiens et ceux des calques de données (même masqués), coupés au bord du secteur. Les fronts de taille et les murs en ligne ne comptent pas ;
 - la **surface exploitée** (secteur moins piliers) et le **taux de défruitement** (exploité ÷ secteur) ;
-- le **volume exploité** : surface exploitée × **hauteur moyenne de galerie**, à saisir dans la fenêtre (2 m par défaut, retenue pour ce plan, recalcul immédiat) ;
+- le **volume exploité** : surface exploitée × **hauteur moyenne de galerie**, à saisir dans la fenêtre (au départ celle du niveau, 2 m sinon ; recalcul immédiat). Sur un plan à un niveau, elle est retenue pour le plan ; sur un plan à plusieurs niveaux, elle sert au calcul seulement : la hauteur de chaque niveau se règle dans ⚙️ Réglages › Niveaux : profondeur et hauteur, et une phrase le rappelle sous le champ ;
 - les **remblais** (zones « Remblais » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins remblais).
 
 Sur un plan à étages, seul le **niveau actif** compte (dans la 🧊 Vue 3D : celui de la 3D), et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
@@ -1170,6 +1182,8 @@ Si le plan contient des éléments à d'autres niveaux, la liste s'étend d'elle
 Un objet a pris le mauvais niveau ? Dans la bulle d'un tracé, d'une zone ou d'une structure que tu as dessinés, la liste **Niveau** (sous 🔄 Convertir) le déplace aussitôt ; pour un point, c'est la liste **Niveau** de **✏️ Modifier**, enregistrée avec le reste de la fiche. Le niveau actuel de l'objet est toujours proposé, même s'il sort de la liste du plan. Si le niveau choisi est masqué par le filtre, l'objet disparaît de la carte et un message le dit : la vue reste sur ton niveau. **⏪** annule.
 
 Une zone qui touche plusieurs niveaux (un effondrement entre le −1 et le −2) : trace-la au niveau actif, puis dans sa bulle coche **Aussi aux niveaux** les autres niveaux concernés et tape **🏗️ Appliquer les niveaux**. C'est la même zone, avec le même contour, affichée sur chacun de ses niveaux : la modifier ou la supprimer agit partout, et une zone ⛔ bloque l'itinéraire sur chacun d'eux. Décoche tout pour la ramener à son seul niveau. **⏪** annule.
+
+Une salle dont le sol monte d'un niveau à l'autre (une chambre en pente) : **⬛ Zones → 🪜 Zone jonction**, choisis **du niveau … au niveau …** (la même fenêtre que pour une jonction), puis dessine la salle : elle est posée sur ces deux niveaux, sans rien cocher. Trace ensuite une jonction qui la traverse, d'un niveau à l'autre : c'est elle qui donne le sens de la pente, et l'itinéraire passe par elle. Tant qu'aucune ne la traverse, la bulle de la zone le dit et propose **🪜 Tracer la jonction** : le tracé de jonction démarre avec les niveaux de la zone, il ne reste qu'à poser ses points. Dans la bulle, **Du niveau** / **Au niveau** et **🪜 Changer les niveaux** les modifient (**⏪** annule). En vue 3D, le sol et le plafond de la salle suivent la pente, ses piliers et les murs le long de la jonction aussi ; sans jonction, le sol reste à plat. La zone jonction a la couleur, le nom et la ligne de légende du tracé jonction : changer l'un change l'autre, le filtre **Jonction** des tracés la masque aussi, et elle part dans les mêmes exports que lui. Une zone cochée « Zone jonction » dans une version précédente devient une zone jonction à l'ouverture du plan, sans rien perdre.
 
 Une jonction a sa propre fiche, avec ses deux niveaux (voir ci-dessous). Pas de liste sur un objet de calque (🔄 Modifier le calque d'abord) ni pendant un tracé en cours.
 
@@ -1207,6 +1221,18 @@ n'est emprunté que si tu coches **🧗 Équipe équipée (corde)** dans les Év
 🔒 Ces passages ne sont **jamais** proposés comme sortie d'urgence ni comptés comme accès de surface en Mode Secours.
 Un puits à échelon ou un escalier de service **qui débouche à la surface** garde son type (Puits à échelon ouvert,
 Escalier service ouvert) et peut aussi cocher plusieurs niveaux : il reste une sortie.
+
+### 📉 Profondeur et hauteur des niveaux
+
+Chaque niveau a trois chiffres, réglés dans **⚙️ Réglages › 📐 Plan › 📉 Niveaux : profondeur et hauteur** (ou en bas de la fenêtre de la pastille **Niv X**) :
+
+- **Sol** : sa profondeur sous la surface, en mètres (négatif vers le bas). Vide = non renseigné ; **Sans** = un niveau qui n'est pas un étage (un relevé ancien rangé au-dessus, par exemple).
+- **Hauteur** : la hauteur de ses galeries (2 m sinon). La vue 3D et ⛏️ Volume exploité s'en servent.
+- **Écart** : l'épaisseur entre le plafond du niveau et le sol du niveau du dessus. **Négatif** quand les deux niveaux s'entremêlent : −1,5 = le plafond monte 1,5 m au-dessus du sol du niveau du dessus. Changer l'écart déplace ce niveau **et ceux du dessous**.
+
+Si deux niveaux qui se suivent ont des chiffres qui ne vont pas ensemble (le sol du niveau du dessus plus bas que celui du dessous, ou deux niveaux qui se chevauchent d'au moins la hauteur de l'un), un avertissement ⚠️ s'affiche sous la table et la ligne est marquée ; rien n'est bloqué, la vue 3D les pose côte à côte.
+
+Le créateur du plan les propose dans le Générateur ; ce que tu corriges ici reste sur ton appareil et prime. **↺ Valeurs du plan** revient à celles du plan. Renseigner les sols allonge les itinéraires qui passent par un puits : leur longueur cesse d'être mesurée à plat.
 
 ### 🛠️ Côté créateur du plan
 
@@ -1435,7 +1461,7 @@ La mémorisation se règle dans **⚙️ Configuration** (« 💾 Mémoriser le 
 
 - **Ranger** : **☑ Sélectionner** un ou plusieurs plans puis « Déplacer vers… », ou **glisser** la ligne sur un dossier (à la souris, ou au doigt après un appui long).
 - **⋮** sur un dossier : renommer, couleur, ordre, supprimer (ses plans repassent en Non classés, aucun plan n'est supprimé).
-- **📥 Tout garder hors ligne** (dans ⋮, aussi sur « Non classés » pour les plans qu'il affiche) : met tout le dossier à jour sur l'appareil avant de descendre. Les plans absents sont téléchargés, ceux dont une version plus récente existe sont mis à jour, ceux déjà à jour sont sautés (un plan importé et mémorisé est déjà là). Un plan à la fois, avec « 3 / 7 » et le plan en cours ; **⏹ Arrêter** à tout moment. L'app demande confirmation seulement au-delà de 200 Mo estimés ou en données mobiles (quand le navigateur sait le dire). Si l'app passe en arrière-plan ou perd le réseau, le plan en cours reprend au retour, sans retélécharger ce qui est déjà rangé. À la fin, le bilan donne les plans récupérés, mis à jour, déjà à jour et ceux en échec, avec la raison.
+- **📥 Tout garder hors ligne** (dans ⋮, aussi sur « Non classés » pour les plans qu'il affiche) : met tout le dossier à jour sur l'appareil avant de descendre. Les plans absents sont téléchargés, ceux dont une version plus récente existe sont mis à jour, ceux déjà à jour sont sautés (un plan importé et mémorisé est déjà là). Un plan à la fois, avec « 3 / 7 » et le plan en cours ; **⏹️ Arrêter** à tout moment. L'app demande confirmation seulement au-delà de 200 Mo estimés ou en données mobiles (quand le navigateur sait le dire). Si l'app passe en arrière-plan ou perd le réseau, le plan en cours reprend au retour, sans retélécharger ce qui est déjà rangé. À la fin, le bilan donne les plans récupérés, mis à jour, déjà à jour et ceux en échec, avec la raison.
 - **🏷️ Règle par étiquette** (dans ⋮) : le dossier accueille tout seul les plans qui portent ces étiquettes. En mode Tout, des puces cochées proposent **📁 Créer un dossier depuis ces étiquettes**. Un rangement à la main l'emporte sur une règle ; la pastille est **pleine** pour un rangement explicite, **creuse** pour une règle.
 - Les dossiers voyagent avec ton profil. Un serveur peut en proposer : tu ne peux ni les renommer ni les supprimer, mais tu y ranges ce que tu veux. L'import de plusieurs plans propose « Ranger dans : ».
 
@@ -1461,11 +1487,12 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **📐 Adapter la taille des icônes au zoom** (activé au départ) : sur le plan, et aussi dans la Vue OSM et la carte OSM de l'accueil ;
   - **❓ Bouton d'aide dans les fenêtres** (activé) : un ❓ dans le titre des fenêtres qui ont une page d'aide, qui ouvre directement la bonne page ;
   - **🔔 Notifications** : **Toutes**, **Essentielles** (au départ : plus de message pour confirmer un geste que tu viens de faire) ou **Silence** (seulement l'important : batterie faible, capteur refusé, erreurs). Les alertes du serveur et les fenêtres qui attendent une décision ne sont jamais coupées ;
-  - **➕ Boutons de zoom +/− sur les cartes** : affiche les boutons + et − sur le plan, le widget OSM de l'accueil et la Vue OSM. Désactivé par défaut : on zoome au doigt (pincer) ou à la molette ;
+  - **➕ Boutons de zoom +/− sur les cartes et en 3D** : affiche les boutons + et − sur le plan, le widget OSM de l'accueil et la Vue OSM, et dans la vue d'édition de la 🧊 Vue 3D les boutons + / − et ▲ ▼ (inclinaison). Désactivé par défaut : on zoome au doigt (pincer), à la molette ou au clavier ; le ⌖ de la 3D reste ;
+  - **Bloquer la rotation de la carte** : deux doigts et Maj + molette ne font plus tourner la carte du plan, le widget OSM de l'accueil ni la Vue OSM ; en l'activant, les cartes ouvertes se remettent droites. Utile sur les appareils lents. Désactivé par défaut. Le 🔃 Plan orienté du suivi tourne toujours, et la 🧊 Vue 3D garde ses gestes ;
   - **🪟 Ancrer les panneaux d'outils au bouton** : les panneaux Tracés, Zones et Structures s'ouvrent collés à leur bouton au lieu d'être centrés (confortable sur grand écran, déconseillé sur téléphone) ;
   - **🧲 Magnétisme au dessin** et sa distance : un clic proche d'un point existant s'y colle, pour que tes galeries se rejoignent vraiment ;
   - **☀️ Thème clair** ;
-  - **🔆 Garder l'écran allumé** tant que l'app est ouverte. Le tracker propose aussi de l'activer à son démarrage.
+  - **📱 Garder l'écran allumé** tant que l'app est ouverte. Le tracker propose aussi de l'activer à son démarrage.
 - **🧩 Fonctionnalités optionnelles** — Replay, Heatmap, batterie et vibration, toutes désactivées au départ : voir « 🔭 Pour aller plus loin ». On y trouve aussi le **🕵️ Mode incognito** : il ouvre une nouvelle fenêtre où rien n'est enregistré (indisponible sur une installation reliée à une base de données, où le serveur enregistre ce que tu fais).
 - **🔒 Confidentialité & sécurité** :
   - **📔 Tenir un carnet de mes sorties** (activé, voir « 📔 Mon carnet ») ;
@@ -1474,9 +1501,9 @@ Le bouton **⚙️** en haut de l'accueil ouvre **⚙️ Configuration** : les r
   - **🔒 Confidentialité & Audit** : **📋 Voir le journal réseau**, **📖 Que fait l'app sur le réseau ?** et la case **🗺️ Vue OSM** (voir « 🔴 Avertissements importants ») — l'app n'envoie aucune de tes données ; le seul site extérieur qu'elle contacte est OpenStreetMap (fond de carte de la Vue OSM), que cette case coupe, et le journal réseau te le montre ;
   - **📚 Plans du site** : **🚫 Ne pas charger les plans du site au démarrage**, si tu n'utilises que tes propres plans (après rechargement, ils disparaissent de la liste et des statistiques).
 - **🛠️ Système & maintenance** :
-  - **🛠️ Mode Développeur** (protégé par mot de passe) : voir « 🔭 Pour aller plus loin » ;
+  - **🛠️ Mode Développeur** : logs détaillés à copier pour signaler un problème, et outils techniques — voir « 🔭 Pour aller plus loin » ;
   - **📊 Voir l'état mémoire** : ce que l'app occupe sur ton appareil, avec **📋 Copier le rapport** pour signaler un problème ;
-  - **🆘 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🆘 Ouvrir l'outil Kill SW** (SW = *Service Worker*, la partie de l'app qui la garde en mémoire pour le hors-ligne) et **💥 Tout réinitialiser** — voir « 🆘 En cas de problème ».
+  - **🔧 Dépannage** : une fenêtre qui range, du plus doux au plus radical, **🔄 Forcer la mise à jour**, **🔧 Ouvrir l'outil Kill SW** (SW = *Service Worker*, la partie de l'app qui la garde en mémoire pour le hors-ligne) et **💥 Tout réinitialiser** — voir « 🔧 En cas de problème ».
 
 ### ⚙️ Réglages (en mode carte) — ce plan
 
@@ -1537,7 +1564,7 @@ Le fichier ne contient que la documentation, aucune de tes données : tu peux le
 
 ---
 
-## 🆘 En cas de problème
+## 🔧 En cas de problème
 
 ### 💥 L'application s'arrête brusquement
 
@@ -1575,15 +1602,15 @@ Au premier lancement, MyKTAMap présente l'app puis te laisse **Entrer** : aucun
 ### 🔄 L'app ne se met pas à jour, ou reste bloquée
 
 Dans l'ordre, en gardant tes données :
-1. **⚙️ Configuration → 🆘 Dépannage → 🔄 Forcer la mise à jour** : retélécharge l'app sans toucher à tes plans, sessions, préférences ni codes. Une connexion est nécessaire.
-2. Si l'app reste coincée (page blanche, accueil sans mise en forme) : vérifie ta connexion (coupe ton VPN, change de réseau), puis **⚙️ Configuration → 🆘 Dépannage → 🆘 Ouvrir l'outil Kill SW**.
-3. Si l'app ne s'ouvre même plus : ouvre la **page de secours** dans un onglet privé du navigateur (pas l'app installée) : **https://myktamap.fr/killsw.html** (son adresse est aussi rappelée en bas de la fenêtre 🆘 Dépannage). Elle vide le cache de l'app **sans toucher à tes données** (plans, sessions, photos) et propose **🚀 Recharger l'app**.
+1. **⚙️ Configuration → 🔧 Dépannage → 🔄 Forcer la mise à jour** : retélécharge l'app sans toucher à tes plans, sessions, préférences ni codes. Une connexion est nécessaire.
+2. Si l'app reste coincée (page blanche, accueil sans mise en forme) : vérifie ta connexion (coupe ton VPN, change de réseau), puis **⚙️ Configuration → 🔧 Dépannage → 🔧 Ouvrir l'outil Kill SW**.
+3. Si l'app ne s'ouvre même plus : ouvre la **page de secours** dans un onglet privé du navigateur (pas l'app installée) : **https://myktamap.fr/killsw.html** (son adresse est aussi rappelée en bas de la fenêtre 🔧 Dépannage). Elle vide le cache de l'app **sans toucher à tes données** (plans, sessions, photos) et propose **🚀 Recharger l'app**.
 
 Ces outils ne suppriment **aucune** donnée (plans mémorisés, sessions, photos, carnet, préférences). Par précaution, **📤 Exporter mon profil** avant.
 
 ### 💥 Tout réinitialiser
 
-**⚙️ Configuration → 🆘 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
+**⚙️ Configuration → 🔧 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).
 
 - La première fenêtre propose **📤 Exporter mon profil d'abord**.
 - Si ton installation a son propre mot de passe, elle te prévient qu'il sera **redemandé au redémarrage** : assure-toi de le connaître avant de confirmer. Sinon, l'app te présentera de nouveau l'écran **Bienvenue**.
@@ -1622,7 +1649,7 @@ Si la batterie ou la vibration s'affiche **grisée** avec « Capteur refusé par
 
 La tuile **🎬** du menu **🧭 Tracker** ouvre une fenêtre plein écran qui **rejoue ta session de suivi** : le marqueur jaune refait ton trajet et la trace s'allonge au fur et à mesure.
 
-- **Commandes** : curseur de temps, ⏮ ▶️ ⏸ ⏭, vitesse de 0.5× à 10×. Au ▶️, la fenêtre se réduit en bas de l'écran pour laisser voir la carte (bouton **⛶** pour basculer).
+- **Commandes** : curseur de temps, ⏮️ ▶️ ⏸️ ⏭️, vitesse de 0.5× à 10×. Au ▶️, la fenêtre se réduit en bas de l'écran pour laisser voir la carte (bouton **⛶** pour basculer).
 - **Clavier** : Espace = lecture / pause · ← → = reculer / avancer d'une seconde · Échap = fermer.
 - **📤 Exporter CSV** : un tableau horodaté des positions (démarrage, chaque pas, chaque recalage, et le niveau sur un plan multi-niveau), lisible dans un tableur.
 - Un recalage est un saut : aucune ligne n'est dessinée entre l'ancienne et la nouvelle position.
@@ -1678,7 +1705,7 @@ Le tracker estime ta position avec **tes pas et la boussole**, ce qui **dérive*
 
 ### 🗺️ « Plan orienté » — la carte tourne avec toi
 
-Dans le menu 🧭 Tracker, la tuile **🗺️ Plan orienté** fait **tourner la carte** pendant le suivi, pour que ta direction de marche pointe toujours vers le haut de l'écran, comme un GPS de voiture.
+Dans le menu 🧭 Tracker, la tuile **🔃 Plan orienté** fait **tourner la carte** pendant le suivi, pour que ta direction de marche pointe toujours vers le haut de l'écran, comme un GPS de voiture.
 
 - **Désactivé par défaut** ; ton choix est retenu sur cet appareil.
 - La carte ne tourne **que pendant le suivi** et se remet droite à l'arrêt du tracker.
@@ -1876,7 +1903,7 @@ Le bouton **🏗️ Générer un plan** de l'accueil ouvre le **Générateur** (
 
 #### 🧙 Le Générateur
 
-- **🧙 Assistant** : le Générateur avance **étape par étape** (nom, image, calques…). Les étapes optionnelles se passent d'un clic (**⏭ Passer**), et un **✅ Résumé avant génération** montre ce qui est rempli, passé ou manquant, avec des avertissements utiles (par exemple : sans géoréférencement GPS, ni Vue OSM ni export KMZ / GPX). **🗒️ Tout afficher** montre au contraire tout le formulaire d'un coup ; ton choix est mémorisé.
+- **🧙 Assistant** : le Générateur avance **étape par étape** (nom, image, calques…). Les étapes optionnelles se passent d'un clic (**⏭️ Passer**), et un **✅ Résumé avant génération** montre ce qui est rempli, passé ou manquant, avec des avertissements utiles (par exemple : sans géoréférencement GPS, ni Vue OSM ni export KMZ / GPX). **🗒️ Tout afficher** montre au contraire tout le formulaire d'un coup ; ton choix est mémorisé.
 - **🚀 Simple / ⚙️ Avancé** : le mode Simple se limite à l'essentiel (image, nom, version, V2 — l'image découpée en tuiles, voir « 🧱 Convertir en V2 tuilé » —, multi-niveau) et charge les icônes par défaut ; le mode Avancé donne accès à toutes les options.
 - **📂 Charger un fichier** accepte un **ZIP MyKTAMap** (pour le modifier), un **KMZ** ou un **GPX** exporté par MyKTAMap (le GPX donne un fond vierge calé automatiquement), un **export SIG** (`.geojson`, `.kml`) ou un **GeoTIFF**. Sinon, remplis le formulaire pour créer un plan de zéro.
 
@@ -2020,9 +2047,10 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
 | 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30 s | Jusqu'à 30 s perdues en cas de plantage |
 | 🛡️ **Limiter le dézoom sur mobile** | Plafonne le dézoom sur téléphone. **Cochée par défaut** | Pas de vue d'ensemble complète sur mobile ; rechargement requis |
 
-- ULTRA coche tout ; le décocher décoche tout. En plus des options ci-dessus, il ne dessine que les tracés et points proches de l'écran (léger temps d'apparition en déplaçant la carte). Tu peux aussi n'activer que certaines options, par exemple **🐢** pour un bon gain sans perte visible.
+- ULTRA coche tout ; le décocher décoche tout. En plus des options ci-dessus, il ne dessine que les tracés et points proches de l'écran (léger temps d'apparition en déplaçant la carte) et bloque la rotation de la carte à deux doigts ou à Maj + molette sur ce plan (et dans la Vue OSM ouverte depuis lui), sans toucher à l'option de l'accueil ; le 🔃 Plan orienté du suivi tourne toujours. Tu peux aussi n'activer que certaines options, par exemple **🐢** pour un bon gain sans perte visible.
 - **Tes points de session restent toujours affichés**, quelles que soient les options.
 - Quand des optimisations sont actives, un message te le rappelle à l'ouverture du plan : un affichage allégé n'est pas un bug.
+- **Alléger la carte tournée (gros plans)** (même groupe, hors ULTRA, cochée par défaut) : sur un gros plan, tant que tu tournes la carte à deux doigts, seuls les points et tracés de l'écran sont dessinés, ce qui évite au téléphone de manquer de mémoire ; tout revient carte remise au nord. Les points restent touchables. Décoche-la si tu préfères tout voir en tournant.
 - Sur un plan multi-niveau, **🏗️ Afficher tous les niveaux au lancement** (même groupe, hors ULTRA, coché par défaut) peut être décoché pour n'ouvrir que les niveaux -1, 0 et +1.
 
 #### 📱 Sur mobile
@@ -2136,7 +2164,11 @@ Il n'y a rien d'autre à faire.
 
 ### 🐛 Logs détaillés
 
-Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (protégé par mot de passe), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut. Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
+Dans **⚙️ Configuration** de l'accueil → **🛠️ Mode Développeur** (sans mot de passe : une confirmation dit ce qu'il fait), **🐛 Logs détaillés** ajoute des informations dans la console du navigateur (capteurs du tracker, découpage de l'image). Utile pour signaler un problème. Désactivé par défaut.
+
+**Pour envoyer tes journaux** à qui t'aide : **⚙️ Configuration** → **🛠️ Mode Développeur** → active **🐛 Logs détaillés**, refais ce qui pose problème, puis **Afficher les logs** → **Copier** ou **Exporter (.txt)**, et colle le texte dans ton message ou joins-y le fichier. La fenêtre garde les 300 dernières lignes, même après un plantage. Relis-les avant de les envoyer : elles peuvent citer des noms de plans ou de fichiers.
+
+Le mode développeur contient aussi **🔧 Voir l'état du cache (Service Worker)** : le détail, fichier par fichier, de ce que résume la pastille hors-ligne.
 
 ### 📖 Toute la documentation en ligne
 

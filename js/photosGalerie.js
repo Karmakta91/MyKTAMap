@@ -272,7 +272,7 @@
     ov.innerHTML =
       '<div class="kta-readme-modal-boite kta-ipl-boite kta-phg-boite" role="dialog" aria-modal="true">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + _esc(_t("photosgal.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("camera") + " " + _esc(_t("photosgal.titre")) + '</span>' +
           '<button class="kta-readme-modal-close" type="button" data-phg="fermer" aria-label="' + _esc(_t("photosgal.fermer")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-phg-corps"></div>' +
@@ -345,7 +345,7 @@
     corps.innerHTML =
       '<div class="kta-phg-barre">' +
         '<button type="button" class="kta-btn kta-btn-ghost kta-phg-retour">' + _esc(_t("photosgal.retour")) + '</button>' +
-        (plan && !ouvert ? '<button type="button" class="kta-btn kta-btn-ghost kta-phg-ouvrir">' + _esc(_t("photosgal.ouvrirPlan")) + '</button>' : '') +
+        (plan && !ouvert ? '<button type="button" class="kta-btn kta-btn-ghost kta-phg-ouvrir">' + window.ktaIcone("map") + " " + _esc(_t("photosgal.ouvrirPlan")) + '</button>' : '') +
       '</div>' +
       '<div class="kta-phg-plan-titre">' + _esc(_nomPlan(planId)) + '</div>' +
       '<p class="kta-ipl-hint kta-phg-etat">' + _esc(_t(_extPhotos() ? "photosgal.completer" : "photosgal.chargement")) + '</p>' +
@@ -378,21 +378,21 @@
 
     if (sans.length) {
       const nb = sans.reduce(function (s, g) { return s + g.photos.length; }, 0);
-      const sec = _section(_t("photosgal.sans.titre"), nb, "kta-phg-sec-sans");
+      const sec = _section(window.ktaIcone("triangle-alert") + " " + _t("photosgal.sans.titre"), nb, "kta-phg-sec-sans");
       _ajouterTexte(sec, _t("photosgal.sans.explication"));
       sans.forEach(function (g) { sec.appendChild(_carte(a, g)); });
       sections.appendChild(sec);
     }
     if (verif.length) {
       const nb = verif.reduce(function (s, g) { return s + g.photos.length; }, 0);
-      const sec = _section(_t("photosgal.verifier.titre"), nb, "kta-phg-sec-verif");
+      const sec = _section(window.ktaIcone("search") + " " + _t("photosgal.verifier.titre"), nb, "kta-phg-sec-verif");
       _ajouterTexte(sec, _t(_plan(a.planId) ? "photosgal.verifier.explication" : "photosgal.verifier.planAbsent"));
       verif.forEach(function (g) { sec.appendChild(_carte(a, g)); });
       sections.appendChild(sec);
     }
     if (avec.length) {
       const nb = avec.reduce(function (s, g) { return s + g.photos.length; }, 0);
-      const sec = _section(_t("photosgal.avec.titre"), nb, "kta-phg-sec-avec");
+      const sec = _section(window.ktaIcone("map-pin") + " " + _t("photosgal.avec.titre"), nb, "kta-phg-sec-avec");
       avec.forEach(function (g) { sec.appendChild(_carte(a, g)); });
       sections.appendChild(sec);
     }
@@ -439,7 +439,8 @@
     const titre = document.createElement("div");
     titre.className = "kta-phg-carte-titre";
     const nom = g.point ? (g.point.nom || g.point.id) : (g.fiche && g.fiche.nom) || _t("photosgal.pointInconnu");
-    titre.textContent = "📍 " + nom;
+    titre.innerHTML = window.ktaIcone("map-pin") + " ";
+    titre.appendChild(document.createTextNode(nom));
     c.appendChild(titre);
     const meta = document.createElement("div");
     meta.className = "kta-phg-carte-meta";
@@ -456,19 +457,19 @@
     actions.className = "kta-phg-actions";
     const ids = g.photos.map(function (p) { return p.id; });
     if (g.etat === "sans") {
-      actions.appendChild(_bouton(_t("photosgal.action.rattacher"), function () { _choisirPoint(a, g); }));
-      if (g.fiche) actions.appendChild(_bouton(_t("photosgal.action.recreer"), function () { _recreer(a.planId, g); }));
+      actions.appendChild(_bouton(window.ktaIcone("link") + " " + _t("photosgal.action.rattacher"), function () { _choisirPoint(a, g); }));
+      if (g.fiche) actions.appendChild(_bouton(window.ktaIcone("rotate-ccw") + " " + _t("photosgal.action.recreer"), function () { _recreer(a.planId, g); }));
     }
     if (g.etat === "verifier" && _plan(a.planId) && !_planOuvert(a.planId)) {
-      actions.appendChild(_bouton(_t("photosgal.ouvrirPlan"), function () { _allerAuPoint(a.planId, null); }));
+      actions.appendChild(_bouton(window.ktaIcone("map") + " " + _t("photosgal.ouvrirPlan"), function () { _allerAuPoint(a.planId, null); }));
     }
     if (g.etat === "point") {
-      actions.appendChild(_bouton(_t("photosgal.action.voir"), function () { _allerAuPoint(a.planId, g.point); }));
+      actions.appendChild(_bouton(window.ktaIcone("map-pin") + " " + _t("photosgal.action.voir"), function () { _allerAuPoint(a.planId, g.point); }));
     }
-    actions.appendChild(_bouton(_t("photosgal.action.enregistrer"), function () { _enregistrer(a.planId, nom, g.photos); }));
+    actions.appendChild(_bouton(window.ktaIcone("save") + " " + _t("photosgal.action.enregistrer"), function () { _enregistrer(a.planId, nom, g.photos); }));
     // Supprimer : photos sans point (ou d'un plan absent de l'appareil, invérifiable).
     if (g.etat === "sans" || (g.etat === "verifier" && !_plan(a.planId))) {
-      actions.appendChild(_bouton(_t("photosgal.action.supprimer"), function () { _supprimer(a.planId, nom, ids, g.taille); }, "kta-phg-danger"));
+      actions.appendChild(_bouton(window.ktaIcone("trash-2") + " " + _t("photosgal.action.supprimer"), function () { _supprimer(a.planId, nom, ids, g.taille); }, "kta-phg-danger"));
     }
     c.appendChild(actions);
     return c;
@@ -539,7 +540,7 @@
           '<button class="kta-readme-modal-close" type="button" data-phg="fermer-pick" aria-label="' + _esc(_t("photosgal.fermer")) + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
-          (_planOuvert(a.planId) ? '<button type="button" class="kta-btn kta-btn-ghost kta-phg-carte-btn">' + _esc(_t("photosgal.pick.carte")) + '</button>' : '') +
+          (_planOuvert(a.planId) ? '<button type="button" class="kta-btn kta-btn-ghost kta-phg-carte-btn">' + window.ktaIcone("map") + " " + _esc(_t("photosgal.pick.carte")) + '</button>' : '') +
           '<input type="search" class="kta-ipl-search kta-phg-filtre" autocomplete="off">' +
           '<div class="kta-phg-pick-liste"></div>' +
         '</div>' +
@@ -667,7 +668,7 @@
     if (_planOuvert(planId)) { fermer(); _recreerIci(planId, g.cle, g.fiche, ids); return; }
     if (!_plan(planId)) return;
     const ok = await window.ktaConfirm(_esc(_t("photosgal.recreer.ouvrir", { plan: _nomPlan(planId) })),
-      { okLabel: _esc(_t("photosgal.ouvrirPlan")) });
+      { okLabel: window.ktaIcone("map") + " " + _esc(_t("photosgal.ouvrirPlan")) });
     if (!ok) return;
     _apresOuverture = { planId: planId, fn: function () { _recreerIci(planId, g.cle, g.fiche, ids); } };
     _allerAuPoint(planId, { x: g.fiche.x, y: g.fiche.y, level: Number.isInteger(g.fiche.niveau) ? g.fiche.niveau : undefined, nom: g.fiche.nom });

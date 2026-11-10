@@ -53,7 +53,8 @@ function contexte() {
     navigator: {},
     // Un navigateur a TOUJOURS ces méthodes : sans elles, faux échec du module.
     addEventListener() {}, removeEventListener() {},
-    formatGpsCoords: (a, b) => a.toFixed(6) + ", " + b.toFixed(6)
+    formatGpsCoords: (a, b) => a.toFixed(6) + ", " + b.toFixed(6),
+    ktaIcone: () => ""                              // ktaIcones.js (icônes SVG), hors sujet ici
   };
   ctx.window = ctx;
   vm.createContext(ctx);
@@ -208,18 +209,18 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     /OsmMesure\.activer\(_osmMap\)/.test(VIEW) && /OsmCoords\.activer\(_osmMap\)/.test(VIEW));
 
   // L'infobulle avertit : la coordonnée est exacte pour la carte, pas pour un plan mal calé.
-  // 🩸 Deux boutons voisins ne partagent pas une icône : « Ma position » garde 📍, le relevé de
-  // coordonnées a 🎯 (on vérifie les DEUX côtés, une collision peut changer de camp).
+  // 🩸 Deux boutons voisins ne partagent pas une icône SVG (ktaIcones.js) : « Ma position » a locate-fixed, le relevé
+  // de coordonnées crosshair (on vérifie les DEUX côtés, une collision peut changer de camp).
   const FR = JSON.parse(fs.readFileSync("lang/fr.json", "utf8"));
-  const ICONE_MOI = "📍", ICONE_COORD = "🎯";
+  const ICONE_MOI = "locate-fixed", ICONE_COORD = "crosshair";
+  const avec = (id, nom) => new RegExp(id + "[\\s\\S]{0,300}?ktaIcone\\(\"" + nom + "\"\\)");
   t("🩸 icones : « Ma position » garde la sienne (" + ICONE_MOI + ")",
-    (FR["osm.btn.mygps"] || "").indexOf(ICONE_MOI) >= 0);
-  t("🩸 icones : le releve de coordonnees a la SIENNE (" + ICONE_COORD + ")",
-    (FR["osm.coords.btnTitle"] || "").indexOf(ICONE_COORD) === 0);
-  t("🩸 icones : les deux boutons du HOME sont distincts",
-    /ktaOsmHomeMyGpsBtn[\s\S]{0,300}?📍/.test(HOME) && /ktaOsmHomeCoordBtn[\s\S]{0,300}?🎯/.test(HOME));
-  t("🩸 icones : le bouton du mode plan porte celle des coordonnees",
-    /kta-osm-coords[\s\S]{0,300}?🎯/.test(VIEW));
+    /ktaIcone\("locate-fixed"\) \+ " " \+ window\.I18n\.t\("osm\.btn\.mygps"\)/.test(VIEW));
+  t("🩸 icones : le releve de coordonnees a la SIENNE (" + ICONE_COORD + ")", avec("kta-osm-coords", ICONE_COORD).test(VIEW));
+  t("🩸 icones : les deux boutons du HOME sont distincts", ICONE_MOI !== ICONE_COORD &&
+    avec("ktaOsmHomeMyGpsBtn", ICONE_MOI).test(HOME) && avec("ktaOsmHomeCoordBtn", ICONE_COORD).test(HOME));
+  t("🩸 icones : les libellés n'ont plus d'emoji (l'icône vient du gabarit)",
+    !/[\p{Extended_Pictographic}]/u.test(FR["osm.btn.mygps"] || "") && !/^[\p{Extended_Pictographic}]/u.test(FR["osm.coords.btnTitle"] || ""));
   t("honnetete : l'infobulle dit que la justesse depend du calage du plan",
     /calage du plan/i.test(FR["osm.coords.btnTitle"] || ""));
   ["osm.coords.invite", "osm.coords.copier", "osm.coords.copie", "osm.coords.copieKo"]
@@ -271,19 +272,20 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
 }
 
 // ───────── 6. pas DEUX règles dans le bandeau de mesure ─────────
-// Le bandeau porte déjà une icône FIXE 📏 : le texte ne la re-préfixe pas. Le ⬛ de la surface
-// reste (seul repère qui la distingue de la distance).
+// Le bandeau porte déjà une icône FIXE (règle, SVG) : le texte ne la re-préfixe pas. L'icône de zone devant la
+// surface reste (seul repère qui la distingue de la distance).
 {
   const MESJS = fs.readFileSync("js/osmMesure.js", "utf8");
   const iMaj = MESJS.indexOf("function _majFloater");
   const bloc = iMaj < 0 ? null : MESJS.slice(iMaj, iMaj + 900);
   t("la fonction d'affichage du bandeau existe", bloc !== null);
-  t("🐛 mesure : le texte ne re-préfixe PAS l'icône 📏 (elle est déjà dans le bandeau)",
-    bloc !== null && bloc.indexOf('"📏 "') < 0);
-  t("mesure : l'icône fixe du bandeau est bien là, elle", MESJS.indexOf('mes-icone">📏') >= 0);
-  // 🩸 Viser la ligne qui l'ÉCRIT : un commentaire voisin contient le même caractère.
-  t("mesure : le ⬛ de la surface est conservé (rien ne la distingue sinon)",
-    bloc !== null && /txt \+= "\s+⬛ " \+ _fmtS\(/.test(bloc));
+  t("🐛 mesure : le texte ne re-préfixe PAS l'icône de distance (elle est déjà dans le bandeau)",
+    bloc !== null && bloc.indexOf('"📏 "') < 0 && bloc.indexOf('ktaIcone("ruler")') < 0);
+  t("mesure : l'icône fixe du bandeau est bien là, elle",
+    MESJS.indexOf('mes-icone">\' + window.ktaIcone("ruler")') >= 0);
+  // 🩸 Viser la ligne qui l'ÉCRIT : un commentaire voisin parle de la même icône.
+  t("mesure : l'icône de zone devant la surface est conservée (rien ne la distingue sinon)",
+    bloc !== null && /html \+= "[^"]*" \+ window\.ktaIcone\("m-zone"\) \+ " " \+ window\.ktaEsc\(_fmtS\(/.test(bloc));
 }
 
 // ───────── 7. les panneaux d'outils ne passent pas sous le footer ─────────

@@ -458,7 +458,7 @@
       row.className = "kta-ca-link-row" + (ok ? "" : " kta-ca-off");
       row.innerHTML = '<input type="checkbox" class="kta-ca-check" data-lk="' + _esc(l.id) + '"' +
         (ok && _linkSel[l.id] ? " checked" : "") + (ok ? "" : " disabled") + ">" +
-        "<span>🌀 " + _coteLabel(l.a) + " ⇄ " + _coteLabel(l.b) +
+        "<span>" + window.ktaIcone("waypoints") + " " + _coteLabel(l.a) + " ⇄ " + _coteLabel(l.b) +
         (ok ? "" : ' <em style="color:var(--kta-texte-3);">(plan non mappé)</em>') + "</span>";
       box.appendChild(row);
     });
@@ -587,17 +587,61 @@
     $("caAccueilLangues").open = autres;
   }
 
-  // ⚠️ Contenu de data/reglages.json : `accueil` (ktaAccueilExport) et `subtitle` SEULS — les clés que
+  // ── Add-ons autorisés sur une installation reliée (data/reglages.json > addons) ──────────
+  // TOUS les add-ons livrés, secrets compris (outil de l'hébergeur, décision produit), lus par js/ktaAddons.js. Un nom
+  // repris d'un reglages.json mais absent de cette version reste coché et exporté (rien n'est perdu en réécrivant).
+  const _addonsCoches = {};
+  function _peindreAddons() {
+    const liste = $("caAddonsListe"), R = window.KtaRegistreAddons;
+    if (!liste || !R) return;
+    R.liste().then(function(ms) {
+      const noms = ms.map(function(m) { return m.nom; });
+      const inconnus = Object.keys(_addonsCoches).filter(function(n) { return noms.indexOf(n) < 0; })
+        .map(function(n) { return { nom: n, inconnu: true }; });
+      liste.textContent = "";
+      ms.concat(inconnus).forEach(function(m) {
+        const l = document.createElement("label");
+        l.className = "kta-ca-flag";
+        l.dataset.addon = m.nom;
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = _addonsCoches[m.nom] === true;
+        cb.addEventListener("change", function() {
+          if (cb.checked) _addonsCoches[m.nom] = true; else delete _addonsCoches[m.nom];
+        });
+        const s = document.createElement("span"), b = document.createElement("strong");
+        const note = document.createElement("small");
+        b.textContent = m.inconnu ? m.nom : R.titre(m);
+        note.textContent = " — " + m.nom + (m.secret ? " · caché, lancé par un code dans la vue 3D" : "") +
+          (m.inconnu ? " · absent de cette version" : "");
+        s.appendChild(b);
+        s.appendChild(note);
+        l.appendChild(cb);
+        l.appendChild(s);
+        liste.appendChild(l);
+      });
+      if (!liste.children.length) liste.textContent = "Aucun add-on livré avec cette version.";
+    });
+  }
+  _peindreAddons();
+
+  // ⚠️ Contenu de data/reglages.json : `accueil` (ktaAccueilExport), `subtitle` et `addons` SEULS — les clés que
   // js/ktaInstance.js > filtrerReglages lit (scripts/check-connexion-serveur.js l'exécute). {} si tout est vide.
-  function ktaReglagesExport(accueil, sousTitre) {
+  // `addons` = { <nom>: true } (noms [a-z0-9-]) ; un add-on non coché n'y figure pas.
+  function ktaReglagesExport(accueil, sousTitre, addons) {
     const out = {};
     if (accueil) out.accueil = accueil;
     const st = String(sousTitre == null ? "" : sousTitre).trim().slice(0, 80);
     if (st) out.subtitle = st;
+    const ad = {};
+    Object.keys(addons || {}).forEach(function(n) {
+      if (addons[n] === true && /^[a-z0-9-]{1,32}$/.test(n)) ad[n] = true;
+    });
+    if (Object.keys(ad).length) out.addons = ad;
     return out;
   }
   $("caReglagesDownload").addEventListener("click", function() {
-    const contenu = ktaReglagesExport(ktaAccueilExport(_accueilSaisi()), $("caSubtitle").value);
+    const contenu = ktaReglagesExport(ktaAccueilExport(_accueilSaisi()), $("caSubtitle").value, _addonsCoches);
     const blob = new Blob([JSON.stringify(contenu, null, 2) + "\n"], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -606,7 +650,8 @@
     setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
   });
   $("caReglagesLoad").addEventListener("click", function() { $("caReglagesInput").click(); });
-  // reglages.json repris : titre, description et sous-titre remplacent les champs ; toute autre clé est ignorée.
+  // reglages.json repris : titre, description, sous-titre et add-ons cochés remplacent les champs ; toute autre clé est
+  // ignorée.
   $("caReglagesInput").addEventListener("change", function(e) {
     const f = (e.target.files || [])[0]; e.target.value = "";
     if (!f) return;
@@ -617,6 +662,12 @@
         if (!d || typeof d !== "object" || Array.isArray(d)) throw new Error("un objet JSON est attendu");
         _poserAccueil(d.accueil);
         $("caSubtitle").value = typeof d.subtitle === "string" ? d.subtitle.slice(0, 80) : "";
+        Object.keys(_addonsCoches).forEach(function(n) { delete _addonsCoches[n]; });
+        const ad = d.addons && typeof d.addons === "object" && !Array.isArray(d.addons) ? d.addons : {};
+        Object.keys(ad).forEach(function(n) {
+          if (ad[n] === true && /^[a-z0-9-]{1,32}$/.test(n)) _addonsCoches[n] = true;
+        });
+        _peindreAddons();
         _statut($("caReglagesEtat"), "✅ réglages repris depuis « " + _esc(f.name) + " »");
         _renderOut();
       } catch (err) {
@@ -714,11 +765,16 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
   });
+  // Libellé du bouton (icône SVG posée par ktaIcones.js, chargé avant) : remis après la confirmation « Copié ».
+  const _libelleCopier = $("caCopy").innerHTML;
   $("caCopy").addEventListener("click", function() {
     if (!_connexionSaisie().valide) return;
     const txt = JSON.stringify(_construire(), null, 2);
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(txt).then(function() { $("caCopy").textContent = "✅ Copié"; setTimeout(function() { $("caCopy").textContent = "📋 Copier"; }, 1500); });
+      navigator.clipboard.writeText(txt).then(function() {
+        $("caCopy").textContent = "✅ Copié";
+        setTimeout(function() { $("caCopy").innerHTML = _libelleCopier; }, 1500);
+      });
     } else {
       const ta = document.createElement("textarea");
       ta.value = txt; document.body.appendChild(ta); ta.select();

@@ -331,7 +331,7 @@
     }
     if (btn) {
       btn.disabled = !(verdict.ok && _plan.nbAjouts > 0);
-      btn.textContent = _t("impmasse.btn.lancer", { n: _plan.nbAjouts });
+      btn.innerHTML = window.ktaIcone("play") + " " + _esc(_t("impmasse.btn.lancer", { n: _plan.nbAjouts }));
     }
   }
 
@@ -383,7 +383,8 @@
     if (btn) {
       btn.disabled = false;
       btn.dataset.fini = "1";
-      btn.textContent = _t(rapport.ajoutes.length ? "impmasse.btn.voir" : "impmasse.btn.fermerRien");
+      btn.innerHTML = (rapport.ajoutes.length ? window.ktaIcone("library") + " " : "") +
+        _esc(_t(rapport.ajoutes.length ? "impmasse.btn.voir" : "impmasse.btn.fermerRien"));
     }
     // Une seule sortie : le bouton principal ; le « Fermer » de pied disparaît (le ✕ d'en-tête reste).
     const fermer = _zone("kta-impm-fermer");
@@ -410,13 +411,13 @@
     ov.innerHTML =
       '<div class="kta-readme-modal-boite kta-impm-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + _esc(_t("impmasse.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("folder-input") + " " + _esc(_t("impmasse.titre")) + '</span>' +
           '<button class="kta-panneau-close" id="kta-impm-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-impm-corps">' +
           '<p class="kta-impm-intro">' + _esc(_t("impmasse.intro")) + '</p>' +
           '<div class="kta-impm-actions">' +
-            '<button type="button" class="kta-btn kta-btn-primary" id="kta-impm-choisir">' + _esc(_t("impmasse.btn.choisir")) + '</button>' +
+            '<button type="button" class="kta-btn kta-btn-primary" id="kta-impm-choisir">' + window.ktaIcone("folder-open") + " " + _esc(_t("impmasse.btn.choisir")) + '</button>' +
             '<input type="file" id="kta-impm-input" accept=".zip,application/zip" multiple style="display:none">' +
           '</div>' +
           '<div class="kta-impm-politique">' +
@@ -428,13 +429,13 @@
           '</div>' +
           // Dossier de destination du lot.
           '<div class="kta-impm-politique" id="kta-impm-dossier-bloc">' +
-            '<span class="kta-impm-politique-titre">' + _esc(_t("impmasse.dossier.titre")) + '</span>' +
+            '<span class="kta-impm-politique-titre">' + window.ktaIcone("folder") + " " + _esc(_t("impmasse.dossier.titre")) + '</span>' +
             '<select class="kta-cfg-input kta-impm-dossier" id="kta-impm-dossier">' + _optionsDossiers() + '</select>' +
             '<input type="text" class="kta-cfg-input kta-impm-dossier-nom" id="kta-impm-dossier-nom" maxlength="40" placeholder="' + _esc(_t("impmasse.dossier.nomPlaceholder")) + '" hidden>' +
           '</div>' +
           '<label class="kta-impm-precharger">' +
             '<input type="checkbox" id="kta-impm-precharger"' + (_precharger ? ' checked' : '') + '>' +
-            '<span><span class="kta-impm-precharger-label">' + _esc(_t("impmasse.precharger.label")) + '</span></span>' +
+            '<span><span class="kta-impm-precharger-label">' + window.ktaIcone("save") + " " + _esc(_t("impmasse.precharger.label")) + '</span></span>' +
           '</label>' +
           '<div class="kta-impm-resume" id="kta-impm-resume"></div>' +
           '<div class="kta-impm-alerte" id="kta-impm-alerte" style="display:none;"></div>' +
@@ -443,7 +444,7 @@
         '</div>' +
         '<div class="kta-cfg-actions-bar">' +
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-impm-fermer">' + _esc(_t("config.actions.close")) + '</button>' +
-          '<button type="button" class="kta-btn kta-btn-primary" id="kta-impm-lancer" disabled>' + _esc(_t("impmasse.btn.lancerVide")) + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-impm-lancer" disabled>' + window.ktaIcone("play") + " " + _esc(_t("impmasse.btn.lancerVide")) + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(ov);

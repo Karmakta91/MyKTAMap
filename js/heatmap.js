@@ -99,7 +99,7 @@
       .kta-heatmap-slider-val {
         min-width: 50px;
         text-align: right;
-        font-family: ui-monospace, monospace;
+        font-family: KTA Emoji, ui-monospace, monospace;
         font-size: 12px;
         color: #ff8a5c;
         font-weight: 600;
@@ -610,7 +610,7 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-heatmap-modal-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + window.I18n.t("heatmap.modal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("flame") + " " + window.I18n.t("heatmap.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-heatmap-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="padding:14px 16px;">' +
@@ -619,57 +619,57 @@
           '</p>' +
 
           '<div class="kta-heatmap-section">' +
-            '<div class="kta-heatmap-section-titre">' + window.I18n.t("heatmap.section.session") + '</div>' +
+            '<div class="kta-heatmap-section-titre">' + window.ktaIcone("save") + " " + window.I18n.t("heatmap.section.session") + '</div>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-tracker"' + (srcTracker && nTracker > 0 ? " checked" : "") + (nTracker === 0 ? " disabled" : "") + '>' +
-              '<span>' + window.I18n.t("heatmap.src.tracker") + '</span>' +
+              '<span>' + window.ktaIcone("navigation") + " " + window.I18n.t("heatmap.src.tracker") + '</span>' +
               '<span class="kta-heatmap-cb-count">' + window.I18n.t("heatmap.count.pts", { pts: nTracker }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-editor"' + (srcEditor && nEditor > 0 ? " checked" : "") + (nEditor === 0 ? " disabled" : "") + '>' +
-              '<span>' + window.I18n.t("heatmap.src.editor") + '</span>' +
+              '<span>' + window.ktaIcone("pencil") + " " + window.I18n.t("heatmap.src.editor") + '</span>' +
               '<span class="kta-heatmap-cb-count">' + window.I18n.t("heatmap.count.pts", { pts: nEditor }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-roads"' + (srcRoads && nRoads > 0 ? " checked" : "") + (nRoads === 0 ? " disabled" : "") + '>' +
-              '<span>' + window.I18n.t("heatmap.src.roads") + '</span>' +
+              '<span>' + window.ktaIcone("m-galerie") + " " + window.I18n.t("heatmap.src.roads") + '</span>' +
               '<span class="kta-heatmap-cb-count">' + window.I18n.t(nRoads > 1 ? "heatmap.count.roads.plural" : "heatmap.count.roads.one", { n: nRoads, pts: nRoadsPts }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-zones"' + (srcZones && nZones > 0 ? " checked" : "") + (nZones === 0 ? " disabled" : "") + '>' +
-              '<span>' + window.I18n.t("heatmap.src.zones") + '</span>' +
+              '<span>' + window.ktaIcone("m-zone") + " " + window.I18n.t("heatmap.src.zones") + '</span>' +
               '<span class="kta-heatmap-cb-count">' + window.I18n.t(nZones > 1 ? "heatmap.count.zones.plural" : "heatmap.count.zones.one", { n: nZones, pts: nZonesPts }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-struct"' + (srcStructures && nStruct > 0 ? " checked" : "") + (nStruct === 0 ? " disabled" : "") + '>' +
-              '<span>' + window.I18n.t("heatmap.src.structures") + '</span>' +
+              '<span>' + window.ktaIcone("m-pilier") + " " + window.I18n.t("heatmap.src.structures") + '</span>' +
               '<span class="kta-heatmap-cb-count">' + window.I18n.t("heatmap.count.struct", { n: nStruct, pts: nStructPts }) + '</span>' +
             '</label>' +
           '</div>' +
 
           '<div class="kta-heatmap-section">' +
             '<div class="kta-heatmap-section-titre" style="display:flex; align-items:center; gap:8px;">' +
-              '<span>' + window.I18n.t("heatmap.section.data") + ' <span style="font-size:10px; color:var(--kta-texte-3); font-weight:400; text-transform:none; letter-spacing:0;">' + window.I18n.t("heatmap.section.dataHint") + '</span></span>' +
+              '<span>' + window.ktaIcone("layers") + " " + window.I18n.t("heatmap.section.data") + ' <span style="font-size:10px; color:var(--kta-texte-3); font-weight:400; text-transform:none; letter-spacing:0;">' + window.I18n.t("heatmap.section.dataHint") + '</span></span>' +
               '<button type="button" id="kta-hm-dl-toggleall" style="margin-left:auto; background:transparent; border:1px solid rgba(255,138,92,0.4); color:#ff8a5c; padding:2px 8px; font-size:10px; border-radius:4px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;" title="' + window.I18n.t("heatmap.data.toggleAllTitle") + '">' + window.I18n.t("heatmap.toggleAll") + '</button>' +
             '</div>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-data-points"' + (srcDataPoints && nDataMarkers > 0 ? " checked" : "") + (nDataMarkers === 0 ? " disabled" : "") + '>' +
-              '<span>' + window.I18n.t("heatmap.src.dataPoints") + '</span>' +
+              '<span>' + window.ktaIcone("map-pin") + " " + window.I18n.t("heatmap.src.dataPoints") + '</span>' +
               '<span class="kta-heatmap-cb-count">' + window.I18n.t(nDataMarkers > 1 ? "heatmap.count.points.plural" : "heatmap.count.points.one", { pts: nDataMarkers }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-data-roads"' + (srcDataRoads && dlRoads.n > 0 ? " checked" : "") + (dlRoads.n === 0 ? " disabled" : "") + '>' +
-              '<span>' + window.I18n.t("heatmap.src.dataRoads") + '</span>' +
+              '<span>' + window.ktaIcone("m-galerie") + " " + window.I18n.t("heatmap.src.dataRoads") + '</span>' +
               '<span class="kta-heatmap-cb-count">' + window.I18n.t(dlRoads.n > 1 ? "heatmap.count.roads.plural" : "heatmap.count.roads.one", { n: dlRoads.n, pts: dlRoads.pts }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-data-zones"' + (srcDataZones && dlZones.n > 0 ? " checked" : "") + (dlZones.n === 0 ? " disabled" : "") + '>' +
-              '<span>' + window.I18n.t("heatmap.src.dataZones") + '</span>' +
+              '<span>' + window.ktaIcone("m-zone") + " " + window.I18n.t("heatmap.src.dataZones") + '</span>' +
               '<span class="kta-heatmap-cb-count">' + window.I18n.t(dlZones.n > 1 ? "heatmap.count.zones.plural" : "heatmap.count.zones.one", { n: dlZones.n, pts: dlZones.pts }) + '</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-data-struct"' + (srcDataStructures && dlStructs.n > 0 ? " checked" : "") + (dlStructs.n === 0 ? " disabled" : "") + '>' +
-              '<span>' + window.I18n.t("heatmap.src.dataStructures") + '</span>' +
+              '<span>' + window.ktaIcone("m-pilier") + " " + window.I18n.t("heatmap.src.dataStructures") + '</span>' +
               '<span class="kta-heatmap-cb-count">' + window.I18n.t("heatmap.count.struct", { n: dlStructs.n, pts: dlStructs.pts }) + '</span>' +
             '</label>' +
           '</div>' +
@@ -678,7 +678,7 @@
           (_isMultiLevel ?
             '<div class="kta-heatmap-section">' +
               '<div class="kta-heatmap-section-titre" style="display:flex; align-items:center; gap:8px;">' +
-                '<span>' + window.I18n.t("heatmap.section.levels") + '</span>' +
+                '<span>' + window.ktaIcone("m-niveaux") + " " + window.I18n.t("heatmap.section.levels") + '</span>' +
                 '<button type="button" id="kta-hm-lvl-toggleall" style="margin-left:auto; background:transparent; border:1px solid rgba(255,138,92,0.4); color:#ff8a5c; padding:2px 8px; font-size:10px; border-radius:4px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;" title="' + window.I18n.t("heatmap.levels.toggleAllTitle") + '">' + window.I18n.t("heatmap.toggleAll") + '</button>' +
               '</div>' +
               '<div class="kta-heatmap-levels-row" style="display:flex; flex-wrap:wrap; gap:6px 10px; padding:4px 0;">' +
@@ -695,7 +695,7 @@
             : '') +
 
           '<div class="kta-heatmap-section">' +
-            '<div class="kta-heatmap-section-titre">' + window.I18n.t("heatmap.section.visual") + '</div>' +
+            '<div class="kta-heatmap-section-titre">' + window.ktaIcone("palette") + " " + window.I18n.t("heatmap.section.visual") + '</div>' +
             '<div class="kta-heatmap-slider-row">' +
               '<span class="kta-heatmap-slider-label">' + window.I18n.t("heatmap.param.radius") + '</span>' +
               '<input type="range" class="kta-heatmap-slider" id="kta-hm-radius" min="10" max="120" step="5" value="' + radius + '">' +
@@ -709,8 +709,8 @@
           '</div>' +
 
           '<div class="kta-heatmap-actions">' +
-            '<button class="kta-btn kta-btn-ghost" id="kta-hm-effacer" type="button">' + window.I18n.t("heatmap.btn.clear") + '</button>' +
-            '<button class="kta-btn kta-btn-primary" id="kta-hm-appliquer" type="button">' + window.I18n.t("heatmap.btn.apply") + '</button>' +
+            '<button class="kta-btn kta-btn-ghost" id="kta-hm-effacer" type="button">' + window.ktaIcone("eraser") + " " + window.I18n.t("heatmap.btn.clear") + '</button>' +
+            '<button class="kta-btn kta-btn-primary" id="kta-hm-appliquer" type="button">' + window.ktaIcone("flame") + " " + window.I18n.t("heatmap.btn.apply") + '</button>' +
           '</div>' +
 
         '</div>' +

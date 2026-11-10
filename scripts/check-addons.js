@@ -58,6 +58,7 @@ for (const nom of noms) {
   t(nom + " : nom du manifeste = nom du dossier", m.nom === nom, m.nom);
   t(nom + " : prise connue (" + PRISES.join(", ") + ")", PRISES.includes(m.prise), m.prise);
   t(nom + " : secret est un booléen", m.secret === undefined || typeof m.secret === "boolean", m.secret);
+  t(nom + " : parDefaut est un booléen", m.parDefaut === undefined || typeof m.parDefaut === "boolean", m.parDefaut);
   const fichiers = Array.isArray(m.fichiers) ? m.fichiers : [];
   const mauvais = fichiers.filter((f) => typeof f !== "string" || !RX_FICHIER.test(f));
   t(nom + " : fichiers sous js/, css/ ou img/, sans chemin détourné", fichiers.length > 0 && !mauvais.length,
@@ -77,9 +78,11 @@ for (const nom of noms) {
     fichiers.includes(m.entree), m.entree);
   t(nom + " : titre en " + LANGUES.join(", "), !!m.titre && LANGUES.every((l) => typeof m.titre[l] === "string" &&
     m.titre[l].trim()), JSON.stringify(m.titre));
-  // Sans bouton d'add-ons dans la vue (à venir), le code est le seul lancement : obligatoire.
-  t(nom + " : code de la vue 3D émis par vue3d.js", typeof m.code === "string" && RX_CODE.test(m.code) &&
-    codesVue.has(m.code), m.code + " (codes émis : " + Array.from(codesVue).join(", ") + ")");
+  // Un add-on secret n'est pas dans 🎮 : son code est son seul lancement, obligatoire. Un visible peut s'en passer.
+  if (m.secret === true || m.code !== undefined) {
+    t(nom + " : code de la vue 3D émis par vue3d.js", typeof m.code === "string" && RX_CODE.test(m.code) &&
+      codesVue.has(m.code), m.code + " (codes émis : " + Array.from(codesVue).join(", ") + ")");
+  }
   if (m.code) {
     t(nom + " : code " + m.code + " pris par un seul add-on", !codes[m.code], codes[m.code]);
     codes[m.code] = nom;

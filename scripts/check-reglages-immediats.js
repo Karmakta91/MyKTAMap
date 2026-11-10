@@ -145,7 +145,7 @@ const UIC = lire("js/interfaceConfig.js");
       ["config.actions.apply", "config.tracking.horsLimites", "config.mlvl.titre", "config.mlvl.toggle.label", "home.perf.tousNiveauxLabel"].every(k => dico[k] === undefined));
   }
   const fr = JSON.parse(lire("lang/fr.json"));
-  t("🌍 T6 : le groupe de la barre s'appelle « Réglages », comme la modale", fr["ui.group.settings"] === "Réglages" && fr["config.titre"] === "⚙️ Réglages");
+  t("🌍 T6 : le groupe de la barre s'appelle « Réglages », comme la modale", fr["ui.group.settings"] === "Réglages" && fr["config.titre"] === "Réglages");
 }
 
 console.log("");

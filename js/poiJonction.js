@@ -160,7 +160,7 @@
     if (!_mlOn()) return "";
     const cache = porteNiveaux(tag) ? "" : " hidden";
     return '<div class="kta-poi-jonction" id="kta-poi-jonction"' + cache + '>' +
-             '<div class="kta-cfg-label">' + _esc(_t("poiJonction.titre")) + '</div>' +
+             '<div class="kta-cfg-label">' + window.ktaIcone("m-niveaux") + ' ' + _esc(_t("poiJonction.titre")) + '</div>' +
              '<div class="kta-poi-jonction-niveaux" id="kta-poi-jonction-niveaux"></div>' +
              '<p class="kta-poi-jonction-aide">' + _esc(_t("poiJonction.aide")) + '</p>' +
              '<div class="kta-poi-jonction-rayon" id="kta-poi-jonction-rayon"></div>' +

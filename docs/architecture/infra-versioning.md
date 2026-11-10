@@ -721,7 +721,7 @@ documentées ici pour la doctrine.
 | `check-georef-estimation.js` | maths de l'estimation du point B (A + échelle + Nord) | `Number(null) = 0` → un A à lat nulle partait à l'équateur |
 | `check-image-header-dims.js` | parseur binaire des dimensions d'image du Générateur | « Image non décodable » sur les JPG 32K×32K (limite Chrome/Skia) |
 | `check-resolution-convert.js` | « Recaler des données sur un autre scan » (`js/recalageScan.js` chargé dans un vm) : réécriture de chaque champ coordonnée, matrices saisies, recalage par les noms (moindres carrés, rejet des homonymes aberrants, affine, cas dégénérés), mauvais clic signalé, câblage | le champ coordonnée oublié à la migration ; l'échelle prise au rapport des résolutions alors que le cadrage diffère (écart médian de plusieurs centaines de px) |
-| `check-devmode-docs.js` | le Mode Dev ne relit **aucune** doc technique (ni manifest, ni `docs/` hors `docs/applications/`, ni `README.md`) ; hash SHA-256 ; ConfAdmin et inspecteur SW rendus **seulement** en mode actif | la bibliothèque obligeait à publier toute la doc interne sur dev (audit CD du 09/10/2026, F1) |
+| `check-devmode-docs.js` | le Mode Dev ne relit **aucune** doc technique (ni manifest, ni `docs/` hors `docs/applications/`, ni `README.md`) ; activation par `ktaConfirm`, sans mot de passe (ni hash, ni champ) ; ConfAdmin et inspecteur SW rendus **seulement** en mode actif | la bibliothèque obligeait à publier toute la doc interne sur dev (audit CD du 09/10/2026, F1) |
 | `check-livrables-docs.js` | le `Dockerfile`, le ZIP de `release.yml` et `.dockerignore` ne livrent de `docs/` que `docs/applications/`, jamais le `README.md` racine (règles rsync présentes et **dans l'ordre**) ; `.dockerignore` ne laisse entrer de `data/` que `data/test` et `data/myktamap.zip`, l'index de l'image venant de `docker/index-fictif.json` (identique au `data/index.json` **suivi**) | BACKLOG, audits et `README.md` dans l'image Docker — donc servis par pro.myktamap.fr — et dans le ZIP (audit CD, F1) ; **relevés réels** et index local du poste dans les couches d'une image construite sur le poste (pile de test pro) |
 | `check-libs.js` | chaque librairie de `lib/` : version de l'en-tête du fichier embarqué = `lib/package.json` (manifeste lu par Dependabot, versions exactes) = `lib/VERSIONS.md` | une veille qui ment : PR Dependabot fusionnée sans remplacer le fichier, ou librairie remplacée sans mettre la table à jour |
 | `check-kmz-superoverlay.js` | géométrie du superoverlay KMZ (pavage, jointures, Lod/drawOrder) | overlay tronqué dans Google Earth |
@@ -806,10 +806,19 @@ documentées ici pour la doctrine.
 ## 📚 La doc technique ne se lit pas dans l'app (depuis le 09/10/2026)
 
 Le mode Développeur avait une bibliothèque qui affichait `README.md` et `docs/` (architecture, BACKLOG, audits…). Pour
-fonctionner, elle exigeait que ces fichiers soient **déployés**, donc publics : le mot de passe du mode ne cachait que
+fonctionner, elle exigeait que ces fichiers soient **déployés**, donc publics : un mot de passe n'aurait caché que
 la liste, pas les fichiers. Elle a été retirée ; les sites ne reçoivent plus que `docs/applications/` (§85) et la doc
 technique se lit dans le dépôt. `scripts/check-devmode-docs.js` refuse son retour : ni manifest de docs, ni lecture de
 `docs/` hors `docs/applications/`, ni du `README.md` racine.
 
 Ce que l'app lit encore, et qui doit donc rester déployé : les guides (`README_USER*.md`, 📚 Documentation), l'Aide IA
 (`AI_CONTEXT.md`), l'audit réseau (`NETWORK_AUDIT*`), les CGU et les guides Docker — tous dans `docs/applications/`.
+
+Le mode Développeur s'active **sans mot de passe** (décision produit) : un utilisateur allume les logs détaillés et
+envoie son journal (« Afficher les logs » → Copier, ou Exporter (.txt) : fichier `myktamap-journal-AAAAMMJJ-HHMM.txt`
+avec un en-tête version, date, navigateur et plan ouvert désigné par une empreinte de son identifiant, car
+l'identifiant contient le nom du plan ; feuille de partage sur iPhone, `debug.js > _exporterJournal`) sans rien
+demander. Une confirmation `ktaConfirm` dit ce que fait le mode à chaque passage à ON ; `myktamap_devmode_active_v1` garde l'état par appareil, et les clés de l'ancienne porte
+(`…_unlock_v1`, `…_tries_v1`) sont effacées au chargement. Rien de ce qu'il ouvre n'est secret (`confadmin.html` et les
+pages de la prise `outilsDev` sont publiques, le reste lit l'appareil) : `check-devmode-docs.js` refuse le retour d'un
+hash ou d'un champ de mot de passe, qui ferait croire le contraire.

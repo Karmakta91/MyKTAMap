@@ -67,7 +67,8 @@ photos restent locales et exportables).
 > autorise(idExt) → bool, publier({ id, blob, nom, progression? }) → Promise }, compte() → { pseudo, libelle } | null })` ·
 > `signaler("on"|"down"|"licence"|null, raison?)` — `"licence"` = le **serveur refuse la licence** (sa raison :
 > expiree, signature, domaine…) : état « licence », libellé « Licence refusée par le serveur », jamais « injoignable » ·
-> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts, planId?) → lot | null` ·
+> `chargerModules()` · `requete(chemin, { …fetch, sonde?, progressionEnvoi? })` · `changementsDepuis(ts, planId?) → lot | null`
+> (`lot.tracesCopie` : suppressions de copies de calque, jamais dans un fichier) ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` ·
@@ -125,7 +126,7 @@ photos restent locales et exportables).
 > `css/bienvenue.css` chargée avec ; la hauteur suit `--h-ville` de la page. `null` : aucune extension avec `gate`,
 > ou fichiers absents / trop lents → la page s'affiche sans ville. Sans extension : sans effet (`check-extensions.js`
 > §9).
-> 🆘 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🆘
+> 🔧 **Outils du community pour une gate déléguée** (10/10/2026) : `window.ktaOuvrirDepannage()` (fenêtre 🔧
 > Dépannage de l'accueil : mise à jour forcée, page de secours, tout réinitialiser — `kta-depannage-modal`, z-index
 > 99999 : la gate passe dessous tant qu'elle est ouverte) et `window.afficherReadme({ hideOnboarding: true,
 > overLocker: true })` (Documentation, au-dessus d'un écran plein). Une installation bloquée à la connexion garde
@@ -311,6 +312,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan
   (décision produit). Un rapatriement date ses copies du moment (`updatedAt`), sinon une synchro incrémentale n'en
   enverrait que les copies retouchées.
+- **Relire la synchro maintenant** : prise `relireChangements(planId) → Promise<boolean>` — l'extension reçoit et
+  applique (`appliquerChangements`) ce qui a changé sur son serveur pour ce plan, puis rend `true` ; `false` si elle
+  n'a pas pu. Côté app : `KtaExtensions.relireChangements(planId)` → `true`, `false` (échec, erreur, forme
+  inattendue, délai de 15 s dépassé) ou `null` (aucune extension n'a la prise, ou pas de plan : rien à relire).
+  Appelée par `CalqueSession.rapatrier` sur un plan d'extension sans copie du calque ici : ses copies peuvent exister
+  ailleurs, et un calque recopié du fichier ferait revenir les objets supprimés par les autres. `false` = l'utilisateur est
+  prévenu et choisit de recopier quand même ou d'annuler (décision produit) ; `null` = comportement local. Règle : `session-data.md` §Restitution partagée
+  (« Repasser en modification »). Garde-fous : `check-extensions.js` §6 bis, `check-calque-session.js`.
 - **Restitution d'un calque** (plan d'extension modifiable) : ⚠️ **jamais une trace de suppression** — une copie
   porte l'uid de l'objet du calque, une trace sur elle (exportée, puis passée par « Fusion de calques » ou l'import
   ZIP du Générateur) détruirait l'original. À la place, UN enregistrement par calque « restitué à T » :
@@ -325,6 +334,14 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   « Effacer la session », n'est pas notée. L'extension ne doit ni la changer en traces ni la mettre dans un
   export ; le droit de l'envoyer est celui d'envoyer des objets (« modifier »). Règle complète :
   `session-data.md` §Rapatrier. Garde-fous : `check-extensions.js`, `check-calque-session.js`.
+- **Copie de calque supprimée** : 🔒 trace de COPIE, jamais dans un fichier (même raison : la fusion de calques
+  détruirait l'original). Sortant, `changementsDepuis(ts).tracesCopie = [{ uid, deletedAt }]` (après `ts`), à
+  envoyer au serveur comme des traces (même forme) — ⚠️ jamais dans un fichier écrit par l'extension (fichier de
+  secours compris). Entrant, rien de nouveau : une trace de `lot.tombstones` qui vise une copie marquée d'ici ou
+  un objet d'un fichier de calque du plan est rangée en trace de copie par l'app. Elle tombe à la restitution du
+  calque ; ses uids rejoignent alors la note `uids` de la restitution. Sans extension : clé présente, liste
+  locale seulement. Règle : `session-data.md` §Restitution partagée. Garde-fous : `check-extensions.js`,
+  `check-calque-session.js`, `check-uid.js`.
 - **Présence sur le plan ouvert** (tracking à plusieurs, opt-in) : une extension qui déclare
   `presence: { actif(), basculer() }` fait apparaître la tuile **📡 Partager ma position sur ce plan** dans le
   tracker (liste recalculée à chaque ouverture). L'app ne fournit que `positionTracker()` — `{ x, y, niveau,
@@ -489,6 +506,22 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   une erreur rejetée porte la raison affichée au bilan, déjà traduite), `taille` (facultatif, 0 si à jour) pour la
   confirmation au-delà de 200 Mo. Côté app : `KtaExtensions.garderHorsLigneExtension(registreId, opts) → { ok, raison }`
   et `tailleHorsLigneExtension(registreId)` ; sans extension : `{ ok: false }` et `null`.
+- **Copie gardée en morceaux** (prise du registre, `js/planRegistry.js`) : `PlanRegistry.rangerEnMorceaux(id) → { ajouter(octets)
+  → Promise, terminer({ type?, verifier? }) → Promise<{ ok, blob?, code?, error? }>, abandonner() → Promise }` range une copie
+  tranche par tranche (une extension qui déchiffre un plan : jamais le plan entier en mémoire). `ajouter` ne prend que des
+  octets (ArrayBuffer ou vue) et en fait un Blob **en mémoire** ; un Blob lu dans une autre base est refusé. Chaque morceau
+  est un enregistrement du store `blobs` sous la clé `[id, gen, i]`, la clé `id` porte une fiche `{ format, gen, morceaux,
+  size, type }` ; `getBlob(id)` rend un Blob composé des morceaux relus (rien recopié, place disque = une fois le plan).
+  `terminer` relit les morceaux, appelle `verifier(blob)` (ex. `zipLisible`) et seulement alors bascule la fiche et efface
+  l'ancienne copie (Blob d'un seul tenant ou autre génération) dans la même transaction : copie illisible → `code:
+  "illisible"`, rien ne change ; quota → `code: "stockage"`, morceaux de la tentative effacés. `removeBlob` / `remove` effacent
+  fiche et morceaux. `saveBlob(id, getBlob(id))` ne réécrit rien (le réécrire d'un seul tenant casserait la copie) ; une copie
+  d'un seul tenant (ZIP local, Générateur, import, ancienne copie) se range et se lit comme avant. 🩸 Pourquoi : sous WebKit,
+  un Blob composé de Blobs d'une **autre** base, rangé puis séparé de ses sources effacées, devient illisible
+  (NotFoundError) jusqu'à la relance du navigateur. `PlanRegistry.zipLisible(blob) → Promise<bool>` : « PK » au début, fin
+  de répertoire central dans les 64 Kio de fin, un octet relu par morceau (tous les 4 Mio pour un Blob d'un seul tenant).
+  Sans extension : aucun module community n'appelle `rangerEnMorceaux` (`check-extensions.js` §10, vrai navigateur :
+  `scripts/smoke/checkup-plan-morceaux.js`, Chromium et WebKit).
   Un plan ☁️ ouvert est gardé selon « Mémoriser le plan dans l'app » ; une copie déjà gardée est toujours mise à jour.
 - **Publier un plan local** (v2.9.0) : la fiche ℹ️ d'un plan local appelle `publierPlan({ blob, nom })` (archive gardée,
   sinon ZIP choisi), puis propose de remplacer la copie locale : `PlanRegistry.transferAssociatedData(ancien, nouveau)`
@@ -616,8 +649,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   `rattacher(photoIds, planId, pointId, fiche)`, `restorePhoto(record, opts?)`.
 - **Liaisons inter-plan** (`js/interPlanLinks.js`, registre de l'appareil) : **sortant**, événement
   `mktm:liaisons-changees` sur `window`, `detail = { ids, action, source? }`, `action` ∈ `creation` | `modification` |
-  `suppression`, émis APRÈS l'écriture du registre (création, suppression, point déplacé / changé de niveau / supprimé,
-  resynchro des snapshots, rattachement à l'uid, plan transféré). Chaque liaison écrite porte `updatedAt` (ms).
+  `suppression`, émis APRÈS l'écriture du registre (création, suppression, point déplacé / changé de niveau / renommé
+  ou changé de tag depuis sa fiche / supprimé, rattachement à l'uid, plan transféré). Chaque liaison écrite porte `updatedAt` (ms). 🩸 La **resynchro automatique
+  des snapshots** (ouverture d'un plan, lecture d'un plan distant) reste **locale** : ni `updatedAt` touché, ni
+  événement — annoncée, elle repartait comme une écriture neuve et deux appareils qui voient le point un peu
+  différemment défaisaient la suppression d'une liaison partagée à chaque ouverture.
   `source: "import"` = fusion d'un export (session, ZIP, profil), pas un geste ; `source: "extension"` = déposé par
   l'extension. **Entrant** : `InterPlanLinks.appliquerExterne({ liens, retirer })` (remplace ou ajoute par id, retire
   les ids donnés ; annonce seulement avec `source: "extension"`) → `{ ecrites, retirees }`. **Prise** `liaisons: {
@@ -778,7 +814,8 @@ navigateur.
 - **ConfAdmin** n'écrit le champ que si `state: "on"` (l'absence vaut OFF), avec la même validation que l'app.
 - **Lecture unique de l'index** avant les gates (`js/ktaInstance.js`, mémoire `myktamap_instance_config_v1` =
   section `config` seule) ; une config **mémorisée** ne révoque jamais rien (`revaliderInstance(…, false)`). Lu en
-  même temps : `data/reglages.json` (`accueil`, `subtitle` seuls ; mémoire `myktamap_instance_reglages_v1`).
+  même temps : `data/reglages.json` (`accueil`, `subtitle`, `addons` seuls ; mémoire `myktamap_instance_reglages_v1`),
+  écrit par ConfAdmin (titre, description, sous-titre, cases des add-ons livrés).
 - **Identifiants stables** (`js/ktaUid.js`) et **points d'extension** : `window.KtaExtensions.register()`, gate
   déléguée, chargeur de modules (règle E), garde des requêtes, permissions import/export, plans d'extension
   (`type: "ext"`, ☁️), publication depuis le Générateur, journal des changements, effacement à la déconnexion

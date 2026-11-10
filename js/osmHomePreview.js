@@ -9,7 +9,9 @@
 // =====================================================================
 // Mini-carte du HOME (plein écran au ⛶, Échap pour réduire), sans charger le plan en mode carte. Un plan
 // principal (liste déroulante) + d'autres empilés (modale « Plans & filtres » : ordre, opacité, filtres).
-// Expose : window.OsmHomePreview = { mount, refresh, selectPlan, openFullScreen }.
+// Expose : window.OsmHomePreview = { mount, refresh, selectPlan, openFullScreen, getRotation }.
+// Rotation manuelle (deux doigts, Maj + molette, bouton nord ; pas de cap) : _brancherRotation, nord en haut à
+// chaque carte recréée.
 // Données : plans de PlanRegistry, géoréf par KmzExport.getCalibration puis registre (p.georef) ; contenu
 // (POI, tracés, zones, structures, tuiles) lu dans le ZIP, ou en HTTP pour un plan serveur, via
 // _loadPlanDataForPreview, isolé de window.PLAN_CONFIG, mis en cache RAM par plan.
@@ -58,6 +60,10 @@
   // session HOME (rien en localStorage).
   const _planDataCache = {};
   let _tilesLayer     = null;   // tuiles du plan projetées
+  // Rotation manuelle (mapBearing.js > creerRotationManuelle) : une instance pour la page, rattachée à chaque
+  // nouvelle carte (_brancherRotation). Une carte recréée (retour à l'accueil, langue, ⚙️) repart nord en haut ;
+  // changer de plan dans la liste garde l'angle (voulu : la carte reste la même).
+  let _rotation       = null;
   let _planOpacity    = 0.5;    // opacité du plan principal (50 % : compromis lecture OSM + plan)
 
   // ── Multi-plans ──────────
@@ -281,6 +287,11 @@
         fill:   z.fillColor || z.color     || "#8892a4"
       };
     }
+    // Zone jonction : la couleur du tracé jonction du plan (styleResolver.js > `_couleurDe`), override compris.
+    if (z && z.type === "pente") {
+      const c = _resolveRoadColorHome({ type: "jonction" }, planId);
+      return { stroke: c, fill: c };
+    }
     // override par plan : remplissage choisi, bordure explicite ou assombrie (même relation que le canon)
     const fillOv   = z && _couleurOverrideDe(planId, "zones", z.type, "colors");
     const borderOv = z && _couleurOverrideDe(planId, "zones", z.type, "borders");
@@ -465,7 +476,7 @@
   function _renderOffline(container) {
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
-        '<div style="font-size:32px;">📴</div>' +
+        '<div style="font-size:32px; line-height:0;">' + window.ktaIcone("wifi-off") + '</div>' +
         '<div><strong>' + window.I18n.t("osm_home.offline.title") + '</strong></div>' +
         '<div style="max-width:280px; font-size:12px;">' +
           window.I18n.t("osm_home.offline.body") +
@@ -477,7 +488,7 @@
   function _renderIncognito(container) {
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
-        '<div style="font-size:32px;">🕶️</div>' +
+        '<div style="font-size:32px; line-height:0;">' + window.ktaIcone("venetian-mask") + '</div>' +
         '<div><strong>' + window.I18n.t("osm_home.incognito.title") + '</strong></div>' +
         '<div style="max-width:300px; font-size:12px; line-height:1.6;">' +
           window.I18n.t("osm_home.incognito.body") +
@@ -508,7 +519,7 @@
 
     container.innerHTML =
       '<div class="kta-osm-home-empty">' +
-        '<div style="font-size:32px;">' + (cle === "nogeoref" ? "📍" : "📂") + '</div>' +
+        '<div style="font-size:32px; line-height:0;">' + window.ktaIcone(cle === "nogeoref" ? "map-pin" : "folder-open") + '</div>' +
         '<div><strong>' + window.I18n.t("osm_home." + cle + ".title") + '</strong></div>' +
         '<div style="max-width:300px; font-size:12px; line-height:1.6;">' +
           window.I18n.t("osm_home." + cle + ".body") + extra +
@@ -564,35 +575,35 @@
         '<select id="ktaOsmHomePlanSelect" title="' + _escapeHtml(window.I18n.t("osm_home.select.title")) + '">' +
           optionsHtml +
         '</select>' +
-        // « 📍 Moi » : un fix ponctuel, rien stocké
+        // « Moi » : un fix ponctuel, rien stocké
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeMyGpsBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.gps.btnTitle")) + '" ' +
                 'style="background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.4); color: #00d4ff;">' +
-          '📍' +
+          window.ktaIcone("locate-fixed") +
         '</button>' +
         // cache hors ligne (partagé avec la modale Vue OSM et le Mode Secours, store IDB myktamap_osm_tiles)
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCacheBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.cache.btnTitle")) + '" ' +
                 'style="background: rgba(166,215,133,0.10); border-color: rgba(166,215,133,0.35); color: var(--kta-ok);">' +
-          '💾' +
+          window.ktaIcone("save") +
         '</button>' +
         // Multi-plans (priorités, opacités, filtres par plan) : dans une MODALE, rien sur la carte.
         // Mesure : en vue OSM elle ne dépend d'AUCUN calibrage (les coordonnées sont déjà des lat/lng), donc plus
         // fiable qu'en mode plan où une échelle fausse fausse tout.
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeMesureBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">' +
-          '📏' +
+          window.ktaIcone("ruler") +
         '</button>' +
         // relevé des coordonnées GPS de surface d'un point ; à côté de la mesure (même famille, même `click`)
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeCoordBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">' +
-          '🎯' +
+          window.ktaIcone("crosshair") +
         '</button>' +
-        // légende en lecture seule (≡ est déjà « Plans & filtres » : 🗺️, l'icône de la Légende du mode plan)
+        // légende en lecture seule (≡ est déjà « Plans & filtres ») : l'icône de la Légende du mode plan
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeLegendeBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_home.legende.btnTitle")) + '" ' +
                 'aria-label="' + _escapeHtml(window.I18n.t("osm_home.legende.btnTitle")) + '">' +
-          '🗺️' +
+          window.ktaIcone("list") +
         '</button>' +
         '<button class="kta-osm-home-fullscreen" id="ktaOsmHomeFiltersBtn" type="button" ' +
                 'title="' + _escapeHtml(window.I18n.t("osm_mode.filters.btnTitle")) + '" ' +
@@ -691,6 +702,9 @@
       _retirerToutHiRes(); // URLs hi-res éphémères : révoquées ici
       try { _mapInstance.remove(); } catch(e) {}
       _mapInstance = null;
+      // 🩸 Vue redressée APRÈS le démontage (carte rendue nulle) : avant, la restitution du padding du canvas lui
+      // redemande un dessin que la destruction laisse orphelin, et le drag sauvegardé irait sur la carte suivante.
+      if (_rotation) { try { _rotation.reset(); } catch(e) {} }
       _panesParPlan = {};   // les panes appartiennent à la carte détruite
       _markerLayer = null;
       // Les plans AJOUTÉS (« + ») appartenaient à la carte détruite : on les sort de la pile plutôt que de lister
@@ -719,6 +733,7 @@
       preferCanvas: true
     }).setView([46.5, 2.5], 5);
     if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_mapInstance);
+    _brancherRotation();
 
     L.tileLayer(OSM_TILE_URL, {
       maxZoom: OSM_MAX_ZOOM,
@@ -782,6 +797,30 @@
         _appliquerVisibilites();
       });
     }
+  }
+
+  // Deux doigts (seuil du plan), Maj + molette, bouton nord dans le coin bas gauche ; pas de cap. Tournent : fond
+  // OSM (grilles élargies par mapBearing), panes des plans (adoptés au premier angle, cf _panePour), tuiles hi-res
+  // relues sur la zone dé-tournée (_zoneVue). Restent droits : contrôles, bulles, libellé de mesure (CSS
+  // `.kta-bearing-on`).
+  // ⚠️ Un doigt garde le comportement d'avant : il déplace la carte (Leaflet pose `touch-action: none`), la page
+  // défile hors du widget ; pendant la rotation, `.kta-bearing-lock` garde `touch-action: none`.
+  function _brancherRotation() {
+    if (!_rotation && window.MapBearing && typeof window.MapBearing.creerRotationManuelle === "function") {
+      _rotation = window.MapBearing.creerRotationManuelle({
+        carte: function() { return _mapInstance; },
+        apresRotation: _onCarteBougeHiRes   // angle changé sans moveend : les tuiles hi-res des coins
+      });
+    }
+    if (!_rotation) return;
+    try { _rotation.reset(); _rotation.attachTo(_mapInstance); }
+    catch(e) { console.warn("[OsmHomePreview] rotation :", e); }
+  }
+
+  // Zone que l'écran montre VRAIMENT : sous rotation, boîte englobante des 4 coins dé-tournés ; à plat, getBounds().
+  function _zoneVue(pad) {
+    const z = _rotation ? _rotation.zoneVisible(pad) : null;
+    return z || _mapInstance.getBounds().pad(pad);
   }
 
   function _renderGeorefMarkers(georef) {
@@ -1265,10 +1304,10 @@
             '<span style="color:var(--kta-texte-2); font-size:12px;">' +
               (desc ? _escapeHtml(desc) : _escapeHtml(tag)) + lvlSfx +
             '</span>' +
-            (desc ? '<br><span style="color:var(--kta-texte-3); font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
+            (desc ? '<br><span style="color:var(--kta-texte-3); font-size:10.5px; opacity:0.75;">' + window.ktaIcone("tag") + ' ' + _escapeHtml(tag) + '</span>' : '') +
             // le point de session est NOMMÉ comme tel : la Vue OSM montre l'état enregistré
             (layer.estSession
-              ? '<br><span style="color:var(--kta-accent-texte); font-size:10.5px;">📝 ' +
+              ? '<br><span style="color:var(--kta-accent-texte); font-size:10.5px;">' + window.ktaIcone("pencil-line") + ' ' +
                 _escapeHtml(window.I18n.t("osm_home.session.badge")) + '</span>'
               : '') +
           '</div>';
@@ -1487,7 +1526,7 @@
         interactive: true
       }).bindPopup(
         '<div style="font-size:13px;line-height:1.5;">' +
-          '<strong>🌀 ' + _escapeHtml(lk.a.nom || lk.a.pointId || "?") + '</strong> ↔ ' +
+          '<strong>' + window.ktaIcone("waypoints") + ' ' + _escapeHtml(lk.a.nom || lk.a.pointId || "?") + '</strong> ↔ ' +
           '<strong>' + _escapeHtml(lk.b.nom || lk.b.pointId || "?") + '</strong><br>' +
           _escapeHtml(window.I18n.t("osm_home.portails.ecart")) + ' : <strong>' +
           (window.formatDistance ? window.formatDistance(ecartM, 0) : (ecartM + " m")) + '</strong>' +
@@ -1546,7 +1585,7 @@
       return window.formatDistance ? window.formatDistance(m, 0) : (Math.round(m) + " m");
     };
     cont.innerHTML =
-      '<div class="kta-osm-qualite-titre">📐 ' +
+      '<div class="kta-osm-qualite-titre">' + window.ktaIcone("ruler") + ' ' +
         _escapeHtml(window.I18n.t("osm_home.portails.qualiteTitre", { n: mesures.length })) +
       '</div>' +
       mesures.map(function(e, i) {
@@ -1626,7 +1665,7 @@
     }
     const btn = document.getElementById("ktaOsmHomeMyGpsBtn");
     const originalHtml = btn ? btn.innerHTML : null;
-    if (btn) { btn.disabled = true; btn.innerHTML = "⏳"; }
+    if (btn) { btn.disabled = true; btn.innerHTML = window.ktaIcone("loader-circle"); }
     navigator.geolocation.getCurrentPosition(
       function(pos) {
         const lat = pos.coords.latitude;
@@ -1668,7 +1707,7 @@
         }).addTo(_mapInstance);
         _myGpsMarkerHome.bindPopup(
           '<div style="font-size:13px; min-width:140px;">' +
-            '<b>' + window.I18n.t("osm_home.gps.popupTitle") + '</b><br>' +
+            '<b>' + window.ktaIcone("map-pin") + " " + window.I18n.t("osm_home.gps.popupTitle") + '</b><br>' +
             '<span style="font-size:11.5px; color:var(--kta-texte-3);">' +
               lat.toFixed(5) + ", " + lng.toFixed(5) + '<br>' +
               window.I18n.t("osm_home.gps.accuracy", { acc: Math.round(acc) }) +
@@ -1991,7 +2030,7 @@
     }
 
     // budget dépassé dans la vue : un cran de moins
-    const vue = _mapInstance.getBounds().pad(0.15);
+    const vue = _zoneVue(0.15);
     let choix = null;
     for (let z = zCible; z > tv.z; z--) {
       const scale = Math.pow(2, -z);
@@ -2094,7 +2133,11 @@
     }
     const nom = "ktaOsmPlan_" + String(planId).replace(/[^a-zA-Z0-9_-]/g, "_");
     let pane = _mapInstance.getPane(nom);
-    if (!pane) pane = _mapInstance.createPane(nom);
+    if (!pane) {
+      pane = _mapInstance.createPane(nom);
+      // posé dans le map-pane, hors rotation : adopté tout de suite si la vue est déjà tournée (plan ajouté)
+      if (_rotation && _rotation.getBearing()) _rotation.reappliquer();
+    }
     pane.style.zIndex = String(_zIndexPour(planId));
     e = { nom: nom, pane: pane, renderer: L.svg({ pane: nom }), map: _mapInstance };
     _panesParPlan[planId] = e;
@@ -2397,7 +2440,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-osm-filters-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🎚️ ' + _escapeHtml(window.I18n.t("osm_mode.filters.title")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("layers") + ' ' + _escapeHtml(window.I18n.t("osm_mode.filters.title")) + '</span>' +
           '<button class="kta-readme-modal-close" id="kta-osm-filters-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
@@ -2408,14 +2451,14 @@
           '<div class="kta-osm-qualite" id="ktaOsmPortailsQualite"></div>' +
           // chips de niveau : masqués sur un plan mono-niveau (« niveau 0 » seul n'apprend rien)
           '<div class="kta-osm-filters-sect" id="ktaOsmFiltersNivSect" style="display:none;">' +
-            _escapeHtml(window.I18n.t("osm_home.niveaux.titre")) + '</div>' +
+            window.ktaIcone("m-niveaux") + " " + _escapeHtml(window.I18n.t("osm_home.niveaux.titre")) + '</div>' +
           '<div class="kta-osm-home-tagchips" id="ktaOsmFiltersNiveaux"></div>' +
-          '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
+          '<div class="kta-osm-filters-sect">' + window.ktaIcone("tag") + " " + _escapeHtml(window.I18n.t("osm_mode.filters.tags")) + '</div>' +
           '<div class="kta-osm-home-tagchips kta-osm-filters-tags" id="ktaOsmFiltersTags"></div>' +
-          '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
+          '<div class="kta-osm-filters-sect">' + window.ktaIcone("layers") + " " + _escapeHtml(window.I18n.t("osm_mode.filters.plans")) + '</div>' +
           // ajout par étiquette de plan : masqué tant qu'aucune étiquette ne porte au moins deux plans
           '<div class="kta-osm-filters-sect" id="ktaOsmMultiTagsSect" style="display:none;">' +
-            _escapeHtml(window.I18n.t("osm_mode.multi.tagsTitre")) + '</div>' +
+            window.ktaIcone("tag") + " " + _escapeHtml(window.I18n.t("osm_mode.multi.tagsTitre")) + '</div>' +
           '<div class="kta-osm-home-tagchips" id="ktaOsmMultiTags"></div>' +
           '<select id="ktaOsmMultiAdd" class="kta-osm-filters-add"></select>' +
           '<div id="ktaOsmMultiRows"></div>' +
@@ -2443,13 +2486,14 @@
     _renderMultiPanel();
   }
 
-  // catalogue des 5 catégories (chips globaux ET par plan)
+  // catalogue des 5 catégories (chips globaux ET par plan) ; [1] = icône SVG (ktaIcones.js), celle de l'outil de la
+  // barre de la carte
   const _CATS = [
-    ["tiles",  "🖼️", "osm_home.toggle.plan.label"],
-    ["poi",    "📍", "osm_home.toggle.poi.label"],
-    ["roads",  "🛣️", "osm_home.toggle.roads.label"],
-    ["zones",  "🌐", "osm_home.toggle.zones.label"],
-    ["struct", "🏛️", "osm_home.toggle.struct.label"]
+    ["tiles",  "image", "osm_home.toggle.plan.label"],
+    ["poi",    "map-pin", "osm_home.toggle.poi.label"],
+    ["roads",  "m-galerie", "osm_home.toggle.roads.label"],
+    ["zones",  "m-zone", "osm_home.toggle.zones.label"],
+    ["struct", "m-pilier", "osm_home.toggle.struct.label"]
   ];
 
   // chips GLOBAUX de la modale
@@ -2463,7 +2507,7 @@
     cont.innerHTML = _CATS.map(function(c) {
       return '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' +
              (etats[c[0]] ? " active" : "") + '" data-gcat="' + c[0] + '">' +
-             c[1] + ' <span>' + _escapeHtml(window.I18n.t(c[2])) + '</span></button>';
+             window.ktaIcone(c[1]) + ' <span>' + _escapeHtml(window.I18n.t(c[2])) + '</span></button>';
     }).join("");
     // chip PORTAILS hors `_CATS` : ce catalogue alimente aussi les filtres PAR PLAN, or un portail appartient à
     // DEUX plans. Affiché seulement s'il existe au moins une liaison.
@@ -2475,13 +2519,13 @@
     if (nbLiens > 0) {
       cont.innerHTML += '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' +
         (_showPortails ? " active" : "") + '" data-gportails="1" ' +
-        'title="' + _escapeHtml(window.I18n.t("osm_home.portails.hint")) + '">🌀 <span>' +
+        'title="' + _escapeHtml(window.I18n.t("osm_home.portails.hint")) + '">' + window.ktaIcone("waypoints") + ' <span>' +
         _escapeHtml(window.I18n.t("osm_home.portails.label")) + '</span></button>';
     }
     // chip SESSION hors `_CATS` aussi : une ORIGINE de données, transversale aux catégories
     cont.innerHTML += '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' +
       (_showSession ? " active" : "") + '" data-gsession="1" ' +
-      'title="' + _escapeHtml(window.I18n.t("osm_home.session.hint")) + '">📝 <span>' +
+      'title="' + _escapeHtml(window.I18n.t("osm_home.session.hint")) + '">' + window.ktaIcone("pencil-line") + ' <span>' +
       _escapeHtml(window.I18n.t("osm_home.session.label")) + '</span></button>';
 
     cont.querySelectorAll("[data-gcat]").forEach(function(b) {
@@ -2655,7 +2699,7 @@
             const v = _visDe(id);
             return '<button type="button" class="kta-osm-multi-cat kta-osm-cat-libelle' + (v[c[0]] ? " active" : "") + '" ' +
                    'data-cat="' + c[0] + '" data-plan="' + _escapeHtml(id) + '">' +
-                   c[1] + ' <span>' + _escapeHtml(window.I18n.t(c[2])) + '</span></button>';
+                   window.ktaIcone(c[1]) + ' <span>' + _escapeHtml(window.I18n.t(c[2])) + '</span></button>';
           }).join("") +
         '</div>' +
       '</div>';
@@ -2855,8 +2899,8 @@
       resEl.innerHTML = matches.map(function(e, i) {
         return '<button type="button" class="kta-osm-search-row" data-i="' + i + '">' +
                  (e.type === "plan"
-                   ? '🗺️ <b>' + _escapeHtml(e.planName) + '</b>'
-                   : '📍 ' + _escapeHtml(e.nom || "?") +
+                   ? window.ktaIcone("map") + ' <b>' + _escapeHtml(e.planName) + '</b>'
+                   : window.ktaIcone("map-pin") + ' ' + _escapeHtml(e.nom || "?") +
                      ' <span class="kta-osm-search-badge">' + _escapeHtml(e.planName) + '</span>') +
                '</button>';
       }).join("");
@@ -3109,7 +3153,7 @@
         "justify-content:center; text-align:center; padding:20px; z-index:500; " +
         "border-radius:6px; gap:8px;";
       ov.innerHTML =
-        '<div style="font-size:32px;">📴</div>' +
+        '<div style="font-size:32px; line-height:0;">' + window.ktaIcone("wifi-off") + '</div>' +
         '<div style="font-weight:600; color:var(--kta-accent-texte);">' + window.I18n.t("osm_home.notcached.title") + '</div>' +
         '<div style="font-size:12.5px; color:var(--kta-texte-2); max-width:280px; line-height:1.4;">' +
           window.I18n.t("osm_home.notcached.body") +
@@ -3156,11 +3200,11 @@
       return;
     }
     const oldHtml = btn ? btn.innerHTML : null;
-    if (btn) { btn.disabled = true; btn.innerHTML = "⏳"; }
+    if (btn) { btn.disabled = true; btn.innerHTML = window.ktaIcone("loader-circle"); }
     try {
       const result = await window.OsmTilesCache.cacheVisibleTiles(_mapInstance, {
         onProgress: function(done, total) {
-          if (btn) btn.innerHTML = "⏳" + done + "/" + total;
+          if (btn) btn.innerHTML = window.ktaIcone("loader-circle") + " " + done + "/" + total;
         }
       });
       let msg = window.I18n.t("osm_home.cache.cached", { cached: result.cached });
@@ -3229,7 +3273,9 @@
     mount:          mount,
     refresh:        refresh,
     selectPlan:     selectPlan,
-    openFullScreen: openFullScreen
+    openFullScreen: openFullScreen,
+    // rotation manuelle de la mini-carte (null avant la première carte) : harnais
+    getRotation:    function() { return _rotation; }
   };
 
   console.log("[OsmHomePreview] Module chargé (v1.40.16).");

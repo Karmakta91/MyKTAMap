@@ -48,6 +48,11 @@
   const PANE_TUILES    = "ktaOsmTuiles";
   let _tilesByPath     = {};   // path → { overlay, tl, tr, bl } (cull rapide)
   let _moveEndHandler  = null; // pour le nettoyage au close()
+  // Rotation manuelle de la carte (mapBearing.js > creerRotationManuelle) : une instance pour la page, rattachée à
+  // chaque nouvelle carte, remise droite à chaque fermeture (décision : la fenêtre rouvre nord en haut).
+  let _rotation        = null;
+  let _rotationTuilesT = null; // minuterie : tuiles du plan relues pendant la rotation
+  const ROTATION_TUILES_MS = 120;
   let _poiLayer   = null;
   let _planTilesVisible = true; // tuiles V2 du plan
   let _poiVisible = true;
@@ -414,7 +419,7 @@
             '<span style="color:var(--kta-texte-2); font-size:12px;">' +
               (desc ? _escapeHtml(desc) : _escapeHtml(tag)) + lvl +
             '</span>' +
-            (desc ? '<br><span style="color:var(--kta-texte-3); font-size:10.5px; opacity:0.75;">🏷️ ' + _escapeHtml(tag) + '</span>' : '') +
+            (desc ? '<br><span style="color:var(--kta-texte-3); font-size:10.5px; opacity:0.75;">' + window.ktaIcone("tag") + ' ' + _escapeHtml(tag) + '</span>' : '') +
           '</div>';
         marker.bindPopup(html, {
           closeButton: true,
@@ -552,7 +557,7 @@
     }
     const btn = document.getElementById("kta-osm-mygps");
     const originalHtml = btn ? btn.innerHTML : null;
-    if (btn) { btn.disabled = true; btn.innerHTML = "⏳"; }
+    if (btn) { btn.disabled = true; btn.innerHTML = window.ktaIcone("loader-circle"); }
     navigator.geolocation.getCurrentPosition(
       function(pos) {
         // 🩸 modale fermée pendant l'attente du fix : ne pas toucher une carte détruite par close()
@@ -600,7 +605,7 @@
         }).addTo(_osmMap);
         _myGpsMarker.bindPopup(
           '<div style="font-size:13px; min-width:140px;">' +
-            '<b>' + window.I18n.t("osm.gps.popup.title") + '</b><br>' +
+            '<b>' + window.ktaIcone("map-pin") + " " + window.I18n.t("osm.gps.popup.title") + '</b><br>' +
             '<span style="font-size:11.5px; color:var(--kta-texte-3);">' +
               lat.toFixed(5) + ", " + lng.toFixed(5) + '<br>' +
               window.I18n.t("osm.gps.popup.accuracy", { acc: Math.round(acc) }) +
@@ -1217,7 +1222,7 @@
               fillOpacity: SECOURS_ZONE_FILL_OPAC,
               interactive: true,
               className:   "kta-osm-secours-zone"
-            }).bindTooltip(window.I18n.t("osm.secours.tooltip.zone", { nomEquipe: _escapeHtml(nomEquipe) }),
+            }).bindTooltip(window.ktaIcone("m-zone") + " " + window.I18n.t("osm.secours.tooltip.zone", { nomEquipe: _escapeHtml(nomEquipe) }),
               { permanent: false, direction: "top" })
               .addTo(_secoursLayer);
             nZones++;
@@ -1251,7 +1256,7 @@
               dashArray:   SECOURS_ITI_DASHARRAY,
               interactive: true,
               className:   "kta-osm-secours-iti"
-            }).bindTooltip(window.I18n.t("osm.secours.tooltip.iti", { nomEquipe: _escapeHtml(nomEquipe) }) + (distFmt ? window.I18n.t("osm.secours.tooltip.itiDist", { dist: distFmt }) : ""),
+            }).bindTooltip(window.ktaIcone("route") + " " + window.I18n.t("osm.secours.tooltip.iti", { nomEquipe: _escapeHtml(nomEquipe) }) + (distFmt ? window.I18n.t("osm.secours.tooltip.itiDist", { dist: distFmt }) : ""),
               { permanent: false, direction: "top" })
               .addTo(_secoursLayer);
             nIti++;
@@ -1267,7 +1272,7 @@
             L.circleMarker(ll, {
               radius: 7, color: "#fff", weight: 2,
               fillColor: color, fillOpacity: 0.95, interactive: true
-            }).bindTooltip(window.I18n.t("osm.secours.tooltip.entree", { nomEquipe: _escapeHtml(nomEquipe) }),
+            }).bindTooltip(window.ktaIcone("door-open") + " " + window.I18n.t("osm.secours.tooltip.entree", { nomEquipe: _escapeHtml(nomEquipe) }),
               { permanent: false, direction: "top" })
               .addTo(_secoursLayer);
             nMarkers++;
@@ -1287,7 +1292,7 @@
                 iconAnchor: [8, 14]
               }),
               interactive: true
-            }).bindTooltip(window.I18n.t("osm.secours.tooltip.sortie", { nomEquipe: _escapeHtml(nomEquipe) }),
+            }).bindTooltip(window.ktaIcone("flag") + " " + window.I18n.t("osm.secours.tooltip.sortie", { nomEquipe: _escapeHtml(nomEquipe) }),
               { permanent: false, direction: "top" })
               .addTo(_secoursLayer);
             nMarkers++;
@@ -1374,7 +1379,7 @@
     const btn     = document.getElementById("kta-osm-toggle-controls");
     if (wrapper) wrapper.style.display = collapsed ? "none" : "";
     if (btn) {
-      btn.textContent = collapsed ? "🔽" : "🔼";
+      btn.innerHTML = window.ktaIcone(collapsed ? "chevron-down" : "chevron-up");
       btn.title = collapsed
         ? window.I18n.t("osm.controls.show")
         : window.I18n.t("osm.controls.collapse");
@@ -1395,10 +1400,10 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:1800px; width:96vw; height:92vh; display:flex; flex-direction:column;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + window.I18n.t("osm.modal.title") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("map") + " " + window.I18n.t("osm.modal.title") + '</span>' +
           '<div style="display:flex; gap:6px; align-items:center;">' +
             // « Réduire les contrôles » (persisté)
-            '<button class="kta-panneau-close" type="button" id="kta-osm-toggle-controls" aria-label="' + _escapeHtml(window.I18n.t("osm.controls.collapse")) + '" title="' + _escapeHtml(window.I18n.t("osm.controls.collapse")) + '" style="font-size:14px; padding:4px 10px;">🔼</button>' +
+            '<button class="kta-panneau-close" type="button" id="kta-osm-toggle-controls" aria-label="' + _escapeHtml(window.I18n.t("osm.controls.collapse")) + '" title="' + _escapeHtml(window.I18n.t("osm.controls.collapse")) + '" style="font-size:14px; padding:4px 10px;">' + window.ktaIcone("chevron-up") + '</button>' +
             '<button class="kta-panneau-close" type="button" id="kta-osm-close" aria-label="' + _escapeHtml(window.I18n.t("osm.modal.close")) + '">&times;</button>' +
           '</div>' +
         '</div>' +
@@ -1406,80 +1411,80 @@
         '<div id="kta-osm-controls-wrapper">' +
         // flex-wrap + row-gap : avec ~10 bascules le bandeau passe à la ligne au lieu de déborder hors de la modale
         '<div style="display:flex; flex-wrap:wrap; gap:10px; row-gap:6px; align-items:center; padding:8px 14px; background:rgba(140,180,255,0.06); border-bottom:1px solid rgba(140,180,255,0.18); font-size:12.5px; color:var(--kta-texte-2);">' +
-          '<span>' + window.I18n.t("osm.opacity.label") + '</span>' +
+          '<span>' + window.ktaIcone("blend") + " " + window.I18n.t("osm.opacity.label") + '</span>' +
           '<input type="range" id="kta-osm-opacity" min="0" max="100" value="' + Math.round(_opacity * 100) + '" style="flex:1 1 auto; max-width:240px;">' +
           '<span id="kta-osm-opacity-val" style="width:38px; text-align:right;">' + Math.round(_opacity * 100) + '%</span>' +
-          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center" style="font-size:12px; padding:5px 10px;">' + window.I18n.t("osm.btn.centerPlan") + '</button>' +
-          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center-tracker" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.btn.centerTracker.title")) + '">' + window.I18n.t("osm.btn.centerTracker") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center" style="font-size:12px; padding:5px 10px;">' + window.ktaIcone("crosshair") + " " + window.I18n.t("osm.btn.centerPlan") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center-tracker" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.btn.centerTracker.title")) + '">' + window.ktaIcone("navigation") + " " + window.I18n.t("osm.btn.centerTracker") + '</button>' +
           // « 📍 Moi » : un fix ponctuel ; désactivé si incognito à la construction
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-mygps" style="font-size:12px; padding:5px 10px;"' +
             (_isIncognitoOn() ? ' disabled' : '') +
             ' title="' +
               _escapeHtml(_isIncognitoOn() ? window.I18n.t("osm.btn.mygps.title.incognito")
                 : window.I18n.t("osm.btn.mygps.title.default")) +
-            '">' + window.I18n.t("osm.btn.mygps") + '</button>' +
+            '">' + window.ktaIcone("locate-fixed") + " " + window.I18n.t("osm.btn.mygps") + '</button>' +
           // mesure (la même que dans la Vue OSM du HOME)
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-mesure" ' +
             'style="font-size:12px; padding:5px 10px;" title="' +
-            _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">📏</button>' +
+            _escapeHtml(window.I18n.t("osm_mes.btnTitle")) + '">' + window.ktaIcone("ruler") + '</button>' +
           // relevé des coordonnées GPS de surface d'un point : la carte est géographique, `e.latlng` suffit
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-coords" ' +
             'style="font-size:12px; padding:5px 10px;" title="' +
-            _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">🎯</button>' +
+            _escapeHtml(window.I18n.t("osm.coords.btnTitle")) + '">' + window.ktaIcone("crosshair") + '</button>' +
           // légende du plan en cours, en lecture seule (interfaceLegende.js > ktaLegendeLectureSeule)
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-legende" ' +
             'style="font-size:12px; padding:5px 10px;" title="' +
-            _escapeHtml(window.I18n.t("osm.legende.btnTitle")) + '">' + window.I18n.t("osm.legende.btn") + '</button>' +
+            _escapeHtml(window.I18n.t("osm.legende.btnTitle")) + '">' + window.ktaIcone("list") + " " + window.I18n.t("osm.legende.btn") + '</button>' +
           // « Cacher pour hors ligne » : tuiles visibles + zoom ±1 en IDB. Cache GLOBAL (myktamap_osm_tiles, z/x/y)
           // partagé avec la Vue OSM du HOME et le Mode Secours.
-          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-cache-btn" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.cache.btn.title")) + '">' + window.I18n.t("osm.cache.btn") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-cache-btn" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.cache.btn.title")) + '">' + window.ktaIcone("save") + " " + window.I18n.t("osm.cache.btn") + '</button>' +
           '<span id="kta-osm-cache-stats" style="color:var(--kta-texte-3); font-size:11.5px;" title="' + _escapeHtml(window.I18n.t("osm.cache.stats.title")) + '">' + window.I18n.t("osm.cache.stats.loading") + '</span>' +
           '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none;" title="' + _escapeHtml(window.I18n.t("osm.toggle.plan.title")) + '">' +
             '<input type="checkbox" id="kta-osm-plan-toggle" ' + (_planTilesVisible ? "checked" : "") + ' style="margin:0;">' +
-            window.I18n.t("osm.toggle.plan") +
+            window.ktaIcone("image") + " " + window.I18n.t("osm.toggle.plan") +
           '</label>' +
           '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none;">' +
             '<input type="checkbox" id="kta-osm-poi-toggle" ' + (_poiVisible ? "checked" : "") + ' style="margin:0;">' +
-            window.I18n.t("osm.toggle.poi") +
+            window.ktaIcone("map-pin") + " " + window.I18n.t("osm.toggle.poi") +
           '</label>' +
           '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none;">' +
             '<input type="checkbox" id="kta-osm-tracker-toggle" ' + (_trackerVisible ? "checked" : "") + ' style="margin:0;">' +
-            window.I18n.t("osm.toggle.tracker") +
+            window.ktaIcone("footprints") + " " + window.I18n.t("osm.toggle.tracker") +
           '</label>' +
           '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none;">' +
             '<input type="checkbox" id="kta-osm-road-toggle" ' + (_roadVisible ? "checked" : "") + ' style="margin:0;">' +
-            window.I18n.t("osm.toggle.roads") +
+            window.ktaIcone("m-galerie") + " " + window.I18n.t("osm.toggle.roads") +
           '</label>' +
           '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none;">' +
             '<input type="checkbox" id="kta-osm-iti-toggle" ' + (_itiVisible ? "checked" : "") + ' style="margin:0;">' +
-            window.I18n.t("osm.toggle.iti") +
+            window.ktaIcone("route") + " " + window.I18n.t("osm.toggle.iti") +
           '</label>' +
           '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none;">' +
             '<input type="checkbox" id="kta-osm-zone-toggle" ' + (_zoneVisible ? "checked" : "") + ' style="margin:0;">' +
-            window.I18n.t("osm.toggle.zones") +
+            window.ktaIcone("m-zone") + " " + window.I18n.t("osm.toggle.zones") +
           '</label>' +
           '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none;">' +
             '<input type="checkbox" id="kta-osm-struct-toggle" ' + (_structVisible ? "checked" : "") + ' style="margin:0;">' +
-            window.I18n.t("osm.toggle.struct") +
+            window.ktaIcone("m-pilier") + " " + window.I18n.t("osm.toggle.struct") +
           '</label>' +
           // bascule Mode Secours : seulement si un scénario est actif
           (_hasActiveSecoursScenario()
             ? '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; cursor:pointer; user-select:none; padding:2px 6px; background:rgba(255,80,80,0.15); border-radius:4px;" title="' + _escapeHtml(window.I18n.t("osm.toggle.secours.title")) + '">' +
                 '<input type="checkbox" id="kta-osm-secours-toggle" ' + (_secoursVisible ? "checked" : "") + ' style="margin:0;">' +
-                window.I18n.t("osm.toggle.secours") +
+                window.ktaIcone("ambulance") + " " + window.I18n.t("osm.toggle.secours") +
               '</label>'
             : '') +
           '<span style="flex:1 1 auto;"></span>' +
         '</div>' +
         // 2e ligne : chips de niveaux (plan multi-niveau seulement)
         '<div id="kta-osm-levels-bar" style="display:none; gap:8px; align-items:center; padding:6px 14px; background:rgba(244,197,66,0.04); border-bottom:1px solid rgba(244,197,66,0.18); font-size:12px; color:var(--kta-texte-2); flex-wrap:wrap;">' +
-          '<span>' + window.I18n.t("osm.levels.label") + '</span>' +
+          '<span>' + window.ktaIcone("m-niveaux") + " " + window.I18n.t("osm.levels.label") + '</span>' +
           '<span id="kta-osm-levels-chips" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></span>' +
           '<span style="color:var(--kta-texte-3); font-size:11px; margin-left:auto;">' + window.I18n.t("osm.levels.hint") + '</span>' +
         '</div>' +
         // 3e ligne : chips de tags (filtre local)
         '<div id="kta-osm-tags-bar" style="display:none; gap:8px; align-items:center; padding:6px 14px; background:rgba(140,180,255,0.04); border-bottom:1px solid rgba(140,180,255,0.16); font-size:12px; color:var(--kta-texte-2); flex-wrap:wrap;">' +
-          '<span title="' + _escapeHtml(window.I18n.t("osm.tags.label.title")) + '">' + window.I18n.t("osm.tags.label") + '</span>' +
+          '<span title="' + _escapeHtml(window.I18n.t("osm.tags.label.title")) + '">' + window.ktaIcone("tag") + " " + window.I18n.t("osm.tags.label") + '</span>' +
           '<span id="kta-osm-tags-chips" style="display:inline-flex; gap:5px; flex-wrap:wrap;"></span>' +
           '<span style="color:var(--kta-texte-3); font-size:11px; margin-left:auto;">' + window.I18n.t("osm.tags.hint") + '</span>' +
         '</div>' +
@@ -1662,7 +1667,7 @@
   async function _runCacheOsmTiles(btn) {
     if (!window.OsmTilesCache || !_osmMap) return;
     if (!btn) btn = document.getElementById("kta-osm-cache-btn");
-    const oldLabel = btn ? btn.textContent : "";
+    const oldLabel = btn ? btn.innerHTML : "";   // icône SVG comprise
     // télécharger exige le réseau
     if (!_isOnline()) {
       _toast(window.I18n.t("osm.cache.run.noNetwork"), 4000);
@@ -1670,12 +1675,12 @@
     }
     if (btn) {
       btn.disabled = true;
-      btn.textContent = "⏳ 0/?";
+      btn.innerHTML = window.ktaIcone("loader-circle") + " 0/?";
     }
     try {
       const result = await window.OsmTilesCache.cacheVisibleTiles(_osmMap, {
         onProgress: function(done, total) {
-          if (btn) btn.textContent = "⏳ " + done + "/" + total;
+          if (btn) btn.innerHTML = window.ktaIcone("loader-circle") + " " + done + "/" + total;
         }
       });
       let msg = window.I18n.t("osm.cache.run.done", { cached: result.cached });
@@ -1688,7 +1693,7 @@
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = oldLabel || window.I18n.t("osm.cache.btn");
+        btn.innerHTML = oldLabel || (window.ktaIcone("save") + " " + window.ktaEsc(window.I18n.t("osm.cache.btn")));
       }
       await _refreshOsmCacheStats();
       // la flag hors ligne aussi : la modale s'ouvre maintenant sans réseau
@@ -1839,7 +1844,7 @@
     const cols     = Math.ceil(Math.ceil(planW / scale) / tileSize);
     const rows     = Math.ceil(Math.ceil(planH / scale) / tileSize);
 
-    const mapBounds = _osmMap.getBounds().pad(VIEWPORT_PADDING);
+    const mapBounds = _zoneVue(VIEWPORT_PADDING);
 
     // phase 1 : tuiles visibles à ajouter
     const aAjouter = [];
@@ -1918,6 +1923,36 @@
     }
   }
 
+  // Zone que l'écran montre VRAIMENT : sous rotation, boîte englobante des 4 coins dé-tournés (le rectangle droit
+  // laisserait les coins sans tuiles du plan) ; à plat, getBounds() au bit près.
+  function _zoneVue(pad) {
+    const z = _rotation ? _rotation.zoneVisible(pad) : null;
+    return z || _osmMap.getBounds().pad(pad);
+  }
+
+  // Angle changé sans déplacement (aucun moveend) : les tuiles du plan qui entrent dans les coins sont posées.
+  function _apresRotation() {
+    if (_rotationTuilesT) return;
+    _rotationTuilesT = setTimeout(function() {
+      _rotationTuilesT = null;
+      if (!_osmMap || !_proj || !_osmMap._loaded) return;
+      const tiling = window.PLAN_CONFIG && window.PLAN_CONFIG.tiling;
+      if (tiling) _renderLevel(_targetLevelForZoom(_osmMap.getZoom(), tiling));
+    }, ROTATION_TUILES_MS);
+  }
+
+  function _brancherRotation() {
+    if (!_rotation && window.MapBearing && typeof window.MapBearing.creerRotationManuelle === "function") {
+      _rotation = window.MapBearing.creerRotationManuelle({
+        carte: function() { return _osmMap; },
+        apresRotation: _apresRotation,
+        suitUltra: true   // ouverte depuis un plan : son mode ULTRA bloque aussi la rotation
+      });
+    }
+    if (!_rotation) return;
+    try { _rotation.reset(); _rotation.attachTo(_osmMap); } catch(e) { console.warn("[OsmView] rotation :", e); }
+  }
+
   // zoomend / moveend : niveau cible réévalué, rendu ou cull (Leaflet émet une fois par cran).
   function _onMoveEnd() {
     if (!_osmMap) return;
@@ -1942,6 +1977,7 @@
       preferCanvas: true
     }).setView([46.5, 2.5], 6);
     if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_osmMap);
+    _brancherRotation();
     L.tileLayer(OSM_TILE_URL, {
       maxZoom: OSM_MAX_ZOOM,
       attribution: OSM_ATTR,
@@ -2132,7 +2168,7 @@
     waitOverlay.style.cssText = "z-index:100050;";
     waitOverlay.innerHTML =
       '<div class="kta-modal" style="max-width:340px;">' +
-        '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
+        '<div class="kta-modal-icon" style="font-size:32px;">' + window.ktaIcone("loader-circle") + '</div>' +
         '<div class="kta-modal-titre">' + window.I18n.t("osm.ping.title") + '</div>' +
         '<div class="kta-modal-texte" style="font-size:13px; color:var(--kta-texte-3);">' + window.I18n.t("osm.ping.text") + '</div>' +
       '</div>';
@@ -2214,7 +2250,11 @@
     if (_myGpsMarker)         { try { _myGpsMarker.remove();         } catch(e) {} _myGpsMarker = null; }
     if (_myGpsAccuracyCircle) { try { _myGpsAccuracyCircle.remove(); } catch(e) {} _myGpsAccuracyCircle = null; }
 
+    if (_rotationTuilesT) { clearTimeout(_rotationTuilesT); _rotationTuilesT = null; }
     if (_osmMap) { try { _osmMap.remove(); } catch(e) {} _osmMap = null; }
+    // 🩸 Vue redressée APRÈS le démontage (l'instance survit à la fenêtre) : avant, la restitution du padding du canvas
+    // lui redemande un dessin que la destruction de la carte laisse orphelin (TypeError « save » au rAF suivant).
+    if (_rotation) { try { _rotation.reset(); } catch(e) {} }
     _planLayer = null;
     if (_modalEl && _modalEl.parentNode) {
       try { _modalEl.parentNode.removeChild(_modalEl); } catch(e) {}
@@ -2232,7 +2272,9 @@
     getPlanGpsBbox: _getPlanGpsBbox,
     // rafraîchit _planHasCachedTiles (lue par isAvailable) : main.js au boot, osmHomePreview après cache,
     // secoursMode au besoin
-    recheckOfflineCache: _recheckCachedForCurrentPlan
+    recheckOfflineCache: _recheckCachedForCurrentPlan,
+    // rotation manuelle de la carte ouverte (null avant la première ouverture) : harnais
+    getRotation: function() { return _rotation; }
   };
 
   // Recheck du cache différé : OsmTilesCache et PLAN_CONFIG doivent être prêts (~1 s après le boot).

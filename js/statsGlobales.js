@@ -457,7 +457,7 @@
     html += '</div>';
     if (meta.author) html += '<div class="kta-stats-glob-meta">' + window.I18n.t("stats.meta.par", { author: _escapeHtml(meta.author) }) + '</div>';
     html += '<div class="kta-stats-glob-meta">';
-    if (meta.imageW && meta.imageH) html += '📐 ' + meta.imageW + ' × ' + meta.imageH + ' px';
+    if (meta.imageW && meta.imageH) html += window.ktaIcone("ruler") + ' ' + meta.imageW + ' × ' + meta.imageH + ' px';
     if (meta.scale && meta.scale !== 1) html += ' &middot; ' + meta.scale.toFixed(1) + ' px/m';
     if (meta.multiLevel) html += ' &middot; ' + window.I18n.t("stats.meta.multiNiveau");
     if (meta.tiledV2)    html += ' &middot; ' + window.I18n.t("stats.meta.v2Tuile");
@@ -465,20 +465,20 @@
     html += '</div>';
 
     html += '<div class="kta-stats-glob-grid">';
-    html += _statCard("📍", t.points,     window.I18n.t(t.points     > 1 ? "stats.card.points.plural"     : "stats.card.points.singular"),     rep.session.points,     rep.embedded.points);
-    html += _statCard("🛣️", t.roads,      window.I18n.t(t.roads      > 1 ? "stats.card.roads.plural"      : "stats.card.roads.singular"),      rep.session.roads,      rep.embedded.roads);
-    html += _statCard("⬛", t.zones,      window.I18n.t(t.zones      > 1 ? "stats.card.zones.plural"      : "stats.card.zones.singular"),      rep.session.zones,      rep.embedded.zones);
-    html += _statCard("🏛️", t.structures, window.I18n.t(t.structures > 1 ? "stats.card.structures.plural" : "stats.card.structures.singular"), rep.session.structures, rep.embedded.structures);
+    html += _statCard(window.ktaIcone("map-pin"), t.points,     window.I18n.t(t.points     > 1 ? "stats.card.points.plural"     : "stats.card.points.singular"),     rep.session.points,     rep.embedded.points);
+    html += _statCard(window.ktaIcone("m-galerie"), t.roads,      window.I18n.t(t.roads      > 1 ? "stats.card.roads.plural"      : "stats.card.roads.singular"),      rep.session.roads,      rep.embedded.roads);
+    html += _statCard(window.ktaIcone("m-zone"), t.zones,      window.I18n.t(t.zones      > 1 ? "stats.card.zones.plural"      : "stats.card.zones.singular"),      rep.session.zones,      rep.embedded.zones);
+    html += _statCard(window.ktaIcone("m-pilier"), t.structures, window.I18n.t(t.structures > 1 ? "stats.card.structures.plural" : "stats.card.structures.singular"), rep.session.structures, rep.embedded.structures);
     if (t.photos > 0) {
       const sz = rep.photos.bytes > 0 ? (rep.photos.bytes / 1024 / 1024).toFixed(1) + " MB" : "";
       html += '<div class="kta-stats-glob-card"><div class="kta-stats-glob-card-num">' + t.photos + '</div>' +
-              '<div class="kta-stats-glob-card-label">📸 ' + window.I18n.t(t.photos > 1 ? "stats.card.photos.plural" : "stats.card.photos.singular") + '</div>' +
+              '<div class="kta-stats-glob-card-label">' + window.ktaIcone("camera") + ' ' + window.I18n.t(t.photos > 1 ? "stats.card.photos.plural" : "stats.card.photos.singular") + '</div>' +
               (sz ? '<div class="kta-stats-glob-card-sub">' + sz + '</div>' : '') +
               '</div>';
     }
     if (rep.tracker && (rep.tracker.distM > 0 || rep.tracker.steps > 0)) {
       html += '<div class="kta-stats-glob-card"><div class="kta-stats-glob-card-num">' + _formatDist(rep.tracker.distM) + '</div>' +
-              '<div class="kta-stats-glob-card-label">🧭 ' + window.I18n.t("stats.card.tracker.label") + '</div>' +
+              '<div class="kta-stats-glob-card-label">' + window.ktaIcone("navigation") + ' ' + window.I18n.t("stats.card.tracker.label") + '</div>' +
               '<div class="kta-stats-glob-card-sub">' + window.I18n.t("stats.card.tracker.steps", { n: rep.tracker.steps }) +
                 ((rep.tracker.distEstimeeM || 0) > 0
                   ? ' · ' + window.I18n.t("jrn.section.dontEstime", { dist: _formatDist(rep.tracker.distEstimeeM) })
@@ -491,7 +491,7 @@
 
     if (t.points > 0) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">📍 ' + window.I18n.t("stats.section.pointsParTag") + '</div>';
+      html += '<div class="kta-stats-glob-section-titre">' + window.ktaIcone("map-pin") + ' ' + window.I18n.t("stats.section.pointsParTag") + '</div>';
       html += _renderPieChart(rep.pointsByTag, "tags", 160);
       html += '</div>';
     }
@@ -499,7 +499,7 @@
     // Tracés et zones : le camembert compte les objets, la liste donne distance ou surface par type.
     if (t.roads > 0) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">🛣️ ' + window.I18n.t("stats.section.traces") + ' ' +
+      html += '<div class="kta-stats-glob-section-titre">' + window.ktaIcone("m-galerie") + ' ' + window.I18n.t("stats.section.traces") + ' ' +
               '<span class="kta-stats-glob-total">' + window.I18n.t("stats.section.cumules", { val: _formatDist(rep.roadsTotalDistM) }) + '</span></div>';
       html += _renderPieChart(rep.roadsByType, "roads", 160);
       html += '<div class="kta-stats-glob-list kta-stats-glob-list-compact">';
@@ -519,7 +519,7 @@
 
     if (t.zones > 0) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">⬛ ' + window.I18n.t("stats.section.zones") + ' ' +
+      html += '<div class="kta-stats-glob-section-titre">' + window.ktaIcone("m-zone") + ' ' + window.I18n.t("stats.section.zones") + ' ' +
               '<span class="kta-stats-glob-total">' + window.I18n.t("stats.section.cumules", { val: _formatSurf(rep.zonesTotalAreaM2) }) + '</span></div>';
       html += _renderPieChart(rep.zonesByType, "zones", 160);
       html += '<div class="kta-stats-glob-list kta-stats-glob-list-compact">';
@@ -538,14 +538,14 @@
 
     if (t.structures > 0) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">🏛️ ' + window.I18n.t("stats.section.structures") + '</div>';
+      html += '<div class="kta-stats-glob-section-titre">' + window.ktaIcone("m-pilier") + ' ' + window.I18n.t("stats.section.structures") + '</div>';
       html += _renderPieChart(rep.structsByType, "structures", 160);
       html += '</div>';
     }
 
     if (rep.multiLevelBreakdown) {
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">🏗️ ' + window.I18n.t("stats.section.breakdownNiveau") + '</div>';
+      html += '<div class="kta-stats-glob-section-titre">' + window.ktaIcone("m-niveaux") + ' ' + window.I18n.t("stats.section.breakdownNiveau") + '</div>';
       html += '<div class="kta-stats-glob-list">';
       const lvlKeys = Object.keys(rep.multiLevelBreakdown).sort(function(a, b) {
         return parseInt(a, 10) - parseInt(b, 10);
@@ -555,10 +555,10 @@
         const total = b.points + b.roads + b.zones + b.structures;
         if (total === 0) return;
         const parts = [];
-        if (b.points     > 0) parts.push('📍 ' + b.points);
-        if (b.roads      > 0) parts.push('🛣️ ' + b.roads);
-        if (b.zones      > 0) parts.push('⬛ ' + b.zones);
-        if (b.structures > 0) parts.push('🏛️ ' + b.structures);
+        if (b.points     > 0) parts.push(window.ktaIcone("map-pin") + ' ' + b.points);
+        if (b.roads      > 0) parts.push(window.ktaIcone("m-galerie") + ' ' + b.roads);
+        if (b.zones      > 0) parts.push(window.ktaIcone("m-zone") + ' ' + b.zones);
+        if (b.structures > 0) parts.push(window.ktaIcone("m-pilier") + ' ' + b.structures);
         html += '<div class="kta-stats-glob-row">' +
                   '<span class="kta-stats-glob-row-lbl">' + window.I18n.t("stats.niveau", { n: _escapeHtml(k) }) + '</span>' +
                   '<span class="kta-stats-glob-row-num">' + parts.join(' &middot; ') + '</span>' +
@@ -571,7 +571,7 @@
       const a = rep.georef.pointA;
       const b = rep.georef.pointB;
       html += '<div class="kta-stats-glob-section">';
-      html += '<div class="kta-stats-glob-section-titre">🌐 ' + window.I18n.t("stats.section.georeferencement") + '</div>';
+      html += '<div class="kta-stats-glob-section-titre">' + window.ktaIcone("globe") + ' ' + window.I18n.t("stats.section.georeferencement") + '</div>';
       html += '<div class="kta-stats-glob-list">';
       html += '<div class="kta-stats-glob-row"><span class="kta-stats-glob-row-lbl">' + window.I18n.t("stats.georef.pointA") + '</span>' +
                 '<span class="kta-stats-glob-row-num">px (' + a.x + ', ' + a.y + ') &harr; (' + a.lat + ', ' + a.lng + ')</span></div>';
@@ -708,18 +708,18 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-stats-glob-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">📊 ' + window.I18n.t("stats.modal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("chart-column") + ' ' + window.I18n.t("stats.modal.titre") + '</span>' +
           '<button type="button" class="kta-panneau-close" id="kta-stats-glob-close" aria-label="' + window.I18n.t("stats.modal.fermer") + '">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" id="kta-stats-glob-corps">' +
           '<div class="kta-stats-glob-loading">⏳ ' + window.I18n.t("stats.loading") + '</div>' +
         '</div>' +
         '<div class="kta-readme-modal-footer kta-stats-glob-footer">' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-refresh">🔄 ' + window.I18n.t("stats.btn.rafraichir") + '</button>' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-csv">📊 ' + window.I18n.t("stats.btn.exportCsv") + '</button>' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-pdf">📤 ' + window.I18n.t("stats.btn.exportPdf") + '</button>' +
-          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-rapport">📋 ' + window.I18n.t("stats.btn.rapportSortie") + '</button>' +
-          '<button type="button" class="kta-btn kta-btn-primary" id="kta-stats-glob-copy">📋 ' + window.I18n.t("stats.btn.copierRapport") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-refresh">' + window.ktaIcone("refresh-cw") + ' ' + window.I18n.t("stats.btn.rafraichir") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-csv">' + window.ktaIcone("table") + ' ' + window.I18n.t("stats.btn.exportCsv") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-pdf">' + window.ktaIcone("file-text") + ' ' + window.I18n.t("stats.btn.exportPdf") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-rapport">' + window.ktaIcone("notebook-pen") + ' ' + window.I18n.t("stats.btn.rapportSortie") + '</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-stats-glob-copy">' + window.ktaIcone("copy") + ' ' + window.I18n.t("stats.btn.copierRapport") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
@@ -747,9 +747,10 @@
       _copyToClipboard(txt).then(function() {
         const btn = document.getElementById("kta-stats-glob-copy");
         if (btn) {
-          const orig = btn.textContent;
+          // innerHTML : l'icône du bouton revient avec son libellé.
+          const orig = btn.innerHTML;
           btn.textContent = "✅ " + window.I18n.t("stats.feedback.copie");
-          setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
+          setTimeout(function() { if (btn) btn.innerHTML = orig; }, 1800);
         }
       }).catch(function(e) {
         window.ktaAlerte(window.I18n.t("stats.feedback.echecCopie", { msg: (e.message || e) }), { type: "erreur" });
@@ -758,15 +759,15 @@
 
     document.getElementById("kta-stats-glob-csv").addEventListener("click", function() {
       const btn = document.getElementById("kta-stats-glob-csv");
-      const orig = btn ? btn.textContent : null;
+      const orig = btn ? btn.innerHTML : null;
       if (btn) { btn.disabled = true; btn.textContent = "⏳ " + window.I18n.t("stats.feedback.generation"); }
       exportToCSV().then(function() {
         if (btn) {
           btn.textContent = "✅ " + window.I18n.t("stats.feedback.zipTelecharge");
-          setTimeout(function() { if (btn) { btn.textContent = orig; btn.disabled = false; } }, 1800);
+          setTimeout(function() { if (btn) { btn.innerHTML = orig; btn.disabled = false; } }, 1800);
         }
       }).catch(function(e) {
-        if (btn) { btn.textContent = orig; btn.disabled = false; }
+        if (btn) { btn.innerHTML = orig; btn.disabled = false; }
         window.ktaAlerte(window.I18n.t("stats.feedback.echecCsv", { msg: (e.message || e) }), { type: "erreur" });
       });
     });
@@ -777,15 +778,15 @@
         return;
       }
       const btn = document.getElementById("kta-stats-glob-pdf");
-      const orig = btn ? btn.textContent : null;
+      const orig = btn ? btn.innerHTML : null;
       if (btn) { btn.disabled = true; btn.textContent = "⏳ " + window.I18n.t("stats.feedback.generation"); }
       exportToPDF({ report: _lastReport }).then(function(res) {
         if (btn) {
           btn.textContent = "✅ " + window.I18n.t("stats.feedback.pdfTelecharge");
-          setTimeout(function() { if (btn) { btn.textContent = orig; btn.disabled = false; } }, 1800);
+          setTimeout(function() { if (btn) { btn.innerHTML = orig; btn.disabled = false; } }, 1800);
         }
       }).catch(function(e) {
-        if (btn) { btn.textContent = orig; btn.disabled = false; }
+        if (btn) { btn.innerHTML = orig; btn.disabled = false; }
         window.ktaAlerte(window.I18n.t("stats.feedback.echecPdf", { msg: (e.message || e) }), { type: "erreur" });
       });
     });

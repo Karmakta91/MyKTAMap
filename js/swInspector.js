@@ -193,18 +193,18 @@
     if (diff.missing.length === 0) {
       html +=
         '<div class="kta-mem-section" style="border-color:var(--kta-ok-bord); background:var(--kta-ok-fond);">' +
-          '<div class="kta-mem-section-titre" style="color:var(--kta-ok);">' + _t("verdict.ok.titre") + '</div>' +
+          '<div class="kta-mem-section-titre" style="color:var(--kta-ok);">' + window.ktaIcone("check") + " " + _t("verdict.ok.titre") + '</div>' +
           '<div class="kta-mem-line">' + _t("verdict.ok.line", { count: diff.present.length, cache: '<code>' + _escapeHtml(cacheName) + '</code>' }) + '</div>' +
         '</div>';
     } else {
       html +=
         '<div class="kta-mem-section" style="border-color:var(--kta-erreur-bord); background:var(--kta-erreur-fond);">' +
-          '<div class="kta-mem-section-titre" style="color:var(--kta-erreur);">' + _t("verdict.ko.titre") + '</div>' +
+          '<div class="kta-mem-section-titre" style="color:var(--kta-erreur);">' + window.ktaIcone("triangle-alert") + " " + _t("verdict.ko.titre") + '</div>' +
           '<div class="kta-mem-line">' + _t("verdict.ko.line", { count: diff.missing.length, total: total, cache: '<code>' + _escapeHtml(cacheName) + '</code>' }) + '</div>' +
           '<div class="kta-mem-line">' + _t("verdict.ko.coverage", { pct: presentPct, present: diff.present.length, total: total }) + '</div>' +
           '<div style="margin-top:10px;">' +
             '<button type="button" id="kta-sw-inspector-refetch" class="kta-btn kta-btn-primary" style="font-size:13px; padding:8px 14px;">' +
-              _t("btn.refetch", { count: diff.missing.length }) +
+              window.ktaIcone("refresh-cw") + " " + _t("btn.refetch", { count: diff.missing.length }) +
             '</button>' +
             '<span id="kta-sw-inspector-refetch-status" style="margin-left:10px; font-size:12px; color:var(--kta-texte-3);"></span>' +
           '</div>' +
@@ -215,7 +215,7 @@
     if (diff.missing.length > 0) {
       html +=
         '<div class="kta-mem-section">' +
-          '<div class="kta-mem-section-titre">' + _t("missing.titre", { count: diff.missing.length }) + '</div>' +
+          '<div class="kta-mem-section-titre">' + window.ktaIcone("x") + " " + _t("missing.titre", { count: diff.missing.length }) + '</div>' +
           '<div class="kta-mem-line kta-mem-dim">' + _t("missing.hint") + '</div>' +
           '<div class="kta-sw-inspector-scrollbox" style="max-height:240px; font-size:11.5px;">' +
             diff.missing.map(function(a) {
@@ -223,13 +223,13 @@
               if (fail) {
                 const lab = _failureLabel(fail.type);
                 return '<div>' + _escapeHtml(a) +
-                       ' <span style="color:' + lab.color + '; font-family:sans-serif; font-size:11px;">' +
+                       ' <span style="color:' + lab.color + '; font-family:KTA Emoji, sans-serif; font-size:11px;">' +
                        lab.icon + ' ' + lab.label +
                        (fail.status ? ' (' + fail.status + ')' : '') +
                        '</span></div>';
               }
               return '<div>' + _escapeHtml(a) +
-                     ' <span style="color:var(--kta-texte-3); font-family:sans-serif; font-size:11px;">' + _t("missing.causeUnknown") + '</span></div>';
+                     ' <span style="color:var(--kta-texte-3); font-family:KTA Emoji, sans-serif; font-size:11px;">' + _t("missing.causeUnknown") + '</span></div>';
             }).join('') +
           '</div>' +
         '</div>';
@@ -261,7 +261,7 @@
       }
       html +=
         '<div class="kta-mem-section" style="border-color:var(--kta-info-bord-fort); background:var(--kta-info-fond);">' +
-          '<div class="kta-mem-section-titre" style="color:var(--kta-interaction);">' + _t("failures.titre", { count: failures.length }) + '</div>' +
+          '<div class="kta-mem-section-titre" style="color:var(--kta-interaction);">' + window.ktaIcone("search") + " " + _t("failures.titre", { count: failures.length }) + '</div>' +
           '<div class="kta-mem-line">' + statsLine + '</div>' +
           (interpretation
             ? '<div class="kta-mem-line" style="margin-top:8px; font-size:12.5px;">' + interpretation + '</div>'
@@ -273,7 +273,7 @@
     // Présents (repliés), puis inattendus (cache dynamique : tuiles, plans…).
     html +=
       '<details class="kta-mem-section">' +
-        '<summary class="kta-mem-section-titre" style="cursor:pointer;">' + _t("present.titre", { count: diff.present.length }) + '</summary>' +
+        '<summary class="kta-mem-section-titre" style="cursor:pointer;">' + window.ktaIcone("check") + " " + _t("present.titre", { count: diff.present.length }) + '</summary>' +
         '<div class="kta-sw-inspector-scrollbox" style="font-size:11.5px;">' +
           diff.present.map(function(a) { return _escapeHtml(a); }).join('<br>') +
         '</div>' +
@@ -282,7 +282,7 @@
     if (diff.unexpected.length > 0) {
       html +=
         '<details class="kta-mem-section">' +
-          '<summary class="kta-mem-section-titre" style="cursor:pointer;">' + _t("dynamic.titre", { count: diff.unexpected.length }) + '</summary>' +
+          '<summary class="kta-mem-section-titre" style="cursor:pointer;">' + window.ktaIcone("package") + " " + _t("dynamic.titre", { count: diff.unexpected.length }) + '</summary>' +
           '<div class="kta-mem-line kta-mem-dim" style="margin-top:8px;">' +
             _t("dynamic.hint", { cap: 800 }) +
           '</div>' +
@@ -303,7 +303,7 @@
     return ''
       + '<div class="kta-readme-modal-boite" style="max-width:780px; width:95vw; max-height:90vh; display:flex; flex-direction:column;">'
       +   '<div class="kta-readme-modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.1);">'
-      +     '<span class="kta-readme-modal-titre">' + _t("titre") + '</span>'
+      +     '<span class="kta-readme-modal-titre">' + window.ktaIcone("wrench") + " " + _t("titre") + '</span>'
       +     '<button type="button" id="kta-sw-inspector-close" aria-label="' + _t("close") + '" style="background:none; border:none; color:var(--kta-texte); font-size:24px; cursor:pointer; padding:0 6px;">×</button>'
       +   '</div>'
       +   '<div class="kta-readme-modal-contenu" id="kta-sw-inspector-body" style="flex:1 1 auto; overflow-y:auto; padding:16px 18px; font-size:13px; color:var(--kta-texte-2); line-height:1.5;">'

@@ -43,7 +43,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-imglayer-calib-boite" style="max-width:1100px; width:95vw; height:auto; max-height:92vh; display:flex; flex-direction:column;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + window.I18n.t("imgcal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("image") + ' ' + window.I18n.t("imgcal.titre") + '</span>' +
           '<button class="kta-panneau-close" type="button" id="kta-ilc-close" aria-label="' + window.I18n.t("imgcal.close") + '">&times;</button>' +
         '</div>' +
         '<div class="kta-imglayer-calib-step" id="kta-ilc-step" style="padding:10px 16px; background:rgba(140,180,255,0.08); border-bottom:1px solid rgba(140,180,255,0.2); color:var(--kta-texte-2); font-size:13px;">' +
@@ -61,8 +61,8 @@
         '</div>' +
         '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end; padding:12px 16px;">' +
           '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ilc-restart">' + window.I18n.t("imgcal.btn.restart") + '</button>' +
-          '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ilc-cancel">' + window.I18n.t("imgcal.btn.cancel") + '</button>' +
-          '<button class="kta-btn kta-btn-primary" type="button" id="kta-ilc-validate" disabled>' + window.I18n.t("imgcal.btn.validate") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost" type="button" id="kta-ilc-cancel">' + window.ktaIcone("x") + ' ' + window.I18n.t("imgcal.btn.cancel") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" type="button" id="kta-ilc-validate" disabled>' + window.ktaIcone("check") + ' ' + window.I18n.t("imgcal.btn.validate") + '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);

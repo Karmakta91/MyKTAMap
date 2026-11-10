@@ -11,7 +11,9 @@
 // Une identité qui survit au renommage, à la conversion, à l'annulation et à l'export pour chaque objet de
 // carte (point, tracé, zone, structure) : `uid` + `updatedAt` (ms). Décisions : docs/ETUDE_UID.md.
 //   genUid("pt") → "pt_lq3x9a_k2f8m1" · touch(obj) · ensure(obj, t, ts) · ensureAll(arr, t, ts, vus) ·
-//   cloneNeuf · sansIdentite · marquerCalqueTexte · get/setTombstones · fusionnerCalques · preparerImport (window.KtaUid).
+//   cloneNeuf · sansIdentite · marquerCalqueTexte · get/setTombstones · traces de copie de calque (tombstoneCopie,
+//   get/setTracesCopie, remplacerTraces, oublierTracesCopie : 🔒 jamais dans un fichier) · fusionnerCalques ·
+//   preparerImport (window.KtaUid).
 // ⚠️ `id` d'un point reste son NOM (photos, favoris, liaisons, Secours) ; l'identité stable est `uid`.
 // 🩸 Le préfixe dit la famille À LA CRÉATION seulement (un « rd_ » peut vivre dans les zones après
 //   conversion) : ne jamais déduire la famille du préfixe.
@@ -154,29 +156,85 @@
     return !!(obj && obj.type === "itinerary");
   }
 
+  // ── Traces de COPIE de calque ──
+  // Une copie de calque (CalqueSession) porte l'uid de l'objet du fichier du calque. 🔒 Sa trace ne doit JAMAIS
+  // entrer dans un fichier : emportée par un export puis passée par « Fusion de calques » ou l'import ZIP du
+  // Générateur (fusionnerCalques), elle détruirait l'original. Elle vit donc à part : getTombstones() (lu par
+  // les exports, les imports et le Tableur) ne la rend jamais ; seuls la synchro (getTracesCopie) et la
+  // sauvegarde LOCALE de la session la lisent. Elle tombe à la restitution du calque (oublierTracesCopie).
+  // Les deux listes restent disjointes : un uid tracé comme copie le reste.
+  let _tracesCopie = new Map();   // uid → { d: deletedAt (ms), calque }
+
+  function _traceValide(t) {
+    return !!(t && typeof t.uid === "string" && t.uid && typeof t.deletedAt === "number" && Number.isFinite(t.deletedAt));
+  }
   function tombstone(uid, ts) {
     if (typeof uid !== "string" || !uid) return;
-    _traces.set(uid, (typeof ts === "number" && isFinite(ts)) ? ts : Date.now());
+    const d = (typeof ts === "number" && Number.isFinite(ts)) ? ts : Date.now();
+    const c = _tracesCopie.get(uid);
+    if (c) { c.d = d; return; }
+    _traces.set(uid, d);
   }
-  function untombstone(uid) { _traces.delete(uid); }
+  function tombstoneCopie(uid, calque, ts) {
+    if (typeof uid !== "string" || !uid || typeof calque !== "string" || !calque) return;
+    _traces.delete(uid);
+    _tracesCopie.set(uid, { d: (typeof ts === "number" && Number.isFinite(ts)) ? ts : Date.now(), calque: calque });
+  }
+  function untombstone(uid) { _traces.delete(uid); _tracesCopie.delete(uid); }
+  function estTraceCopie(uid) { return _tracesCopie.has(uid); }
   function getTombstones() {
     const out = [];
     _traces.forEach(function (d, u) { out.push({ uid: u, deletedAt: d }); });
     return out;
   }
-  // Remplace la liste (restauration, import) ; entrées invalides ignorées.
+  // Remplace la liste (restauration, import) ; entrées invalides ignorées. Un uid déjà tracé comme copie n'y entre pas.
   function setTombstones(list) {
     _traces = new Map();
     (Array.isArray(list) ? list : []).forEach(function (t) {
-      if (t && typeof t.uid === "string" && t.uid && typeof t.deletedAt === "number" && Number.isFinite(t.deletedAt)) {
-        _traces.set(t.uid, t.deletedAt);
+      if (_traceValide(t) && !_tracesCopie.has(t.uid)) _traces.set(t.uid, t.deletedAt);
+    });
+  }
+  // [{ uid, deletedAt, calque }] — synchro et sauvegarde locale seulement (🔒 jamais un fichier).
+  function getTracesCopie() {
+    const out = [];
+    _tracesCopie.forEach(function (v, u) { out.push({ uid: u, deletedAt: v.d, calque: v.calque }); });
+    return out;
+  }
+  function setTracesCopie(list) {
+    _tracesCopie = new Map();
+    (Array.isArray(list) ? list : []).forEach(function (t) {
+      if (_traceValide(t) && typeof t.calque === "string" && t.calque) {
+        _traces.delete(t.uid);
+        _tracesCopie.set(t.uid, { d: t.deletedAt, calque: t.calque });
       }
     });
   }
+  // Remplace les DEUX listes par `list` (fusion d'une synchro, d'un import sur plan partagé), chaque trace rangée :
+  // copie si elle l'était déjà ou si `calqueDe(uid)` donne un calque, sinon ordinaire.
+  function remplacerTraces(list, calqueDe) {
+    const avant = _tracesCopie;
+    _traces = new Map();
+    _tracesCopie = new Map();
+    (Array.isArray(list) ? list : []).forEach(function (t) {
+      if (!_traceValide(t)) return;
+      const c = (avant.get(t.uid) || {}).calque || (typeof calqueDe === "function" ? calqueDe(t.uid) : null);
+      if (typeof c === "string" && c) _tracesCopie.set(t.uid, { d: t.deletedAt, calque: c });
+      else _traces.set(t.uid, t.deletedAt);
+    });
+  }
+  // Restitution du calque : ses traces de copie datées au plus tard de `avant` tombent. → uids retirés.
+  function oublierTracesCopie(calque, avant) {
+    const borne = (typeof avant === "number" && Number.isFinite(avant)) ? avant : Infinity;
+    const out = [];
+    _tracesCopie.forEach(function (v, u) { if (v.calque === calque && v.d <= borne) out.push(u); });
+    out.forEach(function (u) { _tracesCopie.delete(u); });
+    return out;
+  }
   function purge(now) {
-    const n0 = _traces.size, limite = (typeof now === "number" ? now : Date.now()) - TTL_TRACE;
+    const n0 = _traces.size + _tracesCopie.size, limite = (typeof now === "number" ? now : Date.now()) - TTL_TRACE;
     _traces.forEach(function (d, u) { if (d < limite) _traces.delete(u); });
-    return n0 - _traces.size;
+    _tracesCopie.forEach(function (v, u) { if (v.d < limite) _tracesCopie.delete(u); });
+    return n0 - _traces.size - _tracesCopie.size;
   }
 
   // ── Fusion de plusieurs fichiers (sessions, doublon de fusion du Générateur) ──
@@ -347,6 +405,12 @@
     untombstone: untombstone,
     getTombstones: getTombstones,
     setTombstones: setTombstones,
+    tombstoneCopie: tombstoneCopie,
+    estTraceCopie: estTraceCopie,
+    getTracesCopie: getTracesCopie,
+    setTracesCopie: setTracesCopie,
+    remplacerTraces: remplacerTraces,
+    oublierTracesCopie: oublierTracesCopie,
     purge: purge,
     TTL_TRACE: TTL_TRACE
   };

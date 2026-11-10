@@ -236,7 +236,7 @@
         } else {
           // Vraiment vide : silhouette grise neutre.
           avatarWrap.innerHTML =
-            '<div class="kta-loader-profile-avatar-initial kta-loader-profile-avatar-empty">👤</div>';
+            '<div class="kta-loader-profile-avatar-initial kta-loader-profile-avatar-empty">' + window.ktaIcone("user") + '</div>';
         }
       }
 
@@ -409,7 +409,7 @@
         const m = _collectGamifMetrics();
         const all = PA.list(m);
         const nbU = all.filter(function(a){ return a.unlocked; }).length;
-        let html = '<div class="kta-feats-head">🏆 ' + tt("feat.title") +
+        let html = '<div class="kta-feats-head">' + window.ktaIcone("trophy") + ' ' + tt("feat.title") +
                    ' <span class="kta-feats-count">' + nbU + '/' + PA.total + '</span></div>' +
                    '<div class="kta-feats-list">';
         PA.FAMILIES.forEach(function(f) {
@@ -426,7 +426,7 @@
                       a.tierRoman + " — " + a.seuilLabel + '">' + a.tierIcon + '</span>';
           });
           html += '<div class="kta-feat-row">' +
-                    '<span class="kta-feat-fam"><span class="kta-feat-emoji">' + f.emoji + '</span>' + PA.nom(f.id) + '</span>' +
+                    '<span class="kta-feat-fam"><span class="kta-feat-emoji">' + window.ktaIcone(f.ico) + '</span>' + PA.nom(f.id) + '</span>' +
                     '<span class="kta-feat-val">' + valTxt + '</span>' +
                     '<span class="kta-feat-badges">' + badges + '</span>' +
                   '</div>';
@@ -434,11 +434,11 @@
         html += '</div>';
         const specials = all.filter(function(a){ return a.group === "special"; });
         if (specials.length) {
-          html += '<div class="kta-feats-sptitle">🎉 ' + tt("feat.specials") + '</div>' +
+          html += '<div class="kta-feats-sptitle">' + window.ktaIcone("sparkles") + ' ' + tt("feat.specials") + '</div>' +
                   '<div class="kta-feats-specials">';
           specials.forEach(function(a) {
             html += '<span class="kta-feat-sp' + (a.unlocked ? " kta-feat-unlocked" : "") + '">' +
-                      a.emoji + " " + a.nom + '</span>';
+                      window.ktaIcone(a.ico) + " " + a.nom + '</span>';
           });
           html += '</div>';
         }
@@ -476,9 +476,9 @@
             '<span class="kta-profile-rank-score">' + tt("rank.scoreLabel") + ' ' + score + '</span>' +
           '</div>' +
           '<div class="kta-profile-rank-metrics">' +
-            '<span>🗺️ ' + m.plans + ' ' + unitP + '</span>' +
-            '<span>⏱️ ' + _formatDuration(m.timeMs) + '</span>' +
-            '<span>📏 ' + kmTxt + '</span>' +
+            '<span>' + window.ktaIcone("map") + ' ' + m.plans + ' ' + unitP + '</span>' +
+            '<span>' + window.ktaIcone("timer") + ' ' + _formatDuration(m.timeMs) + '</span>' +
+            '<span>' + window.ktaIcone("ruler") + ' ' + kmTxt + '</span>' +
           '</div>';
         if (prog.next) {
           const parts = [];
@@ -508,30 +508,30 @@
         box.innerHTML = html;
       }
 
-      // Stats du bandeau d'accueil, au choix : PROFILE_BAR_STATS = pool disponible ;
+      // Stats du bandeau d'accueil, au choix : PROFILE_BAR_STATS = pool disponible (icon = nom d'icône SVG) ;
       // `myktamap_loader_bar_stats_v1` = clés choisies (défaut ["time", "storage"]) ;
       // _renderProfileBarStatsSlots construit le DOM, _hydrateProfileBarStats remplit les slots présents.
       // ⚠️ i18n : on stocke des clés (titleKey) résolues AU RENDU, jamais au chargement.
       const PROFILE_BAR_STATS = {
         time: {
-          icon:  "⏱️",
+          icon:  "timer",
           titleKey: "home.profile.stats.timeTitle"
         },
         storage: {
-          icon:  "💾",
+          icon:  "save",
           titleKey: "home.profile.stats.storageTitle"
         },
         plans: {
-          icon:  "🗺️",
+          icon:  "map",
           titleKey: "home.profile.stats.plansTitle"
         },
         // Score + nombre de hauts faits débloqués.
         score: {
-          icon:  "⭐",
+          icon:  "star",
           titleKey: "home.profile.stats.scoreTitle"
         },
         feats: {
-          icon:  "🏆",
+          icon:  "trophy",
           titleKey: "home.profile.stats.featsTitle"
         }
       };
@@ -571,15 +571,16 @@
         wrap.innerHTML = "";
         keys.forEach(function(k) {
           const ext = k.indexOf("ext:") === 0 ? _statsExt.find(function(x) { return "ext:" + x.cle === k; }) : null;
-          const cfg = ext ? { icon: ext.icone, titre: ext.titre || ext.libelle } : PROFILE_BAR_STATS[k];
+          const cfg = ext ? { texte: ext.icone, titre: ext.titre || ext.libelle } : PROFILE_BAR_STATS[k];
           if (!cfg) return;
           const div = document.createElement("div");
           div.className = "kta-loader-profile-stat";
           div.id = "kta-loader-profile-stat-" + k.replace(/[^\w-]/g, "_");
           div.title = cfg.titre != null ? cfg.titre : _t(cfg.titleKey);
           div.dataset.statKey = k;
-          // Texte seulement : une stat d'extension n'est jamais du HTML.
-          const ic = document.createElement("span"); ic.className = "kta-loader-profile-stat-icon"; ic.textContent = cfg.icon;
+          // Stat d'extension : son pictogramme en texte, jamais du HTML ; stat intégrée : icône SVG.
+          const ic = document.createElement("span"); ic.className = "kta-loader-profile-stat-icon";
+          if (ext) ic.textContent = cfg.texte; else ic.innerHTML = window.ktaIcone(cfg.icon);
           const val = document.createElement("span"); val.className = "kta-loader-profile-stat-val"; val.textContent = "—";
           div.appendChild(ic); div.appendChild(val);
           wrap.appendChild(div);
@@ -700,7 +701,9 @@
                   total += blobBytes;
                 }
               }
-              if (acc && typeof cur.key === "string" && acc.ids[cur.key]) acc.ext += total - avant;
+              // Morceaux d'une copie (PlanRegistry.rangerEnMorceaux) : clé [idPlan, génération, n].
+              const idCle = Array.isArray(cur.key) ? cur.key[0] : cur.key;
+              if (acc && typeof idCle === "string" && acc.ids[idCle]) acc.ext += total - avant;
               cur.continue();
             };
             req.onerror = function() { resolve(total); };
@@ -871,7 +874,7 @@
         overlay.innerHTML =
           '<div class="kta-readme-modal-boite kta-profile-details-boite">' +
             '<div class="kta-readme-modal-header">' +
-              '<span class="kta-readme-modal-titre">' + _t("home.profile.title") + '</span>' +
+              '<span class="kta-readme-modal-titre">' + window.ktaIcone("user") + ' ' + _t("home.profile.title") + '</span>' +
               '<button type="button" class="kta-panneau-close" id="kta-profile-details-close" aria-label="' + _t("home.profile.closeAria") + '">✕</button>' +
             '</div>' +
             '<div class="kta-readme-modal-corps kta-profile-details-corps">' +
@@ -881,8 +884,8 @@
                   '<span class="kta-profile-details-badge" id="kta-profile-details-badge" aria-hidden="true" style="display:none;"></span>' +
                 '</div>' +
                 '<div class="kta-profile-details-photo-actions">' +
-                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-btn">' + _t("home.profile.photoBtn") + '</button>' +
-                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-remove" style="' + (snap.hasPhoto ? '' : 'display:none;') + '">' + _t("home.profile.photoRemove") + '</button>' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-btn">' + window.ktaIcone("camera") + ' ' + _t("home.profile.photoBtn") + '</button>' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-remove" style="' + (snap.hasPhoto ? '' : 'display:none;') + '">' + window.ktaIcone("trash-2") + ' ' + _t("home.profile.photoRemove") + '</button>' +
                   '<input type="file" id="kta-profile-details-photo-input" accept="image/*" style="display:none;">' +
                 '</div>' +
                 '<div class="kta-profile-details-name-row">' +
@@ -890,7 +893,7 @@
                   '<input type="text" id="kta-profile-details-surnom" class="kta-profile-details-input" ' +
                     'placeholder="' + _t("home.profile.nicknamePlaceholder") + '" maxlength="40" ' +
                     'value="' + (snap.surnom || "").replace(/"/g, "&quot;") + '">' +
-                  '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-details-save-name" style="display:none;">' + _t("home.profile.saveName") + '</button>' +
+                  '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-details-save-name" style="display:none;">' + window.ktaIcone("save") + ' ' + _t("home.profile.saveName") + '</button>' +
                 '</div>' +
               '</div>' +
 
@@ -904,17 +907,17 @@
 
               // Choix des stats du bandeau d'accueil, plafond 3 (PROFILE_BAR_STATS_MAX) pour rester lisible sur mobile.
               '<div class="kta-profile-barstats">' +
-                '<div class="kta-profile-barstats-header">' + _t("home.profile.barStatsHeader") + '</div>' +
+                '<div class="kta-profile-barstats-header">' + window.ktaIcone("palette") + ' ' + _t("home.profile.barStatsHeader") + '</div>' +
                 '<p class="kta-profile-barstats-hint">' +
                   _t("home.profile.barStatsHint") +
                 '</p>' +
                 '<div class="kta-profile-barstats-options" id="kta-profile-barstats-options">' +
-                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="time"> <span>' + _t("home.profile.statTime") + '</span></label>' +
-                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="storage"> <span>' + _t("home.profile.statStorage") + '</span></label>' +
-                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="plans"> <span>' + _t("home.profile.statPlans") + '</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="time"> <span>' + window.ktaIcone("timer") + ' ' + _t("home.profile.statTime") + '</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="storage"> <span>' + window.ktaIcone("save") + ' ' + _t("home.profile.statStorage") + '</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="plans"> <span>' + window.ktaIcone("map") + ' ' + _t("home.profile.statPlans") + '</span></label>' +
                   (_jeuProfilActif()
-                    ? '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="score"> <span>' + _t("home.profile.statScore") + '</span></label>' +
-                      '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="feats"> <span>' + _t("home.profile.statFeats") + '</span></label>'
+                    ? '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="score"> <span>' + window.ktaIcone("star") + ' ' + _t("home.profile.statScore") + '</span></label>' +
+                      '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="feats"> <span>' + window.ktaIcone("trophy") + ' ' + _t("home.profile.statFeats") + '</span></label>'
                     : '') +
                   _statsExt.map(function(x) {
                     return '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="ext:' + _echapStat(x.cle) + '"> <span>' +
@@ -926,7 +929,7 @@
               // Édition pro : affichée SEULEMENT quand l'installation sert sa licence (source serveur). Aucun
               // import ni retrait par l'utilisateur.
               '<div class="kta-profile-pro-section" id="kta-profile-pro-section" hidden>' +
-                '<div class="kta-profile-pro-header">💼 ' + window.I18n.t("home.splash.proEdition") + '</div>' +
+                '<div class="kta-profile-pro-header">' + window.ktaIcone("briefcase") + ' ' + window.I18n.t("home.splash.proEdition") + '</div>' +
                 '<div class="kta-profile-pro-body" id="kta-profile-pro-body">' +
                   '<div class="kta-profile-pro-loading">⏳…</div>' +
                 '</div>' +
@@ -935,11 +938,11 @@
               // Fond d'écran, juste avant les actions : c'est de la déco, elle ne s'intercale pas entre l'identité
               // et les stats/rang qui se lisent d'affilée.
               '<div class="kta-profile-details-section">' +
-                '<div class="kta-profile-details-section-titre">' + _t("home.profile.wallTitle") + '</div>' +
+                '<div class="kta-profile-details-section-titre">' + window.ktaIcone("image") + ' ' + _t("home.profile.wallTitle") + '</div>' +
                 '<div class="kta-wall-preview" id="kta-wall-preview">' + _t("home.profile.wallNone") + '</div>' +
                 '<div class="kta-wall-actions">' +
-                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-wall-btn">' + _t("home.profile.wallBtn") + '</button>' +
-                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-wall-remove" style="' + (snap.hasWallpaper ? '' : 'display:none;') + '">' + _t("home.profile.wallRemove") + '</button>' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-wall-btn">' + window.ktaIcone("image") + ' ' + _t("home.profile.wallBtn") + '</button>' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-wall-remove" style="' + (snap.hasWallpaper ? '' : 'display:none;') + '">' + window.ktaIcone("trash-2") + ' ' + _t("home.profile.wallRemove") + '</button>' +
                   '<input type="file" id="kta-wall-input" accept="image/*" style="display:none;">' +
                 '</div>' +
                 '<div id="kta-wall-reglages" style="' + (snap.hasWallpaper ? '' : 'display:none;') + '">' +
@@ -970,13 +973,13 @@
               '</div>' +
 
               '<div class="kta-profile-details-actions">' +
-                '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">' + _t("home.profile.exportBtn") + '</button>' +
+                '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">' + window.ktaIcone("arrow-up-from-line") + ' ' + _t("home.profile.exportBtn") + '</button>' +
                 // 🔒 En kiosque `serverPlansOnly`, l'import est refusé (cf. profileExportImport) : pas affiché.
                 // L'export reste.
                 ((typeof window.ktaKiosqueServeurSeul === "function" && window.ktaKiosqueServeurSeul())
                   ? ""
-                  : '<button type="button" class="kta-btn kta-btn-secondary" id="kta-profile-details-import">' + _t("home.profile.importBtn") + '</button>') +
-                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-details-reset">' + _t("home.profile.resetBtn") + '</button>' +
+                  : '<button type="button" class="kta-btn kta-btn-secondary" id="kta-profile-details-import">' + window.ktaIcone("arrow-down-to-line") + ' ' + _t("home.profile.importBtn") + '</button>') +
+                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-details-reset">' + window.ktaIcone("trash-2") + ' ' + _t("home.profile.resetBtn") + '</button>' +
               '</div>' +
 
               '<p class="kta-profile-details-footer-hint">' +
@@ -1062,6 +1065,9 @@
         // ligne, données perso, déconnexion — fournies par l'extension).
         if (window.KtaExtensions && typeof window.KtaExtensions.blocActionsCompte === "function") {
           const blocCompte = window.KtaExtensions.blocActionsCompte("profil", _t("home.profile.compteTitre"));
+          // Le titre est posé en texte par la prise : l'icône SVG se glisse devant.
+          const titreCompte = blocCompte && blocCompte.querySelector(".kta-ext-compte-titre");
+          if (titreCompte) titreCompte.insertAdjacentHTML("afterbegin", window.ktaIcone("user") + " ");
           const grade = document.getElementById("kta-profile-details-rank");
           if (blocCompte && grade && grade.parentNode) grade.parentNode.insertBefore(blocCompte, grade);
         }
@@ -1079,12 +1085,12 @@
             setTimeout(function() {
               saveBtn.style.display = "none";
               saveBtn.disabled = false;
-              saveBtn.textContent = _t("home.profile.saveName");
+              saveBtn.innerHTML = window.ktaIcone("save") + " " + window.ktaEsc(_t("home.profile.saveName"));
             }, 700);
           } catch(e) {
             window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" });
             saveBtn.disabled = false;
-            saveBtn.textContent = _t("home.profile.saveName");
+            saveBtn.innerHTML = window.ktaIcone("save") + " " + window.ktaEsc(_t("home.profile.saveName"));
           }
         });
         surnomInput.addEventListener("keydown", function(e) {
@@ -1105,10 +1111,10 @@
             const snap2 = window.UserProfile.get();
             _refreshProfileDetailsAvatar(snap2);
             removeBtn.style.display = "";
-            photoBtn.textContent = _t("home.profile.photoChange");
+            photoBtn.innerHTML = window.ktaIcone("camera") + " " + window.ktaEsc(_t("home.profile.photoChange"));
           } catch(e) {
             window.ktaAlerte(_t("home.profile.errPhotoUpload") + (e.message || e), { type: "erreur" });
-            photoBtn.textContent = _t("home.profile.photoBtn");
+            photoBtn.innerHTML = window.ktaIcone("camera") + " " + window.ktaEsc(_t("home.profile.photoBtn"));
           }
           photoBtn.disabled = false;
           photoInput.value = "";
@@ -1120,7 +1126,7 @@
             const snap2 = window.UserProfile.get();
             _refreshProfileDetailsAvatar(snap2);
             removeBtn.style.display = "none";
-            photoBtn.textContent = _t("home.profile.photoBtn");
+            photoBtn.innerHTML = window.ktaIcone("camera") + " " + window.ktaEsc(_t("home.profile.photoBtn"));
           } catch(e) { window.ktaAlerte(_t("home.profile.errGeneric") + (e.message || e), { type: "erreur" }); }
         });
 
@@ -1282,7 +1288,7 @@
             _originalSurnom = "";
             saveBtn.style.display = "none";
             removeBtn.style.display = "none";
-            photoBtn.textContent = _t("home.profile.photoBtn");
+            photoBtn.innerHTML = window.ktaIcone("camera") + " " + window.ktaEsc(_t("home.profile.photoBtn"));
             _refreshProfileDetailsAvatar(snap2);
             // `clear()` efface aussi le fond : l'aperçu suit.
             await _rafraichirApercuFond();
@@ -1306,7 +1312,7 @@
           overlay.innerHTML =
             '<div class="kta-readme-modal-boite" style="max-width:440px; height:auto !important; max-height:88vh !important; border-color:rgba(255,140,140,0.55);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.25);">' +
-                '<span class="kta-readme-modal-titre" style="color:var(--kta-erreur);">' + _t("home.profile.resetTitle") + '</span>' +
+                '<span class="kta-readme-modal-titre" style="color:var(--kta-erreur);">' + window.ktaIcone("trash-2") + ' ' + _t("home.profile.resetTitle") + '</span>' +
                 '<button type="button" class="kta-panneau-close" id="kta-profile-reset-close" aria-label="' + _t("home.profile.cancel") + '">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps">' +
@@ -1323,7 +1329,7 @@
               '</div>' +
               '<div class="kta-profile-footer" style="display:flex; gap:8px; padding:14px 16px; border-top:1px solid rgba(255,255,255,0.06);">' +
                 '<button type="button" class="kta-btn kta-btn-ghost"  id="kta-profile-reset-cancel" style="flex:1;">' + _t("home.profile.cancel") + '</button>' +
-                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-reset-go"     style="flex:1;">' + _t("home.profile.resetConfirm") + '</button>' +
+                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-reset-go"     style="flex:1;">' + window.ktaIcone("trash-2") + ' ' + _t("home.profile.resetConfirm") + '</button>' +
               '</div>' +
             '</div>';
           document.documentElement.appendChild(overlay);
@@ -1401,7 +1407,7 @@
             '</div>';
         } else {
           avatarEl.innerHTML =
-            '<div class="kta-profile-details-avatar-initial kta-profile-details-avatar-empty">👤</div>';
+            '<div class="kta-profile-details-avatar-initial kta-profile-details-avatar-empty">' + window.ktaIcone("user") + '</div>';
         }
       }
 
@@ -1509,17 +1515,17 @@
         const storageExtBytes = _storageExtBytes();  // ZIP des plans ☁️ (inclus dans le total)
         statsEl.innerHTML =
           '<div class="kta-profile-stat-grid">' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPlans + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPlans") + '</span></div>' +
-            (_plansExtCount.length ? '<div class="kta-profile-stat-cell" title="' + _t("home.profile.stats.plansExtTitle") + '"><span class="kta-profile-stat-num">' + _plansExtCount.length + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPlansExt") + '</span></div>' : '') +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbSessions + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblSessions") + '</span></div>' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblFavorites") + '</span></div>' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblSnapshots") + '</span></div>' +
-            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblPhotos") + ' (' + _fmtBytes(photosBytes) + ')' + (nbPhotosExt ? ' · ☁️ ' + nbPhotosExt : '') + '</span></div>' +
-            '<div class="kta-profile-stat-cell" title="' + _t("home.profile.stats.totalTitle") + '"><span class="kta-profile-stat-num kta-profile-stat-num-bytes">' + _fmtBytes(storageTotalBytes) + '</span><span class="kta-profile-stat-lbl">' + _t("home.profile.stats.lblStorage") + (storageExtBytes ? ' · ' + _t("home.profile.stats.dontExt", { taille: _fmtBytes(storageExtBytes) }) : '') + '</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPlans + '</span><span class="kta-profile-stat-lbl">' + window.ktaIcone("library") + ' ' + _t("home.profile.stats.lblPlans") + '</span></div>' +
+            (_plansExtCount.length ? '<div class="kta-profile-stat-cell" title="' + _t("home.profile.stats.plansExtTitle") + '"><span class="kta-profile-stat-num">' + _plansExtCount.length + '</span><span class="kta-profile-stat-lbl">' + window.ktaIcone("database") + ' ' + _t("home.profile.stats.lblPlansExt") + '</span></div>' : '') +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbSessions + '</span><span class="kta-profile-stat-lbl">' + window.ktaIcone("save") + ' ' + _t("home.profile.stats.lblSessions") + '</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">' + window.ktaIcone("star") + ' ' + _t("home.profile.stats.lblFavorites") + '</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">' + window.ktaIcone("archive") + ' ' + _t("home.profile.stats.lblSnapshots") + '</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">' + window.ktaIcone("camera") + ' ' + _t("home.profile.stats.lblPhotos") + ' (' + _fmtBytes(photosBytes) + ')' + (nbPhotosExt ? ' · ' + window.ktaIcone("cloud") + ' ' + nbPhotosExt : '') + '</span></div>' +
+            '<div class="kta-profile-stat-cell" title="' + _t("home.profile.stats.totalTitle") + '"><span class="kta-profile-stat-num kta-profile-stat-num-bytes">' + _fmtBytes(storageTotalBytes) + '</span><span class="kta-profile-stat-lbl">' + window.ktaIcone("hard-drive") + ' ' + _t("home.profile.stats.lblStorage") + (storageExtBytes ? ' · ' + _t("home.profile.stats.dontExt", { taille: _fmtBytes(storageExtBytes) }) : '') + '</span></div>' +
           '</div>' +
           (_statsExt.length
             ? '<div class="kta-profile-extstats">' +
-                '<div class="kta-profile-barstats-header">' + _t("home.profile.stats.extTitle") + '</div>' +
+                '<div class="kta-profile-barstats-header">' + window.ktaIcone("building-2") + ' ' + _t("home.profile.stats.extTitle") + '</div>' +
                 '<div class="kta-profile-stat-grid">' +
                   _statsExt.map(function(x) {
                     return '<div class="kta-profile-stat-cell" title="' + _echapStat(x.titre || x.libelle) + '">' +
@@ -1533,15 +1539,15 @@
           // planter. Squelette rendu d'abord, `_calculerStatsPlansAggregees` remplit le tbody au fil de l'eau.
           '<div class="kta-profile-plansstats" id="kta-profile-plansstats">' +
             '<div class="kta-profile-plansstats-header" id="kta-profile-plansstats-header">' +
-              _t("home.profile.stats.plansHeaderLoading") +
+              window.ktaIcone("chart-column") + ' ' + _t("home.profile.stats.plansHeaderLoading") +
             '</div>' +
             '<div class="kta-profile-plansstats-wrap">' +
               '<table class="kta-profile-plansstats-table">' +
                 '<thead>' +
                   '<tr>' +
                     '<th>' + _t("home.profile.stats.thPlan") + '</th>' +
-                    '<th title="' + _t("home.profile.stats.thPoisTitle") + '">📍</th>' +
-                    '<th title="' + _t("home.profile.stats.thRoadsTitle") + '">🛣️</th>' +
+                    '<th title="' + _t("home.profile.stats.thPoisTitle") + '">' + window.ktaIcone("map-pin") + '</th>' +
+                    '<th title="' + _t("home.profile.stats.thRoadsTitle") + '">' + window.ktaIcone("m-galerie") + '</th>' +
                     '<th title="' + _t("home.profile.stats.thDistTitle") + '">↔</th>' +
                   '</tr>' +
                 '</thead>' +
@@ -1715,7 +1721,7 @@
           plans = plans.filter(function(p) { return p.type !== "server"; });
         }
         if (plans.length === 0) {
-          if (headerEl) headerEl.innerHTML = _t("home.profile.stats.plansHeaderEmpty");
+          if (headerEl) headerEl.innerHTML = window.ktaIcone("chart-column") + " " + _t("home.profile.stats.plansHeaderEmpty");
           return;
         }
 
@@ -1833,7 +1839,7 @@
           await new Promise(function(r) { setTimeout(r, 0); });
 
           if (headerEl) {
-            headerEl.innerHTML = _t("home.profile.statsProgress", { i: (i + 1), n: plans.length });
+            headerEl.innerHTML = window.ktaIcone("chart-column") + " " + _t("home.profile.statsProgress", { i: (i + 1), n: plans.length });
           }
 
           const stats = _resoudreStatsPlan(plan);
@@ -1904,8 +1910,8 @@
           const versionTag = plan.version ? ' <span class="kta-pps-version">' + window.ktaEsc(plan.version) + '</span>' : '';
           const currentTag = isCurrent ? ' <span class="kta-pps-current" title="Plan actuellement chargé (stats live + data layers)">●</span>' : '';
           // Marqueur ⚠️ si stats partielles (plan jamais ouvert : calques absents).
-          const partialTag = isPartial ? ' <span class="kta-pps-partial" title="⚠️ Stats partielles : session uniquement (les data layers embedded ne sont pas inclus). Ouvre ce plan une fois pour avoir les stats complètes en cache.">⚠️</span>' : '';
-          const extTag = _estPlanExt(plan) ? ' <span class="kta-pps-ext" title="' + _t("home.profile.stats.plansExtTitle") + '">☁️</span>' : '';
+          const partialTag = isPartial ? ' <span class="kta-pps-partial" title="⚠️ Stats partielles : session uniquement (les data layers embedded ne sont pas inclus). Ouvre ce plan une fois pour avoir les stats complètes en cache.">' + window.ktaIcone("triangle-alert") + '</span>' : '';
+          const extTag = _estPlanExt(plan) ? ' <span class="kta-pps-ext" title="' + _t("home.profile.stats.plansExtTitle") + '">' + window.ktaIcone("cloud") + '</span>' : '';
           const row = document.createElement("tr");
           row.className = isCurrent ? "kta-pps-row-current" : (isPartial ? "kta-pps-row-partial" : "");
           row.innerHTML =
@@ -1922,7 +1928,7 @@
             totalDistStr = window.formatDistance(totalDistM, 0);
           } else if (totalDistM > 0 && nbPxOrphan > 0) {
             totalDistStr = window.formatDistance(totalDistM, 0) +
-                           ' <span style="color:var(--kta-accent-texte); font-size:10px;" title="' + nbPxOrphan + ' plan' + (nbPxOrphan > 1 ? "s" : "") + ' sans scale connue, distance en pixels uniquement">(+ ' + nbPxOrphan + ' ⚠️ px)</span>';
+                           ' <span style="color:var(--kta-accent-texte); font-size:10px;" title="' + nbPxOrphan + ' plan' + (nbPxOrphan > 1 ? "s" : "") + ' sans scale connue, distance en pixels uniquement">(+ ' + nbPxOrphan + ' ' + window.ktaIcone("triangle-alert") + ' px)</span>';
           } else if (totalDistPxOrphan > 0) {
             totalDistStr = (totalDistPxOrphan >= 1000
                             ? (totalDistPxOrphan / 1000).toFixed(1) + "k px"
@@ -1930,7 +1936,7 @@
           } else {
             totalDistStr = "—";
           }
-          const partialSuffix = nbPartial > 0 ? ', <span style="color:var(--kta-accent-texte);">' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + '</span>' : '';
+          const partialSuffix = nbPartial > 0 ? ', <span style="color:var(--kta-accent-texte);">' + nbPartial + ' ' + window.ktaIcone("triangle-alert") + ' partiel' + (nbPartial > 1 ? "s" : "") + '</span>' : '';
           tfootEl.innerHTML =
             '<tr>' +
               '<th>Total (' + nbAvecData + ' avec données' + partialSuffix + ')</th>' +
@@ -1948,9 +1954,9 @@
 
         if (headerEl) {
           const partialNote = nbPartial > 0
-            ? ' <span style="color:var(--kta-accent-texte); font-size:11px;">(' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + ' — ouvre une fois pour stats complètes)</span>'
+            ? ' <span style="color:var(--kta-accent-texte); font-size:11px;">(' + nbPartial + ' ' + window.ktaIcone("triangle-alert") + ' partiel' + (nbPartial > 1 ? "s" : "") + ' — ouvre une fois pour stats complètes)</span>'
             : '';
-          headerEl.innerHTML = _t("home.profile.statsFinal", { n: plans.length, s: (plans.length > 1 ? "s" : "") }) + partialNote;
+          headerEl.innerHTML = window.ktaIcone("chart-column") + " " + _t("home.profile.statsFinal", { n: plans.length, s: (plans.length > 1 ? "s" : "") }) + partialNote;
         }
 
         // Camemberts SVG agrégés, après la table (window.StatsGlobales.renderPieChart, même rendu que les Stats
@@ -2048,11 +2054,11 @@
         if (_statsParPlan.length) breakdowns = _agregerFiltre();
 
         const sections = [
-          { key: "plansByTag",    category: "plantags",   label: "🏷️ " + tr("home.profile.pies.plansParTag") },
-          { key: "pointsByTag",   category: "tags",       label: "📍 Points par tag" },
-          { key: "roadsByType",   category: "traces",     label: "🛣️ Tracés par type" },
-          { key: "zonesByType",   category: "zones",      label: "⬛ Zones par type" },
-          { key: "structsByType", category: "structures", label: "🏛️ Structures par type" }
+          { key: "plansByTag",    category: "plantags",   ico: "tag", label: tr("home.profile.pies.plansParTag") },
+          { key: "pointsByTag",   category: "tags",       ico: "map-pin", label: "Points par tag" },
+          { key: "roadsByType",   category: "traces",     ico: "m-galerie", label: "Tracés par type" },
+          { key: "zonesByType",   category: "zones",      ico: "m-zone", label: "Zones par type" },
+          { key: "structsByType", category: "structures", ico: "m-pilier", label: "Structures par type" }
         ];
         const activeSections = sections.filter(function(s) {
           const data = breakdowns[s.key] || {};
@@ -2087,7 +2093,7 @@
             const nbPlans = _statsParPlan.filter(function(e) {
               return e.type === "server" || window.PlanRegistry;
             }).length;
-            bouton = ' <button type="button" class="kta-profile-pies-fix">' +
+            bouton = ' <button type="button" class="kta-profile-pies-fix">' + window.ktaIcone("search") + ' ' +
                        window.ktaEsc(tr("home.profile.pies.retrouverNoms", { n: nbPlans })) +
                      '</button>';
           }
@@ -2192,7 +2198,7 @@
         const piesContainer = document.createElement("div");
         piesContainer.id = "kta-profile-pies";
         piesContainer.className = "kta-profile-pies-wrap";
-        let html = '<div class="kta-profile-pies-header">📊 Répartition par catégorie <span style="color:var(--kta-texte-3); font-size:11px; font-weight:400;">(agrégée sur tes plans)</span></div>';
+        let html = '<div class="kta-profile-pies-header">' + window.ktaIcone("chart-column") + ' Répartition par catégorie <span style="color:var(--kta-texte-3); font-size:11px; font-weight:400;">(agrégée sur tes plans)</span></div>';
         html += _chipsFiltre();
         html += '<div class="kta-profile-pies-grid">';
         activeSections.forEach(function(s) {
@@ -2207,7 +2213,7 @@
             data = copie;
           }
           html += '<div class="kta-profile-pies-card">' +
-                    '<div class="kta-profile-pies-card-title">' + s.label + '</div>' +
+                    '<div class="kta-profile-pies-card-title">' + window.ktaIcone(s.ico) + ' ' + s.label + '</div>' +
                     // 4e argument true : libellés par défaut, sans la cascade LegendCustomization (le renommage
                     // local d'un plan ne s'impose pas à l'agrégat).
                     renderPie(data, s.category, 140, true, labels || {}) +
@@ -2250,7 +2256,7 @@
           modal.innerHTML = `
             <div class="kta-readme-modal-boite" style="max-width:440px;">
               <div class="kta-readme-modal-header">
-                <span class="kta-readme-modal-titre">📂 Charger une liste de plans</span>
+                <span class="kta-readme-modal-titre">${window.ktaIcone("folder-open")} Charger une liste de plans</span>
               </div>
               <div class="kta-readme-modal-corps" style="padding:18px;">
                 <p style="font-size:13px; color:var(--kta-texte-2); line-height:1.5;">
@@ -2260,8 +2266,8 @@
                 </p>
                 <p style="font-size:13px; color:var(--kta-texte); margin-top:14px;">Que voulez-vous faire ?</p>
                 <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
-                  <button class="kta-btn kta-btn-primary" data-mode="replace">🔁 Remplacer ma liste actuelle</button>
-                  <button class="kta-btn kta-btn-primary" data-mode="merge">➕ Fusionner (garder les deux)</button>
+                  <button class="kta-btn kta-btn-primary" data-mode="replace">${window.ktaIcone("replace")} Remplacer ma liste actuelle</button>
+                  <button class="kta-btn kta-btn-primary" data-mode="merge">${window.ktaIcone("merge")} Fusionner (garder les deux)</button>
                   <button class="kta-btn kta-btn-ghost"   data-mode="cancel">Annuler</button>
                 </div>
               </div>

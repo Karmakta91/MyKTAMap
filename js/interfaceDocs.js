@@ -155,15 +155,17 @@ function _choisirGuide(ext, opts) {
     b.type = "button";
     b.id = id;
     b.className = "kta-btn kta-btn-primary";
-    b.textContent = libelle;
+    // Icône de la Documentation (ktaIcones.js) puis libellé en nœud texte.
+    b.innerHTML = window.ktaIcone("book-open") + " ";
+    b.appendChild(document.createTextNode(libelle));
     b.addEventListener("click", function () {
       ov.remove();
       afficherReadme(Object.assign({}, opts, { guide: guide }));
     });
     return b;
   };
-  corps.append(bouton("kta-readme-choix-classique", "📖 " + t("docs.choix.classique"), "classique"),
-    bouton("kta-readme-choix-extension", "📖 " + ext.titre, "extension"));
+  corps.append(bouton("kta-readme-choix-classique", t("docs.choix.classique"), "classique"),
+    bouton("kta-readme-choix-extension", ext.titre, "extension"));
   boite.append(entete, corps);
   ov.appendChild(boite);
   fermer.addEventListener("click", function () { ov.remove(); });
@@ -198,7 +200,7 @@ function _construireSommaireReadme(corpsEl) {
     return { h2: h2, children: children };
   });
 
-  let html = '<div class="kta-readme-toc-title">📚 Sommaire</div>';
+  let html = '<div class="kta-readme-toc-title">' + window.ktaIcone("list") + ' Sommaire</div>';
   html += '<ul class="kta-readme-toc-list">';
 
   tree.forEach(function(node) {
@@ -211,13 +213,14 @@ function _construireSommaireReadme(corpsEl) {
       html += '<span class="kta-readme-toc-bullet">•</span>';
     }
     html += '<a href="#' + node.h2.id + '" class="kta-readme-toc-link kta-readme-toc-link-h2">';
-    html += node.h2.textContent;
+    // innerHTML (déjà échappé par _renderMarkdown) : garde l'icône SVG d'un titre, que textContent perdrait.
+    html += node.h2.innerHTML;
     html += '</a>';
     html += '</div>';
     if (hasChildren) {
       html += '<ul class="kta-readme-toc-sublist">';
       node.children.forEach(function(h3) {
-        html += '<li><a href="#' + h3.id + '" class="kta-readme-toc-link kta-readme-toc-link-h3">' + h3.textContent + '</a></li>';
+        html += '<li><a href="#' + h3.id + '" class="kta-readme-toc-link kta-readme-toc-link-h3">' + h3.innerHTML + '</a></li>';
       });
       html += '</ul>';
     }
@@ -402,7 +405,9 @@ function _chargerReadme(fichier, opts) {
   fetch(fichier)
     .then(function(res) { if (!res.ok) throw new Error("HTTP " + res.status + " — " + fichier); return res.text(); })
     .then(function(md) {
-      const html = _renderMarkdown(md);
+      // Emoji qui désigne un bouton passé en SVG → la même icône (KtaIcones.DOC) ; jeton privé à travers l'échappement.
+      const K = window.KtaIcones;
+      const html = K ? K.jetonsEnSvg(_renderMarkdown(K.substituerDoc(md, { jeton: true }))) : _renderMarkdown(md);
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
       if (!corps) return;
       corps.innerHTML = html;
@@ -560,14 +565,14 @@ function _ouvrirReadmeModal(html, opts) {
   const btnOnboarding = opts.hideOnboarding
     ? ''
     : '<button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="' + _docTxt("docs.tutorielBtn") +
-      '" title="🎓 ' + _docTxt("docs.tutorielBtn") + '">🎓</button>';
+      '" title="' + _docTxt("docs.tutorielBtn") + '">' + window.ktaIcone("graduation-cap") + '</button>';
   // Une langue par fichier réellement disponible (DOC_AVAILABLE_LANGS), méta de I18n.available().
   const _docCurrentLang = _getReadmeLang();
   const _docLangMeta = (window.I18n && window.I18n.available) ? window.I18n.available() : [
     { code: "fr", label: "Français", flag: "🇫🇷" },
     { code: "en", label: "English",  flag: "🇬🇧" }
   ];
-  // Menu déroulant (un seul contrôle quel que soit le nombre de langues) ; la place libérée accueille 🤖.
+  // Menu déroulant (un seul contrôle quel que soit le nombre de langues) ; la place libérée accueille l'aide de l'IA.
   const btnLang = '<select class="kta-readme-lang-select" id="kta-readme-lang-select" ' +
     'aria-label="' + _docTxt("docs.langSelect") + '" title="' + _docTxt("docs.langSelect") + '">' +
     DOC_AVAILABLE_LANGS.map(function(code) {
@@ -578,12 +583,12 @@ function _ouvrirReadmeModal(html, opts) {
     }).join("") + '</select>';
   const btnAiia = (typeof window.afficherModaleAideIA === "function")
     ? '<button class="kta-readme-tutorial-btn" id="kta-readme-aiia-btn" type="button" ' +
-      'aria-label="' + _docTxt("docs.aiiaBtn") + '" title="' + _docTxt("docs.aiiaBtn") + '">🤖</button>'
+      'aria-label="' + _docTxt("docs.aiiaBtn") + '" title="' + _docTxt("docs.aiiaBtn") + '">' + window.ktaIcone("bot") + '</button>'
     : "";
   modal.innerHTML = `
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
-        <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="${_docTxt("docs.tocToggle")}" title="${_docTxt("docs.tocToggle")}">📚</button>
+        <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="${_docTxt("docs.tocToggle")}" title="${_docTxt("docs.tocToggle")}">${window.ktaIcone("list")}</button>
         <span class="kta-readme-modal-titre">Documentation${opts.titreGuide ? " · " + window.ktaEsc(opts.titreGuide) : ""}</span>
         ${btnLang}
         ${btnAiia}
@@ -604,9 +609,10 @@ function _ouvrirReadmeModal(html, opts) {
       </div>
       <div class="kta-readme-modal-footer">
         <span class="kta-readme-modal-by">Développé par <img src="icon/karma.png" alt="KARMA"></span>
-        <!-- Mêmes crédits que le splash et le pied de l'accueil. &amp;nbsp; entre emoji et nom : la paire ne
-             se coupe jamais. -->
-        <span>— 🍃&nbsp;Leaflet · 🧊&nbsp;three.js · 📦&nbsp;JSZip · 📤&nbsp;jsPDF · 🌍&nbsp;OSM · 🧭&nbsp;Dijkstra · 📸&nbsp;html2canvas</span>
+        <!-- Mêmes crédits et mêmes icônes que le splash et le pied de l'accueil. &amp;nbsp; entre icône et nom : la
+             paire ne se coupe jamais. -->
+        <span>— ${window.ktaIcone("leaf")}&nbsp;Leaflet · ${window.ktaIcone("box")}&nbsp;three.js · ${window.ktaIcone("package")}&nbsp;JSZip · ${window.ktaIcone("file-text")}&nbsp;jsPDF ·
+          ${window.ktaIcone("globe")}&nbsp;OSM · ${window.ktaIcone("route")}&nbsp;Dijkstra · ${window.ktaIcone("camera")}&nbsp;html2canvas · ${window.ktaIcone("palette")}&nbsp;Twemoji</span>
       </div>
     </div>
   `;
@@ -718,6 +724,7 @@ const AIDE_PAR_MODALE = {
   "kta-convert-modal":        "corriger",
   "kta-niv-modal":            "multi-niveau",
   "kta-jct-modal":            "multi-niveau",
+  "kta-prof-modal":           "multi-niveau",
   "kta-depannage-modal":      "depannage",
   "kta-vue3d":                "vue-3d"
 };
@@ -749,14 +756,15 @@ function _aidePoserBouton(modal) {
   if (!modal || !modal.id) return;
   const slug = AIDE_PAR_MODALE[modal.id];
   if (!slug || !ktaAideContextuelleActive()) return;
-  // Deux familles d'en-tête (modales de contenu, menu Tracker) : ❓ au même endroit, avant la croix. Une fenêtre
+  // Deux familles d'en-tête (modales de contenu, menu Tracker) : l'aide au même endroit, avant la croix. Une fenêtre
   // sans en-tête de modale (vue 3D) marque sa rangée de boutons kta-aide-ctx-entete et sa croix data-aide-croix.
   const head = modal.querySelector(".kta-readme-modal-header, .kta-tracker-modal-header, .kta-aide-ctx-entete");
   if (!head || head.querySelector(".kta-aide-ctx-btn")) return;
   const b = document.createElement("button");
   b.type = "button";
   b.className = "kta-aide-ctx-btn";
-  b.textContent = "❓";
+  // Même icône que le bouton Aide de la barre de la carte (ktaIcones.js) ; « ? » si le module manque.
+  if (typeof window.ktaIcone === "function") b.innerHTML = window.ktaIcone("circle-help"); else b.textContent = "?";
   const t = (window.I18n && window.I18n.t) ? window.I18n.t("aide.ctx.btn") : "Aide";
   b.title = t; b.setAttribute("aria-label", t);
   b.addEventListener("click", function(e) {
@@ -767,7 +775,7 @@ function _aidePoserBouton(modal) {
     "[data-aide-croix]");
   // 🩸 `querySelector` cherche en PROFONDEUR : la croix est parfois imbriquée dans un conteneur d'actions,
   // et insérer dans `head` lève un NotFoundError — depuis un MutationObserver, donc hors de tout try, et la
-  // modale reste sans ❓. On insère dans le parent RÉEL de la croix.
+  // modale reste sans bouton d'aide. On insère dans le parent RÉEL de la croix.
   if (croix && croix.parentNode) croix.parentNode.insertBefore(b, croix);
   else head.appendChild(b);
 }
@@ -812,7 +820,8 @@ function afficherAide() {
   // Contenu des DICOS : l'Aide suit la langue de l'app, sans sélecteur de langue local (la 📖
   // Documentation garde le sien : elle repose sur des fichiers).
 
-  const aideTitre = window.I18n ? window.I18n.t("aide.ui.titre") : "";
+  // 🔒 Titre échappé puis substitué (❓ → circle-help, comme le bouton Aide de la barre).
+  const aideTitre = _aideIcones(window.ktaEsc(window.I18n ? window.I18n.t("aide.ui.titre") : ""));
 
   // HUB de sections (cartes par catégorie + recherche) → sous-modale par section (dicos `aide.sec.*`).
   modal.innerHTML = `
@@ -878,7 +887,7 @@ function _aideRow(section, onClick) {
   const t = document.createElement("span");
   t.className = "kta-aide-row-titre";
   // Section (titre + raccourci) ou simple chaîne (ligne « ⌨️ Raccourcis clavier »).
-  if (typeof section === "string") t.textContent = section;
+  if (typeof section === "string") _aideTexteIcones(t, section);
   else _aidePoserTitre(t, section);
   const chev = document.createElement("span");
   chev.className = "kta-aide-row-chevron";
@@ -889,11 +898,21 @@ function _aideRow(section, onClick) {
   return r;
 }
 
+// Emoji de l'Aide qui désigne un bouton passé en SVG → la même icône (js/ktaIcones.js > KtaIcones.DOC).
+function _aideIcones(html) {
+  return window.KtaIcones ? window.KtaIcones.substituerDoc(html) : html;
+}
+// 🔒 Texte (titre, catégorie) : échappé AVANT la substitution, qui n'ajoute que des SVG fixes du module.
+function _aideTexteIcones(el, texte) {
+  if (window.KtaIcones && typeof window.ktaEsc === "function") el.innerHTML = _aideIcones(window.ktaEsc(texte));
+  else el.textContent = texte;
+}
+
 // Section depuis les DICOS. Le corps contient du HTML VOULU (documentation mise en forme, classes CSS) ;
 // le titre est du texte.
 function _aideSection(slug) {
   const t = window.I18n ? window.I18n.t("aide.sec." + slug + ".titre") : slug;
-  const h = window.I18n ? window.I18n.t("aide.sec." + slug + ".html") : "";
+  const h = _aideIcones(window.I18n ? window.I18n.t("aide.sec." + slug + ".html") : "");
   // Raccourci clavier : clé PROPRE et facultative. Jamais dans le titre (posé en textContent, le
   // balisage s'afficherait en clair).
   const r = (window.I18n && window.I18n.has && window.I18n.has("aide.sec." + slug + ".raccourci"))
@@ -904,7 +923,7 @@ function _aideSection(slug) {
 // Un seul endroit pour poser un titre (hub ET fiche), sinon deux rendus divergent.
 function _aidePoserTitre(el, section) {
   if (!el || !section) return;
-  el.textContent = section.titre || "";
+  _aideTexteIcones(el, section.titre || "");
   if (!section.raccourci) return;
   const s = document.createElement("span");
   s.className = "kta-aide-mini";
@@ -917,7 +936,7 @@ function _aideRendreHub(corps) {
 
   const intro = document.createElement("p");
   intro.className = "kta-aide-intro";
-  intro.innerHTML = window.I18n ? window.I18n.t("aide.intro") : "";
+  intro.innerHTML = _aideIcones(window.I18n ? window.I18n.t("aide.intro") : "");
   corps.appendChild(intro);
 
   const search = document.createElement("input");
@@ -970,7 +989,7 @@ function _aideRendreHub(corps) {
     if (!rows.length) return;
     const ct = document.createElement("div");
     ct.className = "kta-aide-cat-titre";
-    ct.textContent = window.I18n ? window.I18n.t("aide.cat." + cat.cle) : cat.cle;
+    _aideTexteIcones(ct, window.I18n ? window.I18n.t("aide.cat." + cat.cle) : cat.cle);
     hub.appendChild(ct);
     rows.forEach(function(s) {
       const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
@@ -987,7 +1006,7 @@ function _aideRendreHub(corps) {
   if (orphans.length) {
     const ct = document.createElement("div");
     ct.className = "kta-aide-cat-titre";
-    ct.textContent = window.I18n ? window.I18n.t("aide.ui.other") : "";
+    _aideTexteIcones(ct, window.I18n ? window.I18n.t("aide.ui.other") : "");
     hub.appendChild(ct);
     orphans.forEach(function(s) {
       const r = _aideRow(s, function() { _aideOuvrirSousModal(s); });
@@ -1262,12 +1281,12 @@ window.afficherModaleAideIA = function() {
   modal.innerHTML =
     '<div class="kta-readme-modal-boite" style="max-width:600px; height:auto; max-height:90vh;">' +
       '<div class="kta-readme-modal-header">' +
-        '<span class="kta-readme-modal-titre">' + window.I18n.t("aiia.titre") + '</span>' +
+        '<span class="kta-readme-modal-titre">' + window.ktaIcone("bot") + " " + window.I18n.t("aiia.titre") + '</span>' +
         '<button class="kta-panneau-close" id="kta-aide-ia-close" type="button">✕</button>' +
       '</div>' +
       '<div class="kta-readme-modal-corps">' +
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.profil.titre") + '</div>' +
+          '<div class="kta-aide-section-titre">' + window.ktaIcone("circle-help") + ' ' + window.I18n.t("aiia.profil.titre") + '</div>' +
           '<div id="kta-aide-ia-profils" style="display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--kta-texte-2);">' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="usage" checked> <span><strong>' + window.I18n.t("aiia.profil.usage") + '</strong> — ' + window.I18n.t("aiia.profil.usage.desc") + '</span></label>' +
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="diagnostic"> <span><strong>' + window.I18n.t("aiia.profil.diagnostic") + '</strong> — ' + window.I18n.t("aiia.profil.diagnostic.desc") + '</span></label>' +
@@ -1275,20 +1294,20 @@ window.afficherModaleAideIA = function() {
             '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer;"><input type="radio" name="ktaAiiaProfil" value="complet"> <span><strong>' + window.I18n.t("aiia.profil.complet") + '</strong> — ' + window.I18n.t("aiia.profil.complet.desc") + '</span></label>' +
           '</div>' +
           '<label style="display:flex; gap:8px; align-items:baseline; cursor:pointer; margin-top:10px; font-size:13px; color:var(--kta-texte-2);">' +
-            '<input type="checkbox" id="kta-aide-ia-etat"> <span>' + window.I18n.t("aiia.etat.label") + '</span>' +
+            '<input type="checkbox" id="kta-aide-ia-etat"> <span>' + window.ktaIcone("wrench") + ' ' + window.I18n.t("aiia.etat.label") + '</span>' +
           '</label>' +
           '<p style="color:var(--kta-texte-3); line-height:1.5; font-size:11px; margin:4px 0 0 24px;">' + window.I18n.t("aiia.etat.note") + '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.privacy.titre") + '</div>' +
+          '<div class="kta-aide-section-titre">' + window.ktaIcone("shield") + ' ' + window.I18n.t("aiia.privacy.titre") + '</div>' +
           '<p style="color:var(--kta-texte-2); line-height:1.6; font-size:13px;">' +
             window.I18n.t("aiia.privacy.body") +
           '</p>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.prompt.titre") + '</div>' +
+          '<div class="kta-aide-section-titre">' + window.ktaIcone("clipboard-list") + ' ' + window.I18n.t("aiia.prompt.titre") + '</div>' +
           '<p style="color:var(--kta-texte-2); line-height:1.6; font-size:12px; margin:0 0 8px 0;">' +
             window.I18n.t("aiia.prompt.intro") +
           '</p>' +
@@ -1296,12 +1315,12 @@ window.afficherModaleAideIA = function() {
             '<textarea id="kta-aide-ia-prompt" class="kta-aide-ia-prompt" readonly>' +
               window.I18n.t("aiia.prompt.text") +
             '</textarea>' +
-            '<button class="kta-btn kta-btn-ghost kta-aide-ia-copy-btn" id="kta-aide-ia-copy" type="button">' + window.I18n.t("aiia.btn.copy") + '</button>' +
+            '<button class="kta-btn kta-btn-ghost kta-aide-ia-copy-btn" id="kta-aide-ia-copy" type="button">' + window.ktaIcone("copy") + ' ' + window.I18n.t("aiia.btn.copy") + '</button>' +
           '</div>' +
         '</div>' +
 
         '<div class="kta-aide-section">' +
-          '<div class="kta-aide-section-titre">' + window.I18n.t("aiia.note.titre") + '</div>' +
+          '<div class="kta-aide-section-titre">' + window.ktaIcone("info") + ' ' + window.I18n.t("aiia.note.titre") + '</div>' +
           '<p style="color:var(--kta-texte-2); line-height:1.6; font-size:13px;">' +
             window.I18n.t("aiia.note.body") +
           '</p>' +
@@ -1309,8 +1328,8 @@ window.afficherModaleAideIA = function() {
 
         '<div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">' +
           '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-cancel"   type="button" style="flex:1; min-width:90px;">' + window.I18n.t("aiia.btn.cancel") + '</button>' +
-          '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-copyctx"  type="button" style="flex:2; min-width:150px;">' + window.I18n.t("aiia.btn.copyCtx") + '</button>' +
-          '<button class="kta-btn kta-btn-primary" id="kta-aide-ia-download" type="button" style="flex:2; min-width:150px;">' + window.I18n.t("aiia.btn.download") + '</button>' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-copyctx"  type="button" style="flex:2; min-width:150px;">' + window.ktaIcone("copy") + ' ' + window.I18n.t("aiia.btn.copyCtx") + '</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-aide-ia-download" type="button" style="flex:2; min-width:150px;">' + window.ktaIcone("arrow-down-to-line") + ' ' + window.I18n.t("aiia.btn.download") + '</button>' +
         '</div>' +
         '<div id="kta-aide-ia-status" style="margin-top:10px; font-size:12px; color:var(--kta-texte-3); min-height:18px; text-align:center;"></div>' +
       '</div>' +
@@ -1386,7 +1405,7 @@ window.afficherModaleAideIA = function() {
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
 
     statusEl.textContent = window.I18n.t("aiia.dl.done", { ko: Math.round(res.contenu.length / 1024) });
-    btn.textContent = window.I18n.t("aiia.btn.download");
+    btn.innerHTML = window.ktaIcone("arrow-down-to-line") + " " + window.ktaEsc(window.I18n.t("aiia.btn.download"));
     btn.disabled = false;
 
     setTimeout(_fermer, 1500);

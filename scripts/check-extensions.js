@@ -439,7 +439,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     // Fiche d'un point rendue pour de vrai (fonction extraite de utils.js, dépendances simulées).
     const src = U.slice(U.indexOf("function buildPointPopupHtml("), U.indexOf("window.buildPointPopupHtml = buildPointPopupHtml;"));
     const cf = vm.createContext({ window: { ktaEsc: (s) => String(s).replace(/[&<>"']/g, (c) => "&#" + c.charCodeAt(0) + ";"),
-      I18n: { t: (k) => k } }, _planXyToGps: () => null, _formatGps: () => "" });
+      I18n: { t: (k) => k } }, _planXyToGps: () => null, _formatGps: () => "", _icoFiche: () => "" });
     vm.runInContext(src + ";window.f = buildPointPopupHtml;", cf);
     const fiche = (pt, session) => cf.window.f(pt, session, { layerId: session ? "editor" : "c1", layerLabel: "x" });
     const fCalque = fiche({ uid: "pt_calque1", nom: "P", x: 1, y: 2, tags: ["puits"] }, false);
@@ -482,15 +482,15 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🩸 l'extension reçoit une COPIE du lien (elle ne réécrit pas le registre)", vu && L0.id === "ipl_x");
 
     // Vrai module, faux navigateur : registre, événements émis (avec leur détail), extension facultative.
-    const ipl = (ext) => {
+    const ipl = (ext, plus) => {
       const store = {}, emis = [];
-      const w = {
+      const w = Object.assign({
         console: { log() {}, warn() {}, error() {} },
         localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } },
         CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; },
         dispatchEvent(e) { emis.push(e); return true; }, addEventListener() {}, removeEventListener() {},
         KtaExtensions: ext || undefined, setTimeout: setTimeout
-      };
+      }, plus || {});
       w.window = w;
       const ctx = vm.createContext(w);
       vm.runInContext("var localStorage = window.localStorage, CustomEvent = window.CustomEvent, console = window.console;", ctx);
@@ -529,6 +529,53 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       L.onPointDeleted("p1", { uid: "pt_a", id: "pt_a" });
       t("🩸 liaison que l'extension dit non modifiable : gardée quand son point est supprimé, rien d'annoncé",
         L.getAllLinks().length === 1 && ev().length === avant);
+    }
+    {
+      // Resync automatique des instantanés : LOCAL. Annoncé, il repartait vers l'extension comme une écriture neuve
+      // (updatedAt = maintenant) et deux appareils qui voient le point un peu différemment réécrivaient la liaison
+      // à chaque ouverture du plan, jusqu'à défaire sa suppression.
+      const ext = { liaisonModifiable: () => true, liaisonInfo: () => "", liaisonActions: () => [] };
+      const frais = { uid: "pt_a", id: "pt_a", nom: "renomme", x: 7, y: 8, level: 1, tags: ["puits"] };
+      const { L, ev } = ipl(ext, {
+        setTimeout: (fn) => { fn(); return 0; },
+        _currentLoadedPlanId: "p1",
+        SearchPoints: { getAllPoints: () => Promise.resolve([{ point: frais, layerId: "editor" }]) },
+        KtaSessionStore: { lire: () => JSON.stringify({ editorPoints: [Object.assign({}, frais, { nom: "autre" })] }) }
+      });
+      L.appliquerExterne({ liens: [{ id: "ipl_r", a: cote("p1", "pt_a"), b: cote("p2", "pt_b"), updatedAt: 1000 }] });
+      const avant = ev().length;
+      L.onPlanLoaded();
+      await new Promise((r) => setTimeout(r, 20));
+      const apresOuverture = L.getAllLinks()[0];
+      await L.collectPointsForPlan({ id: "p1", type: "local" }, {});
+      const apresLecture = L.getAllLinks()[0];
+      t("🩸 resync des instantanés (ouverture du plan, lecture d'un plan distant) : instantané à jour, updatedAt " +
+        "INCHANGÉ, rien d'annoncé à l'extension",
+        apresOuverture.a.pointNom === "renomme" && apresOuverture.a.x === 7 && apresOuverture.a.level === 1 &&
+        apresLecture.a.pointNom === "autre" && apresLecture.updatedAt === 1000 && ev().length === avant);
+      L.onPointLevelChanged("p1", Object.assign({}, frais, { level: 2 }));
+      t("…mais un geste (point changé d'étage) reste une écriture : updatedAt neuf, « modification » annoncée",
+        L.getAllLinks()[0].updatedAt > 1000 && ev().length === avant + 1 && ev()[avant].action === "modification");
+      L.appliquerExterne({ liens: [{ id: "ipl_r", a: cote("p1", "pt_a"), b: cote("p2", "pt_b"), updatedAt: 1000 },
+        { id: "ipl_n", a: { planId: "p1", pointId: "Ancien", pointNom: "Ancien", x: 3, y: 3 }, b: cote("p2", "pt_c"),
+          updatedAt: 1000 }] });
+      const avantNom = ev().length;
+      L.onPointRenamed("p1", Object.assign({}, frais, { nom: "Nouveau", tags: ["escalier"] }));
+      L.onPointRenamed("p1", { id: "Nouveau2", nom: "Nouveau2", x: 3, y: 3, tags: [] }, "Ancien");
+      const rU = L.getAllLinks().find((l) => l.id === "ipl_r"), rN = L.getAllLinks().find((l) => l.id === "ipl_n");
+      t("🩸 point renommé / changé de tag depuis sa fiche : un geste — instantané réécrit (par uid, ou par l'ancien " +
+        "nom pour un côté sans uid), updatedAt neuf, « modification » annoncée",
+        rU.a.pointNom === "Nouveau" && rU.a.tag === "escalier" && rU.updatedAt > 1000 &&
+        rN.a.pointNom === "Nouveau2" && rN.a.pointId === "Nouveau2" && rN.updatedAt > 1000 &&
+        ev().length === avantNom + 2 && ev().slice(avantNom).every((x) => x.action === "modification" && !x.source));
+      const avantRe = ev().length;
+      L.onPointRenamed("p1", Object.assign({}, frais, { nom: "Nouveau", tags: ["escalier"] }));
+      await L.collectPointsForPlan({ id: "p1", type: "local" }, {});
+      t("…rien de neuf : rien d'annoncé ; la resynchro qui suit n'annonce toujours rien", ev().length === avantRe);
+      t("la fiche d'un point appelle la prise quand son nom ou son tag change (ancien id passé)",
+        /const ancienId = existingPoint\.id;/.test(lire("js/editor.js")) &&
+        /nom !== nomInitial \|\| \(tag \|\| ""\) !== tagInitial\)[\s\S]{0,160}onPointRenamed\(planId, existingPoint, ancienId\)/
+          .test(lire("js/editor.js")));
     }
     const IPL = lire("js/interPlanLinks.js");
     t("🩸 suppression confirmée : refusée si l'extension dit la liaison non modifiable (🗑️ masquée aussi)",
@@ -909,7 +956,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("profil : 💾 compte les bases IDB « kta_ / myktamap » listées par le navigateur (jamais créées) et isole ☁️",
       /indexedDB\.databases\(\)/.test(HP) && /presentes && presentes\.indexOf\(nom\) < 0/.test(HP) &&
       /n\.indexOf\("kta_"\) === 0 \|\| n\.indexOf\("myktamap"\) === 0/.test(HP) &&
-      /acc\.ids\[cur\.key\]\) acc\.ext \+=/.test(HP) && /home\.profile\.stats\.dontExt/.test(HP));
+      /acc\.ids\[idCle\]\) acc\.ext \+=/.test(HP) && /home\.profile\.stats\.dontExt/.test(HP));
     t("profil : cache de stats du plan courant recalculé (2 s) après des changements reçus",
       /dispatchEvent\(new CustomEvent\("mktm:changements-appliques"\)\)/.test(lire("js/ktaExtensions.js")) &&
       /addEventListener\("mktm:changements-appliques"[\s\S]{0,200}_persisterStatsPlanCourant\(\)[\s\S]{0,40}2000/.test(HP));
@@ -1074,7 +1121,7 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     const bn = cn.K.blocNouveautes(() => { tn.push("fermer"); });
     await new Promise((r) => setTimeout(r, 10));
     t("bloc : un titre puis une ligne par sujet valide (sans texte, sans ouvrir() ou nul : écartés)",
-      !!bn && bn.enfants.length === 3 && bn.enfants[0].textContent === "🆕 alerts.neuf.titre" && !bn.retire);
+      !!bn && bn.enfants.length === 3 && bn.enfants[0].textContent === "alerts.neuf.titre" && !bn.retire);
     const l1n = bn.enfants[1];
     t("ligne : texte et bouton posés en texte", l1n.enfants[0].textContent === "Plan « Secteur A » — 2 nouveautés" &&
       l1n.enfants[1].textContent === "Ouvrir" && !("innerHTML" in l1n.enfants[1]));
@@ -1259,6 +1306,26 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /X\.aPrise\("itineraire"\)/.test(lire("js/interfaceItineraire.js")));
   }
 
+  // ── 6 bis. RELIRE LA SYNCHRO MAINTENANT (avant de passer un calque en modification) ──────
+  {
+    const { K } = nouveauContexte(null);
+    t("relireChangements sans extension : null (rien à relire, l'appelant reste local)", (await K.relireChangements("ext_1")) === null);
+    let vu = null;
+    K.register({ nom: "r1", apiVersion: 1, relireChangements: (p) => { vu = p; return Promise.resolve(true); } });
+    t("relireChangements : la prise reçoit le plan, true rendu", (await K.relireChangements("ext_1")) === true && vu === "ext_1");
+    t("relireChangements sans plan : null, prise non appelée", (await K.relireChangements("")) === null);
+    const { K: K2 } = nouveauContexte(null);
+    K2.register({ nom: "r2", apiVersion: 1, relireChangements: () => Promise.reject(new Error("x")) });
+    const { K: K3 } = nouveauContexte(null);
+    K3.register({ nom: "r3", apiVersion: 1, relireChangements: () => "oui" });
+    t("🩸 relireChangements en erreur ou forme inattendue : false (jamais « relu » par défaut)",
+      (await K2.relireChangements("ext_1")) === false && (await K3.relireChangements("ext_1")) === false);
+    t("relireChangements : délai borné (une extension muette ne bloque pas « Modifier »)",
+      /RELIRE_DELAI_MS\s*=\s*\d+/.test(lire("js/ktaExtensions.js")));
+    t("CalqueSession.rapatrier relit la synchro d'un plan d'extension avant de copier",
+      /X\.relireChangements\(planId\)/.test(lire("js/calqueSession.js")));
+  }
+
   // ── 6 ter. CHANGEMENTS REÇUS (synchro entrante) ──────
   {
     const { K, w } = nouveauContexte(null);
@@ -1398,6 +1465,49 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       JSON.stringify(ch[0].uids) === JSON.stringify(["rd_cop10000"]));
     t("…et plus après son instant", K.changementsDepuis(ch[0].avant).restitutions.length === 0);
     t("🔒 restituer ne crée aucune trace", w.KtaUid.getTombstones().length === 0);
+  }
+
+  // ── 6 ter quinquies. COPIE DE CALQUE SUPPRIMÉE (trace de copie, vrais calqueSession.js et ktaUid.js) ──────
+  // Contrat de la prise : changementsDepuis(ts).tracesCopie = [{ uid, deletedAt }] (à envoyer comme des traces,
+  // 🔒 jamais dans un fichier) ; une trace REÇUE sur l'uid d'une copie d'ici est rangée en trace de copie, jamais
+  // rendue par getTombstones (lu par les exports) ; la restitution du calque la fait tomber.
+  {
+    const { K, w } = nouveauContexte(null); K.planCharge();
+    const vm6 = require("vm");
+    const ctx6 = vm6.createContext(w);
+    vm6.runInContext(lire("js/ktaUid.js"), ctx6, { filename: "ktaUid.js" });
+    let roads = [];
+    w.getEditorPoints = () => []; w.setEditorPoints = () => {};
+    w.getRoads = () => roads; w.setRoads = (r) => { roads = r; }; w.getZones = () => []; w.setZones = () => {};
+    w.getStructures = () => []; w.setStructures = () => {};
+    w.SessionPersist = { save() {} };
+    w.PLAN_CONFIG = { dataLayers: [{ id: "c1", file: "c1.json" }] };
+    w.dataLayerGroups = { c1: { __id: "c1" } };
+    const surCarte = { c1: true };
+    w.map = { hasLayer: (g) => !!surCarte[g.__id], removeLayer: (g) => { surCarte[g.__id] = false; },
+      addLayer: (g) => { surCarte[g.__id] = true; } };
+    w.I18n = { t: (k) => k };
+    vm6.runInContext(lire("js/calqueSession.js"), ctx6, { filename: "calqueSession.js" });
+    const copie = (uid) => ({ uid, type: "chemin", points: [], updatedAt: 150, _srcCalque: "c1", _srcCalqueDepuis: 100 });
+    K.appliquerChangements({ roads: [copie("rd_cpA00000"), copie("rd_cpB00000")], tombstones: [] });
+    K.appliquerChangements({ tombstones: [{ uid: "rd_cpA00000", deletedAt: 400 }] });
+    t("trace reçue sur une copie d'ici : copie retirée, trace rangée en trace de COPIE (calque connu)",
+      roads.length === 1 && JSON.stringify(w.KtaUid.getTracesCopie()) === JSON.stringify([{ uid: "rd_cpA00000", deletedAt: 400, calque: "c1" }]));
+    t("🔒 …jamais dans getTombstones (lu par les exports de session)", w.KtaUid.getTombstones().length === 0);
+    K.appliquerChangements({ tombstones: [{ uid: "pt_ordi0000", deletedAt: 410 }] });
+    t("trace reçue sur un uid sans copie ni calque : trace ordinaire, la trace de copie reste",
+      w.KtaUid.getTombstones().length === 1 && w.KtaUid.getTracesCopie().length === 1);
+    K.appliquerChangements({ tombstones: [{ uid: "rd_cpB00000", deletedAt: 420 }] });
+    t("🩸 toutes les copies supprimées : le calque reste en modification (original masqué, pas ressuscité)",
+      roads.length === 0 && w.CalqueSession.estRapatrie("c1") && surCarte.c1 === false);
+    const ch = K.changementsDepuis(0);
+    t("changementsDepuis : tracesCopie { uid, deletedAt } (sans le calque), hors de `tombstones`",
+      JSON.stringify(ch.tracesCopie) === JSON.stringify([{ uid: "rd_cpA00000", deletedAt: 400 }, { uid: "rd_cpB00000", deletedAt: 420 }]) &&
+      !ch.tombstones.some((x) => /^rd_cp/.test(x.uid)));
+    t("…seulement après le seuil", K.changementsDepuis(400).tracesCopie.length === 1);
+    K.appliquerChangements({ tombstones: [], restitutions: [{ calque: "c1", avant: 500 }] });
+    t("restitution reçue : les traces de copie tombent, le calque d'origine revient",
+      w.KtaUid.getTracesCopie().length === 0 && !w.CalqueSession.estRapatrie("c1") && surCarte.c1 === true);
   }
 
   // ── 6 quater. ACTIONS DU COMPTE ──────
@@ -2429,6 +2539,143 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       appelantsVille.length === 0);
     t("ville seule de connexion SOUS les fenêtres d'une gate (z 99995 < 100001) : css/bienvenue.css",
       /#kta-unlock-overlay\.kta-bv\.kta-bv-connexion \{ z-index: 99995; \}/.test(lire("css/bienvenue.css")));
+  }
+
+  // ── 10. COPIE EN MORCEAUX (prise PlanRegistry.rangerEnMorceaux, zipLisible) ──────
+  // Le vrai planRegistry.js dans un `vm` avec une petite IndexedDB en mémoire (clés chaîne et tableau, plages,
+  // transactions annulées sur quota) ; le vrai navigateur (Chromium, WebKit) : scripts/smoke/checkup-plan-morceaux.js.
+  {
+    const R = lire("js/planRegistry.js");
+    const cmp = (a, b) => {
+      const rang = (k) => (typeof k === "number" ? 1 : typeof k === "string" ? 2 : 3);
+      if (rang(a) !== rang(b)) return rang(a) - rang(b);
+      if (!Array.isArray(a)) return a < b ? -1 : a > b ? 1 : 0;
+      for (let i = 0; i < Math.min(a.length, b.length); i++) { const c = cmp(a[i], b[i]); if (c) return c; }
+      return a.length - b.length;
+    };
+    const fauxIdb = () => {
+      const bases = {}; const etat = { quota: false };
+      const plage = (q) => (q && q.borne ? (k) => cmp(k, q.l) >= 0 && cmp(k, q.u) <= 0 : (k) => cmp(k, q) === 0);
+      const base = (nom) => {
+        const stores = bases[nom] = bases[nom] || {};
+        return { objectStoreNames: { contains: (s) => s in stores }, createObjectStore: (s) => { stores[s] = []; }, close() {},
+          transaction(s) {
+            const st = stores[s], copie = st.slice(); let enCours = 0, fini = false;
+            const tx = { error: null };
+            const req = (fn) => { const r = {}; enCours++; setTimeout(() => {
+              if (fini) return;
+              try { r.result = fn(); } catch (e) { tx.error = e; fini = true; st.splice(0, st.length, ...copie);
+                setTimeout(() => tx.onabort && tx.onabort()); return; }
+              if (r.onsuccess) r.onsuccess();
+              if (--enCours === 0) setTimeout(() => { if (!fini && enCours === 0) { fini = true; if (tx.oncomplete) tx.oncomplete(); } });
+            }); return r; };
+            const tri = () => st.sort((x, y) => cmp(x[0], y[0]));
+            tx.objectStore = () => ({
+              put: (v, k) => req(() => { if (etat.quota) throw { name: "QuotaExceededError" };
+                const i = st.findIndex((e) => cmp(e[0], k) === 0); if (i >= 0) st[i] = [k, v]; else st.push([k, v]); tri(); }),
+              get: (k) => req(() => { const e = st.find((x) => cmp(x[0], k) === 0); return e ? e[1] : undefined; }),
+              getAll: (q) => req(() => st.filter((e) => plage(q)(e[0])).map((e) => e[1])),
+              getAllKeys: (q) => req(() => st.filter((e) => !q || plage(q)(e[0])).map((e) => e[0])),
+              delete: (q) => req(() => { const f = plage(q); for (let i = st.length - 1; i >= 0; i--) if (f(st[i][0])) st.splice(i, 1); })
+            });
+            return tx;
+          } };
+      };
+      const idb = { open(nom) { const r = {}; setTimeout(() => { const neuve = !bases[nom]; r.result = base(nom);
+        if (neuve && r.onupgradeneeded) r.onupgradeneeded(); r.onsuccess(); }); return r; } };
+      return { idb, etat, cles: () => (bases.myktamap_handles ? bases.myktamap_handles.blobs.map((e) => e[0]) : []) };
+    };
+    const contexte = () => {
+      const f = fauxIdb();
+      const w = { console: { log() {}, warn() {}, error() {} }, Blob: Blob, ArrayBuffer: ArrayBuffer, setTimeout: setTimeout,
+        Promise: Promise, WeakMap: WeakMap, indexedDB: f.idb, IDBKeyRange: { bound: (l, u) => ({ borne: true, l, u }) },
+        localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, navigator: {},
+        crypto: require("crypto").webcrypto };
+      w.window = w;
+      const ctx = vm.createContext(w);
+      vm.runInContext("var localStorage = window.localStorage, indexedDB = window.indexedDB, IDBKeyRange = window.IDBKeyRange," +
+        " navigator = window.navigator;", ctx);
+      vm.runInContext(R, ctx, { filename: "planRegistry.js" });
+      return { PR: w.PlanRegistry, f };
+    };
+    // ZIP minimal (STORE, un fichier) : en-tête local, données, répertoire central, fin de répertoire.
+    const zip = (n) => {
+      const data = Buffer.alloc(n, 7), nom = Buffer.from("a.bin");
+      const loc = Buffer.alloc(30); loc.writeUInt32LE(0x04034b50, 0); loc.writeUInt32LE(n, 18); loc.writeUInt32LE(n, 22);
+      loc.writeUInt16LE(nom.length, 26);
+      const cen = Buffer.alloc(46); cen.writeUInt32LE(0x02014b50, 0); cen.writeUInt32LE(n, 20); cen.writeUInt32LE(n, 24);
+      cen.writeUInt16LE(nom.length, 28);
+      const fin = Buffer.alloc(22); fin.writeUInt32LE(0x06054b50, 0); fin.writeUInt16LE(1, 8); fin.writeUInt16LE(1, 10);
+      fin.writeUInt32LE(46 + nom.length, 12); fin.writeUInt32LE(30 + nom.length + n, 16);
+      return new Uint8Array(Buffer.concat([loc, nom, data, cen, nom, fin]));
+    };
+    const ranger = async (PR, id, octets, pas, opts) => {
+      const e = PR.rangerEnMorceaux(id);
+      for (let d = 0; d < octets.length; d += pas) await e.ajouter(octets.subarray(d, Math.min(octets.length, d + pas)));
+      return e.terminer(Object.assign({ verifier: PR.zipLisible }, opts || {}));
+    };
+    const octetsDe = async (b) => new Uint8Array(await b.arrayBuffer());
+    const morceauxDe = (f, id) => f.cles().filter((k) => Array.isArray(k) && k[0] === id);
+
+    const { PR, f } = contexte();
+    t("prise exposée : PlanRegistry.rangerEnMorceaux, zipLisible (saveBlob/getBlob/removeBlob gardés)",
+      typeof PR.rangerEnMorceaux === "function" && typeof PR.zipLisible === "function" &&
+      typeof PR.saveBlob === "function" && typeof PR.getBlob === "function" && typeof PR.removeBlob === "function");
+    const seul = new Blob([zip(50)]);
+    const s0 = await PR.saveBlob("loc", seul);
+    t("sans copie en morceaux : saveBlob range le Blob tel quel, getBlob le rend (comportement inchangé)",
+      s0.ok && f.cles().length === 1 && (await PR.getBlob("loc")) === seul);
+    const z1 = zip(1000);
+    const r1 = await ranger(PR, "ext_a", z1, 300);
+    const b1 = await PR.getBlob("ext_a");
+    t("rangée en 4 morceaux : fiche + morceaux [id, gen, i], getBlob rend le Blob composé octet pour octet",
+      r1.ok && morceauxDe(f, "ext_a").length === 4 && !!b1 && b1.size === z1.length &&
+      Buffer.compare(Buffer.from(await octetsDe(b1)), Buffer.from(z1)) === 0);
+    t("zipLisible : ZIP entier vrai, tronqué (pas de fin de répertoire) ou sans « PK » faux",
+      (await PR.zipLisible(b1)) && !(await PR.zipLisible(b1.slice(0, b1.size - 10))) &&
+      !(await PR.zipLisible(new Blob([new Uint8Array(40)]))));
+    const refus = await ranger(PR, "ext_a", zip(400), 300, { verifier: async () => false });
+    t("🩸 copie refusée par verifier : code illisible, ses morceaux effacés, l'ancienne copie intacte",
+      !refus.ok && refus.code === "illisible" && morceauxDe(f, "ext_a").length === 4 &&
+      (await PR.getBlob("ext_a")).size === z1.length);
+    f.etat.quota = true;
+    let erreur = null;
+    try { await PR.rangerEnMorceaux("ext_a").ajouter(new Uint8Array(10)); } catch (e) { erreur = e; }
+    f.etat.quota = false;
+    t("quota plein à l'écriture d'un morceau : erreur code « stockage », l'ancienne copie intacte",
+      !!erreur && erreur.code === "stockage" && morceauxDe(f, "ext_a").length === 4 &&
+      (await PR.getBlob("ext_a")).size === z1.length);
+    let refusBlob = false;
+    try { await PR.rangerEnMorceaux("ext_a").ajouter(new Blob(["x"])); } catch (e) { refusBlob = /ArrayBuffer/.test(e.message); }
+    t("🩸 ajouter refuse un Blob (lu ailleurs, il ramènerait le défaut WebKit) : octets seulement", refusBlob);
+    const z2 = zip(500);
+    const r2 = await ranger(PR, "ext_a", z2, 300);
+    const gens = new Set(morceauxDe(f, "ext_a").map((k) => k[1]));
+    t("nouvelle génération complète et relue : bascule, anciens morceaux effacés (une seule génération)",
+      r2.ok && gens.size === 1 && (await PR.getBlob("ext_a")).size === z2.length);
+    const c = await PR.getBlob("ext_a");
+    const n0 = f.cles().length;
+    t("🩸 saveBlob(id, sa propre copie composée) : rien réécrit (sinon ses morceaux partaient sous lui)",
+      (await PR.saveBlob("ext_a", c)).ok && f.cles().length === n0 && (await PR.getBlob("ext_a")).size === z2.length);
+    t("saveBlob(autre id, copie composée) : recopiée en morceaux sous le nouvel id",
+      (await PR.saveBlob("ext_b", c)).ok && morceauxDe(f, "ext_b").length > 0 &&
+      Buffer.compare(Buffer.from(await octetsDe(await PR.getBlob("ext_b"))), Buffer.from(z2)) === 0);
+    t("saveBlob d'un seul tenant sur une copie en morceaux : morceaux effacés dans la même transaction",
+      (await PR.saveBlob("ext_b", seul)).ok && morceauxDe(f, "ext_b").length === 0 && (await PR.getBlob("ext_b")) === seul);
+    const ab = PR.rangerEnMorceaux("ext_c");
+    await ab.ajouter(new Uint8Array(5)); await ab.abandonner();
+    t("abandonner : aucun morceau ni fiche laissés", !f.cles().includes("ext_c") && morceauxDe(f, "ext_c").length === 0);
+    t("removeBlob : fiche et morceaux de toutes générations effacés, rien d'un autre plan",
+      (await PR.removeBlob("ext_a")) && !f.cles().includes("ext_a") && morceauxDe(f, "ext_a").length === 0 &&
+      f.cles().includes("loc") && (await PR.getBlob("ext_a")) === null);
+    t("plan supprimé (PlanRegistry.remove) : removeBlob appelé", /function remove\(id\)[\s\S]{0,400}removeBlob\(id\)/.test(R));
+    const appelants = fs.readdirSync("js").filter((x) => x.endsWith(".js") && x !== "planRegistry.js" &&
+      /rangerEnMorceaux\(/.test(lire("js/" + x)));
+    t("🩸 sans extension : aucun module community n'appelle rangerEnMorceaux (copie d'un seul tenant inchangée)",
+      appelants.length === 0);
+    t("lecteurs bruts du store : orphelins sans clé tableau (memInspector), poids « dont ☁️ » par id de clé (homeProfile)",
+      /typeof id !== "string" \|\| vivants\.has\(id\)/.test(lire("js/memInspector.js")) &&
+      /Array\.isArray\(cur\.key\) \? cur\.key\[0\] : cur\.key/.test(lire("js/homeProfile.js")));
   }
 
   console.log("");

@@ -154,7 +154,7 @@ function registre(lsInitial) {
   const CSS  = lire("css/style.css");
   const IDX  = lire("index.html");
   t("le sélecteur TOUT / DOSSIERS vit dans la ligne de titre « Mes plans » (0 px ajouté)",
-    /<div class="loader-section-head"[^>]*>\s*<span data-i18n="home\.plans\.title">[\s\S]{0,1400}id="loaderPlansViewSwitch"[\s\S]{0,400}<\/div>\s*<\/div>\s*\n\s*(<!--(?:(?!-->)[\s\S])*-->\s*)?<div class="loader-plans-filters">/
+    /<div class="loader-section-head"[^>]*>\s*(?:<span class="loader-section-titre"><span data-kta-ico="[a-z0-9-]+"><\/span> )?<span data-i18n="home\.plans\.title">[\s\S]{0,1400}id="loaderPlansViewSwitch"[\s\S]{0,400}<\/div>\s*<\/div>\s*\n\s*(<!--(?:(?!-->)[\s\S])*-->\s*)?<div class="loader-plans-filters">/
       .test(IDX));   // suivi du bloc des filtres, repéré sur le CODE (le commentaire HTML est facultatif)
   t("🩸 le glisser n'existe que pour un pointeur fin (jamais au doigt)",
     /pointer: fine/.test(HOME) && /draggable/.test(HOME));

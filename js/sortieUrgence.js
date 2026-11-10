@@ -12,7 +12,8 @@
 //   pour une sortie → distance à vol d'oiseau, affichée comme NON vérifiée, en fin de liste.
 // Vibration : trouvée → medium ; aucune → error.
 // Expose : window.SortieUrgence — declencher(), declencherDepuis(x, y, level, opts), isActive(), relancerDepuis(pos),
-//   demandeLaCarte() (declencher() demandera la position sur la carte : la vue 3D se ferme d'abord)
+//   demandeLaCarte() (declencher() demandera la position sur la carte : la vue 3D se ferme d'abord),
+//   estUneSortie(point) (règle des sorties, lue aussi par la mini-carte de la vue 3D)
 // Garde-fous : scripts/check-guidage.js, scripts/check-position-confirmee.js · Doc : docs/architecture/tracking.md
 
 (function() {
@@ -184,7 +185,7 @@
     _modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-sortie-urgence-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + window.I18n.t("sortie.modal.titre") + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone("siren") + " " + window.I18n.t("sortie.modal.titre") + '</span>' +
           '<button class="kta-panneau-close" id="kta-sortie-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-sortie-urgence-corps">' + html + '</div>' +
@@ -251,7 +252,7 @@
       parts.push(window.I18n.t("sortie.brancard.evite", { liste: c.avoidZones.map(lab).join(", ") }));
     }
     if (c.respecterInaccessibles === false) parts.push(window.I18n.t("sortie.brancard.inaccLeve"));
-    let html = '<div class="kta-sortie-brancard">' + window.I18n.t("sortie.brancard.titre") + " " +
+    let html = '<div class="kta-sortie-brancard">' + window.ktaIcone("ambulance") + " " + window.I18n.t("sortie.brancard.titre") + " " +
                (parts.length ? parts.join(" · ") : window.I18n.t("sortie.brancard.aucune")) + '</div>';
     if (meilleure && meilleure.contourne) {
       html += '<div class="kta-sortie-fallback-txt">⚠️ ' + window.I18n.t("sortie.brancard.contourne") + '</div>';
@@ -315,7 +316,7 @@
       _htmlContraintes(meta, meilleure) +
       '<div class="kta-sortie-actions">' +
         '<button type="button" class="kta-btn kta-btn-primary kta-sortie-btn-tracer" data-sortie-action="tracer">' +
-          window.I18n.t("sortie.btn.tracer") +
+          window.ktaIcone("route") + " " + window.I18n.t("sortie.btn.tracer") +
         '</button>' +
       '</div>';
 
@@ -527,6 +528,8 @@
   SU.declencherDepuis = declencherDepuis;
   SU.demandeLaCarte   = demandeLaCarte;
   SU.isActive         = function() { return !!_modal; };
+  // La même règle pour qui marque les sorties ailleurs (mini-carte de la vue 3D) : jamais une liste de tags recopiée.
+  SU.estUneSortie     = _estUneSortie;
 
   window.SortieUrgence = SU;
 

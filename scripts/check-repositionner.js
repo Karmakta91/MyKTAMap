@@ -71,6 +71,7 @@ function contexte(hauteur) {
       record: (label, avant, cat) => { journal.record.push({ label: label, avant: avant, cat: cat }); }
     },
     OOMGuard: { showToast: (m) => { journal.toast = m; } },
+    ktaIcone: () => "",
     InterPlanLinks: {
       onPointMoved: (planId, pt, ax, ay) => {
         journal.liens.push({ planId: planId, x: pt.x, y: pt.y, ancX: ax, ancY: ay });

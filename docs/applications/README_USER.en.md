@@ -53,12 +53,13 @@ MyKTAMap relies entirely on **open-source bricks**. Without these projects, the 
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generation of printable PDFs (A0 → A4, portrait/landscape, miniature page Rescue Mode, embed Story Mode).
 - 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — DOM-to-image capture (canvas → PNG). Used to embed the **Leaflet OSM map** in the **« Firefighters Briefing »** PDFs of the Rescue Mode: the full graphic stack (tiles + overlays + projected plan) is captured as a frozen image and embedded in the PDF handed to external rescue teams. Thanks to **Niklas von Hertzen** and contributors.
 - 🧊 **[three.js](https://threejs.org/)** *(MIT, vendored)* — 3D engine for the browser (WebGL). Draws the **🧊 3D view**: the map in relief around your position. Loaded only the first time the view opens, then available offline. Thanks to **Ricardo Cabello (mrdoob)** and the contributors.
+- 🎨 **[Twemoji](https://github.com/twitter/twemoji)** *(artwork CC-BY 4.0, [twemoji-colr](https://github.com/mozilla/twemoji-colr) font by Mozilla, Apache 2.0, subset)* — draws the emoji in the app's texts (messages, alerts, profile medals, export legend, 3D view labels): they look the same on iPhone, Android and PC, offline, with nothing downloaded from elsewhere. Thanks to the **Twemoji** authors and to **Mozilla** for the colour version.
 - 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget) **as soon as one of your maps is GPS-calibrated** (on by default, can be turned off in ⚙️ Configuration). The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
 - 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries. Edsger W. Dijkstra (1930-2002): thanks for this 60+ year old idea that still underpins Google Maps, OpenStreetMap routing, and every GPS in the world.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintained by thousands of people we will never meet and to whom we owe enormously.
 
-> 📜 **License compliance**: vendored files (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`, `lib/three/`) keep their original license header. For network details (when each resource is contacted), see the **[Network Audit](./NETWORK_AUDIT.md)** (also accessible from the Audit modal in the app).
+> 📜 **License compliance**: vendored files (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`, `lib/html2canvas.min.js`, `lib/three/`) keep their original license header; the emoji font (`fonts/kta-emoji.woff2`, Twemoji subset) has its own next to it (`fonts/LICENSE-twemoji.txt`). For network details (when each resource is contacted), see the **[Network Audit](./NETWORK_AUDIT.md)** (also accessible from the Audit modal in the app).
 
 ### To the PWA ecosystem
 
@@ -76,7 +77,7 @@ For taking 10 minutes to read instead of clicking blindly. This is exactly the s
 
 ---
 
-**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🧊 three.js (3D view) · 🌍 OpenStreetMap & contributors (ODbL data, OSM View can be turned off) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
+**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🧊 three.js (3D view) · 🎨 Twemoji (emoji in texts, CC-BY 4.0) · 🌍 OpenStreetMap & contributors (ODbL data, OSM View can be turned off) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
 
 ---
 
@@ -130,7 +131,7 @@ To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Au
 
 - **📋 View the network log** — every request the app makes, live, and whether it sends data; can be copied, exported or emptied. If a request sends data, or an outside address other than OpenStreetMap shows up (in red), **tell the author**: Instagram **@karma_kta** or **contact@myktamap.fr**.
 - **📖 What does the app do on the network?** — the list of addresses the app can contact and how to check with your browser (F12, Network tab). The full audit page describes the current state; what changed in each version is on its "version history" page.
-- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first. On such an installation: the ℹ️ sheet of a local map offers **☁️ Publish this map**, then to **replace your local copy** with the ☁️ version (your annotations, photos and favourites follow); the **💾** on a ☁️ map's row keeps it on your device (**✅** = kept and up to date); in the tracker, **📡 Share my position on this map** shows your marker to others, only if you tick it (it is your position **on the map**, your tracker's: the app does not use GPS). The **👥 Team** button, on the left of the map, shows who is on the map, whether they are viewing or editing it, and their position on the map if they share it (📍 Centre, 👁 Follow, 〰 trail); on the home screen, **👥 N** on a ☁️ map means others have it open (**✏️**: being edited). In the **Route** window, **🧭 Show my route to the team** makes it visible (in yellow, read-only) to those who can see the map, updated at each step, removed when you erase it and after 24 h. On a map your access only lets you view, the drawing tools are greyed out: tapping one reminds you the map is read-only. On the sign-in screen of such an installation, the badge below the card tells you whether the database responds (tap it to check again), and the 📖 and 🆘 icons open the documentation and troubleshooting.
+- **🔌 The "Database: off" badge**, at the bottom of the home screen next to the version number, tells you whether the installation you use is linked to an online database. On myktamap.fr it says "off", and it will stay that way: this site has no database and no backend. An independent installation (club, team) can declare one: the badge then changes colour and text. Tap it to read its status and open the list above. On an installation linked to a database it says "connected" or "unreachable"; if that installation's connection module is missing, the app shows **"Installation unavailable"** and stays closed: try again later or let its administrator know. Signed in to an account of the installation, your actions (password, sign out) sit at the top of **👤 My profile**, and an administrator manages accounts from **⚙️ Configuration**. **Signing out erases** that account's data from the device (installation plans, sessions, photos): anything not yet sent is flagged first. On such an installation: the ℹ️ sheet of a local map offers **☁️ Publish this map**, then to **replace your local copy** with the ☁️ version (your annotations, photos and favourites follow); the **💾** on a ☁️ map's row keeps it on your device (**✅** = kept and up to date); in the tracker, **📡 Share my position on this map** shows your marker to others, only if you tick it (it is your position **on the map**, your tracker's: the app does not use GPS). The **👥 Team** button, on the left of the map, shows who is on the map, whether they are viewing or editing it, and their position on the map if they share it (📍 Centre, 👁️ Follow, 〰 trail); on the home screen, **👥 N** on a ☁️ map means others have it open (**✏️**: being edited). In the **Route** window, **🧭 Show my route to the team** makes it visible (in yellow, read-only) to those who can see the map, updated at each step, removed when you erase it and after 24 h. On a map your access only lets you view, the drawing tools are greyed out: tapping one reminds you the map is read-only. On the sign-in screen of such an installation, the badge below the card tells you whether the database responds (tap it to check again), and the 📖 and 🆘 icons open the documentation and troubleshooting.
 
 ---
 
@@ -298,7 +299,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 **At the top**, a fixed bar:
 
 - the **compass rose** on the left takes you back to the home screen;
-- the **map name** opens **🗂 Switch map** (see below);
+- the **map name** opens **🗂️ Switch map** (see below);
 - the **counters** 📍 points · 🛣️ paths · ⬛ zones · 🏛️ structures · 📸 photos open **📊 Session details**;
 - on the right: **📖** Story Mode, **🌍** OSM View (georeferenced map), **🚨** Emergency exit, **🔋** battery.
 
@@ -347,7 +348,7 @@ A click on the top counters opens the map's **dashboard**:
 ### 🗺️ Reading the map
 
 - **Pinch** to zoom, **drag** to move around (or use the **+** / **−** buttons at the top left).
-- **Twisting two fingers** turns the map (Shift + wheel on a computer); the **north** button, at the bottom left (above the compass when it is open), straightens it. A drawing tool, measurement or realignment straighten it; 🗺️ Oriented map takes over while tracking.
+- **Twisting two fingers** turns the map (Shift + wheel on a computer); the **north** button, at the bottom left (above the compass when it is open), straightens it. A drawing tool, measurement or realignment straighten it; 🔃 Oriented map takes over while tracking. To prevent it: ⚙️ home screen Configuration › 🎨 Display › **Lock map rotation**.
 - **Tapping an icon** opens the point's popup; **double-tapping** zooms onto it (like the popup's “Go” button).
 - Icons shrink as you zoom out to stay at the map's scale, on the plan as well as on the OSM maps (OSM view and the home screen map). To keep a fixed size: home ⚙️ Configuration → 🎨 Display → “📐 Scale icon size with zoom”.
 
@@ -357,7 +358,7 @@ If your map is **georeferenced**, the popup of every point (yours and the map's)
 
 #### 🔄 Switching maps
 
-The **map name** at the top opens **🗂 Switch map**: the current map, the recent maps, and **📚 View all my maps** to go back to the home screen. When you switch, your session is **saved automatically**. To close without doing anything: ✕, click outside or **Esc**.
+The **map name** at the top opens **🗂️ Switch map**: the current map, the recent maps, and **📚 View all my maps** to go back to the home screen. When you switch, your session is **saved automatically**. To close without doing anything: ✕, click outside or **Esc**.
 
 ### ≡ Filters
 
@@ -452,14 +453,14 @@ The **🧭 Tracker** button (or the 🧭 light in the bottom bar) opens a **full
 | Section | Tiles |
 |---|---|
 | **Tracking** | ▶️ / ⏹️ Start / stop · 📍 Realignment mode · 🎯 My position (re-centres the map on you) · 🔓 Suspend trace lock |
-| **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🗺️ Oriented map |
+| **Tools** | 🧭 Compass · 🗺️ Compute a route · 🪧 Itinerary guidance · 🔃 Oriented map |
 | **Emergency** (red background) | ⛑️ I'm lost · 🔆 XL display · 🚑 Rescue mode — see 🆘 In an emergency underground |
 
 Smart navigation (trace lock), oriented map, route across multiple plans, replay and heatmap are options turned off by default → 🔭 Going further.
 
 ### ▶️ Starting tracking
 
-1. Tap **▶️**. The first time after each reload of the app, a window reminds you that the tracker is **experimental** (it drifts) and offers **🔆 Keep screen on**, ticked by default: a screen that goes to sleep means lost steps. Confirm with **Got it — Start**.
+1. Tap **▶️**. The first time after each reload of the app, a window reminds you that the tracker is **experimental** (it drifts) and offers **📱 Keep screen on**, ticked by default: a screen that goes to sleep means lost steps. Confirm with **Got it — Start**.
 2. On a phone, allow access to the motion sensors.
 3. Your icon (a blue cone) appears at the starting point and points in your walking direction (North when tracking is stopped); a trail records your path.
 4. **⏹️** stops tracking.
@@ -533,7 +534,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 
 #### 🧭 Follow or 🕹️ Free
 
-- **🧭 Follow** (chosen on opening when the tracker runs): the view follows your position and **turns with your phone**, like 🗺️ Oriented map.
+- **🧭 Follow** (chosen on opening when the tracker runs): the view follows your position and **turns with your phone**, like 🔃 Oriented map.
 - Moving the joystick or touching a move button switches to **🕹️ Free**. Dragging on the scene only tilts your gaze up / down.
 - The button in the ⚙️ tile, which shows the current mode, switches between the two. A 🧭 / 🕹️ badge at the top left always shows it.
 - Tracker stopped: 🧭 is greyed and says why.
@@ -545,18 +546,20 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 
 - **🧭 Follow / 🕹️ Free**: see above.
 - **✏️ Edit** (formerly bird's-eye view; or the V key): you see yourself from above, and it handles like a map.
-- ✏️ **Zoom** (from 6 to 150 m back): pinch with two fingers, mouse wheel, the **+ / −** buttons at the bottom right or the = / - keys. Zooming out, the floor (and the 🗺️ plan on the floor, if on) spreads with the view; pillars, walls and points stay drawn up to 100 m around the centre of the view, to spare the phone.
-- ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or the small ▲ ▼ buttons next to + / −.
+- ✏️ **Zoom** (from 6 to 150 m back): pinch with two fingers, mouse wheel, the = / - keys or the **+ / −** buttons at the bottom right (home **Zoom buttons** box, off by default). Zooming out, the floor (and the 🗺️ plan on the floor, if on) spreads with the view; pillars, walls and points stay drawn up to 100 m around the centre of the view, to spare the phone.
+- ✏️ **Tilt** (from almost vertical to low): slide two fingers together up or down, **Shift + wheel**, PageUp / PageDown or, with the same box, the small ▲ ▼ buttons next to + / −. The ⌖ always stays.
 - ✏️ Edit view, its zoom and its tilt are kept for this plan on this device: you find them again when you reopen the 3D view, even after reloading the app (on your place, with no tool chosen). A game that forbids Edit view opens at eye level without erasing this choice.
 - ✏️ **Free camera**: drag one finger (or the mouse) to move the view, like a map; your place, your tracker and your figure do not move. Two fingers turning turn the view (on a computer: right-click or Ctrl + drag, ↶ ↷). **⌖** (bottom right) brings you back to your place; so do walking (joystick, pad, arrows) and going back to eye level. In Edit view, the joystick only takes the bottom left corner.
 - ✏️ **Fly-over**: in Edit view, nothing blocks your place (pillars, walls, closed adits). Back at eye level, if you are inside an obstacle, you are moved out of it.
 - ✏️ **Level** (multi-level plan): ▲ / ▼ on the left change the level shown by the 3D view, without taking a staircase; the map and the tracker keep theirs.
 - ✏️ Point panels stay readable even zoomed out; from very far, they keep only their icon (as on the map), a single one where icons overlap (danger and favourites first), and the name comes back as you get closer. Tapping an icon opens the card, at normal size.
-- **⛏️ Height**: the button shows the current height and opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m).
-- ⛏️ It is the same height as ⛏️ Mined volume, kept for this map: changing one changes the other. The scene is rebuilt in place, without moving you.
+- **⛏️ Height**: the button shows the current height and opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m). On a map with several levels, the button is greyed out: the height is set for each level in ⚙️ Settings › Levels: depth and height.
+- ⛏️ It is the height **of the level shown**, the one in ⚙️ Settings › 📉 Levels, which ⛏️ Mined volume also offers. On a single-level map, changing it here or in ⛏️ Mined volume changes the others; on a map with several levels, it can only be changed in ⚙️ Settings. The scene is rebuilt in place, without moving you; when you move to another level (🪜, tracking), the view takes that level's height.
 - **Rendering**: the button shows the current rendering and moves to the next one (Mixed, Structures, Tunnels, see below). Kept for this map; default: Mixed.
 - **🧱 Textures** (on by default): stone, rock, concrete block, earth and rubble at their real size (see below). Kept on this device.
+- **Floor lines** (on by default): the routes drawn on the floor, the gallery edging and the intersection rings. When off, the floor stays bare in all three renderings; your route stays drawn, and the map, its filters and the mini-map do not change. Kept on this device.
 - **Compass**: the tile shows or hides it, for this device. At the bottom left, its **N** shows true north, from the map's north calibration, and turns with your view. Map without a calibrated north: it shows the top of the map and says so.
+- **🗺️ Mini-map** (on by default): a small round map at the top right, **north up**, centred on you, with an arrow that follows where you look. It shows your level with the same filters as the map (zones that block, pillars and walls, routes, all the points shown, dangers, exits, passages to another level), your route and the next instruction, and, as a faint outline, the levels just above and below. **Tap it** to enlarge it (tap again to close it); **pinch it** (or use the wheel) to see closer or further. Hidden in ✏️ Editing. During a game, the game panel moves to the left, under its gauges, to make room for it. Kept on this device.
 - **🪧 Guidance**: on, it is enough: with a route, the banner and the chevrons show in 3D even if the map's guidance is off (its ✕). When off, the 3D view hides the instruction banner and the chevrons on the ground. The route, its stops and 🏁 stay drawn; an emergency exit is always shown; the map's guidance is not affected. Kept on this device.
 - **🗂️ Cards**: ticked, touching a pillar, wall, zone or path opens its card; unticked, nothing opens (the view moves as usual, a long press still adjusts). A point always opens its own. Unticked by default on a phone, ticked on a PC; remembered on this device.
 - **🔭 Range**: a slider from 15 to 100 m (30 m by default) sets how far you see. The black fog, the lamp and the scenery follow. Further is heavier for the phone. Kept on this device.
@@ -564,6 +567,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - **🔦 Beam**: a slider from 40 to 160° (71° by default) sets the beam width; the wider, the more its edge fades into the dark. Kept on this device.
 - **☀️ Daylight**: a low sun, always from the same side (the north-west of the map, or its top-left corner if north is not calibrated): faces turned towards it are bright, the others darker, so the relief of pillars and joints shows; a light pale haze fades the distance. Your lamp stays on at its setting (turn it down to 25% to make it discreet). Also works in ✏️ Edit (unticked: flat lighting for drawing). Kept on this device.
 - **🛡️ Limit range (prevents memory crashes)**: checked by default (range up to 100 m, ✏️ Edit zoom-out up to 150 m). Uncheck it (a question warns you: on a large map, the phone may crash for lack of memory) to see **the whole map**: the 🔭 Range slider jumps straight to its new "Whole map" step, ✏️ Edit zooms out until the whole map shows, and the fog goes away. On a phone, the box is checked again each time the view opens; on a computer, it stays unchecked.
+- **🏗️ Levels** (multi-level map): **Neighbours**, the default, also shows the levels just above and just below yours, at their real depth (📉 Levels); **All** shows every level (heavier for the phone); **Mine**, your level only. You see them through a shaft, at the end of a sloping gallery, or in ✏️ Edit, without their signs. Their own shafts and sloping galleries show too, cut halfway towards a level you do not show. You always walk on your own level and only change level through a way, a sloping gallery or ▲ ▼. Two levels that interlock (negative gap, 📉 Levels) share their volume: where either has a gallery, it is open, with no wall between them; a pillar, wall or face of the other level that rises into your height blocks you, even when it is not shown. On a phone, back to Neighbours each time the view opens; on a computer, your choice stays. **🌫️ Fade** (on by default, a setting of this device): in ✏️ Edit, the levels below are darker than yours and the ones above see-through (you see where their galleries run, they do not hide yours or get in the way of your taps); your floor turns see-through (🧱 Textures off: black where there is nothing below) or veiled (🧱 on, a level below shown) so you see underneath; it stays solid on the deepest level, in Mine with textures on, or with the 🗺️ map on the floor. You still draw and tap on your own floor. Off, the ones below keep their colours, the ones above are not shown (they would hide yours) and your floor stays solid. At eye level, nothing changes.
 - During a game, the range goes back to 30 m, the lamp to 100%, the beam to 71° and Daylight is off (settings greyed out), then your settings come back.
 
 #### 🏛️ The three renderings
@@ -580,7 +584,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 
 **🏛️ Structures**
 
-- Pillars, walls and quarry faces raised to the map's gallery height (⛏️ Mined volume, otherwise 2 m).
+- Pillars, walls and quarry faces raised to the level's gallery height (⚙️ Settings › 📉 Levels, or ⛏️ Mined volume on a single-level map; otherwise 2 m).
 - Backfill and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones.
 - Traces and route on the floor.
 - Points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
@@ -613,11 +617,11 @@ Each way through or access has its volume, where it is.
 - ![](../../icon/jes.png) **Stairs between levels**: a stairwell with steps, in a recess on the side of the tunnel.
 - ![](../../icon/jpe.png) **Rung shaft between levels**: a square stone shaft, with its ladder.
 - ![](../../icon/jps.png) **Shaft without rungs between levels**: a bare shaft.
-- ↕️ **Junction trace**: a ramp in its colour, from floor to ceiling towards the level above, in a trench towards the level below. 🪜 at the end of the trace.
+- ↕️ **Junction trace**: a sloping tunnel you walk through. The floor goes from one level's floor to the other's, from one end of the trace to the other (using the level depths if you entered them, otherwise one tunnel height and 2 m of rock per level). A ribbon in its colour runs along the middle of the floor.
 
 Where and how a way through is drawn:
 
-- It opens **in the floor** towards a level below, **in the ceiling** towards a level above (it rises and fades into the dark), both for a way between three levels, with a golden frame on the floor.
+- It opens **in the floor** towards a level below, **in the ceiling** towards a level above, both for a way between three levels, with a golden frame on the floor. It goes from one level to the other at their **real depth** (📉 Levels): the stairs climb or go down to the other level's floor, the shaft crosses the rock between them. With no depths filled in, 2 m of rock separate two levels.
 - Its sign has a border in the junction colour and the **↕** mark. It stays readable down to 1 m.
 - It is drawn **in the tunnel** of each level, on its point's side, even when the point is placed beside it for the map's readability (tunnel within 10 m).
 - A validated connection on that level gives the exact spot. Near a crossing, the nearest tunnel wins; a validated connection settles it.
@@ -647,7 +651,7 @@ Where and how a way through is drawn:
 **Other points with a shape**:
 
 - ![](../../icon/chatiere.png) **Crawlway**: the tunnel narrows to a low passage in the rock, at floor level (about 0.6 m high and 0.9 m wide), with rock above and on the sides. Nothing stops you: the view goes down so you crawl through, then back up (in 🧭 Follow as in 🕹️ Free). It is 1.8 m long, unless its precise point has a start and an end: it then takes their length and their axis.
-- ![](../../icon/plaque.png) **Marker plate**: a blue and white enamel plate, flat on the nearest wall, with the point's name: it widens for a long name, then goes onto two lines, never cutting it. The point has no sign above it: tap the plate to open its card. The name stays with 🧱 off.
+- ![](../../icon/plaque.png) **Marker plate**: an inscription carved into a stone block, flat on the nearest wall, with the point's name in capitals; if the point's description starts with a date or an acronym (“1857”, “12/03/1890”, “IGC 1902”, “R. 45”), its first line is carved below, smaller. Each plate has its own wear, always the same for a given point. The plate widens for a long name, then goes onto two lines, never cutting it. The point has no sign above it: tap the plate to open its card. The name stays with 🧱 off.
 - ![](../../icon/epure.png) **Survey datum**: a light line drawn on the nearest wall, at eye level.
 - ![](../../icon/portail.png) **Portal (inter-plan link)**: a door frame against the wall, **lit** when the point has a link to another plan, dark otherwise. The card of **any point linked** to another plan (portal or not) offers **🌀 Go to plan…**: the confirmation shows over the view; if you confirm, the view closes and the other plan opens. The card's link ➜ does the same.
 - ![](../../icon/vehicule.png) **Vehicle**: a small simplified car (a city car about 3.2 m long) in the tunnel, along it. **You bump into it**, as into a pillar.
@@ -656,7 +660,9 @@ Where and how a way through is drawn:
 
 #### 🪜 Changing level
 
-- Within **2 m** of a way between levels (stairs, shaft) or of the end of a junction trace, named buttons ("▼ -1 · Crossroads shaft (ladder)") take you to the next level.
+- Within **2 m** of a way between levels (stairs, shaft), named buttons ("▼ -1 · Crossroads shaft (ladder)") take you to the next level.
+- A **junction zone** (a room whose floor rises from one level to the other) is walked like the junction trace that crosses it: the floor follows the slope everywhere in the room, so do its pillars and walls, and those of both levels block you. You only leave it by a side where its floor is level with yours.
+- A **junction trace** has no button: you step in and walk, the view follows the slope. Halfway, you move to the other level without a black screen (**"Level -1"** shows); at the end, you are in its tunnel. The other way round works the same. The route follows it ("walk down the slope to level -1").
 - If it serves more than two, a small list opens.
 - The point's card does the same: **▼ Go down** / **▲ Go up** to each of its levels, from wherever you are.
 - You go down (or up) the way, the screen goes black for a moment, then you arrive through the ceiling (or floor) of the other level. **"Level -1"** shows for 2 seconds.
@@ -672,6 +678,7 @@ Where and how a way through is drawn:
 - **Touching a structure, a zone or a trace** (pillar, wall, face, zone, tunnel) opens **its card**, the same as on the map: note, 🔄 Convert, level, 🗑️ Delete. On a data layer it is read-only.
 - A point's sign comes first. Touching empty space does nothing.
 - **🗺️ Show on the map**, at the bottom of the card: the 3D view closes, the map centres on the object, opens its card and highlights it for a few seconds.
+- **🔍 Search**, at the top left of ⚙️ (in both views), or **Ctrl+K** (⌘K on Mac): the same window as on the map (points, paths, zones, structures, same filters), above the view. Choosing a result takes you there **in 3D**: the view switches to free mode (the tracker does not move), changes level if needed, stands in front of the object (the precise spot of a point that has one) and opens its card. The map underneath does not move. Closing the window without choosing changes nothing. During a game, search is not offered.
 - In the 🛣️ Tunnels rendering, pillars and walls are not drawn: touching a tunnel wall opens the trace's card.
 - **🧭 Go there**: in follow mode the route starts from the tracker. In free mode it starts from **where you are in 3D**, level included, without moving the tracker.
 - Tracker stopped: **Where are you starting from?** offers **Here** first (the tracker is reset where you are in 3D, then the route starts there; as when closing, this jump does not count as a field outing).
@@ -711,7 +718,7 @@ Where and how a way through is drawn:
 
 #### ✏️ Drawing in edit view
 
-- In the **✏️ Edit** view, the map tools are always there, on the right in the middle, in the same order: **📐 Measurement**, **✏️ Add a point**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. At eye level, no drawing.
+- In the **✏️ Edit** view, the map tools are always there, in a column on the right below the top buttons, in the same order: **📐 Measurement**, **✏️ Add a point**, **🛣️ Paths**, **⬛ Zones**, **🏛️ Structures**. Above them: **🗺️ Plan on the ground** and **🧭 Tracker**, the map's Tracker menu (a tile that acts on the map, such as 📍 Realignment mode or 🎯 My position, closes the 3D view first). **▾** at the top folds the column (**◂** opens it again); the app remembers. At eye level, no drawing.
 - Each button opens **the same menu as on the map**: pillars, walls, working faces, your custom types, ➕ new type, ✅ Close / Validate.
 - Nothing is drawn until a tool is chosen. **Choosing a tool is enough**: a tap places a point where you touch. Dragging, pinching and the mouse wheel still move the view, without placing a point.
 - **Closing a pillar, a wall or a zone**: tap the **gold circle** of the first point, or ✅ in the menu. For a thin wall, zoom in first: the circle grows with the view.
@@ -725,7 +732,7 @@ Where and how a way through is drawn:
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
 - **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
 - In read-only mode, the drawing tools stay greyed out, as on the map; 📐 Measurement stays allowed.
-- **✋ Adjust a shape**, as on the map: press and hold a point of a pillar, zone, path or measurement, then drag; in the middle of a side, a point is added; without moving, **＋** (each touch on the ground then inserts a point, until ✓, Esc or the next point) and **🗑️**. **Gold circles** mark the points of the touched shape. Dragging straight away moves the view, without adjusting anything; a chosen drawing tool comes first (except 📐 for the measurement).
+- **✋ Adjust a shape**, as on the map: press and hold a point of a pillar, zone, path or measurement, then drag; in the middle of a side, a point is added; without moving, **＋** (each touch on the ground then inserts a point, until ✓, Esc or the next point), **✂️** (inner point of a path: splits it in two) and **🗑️**. **Gold circles** mark the points of the touched shape. Dragging straight away moves the view, without adjusting anything; a chosen drawing tool comes first (except 📐 for the measurement).
 
 > ⚠️ The 3D view shows the **map**, not the real tunnel. Shapes and heights come from the survey (tunnels in Tunnels and Mixed modes: fixed widths per trace type), your position from the tracker, which drifts. Do not trust it more than the map.
 
@@ -862,6 +869,8 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 
 **📏 Measuring**: in OSM mode, the measurement tool gives a distance and an area; they do not depend on any map calibration.
 
+**🧭 Turning the map**: in the OSM View window opened from a map and on the home screen map, twist two fingers on the map (Shift + wheel on a computer); the **north** button, at the bottom left of the map, straightens it. The window always reopens north up, and so does the home screen map when you come back to it; picking another map in its list keeps the angle. On the home screen, one finger still moves the map: to scroll the page, put your finger beside it. To prevent it: ⚙️ home screen Configuration › 🎨 Display › **Lock map rotation**.
+
 **🎯 Surface coordinates**: a click on the map gives the latitude and longitude of the point right above, with a Copy button — that is what you pass on to a team arriving from the surface. Their accuracy depends on the map's alignment.
 
 **🗺️ Legend**: on a map, the **🗺️ Legend** button of the OSM View; on the home screen, the **🗺️** button of the banner. It is the map's legend, with your names, your colours and your own types, **read-only**: you edit it from the map (🗺️ Legend → ✏️ Edit). On the home screen, it is the legend of the map you just left, otherwise that of the displayed map you opened most recently; when several maps are displayed, a message reminds you that the others have their own.
@@ -880,7 +889,7 @@ The **📖** button in the top bar (on the right, next to 🚨) opens your **exp
 
 ### 📝 Free note
 
-One note per map, **saved as you type**. It shows formatted; **✏️ Edit** opens the text, with a toolbar (bold, italic, headings, list, link, code, quote), and **👁 Preview** goes back to the rendering. The note accepts Markdown (`**bold**`, `# Heading`, `- item`).
+One note per map, **saved as you type**. It shows formatted; **✏️ Edit** opens the text, with a toolbar (bold, italic, headings, list, link, code, quote), and **👁️ Preview** goes back to the rendering. The note accepts Markdown (`**bold**`, `# Heading`, `- item`).
 
 ### 📚 PDF documents
 
@@ -963,12 +972,13 @@ In the **⬛ Zones** group, closed surfaces to annotate the map:
 | 🟥 **Collapse** | red | none |
 | 🟦 **Water** | blue | none |
 | ⛔ **Inaccessible** | dark red / black hatching | **blocks** the way |
+| 🪜 **Junction zone** (multi-level map) | junction trace colour, light veil | none: the route follows the junction trace that crosses it (see 🏗️ Multi-level mode) |
 
 Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
 
 ### ⛔ "Inaccessible" zone — blocks the route
 
-A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its levels** (a zone can touch several, see « 🏗️ Multi-level mode »), and still counts even if you hide the zones layer.
+A ⛔ zone forbids the route from crossing it (recent collapse, deep water…): the calculation looks for another way, or fails and says so. It only blocks **its levels** (a zone can touch several, see « 🏗️ Multi-level mode »), and still counts even if you hide the zones layer. In the ⬛ Zones menu, the tooltip of **⛔ Inaccessible** says so.
 
 The **Respect impassable areas and walls (line)** box in the Route window (ticked by default) lets you relax it. **Rescue Mode** and "I'm lost" always respect it. For "avoid if possible", use the route's **🚫 Avoidance preferences** instead.
 
@@ -1020,8 +1030,9 @@ A **route**, a **zone**, a **structure** or a **📐 measurement** already drawn
 
 - **Move a point**: press and hold (half a second) a point of the shape; a gold circle appears: drag it, the shape follows as a dotted line, then release.
 - **Add a point**: press and hold the middle of a side; a point appears there, drag it straight away.
-- **Delete a point**: press and hold a point without moving: **＋** and **🗑️** appear above it; tap **🗑️**. A line keeps at least 2 points, a surface 3: below that, a message says so and only **＋** is offered.
+- **Delete a point**: press and hold a point without moving: **＋** and **🗑️** appear above it (and **✂️** on an inner point of a path); tap **🗑️**. A line keeps at least 2 points, a surface 3: below that, a message says so and only **＋** is offered.
 - **Insert points in a row**: same press and hold, then **＋**. A banner “＋ Insertion · N point(s) · ✓ Done” appears: each tap on the map adds a point between the last one placed and the next point of the shape, which is redrawn at once (on a closed shape, the first point comes after the last; at the end of a line, the line is extended). Meanwhile, no tap opens a popup or a tool. **✓ Done**, **Esc** or a tap on the next point stop the insertion; **Ctrl+Z** (or ⏪) removes one point at a time, during and after.
+- **✂️ Split a path**: same press and hold on a point of a path, then **✂️**. The path becomes two paths: the first ends at that point, the second starts there (both share the point, the route still goes through). They keep the type, the level and the note. Not on an end (each piece keeps at least 2 points), nor on a link between levels; to split in the middle of a side, first add a point there. A single ⏪ joins the path back.
 
 A short tap still opens the object's popup. A route released near a point of another route snaps onto it if **🧲 Snap while drawing** is on. Each gesture (and each inserted point) can be undone with ⏪ (on a measurement, only while the 📐 tool is on). Objects of a data layer only move once the layer is in **🔄 Edit**; a shared map in read-only mode cannot be changed. With a mouse, same gesture: hold the button half a second, then drag.
 
@@ -1095,6 +1106,7 @@ The same banner can also **delete** in one go, for example everything an import 
 - The window also tells you about: the points' **photos** (they are not erased, they become “without a point” in 🧰 Tools > 📸 My photos), the **data layer objects** seen in the area (never deleted: switch the layer to **🔄 Edit** first), and **portal points** (link to another map), always kept.
 - Never taken: the computed route, links between levels and measurements.
 - **A single ⏪** brings back everything that was deleted. On a connected installation, the deletion goes to the team like a one-by-one deletion; the installation may also **refuse** it before the confirmation (for example too many objects of other members without the right to manage the map): a message says so and nothing is deleted.
+- **🏗️ Level (N)** (map with several levels): the list of the map's levels, the same as in an object's popup, and one checkbox per family; the button says how many objects change (those already on the chosen level do not count). The whole selection changes level, points included. An area on several levels keeps the others: only its original level is replaced. **Links between levels** do not change (their levels are changed in their own sheet), nor do **data layer objects**: the window counts both. **A single ⏪** undoes everything; on a connected installation, the change goes to the team as for a single object.
 
 **✅ Convert (N)** only counts objects of the same shape as the first one (lines or surfaces): an area that also took points or surfaces leaves them out of the conversion.
 
@@ -1143,7 +1155,7 @@ In the **📐 Measurement** group, **⛏️ Mined volume** works out what was ex
 - the **sector area**;
 - the **pillars deducted**: area and count. Pillars, walls and closed custom structures count, yours and those of the data layers (even hidden), clipped at the sector edge. Working faces and line walls do not count;
 - the **mined area** (sector minus pillars) and the **extraction ratio** (mined ÷ sector);
-- the **mined volume**: mined area × **average gallery height**, typed in the window (2 m by default, remembered for this plan, recalculated at once);
+- the **mined volume**: mined area × **average gallery height**, typed in the window (at first the level's height, otherwise 2 m; recalculated at once). On a single-level map, it is remembered for the map; on a map with several levels, it is only used for the calculation: each level's height is set in ⚙️ Settings › Levels: depth and height, and a sentence under the field says so;
 - the **backfill** (“Backfill” zones inside the sector void) in m² and m³, and the **current void** (mined minus backfill).
 
 On a multi-level plan, only the **active level** counts (in the 🧊 3D view: the view's level), and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
@@ -1170,6 +1182,8 @@ If the map contains elements on other levels, the list extends by itself. The sa
 An object ended up on the wrong level? In the popup of a path, a zone or a structure you drew, the **Level** list (under 🔄 Convert) moves it at once; for a point, it is the **Level** list of **✏️ Edit**, saved with the rest of the form. The object's current level is always offered, even if it is outside the map's list. If the chosen level is hidden by the filter, the object disappears from the map and a message says so: the view stays on your level. **⏪** undoes it.
 
 A zone that touches several levels (a collapse between −1 and −2): draw it on the active level, then in its popup tick the other levels under **Also on levels** and tap **🏗️ Apply levels**. It is the same zone, with the same outline, shown on each of its levels: editing or deleting it acts everywhere, and a ⛔ zone blocks the route on each of them. Untick everything to bring it back to its single level. **⏪** undoes it.
+
+A room whose floor rises from one level to the other (a sloping chamber): **⬛ Zones → 🪜 Junction zone**, choose **from level … to level …** (the same window as for a junction), then draw the room: it is placed on both levels, with nothing to tick. Then draw a junction across it, from one level to the other: it gives the direction of the slope, and the route goes through it. As long as none crosses it, the zone's popup says so and offers **🪜 Draw the junction**: the junction trace starts with the zone's levels, you only place its points. In the popup, **From level** / **To level** and **🪜 Change the levels** edit them (**⏪** undoes). In the 3D view, the room's floor and ceiling follow the slope, and so do its pillars and the walls along the junction; without a junction, the floor stays flat. The junction zone has the colour, name and legend row of the junction trace: changing one changes the other, the **Junction** path filter hides it too, and it goes into the same exports. A zone ticked “Junction zone” in an earlier version becomes a junction zone when the map opens, losing nothing.
 
 A junction has its own card, with its two levels (see below). No list on a layer object (🔄 Edit the layer first) or while a path is being drawn.
 
@@ -1206,6 +1220,18 @@ route window.
 🔒 These passages are **never** suggested as emergency exits nor counted as surface accesses in Rescue mode. A rung
 shaft or service staircase **that reaches the surface** keeps its type (Open rung shaft, Open service staircase) and
 can also tick several levels: it stays an exit.
+
+### 📉 Level depth and height
+
+Each level has three figures, set in **⚙️ Settings › 📐 Map › 📉 Levels: depth and height** (or at the bottom of the window of the **Lvl X** badge):
+
+- **Floor**: its depth below the surface, in metres (negative goes down). Empty = not filled in; **None** = a level that is not a floor (an old survey stacked above, for instance).
+- **Height**: the height of its galleries (otherwise 2 m). The 3D view and ⛏️ Mined volume use it.
+- **Gap**: the thickness between the level's ceiling and the floor of the level above. **Negative** when the two levels interlock: −1.5 = the ceiling rises 1.5 m above the floor of the level above. Changing the gap moves this level **and the ones below it**.
+
+If two successive levels have figures that do not fit together (the floor of the upper level lower than the one below, or two levels overlapping by at least the height of one of them), a ⚠️ warning shows under the table and the row is marked; nothing is blocked, the 3D view sets them side by side.
+
+The map creator suggests them in the Generator; what you correct here stays on your device and takes priority. **↺ Map values** goes back to the map's own. Filling in floors lengthens routes that use a shaft: their length is no longer measured flat.
 
 ### 🛠️ On the map creator's side
 
@@ -1434,7 +1460,7 @@ To the right of “📚 My maps”, the **All | Folders** selector. In **Folders
 
 - **Sorting**: **☑ Select** one or more maps then “Move to…”, or **drag** the row onto a folder (with the mouse, or with a finger after a long press).
 - **⋮** on a folder: rename, colour, order, delete (its maps go back to Unsorted, no map is ever deleted).
-- **📥 Keep all offline** (in ⋮, also on “Unsorted” for the maps it shows): brings the whole folder up to date on the device before going underground. Missing maps are downloaded, maps with a newer version are updated, maps already up to date are skipped (an imported, saved map is already there). One map at a time, with “3 / 7” and the current map; **⏹ Stop** at any time. The app asks for confirmation only above an estimated 200 MB or on mobile data (when the browser can tell). If the app goes to the background or loses the network, the current map resumes when it comes back, without downloading again what is already stored. At the end, the summary lists the maps downloaded, updated, already up to date, and those that failed, with the reason.
+- **📥 Keep all offline** (in ⋮, also on “Unsorted” for the maps it shows): brings the whole folder up to date on the device before going underground. Missing maps are downloaded, maps with a newer version are updated, maps already up to date are skipped (an imported, saved map is already there). One map at a time, with “3 / 7” and the current map; **⏹️ Stop** at any time. The app asks for confirmation only above an estimated 200 MB or on mobile data (when the browser can tell). If the app goes to the background or loses the network, the current map resumes when it comes back, without downloading again what is already stored. At the end, the summary lists the maps downloaded, updated, already up to date, and those that failed, with the reason.
 - **🏷️ Tag rule** (in ⋮): the folder takes in by itself the maps carrying those tags. In All mode, ticked chips offer **📁 Create a folder from these tags**. Sorting by hand wins over a rule; the dot is **filled** for an explicit placement, **hollow** for a rule.
 - Folders travel with your profile. A server may offer some: you can neither rename nor delete them, but you can put whatever you like in them. Importing several maps offers “Put in:”.
 
@@ -1460,11 +1486,12 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **📐 Scale icon size with zoom** (on by default): on the plan, and also in the OSM view and the home screen OSM map;
   - **❓ Help button inside windows** (on): a ❓ in the title of windows that have a help page, which opens the right page directly;
   - **🔔 Notifications**: **All**, **Essential** (default: no more messages confirming something you just did) or **Silence** (only what matters: low battery, sensor refused, errors). Server alerts and windows waiting for a decision are never muted;
-  - **➕ Zoom +/− buttons on maps**: shows the + and − buttons on the plan, the home OSM widget and the OSM view. Off by default: zoom with your fingers (pinch) or the mouse wheel;
+  - **➕ Zoom +/− buttons on maps and in 3D**: shows the + and − buttons on the plan, the home OSM widget and the OSM view, and in the edit view of the 🧊 3D view the + / − and ▲ ▼ (tilt) buttons. Off by default: zoom with your fingers (pinch), the mouse wheel or the keyboard; the 3D ⌖ stays;
+  - **Lock map rotation**: two fingers and Shift + wheel no longer turn the plan map, the home OSM widget or the OSM view; turning it on puts open maps back straight. Useful on slow devices. Off by default. The tracker's 🔃 Oriented map still turns, and the 🧊 3D view keeps its gestures;
   - **🪟 Anchor tool panels to their button**: the Paths, Zones and Structures panels open next to their button instead of centred (comfortable on a large screen, not recommended on a phone);
   - **🧲 Snap while drawing** and its distance: a click close to an existing point snaps onto it, so that your galleries really join;
   - **☀️ Light theme**;
-  - **🔆 Keep screen on** while the app is open. The tracker also offers to turn it on when it starts.
+  - **📱 Keep screen on** while the app is open. The tracker also offers to turn it on when it starts.
 - **🧩 Optional features** — Replay, Heatmap, battery and vibration, all off by default: see “🔭 Going further”. This is also where **🕵️ Incognito mode** lives: it opens a new window where nothing is saved (not available on an installation linked to a database, whose server records what you do).
 - **🔒 Privacy & security**:
   - **📔 Keep a logbook of my outings** (on, see “📔 My logbook”);
@@ -1473,9 +1500,9 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?** and the **🗺️ OSM view** box (see “🔴 Important warnings”) — the app sends none of your data; the only outside site it contacts is OpenStreetMap (the OSM View's background map), which this box turns off, and the network log shows it to you;
   - **📚 Site maps**: **🚫 Don't load the site's maps on startup**, if you only use your own maps (after a reload, they disappear from the list and the statistics).
 - **🛠️ System & maintenance**:
-  - **🛠️ Developer Mode** (password-protected): see “🔭 Going further”;
+  - **🛠️ Developer Mode**: verbose logs to copy when reporting a problem, plus technical tools — see “🔭 Going further”;
   - **📊 View memory state**: what the app takes up on your device, with **📋 Copy the report** to report a problem;
-  - **🆘 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🆘 Open the Kill SW tool** (SW = *Service Worker*, the part of the app that keeps it stored for offline use) and **💥 Reset everything** — see “🆘 Troubleshooting”.
+  - **🔧 Troubleshooting**: a window that lists, from the gentlest to the most radical, **🔄 Force the update**, **🔧 Open the Kill SW tool** (SW = *Service Worker*, the part of the app that keeps it stored for offline use) and **💥 Reset everything** — see “🔧 Troubleshooting”.
 
 ### ⚙️ Settings (in map mode) — this map
 
@@ -1536,7 +1563,7 @@ The file only contains the documentation, none of your data: you can share it. T
 
 ---
 
-## 🆘 Troubleshooting
+## 🔧 Troubleshooting
 
 ### 💥 The app stops abruptly
 
@@ -1574,15 +1601,15 @@ On first launch, MyKTAMap presents the app, then lets you **Enter**: no code is 
 ### 🔄 The app does not update, or stays stuck
 
 In this order, keeping your data:
-1. **⚙️ Configuration → 🆘 Troubleshooting → 🔄 Force the update**: downloads the app again without touching your maps, sessions, preferences or codes. A connection is needed.
-2. If the app stays stuck (blank page, unformatted home screen): check your connection (turn off your VPN, change network), then **⚙️ Configuration → 🆘 Troubleshooting → 🆘 Open the Kill SW tool**.
-3. If the app does not even open: open the **rescue page** in a private tab of the browser (not the installed app): **https://myktamap.fr/killsw.html** (its address is also shown at the bottom of the 🆘 Troubleshooting window). It clears the app's cache **without touching your data** (maps, sessions, photos) and offers **🚀 Reload the app**.
+1. **⚙️ Configuration → 🔧 Troubleshooting → 🔄 Force the update**: downloads the app again without touching your maps, sessions, preferences or codes. A connection is needed.
+2. If the app stays stuck (blank page, unformatted home screen): check your connection (turn off your VPN, change network), then **⚙️ Configuration → 🔧 Troubleshooting → 🔧 Open the Kill SW tool**.
+3. If the app does not even open: open the **rescue page** in a private tab of the browser (not the installed app): **https://myktamap.fr/killsw.html** (its address is also shown at the bottom of the 🔧 Troubleshooting window). It clears the app's cache **without touching your data** (maps, sessions, photos) and offers **🚀 Reload the app**.
 
 These tools delete **no** data (stored maps, sessions, photos, logbook, preferences). As a precaution, **📤 Export my profile** first.
 
 ### 💥 Reset everything
 
-**⚙️ Configuration → 🆘 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
+**⚙️ Configuration → 🔧 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
 
 - The first window offers **📤 Export my profile first**.
 - If your installation has its own password, it warns you that it will be **asked again at restart**: make sure you know it before confirming. Otherwise, the app will show the **Welcome** screen again.
@@ -1621,7 +1648,7 @@ If battery or vibration is **greyed out** with "Sensor refused by iOS" or "by th
 
 The **🎬** tile in the **🧭 Tracker** menu opens a full-screen window that **replays your tracking session**: the yellow marker walks your route again and the trail grows as it goes.
 
-- **Controls**: time slider, ⏮ ▶️ ⏸ ⏭, speed from 0.5× to 10×. On ▶️, the window shrinks to the bottom of the screen so you can see the map (the **⛶** button switches back).
+- **Controls**: time slider, ⏮️ ▶️ ⏸️ ⏭️, speed from 0.5× to 10×. On ▶️, the window shrinks to the bottom of the screen so you can see the map (the **⛶** button switches back).
 - **Keyboard**: Space = play / pause · ← → = back / forward one second · Esc = close.
 - **📤 Export CSV**: a time-stamped table of positions (start, every step, every recalibration, and the level on a multi-level map), readable in a spreadsheet.
 - A recalibration is a jump: no line is drawn between the old and the new position.
@@ -1677,7 +1704,7 @@ The tracker estimates your position from **your steps and the compass**, which *
 
 ### 🗺️ "Oriented map" — the map turns with you
 
-In the 🧭 Tracker menu, the **🗺️ Oriented map** tile makes **the map rotate** while tracking, so that your walking direction always points to the top of the screen, like a car GPS.
+In the 🧭 Tracker menu, the **🔃 Oriented map** tile makes **the map rotate** while tracking, so that your walking direction always points to the top of the screen, like a car GPS.
 
 - **Off by default**; your choice is remembered on this device.
 - The map only turns **while tracking** and straightens up when the tracker stops.
@@ -1875,7 +1902,7 @@ The **🏗️ Generate a map** button on the home screen opens the **Generator**
 
 #### 🧙 The Generator
 
-- **🧙 Wizard**: the Generator moves **step by step** (name, image, layers…). Optional steps are skipped in one click (**⏭ Skip**), and a **✅ Summary before generation** shows what is filled in, skipped or missing, with useful warnings (for example: without GPS georeferencing, no OSM View and no KMZ / GPX export). **🗒️ Show all** instead shows the whole form at once; your choice is remembered.
+- **🧙 Wizard**: the Generator moves **step by step** (name, image, layers…). Optional steps are skipped in one click (**⏭️ Skip**), and a **✅ Summary before generation** shows what is filled in, skipped or missing, with useful warnings (for example: without GPS georeferencing, no OSM View and no KMZ / GPX export). **🗒️ Show all** instead shows the whole form at once; your choice is remembered.
 - **🚀 Simple / ⚙️ Advanced**: Simple mode keeps to the essentials (image, name, version, V2 — the image cut into tiles, see “🧱 Convert to V2 tiles” —, multi-level) and loads the default icons; Advanced mode gives access to every option.
 - **📂 Load a file** accepts a **MyKTAMap ZIP** (to edit it), a **KMZ** or a **GPX** exported by MyKTAMap (the GPX gives a blank background georeferenced automatically), a **GIS export** (`.geojson`, `.kml`) or a **GeoTIFF**. Otherwise, fill in the form to create a map from scratch.
 
@@ -2019,9 +2046,10 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
 | 🐢 **Slow auto-save (30s)** | Saves every 30 s | Up to 30 s lost if the app crashes |
 | 🛡️ **Limit zoom-out on mobile** | Caps zoom-out on phones. **Ticked by default** | No full overview on mobile; reload required |
 
-- ULTRA ticks everything; unticking it unticks everything. On top of the options above, it only draws the paths and points near the screen (slight pop-in when moving the map). You can also enable only some options, for example **🐢** for a good gain with no visible loss.
+- ULTRA ticks everything; unticking it unticks everything. On top of the options above, it only draws the paths and points near the screen (slight pop-in when moving the map) and locks map rotation with two fingers or Shift + wheel on this map (and in the OSM view opened from it), without changing the home screen option; the tracker's 🔃 Oriented map still turns. You can also enable only some options, for example **🐢** for a good gain with no visible loss.
 - **Your session points are always shown**, whatever the options.
 - When optimizations are active, a message reminds you when the map opens: a lightened display is not a bug.
+- **Lighten the rotated map (large maps)** (same group, outside ULTRA, ticked by default): on a large map, while you rotate the map with two fingers, only the points and paths on screen are drawn, which keeps the phone from running out of memory; everything comes back once the map points north again. Points stay tappable. Untick it if you prefer to see everything while rotating.
 - On a multi-level map, **🏗️ Show every level at launch** (same group, outside ULTRA, ticked by default) can be unticked to open only levels -1, 0 and +1.
 
 #### 📱 On mobile
@@ -2135,7 +2163,11 @@ There is nothing else to do.
 
 ### 🐛 Detailed logs
 
-In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (password-protected), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default. Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
+In the home screen's **⚙️ Configuration** → **🛠️ Developer Mode** (no password: a confirmation tells what it does), **🐛 Verbose logs** adds information to the browser console (tracker sensors, image splitting). Useful to report a problem. Off by default.
+
+**To send your logs** to whoever is helping you: **⚙️ Configuration** → **🛠️ Developer Mode** → turn on **🐛 Verbose logs**, do again what goes wrong, then **Show logs** → **Copy** or **Export (.txt)**, and paste the text into your message or attach the file. The window keeps the last 300 lines, even after a crash. Read them before sending: they may mention map or file names.
+
+Developer Mode also contains **🔧 View cache state (Service Worker)**: the file-by-file detail of what the offline dot sums up.
 
 ### 📖 All the documentation online
 
