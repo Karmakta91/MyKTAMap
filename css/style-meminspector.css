@@ -601,12 +601,6 @@ html.kta-theme-light .kta-mem-footer {
 }
 
 /* Variants thème clair */
-html.kta-theme-light .kta-profile-intro {
-  color: var(--kta-light-text) !important;
-}
-html.kta-theme-light .kta-profile-intro strong {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
 html.kta-theme-light .kta-profile-fileinfo,
 html.kta-theme-light .kta-profile-row,
 html.kta-theme-light .kta-profile-mode {
@@ -614,16 +608,9 @@ html.kta-theme-light .kta-profile-mode {
   border-color: var(--kta-light-border) !important;
   color: var(--kta-light-text) !important;
 }
-html.kta-theme-light .kta-profile-fileinfo code {
-  background: rgba(140, 180, 255, 0.15) !important;
-  color: #1e3a8a !important;
-}
 html.kta-theme-light .kta-profile-row:hover {
   background: var(--kta-light-accent-bg) !important;
   border-color: var(--kta-light-accent) !important;
-}
-html.kta-theme-light .kta-profile-row-label {
-  color: var(--kta-light-text) !important;
 }
 html.kta-theme-light .kta-profile-row-label strong {
   color: var(--kta-light-text) !important;
@@ -634,18 +621,10 @@ html.kta-theme-light .kta-profile-row-meta {
   color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: var(--kta-light-accent) !important;
 }
-html.kta-theme-light .kta-profile-row-hint {
-  color: var(--kta-light-text-muted) !important;
-}
 html.kta-theme-light .kta-profile-total {
   background: rgba(140, 180, 255, 0.12) !important;
   border-color: rgba(140, 180, 255, 0.35) !important;
   color: var(--kta-light-text) !important;
-}
-html.kta-theme-light .kta-profile-total strong,
-html.kta-theme-light .kta-profile-mode strong,
-html.kta-theme-light .kta-profile-mode-titre {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
 }
 html.kta-theme-light .kta-profile-banner-ok {
   background: rgba(34, 139, 34, 0.08) !important;
@@ -938,15 +917,6 @@ html.kta-theme-light .kta-refonte-session-cta-stats-glob {
 html.kta-theme-light .kta-mem-crash-row {
   background: rgba(255, 140, 140, 0.10) !important;
   border-color: rgba(255, 140, 140, 0.35) !important;
-}
-html.kta-theme-light .kta-mem-crash-head {
-  color: var(--kta-light-text) !important;
-}
-html.kta-theme-light .kta-mem-crash-date {
-  color: #b91c1c !important;
-}
-html.kta-theme-light .kta-mem-crash-meta {
-  color: var(--kta-light-text-muted) !important;
 }
 html.kta-theme-light .kta-mem-crash-detail-pre {
   background: var(--kta-light-bg-deep) !important;
