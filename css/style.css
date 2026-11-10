@@ -4907,9 +4907,6 @@ html.kta-theme-light .kta-osm-home-footer {
 html.kta-theme-light .kta-osm-home-loading {
   color: var(--kta-light-text, #5a4a30) !important;
 }
-html.kta-theme-light .kta-osm-home-empty strong {
-  color: var(--kta-light-text, #2a2620) !important;
-}
 
 /* Plein écran inline (overlay viewport) par classe sur #ktaOsmHomeBox (openFullScreen) : plutôt que la
    Fullscreen API, marche partout (iOS Safari), sans permission ; Échap pour quitter. */
@@ -13113,10 +13110,6 @@ html.kta-theme-light .kta-histoire-tab-active {
   border-color: var(--kta-light-border);
   border-bottom-color: var(--kta-light-bg-elevated);
 }
-/* Textarea note libre */
-html.kta-theme-light .kta-histoire-textarea:focus {
-  border-color: #d97706;  /* accent jaune-orange focus */
-}
 /* Éditeur Markdown de la note libre */
 html.kta-theme-light .kta-histoire-md-toolbar {
   background: rgba(217, 119, 6, 0.05);
@@ -13165,11 +13158,9 @@ html.kta-theme-light .kta-histoire-pdf-wrap {
   background: var(--kta-light-bg-deep);
   border-color: var(--kta-light-border);
 }
-html.kta-theme-light .kta-histoire-pdf-empty,
 html.kta-theme-light .kta-histoire-pdf-fallback {
   color: var(--kta-light-text);
 }
-html.kta-theme-light .kta-histoire-pdf-empty p,
 html.kta-theme-light .kta-histoire-pdf-fallback p {
   color: var(--kta-light-text);
 }
@@ -13181,14 +13172,6 @@ html.kta-theme-light .kta-histoire-pdf-toolbar {
   background: rgba(244, 197, 66, 0.08);
   border-color: var(--kta-light-border);
 }
-html.kta-theme-light .kta-histoire-pdf-meta {
-  color: var(--kta-light-text);
-}
-body.kta-theme-light .kta-panneau-close:hover {
-  background: rgba(220, 50, 50, 0.15);
-  border-color: rgba(220, 50, 50, 0.5);
-  color: #b02020;
-}
 
 body.kta-theme-light .kta-readme-modal-corps input[type="text"],
 body.kta-theme-light .kta-readme-modal-corps input[type="search"],
@@ -13198,22 +13181,10 @@ body.kta-theme-light .kta-readme-modal-corps textarea {
   color: var(--kta-light-text);
   border: 1px solid var(--kta-light-border-strong);
 }
-body.kta-theme-light .kta-readme-modal-corps input:focus,
-body.kta-theme-light .kta-readme-modal-corps select:focus,
 body.kta-theme-light .kta-readme-modal-corps textarea:focus {
   border-color: var(--kta-light-accent);
   outline: none;
   box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25);
-}
-
-body.kta-theme-light .kta-btn-secondary {
-  background: var(--kta-light-bg-deep);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border-strong);
-}
-body.kta-theme-light .kta-btn:hover {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
 }
 
 body.kta-theme-light .kta-measure-distance {
@@ -13481,20 +13452,6 @@ html.kta-theme-light .leaflet-popup-content-wrapper {
   border: 1px solid var(--kta-light-border) !important;
   box-shadow: 0 3px 14px var(--kta-light-shadow) !important;
 }
-html.kta-theme-light .leaflet-popup-tip,
-html.kta-theme-light .leaflet-popup-tip-container .leaflet-popup-tip {
-  background: var(--kta-light-bg-elevated) !important;
-  box-shadow: none !important;
-}
-html.kta-theme-light .leaflet-popup-content {
-  color: var(--kta-light-text) !important;
-}
-html.kta-theme-light .leaflet-popup-close-button {
-  color: var(--kta-light-text-muted) !important;
-}
-html.kta-theme-light .leaflet-popup-close-button:hover {
-  color: var(--kta-light-text) !important;
-}
 /* Description point dans popup (.kta-popup-point .kta-popup-desc) */
 html.kta-theme-light .kta-popup-point .kta-popup-desc {
   color: var(--kta-light-text-muted) !important;
@@ -13548,14 +13505,12 @@ html.kta-theme-light .kta-popup-actions .kta-popup-btn-delete:hover {
   background: rgba(180, 30, 30, 0.22) !important;
 }
 /* Éditer / Ajouter */
-html.kta-theme-light .kta-popup-actions .kta-popup-btn-edit,
-html.kta-theme-light .kta-popup-actions .kta-popup-btn-add {
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-edit {
   background: rgba(161, 110, 16, 0.10) !important;
   border-color: rgba(161, 110, 16, 0.40) !important;
   color: #6b4d10 !important;
 }
-html.kta-theme-light .kta-popup-actions .kta-popup-btn-edit:hover,
-html.kta-theme-light .kta-popup-actions .kta-popup-btn-add:hover {
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-edit:hover {
   background: rgba(161, 110, 16, 0.22) !important;
 }
 html.kta-theme-light .leaflet-popup-content input,
@@ -13723,10 +13678,8 @@ body.kta-theme-light .leaflet-popup-content h2,
 body.kta-theme-light .leaflet-popup-content h3,
 body.kta-theme-light .leaflet-popup-content p,
 body.kta-theme-light .leaflet-popup-content li,
-body.kta-theme-light .leaflet-popup-content span,
 body.kta-theme-light .leaflet-popup-content strong,
 body.kta-theme-light .leaflet-popup-content em,
-body.kta-theme-light .leaflet-popup-content div,
 body.kta-theme-light .leaflet-popup-content b,
 body.kta-theme-light .leaflet-popup-content a {
   color: var(--kta-light-text) !important;
@@ -13778,9 +13731,6 @@ body.kta-theme-light #planLoaderBox h2,
 body.kta-theme-light #planLoaderBox h3 {
   color: #1a1612;
 }
-body.kta-theme-light #planLoaderBox a:hover {
-  color: var(--kta-accent-texte);
-}
 
 /* Boutons utilitaires du header de la HOME : blanc opaque (un fond à 5 % paraît transparent). */
 body.kta-theme-light .loader-btn-secondary {
@@ -13822,15 +13772,6 @@ body.kta-theme-light #planLoaderBox .kta-titre-suffix-pro {
 
 /* « Reprendre » : carte claire, bordure marquée. Mes plans, Vue OSM et Ajouter un plan n'en ont pas : leur
    colonne (.loader-col) est déjà la carte, comme en sombre. */
-body.kta-theme-light #resumeBox {
-  background: var(--kta-light-bg-elevated) !important;
-  color: var(--kta-light-text) !important;
-  border: 1px solid var(--kta-light-bg-bar-border) !important;
-  box-shadow: 0 2px 8px rgba(80, 60, 30, 0.15) !important;
-}
-body.kta-theme-light #resumeBox * {
-  color: var(--kta-light-text);
-}
 body.kta-theme-light #allPlansList li {
   background: rgba(0,0,0,0.03) !important;
   border: 1px solid var(--kta-light-border) !important;
@@ -14017,9 +13958,6 @@ html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link-h2 {
   font-weight: 700 !important;
   color: #1a1612 !important;
 }
-html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link:hover {
-  color: #1a1612 !important;
-}
 /* H3 = sous-items */
 html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-title {
   color: #16497a !important;   /* #8cb4ff sur beige : contraste 1,36 */
@@ -14141,15 +14079,6 @@ html.kta-theme-light #kta-update-modal .kta-readme-modal-corps {
 html.kta-theme-light .kta-alert-overlay {
   background: rgba(40, 32, 20, 0.85) !important;
 }
-html.kta-theme-light .kta-alert-boite {
-  background: var(--kta-surface) !important;
-  border: 2px solid #c0392b !important;
-  color: var(--kta-texte) !important;
-}
-html.kta-theme-light .kta-alert-header {
-  background: linear-gradient(135deg, rgba(220, 50, 50, 0.22), rgba(220, 50, 50, 0.08)) !important;
-  border-bottom: 1px solid rgba(220, 50, 50, 0.50) !important;
-}
 html.kta-theme-light .kta-alert-title-text {
   color: #8a1818 !important;
   text-shadow: 0 0 6px rgba(220, 50, 50, 0.30) !important;
@@ -14157,10 +14086,6 @@ html.kta-theme-light .kta-alert-title-text {
 html.kta-theme-light .kta-alert-pulse-side {
   color: #c0392b !important;
   text-shadow: 0 0 8px rgba(220, 50, 50, 0.50) !important;
-}
-html.kta-theme-light .kta-alert-msg {
-  color: var(--kta-texte) !important;
-  font-weight: 500 !important;
 }
 html.kta-theme-light .kta-alert-details {
   color: #4a3f30 !important;
@@ -14542,11 +14467,6 @@ html.kta-theme-light #zipFileName {
   color: var(--kta-texte-3) !important;
 }
 
-html.kta-theme-light .loader-btn-resume {
-  border-radius: 12px !important;
-  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.12) !important;
-}
-
 /* « Charger ce plan » = action principale : même bleu que .kta-btn-primary (jetons, sans surcharge de couleur). */
 html.kta-theme-light #loadPlanBtn {
   border-radius: 10px;
@@ -14907,11 +14827,6 @@ body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps summary {
 body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps summary:hover {
   background: var(--kta-light-accent-bg) !important;
 }
-body.kta-theme-light .kta-readme-modal-overlay .kta-panneau-close:hover {
-  background: rgba(220, 50, 50, 0.15) !important;
-  border-color: rgba(220, 50, 50, 0.5) !important;
-  color: #b02020 !important;
-}
 /* Inputs dans les modales (cherche, perf, etc.) */
 body.kta-theme-light .kta-readme-modal-overlay input[type="text"],
 body.kta-theme-light .kta-readme-modal-overlay input[type="search"],
@@ -14921,8 +14836,6 @@ body.kta-theme-light .kta-readme-modal-overlay textarea {
   color: var(--kta-light-text) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
 }
-body.kta-theme-light .kta-readme-modal-overlay input:focus,
-body.kta-theme-light .kta-readme-modal-overlay select:focus,
 body.kta-theme-light .kta-readme-modal-overlay textarea:focus {
   border-color: var(--kta-light-accent) !important;
   outline: none !important;
@@ -15532,9 +15445,6 @@ html.kta-theme-light .kta-net-log-table-wrap {
 }
 html.kta-theme-light .kta-net-log-table thead {
   background: var(--kta-light-bg-bar) !important;
-}
-html.kta-theme-light .kta-net-log-table tbody tr:hover {
-  background: rgba(140, 180, 255, 0.10) !important;
 }
 
 /* ── Profil utilisateur : bandeau loader + modale détails ── */
@@ -16495,10 +16405,6 @@ html.kta-theme-light .kta-profile-details-avatar-big {
 html.kta-theme-light .kta-profile-details-avatar-empty {
   background: var(--kta-light-bg-deep, #e5dcc5) !important;
   color: var(--kta-texte-3) !important;
-}
-html.kta-theme-light .kta-profile-details-input:focus {
-  border-color: var(--kta-light-accent-hover, #d9a82e) !important;
-  background: rgba(244,197,66,0.10) !important;
 }
 html.kta-theme-light .kta-profile-details-stats {
   background: rgba(140,180,255,0.10) !important;
@@ -17543,7 +17449,6 @@ html.kta-theme-light .kta-jrn-trace-wrap { background: rgba(255, 255, 255, 0.55)
   min-height: 36px;
 }
 .kta-jrn-bureau-toggle:hover { color: var(--kta-texte-2); border-color: rgba(140, 180, 255, 0.4); }
-html.kta-theme-light .kta-jrn-bureau-toggle:hover { color: #1a1f2e; }
 
 /* Onglet Récits (Mode Histoire au HOME) */
 .kta-jrn-onglets { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -18578,7 +18483,6 @@ html.kta-theme-light .kta-plans-folder-head { background: rgba(140, 180, 255, 0.
 html.kta-theme-light .kta-plans-folder-unfiled .kta-plans-folder-head { background: rgba(0, 0, 0, 0.03); }
 html.kta-theme-light .kta-plans-folder-count { background: rgba(0, 0, 0, 0.06); color: #4a5568; }
 html.kta-theme-light .kta-plans-view-switch { background: rgba(0, 0, 0, 0.04); border-color: rgba(20, 30, 50, 0.14); }
-html.kta-theme-light .kta-plans-view-btn:hover { color: #1a1f2e; }
 html.kta-theme-light .kta-plans-head-btn { background: rgba(0, 0, 0, 0.04); border-color: rgba(20, 30, 50, 0.18); color: #1a1f2e; }
 html.kta-theme-light .kta-plans-sheet-item { background: rgba(0, 0, 0, 0.03); border-color: rgba(20, 30, 50, 0.18); color: #1a1f2e; }
 html.kta-theme-light .kta-plans-select-bar { color: #1a1f2e; background: var(--kta-surface); }
