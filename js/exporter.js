@@ -1973,6 +1973,11 @@
     // sous un pilier de session. Les zones de session, peintes avant toute structure, n'en ont pas besoin.
     const _fileVect = [];
     function _poser(fn, structure) { _fileVect.push({ fn: fn, s: structure || null }); }
+    // Arcs de soutènement au-dessus des routes, comme à l'écran (structures.js > ktaArcsAuDessus).
+    function _arcsDessus(file) {
+      return typeof window.ktaArcsAuDessus === "function"
+        ? window.ktaArcsAuDessus(file, function (e) { return !!e.s && e.s.type === "arc"; }) : file;
+    }
 
     // ── Structures (piliers, murs, fronts) ── calquées sur les zones, styles de structures.js >
     // STRUCTURE_STYLES ; polygone (piliers, mur) ou polyligne (fronts).
@@ -2346,7 +2351,7 @@
       }
     }
 
-    (typeof window.ktaMursSousPiliers === "function"
+    _arcsDessus(typeof window.ktaMursSousPiliers === "function"
       ? window.ktaMursSousPiliers(_fileVect, function (e) { return e.s; }) : _fileVect)
       .forEach(function (e) { e.fn(); });
 

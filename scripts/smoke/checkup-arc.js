@@ -178,6 +178,59 @@ function marche3D(page) {
     const d2 = await itineraire(page);
     verifier(Math.abs(d2 - 200) <= 2, "deux arcs : l'itinéraire passe toujours (200)", d2);
 
+    // ── 3 bis. Au-dessus des tracés, même redessinés après lui ; 2 px et rayures au dézoom maximal ──
+    const dessus = await page.evaluate(async function () {
+      const o = window.__arc, H = window.PLAN_CONFIG.plan.imageHeight, m = window.map, r = m._renderer;
+      const attendreImage = function () { return new Promise(function (ok) { requestAnimationFrame(function () { setTimeout(ok, 120); }); }); };
+      window.renderRoads();                        // tracés ajoutés APRÈS les arcs : la règle doit les repasser dessous
+      await Promise.resolve(); await attendreImage();
+      const ordre = function () {
+        let iArc = -1, iRoute = -1, k = 0;
+        for (let x = r._drawFirst; x; x = x.next, k++) {
+          const op = x.layer.options || {};
+          if (op.ktaStructType === "arc" && iArc < 0) iArc = k;
+          if (!op.ktaStructType && !op.ktaArcDessus && x.layer._latlngs && op.opacity > 0) iRoute = k;
+        }
+        return { iArc: iArc, iDerniereRoute: iRoute };
+      };
+      // Pixel du canvas commun à un point du plan (le contexte est mis à l'échelle de devicePixelRatio).
+      const pixel = function (px, py) {
+        const lp = m.latLngToLayerPoint([H - py, px]), d = window.devicePixelRatio || 1;
+        const x = Math.round((lp.x - r._bounds.min.x) * d), y = Math.round((lp.y - r._bounds.min.y) * d);
+        return Array.from(r._ctx.getImageData(x, y, 1, 1).data.slice(0, 3));
+      };
+      const vert = function (p) { return p[1] > 150 && p[0] < 100 && p[2] < 100; };
+      const res = { ordre: ordre() };
+      m.setView([H - o.y, o.x + 100], m.getMaxZoom(), { animate: false });
+      await attendreImage();
+      res.croisement = pixel(o.x + 100, o.y);
+      res.croisementVert = vert(res.croisement);
+      // Dézoom maximal : un arc long (hors des tracés) pour que ses tirets aient la place d'exister à l'écran.
+      const W = window.PLAN_CONFIG.plan.imageWidth, yL = Math.round(H * 0.5);
+      window.setStructures(window.getStructures().concat([{ uid: "st_arc_long", type: "arc", level: 0,
+        points: [{ x: Math.round(W * 0.2), y: yL }, { x: Math.round(W * 0.8), y: yL }] }]));
+      m.setView([H - yL, W / 2], m.getMinZoom(), { animate: false });
+      await attendreImage();
+      let couche = null;
+      m.eachLayer(function (l) { if (l.options && l.options.ktaStructType === "arc" && l._latlngs && l._latlngs.length === 2 &&
+        Math.abs(l._latlngs[1].lng - l._latlngs[0].lng) > W * 0.5) couche = l; });
+      res.poidsDezoom = couche ? couche.options.weight : null;
+      let rouge = 0, bleu = 0;
+      for (let k = 0; k <= 200; k++) {
+        const p = pixel(W * (0.25 + 0.5 * k / 200), yL);
+        if (p[0] > 120 && p[0] > p[2] + 60 && p[0] > p[1] + 60) rouge++;
+        if (p[2] > p[0] + 40 && p[2] > p[1] + 20) bleu++;
+      }
+      res.rougeDezoom = rouge; res.bleuDezoom = bleu;
+      window.setStructures(window.getStructures().filter(function (s) { return s.uid !== "st_arc_long"; }));
+      return res;
+    });
+    verifier(dessus.ordre.iArc > dessus.ordre.iDerniereRoute && dessus.ordre.iDerniereRoute >= 0,
+      "carte : l'arc reste peint après les tracés, même redessinés après lui", dessus.ordre);
+    verifier(!dessus.croisementVert, "carte : au croisement, c'est l'arc qui se voit, pas le tracé", dessus.croisement);
+    verifier(dessus.poidsDezoom >= 2, "dézoom maximal : l'arc garde 2 px au moins", dessus.poidsDezoom);
+    verifier(dessus.rougeDezoom > 0 && dessus.bleuDezoom > 0, "dézoom maximal : les rayures rouges se voient encore", dessus);
+
     // ── 4. ≡ Légende, ≡ Filtres, fenêtre d'export ──
     const leg = await page.evaluate(async function () {
       window.afficherLegende();

@@ -18,11 +18,17 @@
 **Trait rayé (arc de soutènement)** : `CANON.structures.arc` = trait bleu du mur (`#1e3a8a`), poids 6 (le mur en ligne
 10), et `rayures: { color: "#cc0000" }` (contour de la zone effondrement), gardées en `flat` aussi. Carte :
 `structures.js > ktaPolylineStructure(latlngs, style, opts)` rend une polyligne à UNE couche qui, après son trait,
-repeint le même chemin en segments (`ktaPeindreRayures` : tirets de 0,8 × l'épaisseur, vides de 1,4 ×, bouts
-carrés, opacité de la couche) — une 2e couche aurait doublé filtres, registre, ULTRA, ordre des murs et clic. Canvas
-seulement (renderer SVG : trait uni). Largeur au zoom : `ktaLargeurRayePourRatio` = 0,6 × celle d'un front
-(`majLargeurFronts` reconnaît la couche à `options.ktaRayures`). Exports PNG / PDF : même fonction sur leur
-contexte ; KMZ, Vue OSM, mini-carte d'urgence : trait bleu seul. Pastilles : dégradé répété bleu / rouge
+repeint le même chemin en segments (`ktaPeindreRayures` : tirets de 0,8 × l'épaisseur, vides de 1,4 ×, 3 px au
+moins chacun, bouts carrés, opacité de la couche) — une 2e couche aurait doublé filtres, registre, ULTRA, ordre des
+murs et clic. Canvas seulement (renderer SVG : trait uni). Largeur au zoom : `ktaLargeurRayePourRatio` = 0,6 × celle
+d'un front, **plancher 2 px** (décision produit : à 1 px les rayures disparaissent ; au dézoom l'arc peut paraître
+plus épais que le mur en ligne) ; `majLargeurFronts` reconnaît la couche à `options.ktaRayures`.
+**Arc au-dessus des tracés** (décision produit, posé en travers) : `ktaArcsAuDessus(liste, estArc)` met les arcs en
+queue de la liste du renderer à chaque passe de `ktaOrdonnerMursCarte` (couche rayée et sa zone de clic, marquée
+`ktaArcDessus`) ; tant qu'un arc est sur la carte, tout ajout de vecteur sur le canvas commun (tracés redessinés,
+filtre, niveau, routes rendues par ULTRA au glissé) prévoit une passe. Rien d'autre ne bouge. Exports PNG / PDF : la
+même fonction sur leur file (`_arcsDessus`), donc arcs peints après les routes ; KMZ, Vue OSM, mini-carte
+d'urgence : trait bleu seul, ordre inchangé. Pastilles : dégradé répété bleu / rouge
 (`ktaTypeSwatchHtml`, légende, export) ; `ktaSwatchColor` rend le bleu.
 Contrastes WCAG mesurés (objet graphique, seuil 3:1) : bleu `#1e3a8a` 10,36 sur blanc, 8,65 sur crème `#f2ead8`,
 8,50 sur le fond clair `#f0e8d8`, mais 2,03 sur noir et 1,87 sur le fond sombre `#0a0d18` ; rouge `#cc0000` 5,89 /
@@ -56,7 +62,8 @@ qu'il est un mur) : il garde sa place. Un mur d'un **autre** niveau n'est pas co
 - **Place par rapport aux autres familles** : le minimum. Un mur qui doit descendre se pose juste sous le premier
   pilier/front de son niveau ; s'il y avait entre les deux des zones ou des tracés (ceux d'un calque chargé entre-temps),
   le mur passe aussi sous eux. Les murs déjà en place (cas courant : session seule, ou un seul calque, déjà triés
-  `mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc`) ne bougent pas. Zones, tracés, piliers et fronts ne
+  `mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc`, l'arc passant ensuite au-dessus des tracés,
+  ci-dessus) ne bougent pas. Zones, tracés, piliers et fronts ne
   bougent jamais ; l'itinéraire (renderer à part) et les marqueurs (DOM) ne sont pas touchés.
 - Largeurs au zoom (`majLargeurFronts`, mutation de `options.weight`) et filtre de niveau (opacité des couches de
   calque, re-rendu de session) ne changent pas l'ordre : ils marchent comme avant.

@@ -2803,7 +2803,8 @@ function ajouterPointsDepuisJSON(url, layer) {
                 weight:              Math.max((style.weight || 10) + 12, 22),
                 opacity:             0,
                 interactive:         true,
-                bubblingMouseEvents: false
+                bubblingMouseEvents: false,
+                ktaArcDessus:        !!style.rayures   // suit l'arc au-dessus des tracés (structures.js)
               });
               if (window._aucunModeEditionActif()) {
                 ghostStructRO.addTo(layer);
@@ -3086,6 +3087,11 @@ async function telechargerPlan() {
     // front » (structures.js > ktaMursSousPiliers) la réordonne, un mur de session passe sous un pilier de calque.
     const _fileVect = [];
     function _poser(fn, structure) { _fileVect.push({ fn: fn, s: structure || null }); }
+    // Arcs de soutènement au-dessus des routes, comme à l'écran (structures.js > ktaArcsAuDessus).
+    function _arcsDessus(file) {
+      return typeof window.ktaArcsAuDessus === "function"
+        ? window.ktaArcsAuDessus(file, function (e) { return !!e.s && e.s.type === "arc"; }) : file;
+    }
 
     // compteurs de diagnostic (APP_CONFIG.debugMode)
     const _diag = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embStructs: 0, embPoints: 0, fetchFails: 0 };
@@ -3288,7 +3294,7 @@ async function telechargerPlan() {
       if (road.points && road.points.length >= 2) allRoadsForIntersect.push(road);
     }
 
-    (typeof window.ktaMursSousPiliers === "function"
+    _arcsDessus(typeof window.ktaMursSousPiliers === "function"
       ? window.ktaMursSousPiliers(_fileVect, function (e) { return e.s; }) : _fileVect)
       .forEach(function (e) { e.fn(); });
 

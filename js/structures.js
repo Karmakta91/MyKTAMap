@@ -9,7 +9,7 @@
 // zones.js, stocké à part (`structure.json`). Multi-niveau : champ `level` posé au tracé.
 // Expose : initStructures, toggleStructureMode, fermerStructureEnCours, renderStructures, resetStructures,
 //   removeLastStructure(Point), get/setStructures, getCurrentStructure(Index), setCurrentStructureByIndex,
-//   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, ktaPolylineStructure, ktaPeindreRayures,
+//   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, ktaPolylineStructure, ktaPeindreRayures, ktaArcsAuDessus,
 //   ktaLargeurRayePourRatio, majLargeurFronts, brancherLargeurFronts,
 //   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm, ktaStructuresAuDessus,
 //   ktaMursSousPiliers / ktaOrdonnerMursCarte (un mur sous les piliers et fronts de son niveau, carte et exports).
@@ -117,8 +117,10 @@ window.ktaLargeurFrontPourRatio = _largeurFrontPourRatio;
 const FRONT_FACTEUR_TRACE = 0.6;
 // Trait rayé (arc de soutènement) : plus fin que le front et le mur en ligne, qu'on ne doit pas confondre avec lui.
 const FACTEUR_RAYE = 0.6;
+// Plancher de 2 px (décision produit) : à 1 px les rayures ne se voient plus ; l'arc peut alors paraître plus épais
+// que le mur en ligne au dézoom.
 window.ktaLargeurRayePourRatio = function (ratio) {
-  return Math.max(1, Math.round(_largeurFrontPourRatio(ratio) * FACTEUR_RAYE * 10) / 10);
+  return Math.max(2, Math.round(_largeurFrontPourRatio(ratio) * FACTEUR_RAYE * 10) / 10);
 };
 
 // ── Trait rayé (style à `rayures`, styleResolver.js) ──────────────
@@ -140,7 +142,8 @@ window.ktaPeindreRayures = function (ctx, couleur, largeur, opacite) {
   const w = Number(largeur), a = (opacite === undefined || opacite === null) ? 1 : Number(opacite);
   if (!ctx || !couleur || !(w > 0) || !(a > 0)) return;
   ctx.save();
-  if (ctx.setLineDash) ctx.setLineDash([Math.max(1.5, w * 0.8), Math.max(2.5, w * 1.4)]);
+  // Tirets d'au moins 3 px, vides d'au moins 3 px : sur un trait de 2 px, un tiret plus court se fond dans le bleu.
+  if (ctx.setLineDash) ctx.setLineDash([Math.max(3, w * 0.8), Math.max(3, w * 1.4)]);
   ctx.globalAlpha = a;
   ctx.lineWidth = w;
   ctx.strokeStyle = couleur;
@@ -319,10 +322,11 @@ function _ordonnerMursCarte() {
   if (!r || !r._map || !r._drawFirst) return;
   const ordres = [];
   for (let o = r._drawFirst; o; o = o.next) ordres.push(o);
-  const tries = ktaMursSousPiliers(ordres, function (o) {
+  const tries = ktaArcsAuDessus(ktaMursSousPiliers(ordres, function (o) {
     const op = o.layer && o.layer.options;
     return (op && op.ktaStructType) ? { type: op.ktaStructType, level: op.ktaStructNiveau } : null;
-  });
+  }), function (o) { return _estCoucheArc(o.layer); });
+  _arcsSurCarte = tries.some(function (o) { return _estCoucheArc(o.layer); });
   if (tries === ordres) return;
   for (let i = 0; i < tries.length; i++) {
     tries[i].prev = i > 0 ? tries[i - 1] : null;
@@ -337,11 +341,39 @@ function _ordonnerMursCarte() {
 }
 window.ktaOrdonnerMursCarte = _ordonnerMursCarte;
 
+// ── Règle « arc au-dessus » (décision produit) ──────────────
+// Un arc de soutènement, posé EN TRAVERS de la galerie, se peint au-dessus de tout le canvas des vecteurs (tracés
+// compris), sa zone de clic (ghost) avec lui, sinon la couche rayée avalerait le clic de sa fiche. Rien d'autre ne
+// bouge. Carte : en queue de la liste du renderer, à chaque passe de _ordonnerMursCarte ; exports : la même fonction
+// sur leur file. `estArc(item)` → bool. ⚠️ Rend la MÊME liste si rien ne bouge (test d'identité des appelants).
+function ktaArcsAuDessus(liste, estArc) {
+  if (!Array.isArray(liste) || liste.length < 2) return liste;
+  const autres = [], arcs = [];
+  let vuArc = false, desordre = false;
+  for (let i = 0; i < liste.length; i++) {
+    if (estArc(liste[i])) { arcs.push(liste[i]); vuArc = true; }
+    else { autres.push(liste[i]); if (vuArc) desordre = true; }
+  }
+  return desordre ? autres.concat(arcs) : liste;
+}
+window.ktaArcsAuDessus = ktaArcsAuDessus;
+function _estCoucheArc(l) {
+  const op = l && l.options;
+  return !!(op && (op.ktaRayures || op.ktaArcDessus));
+}
+// 🩸 Un tracé (re)dessiné APRÈS un arc (renderRoads, calque rebasculé, routes rendues par ULTRA au glissé, filtre de
+// niveau) va au bout de la liste et repasserait dessus : tant qu'un arc est sur la carte, tout ajout de vecteur sur le
+// canvas commun prévoit une passe.
+let _arcsSurCarte = false;
+
 // Une passe par lot d'ajouts : la micro-tâche passe après les ajouts synchrones et AVANT le prochain dessin.
 let _ordreMursPrevu = false;
 function _prevoirOrdreMurs(e) {
-  const op = e && e.layer && e.layer.options;
-  if (!op || !ROLE_STRUCTURE[op.ktaStructType] || _ordreMursPrevu) return;
+  const l = e && e.layer, op = l && l.options;
+  if (!op || _ordreMursPrevu) return;
+  if (_estCoucheArc(l)) _arcsSurCarte = true;
+  const vecteurCommun = _arcsSurCarte && l._renderer && window.map && l._renderer === window.map._renderer;
+  if (!ROLE_STRUCTURE[op.ktaStructType] && !_estCoucheArc(l) && !vecteurCommun) return;
   _ordreMursPrevu = true;
   Promise.resolve().then(_ordonnerMursCarte);
 }
@@ -686,7 +718,8 @@ function renderStructures() {
             weight:               Math.max((style.weight || 10) + 12, 22),
             opacity:              0,
             interactive:          true,
-            bubblingMouseEvents:  false
+            bubblingMouseEvents:  false,
+            ktaArcDessus:         !!style.rayures
           }).addTo(target);
           structureLayers.push(ghostStruct);
           cibleClic = ghostStruct;
