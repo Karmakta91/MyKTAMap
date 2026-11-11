@@ -27,6 +27,14 @@
 - **Vieille clé de profil** — ⚪ un vieil export de profil réécrit `myktamap_network_paranoia_v1` (inerte, plus lue
   par le code). Purge en une ligne. Déclencheur : si elle gêne.
 
+- **Vue 3D, épaisseur de plancher (lot E du multi-niveau)** — sur niveaux entremêlés, le sol d'un niveau qui
+  surplombe le vide d'un autre est une surface sans épaisseur ; idée : dalle d'épaisseur fixe, sans valeur à saisir.
+  Le lot D est validé au téléphone (12/11/2026) sans lot E demandé. Déclencheur : un plan réel où le sol qui
+  « flotte » gêne, réglages d'écart entre niveaux vérifiés d'abord (un écart négatif donne le même effet).
+- **Add-on mkmg : interrupteur par organisation (pro)** — aujourd'hui refusé sur une installation reliée, sauf
+  `data/reglages.json > addons.mkmg` (toute l'installation) ; l'idée : un admin d'organisation l'allume (prise
+  neutre ici, case d'admin côté pro). Déclencheur : un client qui le demande (aucun au 12/11/2026).
+
 ## Outillage
 
 - **Tendance des garde-fous** — le tableau de la CI (`ci.yml › tableau-garde-fous`) n'a pas d'historique d'une
