@@ -655,7 +655,10 @@ Où et comment un passage se dessine :
 - ![](../../icon/epure.png) **Épure** : un trait clair tracé sur la paroi la plus proche, à hauteur d'yeux.
 - ![](../../icon/portail.png) **Portail (liaison inter-plan)** : un cadre de porte contre la paroi, **allumé** quand le point a une liaison vers un autre plan, éteint sinon. La fiche de **tout point lié** à un autre plan (portail ou non) propose **🌀 Passer au plan…** : la confirmation s'affiche par-dessus la vue ; si tu confirmes, la vue se ferme et l'autre plan s'ouvre. Le ➜ des liaisons de la fiche fait de même.
 - ![](../../icon/vehicule.png) **Véhicule** : une petite voiture simplifiée (une citadine d'environ 3,2 m) dans la galerie, le long de celle-ci. **On bute dessus**, comme sur un pilier.
-- ![](../../icon/ossuaire.png) **Ossuaire**, ![](../../icon/outil.png) **Outil de carrier** et ![](../../icon/fontis.png) **Fontis** n'ont pas de forme : le point garde son seul panneau.
+- ![](../../icon/ossuaire.png) **Ossuaire** : un pan d'ossements rangés contre la paroi la plus proche, à hauteur d'homme, avec deux rangées de crânes. **On ne le traverse pas** : on le longe. Dans une salle ou en rendu Structures, il se pose sur le pilier, le mur ou le front le plus proche, comme la plaque.
+- ![](../../icon/outil.png) **Outil de carrier** : un vieux concasseur rouillé sur quatre roues à rayons (trémie, broyeur, moteur électrique), dans la galerie, le long de celle-ci. **On bute dessus**, comme sur le véhicule.
+- ![](../../icon/fontis.png) **Fontis** : une cloche sombre qui crève le ciel, et dessous un cône d'éboulis poussé contre la paroi du côté du point. **On bute sur le cône, on passe à côté** : il laisse toujours la place d'un corps.
+- Ossuaire, outil de carrier et fontis gardent le panneau du point.
 - Plaque, épure et portail se posent sur la paroi d'une galerie. Dans une salle ou en rendu Structures, ils se posent sur le pilier, le mur ou le front le plus proche, s'il est à 3 m au plus du point ; sinon, le point garde son seul panneau. En rendu Galeries, rien ne change.
 - Un point qui a un **point précis** (🎯 dans sa fiche) a sa forme posée là : la plaque sur la paroi la plus proche du point précis, le véhicule ou le cavage à cet endroit. Le panneau d'un point sans forme s'y place aussi. Les passages entre niveaux gardent leurs raccords.
 
@@ -1004,7 +1007,7 @@ Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur 
 
 Sur un plan multi-niveau, les éléments de **2e masse** se rangent automatiquement **au niveau −1** (le banc sous la 1re masse), quel que soit le niveau affiché ; les autres prennent le niveau actif. La liste **Niveau** de leur fiche les déplace.
 
-Un **arc de soutènement** se pose **en travers** de la galerie, en deux touches d'une paroi à l'autre : un arc = un objet, à répéter pour chaque arc. Il ne gêne ni l'itinéraire, ni le tracker, ni la vue 3D, où il n'est marqué que par un fin liseré au sol. Dans ≡ Légende, sa pastille est rayée comme sur la carte ; les exports image et PDF gardent les rayures, le KMZ et la Vue OSM n'en gardent que le trait bleu.
+Un **arc de soutènement** se pose **en travers** de la galerie, en deux touches d'une paroi à l'autre : un arc = un objet, à répéter pour chaque arc. Il ne gêne ni l'itinéraire, ni le tracker, ni la vue 3D, où il devient un arc en pierre de taille posé sur deux piliers, d'une paroi à l'autre, la clé au plafond : on passe dessous. Dans ≡ Légende, sa pastille est rayée comme sur la carte ; les exports image et PDF gardent les rayures, le KMZ et la Vue OSM n'en gardent que le trait bleu.
 
 Un **mur (ligne)** coupe toute galerie qu'il croise **sur son niveau** : l'itinéraire passe ailleurs, ou échoue en le disant. La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire le relâche avec les zones ⛔ ; le Mode Secours et « Je suis perdu » le respectent toujours. Renommé ou recoloré dans ≡ Légende, il garde ce rôle. Un mur arrivé en **front de taille** ou en ligne d'un import se convertit en mur (ligne) depuis sa fiche (🧹 Effacer et corriger).
 

@@ -655,7 +655,10 @@ Where and how a way through is drawn:
 - ![](../../icon/epure.png) **Survey datum**: a light line drawn on the nearest wall, at eye level.
 - ![](../../icon/portail.png) **Portal (inter-plan link)**: a door frame against the wall, **lit** when the point has a link to another plan, dark otherwise. The card of **any point linked** to another plan (portal or not) offers **🌀 Go to plan…**: the confirmation shows over the view; if you confirm, the view closes and the other plan opens. The card's link ➜ does the same.
 - ![](../../icon/vehicule.png) **Vehicle**: a small simplified car (a city car about 3.2 m long) in the tunnel, along it. **You bump into it**, as into a pillar.
-- ![](../../icon/ossuaire.png) **Ossuary**, ![](../../icon/outil.png) **Quarryman's tool** and ![](../../icon/fontis.png) **Fontis** have no shape: the point keeps its sign only.
+- ![](../../icon/ossuaire.png) **Ossuary**: a wall of neatly stacked bones against the nearest gallery wall, at head height, with two rows of skulls. **You cannot walk through it**: you walk along it. In a chamber or in Structures rendering, it is set on the nearest pillar, wall or face, like the plaque.
+- ![](../../icon/outil.png) **Quarryman's tool**: an old rusty crusher on four spoked wheels (hopper, crusher, electric motor), in the gallery, along it. **You bump into it**, as with the vehicle.
+- ![](../../icon/fontis.png) **Fontis**: a dark bell breaking through the ceiling, with a cone of rubble below, pushed against the wall on the point's side. **You bump into the cone and walk past it**: it always leaves room for a body.
+- Ossuary, quarryman's tool and fontis keep the point's sign.
 - Plate, datum and portal go on a tunnel wall. In a chamber or in Structures rendering, they go on the nearest pillar, wall or working face, if it is 3 m or less from the point; otherwise the point keeps its sign only. In Tunnels rendering, nothing changes.
 - A point that has a **precise point** (🎯 in its popup) has its shape placed there: the plate on the wall nearest to the precise point, the vehicle or the entrance door at that spot. The sign of a point without a shape goes there too. Passages between levels keep their connections.
 
@@ -1004,7 +1007,7 @@ Press a type, tap the points, then press the lit type again (or **✅ Close the 
 
 On a multi-level map, **2nd-mass** elements are automatically placed **on level −1** (the bed under the 1st mass), whatever level is shown; the others take the active level. The **Level** list of their card moves them.
 
-A **support arch** is placed **across** the gallery, in two taps from one wall to the other: one arch = one object, repeat it for each arch. It gets in the way of neither the route, the tracker nor the 3D view, where only a thin line on the floor marks it. In ≡ Legend its swatch is striped as on the map; image and PDF exports keep the stripes, KMZ and the OSM view keep only the blue stroke.
+A **support arch** is placed **across** the gallery, in two taps from one wall to the other: one arch = one object, repeat it for each arch. It gets in the way of neither the route, the tracker nor the 3D view, where it becomes a dressed-stone arch on two piers, from one wall to the other, its keystone at the ceiling: you walk under it. In ≡ Legend its swatch is striped as on the map; image and PDF exports keep the stripes, KMZ and the OSM view keep only the blue stroke.
 
 A **wall (line)** cuts every gallery it crosses **on its level**: the route goes elsewhere, or fails and says so. The **Respect impassable areas and walls (line)** box in the Route window relaxes it together with ⛔ zones; Rescue Mode and "I'm lost" always respect it. Renamed or recoloured in ≡ Legend, it keeps this role. A wall that arrived as a **quarry face** or as a line from an import converts to a wall (line) from its card (🧹 Erase and correct).
 

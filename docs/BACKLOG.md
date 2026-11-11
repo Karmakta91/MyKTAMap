@@ -77,11 +77,6 @@
   `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
   `qui: Claude · action: rendre l'appel de homeProfile.js déterministe (attendre I18n prêt) · fini: checkup-guidage
   vert sous WebKit sur plusieurs passages, sans clé manquante · depuis: 04/11/2026 · taille: S`
-- **3D phase 2 : arc de soutènement en plein cintre, ossuaire, outil de carrier, fontis** — l'arc (`arc`) n'a en 3D
-  qu'un liseré au sol (`vue3d.js > ARC_SOL`) : le dessiner en plein cintre, pierre de taille, à la hauteur du ciel du
-  niveau, paroi à paroi, sans bloquer ; puis les modèles des points ossuaire, outil de carrier, fontis.
-  `qui: KARMA · action: valider le rendu attendu (maquette ou captures) · fini: arc et 3 points modelés en 3D, la marche
-  passe sous l'arc, checkup-vue-3d vert · depuis: 11/11/2026 · taille: M`
 - **Vérifier le plan, lot 2 : contrôles C4 à C10** — doublons d'objets, contours dégénérés, hors image, niveau
   inconnu, type absent de la légende ; Raccords (C5) et Dédoublonnage (C10) branchés, renvoi des liaisons (C11).
   `docs/ETUDE_VERIFIER_PLAN.md`.

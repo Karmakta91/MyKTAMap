@@ -655,7 +655,10 @@ Dónde y cómo se dibuja un paso:
 - ![](../../icon/epure.png) **Croquis**: un trazo claro dibujado en la pared más cercana, a la altura de los ojos.
 - ![](../../icon/portail.png) **Portal (enlace entre mapas)**: un marco de puerta contra la pared, **encendido** cuando el punto tiene un enlace a otro mapa, apagado si no. La ficha de **todo punto enlazado** a otro mapa (portal o no) propone **🌀 Pasar al plano…**: la confirmación aparece sobre la vista; si confirmas, la vista se cierra y se abre el otro mapa. El ➜ de los enlaces de la ficha hace lo mismo.
 - ![](../../icon/vehicule.png) **Vehículo**: un coche pequeño simplificado (un urbano de unos 3,2 m) en la galería, a lo largo de ella. **Chocas con él**, como con un pilar.
-- ![](../../icon/ossuaire.png) **Osario**, ![](../../icon/outil.png) **Herramienta de cantero** y ![](../../icon/fontis.png) **Fontis** no tienen forma: el punto conserva solo su panel.
+- ![](../../icon/ossuaire.png) **Osario**: un paño de huesos ordenados contra la pared más cercana, a la altura de una persona, con dos filas de cráneos. **No se atraviesa**: se pasa a lo largo. En una sala o en el modo Estructuras, se coloca en el pilar, el muro o el frente más cercano, como la placa.
+- ![](../../icon/outil.png) **Herramienta de cantero**: una vieja trituradora oxidada sobre cuatro ruedas de radios (tolva, trituradora, motor eléctrico), en la galería, a lo largo de ella. **Tropiezas con ella**, como con el vehículo.
+- ![](../../icon/fontis.png) **Fontis**: una campana oscura que perfora el techo y, debajo, un cono de escombros empujado contra la pared del lado del punto. **Tropiezas con el cono y pasas al lado**: siempre deja sitio para un cuerpo.
+- Osario, herramienta de cantero y fontis conservan el panel del punto.
 - Placa, croquis y portal se colocan en la pared de una galería. En una sala o en el modo Estructuras, se colocan en el pilar, el muro o el frente más cercano, si está a 3 m o menos del punto; si no, el punto solo conserva su panel. En el modo Galerías, nada cambia.
 - Un punto que tiene un **punto preciso** (🎯 en su ventana) coloca allí su forma: la placa en la pared más cercana al punto preciso, el vehículo o la puerta de acceso en ese lugar. El panel de un punto sin forma también se coloca allí. Los pasos entre niveles conservan sus enlaces.
 
@@ -1004,7 +1007,7 @@ Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerr
 
 En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente **en el nivel −1** (el banco bajo la 1ª masa), sea cual sea el nivel mostrado; los demás toman el nivel activo. La lista **Nivel** de su ficha los mueve.
 
-Un **arco de sostenimiento** se coloca **de través** en la galería, en dos toques de una pared a otra: un arco = un objeto, a repetir para cada arco. No molesta ni al itinerario, ni al rastreador, ni a la vista 3D, donde solo lo marca una fina línea en el suelo. En ≡ Leyenda su muestra está rayada como en el mapa; las exportaciones de imagen y PDF conservan las rayas, el KMZ y la Vista OSM solo el trazo azul.
+Un **arco de sostenimiento** se coloca **de través** en la galería, en dos toques de una pared a otra: un arco = un objeto, a repetir para cada arco. No molesta ni al itinerario, ni al rastreador, ni a la vista 3D, donde se convierte en un arco de piedra tallada sobre dos pilares, de una pared a otra, con la clave en el techo: se pasa por debajo. En ≡ Leyenda su muestra está rayada como en el mapa; las exportaciones de imagen y PDF conservan las rayas, el KMZ y la Vista OSM solo el trazo azul.
 
 Un **muro (línea)** corta toda galería que cruza **en su nivel**: el itinerario pasa por otro lado, o falla y lo dice. La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario lo relaja junto con las zonas ⛔; el Modo Rescate y «Estoy perdido» lo respetan siempre. Renombrado o recoloreado en ≡ Leyenda, conserva ese papel. Un muro llegado como **frente de cantera** o como línea de una importación se convierte en muro (línea) desde su ficha (🧹 Borrar y corregir).
 
