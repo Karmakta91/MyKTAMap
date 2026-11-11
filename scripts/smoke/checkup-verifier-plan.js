@@ -147,7 +147,13 @@ function bandeau(page) {
       obstacle: document.querySelectorAll(".kta-verif-obstacle").length,
       modale: !!document.getElementById("kta-verif-modal"),
       fiche: !!document.querySelector(".leaflet-popup"),
-      niveau: window.APP_CONFIG.activeLevel
+      niveau: window.APP_CONFIG.activeLevel,
+      // Boutons sortis du cadre du bandeau (ou de l'écran) : rangée qui ne passe pas à la ligne.
+      deborde: Array.prototype.filter.call(b.querySelectorAll("button"), function (x) {
+        if (x.offsetParent === null) return false;
+        const r = x.getBoundingClientRect(), c = b.getBoundingClientRect();
+        return r.left < c.left - 1 || r.right > c.right + 1 || r.left < 0 || r.right > window.innerWidth;
+      }).map(function (x) { return x.dataset.verif; })
     };
   });
 }
@@ -232,6 +238,13 @@ async function jouer(nav, moteur) {
     verifier(await visible(page, [25, 0]), "clic sur la ligne : la carte est centrée sur la coupure");
     verifier(!!b && b.fiche, "clic sur la ligne : la fiche du tracé est ouverte", b);
     verifier(!!b && b.niveau === 0, "niveau du constat affiché", b && b.niveau);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(300);
+    const bTel = await bandeau(page);
+    verifier(!!bTel && bTel.deborde.length === 0, "bandeau au téléphone (390 px) : aucun bouton hors du cadre",
+      bTel && bTel.deborde);
+    await page.setViewportSize({ width: 1200, height: 850 });
+    await page.waitForTimeout(300);
     if (multi) {
       const i2 = await rang(page, C2);
       for (let k = 0; k < 10; k++) {

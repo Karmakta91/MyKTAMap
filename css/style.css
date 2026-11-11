@@ -19992,7 +19992,10 @@ button.kta-cfg-ligne-action {
 .kta-racc-bandeau .kta-btn, .kta-ajuster-bandeau .kta-btn { flex-shrink: 0; font-size: 12px; padding: 6px 12px; }
 .kta-ajuster-bandeau-titre { color: var(--kta-accent-texte); font-weight: 700; }
 .kta-ajuster-bandeau-n { color: var(--kta-texte); font-variant-numeric: tabular-nums; }
-.kta-racc-nav, .kta-racc-actions { display: flex; align-items: center; justify-content: center; gap: 6px; }
+/* 🩸 flex-wrap : sans lui, les 4 boutons de Vérifier le plan (flex-shrink: 0) débordent du bandeau au téléphone. */
+.kta-racc-nav, .kta-racc-actions {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; max-width: 100%;
+}
 .kta-racc-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
 .kta-racc-info { flex: 1 1 140px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
 .kta-racc-ecart { stroke: var(--kta-accent); fill: none; }
