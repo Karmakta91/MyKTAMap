@@ -694,7 +694,7 @@ code disait le contraire de ses propres commentaires.
 | Structures `mur-ligne` (Mur (ligne)) | session + `_ktaDataStructurePolygons` | **dure**, même niveau | ✅ même case |
 | Autres types de zones | idem | souple (relâchée en passe 2) | ✅ cases « 🚫 Préférences d'évitement » |
 | Points / tags à éviter | `SearchPoints` | souple | ✅ |
-| **Autres structures** (piliers, mur polygone, fronts) | — | **aucune** | sans objet |
+| **Autres structures** (piliers, mur polygone, fronts, arc de soutènement `arc`) | — | **aucune** | sans objet |
 
 🩸 **Une seule structure bloque : le mur en ligne** (§31.1 bis). Les autres ne sont ni
 arêtes ni obstacles ; ne pas les y ajouter « par cohérence » (décision produit : un

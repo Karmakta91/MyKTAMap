@@ -988,7 +988,7 @@ The **Respect impassable areas and walls (line)** box in the Route window (ticke
 
 ## 🏛️ Structures (pillars, walls, quarry faces)
 
-For quarries: the load-bearing elements and the progress of the workings, in the **🏛️ Structures** group. Only one matters for the route: the **wall (line)**, which cuts it like a ⛔ inaccessible zone; the others have no effect on the route. The 🧭 tracker, however, does not pass through any pillar, wall or quarry face when it moves off the tracks: a step that would cross one is ignored. This applies to the structures on its level, even hidden ones.
+For quarries: the load-bearing elements and the progress of the workings, in the **🏛️ Structures** group. Only one matters for the route: the **wall (line)**, which cuts it like a ⛔ inaccessible zone; the others have no effect on the route. The 🧭 tracker, however, does not pass through any pillar, wall or quarry face when it moves off the tracks: a step that would cross one is ignored. This applies to the structures on its level, even hidden ones. The **support arch**, on the other hand, blocks nothing: you walk under it (route, tracker, 3D view).
 
 | Type | Shape | Colour |
 |---|---|---|
@@ -998,10 +998,13 @@ For quarries: the load-bearing elements and the progress of the workings, in the
 | 🟦 **Wall (line)** — a wall surveyed as a stroke, often from a GIS import | line | blue stroke |
 | 🟨 **1st-mass quarry face** | line | yellow stroke |
 | 🟧 **2nd-mass quarry face** | line | orange stroke |
+| **Support arch** — a single arch set from one wall of the gallery to the other | line | thin blue stroke striped red |
 
-Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face or a wall (line) (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
+Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face, a wall (line) or an arch (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
 
 On a multi-level map, **2nd-mass** elements are automatically placed **one level below the active level**; the others take the active level.
+
+A **support arch** is placed **across** the gallery, in two taps from one wall to the other: one arch = one object, repeat it for each arch. It gets in the way of neither the route, the tracker nor the 3D view, where only a thin line on the floor marks it. In ≡ Legend its swatch is striped as on the map; image and PDF exports keep the stripes, KMZ and the OSM view keep only the blue stroke.
 
 A **wall (line)** cuts every gallery it crosses **on its level**: the route goes elsewhere, or fails and says so. The **Respect impassable areas and walls (line)** box in the Route window relaxes it together with ⛔ zones; Rescue Mode and "I'm lost" always respect it. Renamed or recoloured in ≡ Legend, it keeps this role. A wall that arrived as a **quarry face** or as a line from an import converts to a wall (line) from its card (🧹 Erase and correct).
 

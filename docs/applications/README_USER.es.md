@@ -988,7 +988,7 @@ La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventan
 
 ## 🏛️ Estructuras (pilares, muros, frentes de cantera)
 
-Para las canteras: los elementos portantes y el avance de la explotación, en el grupo **🏛️ Estructuras**. Solo una cuenta para el itinerario: el **muro (línea)**, que lo corta como una zona ⛔ inaccesible; las demás no tienen ningún efecto en el itinerario. El 🧭 rastreador, en cambio, no atraviesa ningún pilar, muro ni frente de cantera cuando avanza fuera de los trazados: un paso que cruzaría uno se ignora. Vale para las estructuras de su nivel, incluso ocultas.
+Para las canteras: los elementos portantes y el avance de la explotación, en el grupo **🏛️ Estructuras**. Solo una cuenta para el itinerario: el **muro (línea)**, que lo corta como una zona ⛔ inaccesible; las demás no tienen ningún efecto en el itinerario. El 🧭 rastreador, en cambio, no atraviesa ningún pilar, muro ni frente de cantera cuando avanza fuera de los trazados: un paso que cruzaría uno se ignora. Vale para las estructuras de su nivel, incluso ocultas. El **arco de sostenimiento**, en cambio, no bloquea nada: se pasa por debajo (itinerario, rastreador, vista 3D).
 
 | Tipo | Forma | Color |
 |---|---|---|
@@ -998,10 +998,13 @@ Para las canteras: los elementos portantes y el avance de la explotación, en el
 | 🟦 **Muro (línea)** — un muro levantado como trazo, a menudo en una importación SIG | línea | trazo azul |
 | 🟨 **Frente de cantera 1ª masa** | línea | trazo amarillo |
 | 🟧 **Frente de cantera 2ª masa** | línea | trazo naranja |
+| **Arco de sostenimiento** — un arco aislado colocado de una pared a otra de la galería | línea | trazo azul fino rayado de rojo |
 
-Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera o un muro (línea) (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
+Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera, un muro (línea) o un arco (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
 
 En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente **un nivel por debajo del nivel activo**; los demás toman el nivel activo.
+
+Un **arco de sostenimiento** se coloca **de través** en la galería, en dos toques de una pared a otra: un arco = un objeto, a repetir para cada arco. No molesta ni al itinerario, ni al rastreador, ni a la vista 3D, donde solo lo marca una fina línea en el suelo. En ≡ Leyenda su muestra está rayada como en el mapa; las exportaciones de imagen y PDF conservan las rayas, el KMZ y la Vista OSM solo el trazo azul.
 
 Un **muro (línea)** corta toda galería que cruza **en su nivel**: el itinerario pasa por otro lado, o falla y lo dice. La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario lo relaja junto con las zonas ⛔; el Modo Rescate y «Estoy perdido» lo respetan siempre. Renombrado o recoloreado en ≡ Leyenda, conserva ese papel. Un muro llegado como **frente de cantera** o como línea de una importación se convierte en muro (línea) desde su ficha (🧹 Borrar y corregir).
 

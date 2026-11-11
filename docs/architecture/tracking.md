@@ -711,7 +711,8 @@ pas d'image de collision : le champ `plan.collisionImage` d'un ancien plan-confi
 - **`_pasBloqueParStructure(x0, y0, x1, y1)`** — structures de session (`getStructures`) et du plan
    (`_ktaDataStructurePolygons`) : le pas est refusé s'il **entre** dans un pilier 1re/2e masse ou un mur fermé, ou
    s'il **coupe** une arête d'un de ces polygones (coin de pilier) ou un front de taille 1re/2e masse ou un mur
-   (ligne). Les autres types (zones, types `cust-…`) ne comptent pas pour le tracker ; le 6e paramètre
+   (ligne). Les autres types (zones, arc de soutènement `arc`, types `cust-…`) ne comptent pas pour le tracker ;
+   ⚠️ l'arc est absent de `_OBST_TYPES` exprès (on passe dessous : ni tracker, ni vue 3D) ; le 6e paramètre
    `avecPerso` (vue 3D seulement) compte aussi les types `cust-…`, en polygone ou en ligne selon la légende.
    - **Niveau** : en multi-niveau, seulement les structures du niveau du tracker (`trackerLevel` ; sans `level` =
      0). Une 2e masse étant rangée au niveau actif − 1 (`structures.js`), elle bloque sur ce niveau-là. Hors
@@ -1984,6 +1985,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   compté) ; repris → scène remontée à neuf ; sinon fermeture avec le toast `vue3d.contextePerdu`.
   🩸 Jamais `dispose()` sur les objets d'avant la perte : leurs écouteurs appartiennent à l'ancien état de three.js
   et effaceraient sur le nouveau contexte des objets qui n'en sont pas (« object does not belong to this context »).
+- **Arc de soutènement** (`arc`) : pas de modèle 3D, un liseré au sol seulement (`vue3d.js > ARC_SOL`, 30 cm × 2 cm,
+  couleur du canon) ; ni face où poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction,
+  jamais un obstacle de la marche. En mode mixte, il ne fait pas d'une galerie une chambre
+  (`galerieEmprise.js > _indexStructures`).
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.

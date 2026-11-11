@@ -988,7 +988,7 @@ La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre
 
 ## 🏛️ Structures (piliers, murs, fronts de taille)
 
-Pour les carrières : les éléments porteurs et l'avancement de l'exploitation, dans le groupe **🏛️ Structures**. Une seule compte pour l'itinéraire : le **mur (ligne)**, qui le coupe comme une zone ⛔ inaccessible ; les autres n'ont aucun effet sur l'itinéraire. Le 🧭 tracker, lui, ne traverse ni pilier, ni mur, ni front de taille quand il avance hors des tracés : un pas qui en croiserait un est ignoré. Ça vaut pour les structures de son niveau, même masquées.
+Pour les carrières : les éléments porteurs et l'avancement de l'exploitation, dans le groupe **🏛️ Structures**. Une seule compte pour l'itinéraire : le **mur (ligne)**, qui le coupe comme une zone ⛔ inaccessible ; les autres n'ont aucun effet sur l'itinéraire. Le 🧭 tracker, lui, ne traverse ni pilier, ni mur, ni front de taille quand il avance hors des tracés : un pas qui en croiserait un est ignoré. Ça vaut pour les structures de son niveau, même masquées. L'**arc de soutènement**, lui, ne bloque rien : on passe dessous (itinéraire, tracker, vue 3D).
 
 | Type | Forme | Couleur |
 |---|---|---|
@@ -998,10 +998,13 @@ Pour les carrières : les éléments porteurs et l'avancement de l'exploitation,
 | 🟦 **Mur (ligne)** — un mur levé en trait, souvent à l'import SIG | ligne | trait bleu |
 | 🟨 **Front de taille 1ère masse** | ligne | trait jaune |
 | 🟧 **Front de taille 2e masse** | ligne | trait orange |
+| **Arc de soutènement** — un arc isolé posé d'une paroi à l'autre de la galerie | ligne | trait bleu fin rayé de rouge |
 
-Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille ou un mur (ligne) (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
+Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille, un mur (ligne) ou un arc (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
 
 Sur un plan multi-niveau, les éléments de **2e masse** se rangent automatiquement **un niveau sous le niveau actif** ; les autres prennent le niveau actif.
+
+Un **arc de soutènement** se pose **en travers** de la galerie, en deux touches d'une paroi à l'autre : un arc = un objet, à répéter pour chaque arc. Il ne gêne ni l'itinéraire, ni le tracker, ni la vue 3D, où il n'est marqué que par un fin liseré au sol. Dans ≡ Légende, sa pastille est rayée comme sur la carte ; les exports image et PDF gardent les rayures, le KMZ et la Vue OSM n'en gardent que le trait bleu.
 
 Un **mur (ligne)** coupe toute galerie qu'il croise **sur son niveau** : l'itinéraire passe ailleurs, ou échoue en le disant. La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire le relâche avec les zones ⛔ ; le Mode Secours et « Je suis perdu » le respectent toujours. Renommé ou recoloré dans ≡ Légende, il garde ce rôle. Un mur arrivé en **front de taille** ou en ligne d'un import se convertit en mur (ligne) depuis sa fiche (🧹 Effacer et corriger).
 
