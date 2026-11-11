@@ -159,8 +159,8 @@
 - **Sonar : porte en échec sur une fausse alerte** — scan de rattrapage de la v2.25.0 : une seule anomalie de
   fiabilité, `js/verifierPlan.js > _identite`, S7758 (`codePointAt`). Ne pas suivre : l'empreinte FNV se calcule sur
   les unités UTF-16, `codePointAt` changerait l'identité des objets ignorés (types avec emoji). Sécurité : 0.
-  `qui: KARMA · action: marquer l'alerte « Accepted » dans l'interface Sonar (décision du 12/11), avec la raison
-  · fini: porte verte au prochain scan · depuis: 12/11/2026 · taille: XS`
+  `qui: Claude · action: NOSONAR commenté sur la ligne (décision KARMA du 12/11), session Dev · fini: porte verte au
+  prochain scan · depuis: 12/11/2026 · taille: XS`
 - **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
   plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
   des niveaux, et correction du message faux `prof.incoherent.suite`. Après la mise en prod de la v2.25.0 (gel).
