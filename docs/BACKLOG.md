@@ -151,6 +151,10 @@
 
 ## Entrant
 
+- **« Mettre à jour le plan » perd la longueur des chatières** — vu par KARMA le 12/11 : après une mise à jour du plan
+  au Générateur, la longueur d'une chatière (point précis, trait début→fin) n'est pas reprise.
+  `qui: Claude · action: reproduire sur le relevé fictif et diagnostiquer, session Debug · fini: longueur conservée,
+  test rouge puis vert · depuis: 12/11/2026 · taille: S`
 - **Jeu caché : la partie reste sur son niveau de départ** — vu par KARMA pendant l'essai de la v2.25.0 : une partie
   commencée au niveau X y reste, même si ce niveau n'a presque pas de POI. Attendu : jeu sur plusieurs niveaux.
   Décision KARMA (12/11) : les destinations se prennent parmi les POI de tous les niveaux.
