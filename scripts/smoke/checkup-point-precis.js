@@ -531,6 +531,35 @@ async function jouer(nav, moteur, mode) {
     "chatière : centre et cible = le point à mi-longueur du tracé (pas la moyenne des points)", { cen: cen, mil: mil });
     await capture(page, "4-chatiere");
 
+    // ── 6 ter. Reprise d'une chatière tracée : la saisie repart de ses points (pas de second tracé par-dessus) ──
+    await armerCh();
+    const rp0 = await bandeauCh(), gR0 = await guides(page);
+    // 4 carrés = la plaque + les trois points provisoires (l'ancien tracé de la chatière est masqué pendant la reprise).
+    verifier(rp0 && rp0.mode.points === 3 && rp0.fin === true && rp0.ret === true && /3 points/.test(rp0.texte) &&
+      gR0.carres.length === 4 && gR0.segments.length === 1,
+    "chatière reprise : la saisie repart des trois points, ancien tracé masqué, Terminer et Retirer actifs",
+    { rp0: rp0, carres: gR0.carres.length, segments: gR0.segments.length });
+    await retirer();
+    await page.waitForTimeout(300);
+    const D = await planU(page, 230, 20);
+    await ptr.tap(await ecran(page, D));
+    await page.waitForTimeout(300);
+    const rp1 = await bandeauCh();
+    if (mode === "souris") await page.keyboard.press("Enter");
+    else await ptr.tap(await centreDe(page, "#kta-precis-terminer"));
+    await page.waitForTimeout(500);
+    const qr = ((await lirePoint(page, "pt_pp_ch")).precis || {}).pts || [];
+    const undR = await page.evaluate(function () { return window.__pp.undo; });
+    verifier(rp1 && rp1.mode.points === 3 && qr.length === 3 && pres2(qr[0], A) && pres2(qr[1], B) && pres2(qr[2], D) &&
+      undR === und + 1, "chatière reprise : dernier point retiré puis un autre posé → A, B, D, une entrée d'historique",
+    { rp1: rp1, lu: qr, undo: [und, undR] });
+    // Ctrl+Z rend le tracé A, B, C (les sections suivantes le lisent).
+    await page.evaluate(function () { window.map.closePopup(); if (document.activeElement) document.activeElement.blur(); });
+    await page.keyboard.press("Control+z");
+    await page.waitForTimeout(500);
+    const qz = ((await lirePoint(page, "pt_pp_ch")).precis || {}).pts || [];
+    verifier(qz.length === 3 && pres2(qz[2], C), "chatière reprise : Ctrl+Z rend le tracé d'avant", qz);
+
     // ── 6 bis. Ancienne chatière { x, y, x2, y2 } : lue telle quelle, sans migration ──
     const vieille = await page.evaluate(function () {
       const P = window.__pp.P, a = P(-260, 120), b = P(-180, 160);

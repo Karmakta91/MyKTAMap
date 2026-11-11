@@ -2606,7 +2606,8 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
   sous 2 points, Entrée fait de même ; **Retirer le dernier point** (`#kta-precis-retirer-dernier`, icône `undo-2`)
   grisé sans point, Retour arrière fait de même hors d'un champ de saisie ; carrés et polyligne provisoires redessinés
   à chaque tap ou retrait). Les points ne sont écrits qu'à
-  Terminer (une seule entrée annulable) ; Échap ou ✕ avec des points posés n'écrit rien.
+  Terminer (une seule entrée annulable) ; Échap ou ✕ avec des points posés n'écrit rien. Refaire une chatière tracée
+  reprend ses points (le tracé enregistré est masqué pendant la reprise, seuls les provisoires s'affichent).
   `_modeClicCarteActif()` le voit :
   aucune fiche ne s'ouvre, le tap est ré-émis même sur un marqueur, le plan orienté se redresse. Les autres modes
   « clic carte » tombent à l'armement. Échap (écouteur de `window` en capture : `shortcuts.js > _echapCarte` cède au

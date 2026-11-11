@@ -18,7 +18,7 @@
 // Saisie depuis la fiche seulement (utils.js > buildPointPopupHtml, mêmes droits que ✏️ Modifier) : armer() pose un
 // bandeau `.kta-iti-floater` (utils.js > _modeClicCarteActif : aucune fiche, clic ré-émis par map.js), un tap pose le
 // point ; chatière : un tap par point, « Retirer le dernier point » (ou Retour arrière), « Terminer » (ou Entrée) à
-// partir de 2. Échap ou ✕ annule. Une écriture = une entrée d'historique (Ctrl+Z) ; rien n'est écrit avant Terminer.
+// partir de 2 ; refaire une chatière reprend ses points. Échap ou ✕ annule. Une écriture = une entrée d'historique (Ctrl+Z) ; rien n'est écrit avant Terminer.
 // Affichage 2D : pointillé de l'icône au point et petit carré (chatière : un carré par point reliés par la
 // polyligne, pointillé vers le milieu), jeton --kta-accent par classe CSS (renderer SVG), jamais interactif ; visible
 // à partir de SEUIL_PX_PAR_M px d'écran par mètre (sans échelle : ZOOM_SANS_ECHELLE) et toujours fiche ouverte.
@@ -176,6 +176,7 @@
     const fl = document.getElementById("kta-precis-floater");
     if (fl) fl.remove();
     window.removeEventListener("keydown", _surTouche, true);
+    rafraichir();
   }
 
   function _texteBandeau() {
@@ -247,8 +248,12 @@
     try { window.map.closePopup(); } catch (e) { /* rien d'ouvert */ }
 
     const carte = window.map;
-    _mode = { genre: genre, id: id, x: Number(x), y: Number(y), nom: String(pt.nom || id || ""),
-      multi: genre === "precis" && multiPoints(pt), pts: [], carte: carte, temp: null };
+    const multi = genre === "precis" && multiPoints(pt);
+    // Chatière déjà tracée : la saisie reprend ses points (retirer le dernier, continuer), sinon un second tracé
+    // repartirait de zéro par-dessus le premier.
+    const deja = multi ? lire(pt) : null;
+    _mode = { genre: genre, id: id, x: Number(x), y: Number(y), nom: String(pt.nom || id || ""), point: pt,
+      multi: multi, pts: deja && deja.pts ? deja.pts.slice() : [], carte: carte, temp: null };
     _mode.handler = function (e) {
       if (!_mode || !e || !e.latlng) return;
       // Un outil armé depuis (bouton de la barre) : il garde ses clics, le mode tombe.
@@ -302,6 +307,8 @@
     b.addEventListener("click", annuler);
     document.body.appendChild(fl);
     window.addEventListener("keydown", _surTouche, true);
+    if (_mode.pts.length) _majBandeau();
+    rafraichir();
     return true;
   }
 
@@ -351,7 +358,10 @@
   function maj(marker) {
     if (!marker || !marker._ktaPrecisPoint) return;
     const m = marker._map || null;
-    const voir = !!m && !marker._ktaMasque && (marker === _fiche || zoomSuffit(m));
+    // Chatière en cours de reprise : seuls les points provisoires s'affichent (l'ancien tracé garderait un point
+    // retiré).
+    const repris = !!_mode && _mode.multi && _mode.point === marker._ktaPrecisPoint;
+    const voir = !!m && !marker._ktaMasque && !repris && (marker === _fiche || zoomSuffit(m));
     if (!voir) {
       if (marker._ktaPrecisGuide) { try { marker._ktaPrecisGuide.remove(); } catch (e) {} }
       marker._ktaPrecisGuide = null;
