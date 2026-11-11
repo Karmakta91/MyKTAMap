@@ -151,6 +151,11 @@
 
 ## Entrant
 
+- **Vue 3D : mini-carte sur le guidage après rotation** — vu par KARMA (12/11, téléphone) : repassé en portrait, la
+  mini-carte couvre le bandeau du guidage jusqu'à la prochaine étape. En paysage : guidage plus étroit, mini-carte
+  à sa droite (demande liée).
+  `qui: Claude · action: diagnostic et proposition, session Dev : 3d · fini: rotation sans chevauchement, checkup 3D
+  · depuis: 12/11/2026 · taille: S`
 - **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
   d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
   `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
