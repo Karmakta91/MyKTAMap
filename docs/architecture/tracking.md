@@ -2401,7 +2401,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   mien**. ⚠️ contrat (décision produit) : au doigt, retour à Voisins à chaque ouverture (`_niveauxVusVoulu`, réécrit sur
   l'appareil) ; au pointeur fin, retenu. Ligne cachée sur un plan à un niveau.
 - **Construction** (`_voisinsPreparer`, `_voisinNeuf`, `_gererVoisins`, `_construireTuileVoisin`) : mêmes fonctions de
-  tuile que le niveau actif (même rendu, mêmes filtres : un niveau masqué au ≡ ne se montre pas), modèle et hauteur du
+  tuile que le niveau actif (même rendu, mêmes filtres ; un niveau masqué au ≡ n'est pas un voisin du tout,
+  `_niveauxMontres` : vide, il voilait le sol du niveau actif sur du noir — checkup § 57, `KTA_V3D_SEUL=solfiltre`),
+  modèle et hauteur du
   voisin, groupe décalé de son **altitude** (`_altitudeVoisin` : `KtaGalerie.denivele`, sols et hauteurs du lot A, repli
   sans sols d'une hauteur de galerie et 2 m de roche par niveau franchi, comme la galerie inclinée ; jamais du mauvais
   côté, au pire à la
