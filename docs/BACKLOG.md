@@ -45,9 +45,9 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Essai sur dev : chatière et galerie inclinée** — `1147b92e` : « Refaire » sur une chatière reprend ses points au
-  lieu d'un second tracé ; `04efcd48` : parois et plafond de la galerie inclinée cachés en vue d'édition 3D. Prouvés
-  par checkups, pas joués à la main.
+- **Essai sur dev : chatière, galerie inclinée, menu des sommets** — `1147b92e` : « Refaire » sur une chatière
+  reprend ses points ; `04efcd48` : galerie inclinée en vue d'édition 3D ; `4ce78f12` : ＋ / ✂️ / 🗑️ du menu au
+  sommet en icônes au trait (téléphone). Prouvés par checkups, pas joués à la main.
   `qui: KARMA · action: refaire une chatière ; vue d'édition 3D sur une galerie inclinée (capture si les murs se voient
   encore de l'extérieur en vue normale) · fini: vus conformes, ou bugs ouverts · depuis: 12/11/2026 · taille: XS`
 - **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
@@ -151,6 +151,15 @@
 
 ## Entrant
 
+- **Jeu caché : la partie reste sur son niveau de départ** — vu par KARMA pendant l'essai de la v2.25.0 : une partie
+  commencée au niveau X y reste, même si ce niveau n'a presque pas de POI. Attendu : jeu sur plusieurs niveaux.
+  `qui: KARMA · action: dire si la partie prend a) les POI de tous les niveaux, ou b) passe au niveau suivant quand le
+  niveau est épuisé · depuis: 12/11/2026 · taille: S`
+- **Sonar : porte en échec sur une fausse alerte** — scan de rattrapage de la v2.25.0 : une seule anomalie de
+  fiabilité, `js/verifierPlan.js > _identite`, S7758 (`codePointAt`). Ne pas suivre : l'empreinte FNV se calcule sur
+  les unités UTF-16, `codePointAt` changerait l'identité des objets ignorés (types avec emoji). Sécurité : 0.
+  `qui: KARMA · action: choisir NOSONAR commenté (reco) ou « Accepted » dans l'interface Sonar · depuis: 12/11/2026
+  · taille: XS`
 - **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
   plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
   des niveaux, et correction du message faux `prof.incoherent.suite`. Après la mise en prod de la v2.25.0 (gel).
