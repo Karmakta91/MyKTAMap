@@ -635,7 +635,7 @@
     if (connu || typeof window.ktaResolveStyle !== "function") {
       return (typeof window.isStructurePolylineType === "function")
         ? !!window.isStructurePolylineType(type)
-        : (type === "mur-ligne" || type === "front-1" || type === "front-2");
+        : (type === "mur-ligne" || type === "front-1" || type === "front-2" || type === "arc");
     }
     const pts = s.points || [];
     const a = pts[0], z = pts[pts.length - 1];
@@ -1234,6 +1234,7 @@
               const nom = s.type === "front-1" ? "Front de taille 1ère masse"
                         : s.type === "front-2" ? "Front de taille 2e masse"
                         : s.type === "mur-ligne" ? "Mur (ligne)"
+                        : s.type === "arc" ? "Arc de soutènement"
                         : _nomType(s.type);
               body += _emitLineString(s, styleId, nom);
             } else {

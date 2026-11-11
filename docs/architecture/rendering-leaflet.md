@@ -7,13 +7,32 @@
 
 ### 0. 🎨 Styles des types — source de vérité UNIQUE (v1.76.0)
 
-**`js/styleResolver.js` est le SEUL endroit où vivent les styles des 14 types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/remblais/effondrement/inaccessible`, structures `pilier-1/pilier-2/mur/mur-ligne/front-1/front-2`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
+**`js/styleResolver.js` est le SEUL endroit où vivent les styles des types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/remblais/effondrement/inaccessible/pente`, structures `pilier-1/pilier-2/mur/mur-ligne/front-1/front-2/arc`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
 
 **API** (globales `window.*`) :
 - `ktaResolveStyle(cat, clé[, {flat:true}])` → objet **NEUF** | `null` (l'appelant garde son repli). Résout aussi les customs `cust-*` via `LegendCustomization` (gabarit par catégorie/géométrie) et applique l'**override de couleur** utilisateur (`LegendCustomization.getColor`, cascade session > plan). Sans `opts` = style de la carte : `inaccessible` reçoit ses hachures en `CanvasPattern` (`_motifCanvas`, construit une fois, couleurs dans `CANON.zones.inaccessible._motif`), sur le canvas commun des vecteurs — l'ordre d'empilement zones < structures tient (`structures.js > ktaStructuresAuDessus`). `{flat:true}` = contexte qui ne peint pas de motif (canvas d'export, KMZ, fond OSM, pastilles) → `inaccessible` retombe sur son aplat `_flatFill` ; pas de canvas (Node) → aplat aussi. Une couleur choisie par l'utilisateur remplace le motif par un aplat.
 - `ktaSwatchColor(cat, clé)` → LA couleur représentative (polygone = remplissage, ligne = trait) — pastilles, barres de stats, camemberts, rapport.
 - `ktaTypeSwatchHtml(cat, clé, repliEmoji)` → pastille HTML (les émojis 🟩🟥🟡 sont des glyphes à couleur figée — sidebar + reflets de mode).
-- `ktaLabelAvecPastille(cat, clé, label)` → remplace l'émoji de TÊTE d'un libellé i18n par la pastille (formulaires d'export).
+- `ktaLabelAvecPastille(cat, clé, label)` → remplace l'émoji de TÊTE d'un libellé i18n par la pastille (formulaires d'export) ; un type rayé (`arc`) n'a pas d'émoji dans son libellé, sa pastille est toujours posée devant.
+
+**Trait rayé (arc de soutènement)** : `CANON.structures.arc` = trait bleu du mur (`#1e3a8a`), poids 6 (le mur en ligne
+10), et `rayures: { color: "#cc0000" }` (contour de la zone effondrement), gardées en `flat` aussi. Carte :
+`structures.js > ktaPolylineStructure(latlngs, style, opts)` rend une polyligne à UNE couche qui, après son trait,
+repeint le même chemin en segments (`ktaPeindreRayures` : tirets de 0,8 × l'épaisseur, vides de 1,4 ×, 3 px au
+moins chacun, bouts carrés, opacité de la couche) — une 2e couche aurait doublé filtres, registre, ULTRA, ordre des
+murs et clic. Canvas seulement (renderer SVG : trait uni). Largeur au zoom : `ktaLargeurRayePourRatio` = 0,6 × celle
+d'un front, **plancher 2 px** (décision produit : à 1 px les rayures disparaissent ; au dézoom l'arc peut paraître
+plus épais que le mur en ligne) ; `majLargeurFronts` reconnaît la couche à `options.ktaRayures`.
+**Arc au-dessus des tracés** (décision produit, posé en travers) : `ktaArcsAuDessus(liste, estArc)` met les arcs en
+queue de la liste du renderer à chaque passe de `ktaOrdonnerMursCarte` (couche rayée et sa zone de clic, marquée
+`ktaArcDessus`) ; tant qu'un arc est sur la carte, tout ajout de vecteur sur le canvas commun (tracés redessinés,
+filtre, niveau, routes rendues par ULTRA au glissé) prévoit une passe. Rien d'autre ne bouge. Exports PNG / PDF : la
+même fonction sur leur file (`_arcsDessus`), donc arcs peints après les routes ; KMZ, Vue OSM, mini-carte
+d'urgence : trait bleu seul, ordre inchangé. Pastilles : dégradé répété bleu / rouge
+(`ktaTypeSwatchHtml`, légende, export) ; `ktaSwatchColor` rend le bleu.
+Contrastes WCAG mesurés (objet graphique, seuil 3:1) : bleu `#1e3a8a` 10,36 sur blanc, 8,65 sur crème `#f2ead8`,
+8,50 sur le fond clair `#f0e8d8`, mais 2,03 sur noir et 1,87 sur le fond sombre `#0a0d18` ; rouge `#cc0000` 5,89 /
+4,92 / 4,83 / 3,57 / 3,29 : sur fond sombre ce sont les rayures qui gardent l'arc visible.
 
 **Règles** :
 - ❌ **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit BLOQUANT) refuse toute réintroduction. Exceptions assumées, listées dans le script : `emergencyMode.js` (palette vive dédiée), `osmView.js`/`osmHomePreview.js` (`inaccessible` en aplat orange sur OSM).
@@ -43,7 +62,8 @@ qu'il est un mur) : il garde sa place. Un mur d'un **autre** niveau n'est pas co
 - **Place par rapport aux autres familles** : le minimum. Un mur qui doit descendre se pose juste sous le premier
   pilier/front de son niveau ; s'il y avait entre les deux des zones ou des tracés (ceux d'un calque chargé entre-temps),
   le mur passe aussi sous eux. Les murs déjà en place (cas courant : session seule, ou un seul calque, déjà triés
-  `mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1`) ne bougent pas. Zones, tracés, piliers et fronts ne
+  `mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc`, l'arc passant ensuite au-dessus des tracés,
+  ci-dessus) ne bougent pas. Zones, tracés, piliers et fronts ne
   bougent jamais ; l'itinéraire (renderer à part) et les marqueurs (DOM) ne sont pas touchés.
 - Largeurs au zoom (`majLargeurFronts`, mutation de `options.weight`) et filtre de niveau (opacité des couches de
   calque, re-rendu de session) ne changent pas l'ordre : ils marchent comme avant.
@@ -68,9 +88,10 @@ initApp() dans main.js
    └─ Sinon → afficherLoader() (home avec liste) → _splashEnd()
 ```
 
-L'ouverture d'un plan attend **une image** à trois endroits : `lancerApplication()` avant `initMapFromConfig()` (le
-message « mapInit » s'affiche d'abord), `initMapFromConfig()` après `cleanupExistingMap()`, et `initCollisionMap()`
-avant de charger l'image de collision. 🩸 Onglet en arrière-plan ou navigateur sans écran : `requestAnimationFrame`
+L'ouverture d'un plan attend **une image** à deux endroits : `lancerApplication()` avant `initMapFromConfig()` (le
+message « mapInit » s'affiche d'abord) et `initMapFromConfig()` après `cleanupExistingMap()` (aucune image de
+collision : `plan.collisionImage` est ignoré, cf `data-formats.md`). 🩸 Onglet en arrière-plan ou
+navigateur sans écran : `requestAnimationFrame`
 peut ne jamais venir (ouverture figée sur « Chargement en cours… ») ; ces attentes passent donc toutes par
 `utils.js > ktaAttendreImage()` : un minuteur de 1 s prend le relais, le premier des deux reprend seul (pas de double
 exécution). Jamais de `requestAnimationFrame` nu sur ce chemin.

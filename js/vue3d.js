@@ -43,7 +43,7 @@
 // suis ici ») ne la bouge pas (trackerRecale).
 // ⚠️ contrat : hauteur = celle DU NIVEAU affiché (config.js > getNiveauVertical / setHauteurNiveau), la même que
 // ⛏️ Volume exploité, réglée aussi en 3D ; un changement de niveau (passage 🪜, suivi) reprend la sienne (_reindexer).
-// ⚠️ contrat : déplacement à hauteur d'yeux = règle du pas, jamais une copie (tracking.js > ktaEstAccessible,
+// ⚠️ contrat : déplacement à hauteur d'yeux = règle du pas, jamais une copie (tracking.js >
 // ktaSegmentsBloquesParStructure ; galerie : KtaGalerie.segmentsBloques ; mixte : les deux, et paroisBloquent ;
 // partout, KtaGalerie.zonesBloquent : zones et obstacles des accès), sur la largeur d'un corps ; vue d'édition :
 // survol (_pas). Le tracker n'est pas déplacé (décision produit) : à la fermeture, « Je suis ici ? » propose de le
@@ -124,6 +124,20 @@
   const ROTATION = 90;              // °/s
   const EPAISSEUR_MUR_LIGNE = 0.4;  // m
   const EPAISSEUR_FRONT = 0.3;      // m
+  // Arc de soutènement (_arcSoutenement) : plein cintre en pierre de taille sur deux piédroits, paroi à paroi, clé au
+  // ciel du niveau. ⚠️ contrat (décision produit) : on passe dessous ; jamais un obstacle (la règle du pas,
+  // tracking.js > _OBST_TYPES, ne connaît pas `arc`), ni face où poser une forme, ni structure empruntée. Piédroits de
+  // `pied` m en travers (au plus 20 % de la portée), claveaux de `ep` m d'épaisseur, `prof` m de profondeur le long
+  // de la galerie, joints de `joint` m, un claveau tous les `claveau` m d'extrados (impair, `min` à `max`) ; clé
+  // plus profonde de `cle` m ; imposte de `imposte` m débordant de `deborde` ; piédroits d'au moins `piedMin` m de
+  // haut : plus large que le ciel ne le permet, l'arc est surbaissé (demi-ellipse). Portée sous `porteeMin` : rien.
+  // Tympan : maçonnerie de même profondeur entre l'extrados, les piédroits, les parois et le ciel, faces reculées de
+  // `retrait` m sous celles des claveaux ; joints entre claveaux bouchés au fond par un mortier reculé de `fond` m.
+  // Teinte (décision produit) : couleur de la légende (🧱 coupé) ou `pierre` (🧱 : calcaire chaud de la famille des
+  // piliers texturés, accordé aux parois, jamais blanc neuf), nuancée par claveau.
+  const ARC = { pied: 0.3, ep: 0.25, prof: 0.5, joint: 0.012, claveau: 0.32, min: 5, max: 15, cle: 0.04,
+    imposte: 0.06, deborde: 0.03, piedMin: 0.6, porteeMin: 0.6, nuance: 0.1, mortier: 0.5, tube: 3,
+    retrait: 0.005, fond: 0.006, tympan: 0.94, pierre: "#b09872" };
   const LARGEUR_TRACE = 0.25;       // m
   // Itinéraire au sol (décision produit) : le dessin du trajet du jeu (addons/mkmg), à la couleur de l'itinéraire de
   // la carte (--kta-interaction ; le doré reste aux itinéraires publiés par l'équipe). Ruban PLEIN continu de
@@ -278,8 +292,9 @@
   // au-dessus jusqu'au plafond et sur les côtés ; elle n'arrête rien, la caméra s'y abaisse à `oeil` m (on rampe), en
   // descendant sur `approche` m avant l'entrée (et remontant d'autant après la sortie). La roche déborde de
   // `deborde` m dans les parois (aucun jour au bord). Longueur : 1,8 m par défaut, une chatière courte (un corps
-  // allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux ; point précis en deux points
-  // (poiPrecis.js : début et fin) : leur distance, `court` m au moins, et leur axe (_segmentChatiere).
+  // allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux ; point précis en points (poiPrecis.js :
+  // du début à la fin) : une roche par segment qui suit les coudes (_segmentsChatiere) ; deux points : leur distance,
+  // `court` m au moins, et leur axe.
   const CHATIERE = { long: 1.8, court: 0.4, trou: 0.6, large: 0.9, jeu: 0.2, oeil: 0.35, approche: 1, deborde: 0.3 };
   // Profil du trou (t en part de `large`, y en part de `trou`, vers le haut) : sol droit, flancs bas, voûte surbaissée
   // (plus large que haut : on y passe en rampant, pas debout).
@@ -317,6 +332,33 @@
   // `roueL` m de large, à 0,2 m des bouts. Couleurs de la scène, sobres (pas de la charte de l'UI).
   const VEHICULE = { garde: 0.2, caisse: 0.8, hab: 0.6, retrait: 0.1, roue: 0.28, roueL: 0.18,
     cotes: 12, carrosserie: "#59616b", vitre: "#1d2228", pneu: "#1b1b1b" };
+  // Ossuaire (_ossuaire) : pan de `h` m au plus, `plafond` m sous le ciel au moins ; bouts d'os de `bout` m tous les
+  // `pas` m, rangées de `rang` m, en relief de `relief` m sur le fond, dôme de `dome` m à `cotesOs` pans ; crânes de
+  // `l` × `h` × `p` m tous les `pas` m, `avance` m devant le pan, `longs` fuseaux, parallèles `lats` (rad) ; `rangs` :
+  // [bas, haut (parts de la hauteur), genre]. Couleurs de la scène : ivoire sale, une teinte tirée par os et crâne.
+  // 🩸 Coût : ~1 150 triangles (bouts d'os ×5, crânes ×40) ; plus d'os ou de pans le font vite doubler.
+  const OSSUAIRE = { h: 1.6, plafond: 0.25, bout: 0.1, pas: 0.13, rang: 0.105, relief: 0.03, dome: 0.024,
+    cotesOs: 5, cranes: { l: 0.16, h: 0.15, p: 0.09, pas: 0.24, avance: 0.03, longs: 5,
+      lats: [-0.9, -0.2, 0.5, 1.1, Math.PI / 2] },
+    rangs: [[0, 0.3, "os"], [0.3, 0.42, "cranes"], [0.42, 0.72, "os"], [0.72, 0.84, "cranes"], [0.84, 0.93, "os"],
+      [0.93, 1, "couronne"]],
+    os: ["#a89773", "#968462", "#b5a37f", "#8a7958", "#9e8c69", "#7f6f52"], fond: "#2a241c",
+    crane: ["#b3a27e", "#a39170", "#bcab88"], orbite: "#17130e" };
+  // Outil de carrier (_outilCarrier, concasseur) : dimensions et obstacle dans KtaGalerie (ACCES_DIM.outil*) ; roues
+  // de `roue` m de rayon (jante de `jante` m, `roueL` de large, moyeu de `moyeu`, `rayons` rayons) à `roueRetrait`
+  // m des bouts ; caisse du broyeur de `caisse` m de haut, `caisseB` de demi-largeur ; trémie évasée de `evase` m ;
+  // volant de `volant` m ; moteur de `moteurR` × `moteurL` m, poulie de `poulie` m ; `cotes` faces par cercle ; rouille
+  // tirée par pièce dans `rouilles` (brun-orangé oxydé), moteur gris acier sale.
+  const OUTIL = { roue: 0.32, jante: 0.05, roueL: 0.06, moyeu: 0.05, rayons: 6, roueRetrait: 0.42, caisse: 0.62,
+    caisseB: 0.36, evase: 0.18, volant: 0.26, moteurR: 0.17, moteurL: 0.45, poulie: 0.09, cotes: 10,
+    rouilles: ["#4a2c1c", "#5c3520", "#3d2418", "#62402a", "#523222", "#33211a", "#6a4529"], rouilleSombre: "#2f1c12",
+    metal: "#4a4642", moteur: "#55585a", courroie: "#1d1916", creux: "#241b16" };
+  // Fontis (_fontis) : cloche de `r` m de rayon au ciel, qui monte de `haut` m ; `profil` : [hauteur au-dessus du
+  // ciel (m), part du rayon] ; `roche` : teinte par anneau (matériau non éclairé : la lampe n'y porte pas), fondue
+  // au noir vers le haut ; `cotes` faces.
+  const FONTIS = { r: 0.65, haut: 2.4, cotes: 12,
+    profil: [[0, 1], [0.3, 0.95], [0.8, 0.78], [1.3, 0.56], [1.8, 0.34], [2.15, 0.16]],
+    roche: ["#241f19", "#120f0c", "#070605", "#020202", "#000000"] };
   // Geste d'un passage : fondu noir de `fondu` ms de part et d'autre de la bascule ; descente / montée de `ms` en tout
   // (la moitié dans chaque niveau), la caméra passant `auDela` m sous le sol ou au-dessus du plafond ; bandeau
   // « Niveau n » `bandeau` ms.
@@ -758,7 +800,7 @@
 
   function _estLigne(type) {
     if (typeof window.isStructurePolylineType === "function") return window.isStructurePolylineType(type);
-    return type === "mur-ligne" || type === "front-1" || type === "front-2";
+    return type === "mur-ligne" || type === "front-1" || type === "front-2" || type === "arc";
   }
 
   // Couleur du canon (aplat, couleur choisie par l'utilisateur comprise) → THREE.Color, en cache par clé.
@@ -819,9 +861,10 @@
         emprise(t, o.points);
       }
     };
-    // Galerie : d.galerie ; mixte : d.mixte (structures ET pièces des tubes, tracés en rubans au sol).
+    // Galerie : d.galerie ; mixte : d.mixte (structures ET pièces des tubes, tracés en rubans au sol). Galerie : des
+    // structures, les arcs de soutènement seuls (_arcSoutenement, paroi à paroi de la galerie dessinée).
     const g = d.galerie, m = g || d.mixte;
-    if (!g) objets(d.structures, "s");
+    objets(g ? d.structures.filter(function (s) { return s.type === "arc"; }) : d.structures, "s");
     objets(d.zones, "z");
     // Pièces de l'emprise à la tuile de leur centre ; galerie : axes (liseré) aussi, et parmi les tracés seul
     // l'itinéraire reste un ruban.
@@ -1235,6 +1278,7 @@
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
       remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
+      if (t.s[i].type === "arc") { _arcSoutenement(opaque, t.s[i], mx); continue; }
       const s = t.s[i], tex = _e.textures ? _textureDe(s.type) : null;
       const col = !tex ? _couleur("structures", s.type) : tex === "roche" && MASSE_2[s.type]
         ? (_e.teinte2 || (_e.teinte2 = new THREE.Color(TEINTE_MASSE_2))) : BLANC;
@@ -1492,6 +1536,7 @@
     const lots = { opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau, remblais: remblais,
       eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
+    for (let i = 0; i < t.s.length; i++) _arcSoutenement(opaque, t.s[i], m);
     for (let i = 0; i < t.r.length; i++) {
       const r = t.r[i], col = _couleur("traces", r.type, "color");
       if (r.type !== "itinerary" && !_lignesSol()) continue;
@@ -3246,12 +3291,16 @@
     return typeof window.getVue3DNiveauxVus === "function" ? window.getVue3DNiveauxVus() : "voisins";
   }
 
-  // Niveaux montrés en plus de celui de la scène (du plus haut au plus bas).
+  // Niveaux montrés en plus de celui de la scène (du plus haut au plus bas), sans ceux que le ≡ de la carte masque.
+  // 🩸 Un niveau masqué gardé ici restait un voisin VIDE (ses objets filtrés) qui comptait pour « un niveau du dessous
+  // montré » : sol du niveau actif voilé sur du noir (_maniereSol), grain presque effacé avec « Actif seul ».
   function _niveauxMontres() {
     const e = _e, l = _niveauxEdition(), i = l.indexOf(e.niveau);
     if (e.niveauxVus === "mien" || i < 0) return [];
-    if (e.niveauxVus === "tous") return l.filter(function (n) { return n !== e.niveau; });
-    return [l[i - 1], l[i + 1]].filter(Number.isInteger);
+    const vis = (window.APP_CONFIG || {}).visibleLevels;
+    const vu = function (n) { return n !== e.niveau && (!Array.isArray(vis) || vis.indexOf(n) >= 0); };
+    if (e.niveauxVus === "tous") return l.filter(vu);
+    return [l[i - 1], l[i + 1]].filter(Number.isInteger).filter(vu);
   }
 
   // Altitude (m) du sol du niveau n au-dessus de celui de la scène, et son côté (_auDessus : l'ordre de ▲▼).
@@ -4151,7 +4200,7 @@
     _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", function (o) {
       return o.type;
     }).filter(_horsTrace).forEach(function (s) {
-      if (!s || !Array.isArray(s.points)) return;
+      if (!s || !Array.isArray(s.points) || s.type === "arc") return;
       const lvl = Number.isInteger(s.level) ? s.level : 0;
       if (lvl === niveau) return;
       const c = _centreM(s.points, e.sc);
@@ -4175,8 +4224,8 @@
     });
   }
 
-  // Règle du pas dans une zone jonction : structures des deux niveaux de la pente et zones qui bouchent (ni paroi de
-  // tube ni image de collision : on n'est plus au sol du niveau). → -1 (couloir coupé) ou rayons bloqués à l'arrivée.
+  // Règle du pas dans une zone jonction : structures des deux niveaux de la pente et zones qui bouchent (pas de
+  // paroi de tube : on n'est plus au sol du niveau). → -1 (couloir coupé) ou rayons bloqués à l'arrivée.
   function _bloqueEnZone(x0, y0, x1, y1, ux, uy, autre) {
     const e = _e, r = RAYON_CORPS * e.sc, fx = x1 + ux * r, fy = y1 + uy * r, segs = [];
     if (x1 !== x0 || y1 !== y0) {
@@ -4599,6 +4648,26 @@
       e.msFaces += performance.now() - t0;
       return r;
     };
+    // Champs de place d'un volume posé en `pl` (px, ang) ; `panneau` : le panneau du POI suit ce volume.
+    const placer = function (v, pl, dim, p, src, panneau) {
+      v.cote = pl.paroi || 0;
+      v.appui = !v.surParoi ? null : pl.structure ? "structure" : "paroi";
+      v.point = src;
+      v.a = dim[0] / 2; v.b = dim[1] / 2;
+      v.x = pl.x; v.y = pl.y; v.ramene = pl.ramene;
+      // Escalier : repère retourné quand l'entrée (KtaGalerie, _entree) est du côté +ang, les marches partant de −a ;
+      // en niche, ang est la normale vers le fond et l'entrée −1 (pied contre la paroi).
+      v.dir = pl.ang + (v.forme === "escalier" && pl.entree === 1 ? Math.PI : 0);
+      v.cx = pl.x / e.sc; v.cz = pl.y / e.sc;
+      v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
+      // Volume ailleurs que le point (recalé, raccord validé) : son panneau le suit (_placePanneau).
+      if (panneau && Math.hypot(pl.x - p.x, pl.y - p.y) > 1e-6) e.placesPassage.set(p, [v.cx, v.cz]);
+      if (v.comble || v.fontis) {
+        v.cone = pl.cone ? { cx: pl.cone.x / e.sc, cz: pl.cone.y / e.sc, R: pl.cone.R }
+          : { cx: v.cx, cz: v.cz, R: DIM_ACCES.cone };
+      }
+      if (v.acces) _dimAcces(v);
+    };
     d.points.forEach(function (p) {
       const src = p._v3dJonction || p, tag = _premierTag(src);
       if (!J.porteNiveaux(tag) && !window.KtaGalerie.ACCES[tag]) return;
@@ -4616,6 +4685,19 @@
       if (!v.sol && !v.plafond && !v.acces) return;   // passage sans autre niveau (plan à un niveau) : rien à ouvrir
       const dim = v.forme === "escalier" ? VOLUME.escalier
         : v.forme === "puits" ? [VOLUME.puits, VOLUME.puits] : [VOLUME.aeration, VOLUME.aeration];
+      // Chatière relevée en points (poiPrecis.js) : un volume par segment, placés et raccordés (_segmentsChatiere,
+      // _joindreChatiere) ; panneau au segment du milieu du tracé.
+      const segs = v.chatiere ? _segmentsChatiere(src, N) : null;
+      if (segs) {
+        const vols = segs.map(function (s) {
+          const w = Object.assign({}, v, { seg: s });
+          placer(w, s.pl, dim, p, src, s.milieu);
+          return w;
+        });
+        _joindreChatiere(vols);
+        vols.forEach(function (w) { out.push(w); });
+        return;
+      }
       // Place et axe : KtaGalerie.placePassage, le calcul de l'emprise qui ouvre le tube (une seule règle).
       let pl = window.KtaGalerie.placePassage(src, N, e.rendu) || { x: p.x, y: p.y, ang: 0, ramene: false };
       // Forme murale sans paroi de tube à cette place (structures, chambre, loin de tout axe) : sur la face de
@@ -4624,23 +4706,7 @@
         pl = e.rendu === "galerie" ? null : surStructure(pl, v.forme);
         if (!pl) return;
       }
-      v.cote = pl.paroi || 0;
-      v.appui = !v.surParoi ? null : pl.structure ? "structure" : "paroi";
-      v.point = src;
-      v.a = dim[0] / 2; v.b = dim[1] / 2;
-      v.x = pl.x; v.y = pl.y; v.ramene = pl.ramene;
-      // Escalier : repère retourné quand l'entrée (KtaGalerie, _entree) est du côté +ang, les marches partant de −a ;
-      // en niche, ang est la normale vers le fond et l'entrée −1 (pied contre la paroi).
-      v.dir = pl.ang + (v.forme === "escalier" && pl.entree === 1 ? Math.PI : 0);
-      v.cx = pl.x / e.sc; v.cz = pl.y / e.sc;
-      v.r = Math.hypot(v.a, v.b) + VOLUME.marge + VOLUME.cadre;
-      // Volume ailleurs que le point (recalé, raccord validé) : son panneau le suit (_placePanneau).
-      if (Math.hypot(pl.x - p.x, pl.y - p.y) > 1e-6) e.placesPassage.set(p, [v.cx, v.cz]);
-      if (v.comble) {
-        v.cone = pl.cone ? { cx: pl.cone.x / e.sc, cz: pl.cone.y / e.sc, R: pl.cone.R }
-          : { cx: v.cx, cz: v.cz, R: DIM_ACCES.cone };
-      }
-      if (v.acces) _dimAcces(v);
+      placer(v, pl, dim, p, src, true);
       out.push(v);
     });
     // Panneau d'un POI à point précis (poiPrecis.js > centre) que son volume n'a pas déjà placé : au point précis,
@@ -4736,6 +4802,7 @@
   // Demi-longueur (m) d'une forme murale le long de sa face, la plus grande qu'elle puisse prendre.
   function _demiForme(forme) {
     if (forme === "plaque") return PLAQUE.lMax / 2;
+    if (forme === "ossuaire") return DIM_ACCES.ossuaireL / 2;
     return forme === "epure" ? EPURE.l / 2 : PORTAIL.l / 2;
   }
 
@@ -4753,7 +4820,7 @@
       }
     };
     structures.forEach(function (s) {
-      if (!s || !Array.isArray(s.points)) return;
+      if (!s || !Array.isArray(s.points) || s.type === "arc") return;
       const anneaux = _estLigne(s.type)
         ? _pavesLigne(s.points, sc, _epaisseurLigne(s.type)).map(function (q) { return q.ring; })
         : [_anneau(s.points, sc)];
@@ -4923,8 +4990,8 @@
   }
 
   function _construireVolume(v) {
-    const e = _e, lots = { parois: new Lot(), opaque: new Lot(), lumineux: new Lot(), sol: new Lot(),
-      plafond: new Lot(), plafondConduit: new Lot(), trous: {} };
+    const e = _e, lots = { parois: new Lot(), paroisPente: new Lot(), opaque: new Lot(), lumineux: new Lot(),
+      sol: new Lot(), plafond: new Lot(), plafondConduit: new Lot(), trous: {} };
     const g = new THREE.Group();
     g.userData.famille = "passage";
     if (v.genre === "pente") _pente(v, lots); else if (v.acces) _acces(v, lots, g); else _puits(v, lots, g);
@@ -4939,6 +5006,7 @@
       me.renderOrder = ordre;
       me.matrixAutoUpdate = false;
       me.userData.famille = famille;
+      if (famille === "paroiPente") me.visible = e.vue !== "plongee";
       g.add(me);
     };
     ajouter(lots.sol, e.mats.boucheSol, -1, "boucheSol");
@@ -4946,17 +5014,19 @@
     ajouter(lots.plafondConduit, e.mats.bouchePlafondConduit, -1, "bouchePlafond");
     // Trémie d'une galerie inclinée (_tremiePente) ; jamais sur un volume de voisin (gabarit du niveau actif).
     if (!vv) Object.keys(lots.trous).forEach(function (b) { ajouter(lots.trous[b], _matTrou(Number(b)), -1, "trou"); });
-    if (lots.parois.p.length) _paroiTexturee();
+    if (lots.parois.p.length || lots.paroisPente.p.length) _paroiTexturee();
     ajouter(lots.parois, e.mats.paroi, 0, "paroiPassage");
+    ajouter(lots.paroisPente, e.mats.paroi, 0, "paroiPente");
     ajouter(lots.opaque, e.mats.opaque, 0, "passage");
     ajouter(lots.lumineux, e.mats.lumineux, 1, "cadre");
     if (v.acces) _ajouterAcces(lots, ajouter);
     let y0 = Infinity, y1 = -Infinity;
-    [lots.parois, lots.opaque].forEach(function (l) {
+    [lots.parois, lots.paroisPente, lots.opaque].forEach(function (l) {
       for (let i = 1; i < l.p.length; i += 3) { y0 = Math.min(y0, l.p[i]); y1 = Math.max(y1, l.p[i]); }
     });
     const n = function (l) { return l.p.length / 9; };
-    v.stats = { triangles: n(lots.parois) + n(lots.opaque) + n(lots.lumineux), bouchesSol: n(lots.sol),
+    v.stats = { triangles: n(lots.parois) + n(lots.paroisPente) + n(lots.opaque) + n(lots.lumineux),
+      bouchesSol: n(lots.sol),
       bouchesPlafond: n(lots.plafond) + n(lots.plafondConduit), conduit: v.conduit || null,
       cadre: n(lots.lumineux) > 0, yMin: Number.isFinite(y0) ? +y0.toFixed(2) : null,
       yMax: Number.isFinite(y1) ? +y1.toFixed(2) : null,
@@ -5143,6 +5213,8 @@
   // tranche [0, h] du niveau. En descente : tranchée sous le sol (bouche au sol jusqu'à tOuvert), puis galerie couverte
   // sous lui. En montée : bouche au plafond et talus sous la rampe jusqu'à tOuvert, parois et plafond au-dessus du
   // plafond du niveau. Le bout d'en face reste ouvert : la scène a basculé avant d'y arriver (_suivrePente).
+  // Parois et plafond du tube (lot paroisPente, famille « paroiPente ») cachés en vue d'édition (_paroisPenteVue) :
+  // vus d'en haut, ce ne sont que des murs qui dépassent du niveau ; le sol en pente et son ruban restent.
   function _pente(v, lots) {
     const p = v.p, dY = p.dY, hA = p.hA, tO = p.tOuvert, col = _couleur("traces", "jonction", "color");
     const W = function (t) { return window.KtaGalerie.demiPente(p, t); };
@@ -5150,7 +5222,7 @@
     v.paroisPente = [];
     const mur = function (P, Q, y0p, y1p, y0q, y1q) {
       if (y1p - y0p < 1e-3 && y1q - y0q < 1e-3) return;
-      _paroiPente(lots.parois, P, Q, y0p, y1p, y0q, y1q);
+      _paroiPente(lots.paroisPente, P, Q, y0p, y1p, y0q, y1q);
       v.paroisPente.push([+P[0].toFixed(3), +P[1].toFixed(3), +Q[0].toFixed(3), +Q[1].toFixed(3),
         +Math.min(y0p, y0q).toFixed(3), +Math.max(y1p, y1q).toFixed(3)]);
     };
@@ -5206,13 +5278,13 @@
         mur(dA, dB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
         if (ouvert) _quadPlat(lots.sol, [gA, gB, dB, dA], 0);
         else {
-          lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
+          lots.paroisPente.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
             [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -wA, uB, -wB, uB, wB, uA, wA]);
         }
       } else if (dY > 0) {
         mur(gA, gB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
         mur(dA, dB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
-        lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
+        lots.paroisPente.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
           [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -wA, uB, -wB, uB, wB, uA, wA]);
         if (ouvert) {
           _quadPlat(lots.plafond, [gA, gB, dB, dA], hA);
@@ -5303,11 +5375,13 @@
   function _volumeAcces(tag) {
     const f = window.KtaGalerie.ACCES[tag], paroi = !!window.KtaGalerie.PAROI[f];
     return { acces: true, moyen: null, forme: f, sol: f === "bassin",
-      plafond: tag !== "pb" && f !== "bassin" && f !== "porte" && f !== "chatiere" && f !== "vehicule" && !paroi,
+      plafond: tag !== "pb" && f !== "bassin" && f !== "porte" && f !== "chatiere" && f !== "vehicule" &&
+        f !== "outil" && !paroi,
       ciel: tag === "ps",
       grille: false, echelons: tag === "pef", passage: false, ferme: tag === "esf" || tag === "pef",
       bouche: tag === "pb", comble: tag === "pc" || tag === "psf", bassin: f === "bassin", porte: f === "porte",
-      ouvert: tag === "cao", chatiere: f === "chatiere", surParoi: paroi, vehicule: f === "vehicule" };
+      ouvert: tag === "cao", chatiere: f === "chatiere", surParoi: paroi, vehicule: f === "vehicule",
+      ossuaire: f === "ossuaire", outil: f === "outil", fontis: f === "fontis" };
   }
 
   // Dimensions d'un accès placé (v.cx, v.cz, v.dir) : rond et bassin d'après DIM_ACCES ; porte de la largeur de la
@@ -5317,11 +5391,14 @@
   function _dimAcces(v) {
     const D = DIM_ACCES;
     if (v.forme === "rond") v.a = v.b = D.rond / 2;
+    else if (v.fontis) v.a = v.b = FONTIS.r;
+    else if (v.ossuaire) { v.a = D.ossuaireL / 2; v.b = D.ossuaireEp; }
+    else if (v.outil) { v.a = D.outilL / 2; v.b = D.outilW / 2; }
     else if (v.bassin) v.a = v.b = D.bassin / 2 + D.margelle;
     else if (v.chatiere) {
       v.b = _demiLargeurGalerie(v.cx, v.cz);
-      const s = _segmentChatiere(v.point);
-      v.a = s ? Math.max(CHATIERE.court, s.l) / 2 : CHATIERE.long / 2;
+      const s = v.seg;
+      v.a = !s ? CHATIERE.long / 2 : s.n === 1 ? Math.max(CHATIERE.court, s.l) / 2 : s.l / 2;
       if (s) v.dir = s.ang;
     } else if (v.surParoi) {
       v.a = Math.max(PLAQUE.lMax, EPURE.l, PORTAIL.l) / 2;
@@ -5340,15 +5417,68 @@
     if (v.cone) v.r = Math.max(v.r, Math.hypot(v.cone.cx - v.cx, v.cone.cz - v.cz) + v.cone.R);
   }
 
-  // Chatière relevée en deux points (poiPrecis.js > lire : début x, y et fin x2, y2) → { l (m), ang (rad, repère de
-  // KtaGalerie.placePassage) } | null. Le centre reste celui de placePassage (le milieu, ramené sur l'axe de la
-  // galerie : la roche barre toute sa largeur) ; seuls la longueur et l'axe viennent des deux points.
-  function _segmentChatiere(p) {
+  // Segments d'une chatière relevée en points (poiPrecis.js > lire : `pts`, 2 au moins, ancienne forme comprise) au
+  // niveau N → [{ pl (place : x, y px, ang), l (m), ang (rad, repère de KtaGalerie.placePassage), coude0, coude1 (rad,
+  // virage au début et à la fin, 0 aux bouts), i, n, debut, fin, milieu (porte le milieu du tracé en longueur) }] |
+  // null. Chaque segment est décalé comme son milieu par placePassage (ramené sur l'axe de la galerie : la roche barre
+  // toute sa largeur) ; un point intérieur prend la moyenne des décalages de ses deux segments, pour que les segments
+  // se touchent. Deux points : le centre de placePassage, longueur et axe des deux points (la règle d'une chatière
+  // courte). 🩸 Points confondus ignorés : un segment nul n'a pas d'axe.
+  function _segmentsChatiere(p, N) {
     const q = window.KtaPoiPrecis && p ? window.KtaPoiPrecis.lire(p) : null;
-    if (!q || q.x2 === undefined) return null;
-    const dx = q.x2 - q.x, dy = q.y2 - q.y;
-    if (Math.hypot(dx, dy) < 1e-6) return null;
-    return { l: Math.hypot(dx, dy) / _e.sc, ang: Math.atan2(dy, dx) };
+    if (!q || !q.pts) return null;
+    const pts = q.pts.filter(function (a, i, l) {
+      return !i || Math.hypot(a.x - l[i - 1].x, a.y - l[i - 1].y) > 1e-6;
+    });
+    if (pts.length < 2) return null;
+    const e = _e, G = window.KtaGalerie, n = pts.length - 1, dec = [];
+    for (let i = 0; i < n; i++) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2, my = (pts[i].y + pts[i + 1].y) / 2;
+      const faux = Object.assign({}, p, { x: mx, y: my });
+      delete faux.precis;
+      const pl = G.placePassage(faux, N, e.rendu) || { x: mx, y: my, ramene: false };
+      dec.push({ dx: pl.x - mx, dy: pl.y - my, ramene: !!pl.ramene });
+    }
+    const som = pts.map(function (a, k) {
+      const d0 = dec[Math.max(0, k - 1)], d1 = dec[Math.min(n - 1, k)];
+      return { x: a.x + (d0.dx + d1.dx) / 2, y: a.y + (d0.dy + d1.dy) / 2 };
+    });
+    const out = [];
+    let tot = 0;
+    for (let i = 0; i < n; i++) {
+      const a = som[i], b = som[i + 1], dx = b.x - a.x, dy = b.y - a.y, ang = Math.atan2(dy, dx);
+      out.push({ pl: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, ang: ang, ramene: dec[i].ramene },
+        lpx: Math.hypot(dx, dy), l: Math.hypot(dx, dy) / e.sc, ang: ang, coude0: 0, coude1: 0, i: i, n: n,
+        debut: i === 0, fin: i === n - 1, milieu: false });
+      tot += Math.hypot(dx, dy);
+    }
+    let cum = 0;
+    for (let i = 0; i < n; i++) {
+      const s = out[i];
+      if (i > 0) {
+        let d = s.ang - out[i - 1].ang;
+        while (d > Math.PI) d -= 2 * Math.PI;
+        while (d <= -Math.PI) d += 2 * Math.PI;
+        s.coude0 = out[i - 1].coude1 = d;
+      }
+      if (!out.some(function (o) { return o.milieu; }) && cum + s.lpx >= tot / 2) s.milieu = true;
+      cum += s.lpx;
+    }
+    return out;
+  }
+
+  // Raccord des volumes d'une même chatière (_segmentsChatiere), une fois dimensionnés (_dimAcces) : trou de la même
+  // largeur tout du long (la galerie la plus étroite), coupe en onglet à chaque coude (pente k = tan(virage / 2) des
+  // bouts : s = a − k·t à la fin, −a + k·t au début, repère de _repere), bornée pour qu'aucun segment ne se retourne
+  // sur la largeur de sa roche.
+  function _joindreChatiere(vols) {
+    const bTrou = Math.min.apply(null, vols.map(function (v) { return v.b; }));
+    vols.forEach(function (v) { v.bTrou = bTrou; v.k0 = 0; v.k1 = 0; });
+    for (let i = 1; i < vols.length; i++) {
+      const A = vols[i - 1], B = vols[i], larg = Math.max(A.b, B.b) + CHATIERE.deborde;
+      const kMax = 0.9 * Math.min(A.a, B.a) / larg, k = Math.tan(B.seg.coude0 / 2);
+      A.k1 = B.k0 = Math.max(-kMax, Math.min(kMax, k));
+    }
   }
 
   // Demi-largeur (m) de la galerie dont l'axe est le plus proche de (x, z) (m) à 10 m, modèle du rendu affiché :
@@ -5402,6 +5532,9 @@
     if (v.forme === "epure") { _epure(v, lots); return; }
     if (v.forme === "portail") { _portail(v, lots); return; }
     if (v.vehicule) { _vehicule(v, lots); return; }
+    if (v.ossuaire) { _ossuaire(v, lots); return; }
+    if (v.outil) { _outilCarrier(v, lots); return; }
+    if (v.fontis) { _fontis(v, lots); if (_coneMontre(v)) _cone(v, lots); return; }
     const ring = v.forme === "rond" ? _cercle(v, v.a) : _carre(v);
     if (v.bouche) _dalleBouchee(v, lots);
     else if (v.comble) { _puitsComble(v, lots, ring); if (_coneMontre(v)) _cone(v, lots); }
@@ -5540,11 +5673,18 @@
   // les parois, du sol au plafond, percée au sol du trou (PROFIL_CHATIERE : CHATIERE.large × CHATIERE.trou, sur
   // l'axe, axe long de la roche le long de la galerie : le trou se traverse dans le sens de la marche) : deux faces
   // trouées, le tour du trou (vu du dedans) et le dessus (vue d'édition, plafond masqué). Roche brute des piliers
-  // avec 🧱 (matériau `roche`, coordonnées de texture en mètres), couleur du pilier sinon. ⚠️ contrat : aucune
+  // avec 🧱 (matériau `roche`, coordonnées de texture en mètres), couleur du pilier sinon. Segment d'une chatière en
+  // plusieurs points (v.seg, _joindreChatiere) : face trouée au début et à la fin du tracé seulement, bouts coupés en
+  // onglet aux coudes (v.k0, v.k1) : le boyau et le dessus se raccordent au segment voisin. ⚠️ contrat : aucune
   // emprise ni obstacle (galerieEmprise.js > ACCES) ; seule la caméra s'abaisse (_baisseChatiere).
   function _chatiere(v, lots) {
     const e = _e, h = e.hauteur, Q = _repere(v), a = v.a, B = v.b + CHATIERE.deborde, T = CHATIERE.trou;
-    const Wt = Math.max(0.5, Math.min(CHATIERE.large, 2 * v.b - CHATIERE.jeu));
+    const Wt = Math.max(0.5, Math.min(CHATIERE.large, 2 * (v.bTrou || v.b) - CHATIERE.jeu));
+    const k0 = v.k0 || 0, k1 = v.k1 || 0;
+    const s0 = function (t) { return -a + k0 * t; }, s1 = function (t) { return a - k1 * t; };
+    const faces = [];
+    if (!v.seg || v.seg.debut) faces.push([-a, -1]);
+    if (!v.seg || v.seg.fin) faces.push([a, 1]);
     const tx = e.textures === true, lot = tx ? _lot(lots, "roche") : lots.opaque, m = tx ? ROCHE.m : 0;
     const col = tx ? BLANC : _couleur("structures", "pilier-1");
     const trou = PROFIL_CHATIERE.map(function (q) { return [q[0] * Wt, Math.min(q[1] * T, h - 0.05)]; });
@@ -5555,7 +5695,7 @@
     const tous = bord.concat(trou), ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
     const P = function (s, q) { const w = Q(s, q[0]); return [w[0], q[1], w[1]]; };
     const uvF = function (q) { return [q[0] / m, q[1] / m]; };
-    [[-a, -1], [a, 1]].forEach(function (f) {
+    faces.forEach(function (f) {
       const n = [ux * f[1], 0, uz * f[1]];
       tris.forEach(function (tr) {
         const A = tous[tr[0]], Bq = tous[tr[1]], C = tous[tr[2]];
@@ -5569,14 +5709,16 @@
       if (l < 1e-6) continue;
       let nt = dy / l, ny = -dt / l;
       if (nt * -(p[0] + q[0]) / 2 + ny * (T / 2 - (p[1] + q[1]) / 2) < 0) { nt = -nt; ny = -ny; }
-      lot.quad(P(-a, p), P(a, p), P(a, q), P(-a, q), [-uz * nt, ny, ux * nt], col,
-        m ? [-a / m, u / m, a / m, u / m, a / m, (u + l) / m, -a / m, (u + l) / m] : undefined);
+      const ap = s0(p[0]), bp = s1(p[0]), aq = s0(q[0]), bq = s1(q[0]);
+      lot.quad(P(ap, p), P(bp, p), P(bq, q), P(aq, q), [-uz * nt, ny, ux * nt], col,
+        m ? [ap / m, u / m, bp / m, u / m, bq / m, (u + l) / m, aq / m, (u + l) / m] : undefined);
       u += l;
     }
-    _dessus(lot, _sensPositif([Q(-a, -B), Q(a, -B), Q(a, B), Q(-a, B)]), h, col, m || undefined);
+    _dessus(lot, _sensPositif([Q(s0(-B), -B), Q(s1(-B), -B), Q(s1(B), B), Q(s0(B), B)]), h, col, m || undefined);
     v.trace = { long: +(2 * a).toFixed(3), trou: T, largeur: +(2 * v.b).toFixed(3), largeTrou: +Wt.toFixed(3),
       hautTrou: +Math.max.apply(null, trou.map(function (q) { return q[1]; })).toFixed(3),
-      dir: +((v.dir || 0) * 180 / Math.PI).toFixed(2) };
+      dir: +((v.dir || 0) * 180 / Math.PI).toFixed(2), faces: faces.length,
+      segment: v.seg ? [v.seg.i, v.seg.n] : null, onglet: [+k0.toFixed(4), +k1.toFixed(4)] };
   }
 
   // Repère d'une forme sur la paroi (v.cote : côté de la paroi, galerieEmprise.js > _surParoi) : Q(s, recul) = point
@@ -5976,6 +6118,401 @@
     v.trace = { long: +(2 * a).toFixed(3), large: +(2 * b).toFixed(3), haut: +haut.toFixed(3) };
   }
 
+  // ── Arc de soutènement ; ossuaire, outil de carrier, fontis ───────────────────────────────────────────────
+  // Formes faites en code, sans fichier ni texture : peu de triangles, lot opaque du volume ou de la tuile (couleurs
+  // par sommet). L'arc et le fontis lisent la charte (légende de l'arc, remblais du cône) ; ossuaire et outil ont
+  // des couleurs de la scène, comme le véhicule.
+
+  // Arc de soutènement `s` (polyligne `arc`) dans le lot `lot` : un arc par segment (_arcPleinCintre), dans les trois
+  // rendus. Mixte et galerie (`mx` : leur modèle) : un segment en travers d'un tube va d'une paroi du tube à l'autre
+  // (_arcEntreParois) ; sinon (structures, chambre), tel que dessiné.
+  // Relevé du checkup : e.arcs (structure → [{ niveau, a, b (px), portee, piedH, intradosY, cleY, claveaux, k,
+  // tube, triangles }]).
+  function _arcSoutenement(lot, s, mx) {
+    const e = _e, sc = e.sc, out = [];
+    const pts = (s.points || []).filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const ab = _arcEntreParois(pts[i], pts[i + 1], mx);
+      if (!ab) continue;
+      const n0 = lot.p.length;
+      const r = _arcPleinCintre(lot, ab.a.x / sc, ab.a.y / sc, ab.b.x / sc, ab.b.y / sc, ab.biais, !ab.tube);
+      if (!r) continue;
+      out.push(Object.assign(r, { niveau: e.niveau, tube: ab.tube, triangles: (lot.p.length - n0) / 9,
+        a: [+ab.a.x.toFixed(2), +ab.a.y.toFixed(2)], b: [+ab.b.x.toFixed(2), +ab.b.y.toFixed(2)] }));
+    }
+    (e.arcs || (e.arcs = new Map())).set(s, out);
+  }
+
+  // Bouts (px) de l'arc dessiné de a à b → { a, b, tube, biais } | null (segment nul). Mixte ou galerie, milieu dans
+  // un tube (axe à ARC.tube m au plus, hors chambre, milieu dans sa largeur), segment en travers (à plus de 30° de
+  // l'axe) : les points où la ligne du segment coupe les deux parois du tube (paroi à paroi, sens a → b gardé) ;
+  // `biais` : pente des parois dans le repère de l'arc (ds/dw, le long de l'arc par unité de profondeur), pour que le
+  // tympan d'un arc oblique suive la paroi. Sinon (chambre, rendu structures, arc le long de la galerie) : les bouts
+  // dessinés, d'une structure à l'autre, biais nul.
+  function _arcEntreParois(a, b, mx) {
+    const sc = _e.sc, dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
+    if (L < 1e-6) return null;
+    const brut = { a: a, b: b, tube: false, biais: 0 };
+    if (!mx) return brut;
+    const xm = (a.x + b.x) / 2, ym = (a.y + b.y) / 2, pp = mx.plusProche(xm, ym, ARC.tube * sc);
+    if (!pp || pp.d > pp.w || mx.enChambre(xm, ym) || !mx.tubeAu(pp.arete, pp.t)) return brut;
+    const r = mx.aretes[pp.arete];
+    if (!r || !r.l) return brut;
+    const ex = dx / L, ey = dy / L, nx = -(r.by - r.ay) / r.l, ny = (r.bx - r.ax) / r.l, nd = nx * ex + ny * ey;
+    if (Math.abs(nd) < 0.5) return brut;
+    const off = nx * (xm - pp.x) + ny * (ym - pp.y);
+    const u0 = (-pp.w - off) / nd, u1 = (pp.w - off) / nd, lo = Math.min(u0, u1), hi = Math.max(u0, u1);
+    const ax = (r.bx - r.ax) / r.l, ay = (r.by - r.ay) / r.l, dn = ax * -ey + ay * ex;
+    return { a: { x: xm + ex * lo, y: ym + ey * lo }, b: { x: xm + ex * hi, y: ym + ey * hi }, tube: true,
+      biais: Math.abs(dn) > 1e-6 ? (ax * ex + ay * ey) / dn : 0 };
+  }
+
+  // Arc plein cintre de (ax, az) à (bx, bz) (m) : deux piédroits et leur imposte, claveaux en demi-cercle (demi-
+  // ellipse surbaissée si la portée dépasse ce que le ciel permet), extrados à la clé au ciel du niveau (ARC) →
+  // relevé | null (portée sous ARC.porteeMin). Joints : faces des claveaux en couleur de mortier (assombrie), fond
+  // bouché. Tympan (_tympanArc) au-dessus de l'extrados ; `biais` : pente des parois (_arcEntreParois) ; `ferme` :
+  // sans paroi de tube contre lui (structures, chambre), ses bouts sont fermés.
+  function _arcPleinCintre(lot, ax, az, bx, bz, biais, ferme) {
+    const e = _e, A = ARC, h = e.hauteur, dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+    if (L < A.porteeMin) return null;
+    const ux = dx / L, uz = dz / L, nx = -uz, nz = ux, cx = (ax + bx) / 2, cz = (az + bz) / 2;
+    const pied = Math.min(A.pied, L * 0.2), ri = L / 2 - pied, ep = Math.min(A.ep, pied), re = ri + ep;
+    const piedMin = Math.min(A.piedMin, h * 0.4);
+    let ys = h - re, kv = 1;
+    if (ys < piedMin) { ys = piedMin; kv = (h - ys) / re; }
+    const base = e.textures === true ? _couleurFixe(A.pierre) : _couleur("structures", "arc");
+    const teinte = function (f) {
+      return { r: Math.min(1, base.r * f), g: Math.min(1, base.g * f), b: Math.min(1, base.b * f) };
+    };
+    const mortier = teinte(A.mortier), alea = _aleaGraine(_hachage(cx.toFixed(2) + "," + cz.toFixed(2)));
+    const Q = function (s, t) { return [cx + ux * s + nx * t, cz + uz * s + nz * t]; };
+    const P = A.prof / 2, yi = Math.max(0, ys - A.imposte);
+    [-1, 1].forEach(function (c) {
+      const s0 = c * (L / 2 - pied), s1 = c * L / 2, s2 = c * (L / 2 - pied - A.deborde);
+      if (yi > 0.02) _pave(lot, Q, Math.min(s0, s1), Math.max(s0, s1), -P, P, 0, yi, teinte(0.92));
+      _pave(lot, Q, Math.min(s2, s1), Math.max(s2, s1), -P - A.deborde, P + A.deborde, yi, ys, teinte(0.85));
+    });
+    let n = Math.round(Math.PI * (ri + re) / 2 / A.claveau);
+    n = Math.max(A.min, Math.min(A.max, n));
+    if (n % 2 === 0) n += n < A.max ? 1 : -1;
+    const g = A.joint / ((ri + re) / 2);
+    const V = function (r, th, w) {
+      const u = r * Math.cos(th);
+      return [cx + ux * u + nx * w, ys + kv * r * Math.sin(th), cz + uz * u + nz * w];
+    };
+    const N = function (gu, gy) {
+      const l = Math.hypot(gu, gy) || 1;
+      return [ux * gu / l, gy / l, uz * gu / l];
+    };
+    for (let k = 0; k < n; k++) {
+      const t0 = Math.PI * k / n + (k ? g / 2 : 0), t1 = Math.PI * (k + 1) / n - (k < n - 1 ? g / 2 : 0);
+      const w = P + (k === (n - 1) / 2 ? A.cle : 0), tm = (t0 + t1) / 2;
+      const col = teinte(1 + A.nuance * (2 * alea() - 1));
+      const I0 = V(ri, t0, w), I1 = V(ri, t1, w), E0 = V(re, t0, w), E1 = V(re, t1, w);
+      const i0 = V(ri, t0, -w), i1 = V(ri, t1, -w), e0 = V(re, t0, -w), e1 = V(re, t1, -w);
+      lot.quad(I0, I1, E1, E0, [nx, 0, nz], col);
+      lot.quad(i0, i1, e1, e0, [-nx, 0, -nz], col);
+      const gr = N(Math.cos(tm), Math.sin(tm) / kv);
+      lot.quad(I0, I1, i1, i0, [-gr[0], -gr[1], -gr[2]], col);
+      // Extrados noyé dans le tympan, sauf celui de la clé qui le dépasse en profondeur.
+      if (w > P) lot.quad(E0, E1, e1, e0, gr, col);
+      if (k) lot.quad(I0, E0, e0, i0, N(Math.sin(t0), -kv * Math.cos(t0)), mortier);
+      if (k < n - 1) lot.quad(I1, E1, e1, i1, N(-Math.sin(t1), kv * Math.cos(t1)), mortier);
+      // 🩸 Fond du joint : sans lui, le jour du joint traverse l'arc de part en part (fond de galerie vu à travers).
+      if (k) {
+        const tp = Math.PI * k / n - g / 2, wf = P - A.fond;
+        [1, -1].forEach(function (c) {
+          lot.quad(V(ri, tp, c * wf), V(ri, t0, c * wf), V(re, t0, c * wf), V(re, tp, c * wf),
+            [c * nx, 0, c * nz], mortier);
+        });
+      }
+    }
+    _tympanArc(lot, { cx: cx, cz: cz, ux: ux, uz: uz, L: L, re: re, ys: ys, kv: kv, n: n, h: h, P: P,
+      biais: biais || 0, ferme: !!ferme }, teinte(A.tympan));
+    return { portee: +L.toFixed(3), piedH: +ys.toFixed(3), intradosY: +(ys + kv * ri).toFixed(3),
+      cleY: +(ys + kv * re).toFixed(3), claveaux: n, k: +kv.toFixed(3), pied: +pied.toFixed(3), tympan: true };
+  }
+
+  // Tympan de l'arc `a` (_arcPleinCintre) : maçonnerie pleine, de la profondeur de l'arc, entre l'extrados et le ciel
+  // (h) d'un bout à l'autre de la portée ; seule l'ouverture sous l'intrados reste vide. Faces avant et arrière :
+  // une bande par claveau (de l'extrados au ciel, mêmes angles que les joints) et une bande au-dessus de chaque
+  // piédroit ; dessus au ciel (vu en vue d'édition) ; bouts fermés seulement sans paroi de tube (`a.ferme`). Arc
+  // oblique dans un tube : les bandes des piédroits suivent la paroi (`a.biais`), jamais en deçà de l'extrados.
+  // ⚠️ contrat : tout est au-dessus de l'imposte, hors de l'ouverture ; le pas ne change pas (l'arc n'est pas un
+  // obstacle). Coût : 6n + 8 triangles de plus que l'arc seul (fonds de joint compris, extrados noyés retirés).
+  function _tympanArc(lot, a, col) {
+    const nx = -a.uz, nz = a.ux, h = a.h, w = a.P - ARC.retrait, re = a.re;
+    const W = function (s, y, t) { return [a.cx + a.ux * s + nx * t, y, a.cz + a.uz * s + nz * t]; };
+    const bout = function (c, t) {
+      const s = c * a.L / 2 + a.biais * t;
+      return c > 0 ? Math.max(re, s) : Math.min(-re, s);
+    };
+    [1, -1].forEach(function (c) {
+      const t = c * w, nrm = [c * nx, 0, c * nz];
+      for (let j = 0; j < a.n; j++) {
+        const t0 = Math.PI * j / a.n, t1 = Math.PI * (j + 1) / a.n;
+        const u0 = re * Math.cos(t0), u1 = re * Math.cos(t1);
+        lot.quad(W(u0, a.ys + a.kv * re * Math.sin(t0), t), W(u1, a.ys + a.kv * re * Math.sin(t1), t),
+          W(u1, h, t), W(u0, h, t), nrm, col);
+      }
+      [1, -1].forEach(function (d) {
+        const sb = bout(d, t);
+        if (Math.abs(sb) - re < 1e-4) return;
+        lot.quad(W(d * re, a.ys, t), W(sb, a.ys, t), W(sb, h, t), W(d * re, h, t), nrm, col);
+      });
+    });
+    lot.quad(W(bout(-1, w), h, w), W(bout(1, w), h, w), W(bout(1, -w), h, -w), W(bout(-1, -w), h, -w),
+      [0, 1, 0], col);
+    if (!a.ferme) return;
+    [1, -1].forEach(function (d) {
+      const s = d * a.L / 2;
+      lot.quad(W(s, a.ys, -w), W(s, a.ys, w), W(s, h, w), W(s, h, -w), [d * a.ux, 0, d * a.uz], col);
+    });
+  }
+
+  // Relevé des arcs construits (KtaVue3D.etat().arcs, checkup).
+  function _etatArcs() {
+    const out = [];
+    if (_e && _e.arcs) _e.arcs.forEach(function (l) { l.forEach(function (a) { out.push(a); }); });
+    return out;
+  }
+
+  // Quad de quatre points du repère du volume ([s, t, y]) → monde, normale [ns, ny, nt] du même repère (normée ici).
+  function _quadRepere(lot, v, pts, n, col) {
+    const Q = _repere(v), w = pts.map(function (p) { const q = Q(p[0], p[1]); return [q[0], p[2], q[1]]; });
+    lot.quad(w[0], w[1], w[2], w[3], _normaleRepere(v, n), col);
+  }
+
+  // Normale [ns, ny, nt] du repère du volume → monde, normée.
+  function _normaleRepere(v, n) {
+    const ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0), l = Math.hypot(n[0], n[1], n[2]) || 1;
+    return [(ux * n[0] - uz * n[2]) / l, n[1] / l, (uz * n[0] + ux * n[2]) / l];
+  }
+
+  // Cylindre d'axe t (repère du volume) : centre (s, y), rayon r, de t0 à t1, `cotes` faces et ses deux fonds.
+  function _cylindreT(lot, v, s, y, r, t0, t1, cotes, col) {
+    for (let k = 0; k < cotes; k++) {
+      const a0 = 2 * Math.PI * k / cotes, a1 = 2 * Math.PI * (k + 1) / cotes, am = (a0 + a1) / 2;
+      const s0 = s + r * Math.cos(a0), y0 = y + r * Math.sin(a0), s1 = s + r * Math.cos(a1), y1 = y + r * Math.sin(a1);
+      _quadRepere(lot, v, [[s0, t0, y0], [s1, t0, y1], [s1, t1, y1], [s0, t1, y0]], [Math.cos(am), Math.sin(am), 0],
+        col);
+      [[t0, -1], [t1, 1]].forEach(function (f) {
+        _triRepere(lot, v, [[s, f[0], y], [s0, f[0], y0], [s1, f[0], y1]], [0, 0, f[1]], col);
+      });
+    }
+  }
+
+  // Triangle de trois points du repère du volume ([s, t, y]) → monde (_quadRepere).
+  function _triRepere(lot, v, pts, n, col) {
+    const Q = _repere(v), w = pts.map(function (p) { const q = Q(p[0], p[1]); return [q[0], p[2], q[1]]; });
+    lot.tri(w[0], w[1], w[2], _normaleRepere(v, n), col);
+  }
+
+  // Ossuaire : pan d'ossements rangés contre la paroi (_faceParoi, la place des formes murales), de OSSUAIRE.h au
+  // plus (OSSUAIRE.plafond sous le ciel), ACCES_DIM.ossuaireL de long, ossuaireEp d'épaisseur : bouts d'os arrondis
+  // (_boutOs) en rangées décalées sur un fond sombre, deux rangées de crânes (_crane), couronnement d'os longs
+  // (OSSUAIRE.rangs, parts de la hauteur) ; ivoire sale tiré par os dans OSSUAIRE.os. ⚠️ contrat : l'obstacle est
+  // galerieEmprise.js > _obstaclesAcces (genre « ossuaire »), le même pan.
+  function _ossuaire(v, lots) {
+    const e = _e, O = OSSUAIRE, D = DIM_ACCES, F = _faceParoi(v), lot = lots.opaque;
+    const H = Math.min(O.h, e.hauteur - O.plafond), L = D.ossuaireL / 2, ep = D.ossuaireEp, fond = ep - O.relief;
+    const alea = _aleaGraine(_hachage("ossuaire," + v.cx.toFixed(2) + "," + v.cz.toFixed(2)));
+    const ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0), nf = F.n, sombre = _couleurFixe(O.fond);
+    const tire = function (l) { return _couleurFixe(l[Math.floor(alea() * l.length)]); };
+    const P = function (s, r, y) { const q = F.Q(s, r); return [q[0], y, q[1]]; };
+    // Normale (ns le long du pan, nr vers la galerie, ny) → monde, normée.
+    const N = function (ns, nr, ny) {
+      const l = Math.hypot(ns, nr, ny) || 1;
+      return [(ux * ns + nf[0] * nr) / l, ny / l, (uz * ns + nf[2] * nr) / l];
+    };
+    // Masse : face sombre, deux bouts (normale vers +s puis −s, celle de _repere) ; le dessus est le couronnement.
+    _rectParoi(lot, F, -L, L, 0, H, fond, sombre);
+    [[-L, -1], [L, 1]].forEach(function (b) {
+      lot.quad(P(b[0], 0, 0), P(b[0], fond, 0), P(b[0], fond, H), P(b[0], 0, H), [ux * b[1], 0, uz * b[1]], sombre);
+    });
+    let cranes = 0;
+    O.rangs.forEach(function (rg) {
+      const y0 = rg[0] * H, y1 = rg[1] * H;
+      if (rg[2] === "os") {
+        for (let y = y0, j = 0; y + O.rang <= y1 + 1e-6; y += O.rang, j++) {
+          for (let s = -L + O.pas / 2 + (j % 2 ? O.pas / 2 : 0); s + O.bout / 2 <= L; s += O.pas) {
+            const b = O.bout * (0.8 + 0.3 * alea()) / 2, r = fond + O.relief * (0.3 + 0.5 * alea());
+            _boutOs(lot, P, N, s + (alea() - 0.5) * 0.02, y + O.rang / 2, b, r, r + O.dome, alea(), tire(O.os));
+          }
+        }
+      } else if (rg[2] === "cranes") {
+        const C = O.cranes;
+        for (let s = -L + C.pas / 2; s + C.l / 2 <= L; s += C.pas) {
+          _crane(lot, P, N, s, (y0 + y1) / 2, C, ep + C.avance, tire(O.crane), _couleurFixe(O.orbite));
+          cranes++;
+        }
+      } else {
+        // Couronnement : un lit d'os longs couchés le long de la paroi.
+        lot.quad(P(-L, ep, y0), P(L, ep, y0), P(L, ep, y1), P(-L, ep, y1), nf, tire(O.os));
+        lot.quad(P(-L, 0, y1), P(L, 0, y1), P(L, ep, y1), P(-L, ep, y1), [0, 1, 0], tire(O.os));
+      }
+    });
+    v.trace = { ossuaireH: +H.toFixed(3), long: +(2 * L).toFixed(3), ep: ep, cranes: cranes };
+  }
+
+  // Bout d'os vu de face : épiphyse en dôme bas à OSSUAIRE.cotesOs pans, centre (s, y), rayon b, bord au recul r0,
+  // sommet à r1 ; `tour` (0 → 1) fait tourner le polygone (deux os voisins ne se ressemblent pas).
+  function _boutOs(lot, P, N, s, y, b, r0, r1, tour, col) {
+    const k = OSSUAIRE.cotesOs, d = r1 - r0, T = P(s, r1, y);
+    for (let i = 0; i < k; i++) {
+      const a0 = 2 * Math.PI * (i + tour) / k, a1 = 2 * Math.PI * (i + 1 + tour) / k, am = (a0 + a1) / 2;
+      lot.tri(P(s + b * Math.cos(a0), r0, y + b * Math.sin(a0)), P(s + b * Math.cos(a1), r0, y + b * Math.sin(a1)), T,
+        N(Math.cos(am) * d, b, Math.sin(am) * d), col);
+    }
+  }
+
+  // Crâne d'un pan d'ossuaire : moitié avant d'une sphère aplatie (C.l × C.h, C.p de profondeur, nez au recul
+  // `front`), centre (s, yc) ; C.longs fuseaux, C.lats (rad) les parallèles ; orbites et nez sombres posés devant.
+  function _crane(lot, P, N, s, yc, C, front, col, sombre) {
+    const ax = C.l / 2, ay = C.h / 2, az = C.p, rc = front - az, lats = C.lats, n = C.longs;
+    const pt = function (ph, t) {
+      return P(s + ax * Math.sin(ph) * Math.cos(t), rc + az * Math.cos(ph) * Math.cos(t), yc + ay * Math.sin(t));
+    };
+    const nm = function (ph, t) {
+      return N(Math.sin(ph) * Math.cos(t) / ax, Math.cos(ph) * Math.cos(t) / az, Math.sin(t) / ay);
+    };
+    for (let i = 0; i < n; i++) {
+      const p0 = -Math.PI / 2 + Math.PI * i / n, p1 = -Math.PI / 2 + Math.PI * (i + 1) / n, pm = (p0 + p1) / 2;
+      for (let j = 0; j + 1 < lats.length; j++) {
+        const t0 = lats[j], t1 = lats[j + 1], tm = (t0 + t1) / 2;
+        if (j + 2 === lats.length) lot.tri(pt(p0, t0), pt(p1, t0), pt(0, t1), nm(pm, tm), col);
+        else lot.quad(pt(p0, t0), pt(p1, t0), pt(p1, t1), pt(p0, t1), nm(pm, tm), col);
+      }
+    }
+    const devant = function (ph, t) { return rc + az * Math.cos(ph) * Math.cos(t) + 0.006; };
+    const eo = ax * 0.34, ye = yc + ay * 0.12;
+    [-1, 1].forEach(function (c) {
+      const sx = s + c * ax * 0.42, r = devant(c * 0.45, 0.12);
+      lot.quad(P(sx - eo / 2, r, ye - eo * 0.45), P(sx + eo / 2, r, ye - eo * 0.45), P(sx + eo / 2, r, ye + eo * 0.5),
+        P(sx - eo / 2, r, ye + eo * 0.5), N(0, 1, 0), sombre);
+    });
+    const rn = devant(0, -0.35), yn = yc - ay * 0.35;
+    lot.tri(P(s - ax * 0.1, rn, yn - ay * 0.12), P(s + ax * 0.1, rn, yn - ay * 0.12), P(s, rn, yn + ay * 0.1),
+      N(0, 1, 0), sombre);
+  }
+
+  // Outil de carrier : concasseur sur quatre roues à rayons, le long de l'axe (v.dir), dans le lot opaque : châssis,
+  // caisse du broyeur et son volant, trémie ouverte au-dessus, moteur électrique (cylindre, poulie, courroie) sur
+  // une plate-forme à côté ; rouille et métal oxydé (OUTIL). ⚠️ contrat : l'obstacle est son rectangle au sol
+  // (galerieEmprise.js > _obstaclesAcces, genre « outil »), comme le véhicule.
+  function _outilCarrier(v, lots) {
+    const e = _e, O = OUTIL, Q = _repere(v), a = v.a, b = v.b, lot = lots.opaque;
+    const H = Math.min(DIM_ACCES.outilH, e.hauteur - 0.1), R = O.roue;
+    const alea = _aleaGraine(_hachage("outil," + v.cx.toFixed(2) + "," + v.cz.toFixed(2)));
+    const rouille = function () { return _couleurFixe(O.rouilles[Math.floor(alea() * O.rouilles.length)]); };
+    const sombre = _couleurFixe(O.rouilleSombre), metal = _couleurFixe(O.metal);
+    const moteur = _couleurFixe(O.moteur), noir = _couleurFixe(O.courroie), creux = _couleurFixe(O.creux);
+    const sr = a - O.roueRetrait, yC = R + 0.05, yC1 = yC + 0.12;
+    // Roues et essieux.
+    [-sr, sr].forEach(function (s) {
+      _pave(lot, Q, s - 0.03, s + 0.03, -b + 0.04, b - 0.04, R - 0.03, R + 0.03, metal);
+      [-1, 1].forEach(function (c) { _roueRayons(lot, v, s, R, c * (b - 0.04), c, sombre, metal); });
+    });
+    // Châssis : deux longerons, deux traverses.
+    [-1, 1].forEach(function (c) {
+      _pave(lot, Q, -a + 0.1, a - 0.1, Math.min(c * (b - 0.24), c * (b - 0.16)), Math.max(c * (b - 0.24),
+        c * (b - 0.16)), yC, yC1, rouille());
+      _pave(lot, Q, c * (a - 0.18) - 0.04, c * (a - 0.18) + 0.04, -b + 0.16, b - 0.16, yC, yC1, rouille());
+    });
+    // Caisse du broyeur, volant, trémie.
+    const c0 = -a + 0.2, c1 = 0.12, cs = (c0 + c1) / 2, yb = yC1 + O.caisse, cb = O.caisseB;
+    _pave(lot, Q, c0, c1, -cb, cb, yC1, yb, rouille());
+    const yv = yC1 + O.caisse * 0.55;
+    _cylindreT(lot, v, cs, yv, O.volant, cb + 0.02, cb + 0.06, O.cotes, sombre);
+    _cylindreT(lot, v, cs, yv, 0.04, cb, cb + 0.02, 6, metal);
+    const yt = Math.max(yb + 0.15, H), bs = (c1 - c0) / 2 - 0.02, bt = cb - 0.02;
+    const hs = bs + O.evase, ht = bt + O.evase * 0.8, ev = yt - yb;
+    // Quatre pans de la trémie : bas (bs × bt) au dessus de la caisse, haut évasé (hs × ht) ; dehors rouille,
+    // dedans sombre (on la voit ouverte d'en haut, vue d'édition).
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+      const o = d[0] || d[1], bas = d[0] ? [o * bs, bt] : [bs, o * bt], hau = d[0] ? [o * hs, ht] : [hs, o * ht];
+      const p = d[0] ? [[cs + bas[0], -bas[1], yb], [cs + bas[0], bas[1], yb], [cs + hau[0], hau[1], yt],
+        [cs + hau[0], -hau[1], yt]] : [[cs - bas[0], bas[1], yb], [cs + bas[0], bas[1], yb],
+        [cs + hau[0], hau[1], yt], [cs - hau[0], hau[1], yt]];
+      const n = [d[0] * ev, -O.evase, d[1] * ev];
+      _quadRepere(lot, v, p, n, rouille());
+      _quadRepere(lot, v, p, [-n[0], -n[1], -n[2]], creux);
+    });
+    _quadRepere(lot, v, [[cs - bs, -bt, yb + 0.01], [cs + bs, -bt, yb + 0.01], [cs + bs, bt, yb + 0.01],
+      [cs - bs, bt, yb + 0.01]], [0, 1, 0], noir);
+    // Moteur : plate-forme, cylindre couché en travers, arbre, poulie dans le plan du volant, courroie.
+    const m0 = c1 + 0.12, m1 = a - 0.1, ms = (m0 + m1) / 2, yp = yC1 + 0.07, ym = yp + O.moteurR;
+    _pave(lot, Q, m0, m1, -cb, cb - 0.05, yC1, yp, metal);
+    _cylindreT(lot, v, ms, ym, O.moteurR, -O.moteurL / 2, O.moteurL / 2, O.cotes, moteur);
+    _cylindreT(lot, v, ms, ym, 0.025, O.moteurL / 2, cb + 0.02, 6, metal);
+    _cylindreT(lot, v, ms, ym, O.poulie, cb + 0.02, cb + 0.06, O.cotes, sombre);
+    const tc = cb + 0.04;
+    [[O.volant, O.poulie], [-O.volant, -O.poulie]].forEach(function (r) {
+      const A0 = [cs, tc - 0.015, yv + r[0]], B0 = [ms, tc - 0.015, ym + r[1]];
+      const A1 = [cs, tc + 0.015, yv + r[0]], B1 = [ms, tc + 0.015, ym + r[1]];
+      const ds = ms - cs, dy = ym + r[1] - yv - r[0], sg = r[0] > 0 ? 1 : -1;
+      _quadRepere(lot, v, [A0, B0, B1, A1], [-dy * sg, ds * sg, 0], noir);
+    });
+    v.trace = { long: +(2 * a).toFixed(3), large: +(2 * b).toFixed(3), haut: +yt.toFixed(3), roues: 4 };
+  }
+
+  // Roue à rayons d'axe t, centre (s, R), plan à t, face extérieure vers c (±1) : jante (bande et ses deux flancs),
+  // moyeu, OUTIL.rayons rayons plats (deux faces).
+  function _roueRayons(lot, v, s, R, t, c, col, metal) {
+    const O = OUTIL, n = O.cotes, rj = R - O.jante, l = O.roueL / 2, t0 = t - l, t1 = t + l;
+    const P = function (r, a, tt) { return [s + r * Math.cos(a), tt, R + r * Math.sin(a)]; };
+    for (let k = 0; k < n; k++) {
+      const a0 = 2 * Math.PI * k / n, a1 = 2 * Math.PI * (k + 1) / n, am = (a0 + a1) / 2;
+      const ca = Math.cos(am), sa = Math.sin(am);
+      _quadRepere(lot, v, [P(R, a0, t0), P(R, a1, t0), P(R, a1, t1), P(R, a0, t1)], [ca, sa, 0], col);
+      _quadRepere(lot, v, [P(rj, a0, t0), P(rj, a1, t0), P(rj, a1, t1), P(rj, a0, t1)], [-ca, -sa, 0], col);
+      [[t0, -1], [t1, 1]].forEach(function (f) {
+        _quadRepere(lot, v, [P(rj, a0, f[0]), P(R, a0, f[0]), P(R, a1, f[0]), P(rj, a1, f[0])], [0, 0, f[1]], col);
+      });
+    }
+    _cylindreT(lot, v, s, R, O.moyeu, Math.min(t - l * 1.6 * c, t + l * 1.6 * c),
+      Math.max(t - l * 1.6 * c, t + l * 1.6 * c), 6, metal);
+    const w = 0.015, m = O.moyeu;
+    for (let k = 0; k < O.rayons; k++) {
+      const a = 2 * Math.PI * k / O.rayons + Math.PI / O.rayons, ca = Math.cos(a), sa = Math.sin(a);
+      const p = [[s + ca * m - sa * w, t, R + sa * m + ca * w], [s + ca * rj - sa * w, t, R + sa * rj + ca * w],
+        [s + ca * rj + sa * w, t, R + sa * rj - ca * w], [s + ca * m + sa * w, t, R + sa * m - ca * w]];
+      _quadRepere(lot, v, p, [0, 0, 1], metal);
+      _quadRepere(lot, v, p, [0, 0, -1], metal);
+    }
+  }
+
+  // Fontis : cloche crevée dans le ciel au-dessus du volume, plafond troué (bouche du gabarit, comme un puits) sur
+  // v.a (FONTIS.r) de rayon, voûte qui monte de FONTIS.haut en se resserrant (FONTIS.profil), dans le lot lumineux
+  // (non éclairé) : un trou noir au bord net, que la lampe n'éclaire pas ; le cône d'éboulis (_cone) est posé à
+  // part, à v.cone (la règle de pc / psf).
+  function _fontis(v, lots) {
+    const e = _e, F = FONTIS, h = e.hauteur, n = F.cotes, r0 = v.a, lot = lots.lumineux;
+    const anneau = function (r, y) {
+      const out = [];
+      for (let k = 0; k < n; k++) {
+        const a = 2 * Math.PI * k / n;
+        out.push([v.cx + r * Math.cos(a), y, v.cz + r * Math.sin(a)]);
+      }
+      return out;
+    };
+    _dessus(lots.plafond, _sensPositif(anneau(r0, h).map(function (q) { return [q[0], q[2]]; })), h, BLANC);
+    const pr = F.profil;
+    for (let i = 0; i + 1 < pr.length; i++) {
+      const A = anneau(r0 * pr[i][1], h + pr[i][0]), B = anneau(r0 * pr[i + 1][1], h + pr[i + 1][0]);
+      const dy = pr[i + 1][0] - pr[i][0], dr = r0 * (pr[i + 1][1] - pr[i][1]), l = Math.hypot(dy, dr) || 1;
+      const col = _couleurFixe(F.roche[Math.min(i, F.roche.length - 1)]);
+      for (let k = 0; k < n; k++) {
+        const k1 = (k + 1) % n, am = 2 * Math.PI * (k + 0.5) / n;
+        lot.quad(A[k], A[k1], B[k1], B[k], [-Math.cos(am) * dy / l, dr / l, -Math.sin(am) * dy / l], col);
+      }
+    }
+    const der = pr[pr.length - 1], top = anneau(r0 * der[1], h + der[0]), apex = [v.cx, h + F.haut, v.cz];
+    const fond = _couleurFixe(F.roche[F.roche.length - 1]);
+    for (let k = 0; k < n; k++) lot.tri(top[k], top[(k + 1) % n], apex, [0, -1, 0], fond);
+    v.trace = Object.assign(v.trace || {}, { clocheR: +r0.toFixed(3), clocheH: F.haut });
+  }
+
   // Battant : pavé b = [s0, s1, t0, t1] (repère du volume) de y0 à y1 ; ses deux grandes faces portent le motif
   // entier (u en travers, v vers le haut), les chants et les tranches un coin du motif.
   function _battant(lot, Q, b, y0, y1, col, tx) {
@@ -6065,6 +6602,7 @@
       bassin: !!v.bassin, porte: !!v.porte, ouvert: !!v.ouvert, chatiere: !!v.chatiere, surParoi: !!v.surParoi,
       cote: v.cote || 0, appui: v.appui || null,
       dirParoi: v.surParoi ? +((v.dir || 0) * 180 / Math.PI).toFixed(2) : null, vehicule: !!v.vehicule,
+      ossuaire: !!v.ossuaire, outil: !!v.outil, fontis: !!v.fontis,
       roche: n(lots.roche), bois: n(lots.bois),
       remblais: n(lots.remblais),
       eau: n(lots.eau), porteTexturee: !!(porte && porte.material.map), remblaisTexture: !!(remblais &&
@@ -6075,9 +6613,10 @@
   function _volumesItiAcces(vols) {
     const out = [];
     (vols || []).forEach(function (v) {
-      if (!v.acces || (!v.comble && !v.bassin) || (v.comble && !_coneMontre(v))) return;
-      const D = DIM_ACCES, ring = v.comble ? _cercle(v.cone, v.cone.R) : _cercle(v, D.bassin / 2 + D.margelle);
-      const h = v.comble ? D.coneH * Math.min(1, v.cone.R / D.cone) : D.margelleH;
+      const cone = v.comble || v.fontis;
+      if (!v.acces || (!cone && !v.bassin) || (cone && !_coneMontre(v))) return;
+      const D = DIM_ACCES, ring = cone ? _cercle(v.cone, v.cone.R) : _cercle(v, D.bassin / 2 + D.margelle);
+      const h = cone ? D.coneH * Math.min(1, v.cone.R / D.cone) : D.margelleH;
       const o = { ring: ring, h: h, x0: Infinity, z0: Infinity, x1: -Infinity,
         z1: -Infinity };
       ring.forEach(function (q) {
@@ -6584,6 +7123,12 @@
     e.sale = true;
   }
 
+  // Parois et plafond des galeries inclinées (niveau actif et voisins) : cachés en vue d'édition (_pente).
+  function _paroisPenteVue() {
+    const vu = _e.vue !== "plongee";
+    _e.scene.traverse(function (o) { if (o.userData.famille === "paroiPente") o.visible = vu; });
+  }
+
   function _appliquerVue() {
     const e = _e, haut = e.vue === "plongee";
     // Retour à hauteur d'yeux : caméra sur la place ; la place survolée (_pas) peut être dans un pilier, elle en est
@@ -6600,6 +7145,7 @@
     e.tuiles.forEach(function (t) {
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
     });
+    _paroisPenteVue();
     _voisinsVue();
     _majSolActif();
     e.avatar.visible = haut && _permisGreffe("avatar");
@@ -6876,8 +7422,8 @@
       _poser(x1, y1);
       return true;
     }
-    // Jamais coincé : parti d'une place d'où aucun pas n'est possible (dans un pilier, dans la roche de l'image de
-    // collision), tout pas qui rapproche du point libre le plus proche passe (_sortie). Pas dans une galerie inclinée,
+    // Jamais coincé : parti d'une place d'où aucun pas n'est possible (dans un pilier, dans une zone qui bouche),
+    // tout pas qui rapproche du point libre le plus proche passe (_sortie). Pas dans une galerie inclinée,
     // loin du sol du niveau : ses parois tiennent.
     if (pd && Math.abs(pd.dy) >= PENTE.sortie) { e.butees++; return false; }
     const s = _sortie();
@@ -6897,8 +7443,8 @@
   }
 
   // ── Jamais coincé (ouverture, arrivée d'un passage 🪜) ─────────────────────────────────────────────────
-  // 🩸 Une accroche de POI jonction posée à côté de la galerie, un POI dans un pilier ou un point que l'image de
-  // collision dit dans la roche : la règle du pas refusait tout pas, la vue restait figée. ⚠️ contrat : une place
+  // 🩸 Une accroche de POI jonction posée à côté de la galerie ou un POI dans un pilier : la règle du pas refusait
+  // tout pas, la vue restait figée. ⚠️ contrat : une place
   // hors de l'emprise (galerie) ou d'où aucun pas n'est possible est ramenée au point libre le plus proche :
   // l'axe du tracé le plus proche (modèle KtaGalerie du rendu, plusProche) à moins de smartNavRadiusM (6 m par
   // défaut, le rayon du verrou sur tracé ; pas celui du recalage du tracker, KtaGalerie.PROCHE_M), sinon un point
@@ -6953,7 +7499,6 @@
       const n = Math.max(8, Math.ceil(2 * Math.PI * r / pas));
       for (let k = 0; k < n; k++) {
         const qx = x + r * Math.cos(2 * Math.PI * k / n), qy = y + r * Math.sin(2 * Math.PI * k / n);
-        if (!e.galerie && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(qx, qy)) continue;
         if (!_coince(qx, qy, volumes)) return { x: qx, y: qy };
       }
     }
@@ -6962,8 +7507,7 @@
 
   // Ramène la place au point libre le plus proche si elle est coincée. `volumes` : aussi si son centre est dans une
   // structure dessinée, et le point libre cherché à un corps de toute structure (_coince). 🩸 La place elle-même
-  // n'est jugée que sur son centre : à moins d'un corps d'une face (galerie étroite de l'image de collision), elle
-  // reste où elle est. → true si elle a bougé.
+  // n'est jugée que sur son centre : à moins d'un corps d'une face (galerie étroite), elle reste où elle est. → true si elle a bougé.
   function _degager(volumes) {
     const e = _e;
     const dedans = !!volumes && !!_volumeContenant(e.pos.x / e.sc, e.pos.y / e.sc);
@@ -6994,18 +7538,16 @@
     return cible;
   }
 
-  // → -1 si un couloir est coupé (ou l'arrivée hors plan / hors image de collision), sinon le nombre de rayons
-  // bloqués autour de l'arrivée. Un seul lot de segments par essai (_juger : structures ou galerie).
-  // Mode galerie : on bute contre les parois (KtaGalerie.segmentsBloques) et les zones qui bouchent, l'image de
-  // collision du plan n'est pas lue ; parti d'en dehors des galeries (tracker hors tracé, dans une zone qui bouche),
-  // on se déplace librement pour y entrer.
-  // Mode mixte : règle des structures (image de collision comprise), parois dessinées des tubes et zones (_juger).
+  // → -1 si un couloir est coupé (ou l'arrivée hors plan), sinon le nombre de rayons bloqués autour de l'arrivée.
+  // Un seul lot de segments par essai (_juger : structures ou galerie).
+  // Mode galerie : on bute contre les parois (KtaGalerie.segmentsBloques) et les zones qui bouchent ; parti d'en
+  // dehors des galeries (tracker hors tracé, dans une zone qui bouche), on se déplace librement pour y entrer.
+  // Mode mixte : règle des structures, parois dessinées des tubes et zones (_juger).
   function _balayage(x0, y0, x1, y1, ux, uy) {
     const r = RAYON_CORPS * _e.sc, fx = x1 + ux * r, fy = y1 + uy * r, gal = !!_e.galerie;
     const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
     if (pc && (fx < 0 || fy < 0 || fx > pc.imageWidth || fy > pc.imageHeight)) return -1;
     if (gal && !window.KtaGalerie.dedans(x0, y0, _niveauPas())) return 0;
-    if (!gal && typeof window.ktaEstAccessible === "function" && !window.ktaEstAccessible(fx, fy)) return -1;
     const segs = [];
     for (let i = 0; i < RAILS.length; i++) {
       const ox = -uy * r * RAILS[i], oy = ux * r * RAILS[i];
@@ -7678,6 +8220,127 @@
     if (!b) return;
     const cache = !_rechercheDispo();
     if (b.hidden !== cache) b.hidden = cache;
+    // ⭐ comme 🔍 (un favori s'ouvre comme un résultat) ; ↶ avec la colonne d'outils (vue d'édition).
+    const f = e.boutonFavoris, h = e.boutonHistorique;
+    const cacheF = !window.Favoris || cache, cacheH = !window.HistoryManager || !_dessinPermis();
+    const change = (f && f.hidden !== cacheF) || (h && h.hidden !== cacheH);
+    if (f && f.hidden !== cacheF) f.hidden = cacheF;
+    if (h && h.hidden !== cacheH) h.hidden = cacheH;
+    if (change) _majRangeeSerree();
+    if (e.menuHaut && e.menuHaut.bouton.hidden) _fermerMenuHaut();
+  }
+
+  // (décision produit) La rangée du haut tient sur une ligne. Au téléphone en vue d'édition (↶ en plus), elle touchait
+  // la pastille suivi / libre : l'écart entre ses boutons passe alors à 2 px (kta-v3d-haut-serre), seulement si elle
+  // ne tient pas. Mesuré quand un bouton apparaît ou disparaît, et au redimensionnement.
+  function _majRangeeSerree() {
+    const e = _e, haut = e && e.boutonRechercheHaut && e.boutonRechercheHaut.parentNode;
+    if (!haut || !e.indicMode) return;
+    haut.classList.remove("kta-v3d-haut-serre");
+    const vus = Array.prototype.filter.call(haut.children, function (b) { return !b.hidden && b.offsetWidth > 0; });
+    if (!vus.length) return;
+    const gauche = Math.min.apply(null, vus.map(function (b) { return b.getBoundingClientRect().left; }));
+    const ip = e.indicMode.getBoundingClientRect();
+    const touche = ip.width > 0 && gauche < ip.right + 2 && haut.getBoundingClientRect().top < ip.bottom;
+    const lignes = new Set(vus.map(function (b) { return Math.round(b.getBoundingClientRect().top); })).size;
+    if (touche || lignes > 1) haut.classList.add("kta-v3d-haut-serre");
+  }
+
+  // ── Menus de la rangée du haut (⭐, ↶) : un seul ouvert, sous son bouton, jamais avec la tuile ⚙️ ──
+  function _fermerMenuHaut() {
+    const e = _e, m = e && e.menuHaut;
+    if (!m) return false;
+    m.el.remove();
+    m.bouton.setAttribute("aria-expanded", "false");
+    e.menuHaut = null;
+    return true;
+  }
+
+  function _ouvrirMenuHaut(quel) {
+    const e = _e;
+    if (!e) return false;
+    const bouton = quel === "favoris" ? e.boutonFavoris : e.boutonHistorique;
+    const deja = !!e.menuHaut && e.menuHaut.quel === quel;
+    _fermerMenuHaut();
+    if (deja || !bouton || bouton.hidden) return false;
+    _basculerReglages(false);
+    const el = document.createElement("div");
+    el.className = "kta-v3d-menu-haut";
+    el.setAttribute("role", "menu");
+    el.setAttribute("aria-label", bouton.title);
+    e.ov.appendChild(el);
+    e.menuHaut = { quel: quel, el: el, bouton: bouton };
+    bouton.setAttribute("aria-expanded", "true");
+    _remplirMenuHaut();
+    // Sous le bouton, aligné sur son bord gauche, sans sortir de la vue à droite.
+    const r = bouton.getBoundingClientRect(), o = e.ov.getBoundingClientRect();
+    el.style.top = Math.round(r.bottom - o.top + 6) + "px";
+    el.style.left = Math.round(Math.max(10, Math.min(r.left - o.left, o.width - el.offsetWidth - 10))) + "px";
+    return true;
+  }
+
+  function _remplirMenuHaut() {
+    const e = _e, m = e && e.menuHaut;
+    if (!m) return;
+    m.el.textContent = "";
+    const ligne = function (action, ico, texte, titre) {
+      const b = _bouton(m.el, "kta-v3d-menu-ligne", texte, titre || texte, action, ico);
+      b.setAttribute("role", "menuitem");
+      return b;
+    };
+    if (m.quel === "historique") {
+      const H = window.HistoryManager;
+      ligne("annuler", "undo-2", _t("vue3d.annuler"), _t("ui.subaction.undo")).disabled = !(H && H.canUndo());
+      ligne("retablir", "redo-2", _t("vue3d.retablir"), _t("ui.subaction.redo")).disabled = !(H && H.canRedo());
+      return;
+    }
+    const favs = window.Favoris ? window.Favoris.getAll() : [];
+    if (!favs.length) {
+      const v = document.createElement("p");
+      v.className = "kta-v3d-menu-vide";
+      v.textContent = _t("ui.favoris.empty");
+      m.el.appendChild(v);
+      return;
+    }
+    favs.forEach(function (f, i) {
+      const b = ligne("favori", null, f.nom || f.pointId || "?");
+      b.dataset.favori = String(i);
+      const url = typeof window.getIconUrlForPoint === "function" ? window.getIconUrlForPoint({ tags: [f.tag] }) : null;
+      if (url) {
+        const img = document.createElement("img");
+        img.src = url; img.alt = ""; img.className = "kta-v3d-menu-icone";
+        b.insertBefore(img, b.firstChild);
+      }
+    });
+  }
+
+  // ↶ / ↷ : l'historique de la carte (historyManager.js) ; le menu reste ouvert pour enchaîner.
+  function _historique(sens) {
+    const H = window.HistoryManager;
+    if (!H) return false;
+    const peut = sens === "annuler" ? H.canUndo() : H.canRedo();
+    if (!peut) {
+      _toast(_t(sens === "annuler" ? "ui.toast.nothingUndo" : "ui.toast.nothingRedo"), "info");
+    } else if (sens === "annuler") H.undo(); else H.redo();
+    _remplirMenuHaut();
+    if (_e) _e.sale = true;
+    return peut;
+  }
+
+  // Favori choisi : comme un résultat 🔍 (allerA), sur le point retrouvé par son uid (sinon nom et coordonnées) ;
+  // introuvable, sur sa place enregistrée.
+  function _allerFavori(i) {
+    const f = window.Favoris && window.Favoris.getAll()[i];
+    _fermerMenuHaut();
+    if (!f || !_e) return false;
+    if (!_permisGreffe("fiches")) { _toast(_t("vue3d.rechercheGreffe"), "info"); return false; }
+    const pts = _tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints));
+    const p = pts.filter(function (q) {
+      if (f.pointUid && q.uid) return q.uid === f.pointUid;
+      return String(q.id || q.name || "") === String(f.pointId || "") && q.x === f.x && q.y === f.y;
+    })[0];
+    const item = p || { id: f.pointId || f.nom || "", name: f.nom || "", x: f.x, y: f.y, tags: f.tag ? [f.tag] : [] };
+    return allerA({ kind: "point", item: item, layerId: f.layerId || null });
   }
 
   function _majDessin() {
@@ -9850,6 +10513,16 @@
     e.boutonRechercheHaut = _bouton(haut, "kta-v3d-recherche", "", _t("vue3d.recherche"), "recherche", "search");
     e.boutonRechercheHaut.setAttribute("aria-keyshortcuts", "Control+K Meta+K");
     e.boutonRechercheHaut.hidden = true;
+    // ⭐ Favoris (les deux vues) et ↶ Annuler / Rétablir (vue d'édition), à gauche de 🔍 (décision produit) : chacun
+    // déplie un menu vertical dessous (_ouvrirMenuHaut). Montrés par _majRechercheHaut.
+    e.boutonFavoris = _bouton(haut, "kta-v3d-favoris", "", _t("ui.group.favoris"), "favoris", "star");
+    e.boutonFavoris.setAttribute("aria-haspopup", "menu");
+    e.boutonFavoris.setAttribute("aria-expanded", "false");
+    e.boutonFavoris.hidden = true;
+    e.boutonHistorique = _bouton(haut, "kta-v3d-historique", "", _t("ui.group.history"), "historique", "undo-2");
+    e.boutonHistorique.setAttribute("aria-haspopup", "menu");
+    e.boutonHistorique.setAttribute("aria-expanded", "false");
+    e.boutonHistorique.hidden = true;
     // Tuile des réglages (décision produit : la rangée du haut tient sur une ligne au téléphone) : suivi / libre, vue,
     // hauteur et son − / +, rendu, chacun écrit en clair avec son état. Petit panneau ancré sous ⚙️.
     const tuile = document.createElement("div");
@@ -10154,6 +10827,7 @@
     const e = _e, t = e && e.tuileReglages;
     if (!t) return false;
     const voulu = typeof ouvrir === "boolean" ? ouvrir : t.hidden;
+    if (voulu) _fermerMenuHaut();
     if (voulu === !t.hidden) return voulu;
     if (voulu) {
       const b = e.boutonReglages.getBoundingClientRect(), o = e.ov.getBoundingClientRect();
@@ -10852,8 +11526,9 @@
 
   function _oeil(h) { return Math.min(OEIL, Math.max(0.4, h * 0.8)); }
 
-  // (décision produit) Plan multi-niveau : ⛏️ montre la hauteur du niveau sans la régler. Elle se règle par niveau
-  // dans Réglages (profondeurNiveaux.js) : la changer ici recalculerait les pentes des jonctions qui y arrivent.
+  // (décision produit) Plan multi-niveau : ⛏️ n'ouvre pas le − / + : il ouvre la table « Profondeur et hauteur des
+  // niveaux » (profondeurNiveaux.js > ouvrirSaisie, celle de Réglages), où chaque niveau a sa hauteur — la régler seule
+  // ici recalculerait les pentes des jonctions sans montrer les autres niveaux. À la fermeture, la scène est refaite.
   // reglerHauteur (API) suit la même règle : sur un tel plan elle rend la hauteur courante sans rien écrire.
   function _hauteurFigee() { return (window.APP_CONFIG || {}).multiLevel === true; }
 
@@ -10864,7 +11539,7 @@
     if (e.boutonHauteur) {
       _poserIcone(e.boutonHauteur, "pickaxe", txt);
       const fige = _hauteurFigee(), titre = _t(fige ? "vue3d.hauteurNiveaux" : "vue3d.hauteur");
-      e.boutonHauteur.disabled = fige;
+      e.boutonHauteur.classList.toggle("kta-v3d-btn-hauteur-niveaux", fige);
       e.boutonHauteur.title = titre;
       e.boutonHauteur.setAttribute("aria-label", titre);
       if (fige && e.reglageHauteur && !e.reglageHauteur.hidden) _basculerReglageHauteur();
@@ -10872,6 +11547,21 @@
     if (e.hauteurValeur) e.hauteurValeur.textContent = txt;
     if (e.hauteurMoins) e.hauteurMoins.disabled = e.hauteur <= HAUTEUR_REGLAGE.min;
     if (e.hauteurPlus) e.hauteurPlus.disabled = e.hauteur >= HAUTEUR_REGLAGE.max;
+  }
+
+  // Plan multi-niveau : la table des niveaux par-dessus la vue ; fermée, la scène reprend hauteurs et sols.
+  function _ouvrirHauteursNiveaux() {
+    if (!window.ProfondeurNiveaux || typeof window.ProfondeurNiveaux.ouvrirSaisie !== "function") return;
+    window.ProfondeurNiveaux.ouvrirSaisie({ apres: function () {
+      const e = _e;
+      if (!e) return;
+      _reindexer();
+      _majMarqueursIti();
+      _majItiPentes();
+      _majHauteur();
+      e.chevSig = null;
+      e.sale = true;
+    } });
   }
 
   function _basculerReglageHauteur() {
@@ -10990,7 +11680,10 @@
     if (a === "textures") { _basculerTextures(); return true; }
     if (a === "lignesSol") { _basculerLignesSol(); return true; }
     if (a === "rendu") { basculerRendu(); return true; }
-    if (a === "hauteur") { _basculerReglageHauteur(); return true; }
+    if (a === "hauteur") {
+      if (_hauteurFigee()) _ouvrirHauteursNiveaux(); else _basculerReglageHauteur();
+      return true;
+    }
     if (a === "hauteurMoins" || a === "hauteurPlus") {
       if (ev) ev.preventDefault();
       const pas = (a === "hauteurPlus" ? e.hauteur : e.hauteur - 0.1) >= HAUTEUR_PAS_FIN ? 0.5 : 0.1;
@@ -11046,6 +11739,9 @@
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
       else if (a === "recherche") { ev.preventDefault(); _ouvrirRecherche(); }
+      else if (a === "favoris" || a === "historique") { ev.preventDefault(); _ouvrirMenuHaut(a); }
+      else if (a === "annuler" || a === "retablir") { ev.preventDefault(); _historique(a); }
+      else if (a === "favori") { ev.preventDefault(); _allerFavori(Number(b.dataset.favori)); }
       else if (a === "outilsPlier") {
         ev.preventDefault();
         _plierOutils(!_e.dessin.barre.classList.contains("kta-v3d-outils-plie"), true);
@@ -11075,7 +11771,8 @@
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
         a === "ficheVoir" || a === "outil" || a === "planSol" || a === "recherche" || a === "place" ||
         a === "guidAction" || a === "ajusterSuppr" || a === "ajusterInserer" || a === "ajusterCouper" ||
-        a === "addons" ||
+        a === "addons" || a === "favoris" || a === "historique" || a === "annuler" || a === "retablir" ||
+        a === "favori" ||
         a === "outilsPlier" || a === "tracker") return;
       // Au doigt, + / − et inclinaison attendent le click : un doigt de pincement posé dessus n'agit pas (_brancher,
       // geste de la scène).
@@ -11105,6 +11802,10 @@
     // Panneau d'un groupe de dessin ouvert : le toucher qui le ferme ne pose aucun sommet (_poserSommet). Posé avant
     // l'écouteur du panneau (interface.js > _onDocClickFlyout, qui le retire aussitôt) : il le voit encore ouvert.
     on(document, "pointerdown", function (ev) {
+      const m = e.menuHaut;
+      if (m && ev.target && !m.el.contains(ev.target) && !m.bouton.contains(ev.target)) _fermerMenuHaut();
+    }, true);
+    on(document, "pointerdown", function (ev) {
       const fly = typeof window.ktaOutilsOuverts === "function" && window.ktaOutilsOuverts();
       const dans = ev.target && ev.target.closest && ev.target.closest(".kta-group-flyout, .kta-v3d-outils");
       if (fly && !dans && e.dessin) e.dessin.avaleJusqua = performance.now() + DESSIN_AVALER;
@@ -11112,6 +11813,7 @@
     if (e.stickZone) _brancherStick(on);
     if (e.mc) _brancherMiniCarte(on);
     on(e.ov, "pointerout", function (ev) { if (ev.target.dataset && ev.target.dataset.v3d) relacher(); });
+    on(window, "resize", _majRangeeSerree);
     on(e.curseurPortee, "input", function () { reglerPortee(e.curseurPortee.value); });
     on(e.curseurLampe, "input", function () { reglerLampe(e.curseurLampe.value); });
     on(e.curseurFaisceau, "input", function () { reglerFaisceau(e.curseurFaisceau.value); });
@@ -11390,6 +12092,7 @@
         if (A && A.terminerInsertion()) return;
         // Échap ferme d'abord la tuile des réglages (et la hauteur qu'elle montre), éteint l'outil de dessin armé,
         // ferme une fiche, puis la vue.
+        if (_fermerMenuHaut()) return;
         if (e.tuileReglages && !e.tuileReglages.hidden) { _basculerReglages(false); return; }
         if (e.reglageHauteur && !e.reglageHauteur.hidden) { _basculerReglageHauteur(); return; }
         if (_dessinActif()) { _desarmerDessin(); return; }
@@ -12184,7 +12887,7 @@
         valeur: e.hauteurValeur ? e.hauteurValeur.textContent : "" },
       rendu: e.rendu, poiMasques: e.poiMasques, zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux.slice(),
       facesRemblais: e.facesRemblais, facesEboulis: e.facesEboulis, rubans: Object.assign({}, e.rubans),
-      liseres: Object.assign({}, e.liseres),
+      liseres: Object.assign({}, e.liseres), arcs: _etatArcs(),
       zonesTube: e.zonesTube, poiTube: e.poiTube, halos: e.halos,
       equipe: Object.assign({ membres: 0, membres3d: 0, reperes: 0, itineraires: 0 }, e.nbEquipe || {}),
       membres: e.equipe ? e.equipe.children.filter(function (o) { return o.userData.famille === "membre"; })
@@ -12240,7 +12943,10 @@
             return _repere(v)(q[0], q[1]);
           }) : null,
           pente: v.p ? { dY: +v.p.dY.toFixed(3), tOuvert: +v.p.tOuvert.toFixed(3), autre: v.p.autre } : null,
-          paroisPente: v.paroisPente || null },
+          paroisPente: v.paroisPente || null,
+          paroisPenteVues: v.obj ? v.obj.children.some(function (o) {
+            return o.userData.famille === "paroiPente" && o.visible;
+          }) : null },
           v.stats || {});
       }),
       voisins: _etatVoisins(),
@@ -12318,6 +13024,10 @@
       greffe: e.greffe ? { nom: e.greffe.nom, appels: Object.assign({}, e.greffe.appels),
         objets: e.greffe.groupe.children.length, dansScene: e.greffe.groupe.parent === e.scene,
         hud: e.greffe.hud.isConnected, reglage: Object.assign({}, e.greffe.reglage) } : null,
+      menusHaut: { favoris: !!e.boutonFavoris && !e.boutonFavoris.hidden,
+        historique: !!e.boutonHistorique && !e.boutonHistorique.hidden, ouvert: e.menuHaut ? e.menuHaut.quel : null,
+        lignes: e.menuHaut ? Array.prototype.map.call(e.menuHaut.el.querySelectorAll(".kta-v3d-menu-ligne"),
+          function (b) { return { texte: b.textContent.trim(), actif: !b.disabled }; }) : [] },
       reglages: { ouvert: !!e.tuileReglages && !e.tuileReglages.hidden,
         repere: !!e.boutonReglages && e.boutonReglages.classList.contains("kta-v3d-modifie"),
         indic: _texteIco(e.indicMode), boussole: !!e.boussole && !e.boussole.hidden,

@@ -285,6 +285,31 @@ async function choisirDansFiche(page, valeur) {
     verifier(JSON.stringify(e6.niveaux) === JSON.stringify({ rd: 1, zn: -1, st: 2, pt: -2 }),
       "⏩ ×4 : les quatre changements sont rétablis", e6.niveaux);
 
+    // ── 2e masse : toujours au niveau −1, quel que soit le niveau actif ; les autres au niveau actif ──
+    if (multi) {
+      const masses = await page.evaluate(function () {
+        const avant = window.getStructures().slice(), actifAvant = window.APP_CONFIG.activeLevel;
+        const c = window.map.getCenter(), out = {};
+        [0, -1, 1].forEach(function (a) {
+          ["pilier-2", "front-2", "pilier-1"].forEach(function (t) {
+            window.APP_CONFIG.activeLevel = a;
+            window.modeStructure = t;
+            window.map.fire("click", { latlng: c });
+            const l = window.getStructures(), s = l[l.length - 1];
+            out[t + "@" + a] = s && s.type === t ? s.level : null;
+            window.modeStructure = null;
+            window.setStructures(avant.slice());
+          });
+        });
+        window.APP_CONFIG.activeLevel = actifAvant;
+        return out;
+      });
+      verifier([0, -1, 1].every(function (a) {
+        return masses["pilier-2@" + a] === -1 && masses["front-2@" + a] === -1 && masses["pilier-1@" + a] === a;
+      }), "2e masse (pilier, front) posée au niveau −1 depuis les niveaux 0, −1 et +1 ; pilier 1re masse au niveau actif",
+      masses);
+    }
+
     // ── Persistance ──
     await page.evaluate(function () { return window.SessionPersist.save({ force: true }); });
     await page.waitForTimeout(1500);

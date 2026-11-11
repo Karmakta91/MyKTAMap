@@ -640,7 +640,6 @@ Chaque bloc data-layer reçoit fond + bordure subtils pour le matérialiser comm
 
 - **v1.10.x** : accessibilité clavier complète (Tab + raccourcis E/M/Échap)
 - **v1.10.x** : polish micro-interactions (transitions sidebars, badges contextuels)
-- **v2.0.0** : (quand l'ancienne UI sera abandonnée définitivement) retirer le flag `myktamap_legacy_interface`, supprimer le code mort, bumper en MAJOR car retrait d'un comportement publique
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container`
 
@@ -750,8 +749,19 @@ l'interface : leurs `style=` d'interface comptent comme les autres. Diagnostic :
 — enfant de `<html>`, sœur de `<body>` : `body.kta-theme-light .modal` ne les atteint pas. Les jetons, eux,
 cascadent depuis `<html>` : une règle de base écrite en jetons n'a besoin d'aucun des deux.
 
-**`!important` restants** : les règles claires historiques (environ 1 860 sélecteurs `.kta-theme-light`) en
-portent encore beaucoup. On les retire écran par écran, quand la règle de base écrite en jetons suffit.
+**Surcharges claires restantes** : environ 1 000 sélecteurs `.kta-theme-light` dans `css/`, beaucoup en
+`!important`. Une surcharge ne se retire que sur preuve, avec `scripts/smoke/releve-theme.js` : le style calculé
+(couleurs, fonds, bordures, ombres, opacité, filtre, `display`, `visibility` et toute propriété que déclare une
+règle claire) de chaque élément visible est relevé avant et après, en clair et en sombre, PC et téléphone, survol
+et focus forcés, et doit rester identique sur chaque écran où la règle atteint un élément visible. Une règle
+qu'aucun écran relevé n'atteint reste (écrans parcourus : `scripts/smoke/releve-theme-ecrans.js` ; non couverts
+aujourd'hui : Vue OSM, écran à mot de passe d'instance, sous-fenêtres profondes). Dans une même règle,
+`body.kta-theme-light X` à côté de `html.kta-theme-light X` ne sert à rien (même spécificité, le second atteint
+tout ce qu'atteint le premier) : une règle claire s'écrit avec le seul préfixe `html.kta-theme-light`.
+🩸 Une copie `body.` posée **ailleurs** dans le fichier n'est pas un doublon neutre : plus bas, elle gagne par l'ordre
+contre une règle de même spécificité placée entre les deux (cas mesuré : le survol `.kta-btn:hover` des boutons d'une
+fenêtre de doc). Le relevé « avant » est donc toujours celui des CSS **d'origine**, survol et focus forcés compris,
+jamais celui de la passe précédente.
 
 #### 53.4 Scope final (toute l'app)
 
@@ -1888,6 +1898,17 @@ Tuile 🔗 de l'accueil de l'Éditeur, **plan affiché seulement** (`ktaPlanAffi
 
 Parcours : `scripts/smoke/checkup-raccords.js` (Chromium et WebKit). i18n `raccords.*`, `tabledit.source.raccords*` (fr/en/es). Aucune nouvelle surface réseau (le seul `fetch` possible est celui du rapatriement d'un calque, déjà fait au chargement du plan).
 
+#### 91.6 Vérifier le plan (`js/verifierPlan.js`)
+
+Tuile de l'accueil de l'Éditeur, avant les Raccords, **plan affiché seulement** : ferme l'accueil et ouvre `window.KtaVerifierPlan.ouvrir()` (`tableEditor.js` ne porte que l'appel ; icône `clipboard-list`). Contrôles, seuils et clé « vu, normal » : `multilevel-pathfinding.md` § Vérifier le plan.
+
+- **Fenêtre** `#kta-verif-modal` (`kta-readme-modal-overlay`, boîte des raccords) : note, compte « À revoir : N · vus, normaux : V », puis la liste **groupée par gravité** (`kta-verif-g-bloquant` / `-revoir` / `-info`, titre avec l'icône `triangle-alert`) et, dans chaque gravité, par contrôle (titre + nombre) ; une ligne par constat (objet nommé par son type de légende et son nom, niveau en multi-niveau ; dessous, ce qui ne va pas). Un passage entre niveaux qui traverse un niveau intermédiaire sans raccord est rangé en « Pour info », pas en « Bloquant ». « Vus, normaux (V) » déplie la liste des vus, chacun avec **Rétablir**, et **Tout rétablir**. Liste vide : phrase « rien à signaler ».
+- **Clic sur une ligne** : la fenêtre part, la carte passe au niveau du constat (`ktaSetActiveLevel`) et le cadre (`fitBounds` sur les segments en cause, marge 10 m) ; l'objet est surligné (`kta-verif-objet`, `--kta-accent`), l'obstacle cerné en tireté (`kta-verif-obstacle`, `--kta-erreur`), l'endroit entouré (`kta-verif-cercle`) ; calque `L.svg` à part. La **fiche** de l'objet s'ouvre 150 ms après (couches rattachées au déplacement) : celle que la carte a attachée à l'objet (`utils.js > ktaFicheObjetDe`) pour un tracé, une zone, une structure ; le marqueur à sa position pour un point. Objet masqué (filtres, niveau) : toast `warn`, pas de fiche.
+- **Bandeau** `#kta-verif-bandeau` (allure de `.kta-racc-bandeau`, sans `.kta-iti-floater`, même raison) : « ◀ Précédent · i / N · Suivant ▶ » (circulaire, la fiche suit), l'objet et le constat, **Ouvrir la fiche**, **Fiche de l'obstacle** (C1 seulement), **Vu, normal**, **Fermer**. Vu, normal recalcule et passe au suivant (même rang) ; liste vide → toast `success` et retour à la fenêtre. Échap et Fermer rendent la fenêtre ; `kta:donneesPlanChange` recalcule (300 ms) ; `mktm:plan-ferme` ferme tout.
+- **Saisie** : un tracé, une zone d'un type dur ou un mur en ligne saisi qui crée une coupure → toast `warn` (`verif.saisie.*`) qui renvoie à l'outil ; une fois par coupure et par plan ouvert.
+
+Parcours : `scripts/smoke/checkup-verifier-plan.js` (Chromium et WebKit). i18n `verif.*`, `tabledit.source.verif*` (fr/en/es). Aucune popup native, aucune surface réseau, rien d'écrit dans les données.
+
 ---
 
 ### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)
@@ -2454,7 +2475,14 @@ icônes.
   (menu Tracker de la carte, complet, par le bouton de la barre 2D : `_ouvrirTracker` ; une tuile `carte: true`,
   `data-carte` — boussole, plan orienté, recalage, ma position, replay, heatmap, perdu — ferme d'abord la 3D) et les
   outils. **🔍 Rechercher** est dans la rangée du haut dans les deux vues, à gauche de ⚙️, même gabarit (décision
-  produit) ; caché pendant une greffe qui coupe les fiches (jeu). Il ouvre la fenêtre de la carte (`window.ouvrirRecherche`, `.kta-readme-modal-overlay` 99999 posée
+  produit) ; caché pendant une greffe qui coupe les fiches (jeu). À sa gauche, **⭐ Favoris** (mêmes règles que 🔍) et
+  **↶ Annuler / Rétablir** (avec la colonne d'outils, `_dessinPermis`) déplient chacun un menu vertical sous eux
+  (`_ouvrirMenuHaut`, `.kta-v3d-menu-haut`, z-index 900 comme la tuile ⚙️ ; un seul ouvert, fermé par un toucher à
+  côté, Échap ou ⚙️) : un favori passe par `allerA` (comme un résultat 🔍), Annuler / Rétablir par `HistoryManager`
+  (grisés selon `canUndo` / `canRedo`, menu gardé ouvert). La rangée tient sur une ligne : quand elle touche la
+  pastille suivi / libre (téléphone, vue d'édition), `_majRangeeSerree` passe son écart à 2 px
+  (`.kta-v3d-haut-serre`, zones de toucher voisines qui se recouvrent de 4 px). Garde-fou :
+  `checkup-vue-3d.js > sectionMenusHaut`. Il ouvre la fenêtre de la carte (`window.ouvrirRecherche`, `.kta-readme-modal-overlay` 99999 posée
   sur `<html>` après la vue : au-dessus d'elle ; Ctrl/Cmd+K de même, la vue ne garde pas la touche K) ; le choix :
   `tracking.md` § Vue 3D › Rechercher. Les outils de dessin, montrés en ✏️ Édition seulement, toujours actifs
   (aucun bouton pour les ouvrir) ; absents à hauteur d'yeux et pendant une greffe qui coupe l'édition (jeu).
@@ -2583,16 +2611,24 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
   point précis** et **Retirer la précision** s'il en a un. Aucun bouton pour un passage entre niveaux
   (`KtaPoiJonction.porteNiveaux`). Le bouton arme le mode pendant la capture de son clic, comme Repositionner : la
   fiche est exclue du clic ré-émis (`map.js > _ktaPickCaptureClick`).
-- **Mode** : bandeau `.kta-iti-floater` (`#kta-precis-floater`, « « Nom » : touchez le point exact · ✕ Annuler » ;
-  chatière : « touchez le début », puis « la fin », un carré provisoire au début). `_modeClicCarteActif()` le voit :
+- **Mode** : bandeau `.kta-iti-floater` (`#kta-precis-floater`, icône `crosshair` — `map-pin` pour 📍 Déplacer —,
+  « « Nom » : touchez le point exact · ✕ Annuler » ; chatière : « touchez le début », « le point suivant », puis
+  « n points — touchez le suivant ou Terminer », bouton **✓ Terminer** (`#kta-precis-terminer`, icône `check`) grisé
+  sous 2 points, Entrée fait de même ; **Retirer le dernier point** (`#kta-precis-retirer-dernier`, icône `undo-2`)
+  grisé sans point, Retour arrière fait de même hors d'un champ de saisie ; carrés et polyligne provisoires redessinés
+  à chaque tap ou retrait). Les points ne sont écrits qu'à
+  Terminer (une seule entrée annulable) ; Échap ou ✕ avec des points posés n'écrit rien. Refaire une chatière tracée
+  reprend ses points (le tracé enregistré est masqué pendant la reprise, seuls les provisoires s'affichent).
+  `_modeClicCarteActif()` le voit :
   aucune fiche ne s'ouvre, le tap est ré-émis même sur un marqueur, le plan orienté se redresse. Les autres modes
   « clic carte » tombent à l'armement. Échap (écouteur de `window` en capture : `shortcuts.js > _echapCarte` cède au
   bandeau, la vue 3D aussi) ou ✕ annulent sans rien écrire. Un outil armé depuis la barre : le tap suivant est à lui.
 - ⚠️ **Écriture** (une pose ou un retrait = une entrée annulable) : `captureState("editorPoints")` → mutation en place
   → `KtaUid.touch` → `renderEditorPoints` → `record` → `SessionPersist.save({ force: true })`. Le point est recherché au
   tap (id + coordonnées de l'icône, `editor.js > ktaPointSession`).
-- **Affichage** : pointillé (`.kta-precis-trait`, 2 px, `4 4`) de l'icône au point précis — au milieu des deux
-  points d'une chatière —, segment plein entre eux (`.kta-precis-segment`), petit carré de 9 px à chaque point
+- **Affichage** : pointillé (`.kta-precis-trait`, 2 px, `4 4`) de l'icône au point précis — au milieu du tracé d'une
+  chatière, mesuré en longueur —, polyligne pleine par ses points (`.kta-precis-segment`), petit carré de 9 px à
+  chaque point
   (`.kta-precis-carre`, divIcon) ; couleurs par classes CSS (`--kta-accent`, liseré `--kta-sur-accent`), renderer SVG
   propre à la carte (`map._ktaPrecisRendu`) : la carte dessine en canvas, où une classe ne vaut rien. Rien
   n'est interactif (`pointer-events: none`). ⚠️ Visible si l'échelle donne au moins `SEUIL_PX_PAR_M` = 4 px d'écran par
@@ -2601,7 +2637,8 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
   marqueur quitte la carte. Rotation : pointillé et carrés vivent dans les panes de la carte, sous `.kta-rotate-pane` :
   ils tournent avec le plan, comme les icônes (rien à contre-tourner). Branché par `brancherMarqueur` à la création
   de chaque marqueur (session et calques), sans coût pour un POI sans point précis.
-- **Ce qui vise le point précis** (`KtaPoiPrecis.cible` : le point, le milieu des deux points d'une chatière) : 🧭 Y
+- **Ce qui vise le point précis** (`KtaPoiPrecis.cible` : le point ; chatière : le point de son tracé à mi-longueur,
+  `KtaPoiPrecis.milieu`, pas la moyenne de ses points) : 🧭 Y
   aller, ➕ Itinéraire et **📍 Je suis ici** de la fiche (`data-kta-cx` / `data-kta-cy` des trois boutons), carte comme
   vue 3D, et la bulle de point du mode urgence. « Je suis ici » y applique la règle de la galerie (`tracking.md`
   § Recalage dans la galerie) depuis le point précis ; une étape ou un portail posés sur l'icône se valident encore

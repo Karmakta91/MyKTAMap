@@ -7,7 +7,7 @@
 // 3) et PC 1280×800 :
 //   1. première ouverture : galeries dessinées par le worker (canvas), le SVG des galeries masqué (pas de double
 //      trait), tracé en cours 1 s après le démarrage de la scène, image finale complète (pixels du canvas comparés
-//      à l'image finale du SVG, 6 pictos, rose, titre), canvas en pleine densité, fondu à la fin de l'animation ;
+//      à l'image finale du SVG, 7 pictos, rose, titre), canvas en pleine densité, fondu à la fin de l'animation ;
 //   2. replis : sans OffscreenCanvas, worker introuvable, worker muet (300 ms), worker tombé en route : SVG animé,
 //      pas de canvas, image finale complète ;
 //   3. tâche longue de 500 ms sur le fil principal pendant le tracé (normal et processeur ×4) : le worker continue
@@ -323,7 +323,7 @@ async function premiereOuverture(nav, nom, w, h, dpr) {
     ok("canvas en densité " + dpr + " : " + bilan.pixels.join("×") + " px pour " +
        fin.canvasCss.map(Math.round).join("×") + " CSS · " + bilan.images.length + " images produites");
   } else pb("taille du canvas : " + JSON.stringify(bilan && bilan.pixels) + " pour " + JSON.stringify(fin.canvasCss) + " × " + dpr);
-  if (fin.pictos === 6 && fin.pictosVisibles === 6) ok("6 pictos visibles"); else pb("pictos : " + fin.pictosVisibles + "/" + fin.pictos);
+  if (fin.pictos === 7 && fin.pictosVisibles === 7) ok("7 pictos visibles"); else pb("pictos : " + fin.pictosVisibles + "/" + fin.pictos);
   if (fin.rose > 0.99) ok("rose visible"); else pb("rose opacité " + fin.rose);
   if (fin.licence > 0.99) ok("licence visible à la fin"); else pb("licence opacité " + fin.licence + " à la fin");
   if (fin.titre > 0.99 && fin.titreTexte === "MyKTAMap") ok("titre « MyKTAMap » visible, sans suffixe en community");

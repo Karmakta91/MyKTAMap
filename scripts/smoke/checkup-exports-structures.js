@@ -4,11 +4,13 @@
 // checkup-exports-structures.js — checkup (Playwright, pas un hook pré-commit) : ce que les exports emportent
 // =====================================================================
 // Le relevé fictif devient un plan LOCAL (ZIP construit dans la page) auquel on ajoute un calque de données
-// fabriqué : les 5 structures intégrées, une structure personnalisée en LIGNE et une en polygone (`cust-…`,
-// légende du plan), deux structures au type brut sans entrée de légende (une ouverte, une fermée), et de même
-// pour tracés et zones ; des points de chaque tag du catalogue, un point sans tag, un point au tag inconnu. Puis :
+// fabriqué : 6 structures intégrées (arc de soutènement compris), une structure personnalisée en LIGNE et une en
+// polygone (`cust-…`, légende du plan), deux structures au type brut sans entrée de légende (une ouverte, une
+// fermée), et de même pour tracés et zones ; des points de chaque tag du catalogue, un point sans tag, un point au
+// tag inconnu. Puis :
 //   • KMZ (par la fenêtre d'export) : Placemarks par famille = objets du calque, ligne personnalisée en
-//     LineString avec son <Style> à la couleur de la légende ; type brut au style de repli de la carte (zone →
+//     LineString avec son <Style> à la couleur de la légende ; arc en LineString au trait bleu du canon (les
+//     rayures ne passent pas en KML) ; type brut au style de repli de la carte (zone →
 //     remblais, structure → mur), structure brute ouverte en LineString, fermée en Polygon ; une icône par tag,
 //     présente, non vide et distincte de celle des autres tags (une variante « fermé » repliée se verrait) ;
 //   • carte : chaque point du catalogue porte l'icône du catalogue ;
@@ -60,7 +62,7 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
       if (!srv || !srv.path) return { ok: false, raison: "relevé fictif absent de l'index" };
       const cfg = JSON.parse(await (await fetch(srv.path + "/plan-config.json")).text());
       const zip = new JSZip();
-      const chemins = [cfg.plan.baseImage, cfg.plan.collisionImage]
+      const chemins = [cfg.plan.baseImage]
         .concat((cfg.imageLayers || []).map(function (l) { return l.file; }), (cfg.dataLayers || []).map(function (l) { return l.file; }))
         .filter(function (p) { return typeof p === "string" && p && !/^(data:|blob:|https?:)/.test(p); });
       for (const p of Array.from(new Set(chemins))) {
@@ -81,6 +83,7 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
       const structures = [
         { type: "pilier-1", points: carre(0, 0) }, { type: "pilier-2", points: carre(1, 0) }, { type: "mur", points: carre(2, 0) },
         { type: "front-1", points: trait(3, 0) }, { type: "front-2", points: trait(4, 0) },
+        { type: "arc", points: trait(5, 0) },
         { type: "cust-ckpil", points: carre(0, 1) }, { type: "cust-ckfront", points: trait(1, 1) },
         { type: "ckbrut", points: carre(2, 1).concat([carre(2, 1)[0]]) },
         { type: "ckbrut", points: trait(3, 1).concat([{ x: x0 + 3 * pas + Math.floor(pas * 0.8), y: y0 + pas + Math.floor(pas * 0.5) }]) }
@@ -251,6 +254,7 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
         icones[id] = { href: href, octets: u.length, png: u[0] === 0x89 && u[1] === 0x50, empreinte: u.length + ":" + h };
       }
       return { familles: familles, icones: icones, styleFront: styleDe("structure_cust-ckfront"), stylePil: styleDe("structure_cust-ckpil"),
+        styleArc: styleDe("structure_arc"),
         styleZBrut: styleDe("zone_ckbrut"), styleRemblais: styleDe("zone_remblais"),
         styleSBrut: styleDe("structure_ckbrut"), styleMur: styleDe("structure_mur") };
     });
@@ -266,6 +270,9 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
     verifier(!!k.styleFront && k.styleFront.ligne === kml(COUL.sFront) && !k.styleFront.fond,
       "KMZ : <Style> de la ligne personnalisée à sa couleur, sans fond", k.styleFront);
     verifier(!!k.stylePil && (k.stylePil.fond || "").slice(2) === kml(COUL.sPil).slice(2), "KMZ : <Style> du polygone personnalisé à sa couleur", k.stylePil);
+    const arcCk = (k.familles.structures || []).find(function (x) { return x.style === "structure_arc"; });
+    verifier(!!arcCk && arcCk.geom === "ligne" && !!k.styleArc && k.styleArc.ligne === kml("#1e3a8a") && !k.styleArc.fond,
+      "KMZ : arc de soutènement en LineString, trait bleu du canon, sans fond", { pm: arcCk, style: k.styleArc });
     const rCk = compte("roads", function (x) { return ck(x.style) || x.style === "road_principal"; });
     const zCk = compte("zones", function (x) { return ck(x.style) || x.style === "zone_eau"; });
     verifier(compte("roads", function (x) { return ck(x.style); }) === 2, "KMZ : tracés personnalisé + brut du calque exportés", rCk);

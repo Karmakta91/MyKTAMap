@@ -228,7 +228,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
   partout ; tout geste de déplacement passe en libre. **2,8 m/s** (le double du prototype : on explore, on ne
   marche pas) ; **pas rapide × 2,5** avec Maj maintenue ou ▲ gardé appuyé plus de 0,6 s ; 90 °/s.
 - **Collisions** : chaque déplacement libre passe la règle du pas du tracker, exposée par `tracking.js`
-  (`ktaEstAccessible` puis `ktaPasBloqueParStructure`, sans copie), appliquée à un **corps de 0,8 m** : trois
+  (`ktaPasBloqueParStructure`, sans copie), appliquée à un **corps de 0,8 m** : trois
   segments parallèles (axe et ± 0,4 m) balaient tout le pas, prolongés de 0,4 m devant, puis douze rayons de
   0,4 m autour de l'arrivée doivent rester libres (pas plus qu'au départ, pour ne pas rester collé si la vue
   s'ouvre contre un mur). Types perso compris (`avecPerso`, que le tracker ne passe pas). Si le pas est refusé,

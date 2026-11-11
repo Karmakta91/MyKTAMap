@@ -352,96 +352,57 @@
 }
 
 /* ─── Thème clair ─── */
-body.kta-theme-light .kta-fp-section,
-html.kta-theme-light .kta-fp-section {
-  background: rgba(244, 197, 66, 0.08) !important;
-  border-color: rgba(154, 135, 84, 0.35) !important;
-}
-body.kta-theme-light .kta-fp-section-titre,
-html.kta-theme-light .kta-fp-section-titre {
-  background: rgba(244, 197, 66, 0.18) !important;
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-fp-section-titre:hover,
-html.kta-theme-light .kta-fp-section-titre:hover {
-  background: rgba(244, 197, 66, 0.30) !important;
-}
-body.kta-theme-light .kta-fp-section-body,
 html.kta-theme-light .kta-fp-section-body {
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
 }
-body.kta-theme-light .kta-fp-section-empty,
-html.kta-theme-light .kta-fp-section-empty {
-  color: var(--kta-texte-3) !important;
-}
-body.kta-theme-light .kta-fp-chip,
 html.kta-theme-light .kta-fp-chip {
   background: var(--kta-light-bg, #f0e8d8) !important;
   border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-fp-chip:hover,
 html.kta-theme-light .kta-fp-chip:hover {
   background: rgba(244, 197, 66, 0.18) !important;
   border-color: var(--kta-light-accent-hover, #d9a82e) !important;
 }
-body.kta-theme-light .kta-fp-chip.kta-fp-chip-off,
 html.kta-theme-light .kta-fp-chip.kta-fp-chip-off {
   background: rgba(0, 0, 0, 0.03) !important;
 }
-body.kta-theme-light .kta-fp-chip.kta-fp-chip-off .kta-fp-chip-label,
 html.kta-theme-light .kta-fp-chip.kta-fp-chip-off .kta-fp-chip-label {
   color: var(--kta-light-text-dim) !important;
 }
-body.kta-theme-light .kta-fp-row-cb,
 html.kta-theme-light .kta-fp-row-cb {
   background: var(--kta-light-bg, #f0e8d8) !important;
   border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-fp-row-cb:hover,
 html.kta-theme-light .kta-fp-row-cb:hover {
   background: rgba(244, 197, 66, 0.20) !important;
 }
-body.kta-theme-light .kta-fp-mini-btn,
 html.kta-theme-light .kta-fp-mini-btn {
   background: rgba(30, 58, 138, 0.10) !important;
   color: var(--kta-light-text, #2a2620) !important;
   border-color: rgba(30, 58, 138, 0.30) !important;
 }
-body.kta-theme-light .kta-fp-mini-btn:hover,
 html.kta-theme-light .kta-fp-mini-btn:hover {
   background: rgba(30, 58, 138, 0.20) !important;
 }
-body.kta-theme-light .kta-fp-sublabel,
-html.kta-theme-light .kta-fp-sublabel {
-  color: var(--kta-texte-3) !important;
-}
-body.kta-theme-light .kta-fp-lvl-btn,
 html.kta-theme-light .kta-fp-lvl-btn {
   background: var(--kta-light-bg, #f0e8d8) !important;
   border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-fp-lvl-btn:hover,
 html.kta-theme-light .kta-fp-lvl-btn:hover {
   background: rgba(244, 197, 66, 0.22) !important;
   border-color: var(--kta-light-accent-hover, #d9a82e) !important;
 }
-body.kta-theme-light .kta-fp-lvl-btn.kta-fp-lvl-btn-active,
 html.kta-theme-light .kta-fp-lvl-btn.kta-fp-lvl-btn-active {
   background: var(--kta-light-accent, #f4c542) !important;
   color: var(--kta-sur-accent) !important;
   border-color: var(--kta-light-accent-hover, #d9a82e) !important;
 }
-body.kta-theme-light .kta-fp-footer,
 html.kta-theme-light .kta-fp-footer {
   background: var(--kta-light-bg-deep, #e5dcc5) !important;
   border-top-color: rgba(154, 135, 84, 0.35) !important;
-}
-body.kta-theme-light .kta-fp-status,
-html.kta-theme-light .kta-fp-status {
-  color: var(--kta-texte-3) !important;
 }
 
 /* Intégrer des ajouts : sous-fenêtre au-dessus du panneau (filterPanel.js > _ouvrirAjouts). */
@@ -488,21 +449,16 @@ html.kta-theme-light .kta-fp-status {
   font-size: 11px;
 }
 .kta-fp-row-cb[hidden] { display: none; }
-body.kta-theme-light .kta-fp-ajouts-intro,
 html.kta-theme-light .kta-fp-ajouts-intro,
-body.kta-theme-light .kta-fp-ajouts-outils,
 html.kta-theme-light .kta-fp-ajouts-outils {
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light .kta-fp-ajouts-meta,
 html.kta-theme-light .kta-fp-ajouts-meta {
   color: var(--kta-texte-3) !important;
 }
-body.kta-theme-light .kta-fp-ajouts-groupe,
 html.kta-theme-light .kta-fp-ajouts-groupe {
   color: #9a6b00 !important;
 }
-body.kta-theme-light .kta-fp-ajouts-filtre select,
 html.kta-theme-light .kta-fp-ajouts-filtre select {
   background: var(--kta-light-bg, #f0e8d8) !important;
   color: var(--kta-light-text, #2a2620) !important;

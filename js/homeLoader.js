@@ -100,8 +100,8 @@
         let planConfigFile = null;
         const assetFiles = [];
 
-        // Passe 1 : plan-config lu EN PREMIER pour lister les chemins référencés (baseImage, collisionImage,
-        // imageLayers, dataLayers, PDF). 🩸 Un asset référencé n'est JAMAIS remplacé par un stub : la regex
+        // Passe 1 : plan-config lu EN PREMIER pour lister les chemins référencés (baseImage, imageLayers,
+        // dataLayers, PDF). 🩸 Un asset référencé n'est JAMAIS remplacé par un stub : la regex
         // `^data/tiles/z-?\d+/` peut attraper un asset de plan-config (ex. baseImage) et casser l'image principale.
         let referencedPaths = new Set();
         const planConfigEntry = zip.files["plan-config.json"];
@@ -113,7 +113,6 @@
               if (p) referencedPaths.add(String(p).replace(/\\/g, "/").trim());
             }
             _addPath(planConfig.plan && planConfig.plan.baseImage);
-            _addPath(planConfig.plan && planConfig.plan.collisionImage);
             // `histoirePdf` reste extrait d'emblée : taille modérée, consulté à la demande, et l'iframe veut
             // une URL stable.
             _addPath(planConfig.plan && planConfig.plan.histoirePdf);

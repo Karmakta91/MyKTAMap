@@ -19,8 +19,8 @@
 // ici ») ; « Je suis ici » d'un POI à côté de la galerie (§ 16, galerie de la vue 3D) : à 2 m → tracker sur le
 // tracé de son niveau, à 8 m d'un tracé perso → dans sa galerie, déjà dans l'emprise → ne bouge pas, entre deux
 // galeries → celle dont la paroi est la plus proche, à 30 m → sur le POI ; clic de recalage et picker à côté d'un
-// tracé → au point tapé exact (un tap est une position voulue, jamais ramené sur l'axe), image de collision sans tracé → point accessible, et de même pour un POI d'un niveau sans
-// tracé quand d'autres niveaux en ont (§ 16 bis) ; « Y aller » tracker arrêté (§ 17) : « D'où pars-tu ? » à chaque
+// tracé → au point tapé exact (un tap est une position voulue, jamais ramené sur l'axe), plan sans tracé → sur le POI, et
+// de même pour un POI d'un niveau sans tracé quand d'autres niveaux en ont (§ 16 bis) ; « Y aller » tracker arrêté (§ 17) : « D'où pars-tu ? » à chaque
 // fois (« Ma dernière position (il y a …) » part de là, « Me repositionner » arme le picker, Annuler ne fait rien),
 // picker direct si la position n'a jamais été confirmée ; pas du tracker le long d'une arête de pilier (§ 18 :
 // longée sans la recouvrir = libre, chevauchée, bout qui touche, croisement = bloqué) ; mono-niveau → jamais de fenêtre.
@@ -740,21 +740,10 @@ async function repondreDepart(page, valeur) {
       return { ok: Math.abs(pos.x - x) < 0.01 && Math.abs(pos.y - y) < 0.01, pos: pos };
     }, P);
     verifier(exact.ok, "recalage sans « dansGalerie » (portail, Secours) : coordonnées exactes", exact.pos);
-    // Plan sans tracé (simulé : Pathfinder.aDesTraces rend false, session et calques vides) : point accessible le plus proche
-    // de l'image de collision. Cherche un point refusé qui a un point accessible à moins de 3 m.
-    const coll = await page.evaluate(function () {
-      const c = window.APP_CONFIG, sc = c.scale, acc = window.ktaEstAccessible;
-      let cas = null;
-      for (let y = 80; y < c.imageHeight - 80 && !cas; y += 37) {
-        for (let x = 80; x < c.imageWidth - 80 && !cas; x += 37) {
-          if (acc(x, y)) continue;
-          for (let a = 0; a < 16 && !cas; a++) {
-            const qx = x + 2 * sc * Math.cos(a * Math.PI / 8), qy = y + 2 * sc * Math.sin(a * Math.PI / 8);
-            if (acc(qx, qy)) cas = { x: x, y: y };
-          }
-        }
-      }
-      if (!cas) return null;
+    // Plan sans tracé (simulé : Pathfinder.aDesTraces rend false, session et calques vides) : rien ne ramène le
+    // point, le tracker reste sur le POI.
+    const coll = await page.evaluate(function (P) {
+      const sc = P.sc, cas = { x: P.x + 5 * sc, y: P.y + 5 * sc };
       const pf = window.Pathfinder, orig = pf.aDesTraces, emb = window.getAllEmbeddedRoads;
       const roads = window.getRoads().slice();
       try {
@@ -768,29 +757,15 @@ async function repondreDepart(page, valeur) {
         window.setRoads(roads);
       }
       const pos = window.getTrackingPosition();
-      return { accessible: acc(pos.x, pos.y), dM: Math.hypot(pos.x - cas.x, pos.y - cas.y) / sc };
-    });
-    if (coll) {
-      verifier(coll.accessible && coll.dM <= 3.1, "plan sans tracé : tracker sur le point accessible le plus proche",
-        coll);
-    } else inf("pas d'image de collision exploitable : repli sur l'image non testé");
+      return { dM: Math.hypot(pos.x - cas.x, pos.y - cas.y) / sc };
+    }, P);
+    verifier(coll.dM < 0.01, "plan sans tracé : tracker sur le POI (rien pour le ramener)", coll);
 
-    // § 16 bis. POI d'un niveau sans aucun tracé, alors que d'autres niveaux en ont : même repli sur l'image de
-    // collision (avant : on restait sur l'icône dès que le plan avait un tracé quelque part).
+    // § 16 bis. POI d'un niveau sans aucun tracé, alors que d'autres niveaux en ont : le tracker reste sur le POI,
+    // au niveau du POI.
     console.log("\n── 16 bis. « 📍 Je suis ici » d'un POI d'un niveau sans tracé (d'autres niveaux en ont) ──");
-    const coll2 = await page.evaluate(function () {
-      const c = window.APP_CONFIG, sc = c.scale, acc = window.ktaEstAccessible;
-      let cas = null;
-      for (let y = 80; y < c.imageHeight - 80 && !cas; y += 37) {
-        for (let x = 80; x < c.imageWidth - 80 && !cas; x += 37) {
-          if (acc(x, y)) continue;
-          for (let a = 0; a < 16 && !cas; a++) {
-            const qx = x + 2 * sc * Math.cos(a * Math.PI / 8), qy = y + 2 * sc * Math.sin(a * Math.PI / 8);
-            if (acc(qx, qy)) cas = { x: x, y: y };
-          }
-        }
-      }
-      if (!cas) return null;
+    const coll2 = await page.evaluate(function (P) {
+      const sc = P.sc, cas = { x: P.x + 5 * sc, y: P.y + 5 * sc };
       const roads = window.getRoads().slice(), emb = window.getAllEmbeddedRoads;
       const out = {};
       try {
@@ -801,8 +776,8 @@ async function repondreDepart(page, valeur) {
         out.aDesTraces = window.Pathfinder.aDesTraces();
         window.recalerTrackerSurPoint(cas.x, cas.y, -2, { dansGalerie: true });
         const p = window.getTrackingPosition();
-        out.bas = { accessible: acc(p.x, p.y), dM: Math.hypot(p.x - cas.x, p.y - cas.y) / sc, niveau: window.getTrackerLevel() };
-        // Contre-cas : au niveau 0 (qui a un tracé, à 40 m, plus de 10 m), on reste sur le POI.
+        out.bas = { dM: Math.hypot(p.x - cas.x, p.y - cas.y) / sc, niveau: window.getTrackerLevel() };
+        // Contre-cas : au niveau 0 (qui a un tracé, à 40 m, plus de 10 m), on reste aussi sur le POI.
         window.recalerTrackerSurPoint(cas.x, cas.y, 0, { dansGalerie: true });
         const q = window.getTrackingPosition();
         out.zero = { dM: Math.hypot(q.x - cas.x, q.y - cas.y) / sc };
@@ -811,13 +786,10 @@ async function repondreDepart(page, valeur) {
         window.setRoads(roads);
       }
       return out;
-    });
-    if (coll2) {
-      verifier(coll2.aDesTraces && coll2.bas.accessible && coll2.bas.dM > 0 && coll2.bas.dM <= 3.1 &&
-        coll2.bas.niveau === -2, "POI du −2 sans tracé à ce niveau (le 0 en a) : point accessible le plus proche",
-        coll2.bas);
-      verifier(coll2.zero.dM < 0.01, "POI du 0, tracé du 0 à 40 m (plus de 10 m) : tracker sur le POI", coll2.zero);
-    } else inf("pas d'image de collision exploitable : § 16 bis non testé");
+    }, P);
+    verifier(coll2.aDesTraces && coll2.bas.dM < 0.01 && coll2.bas.niveau === -2,
+      "POI du −2 sans tracé à ce niveau (le 0 en a) : tracker sur le POI, au −2", coll2.bas);
+    verifier(coll2.zero.dM < 0.01, "POI du 0, tracé du 0 à 40 m (plus de 10 m) : tracker sur le POI", coll2.zero);
 
     // § 17. « Y aller », tracker arrêté : la question se pose chaque fois ; Annuler ne fait rien ; « Me
     // repositionner » arme le picker ; jamais confirmée → picker direct, sans question.

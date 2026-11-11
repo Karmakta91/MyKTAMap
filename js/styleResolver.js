@@ -64,7 +64,15 @@
       "front-2":  { color: "#ff9933", fillColor: "#ff9933", fillOpacity: 1, weight: 10, opacity: 1, isPolyline: true },
       // Mur en ligne : le bleu du mur, en trait. Seule structure qui coupe l'itinéraire (pathfinder.js >
       // _collecterMursLigne) — rôle lié à la CLÉ, pas au libellé ni à la couleur choisis en légende.
-      "mur-ligne": { color: "#1e3a8a", fillColor: "#1e3a8a", fillOpacity: 1, weight: 10, opacity: 1, isPolyline: true }
+      "mur-ligne": { color: "#1e3a8a", fillColor: "#1e3a8a", fillOpacity: 1, weight: 10, opacity: 1, isPolyline: true },
+      // Arc de soutènement (arc isolé en travers de la galerie, on passe dessous) : le bleu de la maçonnerie, plus
+      // fin que le mur en ligne, rayé de rouge (convention des légendes de carrière). `rayures`, gardées en aplat
+      // aussi : couleur des segments peints par-dessus le trait (structures.js > ktaPolylineStructure, exports
+      // canvas) ; un contexte qui ne sait pas les peindre (KMZ, Vue OSM) garde le trait bleu seul. Rouge = contour
+      // de la zone effondrement, le seul rouge de la table à ≥ 3:1 sur fond blanc, crème et noir.
+      // ⚠️ Aucun rôle d'obstacle : ni itinéraire, ni tracker, ni vue 3D (clé absente de leurs tables).
+      "arc": { color: "#1e3a8a", fillColor: "#1e3a8a", fillOpacity: 1, weight: 6, opacity: 1, isPolyline: true,
+               rayures: { color: "#cc0000" } }
     }
   };
 
@@ -158,9 +166,13 @@
     return motif;
   }
 
+  // Objets imbriqués (`rayures`, `_motif`) copiés aussi : l'appelant peut muter le style sans toucher la table.
   function _copie(o) {
     const c = {};
-    for (const k in o) if (Object.prototype.hasOwnProperty.call(o, k)) c[k] = o[k];
+    for (const k in o) {
+      if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+      c[k] = (o[k] && typeof o[k] === "object" && !Array.isArray(o[k])) ? _copie(o[k]) : o[k];
+    }
     return c;
   }
 
@@ -271,6 +283,11 @@
     const s = ktaResolveStyle(categorie, cle, { flat: true });
     if (!s) return repli || "";
     const estLigne = (categorie === "traces") || !!s.isPolyline;
+    if (estLigne && s.rayures && s.rayures.color) {
+      return '<span style="display:inline-block;width:18px;height:4px;vertical-align:middle;border-radius:1px;' +
+             'background:repeating-linear-gradient(90deg,' + s.color + ' 0 3px,' + s.rayures.color + ' 3px 6px);">' +
+             '</span>';
+    }
     if (estLigne) {
       return '<span style="display:inline-block;width:18px;height:4px;background:' + s.color +
              ';vertical-align:middle;border-radius:1px;"></span>';
@@ -285,6 +302,9 @@
   const _EMOJIS_COULEUR = ["🟩", "🟪", "🟨", "🟦", "🟥", "⬛", "🟡", "🟠", "🔵", "🟧"];
   function ktaLabelAvecPastille(categorie, cle, label) {
     const l = String(label == null ? "" : label);
+    // Trait rayé (arc) : aucun émoji de couleur ne le dit, son libellé n'en porte pas ; la pastille est posée.
+    const st = ktaResolveStyle(categorie, cle, { flat: true });
+    if (st && st.rayures) return ktaTypeSwatchHtml(categorie, cle, "") + " " + l;
     for (let i = 0; i < _EMOJIS_COULEUR.length; i++) {
       const e = _EMOJIS_COULEUR[i];
       if (l.indexOf(e) === 0) {

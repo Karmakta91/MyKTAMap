@@ -493,7 +493,7 @@ function charger(fichier, nomGlobal, prealables) {
   t("niveau : instantané CIBLÉ sur la famille, entrée d'historique de la même famille",
     journalNiv.cats[0] === "roads" && journal.record.length === nRec + 1 && journal.record[nRec].cat === "roads");
   t("niveau : session sauvegardée", journal.saves === nSave + 1);
-  // 🩸 pilier-2 / front-2 naissent à « niveau actif − 1 » : un changement écrit la valeur telle quelle.
+  // 🩸 pilier-2 / front-2 naissent au niveau −1 : un changement écrit la valeur telle quelle.
   const p2 = { type: "pilier-2", level: -1, points: [{x:0,y:0},{x:1,y:0},{x:1,y:1}] };
   S = [p2];
   t("🩸 niveau : pilier-2 reçoit la valeur choisie, sans le « − 1 » de la création",

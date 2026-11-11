@@ -35,6 +35,13 @@
              ? window.ktaLabelAvecPastille(cat, key, label) : label;
   }
 
+  // Couleur des rayures d'une structure intégrée (arc), ou null : lue au canon, jamais recopiée.
+  function _rayuresDe(key) {
+    const s = (typeof window.ktaResolveStyle === "function")
+      ? window.ktaResolveStyle("structures", key, { flat: true }) : null;
+    return (s && s.rayures && s.rayures.color) || null;
+  }
+
   function _styleCanvas(categorie, type, repli) {
     const R = window.ktaResolveStyle;
     if (typeof R !== "function") {
@@ -848,7 +855,7 @@
 
     // 🩸 Les sous-types ne sont PAS listés en dur : un plan importé (types tous personnalisés) aurait son total
     // juste et tous ses sous-types à zéro.
-    const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]);
+    const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"]);
     const structuresByType   = _sS.par;
     const structTypesCustom  = _sS.custom;
     const _sR = _compterEtCustom(roads, ["principal", "secondaire", "chemin"]);
@@ -913,6 +920,7 @@
              structuresByType["mur-ligne"], true) +
       rowSub("structures_front-1",  _lp("structures", "front-1", Ti("imgexport.structType.front1")),  structuresByType["front-1"], true) +
       rowSub("structures_front-2",  _lp("structures", "front-2", Ti("imgexport.structType.front2")),  structuresByType["front-2"], true) +
+      rowSub("structures_arc",      _lp("structures", "arc", Ti("imgexport.structType.arc")),         structuresByType["arc"],     true) +
       structTypesCustom.map(function (c) {
         return rowSub("structures_" + c.type, c.label, c.n, true);
       }).join("") +
@@ -934,7 +942,7 @@
       // en dur, sinon décocher « Structures » ne les décoche pas.
       _syncAnnotParent("ann_structures",
         ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur", "ann_structures_mur-ligne",
-         "ann_structures_front-1", "ann_structures_front-2"]
+         "ann_structures_front-1", "ann_structures_front-2", "ann_structures_arc"]
         .concat(structTypesCustom.map(function (c) { return "ann_structures_" + c.type; })));
 
       const pointsTagIds = sessionTags.map(function(item) { return "ann_points_tag_" + _slugTagId(item.tag); });
@@ -998,7 +1006,9 @@
         swatch = '<img src="' + _esc(iconUrl) + '" alt="" style="width:16px;height:16px;object-fit:contain;flex:0 0 16px;">';
       } else if (e.geometry === "polyline" || (!e.geometry && e.lineColor && !e.fillColor)) {
         const col = e.lineColor || e.fillColor || "#888";
-        swatch = '<span style="display:inline-block;width:16px;height:3px;background:' + _esc(col) + ';flex:0 0 16px;border-radius:1px;"></span>';
+        const ry = e.category === "structures" ? _rayuresDe(e.key) : null;
+        const fond = ry ? "repeating-linear-gradient(90deg," + _esc(col) + " 0 3px," + _esc(ry) + " 3px 6px)" : _esc(col);
+        swatch = '<span style="display:inline-block;width:16px;height:3px;background:' + fond + ';flex:0 0 16px;border-radius:1px;"></span>';
       } else if (e.geometry === "polygon" || e.fillColor) {
         const fill   = e.fillColor || e.lineColor || "#888";
         const border = e.borderColor || e.lineColor || fill;
@@ -1297,7 +1307,7 @@
       const cb = document.getElementById("ann_zones_" + t);
       etat.ann["zones_" + t] = cb ? cb.checked : true;
     });
-    ["pilier-1","pilier-2","mur","mur-ligne","front-1","front-2"].forEach(function(t) {
+    ["pilier-1","pilier-2","mur","mur-ligne","front-1","front-2","arc"].forEach(function(t) {
       const cb = document.getElementById("ann_structures_" + t);
       etat.ann["structures_" + t] = cb ? cb.checked : true;
     });
@@ -1602,7 +1612,8 @@
       "mur":      document.getElementById("ann_structures_mur")?.checked      ?? true,
       "mur-ligne": document.getElementById("ann_structures_mur-ligne")?.checked ?? true,
       "front-1":  document.getElementById("ann_structures_front-1")?.checked  ?? true,
-      "front-2":  document.getElementById("ann_structures_front-2")?.checked  ?? true
+      "front-2":  document.getElementById("ann_structures_front-2")?.checked  ?? true,
+      "arc":      document.getElementById("ann_structures_arc")?.checked      ?? true
     };
     // 🩸 Les sous-cases PERSONNALISÉES comptent aussi (sinon décocher un niveau importé n'a aucun effet). On
     // balaie le DOM : les listes sont construites à la volée.
@@ -1769,6 +1780,19 @@
       return (typeof window.ktaLargeurFrontPourRatio === "function")
         ? window.ktaLargeurFrontPourRatio(scale)
         : ((style && style.weight) || 5) * scale;
+    }
+    // Structure en ligne : largeur du front, ou du trait rayé (arc) plus fin, comme à l'écran (majLargeurFronts).
+    function _largeurLigneStructExp(style) {
+      if (!(style && style.rayures)) return _largeurFrontExp(style);
+      if (!_planCalibre) return ((style && style.weight) || 5) * scale;
+      return (typeof window.ktaLargeurRayePourRatio === "function")
+        ? window.ktaLargeurRayePourRatio(scale) : style.weight * scale;
+    }
+    // Rayures d'un style (arc) sur le chemin courant de `ctx`, déjà tracé (structures.js > ktaPeindreRayures).
+    function _rayuresExp(style) {
+      if (style && style.rayures && typeof window.ktaPeindreRayures === "function") {
+        window.ktaPeindreRayures(ctx, style.rayures.color, ctx.lineWidth, ctx.globalAlpha);
+      }
     }
     // Tracés de galerie : même loi, minorée (cf. `wTrace` dans structures.js), pour les tracés EMBARQUÉS
     // seulement, comme à l'écran.
@@ -1949,18 +1973,23 @@
     // sous un pilier de session. Les zones de session, peintes avant toute structure, n'en ont pas besoin.
     const _fileVect = [];
     function _poser(fn, structure) { _fileVect.push({ fn: fn, s: structure || null }); }
+    // Arcs de soutènement au-dessus des routes, comme à l'écran (structures.js > ktaArcsAuDessus).
+    function _arcsDessus(file) {
+      return typeof window.ktaArcsAuDessus === "function"
+        ? window.ktaArcsAuDessus(file, function (e) { return !!e.s && e.s.type === "arc"; }) : file;
+    }
 
     // ── Structures (piliers, murs, fronts) ── calquées sur les zones, styles de structures.js >
     // STRUCTURE_STYLES ; polygone (piliers, mur) ou polyligne (fronts).
     if (opts.ann.structures && window.getStructures) {
       const structures = window.ktaExportEtatsFiltres(window.getStructures());
       // Fronts : polylignes épaisses sans contour (`weight` converti par `scale`).
-      // Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1, + tri par level en multi-niveau
+      // Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc, + tri par level en multi-niveau
       // (comme structures.js > renderStructures).
-      const ordreS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
+      const ordreS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5, "arc": 6 };
       const filtreS = opts.ann.structuresTypes || {
         "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
-        "front-1":  true, "front-2": true
+        "front-1":  true, "front-2": true, "arc": true
       };
       // Custom : la géométrie déclarée tranche (polyligne → trait épais, polygone → contour noir), via le gabarit
       // « structures » du résolveur.
@@ -1992,13 +2021,14 @@
             ctx.lineTo(sc(st.points[i].x), sc(st.points[i].y));
           }
           if (isPolyline) {
-            // Front : polyligne pleine colorée, bouts arrondis, sans fond ni contour.
+            // Front : polyligne pleine colorée, bouts arrondis, sans fond ni contour ; arc : plus fin, rayé.
             ctx.strokeStyle = s.color;
-            ctx.lineWidth = _largeurFrontExp(s);
+            ctx.lineWidth = _largeurLigneStructExp(s);
             ctx.globalAlpha = s.opacity;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
             ctx.stroke();
+            _rayuresExp(s);
           } else {
             // Pilier / mur : polygone fermé, fond + contour noir.
             ctx.closePath();
@@ -2050,6 +2080,7 @@
         ctx.lineTo(sc(points[i].x), sc(points[i].y));
       }
       ctx.stroke();
+      _rayuresExp(style);
       ctx.restore();
     }
 
@@ -2174,13 +2205,14 @@
       });
 
       // Structures embarquées : couleurs et ordre Z comme les structures de session (mur < mur-ligne < pilier-2 <
-      // pilier-1 < front-2 < front-1). Mêmes filtres (opts.ann.structures + structuresTypes) : la modale n'a
+      // pilier-1 < front-2 < front-1 < arc). Mêmes filtres (opts.ann.structures + structuresTypes) : la modale n'a
       // qu'un groupe.
       if (opts.ann.structures && embeddedStructures.length > 0) {
-        const ordreS_E = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
+        const ordreS_E = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5,
+          "arc": 6 };
         const filtreS_E = opts.ann.structuresTypes || {
           "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
-          "front-1":  true, "front-2": true
+          "front-1":  true, "front-2": true, "arc": true
         };
         const _mlOnEmbS = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         const trieesEmb = [...embeddedStructures]
@@ -2200,7 +2232,7 @@
           const minPts = isPolyline ? 2 : 3;
           if (!st.points || st.points.length < minPts) continue;
           _poser(function () {
-            if (isPolyline) _drawPolyline(st.points, s, _largeurFrontExp(s));
+            if (isPolyline) _drawPolyline(st.points, s, _largeurLigneStructExp(s));
             else _drawPolygon(st.points, s);
           }, st);
           if (typeof _diagAdv.embStructs !== "number") _diagAdv.embStructs = 0;
@@ -2319,7 +2351,7 @@
       }
     }
 
-    (typeof window.ktaMursSousPiliers === "function"
+    _arcsDessus(typeof window.ktaMursSousPiliers === "function"
       ? window.ktaMursSousPiliers(_fileVect, function (e) { return e.s; }) : _fileVect)
       .forEach(function (e) { e.fn(); });
 
@@ -2497,7 +2529,7 @@
     // renommées ou masquées dans la modale), avec repli si le module manque.
     const LC = window.LegendCustomization;
 
-    // Icônes en 3 sous-groupes (comme la légende d'aide).
+    // Icônes en sous-groupes (comme la légende d'aide).
     if (leg.contenu.icones && config.icons) {
       const exclu = ["default"];
       if (!leg.contenu.track) exclu.push("track");
@@ -2506,7 +2538,8 @@
         { titre: window.I18n.t("imgexport.legGroupe.puits"),        cles: ["pa", "pb", "pc", "pe", "ps", "psf"] },
         { titre: window.I18n.t("imgexport.legGroupe.acces"),        cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
         { titre: window.I18n.t("imgexport.legGroupe.niveaux"),      cles: ["jes", "jpe", "jps"] },
-        { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
+        { titre: window.I18n.t("imgexport.legGroupe.signaletique"), cles: ["salle", "chatiere", "passage", "danger", "fontis", "info", "elec", "epure", "vehicule", "plaque", "portail"] },
+        { titre: window.I18n.t("imgexport.legGroupe.patrimoine"),   cles: ["ossuaire", "outil"] },
         // Catégorie Secours (Vue OSM × Mode Secours).
         { titre: window.I18n.t("imgexport.legGroupe.secours"),      cles: ["entree_plan"] }
       ];
@@ -2642,8 +2675,9 @@
         ? LC.listEntries("structures")
             .filter(function(e) { return e.visible; })
             .map(function(e) {
-              // Polyligne (front-X : lineColor) ou polygone (pilier-X / mur : fillColor + borderColor).
-              if (e.lineColor) return { label: e.label, lineColor: e.lineColor };
+              // Polyligne (front-X : lineColor ; arc : + rayures du canon) ou polygone (pilier-X / mur : fillColor
+              // + borderColor).
+              if (e.lineColor) return { label: e.label, lineColor: e.lineColor, rayures: _rayuresDe(e.key) };
               return { label: e.label, fillColor: e.fillColor, borderColor: e.borderColor };
             })
         : [
@@ -2652,7 +2686,8 @@
             { label: window.I18n.t("imgexport.legLabel.mur"),     fillColor: "#1e3a8a", borderColor: "#000000" },
             { label: window.I18n.t("imgexport.legLabel.murLigne"), lineColor: "#1e3a8a" },
             { label: window.I18n.t("imgexport.legLabel.front1"),  lineColor:  "#f4c542" },
-            { label: window.I18n.t("imgexport.legLabel.front2"),  lineColor:  "#ff9933" }
+            { label: window.I18n.t("imgexport.legLabel.front2"),  lineColor:  "#ff9933" },
+            { label: window.I18n.t("imgexport.legLabel.arc"),     lineColor:  "#1e3a8a", rayures: "#cc0000" }
           ];
       if (LC) {
         LC.listCustomEntries("structures")
@@ -2878,6 +2913,9 @@
             ctx.moveTo(xCol, cyLocal + lh / 2);
             ctx.lineTo(xCol + ic, cyLocal + lh / 2);
             ctx.stroke();
+            if (l.rayures && typeof window.ktaPeindreRayures === "function") {
+              window.ktaPeindreRayures(ctx, l.rayures, ctx.lineWidth, 1);
+            }
             ctx.restore();
           } else if (l.fillColor) {
             ctx.save();

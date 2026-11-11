@@ -3103,7 +3103,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       // Pilier 1ʳᵉ masse : jaune (fill #f4c542) ; en multi-niveau, tagué au niveau actif.
       { icone: "🟡", dynamicIcon: function() { return _iconeType("structures", "pilier-1", "🟡"); }, titre: window.I18n.t("ui.struct.pilier1"), dynamicTitre: function() { return _titreType("structures", "pilier-1", window.I18n.t("ui.struct.pilier1")); }, isTypeAction: true, typeKey: "pilier-1",
         onClick: function(btn) { _activerStructure("pilier-1", btn, _iconeType("structures", "pilier-1", "🟡")); } },
-      // Pilier 2ᵉ masse : orange (fill #ff9933) ; en multi-niveau, auto-tagué `activeLevel - 1`
+      // Pilier 2ᵉ masse : orange (fill #ff9933) ; en multi-niveau, rangé au niveau −1
       // (structures.js) : c'est la masse inférieure vue depuis le niveau actif.
       { icone: "🟠", dynamicIcon: function() { return _iconeType("structures", "pilier-2", "🟠"); }, titre: window.I18n.t("ui.struct.pilier2"), dynamicTitre: function() { return _titreType("structures", "pilier-2", window.I18n.t("ui.struct.pilier2")); }, isTypeAction: true, typeKey: "pilier-2",
         onClick: function(btn) { _activerStructure("pilier-2", btn, _iconeType("structures", "pilier-2", "🟠")); } },
@@ -3114,11 +3114,14 @@ _setGroupeModeActif("tracker", isTracking, null);
       { icone: "🟦", dynamicIcon: function() { return _iconeType("structures", "mur-ligne", "🟦"); }, titre: window.I18n.t("ui.struct.murLigne"), dynamicTitre: function() { return _titreType("structures", "mur-ligne", window.I18n.t("ui.struct.murLigne")); }, isTypeAction: true, typeKey: "mur-ligne",
         onClick: function(btn) { _activerStructure("mur-ligne", btn, _iconeType("structures", "mur-ligne", "🟦")); } },
       // Fronts de taille : polylines épaisses, mais rangés dans Structures (décision produit).
-      // Même règle multi-niveau que les piliers : front-2 auto-tagué activeLevel - 1.
+      // Même règle multi-niveau que les piliers : front-2 rangé au niveau −1.
       { icone: "🟨", dynamicIcon: function() { return _iconeType("structures", "front-1", "🟨"); }, titre: window.I18n.t("ui.struct.front1"), dynamicTitre: function() { return _titreType("structures", "front-1", window.I18n.t("ui.struct.front1")); }, isTypeAction: true, typeKey: "front-1",
         onClick: function(btn) { _activerStructure("front-1", btn, _iconeType("structures", "front-1", "🟨")); } },
       { icone: "🟧", dynamicIcon: function() { return _iconeType("structures", "front-2", "🟧"); }, titre: window.I18n.t("ui.struct.front2"), dynamicTitre: function() { return _titreType("structures", "front-2", window.I18n.t("ui.struct.front2")); }, isTypeAction: true, typeKey: "front-2",
         onClick: function(btn) { _activerStructure("front-2", btn, _iconeType("structures", "front-2", "🟧")); } },
+      // Arc de soutènement : trait bleu rayé de rouge, posé de paroi à paroi ; on passe dessous (aucun obstacle).
+      { icone: "🟦", dynamicIcon: function() { return _iconeType("structures", "arc", "🟦"); }, titre: window.I18n.t("ui.struct.arc"), dynamicTitre: function() { return _titreType("structures", "arc", window.I18n.t("ui.struct.arc")); }, isTypeAction: true, typeKey: "arc",
+        onClick: function(btn) { _activerStructure("arc", btn, _iconeType("structures", "arc", "🟦")); } },
       { icone: window.ktaIcone("check"), titre: window.I18n.t("ui.struct.fermer"),
         onClick: function() {
           if (!window.modeStructure) {

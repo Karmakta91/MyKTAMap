@@ -371,84 +371,51 @@
 /* ===========================================================
    🆕 v1.19.0 — Variants thème clair (Memory Inspector)
    =========================================================== */
-body.kta-theme-light .kta-mem-header-stamp,
 html.kta-theme-light .kta-mem-header-stamp,
-body.kta-theme-light .kta-mem-section,
 html.kta-theme-light .kta-mem-section {
   background: var(--kta-light-bg-deep) !important;
   border-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-mem-section-titre,
 html.kta-theme-light .kta-mem-section-titre {
   color: var(--kta-light-accent-text, #7a5a00) !important;
   border-bottom-color: var(--kta-light-accent) !important;
 }
-body.kta-theme-light .kta-mem-total,
 html.kta-theme-light .kta-mem-total {
   background: rgba(140, 180, 255, 0.15) !important;
   border-color: rgba(140, 180, 255, 0.35) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-mem-row,
 html.kta-theme-light .kta-mem-row {
   border-bottom-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-mem-lbl,
-html.kta-theme-light .kta-mem-lbl,
-body.kta-theme-light .kta-mem-dim,
-html.kta-theme-light .kta-mem-dim {
-  color: var(--kta-light-text-muted) !important;
-}
-body.kta-theme-light .kta-mem-val,
-html.kta-theme-light .kta-mem-val,
-body.kta-theme-light .kta-mem-num,
-html.kta-theme-light .kta-mem-num {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-mem-tag,
 html.kta-theme-light .kta-mem-tag {
   background: var(--kta-light-accent-bg) !important;
   color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: var(--kta-light-accent) !important;
 }
-body.kta-theme-light .kta-mem-tag-dim,
 html.kta-theme-light .kta-mem-tag-dim {
   background: rgba(0, 0, 0, 0.04) !important;
   color: var(--kta-light-text-muted) !important;
   border-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-mem-table code,
-html.kta-theme-light .kta-mem-table code,
-body.kta-theme-light .kta-mem-cache-row code,
 html.kta-theme-light .kta-mem-cache-row code {
   background: rgba(140, 180, 255, 0.10) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-mem-db,
 html.kta-theme-light .kta-mem-db {
   background: rgba(140, 180, 255, 0.06) !important;
   border-color: rgba(140, 180, 255, 0.20) !important;
 }
-body.kta-theme-light .kta-mem-db-titre code,
-html.kta-theme-light .kta-mem-db-titre code {
-  color: #1e3a8a !important;
-  background: rgba(140, 180, 255, 0.12) !important;
-}
-body.kta-theme-light .kta-mem-bar-wrap,
 html.kta-theme-light .kta-mem-bar-wrap,
-body.kta-theme-light .kta-mem-quota-bar,
 html.kta-theme-light .kta-mem-quota-bar {
   background: rgba(0, 0, 0, 0.06) !important;
 }
-body.kta-theme-light .kta-mem-cache-active,
 html.kta-theme-light .kta-mem-cache-active {
   background: var(--kta-light-accent-bg) !important;
 }
-body.kta-theme-light .kta-mem-asset,
 html.kta-theme-light .kta-mem-asset {
   color: #1e3a8a !important;
 }
-body.kta-theme-light .kta-mem-footer,
 html.kta-theme-light .kta-mem-footer {
   border-top-color: var(--kta-light-border) !important;
 }
@@ -634,80 +601,41 @@ html.kta-theme-light .kta-mem-footer {
 }
 
 /* Variants thème clair */
-body.kta-theme-light .kta-profile-intro,
-html.kta-theme-light .kta-profile-intro {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-profile-intro strong,
-html.kta-theme-light .kta-profile-intro strong {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-profile-fileinfo,
 html.kta-theme-light .kta-profile-fileinfo,
-body.kta-theme-light .kta-profile-row,
 html.kta-theme-light .kta-profile-row,
-body.kta-theme-light .kta-profile-mode,
 html.kta-theme-light .kta-profile-mode {
   background: var(--kta-light-bg-deep) !important;
   border-color: var(--kta-light-border) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-profile-fileinfo code,
-html.kta-theme-light .kta-profile-fileinfo code {
-  background: rgba(140, 180, 255, 0.15) !important;
-  color: #1e3a8a !important;
-}
-body.kta-theme-light .kta-profile-row:hover,
 html.kta-theme-light .kta-profile-row:hover {
   background: var(--kta-light-accent-bg) !important;
   border-color: var(--kta-light-accent) !important;
 }
-body.kta-theme-light .kta-profile-row-label,
-html.kta-theme-light .kta-profile-row-label {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-profile-row-label strong,
 html.kta-theme-light .kta-profile-row-label strong {
   color: var(--kta-light-text) !important;
   font-weight: 700;
 }
-body.kta-theme-light .kta-profile-row-meta,
 html.kta-theme-light .kta-profile-row-meta {
   background: var(--kta-light-accent-bg) !important;
   color: var(--kta-light-accent-text, #7a5a00) !important;
   border-color: var(--kta-light-accent) !important;
 }
-body.kta-theme-light .kta-profile-row-hint,
-html.kta-theme-light .kta-profile-row-hint {
-  color: var(--kta-light-text-muted) !important;
-}
-body.kta-theme-light .kta-profile-total,
 html.kta-theme-light .kta-profile-total {
   background: rgba(140, 180, 255, 0.12) !important;
   border-color: rgba(140, 180, 255, 0.35) !important;
   color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-profile-total strong,
-html.kta-theme-light .kta-profile-total strong,
-body.kta-theme-light .kta-profile-mode strong,
-html.kta-theme-light .kta-profile-mode strong,
-body.kta-theme-light .kta-profile-mode-titre,
-html.kta-theme-light .kta-profile-mode-titre {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-profile-banner-ok,
 html.kta-theme-light .kta-profile-banner-ok {
   background: rgba(34, 139, 34, 0.08) !important;
   border-color: rgba(34, 139, 34, 0.30) !important;
   color: #228b22 !important;
 }
-body.kta-theme-light .kta-profile-banner-legacy,
 html.kta-theme-light .kta-profile-banner-legacy {
   background: rgba(180, 80, 30, 0.08) !important;
   border-color: rgba(180, 80, 30, 0.30) !important;
   color: #b45309 !important;
 }
-body.kta-theme-light .kta-profile-footer,
 html.kta-theme-light .kta-profile-footer {
   border-top-color: var(--kta-light-border) !important;
 }
@@ -878,43 +806,22 @@ html.kta-theme-light .kta-profile-footer {
 }
 
 /* Variants thème clair */
-body.kta-theme-light .kta-tutorial-header,
-html.kta-theme-light .kta-tutorial-header {
-  border-bottom-color: var(--kta-light-accent) !important;
-}
-body.kta-theme-light .kta-tutorial-card-titre,
-html.kta-theme-light .kta-tutorial-card-titre {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-tutorial-card-texte,
-html.kta-theme-light .kta-tutorial-card-texte {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-tutorial-card-texte strong,
-html.kta-theme-light .kta-tutorial-card-texte strong {
-  color: var(--kta-light-accent-text, #7a5a00) !important;
-}
-body.kta-theme-light .kta-tutorial-card-texte code,
 html.kta-theme-light .kta-tutorial-card-texte code {
   background: rgba(140, 180, 255, 0.15) !important;
   color: #1e3a8a !important;
 }
-body.kta-theme-light .kta-tutorial-card-hint,
 html.kta-theme-light .kta-tutorial-card-hint {
   background: rgba(140, 180, 255, 0.12) !important;
   border-color: rgba(140, 180, 255, 0.30) !important;
   color: #1e3a8a !important;
 }
-body.kta-theme-light .kta-tutorial-footer,
 html.kta-theme-light .kta-tutorial-footer {
   border-top-color: var(--kta-light-border) !important;
 }
-body.kta-theme-light .kta-tutorial-dot,
 html.kta-theme-light .kta-tutorial-dot {
   background: rgba(0, 0, 0, 0.15) !important;
   border-color: rgba(0, 0, 0, 0.10) !important;
 }
-body.kta-theme-light .kta-tutorial-dot.kta-tutorial-dot-active,
 html.kta-theme-light .kta-tutorial-dot.kta-tutorial-dot-active {
   background: var(--kta-light-accent) !important;
   border-color: var(--kta-light-accent-hover) !important;
@@ -940,12 +847,9 @@ html.kta-theme-light .kta-tutorial-dot.kta-tutorial-dot-active {
   font-size: 13px;
   padding: 10px 14px;
 }
-body.kta-theme-light .kta-refonte-session-cta-stats-glob,
 html.kta-theme-light .kta-refonte-session-cta-stats-glob {
   background: rgba(140, 180, 255, 0.10) !important;
   border-color: rgba(140, 180, 255, 0.35) !important;
-}
-
 }
 
 /* ===========================================================
@@ -1010,24 +914,10 @@ html.kta-theme-light .kta-refonte-session-cta-stats-glob {
 }
 
 /* Variants thème clair */
-body.kta-theme-light .kta-mem-crash-row,
 html.kta-theme-light .kta-mem-crash-row {
   background: rgba(255, 140, 140, 0.10) !important;
   border-color: rgba(255, 140, 140, 0.35) !important;
 }
-body.kta-theme-light .kta-mem-crash-head,
-html.kta-theme-light .kta-mem-crash-head {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-mem-crash-date,
-html.kta-theme-light .kta-mem-crash-date {
-  color: #b91c1c !important;
-}
-body.kta-theme-light .kta-mem-crash-meta,
-html.kta-theme-light .kta-mem-crash-meta {
-  color: var(--kta-light-text-muted) !important;
-}
-body.kta-theme-light .kta-mem-crash-detail-pre,
 html.kta-theme-light .kta-mem-crash-detail-pre {
   background: var(--kta-light-bg-deep) !important;
   color: var(--kta-light-text) !important;
@@ -1054,58 +944,28 @@ html.kta-theme-light .kta-mem-crash-detail-pre {
 }
 
 /* === Thème clair pour la modale SwInspector === */
-body.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-boite,
 html.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-boite {
   background: var(--kta-light-bg-elevated, #f5ecd6) !important;
   color: var(--kta-light-text, #2a2620) !important;
   border: 1px solid var(--kta-light-border, rgba(0,0,0,0.12)) !important;
 }
-body.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-header,
-html.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-header {
-  background: var(--kta-light-bg-deep, #ebe0c2) !important;
-  color: var(--kta-light-text, #2a2620) !important;
-  border-bottom-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
-}
-body.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-titre,
-html.kta-theme-light #kta-sw-inspector-modal .kta-readme-modal-titre {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light #kta-sw-inspector-modal #kta-sw-inspector-close,
-html.kta-theme-light #kta-sw-inspector-modal #kta-sw-inspector-close {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light #kta-sw-inspector-body,
 html.kta-theme-light #kta-sw-inspector-body {
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light #kta-sw-inspector-body code,
 html.kta-theme-light #kta-sw-inspector-body code {
   background: var(--kta-light-bg-deep, #ebe0c2) !important;
   color: var(--kta-light-accent-text, #7a5a00) !important;
 }
-body.kta-theme-light #kta-sw-inspector-body .kta-mem-section,
-html.kta-theme-light #kta-sw-inspector-body .kta-mem-section {
-  background: var(--kta-light-bg-deep, #ebe0c2) !important;
-  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
-}
-body.kta-theme-light #kta-sw-inspector-body .kta-mem-section-titre,
 html.kta-theme-light #kta-sw-inspector-body .kta-mem-section-titre {
   color: var(--kta-light-text, #2a2620) !important;
 }
-body.kta-theme-light #kta-sw-inspector-body .kta-mem-line,
-html.kta-theme-light #kta-sw-inspector-body .kta-mem-line {
-  color: var(--kta-light-text, #2a2620) !important;
-}
-body.kta-theme-light #kta-sw-inspector-body .kta-mem-dim,
 html.kta-theme-light #kta-sw-inspector-body .kta-mem-dim {
   color: var(--kta-light-text-secondary, #5a4f40) !important;
 }
-body.kta-theme-light #kta-sw-inspector-body details summary,
 html.kta-theme-light #kta-sw-inspector-body details summary {
   color: var(--kta-light-text, #2a2620) !important;
 }
 /* Scrollboxes : fond clair lisible (au lieu de noir 20%) */
-body.kta-theme-light .kta-sw-inspector-scrollbox,
 html.kta-theme-light .kta-sw-inspector-scrollbox {
   background: #fffaf0 !important;
   color: var(--kta-light-text, #2a2620) !important;
@@ -1115,14 +975,12 @@ html.kta-theme-light .kta-sw-inspector-scrollbox {
 
 /* 🆕 v1.44.0 — Quick wins audit V2 : overrides theming light pour
    éléments hardcodés #8892a4 du MemInspector + SwInspector */
-body.kta-theme-light .kta-mem-loading,
 html.kta-theme-light .kta-mem-loading {
   color: var(--kta-texte-3) !important;
 }
 
 /* Toast "cache incomplet" du SW Inspector : background rouge translucide
    illisible sur fond blanc → renforcer le contraste en mode clair */
-body.kta-theme-light #kta-sw-incomplet-toast,
 html.kta-theme-light #kta-sw-incomplet-toast {
   background: rgba(204, 51, 51, 0.95) !important;
   color: #ffffff !important;

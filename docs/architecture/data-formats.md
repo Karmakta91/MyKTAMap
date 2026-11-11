@@ -21,7 +21,8 @@
     "imageWidth": 1044,
     "imageHeight": 610,
     "baseImage": "TestMAP.png",
-    "collisionImage": "collision.png",
+    // "collisionImage" : ni écrit par le Générateur, ni lu par l'app ; présent dans un ancien plan-config, il
+    // est ignoré : le plan s'ouvre, l'image n'est ni chargée, ni demandée au serveur, ni mise hors ligne.
     "georef": {                          // optionnel — calage GPS (Vue OSM, exports KMZ/GPX/GeoJSON/GeoTIFF, Secours)
       "pointA": { "x": 0,    "y": 610, "lat": 46.5,     "lng": 3.0 },
       "pointB": { "x": 1044, "y": 0,   "lat": 46.50137, "lng": 3.00336, "estimated": true },  // estimated : B déduit
@@ -95,11 +96,14 @@ GeoJSON : `niveaux` seulement (les raccords sont des pixels du plan). Voir `mult
 
 → **Point précis** (`js/poiPrecis.js`, tout POI sauf un passage entre niveaux) : `"precis": { "x": 4851, "y": 2004 }`
 = le vrai lieu (le mur d'une plaque…), en px du plan, au niveau du POI ; `x`, `y` du POI restent la place de
-l'icône. Chatière (tag `chatiere`) : `{ "x", "y", "x2", "y2" }` = début et fin (la 3D en tire longueur et axe). Absent
-= rien ne change. Posé depuis la fiche (uid gardé, `updatedAt` touché). Gardé par la session, les calques (Générateur,
-`getAllEmbeddedPoints`), l'export et l'import de session, l'export anonymisé (géométrie seule) ; Tableur : colonne
-`precis` en lecture. Lu par la vue 3D (forme et panneau), l'itinéraire (« Y aller », étape, repères du guidage) et « 📍 Je suis ici »
-(le tracker va au point précis).
+l'icône. Chatière (tag `chatiere`) : `{ "pts": [{ "x", "y" }, …] }` = 2 points ou plus, du début à la fin (la 3D
+en tire une roche par segment ; l'itinéraire vise le milieu du tracé en longueur). L'ancienne forme
+`{ "x", "y", "x2", "y2" }` (début et fin) se lit telle quelle, sans migration (`poiPrecis.js > lire` normalise ; un
+lecteur ne lit jamais `precis` brut). Absent = rien ne change. Posé depuis la fiche (uid gardé, `updatedAt` touché).
+Gardé par la session, les calques (Générateur, `getAllEmbeddedPoints`), l'export et l'import de session, l'export
+anonymisé (géométrie seule, `pts` ou ancienne forme recopiés) ; Tableur : colonne `precis` en lecture (chatière :
+`x, y → x, y → …`). Lu par la vue 3D (forme et panneau), l'itinéraire (« Y aller », étape, repères du guidage) et
+« 📍 Je suis ici » (le tracker va au point précis).
 KMZ / GPX / GeoJSON / PNG / PDF : la place de l'icône seulement (décision produit). Passages (`jes`, `jpe`, `jps`,
 `peo`, `eso`, `pa`) : ignoré, leurs `accroches` jouent ce rôle. Voir `ui.md` § Point précis.
 

@@ -380,9 +380,9 @@
             const px = gpsToPixel(transform, p.lat, p.lng);
             return { x: Math.round(px.x), y: Math.round(px.y) };
           });
-          // #structure_front-1/2, mur-ligne, cust-… → structure polyline ; #road_<built-in>/cust-… → route ; sinon
-          // defaults.roadType. 🩸 Les types `cust-*` doivent matcher, sinon le type custom est perdu en silence.
-          const frontMatch = _styleUrl.match(/^#structure_(front-1|front-2|mur-ligne)$/);
+          // #structure_front-1/2, mur-ligne, arc, cust-… → structure polyline ; #road_<built-in>/cust-… →
+          // route ; sinon defaults.roadType. 🩸 Les types `cust-*` doivent matcher, sinon le type custom est perdu.
+          const frontMatch = _styleUrl.match(/^#structure_(front-1|front-2|mur-ligne|arc)$/);
           const frontCustMatch = _styleUrl.match(/^#structure_(cust-[A-Za-z0-9_-]+)$/);
           if (frontMatch || frontCustMatch) {
             const stType = frontMatch ? frontMatch[1] : frontCustMatch[1];

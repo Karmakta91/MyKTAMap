@@ -1,8 +1,8 @@
 {
-  "version": "v2.24.0",
-  "released": "2026-11-09",
+  "version": "v2.25.0",
+  "released": "2026-11-11",
   "notes": [
-    "🎨 Nouvelles icônes partout dans l'app, les mêmes sur iPhone, Android et ordinateur.",
-    "🗺️ Vue 3D avec mini-carte et niveaux voisins, ✂️ couper un tracé en deux, et une option pour bloquer la rotation de la carte."
+    "🏛️ Nouveau : l'arc de soutènement, et trois types de points (ossuaire, outil de carrier, fontis), aussi en vue 3D.",
+    "🔎 « Vérifier le plan » repère les erreurs qui trompent l'itinéraire ; en vue 3D, ⭐ Favoris et Annuler / Rétablir en haut de l'écran."
   ]
 }

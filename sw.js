@@ -30,7 +30,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.24.0";
+const CACHE_NAME = "myktamap-cache-v2.25.0";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -440,6 +440,7 @@ const ASSETS_TO_CACHE = [
   "./js/tableEditor.js",
   "./js/recalageScan.js",
   "./js/raccordsTraces.js",
+  "./js/verifierPlan.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
   "./js/vuePlan.js",
@@ -545,8 +546,8 @@ const ASSETS_TO_CACHE = [
   // Données JSON
   "./data/index.json",
   // 🩸 LE PLAN DE DÉMO N'EST PAS PRÉ-CACHÉ.
-  // Ses 8 fichiers pèsent ~2 Mo (dont 2,0 Mo pour TestMAP.png +
-  // collision.png), téléchargés à l'INSTALL par tout le monde — y compris
+  // Ses fichiers pèsent ~2 Mo, l'image du plan pour l'essentiel,
+  // téléchargés à l'INSTALL par tout le monde — y compris
   // ceux qui ne l'ouvriront jamais.
   // Et surtout, pré-caché, il serait INÉVINÇABLE (cf _staticAssetUrls
   // et l'éviction LRU) : tester le hors-ligne avec lui donnerait un faux
@@ -590,6 +591,9 @@ const ASSETS_TO_CACHE = [
   "./icon/jps.png",
   "./icon/plaque.png",
   "./icon/portail.png",
+  "./icon/ossuaire.png",
+  "./icon/outil.png",
+  "./icon/fontis.png",
   "./icon/entree_plan.png",
   "./icon/default.png",
   "./icon/compass.png",

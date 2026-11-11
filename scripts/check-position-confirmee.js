@@ -58,7 +58,7 @@ verif(clicRecalage.includes("_marquerPositionConfirmee()"), "🩸 clic carte en 
 const surPoint = bloc(tracking, "window.recalerTrackerSurPoint = function", "_notifierRecalage(x, y, \"point\")");
 verif(surPoint.includes("_marquerPositionConfirmee()"), "🩸 recalerTrackerSurPoint (« Je suis ici », portail, picker) → pose le drapeau");
 
-const init = bloc(tracking, "function initTracking() {", "initCollisionCache();");
+const init = bloc(tracking, "function initTracking() {", "const iconeTracker = window.iconeTrack;");
 verif(/_positionConfirmee\s*=\s*false/.test(init), "🩸 initTracking (nouveau plan) → retombe le drapeau");
 
 const reset = bloc(tracking, "function resetTrackingPosition() {", "updateMap();");

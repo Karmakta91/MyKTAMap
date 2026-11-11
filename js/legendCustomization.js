@@ -42,6 +42,7 @@ window.LegendCustomization = (function() {
       passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
       danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure",
       plaque: "Plaque indication",
+      ossuaire: "Ossuaire", outil: "Outil de carrier", fontis: "Fontis (effondrement)",
       portail: "Portail (liaison inter-plan)",
       // 🩸 Les trois tags ci-dessous doivent être ici : dès que la légende passe par getLabel (LC
       // toujours présent), une clé absente s'affiche brute (« entree_plan »). LEGENDE_LABELS
@@ -68,7 +69,8 @@ window.LegendCustomization = (function() {
       "mur":       "Mur",
       "mur-ligne": "Mur (ligne)",
       "front-1":   "Front de taille 1ère",
-      "front-2":   "Front de taille 2e"
+      "front-2":   "Front de taille 2e",
+      "arc":       "Arc de soutènement"
     }
   };
 

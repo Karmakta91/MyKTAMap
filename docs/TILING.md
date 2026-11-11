@@ -198,7 +198,7 @@ Le §7 a créé un trou : un plan pré-téléchargé est servi depuis son cache 
 |---|---|
 | `index.json > plans[].version` | **saisi à la main** par le déployeur. Il a **déjà dérivé dans ce repo** : l'index dit `V1`, `data/test/plan-config.json` dit `V2`. |
 | `plan-config.json > plan.version` | fiable seulement si l'auteur pense à l'incrémenter. |
-| un horodatage | **il n'y en a aucun** — `plan{}` = `name, version, author, imageWidth, imageHeight, baseImage, collisionImage, multiLevel` (+ options). Le générateur n'écrit ni date ni build. |
+| un horodatage | **il n'y en a aucun** — `plan{}` = `name, version, author, imageWidth, imageHeight, baseImage, multiLevel` (+ options). Le générateur n'écrit ni date ni build. |
 
 ### Ce qu'on fait à la place : HTTP
 

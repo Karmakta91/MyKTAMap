@@ -12,9 +12,10 @@
 // Expose window.Pathfinder : computeRoute (async, 2 passes), computeRouteOnRoads (sync, réseau fourni),
 //   computeReachable (isochrone du Mode Perdu), buildNetworkGraph / snapPointToGraph (roadGraph.js),
 //   resolvePointById, aDesTraces, carrefoursSurChemin, nbObstaclesDurs, grapheDeTraces / collecterTraces
-//   (outil des raccords, raccordsTraces.js). Et window.getAvoidableZoneTypes.
-// ⚠️ Contraintes DURES : zones `inaccessible` et murs en ligne (`mur-ligne`), levées ensemble par
-//   `respecterInaccessibles: false` (case de la modale) ; aucune autre structure ne compte.
+//   (outil des raccords, raccordsTraces.js), estZoneDure / TYPES_ZONES_DURS, controle (« Vérifier le plan »,
+//   verifierPlan.js : mêmes tests que le graphe). Et window.getAvoidableZoneTypes.
+// ⚠️ Contraintes DURES : zones dont le type est dans TYPES_ZONES_DURS et murs en ligne (`mur-ligne`), levées
+//   ensemble par `respecterInaccessibles: false` (case de la modale) ; aucune autre structure ne compte.
 // ⚠️ computeRoute → { path:[{x, y, level}], totalDistance, segmentCount, snappedPoints, raccords, carrefours }.
 //   `level` = entier du niveau s'il est UNIVOQUE, sinon null (nœud fusionné multi-niveaux, milieu de jonction).
 // Coordonnées en système image (x, y plan) ; la conversion Leaflet se fait au rendu (road.js > renderRoads).
@@ -87,8 +88,13 @@
   }
 
   // ── Zones inaccessibles (contrainte DURE) ──────────
-  // Tout segment qui entre ou traverse le bord d'un polygone "inaccessible" n'est PAS ajouté au graphe.
+  // Tout segment qui entre ou traverse le bord d'une zone dure n'est PAS ajouté au graphe.
   // Multi-niveau : la zone ne bloque que les segments de SON niveau (multiLevel off → tout au niveau 0).
+  // ⚠️ contrat : TYPES_ZONES_DURS est la SEULE table des types de zone durs. Itinéraire, inter-plans
+  // (interPlanRoute.js), liste des évitables et « Vérifier le plan » la lisent par estZoneDure : un test écrit à
+  // part laisserait un de ces chemins traverser un type devenu dur.
+  const TYPES_ZONES_DURS = ["inaccessible"];
+  function _estZoneDure(type) { return TYPES_ZONES_DURS.indexOf(type) >= 0; }
 
   // Ray-casting standard, O(n).
   function _pointInPolygon(p, poly) {
@@ -121,23 +127,32 @@
     if (typeof window.ktaNiveauxObjet === "function") return window.ktaNiveauxObjet(z);
     return [Number.isInteger(z && z.level) ? z.level : 0];
   }
-  // Forme lue par le test de blocage : { points, level, niveaux }, niveaux calculés UNE fois par calcul.
+  // Forme lue par le test de blocage : { points, level, niveaux, objet }, niveaux calculés UNE fois par calcul ;
+  // `objet` = la zone d'origine (« Vérifier le plan » nomme l'obstacle), jamais lu par le graphe.
   function _zoneBloquante(z) {
-    return { points: z.points, level: Number.isInteger(z.level) ? z.level : 0, niveaux: _niveauxZone(z) };
+    return { points: z.points, level: Number.isInteger(z.level) ? z.level : 0, niveaux: _niveauxZone(z), objet: z };
   }
 
   // Une zone bloque sur CHACUN de ses niveaux, et seulement là (sauf multiLevel off). Les segments "transit"
   // (milieu de jonction) ne sont jamais bloqués : ce sont des points « en l'air » dans un puits.
-  function _segmentBloqueParZoneInaccess(p1, p2, segLevel, zonesInacc) {
-    if (segLevel === "transit") return false;
-    if (!zonesInacc || zonesInacc.length === 0) return false;
+  // `toutes` false : s'arrête à la première (graphe) ; true : toutes celles qui bloquent (« Vérifier le plan »).
+  function _zonesQuiBloquent(p1, p2, segLevel, zonesInacc, toutes) {
+    const out = [];
+    if (segLevel === "transit") return out;
+    if (!zonesInacc || zonesInacc.length === 0) return out;
     const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     for (let i = 0; i < zonesInacc.length; i++) {
       const z = zonesInacc[i];
       if (mlOn && z.niveaux.indexOf(segLevel) < 0) continue;  // aucun de ses niveaux → pas bloquant
-      if (_segmentTraversePolygon(p1, p2, z.points)) return true;
+      if (_segmentTraversePolygon(p1, p2, z.points)) {
+        out.push(z);
+        if (!toutes) return out;
+      }
     }
-    return false;
+    return out;
+  }
+  function _segmentBloqueParZoneInaccess(p1, p2, segLevel, zonesInacc) {
+    return _zonesQuiBloquent(p1, p2, segLevel, zonesInacc, false).length > 0;
   }
 
   // ── Murs en ligne (contrainte DURE) ──────────
@@ -163,7 +178,7 @@
       for (let i = 1; i < m.points.length; i++) {
         const a = m.points[i - 1], b = m.points[i];
         const seg = { a: a, b: b, x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y),
-                      x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) };
+                      x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y), mur: m.objet || null };
         _cellulesDe(seg.x0, seg.y0, seg.x1, seg.y1, GRILLE_MUR_PX, function(k) {
           const cle = etage + "|" + k;
           let l = grille.get(cle);
@@ -176,24 +191,35 @@
   }
 
   // Segments "transit" (milieu de jonction) jamais coupés : ce sont des points « en l'air » dans un puits.
-  function _segmentCoupeParMur(p1, p2, segLevel, grille) {
-    if (!grille || segLevel === "transit") return false;
+  // → segments de murs croisés { a, b, mur, croise:{x,y} } ; `tous` false : le premier seulement (graphe).
+  // 🩸 Un segment de mur rangé dans plusieurs cellules est dédoublonné, sinon compté deux fois.
+  function _mursQuiCoupent(p1, p2, segLevel, grille, tous) {
+    const out = [];
+    if (!grille || segLevel === "transit") return out;
     const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     const etage = mlOn ? segLevel : "*";
     const x0 = Math.min(p1.x, p2.x), y0 = Math.min(p1.y, p2.y);
     const x1 = Math.max(p1.x, p2.x), y1 = Math.max(p1.y, p2.y);
-    let coupe = false;
+    const vus = tous ? new Set() : null;
     _cellulesDe(x0, y0, x1, y1, GRILLE_MUR_PX, function(k) {
-      if (coupe) return;
+      if (!tous && out.length) return;
       const l = grille.get(etage + "|" + k);
       if (!l) return;
       for (let i = 0; i < l.length; i++) {
         const s = l[i];
         if (s.x1 < x0 || s.x0 > x1 || s.y1 < y0 || s.y0 > y1) continue;
-        if (_segmentIntersection(p1, p2, s.a, s.b)) { coupe = true; return; }
+        if (vus && vus.has(s)) continue;
+        const ip = _segmentIntersection(p1, p2, s.a, s.b);
+        if (!ip) continue;
+        if (vus) vus.add(s);
+        out.push({ a: s.a, b: s.b, mur: s.mur, croise: ip });
+        if (!tous) return;
       }
     });
-    return coupe;
+    return out;
+  }
+  function _segmentCoupeParMur(p1, p2, segLevel, grille) {
+    return _mursQuiCoupent(p1, p2, segLevel, grille, false).length > 0;
   }
 
   // ── Évitement de points (contrainte SOUPLE) ──────────
@@ -261,53 +287,96 @@
     return Array.isArray(liste) ? liste : [];
   }
 
-  // Zones inaccessibles du plan : session (getZones) + embarquées (_ktaDataPolygons).
-  // → [{ points: [{x,y}], level, niveaux }].
-  function _collecterZonesInaccessibles() {
+  // Zones dures d'une liste de zones (session, registre d'un calque, données fournies). → [_zoneBloquante].
+  function _zonesDuresDe(liste) {
     const out = [];
-    if (typeof window.getZones === "function") {
-      const session = window.getZones();
-      if (Array.isArray(session)) {
-        for (let i = 0; i < session.length; i++) {
-          const z = session[i];
-          if (z && z.type === "inaccessible" &&
-              Array.isArray(z.points) && z.points.length >= 3) {
-            out.push(_zoneBloquante(z));
-          }
-        }
-      }
-    }
-    const zonesCalques = _registre(window._ktaDataPolygons);
-    for (let i = 0; i < zonesCalques.length; i++) {
-      const e = zonesCalques[i];
-      if (e && e.type === "inaccessible" &&
-          Array.isArray(e.points) && e.points.length >= 3) {
-        out.push(_zoneBloquante(e));
-      }
-    }
+    (Array.isArray(liste) ? liste : []).forEach(function(z) {
+      if (z && _estZoneDure(z.type) && Array.isArray(z.points) && z.points.length >= 3) out.push(_zoneBloquante(z));
+    });
     return out;
+  }
+
+  // Murs en ligne d'une liste de structures. → [{ points, level, ligne: true, objet }] ; sans `level` = niveau 0.
+  function _mursLigneDe(liste) {
+    const out = [];
+    (Array.isArray(liste) ? liste : []).forEach(function(s) {
+      if (s && s.type === TYPE_MUR_LIGNE && Array.isArray(s.points) && s.points.length >= 2) {
+        out.push({ points: s.points, level: Number.isInteger(s.level) ? s.level : 0, ligne: true, objet: s });
+      }
+    });
+    return out;
+  }
+
+  // Zones dures du plan : session (getZones) + embarquées (_ktaDataPolygons).
+  function _collecterZonesInaccessibles() {
+    const session = (typeof window.getZones === "function") ? window.getZones() : [];
+    return _zonesDuresDe(session).concat(_zonesDuresDe(_registre(window._ktaDataPolygons)));
   }
 
   // Murs en ligne du plan : structures de session (getStructures) + embarquées (_ktaDataStructurePolygons, qui
-  // range aussi les lignes). → [{ points, level, ligne: true }] ; sans `level` = niveau 0.
+  // range aussi les lignes).
   function _collecterMursLigne() {
-    const out = [];
-    function _pousser(s) {
-      if (s && s.type === TYPE_MUR_LIGNE && Array.isArray(s.points) && s.points.length >= 2) {
-        out.push({ points: s.points, level: Number.isInteger(s.level) ? s.level : 0, ligne: true });
-      }
-    }
-    if (typeof window.getStructures === "function") {
-      const session = window.getStructures();
-      if (Array.isArray(session)) session.forEach(_pousser);
-    }
-    _registre(window._ktaDataStructurePolygons).forEach(_pousser);
-    return out;
+    const session = (typeof window.getStructures === "function") ? window.getStructures() : [];
+    return _mursLigneDe(session).concat(_mursLigneDe(_registre(window._ktaDataStructurePolygons)));
   }
 
-  // Toutes les contraintes dures du plan ouvert : zones inaccessibles puis murs en ligne.
+  // Toutes les contraintes dures du plan ouvert : zones dures puis murs en ligne.
   function _collecterObstaclesDurs() {
     return _collecterZonesInaccessibles().concat(_collecterMursLigne());
+  }
+
+  // ── « Vérifier le plan » (verifierPlan.js) : ce qu'il faut pour MONTRER un obstacle, en plus des tests ──
+  // Longueur d'un segment à l'intérieur d'un polygone (pair-impair, comme _pointInPolygon) : bornes aux
+  // croisements des arêtes, milieu de chaque morceau testé.
+  function _longueurDansPolygone(p1, p2, poly) {
+    const L = _dist(p1, p2);
+    if (L < 1e-9) return 0;
+    const ts = [0, 1];
+    for (let i = 0; i < poly.length; i++) {
+      const ip = _segmentIntersection(p1, p2, poly[i], poly[(i + 1) % poly.length]);
+      if (ip) ts.push(_dist(p1, ip) / L);
+    }
+    ts.sort(function(a, b) { return a - b; });
+    let dedans = 0;
+    for (let i = 1; i < ts.length; i++) {
+      const dt = ts[i] - ts[i - 1];
+      if (dt <= 1e-9) continue;
+      const tm = (ts[i] + ts[i - 1]) / 2;
+      if (_pointInPolygon({ x: p1.x + tm * (p2.x - p1.x), y: p1.y + tm * (p2.y - p1.y) }, poly)) dedans += dt;
+    }
+    return dedans * L;
+  }
+
+  // Grille des zones dures par boîte englobante : un segment ne teste que les zones des cellules de sa boîte.
+  // Filtre exact (un contact suppose des boîtes qui se touchent) ; le test reste _zonesQuiBloquent.
+  const GRILLE_ZONES_PX = 128;
+  function _grilleZones(polys) {
+    const g = new Map();
+    (polys || []).forEach(function(z, i) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      z.points.forEach(function(p) {
+        if (p.x < x0) x0 = p.x;
+        if (p.x > x1) x1 = p.x;
+        if (p.y < y0) y0 = p.y;
+        if (p.y > y1) y1 = p.y;
+      });
+      _cellulesDe(x0, y0, x1, y1, GRILLE_ZONES_PX, function(k) {
+        let l = g.get(k);
+        if (!l) g.set(k, l = []);
+        l.push(i);
+      });
+    });
+    return { polys: polys || [], g: g };
+  }
+  // Zones candidates d'un segment, dans l'ordre de la liste, sans doublon.
+  function _zonesCandidates(grille, p1, p2) {
+    const vus = new Set();
+    _cellulesDe(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y), Math.max(p1.x, p2.x), Math.max(p1.y, p2.y),
+      GRILLE_ZONES_PX, function(k) {
+        const l = grille.g.get(k);
+        if (l) for (let n = 0; n < l.length; n++) vus.add(l[n]);
+      });
+    return Array.from(vus).sort(function(a, b) { return a - b; }).map(function(i) { return grille.polys[i]; });
   }
 
   // ── Évitement de zones par TYPE (contrainte SOUPLE) ──────────
@@ -324,11 +393,11 @@
     return type || "?";
   }
 
-  // Types évitables distincts, SAUF "inaccessible" (bloqué d'office) → [{ type, label, count }].
+  // Types évitables distincts, SAUF les types durs (bloqués d'office) → [{ type, label, count }].
   function _listerTypesZonesEvitables() {
     var counts = {};
     function _compter(z) {
-      if (!z || z.type === "inaccessible" || !Array.isArray(z.points) || z.points.length < 3) return;
+      if (!z || _estZoneDure(z.type) || !Array.isArray(z.points) || z.points.length < 3) return;
       counts[z.type] = (counts[z.type] || 0) + 1;
     }
     if (typeof window.getZones === "function") {
@@ -349,7 +418,7 @@
     avoidTypes.forEach(function(t) { set[t] = 1; });
     var out = [];
     function _pousser(z) {
-      if (!z || z.type === "inaccessible" || !set[z.type] || !Array.isArray(z.points) || z.points.length < 3) return;
+      if (!z || _estZoneDure(z.type) || !set[z.type] || !Array.isArray(z.points) || z.points.length < 3) return;
       out.push(_zoneBloquante(z));
     }
     if (typeof window.getZones === "function") {
@@ -1582,7 +1651,7 @@
   // Dijkstra sur des ROADS FOURNIES (plan NON chargé, lues par InterPlanLinks.collectRoutingDataForPlan).
   // SYNCHRONE : pas d'avoidTags — l'appelant résout ses évitements, les données distantes ne sont pas
   // dans les globales.
-  // opts : allowedTypes · zones [{type, points, level?}] (les "inaccessible" = contrainte DURE) ·
+  // opts : allowedTypes · zones [{type, points, level?}] (types durs = contrainte DURE, estZoneDure) ·
   //   murs [{points, level?}] (murs en ligne de CE réseau, DURS) · respecterInaccessibles (false = lève les deux) ·
   //   avoidPoints · avoidZonesResolved (zones objets, souple) · avoidRadius (px, 100) ·
   //   echelle (px/m de CE réseau : carrefours 3 m / 5 m et dénivelé) ·
@@ -1602,7 +1671,7 @@
       throw e;
     }
     const zonesDures = (Array.isArray(opts.zones) ? opts.zones : []).filter(function(z) {
-      return z && z.type === "inaccessible" && Array.isArray(z.points) && z.points.length >= 3;
+      return z && _estZoneDure(z.type) && Array.isArray(z.points) && z.points.length >= 3;
     }).map(_zoneBloquante);
     const mursDurs = (Array.isArray(opts.murs) ? opts.murs : []).filter(function(m) {
       return m && Array.isArray(m.points) && m.points.length >= 2;
@@ -1904,6 +1973,26 @@
     aDesTraces:        aDesTraces,
     // Obstacles durs du plan ouvert (zones inaccessibles + murs en ligne) : compte des cases qui les lèvent.
     nbObstaclesDurs:   function() { return _collecterObstaclesDurs().length; },
+    TYPES_ZONES_DURS:  TYPES_ZONES_DURS.slice(),
+    estZoneDure:       _estZoneDure,
+    // « Vérifier le plan » (verifierPlan.js) : les tests du graphe eux-mêmes, jamais une copie, sinon l'outil et
+    // l'itinéraire divergent. ⚠️ contrat : obstaclesDuPlan() → la liste que lit _buildGraph (plan ouvert) ;
+    // obstaclesDe(zones, structures) → la même, sur des données fournies ;
+    // preparer(obstacles) → { polys, grille (murs) } ; zonesQuiBloquent(p1, p2, niveau, polys) et
+    // mursQuiCoupent(p1, p2, niveau, grille) → tous les obstacles qui excluent ce segment du graphe.
+    controle: {
+      PROXIMITY_TOLERANCE: PROXIMITY_TOLERANCE,
+      ECHELLE_SANS_CALAGE: ECHELLE_SANS_CALAGE,
+      obstaclesDe: function(zones, structures) { return _zonesDuresDe(zones).concat(_mursLigneDe(structures)); },
+      obstaclesDuPlan: _collecterObstaclesDurs,
+      preparer: _preparerObstacles,
+      grilleZones: _grilleZones,
+      zonesCandidates: _zonesCandidates,
+      zonesQuiBloquent: function(p1, p2, niveau, polys) { return _zonesQuiBloquent(p1, p2, niveau, polys, true); },
+      mursQuiCoupent: function(p1, p2, niveau, grille) { return _mursQuiCoupent(p1, p2, niveau, grille, true); },
+      longueurDansPolygone: _longueurDansPolygone,
+      projeter: _projectOnSegment
+    },
     computeRoute:      computeRoute,
     computeRouteOnRoads: computeRouteOnRoads,   // roads fournies (plan non chargé)
     computeReachable:  computeReachable,

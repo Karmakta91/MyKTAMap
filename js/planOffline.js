@@ -62,7 +62,7 @@
     const ajouter = function (u) {
       if (typeof u === "string" && u && urls.indexOf(u) < 0 && !/^(https?:|blob:|data:)/.test(u)) urls.push(u);
     };
-    if (cfg.plan) { ajouter(cfg.plan.baseImage); ajouter(cfg.plan.collisionImage); }
+    if (cfg.plan) ajouter(cfg.plan.baseImage);
     (cfg.imageLayers || []).forEach(function (l) { ajouter(l && l.file); });
     (cfg.dataLayers  || []).forEach(function (l) { ajouter(l && l.file); });
     // Icônes du dossier du plan seulement : celles de l'app sont déjà précachées par le SW.

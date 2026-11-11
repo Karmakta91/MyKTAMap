@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.25.0 (arc de soutènement, Vérifier le plan, image de collision retirée)
+
+**Aucune requête nouvelle, aucun domaine nouveau, et un fichier de moins.** L'image de collision d'un plan n'est plus téléchargée à son ouverture ni ajoutée aux fichiers qu'un plan garde hors ligne. Les trois nouvelles icônes de points (ossuaire, outil de carrier, fontis) et le module « Vérifier le plan » sont des fichiers du site, gardés hors ligne comme les autres. Tout le reste se calcule sur l'appareil.
+
 ### v2.24.0 (icônes au trait, police des emoji, mini-carte en 3D)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Deux polices arrivent avec l'app, comme fichiers du site gardés hors ligne : celle des emoji (`fonts/kta-emoji.woff2`, avec `css/kta-emoji.css`), pour que les emoji aient le même dessin sur tous les appareils, et celle des plaques gravées de la vue 3D (`lib/bodoni-moda/`). Les nouvelles icônes sont dessinées par l'app elle-même. Le journal du mode développeur s'exporte en fichier `.txt` fabriqué sur l'appareil (rien n'est envoyé ; sur iPhone, la feuille de partage du système, c'est toi qui choisis où il va). La mini-carte de la vue 3D, la recherche en 3D, les niveaux voisins et la coupe d'un tracé se calculent sur l'appareil ; les cartes OSM tournées à la main demandent les mêmes tuiles OpenStreetMap, un peu plus nombreuses une fois la carte tournée pour en couvrir les coins.

@@ -2309,7 +2309,7 @@ window.getAllEmbeddedStructures = function() {
   const exclus = window.ktaCalquesEnModification();
   return window._ktaDataStructurePolygons
     .filter(function(e) {
-      // minimum de points selon la géométrie : polyligne (fronts, mur en ligne) 2, polygone (piliers, mur) 3
+      // minimum de points selon la géométrie : polyligne (fronts, mur en ligne, arc) 2, polygone (piliers, mur) 3
       if (!e || !e.type || !Array.isArray(e.points)) return false;
       if (exclus.length && exclus.indexOf(e.layerId) >= 0) return false;
       // 🩸 Géométrie lue dans la légende (structures.js > _isPolylineType) : un test littéral front-1/front-2
@@ -2317,7 +2317,7 @@ window.getAllEmbeddedStructures = function() {
       // exports. Repli sur le test littéral si structures.js n'est pas chargé.
       const isPolyline = (typeof window.isStructurePolylineType === "function")
         ? window.isStructurePolylineType(e.type)
-        : (e.type === "mur-ligne" || e.type === "front-1" || e.type === "front-2");
+        : (e.type === "mur-ligne" || e.type === "front-1" || e.type === "front-2" || e.type === "arc");
       const minPts = isPolyline ? 2 : 3;
       return e.points.length >= minPts;
     })
@@ -2737,8 +2737,10 @@ function ajouterPointsDepuisJSON(url, layer) {
       // Structures embarquées en lecture seule (structure.json est un data layer comme un autre).
       if (Array.isArray(json.structures) && json.structures.length > 0) {
         // Styles du résolveur (mêmes valeurs qu'en session). Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 <
-        // front-2 < front-1 (fronts devant) ; multi-niveau : level croissant d'abord (structures.js > renderStructures).
-        const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
+        // front-2 < front-1 < arc (fronts devant, l'arc par-dessus) ; multi-niveau : level croissant d'abord
+        // (structures.js > renderStructures).
+        const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5,
+          "arc": 6 };
         const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         const structuresTriees = [...json.structures].sort(function(a, b) {
           if (_multiLevelOnSort) {
@@ -2762,8 +2764,8 @@ function ajouterPointsDepuisJSON(url, layer) {
           const hasNoteROStruct = !!(structure.description && String(structure.description).trim());
           let leafletLayer;
           if (isPolyline) {
-            // front : polyline épaisse non interactive (ghost par-dessus si note)
-            leafletLayer = L.polyline(latlngs, {
+            // front : polyline épaisse non interactive (ghost par-dessus si note) ; arc : trait rayé
+            leafletLayer = window.ktaPolylineStructure(latlngs, style, {
               color:    style.color,
               weight:   style.weight,
               opacity:  style.opacity,
@@ -2783,25 +2785,17 @@ function ajouterPointsDepuisJSON(url, layer) {
             })).addTo(layer);
           }
           if (hasNoteROStruct && typeof window.attacherNotePopup === "function") {
-            const _structEmojisRO = { "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
-                                      "front-1": "🟨", "front-2": "🟧" };
             function _structROTitle(t) {
+              const _integreRO = (window.KTA_STRUCTURE_TYPES_BUILTIN || []).indexOf(t) >= 0;
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
                   const e = window.LegendCustomization.findCustomEntry(t);
                   if (e) return e.label;
                 }
-                if (_structEmojisRO[t]) return window.LegendCustomization.getLabel("structures", t);
+                if (_integreRO) return window.LegendCustomization.getLabel("structures", t);
               }
-              const LBL = {
-                "pilier-1": window.I18n.t("struct.popup.pilier-1"),
-                "pilier-2": window.I18n.t("struct.popup.pilier-2"),
-                "mur":      window.I18n.t("struct.popup.mur"),
-                "mur-ligne": window.I18n.t("struct.popup.mur-ligne"),
-                "front-1":  window.I18n.t("struct.popup.front-1"),
-                "front-2":  window.I18n.t("struct.popup.front-2")
-              };
-              return LBL[t] || window.I18n.t("struct.popup.fallback", { type: t });
+              return _integreRO ? window.I18n.t("struct.popup." + t)
+                : window.I18n.t("struct.popup.fallback", { type: t });
             }
             let cibleStructRO = leafletLayer;
             if (isPolyline) {
@@ -2809,7 +2803,8 @@ function ajouterPointsDepuisJSON(url, layer) {
                 weight:              Math.max((style.weight || 10) + 12, 22),
                 opacity:             0,
                 interactive:         true,
-                bubblingMouseEvents: false
+                bubblingMouseEvents: false,
+                ktaArcDessus:        !!style.rayures   // suit l'arc au-dessus des tracés (structures.js)
               });
               if (window._aucunModeEditionActif()) {
                 ghostStructRO.addTo(layer);
@@ -2977,6 +2972,10 @@ async function telechargerPlan() {
       }
 
       ctx.stroke();
+      // Trait rayé (arc) : segments de la couleur des rayures sur le même chemin.
+      if (style.rayures && typeof window.ktaPeindreRayures === "function") {
+        window.ktaPeindreRayures(ctx, style.rayures.color, ctx.lineWidth, ctx.globalAlpha);
+      }
       ctx.restore();
     }
 
@@ -3088,6 +3087,11 @@ async function telechargerPlan() {
     // front » (structures.js > ktaMursSousPiliers) la réordonne, un mur de session passe sous un pilier de calque.
     const _fileVect = [];
     function _poser(fn, structure) { _fileVect.push({ fn: fn, s: structure || null }); }
+    // Arcs de soutènement au-dessus des routes, comme à l'écran (structures.js > ktaArcsAuDessus).
+    function _arcsDessus(file) {
+      return typeof window.ktaArcsAuDessus === "function"
+        ? window.ktaArcsAuDessus(file, function (e) { return !!e.s && e.s.type === "arc"; }) : file;
+    }
 
     // compteurs de diagnostic (APP_CONFIG.debugMode)
     const _diag = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embStructs: 0, embPoints: 0, fetchFails: 0 };
@@ -3135,8 +3139,9 @@ async function telechargerPlan() {
           // structures embarquées (piliers, mur, fronts) : ordre Z et couleurs comme ajouterPointsDepuisJSON et
           // exporter.js > _genererCanvasExport
           if (Array.isArray(json.structures) && json.structures.length > 0) {
-            // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1
-            const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
+            // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc
+            const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5,
+              "arc": 6 };
             const _mlOnStructEmb = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
             [...json.structures].sort(function(a, b) {
               if (_mlOnStructEmb) {
@@ -3213,8 +3218,9 @@ async function telechargerPlan() {
         return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(s);
       });
       if (structures.length > 0) {
-        // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1
-        const ordreStructS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
+        // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc
+        const ordreStructS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5,
+          "arc": 6 };
         const _mlOnStructSess = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         [...structures].sort(function(a, b) {
           if (_mlOnStructSess) {
@@ -3288,7 +3294,7 @@ async function telechargerPlan() {
       if (road.points && road.points.length >= 2) allRoadsForIntersect.push(road);
     }
 
-    (typeof window.ktaMursSousPiliers === "function"
+    _arcsDessus(typeof window.ktaMursSousPiliers === "function"
       ? window.ktaMursSousPiliers(_fileVect, function (e) { return e.s; }) : _fileVect)
       .forEach(function (e) { e.fn(); });
 

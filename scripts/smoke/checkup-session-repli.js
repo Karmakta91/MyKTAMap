@@ -96,7 +96,12 @@ function etat(page) {
         haut: d.getBoundingClientRect().height
       };
     });
-    return { secs: secs, clair: document.documentElement.classList.contains("kta-theme-light") };
+    // Sections repérées par leur libellé (les icônes des titres sont des SVG, plus des emoji).
+    const libelles = {};
+    ["points_added", "roads", "zones", "structures", "photos"].forEach(function (k) {
+      libelles[k] = window.I18n.t("ui.refonte.section_" + k);
+    });
+    return { secs: secs, libelles: libelles, clair: document.documentElement.classList.contains("kta-theme-light") };
   });
 }
 
@@ -109,8 +114,10 @@ async function scenario(page, tag, theme) {
   const e = await etat(page);
   if (!e) { pb(tag + " : modale absente"); return; }
   verifier(e.clair === (theme === "light"), tag + " : thème " + theme + " appliqué");
-  const par = function (mot) { return e.secs.find(function (s) { return s.titre.indexOf(mot) !== -1; }); };
-  const P = par("📍"), T = par("🛣"), Z = par("⬛"), S = par("🏛"), F = par("📸");
+  const par = function (cle) {
+    return e.secs.find(function (s) { return s.titre.indexOf(e.libelles[cle]) !== -1; });
+  };
+  const P = par("points_added"), T = par("roads"), Z = par("zones"), S = par("structures"), F = par("photos");
   verifier(e.secs.length === 5, tag + " : 5 sections repliables", e.secs.map(function (s) { return s.titre; }));
   verifier(P && !P.ouvert && P.badge === "1000", tag + " : Points repliée, badge 1000", P);
   verifier(P && P.margeTitre === "0px" && P.haut < 80, tag + " : Points repliée tient sur une ligne", P);

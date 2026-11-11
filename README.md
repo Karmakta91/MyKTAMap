@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.24.0` (09/11/2026)
+## 📦 Version courante — `v2.25.0` (11/11/2026)
 
-> 🎨 **v2.24.0 — Icônes au trait partout, mini-carte et multi-niveau en vue 3D, couper un tracé, rotation bloquée** : toute l'interface, la Documentation et l'Aide passent aux icônes SVG au trait, les emoji des textes sont dessinés par la police embarquée « KTA Emoji » (mêmes dessins sur iPhone, Android et PC) ; en 3D, mini-carte nord en haut, option Lignes au sol, niveaux voisins à leur altitude, tracé jonction en galerie inclinée, zone Jonction, recherche 🔍, plaques gravées, puits et conduits à travers les niveaux, boutons de zoom ; en 2D, ✂️ couper un tracé, niveau d'un lot, cartes OSM tournées à la main, option pour bloquer la rotation ; hauteur des niveaux dans ⚙️ Réglages ; Mode Développeur sans mot de passe et journal exporté en .txt ; cadre d'add-ons. Détail : journal ci-dessous.
+> 🏛️ **v2.25.0 — Arc de soutènement, Vérifier le plan, trois nouveaux types de points, Favoris et Annuler en vue 3D** : nouvelle structure **arc de soutènement** (trait bleu rayé de rouge, ne bloque rien), modelée en plein cintre en 3D ; types de points **ossuaire**, **outil de carrier** et **fontis**, modelés en 3D ; **Vérifier le plan** dans l'Éditeur de données ; chatière relevée en plusieurs points ; en 3D, ⭐ Favoris et ⏪ Annuler / Rétablir dans la rangée du haut, ⛏️ qui ouvre la table des niveaux ; l'image de collision disparaît du Générateur et de l'app ; correctifs (niveau du tracker à la réouverture, 2e masse au niveau −1, bandeau de guidage en 3D). Détail : journal ci-dessous.
 
 ---
 
@@ -97,6 +97,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | 📊 Éditeur de données du plan (tableau, 3 sources) | `tableEditor.js` |
 | 🔁 Recaler des données sur un autre scan (noms communs, repères cliqués, aperçu sur la carte) | `recalageScan.js` |
 | 🔗 Raccords à vérifier (tracés qui ne se touchent pas : raccorder un carrefour, ignorer un mur) | `raccordsTraces.js` |
+| Vérifier le plan (tracés coupés par une zone bloquante ou un mur, passages entre niveaux sans raccord, jonctions mal posées ; « Vu, normal ») | `verifierPlan.js` |
 | 📋 Rapport de sortie · 📈 stats globales + export PDF | `sessionReport.js`, `statsGlobales.js` |
 | 💾 Backups multi-rotations sessions (10 FIFO IDB) | `sessionBackups.js` |
 | 📔 **Le Carnet** : archive automatique des sorties (durée, distance, ajouts, tracé, note) + timeline multi-plans | `journal.js`, `journalUi.js` |
@@ -213,7 +214,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (150 modules)
+## 🟢 L'application : modules JS (151 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -319,6 +320,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `tableEditor.js` | Éditeur de données : JSON (calque ou session) en tableau, application à la session, dédoublonnage |
 | `recalageScan.js` | Recaler des données sur un autre scan (calcul pur `KtaRecalageScan` + modale) |
 | `raccordsTraces.js` | Raccords à vérifier : écarts entre morceaux séparés du réseau, revue sur la carte, Raccorder / Ignorer |
+| `verifierPlan.js` | Vérifier le plan : contrôles C1 à C3 sur les tests du pathfinder, liste par gravité, revue sur la carte, « Vu, normal », avertissement à la saisie |
 | `searchPoints.js` | Recherche dans le plan ouvert (Ctrl+K) : points, tracés, zones, structures, saisie lat/lng |
 | `sessionExporter.js` | Export de session : complet, avancé, conversion, fusion de calques, externe (KMZ / GPX / GeoJSON), anonymisé |
 | `sessionReport.js` | Rapport de sortie (texte, JSON, PDF) |
@@ -480,7 +482,7 @@ docs/                   ← Documentation du projet, jamais servie (sauf docs/ap
   audits/               ← Audits ouverts + INDEX.md (un audit soldé part en tag Git d'archive)
   BACKLOG.md            ← Ce qui reste à faire (Maintenant / Ensuite / Plus tard / Entrant, check-backlog.js)
   IDEES.md · DECISIONS_FERMEES.md ← Pistes non engagées · sujets enterrés, acceptés, leçons
-  ETUDE_*.md            ← Études de chantier qui font foi (identifiant stable, guidage, calage en projection)
+  ETUDE_*.md            ← Études de chantier qui font foi (identifiant stable, guidage, calage en projection, remblais, vérifier le plan)
   RELEASE_GATE.md       ← Porte de release : garde-fous → smoke → checkup ciblé → trempage, dérogations
   TILING.md · MATHS.md  ← Tuilage V1 / V2 et hors-ligne d'un plan serveur · les maths de l'app, renvoyées au code
   IA_POUR_LES_NULS.md   ← Méthode de travail avec l'IA (rôles, hooks, garde-fous, porte), transposable
@@ -579,6 +581,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-poi-jonction.js` | POI entre niveaux (`jes` / `jpe` / `jps`) compté comme sortie de surface, jonctions absentes du graphe | pre-commit |
 | `check-niveaux-verticaux.js` | Géométrie verticale des niveaux (sol, hauteur de galerie, écart avec le dessus) : plan sans la donnée changé, pref locale qui ne gagne plus, écart stocké, consommateur qui relit les tables au lieu de `getNiveauVertical` | pre-commit |
 | `check-zones-niveaux.js` | Zone reliée à plusieurs niveaux (`niveaux`) affichée hors de ses niveaux, qui ne bloque plus l'itinéraire sur chacun, ou champ perdu à l'aller-retour session / KMZ / GeoJSON | pre-commit |
+| `check-verifier-plan.js` | « Vérifier le plan » qui ne dit plus la même chose que l'itinéraire (segments coupés), contrôles C1 à C3 ou « vu, normal » cassés, test de zone dure écrit hors de la table unique | pre-commit |
 | `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
 | `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |
 | `check-position-confirmee.js` | Urgence / « Y aller » qui redemande une position déjà sûre (ou part d'une position non confirmée) | pre-commit |
@@ -612,6 +615,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `ci-commits.sh` | CI : rejoue anti-fuite pro, `data/` hors Git et noms réels commit par commit sur les commits reçus |
 | `garde-fous-tableau.js` | Lance chaque garde-fou du pre-commit et écrit un tableau durée / résultat (résumé de la CI), jamais bloquant |
 | `generer-police-emoji.js` | Refait `fonts/kta-emoji.woff2` (Twemoji Mozilla 0.7.0 réduit aux emoji du dépôt, Python + fontTools), son manifeste et `css/kta-emoji.css` ; à lancer après tout ajout d'emoji |
+| `icones/dessiner-icones-poi.py` | Dessine `icon/ossuaire.png`, `outil.png`, `fontis.png` sur la charte des icônes de POI (Python + Pillow, hors app), avec une planche de relecture en option |
 | `md-mini.js` | Markdown → HTML sans dépendance, utilisé par `audit-html.js` |
 | `release/etat-sites.ps1` | Lecture seule : version réellement servie par dev et prod, comparée aux branches |
 | `release/merge-main.ps1` | Passage `Karma_dev` → `main` par KARMA : arbre propre, versions, garde-fous, Sonar, CI verte, merge, tag |
@@ -628,6 +632,8 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/navigateur.js` | Lance le navigateur des harnais avec replis (shell headless, Chromium, Edge) |
 | `smoke/attendre.js` | Attente d'une condition dans la page compatible avec la CSP (remplace `waitForFunction`) |
 | `smoke/repro-import.js` | Reproduction manuelle : l'import d'un profil complet ne reste pas bloqué |
+| `smoke/releve-theme.js` | Outil de mesure : surcharges claires sans effet (CSSOM), relevé du style calculé avant / après, clair et sombre, états forcés |
+| `smoke/releve-theme-ecrans.js` | Écrans parcourus par `releve-theme.js` sur le relevé fictif, dans un ordre reproductible |
 | `smoke/checkup-accueil-hote.js` | Installation hors myktamap.fr : ville seule, textes de `reglages.json` / `index.json`, « Entrer », code d'accès |
 | `smoke/checkup-aide-telephone.js` | Fiche d'Aide sur téléphone : remplace le hub, un seul voile, retour |
 | `smoke/checkup-bienvenue.js` | Écran Bienvenue avec ou sans mot de passe d'instance, parcours d'arrivée (téléphone et PC) |
@@ -661,6 +667,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-mode-dev.js` | Mode Développeur sans mot de passe : confirmation chartée, outils rendus, journal affiché et copié, appareil déjà déverrouillé gardé actif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
+| `smoke/checkup-arc.js` | Arc de soutènement en travers d'une galerie : itinéraire, pas du tracker et vue 3D passent (mur en ligne témoin arrêté), outil de dessin, trait rayé, légende, filtres, export image |
 | `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
 | `smoke/checkup-raccourcis.js` | Fiche des raccourcis : chaque ligne affichée (carte 2D, actions globales, vue 3D) jouée et son effet vérifié, téléphone compris, Chromium et WebKit |
 | `smoke/checkup-mesure-annulable.js` | Mesure 📐 annulable (⏪ / ⏩) tant que l'outil est armé, entrées purgées à sa fermeture, pile partagée avec une zone, vue 3D comprise, Chromium et WebKit |
@@ -687,6 +694,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
 | `smoke/checkup-dessin-sans-fiche.js` | Outil armé (dessin, mesure, ajout de point, pickers) : tout toucher pose au point touché, aucune fiche, un seul outil à la fois (2D et 3D, doigt et souris) |
 | `smoke/checkup-raccords.js` | Règle stricte des jonctions (galeries parallèles : pas de traversée du mur) et « 🔗 Raccords à vérifier » : Raccorder, Ctrl+Z, Ignorer retenu au rechargement |
+| `smoke/checkup-verifier-plan.js` | « Vérifier le plan » depuis l'Éditeur de données : liste par gravité, clic qui centre et ouvre la fiche, Précédent / Suivant, « vu, normal » retenu au rechargement, avertissement à la saisie |
 | `smoke/checkup-recalage-scan.js` | « Recaler des données sur un autre scan » sur des jeux fictifs |
 | `smoke/checkup-repositionner.js` | « Repositionner » un POI de session à la souris |
 | `smoke/checkup-retour-accueil.js` | Fermer un plan le vide, « Reprendre » le retrouve |
@@ -695,6 +703,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-rotation-memoire.js` | Carte tournée sur un plan lourd : canvas sous son budget, leviers ULTRA forcés puis rendus au nord, POI touchables, choix de l'utilisateur et case « Alléger la carte tournée » respectés |
 | `smoke/checkup-secours-une-intervention.js` | Une seule intervention Secours active à la fois sur un plan |
 | `smoke/checkup-session-repli.js` | Sections repliables de la modale Détails de la session sur une grosse session |
+| `smoke/checkup-sans-collision.js` | Image de collision : ni champ ni écriture au Générateur, ancien plan-config qui la porte ouvert sans la charger ni la demander (Chromium et WebKit) |
 | `smoke/checkup-splash.js` | Splash de démarrage au téléphone et au PC |
 | `smoke/checkup-suppression-plan-docs.js` | Supprimer un plan et, sur demande, ses documents d'histoire |
 | `smoke/checkup-tableur-session.js` | L'Éditeur de données applique un fichier de session à la session (multi-niveau) |
@@ -808,6 +817,22 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
+#### v2.25.0 (11/11/2026) — Arc de soutènement, Vérifier le plan, trois nouveaux types de points, Favoris et Annuler en vue 3D (branche `Karma_dev`)
+
+> Écart avec la prod v2.24.0. Les puces sont rangées par thème : nouveautés de la carte, vue 3D, outillage, correctifs.
+
+- **🏛️ Arc de soutènement** (`arc`, `js/styleResolver.js > CANON.structures.arc`, `js/structures.js > ktaPolylineStructure`, `rendering-leaflet.md` § 0) : 7e type de structure, une polyligne posée en travers de la galerie d'une paroi à l'autre, trait bleu fin rayé de rouge (carte, légende, exports PNG / PDF ; trait bleu seul en KMZ et Vue OSM). Ne bloque rien : ni itinéraire, ni tracker, ni vue 3D (on passe sous son modèle, ci-dessous). `check-mur-ligne.js`, `checkup-arc.js`, `checkup-exports-structures.js`.
+- **Vérifier le plan** (`js/verifierPlan.js`, carte de l'📊 Éditeur de données, `multilevel-pathfinding.md` § Vérifier le plan, `ui.md` §91.6, étude `ETUDE_VERIFIER_PLAN.md`, lot 1) : liste les erreurs de données qui trompent l'itinéraire et la sortie d'urgence, groupées par gravité : **tracé coupé par une zone bloquante ou un mur en ligne** (longueur dans la zone, « au bord » sous 0,5 m), **passage entre niveaux (POI) sans raccord validé** à un de ses niveaux (ou raccord qui ne touche plus de galerie), **tracé jonction mal posé** (même niveau aux deux bouts, ou bout à plus de 15 px de toute galerie de son niveau). Toucher une ligne centre la carte, change de niveau, surligne l'objet et ouvre sa fiche ; bandeau Précédent / Suivant ; **Vu, normal** retenu par objet et par plan sur l'appareil, liste des vus réversible. Un toast avertit quand un tracé saisi (ou une zone bloquante, un mur) crée une coupure. Les tests sont ceux du graphe (`Pathfinder.controle`), et les types de zone durs vivent dans une seule table (`Pathfinder.TYPES_ZONES_DURS`, lue aussi par l'inter-plans) : l'outil et l'itinéraire ne peuvent pas diverger. `check-verifier-plan.js`, `checkup-verifier-plan.js`.
+- **⛏️ Trois types de points : ossuaire, outil de carrier, fontis** (`icon/ossuaire.png`, `icon/outil.png`, `icon/fontis.png`, `js/map.js > TAGS_BUILTIN` et les 7 autres tables de `check-icon-catalog.js`, `scripts/icones/dessiner-icones-poi.py`) : nouvelle famille **⛏️ Patrimoine** (ossuaire, outil) dans la légende et l'export ; **fontis** (effondrement du ciel en cloche) rejoint la Signalétique à côté de danger. Proposés aussi par les imports KMZ, GPX et SIG du Générateur. En vue 3D, chacun a son modèle (ci-dessous).
+- **🏛️ Vue 3D : arc de soutènement, ossuaire, outil de carrier, fontis modelés** (`js/vue3d.js > _arcSoutenement`, `_ossuaire`, `_outilCarrier`, `_fontis`, `js/galerieEmprise.js > ACCES`, `BLOQUE`, `tracking.md` § Vue 3D) : l'arc devient un plein cintre en pierre de taille sur deux piédroits, d'une paroi à l'autre de la galerie (dans les trois rendus, Galeries compris), clé au ciel du niveau, claveaux visibles, tympan maçonné jusqu'au ciel et aux parois (plus aucun jour au-dessus de l'arc) ; on passe dessous. L'ossuaire est un pan d'ossements rangés avec deux rangées de crânes contre la paroi la plus proche (on ne le traverse pas) ; l'outil de carrier, un concasseur sur roues à rayons (trémie, caisse du broyeur, moteur à poulie, rouille) qui arrête le pas comme le véhicule ; le fontis, une cloche noire qui crève le ciel au-dessus d'un cône d'éboulis qui laisse toujours un passage. Formes faites en code, peu de triangles, panneau du point gardé. Guides fr / en / es. `checkup-vue-3d.js` § 14 decies (`KTA_V3D_SEUL=modeles`).
+- **🕳️ Chatière relevée en plusieurs points** (`js/poiPrecis.js`, `js/vue3d.js > _segmentsChatiere`, `_joindreChatiere`, `data-formats.md` § Format point, `ui.md` § Point précis, `tracking.md` § Vue 3D) : le point précis d'une chatière n'est plus seulement un début et une fin mais une liste de points (`precis: { pts: [...] }`, 2 au moins) ; saisie d'un tap par point puis **✓ Terminer** (ou Entrée) dans le bandeau, **Retirer le dernier point** (ou Retour arrière) enlève le dernier tap, Échap / ✕ annule sans rien écrire, une seule entrée d'historique. Carte : un carré à chaque point, reliés par la polyligne, pointillé de l'icône vers le milieu du tracé. 🧭 Y aller, ➕ Itinéraire, guidage et 📍 Je suis ici visent le point du tracé à mi-longueur. Vue 3D : une roche par segment, coupée en onglet aux coudes, le boyau suit le tracé et l'on rampe tout du long. Les chatières déjà relevées (`x`, `y`, `x2`, `y2`) se lisent telles quelles, sans migration ; export et import de session, export anonymisé et Tableur gardent tous les points. Icônes du bandeau au trait. `checkup-point-precis.js` (chatière à 3 points, ancienne chatière), `checkup-vue-3d.js` § 39.
+
+- **⭐ Favoris et ⏪ Annuler / Rétablir dans la rangée du haut de la vue 3D** (`js/vue3d.js > _ouvrirMenuHaut`, `_allerFavori`, `_historique`, `_majRangeeSerree`, `ui.md` § Vue 3D, `checkup-vue-3d.js` § menusHaut) : ⭐ (toujours, si la recherche est permise) déplie les favoris du plan, en toucher un emmène la vue comme un résultat de 🔍 ; ⏪ (vue d'édition seulement) déplie Annuler et Rétablir, le même historique que la carte, menu laissé ouvert pour annuler plusieurs fois ; toucher à côté, Échap ou ⚙️ ferme. Sur téléphone, la rangée se resserre quand le 8e bouton toucherait la pastille du mode.
+- **⛏️ Hauteur en 3D sur un plan à plusieurs niveaux** (`js/vue3d.js > _ouvrirHauteursNiveaux`) : le bouton n'est plus grisé et muet ; il ouvre la table « Niveaux : profondeur et hauteur » par-dessus la vue, et la scène se refait à la fermeture.
+- **Image de collision retirée** (`js/tracking.js`, `js/map.js`, `js/main.js`, `js/vue3d.js`, Générateur, `sw.js`, `checkup-sans-collision.js`) : le Générateur ne la produit plus, l'app ne la charge ni ne la met en cache ; le traceur et le pas en 3D s'appuient sur les tracés, zones et structures. Un plan déjà généré qui en contient une s'ouvre comme avant (l'image est ignorée).
+- **Thème clair allégé** (`css/style.css`, `css/style-filtres.css`, `css/secours.css` et voisins, `scripts/smoke/releve-theme.js`, `ui.md` §53.3) : près de 800 sélecteurs morts ou en double retirés, rendu relevé avant / après écran par écran ; seul écart voulu : le statut des filtres prend l'accent prévu par le JS.
+- **🧊 Vue 3D : sol qui disparaissait avec « Actif seul »** (`js/vue3d.js > _niveauxMontres`, `tracking.md` § Vue 3D) : un niveau masqué au ≡ Filtres restait un voisin vide de la 3D ; en vue d'édition (🌫️ Estomper et 🧱 allumés, niveau qui a un niveau occupé dessous), il voilait le sol du niveau actif sur du noir, grain presque effacé. Un niveau masqué n'est plus un voisin : sol plein. `checkup-vue-3d.js` § 57 (`KTA_V3D_SEUL=solfiltre`, aussi : piliers et murs d'un plan sans galeries posés sur le sol, copie de session sans niveau comprise).
+- **Correctifs** : le tracker rouvert reprend le niveau de sa dernière position (il revenait au niveau 0, `tracking.js > _rebuildTrailFromTimeline`) ; pilier et front de 2e masse toujours rangés au niveau −1, quel que soit le niveau affiché (un pilier dessiné depuis le −1 partait au −2, `structures.js`) ; bandeau de guidage de la 3D borné à 520 px et centré sur PC et en paysage ; plus de barre de défilement sur la colonne d'outils de la 3D au PC ; parois et plafond d'une galerie inclinée cachés en vue d'édition ; refaire le point précis d'une chatière reprend ses points au lieu d'un second tracé ; l'ossuaire parmi les repères du splash.
 #### v2.24.0 (09/11/2026) — Icônes au trait partout, mini-carte et multi-niveau en vue 3D, couper un tracé, rotation bloquée (branche `Karma_dev`)
 
 > Écart avec la prod v2.23.0. Les puces sont rangées par thème : vue 3D, carte et niveaux, icônes et police, réglages et outils, données partagées, correctifs.
@@ -10087,6 +10112,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🎨 **v2.24.0 — Icônes au trait partout, mini-carte et multi-niveau en vue 3D, couper un tracé, rotation bloquée** : toute l'interface, la Documentation et l'Aide passent aux icônes SVG au trait, les emoji des textes sont dessinés par la police embarquée « KTA Emoji » (mêmes dessins sur iPhone, Android et PC) ; en 3D, mini-carte nord en haut, option Lignes au sol, niveaux voisins à leur altitude, tracé jonction en galerie inclinée, zone Jonction, recherche 🔍, plaques gravées, puits et conduits à travers les niveaux, boutons de zoom ; en 2D, ✂️ couper un tracé, niveau d'un lot, cartes OSM tournées à la main, option pour bloquer la rotation ; hauteur des niveaux dans ⚙️ Réglages ; Mode Développeur sans mot de passe et journal exporté en .txt ; cadre d'add-ons. Détail : journal ci-dessous.
 
 > ✏️ **v2.23.0 — Édition complète en vue 3D, point précis des POI, itinéraire sans traversée de mur** : en vue d'édition, ajouter un point, modifier / déplacer / préciser un POI, ajuster les sommets (＋, 🗑️, insertion), 📏 et ⛏️, recul jusqu'à 150 m (ou tout le plan, case 🛡️ décochée), plan au sol à chaque niveau, itinéraire en ruban à chevrons, formes des chatières, plaques, épures, portails et véhicules ; en 2D, ＋ / 🗑️ au sommet, 🎯 point précis d'un POI, 📏 par niveau ; jonctions des tracés réservées aux bouts libres et 🔗 Raccords à vérifier ; Service Worker inscrit après l'entrée et réinstallé à chaque déploiement ; calques morts supprimés (mémoire). Détail : journal ci-dessous.
 

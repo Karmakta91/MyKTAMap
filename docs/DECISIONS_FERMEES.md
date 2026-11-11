@@ -17,6 +17,13 @@
   apparaît**.
 - **« Session d'une autre version du plan »** — si l'utilisateur choisit « Ignorer », la question revient : voulu,
   rien n'est effacé sans accord. À revoir seulement si un utilisateur s'en plaint (10/10).
+- **Seuils des jonctions : restent en px plan** (12/11/2026). Bouts 15 px, sommets intérieurs 3 px ; après
+  « Raccords à vérifier », les plans réels essayés par KARMA sont bien raccordés. Le passage en mètres n'est rouvert
+  que sur un plan réel qui reste coupé.
+- **Accueil pro : la porte attend la fin du splash** (KARMA, 12/11/2026). Le gain d'environ 4 s ne justifie pas de
+  toucher au splash ; les connexions IndexedDB jamais fermées restent au backlog.
+- **Itinéraire en 3D : à-coup d'environ 0,3 s accepté** (KARMA, 12/11/2026). Pas de worker pour le calcul du chemin
+  tant que ça ne gêne pas sur iPhone.
 - **FR en dur restant** — tri complet fait le 09/10. Assumé : `confadmin.html` (100 % FR), motifs de config
   invalide de `ktaExtensions.js`, `Error` techniques. Le reste se migre au fil de l'eau, quand on touche le module.
 

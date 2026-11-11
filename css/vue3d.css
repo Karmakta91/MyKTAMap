@@ -54,6 +54,27 @@
 .kta-v3d-haut > .kta-aide-ctx-btn { order: 4; }
 .kta-v3d-haut > .kta-v3d-btn-reglages { order: 5; }
 .kta-v3d-haut > .kta-v3d-recherche { order: 6; }
+/* Rangée qui ne tient pas sur une ligne (vue3d.js > _majRangeeSerree) : écart de 2 px ; les zones de toucher de deux
+   voisins se recouvrent alors de 4 px (décision produit : une ligne plutôt que deux). */
+.kta-v3d-haut.kta-v3d-haut-serre { gap: 2px; }
+.kta-v3d-haut > .kta-v3d-favoris { order: 7; }
+.kta-v3d-haut > .kta-v3d-historique { order: 8; }
+/* Menu vertical de ⭐ et ↶ (vue3d.js > _ouvrirMenuHaut), posé sous son bouton : la boîte de la tuile ⚙️, une ligne
+   écrite par choix (zone de toucher de 44 px), défile si la liste des favoris est longue. */
+.kta-v3d-menu-haut {
+  position: absolute; z-index: 900; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box;
+  min-width: 190px; max-width: min(320px, calc(100% - 20px)); max-height: 60%; overflow-y: auto;
+  overscroll-behavior: contain; padding: 8px; border-radius: 14px; border: 1px solid var(--kta-bordure);
+  background: var(--kta-surface); color: var(--kta-texte); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+}
+.kta-v3d-menu-haut .kta-v3d-menu-ligne {
+  width: auto; height: auto; min-height: var(--kta-cible-toucher, 44px); flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px; text-align: left;
+  font-size: 14px; font-weight: 600; box-shadow: none; touch-action: pan-y;
+}
+.kta-v3d-menu-haut .kta-v3d-menu-ligne:disabled { color: var(--kta-texte-3); cursor: default; }
+.kta-v3d-menu-haut .kta-v3d-menu-icone { width: 24px; height: 24px; flex: 0 0 auto; object-fit: contain; }
+.kta-v3d-menu-haut .kta-v3d-menu-vide { margin: 0; padding: 6px 4px; font-size: 13px; color: var(--kta-texte-2); }
 
 /* Bouton carré : celui de la barre 2D (surface, liseré --kta-bordure, ombre de la barre). */
 .kta-v3d-btn {
@@ -223,7 +244,9 @@ span.kta-v3d-btn-icone { display: inline-flex; align-items: center; justify-cont
 /* Bandeau de guidage sous la rangée du haut (vue3d.js > _majBandeau ; `top` posé par _majSousHaut) : compact, une
    icône, la consigne, « puis… » en dessous ; boîte des boutons de la vue. Les toasts passent dessous. */
 .kta-v3d-bandeau {
-  position: absolute; top: 80px; left: 10px; right: 10px;
+/* Largeur bornée et centrée comme le bandeau 2D (.kta-guid-bandeau) : en paysage ou au PC, une consigne de
+   deux lignes n'a rien à faire sur toute la largeur de l'écran. */
+  position: absolute; top: 80px; left: 10px; right: 10px; max-width: 520px; margin: 0 auto;
   display: flex; align-items: center; gap: 10px;
   padding: 8px 12px; border-radius: var(--kta-v3d-rayon); border: 1px solid var(--kta-bordure);
   background: var(--kta-surface); color: var(--kta-texte); box-shadow: var(--kta-v3d-ombre);
@@ -401,11 +424,15 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
    (interface.js > ktaOuvrirOutils) passe au rang de la vue, posé après elle : au-dessus.
    🩸 En paysage bas, style.css passe toute .leaflet-bar en `display: flex !important` (pilules de la barre 2D) : sans
    l'id et !important, `hidden` ne cachait plus la colonne (outils visibles à hauteur d'yeux et pendant le jeu). */
-/* Sous la rangée du haut et le bandeau (décision produit), défile si elle ne tient pas. */
+/* Sous la rangée du haut et le bandeau (décision produit), défile si elle ne tient pas.
+   🩸 Les zones de toucher de 44 px (::before, plus bas) débordent du premier et du dernier bouton : une colonne qui
+   défile compte ce débord comme contenu, d'où une barre de défilement sur PC alors que tout tient. La marge
+   intérieure haute et basse le loge, overflow-x le rogne sur les côtés (mesure : contenu 299 px pour 295 vus). */
 .kta-v3d-outils {
   position: absolute; right: 10px; top: var(--kta-v3d-sous-haut, 80px); margin: 0; clear: none; float: none;
   max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - max(14px, env(safe-area-inset-bottom)));
-  overflow-y: auto;
+  overflow-y: auto; overflow-x: hidden;
+  padding-block: max(0px, calc((var(--kta-cible-toucher, 44px) - var(--kta-barre-bouton, 36px)) / 2));
 }
 /* Repliée (▾ / ◂, _plierOutils) : seul le bouton de repli reste. */
 #kta-vue3d .kta-v3d-outils.kta-v3d-outils-plie > a:not(.kta-v3d-outils-plier) { display: none !important; }
@@ -438,7 +465,8 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
    scripts/smoke/checkup-vue-3d.js > sectionColonnePaysage. */
 @media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
   #kta-vue3d .kta-v3d-outils {
-    --kta-barre-bouton: 25px; box-sizing: border-box;
+    /* Pas de marge intérieure : le budget de hauteur ci-dessus ; au doigt la barre est en surimpression. */
+    --kta-barre-bouton: 25px; box-sizing: border-box; padding-block: 0;
     top: calc(var(--kta-v3d-sous-haut, 80px) + 7px);
     right: calc(10px + env(safe-area-inset-right, 0px));
     max-height: calc(100% - var(--kta-v3d-sous-haut, 80px) - 7px - max(14px, env(safe-area-inset-bottom))

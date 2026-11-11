@@ -243,7 +243,7 @@ APP_CONFIG.multiLevel ←
   false
 ```
 
-Fonctions `_renderMultiLevelSection` / `_bindMultiLevelToggle` (interface.js) restent définies en **dead code propre** avec commentaire explicatif. Si retour terrain demande à ré-exposer le toggle (cas marginal), il suffit de re-appeler les 2 fonctions dans `afficherConfig`.
+Aucune bascule du multi-niveau dans ⚙️ Réglages (décision produit) : le plan le déclare.
 
 #### 39.5 Footer copyright
 
@@ -291,7 +291,6 @@ Refonte UX du Générateur 📦 Créer / Modifier un plan (`js/createConf.js`). 
 
 | Section | Type |
 |---|---|
-| Row `pl_collision` (intra Images) | Champ inline |
 | 3. Calques image | Section complète |
 | 4. Calques données | Section complète |
 | 5. Tracking | Section complète |
@@ -616,7 +615,7 @@ urgence et Mode Histoire ne ramènent pas à l'accueil d'eux-mêmes.
   `_libererRessourcesPlanPrecedent("accueil")` : le démontage d'un changement de plan, dans le même ordre
   (session enregistrée et persistance figée, sortie du carnet suspendue, extension prévenue
   `KtaExtensions.quitterPlan("accueil")` → `mktm:plan-ferme { vers: "accueil" }` **une seule fois**, suivi coupé
-  avant le démontage, puis tuiles, calques, carte, canvas de collision, blobs du ZIP). Pile de retour et chaîne
+  avant le démontage, puis tuiles, calques, carte, blobs du ZIP). Pile de retour et chaîne
   multi-plans abandonnées (`onPlanExit("home")`).
 - Pas de carte (démarrage, accueil déjà affiché) → seulement la purge de navigation et `quitterPlan("accueil")`.
 - Après : `window.map === null`, `PLAN_CONFIG === null`, `#map` vide, `_currentLoadedPlanId === null` (remis à null

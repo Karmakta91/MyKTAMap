@@ -45,7 +45,7 @@ Choix du listener au boot : `if ("ondeviceorientationabsolute" in window)` → `
 
 **À NE PAS TOUCHER** quand on intervient sur tracking.js :
 - `requestPermission()` — iOS gesture flow. Pre-existing bug : ne demande que `DeviceMotionEvent.requestPermission`, pas `DeviceOrientationEvent.requestPermission`. Sur iOS 13+, certaines versions auto-grantent l'orientation avec la motion permission ; d'autres pas. À corriger dans un fix séparé si retour terrain iOS confirme un problème.
-- `initMotion`, `avancer`, `estAccessible`, `initCollisionCache` — détection de pas + collision, indépendants du heading.
+- `initMotion`, `avancer`, `_pasBloqueParStructure` — détection de pas + collision, indépendants du heading.
 - Flags idempotents `_orientationListenerAttached` / `_motionListenerAttached` — protection plan switch.
 
 ---
@@ -550,7 +550,7 @@ session — chaque clic de point re-rendait tout l'univers. Cf. fil RAM (history
 #### 75.3 📐 Conception navigation intelligente (non implémenté)
 
 Doc `docs/DESIGN_NAV_INTELLIGENTE.md` (archivé : tag Git `archive-docs-2026-09-30`) ajoutée : future nav qui calera la position estimée sur le réseau de
-tracés (**map-matching**), en complément **réversible** du PDR + raster collision actuel (toggle `smartNav`,
+tracés (**map-matching**), en complément **réversible** du PDR + collision actuel (toggle `smartNav`,
 défaut OFF). Découverte clé : le **graphe topologique existe déjà** dans `pathfinder.js > _buildGraph`
 (nodes/edges/buckets + enrichissement aux croisements), construit à la volée → à rendre réutilisable/caché.
 Décisions verrouillées : off-network **hybride**, magnétisme edit-time **inclus** (lot C5). Découpage C1→C6.
@@ -573,7 +573,7 @@ Release **mineure**. Grosse évolution user : la nav intelligente compense l'imp
 #### 76.1 Principe
 
 Sous terre, pas de GPS satellite → le tracker fait du **dead-reckoning piéton (PDR)** : pas (accéléromètre)
-+ cap (boussole), borné par l'image de collision et les structures (§🧱 Collision du pas). La dérive s'accumule. Quand le plan a un **réseau de
++ cap (boussole), borné par les structures (§🧱 Collision du pas). La dérive s'accumule. Quand le plan a un **réseau de
 tracés**, la nav intelligente **cale la position sur la galerie la plus proche** (map-matching) → la dérive
 latérale est annulée et on tourne correctement aux croisements. **Réversible** (toggle `smartNav`, défaut OFF).
 
@@ -590,8 +590,8 @@ latérale est annulée et on tourne correctement aux croisements. **Réversible*
   avancer()` devient un **dispatcher** : le corps historique est extrait dans `_avancerRaster()` (inchangé),
   branche ON → `_avancerSurGraphe()`.
 - **C3 — map-matching greedy** : `RoadGraph.matchPosition(rawX, rawY, prevSegIdx, headingDeg)`. Stickiness
-  (hystérésis) pour éviter les sauts entre galeries parallèles + repli **off-network HYBRIDE** (retour PDR
-  raster quand on s'éloigne du réseau, re-snapping au retour). Rayon = `max(25px, échelle × smartNavRadiusM)`,
+  (hystérésis) pour éviter les sauts entre galeries parallèles + repli **off-network HYBRIDE** (retour au PDR
+  seul quand on s'éloigne du réseau, re-snapping au retour). Rayon = `max(25px, échelle × smartNavRadiusM)`,
   `smartNavRadiusM` réglable à chaud (défaut 6 m).
 - **C4 — choix d'arête au cap** : la stickiness ne s'applique que MID-SEGMENT (`T_EDGE < t < 1-T_EDGE`) ;
   dès qu'on dépasse un nœud, on relâche → scan scoré `distance + désalignement_cap×poids − bonus_continuité`.
@@ -700,22 +700,22 @@ Aucune nouvelle surface réseau ni permission. Tout local (état runtime + `app_
 
 ---
 
-## 🧱 Collision du pas : image de collision + structures
+## 🧱 Collision du pas : structures
 
 Un pas PDR **hors réseau** (`_avancerRaster`, aussi repli de `_avancerSurGraphe` quand la position n'est calée sur
-aucun tracé) n'est appliqué que s'il passe deux tests ; refusé, la position ne bouge pas et rien n'entre dans la
-timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests ne s'applique.
+aucun tracé) n'est appliqué que s'il passe la règle des structures ; refusé, la position ne bouge pas et rien
+n'entre dans la timeline. Sur le réseau, le map-matching suit le tracé et cette règle ne s'applique pas. Il n'y a
+pas d'image de collision : le champ `plan.collisionImage` d'un ancien plan-config est ignoré (ni chargé, ni lu ;
+`data-formats.md`, `scripts/smoke/checkup-sans-collision.js`).
 
-1. **`estAccessible(x, y)`** — image de collision du plan (`plan.collisionImage`, chargée par `map.js >
-   initCollisionMap`, réduite à 4096 px) : bloqué si plus de 30 % du carré 5 × 5 autour du point est rouge pur.
-   Sans image de collision, tout passe.
-2. **`_pasBloqueParStructure(x0, y0, x1, y1)`** — structures de session (`getStructures`) et du plan
+- **`_pasBloqueParStructure(x0, y0, x1, y1)`** — structures de session (`getStructures`) et du plan
    (`_ktaDataStructurePolygons`) : le pas est refusé s'il **entre** dans un pilier 1re/2e masse ou un mur fermé, ou
    s'il **coupe** une arête d'un de ces polygones (coin de pilier) ou un front de taille 1re/2e masse ou un mur
-   (ligne). Les autres types (zones, types `cust-…`) ne comptent pas pour le tracker ; le 6e paramètre
+   (ligne). Les autres types (zones, arc de soutènement `arc`, types `cust-…`) ne comptent pas pour le tracker ;
+   ⚠️ l'arc est absent de `_OBST_TYPES` exprès (on passe dessous : ni tracker, ni vue 3D) ; le 6e paramètre
    `avecPerso` (vue 3D seulement) compte aussi les types `cust-…`, en polygone ou en ligne selon la légende.
    - **Niveau** : en multi-niveau, seulement les structures du niveau du tracker (`trackerLevel` ; sans `level` =
-     0). Une 2e masse étant rangée au niveau actif − 1 (`structures.js`), elle bloque sur ce niveau-là. Hors
+     0). Une 2e masse étant rangée au niveau −1 (`structures.js`), elle bloque sur ce niveau-là. Hors
      multi-niveau, toutes bloquent.
    - **Visibilité** : masquées ou non, comme les obstacles du Pathfinder.
    - 🩸 Un polygone qui contient **déjà** la position de départ du pas est ignoré (recalage posé sur un pilier,
@@ -729,8 +729,7 @@ timeline. Sur le réseau, le map-matching suit le tracé et aucun de ces tests n
    - **Exposée** : `window.ktaPasBloqueParStructure(x0, y0, x1, y1[, niveau[, avecPerso]])` (true = refusé),
      `niveau` remplaçant celui du tracker ; `window.ktaSegmentsBloquesParStructure(segments[, niveau[, avecPerso]])`
      juge un lot de segments en relisant l'index une seule fois (la signature parcourt toutes les structures : quinze
-     appels par pas coûtaient 3,5 ms au PC dans un plan dense, le lot 0,2 ms) ; le premier test l'est aussi
-     (`window.ktaEstAccessible(x, y)`). Consommateur : la vue 3D (`js/vue3d.js`), qui s'en sert pour ses déplacements à
+     appels par pas coûtaient 3,5 ms au PC dans un plan dense, le lot 0,2 ms). Consommateur : la vue 3D (`js/vue3d.js`), qui s'en sert pour ses déplacements à
      l'écran et au clavier sans recopier la géométrie ni déplacer le tracker.
 
 Le Pathfinder garde ses propres règles (seuls `mur-ligne` et la zone `inaccessible` coupent l'itinéraire,
@@ -790,7 +789,7 @@ active, et le PDR seul (`_avancerRaster`) partirait de la roche.
   point (`utils.js > _ktaPopupAction`, cas `ici` : POI et étape d'itinéraire, carte comme vue 3D) et la bulle de point
   du mode urgence (`emergencyMode.js > _jeSuisIciPoint`).
 - **POI à point précis** (`poiPrecis.js > cible`, décision KARMA du 06/11/2026) : `x`, `y` = le point précis (chatière :
-  le milieu de ses deux points) et la règle ci-dessous part de lui ; `opts.icone` porte l'icône pour que le hook
+  le point de son tracé à mi-longueur) et la règle ci-dessous part de lui ; `opts.icone` porte l'icône pour que le hook
   (`_notifierRecalage`) valide aussi une étape ou un portail posés sur elle. Sans point précis, ou passage entre
   niveaux : l'icône.
 - **Un tap sur la carte est une position voulue** (décision produit) : le clic du 📍 Mode recalage
@@ -805,9 +804,8 @@ active, et le PDR seul (`_avancerRaster`) partirait de la roche.
      la plus proche** (pièce la plus proche ; tube : projection sur son axe ; joint ou passage : axe le plus proche du
      bord atteint) ;
   3. **niveau sans aucun tracé** (plan sans tracé, ou multi-niveau dont seuls d'autres niveaux en ont ; décision
-     produit), image de collision chargée et point refusé par `estAccessible` : point accessible le plus proche à
-     moins de `PROCHE_M` (anneaux au pas d'un pixel du canvas de collision) ;
-  4. un niveau qui a des tracés, tous à plus de `PROCHE_M` : on reste sur le point (le tracé fait foi, pas l'image).
+     produit) : on reste sur le point ;
+  4. un niveau qui a des tracés, tous à plus de `PROCHE_M` : on reste sur le point (le tracé fait foi).
 - ⚠️ contrat **jamais à travers la roche** : dedans, on ne bouge pas (l'axe le plus proche peut être celui de la
   galerie d'à côté, derrière la paroi) ; dehors, le segment du point au bord de l'emprise la plus proche ne traverse
   aucune autre emprise, sinon elle serait plus proche : la seule roche franchie est celle qui sépare le point de sa
@@ -1377,7 +1375,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 
 ### Contrats
 
-- **Déplacement** = règle du pas du tracker (`ktaEstAccessible`, `ktaSegmentsBloquesParStructure(…, niveau, true)`,
+- **Déplacement** = règle du pas du tracker (`ktaSegmentsBloquesParStructure(…, niveau, true)`,
   plus haut), jamais une copie, appliquée à un **corps de 0,8 m** : chaque pas est balayé par trois segments
   parallèles (axe et ± 0,4 m) prolongés de 0,4 m devant, puis douze rayons de 0,4 m autour de l'arrivée doivent
   rester libres (pas plus de rayons bloqués qu'au départ, pour ne pas rester collé si l'on s'ouvre contre un mur).
@@ -1395,8 +1393,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   doigts. `touch-action: none` sur la zone. Un doigt à la fois ; relâché à la perte de focus de la fenêtre. 🩸 Avec le seul axe et une marge devant, on frôlait une face à quelques centimètres
   en biais : la caméra (plan proche à 5 cm) entrait dans le pilier et l'on voyait au travers ; et les types perso,
   dessinés en volume, n'arrêtaient rien. 2,8 m/s, × 2,5 avec Maj ou ▲ maintenu 0,6 s ; 90 °/s. En rendu galerie, la
-  règle est celle de l'emprise (ci-dessous), même corps, même balayage ; l'image de collision du plan n'est pas lue.
-  En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout (image de collision comprise)
+  règle est celle de l'emprise (ci-dessous), même corps, même balayage.
+  En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout
   et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes et leurs pans de retour) ; dans une chambre,
   seules les structures arrêtent. Dans les trois rendus s'y ajoutent les zones qui bouchent (règle ci-dessous).
 - **Zones obstacles de la 3D** (décision produit) : un remblais, un effondrement ou une zone inaccessible du niveau
@@ -1451,9 +1449,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `_prendreHauteurDuNiveau`). Bouton **⛏️** (hauteur affichée par `formatDistance`) → − / + de 1,5 à
   20 m, par 0,1 m jusqu'à 5 m puis 0,5 m (`reglerHauteur(m)` : borné, arrondi, `setHauteurNiveau` du niveau affiché) ; une valeur
   saisie hors bornes dans ⛏️ est montrée telle quelle jusqu'au premier − / +. **Plan multi-niveau** (`APP_CONFIG.multiLevel`,
-  décision produit) : ⛏️ montre la hauteur du niveau, grisé (`disabled`, titre `vue3d.hauteurNiveaux` : réglée par niveau
-  dans Réglages › Profondeur et hauteur des niveaux), − / + ne s'ouvre pas et se referme (`_hauteurFigee`) : changée
-  depuis la 3D, elle recalculait les pentes des jonctions. `reglerHauteur` (API) suit la même règle : sans effet, rend la
+  décision produit) : ⛏️ montre la hauteur du niveau et ouvre la table « Niveaux : profondeur et hauteur »
+  (`_ouvrirHauteursNiveaux` → `profondeurNiveaux.js > ouvrirSaisie`, au-dessus de la vue, titre `vue3d.hauteurNiveaux`) ;
+  − / + ne s'ouvre pas (`_hauteurFigee`) : changée seule depuis la 3D, elle recalculait les pentes des jonctions sans
+  montrer les autres niveaux. Table fermée : `_reindexer` (hauteurs, sols, pentes) puis marqueurs d'itinéraire. `reglerHauteur` (API) suit la même règle : sans effet, rend la
   hauteur courante ; ⛏️ Volume exploité n'écrit rien non plus (champ de calcul seulement). Les tuiles sont refaites sur place (`_refaireTuiles` : même
   index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais et effondrements à 60 %, rideaux, tubes, plafond, œil
   (`_oeil`) et panneaux suivent.
@@ -1507,8 +1506,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `roadGraph.js` n'est pas réutilisé : c'est un graphe d'itinéraire (croisements en arêtes virtuelles, tronçons non
   coupés, tronçon retiré s'il croise un mur en ligne, types perso exclus).
 - **Jamais coincé** (`vue3d.js > _degager`, `_sortie`) : à l'ouverture en mode libre et à l'arrivée d'un passage 🪜, une
-  place hors de l'emprise (galerie) ou d'où aucun pas de 0,3 m n'est possible (structures, mixte : dans un pilier, dans
-  la roche de l'image de collision) est ramenée au point libre le plus proche : l'axe du tracé le plus proche
+  place hors de l'emprise (galerie) ou d'où aucun pas de 0,3 m n'est possible (structures, mixte : dans un pilier)
+  est ramenée au point libre le plus proche : l'axe du tracé le plus proche
   (`KtaGalerie` du rendu, `plusProche`) à moins de `smartNavRadiusM` (6 m, le rayon du verrou sur tracé ; pas
   celui du recalage, `KtaGalerie.PROCHE_M`), sinon un point libre cherché en couronnes de 0,25 m. 🩸 Une accroche de POI
   jonction posée à côté de la galerie figeait la vue après le passage. ⚠️ contrat (`_coince`) : en **mixte** comme en
@@ -1579,7 +1578,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   au-dessus du sol ; en montée, son sol sous le plafond) — bouche au sol (descente, tranchée) ou au plafond (montée,
   talus sous la rampe), emprise du modèle galerie/mixte (`_emprisesPassages`, la paroi des tubes s'ouvre là) ; au-delà
   elle passe dans la roche, sous le sol ou au-dessus du plafond, couverte (`_pente` : moellons, ruban du canon au
-  milieu du sol ; le bout d'en face reste ouvert). **Trémie** (décision produit, `_plansTremie`, `_tremiePente`) : sol et plafond d'un niveau voisin montré qui passent dans la galerie, strictement entre son sol et son plafond, ne s'y dessinent pas (trou plat du gabarit au bit du voisin sur la bande de la galerie, là seulement où le plan est dans sa section) ; plafond et parois de la galerie restent : en montant comme en descendant, rien ne coupe la vue ni la tête et rien ne s'ouvre sur le noir. Niveaux montrés lus à leur source (`_montresAlt`), refaits quand le réglage 🏗️ Niveaux change (`_majEntreActif`). **Marche** : caméra, avatar, ruban et chevrons de l'itinéraire
+  milieu du sol ; le bout d'en face reste ouvert). **Vue d'édition** : parois et plafond de la galerie (famille
+  `paroiPente`, `_paroisPenteVue`) cachés, vus d'en haut ils ne sont que des murs qui dépassent du niveau ; sol en pente
+  et ruban restent. **Trémie** (décision produit, `_plansTremie`, `_tremiePente`) : sol et plafond d'un niveau voisin montré qui passent dans la galerie, strictement entre son sol et son plafond, ne s'y dessinent pas (trou plat du gabarit au bit du voisin sur la bande de la galerie, là seulement où le plan est dans sa section) ; plafond et parois de la galerie restent : en montant comme en descendant, rien ne coupe la vue ni la tête et rien ne s'ouvre sur le noir. Niveaux montrés lus à leur source (`_montresAlt`), refaits quand le réglage 🏗️ Niveaux change (`_majEntreActif`). **Marche** : caméra, avatar, ruban et chevrons de l'itinéraire
   suivent la pente (`_solPlace`, `_surPente`) ; dans la galerie, la règle du pas est **sa largeur** (corps de 0,4 m dans
   ses parois, jamais plus près du bord qu'au départ ; ni structures ni parois du niveau : on n'est plus à son sol) ; on
   n'en sort par le côté ou par son bout que là où son sol est à moins de 0,3 m de celui du niveau (`_pas`, `_coince`).
@@ -1737,7 +1738,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   l'icône. ⚠️ contrat : une seule entrée, `galerieEmprise.js > _departPassage` (son `centre`, après le raccord d'un
   passage), donc `placePassage` → volume, emprise d'une niche, obstacle (`BLOQUE`), plaque / épure / portail sur la
   paroi ou la face de structure la plus proche **du point précis** ; véhicule, cavage, puits d'accès placés depuis lui ;
-  chatière en deux points : ci-dessous. Panneau : celui d'un volume le suit déjà (`placesPassage`) ; un POI sans forme
+  chatière en plusieurs points : ci-dessous. Panneau : celui d'un volume le suit déjà (`placesPassage`) ; un POI sans forme
   y a le sien au point précis, ramené contre la paroi s'il tombe dans la roche (`_volumesDuNiveau`, `_contreParoi`).
   Ignoré pour les passages entre niveaux (`KtaPoiJonction.porteNiveaux` : jes, jpe, jps, peo, eso, pa) : leurs raccords
   validés. La signature des emprises (`_signature`) le compte. Limite : le POI reste rangé dans la tuile de son icône
@@ -1751,11 +1752,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (centré, au plus la galerie moins 0,2 m ; profil `PROFIL_CHATIERE`, voûte surbaissée), roche au-dessus jusqu'au
   plafond et sur les côtés ; axe long le long de la galerie (`dir` = sens de l'axe, `placePassage`), le trou se
   traverse dans le sens de la marche (🩸 l'ancien trou de 0,6 × 0,6 m à voûte pointue se lisait, du dedans et au
-  téléphone, comme une fente verticale). Point précis en deux points (`poiPrecis.js`, début → fin) :
-  `_segmentChatiere` lui donne leur longueur (`CHATIERE.court` = 0,4 m au moins) et leur axe, au centre de
-  `placePassage` (le milieu des deux points, ramené sur l'axe de la galerie : la roche en barre toute la largeur) ;
-  un seul point : la règle de 1,8 m à ce point. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
-  en suivi comme en libre, l'œil descend à 0,35 m dans la roche et sur 1 m de part et d'autre en fondu
+  téléphone, comme une fente verticale). Point précis en plusieurs points (`poiPrecis.js`, `pts` du début à la fin ;
+  décision KARMA du 10/11/2026) : **une roche par segment** (`_segmentsChatiere`), chaque segment décalé comme son
+  milieu par `placePassage` (ramené sur l'axe de la galerie : la roche en barre toute la largeur), un point intérieur
+  décalé de la moyenne de ses deux segments pour qu'ils se touchent ; `_joindreChatiere` coupe les bouts en onglet à
+  chaque coude (pente tan(virage / 2), bornée pour qu'aucun segment ne se retourne sur la largeur de sa roche) et donne
+  à tous le trou de la galerie la plus étroite ; face trouée au début et à la fin du tracé seulement : le boyau suit les
+  coudes. Deux points : longueur (`CHATIERE.court` = 0,4 m au moins) et axe des deux points, au centre de
+  `placePassage` du milieu (ancienne forme `x2`, `y2` comprise). Un seul point : la règle de 1,8 m à ce point. Panneau
+  au segment qui porte le milieu du tracé. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
+  en suivi comme en libre, l'œil descend à 0,35 m dans la roche (tout du long, coudes compris) et sur 1 m de part et
+  d'autre en fondu
   (`_baisseChatiere`, `_placerCamera`), puis remonte ; vue d'édition : rien. `ctx.libre` des add-ons reste ouvert
   (les égarés du jeu la traversent debout, au travers de la roche : limite connue). **Plaque** (`plaque`),
   **épure** (`epure`), **portail** (`portail`) : à plat sur la paroi du tube **du côté du POI**, en face de lui le
@@ -1811,6 +1818,24 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   long de l'axe ;
   **arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
   survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes`).
+- **Formes de patrimoine** (`galerieEmprise.js > ACCES`, `BLOQUE`, `ACCES_DIM.ossuaire*` / `outil*` ; `vue3d.js >
+  _ossuaire`, `_outilCarrier`, `_fontis`, `OSSUAIRE`, `OUTIL`, `FONTIS` ; décision produit) : faites en code (lot
+  opaque, couleurs par sommet, aucune texture ni fichier), panneau du POI gardé. **Ossuaire** (`ossuaire`, forme de
+  `PAROI`) : pan d'ossements contre la paroi du côté du POI (1,8 m de long, 0,3 m d'épaisseur, 1,6 m de haut au plus,
+  0,25 m sous le ciel au moins) : bouts d'os en épiphyses arrondies (dômes à 5 pans) en rangées décalées sur un fond
+  sombre, deux rangées de crânes (demi-sphères aplaties, orbites), couronnement, ivoire sale tiré par os ; sans paroi
+  de tube, sur la face de structure la plus proche à 3 m (`_surStructure`, comme la plaque), panneau seul sinon.
+  **Obstacle mince** sur une paroi de tube (`BLOQUE` « ossuaire » : le pan et 0,4 m dans la roche) ; posé sur une
+  structure, aucun obstacle propre : ses 0,3 m restent sous `RAYON_CORPS`, le corps gardé devant la structure ne
+  l'atteint pas. **Outil de carrier** (`outil`) : concasseur sur quatre roues à rayons (châssis, caisse du broyeur et
+  son volant, trémie ouverte, moteur électrique avec poulie et courroie), rouille sombre tirée par pièce, moteur gris
+  acier, 2,1 × 1,2 × 1,6 m (borné sous le ciel), posé comme le véhicule (dans le tube du côté du POI, le long de
+  l'axe) et **arrête le pas** comme lui (rectangle au sol). **Fontis** (`fontis`) : plafond troué (bouche du gabarit,
+  `lots.plafond`) sur 0,65 m de rayon, cloche qui monte de 2,4 m en se resserrant, dans le lot `lumineux` (non éclairé
+  : la lampe n'y porte pas, trou noir au bord net, fondu au noir vers le haut), et le **cône d'éboulis** de pc / psf
+  (`BLOQUE` « cone », `_coneDans` : poussé vers la paroi du côté du POI, il laisse toujours un passage ;
+  `_volumesItiAcces` : l'itinéraire passe dessus). Coût : ossuaire ~1 150 triangles, outil ~800, fontis ~130 plus le
+  cône. Garde-fou : `checkup-vue-3d.js` § 14 decies (`KTA_V3D_SEUL=modeles`).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
@@ -1980,6 +2005,23 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   compté) ; repris → scène remontée à neuf ; sinon fermeture avec le toast `vue3d.contextePerdu`.
   🩸 Jamais `dispose()` sur les objets d'avant la perte : leurs écouteurs appartiennent à l'ancien état de three.js
   et effaceraient sur le nouveau contexte des objets qui n'en sont pas (« object does not belong to this context »).
+- **Arc de soutènement** (`arc`, `vue3d.js > _arcSoutenement`, `_arcEntreParois`, `_arcPleinCintre`, `ARC` ; décision
+  produit) : un arc plein cintre en pierre de taille par segment de la polyligne, dans les trois rendus (en galerie,
+  seule structure dessinée : `_indexer` y garde les arcs, `_construireTuileGalerie` les pose) : deux piédroits (0,3 m
+  en travers, au plus 20 % de la portée) et leur imposte, claveaux de 0,25 m (nombre impair, clé un peu plus profonde,
+  joints de mortier assombris, fond bouché), 0,5 m de profondeur, **extrados à la clé au ciel du niveau**. Plus large
+  que le ciel ne le permet (piédroits sous 0,6 m) : surbaissé en demi-ellipse. **Tympan** (`_tympanArc`) : maçonnerie
+  pleine de la profondeur de l'arc qui comble tout l'espace entre l'extrados, les piédroits, les parois et le ciel
+  (faces reculées de 5 mm sous les claveaux, même pierre ou même couleur de légende) ; seule l'ouverture sous
+  l'intrados reste vide. Arc oblique dans un tube : ses bouts suivent la paroi ; sans paroi contre lui (structures,
+  chambre), tel que dessiné et fermé aux bouts. En mixte et en galerie, un segment en travers d'un
+  tube (milieu dans sa largeur, hors chambre, à plus de 30° de l'axe) va **d'une paroi du tube à l'autre**, là où sa
+  ligne les coupe ; ailleurs (chambre, structures), tel que dessiné. Couleur (décision produit) : légende avec 🧱
+  coupé, calcaire chaud avec 🧱 (`ARC.pierre`, famille des piliers texturés, accordé aux parois). ⚠️ contrat : **on
+  passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas `arc`) ; ni face où
+  poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode mixte, il ne fait pas
+  d'une galerie une chambre (`galerieEmprise.js > _indexStructures`). ~250 triangles par arc de 2,5 m (tympan :
+  6 × claveaux + 8 de plus).
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.
@@ -2359,7 +2401,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   mien**. ⚠️ contrat (décision produit) : au doigt, retour à Voisins à chaque ouverture (`_niveauxVusVoulu`, réécrit sur
   l'appareil) ; au pointeur fin, retenu. Ligne cachée sur un plan à un niveau.
 - **Construction** (`_voisinsPreparer`, `_voisinNeuf`, `_gererVoisins`, `_construireTuileVoisin`) : mêmes fonctions de
-  tuile que le niveau actif (même rendu, mêmes filtres : un niveau masqué au ≡ ne se montre pas), modèle et hauteur du
+  tuile que le niveau actif (même rendu, mêmes filtres ; un niveau masqué au ≡ n'est pas un voisin du tout,
+  `_niveauxMontres` : vide, il voilait le sol du niveau actif sur du noir — checkup § 57, `KTA_V3D_SEUL=solfiltre`),
+  modèle et hauteur du
   voisin, groupe décalé de son **altitude** (`_altitudeVoisin` : `KtaGalerie.denivele`, sols et hauteurs du lot A, repli
   sans sols d'une hauteur de galerie et 2 m de roche par niveau franchi, comme la galerie inclinée ; jamais du mauvais
   côté, au pire à la
@@ -2445,7 +2489,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   tube et rubans des tracés posés dans la zone non plus. Dessinée par le niveau actif s'il est l'un des siens, avec les
   structures de l'autre niveau posées dedans (`_structuresEmpruntees`), sinon par le voisin qui la porte
   (`_horsZonesActives` : jamais en double). **Pas** : dans la zone, structures de ses deux niveaux et zones qui
-  bouchent (`_bloqueEnZone`, ni paroi de tube ni image de collision) ; on la quitte par un bord, ou on y entre, là
+  bouchent (`_bloqueEnZone`, pas de paroi de tube) ; on la quitte par un bord, ou on y entre, là
   seulement où son sol est à moins de `PENTE.sortie` de celui du niveau ; à mi-longueur du tracé, la scène passe au
   niveau d'en face (`_suivrePente`, inchangé). Caméra, avatar, ruban et chevrons suivent le sol (`_solPlace`).
 - **Structures en pente** (`_structurePente`, `_structureSurPente`) : piliers, murs et fronts dont le centre est dans

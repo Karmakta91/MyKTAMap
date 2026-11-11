@@ -1178,7 +1178,7 @@
     function _addStruct(s, source) {
       const isPolyline = (typeof window.isStructurePolylineType === "function")
         ? window.isStructurePolylineType(s.type)
-        : (s.type === "mur-ligne" || s.type === "front-1" || s.type === "front-2");
+        : (s.type === "mur-ligne" || s.type === "front-1" || s.type === "front-2" || s.type === "arc");
       structsRows.push({
         source:      source,
         type:        s.type || "",

@@ -12,6 +12,8 @@
  *   • un mur en ligne d'un AUTRE niveau, un mur polygone, un front ne coupent rien ;
  *   • les murs des calques comptent, le Secours / Perdu (computeReachable) et l'inter-plans aussi ;
  *   • l'import SIG « une couleur par niveau » garde la clé `mur-ligne` (sinon le mur perdrait son rôle) ;
+ *   • l'arc de soutènement (`arc`, ligne rayée) ne coupe RIEN : ni itinéraire, ni règle du pas (tracker, vue 3D) ;
+ *     sous « une couleur par niveau », il garde aussi sa clé (type perso en ligne = obstacle pour la vue 3D) ;
  *   • un relevé de milliers de murs ne rend pas le graphe quadratique (temps mesuré, plafond large).
  *
  * Usage : node scripts/check-mur-ligne.js   (exit 1 si un contrôle échoue)
@@ -58,6 +60,18 @@ function bac(fichiers, extra) {
   t("canon : listé parmi les structures intégrées", w.ktaStyleBuiltins("structures").indexOf("mur-ligne") >= 0);
   t("structures.js : isStructurePolylineType(mur-ligne)", w.isStructurePolylineType("mur-ligne") === true);
   t("structures.js : le mur polygone reste un polygone", w.isStructurePolylineType("mur") === false);
+  const a = w.ktaResolveStyle("structures", "arc"), af = w.ktaResolveStyle("structures", "arc", { flat: true });
+  t("canon : arc intégré, en ligne, bleu du mur", !!a && a.isPolyline === true && a.color === s.color &&
+    w.KTA_STRUCTURE_TYPES_BUILTIN.indexOf("arc") >= 0 && w.isStructurePolylineType("arc") === true);
+  t("canon : arc plus fin que le mur en ligne, rayé (aplat compris)", !!a && a.weight < s.weight &&
+    !!a.rayures && !!af && !!af.rayures && af.rayures.color === a.rayures.color && a.rayures.color !== a.color);
+  t("canon : muter le style rendu ne touche pas la table", (function () {
+    a.rayures.color = "#000000"; return w.ktaResolveStyle("structures", "arc").rayures.color === af.rayures.color;
+  })());
+  const tr = fs.readFileSync(path.join(ROOT, "js/tracking.js"), "utf8");
+  const obst = (tr.match(/const _OBST_TYPES = \{([^}]*)\}/) || [])[1] || "";
+  t("tracking.js : l'arc n'est pas un obstacle du pas (absent de _OBST_TYPES)",
+    obst.indexOf("mur-ligne") >= 0 && !/["']arc["']/.test(obst));
   t("structures.js : KTA_STRUCTURE_TYPES_BUILTIN le liste à côté du mur",
     Array.isArray(w.KTA_STRUCTURE_TYPES_BUILTIN) &&
     w.KTA_STRUCTURE_TYPES_BUILTIN.indexOf("mur-ligne") === w.KTA_STRUCTURE_TYPES_BUILTIN.indexOf("mur") + 1);
@@ -126,6 +140,9 @@ async function dist(w, opts) {
   t("itinéraire : un mur polygone ne coupe pas",
     await dist(pf([{ type: "mur", points: [{ x: 195, y: 0 }, { x: 205, y: 0 }, { x: 205, y: 150 }, { x: 195, y: 150 }] }])) === 400);
   t("itinéraire : un front ne coupe pas", await dist(pf([{ type: "front-1", points: MUR }])) === 400);
+  t("itinéraire : un arc de soutènement ne coupe pas (session)", await dist(pf([{ type: "arc", points: MUR }])) === 400);
+  t("itinéraire : … ni dans un calque", await dist(pf([], null, [{ type: "arc", points: MUR, level: 0 }])) === 400);
+  t("nbObstaclesDurs ne compte pas l'arc", pf([{ type: "arc", points: MUR }]).Pathfinder.nbObstaclesDurs() === 0);
   t("itinéraire : un mur renommé en légende coupe toujours (le rôle tient à la clé)",
     await dist(Object.assign(pf([{ type: "mur-ligne", points: MUR }]), {
       LegendCustomization: { getLabel: () => "Muret", findCustomEntry: () => null } })) === 800);
@@ -187,6 +204,9 @@ async function dist(w, opts) {
     const types = r.structures.map((s) => s.type);
     t("SIG : un mur en ligne garde sa clé sous « une couleur par niveau »", types[0] === "mur-ligne");
     t("SIG : … le front du même niveau prend, lui, le type du niveau", /^cust-/.test(types[1] || ""));
+    const ra = w.SigImport.ingest({ points: [], lignes: [ligne("arc")], polygones: [] }, {},
+      { cleType: "type", cleNiveau: "niv", couleurParNiveau: true, mapTraces: { arc: "struct:arc" } });
+    t("SIG : un arc garde sa clé sous « une couleur par niveau »", (ra.structures[0] || {}).type === "arc");
   })();
 
   // ───────── 4. Perf : relevé dense fictif ─────────

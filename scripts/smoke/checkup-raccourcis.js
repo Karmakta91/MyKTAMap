@@ -537,8 +537,6 @@ function etat3D(page) {
 async function section3D(page) {
   console.log("— Vue 3D —");
   const ouvert = await page.evaluate(async function () {
-    window.__acc = window.ktaEstAccessible;
-    window.ktaEstAccessible = function () { return true; };
     const M = window.__rc, d = M.P(0, 0);
     return window.KtaVue3D.ouvrir({ depart: { x: d.x, y: d.y, cap: 0, niveau: 0 }, commandes: "pave" });
   });
@@ -780,7 +778,6 @@ async function section3D(page) {
   s3 = await page.evaluate(function () { return !!window.modeMesure; });
   verifier(!s3, "3D : la vue fermée par Échap éteint 📐 (règle de la vue : vue3d.js > _quitterDessin)", { arme: s3 });
   await page.evaluate(function () { window._desactiverTousLesModes(); window.resetMesure(); window.HistoryManager.reset(); });
-  await page.evaluate(function () { window.ktaEstAccessible = window.__acc; });
 }
 
 // Téléphone (pointeur grossier) : Gestes tactiles en tête et dépliés, le reste replié ; la fiche tient dans la largeur.

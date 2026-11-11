@@ -44,6 +44,9 @@ const PLANNER_DEFAULT_ICONS = {
   passage:  "icon/passage.png",
   danger:   "icon/danger.png",
   plaque:   "icon/plaque.png",
+  ossuaire: "icon/ossuaire.png",
+  outil:    "icon/outil.png",
+  fontis:   "icon/fontis.png",
   portail:  "icon/portail.png",   // liaison inter-plan
   // Point d'entrée du plan (Vue OSM × Mode Secours), cf. map.js > TAGS_BUILTIN.
   entree_plan: "icon/entree_plan.png"
@@ -360,13 +363,6 @@ function afficherPlanner() {
                    est justement ce qu'on veut voir arriver ici. -->
               <input type="file" id="pl_baseImage" accept="image/*,.tif,.tiff" style="display:none">
               <span class="kta-planner-upload-nom" id="pl_baseImage_nom">${window.I18n.t("gen.upload.aucunFichier")}</span>
-            </div>
-
-            <div class="kta-planner-upload-ligne" data-planner-advanced="1">
-              <span class="kta-cfg-label">${window.I18n.t("gen.images.collision")} <span class="kta-planner-hint">${window.I18n.t("gen.commun.optionnel")}</span></span>
-              <label class="kta-planner-upload-btn" for="pl_collision">${window.ktaIcone("folder-open") + " " + window.I18n.t("gen.btn.choisir")}</label>
-              <input type="file" id="pl_collision" accept="image/*" style="display:none">
-              <span class="kta-planner-upload-nom" id="pl_collision_nom">${window.I18n.t("gen.upload.aucunFichier")}</span>
             </div>
           </div>
 
@@ -932,7 +928,6 @@ function afficherPlanner() {
   })();
 
   _bindUploadLabel("pl_baseImage", "pl_baseImage_nom");
-  _bindUploadLabel("pl_collision", "pl_collision_nom");
   // PDF Histoire multiples : liste {name, file|null, fromZip}. file = upload ; fromZip = ré-embarqué depuis
   // _plannerOrigAssets[name] (mode Modifier). Retirer une ligne = ne pas l'embarquer.
   _bindUploadLabel("pl_histoirePdf", "pl_histoirePdf_nom");
@@ -1909,8 +1904,7 @@ function _preRemplirFormulaire(config) {
   if (v2CbInit) v2CbInit.checked = dejaV2;
   _majVisibiliteCheckboxV2();
 
-  if (plan.baseImage)      sn("pl_baseImage_nom", "📄 " + plan.baseImage.split("/").pop());
-  if (plan.collisionImage) sn("pl_collision_nom",  "📄 " + plan.collisionImage.split("/").pop());
+  if (plan.baseImage) sn("pl_baseImage_nom", "📄 " + plan.baseImage.split("/").pop());
 
   // Dimensions : en mode Modifier, déjà dans plan-config, pas besoin de redécoder l'image.
   if (plan.imageWidth && plan.imageHeight) {
@@ -2358,11 +2352,7 @@ function _ajouterImageLayer(prefill) {
     if (baseFile) {
       planUrl = URL.createObjectURL(baseFile);
     } else if (_plannerMode === "modifier") {
-      // 1re image de _plannerOrigAssets qui n'est pas la collision.
-      const collNomMod = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
-      const imgKey = Object.keys(_plannerOrigAssets).find(function(k) {
-        return /\.(png|jpg|jpeg|webp|gif)$/i.test(k) && k !== collNomMod;
-      });
+      const imgKey = _nomImageBaseOrigine();
       if (imgKey) {
         planUrl = URL.createObjectURL(_plannerOrigAssets[imgKey]);
       }
@@ -3078,6 +3068,15 @@ function _estAucunFichier(txt) {
   return !!(window.I18n && txt === window.I18n.t("gen.upload.aucunFichier"));
 }
 
+// Image de base reprise d'un ZIP (mode Modifier) : celle que nomme son plan-config (libellé pl_baseImage_nom),
+// sinon la première image du ZIP. 🩸 Un ZIP d'un ancien Générateur embarque aussi une image de collision, qui
+// n'est plus reprise : chercher la 1re image sans le nom pouvait la prendre pour l'image du plan.
+function _nomImageBaseOrigine() {
+  const nom = (document.getElementById("pl_baseImage_nom")?.textContent || "").replace(/^[✅📄]\s/u, "").trim();
+  if (nom && _plannerOrigAssets[nom]) return nom;
+  return Object.keys(_plannerOrigAssets).find(function(k) { return /\.(png|jpg|jpeg|webp|gif)$/i.test(k); });
+}
+
 function _getFile(inputId, logicalPath) {
   const input = document.getElementById(inputId);
   if (input && input.files && input.files[0]) return input.files[0];
@@ -3446,11 +3445,7 @@ async function _genererZip() {
       baseImageName = "data/" + baseFile.name;
       dataFolder.file(baseFile.name, await _lireFichier(baseFile));
     } else if (_plannerMode === "modifier") {
-      // Assets d'origine : première image qui n'est pas la collision.
-      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
-      const imgKey  = Object.keys(_plannerOrigAssets).find(function(k) {
-        return /\.(png|jpg|jpeg|webp|gif)$/i.test(k) && k !== collNom;
-      });
+      const imgKey = _nomImageBaseOrigine();
       if (imgKey) {
         baseImageName = "data/" + imgKey;
         dataFolder.file(imgKey, await _lireFichier(_plannerOrigAssets[imgKey]));
@@ -3459,20 +3454,6 @@ async function _genererZip() {
       }
     } else {
       _plannerErreur(window.I18n.t("gen.gen.imageObligatoire")); throw new Error("abort");
-    }
-
-    // ── Collision ──
-    let collisionName = "";
-    const collFile = _getFile("pl_collision", null);
-    if (collFile) {
-      collisionName = "data/" + collFile.name;
-      dataFolder.file(collFile.name, await _lireFichier(collFile));
-    } else if (_plannerMode === "modifier") {
-      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
-      if (collNom && !_estAucunFichier(collNom) && _plannerOrigAssets[collNom]) {
-        collisionName = "data/" + collNom;
-        dataFolder.file(collNom, await _lireFichier(_plannerOrigAssets[collNom]));
-      }
     }
 
     // ── Calques image ──
@@ -3810,7 +3791,7 @@ async function _genererZip() {
       name, version, author,
       imageWidth:  v2Dims ? v2Dims.width  : width,
       imageHeight: v2Dims ? v2Dims.height : height,
-      baseImage: baseImageName, collisionImage: collisionName
+      baseImage: baseImageName
     };
     if (multiLevel)     planObj.multiLevel = true;
     // Étiquettes et fond conseillé écrits SEULEMENT s'ils sont saisis (sinon JSON inchangé).
@@ -4262,7 +4243,10 @@ function _afficherImporterKmz(prefilledFile) {
               <option value="chatiere">${window.I18n.t("gen.imp.tagChatiere")}</option>
               <option value="passage">${window.I18n.t("gen.imp.tagPassage")}</option>
               <option value="danger">${window.I18n.t("gen.imp.tagDanger")}</option>
+              <option value="fontis">${window.I18n.t("gen.imp.tagFontis")}</option>
               <option value="info">${window.I18n.t("gen.imp.tagInfo")}</option>
+              <option value="ossuaire">${window.I18n.t("gen.imp.tagOssuaire")}</option>
+              <option value="outil">${window.I18n.t("gen.imp.tagOutil")}</option>
             </select>
 
             <label class="kta-cfg-label">${window.ktaIcone("m-galerie") + " " + window.I18n.t("gen.kmz.lineStringType")}</label>
@@ -4836,7 +4820,10 @@ function _afficherImporterGpx(prefilledFile) {
               <option value="chatiere">${window.I18n.t("gen.imp.tagChatiere")}</option>
               <option value="passage">${window.I18n.t("gen.imp.tagPassage")}</option>
               <option value="danger">${window.I18n.t("gen.imp.tagDanger")}</option>
+              <option value="fontis">${window.I18n.t("gen.imp.tagFontis")}</option>
               <option value="info">${window.I18n.t("gen.imp.tagInfo")}</option>
+              <option value="ossuaire">${window.I18n.t("gen.imp.tagOssuaire")}</option>
+              <option value="outil">${window.I18n.t("gen.imp.tagOutil")}</option>
             </select>
 
             <label class="kta-cfg-label">${window.ktaIcone("m-galerie") + " " + window.I18n.t("gen.gpx.tracksType")}</label>
@@ -5486,7 +5473,7 @@ async function _sigImpAnalyserFichier(file) {
 // sont proposées dans le même select, en deux groupes ; le préfixe `struct:` dit à `SigImport.ingest` où
 // ranger l'objet. Idem pour les tracés (front de taille = structure en polyligne).
 const _SIG_TYPES = {
-  points:    ["default", "pa", "pb", "pc", "pe", "ps", "psf", "salle", "chatiere", "passage", "danger", "info"],
+  points:    ["default", "pa", "pb", "pc", "pe", "ps", "psf", "salle", "chatiere", "passage", "danger", "fontis", "info", "ossuaire", "outil"],
   lignes:    ["chemin", "secondaire", "principal"],
   // `pente` = zone « Jonction » : niveaux de/à saisis sous la table (_htmlNiveauxPente), plan multi-niveau.
   polygones: ["remblais", "eau", "effondrement", "inaccessible", "pente"]
@@ -5497,7 +5484,7 @@ const _SIG_TYPES = {
 // `zone:`, `trace:`) = famille de rangement ; sans préfixe, famille naturelle de la géométrie.
 const _SIG_TYPES_SUP = {
   points:    [],
-  lignes:    ["struct:front-1", "struct:front-2", "struct:mur-ligne", "struct:mur",
+  lignes:    ["struct:front-1", "struct:front-2", "struct:mur-ligne", "struct:arc", "struct:mur",
               "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible", "zone:pente"],
   polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur",
               "struct:front-1", "struct:front-2", "struct:mur-ligne",

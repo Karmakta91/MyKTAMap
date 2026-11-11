@@ -822,10 +822,10 @@
       const t = s.type || "?";
       if (!stats.structures.byType[t]) stats.structures.byType[t] = { nb: 0, areaM2: 0, longM: 0 };
       stats.structures.byType[t].nb += 1;
-      if (t === "mur-ligne" || t === "front-1" || t === "front-2") {
+      if (t === "mur-ligne" || t === "front-1" || t === "front-2" || t === "arc") {
         const d = _distRoadLocal(s);  // shape-similar : array .points
         stats.structures.byType[t].longM += d;
-        if (t !== "mur-ligne") stats.structures.fronts_totalM += d;   // un mur n'est pas un front
+        if (t !== "mur-ligne" && t !== "arc") stats.structures.fronts_totalM += d;   // ni un mur ni un arc
       } else {
         const aM2 = (typeof window.polygonAreaM2 === "function")
           ? (window.polygonAreaM2(s.points) || 0)
@@ -995,11 +995,12 @@
         "mur":      window.I18n.t("ui.refonte.label_struct_mur") + " 🔵",
         "mur-ligne": window.I18n.t("ui.refonte.label_struct_murLigne") + " 🟦",
         "front-1":  window.I18n.t("ui.refonte.label_struct_front1_short") + " 🟨",
-        "front-2":  window.I18n.t("ui.refonte.label_struct_front2_short") + " 🟧"
+        "front-2":  window.I18n.t("ui.refonte.label_struct_front2_short") + " 🟧",
+        "arc":      window.I18n.t("ui.refonte.label_struct_arc")
       };
       Object.keys(stats.structures.byType).forEach(function(t) {
         const s = stats.structures.byType[t];
-        const detail = (t === "mur-ligne" || t === "front-1" || t === "front-2")
+        const detail = (t === "mur-ligne" || t === "front-1" || t === "front-2" || t === "arc")
           ? _fdistStats(s.longM)
           : (s.areaM2 > 0 ? _fsurfStats(s.areaM2) : s.nb + ' u.');
         h += '<div class="kta-refonte-stats-bar-row">';
@@ -1100,7 +1101,7 @@
                  (stats.structures.fronts_totalM > 0 ? window.I18n.t("ui.refonte.stats_fronts_suffix", { dist: _fdistStats(stats.structures.fronts_totalM) }) : ""));
       Object.keys(stats.structures.byType).forEach(function(t) {
         const s = stats.structures.byType[t];
-        const det = (t === "mur-ligne" || t === "front-1" || t === "front-2")
+        const det = (t === "mur-ligne" || t === "front-1" || t === "front-2" || t === "arc")
           ? _fdistStats(s.longM)
           : (s.areaM2 > 0 ? _fsurfStats(s.areaM2) : "");
         lines.push("- " + t + " : " + s.nb + (det ? " · " + det : ""));
@@ -1367,7 +1368,8 @@
                             t === "mur"      ? window.I18n.t("ui.refonte.label_struct_mur") :
                             t === "mur-ligne" ? window.I18n.t("ui.refonte.label_struct_murLigne") :
                             t === "front-1"  ? window.I18n.t("ui.refonte.label_struct_front1") :
-                            t === "front-2"  ? window.I18n.t("ui.refonte.label_struct_front2") : t;
+                            t === "front-2"  ? window.I18n.t("ui.refonte.label_struct_front2") :
+                            t === "arc"      ? window.I18n.t("ui.refonte.label_struct_arc") : t;
         const emojiSuffix = t === "pilier-1" ? " 🟡" :
                             t === "pilier-2" ? " 🟠" :
                             t === "mur"      ? " 🔵" :

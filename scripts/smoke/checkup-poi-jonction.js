@@ -230,7 +230,14 @@ async function calculer(page) {
       const c = g && g.consignes.find(function (k) { return k.type === "niveau"; });
       consigne = c ? window.ItiGuidage.texteAction(c) : null;
     }
-    const m = ok ? (r.textContent.match(/(\d+(?:[.,]\d+)?)\s*m\b/) || [])[1] : null;
+    // La ligne « Distance » seule : le textContent du bloc colle les lignes (« 81.0 mTemps… »), \b n'y voit
+    // pas de fin de mot, et une ligne d'alerte placée avant peut porter un autre nombre.
+    const lib = window.I18n.t("iti.result.distance").trim();
+    const ligne = ok ? Array.prototype.find.call(r.querySelectorAll(".kta-iti-result-row"), function (x) {
+      const st = x.querySelector("strong");
+      return st && st.textContent.trim() === lib;
+    }) : null;
+    const m = ligne ? (ligne.textContent.match(/(\d+(?:[.,]\d+)?)\s*m(?![a-z])/i) || [])[1] : null;
     return { ok: ok, err: ok ? null : e.textContent, distM: m ? Number(m.replace(",", ".")) : null,
              via: !!(it && it.points.some(function (p) { return p.via; })), consigne: consigne };
   });

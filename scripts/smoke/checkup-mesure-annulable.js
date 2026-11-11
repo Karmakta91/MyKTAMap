@@ -408,8 +408,6 @@ async function section3D(page) {
     const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
     const r = {};
     if (window.getTrackingActif && window.getTrackingActif()) window.stopTracking();
-    const acc = window.ktaEstAccessible;
-    window.ktaEstAccessible = function () { return true; };
     window.HistoryManager.reset();
     window.resetMesure();
     let ctxV = null;
@@ -487,7 +485,6 @@ async function section3D(page) {
       r.apresFermer = { arme: window.modeMesure === true, entrees: mesureEntrees(),
         redo: window.HistoryManager._peek().redo.filter(function (e) { return e.category === "mesure"; }).length };
     } finally {
-      window.ktaEstAccessible = acc;
       if (K.etat().ouvert) await K.fermer();
       window._desactiverTousLesModes();
       window.resetMesure();

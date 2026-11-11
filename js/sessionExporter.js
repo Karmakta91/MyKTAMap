@@ -17,6 +17,9 @@
 (function() {
   "use strict";
 
+  // Structures intégrées, dans l'ordre des listes (même ordre que structures.js > STRUCTURE_TYPES_BUILTIN).
+  const STRUCT_INTEGRES = ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"];
+
   // Résout au RENDU (jamais au load) ; clé brute si le dico est absent.
   function t(key, params) {
     return (window.I18n && typeof window.I18n.t === "function")
@@ -946,7 +949,7 @@
     const d = _compter();
     const roadsByType = _trierParType(d.roads, ["principal", "secondaire", "chemin"]);
     const zonesByType = _trierParType(d.zones, ["eau", "remblais", "effondrement", "inaccessible"]);
-    const structuresByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]);
+    const structuresByType = _trierParType(d.structures || [], STRUCT_INTEGRES);
     const tagsList = _listerTagsPoints(d.points);
 
     function row(id, label, count, defaultChecked) {
@@ -1017,6 +1020,7 @@
                  structuresByType["mur-ligne"].length, true)}
         ${rowSub("adv_structures_front-1",  _lp("structures", "front-1", t("export.adv.structFront1")),      structuresByType["front-1"].length,  true)}
         ${rowSub("adv_structures_front-2",  _lp("structures", "front-2", t("export.adv.structFront2")),      structuresByType["front-2"].length,  true)}
+        ${rowSub("adv_structures_arc",      _lp("structures", "arc", t("export.adv.structArc")),             structuresByType["arc"].length,      true)}
 
         ${row("adv_mesure",        window.ktaIcone("ruler") + " " + t("export.adv.mesureDistance"), (d.mesure || []).length,        (d.mesure || []).length > 0)}
         ${row("adv_mesure_surface",window.ktaIcone("square-dashed") + " " + t("export.adv.mesureSurface"),  (d.mesureSurface || []).length, (d.mesureSurface || []).length >= 3)}
@@ -1093,7 +1097,7 @@
 
     syncParent("adv_roads", ["adv_roads_principal", "adv_roads_secondaire", "adv_roads_chemin"]);
     syncParent("adv_zones", ["adv_zones_eau", "adv_zones_remblais", "adv_zones_effondrement", "adv_zones_inaccessible"]);
-    syncParent("adv_structures", ["adv_structures_pilier-1", "adv_structures_pilier-2", "adv_structures_mur", "adv_structures_mur-ligne", "adv_structures_front-1", "adv_structures_front-2"]);
+    syncParent("adv_structures", ["adv_structures_pilier-1", "adv_structures_pilier-2", "adv_structures_mur", "adv_structures_mur-ligne", "adv_structures_front-1", "adv_structures_front-2", "adv_structures_arc"]);
 
     // Points ↔ tags : la liste varie selon les points
     const tagsList = _listerTagsPoints(_compter().points);
@@ -1137,7 +1141,7 @@
     const roadsExportables = (d.roads || []).filter(function(r) { return r.type !== "itinerary"; });
     const roadCountByType = _trierParType(roadsExportables, ["principal", "secondaire", "chemin"]);
     const zoneCountByType = _trierParType(d.zones || [],    ["eau", "remblais", "effondrement", "inaccessible"]);
-    const structureCountByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]);
+    const structureCountByType = _trierParType(d.structures || [], STRUCT_INTEGRES);
 
     function row(id, label, count, defaultChecked) {
       const disabled = count === 0 ? " disabled" : "";
@@ -1199,7 +1203,8 @@
       rowTypeSub("conv_structures_mur-ligne", t("export.conv.structMurLigne"),
                  structureCountByType["mur-ligne"].length, true) +
       rowTypeSub("conv_structures_front-1",  t("export.conv.structFront1"),  structureCountByType["front-1"].length,  true) +
-      rowTypeSub("conv_structures_front-2",  t("export.conv.structFront2"),  structureCountByType["front-2"].length,  true);
+      rowTypeSub("conv_structures_front-2",  t("export.conv.structFront2"),  structureCountByType["front-2"].length,  true) +
+      rowTypeSub("conv_structures_arc",      t("export.conv.structArc"),     structureCountByType["arc"].length,      true);
 
     return `
       <div class="kta-ses-section">
@@ -1359,7 +1364,7 @@
 
     syncParent("conv_roads", ["conv_roads_principal", "conv_roads_secondaire", "conv_roads_chemin"]);
     syncParent("conv_zones", ["conv_zones_eau",       "conv_zones_remblais",   "conv_zones_effondrement", "conv_zones_inaccessible"]);
-    syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_mur", "conv_structures_mur-ligne", "conv_structures_front-1", "conv_structures_front-2"]);
+    syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_mur", "conv_structures_mur-ligne", "conv_structures_front-1", "conv_structures_front-2", "conv_structures_arc"]);
   }
 
   // Charge un .json (un calque) ou un .zip (plusieurs .json + photos/) pour le sens data2ed, puis re-rend.
@@ -1735,10 +1740,17 @@
         if (Array.isArray(p.accroches)) out.accroches = p.accroches.map(function(a) {
           return { level: a.level, x: a.x, y: a.y };
         });
-        // Point précis (poiPrecis.js) : géométrie seule, copiée champ par champ.
+        // Point précis (poiPrecis.js) : géométrie seule, copiée champ par champ (chatière : `pts`, ou l'ancienne
+        // forme x2, y2 gardée telle quelle).
         if (p.precis && typeof p.precis === "object") {
-          const q = p.precis, pr = { x: q.x, y: q.y };
-          if (q.x2 !== undefined) { pr.x2 = q.x2; pr.y2 = q.y2; }
+          const q = p.precis;
+          let pr;
+          if (Array.isArray(q.pts)) {
+            pr = { pts: q.pts.filter(Boolean).map(function(a) { return { x: a.x, y: a.y }; }) };
+          } else {
+            pr = { x: q.x, y: q.y };
+            if (q.x2 !== undefined) { pr.x2 = q.x2; pr.y2 = q.y2; }
+          }
           out.precis = pr;
         }
         return out;
@@ -2075,7 +2087,7 @@
     const zoneTypes = ["eau", "remblais", "effondrement", "inaccessible"].filter(function(t) {
       return document.getElementById("adv_zones_" + t)?.checked;
     });
-    const structureTypes = ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"].filter(function(t) {
+    const structureTypes = STRUCT_INTEGRES.filter(function(t) {
       const cb = document.getElementById("adv_structures_" + t);
       return cb ? cb.checked : true;
     });
@@ -2310,7 +2322,8 @@
       "mur":      document.getElementById("conv_structures_mur")?.checked      ?? true,
       "mur-ligne": document.getElementById("conv_structures_mur-ligne")?.checked ?? true,
       "front-1":  document.getElementById("conv_structures_front-1")?.checked  ?? true,
-      "front-2":  document.getElementById("conv_structures_front-2")?.checked  ?? true
+      "front-2":  document.getElementById("conv_structures_front-2")?.checked  ?? true,
+      "arc":      document.getElementById("conv_structures_arc")?.checked      ?? true
     };
     const filteredStructures = incStructures
       ? (d.structures || []).filter(function(s) { return structureTypesActifs[s.type] !== false; })
@@ -2388,8 +2401,8 @@
       // Structures en granularité fine : un fichier par sous-type, payload { data: [], structures: [...] }
       // (data layer valide, chargeable comme structure.json).
       if (filteredStructures.length) {
-        const byType = _trierParType(filteredStructures, ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]);
-        ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"].forEach(function(t) {
+        const byType = _trierParType(filteredStructures, STRUCT_INTEGRES);
+        STRUCT_INTEGRES.forEach(function(t) {
           if (byType[t].length) {
             files.push({ name: "structures_" + t + ".json", payload: { data: [], structures: byType[t] } });
           }
@@ -2992,7 +3005,8 @@
       "mur-ligne": allStructures.filter(function(s) { return s.type === "mur-ligne"; }).length,
       "front-1":  allStructures.filter(function(s) { return s.type === "front-1";  }).length,
       "front-2":  allStructures.filter(function(s) { return s.type === "front-2";  }).length,
-      autres:     _kmzNbAutres(allStructures, ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"])
+      "arc":      allStructures.filter(function(s) { return s.type === "arc";      }).length,
+      autres:     _kmzNbAutres(allStructures, STRUCT_INTEGRES)
     };
 
     return {
@@ -3235,13 +3249,14 @@
 
     const rByT = stats.roadsByType;
     const zByT = stats.zonesByType;
-    const sByT = stats.structuresByType || { "pilier-1": 0, "pilier-2": 0, "mur": 0, "mur-ligne": 0, "front-1": 0, "front-2": 0 };
+    const sByT = stats.structuresByType ||
+      { "pilier-1": 0, "pilier-2": 0, "mur": 0, "mur-ligne": 0, "front-1": 0, "front-2": 0, "arc": 0 };
     // 🩸 Les types hors intégrés comptent : un plan dont les structures sont toutes personnalisées aurait un
     // total à 0, donc une case grisée, et ses structures ne partiraient pas.
     const roadsTotal = rByT.principal + rByT.secondaire + rByT.chemin + (rByT.autres || 0);
     const zonesTotal = zByT.eau + zByT.remblais + zByT.effondrement + zByT.inaccessible + (zByT.autres || 0);
     const structuresTotal = sByT["pilier-1"] + sByT["pilier-2"] + sByT["mur"] + (sByT["mur-ligne"] || 0)
-                          + (sByT["front-1"] || 0) + (sByT["front-2"] || 0) + (sByT.autres || 0);
+                          + (sByT["front-1"] || 0) + (sByT["front-2"] || 0) + (sByT["arc"] || 0) + (sByT.autres || 0);
 
     return '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">' + window.ktaIcone("layers") + " " + t("export.kmz.contentTitle") + '</div>' +
@@ -3295,6 +3310,7 @@
                sByT["mur-ligne"] || 0, true) +
         rowSub("kmz_inc_structures_front-1",  _lp("structures", "front-1", t("export.kmz.structFront1")),  sByT["front-1"] || 0, true) +
         rowSub("kmz_inc_structures_front-2",  _lp("structures", "front-2", t("export.kmz.structFront2")),  sByT["front-2"] || 0, true) +
+        rowSub("kmz_inc_structures_arc",      _lp("structures", "arc", t("export.kmz.structArc")),         sByT["arc"] || 0,     true) +
 
         (mlOn ? row("kmz_inc_jonctions", window.ktaIcone("m-echelle") + " " + t("export.kmz.jonctions"),
           rByT.jonction + (zByT.pente || 0), rByT.jonction + (zByT.pente || 0) > 0) : '') +
@@ -3381,7 +3397,7 @@
     setTimeout(function() {
       _kmzSyncParent("kmz_inc_roads", ["kmz_inc_roads_principal", "kmz_inc_roads_secondaire", "kmz_inc_roads_chemin"]);
       _kmzSyncParent("kmz_inc_zones", ["kmz_inc_zones_eau", "kmz_inc_zones_remblais", "kmz_inc_zones_effondrement", "kmz_inc_zones_inaccessible"]);
-      _kmzSyncParent("kmz_inc_structures", ["kmz_inc_structures_pilier-1", "kmz_inc_structures_pilier-2", "kmz_inc_structures_mur", "kmz_inc_structures_mur-ligne", "kmz_inc_structures_front-1", "kmz_inc_structures_front-2"]);
+      _kmzSyncParent("kmz_inc_structures", ["kmz_inc_structures_pilier-1", "kmz_inc_structures_pilier-2", "kmz_inc_structures_mur", "kmz_inc_structures_mur-ligne", "kmz_inc_structures_front-1", "kmz_inc_structures_front-2", "kmz_inc_structures_arc"]);
       // Points : IDs kmz_inc_points_tag_<slug>
       const tagCheckboxes = document.querySelectorAll('[id^="kmz_inc_points_tag_"]');
       const tagIds = Array.from(tagCheckboxes).map(function(cb) { return cb.id; });
@@ -3905,13 +3921,13 @@
     if (structuresParent) {
       if (structuresParent.checked) {
         structureTypesSet = new Set();
-        ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"].forEach(function(t) {
+        STRUCT_INTEGRES.forEach(function(t) {
           const cb = document.getElementById("kmz_inc_structures_" + t);
           if (cb && cb.checked) structureTypesSet.add(t);
         });
       }
     } else {
-      structureTypesSet = new Set(["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]);
+      structureTypesSet = new Set(STRUCT_INTEGRES);
     }
 
     // 🩸 Types hors intégrés ajoutés aux Sets, sinon ils disparaissent du KMZ : `cust-…` ET id brut d'un calque
@@ -3925,7 +3941,7 @@
     }
     _ajouterTypesHorsIntegres(roadTypesSet, allRoads, ["principal", "secondaire", "chemin", "jonction", "itinerary"]);
     _ajouterTypesHorsIntegres(zoneTypesSet, allZones, ["eau", "remblais", "effondrement", "inaccessible"]);
-    _ajouterTypesHorsIntegres(structureTypesSet, allStructures, ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]);
+    _ajouterTypesHorsIntegres(structureTypesSet, allStructures, STRUCT_INTEGRES);
 
     return {
       mlOn: mlOn,
