@@ -59,6 +59,7 @@
 // case effective en vue d'édition, greffe figée, coût. Greffe (21) :
 // prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
 // (23) : refus, confirmation, partie en vagues, masquage, endurance, tir, recharge, objets, égaré, silhouette, fin.
+// B sur un autre niveau (58, KTA_V3D_SEUL=mkmgniveaux) : dès la vague 1, forcé sur un niveau pauvre, gardien sur place.
 // Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), intensité 25 / 300 %
 // et faisceau 40 / 160° (curseurs, pénombre, relus, ancien « forte » / « jour » relu), ☀️ Plein jour (interrupteur),
 // greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
@@ -10348,6 +10349,107 @@ async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep) {
   return { ctx: ctx, page: page, erreurs: erreurs };
 }
 
+// ── 58. Jeu (add-on mkmg) : B sur un autre niveau (coeur.js > _nouvelleVague ; KTA_V3D_SEUL=mkmgniveaux) ─────────────
+// Plan FICTIF en mémoire, deux niveaux joints par une jonction : au 0 (riche), une galerie et 4 POI joignables ; au −1
+// (pauvre), une galerie, 1 POI joignable, 1 trop près du départ (< 10 m), 1 à 36 m de tout tracé (B inatteignable).
+// Départ au −1 : B au 0 dès la vague 1, à chaque partie. Départ au 0 : B surtout sur place (tirage 0,4, ~60 %), au
+// moins une fois au −1 dès la vague 1 sur N parties. Vague de gardien (5) au −1 : B reste au −1.
+async function sectionMkmgNiveaux(nav) {
+  const nom = "§ 58 ";
+  const N = 40;
+  console.log("§ 58 — jeu : B sur un autre niveau dès la vague 1, forcé sur un niveau pauvre (" + N + " parties)");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-mkmg-niveaux", [-1, 0], { "-1": -30, "0": -25 },
+    { "-1": 2.5, "0": 2.5 }, function () {
+      const P = window.__fxP;
+      window.setRoads([
+        { uid: "rd_mn_0", type: "principal", level: 0, points: [P(-100, 0), P(100, 0)] },
+        { uid: "rd_mn_m1", type: "principal", level: -1, points: [P(-100, 4), P(100, 4)] },
+        { uid: "rd_mn_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(-90, 0), P(-90, 4)] }
+      ]);
+      const poi = function (id, x, z, niv) {
+        return Object.assign({ id: id, nom: id, uid: "pt_mn_" + id.replace(/\W/g, ""), level: niv, tags: [] }, P(x, z));
+      };
+      window.setEditorPoints([
+        poi("Riche A", 30, 1, 0), poi("Riche B", 45, 1, 0), poi("Riche C", 60, 1, 0), poi("Riche D", 75, 1, 0),
+        poi("Pauvre A", 50, 5, -1), poi("Pauvre près", 4, 5, -1), poi("Pauvre roche", 40, 40, -1)
+      ]);
+    });
+  const page = t.page;
+  try {
+    const r = await page.evaluate(async function (n) {
+      const K = window.KtaVue3D;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const q = function (s) { return document.querySelector(s); };
+      const M = function () { return window.KtaAddons && window.KtaAddons.mkmg; };
+      const appui = function (b) {
+        b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 2 }));
+        window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+      };
+      // Code « six vers le bas » la première fois (charge l'add-on), lancer() ensuite ; confirmation acceptée.
+      const partie = async function () {
+        if (M() && M().etat().enCours) { M().quitter(); await pause(50); }
+        if (M()) M().lancer();
+        else {
+          appui(q('#kta-vue3d [data-v3d="av"]'));
+          for (let k = 0; k < 6; k++) { appui(q('#kta-vue3d [data-v3d="ar"]')); await pause(30); }
+        }
+        for (let k = 0; k < 60 && !q("#kta-confirm-oui"); k++) await pause(50);
+        if (!q("#kta-confirm-oui")) return { erreur: "pas de confirmation" };
+        q("#kta-confirm-oui").click();
+        for (let k = 0; k < 100 && !(M() && M().etat().cible); k++) await pause(30);
+        const e = M().etat();
+        return { vague: e.vague, cible: e.cible && e.cible.nom, niveau: e.cibleNiveau, route: e.route };
+      };
+      const serie = async function (niveau, x, z) {
+        await window.__fxOuvrir(x, z, 90, niveau, "galerie");
+        const res = [];
+        for (let i = 0; i < n; i++) res.push(await partie());
+        return res;
+      };
+      const out = {};
+      out.pauvre = await serie(-1, 0, 4);
+      // Vague de gardien depuis le −1 : B reste ici (POI d'ici, puis sommet des tracés).
+      out.boss = [];
+      for (let i = 0; i < 6; i++) {
+        const avant = M().etat().calcul;
+        if (!M().essai.vague) { out.boss.push({ erreur: "essai.vague absent" }); break; }
+        M().essai.vague(5);
+        for (let k = 0; k < 100 && !(M().etat().calcul > avant && M().etat().cible); k++) await pause(30);
+        await pause(50);
+        const e = M().etat();
+        out.boss.push({ vague: e.vague, cible: e.cible && e.cible.nom, niveau: e.cibleNiveau });
+      }
+      out.riche = await serie(0, 0, 0);
+      if (M().etat().enCours) M().quitter();
+      await K.fermer();
+      return out;
+    }, N);
+    const compte = function (l, f) { return l.filter(f).length; };
+    const ailleurs = function (niv) {
+      return function (o) { return o.niveau === niv && o.vague === 1 && o.route > 0; };
+    };
+    const pauvreOk = compte(r.pauvre, ailleurs(0));
+    verifier(pauvreOk === N, nom + "départ au −1 (1 POI joignable) : B au 0 dès la vague 1, " + pauvreOk + "/" + N,
+      r.pauvre.filter(function (o) { return !ailleurs(0)(o); }).slice(0, 4));
+    const ici = compte(r.riche, function (o) { return o.niveau === null && o.vague === 1; });
+    const bas = compte(r.riche, ailleurs(-1));
+    console.log("  ℹ️ départ au 0 (4 POI joignables), vague 1 : " + ici + " sur place, " + bas + " au −1, sur " + N);
+    // Tirage 0,4 sur 40 parties : P(aucune au −1) ≈ 1e-9, P(moins de 12 sur place) ≈ 1e-5 ; niveau riche compté
+    // pauvre à tort = 0 sur place.
+    verifier(ici + bas === N && bas >= 1 && ici >= 12,
+      nom + "départ au 0 : B surtout sur place (" + ici + "/" + N + "), au −1 dès la vague 1 (" + bas + "/" + N + ")",
+      r.riche.slice(0, 4));
+    const bossOk = compte(r.boss, function (o) { return o.vague === 5 && o.niveau === null && !!o.cible; });
+    verifier(bossOk === r.boss.length && bossOk > 0, nom + "vague du gardien au −1 (pauvre) : B reste au −1, " +
+      bossOk + "/" + r.boss.length, r.boss);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 4));
+  } catch (err) {
+    pb(nom + "exception : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 50. Niveaux entremêlés : union des vides, collision par tranche (vue3d.js > _entreDe, _paroiEntre, _trousEntre,
 // _plansCaches, _niveauxQuiBloquent ; KTA_V3D_SEUL=entremeles) ────────────────────────────────────────────────────
 // Plan FICTIF en mémoire : niveau 0 (sol −30, 10 m de haut), niveau +1 (sol −25, 5 m : la moitié haute du 0, écart
@@ -13467,7 +13569,7 @@ async function sectionCaseBoutonsZoom(nav) {
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "puits-ciel" ||
       SEUL === "jonction-tremie" ||
       SEUL === "jonction-piliers" || SEUL === "caseZoom" ||
-      SEUL === "minicarte" || SEUL === "menusHaut") {
+      SEUL === "minicarte" || SEUL === "menusHaut" || SEUL === "mkmgniveaux") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -19907,6 +20009,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "caseZoom") await sectionCaseBoutonsZoom(nav);
     if (!SEUL || SEUL === "minicarte") await sectionMiniCarte(nav);
     if (!SEUL || SEUL === "menusHaut") await sectionMenusHaut(nav);
+    if (!SEUL || SEUL === "mkmgniveaux") await sectionMkmgNiveaux(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

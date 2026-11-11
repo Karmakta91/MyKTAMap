@@ -208,14 +208,17 @@ embuscades, un monde par niveau), `js/son.js`
 
 - **Lancement** : code `bas6`. Refus de terrain et d'installation ci-dessus ; sinon confirmation « Descendre plus
   bas ? » avec la difficulté (`ktaConfirm`, `choix`).
-- **Vague** = rejoindre un point B depuis la position de la vue : un POI du niveau dont la distance à vol d'oiseau
-  est la plus proche de 40 m + 30 m par vague (10 m au moins), sinon un sommet des tracés ; le premier joignable par
-  `Pathfinder.computeRoute`, sinon le plus proche du voulu, sans trajet. B à 2 m : vague suivante, santé, endurance et pile
-  à 100 % (décision produit).
-- **B à un autre niveau** (décision produit) : dès la vague 4, sur un plan multi-niveau (`APP_CONFIG.multiLevel`),
-  une fois sur 0,4 et jamais en vague de gardien, B est un POI d'un autre niveau, joint par les jonctions (trajet
-  `computeRoute` d'un niveau à l'autre ; sinon repli sur ce niveau). Validé au bout du trajet (la règle du pas d'ici
-  ne vaut rien là-bas), seulement une fois à ce niveau ; balise et trajet au sol dessinés au niveau où ils sont.
+- **Vague** = rejoindre un point B depuis la position de la vue : un POI dont la distance à vol d'oiseau est la plus
+  proche de 40 m + 30 m par vague (10 m au moins), le premier joignable par `Pathfinder.computeRoute` (bout du trajet
+  à 8 m au plus du POI) ; en dernier recours un sommet des tracés du niveau, sinon le plus proche du voulu, sans
+  trajet. B à 2 m : vague suivante, santé, endurance et pile à 100 % (décision produit).
+- **B à un autre niveau** (décision produit) : sur un plan multi-niveau (`APP_CONFIG.multiLevel`), dès la vague 1,
+  une fois sur 0,4 (`REGLES.autreNiveau.chance`), et toujours quand le niveau où l'on est a moins de 3 POI joignables
+  (`minPoi`, comptés sur les candidats triés, arrêt au 3e), B est un POI d'un autre niveau, joint par les jonctions
+  (trajet `computeRoute` d'un niveau à l'autre). Ordre d'essai : autre niveau → POI des autres niveaux, puis d'ici,
+  puis sommet des tracés ; sinon POI d'ici, puis des autres niveaux, puis sommet des tracés. Vague de gardien, plan
+  à un niveau : ce niveau seul. Validé au bout du trajet (la règle du pas d'ici ne vaut rien là-bas), seulement une
+  fois à ce niveau ; balise et trajet au sol dessinés au niveau où ils sont.
 - **Un monde par niveau, escalier = refuge** (décision produit) : les menaces ne changent pas de niveau. Au passage
   🪜, le monde quitté est rangé tel quel (`monde.js > changerNiveau`, maillages retirés, objets gardés) et repris au
   retour ; un niveau neuf est peuplé à moitié, sans silhouette.

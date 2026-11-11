@@ -14,9 +14,9 @@
 // piles et champignons ramassés en passant ; viseur à la souris capturée (PC) ; santé à 0 = fin,
 // meilleure vague retenue par difficulté. La pile de la lampe s'use (lampe qui baisse et vacille, à plat = lueur de
 // quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
-// éboulis couvrent les grognements. Dès la vague 4, sur un plan multi-niveau, B est parfois à un autre niveau ; toutes
-// les 5 vagues, un gardien garde B. Difficulté : facile = tracés + itinéraire du jeu + guidage ; moyen = tracés +
-// itinéraire ; difficile = rien.
+// éboulis couvrent les grognements. Sur un plan multi-niveau, B est parfois à un autre niveau, et toujours quand celui
+// où l'on est a moins de 3 POI joignables (sauf vague du gardien) ; toutes les 5 vagues, un gardien garde B.
+// Difficulté : facile = tracés + itinéraire du jeu + guidage ; moyen = tracés + itinéraire ; difficile = rien.
 // 🔒 Ne touche ni tracker, ni session, ni filtres, ni l'itinéraire de l'app : la greffe (KtaVue3D.greffer) est son
 // seul accès ; ses trajets sont calculés par Pathfinder.computeRoute (lecture) et dessinés dans son propre groupe.
 // ⚠️ contrat (décision produit) : refusé sur une installation reliée à un serveur, pendant le suivi du tracker, une
@@ -152,8 +152,10 @@
     pile: { max: 100, parS: 0.55, faible: 25, min: 0.08, vacille: 0.35, vacilleHz: 2.5, vacilleMs: [50, 200] },
     eau: { x: 0.6, ploufM: 0.6, testMs: 200 },
     eboulis: { rayonM: 15, s: [8, 20], masqueMs: 2500, testMs: 1000 },
-    // B à un autre niveau (plan multi-niveau) : dès la vague `des`, une fois sur `1 / chance` ; jamais en vague boss.
-    autreNiveau: { des: 4, chance: 0.4 }, gardienTous: 5,
+    // B à un autre niveau (plan multi-niveau) : dès la vague 1, une fois sur `1 / chance`, et toujours quand le niveau
+    // a moins de `minPoi` POI joignables (à `minM` au moins, bout du trajet à `horsTraceM` au plus) ; jamais en vague
+    // boss.
+    autreNiveau: { chance: 0.4, minPoi: 3 }, gardienTous: 5,
     // Trajet recalé (on fuit, le trajet suit) : à plus de `ecartM` du trajet pendant `tenirMs`, au plus une fois
     // toutes les `entreMs`.
     recalage: { ecartM: 6, tenirMs: 1500, entreMs: 3000 }
@@ -713,33 +715,52 @@
       }).filter(function (c) { return c.d >= REGLES.minM || autre; })
         .sort(function (a, b) { return Math.abs(a.d - voulu) - Math.abs(b.d - voulu); }).slice(0, REGLES.candidats);
     };
-    const cands = candidats(_pois(niv), false);
+    const ici = candidats(_pois(niv), false);
     const repli = _pointDesTraces(niv, pos, sc, voulu);
-    if (repli) cands.push(repli);
-    // Vague boss : B sur ce niveau (le gardien y est posé) ; sinon, parfois, à un autre niveau du plan.
+    // Vague boss : B sur ce niveau (le gardien y est posé). Sinon, sur un plan multi-niveau, B est à un autre niveau
+    // une fois sur `1 / chance`, et toujours quand ce niveau a moins de `minPoi` POI joignables.
     const boss = p.vague % REGLES.gardienTous === 0, AN = REGLES.autreNiveau;
-    const autre = !boss && niv !== null && niv !== undefined && p.vague >= AN.des && window.APP_CONFIG &&
-      window.APP_CONFIG.multiLevel === true && Math.random() < AN.chance;
-    const listes = [cands];
-    if (autre) {
-      listes.unshift(candidats(_pois(null).filter(function (q) { return _niveauDe(q) !== niv; }), true));
+    const multi = !boss && niv !== null && niv !== undefined && window.APP_CONFIG &&
+      window.APP_CONFIG.multiLevel === true;
+    const ailleurs = multi ? candidats(_pois(null).filter(function (q) { return _niveauDe(q) !== niv; }), true) : [];
+    const routes = new Map();
+    // Trajet vers c, gardé (un POI compté n'est pas routé une 2e fois) ; undefined = partie ou vague périmée.
+    const essayer = async function (c) {
+      if (routes.has(c)) return routes.get(c);
+      let r = await _route(pos, c, niv, c.niveau);
+      if (_p !== p || jeton !== p.calcul) return undefined;
+      // 🩸 Le trajet s'accroche au tracé le plus proche, même loin : un POI à plus de horsTraceM m de tout tracé
+      // (relevé dans la roche, salle isolée) donnait un B qu'on ne rejoint pas. Écarté, au suivant.
+      if (r) {
+        const b = r[r.length - 1];
+        if (Math.hypot(b.x - c.x, b.y - c.y) / sc > REGLES.horsTraceM) r = null;
+      }
+      routes.set(c, r);
+      return r;
+    };
+    let autre = false;
+    // Niveau pauvre : compté sur les candidats triés, arrêté à `minPoi` (jamais tout le niveau routé).
+    if (ailleurs.length && !(autre = Math.random() < AN.chance)) {
+      let n = 0;
+      for (let i = 0; i < ici.length && n < AN.minPoi; i++) {
+        const r = await essayer(ici[i]);
+        if (r === undefined) return;
+        if (r) n++;
+      }
+      autre = n < AN.minPoi;
     }
+    // ⚠️ contrat (décision produit) : le sommet des tracés d'ici vient en dernier, après les POI de tous les niveaux.
+    const listes = (autre ? [ailleurs, ici] : [ici, ailleurs]).concat(repli ? [[repli]] : []);
     let cible = null, route = null;
     for (let l = 0; l < listes.length && !route; l++) {
       for (let i = 0; i < listes[l].length && !route; i++) {
-        route = await _route(pos, listes[l][i], niv, listes[l][i].niveau);
-        if (_p !== p || jeton !== p.calcul) return;
-        // 🩸 Le trajet s'accroche au tracé le plus proche, même loin : un POI à plus de horsTraceM m de tout tracé
-        // (relevé dans la roche, salle isolée) donnait un B qu'on ne rejoint pas. Écarté, au suivant.
-        if (route) {
-          const b = route[route.length - 1];
-          if (Math.hypot(b.x - listes[l][i].x, b.y - listes[l][i].y) / sc > REGLES.horsTraceM) route = null;
-        }
+        route = await essayer(listes[l][i]);
+        if (route === undefined) return;
         if (route) cible = listes[l][i];
       }
     }
     // Aucun trajet (plan sans tracés, réseau coupé) : un point des tracés plutôt qu'un POI, sans itinéraire.
-    if (!cible) cible = repli || cands[0] || null;
+    if (!cible) cible = repli || ici[0] || null;
     // ⚠️ contrat (décision produit) : un POI relevé hors de la galerie (à horsTraceM m au plus d'un tracé) est
     // validé DANS la galerie, au bout du trajet sur les tracés ; et jamais dans une structure (pilier, mur, front) :
     // la place libre la plus proche de ce point (règle du pas de la vue, hors remblais, effondrement, inaccessible).
@@ -1273,6 +1294,8 @@
     sante: function (v) { if (_p) _p.sante = v; },
     chrono: function (ms) { if (_p) { _p.chronoFin = performance.now() + ms; _p.chronoDepasse = false; } },
     tenaille: function () { if (_p && _p.ctx) _tenaille(_p, _p.ctx); },
+    // Vague n tout de suite (cible cherchée à nouveau, depuis la position de la vue).
+    vague: function (n) { if (_p && _p.ctx) { _p.vague = n - 1; _nouvelleVague(); } },
     // Regard rejoué comme la souris capturée (dx, dy en px), glisser clos aussitôt.
     viser: function (dx, dy) { if (_p && _p.viseur) { _p.viseur.tourner(dx, dy); _p.viseur.lever(); } }
   };
