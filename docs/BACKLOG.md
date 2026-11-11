@@ -152,7 +152,9 @@
 ## Entrant
 
 - **« Mettre à jour le plan » perd la longueur des chatières** — vu par KARMA le 12/11 : après une mise à jour du plan
-  au Générateur, la longueur d'une chatière (point précis, trait début→fin) n'est pas reprise.
+  au Générateur, la longueur d'une chatière (point précis, trait début→fin) n'est pas reprise. Scénario : plan
+  d'organisation, chatière dans un calque en modification ; seul le point de départ reste sur la carte 2D. Non
+  reproduit en local.
   `qui: Claude · action: reproduire sur le relevé fictif et diagnostiquer, session Debug · fini: longueur conservée,
   test rouge puis vert · depuis: 12/11/2026 · taille: S`
 - **Jeu caché : la partie reste sur son niveau de départ** — vu par KARMA pendant l'essai de la v2.25.0 : une partie
