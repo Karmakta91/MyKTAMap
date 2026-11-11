@@ -67,6 +67,8 @@
 // Colonne d'outils en vue d'édition seulement (PC, téléphone, paysage ; absente pendant le jeu, qui ne chevauche aucune
 // commande à ces tailles) ; au doigt en paysage bas, contre le bord droit, entre la rangée du haut et ⌖
 // (KTA_V3D_SEUL=colonne : cette vérification seule). Plan au sol sur écran dense, vue immobile (image, V1, V2).
+// Mini-carte et bandeau de guidage au téléphone (59, KTA_V3D_SEUL=mcbandeau) : à droite du bandeau en paysage bas,
+// sous lui en portrait dès la rotation, ResizeObserver débranché à la fermeture.
 // Tuile ⚙️ au doigt en paysage bas : un glisser posé sur une ligne la fait défiler (KTA_V3D_SEUL=tuile).
 // Case « Boutons de zoom » de l'accueil (§ case zoom, KTA_V3D_SEUL=caseZoom) : décochée, + − ▲ ▼ cachés en vue
 // d'édition, ⌖ gardé, molette et clavier zooment ; changée vue ouverte, appliquée aussitôt.
@@ -10281,9 +10283,11 @@ async function sectionSolZones(nav) {
 }
 
 // Page sur le relevé fictif vidé, vue 3D chargée, multi-niveau (sols et hauteurs `sols`, `hauteurs`) ; `prep(P)` pose
-// les objets FICTIFS en mémoire (P(x, z) : m depuis le centre de l'image → px). Rend { ctx, page, erreurs }.
-async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep) {
-  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+// les objets FICTIFS en mémoire (P(x, z) : m depuis le centre de l'image → px). `contexte` : options du contexte en
+// plus (appareil émulé, descripteur Playwright). Rend { ctx, page, erreurs }.
+async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep, contexte) {
+  const ctx = await nav.newContext(Object.assign({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" },
+    contexte || {}));
   const page = await ctx.newPage();
   const erreurs = [];
   page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
@@ -10347,6 +10351,203 @@ async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep) {
   await page.evaluate(prep);
   await page.evaluate(function () { window.KtaGalerie.invalider(); });
   return { ctx: ctx, page: page, erreurs: erreurs };
+}
+
+// ── 59. Mini-carte et bandeau de guidage au téléphone (vue3d.js > _majSousHaut, _majMiniCarteCote, ResizeObserver de
+// _brancher ; css/vue3d.css > .kta-v3d-mc-cote ; KTA_V3D_SEUL=mcbandeau) ─────────────────────────────────────────────
+// iPhone émulé (descripteurs Playwright, iPhone SE et iPhone 15 couchés), plan FICTIF en mémoire, itinéraire guidé.
+// Paysage bas : mini-carte à droite du bandeau, à sa hauteur, sans chevauchement, ni l'un ni l'autre sur la rangée du
+// haut ni sur les commandes du bas ; cachée : bandeau à sa pleine largeur ; agrandie : bandeau à sa pleine largeur,
+// mini-carte centrée dessous. Paysage → portrait, deux images plus tard, même consigne : mini-carte sous le bandeau.
+// Bandeau qui grandit sans redimensionnement de la fenêtre : la mini-carte descend (l'observateur), puis remonte.
+// Portrait et PC : mini-carte 8 px sous le bandeau, à 10 px du bord droit, bandeau à sa largeur (non-régression).
+// Ouvrir / fermer deux fois : un seul ResizeObserver branché, aucun après la fermeture.
+// KTA_V3D_CAPTURES : captures et relevé des positions (mcbandeau-<moteur>-releve.json, comparaison avant / après).
+function _rectsChevauchent(a, b) {
+  return !!a && !!b && a.l < b.r - 0.5 && b.l < a.r - 0.5 && a.t < b.b - 0.5 && b.t < a.b - 0.5;
+}
+
+async function sectionMiniCarteBandeau(nav) {
+  const nom = "§ 59 ", chev = _rectsChevauchent;
+  console.log("§ 59 — mini-carte et bandeau de guidage au téléphone");
+  const devices = require("playwright").devices, moteur = nav.browserType().name();
+  const cas = [{ d: "iPhone SE landscape", p: "iPhone SE", cap: "iphone-se" },
+    { d: "iPhone 15 landscape", p: "iPhone 15", cap: "iphone-15" }];
+  const releve = {};
+  for (const c of cas) {
+    const desc = Object.assign({}, devices[c.d]);
+    delete desc.defaultBrowserType;
+    const t = await pageNiveauxFictifs(nav, "v3d-checkup-mcbandeau", [-1, 0], { "0": -25, "-1": -29 },
+      { "0": 2.5, "-1": 2.5 }, function () {
+        const P = window.__fxP;
+        window.setRoads([
+          { uid: "rd_mcb_0", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] },
+          { uid: "rd_mcb_n", type: "secondaire", level: 0, points: [P(0, 0), P(0, -30)] }
+        ]);
+        localStorage.removeItem("myktamap_v3d_minicarte_v1");
+        try { localStorage.removeItem("myktamap_guidage_v1"); } catch (err) { /* réglage par défaut */ }
+        // « ResizeObserver loop… » : un événement `error` de la fenêtre, pas toujours une erreur de page.
+        window.__mcbBoucles = [];
+        window.addEventListener("error", function (ev) {
+          if (/ResizeObserver/i.test(String(ev.message))) window.__mcbBoucles.push(String(ev.message));
+        });
+        const R = function (el) {
+          const r = el.getBoundingClientRect();
+          return { l: +r.left.toFixed(1), t: +r.top.toFixed(1), r: +r.right.toFixed(1), b: +r.bottom.toFixed(1),
+            w: +r.width.toFixed(1), h: +r.height.toFixed(1) };
+        };
+        const vu = function (el) { return !!el && !el.hidden && el.getClientRects().length > 0; };
+        window.__mcbMesure = function () {
+          const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+          const mc = q(".kta-v3d-minicarte"), ba = q(".kta-v3d-bandeau"), et = window.KtaVue3D.etat();
+          const tous = function (s) { return Array.prototype.filter.call(document.querySelectorAll(s), vu).map(R); };
+          return { vw: window.innerWidth, vh: window.innerHeight, mc: vu(mc) ? R(mc) : null, ba: vu(ba) ? R(ba) : null,
+            haut: tous("#kta-vue3d .kta-v3d-haut > *"),
+            commandes: tous("#kta-vue3d .kta-v3d-pad, #kta-vue3d .kta-v3d-boussole, #kta-vue3d .kta-v3d-mode-indic, " +
+              "#kta-vue3d .kta-v3d-stick, #kta-vue3d .kta-v3d-niveaux"),
+            cle: et.bandeau ? JSON.stringify(et.bandeau) : "",
+            grande: !!(et.miniCarte && et.miniCarte.grande), cote: et.miniCarte ? et.miniCarte.cote : null };
+        };
+        window.__mcbImages = async function (n) {
+          for (let i = 0; i < n; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+        };
+        window.__mcbBasculer = async function () {
+          const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+          if (q("#kta-v3d-reglages").hidden) q('[data-v3d="reglages"]').click();
+          q('[data-v3d="miniCarte"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 9 }));
+          q('[data-v3d="reglages"]').click();
+          await window.__mcbImages(4);
+        };
+        window.__mcbToucher = async function () {
+          document.querySelector("#kta-vue3d .kta-v3d-minicarte").click();
+          await new Promise(function (ok) { setTimeout(ok, 400); });
+          return window.__mcbMesure();
+        };
+      }, desc);
+    const page = t.page, lib = nom + c.cap + " (" + moteur + ") : ", consoleRO = [];
+    page.on("console", function (m) { if (/ResizeObserver/i.test(m.text())) consoleRO.push(m.text()); });
+    try {
+      const p = await page.evaluate(async function () {
+        const P = window.__fxP;
+        const wps = [Object.assign({ source: "search", label: "Départ" }, P(-20, 0), { level: 0 }),
+          Object.assign({ source: "search", label: "Cible fictive" }, P(0, -25), { level: 0 })];
+        const res = await window.Pathfinder.computeRoute(wps, {});
+        window.itineraireActiverRoad({ type: "itinerary", points: res.path, waypoints: wps,
+          raccords: res.raccords || [], carrefours: res.carrefours || [] });
+        await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+        await new Promise(function (ok) { setTimeout(ok, 1500); });
+        await window.__fxImages(10);
+        return window.__mcbMesure();
+      });
+      // ── Paysage bas : mini-carte à droite du bandeau, à sa hauteur ──
+      await capture(page, "mcbandeau-" + moteur + "-" + c.cap + "-paysage");
+      // Bandeau en content-box : max-width 520 px + marges intérieures (2 × 12) + liseré (2 × 1) = 546 px de boîte.
+      const BOITE = 546, pleine = Math.min(BOITE, p.vw - 20);
+      const surAutre = function (m, r) {
+        const sur = function (k) { return chev(k, r); };
+        return m.haut.some(sur) || m.commandes.some(sur);
+      };
+      verifier(!!p.ba && !!p.mc && p.mc.l >= p.ba.r + 0.5 && !chev(p.mc, p.ba) && !surAutre(p, p.mc) &&
+        !surAutre(p, p.ba) && Math.abs(p.ba.t - p.mc.t) <= 1 && p.mc.b <= p.vh && p.mc.w >= 64,
+        lib + "paysage : mini-carte à droite du bandeau, à sa hauteur (" + Math.round(p.mc ? p.mc.w : 0) + " px), " +
+        "sans chevauchement, ni sur la rangée du haut ni sur les commandes du bas", p);
+      const place = p.mc ? p.vw - 20 - p.mc.w - 10 : 0;
+      verifier(!!p.ba && Math.abs((p.ba.l + p.ba.r) / 2 - (10 + place / 2)) <= 1.5 &&
+        Math.abs(p.ba.w - Math.min(BOITE, place)) <= 1,
+        lib + "paysage : bandeau centré dans la place laissée (" + Math.round(place) + " px), 520 px de texte au plus",
+        p.ba);
+      // ── Mini-carte cachée : le bandeau reprend sa pleine largeur ──
+      await page.evaluate(function () { return window.__mcbBasculer(); });
+      const pc = await page.evaluate(function () { return window.__mcbMesure(); });
+      verifier(!pc.mc && !!pc.ba && Math.abs(pc.ba.w - pleine) <= 1 &&
+        Math.abs((pc.ba.l + pc.ba.r) / 2 - pc.vw / 2) <= 1,
+        lib + "paysage, mini-carte cachée : bandeau à sa pleine largeur (" + pleine + " px), centré", pc.ba);
+      await page.evaluate(function () { return window.__mcbBasculer(); });
+      // ── Agrandie en paysage : bandeau à sa pleine largeur, mini-carte centrée dessous ──
+      const pg = await page.evaluate(function () { return window.__mcbToucher(); });
+      verifier(pg.grande && !!pg.ba && !!pg.mc && Math.abs(pg.ba.w - pleine) <= 1 && pg.mc.t >= pg.ba.b &&
+        Math.abs((pg.mc.l + pg.mc.r) / 2 - pg.vw / 2) <= 1,
+        lib + "paysage, agrandie : bandeau à sa pleine largeur, mini-carte centrée dessous", pg);
+      await page.evaluate(function () { return window.__mcbToucher(); });
+      // ── Paysage → portrait : deux images plus tard, même consigne, mini-carte sous le bandeau ──
+      const vp = devices[c.p].viewport;
+      const avant = await page.evaluate(function () { return window.__mcbMesure(); });
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const rot = await page.evaluate(async function () {
+        await window.__mcbImages(2);
+        return window.__mcbMesure();
+      });
+      verifier(rot.cle === avant.cle && !!rot.ba && !!rot.mc && rot.mc.t >= rot.ba.b + 0.5,
+        lib + "paysage → portrait, deux images plus tard, même consigne : mini-carte sous le bandeau (bas du " +
+        "bandeau " + (rot.ba ? rot.ba.b : "?") + ", haut de la mini-carte " + (rot.mc ? rot.mc.t : "?") + ")", rot);
+      await page.waitForTimeout(600);
+      // ── Portrait : mini-carte 8 px sous le bandeau, à 10 px du bord droit ──
+      const po = await page.evaluate(function () { return window.__mcbMesure(); });
+      await capture(page, "mcbandeau-" + moteur + "-" + c.cap + "-portrait");
+      verifier(!!po.ba && !!po.mc && Math.abs(po.mc.t - (po.ba.b + 8)) <= 1.5 && Math.abs(po.vw - po.mc.r - 10) <= 1 &&
+        Math.abs(po.ba.w - Math.min(BOITE, po.vw - 20)) <= 1,
+        lib + "portrait : mini-carte 8 px sous le bandeau, à 10 px du bord, bandeau à sa largeur", po);
+      // Bandeau qui grandit sans redimensionnement de la fenêtre (consigne plus longue) : l'observateur le voit.
+      const gr = await page.evaluate(async function () {
+        const ba = document.querySelector("#kta-vue3d .kta-v3d-bandeau"), cale = document.createElement("div");
+        cale.style.cssText = "flex: 1 0 100%; height: 48px;";
+        ba.appendChild(cale);
+        await window.__mcbImages(2);
+        const m = window.__mcbMesure();
+        cale.remove();
+        await window.__mcbImages(2);
+        return { grandi: m, rendu: window.__mcbMesure() };
+      });
+      verifier(gr.grandi.mc.t >= gr.grandi.ba.b + 0.5 && Math.abs(gr.rendu.mc.t - (gr.rendu.ba.b + 8)) <= 1.5,
+        lib + "bandeau grandi de 48 px sans redimensionnement de la fenêtre : la mini-carte descend, puis remonte", gr);
+      // ── Agrandie en portrait : centrée entre le bandeau et les commandes du bas ──
+      const pa = await page.evaluate(function () { return window.__mcbToucher(); });
+      verifier(pa.grande && !!pa.mc && !chev(pa.mc, pa.ba) && pa.mc.t >= pa.ba.b && pa.mc.b <= pa.vh &&
+        !pa.commandes.some(function (k) { return chev(k, pa.mc); }) &&
+        Math.abs((pa.mc.l + pa.mc.r) / 2 - pa.vw / 2) <= 1,
+        lib + "portrait, agrandie : centrée entre le bandeau et les commandes du bas", pa);
+      await page.evaluate(function () { return window.__mcbToucher(); });
+      releve[c.cap] = { paysage: p, cachee: pc, agrandiePaysage: pg, portrait: po, agrandiePortrait: pa };
+      // ── PC (une fois) : mini-carte sous le bandeau, bandeau à 520 px ──
+      if (c === cas[0]) {
+        await page.setViewportSize({ width: 1200, height: 800 });
+        await page.waitForTimeout(400);
+        const pcv = await page.evaluate(function () { return window.__mcbMesure(); });
+        verifier(!!pcv.ba && !!pcv.mc && Math.abs(pcv.mc.t - (pcv.ba.b + 8)) <= 1.5 &&
+          Math.abs(pcv.ba.w - BOITE) <= 1 &&
+          Math.abs(pcv.vw - pcv.mc.r - 10) <= 1,
+          nom + "PC (" + moteur + ") : mini-carte 8 px sous le bandeau, bandeau à sa largeur (520 px de texte)", pcv);
+        releve.pc = pcv;
+      }
+      // ── Ouvrir / fermer deux fois : un seul ResizeObserver branché, aucun après la fermeture ──
+      const obs = await page.evaluate(async function () {
+        const K = window.KtaVue3D, r = [];
+        for (let i = 0; i < 2; i++) {
+          await K.fermer();
+          r.push(K.etat().observateursTaille);
+          await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+          r.push(K.etat().miniCarte.observateurs);
+        }
+        await K.fermer();
+        r.push(K.etat().observateursTaille);
+        return r;
+      });
+      verifier(obs.join(",") === "0,1,0,1,0", lib + "ouvrir / fermer deux fois : un ResizeObserver branché, aucun " +
+        "après la fermeture (" + obs.join(",") + ")", obs);
+      const boucles = await page.evaluate(function () { return window.__mcbBoucles; });
+      verifier(boucles.length === 0 && consoleRO.length === 0, lib + "aucune boucle « ResizeObserver loop »",
+        boucles.concat(consoleRO).slice(0, 3));
+      verifier(t.erreurs.length === 0, lib + "aucune erreur de page", t.erreurs.slice(0, 3));
+    } catch (err) {
+      pb(lib + "exception du harnais : " + (err && err.message));
+    } finally {
+      await t.ctx.close();
+    }
+  }
+  if (CAPTURES) {
+    require("fs").writeFileSync(path.join(CAPTURES, "mcbandeau-" + moteur + "-releve.json"),
+      JSON.stringify(releve, null, 1));
+  }
 }
 
 // ── 58. Jeu (add-on mkmg) : B sur un autre niveau (coeur.js > _nouvelleVague ; KTA_V3D_SEUL=mkmgniveaux) ─────────────
@@ -13569,7 +13770,7 @@ async function sectionCaseBoutonsZoom(nav) {
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "puits-ciel" ||
       SEUL === "jonction-tremie" ||
       SEUL === "jonction-piliers" || SEUL === "caseZoom" ||
-      SEUL === "minicarte" || SEUL === "menusHaut" || SEUL === "mkmgniveaux") {
+      SEUL === "minicarte" || SEUL === "mcbandeau" || SEUL === "menusHaut" || SEUL === "mkmgniveaux") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -20008,6 +20209,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "jonction-piliers") await sectionJonctionPiliers(nav);
     if (!SEUL || SEUL === "caseZoom") await sectionCaseBoutonsZoom(nav);
     if (!SEUL || SEUL === "minicarte") await sectionMiniCarte(nav);
+    if (!SEUL || SEUL === "mcbandeau") await sectionMiniCarteBandeau(nav);
     if (!SEUL || SEUL === "menusHaut") await sectionMenusHaut(nav);
     if (!SEUL || SEUL === "mkmgniveaux") await sectionMkmgNiveaux(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures

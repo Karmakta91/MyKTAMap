@@ -10871,7 +10871,12 @@
   // false })). Toucher = agrandie au centre de l'écran (sous le bandeau), toucher encore = refermée ; pincer ou la molette = rayon
   // montré (MINI_CARTE.min / max) ; aucun geste posé sur elle n'atteint la scène (_brancherMiniCarte).
   // ⚠️ contrat (css/vue3d.css) : posée sous --kta-v3d-sous-haut (rangée du haut ET bandeau de guidage visible,
-  // _majSousHaut) ; sa taille cède à la hauteur qui reste, elle ne recouvre jamais le bandeau.
+  // _majSousHaut) ; sa taille cède à la hauteur qui reste, elle ne recouvre jamais le bandeau. En paysage bas, montrée
+  // et pas agrandie (classe kta-v3d-mc-cote sur la vue, _majMiniCarteCote) : sous la rangée seule
+  // (--kta-v3d-sous-rangee), à DROITE du bandeau, qui se rétrécit pour lui laisser la place.
+  // 🩸 Ces deux variables suivent la taille de la rangée et du bandeau par un ResizeObserver (_brancher), pas
+  // seulement `resize` : sur iOS, `resize` part avant la remise en page d'une rotation (bandeau encore à sa hauteur
+  // de paysage), et la mini-carte restait sur le bandeau jusqu'à la consigne suivante.
   // Coût : le FOND (zones, structures, tracés, POI) est dessiné une fois dans un canvas hors écran, une fenêtre de
   // MINI_CARTE.fenetre rayons autour de la place, à la résolution du médaillon, déjà tourné vers le nord : refait au
   // changement de niveau, de filtres, de données ou de légende (_reindexer), de nord, de rayon ou de taille, ou quand
@@ -10887,6 +10892,7 @@
   const MINI_CARTE = { rayon: 30, min: 10, max: 100, grande: 2, fenetre: 3, ms: 100, bouge: 0.3, densite: 2,
     fondMax: 2048, cone: 35, traitM: 1, traitPx: 1.5, poiPx: 8, voisinAlpha: 0.35 };
   let _rayonMiniCarte = MINI_CARTE.rayon;   // retenu tant que la page vit (vue refermée puis rouverte)
+  let _observateursTaille = 0;              // ResizeObserver de la rangée et du bandeau branchés (checkup : 0 fermée)
   const _iconesMiniCarte = new Map();       // url → Image (icônes des POI, chargées une fois)
 
   function _monterMiniCarte(ov) {
@@ -10947,7 +10953,17 @@
     if (!oui && e.mc.grande) _agrandirMiniCarte(false);
     e.mc.el.hidden = !oui;
     e.mc.sale = true;
+    _majMiniCarteCote();
     return oui;
+  }
+
+  // Classe kta-v3d-mc-cote sur la vue : mini-carte montrée et pas agrandie (css/vue3d.css, paysage bas : bandeau
+  // rétréci, mini-carte à sa droite). La hauteur du bandeau qui en change est relue par le ResizeObserver (_brancher).
+  function _majMiniCarteCote() {
+    const m = _e && _e.mc, vue = m && m.el.parentNode;
+    if (!vue) return;
+    vue.classList.toggle("kta-v3d-mc-cote", !m.el.hidden && !m.grande);
+    _majSousHaut();
   }
 
   function _basculerMiniCarte() {
@@ -10967,6 +10983,7 @@
     m.el.classList.toggle("kta-v3d-minicarte-grande", v);
     m.sale = true;
     _majLibelleMiniCarte();
+    _majMiniCarteCote();
     return v;
   }
 
@@ -11391,7 +11408,9 @@
       voisins: fm.filter(function (f) { return f.voisin; }).map(function (f) { return f.voisin; }),
       iti: e.mcIti ? { morceaux: e.mcIti.morceaux.length, marques: e.mcIti.marques.length,
         cible: !!_pointItiMiniCarte(e.mcCible) } : null,
-      boite: { x: r.left, y: r.top, w: r.width, h: r.height } };
+      boite: { x: r.left, y: r.top, w: r.width, h: r.height },
+      cote: !!m.el.parentNode && m.el.parentNode.classList.contains("kta-v3d-mc-cote"),
+      observateurs: _observateursTaille };
   }
 
   // Guidage montré ou coupé en 3D (config.js > getVue3DGuidage) : relu au prochain passage de _majGuidage.
@@ -11489,17 +11508,27 @@
     }
   }
 
-  // Bas de la rangée du haut (et du bandeau s'il est montré), en px, posé sur <html> : css/vue3d.css y descend la
-  // pile des toasts de l'app pendant la vue. Refait au redimensionnement et à chaque ouverture / fermeture d'un
-  // réglage ou du bandeau.
+  // Bas de la rangée du haut (et du bandeau s'il est montré), en px, posé sur <html> : --kta-v3d-sous-haut, sous
+  // lequel css/vue3d.css descend la mini-carte, la fiche, le joystick et la pile des toasts de l'app pendant la vue ;
+  // --kta-v3d-sous-rangee : sous la rangée seule (mini-carte à droite du bandeau, paysage bas). Refait par le
+  // ResizeObserver de la rangée et du bandeau (_brancher), au redimensionnement et à chaque ouverture / fermeture
+  // d'un réglage ou du bandeau.
+  // 🩸 N'écrit que `top` du bandeau et des variables qui ne changent ni sa taille ni celle de la rangée (la largeur
+  // du bandeau suit la mini-carte, dont la taille dépend de la rangée seule) : pas de boucle de l'observateur.
   function _majSousHaut() {
     const e = _e;
     if (!e || !e.haut) return;
-    let bas = e.haut.getBoundingClientRect().bottom;
+    const rangee = e.haut.getBoundingClientRect().bottom;
+    let bas = rangee;
     // 🩸 Le bandeau se place sous la rangée seule : posé sous --kta-v3d-sous-haut, qui le compte, il descendrait
     // d'autant à chaque appel.
-    if (e.bandeau) e.bandeau.style.top = Math.round(bas - e.ov.getBoundingClientRect().top + 8) + "px";
+    if (e.bandeau) e.bandeau.style.top = Math.round(rangee - e.ov.getBoundingClientRect().top + 8) + "px";
     if (e.bandeau && !e.bandeau.hidden) bas = Math.max(bas, e.bandeau.getBoundingClientRect().bottom);
+    const r = Math.round(rangee + 8) + "px";
+    if (r !== e.sousRangee) {
+      e.sousRangee = r;
+      document.documentElement.style.setProperty("--kta-v3d-sous-rangee", r);
+    }
     const v = Math.round(bas + 8) + "px";
     if (v === e.sousHaut) return;
     e.sousHaut = v;
@@ -12133,6 +12162,14 @@
     }, true);
     on(window, "blur", function () { relacher(); _lacherStick(); });
     on(window, "resize", function () { _majSousHaut(); });
+    // Rangée du haut et bandeau suivis en taille (rotation, consigne plus longue, rangée sur deux lignes) : voir
+    // l'en-tête de la mini-carte. Débranché par _demonter.
+    if (typeof ResizeObserver === "function") {
+      e.observateurTaille = new ResizeObserver(function () { _majSousHaut(); });
+      e.observateurTaille.observe(e.haut);
+      if (e.bandeau) e.observateurTaille.observe(e.bandeau);
+      _observateursTaille++;
+    }
     // Filtres de la carte changés (ici ou en 2D) : la scène est refaite à l'image suivante, une fois même si
     // plusieurs cases changent d'un coup (« Tout masquer »).
     if (window.FilterPanel && typeof window.FilterPanel.onChange === "function") {
@@ -12637,11 +12674,13 @@
     if (e.rendreRecherche) e.rendreRecherche();
     // Place libre retirée : l'équipe revoit la position du tracker (ou le partage tel qu'avant la 3D).
     if (e.publiee) { e.publiee = null; _prisePresence(null); }
+    if (e.observateurTaille) { e.observateurTaille.disconnect(); e.observateurTaille = null; _observateursTaille--; }
     _quitterDessin();
     _fermerFiche();
     _libererMiniCarte();
     document.documentElement.classList.remove("kta-vue3d-ouverte");
     document.documentElement.style.removeProperty("--kta-v3d-sous-haut");
+    document.documentElement.style.removeProperty("--kta-v3d-sous-rangee");
     if (e.renderer) {
       e.tuiles.forEach(_libererTuile);
       (e.volPassages || []).forEach(_libererVolume);
@@ -12813,7 +12852,7 @@
   function etat(o) {
     if (!_e) {
       return { ouvert: false, contexteLibere: _dernierGl ? _dernierGl.isContextLost() : null,
-        fermeture: _derniereFermeture };
+        fermeture: _derniereFermeture, observateursTaille: _observateursTaille };
     }
     const e = _e, info = e.renderer.info, lv = _lampeEnVigueur();
     let construites = 0, visibles = 0;
