@@ -386,18 +386,20 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
 /* ⚠️ contrat (décision produit) : en paysage bas, mini-carte montrée et pas agrandie (classe kta-v3d-mc-cote sur la
    vue, vue3d.js > _majMiniCarteCote), elle se pose sous la rangée du haut SEULE (--kta-v3d-sous-rangee), à hauteur
    du bandeau, et le bandeau lui laisse la droite : `right` = sa largeur + 20 px, centré dans la place qui reste,
-   520 px au plus. Sa taille se calcule sous la rangée (un bandeau qui grandit ne la rétrécit plus), avec la même
-   réserve de 220 px pour les commandes du bas. Sans mini-carte, le bandeau garde toute sa largeur. Garde-fou :
-   scripts/smoke/checkup-vue-3d.js > sectionMiniCarteBandeau. */
+   520 px au plus. Sa taille se calcule sous la rangée (un bandeau qui grandit ne la rétrécit plus) : 30 % du petit
+   côté, 130 à 150 px, réduite à la hauteur qui reste au-dessus d'une réserve de 150 px pour les commandes du bas
+   (pavé au milieu, boussole à gauche : rien sous la mini-carte à droite). 🩸 La réserve de 220 px et le plancher de
+   96 px du cas général la ramenaient à 64 px sur un petit téléphone couché. Sans mini-carte, le bandeau garde toute
+   sa largeur. Garde-fou : scripts/smoke/checkup-vue-3d.js > sectionMiniCarteBandeau. */
 @media (max-height: 500px) and (orientation: landscape) {
   .kta-vue3d.kta-v3d-mc-cote {
-    --kta-v3d-mc-cote: max(64px, min(clamp(96px, 30vmin, 150px),
-      calc(100vh - var(--kta-v3d-sous-rangee, 80px) - 220px)));
+    --kta-v3d-mc-cote: max(64px, min(clamp(130px, 30vmin, 150px),
+      calc(100vh - var(--kta-v3d-sous-rangee, 80px) - 150px)));
   }
   @supports (height: 100dvh) {
     .kta-vue3d.kta-v3d-mc-cote {
-      --kta-v3d-mc-cote: max(64px, min(clamp(96px, 30vmin, 150px),
-        calc(100dvh - var(--kta-v3d-sous-rangee, 80px) - 220px)));
+      --kta-v3d-mc-cote: max(64px, min(clamp(130px, 30vmin, 150px),
+        calc(100dvh - var(--kta-v3d-sous-rangee, 80px) - 150px)));
     }
   }
   .kta-vue3d.kta-v3d-mc-cote .kta-v3d-minicarte {

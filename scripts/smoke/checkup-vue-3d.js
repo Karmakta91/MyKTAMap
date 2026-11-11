@@ -10404,7 +10404,8 @@ async function sectionMiniCarteBandeau(nav) {
           return { vw: window.innerWidth, vh: window.innerHeight, mc: vu(mc) ? R(mc) : null, ba: vu(ba) ? R(ba) : null,
             haut: tous("#kta-vue3d .kta-v3d-haut > *"),
             commandes: tous("#kta-vue3d .kta-v3d-pad, #kta-vue3d .kta-v3d-boussole, #kta-vue3d .kta-v3d-mode-indic, " +
-              "#kta-vue3d .kta-v3d-stick, #kta-vue3d .kta-v3d-niveaux"),
+              "#kta-vue3d .kta-v3d-stick, #kta-vue3d .kta-v3d-niveaux, #kta-vue3d .kta-v3d-incl, " +
+              "#kta-vue3d .kta-v3d-place, #kta-vue3d .kta-v3d-mesure"),
             cle: et.bandeau ? JSON.stringify(et.bandeau) : "",
             grande: !!(et.miniCarte && et.miniCarte.grande), cote: et.miniCarte ? et.miniCarte.cote : null };
         };
@@ -10451,6 +10452,11 @@ async function sectionMiniCarteBandeau(nav) {
         !surAutre(p, p.ba) && Math.abs(p.ba.t - p.mc.t) <= 1 && p.mc.b <= p.vh && p.mc.w >= 64,
         lib + "paysage : mini-carte à droite du bandeau, à sa hauteur (" + Math.round(p.mc ? p.mc.w : 0) + " px), " +
         "sans chevauchement, ni sur la rangée du haut ni sur les commandes du bas", p);
+      // Réserve des commandes du bas propre au paysage bas (css/vue3d.css > .kta-v3d-mc-cote) : assez petite pour une
+      // mini-carte lisible, assez grande pour ne recouvrir aucune commande (vérifié juste au-dessus).
+      verifier(!!p.mc && p.mc.w >= 100 && p.mc.h >= 100 && p.commandes.length >= 2,
+        lib + "paysage : mini-carte d'au moins 100 px (" + Math.round(p.mc ? p.mc.w : 0) + " px), " +
+        p.commandes.length + " commandes du bas mesurées", { mc: p.mc, commandes: p.commandes });
       const place = p.mc ? p.vw - 20 - p.mc.w - 10 : 0;
       verifier(!!p.ba && Math.abs((p.ba.l + p.ba.r) / 2 - (10 + place / 2)) <= 1.5 &&
         Math.abs(p.ba.w - Math.min(BOITE, place)) <= 1,

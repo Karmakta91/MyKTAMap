@@ -2433,8 +2433,10 @@ icônes.
   chevauchement. **Paysage bas** (`max-height: 500px` en paysage), montrée et pas agrandie (classe
   `kta-v3d-mc-cote` sur la vue, `_majMiniCarteCote`) : posée sous la rangée **seule** (`--kta-v3d-sous-rangee`), à
   hauteur du bandeau, à sa **droite** ; le bandeau prend `right` = largeur de la mini-carte + 20 px (centré dans la
-  place qui reste, 520 px de texte au plus) et sa taille se calcule sous la rangée (100 vh − `--kta-v3d-sous-rangee`
-  − 220 px). Cachée ou agrandie : le bandeau garde toute sa largeur (`checkup-vue-3d.js` § 59).
+  place qui reste, 520 px de texte au plus) et sa taille se calcule sous la rangée : 30 % du petit côté, 130 à 150 px,
+  réduite à 100 vh − `--kta-v3d-sous-rangee` − 150 px (réserve des commandes du bas propre au paysage bas : pavé au
+  milieu, boussole à gauche, rien sous la mini-carte) ; 120 px à 667 × 320 et 130 px à 734 × 343, sans chevauchement.
+  Cachée ou agrandie : le bandeau garde toute sa largeur (`checkup-vue-3d.js` § 59).
   Pas de conflit avec la colonne d'outils : la mini-carte est **masquée en vue d'édition**. Contenu, orientation et
   coût : `tracking.md` § Vue 3D › Mini-carte. **Toucher** = agrandie (`.kta-v3d-minicarte-grande`) au centre de la
   place entre le bandeau et les commandes du bas (86 vw, 480 px au plus), liseré plein ; toucher encore = refermée ;
