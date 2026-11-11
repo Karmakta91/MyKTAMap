@@ -46,7 +46,7 @@
   · taille: S`
 - **Essai sur dev : chatière, galerie inclinée, menu des sommets, jeu** — `1147b92e` « Refaire » une chatière ;
   `04efcd48` galerie inclinée en édition 3D ; `4ce78f12` menu au sommet en icônes au trait ; `93759be9` jeu caché
-  multi-niveau ; `61a8bd33` mini-carte 3D après rotation et à droite du guidage en paysage. Prouvés par checkups.
+  multi-niveau ; `61a8bd33` + `fe52d9a4` mini-carte 3D (rotation, à droite du guidage, plus grande en paysage). Prouvés par checkups.
   `qui: KARMA · action: refaire une chatière ; vue d'édition 3D sur une galerie inclinée (capture si les murs se voient
   encore de l'extérieur en vue normale) · fini: vus conformes, ou bugs ouverts · depuis: 12/11/2026 · taille: XS`
 - **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
@@ -150,11 +150,11 @@
 
 ## Entrant
 
-- **Vue 3D : mini-carte plus grande en paysage bas** — la réserve de 220 px pour les commandes du bas laisse une
-  mini-carte de 64 à 73 px au téléphone en paysage ; piste : réserve à environ 150 px (100 à 130 px de mini-carte).
-  Accordé par KARMA (12/11, après la mise en prod de la v2.25.0).
-  `qui: Claude · action: réserve à environ 150 px en paysage bas, session Dev : 3d · fini: mini-carte de 100 px au
-  moins, aucun chevauchement, checkup 3D · depuis: 12/11/2026 · taille: XS`
+- **Vue 3D : Estomper aussi à hauteur d'yeux** — aujourd'hui il n'agit qu'en vue d'édition (fantôme du dessus à
+  0,16). QCM du 12/11 : lot A (XS) fantôme à 0,35, libellé et ligne d'Aide (« Actif seul » cache les autres niveaux) ;
+  lot B (M) galerie du dessus et du dessous en flou (plafond, sol) à hauteur d'yeux.
+  `qui: Claude · action: proposition du lot B, puis A et B après la mini-carte, session Debug · fini: dessus visible
+  estompé à hauteur d'yeux, checkup 3D, perf mesurée au téléphone · depuis: 12/11/2026 · taille: M`
 - **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
   d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
   `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
