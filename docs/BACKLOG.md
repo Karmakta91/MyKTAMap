@@ -14,8 +14,7 @@
   **Reclore le jour même.**
 - **Pilotage** (décisions KARMA du 12/11/2026) : au-delà de **3 tests KARMA en attente**, Claude n'ouvre pas de
   lot M ou L (XS / S, tests instables, ou feuille de test pour KARMA) · **`## Entrant` trié chaque lundi** : une
-  entrée de plus de 14 jours y passe en `## Ensuite` / `## Plus tard`, ou sort vers `IDEES.md` · **features 3D
-  gelées jusqu'à la prochaine mise en prod** (les bugs 3D restent traités).
+  entrée de plus de 14 jours y passe en `## Ensuite` / `## Plus tard`, ou sort vers `IDEES.md`.
 - **Tester sur appareil APRÈS un bump** : un téléphone garde l'ancien JS jusqu'au changement de `CACHE_NAME`. La
   validation iOS/Safari d'un changement de rendu vit dans `docs/RELEASE_GATE.md`.
 - **Format** (lu par `scripts/check-backlog.js`, avertissement au pre-commit, et par la vue du backlog) :
@@ -153,8 +152,9 @@
 
 - **Vue 3D : mini-carte plus grande en paysage bas** — la réserve de 220 px pour les commandes du bas laisse une
   mini-carte de 64 à 73 px au téléphone en paysage ; piste : réserve à environ 150 px (100 à 130 px de mini-carte).
-  Amélioration : après la prochaine mise en prod (gel des features 3D).
-  `qui: KARMA · action: dire oui ou non · depuis: 12/11/2026 · taille: XS`
+  Accordé par KARMA (12/11, après la mise en prod de la v2.25.0).
+  `qui: Claude · action: réserve à environ 150 px en paysage bas, session Dev : 3d · fini: mini-carte de 100 px au
+  moins, aucun chevauchement, checkup 3D · depuis: 12/11/2026 · taille: XS`
 - **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
   d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
   `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
