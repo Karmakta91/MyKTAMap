@@ -3289,12 +3289,16 @@
     return typeof window.getVue3DNiveauxVus === "function" ? window.getVue3DNiveauxVus() : "voisins";
   }
 
-  // Niveaux montrés en plus de celui de la scène (du plus haut au plus bas).
+  // Niveaux montrés en plus de celui de la scène (du plus haut au plus bas), sans ceux que le ≡ de la carte masque.
+  // 🩸 Un niveau masqué gardé ici restait un voisin VIDE (ses objets filtrés) qui comptait pour « un niveau du dessous
+  // montré » : sol du niveau actif voilé sur du noir (_maniereSol), grain presque effacé avec « Actif seul ».
   function _niveauxMontres() {
     const e = _e, l = _niveauxEdition(), i = l.indexOf(e.niveau);
     if (e.niveauxVus === "mien" || i < 0) return [];
-    if (e.niveauxVus === "tous") return l.filter(function (n) { return n !== e.niveau; });
-    return [l[i - 1], l[i + 1]].filter(Number.isInteger);
+    const vis = (window.APP_CONFIG || {}).visibleLevels;
+    const vu = function (n) { return n !== e.niveau && (!Array.isArray(vis) || vis.indexOf(n) >= 0); };
+    if (e.niveauxVus === "tous") return l.filter(vu);
+    return [l[i - 1], l[i + 1]].filter(Number.isInteger).filter(vu);
   }
 
   // Altitude (m) du sol du niveau n au-dessus de celui de la scène, et son côté (_auDessus : l'ordre de ▲▼).

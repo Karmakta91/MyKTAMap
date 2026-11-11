@@ -12080,6 +12080,152 @@ async function sectionSolVoile(nav) {
   }
 }
 
+// ── 57. Sol et structures d'un plan sans galeries, niveau masqué au ≡ (vue3d.js > _niveauxMontres, _maniereSol ;
+// KTA_V3D_SEUL=solfiltre) ───────────────────────────────────────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire, sans galerie sous les structures (un tracé par niveau, à 200 m) : piliers de 2e masse au 0
+// (calque), de 1re masse au +1 (calque), un mur du calque au 0 et sa copie de session SANS `level`. Vue d'édition au +1,
+// 🧱 et 🌫️ allumés : Voisins = sol voilé (le 0 montré dessous, contrat § 49) ; ≡ « Actif seul » (niveau 0 masqué) =
+// plus aucun voisin, sol PLEIN et texturé, aussi lumineux qu'en « Le mien » (rouge sans le correctif : voisin vide
+// gardé, sol voilé sur du noir). Hauteur d'yeux et vue d'édition, mixte et structures, au 0 et au +1 : sol à 0 sous
+// un endroit libre, piliers et mur (copie sans niveau comprise) touchés au ras du sol (base posée sur le sol).
+async function sectionSolFiltreNiveau(nav) {
+  const nom = "§ 57 ";
+  console.log("§ 57 — sol et structures sans galeries, niveau masqué au ≡");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-solfiltre", [0, 1], { "1": -25, "0": -30 },
+    { "1": 2.5, "0": 2.5 }, function () {
+      const P = window.__fxP;
+      const carre = function (x, z, c) { return [P(x - c, z - c), P(x + c, z - c), P(x + c, z + c), P(x - c, z + c)]; };
+      const emb = [];
+      for (let x = -24; x <= 24; x += 8) {
+        for (let z = -24; z <= 24; z += 8) {
+          emb.push({ uid: "st_sf_2_" + x + "_" + z, type: "pilier-2", level: 0, layerId: "lc_sf", points: carre(x, z, 1.5) });
+          emb.push({ uid: "st_sf_1_" + x + "_" + z, type: "pilier-1", level: 1, layerId: "lc_sf",
+            points: carre(x + 4, z + 4, 1.2) });
+        }
+      }
+      const mur = [P(32, 0), P(40, 0), P(40, 0.6), P(32, 0.6)];
+      emb.push({ uid: "st_sf_mur", type: "mur", level: 0, layerId: "lc_sf", points: mur });
+      window.getAllEmbeddedStructures = function () { return emb; };
+      window.getAllEmbeddedRoads = function () {
+        return [{ type: "principal", level: 0, layerId: "lc_sf", points: [P(200, 200), P(240, 200)] },
+          { type: "principal", level: 1, layerId: "lc_sf", points: [P(-200, -200), P(-240, -200)] }];
+      };
+      window.setStructures([{ uid: "st_sf_mur", type: "mur", _srcCalque: "mur", points: mur.slice() }]);
+    });
+  const page = t.page;
+  try {
+    await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); });
+    // Ouvre au +1 (ou `niveau`), cap nord, vue `vue`, rendu `rendu`, 🧱 allumé, réglage `vus` ; ≡ niveaux `visibles`.
+    const poser = function (a) {
+      return page.evaluate(async function (q) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG;
+        C.visibleLevels = q.visibles.slice();
+        await window.__fxOuvrir(4, 0, 0, q.niveau, q.rendu);
+        if (K.etat().eclairage.active.jour) K.reglerPleinJour(false);
+        if (!K.textures().actives) K.basculerTextures();
+        K.reglerNiveauxVus(q.vus);
+        if ((K.etat().vue === "plongee") !== (q.vue === "plongee")) K.basculerVue();
+        if (q.vue === "plongee") K.zoomer(30 / K.etat().portee.recul);
+        await window.__fxImages(60);
+        return window.__sfLire();
+      }, a);
+    };
+    await page.evaluate(function () {
+      const P = window.__fxP;
+      // Sol sous l'endroit libre (4, −2) et ce que touche un rayon au ras du sol (5 cm) vers un pilier ou le mur.
+      const ras = function (x, z, dir) {
+        const d = P(x, z), r = window.KtaVue3D.rayon(d.x, d.y, 0.05, dir);
+        return r && r.vu ? { mat: r.vu.mat, dist: +r.vu.dist.toFixed(2) } : null;
+      };
+      window.__sfLire = function () {
+        const K = window.KtaVue3D, e = K.etat(), d = P(4, -2), h = e.hauteur;   // libre, hors avatar
+        const bas = K.rayon(d.x, d.y, h - 0.1, [0, -1, 0]);
+        return { niveau: e.niveau, vue: e.vue, rendu: e.rendu, maniere: e.profondeur.maniereSol,
+          solMat: e.profondeur.solMat, voisins: e.voisins.niveaux.map(function (v) { return v.niveau; }),
+          sol: bas && bas.vu ? { mat: bas.vu.mat, y: +(h - 0.1 - bas.vu.dist).toFixed(3) } : null,
+          pilier0: ras(4, 0, [-1, 0, 0]), pilier1: ras(4, 0, [0, 0, 1]), mur: ras(36, 3, [0, 0, -1]) };
+      };
+    });
+    const lum = async function () {
+      await page.waitForTimeout(300);
+      const b64 = (await page.screenshot({ type: "png" })).toString("base64");
+      return page.evaluate(function (b) {
+        return new Promise(function (ok) {
+          const img = new Image();
+          img.onload = function () {
+            const c = document.createElement("canvas"), w = img.width, h = img.height;
+            c.width = w; c.height = h;
+            const g = c.getContext("2d");
+            g.drawImage(img, 0, 0);
+            const d = g.getImageData(Math.round(w * 0.2), Math.round(h * 0.55), Math.round(w * 0.6),
+              Math.round(h * 0.25)).data;
+            let s = 0, n = 0;
+            for (let i = 0; i < d.length; i += 4 * 5) { s += d[i] + d[i + 1] + d[i + 2]; n++; }
+            ok(+(s / n / 3).toFixed(1));
+          };
+          img.src = "data:image/png;base64," + b;
+        });
+      }, b64);
+    };
+    const TOUS = [0, 1];
+    // Voisins, tous niveaux visibles : sol voilé (contrat § 49), le 0 montré dessous.
+    const a = await poser({ niveau: 1, vue: "plongee", rendu: "structures", vus: "voisins", visibles: TOUS });
+    await capture(page, "solfiltre-voisins");
+    verifier(a.niveau === 1 && a.maniere === "voile" && a.voisins.indexOf(0) >= 0 && !!a.sol && a.sol.mat === "solVoile",
+      nom + "Voisins au +1 : le 0 montré dessous, sol voilé (contrat § 49)", a);
+    // ≡ « Actif seul » vue ouverte (filterPanel.js > lvl-active-only : visibleLevels, appliquerFiltreNiveau,
+    // _onLevelChange) : le 0 masqué n'est plus un voisin, sol plein.
+    const b = await page.evaluate(async function () {
+      const C = window.APP_CONFIG;
+      C.visibleLevels = [1];
+      if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+      if (typeof window._onLevelChange === "function") window._onLevelChange("visible", [1]);
+      await window.__fxImages(60);
+      return window.__sfLire();
+    });
+    const lb = await lum();
+    await capture(page, "solfiltre-actif-seul");
+    const c = await poser({ niveau: 1, vue: "plongee", rendu: "structures", vus: "mien", visibles: TOUS });
+    const lc = await lum();
+    verifier(b.voisins.length === 0 && b.maniere === "plein" && b.solMat.transparent === false &&
+      b.solMat.profondeur === true && !!b.sol && b.sol.mat === "sol" && Math.abs(b.sol.y) < 0.02,
+      nom + "≡ « Actif seul » vue ouverte : aucun voisin, sol du +1 plein et texturé à 0 m", b);
+    verifier(lc > 0 && lb >= lc * 0.85,
+      nom + "≡ « Actif seul » : sol aussi lumineux qu'en « Le mien » (" + lb + " / " + lc + ", jamais voilé sur du noir)",
+      { actifSeul: lb, mien: lc });
+    const d = await poser({ niveau: 1, vue: "plongee", rendu: "mixte", vus: "voisins", visibles: [1] });
+    verifier(d.voisins.length === 0 && d.maniere === "plein",
+      nom + "≡ « Actif seul » à l'ouverture, mixte : aucun voisin, sol plein", d);
+    const e = await poser({ niveau: 1, vue: "plongee", rendu: "structures", vus: "tous", visibles: [1] });
+    verifier(e.voisins.length === 0 && e.maniere === "plein", nom + "« Tous » + ≡ « Actif seul » : sol plein", e);
+    // Bases posées sur le sol, sans galerie dessous : 2 rendus × 2 vues × 2 niveaux.
+    const bases = [];
+    for (const rendu of ["structures", "mixte"]) {
+      for (const vue of ["yeux", "plongee"]) {
+        for (const niveau of [0, 1]) {
+          const r = await poser({ niveau: niveau, vue: vue, rendu: rendu, vus: "voisins", visibles: TOUS });
+          const solOk = !!r.sol && /^sol/.test(r.sol.mat || "") && Math.abs(r.sol.y) < 0.02;
+          const ok0 = niveau !== 0 || (!!r.pilier0 && r.pilier0.mat === "roche" && Math.abs(r.pilier0.dist - 2.5) < 0.05 &&
+            !!r.mur && r.mur.mat === "parpaing" && Math.abs(r.mur.dist - 2.4) < 0.05);
+          const ok1 = niveau !== 1 || (!!r.pilier1 && r.pilier1.mat === "roche" && Math.abs(r.pilier1.dist - 2.8) < 0.05);
+          bases.push({ rendu: rendu, vue: vue, niveau: niveau, ok: solOk && ok0 && ok1, sol: r.sol, p0: r.pilier0,
+            p1: r.pilier1, mur: r.mur });
+        }
+      }
+    }
+    const ko = bases.filter(function (q) { return !q.ok; });
+    verifier(ko.length === 0,
+      nom + "sans galerie, mixte et structures, yeux et édition, 0 et +1 : sol à 0 m, piliers et mur (copie de session " +
+      "sans niveau comprise) touchés au ras du sol", ko.length ? ko : bases.length);
+    await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); });
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 41. 🛡️ Limiter la portée (vue3d.js > limiterPortee, _limitee, _diagPlan ; config.js > getVue3DLimiterPortee) ───────
 // Pointeur fin (1200 × 800), relevé fictif vidé, 1 000 piliers fictifs en grille sur 320 × 320 m autour du centre (ils
 // débordent l'image : l'emprise du plan les compte). Case cochée par défaut (portée ≤ 100 m, recul ≤ 150 m, rayon
@@ -13262,6 +13408,7 @@ async function sectionCaseBoutonsZoom(nav) {
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
       SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
+      SEUL === "solfiltre" ||
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "puits-ciel" ||
       SEUL === "jonction-tremie" ||
       SEUL === "jonction-piliers" || SEUL === "caseZoom" ||
@@ -19695,6 +19842,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "voisinspassages") await sectionVoisinsPassages(nav);
     if (!SEUL || SEUL === "fantome") await sectionFantome(nav);
     if (!SEUL || SEUL === "solvoile") await sectionSolVoile(nav);
+    if (!SEUL || SEUL === "solfiltre") await sectionSolFiltreNiveau(nav);
     if (!SEUL || SEUL === "entremeles") await sectionEntremeles(nav);
     if (!SEUL || SEUL === "zonejonction") await sectionZoneJonction(nav);
     if (!SEUL || SEUL === "puits-dessus") await sectionPuitsDessus(nav);
