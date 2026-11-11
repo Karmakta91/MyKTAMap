@@ -131,11 +131,13 @@
   // de la galerie, joints de `joint` m, un claveau tous les `claveau` m d'extrados (impair, `min` à `max`) ; clé
   // plus profonde de `cle` m ; imposte de `imposte` m débordant de `deborde` ; piédroits d'au moins `piedMin` m de
   // haut : plus large que le ciel ne le permet, l'arc est surbaissé (demi-ellipse). Portée sous `porteeMin` : rien.
+  // Tympan : maçonnerie de même profondeur entre l'extrados, les piédroits, les parois et le ciel, faces reculées de
+  // `retrait` m sous celles des claveaux ; joints entre claveaux bouchés au fond par un mortier reculé de `fond` m.
   // Teinte (décision produit) : couleur de la légende (🧱 coupé) ou `pierre` (🧱 : calcaire chaud de la famille des
   // piliers texturés, accordé aux parois, jamais blanc neuf), nuancée par claveau.
   const ARC = { pied: 0.3, ep: 0.25, prof: 0.5, joint: 0.012, claveau: 0.32, min: 5, max: 15, cle: 0.04,
     imposte: 0.06, deborde: 0.03, piedMin: 0.6, porteeMin: 0.6, nuance: 0.1, mortier: 0.5, tube: 3,
-    pierre: "#b09872" };
+    retrait: 0.005, fond: 0.006, tympan: 0.94, pierre: "#b09872" };
   const LARGEUR_TRACE = 0.25;       // m
   // Itinéraire au sol (décision produit) : le dessin du trajet du jeu (addons/mkmg), à la couleur de l'itinéraire de
   // la carte (--kta-interaction ; le doré reste aux itinéraires publiés par l'équipe). Ruban PLEIN continu de
@@ -6128,7 +6130,8 @@
     for (let i = 0; i + 1 < pts.length; i++) {
       const ab = _arcEntreParois(pts[i], pts[i + 1], mx);
       if (!ab) continue;
-      const n0 = lot.p.length, r = _arcPleinCintre(lot, ab.a.x / sc, ab.a.y / sc, ab.b.x / sc, ab.b.y / sc);
+      const n0 = lot.p.length;
+      const r = _arcPleinCintre(lot, ab.a.x / sc, ab.a.y / sc, ab.b.x / sc, ab.b.y / sc, ab.biais, !ab.tube);
       if (!r) continue;
       out.push(Object.assign(r, { niveau: e.niveau, tube: ab.tube, triangles: (lot.p.length - n0) / 9,
         a: [+ab.a.x.toFixed(2), +ab.a.y.toFixed(2)], b: [+ab.b.x.toFixed(2), +ab.b.y.toFixed(2)] }));
@@ -6136,14 +6139,16 @@
     (e.arcs || (e.arcs = new Map())).set(s, out);
   }
 
-  // Bouts (px) de l'arc dessiné de a à b → { a, b, tube } | null (segment nul). Mixte ou galerie, milieu dans un tube
-  // (axe à ARC.tube m au plus, hors chambre, milieu dans sa largeur), segment en travers (à plus de 30° de l'axe) :
-  // les points où la ligne du segment coupe les deux parois du tube (paroi à paroi, sens a → b gardé). Sinon
-  // (chambre, rendu structures, arc le long de la galerie) : les bouts dessinés, d'une structure à l'autre.
+  // Bouts (px) de l'arc dessiné de a à b → { a, b, tube, biais } | null (segment nul). Mixte ou galerie, milieu dans
+  // un tube (axe à ARC.tube m au plus, hors chambre, milieu dans sa largeur), segment en travers (à plus de 30° de
+  // l'axe) : les points où la ligne du segment coupe les deux parois du tube (paroi à paroi, sens a → b gardé) ;
+  // `biais` : pente des parois dans le repère de l'arc (ds/dw, le long de l'arc par unité de profondeur), pour que le
+  // tympan d'un arc oblique suive la paroi. Sinon (chambre, rendu structures, arc le long de la galerie) : les bouts
+  // dessinés, d'une structure à l'autre, biais nul.
   function _arcEntreParois(a, b, mx) {
     const sc = _e.sc, dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
     if (L < 1e-6) return null;
-    const brut = { a: a, b: b, tube: false };
+    const brut = { a: a, b: b, tube: false, biais: 0 };
     if (!mx) return brut;
     const xm = (a.x + b.x) / 2, ym = (a.y + b.y) / 2, pp = mx.plusProche(xm, ym, ARC.tube * sc);
     if (!pp || pp.d > pp.w || mx.enChambre(xm, ym) || !mx.tubeAu(pp.arete, pp.t)) return brut;
@@ -6153,13 +6158,17 @@
     if (Math.abs(nd) < 0.5) return brut;
     const off = nx * (xm - pp.x) + ny * (ym - pp.y);
     const u0 = (-pp.w - off) / nd, u1 = (pp.w - off) / nd, lo = Math.min(u0, u1), hi = Math.max(u0, u1);
-    return { a: { x: xm + ex * lo, y: ym + ey * lo }, b: { x: xm + ex * hi, y: ym + ey * hi }, tube: true };
+    const ax = (r.bx - r.ax) / r.l, ay = (r.by - r.ay) / r.l, dn = ax * -ey + ay * ex;
+    return { a: { x: xm + ex * lo, y: ym + ey * lo }, b: { x: xm + ex * hi, y: ym + ey * hi }, tube: true,
+      biais: Math.abs(dn) > 1e-6 ? (ax * ex + ay * ey) / dn : 0 };
   }
 
   // Arc plein cintre de (ax, az) à (bx, bz) (m) : deux piédroits et leur imposte, claveaux en demi-cercle (demi-
   // ellipse surbaissée si la portée dépasse ce que le ciel permet), extrados à la clé au ciel du niveau (ARC) →
-  // relevé | null (portée sous ARC.porteeMin). Joints : faces des claveaux en couleur de mortier (assombrie).
-  function _arcPleinCintre(lot, ax, az, bx, bz) {
+  // relevé | null (portée sous ARC.porteeMin). Joints : faces des claveaux en couleur de mortier (assombrie), fond
+  // bouché. Tympan (_tympanArc) au-dessus de l'extrados ; `biais` : pente des parois (_arcEntreParois) ; `ferme` :
+  // sans paroi de tube contre lui (structures, chambre), ses bouts sont fermés.
+  function _arcPleinCintre(lot, ax, az, bx, bz, biais, ferme) {
     const e = _e, A = ARC, h = e.hauteur, dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
     if (L < A.porteeMin) return null;
     const ux = dx / L, uz = dz / L, nx = -uz, nz = ux, cx = (ax + bx) / 2, cz = (az + bz) / 2;
@@ -6201,12 +6210,60 @@
       lot.quad(i0, i1, e1, e0, [-nx, 0, -nz], col);
       const gr = N(Math.cos(tm), Math.sin(tm) / kv);
       lot.quad(I0, I1, i1, i0, [-gr[0], -gr[1], -gr[2]], col);
-      lot.quad(E0, E1, e1, e0, gr, col);
+      // Extrados noyé dans le tympan, sauf celui de la clé qui le dépasse en profondeur.
+      if (w > P) lot.quad(E0, E1, e1, e0, gr, col);
       if (k) lot.quad(I0, E0, e0, i0, N(Math.sin(t0), -kv * Math.cos(t0)), mortier);
       if (k < n - 1) lot.quad(I1, E1, e1, i1, N(-Math.sin(t1), kv * Math.cos(t1)), mortier);
+      // 🩸 Fond du joint : sans lui, le jour du joint traverse l'arc de part en part (fond de galerie vu à travers).
+      if (k) {
+        const tp = Math.PI * k / n - g / 2, wf = P - A.fond;
+        [1, -1].forEach(function (c) {
+          lot.quad(V(ri, tp, c * wf), V(ri, t0, c * wf), V(re, t0, c * wf), V(re, tp, c * wf),
+            [c * nx, 0, c * nz], mortier);
+        });
+      }
     }
+    _tympanArc(lot, { cx: cx, cz: cz, ux: ux, uz: uz, L: L, re: re, ys: ys, kv: kv, n: n, h: h, P: P,
+      biais: biais || 0, ferme: !!ferme }, teinte(A.tympan));
     return { portee: +L.toFixed(3), piedH: +ys.toFixed(3), intradosY: +(ys + kv * ri).toFixed(3),
-      cleY: +(ys + kv * re).toFixed(3), claveaux: n, k: +kv.toFixed(3), pied: +pied.toFixed(3) };
+      cleY: +(ys + kv * re).toFixed(3), claveaux: n, k: +kv.toFixed(3), pied: +pied.toFixed(3), tympan: true };
+  }
+
+  // Tympan de l'arc `a` (_arcPleinCintre) : maçonnerie pleine, de la profondeur de l'arc, entre l'extrados et le ciel
+  // (h) d'un bout à l'autre de la portée ; seule l'ouverture sous l'intrados reste vide. Faces avant et arrière :
+  // une bande par claveau (de l'extrados au ciel, mêmes angles que les joints) et une bande au-dessus de chaque
+  // piédroit ; dessus au ciel (vu en vue d'édition) ; bouts fermés seulement sans paroi de tube (`a.ferme`). Arc
+  // oblique dans un tube : les bandes des piédroits suivent la paroi (`a.biais`), jamais en deçà de l'extrados.
+  // ⚠️ contrat : tout est au-dessus de l'imposte, hors de l'ouverture ; le pas ne change pas (l'arc n'est pas un
+  // obstacle). Coût : 6n + 8 triangles de plus que l'arc seul (fonds de joint compris, extrados noyés retirés).
+  function _tympanArc(lot, a, col) {
+    const nx = -a.uz, nz = a.ux, h = a.h, w = a.P - ARC.retrait, re = a.re;
+    const W = function (s, y, t) { return [a.cx + a.ux * s + nx * t, y, a.cz + a.uz * s + nz * t]; };
+    const bout = function (c, t) {
+      const s = c * a.L / 2 + a.biais * t;
+      return c > 0 ? Math.max(re, s) : Math.min(-re, s);
+    };
+    [1, -1].forEach(function (c) {
+      const t = c * w, nrm = [c * nx, 0, c * nz];
+      for (let j = 0; j < a.n; j++) {
+        const t0 = Math.PI * j / a.n, t1 = Math.PI * (j + 1) / a.n;
+        const u0 = re * Math.cos(t0), u1 = re * Math.cos(t1);
+        lot.quad(W(u0, a.ys + a.kv * re * Math.sin(t0), t), W(u1, a.ys + a.kv * re * Math.sin(t1), t),
+          W(u1, h, t), W(u0, h, t), nrm, col);
+      }
+      [1, -1].forEach(function (d) {
+        const sb = bout(d, t);
+        if (Math.abs(sb) - re < 1e-4) return;
+        lot.quad(W(d * re, a.ys, t), W(sb, a.ys, t), W(sb, h, t), W(d * re, h, t), nrm, col);
+      });
+    });
+    lot.quad(W(bout(-1, w), h, w), W(bout(1, w), h, w), W(bout(1, -w), h, -w), W(bout(-1, -w), h, -w),
+      [0, 1, 0], col);
+    if (!a.ferme) return;
+    [1, -1].forEach(function (d) {
+      const s = d * a.L / 2;
+      lot.quad(W(s, a.ys, -w), W(s, a.ys, w), W(s, h, w), W(s, h, -w), [d * a.ux, 0, d * a.uz], col);
+    });
   }
 
   // Relevé des arcs construits (KtaVue3D.etat().arcs, checkup).
