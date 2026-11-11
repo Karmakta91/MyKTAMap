@@ -151,12 +151,11 @@
 
 ## Entrant
 
-- **« Mettre à jour le plan » perd la longueur des chatières** — vu par KARMA le 12/11 : après une mise à jour du plan
-  au Générateur, la longueur d'une chatière (point précis, trait début→fin) n'est pas reprise. Scénario : plan
-  d'organisation, chatière dans un calque en modification ; seul le point de départ reste sur la carte 2D. Non
-  reproduit en local.
-  `qui: Claude · action: reproduire sur le relevé fictif et diagnostiquer, session Debug · fini: longueur conservée,
-  test rouge puis vert · depuis: 12/11/2026 · taille: S`
+- **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
+  d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
+  `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
+  `qui: KARMA · action: coller en console la ligne tags / clés / nombre de points envoyée le 12/11 · fini: cause
+  identifiée, test rouge puis vert · depuis: 12/11/2026 · taille: S`
 - **Jeu caché : la partie reste sur son niveau de départ** — vu par KARMA pendant l'essai de la v2.25.0 : une partie
   commencée au niveau X y reste, même si ce niveau n'a presque pas de POI. Attendu : jeu sur plusieurs niveaux.
   Décision KARMA (12/11) : les destinations se prennent parmi les POI de tous les niveaux.
