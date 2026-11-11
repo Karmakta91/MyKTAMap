@@ -5484,7 +5484,7 @@ const _SIG_TYPES = {
 // `zone:`, `trace:`) = famille de rangement ; sans préfixe, famille naturelle de la géométrie.
 const _SIG_TYPES_SUP = {
   points:    [],
-  lignes:    ["struct:front-1", "struct:front-2", "struct:mur-ligne", "struct:mur",
+  lignes:    ["struct:front-1", "struct:front-2", "struct:mur-ligne", "struct:arc", "struct:mur",
               "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible", "zone:pente"],
   polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur",
               "struct:front-1", "struct:front-2", "struct:mur-ligne",

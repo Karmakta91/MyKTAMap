@@ -543,7 +543,8 @@
       "pilier2emasse": "struct:pilier-2", "2emasse": "struct:pilier-2",
       mur: "struct:mur", murs: "struct:mur", muret: "struct:mur",
       maconnerie: "struct:mur", beton: "struct:mur",
-      "front1": "struct:front-1", "front2": "struct:front-2"
+      "front1": "struct:front-1", "front2": "struct:front-2",
+      arc: "struct:arc", arcs: "struct:arc", "arcdesoutenement": "struct:arc"
     },
     zones: {
       eau: "eau", water: "eau", inondation: "eau", "zone humide": "eau",
@@ -634,7 +635,7 @@
     const typeDefaut = opts.roadType  || "secondaire";
     const zoneDefaut = opts.zoneType  || "remblais";
     const cleType    = opts.cleType   || null;
-    const TYPES_POLYLIGNE = ["mur-ligne", "front-1", "front-2"];
+    const TYPES_POLYLIGNE = ["mur-ligne", "front-1", "front-2", "arc"];
 
     const valeurType = function (props) {
       if (!cleType || !props) return null;
@@ -752,13 +753,14 @@
     // 🩸 Pour un type CUSTOM, structures.js > _isPolylineType lit `entry.geometry === "polyline"` dans la légende :
     // sans ce champ, un front repeint par niveau redevient un POLYGONE PLEIN. On garde le type de base pour le
     // déduire.
-    const TYPES_POLYLIGNE = ["mur-ligne", "front-1", "front-2"];   // cf. STRUCTURE_TYPES_POLYLINE
+    const TYPES_POLYLIGNE = ["mur-ligne", "front-1", "front-2", "arc"];   // cf. STRUCTURE_TYPES_POLYLINE
 
     function _typeNiveau(typeBase, categorie, lvl, libelleBase) {
       if (!couleurParNiveau || lvl === null || typeof lvl !== "number") return typeBase;
       // 🩸 Un mur en ligne garde SA clé : l'itinéraire le lit comme obstacle par `mur-ligne` (pathfinder.js), un
-      // type de niveau le confondrait avec les fronts du même étage.
-      if (categorie === "structures" && typeBase === "mur-ligne") return typeBase;
+      // type de niveau le confondrait avec les fronts du même étage. Un arc aussi, pour l'inverse : devenu type
+      // personnalisé en ligne, la vue 3D le compterait comme obstacle (tracking.js > _formeObstacle, avecPerso).
+      if (categorie === "structures" && (typeBase === "mur-ligne" || typeBase === "arc")) return typeBase;
       // Zone jonction : garde SA clé (la 3D et la fiche la lisent par `pente`), couleur du tracé jonction.
       if (categorie === "zones" && typeBase === "pente") return typeBase;
       const estLigne = (categorie === "traces") || TYPES_POLYLIGNE.indexOf(typeBase) >= 0;

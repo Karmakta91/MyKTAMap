@@ -527,7 +527,7 @@
       roadsTypes:      { principal: true, secondaire: true, chemin: true, jonction: true, itinerary: true },
       zonesTypes:      { eau: true, remblais: true, effondrement: true, inaccessible: true },
       structuresTypes: { "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
-                         "front-1": true, "front-2": true },
+                         "front-1": true, "front-2": true, "arc": true },
       levels:          null
     };
 
