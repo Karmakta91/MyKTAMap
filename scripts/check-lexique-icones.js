@@ -72,7 +72,7 @@ const NOMS = {
   "👤 user": "Profil / rôle", "🧰 pocket-knife": "Outils", "🗺 list": "Légende", "🤖 bot": "Aide IA",
   "🔍 search": "Rechercher", "⭐ star": "Favori", "🚨 siren": "Sortie d'urgence / Alertes", "🧹 eraser": "Effacer",
   "💥 trash-2": "Tout réinitialiser", "📚 library": "Mes plans", "🧱 grid-2x2": "Convertir en V2 tuilé",
-  "🪧 signpost": "Guidage / Feuille de route", "🌫 cloud-fog": "Estomper", "🧭 route": "Y aller",
+  "🪧 signpost": "Guidage / Feuille de route", "🌫 cloud-fog": "Niveaux en transparence", "🧭 route": "Y aller",
   "🌀 waypoints": "Liaisons entre plans", "🗺 map": "Vue OSM / Plan", "✏ square-dashed": "Effacer par zone",
   "🧭 compass": "Boussole", "📖 file-text": "Récits", "🧊 box": "Vue 3D", "🎬 clapperboard": "Replay",
   "🧩 puzzle": "Fonctionnalités optionnelles", "📸 camera": "Mes photos", "🔐 key-round": "Code d'accès",

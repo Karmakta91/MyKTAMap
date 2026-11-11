@@ -12291,6 +12291,8 @@ async function sectionFantome(nav) {
     const off = await etatP1();
     const lumOff = await luminanceCapture(page, 0.6, 0.35, 0.95, 0.6);
     await capture(page, "fantome-coupe");
+    // Opacité 0,35 (vue3d.js > ESTOMPE.fantome) : le fantôme se lit nettement (à 0,16, luminance mesurée ≈ 11).
+    verifier(lumA >= 18, nom + "fantôme bien visible (opacité 0,35) : luminance " + lumA + " ≥ 18", lumA);
     verifier(c === null && off.maniere === null && off.montrees === 0 && lumA > lumOff + 2,
       nom + "🌫️ coupé : le +1 caché en vue d'édition (rendu du lot C) ; luminance du fantôme " + lumA + " → " + lumOff,
       { off: off, lumA: lumA, lumOff: lumOff });

@@ -2423,13 +2423,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Niveau actif d'abord** : ni la règle du pas (sauf les structures d'un niveau entremêlé, ci-dessous), ni la visée
   (`_pointVise`), ni les fiches, ni les passages, ni le suivi ne lisent les voisins ; ils se voient et cachent ce qui est derrière eux. Le niveau actif ne change que par un
   passage, une galerie inclinée ou ▲▼. **Vue d'édition** : voisins sans plafond, **estompés** selon le réglage ⚙️
-  « 🌫️ Estomper » (`reglerEstomper`, `config.js > getVue3DEstomper`, `myktamap_v3d_estomper_v1`, cet appareil, activé
+  « 🌫️ Niveaux en transparence » (`reglerEstomper`, `config.js > getVue3DEstomper`, `myktamap_v3d_estomper_v1`, cet appareil, activé
   par défaut, au doigt comme au pointeur ; un seul réglage pour les deux côtés) : le **dessous assombri**
-  (`ESTOMPE.dessous`), le **dessus en fantôme** (`ESTOMPE.fantome` : transparent, sans écriture de profondeur, sol
+  (`ESTOMPE.dessous`), le **dessus en fantôme** (`ESTOMPE.fantome` : opacité 0,35, sans écriture de profondeur, sol
   caché) : on voit où passent ses galeries sans qu'il cache le niveau actif, et il ne capte aucun toucher
   (`_pointVise` ne lit que les tuiles du niveau actif). Copies des matériaux par manière (`_matEstompe`), le maillage
   garde l'original dans `userData.matOrigine`. Coupé : le dessous en rendu d'origine, **rien au-dessus** (il
-  couvrirait la scène, comme son plafond qu'elle retire : `_voisinCache`). À hauteur d'yeux, jamais. Checkup § 46
+  couvrirait la scène, comme son plafond qu'elle retire : `_voisinCache`). À hauteur d'yeux, jamais. « Actif seul » (≡) retire tous les voisins
+  (`_niveauxMontres` lit `visibleLevels`). Checkup § 46
   (`KTA_V3D_SEUL=estomper`), § 48 (`=fantome`).
 - **Sol du niveau actif en vue d'édition** (`_maniereSol`, `_majSolActif`, décision produit ; rendus structures et
   mixte, dont le sol d'un seul tenant cachait tout le dessous ; pas en galerie, où rien de plein n'est sous les

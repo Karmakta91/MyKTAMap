@@ -4370,7 +4370,7 @@
   // l'original change (🧱 : carte et couleur du sol), libérées avec la vue ; un maillage garde son matériau d'origine
   // dans userData.matOrigine. Les voisins ne sont ni visés ni touchés (_pointVise ne lit que les tuiles du niveau
   // actif) : un fantôme ne capte aucun toucher.
-  const ESTOMPE = { dessous: 0.35, fantome: 0.16 };
+  const ESTOMPE = { dessous: 0.35, fantome: 0.35 };
 
   function _estomper() {
     return typeof window.getVue3DEstomper !== "function" || window.getVue3DEstomper() === true;

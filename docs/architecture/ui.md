@@ -2376,7 +2376,7 @@ icônes.
   🏗️ **Niveaux** (plan multi-niveau seulement, `.kta-v3d-niveaux-vus`) : le nom sur sa ligne, dessous trois choix
   exclusifs côte à côte, Voisins / Tous / Le mien (`aria-pressed`, pastille ronde au lieu de la case,
   `myktamap_v3d_niveaux_vus_v1`, cet appareil ; au doigt, Voisins à chaque ouverture ; effets : `tracking.md` § Vue 3D
-  › Niveaux voisins) ; dessous, 🌫️ **Estomper** (interrupteur `aria-pressed`, `myktamap_v3d_estomper_v1`, cet
+  › Niveaux voisins) ; dessous, 🌫️ **Niveaux en transparence** (interrupteur `aria-pressed`, `myktamap_v3d_estomper_v1`, cet
   appareil, activé par défaut ; en vue d'édition, dessous assombri et dessus en fantôme ; ligne cachée sur un plan à
   un niveau).
   La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼, montrés si
