@@ -2009,14 +2009,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   produit) : un arc plein cintre en pierre de taille par segment de la polyligne, dans les trois rendus (en galerie,
   seule structure dessinée : `_indexer` y garde les arcs, `_construireTuileGalerie` les pose) : deux piédroits (0,3 m
   en travers, au plus 20 % de la portée) et leur imposte, claveaux de 0,25 m (nombre impair, clé un peu plus profonde,
-  joints de mortier assombris), 0,5 m de profondeur, **extrados à la clé au ciel du niveau**. Plus large que le ciel
-  ne le permet (piédroits sous 0,6 m) : surbaissé en demi-ellipse. En mixte et en galerie, un segment en travers d'un
+  joints de mortier assombris, fond bouché), 0,5 m de profondeur, **extrados à la clé au ciel du niveau**. Plus large
+  que le ciel ne le permet (piédroits sous 0,6 m) : surbaissé en demi-ellipse. **Tympan** (`_tympanArc`) : maçonnerie
+  pleine de la profondeur de l'arc qui comble tout l'espace entre l'extrados, les piédroits, les parois et le ciel
+  (faces reculées de 5 mm sous les claveaux, même pierre ou même couleur de légende) ; seule l'ouverture sous
+  l'intrados reste vide. Arc oblique dans un tube : ses bouts suivent la paroi ; sans paroi contre lui (structures,
+  chambre), tel que dessiné et fermé aux bouts. En mixte et en galerie, un segment en travers d'un
   tube (milieu dans sa largeur, hors chambre, à plus de 30° de l'axe) va **d'une paroi du tube à l'autre**, là où sa
   ligne les coupe ; ailleurs (chambre, structures), tel que dessiné. Couleur (décision produit) : légende avec 🧱
   coupé, calcaire chaud avec 🧱 (`ARC.pierre`, famille des piliers texturés, accordé aux parois). ⚠️ contrat : **on
   passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas `arc`) ; ni face où
   poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode mixte, il ne fait pas
-  d'une galerie une chambre (`galerieEmprise.js > _indexStructures`). ~180 triangles par arc.
+  d'une galerie une chambre (`galerieEmprise.js > _indexStructures`). ~250 triangles par arc de 2,5 m (tympan :
+  6 × claveaux + 8 de plus).
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.

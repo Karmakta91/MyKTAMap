@@ -30,8 +30,9 @@
 // liaison (« Passer au plan », confirmation au-dessus de la vue), véhicule qui bloque, 🧱, mémoire de 50 plaques ;
 // sans paroi de tube, sur la face de structure la plus proche à 3 m (pilier, mur en ligne, front ; paroi du tube
 // d'abord en mixte, rien en galerie ; 50 POI parmi 2 025 piliers mesurés). Arc de soutènement et formes de
-// patrimoine (§ 14 decies, =modeles) : arc plein cintre paroi à paroi sous lequel on passe, ossuaire contre la
-// paroi (non traversable), outil de carrier qui arrête le pas, fontis (cloche, cône qui bloque, passage latéral).
+// patrimoine (§ 14 decies, =modeles) : arc plein cintre paroi à paroi sous lequel on passe, tympan sans jour jusqu'au
+// ciel (rayons), ossuaire contre la paroi (non traversable), outil de carrier qui arrête le pas, fontis (cloche, cône
+// qui bloque, passage latéral).
 // Intégration :
 // ≡ ouvre le ≡ Filtres de la carte (état partagé dans les deux sens : zone, structure, calque, type de tracé), pastille ;
 // 🚨 = Sortie d'urgence ; toasts sous la rangée ; ✕ au coin haut droit au téléphone ; ❓ ouvre l'aide de la 3D ;
@@ -4002,10 +4003,11 @@ async function restaurerFormes(page) {
 // § 14 decies — Arc de soutènement et formes de patrimoine (KTA_V3D_SEUL=modeles ; objets FICTIFS en mémoire,
 // galerie principale de 2,5 m à z = 0) : arc tracé en travers de la galerie (au-delà des parois) = plein cintre
 // d'une paroi du tube à l'autre en mixte et en galerie (portée 2,5 m, clé au ciel, piédroits, claveaux impairs),
-// tel que dessiné en structures ; on marche dessous sans buter (au milieu et contre un piédroit). Ossuaire contre la
-// paroi du côté du POI (le pan, crânes, obstacle mince : on ne l'atteint pas de face, on le longe), sur la face d'un
-// pilier à 3 m, panneau seul en structures sans structure. Outil de carrier (2,1 × 1,2 m, le long de l'axe) qui
-// arrête le pas des deux côtés. Fontis : plafond troué, cloche, cône poussé contre la paroi du côté du POI, qui
+// tel que dessiné en structures (surbaissé) ; tympan : aucun jour entre l'extrados, le ciel et les parois, ouverture
+// libre sous l'intrados (rayons sur la scène) ; on marche dessous sans buter (au milieu et contre un piédroit).
+// Ossuaire contre la paroi du côté du POI (le pan, crânes, obstacle mince : on ne l'atteint pas de face, on le
+// longe), sur la face d'un pilier à 3 m, panneau seul en structures sans structure. Outil de carrier (2,1 × 1,2 m, le
+// long de l'axe) qui arrête le pas des deux côtés. Fontis : plafond troué, cloche, cône poussé contre la paroi du côté du POI, qui
 // arrête le pas, passage latéral libre. KTA_V3D_CAPTURES : une capture par modèle et une d'ensemble.
 async function sectionModeles(page) {
   const R = await page.evaluate(async function () {
@@ -4056,15 +4058,56 @@ async function sectionModeles(page) {
       for (let i = 0; i < (n || 80); i++) K.avancer(0.1);
       return rel(K.etat().pos);
     };
-    let ctx = null;
+    let ctx = null, scene = null;
+    // Jours de l'arc (relevé `a`, à x = -30) : rayons horizontaux le long de la galerie, tous les 7 cm en travers et
+    // en hauteur, sur la vraie scène (maillages visibles qui écrivent la couleur). Hors de l'ouverture (marge 4 cm :
+    // cordes des claveaux), le rayon doit toucher la maçonnerie dans la profondeur de l'arc ; dans l'ouverture, rien
+    // sur 3 m. → { plein, jours (points sans maçonnerie), vide, bouches (points de l'ouverture touchés) }.
+    const jours = function (a, h) {
+      const T = ctx.THREE, ray = new T.Raycaster(), cibles = [];
+      scene.updateMatrixWorld(true);
+      scene.traverse(function (o) {
+        if (!o.isMesh || !o.material || o.material.colorWrite === false) return;
+        for (let q = o; q; q = q.parent) if (!q.visible) return;
+        cibles.push(o);
+      });
+      ray.camera = ctx.camera;
+      const ri = a.portee / 2 - a.pied, ys = a.piedH, kv = a.k, demi = a.portee / 2, mg = 0.04;
+      const out = { plein: 0, jours: [], vide: 0, bouches: [] };
+      for (let z = -demi + 0.02; z <= demi - 0.02; z += 0.07) {
+        for (let y = 0.05; y <= h - 0.02; y += 0.07) {
+          const dans = function (m) {
+            const ra = ri + m, rb = kv * ri + m;
+            return y < ys ? Math.abs(z) < ra : (z / ra) * (z / ra) + ((y - ys) / rb) * ((y - ys) / rb) < 1;
+          };
+          const ouvert = dans(-mg), plein = !dans(mg);
+          if (!ouvert && !plein) continue;
+          ray.set(new T.Vector3(ox - 31.5, y, oz + z), new T.Vector3(1, 0, 0));
+          ray.near = 0; ray.far = 3;
+          const hit = ray.intersectObjects(cibles, false)[0];
+          const pt = [+z.toFixed(2), +y.toFixed(2)];
+          if (plein) {
+            out.plein++;
+            if (!hit || hit.distance < 1.2 || hit.distance > 1.8) {
+              out.jours.push(pt.concat(hit ? +hit.distance.toFixed(2) : null));
+            }
+          } else {
+            out.vide++;
+            if (hit) out.bouches.push(pt.concat(+hit.distance.toFixed(2)));
+          }
+        }
+      }
+      return out;
+    };
     const r = {};
     for (const rendu of ["mixte", "galerie", "structures"]) {
       await ouvrir(rendu, -34, 0, 90);
-      const deg = K.greffer({ nom: "v3d-modeles", scene: function (c) { ctx = c; } });
+      const deg = K.greffer({ nom: "v3d-modeles", scene: function (c) { ctx = c; scene = c.groupe.parent; } });
       if (deg) deg();
       const o = r[rendu] = {};
       const e = K.etat();
       o.arcs = e.arcs; o.hauteur = e.hauteur;
+      if (e.arcs && e.arcs[0] && scene) o.jours = jours(e.arcs[0], e.hauteur);
       const pick = function (v) {
         return v ? { construit: v.construit, place: rel(v), cote: v.cote, appui: v.appui, plafond: v.plafond,
           triangles: v.triangles, bouchesPlafond: v.bouchesPlafond, familles: v.familles, cone: v.cone || null,
@@ -4097,7 +4140,10 @@ async function sectionModeles(page) {
     await ouvrir("mixte", -34, 0, 90);
     K.basculerTextures();
     await pause(150);
-    r.sansTx = { arcs: K.etat().arcs.length, outil: !!(vol("outil") || {}).construit };
+    r.sansTx = { arcs: K.etat().arcs.length, outil: !!(vol("outil") || {}).construit, jours: null };
+    const degT = K.greffer({ nom: "v3d-modeles", scene: function (c) { ctx = c; scene = c.groupe.parent; } });
+    if (degT) degT();
+    if (K.etat().arcs[0] && scene) r.sansTx.jours = jours(K.etat().arcs[0], K.etat().hauteur);
     K.basculerTextures();
     await pause(100);
     await K.fermer();
@@ -4113,14 +4159,22 @@ async function sectionModeles(page) {
     (a && a.cleY) + " m), piédroits de " + (a && a.piedH) + " m, " + (a && a.claveaux) + " claveaux, " +
     (a && a.triangles) + " triangles", M.arcs);
   const as = S.arcs && S.arcs[0];
-  verifier(!!as && !as.tube && pr(as.portee, 3.2) && pr(as.cleY, S.hauteur, 0.005),
-    "structures : arc tel que dessiné (" + (as && as.portee) + " m, d'une structure à l'autre)", S.arcs);
+  verifier(!!as && !as.tube && pr(as.portee, 3.2) && pr(as.cleY, S.hauteur, 0.005) && as.k < 1,
+    "structures : arc tel que dessiné (" + (as && as.portee) + " m, d'une structure à l'autre), surbaissé sous un " +
+      "ciel de " + S.hauteur + " m (k = " + (as && as.k) + ")", S.arcs);
   const ag = Gl.arcs && Gl.arcs[0];
   verifier(!!ag && Gl.arcs.length === 1 && ag.tube && pr(ag.portee, 2.5) && pr(ag.cleY, Gl.hauteur, 0.005),
     "galerie : arc d'une paroi à l'autre de la galerie dessinée (" + (ag && ag.portee) + " m), seule structure " +
     "dessinée", Gl.arcs);
+  const sansJour = function (j) {
+    return !!j && j.plein > 50 && j.vide > 50 && !j.jours.length && !j.bouches.length;
+  };
   ["mixte", "galerie", "structures"].forEach(function (k) {
-    const o = R[k];
+    const o = R[k], j = o.jours, a0 = o.arcs && o.arcs[0];
+    verifier(sansJour(j) && !!a0 && a0.tympan,
+      k + " : aucun jour entre l'arc et le ciel ni les parois (" + (j && j.plein) + " rayons hors de l'ouverture " +
+      "arrêtés par la maçonnerie), ouverture libre sous l'intrados (" + (j && j.vide) + " rayons sans obstacle) ; " +
+      (a0 && a0.triangles) + " triangles", j && { jours: j.jours.slice(0, 8), bouches: j.bouches.slice(0, 8) });
     verifier(o.sousArc[0][0] > -26.3 && o.sousArc[1][0] < -33.7 && o.sousArc[2][0] > -26.3 &&
       o.sousArc[3][0] > -26.3 && o.ctxArc,
     k + " : on passe sous l'arc sans buter (axe, aller et retour ; à 0,8 m de l'axe, contre chaque piédroit) ; " +
@@ -4159,7 +4213,8 @@ async function sectionModeles(page) {
     !Gl.ossPil && !S.oss && S.panneaux.indexOf("Ossuaire fictif") >= 0,
   "ossuaire sans paroi de tube : sur la face du pilier à 3 m (mixte, structures), rien en galerie ; sans " +
     "structure à portée (structures) : le panneau seul", { m: M.ossPil, s: S.ossPil, g: Gl.ossPil, so: S.oss });
-  verifier(R.sansTx.arcs === 1 && R.sansTx.outil, "🧱 coupé : arc et outil construits", R.sansTx);
+  verifier(R.sansTx.arcs === 1 && R.sansTx.outil && sansJour(R.sansTx.jours),
+    "🧱 coupé : arc et outil construits, tympan sans jour", R.sansTx);
   if (CAPTURES) await capturesModeles(page);
   await restaurerFormes(page);
 }
