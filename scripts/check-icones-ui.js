@@ -504,7 +504,10 @@ const SRC_INTERFACE = lire("js/interface.js");
   });
   fautif("js/refonteInterface.js", /class="kta-refonte-(?:counter|stat)-icon"[^>]*>([^<]*)</);
   fautif("js/tutorial.js", /\{ cle: "[^"]+",\s*(?:ico|emoji): "([^"]*)"/);
-  t("1. vue 3D, confirmations, barres du haut et du bas, tutoriel : jamais un emoji d'icône (cliquet 0)",
+  // Menu au sommet d'une forme (carte et vue 3D) : le 4e argument de bouton() est un nom d'icône, jamais un emoji.
+  fautif("js/ajusterSommets.js", /bouton\("kta-ajuster-[^"]+",[^)]*,\s*"([^"]*)"\)/);
+  t("1. vue 3D, confirmations, barres du haut et du bas, tutoriel, menu au sommet : jamais un emoji d'icône " +
+    "(cliquet 0)",
     c3Emoji.length === 0, c3Emoji.join("\n   "));
   // Fin de la refonte : pastilles du bandeau du profil, lignes de l'export / import du profil et du rapport de
   // session, onglets du recalage, familles des fenêtres de la sélection multiple, familles et spéciaux des hauts
