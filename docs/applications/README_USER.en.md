@@ -1002,7 +1002,7 @@ For quarries: the load-bearing elements and the progress of the workings, in the
 
 Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face, a wall (line) or an arch (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
 
-On a multi-level map, **2nd-mass** elements are automatically placed **one level below the active level**; the others take the active level.
+On a multi-level map, **2nd-mass** elements are automatically placed **on level −1** (the bed under the 1st mass), whatever level is shown; the others take the active level. The **Level** list of their card moves them.
 
 A **support arch** is placed **across** the gallery, in two taps from one wall to the other: one arch = one object, repeat it for each arch. It gets in the way of neither the route, the tracker nor the 3D view, where only a thin line on the floor marks it. In ≡ Legend its swatch is striped as on the map; image and PDF exports keep the stripes, KMZ and the OSM view keep only the blue stroke.
 

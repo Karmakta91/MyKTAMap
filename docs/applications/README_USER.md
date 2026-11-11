@@ -1002,7 +1002,7 @@ Pour les carrières : les éléments porteurs et l'avancement de l'exploitation,
 
 Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille, un mur (ligne) ou un arc (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
 
-Sur un plan multi-niveau, les éléments de **2e masse** se rangent automatiquement **un niveau sous le niveau actif** ; les autres prennent le niveau actif.
+Sur un plan multi-niveau, les éléments de **2e masse** se rangent automatiquement **au niveau −1** (le banc sous la 1re masse), quel que soit le niveau affiché ; les autres prennent le niveau actif. La liste **Niveau** de leur fiche les déplace.
 
 Un **arc de soutènement** se pose **en travers** de la galerie, en deux touches d'une paroi à l'autre : un arc = un objet, à répéter pour chaque arc. Il ne gêne ni l'itinéraire, ni le tracker, ni la vue 3D, où il n'est marqué que par un fin liseré au sol. Dans ≡ Légende, sa pastille est rayée comme sur la carte ; les exports image et PDF gardent les rayures, le KMZ et la Vue OSM n'en gardent que le trait bleu.
 

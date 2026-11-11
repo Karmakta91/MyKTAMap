@@ -128,8 +128,8 @@ APP_CONFIG.multiLevel ←
 
 **Données persistées** :
 - Roads : `road.level: number` OU `{ type: "jonction", fromLevel, toLevel }`
-- Structures : `structure.level: number` (`pilier-2` / `front-2` naissent à `activeLevel − 1`, la « 2e masse » vue
-  d'ici : défaut de création seulement, la valeur stockée est le vrai niveau)
+- Structures : `structure.level: number` (`pilier-2` / `front-2` naissent au niveau −1, la « 2e masse », banc fixe
+  sous la 1re, quel que soit le niveau actif : défaut de création seulement, la valeur stockée est le vrai niveau)
 - Zones : `zone.level: number` + `zone.niveaux: number[]` facultatif (zone sur plusieurs niveaux, §26.12)
 - Editor points : `point.level: number`
 - Data layer items : `level: number` optionnel dans le JSON (`puits.json`, etc.)

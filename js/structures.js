@@ -440,12 +440,14 @@ function initStructures() {
         type: window.modeStructure,
         points: []
       };
-      // Multi-niveau seulement (sinon aucun champ level). pilier-2 et front-2 appartiennent à la 2e masse,
-      // la couche INFÉRIEURE vue depuis la courante : niveau actif - 1 (décision produit). Le reste : niveau actif.
+      // Multi-niveau seulement (sinon aucun champ level). pilier-2 et front-2 sont la 2e masse, un banc FIXE du
+      // terrain sous la 1re (niveau 0) : toujours au niveau −1, quel que soit le niveau actif (décision produit ;
+      // « niveau actif − 1 » rangeait au −2 un pilier dessiné depuis le −1). Le reste : niveau actif. La fiche
+      // (liste Niveau) change ensuite la valeur telle quelle.
       if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
         const _activeLvl = window.APP_CONFIG.activeLevel || 0;
         if (currentStructure.type === "pilier-2" || currentStructure.type === "front-2") {
-          currentStructure.level = _activeLvl - 1;
+          currentStructure.level = -1;
         } else {
           currentStructure.level = _activeLvl;
         }

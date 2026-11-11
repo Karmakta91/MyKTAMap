@@ -715,7 +715,7 @@ pas d'image de collision : le champ `plan.collisionImage` d'un ancien plan-confi
    ⚠️ l'arc est absent de `_OBST_TYPES` exprès (on passe dessous : ni tracker, ni vue 3D) ; le 6e paramètre
    `avecPerso` (vue 3D seulement) compte aussi les types `cust-…`, en polygone ou en ligne selon la légende.
    - **Niveau** : en multi-niveau, seulement les structures du niveau du tracker (`trackerLevel` ; sans `level` =
-     0). Une 2e masse étant rangée au niveau actif − 1 (`structures.js`), elle bloque sur ce niveau-là. Hors
+     0). Une 2e masse étant rangée au niveau −1 (`structures.js`), elle bloque sur ce niveau-là. Hors
      multi-niveau, toutes bloquent.
    - **Visibilité** : masquées ou non, comme les obstacles du Pathfinder.
    - 🩸 Un polygone qui contient **déjà** la position de départ du pas est ignoré (recalage posé sur un pilier,

@@ -1002,7 +1002,7 @@ Para las canteras: los elementos portantes y el avance de la explotación, en el
 
 Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera, un muro (línea) o un arco (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
 
-En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente **un nivel por debajo del nivel activo**; los demás toman el nivel activo.
+En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente **en el nivel −1** (el banco bajo la 1ª masa), sea cual sea el nivel mostrado; los demás toman el nivel activo. La lista **Nivel** de su ficha los mueve.
 
 Un **arco de sostenimiento** se coloca **de través** en la galería, en dos toques de una pared a otra: un arco = un objeto, a repetir para cada arco. No molesta ni al itinerario, ni al rastreador, ni a la vista 3D, donde solo lo marca una fina línea en el suelo. En ≡ Leyenda su muestra está rayada como en el mapa; las exportaciones de imagen y PDF conservan las rayas, el KMZ y la Vista OSM solo el trazo azul.
 
