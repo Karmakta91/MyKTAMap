@@ -436,6 +436,13 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.resolHint")}</span>
               </span>
             </button>
+            ${planAffiche && window.KtaVerifierPlan ? `<button class="kta-tbl-source-card" id="kta-tbl-src-verif">
+              <span class="kta-tbl-source-ico">${window.ktaIcone("clipboard-list")}</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.verif"))}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.verifHint")}</span>
+              </span>
+            </button>` : ""}
             ${planAffiche && window.KtaRaccords ? `<button class="kta-tbl-source-card" id="kta-tbl-src-raccords">
               <span class="kta-tbl-source-ico">${window.ktaIcone("link")}</span>
               <span class="kta-tbl-source-txt">
@@ -470,6 +477,9 @@
     // 🔗 Raccords à vérifier : outil à part (js/raccordsTraces.js), sur le plan affiché seulement.
     var btnRacc = document.getElementById("kta-tbl-src-raccords");
     if (btnRacc) btnRacc.addEventListener("click", function() { fermer(); window.KtaRaccords.ouvrir(); });
+    // Vérifier le plan : outil à part (js/verifierPlan.js), sur le plan affiché seulement.
+    var btnVerif = document.getElementById("kta-tbl-src-verif");
+    if (btnVerif) btnVerif.addEventListener("click", function() { fermer(); window.KtaVerifierPlan.ouvrir(); });
     // Fusion et conversion : onglets de la modale d'export de session, ouverts en solo.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
       fermer();

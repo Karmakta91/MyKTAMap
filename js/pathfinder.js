@@ -1976,13 +1976,15 @@
     TYPES_ZONES_DURS:  TYPES_ZONES_DURS.slice(),
     estZoneDure:       _estZoneDure,
     // « Vérifier le plan » (verifierPlan.js) : les tests du graphe eux-mêmes, jamais une copie, sinon l'outil et
-    // l'itinéraire divergent. ⚠️ contrat : obstaclesDe(zones, structures) → la liste que lit _buildGraph ;
+    // l'itinéraire divergent. ⚠️ contrat : obstaclesDuPlan() → la liste que lit _buildGraph (plan ouvert) ;
+    // obstaclesDe(zones, structures) → la même, sur des données fournies ;
     // preparer(obstacles) → { polys, grille (murs) } ; zonesQuiBloquent(p1, p2, niveau, polys) et
     // mursQuiCoupent(p1, p2, niveau, grille) → tous les obstacles qui excluent ce segment du graphe.
     controle: {
       PROXIMITY_TOLERANCE: PROXIMITY_TOLERANCE,
       ECHELLE_SANS_CALAGE: ECHELLE_SANS_CALAGE,
       obstaclesDe: function(zones, structures) { return _zonesDuresDe(zones).concat(_mursLigneDe(structures)); },
+      obstaclesDuPlan: _collecterObstaclesDurs,
       preparer: _preparerObstacles,
       grilleZones: _grilleZones,
       zonesCandidates: _zonesCandidates,

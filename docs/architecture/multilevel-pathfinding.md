@@ -690,7 +690,7 @@ code disait le contraire de ses propres commentaires.
 
 | Contrainte | Source | Nature | Réglable |
 |---|---|---|---|
-| Zones `inaccessible` | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ case « Respecter… » |
+| Zones d'un type dur (`Pathfinder.TYPES_ZONES_DURS` : `inaccessible`) | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ case « Respecter… » |
 | Structures `mur-ligne` (Mur (ligne)) | session + `_ktaDataStructurePolygons` | **dure**, même niveau | ✅ même case |
 | Autres types de zones | idem | souple (relâchée en passe 2) | ✅ cases « 🚫 Préférences d'évitement » |
 | Points / tags à éviter | `SearchPoints` | souple | ✅ |
@@ -731,6 +731,44 @@ sorties → `itineraireYAller(…, { evacuation })` → `road.evacuation`, relu 
 (`_replanifierDepuis`, `SortieUrgence.relancerDepuis`). Une sortie atteinte seulement en
 traversant une zone « à éviter » (passe 2 du moteur) est classée après celles qui la
 respectent, et la fenêtre le dit.
+
+### Table unique des types de zone durs
+
+`pathfinder.js > TYPES_ZONES_DURS` (exposée `Pathfinder.TYPES_ZONES_DURS`, test `Pathfinder.estZoneDure(type)`) est la
+**seule** liste des types de zone qui bloquent : collecte des obstacles (`_zonesDuresDe`), liste des évitables
+(`getAvoidableZoneTypes`, un type dur n'y figure pas), évitements souples (`_collecterZonesAEviter`), réseau fourni de
+l'inter-plans (`computeRouteOnRoads`) et ses deux filtres d'évitement (`interPlanRoute.js > _zoneDure`), « Vérifier
+le plan ». Elle ne contient que `inaccessible` : le type Comblé (`remblais`) y entrera avec son propre lot
+(`docs/ETUDE_REMBLAIS.md`), pas avant. `check-verifier-plan.js` refuse un test `=== "inaccessible"` écrit à part dans
+`pathfinder.js` ou `interPlanRoute.js`.
+
+### Vérifier le plan (`js/verifierPlan.js`)
+
+Contrôle des données du plan ouvert, lancé depuis la carte de l'Éditeur de données (UI : `ui.md` §91.6 ; étude et
+décisions : `docs/ETUDE_VERIFIER_PLAN.md`). Il lit ce que lit l'itinéraire : `Pathfinder.collecterTraces()`, zones et
+structures de session plus registres des calques (sans les calques en modification), points de session et des calques.
+Lecture seule.
+
+⚠️ **Même vérité que le graphe** : C1 et C3 appellent les tests du pathfinder, exposés pour lui dans
+`Pathfinder.controle`, jamais une copie. `_segmentBloqueParZoneInaccess` et `_segmentCoupeParMur` sont des façades de
+`_zonesQuiBloquent` / `_mursQuiCoupent` (qui rendent **tous** les obstacles d'un segment quand on le demande) : le
+graphe et l'outil passent par le même code. `check-verifier-plan.js` vérifie, tracé par tracé, que les segments
+déclarés coupés sont exactement ceux que `grapheDeTraces(…, { includeZones: true })` écarte.
+
+| Contrôle | Règle | Gravité |
+|---|---|---|
+| **C1** tracé coupé | Chaque segment de galerie (tout type sauf jonction et itinéraire) contre les obstacles durs de son niveau (plan ouvert : `controle.obstaclesDuPlan`, la collecte même de l'itinéraire ; données fournies : `obstaclesDe` ; puis `preparer`), zones candidates par une grille de leurs boîtes (`controle.grilleZones`, 128 px, filtre exact). Un constat par paire (tracé, obstacle) ; zone : longueur du tracé dans la zone (`longueurDansPolygone`) ; mur : point de croisement. **Au bord** sous 0,5 m (`BORD_M` ; plan sans échelle : 10 px/m supposés, `ECHELLE_SANS_CALAGE`) : longueur dans la zone, ou distance du croisement au bout du tracé le plus proche | Bloquant |
+| **C2** passage sans raccord | POI qui relie des niveaux (`KtaPoiJonction.estJonction`) avec un moyen de passage (pas le puits d'aération) : pour chaque niveau, aucun raccord validé (`accroches`), ou aucun qui retombe à `PROXIMITY_TOLERANCE` (15 px) d'une galerie de ce niveau (« perdu », comme `_injecterJonctionsPoi` qui l'ignore). Un niveau intermédiaire est signalé aussi, marqué « traversé » (normal si le puits n'y débouche pas). Le nombre de galeries que `proposerRaccords` proposerait est affiché | Bloquant |
+| **C3** tracé jonction mal posé | `fromLevel` = `toLevel`, ou un bout à plus de `PROXIMITY_TOLERANCE` de toute galerie de son niveau (le graphe ne le raccroche à rien) | Bloquant |
+
+C2 et C3 ne valent qu'en plan multi-niveau. **Vu, normal** : clé `contrôle|identité[|identité|détail]` (identité = `uid`,
+sinon empreinte du type et des sommets au dixième de px) dans la pref du plan `verifVus` (`config.js >
+get/setPlanVerifVus`), sur l'appareil seulement. Modifier l'objet ne fait pas revenir le constat ; 🩸 un objet de
+calque sans `uid` revient s'il est redessiné. **Saisie** : à chaque `kta:donneesPlanChange` (tracés, zones,
+structures, calques ; 700 ms de calme), C1 sur les seuls objets de session dont la signature a changé **et** dont
+`updatedAt` a moins d'une minute (la session restaurée ou rejouée par Ctrl+Z n'est pas une saisie) : un toast `warn`
+par coupure nouvelle, une fois par plan ouvert. Pas encore : passe au chargement, fin du Générateur, contrôles C4 à
+C10, corrections (lots 2 à 4 de l'étude). Garde-fous : `check-verifier-plan.js` (Node), `checkup-verifier-plan.js`.
 
 ---
 

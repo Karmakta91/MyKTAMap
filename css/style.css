@@ -19997,6 +19997,34 @@ button.kta-cfg-ligne-action {
 .kta-racc-info { flex: 1 1 140px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
 .kta-racc-ecart { stroke: var(--kta-accent); fill: none; }
 .kta-racc-cercle { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.2; }
+/* Vérifier le plan (js/verifierPlan.js) : liste groupée par gravité, bandeau de revue (allure des raccords), objet
+   surligné et obstacle cerné en tireté sur la carte. */
+.kta-verif-compte { color: var(--kta-texte-2); margin: 0 0 10px; font-variant-numeric: tabular-nums; }
+.kta-verif-gravite {
+  display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; font-size: 13px; font-weight: 700;
+}
+.kta-verif-g-bloquant { color: var(--kta-erreur); }
+.kta-verif-g-revoir { color: var(--kta-avert); }
+.kta-verif-g-info { color: var(--kta-texte-2); }
+.kta-verif-controle { color: var(--kta-accent-texte); font-weight: 600; margin: 8px 0 4px; }
+.kta-verif-ligne {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 8px 10px; min-height: 40px;
+  background: var(--kta-surface); color: var(--kta-texte); border: 1px solid var(--kta-bordure);
+  border-radius: 8px; cursor: pointer; font: inherit; text-align: left;
+}
+.kta-verif-ligne:hover, .kta-verif-ligne:focus-visible { border-color: var(--kta-interaction); }
+.kta-verif-ligne-detail { color: var(--kta-texte-2); font-size: 12px; overflow-wrap: anywhere; }
+.kta-verif-vus { margin: 8px 0; }
+.kta-verif-vu {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px;
+  border: 1px solid var(--kta-bordure); border-radius: 8px;
+}
+.kta-verif-vu-txt { color: var(--kta-texte-2); font-size: 12px; overflow-wrap: anywhere; }
+.kta-verif-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
+.kta-verif-info { flex: 1 1 160px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
+.kta-verif-objet { stroke: var(--kta-accent); fill: none; }
+.kta-verif-obstacle { stroke: var(--kta-erreur); fill: var(--kta-erreur); fill-opacity: 0.12; }
+.kta-verif-cercle { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.2; }
 /* Sommets de la mesure 📐 (measure.js > _majSommetsMesure) : rond doré plein, liseré sombre, lisible sur le plan. */
 .kta-mesure-sommet { fill: var(--kta-accent); fill-opacity: 1; stroke: var(--kta-sur-accent); }
 .kta-ajuster-menu { background: none; border: 0; }
