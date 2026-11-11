@@ -212,17 +212,18 @@ window.KtaAjusterSommets = (function () {
     const marker = L.marker(_ll(c), { icon: icon, interactive: true, keyboard: false, zIndexOffset: 1000 }).addTo(m);
     _menu = { marker: marker, c: c, timer: setTimeout(_fermerMenu, MENU_MS) };
   }
-  // Les boutons du menu (carte et vue 3D) ; `attr(action)` = attributs en plus (vue 3D : data-v3d).
+  // Les boutons du menu (carte et vue 3D) ; `attr(action)` = attributs en plus (vue 3D : data-v3d). Icônes au trait
+  // (ktaIcone : couleur du bouton, contraste du texte), jamais l'emoji : la police emoji dessine 🗑️ en gris sur gris.
   const BOUTON_PX = 44, ECART_PX = 8;   // cibles et écart (style.css > .kta-ajuster-boutons)
   function htmlMenu(attr, sansSuppr, avecCouper) {
     const bouton = function (classe, cle, action, icone) {
       const titre = window.ktaEsc(_t(cle));
       return '<button type="button" class="' + classe + '"' + (attr ? attr(action) : "") + ' aria-label="' + titre +
-        '" title="' + titre + '">' + icone + '</button>';
+        '" title="' + titre + '">' + window.ktaIcone(icone) + '</button>';
     };
-    return '<div class="kta-ajuster-boutons">' + bouton("kta-ajuster-inserer", "ajuster.inserer", "inserer", "＋") +
-      (avecCouper ? bouton("kta-ajuster-couper", "ajuster.couper", "couper", "✂️") : "") +
-      (sansSuppr ? "" : bouton("kta-ajuster-suppr", "ajuster.supprimer", "supprimer", "🗑️")) + '</div>';
+    return '<div class="kta-ajuster-boutons">' + bouton("kta-ajuster-inserer", "ajuster.inserer", "inserer", "plus") +
+      (avecCouper ? bouton("kta-ajuster-couper", "ajuster.couper", "couper", "scissors") : "") +
+      (sansSuppr ? "" : bouton("kta-ajuster-suppr", "ajuster.supprimer", "supprimer", "trash-2")) + '</div>';
   }
 
   // ── ✂️ Couper : deux formes à un sommet intérieur ──
