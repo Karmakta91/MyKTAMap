@@ -32,9 +32,6 @@
 
 ## Maintenant
 
-- **`checkup-poi-jonction` rouge sur la base** — 3 KO sur `Karma_dev`, bloque la porte de release de la v2.25.0.
-  `qui: Claude · action: diagnostiquer (régression ou test périmé) puis corriger, session Dev · fini: vert sous
-  Chromium et WebKit, poussé · depuis: 12/11/2026 · taille: S`
 - **`_currentLoadedPlanId` à l'accueil : scénario pro** — community fait : id remis à null au retour à l'accueil, plan
   quitté dans `_ktaDernierPlanId` (carte OSM), prouvé par `smoke.js` sous Chromium et WebKit. Reste à prouver côté pro :
   plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
