@@ -45,9 +45,9 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Essai sur dev : chatière, galerie inclinée, menu des sommets** — `1147b92e` : « Refaire » sur une chatière
-  reprend ses points ; `04efcd48` : galerie inclinée en vue d'édition 3D ; `4ce78f12` : ＋ / ✂️ / 🗑️ du menu au
-  sommet en icônes au trait (téléphone). Prouvés par checkups, pas joués à la main.
+- **Essai sur dev : chatière, galerie inclinée, menu des sommets, jeu** — `1147b92e` « Refaire » une chatière ;
+  `04efcd48` galerie inclinée en édition 3D ; `4ce78f12` menu au sommet en icônes au trait ; `93759be9` jeu caché
+  qui change de niveau dès la vague 1 (forcé sur un niveau pauvre). Prouvés par checkups, pas joués à la main.
   `qui: KARMA · action: refaire une chatière ; vue d'édition 3D sur une galerie inclinée (capture si les murs se voient
   encore de l'extérieur en vue normale) · fini: vus conformes, ou bugs ouverts · depuis: 12/11/2026 · taille: XS`
 - **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
@@ -156,11 +156,6 @@
   `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
   `qui: KARMA · action: coller en console la ligne tags / clés / nombre de points envoyée le 12/11 · fini: cause
   identifiée, test rouge puis vert · depuis: 12/11/2026 · taille: S`
-- **Jeu caché : la partie reste sur son niveau de départ** — vu par KARMA pendant l'essai de la v2.25.0 : une partie
-  commencée au niveau X y reste, même si ce niveau n'a presque pas de POI. Attendu : jeu sur plusieurs niveaux.
-  Décision KARMA (12/11) : les destinations se prennent parmi les POI de tous les niveaux.
-  `qui: Claude · action: correctif dans addons/mkmg (session Dev : 3d), proposition avant code · fini: partie lancée sur
-  un niveau pauvre qui mène aux autres niveaux, checkup vert · depuis: 12/11/2026 · taille: S`
 - **Sonar : porte en échec sur une fausse alerte** — scan de rattrapage de la v2.25.0 : une seule anomalie de
   fiabilité, `js/verifierPlan.js > _identite`, S7758 (`codePointAt`). Ne pas suivre : l'empreinte FNV se calcule sur
   les unités UTF-16, `codePointAt` changerait l'identité des objets ignorés (types avec emoji). Sécurité : 0.
