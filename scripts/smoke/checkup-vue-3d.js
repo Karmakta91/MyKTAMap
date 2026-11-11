@@ -4001,8 +4001,8 @@ async function restaurerFormes(page) {
 
 // § 14 decies — Arc de soutènement et formes de patrimoine (KTA_V3D_SEUL=modeles ; objets FICTIFS en mémoire,
 // galerie principale de 2,5 m à z = 0) : arc tracé en travers de la galerie (au-delà des parois) = plein cintre
-// d'une paroi du tube à l'autre en mixte (portée 2,5 m, clé au ciel, piédroits, claveaux impairs), tel que dessiné
-// en structures, rien en galerie ; on marche dessous sans buter (au milieu et contre un piédroit). Ossuaire contre la
+// d'une paroi du tube à l'autre en mixte et en galerie (portée 2,5 m, clé au ciel, piédroits, claveaux impairs),
+// tel que dessiné en structures ; on marche dessous sans buter (au milieu et contre un piédroit). Ossuaire contre la
 // paroi du côté du POI (le pan, crânes, obstacle mince : on ne l'atteint pas de face, on le longe), sur la face d'un
 // pilier à 3 m, panneau seul en structures sans structure. Outil de carrier (2,1 × 1,2 m, le long de l'axe) qui
 // arrête le pas des deux côtés. Fontis : plafond troué, cloche, cône poussé contre la paroi du côté du POI, qui
@@ -4115,7 +4115,10 @@ async function sectionModeles(page) {
   const as = S.arcs && S.arcs[0];
   verifier(!!as && !as.tube && pr(as.portee, 3.2) && pr(as.cleY, S.hauteur, 0.005),
     "structures : arc tel que dessiné (" + (as && as.portee) + " m, d'une structure à l'autre)", S.arcs);
-  verifier(Gl.arcs.length === 0, "galerie : aucun arc (aucune structure dessinée)", Gl.arcs);
+  const ag = Gl.arcs && Gl.arcs[0];
+  verifier(!!ag && Gl.arcs.length === 1 && ag.tube && pr(ag.portee, 2.5) && pr(ag.cleY, Gl.hauteur, 0.005),
+    "galerie : arc d'une paroi à l'autre de la galerie dessinée (" + (ag && ag.portee) + " m), seule structure " +
+    "dessinée", Gl.arcs);
   ["mixte", "galerie", "structures"].forEach(function (k) {
     const o = R[k];
     verifier(o.sousArc[0][0] > -26.3 && o.sousArc[1][0] < -33.7 && o.sousArc[2][0] > -26.3 &&
@@ -4131,9 +4134,9 @@ async function sectionModeles(page) {
       { a: o.outilA, r: o.outilR, ctx: o.ctxOutil });
     const f = o.fontis;
     verifier(!!f && f.construit && f.fontis && f.plafond && f.bouchesPlafond > 0 && pr(f.clocheR, 0.65) &&
-      f.yMax > o.hauteur + 1 && !!f.cone,
-    k + " : fontis = plafond troué (" + (f && f.bouchesPlafond) + " triangles de bouche), cloche de " +
-      (f && f.clocheR) + " m qui monte à " + (f && f.yMax) + " m, cône d'éboulis (" + (f && f.triangles) +
+      f.clocheH >= 2 && f.familles.indexOf("cadre") >= 0 && !!f.cone,
+    k + " : fontis = plafond troué (" + (f && f.bouchesPlafond) + " triangles de bouche), cloche noire non éclairée " +
+      "de " + (f && f.clocheR) + " m qui monte de " + (f && f.clocheH) + " m, cône d'éboulis (" + (f && f.triangles) +
       " triangles)", f);
     verifier(o.fontisCone[0] < 39.2 && o.fontisPassage[0] > 44.5,
       k + " : le cône du fontis arrête le pas (butée à " + o.fontisCone[0] + " m), le passage d'à côté reste libre (" +
@@ -4163,7 +4166,7 @@ async function sectionModeles(page) {
 
 // Captures de § 14 decies (KTA_V3D_CAPTURES) : scène resserrée (arc, ossuaire, outil, fontis tous les 6 m) ; chaque
 // modèle de près, à hauteur d'yeux, éclairage par défaut (fontis : regard levé vers la cloche, par un glisser), puis
-// l'ensemble en vue d'édition inclinée.
+// l'ensemble en vue d'édition inclinée, et l'arc en rendu galerie.
 async function capturesModeles(page) {
   await page.evaluate(function () {
     const sc = window.APP_CONFIG.scale;
@@ -4177,14 +4180,14 @@ async function capturesModeles(page) {
       poi("pt_m_outil", "outil", 3, 0.5, "Outil fictif"), poi("pt_m_fontis", "fontis", 9, 1, "Fontis fictif")]);
   });
   const vues = [["modeles-arc", -12.2, 0.3, 90], ["modeles-ossuaire", -3, -0.9, 180],
-    ["modeles-outil", 5.6, -1, 245], ["modeles-fontis", 7.5, 0.35, 90, false, true],
-    ["modeles-ensemble", -5, 0, 90, true]];
+    ["modeles-outil", 5.6, -1, 245], ["modeles-fontis", 5.4, -0.9, 100, false, 18],
+    ["modeles-ensemble", -5, 0, 90, true], ["modeles-arc-galerie", -12.2, 0.3, 90, false, 0, "galerie"]];
   for (const q of vues) {
     await page.evaluate(async function (c) {
       const K = window.KtaVue3D, sc = window.APP_CONFIG.scale;
       const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
       if (K.etat().ouvert !== false) await K.fermer();
-      window.setPlanRenduVue3D(null, "mixte");
+      window.setPlanRenduVue3D(null, c[6] || "mixte");
       window.KtaGalerie.invalider();
       await K.ouvrir({ depart: { x: (ox + c[1]) * sc, y: (oz + c[2]) * sc, cap: c[3] }, tuiles: false,
         commandes: "pave" });
@@ -4196,7 +4199,7 @@ async function capturesModeles(page) {
       const b = await page.locator("#kta-vue3d canvas").first().boundingBox();
       await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
       await page.mouse.down();
-      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2 - 150, { steps: 6 });
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2 - q[5], { steps: 6 });
       await page.mouse.up();
     }
     await page.waitForTimeout(600);

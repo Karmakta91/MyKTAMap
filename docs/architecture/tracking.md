@@ -1818,23 +1818,24 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   long de l'axe ;
   **arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
   survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes`).
-- **Formes de patrimoine** (`galerieEmprise.js > ACCES`, `BLOQUE`, `ACCES_DIM.ossuaire*` / `outil*` ;
-  `vue3d.js > _ossuaire`, `_outilCarrier`, `_fontis`, `OSSUAIRE`, `OUTIL`, `FONTIS` ; décision produit) : faites en
-  code (lot opaque, couleurs par sommet, aucune texture ni fichier), panneau du POI gardé. **Ossuaire**
-  (`ossuaire`, forme de `PAROI`) : pan d'ossements contre la paroi du côté du POI (1,8 m de long, 0,3 m d'épaisseur,
-  1,6 m de haut au plus, 0,25 m sous le ciel au moins) : bouts d'os en rangées décalées sur un fond sombre, deux
-  rangées de crânes, couronnement ; sans paroi de tube, sur la face de structure la plus proche à 3 m
-  (`_surStructure`, comme la plaque), panneau seul sinon. **Obstacle mince** sur une paroi de tube (`BLOQUE`
-  « ossuaire » : le pan et 0,4 m dans la roche) ; posé sur une structure, aucun obstacle propre : ses 0,3 m restent
-  sous `RAYON_CORPS`, le corps gardé devant la structure ne l'atteint pas. **Outil de carrier** (`outil`) :
-  concasseur sur quatre roues à rayons (châssis, caisse du broyeur et son volant, trémie ouverte, moteur électrique
-  avec poulie et courroie), rouille et métal oxydé, 2,1 × 1,2 × 1,6 m (borné sous le ciel), posé comme le véhicule
-  (dans le tube du côté du POI, le long de l'axe) et **arrête le pas** comme lui (rectangle au sol). **Fontis**
-  (`fontis`) : plafond troué (bouche du gabarit, `lots.plafond`) sur 0,65 m de rayon, cloche de roche sombre qui
-  monte de 1,2 m en se resserrant, et le **cône d'éboulis** de pc / psf (`BLOQUE` « cone », `_coneDans` : poussé
-  vers la paroi du côté du POI, il laisse toujours un passage ; `_volumesItiAcces` : l'itinéraire passe dessus).
-  Coût : ossuaire ~900 triangles, outil ~800, fontis ~110 plus le cône. Garde-fou : `checkup-vue-3d.js` § 14 decies
-  (`KTA_V3D_SEUL=modeles`).
+- **Formes de patrimoine** (`galerieEmprise.js > ACCES`, `BLOQUE`, `ACCES_DIM.ossuaire*` / `outil*` ; `vue3d.js >
+  _ossuaire`, `_outilCarrier`, `_fontis`, `OSSUAIRE`, `OUTIL`, `FONTIS` ; décision produit) : faites en code (lot
+  opaque, couleurs par sommet, aucune texture ni fichier), panneau du POI gardé. **Ossuaire** (`ossuaire`, forme de
+  `PAROI`) : pan d'ossements contre la paroi du côté du POI (1,8 m de long, 0,3 m d'épaisseur, 1,6 m de haut au plus,
+  0,25 m sous le ciel au moins) : bouts d'os en épiphyses arrondies (dômes à 5 pans) en rangées décalées sur un fond
+  sombre, deux rangées de crânes (demi-sphères aplaties, orbites), couronnement, ivoire sale tiré par os ; sans paroi
+  de tube, sur la face de structure la plus proche à 3 m (`_surStructure`, comme la plaque), panneau seul sinon.
+  **Obstacle mince** sur une paroi de tube (`BLOQUE` « ossuaire » : le pan et 0,4 m dans la roche) ; posé sur une
+  structure, aucun obstacle propre : ses 0,3 m restent sous `RAYON_CORPS`, le corps gardé devant la structure ne
+  l'atteint pas. **Outil de carrier** (`outil`) : concasseur sur quatre roues à rayons (châssis, caisse du broyeur et
+  son volant, trémie ouverte, moteur électrique avec poulie et courroie), rouille sombre tirée par pièce, moteur gris
+  acier, 2,1 × 1,2 × 1,6 m (borné sous le ciel), posé comme le véhicule (dans le tube du côté du POI, le long de
+  l'axe) et **arrête le pas** comme lui (rectangle au sol). **Fontis** (`fontis`) : plafond troué (bouche du gabarit,
+  `lots.plafond`) sur 0,65 m de rayon, cloche qui monte de 2,4 m en se resserrant, dans le lot `lumineux` (non éclairé
+  : la lampe n'y porte pas, trou noir au bord net, fondu au noir vers le haut), et le **cône d'éboulis** de pc / psf
+  (`BLOQUE` « cone », `_coneDans` : poussé vers la paroi du côté du POI, il laisse toujours un passage ;
+  `_volumesItiAcces` : l'itinéraire passe dessus). Coût : ossuaire ~1 150 triangles, outil ~800, fontis ~130 plus le
+  cône. Garde-fou : `checkup-vue-3d.js` § 14 decies (`KTA_V3D_SEUL=modeles`).
 - **Suivi / libre** (`basculerSuivi`, bouton 🧭 Suivi / 🕹️ Libre) : en suivi, position du tracker et cap de
   l'appareil lissés,
   lus à la source du mode « plan orienté » (`getPlanRelHeading`, offset Nord compris) ; le lissage reste celui de
@@ -2004,17 +2005,18 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   compté) ; repris → scène remontée à neuf ; sinon fermeture avec le toast `vue3d.contextePerdu`.
   🩸 Jamais `dispose()` sur les objets d'avant la perte : leurs écouteurs appartiennent à l'ancien état de three.js
   et effaceraient sur le nouveau contexte des objets qui n'en sont pas (« object does not belong to this context »).
-- **Arc de soutènement** (`arc`, `vue3d.js > _arcSoutenement`, `_arcEntreParois`, `_arcPleinCintre`, `ARC` ;
-  décision produit) : un arc plein cintre en pierre de taille par segment de la polyligne, dans les rendus qui
-  dessinent les structures (mixte, structures ; rien en galerie) : deux piédroits (0,3 m en travers, au plus 20 % de
-  la portée) et leur imposte, claveaux de 0,25 m (nombre impair, clé un peu plus profonde, joints de mortier
-  assombris), 0,5 m de profondeur, **extrados à la clé au ciel du niveau**. Plus large que le ciel ne le permet
-  (piédroits sous 0,6 m) : surbaissé en demi-ellipse. En mixte, un segment en travers d'un tube (milieu dans sa
-  largeur, hors chambre, à plus de 30° de l'axe) va **d'une paroi du tube à l'autre**, là où sa ligne les coupe ;
-  ailleurs (chambre, structures), tel que dessiné. Couleur de la légende (🧱 coupé) ou pierre (`PIERRE.couleur`, 🧱).
-  ⚠️ contrat : **on passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas
-  `arc`) ; ni face où poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode
-  mixte, il ne fait pas d'une galerie une chambre (`galerieEmprise.js > _indexStructures`). ~180 triangles par arc.
+- **Arc de soutènement** (`arc`, `vue3d.js > _arcSoutenement`, `_arcEntreParois`, `_arcPleinCintre`, `ARC` ; décision
+  produit) : un arc plein cintre en pierre de taille par segment de la polyligne, dans les trois rendus (en galerie,
+  seule structure dessinée : `_indexer` y garde les arcs, `_construireTuileGalerie` les pose) : deux piédroits (0,3 m
+  en travers, au plus 20 % de la portée) et leur imposte, claveaux de 0,25 m (nombre impair, clé un peu plus profonde,
+  joints de mortier assombris), 0,5 m de profondeur, **extrados à la clé au ciel du niveau**. Plus large que le ciel
+  ne le permet (piédroits sous 0,6 m) : surbaissé en demi-ellipse. En mixte et en galerie, un segment en travers d'un
+  tube (milieu dans sa largeur, hors chambre, à plus de 30° de l'axe) va **d'une paroi du tube à l'autre**, là où sa
+  ligne les coupe ; ailleurs (chambre, structures), tel que dessiné. Couleur (décision produit) : légende avec 🧱
+  coupé, calcaire chaud avec 🧱 (`ARC.pierre`, famille des piliers texturés, accordé aux parois). ⚠️ contrat : **on
+  passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas `arc`) ; ni face où
+  poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode mixte, il ne fait pas
+  d'une galerie une chambre (`galerieEmprise.js > _indexStructures`). ~180 triangles par arc.
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.

@@ -131,9 +131,11 @@
   // de la galerie, joints de `joint` m, un claveau tous les `claveau` m d'extrados (impair, `min` à `max`) ; clé
   // plus profonde de `cle` m ; imposte de `imposte` m débordant de `deborde` ; piédroits d'au moins `piedMin` m de
   // haut : plus large que le ciel ne le permet, l'arc est surbaissé (demi-ellipse). Portée sous `porteeMin` : rien.
-  // Teinte : couleur de la légende (🧱 coupé) ou pierre de taille (PIERRE.couleur, 🧱), nuancée par claveau.
+  // Teinte (décision produit) : couleur de la légende (🧱 coupé) ou `pierre` (🧱 : calcaire chaud de la famille des
+  // piliers texturés, accordé aux parois, jamais blanc neuf), nuancée par claveau.
   const ARC = { pied: 0.3, ep: 0.25, prof: 0.5, joint: 0.012, claveau: 0.32, min: 5, max: 15, cle: 0.04,
-    imposte: 0.06, deborde: 0.03, piedMin: 0.6, porteeMin: 0.6, nuance: 0.07, mortier: 0.55, tube: 3 };
+    imposte: 0.06, deborde: 0.03, piedMin: 0.6, porteeMin: 0.6, nuance: 0.1, mortier: 0.5, tube: 3,
+    pierre: "#b09872" };
   const LARGEUR_TRACE = 0.25;       // m
   // Itinéraire au sol (décision produit) : le dessin du trajet du jeu (addons/mkmg), à la couleur de l'itinéraire de
   // la carte (--kta-interaction ; le doré reste aux itinéraires publiés par l'équipe). Ruban PLEIN continu de
@@ -329,26 +331,32 @@
   const VEHICULE = { garde: 0.2, caisse: 0.8, hab: 0.6, retrait: 0.1, roue: 0.28, roueL: 0.18,
     cotes: 12, carrosserie: "#59616b", vitre: "#1d2228", pneu: "#1b1b1b" };
   // Ossuaire (_ossuaire) : pan de `h` m au plus, `plafond` m sous le ciel au moins ; bouts d'os de `bout` m tous les
-  // `pas` m, rangées de `rang` m, en relief de `relief` m sur le fond ; crânes de `l` × `h` m tous les `pas` m,
-  // `avance` m devant le pan ; `rangs` : [bas, haut (parts de la hauteur), genre]. Couleurs de la scène (os patinés).
-  const OSSUAIRE = { h: 1.6, plafond: 0.25, bout: 0.085, pas: 0.1, rang: 0.08, relief: 0.03,
-    cranes: { l: 0.16, h: 0.15, pas: 0.22, avance: 0.02 },
+  // `pas` m, rangées de `rang` m, en relief de `relief` m sur le fond, dôme de `dome` m à `cotesOs` pans ; crânes de
+  // `l` × `h` × `p` m tous les `pas` m, `avance` m devant le pan, `longs` fuseaux, parallèles `lats` (rad) ; `rangs` :
+  // [bas, haut (parts de la hauteur), genre]. Couleurs de la scène : ivoire sale, une teinte tirée par os et crâne.
+  // 🩸 Coût : ~1 150 triangles (bouts d'os ×5, crânes ×40) ; plus d'os ou de pans le font vite doubler.
+  const OSSUAIRE = { h: 1.6, plafond: 0.25, bout: 0.1, pas: 0.13, rang: 0.105, relief: 0.03, dome: 0.024,
+    cotesOs: 5, cranes: { l: 0.16, h: 0.15, p: 0.09, pas: 0.24, avance: 0.03, longs: 5,
+      lats: [-0.9, -0.2, 0.5, 1.1, Math.PI / 2] },
     rangs: [[0, 0.3, "os"], [0.3, 0.42, "cranes"], [0.42, 0.72, "os"], [0.72, 0.84, "cranes"], [0.84, 0.93, "os"],
       [0.93, 1, "couronne"]],
-    os: "#a8977a", os2: "#8c7c62", fond: "#2e281f", crane: "#b8a886", orbite: "#1a1611" };
+    os: ["#a89773", "#968462", "#b5a37f", "#8a7958", "#9e8c69", "#7f6f52"], fond: "#2a241c",
+    crane: ["#b3a27e", "#a39170", "#bcab88"], orbite: "#17130e" };
   // Outil de carrier (_outilCarrier, concasseur) : dimensions et obstacle dans KtaGalerie (ACCES_DIM.outil*) ; roues
   // de `roue` m de rayon (jante de `jante` m, `roueL` de large, moyeu de `moyeu`, `rayons` rayons) à `roueRetrait`
   // m des bouts ; caisse du broyeur de `caisse` m de haut, `caisseB` de demi-largeur ; trémie évasée de `evase` m ;
-  // volant de `volant` m ; moteur de `moteurR` × `moteurL` m, poulie de `poulie` m ; `cotes` faces par cercle.
+  // volant de `volant` m ; moteur de `moteurR` × `moteurL` m, poulie de `poulie` m ; `cotes` faces par cercle ; rouille
+  // tirée par pièce dans `rouilles` (brun-orangé oxydé), moteur gris acier sale.
   const OUTIL = { roue: 0.32, jante: 0.05, roueL: 0.06, moyeu: 0.05, rayons: 6, roueRetrait: 0.42, caisse: 0.62,
     caisseB: 0.36, evase: 0.18, volant: 0.26, moteurR: 0.17, moteurL: 0.45, poulie: 0.09, cotes: 10,
-    rouille: "#5e3626", rouilleSombre: "#432719", metal: "#4d463f", moteur: "#3f443c", courroie: "#1d1916",
-    creux: "#241b16" };
+    rouilles: ["#4a2c1c", "#5c3520", "#3d2418", "#62402a", "#523222", "#33211a", "#6a4529"], rouilleSombre: "#2f1c12",
+    metal: "#4a4642", moteur: "#55585a", courroie: "#1d1916", creux: "#241b16" };
   // Fontis (_fontis) : cloche de `r` m de rayon au ciel, qui monte de `haut` m ; `profil` : [hauteur au-dessus du
-  // ciel (m), part du rayon] ; `roche` : teinte par anneau, de plus en plus noire ; `cotes` faces.
-  const FONTIS = { r: 0.65, haut: 1.2, cotes: 12,
-    profil: [[0, 1], [0.35, 0.96], [0.7, 0.82], [1, 0.58], [1.15, 0.3]],
-    roche: ["#3d3831", "#2e2a25", "#211e1b", "#161412"] };
+  // ciel (m), part du rayon] ; `roche` : teinte par anneau (matériau non éclairé : la lampe n'y porte pas), fondue
+  // au noir vers le haut ; `cotes` faces.
+  const FONTIS = { r: 0.65, haut: 2.4, cotes: 12,
+    profil: [[0, 1], [0.3, 0.95], [0.8, 0.78], [1.3, 0.56], [1.8, 0.34], [2.15, 0.16]],
+    roche: ["#241f19", "#120f0c", "#070605", "#020202", "#000000"] };
   // Geste d'un passage : fondu noir de `fondu` ms de part et d'autre de la bascule ; descente / montée de `ms` en tout
   // (la moitié dans chaque niveau), la caméra passant `auDela` m sous le sol ou au-dessus du plafond ; bandeau
   // « Niveau n » `bandeau` ms.
@@ -851,9 +859,10 @@
         emprise(t, o.points);
       }
     };
-    // Galerie : d.galerie ; mixte : d.mixte (structures ET pièces des tubes, tracés en rubans au sol).
+    // Galerie : d.galerie ; mixte : d.mixte (structures ET pièces des tubes, tracés en rubans au sol). Galerie : des
+    // structures, les arcs de soutènement seuls (_arcSoutenement, paroi à paroi de la galerie dessinée).
     const g = d.galerie, m = g || d.mixte;
-    if (!g) objets(d.structures, "s");
+    objets(g ? d.structures.filter(function (s) { return s.type === "arc"; }) : d.structures, "s");
     objets(d.zones, "z");
     // Pièces de l'emprise à la tuile de leur centre ; galerie : axes (liseré) aussi, et parmi les tracés seul
     // l'itinéraire reste un ruban.
@@ -1525,6 +1534,7 @@
     const lots = { opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau, remblais: remblais,
       eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
+    for (let i = 0; i < t.s.length; i++) _arcSoutenement(opaque, t.s[i], m);
     for (let i = 0; i < t.r.length; i++) {
       const r = t.r[i], col = _couleur("traces", r.type, "color");
       if (r.type !== "itinerary" && !_lignesSol()) continue;
@@ -6107,8 +6117,9 @@
   // par sommet). L'arc et le fontis lisent la charte (légende de l'arc, remblais du cône) ; ossuaire et outil ont
   // des couleurs de la scène, comme le véhicule.
 
-  // Arc de soutènement `s` (polyligne `arc`) dans le lot `lot` : un arc par segment (_arcPleinCintre). Mixte : un
-  // segment en travers d'un tube va d'une paroi du tube à l'autre (_arcEntreParois) ; sinon, tel que dessiné.
+  // Arc de soutènement `s` (polyligne `arc`) dans le lot `lot` : un arc par segment (_arcPleinCintre), dans les trois
+  // rendus. Mixte et galerie (`mx` : leur modèle) : un segment en travers d'un tube va d'une paroi du tube à l'autre
+  // (_arcEntreParois) ; sinon (structures, chambre), tel que dessiné.
   // Relevé du checkup : e.arcs (structure → [{ niveau, a, b (px), portee, piedH, intradosY, cleY, claveaux, k,
   // tube, triangles }]).
   function _arcSoutenement(lot, s, mx) {
@@ -6125,7 +6136,7 @@
     (e.arcs || (e.arcs = new Map())).set(s, out);
   }
 
-  // Bouts (px) de l'arc dessiné de a à b → { a, b, tube } | null (segment nul). Mixte, milieu du segment dans un tube
+  // Bouts (px) de l'arc dessiné de a à b → { a, b, tube } | null (segment nul). Mixte ou galerie, milieu dans un tube
   // (axe à ARC.tube m au plus, hors chambre, milieu dans sa largeur), segment en travers (à plus de 30° de l'axe) :
   // les points où la ligne du segment coupe les deux parois du tube (paroi à paroi, sens a → b gardé). Sinon
   // (chambre, rendu structures, arc le long de la galerie) : les bouts dessinés, d'une structure à l'autre.
@@ -6156,7 +6167,7 @@
     const piedMin = Math.min(A.piedMin, h * 0.4);
     let ys = h - re, kv = 1;
     if (ys < piedMin) { ys = piedMin; kv = (h - ys) / re; }
-    const base = e.textures === true ? _couleurFixe(PIERRE.couleur) : _couleur("structures", "arc");
+    const base = e.textures === true ? _couleurFixe(A.pierre) : _couleur("structures", "arc");
     const teinte = function (f) {
       return { r: Math.min(1, base.r * f), g: Math.min(1, base.g * f), b: Math.min(1, base.b * f) };
     };
@@ -6237,18 +6248,22 @@
   }
 
   // Ossuaire : pan d'ossements rangés contre la paroi (_faceParoi, la place des formes murales), de OSSUAIRE.h au
-  // plus (OSSUAIRE.plafond sous le ciel), ACCES_DIM.ossuaireL de long, ossuaireEp d'épaisseur : bouts d'os en
-  // rangées décalées sur un fond sombre, deux rangées de crânes, couronnement d'os longs (OSSUAIRE.rangs, parts de
-  // la hauteur). ⚠️ contrat : l'obstacle est galerieEmprise.js > _obstaclesAcces (genre « ossuaire »), le même pan.
+  // plus (OSSUAIRE.plafond sous le ciel), ACCES_DIM.ossuaireL de long, ossuaireEp d'épaisseur : bouts d'os arrondis
+  // (_boutOs) en rangées décalées sur un fond sombre, deux rangées de crânes (_crane), couronnement d'os longs
+  // (OSSUAIRE.rangs, parts de la hauteur) ; ivoire sale tiré par os dans OSSUAIRE.os. ⚠️ contrat : l'obstacle est
+  // galerieEmprise.js > _obstaclesAcces (genre « ossuaire »), le même pan.
   function _ossuaire(v, lots) {
     const e = _e, O = OSSUAIRE, D = DIM_ACCES, F = _faceParoi(v), lot = lots.opaque;
     const H = Math.min(O.h, e.hauteur - O.plafond), L = D.ossuaireL / 2, ep = D.ossuaireEp, fond = ep - O.relief;
     const alea = _aleaGraine(_hachage("ossuaire," + v.cx.toFixed(2) + "," + v.cz.toFixed(2)));
-    const ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0), plusS = [ux, 0, uz];
-    const os = [_couleurFixe(O.os), _couleurFixe(O.os2)], sombre = _couleurFixe(O.fond);
-    const crane = _couleurFixe(O.crane), orbite = _couleurFixe(O.orbite);
+    const ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0), nf = F.n, sombre = _couleurFixe(O.fond);
+    const tire = function (l) { return _couleurFixe(l[Math.floor(alea() * l.length)]); };
     const P = function (s, r, y) { const q = F.Q(s, r); return [q[0], y, q[1]]; };
-    const haut = [0, 1, 0], nf = F.n;
+    // Normale (ns le long du pan, nr vers la galerie, ny) → monde, normée.
+    const N = function (ns, nr, ny) {
+      const l = Math.hypot(ns, nr, ny) || 1;
+      return [(ux * ns + nf[0] * nr) / l, ny / l, (uz * ns + nf[2] * nr) / l];
+    };
     // Masse : face sombre, deux bouts (normale vers +s puis −s, celle de _repere) ; le dessus est le couronnement.
     _rectParoi(lot, F, -L, L, 0, H, fond, sombre);
     [[-L, -1], [L, 1]].forEach(function (b) {
@@ -6260,55 +6275,64 @@
       if (rg[2] === "os") {
         for (let y = y0, j = 0; y + O.rang <= y1 + 1e-6; y += O.rang, j++) {
           for (let s = -L + O.pas / 2 + (j % 2 ? O.pas / 2 : 0); s + O.bout / 2 <= L; s += O.pas) {
-            const b = O.bout * (0.8 + 0.3 * alea()) / 2, r = fond + O.relief * (0.5 + 0.5 * alea());
-            const yc = y + O.rang / 2;
-            lot.quad(P(s - b, r, yc - b * 0.8), P(s + b, r, yc - b * 0.8), P(s + b, r, yc + b * 0.8),
-              P(s - b, r, yc + b * 0.8), nf, os[alea() < 0.5 ? 0 : 1]);
+            const b = O.bout * (0.8 + 0.3 * alea()) / 2, r = fond + O.relief * (0.3 + 0.5 * alea());
+            _boutOs(lot, P, N, s + (alea() - 0.5) * 0.02, y + O.rang / 2, b, r, r + O.dome, alea(), tire(O.os));
           }
         }
       } else if (rg[2] === "cranes") {
-        const C = O.cranes, ch = Math.min(C.h, y1 - y0);
+        const C = O.cranes;
         for (let s = -L + C.pas / 2; s + C.l / 2 <= L; s += C.pas) {
-          _crane(lot, P, s, y0 + (y1 - y0 - ch) / 2, ch, fond, ep + C.avance, C.l / 2, crane, orbite, nf, plusS);
+          _crane(lot, P, N, s, (y0 + y1) / 2, C, ep + C.avance, tire(O.crane), _couleurFixe(O.orbite));
           cranes++;
         }
       } else {
         // Couronnement : un lit d'os longs couchés le long de la paroi.
-        lot.quad(P(-L, ep, y0), P(L, ep, y0), P(L, ep, y1), P(-L, ep, y1), nf, os[0]);
-        lot.quad(P(-L, 0, y1), P(L, 0, y1), P(L, ep, y1), P(-L, ep, y1), haut, os[1]);
+        lot.quad(P(-L, ep, y0), P(L, ep, y0), P(L, ep, y1), P(-L, ep, y1), nf, tire(O.os));
+        lot.quad(P(-L, 0, y1), P(L, 0, y1), P(L, ep, y1), P(-L, ep, y1), [0, 1, 0], tire(O.os));
       }
     });
     v.trace = { ossuaireH: +H.toFixed(3), long: +(2 * L).toFixed(3), ep: ep, cranes: cranes };
   }
 
-  // Crâne simplifié d'un pan d'ossuaire : mâchoire étroite en retrait, face (jusqu'à 0,7 h), front biseauté, calotte,
-  // tempes ; orbites et nez sombres, posés devant la face. P(s, recul, y) : point du pan ; f : recul de la face ;
-  // fond : celui du pan ; plusS : sens +s dans le monde (normales des tempes).
-  function _crane(lot, P, s, y0, h, fond, f, l, col, sombre, nf, plusS) {
-    const yf = y0 + h * 0.7, yt = y0 + h, fb = f - h * 0.3, haut = [0, 1, 0], yj = y0 + h * 0.3;
-    // Face au-dessus de la mâchoire, mâchoire plus étroite et en retrait, dessous de la face entre les deux.
-    lot.quad(P(s - l, f, yj), P(s + l, f, yj), P(s + l, f, yf), P(s - l, f, yf), nf, col);
-    const lj = l * 0.62, fj = f - 0.015;
-    lot.quad(P(s - lj, fj, y0), P(s + lj, fj, y0), P(s + lj, fj, yj), P(s - lj, fj, yj), nf, col);
-    lot.quad(P(s - l, fond, yj), P(s + l, fond, yj), P(s + l, f, yj), P(s - l, f, yj), [0, -1, 0], col);
-    const nb = [nf[0] * 0.7, 0.7, nf[2] * 0.7];
-    lot.quad(P(s - l, f, yf), P(s + l, f, yf), P(s + l, fb, yt), P(s - l, fb, yt), nb, col);
-    lot.quad(P(s - l, fb, yt), P(s + l, fb, yt), P(s + l, fond, yt), P(s - l, fond, yt), haut, col);
-    [[-l, -1], [l, 1]].forEach(function (c) {
-      const n = [plusS[0] * c[1], 0, plusS[2] * c[1]], x = s + c[0];
-      lot.quad(P(x, fond, yj), P(x, f, yj), P(x, f, yf), P(x, fond, yf), n, col);
-      lot.quad(P(s + c[0] * 0.62, fond, y0), P(s + c[0] * 0.62, fj, y0), P(s + c[0] * 0.62, fj, yj),
-        P(s + c[0] * 0.62, fond, yj), n, col);
-      lot.tri(P(x, fond, yf), P(x, f, yf), P(x, fb, yt), n, col);
-      lot.tri(P(x, fond, yf), P(x, fb, yt), P(x, fond, yt), n, col);
-    });
-    const r = f + 0.004, eo = l * 0.38, ye = y0 + h * 0.42;
+  // Bout d'os vu de face : épiphyse en dôme bas à OSSUAIRE.cotesOs pans, centre (s, y), rayon b, bord au recul r0,
+  // sommet à r1 ; `tour` (0 → 1) fait tourner le polygone (deux os voisins ne se ressemblent pas).
+  function _boutOs(lot, P, N, s, y, b, r0, r1, tour, col) {
+    const k = OSSUAIRE.cotesOs, d = r1 - r0, T = P(s, r1, y);
+    for (let i = 0; i < k; i++) {
+      const a0 = 2 * Math.PI * (i + tour) / k, a1 = 2 * Math.PI * (i + 1 + tour) / k, am = (a0 + a1) / 2;
+      lot.tri(P(s + b * Math.cos(a0), r0, y + b * Math.sin(a0)), P(s + b * Math.cos(a1), r0, y + b * Math.sin(a1)), T,
+        N(Math.cos(am) * d, b, Math.sin(am) * d), col);
+    }
+  }
+
+  // Crâne d'un pan d'ossuaire : moitié avant d'une sphère aplatie (C.l × C.h, C.p de profondeur, nez au recul
+  // `front`), centre (s, yc) ; C.longs fuseaux, C.lats (rad) les parallèles ; orbites et nez sombres posés devant.
+  function _crane(lot, P, N, s, yc, C, front, col, sombre) {
+    const ax = C.l / 2, ay = C.h / 2, az = C.p, rc = front - az, lats = C.lats, n = C.longs;
+    const pt = function (ph, t) {
+      return P(s + ax * Math.sin(ph) * Math.cos(t), rc + az * Math.cos(ph) * Math.cos(t), yc + ay * Math.sin(t));
+    };
+    const nm = function (ph, t) {
+      return N(Math.sin(ph) * Math.cos(t) / ax, Math.cos(ph) * Math.cos(t) / az, Math.sin(t) / ay);
+    };
+    for (let i = 0; i < n; i++) {
+      const p0 = -Math.PI / 2 + Math.PI * i / n, p1 = -Math.PI / 2 + Math.PI * (i + 1) / n, pm = (p0 + p1) / 2;
+      for (let j = 0; j + 1 < lats.length; j++) {
+        const t0 = lats[j], t1 = lats[j + 1], tm = (t0 + t1) / 2;
+        if (j + 2 === lats.length) lot.tri(pt(p0, t0), pt(p1, t0), pt(0, t1), nm(pm, tm), col);
+        else lot.quad(pt(p0, t0), pt(p1, t0), pt(p1, t1), pt(p0, t1), nm(pm, tm), col);
+      }
+    }
+    const devant = function (ph, t) { return rc + az * Math.cos(ph) * Math.cos(t) + 0.006; };
+    const eo = ax * 0.34, ye = yc + ay * 0.12;
     [-1, 1].forEach(function (c) {
-      const sx = s + c * l * 0.45;
-      lot.quad(P(sx - eo / 2, r, ye), P(sx + eo / 2, r, ye), P(sx + eo / 2, r, ye + h * 0.22),
-        P(sx - eo / 2, r, ye + h * 0.22), nf, sombre);
+      const sx = s + c * ax * 0.42, r = devant(c * 0.45, 0.12);
+      lot.quad(P(sx - eo / 2, r, ye - eo * 0.45), P(sx + eo / 2, r, ye - eo * 0.45), P(sx + eo / 2, r, ye + eo * 0.5),
+        P(sx - eo / 2, r, ye + eo * 0.5), N(0, 1, 0), sombre);
     });
-    lot.tri(P(s - l * 0.1, r, y0 + h * 0.18), P(s + l * 0.1, r, y0 + h * 0.18), P(s, r, y0 + h * 0.36), nf, sombre);
+    const rn = devant(0, -0.35), yn = yc - ay * 0.35;
+    lot.tri(P(s - ax * 0.1, rn, yn - ay * 0.12), P(s + ax * 0.1, rn, yn - ay * 0.12), P(s, rn, yn + ay * 0.1),
+      N(0, 1, 0), sombre);
   }
 
   // Outil de carrier : concasseur sur quatre roues à rayons, le long de l'axe (v.dir), dans le lot opaque : châssis,
@@ -6318,7 +6342,9 @@
   function _outilCarrier(v, lots) {
     const e = _e, O = OUTIL, Q = _repere(v), a = v.a, b = v.b, lot = lots.opaque;
     const H = Math.min(DIM_ACCES.outilH, e.hauteur - 0.1), R = O.roue;
-    const rouille = _couleurFixe(O.rouille), sombre = _couleurFixe(O.rouilleSombre), metal = _couleurFixe(O.metal);
+    const alea = _aleaGraine(_hachage("outil," + v.cx.toFixed(2) + "," + v.cz.toFixed(2)));
+    const rouille = function () { return _couleurFixe(O.rouilles[Math.floor(alea() * O.rouilles.length)]); };
+    const sombre = _couleurFixe(O.rouilleSombre), metal = _couleurFixe(O.metal);
     const moteur = _couleurFixe(O.moteur), noir = _couleurFixe(O.courroie), creux = _couleurFixe(O.creux);
     const sr = a - O.roueRetrait, yC = R + 0.05, yC1 = yC + 0.12;
     // Roues et essieux.
@@ -6329,12 +6355,12 @@
     // Châssis : deux longerons, deux traverses.
     [-1, 1].forEach(function (c) {
       _pave(lot, Q, -a + 0.1, a - 0.1, Math.min(c * (b - 0.24), c * (b - 0.16)), Math.max(c * (b - 0.24),
-        c * (b - 0.16)), yC, yC1, rouille);
-      _pave(lot, Q, c * (a - 0.18) - 0.04, c * (a - 0.18) + 0.04, -b + 0.16, b - 0.16, yC, yC1, rouille);
+        c * (b - 0.16)), yC, yC1, rouille());
+      _pave(lot, Q, c * (a - 0.18) - 0.04, c * (a - 0.18) + 0.04, -b + 0.16, b - 0.16, yC, yC1, rouille());
     });
     // Caisse du broyeur, volant, trémie.
     const c0 = -a + 0.2, c1 = 0.12, cs = (c0 + c1) / 2, yb = yC1 + O.caisse, cb = O.caisseB;
-    _pave(lot, Q, c0, c1, -cb, cb, yC1, yb, rouille);
+    _pave(lot, Q, c0, c1, -cb, cb, yC1, yb, rouille());
     const yv = yC1 + O.caisse * 0.55;
     _cylindreT(lot, v, cs, yv, O.volant, cb + 0.02, cb + 0.06, O.cotes, sombre);
     _cylindreT(lot, v, cs, yv, 0.04, cb, cb + 0.02, 6, metal);
@@ -6348,7 +6374,7 @@
         [cs + hau[0], -hau[1], yt]] : [[cs - bas[0], bas[1], yb], [cs + bas[0], bas[1], yb],
         [cs + hau[0], hau[1], yt], [cs - hau[0], hau[1], yt]];
       const n = [d[0] * ev, -O.evase, d[1] * ev];
-      _quadRepere(lot, v, p, n, rouille);
+      _quadRepere(lot, v, p, n, rouille());
       _quadRepere(lot, v, p, [-n[0], -n[1], -n[2]], creux);
     });
     _quadRepere(lot, v, [[cs - bs, -bt, yb + 0.01], [cs + bs, -bt, yb + 0.01], [cs + bs, bt, yb + 0.01],
@@ -6396,10 +6422,11 @@
   }
 
   // Fontis : cloche crevée dans le ciel au-dessus du volume, plafond troué (bouche du gabarit, comme un puits) sur
-  // v.a (FONTIS.r) de rayon, voûte qui monte de FONTIS.haut en se resserrant (FONTIS.profil), roche sombre de plus
-  // en plus noire vers le haut ; le cône d'éboulis (_cone) est posé à part, à v.cone (la règle de pc / psf).
+  // v.a (FONTIS.r) de rayon, voûte qui monte de FONTIS.haut en se resserrant (FONTIS.profil), dans le lot lumineux
+  // (non éclairé) : un trou noir au bord net, que la lampe n'éclaire pas ; le cône d'éboulis (_cone) est posé à
+  // part, à v.cone (la règle de pc / psf).
   function _fontis(v, lots) {
-    const e = _e, F = FONTIS, h = e.hauteur, n = F.cotes, r0 = v.a, lot = lots.opaque;
+    const e = _e, F = FONTIS, h = e.hauteur, n = F.cotes, r0 = v.a, lot = lots.lumineux;
     const anneau = function (r, y) {
       const out = [];
       for (let k = 0; k < n; k++) {
