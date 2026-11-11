@@ -190,8 +190,13 @@ const roads = [
     k.indexOf("pt_perdu@1:perdu") >= 0, k);
   t("C2 : puits d'aération (aucun moyen de passage) → rien", !k.some(x => x.indexOf("pt_aer") === 0), k);
   const mid = l.find(c => c.objet.uid === "pt_mid");
-  t("C2 : niveau intermédiaire sans raccord → signalé, marqué « traversé »", !!mid && mid.niveau === 1 &&
-    mid.intermediaire === true, k);
+  t("C2 : niveau intermédiaire sans raccord → signalé, marqué « traversé », gravité info", !!mid && mid.niveau === 1 &&
+    mid.intermediaire === true && mid.gravite === "info", mid && mid.gravite);
+  const manque = l.find(c => c.cle === "C2|pt_manque|1"), perdu = l.find(c => c.cle === "C2|pt_perdu|1");
+  t("C2 : niveau de départ ou d'arrivée sans raccord (ou raccord perdu) → bloquant",
+    !!manque && manque.gravite === "bloquant" && !!perdu && perdu.gravite === "bloquant");
+  const ordre = analyse(w).liste.map(c => c.gravite);
+  t("liste triée par gravité : bloquant avant info", ordre.lastIndexOf("bloquant") < ordre.indexOf("info"), ordre);
   t("C2 : galeries proches comptées pour la proposition", !!l.find(c => c.objet.uid === "pt_manque" &&
     c.proposes >= 1));
   t("C2 : clé = C2|uid|niveau", l.some(c => c.cle === "C2|pt_manque|1"));

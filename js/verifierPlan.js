@@ -7,7 +7,8 @@
 // verifierPlan.js — « Vérifier le plan » (Éditeur de données) : contrôles des données du plan ouvert (session et
 // calques), liste groupée par gravité, revue sur la carte (bandeau Précédent / Suivant), fiche de l'objet, « Vu,
 // normal ». Contrôles : C1 tracé coupé par un obstacle dur (zone d'un type dur, mur en ligne), C2 passage entre
-// niveaux (POI) sans raccord validé à un de ses niveaux, C3 tracé jonction mal posé. Avertit aussi à la saisie (C1).
+// niveaux (POI) sans raccord validé à un de ses niveaux (niveau intermédiaire traversé : info), C3 tracé jonction mal
+// posé. Avertit aussi à la saisie (C1).
 // ⚠️ contrat : C1 et C3 lisent les tests du graphe (Pathfinder.controle, PROXIMITY_TOLERANCE), jamais une copie :
 // sinon l'outil annonce un problème que l'itinéraire n'a pas, ou en tait un. C2 lit KtaPoiJonction.
 // Moteur PUR : analyser(donnees?) → { liste, vus } ; sans argument, il lit le plan ouvert (collecter()). Éprouvé en
@@ -26,6 +27,9 @@ window.KtaVerifierPlan = (function () {
   const BORD_M = 0.5;                  // en deçà, l'obstacle n'est touché que « au bord » (souvent un dessin raté)
   const GRAVITES = ["bloquant", "revoir", "info"];
   const CONTROLES = { C1: "bloquant", C2: "bloquant", C3: "bloquant" };
+  // C2 sur un niveau INTERMÉDIAIRE sans raccord : le pathfinder traverse ce niveau sans y déboucher (puits de 0 à 2
+  // sans sortie au 1), l'itinéraire n'est pas trompé (décision produit).
+  const GRAVITE_C2_TRAVERSE = "info";
   const ORDRE_CONTROLES = ["C1", "C2", "C3"];
   const SAISIE_MS = 700;               // rafale de rendus (dessin, annulation) : une vérification à la fin
 
@@ -221,7 +225,8 @@ window.KtaVerifierPlan = (function () {
           const pr = PJ.proposerRaccords(p.x, p.y, [n]);
           proposes = (pr && pr.parNiveau && pr.parNiveau[String(n)] || []).length;
         } catch (e) { proposes = 0; }
-        out.push({ controle: "C2", gravite: CONTROLES.C2, cle: "C2|" + _identite(p) + "|" + n, motif: motif,
+        const traverse = motif === "aucun" && n > bas && n < haut;
+        out.push({ controle: "C2", gravite: traverse ? GRAVITE_C2_TRAVERSE : CONTROLES.C2, cle: "C2|" + _identite(p) + "|" + n, motif: motif,
           niveau: n, objet: p, famille: "editorPoints", intermediaire: n > bas && n < haut, proposes: proposes,
           ancre: { x: p.x, y: p.y }, boite: _boite(p, 30) });
       });

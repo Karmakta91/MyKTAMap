@@ -140,7 +140,7 @@ Toutes les recos sont prises.
 |---|---|---|
 | 1 | Moteur de contrôles (fonctions pures, testables en Node comme `check-api-surface.js`), fonctions du pathfinder exposées, table unique des types durs, grille des zones bloquantes ; fenêtre (liste groupée, centrer, fiche, Précédent / Suivant, « vu, normal ») ; **C1, C2, C3** ; avertissement à la saisie pour C1 ; garde-fou Node sur données fictives ; textes fr / en / es, aide, guides, `ui.md`, `multilevel-pathfinding.md`. **À livrer avant que Comblé bloque** (`ETUDE_REMBLAIS.md`, lot 0) | M |
 | 2 | C4, C6, C7, C8, C9 ; C5 et C10 branchés ; renvoi C11 | M |
-| 3 | Corrections sûres (doublon identique, contour dégénéré), filets et historique, calque → session, plan partagé (traces, droits) ; `check-filets-donnees.js` étendu | M |
+| 3 | Corrections sûres (doublon identique, contour dégénéré), filets et historique, calque → session, plan partagé (traces, droits) ; `check-filets-donnees.js` étendu ; **galerie volontairement condamnée écrite sur l'objet** (question 6, partie b : voyage avec le plan, la synchro et les exports ; le lot 1 ne retient « vu, normal » que sur l'appareil) | M |
 | 4 | Passe légère au chargement (pastille, toast une fois) et fin du Générateur, après mesure du coût | S |
 
 ## Inconnues qu'on ne lèvera que sur des relevés réels

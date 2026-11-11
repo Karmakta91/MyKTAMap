@@ -67,7 +67,7 @@ async function ouvrirPlan(page) {
     // Objets du test hors de l'image : les bornes de la carte (map.js > maxBounds) empêcheraient de les centrer.
     window.map.setMaxBounds(null);
     if (cfg.multiLevel === true) {
-      [0, 1].forEach(function (n) {
+      [0, 1, 2].forEach(function (n) {
         if (cfg.availableLevels.indexOf(n) < 0) cfg.availableLevels.push(n);
         if (cfg.visibleLevels.indexOf(n) < 0) cfg.visibleLevels.push(n);
       });
@@ -98,11 +98,15 @@ function semer(page) {
       O2("rd_vp_mur", "principal", [[110, 0], [140, 0]]),
       O2("rd_vp_libre", "principal", [[0, 30], [140, 30]]),
       O2("rd_vp_n1", "principal", [[0, 60], [140, 60]], { level: 1 }),
+      O2("rd_vp_n2", "principal", [[0, 90], [140, 90]], { level: 2 }),
       O2("rd_vp_jmeme", "jonction", [[160, 0], [160, 20]], { fromLevel: 0, toLevel: 0 })
     ]);
     window.setEditorPoints([{ uid: "pt_vp_puits", updatedAt: VIEUX, id: "vp-puits", nom: "vp-puits", tags: ["jpe"],
       x: O + 100 * s, y: O + 61 * s, level: 0, niveaux: [0, 1],
-      accroches: [{ level: 0, x: O + 100 * s, y: O + 30 * s }] }]);
+      accroches: [{ level: 0, x: O + 100 * s, y: O + 30 * s }] },
+      { uid: "pt_vp_mid", updatedAt: VIEUX, id: "vp-mid", nom: "vp-mid", tags: ["jpe"], x: O + 40 * s, y: O + 31 * s,
+        level: 0, niveaux: [0, 1, 2], accroches: [{ level: 0, x: O + 40 * s, y: O + 30 * s },
+          { level: 2, x: O + 40 * s, y: O + 90 * s }] }]);
     if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
     if (window.HistoryManager && typeof window.HistoryManager.reset === "function") window.HistoryManager.reset();
   }, ECHELLE);
@@ -186,6 +190,7 @@ async function jouer(nav, moteur) {
       verifier(l.liste.indexOf(C3) >= 0, "C3 : jonction du niveau 0 au niveau 0 signalée");
       verifier(!l.liste.some(function (k) { return k.indexOf("C2|pt_vp_puits|0") === 0; }),
         "C2 : le niveau raccordé (0) n'est pas signalé", l.liste);
+      verifier(l.liste.indexOf("C2|pt_vp_mid|1") >= 0, "C2 : niveau intermédiaire traversé sans raccord signalé", l.liste);
     }
     const ok1 = await page.evaluate(async function () {
       const P = window.__vp.P;
@@ -200,12 +205,24 @@ async function jouer(nav, moteur) {
     await ouvrirListe(page);
     const fen = await page.evaluate(function () {
       const m = document.getElementById("kta-verif-modal");
-      return { bloquant: !!m.querySelector(".kta-verif-g-bloquant"),
+      const info = m.querySelector(".kta-verif-g-info");
+      let apresInfo = [];
+      for (let e = info && info.nextElementSibling; e; e = e.nextElementSibling) {
+        if (e.classList.contains("kta-verif-gravite")) break;
+        apresInfo = apresInfo.concat(Array.from(e.querySelectorAll(".kta-verif-ligne-objet")).map(function (x) {
+          return x.textContent; }));
+      }
+      return { info: apresInfo, bloquant: !!m.querySelector(".kta-verif-g-bloquant"),
         controles: Array.from(m.querySelectorAll(".kta-verif-controle")).map(function (e) { return e.textContent; }),
         lignes: m.querySelectorAll(".kta-verif-ligne").length, popupNative: false };
     });
     verifier(fen.bloquant && fen.lignes >= 2, "fenêtre : groupe « Bloquant », une ligne par constat", fen);
     verifier(fen.controles.length >= (multi ? 3 : 1), "fenêtre : constats rangés par contrôle", fen.controles);
+    if (multi) {
+      verifier(fen.info.some(function (x) { return /vp-mid/.test(x); }) &&
+        !fen.info.some(function (x) { return /vp-puits/.test(x); }),
+        "fenêtre : niveau intermédiaire traversé rangé en « Pour info », le puits sans raccord reste bloquant", fen.info);
+    }
     const iZ = await rang(page, C1Z);
     await page.click('#kta-verif-modal [data-verif-i="' + iZ + '"]');
     await page.waitForTimeout(700);

@@ -56,6 +56,12 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
+- **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
+  « Comblé » fr / en / es, case « Respecter… », brancard, 3D jusqu'au ciel ; dans le même lot, le message à l'échec
+  (sortie d'urgence comprise) qui nomme les zones Comblé en cause. `docs/ETUDE_REMBLAIS.md`.
+  `qui: Claude · action: lot 1 de ETUDE_REMBLAIS.md · fini: Comblé dur partout, message à l'échec, checkups verts
+  · depuis: 11/11/2026 · taille: M`
+
 ## Ensuite
 
 - **Aide ❓ de la vue 3D : accès et niches** — ✅ vérifié 04/11 : l'Aide cite le cavage mais ni les accès comblés ni
@@ -71,6 +77,34 @@
   `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
   `qui: Claude · action: rendre l'appel de homeProfile.js déterministe (attendre I18n prêt) · fini: checkup-guidage
   vert sous WebKit sur plusieurs passages, sans clé manquante · depuis: 04/11/2026 · taille: S`
+- **Vérifier le plan, lot 2 : contrôles C4 à C10** — doublons d'objets, contours dégénérés, hors image, niveau
+  inconnu, type absent de la légende ; Raccords (C5) et Dédoublonnage (C10) branchés, renvoi des liaisons (C11).
+  `docs/ETUDE_VERIFIER_PLAN.md`.
+  `qui: Claude · action: lot 2 de ETUDE_VERIFIER_PLAN.md · fini: C4 à C10 dans la liste, check-verifier-plan étendu
+  · depuis: 11/11/2026 · taille: M`
+- **Vérifier le plan, lot 3 : corrections sûres** — doublon identique, contour dégénéré, filets et historique, calque
+  passé en session, plan partagé (traces, droits) ; galerie volontairement condamnée écrite sur l'objet (question 6).
+  `qui: Claude · action: lot 3 de ETUDE_VERIFIER_PLAN.md · fini: corrections annulables, check-filets-donnees étendu
+  · depuis: 11/11/2026 · taille: M`
+- **Vérifier le plan, lot 4 : passe au chargement et fin du Générateur** — bloquants seuls, pastille et toast une fois
+  tant que le nombre ne change pas, au repos ; coût mesuré d'abord sur le plus gros relevé des checkups.
+  `qui: Claude · action: mesurer le coût puis lot 4 de ETUDE_VERIFIER_PLAN.md · fini: pastille et toast une fois,
+  temps mesuré · depuis: 11/11/2026 · taille: S`
+- **Masse au sol : maquette 2D (remblais, lot 2)** — rendu 2D de la masse au sol à valider avant le code.
+  `docs/ETUDE_REMBLAIS.md`.
+  `qui: Claude · action: maquette 2D · fini: maquette validée par KARMA · depuis: 11/11/2026 · taille: S`
+- **Masse au sol, donnée et 2D (remblais, lot 3)** — type ajouté partout, champ `comble`, fiche, Tableur, copies,
+  KMZ / GeoJSON / SIG, légende, exports, défaut d'import ; garde-fou d'aller-retour. `docs/ETUDE_REMBLAIS.md`.
+  `qui: Claude · action: lot 3 de ETUDE_REMBLAIS.md · fini: type partout, aller-retour vert · depuis: 11/11/2026
+  · taille: L`
+- **Masse au sol en 3D (remblais, lot 4)** — sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ;
+  mesure de perf. `docs/ETUDE_REMBLAIS.md`.
+  `qui: Claude · action: lot 4 de ETUDE_REMBLAIS.md · fini: checkup-vue-3d vert, perf mesurée · depuis: 11/11/2026
+  · taille: L`
+- **Remblais : volume exploité par paliers et itinéraire (lots 5 et 6)** — volume par paliers ; coût de la masse au
+  sol séparé de la distance, temps du guidage. `docs/ETUDE_REMBLAIS.md`.
+  `qui: Claude · action: lots 5 puis 6 de ETUDE_REMBLAIS.md · fini: volume et itinéraire conformes à l'étude
+  · depuis: 11/11/2026 · taille: M`
 ## Plus tard
 
 - **AI_CONTEXT : remplacer les ~540 emoji de bouton par le nom du bouton dans tout le fichier** — le lexique en tête
