@@ -4949,8 +4949,8 @@
   }
 
   function _construireVolume(v) {
-    const e = _e, lots = { parois: new Lot(), opaque: new Lot(), lumineux: new Lot(), sol: new Lot(),
-      plafond: new Lot(), plafondConduit: new Lot(), trous: {} };
+    const e = _e, lots = { parois: new Lot(), paroisPente: new Lot(), opaque: new Lot(), lumineux: new Lot(),
+      sol: new Lot(), plafond: new Lot(), plafondConduit: new Lot(), trous: {} };
     const g = new THREE.Group();
     g.userData.famille = "passage";
     if (v.genre === "pente") _pente(v, lots); else if (v.acces) _acces(v, lots, g); else _puits(v, lots, g);
@@ -4965,6 +4965,7 @@
       me.renderOrder = ordre;
       me.matrixAutoUpdate = false;
       me.userData.famille = famille;
+      if (famille === "paroiPente") me.visible = e.vue !== "plongee";
       g.add(me);
     };
     ajouter(lots.sol, e.mats.boucheSol, -1, "boucheSol");
@@ -4972,17 +4973,19 @@
     ajouter(lots.plafondConduit, e.mats.bouchePlafondConduit, -1, "bouchePlafond");
     // Trémie d'une galerie inclinée (_tremiePente) ; jamais sur un volume de voisin (gabarit du niveau actif).
     if (!vv) Object.keys(lots.trous).forEach(function (b) { ajouter(lots.trous[b], _matTrou(Number(b)), -1, "trou"); });
-    if (lots.parois.p.length) _paroiTexturee();
+    if (lots.parois.p.length || lots.paroisPente.p.length) _paroiTexturee();
     ajouter(lots.parois, e.mats.paroi, 0, "paroiPassage");
+    ajouter(lots.paroisPente, e.mats.paroi, 0, "paroiPente");
     ajouter(lots.opaque, e.mats.opaque, 0, "passage");
     ajouter(lots.lumineux, e.mats.lumineux, 1, "cadre");
     if (v.acces) _ajouterAcces(lots, ajouter);
     let y0 = Infinity, y1 = -Infinity;
-    [lots.parois, lots.opaque].forEach(function (l) {
+    [lots.parois, lots.paroisPente, lots.opaque].forEach(function (l) {
       for (let i = 1; i < l.p.length; i += 3) { y0 = Math.min(y0, l.p[i]); y1 = Math.max(y1, l.p[i]); }
     });
     const n = function (l) { return l.p.length / 9; };
-    v.stats = { triangles: n(lots.parois) + n(lots.opaque) + n(lots.lumineux), bouchesSol: n(lots.sol),
+    v.stats = { triangles: n(lots.parois) + n(lots.paroisPente) + n(lots.opaque) + n(lots.lumineux),
+      bouchesSol: n(lots.sol),
       bouchesPlafond: n(lots.plafond) + n(lots.plafondConduit), conduit: v.conduit || null,
       cadre: n(lots.lumineux) > 0, yMin: Number.isFinite(y0) ? +y0.toFixed(2) : null,
       yMax: Number.isFinite(y1) ? +y1.toFixed(2) : null,
@@ -5169,6 +5172,8 @@
   // tranche [0, h] du niveau. En descente : tranchée sous le sol (bouche au sol jusqu'à tOuvert), puis galerie couverte
   // sous lui. En montée : bouche au plafond et talus sous la rampe jusqu'à tOuvert, parois et plafond au-dessus du
   // plafond du niveau. Le bout d'en face reste ouvert : la scène a basculé avant d'y arriver (_suivrePente).
+  // Parois et plafond du tube (lot paroisPente, famille « paroiPente ») cachés en vue d'édition (_paroisPenteVue) :
+  // vus d'en haut, ce ne sont que des murs qui dépassent du niveau ; le sol en pente et son ruban restent.
   function _pente(v, lots) {
     const p = v.p, dY = p.dY, hA = p.hA, tO = p.tOuvert, col = _couleur("traces", "jonction", "color");
     const W = function (t) { return window.KtaGalerie.demiPente(p, t); };
@@ -5176,7 +5181,7 @@
     v.paroisPente = [];
     const mur = function (P, Q, y0p, y1p, y0q, y1q) {
       if (y1p - y0p < 1e-3 && y1q - y0q < 1e-3) return;
-      _paroiPente(lots.parois, P, Q, y0p, y1p, y0q, y1q);
+      _paroiPente(lots.paroisPente, P, Q, y0p, y1p, y0q, y1q);
       v.paroisPente.push([+P[0].toFixed(3), +P[1].toFixed(3), +Q[0].toFixed(3), +Q[1].toFixed(3),
         +Math.min(y0p, y0q).toFixed(3), +Math.max(y1p, y1q).toFixed(3)]);
     };
@@ -5232,13 +5237,13 @@
         mur(dA, dB, yA, Math.min(yc(A.t), 0), yB, Math.min(yc(B.t), 0));
         if (ouvert) _quadPlat(lots.sol, [gA, gB, dB, dA], 0);
         else {
-          lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
+          lots.paroisPente.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
             [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -wA, uB, -wB, uB, wB, uA, wA]);
         }
       } else if (dY > 0) {
         mur(gA, gB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
         mur(dA, dB, Math.max(yA, hA), yc(A.t), Math.max(yB, hA), yc(B.t));
-        lots.parois.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
+        lots.paroisPente.quad([gA[0], yc(A.t), gA[1]], [gB[0], yc(B.t), gB[1]], [dB[0], yc(B.t), dB[1]],
           [dA[0], yc(A.t), dA[1]], bas, BLANC, [uA, -wA, uB, -wB, uB, wB, uA, wA]);
         if (ouvert) {
           _quadPlat(lots.plafond, [gA, gB, dB, dA], hA);
@@ -6672,6 +6677,12 @@
     e.sale = true;
   }
 
+  // Parois et plafond des galeries inclinées (niveau actif et voisins) : cachés en vue d'édition (_pente).
+  function _paroisPenteVue() {
+    const vu = _e.vue !== "plongee";
+    _e.scene.traverse(function (o) { if (o.userData.famille === "paroiPente") o.visible = vu; });
+  }
+
   function _appliquerVue() {
     const e = _e, haut = e.vue === "plongee";
     // Retour à hauteur d'yeux : caméra sur la place ; la place survolée (_pas) peut être dans un pilier, elle en est
@@ -6688,6 +6699,7 @@
     e.tuiles.forEach(function (t) {
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
     });
+    _paroisPenteVue();
     _voisinsVue();
     _majSolActif();
     e.avatar.visible = haut && _permisGreffe("avatar");
@@ -12485,7 +12497,10 @@
             return _repere(v)(q[0], q[1]);
           }) : null,
           pente: v.p ? { dY: +v.p.dY.toFixed(3), tOuvert: +v.p.tOuvert.toFixed(3), autre: v.p.autre } : null,
-          paroisPente: v.paroisPente || null },
+          paroisPente: v.paroisPente || null,
+          paroisPenteVues: v.obj ? v.obj.children.some(function (o) {
+            return o.userData.famille === "paroiPente" && o.visible;
+          }) : null },
           v.stats || {});
       }),
       voisins: _etatVoisins(),

@@ -2798,6 +2798,20 @@ async function sectionPenteLargeur(page) {
           return [+(m[0] - ox).toFixed(3), +(m[1] - oz).toFixed(3), +(m[2] - ox).toFixed(3), +(m[3] - oz).toFixed(3),
             m[4], m[5]];
         }) : null;
+        if (niv === 0) {
+          // Parois et plafond du tube : vus à hauteur d'yeux, cachés en vue d'édition, revenus au retour.
+          const vues = function () {
+            const q = K.etat().volumes.filter(function (o) { return o.genre === "pente"; })[0];
+            return q ? q.paroisPenteVues : null;
+          };
+          c.vues = { yeux: vues() };
+          K.basculerVue();
+          await pause(120);
+          c.vues.edition = vues();
+          K.basculerVue();
+          await pause(120);
+          c.vues.retour = vues();
+        }
         if (niv === -1) {
           K.placer(P(11.5, 0).x, P(11.5, 0).y, 180);
           await pause(60);
@@ -2849,6 +2863,10 @@ async function sectionPenteLargeur(page) {
     verifier(Array.isArray(c.parois) && dedans.length === 0,
       k + " : aucune paroi de la galerie inclinée dans l'emprise des galeries raccordées (" +
       (c.parois ? c.parois.length : 0) + " parois relevées)", { dedans: dedans, parois: c.parois });
+    if (c.niveau === 0) {
+      verifier(c.vues && c.vues.yeux === true && c.vues.edition === false && c.vues.retour === true,
+        k + " : parois et plafond de la galerie inclinée cachés en vue d'édition, revenus à hauteur d'yeux", c.vues);
+    }
     if (c.niveau === -1) {
       verifier(c.cote.ok && pr(c.cote.dz, 0.5, 0.01) && c.cote.sur,
         k + " : un pas de côté de 0,5 m au bout de la pente passe (règle du pas à la largeur de la galerie)", c.cote);
