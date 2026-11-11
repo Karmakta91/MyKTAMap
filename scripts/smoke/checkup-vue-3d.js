@@ -13419,23 +13419,63 @@ async function sectionCaseBoutonsZoom(nav) {
         return { aide: !!document.getElementById("kta-aide-submodal"), vue: window.KtaVue3D.etat().ouvert };
       });
       verifier(!aideFermee.aide && aideFermee.vue, "Échap avec l'aide ouverte : l'aide se ferme, la vue reste", aideFermee);
-      // ⛏️ sur un plan multi-niveau (le relevé fictif l'est) : grisé, la hauteur du niveau affichée, le titre renvoie
-      // à Réglages ; un toucher n'ouvre pas − / + et ne change rien (décision produit). Le cas à un niveau : § Hauteur.
+      // ⛏️ sur un plan multi-niveau (le relevé fictif l'est) : actif, la hauteur du niveau affichée ; un toucher n'ouvre
+      // pas − / + mais la table « Niveaux : profondeur et hauteur » au-dessus de la vue ; validée, la scène prend la
+      // nouvelle hauteur du niveau (décision produit). Le cas à un niveau : § Hauteur. Réglages remis à la fin.
       await reglages(page);
       const hMulti = await page.evaluate(function () {
         const K = window.KtaVue3D, b = document.querySelector('#kta-vue3d [data-v3d="hauteur"]'), avant = K.etat();
+        const ls = {};
+        for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls[k] = localStorage.getItem(k); }
+        window.__v3dLsHauteur = ls;
         b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));
         b.click();
-        const e = K.etat();
+        const e = K.etat(), m = document.getElementById("kta-prof-modal");
+        const boite = m && m.querySelector(".kta-prof-boite"), r = boite && boite.getBoundingClientRect();
+        const dessus = r ? document.elementFromPoint(r.left + r.width / 2, r.top + 20) : null;
         return { multi: window.APP_CONFIG.multiLevel === true, disabled: b.disabled, title: b.title,
           aria: b.getAttribute("aria-label"), attendu: window.I18n.t("vue3d.hauteurNiveaux"),
           bouton: e.reglageHauteur.bouton, chiffre: "[pickaxe] " + window.formatDistance(e.hauteur, 1),
-          reglage: e.reglageHauteur.visible, h0: avant.hauteur, h1: e.hauteur,
-          pref0: window.getHauteurNiveau(avant.niveau), niveau: e.niveau };
+          reglage: e.reglageHauteur.visible, h0: avant.hauteur, h1: e.hauteur, niveau: e.niveau,
+          table: !!m, auDessus: !!(dessus && m && m.contains(dessus)),
+          champ: !!(m && m.querySelector('.kta-prof-h[data-h="' + e.niveau + '"]')) };
       });
-      verifier(hMulti.multi && hMulti.disabled && hMulti.title === hMulti.attendu && hMulti.aria === hMulti.attendu &&
-        hMulti.bouton === hMulti.chiffre && !hMulti.reglage && hMulti.h1 === hMulti.h0 && hMulti.pref0 === hMulti.h0,
-        "multi-niveau : ⛏️ grisé, hauteur du niveau affichée, titre « Réglages », toucher sans effet", hMulti);
+      verifier(hMulti.multi && !hMulti.disabled && hMulti.title === hMulti.attendu && hMulti.aria === hMulti.attendu &&
+        hMulti.bouton === hMulti.chiffre && !hMulti.reglage && hMulti.h1 === hMulti.h0 && hMulti.table &&
+        hMulti.auDessus && hMulti.champ,
+        "multi-niveau : ⛏️ actif, hauteur du niveau affichée, un toucher ouvre la table des niveaux au-dessus de la vue " +
+        "(pas de − / +)", hMulti);
+      const hApres = await page.evaluate(function (h0) {
+        const K = window.KtaVue3D, m = document.getElementById("kta-prof-modal"), n = K.etat().niveau;
+        const cible = Math.round((h0 + 0.7) * 10) / 10;
+        const champ = m.querySelector('.kta-prof-h[data-h="' + n + '"]');
+        champ.value = String(cible);
+        champ.dispatchEvent(new Event("input", { bubbles: true }));
+        document.getElementById("kta-prof-ok").click();
+        const e = K.etat();
+        return { cible: cible, h: e.hauteur, ferme: !document.getElementById("kta-prof-modal"),
+          bouton: e.reglageHauteur.bouton, chiffre: "[pickaxe] " + window.formatDistance(cible, 1), vue: e.ouvert };
+      }, hMulti.h0);
+      verifier(hApres.ferme && hApres.vue && hApres.h === hApres.cible && hApres.bouton === hApres.chiffre,
+        "multi-niveau : table validée → la scène et ⛏️ prennent la nouvelle hauteur du niveau, la vue reste", hApres);
+      // Réglages d'origine remis (la table écrit aussi les sols), puis la table refermée sans rien écrire : la scène
+      // reprend la hauteur d'avant.
+      const hRemis = await page.evaluate(function () {
+        const ls = window.__v3dLsHauteur || {};
+        const cles = [];
+        for (let i = 0; i < localStorage.length; i++) cles.push(localStorage.key(i));
+        cles.forEach(function (k) { if (!(k in ls)) localStorage.removeItem(k); });
+        Object.keys(ls).forEach(function (k) { if (localStorage.getItem(k) !== ls[k]) localStorage.setItem(k, ls[k]); });
+        delete window.__v3dLsHauteur;
+        const b = document.querySelector('#kta-vue3d [data-v3d="hauteur"]');
+        b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));
+        b.click();
+        const x = document.getElementById("kta-prof-close");
+        if (x) x.click();
+        return window.KtaVue3D.etat().hauteur;
+      });
+      verifier(hRemis === hMulti.h0, "multi-niveau : table refermée par ✕ après remise des réglages → hauteur d'origine",
+        { avant: hMulti.h0, apres: hRemis });
       // Échap ferme la tuile, la vue reste (Échap sur le réglage ouvert : § Hauteur, plan à un niveau).
       await page.keyboard.press("Escape");
       const echap = await page.evaluate(function () {

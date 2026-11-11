@@ -2584,7 +2584,7 @@
   "vue3d.liaisonsPlan": "Enlaces a otros planos",
   "vue3d.niveauBandeau": "Nivel {n}",
   "vue3d.hauteur": "Altura de las galerías: la misma que Volumen explotado, guardada para este plano",
-  "vue3d.hauteurNiveaux": "Altura del nivel: en un plano con varios niveles, se ajusta para cada nivel en Ajustes › Profundidad y altura de los niveles",
+  "vue3d.hauteurNiveaux": "Altura del nivel: en un plano con varios niveles, cada nivel tiene la suya. Abre «Niveles: profundidad y altura»",
   "vue3d.hauteurReglage": "Altura de las galerías",
   "vue3d.hauteurMoins": "Galerías más bajas",
   "vue3d.hauteurPlus": "Galerías más altas",

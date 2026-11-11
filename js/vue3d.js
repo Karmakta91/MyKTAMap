@@ -10928,8 +10928,9 @@
 
   function _oeil(h) { return Math.min(OEIL, Math.max(0.4, h * 0.8)); }
 
-  // (décision produit) Plan multi-niveau : ⛏️ montre la hauteur du niveau sans la régler. Elle se règle par niveau
-  // dans Réglages (profondeurNiveaux.js) : la changer ici recalculerait les pentes des jonctions qui y arrivent.
+  // (décision produit) Plan multi-niveau : ⛏️ n'ouvre pas le − / + : il ouvre la table « Profondeur et hauteur des
+  // niveaux » (profondeurNiveaux.js > ouvrirSaisie, celle de Réglages), où chaque niveau a sa hauteur — la régler seule
+  // ici recalculerait les pentes des jonctions sans montrer les autres niveaux. À la fermeture, la scène est refaite.
   // reglerHauteur (API) suit la même règle : sur un tel plan elle rend la hauteur courante sans rien écrire.
   function _hauteurFigee() { return (window.APP_CONFIG || {}).multiLevel === true; }
 
@@ -10940,7 +10941,7 @@
     if (e.boutonHauteur) {
       _poserIcone(e.boutonHauteur, "pickaxe", txt);
       const fige = _hauteurFigee(), titre = _t(fige ? "vue3d.hauteurNiveaux" : "vue3d.hauteur");
-      e.boutonHauteur.disabled = fige;
+      e.boutonHauteur.classList.toggle("kta-v3d-btn-hauteur-niveaux", fige);
       e.boutonHauteur.title = titre;
       e.boutonHauteur.setAttribute("aria-label", titre);
       if (fige && e.reglageHauteur && !e.reglageHauteur.hidden) _basculerReglageHauteur();
@@ -10948,6 +10949,21 @@
     if (e.hauteurValeur) e.hauteurValeur.textContent = txt;
     if (e.hauteurMoins) e.hauteurMoins.disabled = e.hauteur <= HAUTEUR_REGLAGE.min;
     if (e.hauteurPlus) e.hauteurPlus.disabled = e.hauteur >= HAUTEUR_REGLAGE.max;
+  }
+
+  // Plan multi-niveau : la table des niveaux par-dessus la vue ; fermée, la scène reprend hauteurs et sols.
+  function _ouvrirHauteursNiveaux() {
+    if (!window.ProfondeurNiveaux || typeof window.ProfondeurNiveaux.ouvrirSaisie !== "function") return;
+    window.ProfondeurNiveaux.ouvrirSaisie({ apres: function () {
+      const e = _e;
+      if (!e) return;
+      _reindexer();
+      _majMarqueursIti();
+      _majItiPentes();
+      _majHauteur();
+      e.chevSig = null;
+      e.sale = true;
+    } });
   }
 
   function _basculerReglageHauteur() {
@@ -11066,7 +11082,10 @@
     if (a === "textures") { _basculerTextures(); return true; }
     if (a === "lignesSol") { _basculerLignesSol(); return true; }
     if (a === "rendu") { basculerRendu(); return true; }
-    if (a === "hauteur") { _basculerReglageHauteur(); return true; }
+    if (a === "hauteur") {
+      if (_hauteurFigee()) _ouvrirHauteursNiveaux(); else _basculerReglageHauteur();
+      return true;
+    }
     if (a === "hauteurMoins" || a === "hauteurPlus") {
       if (ev) ev.preventDefault();
       const pas = (a === "hauteurPlus" ? e.hauteur : e.hauteur - 0.1) >= HAUTEUR_PAS_FIN ? 0.5 : 0.1;

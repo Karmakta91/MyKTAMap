@@ -2584,7 +2584,7 @@
   "vue3d.liaisonsPlan": "Liaisons vers d'autres plans",
   "vue3d.niveauBandeau": "Niveau {n}",
   "vue3d.hauteur": "Hauteur des galeries : la même que Volume exploité, retenue pour ce plan",
-  "vue3d.hauteurNiveaux": "Hauteur du niveau : sur un plan à plusieurs niveaux, elle se règle pour chaque niveau dans Réglages › Profondeur et hauteur des niveaux",
+  "vue3d.hauteurNiveaux": "Hauteur du niveau : sur un plan à plusieurs niveaux, chaque niveau a la sienne. Ouvre « Niveaux : profondeur et hauteur »",
   "vue3d.hauteurReglage": "Hauteur des galeries",
   "vue3d.hauteurMoins": "Galeries plus basses",
   "vue3d.hauteurPlus": "Galeries plus hautes",
