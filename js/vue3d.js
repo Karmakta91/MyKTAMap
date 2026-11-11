@@ -7754,6 +7754,127 @@
     if (!b) return;
     const cache = !_rechercheDispo();
     if (b.hidden !== cache) b.hidden = cache;
+    // ⭐ comme 🔍 (un favori s'ouvre comme un résultat) ; ↶ avec la colonne d'outils (vue d'édition).
+    const f = e.boutonFavoris, h = e.boutonHistorique;
+    const cacheF = !window.Favoris || cache, cacheH = !window.HistoryManager || !_dessinPermis();
+    const change = (f && f.hidden !== cacheF) || (h && h.hidden !== cacheH);
+    if (f && f.hidden !== cacheF) f.hidden = cacheF;
+    if (h && h.hidden !== cacheH) h.hidden = cacheH;
+    if (change) _majRangeeSerree();
+    if (e.menuHaut && e.menuHaut.bouton.hidden) _fermerMenuHaut();
+  }
+
+  // (décision produit) La rangée du haut tient sur une ligne. Au téléphone en vue d'édition (↶ en plus), elle touchait
+  // la pastille suivi / libre : l'écart entre ses boutons passe alors à 2 px (kta-v3d-haut-serre), seulement si elle
+  // ne tient pas. Mesuré quand un bouton apparaît ou disparaît, et au redimensionnement.
+  function _majRangeeSerree() {
+    const e = _e, haut = e && e.boutonRechercheHaut && e.boutonRechercheHaut.parentNode;
+    if (!haut || !e.indicMode) return;
+    haut.classList.remove("kta-v3d-haut-serre");
+    const vus = Array.prototype.filter.call(haut.children, function (b) { return !b.hidden && b.offsetWidth > 0; });
+    if (!vus.length) return;
+    const gauche = Math.min.apply(null, vus.map(function (b) { return b.getBoundingClientRect().left; }));
+    const ip = e.indicMode.getBoundingClientRect();
+    const touche = ip.width > 0 && gauche < ip.right + 2 && haut.getBoundingClientRect().top < ip.bottom;
+    const lignes = new Set(vus.map(function (b) { return Math.round(b.getBoundingClientRect().top); })).size;
+    if (touche || lignes > 1) haut.classList.add("kta-v3d-haut-serre");
+  }
+
+  // ── Menus de la rangée du haut (⭐, ↶) : un seul ouvert, sous son bouton, jamais avec la tuile ⚙️ ──
+  function _fermerMenuHaut() {
+    const e = _e, m = e && e.menuHaut;
+    if (!m) return false;
+    m.el.remove();
+    m.bouton.setAttribute("aria-expanded", "false");
+    e.menuHaut = null;
+    return true;
+  }
+
+  function _ouvrirMenuHaut(quel) {
+    const e = _e;
+    if (!e) return false;
+    const bouton = quel === "favoris" ? e.boutonFavoris : e.boutonHistorique;
+    const deja = !!e.menuHaut && e.menuHaut.quel === quel;
+    _fermerMenuHaut();
+    if (deja || !bouton || bouton.hidden) return false;
+    _basculerReglages(false);
+    const el = document.createElement("div");
+    el.className = "kta-v3d-menu-haut";
+    el.setAttribute("role", "menu");
+    el.setAttribute("aria-label", bouton.title);
+    e.ov.appendChild(el);
+    e.menuHaut = { quel: quel, el: el, bouton: bouton };
+    bouton.setAttribute("aria-expanded", "true");
+    _remplirMenuHaut();
+    // Sous le bouton, aligné sur son bord gauche, sans sortir de la vue à droite.
+    const r = bouton.getBoundingClientRect(), o = e.ov.getBoundingClientRect();
+    el.style.top = Math.round(r.bottom - o.top + 6) + "px";
+    el.style.left = Math.round(Math.max(10, Math.min(r.left - o.left, o.width - el.offsetWidth - 10))) + "px";
+    return true;
+  }
+
+  function _remplirMenuHaut() {
+    const e = _e, m = e && e.menuHaut;
+    if (!m) return;
+    m.el.textContent = "";
+    const ligne = function (action, ico, texte, titre) {
+      const b = _bouton(m.el, "kta-v3d-menu-ligne", texte, titre || texte, action, ico);
+      b.setAttribute("role", "menuitem");
+      return b;
+    };
+    if (m.quel === "historique") {
+      const H = window.HistoryManager;
+      ligne("annuler", "undo-2", _t("vue3d.annuler"), _t("ui.subaction.undo")).disabled = !(H && H.canUndo());
+      ligne("retablir", "redo-2", _t("vue3d.retablir"), _t("ui.subaction.redo")).disabled = !(H && H.canRedo());
+      return;
+    }
+    const favs = window.Favoris ? window.Favoris.getAll() : [];
+    if (!favs.length) {
+      const v = document.createElement("p");
+      v.className = "kta-v3d-menu-vide";
+      v.textContent = _t("ui.favoris.empty");
+      m.el.appendChild(v);
+      return;
+    }
+    favs.forEach(function (f, i) {
+      const b = ligne("favori", null, f.nom || f.pointId || "?");
+      b.dataset.favori = String(i);
+      const url = typeof window.getIconUrlForPoint === "function" ? window.getIconUrlForPoint({ tags: [f.tag] }) : null;
+      if (url) {
+        const img = document.createElement("img");
+        img.src = url; img.alt = ""; img.className = "kta-v3d-menu-icone";
+        b.insertBefore(img, b.firstChild);
+      }
+    });
+  }
+
+  // ↶ / ↷ : l'historique de la carte (historyManager.js) ; le menu reste ouvert pour enchaîner.
+  function _historique(sens) {
+    const H = window.HistoryManager;
+    if (!H) return false;
+    const peut = sens === "annuler" ? H.canUndo() : H.canRedo();
+    if (!peut) {
+      _toast(_t(sens === "annuler" ? "ui.toast.nothingUndo" : "ui.toast.nothingRedo"), "info");
+    } else if (sens === "annuler") H.undo(); else H.redo();
+    _remplirMenuHaut();
+    if (_e) _e.sale = true;
+    return peut;
+  }
+
+  // Favori choisi : comme un résultat 🔍 (allerA), sur le point retrouvé par son uid (sinon nom et coordonnées) ;
+  // introuvable, sur sa place enregistrée.
+  function _allerFavori(i) {
+    const f = window.Favoris && window.Favoris.getAll()[i];
+    _fermerMenuHaut();
+    if (!f || !_e) return false;
+    if (!_permisGreffe("fiches")) { _toast(_t("vue3d.rechercheGreffe"), "info"); return false; }
+    const pts = _tab(window.getEditorPoints).concat(_tab(window.getAllEmbeddedPoints));
+    const p = pts.filter(function (q) {
+      if (f.pointUid && q.uid) return q.uid === f.pointUid;
+      return String(q.id || q.name || "") === String(f.pointId || "") && q.x === f.x && q.y === f.y;
+    })[0];
+    const item = p || { id: f.pointId || f.nom || "", name: f.nom || "", x: f.x, y: f.y, tags: f.tag ? [f.tag] : [] };
+    return allerA({ kind: "point", item: item, layerId: f.layerId || null });
   }
 
   function _majDessin() {
@@ -9926,6 +10047,16 @@
     e.boutonRechercheHaut = _bouton(haut, "kta-v3d-recherche", "", _t("vue3d.recherche"), "recherche", "search");
     e.boutonRechercheHaut.setAttribute("aria-keyshortcuts", "Control+K Meta+K");
     e.boutonRechercheHaut.hidden = true;
+    // ⭐ Favoris (les deux vues) et ↶ Annuler / Rétablir (vue d'édition), à gauche de 🔍 (décision produit) : chacun
+    // déplie un menu vertical dessous (_ouvrirMenuHaut). Montrés par _majRechercheHaut.
+    e.boutonFavoris = _bouton(haut, "kta-v3d-favoris", "", _t("ui.group.favoris"), "favoris", "star");
+    e.boutonFavoris.setAttribute("aria-haspopup", "menu");
+    e.boutonFavoris.setAttribute("aria-expanded", "false");
+    e.boutonFavoris.hidden = true;
+    e.boutonHistorique = _bouton(haut, "kta-v3d-historique", "", _t("ui.group.history"), "historique", "undo-2");
+    e.boutonHistorique.setAttribute("aria-haspopup", "menu");
+    e.boutonHistorique.setAttribute("aria-expanded", "false");
+    e.boutonHistorique.hidden = true;
     // Tuile des réglages (décision produit : la rangée du haut tient sur une ligne au téléphone) : suivi / libre, vue,
     // hauteur et son − / +, rendu, chacun écrit en clair avec son état. Petit panneau ancré sous ⚙️.
     const tuile = document.createElement("div");
@@ -10230,6 +10361,7 @@
     const e = _e, t = e && e.tuileReglages;
     if (!t) return false;
     const voulu = typeof ouvrir === "boolean" ? ouvrir : t.hidden;
+    if (voulu) _fermerMenuHaut();
     if (voulu === !t.hidden) return voulu;
     if (voulu) {
       const b = e.boutonReglages.getBoundingClientRect(), o = e.ov.getBoundingClientRect();
@@ -11141,6 +11273,9 @@
       else if (a === "outil") { ev.preventDefault(); _ouvrirOutil(b.dataset.groupe, b); }
       else if (a === "planSol") { ev.preventDefault(); _basculerPlanSol(); }
       else if (a === "recherche") { ev.preventDefault(); _ouvrirRecherche(); }
+      else if (a === "favoris" || a === "historique") { ev.preventDefault(); _ouvrirMenuHaut(a); }
+      else if (a === "annuler" || a === "retablir") { ev.preventDefault(); _historique(a); }
+      else if (a === "favori") { ev.preventDefault(); _allerFavori(Number(b.dataset.favori)); }
       else if (a === "outilsPlier") {
         ev.preventDefault();
         _plierOutils(!_e.dessin.barre.classList.contains("kta-v3d-outils-plie"), true);
@@ -11170,7 +11305,8 @@
       if (a === "fermer" || a === "filtres" || a === "urgence" || a === "ficheFermer" || a === "reglages" ||
         a === "ficheVoir" || a === "outil" || a === "planSol" || a === "recherche" || a === "place" ||
         a === "guidAction" || a === "ajusterSuppr" || a === "ajusterInserer" || a === "ajusterCouper" ||
-        a === "addons" ||
+        a === "addons" || a === "favoris" || a === "historique" || a === "annuler" || a === "retablir" ||
+        a === "favori" ||
         a === "outilsPlier" || a === "tracker") return;
       // Au doigt, + / − et inclinaison attendent le click : un doigt de pincement posé dessus n'agit pas (_brancher,
       // geste de la scène).
@@ -11200,6 +11336,10 @@
     // Panneau d'un groupe de dessin ouvert : le toucher qui le ferme ne pose aucun sommet (_poserSommet). Posé avant
     // l'écouteur du panneau (interface.js > _onDocClickFlyout, qui le retire aussitôt) : il le voit encore ouvert.
     on(document, "pointerdown", function (ev) {
+      const m = e.menuHaut;
+      if (m && ev.target && !m.el.contains(ev.target) && !m.bouton.contains(ev.target)) _fermerMenuHaut();
+    }, true);
+    on(document, "pointerdown", function (ev) {
       const fly = typeof window.ktaOutilsOuverts === "function" && window.ktaOutilsOuverts();
       const dans = ev.target && ev.target.closest && ev.target.closest(".kta-group-flyout, .kta-v3d-outils");
       if (fly && !dans && e.dessin) e.dessin.avaleJusqua = performance.now() + DESSIN_AVALER;
@@ -11207,6 +11347,7 @@
     if (e.stickZone) _brancherStick(on);
     if (e.mc) _brancherMiniCarte(on);
     on(e.ov, "pointerout", function (ev) { if (ev.target.dataset && ev.target.dataset.v3d) relacher(); });
+    on(window, "resize", _majRangeeSerree);
     on(e.curseurPortee, "input", function () { reglerPortee(e.curseurPortee.value); });
     on(e.curseurLampe, "input", function () { reglerLampe(e.curseurLampe.value); });
     on(e.curseurFaisceau, "input", function () { reglerFaisceau(e.curseurFaisceau.value); });
@@ -11485,6 +11626,7 @@
         if (A && A.terminerInsertion()) return;
         // Échap ferme d'abord la tuile des réglages (et la hauteur qu'elle montre), éteint l'outil de dessin armé,
         // ferme une fiche, puis la vue.
+        if (_fermerMenuHaut()) return;
         if (e.tuileReglages && !e.tuileReglages.hidden) { _basculerReglages(false); return; }
         if (e.reglageHauteur && !e.reglageHauteur.hidden) { _basculerReglageHauteur(); return; }
         if (_dessinActif()) { _desarmerDessin(); return; }
@@ -12413,6 +12555,10 @@
       greffe: e.greffe ? { nom: e.greffe.nom, appels: Object.assign({}, e.greffe.appels),
         objets: e.greffe.groupe.children.length, dansScene: e.greffe.groupe.parent === e.scene,
         hud: e.greffe.hud.isConnected, reglage: Object.assign({}, e.greffe.reglage) } : null,
+      menusHaut: { favoris: !!e.boutonFavoris && !e.boutonFavoris.hidden,
+        historique: !!e.boutonHistorique && !e.boutonHistorique.hidden, ouvert: e.menuHaut ? e.menuHaut.quel : null,
+        lignes: e.menuHaut ? Array.prototype.map.call(e.menuHaut.el.querySelectorAll(".kta-v3d-menu-ligne"),
+          function (b) { return { texte: b.textContent.trim(), actif: !b.disabled }; }) : [] },
       reglages: { ouvert: !!e.tuileReglages && !e.tuileReglages.hidden,
         repere: !!e.boutonReglages && e.boutonReglages.classList.contains("kta-v3d-modifie"),
         indic: _texteIco(e.indicMode), boussole: !!e.boussole && !e.boussole.hidden,

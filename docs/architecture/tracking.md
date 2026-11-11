@@ -1448,9 +1448,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `_prendreHauteurDuNiveau`). Bouton **⛏️** (hauteur affichée par `formatDistance`) → − / + de 1,5 à
   20 m, par 0,1 m jusqu'à 5 m puis 0,5 m (`reglerHauteur(m)` : borné, arrondi, `setHauteurNiveau` du niveau affiché) ; une valeur
   saisie hors bornes dans ⛏️ est montrée telle quelle jusqu'au premier − / +. **Plan multi-niveau** (`APP_CONFIG.multiLevel`,
-  décision produit) : ⛏️ montre la hauteur du niveau, grisé (`disabled`, titre `vue3d.hauteurNiveaux` : réglée par niveau
-  dans Réglages › Profondeur et hauteur des niveaux), − / + ne s'ouvre pas et se referme (`_hauteurFigee`) : changée
-  depuis la 3D, elle recalculait les pentes des jonctions. `reglerHauteur` (API) suit la même règle : sans effet, rend la
+  décision produit) : ⛏️ montre la hauteur du niveau et ouvre la table « Niveaux : profondeur et hauteur »
+  (`_ouvrirHauteursNiveaux` → `profondeurNiveaux.js > ouvrirSaisie`, au-dessus de la vue, titre `vue3d.hauteurNiveaux`) ;
+  − / + ne s'ouvre pas (`_hauteurFigee`) : changée seule depuis la 3D, elle recalculait les pentes des jonctions sans
+  montrer les autres niveaux. Table fermée : `_reindexer` (hauteurs, sols, pentes) puis marqueurs d'itinéraire. `reglerHauteur` (API) suit la même règle : sans effet, rend la
   hauteur courante ; ⛏️ Volume exploité n'écrit rien non plus (champ de calcul seulement). Les tuiles sont refaites sur place (`_refaireTuiles` : même
   index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais et effondrements à 60 %, rideaux, tubes, plafond, œil
   (`_oeil`) et panneaux suivent.

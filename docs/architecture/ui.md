@@ -2464,7 +2464,14 @@ icônes.
   (menu Tracker de la carte, complet, par le bouton de la barre 2D : `_ouvrirTracker` ; une tuile `carte: true`,
   `data-carte` — boussole, plan orienté, recalage, ma position, replay, heatmap, perdu — ferme d'abord la 3D) et les
   outils. **🔍 Rechercher** est dans la rangée du haut dans les deux vues, à gauche de ⚙️, même gabarit (décision
-  produit) ; caché pendant une greffe qui coupe les fiches (jeu). Il ouvre la fenêtre de la carte (`window.ouvrirRecherche`, `.kta-readme-modal-overlay` 99999 posée
+  produit) ; caché pendant une greffe qui coupe les fiches (jeu). À sa gauche, **⭐ Favoris** (mêmes règles que 🔍) et
+  **↶ Annuler / Rétablir** (avec la colonne d'outils, `_dessinPermis`) déplient chacun un menu vertical sous eux
+  (`_ouvrirMenuHaut`, `.kta-v3d-menu-haut`, z-index 900 comme la tuile ⚙️ ; un seul ouvert, fermé par un toucher à
+  côté, Échap ou ⚙️) : un favori passe par `allerA` (comme un résultat 🔍), Annuler / Rétablir par `HistoryManager`
+  (grisés selon `canUndo` / `canRedo`, menu gardé ouvert). La rangée tient sur une ligne : quand elle touche la
+  pastille suivi / libre (téléphone, vue d'édition), `_majRangeeSerree` passe son écart à 2 px
+  (`.kta-v3d-haut-serre`, zones de toucher voisines qui se recouvrent de 4 px). Garde-fou :
+  `checkup-vue-3d.js > sectionMenusHaut`. Il ouvre la fenêtre de la carte (`window.ouvrirRecherche`, `.kta-readme-modal-overlay` 99999 posée
   sur `<html>` après la vue : au-dessus d'elle ; Ctrl/Cmd+K de même, la vue ne garde pas la touche K) ; le choix :
   `tracking.md` § Vue 3D › Rechercher. Les outils de dessin, montrés en ✏️ Édition seulement, toujours actifs
   (aucun bouton pour les ouvrir) ; absents à hauteur d'yeux et pendant une greffe qui coupe l'édition (jeu).

@@ -54,6 +54,27 @@
 .kta-v3d-haut > .kta-aide-ctx-btn { order: 4; }
 .kta-v3d-haut > .kta-v3d-btn-reglages { order: 5; }
 .kta-v3d-haut > .kta-v3d-recherche { order: 6; }
+/* Rangée qui ne tient pas sur une ligne (vue3d.js > _majRangeeSerree) : écart de 2 px ; les zones de toucher de deux
+   voisins se recouvrent alors de 4 px (décision produit : une ligne plutôt que deux). */
+.kta-v3d-haut.kta-v3d-haut-serre { gap: 2px; }
+.kta-v3d-haut > .kta-v3d-favoris { order: 7; }
+.kta-v3d-haut > .kta-v3d-historique { order: 8; }
+/* Menu vertical de ⭐ et ↶ (vue3d.js > _ouvrirMenuHaut), posé sous son bouton : la boîte de la tuile ⚙️, une ligne
+   écrite par choix (zone de toucher de 44 px), défile si la liste des favoris est longue. */
+.kta-v3d-menu-haut {
+  position: absolute; z-index: 900; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box;
+  min-width: 190px; max-width: min(320px, calc(100% - 20px)); max-height: 60%; overflow-y: auto;
+  overscroll-behavior: contain; padding: 8px; border-radius: 14px; border: 1px solid var(--kta-bordure);
+  background: var(--kta-surface); color: var(--kta-texte); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+}
+.kta-v3d-menu-haut .kta-v3d-menu-ligne {
+  width: auto; height: auto; min-height: var(--kta-cible-toucher, 44px); flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px; text-align: left;
+  font-size: 14px; font-weight: 600; box-shadow: none; touch-action: pan-y;
+}
+.kta-v3d-menu-haut .kta-v3d-menu-ligne:disabled { color: var(--kta-texte-3); cursor: default; }
+.kta-v3d-menu-haut .kta-v3d-menu-icone { width: 24px; height: 24px; flex: 0 0 auto; object-fit: contain; }
+.kta-v3d-menu-haut .kta-v3d-menu-vide { margin: 0; padding: 6px 4px; font-size: 13px; color: var(--kta-texte-2); }
 
 /* Bouton carré : celui de la barre 2D (surface, liseré --kta-bordure, ombre de la barre). */
 .kta-v3d-btn {

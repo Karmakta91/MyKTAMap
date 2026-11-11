@@ -2584,6 +2584,8 @@
   "vue3d.liaisonsPlan": "Links to other plans",
   "vue3d.niveauBandeau": "Level {n}",
   "vue3d.hauteur": "Gallery height: the same as Mined volume, kept for this map",
+  "vue3d.annuler": "Undo",
+  "vue3d.retablir": "Redo",
   "vue3d.hauteurNiveaux": "Level height: on a map with several levels, each level has its own. Opens “Levels: depth and height”",
   "vue3d.hauteurReglage": "Gallery height",
   "vue3d.hauteurMoins": "Lower galleries",

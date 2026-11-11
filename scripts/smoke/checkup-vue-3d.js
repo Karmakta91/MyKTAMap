@@ -246,7 +246,8 @@ async function homogene(page, nom) {
     return { barre: [+barre.width.toFixed(1), +barre.height.toFixed(1)], tailles: tailles, ecarts: ecarts,
       petits: petits, autres: autres, icones: icones, indic: Math.abs(indic.width - barre.width) <= 1 };
   });
-  verifier(r.ecarts.length === 0 && (r.tailles.length === 5 || r.tailles.length === 6),
+  // 5 à 8 : ✕ ≡ 🚨 ⚙️ (❓ posé par l'aide), 🔍 et ⭐ (permis), ↶ (vue d'édition).
+  verifier(r.ecarts.length === 0 && r.tailles.length >= 5 && r.tailles.length <= 8,
     nom + " : boutons du haut de la 3D à la taille de la barre 2D (" + r.barre.join(" × ") + ", ± 1 px)", r);
   verifier(r.autres.length === 0, nom + " : ☰ 🚨 ⚙️ ❓ de la 3D = icônes de la 2D", r.icones);
   verifier(r.petits.length === 0, nom + " : cibles de toucher ≥ 44 px (rangée du haut, pavé, zoom)", r.petits);
@@ -10864,6 +10865,101 @@ async function luminanceCapture(page, x0, y0, x1, y1) {
   }, { b: b64, x0: x0, y0: y0, x1: x1, y1: y1 });
 }
 
+// ── 56. ⭐ Favoris et ↶ Annuler / Rétablir de la rangée du haut (vue3d.js > _ouvrirMenuHaut, _allerFavori,
+// _historique, _majRangeeSerree ; KTA_V3D_SEUL=menusHaut) ──────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire, un niveau : une galerie, un POI fictif mis en favori. À hauteur d'yeux : ⭐ montré, ↶ caché ;
+// ⭐ déplie la liste sous lui (icône du point, dans l'écran) ; un favori = un résultat 🔍 (allerA : la vue y va, menu
+// fermé). Vue d'édition : ⭐ et ↶ montrés ; ↶ déplie Annuler / Rétablir grisés selon l'historique ; Annuler retire
+// l'objet enregistré, le menu reste, Rétablir le rend ; Échap ferme le menu, la vue reste ; ⚙️ ferme le menu. Au
+// téléphone (390 × 844), vue d'édition : rangée sur une ligne, sans toucher la pastille suivi / libre.
+async function sectionMenusHaut(nav) {
+  const nom = "§ 56 ";
+  console.log("§ 56 — ⭐ Favoris et ↶ Annuler / Rétablir");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-menus", [0], { "0": -25 }, { "0": 2.5 }, function () {
+    const P = window.__fxP;
+    window.setRoads([{ uid: "rd_mh_0", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] }]);
+    const q = Object.assign({ id: "Repère fictif", uid: "pt_mh_f", level: 0, tags: ["salle"] }, P(25, 1));
+    window.setEditorPoints([q]);
+    window.Favoris.getAll().slice().forEach(function (x) { window.Favoris.remove(x.pointId); });
+    window.Favoris.add({ pointId: q.id, pointUid: q.uid, nom: q.id, x: q.x, y: q.y, tag: "salle", layerId: "editor" });
+    window.__mh = function () { return window.KtaVue3D.etat().menusHaut; };
+    window.__mhClic = function (sel) { document.querySelector("#kta-vue3d " + sel).click(); };
+  });
+  const page = t.page;
+  try {
+    const a = await page.evaluate(async function () {
+      await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+      const yeux = window.__mh();
+      window.__mhClic('[data-v3d="favoris"]');
+      const liste = window.__mh(), m = document.querySelector("#kta-vue3d .kta-v3d-menu-haut");
+      const r = m.getBoundingClientRect(), b = document.querySelector('#kta-vue3d [data-v3d="favoris"]').getBoundingClientRect();
+      const img = m.querySelector("img.kta-v3d-menu-icone");
+      const geo = { dessous: r.top >= b.bottom, dansEcran: r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight,
+        icone: !!img && !!img.getAttribute("src") };
+      window.__mhClic('.kta-v3d-menu-haut [data-v3d="favori"]');
+      await window.__fxImages(30);
+      const e = window.KtaVue3D.etat();
+      return { yeux: yeux, liste: liste, geo: geo, apres: { menu: e.menusHaut.ouvert, rech: e.recherche } };
+    });
+    verifier(a.yeux.favoris && !a.yeux.historique, nom + "hauteur d'yeux : ⭐ montré, ↶ caché", a.yeux);
+    verifier(a.liste.ouvert === "favoris" && a.liste.lignes.length === 1 && a.liste.lignes[0].texte === "Repère fictif" &&
+      a.geo.dessous && a.geo.dansEcran && a.geo.icone, nom + "⭐ déplie la liste des favoris sous lui, icône du point",
+      { liste: a.liste, geo: a.geo });
+    verifier(!a.apres.menu && !!a.apres.rech && a.apres.rech.allees === 1 && a.apres.rech.kind === "point",
+      nom + "un favori : la vue y va comme un résultat 🔍, menu fermé", a.apres);
+    const b = await page.evaluate(async function () {
+      const K = window.KtaVue3D, H = window.HistoryManager;
+      if (K.etat().vue !== "plongee") K.basculerVue();
+      await window.__fxImages(20);
+      const edition = window.__mh();
+      const avant = H.captureState(), P = window.__fxP;
+      window.setEditorPoints(window.getEditorPoints().concat([Object.assign({ id: "Point annulable fictif",
+        uid: "pt_mh_a", level: 0 }, P(-5, 1))]));
+      H.record("checkup", avant);
+      const n0 = window.getEditorPoints().length;
+      window.__mhClic('[data-v3d="historique"]');
+      const ouvert = window.__mh();
+      window.__mhClic('.kta-v3d-menu-haut [data-v3d="annuler"]');
+      const annule = { n: window.getEditorPoints().length, m: window.__mh() };
+      window.__mhClic('.kta-v3d-menu-haut [data-v3d="retablir"]');
+      const retabli = window.getEditorPoints().length;
+      document.getElementById("kta-vue3d").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      const echap = { menu: window.__mh().ouvert, vue: K.etat().ouvert };
+      window.__mhClic('[data-v3d="historique"]');
+      window.__mhClic('[data-v3d="reglages"]');
+      const reglages = { menu: window.__mh().ouvert, tuile: K.etat().reglages.ouvert };
+      window.__mhClic('[data-v3d="reglages"]');
+      return { edition: edition, n0: n0, ouvert: ouvert, annule: annule, retabli: retabli, echap: echap, reglages: reglages };
+    });
+    verifier(b.edition.favoris && b.edition.historique, nom + "vue d'édition : ⭐ et ↶ montrés", b.edition);
+    verifier(b.ouvert.ouvert === "historique" && b.ouvert.lignes.length === 2 && b.ouvert.lignes[0].actif &&
+      !b.ouvert.lignes[1].actif, nom + "↶ déplie Annuler (actif) et Rétablir (grisé)", b.ouvert);
+    verifier(b.annule.n === b.n0 - 1 && b.annule.m.ouvert === "historique" && b.annule.m.lignes[1].actif &&
+      b.retabli === b.n0, nom + "Annuler retire l'objet, le menu reste, Rétablir le rend", b);
+    verifier(!b.echap.menu && b.echap.vue, nom + "Échap ferme le menu, la vue reste", b.echap);
+    verifier(!b.reglages.menu && b.reglages.tuile, nom + "⚙️ ferme le menu ouvert", b.reglages);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(400);
+    const c = await page.evaluate(function () {
+      const haut = document.querySelector("#kta-vue3d .kta-v3d-haut");
+      const ip = document.querySelector("#kta-vue3d .kta-v3d-mode-indic").getBoundingClientRect();
+      const vus = Array.prototype.filter.call(haut.children, function (x) { return !x.hidden && x.offsetWidth > 0; })
+        .map(function (x) { return x.getBoundingClientRect(); });
+      return { boutons: vus.length, lignes: new Set(vus.map(function (r) { return Math.round(r.top); })).size,
+        gauche: Math.round(Math.min.apply(null, vus.map(function (r) { return r.left; }))), pastille: Math.round(ip.right),
+        droite: Math.round(Math.max.apply(null, vus.map(function (r) { return r.right; }))), largeur: innerWidth,
+        serre: haut.classList.contains("kta-v3d-haut-serre") };
+    });
+    verifier(c.lignes === 1 && c.gauche >= c.pastille && c.droite <= c.largeur,
+      nom + "téléphone, vue d'édition : rangée du haut sur une ligne, sans toucher la pastille suivi / libre", c);
+    await capture(page, "menus-haut-telephone");
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 55. Mini-carte (vue3d.js > _majMiniCarte, _dessinerFondMiniCarte, _brancherMiniCarte ; KTA_V3D_SEUL=minicarte) ──
 // Plan FICTIF en mémoire, deux niveaux : au 0 une galerie est-ouest et une branche nord, un pilier, un remblais, un
 // POI danger, une entrée (sortie), un puits vers le −1 ; au −1 une galerie (jamais sur la mini-carte du 0). Montrée par
@@ -12936,7 +13032,7 @@ async function sectionCaseBoutonsZoom(nav) {
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "puits-ciel" ||
       SEUL === "jonction-tremie" ||
       SEUL === "jonction-piliers" || SEUL === "caseZoom" ||
-      SEUL === "minicarte") {
+      SEUL === "minicarte" || SEUL === "menusHaut") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -13344,7 +13440,7 @@ async function sectionCaseBoutonsZoom(nav) {
           titres: Array.prototype.map.call(document.querySelectorAll("#kta-vue3d [data-v3d]"), function (b) { return b.title; }),
           // ⚙️ : « Réglages de la vue », suivi d'une mention quand un réglage n'est pas celui par défaut.
           attendus: ["vue3d.fermer", window.FilterPanel.nbActifs() > 0 ? "filter.badge.actifs" : "filter.badge.aucun",
-            "ui.refonte.counter_sortie_title", "vue3d.reglages", "vue3d.recherche",
+            "ui.refonte.counter_sortie_title", "vue3d.reglages", "vue3d.recherche", "ui.group.favoris", "ui.group.history",
             "vue3d.tournerGauche", "vue3d.avancer", "vue3d.tournerDroite", "vue3d.pasGauche", "vue3d.reculer",
             "vue3d.pasDroite", "vue3d.zoomPlus", "vue3d.inclinaisonPlus", "vue3d.zoomMoins", "vue3d.inclinaisonMoins",
             "vue3d.surPlace", "vue3d.niveauEditionHaut", "vue3d.niveauEditionBas", "ui.refonte.btn_sidebar_collapse",
@@ -17428,9 +17524,10 @@ async function sectionCaseBoutonsZoom(nav) {
         await K.fermer();
         return r;
       }, { ox: MX.ox, oz: MX.oz, sc: MX.sc });
-      verifier(JSON.stringify(TU.rangee) === JSON.stringify(["aide", "fermer", "filtres", "recherche", "reglages",
-        "urgence"]) &&
-        TU.dansTuile.every(Boolean), "rangée du haut : ✕, ≡, 🚨, ❓, ⚙️, 🔍 ; suivi, vue, hauteur, rendu, boussole et guidage " +
+      verifier(JSON.stringify(TU.rangee) === JSON.stringify(["aide", "favoris", "fermer", "filtres", "historique",
+        "recherche", "reglages", "urgence"]) &&
+        TU.dansTuile.every(Boolean), "rangée du haut : ✕, ≡, 🚨, ❓, ⚙️, 🔍, ⭐, ↶ ; suivi, vue, hauteur, rendu, " +
+        "boussole et guidage " +
         "dans la tuile, écrits en clair", TU);
       verifier(TU.ferme0 === false && TU.ouverte.ouvert && TU.ouverte.sous && TU.ouverte.droite && !TU.ouverte.pleinEcran &&
         TU.ouverte.expanded === "true", "⚙️ ouvre un petit panneau ancré sous lui, à droite (pas une fenêtre plein écran)",
@@ -19367,6 +19464,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "jonction-piliers") await sectionJonctionPiliers(nav);
     if (!SEUL || SEUL === "caseZoom") await sectionCaseBoutonsZoom(nav);
     if (!SEUL || SEUL === "minicarte") await sectionMiniCarte(nav);
+    if (!SEUL || SEUL === "menusHaut") await sectionMenusHaut(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
