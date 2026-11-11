@@ -664,6 +664,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-mode-dev.js` | Mode Développeur sans mot de passe : confirmation chartée, outils rendus, journal affiché et copié, appareil déjà déverrouillé gardé actif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
+| `smoke/checkup-arc.js` | Arc de soutènement en travers d'une galerie : itinéraire, pas du tracker et vue 3D passent (mur en ligne témoin arrêté), outil de dessin, trait rayé, légende, filtres, export image |
 | `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
 | `smoke/checkup-raccourcis.js` | Fiche des raccourcis : chaque ligne affichée (carte 2D, actions globales, vue 3D) jouée et son effet vérifié, téléphone compris, Chromium et WebKit |
 | `smoke/checkup-mesure-annulable.js` | Mesure 📐 annulable (⏪ / ⏩) tant que l'outil est armé, entrées purgées à sa fermeture, pile partagée avec une zone, vue 3D comprise, Chromium et WebKit |
