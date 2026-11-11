@@ -97,6 +97,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | 📊 Éditeur de données du plan (tableau, 3 sources) | `tableEditor.js` |
 | 🔁 Recaler des données sur un autre scan (noms communs, repères cliqués, aperçu sur la carte) | `recalageScan.js` |
 | 🔗 Raccords à vérifier (tracés qui ne se touchent pas : raccorder un carrefour, ignorer un mur) | `raccordsTraces.js` |
+| Vérifier le plan (tracés coupés par une zone bloquante ou un mur, passages entre niveaux sans raccord, jonctions mal posées ; « Vu, normal ») | `verifierPlan.js` |
 | 📋 Rapport de sortie · 📈 stats globales + export PDF | `sessionReport.js`, `statsGlobales.js` |
 | 💾 Backups multi-rotations sessions (10 FIFO IDB) | `sessionBackups.js` |
 | 📔 **Le Carnet** : archive automatique des sorties (durée, distance, ajouts, tracé, note) + timeline multi-plans | `journal.js`, `journalUi.js` |
@@ -213,7 +214,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (150 modules)
+## 🟢 L'application : modules JS (151 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -319,6 +320,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `tableEditor.js` | Éditeur de données : JSON (calque ou session) en tableau, application à la session, dédoublonnage |
 | `recalageScan.js` | Recaler des données sur un autre scan (calcul pur `KtaRecalageScan` + modale) |
 | `raccordsTraces.js` | Raccords à vérifier : écarts entre morceaux séparés du réseau, revue sur la carte, Raccorder / Ignorer |
+| `verifierPlan.js` | Vérifier le plan : contrôles C1 à C3 sur les tests du pathfinder, liste par gravité, revue sur la carte, « Vu, normal », avertissement à la saisie |
 | `searchPoints.js` | Recherche dans le plan ouvert (Ctrl+K) : points, tracés, zones, structures, saisie lat/lng |
 | `sessionExporter.js` | Export de session : complet, avancé, conversion, fusion de calques, externe (KMZ / GPX / GeoJSON), anonymisé |
 | `sessionReport.js` | Rapport de sortie (texte, JSON, PDF) |
@@ -579,6 +581,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-poi-jonction.js` | POI entre niveaux (`jes` / `jpe` / `jps`) compté comme sortie de surface, jonctions absentes du graphe | pre-commit |
 | `check-niveaux-verticaux.js` | Géométrie verticale des niveaux (sol, hauteur de galerie, écart avec le dessus) : plan sans la donnée changé, pref locale qui ne gagne plus, écart stocké, consommateur qui relit les tables au lieu de `getNiveauVertical` | pre-commit |
 | `check-zones-niveaux.js` | Zone reliée à plusieurs niveaux (`niveaux`) affichée hors de ses niveaux, qui ne bloque plus l'itinéraire sur chacun, ou champ perdu à l'aller-retour session / KMZ / GeoJSON | pre-commit |
+| `check-verifier-plan.js` | « Vérifier le plan » qui ne dit plus la même chose que l'itinéraire (segments coupés), contrôles C1 à C3 ou « vu, normal » cassés, test de zone dure écrit hors de la table unique | pre-commit |
 | `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
 | `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |
 | `check-position-confirmee.js` | Urgence / « Y aller » qui redemande une position déjà sûre (ou part d'une position non confirmée) | pre-commit |
@@ -691,6 +694,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
 | `smoke/checkup-dessin-sans-fiche.js` | Outil armé (dessin, mesure, ajout de point, pickers) : tout toucher pose au point touché, aucune fiche, un seul outil à la fois (2D et 3D, doigt et souris) |
 | `smoke/checkup-raccords.js` | Règle stricte des jonctions (galeries parallèles : pas de traversée du mur) et « 🔗 Raccords à vérifier » : Raccorder, Ctrl+Z, Ignorer retenu au rechargement |
+| `smoke/checkup-verifier-plan.js` | « Vérifier le plan » depuis l'Éditeur de données : liste par gravité, clic qui centre et ouvre la fiche, Précédent / Suivant, « vu, normal » retenu au rechargement, avertissement à la saisie |
 | `smoke/checkup-recalage-scan.js` | « Recaler des données sur un autre scan » sur des jeux fictifs |
 | `smoke/checkup-repositionner.js` | « Repositionner » un POI de session à la souris |
 | `smoke/checkup-retour-accueil.js` | Fermer un plan le vide, « Reprendre » le retrouve |
@@ -816,6 +820,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 #### Pas encore publié (après v2.24.0, branche `Karma_dev`)
 
 - **🏛️ Arc de soutènement** (`arc`, `js/styleResolver.js > CANON.structures.arc`, `js/structures.js > ktaPolylineStructure`, `rendering-leaflet.md` § 0) : 7e type de structure, une polyligne posée en travers de la galerie d'une paroi à l'autre, trait bleu fin rayé de rouge (carte, légende, exports PNG / PDF ; trait bleu seul en KMZ et Vue OSM). Ne bloque rien : ni itinéraire, ni tracker, ni vue 3D (liseré au sol, modèle en volume au backlog). `check-mur-ligne.js`, `checkup-arc.js`, `checkup-exports-structures.js`.
+- **Vérifier le plan** (`js/verifierPlan.js`, carte de l'📊 Éditeur de données, `multilevel-pathfinding.md` § Vérifier le plan, `ui.md` §91.6, étude `ETUDE_VERIFIER_PLAN.md`, lot 1) : liste les erreurs de données qui trompent l'itinéraire et la sortie d'urgence, groupées par gravité : **tracé coupé par une zone bloquante ou un mur en ligne** (longueur dans la zone, « au bord » sous 0,5 m), **passage entre niveaux (POI) sans raccord validé** à un de ses niveaux (ou raccord qui ne touche plus de galerie), **tracé jonction mal posé** (même niveau aux deux bouts, ou bout à plus de 15 px de toute galerie de son niveau). Toucher une ligne centre la carte, change de niveau, surligne l'objet et ouvre sa fiche ; bandeau Précédent / Suivant ; **Vu, normal** retenu par objet et par plan sur l'appareil, liste des vus réversible. Un toast avertit quand un tracé saisi (ou une zone bloquante, un mur) crée une coupure. Les tests sont ceux du graphe (`Pathfinder.controle`), et les types de zone durs vivent dans une seule table (`Pathfinder.TYPES_ZONES_DURS`, lue aussi par l'inter-plans) : l'outil et l'itinéraire ne peuvent pas diverger. `check-verifier-plan.js`, `checkup-verifier-plan.js`.
 - **⛏️ Trois types de points : ossuaire, outil de carrier, fontis** (`icon/ossuaire.png`, `icon/outil.png`, `icon/fontis.png`, `js/map.js > TAGS_BUILTIN` et les 7 autres tables de `check-icon-catalog.js`, `scripts/icones/dessiner-icones-poi.py`) : nouvelle famille **⛏️ Patrimoine** (ossuaire, outil) dans la légende et l'export ; **fontis** (effondrement du ciel en cloche) rejoint la Signalétique à côté de danger. Proposés aussi par les imports KMZ, GPX et SIG du Générateur. En vue 3D, aucun volume : le point garde son seul panneau.
 - **🕳️ Chatière relevée en plusieurs points** (`js/poiPrecis.js`, `js/vue3d.js > _segmentsChatiere`, `_joindreChatiere`, `data-formats.md` § Format point, `ui.md` § Point précis, `tracking.md` § Vue 3D) : le point précis d'une chatière n'est plus seulement un début et une fin mais une liste de points (`precis: { pts: [...] }`, 2 au moins) ; saisie d'un tap par point puis **✓ Terminer** (ou Entrée) dans le bandeau, **Retirer le dernier point** (ou Retour arrière) enlève le dernier tap, Échap / ✕ annule sans rien écrire, une seule entrée d'historique. Carte : un carré à chaque point, reliés par la polyligne, pointillé de l'icône vers le milieu du tracé. 🧭 Y aller, ➕ Itinéraire, guidage et 📍 Je suis ici visent le point du tracé à mi-longueur. Vue 3D : une roche par segment, coupée en onglet aux coudes, le boyau suit le tracé et l'on rampe tout du long. Les chatières déjà relevées (`x`, `y`, `x2`, `y2`) se lisent telles quelles, sans migration ; export et import de session, export anonymisé et Tableur gardent tous les points. Icônes du bandeau au trait. `checkup-point-precis.js` (chatière à 3 points, ancienne chatière), `checkup-vue-3d.js` § 39.
 

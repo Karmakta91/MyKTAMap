@@ -1898,6 +1898,17 @@ Tuile 🔗 de l'accueil de l'Éditeur, **plan affiché seulement** (`ktaPlanAffi
 
 Parcours : `scripts/smoke/checkup-raccords.js` (Chromium et WebKit). i18n `raccords.*`, `tabledit.source.raccords*` (fr/en/es). Aucune nouvelle surface réseau (le seul `fetch` possible est celui du rapatriement d'un calque, déjà fait au chargement du plan).
 
+#### 91.6 Vérifier le plan (`js/verifierPlan.js`)
+
+Tuile de l'accueil de l'Éditeur, avant les Raccords, **plan affiché seulement** : ferme l'accueil et ouvre `window.KtaVerifierPlan.ouvrir()` (`tableEditor.js` ne porte que l'appel ; icône `clipboard-list`). Contrôles, seuils et clé « vu, normal » : `multilevel-pathfinding.md` § Vérifier le plan.
+
+- **Fenêtre** `#kta-verif-modal` (`kta-readme-modal-overlay`, boîte des raccords) : note, compte « À revoir : N · vus, normaux : V », puis la liste **groupée par gravité** (`kta-verif-g-bloquant` / `-revoir` / `-info`, titre avec l'icône `triangle-alert`) et, dans chaque gravité, par contrôle (titre + nombre) ; une ligne par constat (objet nommé par son type de légende et son nom, niveau en multi-niveau ; dessous, ce qui ne va pas). Un passage entre niveaux qui traverse un niveau intermédiaire sans raccord est rangé en « Pour info », pas en « Bloquant ». « Vus, normaux (V) » déplie la liste des vus, chacun avec **Rétablir**, et **Tout rétablir**. Liste vide : phrase « rien à signaler ».
+- **Clic sur une ligne** : la fenêtre part, la carte passe au niveau du constat (`ktaSetActiveLevel`) et le cadre (`fitBounds` sur les segments en cause, marge 10 m) ; l'objet est surligné (`kta-verif-objet`, `--kta-accent`), l'obstacle cerné en tireté (`kta-verif-obstacle`, `--kta-erreur`), l'endroit entouré (`kta-verif-cercle`) ; calque `L.svg` à part. La **fiche** de l'objet s'ouvre 150 ms après (couches rattachées au déplacement) : celle que la carte a attachée à l'objet (`utils.js > ktaFicheObjetDe`) pour un tracé, une zone, une structure ; le marqueur à sa position pour un point. Objet masqué (filtres, niveau) : toast `warn`, pas de fiche.
+- **Bandeau** `#kta-verif-bandeau` (allure de `.kta-racc-bandeau`, sans `.kta-iti-floater`, même raison) : « ◀ Précédent · i / N · Suivant ▶ » (circulaire, la fiche suit), l'objet et le constat, **Ouvrir la fiche**, **Fiche de l'obstacle** (C1 seulement), **Vu, normal**, **Fermer**. Vu, normal recalcule et passe au suivant (même rang) ; liste vide → toast `success` et retour à la fenêtre. Échap et Fermer rendent la fenêtre ; `kta:donneesPlanChange` recalcule (300 ms) ; `mktm:plan-ferme` ferme tout.
+- **Saisie** : un tracé, une zone d'un type dur ou un mur en ligne saisi qui crée une coupure → toast `warn` (`verif.saisie.*`) qui renvoie à l'outil ; une fois par coupure et par plan ouvert.
+
+Parcours : `scripts/smoke/checkup-verifier-plan.js` (Chromium et WebKit). i18n `verif.*`, `tabledit.source.verif*` (fr/en/es). Aucune popup native, aucune surface réseau, rien d'écrit dans les données.
+
 ---
 
 ### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)

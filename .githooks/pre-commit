@@ -277,6 +277,9 @@ node scripts/check-mur-ligne.js || exit $?
 # garde a l'aller-retour (session, KMZ, GeoJSON).
 node scripts/check-zones-niveaux.js || exit $?
 
+# Verifier le plan : C1 (troncons coupes) = graphe de l'itineraire, C1 a C3 sur donnees fictives, "vu, normal".
+node scripts/check-verifier-plan.js || exit $?
+
 # Niveaux en hauteur : sol, hauteur et ecart par niveau lus par un seul acces (getNiveauVertical), plan sans la
 # donnee inchange, pref locale qui gagne, ecart jamais stocke.
 node scripts/check-niveaux-verticaux.js || exit $?

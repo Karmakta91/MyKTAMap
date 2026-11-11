@@ -1297,6 +1297,26 @@ function setPlanRaccordsIgnores(planId, cles) {
 window.getPlanRaccordsIgnores = getPlanRaccordsIgnores;
 window.setPlanRaccordsIgnores = setPlanRaccordsIgnores;
 
+// ── « Vu, normal » de « Vérifier le plan » (js/verifierPlan.js) ──────────────────────
+// Par plan, pref `verifVus` = clés de constat (« contrôle|identité[|identité…] ») déclarées normales sur CET appareil
+// (avis personnel, jamais synchronisé ni exporté) ; absente → []. Même plafond que les raccords ignorés.
+function getPlanVerifVus(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _readPlanPrefs(pid).verifVus;
+  return Array.isArray(v) ? v.filter(function (k) { return typeof k === "string" && k; }) : [];
+}
+function setPlanVerifVus(planId, cles) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  const liste = Array.isArray(cles) ? cles.filter(function (k) { return typeof k === "string" && k; }) : [];
+  if (liste.length) prefs.verifVus = liste.slice(-RACCORDS_IGNORES_MAX);
+  else delete prefs.verifVus;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanVerifVus = getPlanVerifVus;
+window.setPlanVerifVus = setPlanVerifVus;
+
 // ── Rendu de la vue 3D (js/vue3d.js) : "mixte", "structures" ou "galerie", retenu par plan ──────────────────
 // Par plan, pref `vue3dRendu` ; absente → null (la vue prend le mixte). Autre valeur refusée.
 function getPlanRenduVue3D(planId) {

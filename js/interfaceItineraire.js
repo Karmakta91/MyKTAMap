@@ -1232,7 +1232,7 @@ function _setItiAvoidPrefs(prefs) {
 }
 
 // Types de zones à éviter (une case par TYPE, pas par instance) : window.getAvoidableZoneTypes()
-// (types des zones session + embarquées, sauf "inaccessible"). Contrainte SOUPLE (relâchée si aucun chemin).
+// (types des zones session + embarquées, sauf les types durs : pathfinder.js > TYPES_ZONES_DURS). Contrainte SOUPLE.
 function _rafraichirListeAvoidZones() {
   const el = document.getElementById("kta-iti-avoid-zones-list");
   if (!el) return;

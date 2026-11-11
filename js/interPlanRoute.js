@@ -52,6 +52,12 @@
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
   function _esc(s) { return window.ktaEsc(s); }   // échappeur unique (js/langManager.js)
+  // Type de zone dur : la table unique du pathfinder (pathfinder.js > TYPES_ZONES_DURS) ; un type dur n'est jamais
+  // un évitement souple, il est déjà un obstacle (sans pathfinder, aucun itinéraire ne se calcule).
+  function _zoneDure(type) {
+    const PF = window.Pathfinder;
+    return !!(PF && typeof PF.estZoneDure === "function" && PF.estZoneDure(type));
+  }
   function _err(code, msg) {
     const e = new Error(msg);
     e.code = code;
@@ -168,7 +174,7 @@
       } catch(e) { /* tags non résolus → points/zones seulement */ }
     }
     const avoidZones = (routing.zones || []).filter(function(z) {
-      return z && z.type !== "inaccessible" && prefs.zones.indexOf(z.type) >= 0;
+      return z && !_zoneDure(z.type) && prefs.zones.indexOf(z.type) >= 0;
     });
     return {
       planId: planId, isCurrent: false,
@@ -489,7 +495,7 @@
       } catch(e) { /* tags B non résolus → on continue avec points/zones */ }
     }
     const avoidZonesB = (routingB.zones || []).filter(function(z) {
-      return z && z.type !== "inaccessible" && prefsB.zones.indexOf(z.type) >= 0;
+      return z && !_zoneDure(z.type) && prefsB.zones.indexOf(z.type) >= 0;
     });
 
     const scaleA = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
