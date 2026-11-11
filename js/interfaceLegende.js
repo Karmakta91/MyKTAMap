@@ -239,6 +239,12 @@ function _ktaLegendeCorps(src, opts) {
              ? window.ktaResolveStyle(cat, key, { flat: true }) : null;
   }
   function _couleurTrait(cat, key) { const s = _resolu(cat, key); return (s && s.color) || "#888888"; }
+  // Fond d'une pastille de trait : couleur du trait, rayée si le style a des `rayures` (arc de soutènement).
+  function _fondTrait(cat, key) {
+    const s = _resolu(cat, key), c = (s && s.color) || "#888888";
+    if (!s || !s.rayures || !s.rayures.color) return c;
+    return "repeating-linear-gradient(90deg," + c + " 0 4px," + s.rayures.color + " 4px 7px)";
+  }
   function _couleurFond(cat, key)  { const s = _resolu(cat, key); return (s && s.fillColor) || "#888888"; }
 
   function _ligneTrace(key) {
@@ -294,7 +300,7 @@ function _ktaLegendeCorps(src, opts) {
   }
   function _ligneStructLine(key) {
     if (!_visible("structures", key)) return "";
-    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurTrait("structures", key)};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
+    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_fondTrait("structures", key)};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
   }
   let contenuStructures = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.ktaIcone("m-pilier")} ${window.I18n.t("legendui.section.structures")}</div>`;
   contenuStructures += _ligneStructPoly("pilier-1");
@@ -303,6 +309,7 @@ function _ktaLegendeCorps(src, opts) {
   contenuStructures += _ligneStructLine("mur-ligne");
   contenuStructures += _ligneStructLine("front-1");
   contenuStructures += _ligneStructLine("front-2");
+  contenuStructures += _ligneStructLine("arc");
   // Customs structures : la GÉOMÉTRIE décide de la pastille (pas « lineColor d'abord »), sinon un polygone avec
   // lineColor stocké par accident s'afficherait aussi en trait.
   if (LC) {

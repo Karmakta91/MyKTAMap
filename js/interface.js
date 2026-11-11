@@ -3119,6 +3119,9 @@ _setGroupeModeActif("tracker", isTracking, null);
         onClick: function(btn) { _activerStructure("front-1", btn, _iconeType("structures", "front-1", "🟨")); } },
       { icone: "🟧", dynamicIcon: function() { return _iconeType("structures", "front-2", "🟧"); }, titre: window.I18n.t("ui.struct.front2"), dynamicTitre: function() { return _titreType("structures", "front-2", window.I18n.t("ui.struct.front2")); }, isTypeAction: true, typeKey: "front-2",
         onClick: function(btn) { _activerStructure("front-2", btn, _iconeType("structures", "front-2", "🟧")); } },
+      // Arc de soutènement : trait bleu rayé de rouge, posé de paroi à paroi ; on passe dessous (aucun obstacle).
+      { icone: "🟦", dynamicIcon: function() { return _iconeType("structures", "arc", "🟦"); }, titre: window.I18n.t("ui.struct.arc"), dynamicTitre: function() { return _titreType("structures", "arc", window.I18n.t("ui.struct.arc")); }, isTypeAction: true, typeKey: "arc",
+        onClick: function(btn) { _activerStructure("arc", btn, _iconeType("structures", "arc", "🟦")); } },
       { icone: window.ktaIcone("check"), titre: window.I18n.t("ui.struct.fermer"),
         onClick: function() {
           if (!window.modeStructure) {

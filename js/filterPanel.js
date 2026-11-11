@@ -474,7 +474,7 @@
     }
     if (category === "structures") {
       return ({ "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
-                "front-1": "🟨", "front-2": "🟧" })[type] || "✨";
+                "front-1": "🟨", "front-2": "🟧", "arc": "🟦" })[type] || "✨";
     }
     return "🏷️";
   }
@@ -698,7 +698,8 @@
            _section(window.I18n.t("filter.section.zoneTypes"), "zones",
              _renderTypesSection("zones", "zoneTypes", ["eau", "remblais", "effondrement", "inaccessible"]), "m-zone") +
            _section(window.I18n.t("filter.section.structTypes"), "structs",
-             _renderTypesSection("structures", "structTypes", ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"]),
+             _renderTypesSection("structures", "structTypes", window.KTA_STRUCTURE_TYPES_BUILTIN ||
+               ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"]),
              "m-pilier");
   }
 

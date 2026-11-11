@@ -451,7 +451,7 @@
         if (!_passeFiltreLevel(entry, levelSet)) return;
         const isPolyline = (typeof window.isStructurePolylineType === "function")
           ? window.isStructurePolylineType(entry.type)
-          : (entry.type === "mur-ligne" || entry.type === "front-1" || entry.type === "front-2");
+          : ["mur-ligne", "front-1", "front-2", "arc"].indexOf(entry.type) >= 0;
         _pushPolylineSegs(segs, entry.points, !isPolyline);
       });
     }

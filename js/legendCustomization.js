@@ -69,7 +69,8 @@ window.LegendCustomization = (function() {
       "mur":       "Mur",
       "mur-ligne": "Mur (ligne)",
       "front-1":   "Front de taille 1ère",
-      "front-2":   "Front de taille 2e"
+      "front-2":   "Front de taille 2e",
+      "arc":       "Arc de soutènement"
     }
   };
 

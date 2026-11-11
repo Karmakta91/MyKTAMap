@@ -124,6 +124,10 @@
   const ROTATION = 90;              // °/s
   const EPAISSEUR_MUR_LIGNE = 0.4;  // m
   const EPAISSEUR_FRONT = 0.3;      // m
+  // Arc de soutènement : pas de modèle 3D, on passe dessous. Un liseré au sol seulement (épaisseur, hauteur en m) :
+  // ni volume, ni face où poser une forme, ni structure empruntée ; jamais un obstacle (la règle du pas,
+  // tracking.js > _OBST_TYPES, ne connaît pas `arc`).
+  const ARC_SOL = { ep: 0.3, h: 0.02 };
   const LARGEUR_TRACE = 0.25;       // m
   // Itinéraire au sol (décision produit) : le dessin du trajet du jeu (addons/mkmg), à la couleur de l'itinéraire de
   // la carte (--kta-interaction ; le doré reste aux itinéraires publiés par l'équipe). Ruban PLEIN continu de
@@ -759,7 +763,7 @@
 
   function _estLigne(type) {
     if (typeof window.isStructurePolylineType === "function") return window.isStructurePolylineType(type);
-    return type === "mur-ligne" || type === "front-1" || type === "front-2";
+    return type === "mur-ligne" || type === "front-1" || type === "front-2" || type === "arc";
   }
 
   // Couleur du canon (aplat, couleur choisie par l'utilisateur comprise) → THREE.Color, en cache par clé.
@@ -1236,6 +1240,10 @@
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
       remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
+      if (t.s[i].type === "arc") {
+        _murLigne(opaque, t.s[i].points, sc, ARC_SOL.ep, ARC_SOL.h, _couleur("structures", "arc"));
+        continue;
+      }
       const s = t.s[i], tex = _e.textures ? _textureDe(s.type) : null;
       const col = !tex ? _couleur("structures", s.type) : tex === "roche" && MASSE_2[s.type]
         ? (_e.teinte2 || (_e.teinte2 = new THREE.Color(TEINTE_MASSE_2))) : BLANC;
@@ -4152,7 +4160,7 @@
     _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", function (o) {
       return o.type;
     }).filter(_horsTrace).forEach(function (s) {
-      if (!s || !Array.isArray(s.points)) return;
+      if (!s || !Array.isArray(s.points) || s.type === "arc") return;
       const lvl = Number.isInteger(s.level) ? s.level : 0;
       if (lvl === niveau) return;
       const c = _centreM(s.points, e.sc);
@@ -4771,7 +4779,7 @@
       }
     };
     structures.forEach(function (s) {
-      if (!s || !Array.isArray(s.points)) return;
+      if (!s || !Array.isArray(s.points) || s.type === "arc") return;
       const anneaux = _estLigne(s.type)
         ? _pavesLigne(s.points, sc, _epaisseurLigne(s.type)).map(function (q) { return q.ring; })
         : [_anneau(s.points, sc)];

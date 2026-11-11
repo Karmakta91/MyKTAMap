@@ -114,7 +114,9 @@
     "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 2, isPolyline: false },
     "mur-ligne": { color: "#1e3a8a", weight: 6, opacity: 1, isPolyline: true },
     "front-1":  { color: "#f4c542", weight: 6, opacity: 1, isPolyline: true },
-    "front-2":  { color: "#ff9933", weight: 6, opacity: 1, isPolyline: true }
+    "front-2":  { color: "#ff9933", weight: 6, opacity: 1, isPolyline: true },
+    // Arc : trait bleu seul, plus fin que le mur en ligne (pas de rayures sur fond OSM).
+    "arc":      { color: "#1e3a8a", weight: 3, opacity: 1, isPolyline: true }
   };
 
   // ── Config / opt-in ──────────
@@ -1105,7 +1107,7 @@
     }
     const isPolylineType = (typeof window.isStructurePolylineType === "function")
                             ? window.isStructurePolylineType
-                            : function(t) { return /^(front|mur-ligne)/.test(String(t || "")); }; // repli regex
+                            : function(t) { return /^(front|mur-ligne|arc$)/.test(String(t || "")); }; // repli regex
     let added = 0, skipped = 0;
     for (const s of structs) {
       const latlngs = _projectPoints(s.points);

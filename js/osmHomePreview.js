@@ -113,7 +113,8 @@
     "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.70, weight: 1, isPolyline: false },
     "mur-ligne": { color: "#1e3a8a", weight: 4, opacity: 0.95, isPolyline: true },
     "front-1":  { color: "#f4c542", weight: 4, opacity: 0.95, isPolyline: true },
-    "front-2":  { color: "#ff9933", weight: 4, opacity: 0.95, isPolyline: true }
+    "front-2":  { color: "#ff9933", weight: 4, opacity: 0.95, isPolyline: true },
+    "arc":      { color: "#1e3a8a", weight: 2, opacity: 0.95, isPolyline: true }
   };
   // Couleurs natives des tracés par type (repli aligné sur road.js / utils.js).
   const ROAD_STYLES_DATA_HOME = {

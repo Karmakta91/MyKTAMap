@@ -269,6 +269,7 @@ window._applyLevelFilterToTracker = _appliquerFiltreNiveauSurTracker;
 // et même signature (somme des `updatedAt` et des nombres de points ; toute modification passe par KtaUid.touch).
 // Un pas ne teste que les objets des cases qu'il touche (~0,1 ms pour 13 000 piliers, contre ~5 ms en balayage).
 // Type → forme de l'obstacle (true = polygone fermé, false = ligne).
+// ⚠️ `arc` (arc de soutènement) absent exprès : on passe dessous, ni le tracker ni la vue 3D ne s'y arrêtent.
 const _OBST_TYPES = {
   "pilier-1": true, "pilier-2": true, "mur": true,
   "front-1": false, "front-2": false, "mur-ligne": false
@@ -1438,7 +1439,7 @@ window.ktaNiveauxRecalage = function(x, y) {
     });
     const ligne = function(t) {
       return (typeof window.isStructurePolylineType === "function") ? window.isStructurePolylineType(t)
-        : (t === "mur-ligne" || t === "front-1" || t === "front-2");
+        : (t === "mur-ligne" || t === "front-1" || t === "front-2" || t === "arc");
     };
     lire("getStructures").concat(lire("getAllEmbeddedStructures")).forEach(function(st) {
       if (st && _recalProche(p, st.points, !ligne(st.type), r)) trouves.add(lvl(st));

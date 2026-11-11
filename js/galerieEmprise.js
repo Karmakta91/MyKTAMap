@@ -339,7 +339,7 @@
 
   function _estLigne(type) {
     if (typeof window.isStructurePolylineType === "function") return window.isStructurePolylineType(type);
-    return type === "mur-ligne" || type === "front-1" || type === "front-2";
+    return type === "mur-ligne" || type === "front-1" || type === "front-2" || type === "arc";
   }
 
   // Signature bon marché (comme roadGraph.js) : nombre, sommets et niveaux des tracés, zones et structures ; place,
@@ -659,7 +659,8 @@
   function _indexStructures(niveau, sc) {
     const segs = [], polys = [], g = new Grille(CASE_M * sc), gp = new Grille(CASE_M * sc);
     _structures().forEach(function (s) {
-      if (!s || !Array.isArray(s.points) || !_surNiveau(s, niveau)) return;
+      // Un arc de soutènement enjambe la galerie, il n'en fait pas une chambre.
+      if (!s || !Array.isArray(s.points) || s.type === "arc" || !_surNiveau(s, niveau)) return;
       const pts = s.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
       if (!pts.length) return;
       const ligne = _estLigne(s.type), n = pts.length;

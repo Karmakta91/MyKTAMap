@@ -5,26 +5,28 @@
  */
 
 // structures.js — structures de session : piliers (1re / 2e masse) et murs en polygones remplis, fronts de
-// taille et murs en ligne en polylignes épaisses ; types custom de la légende. Clone adapté de zones.js,
-// stocké à part (`structure.json`). Multi-niveau : champ `level` posé au tracé.
+// taille, murs en ligne et arcs de soutènement en polylignes ; types custom de la légende. Clone adapté de
+// zones.js, stocké à part (`structure.json`). Multi-niveau : champ `level` posé au tracé.
 // Expose : initStructures, toggleStructureMode, fermerStructureEnCours, renderStructures, resetStructures,
 //   removeLastStructure(Point), get/setStructures, getCurrentStructure(Index), setCurrentStructureByIndex,
-//   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, majLargeurFronts, brancherLargeurFronts,
+//   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, ktaPolylineStructure, ktaPeindreRayures,
+//   ktaLargeurRayePourRatio, majLargeurFronts, brancherLargeurFronts,
 //   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm, ktaStructuresAuDessus,
 //   ktaMursSousPiliers / ktaOrdonnerMursCarte (un mur sous les piliers et fronts de son niveau, carte et exports).
 // ⚠️ Aucune couleur ici : la source est js/styleResolver.js (l'utilisateur choisit dans ≡ Légende).
 // 🩸 Le Pathfinder ne fait aucune arête d'une structure (graphe sur les `roads` seulement) : un relevé tout en
 // structures n'a AUCUN itinéraire → js/convertirObjet.js reclasse un vecteur en tracé. Seul `mur-ligne` y
-// joue un rôle, d'obstacle (pathfinder.js > _collecterMursLigne) ; piliers, mur polygone et fronts, aucun.
+// joue un rôle, d'obstacle (pathfinder.js > _collecterMursLigne) ; piliers, mur polygone, fronts et arcs, aucun.
 // Garde-fou : scripts/check-style-canon.js, scripts/check-api-surface.js, scripts/check-filets-donnees.js
 
-window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "mur-ligne" | "front-1" | "front-2"
+window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "mur-ligne" | "front-1" | "front-2" | "arc"
 
-// Fronts de taille (limites d'exploitation d'une couche) et mur en ligne (mur levé en trait, cas d'un import
-// SIG) = POLYLINES ouvertes ; les autres = polygones fermés.
-const STRUCTURE_TYPES_POLYLINE = ["mur-ligne", "front-1", "front-2"];
+// Fronts de taille (limites d'exploitation d'une couche), mur en ligne (mur levé en trait, cas d'un import SIG)
+// et arc de soutènement (posé d'une paroi à l'autre, en travers de la galerie) = POLYLINES ouvertes ; les autres =
+// polygones fermés.
+const STRUCTURE_TYPES_POLYLINE = ["mur-ligne", "front-1", "front-2", "arc"];
 // Types intégrés, dans l'ordre des listes (légende, exports, filtres).
-const STRUCTURE_TYPES_BUILTIN = ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2"];
+const STRUCTURE_TYPES_BUILTIN = ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"];
 window.KTA_STRUCTURE_TYPES_BUILTIN = STRUCTURE_TYPES_BUILTIN;
 function _isPolylineType(type) {
   if (STRUCTURE_TYPES_POLYLINE.indexOf(type) >= 0) return true;
@@ -113,6 +115,58 @@ window.ktaLargeurFrontPourRatio = _largeurFrontPourRatio;
 
 // Tracé de galerie : même loi, plus fin ; facteur unique, écran comme export.
 const FRONT_FACTEUR_TRACE = 0.6;
+// Trait rayé (arc de soutènement) : plus fin que le front et le mur en ligne, qu'on ne doit pas confondre avec lui.
+const FACTEUR_RAYE = 0.6;
+window.ktaLargeurRayePourRatio = function (ratio) {
+  return Math.max(1, Math.round(_largeurFrontPourRatio(ratio) * FACTEUR_RAYE * 10) / 10);
+};
+
+// ── Trait rayé (style à `rayures`, styleResolver.js) ──────────────
+// Une SEULE couche Leaflet : après son trait, la polyligne repeint le même chemin en segments courts de la couleur
+// des rayures. Une seconde couche doublerait tout ce qui manipule la couche d'une structure (filtres de niveau et de
+// type par setStyle, registre, ULTRA, ordre des murs, clic).
+// 🩸 Canvas seulement (la carte est en preferCanvas) : le chemin construit par `_updatePoly` reste le chemin courant
+// du contexte après son `stroke`, on le repeint tel quel. Sous un renderer SVG, le trait reste uni.
+// Segments proportionnels à l'épaisseur (lue à chaque dessin : majLargeurFronts la change au zoom), opacité de la
+// couche (un filtre qui la passe à 0 cache aussi les rayures).
+function _peindreRayures(couche) {
+  const r = couche._renderer, op = couche.options || {};
+  if (!op.ktaRayures || !r || !r._ctx || !r._drawing || !couche._parts || !couche._parts.length) return;
+  if (!op.stroke) return;
+  window.ktaPeindreRayures(r._ctx, op.ktaRayures, op.weight, op.opacity);
+}
+// Rayures sur le chemin COURANT d'un contexte 2D déjà tracé (carte, exports PNG/PDF) : une seule loi de dessin.
+window.ktaPeindreRayures = function (ctx, couleur, largeur, opacite) {
+  const w = Number(largeur), a = (opacite === undefined || opacite === null) ? 1 : Number(opacite);
+  if (!ctx || !couleur || !(w > 0) || !(a > 0)) return;
+  ctx.save();
+  if (ctx.setLineDash) ctx.setLineDash([Math.max(1.5, w * 0.8), Math.max(2.5, w * 1.4)]);
+  ctx.globalAlpha = a;
+  ctx.lineWidth = w;
+  ctx.strokeStyle = couleur;
+  ctx.lineCap = "butt";
+  ctx.stroke();
+  ctx.restore();
+};
+let _ClassePolylineRayee = null;
+// Polyligne d'une structure : `style` résolu (ktaResolveStyle) ; `opts` = options Leaflet ajoutées. Un style à
+// `rayures` donne la polyligne rayée, sinon un L.polyline ordinaire.
+window.ktaPolylineStructure = function (latlngs, style, opts) {
+  const o = Object.assign({}, opts || {});
+  if (style && style.rayures && style.rayures.color) {
+    if (!_ClassePolylineRayee) {
+      _ClassePolylineRayee = L.Polyline.extend({
+        _updatePath: function () {
+          L.Polyline.prototype._updatePath.call(this);
+          _peindreRayures(this);
+        }
+      });
+    }
+    o.ktaRayures = style.rayures.color;
+    return new _ClassePolylineRayee(latlngs, o);
+  }
+  return L.polyline(latlngs, o);
+};
 window.ktaLargeurTracePourRatio = function (ratio) {
   return Math.max(1, Math.round(_largeurFrontPourRatio(ratio) * FRONT_FACTEUR_TRACE * 10) / 10);
 };
@@ -134,6 +188,7 @@ function majLargeurFronts() {
 
   const wFront = _largeurFrontPourZoom(z);
   const wTrace = window.ktaLargeurTracePourRatio(Math.pow(2, z));
+  const wRaye = window.ktaLargeurRayePourRatio(Math.pow(2, z));
   // Contour d'une surface (pilier, mur) : le quart d'un front, jamais plus que son épaisseur d'origine, plancher
   // 0,5 px. Un contour fixe de 3 px recouvre tout le pilier au dézoom ; trop fin, il disparaîtrait.
   const bord = function (wOrig) {
@@ -154,7 +209,7 @@ function majLargeurFronts() {
       if (lay.options.fill === true || lay._latlngs && Array.isArray(lay._latlngs[0])) {
         lay.options.weight = bord(e._wOrig);
       } else {
-        lay.options.weight = largeur;
+        lay.options.weight = lay.options.ktaRayures ? wRaye : largeur;
       }
       n++;
     }
@@ -169,7 +224,7 @@ function majLargeurFronts() {
     if (Array.isArray(structureLayers)) {
       structureLayers.forEach(function (l) {
         if (!l || !l.options) return;
-        if (l.options.fill !== true) { l.options.weight = wFront; return; }
+        if (l.options.fill !== true) { l.options.weight = l.options.ktaRayures ? wRaye : wFront; return; }
         if (l._ktaWOrig === undefined) l._ktaWOrig = l.options.weight;
         l.options.weight = bord(l._ktaWOrig);
       });
@@ -517,9 +572,10 @@ function renderStructures() {
   structurePreviewLayer = null;
 
   // Ordre Z (décision produit), de l'arrière à l'avant : mur < mur-ligne < pilier-2 < pilier-1 < front-2 <
-  // front-1. Stratigraphie : la 1re masse devant la 2e ; les fronts devant les piliers, sinon l'avancement
-  // d'exploitation est masqué. En multi-niveau, tri primaire par `level` croissant (comme les tracés).
-  const ordreType = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5 };
+  // front-1 < arc. Stratigraphie : la 1re masse devant la 2e ; les fronts devant les piliers, sinon l'avancement
+  // d'exploitation est masqué ; l'arc, trait fin posé en travers, devant tout. En multi-niveau, tri primaire par
+  // `level` croissant (comme les tracés).
+  const ordreType = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5, "arc": 6 };
   const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const structuresAffichage = [...structuresData].sort(function(a, b) {
     if (_multiLevelOnSort) {
@@ -550,7 +606,7 @@ function renderStructures() {
       // avalerait le clic suivant, et la popup s'ouvrirait sur le point qu'on vient de poser.
       if (s.points.length >= 1) {
         if (isPolyline) {
-          structurePreviewLayer = L.polyline(latlngs, {
+          structurePreviewLayer = window.ktaPolylineStructure(latlngs, style, {
             color:    style.color,
             weight:   style.weight,
             opacity:  style.opacity,
@@ -583,8 +639,8 @@ function renderStructures() {
       // Fermée : rendu final + popup note.
       let layer;
       if (isPolyline) {
-        // Front : trait épais sans contour. `weight` est réécrit au zoom par majLargeurFronts.
-        layer = L.polyline(latlngs, {
+        // Front : trait épais sans contour (arc : trait rayé). `weight` est réécrit au zoom par majLargeurFronts.
+        layer = window.ktaPolylineStructure(latlngs, style, {
           color:     style.color,
           weight:    style.weight,
           opacity:   style.opacity,
@@ -612,19 +668,16 @@ function renderStructures() {
         const _structRef = s;
         // Titre = libellé de l'utilisateur (custom : findCustomEntry ; built-in : getLabel, renommage compris),
         // jamais l'id brut `cust-…`.
-        const _structEmojis = {
-          "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
-          "front-1":  "🟨", "front-2":  "🟧"
-        };
         function _structPopupTitle(t) {
+          const integre = STRUCTURE_TYPES_BUILTIN.indexOf(t) >= 0;
           if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
             if (String(t).startsWith("cust-")) {
               const e = window.LegendCustomization.findCustomEntry(t);
               if (e) return e.label;
             }
-            if (_structEmojis[t]) return window.LegendCustomization.getLabel("structures", t);
+            if (integre) return window.LegendCustomization.getLabel("structures", t);
           }
-          if (_structEmojis[t]) return window.I18n.t("struct.popup." + t);
+          if (integre) return window.I18n.t("struct.popup." + t);
           return window.I18n.t("struct.popup.fallback", { type: t });
         }
         let cibleClic = layer;
@@ -774,7 +827,7 @@ window.renderStructures              = renderStructures;
 
 // ── Ajustement des sommets (js/ajusterSommets.js) ──────────────
 // ⚠️ contrat : même forme que road.js > ktaFormesAjustables.roads. Structures de session visibles, hors structure en
-// cours ; une ligne (front, mur en ligne) reste ouverte, minimum 2 ; un polygone, minimum 3.
+// cours ; une ligne (front, mur en ligne, arc) reste ouverte, minimum 2 ; un polygone, minimum 3.
 window.ktaFormesAjustables = window.ktaFormesAjustables || {};
 window.ktaFormesAjustables.structures = {
   cat: "structures",
