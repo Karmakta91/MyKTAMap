@@ -2,7 +2,8 @@
 
 > Étude ouverte le 11/11/2026 à la demande de KARMA, née de l'étude des remblais (`docs/ETUDE_REMBLAIS.md`,
 > question 2 bis) : quand le type « Comblé » bloquera l'itinéraire, il faudra voir les tracés qu'il coupe. KARMA
-> élargit l'idée à un outil de contrôle général du plan. **Rien n'est tranché** : le QCM attend ses réponses. Aucun
+> élargit l'idée à un outil de contrôle général du plan. Le QCM a été tranché le même jour, toutes les recos prises (« Décisions de
+> KARMA », en fin de document) : il fait foi pour l'implémentation. Aucun
 > code de l'app n'a été modifié pour l'écrire ; chaque fait de l'état actuel renvoie à `fichier > fonction` (lu sur
 > `Karma_dev`, commit `032b1b29`).
 
@@ -116,9 +117,11 @@ le vérifiera). Objets d'un **calque** : en lecture seule, la correction propose
 - **Correction destructive** sur un faux doublon : seulement les identiques en tout, et un geste.
 - **Coût au démarrage** sur un vieux téléphone : passe légère seulement, au repos.
 
-## Questions à trancher (QCM)
+## Décisions de KARMA (QCM du 11/11/2026)
 
-| # | Question | Options | Reco |
+Toutes les recos sont prises.
+
+| # | Question | Options | Décision |
 |---|---|---|---|
 | 1 | Contrôles du premier lot | a) C1 à C3 (bloquants) · b) C1 à C10 d'un coup | **a**, puis le reste au lot 2 |
 | 2 | Liste des contrôles | a) C1 à C10 + renvoi C11, écartés tels quels · b) en ajouter / retirer | **a** |

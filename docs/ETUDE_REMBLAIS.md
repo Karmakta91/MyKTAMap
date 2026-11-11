@@ -1,7 +1,8 @@
 # Étude — Comblé et masse au sol (remblais total et partiel)
 
 > Étude ouverte le 11/11/2026 à la demande de KARMA, réorientée le même jour par sa décision de **différencier** le
-> comblement total et le remblai partiel (ci-dessous). Le reste attend le QCM en fin de document. Aucun code de l'app
+> comblement total et le remblai partiel (ci-dessous). Le QCM a été tranché le même jour (« Décisions de KARMA », en fin
+> de document) : il fait foi pour l'implémentation. Aucun code de l'app
 > n'a été modifié pour l'écrire ; chaque fait de l'état actuel renvoie à `fichier > fonction` (lu sur `Karma_dev`,
 > commit `032b1b29`).
 
@@ -176,9 +177,10 @@ contrôle au chargement ci-dessous mesure chaque plan dans l'app.
 | d. Contrôle au chargement, une fois par plan | Seulement si une zone Comblé coupe un tracé : « N zones Comblé coupent des galeries tracées : comblement total ou masse au sol ? » → liste, carte centrée sur chacune, re-typage zone par zone ou en lot | Zones d'un calque (lecture seule) : re-typage par l'Éditeur de données ou à la régénération, le message le dit |
 | e. Repli de la sortie d'urgence | Sans chemin → relance en levant les Comblé (pas les inaccessibles), avec l'avertissement « passe par une zone notée Comblé » | Révise « les dures ne se relâchent jamais » pour Comblé seul |
 
-**Reco d + b + e** : d attrape le cas là où il naît (une zone Comblé qui coupe un tracé, c'est exactement le risque),
+**Décision : d + b, sans e** (question 2 ci-dessous). Raisonnement d'origine, pour mémoire :  d attrape le cas là où il naît (une zone Comblé qui coupe un tracé, c'est exactement le risque),
 avec le re-typage en lot de c dans sa liste ; b couvre ce qui a échappé ; e parce qu'une sortie d'urgence bloquée par
-une erreur de typage est le pire résultat possible. e est une décision de sécurité propre à KARMA.
+une erreur de typage est le pire résultat possible. KARMA refuse e : une contrainte dure ne se relâche jamais ; en
+urgence sans chemin, l'app dit quelles zones Comblé coupent le chemin.
 
 ### 2 bis. « Vérifier le plan » (étude à part)
 
@@ -263,8 +265,9 @@ chevauche un Comblé, le Comblé l'emporte. Deux lignes de plus dans la fenêtre
 
 ### 11. Brancard du Secours
 
-**Reco** : Comblé retiré de `BRANCARD_COCHES` (déjà dur) ; masse au sol cochée d'office avec l'eau (un brancard ne
-passe ni en rampant ni sur un talus).
+**Décision** : Comblé retiré de `BRANCARD_COCHES` (déjà dur). Masse au sol : évitée d'office **seulement là où elle
+laisse moins de 1,8 m de vide** ; à 1,8 m ou plus, elle passe au brancard (la reco d'origine l'évitait toujours, KARMA
+ne l'a pas retenue). L'évitement brancard devient donc une règle par zone et non plus par type.
 
 ### 12. Zone sur plusieurs niveaux
 
@@ -307,21 +310,24 @@ type inconnu (style de repli) : livrer quand le front du pro suit. Les modules p
   Comblé (case décochée) ; perf du talus.
 - **Liste fermée** des types dans `AI_CONTEXT.md` : sans mise à jour, l'aide IA nie le nouveau type.
 
-## Questions à trancher (QCM)
+## Décisions de KARMA (QCM du 11/11/2026)
 
-| # | Question | Options | Reco |
+Toutes les recos sont prises, sauf aux questions 2 (pas de repli d'urgence) et 11 (brancard selon le vide) ; à la
+question 4, la préférence proposée est retenue.
+
+| # | Question | Options | Décision |
 |---|---|---|---|
 | 1 | Clé de Comblé | a) garder `remblais`, libellés seuls · b) nouvelle clé + lecture de l'ancienne | **a** |
-| 2 | Plans existants mal typés | a) rien · b) message à l'échec · c) re-typage en lot · d) contrôle au chargement · e) repli de la sortie d'urgence | **d + b + e** (d = contrôle de « Vérifier le plan », c dans sa liste) |
+| 2 | Plans existants mal typés | a) rien · b) message à l'échec · c) re-typage en lot · d) contrôle au chargement · e) repli de la sortie d'urgence | **d + b**, **pas de e** : une contrainte dure ne se relâche jamais ; en urgence sans chemin, l'app dit quelles zones Comblé coupent le chemin |
 | 3 | Nom et clé du nouveau type | a) « Masse au sol » `masse-sol` · b) « Remblai partiel » · c) « Remblai bas » | **a** |
-| 4 | Style 2D de la masse au sol | i) gris clair + grains · ii) terre / sable + grains · iii) fond léger + contour pointillé | KARMA ; préférence **ii**, maquette avant code |
+| 4 | Style 2D de la masse au sol | i) gris clair + grains · ii) terre / sable + grains · iii) fond léger + contour pointillé | **ii** : terre / sable, grains plus denses plus c'est haut ; **maquette avant code** ; Comblé garde l'aplat actuel |
 | 5 | Valeur | a) part de la hauteur, crans ¼ ½ ¾ + Autre, absent = ½ · b) mètres de remblai · c) mètres de vide | **a** |
 | 6 | Forme | a) talus automatique 30° · b) rampe d'un bord à l'autre · c) a puis b si besoin | **c** |
 | 7 | Seuils 3D | a) 1,8 / 1 / 0,5 m · b) autres | **a** |
 | 8 | Itinéraire, guidage | a) coût selon le vide, distance séparée, temps du guidage · b) a + consigne « ramper » · c) pas de coût | **a** ; b plus tard |
 | 9 | Volume exploité | a) Comblé entier, masse par paliers · b) masse ignorée | **a** |
 | 10 | Effondrement | a) inchangé (60 %, obstacle 3D, pas dur) · b) le rendre dur aussi | **a** |
-| 11 | Brancard | a) Comblé retiré (déjà dur), masse au sol cochée d'office · b) masse non cochée | **a** |
+| 11 | Brancard | a) Comblé retiré (déjà dur), masse au sol cochée d'office · b) masse non cochée | Comblé retiré (déjà dur) ; **masse au sol évitée d'office seulement sous 1,8 m de vide** : à 1,8 m ou plus, elle passe au brancard |
 | 12 | Plusieurs niveaux | a) Comblé dur sur chacun, masse : une valeur pour tous · b) une valeur par niveau | **a** |
 | 13 | Saisie, exports, SIG | a) fiche, Tableur, KMZ, GeoJSON, synonymes ci-dessus, défaut d'import = masse au sol · b) défaut d'import inchangé | **a** |
 
@@ -330,7 +336,7 @@ type inconnu (style de repli) : livrer quand le front du pro suit. Les modules p
 | Lot | Contenu | Taille |
 |---|---|---|
 | 0 | **« Vérifier le plan »**, au moins le contrôle des tracés coupés par une zone bloquante (lots de `ETUDE_VERIFIER_PLAN.md`) ; table unique des types durs (pathfinder, inter-plans) posée à cette occasion, `inaccessible` seul | M |
-| 1 | **Comblé** (après le lot 0) : libellés fr / en / es, `remblais` ajouté aux types durs, case « Respecter… », brancard, 3D jusqu'au ciel (effondrement découplé) ; **dans le même lot**, le message à l'échec et le repli d'urgence (question 2) : Comblé dur ne part pas sans eux ; défaut d'import ; guides, `AI_CONTEXT.md`, `multilevel-pathfinding.md` | M |
+| 1 | **Comblé** (après le lot 0) : libellés fr / en / es, `remblais` ajouté aux types durs, case « Respecter… », brancard, 3D jusqu'au ciel (effondrement découplé) ; **dans le même lot**, le message à l'échec, sortie d'urgence comprise, qui dit quelles zones Comblé coupent le chemin (question 2, sans repli) : Comblé dur ne part pas sans lui ; défaut d'import ; guides, `AI_CONTEXT.md`, `multilevel-pathfinding.md` | M |
 | 2 | Maquette 2D de la masse au sol | S |
 | 3 | **Masse au sol, donnée et 2D** : type ajouté partout (21 fichiers, skill mis à jour), champ `comble`, fiche, Tableur, copies, KMZ / GeoJSON / SIG, légende, exports ; garde-fou d'aller-retour ; `data-formats.md` | L |
 | 4 | Masse au sol en 3D : sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ; checkup § 24 bis ; mesure de perf | L |
