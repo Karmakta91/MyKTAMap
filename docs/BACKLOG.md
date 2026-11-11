@@ -32,6 +32,9 @@
 
 ## Maintenant
 
+- **`checkup-poi-jonction` rouge sur la base** — 3 KO sur `Karma_dev`, bloque la porte de release de la v2.25.0.
+  `qui: Claude · action: diagnostiquer (régression ou test périmé) puis corriger, session Dev · fini: vert sous
+  Chromium et WebKit, poussé · depuis: 12/11/2026 · taille: S`
 - **`_currentLoadedPlanId` à l'accueil : scénario pro** — community fait : id remis à null au retour à l'accueil, plan
   quitté dans `_ktaDernierPlanId` (carte OSM), prouvé par `smoke.js` sous Chromium et WebKit. Reste à prouver côté pro :
   plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
@@ -151,6 +154,10 @@
 
 ## Entrant
 
+- **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
+  plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
+  des niveaux, et correction du message faux `prof.incoherent.suite`. Après la mise en prod de la v2.25.0 (gel).
+  `qui: KARMA · action: valider la proposition · depuis: 12/11/2026 · taille: S`
 - **Connexions IndexedDB jamais fermées** — audit pro
   `MyKTAMap-pro/docs/audits/2026-11-06_audit-accueil-chiffre-v1.md` : `planRegistry.js > _openIDB` ouvre une
   connexion à chaque appel, jamais fermée. (Le splash, lui, reste bloquant : décision du 12/11/2026.)
