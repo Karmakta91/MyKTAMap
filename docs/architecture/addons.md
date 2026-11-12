@@ -322,8 +322,11 @@ embuscades, nuages de fumigène, un monde par niveau), `js/son.js`
 - **Interface** : santé, endurance et lampe (pile) en haut à gauche ; panneau en haut à droite réductible (▾ / ▸,
   retenu sous `myktamap_mkmg_panneau_v1`) : vague, chrono et guidage toujours là ; objectif, statistiques (égarés tués, balles
   tirées, balles au but) et « Quitter » repliés ; cartouches sur le bouton de tir. Fin de partie (santé à 0) :
-  meilleure vague par difficulté sous `myktamap_mkmg_v1`, « Rejouer » ou « Quitter », joystick et pavé retirés le
-  temps de toucher la carte (`regler({ commandes: false })`).
+  vague atteinte et vagues réussies, meilleure vague par difficulté, puis le bilan de la partie — précision (balles
+  au but / tirées, « aucun tir » sinon), égarés tués, durée (m:ss) ; « Rejouer » ou « Quitter », joystick et pavé
+  retirés le temps de toucher la carte (`regler({ commandes: false })`). ⚠️ contrat : `myktamap_mkmg_v1` ne retient
+  que `{ <difficulté>: meilleure vague }` (nombres), forme lue par toute version du jeu ; le bilan est affiché, pas
+  retenu.
 - **Performance** (plan dense, iPhone) : menaces pensées à 15 Hz ; hors de vue directe elles descendent une **carte
   des distances** au joueur (Dijkstra sur `RoadGraph.getGraph`, refait au plus chaque seconde et s'il a bougé de
   2 m), une seule pour toutes — un `Pathfinder.computeRoute` par égaré reconstruisait tout le réseau ; règle du pas à
@@ -345,7 +348,8 @@ embuscades, nuages de fumigène, un monde par niveau), `js/son.js`
   sonnée au tir, contact, grésillement situé ; fumigène — lancer à 8 m ou contre une paroi, stock, mur au bord du
   nuage avec et sans la règle du pas, figé dedans, silhouette qui traverse hors faisceau, dissipation, ramassage,
   gardien, reprise du contexte WebGL, fin de partie ; coups portés — élan sans dégât, coup, cadence, esquive,
-  gardien) et § 58 (B à un autre niveau, `=mkmgniveaux`). Non joués par le
+  gardien ; écran de fin — précision, égarés tués, durée, partie sans tir, scores d'une ancienne partie gardés
+  tels quels) et § 58 (B à un autre niveau, `=mkmgniveaux`). Non joués par le
   checkup : passage de niveau en cours de partie (monde rangé, refuge, nuages abandonnés), recul de la silhouette
   dans un cul-de-sac ou sans place (repli à 25-50 m), nuage dans une salle large (marcheur arrêté au bord, sans
   contournement), rendu sonore et visuel (geste des bras compris).

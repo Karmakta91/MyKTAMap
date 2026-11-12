@@ -64,7 +64,7 @@
 // quand on la fixe, recul et sonnée au tir, contact. Fumigène : lancer (8 m, arrêté par une paroi), stock, mur pour
 // les marcheurs (règle du pas et glissement de nœud en nœud), figés dedans, silhouette qui traverse hors faisceau,
 // dissipation, ramassage, gardien, reprise du contexte WebGL, fin de partie. Coups portés : élan, dégâts, esquive,
-// cadence, gardien.
+// cadence, gardien. Écran de fin : précision, égarés tués, durée, scores d'une ancienne partie gardés tels quels.
 // Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), intensité 25 / 300 %
 // et faisceau 40 / 160° (curseurs, pénombre, relus, ancien « forte » / « jour » relu), ☀️ Plein jour (interrupteur),
 // greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
@@ -10671,7 +10671,7 @@ async function sectionMkmgNiveaux(nav) {
 // facile, monde vidé, chrono repoussé ; chaque situation est posée par KtaAddons.mkmg.essai.
 async function sectionMkmgArsenal(nav) {
   const nom = "§ 23 bis ";
-  console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile), fumigène, coups portés");
+  console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile), fumigène, coups portés, écran de fin");
   const t = await pageNiveauxFictifs(nav, "v3d-checkup-mkmg-arsenal", [0], { "0": -25 }, { "0": 2.5 }, function () {
     const P = window.__fxP, pts = [];
     for (let x = -80; x <= 80; x += 5) pts.push(P(x, 0));
@@ -10933,6 +10933,9 @@ async function sectionMkmgArsenal(nav) {
         plafond: [V({ vague: 99 }, 20), V({ vague: 99 }, 5)], vague2: [V({ vague: 2 }, 20), V({ vague: 2 }, 5)] };
       Math.random = hasard;
       // Fin de partie : fumigène inactif (touche et bouton).
+      // Scores laissés par une ancienne partie : relus, gardés tels quels (la clé ne change pas de forme).
+      const CLE = "myktamap_mkmg_v1", anciens = '{"facile":7,"moyen":2}';
+      localStorage.setItem(CLE, anciens);
       neuf();
       X.fumigenes(2);
       X.sante(0);
@@ -10942,6 +10945,19 @@ async function sectionMkmgArsenal(nav) {
       await pause(60);
       out.fin = { fin: M().etat().fin, stock: M().etat().fumigene.stock, nuages: nuages().length,
         bouton: M().etat().fumigene.bouton };
+      // Écran de fin : précision, égarés tués, durée ; puis une partie sans un tir (« Rejouer », santé à 0 aussitôt).
+      const lignes = function (s) {
+        return Array.prototype.map.call(document.querySelectorAll(s), function (el) { return el.textContent; });
+      };
+      out.bilan = { etat: M().etat().bilan, lignes: lignes(".mkmg-fin-stats > div"), textes: lignes(".mkmg-fin-texte"),
+        brut: localStorage.getItem(CLE), anciens: anciens };
+      q(".mkmg-fin .mkmg-bouton-primaire").click();
+      for (let k = 0; k < 100 && !(M().etat().enCours && !M().etat().fin && M().etat().cible); k++) await pause(30);
+      X.vider();
+      X.sante(0);
+      await pause(200);
+      out.bilanVide = { etat: M().etat().bilan, lignes: lignes(".mkmg-fin-stats > div"), fin: M().etat().fin };
+      localStorage.removeItem(CLE);
       M().quitter();
       await K.fermer();
       return out;
@@ -11027,6 +11043,18 @@ async function sectionMkmgArsenal(nav) {
       nom + "coup d'égaré : écarté pendant l'élan → raté, santé intacte, l'égaré repart vers soi", r.esquive);
     verifier(CG.elanS === 0.6 && CG.degats === 36 && r.coupGardien.elan === 100 && r.coupGardien.un === 100 - CG.degats,
       nom + "coup du gardien : 0,6 s d'élan, 36 de santé d'un coup", r.coupGardien);
+    const b = r.bilan.etat, bl = r.bilan.lignes;
+    verifier(b.tirs >= 6 && b.touches >= 6 && b.touches <= b.tirs && b.tues >= 1 && b.dureeS >= 20 && bl.length === 3 &&
+      bl[0] === "Précision : " + Math.round(b.touches / b.tirs * 100) + " % (" + b.touches + " / " + b.tirs + ")" &&
+      bl[1] === "Égarés tués : " + b.tues &&
+      bl[2] === "Durée : " + Math.floor(b.dureeS / 60) + ":" + String(b.dureeS % 60).padStart(2, "0"),
+      nom + "écran de fin : précision (balles au but / tirées), égarés tués, durée de la partie", r.bilan);
+    verifier(r.bilan.brut === r.bilan.anciens && r.bilan.textes.indexOf("Meilleure vague (Facile) : 7") >= 0,
+      nom + "écran de fin : scores d'une ancienne partie relus et gardés tels quels (clé de même forme)", r.bilan);
+    verifier(r.bilanVide.fin && r.bilanVide.lignes[0] === "Précision : aucun tir" &&
+      r.bilanVide.lignes[1] === "Égarés tués : 0" && /^Durée : 0:0\d$/.test(r.bilanVide.lignes[2] || "") &&
+      r.bilanVide.etat.precision === null,
+      nom + "écran de fin : partie sans un tir → « aucun tir », 0 égaré, durée de quelques secondes", r.bilanVide);
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 4));
   } catch (err) {
     pb(nom + "exception : " + (err && err.message));
@@ -19393,7 +19421,9 @@ async function sectionCaseBoutonsZoom(nav) {
         await pause(150);
         const pave = function () { const el = q("#kta-vue3d .kta-v3d-pad"); return !!el && getComputedStyle(el).display !== "none"; };
         r.fin = { fin: M().etat().fin, carte: !!q(".mkmg-fin"), score: M().etat().scores.facile,
-          tirer: q(".mkmg-tirer").disabled, pave: pave() };
+          tirer: q(".mkmg-tirer").disabled, pave: pave(), bilan: M().etat().bilan,
+          lignes: Array.prototype.map.call(document.querySelectorAll(".mkmg-fin-stats > div"),
+            function (el) { return el.textContent; }), brut: localStorage.getItem("myktamap_mkmg_v1") };
         q(".mkmg-fin .mkmg-bouton-primaire").click();
         for (let k = 0; k < 60 && !(M().etat().cible); k++) await pause(50);
         r.rejoue = { enCours: M().etat().enCours, fin: M().etat().fin, vague: M().etat().vague, carte: !!q(".mkmg-fin"),
@@ -19566,6 +19596,13 @@ async function sectionCaseBoutonsZoom(nav) {
         "jeu : santé à 0 → fin, meilleure vague retenue (1), tir coupé, commandes retirées (la carte se touche) ; " +
         "« Rejouer » relance la vague 1, commandes revenues",
         { fin: MK.fin, rejoue: MK.rejoue });
+      const BF = MK.fin.bilan;
+      verifier(BF.tirs > 0 && MK.fin.lignes.length === 3 &&
+        MK.fin.lignes[0] === "Précision : " + BF.precision + " % (" + BF.touches + " / " + BF.tirs + ")" &&
+        MK.fin.lignes[1] === "Égarés tués : " + BF.tues && /^Durée : \d+:\d\d$/.test(MK.fin.lignes[2]) &&
+        MK.fin.brut === '{"facile":1}',
+        "jeu : écran de fin — précision (balles au but / tirées), égarés tués, durée ; scores retenus sous leur forme " +
+        "de toujours ({ difficulté: meilleure vague })", { bilan: BF, lignes: MK.fin.lignes, brut: MK.fin.brut });
       console.log("  ℹ️ jeu, son après « Rejouer » : " + MK.son.avant + " → " + MK.son.apres + " (navigateur de test : " +
         "un clic simulé n'est pas un geste, le son peut y rester suspendu)");
       // Sans WebAudio (WebKit de test sous Windows), le jeu reste muet : rien à vérifier.

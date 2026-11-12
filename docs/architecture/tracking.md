@@ -2666,7 +2666,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   à chaque vague, lampe qui vacille sous 8 m, pile × 2 quand on la fixe, recul de 12 m et sonnée au tir, contact,
   grésillement situé ; fumigène — lancer, stock, mur pour les marcheurs, figés dedans, silhouette qui traverse hors
   faisceau, dissipation, ramassage, gardien, reprise du contexte WebGL, fin de partie ; coups portés — élan, dégâts,
-  cadence, esquive, gardien.
+  cadence, esquive, gardien ; écran de fin — précision, égarés tués, durée, scores gardés sous leur forme.
   Données changées pendant la vue (§ 26, objets fictifs) : ouverture en libre au centre d'un pilier → place dégagée,
   en suivi (tracker dans le pilier) → rien ; rien sur 40 images sans signal, un rendu sans changement relu sans rien
   refaire ; itinéraire remplacé, puis aperçu posé → aucune reconstruction, ruban seul refait (le nouveau) ; carte

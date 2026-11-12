@@ -12,8 +12,8 @@
 // silhouette (monde.js) ; fusil à pompe (rage après 20 égarés : santé pleine, 30 s de tir auto, endurance sans fin,
 // dégâts reçus ÷ 2, halo rouge), fumigènes (bouton ou G : un nuage qui arrête les marcheurs et cache de la
 // silhouette), munitions, piles, champignons et fumigènes ramassés en passant ; viseur à la souris capturée (PC) ;
-// santé à 0 = fin, meilleure vague retenue par difficulté. La pile de la lampe s'use, deux fois plus vite en fixant
-// la silhouette (lampe qui baisse et vacille, aussi quand la silhouette est proche ; à plat = lueur de
+// santé à 0 = fin (bilan affiché, meilleure vague retenue par difficulté). La pile de la lampe s'use, deux fois plus
+// vite en fixant la silhouette (lampe qui baisse et vacille, aussi quand la silhouette est proche ; à plat = lueur de
 // quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
 // éboulis couvrent les grognements. Sur un plan multi-niveau, B est parfois à un autre niveau, et toujours quand celui
 // où l'on est a moins de 3 POI joignables (sauf vague du gardien) ; toutes les 5 vagues, un gardien garde B.
@@ -55,6 +55,8 @@
       "hud.plusSante": "+{n} santé", "hud.recule": "Elle recule…",
       "fin.titre": "Tu es resté sous terre", "fin.texte": "Vague {n} · {r} réussie(s)",
       "fin.meilleure": "Meilleure vague ({diff}) : {m}", "fin.rejouer": "Rejouer",
+      "fin.precision": "Précision : {p} % ({t} / {n})", "fin.precisionSans": "Précision : aucun tir",
+      "fin.tues": "Égarés tués : {n}", "fin.duree": "Durée : {d}",
       "hud.tropTard": "Trop tard ! Ils arrivent de partout…", "hud.tenaille": "Pris en tenaille : fuis !",
       "hud.lampe": "Lampe", "hud.plusPile": "+{n} % de pile", "hud.pileFaible": "La lampe faiblit…",
       "hud.pileVide": "Plus de pile : avance à tâtons", "hud.objectifNiveau": "Rejoins : {nom} · niveau {n}",
@@ -89,6 +91,8 @@
       "hud.plusSante": "+{n} health", "hud.recule": "It backs away…",
       "fin.titre": "You stayed underground", "fin.texte": "Wave {n} · {r} cleared",
       "fin.meilleure": "Best wave ({diff}): {m}", "fin.rejouer": "Play again",
+      "fin.precision": "Accuracy: {p}% ({t} / {n})", "fin.precisionSans": "Accuracy: no shot fired",
+      "fin.tues": "Lost ones killed: {n}", "fin.duree": "Time: {d}",
       "hud.tropTard": "Too late! They come from everywhere…", "hud.tenaille": "Caught in a pincer: run!",
       "hud.lampe": "Lamp", "hud.plusPile": "+{n}% battery", "hud.pileFaible": "The lamp is fading…",
       "hud.pileVide": "Battery dead: feel your way", "hud.objectifNiveau": "Reach: {nom} · level {n}",
@@ -123,6 +127,8 @@
       "hud.plusSante": "+{n} salud", "hud.recule": "Retrocede…",
       "fin.titre": "Te quedaste bajo tierra", "fin.texte": "Oleada {n} · {r} superada(s)",
       "fin.meilleure": "Mejor oleada ({diff}): {m}", "fin.rejouer": "Jugar otra vez",
+      "fin.precision": "Precisión: {p} % ({t} / {n})", "fin.precisionSans": "Precisión: ningún disparo",
+      "fin.tues": "Perdidos abatidos: {n}", "fin.duree": "Duración: {d}",
       "hud.tropTard": "¡Demasiado tarde! Llegan por todas partes…", "hud.tenaille": "Atrapado en tenaza: ¡huye!",
       "hud.lampe": "Linterna", "hud.plusPile": "+{n} % de batería", "hud.pileFaible": "La linterna se apaga…",
       "hud.pileVide": "Sin batería: avanza a tientas", "hud.objectifNiveau": "Llega a: {nom} · nivel {n}",
@@ -277,7 +283,7 @@
       tirs: 0, touches: 0,
       blesseT: 0, ecouteurs: [], saleT: 0, carte: null, mondes: {}, pile: REGLES.pile.max, lampeK: 1, eau: false,
       eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0, silM: null, silVue: false,
-      usure: 0, coups: 0, rates: 0, fumigenes: _monde().REGLES.fumigene.depart, nuages: [],
+      usure: 0, coups: 0, rates: 0, debutT: performance.now(), fumigenes: _monde().REGLES.fumigene.depart, nuages: [],
       ecartT: 0, recaleT: 0, recale: false, recalages: 0,
       rageTues: 0, rageFin: 0, rageCanon: 0, rechargeRage: false, gachette: false, prochainTir: 0 };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
@@ -935,15 +941,24 @@
     try { return JSON.parse(localStorage.getItem(CLE_SCORES) || "{}") || {}; } catch (e) { return {}; }
   }
 
+  // Bilan de la partie pour l'écran de fin : précision (balles au but / tirées, null sans tir), égarés tués, durée (s).
+  function _bilan(p) {
+    return { tirs: p.tirs, touches: p.touches, precision: p.tirs ? Math.round(p.touches / p.tirs * 100) : null,
+      tues: p.tues, dureeS: Math.max(0, Math.round(((p.finT || performance.now()) - p.debutT) / 1000)) };
+  }
+
   function _finPartie() {
     const p = _p;
     p.fin = true;
+    p.finT = performance.now();
     if (p.viseur) p.viseur.liberer();   // la souris rendue pour toucher la carte de fin
     // La carte de fin est sous les commandes (calque de la greffe) : joystick et pavé retirés le temps de toucher.
     p.ctx.regler({ course: false, commandes: false });
     _son().proximite(0);
     _son().ambiance(false);
     _jouer("fin");
+    // ⚠️ contrat : la clé des scores garde sa forme { <difficulté>: meilleure vague }, lue telle quelle par toute
+    // version du jeu ; le bilan de la partie (précision, égarés, durée) est affiché, pas retenu.
     const scores = _lireScores(), avant = Number(scores[p.diff]) || 0;
     scores[p.diff] = Math.max(avant, p.reussies);
     try { localStorage.setItem(CLE_SCORES, JSON.stringify(scores)); } catch (e) { /* stockage refusé : sans score */ }
@@ -952,6 +967,12 @@
     _el(f, "div", "mkmg-fin-titre", _t("fin.titre"));
     _el(f, "div", "mkmg-fin-texte", _t("fin.texte", { n: p.vague, r: p.reussies }));
     _el(f, "div", "mkmg-fin-texte", _t("fin.meilleure", { diff: _t("diff." + p.diff), m: scores[p.diff] }));
+    const b = _bilan(p), stats = _el(f, "div", "mkmg-fin-stats");
+    _el(stats, "div", "", b.precision === null ? _t("fin.precisionSans")
+      : _t("fin.precision", { p: b.precision, t: b.touches, n: b.tirs }));
+    _el(stats, "div", "", _t("fin.tues", { n: b.tues }));
+    const duree = Math.floor(b.dureeS / 60) + ":" + String(b.dureeS % 60).padStart(2, "0");
+    _el(stats, "div", "", _t("fin.duree", { d: duree }));
     const bts = _el(f, "div", "mkmg-fin-boutons");
     const rejouer = _el(bts, "button", "mkmg-bouton mkmg-bouton-primaire", _t("fin.rejouer"));
     rejouer.type = "button";
@@ -1326,7 +1347,7 @@
         return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu, sonnee: performance.now() < (o.sonneeFin || 0),
           elan: !!o.elanFin };
       }),
-      coups: { portes: p.coups, rates: p.rates },
+      coups: { portes: p.coups, rates: p.rates }, bilan: _bilan(p),
       usure: +p.usure.toFixed(4), vacille: performance.now() < (p.vacilleFin || 0),
       fumigene: { stock: p.fumigenes, bouton: !!p.hud && !p.hud.fumigene.disabled,
         nuages: (p.nuages || []).map(function (n) {

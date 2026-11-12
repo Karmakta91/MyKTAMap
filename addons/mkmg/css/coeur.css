@@ -103,6 +103,11 @@
 }
 .mkmg-fin-titre { font-size: 20px; font-weight: 700; color: var(--kta-accent-texte); }
 .mkmg-fin-texte { color: var(--kta-texte-2); }
+/* Bilan de la partie : précision, égarés tués, durée (une ligne chacun). */
+.mkmg-fin-stats {
+  display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--kta-texte-3);
+  color: var(--kta-texte-2); font-size: 13px;
+}
 .mkmg-fin-boutons { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) {
   .mkmg-recul { animation: none; }
