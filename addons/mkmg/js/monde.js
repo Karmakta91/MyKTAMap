@@ -897,7 +897,8 @@
           r.sons.push(["gresille", k * k, angle(ctx, o)]);
           o.bruitT = S.bruitS[0] + Math.random() * (S.bruitS[1] - S.bruitS[0]);
         }
-        if (_d(o, pos, sc) <= S.contact) {
+        // Sonnée, elle est inoffensive (décision produit) : le tir à bout portant achète un vrai répit.
+        if (t >= (o.sonneeFin || 0) && _d(o, pos, sc) <= S.contact) {
           r.degats += S.degats; r.sons.push(["blesse", 1]); _eloigner(p, ctx, o, S.fuite);
         }
       }

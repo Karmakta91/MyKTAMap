@@ -252,7 +252,7 @@ embuscades, nuages de fumigène, un monde par niveau), `js/son.js`
   qu'elle est dans le faisceau, la pile s'use × 2. Au contact : 50 de santé, puis elle repart à 15-25 m. Touchée au
   fusil : elle recule de 12 m le long des tracés en s'éloignant du joueur (carte des distances remontée de nœud en
   nœud, place valide `placeOk` ; un cul-de-sac l'arrête plus tôt ; sans réseau ni place, elle repart à 25-50 m) et
-  reste sonnée 3 s, immobile même hors faisceau (son contact blesse toujours).
+  reste sonnée 3 s, immobile même hors faisceau et inoffensive au contact (décision produit).
 - **Rampants** dès la vague 3 (1, + 1 toutes les deux vagues, 5 au plus) : à plat ventre, ×1,5 la vitesse des égarés,
   1 point, chargent comme eux. **Hurleurs** dès la vague 5 (1, + 1 toutes les trois vagues, 3 au plus) : ×0,65, 3
   points ; en vue directe à moins de 14 m, ils crient (au plus toutes les 15 s) : les marcheurs à moins de 30 m vont
