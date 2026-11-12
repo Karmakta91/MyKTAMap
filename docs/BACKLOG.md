@@ -57,10 +57,6 @@
 
 ## Ensuite
 
-- **Aide ❓ de la vue 3D : accès et niches** — ✅ vérifié 04/11 : l'Aide cite le cavage mais ni les accès comblés ni
-  l'escalier en niche (le guide, lui, les liste).
-  `qui: Claude · action: compléter la section dans les 3 langues · fini: section à jour, check-i18n vert
-  · depuis: 03/11/2026 · taille: XS`
 - **Course i18n au démarrage sous WebKit** — ✅ vu 04/11 : sous WebKit, `checkup-guidage.js` tombe parfois sur
   `[I18n] Clé manquante : "home.profile.stats.storageTitle"`, alors que la clé existe ; l'appel vient de
   `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
@@ -155,6 +151,10 @@
 
 ## Entrant
 
+- **`check-uid.js` instable : « 5 000 tirages distincts »** — 1 échec sur 4 au pre-commit le 12/11 : 5 000 uid
+  dans la même milliseconde, 6 caractères aléatoires, collision possible (doublons déjà régénérés par `ensureAll`).
+  `qui: Claude · action: tirages étalés ou moins nombreux, sans affaiblir le test · fini: 20 passages verts
+  · depuis: 12/11/2026 · taille: XS`
 - **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
   d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
   `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
