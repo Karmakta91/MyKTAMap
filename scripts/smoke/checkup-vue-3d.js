@@ -107,6 +107,8 @@
 // téléphones), coût sur 9 000 piliers.
 // Niveau du dessous estompé en vue d'édition (46, =estomper) : par défaut, bouton 🌫️, retenu, hauteur d'yeux intacte.
 // Passages et pentes des voisins (47, =voisinspassages) : coupés à ce qui est montré, jamais en double, arrivées intactes.
+// Autres niveaux en transparence à hauteur d'yeux (46 bis, =transparence) : plafond et sol ouverts sous l'emprise
+// des voisins, pas et toucher inchangés, niveau le plus haut, « Actif seul ».
 // Niveau du dessus en fantôme en vue d'édition (48, =fantome) : transparent, sans sol, ne capte aucun toucher, 🌫️.
 // Sol actif voilé ou invisible en vue d'édition (49, =solvoile) : 🧱, Voisins / Le mien, niveau le plus profond, yeux.
 // Niveaux entremêlés (50, =entremeles) : union des vides (parois coupées, trous du gabarit, plans cachés en structures),
@@ -5065,7 +5067,7 @@ async function sectionCamera(page) {
     const scn = ctxV.camera.parent;
     const mPlan = scn.children.filter(function (o) { return o.userData.famille === "planSol"; })[0];
     const solM = scn.children.filter(function (o) {
-      return o.isMesh && o.material && o.material.stencilRef === 1 && o.userData.famille !== "planSol" &&
+      return o.isMesh && o.material && (o.material.stencilFuncMask & 1) === 1 && o.userData.famille !== "planSol" &&
         o.geometry && o.geometry.parameters && o.geometry.parameters.width === 1;
     })[0];
     r.planSol = { etat: K.etat().dessin.planSol, ordre: mPlan ? mPlan.renderOrder : null,
@@ -12037,8 +12039,8 @@ async function sectionMiniCarte(nav) {
 // getVue3DEstomper ; KTA_V3D_SEUL=estomper) ──────────────────────────────────────────────────────────────────────────
 // Plan FICTIF en mémoire, rendu galerie : galerie nord-sud du 0 à l'ouest, galerie du −1 (4 m dessous) à l'est,
 // visible entre les galeries en vue d'édition. Par défaut : tous les maillages du −1 estompés, bouton pressé, pixels
-// du −1 plus sombres ; bouton touché : rendu d'origine, retenu sur l'appareil (réouverture) ; hauteur d'yeux : rien
-// d'estompé ; plan à un niveau : ligne cachée.
+// du −1 plus sombres ; bouton touché : rendu d'origine, retenu sur l'appareil (réouverture) ; hauteur d'yeux : le −1
+// en fantôme (46 bis) ; plan à un niveau : ligne cachée.
 async function sectionEstomper(nav) {
   const nom = "§ 46 ";
   console.log("§ 46 — niveau du dessous estompé en vue d'édition");
@@ -12097,7 +12099,8 @@ async function sectionEstomper(nav) {
       lumA > 0 && lumB > lumA * 1.5,
       nom + "🌫️ touché : rendu d'origine (aucun maillage estompé), retenu sur l'appareil ; luminance du −1 " + lumA +
       " → " + lumB, { a: lumA, b: lumB, etat: b });
-    // Retenu à la réouverture ; recoché puis hauteur d'yeux : rien d'estompé ; retour en édition : estompé.
+    // Retenu à la réouverture ; recoché puis hauteur d'yeux : le −1 (4 m dessous) en fantôme, vu à travers le sol
+    // (§ 46 bis) ; retour en édition : assombri.
     await edition();
     const c = await lireM1();
     const d = await page.evaluate(async function () {
@@ -12115,9 +12118,9 @@ async function sectionEstomper(nav) {
     });
     verifier(c.estomper === false && c.estompes === 0 && c.presse === "false",
       nom + "coupé retenu à la réouverture de la vue", c);
-    verifier(d.recoche === true && d.yeux.vue === "yeux" && d.yeux.estompes === 0 && d.yeux.maillages > 0 &&
+    verifier(d.recoche === true && d.yeux.vue === "yeux" && d.yeux.estompes === d.yeux.maillages && d.yeux.maillages > 0 &&
       d.edition.vue === "plongee" && d.edition.estompes === d.edition.maillages && d.edition.maillages > 0,
-      nom + "hauteur d'yeux : rien d'estompé (rendu inchangé) ; de retour en édition, le −1 estompé", d);
+      nom + "hauteur d'yeux : le −1 en fantôme (vu à travers le sol) ; de retour en édition, le −1 estompé", d);
     // Plan à un niveau : ligne cachée.
     const un = await page.evaluate(async function () {
       const K = window.KtaVue3D;
@@ -12136,6 +12139,158 @@ async function sectionEstomper(nav) {
   } catch (err) {
     pb(nom + "exception du harnais : " + (err && err.message));
   } finally {
+    await t.ctx.close();
+  }
+}
+
+// ── 46 bis. Autres niveaux en transparence à hauteur d'yeux (vue3d.js > _transparenceYeux, _masqueTransparence,
+// _matVoile ; KTA_V3D_SEUL=transparence) ──────────────────────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire, rendu galerie, trois niveaux séparés (4 m) : galerie nord-sud du 0, galeries est-ouest du +1
+// et du −1 qui la croisent à z = −8 et z = 8. Vue à 3 m d'un croisement (z = −5). Réglage activé : masques posés par
+// les voisins, voisins opaques non éclairés, plafond du −1 gardé ; l'image change en haut ET en bas par rapport au
+// réglage coupé, et le sol voilé reste un sol (luminance sous l'emprise loin du noir) ; pas et toucher au sol
+// identiques ; niveau le plus haut : seul le dessous ; « Actif seul » : rien ; coupé : rendu d'origine.
+// Captures : transparence-{coupe,activee-3m,activee-8m,niveau-haut,actif-seul}.
+async function sectionTransparence(nav) {
+  const nom = "§ 46 bis ";
+  console.log("§ 46 bis — autres niveaux en transparence à hauteur d'yeux");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-transparence", [-1, 0, 1], { "1": -21, "0": -25, "-1": -29 },
+    { "1": 2.5, "0": 2.5, "-1": 2.5 }, function () {
+      const P = window.__fxP;
+      window.setRoads([
+        { uid: "rd_tr_0", type: "principal", level: 0, points: [P(0, -80), P(0, 80)] },
+        { uid: "rd_tr_p1a", type: "principal", level: 1, points: [P(-40, -8), P(40, -8)] },
+        { uid: "rd_tr_p1b", type: "principal", level: 1, points: [P(-40, 8), P(40, 8)] },
+        { uid: "rd_tr_m1a", type: "principal", level: -1, points: [P(-40, -8), P(40, -8)] },
+        { uid: "rd_tr_m1b", type: "principal", level: -1, points: [P(-40, 8), P(40, 8)] }
+      ]);
+    }, { viewport: { width: 393, height: 852 } });
+  const page = t.page;
+  try {
+    // `vis` posé APRÈS l'ouverture (l'ouverture réécrit le filtre de niveaux de la carte), puis voisins recalculés.
+    const ouvrir = function (est, niveau, z, vis) {
+      return page.evaluate(async function (a) {
+        const K = window.KtaVue3D;
+        window.APP_CONFIG.visibleLevels = [-1, 0, 1];
+        await window.__fxOuvrir(0, a.z, 0, a.niveau, "galerie");
+        if (K.etat().eclairage.active.jour) K.reglerPleinJour(false);
+        if (a.vis) window.APP_CONFIG.visibleLevels = a.vis;
+        K.reglerNiveauxVus("tous");
+        K.reglerNiveauxVus("voisins");
+        K.reglerEstomper(a.est);
+        if (K.etat().vue !== "yeux") K.basculerVue();
+        await window.__fxImages(60);
+        const e = K.etat();
+        return { vue: e.vue, voisins: e.voisins.niveaux.map(function (q) {
+          return { n: q.niveau, dessus: q.dessus, transparence: q.transparence, masques: q.masques, maniere: q.maniere,
+            maillages: q.maillages, estompes: q.estompes, plafondsCaches: q.plafondsCaches };
+        }) };
+      }, { est: est, niveau: niveau, z: z, vis: vis || null });
+    };
+    // Bandes de l'image (vue à 3 m du croisement) : plafond sous la galerie du +1, sol au-dessus de celle du −1.
+    const lum = async function () {
+      return { haut: await luminanceCapture(page, 0.3, 0.14, 0.7, 0.28),
+        bas: await luminanceCapture(page, 0.3, 0.8, 0.7, 0.86) };
+    };
+    const pas = function () {
+      return page.evaluate(function () {
+        const K = window.KtaVue3D, p0 = K.etat().pos, ok = K.avancer(1), p1 = K.etat().pos;
+        const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+        const v = K.viser(r.left + r.width / 2, r.top + r.height * 0.83);
+        K.avancer(-1);
+        return { ok: ok, d: +Math.hypot(p1.x - p0.x, p1.y - p0.y).toFixed(3),
+          vise: v ? { genre: v.genre, sol: v.sol, h: +v.h.toFixed(2), rel: window.__fxRel(v) } : null };
+      });
+    };
+    const v = function (r, n) { return r.voisins.find(function (q) { return q.n === n; }) || {}; };
+    const off = await ouvrir(false, 0, -5);
+    const lOff = await lum(), pOff = await pas();
+    await capture(page, "transparence-coupe");
+    verifier(off.vue === "yeux" && [1, -1].every(function (n) {
+      const q = v(off, n); return q.transparence === false && q.masques === 0 && q.estompes === 0 && q.maillages > 0; }),
+      nom + "coupé : voisins construits, rien de voilé ni d'estompé (rendu d'origine)", off);
+    const on = await ouvrir(true, 0, -5);
+    const lOn = await lum(), pOn = await pas();
+    await capture(page, "transparence-activee-3m");
+    verifier([1, -1].every(function (n) {
+      const q = v(on, n); return q.transparence === true && q.masques > 0 && q.maniere === "fantomeYeux" &&
+        q.estompes === q.maillages && q.maillages > 0; }) && v(on, -1).plafondsCaches === 0,
+      nom + "activé : le +1 et le −1 en transparence (masques posés, voisins non éclairés, plafond du −1 gardé)", on);
+    verifier(Math.abs(lOn.haut - lOff.haut) > 2 && Math.abs(lOn.bas - lOff.bas) > 2,
+      nom + "activé : l'image change à travers le plafond ET à travers le sol — luminance haut " + lOff.haut + " → " +
+      lOn.haut + ", bas " + lOff.bas + " → " + lOn.bas, { off: lOff, on: lOn });
+    verifier(lOn.bas >= 0.3 * lOff.bas && lOn.bas > 20,
+      nom + "le sol voilé se lit comme un sol (luminance sous l'emprise " + lOn.bas + ", pas un puits noir)", lOn);
+    verifier(JSON.stringify(pOn) === JSON.stringify(pOff) && pOn.ok && !!pOn.vise,
+      nom + "le sol reste solide : avancer d'un mètre et toucher au sol identiques, réglage activé ou coupé",
+      { on: pOn, off: pOff });
+    await ouvrir(true, 0, 0);
+    await capture(page, "transparence-activee-8m");
+    const haut = await ouvrir(true, 1, -5);
+    await capture(page, "transparence-niveau-haut");
+    const q0 = v(haut, 0);
+    verifier(haut.voisins.every(function (q) { return !q.dessus; }) && q0.transparence === true && q0.masques > 0,
+      nom + "niveau le plus haut : rien au-dessus, seul le dessous (le 0) en transparence", haut);
+    const seul = await ouvrir(true, 0, -5, [0]);
+    await capture(page, "transparence-actif-seul");
+    verifier(seul.voisins.length === 0, nom + "« Actif seul » (≡) : aucun voisin, rien de voilé", seul);
+    // Eau sur le sol voilé (au croisement du −1) : toujours dessinée par-dessus le voile (ORDRE_VOILE avant l'eau).
+    const eau = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP;
+      window.setZones([{ uid: "zn_tr_eau", type: "eau", level: 0, points: [P(-1, -9.5), P(1, -9.5), P(1, -6.5), P(-1, -6.5)] }]);
+      window.KtaGalerie.invalider();
+      window.APP_CONFIG.visibleLevels = [-1, 0, 1];
+      await window.__fxOuvrir(0, -4, 0, 0, "galerie");
+      K.reglerNiveauxVus("tous"); K.reglerNiveauxVus("voisins"); K.reglerEstomper(true);
+      if (K.etat().vue !== "yeux") K.basculerVue();
+      await window.__fxImages(60);
+      return { eau: K.etat().zones ? K.etat().zones.eau || 0 : null };
+    });
+    const lEau = await luminanceCapture(page, 0.42, 0.74, 0.58, 0.86);
+    await capture(page, "transparence-eau");
+    await page.evaluate(function () { window.setZones([]); window.KtaGalerie.invalider(); });
+    verifier(lEau > 20, nom + "eau posée sur le sol voilé : dessinée par-dessus le voile (luminance " + lEau + ")", eau);
+    // Coût : grille de galeries de 8 m sur 160 m, trois niveaux, à hauteur d'yeux ; réglage activé contre coupé, même
+    // place. Chromium : processeur ralenti x4 (ordre de grandeur d'un téléphone). Seuil : +3 ms par image (médiane).
+    const cdp = nav.browserType().name() === "chromium" ? await t.ctx.newCDPSession(page) : null;
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const cout = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP, roads = [], out = {};
+      for (let n = -1; n <= 1; n++) {
+        for (let k = -10; k <= 10; k++) {
+          roads.push({ type: "principal", level: n, points: [P(-80, k * 8), P(80, k * 8)] });
+          roads.push({ type: "secondaire", level: n, points: [P(k * 8, -80), P(k * 8, 80)] });
+        }
+      }
+      window.setRoads(roads);
+      window.APP_CONFIG.visibleLevels = [-1, 0, 1];
+      for (const rd of ["galerie", "mixte"]) {
+        for (const est of [false, true]) {
+          window.KtaGalerie.invalider();
+          await window.__fxOuvrir(4, 1, 90, 0, rd);
+          if (K.etat().eclairage.active.jour) K.reglerPleinJour(false);
+          K.reglerNiveauxVus("tous"); K.reglerNiveauxVus("voisins"); K.reglerEstomper(est);
+          if (K.etat().vue !== "yeux") K.basculerVue();
+          await window.__fxImages(90);
+          const m = K.mesurer({ images: 60 });
+          out[rd + (est ? "/activé" : "/coupé")] = { msMed: m.msMed, msP95: m.msP95, appels: m.appelsMax,
+            masques: K.etat().voisins.niveaux.reduce(function (s, q) { return s + q.masques; }, 0) };
+        }
+      }
+      return out;
+    });
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    console.log("  ℹ️ coût de la transparence (grille 8 m, 3 niveaux" + (cdp ? ", processeur ralenti x4" : "") + ") : " +
+      JSON.stringify(cout));
+    verifier(["galerie", "mixte"].every(function (rd) {
+      const a = cout[rd + "/coupé"], b = cout[rd + "/activé"];
+      return a && b && b.masques > 0 && b.msMed - a.msMed <= 3; }),
+      nom + "coût : au plus +3 ms par image (médiane), galerie et mixte, réglage activé contre coupé", cout);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); }).catch(function () {});
     await t.ctx.close();
   }
 }
@@ -12224,7 +12379,8 @@ async function sectionVoisinsPassages(nav) {
 // Plan FICTIF en mémoire, rendu galerie : galerie nord-sud du 0 sous la place, galerie est-ouest du +1 (5 m
 // au-dessus) qui passe au-dessus du point visé. Par défaut (🌫️ activé), en vue d'édition : +1 montré en fantôme
 // (tous ses maillages transparents, sol caché), pixels du +1 visibles ; un toucher au point visé atteint le sol du 0
-// (même résultat qu'en « Le mien ») ; 🌫️ coupé : +1 caché (rendu du lot C) ; hauteur d'yeux : rendu d'origine.
+// (même résultat qu'en « Le mien ») ; 🌫️ coupé : +1 caché (rendu du lot C) ; hauteur d'yeux : fantôme, sol
+// gardé (46 bis).
 async function sectionFantome(nav) {
   const nom = "§ 48 ";
   console.log("§ 48 — niveau du dessus en fantôme en vue d'édition");
@@ -12304,9 +12460,9 @@ async function sectionFantome(nav) {
       return null;
     });
     const yeux = await etatP1();
-    verifier(y === null && yeux.vue === "yeux" && yeux.maniere === null && yeux.estompes === 0 &&
+    verifier(y === null && yeux.vue === "yeux" && yeux.maniere === "fantomeYeux" && yeux.estompes === yeux.maillages &&
       yeux.solsCaches === 0 && yeux.montrees > 0,
-      nom + "hauteur d'yeux : le +1 en rendu d'origine (sol rendu, rien de transparent)", yeux);
+      nom + "hauteur d'yeux : le +1 en fantôme vu à travers le plafond, son sol gardé (§ 46 bis)", yeux);
     await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); });
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
   } catch (err) {
@@ -13773,7 +13929,7 @@ async function sectionCaseBoutonsZoom(nav) {
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
       SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
-      SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
+      SEUL === "estomper" || SEUL === "transparence" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
       SEUL === "solfiltre" ||
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "puits-ciel" ||
       SEUL === "jonction-tremie" ||
@@ -20205,6 +20361,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "voisins") await sectionNiveauxVoisins(nav);
     if (!SEUL || SEUL === "solzones") await sectionSolZones(nav);
     if (!SEUL || SEUL === "estomper") await sectionEstomper(nav);
+    if (!SEUL || SEUL === "transparence") await sectionTransparence(nav);
     if (!SEUL || SEUL === "voisinspassages") await sectionVoisinsPassages(nav);
     if (!SEUL || SEUL === "fantome") await sectionFantome(nav);
     if (!SEUL || SEUL === "solvoile") await sectionSolVoile(nav);

@@ -187,6 +187,9 @@
   // Ordre de rendu du sol (carré qui suit et sol des galeries) : avant tout le reste, pour que le plan au sol
   // (PLAN_SOL.ordre) se pose dessus sans dépendre de la profondeur.
   const ORDRE_SOL = -0.6;
+  // Transparents à hauteur d'yeux, réglage « Niveaux en transparence » : ceux des voisins d'abord, puis le voile du
+  // niveau actif, avant ses propres transparents (eau, zones, rideaux).
+  const ORDRE_FANTOME = -5, ORDRE_VOILE = -4;
   // 🩸 Sol (carré qui suit, pièces des galeries, sols des voisins : copies) reculé de quelques unités de profondeur :
   // eau (4 cm, profondeur stricte en tube), hachures, rubans et liserés posés dessus gagnent toujours, même quand la
   // profondeur ne sépare plus quelques centimètres (vue d'édition dézoomée : bandes et triangles du sol dans l'eau).
@@ -2827,6 +2830,13 @@
       x[0].stencilFuncMask = x[1];   // son bit seul (GABARIT : les voisins et les trous ont les leurs)
       x[0].stencilFunc = THREE.NotEqualStencilFunc;
     });
+    // Sol et plafond : ni dans leur bouche, ni sous l'emprise d'un voisin montré en transparence à hauteur d'yeux
+    // (GABARIT.transparence, _masqueTransparence) : dessinés si aucun des deux bits n'est posé. Les rubans non.
+    [[m.sol, 1], [m.solGalerie, 1], [m.plafond, 2], [m.plafondGalerie, 2]].forEach(function (x) {
+      x[0].stencilRef = 0;
+      x[0].stencilFuncMask = x[1] | GABARIT.transparence;
+      x[0].stencilFunc = THREE.EqualStencilFunc;
+    });
     return m;
   }
 
@@ -2870,6 +2880,8 @@
     e.plafond = new THREE.Mesh(plan, e.mats.plafond);
     e.plafond.position.y = e.hauteur;
     e.scene.add(e.sol, e.plafond);
+    _poserVoile(e.sol, GABARIT.sol);
+    _poserVoile(e.plafond, GABARIT.plafond);
     // Tête (porte la lampe) et silhouette visible en vue plongeante.
     e.tete = new THREE.Object3D();
     e.tete.rotation.order = "YXZ";
@@ -3544,9 +3556,9 @@
     if (!t.obj) return;
     t.obj.position.y = v.dy;
     t.obj.userData.voisin = v.niveau;
-    if (e.vue === "plongee") {
-      t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = false; });
-    }
+    _masqueTransparence(v, t);
+    const plafond = _plafondVoisinVu(v);
+    t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = plafond; });
     if (_voisinEstompe(v)) _estomperObjet(t.obj, _voisinEstompe(v));
   }
 
@@ -3589,13 +3601,8 @@
   // Vue changée (yeux / édition) : plafonds des voisins (cachés en vue d'édition), manière estompée (_estomperVoisins) ;
   // montrés ou cachés par _gererVoisins (_voisinCache).
   function _voisinsVue() {
-    const e = _e, haut = e.vue === "plongee";
-    (e.voisins || []).forEach(function (v) {
-      v.tuiles.forEach(function (t) {
-        if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
-      });
-    });
     _estomperVoisins();
+    _majVoiles();
     _gererVoisins(false);
   }
 
@@ -3612,7 +3619,7 @@
       v.plans.plafond.scale.copy(e.plafond.scale);
       const cache = v.plansCaches || {};
       v.plans.sol.visible = vu && (solPlein || v.dessus) && !cache.sol;
-      v.plans.plafond.visible = vu && !haut && !cache.plafond;
+      v.plans.plafond.visible = vu && _plafondVoisinVu(v) && !cache.plafond;
     });
   }
 
@@ -3643,7 +3650,8 @@
   // Bits du gabarit (stencil) : bouches et trous du sol et du plafond du niveau actif (1, 2), sols et plafonds des
   // voisins du dessus (4, 8) et du dessous (16, 32), conduit dans la roche du dessus (64 : bouche d'un passage,
   // _sommetPlafond). Chaque matériau ne lit et n'écrit que ses bits.
-  const GABARIT = { sol: 1, plafond: 2, vSolHaut: 4, vPlafHaut: 8, vSolBas: 16, vPlafBas: 32, conduit: 64 };
+  const GABARIT = { sol: 1, plafond: 2, vSolHaut: 4, vPlafHaut: 8, vSolBas: 16, vPlafBas: 32, conduit: 64,
+    transparence: 128 };
 
   function _bitsVoisin(dessus) {
     return dessus ? { sol: GABARIT.vSolHaut, plafond: GABARIT.vPlafHaut }
@@ -4369,20 +4377,34 @@
   // Copies des matériaux faites à la demande (_matEstompe, une par matériau d'origine et par manière), recolorées quand
   // l'original change (🧱 : carte et couleur du sol), libérées avec la vue ; un maillage garde son matériau d'origine
   // dans userData.matOrigine. Les voisins ne sont ni visés ni touchés (_pointVise ne lit que les tuiles du niveau
-  // actif) : un fantôme ne capte aucun toucher.
-  const ESTOMPE = { dessous: 0.35, fantome: 0.35 };
+  // actif) : un fantôme ne capte aucun toucher. ESTOMPE.voile : opacité du sol et du plafond du niveau actif là où un
+  // voisin se voit à travers, à hauteur d'yeux (_matVoile) ; le voisin y paraît à 1 - voile.
+  const ESTOMPE = { dessous: 0.35, fantome: 0.35, voile: 0.65 };
 
   function _estomper() {
     return typeof window.getVue3DEstomper !== "function" || window.getVue3DEstomper() === true;
   }
 
-  // Copie du matériau m pour la manière `mode` ("sombre" | "fantome").
+  // Copie du matériau m pour la manière `mode` ("sombre" | "fantome" | "yeux").
   function _matEstompe(m, mode) {
     const e = _e;
     if (!m || !m.color) return m;
     if (!e.matsEstompes) e.matsEstompes = new Map();
     const cle = mode + "|" + m.uuid;
     let a = e.matsEstompes.get(cle);
+    if (!a && mode === "yeux") {
+      // Voisin à hauteur d'yeux : NON éclairé (sa couleur propre), sinon il reste noir hors du cône de la lampe ;
+      // OPAQUE (un fantôme transparent coûte ~10 ms par image au téléphone) : caché partout par le niveau actif, il ne
+      // paraît que sous le voile (_matVoile), qui suffit à l'estomper. Transparence d'origine gardée (eau, zones) ;
+      // brouillard gardé ; le gabarit du voisin repris (bouches, trous d'un niveau entremêlé).
+      // 🩸 Côté d'origine gardé : en DoubleSide, le sol du dessus (vu par-dessous) et le plafond du dessous (vu
+      // par-dessus) deviennent des écrans opaques qui cachent la galerie qu'on veut voir.
+      a = new THREE.MeshBasicMaterial({ map: m.map, vertexColors: !!m.vertexColors, side: m.side, fog: true,
+        transparent: !!m.transparent, opacity: m.opacity === undefined ? 1 : m.opacity, depthWrite: m.depthWrite });
+      ["stencilWrite", "stencilRef", "stencilFuncMask", "stencilWriteMask", "stencilFunc", "stencilFail",
+        "stencilZFail", "stencilZPass"].forEach(function (k) { a[k] = m[k]; });
+      e.matsEstompes.set(cle, a);
+    }
     if (!a) {
       a = m.clone();
       // 🩸 clone() ne reprend pas onBeforeCompile (hachures d'une zone inaccessible, _hachurer).
@@ -4409,21 +4431,139 @@
   // vue d'édition), rendu à la sortie.
   function _estomperObjet(obj, mode) {
     if (!obj) return;
+    const mat = mode === "fantomeYeux" ? "yeux" : mode;
     obj.traverse(function (o) {
       if (!o.isMesh || !o.material || Array.isArray(o.material)) return;
-      if (o.userData.famille === "trou") return;   // gabarit : jamais transparent (dessiné avant tout)
+      // Gabarit (bouches, masque de la transparence) : jamais transparent (dessiné avant tout).
+      if (o.userData.famille === "trou" || o.userData.famille === "masqueNiveau") return;
       const base = o.userData.matOrigine || o.material;
-      if (mode) { o.userData.matOrigine = base; o.material = _matEstompe(base, mode); }
+      if (mode) { o.userData.matOrigine = base; o.material = _matEstompe(base, mat); }
       else if (o.userData.matOrigine) { o.material = base; delete o.userData.matOrigine; }
+      // Transparent d'un voisin à hauteur d'yeux (eau, zones) : avant le voile (ORDRE_FANTOME), qui passe dessus.
+      if (mode === "fantomeYeux" && o.material.transparent) {
+        if (o.userData.ordreOrigine === undefined) o.userData.ordreOrigine = o.renderOrder;
+        o.renderOrder = ORDRE_FANTOME;
+      } else if (o.userData.ordreOrigine !== undefined) {
+        o.renderOrder = o.userData.ordreOrigine;
+        delete o.userData.ordreOrigine;
+      }
       if (mode === "fantome" && o.userData.famille === "sol") { o.visible = false; o.userData.solFantome = true; }
       else if (o.userData.solFantome) { o.visible = true; delete o.userData.solFantome; }
     });
   }
 
-  // Manière d'un voisin : "sombre" (dessous), "fantome" (dessus) en vue d'édition réglage activé, sinon false.
+  // Manière d'un voisin : en vue d'édition, réglage activé, "sombre" (dessous) ou "fantome" (dessus) ; à hauteur
+  // d'yeux, "fantomeYeux" s'il est montré en transparence (_transparenceYeux) ; sinon false.
   function _voisinEstompe(v) {
-    if (_e.vue !== "plongee" || !_estomper()) return false;
-    return v.dessus ? "fantome" : "sombre";
+    if (!_estomper()) return false;
+    if (_e.vue === "plongee") return v.dessus ? "fantome" : "sombre";
+    return _transparenceYeux(v) ? "fantomeYeux" : false;
+  }
+
+  // ⚠️ contrat (décision produit) : à hauteur d'yeux, réglage activé, le voisin juste au-dessus et juste en dessous
+  // (« Voisins » ou « Tous » : les deux plus proches seulement) se voient à travers le plafond et le sol, là seulement
+  // où une de ses galeries passe à l'aplomb : plafond et sol du niveau actif VOILÉS sous son emprise (gabarit
+  // GABARIT.transparence posé par _masqueTransparence ; l'opaque n'y est pas dessiné, sa copie voilée _matVoile à
+  // ESTOMPE.voile si : le sol se lit toujours comme un sol, jamais un puits), le voisin OPAQUE et NON éclairé
+  // (_matEstompe « yeux », côté d'origine : son sol vu par-dessous et son plafond vu par-dessus ne sont pas dessinés,
+  // on voit dans sa galerie). Portée voulue : à
+  // quelques mètres, le regard en biais n'atteint pas la géométrie du voisin (la roche entre les deux niveaux n'est
+  // pas dessinée) ; on voit OÙ il passe (bande voilée), et sa galerie vraiment en passant dessous ou dessus. Un seul bit pour les
+  // deux côtés, posé une fois par image et lu jusqu'aux transparents : l'œil est entre le sol et le plafond, un plan
+  // sous l'œil et un plan au-dessus ne se recouvrent jamais à l'écran. Le sol reste solide : le pas et la
+  // visée lisent les données et le maillage, jamais le dessin. Pas de transparence vers un niveau entremêlé (écart
+  // négatif : son volume est déjà ouvert sur le nôtre), ni en rendu structures (aucune pièce de galerie), ni réglage
+  // coupé (rien ne change).
+  function _transparenceYeux(v) {
+    const e = _e;
+    if (e.vue === "plongee" || !_estomper() || !v) return false;
+    const l = _niveauxEdition(), i = l.indexOf(e.niveau);
+    if (i < 0 || (v.dessus ? l[i - 1] : l[i + 1]) !== v.niveau) return false;
+    return v.dessus ? v.dy >= e.hauteur - ENTRE.eps : -v.dy >= v.hauteur - ENTRE.eps;
+  }
+
+  // Masque de la transparence dans la tuile t d'un voisin : ses pièces en éventail à la hauteur du plafond (voisin
+  // du dessus) ou du sol (dessous) du niveau actif, repère de la tuile (posée à v.dy). Visible selon _transparenceYeux.
+  function _masqueTransparence(v, t) {
+    const e = _e, M = v.galerie || v.mixte;
+    if (!M || !t.obj || !t.g || !t.g.length) return;
+    const lot = new Lot(), y = (v.dessus ? e.hauteur : 0) - v.dy;
+    t.g.forEach(function (i) { _platFan(lot, _metres(M.pieces[i].pts, e.sc), y); });
+    const g = lot.geometrie();
+    if (!g) return;
+    const me = new THREE.Mesh(g, _matTrou(GABARIT.transparence));
+    me.renderOrder = -1;
+    me.matrixAutoUpdate = false;
+    me.userData.famille = "masqueNiveau";
+    me.visible = _transparenceYeux(v);
+    t.obj.add(me);
+  }
+
+  // Copie voilée d'un sol ou d'un plafond du niveau actif : dessinée là seulement où le masque est posé (et hors de la
+  // bouche d'un passage : bit 1 ou 2 à zéro), transparente, sans écriture de profondeur, recolorée sur l'original (🧱).
+  function _matVoile(m, bit) {
+    const e = _e;
+    if (!e.matsVoile) e.matsVoile = new Map();
+    let a = e.matsVoile.get(m.uuid);
+    if (!a) {
+      a = m.clone();
+      a.transparent = true;
+      a.opacity = ESTOMPE.voile;
+      a.depthWrite = false;
+      a.stencilWrite = true;
+      a.stencilRef = GABARIT.transparence;
+      a.stencilFuncMask = GABARIT.transparence | bit;
+      a.stencilFunc = THREE.EqualStencilFunc;
+      e.matsVoile.set(m.uuid, a);
+    }
+    if (a.map !== m.map || !a.color.equals(m.color)) { a.map = m.map; a.color.copy(m.color); a.needsUpdate = true; }
+    return a;
+  }
+
+  // Voile sous un maillage de sol ou de plafond du niveau actif (enfant : il suit le carré qui se déplace).
+  function _poserVoile(me, bit) {
+    const v = new THREE.Mesh(me.geometry, _matVoile(me.material, bit));
+    v.renderOrder = ORDRE_VOILE;
+    v.matrixAutoUpdate = false;
+    v.userData.famille = "voile";
+    v.userData.baseVoile = me.material;
+    v.userData.bitVoile = bit;
+    v.visible = _voilesVus();
+    me.add(v);
+  }
+
+  // Voiles d'une tuile active qui vient d'être construite (sols et plafonds des galeries).
+  function _voilerTuile(t) {
+    if (!t.obj) return;
+    t.obj.children.slice().forEach(function (o) {
+      if (!o.isMesh) return;
+      if (o.userData.famille === "sol") _poserVoile(o, GABARIT.sol);
+      else if (o.userData.famille === "plafond") _poserVoile(o, GABARIT.plafond);
+    });
+  }
+
+  // Voiles montrés : à hauteur d'yeux, réglage activé (sans masque posé, ils ne dessinent rien).
+  function _voilesVus() { return !!_e && _e.vue !== "plongee" && _estomper(); }
+
+  function _majVoiles() {
+    const e = _e, vu = _voilesVus();
+    const maj = function (o) {
+      if (o.userData.famille !== "voile") return;
+      o.visible = vu;
+      const m = _matVoile(o.userData.baseVoile, o.userData.bitVoile);
+      if (o.material !== m) o.material = m;
+    };
+    if (e.sol) e.sol.children.forEach(maj);
+    if (e.plafond) e.plafond.children.forEach(maj);
+    (e.tuiles || []).forEach(function (t) {
+      if (t.obj) t.obj.children.forEach(function (o) { if (o.isMesh) o.children.forEach(maj); });
+    });
+    e.sale = true;
+  }
+
+  // Plafond d'un voisin montré : jamais en vue d'édition (le voisin est vu d'en haut, son plafond le couvrirait).
+  function _plafondVoisinVu() {
+    return _e.vue !== "plongee";
   }
 
   // Voisin caché : celui du dessus en vue d'édition, réglage coupé.
@@ -4432,8 +4572,15 @@
   }
 
   function _estomperVoisin(v) {
-    const mode = _voisinEstompe(v);
-    v.tuiles.forEach(function (t) { if (t.obj) _estomperObjet(t.obj, mode); });
+    const mode = _voisinEstompe(v), transp = _transparenceYeux(v), plafond = _plafondVoisinVu(v);
+    v.tuiles.forEach(function (t) {
+      if (!t.obj) return;
+      _estomperObjet(t.obj, mode);
+      t.obj.children.forEach(function (o) {
+        if (o.userData.famille === "masqueNiveau") o.visible = transp;
+        else if (o.userData.famille === "plafond") o.visible = plafond;
+      });
+    });
     (v.volumes || []).forEach(function (vol) { if (vol.obj) _estomperObjet(vol.obj, mode); });
     if (v.plans) { _estomperObjet(v.plans.sol, mode); _estomperObjet(v.plans.plafond, mode); }
     _e.sale = true;
@@ -4490,8 +4637,7 @@
     if (!_e) return null;
     const v = oui === undefined ? !_estomper() : oui !== false;
     if (typeof window.setVue3DEstomper === "function") window.setVue3DEstomper(v);
-    _estomperVoisins();
-    _gererVoisins(false);
+    _voisinsVue();
     _majSolActif();
     _majNiveauxVus();
     return _estomper();
@@ -4501,7 +4647,7 @@
   function _etatVoisins() {
     const e = _e;
     return { mode: e.niveauxVus, estomper: _estomper(), ms: +(e.msVoisins || 0).toFixed(1), niveaux: (e.voisins || []).map(function (v) {
-      let construites = 0, montrees = 0, sansPlafond = 0, maillages = 0, estompes = 0, solsCaches = 0;
+      let construites = 0, montrees = 0, sansPlafond = 0, maillages = 0, estompes = 0, solsCaches = 0, masques = 0;
       v.tuiles.forEach(function (t) {
         if (!t.obj) return;
         construites++;
@@ -4509,6 +4655,7 @@
         t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond" && !o.visible) sansPlafond++; });
         t.obj.traverse(function (o) {
           if (!o.isMesh) return;
+          if (o.userData.famille === "masqueNiveau") { if (o.visible) masques++; return; }
           maillages++;
           if (o.userData.matOrigine) estompes++;
           if (o.userData.solFantome && !o.visible) solsCaches++;
@@ -4516,6 +4663,7 @@
       });
       return { niveau: v.niveau, dy: +v.dy.toFixed(3), dessus: v.dessus, hauteur: v.hauteur, tuiles: v.tuiles.size,
         maillages: maillages, estompes: estompes, solsCaches: solsCaches, maniere: _voisinEstompe(v) || null,
+        masques: masques, transparence: _transparenceYeux(v),
         volumes: (v.volumes || []).map(function (vol) {
           // Emprise verticale construite (après coupe), repère du voisin.
           let y0 = Infinity, y1 = -Infinity, bouches = 0;
@@ -6776,7 +6924,7 @@
     e.tuiles.forEach(function (t) {
       const d = _distTuile(t, px, pz);
       if (d <= rVue) {
-        if (!t.obj && (tout || construites < TUILES_PAR_IMAGE)) { _construireTuile(t); construites++; }
+        if (!t.obj && (tout || construites < TUILES_PAR_IMAGE)) { _construireTuile(t); _voilerTuile(t); construites++; }
         if (t.obj && !t.obj.visible) { t.obj.visible = true; e.sale = true; }
       } else if (d > rGarde) {
         if (t.obj) { _libererTuile(t); e.sale = true; }
@@ -7900,7 +8048,8 @@
     const loin = e.vue === "plongee" ? Math.max(e.distance, e.scene.fog.far) : e.distance;
     for (let i = 0; i < hits.length; i++) {
       const h = hits[i], o = h.object;
-      if (!o.isMesh || !_montreDansScene(o)) continue;
+      // Voile du réglage « Niveaux en transparence » : copie d'un sol ou d'un plafond, jamais visé à sa place.
+      if (!o.isMesh || o.userData.famille === "voile" || !_montreDansScene(o)) continue;
       if (h.distance > loin || o === e.plafond || o.userData.famille === "plafond") return null;
       return { x: h.point.x * e.sc, y: h.point.z * e.sc, h: h.point.y, dist: h.distance,
         sol: o === e.sol || o.userData.famille === "sol" };
