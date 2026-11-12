@@ -44,11 +44,11 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Essai sur dev : chatière, galerie inclinée, menu des sommets, jeu** — `1147b92e` « Refaire » une chatière ;
-  `04efcd48` galerie inclinée en édition 3D ; `4ce78f12` menu au sommet en icônes au trait ; `93759be9` jeu caché
-  multi-niveau ; `61a8bd33` + `fe52d9a4` mini-carte 3D (rotation, à droite du guidage, plus grande en paysage). Prouvés par checkups.
-  `qui: KARMA · action: refaire une chatière ; vue d'édition 3D sur une galerie inclinée (capture si les murs se voient
-  encore de l'extérieur en vue normale) · fini: vus conformes, ou bugs ouverts · depuis: 12/11/2026 · taille: XS`
+- **Essai sur dev : chatière, galerie inclinée, sommets, jeu, mini-carte, transparence** — `1147b92e` chatière ;
+  `04efcd48` galerie inclinée en édition 3D ; `4ce78f12` menu des sommets ; `93759be9` jeu multi-niveau ; `61a8bd33` +
+  `fe52d9a4` mini-carte 3D ; `32a296ec` + `f15d5470` « Niveaux en transparence » (voisins vus au sol et au plafond).
+  `qui: KARMA · action: refaire une chatière ; galerie inclinée en vue d'édition ; transparence à hauteur d'yeux au
+  téléphone (fluidité, sol lisible) · fini: vus conformes, ou bugs ouverts · depuis: 12/11/2026 · taille: XS`
 - **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
   « Comblé » fr / en / es, case « Respecter… », brancard, 3D jusqu'au ciel ; dans le même lot, le message à l'échec
   (sortie d'urgence comprise) qui nomme les zones Comblé en cause. `docs/ETUDE_REMBLAIS.md`.
@@ -150,11 +150,6 @@
 
 ## Entrant
 
-- **Vue 3D : Estomper aussi à hauteur d'yeux** — aujourd'hui il n'agit qu'en vue d'édition (fantôme du dessus à
-  0,16). QCM du 12/11 : lot A (XS) fantôme à 0,35, libellé et ligne d'Aide (« Actif seul » cache les autres niveaux) ;
-  lot B (M) galerie du dessus et du dessous en flou (plafond, sol) à hauteur d'yeux.
-  `qui: Claude · action: proposition du lot B, puis A et B après la mini-carte, session Debug · fini: dessus visible
-  estompé à hauteur d'yeux, checkup 3D, perf mesurée au téléphone · depuis: 12/11/2026 · taille: M`
 - **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
   d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
   `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
