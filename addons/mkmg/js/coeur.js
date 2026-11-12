@@ -277,7 +277,7 @@
       tirs: 0, touches: 0,
       blesseT: 0, ecouteurs: [], saleT: 0, carte: null, mondes: {}, pile: REGLES.pile.max, lampeK: 1, eau: false,
       eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0, silM: null, silVue: false,
-      usure: 0, fumigenes: _monde().REGLES.fumigene.depart, nuages: [],
+      usure: 0, coups: 0, rates: 0, fumigenes: _monde().REGLES.fumigene.depart, nuages: [],
       ecartT: 0, recaleT: 0, recale: false, recalages: 0,
       rageTues: 0, rageFin: 0, rageCanon: 0, rechargeRage: false, gachette: false, prochainTir: 0 };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
@@ -344,6 +344,8 @@
     const r = _monde().animer(p, ctx, dt);
     p.silM = r.silhouetteM;
     p.silVue = r.fixee;
+    p.coups += r.coups;
+    p.rates += r.rates;
     // Un éboulis couvre grognements et pas un moment.
     r.sons.forEach(function (s) {
       if (t < p.masqueFin && (s[0] === "grogne" || s[0] === "pas")) return;
@@ -1321,8 +1323,10 @@
       chronoDepasse: p.chronoDepasse,
       chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
       ennemis: p.ennemis.map(function (o) {
-        return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu, sonnee: performance.now() < (o.sonneeFin || 0) };
+        return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu, sonnee: performance.now() < (o.sonneeFin || 0),
+          elan: !!o.elanFin };
       }),
+      coups: { portes: p.coups, rates: p.rates },
       usure: +p.usure.toFixed(4), vacille: performance.now() < (p.vacilleFin || 0),
       fumigene: { stock: p.fumigenes, bouton: !!p.hud && !p.hud.fumigene.disabled,
         nuages: (p.nuages || []).map(function (n) {

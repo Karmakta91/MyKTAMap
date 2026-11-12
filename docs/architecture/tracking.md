@@ -2660,12 +2660,13 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   de l'app masqués ; endurance vidée par le pas rapide, course interdite à bout de souffle puis rendue ; cible
   atteinte → vague 2 ; Quitter ; difficile → ni tracés, ni trajet, ni balise ; fermer la vue termine la partie.
   Monde vidé puis situations posées (`essai`) : vague peuplée, un coup tue l'égaré à 5 m, recharge de 1,5 s,
-  munitions et champignon ramassés, santé qui baisse au contact, silhouette figée dans le faisceau et qui avance de
+  munitions et champignon ramassés, coup d'égaré au contact, silhouette figée dans le faisceau et qui avance de
   dos, santé à 0 → fin et meilleure vague retenue, « Rejouer ».
   Page à part (§ 23 bis, `KTA_V3D_SEUL=mkmg`, galerie fictive) : silhouette — lente de loin, rapide de près, plus vite
   à chaque vague, lampe qui vacille sous 8 m, pile × 2 quand on la fixe, recul de 12 m et sonnée au tir, contact,
   grésillement situé ; fumigène — lancer, stock, mur pour les marcheurs, figés dedans, silhouette qui traverse hors
-  faisceau, dissipation, ramassage, gardien, reprise du contexte WebGL, fin de partie.
+  faisceau, dissipation, ramassage, gardien, reprise du contexte WebGL, fin de partie ; coups portés — élan, dégâts,
+  cadence, esquive, gardien.
   Données changées pendant la vue (§ 26, objets fictifs) : ouverture en libre au centre d'un pilier → place dégagée,
   en suivi (tracker dans le pilier) → rien ; rien sur 40 images sans signal, un rendu sans changement relu sans rien
   refaire ; itinéraire remplacé, puis aperçu posé → aucune reconstruction, ruban seul refait (le nouveau) ; carte

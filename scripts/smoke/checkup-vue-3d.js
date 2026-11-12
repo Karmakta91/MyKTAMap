@@ -63,7 +63,8 @@
 // Silhouette (23 bis, KTA_V3D_SEUL=mkmg) : deux allures, plus vite à chaque vague, lampe qui vacille de près, pile × 2
 // quand on la fixe, recul et sonnée au tir, contact. Fumigène : lancer (8 m, arrêté par une paroi), stock, mur pour
 // les marcheurs (règle du pas et glissement de nœud en nœud), figés dedans, silhouette qui traverse hors faisceau,
-// dissipation, ramassage, gardien, reprise du contexte WebGL, fin de partie.
+// dissipation, ramassage, gardien, reprise du contexte WebGL, fin de partie. Coups portés : élan, dégâts, esquive,
+// cadence, gardien.
 // Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), intensité 25 / 300 %
 // et faisceau 40 / 160° (curseurs, pénombre, relus, ancien « forte » / « jour » relu), ☀️ Plein jour (interrupteur),
 // greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
@@ -10664,12 +10665,13 @@ async function sectionMkmgNiveaux(nav) {
 }
 
 // ── 23 bis. Jeu (add-on mkmg) : silhouette (monde.js > animer, _repousser ; coeur.js > _pile), fumigène (monde.js >
-// lancerFumigene, _avancer, dansFaisceau ; coeur.js > _fumigene ; KTA_V3D_SEUL=mkmg) ───────────────────────────────
+// lancerFumigene, _avancer, dansFaisceau ; coeur.js > _fumigene), coups portés (monde.js > _frapper ;
+// KTA_V3D_SEUL=mkmg) ──────────────────────────────────────────────────────────────────────────────────────────────
 // Plan FICTIF en mémoire : une galerie est-ouest de 160 m (un sommet tous les 5 m), un POI à 70 m du départ. Partie en
 // facile, monde vidé, chrono repoussé ; chaque situation est posée par KtaAddons.mkmg.essai.
 async function sectionMkmgArsenal(nav) {
   const nom = "§ 23 bis ";
-  console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile), fumigène");
+  console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile), fumigène, coups portés");
   const t = await pageNiveauxFictifs(nav, "v3d-checkup-mkmg-arsenal", [0], { "0": -25 }, { "0": 2.5 }, function () {
     const P = window.__fxP, pts = [];
     for (let x = -80; x <= 80; x += 5) pts.push(P(x, 0));
@@ -10720,7 +10722,7 @@ async function sectionMkmgArsenal(nav) {
       const face = function () { K.placer(d.x, d.y, 90); }, dos = function () { K.placer(d.x, d.y, 270); };
       const neuf = function () { X.vider(); X.chrono(600000); X.sante(100); X.pile(100); };
       const R = window.KtaAddons.mkmgMonde.REGLES;
-      out.regles = { silhouette: R.silhouette, fumigene: R.fumigene };
+      out.regles = { silhouette: R.silhouette, fumigene: R.fumigene, coup: R.egares.coup, coupGardien: R.gardien.coup };
 
       // Silhouette, dos tourné : lente à 20 m, rapide sous 10 m ; la lampe vacille sous 8 m (hasard forcé).
       neuf(); dos();
@@ -10886,6 +10888,39 @@ async function sectionMkmgArsenal(nav) {
       X.rageFin();
       await pause(100);
 
+      // ── Coups portés ──
+      // Égaré au contact : rien pendant l'élan (0,4 s, immobile), 12 à sa fin, le suivant 0,5 s plus tard.
+      const etatCoups = function () { const e = M().etat(); return { sante: e.sante, coups: e.coups.portes, rates: e.coups.rates }; };
+      neuf(); face();
+      await pause(60);
+      const c0 = etatCoups(), tc = performance.now();
+      X.poser("egare", P(-29.5, 0).x, P(-29.5, 0).y);
+      await pause(250);
+      out.coup = { elan: Object.assign(etatCoups(), { geste: de("egare")[0].elan, x: xm(de("egare")[0]) }) };
+      await pause(Math.max(0, 700 - (performance.now() - tc)));
+      out.coup.un = etatCoups();
+      await pause(Math.max(0, 1200 - (performance.now() - tc)));
+      out.coup.deux = etatCoups();
+      out.coup.avant = c0;
+      // Esquive : on s'écarte de 4 m pendant l'élan → coup raté, santé intacte, l'égaré repart vers soi.
+      neuf(); face();
+      await pause(60);
+      const e0c = etatCoups();
+      X.poser("egare", P(-29.5, 0).x, P(-29.5, 0).y);
+      await pause(200);
+      K.placer(P(-34, 0).x, d.y, 90);
+      await pause(500);
+      out.esquive = { avant: e0c, apres: etatCoups(), x: xm(de("egare")[0]) };
+      // Gardien au contact : 0,6 s d'élan, 36 d'un coup.
+      neuf(); face();
+      await pause(60);
+      const tg = performance.now();
+      X.poser("gardien", P(-29.3, 0).x, P(-29.3, 0).y);
+      await pause(450);
+      out.coupGardien = { elan: M().etat().sante };
+      await pause(Math.max(0, 900 - (performance.now() - tg)));
+      out.coupGardien.un = M().etat().sante;
+
       // Vague 6 (en dernier : la vague repeuple le monde) : la silhouette va plus vite, plafonnée sous la course.
       const avant = M().etat().calcul;
       X.vague(6);
@@ -10980,6 +11015,18 @@ async function sectionMkmgArsenal(nav) {
       nom + "fumigène : le gardien abattu en lâche un (avec champignon et munitions)", r.gardien);
     verifier(r.fin.fin && r.fin.stock === 2 && r.fin.nuages === 0 && !r.fin.bouton,
       nom + "fumigène : inactif en fin de partie (touche G et bouton)", r.fin);
+    const C = r.regles.coup, CG = r.regles.coupGardien, cp = r.coup;
+    verifier(C.elanS === 0.4 && C.degats === 12 && cp.elan.sante === 100 && cp.elan.geste === true &&
+      Math.abs(cp.elan.x + 29.5) < 0.01 && cp.elan.coups === cp.avant.coups && cp.un.sante === 100 - C.degats &&
+      cp.un.coups === cp.avant.coups + 1 && cp.deux.sante === 100 - 2 * C.degats &&
+      cp.deux.coups === cp.avant.coups + 2,
+      nom + "coup d'égaré : 0,4 s d'élan sans dégât (immobile), puis 12 de santé ; coup suivant 0,5 s après (24 par " +
+      "seconde)", cp);
+    verifier(r.esquive.apres.sante === 100 && r.esquive.apres.rates === r.esquive.avant.rates + 1 &&
+      r.esquive.apres.coups === r.esquive.avant.coups && r.esquive.x < -29.6,
+      nom + "coup d'égaré : écarté pendant l'élan → raté, santé intacte, l'égaré repart vers soi", r.esquive);
+    verifier(CG.elanS === 0.6 && CG.degats === 36 && r.coupGardien.elan === 100 && r.coupGardien.un === 100 - CG.degats,
+      nom + "coup du gardien : 0,6 s d'élan, 36 de santé d'un coup", r.coupGardien);
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 4));
   } catch (err) {
     pb(nom + "exception : " + (err && err.message));
@@ -19471,7 +19518,8 @@ async function sectionCaseBoutonsZoom(nav) {
         { butin: MK.butin, facile: MK.partie.objets, difficile: MK.difficile.objets, fumigenes: MK.difficile.fumigenes });
       verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,
         "jeu : en passant dessus, munitions (+4) et champignon (+30 santé) ramassés", MK.ramasse);
-      verifier(MK.contact < 80, "jeu : au contact d'un égaré, la santé baisse (" + MK.contact + ")", MK.contact);
+      verifier(MK.contact === 68, "jeu : au contact d'un égaré, un coup porté en 0,6 s (80 → " + MK.contact + ")",
+        MK.contact);
       verifier(MK.silFace.vu === true && MK.silDos.vu === false && MK.silDos.avance > 0,
         "jeu : la silhouette reste figée dans le faisceau, avance dès qu'on lui tourne le dos",
         { face: MK.silFace, dos: MK.silDos });

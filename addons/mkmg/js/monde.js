@@ -5,7 +5,8 @@
  */
 
 // addons/mkmg/js/monde.js — ce qui vit dans la carrière pendant une partie de l'add-on « mkmg » : égarés (presque
-// aussi rapides que la marche, nombreux, ils chargent à vue ; tués au fusil, ils tombent et restent au sol), rampants
+// aussi rapides que la marche, nombreux, ils chargent à vue et frappent au contact, un coup après un élan qu'on peut
+// esquiver ; tués au fusil, ils tombent et restent au sol), rampants
 // (dès la vague 3 : au ras du sol, rapides, fragiles), hurleurs (dès la vague 5 : lents ; à vue, ils crient et les
 // égarés proches accourent), gardien (vagues boss : garde le point B, encaisse en reculant, lâche santé et cartouches),
 // silhouette (une seule, invulnérable, ne bouge que hors du faisceau de la lampe : lente de loin, rapide de près, elle
@@ -29,16 +30,20 @@
   // Réglages (m, s, points) : premiers essais, à revoir au jeu.
   const REGLES = {
     // Proches de la marche (2,8 m/s) : il faut courir pour décrocher, l'endurance devient l'enjeu (décision produit).
+    // Coup porté (égaré, rampant, hurleur) : au contact, `elanS` s d'élan (immobile, bras levés), puis `degats` si le
+    // joueur est encore au contact, raté sinon ; `pauseS` s avant le suivant (24 de santé par seconde sans esquive).
     egares: { base: 2, parVague: 2, max: 14, total: 18, vitesse: 1.6, vitesseParVague: 0.12, vitesseMax: 2.6,
-      pv: 2, contact: 0.75, degatsParS: 25, vueDirecte: 12, vueS: 0.25, regleM: 25, carteS: 1, carteM: 2,
-      charge: { m: 8, x: 1.6, s: 2, repos: 4 } },
+      pv: 2, contact: 0.75, coup: { elanS: 0.4, degats: 12, pauseS: 0.1 }, vueDirecte: 12, vueS: 0.25, regleM: 25,
+      carteS: 1, carteM: 2, charge: { m: 8, x: 1.6, s: 2, repos: 4 } },
     rampants: { desVague: 3, base: 1, parDeuxVagues: 1, max: 5, vitesseX: 1.5, pv: 1 },
     // Hurleur : à vue (`vue` m), il crie ; les marcheurs à moins de `rayon` m accourent (×`enrageX` pendant
     // `enrage` s) et `renfort` égarés sortent du noir près de lui. Un cri toutes les `repos` s au plus.
     hurleurs: { desVague: 5, base: 1, parTroisVagues: 1, max: 3, vitesseX: 0.65, pv: 3, vue: 14, rayon: 30, enrage: 8,
       enrageX: 1.35, renfort: 2, repos: 15, criMs: 1200 },
     // Gardien (vagues boss) : posé à `place` m de B, y revient s'il est à plus de `garde` m sans le joueur en vue.
-    gardien: { pv: 10, pvParBoss: 2, vitesse: 0.9, place: [3, 6], garde: 8, vue: 12, degatsParS: 45, reculM: 0.5 },
+    // Son coup est plus lent et plus lourd que celui d'un égaré (45 de santé par seconde sans esquive).
+    gardien: { pv: 10, pvParBoss: 2, vitesse: 0.9, place: [3, 6], garde: 8, vue: 12,
+      coup: { elanS: 0.6, degats: 36, pauseS: 0.2 }, reculM: 0.5 },
     // Embuscade (sandwich, horde) : égarés posés autour d'un point, au-delà du plafond `total` de `enPlus` au plus.
     embuscade: { rayon: 3, enPlus: 8 },
     // Silhouette : lente de loin (`vitesseLoin`), plus rapide sous `presM` m (`vitessePres`), + `vitesseParVague` à
@@ -78,9 +83,10 @@
     // Teintes des variantes (multipliées aux couleurs de l'égaré).
     rampant: 0xd8e2c4, hurleur: 0xe8a090, gardien: 0x9a8a80 };
   // Animation des égarés : foulée (rad, pas par m), recul quand le coup ne tue pas, chute, corps gardés au sol.
-  // rampe : bascule du rampant vers l'avant (rad).
+  // rampe : bascule du rampant vers l'avant (rad). Coup porté : bras levés de `elan` rad pendant l'élan (buste en
+  // arrière de `cambre`), abattus de `abat` rad en `abatMs`.
   const ANIM = { foulee: 0.55, pasParM: 3.2, recul: 0.45, reculMs: 250, chuteMs: 550, flaqueMs: 3000, cadavres: 16,
-    rampe: 1.32 };
+    rampe: 1.32, elan: 1.5, cambre: 0.25, abat: 0.8, abatMs: 180 };
 
   function _d(a, b, sc) { return Math.hypot(a.x - b.x, a.y - b.y) / sc; }
 
@@ -462,14 +468,19 @@
     const os = o.os, ph = o.phase || 0, a = o.marche || 0;
     if (!os) return;
     const recul = o.toucheT ? Math.max(0, 1 - (t - o.toucheT) / ANIM.reculMs) : 0;
+    // Coup porté : `leve` monte de 0 à 1 pendant l'élan (bras levés), `abat` retombe de 1 à 0 après le coup.
+    const C = o.type === "gardien" ? REGLES.gardien.coup : REGLES.egares.coup;
+    const leve = o.elanFin ? Math.sin(Math.min(1, (t - o.elanT) / (C.elanS * 1000)) * Math.PI / 2) : 0;
+    const abat = !o.elanFin && o.abatT ? Math.max(0, 1 - (t - o.abatT) / ANIM.abatMs) : 0;
+    const geste = ANIM.abat * abat - ANIM.elan * leve;
     if (o.type === "rampant") {
       // À plat ventre (pivot aux pieds, corps basculé vers l'avant), bras qui tirent tour à tour.
       os.corps.rotation.set(ANIM.rampe, 0, Math.sin(ph) * 0.06 * a);
       os.corps.position.set(0, 0.16, -os.hanche * 1.2);
       os.jambes[0].rotation.x = Math.sin(ph) * 0.25 * a;
       os.jambes[1].rotation.x = -Math.sin(ph) * 0.25 * a;
-      os.haut.rotation.set(-0.85 - recul * ANIM.recul, 0, 0);
-      os.bras.rotation.set(os.voute - 0.6 + Math.sin(ph * 0.5) * 0.5 * a, 0, 0);
+      os.haut.rotation.set(-0.85 - recul * ANIM.recul - ANIM.cambre * leve, 0, 0);
+      os.bras.rotation.set(os.voute - 0.6 + Math.sin(ph * 0.5) * 0.5 * a + geste * 0.6, 0, 0);
       return;
     }
     os.jambes[0].rotation.x = Math.sin(ph) * ANIM.foulee * a;
@@ -477,8 +488,8 @@
     // Cri du hurleur : tête rejetée en arrière, bras levés.
     const cri = o.criT ? Math.max(0, 1 - (t - o.criT) / REGLES.hurleurs.criMs) : 0;
     const k = cri > 0 ? Math.sin(Math.min(1, (1 - cri) * 4) * Math.PI / 2) * Math.min(1, cri * 4) : 0;
-    os.haut.rotation.set(-recul * ANIM.recul - 0.6 * k, 0, Math.sin(ph) * 0.07 * a);
-    os.bras.rotation.set(os.voute + Math.cos(ph * 2) * 0.08 * a - recul * 0.6 - 1.8 * k, 0, 0);
+    os.haut.rotation.set(-recul * ANIM.recul - 0.6 * k - ANIM.cambre * (leve - abat), 0, Math.sin(ph) * 0.07 * a);
+    os.bras.rotation.set(os.voute + Math.cos(ph * 2) * 0.08 * a - recul * 0.6 - 1.8 * k + geste, 0, 0);
   }
 
   // Chute en arrière (k : 0 → 1), corps couché un peu de biais, yeux éteints, flaque qui s'étale (kf : 0 → 1).
@@ -830,11 +841,29 @@
     return (d < S.presM ? S.vitessePres : S.vitesseLoin) + bonus;
   }
 
-  // → { degats, sons: [[nom, force, angle]], ramasse: [type], hurle, silhouetteM (m ; null sans silhouette), fixee
-  // (silhouette dans le faisceau) }
+  // Coup porté par un marcheur au contact (`portee` m, réglages `C`) : élan (immobile), puis le coup tombe — dégâts
+  // si le joueur est encore au contact, raté sinon —, puis une pause. → true tant qu'il frappe ou reste au contact
+  // (il n'avance pas).
+  function _frapper(o, d, t, r, C, portee) {
+    if (o.elanFin) {
+      if (t < o.elanFin) return true;
+      o.elanFin = 0;
+      o.abatT = t;
+      o.coupPret = t + C.pauseS * 1000;
+      if (d <= portee) { r.degats += C.degats; r.coups++; } else r.rates++;
+      return d <= portee;
+    }
+    if (d > portee) return false;
+    if (t >= (o.coupPret || 0)) { o.elanFin = t + C.elanS * 1000; o.elanT = t; }
+    return true;
+  }
+
+  // → { degats, coups, rates (coups portés, esquivés), sons: [[nom, force, angle]], ramasse: [type], hurle,
+  // silhouetteM (m ; null sans silhouette), fixee (silhouette dans le faisceau) }
   function animer(p, ctx, dt) {
     const t0 = performance.now(), t = t0, pos = ctx.pos, sc = ctx.sc, E = REGLES.egares, S = REGLES.silhouette;
-    const r = { degats: 0, sons: [], ramasse: [], hurle: false, silhouetteM: null, fixee: false };
+    const r = { degats: 0, coups: 0, rates: 0, sons: [], ramasse: [], hurle: false, silhouetteM: null,
+      fixee: false };
     const pas = [];
     // Menaces pensées à `iaHz` par seconde (pas à chaque image) : le coût ne monte plus avec la cadence d'affichage.
     p.iaAcc = (p.iaAcc || 0) + dt;
@@ -844,10 +873,9 @@
     p.mur = _nuagesPleins(p, t);
     p.ennemis.slice().forEach(function (o) {
       const d = _d(o, pos, sc);
-      if (o.type === "gardien") _gardien(p, ctx, o, d, pense, dtIa, t, r, dt);
+      if (o.type === "gardien") _gardien(p, ctx, o, d, pense, dtIa, t, r);
       else if (_estMarcheur(o)) {
-        if (d <= E.contact) r.degats += E.degatsParS * dt;
-        else if (pense) _versJoueur(p, ctx, o, o.vitesse, dtIa, t);
+        if (!_frapper(o, d, t, r, E.coup, E.contact) && pense) _versJoueur(p, ctx, o, o.vitesse, dtIa, t);
         if (o.type === "hurleur" && pense) _hurler(p, ctx, o, d, t, r);
         o.grogneT -= dt;
         if (o.grogneT <= 0 && d < 20) {
@@ -917,10 +945,9 @@
   }
 
   // Gardien : reste près de B tant que le joueur n'est pas en vue (ou qu'il ne l'a pas touché), puis le poursuit.
-  function _gardien(p, ctx, o, d, pense, dtIa, t, r, dt) {
+  function _gardien(p, ctx, o, d, pense, dtIa, t, r) {
     const G = REGLES.gardien, sc = ctx.sc;
-    if (d <= REGLES.egares.contact * 1.3) { r.degats += G.degatsParS * dt; return; }
-    if (!pense) return;
+    if (_frapper(o, d, t, r, G.coup, REGLES.egares.contact * 1.3) || !pense) return;
     const voit = d <= G.vue && !ctx.ligneBloquee(o.x, o.y, ctx.pos.x, ctx.pos.y);
     if (voit && !o.chasse) { o.chasse = true; r.sons.push(["rugit", 1, angle(ctx, o)]); }
     if (o.chasse && d > G.vue * 2.5) o.chasse = false;

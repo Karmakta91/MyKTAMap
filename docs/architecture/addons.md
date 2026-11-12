@@ -238,9 +238,11 @@ embuscades, nuages de fumigène, un monde par niveau), `js/son.js`
   souffle, pas rapide interdit (`regler({ course: false })`) jusqu'à 30. Battement de cœur (décision produit)
   seulement sous 5 % ou à bout de souffle, de plus en plus lent pendant la reprise.
 - **Égarés** (`monde.js`, posés sur les tracés à 15-35 m) : 2 + 2 par vague, 14 au plus et 18 en tout ; 1,6 m/s +
-  0,12 par vague, 2,6 au plus, proche de la marche à 2,8 (il faut courir pour décrocher, décision produit) ; 25 de
-  santé par seconde au contact ; à vue directe sous 12 m ils foncent, sous 8 m ils **chargent** 2 s à ×1,6 puis
-  soufflent 4 s.
+  0,12 par vague, 2,6 au plus, proche de la marche à 2,8 (il faut courir pour décrocher, décision produit) ; à vue
+  directe sous 12 m ils foncent, sous 8 m ils **chargent** 2 s à ×1,6 puis soufflent 4 s. Au contact (0,75 m), ils
+  **frappent** (égaré, rampant, hurleur) : 0,4 s d'élan, immobiles, bras levés, puis le coup tombe — 12 de santé si
+  le joueur est encore au contact, raté s'il s'est écarté — et 0,1 s de pause avant le suivant (24 de santé par
+  seconde sans esquive).
 - **Silhouette** (décision produit) dès la vague 2 : une seule, invulnérable, figée dans le faisceau (à moins de
   30 m × la lampe, à moins de 32° du cap, rien entre elle et soi) ; lampe à plat, elle ne se fige plus qu'à bout
   portant. Hors faisceau, approche en deux temps : 1,2 m/s de loin, 2,5 m/s sous 10 m, + 0,1 m/s par vague après la
@@ -256,8 +258,9 @@ embuscades, nuages de fumigène, un monde par niveau), `js/son.js`
   points ; en vue directe à moins de 14 m, ils crient (au plus toutes les 15 s) : les marcheurs à moins de 30 m vont
   ×1,35 pendant 8 s et 2 égarés sortent du noir près d'eux. Les uns et les autres comptent dans le plafond des égarés.
 - **Gardien** (vagues 5, 10, 15… ; décision produit) : un égaré massif posé à 3-6 m de B, qu'il garde (y revient à
-  plus de 8 m) tant que le joueur n'est pas en vue (12 m) ; vu ou touché, il poursuit (0,9 m/s, 45 de santé par
-  seconde au contact). 10 points (+ 2 par gardien suivant) ; chaque coup le fait reculer d'un demi-mètre. Tué, il
+  plus de 8 m) tant que le joueur n'est pas en vue (12 m) ; vu ou touché, il poursuit (0,9 m/s) et frappe comme
+  les égarés, plus lentement et plus lourd : 0,6 s d'élan, 36 de santé, 0,2 s de pause (45 par seconde sans
+  esquive, contact à 1 m). 10 points (+ 2 par gardien suivant) ; chaque coup le fait reculer d'un demi-mètre. Tué, il
   lâche un champignon, une caisse de munitions et un fumigène. Sa jauge s'affiche sous les autres tant qu'il vit.
 - **Fumigène** (décision produit ; `monde.js > REGLES.fumigene`) : bouton au-dessus de « Rage » (nuage et nombre en
   poche ; à gauche du fusil sur un écran bas) ou touche G (`KeyG`, libre dans l'app ; prise comme R sur `window` en
@@ -341,10 +344,11 @@ embuscades, nuages de fumigène, un monde par niveau), `js/son.js`
   part, `KTA_V3D_SEUL=mkmg` : silhouette — deux allures, vitesse par vague, lampe qui vacille, pile × 2, recul et
   sonnée au tir, contact, grésillement situé ; fumigène — lancer à 8 m ou contre une paroi, stock, mur au bord du
   nuage avec et sans la règle du pas, figé dedans, silhouette qui traverse hors faisceau, dissipation, ramassage,
-  gardien, reprise du contexte WebGL, fin de partie) et § 58 (B à un autre niveau, `=mkmgniveaux`). Non joués par le
+  gardien, reprise du contexte WebGL, fin de partie ; coups portés — élan sans dégât, coup, cadence, esquive,
+  gardien) et § 58 (B à un autre niveau, `=mkmgniveaux`). Non joués par le
   checkup : passage de niveau en cours de partie (monde rangé, refuge, nuages abandonnés), recul de la silhouette
   dans un cul-de-sac ou sans place (repli à 25-50 m), nuage dans une salle large (marcheur arrêté au bord, sans
-  contournement), rendu sonore et visuel.
+  contournement), rendu sonore et visuel (geste des bras compris).
 
 ## À donner à une IA (résumé à coller)
 
