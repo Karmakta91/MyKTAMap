@@ -7,7 +7,7 @@
 // addons/mkmg/js/son.js — sons de l'add-on « mkmg », fabriqués par WebAudio (aucun fichier, aucun réseau). Expose
 // window.KtaAddons.mkmgSon = { demarrer(), arreter(), reveiller(), jouer(nom, force, angle), coeur(intensite),
 // proximite(intensite), ambiance(actif), etat() }. Noms : tir, pompe, recharge, vide, ramasse, soin, blesse, grogne,
-// mort, vague, fin, pas, hurle, rugit, gresille, eclabousse, eboulis, goutte, pile.
+// mort, vague, fin, pas, hurle, rugit, gresille, lance, siffle, eclabousse, eboulis, goutte, pile.
 // angle (degrés, 0 = devant, 90 = à droite) : le son vient de là (gauche / droite), étouffé quand il vient de derrière.
 // 🩸 Un navigateur ne joue rien avant un geste de l'utilisateur : demarrer() est appelé dans le geste qui lance la
 // partie. iOS suspend (« interrupted ») le son sur une notification, un appel, l'écran verrouillé : reveiller() le
@@ -154,6 +154,18 @@
       for (let i = 3 + Math.floor(Math.random() * 5); i > 0; i--) {
         _bruite(t + Math.random() * d, "highpass", 4500, 0.7, 0.14 * k, 0.001, 0.012 + Math.random() * 0.02);
       }
+    },
+    // Fumigène : le bras qui lance (souffle bref qui monte), puis le choc au sol et la fumée qui siffle en sortant,
+    // longtemps, de moins en moins aigu.
+    lance: function (t) {
+      const f = _bruite(t, "bandpass", 450, 1.5, 0.3, 0.04, 0.24);
+      f.frequency.exponentialRampToValueAtTime(1700, t + 0.2);
+    },
+    siffle: function (t, k) {
+      const d = 1.6 + Math.random() * 0.7;
+      _bruite(t + 0.25, "bandpass", 320, 3, 0.4 * k, 0.002, 0.08);
+      const f = _bruite(t + 0.3, "highpass", 5200 + Math.random() * 1200, 0.8, 0.2 * k, 0.08, d);
+      f.frequency.linearRampToValueAtTime(2600, t + 0.3 + d);
     },
     eclabousse: function (t, k) {
       _bruite(t, "highpass", 1800 + Math.random() * 900, 0.8, 0.22 * k, 0.01, 0.18);

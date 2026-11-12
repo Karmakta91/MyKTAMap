@@ -61,7 +61,9 @@
 // (23) : refus, confirmation, partie en vagues, masquage, endurance, tir, recharge, objets, égaré, silhouette, fin.
 // B sur un autre niveau (58, KTA_V3D_SEUL=mkmgniveaux) : dès la vague 1, forcé sur un niveau pauvre, gardien sur place.
 // Silhouette (23 bis, KTA_V3D_SEUL=mkmg) : deux allures, plus vite à chaque vague, lampe qui vacille de près, pile × 2
-// quand on la fixe, recul et sonnée au tir, contact.
+// quand on la fixe, recul et sonnée au tir, contact. Fumigène : lancer (8 m, arrêté par une paroi), stock, mur pour
+// les marcheurs (règle du pas et glissement de nœud en nœud), figés dedans, silhouette qui traverse hors faisceau,
+// dissipation, ramassage, gardien, reprise du contexte WebGL, fin de partie.
 // Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), intensité 25 / 300 %
 // et faisceau 40 / 160° (curseurs, pénombre, relus, ancien « forte » / « jour » relu), ☀️ Plein jour (interrupteur),
 // greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
@@ -10661,13 +10663,13 @@ async function sectionMkmgNiveaux(nav) {
   }
 }
 
-// ── 23 bis. Jeu (add-on mkmg) : silhouette (monde.js > animer, _repousser ; coeur.js > _pile ;
-// KTA_V3D_SEUL=mkmg) ──────────────────────────────────────────────────────────────────────────────────────────────
+// ── 23 bis. Jeu (add-on mkmg) : silhouette (monde.js > animer, _repousser ; coeur.js > _pile), fumigène (monde.js >
+// lancerFumigene, _avancer, dansFaisceau ; coeur.js > _fumigene ; KTA_V3D_SEUL=mkmg) ───────────────────────────────
 // Plan FICTIF en mémoire : une galerie est-ouest de 160 m (un sommet tous les 5 m), un POI à 70 m du départ. Partie en
 // facile, monde vidé, chrono repoussé ; chaque situation est posée par KtaAddons.mkmg.essai.
 async function sectionMkmgArsenal(nav) {
   const nom = "§ 23 bis ";
-  console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile)");
+  console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile), fumigène");
   const t = await pageNiveauxFictifs(nav, "v3d-checkup-mkmg-arsenal", [0], { "0": -25 }, { "0": 2.5 }, function () {
     const P = window.__fxP, pts = [];
     for (let x = -80; x <= 80; x += 5) pts.push(P(x, 0));
@@ -10698,6 +10700,12 @@ async function sectionMkmgArsenal(nav) {
       q("#kta-confirm-oui").click();
       for (let k = 0; k < 100 && !(M() && M().etat().cible); k++) await pause(30);
       const X = M().essai, d = P(-30, 0), out = { diff: M().etat().diff };
+      const compte = function (type) {
+        return M().etat().objets.filter(function (o) { return o.type === type; }).length;
+      };
+      out.depart = { stock: M().etat().fumigene.stock, poses: compte("fumigene"), butin: M().etat().butin.fumigenes,
+        bouton: !!q(".mkmg-fumigene") && M().etat().fumigene.bouton, icone: !!q(".mkmg-fumigene svg"),
+        nombre: q(".mkmg-fumigene-n") && q(".mkmg-fumigene-n").textContent };
       const hasard = Math.random;
       const sil = function () {
         return M().etat().ennemis.filter(function (o) { return o.type === "silhouette"; })[0];
@@ -10712,7 +10720,7 @@ async function sectionMkmgArsenal(nav) {
       const face = function () { K.placer(d.x, d.y, 90); }, dos = function () { K.placer(d.x, d.y, 270); };
       const neuf = function () { X.vider(); X.chrono(600000); X.sante(100); X.pile(100); };
       const R = window.KtaAddons.mkmgMonde.REGLES;
-      out.regles = { silhouette: R.silhouette };
+      out.regles = { silhouette: R.silhouette, fumigene: R.fumigene };
 
       // Silhouette, dos tourné : lente à 20 m, rapide sous 10 m ; la lampe vacille sous 8 m (hasard forcé).
       neuf(); dos();
@@ -10775,6 +10783,109 @@ async function sectionMkmgArsenal(nav) {
       out.bruit = { derriere: await entendre(-50), devant: await entendre(-25) };
       Son.jouer = jouer0;
 
+      // ── Fumigène ──
+      const xm = function (o) { return o.x / sc - P(0, 0).x / sc; };   // abscisse en m, 0 au centre du plan
+      const zm = function (o) { return o.y / sc - P(0, 0).y / sc; };
+      const G = function () { touche("keydown", "g", "KeyG"); touche("keyup", "g", "KeyG"); };
+      const nuages = function () { return M().etat().fumigene.nuages; };
+      const de = function (type) { return M().etat().ennemis.filter(function (o) { return o.type === type; }); };
+      const minX = function (type) { return Math.min.apply(null, de(type).map(xm)); };
+      // Lancer (touche G) vers l'est, galerie libre : nuage à 8 m, plein, dessiné ; stock à 0, bouton grisé ; un 2e
+      // appui ne lance rien.
+      neuf(); face();
+      await pause(60);
+      const t0 = performance.now();
+      G();
+      await pause(60);
+      const n1 = nuages();
+      out.lancer = { n: n1.length, x: n1[0] && xm(n1[0]), z: n1[0] && zm(n1[0]), plein: n1[0] && n1[0].plein,
+        maillage: n1[0] && n1[0].maillage, stock: M().etat().fumigene.stock, bouton: M().etat().fumigene.bouton };
+      G();
+      await pause(60);
+      out.lancer.vide = { n: nuages().length, message: q(".mkmg-message").textContent };
+      // Mur : égaré, rampant et gardien venus de l'est s'arrêtent au bord du nuage (−19 m), sans le contourner ; la
+      // partie pleine finie, ils passent ; puis le nuage part. (Le hurleur, qui crie à vue et fait surgir des égarés
+      // au hasard, est joué plus loin, hors de vue.)
+      X.poser("egare", P(-17, 0.3).x, P(-17, 0.3).y);
+      X.poser("rampant", P(-16.5, -0.3).x, P(-16.5, -0.3).y);
+      X.poser("gardien", P(-18.5, 0).x, P(-18.5, 0).y);
+      await pause(Math.max(0, 4300 - (performance.now() - t0)));
+      out.mur = { opacite: nuages()[0] && nuages()[0].opacite, plein: nuages()[0] && nuages()[0].plein,
+        egare: minX("egare"), rampant: minX("rampant"), gardien: minX("gardien"), sante: M().etat().sante };
+      await pause(Math.max(0, 7300 - (performance.now() - t0)));
+      out.apres = { plein: nuages()[0] && nuages()[0].plein, n: nuages().length, opacite: nuages()[0] && nuages()[0].opacite,
+        passe: Math.min(minX("egare"), minX("rampant"), minX("gardien")) };
+      await pause(Math.max(0, 8300 - (performance.now() - t0)));
+      out.apres.parti = nuages().length;
+      X.vider();
+      // Dedans au moment où il se forme : figé. Loin du joueur (35 m, glissement de nœud en nœud) : égaré et hurleur
+      // arrêtés au bord.
+      neuf(); face();
+      X.poser("egare", P(-20, 0).x, P(-20, 0).y);
+      X.poser("egare", P(10, 0).x, P(10, 0).y);
+      X.poser("hurleur", P(10.5, 0).x, P(10.5, 0).y);
+      await pause(100);
+      X.nuage(P(-21, 0).x, P(-21, 0).y);
+      X.nuage(P(5, 0).x, P(5, 0).y);
+      const e0 = de("egare").map(xm);
+      await pause(3000);
+      const e1 = de("egare").map(xm);
+      out.fige = { dedans: Math.abs(e1[0] - e0[0]), loin: e1[1], hurleur: minX("hurleur"), avant: e0 };
+      // Silhouette : figée dans le faisceau à 13 m ; un nuage entre elle et soi coupe le faisceau, elle avance et
+      // entre dans le nuage (qu'un marcheur ne franchit pas).
+      neuf(); face();
+      X.poser("silhouette", P(-17, 0).x, P(-17, 0).y);
+      await pause(350);
+      const sf0 = sil();
+      X.nuage(P(-22, 0).x, P(-22, 0).y);
+      await pause(3000);
+      const sf1 = sil();
+      out.fumeeSil = { vuAvant: sf0.vu, vuApres: sf1.vu, x0: xm(sf0), x1: xm(sf1) };
+      // Lancer vers le nord : la paroi de la galerie arrête la course, le nuage se forme avant 8 m, sur une place valide.
+      neuf();
+      K.placer(d.x, d.y, 0);
+      X.fumigenes(1);
+      await pause(50);
+      G();
+      await pause(60);
+      const nn = nuages()[0];
+      out.paroi = { n: nuages().length, z: nn && zm(nn), x: nn && xm(nn) };
+      // Reprise du contexte WebGL : le nuage est redessiné dans le groupe neuf.
+      X.nuage(P(-25, 0).x, P(-25, 0).y);
+      await pause(100);
+      const gl = q("#kta-vue3d canvas").getContext("webgl2"), perte = gl && gl.getExtension("WEBGL_lose_context");
+      if (perte) {
+        perte.loseContext();
+        await pause(300);
+        perte.restoreContext();
+        await pause(700);
+      }
+      out.reprise = { perte: !!perte, enCours: M().etat().enCours,
+        nuages: nuages().map(function (n) { return n.maillage; }) };
+      // Ramasser : + 1, jusqu'à 3 ; poches pleines, le fumigène reste au sol.
+      neuf(); face();
+      X.fumigenes(2);
+      X.poser("fumigene", P(-29.6, 0).x, P(-29.6, 0).y);
+      await pause(400);   // le compteur du bouton suit à la prochaine mise à jour du panneau (150 ms)
+      out.ramasse = { stock: M().etat().fumigene.stock, reste: compte("fumigene"),
+        message: q(".mkmg-message").textContent, nombre: q(".mkmg-fumigene-n").textContent };
+      X.poser("fumigene", P(-29.6, 0).x, P(-29.6, 0).y);
+      await pause(150);
+      out.ramasse.plein = { stock: M().etat().fumigene.stock, reste: compte("fumigene") };
+      // Gardien abattu (rage : tir automatique) : il lâche champignon, munitions et fumigène.
+      neuf(); face();
+      X.poser("gardien", P(-25, 0).x, P(-25, 0).y);
+      X.rage(20);
+      touche("keydown", "r", "KeyR"); touche("keyup", "r", "KeyR");
+      await pause(50);
+      touche("keydown", " ", "Space");
+      for (let k = 0; k < 60 && de("gardien").length; k++) await pause(50);
+      touche("keyup", " ", "Space");
+      out.gardien = { tue: de("gardien").length === 0,
+        lache: M().etat().objets.map(function (o) { return o.type; }).sort().join(",") };
+      X.rageFin();
+      await pause(100);
+
       // Vague 6 (en dernier : la vague repeuple le monde) : la silhouette va plus vite, plafonnée sous la course.
       const avant = M().etat().calcul;
       X.vague(6);
@@ -10786,6 +10897,16 @@ async function sectionMkmgArsenal(nav) {
       out.vague6 = { vague: M().etat().vague, vitesse: await approche(1500),
         plafond: [V({ vague: 99 }, 20), V({ vague: 99 }, 5)], vague2: [V({ vague: 2 }, 20), V({ vague: 2 }, 5)] };
       Math.random = hasard;
+      // Fin de partie : fumigène inactif (touche et bouton).
+      neuf();
+      X.fumigenes(2);
+      X.sante(0);
+      await pause(200);
+      G();
+      q(".mkmg-fumigene").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+      await pause(60);
+      out.fin = { fin: M().etat().fin, stock: M().etat().fumigene.stock, nuages: nuages().length,
+        bouton: M().etat().fumigene.bouton };
       M().quitter();
       await K.fermer();
       return out;
@@ -10821,6 +10942,44 @@ async function sectionMkmgArsenal(nav) {
       r.vague6.vague2[1] === 2.5 && Math.abs(r.vague6.plafond[1] - 3.7) < 1e-9 && r.vague6.plafond[1] < 7,
       nom + "silhouette plus rapide à chaque vague (" + r.vague6.vitesse.toFixed(2) + " m/s de loin en vague 6), " +
       "plafonnée à " + r.vague6.plafond[1].toFixed(1) + " m/s de près (course du joueur : 7)", r.vague6);
+    const F = r.regles.fumigene, bord = -22 + F.rayon;
+    verifier(r.depart.stock === 1 && F.depart === 1 && F.max === 3 && r.depart.poses === 2 && r.depart.butin === 2 &&
+      r.depart.bouton && r.depart.icone && r.depart.nombre === "1",
+      nom + "fumigène : 1 en poche au départ (3 au plus), 2 posés à la vague 1 en facile, bouton avec son compteur",
+      r.depart);
+    verifier(r.lancer.n === 1 && Math.abs(r.lancer.x - (-30 + F.porteeM)) < 0.05 && Math.abs(r.lancer.z) < 0.05 &&
+      r.lancer.plein && r.lancer.maillage && r.lancer.stock === 0 && !r.lancer.bouton && !r.lancer.recherche &&
+      r.lancer.vide.n === 1 && /fumig/i.test(r.lancer.vide.message),
+      nom + "fumigène : touche G → nuage à 8 m dans l'axe du regard, dessiné ; stock à 0, bouton grisé, un 2e appui " +
+      "ne lance rien (message)", r.lancer);
+    verifier(r.mur.plein && r.mur.opacite > 0.25 && [r.mur.egare, r.mur.rampant, r.mur.gardien]
+      .every(function (x) { return x >= bord - 0.02 && x < bord + 0.6; }) && r.mur.sante === 100,
+      nom + "fumigène : égaré, rampant et gardien arrêtés au bord du nuage (aucun pas dedans, pas de contournement)",
+      r.mur);
+    verifier(r.apres.plein === false && r.apres.n === 1 && r.apres.opacite < r.mur.opacite && r.apres.passe < bord - 0.3 &&
+      r.apres.parti === 0, nom + "fumigène : après 6 s le nuage se dissipe (2 s), les marcheurs passent ; puis il part",
+      r.apres);
+    verifier(r.fige.dedans < 0.02 && [r.fige.loin, r.fige.hurleur].every(function (x) {
+      return x >= 5 + F.rayon - 0.02 && x < 5 + F.rayon + 0.6;
+    }), nom + "fumigène : un égaré pris dans le nuage reste figé ; un égaré et un hurleur à 35 m (glissement de nœud " +
+      "en nœud) s'arrêtent au bord", r.fige);
+    verifier(r.fumeeSil.vuAvant === true && r.fumeeSil.vuApres === false && r.fumeeSil.x1 < bord - 0.5 &&
+      r.fumeeSil.x1 < r.fumeeSil.x0 - 2,
+      nom + "fumigène : la fumée coupe le faisceau — la silhouette n'est plus vue, avance et entre dans le nuage",
+      r.fumeeSil);
+    verifier(r.paroi.n === 1 && r.paroi.z <= 0 && r.paroi.z > -(F.porteeM - 1) && Math.abs(r.paroi.x + 30) < 0.05,
+      nom + "fumigène : lancé vers une paroi, il s'arrête avant (" + (-r.paroi.z).toFixed(1) + " m au lieu de 8)",
+      r.paroi);
+    verifier(r.reprise.perte && r.reprise.enCours && r.reprise.nuages.length === 2 &&
+      r.reprise.nuages.every(function (x) { return x === true; }),
+      nom + "fumigène : perte puis reprise du contexte WebGL → nuages redessinés, partie en cours", r.reprise);
+    verifier(r.ramasse.stock === 3 && r.ramasse.reste === 0 && /fumig/i.test(r.ramasse.message) &&
+      r.ramasse.nombre === "3" && r.ramasse.plein.stock === 3 && r.ramasse.plein.reste === 1,
+      nom + "fumigène : ramassé en passant (+ 1) ; à 3, il reste au sol", r.ramasse);
+    verifier(r.gardien.tue && r.gardien.lache === "champignon,fumigene,munitions",
+      nom + "fumigène : le gardien abattu en lâche un (avec champignon et munitions)", r.gardien);
+    verifier(r.fin.fin && r.fin.stock === 2 && r.fin.nuages === 0 && !r.fin.bouton,
+      nom + "fumigène : inactif en fin de partie (touche G et bouton)", r.fin);
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 4));
   } catch (err) {
     pb(nom + "exception : " + (err && err.message));
@@ -19241,6 +19400,7 @@ async function sectionCaseBoutonsZoom(nav) {
         await pause(200);
         r.difficile = { diff: M().etat().diff, reglage: K.etat().greffe.reglage, roads: K.etat().compte.roads,
           traits: M().etat().traits, guide: q(".mkmg-guide").hidden, objets: M().etat().objets.length,
+          fumigenes: M().etat().objets.filter(function (o) { return o.type === "fumigene"; }).length,
           butin: M().etat().butin };
         // Fermer la vue termine la partie.
         await K.fermer();
@@ -19304,9 +19464,11 @@ async function sectionCaseBoutonsZoom(nav) {
       verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",
         "jeu : canon vide → recharge automatique de 1,5 s (2 cartouches prises dans la réserve)", MK.recharge);
       verifier(MK.butin.tues === 1 && MK.butin.lache === "champignon,munitions" && MK.butin.facile.pileX < 1 &&
-        MK.difficile.butin.pileX === 1 && MK.partie.objets > MK.difficile.objets,
+        MK.difficile.butin.pileX === 1 && MK.partie.objets > MK.difficile.objets && MK.butin.facile.fumigenes === 2 &&
+        MK.difficile.butin.fumigenes === 1 && MK.difficile.fumigenes === 1,
         "jeu : facile plus généreux que difficile (objets posés à la vague 1, lâcher champignon + caisse, pile plus " +
-        "lente)", { butin: MK.butin, facile: MK.partie.objets, difficile: MK.difficile.objets });
+        "lente, 2 fumigènes par vague contre 1)",
+        { butin: MK.butin, facile: MK.partie.objets, difficile: MK.difficile.objets, fumigenes: MK.difficile.fumigenes });
       verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,
         "jeu : en passant dessus, munitions (+4) et champignon (+30 santé) ramassés", MK.ramasse);
       verifier(MK.contact < 80, "jeu : au contact d'un égaré, la santé baisse (" + MK.contact + ")", MK.contact);

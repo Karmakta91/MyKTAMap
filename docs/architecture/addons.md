@@ -202,7 +202,7 @@ l'add-on.
 ## Add-on `mkmg` (jeu en vagues)
 
 Fichiers : `js/coeur.js` (partie, interface, chrono, pile, eau, éboulis), `js/monde.js` (menaces, objets, tir,
-embuscades, un monde par niveau), `js/son.js`
+embuscades, nuages de fumigène, un monde par niveau), `js/son.js`
 (sons WebAudio, aucun fichier), `js/joueur.js` (bras et fusil, silhouette en vue d'édition), `css/coeur.css`,
 `img/fusil.svg` ; `coeur.js` charge les trois autres. Réglages chiffrés en tête de chaque fichier (`REGLES`).
 
@@ -258,7 +258,24 @@ embuscades, un monde par niveau), `js/son.js`
 - **Gardien** (vagues 5, 10, 15… ; décision produit) : un égaré massif posé à 3-6 m de B, qu'il garde (y revient à
   plus de 8 m) tant que le joueur n'est pas en vue (12 m) ; vu ou touché, il poursuit (0,9 m/s, 45 de santé par
   seconde au contact). 10 points (+ 2 par gardien suivant) ; chaque coup le fait reculer d'un demi-mètre. Tué, il
-  lâche un champignon et une caisse de munitions. Sa jauge s'affiche sous les autres tant qu'il vit.
+  lâche un champignon, une caisse de munitions et un fumigène. Sa jauge s'affiche sous les autres tant qu'il vit.
+- **Fumigène** (décision produit ; `monde.js > REGLES.fumigene`) : bouton au-dessus de « Rage » (nuage et nombre en
+  poche ; à gauche du fusil sur un écran bas) ou touche G (`KeyG`, libre dans l'app ; prise comme R sur `window` en
+  capture). Lancé dans l'axe du regard, il tombe à 8 m, ou là où la règle du pas de la vue arrête sa course (pas de
+  0,5 m : mur, pilier, paroi), sur la place valide (`placeOk`) la plus loin de cette course, à défaut à ses pieds.
+  Nuage de 3 m de rayon, formé aussitôt : **plein 6 s**, puis **2 s de dissipation**. Plein, c'est un **mur pour
+  les marcheurs** (égaré, rampant, hurleur, gardien) : aucun pas ne touche le nuage (`_avancer`, avec la règle du pas
+  comme en glissement de nœud en nœud loin du joueur) — qui arrive devant s'arrête au bord, qui est dedans quand il
+  se forme reste figé ; ni contournement, ni recalcul de la carte des distances. La **silhouette** le traverse, et
+  la fumée **coupe le faisceau** : dans le nuage, ou le nuage entre elle et soi (soi dedans compris), elle n'est
+  plus vue, donc elle avance (`dansFaisceau`). Pendant la dissipation, le nuage n'est plus qu'un décor qui
+  s'éclaircit : plus rien n'est arrêté ni caché (le mur tombe d'un coup à 6 s, pour tous). Le tir, la vue des
+  égarés et le cri du hurleur ne sont pas concernés. Stock : 1 au départ, 3 au plus (au-delà, le fumigène reste au
+  sol) ; à ramasser : 2 par vague en facile, 1 en moyen et en difficile (`DIFFICULTES.butin.fumigenes`, nombre exact) ;
+  le gardien abattu en lâche un. Inactif en fin de partie. Un monde par niveau : les nuages du niveau quitté sont
+  abandonnés. Dessin : 9 volutes face à la caméra (une texture aux bords fondus, une matière par nuage), sans
+  éclairage de scène — leur clarté suit la lampe et la distance (jusqu'à 22 m) ; refaites après une perte du contexte
+  WebGL. Son : lancer, puis choc au sol et sifflement situé.
 - **Pile de la lampe** (décision produit) : 100 %, − 0,55 par seconde (× 0,75 en facile, environ 4 min ; × 2 tant
   que la silhouette est dans le faisceau) ; sous 25 %, la lampe baisse
   (`regler({ lampe })`) jusqu'à une lueur de quelques mètres (8 %, jamais le noir) et vacille de plus en plus
@@ -282,11 +299,13 @@ embuscades, un monde par niveau), `js/son.js`
   proche dans l'axe (6° ou le gabarit du corps), à 18 m au plus, ligne de vue libre ; un égaré a 2 points, un coup à
   8 m ou moins en ôte 2 ; la silhouette touchée recule et reste sonnée. Recharge automatique de 1,5 s ; départ 2 + 6 cartouches. Son : détonation grave puis coup de pompe (pas en rage).
 - **Rage** (décision produit) : prête après 20 égarés tués hors rage (compteur sur le petit bouton au-dessus du
-  fusil, à sa gauche sur un écran bas où il touchait « Quitter » ; puis « Rage » qui pulse) ; bouton ou touche R : toute la santé rendue, 30 s de tir automatique tant que
+  fusil, à sa gauche sur un écran bas où il touchait « Quitter » ; puis « Rage » qui pulse ; le bouton du fumigène est
+  juste au-dessus de lui) ; bouton ou touche R : toute la santé rendue, 30 s de tir automatique tant que
   la détente est tenue (bouton, clic gauche capturé, Espace ; un coup toutes les 110 ms), cartouches non comptées, chargeur de 25 puis
   recharge de 1,5 s ; endurance sans fin, dégâts reçus ÷ 2 (`REGLES.rage.degatsX`), halo rouge au bord de l'écran.
   Les égarés tués pendant la rage ne chargent pas la suivante.
 - **À ramasser** à moins d'1 m : munitions (+4 ; 4 par vague, une de moins toutes les deux vagues, 1 au moins), piles,
+  fumigènes (ci-dessus),
   champignons (+30 santé ; 3, un de moins toutes les trois vagues, au bout des culs-de-sac de préférence). Butin selon
   la difficulté (décision produit, `coeur.js > DIFFICULTES.butin`) : facile = quantités × 2, au moins 2 de chaque,
   un égaré tué lâche un champignon une fois sur deux et une caisse une fois sur cinq ; moyen = × 1,5, champignon une
@@ -318,10 +337,14 @@ embuscades, un monde par niveau), `js/son.js`
   son régulier se lit comme un bip ou un métronome.
 - **Checkup** : `checkup-vue-3d.js` § 21 (prise, code) et § 23 (jeu, avec `KtaAddons.mkmg.essai` : `vider`, `poser`,
   `sante`, `chrono`, `tenaille`, `pile`, `viser`, `rage`, `rageFin`, `vague` ; `poser` accepte `rampant`, `hurleur`,
-  `gardien`, `silhouette`, `pile`), § 23 bis (page à part, `KTA_V3D_SEUL=mkmg` : silhouette — deux allures, vitesse
-  par vague, lampe qui vacille, pile × 2, recul et sonnée au tir, contact, grésillement situé) et § 58 (B à un autre
-  niveau, `=mkmgniveaux`). Non joués par le checkup : passage de niveau en cours de partie (monde rangé, refuge),
-  recul de la silhouette dans un cul-de-sac ou sans place (repli à 25-50 m), rendu sonore.
+  `gardien`, `silhouette`, `pile`, `fumigene` ; `fumigenes` règle le stock, `nuage` pose un nuage), § 23 bis (page à
+  part, `KTA_V3D_SEUL=mkmg` : silhouette — deux allures, vitesse par vague, lampe qui vacille, pile × 2, recul et
+  sonnée au tir, contact, grésillement situé ; fumigène — lancer à 8 m ou contre une paroi, stock, mur au bord du
+  nuage avec et sans la règle du pas, figé dedans, silhouette qui traverse hors faisceau, dissipation, ramassage,
+  gardien, reprise du contexte WebGL, fin de partie) et § 58 (B à un autre niveau, `=mkmgniveaux`). Non joués par le
+  checkup : passage de niveau en cours de partie (monde rangé, refuge, nuages abandonnés), recul de la silhouette
+  dans un cul-de-sac ou sans place (repli à 25-50 m), nuage dans une salle large (marcheur arrêté au bord, sans
+  contournement), rendu sonore et visuel.
 
 ## À donner à une IA (résumé à coller)
 

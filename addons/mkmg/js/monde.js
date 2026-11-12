@@ -9,12 +9,13 @@
 // (dès la vague 3 : au ras du sol, rapides, fragiles), hurleurs (dès la vague 5 : lents ; à vue, ils crient et les
 // égarés proches accourent), gardien (vagues boss : garde le point B, encaisse en reculant, lâche santé et cartouches),
 // silhouette (une seule, invulnérable, ne bouge que hors du faisceau de la lampe : lente de loin, rapide de près, elle
-// grésille et fait vaciller la lampe ; un tir la fait reculer et la sonne), munitions,
-// piles et champignons à ramasser en passant dessus, tir, embuscades (surgir). L'eau ralentit tout le monde. Un monde
-// par niveau : changer de niveau range celui qu'on quitte (ses menaces attendent là, elles ne prennent pas l'escalier).
+// grésille et fait vaciller la lampe ; un tir la fait reculer et la sonne), munitions, piles, champignons et fumigènes
+// à ramasser en passant dessus, tir, embuscades (surgir), nuages de fumigène (mur pour les marcheurs, faisceau coupé).
+// L'eau ralentit tout le monde. Un monde par niveau : changer de niveau range celui qu'on quitte (ses menaces
+// attendent là, elles ne prennent pas l'escalier ; ses nuages sont abandonnés).
 // Expose window.KtaAddons.mkmgMonde = { peupler, animer, tirer, dessiner, vider, liberer, surgir, poserGardien,
-// changerNiveau, nouveau, dansEau, zonesDe, angle, dansFaisceau, placeOk, vitesseSilhouette, REGLES }. Positions en px
-// plan (comme ctx.pos), maillages en m.
+// changerNiveau, nouveau, dansEau, zonesDe, angle, dansFaisceau, placeOk, vitesseSilhouette, lancerFumigene,
+// poserNuage, REGLES }. Positions en px plan (comme ctx.pos), maillages en m.
 // ⚠️ contrat : à moins de 25 m (et droit sur le joueur) tout pas passe la règle du pas de la vue (ctx.bloque) ; plus
 // loin, hors de vue, une menace glisse de nœud en nœud des tracés (_carte : distances au joueur sur le graphe en cache
 // de RoadGraph, une seule pour toutes). Pensées à 15 Hz, pas à chaque image. Rien n'est écrit ailleurs que dans l'état
@@ -54,6 +55,13 @@
     // Quantités de base ; la difficulté les multiplie (coeur.js > DIFFICULTES.butin, lâchers compris).
     champignons: { base: 3, parTroisVagues: 1, min: 1, soin: 30 },
     piles: { base: 2, parTroisVagues: 1, min: 1, gain: 45 },
+    // Fumigène : lancé dans l'axe du regard, il tombe à `porteeM` m ou s'arrête au premier obstacle (course testée
+    // par pas de `pasM` m). Nuage de `rayon` m : plein `pleinS` s (mur pour les marcheurs, faisceau coupé), puis
+    // `dissipeS` s de dissipation (décor seul : plus rien n'est bloqué ni caché). `depart` en poche, `max` au plus ;
+    // le nombre posé par vague vient de la difficulté (coeur.js > DIFFICULTES.butin.fumigenes). Dessin : `boules`
+    // volutes (`opacite`), gonflées en `gonfleMs`, éclairées par la lampe jusqu'à `lueurM` m (jamais sous `sombre`).
+    fumigene: { rayon: 3, pleinS: 6, dissipeS: 2, porteeM: 8, pasM: 0.5, depart: 1, max: 3, boules: 9, opacite: 0.5,
+      gonfleMs: 500, lueurM: 22, sombre: 0.12 },
     // Refuge : un niveau jamais visité de la vague est peuplé à `part` seulement, sans silhouette.
     refuge: { part: 0.5 },
     eau: { x: 0.6 },
@@ -65,7 +73,8 @@
   };
   const COULEURS = { haillons: 0x5b5f4a, pantalon: 0x3a372f, peau: 0x9aa58a, casque: 0xa8842c, bottes: 0x231f1a,
     yeuxE: 0xff6a3a, silhouette: 0x0d0d0f, yeux: 0xd8d8d0, caisse: 0x8a6a3a, pied: 0xe8dcc8, chapeau: 0xb03a2e,
-    flaque: 0x2a0705, pile: 0xc89a1a, pileHaut: 0x1a1a1a, borne: 0xb8b8b8,
+    flaque: 0x2a0705, pile: 0xc89a1a, pileHaut: 0x1a1a1a, borne: 0xb8b8b8, fumee: 0xb4b9c0,
+    fumigene: 0x55604a, fumigeneBande: 0xd8d2c0,
     // Teintes des variantes (multipliées aux couleurs de l'égaré).
     rampant: 0xd8e2c4, hurleur: 0xe8a090, gardien: 0x9a8a80 };
   // Animation des égarés : foulée (rad, pas par m), recul quand le coup ne tue pas, chute, corps gardés au sol.
@@ -186,7 +195,7 @@
   }
 
   function _butin(p) {
-    return (p.regle && p.regle.butin) || { x: 1, min: 1, lacher: 0.25, lacherMunitions: 0 };
+    return (p.regle && p.regle.butin) || { x: 1, min: 1, lacher: 0.25, lacherMunitions: 0, fumigenes: 1 };
   }
 
   // opts.refuge : niveau rejoint pendant la vague (escalier) : population réduite, sans silhouette.
@@ -215,7 +224,7 @@
     const nm = fois(Math.max(M.min, M.base - Math.floor(n / 2) * M.parDeuxVagues));
     const nc = fois(Math.max(C.min, C.base - Math.floor(n / 3) * C.parTroisVagues));
     const np = fois(Math.max(Pi.min, Pi.base - Math.floor(n / 3) * Pi.parTroisVagues));
-    [["munitions", nm], ["pile", np]].forEach(function (x) {
+    [["munitions", nm], ["pile", np], ["fumigene", B.fumigenes || 0]].forEach(function (x) {
       for (let i = 0; i < x[1]; i++) {
         const q = _choisir(ctx, pts.tous, 6, A.max, pris);
         if (q) { const o = { type: x[0], x: q.x, y: q.y }; p.objets.push(o); pris.push(o); }
@@ -258,6 +267,8 @@
   function changerNiveau(p, ctx) {
     p.mondes = p.mondes || {};
     p.ennemis.concat(p.objets, p.cadavres || []).forEach(_retirer);
+    // Un nuage reste au niveau où il a été lancé : abandonné en le quittant (il n'y sera plus au retour).
+    _viderNuages(p, false);
     p.mondes[p.niveauMonde] = { ennemis: p.ennemis, objets: p.objets, cadavres: p.cadavres || [] };
     const m = p.mondes[ctx.niveau];
     delete p.mondes[ctx.niveau];
@@ -382,6 +393,20 @@
       [new T.CylinderGeometry(0.061, 0.061, 0.05, 12), COULEURS.pileHaut, _mx(T, 0, 0.19, 0)],
       [new T.CylinderGeometry(0.02, 0.02, 0.025, 8), COULEURS.borne, _mx(T, 0, 0.225, 0)]
     ]);
+    g.fumigeneE = _fusion(T, [
+      [new T.CylinderGeometry(0.05, 0.05, 0.16, 12), COULEURS.fumigene, _mx(T, 0, 0.08, 0)],
+      [new T.CylinderGeometry(0.052, 0.052, 0.03, 12), COULEURS.fumigeneBande, _mx(T, 0, 0.11, 0)],
+      [new T.CylinderGeometry(0.02, 0.025, 0.04, 8), COULEURS.borne, _mx(T, 0, 0.18, 0)]
+    ]);
+    // Volute de fumée : disque blanc aux bords fondus (dessiné une fois), teinté et éclairci par la matière.
+    const cv = document.createElement("canvas"), c2 = cv.getContext("2d");
+    cv.width = cv.height = 64;
+    c2.fillStyle = "white";
+    for (let i = 32; i > 0; i--) {
+      c2.globalAlpha = 0.09 * (1 - i / 33);
+      c2.beginPath(); c2.arc(32, 32, i, 0, Math.PI * 2); c2.fill();
+    }
+    g.fumee = new T.CanvasTexture(cv);
     // Variantes : même corps, teinte multipliée aux couleurs des sommets.
     const teinte = function (c) { return new T.MeshLambertMaterial({ vertexColors: true, color: c }); };
     const m = { corps: new T.MeshLambertMaterial({ vertexColors: true }), rampant: teinte(COULEURS.rampant),
@@ -425,6 +450,7 @@
     if (o.type === "munitions") grp.add(new T.Mesh(g.caisse, m.caisse));
     if (o.type === "champignon") grp.add(new T.Mesh(g.pied, m.pied), new T.Mesh(g.chapeau, m.chapeau));
     if (o.type === "pile") grp.add(new T.Mesh(g.pileE, m.corps));
+    if (o.type === "fumigene") grp.add(new T.Mesh(g.fumigeneE, m.corps));
     o.mesh = grp;
     _placer(o, ctx);
     ctx.groupe.add(grp);
@@ -509,12 +535,19 @@
       if (o.mesh && o.mesh.parent) o.mesh.parent.remove(o.mesh);
       _maillage(p, ctx, o);
     });
+    (p.nuages || []).forEach(function (n) {
+      if (n.mesh && !neuf && n.mesh.parent === ctx.groupe) return;
+      _retirerNuage(n, neuf);
+      _maillageNuage(p, ctx, n);
+    });
   }
 
   function _retirer(o) { if (o.mesh && o.mesh.parent) o.mesh.parent.remove(o.mesh); o.mesh = null; o.os = null; }
 
-  function vider(p) {
+  // contexteMort : après une perte du contexte WebGL non reprise (rien n'est libéré).
+  function vider(p, contexteMort) {
     p.ennemis.concat(p.objets, p.cadavres || []).forEach(_retirer);
+    _viderNuages(p, contexteMort);
     p.ennemis = []; p.objets = []; p.cadavres = []; p.mondes = {};
   }
 
@@ -530,7 +563,7 @@
 
   // Fin de partie : gabarits libérés (maillages partagés).
   function liberer(p, contexteMort) {
-    vider(p);
+    vider(p, contexteMort);
     if (p.gabarits && !contexteMort) {
       const g = p.gabarits.g, m = p.gabarits.m;
       Object.keys(g).forEach(function (k) { if (g[k] && g[k].dispose) g[k].dispose(); });
@@ -543,14 +576,20 @@
 
   // Pas vers (tx, ty) à `v` m/s. regle : la règle du pas de la vue (glisse sur un axe si le pas entier est refusé) ;
   // sans elle (menace loin, hors de vue, sur les nœuds des tracés), le pas est libre.
-  function _avancer(o, ctx, tx, ty, v, dt, regle) {
+  // ⚠️ contrat (décision produit) : `mur` = nuages de fumigène pleins, donnés pour un marcheur seulement. Aucun pas
+  // ne touche un nuage, avec ou sans la règle du pas : qui arrive devant s'arrête au bord (pas de contournement, la
+  // carte des distances n'en sait rien), qui est dedans reste figé. La silhouette passe (`mur` absent).
+  function _avancer(o, ctx, tx, ty, v, dt, regle, mur) {
     const sc = ctx.sc, dx = tx - o.x, dy = ty - o.y, l = Math.hypot(dx, dy);
     if (l < 1e-6) return false;
     const pas = Math.min(l, v * dt * sc), ux = dx / l * pas, uy = dy / l * pas;
+    const fumee = mur && mur.length ? mur : null;
+    if (fumee && _dansNuage(fumee, o.x, o.y, o.x + ux, o.y + uy, sc)) return false;
     if (!regle) { o.x += ux; o.y += uy; return true; }
     const essais = [[ux, uy], [ux, 0], [0, uy]];
     for (let i = 0; i < essais.length; i++) {
       const nx = o.x + essais[i][0], ny = o.y + essais[i][1];
+      if (fumee && _dansNuage(fumee, o.x, o.y, nx, ny, sc)) continue;
       if ((essais[i][0] || essais[i][1]) && !ctx.bloque(o.x, o.y, nx, ny)) { o.x = nx; o.y = ny; return true; }
     }
     return false;
@@ -652,7 +691,7 @@
     if (o.enrageFin && t < o.enrageFin) vit *= REGLES.hurleurs.enrageX;
     if (dansEau(ctx, o.x, o.y)) vit *= REGLES.eau.x;
     const cible = k >= 0 ? c.g.nodes[k] : pos;
-    _avancer(o, ctx, cible.x, cible.y, vit, dt, proche || k < 0);
+    _avancer(o, ctx, cible.x, cible.y, vit, dt, proche || k < 0, _estMarcheur(o) ? p.mur : null);
   }
 
   // Égarés surgis autour de `centre` (px) : jusqu'à `n`, sur des places libres, plafond total + embuscade.enPlus.
@@ -675,14 +714,113 @@
   }
 
   // La silhouette est-elle dans le faisceau ? (distance de vue × lampe de 0 à 1, cône de la lampe, rien entre elle
-  // et soi) ; lampe à plat, elle ne se voit plus qu'à bout portant et bouge librement.
-  function dansFaisceau(ctx, o, lampe) {
+  // et soi) ; lampe à plat, elle ne se voit plus qu'à bout portant et bouge librement. `fumee` (nuages pleins) : un
+  // nuage sur la ligne — elle dedans, soi dedans, ou le nuage entre les deux — coupe le faisceau.
+  function dansFaisceau(ctx, o, lampe, fumee) {
     const S = REGLES.silhouette, pos = ctx.pos, d = _d(o, pos, ctx.sc);
     if (d > S.vue * Math.max(0.08, lampe === undefined ? 1 : lampe)) return false;
     const ang = Math.atan2(o.x - pos.x, -(o.y - pos.y)) * 180 / Math.PI;
     let ecart = Math.abs(((ang - ctx.cap) % 360 + 540) % 360 - 180);
     if (ecart > S.faisceau) return false;
+    if (fumee && fumee.length && _dansNuage(fumee, pos.x, pos.y, o.x, o.y, ctx.sc)) return false;
     return !ctx.ligneBloquee(pos.x, pos.y, o.x, o.y);
+  }
+
+  // ── Fumigène ──────────────────────────────────────────────────────────────────────────────────────────
+
+  // Nuages encore pleins à l'instant t (ceux qui bloquent et cachent) ; en dissipation, un nuage n'est plus qu'un
+  // décor.
+  function _nuagesPleins(p, t) {
+    const ms = REGLES.fumigene.pleinS * 1000;
+    return (p.nuages || []).filter(function (n) { return t - n.t0 < ms; });
+  }
+
+  // Le segment (x0, y0) → (x1, y1) (px plan) touche-t-il un de ces nuages ?
+  function _dansNuage(nuages, x0, y0, x1, y1, sc) {
+    const r = REGLES.fumigene.rayon * sc, dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy;
+    return nuages.some(function (n) {
+      const k = l2 > 0 ? Math.max(0, Math.min(1, ((n.x - x0) * dx + (n.y - y0) * dy) / l2)) : 0;
+      return Math.hypot(x0 + dx * k - n.x, y0 + dy * k - n.y) < r;
+    });
+  }
+
+  // Dessin d'un nuage : quelques volutes face à la caméra (une matière par nuage, pour son opacité et sa clarté),
+  // placées d'après la graine du nuage (même forme après une reprise du contexte). Pas d'éclairage de scène sur une
+  // volute : sa clarté suit la lampe et la distance (_animerNuages).
+  function _maillageNuage(p, ctx, n) {
+    const T = ctx.THREE, F = REGLES.fumigene, grp = new T.Group();
+    const mat = new T.SpriteMaterial({ map: p.gabarits.g.fumee, color: COULEURS.fumee, transparent: true, opacity: 0,
+      depthWrite: false });
+    let s = n.graine;
+    const alea = function () { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+    for (let i = 0; i < F.boules; i++) {
+      const b = new T.Sprite(mat), a = alea() * Math.PI * 2, rr = i ? Math.sqrt(alea()) * F.rayon * 0.7 : 0;
+      const w = F.rayon * (0.9 + alea() * 0.5);
+      b.position.set(Math.cos(a) * rr, 0.5 + alea() * Math.max(0.3, ctx.hauteur - 1), Math.sin(a) * rr);
+      b.scale.set(w, w, 1);
+      grp.add(b);
+    }
+    grp.position.set(n.x / ctx.sc, 0, n.y / ctx.sc);
+    ctx.groupe.add(grp);
+    n.mesh = grp; n.mat = mat;
+  }
+
+  // contexteMort : la matière est morte avec l'ancien contexte WebGL (jamais dispose()).
+  function _retirerNuage(n, contexteMort) {
+    if (n.mesh && n.mesh.parent) n.mesh.parent.remove(n.mesh);
+    if (n.mat && !contexteMort) n.mat.dispose();
+    n.mesh = null; n.mat = null;
+  }
+
+  function _viderNuages(p, contexteMort) {
+    (p.nuages || []).forEach(function (n) { _retirerNuage(n, contexteMort); });
+    p.nuages = [];
+  }
+
+  // Nuage formé en (x, y) px, tout de suite plein.
+  function poserNuage(p, ctx, x, y) {
+    const n = { x: x, y: y, t0: performance.now(), graine: Math.floor(Math.random() * 233280) };
+    p.nuages = (p.nuages || []).concat([n]);
+    if (!p.gabarits) _gabarits(p, ctx);
+    _maillageNuage(p, ctx, n);
+    return n;
+  }
+
+  // Fumigène lancé dans l'axe du regard : il tombe à `porteeM` m, ou là où la règle du pas de la vue arrête sa
+  // course (mur, pilier, paroi), sur la place valide (placeOk) la plus loin de cette course ; à défaut, à ses pieds.
+  // → le nuage.
+  function lancerFumigene(p, ctx) {
+    const F = REGLES.fumigene, sc = ctx.sc, pos = ctx.pos, a = ctx.cap * Math.PI / 180;
+    const ux = Math.sin(a) * F.pasM * sc, uy = -Math.cos(a) * F.pasM * sc, course = [{ x: pos.x, y: pos.y }];
+    for (let i = 1; i * F.pasM <= F.porteeM + 1e-9; i++) {
+      const q = course[course.length - 1], n = { x: pos.x + ux * i, y: pos.y + uy * i };
+      if (ctx.bloque(q.x, q.y, n.x, n.y)) break;
+      course.push(n);
+    }
+    let q = course[0];
+    for (let i = course.length - 1; i > 0; i--) {
+      if (placeOk(ctx, course[i].x, course[i].y)) { q = course[i]; break; }
+    }
+    return poserNuage(p, ctx, q.x, q.y);
+  }
+
+  // Nuages animés à chaque image : gonflent, tournent lentement, s'éclaircissent pendant la dissipation, puis partent.
+  function _animerNuages(p, ctx, t) {
+    const F = REGLES.fumigene, plein = F.pleinS * 1000, fin = plein + F.dissipeS * 1000;
+    if (!p.nuages || !p.nuages.length) return;
+    const lampe = p.lampeK === undefined ? 1 : p.lampeK, teinte = new ctx.THREE.Color(COULEURS.fumee);
+    p.nuages = p.nuages.filter(function (n) {
+      const age = t - n.t0;
+      if (age >= fin) { _retirerNuage(n, false); return false; }
+      if (n.mesh) {
+        const monte = Math.min(1, age / F.gonfleMs), reste = age < plein ? 1 : 1 - (age - plein) / (fin - plein);
+        n.mat.opacity = F.opacite * monte * reste;
+        n.mat.color.copy(teinte).multiplyScalar(Math.max(F.sombre, lampe * (1 - _d(n, ctx.pos, ctx.sc) / F.lueurM)));
+        n.mesh.scale.setScalar(0.4 + 0.6 * monte + 0.3 * (1 - reste));
+        n.mesh.rotation.y = age / 9000;
+      }
+      return true;
+    });
   }
 
   // Vitesse de la silhouette à `d` m du joueur (m/s) : deux allures, un peu plus vite à chaque vague.
@@ -702,6 +840,8 @@
     p.iaAcc = (p.iaAcc || 0) + dt;
     const pense = p.iaAcc >= 1 / REGLES.iaHz, dtIa = p.iaAcc;
     if (pense) p.iaAcc = 0;
+    _animerNuages(p, ctx, t);
+    p.mur = _nuagesPleins(p, t);
     p.ennemis.slice().forEach(function (o) {
       const d = _d(o, pos, sc);
       if (o.type === "gardien") _gardien(p, ctx, o, d, pense, dtIa, t, r, dt);
@@ -717,7 +857,7 @@
       } else {
         // Figée dans le faisceau, et sonnée un moment après un coup de fusil (même hors faisceau).
         if (pense) {
-          o.vu = dansFaisceau(ctx, o, p.lampeK);
+          o.vu = dansFaisceau(ctx, o, p.lampeK, p.mur);
           if (!o.vu && t >= (o.sonneeFin || 0)) _versJoueur(p, ctx, o, vitesseSilhouette(p, d), dtIa, t);
         }
         if (o.vu) r.fixee = true;
@@ -767,6 +907,8 @@
     p.objets = p.objets.filter(function (o) {
       if (o.mesh) o.mesh.rotation.y += dt * 1.2;
       if (_d(o, pos, sc) > REGLES.ramasser) return true;
+      // Poches pleines : le fumigène reste au sol.
+      if (o.type === "fumigene" && (p.fumigenes || 0) >= REGLES.fumigene.max) return true;
       r.ramasse.push(o.type);
       _retirer(o);
       return false;
@@ -783,7 +925,9 @@
     if (voit && !o.chasse) { o.chasse = true; r.sons.push(["rugit", 1, angle(ctx, o)]); }
     if (o.chasse && d > G.vue * 2.5) o.chasse = false;
     if (o.chasse) { _versJoueur(p, ctx, o, o.vitesse, dtIa, t); return; }
-    if (o.garde && _d(o, o.garde, sc) > G.garde) _avancer(o, ctx, o.garde.x, o.garde.y, o.vitesse, dtIa, true);
+    if (o.garde && _d(o, o.garde, sc) > G.garde) {
+      _avancer(o, ctx, o.garde.x, o.garde.y, o.vitesse, dtIa, true, p.mur);
+    }
   }
 
   // Hurleur en vue du joueur : cri, les marcheurs proches accourent, des égarés sortent du noir près de lui.
@@ -877,16 +1021,17 @@
       // Il encaisse en reculant, et ne garde plus : il poursuit.
       const l = Math.max(1e-6, dMin * sc), G = REGLES.gardien;
       const k = G.reculM * sc / l;
-      _avancer(cible, ctx, cible.x + (cible.x - pos.x) * k, cible.y + (cible.y - pos.y) * k, G.reculM * 20, 0.05, true);
+      _avancer(cible, ctx, cible.x + (cible.x - pos.x) * k, cible.y + (cible.y - pos.y) * k, G.reculM * 20, 0.05, true,
+        _nuagesPleins(p, cible.toucheT));
       cible.chasse = true;
       _placer(cible, ctx);
     }
     if (cible.pv <= 0) {
       res.tue = true;
       _abattre(p, cible);
-      // Le gardien lâche toujours santé et cartouches ; un autre, parfois un champignon, parfois une caisse (selon
-      // la difficulté).
-      const B = _butin(p), laches = cible.type === "gardien" ? ["champignon", "munitions"] : [];
+      // Le gardien lâche toujours santé, cartouches et fumigène ; un autre, parfois un champignon, parfois une
+      // caisse (selon la difficulté).
+      const B = _butin(p), laches = cible.type === "gardien" ? ["champignon", "munitions", "fumigene"] : [];
       if (cible.type !== "gardien" && Math.random() < B.lacher) laches.push("champignon");
       if (cible.type !== "gardien" && Math.random() < B.lacherMunitions) laches.push("munitions");
       laches.forEach(function (type, i) {
@@ -902,7 +1047,7 @@
   window.KtaAddons = window.KtaAddons || {};
   window.KtaAddons.mkmgMonde = { REGLES: REGLES, peupler: peupler, animer: animer, tirer: tirer, dessiner: dessiner,
     vider: vider, liberer: liberer, dansFaisceau: dansFaisceau, surgir: surgir, placeOk: placeOk,
-    vitesseSilhouette: vitesseSilhouette,
+    vitesseSilhouette: vitesseSilhouette, lancerFumigene: lancerFumigene, poserNuage: poserNuage,
     poserGardien: poserGardien, changerNiveau: changerNiveau, nouveau: nouveau, dansEau: dansEau, zonesDe: zonesDe,
     angle: angle };
 })();

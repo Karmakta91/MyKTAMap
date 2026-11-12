@@ -10,10 +10,10 @@
 // window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
 // rejoindre un point B (POI de plus en plus loin, sinon un point des tracés) avec des égarés et, dès la vague 2, la
 // silhouette (monde.js) ; fusil à pompe (rage après 20 égarés : santé pleine, 30 s de tir auto, endurance sans fin,
-// dégâts reçus ÷ 2, halo rouge), munitions,
-// piles et champignons ramassés en passant ; viseur à la souris capturée (PC) ; santé à 0 = fin,
-// meilleure vague retenue par difficulté. La pile de la lampe s'use, deux fois plus vite en fixant la silhouette (lampe
-// qui baisse et vacille, aussi quand la silhouette est proche ; à plat = lueur de
+// dégâts reçus ÷ 2, halo rouge), fumigènes (bouton ou G : un nuage qui arrête les marcheurs et cache de la
+// silhouette), munitions, piles, champignons et fumigènes ramassés en passant ; viseur à la souris capturée (PC) ;
+// santé à 0 = fin, meilleure vague retenue par difficulté. La pile de la lampe s'use, deux fois plus vite en fixant
+// la silhouette (lampe qui baisse et vacille, aussi quand la silhouette est proche ; à plat = lueur de
 // quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
 // éboulis couvrent les grognements. Sur un plan multi-niveau, B est parfois à un autre niveau, et toujours quand celui
 // où l'on est a moins de 3 POI joignables (sauf vague du gardien) ; toutes les 5 vagues, un gardien garde B.
@@ -59,7 +59,9 @@
       "hud.lampe": "Lampe", "hud.plusPile": "+{n} % de pile", "hud.pileFaible": "La lampe faiblit…",
       "hud.pileVide": "Plus de pile : avance à tâtons", "hud.objectifNiveau": "Rejoins : {nom} · niveau {n}",
       "hud.hurle": "Un hurlement… ils accourent !", "hud.gardien": "Gardien",
-      "hud.gardienVague": "Quelque chose garde la sortie…", "hud.gardienAbattu": "Le gardien est tombé !"
+      "hud.gardienVague": "Quelque chose garde la sortie…", "hud.gardienAbattu": "Le gardien est tombé !",
+      "hud.fumigene": "Fumigène : {n} / {m} (bouton ou touche G)", "hud.fumigeneVide": "Plus de fumigène",
+      "hud.plusFumigene": "+1 fumigène"
     },
     en: {
       "confirmer.titre": "⛏️ Six feet under",
@@ -91,7 +93,9 @@
       "hud.lampe": "Lamp", "hud.plusPile": "+{n}% battery", "hud.pileFaible": "The lamp is fading…",
       "hud.pileVide": "Battery dead: feel your way", "hud.objectifNiveau": "Reach: {nom} · level {n}",
       "hud.hurle": "A howl… they're coming!", "hud.gardien": "Guardian",
-      "hud.gardienVague": "Something guards the way out…", "hud.gardienAbattu": "The guardian has fallen!"
+      "hud.gardienVague": "Something guards the way out…", "hud.gardienAbattu": "The guardian has fallen!",
+      "hud.fumigene": "Smoke grenade: {n} / {m} (button or G key)", "hud.fumigeneVide": "No smoke grenade left",
+      "hud.plusFumigene": "+1 smoke grenade"
     },
     es: {
       "confirmer.titre": "⛏️ Dos metros bajo tierra",
@@ -123,7 +127,9 @@
       "hud.lampe": "Linterna", "hud.plusPile": "+{n} % de batería", "hud.pileFaible": "La linterna se apaga…",
       "hud.pileVide": "Sin batería: avanza a tientas", "hud.objectifNiveau": "Llega a: {nom} · nivel {n}",
       "hud.hurle": "Un aullido… ¡vienen corriendo!", "hud.gardien": "Guardián",
-      "hud.gardienVague": "Algo vigila la salida…", "hud.gardienAbattu": "¡El guardián ha caído!"
+      "hud.gardienVague": "Algo vigila la salida…", "hud.gardienAbattu": "¡El guardián ha caído!",
+      "hud.fumigene": "Bote de humo: {n} / {m} (botón o tecla G)", "hud.fumigeneVide": "Sin botes de humo",
+      "hud.plusFumigene": "+1 bote de humo"
     }
   };
 
@@ -162,14 +168,15 @@
     recalage: { ecartM: 6, tenirMs: 1500, entreMs: 3000 }
   };
   // Butin (décision produit) : objets posés à chaque vague × `x` (au moins `min` de chaque), chance qu'un égaré
-  // abattu lâche un champignon (`lacher`) ou une caisse (`lacherMunitions`) ; pile qui s'use × `pileX`.
+  // abattu lâche un champignon (`lacher`) ou une caisse (`lacherMunitions`) ; pile qui s'use × `pileX` ; `fumigenes`
+  // posés à chaque vague (nombre exact, hors `x`).
   const DIFFICULTES = {
     facile: { traces: true, route: true, guidage: true,
-      butin: { x: 2, min: 2, lacher: 0.5, lacherMunitions: 0.2, pileX: 0.75 } },
+      butin: { x: 2, min: 2, lacher: 0.5, lacherMunitions: 0.2, pileX: 0.75, fumigenes: 2 } },
     moyen: { traces: true, route: true, guidage: false,
-      butin: { x: 1.5, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1 } },
+      butin: { x: 1.5, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1, fumigenes: 1 } },
     difficile: { traces: false, route: false, guidage: false,
-      butin: { x: 1, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1 } }
+      butin: { x: 1, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1, fumigenes: 1 } }
   };
   const ROUTE = { largeur: 0.3, y: 0.08 };
   // Chevrons du sens du trajet, posés sur le ruban (m) : un tous les `pas`, longueur `l`, épaisseur des branches `ep`.
@@ -270,7 +277,7 @@
       tirs: 0, touches: 0,
       blesseT: 0, ecouteurs: [], saleT: 0, carte: null, mondes: {}, pile: REGLES.pile.max, lampeK: 1, eau: false,
       eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0, silM: null, silVue: false,
-      usure: 0,
+      usure: 0, fumigenes: _monde().REGLES.fumigene.depart, nuages: [],
       ecartT: 0, recaleT: 0, recale: false, recalages: 0,
       rageTues: 0, rageFin: 0, rageCanon: 0, rechargeRage: false, gachette: false, prochainTir: 0 };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
@@ -354,6 +361,10 @@
         p.reserve += n;
         _jouer("ramasse");
         _message(_t("hud.plusCartouches", { n: n }));
+      } else if (type === "fumigene") {
+        p.fumigenes++;
+        _jouer("ramasse");
+        _message(_t("hud.plusFumigene"));
       } else if (type === "pile") {
         const n = _monde().REGLES.piles.gain;
         p.pile = Math.min(REGLES.pile.max, p.pile + n);
@@ -471,14 +482,17 @@
     on(document, "pointerdown", function () { _son().reveiller(); }, true);
     on(document, "visibilitychange", function () { if (document.visibilityState === "visible") _son().reveiller(); });
     // 🩸 R est aussi le raccourci « Recherche » de la carte (shortcuts.js, écouteur de document posé avant le jeu) :
-    // pris sur window en capture et arrêté là, sinon la recherche s'ouvre par-dessus la partie.
+    // pris sur window en capture et arrêté là, sinon la recherche s'ouvre par-dessus la partie. G (fumigène) n'est
+    // le raccourci de rien dans l'app ; pris au même endroit, il ne le deviendra pas pendant une partie.
     on(window, "keydown", function (ev) {
-      if (ev.code !== "KeyR" || ev.ctrlKey || ev.metaKey || ev.altKey || document.getElementById("kta-confirm-oui")) {
+      const rage = ev.code === "KeyR", fumigene = ev.code === "KeyG";
+      if (!(rage || fumigene) || ev.ctrlKey || ev.metaKey || ev.altKey || document.getElementById("kta-confirm-oui")) {
         return;
       }
       ev.stopPropagation();
       ev.preventDefault();
-      if (!ev.repeat) _rage();
+      if (ev.repeat) return;
+      if (rage) _rage(); else _fumigene();
     }, true);
     on(document, "keydown", function (ev) {
       _son().reveiller();
@@ -630,6 +644,21 @@
   }
 
   function _degatsX(p) { return p.rageFin ? REGLES.rage.degatsX : 1; }
+
+  // Fumigène lancé dans l'axe du regard (bouton au-dessus de « Rage », touche G) : monde.js > lancerFumigene.
+  function _fumigene() {
+    const p = _p;
+    if (!p || p.fin || !p.ctx) return;
+    if (p.fumigenes <= 0) { _jouer("vide"); _message(_t("hud.fumigeneVide")); return; }
+    p.fumigenes--;
+    const ctx = p.ctx, n = _monde().lancerFumigene(p, ctx);
+    _jouer("lance");
+    // Sifflement situé là où il tombe ; à ses pieds, au centre.
+    const loin = Math.hypot(n.x - ctx.pos.x, n.y - ctx.pos.y) > 0.5 * ctx.sc;
+    _jouer("siffle", 1, loin ? _monde().angle(ctx, n) : undefined);
+    _majHud();
+    ctx.sale();
+  }
 
   function _finRage(p) {
     p.rageFin = 0;
@@ -1139,6 +1168,15 @@
     h.rage.type = "button";
     h.rage.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _rage(); });
     h.rage.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+    h.fumigene = _el(ctx.hud, "button", "mkmg-fumigene");
+    h.fumigene.type = "button";
+    const ico = _el(h.fumigene, "span", "mkmg-fumigene-ico");
+    ico.setAttribute("data-kta-ico", "cloud-fog");
+    ico.setAttribute("aria-hidden", "true");
+    if (window.KtaIcones && typeof window.KtaIcones.poser === "function") window.KtaIcones.poser(h.fumigene);
+    h.fumigeneN = _el(h.fumigene, "span", "mkmg-fumigene-n");
+    h.fumigene.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _fumigene(); });
+    h.fumigene.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
     h.message = _el(ctx.hud, "div", "mkmg-message");
     h.message.hidden = true;
     h.message.setAttribute("aria-live", "polite");
@@ -1228,6 +1266,10 @@
       _t("hud.rageCharge", { n: Math.min(p.rageTues, R.tues), m: R.tues });
     h.rage.setAttribute("aria-label", h.rage.title);
     h.tirer.classList.toggle("mkmg-tirer-rage", rage);
+    h.fumigeneN.textContent = String(p.fumigenes);
+    h.fumigene.disabled = p.fin || p.fumigenes <= 0;
+    h.fumigene.title = _t("hud.fumigene", { n: p.fumigenes, m: _monde().REGLES.fumigene.max });
+    h.fumigene.setAttribute("aria-label", h.fumigene.title);
     h.halo.classList.toggle("mkmg-halo-actif", rage);
     h.tirer.title = _t("hud.tirer") + " — " + _t("hud.cartouches") + " : " + p.canon + " + " + p.reserve +
       (p.rechargeFin ? " (" + _t("hud.recharge") + ")" : "");
@@ -1282,6 +1324,12 @@
         return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu, sonnee: performance.now() < (o.sonneeFin || 0) };
       }),
       usure: +p.usure.toFixed(4), vacille: performance.now() < (p.vacilleFin || 0),
+      fumigene: { stock: p.fumigenes, bouton: !!p.hud && !p.hud.fumigene.disabled,
+        nuages: (p.nuages || []).map(function (n) {
+          return { x: n.x, y: n.y, maillage: !!n.mesh && n.mesh.parent === p.ctx.groupe,
+            opacite: n.mat ? +n.mat.opacity.toFixed(3) : 0,
+            plein: performance.now() - n.t0 < _monde().REGLES.fumigene.pleinS * 1000 };
+        }) },
       objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }),
       cadavres: (p.cadavres || []).length, butin: p.regle.butin, pile: Math.round(p.pile), lampe: +p.lampeK.toFixed(2), eau: p.eau,
       cibleNiveau: p.cible && p.cible.niveau !== undefined ? p.cible.niveau : null,
@@ -1300,6 +1348,8 @@
       _monde().dessiner(_p, _p.ctx, false);
     },
     pile: function (v) { if (_p) _p.pile = v; },
+    fumigenes: function (n) { if (_p) { _p.fumigenes = n; _majHud(); } },
+    nuage: function (x, y) { if (_p && _p.ctx) _monde().poserNuage(_p, _p.ctx, x, y); },
     rage: function (n) { if (_p) { _p.rageTues = n; _majHud(); } },
     rageFin: function () { if (_p && _p.rageFin) _p.rageFin = performance.now(); },
     sante: function (v) { if (_p) _p.sante = v; },
