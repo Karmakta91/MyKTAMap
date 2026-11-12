@@ -147,6 +147,11 @@
   piste : ne couvrir que la partie visible, plus fine.
   `qui: Claude · action: texture limitée au champ visible, mémoire mesurée en iPhone émulé · fini: lisible de près,
   mémoire tenue · depuis: 04/11/2026 · taille: S`
+- **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
+  session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
+  du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
+  `qui: Claude · action: scénario pro sur la pile (calque copié en session, 1re suppression depuis la fiche, chiffré)
+  · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
 
@@ -202,10 +207,3 @@
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.
   `qui: Claude · action: topo (ce que masque hidden aujourd'hui, ce qui manque) · depuis: 01/11/2026 · taille: S`
-
-- **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
-  session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
-  du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
-  `qui: Claude · action: scénario pro sur la pile (calque copié en session, 1re suppression depuis la fiche, chiffré)
-  · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
-
