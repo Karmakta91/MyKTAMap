@@ -7,7 +7,7 @@
 // addons/mkmg/js/son.js — sons de l'add-on « mkmg », fabriqués par WebAudio (aucun fichier, aucun réseau). Expose
 // window.KtaAddons.mkmgSon = { demarrer(), arreter(), reveiller(), jouer(nom, force, angle), coeur(intensite),
 // proximite(intensite), ambiance(actif), etat() }. Noms : tir, pompe, recharge, vide, ramasse, soin, blesse, grogne,
-// mort, vague, fin, pas, hurle, rugit, eclabousse, eboulis, goutte, pile.
+// mort, vague, fin, pas, hurle, rugit, gresille, eclabousse, eboulis, goutte, pile.
 // angle (degrés, 0 = devant, 90 = à droite) : le son vient de là (gauche / droite), étouffé quand il vient de derrière.
 // 🩸 Un navigateur ne joue rien avant un geste de l'utilisateur : demarrer() est appelé dans le geste qui lance la
 // partie. iOS suspend (« interrupted ») le son sur une notification, un appel, l'écran verrouillé : reveiller() le
@@ -144,6 +144,16 @@
       const f = _bruite(t, "lowpass", 300, 3, 0.7 * k, 0.2, 2.0);
       f.frequency.linearRampToValueAtTime(120, t + 2.0);
       _ton(t, "sawtooth", 55, 38, 0.25 * k, 0.25, 1.9);
+    },
+    // Présence de la silhouette : souffle sourd qui enfle, éclats de grésillement par-dessus ; durée, hauteur et
+    // nombre d'éclats tirés au hasard à chaque fois.
+    gresille: function (t, k) {
+      const d = 1.1 + Math.random() * 0.9;
+      const f = _bruite(t, "bandpass", 500 + Math.random() * 300, 1.2, 0.3 * k, d * 0.45, d);
+      f.frequency.linearRampToValueAtTime(1100 + Math.random() * 500, t + d);
+      for (let i = 3 + Math.floor(Math.random() * 5); i > 0; i--) {
+        _bruite(t + Math.random() * d, "highpass", 4500, 0.7, 0.14 * k, 0.001, 0.012 + Math.random() * 0.02);
+      }
     },
     eclabousse: function (t, k) {
       _bruite(t, "highpass", 1800 + Math.random() * 900, 0.8, 0.22 * k, 0.01, 0.18);

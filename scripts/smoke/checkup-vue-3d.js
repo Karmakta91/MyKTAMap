@@ -60,6 +60,8 @@
 // prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
 // (23) : refus, confirmation, partie en vagues, masquage, endurance, tir, recharge, objets, égaré, silhouette, fin.
 // B sur un autre niveau (58, KTA_V3D_SEUL=mkmgniveaux) : dès la vague 1, forcé sur un niveau pauvre, gardien sur place.
+// Silhouette (23 bis, KTA_V3D_SEUL=mkmg) : deux allures, plus vite à chaque vague, lampe qui vacille de près, pile × 2
+// quand on la fixe, recul et sonnée au tir, contact.
 // Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), intensité 25 / 300 %
 // et faisceau 40 / 160° (curseurs, pénombre, relus, ancien « forte » / « jour » relu), ☀️ Plein jour (interrupteur),
 // greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
@@ -10659,6 +10661,174 @@ async function sectionMkmgNiveaux(nav) {
   }
 }
 
+// ── 23 bis. Jeu (add-on mkmg) : silhouette (monde.js > animer, _repousser ; coeur.js > _pile ;
+// KTA_V3D_SEUL=mkmg) ──────────────────────────────────────────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire : une galerie est-ouest de 160 m (un sommet tous les 5 m), un POI à 70 m du départ. Partie en
+// facile, monde vidé, chrono repoussé ; chaque situation est posée par KtaAddons.mkmg.essai.
+async function sectionMkmgArsenal(nav) {
+  const nom = "§ 23 bis ";
+  console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile)");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-mkmg-arsenal", [0], { "0": -25 }, { "0": 2.5 }, function () {
+    const P = window.__fxP, pts = [];
+    for (let x = -80; x <= 80; x += 5) pts.push(P(x, 0));
+    window.setRoads([{ uid: "rd_ma", type: "principal", level: 0, points: pts }]);
+    window.setEditorPoints([Object.assign({ id: "ma1", nom: "Salle fictive", uid: "pt_ma_1", level: 0, tags: [] },
+      P(40, 0))]);
+  });
+  const page = t.page;
+  try {
+    const r = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP, sc = window.APP_CONFIG.scale;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const q = function (s) { return document.querySelector(s); };
+      const M = function () { return window.KtaAddons && window.KtaAddons.mkmg; };
+      const appui = function (b) {
+        b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 2 }));
+        window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+      };
+      const touche = function (type, key, code) {
+        document.dispatchEvent(new KeyboardEvent(type, { key: key, code: code, bubbles: true, cancelable: true }));
+      };
+      const tir = function () { touche("keydown", " ", "Space"); touche("keyup", " ", "Space"); };
+      await window.__fxOuvrir(-30, 0, 90, 0, "galerie");
+      appui(q('#kta-vue3d [data-v3d="av"]'));
+      for (let k = 0; k < 6; k++) { appui(q('#kta-vue3d [data-v3d="ar"]')); await pause(30); }
+      for (let k = 0; k < 60 && !q("#kta-confirm-oui"); k++) await pause(50);
+      if (!q("#kta-confirm-oui")) return { erreur: "pas de confirmation" };
+      q("#kta-confirm-oui").click();
+      for (let k = 0; k < 100 && !(M() && M().etat().cible); k++) await pause(30);
+      const X = M().essai, d = P(-30, 0), out = { diff: M().etat().diff };
+      const hasard = Math.random;
+      const sil = function () {
+        return M().etat().ennemis.filter(function (o) { return o.type === "silhouette"; })[0];
+      };
+      // Distance au joueur (m) et vitesse d'approche mesurée sur `ms`.
+      const dist = function (o) { const e = K.etat(); return Math.hypot(o.x - e.pos.x, o.y - e.pos.y) / sc; };
+      const approche = async function (ms) {
+        const t0 = performance.now(), d0 = dist(sil());
+        await pause(ms);
+        return (d0 - dist(sil())) / ((performance.now() - t0) / 1000);
+      };
+      const face = function () { K.placer(d.x, d.y, 90); }, dos = function () { K.placer(d.x, d.y, 270); };
+      const neuf = function () { X.vider(); X.chrono(600000); X.sante(100); X.pile(100); };
+      const R = window.KtaAddons.mkmgMonde.REGLES;
+      out.regles = { silhouette: R.silhouette };
+
+      // Silhouette, dos tourné : lente à 20 m, rapide sous 10 m ; la lampe vacille sous 8 m (hasard forcé).
+      neuf(); dos();
+      X.poser("silhouette", P(-10, 0).x, P(-10, 0).y);
+      await pause(150);
+      out.loin = { vitesse: await approche(1500), usure: M().etat().usure };
+      Math.random = function () { return 0; };
+      await pause(200);
+      Math.random = hasard;
+      out.loin.lampe = M().etat().lampe;
+      neuf();
+      X.poser("silhouette", P(-21, 0).x, P(-21, 0).y);
+      await pause(150);
+      out.pres = { vitesse: await approche(800), d: dist(sil()) };
+      Math.random = function () { return 0; };
+      await pause(200);
+      Math.random = hasard;
+      out.pres.lampe = M().etat().lampe;
+      out.pres.vue = K.etat().lampe;
+      neuf();
+      await pause(400);
+      out.pres.rendue = M().etat().lampe;
+      // Fixée à 12 m : figée, la pile s'use deux fois plus vite, la lampe ne vacille pas (plus de 8 m).
+      face();
+      X.poser("silhouette", P(-18, 0).x, P(-18, 0).y);
+      await pause(300);
+      const f0 = sil();
+      await pause(400);
+      out.fixee = { vu: f0.vu, bouge: Math.abs(sil().x - f0.x) / sc, usure: M().etat().usure, lampe: M().etat().lampe };
+      // Tir : elle recule de 12 m le long de la galerie et reste sonnée 3 s, même dos tourné.
+      tir();
+      await pause(100);
+      const s1 = sil();
+      out.tir = { recul: (s1.x - f0.x) / sc, travers: Math.abs(s1.y - f0.y) / sc, sonnee: s1.sonnee,
+        message: q(".mkmg-message").textContent, touches: M().etat().touches };
+      dos();
+      await pause(1000);
+      const s2 = sil();
+      out.tir.immobile = Math.abs(s2.x - s1.x) / sc;
+      out.tir.vuDos = s2.vu;
+      out.tir.sonneeDos = s2.sonnee;
+      await pause(2600);
+      const s3 = sil();
+      out.tir.reveil = { sonnee: s3.sonnee, avance: (s2.x - s3.x) / sc };
+      // Contact : 50 de santé, puis elle repart à 15-25 m.
+      neuf(); dos();
+      X.poser("silhouette", P(-29.5, 0).x, P(-29.5, 0).y);
+      await pause(200);
+      out.contact = { sante: M().etat().sante, d: dist(sil()) };
+      // Présence : grésillement situé (derrière à 20 m, devant à 5 m), plus fort de près.
+      const Son = window.KtaAddons.mkmgSon, jouer0 = Son.jouer, joues = [];
+      Son.jouer = function (n, force, angle) { if (n === "gresille") joues.push([force, angle]); };
+      const entendre = async function (x) {
+        neuf(); face();
+        X.poser("silhouette", P(x, 0).x, P(x, 0).y);
+        joues.length = 0;
+        for (let k = 0; k < 120 && !joues.length; k++) await pause(40);
+        return joues[0] || null;
+      };
+      out.bruit = { derriere: await entendre(-50), devant: await entendre(-25) };
+      Son.jouer = jouer0;
+
+      // Vague 6 (en dernier : la vague repeuple le monde) : la silhouette va plus vite, plafonnée sous la course.
+      const avant = M().etat().calcul;
+      X.vague(6);
+      for (let k = 0; k < 100 && !(M().etat().calcul > avant && M().etat().cible); k++) await pause(30);
+      neuf(); dos();
+      X.poser("silhouette", P(-10, 0).x, P(-10, 0).y);
+      await pause(150);
+      const V = window.KtaAddons.mkmgMonde.vitesseSilhouette;
+      out.vague6 = { vague: M().etat().vague, vitesse: await approche(1500),
+        plafond: [V({ vague: 99 }, 20), V({ vague: 99 }, 5)], vague2: [V({ vague: 2 }, 20), V({ vague: 2 }, 5)] };
+      Math.random = hasard;
+      M().quitter();
+      await K.fermer();
+      return out;
+    });
+    if (r.erreur) throw new Error(r.erreur);
+    const S = r.regles.silhouette, entre = function (v, a, b) { return v >= a && v <= b; };
+    const usure = 0.55 * 0.75;   // coeur.js > REGLES.pile.parS × butin.pileX du facile
+    verifier(r.diff === "facile" && entre(r.loin.vitesse, 0.9, 1.5) && entre(r.pres.vitesse, 2, 3) &&
+      S.vitesseLoin === 1.2 && S.vitessePres === 2.5,
+      nom + "silhouette dos tourné : lente de loin (" + r.loin.vitesse.toFixed(2) + " m/s à 20 m), plus rapide sous " +
+      "10 m (" + r.pres.vitesse.toFixed(2) + " m/s)", { loin: r.loin, pres: r.pres });
+    verifier(r.pres.d < S.vacilleM && r.pres.lampe < 0.5 && Math.abs(r.pres.vue - r.pres.lampe) < 0.02 &&
+      r.loin.lampe === 1 && r.pres.rendue === 1 && r.fixee.lampe === 1,
+      nom + "silhouette à moins de 8 m : la lampe vacille (pile pleine) ; ni à 20 m, ni à 12 m, ni une fois partie",
+      { loin: r.loin.lampe, pres: r.pres, fixee: r.fixee.lampe });
+    verifier(r.fixee.vu === true && r.fixee.bouge < 0.05 && Math.abs(r.fixee.usure - usure * S.pileX) < 0.001 &&
+      Math.abs(r.loin.usure - usure) < 0.001 && S.pileX === 2,
+      nom + "silhouette fixée : figée dans le faisceau, la pile s'use × 2 (" + r.fixee.usure + " contre " +
+      r.loin.usure + " par seconde)", r.fixee);
+    verifier(entre(r.tir.recul, S.reculM - 0.5, S.reculM + 0.5) && r.tir.travers < 0.5 && r.tir.sonnee &&
+      /recule/.test(r.tir.message) && r.tir.touches === 1 && r.tir.immobile < 0.05 && r.tir.vuDos === false &&
+      r.tir.sonneeDos && r.tir.reveil.sonnee === false && r.tir.reveil.avance > 0.3,
+      nom + "silhouette touchée : recule de " + r.tir.recul.toFixed(1) + " m le long de la galerie, sonnée 3 s " +
+      "(immobile dos tourné), puis repart", r.tir);
+    verifier(r.contact.sante === 100 - S.degats && S.degats === 50 && entre(r.contact.d, S.fuite[0] - 1.5,
+      S.fuite[1] + 0.5), nom + "silhouette au contact : −50 de santé, elle repart à 15-25 m (" +
+      r.contact.d.toFixed(1) + " m)", r.contact);
+    const bd = r.bruit.derriere, bv = r.bruit.devant;
+    verifier(!!bd && !!bv && bd[0] < 0.3 && bv[0] > bd[0] * 2 && Math.abs(bv[0] - 0.64) < 0.05 && Math.abs(bv[1]) < 5 &&
+      Math.abs(Math.abs(bd[1]) - 180) < 5,
+      nom + "silhouette : grésillement situé (derrière à 20 m, devant à 5 m), plus fort de près", r.bruit);
+    verifier(r.vague6.vague === 6 && entre(r.vague6.vitesse, 1.3, 1.9) && r.vague6.vague2[0] === 1.2 &&
+      r.vague6.vague2[1] === 2.5 && Math.abs(r.vague6.plafond[1] - 3.7) < 1e-9 && r.vague6.plafond[1] < 7,
+      nom + "silhouette plus rapide à chaque vague (" + r.vague6.vitesse.toFixed(2) + " m/s de loin en vague 6), " +
+      "plafonnée à " + r.vague6.plafond[1].toFixed(1) + " m/s de près (course du joueur : 7)", r.vague6);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 4));
+  } catch (err) {
+    pb(nom + "exception : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 // ── 50. Niveaux entremêlés : union des vides, collision par tranche (vue3d.js > _entreDe, _paroiEntre, _trousEntre,
 // _plansCaches, _niveauxQuiBloquent ; KTA_V3D_SEUL=entremeles) ────────────────────────────────────────────────────
 // Plan FICTIF en mémoire : niveau 0 (sol −30, 10 m de haut), niveau +1 (sol −25, 5 m : la moitié haute du 0, écart
@@ -13934,7 +14104,8 @@ async function sectionCaseBoutonsZoom(nav) {
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "puits-ciel" ||
       SEUL === "jonction-tremie" ||
       SEUL === "jonction-piliers" || SEUL === "caseZoom" ||
-      SEUL === "minicarte" || SEUL === "mcbandeau" || SEUL === "menusHaut" || SEUL === "mkmgniveaux") {
+      SEUL === "minicarte" || SEUL === "mcbandeau" || SEUL === "menusHaut" || SEUL === "mkmgniveaux" ||
+      SEUL === "mkmg") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -20377,6 +20548,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "mcbandeau") await sectionMiniCarteBandeau(nav);
     if (!SEUL || SEUL === "menusHaut") await sectionMenusHaut(nav);
     if (!SEUL || SEUL === "mkmgniveaux") await sectionMkmgNiveaux(nav);
+    if (!SEUL || SEUL === "mkmg") await sectionMkmgArsenal(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

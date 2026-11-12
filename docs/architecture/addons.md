@@ -240,9 +240,17 @@ embuscades, un monde par niveau), `js/son.js`
 - **Égarés** (`monde.js`, posés sur les tracés à 15-35 m) : 2 + 2 par vague, 14 au plus et 18 en tout ; 1,6 m/s +
   0,12 par vague, 2,6 au plus, proche de la marche à 2,8 (il faut courir pour décrocher, décision produit) ; 25 de
   santé par seconde au contact ; à vue directe sous 12 m ils foncent, sous 8 m ils **chargent** 2 s à ×1,6 puis
-  soufflent 4 s. **Silhouette** dès la vague 2 : une seule, invulnérable, 3,2 m/s mais figée dans le faisceau (à
-  moins de 30 m × la lampe, à moins de 32° du cap, rien entre elle et soi) ; au contact 35 de santé puis elle repart
-  loin. Lampe à plat, elle ne se fige plus qu'à bout portant.
+  soufflent 4 s.
+- **Silhouette** (décision produit) dès la vague 2 : une seule, invulnérable, figée dans le faisceau (à moins de
+  30 m × la lampe, à moins de 32° du cap, rien entre elle et soi) ; lampe à plat, elle ne se fige plus qu'à bout
+  portant. Hors faisceau, approche en deux temps : 1,2 m/s de loin, 2,5 m/s sous 10 m, + 0,1 m/s par vague après la
+  2 (au plus + 1,2 : 3,7 m/s de près, sous la course du joueur à 7 m/s, au-dessus de sa marche).
+  Présence : un grésillement situé sous 25 m, plus fort de près (un toutes les 0,9 à 2,6 s) ; sous 8 m la lampe
+  vacille, de plus en plus souvent (même vacillement que la pile faible, les deux s'ajoutent). La fixer coûte : tant
+  qu'elle est dans le faisceau, la pile s'use × 2. Au contact : 50 de santé, puis elle repart à 15-25 m. Touchée au
+  fusil : elle recule de 12 m le long des tracés en s'éloignant du joueur (carte des distances remontée de nœud en
+  nœud, place valide `placeOk` ; un cul-de-sac l'arrête plus tôt ; sans réseau ni place, elle repart à 25-50 m) et
+  reste sonnée 3 s, immobile même hors faisceau (son contact blesse toujours).
 - **Rampants** dès la vague 3 (1, + 1 toutes les deux vagues, 5 au plus) : à plat ventre, ×1,5 la vitesse des égarés,
   1 point, chargent comme eux. **Hurleurs** dès la vague 5 (1, + 1 toutes les trois vagues, 3 au plus) : ×0,65, 3
   points ; en vue directe à moins de 14 m, ils crient (au plus toutes les 15 s) : les marcheurs à moins de 30 m vont
@@ -251,7 +259,8 @@ embuscades, un monde par niveau), `js/son.js`
   plus de 8 m) tant que le joueur n'est pas en vue (12 m) ; vu ou touché, il poursuit (0,9 m/s, 45 de santé par
   seconde au contact). 10 points (+ 2 par gardien suivant) ; chaque coup le fait reculer d'un demi-mètre. Tué, il
   lâche un champignon et une caisse de munitions. Sa jauge s'affiche sous les autres tant qu'il vit.
-- **Pile de la lampe** (décision produit) : 100 %, − 0,55 par seconde (× 0,75 en facile, environ 4 min) ; sous 25 %, la lampe baisse
+- **Pile de la lampe** (décision produit) : 100 %, − 0,55 par seconde (× 0,75 en facile, environ 4 min ; × 2 tant
+  que la silhouette est dans le faisceau) ; sous 25 %, la lampe baisse
   (`regler({ lampe })`) jusqu'à une lueur de quelques mètres (8 %, jamais le noir) et vacille de plus en plus
   souvent. Piles à ramasser (+45 ; 2 par vague, une de moins toutes les trois, 1 au moins).
 - **Eau** : dans une zone `eau` du niveau, le joueur va à 60 % (`regler({ vitesse })`) et éclabousse ; les menaces
@@ -271,7 +280,7 @@ embuscades, un monde par niveau), `js/son.js`
   clic bref pour tirer. Souris rendue en fin de partie et en quittant.
 - **Fusil à pompe** (bouton en bas à droite, Espace, clic gauche de la souris capturée) : la menace la plus
   proche dans l'axe (6° ou le gabarit du corps), à 18 m au plus, ligne de vue libre ; un égaré a 2 points, un coup à
-  8 m ou moins en ôte 2 ; la silhouette touchée recule. Recharge automatique de 1,5 s ; départ 2 + 6 cartouches. Son : détonation grave puis coup de pompe (pas en rage).
+  8 m ou moins en ôte 2 ; la silhouette touchée recule et reste sonnée. Recharge automatique de 1,5 s ; départ 2 + 6 cartouches. Son : détonation grave puis coup de pompe (pas en rage).
 - **Rage** (décision produit) : prête après 20 égarés tués hors rage (compteur sur le petit bouton au-dessus du
   fusil, à sa gauche sur un écran bas où il touchait « Quitter » ; puis « Rage » qui pulse) ; bouton ou touche R : toute la santé rendue, 30 s de tir automatique tant que
   la détente est tenue (bouton, clic gauche capturé, Espace ; un coup toutes les 110 ms), cartouches non comptées, chargeur de 25 puis
@@ -301,14 +310,18 @@ embuscades, un monde par niveau), `js/son.js`
   interruption (notification, appel, écran verrouillé) et ne le rend que dans un geste : `reveiller()` à chaque
   `pointerdown` / `keydown` et au retour à l'écran. Arrêt d'une partie : suspension différée de 1,5 s, sinon
   « Rejouer » (arrêt puis démarrage) laissait la nouvelle partie muette sur Safari. Sons **situés** : grognements,
-  pas (les deux plus proches à moins de 6 m, un sur trois sauté), cris et éboulis viennent de leur direction
+  pas (les deux plus proches à moins de 6 m, un sur trois sauté), cris, grésillement de la silhouette et éboulis
+  viennent de leur direction
   (panoramique gauche / droite, étouffés quand ils viennent de derrière ; au centre sans `StereoPanner`). Fond :
   gouttes (« plic » qui monte, puis écho ; toutes les 4 à 11 s) et éboulis lointains au hasard ; pas de bruit de
   respiration ni d'essoufflement (décision produit : seul le cœur bat à bout de souffle). 🩸 Rien ne revient à intervalle fixe : un
   son régulier se lit comme un bip ou un métronome.
 - **Checkup** : `checkup-vue-3d.js` § 21 (prise, code) et § 23 (jeu, avec `KtaAddons.mkmg.essai` : `vider`, `poser`,
-  `sante`, `chrono`, `tenaille`, `pile`, `viser`, `rage`, `rageFin` ; `poser` accepte `rampant`, `hurleur`, `gardien`, `pile`). Non joués
-  par le checkup : passage de niveau (monde rangé, refuge) et B à un autre niveau (le relevé fictif est sur un niveau).
+  `sante`, `chrono`, `tenaille`, `pile`, `viser`, `rage`, `rageFin`, `vague` ; `poser` accepte `rampant`, `hurleur`,
+  `gardien`, `silhouette`, `pile`), § 23 bis (page à part, `KTA_V3D_SEUL=mkmg` : silhouette — deux allures, vitesse
+  par vague, lampe qui vacille, pile × 2, recul et sonnée au tir, contact, grésillement situé) et § 58 (B à un autre
+  niveau, `=mkmgniveaux`). Non joués par le checkup : passage de niveau en cours de partie (monde rangé, refuge),
+  recul de la silhouette dans un cul-de-sac ou sans place (repli à 25-50 m), rendu sonore.
 
 ## À donner à une IA (résumé à coller)
 

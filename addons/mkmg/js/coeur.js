@@ -12,7 +12,8 @@
 // silhouette (monde.js) ; fusil à pompe (rage après 20 égarés : santé pleine, 30 s de tir auto, endurance sans fin,
 // dégâts reçus ÷ 2, halo rouge), munitions,
 // piles et champignons ramassés en passant ; viseur à la souris capturée (PC) ; santé à 0 = fin,
-// meilleure vague retenue par difficulté. La pile de la lampe s'use (lampe qui baisse et vacille, à plat = lueur de
+// meilleure vague retenue par difficulté. La pile de la lampe s'use, deux fois plus vite en fixant la silhouette (lampe
+// qui baisse et vacille, aussi quand la silhouette est proche ; à plat = lueur de
 // quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
 // éboulis couvrent les grognements. Sur un plan multi-niveau, B est parfois à un autre niveau, et toujours quand celui
 // où l'on est a moins de 3 POI joignables (sauf vague du gardien) ; toutes les 5 vagues, un gardien garde B.
@@ -268,7 +269,8 @@
       canon: REGLES.cartouches.canon, reserve: REGLES.cartouches.reserve, rechargeFin: 0, fin: false, tues: 0,
       tirs: 0, touches: 0,
       blesseT: 0, ecouteurs: [], saleT: 0, carte: null, mondes: {}, pile: REGLES.pile.max, lampeK: 1, eau: false,
-      eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0,
+      eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0, silM: null, silVue: false,
+      usure: 0,
       ecartT: 0, recaleT: 0, recale: false, recalages: 0,
       rageTues: 0, rageFin: 0, rageCanon: 0, rechargeRage: false, gachette: false, prochainTir: 0 };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
@@ -333,6 +335,8 @@
     _eau(p, ctx, t);
     _eboulis(p, ctx, t);
     const r = _monde().animer(p, ctx, dt);
+    p.silM = r.silhouetteM;
+    p.silVue = r.fixee;
     // Un éboulis couvre grognements et pas un moment.
     r.sons.forEach(function (s) {
       if (t < p.masqueFin && (s[0] === "grogne" || s[0] === "pas")) return;
@@ -379,13 +383,17 @@
     if (t - p.saleT >= REGLES.imageMs) { p.saleT = t; ctx.sale(); }
   }
 
-  // Pile de la lampe : s'use, la lampe baisse et vacille sous le seuil faible, lueur minimale à plat.
+  // Pile de la lampe : s'use (deux fois plus vite tant que la silhouette est dans le faisceau), la lampe baisse sous
+  // le seuil faible, lueur minimale à plat. Elle vacille pile faible, et quand la silhouette est toute proche : les
+  // deux causes s'ajoutent (même vacillement, plus fréquent).
   function _pile(p, ctx, t, dt) {
-    const L = REGLES.pile;
-    p.pile = Math.max(0, p.pile - L.parS * p.regle.butin.pileX * dt);
+    const L = REGLES.pile, S = _monde().REGLES.silhouette;
+    p.usure = L.parS * p.regle.butin.pileX * (p.silVue ? S.pileX : 1);
+    p.pile = Math.max(0, p.pile - p.usure * dt);
     let k = p.pile >= L.faible ? 1 : L.min + (1 - L.min) * p.pile / L.faible;
-    if (p.pile < L.faible) {
-      const freq = L.vacilleHz * (1 - p.pile / L.faible) + 0.4;
+    let freq = p.pile < L.faible ? L.vacilleHz * (1 - p.pile / L.faible) + 0.4 : 0;
+    if (p.silM !== null && p.silM < S.vacilleM) freq += S.vacilleHz * (1 - p.silM / S.vacilleM) + 0.6;
+    if (freq > 0) {
       if (t > (p.vacilleFin || 0) && Math.random() < dt * freq) {
         p.vacilleFin = t + L.vacilleMs[0] + Math.random() * (L.vacilleMs[1] - L.vacilleMs[0]);
       }
@@ -1270,7 +1278,10 @@
       tenailleMi: p.tenailleMi,
       chronoDepasse: p.chronoDepasse,
       chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
-      ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),
+      ennemis: p.ennemis.map(function (o) {
+        return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu, sonnee: performance.now() < (o.sonneeFin || 0) };
+      }),
+      usure: +p.usure.toFixed(4), vacille: performance.now() < (p.vacilleFin || 0),
       objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }),
       cadavres: (p.cadavres || []).length, butin: p.regle.butin, pile: Math.round(p.pile), lampe: +p.lampeK.toFixed(2), eau: p.eau,
       cibleNiveau: p.cible && p.cible.niveau !== undefined ? p.cible.niveau : null,

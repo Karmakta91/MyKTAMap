@@ -8,11 +8,13 @@
 // aussi rapides que la marche, nombreux, ils chargent à vue ; tués au fusil, ils tombent et restent au sol), rampants
 // (dès la vague 3 : au ras du sol, rapides, fragiles), hurleurs (dès la vague 5 : lents ; à vue, ils crient et les
 // égarés proches accourent), gardien (vagues boss : garde le point B, encaisse en reculant, lâche santé et cartouches),
-// silhouette (une seule, invulnérable, ne bouge que hors du faisceau de la lampe ; un tir la fait reculer), munitions,
+// silhouette (une seule, invulnérable, ne bouge que hors du faisceau de la lampe : lente de loin, rapide de près, elle
+// grésille et fait vaciller la lampe ; un tir la fait reculer et la sonne), munitions,
 // piles et champignons à ramasser en passant dessus, tir, embuscades (surgir). L'eau ralentit tout le monde. Un monde
 // par niveau : changer de niveau range celui qu'on quitte (ses menaces attendent là, elles ne prennent pas l'escalier).
 // Expose window.KtaAddons.mkmgMonde = { peupler, animer, tirer, dessiner, vider, liberer, surgir, poserGardien,
-// changerNiveau, nouveau, dansEau, zonesDe, angle, REGLES }. Positions en px plan (comme ctx.pos), maillages en m.
+// changerNiveau, nouveau, dansEau, zonesDe, angle, dansFaisceau, placeOk, vitesseSilhouette, REGLES }. Positions en px
+// plan (comme ctx.pos), maillages en m.
 // ⚠️ contrat : à moins de 25 m (et droit sur le joueur) tout pas passe la règle du pas de la vue (ctx.bloque) ; plus
 // loin, hors de vue, une menace glisse de nœud en nœud des tracés (_carte : distances au joueur sur le graphe en cache
 // de RoadGraph, une seule pour toutes). Pensées à 15 Hz, pas à chaque image. Rien n'est écrit ailleurs que dans l'état
@@ -38,7 +40,15 @@
     gardien: { pv: 10, pvParBoss: 2, vitesse: 0.9, place: [3, 6], garde: 8, vue: 12, degatsParS: 45, reculM: 0.5 },
     // Embuscade (sandwich, horde) : égarés posés autour d'un point, au-delà du plafond `total` de `enPlus` au plus.
     embuscade: { rayon: 3, enPlus: 8 },
-    silhouette: { desVague: 2, vitesse: 3.2, contact: 0.8, degats: 35, faisceau: 32, vue: 30 },
+    // Silhouette : lente de loin (`vitesseLoin`), plus rapide sous `presM` m (`vitessePres`), + `vitesseParVague` à
+    // chaque vague après `desVague` (au plus + `vitesseBonusMax` : toujours sous la course du joueur, 7 m/s). Contact :
+    // `degats`, puis elle repart à `fuite` m. Touchée au fusil : elle recule de `reculM` m le long des tracés (sans
+    // place : repart à `repli` m) et reste sonnée `sonneeS` s. Présence : grésillement situé sous `bruitM` m (un tous
+    // les `bruitS` s, au hasard), lampe qui vacille sous `vacilleM` m (jusqu'à `vacilleHz` fois par seconde au plus
+    // près) ; tant qu'elle est dans le faisceau, la pile s'use × `pileX`.
+    silhouette: { desVague: 2, vitesseLoin: 1.2, vitessePres: 2.5, presM: 10, vitesseParVague: 0.1,
+      vitesseBonusMax: 1.2, contact: 0.8, degats: 50, fuite: [15, 25], reculM: 12, sonneeS: 3, repli: [25, 50],
+      faisceau: 32, vue: 30, bruitM: 25, bruitS: [0.9, 2.6], vacilleM: 8, vacilleHz: 4, pileX: 2 },
     apparition: { min: 15, max: 35, essais: 40 },
     munitions: { base: 4, parDeuxVagues: 1, min: 1, gain: 4 },
     // Quantités de base ; la difficulté les multiplie (coeur.js > DIFFICULTES.butin, lâchers compris).
@@ -675,10 +685,18 @@
     return !ctx.ligneBloquee(pos.x, pos.y, o.x, o.y);
   }
 
-  // → { degats, sons: [[nom, force]], ramasse: [type] }
+  // Vitesse de la silhouette à `d` m du joueur (m/s) : deux allures, un peu plus vite à chaque vague.
+  function vitesseSilhouette(p, d) {
+    const S = REGLES.silhouette;
+    const bonus = Math.min(S.vitesseBonusMax, S.vitesseParVague * Math.max(0, (p.vague || 0) - S.desVague));
+    return (d < S.presM ? S.vitessePres : S.vitesseLoin) + bonus;
+  }
+
+  // → { degats, sons: [[nom, force, angle]], ramasse: [type], hurle, silhouetteM (m ; null sans silhouette), fixee
+  // (silhouette dans le faisceau) }
   function animer(p, ctx, dt) {
     const t0 = performance.now(), t = t0, pos = ctx.pos, sc = ctx.sc, E = REGLES.egares, S = REGLES.silhouette;
-    const r = { degats: 0, sons: [], ramasse: [], hurle: false };
+    const r = { degats: 0, sons: [], ramasse: [], hurle: false, silhouetteM: null, fixee: false };
     const pas = [];
     // Menaces pensées à `iaHz` par seconde (pas à chaque image) : le coût ne monte plus avec la cadence d'affichage.
     p.iaAcc = (p.iaAcc || 0) + dt;
@@ -697,12 +715,22 @@
           o.grogneT = 4 + Math.random() * 5;
         }
       } else {
+        // Figée dans le faisceau, et sonnée un moment après un coup de fusil (même hors faisceau).
         if (pense) {
           o.vu = dansFaisceau(ctx, o, p.lampeK);
-          if (!o.vu) _versJoueur(p, ctx, o, S.vitesse, dtIa, t);
+          if (!o.vu && t >= (o.sonneeFin || 0)) _versJoueur(p, ctx, o, vitesseSilhouette(p, d), dtIa, t);
+        }
+        if (o.vu) r.fixee = true;
+        if (r.silhouetteM === null || d < r.silhouetteM) r.silhouetteM = d;
+        // Présence : grésillement situé, de plus en plus fort en approchant, jamais à intervalle fixe.
+        o.bruitT = (o.bruitT === undefined ? Math.random() * S.bruitS[1] : o.bruitT) - dt;
+        if (o.bruitT <= 0 && d < S.bruitM) {
+          const k = 1 - d / S.bruitM;
+          r.sons.push(["gresille", k * k, angle(ctx, o)]);
+          o.bruitT = S.bruitS[0] + Math.random() * (S.bruitS[1] - S.bruitS[0]);
         }
         if (_d(o, pos, sc) <= S.contact) {
-          r.degats += S.degats; r.sons.push(["blesse", 1]); _eloigner(p, ctx, o);
+          r.degats += S.degats; r.sons.push(["blesse", 1]); _eloigner(p, ctx, o, S.fuite);
         }
       }
       if (pense) _placer(o, ctx);
@@ -771,11 +799,57 @@
     surgir(p, ctx, o, H.renfort, 5);
   }
 
-  // La silhouette touchée (tir, contact) repart loin, hors de vue.
-  function _eloigner(p, ctx, o) {
-    const A = REGLES.apparition, q = _choisir(ctx, _pointsDesTraces(ctx.niveau).tous, A.min + 10, A.max + 15, []);
+  // La silhouette repart sur un point des tracés à `bornes` = [min, max] m du joueur (après un contact ; après un
+  // tir quand elle n'a pas la place de reculer).
+  function _eloigner(p, ctx, o, bornes) {
+    const q = _choisir(ctx, _pointsDesTraces(ctx.niveau).tous, bornes[0], bornes[1], []);
     if (q) { o.x = q.x; o.y = q.y; }
     o.noeud = undefined;
+    _placer(o, ctx);
+  }
+
+  // Place valide à `m` mètres de o en s'éloignant du joueur LE LONG des tracés : la carte des distances remontée de
+  // nœud en nœud (jamais par-dessus le joueur ; un cul-de-sac arrête le recul). → { x, y }, ou null (pas de réseau,
+  // aucune place valide à 2 m du point trouvé).
+  function _reculSurTraces(p, ctx, o, m, t) {
+    const c = _carte(p, ctx, t), sc = ctx.sc, pos = ctx.pos;
+    const s = c ? window.Pathfinder.snapPointToGraph(c.g, o) : null;
+    if (!s || !s.seg) return null;
+    const g = c.g, a = s.seg.a, b = s.seg.b;
+    // Sur le tronçon du joueur, le bout qui tourne le dos au joueur ; ailleurs, celui qui en est le plus loin.
+    const dos = function (k) { return (g.nodes[k].x - o.x) * (o.x - pos.x) + (g.nodes[k].y - o.y) * (o.y - pos.y); };
+    const meme = (a === c.a && b === c.b) || (a === c.b && b === c.a);
+    let k = (meme ? dos(a) >= dos(b) : c.dist[a] >= c.dist[b]) ? a : b, avant = k === a ? b : a;
+    let de = { x: o.x, y: o.y }, reste = m * sc, q = null;
+    for (let i = 0; i < 64 && reste > 0; i++) {
+      const n = g.nodes[k], l = Math.hypot(n.x - de.x, n.y - de.y);
+      if (l >= reste) { q = { x: de.x + (n.x - de.x) * reste / l, y: de.y + (n.y - de.y) * reste / l }; break; }
+      reste -= l; de = n; q = { x: n.x, y: n.y };
+      let suite = -1, bd = c.dist[k];
+      (g.edges[k] || []).forEach(function (e) {
+        if (e.to !== avant && Number.isFinite(c.dist[e.to]) && c.dist[e.to] > bd) { bd = c.dist[e.to]; suite = e.to; }
+      });
+      if (suite < 0) break;
+      avant = k; k = suite;
+    }
+    if (!q) return null;
+    if (placeOk(ctx, q.x, q.y)) return q;
+    for (let rr = 0.5; rr <= 2; rr += 0.5) {
+      for (let i = 0; i < 8; i++) {
+        const x = q.x + Math.cos(i * Math.PI / 4) * rr * sc, y = q.y + Math.sin(i * Math.PI / 4) * rr * sc;
+        if (placeOk(ctx, x, y)) return { x: x, y: y };
+      }
+    }
+    return null;
+  }
+
+  // Silhouette touchée au fusil : elle recule le long de la galerie et reste sonnée ; sans place où reculer, elle
+  // repart loin, hors de vue.
+  function _repousser(p, ctx, o) {
+    const S = REGLES.silhouette, t = performance.now(), q = _reculSurTraces(p, ctx, o, S.reculM, t);
+    o.sonneeFin = t + S.sonneeS * 1000;
+    if (!q) { _eloigner(p, ctx, o, S.repli); return; }
+    o.x = q.x; o.y = q.y; o.noeud = undefined;
     _placer(o, ctx);
   }
 
@@ -796,7 +870,7 @@
     });
     if (!cible) return res;
     res.touche = cible.type;
-    if (cible.type === "silhouette") { _eloigner(p, ctx, cible); return res; }
+    if (cible.type === "silhouette") { _repousser(p, ctx, cible); return res; }
     cible.pv -= dMin <= T.pres ? 2 : 1;
     cible.toucheT = performance.now();
     if (cible.type === "gardien" && cible.pv > 0) {
@@ -828,6 +902,7 @@
   window.KtaAddons = window.KtaAddons || {};
   window.KtaAddons.mkmgMonde = { REGLES: REGLES, peupler: peupler, animer: animer, tirer: tirer, dessiner: dessiner,
     vider: vider, liberer: liberer, dansFaisceau: dansFaisceau, surgir: surgir, placeOk: placeOk,
+    vitesseSilhouette: vitesseSilhouette,
     poserGardien: poserGardien, changerNiveau: changerNiveau, nouveau: nouveau, dansEau: dansEau, zonesDe: zonesDe,
     angle: angle };
 })();
