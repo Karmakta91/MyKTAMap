@@ -178,10 +178,6 @@
   sous WebKit) ; au téléphone, ~1 500 couches de POI + `--kta-bearing` sur toute la carte figent le geste (jusqu'à 1,7 s).
   `qui: Claude · action: a) supprimer le redessin inutile (risque faible) ; b) et c) en QCM · depuis: 06/11/2026
   · taille: S`
-- **`checkup-ultra-traces-plan.js` impossible sur le relevé fictif** — il attend plus de 20 tracés de calque : rouge
-  (délai) sur la base comme sur le lot fuite-calques-2d.
-  `qui: Claude · action: l'adapter au relevé fictif ou le documenter comme checkup sur plan réel · depuis: 06/11/2026
-  · taille: XS`
 - **Mode « strict » des jonctions, par plan** — la règle stricte du 05/11 n'a pas réglé l'itinéraire de KARMA qui
   traverse un mur. Idée KARMA : tolérance 0, deux tracés qui ne se touchent pas = réseau coupé (seuls sommets partagés
   et croisements exacts). ⚠️ D'abord vérifier si le trajet suit un VRAI tracé à travers le mur (le strict n'y peut rien).

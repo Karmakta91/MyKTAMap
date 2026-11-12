@@ -13,6 +13,7 @@
 //   3. un calque DÉCOCHÉ reste décoché ;
 //   4. decim au dézoom : moins de sommets dessinés, `entry.points` intact ; rezoomé, tout revient ;
 //   5. réglages recoupés : tout revient.
+// Sous 20 tracés de calque (relevé fictif), un calque d’essai fabriqué par le harnais complète : voir MIN_TRACES.
 // Usage : node scripts/smoke/checkup-ultra-traces-plan.js
 "use strict";
 
@@ -41,6 +42,27 @@ function planAOuvrir() {
 }
 const PLAN = planAOuvrir();
 
+// 🩸 Le relevé fictif n'a que quelques tracés de calque : trop peu pour qu'un écran en laisse dehors, le passage 2
+// ne prouverait rien. Sous MIN_TRACES, le harnais ajoute un calque d'essai (jamais écrit dans data/), chargé par le
+// même chemin qu'un calque du plan (utils.js > ajouterPointsDepuisJSON) : grille de tracés sur toute l'image,
+// sommets serrés pour que decim ait de quoi simplifier au dézoom.
+const MIN_TRACES = 20;
+let calqueEssai = { roads: [] };
+function fabriquerCalque(w, h) {
+  const roads = [], COL = 6, LIG = 6, N = 60;
+  for (let i = 0; i < COL; i++) {
+    for (let j = 0; j < LIG; j++) {
+      const x0 = w * (i + 0.1) / COL, x1 = w * (i + 0.9) / COL, y = h * (j + 0.5) / LIG, a = h / LIG * 0.15;
+      const points = [];
+      for (let k = 0; k < N; k++) {
+        points.push({ x: Math.round(x0 + (x1 - x0) * k / (N - 1)), y: Math.round(y + a * Math.sin(k / 3)) });
+      }
+      roads.push({ type: j % 2 ? "secondaire" : "principal", points: points });
+    }
+  }
+  return { roads: roads };
+}
+
 const problemes = [];
 function pb(m) { problemes.push(m); console.log("  ❌ " + m); }
 function ok(m) { console.log("  ✅ " + m); }
@@ -62,9 +84,28 @@ function inf(m) { console.log("  •  " + m); }
     await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
     await page.getByText(PLAN.nom, { exact: false }).first().click();
     await attendre(page, function () {
-      return !!window.map && Array.isArray(window._ktaDataPolylines) && window._ktaDataPolylines.length > 20;
+      return !!window.map && !!window.APP_CONFIG && window.APP_CONFIG.imageWidth > 0 &&
+        Array.isArray(window._ktaDataPolylines);
     }, 90000);
     await page.waitForTimeout(3000);
+    const avant = await page.evaluate(function () { return window._ktaDataPolylines.length; });
+    if (avant <= MIN_TRACES) {
+      const dim = await page.evaluate(function () {
+        return { w: window.APP_CONFIG.imageWidth, h: window.APP_CONFIG.imageHeight };
+      });
+      calqueEssai = fabriquerCalque(dim.w, dim.h);
+      // URL blob: : un fetch vers une adresse inventée passerait par le Service Worker, que page.route ne voit pas.
+      const etat = await page.evaluate(function (json) {
+        if (typeof ajouterPointsDepuisJSON !== "function") return "ajouterPointsDepuisJSON absent";
+        const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+        ajouterPointsDepuisJSON(url, L.layerGroup().addTo(window.map));
+        return "ok";
+      }, JSON.stringify(calqueEssai));
+      if (etat !== "ok") throw new Error(etat);
+      await attendre(page, function () { return window._ktaDataPolylines.length > 20; }, 30000);
+      await page.waitForTimeout(1500);
+      inf(avant + " tracé(s) de calque dans le plan : calque d'essai ajouté (" + calqueEssai.roads.length + " tracés)");
+    }
 
     const mesurer = function () {
       return page.evaluate(function () {
