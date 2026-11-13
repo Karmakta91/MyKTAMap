@@ -9269,7 +9269,7 @@ async function sectionFichesReglage(nav) {
 // ── 24 quater. Sol et ciel de carrière texturés (vue3d.js > _solDame, _cielCarriere, _cartesSol, _calerCarre) ────────
 // KTA_V3D_SEUL=textures. Objets FICTIFS en mémoire : galerie est-ouest, piliers d'une salle. 🧱 allumé : deux motifs
 // distincts (sol, ciel), couleur et relief, sans couture, sol peu contrasté et jamais plus clair que le sable
-// calcaire, liseré de l'itinéraire à plus de 3:1 du sol le plus sombre ; carré qui suit calé sur le monde (après un
+// calcaire, ciel clair et presque nu (quelques passes de coups de pic parallèles), liseré de l'itinéraire à plus de 3:1 du sol le plus sombre ; carré qui suit calé sur le monde (après un
 // déplacement, après un changement de portée), pièces des galeries à la même projection ; 🧱 coupé : noirs, sans
 // carte ni relief, aucun dessin ; reprise du contexte WebGL ; temps du premier dessin (téléphone ralenti × 4 sous
 // Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied des piliers, du mur et des parois,
@@ -9546,6 +9546,15 @@ async function sectionTexturesSol(nav) {
     verifier(M.ciel.moyenne < M.sol.moyenne - 3 && M.sol.pente > 0.02 && M.ciel.pente > 0.02,
       nom + "ciel plus sombre que le sol (" + M.ciel.moyenne + " < " + M.sol.moyenne + "), relief présent (pente " +
       M.sol.pente + " / " + M.ciel.pente + ")", M);
+    // Ciel presque nu (vue3d.js > CIEL) : jamais sous 105 de luminance (un niveau du dessus en transparence s'y lit,
+    // § 46 bis), quelques passes de pic seulement — 245 coups par motif en donnaient un tissu froissé ; au plus un
+    // tiers, rangés à une ou deux orientations.
+    const Tc = M.ciel.traces || {};
+    verifier(M.ciel.moyenne >= 105 && Tc.passes >= 3 && Tc.passes <= 8 && Tc.coups >= 20 && Tc.coups <= 82 &&
+      Tc.orientations >= 1 && Tc.orientations <= 2,
+    nom + "ciel clair et presque nu (luminance " + M.ciel.moyenne + " ≥ 105) : " + Tc.coups + " coups de pic par " +
+      "motif de 4 m (au plus 82), en " + Tc.passes + " passes de coups parallèles, " + Tc.orientations +
+      " orientation(s)", M.ciel);
     // Contraste WCAG entre le sol le plus sombre (5e centile, luminance relative) et le liseré de l'itinéraire.
     const lin = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
     const lumHex = function (h) {

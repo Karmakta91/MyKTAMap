@@ -2093,10 +2093,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   par plages. 🩸 Plages et taches larges (`nuance`) restent faibles : vues d'en haut, en vue d'édition, des plages
   marquées dessinent la grille du motif de 4 m ; le relief et le cailloutis, eux, ne se lisent qu'à hauteur d'yeux
   et portent le caractère du sol. **Plafond** (`CIEL`, `_cielCarriere`) : le banc laissé
-  au toit, bosses de la taille, fissures longues en tous sens, traces de pic en grappes (`CIEL.trace` : sillons en
-  fuseau de 20 à 50 cm, larges de 5 à 6 cm — plus fins, ils se fondent dès 10 m en ☀️ Plein jour et le plafond d'une
-  salle redevient lisse), un peu plus gris et plus sombre que le sol (pas davantage : trop sombre, un niveau du dessus montré en transparence ne s'y lisait plus,
-  checkup § 46 bis). ⚠️ contrat (décision produit) : que des traits ouverts, dans la couleur comme dans le relief —
+  en place au toit, un joint de stratification presque plan — bosses douces, fissures longues en tous sens, et peu de
+  traces d'outil (décision produit) : six passes de pic par motif (`CIEL.passes`, `CIEL.trace`), chacune une
+  rangée de 7 à 13 coups courts (16 à 30 cm), droits, parallèles et régulièrement espacés (5,5 à 8 cm), tous à l'une
+  des deux orientations du motif, obliques à leur rangée ; de grandes plages nues entre elles. 🩸 Coups fins et de
+  creux modéré : des sillons larges et creux en faisceaux qui convergent se lisent comme les plis d'un tissu
+  froissé. Un peu plus gris et plus sombre que le sol (pas davantage : trop sombre, un niveau du dessus montré en
+  transparence ne s'y lisait plus, checkup § 46 bis ; luminance du motif d'au moins 105, checkup § 24 quater). ⚠️ contrat (décision produit) : que des traits ouverts, dans la couleur comme dans le relief —
   un contour fermé (plaque de banc, palier) se répète avec le motif et craquelle le plafond d'une longue galerie.
   Motif de **4 m** à 256 px (64 px/m ; 512 px en Textures HD) : plus grand que celui d'une
   paroi, un sol se voit sur des dizaines de mètres. ⚠️ contrat (décision produit) : le sol reste peu contrasté et

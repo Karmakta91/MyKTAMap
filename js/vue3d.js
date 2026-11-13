@@ -192,18 +192,22 @@
   // liserés, zones et plan au sol se lisent dessus.
   const SOL = { m: 4, px: 256, couleur: COULEUR_CALCAIRE, terre: "#bda881", eclat: "#d3c6a8", terrePart: 0.35,
     terreForce: 0.35, nuance: 0.07, cailloux: 1300, caillou: [0.008, 0.035], grain: 0.1, relief: 1.7, graine: 83 };
-  // Ciel de carrière (plafond, 🧱 activé ; _cielCarriere) : le banc laissé au toit, taillé au pic. `fissures`
-  // fissures longues en tous sens, `grappes` grappes de traces de pic, bosses de la taille, taches larges. Plus gris
-  // et plus sombre que le sol : le regard reste en bas. ⚠️ contrat (décision produit) : que des traits OUVERTS
-  // (fissures, sillons) — un contour fermé (plaque de banc, palier) se répète avec le motif et craquelle le plafond
+  // Ciel de carrière (plafond, 🧱 activé ; _cielCarriere) : le banc laissé en place au toit, un joint de
+  // stratification presque plan. `fissures` fissures longues en tous sens, bosses douces, taches larges, et peu de
+  // traces d'outil (décision produit) : `passes` passes de pic par motif, de grandes plages nues entre elles. Plus
+  // gris et plus sombre que le sol : le regard reste en bas. ⚠️ contrat (décision produit) : que des traits OUVERTS
+  // (fissures, coups) — un contour fermé (plaque de banc, palier) se répète avec le motif et craquelle le plafond
   // d'une longue galerie. ⚠️ contrat : même `m` que SOL (une seule projection monde pour le sol et le plafond,
   // _dalleTexturee).
-  // `trace` : un sillon de pic, long de `long` m, de rayon `rayon` m, espacé de `pas` m du suivant dans sa grappe,
-  // creusé de `creux` (hauteur dessinée) et assombri de `sombre` au fond. 🩸 Taille voulue : plus fins ou moins
-  // marqués, les sillons se fondent dès 10 m sous un éclairage plat (☀️ Plein jour) et le plafond d'une salle
-  // redevient lisse.
-  const CIEL = { m: SOL.m, px: 256, couleur: "#c1b598", fissures: 11, grappes: 70, grain: 0.07, relief: 2.6,
-    trace: { long: [0.2, 0.5], rayon: 0.028, pas: [0.07, 0.12], creux: 0.17, sombre: 0.14 }, graine: 89 };
+  // `trace` : une passe = `coups` coups droits, parallèles entre eux et régulièrement espacés de `pas` m le long
+  // d'une rangée, tous à l'une des orientations `angles` (rad : une ou deux dominantes pour tout le motif) ; un
+  // coup est long de `long` m (le même à `ecart` près dans sa passe), de rayon `rayon` m, creusé de `creux`
+  // (hauteur dessinée) et assombri de `sombre` au fond. 🩸 Coups fins, rectilignes et de creux modéré, exprès : des
+  // sillons larges et creux en faisceaux qui convergent se lisent comme les plis d'un tissu froissé, pas comme un
+  // travail d'outil.
+  const CIEL = { m: SOL.m, px: 256, couleur: "#c1b598", fissures: 11, passes: 6, grain: 0.07, relief: 2.6,
+    trace: { angles: [0.55, 2.3], coups: [7, 13], long: [0.16, 0.3], ecart: 0.15, rayon: 0.02, pas: [0.055, 0.08],
+      creux: 0.1, sombre: 0.1 }, graine: 89 };
   // Ordre de rendu du sol (carré qui suit et sol des galeries) : avant tout le reste, pour que le plan au sol
   // (PLAN_SOL.ordre) se pose dessus sans dépendre de la profondeur.
   const ORDRE_SOL = -0.6;
@@ -2584,34 +2588,42 @@
     return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, S.relief * _fin()) };
   }
 
-  // Ciel de carrière (CIEL) : le banc de calcaire laissé au toit. Bosses de la taille à deux échelles, fissures
-  // longues en tous sens, traces de pic en grappes (sillons courts que la lampe accroche), taches larges (humidité,
-  // fumée de lampe). Aucun contour fermé (contrat de CIEL).
-  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  // Ciel de carrière (CIEL) : le banc de calcaire laissé au toit, presque plan. Bosses douces à deux échelles,
+  // fissures longues en tous sens, quelques passes de pic (rangées de coups courts, droits, parallèles et
+  // régulièrement espacés, obliques à leur rangée ; CIEL.trace), taches larges (humidité, fumée de lampe). Aucun
+  // contour fermé (contrat de CIEL).
+  // → { couleur, normale (canvas n × n), traces: { passes, coups, orientations } (relevé du checkup) }.
+  // 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _cielCarriere(alea) {
     const T = CIEL, n = _px(T), k = n / T.m, q = _fin(), haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
     const creux = new Float32Array(n * n);
     const moyen = _champBoucle(alea, 11, 11, n), fin = _champBoucle(alea, 34, 34, n);
     const tache = _champBoucle(alea, 3, 3, n), tache2 = _champBoucle(alea, 9, 9, n);
-    for (let p = 0; p < n * n; p++) haut[p] = 0.3 * moyen[p] + 0.14 * fin[p];
+    for (let p = 0; p < n * n; p++) haut[p] = 0.22 * moyen[p] + 0.14 * fin[p];
     const C = { n: n, q: q, creux: creux, sombre: sombre };
     for (let f = 0; f < T.fissures; f++) {
       _fissurer(C, alea, alea() * n, alea() * n, alea() * 2 * Math.PI, (0.5 + alea() * 1.3) * k,
         (0.3 + alea() * 0.4) * q, 0.5);
     }
-    const R = T.trace;
-    for (let g = 0; g < T.grappes; g++) {
-      const cx = alea() * n, cy = alea() * n, a0 = alea() * Math.PI, nb = 2 + Math.floor(alea() * 4);
+    const R = T.trace, tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
+    const traces = { passes: T.passes, coups: 0, orientations: [] };
+    for (let g = 0; g < T.passes; g++) {
+      // Une passe : même orientation, même pas et (à peu près) même longueur pour tous ses coups ; la rangée court
+      // en travers des coups, à 60–80° d'eux (coups obliques à leur rangée).
+      const dominante = Math.floor(alea() * R.angles.length), a = R.angles[dominante] + (alea() - 0.5) * 0.12;
+      if (traces.orientations.indexOf(dominante) < 0) traces.orientations.push(dominante);
+      const rg = a + (alea() < 0.5 ? -1 : 1) * (1.05 + alea() * 0.35), nb = Math.round(tire(R.coups));
+      const pas = tire(R.pas) * k, l0 = tire(R.long) * k, ca = Math.cos(a), sa = Math.sin(a);
+      let ox = alea() * n, oy = alea() * n;
+      traces.coups += nb;
       for (let i = 0; i < nb; i++) {
-        const a = a0 + (alea() - 0.5) * 0.25, l = (R.long[0] + alea() * (R.long[1] - R.long[0])) * k;
-        const e = (R.pas[0] + alea() * (R.pas[1] - R.pas[0])) * k * i;
-        const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
-        // Sillon en fuseau : plein au milieu, effilé aux deux bouts (un coup de pic, pas un trait de règle).
+        const l = l0 * (1 + (alea() - 0.5) * 2 * R.ecart), f = 0.75 + alea() * 0.25;
+        // Coup droit, plein sur toute sa longueur, effilé aux deux bouts seulement.
         for (let s = 0; s < l; s += 0.5 * q) {
-          const t = Math.sin(Math.PI * s / l);
-          _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, R.rayon * k * (0.45 + 0.55 * t), R.creux * t,
-            R.sombre * t);
+          const t = Math.min(1, 5 * Math.min(s, l - s) / l);
+          _creuser(C, ox + ca * s, oy + sa * s, R.rayon * k * (0.6 + 0.4 * t), R.creux * f * t, R.sombre * f * t);
         }
+        ox += Math.cos(rg) * pas; oy += Math.sin(rg) * pas;
       }
     }
     const img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(T.couleur);
@@ -2628,7 +2640,7 @@
         img[o4 + 3] = 255;
       }
     }
-    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, T.relief * q) };
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, T.relief * q), traces: traces };
   }
 
   // Roche brute (piliers et fronts : la masse calcaire laissée en place, jamais appareillée) : relief en bosses à
@@ -13793,6 +13805,10 @@
           p95: +tri[Math.floor(n * n * 0.95)].toFixed(1), lum5: +lin(tri[Math.floor(n * n * 0.05)]).toFixed(4),
           couture: +(bord / dedans).toFixed(2), pente: pente(q[1].normale.image), taille: n };
       });
+      // Traces d'outil du ciel dessiné à la finesse en vigueur (_cielCarriere).
+      const dessinCiel = _appareils[_fin() > 1 ? "ciel@" + _fin() : "ciel"];
+      r.motifs.ciel.traces = dessinCiel && dessinCiel.traces ? { passes: dessinCiel.traces.passes,
+        coups: dessinCiel.traces.coups, orientations: dessinCiel.traces.orientations.length } : null;
     }
     r.materiaux.paroi.repetition = [e.mats.paroi.map.repeat.x, e.mats.paroi.map.repeat.y];
     if (e.mats.paroi.normalMap) {
