@@ -2012,16 +2012,29 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   joints de mortier assombris, fond bouché), 0,5 m de profondeur, **extrados à la clé au ciel du niveau**. Plus large
   que le ciel ne le permet (piédroits sous 0,6 m) : surbaissé en demi-ellipse. **Tympan** (`_tympanArc`) : maçonnerie
   pleine de la profondeur de l'arc qui comble tout l'espace entre l'extrados, les piédroits, les parois et le ciel
-  (faces reculées de 5 mm sous les claveaux, même pierre ou même couleur de légende) ; seule l'ouverture sous
+  (faces reculées de 5 mm sous les claveaux, appareil des parois ou couleur de légende) ; seule l'ouverture sous
   l'intrados reste vide. Arc oblique dans un tube : ses bouts suivent la paroi ; sans paroi contre lui (structures,
   chambre), tel que dessiné et fermé aux bouts. En mixte et en galerie, un segment en travers d'un
   tube (milieu dans sa largeur, hors chambre, à plus de 30° de l'axe) va **d'une paroi du tube à l'autre**, là où sa
-  ligne les coupe ; ailleurs (chambre, structures), tel que dessiné. Couleur (décision produit) : légende avec 🧱
-  coupé, calcaire chaud avec 🧱 (`ARC.pierre`, famille des piliers texturés, accordé aux parois). ⚠️ contrat : **on
+  ligne les coupe ; ailleurs (chambre, structures), tel que dessiné. **Matière et teinte** (décision produit).
+  🧱 coupé : aplats à la couleur de la légende, dans le lot opaque de la tuile. 🧱 activé : pierre de taille
+  texturée avec relief, **à la teinte du niveau** (`_teinteArc`) — en travers d'un tube, celle de ses parois de
+  pierre (la texture seule) ; ailleurs (chambre, rendu structures), celle de la masse du niveau, comme ses piliers
+  (`TEINTE_MASSE_2` quand les structures de 2e masse y sont les plus nombreuses). **Claveaux** : un bloc de
+  géométrie chacun (joints et fonds de joint gardés), en pierre dressée (`CLAVEAU`, `_pierresDressees`,
+  `_matClaveau`) — une planche de 4 × 4 pierres entières dessinée dans un canvas (grain fin, nuance légère, arêtes
+  émoussées, layage discret par endroits), une case tirée par face, nuance par claveau (au plus − 10 %).
+  **Piédroits, impostes et tympan** : l'appareil des parois (`PIERRE`, matériau `paroi`, coordonnées de texture
+  en mètres), avec l'ombre de contact au pied. Architecture : deux lots par tuile qui porte un arc (`_lotsArc`,
+  `_poserArcs`, famille « arc ») — la maçonnerie réemploie le matériau et la texture des parois, seuls les
+  claveaux ont les leurs (une pierre entière par face ne se tire pas d'un appareil répété). Les Textures HD suivent
+  (planche en 512 px, grain de détail). Coût mesuré (douze arcs dans une galerie, PC) : 2 appels de dessin par tuile
+  qui porte un arc (1 sans texture), 266 triangles par arc de 2,5 m (250 sans texture : 16 pour la bande de l'ombre
+  de contact ; tympan : 6 × claveaux + 8), 2 textures de plus pour la vue, premier dessin de la planche 11 à 15 ms
+  (66 ms en 512 px), temps par image 0,4 → 0,5 ms. ⚠️ contrat : **on
   passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas `arc`) ; ni face où
   poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode mixte, il ne fait pas
-  d'une galerie une chambre (`galerieEmprise.js > _indexStructures`). ~250 triangles par arc de 2,5 m (tympan :
-  6 × claveaux + 8 de plus).
+  d'une galerie une chambre (`galerieEmprise.js > _indexStructures`).
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.

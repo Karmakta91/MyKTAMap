@@ -4020,6 +4020,8 @@ async function restaurerFormes(page) {
 // d'une paroi du tube à l'autre en mixte et en galerie (portée 2,5 m, clé au ciel, piédroits, claveaux impairs),
 // tel que dessiné en structures (surbaissé) ; tympan : aucun jour entre l'extrados, le ciel et les parois, ouverture
 // libre sous l'intrados (rayons sur la scène) ; on marche dessous sans buter (au milieu et contre un piédroit).
+// 🧱 activé : deux maillages texturés avec relief (claveaux en pierre dressée, maçonnerie dans l'appareil des
+// parois), teinte du niveau (parois du tube, masse du niveau), Textures HD ; 🧱 coupé : aplats de la légende.
 // Ossuaire contre la paroi du côté du POI (le pan, crânes, obstacle mince : on ne l'atteint pas de face, on le
 // longe), sur la face d'un pilier à 3 m, panneau seul en structures sans structure. Outil de carrier (2,1 × 1,2 m, le
 // long de l'axe) qui arrête le pas des deux côtés. Fontis : plafond troué, cloche, cône poussé contre la paroi du côté du POI, qui
@@ -4114,6 +4116,18 @@ async function sectionModeles(page) {
       }
       return out;
     };
+    // Maillages des arcs texturés (famille « arc ») de la scène : carte, relief, coordonnées de texture, triangles.
+    const maillesArc = function () {
+      const out = [];
+      if (!scene) return out;
+      scene.traverse(function (m) {
+        if (!m.isMesh || m.userData.famille !== "arc") return;
+        out.push({ carte: !!m.material.map, relief: !!m.material.normalMap, sommets: !!m.material.vertexColors,
+          uv: !!m.geometry.attributes.uv, triangles: m.geometry.attributes.position.count / 3,
+          taille: m.material.map ? m.material.map.image.width : 0 });
+      });
+      return out;
+    };
     const r = {};
     for (const rendu of ["mixte", "galerie", "structures"]) {
       await ouvrir(rendu, -34, 0, 90);
@@ -4123,6 +4137,8 @@ async function sectionModeles(page) {
       const e = K.etat();
       o.arcs = e.arcs; o.hauteur = e.hauteur;
       if (e.arcs && e.arcs[0] && scene) o.jours = jours(e.arcs[0], e.hauteur);
+      o.mailles = maillesArc();
+      o.mats = { claveau: K.textures().materiaux.claveau || null, paroi: K.textures().materiaux.paroi };
       const pick = function (v) {
         return v ? { construit: v.construit, place: rel(v), cote: v.cote, appui: v.appui, plafond: v.plafond,
           triangles: v.triangles, bouchesPlafond: v.bouchesPlafond, familles: v.familles, cone: v.cone || null,
@@ -4159,9 +4175,31 @@ async function sectionModeles(page) {
     const degT = K.greffer({ nom: "v3d-modeles", scene: function (c) { ctx = c; scene = c.groupe.parent; } });
     if (degT) degT();
     if (K.etat().arcs[0] && scene) r.sansTx.jours = jours(K.etat().arcs[0], K.etat().hauteur);
+    r.sansTx.mailles = maillesArc();
+    r.sansTx.arc = K.etat().arcs[0];
+    r.sansTx.legende = (K.textures().couleurs.opaque || []).slice();
     K.basculerTextures();
-    await pause(100);
+    await pause(250);
+    // 🧱 rallumé vue ouverte : l'arc reprend ses deux maillages texturés ; Textures HD : la planche des claveaux suit.
+    r.rallume = { mailles: maillesArc(), arc: K.etat().arcs[0] };
+    K.basculerTexturesHD();
+    await pause(400);
+    r.hd = { mailles: maillesArc(), claveau: K.textures().materiaux.claveau, dessins: K.textures().dessins };
+    K.basculerTexturesHD();
+    await pause(300);
+    r.hdCoupe = (K.textures().materiaux.claveau || {}).carte;
     await K.fermer();
+    // Teinte du niveau : structures de 2e masse les plus nombreuses → l'arc tel que dessiné (structures) prend la
+    // teinte de la 2e masse, comme les piliers ; en travers d'un tube (mixte), celle de ses parois de pierre.
+    window.setStructures([{ uid: "st_m_arc", type: "arc", level: 0, points: [P(-30, -1.6), P(-30, 1.6)] },
+      { uid: "st_m_pil", type: "pilier-2", level: 0, points: [P(0, 20), P(2, 20), P(2, 22), P(0, 22)] }]);
+    r.masse2 = {};
+    for (const rendu of ["structures", "mixte"]) {
+      await ouvrir(rendu, -34, 0, 90);
+      r.masse2[rendu] = (K.etat().arcs[0] || {}).teinte;
+      if (rendu === "structures") r.masse2.piliers = (K.textures().teintes.roche || []).slice();
+      await K.fermer();
+    }
     return r;
   });
   console.log("§ 14 decies — arc de soutènement, ossuaire, outil de carrier, fontis");
@@ -4230,6 +4268,45 @@ async function sectionModeles(page) {
     "structure à portée (structures) : le panneau seul", { m: M.ossPil, s: S.ossPil, g: Gl.ossPil, so: S.oss });
   verifier(R.sansTx.arcs === 1 && R.sansTx.outil && sansJour(R.sansTx.jours),
     "🧱 coupé : arc et outil construits, tympan sans jour", R.sansTx);
+  // Arc texturé (vue3d.js > _lotsArc, CLAVEAU, _teinteArc) : 🧱 activé, deux maillages à carte, relief, coordonnées
+  // de texture et couleurs par sommet (claveaux en pierre dressée, maçonnerie dans l'appareil des parois).
+  const texture = function (l) {
+    return l.length === 2 && l.every(function (m) { return m.carte && m.relief && m.sommets && m.uv && m.triangles > 0; });
+  };
+  ["mixte", "galerie", "structures"].forEach(function (k) {
+    const o = R[k], a0 = (o.arcs || [])[0] || {}, tri = o.mailles.reduce(function (s, m) { return s + m.triangles; }, 0);
+    verifier(texture(o.mailles) && a0.texture === true && tri === a0.triangles && a0.teinte === "#ffffff",
+      k + " : 🧱 activé, arc en deux maillages texturés avec relief (claveaux, maçonnerie ; " + tri +
+      " triangles, ceux du relevé), teinte du niveau (1re masse, parois : blanc)", { mailles: o.mailles, arc: a0 });
+  });
+  // Teinte de la pierre : moyenne de la planche des claveaux à moins de 8 % par composante de celle des parois, et
+  // jamais plus sombre de plus de 8 % (l'arc ne jure plus à côté d'elles).
+  const mcl = M.mats.claveau || {}, mpa = M.mats.paroi || {};
+  const ecartTeinte = (mcl.moyenne && mpa.moyenne) ? mcl.moyenne.map(function (v, i) {
+    return +((v - mpa.moyenne[i]) / mpa.moyenne[i]).toFixed(3);
+  }) : null;
+  verifier(!!ecartTeinte && ecartTeinte.every(function (d) { return Math.abs(d) <= 0.08; }) && mcl.carte === "256x256" &&
+    mcl.normale && mcl.couleursSommets && mcl.pente > 0.02 && mpa.pierre,
+  "claveaux : planche de pierres dressées de 256 px avec relief (pente " + mcl.pente + "), teinte moyenne " +
+    JSON.stringify(mcl.moyenne) + " proche de celle de la pierre des parois " + JSON.stringify(mpa.moyenne) +
+    " (écarts " + JSON.stringify(ecartTeinte) + ", au plus 8 %) ; premier dessin " + mcl.ms + " ms", { c: mcl, p: mpa });
+  const sa = R.sansTx.arc || {};
+  verifier(R.sansTx.mailles.length === 0 && sa.texture === false && /^#[0-9a-f]{6}$/.test(sa.teinte || "") &&
+    sa.teinte !== "#ffffff" && sa.triangles === (M.arcs[0] || {}).triangles - 16,
+  "🧱 coupé : arc en aplats à la couleur de la légende (" + sa.teinte + "), dans le lot opaque, aucun maillage " +
+    "texturé, " + sa.triangles + " triangles (16 de moins : la bande de l'ombre de contact des huit faces des " +
+    "piédroits)", { mailles: R.sansTx.mailles, arc: sa });
+  verifier(texture(R.rallume.mailles) && (R.rallume.arc || {}).texture === true,
+    "🧱 rallumé vue ouverte : l'arc reprend sa pierre texturée", R.rallume);
+  verifier(texture(R.hd.mailles) && R.hd.mailles.every(function (m) { return m.taille === 512; }) &&
+    (R.hd.claveau || {}).carte === "512x512" && R.hd.dessins["claveau@2"] >= 0 && R.hdCoupe === "256x256",
+  "Textures HD : claveaux et maçonnerie de l'arc en 512 px (dessin " + R.hd.dessins["claveau@2"] +
+    " ms), retour à 256 px", { hd: R.hd.mailles, coupe: R.hdCoupe });
+  const p2 = (R.masse2.piliers || []).map(function (c) { return parseInt(c.slice(5, 7), 16) / parseInt(c.slice(1, 3), 16); });
+  verifier(R.masse2.structures === "#f0b98a" && R.masse2.mixte === "#ffffff" && p2.length > 0 &&
+    p2.every(function (v) { return v < 0.65; }),
+  "teinte du niveau : niveau de 2e masse → arc tel que dessiné à la teinte chaude de ses piliers (" +
+    R.masse2.structures + "), arc en travers d'un tube à celle de ses parois (" + R.masse2.mixte + ")", R.masse2);
   if (CAPTURES) await capturesModeles(page);
   await restaurerFormes(page);
 }

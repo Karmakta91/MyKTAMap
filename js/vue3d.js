@@ -134,11 +134,14 @@
   // haut : plus large que le ciel ne le permet, l'arc est surbaissé (demi-ellipse). Portée sous `porteeMin` : rien.
   // Tympan : maçonnerie de même profondeur entre l'extrados, les piédroits, les parois et le ciel, faces reculées de
   // `retrait` m sous celles des claveaux ; joints entre claveaux bouchés au fond par un mortier reculé de `fond` m.
-  // Teinte (décision produit) : couleur de la légende (🧱 coupé) ou `pierre` (🧱 : calcaire chaud de la famille des
-  // piliers texturés, accordé aux parois, jamais blanc neuf), nuancée par claveau.
+  // Matière et teinte (décision produit). 🧱 coupé : aplats à la couleur de la légende, nuancée de ± `nuance` par
+  // claveau. 🧱 activé : pierre de taille texturée à la teinte du niveau (_teinteArc : celle des parois du tube qu'il
+  // barre, sinon celle de la masse du niveau, comme ses piliers) — claveaux en pierre dressée (CLAVEAU), un bloc de
+  // géométrie chacun, assombri d'au plus `nuance` ; piédroits, impostes et tympan dans l'appareil des parois
+  // (PIERRE), à `piedroit`, `sommier` et `tympan` de la teinte ; faces des joints à `mortier`.
   const ARC = { pied: 0.3, ep: 0.25, prof: 0.5, joint: 0.012, claveau: 0.32, min: 5, max: 15, cle: 0.04,
     imposte: 0.06, deborde: 0.03, piedMin: 0.6, porteeMin: 0.6, nuance: 0.1, mortier: 0.5, tube: 3,
-    retrait: 0.005, fond: 0.006, tympan: 0.94, pierre: "#b09872" };
+    retrait: 0.005, fond: 0.006, piedroit: 0.92, sommier: 0.85, tympan: 0.94 };
   const LARGEUR_TRACE = 0.25;       // m
   // Itinéraire au sol (décision produit) : le dessin du trajet du jeu (addons/mkmg), à la couleur de l'itinéraire de
   // la carte (--kta-interaction ; le doré reste aux itinéraires publiés par l'équipe). Ruban PLEIN continu de
@@ -268,6 +271,13 @@
   // lit ondulé), arêtes émoussées. Longueurs en m.
   const PIERRE = { m: 2, px: 256, couleur: "#d5c9ad", mortier: "#8f8571", assise: [0.28, 0.46], bloc: [0.5, 1.1],
     joint: [0.008, 0.02], onde: 0.008, pente: 0.05, biseau: 0.03, relief: 2.2, graine: 29 };
+  // Pierre dressée des claveaux d'un arc (🧱 activé ; _pierresDressees) : planche de `cases` × `cases` pierres
+  // entières, une case par face de claveau (tirée par face, parfois retournée : deux claveaux voisins ne sortent pas
+  // du même moule). Une case vaut `pierre` m de pierre : grain fin, nuance légère, arêtes émoussées sur `biseau` m,
+  // par endroits un layage discret (stries parallèles de taille tous les `layage` m, de force `strie`). Même
+  // teinte de base que la pierre des parois. `m` : mètres couverts par la planche, pour le grain des Textures HD.
+  const CLAVEAU = { px: 256, cases: 4, pierre: 0.32, m: 1.28, couleur: PIERRE.couleur, biseau: 0.014,
+    layage: [0.014, 0.022], strie: 0.5, relief: 2.2, graine: 37 };
   // Parpaing (murs) : motif de 1 m (256 px/m, un joint de 1 cm fait 2,6 px ; un appareil régulier se répète de
   // toute façon), blocs de 50 × 20 cm à joints droits, gris béton, pores.
   const PARPAING = { m: 1, px: 256, couleur: "#a3a29c", mortier: "#b5b1a6", l: 0.5, h: 0.2, joint: 0.01,
@@ -1374,12 +1384,12 @@
     // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine. Remblais et effondrement (deux
     // volumes) texturés : un lot chacun, chambres et tubes ensemble (_zoneGalerie) ; 🧱 coupé, les lots d'origine.
     const roche = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
-    const remblaisTex = new Lot(), eboulis = new Lot();
+    const remblaisTex = new Lot(), eboulis = new Lot(), arcs = _lotsArc(opaque, h);
     if (ombre) roche.ombre = parpaing.ombre = ombre;
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
       remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
-      if (t.s[i].type === "arc") { _arcSoutenement(opaque, t.s[i], mx); continue; }
+      if (t.s[i].type === "arc") { _arcSoutenement(arcs, t.s[i], mx); continue; }
       const s = t.s[i], tex = _e.textures ? _textureDe(s.type) : null;
       const col = !tex ? _couleur("structures", s.type) : tex === "roche" ? _nuanceRoche(s) : BLANC;
       const m = tex ? (tex === "roche" ? ROCHE : PARPAING).m : undefined;
@@ -1448,6 +1458,7 @@
     if (roche.p.length || parpaing.p.length) _matsTextures();
     ajouter(roche, _e.mats.roche, 0, "opaque");
     ajouter(parpaing, _e.mats.parpaing, 0, "murs");
+    _poserArcs(arcs, ajouter);
     ajouter(lumineux, _e.mats.iti, 1, "itineraire");
     ajouter(transp, _e.mats.transp, 2);
     ajouter(hachSol, _e.mats.hachSol, 0, "opaque");
@@ -1637,7 +1648,8 @@
     const lots = { opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau, remblais: remblais,
       eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
-    for (let i = 0; i < t.s.length; i++) _arcSoutenement(opaque, t.s[i], m);
+    const arcs = _lotsArc(opaque, h);
+    for (let i = 0; i < t.s.length; i++) _arcSoutenement(arcs, t.s[i], m);
     for (let i = 0; i < t.r.length; i++) {
       const r = t.r[i], col = _couleur("traces", r.type, "color");
       if (r.type !== "itinerary" && !_lignesSol()) continue;
@@ -1661,6 +1673,7 @@
     if (parois.p.length) _paroiTexturee();
     ajouter(parois, e.mats.paroi, 0, "parois");
     ajouter(paroisUnies, e.mats.paroiUnie, 0, "parois");
+    _poserArcs(arcs, ajouter);
     ajouter(opaque, e.mats.opaque, 0, "opaque");
     ajouter(rubans, e.mats.rubans, 0, "rubans");
     if (tx && remblais.p.length) _matZone("remblais");
@@ -2895,6 +2908,65 @@
       function (alea) { return _pierraille(P, alea); }, P.graine);
     e.msZones = (e.msZones || 0) + performance.now() - t0;
     return e.mats[cle];
+  }
+
+  // Matériau des claveaux d'un arc (🧱), fait au premier arc texturé : planche de pierres dressées (CLAVEAU),
+  // couleur + normal map, teinte et nuance par sommet ; suit les Textures HD comme la roche (_habiller, _detailler).
+  function _matClaveau() {
+    const e = _e;
+    if (e.mats.claveau) return e.mats.claveau;
+    const t0 = performance.now();
+    e.mats.claveau = _habiller(_detailler(new THREE.MeshLambertMaterial({ vertexColors: true }), CLAVEAU.m),
+      "claveau", _pierresDressees, CLAVEAU.graine);
+    e.msClaveau = performance.now() - t0;
+    return e.mats.claveau;
+  }
+
+  // Planche de pierres dressées (CLAVEAU) : cases × cases pierres entières côte à côte. Chaque pierre : face
+  // dressée presque plane (bosses très douces, grain fin), teinte propre, arêtes émoussées (la hauteur et la couleur
+  // tombent vers le bord de la case : la lampe accroche le chanfrein), layage par endroits (stries parallèles à
+  // l'angle et au pas de la pierre, là où un voile à grande échelle le laisse voir), quelques pores.
+  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  function _pierresDressees(alea) {
+    const V = CLAVEAU, n = _px(V), q = _fin(), nc = V.cases, c = n / nc, k = c / V.pierre;
+    const haut = new Float32Array(n * n), img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(V.couleur);
+    const tache = _champBoucle(alea, 9, 9, n), bosse = _champBoucle(alea, 20, 20, n), voile = _champBoucle(alea, 7, 7, n);
+    const pierres = [];
+    for (let i = 0; i < nc * nc; i++) {
+      const t = 0.9 + alea() * 0.1, chaud = alea(), a = (alea() < 0.5 ? -1 : 1) * (0.5 + alea() * 0.6);
+      pierres.push({ teinte: alea() < 0.2 ? [t * 0.96, t * 0.98, t] : [t * (1 + 0.02 * chaud), t, t * (0.98 - 0.04 * chaud)],
+        ca: Math.cos(a), sa: Math.sin(a), pas: (V.layage[0] + alea() * (V.layage[1] - V.layage[0])) * k });
+    }
+    let graine = Math.floor(alea() * 2147483647) | 1;
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
+    const biseau = V.biseau * k;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4, lx = x % c, ly = y % c;
+        const S = pierres[Math.floor(y / c) * nc + Math.floor(x / c)];
+        const bord = Math.min(lx, c - 1 - lx, ly, c - 1 - ly) + 0.5, t = bord < biseau ? bord / biseau : 1;
+        const s = t * t * (3 - 2 * t), vu = Math.max(0, Math.min(1, voile[p] * 3 - 1.2)) * V.strie * s;
+        const strie = Math.sin(2 * Math.PI * (lx * S.ca + ly * S.sa) / S.pas);
+        haut[p] = 0.35 + 0.65 * s + (bosse[p] - 0.5) * 0.1 + strie * 0.07 * vu + (grain() - 0.5) * 0.05;
+        const f = (0.93 + 0.14 * tache[p]) * (1 + (grain() - 0.5) * 0.07) * (0.8 + 0.2 * s) *
+          (1 - 0.07 * vu * Math.max(0, -strie));
+        img[o4] = base.r * 255 * S.teinte[0] * f; img[o4 + 1] = base.g * 255 * S.teinte[1] * f;
+        img[o4 + 2] = base.b * 255 * S.teinte[2] * f; img[o4 + 3] = 255;
+      }
+    }
+    for (let i = 0; i < 70; i++) {
+      const cx = alea() * n, cy = alea() * n, rr = (0.6 + alea() * 1.1) * q, pr = 0.15 + alea() * 0.25;
+      for (let y = Math.floor(cy - rr); y <= cy + rr; y++) {
+        for (let x = Math.floor(cx - rr); x <= cx + rr; x++) {
+          const d = Math.hypot(x - cx, y - cy);
+          if (d > rr) continue;
+          const xx = ((x % n) + n) % n, yy = ((y % n) + n) % n, e = 1 - d / rr, o4 = ((n - 1 - yy) * n + xx) * 4;
+          haut[yy * n + xx] -= pr * e;
+          for (let j = 0; j < 3; j++) img[o4 + j] *= 1 - 0.22 * e;
+        }
+      }
+    }
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, V.relief * q) };
   }
 
   // Couleur + normal map (CanvasTexture répétées, anisotropie ≤ 4, libérées avec la vue) d'une texture dessinée par
@@ -5427,11 +5499,13 @@
   }
 
   // Pavé (repère du volume) de s0..s1 × t0..t1, de y0 à y1, dessus et dessous compris (échelons vus d'en bas).
-  function _pave(lot, Q, s0, s1, t0, t1, y0, y1, col) {
+  // `m`, `u0` facultatifs : coordonnées de texture comme _prisme (dessous : projection monde / m).
+  function _pave(lot, Q, s0, s1, t0, t1, y0, y1, col, m, u0) {
     const ring = _sensPositif([Q(s0, t0), Q(s1, t0), Q(s1, t1), Q(s0, t1)]);
-    _prisme(lot, ring, y0, y1, col, true);
+    _prisme(lot, ring, y0, y1, col, true, m, u0);
     lot.quad([ring[0][0], y0, ring[0][1]], [ring[1][0], y0, ring[1][1]], [ring[2][0], y0, ring[2][1]],
-      [ring[3][0], y0, ring[3][1]], [0, -1, 0], col);
+      [ring[3][0], y0, ring[3][1]], [0, -1, 0], col, m ? [ring[0][0] / m, ring[0][1] / m, ring[1][0] / m,
+        ring[1][1] / m, ring[2][0] / m, ring[2][1] / m, ring[3][0] / m, ring[3][1] / m] : undefined);
   }
 
   // Paroi de y0 à y1 (m), matériau `paroi` (pierre de taille ou moellons, _paroiTexturee). ⚠️ contrat :
@@ -6599,25 +6673,69 @@
   }
 
   // ── Arc de soutènement ; ossuaire, outil de carrier, fontis ───────────────────────────────────────────────
-  // Formes faites en code, sans fichier ni texture : peu de triangles, lot opaque du volume ou de la tuile (couleurs
-  // par sommet). L'arc et le fontis lisent la charte (légende de l'arc, remblais du cône) ; ossuaire et outil ont
-  // des couleurs de la scène, comme le véhicule.
+  // Formes faites en code, sans fichier : peu de triangles, lot opaque du volume ou de la tuile (couleurs par
+  // sommet). L'arc lit la charte 🧱 coupé (sa couleur de légende) et prend la pierre du niveau 🧱 activé (ses deux
+  // lots texturés, _lotsArc) ; le fontis lit la charte (remblais du cône) ; ossuaire et outil ont des couleurs de la
+  // scène, comme le véhicule.
 
-  // Arc de soutènement `s` (polyligne `arc`) dans le lot `lot` : un arc par segment (_arcPleinCintre), dans les trois
-  // rendus. Mixte et galerie (`mx` : leur modèle) : un segment en travers d'un tube va d'une paroi du tube à l'autre
-  // (_arcEntreParois) ; sinon (structures, chambre), tel que dessiné.
+  // Lots d'une tuile pour ses arcs → { claveaux, pierre, tex }. 🧱 activé : deux lots à coordonnées de texture, les
+  // claveaux (matériau `claveau`, _matClaveau) et la maçonnerie des piédroits, impostes et tympans (matériau
+  // `paroi` : l'appareil des parois, avec son ombre de contact) ; 🧱 coupé : le lot opaque de la tuile.
+  // Pourquoi deux lots : un claveau est une pierre entière (planche CLAVEAU, une case par face), la maçonnerie un
+  // appareil répété en mètres déjà dessiné pour les parois — ni matériau ni texture de plus pour elle.
+  function _lotsArc(opaque, h) {
+    if (_e.textures !== true) return { claveaux: opaque, pierre: opaque, tex: false };
+    const pierre = new Lot();
+    pierre.ombre = { sol: 0, plafond: h };
+    return { claveaux: new Lot(), pierre: pierre, tex: true };
+  }
+
+  // Maillages des arcs texturés d'une tuile (famille « arc ») : deux appels de dessin par tuile qui porte un arc,
+  // aucun sans arc ni 🧱 coupé (les arcs sont alors dans le lot opaque).
+  function _poserArcs(arcs, ajouter) {
+    if (!arcs.tex || !arcs.claveaux.p.length) return;
+    _paroiTexturee();
+    ajouter(arcs.claveaux, _matClaveau(), 0, "arc");
+    ajouter(arcs.pierre, _e.mats.paroi, 0, "arc");
+  }
+
+  // Teinte de la pierre d'un arc, 🧱 activé (décision produit : celle du niveau, là où il est) : en travers d'un tube
+  // (`tube`), la teinte de ses parois de pierre (blanc : la texture seule) ; ailleurs (chambre, rendu structures),
+  // celle de la masse du niveau, comme ses piliers et ses fronts — TEINTE_MASSE_2 quand les structures de 2e masse
+  // y sont les plus nombreuses, blanc sinon. Comptée sur toutes les structures du niveau (filtres de la carte
+  // ignorés), une fois par état des données.
+  function _teinteArc(tube) {
+    const e = _e;
+    if (tube) return BLANC;
+    const cle = e.donnees ? e.donnees.empreinte : "";
+    if (!e.masses || e.masses.cle !== cle) e.masses = { cle: cle, niveaux: new Map() };
+    if (!e.masses.niveaux.has(e.niveau)) {
+      let n1 = 0, n2 = 0;
+      _tab(window.getStructures).concat(_tab(window.getAllEmbeddedStructures)).forEach(function (s) {
+        if (!s || _textureDe(s.type) !== "roche" || !_surNiveau(s, e.niveau)) return;
+        if (MASSE_2[s.type]) n2++; else n1++;
+      });
+      e.masses.niveaux.set(e.niveau, n2 > n1);
+    }
+    return e.masses.niveaux.get(e.niveau) ? (e.teinte2 || (e.teinte2 = new THREE.Color(TEINTE_MASSE_2))) : BLANC;
+  }
+
+  // Arc de soutènement `s` (polyligne `arc`) dans les lots `lots` (_lotsArc) : un arc par segment
+  // (_arcPleinCintre), dans les trois rendus. Mixte et galerie (`mx` : leur modèle) : un segment en travers d'un
+  // tube va d'une paroi du tube à l'autre (_arcEntreParois) ; sinon (structures, chambre), tel que dessiné.
   // Relevé du checkup : e.arcs (structure → [{ niveau, a, b (px), portee, piedH, intradosY, cleY, claveaux, k,
-  // tube, triangles }]).
-  function _arcSoutenement(lot, s, mx) {
+  // tube, triangles, texture, teinte }]).
+  function _arcSoutenement(lots, s, mx) {
     const e = _e, sc = e.sc, out = [];
     const pts = (s.points || []).filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
+    const taille = function () { return lots.claveaux.p.length + (lots.tex ? lots.pierre.p.length : 0); };
     for (let i = 0; i + 1 < pts.length; i++) {
       const ab = _arcEntreParois(pts[i], pts[i + 1], mx);
       if (!ab) continue;
-      const n0 = lot.p.length;
-      const r = _arcPleinCintre(lot, ab.a.x / sc, ab.a.y / sc, ab.b.x / sc, ab.b.y / sc, ab.biais, !ab.tube);
+      const n0 = taille();
+      const r = _arcPleinCintre(lots, ab.a.x / sc, ab.a.y / sc, ab.b.x / sc, ab.b.y / sc, ab.biais, !ab.tube);
       if (!r) continue;
-      out.push(Object.assign(r, { niveau: e.niveau, tube: ab.tube, triangles: (lot.p.length - n0) / 9,
+      out.push(Object.assign(r, { niveau: e.niveau, tube: ab.tube, triangles: (taille() - n0) / 9,
         a: [+ab.a.x.toFixed(2), +ab.a.y.toFixed(2)], b: [+ab.b.x.toFixed(2), +ab.b.y.toFixed(2)] }));
     }
     (e.arcs || (e.arcs = new Map())).set(s, out);
@@ -6651,8 +6769,10 @@
   // ellipse surbaissée si la portée dépasse ce que le ciel permet), extrados à la clé au ciel du niveau (ARC) →
   // relevé | null (portée sous ARC.porteeMin). Joints : faces des claveaux en couleur de mortier (assombrie), fond
   // bouché. Tympan (_tympanArc) au-dessus de l'extrados ; `biais` : pente des parois (_arcEntreParois) ; `ferme` :
-  // sans paroi de tube contre lui (structures, chambre), ses bouts sont fermés.
-  function _arcPleinCintre(lot, ax, az, bx, bz, biais, ferme) {
+  // sans paroi de tube contre lui (structures, chambre), ses bouts sont fermés. `lots` (_lotsArc) : texturé
+  // (`lots.tex`), chaque face d'un claveau, joints compris, prend une case entière de la planche CLAVEAU ; piédroits
+  // et impostes prennent l'appareil des parois, en mètres (_pave).
+  function _arcPleinCintre(lots, ax, az, bx, bz, biais, ferme) {
     const e = _e, A = ARC, h = e.hauteur, dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
     if (L < A.porteeMin) return null;
     const ux = dx / L, uz = dz / L, nx = -uz, nz = ux, cx = (ax + bx) / 2, cz = (az + bz) / 2;
@@ -6660,18 +6780,32 @@
     const piedMin = Math.min(A.piedMin, h * 0.4);
     let ys = h - re, kv = 1;
     if (ys < piedMin) { ys = piedMin; kv = (h - ys) / re; }
-    const base = e.textures === true ? _couleurFixe(A.pierre) : _couleur("structures", "arc");
+    const tex = lots.tex, base = tex ? _teinteArc(!ferme) : _couleur("structures", "arc");
     const teinte = function (f) {
       return { r: Math.min(1, base.r * f), g: Math.min(1, base.g * f), b: Math.min(1, base.b * f) };
     };
     const mortier = teinte(A.mortier), alea = _aleaGraine(_hachage(cx.toFixed(2) + "," + cz.toFixed(2)));
     const Q = function (s, t) { return [cx + ux * s + nx * t, cz + uz * s + nz * t]; };
     const P = A.prof / 2, yi = Math.max(0, ys - A.imposte);
+    // Appareil des parois (matériau `paroi` : coordonnées de texture en mètres), origine tirée par arc.
+    const mp = tex ? 1 : undefined, up = tex ? alea() * PIERRE.m : undefined;
     [-1, 1].forEach(function (c) {
       const s0 = c * (L / 2 - pied), s1 = c * L / 2, s2 = c * (L / 2 - pied - A.deborde);
-      if (yi > 0.02) _pave(lot, Q, Math.min(s0, s1), Math.max(s0, s1), -P, P, 0, yi, teinte(0.92));
-      _pave(lot, Q, Math.min(s2, s1), Math.max(s2, s1), -P - A.deborde, P + A.deborde, yi, ys, teinte(0.85));
+      if (yi > 0.02) {
+        _pave(lots.pierre, Q, Math.min(s0, s1), Math.max(s0, s1), -P, P, 0, yi, teinte(A.piedroit), mp, up);
+      }
+      _pave(lots.pierre, Q, Math.min(s2, s1), Math.max(s2, s1), -P - A.deborde, P + A.deborde, yi, ys,
+        teinte(A.sommier), mp, up);
     });
+    // Face d'un claveau : une case de la planche tirée par face, retournée une fois sur deux (CLAVEAU).
+    const lot = lots.claveaux, nc = CLAVEAU.cases, bord = 0.02 / nc;
+    const face = function (a, b, c, d, nrm, col) {
+      if (!tex) { lot.quad(a, b, c, d, nrm, col); return; }
+      const j = Math.floor(alea() * nc * nc), v0 = Math.floor(j / nc) / nc + bord, v1 = v0 + 1 / nc - 2 * bord;
+      let u0 = (j % nc) / nc + bord, u1 = u0 + 1 / nc - 2 * bord;
+      if (alea() < 0.5) { const u = u0; u0 = u1; u1 = u; }
+      lot.quad(a, b, c, d, nrm, col, [u0, v0, u1, v0, u1, v1, u0, v1]);
+    };
     let n = Math.round(Math.PI * (ri + re) / 2 / A.claveau);
     n = Math.max(A.min, Math.min(A.max, n));
     if (n % 2 === 0) n += n < A.max ? 1 : -1;
@@ -6687,30 +6821,32 @@
     for (let k = 0; k < n; k++) {
       const t0 = Math.PI * k / n + (k ? g / 2 : 0), t1 = Math.PI * (k + 1) / n - (k < n - 1 ? g / 2 : 0);
       const w = P + (k === (n - 1) / 2 ? A.cle : 0), tm = (t0 + t1) / 2;
-      const col = teinte(1 + A.nuance * (2 * alea() - 1));
+      // 🧱 activé : une couleur de sommet ne dépasse jamais 1, le claveau est seulement assombri.
+      const col = teinte(tex ? 1 - A.nuance * alea() : 1 + A.nuance * (2 * alea() - 1));
       const I0 = V(ri, t0, w), I1 = V(ri, t1, w), E0 = V(re, t0, w), E1 = V(re, t1, w);
       const i0 = V(ri, t0, -w), i1 = V(ri, t1, -w), e0 = V(re, t0, -w), e1 = V(re, t1, -w);
-      lot.quad(I0, I1, E1, E0, [nx, 0, nz], col);
-      lot.quad(i0, i1, e1, e0, [-nx, 0, -nz], col);
+      face(I0, I1, E1, E0, [nx, 0, nz], col);
+      face(i0, i1, e1, e0, [-nx, 0, -nz], col);
       const gr = N(Math.cos(tm), Math.sin(tm) / kv);
-      lot.quad(I0, I1, i1, i0, [-gr[0], -gr[1], -gr[2]], col);
+      face(I0, I1, i1, i0, [-gr[0], -gr[1], -gr[2]], col);
       // Extrados noyé dans le tympan, sauf celui de la clé qui le dépasse en profondeur.
-      if (w > P) lot.quad(E0, E1, e1, e0, gr, col);
-      if (k) lot.quad(I0, E0, e0, i0, N(Math.sin(t0), -kv * Math.cos(t0)), mortier);
-      if (k < n - 1) lot.quad(I1, E1, e1, i1, N(-Math.sin(t1), kv * Math.cos(t1)), mortier);
+      if (w > P) face(E0, E1, e1, e0, gr, col);
+      if (k) face(I0, E0, e0, i0, N(Math.sin(t0), -kv * Math.cos(t0)), mortier);
+      if (k < n - 1) face(I1, E1, e1, i1, N(-Math.sin(t1), kv * Math.cos(t1)), mortier);
       // 🩸 Fond du joint : sans lui, le jour du joint traverse l'arc de part en part (fond de galerie vu à travers).
       if (k) {
         const tp = Math.PI * k / n - g / 2, wf = P - A.fond;
         [1, -1].forEach(function (c) {
-          lot.quad(V(ri, tp, c * wf), V(ri, t0, c * wf), V(re, t0, c * wf), V(re, tp, c * wf),
+          face(V(ri, tp, c * wf), V(ri, t0, c * wf), V(re, t0, c * wf), V(re, tp, c * wf),
             [c * nx, 0, c * nz], mortier);
         });
       }
     }
-    _tympanArc(lot, { cx: cx, cz: cz, ux: ux, uz: uz, L: L, re: re, ys: ys, kv: kv, n: n, h: h, P: P,
-      biais: biais || 0, ferme: !!ferme }, teinte(A.tympan));
+    _tympanArc(lots.pierre, { cx: cx, cz: cz, ux: ux, uz: uz, L: L, re: re, ys: ys, kv: kv, n: n, h: h, P: P,
+      biais: biais || 0, ferme: !!ferme, u0: up }, teinte(A.tympan));
     return { portee: +L.toFixed(3), piedH: +ys.toFixed(3), intradosY: +(ys + kv * ri).toFixed(3),
-      cleY: +(ys + kv * re).toFixed(3), claveaux: n, k: +kv.toFixed(3), pied: +pied.toFixed(3), tympan: true };
+      cleY: +(ys + kv * re).toFixed(3), claveaux: n, k: +kv.toFixed(3), pied: +pied.toFixed(3), tympan: true,
+      texture: tex, teinte: "#" + new THREE.Color(base.r, base.g, base.b).getHexString() };
   }
 
   // Tympan de l'arc `a` (_arcPleinCintre) : maçonnerie pleine, de la profondeur de l'arc, entre l'extrados et le ciel
@@ -6720,9 +6856,16 @@
   // oblique dans un tube : les bandes des piédroits suivent la paroi (`a.biais`), jamais en deçà de l'extrados.
   // ⚠️ contrat : tout est au-dessus de l'imposte, hors de l'ouverture ; le pas ne change pas (l'arc n'est pas un
   // obstacle). Coût : 6n + 8 triangles de plus que l'arc seul (fonds de joint compris, extrados noyés retirés).
+  // `a.u0` défini (🧱 activé) : appareil des parois, coordonnées de texture en mètres — la portée et la hauteur sur
+  // les faces, la portée et la profondeur au dessus, la profondeur et la hauteur aux bouts.
   function _tympanArc(lot, a, col) {
-    const nx = -a.uz, nz = a.ux, h = a.h, w = a.P - ARC.retrait, re = a.re;
+    const nx = -a.uz, nz = a.ux, h = a.h, w = a.P - ARC.retrait, re = a.re, tex = a.u0 !== undefined;
     const W = function (s, y, t) { return [a.cx + a.ux * s + nx * t, y, a.cz + a.uz * s + nz * t]; };
+    // Face verticale à la profondeur t, de quatre points (s, y).
+    const pan = function (q, t, nrm) {
+      lot.quad(W(q[0], q[1], t), W(q[2], q[3], t), W(q[4], q[5], t), W(q[6], q[7], t), nrm, col,
+        tex ? [q[0] + a.u0, q[1], q[2] + a.u0, q[3], q[4] + a.u0, q[5], q[6] + a.u0, q[7]] : undefined);
+    };
     const bout = function (c, t) {
       const s = c * a.L / 2 + a.biais * t;
       return c > 0 ? Math.max(re, s) : Math.min(-re, s);
@@ -6732,21 +6875,22 @@
       for (let j = 0; j < a.n; j++) {
         const t0 = Math.PI * j / a.n, t1 = Math.PI * (j + 1) / a.n;
         const u0 = re * Math.cos(t0), u1 = re * Math.cos(t1);
-        lot.quad(W(u0, a.ys + a.kv * re * Math.sin(t0), t), W(u1, a.ys + a.kv * re * Math.sin(t1), t),
-          W(u1, h, t), W(u0, h, t), nrm, col);
+        pan([u0, a.ys + a.kv * re * Math.sin(t0), u1, a.ys + a.kv * re * Math.sin(t1), u1, h, u0, h], t, nrm);
       }
       [1, -1].forEach(function (d) {
         const sb = bout(d, t);
         if (Math.abs(sb) - re < 1e-4) return;
-        lot.quad(W(d * re, a.ys, t), W(sb, a.ys, t), W(sb, h, t), W(d * re, h, t), nrm, col);
+        pan([d * re, a.ys, sb, a.ys, sb, h, d * re, h], t, nrm);
       });
     });
-    lot.quad(W(bout(-1, w), h, w), W(bout(1, w), h, w), W(bout(1, -w), h, -w), W(bout(-1, -w), h, -w),
-      [0, 1, 0], col);
+    const b0 = bout(-1, w), b1 = bout(1, w), b2 = bout(1, -w), b3 = bout(-1, -w);
+    lot.quad(W(b0, h, w), W(b1, h, w), W(b2, h, -w), W(b3, h, -w), [0, 1, 0], col,
+      tex ? [b0 + a.u0, w, b1 + a.u0, w, b2 + a.u0, -w, b3 + a.u0, -w] : undefined);
     if (!a.ferme) return;
     [1, -1].forEach(function (d) {
       const s = d * a.L / 2;
-      lot.quad(W(s, a.ys, -w), W(s, a.ys, w), W(s, h, w), W(s, h, -w), [d * a.ux, 0, d * a.uz], col);
+      lot.quad(W(s, a.ys, -w), W(s, a.ys, w), W(s, h, w), W(s, h, -w), [d * a.ux, 0, d * a.uz], col,
+        tex ? [-w, a.ys, w, a.ys, w, h, -w, h] : undefined);
     });
   }
 
@@ -13750,6 +13894,20 @@
         lits: lits(m.map.image) };
     });
     r.materiaux.paroi.pierre = !!e.texPierre && e.mats.paroi.map === e.texPierre.couleur;
+    // Claveaux des arcs (matériau fait au premier arc texturé) et teinte moyenne des cartes ([r, v, b] sur 255) de
+    // la pierre des claveaux et de celle des parois, à comparer.
+    const moyenne = function (cv) {
+      const d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data, t = [0, 0, 0];
+      for (let i = 0; i < d.length; i += 4) { t[0] += d[i]; t[1] += d[i + 1]; t[2] += d[i + 2]; }
+      return t.map(function (v) { return +(v / (d.length / 4)).toFixed(1); });
+    };
+    const mc = e.mats.claveau;
+    if (mc) {
+      r.materiaux.claveau = { pente: pente(mc.normalMap.image), carte: mc.map.image.width + "x" + mc.map.image.height,
+        normale: !!mc.normalMap, couleursSommets: mc.vertexColors, moyenne: moyenne(mc.map.image),
+        ms: Math.round(e.msClaveau || 0) };
+    }
+    if (r.materiaux.paroi.pierre) r.materiaux.paroi.moyenne = moyenne(e.mats.paroi.map.image);
     // Textures HD : préférence, état en vigueur, bouton, grain de détail ; mémoire des textures de la vue (images
     // distinctes × 4 octets, mipmaps compris : × 4 / 3).
     const images = new Set();

@@ -603,6 +603,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - Parois des galeries : pierre de taille (assises de blocs, joints irréguliers, relief à la lampe). La pierre garde sa taille quelle que soit la hauteur de galerie.
 - Piliers et fronts de taille : roche brute (la masse calcaire laissée en place : bosses, nuances, fines strates, fissures et traces d'outil, sans joints) ; la 2e masse est la même roche, plus chaude, pour la distinguer de la 1re. Une structure personnalisée prend la roche.
 - Murs : parpaing, à sa taille réelle (un parpaing fait 50 cm, quel que soit le mur).
+- Arcs de soutènement : pierre de taille de la teinte du niveau — claveaux en pierre dressée, piédroits et maçonnerie au-dessus de l'arc dans la pierre des parois.
 - **Remblais** : terre et sable calcaire tassés, mêlés de cailloux et de blocs de calcaire anguleux à moitié enfouis.
 - **Effondrement** (fontis) : un éboulis de gros blocs cassés et fissurés, avec peu de terre.
 - Remblais et effondrement sont à leur taille réelle et ne changent pas de forme. Une zone personnalisée garde sa couleur.

@@ -603,6 +603,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - Tunnel walls: dressed stone (courses of blocks, irregular joints, relief under the lamp). The stone keeps its size whatever the tunnel height.
 - Pillars and working faces: raw rock (the limestone mass left in place: bumps, shades, thin strata, cracks and tool marks, no joints); the 2nd mass is the same rock in a warmer shade, to tell it from the 1st. A custom structure gets the rock.
 - Walls: concrete block, at its real size (a block is 50 cm long, whatever the wall).
+- Support arches: dressed stone in the tone of the level — voussoirs in smooth-dressed stone, piers and the masonry above the arch in the same stone as the gallery walls.
 - **Backfill**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
 - **Collapse** (sinkhole): rubble of large broken, cracked blocks, with little earth.
 - Backfill and collapse are at their real size and do not change shape. A custom zone keeps its colour.
