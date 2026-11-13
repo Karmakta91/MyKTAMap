@@ -2074,9 +2074,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   tiré au hasard dans une passe) — `ROCHE.pic`, cinq passes de rangées superposées de coups de pic courts, serrés
   et obliques, à l'une de deux orientations dominantes pour tout le motif (souchevage) ; `ROCHE.lance`, deux
   passes de quelques longues stries droites, presque verticales (défermage) ; de grandes plages nues entre elles.
-  🩸 Le motif (3 m) se répète sur une longue face : de face et en plein jour, les fissures d'abord puis les passes
-  se retrouvent tous les 3 m sur un long front ; à la lampe, le halo n'en montre qu'un motif à la fois. D'où peu
-  de passes, et des stries de lance rares et peu creusées. Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
+  🩸 Le motif (3 m) se répéterait sur une longue face — de face et en plein jour, le même groupe de fissures et de
+  passes tous les 3 m sur un long front. Deux parades : les **fissures sont rares et fines** (quatre par motif, à
+  demi-force : longues et sombres, ce sont elles qui signent le motif), et une **face de plus de 6 m est brisée en
+  pans** de 3 à 5 m (`_faceBrisee`, `BRISE`) — chaque pan a sa propre origine du motif (u et v décalés, sens
+  retourné une fois sur deux), tirée de la position de la face, donc stable d'une ouverture à l'autre et d'un
+  appareil à l'autre. Même matériau, même texture, aucun appel de dessin de plus ; coût : douze sommets par pan
+  (environ + 190 sommets pour une face de 64 m ; rien pour un pilier aux faces de moins de 6 m, donc rien sur la
+  salle de piliers de référence). 🩸 Contrepartie : la jointure de deux pans peut se voir en plein jour (un saut de
+  nuance vertical), comme une reprise de taille. Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
   `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche :
   sans elle un pilier passé de la 1re à la 2e masse ne changeait rien dans la scène), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
   le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,

@@ -9748,10 +9748,12 @@ async function sectionTexturesSol(nav) {
     // peu de stries longues (elles se reconnaissent d'un motif à l'autre sur un long front), et de la roche nue :
     // au plus 400 coups de pic par motif de 3 m.
     const Tr = (R.defaut.roche || {}).traces || { pic: {}, lance: {} };
-    verifier(Tr.pic.passes >= 3 && Tr.pic.passes <= 8 && Tr.pic.coups >= 40 && Tr.pic.coups <= 400 &&
+    verifier(Tr.fissures >= 1 && Tr.fissures <= 5 && Tr.pic.passes >= 3 && Tr.pic.passes <= 8 && Tr.pic.coups >= 40 &&
+      Tr.pic.coups <= 400 &&
       Tr.pic.orientations >= 1 && Tr.pic.orientations <= 2 && Tr.lance.passes >= 1 && Tr.lance.passes <= 3 &&
       Tr.lance.coups >= 3 && Tr.lance.coups <= 18 && Tr.lance.penteMax <= 0.07 + 1e-9,
-    nom + "roche des piliers et des fronts : " + Tr.pic.coups + " coups de pic en " + Tr.pic.passes +
+    nom + "roche des piliers et des fronts : " + Tr.fissures + " fissures par motif (au plus 5 : elles signent le " +
+      "motif quand il se répète), " + Tr.pic.coups + " coups de pic en " + Tr.pic.passes +
       " passes de rangées parallèles, " + Tr.pic.orientations + " orientation(s) ; " + Tr.lance.coups +
       " stries de lance en " + Tr.lance.passes + " passes, à " + Tr.lance.penteMax + " rad au plus de la verticale",
     R.defaut.roche);

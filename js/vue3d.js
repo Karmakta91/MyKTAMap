@@ -247,7 +247,10 @@
   // d'un coup à l'autre dans sa passe ; `rayon` (m), `creux` (hauteur dessinée) et `sombre` d'un coup. ⚠️ contrat
   // (décision produit) : jamais d'angle tiré au hasard dans une passe. 🩸 Stries de lance peu nombreuses et peu
   // creusées : longues et droites, elles se reconnaissent d'un motif à l'autre sur un long front. Longueurs en m.
-  const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 7,
+  // Fissures rares et fines (`fissures` par motif, de force `fissure` : 1 = creux et ombre pleins) : longues et
+  // sombres, ce sont elles qui signent le motif quand il se répète. Longue face (BRISE) : le motif y est décalé de
+  // pan en pan (_faceBrisee).
+  const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 4, fissure: 0.55,
     pic: { passes: 5, angles: [1.0, 2.15], rangs: [2, 4], coups: [9, 17], long: [0.12, 0.2], pas: [0.04, 0.06],
       ecart: 0.15, rayon: 0.015, creux: 0.11, sombre: 0.06 },
     lance: { passes: 2, coups: [3, 6], long: [0.5, 1.1], pas: [0.07, 0.12], pente: 0.07, ecart: 0.2, rayon: 0.015,
@@ -258,6 +261,8 @@
   // un pilier passé de l'une à l'autre ne changeait rien dans la scène. Pas de second matériau : préparé au premier
   // pilier de 2e masse, il retardait d'une image le changement de niveau sous le fondu (WebKit).
   const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f0b98a";
+  // Face de roche de plus de `long` motifs (un front, le flanc d'un long pilier) : pans de `pan` motifs de long.
+  const BRISE = { long: 2, pan: [1, 1.7] };
   // Nuance de roche par structure (🧱 activé, _nuanceRoche) : deux piliers voisins ne sortent plus du même moule. La
   // teinte de la structure (blanc, ou TEINTE_MASSE_2) est assombrie de 0 à `clair` et tirée vers le chaud ou le
   // froid d'au plus `chaud` (une composante abaissée : une couleur de sommet ne dépasse jamais 1). Discrète exprès :
@@ -1146,7 +1151,8 @@
       const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
       if (l < 1e-6) continue;
       const n = [dz / l, 0, -dx / l];
-      if (lot.ombre && m) _faceOmbree(lot, p, q, y0, y1, n, col, s / m, (s + l) / m, m);
+      if (lot.brise && m && l > BRISE.long * m) _faceBrisee(lot, p, q, y0, y1, n, col, m);
+      else if (lot.ombre && m) _faceOmbree(lot, p, q, y0, y1, n, col, s / m, (s + l) / m, m);
       else {
         lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], n, col,
           m ? [s / m, y0 / m, (s + l) / m, y0 / m, (s + l) / m, y1 / m, s / m, y1 / m] : undefined);
@@ -1161,7 +1167,9 @@
   // découpée à la hauteur où le dégradé du pied s'arrête, teinte par sommet, coordonnées de texture u0..u1 et
   // v = y / mv (inchangées : la texture ne voit pas le découpage). Une face qui ne descend pas dans la bande du pied
   // reste un quadrilatère à pleine teinte.
-  function _faceOmbree(lot, p, q, y0, y1, n, col, u0, u1, mv) {
+  // `dv` facultatif (motifs) : décalage de v, pour une face de roche brisée en pans (_faceBrisee).
+  function _faceOmbree(lot, p, q, y0, y1, n, col, u0, u1, mv, dv) {
+    dv = dv || 0;
     const O = lot.ombre, a = Math.min(OMBRE_CONTACT.haut, (O.plafond - O.sol) / 3), f = OMBRE_CONTACT.force;
     const k = function (y) {
       const d = y - O.sol;
@@ -1171,7 +1179,31 @@
     for (let i = 0; i + 1 < ys.length; i++) {
       const b = ys[i], h = ys[i + 1];
       lot.quadDegrade([p[0], b, p[1]], [q[0], b, q[1]], [q[0], h, q[1]], [p[0], h, p[1]], n, col, k(b), k(h),
-        [u0, b / mv, u1, b / mv, u1, h / mv, u0, h / mv]);
+        [u0, b / mv + dv, u1, b / mv + dv, u1, h / mv + dv, u0, h / mv + dv]);
+    }
+  }
+
+  // Longue face de roche (lot.brise, plus de BRISE.long motifs) de p à q : découpée en pans de BRISE.pan motifs de
+  // long, chacun à sa propre origine du motif (u et v décalés, sens de u retourné une fois sur deux) — sur un long
+  // front, le même groupe de fissures et de stries ne revient plus à pas fixe et à la même hauteur. Tirages
+  // dérivés de la position de la face (cm) : les mêmes à chaque reconstruction de tuile, à chaque ouverture et sur
+  // chaque appareil. ⚠️ contrat : même géométrie (pans coplanaires jointifs), même matériau ; coût : douze sommets
+  // par pan avec l'ombre de contact (six sans), au lieu d'autant pour la face entière.
+  function _faceBrisee(lot, p, q, y0, y1, n, col, m) {
+    const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+    const alea = _aleaGraine(_hachage("pan," + p[0].toFixed(2) + "," + p[1].toFixed(2) + "," + q[0].toFixed(2) + "," +
+      q[1].toFixed(2)));
+    for (let s = 0; s < l - 1e-6;) {
+      let pan = (BRISE.pan[0] + alea() * (BRISE.pan[1] - BRISE.pan[0])) * m;
+      if (l - s - pan < BRISE.pan[0] * m / 2) pan = l - s;
+      const a = [p[0] + dx * s / l, p[1] + dz * s / l], b = [p[0] + dx * (s + pan) / l, p[1] + dz * (s + pan) / l];
+      const u = alea(), dv = alea(), sens = alea() < 0.5 ? -1 : 1, u1 = u + sens * pan / m;
+      if (lot.ombre) _faceOmbree(lot, a, b, y0, y1, n, col, u, u1, m, dv);
+      else {
+        lot.quad([a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]], n, col,
+          [u, y0 / m + dv, u1, y0 / m + dv, u1, y1 / m + dv, u, y1 / m + dv]);
+      }
+      s += pan;
     }
   }
 
@@ -1428,6 +1460,7 @@
     const roche = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
     const remblaisTex = new Lot(), eboulis = new Lot(), arcs = _lotsArc(opaque, h);
     if (ombre) roche.ombre = parpaing.ombre = ombre;
+    roche.brise = true;
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
       remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
@@ -2734,7 +2767,7 @@
     const C = { n: n, q: q, creux: creux, sombre: sombre };
     for (let f = 0; f < R.fissures; f++) {
       _fissurer(C, alea, alea() * n, alea() * n, Math.PI / 2 + (alea() - 0.5) * 0.9, (0.3 + alea() * 0.9) * k,
-        (0.4 + alea() * 0.6) * q, 1);
+        (0.3 + alea() * 0.4) * q, R.fissure);
     }
     // Traces d'outil. Un coup : droit, de (x, y) vers l'angle a, long de l px, effilé aux deux bouts.
     const tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
@@ -2745,7 +2778,7 @@
         _creuser(C, x + ca * s, y + sa * s, r * (0.6 + 0.4 * t), O.creux * f * t, O.sombre * f * t);
       }
     };
-    const traces = { pic: { passes: R.pic.passes, coups: 0, orientations: [] },
+    const traces = { fissures: R.fissures, pic: { passes: R.pic.passes, coups: 0, orientations: [] },
       lance: { passes: R.lance.passes, coups: 0, penteMax: 0 } };
     // Passes de pic : rangées superposées de coups obliques, même orientation, même pas et même longueur (à
     // `ecart` près) pour toute la passe ; la rangée court presque à l'horizontale.
@@ -14297,7 +14330,7 @@
     // Traces d'outil de la roche dessinée à la finesse en vigueur (_rocheBrute).
     const tr = (_appareils[_fin() > 1 ? "roche@" + _fin() : "roche"] || {}).traces;
     if (r.materiaux.roche && tr) {
-      r.materiaux.roche.traces = { pic: { passes: tr.pic.passes, coups: tr.pic.coups,
+      r.materiaux.roche.traces = { fissures: tr.fissures, pic: { passes: tr.pic.passes, coups: tr.pic.coups,
         orientations: tr.pic.orientations.length }, lance: { passes: tr.lance.passes, coups: tr.lance.coups,
         penteMax: +tr.lance.penteMax.toFixed(3) } };
     }
