@@ -190,13 +190,14 @@
   // liserés, zones et plan au sol se lisent dessus.
   const SOL = { m: 4, px: 256, couleur: COULEUR_CALCAIRE, terre: "#bda881", eclat: "#d3c6a8", terrePart: 0.35,
     cailloux: 1300, caillou: [0.008, 0.035], grain: 0.1, relief: 1.7, graine: 83 };
-  // Ciel de carrière (plafond, 🧱 activé ; _cielCarriere) : le banc laissé au toit. `bancs` paliers de plaques
-  // décollées à bords francs (ressaut de `ressaut`, en part de la hauteur dessinée), `fissures` fissures longues en
-  // tous sens, `grappes` grappes de traces de pic, taches larges. Plus gris et plus sombre que le sol : le regard
-  // reste en bas. ⚠️ contrat : même `m` que SOL (une seule projection monde pour le sol et le plafond,
+  // Ciel de carrière (plafond, 🧱 activé ; _cielCarriere) : le banc laissé au toit, taillé au pic. `fissures`
+  // fissures longues en tous sens, `grappes` grappes de traces de pic, bosses de la taille, taches larges. Plus gris
+  // et plus sombre que le sol : le regard reste en bas. ⚠️ contrat (décision produit) : que des traits OUVERTS
+  // (fissures, sillons) — un contour fermé (plaque de banc, palier) se répète avec le motif et craquelle le plafond
+  // d'une longue galerie. ⚠️ contrat : même `m` que SOL (une seule projection monde pour le sol et le plafond,
   // _dalleTexturee).
-  const CIEL = { m: SOL.m, px: 256, couleur: "#c1b598", bancs: 2, ressaut: 0.16, fissures: 6, grappes: 46,
-    grain: 0.07, relief: 2, graine: 89 };
+  const CIEL = { m: SOL.m, px: 256, couleur: "#c1b598", fissures: 11, grappes: 70, grain: 0.07, relief: 2.6,
+    graine: 89 };
   // Ordre de rendu du sol (carré qui suit et sol des galeries) : avant tout le reste, pour que le plan au sol
   // (PLAN_SOL.ordre) se pose dessus sans dépendre de la profondeur.
   const ORDRE_SOL = -0.6;
@@ -2577,27 +2578,16 @@
     return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, S.relief * _fin()) };
   }
 
-  // Ciel de carrière (CIEL) : le banc de calcaire laissé au toit. Plaques de banc décollées (champ à deux échelles
-  // découpé en CIEL.bancs paliers : bord franc, ressaut que la lampe accroche, ombre au pied du ressaut), bosses de
-  // la taille, fissures longues en tous sens, traces de pic en grappes, taches larges (humidité, fumée de lampe).
+  // Ciel de carrière (CIEL) : le banc de calcaire laissé au toit. Bosses de la taille à deux échelles, fissures
+  // longues en tous sens, traces de pic en grappes (sillons courts que la lampe accroche), taches larges (humidité,
+  // fumée de lampe). Aucun contour fermé (contrat de CIEL).
   // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _cielCarriere(alea) {
     const T = CIEL, n = _px(T), k = n / T.m, q = _fin(), haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
-    const creux = new Float32Array(n * n), palier = new Uint8Array(n * n);
+    const creux = new Float32Array(n * n);
     const moyen = _champBoucle(alea, 11, 11, n), fin = _champBoucle(alea, 34, 34, n);
     const tache = _champBoucle(alea, 3, 3, n), tache2 = _champBoucle(alea, 9, 9, n);
-    const bancA = _champBoucle(alea, 4, 4, n), bancB = _champBoucle(alea, 13, 13, n);
-    for (let p = 0; p < n * n; p++) {
-      palier[p] = Math.min(T.bancs - 1, Math.floor((0.6 * bancA[p] + 0.4 * bancB[p]) * T.bancs));
-      haut[p] = 0.3 * moyen[p] + 0.14 * fin[p] + T.ressaut * palier[p];
-    }
-    // Ombre au pied d'un ressaut : pixel dont le voisin de droite ou du dessus est sur un autre palier (motif bouclé).
-    for (let y = 0; y < n; y++) {
-      for (let x = 0; x < n; x++) {
-        const p = y * n + x, d = palier[y * n + (x + 1) % n], h = palier[((y + 1) % n) * n + x];
-        if (d !== palier[p] || h !== palier[p]) sombre[p] = 0.07;
-      }
-    }
+    for (let p = 0; p < n * n; p++) haut[p] = 0.3 * moyen[p] + 0.14 * fin[p];
     const C = { n: n, q: q, creux: creux, sombre: sombre };
     for (let f = 0; f < T.fissures; f++) {
       _fissurer(C, alea, alea() * n, alea() * n, alea() * 2 * Math.PI, (0.5 + alea() * 1.3) * k,
@@ -2608,7 +2598,7 @@
       for (let i = 0; i < nb; i++) {
         const a = a0 + (alea() - 0.5) * 0.25, l = (0.08 + alea() * 0.16) * k, e = (0.03 + alea() * 0.03) * k * i;
         const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
-        for (let s = 0; s < l; s += 0.5 * q) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9 * q, 0.06, 0.04);
+        for (let s = 0; s < l; s += 0.5 * q) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9 * q, 0.08, 0.05);
       }
     }
     const img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(T.couleur);
@@ -2618,7 +2608,7 @@
       for (let x = 0; x < n; x++) {
         const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
         haut[p] -= creux[p];
-        const f = (0.82 + 0.2 * tache[p]) * (0.94 + 0.12 * tache2[p]) * (0.95 + 0.04 * palier[p]) * (1 - sombre[p]) *
+        const f = (0.8 + 0.2 * tache[p]) * (0.94 + 0.12 * tache2[p]) * (1 - sombre[p]) *
           (1 + (grain() - 0.5) * T.grain);
         img[o4] = base.r * 255 * f; img[o4 + 1] = base.g * 255 * f;
         img[o4 + 2] = base.b * 255 * f * (1.02 - 0.04 * tache2[p]);

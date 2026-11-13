@@ -2090,9 +2090,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   et normal map, dessinées dans un canvas comme les autres (`_texturesPeintes`, aucune image). **Sol** (`SOL`,
   `_solDame`) : calcaire damé en bosses douces, plages de terre plus sombres et plus lisses (35 % de la surface, bord
   fondu), cailloutis d'éclats de 1 à 3,5 cm serrés par plages. **Plafond** (`CIEL`, `_cielCarriere`) : le banc laissé
-  au toit, plaques décollées à bord franc, fissures longues en tous sens, traces de pic en grappes, un peu plus gris et
-  plus sombre que le sol (pas davantage : trop sombre, un niveau du dessus montré en transparence ne s'y lisait
-  plus, checkup § 46 bis). Motif de **4 m** à 256 px (64 px/m ; 512 px en Textures HD) : plus grand que celui d'une
+  au toit, bosses de la taille, fissures longues en tous sens, traces de pic en grappes, un peu plus gris et plus
+  sombre que le sol (pas davantage : trop sombre, un niveau du dessus montré en transparence ne s'y lisait plus,
+  checkup § 46 bis). ⚠️ contrat (décision produit) : que des traits ouverts, dans la couleur comme dans le relief —
+  un contour fermé (plaque de banc, palier) se répète avec le motif et craquelle le plafond d'une longue galerie.
+  Motif de **4 m** à 256 px (64 px/m ; 512 px en Textures HD) : plus grand que celui d'une
   paroi, un sol se voit sur des dizaines de mètres. ⚠️ contrat (décision produit) : le sol reste peu contrasté et
   jamais plus clair que le sable calcaire (`COULEUR_CALCAIRE`) — rubans, liserés, zones et plan au sol se lisent
   dessus ; le liseré sombre de l'itinéraire garde plus de 3:1 sur le sol le plus sombre (checkup § 24 quater).
