@@ -2091,7 +2091,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   tuiles). Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche à peine plus chaude (teinte
   `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche.
   Discrète, décision produit : on la devine, la distinction franche se lit 🧱 coupé, sur la carte 2D et la
-  mini-carte), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
+  mini-carte), mur en surface fermée (`mur`) en parpaing de 50 × 20 cm, mur tracé en ligne (`mur-ligne`) en
+  pierre de taille (ci-dessous) ; un type perso `cust-…` résolu par
   le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,
   polygone = pilier), un type inconnu garde sa couleur. Couleur et normal map dessinées dans un canvas
   (`_rocheBrute`, `ROCHE` : 256 px — 512 en Textures HD, ci-dessous —, motif de 3 m, plus grand que l'appareil car sans joints la répétition se voit
@@ -2124,24 +2125,43 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   textures 3,3 → 13,3 Mo ; temps par image inchangé au PC (0,7 ms à 30 m, 0,9 ms à 100 m, avec ou sans HD), au
   téléphone émulé (processeur × 4, écran × 3, carte graphique du PC) 512 px seul sans surcoût, grain ~ + 0,3 ms
   par image. Jamais mesuré sur la carte graphique d'un vrai téléphone.
+- **Mur tracé en ligne en pierre de taille** (même interrupteur 🧱 ; décision produit : la surface fermée garde le
+  parpaing, le tracé est bâti en pierre ; la forme est portée par le type, `isStructurePolylineType`) : le
+  `mur-ligne` (épaisseur `EPAISSEUR_MUR_LIGNE`, 98 % de la hauteur) prend la carte et le relief de la pierre de
+  taille des parois (`PIERRE`, `e.texPierre`) — même teinte, sans nuance par structure, ombre de contact au pied,
+  Textures HD suivies. Lot à lui dans la tuile (`pierreMur`), matériau `murPierre` (`_matMurPierre`) : celui des
+  parois ne convient pas tel quel, un mur passe sous un pilier ou un front et doit être reculé en profondeur
+  (contrat de `_estMur`) ; il partage donc les textures, pas le matériau, et suit la carte des parois quand elle
+  est redessinée (`_suivreMurPierre`, appelé par `_paroiTexturee`). Coordonnées de texture en mètres
+  (`MUR_PIERRE.m`, l'échelle est dans le `repeat` de la carte), u le long du mur, dessus en projection monde.
+  Ce qui le distingue d'une paroi de galerie, à teinte égale : une paroi part d'un lit au sol et est coupée où
+  tombe le ciel ; le mur finit sur une assise entière — son appareil est calé sur sa tête (`lot.dv`, lu par
+  `_prisme` : la tête tombe `MUR_PIERRE.tete` = 2 cm sous un lit du motif), l'assise entamée est au pied, dans
+  l'ombre de contact. Coût : ni dessin ni texture de plus quand la pierre des parois existe déjà (mixte, galerie,
+  arc) ; en rendu structures sans paroi ni arc, le premier mur en ligne la fait dessiner (11 ms mesurées au PC,
+  0,67 Mo, 2,67 en HD) ; un appel de dessin de plus pour une tuile qui porte à la fois un mur en surface et un mur
+  en ligne, aucun sinon ; même programme que la roche et le parpaing. 🧱 coupé : couleur de la légende, inchangé.
+  Garde-fou : § 24 quater (murs).
 - **Nuance de roche par structure** (même interrupteur 🧱, `NUANCE_ROCHE`, `_nuanceRoche`) : chaque pilier, front ou
   type perso en roche reçoit une teinte à lui — celle de sa masse (blanc, `TEINTE_MASSE_2`) assombrie de 0 à 16 % et
   tirée de ± 6 % vers le chaud ou le froid — posée par sommet comme la 2e masse : deux piliers voisins ne sortent
   plus du même moule, la 2e masse reste reconnaissable (les plages des deux masses ne se recouvrent pas : rapport
   bleu / rouge des sommets de 0,94 à 1,06 pour la 1re, de 0,67 à 0,76 pour la 2e). ⚠️ contrat :
   tirée de la position du premier sommet de la structure (px du plan, comme l'origine du motif), jamais de
-  `Math.random` : la même à chaque reconstruction de tuile, à chaque ouverture, sur chaque appareil. Murs en
-  parpaing sans nuance (un appareil régulier). Aucun coût : une couleur de sommet déjà écrite.
+  `Math.random` : la même à chaque reconstruction de tuile, à chaque ouverture, sur chaque appareil. Murs sans
+  nuance (parpaing : un appareil régulier ; pierre de taille : la teinte des parois). Aucun coût : une couleur de
+  sommet déjà écrite.
 - **Ombre de contact** (même interrupteur 🧱, `OMBRE_CONTACT`) : au pied des piliers, des fronts, des murs et des
   parois des galeries et des tubes, la teinte descend à 50 % au contact du sol et revient à 100 % en 28 cm (au plus
   le tiers de la hauteur) : les volumes tiennent au sol. Au pied seul (décision produit) : en tête, l'ombre dessinait
   un collier sombre sous le dessus des piliers en vue d'édition, où le plafond est caché. ⚠️ contrat (décision
   batterie) : posée **par sommet** dans la couleur du maillage (`_faceOmbree`, `Lot.quadDegrade`), multipliée par la
   texture et par la teinte de la 2e masse ; ni ombre calculée, ni passe de rendu, ni lumière en plus. Le lot texturé
-  la porte (`lot.ombre = { sol, plafond }` sur la roche, le parpaing et la pierre des parois d'une tuile) : `_prisme`
+  la porte (`lot.ombre = { sol, plafond }` sur la roche, le parpaing, la pierre des murs en ligne et celle des
+  parois d'une tuile) : `_prisme`
   et `_paroiY` découpent alors chaque face verticale en deux bandes (sol, +28 cm, tête) sans toucher aux coordonnées
   de texture (v = hauteur en mètres) ; une paroi coupée par un niveau entremêlé ne s'assombrit qu'au bout qui touche
-  le sol. Matériaux `roche`, `parpaing` et `paroi` en couleurs de sommets (blanc hors de la bande). Volumes des
+  le sol. Matériaux `roche`, `parpaing`, `murPierre` et `paroi` en couleurs de sommets (blanc hors de la bande). Volumes des
   passages, remblais, dessus des structures : sans ombre. Coût mesuré (salle fictive de 2 025 piliers de 6 à 12 pans,
   PC) : sommets de la scène × 1,7 (79 300 → 136 100 à 100 m de portée, 8 800 → 14 900 à 30 m), triangles dessinés au
   plus 9 500 → 16 100, temps par image 0,6 → 0,7 ms ; aucun appel de dessin ni matériau de plus. Coupé : géométrie

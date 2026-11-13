@@ -286,9 +286,9 @@
   // image hors des sommets de la bande (une bande de plus par face verticale). Multipliée par la texture et par la
   // teinte de la 2e masse ; les coordonnées de texture restent en mètres.
   const OMBRE_CONTACT = { haut: 0.28, force: 0.5 };
-  // Pierre de taille de carrière (parois des galeries et des tubes, 🧱 activé ; jamais les piliers ni les fronts) :
-  // motif de 2 m (128 px/m), assises de hauteur tirée, blocs de longueur tirée, joints irréguliers (largeur, pente,
-  // lit ondulé), arêtes émoussées. Longueurs en m.
+  // Pierre de taille de carrière (parois des galeries et des tubes, murs tracés en ligne, 🧱 activé ; jamais les
+  // piliers ni les fronts) : motif de 2 m (128 px/m), assises de hauteur tirée, blocs de longueur tirée, joints
+  // irréguliers (largeur, pente, lit ondulé), arêtes émoussées. Longueurs en m.
   const PIERRE = { m: 2, px: 256, couleur: "#d5c9ad", mortier: "#8f8571", assise: [0.28, 0.46], bloc: [0.5, 1.1],
     joint: [0.008, 0.02], onde: 0.008, pente: 0.05, biseau: 0.03, relief: 2.2, graine: 29 };
   // Pierre dressée des claveaux d'un arc (🧱 activé ; _pierresDressees) : planche de `cases` × `cases` pierres
@@ -310,8 +310,8 @@
   // en m. ⚠️ contrat : coordonnées de texture en motifs (mètres / `m`), posées par _tympanArc.
   const BLOCAGE = { m: 2, px: 256, couleur: PIERRE.couleur, mortier: "#a69a83", assise: [0.1, 0.2],
     bloc: [0.14, 0.5], ecart: 0.3, joint: [0.006, 0.013], biseau: 0.03, tors: 0.016, relief: 2.6, graine: 71 };
-  // Parpaing (murs) : motif de 1 m (256 px/m, un joint de 1 cm fait 2,6 px ; un appareil régulier se répète de
-  // toute façon), blocs de 50 × 20 cm à joints droits, gris béton, pores.
+  // Parpaing (murs en surface, type `mur`) : motif de 1 m (256 px/m, un joint de 1 cm fait 2,6 px ; un appareil
+  // régulier se répète de toute façon), blocs de 50 × 20 cm à joints droits, gris béton, pores.
   const PARPAING = { m: 1, px: 256, couleur: "#a3a29c", mortier: "#b5b1a6", l: 0.5, h: 0.2, joint: 0.01,
     biseau: 0.006, relief: 2.4, graine: 41 };
   // Remblais (zones `remblais`, 🧱 activé) : terre et sable calcaire tassés, cailloux et blocs de calcaire anguleux à
@@ -328,8 +328,17 @@
   const EBOULIS = { m: 4, px: 256, terre: "#857864", pierre: "#cbc2ab", tailles: [[0.02, 0.05, 460, 0.4],
     [0.07, 0.16, 125, 0.7], [0.2, 0.36, 39, 0.9], [0.42, 0.62, 12, 1]], facettes: [4, 7], allonge: 0.7,
     sable: 250, fissures: 3, relief: 5, graine: 67 };
+  // Mur tracé en ligne (`mur-ligne`, 🧱 activé) : bâti dans la pierre de taille des parois, sa carte et son relief
+  // (PIERRE, _matMurPierre) — même teinte, aucune nuance par structure. `m` : coordonnées de texture en mètres (la
+  // carte des parois porte l'échelle dans son `repeat`). Une paroi de galerie part d'un lit au sol et est coupée
+  // où tombe le ciel ; le mur, lui, finit sur une assise entière : son appareil est calé sur sa tête, `tete` m sous
+  // un lit (au-delà de la demi-largeur d'un joint et de l'onde du lit), l'assise entamée est au pied, dans l'ombre
+  // de contact.
+  const MUR_PIERRE = { m: 1, tete: 0.02 };
+  // ⚠️ contrat (décision produit) : le mur en surface fermée (`mur`) est en parpaing, le mur tracé en ligne
+  // (`mur-ligne`) en pierre de taille. La forme est portée par le type (isStructurePolylineType).
   const TEXTURE_TYPE = { "pilier-1": "roche", "pilier-2": "roche", "front-1": "roche", "front-2": "roche",
-    "mur": "parpaing", "mur-ligne": "parpaing" };
+    "mur": "parpaing", "mur-ligne": "pierre" };
   const LISERE = 0.15;              // m
   // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie (salles comprises). ⚠️ contrat : le rayon du
   // recalage du tracker (KtaGalerie.versGalerie), une seule valeur.
@@ -1146,7 +1155,8 @@
   // Prisme : faces latérales vers l'extérieur (contour de sens positif), dessus facultatif.
   // `m` facultatif (m par motif) : coordonnées de texture en mètres, u = longueur de contour cumulée depuis `u0` m
   // (l'appareil tourne l'angle sans saut ; tiré de la position du premier sommet si absent : deux piliers voisins
-  // ne montrent pas le même dessin), v = hauteur depuis le sol (une assise part toujours du sol).
+  // ne montrent pas le même dessin), v = hauteur depuis le sol (une assise part toujours du sol), décalée de
+  // `lot.dv` motifs si le lot en porte un (mur en pierre de taille : MUR_PIERRE).
   function _prisme(lot, ring, y0, y1, col, dessus, m, u0) {
     if (ring.length < 3) return;
     let s = !m ? 0 : u0 !== undefined ? u0 : _origineMotif(ring, m);
@@ -1158,11 +1168,12 @@
       if (lot.brise && m && l > BRISE.long * m) _faceBrisee(lot, p, q, y0, y1, n, col, m);
       else if (lot.ombre && m) {
         if (lot.brise) _pansReleves().courtes.add(p[0].toFixed(2) + "," + p[1].toFixed(2) + "," + q[0].toFixed(2));
-        _faceOmbree(lot, p, q, y0, y1, n, col, s / m, (s + l) / m, m);
+        _faceOmbree(lot, p, q, y0, y1, n, col, s / m, (s + l) / m, m, lot.dv);
       }
       else {
-        lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], n, col,
-          m ? [s / m, y0 / m, (s + l) / m, y0 / m, (s + l) / m, y1 / m, s / m, y1 / m] : undefined);
+        const dv = lot.dv || 0;
+        lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], n, col, m ? [s / m,
+          y0 / m + dv, (s + l) / m, y0 / m + dv, (s + l) / m, y1 / m + dv, s / m, y1 / m + dv] : undefined);
       }
       s += l;
     }
@@ -1495,7 +1506,8 @@
     const hachSol = new Lot(), hachRideau = new Lot();
     // Mixte : parois des tubes (pièces de la tuile, bouts ouverts exclus), zones des tubes découpées comme en galerie.
     const parois = new Lot(), paroisUnies = new Lot(), eauTube = new Lot(), remblaisTube = new Lot();
-    // Ombre de contact (OMBRE_CONTACT, 🧱 activé) : pierre des parois, roche et parpaing, du sol au plafond du niveau.
+    // Ombre de contact (OMBRE_CONTACT, 🧱 activé) : pierre des parois et des murs en ligne, roche et parpaing, du
+    // sol au plafond du niveau.
     const ombre = _e.textures === true ? { sol: 0, plafond: h } : null;
     if (ombre) parois.ombre = ombre;
     // Niveaux entremêlés et zones jonction (_paroiEntre, _trousEntre, _zoneJonction) : coupes, trous du gabarit et
@@ -1513,21 +1525,25 @@
       }
       _trousEntre(trous, mx, t.g, h);
     }
-    // Textures (🧱) : roche et parpaing dans leurs lots, couleur blanche (texture naturelle, jamais teintée par la
-    // légende) ; un type sans texture garde sa couleur unie dans le lot d'origine. Remblais et effondrement (deux
-    // volumes) texturés : un lot chacun, chambres et tubes ensemble (_zoneGalerie) ; 🧱 coupé, les lots d'origine.
-    const roche = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
+    // Textures (🧱) : roche, parpaing (murs en surface) et pierre de taille (murs en ligne) dans leurs lots, couleur
+    // blanche (texture naturelle, jamais teintée par la légende) ; un type sans texture garde sa couleur unie dans
+    // le lot d'origine. Remblais et effondrement (deux volumes) texturés : un lot chacun, chambres et tubes ensemble
+    // (_zoneGalerie) ; 🧱 coupé, les lots d'origine.
+    const roche = new Lot(), parpaing = new Lot(), pierreMur = new Lot(), tx = _e.textures === true;
     const remblaisTex = new Lot(), eboulis = new Lot(), arcs = _lotsArc(opaque, h);
-    if (ombre) roche.ombre = parpaing.ombre = ombre;
+    if (ombre) roche.ombre = parpaing.ombre = pierreMur.ombre = ombre;
     roche.brise = true;
+    pierreMur.dv = -(h * HAUTEUR_MUR + MUR_PIERRE.tete) / MUR_PIERRE.m;
+    const motifs = { roche: ROCHE.m, parpaing: PARPAING.m, pierre: MUR_PIERRE.m };
+    const lotsTex = { roche: roche, parpaing: parpaing, pierre: pierreMur };
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
       remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
       if (t.s[i].type === "arc") { _arcSoutenement(arcs, t.s[i], mx); continue; }
       const s = t.s[i], tex = _e.textures ? _textureDe(s.type) : null;
       const col = !tex ? _couleur("structures", s.type) : tex === "roche" ? _nuanceRoche(s) : BLANC;
-      const m = tex ? (tex === "roche" ? ROCHE : PARPAING).m : undefined;
-      const lot = tex === "roche" ? roche : tex === "parpaing" ? parpaing : _estMur(s.type) ? murs : opaque;
+      const m = tex ? motifs[tex] : undefined;
+      const lot = tex ? lotsTex[tex] : _estMur(s.type) ? murs : opaque;
       const hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
       const pente = _structurePente(s);
       if (pente) {
@@ -1592,6 +1608,7 @@
     if (roche.p.length || parpaing.p.length) _matsTextures();
     ajouter(roche, _e.mats.roche, 0, "opaque");
     ajouter(parpaing, _e.mats.parpaing, 0, "murs");
+    if (pierreMur.p.length) ajouter(pierreMur, _matMurPierre(), 0, "murs");
     _poserArcs(arcs, ajouter);
     ajouter(lumineux, _e.mats.iti, 1, "itineraire");
     ajouter(transp, _e.mats.transp, 2);
@@ -2492,7 +2509,8 @@
 
   // ── Textures des structures (🧱) ──────────────────────────────────────────────────────────────────────
 
-  // Type de structure → "roche" | "parpaing" | null (couleur unie), en cache pour la vue. Un type perso `cust-…`
+  // Type de structure → "roche" | "parpaing" | "pierre" (TEXTURE_TYPE) | null (couleur unie), en cache pour la vue.
+  // Un type perso `cust-…`
   // n'a pas de type de base, seulement la géométrie de son entrée de légende (styleResolver.js > _styleCustom) :
   // en ligne, un front de taille ; en polygone, un pilier (il monte à toute la hauteur comme un pilier, la règle
   // du mur ne vaut que pour les clés `mur` et `mur-ligne`) : roche brute dans les deux cas, s'il est résolu
@@ -3063,6 +3081,29 @@
     e.msTextures = performance.now() - t0;
   }
 
+  // Matériau des murs tracés en ligne (🧱, MUR_PIERRE), fait au premier d'entre eux : la carte et le relief de la
+  // pierre de taille des parois (e.texPierre) — ni dessin, ni texture de plus. Reculé en profondeur comme les murs
+  // (contrat de _estMur), faces avant seules comme la roche et le parpaing : le même programme qu'eux.
+  // ⚠️ contrat : il suit la carte des parois (_suivreMurPierre), redessinée quand la finesse change (Textures HD).
+  function _matMurPierre() {
+    const e = _e;
+    _paroiTexturee();
+    if (!e.mats.murPierre) {
+      e.mats.murPierre = _detailler(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true,
+        polygonOffsetFactor: 1, polygonOffsetUnits: 1 }), PIERRE.m);
+      _suivreMurPierre();
+    }
+    return e.mats.murPierre;
+  }
+
+  function _suivreMurPierre() {
+    const e = _e, m = e.mats.murPierre, t = e.texPierre;
+    if (!m || !t || m.map === t.couleur) return;
+    m.map = t.couleur;
+    m.normalMap = t.normale;
+    m.needsUpdate = true;
+  }
+
   // Matériau d'une zone texturée (🧱) : `remblais` (REMBLAIS) ou `eboulis` (effondrement, EBOULIS), un seul par type
   // pour toutes les tuiles et les trois rendus, fait à la première zone de ce type (aucun coût sans elle ni 🧱
   // coupé). Couleur + normal map comme la roche, jamais teinté par la légende ; libéré avec la vue (_demonter).
@@ -3386,6 +3427,7 @@
     }
     mat.needsUpdate = true;
     e.paroiPierre = pierre;
+    _suivreMurPierre();
   }
 
   // Hachures à 45° en coordonnées monde (une bande sombre tous les HACHURE_PAS m) sur un matériau Lambert :
@@ -14351,7 +14393,7 @@
     if (!_e) return null;
     const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs,
       paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis,
-      porte: e.mats.porte, tole: e.mats.tole };
+      porte: e.mats.porte, tole: e.mats.tole, murPierre: e.mats.murPierre };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
       uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m, remblais: 1 / REMBLAIS.m,
         eboulis: 1 / EBOULIS.m,
@@ -14376,9 +14418,9 @@
       for (let i = 0; i < d.length; i += 4) t += Math.hypot(d[i] / 127.5 - 1, d[i + 1] / 127.5 - 1);
       return +(t / (w * h)).toFixed(3);
     };
-    ["roche", "parpaing", "paroi", "remblais", "eboulis", "porte", "tole"].forEach(function (k) {
+    ["roche", "parpaing", "paroi", "remblais", "eboulis", "porte", "tole", "murPierre"].forEach(function (k) {
       const m = mats[k];
-      if (!m) return;
+      if (!m || !m.map) return;
       r.materiaux[k] = { pente: m.normalMap ? pente(m.normalMap.image) : 0, carte: m.map.image.width + "x" + m.map.image.height, normale: !!m.normalMap,
         relief: m.normalMap ? m.normalMap.image.width : 0,
         mipmaps: m.map.generateMipmaps && (!m.normalMap || m.normalMap.generateMipmaps),
@@ -14386,6 +14428,12 @@
         lits: lits(m.map.image) };
     });
     r.materiaux.paroi.pierre = !!e.texPierre && e.mats.paroi.map === e.texPierre.couleur;
+    // Mur en ligne : la carte et le relief mêmes de la pierre des parois, calage de sa tête (MUR_PIERRE).
+    if (r.materiaux.murPierre) {
+      r.materiaux.murPierre.pierre = !!e.texPierre && mats.murPierre.map === e.texPierre.couleur &&
+        mats.murPierre.normalMap === e.texPierre.normale;
+      r.materiaux.murPierre.tete = MUR_PIERRE.tete;
+    }
     // Traces d'outil de la roche dessinée à la finesse en vigueur (_rocheBrute).
     const tr = (_appareils[_fin() > 1 ? "roche@" + _fin() : "roche"] || {}).traces;
     if (r.materiaux.roche && tr) {
@@ -14413,6 +14461,7 @@
         ms: Math.round(e.msBlocage || 0) };
     }
     if (r.materiaux.paroi.pierre) r.materiaux.paroi.moyenne = moyenne(e.mats.paroi.map.image);
+    if (r.materiaux.murPierre) r.materiaux.murPierre.moyenne = moyenne(mats.murPierre.map.image);
     // Textures HD : préférence, état en vigueur, bouton, grain de détail ; mémoire des textures de la vue (images
     // distinctes × 4 octets, mipmaps compris : × 4 / 3).
     const images = new Set();
@@ -14508,7 +14557,7 @@
             const lh = Math.hypot(dx, dz), sens = Math.abs(dy) < 1e-6 ? "h" : lh < 1e-6 ? "v" : null;
             const l = Math.hypot(lh, dy);
             if (!sens || l < 0.05) continue;
-            const rep = nom === "paroi" ? me.material.map.repeat : null;
+            const rep = nom === "paroi" || nom === "murPierre" ? me.material.map.repeat : null;
             const du = (uv[b * 2] - uv[a * 2]) * (rep ? rep.x : 1), dv = (uv[b * 2 + 1] - uv[a * 2 + 1]) * (rep ? rep.y : 1);
             parMat[nom] = (parMat[nom] || 0) + 1;
             r.aretes.push({ x: (p[a * 3] + p[b * 3]) / 2, z: (p[a * 3 + 2] + p[b * 3 + 2]) / 2, y: p[a * 3 + 1],

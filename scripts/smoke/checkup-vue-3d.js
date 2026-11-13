@@ -9474,7 +9474,10 @@ async function sectionFichesReglage(nav) {
 // Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied des piliers, du mur et des parois,
 // pleine à 0,28 m et jusqu'en tête, deux bandes par face, texture inchangée, rien 🧱 coupé. Nuance de roche par structure
 // (NUANCE_ROCHE) : deux piliers voisins différents, discrète, 2e masse reconnaissable, stable (tuiles refaites, vue
-// rouverte). Traces d'outil de la roche (ROCHE.pic, ROCHE.lance) : passes de coups parallèles, une ou deux orientations. Textures HD (HD, config.js > getVue3DTexturesHD) : défaut selon l'appareil, bouton de la tuile, 512 px
+// rouverte). Murs (TEXTURE_TYPE, MUR_PIERRE) : en surface, parpaing ; tracé en ligne, pierre de taille des parois
+// (même carte, relief, tête sur une assise entière, ombre de contact, sans nuance, Textures HD suivies, légende
+// 🧱 coupé).
+// Traces d'outil de la roche (ROCHE.pic, ROCHE.lance) : passes de coups parallèles, une ou deux orientations. Textures HD (HD, config.js > getVue3DTexturesHD) : défaut selon l'appareil, bouton de la tuile, 512 px
 // et grain de détail, bascule sans géométrie refaite, sans effet 🧱 coupé, retour à 256 px sans redessin, reprise du
 // contexte, temps et mémoire (PC, téléphone ralenti × 4).
 async function sectionTexturesSol(nav) {
@@ -9724,6 +9727,38 @@ async function sectionTexturesSol(nav) {
       H.recoupe = { hd: t.hd, tailles: tailles(t), dessins: t.dessins, ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
       q(".kta-v3d-btn-reglages").click();
       await K.fermer();
+      // Murs : un mur en surface (parpaing) et un mur tracé en ligne, coudé (pierre de taille des parois), dans
+      // la salle ; rendu structures, Textures HD allumé puis coupé, 🧱 coupé puis rallumé, puis mixte (parois de
+      // tube).
+      window.setStructures([
+        { uid: "st_ts_m", type: "mur", level: 0, points: [P(12, 8), P(20, 8), P(20, 8.5), P(12, 8.5)] },
+        { uid: "st_ts_ml", type: "mur-ligne", level: 0, points: [P(4, -6), P(12, -6), P(15, -9)] }]);
+      const murs = function () {
+        const t = K.textures(), e = K.etat();
+        return { maillages: t.maillages, parpaing: t.materiaux.parpaing, pierre: t.materiaux.murPierre,
+          paroi: t.materiaux.paroi, teintes: (t.teintes.murPierre || []).slice().sort(), couleurs: t.couleurs,
+          aretes: t.aretes.filter(function (a) { return a.mat === "murPierre" || a.mat === "parpaing"; }),
+          hauteur: e.hauteur, yMax: e.yMax, uv: t.uvParMetre.pierre, images: t.hd.images, dessins: t.dessins };
+      };
+      const M = r.murs = { ox: P(0, 0).x / sc, oz: P(0, 0).y / sc, legende: {
+        mur: window.ktaSwatchColor("structures", "mur"), ligne: window.ktaSwatchColor("structures", "mur-ligne") } };
+      await ouvrir("structures", 0, 0);
+      M.structures = murs();
+      K.basculerTexturesHD();
+      await pause(500);
+      M.hd = murs();
+      K.basculerTexturesHD();
+      await pause(400);
+      M.sd = murs();
+      K.basculerTextures();
+      await pause(250);
+      M.coupe = murs();
+      K.basculerTextures();
+      await pause(250);
+      M.rallume = murs();
+      await ouvrir("mixte", 0, 0);
+      M.mixte = murs();
+      await K.fermer();
       // Vue ouverte 🧱 coupé dans une page où rien n'est dessiné : voir `froid` (autre page).
       return r;
     });
@@ -9844,6 +9879,80 @@ async function sectionTexturesSol(nav) {
       "± 6 %), la 2e masse toujours reconnaissable, à peine plus chaude", N.depart);
     verifier(JSON.stringify(N.depart) === JSON.stringify(N.refaite) && JSON.stringify(N.depart) === JSON.stringify(N.rouverte),
       nom + "nuance stable : la même après reconstruction des tuiles et après réouverture", N);
+    // Murs (vue3d.js > TEXTURE_TYPE, MUR_PIERRE) : en surface fermée, parpaing ; tracé en ligne, pierre de taille.
+    const W = R.murs, Ws = W.structures, pm = Ws.pierre || {}, pg = Ws.parpaing || {};
+    const versSrgb = function (hex) {
+      return [1, 3, 5].map(function (i) {
+        const c = parseInt(hex.substr(i, 2), 16) / 255;
+        return Math.round((c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055) * 255);
+      });
+    };
+    const aLaCouleur = function (liste, hex) {
+      if (!/^#[0-9a-f]{6}$/i.test(hex || "")) return false;
+      const v = [1, 3, 5].map(function (i) { return parseInt(hex.substr(i, 2), 16); });
+      return (liste || []).some(function (h) {
+        const w = versSrgb(h);
+        return Math.abs(w[0] - v[0]) <= 4 && Math.abs(w[1] - v[1]) <= 4 && Math.abs(w[2] - v[2]) <= 4;
+      });
+    };
+    const dans = function (x0, z0, x1, z1) {
+      return function (a) { return a.x > W.ox + x0 && a.x < W.ox + x1 && a.z > W.oz + z0 && a.z < W.oz + z1; };
+    };
+    const enSurface = dans(11.9, 7.9, 20.1, 8.6), enLigne = dans(3.7, -9.4, 15.4, -5.7);
+    const aP = Ws.aretes.filter(function (a) { return a.mat === "parpaing"; });
+    const aL = Ws.aretes.filter(function (a) { return a.mat === "murPierre"; });
+    verifier(Ws.maillages.parpaing >= 1 && aP.length > 0 && aP.every(enSurface) && pg.carte === "256x256" &&
+      pg.lits > 0.12 && pg.recule === true && pg.couleursSommets === true &&
+      aP.every(function (a) { return Math.abs(a.uvParM - 1) < 2e-3; }),
+    nom + "mur en surface fermée : parpaing, à sa taille réelle, reculé en profondeur (" + aP.length +
+      " arêtes, toutes sur le mur en surface)", { maillages: Ws.maillages, parpaing: pg });
+    verifier(Ws.maillages.murPierre >= 1 && aL.length > 0 && aL.every(enLigne) && pm.pierre === true &&
+      pm.normale === true && pm.pente > 0.02 && pm.lits > 0.12 && pm.carte === "256x256" && pm.mipmaps &&
+      pm.recule === true && pm.couleursSommets === true && !Ws.maillages.murs,
+    nom + "mur tracé en ligne : pierre de taille, la carte et le relief des parois (pente du relief " + pm.pente +
+      "), reculé en profondeur comme les murs (" + aL.length + " arêtes, toutes sur le mur en ligne)",
+    { maillages: Ws.maillages, pierre: pm });
+    const moy = function (o) { return (o && o.moyenne) || [0, 0, 0]; };
+    const ecartTeinte = function (a, b) {
+      return Math.max.apply(null, [0, 1, 2].map(function (i) { return Math.abs(a[i] - b[i]) / Math.max(1, b[i]); }));
+    };
+    const eS = ecartTeinte(moy(pm), moy(Ws.paroi)), eM = ecartTeinte(moy(W.mixte.pierre), moy(W.mixte.paroi));
+    verifier(moy(pm)[0] > 0 && eS <= 0.08 && W.mixte.paroi.pierre === true && W.mixte.maillages.paroi >= 1 &&
+      W.mixte.maillages.murPierre >= 1 && eM <= 0.08 && moy(pm)[0] - moy(pm)[2] > 15,
+    nom + "mur en ligne à la teinte des parois de pierre (écart " + eM.toFixed(3) + " en mixte, à côté des " +
+      "parois d'un tube ; au plus 0,08), plus de gris béton (rouge − bleu " +
+      (moy(pm)[0] - moy(pm)[2]).toFixed(1) + ")",
+    { mur: moy(pm), paroi: moy(W.mixte.paroi), parpaing: pg.lits });
+    verifier(aL.every(function (a) { return Math.abs(a.uvParM - Ws.uv) < 2e-3; }) &&
+      aL.some(function (a) { return a.sens === "v"; }) && aL.some(function (a) { return a.sens === "h"; }),
+    nom + "mur en ligne à la taille réelle de la pierre des parois (" + Ws.uv + " motif par mètre, en long, en " +
+      "hauteur et sur le dessus)", aL.slice(0, 3));
+    // Tête sur une assise entière : v = − MUR_PIERRE.tete (m) au sommet du mur, juste sous un lit du motif.
+    const hs = Ws.hauteur * 0.98;
+    const enTete = aL.filter(function (a) { return a.sens === "v" && Math.abs(a.y - hs) < 1e-3; });
+    verifier(Math.abs(Ws.yMax.murs - hs) < 1e-3 && pm.tete > 0.018 && pm.tete < 0.1 && enTete.length > 0 &&
+      enTete.every(function (a) { return Math.abs(a.v0 + pm.tete) < 1e-4; }),
+    nom + "mur en ligne : monte à 98 % de la hauteur et finit sur une assise entière (tête à " + pm.tete +
+      " m sous un lit, " + enTete.length + " arêtes)", { hs: hs, yMax: Ws.yMax, tete: enTete.slice(0, 3) });
+    verifier(Ws.teintes.join() === "#808080,#ffffff",
+      nom + "mur en ligne : ombre de contact au pied (teinte × 0,5), blanc au-delà, aucune nuance par structure",
+      Ws.teintes);
+    verifier(W.hd.pierre.carte === "512x512" && W.hd.pierre.pierre === true && W.hd.parpaing.carte === "512x512" &&
+      W.sd.pierre.carte === "256x256" && W.sd.pierre.pierre === true &&
+      JSON.stringify(W.hd.maillages) === JSON.stringify(Ws.maillages) &&
+      !Object.keys(W.hd.dessins).some(function (k) { return /mur/i.test(k); }) &&
+      W.hd.teintes.join() === Ws.teintes.join(),
+    nom + "Textures HD : le mur en ligne suit la pierre des parois en 512 px, sans géométrie refaite ni dessin de " +
+      "plus (" + Object.keys(W.hd.dessins).join(", ") + "), puis revient à 256 px",
+    { hd: W.hd.pierre, sd: W.sd.pierre });
+    const Wc = W.coupe;
+    verifier(!Wc.maillages.murPierre && !Wc.maillages.parpaing && Wc.maillages.murs >= 1 &&
+      aLaCouleur(Wc.couleurs.murs, W.legende.mur) && aLaCouleur(Wc.couleurs.murs, W.legende.ligne) &&
+      Wc.aretes.length === 0 && W.rallume.maillages.murPierre >= 1 && W.rallume.maillages.parpaing >= 1 &&
+      W.rallume.pierre.pierre === true,
+    nom + "🧱 coupé : murs en surface et en ligne à la couleur de la légende (" + W.legende.mur + ", " +
+      W.legende.ligne + "), sans texture ; rallumé : parpaing et pierre de taille",
+    { coupe: Wc.maillages, couleurs: Wc.couleurs, rallume: W.rallume.maillages });
     // Textures HD (vue3d.js > HD, config.js > getVue3DTexturesHD).
     const H = R.hd, T256 = { roche: "256x256", parpaing: "256x256", paroi: "256x256", sol: 256, plafond: 256 };
     const T512 = { roche: "512x512", parpaing: "512x512", paroi: "512x512", sol: 512, plafond: 512 };
@@ -20586,8 +20695,9 @@ async function sectionCaseBoutonsZoom(nav) {
         "premier dessin des trois textures : roche " + dess.roche + " ms, parpaing " + dess.parpaing + " ms, pierre " +
         dess.pierre + " ms (à cette ouverture : structures " + D0.ms + " ms, parois " + D0.msParoi + " ms)", dess);
       verifier(D0.actives && D0.bouton === "true" && TX.defaut.pref === true &&
-        D0.maillages.roche >= 1 && D0.maillages.parpaing >= 1 && !D0.maillages.murs,
-        "textures actives par défaut : roche brute (piliers, fronts, type perso) et parpaing (murs)",
+        D0.maillages.roche >= 1 && D0.maillages.parpaing >= 1 && D0.maillages.murPierre >= 1 && !D0.maillages.murs,
+        "textures actives par défaut : roche brute (piliers, fronts, type perso), parpaing (murs en surface) et " +
+        "pierre de taille (mur tracé en ligne)",
         { actives: D0.actives, bouton: D0.bouton, maillages: D0.maillages });
       const mp = D0.materiaux.roche || {}, mg = D0.materiaux.parpaing || {};
       // Roche brute : aucune assise appareillée, donc aucune rangée de la couleur nettement à l'écart des autres
@@ -20620,7 +20730,8 @@ async function sectionCaseBoutonsZoom(nav) {
         "taille réelle : parpaing " + ap + " et roche " + ar + " de texture par mètre, sur le mur de 2 m comme sur " +
         "celui de 40 m, en hauteur et sur le dessus (aucun étirement)", ech);
       verifier(!C0.actives && C0.bouton === "false" && TX.coupe.pref === false && !TX.coupe.repere && TX.coupe.tuile &&
-        TX.coupe.dansTuile && !C0.maillages.roche && !C0.maillages.parpaing && C0.maillages.opaque >= 1 &&
+        TX.coupe.dansTuile && !C0.maillages.roche && !C0.maillages.parpaing && !C0.maillages.murPierre &&
+        C0.maillages.opaque >= 1 &&
         C0.maillages.murs >= 1 && C0.aretes.every(function (x) { return x.mat === "paroi"; }),
         "🧱 coupé dans la tuile ⚙️ : matériaux d'origine, plus aucune texture ; repère sur ⚙️ ; tuile ouverte",
         { actives: C0.actives, maillages: C0.maillages, repere: TX.coupe.repere });

@@ -2353,7 +2353,7 @@ icônes.
   un panneau de POI ouvre toujours la sienne, l'ajustement par appui long reste permis ; une greffe `fiches: false`
   l'emporte), 🧱
   Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
-  des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
+  des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing (en pierre de taille s'ils sont tracés en ligne), remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),
   battants de bois des cavages et remblais des puits comblés ; coupé : parois des galeries et des tubes à la couleur de légende de leur tracé, sol et plafond noirs, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
   Lignes au sol sur la suivante, Boussole et Mini-carte ensuite, Guidage et Fiches dessous ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
