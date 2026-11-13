@@ -301,7 +301,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 - la **rosa de los vientos** a la izquierda vuelve a la pantalla de inicio;
 - el **nombre del mapa** abre **🗂️ Cambiar de mapa** (ver más abajo);
 - los **contadores** 📍 puntos · 🛣️ trazados · ⬛ zonas · 🏛️ estructuras · 📸 fotos abren **📊 Detalles de la sesión**;
-- a la derecha: **📖** Modo Historia, **🌍** Vista OSM (mapa georreferenciado), **🚨** Salida de emergencia, **🔋** batería.
+- a la derecha: **📖** Modo Historia, **🌍** fondo OpenStreetMap bajo el plano (mapa georreferenciado, ver «🌍 Vista OSM»), **🚨** Salida de emergencia, **🔋** batería.
 
 **Abajo**, una barra de estado reúne lo que está en curso: 📐 medición, 📏 distancia total de los trazados, 🗺️ itinerario (distancia, tiempo, ritmo — tócalo para abrir el itinerario) y el indicador **🧭 tracker** (ON · pasos · distancia durante el seguimiento; tócalo para abrir el menú del Tracker). Pasa a una segunda línea si no cabe todo; el botón ▾▴ la reduce.
 
@@ -867,20 +867,28 @@ Por defecto, el trayecto solo cruza una frontera (tu mapa y el mapa de llegada).
 La Vista OSM coloca tus mapas **georreferenciados** sobre el mapa de OpenStreetMap, con sus puntos, trazados, zonas y estructuras, en tus colores de leyenda. Está **activa por defecto**: el fondo de mapa procede de OpenStreetMap, que por tanto ve las zonas que miras; ningún dato de tus mapas sale del dispositivo. Para desactivarla: ⚙️ Configuración.
 
 - **En la pantalla de inicio**, el widget **🌍 Vista OSM**; su botón **⛶** abre el modo OSM a pantalla completa.
-- **En un mapa**, el botón **🌍** de la barra de arriba (mapas georreferenciados). Desde un mapa, la Vista OSM solo se abre si el mapa se ha **convertido a V2 en teselas** (ver «🧱 Convertir a teselas V2»); si no, un mensaje explica cómo convertirlo.
+- **En un mapa**, el botón **🌍** de la barra de arriba no abre la Vista OSM: pone OpenStreetMap **bajo** el plano («Fondo OpenStreetMap bajo el plano», más abajo). El Modo Rescate sigue abriendo la ventana Vista OSM.
 - Un mapa solo aparece una vez que se ha **abierto al menos una vez**: es al abrirlo cuando la app lee su georreferenciación.
 - **Sin conexión**: **💾 Guardar sin conexión** descarga con antelación las teselas de la zona visible.
 - Al acercar el zoom sobre un mapa se muestran imágenes más detalladas, leídas del archivo del mapa que ya está en tu dispositivo. Las capas incluidas ocultas se muestran y se filtran como las demás.
+
+**Fondo OpenStreetMap bajo el plano**: en un mapa georreferenciado, el botón **🌍** de la barra de arriba abre un pequeño panel.
+
+- **Fondo OSM bajo el plano** lo activa o lo desactiva. Activado, el botón 🌍 queda resaltado y el crédito de OpenStreetMap aparece abajo a la izquierda. Cerrar el panel no lo desactiva.
+- **Transparencia del plano**: al 0 %, el plano tapa OpenStreetMap; al 100 %, solo queda OpenStreetMap. OpenStreetMap sigue opaco.
+- **Mi posición**: tu posición GPS, una vez, sin seguimiento. Se rechaza si estás lejos del mapa, y en modo incógnito. No se guarda ni se envía nada.
+
+El fondo gira con el mapa orientado y se desactiva cada vez que se abre un mapa. Sin georreferenciación, el botón aparece en gris (pasa el cursor por encima para leer el motivo). Si la Vista OSM está desactivada en ⚙️ Configuración, o en modo incógnito, el fondo se rechaza. Sin conexión, solo se muestran las teselas guardadas antes (💾 en el mapa de la pantalla de inicio). Muy de cerca, OpenStreetMap se vuelve borroso: no existe con más detalle. Las exportaciones de imagen, PDF y KMZ no contienen el fondo.
 
 **Búsqueda**: la barra de la línea de título busca un mapa o un punto entre tus mapas georreferenciados; el mapa vuela hasta él. Lee tus mapas, sin consultar nada en Internet.
 
 **📏 Medir**: en modo OSM, la herramienta de medición da una distancia y una superficie; no dependen de ninguna calibración del mapa.
 
-**🧭 Girar el mapa**: en la ventana Vista OSM abierta desde un mapa y en el mapa de la pantalla de inicio, gira dos dedos sobre el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda del mapa, lo endereza. La ventana siempre se vuelve a abrir con el norte arriba, y el mapa de la pantalla de inicio también cuando vuelves a ella; elegir otro mapa en su lista conserva el ángulo. En la pantalla de inicio, un solo dedo sigue moviendo el mapa: para desplazar la página, pon el dedo al lado. Para impedirlo: ⚙️ Configuración de la pantalla de inicio › 🎨 Visualización › **Bloquear la rotación del mapa**.
+**🧭 Girar el mapa**: en la ventana Vista OSM (Modo Rescate) y en el mapa de la pantalla de inicio, gira dos dedos sobre el mapa (Mayús + rueda en un ordenador); el botón **norte**, abajo a la izquierda del mapa, lo endereza. La ventana siempre se vuelve a abrir con el norte arriba, y el mapa de la pantalla de inicio también cuando vuelves a ella; elegir otro mapa en su lista conserva el ángulo. En la pantalla de inicio, un solo dedo sigue moviendo el mapa: para desplazar la página, pon el dedo al lado. Para impedirlo: ⚙️ Configuración de la pantalla de inicio › 🎨 Visualización › **Bloquear la rotación del mapa**.
 
 **🎯 Coordenadas de superficie**: un clic en el mapa da la latitud y la longitud del punto situado justo encima, con un botón Copiar — es lo que se transmite a un equipo que llega por la superficie. Su exactitud depende de la calibración del mapa.
 
-**🗺️ Leyenda**: en un mapa, el botón **🗺️ Leyenda** de la Vista OSM; en la pantalla de inicio, el botón **🗺️** del encabezado. Es la leyenda del mapa, con tus nombres, tus colores y tus tipos propios, en **solo lectura**: se modifica desde el mapa (🗺️ Leyenda → ✏️ Modificar). En la pantalla de inicio, es la leyenda del mapa que acabas de dejar; si no, la del mapa mostrado que abriste más recientemente. Si se muestran varios mapas, un mensaje te recuerda que los demás tienen la suya.
+**🗺️ Leyenda**: en la ventana Vista OSM, el botón **🗺️ Leyenda**; en la pantalla de inicio, el botón **🗺️** del encabezado. Es la leyenda del mapa, con tus nombres, tus colores y tus tipos propios, en **solo lectura**: se modifica desde el mapa (🗺️ Leyenda → ✏️ Modificar). En la pantalla de inicio, es la leyenda del mapa que acabas de dejar; si no, la del mapa mostrado que abriste más recientemente. Si se muestran varios mapas, un mensaje te recuerda que los demás tienen la suya.
 
 **🗂️ Varios mapas a la vez**: el botón **≡** del encabezado abre una ventana con los ajustes de visualización, el filtro por tag y la pila de mapas mostrados:
 
@@ -1813,7 +1821,7 @@ En **📋 Fases**, **➕ Añadir una fase**: un nombre, y luego marca los **equi
 
 - **📤 Exportar .mkmsec.json**: envía este archivo a cada equipo (mensajería, correo, cable). En su teléfono, el equipo abre 🚑 Modo Rescate → **📥 Importar un plan**, revisa la vista previa y luego **✓ Importar este escenario** — o, más rápido, suelta el archivo en **📦 Añadir un mapa** en la pantalla de inicio: la app abre el mapa correcto, muestra la vista previa y propone lanzar como «Equipo». La importación conserva el vínculo con el puesto de mando: es lo que permitirá al operador aceptar su informe. Si el escenario ya está en el teléfono, elige **Reemplazar** (recomendado: conserva el vínculo, pero borra lo ya introducido durante la intervención en ese teléfono) en vez de **Importar como copia** (el informe de esa copia será rechazado). La vista previa avisa si el archivo viene de otro mapa o de otra versión del mapa.
 - ⚠️ **Tras una actualización de la aplicación, vuelve a importar el escenario en cada teléfono antes de la intervención**: si no, el puesto de mando puede no lograr fusionar los informes.
-- **Sin conexión**: al lanzar, la app avisa si el mapa no está totalmente disponible sin conexión en el dispositivo; descárgalo desde **ℹ️ Información del mapa** antes de bajar. Para el mapa de superficie, abre la **🌍 Vista OSM** mientras tengas red y toca **💾 Guardar sin conexión** (detalles en la sección Vista OSM).
+- **Sin conexión**: al lanzar, la app avisa si el mapa no está totalmente disponible sin conexión en el dispositivo; descárgalo desde **ℹ️ Información del mapa** antes de bajar. Para el mapa de superficie, abre la **🌍 Vista OSM** de la pantalla de inicio mientras tengas red y toca **💾 Guardar sin conexión** (detalles en la sección Vista OSM): el fondo OpenStreetMap bajo el plano la usa sin conexión.
 - **📄 Exportar PDF (1 página/equipo)**: una ficha por equipo, para imprimir o llevar en el teléfono — contexto, miembros, jefe y efectivo, regreso obligatorio, misión, mapa de la zona (a la resolución completa del mapa: los nombres de galerías se leen incluso en un mapa grande), etapas, **hoja de ruta** cruce por cruce (cambios de nivel incluidos, si el itinerario está calculado) y un recuadro «Observaciones» para rellenar a bolígrafo.
 - **🌍 Exportar KMZ geolocalizado**: el escenario para Google Earth, OsmAnd o Avenza — una carpeta por equipo (puntos, zona, itinerario) sobre el mapa de fondo. Los itinerarios que faltan se calculan antes de exportar, y MyKTAMap vuelve a leer ese KMZ con el escenario. Hace falta un mapa calibrado con dos puntos GPS (pestaña 📡 Exportación externa de la exportación de sesión).
 

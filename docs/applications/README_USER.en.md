@@ -301,7 +301,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 - the **compass rose** on the left takes you back to the home screen;
 - the **map name** opens **🗂️ Switch map** (see below);
 - the **counters** 📍 points · 🛣️ paths · ⬛ zones · 🏛️ structures · 📸 photos open **📊 Session details**;
-- on the right: **📖** Story Mode, **🌍** OSM View (georeferenced map), **🚨** Emergency exit, **🔋** battery.
+- on the right: **📖** Story Mode, **🌍** OpenStreetMap background under the map (georeferenced map, see “🌍 OSM View”), **🚨** Emergency exit, **🔋** battery.
 
 **At the bottom**, a status bar groups what is in progress: 📐 measurement, 📏 total path distance, 🗺️ route (distance, time, pace — tap it to open the route) and the **🧭 tracker** light (ON · steps · distance while tracking; tap it to open the Tracker menu). It wraps onto a second line if everything doesn't fit; the ▾▴ button collapses it.
 
@@ -867,20 +867,28 @@ By default, the route crosses only one border (your map and the destination map)
 The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with their points, paths, zones and structures, in your legend colours. It is **on by default**: the background map comes from OpenStreetMap, which therefore sees the areas you look at; no data from your maps leaves the device. To turn it off: ⚙️ Configuration.
 
 - **On the home screen**, the **🌍 OSM View** widget; its **⛶** button opens the OSM mode full screen.
-- **On a map**, the **🌍** button in the top bar (georeferenced maps). From a map, the OSM View only opens if the map has been **converted to tiled V2** (see “🧱 Convert to V2 tiles”); otherwise, a message explains how to convert it.
+- **On a map**, the **🌍** button in the top bar does not open the OSM View: it puts OpenStreetMap **under** the map (“OpenStreetMap background under the map”, below). Rescue Mode still opens the OSM View window.
 - A map only shows up once it has been **opened at least once**: that is when the app reads its georeferencing.
 - **Offline**: **💾 Save Offline** downloads the tiles of the visible area in advance.
 - Zooming in on a map shows more detailed images, read from the map file already on your device. Layers shipped hidden are shown and filtered like the others.
+
+**OpenStreetMap background under the map**: on a georeferenced map, the **🌍** button in the top bar opens a small panel.
+
+- **OSM background under the map** turns it on or off. When it is on, the 🌍 button stays highlighted and the OpenStreetMap credit shows at the bottom left. Closing the panel does not turn it off.
+- **Map transparency**: at 0 %, the map hides OpenStreetMap; at 100 %, only OpenStreetMap is left. OpenStreetMap itself stays opaque.
+- **My location**: your GPS position, once, without tracking. Refused when you are far from the map, and in incognito mode. Nothing is saved or sent.
+
+The background turns with the oriented map and is off every time a map opens. Without georeferencing, the button is greyed out (hover over it to read why). If the OSM View is turned off in ⚙️ Configuration, or in incognito mode, the background is refused. Offline, only tiles saved beforehand are shown (💾 on the home screen map). Zoomed in very close, OpenStreetMap gets blurry: it does not exist in more detail. Image, PDF and KMZ exports do not contain the background.
 
 **Search**: the bar in the title row looks for a map or a point among your georeferenced maps; the map flies to it. It reads your maps, without asking the Internet anything.
 
 **📏 Measuring**: in OSM mode, the measurement tool gives a distance and an area; they do not depend on any map calibration.
 
-**🧭 Turning the map**: in the OSM View window opened from a map and on the home screen map, twist two fingers on the map (Shift + wheel on a computer); the **north** button, at the bottom left of the map, straightens it. The window always reopens north up, and so does the home screen map when you come back to it; picking another map in its list keeps the angle. On the home screen, one finger still moves the map: to scroll the page, put your finger beside it. To prevent it: ⚙️ home screen Configuration › 🎨 Display › **Lock map rotation**.
+**🧭 Turning the map**: in the OSM View window (Rescue Mode) and on the home screen map, twist two fingers on the map (Shift + wheel on a computer); the **north** button, at the bottom left of the map, straightens it. The window always reopens north up, and so does the home screen map when you come back to it; picking another map in its list keeps the angle. On the home screen, one finger still moves the map: to scroll the page, put your finger beside it. To prevent it: ⚙️ home screen Configuration › 🎨 Display › **Lock map rotation**.
 
 **🎯 Surface coordinates**: a click on the map gives the latitude and longitude of the point right above, with a Copy button — that is what you pass on to a team arriving from the surface. Their accuracy depends on the map's alignment.
 
-**🗺️ Legend**: on a map, the **🗺️ Legend** button of the OSM View; on the home screen, the **🗺️** button of the banner. It is the map's legend, with your names, your colours and your own types, **read-only**: you edit it from the map (🗺️ Legend → ✏️ Edit). On the home screen, it is the legend of the map you just left, otherwise that of the displayed map you opened most recently; when several maps are displayed, a message reminds you that the others have their own.
+**🗺️ Legend**: in the OSM View window, the **🗺️ Legend** button; on the home screen, the **🗺️** button of the banner. It is the map's legend, with your names, your colours and your own types, **read-only**: you edit it from the map (🗺️ Legend → ✏️ Edit). On the home screen, it is the legend of the map you just left, otherwise that of the displayed map you opened most recently; when several maps are displayed, a message reminds you that the others have their own.
 
 **🗂️ Several maps at once**: the **≡** button of the banner opens a window with the display settings, the tag filter and the stack of displayed maps:
 
@@ -1813,7 +1821,7 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 
 - **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚑 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario** — or, quicker, drops the file on **📦 Add a map** on the home screen: the app opens the right map, shows the preview, then offers to launch as “Team”. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
 - ⚠️ **After an app update, re-import the scenario on every phone before the operation**: otherwise the command post may fail to merge the reports.
-- **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, open the **🌍 OSM view** while you still have a network and tap **💾 Save Offline** (details in the OSM view section).
+- **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, open the home screen **🌍 OSM view** while you still have a network and tap **💾 Save Offline** (details in the OSM view section): the OpenStreetMap background under the map uses it offline.
 - **📄 PDF export (1 page/team)**: one sheet per team, to print or keep on the phone — context, members, leader and headcount, mandatory return, mission, map of the zone (at the map's full resolution: gallery names stay readable even on a large map), steps, **route sheet** junction by junction (level changes included, if the route has been computed) and an "Observations" box to fill in with a pen.
 - **🌍 Geolocated KMZ export**: the scenario for Google Earth, OsmAnd or Avenza — one folder per team (points, zone, route) over the map as background. Missing routes are computed before the export, and MyKTAMap reads this KMZ back along with the scenario. The map must be calibrated with two GPS points (📡 External export tab of the session export).
 

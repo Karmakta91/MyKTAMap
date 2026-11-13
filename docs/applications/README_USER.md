@@ -301,7 +301,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 - la **rose des vents** à gauche ramène à l'accueil ;
 - le **nom du plan** ouvre **🗂️ Changer de plan** (voir plus bas) ;
 - les **compteurs** 📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures · 📸 photos ouvrent **📊 Détails de la session** ;
-- à droite : **📖** Mode Histoire, **🌍** Vue OSM (plan géoréférencé), **🚨** Sortie d'urgence, **🔋** batterie.
+- à droite : **📖** Mode Histoire, **🌍** fond OpenStreetMap sous le plan (plan géoréférencé, voir « 🌍 Vue OSM »), **🚨** Sortie d'urgence, **🔋** batterie.
 
 **En bas**, une barre d'état regroupe ce qui est en cours : 📐 mesure, 📏 distance totale des tracés, 🗺️ itinéraire (distance, temps, allure — touche-le pour ouvrir l'itinéraire) et le voyant **🧭 tracker** (ON · pas · distance pendant le suivi ; touche-le pour ouvrir le menu Tracker). Elle passe à la ligne si tout ne tient pas ; le bouton ▾▴ la réduit.
 
@@ -867,20 +867,28 @@ Par défaut, le trajet ne franchit qu'une frontière (ton plan et le plan d'arri
 La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec leurs points, tracés, zones et structures, dans tes couleurs de légende. Elle est **active par défaut** : le fond de carte vient d'OpenStreetMap, qui voit donc les zones que tu regardes ; aucune donnée de tes plans ne sort. Pour la couper : ⚙️ Configuration.
 
 - **Sur l'accueil**, le widget **🌍 Vue OSM** ; son bouton **⛶** ouvre le mode OSM en plein écran.
-- **Sur un plan**, le bouton **🌍** de la barre du haut (plans géoréférencés). Depuis un plan, la Vue OSM ne s'ouvre que si le plan a été **converti en V2 tuilé** (voir « 🧱 Convertir en V2 tuilé ») ; sinon, un message explique comment le convertir.
+- **Sur un plan**, le bouton **🌍** de la barre du haut n'ouvre pas la Vue OSM : il pose OpenStreetMap **sous** le plan (« Fond OpenStreetMap sous le plan », ci-dessous). Le Mode Secours, lui, ouvre la fenêtre Vue OSM.
 - Un plan n'y apparaît qu'une fois **ouvert au moins une fois** : c'est à l'ouverture que l'app lit son géoréférencement.
 - **Hors connexion** : **💾 Sauvegarder hors-ligne** télécharge à l'avance les tuiles de la zone visible.
 - Zoomer sur un plan affiche des images plus détaillées, lues dans le fichier du plan déjà sur ton appareil. Les calques livrés masqués s'y affichent et se filtrent comme les autres.
+
+**Fond OpenStreetMap sous le plan** : sur un plan géoréférencé, le bouton **🌍** de la barre du haut ouvre un petit panneau.
+
+- **Fond OSM sous le plan** l'allume ou l'éteint. Allumé, le bouton 🌍 reste en surbrillance et le crédit OpenStreetMap s'affiche en bas à gauche. Fermer le panneau ne l'éteint pas.
+- **Transparence du plan** : à 0 %, le plan cache la carte ; à 100 %, on ne voit plus que la carte. La carte, elle, reste opaque.
+- **Ma position** : ta position GPS, une fois, sans suivi. Refusée si tu es loin du plan, et en mode incognito. Rien n'est enregistré ni envoyé.
+
+Le fond tourne avec le plan orienté et s'éteint à chaque ouverture de plan. Sans géoréférencement, le bouton est grisé (survole-le pour en lire la raison). Si la Vue OSM est coupée dans ⚙️ Configuration, ou en mode incognito, le fond est refusé. Hors connexion, seules les tuiles déjà sauvegardées s'affichent (💾 sur la carte de l'accueil). Au plus près, la carte OSM devient floue : elle n'existe pas plus détaillée. Les exports image, PDF et KMZ ne contiennent pas le fond.
 
 **Recherche** : la barre de la ligne de titre cherche un plan ou un point de tes plans géoréférencés ; la carte vole dessus. Elle lit tes plans, sans rien demander à Internet.
 
 **📏 Mesurer** : en mode OSM, l'outil de mesure donne une distance et une surface ; elles ne dépendent d'aucun calibrage de plan.
 
-**🧭 Tourner la carte** : dans la fenêtre Vue OSM ouverte depuis un plan et sur la carte de l'accueil, tourne deux doigts posés sur la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche de la carte, la remet droite. La fenêtre rouvre toujours nord en haut, la carte de l'accueil aussi quand tu y reviens ; choisir un autre plan dans sa liste garde l'angle. Sur l'accueil, un seul doigt déplace toujours la carte : pour faire défiler la page, pose le doigt à côté. Pour l'empêcher : ⚙️ Configuration de l'accueil › 🎨 Affichage › **Bloquer la rotation de la carte**.
+**🧭 Tourner la carte** : dans la fenêtre Vue OSM (Mode Secours) et sur la carte de l'accueil, tourne deux doigts posés sur la carte (Maj + molette sur ordinateur) ; le bouton **nord**, en bas à gauche de la carte, la remet droite. La fenêtre rouvre toujours nord en haut, la carte de l'accueil aussi quand tu y reviens ; choisir un autre plan dans sa liste garde l'angle. Sur l'accueil, un seul doigt déplace toujours la carte : pour faire défiler la page, pose le doigt à côté. Pour l'empêcher : ⚙️ Configuration de l'accueil › 🎨 Affichage › **Bloquer la rotation de la carte**.
 
 **🎯 Coordonnées de surface** : un clic sur la carte donne la latitude et la longitude du point juste au-dessus, avec un bouton Copier — c'est ce qu'on transmet à une équipe qui arrive par la surface. Leur justesse dépend du calage du plan.
 
-**🗺️ Légende** : sur un plan, le bouton **🗺️ Légende** de la Vue OSM ; sur l'accueil, le bouton **🗺️** du bandeau. La légende est celle du plan, avec tes noms, tes couleurs et tes types personnels, en **lecture seule** : elle se modifie depuis le plan (🗺️ Légende → ✏️ Modifier). Sur l'accueil, c'est la légende du plan que tu viens de quitter, sinon celle du plan affiché que tu as ouvert le plus récemment ; si plusieurs plans sont affichés, un message te rappelle que les autres ont la leur.
+**🗺️ Légende** : dans la fenêtre Vue OSM, le bouton **🗺️ Légende** ; sur l'accueil, le bouton **🗺️** du bandeau. La légende est celle du plan, avec tes noms, tes couleurs et tes types personnels, en **lecture seule** : elle se modifie depuis le plan (🗺️ Légende → ✏️ Modifier). Sur l'accueil, c'est la légende du plan que tu viens de quitter, sinon celle du plan affiché que tu as ouvert le plus récemment ; si plusieurs plans sont affichés, un message te rappelle que les autres ont la leur.
 
 **🗂️ Plusieurs plans à la fois** : le bouton **≡** du bandeau ouvre une fenêtre avec les réglages d'affichage, le filtre par tag et la pile des plans affichés :
 
@@ -1814,7 +1822,7 @@ Dans **📋 Phases**, **➕ Ajouter une phase** : un nom, puis coche les **équi
 
 - **📤 Export .mkmsec.json** : envoie ce fichier à chaque équipe (messagerie, mail, câble). Sur son téléphone, l'équipe ouvre 🚑 Mode Secours → **📥 Importer un plan**, vérifie l'aperçu, puis **✓ Importer ce scénario** — ou, plus court, dépose le fichier sur **📦 Ajouter un plan** à l'accueil : l'app ouvre le bon plan, montre l'aperçu, puis propose de lancer en « Équipe ». L'import garde le lien avec le PC : c'est ce qui permettra à l'opérateur d'accepter son rapport. Si le scénario est déjà sur le téléphone, choisis **Remplacer** (recommandé : garde le lien, mais efface les saisies d'intervention déjà faites sur ce téléphone) plutôt qu'**Importer comme copie** (le rapport de cette copie sera refusé). L'aperçu prévient si le fichier vient d'un autre plan ou d'une autre version du plan.
 - ⚠️ **Après une mise à jour de l'application, réimporte le scénario sur chaque téléphone avant l'intervention** : sinon le PC peut ne pas réussir à fusionner les rapports.
-- **Hors-ligne** : au lancement, l'app prévient si le plan n'est pas entièrement disponible hors-ligne sur l'appareil ; télécharge-le depuis **ℹ️ Infos du plan** avant de descendre. Pour la carte de surface, ouvre la **🌍 Vue OSM** tant que tu as du réseau et touche **💾 Sauvegarder hors-ligne** (détails dans la section Vue OSM).
+- **Hors-ligne** : au lancement, l'app prévient si le plan n'est pas entièrement disponible hors-ligne sur l'appareil ; télécharge-le depuis **ℹ️ Infos du plan** avant de descendre. Pour la carte de surface, ouvre la **🌍 Vue OSM** de l'accueil tant que tu as du réseau et touche **💾 Sauvegarder hors-ligne** (détails dans la section Vue OSM) : le fond OpenStreetMap sous le plan s'en sert hors connexion.
 - **📄 Export PDF (1 page/équipe)** : une fiche par équipe, à imprimer ou à garder sur le téléphone — contexte, membres, chef et effectif, retour impératif, mission, carte de la zone (à pleine résolution du plan : les noms de galeries restent lisibles même sur un grand plan), étapes, **feuille de route** carrefour par carrefour (changements de niveau compris, si l'itinéraire est calculé) et un cadre « Observations » à remplir au stylo.
 - **🌍 Export KMZ géolocalisé** : le scénario pour Google Earth, OsmAnd ou Avenza — un dossier par équipe (points, zone, itinéraire) sur le plan en fond. Les itinéraires manquants sont calculés avant l'export, et MyKTAMap relit ce KMZ avec le scénario. Il faut un plan calibré avec deux points GPS (onglet 📡 Export externe de l'export de session).
 

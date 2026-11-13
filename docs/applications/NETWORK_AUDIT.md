@@ -96,7 +96,7 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/applications/NETWORK_AUDIT*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
 | `<origin>/lang/fr.json`, `<origin>/lang/en.json`, `<origin>/lang/es.json` | `GET` | Au boot (`I18n.init` : fr = fallback + langue active) puis au changement de langue | Charger les dicos de traduction multi-langue (français, anglais, espagnol) | **Aucune** (fichiers statiques same-origin, **network-first** + **cache-buster `?v=<build>`** — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule) |
 | `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
-| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | Quand la **Vue OSM** s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic) ou modale du mode carte. **Active par défaut**, désactivable dans ⚙️ Configuration | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
+| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | Quand la **Vue OSM** s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic), fenêtre Vue OSM du Mode Secours, ou **fond OSM sous le plan** allumé à la main (bouton 🌍 du mode plan). **Active par défaut**, désactivable dans ⚙️ Configuration | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
 | `blob:<origin>/<uuid>` | `GET` | Chargement des tuiles V2 d'un plan tuilé | Déréférencer une tuile JPEG depuis le ZIP **déjà en mémoire** dans le navigateur | **Aucune** (blob URL = référence locale au navigateur, ne sort pas) |
 | `data:<mime>;base64,...` | `GET` | Icônes SVG inline, certains exports | Déréférencer une donnée encodée en base64 **dans le code de l'app** | **Aucune** (data URL = pas de fetch réseau réel) |
 
@@ -166,17 +166,26 @@ En dehors de son propre serveur, l'app ne contacte qu'un seul domaine :
 sous 3 conditions strictes simultanément réunies** :
 
 1. **Le plan a un georef GPS** (saisi via générateur avancé OU via Réglages
-   map mode → Géoréférencement). Sans georef, le bouton 🗺️ Vue OSM est
-   masqué côté UI et l'appel n'a aucun moyen de se déclencher.
+   map mode → Géoréférencement). Sans georef, le bouton 🌍 du mode plan est
+   grisé et le fond OSM ne peut pas s'allumer.
 2. **L'utilisateur n'a pas désactivé la Vue OSM** dans ⚙️ Configuration
    home. **Active par défaut** (un bandeau le signale au premier usage),
    persisté en `localStorage` sous la clé `myktamap_osm_view_opt_in` :
    un refus (« 0 ») est mémorisé et n'est jamais réécrasé.
 3. **L'utilisateur charge effectivement la Vue OSM**. Deux contextes
    possibles :
-   - **Modale Vue OSM full-screen** (mode carte) : clic sur le bouton 🗺️
-     dans la status bar quand un plan est chargé. Couvre les tuiles plan
-     V2 projetées + POI + Tracker + Roads + Iti + Zones + Structures.
+   - **Fond OSM sous le plan** (mode carte, `js/fondOsmPlan.js`) : bouton
+     🌍 de la barre du haut, puis l'interrupteur « Fond OSM sous le plan »
+     du petit panneau. **Éteint à chaque ouverture de plan**, sans mémoire :
+     aucune tuile n'est demandée tant qu'on ne l'allume pas. Seules les
+     tuiles qui couvrent la vue sont demandées, jamais au-delà du zoom 19
+     (au-delà, la tuile 19 est agrandie). Hors ligne : **aucune requête**,
+     seules les tuiles déjà enregistrées (« Save Offline ») sont lues.
+     Refusé avec un message si la Vue OSM est coupée ou en incognito ;
+     couper la Vue OSM pendant qu'il est affiché l'éteint.
+   - **Modale Vue OSM full-screen** (Mode Secours : bouton 🌍 du scénario,
+     capture du briefing PDF). Couvre les tuiles plan V2 projetées + POI +
+     Tracker + Roads + Iti + Zones + Structures.
    - **Widget mini-preview HOME** (page d'accueil) : si l'opt-in est ON,
      la colonne 🌍 Vue OSM apparaît entre Mes plans et Ajouter, avec un
      plan georef sélectionné par défaut (= lastOpened). Sinon la colonne
@@ -206,7 +215,9 @@ sous 3 conditions strictes simultanément réunies** :
   un tiers — uniquement les tuiles `{z}/{x}/{y}` sont demandées au CDN
   OSM, identiques à celles affichées par tout client OSM standard.
 - **Bouton « 📍 Ma position »** : disponible dans la
-  modale Vue OSM ET dans le widget HOME Vue OSM. **Fix GPS ponctuel à la
+  modale Vue OSM, dans le widget HOME Vue OSM et dans le panneau du fond
+  OSM sous le plan (« Ma position », point posé sur le plan, effacé au
+  plan suivant ; refusé hors de l'emprise du plan et en incognito). **Fix GPS ponctuel à la
   demande user** via `navigator.geolocation.getCurrentPosition()` — pas de
   watch continu (`watchPosition`), pas d'usage batterie en continu. La
   permission OS est demandée à la demande user (pas au boot), les
