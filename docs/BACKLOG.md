@@ -44,11 +44,6 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Essai v2.26.0 au téléphone (en prod)** — vue 3D texturée (sol, ciel, ombres, stries, arcs en pierre de taille,
-  voiture), Textures HD, niveaux en transparence, mini-carte (arc rayé, paysage), colonne sans rectangle ; chatière
-  refaite, galerie inclinée en édition, menu des sommets, jeu ; plan de test à copier sur le serveur (`scp`).
-  `qui: KARMA · action: essai iPhone sur myktamap.fr (Textures HD : fluidité, chauffe) · fini: vus conformes, ou bugs
-  ouverts · depuis: 13/11/2026 · taille: XS`
 - **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
   « Comblé » fr / en / es, case « Respecter… », brancard, 3D jusqu'au ciel ; dans le même lot, le message à l'échec
   (sortie d'urgence comprise) qui nomme les zones Comblé en cause. `docs/ETUDE_REMBLAIS.md`.
