@@ -463,6 +463,10 @@ html.kta-vue3d-ouverte .kta-toasts { top: var(--kta-v3d-sous-haut, 140px); }
   overflow-y: auto; overflow-x: hidden;
   padding-block: max(0px, calc((var(--kta-cible-toucher, 44px) - var(--kta-barre-bouton, 36px)) / 2));
 }
+/* 🩸 La colonne porte .leaflet-bar : style.css lui pose le liseré et l'ombre de la barre 2D (!important), que sa
+   marge intérieure écarte des boutons — un rectangle à coins carrés autour du groupe. Ce sont les boutons qui
+   dessinent la colonne : liseré transparent (même boîte, les écarts du paysage bas restent justes), sans ombre. */
+#kta-vue3d .kta-v3d-outils.leaflet-bar { border-color: transparent !important; box-shadow: none !important; }
 /* Repliée (▾ / ◂, _plierOutils) : seul le bouton de repli reste. */
 #kta-vue3d .kta-v3d-outils.kta-v3d-outils-plie > a:not(.kta-v3d-outils-plier) { display: none !important; }
 #kta-vue3d .kta-v3d-outils[hidden], #kta-vue3d .kta-v3d-outils a[hidden] { display: none !important; }
