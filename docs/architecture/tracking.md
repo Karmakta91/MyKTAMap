@@ -2023,7 +2023,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   prend jamais la teinte chaude des piliers de 2e masse. **Claveaux** : un bloc de
   géométrie chacun (joints et fonds de joint gardés), en pierre dressée (`CLAVEAU`, `_pierresDressees`,
   `_matClaveau`) — une planche de 4 × 4 pierres entières dessinée dans un canvas (grain fin, nuance légère, arêtes
-  émoussées, layage discret par endroits), une case tirée par face, nuance par claveau (au plus − 10 %).
+  émoussées, layage discret et irrégulier — coups parallèles à une orientation qui varie un peu d'une pierre à
+  l'autre, de pas, de profondeur et de largeur inégaux, certains absents, effacés par plages : de près, une pierre
+  dressée à la main, jamais une onde régulière qui la raie), une case tirée par face, nuance par claveau (au plus
+  − 10 %).
   **Piédroits et impostes** : l'appareil des parois (`PIERRE`, matériau `paroi`, coordonnées de texture en
   mètres), avec l'ombre de contact au pied. **Tympan** : maçonnerie de moellons (`BLOCAGE`, `_moellonsBruts`,
   `_matBlocage`), plus rustique que les parois et de la même teinte — moellons de tailles et de formes inégales en

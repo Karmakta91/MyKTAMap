@@ -275,10 +275,15 @@
   // Pierre dressée des claveaux d'un arc (🧱 activé ; _pierresDressees) : planche de `cases` × `cases` pierres
   // entières, une case par face de claveau (tirée par face, parfois retournée : deux claveaux voisins ne sortent pas
   // du même moule). Une case vaut `pierre` m de pierre : grain fin, nuance légère, arêtes émoussées sur `biseau` m,
-  // par endroits un layage discret (stries parallèles de taille tous les `layage` m, de force `strie`). Même
-  // teinte de base que la pierre des parois. `m` : mètres couverts par la planche, pour le grain des Textures HD.
+  // et un layage discret, irrégulier comme un travail à la main (`layage`) : coups parallèles à `angle` rad, à
+  // ± `ecart` près d'une pierre à l'autre, espacés de `pas` m en moyenne (de 0,55 à 1,65 fois, tiré à chaque
+  // coup), de profondeur tirée, `manque` des coups absents, effacés par plages (zones lisses) ; creux de `creux`
+  // (hauteur dessinée) et assombri de `sombre` au plus. 🩸 Jamais une onde régulière ni un creux marqué : de très
+  // près, surtout en Textures HD, elle raye la pierre comme une tôle. Même teinte de base que la pierre des
+  // parois. `m` : mètres couverts par la planche, pour le grain des Textures HD.
   const CLAVEAU = { px: 256, cases: 4, pierre: 0.32, m: 1.28, couleur: PIERRE.couleur, biseau: 0.014,
-    layage: [0.014, 0.022], strie: 0.5, relief: 2.2, graine: 37 };
+    layage: { angle: 0.8, ecart: 0.2, pas: [0.016, 0.028], manque: 0.25, creux: 0.05, sombre: 0.045 },
+    relief: 2.2, graine: 37 };
   // Moellons du tympan d'un arc (🧱 activé ; _moellonsBruts) : maçonnerie de blocage, plus rustique que la pierre de
   // taille des parois, de la même teinte. Motif de `m` m ; assises approximatives de hauteur `assise`, moellons de
   // longueur `bloc`, chacun décalé d'au plus `ecart` de sa taille (formes et lits irréguliers), contours tordus de
@@ -3035,18 +3040,27 @@
 
   // Planche de pierres dressées (CLAVEAU) : cases × cases pierres entières côte à côte. Chaque pierre : face
   // dressée presque plane (bosses très douces, grain fin), teinte propre, arêtes émoussées (la hauteur et la couleur
-  // tombent vers le bord de la case : la lampe accroche le chanfrein), layage par endroits (stries parallèles à
-  // l'angle et au pas de la pierre, là où un voile à grande échelle le laisse voir), quelques pores.
+  // tombent vers le bord de la case : la lampe accroche le chanfrein), layage discret (CLAVEAU.layage : un profil
+  // de coups tiré par pierre, en travers de leur direction — pas, profondeur et largeur inégaux, coups manquants —,
+  // lu avec une légère ondulation et effacé par plages à deux échelles), quelques pores.
   // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _pierresDressees(alea) {
     const V = CLAVEAU, n = _px(V), q = _fin(), nc = V.cases, c = n / nc, k = c / V.pierre;
     const haut = new Float32Array(n * n), img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(V.couleur);
     const tache = _champBoucle(alea, 9, 9, n), bosse = _champBoucle(alea, 20, 20, n), voile = _champBoucle(alea, 7, 7, n);
     const pierres = [];
+    const Y = V.layage, lp = Math.ceil(c * 1.5) + 4;
     for (let i = 0; i < nc * nc; i++) {
-      const t = 0.9 + alea() * 0.1, chaud = alea(), a = (alea() < 0.5 ? -1 : 1) * (0.5 + alea() * 0.6);
+      const t = 0.9 + alea() * 0.1, chaud = alea(), a = Y.angle + (alea() - 0.5) * 2 * Y.ecart;
+      const pas = (Y.pas[0] + alea() * (Y.pas[1] - Y.pas[0])) * k, coups = new Float32Array(lp);
+      for (let x = alea() * pas; x < lp; x += pas * (0.55 + alea() * 1.1)) {
+        const f = alea() < Y.manque ? 0 : 0.3 + alea() * 0.7, w = Math.max(q, pas * (0.25 + alea() * 0.25));
+        for (let j = Math.max(0, Math.floor(x - w)); j <= Math.min(lp - 1, Math.ceil(x + w)); j++) {
+          coups[j] = Math.max(coups[j], f * Math.max(0, 1 - Math.abs(j - x) / w));
+        }
+      }
       pierres.push({ teinte: alea() < 0.2 ? [t * 0.96, t * 0.98, t] : [t * (1 + 0.02 * chaud), t, t * (0.98 - 0.04 * chaud)],
-        ca: Math.cos(a), sa: Math.sin(a), pas: (V.layage[0] + alea() * (V.layage[1] - V.layage[0])) * k });
+        ca: Math.cos(a), sa: Math.sin(a), coups: coups, onde: (0.4 + alea() * 0.8) * pas });
     }
     let graine = Math.floor(alea() * 2147483647) | 1;
     const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
@@ -3056,11 +3070,13 @@
         const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4, lx = x % c, ly = y % c;
         const S = pierres[Math.floor(y / c) * nc + Math.floor(x / c)];
         const bord = Math.min(lx, c - 1 - lx, ly, c - 1 - ly) + 0.5, t = bord < biseau ? bord / biseau : 1;
-        const s = t * t * (3 - 2 * t), vu = Math.max(0, Math.min(1, voile[p] * 3 - 1.2)) * V.strie * s;
-        const strie = Math.sin(2 * Math.PI * (lx * S.ca + ly * S.sa) / S.pas);
-        haut[p] = 0.35 + 0.65 * s + (bosse[p] - 0.5) * 0.1 + strie * 0.07 * vu + (grain() - 0.5) * 0.05;
-        const f = (0.93 + 0.14 * tache[p]) * (1 + (grain() - 0.5) * 0.07) * (0.8 + 0.2 * s) *
-          (1 - 0.07 * vu * Math.max(0, -strie));
+        // Zones lisses : le layage s'efface là où l'un des deux voiles (large, moyen) tombe.
+        const s = t * t * (3 - 2 * t), vu = Math.max(0, Math.min(1, voile[p] * 3 - 0.9)) *
+          Math.max(0, Math.min(1, tache[p] * 2.6 - 0.55)) * s;
+        const tt = Math.max(0, Math.min(lp - 2, lx * S.ca + ly * S.sa + (bosse[p] - 0.5) * S.onde)), i0 = Math.floor(tt);
+        const coup = (S.coups[i0] + (S.coups[i0 + 1] - S.coups[i0]) * (tt - i0)) * vu;
+        haut[p] = 0.35 + 0.65 * s + (bosse[p] - 0.5) * 0.1 - coup * Y.creux + (grain() - 0.5) * 0.05;
+        const f = (0.93 + 0.14 * tache[p]) * (1 + (grain() - 0.5) * 0.07) * (0.8 + 0.2 * s) * (1 - Y.sombre * coup);
         img[o4] = base.r * 255 * S.teinte[0] * f; img[o4 + 1] = base.g * 255 * S.teinte[1] * f;
         img[o4 + 2] = base.b * 255 * S.teinte[2] * f; img[o4 + 3] = 255;
       }
