@@ -2012,7 +2012,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   joints de mortier assombris, fond bouché), 0,5 m de profondeur, **extrados à la clé au ciel du niveau**. Plus large
   que le ciel ne le permet (piédroits sous 0,6 m) : surbaissé en demi-ellipse. **Tympan** (`_tympanArc`) : maçonnerie
   pleine de la profondeur de l'arc qui comble tout l'espace entre l'extrados, les piédroits, les parois et le ciel
-  (faces reculées de 5 mm sous les claveaux, appareil des parois ou couleur de légende) ; seule l'ouverture sous
+  (faces reculées de 5 mm sous les claveaux, moellons ou couleur de légende) ; seule l'ouverture sous
   l'intrados reste vide. Arc oblique dans un tube : ses bouts suivent la paroi ; sans paroi contre lui (structures,
   chambre), tel que dessiné et fermé aux bouts. En mixte et en galerie, un segment en travers d'un
   tube (milieu dans sa largeur, hors chambre, à plus de 30° de l'axe) va **d'une paroi du tube à l'autre**, là où sa
@@ -2024,14 +2024,20 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   géométrie chacun (joints et fonds de joint gardés), en pierre dressée (`CLAVEAU`, `_pierresDressees`,
   `_matClaveau`) — une planche de 4 × 4 pierres entières dessinée dans un canvas (grain fin, nuance légère, arêtes
   émoussées, layage discret par endroits), une case tirée par face, nuance par claveau (au plus − 10 %).
-  **Piédroits, impostes et tympan** : l'appareil des parois (`PIERRE`, matériau `paroi`, coordonnées de texture
-  en mètres), avec l'ombre de contact au pied. Architecture : deux lots par tuile qui porte un arc (`_lotsArc`,
-  `_poserArcs`, famille « arc ») — la maçonnerie réemploie le matériau et la texture des parois, seuls les
-  claveaux ont les leurs (une pierre entière par face ne se tire pas d'un appareil répété). Les Textures HD suivent
-  (planche en 512 px, grain de détail). Coût mesuré (douze arcs dans une galerie, PC) : 2 appels de dessin par tuile
-  qui porte un arc (1 sans texture), 266 triangles par arc de 2,5 m (250 sans texture : 16 pour la bande de l'ombre
-  de contact ; tympan : 6 × claveaux + 8), 2 textures de plus pour la vue, premier dessin de la planche 11 à 15 ms
-  (66 ms en 512 px), temps par image 0,4 → 0,5 ms. ⚠️ contrat : **on
+  **Piédroits et impostes** : l'appareil des parois (`PIERRE`, matériau `paroi`, coordonnées de texture en
+  mètres), avec l'ombre de contact au pied. **Tympan** : maçonnerie de moellons (`BLOCAGE`, `_moellonsBruts`,
+  `_matBlocage`), plus rustique que les parois et de la même teinte — moellons de tailles et de formes inégales en
+  assises approximatives, joints larges et creux, faces bombées (un germe par moellon, distance rapportée à sa
+  taille : chaque pixel va au plus proche, l'écart au second donne le joint) ; dans l'appareil des parois il se
+  fondait en elles et l'arc ne se détachait plus. Architecture : trois lots par tuile qui porte un arc
+  (`_lotsArc`, `_poserArcs`, famille « arc ») — piédroits et impostes réemploient le matériau et la texture des
+  parois, claveaux et tympan ont les leurs. Les Textures HD suivent (512 px, grain de détail). Coût mesuré (PC) :
+  3 appels de dessin par tuile qui porte un arc (1 sans texture), 266 triangles par arc de 2,5 m (250 sans
+  texture : 16 pour la bande de l'ombre de contact ; tympan : 6 × claveaux + 8), 4 textures de plus pour la vue
+  (couleur et relief des claveaux et des moellons : 0,7 Mo chacun des deux matériaux, mipmaps compris, 2,8 Mo en
+  512 px), premier dessin de la planche des claveaux 11 à 22 ms (46 à 66 ms en 512 px), des moellons 30 à 37 ms
+  (93 ms en 512 px ; le sol en coûte 33), temps par image inchangé par le troisième lot (douze arcs dans une
+  galerie : 0,5 à 0,6 ms, 12 appels de dessin au lieu de 10). ⚠️ contrat : **on
   passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas `arc`) ; ni face où
   poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode mixte, il ne fait pas
   d'une galerie une chambre (`galerieEmprise.js > _indexStructures`).

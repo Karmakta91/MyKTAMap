@@ -137,8 +137,9 @@
   // Matière et teinte (décision produit). 🧱 coupé : aplats à la couleur de la légende, nuancée de ± `nuance` par
   // claveau. 🧱 activé : pierre de taille texturée, partout à la teinte des parois de pierre (en tube comme en
   // chambre ou en rendu structures, quelle que soit la masse du niveau) — claveaux en pierre dressée (CLAVEAU), un
-  // bloc de géométrie chacun, assombri d'au plus `nuance` ; piédroits, impostes et tympan dans l'appareil des parois
-  // (PIERRE), à `piedroit`, `sommier` et `tympan` de la teinte ; faces des joints à `mortier`.
+  // bloc de géométrie chacun, assombri d'au plus `nuance` ; piédroits et impostes dans l'appareil des parois (PIERRE),
+  // à `piedroit` et `sommier` de la teinte ; tympan en moellons (BLOCAGE), à `tympan` ; faces des joints à
+  // `mortier`.
   const ARC = { pied: 0.3, ep: 0.25, prof: 0.5, joint: 0.012, claveau: 0.32, min: 5, max: 15, cle: 0.04,
     imposte: 0.06, deborde: 0.03, piedMin: 0.6, porteeMin: 0.6, nuance: 0.1, mortier: 0.5, tube: 3,
     retrait: 0.005, fond: 0.006, piedroit: 0.92, sommier: 0.85, tympan: 0.94 };
@@ -278,6 +279,13 @@
   // teinte de base que la pierre des parois. `m` : mètres couverts par la planche, pour le grain des Textures HD.
   const CLAVEAU = { px: 256, cases: 4, pierre: 0.32, m: 1.28, couleur: PIERRE.couleur, biseau: 0.014,
     layage: [0.014, 0.022], strie: 0.5, relief: 2.2, graine: 37 };
+  // Moellons du tympan d'un arc (🧱 activé ; _moellonsBruts) : maçonnerie de blocage, plus rustique que la pierre de
+  // taille des parois, de la même teinte. Motif de `m` m ; assises approximatives de hauteur `assise`, moellons de
+  // longueur `bloc`, chacun décalé d'au plus `ecart` de sa taille (formes et lits irréguliers), contours tordus de
+  // ± `tors` m ; joints larges (`joint` : demi-largeur) et creux, faces bombées sur `biseau` m et gauchies. Longueurs
+  // en m. ⚠️ contrat : coordonnées de texture en motifs (mètres / `m`), posées par _tympanArc.
+  const BLOCAGE = { m: 2, px: 256, couleur: PIERRE.couleur, mortier: "#a69a83", assise: [0.1, 0.2],
+    bloc: [0.14, 0.5], ecart: 0.3, joint: [0.006, 0.013], biseau: 0.03, tors: 0.016, relief: 2.6, graine: 71 };
   // Parpaing (murs) : motif de 1 m (256 px/m, un joint de 1 cm fait 2,6 px ; un appareil régulier se répète de
   // toute façon), blocs de 50 × 20 cm à joints droits, gris béton, pores.
   const PARPAING = { m: 1, px: 256, couleur: "#a3a29c", mortier: "#b5b1a6", l: 0.5, h: 0.2, joint: 0.01,
@@ -2920,6 +2928,109 @@
       "claveau", _pierresDressees, CLAVEAU.graine);
     e.msClaveau = performance.now() - t0;
     return e.mats.claveau;
+  }
+
+  // Matériau du tympan des arcs (🧱), fait au premier arc texturé : moellons de blocage (BLOCAGE), couleur + normal
+  // map, teinte par sommet ; suit les Textures HD comme la roche (_habiller, _detailler).
+  function _matBlocage() {
+    const e = _e;
+    if (e.mats.blocage) return e.mats.blocage;
+    const t0 = performance.now();
+    e.mats.blocage = _habiller(_detailler(new THREE.MeshLambertMaterial({ vertexColors: true }), BLOCAGE.m),
+      "blocage", _moellonsBruts, BLOCAGE.graine);
+    e.msBlocage = performance.now() - t0;
+    return e.mats.blocage;
+  }
+
+  // Maçonnerie de moellons (BLOCAGE) : un germe par moellon, rangé en assises approximatives puis décalé ; chaque
+  // pixel appartient au germe le plus proche, la distance étant rapportée à la taille du moellon et arrondie aux
+  // angles (norme 4 : des pavés aux coins ronds, de tailles inégales, lits qui ondulent, mortier plus large là où
+  // trois moellons se touchent) ; l'écart au second plus proche donne le joint (large, en creux, mortier grenu) et
+  // le bombé de la face. Contours tordus par deux champs de bruit ; face gauchie (pente propre à chaque moellon),
+  // bosselée, teinte tirée par moellon. Motif sans couture (distances bouclées).
+  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  // ⚠️ Coût : neuf germes lus par pixel, jamais tous — ceux de son assise et des deux voisines, à sa colonne et de
+  // part et d'autre (tables par ligne et par colonne).
+  function _moellonsBruts(alea) {
+    const B = BLOCAGE, n = _px(B), k = n / B.m, q = _fin(), tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
+    const haut = new Float32Array(n * n), img = new Uint8ClampedArray(n * n * 4);
+    const base = new THREE.Color(B.couleur), mo = new THREE.Color(B.mortier);
+    const tache = _champBoucle(alea, 6, 6, n), face = _champBoucle(alea, 26, 26, n), fin = _champBoucle(alea, 60, 60, n);
+    const tx = _champBoucle(alea, 12, 12, n), ty = _champBoucle(alea, 12, 12, n);
+    // Longueurs tirées dont la somme fait le motif (la dernière prend le reste, coupée en deux si elle est trop grande).
+    const decoupe = function (b) {
+      const out = [];
+      for (let x = 0; x < B.m - 1e-6;) {
+        let l = tire(b);
+        if (B.m - x - l < b[0]) l = B.m - x;
+        if (l > b[1] * 1.2) l /= 2;
+        out.push([x, l]);
+        x += l;
+      }
+      return out;
+    };
+    // Assises : leurs moellons dans l'ordre, et pour chaque colonne de pixels le rang de celui qui la couvre.
+    const A = [], rang = new Int16Array(n);
+    decoupe(B.assise).forEach(function (a) {
+      const dec = alea() * B.m, G = [], col = new Int16Array(n);
+      for (let y = Math.round(a[0] * k); y < Math.round((a[0] + a[1]) * k) && y < n; y++) rang[y] = A.length;
+      A.push({ G: G, col: col });
+      decoupe(B.bloc).forEach(function (b) {
+        const t = 0.86 + alea() * 0.18, chaud = alea(), gris = alea() < 0.25;
+        const c1 = Math.round((dec + b[0] + b[1]) * k);
+        for (let c = Math.round((dec + b[0]) * k); c < c1; c++) col[c % n] = G.length;
+        const x = (((dec + b[0] + b[1] * (0.5 + (alea() - 0.5) * B.ecart)) % B.m) + B.m) % B.m * k;
+        const y = (((a[0] + a[1] * (0.5 + (alea() - 0.5) * B.ecart)) % B.m) + B.m) % B.m * k;
+        G.push({ x: x, y: y, hx: b[1] * k / 2, hy: a[1] * k / 2, demi: tire(B.joint) * k,
+          gx: (alea() - 0.5) * 0.5 / (b[1] * k),
+          gy: (alea() - 0.5) * 0.5 / (a[1] * k), bombe: 0.45 + alea() * 0.3,
+          teinte: gris ? [t * 0.95, t * 0.97, t] : [t * (1 + 0.04 * chaud), t, t * (0.96 - 0.06 * chaud)] });
+      });
+    });
+    const na = A.length;
+    let graine = Math.floor(alea() * 2147483647) | 1;
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
+    const biseau = B.biseau * k, tors = 2 * B.tors * k, demiN = n / 2;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
+        const px = x + (tx[p] - 0.5) * tors, py = y + (ty[p] - 0.5) * tors;
+        const cx = ((Math.floor(px) % n) + n) % n, ra = rang[((Math.floor(py) % n) + n) % n];
+        let d1 = Infinity, d2 = Infinity, g1 = null, g2 = null, x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+        for (let j = ra - 1; j <= ra + 1; j++) {
+          const a = A[(j + na) % na], ng = a.G.length, c = a.col[cx];
+          for (let i = c - 1; i <= c + 1; i++) {
+            const g = a.G[(i + ng) % ng];
+            let dx = g.x - px, dy = g.y - py;
+            if (dx > demiN) dx -= n; else if (dx < -demiN) dx += n;
+            if (dy > demiN) dy -= n; else if (dy < -demiN) dy += n;
+            const u = dx * dx / (g.hx * g.hx), v = dy * dy / (g.hy * g.hy), d = u * u + v * v;
+            if (d < d1) { d2 = d1; g2 = g1; x2 = x1; y2 = y1; d1 = d; g1 = g; x1 = dx; y1 = dy; } else if (d < d2) {
+              d2 = d; g2 = g; x2 = dx; y2 = dy;
+            }
+          }
+        }
+        // Distance (px) à la frontière entre les deux moellons les plus proches, moins le demi-joint : l'écart des
+        // deux distances réduites, rendu en pixels par la demi-taille de chaque moellon dans la direction du pixel.
+        const h1 = Math.abs(x1) * g1.hy > Math.abs(y1) * g1.hx ? g1.hx : g1.hy;
+        const h2 = !g2 ? h1 : Math.abs(x2) * g2.hy > Math.abs(y2) * g2.hx ? g2.hx : g2.hy;
+        const bord = (Math.sqrt(Math.sqrt(d2)) - Math.sqrt(Math.sqrt(d1))) / (1 / h1 + 1 / h2) -
+          g1.demi * (0.7 + 0.6 * fin[p]);
+        if (bord < 0) {
+          const f = 0.88 + grain() * 0.2, c = Math.min(1, -bord / (g1.demi || 1));
+          haut[p] = 0.16 - 0.1 * c + grain() * 0.06;
+          img[o4] = mo.r * 255 * f; img[o4 + 1] = mo.g * 255 * f; img[o4 + 2] = mo.b * 255 * f;
+        } else {
+          const t = bord < biseau ? bord / biseau : 1, s = t * (2 - t), te = g1.teinte;
+          haut[p] = 0.22 + g1.bombe * s - (x1 * g1.gx + y1 * g1.gy) * s + (face[p] - 0.5) * 0.2 +
+            (fin[p] - 0.5) * 0.1 + (grain() - 0.5) * 0.05;
+          const f = (0.92 + 0.2 * tache[p]) * (0.93 + 0.14 * face[p]) * (1 + (grain() - 0.5) * 0.09) * (0.84 + 0.16 * s);
+          img[o4] = base.r * 255 * te[0] * f; img[o4 + 1] = base.g * 255 * te[1] * f; img[o4 + 2] = base.b * 255 * te[2] * f;
+        }
+        img[o4 + 3] = 255;
+      }
+    }
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, B.relief * q) };
   }
 
   // Planche de pierres dressées (CLAVEAU) : cases × cases pierres entières côte à côte. Chaque pierre : face
@@ -6679,25 +6790,28 @@
   // lots texturés, _lotsArc) ; le fontis lit la charte (remblais du cône) ; ossuaire et outil ont des couleurs de la
   // scène, comme le véhicule.
 
-  // Lots d'une tuile pour ses arcs → { claveaux, pierre, tex }. 🧱 activé : deux lots à coordonnées de texture, les
-  // claveaux (matériau `claveau`, _matClaveau) et la maçonnerie des piédroits, impostes et tympans (matériau
-  // `paroi` : l'appareil des parois, avec son ombre de contact) ; 🧱 coupé : le lot opaque de la tuile.
-  // Pourquoi deux lots : un claveau est une pierre entière (planche CLAVEAU, une case par face), la maçonnerie un
-  // appareil répété en mètres déjà dessiné pour les parois — ni matériau ni texture de plus pour elle.
+  // Lots d'une tuile pour ses arcs → { claveaux, pierre, tympan, tex }. 🧱 activé : trois lots à coordonnées de
+  // texture, les claveaux (matériau `claveau`, _matClaveau), la pierre de taille des piédroits et des impostes
+  // (matériau `paroi` : l'appareil des parois, avec son ombre de contact) et les moellons des tympans (matériau
+  // `blocage`, _matBlocage) ; 🧱 coupé : le lot opaque de la tuile.
+  // Pourquoi trois lots : un claveau est une pierre entière (planche CLAVEAU, une case par face), piédroits et
+  // impostes réemploient l'appareil répété en mètres déjà dessiné pour les parois, et le tympan a sa maçonnerie
+  // propre, plus rustique — dans l'appareil des parois il se fond en elles et l'arc ne se détache plus.
   function _lotsArc(opaque, h) {
-    if (_e.textures !== true) return { claveaux: opaque, pierre: opaque, tex: false };
+    if (_e.textures !== true) return { claveaux: opaque, pierre: opaque, tympan: opaque, tex: false };
     const pierre = new Lot();
     pierre.ombre = { sol: 0, plafond: h };
-    return { claveaux: new Lot(), pierre: pierre, tex: true };
+    return { claveaux: new Lot(), pierre: pierre, tympan: new Lot(), tex: true };
   }
 
-  // Maillages des arcs texturés d'une tuile (famille « arc ») : deux appels de dessin par tuile qui porte un arc,
+  // Maillages des arcs texturés d'une tuile (famille « arc ») : trois appels de dessin par tuile qui porte un arc,
   // aucun sans arc ni 🧱 coupé (les arcs sont alors dans le lot opaque).
   function _poserArcs(arcs, ajouter) {
     if (!arcs.tex || !arcs.claveaux.p.length) return;
     _paroiTexturee();
     ajouter(arcs.claveaux, _matClaveau(), 0, "arc");
     ajouter(arcs.pierre, _e.mats.paroi, 0, "arc");
+    ajouter(arcs.tympan, _matBlocage(), 0, "arc");
   }
 
   // Arc de soutènement `s` (polyligne `arc`) dans les lots `lots` (_lotsArc) : un arc par segment
@@ -6708,7 +6822,9 @@
   function _arcSoutenement(lots, s, mx) {
     const e = _e, sc = e.sc, out = [];
     const pts = (s.points || []).filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
-    const taille = function () { return lots.claveaux.p.length + (lots.tex ? lots.pierre.p.length : 0); };
+    const taille = function () {
+      return lots.claveaux.p.length + (lots.tex ? lots.pierre.p.length + lots.tympan.p.length : 0);
+    };
     for (let i = 0; i + 1 < pts.length; i++) {
       const ab = _arcEntreParois(pts[i], pts[i + 1], mx);
       if (!ab) continue;
@@ -6751,7 +6867,7 @@
   // bouché. Tympan (_tympanArc) au-dessus de l'extrados ; `biais` : pente des parois (_arcEntreParois) ; `ferme` :
   // sans paroi de tube contre lui (structures, chambre), ses bouts sont fermés. `lots` (_lotsArc) : texturé
   // (`lots.tex`), chaque face d'un claveau, joints compris, prend une case entière de la planche CLAVEAU ; piédroits
-  // et impostes prennent l'appareil des parois, en mètres (_pave).
+  // et impostes prennent l'appareil des parois, en mètres (_pave) ; le tympan, ses moellons (BLOCAGE).
   function _arcPleinCintre(lots, ax, az, bx, bz, biais, ferme) {
     const e = _e, A = ARC, h = e.hauteur, dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
     if (L < A.porteeMin) return null;
@@ -6824,8 +6940,8 @@
         });
       }
     }
-    _tympanArc(lots.pierre, { cx: cx, cz: cz, ux: ux, uz: uz, L: L, re: re, ys: ys, kv: kv, n: n, h: h, P: P,
-      biais: biais || 0, ferme: !!ferme, u0: up }, teinte(A.tympan));
+    _tympanArc(lots.tympan, { cx: cx, cz: cz, ux: ux, uz: uz, L: L, re: re, ys: ys, kv: kv, n: n, h: h, P: P,
+      biais: biais || 0, ferme: !!ferme, u0: tex ? alea() * BLOCAGE.m : undefined }, teinte(A.tympan));
     return { portee: +L.toFixed(3), piedH: +ys.toFixed(3), intradosY: +(ys + kv * ri).toFixed(3),
       cleY: +(ys + kv * re).toFixed(3), claveaux: n, k: +kv.toFixed(3), pied: +pied.toFixed(3), tympan: true,
       texture: tex, teinte: "#" + new THREE.Color(base.r, base.g, base.b).getHexString() };
@@ -6838,15 +6954,18 @@
   // oblique dans un tube : les bandes des piédroits suivent la paroi (`a.biais`), jamais en deçà de l'extrados.
   // ⚠️ contrat : tout est au-dessus de l'imposte, hors de l'ouverture ; le pas ne change pas (l'arc n'est pas un
   // obstacle). Coût : 6n + 8 triangles de plus que l'arc seul (fonds de joint compris, extrados noyés retirés).
-  // `a.u0` défini (🧱 activé) : appareil des parois, coordonnées de texture en mètres — la portée et la hauteur sur
-  // les faces, la portée et la profondeur au dessus, la profondeur et la hauteur aux bouts.
+  // `a.u0` défini (🧱 activé) : moellons (BLOCAGE), coordonnées de texture en motifs (mètres / BLOCAGE.m, origine
+  // `a.u0` m tirée par arc) — la portée et la hauteur sur les faces, la portée et la profondeur au dessus, la
+  // profondeur et la hauteur aux bouts.
   function _tympanArc(lot, a, col) {
     const nx = -a.uz, nz = a.ux, h = a.h, w = a.P - ARC.retrait, re = a.re, tex = a.u0 !== undefined;
+    const M = BLOCAGE.m;
     const W = function (s, y, t) { return [a.cx + a.ux * s + nx * t, y, a.cz + a.uz * s + nz * t]; };
     // Face verticale à la profondeur t, de quatre points (s, y).
     const pan = function (q, t, nrm) {
       lot.quad(W(q[0], q[1], t), W(q[2], q[3], t), W(q[4], q[5], t), W(q[6], q[7], t), nrm, col,
-        tex ? [q[0] + a.u0, q[1], q[2] + a.u0, q[3], q[4] + a.u0, q[5], q[6] + a.u0, q[7]] : undefined);
+        tex ? [(q[0] + a.u0) / M, q[1] / M, (q[2] + a.u0) / M, q[3] / M, (q[4] + a.u0) / M, q[5] / M,
+          (q[6] + a.u0) / M, q[7] / M] : undefined);
     };
     const bout = function (c, t) {
       const s = c * a.L / 2 + a.biais * t;
@@ -6867,12 +6986,13 @@
     });
     const b0 = bout(-1, w), b1 = bout(1, w), b2 = bout(1, -w), b3 = bout(-1, -w);
     lot.quad(W(b0, h, w), W(b1, h, w), W(b2, h, -w), W(b3, h, -w), [0, 1, 0], col,
-      tex ? [b0 + a.u0, w, b1 + a.u0, w, b2 + a.u0, -w, b3 + a.u0, -w] : undefined);
+      tex ? [(b0 + a.u0) / M, w / M, (b1 + a.u0) / M, w / M, (b2 + a.u0) / M, -w / M, (b3 + a.u0) / M, -w / M]
+        : undefined);
     if (!a.ferme) return;
     [1, -1].forEach(function (d) {
       const s = d * a.L / 2;
       lot.quad(W(s, a.ys, -w), W(s, a.ys, w), W(s, h, w), W(s, h, -w), [d * a.ux, 0, d * a.uz], col,
-        tex ? [-w, a.ys, w, a.ys, w, h, -w, h] : undefined);
+        tex ? [-w / M, a.ys / M, w / M, a.ys / M, w / M, h / M, -w / M, h / M] : undefined);
     });
   }
 
@@ -13888,6 +14008,12 @@
       r.materiaux.claveau = { pente: pente(mc.normalMap.image), carte: mc.map.image.width + "x" + mc.map.image.height,
         normale: !!mc.normalMap, couleursSommets: mc.vertexColors, moyenne: moyenne(mc.map.image),
         ms: Math.round(e.msClaveau || 0) };
+    }
+    const mb = e.mats.blocage;
+    if (mb) {
+      r.materiaux.blocage = { pente: pente(mb.normalMap.image), carte: mb.map.image.width + "x" + mb.map.image.height,
+        normale: !!mb.normalMap, couleursSommets: mb.vertexColors, moyenne: moyenne(mb.map.image),
+        ms: Math.round(e.msBlocage || 0) };
     }
     if (r.materiaux.paroi.pierre) r.materiaux.paroi.moyenne = moyenne(e.mats.paroi.map.image);
     // Textures HD : préférence, état en vigueur, bouton, grain de détail ; mémoire des textures de la vue (images
