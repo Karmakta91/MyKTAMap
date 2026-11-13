@@ -10,3 +10,5 @@
 # 0123456789abcdef0123456789abcdef01234567 relevé fictif mis à jour par l'éditeur web
 #
 # La dérogation ne couvre que `data/` : l'anti-fuite pro et les noms réels restent rejoués sur ce commit.
+a1340f7473de52ca1be72122d760e70309ae8f25 nouveau_plan_test
+f85e7d1642901beec018423243d49e13eb9e25e7 nouveau_plan_test2
