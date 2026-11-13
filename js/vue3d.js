@@ -261,7 +261,7 @@
   // (décision produit) : on la devine, sans plus ; la distinction franche se lit 🧱 coupé (couleurs de la légende),
   // sur la carte 2D et la mini-carte. 🩸 Pas de second matériau : préparé au premier pilier de 2e masse, il
   // retardait d'une image le changement de niveau sous le fondu (WebKit).
-  const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f4e5d2";
+  const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#eed6b8";
   // Face de roche de plus de `long` motifs (un front, le flanc d'un long pilier) : pans de `pan` motifs de long.
   // `essais` origines tirées par pan, la mieux raccordée en teinte gardée ; `ton` : cases par côté du motif pour
   // comparer les teintes (_tonRoche) ; `haut` : écart de v minimal (motifs) entre deux pans qui se suivent.

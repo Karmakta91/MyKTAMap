@@ -2146,7 +2146,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   type perso en roche reçoit une teinte à lui — celle de sa masse (blanc, `TEINTE_MASSE_2`) assombrie de 0 à 16 % et
   tirée de ± 6 % vers le chaud ou le froid — posée par sommet comme la 2e masse : deux piliers voisins ne sortent
   plus du même moule, la 2e masse reste reconnaissable (les plages des deux masses ne se recouvrent pas : rapport
-  bleu / rouge des sommets de 0,94 à 1,06 pour la 1re, de 0,67 à 0,76 pour la 2e). ⚠️ contrat :
+  bleu / rouge des sommets de 0,94 à 1,06 pour la 1re, de 0,53 à 0,60 pour la 2e). ⚠️ contrat :
   tirée de la position du premier sommet de la structure (px du plan, comme l'origine du motif), jamais de
   `Math.random` : la même à chaque reconstruction de tuile, à chaque ouverture, sur chaque appareil. Murs sans
   nuance (parpaing : un appareil régulier ; pierre de taille : la teinte des parois). Aucun coût : une couleur de

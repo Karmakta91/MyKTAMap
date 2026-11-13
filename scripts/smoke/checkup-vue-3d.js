@@ -4425,8 +4425,8 @@ async function sectionModeles(page) {
     R.hd.dessins["claveau@2"] + " ms, des moellons " + R.hd.dessins["blocage@2"] + " ms), retour à 256 px", { hd: R.hd.mailles, coupe: R.hdCoupe });
   const p2 = (R.masse2.piliers || []).map(function (c) { return parseInt(c.slice(5, 7), 16) / parseInt(c.slice(1, 3), 16); });
   verifier(R.masse2.structures === "#ffffff" && R.masse2.mixte === "#ffffff" && p2.length > 0 &&
-    p2.every(function (v) { return v > 0.6 && v < 0.85; }),
-  "niveau de 2e masse (piliers à peine plus chauds : bleu / rouge entre 0,6 et 0,85) : l'arc garde la teinte " +
+    p2.every(function (v) { return v > 0.5 && v < 0.77; }),
+  "niveau de 2e masse (piliers à peine plus chauds : bleu / rouge entre 0,5 et 0,77) : l'arc garde la teinte " +
     "des parois de pierre, tel que dessiné (" +
     R.masse2.structures + ") comme en travers d'un tube (" + R.masse2.mixte + ")", R.masse2);
   if (CAPTURES) await capturesModeles(page);
@@ -9868,11 +9868,11 @@ async function sectionTexturesSol(nav) {
     nom + "🧱 coupé : aucune ombre de contact, couleurs de la légende seules", O.coupe);
     // Nuance de roche par structure (vue3d.js > NUANCE_ROCHE : au plus − 16 %, ± 6 % de chaleur). Trois structures
     // en roche : deux piliers de 1re masse, un de 2e masse, à peine plus chaude (TEINTE_MASSE_2). Bleu / rouge des
-    // sommets, nuance comprise : 0,94 à 1,06 pour la 1re masse, 0,67 à 0,76 pour la 2e — seuil à mi-chemin, et
-    // plancher à 0,6 (une 2e masse franchement orangée passerait dessous).
+    // sommets, nuance comprise : 0,94 à 1,06 pour la 1re masse, 0,53 à 0,60 pour la 2e — seuil à mi-chemin (0,77),
+    // et plancher à 0,5 (une 2e masse orangée passerait dessous).
     const N = R.nuance, rvb = N.depart.map(function (c) { return c.split(",").map(Number); });
-    const masse1 = rvb.filter(function (c) { return c[2] / c[0] > 0.85; });
-    const masse2 = rvb.filter(function (c) { return c[2] / c[0] > 0.6 && c[2] / c[0] < 0.85; });
+    const masse1 = rvb.filter(function (c) { return c[2] / c[0] > 0.77; });
+    const masse2 = rvb.filter(function (c) { return c[2] / c[0] > 0.5 && c[2] / c[0] < 0.77; });
     verifier(rvb.length === 3 && masse1.length === 2 && masse2.length === 1 &&
       masse1.every(function (c) { return Math.min(c[0], c[1], c[2]) >= 255 * 0.84 * 0.94 - 2; }),
     nom + "nuance par structure : deux piliers de 1re masse de teintes différentes, discrètes (au plus − 16 % et " +
