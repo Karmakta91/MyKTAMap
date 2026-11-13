@@ -2035,7 +2035,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   sans elle un pilier passé de la 1re à la 2e masse ne changeait rien dans la scène), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
   le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,
   polygone = pilier), un type inconnu garde sa couleur. Couleur et normal map dessinées dans un canvas
-  (`_rocheBrute`, `ROCHE` : 256 px, motif de 3 m, plus grand que l'appareil car sans joints la répétition se voit
+  (`_rocheBrute`, `ROCHE` : 256 px — 512 en Textures HD, ci-dessous —, motif de 3 m, plus grand que l'appareil car sans joints la répétition se voit
   plus ; `_appareil`, `PARPAING` : 256 px, motif de 1 m ; normal map commune `_carteNormale`), faits à la première
   structure texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée par la légende (couleurs de sommets : 2e masse, ombre de contact). Deux matériaux de plus,
   structures toujours regroupées par matériau (un maillage par tuile et par matériau). Coordonnées de texture en
@@ -2046,6 +2046,25 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   pierre, remblais, éboulis) est dessinée une fois par page (`_texturesPeintes`, canvas gardés dans `_appareils`,
   ~15 à 30 ms au PC, ~100 ms au téléphone ralenti × 4), la pierre seulement à la première paroi texturée, remblais
   et éboulis à la première zone de leur type ; `KtaVue3D.textures()` rend ces temps (checkup § 24).
+- **Textures HD** (bouton **HD** de la tuile ⚙️, sur la ligne de 🧱 ; `config.js > getVue3DTexturesHD`, réglage de
+  l'appareil : **coupé par défaut au doigt** (`ktaAppareilTactile`), allumé au pointeur fin ; grisé et sans effet 🧱
+  coupé, le réglage est gardé) : chaque texture dessinée (roche, parpaing, pierre, remblais, éboulis, sol, ciel)
+  passe de 256 à **512 px** (`HD.px`, `_px`, `_fin` ; jamais 1024) et un **grain de détail** est mêlé de près à la
+  couleur (`_detailler` : texture de 64 px répétée tous les 25 cm, ± 18 %, pleine jusqu'à 1,2 m de l'œil, éteinte à
+  4 m, une lecture de plus pour ces pixels seulement). ⚠️ contrat : le dessin HD est **le même, plus fin** — les
+  longueurs écrites en pixels (rayon d'un creux, pas d'une fissure, pore, force du relief) sont multipliées par la
+  finesse, jamais le nombre de tirages : fissures et blocs restent à leur place quand on bascule. ⚠️ contrat : HD
+  coupé, `onBeforeCompile` ne touche à rien et la clé de programme est vide (les shaders de three.js, sans une ligne
+  de plus). Bascule **sur place** (`_basculerTexturesHD` → `_refaireCartes`) : les matériaux reçoivent le dessin de
+  l'autre taille (`e.habits`, `_habiller`), les anciennes textures sont libérées, aucune géométrie ni tuile n'est
+  refaite (coordonnées de texture en mètres) ; copies du sol (pente, voiles, sol voilé) resynchronisées, voisins par
+  leur signature. Un dessin par finesse et par page (`_appareils` : « roche », « roche@2 »). Bois des battants et
+  moellons : toujours 256 px. Mesures (checkup § 24 quater ; salle fictive de 2 025 piliers pour le temps par
+  image) : premier dessin des cinq textures ~95 ms en 256 px et ~250 ms en 512 px au PC, ~350 ms et ~1,05 s au
+  téléphone ralenti × 4 (d'où le défaut coupé au doigt ; la bascule y fige l'écran une seconde) ; mémoire des
+  textures 3,3 → 13,3 Mo ; temps par image inchangé au PC (0,7 ms à 30 m, 0,9 ms à 100 m, avec ou sans HD), au
+  téléphone émulé (processeur × 4, écran × 3, carte graphique du PC) 512 px seul sans surcoût, grain ~ + 0,3 ms
+  par image. Jamais mesuré sur la carte graphique d'un vrai téléphone.
 - **Nuance de roche par structure** (même interrupteur 🧱, `NUANCE_ROCHE`, `_nuanceRoche`) : chaque pilier, front ou
   type perso en roche reçoit une teinte à lui — celle de sa masse (blanc, `TEINTE_MASSE_2`) assombrie de 0 à 16 % et
   tirée de ± 6 % vers le chaud ou le froid — posée par sommet comme la 2e masse : deux piliers voisins ne sortent
@@ -2070,8 +2089,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   et normal map, dessinées dans un canvas comme les autres (`_texturesPeintes`, aucune image). **Sol** (`SOL`,
   `_solDame`) : calcaire damé en bosses douces, plages de terre plus sombres et plus lisses (35 % de la surface, bord
   fondu), cailloutis d'éclats de 1 à 3,5 cm serrés par plages. **Plafond** (`CIEL`, `_cielCarriere`) : le banc laissé
-  au toit, plaques décollées à bord franc, fissures longues en tous sens, traces de pic en grappes, plus gris et plus
-  sombre que le sol. Motif de **4 m** à 256 px (64 px/m, la densité de l'ancien grain) : plus grand que celui d'une
+  au toit, plaques décollées à bord franc, fissures longues en tous sens, traces de pic en grappes, un peu plus gris et
+  plus sombre que le sol (pas davantage : trop sombre, un niveau du dessus montré en transparence ne s'y lisait
+  plus, checkup § 46 bis). Motif de **4 m** à 256 px (64 px/m ; 512 px en Textures HD) : plus grand que celui d'une
   paroi, un sol se voit sur des dizaines de mètres. ⚠️ contrat (décision produit) : le sol reste peu contrasté et
   jamais plus clair que le sable calcaire (`COULEUR_CALCAIRE`) — rubans, liserés, zones et plan au sol se lisent
   dessus ; le liseré sombre de l'itinéraire garde plus de 3:1 sur le sol le plus sombre (checkup § 24 quater).
@@ -2754,7 +2774,9 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   contexte, temps du premier dessin (téléphone ralenti × 4) ; ombre de contact : teinte × 0,5 au pied et en tête des
   piliers (1re et 2e masse), du mur et des parois, pleine à 28 cm, trois bandes par face, texture inchangée, rien 🧱
   coupé ; nuance de roche : deux piliers de 1re masse différents, discrète, 2e masse reconnaissable, stable après
-  reconstruction et réouverture ; tuile ⚙️
+  reconstruction et réouverture ; Textures HD : défaut selon l'appareil, bouton HD sur la ligne de 🧱 (393 px
+  compris), 512 px et grain, bascule sans géométrie refaite, grisé et sans effet 🧱 coupé, retour à 256 px sans
+  redessin, reprise du contexte, temps et mémoire ; tuile ⚙️
   au-dessus de la colonne ✏️, curseurs entiers, sélecteur de niveau hors de la colonne, de la tuile et de la grille
   (portrait et paysage) ; ▼ en vue d'édition → la 3D au −1 sans passage, carte et tracker au 0, tracé dessiné au −1,
   retour à hauteur d'yeux dégagé, plan à un niveau sans sélecteur ; vue d'édition, zoom et inclinaison retrouvés à la

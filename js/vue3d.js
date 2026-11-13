@@ -8,7 +8,8 @@
 // la barre de droite (interface.js > _ouvrirVue3D, qui la charge à la demande avec css/vue3d.css) ; three.js
 // (lib/three/) n'est importé qu'à la première ouverture. Tout est précaché par sw.js (la 3D sert sous terre).
 // Expose : window.KtaVue3D = { ouvrir(opts) → Promise<bool>, fermer() → Promise<bool recalé>, etat(o), parois(),
-//   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(), incliner(deg),
+//   textures(), mesurer(opts), basculerVue(), basculerSuivi(), basculerRendu(), basculerTextures(),
+//   basculerTexturesHD(), incliner(deg),
 //   zoomer(facteur), panner(dx, dz), surPlace(), niveauEdition(sens), reglerPortee(m), reglerLampe(%),
 //   reglerFaisceau(°), reglerPleinJour(bool), reglerNiveauxVus("voisins" | "tous" | "mien"), reglerEstomper(bool),
 //   changerNiveau(sens), avancer(m), tourner(deg), suivre(), placer(x, y, cap), reglerHauteur(m), origineItineraire(),
@@ -194,8 +195,8 @@
   // tous sens, `grappes` grappes de traces de pic, taches larges. Plus gris et plus sombre que le sol : le regard
   // reste en bas. ⚠️ contrat : même `m` que SOL (une seule projection monde pour le sol et le plafond,
   // _dalleTexturee).
-  const CIEL = { m: SOL.m, px: 256, couleur: "#b3a88f", bancs: 2, ressaut: 0.16, fissures: 6, grappes: 46,
-    grain: 0.07, relief: 2.6, graine: 89 };
+  const CIEL = { m: SOL.m, px: 256, couleur: "#c1b598", bancs: 2, ressaut: 0.16, fissures: 6, grappes: 46,
+    grain: 0.07, relief: 2, graine: 89 };
   // Ordre de rendu du sol (carré qui suit et sol des galeries) : avant tout le reste, pour que le plan au sol
   // (PLAN_SOL.ordre) se pose dessus sans dépendre de la profondeur.
   const ORDRE_SOL = -0.6;
@@ -218,7 +219,8 @@
   // Structures texturées (interrupteur 🧱 Textures de la tuile ⚙️, _textureDe) : appareil dessiné dans un canvas
   // (couleur et normal map), motif carré de `m` m sur `px` px (puissance de 2 : mipmaps). Coordonnées de texture en
   // mètres / m, posées face par face (_prisme). ⚠️ `px` borne le temps de dessin à l'ouverture (~4 ms par texture
-  // de 256 px au PC, 4 fois plus au téléphone) : 512 px coûtait 0,4 s au téléphone ralenti.
+  // de 256 px au PC, 4 fois plus au téléphone) : 512 px coûtait 0,4 s au téléphone ralenti, d'où le réglage
+  // « Textures HD » (HD ci-dessous), coupé par défaut au doigt.
   // Roche brute (piliers, fronts : la masse calcaire laissée en place, décision produit, jamais appareillée) :
   // motif de 3 m (85 px/m) — sans joints la répétition se voit plus, d'où un motif plus grand que l'appareil et des
   // taches à deux échelles ; strates tous les `strate` m (lit de `lit` m, ondulé de `onde` m), `fissures` fissures,
@@ -235,6 +237,13 @@
   // froid d'au plus `chaud` (une composante abaissée : une couleur de sommet ne dépasse jamais 1). Discrète exprès :
   // l'écart entre deux piliers reste loin de celui qui sépare la 1re de la 2e masse.
   const NUANCE_ROCHE = { clair: 0.16, chaud: 0.06 };
+  // Textures HD (réglage de l'appareil, config.js > getVue3DTexturesHD ; sans effet 🧱 coupé) : chaque texture est
+  // dessinée à `px` fois sa taille (512 px pour 256 ; jamais 1024 : seize fois les pixels), le même dessin plus fin
+  // (longueurs en pixels et force du relief multipliées d'autant, tirages inchangés : _px, _fin), et un grain de
+  // détail est mêlé de près à la couleur (_detailler) : petite texture `grainPx` px répétée tous les `grainM` m,
+  // de force `force` (± la moitié), pleine jusqu'à `pres` m de l'œil, éteinte à `loin` m. ⚠️ contrat : HD coupé, les
+  // shaders sont ceux de three.js, sans une ligne de plus.
+  const HD = { px: 2, grainPx: 64, grainM: 0.25, force: 0.36, pres: 1.2, loin: 4, graine: 97 };
   // Ombre de contact (🧱 activé) : au pied et en tête des piliers, des fronts, des murs et des parois des galeries
   // et des tubes, la teinte descend à `force` au contact du sol et du plafond et revient à 1 en `haut` m — les
   // volumes tiennent au sol au lieu d'y flotter. ⚠️ contrat (décision batterie) : posée PAR SOMMET, dans la couleur
@@ -2344,6 +2353,16 @@
     return typeof window.getVue3DTextures !== "function" || window.getVue3DTextures() === true;
   }
 
+  // Textures HD : la préférence de l'appareil (sans config.js : coupé) ; en vigueur seulement avec les textures.
+  function _hdVoulu() { return typeof window.getVue3DTexturesHD === "function" && window.getVue3DTexturesHD() === true; }
+  function _hdActif() { return !!_e && _e.textures === true && _e.hd === true; }
+
+  // Finesse du dessin : 1, ou HD.px en Textures HD. Taille en pixels d'une texture décrite par O (ROCHE, SOL…).
+  // ⚠️ contrat : une longueur écrite en pixels dans un dessin (rayon d'un creux, pas d'une marche, pore) est
+  // multipliée par _fin(), jamais le nombre de tirages : le dessin HD est le même, plus fin.
+  function _fin() { return _hdActif() ? HD.px : 1; }
+  function _px(O) { return O.px * _fin(); }
+
   // Champ de bruit de valeur répétable n × n (Float32Array, [0, 1]) : grille gx × gy bouclée, interpolation douce,
   // indices et poids précalculés par colonne et par ligne (aucune division ni arrondi par pixel).
   function _champBoucle(alea, gx, gy, n) {
@@ -2493,11 +2512,13 @@
 
   // Fissure dans C (_creuser) : fine, presque droite, partie de (x, y) px vers l'angle a, longue de l px, large de
   // w0 px au départ, qui s'amincit ; une branche parfois. `f` : force du creux et de son ombre (1 = roche brute).
+  // Pas de C.q / 2 px (C.q : finesse du dessin, _fin) : autant de pas, donc de tirages, à toute finesse.
   function _fissurer(C, alea, x, y, a, l, w0, f) {
-    for (let s = 0; s < l; s += 0.5) {
+    const pas = 0.5 * C.q;
+    for (let s = 0; s < l; s += pas) {
       a += (alea() - 0.5) * 0.18;
-      x += Math.cos(a) * 0.5; y += Math.sin(a) * 0.5;
-      _creuser(C, x, y, w0 * (1 - s / l) + 0.5, 0.25 * f, 0.22 * f);
+      x += Math.cos(a) * pas; y += Math.sin(a) * pas;
+      _creuser(C, x, y, w0 * (1 - s / l) + pas, 0.25 * f, 0.22 * f);
       if (alea() < 0.004) {
         _fissurer(C, alea, x, y, a + (alea() < 0.5 ? -1 : 1) * (0.5 + alea() * 0.5), (l - s) * 0.4, w0 * 0.6, f);
       }
@@ -2509,7 +2530,7 @@
   // relief, gardés selon un semis à grande échelle : serrés par plages, absents ailleurs), grain fin.
   // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _solDame(alea) {
-    const S = SOL, n = S.px, k = n / S.m, haut = new Float32Array(n * n), eclat = new Float32Array(n * n);
+    const S = SOL, n = _px(S), k = n / S.m, haut = new Float32Array(n * n), eclat = new Float32Array(n * n);
     const ton = new Float32Array(n * n);
     const large = _champBoucle(alea, 5, 5, n), moyen = _champBoucle(alea, 11, 11, n);
     const fin = _champBoucle(alea, 28, 28, n), tres = _champBoucle(alea, 72, 72, n);
@@ -2553,7 +2574,7 @@
         img[o4] = r0 * 255; img[o4 + 1] = g0 * 255; img[o4 + 2] = b0 * 255; img[o4 + 3] = 255;
       }
     }
-    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, S.relief) };
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, S.relief * _fin()) };
   }
 
   // Ciel de carrière (CIEL) : le banc de calcaire laissé au toit. Plaques de banc décollées (champ à deux échelles
@@ -2561,7 +2582,7 @@
   // la taille, fissures longues en tous sens, traces de pic en grappes, taches larges (humidité, fumée de lampe).
   // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _cielCarriere(alea) {
-    const T = CIEL, n = T.px, k = n / T.m, haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
+    const T = CIEL, n = _px(T), k = n / T.m, q = _fin(), haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
     const creux = new Float32Array(n * n), palier = new Uint8Array(n * n);
     const moyen = _champBoucle(alea, 11, 11, n), fin = _champBoucle(alea, 34, 34, n);
     const tache = _champBoucle(alea, 3, 3, n), tache2 = _champBoucle(alea, 9, 9, n);
@@ -2577,17 +2598,17 @@
         if (d !== palier[p] || h !== palier[p]) sombre[p] = 0.07;
       }
     }
-    const C = { n: n, creux: creux, sombre: sombre };
+    const C = { n: n, q: q, creux: creux, sombre: sombre };
     for (let f = 0; f < T.fissures; f++) {
-      _fissurer(C, alea, alea() * n, alea() * n, alea() * 2 * Math.PI, (0.5 + alea() * 1.3) * k, 0.3 + alea() * 0.4,
-        0.5);
+      _fissurer(C, alea, alea() * n, alea() * n, alea() * 2 * Math.PI, (0.5 + alea() * 1.3) * k,
+        (0.3 + alea() * 0.4) * q, 0.5);
     }
     for (let g = 0; g < T.grappes; g++) {
       const cx = alea() * n, cy = alea() * n, a0 = alea() * Math.PI, nb = 2 + Math.floor(alea() * 4);
       for (let i = 0; i < nb; i++) {
         const a = a0 + (alea() - 0.5) * 0.25, l = (0.08 + alea() * 0.16) * k, e = (0.03 + alea() * 0.03) * k * i;
         const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
-        for (let s = 0; s < l; s += 0.5) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9, 0.06, 0.04);
+        for (let s = 0; s < l; s += 0.5 * q) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9 * q, 0.06, 0.04);
       }
     }
     const img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(T.couleur);
@@ -2604,7 +2625,7 @@
         img[o4 + 3] = 255;
       }
     }
-    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, T.relief) };
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, T.relief * q) };
   }
 
   // Roche brute (piliers et fronts : la masse calcaire laissée en place, jamais appareillée) : relief en bosses à
@@ -2614,7 +2635,7 @@
   // joints la répétition se voit plus, d'où un motif plus grand que celui du parpaing et deux échelles de taches.
   // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _rocheBrute(alea) {
-    const R = ROCHE, n = R.px, k = n / R.m, haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
+    const R = ROCHE, n = _px(R), k = n / R.m, q = _fin(), haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
     const creux = new Float32Array(n * n);
     const gros = _champBoucle(alea, 5, 5, n), moyen = _champBoucle(alea, 14, 14, n);
     const fin = _champBoucle(alea, 40, 40, n);
@@ -2638,10 +2659,10 @@
       }
     }
     // Fissures : surtout verticales.
-    const C = { n: n, creux: creux, sombre: sombre };
+    const C = { n: n, q: q, creux: creux, sombre: sombre };
     for (let f = 0; f < R.fissures; f++) {
       _fissurer(C, alea, alea() * n, alea() * n, Math.PI / 2 + (alea() - 0.5) * 0.9, (0.3 + alea() * 0.9) * k,
-        0.4 + alea() * 0.6, 1);
+        (0.4 + alea() * 0.6) * q, 1);
     }
     // Traces d'outil (pic, broche) : sillons isolés ou par deux ou trois, de longueur, d'angle et d'écart tirés.
     for (let g = 0; g < R.grappes; g++) {
@@ -2650,7 +2671,7 @@
       for (let i = 0; i < nb; i++) {
         const a = a0 + (alea() - 0.5) * 0.3, l = (0.06 + alea() * 0.14) * k, e = (0.02 + alea() * 0.04) * k * i;
         const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
-        for (let s = 0; s < l; s += 0.5) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9, 0.07, 0.035);
+        for (let s = 0; s < l; s += 0.5 * q) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9 * q, 0.07, 0.035);
       }
     }
     for (let p = 0; p < n * n; p++) haut[p] -= creux[p];
@@ -2669,7 +2690,7 @@
       }
     }
     for (let p = 0; p < n * n; p++) haut[p] += (grain() - 0.5) * 0.02;
-    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, R.relief) };
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, R.relief * q) };
   }
 
   // Pierraille (REMBLAIS, EBOULIS) : sol de terre et de sable (bruit à trois échelles, grains clairs), cailloux et
@@ -2681,7 +2702,7 @@
   // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   // ⚠️ Coût proportionnel à la surface des blocs × facettes : borné par `tailles` (~10 ms au PC par texture).
   function _pierraille(o, alea) {
-    const n = o.px, k = n / o.m, img = new Uint8ClampedArray(n * n * 4);
+    const n = _px(o), k = n / o.m, q = _fin(), img = new Uint8ClampedArray(n * n * 4);
     const S = { n: n, haut: new Float32Array(n * n), bloc: new Int32Array(n * n).fill(-1),
       ombre: new Float32Array(n * n), eclat: new Float32Array(n * n) };
     const haut = S.haut, bloc = S.bloc, ombre = S.ombre, eclat = S.eclat;
@@ -2707,7 +2728,7 @@
           const a = a0 + (f + (alea() - 0.5) * 0.7) * 2 * Math.PI / B.nf;
           B.nx[f] = Math.cos(a); B.ny[f] = Math.sin(a);
           B.d[f] = r * (0.75 + alea() * 0.35) * (1 + (al - 1) * Math.abs(Math.cos(a - axe)));
-          B.pente[f] = (0.6 + alea() * 1.1) / Math.max(1.5, r * 0.45);
+          B.pente[f] = (0.6 + alea() * 1.1) / Math.max(1.5 * q, r * 0.45);
           B.ton[f] = 0.8 + alea() * 0.3;
         }
         // Saillie : part de la classe, plus la taille dans la classe ; plateau un peu incliné.
@@ -2720,7 +2741,7 @@
         for (let f = 0; f < B.nfis; f++) {
           const a = alea() * Math.PI;
           B.fis[5 * f] = Math.cos(a); B.fis[5 * f + 1] = Math.sin(a);
-          B.fis[5 * f + 2] = (alea() - 0.5) * r * 0.9; B.fis[5 * f + 3] = 0.6 + alea() * 0.6;
+          B.fis[5 * f + 2] = (alea() - 0.5) * r * 0.9; B.fis[5 * f + 3] = (0.6 + alea() * 0.6) * q;
           B.fis[5 * f + 4] = r * (0.3 + alea() * 0.7);
         }
         _poserBloc(B, S);
@@ -2728,7 +2749,7 @@
     }
     // Grains de sable clairs dans la terre.
     const sable = new Uint8Array(n * n);
-    for (let s = 0; s < o.sable; s++) sable[Math.floor(grain() * n * n)] = 1;
+    for (let s = 0; s < o.sable * q * q; s++) sable[Math.floor(grain() * n * n)] = 1;
     for (let y = 0; y < n; y++) {
       for (let x = 0; x < n; x++) {
         const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4, b = bloc[p];
@@ -2745,7 +2766,7 @@
         img[o4] = r0 * 255; img[o4 + 1] = g0 * 255; img[o4 + 2] = b0 * 255; img[o4 + 3] = 255;
       }
     }
-    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, o.relief) };
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, o.relief * q) };
   }
 
   // Trace un bloc B (_pierraille) dans S : hauteur en facettes, plus haute surface gardée par pixel (bloc, éclat de
@@ -2754,7 +2775,7 @@
     const n = S.n, haut = S.haut, nf = B.nf, nx = B.nx, ny = B.ny, d = B.d, pente = B.pente, fis = B.fis;
     let dmax = 0;
     for (let f = 0; f < nf; f++) dmax = Math.max(dmax, d[f]);
-    const lis = Math.max(1, B.r * 0.18), R = Math.ceil(dmax + lis) + 1, cx = B.cx, cy = B.cy;
+    const lis = Math.max(_fin(), B.r * 0.18), R = Math.ceil(dmax + lis) + 1, cx = B.cx, cy = B.cy;
     for (let yy = Math.floor(cy - R); yy <= cy + R; yy++) {
       const qy = yy - cy, ligne = (((yy % n) + n) % n) * n;
       for (let xx = Math.floor(cx - R); xx <= cx + R; xx++) {
@@ -2790,7 +2811,7 @@
   // Assises d'une pierre de taille de carrière (PIERRE) : hauteurs tirées dont la somme fait le motif, blocs de
   // longueur tirée partant d'un décalage tiré (joints jamais alignés d'une assise à l'autre), joints irréguliers.
   function _assisesPierre(alea) {
-    const P = PIERRE, k = P.px / P.m, A = [], tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
+    const P = PIERRE, q = _fin(), k = _px(P) / P.m, A = [], tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
     for (let y = 0; y < P.m - 1e-6;) {
       let h = tire(P.assise);
       const reste = P.m - y;
@@ -2807,13 +2828,14 @@
         onde: [(0.4 + alea() * 0.6) * P.onde * k, 1 + Math.floor(alea() * 3), alea() * 2 * Math.PI], blocs: blocs });
       y += h;
     }
-    return { assises: A, couleur: P.couleur, mortier: P.mortier, biseau: P.biseau * k, relief: P.relief,
-      bosse: 0.12, grainRelief: 0.06, taches: 0.16, grain: 0.08, lits: 0.05, pores: 120, pore: [0.6, 1.8], px: P.px };
+    return { assises: A, couleur: P.couleur, mortier: P.mortier, biseau: P.biseau * k, relief: P.relief * q,
+      bosse: 0.12, grainRelief: 0.06, taches: 0.16, grain: 0.08, lits: 0.05, pores: 120, pore: [0.6 * q, 1.8 * q],
+      px: _px(P) };
   }
 
   // Assises de parpaings (PARPAING) : blocs réguliers posés à joints croisés (demi-bloc de décalage).
   function _assisesParpaing(alea) {
-    const P = PARPAING, k = P.px / P.m, A = [], nl = Math.round(P.m / P.l);
+    const P = PARPAING, q = _fin(), k = _px(P) / P.m, A = [], nl = Math.round(P.m / P.l);
     for (let i = 0; i < Math.round(P.m / P.h); i++) {
       const blocs = [];
       for (let j = 0; j < nl; j++) {
@@ -2822,8 +2844,9 @@
       }
       A.push({ bas: i * P.h * k, demiLit: P.joint * k / 2, onde: null, blocs: blocs });
     }
-    return { assises: A, couleur: P.couleur, mortier: P.mortier, biseau: P.biseau * k, relief: P.relief,
-      bosse: 0.08, grainRelief: 0.14, taches: 0.1, grain: 0.2, lits: 0, pores: 550, pore: [0.6, 1.8], px: P.px };
+    return { assises: A, couleur: P.couleur, mortier: P.mortier, biseau: P.biseau * k, relief: P.relief * q,
+      bosse: 0.08, grainRelief: 0.14, taches: 0.1, grain: 0.2, lits: 0, pores: 550, pore: [0.6 * q, 1.8 * q],
+      px: _px(P) };
   }
 
   // Matériaux roche et parpaing, faits à la première structure texturée (aucun coût si l'interrupteur est coupé) :
@@ -2835,15 +2858,14 @@
     const e = _e;
     if (e.mats.roche) return;
     const t0 = performance.now();
-    const fab = function (nom, dessin, graine, recule) {
-      const t = _texturesPeintes(nom, dessin, graine);
-      const o = { map: t.couleur, normalMap: t.normale, vertexColors: true };
+    const fab = function (nom, dessin, O, recule) {
+      const o = { vertexColors: true };
       if (recule) Object.assign(o, { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-      return new THREE.MeshLambertMaterial(o);
+      return _habiller(_detailler(new THREE.MeshLambertMaterial(o), O.m), nom, dessin, O.graine);
     };
-    e.mats.roche = fab("roche", _rocheBrute, ROCHE.graine, false);
+    e.mats.roche = fab("roche", _rocheBrute, ROCHE, false);
     e.mats.parpaing = fab("parpaing", function (alea) { return _appareil(_assisesParpaing(alea), alea); },
-      PARPAING.graine, true);
+      PARPAING, true);
     e.msTextures = performance.now() - t0;
   }
 
@@ -2854,8 +2876,8 @@
     const e = _e;
     if (e.mats[cle]) return e.mats[cle];
     const t0 = performance.now(), P = cle === "remblais" ? REMBLAIS : EBOULIS;
-    const t = _texturesPeintes(cle, function (alea) { return _pierraille(P, alea); }, P.graine);
-    e.mats[cle] = new THREE.MeshLambertMaterial({ map: t.couleur, normalMap: t.normale });
+    e.mats[cle] = _habiller(_detailler(new THREE.MeshLambertMaterial({}), P.m), cle,
+      function (alea) { return _pierraille(P, alea); }, P.graine);
     e.msZones = (e.msZones || 0) + performance.now() - t0;
     return e.mats[cle];
   }
@@ -2865,15 +2887,17 @@
   // _appareilsMs, lue par le checkup).
   function _texturesPeintes(nom, dessin, graine) {
     const e = _e, aniso = Math.min(4, e.renderer.capabilities.getMaxAnisotropy());
-    if (!_appareils[nom]) {
+    // Un dessin par finesse (« roche », « roche@2 » en Textures HD) : basculer ne redessine jamais deux fois.
+    const cle = _fin() > 1 && dessin !== _bois ? nom + "@" + _fin() : nom;
+    if (!_appareils[cle]) {
       const t0 = performance.now();
       let g = graine;
       const alea = function () { g = (g * 16807) % 2147483647; return g / 2147483647; };
-      _appareils[nom] = dessin(alea);
-      _appareilsMs[nom] = Math.round(performance.now() - t0);
+      _appareils[cle] = dessin(alea);
+      _appareilsMs[cle] = Math.round(performance.now() - t0);
     }
-    const t = { couleur: new THREE.CanvasTexture(_appareils[nom].couleur),
-      normale: new THREE.CanvasTexture(_appareils[nom].normale) };
+    const t = { couleur: new THREE.CanvasTexture(_appareils[cle].couleur),
+      normale: new THREE.CanvasTexture(_appareils[cle].normale) };
     [t.couleur, t.normale].forEach(function (x) {
       x.wrapS = x.wrapT = THREE.RepeatWrapping;
       x.anisotropy = aniso;
@@ -2881,6 +2905,93 @@
     });
     t.couleur.colorSpace = THREE.SRGBColorSpace;
     return t;
+  }
+
+  // Carte et relief dessinés (_texturesPeintes) posés sur un matériau, retenus avec lui (e.habits) : en changeant de
+  // finesse (_refaireCartes), le matériau reçoit le dessin de l'autre taille sans que rien ne soit reconstruit.
+  function _habiller(mat, nom, dessin, graine) {
+    const e = _e, t = _texturesPeintes(nom, dessin, graine);
+    mat.map = t.couleur;
+    mat.normalMap = t.normale;
+    mat.needsUpdate = true;
+    e.habits.set(mat, { nom: nom, dessin: dessin, graine: graine, t: t });
+    return mat;
+  }
+
+  // Grain de détail des Textures HD (HD) : bruit fin répétable, gris moyen 0,5, une texture pour la vue.
+  function _texGrain() {
+    const e = _e;
+    if (e.texGrain) return e.texGrain;
+    const n = HD.grainPx, img = new Uint8ClampedArray(n * n * 4);
+    let g = HD.graine;
+    const alea = function () { g = (g * 16807) % 2147483647; return g / 2147483647; };
+    const a = _champBoucle(alea, 9, 9, n), b = _champBoucle(alea, 21, 21, n);
+    for (let p = 0; p < n * n; p++) {
+      const v = 255 * Math.max(0, Math.min(1, 0.5 + (a[p] - 0.5) * 0.5 + (b[p] - 0.5) * 0.6 + (alea() - 0.5) * 0.5));
+      img[p * 4] = img[p * 4 + 1] = img[p * 4 + 2] = v; img[p * 4 + 3] = 255;
+    }
+    const t = e.texGrain = new THREE.CanvasTexture(_canvasDe(img, n));
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return t;
+  }
+
+  // Grain de détail mêlé de près à la couleur d'un matériau texturé dont le motif fait `m` mètres (HD) : une
+  // lecture de texture de plus pour les pixels à moins de HD.loin de l'œil, rien au-delà (branche), fondu entre
+  // HD.pres et HD.loin. ⚠️ contrat : Textures HD coupé, onBeforeCompile ne touche à rien et la clé de programme est
+  // vide — les shaders sont ceux de three.js ; la bascule recompile ces matériaux (needsUpdate posé par l'appelant).
+  // 🩸 clone() ne reprend pas onBeforeCompile : une copie (voisins, voile, sol en pente) reste sans grain, voulu
+  // (plus loin, ou transparente).
+  function _detailler(mat, m) {
+    mat.onBeforeCompile = function (sh) {
+      if (!_hdActif()) return;
+      sh.uniforms.ktaGrain = { value: _texGrain() };
+      sh.uniforms.ktaGrainK = { value: m / HD.grainM };
+      sh.fragmentShader = sh.fragmentShader
+        .replace("#include <common>", "#include <common>\nuniform sampler2D ktaGrain;\nuniform float ktaGrainK;")
+        .replace("#include <map_fragment>", "#include <map_fragment>\n#ifdef USE_MAP\n" +
+          "float ktaLoin = length( vViewPosition );\n" +
+          "if ( ktaLoin < " + HD.loin.toFixed(2) + " ) diffuseColor.rgb *= 1.0 + " + HD.force.toFixed(2) +
+          " * ( texture2D( ktaGrain, vMapUv * ktaGrainK ).r - 0.5 ) * ( 1.0 - smoothstep( " + HD.pres.toFixed(2) +
+          ", " + HD.loin.toFixed(2) + ", ktaLoin ) );\n#endif");
+    };
+    mat.customProgramCacheKey = function () { return _hdActif() ? "kta-grain" : ""; };
+    return mat;
+  }
+
+  // Changement de finesse (Textures HD basculé, 🧱 activé) : chaque matériau texturé reçoit le dessin de l'autre
+  // taille, les anciennes textures sont libérées ; géométries, tuiles, greffe et position ne bougent pas (les
+  // coordonnées de texture sont en mètres). Premier passage à une finesse : ses dessins sont faits ici.
+  function _refaireCartes() {
+    const e = _e, libres = [];
+    e.habits.forEach(function (h, mat) {
+      libres.push(h.t.couleur, h.t.normale);
+      _habiller(mat, h.nom, h.dessin, h.graine);
+    });
+    if (e.texPierre) {
+      libres.push(e.texPierre.couleur, e.texPierre.normale);
+      const pierre = e.paroiPierre === true;
+      e.texPierre = null; e.paroiPierre = null;
+      if (pierre) _paroiTexturee();
+    }
+    if (e.cartesSol) {
+      [e.cartesSol.sol, e.cartesSol.ciel].forEach(function (j) {
+        libres.push(j.carre.couleur, j.carre.normale, j.monde.couleur, j.monde.normale);
+      });
+      e.cartesSol = null;
+    }
+    _grainSol(e.mats, e.textures === true);
+    // Copies des matériaux du sol et du plafond (_suivreCartes) : pente, voiles, sol voilé ; les voisins suivent par
+    // leur signature (_sigVoisins).
+    if (e.matsPente) _matsPente();
+    _majVoiles();
+    _majSolActif();
+    libres.forEach(function (t) {
+      t.dispose();
+      const i = e.texStructures.indexOf(t);
+      if (i >= 0) e.texStructures.splice(i, 1);
+    });
+    e.mats.paroi.needsUpdate = true;
+    e.sale = true;
   }
 
   // Parois (matériau `paroi`, un seul pour les galeries, les tubes et les puits) : pierre de taille avec relief si
@@ -2931,6 +3042,9 @@
     // Sol, ciel, roche, parpaing et pierre des parois (🧱) : faits à la demande (_cartesSol, _matsTextures,
     // _paroiTexturee) ; refaits avec la scène (reprise du contexte). La paroi naît en moellons, le sol sans carte.
     _e.textures = _texturesVoulues();
+    _e.hd = _hdVoulu();
+    _e.habits = new Map();
+    _e.texGrain = null;
     _e.texStructures = [];
     _e.cartesSol = null;
     _e.texPierre = null;
@@ -2950,13 +3064,14 @@
       hachSol: _hachurer(new THREE.MeshLambertMaterial({ vertexColors: true })),
       hachRideau: _hachurer(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.55,
         depthWrite: false, side: THREE.DoubleSide })),
-      sol: new THREE.MeshLambertMaterial(Object.assign({}, SOL_RECULE)),
-      plafond: new THREE.MeshLambertMaterial({ side: THREE.BackSide }),
+      sol: _detailler(new THREE.MeshLambertMaterial(Object.assign({}, SOL_RECULE)), SOL.m),
+      plafond: _detailler(new THREE.MeshLambertMaterial({ side: THREE.BackSide }), CIEL.m),
       avatar: new THREE.MeshBasicMaterial({ color: 0xf4c542 }),
-      solGalerie: new THREE.MeshLambertMaterial(Object.assign({}, SOL_RECULE)),
-      plafondGalerie: new THREE.MeshLambertMaterial({}),
+      solGalerie: _detailler(new THREE.MeshLambertMaterial(Object.assign({}, SOL_RECULE)), SOL.m),
+      plafondGalerie: _detailler(new THREE.MeshLambertMaterial({}), CIEL.m),
       // Couleurs des sommets : l'ombre de contact des parois de pierre (OMBRE_CONTACT) ; blanc partout ailleurs.
-      paroi: new THREE.MeshLambertMaterial({ map: _e.moellons, side: THREE.DoubleSide, vertexColors: true }),
+      paroi: _detailler(new THREE.MeshLambertMaterial({ map: _e.moellons, side: THREE.DoubleSide,
+        vertexColors: true }), PIERRE.m),
       paroiUnie: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
       // 🩸 Eau découpée en plusieurs pièces qui se recouvrent : sans écriture de profondeur stricte, chaque
       // recouvrement serait mélangé deux fois (taches plus sombres).
@@ -3530,7 +3645,7 @@
   // Ce qui, hors du niveau, fait refaire un voisin : rendu, textures, données, filtres de la carte, greffe.
   function _sigVoisins() {
     const e = _e, f = window._ktaRuntimeFilters || {}, g = window.dataLayerGroups || {}, map = window.map;
-    let s = e.rendu + "|" + (e.textures === true) + "|" + (e.donnees ? e.donnees.empreinte : "") + "|" +
+    let s = e.rendu + "|" + (e.textures === true) + "|" + _hdActif() + "|" + (e.donnees ? e.donnees.empreinte : "") + "|" +
       e.tuilesActives + "|" + _permisGreffe("traces") + "|" + _lignesSol() + "|";
     const cmp = function (a, b) { return String(a).localeCompare(String(b)); };
     Object.keys(f).sort(cmp).forEach(function (k) {
@@ -10916,6 +11031,9 @@
     icT.innerHTML = _ico("brick-wall");
     e.boutonTextures.appendChild(icT);
     e.boutonTextures.appendChild(document.createTextNode(_t("vue3d.texturesNom")));
+    // Textures HD (réglage de cet appareil, coupé par défaut au doigt) : à côté de 🧱, grisé tant qu'il est coupé.
+    e.boutonTexturesHD = _bouton(ligneRendu, "kta-v3d-btn-mode kta-v3d-btn-textures-hd", _t("vue3d.texturesHdNom"),
+      _t("vue3d.texturesHdMontrer"), "texturesHD", "sparkles");
     // Lignes au sol (rubans des tracés, liseré des galeries, ronds) : 3D seulement, l'itinéraire reste.
     const ligneSol = document.createElement("div");
     ligneSol.className = "kta-v3d-reglages-ligne";
@@ -11808,7 +11926,26 @@
   function _appliquerTextures() {
     const e = _e;
     if (e.boutonTextures) e.boutonTextures.setAttribute("aria-pressed", _texturesActives() ? "true" : "false");
+    if (e.boutonTexturesHD) {
+      const hd = typeof e.hd === "boolean" ? e.hd : _hdVoulu();
+      e.boutonTexturesHD.setAttribute("aria-pressed", hd ? "true" : "false");
+      e.boutonTexturesHD.disabled = !_texturesActives();
+    }
     _majRepere();
+  }
+
+  // Bascule des Textures HD : retenue sur l'appareil ; avec 🧱, les matériaux changent de dessin sur place
+  // (_refaireCartes), les voisins suivent (_voisinsPreparer). 🧱 coupé : refusée (bouton grisé), rien n'est écrit.
+  // Rend le réglage en vigueur, null vue fermée.
+  function _basculerTexturesHD() {
+    const e = _e;
+    if (!e) return null;
+    if (!_texturesActives()) return e.hd === true;
+    e.hd = !e.hd;
+    if (typeof window.setVue3DTexturesHD === "function") window.setVue3DTexturesHD(e.hd);
+    if (e.mats) { _refaireCartes(); _voisinsPreparer(true); }
+    _appliquerTextures();
+    return e.hd;
   }
 
   // Bascule : retenue sur l'appareil, tuiles refaites sur place (la scène, la greffe et la position ne bougent pas).
@@ -12057,6 +12194,7 @@
     if (a === "guidage") { _basculerGuidage(); return true; }
     if (a === "fichesObjets") { _basculerFichesObjets(); return true; }
     if (a === "textures") { _basculerTextures(); return true; }
+    if (a === "texturesHD") { _basculerTexturesHD(); return true; }
     if (a === "lignesSol") { _basculerLignesSol(); return true; }
     if (a === "rendu") { basculerRendu(); return true; }
     if (a === "hauteur") {
@@ -13055,6 +13193,7 @@
       if (e.avatar) e.avatar.geometry.dispose();
       if (e.mats) Object.keys(e.mats).forEach(function (k) { e.mats[k].dispose(); });
       if (e.moellons) e.moellons.dispose();
+      if (e.texGrain) e.texGrain.dispose();
       (e.texStructures || []).forEach(function (t) { t.dispose(); });
       if (e.equipe) _viderEquipe();
       if (e.matsEquipe) e.matsEquipe.forEach(function (m) { m.dispose(); });
@@ -13596,6 +13735,17 @@
         lits: lits(m.map.image) };
     });
     r.materiaux.paroi.pierre = !!e.texPierre && e.mats.paroi.map === e.texPierre.couleur;
+    // Textures HD : préférence, état en vigueur, bouton, grain de détail ; mémoire des textures de la vue (images
+    // distinctes × 4 octets, mipmaps compris : × 4 / 3).
+    const images = new Set();
+    (e.texStructures || []).forEach(function (t) { if (t.image) images.add(t.image); });
+    let octets = 0;
+    images.forEach(function (im) { octets += im.width * im.height * 4 * 4 / 3; });
+    r.hd = { voulu: e.hd === true, actif: _hdActif(), finesse: _fin(),
+      bouton: e.boutonTexturesHD ? e.boutonTexturesHD.getAttribute("aria-pressed") : null,
+      grise: e.boutonTexturesHD ? e.boutonTexturesHD.disabled : null, grain: !!e.texGrain,
+      cle: e.mats.sol.customProgramCacheKey ? e.mats.sol.customProgramCacheKey() : null,
+      images: images.size, mo: +(octets / 1048576).toFixed(2) };
     // Sol et plafond (🧱 coupé : noirs, sans carte ni relief). `motif` : "sol" | "ciel" ; `calage` : coordonnées de
     // texture rendues au coin (x0, z0) du carré, à comparer à (x0, z0) / SOL.m (_calerCarre).
     r.sols = {};
@@ -13729,6 +13879,7 @@
     panner: panner, surPlace: surPlace, niveauEdition: niveauEdition,
     basculerSuivi: basculerSuivi, basculerRendu: basculerRendu, changerNiveau: changerNiveau, parois: parois,
     textures: textures, basculerTextures: function () { return _basculerTextures(); },
+    basculerTexturesHD: function () { return _basculerTexturesHD(); },
     avancer: avancer, tourner: tourner, suivre: suivre, placer: placer, reglerHauteur: reglerHauteur,
     reglerPortee: reglerPortee, reglerLampe: reglerLampe, reglerFaisceau: reglerFaisceau,
     reglerPleinJour: reglerPleinJour, limiterPortee: limiterPortee, zoomer: zoomer, reglerNiveauxVus: reglerNiveauxVus,

@@ -1454,6 +1454,26 @@ function setVue3DTextures(oui) {
 window.getVue3DTextures = getVue3DTextures;
 window.setVue3DTextures = setVue3DTextures;
 
+// ── Textures HD de la vue 3D (512 px et grain de détail de près), réglage de CET appareil ───────────────────────
+// localStorage["myktamap_v3d_textures_hd_v1"] = "0" (coupé) | "1" ; absente → selon l'appareil (décision produit) :
+// coupé au doigt (window.ktaAppareilTactile : quatre fois plus de pixels à dessiner à l'ouverture et à garder en
+// mémoire, une lecture de texture de plus par pixel proche), allumé au pointeur fin. Réglé dans la tuile ⚙️ de la
+// vue (vue3d.js > _basculerTexturesHD). ⚠️ contrat : sans effet tant que les textures sont coupées
+// (getVue3DTextures) ; le réglage est gardé tel quel pour le jour où elles reviennent.
+const V3D_TEXTURES_HD_CLE = "myktamap_v3d_textures_hd_v1";
+function getVue3DTexturesHD() {
+  try {
+    const v = localStorage.getItem(V3D_TEXTURES_HD_CLE);
+    if (v === "1" || v === "0") return v === "1";
+  } catch (e) { /* stockage refusé : le défaut */ }
+  return !(typeof window.ktaAppareilTactile === "function" && window.ktaAppareilTactile());
+}
+function setVue3DTexturesHD(oui) {
+  try { localStorage.setItem(V3D_TEXTURES_HD_CLE, oui ? "1" : "0"); return true; } catch (e) { return false; }
+}
+window.getVue3DTexturesHD = getVue3DTexturesHD;
+window.setVue3DTexturesHD = setVue3DTexturesHD;
+
 // ── Fiches des objets au toucher dans la vue 3D (structure, zone, tracé), réglage de CET appareil ───────────────
 // localStorage["myktamap_v3d_fiches_objets_v1"] = "0" (coupé) | "1" ; absente → selon le pointeur (décision produit) :
 // coupé au doigt (window.ktaAppareilTactile, pointer: coarse : une fiche ouverte par erreur gêne l'écran), ouvert au

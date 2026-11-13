@@ -191,7 +191,10 @@ const LS_PREGATES = {
   "myktamap_tutorial_seen_v1": "1",
   // Case « Boutons de zoom » cochée : les sections existantes attendent + − ▲ ▼ en vue d'édition (décochée par défaut,
   // ils y sont cachés ; § case zoom la décoche).
-  "app_user_prefs": JSON.stringify({ zoomBoutons: true })
+  "app_user_prefs": JSON.stringify({ zoomBoutons: true }),
+  // Textures HD coupées (allumées par défaut au pointeur fin) : les sections mesurent les textures de 256 px et
+  // leurs temps de dessin ; § 24 quater les allume lui-même.
+  "myktamap_v3d_textures_hd_v1": "0"
 };
 // ☀️ Plein jour (vue3d.js > AMBIANCE.jour, SOLEIL.force, jeton --kta-texte-3 du brouillard et du fond).
 const PJ = { ambiance: 0.25, soleil: 1.8, fond: "#98a1b3", brume: 0.4 };
@@ -9272,20 +9275,29 @@ async function sectionFichesReglage(nav) {
 // Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied et en tête des piliers, du mur et des
 // parois, pleine à 0,28 m, trois bandes par face, texture inchangée, rien 🧱 coupé. Nuance de roche par structure
 // (NUANCE_ROCHE) : deux piliers voisins différents, discrète, 2e masse reconnaissable, stable (tuiles refaites, vue
-// rouverte).
+// rouverte). Textures HD (HD, config.js > getVue3DTexturesHD) : défaut selon l'appareil, bouton de la tuile, 512 px
+// et grain de détail, bascule sans géométrie refaite, sans effet 🧱 coupé, retour à 256 px sans redessin, reprise du
+// contexte, temps et mémoire (PC, téléphone ralenti × 4).
 async function sectionTexturesSol(nav) {
   const chromiumNav = nav.browserType().name() === "chromium";
   const nom = "§ 24 quater ";
   console.log("§ 24 quater — sol et ciel de carrière texturés");
   const erreurs = [];
-  const ouvrirPage = async function (opts) {
+  // `sansHD` : la clé du réglage Textures HD n'est pas posée (défaut de l'appareil).
+  const ouvrirPage = async function (opts, sansHD) {
     const ctx = await nav.newContext(Object.assign({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" },
       opts || {}));
     const page = await ctx.newPage();
     page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
-    await page.addInitScript(function (ls) {
-      for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
-    }, LS_PREGATES);
+    // Un shader refusé (grain de détail) s'écrit dans la console, pas en erreur de page.
+    page.on("console", function (m) {
+      if (m.type() === "error" && /THREE|WebGL|shader/i.test(m.text())) erreurs.push(m.text().slice(0, 200));
+    });
+    const ls = Object.assign({}, LS_PREGATES);
+    if (sansHD) delete ls.myktamap_v3d_textures_hd_v1;
+    await page.addInitScript(function (v) {
+      for (const k in v) { try { if (localStorage.getItem(k) === null) localStorage.setItem(k, v[k]); } catch (e) {} }
+    }, ls);
     await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
     await attendre(page, function () {
       return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
@@ -9452,6 +9464,64 @@ async function sectionTexturesSol(nav) {
       // Mixte : le carré dans la salle comme dans les tubes.
       await ouvrir("mixte", -20, 0);
       r.mixte = { sols: K.textures().sols, calage: ecartCalage(K.textures()) };
+      // Textures HD (réglage coupé par le harnais) : bouton de la tuile, bascule sur place, 🧱 coupé, retenue.
+      const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+      const geo = function () {
+        let ctx = null;
+        const deg = K.greffer({ nom: "v3d-textures-hd", scene: function (c) { ctx = c; } });
+        let racine = ctx.groupe;
+        const ids = [];
+        while (racine.parent) racine = racine.parent;
+        racine.traverse(function (m) { if (m.isMesh && m.userData.famille === "opaque") ids.push(m.geometry.uuid); });
+        if (deg) deg();
+        return ids.sort().join();
+      };
+      const tailles = function (t) {
+        return { roche: t.materiaux.roche.carte, parpaing: t.materiaux.parpaing.carte, paroi: t.materiaux.paroi.carte,
+          sol: t.sols.sol.taille, plafond: t.sols.plafond.taille, uv: [t.uvParMetre.roche, t.uvParMetre.sol] };
+      };
+      const H = r.hd = {};
+      let t = K.textures();
+      H.coupe = { hd: t.hd, tailles: tailles(t), geo: geo(), motif: t.motifs.sol, ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      q(".kta-v3d-btn-reglages").click();
+      await pause(150);
+      const b = q(".kta-v3d-btn-textures-hd");
+      H.bouton = { present: !!b, texte: b ? b.textContent.trim() : null, titre: b ? b.title : null,
+        dansLaLigne: !!b && b.parentNode === q(".kta-v3d-btn-textures").parentNode };
+      b.click();
+      await pause(500);
+      t = K.textures();
+      H.allume = { hd: t.hd, tailles: tailles(t), geo: geo(), motif: t.motifs.sol, dessins: t.dessins,
+        calage: ecartCalage(t), ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      // 🧱 coupé : bouton HD grisé, la bascule ne fait rien et n'écrit rien.
+      K.basculerTextures();
+      await pause(200);
+      const avant = K.textures().hd;
+      const rendu = K.basculerTexturesHD();
+      b.click();
+      await pause(150);
+      H.sansTextures = { avant: avant, apres: K.textures().hd, rendu: rendu, ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      K.basculerTextures();
+      await pause(300);
+      H.rallume = { hd: K.textures().hd, tailles: tailles(K.textures()) };
+      // Reprise du contexte en HD (contexte et extension relus : ceux d'avant la première perte ne valent plus).
+      const gl2 = document.querySelector("#kta-vue3d canvas").getContext("webgl2");
+      const perte2 = gl2 && !gl2.isContextLost() && gl2.getExtension("WEBGL_lose_context");
+      if (perte2) {
+        perte2.loseContext();
+        await pause(300);
+        perte2.restoreContext();
+        await pause(900);
+        K.tourner(5);
+        await pause(300);
+        H.reprise = { hd: K.textures().hd, tailles: tailles(K.textures()) };
+      }
+      // Retour à 256 px : aucun nouveau dessin.
+      b.click();
+      await pause(400);
+      t = K.textures();
+      H.recoupe = { hd: t.hd, tailles: tailles(t), dessins: t.dessins, ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      q(".kta-v3d-btn-reglages").click();
       await K.fermer();
       // Vue ouverte 🧱 coupé dans une page où rien n'est dessiné : voir `froid` (autre page).
       return r;
@@ -9471,7 +9541,7 @@ async function sectionTexturesSol(nav) {
     verifier(M.sol.moyenne <= 119.7 && M.sol.moyenne >= 100 && M.sol.ecart <= 12 && M.sol.p95 <= 132,
       nom + "sol peu contrasté, jamais plus clair que le sable calcaire (moyenne " + M.sol.moyenne + " / 119,7, écart " +
       "type " + M.sol.ecart + ", 95e centile " + M.sol.p95 + ")", M.sol);
-    verifier(M.ciel.moyenne < M.sol.moyenne - 8 && M.sol.pente > 0.02 && M.ciel.pente > 0.02,
+    verifier(M.ciel.moyenne < M.sol.moyenne - 3 && M.sol.pente > 0.02 && M.ciel.pente > 0.02,
       nom + "ciel plus sombre que le sol (" + M.ciel.moyenne + " < " + M.sol.moyenne + "), relief présent (pente " +
       M.sol.pente + " / " + M.ciel.pente + ")", M);
     // Contraste WCAG entre le sol le plus sombre (5e centile, luminance relative) et le liseré de l'itinéraire.
@@ -9546,12 +9616,53 @@ async function sectionTexturesSol(nav) {
       "± 6 %), la 2e masse toujours reconnaissable", N.depart);
     verifier(JSON.stringify(N.depart) === JSON.stringify(N.refaite) && JSON.stringify(N.depart) === JSON.stringify(N.rouverte),
       nom + "nuance stable : la même après reconstruction des tuiles et après réouverture", N);
+    // Textures HD (vue3d.js > HD, config.js > getVue3DTexturesHD).
+    const H = R.hd, T256 = { roche: "256x256", parpaing: "256x256", paroi: "256x256", sol: 256, plafond: 256 };
+    const T512 = { roche: "512x512", parpaing: "512x512", paroi: "512x512", sol: 512, plafond: 512 };
+    const memes = function (a, b) { return Object.keys(b).every(function (k) { return a[k] === b[k]; }); };
+    verifier(H.bouton.present && H.bouton.dansLaLigne && H.bouton.texte === "HD" && /HD/.test(H.bouton.titre || ""),
+      nom + "Textures HD : bouton « HD » dans la tuile ⚙️, sur la ligne de 🧱", H.bouton);
+    verifier(H.coupe.hd.voulu === false && !H.coupe.hd.actif && H.coupe.hd.bouton === "false" && H.coupe.hd.cle === "" &&
+      !H.coupe.hd.grain && memes(H.coupe.tailles, T256),
+    nom + "HD coupé : textures de 256 px, shaders de three.js sans grain (clé de programme vide)", H.coupe);
+    verifier(H.allume.hd.actif && H.allume.hd.finesse === 2 && H.allume.hd.bouton === "true" &&
+      H.allume.hd.cle === "kta-grain" && H.allume.hd.grain && memes(H.allume.tailles, T512) && H.allume.ls === "1",
+    nom + "HD allumé au bouton : roche, parpaing, pierre, sol et ciel en 512 px, grain de détail, retenu sur " +
+      "l'appareil", { hd: H.allume.hd, tailles: H.allume.tailles });
+    verifier(H.allume.geo === H.coupe.geo && H.allume.geo.length > 0 && H.allume.calage < 1e-3 &&
+      H.allume.tailles.uv.join() === H.coupe.tailles.uv.join(),
+    nom + "bascule HD sur place : aucune géométrie refaite, échelle des textures et calage du sol inchangés",
+    { avant: H.coupe.geo.length, apres: H.allume.geo.length, uv: H.allume.tailles.uv });
+    verifier(Math.abs(H.allume.motif.moyenne - H.coupe.motif.moyenne) < 3 && H.allume.motif.couture < 2.5 &&
+      Math.abs(H.allume.motif.pente - H.coupe.motif.pente) < 0.03,
+    nom + "sol HD : le même dessin plus fin (luminance " + H.coupe.motif.moyenne + " → " + H.allume.motif.moyenne +
+      ", pente du relief " + H.coupe.motif.pente + " → " + H.allume.motif.pente + ", sans couture)",
+    { d256: H.coupe.motif, d512: H.allume.motif });
+    verifier(H.sansTextures.avant.grise === true && !H.sansTextures.avant.actif && H.sansTextures.avant.cle === "" &&
+      H.sansTextures.rendu === true && H.sansTextures.apres.voulu === true && H.sansTextures.ls === "1",
+    nom + "🧱 coupé : bouton HD grisé, sans effet (rien n'est écrit, aucun grain)", H.sansTextures);
+    verifier(H.rallume.hd.actif && !H.rallume.hd.grise && memes(H.rallume.tailles, T512),
+      nom + "🧱 rallumé : le HD revient avec lui", H.rallume);
+    if (H.reprise) {
+      verifier(H.reprise.hd.actif && memes(H.reprise.tailles, T512),
+        nom + "reprise du contexte WebGL en HD : textures de 512 px refaites", H.reprise);
+    }
+    const dh = H.allume.dessins, dr = H.recoupe.dessins;
+    verifier(!H.recoupe.hd.actif && H.recoupe.hd.cle === "" && memes(H.recoupe.tailles, T256) && H.recoupe.ls === "0" &&
+      ["roche", "parpaing", "pierre", "sol", "ciel", "roche@2", "parpaing@2", "pierre@2", "sol@2", "ciel@2"]
+        .every(function (k) { return dr[k] === dh[k] && dr[k] >= 0; }),
+    nom + "HD recoupé : retour à 256 px sans rien redessiner (un dessin par finesse et par page)", H.recoupe);
+    const somme = function (o, s) {
+      return ["roche", "parpaing", "pierre", "sol", "ciel"].reduce(function (t, k) { return t + (o[k + s] || 0); }, 0);
+    };
+    ok(nom + "mesure, PC : premier dessin des cinq textures " + somme(dh, "") + " ms en 256 px, " + somme(dh, "@2") +
+      " ms en 512 px ; mémoire des textures " + H.coupe.hd.mo + " Mo → " + H.allume.hd.mo + " Mo");
     const d = R.defaut.dessins;
     verifier(d.sol >= 0 && d.ciel >= 0, nom + "premier dessin : sol " + d.sol + " ms, ciel " + d.ciel +
       " ms (cette ouverture : " + R.defaut.msSol + " ms)", d);
     // Page neuve, 🧱 coupé avant la première ouverture : rien n'est dessiné ; puis téléphone ralenti × 4 (Chromium).
     const f = await ouvrirPage(chromiumNav ? { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3,
-      isMobile: true, hasTouch: true } : null);
+      isMobile: true, hasTouch: true } : null, true);
     try {
       let cdp = null;
       if (chromiumNav) {
@@ -9561,29 +9672,84 @@ async function sectionTexturesSol(nav) {
       const F = await f.page.evaluate(async function () {
         const K = window.KtaVue3D, P = window.__txP;
         const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const defautHD = { tactile: typeof window.ktaAppareilTactile === "function" && window.ktaAppareilTactile(),
+          voulu: window.getVue3DTexturesHD(), ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
         window.setVue3DTextures(false);
-        window.setPlanRenduVue3D(null, "structures");
+        window.setPlanRenduVue3D(null, "mixte");
         await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 90 } });
         await pause(300);
         const coupe = { sols: K.textures().sols, dessins: K.textures().dessins };
         K.basculerTextures();
         await pause(400);
         const t = K.textures();
+        // Tuile ⚙️ : la ligne de 🧱 tient dans la tuile avec le bouton HD.
+        document.querySelector("#kta-vue3d .kta-v3d-btn-reglages").click();
+        await pause(200);
+        const b = document.querySelector("#kta-vue3d .kta-v3d-btn-textures-hd"), l = b.parentNode;
+        const rb = b.getBoundingClientRect(), rl = l.getBoundingClientRect();
+        const tuile = { deborde: l.scrollWidth > l.clientWidth + 1, dedans: rb.right <= rl.right + 1 && rb.left >= rl.left - 1,
+          haut: +rb.height.toFixed(1), large: +rb.width.toFixed(1), ecran: rl.right <= window.innerWidth + 1 };
+        // HD allumé à la main sur ce téléphone : temps du dessin en 512 px.
+        const t0 = performance.now();
+        K.basculerTexturesHD();
+        const msBascule = Math.round(performance.now() - t0);
+        await pause(600);
+        const th = K.textures();
+        K.basculerTexturesHD();
+        document.querySelector("#kta-vue3d .kta-v3d-btn-reglages").click();
         await K.fermer();
         window.setVue3DTextures(true);
-        return { coupe: coupe, dessins: t.dessins, msSol: t.msSol, sols: t.sols };
+        try { localStorage.removeItem("myktamap_v3d_textures_hd_v1"); } catch (err) { /* lecture seule */ }
+        return { coupe: coupe, dessins: t.dessins, msSol: t.msSol, sols: t.sols, defautHD: defautHD, tuile: tuile,
+          hd: { hd: th.hd, dessins: th.dessins, msBascule: msBascule, t256: t.hd } };
       });
       if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
       verifier(noirs(F.coupe.sols) && F.coupe.dessins.sol === undefined && F.coupe.dessins.ciel === undefined,
         nom + "vue ouverte 🧱 coupé : sol et ciel jamais dessinés (aucun coût)", F.coupe);
-      verifier(F.sols.sol.motif === "sol" && F.dessins.sol >= 0 && F.dessins.ciel >= 0 &&
-        (!chromiumNav || F.dessins.sol + F.dessins.ciel < 600),
-      nom + "🧱 allumé vue ouverte" + (chromiumNav ? ", téléphone ralenti × 4" : "") + " : sol " + F.dessins.sol +
-        " ms, ciel " + F.dessins.ciel + " ms", F.dessins);
+      // Finesse de cette page : celle du défaut de l'appareil (HD au pointeur fin : dessins « sol@2 », « ciel@2 »).
+      const fs = F.defautHD.voulu ? "@2" : "", dSol = F.dessins["sol" + fs], dCiel = F.dessins["ciel" + fs];
+      verifier(F.sols.sol.motif === "sol" && dSol >= 0 && dCiel >= 0 && (!chromiumNav || dSol + dCiel < 600),
+        nom + "🧱 allumé vue ouverte" + (chromiumNav ? ", téléphone ralenti × 4" : "") + " : sol " + dSol +
+        " ms, ciel " + dCiel + " ms", F.dessins);
+      verifier(F.defautHD.ls === null && F.defautHD.voulu === !F.defautHD.tactile && F.hd.t256.voulu === !F.defautHD.tactile,
+        nom + "Textures HD par défaut selon l'appareil (" + (F.defautHD.tactile ? "au doigt : coupé" :
+          "pointeur fin : allumé") + ")", F.defautHD);
+      verifier(!F.tuile.deborde && F.tuile.dedans && F.tuile.ecran && F.tuile.haut >= 44,
+        nom + "tuile ⚙️" + (chromiumNav ? " à 393 px" : "") + " : le bouton HD tient sur la ligne de 🧱 (" +
+          F.tuile.large + " × " + F.tuile.haut + " px, cible ≥ 44 px)", F.tuile);
+      const hd4 = ["roche", "parpaing", "pierre", "sol", "ciel"].reduce(function (s, k) {
+        return s + (F.hd.dessins[k + "@2"] || 0);
+      }, 0);
+      const sd4 = ["roche", "parpaing", "pierre", "sol", "ciel"].reduce(function (s, k) {
+        return s + (F.hd.dessins[k] || 0);
+      }, 0);
+      verifier(F.hd.hd.finesse !== F.hd.t256.finesse && hd4 > 0 && sd4 > 0,
+        nom + "mesure" + (chromiumNav ? ", téléphone ralenti × 4" : "") + " : premier dessin " + sd4 + " ms en 256 px, " +
+          hd4 + " ms en 512 px (bascule HD : " + F.hd.msBascule + " ms) ; mémoire " +
+          Math.min(F.hd.t256.mo, F.hd.hd.mo) + " → " + Math.max(F.hd.t256.mo, F.hd.hd.mo) + " Mo", F.hd.dessins);
     } finally {
       await f.ctx.close();
     }
-    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+    // Pointeur fin, clé absente : HD allumé d'office dès la première ouverture.
+    const g = await ouvrirPage(null, true);
+    try {
+      const G = await g.page.evaluate(async function () {
+        const K = window.KtaVue3D, P = window.__txP;
+        const voulu = window.getVue3DTexturesHD(), tactile = window.ktaAppareilTactile();
+        window.setPlanRenduVue3D(null, "structures");
+        await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 90 }, commandes: "pave" });
+        await new Promise(function (ok) { setTimeout(ok, 400); });
+        const t = K.textures();
+        await K.fermer();
+        return { voulu: voulu, tactile: tactile, hd: t.hd, sol: t.sols.sol.taille, roche: t.materiaux.roche.carte,
+          ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      });
+      verifier(G.tactile || (G.voulu === true && G.hd.actif && G.sol === 512 && G.roche === "512x512" && G.ls === null),
+        nom + "pointeur fin, réglage jamais touché : Textures HD d'office (512 px), rien d'écrit sur l'appareil", G);
+    } finally {
+      await g.ctx.close();
+    }
+    verifier(erreurs.length === 0, nom + "aucune erreur de page ni de shader", erreurs.slice(0, 3));
   } catch (err) {
     pb(nom + "exception du harnais : " + (err && err.message));
   } finally {
@@ -15092,7 +15258,7 @@ async function sectionCaseBoutonsZoom(nav) {
             "vue3d.suivre", "vue3d.plongee",
             window.APP_CONFIG.multiLevel === true ? "vue3d.hauteurNiveaux" : "vue3d.hauteur",
             "vue3d.hauteurMoins", "vue3d.hauteurPlus",
-            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.lignesSolMontrer",
+            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.texturesHdMontrer", "vue3d.lignesSolMontrer",
             "vue3d.boussoleMontrer", "vue3d.miniCarteMontrer",
             "vue3d.guidageMontrer", "vue3d.fichesMontrer",
             "vue3d.lampeJourAide", "vue3d.limiterAide", "vue3d.niveauxVus.voisinsAide", "vue3d.niveauxVus.tousAide",

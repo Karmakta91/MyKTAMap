@@ -161,6 +161,8 @@ html.kta-theme-light .kta-v3d-mode-indic {
   font-size: 13px; font-weight: 600; line-height: 1.3; text-align: left; white-space: nowrap;
 }
 .kta-v3d-reglages-ligne > .kta-v3d-btn.kta-v3d-btn-mode { flex: 1 1 0; }
+/* Textures HD : libellé court (« HD ») à côté de 🧱, à sa largeur. */
+.kta-v3d-reglages-ligne > .kta-v3d-btn.kta-v3d-btn-mode.kta-v3d-btn-textures-hd { flex: 0 0 auto; width: auto; }
 @media (hover: hover) {
   .kta-v3d-reglages .kta-v3d-btn.kta-v3d-btn-mode:hover {
     background: var(--kta-info-fond); border-color: var(--kta-info-bord);
