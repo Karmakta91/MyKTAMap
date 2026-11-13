@@ -127,7 +127,8 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 
 | Fonctionnalité | Module(s) clé(s) |
 |---|---|
-| Modale OSM : plan projeté sur fond OpenStreetMap via géoréférencement 2 points | `osmView.js` |
+| Modale OSM (ouverte par le Mode Secours) : plan projeté sur fond OpenStreetMap via géoréférencement 2 points | `osmView.js` |
+| Fond OpenStreetMap sous le plan (bouton carte du haut) : interrupteur, transparence du plan, « Ma position » | `fondOsmPlan.js` |
 | Cartes OSM (modale et widget de l'accueil) tournées à la main (deux doigts, Maj + molette, bouton nord), nord en haut à chaque ouverture | `osmView.js`, `osmHomePreview.js`, `mapBearing.js` |
 | Widget aperçu OSM sur la home | `osmHomePreview.js` |
 | Légende du plan en lecture seule depuis les deux cartes OSM (avertissement si plusieurs plans) | `interfaceLegende.js` |
@@ -214,7 +215,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (151 modules)
+## 🟢 L'application : modules JS (152 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -343,6 +344,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `kmzExport.js` | Export KMZ géolocalisé (GroundOverlay ou superoverlay V2) et moteur de calage plan ↔ GPS |
 | `osmTilesCache.js` | Cache hors ligne des tuiles OpenStreetMap (IDB, servi par le SW) |
 | `osmView.js` | Modale Vue OSM : le plan projeté sur OpenStreetMap par son géoréférencement |
+| `fondOsmPlan.js` | Fond OpenStreetMap sous le plan, dans la carte du plan, et son petit panneau (bouton carte du haut) |
 | `osmHomePreview.js` | Widget Vue OSM de l'accueil : plans géoréférencés empilés, sans charger de plan |
 | `kmzImport.js` | Import KMZ → ZIP de plan MyKTAMap |
 | `gpxIO.js` | Export / import GPX 1.1 de la session |
@@ -675,6 +677,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
 | `smoke/checkup-inaccessible-sous-structures.js` | Zones (inaccessible comprise) sous les structures sur le canvas commun après chargement, édition, ⏪ et filtre ; hachures en CanvasPattern ; fiche au clic |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
+| `smoke/checkup-fond-osm.js` | Fond OSM sous le plan : bouton grisé sans géoréf, interrupteur, transparence de l'image du plan, calage au pixel au zoom max, plan orienté, extinction, hors ligne, OSM refusé et incognito sans requête, « Ma position » |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
 | `smoke/checkup-osm-rotation.js` | Rotation manuelle des cartes OSM (widget de l'accueil en contexte téléphone, Vue OSM) : vrai geste CDP, page ni défilée ni zoomée, coins couverts à 45° (tuiles OSM et du plan), toucher et mesure sous rotation, Maj + molette, bouton nord, nord en haut à la recréation, autres cartes droites |
@@ -817,6 +820,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### Pas encore publié (après v2.26.0, branche `Karma_dev`)
+
+- **🗺️ Fond OpenStreetMap sous le plan** (`js/fondOsmPlan.js`, `js/refonteInterface.js`, `mapBearing.js`, `osmView.js > getGeorefEffectif`, `vue-osm.md` § Fond OSM sous le plan) : en mode plan, le bouton carte du haut n'ouvre plus la fenêtre Vue OSM mais un petit panneau ancré au bouton : interrupteur du fond OSM posé **sous** le plan, dans sa carte (une couche de tuiles canvas, chaque tuile OSM placée par le calage du plan), curseur de transparence de l'image du plan (le fond reste opaque), **Ma position** (un relevé GPS, sans suivi, refusé hors de l'emprise du plan et en incognito). Bouton grisé sans géoréférencement (raison au survol), allumé quand le fond l'est ; le fond tourne avec le plan orienté, s'éteint à chaque plan ouvert, est refusé (avec un message) si OSM est coupé dans Configuration ou en incognito ; hors ligne, seules les tuiles enregistrées s'affichent, aucune requête. Au-delà du zoom 19 d'OSM, la dernière tuile est agrandie. Attribution © OpenStreetMap visible tant qu'il est allumé ; exports PNG, PDF et KMZ sans le fond. La Vue OSM de l'accueil (widget et plein écran) ne change pas ; la fenêtre Vue OSM reste ouverte par le Mode Secours. Guides, Aide, audit réseau (même domaine, nouveau point d'appel). `checkup-fond-osm.js`.
 
 #### v2.26.0 (13/11/2026) — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage (branche `Karma_dev`)
 

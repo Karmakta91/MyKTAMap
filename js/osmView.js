@@ -11,7 +11,8 @@
 // du niveau choisi : 3 coins plan (flip Y) → KmzExport.planToGps → L.imageOverlay.rotated(url, tl, tr, bl).
 // Superpose POI, tracker, tracés, itinéraire, zones, structures, couche Mode Secours, filtres tag / niveau.
 // Expose : window.OsmView = { open, close, isAvailable, isOptedIn, setOptedIn, getPlanGpsBbox,
-// recheckOfflineCache }.
+// getGeorefEffectif, recheckOfflineCache }. Ouverte par le Mode Secours (l'accueil a son widget) ; le bouton
+// carte du plan pose le fond OSM sous le plan (fondOsmPlan.js) au lieu de l'ouvrir.
 // Prérequis : géoréf (plan-config ou Réglages), plan V2 tuilé, OSM autorisé, en ligne ou tuiles en cache.
 // 🩸 Plans V2 tuilés SEULEMENT : l'image complète en imageOverlay sature le GPU mobile (OOM silencieux).
 // 🩸 Niveau adaptatif + culling : au plus MAX_TILES_BASELINE tuiles au boot, puis delta de zoom OSM = delta
@@ -2272,6 +2273,8 @@
     setOptedIn: setOptedIn,
     // bbox GPS du plan (L.LatLngBounds | null) pour le briefing PDF du Mode Secours
     getPlanGpsBbox: _getPlanGpsBbox,
+    // géoréf effectif (même cascade que la fenêtre) pour le fond OSM sous le plan (fondOsmPlan.js)
+    getGeorefEffectif: _getEffectiveGeoref,
     // rafraîchit _planHasCachedTiles (lue par isAvailable) : main.js au boot, osmHomePreview après cache,
     // secoursMode au besoin
     recheckOfflineCache: _recheckCachedForCurrentPlan,

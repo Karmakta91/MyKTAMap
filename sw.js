@@ -423,6 +423,7 @@ const ASSETS_TO_CACHE = [
   "./js/kmzExport.js",
   // Vue OSM (plan au-dessus OpenStreetMap)
   "./js/osmView.js",
+  "./js/fondOsmPlan.js",
   "./js/osmHomePreview.js",
   "./js/kmzImport.js",
   // GPX import + export (réutilise calibrage KMZ)

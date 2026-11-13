@@ -114,9 +114,10 @@
 
   // ── Tuiles d'une GridLayer ──
   // Une GridLayer (tuiles OSM) ne demande que les tuiles du rectangle DROIT de l'écran : tournée, les coins restent
-  // blancs. Pour une carte qui le demande (`rot.grilles`, pas la carte du plan : ses tuiles sont des imageOverlay
-  // retirées par tiling.js), la zone devient la boîte englobante du rectangle tourné ; l'instance relance `_update`
-  // des grilles quand l'angle change (aucun moveend ne vient).
+  // blancs. Sur toute carte rattachée (`rot.grilles`), la zone devient la boîte englobante du rectangle tourné ;
+  // l'instance relance `_update` des grilles quand l'angle change (aucun moveend ne vient). Carte du plan : ses
+  // tuiles sont des imageOverlay retirées par tiling.js ; seules les grilles inscrites dans
+  // `map._ktaGrillesSousRotation` (fond OSM, fondOsmPlan.js) sont relancées, sans parcourir tous les calques.
   let _patchGrillesPose = false;
   function _installerPatchGrilles() {
     if (_patchGrillesPose) return;
@@ -736,7 +737,8 @@
   function _cullerTuilesThrottle() {
     if (_plan) {
       if (typeof window.ktaCullerTuilesV2Throttle === "function") window.ktaCullerTuilesV2Throttle();
-      return;
+      const m = _carte();
+      if (!m || !m._ktaGrillesSousRotation || !m._ktaGrillesSousRotation.length) return;
     }
     if (_grillesPlanifiees) return;
     _grillesPlanifiees = true;
@@ -744,12 +746,14 @@
       _grillesPlanifiees = false;
       const map = _carte();
       if (!map || map._animatingZoom) return;
+      const maj = function(l) {
+        if (l instanceof L.GridLayer && l._map && typeof l._update === "function") l._update();
+      };
       try {
-        map.eachLayer(function(l) {
-          if (l instanceof L.GridLayer && l._map && typeof l._update === "function") l._update();
-        });
+        if (_plan) (map._ktaGrillesSousRotation || []).forEach(maj);
+        else map.eachLayer(maj);
       } catch(e) {}
-      try { if (typeof cfg.apresRotation === "function") cfg.apresRotation(); } catch(e) {}
+      try { if (!_plan && typeof cfg.apresRotation === "function") cfg.apresRotation(); } catch(e) {}
     });
   }
 
@@ -845,10 +849,10 @@
     // Lu par les patchs de prototype (gestes, grilles) : l'angle de CETTE carte, nul si l'instance sert déjà une
     // autre carte (carte du plan remplacée).
     map._ktaRotation = {
-      grilles: !_plan,
+      grilles: true,
       angle: function() { return _carte() === map ? _bearing : 0; }
     };
-    if (!_plan) _installerPatchGrilles();
+    _installerPatchGrilles();
     _installerEcouteurs(map);
     map.on("move zoom moveend zoomend viewreset", function() {
       if (Math.abs(_bearing) > 0.01) _appliquer();

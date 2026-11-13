@@ -1021,6 +1021,8 @@
   <!-- ⚠️ osmView.js : APRÈS kmzExport (buildTransform / planToGps) et imageLayerCalibration
        (compute3CornersFromAnchorsPx). -->
   <script src="js/osmView.js" defer></script>
+  <!-- fondOsmPlan.js : APRÈS osmView.js (isOptedIn, géoréf effectif, emprise) et osmTilesCache.js. -->
+  <script src="js/fondOsmPlan.js" defer></script>
   <script src="js/osmHomePreview.js" defer></script>
   <script src="js/kmzImport.js" defer></script>
   <!-- gpxIO.js : APRÈS kmzExport.js (réutilise planToGps / gpsToPlan). -->

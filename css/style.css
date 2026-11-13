@@ -15034,6 +15034,77 @@ body.kta-theme-light .kta-group-flyout-fond { background: rgba(20, 28, 44, 0.35)
   word-break: break-word;
 }
 
+/* ── Fond OpenStreetMap sous le plan (js/fondOsmPlan.js) : panneau ancré au bouton carte du haut ── */
+/* Réutilise .kta-group-flyout (mode ancré, sans fond assombri) ; position posée en JS sous le bouton. */
+.kta-fond-osm-panneau .kta-group-flyout-title { display: inline-flex; align-items: center; gap: 6px; }
+.kta-fond-osm-etat {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--kta-texte-3);
+}
+.kta-group-flyout-btn.kta-actif .kta-fond-osm-etat { color: var(--kta-accent-texte); font-weight: 700; }
+.kta-fond-osm-panneau .kta-group-flyout-btn:disabled {
+  color: var(--kta-texte-3);
+  cursor: not-allowed;
+}
+.kta-fond-osm-curseur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  font-size: 13px;
+  color: var(--kta-texte-2);
+}
+.kta-fond-osm-curseur > span:first-child { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.kta-fond-osm-curseur input[type="range"] { flex: 1 1 auto; min-width: 60px; accent-color: var(--kta-accent); }
+.kta-fond-osm-curseur input[type="range"]:disabled { cursor: not-allowed; }
+.kta-fond-osm-valeur { width: 44px; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+/* Bouton du haut : actif = fond allumé ; indisponible = sans géoréf (texte méta, bordure pointillée, jamais
+   d'opacité : ui.md §53). */
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-osm { cursor: pointer; user-select: none; }
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-osm.kta-fond-osm-actif {
+  background: rgba(244, 197, 66, 0.18);
+  border-color: var(--kta-accent);
+  color: var(--kta-accent-texte);
+}
+body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-osm.kta-fond-osm-indispo {
+  color: var(--kta-texte-3);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+body.kta-theme-light .kta-refonte-counter-osm.kta-fond-osm-actif {
+  border-color: var(--kta-accent) !important;
+  color: var(--kta-accent-texte) !important;
+}
+body.kta-theme-light .kta-refonte-counter-osm.kta-fond-osm-indispo {
+  color: var(--kta-texte-3) !important;
+  border-style: dashed !important;
+}
+/* Attribution exigée par la licence ODbL, visible tant que le fond est allumé. */
+/* Fixée au-dessus de la barre d'état : le conteneur de la carte descend sous elle. */
+.kta-fond-osm-attrib {
+  position: fixed;
+  left: 6px;
+  bottom: calc(var(--kta-statusbar-h, 52px) + 6px);
+  z-index: 1000;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--kta-fond);
+  color: var(--kta-texte-2);
+  font-size: 11px;
+  line-height: 1.4;
+  pointer-events: auto;
+}
+.kta-fond-osm-attrib a { color: var(--kta-interaction); text-decoration: none; }
+/* Point « Ma position » (un fix, jamais de suivi). */
+.kta-fond-osm-moi {
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--kta-interaction);
+  border: 2px solid var(--kta-texte);
+  box-shadow: 0 0 0 3px rgba(140, 180, 255, 0.35);
+}
+
 /* Séparateur entre la dernière action type et le premier outil (.kta-flyout-sep). */
 .kta-group-flyout-sep {
   height: 1px;
