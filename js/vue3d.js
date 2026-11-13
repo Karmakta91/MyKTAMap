@@ -238,9 +238,20 @@
   // « Textures HD » (HD ci-dessous), coupé par défaut au doigt.
   // Roche brute (piliers, fronts : la masse calcaire laissée en place, décision produit, jamais appareillée) :
   // motif de 3 m (85 px/m) — sans joints la répétition se voit plus, d'où un motif plus grand que l'appareil et des
-  // taches à deux échelles ; strates tous les `strate` m (lit de `lit` m, ondulé de `onde` m), `fissures` fissures,
-  // `grappes` grappes de traces d'outil (pic, broche). Longueurs en m.
-  const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 7, grappes: 40,
+  // taches à deux échelles ; strates tous les `strate` m (lit de `lit` m, ondulé de `onde` m), `fissures` fissures.
+  // Traces d'outil en PASSES de coups parallèles, comme le carrier les laisse, de grandes plages nues entre elles :
+  // `pic` (souchevage) — `passes` passes de `rangs` rangées superposées de `coups` coups courts (`long` m), serrés
+  // (`pas` m) et obliques, toutes les rangées d'une passe à la même orientation, l'une des `angles` (rad : une ou
+  // deux dominantes pour tout le motif) ; `lance` (défermage) — `passes` passes de `coups` longues stries droites
+  // (`long` m), parallèles, à `pente` rad au plus de la verticale, espacées de `pas` m. `ecart` : écart de longueur
+  // d'un coup à l'autre dans sa passe ; `rayon` (m), `creux` (hauteur dessinée) et `sombre` d'un coup. ⚠️ contrat
+  // (décision produit) : jamais d'angle tiré au hasard dans une passe. 🩸 Stries de lance peu nombreuses et peu
+  // creusées : longues et droites, elles se reconnaissent d'un motif à l'autre sur un long front. Longueurs en m.
+  const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 7,
+    pic: { passes: 5, angles: [1.0, 2.15], rangs: [2, 4], coups: [9, 17], long: [0.12, 0.2], pas: [0.04, 0.06],
+      ecart: 0.15, rayon: 0.015, creux: 0.11, sombre: 0.06 },
+    lance: { passes: 2, coups: [3, 6], long: [0.5, 1.1], pas: [0.07, 0.12], pente: 0.07, ecart: 0.2, rayon: 0.015,
+      creux: 0.09, sombre: 0.05 },
     grain: 0.07, relief: 4, graine: 53 };
   // 2e masse (pilier-2, front-2) : la même roche, plus chaude (teinte par sommet multipliée par la texture, même
   // matériau et même maillage que la 1re, blanche ; chacune nuancée par structure : NUANCE_ROCHE). 🩸 Sans elle, 🧱 activé, 1re et 2e masse étaient la même roche :
@@ -2671,10 +2682,12 @@
 
   // Roche brute (piliers et fronts : la masse calcaire laissée en place, jamais appareillée) : relief en bosses à
   // trois échelles (champs bouclés), nuances de calcaire en taches larges, strates horizontales discrètes et
-  // ondulées, fissures en creux (marches aléatoires bouclées) et traces d'outil (pic, broche : courts sillons
-  // parallèles en grappes, obliques). Aucun joint, aucun bloc. Motif de ROCHE.m mètres (décalé par structure) : sans
-  // joints la répétition se voit plus, d'où un motif plus grand que celui du parpaing et deux échelles de taches.
-  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  // ondulées, fissures en creux (marches aléatoires bouclées) et traces d'outil en passes de coups parallèles
+  // (ROCHE.pic : rangées de coups de pic courts, serrés, obliques ; ROCHE.lance : longues stries presque
+  // verticales). Aucun joint, aucun bloc. Motif de ROCHE.m mètres (décalé par structure) : sans joints la répétition
+  // se voit plus, d'où un motif plus grand que celui du parpaing et deux échelles de taches.
+  // → { couleur, normale (canvas n × n), traces: { pic: { passes, coups, orientations }, lance: { passes, coups,
+  // penteMax } } (relevé du checkup) }. 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _rocheBrute(alea) {
     const R = ROCHE, n = _px(R), k = n / R.m, q = _fin(), haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
     const creux = new Float32Array(n * n);
@@ -2705,14 +2718,44 @@
       _fissurer(C, alea, alea() * n, alea() * n, Math.PI / 2 + (alea() - 0.5) * 0.9, (0.3 + alea() * 0.9) * k,
         (0.4 + alea() * 0.6) * q, 1);
     }
-    // Traces d'outil (pic, broche) : sillons isolés ou par deux ou trois, de longueur, d'angle et d'écart tirés.
-    for (let g = 0; g < R.grappes; g++) {
-      const cx = alea() * n, cy = alea() * n, a0 = (alea() < 0.5 ? -1 : 1) * (0.4 + alea() * 0.8);
-      const nb = 1 + Math.floor(alea() * 3);
+    // Traces d'outil. Un coup : droit, de (x, y) vers l'angle a, long de l px, effilé aux deux bouts.
+    const tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
+    const coup = function (O, x, y, a, l, f) {
+      const ca = Math.cos(a), sa = Math.sin(a), r = Math.max(0.8 * q, O.rayon * k);
+      for (let s = 0; s < l; s += 0.5 * q) {
+        const t = Math.min(1, 4 * Math.min(s, l - s) / l);
+        _creuser(C, x + ca * s, y + sa * s, r * (0.6 + 0.4 * t), O.creux * f * t, O.sombre * f * t);
+      }
+    };
+    const traces = { pic: { passes: R.pic.passes, coups: 0, orientations: [] },
+      lance: { passes: R.lance.passes, coups: 0, penteMax: 0 } };
+    // Passes de pic : rangées superposées de coups obliques, même orientation, même pas et même longueur (à
+    // `ecart` près) pour toute la passe ; la rangée court presque à l'horizontale.
+    for (let g = 0; g < R.pic.passes; g++) {
+      const O = R.pic, dominante = alea() < 0.7 ? 0 : O.angles.length - 1, a = O.angles[dominante] + (alea() - 0.5) * 0.1;
+      if (traces.pic.orientations.indexOf(dominante) < 0) traces.pic.orientations.push(dominante);
+      const rg = (alea() - 0.5) * 0.3, nb = Math.round(tire(O.coups)), pas = tire(O.pas) * k, l0 = tire(O.long) * k;
+      const rangs = Math.round(tire(O.rangs)), haut0 = l0 * Math.abs(Math.sin(a));
+      let rx = alea() * n, ry = alea() * n;
+      for (let j = 0; j < rangs; j++) {
+        for (let i = 0; i < nb; i++) {
+          coup(O, rx + Math.cos(rg) * pas * i, ry + Math.sin(rg) * pas * i, a, l0 * (1 + (alea() - 0.5) * 2 * O.ecart),
+            0.7 + alea() * 0.3);
+        }
+        traces.pic.coups += nb;
+        rx += (alea() - 0.5) * pas + haut0 * Math.cos(a) / Math.abs(Math.sin(a));
+        ry += haut0 * (0.95 + alea() * 0.2);
+      }
+    }
+    // Passes de lance : quelques longues stries droites, parallèles, presque verticales, côte à côte.
+    for (let g = 0; g < R.lance.passes; g++) {
+      const O = R.lance, pente = (alea() - 0.5) * 2 * O.pente, a = Math.PI / 2 + pente, nb = Math.round(tire(O.coups));
+      const pas = tire(O.pas) * k, l0 = tire(O.long) * k, ox = alea() * n, oy = alea() * n;
+      traces.lance.penteMax = Math.max(traces.lance.penteMax, Math.abs(pente));
+      traces.lance.coups += nb;
       for (let i = 0; i < nb; i++) {
-        const a = a0 + (alea() - 0.5) * 0.3, l = (0.06 + alea() * 0.14) * k, e = (0.02 + alea() * 0.04) * k * i;
-        const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
-        for (let s = 0; s < l; s += 0.5 * q) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9 * q, 0.07, 0.035);
+        coup(O, ox + pas * i * (0.9 + alea() * 0.2), oy + (alea() - 0.5) * O.ecart * l0,
+          a, l0 * (1 + (alea() - 0.5) * 2 * O.ecart), 0.7 + alea() * 0.3);
       }
     }
     for (let p = 0; p < n * n; p++) haut[p] -= creux[p];
@@ -2731,7 +2774,7 @@
       }
     }
     for (let p = 0; p < n * n; p++) haut[p] += (grain() - 0.5) * 0.02;
-    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, R.relief * q) };
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, R.relief * q), traces: traces };
   }
 
   // Pierraille (REMBLAIS, EBOULIS) : sol de terre et de sable (bruit à trois échelles, grains clairs), cailloux et
@@ -14012,6 +14055,13 @@
         lits: lits(m.map.image) };
     });
     r.materiaux.paroi.pierre = !!e.texPierre && e.mats.paroi.map === e.texPierre.couleur;
+    // Traces d'outil de la roche dessinée à la finesse en vigueur (_rocheBrute).
+    const tr = (_appareils[_fin() > 1 ? "roche@" + _fin() : "roche"] || {}).traces;
+    if (r.materiaux.roche && tr) {
+      r.materiaux.roche.traces = { pic: { passes: tr.pic.passes, coups: tr.pic.coups,
+        orientations: tr.pic.orientations.length }, lance: { passes: tr.lance.passes, coups: tr.lance.coups,
+        penteMax: +tr.lance.penteMax.toFixed(3) } };
+    }
     // Claveaux des arcs (matériau fait au premier arc texturé) et teinte moyenne des cartes ([r, v, b] sur 255) de
     // la pierre des claveaux et de celle des parois, à comparer.
     const moyenne = function (cv) {

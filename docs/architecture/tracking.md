@@ -2051,8 +2051,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   par défaut) : parois des galeries et des tubes en pierre de taille (§ Scène galerie ; coupé : couleur de légende du
   tracé) ;
   piliers et fronts en **roche brute** (décision produit : la masse calcaire laissée en place, jamais appareillée —
-  bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux, traces
-  d'outil ; aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
+  bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux ;
+  **traces d'outil en passes de coups parallèles**, comme le carrier les laisse (décision produit : jamais d'angle
+  tiré au hasard dans une passe) — `ROCHE.pic`, cinq passes de rangées superposées de coups de pic courts, serrés
+  et obliques, à l'une de deux orientations dominantes pour tout le motif (souchevage) ; `ROCHE.lance`, deux
+  passes de quelques longues stries droites, presque verticales (défermage) ; de grandes plages nues entre elles.
+  🩸 Le motif (3 m) se répète sur une longue face : de face et en plein jour, les fissures d'abord puis les passes
+  se retrouvent tous les 3 m sur un long front ; à la lampe, le halo n'en montre qu'un motif à la fois. D'où peu
+  de passes, et des stries de lance rares et peu creusées. Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
   `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche :
   sans elle un pilier passé de la 1re à la 2e masse ne changeait rien dans la scène), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
   le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,

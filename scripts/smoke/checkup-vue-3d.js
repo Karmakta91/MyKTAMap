@@ -9372,7 +9372,7 @@ async function sectionFichesReglage(nav) {
 // Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied des piliers, du mur et des parois,
 // pleine à 0,28 m et jusqu'en tête, deux bandes par face, texture inchangée, rien 🧱 coupé. Nuance de roche par structure
 // (NUANCE_ROCHE) : deux piliers voisins différents, discrète, 2e masse reconnaissable, stable (tuiles refaites, vue
-// rouverte). Textures HD (HD, config.js > getVue3DTexturesHD) : défaut selon l'appareil, bouton de la tuile, 512 px
+// rouverte). Traces d'outil de la roche (ROCHE.pic, ROCHE.lance) : passes de coups parallèles, une ou deux orientations. Textures HD (HD, config.js > getVue3DTexturesHD) : défaut selon l'appareil, bouton de la tuile, 512 px
 // et grain de détail, bascule sans géométrie refaite, sans effet 🧱 coupé, retour à 256 px sans redessin, reprise du
 // contexte, temps et mémoire (PC, téléphone ralenti × 4).
 async function sectionTexturesSol(nav) {
@@ -9510,7 +9510,7 @@ async function sectionTexturesSol(nav) {
       await ouvrir("structures", 0, 0);
       const t0 = K.textures();
       r.defaut = { sols: t0.sols, motifs: t0.motifs, uv: t0.uvParMetre.sol, dessins: t0.dessins, msSol: t0.msSol,
-        calage: ecartCalage(t0), cote: t0.calage.cote };
+        calage: ecartCalage(t0), cote: t0.calage.cote, roche: t0.materiaux.roche };
       // Ombre de contact : roche (piliers de 1re et 2e masse), parpaing (mur à 98 % de la hauteur).
       r.ombre = { roche: ombres("opaque", 3), mur: ombres("murs", 1), teintes: t0.teintes,
         sommets: t0.materiaux.parpaing.couleursSommets && t0.materiaux.roche.couleursSommets };
@@ -9664,6 +9664,18 @@ async function sectionTexturesSol(nav) {
       contraste.toFixed(1) + ":1 ≥ 3:1, seuil des objets graphiques)", { sol5: M.sol.lum5, lisere: liseHex });
     verifier(R.defaut.uv === 0.25 && M.sol.taille === 256 && M.ciel.taille === 256,
       nom + "motif de 4 m (0,25 de texture par mètre), 256 px", { uv: R.defaut.uv, sol: M.sol.taille });
+    // Roche des piliers et des fronts (vue3d.js > ROCHE.pic, ROCHE.lance) : traces d'outil en passes de coups
+    // parallèles — pic à une ou deux orientations pour tout le motif, lance à 0,07 rad (4°) au plus de la verticale,
+    // peu de stries longues (elles se reconnaissent d'un motif à l'autre sur un long front), et de la roche nue :
+    // au plus 400 coups de pic par motif de 3 m.
+    const Tr = (R.defaut.roche || {}).traces || { pic: {}, lance: {} };
+    verifier(Tr.pic.passes >= 3 && Tr.pic.passes <= 8 && Tr.pic.coups >= 40 && Tr.pic.coups <= 400 &&
+      Tr.pic.orientations >= 1 && Tr.pic.orientations <= 2 && Tr.lance.passes >= 1 && Tr.lance.passes <= 3 &&
+      Tr.lance.coups >= 3 && Tr.lance.coups <= 18 && Tr.lance.penteMax <= 0.07 + 1e-9,
+    nom + "roche des piliers et des fronts : " + Tr.pic.coups + " coups de pic en " + Tr.pic.passes +
+      " passes de rangées parallèles, " + Tr.pic.orientations + " orientation(s) ; " + Tr.lance.coups +
+      " stries de lance en " + Tr.lance.passes + " passes, à " + Tr.lance.penteMax + " rad au plus de la verticale",
+    R.defaut.roche);
     verifier(R.defaut.calage < 1e-3 && R.deplace.calage < 1e-3 && R.portee.calage < 1e-3 &&
       R.portee.cote > R.defaut.cote, nom + "carré qui suit calé sur le monde : au départ, après un déplacement, " +
       "après un changement de portée (côté " + R.defaut.cote + " → " + R.portee.cote + " m, sans saut du motif)",
