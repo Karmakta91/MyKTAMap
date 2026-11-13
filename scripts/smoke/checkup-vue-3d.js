@@ -47,7 +47,9 @@
 // tubes et des galeries en pierre de taille (lits de joint mesurés, 0,5 de texture par mètre à 2,5 m comme à 6 m de
 // hauteur, une assise part du sol), moellons d'origine une fois coupé, temps de dessin des textures ; remblais et
 // effondrement texturés (zone de 1 m et de 10 m à la même échelle, chambre, tube, galerie, structures ; eau et zone
-// perso jamais texturées ; couleur de la légende une fois coupé).
+// perso jamais texturées ; couleur de la légende une fois coupé). Sol et ciel de carrière (§ 24 quater,
+// KTA_V3D_SEUL=textures) : deux motifs distincts avec relief, sans couture, sol peu contrasté, carré calé sur le monde,
+// noirs une fois coupé, reprise du contexte, temps de dessin.
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en ruban plein (largeur, liseré, chevrons de sens, niveau, étape,
 // 🏁) ; ronds d'intersection de
@@ -9261,6 +9263,253 @@ async function sectionFichesReglage(nav) {
   }
 }
 
+// ── 24 quater. Sol et ciel de carrière texturés (vue3d.js > _solDame, _cielCarriere, _cartesSol, _calerCarre) ────────
+// KTA_V3D_SEUL=textures. Objets FICTIFS en mémoire : galerie est-ouest, piliers d'une salle. 🧱 allumé : deux motifs
+// distincts (sol, ciel), couleur et relief, sans couture, sol peu contrasté et jamais plus clair que le sable
+// calcaire, liseré de l'itinéraire à plus de 3:1 du sol le plus sombre ; carré qui suit calé sur le monde (après un
+// déplacement, après un changement de portée), pièces des galeries à la même projection ; 🧱 coupé : noirs, sans
+// carte ni relief, aucun dessin ; reprise du contexte WebGL ; temps du premier dessin (téléphone ralenti × 4 sous
+// Chromium).
+async function sectionTexturesSol(nav) {
+  const chromiumNav = nav.browserType().name() === "chromium";
+  const nom = "§ 24 quater ";
+  console.log("§ 24 quater — sol et ciel de carrière texturés");
+  const erreurs = [];
+  const ouvrirPage = async function (opts) {
+    const ctx = await nav.newContext(Object.assign({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" },
+      opts || {}));
+    const page = await ctx.newPage();
+    page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+    await page.addInitScript(function (ls) {
+      for (const k in ls) { try { localStorage.setItem(k, ls[k]); } catch (e) {} }
+    }, LS_PREGATES);
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    await page.evaluate(function () {
+      const C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = window.__txP = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      window.getPlanEditionVue3D = function () { return null; };
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window._currentLoadedPlanId = "v3d-checkup-textures-sol";
+      C.multiLevel = false;
+      try { localStorage.removeItem("myktamap_v3d_textures_v1"); } catch (err) { /* lecture seule */ }
+      const carre = function (cx, cz, r) { return [P(cx - r, cz - r), P(cx + r, cz - r), P(cx + r, cz + r), P(cx - r, cz + r)]; };
+      window.setStructures([{ uid: "st_ts_1", type: "pilier-1", level: 0, points: carre(8, -5, 2) },
+        { uid: "st_ts_2", type: "pilier-2", level: 0, points: carre(8, 5, 2) },
+        { uid: "st_ts_3", type: "pilier-1", level: 0, points: carre(16, -5, 2) },
+        { uid: "st_ts_m", type: "mur", level: 0, points: [P(12, 8), P(20, 8), P(20, 8.5), P(12, 8.5)] }]);
+      window.setZones([]);
+      window.setRoads([{ uid: "rd_ts_1", type: "principal", level: 0, points: [P(-40, 0), P(30, 0)] },
+        { uid: "rd_ts_iti", type: "itinerary", level: 0, points: [P(-38, 0), P(28, 0)] }]);
+      window.setEditorPoints([]);
+      window.KtaGalerie.invalider();
+    });
+    return { ctx: ctx, page: page };
+  };
+  const o = await ouvrirPage();
+  const page = o.page;
+  try {
+    const R = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__txP, sc = window.APP_CONFIG.scale, r = {};
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const ouvrir = async function (rendu, x, z) {
+        if (K.etat().ouvert) await K.fermer();
+        window.setPlanRenduVue3D(null, rendu);
+        window.KtaGalerie.invalider();
+        await K.ouvrir({ depart: { x: P(x, z).x, y: P(x, z).y, cap: 90 }, commandes: "pave" });
+        await pause(300);
+      };
+      // Coordonnées de texture (monde / SOL.m) du premier sommet des maillages d'une famille, lues dans la scène.
+      const uvMonde = function (famille) {
+        let ctx = null;
+        const deg = K.greffer({ nom: "v3d-textures-sol", scene: function (c) { ctx = c; } });
+        let racine = ctx.groupe, pire = 0, n = 0;
+        while (racine.parent) racine = racine.parent;
+        racine.traverse(function (m) {
+          if (!m.isMesh || m.userData.famille !== famille || !m.geometry.attributes.uv) return;
+          const p = m.geometry.attributes.position.array, uv = m.geometry.attributes.uv.array;
+          for (let i = 0; i < p.length / 3; i++) {
+            pire = Math.max(pire, Math.abs(uv[i * 2] - p[i * 3] * 0.25), Math.abs(uv[i * 2 + 1] - p[i * 3 + 2] * 0.25));
+            n++;
+          }
+        });
+        if (deg) deg();
+        return { sommets: n, ecart: pire };
+      };
+      const ecartCalage = function (t) {
+        return Math.max(Math.abs(t.calage.rendu[0] - t.calage.attendu[0]), Math.abs(t.calage.rendu[1] - t.calage.attendu[1]));
+      };
+      window.setVue3DTextures(true);
+      await ouvrir("structures", 0, 0);
+      const t0 = K.textures();
+      r.defaut = { sols: t0.sols, motifs: t0.motifs, uv: t0.uvParMetre.sol, dessins: t0.dessins, msSol: t0.msSol,
+        calage: ecartCalage(t0), cote: t0.calage.cote };
+      // Couleurs de référence : sable calcaire du sol (luminance relative), liseré de l'itinéraire (jeton --kta-fond
+      // du thème sombre).
+      r.defaut.lisere = (K.etat().itineraire || {}).couleurLisere || null;
+      // Déplacement puis portée : le carré reste calé sur le monde.
+      K.placer(P(13.3, -1.7).x, P(13.3, -1.7).y, 40);
+      await pause(200);
+      r.deplace = { calage: ecartCalage(K.textures()), cote: K.textures().calage.cote };
+      const portee0 = K.etat().portee.distance;
+      K.reglerPortee(60);
+      await pause(200);
+      r.portee = { calage: ecartCalage(K.textures()), cote: K.textures().calage.cote };
+      K.reglerPortee(typeof portee0 === "number" ? portee0 : 30);
+      // Bascule 🧱 vue ouverte : noirs sans carte ni relief, puis les cartes reviennent sans nouveau dessin.
+      K.basculerTextures();
+      await pause(200);
+      r.coupe = K.textures().sols;
+      K.basculerTextures();
+      await pause(200);
+      r.rallume = { sols: K.textures().sols, dessins: K.textures().dessins };
+      // Reprise du contexte WebGL : les cartes sont refaites avec la scène.
+      const gl = document.querySelector("#kta-vue3d canvas").getContext("webgl2");
+      const perte = gl && gl.getExtension("WEBGL_lose_context");
+      if (perte) {
+        perte.loseContext();
+        await pause(300);
+        perte.restoreContext();
+        await pause(900);
+        K.tourner(5);
+        await pause(300);
+        const t = K.textures();
+        r.reprise = { ouvert: K.etat().ouvert, sols: t.sols, calage: ecartCalage(t) };
+      }
+      // Rendu galerie : sol et plafond = les pièces, même projection monde.
+      await ouvrir("galerie", -20, 0);
+      const tg = K.textures();
+      r.galerie = { sols: tg.sols, sol: uvMonde("sol"), plafond: uvMonde("plafond") };
+      // Mixte : le carré dans la salle comme dans les tubes.
+      await ouvrir("mixte", -20, 0);
+      r.mixte = { sols: K.textures().sols, calage: ecartCalage(K.textures()) };
+      await K.fermer();
+      // Vue ouverte 🧱 coupé dans une page où rien n'est dessiné : voir `froid` (autre page).
+      return r;
+    });
+    const S = R.defaut.sols, M = R.defaut.motifs || {};
+    verifier(S.sol.carte && S.sol.relief && S.sol.motif === "sol" && S.plafond.carte && S.plafond.relief &&
+      S.plafond.motif === "ciel" && S.solGalerie.motif === "sol" && S.plafondGalerie.motif === "ciel" &&
+      S.sol.couleur === "#ffffff",
+    nom + "🧱 allumé : sol et plafond ont chacun leur carte et leur relief (sol damé, ciel de carrière)", S);
+    verifier(["sol", "plafond", "solGalerie", "plafondGalerie"].every(function (k) { return S[k].memeCalage; }),
+      nom + "couleur et relief posés avec la même transformation (le relief ne glisse pas sous la couleur)", S);
+    verifier(!!M.sol && !!M.ciel && M.sol.couture < 2.5 && M.ciel.couture < 2.5,
+      nom + "motifs sans couture (écart au bord / écart entre rangées voisines : sol " + (M.sol || {}).couture +
+      ", ciel " + (M.ciel || {}).couture + ")", M);
+    // Sable calcaire #c9b48c tel que la scène l'écrit dans ses canvas (composantes linéaires × 255 : 148,9 / 116,3 /
+    // 66,9), luminance 0,2126 × 148,9 + 0,7152 × 116,3 + 0,0722 × 66,9 = 119,7.
+    verifier(M.sol.moyenne <= 119.7 && M.sol.moyenne >= 100 && M.sol.ecart <= 12 && M.sol.p95 <= 132,
+      nom + "sol peu contrasté, jamais plus clair que le sable calcaire (moyenne " + M.sol.moyenne + " / 119,7, écart " +
+      "type " + M.sol.ecart + ", 95e centile " + M.sol.p95 + ")", M.sol);
+    verifier(M.ciel.moyenne < M.sol.moyenne - 8 && M.sol.pente > 0.02 && M.ciel.pente > 0.02,
+      nom + "ciel plus sombre que le sol (" + M.ciel.moyenne + " < " + M.sol.moyenne + "), relief présent (pente " +
+      M.sol.pente + " / " + M.ciel.pente + ")", M);
+    // Contraste WCAG entre le sol le plus sombre (5e centile, luminance relative) et le liseré de l'itinéraire.
+    const lin = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const lumHex = function (h) {
+      const n = parseInt(String(h).replace("#", ""), 16);
+      return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+    };
+    const liseHex = R.defaut.lisere || "#0a0d18";
+    const contraste = (M.sol.lum5 + 0.05) / (lumHex(liseHex) + 0.05);
+    verifier(contraste >= 3, nom + "liseré de l'itinéraire lisible sur le sol le plus sombre (" +
+      contraste.toFixed(1) + ":1 ≥ 3:1, seuil des objets graphiques)", { sol5: M.sol.lum5, lisere: liseHex });
+    verifier(R.defaut.uv === 0.25 && M.sol.taille === 256 && M.ciel.taille === 256,
+      nom + "motif de 4 m (0,25 de texture par mètre), 256 px", { uv: R.defaut.uv, sol: M.sol.taille });
+    verifier(R.defaut.calage < 1e-3 && R.deplace.calage < 1e-3 && R.portee.calage < 1e-3 &&
+      R.portee.cote > R.defaut.cote, nom + "carré qui suit calé sur le monde : au départ, après un déplacement, " +
+      "après un changement de portée (côté " + R.defaut.cote + " → " + R.portee.cote + " m, sans saut du motif)",
+    { depart: R.defaut.calage, deplace: R.deplace.calage, portee: R.portee.calage });
+    const noirs = function (s) {
+      return ["sol", "plafond", "solGalerie", "plafondGalerie"].every(function (k) {
+        return !s[k].carte && !s[k].relief && s[k].couleur === "#000000";
+      });
+    };
+    verifier(noirs(R.coupe), nom + "🧱 coupé : sol et plafond noirs, sans carte ni relief", R.coupe);
+    verifier(R.rallume.sols.sol.motif === "sol" && R.rallume.sols.plafond.motif === "ciel" &&
+      R.rallume.dessins.sol === R.defaut.dessins.sol && R.rallume.dessins.ciel === R.defaut.dessins.ciel,
+    nom + "🧱 rallumé : les cartes reviennent, sans nouveau dessin", R.rallume);
+    if (R.reprise) {
+      verifier(R.reprise.ouvert && R.reprise.sols.sol.motif === "sol" && R.reprise.sols.plafond.motif === "ciel" &&
+        R.reprise.sols.sol.relief && R.reprise.calage < 1e-3,
+      nom + "reprise du contexte WebGL : cartes du sol et du ciel refaites avec la scène, carré calé", R.reprise);
+    } else ok(nom + "reprise du contexte : WEBGL_lose_context absent, non jouée");
+    verifier(R.galerie.sols.solGalerie.motif === "sol" && R.galerie.sols.plafondGalerie.motif === "ciel" &&
+      R.galerie.sol.sommets > 0 && R.galerie.sol.ecart < 1e-4 && R.galerie.plafond.sommets > 0 &&
+      R.galerie.plafond.ecart < 1e-4,
+    nom + "rendu galerie : pièces du sol et du plafond en projection monde (x / 4, z / 4 ; " + R.galerie.sol.sommets +
+      " + " + R.galerie.plafond.sommets + " sommets)", R.galerie);
+    verifier(R.mixte.sols.sol.motif === "sol" && R.mixte.calage < 1e-3, nom + "rendu mixte : même sol, carré calé",
+      R.mixte);
+    const d = R.defaut.dessins;
+    verifier(d.sol >= 0 && d.ciel >= 0, nom + "premier dessin : sol " + d.sol + " ms, ciel " + d.ciel +
+      " ms (cette ouverture : " + R.defaut.msSol + " ms)", d);
+    // Page neuve, 🧱 coupé avant la première ouverture : rien n'est dessiné ; puis téléphone ralenti × 4 (Chromium).
+    const f = await ouvrirPage(chromiumNav ? { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3,
+      isMobile: true, hasTouch: true } : null);
+    try {
+      let cdp = null;
+      if (chromiumNav) {
+        cdp = await f.ctx.newCDPSession(f.page);
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+      }
+      const F = await f.page.evaluate(async function () {
+        const K = window.KtaVue3D, P = window.__txP;
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        window.setVue3DTextures(false);
+        window.setPlanRenduVue3D(null, "structures");
+        await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 90 } });
+        await pause(300);
+        const coupe = { sols: K.textures().sols, dessins: K.textures().dessins };
+        K.basculerTextures();
+        await pause(400);
+        const t = K.textures();
+        await K.fermer();
+        window.setVue3DTextures(true);
+        return { coupe: coupe, dessins: t.dessins, msSol: t.msSol, sols: t.sols };
+      });
+      if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+      verifier(noirs(F.coupe.sols) && F.coupe.dessins.sol === undefined && F.coupe.dessins.ciel === undefined,
+        nom + "vue ouverte 🧱 coupé : sol et ciel jamais dessinés (aucun coût)", F.coupe);
+      verifier(F.sols.sol.motif === "sol" && F.dessins.sol >= 0 && F.dessins.ciel >= 0 &&
+        (!chromiumNav || F.dessins.sol + F.dessins.ciel < 600),
+      nom + "🧱 allumé vue ouverte" + (chromiumNav ? ", téléphone ralenti × 4" : "") + " : sol " + F.dessins.sol +
+        " ms, ciel " + F.dessins.ciel + " ms", F.dessins);
+    } finally {
+      await f.ctx.close();
+    }
+    verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await o.ctx.close();
+  }
+}
+
 // ── 43. 🔍 Recherche depuis la vue 3D (vue3d.js > allerA, _choixRecherche ; searchPoints.js > prendreChoix) ─────────
 // Pointeur fin (1200 × 800), relevé fictif vidé, plan à deux niveaux simulé (0 et −1) : un pilier, une zone, un tracé
 // au 0, un tracé au −1, un POI au 0 avec point précis, un POI au −1 (tous fictifs, en mémoire). 🔍 à hauteur d'yeux dans
@@ -14332,7 +14581,7 @@ async function sectionCaseBoutonsZoom(nav) {
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
-      SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
+      SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" || SEUL === "textures" ||
       SEUL === "estomper" || SEUL === "transparence" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
       SEUL === "solfiltre" ||
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "puits-ciel" ||
@@ -20755,6 +21004,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPlanSolNiveaux(page);
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
+    if (!SEUL || SEUL === "textures") await sectionTexturesSol(nav);
     if (!SEUL || SEUL === "addons") await sectionAddonsVisibles(nav);
     if (!SEUL || SEUL === "colonneedit") await sectionColonneEdition(nav);
     if (!SEUL || SEUL === "ajuster") {

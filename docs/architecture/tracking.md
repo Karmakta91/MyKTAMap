@@ -1520,8 +1520,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `KtaGalerie.dedans` = dans l'emprise et hors de ces zones. Niveau sans galerie : rien n'arrête que les zones.
   `versGalerie` (recalage du tracker) ne lit que l'emprise. Départ dans une zone : ramené au point libre le plus
   proche (jamais coincé, ci-dessus). Parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
-- **Scène galerie** : sol et plafond = les pièces, texture calcaire posée en coordonnées monde (pièces superposées sans
-  couture) ; parois (galeries, tubes du mixte, puits et tranchées des passages : un seul matériau `paroi`) en
+- **Scène galerie** : sol et plafond = les pièces, sol damé et ciel de carrière posés en coordonnées monde (pièces
+  superposées sans couture, § Sol et ciel de carrière) ; parois (galeries, tubes du mixte, puits et tranchées des passages : un seul matériau `paroi`) en
   **pierre de taille** quand 🧱 Textures est activé (`_paroiTexturee` : `_appareil` + `_assisesPierre`, `PIERRE` :
   256 px, motif de 2 m, assises de hauteur tirée, blocs de longueur tirée, joints irréguliers, arêtes émoussées,
   normal map `_carteNormale`). 🧱 coupé (décision produit, révisée : `ETUDE_VUE_3D.md`) : parois des galeries et
@@ -2046,6 +2046,24 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   pierre, remblais, éboulis) est dessinée une fois par page (`_texturesPeintes`, canvas gardés dans `_appareils`,
   ~15 à 30 ms au PC, ~100 ms au téléphone ralenti × 4), la pierre seulement à la première paroi texturée, remblais
   et éboulis à la première zone de leur type ; `KtaVue3D.textures()` rend ces temps (checkup § 24).
+- **Sol et ciel de carrière** (même interrupteur 🧱 ; coupé : noirs, ci-dessous) : deux textures distinctes, couleur
+  et normal map, dessinées dans un canvas comme les autres (`_texturesPeintes`, aucune image). **Sol** (`SOL`,
+  `_solDame`) : calcaire damé en bosses douces, plages de terre plus sombres et plus lisses (35 % de la surface, bord
+  fondu), cailloutis d'éclats de 1 à 3,5 cm serrés par plages. **Plafond** (`CIEL`, `_cielCarriere`) : le banc laissé
+  au toit, plaques décollées à bord franc, fissures longues en tous sens, traces de pic en grappes, plus gris et plus
+  sombre que le sol. Motif de **4 m** à 256 px (64 px/m, la densité de l'ancien grain) : plus grand que celui d'une
+  paroi, un sol se voit sur des dizaines de mètres. ⚠️ contrat (décision produit) : le sol reste peu contrasté et
+  jamais plus clair que le sable calcaire (`COULEUR_CALCAIRE`) — rubans, liserés, zones et plan au sol se lisent
+  dessus ; le liseré sombre de l'itinéraire garde plus de 3:1 sur le sol le plus sombre (checkup § 24 quater).
+  ⚠️ contrat : une seule projection, **monde / 4 m** (u = x, v = z), pour les pièces des galeries (`_dalleTexturee`)
+  et pour le carré qui suit (`_calerCarre` : `repeat` et `offset` des cartes recalculés quand le carré se déplace ou
+  change de taille) — le motif reste fixe sous les pieds et ne saute pas quand la portée change ; couleur et relief
+  sont calés ensemble (three.js transforme chaque carte avec la sienne). Les deux jeux de textures (`carre`,
+  `monde`) partagent une image (clone : un envoi au GPU). Les copies des matériaux du sol et du plafond (voisins,
+  voile, sol en pente, sol voilé) suivent carte, relief et couleur (`_suivreCartes`). Coût : dessinées à la première
+  vue texturée de la page (`_cartesSol` : sol ~33 ms, ciel ~15 ms au PC ; ~100 et ~55 ms au téléphone ralenti × 4),
+  quatre canvas de 256 px (1 Mo dans la page, 1,4 Mo de textures avec leurs mipmaps) ; `KtaVue3D.textures()` rend
+  `sols`, `motifs` et `calage`.
 - **Remblais et effondrements texturés** (même interrupteur 🧱) : `remblais` en terre et sable calcaire tassés avec
   cailloux et blocs anguleux à moitié enfouis (`REMBLAIS` : motif de 2 m, du gravier de 1 cm aux blocs de 25 cm),
   `effondrement` en éboulis de fontis (`EBOULIS` : motif de 4 m, gros blocs cassés jusqu'à 60 cm, empilés, fissurés,
@@ -2136,7 +2154,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 
 - **Itinéraire** (décision produit) : ruban **plein** continu de 0,3 m (`LARGEUR_ITI`) à `--kta-interaction` (la
   couleur de l'itinéraire de la carte ; le doré reste aux itinéraires publiés par l'équipe) sur un liseré `--kta-fond`
-  de 4 cm par bord, gardé parce que le sol est clair (grain calcaire, plan au sol) et que le ruban passe sur le liseré
+  de 4 cm par bord, gardé parce que le sol est clair (sol damé, plan au sol) et que le ruban passe sur le liseré
   vert d'un tracé ; **chevrons « ^ » de sens** `--kta-fond` (9,3:1 sur le ruban) tous les `ITI.pas` = 2 m à partir
   de 1 m, pointe vers l'arrivée, branches de 0,26 m sur 6 cm (`_chevronIti`) : le dessin du trajet du jeu
   (`addons/mkmg`), à la couleur de l'app, sans code partagé. Chaque segment est prolongé d'une demi-largeur à ses bouts
@@ -2391,7 +2409,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   profondeur, trouée par les bouches comme le sol : tracés, zones et structures passent dessus par la profondeur du sol
   (🩸 posée 6 mm au-dessus et départagée par la profondeur, elle dépendait de la précision du tampon de profondeur).
 - **Sol et plafond noirs 🧱 coupé** (décision produit, `_grainSol`) : carré qui suit et pièces des galeries noirs,
-  sans grain, dans les trois rendus ; allumé, le grain calcaire. Le matériau change, rien n'est reconstruit.
+  sans carte ni relief, dans les trois rendus ; allumé, le sol damé et le ciel de carrière (§ Sol et ciel de
+  carrière). Le matériau change, rien n'est reconstruit, et rien n'est dessiné tant que 🧱 reste coupé.
 
 ### Niveaux voisins (QCM du 07/11/2026, lot C du multi-niveau en 3D)
 
@@ -2708,7 +2727,11 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   sommets, 3e, surface, désarmé caché, sans chevaucher boussole, joystick, pavé ni zoom) ; angle droit → « 90° » comme
   la carte ; survol (pilier, cavage fermé) en édition, bloqué à hauteur d'yeux, place dégagée au retour ; plan au sol
   au point visé et vu à l'écran (pixels d'une capture) ; 🧱 coupé : sol et plafond noirs (trois rendus), plan au sol visible dessus, parois de galerie à la couleur de légende
-  de leur tracé (type `cust-…` compris), légende changée vue ouverte → la paroi suit, rallumé → la pierre ; tuile ⚙️
+  de leur tracé (type `cust-…` compris), légende changée vue ouverte → la paroi suit, rallumé → la pierre ; sol et
+  ciel de carrière (§ 24 quater, `KTA_V3D_SEUL=textures`) : deux motifs distincts avec relief, sans couture, sol peu
+  contrasté et jamais plus clair que le sable calcaire, liseré de l'itinéraire à plus de 3:1, carré calé sur le monde
+  (déplacement, portée), pièces des galeries à la même projection, noirs et jamais dessinés 🧱 coupé, reprise du
+  contexte, temps du premier dessin (téléphone ralenti × 4) ; tuile ⚙️
   au-dessus de la colonne ✏️, curseurs entiers, sélecteur de niveau hors de la colonne, de la tuile et de la grille
   (portrait et paysage) ; ▼ en vue d'édition → la 3D au −1 sans passage, carte et tracker au 0, tracé dessiné au −1,
   retour à hauteur d'yeux dégagé, plan à un niveau sans sélecteur ; vue d'édition, zoom et inclinaison retrouvés à la

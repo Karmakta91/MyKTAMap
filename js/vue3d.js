@@ -178,12 +178,24 @@
   const DESENCOMBRE = { cellule: 64, marge: 4, loinYeux: 12 };
   const BRUIT_CAP = 2;              // ° : en suivi, un écart de cap plus petit (boussole) ne redessine pas
   const HAUTEUR_MUR = 0.98;         // part de la hauteur du plan : un mur passe toujours sous pilier et front
-  // Sol et ciel de carrière (plafond, à la hauteur du plan) : même teinte sable calcaire, grain procédural répété
-  // (bruit dessiné dans un canvas, aucune image téléchargée). Couleur de la scène, pas de la charte de l'UI.
+  // Sable calcaire : teinte de base du sol et des marches. Couleur de la scène, pas de la charte de l'UI.
   const COULEUR_CALCAIRE = "#c9b48c";
   const HACHURE_PAS = 0.6;   // m : période des hachures d'une zone inaccessible (sol et rideau)
-  const GRAIN_TAILLE = 128;         // px du motif
-  const GRAIN_METRES = 2;           // m couverts par un motif
+  // Sol de carrière (carré qui suit et pièces des galeries, 🧱 activé ; _solDame) : calcaire damé, plages de terre
+  // (`terrePart` de la surface, plus sombres et plus lisses), cailloutis (`cailloux` éclats de `caillou` m de rayon
+  // par motif, serrés par plages), couleur et normal map dessinées dans un canvas, aucune image téléchargée. Motif
+  // de `m` m : plus grand que celui d'une paroi, un sol se voit sur des dizaines de mètres et rien n'y cache la
+  // répétition. ⚠️ contrat (décision produit) : peu contrasté et jamais plus clair que COULEUR_CALCAIRE — rubans,
+  // liserés, zones et plan au sol se lisent dessus.
+  const SOL = { m: 4, px: 256, couleur: COULEUR_CALCAIRE, terre: "#bda881", eclat: "#d3c6a8", terrePart: 0.35,
+    cailloux: 1300, caillou: [0.008, 0.035], grain: 0.1, relief: 1.7, graine: 83 };
+  // Ciel de carrière (plafond, 🧱 activé ; _cielCarriere) : le banc laissé au toit. `bancs` paliers de plaques
+  // décollées à bords francs (ressaut de `ressaut`, en part de la hauteur dessinée), `fissures` fissures longues en
+  // tous sens, `grappes` grappes de traces de pic, taches larges. Plus gris et plus sombre que le sol : le regard
+  // reste en bas. ⚠️ contrat : même `m` que SOL (une seule projection monde pour le sol et le plafond,
+  // _dalleTexturee).
+  const CIEL = { m: SOL.m, px: 256, couleur: "#b3a88f", bancs: 2, ressaut: 0.16, fissures: 6, grappes: 46,
+    grain: 0.07, relief: 2.6, graine: 89 };
   // Ordre de rendu du sol (carré qui suit et sol des galeries) : avant tout le reste, pour que le plan au sol
   // (PLAN_SOL.ordre) se pose dessus sans dépendre de la profondeur.
   const ORDRE_SOL = -0.6;
@@ -400,7 +412,7 @@
   let _e = null;                    // état de la vue ouverte (null = fermée)
   // Police des plaques : etat "absente" | "charge" | "prete" | "echec" | "indisponible" (pas de FontFace).
   const _police = { etat: "absente", promesse: null };
-  let _appareils = {};               // canvas des textures déjà dessinés (_texturesPeintes : structures, parois)
+  let _appareils = {};               // canvas des textures déjà dessinés (_texturesPeintes : structures, parois, sol)
   const _appareilsMs = {};          // ms du premier dessin de chacun (checkup)
   let _dernierGl = null;            // contexte de la dernière vue fermée (checkup : libéré ou non)
   let _derniereFermeture = null;    // "utilisateur" | "contexte" (checkup)
@@ -1487,7 +1499,7 @@
 
   // Pièce convexe (m) en éventail, à la hauteur y, normale vers le haut (sol) ou le bas (plafond), texture monde.
   function _dalleTexturee(lot, ring, y, haut) {
-    const n = haut ? [0, 1, 0] : [0, -1, 0], g = GRAIN_METRES;
+    const n = haut ? [0, 1, 0] : [0, -1, 0], g = SOL.m;
     for (let i = 1; i + 1 < ring.length; i++) {
       const a = ring[0], b = ring[i], c = ring[i + 1];
       lot.tri([a[0], y, a[1]], [b[0], y, b[1]], [c[0], y, c[1]], n, BLANC,
@@ -2191,40 +2203,6 @@
 
   // ── Scène ──────────────────────────────────────────────────────────────────────────────────────────
 
-  // Motif calcaire répétable : teinte COULEUR_CALCAIRE, taches douces (bruit de valeur 8 × 8 interpolé, bouclé sur
-  // les bords pour que la répétition ne se voie pas) et grain fin par pixel. ~1 ms, 64 Ko de texture.
-  function _grainCalcaire() {
-    const n = GRAIN_TAILLE, g = 8, cv = document.createElement("canvas");
-    cv.width = n; cv.height = n;
-    const ctx = cv.getContext("2d"), img = ctx.createImageData(n, n), base = new THREE.Color(COULEUR_CALCAIRE);
-    let graine = 7;
-    const alea = function () { graine = (graine * 16807) % 2147483647; return graine / 2147483647; };
-    const grille = [];
-    for (let i = 0; i < g * g; i++) grille.push(alea());
-    const v = function (x, y) { return grille[((y + g) % g) * g + ((x + g) % g)]; };
-    for (let y = 0; y < n; y++) {
-      for (let x = 0; x < n; x++) {
-        const fx = x / n * g, fy = y / n * g, x0 = Math.floor(fx), y0 = Math.floor(fy);
-        const tx = fx - x0, ty = fy - y0, sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
-        const haut = v(x0, y0) + (v(x0 + 1, y0) - v(x0, y0)) * sx;
-        const bas = v(x0, y0 + 1) + (v(x0 + 1, y0 + 1) - v(x0, y0 + 1)) * sx;
-        const k = 0.86 + (haut + (bas - haut) * sy) * 0.2 + (alea() - 0.5) * 0.1;
-        const o = (y * n + x) * 4;
-        img.data[o] = Math.min(255, base.r * 255 * k);
-        img.data[o + 1] = Math.min(255, base.g * 255 * k);
-        img.data[o + 2] = Math.min(255, base.b * 255 * k);
-        img.data[o + 3] = 255;
-      }
-    }
-    ctx.putImageData(img, 0, 0);
-    const tex = new THREE.CanvasTexture(cv);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    // Répétition posée par _appliquerPortee (le carré de sol suit la portée et le recul).
-    tex.anisotropy = 4;
-    return tex;
-  }
-
   // Appareil de moellons des parois du mode galerie (galeries consolidées des carrières) : MOELLONS_MOTIF.h assises
   // de blocs MOELLON.l × MOELLON.h, joints décalés (chaque assise part d'un décalage tiré, les blocs bouclent sur la
   // largeur : motif sans couture), longueur de bloc ± 25 %, teinte par bloc autour de MOELLON.couleur, arêtes un peu
@@ -2432,6 +2410,137 @@
     return cv;
   }
 
+  // Creux rond de rayon r px dans C = { n, creux, sombre } (fissure, trace d'outil) : le plus profond gardé par pixel,
+  // jamais la somme des passages ; motif bouclé.
+  function _creuser(C, x, y, r, prof, assomb) {
+    const n = C.n;
+    for (let yy = Math.floor(y - r); yy <= y + r; yy++) {
+      for (let xx = Math.floor(x - r); xx <= x + r; xx++) {
+        const d = Math.hypot(xx - x, yy - y);
+        if (d > r) continue;
+        const p = (((yy % n) + n) % n) * n + (((xx % n) + n) % n), s = 1 - d / r;
+        C.creux[p] = Math.max(C.creux[p], prof * s);
+        C.sombre[p] = Math.max(C.sombre[p], assomb * s);
+      }
+    }
+  }
+
+  // Fissure dans C (_creuser) : fine, presque droite, partie de (x, y) px vers l'angle a, longue de l px, large de
+  // w0 px au départ, qui s'amincit ; une branche parfois. `f` : force du creux et de son ombre (1 = roche brute).
+  function _fissurer(C, alea, x, y, a, l, w0, f) {
+    for (let s = 0; s < l; s += 0.5) {
+      a += (alea() - 0.5) * 0.18;
+      x += Math.cos(a) * 0.5; y += Math.sin(a) * 0.5;
+      _creuser(C, x, y, w0 * (1 - s / l) + 0.5, 0.25 * f, 0.22 * f);
+      if (alea() < 0.004) {
+        _fissurer(C, alea, x, y, a + (alea() < 0.5 ? -1 : 1) * (0.5 + alea() * 0.5), (l - s) * 0.4, w0 * 0.6, f);
+      }
+    }
+  }
+
+  // Sol de carrière (SOL) : calcaire damé en bosses douces à quatre échelles, plages de terre (masque à deux
+  // échelles, bord irrégulier : plus sombres, plus lisses, un peu en creux), cailloutis (éclats de calcaire ovales en
+  // relief, gardés selon un semis à grande échelle : serrés par plages, absents ailleurs), grain fin.
+  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  function _solDame(alea) {
+    const S = SOL, n = S.px, k = n / S.m, haut = new Float32Array(n * n), eclat = new Float32Array(n * n);
+    const ton = new Float32Array(n * n);
+    const large = _champBoucle(alea, 5, 5, n), moyen = _champBoucle(alea, 11, 11, n);
+    const fin = _champBoucle(alea, 28, 28, n), tres = _champBoucle(alea, 72, 72, n);
+    const terreA = _champBoucle(alea, 7, 7, n), terreB = _champBoucle(alea, 19, 19, n);
+    const semis = _champBoucle(alea, 8, 8, n);
+    // Seuil du masque de terre : la part SOL.terrePart la plus haute du champ (mesurée, pas supposée).
+    const masque = new Float32Array(n * n);
+    for (let p = 0; p < n * n; p++) masque[p] = 0.6 * terreA[p] + 0.4 * terreB[p];
+    const seuil = Float32Array.from(masque).sort()[Math.floor(n * n * (1 - S.terrePart))];
+    for (let c = 0; c < S.cailloux; c++) {
+      const cx = alea() * n, cy = alea() * n, r = (S.caillou[0] + alea() * alea() * (S.caillou[1] - S.caillou[0])) * k;
+      const a = alea() * Math.PI, al = 0.55 + alea() * 0.45, t = 0.88 + alea() * 0.2, garde = alea();
+      if (garde > semis[Math.floor(cy) * n + Math.floor(cx)] * 1.5 - 0.25) continue;
+      const ca = Math.cos(a), sa = Math.sin(a), R = Math.ceil(r) + 1, sail = 0.1 + 0.22 * r / (S.caillou[1] * k);
+      for (let yy = Math.floor(cy - R); yy <= cy + R; yy++) {
+        for (let xx = Math.floor(cx - R); xx <= cx + R; xx++) {
+          const qx = xx - cx, qy = yy - cy, u = (qx * ca + qy * sa) / r, v = (qy * ca - qx * sa) / (r * al);
+          const d = u * u + v * v;
+          if (d >= 1) continue;
+          const p = (((yy % n) + n) % n) * n + (((xx % n) + n) % n), h = sail * (1 - d);
+          if (h > eclat[p]) { eclat[p] = h; ton[p] = t; }
+        }
+      }
+    }
+    const img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(S.couleur), terre = new THREE.Color(S.terre);
+    const pierre = new THREE.Color(S.eclat);
+    let graine = Math.floor(alea() * 2147483647) | 1;
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
+        const e = (masque[p] - seuil) / 0.16 + 0.5, mt = e <= 0 ? 0 : e >= 1 ? 0.7 : 0.7 * e * e * (3 - 2 * e);
+        const masse = 0.5 * large[p] + 0.3 * moyen[p] + 0.2 * fin[p];
+        haut[p] = (0.34 * moyen[p] + 0.2 * fin[p] + 0.1 * tres[p]) * (1 - 0.6 * mt) - 0.05 * mt + eclat[p];
+        const f = (0.9 + 0.1 * masse) * (1 + (grain() - 0.5) * S.grain);
+        const ke = Math.min(1, eclat[p] * 9), fe = ke * ton[p];
+        let r0 = base.r + (terre.r - base.r) * mt, g0 = base.g + (terre.g - base.g) * mt;
+        let b0 = base.b + (terre.b - base.b) * mt;
+        r0 = (r0 * (1 - ke) + pierre.r * fe) * f; g0 = (g0 * (1 - ke) + pierre.g * fe) * f;
+        b0 = (b0 * (1 - ke) + pierre.b * fe) * f;
+        img[o4] = r0 * 255; img[o4 + 1] = g0 * 255; img[o4 + 2] = b0 * 255; img[o4 + 3] = 255;
+      }
+    }
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, S.relief) };
+  }
+
+  // Ciel de carrière (CIEL) : le banc de calcaire laissé au toit. Plaques de banc décollées (champ à deux échelles
+  // découpé en CIEL.bancs paliers : bord franc, ressaut que la lampe accroche, ombre au pied du ressaut), bosses de
+  // la taille, fissures longues en tous sens, traces de pic en grappes, taches larges (humidité, fumée de lampe).
+  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  function _cielCarriere(alea) {
+    const T = CIEL, n = T.px, k = n / T.m, haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
+    const creux = new Float32Array(n * n), palier = new Uint8Array(n * n);
+    const moyen = _champBoucle(alea, 11, 11, n), fin = _champBoucle(alea, 34, 34, n);
+    const tache = _champBoucle(alea, 3, 3, n), tache2 = _champBoucle(alea, 9, 9, n);
+    const bancA = _champBoucle(alea, 4, 4, n), bancB = _champBoucle(alea, 13, 13, n);
+    for (let p = 0; p < n * n; p++) {
+      palier[p] = Math.min(T.bancs - 1, Math.floor((0.6 * bancA[p] + 0.4 * bancB[p]) * T.bancs));
+      haut[p] = 0.3 * moyen[p] + 0.14 * fin[p] + T.ressaut * palier[p];
+    }
+    // Ombre au pied d'un ressaut : pixel dont le voisin de droite ou du dessus est sur un autre palier (motif bouclé).
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, d = palier[y * n + (x + 1) % n], h = palier[((y + 1) % n) * n + x];
+        if (d !== palier[p] || h !== palier[p]) sombre[p] = 0.07;
+      }
+    }
+    const C = { n: n, creux: creux, sombre: sombre };
+    for (let f = 0; f < T.fissures; f++) {
+      _fissurer(C, alea, alea() * n, alea() * n, alea() * 2 * Math.PI, (0.5 + alea() * 1.3) * k, 0.3 + alea() * 0.4,
+        0.5);
+    }
+    for (let g = 0; g < T.grappes; g++) {
+      const cx = alea() * n, cy = alea() * n, a0 = alea() * Math.PI, nb = 2 + Math.floor(alea() * 4);
+      for (let i = 0; i < nb; i++) {
+        const a = a0 + (alea() - 0.5) * 0.25, l = (0.08 + alea() * 0.16) * k, e = (0.03 + alea() * 0.03) * k * i;
+        const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
+        for (let s = 0; s < l; s += 0.5) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9, 0.06, 0.04);
+      }
+    }
+    const img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(T.couleur);
+    let graine = Math.floor(alea() * 2147483647) | 1;
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
+        haut[p] -= creux[p];
+        const f = (0.82 + 0.2 * tache[p]) * (0.94 + 0.12 * tache2[p]) * (0.95 + 0.04 * palier[p]) * (1 - sombre[p]) *
+          (1 + (grain() - 0.5) * T.grain);
+        img[o4] = base.r * 255 * f; img[o4 + 1] = base.g * 255 * f;
+        img[o4 + 2] = base.b * 255 * f * (1.02 - 0.04 * tache2[p]);
+        img[o4 + 3] = 255;
+      }
+    }
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, T.relief) };
+  }
+
   // Roche brute (piliers et fronts : la masse calcaire laissée en place, jamais appareillée) : relief en bosses à
   // trois échelles (champs bouclés), nuances de calcaire en taches larges, strates horizontales discrètes et
   // ondulées, fissures en creux (marches aléatoires bouclées) et traces d'outil (pic, broche : courts sillons
@@ -2462,29 +2571,11 @@
         sombre[p] += 0.05 * s;
       }
     }
-    // Creux (fissure, trace d'outil) : on garde le plus profond par pixel, jamais la somme des passages.
-    const creuser = function (x, y, r, prof, assomb) {
-      for (let yy = Math.floor(y - r); yy <= y + r; yy++) {
-        for (let xx = Math.floor(x - r); xx <= x + r; xx++) {
-          const d = Math.hypot(xx - x, yy - y);
-          if (d > r) continue;
-          const p = (((yy % n) + n) % n) * n + (((xx % n) + n) % n), s = 1 - d / r;
-          creux[p] = Math.max(creux[p], prof * s);
-          sombre[p] = Math.max(sombre[p], assomb * s);
-        }
-      }
-    };
-    // Fissures : fines, presque droites, surtout verticales, qui s'amincissent ; une branche parfois.
-    const fissure = function (x, y, a, l, w0) {
-      for (let s = 0; s < l; s += 0.5) {
-        a += (alea() - 0.5) * 0.18;
-        x += Math.cos(a) * 0.5; y += Math.sin(a) * 0.5;
-        creuser(x, y, w0 * (1 - s / l) + 0.5, 0.25, 0.22);
-        if (alea() < 0.004) fissure(x, y, a + (alea() < 0.5 ? -1 : 1) * (0.5 + alea() * 0.5), (l - s) * 0.4, w0 * 0.6);
-      }
-    };
+    // Fissures : surtout verticales.
+    const C = { n: n, creux: creux, sombre: sombre };
     for (let f = 0; f < R.fissures; f++) {
-      fissure(alea() * n, alea() * n, Math.PI / 2 + (alea() - 0.5) * 0.9, (0.3 + alea() * 0.9) * k, 0.4 + alea() * 0.6);
+      _fissurer(C, alea, alea() * n, alea() * n, Math.PI / 2 + (alea() - 0.5) * 0.9, (0.3 + alea() * 0.9) * k,
+        0.4 + alea() * 0.6, 1);
     }
     // Traces d'outil (pic, broche) : sillons isolés ou par deux ou trois, de longueur, d'angle et d'écart tirés.
     for (let g = 0; g < R.grappes; g++) {
@@ -2493,7 +2584,7 @@
       for (let i = 0; i < nb; i++) {
         const a = a0 + (alea() - 0.5) * 0.3, l = (0.06 + alea() * 0.14) * k, e = (0.02 + alea() * 0.04) * k * i;
         const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
-        for (let s = 0; s < l; s += 0.5) creuser(ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9, 0.07, 0.035);
+        for (let s = 0; s < l; s += 0.5) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9, 0.07, 0.035);
       }
     }
     for (let p = 0; p < n * n; p++) haut[p] -= creux[p];
@@ -2770,17 +2861,12 @@
   }
 
   function _materiaux() {
-    const grain = _e.grain = _grainCalcaire();
-    // Sol et plafond des galeries : même motif, posé en coordonnées monde (pièces superposées sans couture).
-    const monde = _e.grainMonde = grain.clone();
-    monde.repeat.set(1, 1);
-    monde.offset.set(0, 0);
-    monde.needsUpdate = true;
     _e.moellons = _moellons();
-    // Roche, parpaing et pierre des parois (🧱) : faits à la demande (_matsTextures, _paroiTexturee) ; refaits avec
-    // la scène (reprise du contexte). La paroi naît en moellons.
+    // Sol, ciel, roche, parpaing et pierre des parois (🧱) : faits à la demande (_cartesSol, _matsTextures,
+    // _paroiTexturee) ; refaits avec la scène (reprise du contexte). La paroi naît en moellons, le sol sans carte.
     _e.textures = _texturesVoulues();
     _e.texStructures = [];
+    _e.cartesSol = null;
     _e.texPierre = null;
     _e.paroiPierre = false;
     const m = {
@@ -2798,11 +2884,11 @@
       hachSol: _hachurer(new THREE.MeshLambertMaterial({ vertexColors: true })),
       hachRideau: _hachurer(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.55,
         depthWrite: false, side: THREE.DoubleSide })),
-      sol: new THREE.MeshLambertMaterial(Object.assign({ map: grain }, SOL_RECULE)),
-      plafond: new THREE.MeshLambertMaterial({ map: grain, side: THREE.BackSide }),
+      sol: new THREE.MeshLambertMaterial(Object.assign({}, SOL_RECULE)),
+      plafond: new THREE.MeshLambertMaterial({ side: THREE.BackSide }),
       avatar: new THREE.MeshBasicMaterial({ color: 0xf4c542 }),
-      solGalerie: new THREE.MeshLambertMaterial(Object.assign({ map: monde }, SOL_RECULE)),
-      plafondGalerie: new THREE.MeshLambertMaterial({ map: monde }),
+      solGalerie: new THREE.MeshLambertMaterial(Object.assign({}, SOL_RECULE)),
+      plafondGalerie: new THREE.MeshLambertMaterial({}),
       paroi: new THREE.MeshLambertMaterial({ map: _e.moellons, side: THREE.DoubleSide }),
       paroiUnie: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
       // 🩸 Eau découpée en plusieurs pièces qui se recouvrent : sans écriture de profondeur stricte, chaque
@@ -2842,15 +2928,64 @@
 
   // ⚠️ contrat (décision produit) : 🧱 coupé, sol et plafond (carré qui suit et pièces des galeries) sont NOIRS dans
   // les trois rendus ; parois à la couleur de leur tracé, structures et zones à celle de la légende, panneaux,
-  // itinéraire, liserés et plan au sol passent dessus. Allumé, le grain calcaire. Rien à reconstruire : le matériau
-  // change.
+  // itinéraire, liserés et plan au sol passent dessus. Allumé : le sol damé et le ciel de carrière, chacun sa carte
+  // et son relief (_cartesSol). Rien à reconstruire : le matériau change.
   function _grainSol(m, oui) {
-    [[m.sol, _e.grain], [m.plafond, _e.grain], [m.solGalerie, _e.grainMonde], [m.plafondGalerie, _e.grainMonde]]
-      .forEach(function (q) {
-        q[0].map = oui ? q[1] : null;
-        q[0].color.set(oui ? 0xffffff : 0x000000);
-        q[0].needsUpdate = true;
+    const C = oui ? _cartesSol() : null;
+    [[m.sol, "sol", "carre"], [m.plafond, "ciel", "carre"], [m.solGalerie, "sol", "monde"],
+      [m.plafondGalerie, "ciel", "monde"]].forEach(function (q) {
+      const t = C ? C[q[1]][q[2]] : null;
+      q[0].map = t ? t.couleur : null;
+      q[0].normalMap = t ? t.normale : null;
+      q[0].color.set(oui ? 0xffffff : 0x000000);
+      q[0].needsUpdate = true;
+    });
+  }
+
+  // Cartes du sol (SOL, _solDame) et du ciel de carrière (CIEL, _cielCarriere), couleur et relief : dessinées à la
+  // première vue texturée de la page (aucun coût 🧱 coupé). `carre` : celles du carré qui suit (_calerCarre) ;
+  // `monde` : celles des pièces des galeries (coordonnées de texture = monde / SOL.m, _dalleTexturee). Deux jeux de
+  // textures three.js sur la même image (clone) : un seul envoi au GPU.
+  function _cartesSol() {
+    const e = _e;
+    if (e.cartesSol) return e.cartesSol;
+    const t0 = performance.now();
+    const jeu = function (nom, dessin, graine) {
+      const carre = _texturesPeintes(nom, dessin, graine);
+      const monde = { couleur: carre.couleur.clone(), normale: carre.normale.clone() };
+      [monde.couleur, monde.normale].forEach(function (x) { x.needsUpdate = true; e.texStructures.push(x); });
+      return { carre: carre, monde: monde };
+    };
+    e.cartesSol = { sol: jeu("sol", _solDame, SOL.graine), ciel: jeu("ciel", _cielCarriere, CIEL.graine) };
+    e.msSol = performance.now() - t0;
+    _calerCarre();
+    return e.cartesSol;
+  }
+
+  // ⚠️ contrat : le carré de sol et de plafond (plan unité mis à l'échelle, qui suit la position) montre le motif en
+  // coordonnées MONDE, u = x / SOL.m et v = z / SOL.m comme les pièces des galeries : fixe sous les pieds quand le
+  // carré se déplace, sans saut quand la portée change sa taille. 🩸 Chaque carte a sa transformation (three.js) :
+  // couleur et relief sont calés ensemble, sinon le relief glisse sous la couleur.
+  function _calerCarre() {
+    const e = _e, C = e.cartesSol;
+    if (!C || !e.sol) return;
+    const m = SOL.m, cote = e.sol.scale.x, x = e.sol.position.x, z = e.sol.position.z;
+    [C.sol.carre, C.ciel.carre].forEach(function (j) {
+      [j.couleur, j.normale].forEach(function (t) {
+        t.repeat.set(cote / m, -cote / m);
+        t.offset.set(x / m - cote / (2 * m), z / m + cote / (2 * m));
       });
+    });
+  }
+
+  // ⚠️ contrat : une copie d'un matériau du sol ou du plafond (voisins, voile, sol en pente, sol voilé) suit sa carte,
+  // son relief et sa couleur ; à appeler avant de s'en servir (🧱 basculé entre-temps).
+  function _suivreCartes(copie, m) {
+    if (copie.map === m.map && copie.normalMap === m.normalMap && copie.color.equals(m.color)) return;
+    copie.map = m.map;
+    copie.normalMap = m.normalMap;
+    copie.color.copy(m.color);
+    copie.needsUpdate = true;
   }
 
   function _monterScene() {
@@ -3367,7 +3502,7 @@
     }
     MATS_GABARIT.forEach(function (k) {
       const a = e.mats[k], b = e.matsV[k2][k];
-      if (b.map !== a.map || !b.color.equals(a.color)) { b.map = a.map; b.color.copy(a.color); b.needsUpdate = true; }
+      _suivreCartes(b, a);
     });
     return e.matsV[k2];
   }
@@ -4108,7 +4243,7 @@
     }
     [["sol", "solGalerie"], ["plafond", "plafondGalerie"]].forEach(function (q) {
       const a = e.mats[q[1]], b = e.matsPente[q[0]];
-      if (b.map !== a.map || !b.color.equals(a.color)) { b.map = a.map; b.color.copy(a.color); b.needsUpdate = true; }
+      _suivreCartes(b, a);
     });
     return e.matsPente;
   }
@@ -4136,7 +4271,7 @@
   // dehors, la tranche de chacun des deux niveaux de la pente là où il a un vide), trous du sol et du plafond d'un seul
   // tenant du niveau (bits du contexte) et, au niveau actif, de ceux des voisins pris dans sa hauteur.
   function _zoneJonction(z, p, L) {
-    const e = _e, ring = _anneau(z.points, e.sc), h = e.hauteur, g = GRAIN_METRES;
+    const e = _e, ring = _anneau(z.points, e.sc), h = e.hauteur, g = SOL.m;
     if (ring.length < 3) return;
     let fmin = Infinity, cmax = -Infinity;
     const haut = function (q) {
@@ -4419,6 +4554,7 @@
     }
     if (a.map !== m.map || !a.userData.base || !a.userData.base.equals(m.color)) {
       a.map = m.map;
+      if (a.isMeshLambertMaterial) a.normalMap = m.normalMap;
       a.color.copy(m.color);
       if (mode === "sombre") a.color.multiplyScalar(ESTOMPE.dessous);
       a.userData.base = m.color.clone();
@@ -4516,7 +4652,7 @@
       a.stencilFunc = THREE.EqualStencilFunc;
       e.matsVoile.set(m.uuid, a);
     }
-    if (a.map !== m.map || !a.color.equals(m.color)) { a.map = m.map; a.color.copy(m.color); a.needsUpdate = true; }
+    _suivreCartes(a, m);
     return a;
   }
 
@@ -4626,9 +4762,7 @@
       a.depthWrite = false;
       if (m === "voile") { a.transparent = true; a.opacity = SOL_VOILE; } else a.colorWrite = false;
     }
-    if (a.map !== base.map || !a.color.equals(base.color)) {
-      a.map = base.map; a.color.copy(base.color); a.needsUpdate = true;
-    }
+    _suivreCartes(a, base);
     if (e.sol.material !== a) { e.sol.material = a; e.sale = true; }
   }
 
@@ -6982,8 +7116,7 @@
     e.tete.position.set(x, e.oeil + dy, z);
     e.tete.rotation.set(e.tangage, -cap, 0);
     e.sol.position.set(c.x, 0, c.z);
-    // Le carré de sol suit le centre de la scène : le motif est décalé d'autant pour rester fixe sous les pieds.
-    e.grain.offset.set(c.x / GRAIN_METRES, -c.z / GRAIN_METRES);
+    _calerCarre();   // le carré suit le centre de la scène, le motif reste fixe sous les pieds
     e.plafond.position.set(c.x, e.hauteur, c.z);
     _placerVoisins(c);
     e.avatar.position.set(x, 0.45 + sol, z);
@@ -7266,7 +7399,7 @@
     const cote = 2.4 * r;
     e.sol.scale.set(cote, 1, cote);
     e.plafond.scale.set(cote, 1, cote);
-    e.grain.repeat.set(cote / GRAIN_METRES, cote / GRAIN_METRES);
+    _calerCarre();
     _lampeGreffe();
     e.sale = true;
   }
@@ -12853,8 +12986,6 @@
       if (e.sol) e.sol.geometry.dispose();
       if (e.avatar) e.avatar.geometry.dispose();
       if (e.mats) Object.keys(e.mats).forEach(function (k) { e.mats[k].dispose(); });
-      if (e.grain) e.grain.dispose();
-      if (e.grainMonde) e.grainMonde.dispose();
       if (e.moellons) e.moellons.dispose();
       (e.texStructures || []).forEach(function (t) { t.dispose(); });
       if (e.equipe) _viderEquipe();
@@ -13397,12 +13528,51 @@
         lits: lits(m.map.image) };
     });
     r.materiaux.paroi.pierre = !!e.texPierre && e.mats.paroi.map === e.texPierre.couleur;
-    // Sol et plafond (🧱 coupé : noirs, sans carte).
+    // Sol et plafond (🧱 coupé : noirs, sans carte ni relief). `motif` : "sol" | "ciel" ; `calage` : coordonnées de
+    // texture rendues au coin (x0, z0) du carré, à comparer à (x0, z0) / SOL.m (_calerCarre).
     r.sols = {};
+    r.msSol = Math.round(e.msSol || 0);
+    r.uvParMetre.sol = 1 / SOL.m;
+    const C = e.cartesSol;
     ["sol", "plafond", "solGalerie", "plafondGalerie"].forEach(function (k) {
-      const m = e.mats[k];
-      r.sols[k] = { carte: !!m.map, couleur: "#" + m.color.getHexString() };
+      const m = e.mats[k], q = r.sols[k] = { carte: !!m.map, relief: !!m.normalMap, couleur: "#" + m.color.getHexString() };
+      if (!m.map || !C) return;
+      q.motif = m.map.image === C.sol.carre.couleur.image ? "sol" : m.map.image === C.ciel.carre.couleur.image ? "ciel" : "?";
+      q.taille = m.map.image.width;
+      q.memeCalage = m.map.repeat.equals(m.normalMap.repeat) && m.map.offset.equals(m.normalMap.offset);
+      q.repetition = [m.map.repeat.x, m.map.repeat.y];
     });
+    if (C) {
+      const cote = e.sol.scale.x, x0 = e.sol.position.x - cote / 2, z0 = e.sol.position.z + cote / 2;
+      const t = C.sol.carre.couleur;
+      // Coin (u, v) = (0, 0) du plan unité : x = x0, z = z0 (v du plan opposé à z).
+      r.calage = { rendu: [t.offset.x, t.offset.y], attendu: [x0 / SOL.m, z0 / SOL.m], cote: cote };
+      // Motif : luminance moyenne, écart type et 95e centile (0 à 255), luminance relative du 5e centile (WCAG),
+      // couture (écart moyen entre la dernière et la première rangée, et colonne, rapporté à l'écart moyen entre deux
+      // rangées voisines : ~1 = sans couture), pente du relief.
+      r.motifs = {};
+      [["sol", C.sol.carre], ["ciel", C.ciel.carre]].forEach(function (q) {
+        const cv = q[1].couleur.image, n = cv.width, d = cv.getContext("2d").getImageData(0, 0, n, n).data;
+        const L = new Float32Array(n * n);
+        let s = 0, s2 = 0, bord = 0, dedans = 0;
+        for (let p = 0; p < n * n; p++) {
+          L[p] = 0.2126 * d[p * 4] + 0.7152 * d[p * 4 + 1] + 0.0722 * d[p * 4 + 2];
+          s += L[p]; s2 += L[p] * L[p];
+        }
+        for (let i = 0; i < n; i++) {
+          bord += Math.abs(L[i] - L[(n - 1) * n + i]) + Math.abs(L[i * n] - L[i * n + n - 1]);
+          dedans += Math.abs(L[(n >> 1) * n + i] - L[((n >> 1) - 1) * n + i]) +
+            Math.abs(L[i * n + (n >> 1)] - L[i * n + (n >> 1) - 1]);
+        }
+        const moy = s / (n * n), tri = Float32Array.from(L).sort(), lin = function (v) {
+          v /= 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        };
+        r.motifs[q[0]] = { moyenne: +moy.toFixed(1), ecart: +Math.sqrt(s2 / (n * n) - moy * moy).toFixed(1),
+          p95: +tri[Math.floor(n * n * 0.95)].toFixed(1), lum5: +lin(tri[Math.floor(n * n * 0.05)]).toFixed(4),
+          couture: +(bord / dedans).toFixed(2), pente: pente(q[1].normale.image), taille: n };
+      });
+    }
     r.materiaux.paroi.repetition = [e.mats.paroi.map.repeat.x, e.mats.paroi.map.repeat.y];
     if (e.mats.paroi.normalMap) {
       r.materiaux.paroi.repetitionRelief = [e.mats.paroi.normalMap.repeat.x, e.mats.paroi.normalMap.repeat.y];

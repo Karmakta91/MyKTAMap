@@ -348,7 +348,7 @@ mode suivi / libre reste visible hors de la tuile par une pastille ronde 🧭 / 
     monde).
   - **Matériaux** : parois en moellons de calcaire taillés, à la manière des galeries consolidées des carrières (blocs
     de 40 × 25 cm, assises horizontales à joints décalés, teinte par bloc, mortier plus sombre ou plus clair, grain ;
-    motif de 1,6 × 1 m répété en mètres, canvas), sol et plafond au grain calcaire (la paroi, plus claire et plus
+    motif de 1,6 × 1 m répété en mètres, canvas), sol et plafond calcaire (la paroi, plus claire et plus
     grise, s'en détache), liseré au sol de 15 cm à la couleur de la légende. Révisé depuis (retour de KARMA) : 🧱
     Textures activé, les parois passent en pierre de taille (assises appareillées, joints irréguliers, relief) ;
     les moellons restent le rendu 🧱 coupé (`tracking.md` § Scène galerie). **Révisé le 04/11/2026** (décision de
