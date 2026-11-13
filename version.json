@@ -1,8 +1,8 @@
 {
-  "version": "v2.25.0",
-  "released": "2026-11-11",
+  "version": "v2.26.0",
+  "released": "2026-11-13",
   "notes": [
-    "🏛️ Nouveau : l'arc de soutènement, et trois types de points (ossuaire, outil de carrier, fontis), aussi en vue 3D.",
-    "🔎 « Vérifier le plan » repère les erreurs qui trompent l'itinéraire ; en vue 3D, ⭐ Favoris et Annuler / Rétablir en haut de l'écran."
+    "🧊 Vue 3D plus vraie : sol et ciel de carrière texturés, ombres et nuances de la pierre, arcs en pierre de taille, voiture, réglage Textures HD.",
+    "🌫️ En 3D, les niveaux voisins se devinent en transparence ; la mini-carte grandit en paysage."
   ]
 }
