@@ -2046,6 +2046,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   pierre, remblais, éboulis) est dessinée une fois par page (`_texturesPeintes`, canvas gardés dans `_appareils`,
   ~15 à 30 ms au PC, ~100 ms au téléphone ralenti × 4), la pierre seulement à la première paroi texturée, remblais
   et éboulis à la première zone de leur type ; `KtaVue3D.textures()` rend ces temps (checkup § 24).
+- **Nuance de roche par structure** (même interrupteur 🧱, `NUANCE_ROCHE`, `_nuanceRoche`) : chaque pilier, front ou
+  type perso en roche reçoit une teinte à lui — celle de sa masse (blanc, `TEINTE_MASSE_2`) assombrie de 0 à 16 % et
+  tirée de ± 6 % vers le chaud ou le froid — posée par sommet comme la 2e masse : deux piliers voisins ne sortent
+  plus du même moule, la 2e masse reste reconnaissable (son écart à la 1re est sans commune mesure). ⚠️ contrat :
+  tirée de la position du premier sommet de la structure (px du plan, comme l'origine du motif), jamais de
+  `Math.random` : la même à chaque reconstruction de tuile, à chaque ouverture, sur chaque appareil. Murs en
+  parpaing sans nuance (un appareil régulier). Aucun coût : une couleur de sommet déjà écrite.
 - **Ombre de contact** (même interrupteur 🧱, `OMBRE_CONTACT`) : au pied et en tête des piliers, des fronts, des murs
   et des parois des galeries et des tubes, la teinte descend à 50 % au contact du sol et du plafond et revient à
   100 % en 28 cm (au plus le tiers de la hauteur) : les volumes tiennent au sol. ⚠️ contrat (décision batterie) :
@@ -2746,7 +2753,8 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   (déplacement, portée), pièces des galeries à la même projection, noirs et jamais dessinés 🧱 coupé, reprise du
   contexte, temps du premier dessin (téléphone ralenti × 4) ; ombre de contact : teinte × 0,5 au pied et en tête des
   piliers (1re et 2e masse), du mur et des parois, pleine à 28 cm, trois bandes par face, texture inchangée, rien 🧱
-  coupé ; tuile ⚙️
+  coupé ; nuance de roche : deux piliers de 1re masse différents, discrète, 2e masse reconnaissable, stable après
+  reconstruction et réouverture ; tuile ⚙️
   au-dessus de la colonne ✏️, curseurs entiers, sélecteur de niveau hors de la colonne, de la tuile et de la grille
   (portrait et paysage) ; ▼ en vue d'édition → la 3D au −1 sans passage, carte et tracker au 0, tracé dessiné au −1,
   retour à hauteur d'yeux dégagé, plan à un niveau sans sélecteur ; vue d'édition, zoom et inclinaison retrouvés à la

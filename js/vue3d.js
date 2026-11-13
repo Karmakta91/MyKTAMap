@@ -226,10 +226,15 @@
   const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 7, grappes: 40,
     grain: 0.07, relief: 4, graine: 53 };
   // 2e masse (pilier-2, front-2) : la même roche, plus chaude (teinte par sommet multipliée par la texture, même
-  // matériau et même maillage que la 1re, blanche). 🩸 Sans elle, 🧱 activé, 1re et 2e masse étaient la même roche :
+  // matériau et même maillage que la 1re, blanche ; chacune nuancée par structure : NUANCE_ROCHE). 🩸 Sans elle, 🧱 activé, 1re et 2e masse étaient la même roche :
   // un pilier passé de l'une à l'autre ne changeait rien dans la scène. Pas de second matériau : préparé au premier
   // pilier de 2e masse, il retardait d'une image le changement de niveau sous le fondu (WebKit).
   const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f0b98a";
+  // Nuance de roche par structure (🧱 activé, _nuanceRoche) : deux piliers voisins ne sortent plus du même moule. La
+  // teinte de la structure (blanc, ou TEINTE_MASSE_2) est assombrie de 0 à `clair` et tirée vers le chaud ou le
+  // froid d'au plus `chaud` (une composante abaissée : une couleur de sommet ne dépasse jamais 1). Discrète exprès :
+  // l'écart entre deux piliers reste loin de celui qui sépare la 1re de la 2e masse.
+  const NUANCE_ROCHE = { clair: 0.16, chaud: 0.06 };
   // Ombre de contact (🧱 activé) : au pied et en tête des piliers, des fronts, des murs et des parois des galeries
   // et des tubes, la teinte descend à `force` au contact du sol et du plafond et revient à 1 en `haut` m — les
   // volumes tiennent au sol au lieu d'y flotter. ⚠️ contrat (décision batterie) : posée PAR SOMMET, dans la couleur
@@ -1297,6 +1302,22 @@
     return (e.itiCouleurs = { ruban: ruban, lisere: lisere, hexRuban: j.interaction, hexLisere: j.fond });
   }
 
+  // Teinte d'une structure en roche brute : celle de sa masse (blanc, TEINTE_MASSE_2), nuancée (NUANCE_ROCHE).
+  // ⚠️ contrat : tirée de la position de son premier sommet (px du plan, comme l'origine du motif : _origineMotif),
+  // jamais de Math.random — la même à chaque reconstruction de tuile, à chaque ouverture et sur chaque appareil.
+  function _nuanceRoche(s) {
+    const e = _e, N = NUANCE_ROCHE, p = s.points && s.points[0];
+    const base = MASSE_2[s.type] ? (e.teinte2 || (e.teinte2 = new THREE.Color(TEINTE_MASSE_2))) : BLANC;
+    if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return base;
+    let h = (Math.imul(Math.round(p.x), 73856093) ^ Math.imul(Math.round(p.y), 19349663)) >>> 0;
+    h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
+    h = Math.imul(h ^ (h >>> 13), 3266489917) >>> 0;
+    h ^= h >>> 16;
+    const k = 1 - N.clair * (h & 0xffff) / 65535, c = N.chaud * ((h >>> 16) / 65535 * 2 - 1);
+    return { r: base.r * k * (c < 0 ? 1 + c : 1), g: base.g * k * (1 - Math.abs(c) * 0.4),
+      b: base.b * k * (c > 0 ? 1 - c : 1) };
+  }
+
   // ⚠️ contrat (décision produit) : un mur (polygone ou en ligne) est toujours SOUS un pilier ou un front de son
   // niveau. Là où ils se chevauchent, le pilier ou le front l'emporte : le mur monte à HAUTEUR_MUR de la hauteur et
   // son matériau est reculé en profondeur (polygonOffset), d'où aucun scintillement sur les faces confondues et
@@ -1340,8 +1361,7 @@
     for (let i = 0; i < t.s.length; i++) {
       if (t.s[i].type === "arc") { _arcSoutenement(opaque, t.s[i], mx); continue; }
       const s = t.s[i], tex = _e.textures ? _textureDe(s.type) : null;
-      const col = !tex ? _couleur("structures", s.type) : tex === "roche" && MASSE_2[s.type]
-        ? (_e.teinte2 || (_e.teinte2 = new THREE.Color(TEINTE_MASSE_2))) : BLANC;
+      const col = !tex ? _couleur("structures", s.type) : tex === "roche" ? _nuanceRoche(s) : BLANC;
       const m = tex ? (tex === "roche" ? ROCHE : PARPAING).m : undefined;
       const lot = tex === "roche" ? roche : tex === "parpaing" ? parpaing : _estMur(s.type) ? murs : opaque;
       const hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;

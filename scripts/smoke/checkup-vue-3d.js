@@ -9270,7 +9270,9 @@ async function sectionFichesReglage(nav) {
 // déplacement, après un changement de portée), pièces des galeries à la même projection ; 🧱 coupé : noirs, sans
 // carte ni relief, aucun dessin ; reprise du contexte WebGL ; temps du premier dessin (téléphone ralenti × 4 sous
 // Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied et en tête des piliers, du mur et des
-// parois, pleine à 0,28 m, trois bandes par face, texture inchangée, rien 🧱 coupé.
+// parois, pleine à 0,28 m, trois bandes par face, texture inchangée, rien 🧱 coupé. Nuance de roche par structure
+// (NUANCE_ROCHE) : deux piliers voisins différents, discrète, 2e masse reconnaissable, stable (tuiles refaites, vue
+// rouverte).
 async function sectionTexturesSol(nav) {
   const chromiumNav = nav.browserType().name() === "chromium";
   const nom = "§ 24 quater ";
@@ -9365,7 +9367,8 @@ async function sectionTexturesSol(nav) {
       const ombres = function (famille, m) {
         let ctx = null;
         const deg = K.greffer({ nom: "v3d-textures-ombre", scene: function (c) { ctx = c; } });
-        const h = K.etat().hauteur, o = { sommets: 0, contact: [1, 0], plein: [1, 0], entre: [1, 0], ys: {}, v: 0, haut: h };
+        const h = K.etat().hauteur, o = { sommets: 0, contact: [1, 0], plein: [1, 0], entre: [1, 0], ys: {}, v: 0,
+          haut: h, pleins: [] };
         let racine = ctx.groupe;
         while (racine.parent) racine = racine.parent;
         racine.traverse(function (me) {
@@ -9378,6 +9381,9 @@ async function sectionTexturesSol(nav) {
             const y = p[i * 3 + 1], k = c[i * 3] / 255, d = Math.min(y, h - y);
             const q = d < 0.001 ? o.contact : d > 0.2799 ? o.plein : o.entre;
             q[0] = Math.min(q[0], k); q[1] = Math.max(q[1], k);
+            // Teintes pleines (hors ombre) : une par structure nuancée, [r, v, b] sur 255.
+            const cle = c[i * 3] + "," + c[i * 3 + 1] + "," + c[i * 3 + 2];
+            if (q === o.plein && o.pleins.indexOf(cle) < 0) o.pleins.push(cle);
             o.ys[y.toFixed(2)] = (o.ys[y.toFixed(2)] || 0) + 1;
             o.v = Math.max(o.v, Math.abs(uv[i * 2 + 1] - y / m));
             o.sommets++;
@@ -9397,6 +9403,13 @@ async function sectionTexturesSol(nav) {
       // Ombre de contact : roche (piliers de 1re et 2e masse), parpaing (mur à 98 % de la hauteur).
       r.ombre = { roche: ombres("opaque", 3), mur: ombres("murs", 1), teintes: t0.teintes,
         sommets: t0.materiaux.parpaing.couleursSommets && t0.materiaux.roche.couleursSommets };
+      // Nuance par structure : relue après une reconstruction des tuiles (🧱 basculé deux fois) et une réouverture.
+      r.nuance = { depart: r.ombre.roche.pleins.slice().sort() };
+      K.basculerTextures(); await pause(150);
+      K.basculerTextures(); await pause(250);
+      r.nuance.refaite = ombres("opaque", 3).pleins.slice().sort();
+      await ouvrir("structures", 0, 0);
+      r.nuance.rouverte = ombres("opaque", 3).pleins.slice().sort();
       // Couleurs de référence : sable calcaire du sol (luminance relative), liseré de l'itinéraire (jeton --kta-fond
       // du thème sombre).
       r.defaut.lisere = (K.etat().itineraire || {}).couleurLisere || null;
@@ -9500,12 +9513,15 @@ async function sectionTexturesSol(nav) {
       R.mixte);
     // Ombre de contact (vue3d.js > OMBRE_CONTACT : 0,28 m, teinte × 0,5 au contact ; 0,5 × 255 = 128).
     const O = R.ombre, pres = function (a, b) { return Math.abs(a - b) < 0.012; };
-    // Pilier de 1re masse : blanc (1) ; de 2e masse : sa teinte (rouge < 1), ombrée dans la même proportion.
-    verifier(O.sommets && pres(O.roche.contact[1], 0.5) && pres(O.roche.contact[0], 0.5 * O.roche.plein[0]) &&
-      O.roche.plein[1] === 1 && O.roche.plein[0] < 0.95 && O.roche.entre[1] === 0 && O.roche.v < 1e-4,
-    nom + "ombre de contact des piliers : teinte × 0,5 au sol et au plafond (1re masse " + O.roche.contact[1].toFixed(2) +
-      ", 2e masse " + O.roche.contact[0].toFixed(2) + " pour " + O.roche.plein[0].toFixed(2) + "), pleine à 0,28 m, " +
-      "texture inchangée (v = y / 3 m ; " + O.roche.sommets + " sommets de faces)", O.roche);
+    // Rouge de la teinte : la plus claire (pilier de 1re masse, nuancé) et la plus sombre (2e masse), ombrées dans
+    // la même proportion.
+    verifier(O.sommets && pres(O.roche.contact[1], 0.5 * O.roche.plein[1]) &&
+      pres(O.roche.contact[0], 0.5 * O.roche.plein[0]) && O.roche.plein[1] <= 1 && O.roche.plein[1] > 0.8 &&
+      O.roche.entre[1] === 0 && O.roche.v < 1e-4,
+    nom + "ombre de contact des piliers : teinte × 0,5 au sol et au plafond (" + O.roche.contact[1].toFixed(2) +
+      " pour " + O.roche.plein[1].toFixed(2) + ", " + O.roche.contact[0].toFixed(2) + " pour " +
+      O.roche.plein[0].toFixed(2) + "), pleine à 0,28 m, texture inchangée (v = y / 3 m ; " + O.roche.sommets +
+      " sommets de faces)", O.roche);
     verifier(Object.keys(O.roche.ys).sort().join() === "0.00,0.28," + (O.roche.haut - 0.28).toFixed(2) + "," +
       O.roche.haut.toFixed(2), nom + "faces des piliers en trois bandes (sol, 0,28 m, plafond − 0,28 m, plafond)",
     O.roche.ys);
@@ -9519,6 +9535,17 @@ async function sectionTexturesSol(nav) {
       (O.coupe.couleurs.opaque || []).every(function (c) { return /^#[0-9a-f]{6}$/.test(c); }) &&
       (O.coupe.couleurs.opaque || []).length <= 3,
     nom + "🧱 coupé : aucune ombre de contact, couleurs de la légende seules", O.coupe);
+    // Nuance de roche par structure (vue3d.js > NUANCE_ROCHE : au plus − 16 %, ± 6 % de chaleur). Trois structures
+    // en roche : deux piliers de 1re masse, un de 2e masse (bleu / rouge < 0,45 : la teinte chaude de la 2e masse).
+    const N = R.nuance, rvb = N.depart.map(function (c) { return c.split(",").map(Number); });
+    const masse1 = rvb.filter(function (c) { return c[2] / c[0] > 0.8; });
+    const masse2 = rvb.filter(function (c) { return c[2] / c[0] < 0.45; });
+    verifier(rvb.length === 3 && masse1.length === 2 && masse2.length === 1 &&
+      masse1.every(function (c) { return Math.min(c[0], c[1], c[2]) >= 255 * 0.84 * 0.94 - 2; }),
+    nom + "nuance par structure : deux piliers de 1re masse de teintes différentes, discrètes (au plus − 16 % et " +
+      "± 6 %), la 2e masse toujours reconnaissable", N.depart);
+    verifier(JSON.stringify(N.depart) === JSON.stringify(N.refaite) && JSON.stringify(N.depart) === JSON.stringify(N.rouverte),
+      nom + "nuance stable : la même après reconstruction des tuiles et après réouverture", N);
     const d = R.defaut.dessins;
     verifier(d.sol >= 0 && d.ciel >= 0, nom + "premier dessin : sol " + d.sol + " ms, ciel " + d.ciel +
       " ms (cette ouverture : " + R.defaut.msSol + " ms)", d);
