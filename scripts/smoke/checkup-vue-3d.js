@@ -2038,11 +2038,22 @@ async function sectionPleinJour(page) {
   // Faces intérieures des piliers nord (à gauche) et sud (à droite), 6 m devant (à l'écran du téléphone aussi).
   const r = {};
   r.nuit = await lire();
-  const FACES = await projeter([[6, 2, -1.49], [6, 2, 1.49]]);
-  r.nuit.px = await lumiere(FACES, 4);
+  // Une plage de chaque face, pas un point : douze carrés de 9 px, de 6 à 9 m devant et de 1,3 à 2 m de haut — le
+  // dessin de la roche (fissure, passe de pic) ne pèse plus sur la mesure. → [gauche, droite], au dixième.
+  const PLAGE = [];
+  [-1.49, 1.49].forEach(function (z) {
+    [6, 7, 8, 9].forEach(function (x) { [1.3, 1.65, 2].forEach(function (y) { PLAGE.push([x, y, z]); }); });
+  });
+  const FACES = await projeter(PLAGE);
+  const faces = async function () {
+    const px = await lumiere(FACES, 4), n = px.length / 2;
+    const moy = function (l) { return +(l.reduce(function (s, v) { return s + v; }, 0) / l.length).toFixed(1); };
+    return [moy(px.slice(0, n)), moy(px.slice(n))];
+  };
+  r.nuit.px = await faces();
   await page.evaluate(function () { window.KtaVue3D.reglerPleinJour(true); });
   r.jour = await lire();
-  r.jour.px = await lumiere(FACES, 4);
+  r.jour.px = await faces();
   await capture(page, "plein-jour-yeux");
   // Nord calibré à 180° : le soleil passe de l'autre côté.
   await page.evaluate(function () {
@@ -2051,7 +2062,7 @@ async function sectionPleinJour(page) {
     window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
   });
   r.sud = await lire();
-  r.sud.px = await lumiere(FACES, 4);
+  r.sud.px = await faces();
   // Lampe en Plein jour : active, réglable (25 % = discrète), curseurs actifs.
   r.lampe = await page.evaluate(function () {
     const K = window.KtaVue3D, e = K.etat().eclairage;
