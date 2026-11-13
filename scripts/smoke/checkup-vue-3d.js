@@ -13201,6 +13201,66 @@ async function sectionMiniCarte(nav) {
       nom + "agrandie sur un petit téléphone, guidage actif : entre le bandeau et le pavé, dans l'écran", ga);
     await page.evaluate(function () { window.__mcEl().click(); });
     await page.setViewportSize({ width: 1200, height: 800 });
+    // ── Arc de soutènement (6 m à l'ouest, en travers de la galerie) : trait rayé du canon, au-dessus du tracé qu'il
+    // traverse (structures.js > ktaArcsAuDessus). Pixels de la colonne de l'arc classés à la couleur la plus proche ──
+    const arc = await page.evaluate(async function () {
+      const P = window.__fxP, R = window.ktaResolveStyle;
+      await window.KtaVue3D.fermer();
+      // Itinéraire du guidage retiré : son ruban passerait sur le croisement mesuré.
+      window.setRoads(window.getRoads().filter(function (q) { return q.type !== "itinerary"; }));
+      window.setStructures([{ uid: "st_mc_p", type: "pilier-1", level: 0, points: [P(4.5, 3.5), P(7.5, 3.5),
+        P(7.5, 6.5), P(4.5, 6.5)] }, { uid: "st_mc_arc", type: "arc", level: 0, points: [P(-26, -3), P(-26, 3)] }]);
+      await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+      for (let i = 0; i < 30; i++) {   // rayon au plus court (10 m) : l'arc sur plusieurs pixels
+        window.__mcEl().dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -100 }));
+      }
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+      await window.__fxImages(20);
+      const sa = R("structures", "arc", { flat: true }), st = R("traces", "principal", { flat: true });
+      const hex = function (h) {
+        const v = parseInt(String(h).replace("#", ""), 16);
+        return [v >> 16 & 255, v >> 8 & 255, v & 255];
+      };
+      const refs = { arc: hex(sa.color), rayure: hex(sa.rayures && sa.rayures.color), trace: hex(st.color) };
+      const m = window.__mc(), cv = window.__mcEl().querySelector("canvas"), S = cv.width;
+      const k = S / (2 * m.rayonMontre), u = Math.round(S / 2 - 6 * k), v0 = S / 2;
+      const px = cv.getContext("2d").getImageData(u - 1, 0, 3, S).data;
+      const genre = function (i) {
+        let best = null, dmin = Infinity;
+        for (const g in refs) {
+          const c = refs[g], d = Math.hypot(px[i] - c[0], px[i + 1] - c[1], px[i + 2] - c[2]);
+          if (d < dmin) { dmin = d; best = g; }
+        }
+        return dmin < 60 ? best : null;
+      };
+      const r = { formes: m.formes, rayon: m.rayonMontre, refs: refs, sur: { arc: 0, rayure: 0, trace: 0 },
+        long: { arc: 0, rayure: 0, trace: 0 } };
+      for (let y = Math.round(v0 - 2.5 * k); y <= Math.round(v0 + 2.5 * k); y++) {
+        const zone = Math.abs(y - v0) <= 1 ? r.sur : r.long;
+        // Sur le tracé, la colonne du milieu seule : l'arc (≈ 2 px) n'en couvre pas trois.
+        for (let c = zone === r.sur ? 1 : 0; c < (zone === r.sur ? 2 : 3); c++) {
+          const g = genre((y * 3 + c) * 4);
+          if (g) zone[g]++;
+        }
+      }
+      return r;
+    });
+    await capture(page, "minicarte-arc");
+    if (CAPTURES) {
+      await page.evaluate(function () { window.__mcEl().click(); });
+      await page.waitForTimeout(400);
+      await capture(page, "minicarte-arc-agrandie");
+      await page.evaluate(function () { window.__mcEl().click(); });
+    }
+    await page.evaluate(function () {
+      for (let i = 0; i < 8; i++) {   // rayon rendu (≈ 30 m, 10 × 1,15⁸) pour le coût mesuré ensuite
+        window.__mcEl().dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 100 }));
+      }
+    });
+    verifier(arc.formes === 5 && arc.long.rayure > 0 && arc.long.arc > 0,
+      nom + "arc de soutènement : trait bleu rayé de rouge (canon, comme la carte)", arc);
+    verifier(arc.sur.arc + arc.sur.rayure > 0 && arc.sur.trace === 0,
+      nom + "arc de soutènement au-dessus du tracé qu'il traverse (comme la carte)", arc.sur);
     // ── Coût : 9 000 piliers fictifs, fond à 30 m, 100 m et agrandi ; mises à jour en marchant. Chromium : processeur
     // ralenti x4 (ordre de grandeur d'un téléphone) ──
     const cdp = nav.browserType().name() === "chromium" ? await t.ctx.newCDPSession(page) : null;

@@ -12318,11 +12318,13 @@
       n++;
     });
     ctx.setLineDash([]);
-    // Ordre de la carte : zones, puis structures, puis tracés par-dessus.
-    ["zones", "structures", "traces"].forEach(function (cat) {
+    // Ordre de la carte : zones, puis structures, puis tracés par-dessus, puis les structures rayées (arc) au-dessus
+    // des tracés qu'elles traversent (structures.js > ktaArcsAuDessus).
+    ["zones", "structures", "traces", "rayees"].forEach(function (passe) {
       D.formes.forEach(function (f) {
-        if (f.voisin || f.cat !== cat || f.x1 < cx - r || f.x0 > cx + r || f.z1 < cz - r || f.z0 > cz + r) return;
-        const s = style(cat, f.cle), p = f.pts;
+        if (f.voisin || f.x1 < cx - r || f.x0 > cx + r || f.z1 < cz - r || f.z0 > cz + r) return;
+        const cat = f.cat, s = style(cat, f.cle), p = f.pts, raye = !f.ferme && !!(s.rayures && s.rayures.color);
+        if (passe === "rayees" ? !raye : (cat !== passe || raye)) return;
         ctx.beginPath();
         ctx.moveTo(p[0], p[1]);
         for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
@@ -12336,6 +12338,13 @@
           ctx.strokeStyle = s.color || s.fillColor || "#888888";
           ctx.lineWidth = cat === "traces" ? trait : trait * 0.6;
           ctx.stroke();
+          if (raye && typeof window.ktaPeindreRayures === "function") {
+            // 🩸 Tirets de ktaPeindreRayures en pixels (3 px au moins) : repère identité, le chemin déjà construit
+            // garde sa place ; en mètres, un tiret de 3 m couvrirait l'arc entier.
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            window.ktaPeindreRayures(ctx, s.rayures.color, ctx.lineWidth * k, ctx.globalAlpha);
+            ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
+          }
         }
         n++;
       });
