@@ -1813,11 +1813,29 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   après la vue) s'affiche **par-dessus** la vue ; confirmée, `goTo` émet `kta:avantChangementPlan` avant tout
   chargement et la vue se ferme sans « Je suis ici ? » (`_fermerPourPlan` : la liaison recale elle-même le
   tracker) ; de même pour ➜ de la section liaisons de la fiche. **Véhicule**
-  (`vehicule`) : voiture simplifiée (caisse, habitacle à vitres sombres, quatre roues ; `ACCES_DIM.vehicule*` =
+  (`vehicule`, `_vehicule`, `VEHICULE`) : petite voiture à hayon faite en code (`ACCES_DIM.vehicule*` =
   3,2 × 1,4 × 1,3 m, une citadine), dans le tube du côté du POI gardée entre les parois (demi-emprise 0,7 m), le
-  long de l'axe ;
-  **arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
-  survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes`).
+  long de l'axe, avant vers +s. **Forme** : la caisse est une suite de sections en travers (`_sectionVehicule`,
+  douze points : bas de caisse rentré, flanc galbé, ceinture, vitres rentrées vers le toit) posées aux stations
+  d'un profil (`VEHICULE.profil` : bouclier, capot, pare-brise incliné, toit, lunette inclinée, hayon) et à
+  celles des **passages de roue** (arche en trapèze découpée dans le bas de caisse), reliées de proche en proche ;
+  normales lissées par sommet, arêtes de plus de 50° gardées vives. Vitres, phares, calandre et feux : plaques
+  posées à 6 mm de la tôle. Roues à seize pans, flanc de pneu et jante à branches. ⚠️ contrat : **toute la forme
+  tient dans le rectangle de l'obstacle** et sous la hauteur (retrait de 12 mm, boîte des sommets dans
+  `v.trace.boite`) ; `v.trace` garde `long`, `large`, `haut`. **Matière** : 🧱 coupé, la même silhouette en
+  aplats dans le lot opaque du volume ; 🧱 activé, un lot `tole` (famille « vehicule », matériau `_matTole`) —
+  carte claire dessinée dans un canvas (`TOLE`, `_toleUsee` : peinture passée en plaques, coulures, piqûres,
+  relief à peine bosselé) qui module la couleur des sommets, et voile de poussière par triangle (plus dense vers le
+  sol et sur les faces à plat, moindre sur les vitres et les pneus). Choix : une seule carte pour toute la voiture,
+  vitres et pneus compris, plutôt qu'un matériau par matière — le lot `tole` remplace le lot opaque du volume,
+  **aucun appel de dessin de plus**, et les Textures HD suivent par le mécanisme commun (512 px, grain de détail)
+  sans refaire la géométrie. Coût mesuré (huit voitures dans le champ, PC) : 662 triangles par voiture (176 pour
+  les deux pavés et les quatre prismes d'avant), 18 appels de dessin avant comme après, une carte et son relief de
+  plus pour la vue (0,7 Mo, 2,8 Mo en 512 px), premier dessin 12 à 25 ms (34 à 38 ms en 512 px), temps par image
+  0,5 → 0,6 ms 🧱 activé, 0,4 ms inchangé 🧱 coupé.
+  **Arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
+  survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes` : maillage lu sur la scène dans
+  l'emprise, triangles bornés, 🧱 coupé / activé / Textures HD).
 - **Formes de patrimoine** (`galerieEmprise.js > ACCES`, `BLOQUE`, `ACCES_DIM.ossuaire*` / `outil*` ; `vue3d.js >
   _ossuaire`, `_outilCarrier`, `_fontis`, `OSSUAIRE`, `OUTIL`, `FONTIS` ; décision produit) : faites en code (lot
   opaque, couleurs par sommet, aucune texture ni fichier), panneau du POI gardé. **Ossuaire** (`ossuaire`, forme de

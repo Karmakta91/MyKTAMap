@@ -408,12 +408,30 @@
   // point a une liaison, éteint (COULEUR_PORTAIL_ETEINT) sinon.
   const PORTAIL = { l: 1, h: 2, plafond: 0.1, bord: 0.09, ep: 0.08, recul: 0.005 };
   const COULEUR_PORTAIL_ETEINT = "#3d4048";   // couleur de la scène : un cadre de fer sombre
-  // Véhicule (vehicule) : voiture simplifiée, dimensions et obstacle dans KtaGalerie (ACCES_DIM.vehicule*) ; caisse
-  // de `garde` m au-dessus du sol jusqu'à `caisse` m, habitacle jusqu'au toit (vehiculeH, borné sous le plafond),
-  // de `hab` de la longueur, en retrait de `retrait` m sur les côtés ; quatre roues de `roue` m de rayon et
-  // `roueL` m de large, à 0,2 m des bouts. Couleurs de la scène, sobres (pas de la charte de l'UI).
-  const VEHICULE = { garde: 0.2, caisse: 0.8, hab: 0.6, retrait: 0.1, roue: 0.28, roueL: 0.18,
-    cotes: 12, carrosserie: "#59616b", vitre: "#1d2228", pneu: "#1b1b1b" };
+  // Véhicule (vehicule, _vehicule) : petite voiture à hayon, dimensions et obstacle dans KtaGalerie
+  // (ACCES_DIM.vehicule*). ⚠️ contrat : toute la forme tient dans le rectangle au sol de l'obstacle et sous
+  // vehiculeH (borné sous le plafond) — `marge` m de retrait sur chaque face. Caisse de `garde` m au-dessus du sol
+  // jusqu'à la ceinture (`caisse` m), habitacle jusqu'au toit, flancs rentrés de `devers` m en haut des vitres ;
+  // quatre roues de `roue` m de rayon et `roueL` m de large à `cotes` pans, axes à 0,2 m + un rayon des bouts,
+  // dans des passages de roue de `passage` m de jeu. Profil (`profil`) : stations de l'avant (u = 1) à l'arrière
+  // (u = −1), en parts de la demi-longueur — [u, demi-largeur (part), bas, ceinture (m pour une ceinture de
+  // `caisse`), habitacle (0 : capot ou coffre, 1 : toit)] ; les passages de roue ajoutent leurs stations.
+  // Couleurs de la scène, sobres (pas de la charte de l'UI) ; 🧱 activé, la poussière (`poussiere`) gagne le bas de
+  // caisse (`voile` : part au sol, part au toit) et les faces à plat (`depot`), moins les vitres et les pneus.
+  const VEHICULE = { garde: 0.2, caisse: 0.8, roue: 0.28, roueL: 0.18, cotes: 16, marge: 0.012, devers: 0.11,
+    passage: 0.06,
+    profil: [[1, 0.8, 0.34, 0.62, 0], [0.965, 0.93, 0.24, 0.67, 0], [0.9125, 0.98, 0.2, 0.7, 0],
+      [0.4875, 1, 0.2, 0.77, 0], [0.4, 1, 0.2, 0.8, 0], [0.1, 1, 0.2, 0.8, 1], [-0.4875, 1, 0.2, 0.8, 1],
+      [-0.9125, 0.98, 0.2, 0.82, 0], [-0.965, 0.93, 0.24, 0.7, 0], [-1, 0.82, 0.34, 0.6, 0]],
+    carrosserie: "#5a6a72", bas: "#2b2e32", dessous: "#17181a", vitre: "#1d2228", pneu: "#1b1b1b",
+    jante: "#8d9196", moyeu: "#4a4d52", phare: "#d8d2bc", feu: "#7a2a22", poussiere: "#b3a585",
+    voile: [0.26, 0.03], depot: 0.08 };
+  // Tôle du véhicule (🧱 activé ; _toleUsee) : carte claire qui module la couleur des sommets — peinture passée en
+  // plaques larges, coulures verticales, piqûres de rouille, grain ; relief à peine bosselé. Motif de `m` m,
+  // coordonnées de texture en motifs. Une seule carte pour toute la voiture, vitres et pneus compris (la
+  // poussière ne choisit pas) : aucun appel de dessin de plus que le lot opaque qu'elle remplace.
+  const TOLE = { m: 1, px: 256, couleur: "#f2eee4", plaques: 0.16, coulures: 0.07, piqures: 45, grain: 0.06,
+    relief: 1.4, graine: 113 };
   // Ossuaire (_ossuaire) : pan de `h` m au plus, `plafond` m sous le ciel au moins ; bouts d'os de `bout` m tous les
   // `pas` m, rangées de `rang` m, en relief de `relief` m sur le fond, dôme de `dome` m à `cotesOs` pans ; crânes de
   // `l` × `h` × `p` m tous les `pas` m, `avance` m devant le pan, `longs` fuseaux, parallèles `lats` (rad) ; `rangs` :
@@ -6805,49 +6823,268 @@
     v.trace = { allume: v.allume, haut: +H.toFixed(3), largeur: PORTAIL.l };
   }
 
-  // Véhicule : caisse, habitacle (vitres sombres sur les quatre côtés) et quatre roues, le long de l'axe (v.dir),
-  // dans le lot opaque. ⚠️ contrat : l'obstacle est son rectangle au sol (galerieEmprise.js > _obstaclesAcces).
+  // Véhicule : petite voiture à hayon le long de l'axe (v.dir), avant vers +s. Caisse = sections en travers
+  // (_sectionVehicule) aux stations du profil (VEHICULE.profil, plus celles des passages de roue), reliées de proche
+  // en proche et fermées aux deux bouts : capot, pare-brise et lunette inclinés, toit, flancs galbés et rentrés en
+  // haut, bas de caisse et boucliers sombres ; normales lissées par sommet sauf aux arêtes vives (plus de 50°).
+  // Vitres, phares, calandre et feux : plaques posées à VEHICULE.marge / 2 de la tôle. Roues : pneu à
+  // VEHICULE.cotes pans (normales radiales), flanc, jante à branches. 🧱 activé : lot `tole` (matériau _matTole,
+  // coordonnées de texture en motifs, projetées selon la face) et voile de poussière par triangle ; 🧱 coupé : la
+  // même forme en aplats dans le lot opaque. ⚠️ contrat : l'obstacle est son rectangle au sol (galerieEmprise.js >
+  // _obstaclesAcces) — aucun sommet n'en sort ni ne dépasse la hauteur (v.trace.boite : la boîte mesurée).
+  // Relevé : v.trace { long, large, haut (m), boite: { long, large, bas, haut }, pans, texture }.
   function _vehicule(v, lots) {
-    const e = _e, V = VEHICULE, Q = _repere(v), a = v.a, b = v.b, lot = lots.opaque;
-    const haut = Math.min(DIM_ACCES.vehiculeH, e.hauteur - 0.05), caisse = Math.min(V.caisse, haut - 0.2);
-    const ha = a * V.hab, hb = b - V.retrait, verre = 0.012;
-    const corps = _couleurFixe(V.carrosserie), vitre = _couleurFixe(V.vitre), pneu = _couleurFixe(V.pneu);
-    _pave(lot, Q, -a, a, -b, b, V.garde, caisse, corps);
-    _pave(lot, Q, -ha * 0.9, ha, -hb, hb, caisse, haut, corps);
-    const yv0 = caisse + 0.06, yv1 = haut - 0.08;
-    [[-hb - verre, -1], [hb + verre, 1]].forEach(function (c) {
-      const p = Q(-ha * 0.9 + 0.1, c[0]), q = Q(ha - 0.1, c[0]), n = [-Math.sin(v.dir || 0) * c[1], 0,
-        Math.cos(v.dir || 0) * c[1]];
-      lot.quad([p[0], yv0, p[1]], [q[0], yv0, q[1]], [q[0], yv1, q[1]], [p[0], yv1, p[1]], n, vitre);
+    const e = _e, V = VEHICULE, tex = e.textures === true, lot = tex ? _lot(lots, "tole") : lots.opaque;
+    const mg = V.marge, a = v.a - mg, b = v.b - mg;
+    const haut = Math.min(DIM_ACCES.vehiculeH, e.hauteur - 0.05), toit = haut - mg;
+    const ceinture = Math.min(V.caisse, haut - 0.2), ky = ceinture / V.caisse;
+    const ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0), M = TOLE.m;
+    const C = {};
+    ["carrosserie", "bas", "dessous", "vitre", "pneu", "jante", "moyeu", "phare", "feu", "poussiere"]
+      .forEach(function (k) { C[k] = _couleurFixe(V[k]); });
+    const boite = { s: 0, t: 0, bas: Infinity, haut: -Infinity };
+    // Triangle du repère de la voiture ([s, y, t]) → monde, normales par sommet (même repère), sens corrigé.
+    const tri = function (A, B, Cc, nA, nB, nC, col) {
+      let gx = (B[1] - A[1]) * (Cc[2] - A[2]) - (B[2] - A[2]) * (Cc[1] - A[1]);
+      let gy = (B[2] - A[2]) * (Cc[0] - A[0]) - (B[0] - A[0]) * (Cc[2] - A[2]);
+      let gz = (B[0] - A[0]) * (Cc[1] - A[1]) - (B[1] - A[1]) * (Cc[0] - A[0]);
+      const l = Math.hypot(gx, gy, gz);
+      if (l < 1e-9) return;
+      gx /= l; gy /= l; gz /= l;
+      if (gx * (nA[0] + nB[0] + nC[0]) + gy * (nA[1] + nB[1] + nC[1]) + gz * (nA[2] + nB[2] + nC[2]) < 0) {
+        let x = B; B = Cc; Cc = x; x = nB; nB = nC; nC = x;
+        gx = -gx; gy = -gy; gz = -gz;
+      }
+      const P = [A, B, Cc], N = [nA, nB, nC];
+      let c = col;
+      if (tex) {
+        // Poussière : plus dense vers le sol, déposée sur les faces à plat.
+        const ym = (A[1] + B[1] + Cc[1]) / 3;
+        const k = Math.min(0.6, V.voile[0] + (V.voile[1] - V.voile[0]) * Math.min(1, ym / toit) +
+          (gy > 0.7 ? V.depot : 0)) * (col === C.pneu || col === C.vitre || col === C.dessous ? 0.4 : 1);
+        c = { r: col.r + (C.poussiere.r - col.r) * k, g: col.g + (C.poussiere.g - col.g) * k,
+          b: col.b + (C.poussiere.b - col.b) * k };
+      }
+      const W = P.map(function (p) {
+        boite.s = Math.max(boite.s, Math.abs(p[0])); boite.t = Math.max(boite.t, Math.abs(p[2]));
+        boite.bas = Math.min(boite.bas, p[1]); boite.haut = Math.max(boite.haut, p[1]);
+        return [v.cx + ux * p[0] - uz * p[2], p[1], v.cz + uz * p[0] + ux * p[2]];
+      });
+      // Coordonnées de texture : projection selon l'axe dominant de la face (flanc, dessus, bout).
+      const ax = Math.abs(gx), ay = Math.abs(gy), az = Math.abs(gz);
+      const uv = !tex ? undefined : [].concat.apply([], P.map(function (p) {
+        return az >= ax && az >= ay ? [p[0] / M, p[1] / M] : ay >= ax ? [p[0] / M, p[2] / M] : [p[2] / M, p[1] / M];
+      }));
+      const i0 = lot.n.length;
+      lot.tri(W[0], W[1], W[2], [ux * gx - uz * gz, gy, uz * gx + ux * gz], c, uv);
+      for (let i = 0; i < 3; i++) {
+        const n = N[i], ln = Math.hypot(n[0], n[1], n[2]) || 1;
+        lot.n[i0 + i * 3] = Math.round((ux * n[0] - uz * n[2]) / ln * 127);
+        lot.n[i0 + i * 3 + 1] = Math.round(n[1] / ln * 127);
+        lot.n[i0 + i * 3 + 2] = Math.round((uz * n[0] + ux * n[2]) / ln * 127);
+      }
+    };
+    // Plaque (vitre, phare) : quadrilatère plat, décollé de VEHICULE.marge / 2 le long de sa normale.
+    const plaque = function (q, n, col) {
+      const l = Math.hypot(n[0], n[1], n[2]) || 1, d = mg / 2 / l;
+      const p = q.map(function (x) { return [x[0] + n[0] * d, x[1] + n[1] * d, x[2] + n[2] * d]; });
+      tri(p[0], p[1], p[2], n, n, n, col);
+      tri(p[0], p[2], p[3], n, n, n, col);
+    };
+    // Stations : celles du profil, et quatre par essieu pour le passage de roue (pieds et dessus de l'arche).
+    const R = Math.min(V.roue, (ceinture - 0.1) / 2), xa = a - R - 0.2, ra = R + V.passage, rt = R * 0.55;
+    const ya = 2 * R + V.passage * 0.8, cles = V.profil;
+    const us = cles.map(function (k) { return k[0]; });
+    [1, -1].forEach(function (c) {
+      [xa - ra, xa - rt, xa + rt, xa + ra].forEach(function (s) {
+        const u = c * s / a;
+        if (!us.some(function (x) { return Math.abs(x - u) < 0.01; })) us.push(u);
+      });
     });
-    [[ha + verre, 1], [-ha * 0.9 - verre, -1]].forEach(function (c) {
-      const p = Q(c[0], -hb + 0.1), q = Q(c[0], hb - 0.1), n = [Math.cos(v.dir || 0) * c[1], 0,
-        Math.sin(v.dir || 0) * c[1]];
-      lot.quad([p[0], yv0, p[1]], [q[0], yv0, q[1]], [q[0], yv1, q[1]], [p[0], yv1, p[1]], n, vitre);
+    us.sort(function (x, y) { return y - x; });
+    const station = function (u) {
+      let i = 0;
+      while (i < cles.length - 2 && u < cles[i + 1][0]) i++;
+      const A = cles[i], B = cles[i + 1], f = Math.max(0, Math.min(1, (A[0] - u) / (A[0] - B[0])));
+      const L = function (j) { return A[j] + (B[j] - A[j]) * f; };
+      const s = u * a, d = Math.abs(Math.abs(s) - xa);
+      const arche = d >= ra ? 0 : d <= rt ? ya : ya * (ra - d) / (ra - rt);
+      const yc = L(3) * ky, cab = L(4);
+      return { s: s, w: L(1) * b, yb: Math.max(L(2) * ky, Math.min(arche, yc - 0.06)), yc: yc,
+        yt: yc + cab * (toit - yc), cab: cab, bout: Math.abs(u) > 0.9 };
+    };
+    const S = us.map(station), ns = S.length, np = 12;
+    const anneaux = S.map(_sectionVehicule), T = [];
+    // Bandes d'un anneau à l'autre : 0 et 10 bas de caisse, 1-2 et 8-9 flanc, 3 et 7 vitrage, 4 et 6 rive du toit,
+    // 5 dessus (capot, pare-brise, toit, lunette, coffre), 11 dessous.
+    for (let i = 0; i + 1 < ns; i++) {
+      const bout = S[i].bout && S[i + 1].bout;
+      for (let j = 0; j < np; j++) {
+        const k = (j + 1) % np, bas = j === 0 || j === 10 || (bout && (j === 1 || j === 9));
+        const col = j === 11 ? C.dessous : bas ? C.bas : C.carrosserie;
+        T.push([anneaux[i][j], anneaux[i + 1][j], anneaux[i + 1][k], col, null],
+          [anneaux[i][j], anneaux[i + 1][k], anneaux[i][k], col, null]);
+      }
+    }
+    // Bouts : éventail autour du centre de l'anneau.
+    [0, ns - 1].forEach(function (i) {
+      const A = anneaux[i], c = [A[0][0], (S[i].yb + S[i].yc) / 2, 0];
+      for (let j = 0; j < np; j++) T.push([c, A[j], A[(j + 1) % np], C.carrosserie, i ? -1 : 1]);
     });
-    // Roues : prismes à V.cotes faces, axe en travers (t), posées au sol.
-    const R = V.roue, ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
+    // Normales : par triangle, puis par sommet la somme de celles des triangles voisins à moins de 50° (arêtes
+    // vives gardées : ceinture, boucliers ; galbe lissé). Vers l'extérieur : l'anneau tourne toujours dans le même
+    // sens, la normale géométrique d'une bande pointe vers l'intérieur ; un bout regarde vers son côté de s.
+    const par = new Map();
+    const cle = function (p) { return p[0].toFixed(3) + "," + p[1].toFixed(3) + "," + p[2].toFixed(3); };
+    T.forEach(function (t) {
+      const A = t[0], B = t[1], D = t[2];
+      let gx = (B[1] - A[1]) * (D[2] - A[2]) - (B[2] - A[2]) * (D[1] - A[1]);
+      let gy = (B[2] - A[2]) * (D[0] - A[0]) - (B[0] - A[0]) * (D[2] - A[2]);
+      let gz = (B[0] - A[0]) * (D[1] - A[1]) - (B[1] - A[1]) * (D[0] - A[0]);
+      const l = Math.hypot(gx, gy, gz);
+      if (l < 1e-9) { t.n = null; return; }
+      const sens = t[4] === null ? -1 : gx * t[4] < 0 ? -1 : 1;
+      t.n = [sens * gx / l, sens * gy / l, sens * gz / l];
+      t.aire = l;
+      [A, B, D].forEach(function (p) {
+        const k = cle(p);
+        if (!par.has(k)) par.set(k, []);
+        par.get(k).push(t);
+      });
+    });
+    const lisse = function (t, p) {
+      const n = [0, 0, 0];
+      par.get(cle(p)).forEach(function (o) {
+        if (o.n[0] * t.n[0] + o.n[1] * t.n[1] + o.n[2] * t.n[2] < 0.64) return;
+        n[0] += o.n[0] * o.aire; n[1] += o.n[1] * o.aire; n[2] += o.n[2] * o.aire;
+      });
+      return n;
+    };
+    T.forEach(function (t) {
+      if (t.n) tri(t[0], t[1], t[2], lisse(t, t[0]), lisse(t, t[1]), lisse(t, t[2]), t[3]);
+    });
+    // Vitrage : le flanc de l'habitacle est un plan (t ne dépend que de y), le pare-brise et la lunette aussi.
+    const iC = cles.findIndex(function (k) { return k[4] === 1; }), sC = cles[iC - 1][0] * a, sF = cles[iC][0] * a;
+    const sR = cles[iC + 1][0] * a, sH = cles[iC + 2][0] * a, yH = cles[iC + 2][3] * ky;
+    const flanc = _sectionVehicule({ s: 0, w: b, yb: V.garde, yc: ceinture, yt: toit, cab: 1 });
+    const t3 = flanc[3][2], y3 = flanc[3][1], t4 = flanc[4][2], y4 = flanc[4][1], t5 = flanc[5][2];
+    const tY = function (y) { return t3 + (t4 - t3) * (y - y3) / (y4 - y3); };
+    const y0 = ceinture + 0.05, y1 = y4 - 0.05, sB = (sF + sR) / 2;
+    const sAv = function (y) { return sC + (sF - sC) * (y - ceinture) / (toit - ceinture) - 0.09; };
+    const sAr = function (y) { return sH + (sR - sH) * (y - yH) / (toit - yH) + 0.09; };
+    if (y1 > y0 + 0.03) {
+      [1, -1].forEach(function (c) {
+        const n = [0, t3 - t4, c * (y4 - y3)];
+        const P = function (s, y) { return [s, y, c * tY(y)]; };
+        plaque([P(sAv(y0), y0), P(sB + 0.03, y0), P(sB + 0.03, y1), P(sAv(y1), y1)], n, C.vitre);
+        plaque([P(sB - 0.03, y0), P(sAr(y0), y0), P(sAr(y1), y1), P(sB - 0.03, y1)], n, C.vitre);
+      });
+      // Pare-brise (du capot au toit) et lunette (du toit au hayon) : trapèzes, 12 % de montant en bas et en haut.
+      [[sC, ceinture, sF, 1], [sH, yH, sR, -1]].forEach(function (g) {
+        const P = function (f, c) {
+          return [g[0] + (g[2] - g[0]) * f, g[1] + (toit - g[1]) * f, c * (t3 + (t5 - t3) * f - 0.07)];
+        };
+        plaque([P(0.12, -1), P(0.12, 1), P(0.88, 1), P(0.88, -1)], [g[3] * (toit - g[1]), g[3] * (g[0] - g[2]), 0],
+          C.vitre);
+      });
+    }
+    // Phares et calandre sur le bout avant, feux sur le bout arrière.
+    [[0, 1, C.phare], [ns - 1, -1, C.feu]].forEach(function (g) {
+      const st = S[g[0]], n = [g[1], 0, 0], yh = st.yc - 0.03, yl = Math.max(st.yb + 0.03, yh - 0.1);
+      const w = st.w - 0.09;
+      if (yh - yl < 0.03) return;
+      [1, -1].forEach(function (c) {
+        plaque([[st.s, yl, c * w * 0.5], [st.s, yl, c * w], [st.s, yh, c * w], [st.s, yh, c * w * 0.5]], n, g[2]);
+      });
+      if (g[1] < 0) return;
+      plaque([[st.s, yl, -w * 0.38], [st.s, yl, w * 0.38], [st.s, yh, w * 0.38], [st.s, yh, -w * 0.38]], n, C.bas);
+    });
+    // Roues : axe en travers (t), posées au sol, face extérieure dans le plan du flanc.
+    const N = V.cotes, rj = R * 0.62;
     [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(function (r) {
-      const sc = r[0] * (a - R - 0.2), t0 = r[1] * (b - V.roueL), t1 = r[1] * b + r[1] * 0.01;
-      for (let k = 0; k < V.cotes; k++) {
-        const a0 = 2 * Math.PI * k / V.cotes, a1 = 2 * Math.PI * (k + 1) / V.cotes;
-        const s0 = sc + R * Math.cos(a0), y0 = R + R * Math.sin(a0);
-        const s1 = sc + R * Math.cos(a1), y1 = R + R * Math.sin(a1);
-        const nm = (a0 + a1) / 2, n = [ux * Math.cos(nm), Math.sin(nm), uz * Math.cos(nm)];
-        const A = Q(s0, t0), B = Q(s1, t0), C = Q(s1, t1), D = Q(s0, t1);
-        lot.quad([A[0], y0, A[1]], [B[0], y1, B[1]], [C[0], y1, C[1]], [D[0], y0, D[1]], n, pneu);
-        const F = Q(sc, t1), G = Q(s0, t1), H = Q(s1, t1), nf = [-uz * r[1], 0, ux * r[1]];
-        lot.tri([F[0], R, F[1]], [G[0], y0, G[1]], [H[0], y1, H[1]], nf, pneu);
+      const sc = r[0] * xa, te = r[1] * b, ti = r[1] * (b - V.roueL), nf = [0, 0, r[1]], ni = [0, 0, -r[1]];
+      const pt = function (k, rayon, t) {
+        const an = 2 * Math.PI * k / N;
+        return [sc + rayon * Math.cos(an), R + rayon * Math.sin(an), t];
+      };
+      const nr = function (k) { const an = 2 * Math.PI * k / N; return [Math.cos(an), Math.sin(an), 0]; };
+      for (let k = 0; k < N; k++) {
+        tri(pt(k, R, ti), pt(k + 1, R, ti), pt(k + 1, R, te), nr(k), nr(k + 1), nr(k + 1), C.pneu);
+        tri(pt(k, R, ti), pt(k + 1, R, te), pt(k, R, te), nr(k), nr(k + 1), nr(k), C.pneu);
+        tri(pt(k, rj, te), pt(k, R, te), pt(k + 1, R, te), nf, nf, nf, C.pneu);
+        tri(pt(k, rj, te), pt(k + 1, R, te), pt(k + 1, rj, te), nf, nf, nf, C.pneu);
+        // Jante à branches : un secteur clair, un secteur sombre.
+        tri([sc, R, te], pt(k, rj, te), pt(k + 1, rj, te), nf, nf, nf, k % 2 ? C.moyeu : C.jante);
+        tri([sc, R, ti], pt(k, R, ti), pt(k + 1, R, ti), ni, ni, ni, C.dessous);
       }
     });
-    v.trace = { long: +(2 * a).toFixed(3), large: +(2 * b).toFixed(3), haut: +haut.toFixed(3) };
+    v.trace = { long: +(2 * v.a).toFixed(3), large: +(2 * v.b).toFixed(3), haut: +haut.toFixed(3),
+      boite: { long: +(2 * boite.s).toFixed(4), large: +(2 * boite.t).toFixed(4), bas: +boite.bas.toFixed(4),
+        haut: +boite.haut.toFixed(4) }, pans: N, texture: tex };
+  }
+
+  // Section en travers de la caisse à la station `o` (_vehicule) → 12 points [s, y, t], du bas du flanc +t au bas
+  // du flanc −t en passant par le toit : bas de caisse rentré, flanc galbé (le plus large aux 7/10 de sa hauteur),
+  // ceinture, haut des vitres rentré de VEHICULE.devers × `o.cab`, rive du toit. Capot et coffre (`o.cab` = 0) :
+  // les trois derniers points se confondent à la ceinture.
+  function _sectionVehicule(o) {
+    const V = VEHICULE, h = o.yc - o.yb, w3 = o.w - 0.04, w4 = w3 - V.devers * o.cab;
+    const demi = [[o.w - 0.07, o.yb], [o.w - 0.015, o.yb + Math.min(0.07, h * 0.4)], [o.w, o.yb + h * 0.7], [w3, o.yc],
+      [w4, o.yt - 0.04 * o.cab], [w4 - 0.05 * o.cab, o.yt]];
+    return demi.map(function (p) { return [o.s, p[1], p[0]]; })
+      .concat(demi.slice().reverse().map(function (p) { return [o.s, p[1], -p[0]]; }));
+  }
+
+  // Matériau de la tôle du véhicule (🧱), fait au premier véhicule construit (aucun coût sans véhicule ni 🧱
+  // coupé) : carte claire + normal map, couleurs par sommet ; suit les Textures HD (_habiller, _detailler).
+  function _matTole() {
+    const e = _e;
+    if (e.mats.tole) return e.mats.tole;
+    const t0 = performance.now();
+    e.mats.tole = _habiller(_detailler(new THREE.MeshLambertMaterial({ vertexColors: true }), TOLE.m), "tole",
+      _toleUsee, TOLE.graine);
+    e.msTole = performance.now() - t0;
+    return e.mats.tole;
+  }
+
+  // Tôle usée (TOLE) : peinture passée en plaques larges à deux échelles, coulures verticales (bruit étiré en
+  // hauteur), piqûres sombres, grain fin ; hauteur presque plane (bosses très douces, piqûres en creux).
+  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  function _toleUsee(alea) {
+    const T = TOLE, n = _px(T), q = _fin(), haut = new Float32Array(n * n), img = new Uint8ClampedArray(n * n * 4);
+    const base = new THREE.Color(T.couleur), large = _champBoucle(alea, 4, 4, n), moyen = _champBoucle(alea, 13, 13, n);
+    const coule = _champBoucle(alea, 26, 3, n), bosse = _champBoucle(alea, 6, 6, n), pique = new Float32Array(n * n);
+    for (let i = 0; i < T.piqures; i++) {
+      const cx = alea() * n, cy = alea() * n, rr = (0.7 + alea() * 1.3) * q, f = 0.25 + alea() * 0.4;
+      for (let y = Math.floor(cy - rr); y <= cy + rr; y++) {
+        for (let x = Math.floor(cx - rr); x <= cx + rr; x++) {
+          const d = Math.hypot(x - cx, y - cy);
+          if (d > rr) continue;
+          const p = (((y % n) + n) % n) * n + (((x % n) + n) % n);
+          pique[p] = Math.max(pique[p], f * (1 - d / rr));
+        }
+      }
+    }
+    let graine = Math.floor(alea() * 2147483647) | 1;
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
+        const f = (1 - T.plaques * (0.6 * large[p] + 0.4 * moyen[p])) *
+          (1 - T.coulures * Math.max(0, coule[p] * 2 - 1)) * (1 - pique[p]) * (1 + (grain() - 0.5) * T.grain);
+        haut[p] = 0.3 * bosse[p] + 0.05 * moyen[p] - 0.25 * pique[p] + (grain() - 0.5) * 0.02;
+        img[o4] = base.r * 255 * f; img[o4 + 1] = base.g * 255 * f * (1 - 0.05 * pique[p]);
+        img[o4 + 2] = base.b * 255 * f * (1 - 0.12 * pique[p]); img[o4 + 3] = 255;
+      }
+    }
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, T.relief * q) };
   }
 
   // ── Arc de soutènement ; ossuaire, outil de carrier, fontis ───────────────────────────────────────────────
   // Formes faites en code, sans fichier : peu de triangles, lot opaque du volume ou de la tuile (couleurs par
   // sommet). L'arc lit la charte 🧱 coupé (sa couleur de légende) et prend la pierre des parois 🧱 activé (ses deux
   // lots texturés, _lotsArc) ; le fontis lit la charte (remblais du cône) ; ossuaire et outil ont des couleurs de la
-  // scène, comme le véhicule.
+  // scène, comme le véhicule (_vehicule).
 
   // Lots d'une tuile pour ses arcs → { claveaux, pierre, tympan, tex }. 🧱 activé : trois lots à coordonnées de
   // texture, les claveaux (matériau `claveau`, _matClaveau), la pierre de taille des piédroits et des impostes
@@ -7374,6 +7611,7 @@
   function _ajouterAcces(lots, ajouter) {
     if (lots.bois && lots.bois.p.length) ajouter(lots.bois, _matPorte(), 0, "porte");
     if (lots.roche && lots.roche.p.length) { _matsTextures(); ajouter(lots.roche, _e.mats.roche, 0, "chatiere"); }
+    if (lots.tole && lots.tole.p.length) ajouter(lots.tole, _matTole(), 0, "vehicule");
     if (lots.remblais && lots.remblais.p.length) ajouter(lots.remblais, _matZone("remblais"), 0, "remblais");
     if (lots.eau) ajouter(lots.eau, _e.mats.eauGalerie, 2, "eau");
   }
@@ -7388,7 +7626,7 @@
       cote: v.cote || 0, appui: v.appui || null,
       dirParoi: v.surParoi ? +((v.dir || 0) * 180 / Math.PI).toFixed(2) : null, vehicule: !!v.vehicule,
       ossuaire: !!v.ossuaire, outil: !!v.outil, fontis: !!v.fontis,
-      roche: n(lots.roche), bois: n(lots.bois),
+      roche: n(lots.roche), bois: n(lots.bois), tole: n(lots.tole),
       remblais: n(lots.remblais),
       eau: n(lots.eau), porteTexturee: !!(porte && porte.material.map), remblaisTexture: !!(remblais &&
       remblais.material.map), familles: g.children.map(function (o) { return o.userData.famille; }) }, v.trace || {});
@@ -14020,7 +14258,8 @@
   function textures() {
     if (!_e) return null;
     const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs,
-      paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis, porte: e.mats.porte };
+      paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis,
+      porte: e.mats.porte, tole: e.mats.tole };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
       uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m, remblais: 1 / REMBLAIS.m,
         eboulis: 1 / EBOULIS.m,
@@ -14045,7 +14284,7 @@
       for (let i = 0; i < d.length; i += 4) t += Math.hypot(d[i] / 127.5 - 1, d[i + 1] / 127.5 - 1);
       return +(t / (w * h)).toFixed(3);
     };
-    ["roche", "parpaing", "paroi", "remblais", "eboulis", "porte"].forEach(function (k) {
+    ["roche", "parpaing", "paroi", "remblais", "eboulis", "porte", "tole"].forEach(function (k) {
       const m = mats[k];
       if (!m) return;
       r.materiaux[k] = { pente: m.normalMap ? pente(m.normalMap.image) : 0, carte: m.map.image.width + "x" + m.map.image.height, normale: !!m.normalMap,

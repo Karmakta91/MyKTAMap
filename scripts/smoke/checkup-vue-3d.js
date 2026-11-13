@@ -2946,7 +2946,8 @@ async function capturesPente(page) {
 // élargie au nom jusqu'à 1 m puis sur deux lignes, nom jamais coupé), épure (traits sur la paroi), portail (cadre allumé
 // avec une liaison fictive, éteint sans ; fiche « Passer au plan », confirmation au-dessus de la vue, annuler garde
 // la vue, confirmer la ferme ; aucun bouton sans liaison), véhicule (citadine de 3,2 × 1,4 × 1,3 m, dans la galerie, le long de l'axe, arrête le
-// pas, ctx.libre fermé, survol en vue d'édition). Rendu structures : plaque, épure et portail sans paroi ni
+// pas, ctx.libre fermé, survol en vue d'édition ; silhouette de voiture en un maillage texturé, triangles bornés, tout
+// entière dans l'emprise de l'obstacle, la même en aplats 🧱 coupé, tôle en 512 px en Textures HD). Rendu structures : plaque, épure et portail sans paroi ni
 // structure à 3 m = panneau seul (sur une structure : sectionFormesStructures) ; tag sans forme = aucun volume.
 // Point lié sans le tag portail : « Passer au plan » aussi, et ➜ de sa fiche ferme la vue après la confirmation. 50 plaques : mémoire des textures mesurée.
 async function sectionFormesPoi(page) {
@@ -3010,9 +3011,9 @@ async function sectionFormesPoi(page) {
       return id === "v3d-plan-fictif-b" ? { id: id, name: "Plan fictif B", type: "server", path: "fictif/" }
         : window.__v3dFormesSauve.trouve.call(window.PlanRegistry, id);
     };
-    let ctx = null;
+    let ctx = null, scene3d = null;
     const lireCtx = function () {
-      const deg = K.greffer({ nom: "v3d-formes", scene: function (c) { ctx = c; } });
+      const deg = K.greffer({ nom: "v3d-formes", scene: function (c) { ctx = c; scene3d = c.groupe.parent; } });
       if (deg) deg();
     };
     const rel = function (q) { return [+(q.x / sc - ox).toFixed(3), +(q.y / sc - oz).toFixed(3)]; };
@@ -3032,6 +3033,31 @@ async function sectionFormesPoi(page) {
       await pause(80);
       await images(3);
     };
+    // Maillage du véhicule lu sur la scène : le lot texturé (famille « vehicule », 🧱 activé) ou le lot opaque de
+    // son volume (🧱 coupé : le maillage « passage » centré sur lui) → triangles, carte, boîte des sommets (m)
+    // autour du centre du volume (dx le long de la galerie, dz en travers, y).
+    const mailleVeh = function () {
+      const v = vol("vehicule");
+      if (!v || !ctx || !scene3d) return null;
+      const cx = v.x / sc, cz = v.y / sc, scene = scene3d, out = [];
+      scene.updateMatrixWorld(true);
+      scene.traverse(function (m) {
+        if (!m.isMesh || ["vehicule", "passage"].indexOf(m.userData.famille) < 0) return;
+        const p = m.geometry.attributes.position, b = { dx: 0, dz: 0, y0: Infinity, y1: -Infinity };
+        const w = new ctx.THREE.Vector3();
+        for (let i = 0; i < p.count; i++) {
+          w.fromBufferAttribute(p, i).applyMatrix4(m.matrixWorld);
+          b.dx = Math.max(b.dx, Math.abs(w.x - cx)); b.dz = Math.max(b.dz, Math.abs(w.z - cz));
+          b.y0 = Math.min(b.y0, w.y); b.y1 = Math.max(b.y1, w.y);
+        }
+        if (b.dx > 3 || b.dz > 3) return;
+        out.push({ famille: m.userData.famille, triangles: p.count / 3, carte: !!m.material.map,
+          relief: !!m.material.normalMap, uv: !!m.geometry.attributes.uv, sommets: !!m.material.vertexColors,
+          taille: m.material.map ? m.material.map.image.width : 0, dx: +b.dx.toFixed(4), dz: +b.dz.toFixed(4),
+          y0: +b.y0.toFixed(4), y1: +b.y1.toFixed(4) });
+      });
+      return out;
+    };
     const r = {};
     // ── Par rendu : formes, places, chatière traversée en libre, véhicule qui bloque ──
     for (const rendu of ["mixte", "galerie", "structures"]) {
@@ -3042,8 +3068,8 @@ async function sectionFormesPoi(page) {
         return v ? { construit: v.construit, place: rel(v), cote: v.cote, trace: { trou: v.trou, hautTrou: v.hautTrou,
           long: v.long, largeur: v.largeur, largeTrou: v.largeTrou, dir: v.dir, plaqueY: v.plaqueY, texture: v.texture, nom: v.nom, epureY: v.epureY,
           traits: v.traits, allume: v.allume, large: v.large, haut: v.haut, plaqueL: v.plaqueL, plaqueH: v.plaqueH,
-          lignes: v.lignes, coupe: v.coupe, taillePx: v.taillePx }, roche: v.roche, familles: v.familles,
-          triangles: v.triangles } : null;
+          lignes: v.lignes, coupe: v.coupe, taillePx: v.taillePx, boite: v.boite, pans: v.pans }, roche: v.roche,
+          tole: v.tole, familles: v.familles, triangles: v.triangles } : null;
       };
       o.chat = pick(vol("chatiere", "pt_f_chat")); o.chatOb = pick(vol("chatiere", "pt_f_chat_ob"));
       o.plN = pick(vol("plaque", "pt_f_pl_n")); o.plS = pick(vol("plaque", "pt_f_pl_s"));
@@ -3079,6 +3105,7 @@ async function sectionFormesPoi(page) {
       o.ep = pick(vol("epure")); o.def = !!vol("default");
       o.poLie = pick(vol("portail", "pt_f_po_lie")); o.poSeul = pick(vol("portail", "pt_f_po_seul"));
       o.veh = pick(vol("vehicule"));
+      o.vehMaille = mailleVeh();
       o.plaques = K.etat().plaques;
       if (rendu !== "structures") {
         // Chatière en libre : pas de 0,1 m le long de l'axe, de x = −27 à −13 ; hauteur de caméra relue à chaque
@@ -3129,9 +3156,21 @@ async function sectionFormesPoi(page) {
       plFam: (vol("plaque", "pt_f_pl_n") || {}).familles, chatRoche: (vol("chatiere", "pt_f_chat") || {}).roche,
       chatTri: (vol("chatiere", "pt_f_chat") || {}).triangles, ep: (vol("epure") || {}).traits,
       po: (vol("portail", "pt_f_po_lie") || {}).allume, veh: !!(vol("vehicule") || {}).construit, avant: avantTx };
+    lireCtx();
+    r.sansTx.vehMaille = mailleVeh();
+    r.sansTx.vehTole = (vol("vehicule") || {}).tole;
     K.basculerTextures();
     await pause(150); await images(3);
     r.avecTx = K.etat().plaques;
+    // Véhicule : Textures HD basculées vue ouverte (la tôle suit, la géométrie ne bouge pas), puis recoupées.
+    lireCtx();
+    r.vehRallume = mailleVeh();
+    K.basculerTexturesHD();
+    await pause(400); await images(3);
+    r.vehHd = { maille: mailleVeh(), tole: (K.textures().materiaux.tole || {}).carte, dessins: K.textures().dessins };
+    K.basculerTexturesHD();
+    await pause(300); await images(3);
+    r.vehHdCoupe = (K.textures().materiaux.tole || {}).carte;
     await K.fermer();
     // ── Chatière en suivi : le tracker avance pas à pas, la vue suit ──
     window.setPlanRenduVue3D(null, "mixte");
@@ -3378,6 +3417,20 @@ async function sectionFormesPoi(page) {
     verifier(!!o.veh && o.veh.construit && pr(o.veh.place[1], 0.5) && pr(o.veh.trace.long, 3.2) &&
       pr(o.veh.trace.large, 1.4) && pr(o.veh.trace.haut, 1.3),
     k + " : véhicule de 3,2 × 1,4 × 1,3 m (citadine) dans la galerie, du côté du POI (gardé entre les parois)", o.veh);
+    // Forme de la voiture (vue3d.js > _vehicule, VEHICULE) : un maillage texturé (tôle) de 300 à 900 triangles
+    // (deux pavés et quatre prismes en faisaient 176 ; au-delà, la forme coûte plus qu'un ossuaire), tout entier
+    // dans le rectangle de l'obstacle (3,2 × 1,4 m) et sous 1,3 m, sans y flotter (il le remplit à 5 cm près).
+    const vm = (o.vehMaille || []).filter(function (m) { return m.famille === "vehicule"; }), m0 = vm[0] || {};
+    const bt = (o.veh && o.veh.trace.boite) || {};
+    verifier(vm.length === 1 && m0.carte && m0.relief && m0.uv && m0.sommets && m0.taille === 256 &&
+      m0.triangles >= 300 && m0.triangles <= 900 && m0.triangles === o.veh.tole &&
+      m0.dx <= 1.6 + 1e-4 && m0.dx >= 1.55 && m0.dz <= 0.7 + 1e-4 && m0.dz >= 0.65 && m0.y0 >= -1e-4 &&
+      m0.y1 <= 1.3 + 1e-4 && m0.y1 >= 1.25 && bt.long <= 3.2 && bt.large <= 1.4 && bt.haut <= 1.3 && bt.bas >= 0 &&
+      o.veh.trace.pans >= 14,
+    k + " : voiture en un maillage texturé (tôle 256 px, relief) de " + m0.triangles + " triangles (300 à 900), " +
+      "roues à " + (o.veh && o.veh.trace.pans) + " pans, tout entière dans l'emprise de l'obstacle (demi-longueur " +
+      m0.dx + " ≤ 1,6 m, demi-largeur " + m0.dz + " ≤ 0,7 m, de " + m0.y0 + " à " + m0.y1 + " ≤ 1,3 m)",
+    { maille: o.vehMaille, boite: bt });
     verifier(o.vehA < 38.1 && o.vehA > 37.4 && o.vehR > 41.9 && o.vehR < 42.6 && !o.ctxVeh,
       k + " : véhicule bloque le pas (butée à " + o.vehA + " et " + o.vehR + " m) ; ctx.libre fermé",
       { a: o.vehA, r: o.vehR, ctx: o.ctxVeh });
@@ -3397,6 +3450,21 @@ async function sectionFormesPoi(page) {
     T.chatRoche === 0 && T.chatTri > 0 && T.ep === 7 && T.po === true && T.veh && R.avecTx.n === T.avant.n,
   "🧱 coupé : la plaque garde son nom (" + T.plaques.n + " textures), chatière unie, épure, portail et véhicule " +
   "gardés ; rallumé, " + R.avecTx.n + " textures", T);
+  // Véhicule 🧱 coupé : la même silhouette (mêmes triangles, même boîte) en aplats dans le lot opaque de son
+  // volume, sans carte ; Textures HD : la tôle en 512 px sans que la géométrie change, retour à 256 px.
+  const vmx = (R.mixte.vehMaille || []).filter(function (m) { return m.famille === "vehicule"; })[0] || {};
+  const vs = (T.vehMaille || []), vs0 = vs.filter(function (m) { return m.famille === "passage"; })[0] || {};
+  verifier(vs.length === 1 && T.vehTole === 0 && !vs0.carte && !vs0.uv && vs0.sommets &&
+    vs0.triangles === vmx.triangles && vs0.dx === vmx.dx && vs0.dz === vmx.dz && vs0.y1 === vmx.y1,
+  "🧱 coupé : la voiture garde sa silhouette (" + vs0.triangles + " triangles, même boîte) en aplats dans le lot " +
+    "opaque, aucun maillage texturé", { coupe: vs, active: vmx });
+  const vh = ((R.vehHd || {}).maille || []).filter(function (m) { return m.famille === "vehicule"; })[0] || {};
+  const vr = (R.vehRallume || []).filter(function (m) { return m.famille === "vehicule"; })[0] || {};
+  verifier(vr.triangles === vmx.triangles && vr.taille === 256 && vh.taille === 512 && R.vehHd.tole === "512x512" &&
+    vh.triangles === vmx.triangles && vh.dx === vmx.dx && R.vehHd.dessins["tole@2"] >= 0 && R.vehHdCoupe === "256x256",
+  "🧱 rallumé : la tôle revient ; Textures HD : tôle en 512 px (dessin " + ((R.vehHd || {}).dessins || {})["tole@2"] +
+    " ms ; 256 px : " + ((R.vehHd || {}).dessins || {}).tole + " ms), mêmes " + vh.triangles +
+    " triangles, retour à 256 px", { rallume: vr, hd: R.vehHd, coupe: R.vehHdCoupe });
   verifier(R.suivi.modes.length === 1 && R.suivi.modes[0] === "suivi" && !!R.suiviDans &&
     R.suiviDans.cameraY < 0.45 && pr(R.suivi.apres, R.suivi.oeil) && pr(R.suivi.avant, R.suivi.oeil) &&
     R.suivi.fin > -13.5, "suivi : caméra abaissée dans la chatière (" + (R.suiviDans && R.suiviDans.cameraY) +
