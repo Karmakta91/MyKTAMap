@@ -230,6 +230,13 @@
   // un pilier passé de l'une à l'autre ne changeait rien dans la scène. Pas de second matériau : préparé au premier
   // pilier de 2e masse, il retardait d'une image le changement de niveau sous le fondu (WebKit).
   const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f0b98a";
+  // Ombre de contact (🧱 activé) : au pied et en tête des piliers, des fronts, des murs et des parois des galeries
+  // et des tubes, la teinte descend à `force` au contact du sol et du plafond et revient à 1 en `haut` m — les
+  // volumes tiennent au sol au lieu d'y flotter. ⚠️ contrat (décision batterie) : posée PAR SOMMET, dans la couleur
+  // du maillage (_faceOmbree) ; ni ombre calculée, ni passe de rendu, ni lumière en plus, aucun coût par image hors
+  // des sommets des bandes (deux bandes de plus par face verticale). Multipliée par la texture et par la teinte de
+  // la 2e masse ; les coordonnées de texture restent en mètres.
+  const OMBRE_CONTACT = { haut: 0.28, force: 0.5 };
   // Pierre de taille de carrière (parois des galeries et des tubes, 🧱 activé ; jamais les piliers ni les fronts) :
   // motif de 2 m (128 px/m), assises de hauteur tirée, blocs de longueur tirée, joints irréguliers (largeur, pente,
   // lit ondulé), arêtes émoussées. Longueurs en m.
@@ -958,6 +965,17 @@
     this.tri(a, c, d, n, col, uv && [uv[0], uv[1], uv[4], uv[5], uv[6], uv[7]]);
   };
 
+  // Quadrilatère en dégradé : `col` × k0 sur l'arête a-b, × k1 sur l'arête d-c (ombre de contact, _faceOmbree).
+  Lot.prototype.quadDegrade = function (a, b, c, d, n, col, k0, k1, uv) {
+    const i0 = this.c.length, p0 = this.p.length;
+    this.quad(a, b, c, d, n, col, uv);
+    // Chaque sommet écrit reçoit le facteur de son arête : il est sur a-b s'il a la hauteur de a.
+    for (let i = 0; i < 6; i++) {
+      const k = Math.abs(this.p[p0 + i * 3 + 1] - a[1]) < Math.abs(this.p[p0 + i * 3 + 1] - d[1]) ? k0 : k1;
+      for (let j = 0; j < 3; j++) this.c[i0 + i * 3 + j] = Math.round(this.c[i0 + i * 3 + j] * k);
+    }
+  };
+
   // Lot coupé à la tranche y0 ≤ y ≤ y1 (m ; ±Infinity : pas de coupe de ce côté) : chaque triangle rogné aux deux
   // plans (coordonnées de texture interpolées), sa normale et sa couleur gardées, le sens des sommets aussi.
   // Volumes de passage d'un niveau voisin tronqués à ce qui est montré (_volumesVoisin).
@@ -1050,11 +1068,34 @@
       const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
       if (l < 1e-6) continue;
       const n = [dz / l, 0, -dx / l];
-      const uv = m ? [s / m, y0 / m, (s + l) / m, y0 / m, (s + l) / m, y1 / m, s / m, y1 / m] : undefined;
+      if (lot.ombre && m) _faceOmbree(lot, p, q, y0, y1, n, col, s / m, (s + l) / m, m);
+      else {
+        lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], n, col,
+          m ? [s / m, y0 / m, (s + l) / m, y0 / m, (s + l) / m, y1 / m, s / m, y1 / m] : undefined);
+      }
       s += l;
-      lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], n, col, uv);
     }
     if (dessus) _dessus(lot, ring, y1, col, m);
+  }
+
+  // Face verticale texturée de p à q (m), de y0 à y1, avec l'ombre de contact du lot (OMBRE_CONTACT ; lot.ombre =
+  // { sol, plafond } : hauteurs en m des surfaces qu'elle touche) : découpée en bandes aux hauteurs où la teinte
+  // change de pente, teinte par sommet, coordonnées de texture u0..u1 et v = y / mv (inchangées : la texture ne voit
+  // pas le découpage). Une face qui ne touche ni le sol ni le plafond reste un quadrilatère à pleine teinte.
+  function _faceOmbree(lot, p, q, y0, y1, n, col, u0, u1, mv) {
+    const O = lot.ombre, a = Math.min(OMBRE_CONTACT.haut, (O.plafond - O.sol) / 3), f = OMBRE_CONTACT.force;
+    const k = function (y) {
+      const d = Math.min(y - O.sol, O.plafond - y);
+      return d >= a ? 1 : d <= 0 ? f : f + (1 - f) * d / a;
+    };
+    const ys = [y0];
+    [O.sol + a, O.plafond - a].forEach(function (y) { if (y > y0 + 1e-4 && y < y1 - 1e-4) ys.push(y); });
+    ys.push(y1);
+    for (let i = 0; i + 1 < ys.length; i++) {
+      const b = ys[i], h = ys[i + 1];
+      lot.quadDegrade([p[0], b, p[1]], [q[0], b, q[1]], [q[0], h, q[1]], [p[0], h, p[1]], n, col, k(b), k(h),
+        [u0, b / mv, u1, b / mv, u1, h / mv, u0, h / mv]);
+    }
   }
 
   // Origine du motif sur un contour (m) : tirée de la position de son premier sommet, deux volumes voisins ne montrent
@@ -1270,6 +1311,9 @@
     const hachSol = new Lot(), hachRideau = new Lot();
     // Mixte : parois des tubes (pièces de la tuile, bouts ouverts exclus), zones des tubes découpées comme en galerie.
     const parois = new Lot(), paroisUnies = new Lot(), eauTube = new Lot(), remblaisTube = new Lot();
+    // Ombre de contact (OMBRE_CONTACT, 🧱 activé) : pierre des parois, roche et parpaing, du sol au plafond du niveau.
+    const ombre = _e.textures === true ? { sol: 0, plafond: h } : null;
+    if (ombre) parois.ombre = ombre;
     // Niveaux entremêlés et zones jonction (_paroiEntre, _trousEntre, _zoneJonction) : coupes, trous du gabarit et
     // chambres en pente.
     const trous = {}, solPente = new Lot(), plafondPente = new Lot();
@@ -1290,6 +1334,7 @@
     // volumes) texturés : un lot chacun, chambres et tubes ensemble (_zoneGalerie) ; 🧱 coupé, les lots d'origine.
     const roche = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
     const remblaisTex = new Lot(), eboulis = new Lot();
+    if (ombre) roche.ombre = parpaing.ombre = ombre;
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
       remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
@@ -1524,6 +1569,7 @@
     const sol = new Lot(), plafond = new Lot(), parois = new Lot(), opaque = new Lot(), lumineux = new Lot();
     const rubans = new Lot(), paroisUnies = new Lot();
     const eau = new Lot(), hachSol = new Lot(), hachRideau = new Lot(), remblais = new Lot(), eboulis = new Lot();
+    if (e.textures === true) parois.ombre = { sol: 0, plafond: h };   // ombre de contact (OMBRE_CONTACT)
     t.parois = []; t.paroisY = [];
     const trous = {};
     for (let i = 0; i < t.g.length; i++) {
@@ -2761,7 +2807,7 @@
   }
 
   // Matériaux roche et parpaing, faits à la première structure texturée (aucun coût si l'interrupteur est coupé) :
-  // couleur + normal map. Normal map plutôt que bump map : une seule lecture par pixel, et la pente est calculée une
+  // couleur + normal map, couleurs des sommets (2e masse de la roche, ombre de contact : OMBRE_CONTACT). Normal map plutôt que bump map : une seule lecture par pixel, et la pente est calculée une
   // fois ici (une bump map relit la hauteur trois fois par pixel et scintille au loin avec les mipmaps). Parpaing
   // reculé en profondeur comme les murs (contrat de _estMur). Textures libérées à la fermeture (_demonter) ; les
   // canvas dessinés restent pour la page (_appareils, 1 Mo) : seule la première ouverture paie le dessin.
@@ -2769,13 +2815,13 @@
     const e = _e;
     if (e.mats.roche) return;
     const t0 = performance.now();
-    const fab = function (nom, dessin, graine, recule, teinte) {
+    const fab = function (nom, dessin, graine, recule) {
       const t = _texturesPeintes(nom, dessin, graine);
-      const o = { map: t.couleur, normalMap: t.normale, vertexColors: !!teinte };
+      const o = { map: t.couleur, normalMap: t.normale, vertexColors: true };
       if (recule) Object.assign(o, { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
       return new THREE.MeshLambertMaterial(o);
     };
-    e.mats.roche = fab("roche", _rocheBrute, ROCHE.graine, false, true);   // teinte par sommet : 2e masse
+    e.mats.roche = fab("roche", _rocheBrute, ROCHE.graine, false);
     e.mats.parpaing = fab("parpaing", function (alea) { return _appareil(_assisesParpaing(alea), alea); },
       PARPAING.graine, true);
     e.msTextures = performance.now() - t0;
@@ -2889,7 +2935,8 @@
       avatar: new THREE.MeshBasicMaterial({ color: 0xf4c542 }),
       solGalerie: new THREE.MeshLambertMaterial(Object.assign({}, SOL_RECULE)),
       plafondGalerie: new THREE.MeshLambertMaterial({}),
-      paroi: new THREE.MeshLambertMaterial({ map: _e.moellons, side: THREE.DoubleSide }),
+      // Couleurs des sommets : l'ombre de contact des parois de pierre (OMBRE_CONTACT) ; blanc partout ailleurs.
+      paroi: new THREE.MeshLambertMaterial({ map: _e.moellons, side: THREE.DoubleSide, vertexColors: true }),
       paroiUnie: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
       // 🩸 Eau découpée en plusieurs pièces qui se recouvrent : sans écriture de profondeur stricte, chaque
       // recouvrement serait mélangé deux fois (taches plus sombres).
@@ -5246,6 +5293,7 @@
     const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
     if (l < 1e-6 || y1 <= y0) return;
     const u0 = (p[0] * dx + p[1] * dz) / l, u1 = u0 + l;
+    if (lot.ombre && !col) { _faceOmbree(lot, p, q, y0, y1, [-dz / l, 0, dx / l], BLANC, u0, u1, 1); return; }
     lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], [-dz / l, 0, dx / l],
       col || BLANC, col ? undefined : [u0, y0, u1, y0, u1, y1, u0, y1]);
   }

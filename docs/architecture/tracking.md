@@ -2037,7 +2037,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   polygone = pilier), un type inconnu garde sa couleur. Couleur et normal map dessinées dans un canvas
   (`_rocheBrute`, `ROCHE` : 256 px, motif de 3 m, plus grand que l'appareil car sans joints la répétition se voit
   plus ; `_appareil`, `PARPAING` : 256 px, motif de 1 m ; normal map commune `_carteNormale`), faits à la première
-  structure texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée par la légende. Deux matériaux de plus,
+  structure texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée par la légende (couleurs de sommets : 2e masse, ombre de contact). Deux matériaux de plus,
   structures toujours regroupées par matériau (un maillage par tuile et par matériau). Coordonnées de texture en
   mètres posées face par face (`_prisme`) : u = longueur de contour cumulée (l'appareil tourne l'angle), v = hauteur
   depuis le sol, dessus en projection monde (x, z). Normal map plutôt que bump map (une lecture par pixel, pas de
@@ -2046,6 +2046,19 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   pierre, remblais, éboulis) est dessinée une fois par page (`_texturesPeintes`, canvas gardés dans `_appareils`,
   ~15 à 30 ms au PC, ~100 ms au téléphone ralenti × 4), la pierre seulement à la première paroi texturée, remblais
   et éboulis à la première zone de leur type ; `KtaVue3D.textures()` rend ces temps (checkup § 24).
+- **Ombre de contact** (même interrupteur 🧱, `OMBRE_CONTACT`) : au pied et en tête des piliers, des fronts, des murs
+  et des parois des galeries et des tubes, la teinte descend à 50 % au contact du sol et du plafond et revient à
+  100 % en 28 cm (au plus le tiers de la hauteur) : les volumes tiennent au sol. ⚠️ contrat (décision batterie) :
+  posée **par sommet** dans la couleur du maillage (`_faceOmbree`, `Lot.quadDegrade`), multipliée par la texture et
+  par la teinte de la 2e masse ; ni ombre calculée, ni passe de rendu, ni lumière en plus. Le lot texturé la porte
+  (`lot.ombre = { sol, plafond }` sur la roche, le parpaing et la pierre des parois d'une tuile) : `_prisme` et
+  `_paroiY` découpent alors chaque face verticale en trois bandes (sol, +28 cm, plafond −28 cm, plafond) sans toucher
+  aux coordonnées de texture (v = hauteur en mètres) ; une paroi coupée par un niveau entremêlé ne s'assombrit qu'aux
+  bouts qui touchent le sol ou le plafond ; un mur (98 % de la hauteur) garde sa tête dans le dégradé. Matériaux
+  `roche`, `parpaing` et `paroi` en couleurs de sommets (blanc hors des bandes). Volumes des passages, remblais,
+  dessus des structures : sans ombre. Coût mesuré (salle fictive de 2 025 piliers de 6 à 12 pans, PC) : sommets de
+  la scène × 2,4 (79 300 → 192 900 à 100 m de portée, 11 600 → 27 800 à 30 m), triangles dessinés au plus 10 000 →
+  23 700, temps par image 0,8 → 0,95 ms ; aucun appel de dessin ni matériau de plus. Coupé : géométrie d'origine.
 - **Sol et ciel de carrière** (même interrupteur 🧱 ; coupé : noirs, ci-dessous) : deux textures distinctes, couleur
   et normal map, dessinées dans un canvas comme les autres (`_texturesPeintes`, aucune image). **Sol** (`SOL`,
   `_solDame`) : calcaire damé en bosses douces, plages de terre plus sombres et plus lisses (35 % de la surface, bord
@@ -2731,7 +2744,9 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   ciel de carrière (§ 24 quater, `KTA_V3D_SEUL=textures`) : deux motifs distincts avec relief, sans couture, sol peu
   contrasté et jamais plus clair que le sable calcaire, liseré de l'itinéraire à plus de 3:1, carré calé sur le monde
   (déplacement, portée), pièces des galeries à la même projection, noirs et jamais dessinés 🧱 coupé, reprise du
-  contexte, temps du premier dessin (téléphone ralenti × 4) ; tuile ⚙️
+  contexte, temps du premier dessin (téléphone ralenti × 4) ; ombre de contact : teinte × 0,5 au pied et en tête des
+  piliers (1re et 2e masse), du mur et des parois, pleine à 28 cm, trois bandes par face, texture inchangée, rien 🧱
+  coupé ; tuile ⚙️
   au-dessus de la colonne ✏️, curseurs entiers, sélecteur de niveau hors de la colonne, de la tuile et de la grille
   (portrait et paysage) ; ▼ en vue d'édition → la 3D au −1 sans passage, carte et tracker au 0, tracé dessiné au −1,
   retour à hauteur d'yeux dégagé, plan à un niveau sans sélecteur ; vue d'édition, zoom et inclinaison retrouvés à la

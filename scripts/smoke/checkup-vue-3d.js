@@ -9269,7 +9269,8 @@ async function sectionFichesReglage(nav) {
 // calcaire, liseré de l'itinéraire à plus de 3:1 du sol le plus sombre ; carré qui suit calé sur le monde (après un
 // déplacement, après un changement de portée), pièces des galeries à la même projection ; 🧱 coupé : noirs, sans
 // carte ni relief, aucun dessin ; reprise du contexte WebGL ; temps du premier dessin (téléphone ralenti × 4 sous
-// Chromium).
+// Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied et en tête des piliers, du mur et des
+// parois, pleine à 0,28 m, trois bandes par face, texture inchangée, rien 🧱 coupé.
 async function sectionTexturesSol(nav) {
   const chromiumNav = nav.browserType().name() === "chromium";
   const nom = "§ 24 quater ";
@@ -9359,6 +9360,32 @@ async function sectionTexturesSol(nav) {
         if (deg) deg();
         return { sommets: n, ecart: pire };
       };
+      // Ombre de contact : sommets des maillages texturés d'une famille → teinte (rouge / 255) la plus sombre et la
+      // plus claire au contact (y = 0 ou y = h à 1 mm), à la fin du dégradé et au-delà, hauteur de fin, v = y / m.
+      const ombres = function (famille, m) {
+        let ctx = null;
+        const deg = K.greffer({ nom: "v3d-textures-ombre", scene: function (c) { ctx = c; } });
+        const h = K.etat().hauteur, o = { sommets: 0, contact: [1, 0], plein: [1, 0], entre: [1, 0], ys: {}, v: 0, haut: h };
+        let racine = ctx.groupe;
+        while (racine.parent) racine = racine.parent;
+        racine.traverse(function (me) {
+          if (!me.isMesh || me.userData.famille !== famille || !me.geometry.attributes.uv ||
+              !me.material.vertexColors) return;
+          const p = me.geometry.attributes.position.array, c = me.geometry.attributes.color.array;
+          const uv = me.geometry.attributes.uv.array, nn = me.geometry.attributes.normal.array;
+          for (let i = 0; i < p.length / 3; i++) {
+            if (Math.abs(nn[i * 3 + 1]) > 60) continue;   // dessus : pas une face verticale
+            const y = p[i * 3 + 1], k = c[i * 3] / 255, d = Math.min(y, h - y);
+            const q = d < 0.001 ? o.contact : d > 0.2799 ? o.plein : o.entre;
+            q[0] = Math.min(q[0], k); q[1] = Math.max(q[1], k);
+            o.ys[y.toFixed(2)] = (o.ys[y.toFixed(2)] || 0) + 1;
+            o.v = Math.max(o.v, Math.abs(uv[i * 2 + 1] - y / m));
+            o.sommets++;
+          }
+        });
+        if (deg) deg();
+        return o;
+      };
       const ecartCalage = function (t) {
         return Math.max(Math.abs(t.calage.rendu[0] - t.calage.attendu[0]), Math.abs(t.calage.rendu[1] - t.calage.attendu[1]));
       };
@@ -9367,6 +9394,9 @@ async function sectionTexturesSol(nav) {
       const t0 = K.textures();
       r.defaut = { sols: t0.sols, motifs: t0.motifs, uv: t0.uvParMetre.sol, dessins: t0.dessins, msSol: t0.msSol,
         calage: ecartCalage(t0), cote: t0.calage.cote };
+      // Ombre de contact : roche (piliers de 1re et 2e masse), parpaing (mur à 98 % de la hauteur).
+      r.ombre = { roche: ombres("opaque", 3), mur: ombres("murs", 1), teintes: t0.teintes,
+        sommets: t0.materiaux.parpaing.couleursSommets && t0.materiaux.roche.couleursSommets };
       // Couleurs de référence : sable calcaire du sol (luminance relative), liseré de l'itinéraire (jeton --kta-fond
       // du thème sombre).
       r.defaut.lisere = (K.etat().itineraire || {}).couleurLisere || null;
@@ -9383,6 +9413,7 @@ async function sectionTexturesSol(nav) {
       K.basculerTextures();
       await pause(200);
       r.coupe = K.textures().sols;
+      r.ombre.coupe = { roche: ombres("opaque", 3), couleurs: K.textures().couleurs };
       K.basculerTextures();
       await pause(200);
       r.rallume = { sols: K.textures().sols, dessins: K.textures().dessins };
@@ -9403,6 +9434,8 @@ async function sectionTexturesSol(nav) {
       await ouvrir("galerie", -20, 0);
       const tg = K.textures();
       r.galerie = { sols: tg.sols, sol: uvMonde("sol"), plafond: uvMonde("plafond") };
+      r.ombre.paroi = ombres("parois", 1);
+      r.ombre.paroiSommets = tg.materiaux.paroi.couleursSommets;
       // Mixte : le carré dans la salle comme dans les tubes.
       await ouvrir("mixte", -20, 0);
       r.mixte = { sols: K.textures().sols, calage: ecartCalage(K.textures()) };
@@ -9465,6 +9498,27 @@ async function sectionTexturesSol(nav) {
       " + " + R.galerie.plafond.sommets + " sommets)", R.galerie);
     verifier(R.mixte.sols.sol.motif === "sol" && R.mixte.calage < 1e-3, nom + "rendu mixte : même sol, carré calé",
       R.mixte);
+    // Ombre de contact (vue3d.js > OMBRE_CONTACT : 0,28 m, teinte × 0,5 au contact ; 0,5 × 255 = 128).
+    const O = R.ombre, pres = function (a, b) { return Math.abs(a - b) < 0.012; };
+    // Pilier de 1re masse : blanc (1) ; de 2e masse : sa teinte (rouge < 1), ombrée dans la même proportion.
+    verifier(O.sommets && pres(O.roche.contact[1], 0.5) && pres(O.roche.contact[0], 0.5 * O.roche.plein[0]) &&
+      O.roche.plein[1] === 1 && O.roche.plein[0] < 0.95 && O.roche.entre[1] === 0 && O.roche.v < 1e-4,
+    nom + "ombre de contact des piliers : teinte × 0,5 au sol et au plafond (1re masse " + O.roche.contact[1].toFixed(2) +
+      ", 2e masse " + O.roche.contact[0].toFixed(2) + " pour " + O.roche.plein[0].toFixed(2) + "), pleine à 0,28 m, " +
+      "texture inchangée (v = y / 3 m ; " + O.roche.sommets + " sommets de faces)", O.roche);
+    verifier(Object.keys(O.roche.ys).sort().join() === "0.00,0.28," + (O.roche.haut - 0.28).toFixed(2) + "," +
+      O.roche.haut.toFixed(2), nom + "faces des piliers en trois bandes (sol, 0,28 m, plafond − 0,28 m, plafond)",
+    O.roche.ys);
+    verifier(pres(O.mur.contact[0], 0.5) && O.mur.entre[0] > 0.5 && O.mur.entre[1] < 1 && O.mur.plein[1] === 1,
+      nom + "mur (98 % de la hauteur) : sombre au pied, tête prise dans le dégradé du plafond", O.mur);
+    verifier(O.paroiSommets && pres(O.paroi.contact[0], 0.5) && pres(O.paroi.contact[1], 0.5) &&
+      O.paroi.plein[0] === 1 && O.paroi.v < 1e-4 && O.paroi.sommets > 0,
+    nom + "parois de galerie : même ombre au pied et en tête, texture en mètres inchangée (" + O.paroi.sommets +
+      " sommets)", O.paroi);
+    verifier(O.coupe.roche.sommets === 0 && (O.coupe.couleurs.opaque || []).length >= 1 &&
+      (O.coupe.couleurs.opaque || []).every(function (c) { return /^#[0-9a-f]{6}$/.test(c); }) &&
+      (O.coupe.couleurs.opaque || []).length <= 3,
+    nom + "🧱 coupé : aucune ombre de contact, couleurs de la légende seules", O.coupe);
     const d = R.defaut.dessins;
     verifier(d.sol >= 0 && d.ciel >= 0, nom + "premier dessin : sol " + d.sol + " ms, ciel " + d.ciel +
       " ms (cette ouverture : " + R.defaut.msSol + " ms)", d);
@@ -20115,10 +20169,10 @@ async function sectionCaseBoutonsZoom(nav) {
         "piliers et fronts en roche brute : aucun lit de mortier (écart de rangée " + mp.lits + " ; parpaing " +
         mg.lits + ")", { roche: mp.lits, parpaing: mg.lits });
       verifier(mp.carte === "256x256" && mp.normale && mp.relief === 256 && mp.mipmaps && mp.anisotropie >= 1 &&
-        mp.anisotropie <= 4 && mp.couleursSommets === true && mg.couleursSommets === false && mp.recule === false &&
+        mp.anisotropie <= 4 && mp.couleursSommets === true && mg.couleursSommets === true && mp.recule === false &&
         mg.carte === "256x256" && mg.normale && mg.mipmaps && mg.recule === true && TX.defaut.murDecale,
         "matériaux : couleur et normal map de 256 px (puissance de 2), mipmaps, anisotropie ≤ 4, jamais teintés par " +
-        "la légende (roche : teinte fixe de la 2e masse par sommet) ; " +
+        "la légende (couleurs des sommets : 2e masse de la roche, ombre de contact) ; " +
         "parpaing reculé en profondeur comme les murs (" + D0.ms + " ms pour les dessiner)", D0.materiaux);
       verifier((D0.couleurs.opaque || []).length >= 1 && !contient(D0.couleurs.opaque, "#3c9be0") &&
         TX.defaut.yMax.murs > 0 && TX.defaut.yMax.murs < TX.defaut.yMax.opaque,
