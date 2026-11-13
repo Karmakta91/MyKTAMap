@@ -44,11 +44,11 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Essai sur dev : chatière, galerie inclinée, sommets, jeu, mini-carte, transparence** — `1147b92e` chatière ;
-  `04efcd48` galerie inclinée en édition 3D ; `4ce78f12` menu des sommets ; `93759be9` jeu multi-niveau ; `61a8bd33` +
-  `fe52d9a4` mini-carte 3D ; `32a296ec` + `f15d5470` « Niveaux en transparence » (voisins vus au sol et au plafond).
-  `qui: KARMA · action: refaire une chatière ; galerie inclinée en vue d'édition ; transparence à hauteur d'yeux au
-  téléphone (fluidité, sol lisible) · fini: vus conformes, ou bugs ouverts · depuis: 12/11/2026 · taille: XS`
+- **Essai v2.26.0 au téléphone (en prod)** — vue 3D texturée (sol, ciel, ombres, stries, arcs en pierre de taille,
+  voiture), Textures HD, niveaux en transparence, mini-carte (arc rayé, paysage), colonne sans rectangle ; chatière
+  refaite, galerie inclinée en édition, menu des sommets, jeu ; plan de test à copier sur le serveur (`scp`).
+  `qui: KARMA · action: essai iPhone sur myktamap.fr (Textures HD : fluidité, chauffe) · fini: vus conformes, ou bugs
+  ouverts · depuis: 13/11/2026 · taille: XS`
 - **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
   « Comblé » fr / en / es, case « Respecter… », brancard, 3D jusqu'au ciel ; dans le même lot, le message à l'échec
   (sortie d'urgence comprise) qui nomme les zones Comblé en cause. `docs/ETUDE_REMBLAIS.md`.
@@ -56,6 +56,12 @@
   · depuis: 11/11/2026 · taille: M`
 
 ## Ensuite
+
+- **Fond OSM sous le plan (bouton OSM du plan)** — petit panneau : on/off du fond OSM sous le plan, transparence de
+  l'image du plan, « Ma position » ponctuelle ; modale OSM depuis l'accueil seulement ; éteint à l'ouverture. QCM
+  du 13/11/2026, couche canvas dans la carte du plan, exports sans fond. Brief : session chef de projet du 13/11.
+  `qui: Claude · action: lot M dès que les tests KARMA en attente ≤ 3 · fini: checkup (calage < 1 px, rotation, aucune
+  requête hors ligne / incognito), docs et NETWORK_AUDIT · depuis: 13/11/2026 · taille: M`
 
 - **Course i18n au démarrage sous WebKit** — ✅ vu 04/11 : sous WebKit, `checkup-guidage.js` tombe parfois sur
   `[I18n] Clé manquante : "home.profile.stats.storageTitle"`, alors que la clé existe ; l'appel vient de
@@ -150,6 +156,17 @@
   · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
+
+- **Pile de test Docker sur le port de Sonar** — une pile de test a pris le 9000 (13/11) : la porte Sonar de
+  `merge-main.ps1` échoue tant qu'elle tourne. Refuser ce port aux piles de test, ou les sortir de sa plage.
+  `qui: Claude · action: trouver la pile en cause, plage de ports réservée · depuis: 13/11/2026 · taille: XS`
+- **Scan Sonar impossible depuis une copie séparée** — le scanner (Docker) ne lit pas le `.git` d'un worktree
+  (chemin Windows absolu) : `RepositoryNotFoundException`. Les lots ne peuvent pas prouver la porte avant intégration.
+  `qui: Claude · action: monter le dépôt principal dans le conteneur, ou scan sans SCM sur un projet Sonar à part
+  · depuis: 13/11/2026 · taille: XS`
+- **En-tête de licence : étendre le garde-fou** — `check-entete-licence.js` ne lit que `js/` et `sw.js` ; `addons/`
+  et `css/` portent l'en-tête aujourd'hui sans que rien ne l'impose.
+  `qui: Claude · action: ajouter addons/**/*.js et css/*.css au périmètre · depuis: 13/11/2026 · taille: XS`
 
 - **`check-uid.js` instable : « 5 000 tirages distincts »** — 1 échec sur 4 au pre-commit le 12/11 : 5 000 uid
   dans la même milliseconde, 6 caractères aléatoires, collision possible (doublons déjà régénérés par `ensureAll`).
