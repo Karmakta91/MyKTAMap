@@ -256,19 +256,20 @@
     lance: { passes: 2, coups: [3, 6], long: [0.5, 1.1], pas: [0.07, 0.12], pente: 0.07, ecart: 0.2, rayon: 0.015,
       creux: 0.09, sombre: 0.05 },
     grain: 0.07, relief: 4, graine: 53 };
-  // 2e masse (pilier-2, front-2) : la même roche, plus chaude (teinte par sommet multipliée par la texture, même
-  // matériau et même maillage que la 1re, blanche ; chacune nuancée par structure : NUANCE_ROCHE). 🩸 Sans elle, 🧱 activé, 1re et 2e masse étaient la même roche :
-  // un pilier passé de l'une à l'autre ne changeait rien dans la scène. Pas de second matériau : préparé au premier
-  // pilier de 2e masse, il retardait d'une image le changement de niveau sous le fondu (WebKit).
-  const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f0b98a";
+  // 2e masse (pilier-2, front-2) : la même roche, à peine plus chaude (teinte par sommet multipliée par la texture,
+  // même matériau et même maillage que la 1re, blanche ; chacune nuancée par structure : NUANCE_ROCHE). Discrète
+  // (décision produit) : on la devine, sans plus ; la distinction franche se lit 🧱 coupé (couleurs de la légende),
+  // sur la carte 2D et la mini-carte. 🩸 Pas de second matériau : préparé au premier pilier de 2e masse, il
+  // retardait d'une image le changement de niveau sous le fondu (WebKit).
+  const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f4e5d2";
   // Face de roche de plus de `long` motifs (un front, le flanc d'un long pilier) : pans de `pan` motifs de long.
   // `essais` origines tirées par pan, la mieux raccordée en teinte gardée ; `ton` : cases par côté du motif pour
   // comparer les teintes (_tonRoche) ; `haut` : écart de v minimal (motifs) entre deux pans qui se suivent.
   const BRISE = { long: 2, pan: [1, 1.7], essais: 64, ton: 24, haut: 0.2 };
   // Nuance de roche par structure (🧱 activé, _nuanceRoche) : deux piliers voisins ne sortent plus du même moule. La
   // teinte de la structure (blanc, ou TEINTE_MASSE_2) est assombrie de 0 à `clair` et tirée vers le chaud ou le
-  // froid d'au plus `chaud` (une composante abaissée : une couleur de sommet ne dépasse jamais 1). Discrète exprès :
-  // l'écart entre deux piliers reste loin de celui qui sépare la 1re de la 2e masse.
+  // froid d'au plus `chaud` (une composante abaissée : une couleur de sommet ne dépasse jamais 1). Discrète exprès.
+  // ⚠️ contrat : les plages de la 1re et de la 2e masse ne se recouvrent pas (rapport bleu / rouge des sommets).
   const NUANCE_ROCHE = { clair: 0.16, chaud: 0.06 };
   // Textures HD (réglage de l'appareil, config.js > getVue3DTexturesHD ; sans effet 🧱 coupé) : chaque texture est
   // dessinée à `px` fois sa taille (512 px pour 256 ; jamais 1024 : seize fois les pixels), le même dessin plus fin
@@ -7264,7 +7265,7 @@
     let ys = h - re, kv = 1;
     if (ys < piedMin) { ys = piedMin; kv = (h - ys) / re; }
     // 🧱 activé : la teinte des parois de pierre de taille, partout (décision produit) — la texture seule, jamais
-    // la teinte chaude de la 2e masse : un arc est bâti, pas taillé dans la masse.
+    // la teinte plus chaude de la 2e masse : un arc est bâti, pas taillé dans la masse.
     const tex = lots.tex, base = tex ? BLANC : _couleur("structures", "arc");
     const teinte = function (f) {
       return { r: Math.min(1, base.r * f), g: Math.min(1, base.g * f), b: Math.min(1, base.b * f) };

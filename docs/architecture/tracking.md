@@ -2038,7 +2038,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   🧱 coupé : aplats à la couleur de la légende, dans le lot opaque de la tuile. 🧱 activé : pierre de taille
   texturée avec relief, **partout à la teinte des parois de pierre de taille** (la texture seule) — en travers
   d'un tube comme en chambre ou en rendu structures, quelle que soit la masse du niveau : un arc est bâti, il ne
-  prend jamais la teinte chaude des piliers de 2e masse. **Claveaux** : un bloc de
+  prend jamais la teinte plus chaude des piliers de 2e masse. **Claveaux** : un bloc de
   géométrie chacun (joints et fonds de joint gardés), en pierre dressée (`CLAVEAU`, `_pierresDressees`,
   `_matClaveau`) — une planche de 4 × 4 pierres entières dessinée dans un canvas (grain fin, nuance légère, arêtes
   émoussées, layage discret et irrégulier — coups parallèles à une orientation qui varie un peu d'une pierre à
@@ -2088,9 +2088,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   du motif par case de 12,5 cm, lue une fois par page sur la carte dessinée), jamais à moins de 0,2 motif de la
   hauteur du pan d'avant (le même dessin reviendrait à côté). La jointure n'est plus qu'un changement de dessin.
   Garde-fou : § 12 quater (faces longues brisées, courtes entières, mêmes origines après reconstruction des
-  tuiles). Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
-  `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche :
-  sans elle un pilier passé de la 1re à la 2e masse ne changeait rien dans la scène), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
+  tuiles). Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche à peine plus chaude (teinte
+  `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche.
+  Discrète, décision produit : on la devine, la distinction franche se lit 🧱 coupé, sur la carte 2D et la
+  mini-carte), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
   le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,
   polygone = pilier), un type inconnu garde sa couleur. Couleur et normal map dessinées dans un canvas
   (`_rocheBrute`, `ROCHE` : 256 px — 512 en Textures HD, ci-dessous —, motif de 3 m, plus grand que l'appareil car sans joints la répétition se voit
@@ -2126,7 +2127,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Nuance de roche par structure** (même interrupteur 🧱, `NUANCE_ROCHE`, `_nuanceRoche`) : chaque pilier, front ou
   type perso en roche reçoit une teinte à lui — celle de sa masse (blanc, `TEINTE_MASSE_2`) assombrie de 0 à 16 % et
   tirée de ± 6 % vers le chaud ou le froid — posée par sommet comme la 2e masse : deux piliers voisins ne sortent
-  plus du même moule, la 2e masse reste reconnaissable (son écart à la 1re est sans commune mesure). ⚠️ contrat :
+  plus du même moule, la 2e masse reste reconnaissable (les plages des deux masses ne se recouvrent pas : rapport
+  bleu / rouge des sommets de 0,94 à 1,06 pour la 1re, de 0,67 à 0,76 pour la 2e). ⚠️ contrat :
   tirée de la position du premier sommet de la structure (px du plan, comme l'origine du motif), jamais de
   `Math.random` : la même à chaque reconstruction de tuile, à chaque ouverture, sur chaque appareil. Murs en
   parpaing sans nuance (un appareil régulier). Aucun coût : une couleur de sommet déjà écrite.
