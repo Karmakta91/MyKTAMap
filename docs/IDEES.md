@@ -34,6 +34,9 @@
 - **Add-on mkmg : interrupteur par organisation (pro)** — aujourd'hui refusé sur une installation reliée, sauf
   `data/reglages.json > addons.mkmg` (toute l'installation) ; l'idée : un admin d'organisation l'allume (prise
   neutre ici, case d'admin côté pro). Déclencheur : un client qui le demande (aucun au 12/11/2026).
+- **Add-on « Exporter en 3D (.glb) »** — la scène de la vue 3D enregistrée en `.glb` (three.js `GLTFExporter`), par
+  la prise `KtaVue3D.greffer`, pour l'ouvrir dans un moteur de jeu ou un logiciel 3D. Un outil hors dépôt le fait
+  déjà, piloté par navigateur (12/11/2026). Déclencheur : une demande d'utilisateur, ou un besoin récurrent du portage.
 
 ## Outillage
 

@@ -27,8 +27,9 @@ plus épais que le mur en ligne) ; `majLargeurFronts` reconnaît la couche à `o
 queue de la liste du renderer à chaque passe de `ktaOrdonnerMursCarte` (couche rayée et sa zone de clic, marquée
 `ktaArcDessus`) ; tant qu'un arc est sur la carte, tout ajout de vecteur sur le canvas commun (tracés redessinés,
 filtre, niveau, routes rendues par ULTRA au glissé) prévoit une passe. Rien d'autre ne bouge. Exports PNG / PDF : la
-même fonction sur leur file (`_arcsDessus`), donc arcs peints après les routes ; KMZ, Vue OSM, mini-carte
-d'urgence : trait bleu seul, ordre inchangé. Pastilles : dégradé répété bleu / rouge
+même fonction sur leur file (`_arcsDessus`), donc arcs peints après les routes ; mini-carte de la vue 3D
+(`vue3d.js > _dessinerFondMiniCarte`) : rayures en pixels (`ktaPeindreRayures`), arcs après les tracés ; KMZ, Vue OSM,
+mini-carte d'urgence : trait bleu seul, ordre inchangé. Pastilles : dégradé répété bleu / rouge
 (`ktaTypeSwatchHtml`, légende, export) ; `ktaSwatchColor` rend le bleu.
 Contrastes WCAG mesurés (objet graphique, seuil 3:1) : bleu `#1e3a8a` 10,36 sur blanc, 8,65 sur crème `#f2ead8`,
 8,50 sur le fond clair `#f0e8d8`, mais 2,03 sur noir et 1,87 sur le fond sombre `#0a0d18` ; rouge `#cc0000` 5,89 /

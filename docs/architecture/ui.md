@@ -2353,7 +2353,7 @@ icônes.
   un panneau de POI ouvre toujours la sienne, l'ajustement par appui long reste permis ; une greffe `fiches: false`
   l'emporte), 🧱
   Textures (`getVue3DTextures`, `myktamap_v3d_textures_v1`, cet appareil, actif par défaut : parois des galeries et
-  des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing, remblais en terre et cailloux,
+  des tubes en pierre de taille, piliers et fronts en roche brute, murs en parpaing (en pierre de taille s'ils sont tracés en ligne), remblais en terre et cailloux,
   effondrements en éboulis (deux volumes qui, comme la zone ⛔ inaccessible, arrêtent le pas en 3D dans les trois rendus),
   battants de bois des cavages et remblais des puits comblés ; coupé : parois des galeries et des tubes à la couleur de légende de leur tracé, sol et plafond noirs, structures et zones aux couleurs de la légende, battants en bois uni ; contrats : `tracking.md` § Vue 3D ; sur la ligne du rendu,
   Lignes au sol sur la suivante, Boussole et Mini-carte ensuite, Guidage et Fiches dessous ; basculer refait les tuiles sur place, `_basculerTextures` > `_refaireTuiles`,
@@ -2376,8 +2376,8 @@ icônes.
   🏗️ **Niveaux** (plan multi-niveau seulement, `.kta-v3d-niveaux-vus`) : le nom sur sa ligne, dessous trois choix
   exclusifs côte à côte, Voisins / Tous / Le mien (`aria-pressed`, pastille ronde au lieu de la case,
   `myktamap_v3d_niveaux_vus_v1`, cet appareil ; au doigt, Voisins à chaque ouverture ; effets : `tracking.md` § Vue 3D
-  › Niveaux voisins) ; dessous, 🌫️ **Estomper** (interrupteur `aria-pressed`, `myktamap_v3d_estomper_v1`, cet
-  appareil, activé par défaut ; en vue d'édition, dessous assombri et dessus en fantôme ; ligne cachée sur un plan à
+  › Niveaux voisins) ; dessous, 🌫️ **Niveaux en transparence** (interrupteur `aria-pressed`, `myktamap_v3d_estomper_v1`, cet
+  appareil, activé par défaut ; en vue d'édition, dessous assombri et dessus en fantôme ; à hauteur d'yeux, voisins immédiats vus à travers le plafond et le sol voilés ; ligne cachée sur un plan à
   un niveau).
   La tuile tient au téléphone (393 px) ; les boutons de la vue d'édition (+ − ▲ ▼, montrés si
   la case « Boutons de zoom » de l'accueil est cochée, `tracking.md` § Vue 3D) sont en bas à droite, sous elle : ouverte, elle ne les recouvre pas. Fermée par ⚙️, Échap (avant tout le reste) ou un
@@ -2424,9 +2424,19 @@ icônes.
 - **Mini-carte** (`vue3d.js > _majMiniCarte`, `.kta-v3d-minicarte`) : médaillon rond (`<button>`, canvas 2D, liseré
   `--kta-accent` à 55 %, fond de la scène) en **haut à droite, sous la rangée du haut et sous le bandeau de guidage
   visible** : son `top` est `--kta-v3d-sous-haut` (`_majSousHaut`, qui compte le bandeau), elle suit le bandeau qui
-  apparaît, grandit ou disparaît et ne le recouvre jamais. Taille : 30 % du petit côté, 96 à 150 px, **réduite à la
-  hauteur qui reste** au-dessus des commandes du bas (100 vh − `--kta-v3d-sous-haut` − 220 px, 64 px au moins) :
-  118 px à 393 × 852 et 108 px à 360 × 640 avec un bandeau de deux lignes et l'encart « reste », sans chevauchement.
+  apparaît, grandit, rétrécit ou disparaît et ne le recouvre jamais. 🩸 `_majSousHaut` est appelé par un
+  `ResizeObserver` sur la rangée du haut et le bandeau (branché par `_brancher`, débranché par `_demonter`), pas
+  seulement au `resize` : sur iOS, `resize` part avant la remise en page d'une rotation et la mini-carte restait sur
+  le bandeau, passé sur plusieurs lignes, jusqu'à la consigne suivante. Taille : 30 % du petit côté, 96 à 150 px,
+  **réduite à la hauteur qui reste** au-dessus des commandes du bas (100 vh − `--kta-v3d-sous-haut` − 220 px, 64 px
+  au moins) : 118 px à 393 × 852 et 108 px à 360 × 640 avec un bandeau de deux lignes et l'encart « reste », sans
+  chevauchement. **Paysage bas** (`max-height: 500px` en paysage), montrée et pas agrandie (classe
+  `kta-v3d-mc-cote` sur la vue, `_majMiniCarteCote`) : posée sous la rangée **seule** (`--kta-v3d-sous-rangee`), à
+  hauteur du bandeau, à sa **droite** ; le bandeau prend `right` = largeur de la mini-carte + 20 px (centré dans la
+  place qui reste, 520 px de texte au plus) et sa taille se calcule sous la rangée : 30 % du petit côté, 130 à 150 px,
+  réduite à 100 vh − `--kta-v3d-sous-rangee` − 150 px (réserve des commandes du bas propre au paysage bas : pavé au
+  milieu, boussole à gauche, rien sous la mini-carte) ; 120 px à 667 × 320 et 130 px à 734 × 343, sans chevauchement.
+  Cachée ou agrandie : le bandeau garde toute sa largeur (`checkup-vue-3d.js` § 59).
   Pas de conflit avec la colonne d'outils : la mini-carte est **masquée en vue d'édition**. Contenu, orientation et
   coût : `tracking.md` § Vue 3D › Mini-carte. **Toucher** = agrandie (`.kta-v3d-minicarte-grande`) au centre de la
   place entre le bandeau et les commandes du bas (86 vw, 480 px au plus), liseré plein ; toucher encore = refermée ;

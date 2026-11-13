@@ -47,7 +47,9 @@
 // tubes et des galeries en pierre de taille (lits de joint mesurés, 0,5 de texture par mètre à 2,5 m comme à 6 m de
 // hauteur, une assise part du sol), moellons d'origine une fois coupé, temps de dessin des textures ; remblais et
 // effondrement texturés (zone de 1 m et de 10 m à la même échelle, chambre, tube, galerie, structures ; eau et zone
-// perso jamais texturées ; couleur de la légende une fois coupé).
+// perso jamais texturées ; couleur de la légende une fois coupé). Sol et ciel de carrière (§ 24 quater,
+// KTA_V3D_SEUL=textures) : deux motifs distincts avec relief, sans couture, sol peu contrasté, carré calé sur le monde,
+// noirs une fois coupé, reprise du contexte, temps de dessin.
 // Mixte par côté (pilier ou front d'un seul côté, deux côtés, structure dans l'axe : parois, pans de retour, fentes
 // cherchées par rayons, collisions) ; itinéraire en ruban plein (largeur, liseré, chevrons de sens, niveau, étape,
 // 🏁) ; ronds d'intersection de
@@ -59,6 +61,12 @@
 // case effective en vue d'édition, greffe figée, coût. Greffe (21) :
 // prise neutre d'un add-on (cycle de vie, rendu à la demande, règle du pas), code « six vers le bas ». Add-on mkmg
 // (23) : refus, confirmation, partie en vagues, masquage, endurance, tir, recharge, objets, égaré, silhouette, fin.
+// B sur un autre niveau (58, KTA_V3D_SEUL=mkmgniveaux) : dès la vague 1, forcé sur un niveau pauvre, gardien sur place.
+// Silhouette (23 bis, KTA_V3D_SEUL=mkmg) : deux allures, plus vite à chaque vague, lampe qui vacille de près, pile × 2
+// quand on la fixe, recul et sonnée au tir, contact. Fumigène : lancer (8 m, arrêté par une paroi), stock, mur pour
+// les marcheurs (règle du pas et glissement de nœud en nœud), figés dedans, silhouette qui traverse hors faisceau,
+// dissipation, ramassage, gardien, reprise du contexte WebGL, fin de partie. Coups portés : élan, dégâts, esquive,
+// cadence, gardien. Écran de fin : précision, égarés tués, durée, scores d'une ancienne partie gardés tels quels.
 // Réglages (25) : portée 15 / 100 m (curseur, brouillard, profondeur, lampe, tuiles, relue), intensité 25 / 300 %
 // et faisceau 40 / 160° (curseurs, pénombre, relus, ancien « forte » / « jour » relu), ☀️ Plein jour (interrupteur),
 // greffe figée ou non (facteur d'une greffe multiplié, réglages rendus au retrait), zoom de la vue plongeante 6 / 60 m
@@ -66,6 +74,8 @@
 // Colonne d'outils en vue d'édition seulement (PC, téléphone, paysage ; absente pendant le jeu, qui ne chevauche aucune
 // commande à ces tailles) ; au doigt en paysage bas, contre le bord droit, entre la rangée du haut et ⌖
 // (KTA_V3D_SEUL=colonne : cette vérification seule). Plan au sol sur écran dense, vue immobile (image, V1, V2).
+// Mini-carte et bandeau de guidage au téléphone (59, KTA_V3D_SEUL=mcbandeau) : à droite du bandeau en paysage bas,
+// sous lui en portrait dès la rotation, ResizeObserver débranché à la fermeture.
 // Tuile ⚙️ au doigt en paysage bas : un glisser posé sur une ligne la fait défiler (KTA_V3D_SEUL=tuile).
 // Case « Boutons de zoom » de l'accueil (§ case zoom, KTA_V3D_SEUL=caseZoom) : décochée, + − ▲ ▼ cachés en vue
 // d'édition, ⌖ gardé, molette et clavier zooment ; changée vue ouverte, appliquée aussitôt.
@@ -104,6 +114,8 @@
 // téléphones), coût sur 9 000 piliers.
 // Niveau du dessous estompé en vue d'édition (46, =estomper) : par défaut, bouton 🌫️, retenu, hauteur d'yeux intacte.
 // Passages et pentes des voisins (47, =voisinspassages) : coupés à ce qui est montré, jamais en double, arrivées intactes.
+// Autres niveaux en transparence à hauteur d'yeux (46 bis, =transparence) : plafond et sol ouverts sous l'emprise
+// des voisins, pas et toucher inchangés, niveau le plus haut, « Actif seul ».
 // Niveau du dessus en fantôme en vue d'édition (48, =fantome) : transparent, sans sol, ne capte aucun toucher, 🌫️.
 // Sol actif voilé ou invisible en vue d'édition (49, =solvoile) : 🧱, Voisins / Le mien, niveau le plus profond, yeux.
 // Niveaux entremêlés (50, =entremeles) : union des vides (parois coupées, trous du gabarit, plans cachés en structures),
@@ -179,7 +191,10 @@ const LS_PREGATES = {
   "myktamap_tutorial_seen_v1": "1",
   // Case « Boutons de zoom » cochée : les sections existantes attendent + − ▲ ▼ en vue d'édition (décochée par défaut,
   // ils y sont cachés ; § case zoom la décoche).
-  "app_user_prefs": JSON.stringify({ zoomBoutons: true })
+  "app_user_prefs": JSON.stringify({ zoomBoutons: true }),
+  // Textures HD coupées (allumées par défaut au pointeur fin) : les sections mesurent les textures de 256 px et
+  // leurs temps de dessin ; § 24 quater les allume lui-même.
+  "myktamap_v3d_textures_hd_v1": "0"
 };
 // ☀️ Plein jour (vue3d.js > AMBIANCE.jour, SOLEIL.force, jeton --kta-texte-3 du brouillard et du fond).
 const PJ = { ambiance: 0.25, soleil: 1.8, fond: "#98a1b3", brume: 0.4 };
@@ -260,6 +275,111 @@ async function homogene(page, nom) {
 async function capture(page, nom) {
   if (!CAPTURES) return;
   await page.screenshot({ path: path.join(CAPTURES, nom + ".png") });
+}
+
+// Relevé écarté de la scène d'un test (script d'initialisation de chaque page, cf main > nav.newContext).
+// Une section qui pose ses propres formes remplace les accesseurs du relevé (getAllEmbeddedRoads, …Zones, …Points,
+// …Structures) puis appelle window.__v3dReleve.aligner() ; elle le rappelle après les avoir rendus.
+// 🩸 Remplacer les accesseurs ne suffit pas : la règle du pas (tracking.js > _segmentsBloquesParStructure),
+// l'itinéraire (pathfinder.js > zones dures, murs en ligne) et ⛏️ Volume exploité lisent les registres des calques
+// (_ktaDataStructurePolygons, _ktaDataPolygons) sans passer par eux. Un pilier du relevé, absent de la scène dessinée,
+// arrêtait alors le pas d'un test selon l'endroit où le relevé en pose.
+// aligner() : accesseur remplacé → son registre mis de côté (tableau vide à la place) ; accesseur d'origine → registre
+// remis. Sans effet si rien n'a changé : une section jouée à l'intérieur d'une autre ne remet rien trop tôt.
+// ⚠️ Un calque de test se charge APRÈS aligner() (il s'inscrit dans le registre vide) et se retire avant de rendre
+// les accesseurs ; un changement de plan pendant qu'un registre est de côté n'est pas géré.
+// 🔒 Garde-fou : chaque appel rejoue la règle du pas en travers de chaque structure du relevé mise de côté (session
+// ignorée le temps de la sonde) ; une seule qui arrête encore le pas = exception « la scène du test n'est pas vide ».
+// Sections jouées SUR le relevé (début de main) : la scène dessinée le garde, deux aides pour le pas seulement.
+// bandeLibre(x0, y0, x1, y1, pas, niveau) → true si aucune structure du relevé n'arrête un pas dans ce rectangle
+// (px ; quadrillage de segments tous les `pas`) : sert à choisir un départ dégagé. sansStructures() met de côté le
+// registre des structures le temps d'un bloc synchrone et rend la fonction qui le remet.
+function brancherReleve() {
+  if (window.__v3dReleve) return;
+  const REGISTRES = { getAllEmbeddedZones: "_ktaDataPolygons", getAllEmbeddedStructures: "_ktaDataStructurePolygons" };
+  const ACCESSEURS = ["getAllEmbeddedRoads", "getAllEmbeddedZones", "getAllEmbeddedPoints", "getAllEmbeddedStructures"];
+  const origine = {}, reels = {}, bilan = { alignements: 0, temoins: 0, restants: 0 };
+  // Accesseur d'origine = la première fonction que l'app pose sous ce nom (utils.js, road.js).
+  ACCESSEURS.forEach(function (g) {
+    Object.defineProperty(window, g, { configurable: true, enumerable: true,
+      get: function () { return undefined; },
+      set: function (f) {
+        origine[g] = f;
+        Object.defineProperty(window, g, { value: f, writable: true, configurable: true, enumerable: true });
+      } });
+  });
+  // Règle du pas jouée sur le relevé seul (structures de session ignorées) → nombre de segments refusés.
+  const refuses = function (segments, niveau) {
+    const session = window.getStructures;
+    window.getStructures = function () { return []; };
+    try {
+      return window.ktaSegmentsBloquesParStructure(segments, niveau, true).filter(Boolean).length;
+    } finally { window.getStructures = session; }
+  };
+  const pasVide = function (n, quoi) {
+    return new Error("la scène du test n'est pas vide : objets du relevé présents (" + n + " " + quoi + ")");
+  };
+  // Nombre de structures de `liste` qui arrêtent un pas tiré en travers de leur emprise, à leur niveau.
+  const sonder = function (liste) {
+    if (typeof window.ktaSegmentsBloquesParStructure !== "function" || !Array.isArray(liste)) return 0;
+    const parNiveau = {};
+    liste.forEach(function (e) {
+      if (!e || !Array.isArray(e.points) || e.points.length < 2) return;
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      e.points.forEach(function (p) {
+        x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+      });
+      const niveau = Number.isInteger(e.level) ? e.level : 0;
+      (parNiveau[niveau] = parNiveau[niveau] || []).push([x0 - 1, (y0 + y1) / 2, x1 + 1, (y0 + y1) / 2]);
+    });
+    let n = 0;
+    Object.keys(parNiveau).forEach(function (niveau) { n += refuses(parNiveau[niveau], +niveau); });
+    return n;
+  };
+  window.__v3dReleve = {
+    bandeLibre: function (x0, y0, x1, y1, pas, niveau) {
+      const segments = [];
+      for (let x = x0; x <= x1 + 1e-6; x += pas) segments.push([x, y0, x, y1]);
+      for (let y = y0; y <= y1 + 1e-6; y += pas) segments.push([x0, y, x1, y]);
+      return refuses(segments, niveau) === 0;
+    },
+    sansStructures: function () {
+      const k = "_ktaDataStructurePolygons";
+      if (k in reels) return function () {};
+      const liste = window[k];
+      window[k] = [];
+      const restants = sonder(liste);
+      if (restants) { window[k] = liste; throw pasVide(restants, "structure(s) du relevé arrêtent encore le pas"); }
+      return function () { window[k] = liste; };
+    },
+    aligner: function () {
+      ACCESSEURS.forEach(function (g) {
+        if (!origine[g]) throw new Error("relevé : accesseur " + g + " introuvable, la scène ne peut pas être vidée");
+      });
+      Object.keys(REGISTRES).forEach(function (g) {
+        const k = REGISTRES[g], remplace = window[g] !== origine[g];
+        if (remplace && !(k in reels)) {
+          if (g === "getAllEmbeddedStructures") bilan.temoins = sonder(window[k]);
+          reels[k] = window[k];
+          window[k] = [];
+        } else if (!remplace && k in reels) {
+          window[k] = reels[k];
+          delete reels[k];
+        }
+      });
+      bilan.alignements++;
+      if ("_ktaDataStructurePolygons" in reels) {
+        bilan.restants = sonder(reels._ktaDataStructurePolygons);
+        if (bilan.restants) throw pasVide(bilan.restants, "structure(s) du relevé arrêtent encore le pas");
+      }
+    },
+    // { ecartes: registres de côté, alignements, temoins: structures du relevé qui arrêtaient le pas avant d'être
+    // mises de côté, restants: celles qui l'arrêtent encore (0 attendu) }
+    etat: function () {
+      return { ecartes: Object.keys(reels), alignements: bilan.alignements, temoins: bilan.temoins,
+        restants: bilan.restants };
+    }
+  };
 }
 
 // Plan dense synthétique, dans le registre des structures embarquées (mémoire seule, aucune session écrite).
@@ -959,6 +1079,7 @@ async function sectionDonnees(page, MX) {
     const vrais = window.__v3dEmb;
     window.getAllEmbeddedRoads = vrais.r; window.getAllEmbeddedZones = vrais.z; window.getAllEmbeddedPoints = vrais.p;
     window.getAllEmbeddedStructures = vrais.s;
+    window.__v3dReleve.aligner();
     const CAL = "v3d_dn_calque";
     const json = { data: [Object.assign({ id: "POI calque v3d", nom: "POI calque v3d", uid: "pt_dn_cal", tags: ["salle"],
       level: 0, description: "" }, P(-3, 2))],
@@ -1006,6 +1127,7 @@ async function sectionDonnees(page, MX) {
     window.PLAN_CONFIG.dataLayers = window.PLAN_CONFIG.dataLayers.filter(function (l) { return l.id !== CAL; });
     window.getAllEmbeddedRoads = bouchons.r; window.getAllEmbeddedZones = bouchons.z;
     window.getAllEmbeddedPoints = bouchons.p; window.getAllEmbeddedStructures = bouchons.s;
+    window.__v3dReleve.aligner();
     URL.revokeObjectURL(url);
     r.fin = r.finAvantCalque;
     window.setRoads([]); window.setZones([]); window.setStructures([]); window.setEditorPoints([]);
@@ -1136,6 +1258,7 @@ async function sectionTypeModifie(page) {
     };
     window.getAllEmbeddedRoads = duCalque(vrais.r); window.getAllEmbeddedZones = duCalque(vrais.z);
     window.getAllEmbeddedPoints = function () { return []; }; window.getAllEmbeddedStructures = duCalque(vrais.s);
+    window.__v3dReleve.aligner();
     // Deux types perso de tracé, identifiants de même longueur, couleurs distinctes.
     const LC = window.LegendCustomization, trouver = LC.findCustomEntry;
     const PERSO = { "cust-v3d-ty-a": "#3c9be0", "cust-v3d-ty-b": "#e0583c" };
@@ -1293,6 +1416,7 @@ async function sectionTypeModifie(page) {
     LC.findCustomEntry = trouver;
     window.getAllEmbeddedRoads = bouchons.r; window.getAllEmbeddedZones = bouchons.z;
     window.getAllEmbeddedPoints = bouchons.p; window.getAllEmbeddedStructures = bouchons.s;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = bouchons.id;
     window.setVue3DTextures(texAvant);
     window.setRoads([]); window.setZones([]); window.setStructures([]);
@@ -1337,6 +1461,7 @@ async function sectionFichesObjets(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-fiches";
     const poser = function () {
       window.setRoads([{ uid: "rd_fi_p", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)],
@@ -1556,6 +1681,7 @@ async function sectionFichesObjets(page) {
     const vrais = window.__v3dFi;
     window.getAllEmbeddedRoads = vrais.r; window.getAllEmbeddedZones = vrais.z; window.getAllEmbeddedPoints = vrais.p;
     window.getAllEmbeddedStructures = vrais.s;
+    window.__v3dReleve.aligner();
     const CAL = "v3d_fi_calque";
     const json = { data: [], structures: [
       { uid: "st_fi_cal1", type: "pilier-1", level: 0, points: rect(13, 15, 5, 7), description: "note du calque" },
@@ -1783,6 +1909,7 @@ async function sectionLampesMembres(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-lampes";
     if (K.etat().ouvert !== false) await K.fermer();
     window.setPlanRenduVue3D(null, "structures");
@@ -1885,6 +2012,7 @@ async function sectionLampesMembres(page) {
     await K.fermer();
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -1994,6 +2122,7 @@ async function sectionPleinJour(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-plein-jour";
     window.getPlanNorthCalibre = function () { return false; };
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2022,12 +2151,36 @@ async function sectionPleinJour(page) {
   };
   // Faces intérieures des piliers nord (à gauche) et sud (à droite), 6 m devant (à l'écran du téléphone aussi).
   const r = {};
+  // Faces de roche brisées en pans (vue3d.js > _faceBrisee, BRISE) : relevé à l'ouverture, puis après une
+  // reconstruction des tuiles (🧱 basculé deux fois) — mêmes pans, mêmes origines.
+  r.pans = await page.evaluate(async function () {
+    const K = window.KtaVue3D, pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const out = { actives: K.textures().actives, depart: K.textures().pans };
+    K.basculerTextures();
+    await pause(200);
+    out.coupe = K.textures().actives;
+    K.basculerTextures();
+    await pause(300);
+    out.refait = K.textures().pans;
+    return out;
+  });
   r.nuit = await lire();
-  const FACES = await projeter([[6, 2, -1.49], [6, 2, 1.49]]);
-  r.nuit.px = await lumiere(FACES, 4);
+  // Une plage de chaque face, pas un point : douze carrés de 9 px, de 6 à 9 m devant et de 1,3 à 2 m de haut — le
+  // dessin de la roche (fissure, passe de pic) ne pèse plus sur la mesure. → [gauche, droite], au dixième.
+  const PLAGE = [];
+  [-1.49, 1.49].forEach(function (z) {
+    [6, 7, 8, 9].forEach(function (x) { [1.3, 1.65, 2].forEach(function (y) { PLAGE.push([x, y, z]); }); });
+  });
+  const FACES = await projeter(PLAGE);
+  const faces = async function () {
+    const px = await lumiere(FACES, 4), n = px.length / 2;
+    const moy = function (l) { return +(l.reduce(function (s, v) { return s + v; }, 0) / l.length).toFixed(1); };
+    return [moy(px.slice(0, n)), moy(px.slice(n))];
+  };
+  r.nuit.px = await faces();
   await page.evaluate(function () { window.KtaVue3D.reglerPleinJour(true); });
   r.jour = await lire();
-  r.jour.px = await lumiere(FACES, 4);
+  r.jour.px = await faces();
   await capture(page, "plein-jour-yeux");
   // Nord calibré à 180° : le soleil passe de l'autre côté.
   await page.evaluate(function () {
@@ -2036,7 +2189,7 @@ async function sectionPleinJour(page) {
     window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
   });
   r.sud = await lire();
-  r.sud.px = await lumiere(FACES, 4);
+  r.sud.px = await faces();
   // Lampe en Plein jour : active, réglable (25 % = discrète), curseurs actifs.
   r.lampe = await page.evaluate(function () {
     const K = window.KtaVue3D, e = K.etat().eclairage;
@@ -2117,6 +2270,7 @@ async function sectionPleinJour(page) {
     if (typeof window.setVue3DLampeIntensite === "function" && s.intensite) window.setVue3DLampeIntensite(s.intensite);
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.__v3dReleve.aligner();
     window.getPlanNorthCalibre = s.calibre; window.getPlanNorthOffset = s.nord;
     window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
     window.setRoads([]); window.setZones([]); window.setStructures([]);
@@ -2136,6 +2290,15 @@ async function sectionPleinJour(page) {
   verifier(J.fond === PJ.fond && J.brouillard === PJ.fond && Math.abs(J.brume[0] - 30 * PJ.brume) < 0.01 &&
     J.brume[1] === 30, "Plein jour : brouillard clair (jeton --kta-texte-3) de 40 % à 100 % de la portée, fond pareil",
     { fond: J.fond, brouillard: J.brouillard, brume: J.brume });
+  // Deux piliers de 80 × 4,5 m : quatre faces de 80 m brisées en pans de 3 à 5,1 m (16 à 27 chacune), quatre bouts
+  // de 4,5 m laissés entiers ; tuiles refaites : mêmes pans et mêmes origines (empreinte égale).
+  const PA = r.pans.depart || {}, PB = r.pans.refait || {};
+  verifier(r.pans.actives === true && r.pans.coupe === false && PA.longues === 4 && PA.courtes === 4 &&
+    PA.pans >= 4 * 16 && PA.pans <= 4 * 27 && PB.longues === 4 && PB.pans === PA.pans &&
+    PB.empreinte === PA.empreinte,
+  "roche : les 4 faces de 80 m brisées en " + PA.pans + " pans (3 à 5,1 m), les " + PA.courtes +
+    " faces de 4,5 m entières ; tuiles refaites : mêmes pans, mêmes origines du motif (empreinte " + PA.empreinte +
+    ")", r.pans);
   verifier(J.px[1] - J.px[0] > 40 && Math.abs(N.px[1] - N.px[0]) < 25,
     "relief : face au soleil claire, face opposée sombre (gauche / droite " + J.px.join(" / ") + " ; nuit " +
     N.px.join(" / ") + ")", { jour: J.px, nuit: N.px });
@@ -2185,6 +2348,7 @@ async function sectionZonesNiveaux(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-zones-niveaux";
     C.multiLevel = true; C.availableLevels = [-2, -1, 0]; C.visibleLevels = [-2, -1, 0]; C.activeLevel = 0;
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2235,6 +2399,7 @@ async function sectionZonesNiveaux(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -2278,6 +2443,7 @@ async function sectionConePassage(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-cone";
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2389,6 +2555,7 @@ async function sectionConePassage(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads(av.roads); window.setZones(av.zn); window.setStructures(av.st); window.setEditorPoints(av.pts);
     window.setPlanRenduVue3D(null, av.rendu);
     G.invalider();
@@ -2407,6 +2574,7 @@ async function sectionConePassage(page) {
         const vide = function () { return []; };
         window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
         window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
         window._currentLoadedPlanId = "v3d-checkup-cone";
         window.setPlanRenduVue3D(null, "mixte");
         window.setRoads([{ uid: "rd_cone_cap", type: "secondaire", level: 0, points: [P(-50, 30), P(50, 30)] }]);
@@ -2424,6 +2592,7 @@ async function sectionConePassage(page) {
         await K.fermer();
         window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
         window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+        window.__v3dReleve.aligner();
         window.setRoads(s.roads); window.setEditorPoints(s.pts); window.setPlanRenduVue3D(null, s.rendu);
         window.__v3dCone = null;
         window.KtaGalerie.invalider();
@@ -2509,6 +2678,7 @@ async function sectionPente(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = PID;
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
     C.smartNav = false;
@@ -2668,6 +2838,7 @@ async function sectionPente(page) {
     window.effacerReglagesNiveaux(PID);
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     C.smartNav = av.smart;
     window.setPlanRenduVue3D(null, av.rendu);
@@ -2771,6 +2942,7 @@ async function sectionPenteLargeur(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = PID;
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2841,6 +3013,7 @@ async function sectionPenteLargeur(page) {
     window.effacerReglagesNiveaux(PID);
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.setPlanRenduVue3D(null, av.rendu);
     window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
@@ -2896,6 +3069,7 @@ async function capturesPente(page) {
         const vide = function () { return []; };
         window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
         window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
         window._currentLoadedPlanId = PID;
         C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
         window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
@@ -2931,7 +3105,8 @@ async function capturesPente(page) {
 // élargie au nom jusqu'à 1 m puis sur deux lignes, nom jamais coupé), épure (traits sur la paroi), portail (cadre allumé
 // avec une liaison fictive, éteint sans ; fiche « Passer au plan », confirmation au-dessus de la vue, annuler garde
 // la vue, confirmer la ferme ; aucun bouton sans liaison), véhicule (citadine de 3,2 × 1,4 × 1,3 m, dans la galerie, le long de l'axe, arrête le
-// pas, ctx.libre fermé, survol en vue d'édition). Rendu structures : plaque, épure et portail sans paroi ni
+// pas, ctx.libre fermé, survol en vue d'édition ; silhouette de voiture en un maillage texturé, triangles bornés, tout
+// entière dans l'emprise de l'obstacle, la même en aplats 🧱 coupé, tôle en 512 px en Textures HD). Rendu structures : plaque, épure et portail sans paroi ni
 // structure à 3 m = panneau seul (sur une structure : sectionFormesStructures) ; tag sans forme = aucun volume.
 // Point lié sans le tag portail : « Passer au plan » aussi, et ➜ de sa fiche ferme la vue après la confirmation. 50 plaques : mémoire des textures mesurée.
 async function sectionFormesPoi(page) {
@@ -2957,6 +3132,7 @@ async function sectionFormesPoi(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-formes";
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2995,9 +3171,9 @@ async function sectionFormesPoi(page) {
       return id === "v3d-plan-fictif-b" ? { id: id, name: "Plan fictif B", type: "server", path: "fictif/" }
         : window.__v3dFormesSauve.trouve.call(window.PlanRegistry, id);
     };
-    let ctx = null;
+    let ctx = null, scene3d = null;
     const lireCtx = function () {
-      const deg = K.greffer({ nom: "v3d-formes", scene: function (c) { ctx = c; } });
+      const deg = K.greffer({ nom: "v3d-formes", scene: function (c) { ctx = c; scene3d = c.groupe.parent; } });
       if (deg) deg();
     };
     const rel = function (q) { return [+(q.x / sc - ox).toFixed(3), +(q.y / sc - oz).toFixed(3)]; };
@@ -3017,6 +3193,31 @@ async function sectionFormesPoi(page) {
       await pause(80);
       await images(3);
     };
+    // Maillage du véhicule lu sur la scène : le lot texturé (famille « vehicule », 🧱 activé) ou le lot opaque de
+    // son volume (🧱 coupé : le maillage « passage » centré sur lui) → triangles, carte, boîte des sommets (m)
+    // autour du centre du volume (dx le long de la galerie, dz en travers, y).
+    const mailleVeh = function () {
+      const v = vol("vehicule");
+      if (!v || !ctx || !scene3d) return null;
+      const cx = v.x / sc, cz = v.y / sc, scene = scene3d, out = [];
+      scene.updateMatrixWorld(true);
+      scene.traverse(function (m) {
+        if (!m.isMesh || ["vehicule", "passage"].indexOf(m.userData.famille) < 0) return;
+        const p = m.geometry.attributes.position, b = { dx: 0, dz: 0, y0: Infinity, y1: -Infinity };
+        const w = new ctx.THREE.Vector3();
+        for (let i = 0; i < p.count; i++) {
+          w.fromBufferAttribute(p, i).applyMatrix4(m.matrixWorld);
+          b.dx = Math.max(b.dx, Math.abs(w.x - cx)); b.dz = Math.max(b.dz, Math.abs(w.z - cz));
+          b.y0 = Math.min(b.y0, w.y); b.y1 = Math.max(b.y1, w.y);
+        }
+        if (b.dx > 3 || b.dz > 3) return;
+        out.push({ famille: m.userData.famille, triangles: p.count / 3, carte: !!m.material.map,
+          relief: !!m.material.normalMap, uv: !!m.geometry.attributes.uv, sommets: !!m.material.vertexColors,
+          taille: m.material.map ? m.material.map.image.width : 0, dx: +b.dx.toFixed(4), dz: +b.dz.toFixed(4),
+          y0: +b.y0.toFixed(4), y1: +b.y1.toFixed(4) });
+      });
+      return out;
+    };
     const r = {};
     // ── Par rendu : formes, places, chatière traversée en libre, véhicule qui bloque ──
     for (const rendu of ["mixte", "galerie", "structures"]) {
@@ -3027,8 +3228,8 @@ async function sectionFormesPoi(page) {
         return v ? { construit: v.construit, place: rel(v), cote: v.cote, trace: { trou: v.trou, hautTrou: v.hautTrou,
           long: v.long, largeur: v.largeur, largeTrou: v.largeTrou, dir: v.dir, plaqueY: v.plaqueY, texture: v.texture, nom: v.nom, epureY: v.epureY,
           traits: v.traits, allume: v.allume, large: v.large, haut: v.haut, plaqueL: v.plaqueL, plaqueH: v.plaqueH,
-          lignes: v.lignes, coupe: v.coupe, taillePx: v.taillePx }, roche: v.roche, familles: v.familles,
-          triangles: v.triangles } : null;
+          lignes: v.lignes, coupe: v.coupe, taillePx: v.taillePx, boite: v.boite, pans: v.pans }, roche: v.roche,
+          tole: v.tole, familles: v.familles, triangles: v.triangles } : null;
       };
       o.chat = pick(vol("chatiere", "pt_f_chat")); o.chatOb = pick(vol("chatiere", "pt_f_chat_ob"));
       o.plN = pick(vol("plaque", "pt_f_pl_n")); o.plS = pick(vol("plaque", "pt_f_pl_s"));
@@ -3064,6 +3265,7 @@ async function sectionFormesPoi(page) {
       o.ep = pick(vol("epure")); o.def = !!vol("default");
       o.poLie = pick(vol("portail", "pt_f_po_lie")); o.poSeul = pick(vol("portail", "pt_f_po_seul"));
       o.veh = pick(vol("vehicule"));
+      o.vehMaille = mailleVeh();
       o.plaques = K.etat().plaques;
       if (rendu !== "structures") {
         // Chatière en libre : pas de 0,1 m le long de l'axe, de x = −27 à −13 ; hauteur de caméra relue à chaque
@@ -3114,9 +3316,21 @@ async function sectionFormesPoi(page) {
       plFam: (vol("plaque", "pt_f_pl_n") || {}).familles, chatRoche: (vol("chatiere", "pt_f_chat") || {}).roche,
       chatTri: (vol("chatiere", "pt_f_chat") || {}).triangles, ep: (vol("epure") || {}).traits,
       po: (vol("portail", "pt_f_po_lie") || {}).allume, veh: !!(vol("vehicule") || {}).construit, avant: avantTx };
+    lireCtx();
+    r.sansTx.vehMaille = mailleVeh();
+    r.sansTx.vehTole = (vol("vehicule") || {}).tole;
     K.basculerTextures();
     await pause(150); await images(3);
     r.avecTx = K.etat().plaques;
+    // Véhicule : Textures HD basculées vue ouverte (la tôle suit, la géométrie ne bouge pas), puis recoupées.
+    lireCtx();
+    r.vehRallume = mailleVeh();
+    K.basculerTexturesHD();
+    await pause(400); await images(3);
+    r.vehHd = { maille: mailleVeh(), tole: (K.textures().materiaux.tole || {}).carte, dessins: K.textures().dessins };
+    K.basculerTexturesHD();
+    await pause(300); await images(3);
+    r.vehHdCoupe = (K.textures().materiaux.tole || {}).carte;
     await K.fermer();
     // ── Chatière en suivi : le tracker avance pas à pas, la vue suit ──
     window.setPlanRenduVue3D(null, "mixte");
@@ -3363,6 +3577,20 @@ async function sectionFormesPoi(page) {
     verifier(!!o.veh && o.veh.construit && pr(o.veh.place[1], 0.5) && pr(o.veh.trace.long, 3.2) &&
       pr(o.veh.trace.large, 1.4) && pr(o.veh.trace.haut, 1.3),
     k + " : véhicule de 3,2 × 1,4 × 1,3 m (citadine) dans la galerie, du côté du POI (gardé entre les parois)", o.veh);
+    // Forme de la voiture (vue3d.js > _vehicule, VEHICULE) : un maillage texturé (tôle) de 300 à 900 triangles
+    // (deux pavés et quatre prismes en faisaient 176 ; au-delà, la forme coûte plus qu'un ossuaire), tout entier
+    // dans le rectangle de l'obstacle (3,2 × 1,4 m) et sous 1,3 m, sans y flotter (il le remplit à 5 cm près).
+    const vm = (o.vehMaille || []).filter(function (m) { return m.famille === "vehicule"; }), m0 = vm[0] || {};
+    const bt = (o.veh && o.veh.trace.boite) || {};
+    verifier(vm.length === 1 && m0.carte && m0.relief && m0.uv && m0.sommets && m0.taille === 256 &&
+      m0.triangles >= 300 && m0.triangles <= 900 && m0.triangles === o.veh.tole &&
+      m0.dx <= 1.6 + 1e-4 && m0.dx >= 1.55 && m0.dz <= 0.7 + 1e-4 && m0.dz >= 0.65 && m0.y0 >= -1e-4 &&
+      m0.y1 <= 1.3 + 1e-4 && m0.y1 >= 1.25 && bt.long <= 3.2 && bt.large <= 1.4 && bt.haut <= 1.3 && bt.bas >= 0 &&
+      o.veh.trace.pans >= 14,
+    k + " : voiture en un maillage texturé (tôle 256 px, relief) de " + m0.triangles + " triangles (300 à 900), " +
+      "roues à " + (o.veh && o.veh.trace.pans) + " pans, tout entière dans l'emprise de l'obstacle (demi-longueur " +
+      m0.dx + " ≤ 1,6 m, demi-largeur " + m0.dz + " ≤ 0,7 m, de " + m0.y0 + " à " + m0.y1 + " ≤ 1,3 m)",
+    { maille: o.vehMaille, boite: bt });
     verifier(o.vehA < 38.1 && o.vehA > 37.4 && o.vehR > 41.9 && o.vehR < 42.6 && !o.ctxVeh,
       k + " : véhicule bloque le pas (butée à " + o.vehA + " et " + o.vehR + " m) ; ctx.libre fermé",
       { a: o.vehA, r: o.vehR, ctx: o.ctxVeh });
@@ -3382,6 +3610,21 @@ async function sectionFormesPoi(page) {
     T.chatRoche === 0 && T.chatTri > 0 && T.ep === 7 && T.po === true && T.veh && R.avecTx.n === T.avant.n,
   "🧱 coupé : la plaque garde son nom (" + T.plaques.n + " textures), chatière unie, épure, portail et véhicule " +
   "gardés ; rallumé, " + R.avecTx.n + " textures", T);
+  // Véhicule 🧱 coupé : la même silhouette (mêmes triangles, même boîte) en aplats dans le lot opaque de son
+  // volume, sans carte ; Textures HD : la tôle en 512 px sans que la géométrie change, retour à 256 px.
+  const vmx = (R.mixte.vehMaille || []).filter(function (m) { return m.famille === "vehicule"; })[0] || {};
+  const vs = (T.vehMaille || []), vs0 = vs.filter(function (m) { return m.famille === "passage"; })[0] || {};
+  verifier(vs.length === 1 && T.vehTole === 0 && !vs0.carte && !vs0.uv && vs0.sommets &&
+    vs0.triangles === vmx.triangles && vs0.dx === vmx.dx && vs0.dz === vmx.dz && vs0.y1 === vmx.y1,
+  "🧱 coupé : la voiture garde sa silhouette (" + vs0.triangles + " triangles, même boîte) en aplats dans le lot " +
+    "opaque, aucun maillage texturé", { coupe: vs, active: vmx });
+  const vh = ((R.vehHd || {}).maille || []).filter(function (m) { return m.famille === "vehicule"; })[0] || {};
+  const vr = (R.vehRallume || []).filter(function (m) { return m.famille === "vehicule"; })[0] || {};
+  verifier(vr.triangles === vmx.triangles && vr.taille === 256 && vh.taille === 512 && R.vehHd.tole === "512x512" &&
+    vh.triangles === vmx.triangles && vh.dx === vmx.dx && R.vehHd.dessins["tole@2"] >= 0 && R.vehHdCoupe === "256x256",
+  "🧱 rallumé : la tôle revient ; Textures HD : tôle en 512 px (dessin " + ((R.vehHd || {}).dessins || {})["tole@2"] +
+    " ms ; 256 px : " + ((R.vehHd || {}).dessins || {}).tole + " ms), mêmes " + vh.triangles +
+    " triangles, retour à 256 px", { rallume: vr, hd: R.vehHd, coupe: R.vehHdCoupe });
   verifier(R.suivi.modes.length === 1 && R.suivi.modes[0] === "suivi" && !!R.suiviDans &&
     R.suiviDans.cameraY < 0.45 && pr(R.suivi.apres, R.suivi.oeil) && pr(R.suivi.avant, R.suivi.oeil) &&
     R.suivi.fin > -13.5, "suivi : caméra abaissée dans la chatière (" + (R.suiviDans && R.suiviDans.cameraY) +
@@ -3460,6 +3703,7 @@ async function sectionPlaques(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-plaques";
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
@@ -3865,6 +4109,7 @@ async function poserFormesStructures(page) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-formes";
       window.ktaSetActiveLevel(0);
       if (window.getTrackingActif()) window.stopTracking();
@@ -3943,6 +4188,7 @@ async function capturesFormes(page) {
         const vide = function () { return []; };
         window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
         window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
         window._currentLoadedPlanId = "v3d-checkup-formes";
         window.setPlanRenduVue3D(null, "mixte");
         window.setVue3DTextures(true);
@@ -3989,6 +4235,7 @@ async function restaurerFormes(page) {
     if (!s) return;
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.__v3dReleve.aligner();
     window.setRoads(s.roads); window.setZones(s.zn); window.setStructures(s.st); window.setEditorPoints(s.pts);
     window.setPlanRenduVue3D(null, s.rendu);
     window.PlanRegistry.findById = s.trouve;
@@ -4005,6 +4252,9 @@ async function restaurerFormes(page) {
 // d'une paroi du tube à l'autre en mixte et en galerie (portée 2,5 m, clé au ciel, piédroits, claveaux impairs),
 // tel que dessiné en structures (surbaissé) ; tympan : aucun jour entre l'extrados, le ciel et les parois, ouverture
 // libre sous l'intrados (rayons sur la scène) ; on marche dessous sans buter (au milieu et contre un piédroit).
+// 🧱 activé : trois maillages texturés avec relief (claveaux en pierre dressée, piédroits et impostes dans l'appareil
+// des parois, tympan en moellons), partout à la teinte des parois de pierre (niveau de 2e masse compris), Textures HD ; 🧱 coupé : aplats de
+// la légende.
 // Ossuaire contre la paroi du côté du POI (le pan, crânes, obstacle mince : on ne l'atteint pas de face, on le
 // longe), sur la face d'un pilier à 3 m, panneau seul en structures sans structure. Outil de carrier (2,1 × 1,2 m, le
 // long de l'axe) qui arrête le pas des deux côtés. Fontis : plafond troué, cloche, cône poussé contre la paroi du côté du POI, qui
@@ -4023,6 +4273,7 @@ async function sectionModeles(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-modeles";
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
@@ -4099,6 +4350,18 @@ async function sectionModeles(page) {
       }
       return out;
     };
+    // Maillages des arcs texturés (famille « arc ») de la scène : carte, relief, coordonnées de texture, triangles.
+    const maillesArc = function () {
+      const out = [];
+      if (!scene) return out;
+      scene.traverse(function (m) {
+        if (!m.isMesh || m.userData.famille !== "arc") return;
+        out.push({ carte: !!m.material.map, relief: !!m.material.normalMap, sommets: !!m.material.vertexColors,
+          uv: !!m.geometry.attributes.uv, triangles: m.geometry.attributes.position.count / 3,
+          taille: m.material.map ? m.material.map.image.width : 0 });
+      });
+      return out;
+    };
     const r = {};
     for (const rendu of ["mixte", "galerie", "structures"]) {
       await ouvrir(rendu, -34, 0, 90);
@@ -4108,6 +4371,9 @@ async function sectionModeles(page) {
       const e = K.etat();
       o.arcs = e.arcs; o.hauteur = e.hauteur;
       if (e.arcs && e.arcs[0] && scene) o.jours = jours(e.arcs[0], e.hauteur);
+      o.mailles = maillesArc();
+      o.mats = { claveau: K.textures().materiaux.claveau || null, paroi: K.textures().materiaux.paroi,
+        blocage: K.textures().materiaux.blocage || null, dessins: K.textures().dessins };
       const pick = function (v) {
         return v ? { construit: v.construit, place: rel(v), cote: v.cote, appui: v.appui, plafond: v.plafond,
           triangles: v.triangles, bouchesPlafond: v.bouchesPlafond, familles: v.familles, cone: v.cone || null,
@@ -4144,9 +4410,32 @@ async function sectionModeles(page) {
     const degT = K.greffer({ nom: "v3d-modeles", scene: function (c) { ctx = c; scene = c.groupe.parent; } });
     if (degT) degT();
     if (K.etat().arcs[0] && scene) r.sansTx.jours = jours(K.etat().arcs[0], K.etat().hauteur);
+    r.sansTx.mailles = maillesArc();
+    r.sansTx.arc = K.etat().arcs[0];
+    r.sansTx.legende = (K.textures().couleurs.opaque || []).slice();
     K.basculerTextures();
-    await pause(100);
+    await pause(250);
+    // 🧱 rallumé vue ouverte : l'arc reprend ses trois maillages texturés ; Textures HD : claveaux et moellons suivent.
+    r.rallume = { mailles: maillesArc(), arc: K.etat().arcs[0] };
+    K.basculerTexturesHD();
+    await pause(400);
+    r.hd = { mailles: maillesArc(), claveau: K.textures().materiaux.claveau,
+      blocage: K.textures().materiaux.blocage, dessins: K.textures().dessins };
+    K.basculerTexturesHD();
+    await pause(300);
+    r.hdCoupe = (K.textures().materiaux.claveau || {}).carte;
     await K.fermer();
+    // Niveau de 2e masse (toutes ses structures de roche) : l'arc garde la teinte des parois de pierre, tel que
+    // dessiné (structures) comme en travers d'un tube (mixte) ; seuls les piliers portent la teinte de leur masse.
+    window.setStructures([{ uid: "st_m_arc", type: "arc", level: 0, points: [P(-30, -1.6), P(-30, 1.6)] },
+      { uid: "st_m_pil", type: "pilier-2", level: 0, points: [P(0, 20), P(2, 20), P(2, 22), P(0, 22)] }]);
+    r.masse2 = {};
+    for (const rendu of ["structures", "mixte"]) {
+      await ouvrir(rendu, -34, 0, 90);
+      r.masse2[rendu] = (K.etat().arcs[0] || {}).teinte;
+      if (rendu === "structures") r.masse2.piliers = (K.textures().teintes.roche || []).slice();
+      await K.fermer();
+    }
     return r;
   });
   console.log("§ 14 decies — arc de soutènement, ossuaire, outil de carrier, fontis");
@@ -4215,6 +4504,63 @@ async function sectionModeles(page) {
     "structure à portée (structures) : le panneau seul", { m: M.ossPil, s: S.ossPil, g: Gl.ossPil, so: S.oss });
   verifier(R.sansTx.arcs === 1 && R.sansTx.outil && sansJour(R.sansTx.jours),
     "🧱 coupé : arc et outil construits, tympan sans jour", R.sansTx);
+  // Arc texturé (vue3d.js > _lotsArc, CLAVEAU, BLOCAGE) : 🧱 activé, trois maillages à carte, relief, coordonnées
+  // de texture et couleurs par sommet (claveaux en pierre dressée, piédroits et impostes dans l'appareil des parois,
+  // tympan en moellons).
+  const texture = function (l) {
+    return l.length === 3 && l.every(function (m) { return m.carte && m.relief && m.sommets && m.uv && m.triangles > 0; });
+  };
+  ["mixte", "galerie", "structures"].forEach(function (k) {
+    const o = R[k], a0 = (o.arcs || [])[0] || {}, tri = o.mailles.reduce(function (s, m) { return s + m.triangles; }, 0);
+    verifier(texture(o.mailles) && a0.texture === true && tri === a0.triangles && a0.teinte === "#ffffff",
+      k + " : 🧱 activé, arc en trois maillages texturés avec relief (claveaux, piédroits, tympan ; " + tri +
+      " triangles, ceux du relevé), teinte des parois de pierre (blanc : la texture seule)",
+    { mailles: o.mailles, arc: a0 });
+  });
+  // Teinte de la pierre : moyenne de la planche des claveaux à moins de 8 % par composante de celle des parois, et
+  // jamais plus sombre de plus de 8 % (l'arc ne jure plus à côté d'elles).
+  const mcl = M.mats.claveau || {}, mpa = M.mats.paroi || {};
+  const ecartTeinte = (mcl.moyenne && mpa.moyenne) ? mcl.moyenne.map(function (v, i) {
+    return +((v - mpa.moyenne[i]) / mpa.moyenne[i]).toFixed(3);
+  }) : null;
+  verifier(!!ecartTeinte && ecartTeinte.every(function (d) { return Math.abs(d) <= 0.08; }) && mcl.carte === "256x256" &&
+    mcl.normale && mcl.couleursSommets && mcl.pente > 0.02 && mpa.pierre,
+  "claveaux : planche de pierres dressées de 256 px avec relief (pente " + mcl.pente + "), teinte moyenne " +
+    JSON.stringify(mcl.moyenne) + " proche de celle de la pierre des parois " + JSON.stringify(mpa.moyenne) +
+    " (écarts " + JSON.stringify(ecartTeinte) + ", au plus 8 %) ; premier dessin " + mcl.ms + " ms", { c: mcl, p: mpa });
+  // Tympan (vue3d.js > BLOCAGE, _moellonsBruts) : sa propre carte (moellons, pas l'appareil des parois), de la même
+  // teinte que la pierre des parois (au plus 8 % d'écart par composante), plus rustique (relief plus marqué que celui
+  // des claveaux dressés).
+  const mbl = M.mats.blocage || {};
+  const ecartBlocage = (mbl.moyenne && mpa.moyenne) ? mbl.moyenne.map(function (v, i) {
+    return +((v - mpa.moyenne[i]) / mpa.moyenne[i]).toFixed(3);
+  }) : null;
+  verifier(!!ecartBlocage && ecartBlocage.every(function (d) { return Math.abs(d) <= 0.08; }) &&
+    mbl.carte === "256x256" && mbl.normale && mbl.couleursSommets && mbl.pente > mcl.pente * 1.5 &&
+    M.mailles.filter(function (m) { return m.taille === 256; }).length === 3,
+  "tympan : maçonnerie de moellons de 256 px, relief plus marqué que les claveaux (pente " + mbl.pente + " contre " +
+    mcl.pente + "), teinte moyenne " + JSON.stringify(mbl.moyenne) + " proche de la pierre des parois (écarts " +
+    JSON.stringify(ecartBlocage) + ", au plus 8 %) ; premier dessin " + (M.mats.dessins || {}).blocage + " ms",
+  { b: mbl, p: mpa });
+  const sa = R.sansTx.arc || {};
+  verifier(R.sansTx.mailles.length === 0 && sa.texture === false && /^#[0-9a-f]{6}$/.test(sa.teinte || "") &&
+    sa.teinte !== "#ffffff" && sa.triangles === (M.arcs[0] || {}).triangles - 16,
+  "🧱 coupé : arc en aplats à la couleur de la légende (" + sa.teinte + "), dans le lot opaque, aucun maillage " +
+    "texturé, " + sa.triangles + " triangles (16 de moins : la bande de l'ombre de contact des huit faces des " +
+    "piédroits)", { mailles: R.sansTx.mailles, arc: sa });
+  verifier(texture(R.rallume.mailles) && (R.rallume.arc || {}).texture === true,
+    "🧱 rallumé vue ouverte : l'arc reprend sa pierre texturée", R.rallume);
+  verifier(texture(R.hd.mailles) && R.hd.mailles.every(function (m) { return m.taille === 512; }) &&
+    (R.hd.claveau || {}).carte === "512x512" && R.hd.dessins["claveau@2"] >= 0 && R.hdCoupe === "256x256" &&
+    (R.hd.blocage || {}).carte === "512x512" && R.hd.dessins["blocage@2"] >= 0,
+  "Textures HD : claveaux, piédroits et moellons du tympan en 512 px (dessin des claveaux " +
+    R.hd.dessins["claveau@2"] + " ms, des moellons " + R.hd.dessins["blocage@2"] + " ms), retour à 256 px", { hd: R.hd.mailles, coupe: R.hdCoupe });
+  const p2 = (R.masse2.piliers || []).map(function (c) { return parseInt(c.slice(5, 7), 16) / parseInt(c.slice(1, 3), 16); });
+  verifier(R.masse2.structures === "#ffffff" && R.masse2.mixte === "#ffffff" && p2.length > 0 &&
+    p2.every(function (v) { return v > 0.5 && v < 0.77; }),
+  "niveau de 2e masse (piliers à peine plus chauds : bleu / rouge entre 0,5 et 0,77) : l'arc garde la teinte " +
+    "des parois de pierre, tel que dessiné (" +
+    R.masse2.structures + ") comme en travers d'un tube (" + R.masse2.mixte + ")", R.masse2);
   if (CAPTURES) await capturesModeles(page);
   await restaurerFormes(page);
 }
@@ -4315,6 +4661,7 @@ async function sectionEcartItineraire(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-ecart-iti";
     C.multiLevel = true; C.availableLevels = [-1, 0, 1]; C.visibleLevels = [-1, 0, 1]; C.activeLevel = 0;
     C.smartNav = false;
@@ -4458,6 +4805,7 @@ async function sectionEcartItineraire(page) {
     C.smartNav = av.smart;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -4520,6 +4868,7 @@ async function sectionEncartReste(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-encart";
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
     if (K.etat().ouvert !== false) await K.fermer();
@@ -4626,6 +4975,7 @@ async function sectionEncartReste(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -4728,6 +5078,7 @@ async function sectionCamera(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-camera";
     if (window.ktaSetActiveLevel) window.ktaSetActiveLevel(0); else C.activeLevel = 0;
     const carre = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
@@ -5062,7 +5413,7 @@ async function sectionCamera(page) {
     const scn = ctxV.camera.parent;
     const mPlan = scn.children.filter(function (o) { return o.userData.famille === "planSol"; })[0];
     const solM = scn.children.filter(function (o) {
-      return o.isMesh && o.material && o.material.stencilRef === 1 && o.userData.famille !== "planSol" &&
+      return o.isMesh && o.material && (o.material.stencilFuncMask & 1) === 1 && o.userData.famille !== "planSol" &&
         o.geometry && o.geometry.parameters && o.geometry.parameters.width === 1;
     })[0];
     r.planSol = { etat: K.etat().dessin.planSol, ordre: mPlan ? mPlan.renderOrder : null,
@@ -5141,6 +5492,7 @@ async function sectionCamera(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.setVue3DTextures(av.tx);
@@ -5302,6 +5654,7 @@ async function sectionCameraPixels(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window.setStructures([]); window.setRoads([]); window.setZones([]); window.setEditorPoints([]);
     window.setVue3DTextures(true);
     window.setPlanRenduVue3D(null, "structures");
@@ -5360,6 +5713,7 @@ async function sectionCameraPixels(page) {
     await window.KtaVue3D.fermer();
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s;
+    window.__v3dReleve.aligner();
     window.setVue3DTextures(s.tx);
     window.setEditorPoints(window.__v3dPoints || []);
     window.KtaGalerie.invalider();
@@ -5658,6 +6012,7 @@ async function sectionSautCarnet(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-saut";
     C.multiLevel = false;
     window.setPlanRenduVue3D(null, "structures");
@@ -5761,6 +6116,7 @@ async function sectionSautCarnet(page) {
     C.multiLevel = s.ml;
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
     window.KtaGalerie.invalider();
   });
@@ -6443,6 +6799,7 @@ async function sectionNiveauEdition(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
     if (window.ktaSetActiveLevel) window.ktaSetActiveLevel(0); else C.activeLevel = 0;
     const carre = function (x0, z0, x1, z1, lv) {
@@ -6531,6 +6888,7 @@ async function sectionNiveauEdition(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setStructures([]); window.setZones([]);
     window.setEditorPoints(window.__v3dPoints || []);
     window.KtaGalerie.invalider();
@@ -6667,6 +7025,7 @@ async function sectionDessin(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-dessin";
     // Plan à deux niveaux (−1 et 0), carte au 0 : la 3D dessine au −1.
     C.multiLevel = true;
@@ -7123,6 +7482,7 @@ async function sectionDessin(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -7274,6 +7634,7 @@ async function sectionAjusterSommets(nav, mode) {
       const calque = [{ uid: "st_aj_calque", type: "pilier-1", level: -1,
         points: [P(-1, 4), P(1, 4), P(1, 6), P(-1, 6)] }];
       window.getAllEmbeddedStructures = function () { return calque; };
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-ajuster";
       // Au doigt, réglage ⚙️ Fiches coupé (défaut du téléphone) : l'ajustement reste permis (§ 37).
       if (window.__ajDoigt) window.setVue3DFichesObjets(false);
@@ -7726,6 +8087,7 @@ async function sectionAjusterSourisReelle(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-souris";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "structures");
@@ -8000,6 +8362,7 @@ async function sectionPoi3D(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-poi";
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
       window.setPlanRenduVue3D(null, "structures");
@@ -8251,6 +8614,7 @@ async function sectionMesures3D(nav, mode) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-mesures";
       window.setPlanDistTotTousNiveaux(null, false);
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
@@ -8557,6 +8921,7 @@ async function sectionPointPrecis3D(nav, mode) {
       const cq = Object.assign({ id: "cq", nom: "Calque fictif", uid: "pt_pp3_cq", level: 0, tags: ["info"],
         layerId: "x" }, P(-12, 0.6));
       window.getAllEmbeddedPoints = function () { return [cq]; };
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-precis";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "mixte");
@@ -8947,6 +9312,7 @@ async function sectionPassageFicheCalque(nav) {
       window.getAllEmbeddedPoints = duCalque(vrais.p);
       window.getAllEmbeddedStructures = duCalque(vrais.s);
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = function () { return []; };
+      window.__v3dReleve.aligner();
       window.setStructures([]); window.setZones([]);
       window.setRoads([{ uid: "rd_pfc_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] },
         { uid: "rd_pfc_1", type: "principal", level: 1, points: [P(-60, 0), P(60, 0)] }]);
@@ -9163,6 +9529,7 @@ async function sectionFichesReglage(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-fiches";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "structures");
@@ -9251,6 +9618,636 @@ async function sectionFichesReglage(nav) {
   }
 }
 
+// ── 24 quater. Sol et ciel de carrière texturés (vue3d.js > _solDame, _cielCarriere, _cartesSol, _calerCarre) ────────
+// KTA_V3D_SEUL=textures. Objets FICTIFS en mémoire : galerie est-ouest, piliers d'une salle. 🧱 allumé : deux motifs
+// distincts (sol, ciel), couleur et relief, sans couture, sol peu contrasté et jamais plus clair que le sable
+// calcaire, ciel clair et presque nu (quelques passes de coups de pic parallèles), liseré de l'itinéraire à plus de 3:1 du sol le plus sombre ; carré qui suit calé sur le monde (après un
+// déplacement, après un changement de portée), pièces des galeries à la même projection ; 🧱 coupé : noirs, sans
+// carte ni relief, aucun dessin ; reprise du contexte WebGL ; temps du premier dessin (téléphone ralenti × 4 sous
+// Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied des piliers, du mur et des parois,
+// pleine à 0,28 m et jusqu'en tête, deux bandes par face, texture inchangée, rien 🧱 coupé. Nuance de roche par structure
+// (NUANCE_ROCHE) : deux piliers voisins différents, discrète, 2e masse reconnaissable, stable (tuiles refaites, vue
+// rouverte). Murs (TEXTURE_TYPE, MUR_PIERRE) : en surface, parpaing ; tracé en ligne, pierre de taille des parois
+// (même carte, relief, tête sur une assise entière, ombre de contact, sans nuance, Textures HD suivies, légende
+// 🧱 coupé).
+// Traces d'outil de la roche (ROCHE.pic, ROCHE.lance) : passes de coups parallèles, une ou deux orientations. Textures HD (HD, config.js > getVue3DTexturesHD) : défaut selon l'appareil, bouton de la tuile, 512 px
+// et grain de détail, bascule sans géométrie refaite, sans effet 🧱 coupé, retour à 256 px sans redessin, reprise du
+// contexte, temps et mémoire (PC, téléphone ralenti × 4).
+async function sectionTexturesSol(nav) {
+  const chromiumNav = nav.browserType().name() === "chromium";
+  const nom = "§ 24 quater ";
+  console.log("§ 24 quater — sol et ciel de carrière texturés");
+  const erreurs = [];
+  // `sansHD` : la clé du réglage Textures HD n'est pas posée (défaut de l'appareil).
+  const ouvrirPage = async function (opts, sansHD) {
+    const ctx = await nav.newContext(Object.assign({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" },
+      opts || {}));
+    const page = await ctx.newPage();
+    page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+    // Un shader refusé (grain de détail) s'écrit dans la console, pas en erreur de page.
+    page.on("console", function (m) {
+      if (m.type() === "error" && /THREE|WebGL|shader/i.test(m.text())) erreurs.push(m.text().slice(0, 200));
+    });
+    const ls = Object.assign({}, LS_PREGATES);
+    if (sansHD) delete ls.myktamap_v3d_textures_hd_v1;
+    await page.addInitScript(function (v) {
+      for (const k in v) { try { if (localStorage.getItem(k) === null) localStorage.setItem(k, v[k]); } catch (e) {} }
+    }, ls);
+    await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+    await attendre(page, function () {
+      return !!window.PlanRegistry && typeof window.chargerPlanDuRegistre === "function" &&
+        window.PlanRegistry.getAll().length > 0;
+    }, 20000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const b = document.getElementById("kta-alert-ok"); if (b) b.click();
+      const tous = window.PlanRegistry.getAll();
+      const p = tous.find(function (x) { return /fictif/i.test(x.name || ""); }) || tous[0];
+      window.__pret = false;
+      Promise.resolve(window.chargerPlanDuRegistre(p.id)).then(function () { window.__pret = true; });
+    });
+    await attendre(page, function () { return window.__pret && !!window.map && !!window.PLAN_CONFIG; }, 40000);
+    await page.waitForTimeout(1500);
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m) { const x = m.querySelector(".kta-panneau-close"); if (x) x.click(); else m.remove(); }
+      if (window.getTrackingActif()) window.stopTracking();
+    });
+    await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+    await page.evaluate(function () {
+      const C = window.APP_CONFIG, sc = C.scale;
+      const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+      const ox = W / 2 / sc, oz = H / 2 / sc;
+      const P = window.__txP = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+      window.getPlanEditionVue3D = function () { return null; };
+      const vide = function () { return []; };
+      window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+      window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
+      window._currentLoadedPlanId = "v3d-checkup-textures-sol";
+      C.multiLevel = false;
+      try { localStorage.removeItem("myktamap_v3d_textures_v1"); } catch (err) { /* lecture seule */ }
+      const carre = function (cx, cz, r) { return [P(cx - r, cz - r), P(cx + r, cz - r), P(cx + r, cz + r), P(cx - r, cz + r)]; };
+      window.setStructures([{ uid: "st_ts_1", type: "pilier-1", level: 0, points: carre(8, -5, 2) },
+        { uid: "st_ts_2", type: "pilier-2", level: 0, points: carre(8, 5, 2) },
+        { uid: "st_ts_3", type: "pilier-1", level: 0, points: carre(16, -5, 2) },
+        { uid: "st_ts_m", type: "mur", level: 0, points: [P(12, 8), P(20, 8), P(20, 8.5), P(12, 8.5)] }]);
+      window.setZones([]);
+      window.setRoads([{ uid: "rd_ts_1", type: "principal", level: 0, points: [P(-40, 0), P(30, 0)] },
+        { uid: "rd_ts_iti", type: "itinerary", level: 0, points: [P(-38, 0), P(28, 0)] }]);
+      window.setEditorPoints([]);
+      window.KtaGalerie.invalider();
+    });
+    return { ctx: ctx, page: page };
+  };
+  const o = await ouvrirPage();
+  const page = o.page;
+  try {
+    const R = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__txP, sc = window.APP_CONFIG.scale, r = {};
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const ouvrir = async function (rendu, x, z) {
+        if (K.etat().ouvert) await K.fermer();
+        window.setPlanRenduVue3D(null, rendu);
+        window.KtaGalerie.invalider();
+        await K.ouvrir({ depart: { x: P(x, z).x, y: P(x, z).y, cap: 90 }, commandes: "pave" });
+        await pause(300);
+      };
+      // Coordonnées de texture (monde / SOL.m) du premier sommet des maillages d'une famille, lues dans la scène.
+      const uvMonde = function (famille) {
+        let ctx = null;
+        const deg = K.greffer({ nom: "v3d-textures-sol", scene: function (c) { ctx = c; } });
+        let racine = ctx.groupe, pire = 0, n = 0;
+        while (racine.parent) racine = racine.parent;
+        racine.traverse(function (m) {
+          if (!m.isMesh || m.userData.famille !== famille || !m.geometry.attributes.uv) return;
+          const p = m.geometry.attributes.position.array, uv = m.geometry.attributes.uv.array;
+          for (let i = 0; i < p.length / 3; i++) {
+            pire = Math.max(pire, Math.abs(uv[i * 2] - p[i * 3] * 0.25), Math.abs(uv[i * 2 + 1] - p[i * 3 + 2] * 0.25));
+            n++;
+          }
+        });
+        if (deg) deg();
+        return { sommets: n, ecart: pire };
+      };
+      // Ombre de contact : sommets des maillages texturés d'une famille → teinte (rouge / 255) la plus sombre et la
+      // plus claire au contact du sol (y = 0 à 1 mm), dans le dégradé, au-delà, et en tête (y = h à 1 mm, comptée
+      // aussi au-delà), hauteurs des sommets, v = y / m.
+      const ombres = function (famille, m) {
+        let ctx = null;
+        const deg = K.greffer({ nom: "v3d-textures-ombre", scene: function (c) { ctx = c; } });
+        const h = K.etat().hauteur, o = { sommets: 0, contact: [1, 0], plein: [1, 0], entre: [1, 0], tete: [1, 0],
+          ys: {}, v: 0, haut: h, pleins: [] };
+        let racine = ctx.groupe;
+        while (racine.parent) racine = racine.parent;
+        racine.traverse(function (me) {
+          if (!me.isMesh || me.userData.famille !== famille || !me.geometry.attributes.uv ||
+              !me.material.vertexColors) return;
+          const p = me.geometry.attributes.position.array, c = me.geometry.attributes.color.array;
+          const uv = me.geometry.attributes.uv.array, nn = me.geometry.attributes.normal.array;
+          for (let i = 0; i < p.length / 3; i++) {
+            if (Math.abs(nn[i * 3 + 1]) > 60) continue;   // dessus : pas une face verticale
+            const y = p[i * 3 + 1], k = c[i * 3] / 255;
+            const q = y < 0.001 ? o.contact : y > 0.2799 ? o.plein : o.entre;
+            q[0] = Math.min(q[0], k); q[1] = Math.max(q[1], k);
+            if (h - y < 0.001) { o.tete[0] = Math.min(o.tete[0], k); o.tete[1] = Math.max(o.tete[1], k); }
+            // Teintes pleines (hors ombre) : une par structure nuancée, [r, v, b] sur 255.
+            const cle = c[i * 3] + "," + c[i * 3 + 1] + "," + c[i * 3 + 2];
+            if (q === o.plein && o.pleins.indexOf(cle) < 0) o.pleins.push(cle);
+            o.ys[y.toFixed(2)] = (o.ys[y.toFixed(2)] || 0) + 1;
+            o.v = Math.max(o.v, Math.abs(uv[i * 2 + 1] - y / m));
+            o.sommets++;
+          }
+        });
+        if (deg) deg();
+        return o;
+      };
+      const ecartCalage = function (t) {
+        return Math.max(Math.abs(t.calage.rendu[0] - t.calage.attendu[0]), Math.abs(t.calage.rendu[1] - t.calage.attendu[1]));
+      };
+      window.setVue3DTextures(true);
+      await ouvrir("structures", 0, 0);
+      const t0 = K.textures();
+      r.defaut = { sols: t0.sols, motifs: t0.motifs, uv: t0.uvParMetre.sol, dessins: t0.dessins, msSol: t0.msSol,
+        calage: ecartCalage(t0), cote: t0.calage.cote, roche: t0.materiaux.roche };
+      // Ombre de contact : roche (piliers de 1re et 2e masse), parpaing (mur à 98 % de la hauteur).
+      r.ombre = { roche: ombres("opaque", 3), mur: ombres("murs", 1), teintes: t0.teintes,
+        sommets: t0.materiaux.parpaing.couleursSommets && t0.materiaux.roche.couleursSommets };
+      // Nuance par structure : relue après une reconstruction des tuiles (🧱 basculé deux fois) et une réouverture.
+      r.nuance = { depart: r.ombre.roche.pleins.slice().sort() };
+      K.basculerTextures(); await pause(150);
+      K.basculerTextures(); await pause(250);
+      r.nuance.refaite = ombres("opaque", 3).pleins.slice().sort();
+      await ouvrir("structures", 0, 0);
+      r.nuance.rouverte = ombres("opaque", 3).pleins.slice().sort();
+      // Couleurs de référence : sable calcaire du sol (luminance relative), liseré de l'itinéraire (jeton --kta-fond
+      // du thème sombre).
+      r.defaut.lisere = (K.etat().itineraire || {}).couleurLisere || null;
+      // Déplacement puis portée : le carré reste calé sur le monde.
+      K.placer(P(13.3, -1.7).x, P(13.3, -1.7).y, 40);
+      await pause(200);
+      r.deplace = { calage: ecartCalage(K.textures()), cote: K.textures().calage.cote };
+      const portee0 = K.etat().portee.distance;
+      K.reglerPortee(60);
+      await pause(200);
+      r.portee = { calage: ecartCalage(K.textures()), cote: K.textures().calage.cote };
+      K.reglerPortee(typeof portee0 === "number" ? portee0 : 30);
+      // Bascule 🧱 vue ouverte : noirs sans carte ni relief, puis les cartes reviennent sans nouveau dessin.
+      K.basculerTextures();
+      await pause(200);
+      r.coupe = K.textures().sols;
+      r.ombre.coupe = { roche: ombres("opaque", 3), couleurs: K.textures().couleurs };
+      K.basculerTextures();
+      await pause(200);
+      r.rallume = { sols: K.textures().sols, dessins: K.textures().dessins };
+      // Reprise du contexte WebGL : les cartes sont refaites avec la scène.
+      const gl = document.querySelector("#kta-vue3d canvas").getContext("webgl2");
+      const perte = gl && gl.getExtension("WEBGL_lose_context");
+      if (perte) {
+        perte.loseContext();
+        await pause(300);
+        perte.restoreContext();
+        await pause(900);
+        K.tourner(5);
+        await pause(300);
+        const t = K.textures();
+        r.reprise = { ouvert: K.etat().ouvert, sols: t.sols, calage: ecartCalage(t) };
+      }
+      // Rendu galerie : sol et plafond = les pièces, même projection monde.
+      await ouvrir("galerie", -20, 0);
+      const tg = K.textures();
+      r.galerie = { sols: tg.sols, sol: uvMonde("sol"), plafond: uvMonde("plafond") };
+      r.ombre.paroi = ombres("parois", 1);
+      r.ombre.paroiSommets = tg.materiaux.paroi.couleursSommets;
+      // Mixte : le carré dans la salle comme dans les tubes.
+      await ouvrir("mixte", -20, 0);
+      r.mixte = { sols: K.textures().sols, calage: ecartCalage(K.textures()) };
+      // Textures HD (réglage coupé par le harnais) : bouton de la tuile, bascule sur place, 🧱 coupé, retenue.
+      const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+      const geo = function () {
+        let ctx = null;
+        const deg = K.greffer({ nom: "v3d-textures-hd", scene: function (c) { ctx = c; } });
+        let racine = ctx.groupe;
+        const ids = [];
+        while (racine.parent) racine = racine.parent;
+        racine.traverse(function (m) { if (m.isMesh && m.userData.famille === "opaque") ids.push(m.geometry.uuid); });
+        if (deg) deg();
+        return ids.sort().join();
+      };
+      const tailles = function (t) {
+        return { roche: t.materiaux.roche.carte, parpaing: t.materiaux.parpaing.carte, paroi: t.materiaux.paroi.carte,
+          sol: t.sols.sol.taille, plafond: t.sols.plafond.taille, uv: [t.uvParMetre.roche, t.uvParMetre.sol] };
+      };
+      const H = r.hd = {};
+      let t = K.textures();
+      H.coupe = { hd: t.hd, tailles: tailles(t), geo: geo(), motif: t.motifs.sol, ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      q(".kta-v3d-btn-reglages").click();
+      await pause(150);
+      const b = q(".kta-v3d-btn-textures-hd");
+      H.bouton = { present: !!b, texte: b ? b.textContent.trim() : null, titre: b ? b.title : null,
+        dansLaLigne: !!b && b.parentNode === q(".kta-v3d-btn-textures").parentNode };
+      b.click();
+      await pause(500);
+      t = K.textures();
+      H.allume = { hd: t.hd, tailles: tailles(t), geo: geo(), motif: t.motifs.sol, dessins: t.dessins,
+        calage: ecartCalage(t), ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      // 🧱 coupé : bouton HD grisé, la bascule ne fait rien et n'écrit rien.
+      K.basculerTextures();
+      await pause(200);
+      const avant = K.textures().hd;
+      const rendu = K.basculerTexturesHD();
+      b.click();
+      await pause(150);
+      H.sansTextures = { avant: avant, apres: K.textures().hd, rendu: rendu, ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      K.basculerTextures();
+      await pause(300);
+      H.rallume = { hd: K.textures().hd, tailles: tailles(K.textures()) };
+      // Reprise du contexte en HD (contexte et extension relus : ceux d'avant la première perte ne valent plus).
+      const gl2 = document.querySelector("#kta-vue3d canvas").getContext("webgl2");
+      const perte2 = gl2 && !gl2.isContextLost() && gl2.getExtension("WEBGL_lose_context");
+      if (perte2) {
+        perte2.loseContext();
+        await pause(300);
+        perte2.restoreContext();
+        await pause(900);
+        K.tourner(5);
+        await pause(300);
+        H.reprise = { hd: K.textures().hd, tailles: tailles(K.textures()) };
+      }
+      // Retour à 256 px : aucun nouveau dessin.
+      b.click();
+      await pause(400);
+      t = K.textures();
+      H.recoupe = { hd: t.hd, tailles: tailles(t), dessins: t.dessins, ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      q(".kta-v3d-btn-reglages").click();
+      await K.fermer();
+      // Murs : un mur en surface (parpaing) et un mur tracé en ligne, coudé (pierre de taille des parois), dans
+      // la salle ; rendu structures, Textures HD allumé puis coupé, 🧱 coupé puis rallumé, puis mixte (parois de
+      // tube).
+      window.setStructures([
+        { uid: "st_ts_m", type: "mur", level: 0, points: [P(12, 8), P(20, 8), P(20, 8.5), P(12, 8.5)] },
+        { uid: "st_ts_ml", type: "mur-ligne", level: 0, points: [P(4, -6), P(12, -6), P(15, -9)] }]);
+      const murs = function () {
+        const t = K.textures(), e = K.etat();
+        return { maillages: t.maillages, parpaing: t.materiaux.parpaing, pierre: t.materiaux.murPierre,
+          paroi: t.materiaux.paroi, teintes: (t.teintes.murPierre || []).slice().sort(), couleurs: t.couleurs,
+          aretes: t.aretes.filter(function (a) { return a.mat === "murPierre" || a.mat === "parpaing"; }),
+          hauteur: e.hauteur, yMax: e.yMax, uv: t.uvParMetre.pierre, images: t.hd.images, dessins: t.dessins };
+      };
+      const M = r.murs = { ox: P(0, 0).x / sc, oz: P(0, 0).y / sc, legende: {
+        mur: window.ktaSwatchColor("structures", "mur"), ligne: window.ktaSwatchColor("structures", "mur-ligne") } };
+      await ouvrir("structures", 0, 0);
+      M.structures = murs();
+      K.basculerTexturesHD();
+      await pause(500);
+      M.hd = murs();
+      K.basculerTexturesHD();
+      await pause(400);
+      M.sd = murs();
+      K.basculerTextures();
+      await pause(250);
+      M.coupe = murs();
+      K.basculerTextures();
+      await pause(250);
+      M.rallume = murs();
+      await ouvrir("mixte", 0, 0);
+      M.mixte = murs();
+      await K.fermer();
+      // Vue ouverte 🧱 coupé dans une page où rien n'est dessiné : voir `froid` (autre page).
+      return r;
+    });
+    const S = R.defaut.sols, M = R.defaut.motifs || {};
+    verifier(S.sol.carte && S.sol.relief && S.sol.motif === "sol" && S.plafond.carte && S.plafond.relief &&
+      S.plafond.motif === "ciel" && S.solGalerie.motif === "sol" && S.plafondGalerie.motif === "ciel" &&
+      S.sol.couleur === "#ffffff",
+    nom + "🧱 allumé : sol et plafond ont chacun leur carte et leur relief (sol damé, ciel de carrière)", S);
+    verifier(["sol", "plafond", "solGalerie", "plafondGalerie"].every(function (k) { return S[k].memeCalage; }),
+      nom + "couleur et relief posés avec la même transformation (le relief ne glisse pas sous la couleur)", S);
+    verifier(!!M.sol && !!M.ciel && M.sol.couture < 2.5 && M.ciel.couture < 2.5,
+      nom + "motifs sans couture (écart au bord / écart entre rangées voisines : sol " + (M.sol || {}).couture +
+      ", ciel " + (M.ciel || {}).couture + ")", M);
+    // Sable calcaire #c9b48c tel que la scène l'écrit dans ses canvas (composantes linéaires × 255 : 148,9 / 116,3 /
+    // 66,9), luminance 0,2126 × 148,9 + 0,7152 × 116,3 + 0,0722 × 66,9 = 119,7.
+    verifier(M.sol.moyenne <= 119.7 && M.sol.moyenne >= 100 && M.sol.ecart <= 12 && M.sol.p95 <= 132,
+      nom + "sol peu contrasté, jamais plus clair que le sable calcaire (moyenne " + M.sol.moyenne + " / 119,7, écart " +
+      "type " + M.sol.ecart + ", 95e centile " + M.sol.p95 + ")", M.sol);
+    verifier(M.ciel.moyenne < M.sol.moyenne - 3 && M.sol.pente > 0.02 && M.ciel.pente > 0.02,
+      nom + "ciel plus sombre que le sol (" + M.ciel.moyenne + " < " + M.sol.moyenne + "), relief présent (pente " +
+      M.sol.pente + " / " + M.ciel.pente + ")", M);
+    // Ciel presque nu (vue3d.js > CIEL) : jamais sous 105 de luminance (un niveau du dessus en transparence s'y lit,
+    // § 46 bis), quelques passes de pic seulement — 245 coups par motif en donnaient un tissu froissé ; au plus un
+    // tiers, rangés à une ou deux orientations.
+    const Tc = M.ciel.traces || {};
+    verifier(M.ciel.moyenne >= 105 && Tc.passes >= 3 && Tc.passes <= 8 && Tc.coups >= 20 && Tc.coups <= 82 &&
+      Tc.orientations >= 1 && Tc.orientations <= 2,
+    nom + "ciel clair et presque nu (luminance " + M.ciel.moyenne + " ≥ 105) : " + Tc.coups + " coups de pic par " +
+      "motif de 4 m (au plus 82), en " + Tc.passes + " passes de coups parallèles, " + Tc.orientations +
+      " orientation(s)", M.ciel);
+    // Contraste WCAG entre le sol le plus sombre (5e centile, luminance relative) et le liseré de l'itinéraire.
+    const lin = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const lumHex = function (h) {
+      const n = parseInt(String(h).replace("#", ""), 16);
+      return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+    };
+    const liseHex = R.defaut.lisere || "#0a0d18";
+    const contraste = (M.sol.lum5 + 0.05) / (lumHex(liseHex) + 0.05);
+    verifier(contraste >= 3, nom + "liseré de l'itinéraire lisible sur le sol le plus sombre (" +
+      contraste.toFixed(1) + ":1 ≥ 3:1, seuil des objets graphiques)", { sol5: M.sol.lum5, lisere: liseHex });
+    verifier(R.defaut.uv === 0.25 && M.sol.taille === 256 && M.ciel.taille === 256,
+      nom + "motif de 4 m (0,25 de texture par mètre), 256 px", { uv: R.defaut.uv, sol: M.sol.taille });
+    // Roche des piliers et des fronts (vue3d.js > ROCHE.pic, ROCHE.lance) : traces d'outil en passes de coups
+    // parallèles — pic à une ou deux orientations pour tout le motif, lance à 0,07 rad (4°) au plus de la verticale,
+    // peu de stries longues (elles se reconnaissent d'un motif à l'autre sur un long front), et de la roche nue :
+    // au plus 400 coups de pic par motif de 3 m.
+    const Tr = (R.defaut.roche || {}).traces || { pic: {}, lance: {} };
+    verifier(Tr.fissures >= 1 && Tr.fissures <= 5 && Tr.pic.passes >= 3 && Tr.pic.passes <= 8 && Tr.pic.coups >= 40 &&
+      Tr.pic.coups <= 400 &&
+      Tr.pic.orientations >= 1 && Tr.pic.orientations <= 2 && Tr.lance.passes >= 1 && Tr.lance.passes <= 3 &&
+      Tr.lance.coups >= 3 && Tr.lance.coups <= 18 && Tr.lance.penteMax <= 0.07 + 1e-9,
+    nom + "roche des piliers et des fronts : " + Tr.fissures + " fissures par motif (au plus 5 : elles signent le " +
+      "motif quand il se répète), " + Tr.pic.coups + " coups de pic en " + Tr.pic.passes +
+      " passes de rangées parallèles, " + Tr.pic.orientations + " orientation(s) ; " + Tr.lance.coups +
+      " stries de lance en " + Tr.lance.passes + " passes, à " + Tr.lance.penteMax + " rad au plus de la verticale",
+    R.defaut.roche);
+    verifier(R.defaut.calage < 1e-3 && R.deplace.calage < 1e-3 && R.portee.calage < 1e-3 &&
+      R.portee.cote > R.defaut.cote, nom + "carré qui suit calé sur le monde : au départ, après un déplacement, " +
+      "après un changement de portée (côté " + R.defaut.cote + " → " + R.portee.cote + " m, sans saut du motif)",
+    { depart: R.defaut.calage, deplace: R.deplace.calage, portee: R.portee.calage });
+    const noirs = function (s) {
+      return ["sol", "plafond", "solGalerie", "plafondGalerie"].every(function (k) {
+        return !s[k].carte && !s[k].relief && s[k].couleur === "#000000";
+      });
+    };
+    verifier(noirs(R.coupe), nom + "🧱 coupé : sol et plafond noirs, sans carte ni relief", R.coupe);
+    verifier(R.rallume.sols.sol.motif === "sol" && R.rallume.sols.plafond.motif === "ciel" &&
+      R.rallume.dessins.sol === R.defaut.dessins.sol && R.rallume.dessins.ciel === R.defaut.dessins.ciel,
+    nom + "🧱 rallumé : les cartes reviennent, sans nouveau dessin", R.rallume);
+    if (R.reprise) {
+      verifier(R.reprise.ouvert && R.reprise.sols.sol.motif === "sol" && R.reprise.sols.plafond.motif === "ciel" &&
+        R.reprise.sols.sol.relief && R.reprise.calage < 1e-3,
+      nom + "reprise du contexte WebGL : cartes du sol et du ciel refaites avec la scène, carré calé", R.reprise);
+    } else ok(nom + "reprise du contexte : WEBGL_lose_context absent, non jouée");
+    verifier(R.galerie.sols.solGalerie.motif === "sol" && R.galerie.sols.plafondGalerie.motif === "ciel" &&
+      R.galerie.sol.sommets > 0 && R.galerie.sol.ecart < 1e-4 && R.galerie.plafond.sommets > 0 &&
+      R.galerie.plafond.ecart < 1e-4,
+    nom + "rendu galerie : pièces du sol et du plafond en projection monde (x / 4, z / 4 ; " + R.galerie.sol.sommets +
+      " + " + R.galerie.plafond.sommets + " sommets)", R.galerie);
+    verifier(R.mixte.sols.sol.motif === "sol" && R.mixte.calage < 1e-3, nom + "rendu mixte : même sol, carré calé",
+      R.mixte);
+    // Ombre de contact (vue3d.js > OMBRE_CONTACT : 0,28 m, teinte × 0,5 au contact ; 0,5 × 255 = 128).
+    const O = R.ombre, pres = function (a, b) { return Math.abs(a - b) < 0.012; };
+    // Rouge de la teinte : la plus claire et la plus sombre des structures (1re et 2e masse, nuancées), ombrées
+    // dans la même proportion.
+    verifier(O.sommets && pres(O.roche.contact[1], 0.5 * O.roche.plein[1]) &&
+      pres(O.roche.contact[0], 0.5 * O.roche.plein[0]) && O.roche.plein[1] <= 1 && O.roche.plein[1] > 0.8 &&
+      O.roche.entre[1] === 0 && O.roche.v < 1e-4 && O.roche.tete[0] === O.roche.plein[0] &&
+      O.roche.tete[1] === O.roche.plein[1],
+    nom + "ombre de contact des piliers : teinte × 0,5 au sol (" + O.roche.contact[1].toFixed(2) +
+      " pour " + O.roche.plein[1].toFixed(2) + ", " + O.roche.contact[0].toFixed(2) + " pour " +
+      O.roche.plein[0].toFixed(2) + "), pleine à 0,28 m et jusqu'en tête (aucune ombre sous le plafond), texture " +
+      "inchangée (v = y / 3 m ; " + O.roche.sommets + " sommets de faces)", O.roche);
+    verifier(Object.keys(O.roche.ys).sort().join() === "0.00,0.28," + O.roche.haut.toFixed(2),
+      nom + "faces des piliers en deux bandes (sol, 0,28 m, plafond)", O.roche.ys);
+    verifier(pres(O.mur.contact[0], 0.5) && pres(O.mur.contact[1], 0.5) && O.mur.entre[1] === 0 &&
+      O.mur.plein[0] === 1 && O.mur.plein[1] === 1 && Object.keys(O.mur.ys).length === 3,
+    nom + "mur (98 % de la hauteur) : sombre au pied, pleine teinte de 0,28 m à sa tête", O.mur);
+    verifier(O.paroiSommets && pres(O.paroi.contact[0], 0.5) && pres(O.paroi.contact[1], 0.5) &&
+      O.paroi.plein[0] === 1 && O.paroi.tete[0] === 1 && O.paroi.tete[1] === 1 && O.paroi.v < 1e-4 &&
+      O.paroi.sommets > 0,
+    nom + "parois de galerie : même ombre au pied, pleine teinte en tête, texture en mètres inchangée (" +
+      O.paroi.sommets + " sommets)", O.paroi);
+    verifier(O.coupe.roche.sommets === 0 && (O.coupe.couleurs.opaque || []).length >= 1 &&
+      (O.coupe.couleurs.opaque || []).every(function (c) { return /^#[0-9a-f]{6}$/.test(c); }) &&
+      (O.coupe.couleurs.opaque || []).length <= 3,
+    nom + "🧱 coupé : aucune ombre de contact, couleurs de la légende seules", O.coupe);
+    // Nuance de roche par structure (vue3d.js > NUANCE_ROCHE : au plus − 16 %, ± 6 % de chaleur). Trois structures
+    // en roche : deux piliers de 1re masse, un de 2e masse, à peine plus chaude (TEINTE_MASSE_2). Bleu / rouge des
+    // sommets, nuance comprise : 0,94 à 1,06 pour la 1re masse, 0,53 à 0,60 pour la 2e — seuil à mi-chemin (0,77),
+    // et plancher à 0,5 (une 2e masse orangée passerait dessous).
+    const N = R.nuance, rvb = N.depart.map(function (c) { return c.split(",").map(Number); });
+    const masse1 = rvb.filter(function (c) { return c[2] / c[0] > 0.77; });
+    const masse2 = rvb.filter(function (c) { return c[2] / c[0] > 0.5 && c[2] / c[0] < 0.77; });
+    verifier(rvb.length === 3 && masse1.length === 2 && masse2.length === 1 &&
+      masse1.every(function (c) { return Math.min(c[0], c[1], c[2]) >= 255 * 0.84 * 0.94 - 2; }),
+    nom + "nuance par structure : deux piliers de 1re masse de teintes différentes, discrètes (au plus − 16 % et " +
+      "± 6 %), la 2e masse toujours reconnaissable, à peine plus chaude", N.depart);
+    verifier(JSON.stringify(N.depart) === JSON.stringify(N.refaite) && JSON.stringify(N.depart) === JSON.stringify(N.rouverte),
+      nom + "nuance stable : la même après reconstruction des tuiles et après réouverture", N);
+    // Murs (vue3d.js > TEXTURE_TYPE, MUR_PIERRE) : en surface fermée, parpaing ; tracé en ligne, pierre de taille.
+    const W = R.murs, Ws = W.structures, pm = Ws.pierre || {}, pg = Ws.parpaing || {};
+    const versSrgb = function (hex) {
+      return [1, 3, 5].map(function (i) {
+        const c = parseInt(hex.substr(i, 2), 16) / 255;
+        return Math.round((c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055) * 255);
+      });
+    };
+    const aLaCouleur = function (liste, hex) {
+      if (!/^#[0-9a-f]{6}$/i.test(hex || "")) return false;
+      const v = [1, 3, 5].map(function (i) { return parseInt(hex.substr(i, 2), 16); });
+      return (liste || []).some(function (h) {
+        const w = versSrgb(h);
+        return Math.abs(w[0] - v[0]) <= 4 && Math.abs(w[1] - v[1]) <= 4 && Math.abs(w[2] - v[2]) <= 4;
+      });
+    };
+    const dans = function (x0, z0, x1, z1) {
+      return function (a) { return a.x > W.ox + x0 && a.x < W.ox + x1 && a.z > W.oz + z0 && a.z < W.oz + z1; };
+    };
+    const enSurface = dans(11.9, 7.9, 20.1, 8.6), enLigne = dans(3.7, -9.4, 15.4, -5.7);
+    const aP = Ws.aretes.filter(function (a) { return a.mat === "parpaing"; });
+    const aL = Ws.aretes.filter(function (a) { return a.mat === "murPierre"; });
+    verifier(Ws.maillages.parpaing >= 1 && aP.length > 0 && aP.every(enSurface) && pg.carte === "256x256" &&
+      pg.lits > 0.12 && pg.recule === true && pg.couleursSommets === true &&
+      aP.every(function (a) { return Math.abs(a.uvParM - 1) < 2e-3; }),
+    nom + "mur en surface fermée : parpaing, à sa taille réelle, reculé en profondeur (" + aP.length +
+      " arêtes, toutes sur le mur en surface)", { maillages: Ws.maillages, parpaing: pg });
+    verifier(Ws.maillages.murPierre >= 1 && aL.length > 0 && aL.every(enLigne) && pm.pierre === true &&
+      pm.normale === true && pm.pente > 0.02 && pm.lits > 0.12 && pm.carte === "256x256" && pm.mipmaps &&
+      pm.recule === true && pm.couleursSommets === true && !Ws.maillages.murs,
+    nom + "mur tracé en ligne : pierre de taille, la carte et le relief des parois (pente du relief " + pm.pente +
+      "), reculé en profondeur comme les murs (" + aL.length + " arêtes, toutes sur le mur en ligne)",
+    { maillages: Ws.maillages, pierre: pm });
+    const moy = function (o) { return (o && o.moyenne) || [0, 0, 0]; };
+    const ecartTeinte = function (a, b) {
+      return Math.max.apply(null, [0, 1, 2].map(function (i) { return Math.abs(a[i] - b[i]) / Math.max(1, b[i]); }));
+    };
+    const eS = ecartTeinte(moy(pm), moy(Ws.paroi)), eM = ecartTeinte(moy(W.mixte.pierre), moy(W.mixte.paroi));
+    verifier(moy(pm)[0] > 0 && eS <= 0.08 && W.mixte.paroi.pierre === true && W.mixte.maillages.paroi >= 1 &&
+      W.mixte.maillages.murPierre >= 1 && eM <= 0.08 && moy(pm)[0] - moy(pm)[2] > 15,
+    nom + "mur en ligne à la teinte des parois de pierre (écart " + eM.toFixed(3) + " en mixte, à côté des " +
+      "parois d'un tube ; au plus 0,08), plus de gris béton (rouge − bleu " +
+      (moy(pm)[0] - moy(pm)[2]).toFixed(1) + ")",
+    { mur: moy(pm), paroi: moy(W.mixte.paroi), parpaing: pg.lits });
+    verifier(aL.every(function (a) { return Math.abs(a.uvParM - Ws.uv) < 2e-3; }) &&
+      aL.some(function (a) { return a.sens === "v"; }) && aL.some(function (a) { return a.sens === "h"; }),
+    nom + "mur en ligne à la taille réelle de la pierre des parois (" + Ws.uv + " motif par mètre, en long, en " +
+      "hauteur et sur le dessus)", aL.slice(0, 3));
+    // Tête sur une assise entière : v = − MUR_PIERRE.tete (m) au sommet du mur, juste sous un lit du motif.
+    const hs = Ws.hauteur * 0.98;
+    const enTete = aL.filter(function (a) { return a.sens === "v" && Math.abs(a.y - hs) < 1e-3; });
+    verifier(Math.abs(Ws.yMax.murs - hs) < 1e-3 && pm.tete > 0.018 && pm.tete < 0.1 && enTete.length > 0 &&
+      enTete.every(function (a) { return Math.abs(a.v0 + pm.tete) < 1e-4; }),
+    nom + "mur en ligne : monte à 98 % de la hauteur et finit sur une assise entière (tête à " + pm.tete +
+      " m sous un lit, " + enTete.length + " arêtes)", { hs: hs, yMax: Ws.yMax, tete: enTete.slice(0, 3) });
+    verifier(Ws.teintes.join() === "#808080,#ffffff",
+      nom + "mur en ligne : ombre de contact au pied (teinte × 0,5), blanc au-delà, aucune nuance par structure",
+      Ws.teintes);
+    verifier(W.hd.pierre.carte === "512x512" && W.hd.pierre.pierre === true && W.hd.parpaing.carte === "512x512" &&
+      W.sd.pierre.carte === "256x256" && W.sd.pierre.pierre === true &&
+      JSON.stringify(W.hd.maillages) === JSON.stringify(Ws.maillages) &&
+      !Object.keys(W.hd.dessins).some(function (k) { return /mur/i.test(k); }) &&
+      W.hd.teintes.join() === Ws.teintes.join(),
+    nom + "Textures HD : le mur en ligne suit la pierre des parois en 512 px, sans géométrie refaite ni dessin de " +
+      "plus (" + Object.keys(W.hd.dessins).join(", ") + "), puis revient à 256 px",
+    { hd: W.hd.pierre, sd: W.sd.pierre });
+    const Wc = W.coupe;
+    verifier(!Wc.maillages.murPierre && !Wc.maillages.parpaing && Wc.maillages.murs >= 1 &&
+      aLaCouleur(Wc.couleurs.murs, W.legende.mur) && aLaCouleur(Wc.couleurs.murs, W.legende.ligne) &&
+      Wc.aretes.length === 0 && W.rallume.maillages.murPierre >= 1 && W.rallume.maillages.parpaing >= 1 &&
+      W.rallume.pierre.pierre === true,
+    nom + "🧱 coupé : murs en surface et en ligne à la couleur de la légende (" + W.legende.mur + ", " +
+      W.legende.ligne + "), sans texture ; rallumé : parpaing et pierre de taille",
+    { coupe: Wc.maillages, couleurs: Wc.couleurs, rallume: W.rallume.maillages });
+    // Textures HD (vue3d.js > HD, config.js > getVue3DTexturesHD).
+    const H = R.hd, T256 = { roche: "256x256", parpaing: "256x256", paroi: "256x256", sol: 256, plafond: 256 };
+    const T512 = { roche: "512x512", parpaing: "512x512", paroi: "512x512", sol: 512, plafond: 512 };
+    const memes = function (a, b) { return Object.keys(b).every(function (k) { return a[k] === b[k]; }); };
+    verifier(H.bouton.present && H.bouton.dansLaLigne && H.bouton.texte === "HD" && /HD/.test(H.bouton.titre || ""),
+      nom + "Textures HD : bouton « HD » dans la tuile ⚙️, sur la ligne de 🧱", H.bouton);
+    verifier(H.coupe.hd.voulu === false && !H.coupe.hd.actif && H.coupe.hd.bouton === "false" && H.coupe.hd.cle === "" &&
+      !H.coupe.hd.grain && memes(H.coupe.tailles, T256),
+    nom + "HD coupé : textures de 256 px, shaders de three.js sans grain (clé de programme vide)", H.coupe);
+    verifier(H.allume.hd.actif && H.allume.hd.finesse === 2 && H.allume.hd.bouton === "true" &&
+      H.allume.hd.cle === "kta-grain" && H.allume.hd.grain && memes(H.allume.tailles, T512) && H.allume.ls === "1",
+    nom + "HD allumé au bouton : roche, parpaing, pierre, sol et ciel en 512 px, grain de détail, retenu sur " +
+      "l'appareil", { hd: H.allume.hd, tailles: H.allume.tailles });
+    verifier(H.allume.geo === H.coupe.geo && H.allume.geo.length > 0 && H.allume.calage < 1e-3 &&
+      H.allume.tailles.uv.join() === H.coupe.tailles.uv.join(),
+    nom + "bascule HD sur place : aucune géométrie refaite, échelle des textures et calage du sol inchangés",
+    { avant: H.coupe.geo.length, apres: H.allume.geo.length, uv: H.allume.tailles.uv });
+    verifier(Math.abs(H.allume.motif.moyenne - H.coupe.motif.moyenne) < 3 && H.allume.motif.couture < 2.5 &&
+      Math.abs(H.allume.motif.pente - H.coupe.motif.pente) < 0.03,
+    nom + "sol HD : le même dessin plus fin (luminance " + H.coupe.motif.moyenne + " → " + H.allume.motif.moyenne +
+      ", pente du relief " + H.coupe.motif.pente + " → " + H.allume.motif.pente + ", sans couture)",
+    { d256: H.coupe.motif, d512: H.allume.motif });
+    verifier(H.sansTextures.avant.grise === true && !H.sansTextures.avant.actif && H.sansTextures.avant.cle === "" &&
+      H.sansTextures.rendu === true && H.sansTextures.apres.voulu === true && H.sansTextures.ls === "1",
+    nom + "🧱 coupé : bouton HD grisé, sans effet (rien n'est écrit, aucun grain)", H.sansTextures);
+    verifier(H.rallume.hd.actif && !H.rallume.hd.grise && memes(H.rallume.tailles, T512),
+      nom + "🧱 rallumé : le HD revient avec lui", H.rallume);
+    if (H.reprise) {
+      verifier(H.reprise.hd.actif && memes(H.reprise.tailles, T512),
+        nom + "reprise du contexte WebGL en HD : textures de 512 px refaites", H.reprise);
+    }
+    const dh = H.allume.dessins, dr = H.recoupe.dessins;
+    verifier(!H.recoupe.hd.actif && H.recoupe.hd.cle === "" && memes(H.recoupe.tailles, T256) && H.recoupe.ls === "0" &&
+      ["roche", "parpaing", "pierre", "sol", "ciel", "roche@2", "parpaing@2", "pierre@2", "sol@2", "ciel@2"]
+        .every(function (k) { return dr[k] === dh[k] && dr[k] >= 0; }),
+    nom + "HD recoupé : retour à 256 px sans rien redessiner (un dessin par finesse et par page)", H.recoupe);
+    const somme = function (o, s) {
+      return ["roche", "parpaing", "pierre", "sol", "ciel"].reduce(function (t, k) { return t + (o[k + s] || 0); }, 0);
+    };
+    ok(nom + "mesure, PC : premier dessin des cinq textures " + somme(dh, "") + " ms en 256 px, " + somme(dh, "@2") +
+      " ms en 512 px ; mémoire des textures " + H.coupe.hd.mo + " Mo → " + H.allume.hd.mo + " Mo");
+    const d = R.defaut.dessins;
+    verifier(d.sol >= 0 && d.ciel >= 0, nom + "premier dessin : sol " + d.sol + " ms, ciel " + d.ciel +
+      " ms (cette ouverture : " + R.defaut.msSol + " ms)", d);
+    // Page neuve, 🧱 coupé avant la première ouverture : rien n'est dessiné ; puis téléphone ralenti × 4 (Chromium).
+    const f = await ouvrirPage(chromiumNav ? { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3,
+      isMobile: true, hasTouch: true } : null, true);
+    try {
+      let cdp = null;
+      if (chromiumNav) {
+        cdp = await f.ctx.newCDPSession(f.page);
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+      }
+      const F = await f.page.evaluate(async function () {
+        const K = window.KtaVue3D, P = window.__txP;
+        const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+        const defautHD = { tactile: typeof window.ktaAppareilTactile === "function" && window.ktaAppareilTactile(),
+          voulu: window.getVue3DTexturesHD(), ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+        window.setVue3DTextures(false);
+        window.setPlanRenduVue3D(null, "mixte");
+        await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 90 } });
+        await pause(300);
+        const coupe = { sols: K.textures().sols, dessins: K.textures().dessins };
+        K.basculerTextures();
+        await pause(400);
+        const t = K.textures();
+        // Tuile ⚙️ : la ligne de 🧱 tient dans la tuile avec le bouton HD.
+        document.querySelector("#kta-vue3d .kta-v3d-btn-reglages").click();
+        await pause(200);
+        const b = document.querySelector("#kta-vue3d .kta-v3d-btn-textures-hd"), l = b.parentNode;
+        const rb = b.getBoundingClientRect(), rl = l.getBoundingClientRect();
+        const tuile = { deborde: l.scrollWidth > l.clientWidth + 1, dedans: rb.right <= rl.right + 1 && rb.left >= rl.left - 1,
+          haut: +rb.height.toFixed(1), large: +rb.width.toFixed(1), ecran: rl.right <= window.innerWidth + 1 };
+        // HD allumé à la main sur ce téléphone : temps du dessin en 512 px.
+        const t0 = performance.now();
+        K.basculerTexturesHD();
+        const msBascule = Math.round(performance.now() - t0);
+        await pause(600);
+        const th = K.textures();
+        K.basculerTexturesHD();
+        document.querySelector("#kta-vue3d .kta-v3d-btn-reglages").click();
+        await K.fermer();
+        window.setVue3DTextures(true);
+        try { localStorage.removeItem("myktamap_v3d_textures_hd_v1"); } catch (err) { /* lecture seule */ }
+        return { coupe: coupe, dessins: t.dessins, msSol: t.msSol, sols: t.sols, defautHD: defautHD, tuile: tuile,
+          hd: { hd: th.hd, dessins: th.dessins, msBascule: msBascule, t256: t.hd } };
+      });
+      if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+      verifier(noirs(F.coupe.sols) && F.coupe.dessins.sol === undefined && F.coupe.dessins.ciel === undefined,
+        nom + "vue ouverte 🧱 coupé : sol et ciel jamais dessinés (aucun coût)", F.coupe);
+      // Finesse de cette page : celle du défaut de l'appareil (HD au pointeur fin : dessins « sol@2 », « ciel@2 »).
+      const fs = F.defautHD.voulu ? "@2" : "", dSol = F.dessins["sol" + fs], dCiel = F.dessins["ciel" + fs];
+      verifier(F.sols.sol.motif === "sol" && dSol >= 0 && dCiel >= 0 && (!chromiumNav || dSol + dCiel < 600),
+        nom + "🧱 allumé vue ouverte" + (chromiumNav ? ", téléphone ralenti × 4" : "") + " : sol " + dSol +
+        " ms, ciel " + dCiel + " ms", F.dessins);
+      verifier(F.defautHD.ls === null && F.defautHD.voulu === !F.defautHD.tactile && F.hd.t256.voulu === !F.defautHD.tactile,
+        nom + "Textures HD par défaut selon l'appareil (" + (F.defautHD.tactile ? "au doigt : coupé" :
+          "pointeur fin : allumé") + ")", F.defautHD);
+      verifier(!F.tuile.deborde && F.tuile.dedans && F.tuile.ecran && F.tuile.haut >= 44,
+        nom + "tuile ⚙️" + (chromiumNav ? " à 393 px" : "") + " : le bouton HD tient sur la ligne de 🧱 (" +
+          F.tuile.large + " × " + F.tuile.haut + " px, cible ≥ 44 px)", F.tuile);
+      const hd4 = ["roche", "parpaing", "pierre", "sol", "ciel"].reduce(function (s, k) {
+        return s + (F.hd.dessins[k + "@2"] || 0);
+      }, 0);
+      const sd4 = ["roche", "parpaing", "pierre", "sol", "ciel"].reduce(function (s, k) {
+        return s + (F.hd.dessins[k] || 0);
+      }, 0);
+      verifier(F.hd.hd.finesse !== F.hd.t256.finesse && hd4 > 0 && sd4 > 0,
+        nom + "mesure" + (chromiumNav ? ", téléphone ralenti × 4" : "") + " : premier dessin " + sd4 + " ms en 256 px, " +
+          hd4 + " ms en 512 px (bascule HD : " + F.hd.msBascule + " ms) ; mémoire " +
+          Math.min(F.hd.t256.mo, F.hd.hd.mo) + " → " + Math.max(F.hd.t256.mo, F.hd.hd.mo) + " Mo", F.hd.dessins);
+    } finally {
+      await f.ctx.close();
+    }
+    // Pointeur fin, clé absente : HD allumé d'office dès la première ouverture.
+    const g = await ouvrirPage(null, true);
+    try {
+      const G = await g.page.evaluate(async function () {
+        const K = window.KtaVue3D, P = window.__txP;
+        const voulu = window.getVue3DTexturesHD(), tactile = window.ktaAppareilTactile();
+        window.setPlanRenduVue3D(null, "structures");
+        await K.ouvrir({ depart: { x: P(0, 0).x, y: P(0, 0).y, cap: 90 }, commandes: "pave" });
+        await new Promise(function (ok) { setTimeout(ok, 400); });
+        const t = K.textures();
+        await K.fermer();
+        return { voulu: voulu, tactile: tactile, hd: t.hd, sol: t.sols.sol.taille, roche: t.materiaux.roche.carte,
+          ls: localStorage.getItem("myktamap_v3d_textures_hd_v1") };
+      });
+      verifier(G.tactile || (G.voulu === true && G.hd.actif && G.sol === 512 && G.roche === "512x512" && G.ls === null),
+        nom + "pointeur fin, réglage jamais touché : Textures HD d'office (512 px), rien d'écrit sur l'appareil", G);
+    } finally {
+      await g.ctx.close();
+    }
+    verifier(erreurs.length === 0, nom + "aucune erreur de page ni de shader", erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await o.ctx.close();
+  }
+}
+
 // ── 43. 🔍 Recherche depuis la vue 3D (vue3d.js > allerA, _choixRecherche ; searchPoints.js > prendreChoix) ─────────
 // Pointeur fin (1200 × 800), relevé fictif vidé, plan à deux niveaux simulé (0 et −1) : un pilier, une zone, un tracé
 // au 0, un tracé au −1, un POI au 0 avec point précis, un POI au −1 (tous fictifs, en mémoire). 🔍 à hauteur d'yeux dans
@@ -9303,6 +10300,7 @@ async function sectionRecherche3D(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-recherche";
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
       if (window.ktaSetActiveLevel) window.ktaSetActiveLevel(0); else C.activeLevel = 0;
@@ -9656,6 +10654,7 @@ async function sectionNiveauxVoisins(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = PID;
       C.multiLevel = true; C.availableLevels = [-2, -1, 0, 1]; C.visibleLevels = [-2, -1, 0, 1];
       window.ktaSetActiveLevel(0);
@@ -10125,6 +11124,7 @@ async function sectionSolZones(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = PID;
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
       window.ktaSetActiveLevel(0);
@@ -10280,9 +11280,11 @@ async function sectionSolZones(nav) {
 }
 
 // Page sur le relevé fictif vidé, vue 3D chargée, multi-niveau (sols et hauteurs `sols`, `hauteurs`) ; `prep(P)` pose
-// les objets FICTIFS en mémoire (P(x, z) : m depuis le centre de l'image → px). Rend { ctx, page, erreurs }.
-async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep) {
-  const ctx = await nav.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+// les objets FICTIFS en mémoire (P(x, z) : m depuis le centre de l'image → px). `contexte` : options du contexte en
+// plus (appareil émulé, descripteur Playwright). Rend { ctx, page, erreurs }.
+async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep, contexte) {
+  const ctx = await nav.newContext(Object.assign({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" },
+    contexte || {}));
   const page = await ctx.newPage();
   const erreurs = [];
   page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
@@ -10319,6 +11321,7 @@ async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = a.pid;
     C.multiLevel = true; C.availableLevels = a.niveaux.slice(); C.visibleLevels = a.niveaux.slice();
     window.ktaSetActiveLevel(0);
@@ -10346,6 +11349,709 @@ async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep) {
   await page.evaluate(prep);
   await page.evaluate(function () { window.KtaGalerie.invalider(); });
   return { ctx: ctx, page: page, erreurs: erreurs };
+}
+
+// ── 59. Mini-carte et bandeau de guidage au téléphone (vue3d.js > _majSousHaut, _majMiniCarteCote, ResizeObserver de
+// _brancher ; css/vue3d.css > .kta-v3d-mc-cote ; KTA_V3D_SEUL=mcbandeau) ─────────────────────────────────────────────
+// iPhone émulé (descripteurs Playwright, iPhone SE et iPhone 15 couchés), plan FICTIF en mémoire, itinéraire guidé.
+// Paysage bas : mini-carte à droite du bandeau, à sa hauteur, sans chevauchement, ni l'un ni l'autre sur la rangée du
+// haut ni sur les commandes du bas ; cachée : bandeau à sa pleine largeur ; agrandie : bandeau à sa pleine largeur,
+// mini-carte centrée dessous. Paysage → portrait, deux images plus tard, même consigne : mini-carte sous le bandeau.
+// Bandeau qui grandit sans redimensionnement de la fenêtre : la mini-carte descend (l'observateur), puis remonte.
+// Portrait et PC : mini-carte 8 px sous le bandeau, à 10 px du bord droit, bandeau à sa largeur (non-régression).
+// Ouvrir / fermer deux fois : un seul ResizeObserver branché, aucun après la fermeture.
+// KTA_V3D_CAPTURES : captures et relevé des positions (mcbandeau-<moteur>-releve.json, comparaison avant / après).
+function _rectsChevauchent(a, b) {
+  return !!a && !!b && a.l < b.r - 0.5 && b.l < a.r - 0.5 && a.t < b.b - 0.5 && b.t < a.b - 0.5;
+}
+
+async function sectionMiniCarteBandeau(nav) {
+  const nom = "§ 59 ", chev = _rectsChevauchent;
+  console.log("§ 59 — mini-carte et bandeau de guidage au téléphone");
+  const devices = require("playwright").devices, moteur = nav.browserType().name();
+  const cas = [{ d: "iPhone SE landscape", p: "iPhone SE", cap: "iphone-se" },
+    { d: "iPhone 15 landscape", p: "iPhone 15", cap: "iphone-15" }];
+  const releve = {};
+  for (const c of cas) {
+    const desc = Object.assign({}, devices[c.d]);
+    delete desc.defaultBrowserType;
+    const t = await pageNiveauxFictifs(nav, "v3d-checkup-mcbandeau", [-1, 0], { "0": -25, "-1": -29 },
+      { "0": 2.5, "-1": 2.5 }, function () {
+        const P = window.__fxP;
+        window.setRoads([
+          { uid: "rd_mcb_0", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] },
+          { uid: "rd_mcb_n", type: "secondaire", level: 0, points: [P(0, 0), P(0, -30)] }
+        ]);
+        localStorage.removeItem("myktamap_v3d_minicarte_v1");
+        try { localStorage.removeItem("myktamap_guidage_v1"); } catch (err) { /* réglage par défaut */ }
+        // « ResizeObserver loop… » : un événement `error` de la fenêtre, pas toujours une erreur de page.
+        window.__mcbBoucles = [];
+        window.addEventListener("error", function (ev) {
+          if (/ResizeObserver/i.test(String(ev.message))) window.__mcbBoucles.push(String(ev.message));
+        });
+        const R = function (el) {
+          const r = el.getBoundingClientRect();
+          return { l: +r.left.toFixed(1), t: +r.top.toFixed(1), r: +r.right.toFixed(1), b: +r.bottom.toFixed(1),
+            w: +r.width.toFixed(1), h: +r.height.toFixed(1) };
+        };
+        const vu = function (el) { return !!el && !el.hidden && el.getClientRects().length > 0; };
+        window.__mcbMesure = function () {
+          const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+          const mc = q(".kta-v3d-minicarte"), ba = q(".kta-v3d-bandeau"), et = window.KtaVue3D.etat();
+          const tous = function (s) { return Array.prototype.filter.call(document.querySelectorAll(s), vu).map(R); };
+          return { vw: window.innerWidth, vh: window.innerHeight, mc: vu(mc) ? R(mc) : null, ba: vu(ba) ? R(ba) : null,
+            haut: tous("#kta-vue3d .kta-v3d-haut > *"),
+            commandes: tous("#kta-vue3d .kta-v3d-pad, #kta-vue3d .kta-v3d-boussole, #kta-vue3d .kta-v3d-mode-indic, " +
+              "#kta-vue3d .kta-v3d-stick, #kta-vue3d .kta-v3d-niveaux, #kta-vue3d .kta-v3d-incl, " +
+              "#kta-vue3d .kta-v3d-place, #kta-vue3d .kta-v3d-mesure"),
+            cle: et.bandeau ? JSON.stringify(et.bandeau) : "",
+            grande: !!(et.miniCarte && et.miniCarte.grande), cote: et.miniCarte ? et.miniCarte.cote : null };
+        };
+        window.__mcbImages = async function (n) {
+          for (let i = 0; i < n; i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+        };
+        window.__mcbBasculer = async function () {
+          const q = function (s) { return document.querySelector("#kta-vue3d " + s); };
+          if (q("#kta-v3d-reglages").hidden) q('[data-v3d="reglages"]').click();
+          q('[data-v3d="miniCarte"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 9 }));
+          q('[data-v3d="reglages"]').click();
+          await window.__mcbImages(4);
+        };
+        window.__mcbToucher = async function () {
+          document.querySelector("#kta-vue3d .kta-v3d-minicarte").click();
+          await new Promise(function (ok) { setTimeout(ok, 400); });
+          return window.__mcbMesure();
+        };
+      }, desc);
+    const page = t.page, lib = nom + c.cap + " (" + moteur + ") : ", consoleRO = [];
+    page.on("console", function (m) { if (/ResizeObserver/i.test(m.text())) consoleRO.push(m.text()); });
+    try {
+      const p = await page.evaluate(async function () {
+        const P = window.__fxP;
+        const wps = [Object.assign({ source: "search", label: "Départ" }, P(-20, 0), { level: 0 }),
+          Object.assign({ source: "search", label: "Cible fictive" }, P(0, -25), { level: 0 })];
+        const res = await window.Pathfinder.computeRoute(wps, {});
+        window.itineraireActiverRoad({ type: "itinerary", points: res.path, waypoints: wps,
+          raccords: res.raccords || [], carrefours: res.carrefours || [] });
+        await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+        await new Promise(function (ok) { setTimeout(ok, 1500); });
+        await window.__fxImages(10);
+        return window.__mcbMesure();
+      });
+      // ── Paysage bas : mini-carte à droite du bandeau, à sa hauteur ──
+      await capture(page, "mcbandeau-" + moteur + "-" + c.cap + "-paysage");
+      // Bandeau en content-box : max-width 520 px + marges intérieures (2 × 12) + liseré (2 × 1) = 546 px de boîte.
+      const BOITE = 546, pleine = Math.min(BOITE, p.vw - 20);
+      const surAutre = function (m, r) {
+        const sur = function (k) { return chev(k, r); };
+        return m.haut.some(sur) || m.commandes.some(sur);
+      };
+      verifier(!!p.ba && !!p.mc && p.mc.l >= p.ba.r + 0.5 && !chev(p.mc, p.ba) && !surAutre(p, p.mc) &&
+        !surAutre(p, p.ba) && Math.abs(p.ba.t - p.mc.t) <= 1 && p.mc.b <= p.vh && p.mc.w >= 64,
+        lib + "paysage : mini-carte à droite du bandeau, à sa hauteur (" + Math.round(p.mc ? p.mc.w : 0) + " px), " +
+        "sans chevauchement, ni sur la rangée du haut ni sur les commandes du bas", p);
+      // Réserve des commandes du bas propre au paysage bas (css/vue3d.css > .kta-v3d-mc-cote) : assez petite pour une
+      // mini-carte lisible, assez grande pour ne recouvrir aucune commande (vérifié juste au-dessus).
+      verifier(!!p.mc && p.mc.w >= 100 && p.mc.h >= 100 && p.commandes.length >= 2,
+        lib + "paysage : mini-carte d'au moins 100 px (" + Math.round(p.mc ? p.mc.w : 0) + " px), " +
+        p.commandes.length + " commandes du bas mesurées", { mc: p.mc, commandes: p.commandes });
+      const place = p.mc ? p.vw - 20 - p.mc.w - 10 : 0;
+      verifier(!!p.ba && Math.abs((p.ba.l + p.ba.r) / 2 - (10 + place / 2)) <= 1.5 &&
+        Math.abs(p.ba.w - Math.min(BOITE, place)) <= 1,
+        lib + "paysage : bandeau centré dans la place laissée (" + Math.round(place) + " px), 520 px de texte au plus",
+        p.ba);
+      // ── Mini-carte cachée : le bandeau reprend sa pleine largeur ──
+      await page.evaluate(function () { return window.__mcbBasculer(); });
+      const pc = await page.evaluate(function () { return window.__mcbMesure(); });
+      verifier(!pc.mc && !!pc.ba && Math.abs(pc.ba.w - pleine) <= 1 &&
+        Math.abs((pc.ba.l + pc.ba.r) / 2 - pc.vw / 2) <= 1,
+        lib + "paysage, mini-carte cachée : bandeau à sa pleine largeur (" + pleine + " px), centré", pc.ba);
+      await page.evaluate(function () { return window.__mcbBasculer(); });
+      // ── Agrandie en paysage : bandeau à sa pleine largeur, mini-carte centrée dessous ──
+      const pg = await page.evaluate(function () { return window.__mcbToucher(); });
+      verifier(pg.grande && !!pg.ba && !!pg.mc && Math.abs(pg.ba.w - pleine) <= 1 && pg.mc.t >= pg.ba.b &&
+        Math.abs((pg.mc.l + pg.mc.r) / 2 - pg.vw / 2) <= 1,
+        lib + "paysage, agrandie : bandeau à sa pleine largeur, mini-carte centrée dessous", pg);
+      await page.evaluate(function () { return window.__mcbToucher(); });
+      // ── Paysage → portrait : deux images plus tard, même consigne, mini-carte sous le bandeau ──
+      const vp = devices[c.p].viewport;
+      const avant = await page.evaluate(function () { return window.__mcbMesure(); });
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const rot = await page.evaluate(async function () {
+        await window.__mcbImages(2);
+        return window.__mcbMesure();
+      });
+      verifier(rot.cle === avant.cle && !!rot.ba && !!rot.mc && rot.mc.t >= rot.ba.b + 0.5,
+        lib + "paysage → portrait, deux images plus tard, même consigne : mini-carte sous le bandeau (bas du " +
+        "bandeau " + (rot.ba ? rot.ba.b : "?") + ", haut de la mini-carte " + (rot.mc ? rot.mc.t : "?") + ")", rot);
+      await page.waitForTimeout(600);
+      // ── Portrait : mini-carte 8 px sous le bandeau, à 10 px du bord droit ──
+      const po = await page.evaluate(function () { return window.__mcbMesure(); });
+      await capture(page, "mcbandeau-" + moteur + "-" + c.cap + "-portrait");
+      verifier(!!po.ba && !!po.mc && Math.abs(po.mc.t - (po.ba.b + 8)) <= 1.5 && Math.abs(po.vw - po.mc.r - 10) <= 1 &&
+        Math.abs(po.ba.w - Math.min(BOITE, po.vw - 20)) <= 1,
+        lib + "portrait : mini-carte 8 px sous le bandeau, à 10 px du bord, bandeau à sa largeur", po);
+      // Bandeau qui grandit sans redimensionnement de la fenêtre (consigne plus longue) : l'observateur le voit.
+      const gr = await page.evaluate(async function () {
+        const ba = document.querySelector("#kta-vue3d .kta-v3d-bandeau"), cale = document.createElement("div");
+        cale.style.cssText = "flex: 1 0 100%; height: 48px;";
+        ba.appendChild(cale);
+        await window.__mcbImages(2);
+        const m = window.__mcbMesure();
+        cale.remove();
+        await window.__mcbImages(2);
+        return { grandi: m, rendu: window.__mcbMesure() };
+      });
+      verifier(gr.grandi.mc.t >= gr.grandi.ba.b + 0.5 && Math.abs(gr.rendu.mc.t - (gr.rendu.ba.b + 8)) <= 1.5,
+        lib + "bandeau grandi de 48 px sans redimensionnement de la fenêtre : la mini-carte descend, puis remonte", gr);
+      // ── Agrandie en portrait : centrée entre le bandeau et les commandes du bas ──
+      const pa = await page.evaluate(function () { return window.__mcbToucher(); });
+      verifier(pa.grande && !!pa.mc && !chev(pa.mc, pa.ba) && pa.mc.t >= pa.ba.b && pa.mc.b <= pa.vh &&
+        !pa.commandes.some(function (k) { return chev(k, pa.mc); }) &&
+        Math.abs((pa.mc.l + pa.mc.r) / 2 - pa.vw / 2) <= 1,
+        lib + "portrait, agrandie : centrée entre le bandeau et les commandes du bas", pa);
+      await page.evaluate(function () { return window.__mcbToucher(); });
+      releve[c.cap] = { paysage: p, cachee: pc, agrandiePaysage: pg, portrait: po, agrandiePortrait: pa };
+      // ── PC (une fois) : mini-carte sous le bandeau, bandeau à 520 px ──
+      if (c === cas[0]) {
+        await page.setViewportSize({ width: 1200, height: 800 });
+        await page.waitForTimeout(400);
+        const pcv = await page.evaluate(function () { return window.__mcbMesure(); });
+        verifier(!!pcv.ba && !!pcv.mc && Math.abs(pcv.mc.t - (pcv.ba.b + 8)) <= 1.5 &&
+          Math.abs(pcv.ba.w - BOITE) <= 1 &&
+          Math.abs(pcv.vw - pcv.mc.r - 10) <= 1,
+          nom + "PC (" + moteur + ") : mini-carte 8 px sous le bandeau, bandeau à sa largeur (520 px de texte)", pcv);
+        releve.pc = pcv;
+      }
+      // ── Ouvrir / fermer deux fois : un seul ResizeObserver branché, aucun après la fermeture ──
+      const obs = await page.evaluate(async function () {
+        const K = window.KtaVue3D, r = [];
+        for (let i = 0; i < 2; i++) {
+          await K.fermer();
+          r.push(K.etat().observateursTaille);
+          await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+          r.push(K.etat().miniCarte.observateurs);
+        }
+        await K.fermer();
+        r.push(K.etat().observateursTaille);
+        return r;
+      });
+      verifier(obs.join(",") === "0,1,0,1,0", lib + "ouvrir / fermer deux fois : un ResizeObserver branché, aucun " +
+        "après la fermeture (" + obs.join(",") + ")", obs);
+      const boucles = await page.evaluate(function () { return window.__mcbBoucles; });
+      verifier(boucles.length === 0 && consoleRO.length === 0, lib + "aucune boucle « ResizeObserver loop »",
+        boucles.concat(consoleRO).slice(0, 3));
+      verifier(t.erreurs.length === 0, lib + "aucune erreur de page", t.erreurs.slice(0, 3));
+    } catch (err) {
+      pb(lib + "exception du harnais : " + (err && err.message));
+    } finally {
+      await t.ctx.close();
+    }
+  }
+  if (CAPTURES) {
+    require("fs").writeFileSync(path.join(CAPTURES, "mcbandeau-" + moteur + "-releve.json"),
+      JSON.stringify(releve, null, 1));
+  }
+}
+
+// ── 58. Jeu (add-on mkmg) : B sur un autre niveau (coeur.js > _nouvelleVague ; KTA_V3D_SEUL=mkmgniveaux) ─────────────
+// Plan FICTIF en mémoire, deux niveaux joints par une jonction : au 0 (riche), une galerie et 4 POI joignables ; au −1
+// (pauvre), une galerie, 1 POI joignable, 1 trop près du départ (< 10 m), 1 à 36 m de tout tracé (B inatteignable).
+// Départ au −1 : B au 0 dès la vague 1, à chaque partie. Départ au 0 : B surtout sur place (tirage 0,4, ~60 %), au
+// moins une fois au −1 dès la vague 1 sur N parties. Vague de gardien (5) au −1 : B reste au −1.
+async function sectionMkmgNiveaux(nav) {
+  const nom = "§ 58 ";
+  const N = 40;
+  console.log("§ 58 — jeu : B sur un autre niveau dès la vague 1, forcé sur un niveau pauvre (" + N + " parties)");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-mkmg-niveaux", [-1, 0], { "-1": -30, "0": -25 },
+    { "-1": 2.5, "0": 2.5 }, function () {
+      const P = window.__fxP;
+      window.setRoads([
+        { uid: "rd_mn_0", type: "principal", level: 0, points: [P(-100, 0), P(100, 0)] },
+        { uid: "rd_mn_m1", type: "principal", level: -1, points: [P(-100, 4), P(100, 4)] },
+        { uid: "rd_mn_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(-90, 0), P(-90, 4)] }
+      ]);
+      const poi = function (id, x, z, niv) {
+        return Object.assign({ id: id, nom: id, uid: "pt_mn_" + id.replace(/\W/g, ""), level: niv, tags: [] }, P(x, z));
+      };
+      window.setEditorPoints([
+        poi("Riche A", 30, 1, 0), poi("Riche B", 45, 1, 0), poi("Riche C", 60, 1, 0), poi("Riche D", 75, 1, 0),
+        poi("Pauvre A", 50, 5, -1), poi("Pauvre près", 4, 5, -1), poi("Pauvre roche", 40, 40, -1)
+      ]);
+    });
+  const page = t.page;
+  try {
+    const r = await page.evaluate(async function (n) {
+      const K = window.KtaVue3D;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const q = function (s) { return document.querySelector(s); };
+      const M = function () { return window.KtaAddons && window.KtaAddons.mkmg; };
+      const appui = function (b) {
+        b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 2 }));
+        window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+      };
+      // Code « six vers le bas » la première fois (charge l'add-on), lancer() ensuite ; confirmation acceptée.
+      const partie = async function () {
+        if (M() && M().etat().enCours) { M().quitter(); await pause(50); }
+        if (M()) M().lancer();
+        else {
+          appui(q('#kta-vue3d [data-v3d="av"]'));
+          for (let k = 0; k < 6; k++) { appui(q('#kta-vue3d [data-v3d="ar"]')); await pause(30); }
+        }
+        for (let k = 0; k < 60 && !q("#kta-confirm-oui"); k++) await pause(50);
+        if (!q("#kta-confirm-oui")) return { erreur: "pas de confirmation" };
+        q("#kta-confirm-oui").click();
+        for (let k = 0; k < 100 && !(M() && M().etat().cible); k++) await pause(30);
+        const e = M().etat();
+        return { vague: e.vague, cible: e.cible && e.cible.nom, niveau: e.cibleNiveau, route: e.route };
+      };
+      const serie = async function (niveau, x, z) {
+        await window.__fxOuvrir(x, z, 90, niveau, "galerie");
+        const res = [];
+        for (let i = 0; i < n; i++) res.push(await partie());
+        return res;
+      };
+      const out = {};
+      out.pauvre = await serie(-1, 0, 4);
+      // Vague de gardien depuis le −1 : B reste ici (POI d'ici, puis sommet des tracés).
+      out.boss = [];
+      for (let i = 0; i < 6; i++) {
+        const avant = M().etat().calcul;
+        if (!M().essai.vague) { out.boss.push({ erreur: "essai.vague absent" }); break; }
+        M().essai.vague(5);
+        for (let k = 0; k < 100 && !(M().etat().calcul > avant && M().etat().cible); k++) await pause(30);
+        await pause(50);
+        const e = M().etat();
+        out.boss.push({ vague: e.vague, cible: e.cible && e.cible.nom, niveau: e.cibleNiveau });
+      }
+      out.riche = await serie(0, 0, 0);
+      if (M().etat().enCours) M().quitter();
+      await K.fermer();
+      return out;
+    }, N);
+    const compte = function (l, f) { return l.filter(f).length; };
+    const ailleurs = function (niv) {
+      return function (o) { return o.niveau === niv && o.vague === 1 && o.route > 0; };
+    };
+    const pauvreOk = compte(r.pauvre, ailleurs(0));
+    verifier(pauvreOk === N, nom + "départ au −1 (1 POI joignable) : B au 0 dès la vague 1, " + pauvreOk + "/" + N,
+      r.pauvre.filter(function (o) { return !ailleurs(0)(o); }).slice(0, 4));
+    const ici = compte(r.riche, function (o) { return o.niveau === null && o.vague === 1; });
+    const bas = compte(r.riche, ailleurs(-1));
+    console.log("  ℹ️ départ au 0 (4 POI joignables), vague 1 : " + ici + " sur place, " + bas + " au −1, sur " + N);
+    // Tirage 0,4 sur 40 parties : P(aucune au −1) ≈ 1e-9, P(moins de 12 sur place) ≈ 1e-5 ; niveau riche compté
+    // pauvre à tort = 0 sur place.
+    verifier(ici + bas === N && bas >= 1 && ici >= 12,
+      nom + "départ au 0 : B surtout sur place (" + ici + "/" + N + "), au −1 dès la vague 1 (" + bas + "/" + N + ")",
+      r.riche.slice(0, 4));
+    const bossOk = compte(r.boss, function (o) { return o.vague === 5 && o.niveau === null && !!o.cible; });
+    verifier(bossOk === r.boss.length && bossOk > 0, nom + "vague du gardien au −1 (pauvre) : B reste au −1, " +
+      bossOk + "/" + r.boss.length, r.boss);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 4));
+  } catch (err) {
+    pb(nom + "exception : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
+// ── 23 bis. Jeu (add-on mkmg) : silhouette (monde.js > animer, _repousser ; coeur.js > _pile), fumigène (monde.js >
+// lancerFumigene, _avancer, dansFaisceau ; coeur.js > _fumigene), coups portés (monde.js > _frapper ;
+// KTA_V3D_SEUL=mkmg) ──────────────────────────────────────────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire : une galerie est-ouest de 160 m (un sommet tous les 5 m), un POI à 70 m du départ. Partie en
+// facile, monde vidé, chrono repoussé ; chaque situation est posée par KtaAddons.mkmg.essai.
+async function sectionMkmgArsenal(nav) {
+  const nom = "§ 23 bis ";
+  console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile), fumigène, coups portés, écran de fin");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-mkmg-arsenal", [0], { "0": -25 }, { "0": 2.5 }, function () {
+    const P = window.__fxP, pts = [];
+    for (let x = -80; x <= 80; x += 5) pts.push(P(x, 0));
+    window.setRoads([{ uid: "rd_ma", type: "principal", level: 0, points: pts }]);
+    window.setEditorPoints([Object.assign({ id: "ma1", nom: "Salle fictive", uid: "pt_ma_1", level: 0, tags: [] },
+      P(40, 0))]);
+  });
+  const page = t.page;
+  try {
+    const r = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP, sc = window.APP_CONFIG.scale;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const q = function (s) { return document.querySelector(s); };
+      const M = function () { return window.KtaAddons && window.KtaAddons.mkmg; };
+      const appui = function (b) {
+        b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 2 }));
+        window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+      };
+      const touche = function (type, key, code) {
+        document.dispatchEvent(new KeyboardEvent(type, { key: key, code: code, bubbles: true, cancelable: true }));
+      };
+      const tir = function () { touche("keydown", " ", "Space"); touche("keyup", " ", "Space"); };
+      await window.__fxOuvrir(-30, 0, 90, 0, "galerie");
+      appui(q('#kta-vue3d [data-v3d="av"]'));
+      for (let k = 0; k < 6; k++) { appui(q('#kta-vue3d [data-v3d="ar"]')); await pause(30); }
+      for (let k = 0; k < 60 && !q("#kta-confirm-oui"); k++) await pause(50);
+      if (!q("#kta-confirm-oui")) return { erreur: "pas de confirmation" };
+      q("#kta-confirm-oui").click();
+      for (let k = 0; k < 100 && !(M() && M().etat().cible); k++) await pause(30);
+      const X = M().essai, d = P(-30, 0), out = { diff: M().etat().diff };
+      const compte = function (type) {
+        return M().etat().objets.filter(function (o) { return o.type === type; }).length;
+      };
+      out.depart = { stock: M().etat().fumigene.stock, poses: compte("fumigene"), butin: M().etat().butin.fumigenes,
+        bouton: !!q(".mkmg-fumigene") && M().etat().fumigene.bouton, icone: !!q(".mkmg-fumigene svg"),
+        nombre: q(".mkmg-fumigene-n") && q(".mkmg-fumigene-n").textContent };
+      const hasard = Math.random;
+      const sil = function () {
+        return M().etat().ennemis.filter(function (o) { return o.type === "silhouette"; })[0];
+      };
+      // Distance au joueur (m) et vitesse d'approche mesurée sur `ms`.
+      const dist = function (o) { const e = K.etat(); return Math.hypot(o.x - e.pos.x, o.y - e.pos.y) / sc; };
+      const approche = async function (ms) {
+        const t0 = performance.now(), d0 = dist(sil());
+        await pause(ms);
+        return (d0 - dist(sil())) / ((performance.now() - t0) / 1000);
+      };
+      const face = function () { K.placer(d.x, d.y, 90); }, dos = function () { K.placer(d.x, d.y, 270); };
+      const neuf = function () { X.vider(); X.chrono(600000); X.sante(100); X.pile(100); };
+      const R = window.KtaAddons.mkmgMonde.REGLES;
+      out.regles = { silhouette: R.silhouette, fumigene: R.fumigene, coup: R.egares.coup, coupGardien: R.gardien.coup };
+
+      // Silhouette, dos tourné : lente à 20 m, rapide sous 10 m ; la lampe vacille sous 8 m (hasard forcé).
+      neuf(); dos();
+      X.poser("silhouette", P(-10, 0).x, P(-10, 0).y);
+      await pause(150);
+      out.loin = { vitesse: await approche(1500), usure: M().etat().usure };
+      Math.random = function () { return 0; };
+      await pause(200);
+      Math.random = hasard;
+      out.loin.lampe = M().etat().lampe;
+      neuf();
+      X.poser("silhouette", P(-21, 0).x, P(-21, 0).y);
+      await pause(150);
+      out.pres = { vitesse: await approche(800), d: dist(sil()) };
+      Math.random = function () { return 0; };
+      await pause(200);
+      Math.random = hasard;
+      out.pres.lampe = M().etat().lampe;
+      out.pres.vue = K.etat().lampe;
+      neuf();
+      await pause(400);
+      out.pres.rendue = M().etat().lampe;
+      // Fixée à 12 m : figée, la pile s'use deux fois plus vite, la lampe ne vacille pas (plus de 8 m).
+      face();
+      X.poser("silhouette", P(-18, 0).x, P(-18, 0).y);
+      await pause(300);
+      const f0 = sil();
+      await pause(400);
+      out.fixee = { vu: f0.vu, bouge: Math.abs(sil().x - f0.x) / sc, usure: M().etat().usure, lampe: M().etat().lampe };
+      // Tir : elle recule de 12 m le long de la galerie et reste sonnée 3 s, même dos tourné.
+      tir();
+      await pause(100);
+      const s1 = sil();
+      out.tir = { recul: (s1.x - f0.x) / sc, travers: Math.abs(s1.y - f0.y) / sc, sonnee: s1.sonnee,
+        message: q(".mkmg-message").textContent, touches: M().etat().touches };
+      dos();
+      await pause(1000);
+      const s2 = sil();
+      out.tir.immobile = Math.abs(s2.x - s1.x) / sc;
+      out.tir.vuDos = s2.vu;
+      out.tir.sonneeDos = s2.sonnee;
+      await pause(2600);
+      const s3 = sil();
+      out.tir.reveil = { sonnee: s3.sonnee, avance: (s2.x - s3.x) / sc };
+      // Contact : 50 de santé, puis elle repart à 15-25 m.
+      neuf(); dos();
+      X.poser("silhouette", P(-29.5, 0).x, P(-29.5, 0).y);
+      await pause(200);
+      out.contact = { sante: M().etat().sante, d: dist(sil()) };
+      // Présence : grésillement situé (derrière à 20 m, devant à 5 m), plus fort de près.
+      const Son = window.KtaAddons.mkmgSon, jouer0 = Son.jouer, joues = [];
+      Son.jouer = function (n, force, angle) { if (n === "gresille") joues.push([force, angle]); };
+      const entendre = async function (x) {
+        neuf(); face();
+        X.poser("silhouette", P(x, 0).x, P(x, 0).y);
+        joues.length = 0;
+        for (let k = 0; k < 120 && !joues.length; k++) await pause(40);
+        return joues[0] || null;
+      };
+      out.bruit = { derriere: await entendre(-50), devant: await entendre(-25) };
+      Son.jouer = jouer0;
+
+      // ── Fumigène ──
+      const xm = function (o) { return o.x / sc - P(0, 0).x / sc; };   // abscisse en m, 0 au centre du plan
+      const zm = function (o) { return o.y / sc - P(0, 0).y / sc; };
+      const G = function () { touche("keydown", "g", "KeyG"); touche("keyup", "g", "KeyG"); };
+      const nuages = function () { return M().etat().fumigene.nuages; };
+      const de = function (type) { return M().etat().ennemis.filter(function (o) { return o.type === type; }); };
+      const minX = function (type) { return Math.min.apply(null, de(type).map(xm)); };
+      // Lancer (touche G) vers l'est, galerie libre : nuage à 8 m, plein, dessiné ; stock à 0, bouton grisé ; un 2e
+      // appui ne lance rien.
+      neuf(); face();
+      await pause(60);
+      const t0 = performance.now();
+      G();
+      await pause(60);
+      const n1 = nuages();
+      out.lancer = { n: n1.length, x: n1[0] && xm(n1[0]), z: n1[0] && zm(n1[0]), plein: n1[0] && n1[0].plein,
+        maillage: n1[0] && n1[0].maillage, stock: M().etat().fumigene.stock, bouton: M().etat().fumigene.bouton };
+      G();
+      await pause(60);
+      out.lancer.vide = { n: nuages().length, message: q(".mkmg-message").textContent };
+      // Mur : égaré, rampant et gardien venus de l'est s'arrêtent au bord du nuage (−19 m), sans le contourner ; la
+      // partie pleine finie, ils passent ; puis le nuage part. (Le hurleur, qui crie à vue et fait surgir des égarés
+      // au hasard, est joué plus loin, hors de vue.)
+      X.poser("egare", P(-17, 0.3).x, P(-17, 0.3).y);
+      X.poser("rampant", P(-16.5, -0.3).x, P(-16.5, -0.3).y);
+      X.poser("gardien", P(-18.5, 0).x, P(-18.5, 0).y);
+      await pause(Math.max(0, 4300 - (performance.now() - t0)));
+      out.mur = { opacite: nuages()[0] && nuages()[0].opacite, plein: nuages()[0] && nuages()[0].plein,
+        egare: minX("egare"), rampant: minX("rampant"), gardien: minX("gardien"), sante: M().etat().sante };
+      await pause(Math.max(0, 7300 - (performance.now() - t0)));
+      out.apres = { plein: nuages()[0] && nuages()[0].plein, n: nuages().length, opacite: nuages()[0] && nuages()[0].opacite,
+        passe: Math.min(minX("egare"), minX("rampant"), minX("gardien")) };
+      await pause(Math.max(0, 8300 - (performance.now() - t0)));
+      out.apres.parti = nuages().length;
+      X.vider();
+      // Dedans au moment où il se forme : figé. Loin du joueur (35 m, glissement de nœud en nœud) : égaré et hurleur
+      // arrêtés au bord.
+      neuf(); face();
+      X.poser("egare", P(-20, 0).x, P(-20, 0).y);
+      X.poser("egare", P(10, 0).x, P(10, 0).y);
+      X.poser("hurleur", P(10.5, 0).x, P(10.5, 0).y);
+      await pause(100);
+      X.nuage(P(-21, 0).x, P(-21, 0).y);
+      X.nuage(P(5, 0).x, P(5, 0).y);
+      const e0 = de("egare").map(xm);
+      await pause(3000);
+      const e1 = de("egare").map(xm);
+      out.fige = { dedans: Math.abs(e1[0] - e0[0]), loin: e1[1], hurleur: minX("hurleur"), avant: e0 };
+      // Silhouette : figée dans le faisceau à 13 m ; un nuage entre elle et soi coupe le faisceau, elle avance et
+      // entre dans le nuage (qu'un marcheur ne franchit pas).
+      neuf(); face();
+      X.poser("silhouette", P(-17, 0).x, P(-17, 0).y);
+      await pause(350);
+      const sf0 = sil();
+      X.nuage(P(-22, 0).x, P(-22, 0).y);
+      await pause(3000);
+      const sf1 = sil();
+      out.fumeeSil = { vuAvant: sf0.vu, vuApres: sf1.vu, x0: xm(sf0), x1: xm(sf1) };
+      // Lancer vers le nord : la paroi de la galerie arrête la course, le nuage se forme avant 8 m, sur une place valide.
+      neuf();
+      K.placer(d.x, d.y, 0);
+      X.fumigenes(1);
+      await pause(50);
+      G();
+      await pause(60);
+      const nn = nuages()[0];
+      out.paroi = { n: nuages().length, z: nn && zm(nn), x: nn && xm(nn) };
+      // Reprise du contexte WebGL : le nuage est redessiné dans le groupe neuf.
+      X.nuage(P(-25, 0).x, P(-25, 0).y);
+      await pause(100);
+      const gl = q("#kta-vue3d canvas").getContext("webgl2"), perte = gl && gl.getExtension("WEBGL_lose_context");
+      if (perte) {
+        perte.loseContext();
+        await pause(300);
+        perte.restoreContext();
+        await pause(700);
+      }
+      out.reprise = { perte: !!perte, enCours: M().etat().enCours,
+        nuages: nuages().map(function (n) { return n.maillage; }) };
+      // Ramasser : + 1, jusqu'à 3 ; poches pleines, le fumigène reste au sol.
+      neuf(); face();
+      X.fumigenes(2);
+      X.poser("fumigene", P(-29.6, 0).x, P(-29.6, 0).y);
+      await pause(400);   // le compteur du bouton suit à la prochaine mise à jour du panneau (150 ms)
+      out.ramasse = { stock: M().etat().fumigene.stock, reste: compte("fumigene"),
+        message: q(".mkmg-message").textContent, nombre: q(".mkmg-fumigene-n").textContent };
+      X.poser("fumigene", P(-29.6, 0).x, P(-29.6, 0).y);
+      await pause(150);
+      out.ramasse.plein = { stock: M().etat().fumigene.stock, reste: compte("fumigene") };
+      // Gardien abattu (rage : tir automatique) : il lâche champignon, munitions et fumigène.
+      neuf(); face();
+      X.poser("gardien", P(-25, 0).x, P(-25, 0).y);
+      X.rage(20);
+      touche("keydown", "r", "KeyR"); touche("keyup", "r", "KeyR");
+      await pause(50);
+      touche("keydown", " ", "Space");
+      for (let k = 0; k < 60 && de("gardien").length; k++) await pause(50);
+      touche("keyup", " ", "Space");
+      out.gardien = { tue: de("gardien").length === 0,
+        lache: M().etat().objets.map(function (o) { return o.type; }).sort().join(",") };
+      X.rageFin();
+      await pause(100);
+
+      // ── Coups portés ──
+      // Égaré au contact : rien pendant l'élan (0,4 s, immobile), 12 à sa fin, le suivant 0,5 s plus tard.
+      const etatCoups = function () { const e = M().etat(); return { sante: e.sante, coups: e.coups.portes, rates: e.coups.rates }; };
+      neuf(); face();
+      await pause(60);
+      const c0 = etatCoups(), tc = performance.now();
+      X.poser("egare", P(-29.5, 0).x, P(-29.5, 0).y);
+      await pause(250);
+      out.coup = { elan: Object.assign(etatCoups(), { geste: de("egare")[0].elan, x: xm(de("egare")[0]) }) };
+      await pause(Math.max(0, 700 - (performance.now() - tc)));
+      out.coup.un = etatCoups();
+      await pause(Math.max(0, 1200 - (performance.now() - tc)));
+      out.coup.deux = etatCoups();
+      out.coup.avant = c0;
+      // Esquive : on s'écarte de 4 m pendant l'élan → coup raté, santé intacte, l'égaré repart vers soi.
+      neuf(); face();
+      await pause(60);
+      const e0c = etatCoups();
+      X.poser("egare", P(-29.5, 0).x, P(-29.5, 0).y);
+      await pause(200);
+      K.placer(P(-34, 0).x, d.y, 90);
+      await pause(500);
+      out.esquive = { avant: e0c, apres: etatCoups(), x: xm(de("egare")[0]) };
+      // Gardien au contact : 0,6 s d'élan, 36 d'un coup.
+      neuf(); face();
+      await pause(60);
+      const tg = performance.now();
+      X.poser("gardien", P(-29.3, 0).x, P(-29.3, 0).y);
+      await pause(450);
+      out.coupGardien = { elan: M().etat().sante };
+      await pause(Math.max(0, 900 - (performance.now() - tg)));
+      out.coupGardien.un = M().etat().sante;
+
+      // Vague 6 (en dernier : la vague repeuple le monde) : la silhouette va plus vite, plafonnée sous la course.
+      const avant = M().etat().calcul;
+      X.vague(6);
+      for (let k = 0; k < 100 && !(M().etat().calcul > avant && M().etat().cible); k++) await pause(30);
+      neuf(); dos();
+      X.poser("silhouette", P(-10, 0).x, P(-10, 0).y);
+      await pause(150);
+      const V = window.KtaAddons.mkmgMonde.vitesseSilhouette;
+      out.vague6 = { vague: M().etat().vague, vitesse: await approche(1500),
+        plafond: [V({ vague: 99 }, 20), V({ vague: 99 }, 5)], vague2: [V({ vague: 2 }, 20), V({ vague: 2 }, 5)] };
+      Math.random = hasard;
+      // Fin de partie : fumigène inactif (touche et bouton).
+      // Scores laissés par une ancienne partie : relus, gardés tels quels (la clé ne change pas de forme).
+      const CLE = "myktamap_mkmg_v1", anciens = '{"facile":7,"moyen":2}';
+      localStorage.setItem(CLE, anciens);
+      neuf();
+      X.fumigenes(2);
+      X.sante(0);
+      await pause(200);
+      G();
+      q(".mkmg-fumigene").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+      await pause(60);
+      out.fin = { fin: M().etat().fin, stock: M().etat().fumigene.stock, nuages: nuages().length,
+        bouton: M().etat().fumigene.bouton };
+      // Écran de fin : précision, égarés tués, durée ; puis une partie sans un tir (« Rejouer », santé à 0 aussitôt).
+      const lignes = function (s) {
+        return Array.prototype.map.call(document.querySelectorAll(s), function (el) { return el.textContent; });
+      };
+      out.bilan = { etat: M().etat().bilan, lignes: lignes(".mkmg-fin-stats > div"), textes: lignes(".mkmg-fin-texte"),
+        brut: localStorage.getItem(CLE), anciens: anciens };
+      q(".mkmg-fin .mkmg-bouton-primaire").click();
+      for (let k = 0; k < 100 && !(M().etat().enCours && !M().etat().fin && M().etat().cible); k++) await pause(30);
+      X.vider();
+      X.sante(0);
+      await pause(200);
+      out.bilanVide = { etat: M().etat().bilan, lignes: lignes(".mkmg-fin-stats > div"), fin: M().etat().fin };
+      localStorage.removeItem(CLE);
+      M().quitter();
+      await K.fermer();
+      return out;
+    });
+    if (r.erreur) throw new Error(r.erreur);
+    const S = r.regles.silhouette, entre = function (v, a, b) { return v >= a && v <= b; };
+    const usure = 0.55 * 0.75;   // coeur.js > REGLES.pile.parS × butin.pileX du facile
+    verifier(r.diff === "facile" && entre(r.loin.vitesse, 0.9, 1.5) && entre(r.pres.vitesse, 2, 3) &&
+      S.vitesseLoin === 1.2 && S.vitessePres === 2.5,
+      nom + "silhouette dos tourné : lente de loin (" + r.loin.vitesse.toFixed(2) + " m/s à 20 m), plus rapide sous " +
+      "10 m (" + r.pres.vitesse.toFixed(2) + " m/s)", { loin: r.loin, pres: r.pres });
+    verifier(r.pres.d < S.vacilleM && r.pres.lampe < 0.5 && Math.abs(r.pres.vue - r.pres.lampe) < 0.02 &&
+      r.loin.lampe === 1 && r.pres.rendue === 1 && r.fixee.lampe === 1,
+      nom + "silhouette à moins de 8 m : la lampe vacille (pile pleine) ; ni à 20 m, ni à 12 m, ni une fois partie",
+      { loin: r.loin.lampe, pres: r.pres, fixee: r.fixee.lampe });
+    verifier(r.fixee.vu === true && r.fixee.bouge < 0.05 && Math.abs(r.fixee.usure - usure * S.pileX) < 0.001 &&
+      Math.abs(r.loin.usure - usure) < 0.001 && S.pileX === 2,
+      nom + "silhouette fixée : figée dans le faisceau, la pile s'use × 2 (" + r.fixee.usure + " contre " +
+      r.loin.usure + " par seconde)", r.fixee);
+    verifier(entre(r.tir.recul, S.reculM - 0.5, S.reculM + 0.5) && r.tir.travers < 0.5 && r.tir.sonnee &&
+      /recule/.test(r.tir.message) && r.tir.touches === 1 && r.tir.immobile < 0.05 && r.tir.vuDos === false &&
+      r.tir.sonneeDos && r.tir.reveil.sonnee === false && r.tir.reveil.avance > 0.3,
+      nom + "silhouette touchée : recule de " + r.tir.recul.toFixed(1) + " m le long de la galerie, sonnée 3 s " +
+      "(immobile dos tourné), puis repart", r.tir);
+    verifier(r.contact.sante === 100 - S.degats && S.degats === 50 && entre(r.contact.d, S.fuite[0] - 1.5,
+      S.fuite[1] + 0.5), nom + "silhouette au contact : −50 de santé, elle repart à 15-25 m (" +
+      r.contact.d.toFixed(1) + " m)", r.contact);
+    const bd = r.bruit.derriere, bv = r.bruit.devant;
+    verifier(!!bd && !!bv && bd[0] < 0.3 && bv[0] > bd[0] * 2 && Math.abs(bv[0] - 0.64) < 0.05 && Math.abs(bv[1]) < 5 &&
+      Math.abs(Math.abs(bd[1]) - 180) < 5,
+      nom + "silhouette : grésillement situé (derrière à 20 m, devant à 5 m), plus fort de près", r.bruit);
+    verifier(r.vague6.vague === 6 && entre(r.vague6.vitesse, 1.3, 1.9) && r.vague6.vague2[0] === 1.2 &&
+      r.vague6.vague2[1] === 2.5 && Math.abs(r.vague6.plafond[1] - 3.7) < 1e-9 && r.vague6.plafond[1] < 7,
+      nom + "silhouette plus rapide à chaque vague (" + r.vague6.vitesse.toFixed(2) + " m/s de loin en vague 6), " +
+      "plafonnée à " + r.vague6.plafond[1].toFixed(1) + " m/s de près (course du joueur : 7)", r.vague6);
+    const F = r.regles.fumigene, bord = -22 + F.rayon;
+    verifier(r.depart.stock === 1 && F.depart === 1 && F.max === 3 && r.depart.poses === 2 && r.depart.butin === 2 &&
+      r.depart.bouton && r.depart.icone && r.depart.nombre === "1",
+      nom + "fumigène : 1 en poche au départ (3 au plus), 2 posés à la vague 1 en facile, bouton avec son compteur",
+      r.depart);
+    verifier(r.lancer.n === 1 && Math.abs(r.lancer.x - (-30 + F.porteeM)) < 0.05 && Math.abs(r.lancer.z) < 0.05 &&
+      r.lancer.plein && r.lancer.maillage && r.lancer.stock === 0 && !r.lancer.bouton && !r.lancer.recherche &&
+      r.lancer.vide.n === 1 && /fumig/i.test(r.lancer.vide.message),
+      nom + "fumigène : touche G → nuage à 8 m dans l'axe du regard, dessiné ; stock à 0, bouton grisé, un 2e appui " +
+      "ne lance rien (message)", r.lancer);
+    verifier(r.mur.plein && r.mur.opacite > 0.25 && [r.mur.egare, r.mur.rampant, r.mur.gardien]
+      .every(function (x) { return x >= bord - 0.02 && x < bord + 0.6; }) && r.mur.sante === 100,
+      nom + "fumigène : égaré, rampant et gardien arrêtés au bord du nuage (aucun pas dedans, pas de contournement)",
+      r.mur);
+    verifier(r.apres.plein === false && r.apres.n === 1 && r.apres.opacite < r.mur.opacite && r.apres.passe < bord - 0.3 &&
+      r.apres.parti === 0, nom + "fumigène : après 6 s le nuage se dissipe (2 s), les marcheurs passent ; puis il part",
+      r.apres);
+    verifier(r.fige.dedans < 0.02 && [r.fige.loin, r.fige.hurleur].every(function (x) {
+      return x >= 5 + F.rayon - 0.02 && x < 5 + F.rayon + 0.6;
+    }), nom + "fumigène : un égaré pris dans le nuage reste figé ; un égaré et un hurleur à 35 m (glissement de nœud " +
+      "en nœud) s'arrêtent au bord", r.fige);
+    verifier(r.fumeeSil.vuAvant === true && r.fumeeSil.vuApres === false && r.fumeeSil.x1 < bord - 0.5 &&
+      r.fumeeSil.x1 < r.fumeeSil.x0 - 2,
+      nom + "fumigène : la fumée coupe le faisceau — la silhouette n'est plus vue, avance et entre dans le nuage",
+      r.fumeeSil);
+    verifier(r.paroi.n === 1 && r.paroi.z <= 0 && r.paroi.z > -(F.porteeM - 1) && Math.abs(r.paroi.x + 30) < 0.05,
+      nom + "fumigène : lancé vers une paroi, il s'arrête avant (" + (-r.paroi.z).toFixed(1) + " m au lieu de 8)",
+      r.paroi);
+    verifier(r.reprise.perte && r.reprise.enCours && r.reprise.nuages.length === 2 &&
+      r.reprise.nuages.every(function (x) { return x === true; }),
+      nom + "fumigène : perte puis reprise du contexte WebGL → nuages redessinés, partie en cours", r.reprise);
+    verifier(r.ramasse.stock === 3 && r.ramasse.reste === 0 && /fumig/i.test(r.ramasse.message) &&
+      r.ramasse.nombre === "3" && r.ramasse.plein.stock === 3 && r.ramasse.plein.reste === 1,
+      nom + "fumigène : ramassé en passant (+ 1) ; à 3, il reste au sol", r.ramasse);
+    verifier(r.gardien.tue && r.gardien.lache === "champignon,fumigene,munitions",
+      nom + "fumigène : le gardien abattu en lâche un (avec champignon et munitions)", r.gardien);
+    verifier(r.fin.fin && r.fin.stock === 2 && r.fin.nuages === 0 && !r.fin.bouton,
+      nom + "fumigène : inactif en fin de partie (touche G et bouton)", r.fin);
+    const C = r.regles.coup, CG = r.regles.coupGardien, cp = r.coup;
+    verifier(C.elanS === 0.4 && C.degats === 12 && cp.elan.sante === 100 && cp.elan.geste === true &&
+      Math.abs(cp.elan.x + 29.5) < 0.01 && cp.elan.coups === cp.avant.coups && cp.un.sante === 100 - C.degats &&
+      cp.un.coups === cp.avant.coups + 1 && cp.deux.sante === 100 - 2 * C.degats &&
+      cp.deux.coups === cp.avant.coups + 2,
+      nom + "coup d'égaré : 0,4 s d'élan sans dégât (immobile), puis 12 de santé ; coup suivant 0,5 s après (24 par " +
+      "seconde)", cp);
+    verifier(r.esquive.apres.sante === 100 && r.esquive.apres.rates === r.esquive.avant.rates + 1 &&
+      r.esquive.apres.coups === r.esquive.avant.coups && r.esquive.x < -29.6,
+      nom + "coup d'égaré : écarté pendant l'élan → raté, santé intacte, l'égaré repart vers soi", r.esquive);
+    verifier(CG.elanS === 0.6 && CG.degats === 36 && r.coupGardien.elan === 100 && r.coupGardien.un === 100 - CG.degats,
+      nom + "coup du gardien : 0,6 s d'élan, 36 de santé d'un coup", r.coupGardien);
+    const b = r.bilan.etat, bl = r.bilan.lignes;
+    verifier(b.tirs >= 6 && b.touches >= 6 && b.touches <= b.tirs && b.tues >= 1 && b.dureeS >= 20 && bl.length === 3 &&
+      bl[0] === "Précision : " + Math.round(b.touches / b.tirs * 100) + " % (" + b.touches + " / " + b.tirs + ")" &&
+      bl[1] === "Égarés tués : " + b.tues &&
+      bl[2] === "Durée : " + Math.floor(b.dureeS / 60) + ":" + String(b.dureeS % 60).padStart(2, "0"),
+      nom + "écran de fin : précision (balles au but / tirées), égarés tués, durée de la partie", r.bilan);
+    verifier(r.bilan.brut === r.bilan.anciens && r.bilan.textes.indexOf("Meilleure vague (Facile) : 7") >= 0,
+      nom + "écran de fin : scores d'une ancienne partie relus et gardés tels quels (clé de même forme)", r.bilan);
+    verifier(r.bilanVide.fin && r.bilanVide.lignes[0] === "Précision : aucun tir" &&
+      r.bilanVide.lignes[1] === "Égarés tués : 0" && /^Durée : 0:0\d$/.test(r.bilanVide.lignes[2] || "") &&
+      r.bilanVide.etat.precision === null,
+      nom + "écran de fin : partie sans un tir → « aucun tir », 0 égaré, durée de quelques secondes", r.bilanVide);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 4));
+  } catch (err) {
+    pb(nom + "exception : " + (err && err.message));
+  } finally {
+    await t.ctx.close();
+  }
 }
 
 // ── 50. Niveaux entremêlés : union des vides, collision par tranche (vue3d.js > _entreDe, _paroiEntre, _trousEntre,
@@ -10596,7 +12302,8 @@ async function sectionPuitsDessus(nav) {
 // _sommetPlafond, _niveauxAuDessus, GABARIT.conduit, rayon ; KTA_V3D_SEUL=puits-ciel) ─────────────────────────────
 // Plan FICTIF en mémoire : niveaux 0 et +1 (2 m chacun). Au 0, galerie est-ouest de x = −30 à 30 ; au +1, une galerie
 // au droit du 0 de x = 10 à 30. Au 0 seul : puits à échelons ouverts (peo, sans niveau lié) en (15, 0) sous la galerie
-// du +1 et en (−15, 0) sous sa roche. Témoins non ouverts : aération (pa) en (−5, 0) sous la roche, puits à échelons
+// du +1 et en (−15, 0) sous sa roche ; puits de surface rond (ps) en (−25, 0) sous la roche.
+// Témoins non ouverts : aération (pa) en (−5, 0) sous la roche, puits à échelons
 // (jpe, 0 ↔ +1) en (25, 0) sous la galerie. Écart du +1 : +1 m (sol à 3 m), puis +4 m (sol à 6 m).
 // Puits ouvert : conduit jusqu'à VOLUME.long au-dessus du plafond du +1 (au moins au-dessus du nôtre), bouche au bit
 // GABARIT.conduit, disque de ciel au sommet, et le rayon vertical depuis le fond du puits ne touche rien d'autre que
@@ -10620,6 +12327,7 @@ async function sectionPuitsCiel(nav) {
         Object.assign({ id: "Puits ouvert galerie", uid: "pt_pc_peo_g", level: 0, tags: ["peo"] }, P(15, 0)),
         Object.assign({ id: "Puits ouvert roche", uid: "pt_pc_peo_r", level: 0, tags: ["peo"] }, P(-15, 0)),
         Object.assign({ id: "Aération roche", uid: "pt_pc_pa_r", level: 0, tags: ["pa"] }, P(-5, 0)),
+        Object.assign({ id: "Puits de surface roche", uid: "pt_pc_ps_r", level: 0, tags: ["ps"] }, P(-25, 0)),
         Object.assign({ id: "Puits galerie", uid: "pt_pc_jpe_g", level: 0, niveaux: [0, 1], tags: ["jpe"] }, P(25, 0))
       ]);
     });
@@ -10652,6 +12360,7 @@ async function sectionPuitsCiel(nav) {
               return v ? lire(v) : null;
             };
             return { h: e.hauteur, peoG: par("peo", 15), peoR: par("peo", -15), paR: par("pa", -5),
+              psR: par("ps", -25),
               jpeG: par("jpe", 25) };
           }, { ecart: ecart, rendu: rendu, vus: vus });
           const k = nom + rendu + " « " + vus + " », écart " + ecart + " m : ";
@@ -10666,6 +12375,9 @@ async function sectionPuitsCiel(nav) {
           verifier(jour(r.peoR),
             k + "puits ouvert sous la roche du +1 : conduit jusqu'à " + cimeJour + " m, ciel au sommet, rien du +1 " +
             "en travers du rayon vertical", r.peoR);
+          verifier(jour(r.psR),
+            k + "puits de surface (ps) sous la roche du +1 : conduit jusqu'à " + cimeJour + " m, ciel au sommet, " +
+            "rien du +1 en travers du rayon vertical", r.psR);
           verifier(!!r.paR && r.paR.conduit && r.paR.conduit.roche === true && pr(r.paR.conduit.cime, h + 6) &&
             r.paR.haut === null && r.paR.cielVu === false,
             k + "aération sous la roche (témoin) : conduit de 6 m, sans ciel", r.paR);
@@ -11647,6 +13359,66 @@ async function sectionMiniCarte(nav) {
       nom + "agrandie sur un petit téléphone, guidage actif : entre le bandeau et le pavé, dans l'écran", ga);
     await page.evaluate(function () { window.__mcEl().click(); });
     await page.setViewportSize({ width: 1200, height: 800 });
+    // ── Arc de soutènement (6 m à l'ouest, en travers de la galerie) : trait rayé du canon, au-dessus du tracé qu'il
+    // traverse (structures.js > ktaArcsAuDessus). Pixels de la colonne de l'arc classés à la couleur la plus proche ──
+    const arc = await page.evaluate(async function () {
+      const P = window.__fxP, R = window.ktaResolveStyle;
+      await window.KtaVue3D.fermer();
+      // Itinéraire du guidage retiré : son ruban passerait sur le croisement mesuré.
+      window.setRoads(window.getRoads().filter(function (q) { return q.type !== "itinerary"; }));
+      window.setStructures([{ uid: "st_mc_p", type: "pilier-1", level: 0, points: [P(4.5, 3.5), P(7.5, 3.5),
+        P(7.5, 6.5), P(4.5, 6.5)] }, { uid: "st_mc_arc", type: "arc", level: 0, points: [P(-26, -3), P(-26, 3)] }]);
+      await window.__fxOuvrir(-20, 0, 90, 0, "structures");
+      for (let i = 0; i < 30; i++) {   // rayon au plus court (10 m) : l'arc sur plusieurs pixels
+        window.__mcEl().dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -100 }));
+      }
+      await new Promise(function (ok) { setTimeout(ok, 300); });
+      await window.__fxImages(20);
+      const sa = R("structures", "arc", { flat: true }), st = R("traces", "principal", { flat: true });
+      const hex = function (h) {
+        const v = parseInt(String(h).replace("#", ""), 16);
+        return [v >> 16 & 255, v >> 8 & 255, v & 255];
+      };
+      const refs = { arc: hex(sa.color), rayure: hex(sa.rayures && sa.rayures.color), trace: hex(st.color) };
+      const m = window.__mc(), cv = window.__mcEl().querySelector("canvas"), S = cv.width;
+      const k = S / (2 * m.rayonMontre), u = Math.round(S / 2 - 6 * k), v0 = S / 2;
+      const px = cv.getContext("2d").getImageData(u - 1, 0, 3, S).data;
+      const genre = function (i) {
+        let best = null, dmin = Infinity;
+        for (const g in refs) {
+          const c = refs[g], d = Math.hypot(px[i] - c[0], px[i + 1] - c[1], px[i + 2] - c[2]);
+          if (d < dmin) { dmin = d; best = g; }
+        }
+        return dmin < 60 ? best : null;
+      };
+      const r = { formes: m.formes, rayon: m.rayonMontre, refs: refs, sur: { arc: 0, rayure: 0, trace: 0 },
+        long: { arc: 0, rayure: 0, trace: 0 } };
+      for (let y = Math.round(v0 - 2.5 * k); y <= Math.round(v0 + 2.5 * k); y++) {
+        const zone = Math.abs(y - v0) <= 1 ? r.sur : r.long;
+        // Sur le tracé, la colonne du milieu seule : l'arc (≈ 2 px) n'en couvre pas trois.
+        for (let c = zone === r.sur ? 1 : 0; c < (zone === r.sur ? 2 : 3); c++) {
+          const g = genre((y * 3 + c) * 4);
+          if (g) zone[g]++;
+        }
+      }
+      return r;
+    });
+    await capture(page, "minicarte-arc");
+    if (CAPTURES) {
+      await page.evaluate(function () { window.__mcEl().click(); });
+      await page.waitForTimeout(400);
+      await capture(page, "minicarte-arc-agrandie");
+      await page.evaluate(function () { window.__mcEl().click(); });
+    }
+    await page.evaluate(function () {
+      for (let i = 0; i < 8; i++) {   // rayon rendu (≈ 30 m, 10 × 1,15⁸) pour le coût mesuré ensuite
+        window.__mcEl().dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 100 }));
+      }
+    });
+    verifier(arc.formes === 5 && arc.long.rayure > 0 && arc.long.arc > 0,
+      nom + "arc de soutènement : trait bleu rayé de rouge (canon, comme la carte)", arc);
+    verifier(arc.sur.arc + arc.sur.rayure > 0 && arc.sur.trace === 0,
+      nom + "arc de soutènement au-dessus du tracé qu'il traverse (comme la carte)", arc.sur);
     // ── Coût : 9 000 piliers fictifs, fond à 30 m, 100 m et agrandi ; mises à jour en marchant. Chromium : processeur
     // ralenti x4 (ordre de grandeur d'un téléphone) ──
     const cdp = nav.browserType().name() === "chromium" ? await t.ctx.newCDPSession(page) : null;
@@ -11728,8 +13500,8 @@ async function sectionMiniCarte(nav) {
 // getVue3DEstomper ; KTA_V3D_SEUL=estomper) ──────────────────────────────────────────────────────────────────────────
 // Plan FICTIF en mémoire, rendu galerie : galerie nord-sud du 0 à l'ouest, galerie du −1 (4 m dessous) à l'est,
 // visible entre les galeries en vue d'édition. Par défaut : tous les maillages du −1 estompés, bouton pressé, pixels
-// du −1 plus sombres ; bouton touché : rendu d'origine, retenu sur l'appareil (réouverture) ; hauteur d'yeux : rien
-// d'estompé ; plan à un niveau : ligne cachée.
+// du −1 plus sombres ; bouton touché : rendu d'origine, retenu sur l'appareil (réouverture) ; hauteur d'yeux : le −1
+// en fantôme (46 bis) ; plan à un niveau : ligne cachée.
 async function sectionEstomper(nav) {
   const nom = "§ 46 ";
   console.log("§ 46 — niveau du dessous estompé en vue d'édition");
@@ -11788,7 +13560,8 @@ async function sectionEstomper(nav) {
       lumA > 0 && lumB > lumA * 1.5,
       nom + "🌫️ touché : rendu d'origine (aucun maillage estompé), retenu sur l'appareil ; luminance du −1 " + lumA +
       " → " + lumB, { a: lumA, b: lumB, etat: b });
-    // Retenu à la réouverture ; recoché puis hauteur d'yeux : rien d'estompé ; retour en édition : estompé.
+    // Retenu à la réouverture ; recoché puis hauteur d'yeux : le −1 (4 m dessous) en fantôme, vu à travers le sol
+    // (§ 46 bis) ; retour en édition : assombri.
     await edition();
     const c = await lireM1();
     const d = await page.evaluate(async function () {
@@ -11806,9 +13579,9 @@ async function sectionEstomper(nav) {
     });
     verifier(c.estomper === false && c.estompes === 0 && c.presse === "false",
       nom + "coupé retenu à la réouverture de la vue", c);
-    verifier(d.recoche === true && d.yeux.vue === "yeux" && d.yeux.estompes === 0 && d.yeux.maillages > 0 &&
+    verifier(d.recoche === true && d.yeux.vue === "yeux" && d.yeux.estompes === d.yeux.maillages && d.yeux.maillages > 0 &&
       d.edition.vue === "plongee" && d.edition.estompes === d.edition.maillages && d.edition.maillages > 0,
-      nom + "hauteur d'yeux : rien d'estompé (rendu inchangé) ; de retour en édition, le −1 estompé", d);
+      nom + "hauteur d'yeux : le −1 en fantôme (vu à travers le sol) ; de retour en édition, le −1 estompé", d);
     // Plan à un niveau : ligne cachée.
     const un = await page.evaluate(async function () {
       const K = window.KtaVue3D;
@@ -11827,6 +13600,158 @@ async function sectionEstomper(nav) {
   } catch (err) {
     pb(nom + "exception du harnais : " + (err && err.message));
   } finally {
+    await t.ctx.close();
+  }
+}
+
+// ── 46 bis. Autres niveaux en transparence à hauteur d'yeux (vue3d.js > _transparenceYeux, _masqueTransparence,
+// _matVoile ; KTA_V3D_SEUL=transparence) ──────────────────────────────────────────────────────────────────────────
+// Plan FICTIF en mémoire, rendu galerie, trois niveaux séparés (4 m) : galerie nord-sud du 0, galeries est-ouest du +1
+// et du −1 qui la croisent à z = −8 et z = 8. Vue à 3 m d'un croisement (z = −5). Réglage activé : masques posés par
+// les voisins, voisins opaques non éclairés, plafond du −1 gardé ; l'image change en haut ET en bas par rapport au
+// réglage coupé, et le sol voilé reste un sol (luminance sous l'emprise loin du noir) ; pas et toucher au sol
+// identiques ; niveau le plus haut : seul le dessous ; « Actif seul » : rien ; coupé : rendu d'origine.
+// Captures : transparence-{coupe,activee-3m,activee-8m,niveau-haut,actif-seul}.
+async function sectionTransparence(nav) {
+  const nom = "§ 46 bis ";
+  console.log("§ 46 bis — autres niveaux en transparence à hauteur d'yeux");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-transparence", [-1, 0, 1], { "1": -21, "0": -25, "-1": -29 },
+    { "1": 2.5, "0": 2.5, "-1": 2.5 }, function () {
+      const P = window.__fxP;
+      window.setRoads([
+        { uid: "rd_tr_0", type: "principal", level: 0, points: [P(0, -80), P(0, 80)] },
+        { uid: "rd_tr_p1a", type: "principal", level: 1, points: [P(-40, -8), P(40, -8)] },
+        { uid: "rd_tr_p1b", type: "principal", level: 1, points: [P(-40, 8), P(40, 8)] },
+        { uid: "rd_tr_m1a", type: "principal", level: -1, points: [P(-40, -8), P(40, -8)] },
+        { uid: "rd_tr_m1b", type: "principal", level: -1, points: [P(-40, 8), P(40, 8)] }
+      ]);
+    }, { viewport: { width: 393, height: 852 } });
+  const page = t.page;
+  try {
+    // `vis` posé APRÈS l'ouverture (l'ouverture réécrit le filtre de niveaux de la carte), puis voisins recalculés.
+    const ouvrir = function (est, niveau, z, vis) {
+      return page.evaluate(async function (a) {
+        const K = window.KtaVue3D;
+        window.APP_CONFIG.visibleLevels = [-1, 0, 1];
+        await window.__fxOuvrir(0, a.z, 0, a.niveau, "galerie");
+        if (K.etat().eclairage.active.jour) K.reglerPleinJour(false);
+        if (a.vis) window.APP_CONFIG.visibleLevels = a.vis;
+        K.reglerNiveauxVus("tous");
+        K.reglerNiveauxVus("voisins");
+        K.reglerEstomper(a.est);
+        if (K.etat().vue !== "yeux") K.basculerVue();
+        await window.__fxImages(60);
+        const e = K.etat();
+        return { vue: e.vue, voisins: e.voisins.niveaux.map(function (q) {
+          return { n: q.niveau, dessus: q.dessus, transparence: q.transparence, masques: q.masques, maniere: q.maniere,
+            maillages: q.maillages, estompes: q.estompes, plafondsCaches: q.plafondsCaches };
+        }) };
+      }, { est: est, niveau: niveau, z: z, vis: vis || null });
+    };
+    // Bandes de l'image (vue à 3 m du croisement) : plafond sous la galerie du +1, sol au-dessus de celle du −1.
+    const lum = async function () {
+      return { haut: await luminanceCapture(page, 0.3, 0.14, 0.7, 0.28),
+        bas: await luminanceCapture(page, 0.3, 0.8, 0.7, 0.86) };
+    };
+    const pas = function () {
+      return page.evaluate(function () {
+        const K = window.KtaVue3D, p0 = K.etat().pos, ok = K.avancer(1), p1 = K.etat().pos;
+        const cv = document.querySelector("#kta-vue3d canvas"), r = cv.getBoundingClientRect();
+        const v = K.viser(r.left + r.width / 2, r.top + r.height * 0.83);
+        K.avancer(-1);
+        return { ok: ok, d: +Math.hypot(p1.x - p0.x, p1.y - p0.y).toFixed(3),
+          vise: v ? { genre: v.genre, sol: v.sol, h: +v.h.toFixed(2), rel: window.__fxRel(v) } : null };
+      });
+    };
+    const v = function (r, n) { return r.voisins.find(function (q) { return q.n === n; }) || {}; };
+    const off = await ouvrir(false, 0, -5);
+    const lOff = await lum(), pOff = await pas();
+    await capture(page, "transparence-coupe");
+    verifier(off.vue === "yeux" && [1, -1].every(function (n) {
+      const q = v(off, n); return q.transparence === false && q.masques === 0 && q.estompes === 0 && q.maillages > 0; }),
+      nom + "coupé : voisins construits, rien de voilé ni d'estompé (rendu d'origine)", off);
+    const on = await ouvrir(true, 0, -5);
+    const lOn = await lum(), pOn = await pas();
+    await capture(page, "transparence-activee-3m");
+    verifier([1, -1].every(function (n) {
+      const q = v(on, n); return q.transparence === true && q.masques > 0 && q.maniere === "fantomeYeux" &&
+        q.estompes === q.maillages && q.maillages > 0; }) && v(on, -1).plafondsCaches === 0,
+      nom + "activé : le +1 et le −1 en transparence (masques posés, voisins non éclairés, plafond du −1 gardé)", on);
+    verifier(Math.abs(lOn.haut - lOff.haut) > 2 && Math.abs(lOn.bas - lOff.bas) > 2,
+      nom + "activé : l'image change à travers le plafond ET à travers le sol — luminance haut " + lOff.haut + " → " +
+      lOn.haut + ", bas " + lOff.bas + " → " + lOn.bas, { off: lOff, on: lOn });
+    verifier(lOn.bas >= 0.3 * lOff.bas && lOn.bas > 20,
+      nom + "le sol voilé se lit comme un sol (luminance sous l'emprise " + lOn.bas + ", pas un puits noir)", lOn);
+    verifier(JSON.stringify(pOn) === JSON.stringify(pOff) && pOn.ok && !!pOn.vise,
+      nom + "le sol reste solide : avancer d'un mètre et toucher au sol identiques, réglage activé ou coupé",
+      { on: pOn, off: pOff });
+    await ouvrir(true, 0, 0);
+    await capture(page, "transparence-activee-8m");
+    const haut = await ouvrir(true, 1, -5);
+    await capture(page, "transparence-niveau-haut");
+    const q0 = v(haut, 0);
+    verifier(haut.voisins.every(function (q) { return !q.dessus; }) && q0.transparence === true && q0.masques > 0,
+      nom + "niveau le plus haut : rien au-dessus, seul le dessous (le 0) en transparence", haut);
+    const seul = await ouvrir(true, 0, -5, [0]);
+    await capture(page, "transparence-actif-seul");
+    verifier(seul.voisins.length === 0, nom + "« Actif seul » (≡) : aucun voisin, rien de voilé", seul);
+    // Eau sur le sol voilé (au croisement du −1) : toujours dessinée par-dessus le voile (ORDRE_VOILE avant l'eau).
+    const eau = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP;
+      window.setZones([{ uid: "zn_tr_eau", type: "eau", level: 0, points: [P(-1, -9.5), P(1, -9.5), P(1, -6.5), P(-1, -6.5)] }]);
+      window.KtaGalerie.invalider();
+      window.APP_CONFIG.visibleLevels = [-1, 0, 1];
+      await window.__fxOuvrir(0, -4, 0, 0, "galerie");
+      K.reglerNiveauxVus("tous"); K.reglerNiveauxVus("voisins"); K.reglerEstomper(true);
+      if (K.etat().vue !== "yeux") K.basculerVue();
+      await window.__fxImages(60);
+      return { eau: K.etat().zones ? K.etat().zones.eau || 0 : null };
+    });
+    const lEau = await luminanceCapture(page, 0.42, 0.74, 0.58, 0.86);
+    await capture(page, "transparence-eau");
+    await page.evaluate(function () { window.setZones([]); window.KtaGalerie.invalider(); });
+    verifier(lEau > 20, nom + "eau posée sur le sol voilé : dessinée par-dessus le voile (luminance " + lEau + ")", eau);
+    // Coût : grille de galeries de 8 m sur 160 m, trois niveaux, à hauteur d'yeux ; réglage activé contre coupé, même
+    // place. Chromium : processeur ralenti x4 (ordre de grandeur d'un téléphone). Seuil : +3 ms par image (médiane).
+    const cdp = nav.browserType().name() === "chromium" ? await t.ctx.newCDPSession(page) : null;
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const cout = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP, roads = [], out = {};
+      for (let n = -1; n <= 1; n++) {
+        for (let k = -10; k <= 10; k++) {
+          roads.push({ type: "principal", level: n, points: [P(-80, k * 8), P(80, k * 8)] });
+          roads.push({ type: "secondaire", level: n, points: [P(k * 8, -80), P(k * 8, 80)] });
+        }
+      }
+      window.setRoads(roads);
+      window.APP_CONFIG.visibleLevels = [-1, 0, 1];
+      for (const rd of ["galerie", "mixte"]) {
+        for (const est of [false, true]) {
+          window.KtaGalerie.invalider();
+          await window.__fxOuvrir(4, 1, 90, 0, rd);
+          if (K.etat().eclairage.active.jour) K.reglerPleinJour(false);
+          K.reglerNiveauxVus("tous"); K.reglerNiveauxVus("voisins"); K.reglerEstomper(est);
+          if (K.etat().vue !== "yeux") K.basculerVue();
+          await window.__fxImages(90);
+          const m = K.mesurer({ images: 60 });
+          out[rd + (est ? "/activé" : "/coupé")] = { msMed: m.msMed, msP95: m.msP95, appels: m.appelsMax,
+            masques: K.etat().voisins.niveaux.reduce(function (s, q) { return s + q.masques; }, 0) };
+        }
+      }
+      return out;
+    });
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    console.log("  ℹ️ coût de la transparence (grille 8 m, 3 niveaux" + (cdp ? ", processeur ralenti x4" : "") + ") : " +
+      JSON.stringify(cout));
+    verifier(["galerie", "mixte"].every(function (rd) {
+      const a = cout[rd + "/coupé"], b = cout[rd + "/activé"];
+      return a && b && b.masques > 0 && b.msMed - a.msMed <= 3; }),
+      nom + "coût : au plus +3 ms par image (médiane), galerie et mixte, réglage activé contre coupé", cout);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } catch (err) {
+    pb(nom + "exception du harnais : " + (err && err.message));
+  } finally {
+    await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); }).catch(function () {});
     await t.ctx.close();
   }
 }
@@ -11915,7 +13840,8 @@ async function sectionVoisinsPassages(nav) {
 // Plan FICTIF en mémoire, rendu galerie : galerie nord-sud du 0 sous la place, galerie est-ouest du +1 (5 m
 // au-dessus) qui passe au-dessus du point visé. Par défaut (🌫️ activé), en vue d'édition : +1 montré en fantôme
 // (tous ses maillages transparents, sol caché), pixels du +1 visibles ; un toucher au point visé atteint le sol du 0
-// (même résultat qu'en « Le mien ») ; 🌫️ coupé : +1 caché (rendu du lot C) ; hauteur d'yeux : rendu d'origine.
+// (même résultat qu'en « Le mien ») ; 🌫️ coupé : +1 caché (rendu du lot C) ; hauteur d'yeux : fantôme, sol
+// gardé (46 bis).
 async function sectionFantome(nav) {
   const nom = "§ 48 ";
   console.log("§ 48 — niveau du dessus en fantôme en vue d'édition");
@@ -11982,6 +13908,8 @@ async function sectionFantome(nav) {
     const off = await etatP1();
     const lumOff = await luminanceCapture(page, 0.6, 0.35, 0.95, 0.6);
     await capture(page, "fantome-coupe");
+    // Opacité 0,35 (vue3d.js > ESTOMPE.fantome) : le fantôme se lit nettement (à 0,16, luminance mesurée ≈ 11).
+    verifier(lumA >= 18, nom + "fantôme bien visible (opacité 0,35) : luminance " + lumA + " ≥ 18", lumA);
     verifier(c === null && off.maniere === null && off.montrees === 0 && lumA > lumOff + 2,
       nom + "🌫️ coupé : le +1 caché en vue d'édition (rendu du lot C) ; luminance du fantôme " + lumA + " → " + lumOff,
       { off: off, lumA: lumA, lumOff: lumOff });
@@ -11993,9 +13921,9 @@ async function sectionFantome(nav) {
       return null;
     });
     const yeux = await etatP1();
-    verifier(y === null && yeux.vue === "yeux" && yeux.maniere === null && yeux.estompes === 0 &&
+    verifier(y === null && yeux.vue === "yeux" && yeux.maniere === "fantomeYeux" && yeux.estompes === yeux.maillages &&
       yeux.solsCaches === 0 && yeux.montrees > 0,
-      nom + "hauteur d'yeux : le +1 en rendu d'origine (sol rendu, rien de transparent)", yeux);
+      nom + "hauteur d'yeux : le +1 en fantôme vu à travers le plafond, son sol gardé (§ 46 bis)", yeux);
     await page.evaluate(function () { localStorage.removeItem("myktamap_v3d_estomper_v1"); });
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
   } catch (err) {
@@ -12411,6 +14339,7 @@ async function sectionLimiterPortee(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-limiter";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "structures");
@@ -12620,6 +14549,7 @@ function semerToutPlan() {
   const vide = function () { return []; };
   window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
   window.getAllEmbeddedStructures = vide;
+  window.__v3dReleve.aligner();
   window._currentLoadedPlanId = "v3d-mesure-tout-plan";
   window.APP_CONFIG.multiLevel = true;
   window.ktaSetActiveLevel(0);
@@ -12773,6 +14703,7 @@ async function sectionPanneauxDezoom(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-panneaux";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "structures");
@@ -13391,6 +15322,13 @@ async function sectionCaseBoutonsZoom(nav) {
 (async function main() {
   const lancement = { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] };
   const nav = await lancerNavigateur(chromium, lancement);
+  // Chaque page du checkup reçoit window.__v3dReleve avant les scripts de l'app (cf brancherReleve).
+  const nouveauContexte = nav.newContext.bind(nav);
+  nav.newContext = async function (options) {
+    const c = await nouveauContexte(options);
+    await c.addInitScript(brancherReleve);
+    return c;
+  };
   const contexte = await nav.newContext(TEL
     ? { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, serviceWorkers: "block" }
     : { viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
@@ -13461,13 +15399,14 @@ async function sectionCaseBoutonsZoom(nav) {
     } else if (SEUL === "sol" || SEUL === "ajuster" || SEUL === "poi" || SEUL === "precis" ||
       SEUL === "fiches" || SEUL === "gestes" || SEUL === "colonne" || SEUL === "limiter" || SEUL === "panneaux" ||
       SEUL === "passagecalque" || SEUL === "mesures" || SEUL === "tuile" || SEUL === "recherche" ||
-      SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" ||
-      SEUL === "estomper" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
+      SEUL === "addons" || SEUL === "voisins" || SEUL === "colonneedit" || SEUL === "solzones" || SEUL === "textures" ||
+      SEUL === "estomper" || SEUL === "transparence" || SEUL === "voisinspassages" || SEUL === "fantome" || SEUL === "solvoile" ||
       SEUL === "solfiltre" ||
       SEUL === "entremeles" || SEUL === "zonejonction" || SEUL === "puits-dessus" || SEUL === "puits-ciel" ||
       SEUL === "jonction-tremie" ||
       SEUL === "jonction-piliers" || SEUL === "caseZoom" ||
-      SEUL === "minicarte" || SEUL === "menusHaut") {
+      SEUL === "minicarte" || SEUL === "mcbandeau" || SEUL === "menusHaut" || SEUL === "mkmgniveaux" ||
+      SEUL === "mkmg") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -13734,20 +15673,27 @@ async function sectionCaseBoutonsZoom(nav) {
       const prep = await page.evaluate(function () {
         const sc = window.APP_CONFIG.scale;
         if (window.APP_CONFIG.multiLevel === true) window.APP_CONFIG.activeLevel = 0;
-        // Départ : le point le plus proche du centre assez loin des bords pour la bande nord-sud de -4 m à +2 m.
+        // Départ : le point le plus proche du centre assez loin des bords pour la bande nord-sud de -4 m à +2 m,
+        // dans un couloir que le relevé laisse au pas (du pilier posé à 3 m au nord jusqu'à 8 m au sud, 1 m de part
+        // et d'autre) : les pas joués là ne jugent que les formes du checkup.
         const c = window.map.getCenter();
         const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
         const cx = Math.round(c.lng), cy = Math.round(H - c.lat);
         const libre = function (px, py) {
-          return px > 5 * sc && px < W - 5 * sc && py > 6 * sc && py < H - 4 * sc;
+          return px > 5 * sc && px < W - 5 * sc && py > 6 * sc && py < H - 4 * sc &&
+            window.__v3dReleve.bandeLibre(px - sc, py - 3 * sc, px + sc, py + 8 * sc, 0.5 * sc, 0);
         };
-        let x = cx, y = cy;
+        let x = cx, y = cy, trouve = false;
         chercher: for (let r = 0; r < 400; r++) {
-          for (let a = 0; a < 16; a++) {
+          for (let a = 0; a < (r ? 16 : 1); a++) {
             const px = Math.round(cx + Math.cos(a * Math.PI / 8) * r * sc);
             const py = Math.round(cy + Math.sin(a * Math.PI / 8) * r * sc);
-            if (libre(px, py)) { x = px; y = py; break chercher; }
+            if (libre(px, py)) { x = px; y = py; trouve = true; break chercher; }
           }
+        }
+        if (!trouve) {
+          throw new Error("la scène du test n'est pas vide : objets du relevé présents (aucun couloir de départ " +
+            "dégagé à 400 m du centre du plan)");
         }
         const d = 3 * sc, l = 1.5 * sc, m = 0.25 * sc, ym = y - d - l;
         window.setStructures([
@@ -13762,8 +15708,10 @@ async function sectionCaseBoutonsZoom(nav) {
         // Tracker en suivi, posé au départ : la tuile ouvre la vue là.
         window.recalerTrackerSurPoint(x, y, 0);
         if (!window.getTrackingActif()) window.startTracking();
-        return { x: x, y: y, sc: sc, multi: window.APP_CONFIG.multiLevel === true };
+        return { x: x, y: y, sc: sc, multi: window.APP_CONFIG.multiLevel === true,
+          duCentre: +(Math.hypot(x - cx, y - cy) / sc).toFixed(1) };
       });
+      console.log("  ℹ️ départ à " + prep.duCentre + " m du centre du plan (couloir que le relevé laisse au pas)");
 
       // ── 2. Ouverture par le bouton cube : indicateur de chargement, focus dans la vue ─────────────────────
       await page.evaluate(function () {
@@ -13890,7 +15838,7 @@ async function sectionCaseBoutonsZoom(nav) {
             "vue3d.suivre", "vue3d.plongee",
             window.APP_CONFIG.multiLevel === true ? "vue3d.hauteurNiveaux" : "vue3d.hauteur",
             "vue3d.hauteurMoins", "vue3d.hauteurPlus",
-            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.lignesSolMontrer",
+            "vue3d.passerStructures", "vue3d.texturesMontrer", "vue3d.texturesHdMontrer", "vue3d.lignesSolMontrer",
             "vue3d.boussoleMontrer", "vue3d.miniCarteMontrer",
             "vue3d.guidageMontrer", "vue3d.fichesMontrer",
             "vue3d.lampeJourAide", "vue3d.limiterAide", "vue3d.niveauxVus.voisinsAide", "vue3d.niveauxVus.tousAide",
@@ -14436,7 +16384,8 @@ async function sectionCaseBoutonsZoom(nav) {
       }
 
       // ── Collisions : jamais à travers un pilier, un mur, un mur en ligne, un front ou un pilier perso ──────
-      // Obstacles fictifs posés loin du départ : seule la règle des structures est jugée. Chaque pas est vérifié par
+      // Obstacles fictifs posés loin du départ : seule la règle des structures est jugée, structures du relevé mises
+      // de côté le temps du bloc (elles arrêteraient un pas à la place de l'obstacle jugé). Chaque pas est vérifié par
       // une géométrie propre au checkup (pas celle de l'app) : le segment parcouru ne coupe aucune arête, l'arrivée
       // n'est dans aucun polygone, et le corps garde au moins 0,2 m du bord.
       const coll = await page.evaluate(function (p) {
@@ -14455,6 +16404,7 @@ async function sectionCaseBoutonsZoom(nav) {
           { nom: "pilier perso", s: { uid: "st_v3d_c6", type: "cust-v3d-test", level: 0, points: carre(ox + 100 * sc, oy, 1 * sc, 1 * sc) } }
         ];
         const avant = window.getStructures().slice();
+        const remettreReleve = window.__v3dReleve.sansStructures();
         window.setStructures(avant.concat(obstacles.map(function (o) { return o.s; })));
         const coupe = function (ax, ay, bx, by, cx, cy, dx, dy) {
           const o = function (px, py, qx, qy, rx, ry) { return (qx - px) * (ry - py) - (qy - py) * (rx - px); };
@@ -14536,6 +16486,7 @@ async function sectionCaseBoutonsZoom(nav) {
         const t0 = window.KtaVue3D.etat().pos;
         window.KtaVue3D.avancer(3);
         juger(T, t0, window.KtaVue3D.etat().pos, "pas de 3 m sur un pilier de 0,4 m");
+        remettreReleve();
         window.setStructures(avant);
         window.KtaVue3D.placer(p.x, p.y - 1 * sc, 0);   // à 2 m du pilier du départ, écarté du tracker
         return { echecs: echecs.slice(0, 6), nEchecs: echecs.length, pas: pas, butees: butees,
@@ -14827,6 +16778,7 @@ async function sectionCaseBoutonsZoom(nav) {
         const vide = function () { return []; };
         window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
         window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
         window._currentLoadedPlanId = "v3d-checkup-galerie";
         if (window.getTrackingActif()) window.stopTracking();
         window.ktaSetActiveLevel(0);
@@ -14869,6 +16821,11 @@ async function sectionCaseBoutonsZoom(nav) {
           modele: { pieces: m.pieces.length, aretes: m.aretes.length, dalles: m.dalles, coudes: m.coudes, bouts: m.bouts,
             ms: +m.msConstruction.toFixed(1) } };
       });
+      // Formes du checkup seules en scène : le relevé ne doit plus arrêter un pas (garde-fou de brancherReleve).
+      const releve = await page.evaluate(function () { return window.__v3dReleve.etat(); });
+      verifier(releve.ecartes.length === 2 && releve.restants === 0,
+        "relevé écarté des scènes fictives : registres des zones et des structures de côté, aucune de ses " +
+        "structures n'arrête plus le pas (" + releve.temoins + " l'arrêtaient)", releve);
       // Point (mètres, relatif à une forme) → coordonnées plan (px).
       const pt = function (cx, x, z, cap) {
         return { x: (G.ox + cx + x) * G.sc, y: (G.oz + z) * G.sc, cap: cap === undefined ? 0 : cap };
@@ -18549,7 +20506,9 @@ async function sectionCaseBoutonsZoom(nav) {
         await pause(150);
         const pave = function () { const el = q("#kta-vue3d .kta-v3d-pad"); return !!el && getComputedStyle(el).display !== "none"; };
         r.fin = { fin: M().etat().fin, carte: !!q(".mkmg-fin"), score: M().etat().scores.facile,
-          tirer: q(".mkmg-tirer").disabled, pave: pave() };
+          tirer: q(".mkmg-tirer").disabled, pave: pave(), bilan: M().etat().bilan,
+          lignes: Array.prototype.map.call(document.querySelectorAll(".mkmg-fin-stats > div"),
+            function (el) { return el.textContent; }), brut: localStorage.getItem("myktamap_mkmg_v1") };
         q(".mkmg-fin .mkmg-bouton-primaire").click();
         for (let k = 0; k < 60 && !(M().etat().cible); k++) await pause(50);
         r.rejoue = { enCours: M().etat().enCours, fin: M().etat().fin, vague: M().etat().vague, carte: !!q(".mkmg-fin"),
@@ -18603,6 +20562,7 @@ async function sectionCaseBoutonsZoom(nav) {
         await pause(200);
         r.difficile = { diff: M().etat().diff, reglage: K.etat().greffe.reglage, roads: K.etat().compte.roads,
           traits: M().etat().traits, guide: q(".mkmg-guide").hidden, objets: M().etat().objets.length,
+          fumigenes: M().etat().objets.filter(function (o) { return o.type === "fumigene"; }).length,
           butin: M().etat().butin };
         // Fermer la vue termine la partie.
         await K.fermer();
@@ -18666,12 +20626,15 @@ async function sectionCaseBoutonsZoom(nav) {
       verifier(MK.recharge.canon === 0 && MK.recharge.recharge && MK.recharge.apres === "2/4",
         "jeu : canon vide → recharge automatique de 1,5 s (2 cartouches prises dans la réserve)", MK.recharge);
       verifier(MK.butin.tues === 1 && MK.butin.lache === "champignon,munitions" && MK.butin.facile.pileX < 1 &&
-        MK.difficile.butin.pileX === 1 && MK.partie.objets > MK.difficile.objets,
+        MK.difficile.butin.pileX === 1 && MK.partie.objets > MK.difficile.objets && MK.butin.facile.fumigenes === 2 &&
+        MK.difficile.butin.fumigenes === 1 && MK.difficile.fumigenes === 1,
         "jeu : facile plus généreux que difficile (objets posés à la vague 1, lâcher champignon + caisse, pile plus " +
-        "lente)", { butin: MK.butin, facile: MK.partie.objets, difficile: MK.difficile.objets });
+        "lente, 2 fumigènes par vague contre 1)",
+        { butin: MK.butin, facile: MK.partie.objets, difficile: MK.difficile.objets, fumigenes: MK.difficile.fumigenes });
       verifier(MK.ramasse.reserve === 8 && MK.ramasse.sante === 80 && MK.ramasse.objets === 0,
         "jeu : en passant dessus, munitions (+4) et champignon (+30 santé) ramassés", MK.ramasse);
-      verifier(MK.contact < 80, "jeu : au contact d'un égaré, la santé baisse (" + MK.contact + ")", MK.contact);
+      verifier(MK.contact === 68, "jeu : au contact d'un égaré, un coup porté en 0,6 s (80 → " + MK.contact + ")",
+        MK.contact);
       verifier(MK.silFace.vu === true && MK.silDos.vu === false && MK.silDos.avance > 0,
         "jeu : la silhouette reste figée dans le faisceau, avance dès qu'on lui tourne le dos",
         { face: MK.silFace, dos: MK.silDos });
@@ -18718,6 +20681,13 @@ async function sectionCaseBoutonsZoom(nav) {
         "jeu : santé à 0 → fin, meilleure vague retenue (1), tir coupé, commandes retirées (la carte se touche) ; " +
         "« Rejouer » relance la vague 1, commandes revenues",
         { fin: MK.fin, rejoue: MK.rejoue });
+      const BF = MK.fin.bilan;
+      verifier(BF.tirs > 0 && MK.fin.lignes.length === 3 &&
+        MK.fin.lignes[0] === "Précision : " + BF.precision + " % (" + BF.touches + " / " + BF.tirs + ")" &&
+        MK.fin.lignes[1] === "Égarés tués : " + BF.tues && /^Durée : \d+:\d\d$/.test(MK.fin.lignes[2]) &&
+        MK.fin.brut === '{"facile":1}',
+        "jeu : écran de fin — précision (balles au but / tirées), égarés tués, durée ; scores retenus sous leur forme " +
+        "de toujours ({ difficulté: meilleure vague })", { bilan: BF, lignes: MK.fin.lignes, brut: MK.fin.brut });
       console.log("  ℹ️ jeu, son après « Rejouer » : " + MK.son.avant + " → " + MK.son.apres + " (navigateur de test : " +
         "un clic simulé n'est pas un geste, le son peut y rester suspendu)");
       // Sans WebAudio (WebKit de test sous Windows), le jeu reste muet : rien à vérifier.
@@ -18971,8 +20941,9 @@ async function sectionCaseBoutonsZoom(nav) {
         "premier dessin des trois textures : roche " + dess.roche + " ms, parpaing " + dess.parpaing + " ms, pierre " +
         dess.pierre + " ms (à cette ouverture : structures " + D0.ms + " ms, parois " + D0.msParoi + " ms)", dess);
       verifier(D0.actives && D0.bouton === "true" && TX.defaut.pref === true &&
-        D0.maillages.roche >= 1 && D0.maillages.parpaing >= 1 && !D0.maillages.murs,
-        "textures actives par défaut : roche brute (piliers, fronts, type perso) et parpaing (murs)",
+        D0.maillages.roche >= 1 && D0.maillages.parpaing >= 1 && D0.maillages.murPierre >= 1 && !D0.maillages.murs,
+        "textures actives par défaut : roche brute (piliers, fronts, type perso), parpaing (murs en surface) et " +
+        "pierre de taille (mur tracé en ligne)",
         { actives: D0.actives, bouton: D0.bouton, maillages: D0.maillages });
       const mp = D0.materiaux.roche || {}, mg = D0.materiaux.parpaing || {};
       // Roche brute : aucune assise appareillée, donc aucune rangée de la couleur nettement à l'écart des autres
@@ -18981,10 +20952,10 @@ async function sectionCaseBoutonsZoom(nav) {
         "piliers et fronts en roche brute : aucun lit de mortier (écart de rangée " + mp.lits + " ; parpaing " +
         mg.lits + ")", { roche: mp.lits, parpaing: mg.lits });
       verifier(mp.carte === "256x256" && mp.normale && mp.relief === 256 && mp.mipmaps && mp.anisotropie >= 1 &&
-        mp.anisotropie <= 4 && mp.couleursSommets === true && mg.couleursSommets === false && mp.recule === false &&
+        mp.anisotropie <= 4 && mp.couleursSommets === true && mg.couleursSommets === true && mp.recule === false &&
         mg.carte === "256x256" && mg.normale && mg.mipmaps && mg.recule === true && TX.defaut.murDecale,
         "matériaux : couleur et normal map de 256 px (puissance de 2), mipmaps, anisotropie ≤ 4, jamais teintés par " +
-        "la légende (roche : teinte fixe de la 2e masse par sommet) ; " +
+        "la légende (couleurs des sommets : 2e masse de la roche, ombre de contact) ; " +
         "parpaing reculé en profondeur comme les murs (" + D0.ms + " ms pour les dessiner)", D0.materiaux);
       verifier((D0.couleurs.opaque || []).length >= 1 && !contient(D0.couleurs.opaque, "#3c9be0") &&
         TX.defaut.yMax.murs > 0 && TX.defaut.yMax.murs < TX.defaut.yMax.opaque,
@@ -19005,7 +20976,8 @@ async function sectionCaseBoutonsZoom(nav) {
         "taille réelle : parpaing " + ap + " et roche " + ar + " de texture par mètre, sur le mur de 2 m comme sur " +
         "celui de 40 m, en hauteur et sur le dessus (aucun étirement)", ech);
       verifier(!C0.actives && C0.bouton === "false" && TX.coupe.pref === false && !TX.coupe.repere && TX.coupe.tuile &&
-        TX.coupe.dansTuile && !C0.maillages.roche && !C0.maillages.parpaing && C0.maillages.opaque >= 1 &&
+        TX.coupe.dansTuile && !C0.maillages.roche && !C0.maillages.parpaing && !C0.maillages.murPierre &&
+        C0.maillages.opaque >= 1 &&
         C0.maillages.murs >= 1 && C0.aretes.every(function (x) { return x.mat === "paroi"; }),
         "🧱 coupé dans la tuile ⚙️ : matériaux d'origine, plus aucune texture ; repère sur ⚙️ ; tuile ouverte",
         { actives: C0.actives, maillages: C0.maillages, repere: TX.coupe.repere });
@@ -19854,6 +21826,7 @@ async function sectionCaseBoutonsZoom(nav) {
         const s = window.__v3dEmb;
         window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
         window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+        window.__v3dReleve.aligner();
         window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
         window.KtaGalerie.invalider();
       });
@@ -19870,6 +21843,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPlanSolNiveaux(page);
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
+    if (!SEUL || SEUL === "textures") await sectionTexturesSol(nav);
     if (!SEUL || SEUL === "addons") await sectionAddonsVisibles(nav);
     if (!SEUL || SEUL === "colonneedit") await sectionColonneEdition(nav);
     if (!SEUL || SEUL === "ajuster") {
@@ -19894,6 +21868,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "voisins") await sectionNiveauxVoisins(nav);
     if (!SEUL || SEUL === "solzones") await sectionSolZones(nav);
     if (!SEUL || SEUL === "estomper") await sectionEstomper(nav);
+    if (!SEUL || SEUL === "transparence") await sectionTransparence(nav);
     if (!SEUL || SEUL === "voisinspassages") await sectionVoisinsPassages(nav);
     if (!SEUL || SEUL === "fantome") await sectionFantome(nav);
     if (!SEUL || SEUL === "solvoile") await sectionSolVoile(nav);
@@ -19906,7 +21881,10 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "jonction-piliers") await sectionJonctionPiliers(nav);
     if (!SEUL || SEUL === "caseZoom") await sectionCaseBoutonsZoom(nav);
     if (!SEUL || SEUL === "minicarte") await sectionMiniCarte(nav);
+    if (!SEUL || SEUL === "mcbandeau") await sectionMiniCarteBandeau(nav);
     if (!SEUL || SEUL === "menusHaut") await sectionMenusHaut(nav);
+    if (!SEUL || SEUL === "mkmgniveaux") await sectionMkmgNiveaux(nav);
+    if (!SEUL || SEUL === "mkmg") await sectionMkmgArsenal(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

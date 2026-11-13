@@ -29,6 +29,7 @@ function contexte() {
     addEventListener() {}, removeEventListener() {},
     I18n: { t: (k, p) => k + (p ? ":" + JSON.stringify(p) : "") },
     ktaEsc: (s) => String(s),
+    ktaIcone: (nom) => '<svg class="kta-ico" data-nom="' + nom + '"></svg>',
     HistoryManager: {
       captureState: (cat) => { journal.snap++; return { cat: cat }; },
       record: (label, avant, cat) => { journal.record.push({ label, avant, cat }); }

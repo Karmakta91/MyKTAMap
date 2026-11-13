@@ -83,7 +83,7 @@
 .mkmg-tirer:disabled { border-color: var(--kta-texte-3); cursor: default; }
 /* 🩸 Appui long (détente tenue en rage) : sans ces règles, iOS ouvre son menu « Partager / Enregistrer l'image » sur
    l'icône du fusil, ou sélectionne le texte des boutons. */
-.mkmg-tirer, .mkmg-rage { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.mkmg-tirer, .mkmg-rage, .mkmg-fumigene { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .mkmg-tirer-image { width: 100%; height: 100%; display: block; pointer-events: none; -webkit-user-drag: none; }
 .mkmg-recul { animation: mkmg-recul 160ms ease-out; }
 @keyframes mkmg-recul { 30% { transform: translate(6px, 6px) rotate(-8deg); } }
@@ -103,6 +103,11 @@
 }
 .mkmg-fin-titre { font-size: 20px; font-weight: 700; color: var(--kta-accent-texte); }
 .mkmg-fin-texte { color: var(--kta-texte-2); }
+/* Bilan de la partie : précision, égarés tués, durée (une ligne chacun). */
+.mkmg-fin-stats {
+  display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--kta-texte-3);
+  color: var(--kta-texte-2); font-size: 13px;
+}
 .mkmg-fin-boutons { display: flex; justify-content: center; gap: 10px; margin-top: 6px; }
 @media (prefers-reduced-motion: reduce) {
   .mkmg-recul { animation: none; }
@@ -127,6 +132,21 @@
   .mkmg-rage { right: 104px; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 22px); }
 }
 .mkmg-rage:disabled { cursor: default; }
+/* Fumigène : petit bouton au-dessus de « Rage », dans la même colonne et avec le même repli sur un écran bas (à gauche
+   du fusil) ; nuage et nombre en poche, grisé à 0. */
+.mkmg-fumigene {
+  position: absolute; right: 26px; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 140px);
+  min-width: 52px; height: 32px; padding: 0 8px; border-radius: 999px; box-sizing: border-box; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  border: 1px solid var(--kta-texte-3); background: var(--kta-surface); color: var(--kta-texte);
+  font-size: 13px; font-weight: 700; pointer-events: auto; touch-action: none;
+}
+.mkmg-fumigene-ico { display: inline-flex; pointer-events: none; }
+.mkmg-fumigene-ico svg { width: 16px; height: 16px; }
+@media (max-height: 500px) {
+  .mkmg-fumigene { right: 104px; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 62px); }
+}
+.mkmg-fumigene:disabled { color: var(--kta-texte-3); cursor: default; }
 .mkmg-rage-prete {
   border: 2px solid var(--kta-accent); background: var(--kta-accent); color: var(--kta-sur-accent);
   animation: mkmg-rage-pouls 900ms ease-in-out infinite;

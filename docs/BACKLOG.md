@@ -14,8 +14,7 @@
   **Reclore le jour même.**
 - **Pilotage** (décisions KARMA du 12/11/2026) : au-delà de **3 tests KARMA en attente**, Claude n'ouvre pas de
   lot M ou L (XS / S, tests instables, ou feuille de test pour KARMA) · **`## Entrant` trié chaque lundi** : une
-  entrée de plus de 14 jours y passe en `## Ensuite` / `## Plus tard`, ou sort vers `IDEES.md` · **features 3D
-  gelées jusqu'à la prochaine mise en prod** (les bugs 3D restent traités).
+  entrée de plus de 14 jours y passe en `## Ensuite` / `## Plus tard`, ou sort vers `IDEES.md`.
 - **Tester sur appareil APRÈS un bump** : un téléphone garde l'ancien JS jusqu'au changement de `CACHE_NAME`. La
   validation iOS/Safari d'un changement de rendu vit dans `docs/RELEASE_GATE.md`.
 - **Format** (lu par `scripts/check-backlog.js`, avertissement au pre-commit, et par la vue du backlog) :
@@ -45,11 +44,11 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Essai sur dev : chatière et galerie inclinée** — `1147b92e` : « Refaire » sur une chatière reprend ses points au
-  lieu d'un second tracé ; `04efcd48` : parois et plafond de la galerie inclinée cachés en vue d'édition 3D. Prouvés
-  par checkups, pas joués à la main.
-  `qui: KARMA · action: refaire une chatière ; vue d'édition 3D sur une galerie inclinée (capture si les murs se voient
-  encore de l'extérieur en vue normale) · fini: vus conformes, ou bugs ouverts · depuis: 12/11/2026 · taille: XS`
+- **Essai sur dev : chatière, galerie inclinée, sommets, jeu, mini-carte, transparence** — `1147b92e` chatière ;
+  `04efcd48` galerie inclinée en édition 3D ; `4ce78f12` menu des sommets ; `93759be9` jeu multi-niveau ; `61a8bd33` +
+  `fe52d9a4` mini-carte 3D ; `32a296ec` + `f15d5470` « Niveaux en transparence » (voisins vus au sol et au plafond).
+  `qui: KARMA · action: refaire une chatière ; galerie inclinée en vue d'édition ; transparence à hauteur d'yeux au
+  téléphone (fluidité, sol lisible) · fini: vus conformes, ou bugs ouverts · depuis: 12/11/2026 · taille: XS`
 - **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
   « Comblé » fr / en / es, case « Respecter… », brancard, 3D jusqu'au ciel ; dans le même lot, le message à l'échec
   (sortie d'urgence comprise) qui nomme les zones Comblé en cause. `docs/ETUDE_REMBLAIS.md`.
@@ -58,10 +57,6 @@
 
 ## Ensuite
 
-- **Aide ❓ de la vue 3D : accès et niches** — ✅ vérifié 04/11 : l'Aide cite le cavage mais ni les accès comblés ni
-  l'escalier en niche (le guide, lui, les liste).
-  `qui: Claude · action: compléter la section dans les 3 langues · fini: section à jour, check-i18n vert
-  · depuis: 03/11/2026 · taille: XS`
 - **Course i18n au démarrage sous WebKit** — ✅ vu 04/11 : sous WebKit, `checkup-guidage.js` tombe parfois sur
   `[I18n] Clé manquante : "home.profile.stats.storageTitle"`, alors que la clé existe ; l'appel vient de
   `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
@@ -148,9 +143,28 @@
   piste : ne couvrir que la partie visible, plus fine.
   `qui: Claude · action: texture limitée au champ visible, mémoire mesurée en iPhone émulé · fini: lisible de près,
   mémoire tenue · depuis: 04/11/2026 · taille: S`
+- **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
+  session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
+  du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
+  `qui: Claude · action: scénario pro sur la pile (calque copié en session, 1re suppression depuis la fiche, chiffré)
+  · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
 
+- **`check-uid.js` instable : « 5 000 tirages distincts »** — 1 échec sur 4 au pre-commit le 12/11 : 5 000 uid
+  dans la même milliseconde, 6 caractères aléatoires, collision possible (doublons déjà régénérés par `ensureAll`).
+  `qui: Claude · action: tirages étalés ou moins nombreux, sans affaiblir le test · fini: 20 passages verts
+  · depuis: 12/11/2026 · taille: XS`
+- **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
+  d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
+  `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
+  `qui: KARMA · action: coller en console la ligne tags / clés / nombre de points envoyée le 12/11 · fini: cause
+  identifiée, test rouge puis vert · depuis: 12/11/2026 · taille: S`
+- **Sonar : porte en échec sur une fausse alerte** — scan de rattrapage de la v2.25.0 : une seule anomalie de
+  fiabilité, `js/verifierPlan.js > _identite`, S7758 (`codePointAt`). Ne pas suivre : l'empreinte FNV se calcule sur
+  les unités UTF-16, `codePointAt` changerait l'identité des objets ignorés (types avec emoji). Sécurité : 0.
+  `qui: Claude · action: NOSONAR commenté sur la ligne (décision KARMA du 12/11), session Dev · fini: porte verte au
+  prochain scan · depuis: 12/11/2026 · taille: XS`
 - **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
   plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
   des niveaux, et correction du message faux `prof.incoherent.suite`. Après la mise en prod de la v2.25.0 (gel).
@@ -164,10 +178,6 @@
   sous WebKit) ; au téléphone, ~1 500 couches de POI + `--kta-bearing` sur toute la carte figent le geste (jusqu'à 1,7 s).
   `qui: Claude · action: a) supprimer le redessin inutile (risque faible) ; b) et c) en QCM · depuis: 06/11/2026
   · taille: S`
-- **`checkup-ultra-traces-plan.js` impossible sur le relevé fictif** — il attend plus de 20 tracés de calque : rouge
-  (délai) sur la base comme sur le lot fuite-calques-2d.
-  `qui: Claude · action: l'adapter au relevé fictif ou le documenter comme checkup sur plan réel · depuis: 06/11/2026
-  · taille: XS`
 - **Mode « strict » des jonctions, par plan** — la règle stricte du 05/11 n'a pas réglé l'itinéraire de KARMA qui
   traverse un mur. Idée KARMA : tolérance 0, deux tracés qui ne se touchent pas = réseau coupé (seuls sommets partagés
   et croisements exacts). ⚠️ D'abord vérifier si le trajet suit un VRAI tracé à travers le mur (le strict n'y peut rien).
@@ -193,10 +203,3 @@
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.
   `qui: Claude · action: topo (ce que masque hidden aujourd'hui, ce qui manque) · depuis: 01/11/2026 · taille: S`
-
-- **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
-  session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
-  du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
-  `qui: Claude · action: scénario pro sur la pile (calque copié en session, 1re suppression depuis la fiche, chiffré)
-  · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
-

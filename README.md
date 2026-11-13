@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.25.0` (11/11/2026)
+## 📦 Version courante — `v2.26.0` (13/11/2026)
 
-> 🏛️ **v2.25.0 — Arc de soutènement, Vérifier le plan, trois nouveaux types de points, Favoris et Annuler en vue 3D** : nouvelle structure **arc de soutènement** (trait bleu rayé de rouge, ne bloque rien), modelée en plein cintre en 3D ; types de points **ossuaire**, **outil de carrier** et **fontis**, modelés en 3D ; **Vérifier le plan** dans l'Éditeur de données ; chatière relevée en plusieurs points ; en 3D, ⭐ Favoris et ⏪ Annuler / Rétablir dans la rangée du haut, ⛏️ qui ouvre la table des niveaux ; l'image de collision disparaît du Générateur et de l'app ; correctifs (niveau du tracker à la réouverture, 2e masse au niveau −1, bandeau de guidage en 3D). Détail : journal ci-dessous.
+> 🧊 **v2.26.0 — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage** : en 3D, sol damé et ciel de carrière texturés, ombre de contact au pied des piliers et des parois, nuance de roche propre à chaque structure, stries d'outil en passes parallèles, arcs en pierre de taille (claveaux, tympan en moellons), mur tracé en ligne en pierre de taille, véhicule en silhouette de voiture, réglage **Textures HD** ; **Niveaux en transparence** (fantôme du dessus en vue d'édition, voisins à travers plafond et sol à hauteur d'yeux) ; mini-carte plus grande en paysage, collée au bandeau de guidage ; icônes au trait dans le menu au sommet ; correctifs. Détail : journal ci-dessous.
 
 ---
 
@@ -522,7 +522,8 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-constantes-orphelines.js` | Constante MAJUSCULE utilisée dans `js/` mais déclarée nulle part | pre-commit |
 | `check-couleurs-inline.js` | Couleur hex en dur dans un style posé par le JS au-delà du cliquet (la charte s'écrit `var(--kta-…)`) | pre-commit |
 | `check-csp-inline.js` | Script inline (`onclick=`, `javascript:`, `<script>` sans `src`) bloqué par la CSP stricte | pre-commit |
-| `check-data-hors-git.js` | Commit qui embarque un fichier de `data/` (relevés réels), sauf ligne `Data-deroge:` écrite par KARMA | commit-msg + ci-commits |
+| `check-data-hors-git.js` | Commit qui embarque un fichier de `data/` (relevés réels), sauf ligne `Data-deroge:` écrite par KARMA (ou, commit déjà poussé, son SHA complet dans `ci-derogations-data.txt`) | commit-msg + ci-commits |
+| `check-derogations-data.js` | `ci-derogations-data.txt` mal formé (SHA abrégé, motif vide), ou contrôle `data/` qui laisserait passer un commit non listé | pre-commit |
 | `check-devmode-docs.js` | Mode Développeur qui lirait la doc technique (il faudrait la déployer), hash ou rendu des outils cassés | pre-commit |
 | `check-doc-langues.js` | Guides utilisateur fr/en/es désappariés : section absente ou traduction sous 70 % du FR | pre-commit |
 | `check-doc-recherche.js` | Recherche plein texte de la Documentation et de l'Aide qui rate ou double des occurrences | pre-commit |
@@ -816,6 +817,22 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.26.0 (13/11/2026) — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage (branche `Karma_dev`)
+
+> Écart avec la prod v2.25.0. Les puces sont rangées par thème : rendu de la vue 3D, niveaux et mini-carte, carte, outillage, correctifs.
+
+- **🧊 Sol et ciel de carrière** (`js/vue3d.js`, `tracking.md` § Vue 3D) : le sol damé et le plafond ont chacun leur texture et leur relief, dessinés dans le code (aucun fichier à télécharger) ; sol plus clair sans grille visible d'en haut, plafond presque nu avec quelques passes de coups de pic parallèles.
+- **Ombres et nuances de la pierre** (`js/vue3d.js`, `tracking.md` § Vue 3D) : ombre de contact au pied des piliers, murs et parois ; nuance de roche propre à chaque structure, la même d'une ouverture à l'autre ; 2e masse un cran plus chaude que la 1re, pour la deviner à la lampe ; stries d'outil en passes parallèles sur les piliers et les fronts ; longs fronts sans motif qui revient tous les 3 m ni saut de nuance à la jointure de deux pans.
+- **🏛️ Arcs et murs en pierre de taille** (`js/vue3d.js`, `tracking.md` § Vue 3D) : l'arc de soutènement est bâti en claveaux de pierre de taille à layage irrégulier, son tympan en moellons, toujours à la teinte des parois du niveau ; un mur tracé en ligne est lui aussi en pierre de taille texturée.
+- **🚗 Véhicule en silhouette de voiture** (`js/vue3d.js`, `tracking.md` § Vue 3D) : la carcasse de véhicule prend la forme d'une voiture, tôle texturée qui suit le réglage Textures HD.
+- **🧱 Réglage « Textures HD »** (bouton **HD** à côté de Textures dans ⚙️ de la vue 3D, guides utilisateur) : textures en 512 px et grain de détail de près ; allumé par défaut à l'ordinateur, coupé au téléphone (plus lourd), retenu sur l'appareil.
+- **🌫️ Niveaux en transparence** (`js/vue3d.js`, `tracking.md`, `ui.md` § Vue 3D, guides) : ancien « Estomper » ; en vue d'édition, le niveau du dessus apparaît en fantôme ; à hauteur d'yeux, les niveaux voisins se devinent à travers le plafond et le sol.
+- **🗺️ Mini-carte de la 3D** (`js/vue3d.js`, `ui.md` § Vue 3D) : elle suit la taille du bandeau de guidage et se range à sa droite en paysage, et grandit en paysage bas ; l'arc de soutènement y est rayé de rouge, au-dessus du tracé.
+- **Menu au sommet** (`js/ajusterSommets.js`, `check-icones-ui.js`) : ＋, ✂️ et 🗑️ passent aux icônes au trait, et le garde-fou lit désormais ce menu.
+- **Aide de la vue 3D** (dicos `lang/` fr / en / es) : escalier en niche et accès sans passage expliqués.
+- **Outillage** : dérogation `data/` par SHA pour un commit déjà poussé sans sa ligne (`scripts/ci-derogations-data.txt`, écrite par KARMA, lue par `check-data-hors-git.js` en CI ; format gardé par `check-derogations-data.js`, `infra-versioning.md` §29bis) ; `checkup-ultra-traces-plan` fabrique son calque d'essai et passe sur le relevé fictif ; empreinte de Vérifier le plan gardée sur les unités UTF-16 (alerte Sonar S7758 commentée).
+- **Correctifs** : puits de surface ouvert au jour sous un niveau du dessus ; colonne de dessin de la 3D sans rectangle autour des boutons ; plus de collier d'ombre sous le dessus des piliers.
 
 #### v2.25.0 (11/11/2026) — Arc de soutènement, Vérifier le plan, trois nouveaux types de points, Favoris et Annuler en vue 3D (branche `Karma_dev`)
 
@@ -10112,6 +10129,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🏛️ **v2.25.0 — Arc de soutènement, Vérifier le plan, trois nouveaux types de points, Favoris et Annuler en vue 3D** : nouvelle structure **arc de soutènement** (trait bleu rayé de rouge, ne bloque rien), modelée en plein cintre en 3D ; types de points **ossuaire**, **outil de carrier** et **fontis**, modelés en 3D ; **Vérifier le plan** dans l'Éditeur de données ; chatière relevée en plusieurs points ; en 3D, ⭐ Favoris et ⏪ Annuler / Rétablir dans la rangée du haut, ⛏️ qui ouvre la table des niveaux ; l'image de collision disparaît du Générateur et de l'app ; correctifs (niveau du tracker à la réouverture, 2e masse au niveau −1, bandeau de guidage en 3D). Détail : journal ci-dessous.
 
 > 🎨 **v2.24.0 — Icônes au trait partout, mini-carte et multi-niveau en vue 3D, couper un tracé, rotation bloquée** : toute l'interface, la Documentation et l'Aide passent aux icônes SVG au trait, les emoji des textes sont dessinés par la police embarquée « KTA Emoji » (mêmes dessins sur iPhone, Android et PC) ; en 3D, mini-carte nord en haut, option Lignes au sol, niveaux voisins à leur altitude, tracé jonction en galerie inclinée, zone Jonction, recherche 🔍, plaques gravées, puits et conduits à travers les niveaux, boutons de zoom ; en 2D, ✂️ couper un tracé, niveau d'un lot, cartes OSM tournées à la main, option pour bloquer la rotation ; hauteur des niveaux dans ⚙️ Réglages ; Mode Développeur sans mot de passe et journal exporté en .txt ; cadre d'add-ons. Détail : journal ci-dessous.
 

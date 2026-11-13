@@ -71,7 +71,8 @@ window.KtaVerifierPlan = (function () {
       (Array.isArray(o && o.points) ? o.points : [o || {}]).map(function (p) {
         return Math.round((p && p.x) * 10) + "," + Math.round((p && p.y) * 10);
       }).join(";");
-    for (let i = 0; i < txt.length; i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    // 🩸 FNV-1a sur les unités UTF-16 : codePointAt changerait l'identité des objets ignorés dont le type a un emoji.
+    for (let i = 0; i < txt.length; i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } // NOSONAR
     return "g" + h.toString(36);
   }
 

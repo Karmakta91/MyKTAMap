@@ -1520,8 +1520,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `KtaGalerie.dedans` = dans l'emprise et hors de ces zones. Niveau sans galerie : rien n'arrête que les zones.
   `versGalerie` (recalage du tracker) ne lit que l'emprise. Départ dans une zone : ramené au point libre le plus
   proche (jamais coincé, ci-dessus). Parti d'en dehors des galeries (tracker hors tracé), on se déplace librement pour y entrer.
-- **Scène galerie** : sol et plafond = les pièces, texture calcaire posée en coordonnées monde (pièces superposées sans
-  couture) ; parois (galeries, tubes du mixte, puits et tranchées des passages : un seul matériau `paroi`) en
+- **Scène galerie** : sol et plafond = les pièces, sol damé et ciel de carrière posés en coordonnées monde (pièces
+  superposées sans couture, § Sol et ciel de carrière) ; parois (galeries, tubes du mixte, puits et tranchées des passages : un seul matériau `paroi`) en
   **pierre de taille** quand 🧱 Textures est activé (`_paroiTexturee` : `_appareil` + `_assisesPierre`, `PIERRE` :
   256 px, motif de 2 m, assises de hauteur tirée, blocs de longueur tirée, joints irréguliers, arêtes émoussées,
   normal map `_carteNormale`). 🧱 coupé (décision produit, révisée : `ETUDE_VUE_3D.md`) : parois des galeries et
@@ -1648,7 +1648,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   sols et plafonds des voisins du dessus respectent (`_matsVoisins`) : rien de leur niveau en travers du conduit.
   🩸 Les parois des tubes d'un voisin ne lisent pas le gabarit : une galerie du dessus qui ne couvre qu'une partie de
   la bouche coupe le conduit, fermé (checkup § 52, `KTA_V3D_SEUL=puits-dessus`). **Puits ouvert au jour** (ciel :
-  `peo`, `eso`) sous d'autres niveaux (montrés ou non) : il les **traverse tous**, galerie ou roche, jusqu'à 6 m
+  `peo`, `eso`, puits de surface `ps`) sous d'autres niveaux (montrés ou non) : il les **traverse tous**, galerie ou roche, jusqu'à 6 m
   au-dessus du plafond du plus haut, bouche au bit `GABARIT.conduit` : aucun sol ni plafond du dessus ne ferme le
   ciel, avec ou sans galerie au droit. **Vu d'un niveau qu'il traverse** (`_puitsTraversants`, puits du niveau M
   montré ou non, trois rendus) : volume `traverse` à la place du puits sur M, parois du plafond de M à notre sol et de
@@ -1813,11 +1813,29 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   après la vue) s'affiche **par-dessus** la vue ; confirmée, `goTo` émet `kta:avantChangementPlan` avant tout
   chargement et la vue se ferme sans « Je suis ici ? » (`_fermerPourPlan` : la liaison recale elle-même le
   tracker) ; de même pour ➜ de la section liaisons de la fiche. **Véhicule**
-  (`vehicule`) : voiture simplifiée (caisse, habitacle à vitres sombres, quatre roues ; `ACCES_DIM.vehicule*` =
+  (`vehicule`, `_vehicule`, `VEHICULE`) : petite voiture à hayon faite en code (`ACCES_DIM.vehicule*` =
   3,2 × 1,4 × 1,3 m, une citadine), dans le tube du côté du POI gardée entre les parois (demi-emprise 0,7 m), le
-  long de l'axe ;
-  **arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
-  survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes`).
+  long de l'axe, avant vers +s. **Forme** : la caisse est une suite de sections en travers (`_sectionVehicule`,
+  douze points : bas de caisse rentré, flanc galbé, ceinture, vitres rentrées vers le toit) posées aux stations
+  d'un profil (`VEHICULE.profil` : bouclier, capot, pare-brise incliné, toit, lunette inclinée, hayon) et à
+  celles des **passages de roue** (arche en trapèze découpée dans le bas de caisse), reliées de proche en proche ;
+  normales lissées par sommet, arêtes de plus de 50° gardées vives. Vitres, phares, calandre et feux : plaques
+  posées à 6 mm de la tôle. Roues à seize pans, flanc de pneu et jante à branches. ⚠️ contrat : **toute la forme
+  tient dans le rectangle de l'obstacle** et sous la hauteur (retrait de 12 mm, boîte des sommets dans
+  `v.trace.boite`) ; `v.trace` garde `long`, `large`, `haut`. **Matière** : 🧱 coupé, la même silhouette en
+  aplats dans le lot opaque du volume ; 🧱 activé, un lot `tole` (famille « vehicule », matériau `_matTole`) —
+  carte claire dessinée dans un canvas (`TOLE`, `_toleUsee` : peinture passée en plaques, coulures, piqûres,
+  relief à peine bosselé) qui module la couleur des sommets, et voile de poussière par triangle (plus dense vers le
+  sol et sur les faces à plat, moindre sur les vitres et les pneus). Choix : une seule carte pour toute la voiture,
+  vitres et pneus compris, plutôt qu'un matériau par matière — le lot `tole` remplace le lot opaque du volume,
+  **aucun appel de dessin de plus**, et les Textures HD suivent par le mécanisme commun (512 px, grain de détail)
+  sans refaire la géométrie. Coût mesuré (huit voitures dans le champ, PC) : 662 triangles par voiture (176 pour
+  les deux pavés et les quatre prismes d'avant), 18 appels de dessin avant comme après, une carte et son relief de
+  plus pour la vue (0,7 Mo, 2,8 Mo en 512 px), premier dessin 12 à 25 ms (34 à 38 ms en 512 px), temps par image
+  0,5 → 0,6 ms 🧱 activé, 0,4 ms inchangé 🧱 coupé.
+  **Arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
+  survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes` : maillage lu sur la scène dans
+  l'emprise, triangles bornés, 🧱 coupé / activé / Textures HD).
 - **Formes de patrimoine** (`galerieEmprise.js > ACCES`, `BLOQUE`, `ACCES_DIM.ossuaire*` / `outil*` ; `vue3d.js >
   _ossuaire`, `_outilCarrier`, `_fontis`, `OSSUAIRE`, `OUTIL`, `FONTIS` ; décision produit) : faites en code (lot
   opaque, couleurs par sommet, aucune texture ni fichier), panneau du POI gardé. **Ossuaire** (`ossuaire`, forme de
@@ -2012,16 +2030,38 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   joints de mortier assombris, fond bouché), 0,5 m de profondeur, **extrados à la clé au ciel du niveau**. Plus large
   que le ciel ne le permet (piédroits sous 0,6 m) : surbaissé en demi-ellipse. **Tympan** (`_tympanArc`) : maçonnerie
   pleine de la profondeur de l'arc qui comble tout l'espace entre l'extrados, les piédroits, les parois et le ciel
-  (faces reculées de 5 mm sous les claveaux, même pierre ou même couleur de légende) ; seule l'ouverture sous
+  (faces reculées de 5 mm sous les claveaux, moellons ou couleur de légende) ; seule l'ouverture sous
   l'intrados reste vide. Arc oblique dans un tube : ses bouts suivent la paroi ; sans paroi contre lui (structures,
   chambre), tel que dessiné et fermé aux bouts. En mixte et en galerie, un segment en travers d'un
   tube (milieu dans sa largeur, hors chambre, à plus de 30° de l'axe) va **d'une paroi du tube à l'autre**, là où sa
-  ligne les coupe ; ailleurs (chambre, structures), tel que dessiné. Couleur (décision produit) : légende avec 🧱
-  coupé, calcaire chaud avec 🧱 (`ARC.pierre`, famille des piliers texturés, accordé aux parois). ⚠️ contrat : **on
+  ligne les coupe ; ailleurs (chambre, structures), tel que dessiné. **Matière et teinte** (décision produit).
+  🧱 coupé : aplats à la couleur de la légende, dans le lot opaque de la tuile. 🧱 activé : pierre de taille
+  texturée avec relief, **partout à la teinte des parois de pierre de taille** (la texture seule) — en travers
+  d'un tube comme en chambre ou en rendu structures, quelle que soit la masse du niveau : un arc est bâti, il ne
+  prend jamais la teinte plus chaude des piliers de 2e masse. **Claveaux** : un bloc de
+  géométrie chacun (joints et fonds de joint gardés), en pierre dressée (`CLAVEAU`, `_pierresDressees`,
+  `_matClaveau`) — une planche de 4 × 4 pierres entières dessinée dans un canvas (grain fin, nuance légère, arêtes
+  émoussées, layage discret et irrégulier — coups parallèles à une orientation qui varie un peu d'une pierre à
+  l'autre, de pas, de profondeur et de largeur inégaux, certains absents, effacés par plages : de près, une pierre
+  dressée à la main, jamais une onde régulière qui la raie), une case tirée par face, nuance par claveau (au plus
+  − 10 %).
+  **Piédroits et impostes** : l'appareil des parois (`PIERRE`, matériau `paroi`, coordonnées de texture en
+  mètres), avec l'ombre de contact au pied. **Tympan** : maçonnerie de moellons (`BLOCAGE`, `_moellonsBruts`,
+  `_matBlocage`), plus rustique que les parois et de la même teinte — moellons de tailles et de formes inégales en
+  assises approximatives, joints larges et creux, faces bombées (un germe par moellon, distance rapportée à sa
+  taille : chaque pixel va au plus proche, l'écart au second donne le joint) ; dans l'appareil des parois il se
+  fondait en elles et l'arc ne se détachait plus. Architecture : trois lots par tuile qui porte un arc
+  (`_lotsArc`, `_poserArcs`, famille « arc ») — piédroits et impostes réemploient le matériau et la texture des
+  parois, claveaux et tympan ont les leurs. Les Textures HD suivent (512 px, grain de détail). Coût mesuré (PC) :
+  3 appels de dessin par tuile qui porte un arc (1 sans texture), 266 triangles par arc de 2,5 m (250 sans
+  texture : 16 pour la bande de l'ombre de contact ; tympan : 6 × claveaux + 8), 4 textures de plus pour la vue
+  (couleur et relief des claveaux et des moellons : 0,7 Mo chacun des deux matériaux, mipmaps compris, 2,8 Mo en
+  512 px), premier dessin de la planche des claveaux 11 à 22 ms (46 à 66 ms en 512 px), des moellons 30 à 37 ms
+  (93 ms en 512 px ; le sol en coûte 33), temps par image inchangé par le troisième lot (douze arcs dans une
+  galerie : 0,5 à 0,6 ms, 12 appels de dessin au lieu de 10). ⚠️ contrat : **on
   passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas `arc`) ; ni face où
   poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode mixte, il ne fait pas
-  d'une galerie une chambre (`galerieEmprise.js > _indexStructures`). ~250 triangles par arc de 2,5 m (tympan :
-  6 × claveaux + 8 de plus).
+  d'une galerie une chambre (`galerieEmprise.js > _indexStructures`).
 - **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
   matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
   c'est le pilier ou le front qui se voit, sans scintillement.
@@ -2029,15 +2069,35 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   par défaut) : parois des galeries et des tubes en pierre de taille (§ Scène galerie ; coupé : couleur de légende du
   tracé) ;
   piliers et fronts en **roche brute** (décision produit : la masse calcaire laissée en place, jamais appareillée —
-  bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux, traces
-  d'outil ; aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
-  `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche :
-  sans elle un pilier passé de la 1re à la 2e masse ne changeait rien dans la scène), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
+  bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux ;
+  **traces d'outil en passes de coups parallèles**, comme le carrier les laisse (décision produit : jamais d'angle
+  tiré au hasard dans une passe) — `ROCHE.pic`, cinq passes de rangées superposées de coups de pic courts, serrés
+  et obliques, à l'une de deux orientations dominantes pour tout le motif (souchevage) ; `ROCHE.lance`, deux
+  passes de quelques longues stries droites, presque verticales (défermage) ; de grandes plages nues entre elles.
+  🩸 Le motif (3 m) se répéterait sur une longue face — de face et en plein jour, le même groupe de fissures et de
+  passes tous les 3 m sur un long front. Deux parades : les **fissures sont rares et fines** (quatre par motif, à
+  demi-force : longues et sombres, ce sont elles qui signent le motif), et une **face de plus de 6 m est brisée en
+  pans** de 3 à 5 m (`_faceBrisee`, `BRISE`) — chaque pan a sa propre origine du motif (u et v décalés, sens
+  retourné une fois sur deux), tirée de la position de la face, donc stable d'une ouverture à l'autre et d'un
+  appareil à l'autre. Même matériau, même texture, aucun appel de dessin de plus ; coût : douze sommets par pan
+  (environ + 190 sommets pour une face de 64 m ; rien pour un pilier aux faces de moins de 6 m, donc rien sur la
+  salle de piliers de référence). **Jointure sans saut de nuance** : deux origines prises au hasard se raccordent
+  sur des taches larges différentes et la jointure se lit comme une ligne verticale plus claire d'un côté ;
+  l'origine d'un pan est donc choisie parmi 64 tirages (`BRISE.essais`), celle dont la colonne de départ a la
+  teinte la plus proche de la colonne où finit le pan d'avant sur toute la hauteur de la face (`_tonRoche` : teinte
+  du motif par case de 12,5 cm, lue une fois par page sur la carte dessinée), jamais à moins de 0,2 motif de la
+  hauteur du pan d'avant (le même dessin reviendrait à côté). La jointure n'est plus qu'un changement de dessin.
+  Garde-fou : § 12 quater (faces longues brisées, courtes entières, mêmes origines après reconstruction des
+  tuiles). Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche à peine plus chaude (teinte
+  `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche.
+  Discrète, décision produit : on la devine, la distinction franche se lit 🧱 coupé, sur la carte 2D et la
+  mini-carte), mur en surface fermée (`mur`) en parpaing de 50 × 20 cm, mur tracé en ligne (`mur-ligne`) en
+  pierre de taille (ci-dessous) ; un type perso `cust-…` résolu par
   le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,
   polygone = pilier), un type inconnu garde sa couleur. Couleur et normal map dessinées dans un canvas
-  (`_rocheBrute`, `ROCHE` : 256 px, motif de 3 m, plus grand que l'appareil car sans joints la répétition se voit
+  (`_rocheBrute`, `ROCHE` : 256 px — 512 en Textures HD, ci-dessous —, motif de 3 m, plus grand que l'appareil car sans joints la répétition se voit
   plus ; `_appareil`, `PARPAING` : 256 px, motif de 1 m ; normal map commune `_carteNormale`), faits à la première
-  structure texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée par la légende. Deux matériaux de plus,
+  structure texturée (`_matsTextures`), libérés à la fermeture ; texture naturelle, jamais teintée par la légende (couleurs de sommets : 2e masse, ombre de contact). Deux matériaux de plus,
   structures toujours regroupées par matériau (un maillage par tuile et par matériau). Coordonnées de texture en
   mètres posées face par face (`_prisme`) : u = longueur de contour cumulée (l'appareil tourne l'angle), v = hauteur
   depuis le sol, dessus en projection monde (x, z). Normal map plutôt que bump map (une lecture par pixel, pas de
@@ -2046,6 +2106,94 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   pierre, remblais, éboulis) est dessinée une fois par page (`_texturesPeintes`, canvas gardés dans `_appareils`,
   ~15 à 30 ms au PC, ~100 ms au téléphone ralenti × 4), la pierre seulement à la première paroi texturée, remblais
   et éboulis à la première zone de leur type ; `KtaVue3D.textures()` rend ces temps (checkup § 24).
+- **Textures HD** (bouton **HD** de la tuile ⚙️, sur la ligne de 🧱 ; `config.js > getVue3DTexturesHD`, réglage de
+  l'appareil : **coupé par défaut au doigt** (`ktaAppareilTactile`), allumé au pointeur fin ; grisé et sans effet 🧱
+  coupé, le réglage est gardé) : chaque texture dessinée (roche, parpaing, pierre, remblais, éboulis, sol, ciel)
+  passe de 256 à **512 px** (`HD.px`, `_px`, `_fin` ; jamais 1024) et un **grain de détail** est mêlé de près à la
+  couleur (`_detailler` : texture de 64 px répétée tous les 25 cm, ± 18 %, pleine jusqu'à 1,2 m de l'œil, éteinte à
+  4 m, une lecture de plus pour ces pixels seulement). ⚠️ contrat : le dessin HD est **le même, plus fin** — les
+  longueurs écrites en pixels (rayon d'un creux, pas d'une fissure, pore, force du relief) sont multipliées par la
+  finesse, jamais le nombre de tirages : fissures et blocs restent à leur place quand on bascule. ⚠️ contrat : HD
+  coupé, `onBeforeCompile` ne touche à rien et la clé de programme est vide (les shaders de three.js, sans une ligne
+  de plus). Bascule **sur place** (`_basculerTexturesHD` → `_refaireCartes`) : les matériaux reçoivent le dessin de
+  l'autre taille (`e.habits`, `_habiller`), les anciennes textures sont libérées, aucune géométrie ni tuile n'est
+  refaite (coordonnées de texture en mètres) ; copies du sol (pente, voiles, sol voilé) resynchronisées, voisins par
+  leur signature. Un dessin par finesse et par page (`_appareils` : « roche », « roche@2 »). Bois des battants et
+  moellons : toujours 256 px. Mesures (checkup § 24 quater ; salle fictive de 2 025 piliers pour le temps par
+  image) : premier dessin des cinq textures ~95 ms en 256 px et ~250 ms en 512 px au PC, ~350 ms et ~1,05 s au
+  téléphone ralenti × 4 (d'où le défaut coupé au doigt ; la bascule y fige l'écran une seconde) ; mémoire des
+  textures 3,3 → 13,3 Mo ; temps par image inchangé au PC (0,7 ms à 30 m, 0,9 ms à 100 m, avec ou sans HD), au
+  téléphone émulé (processeur × 4, écran × 3, carte graphique du PC) 512 px seul sans surcoût, grain ~ + 0,3 ms
+  par image. Jamais mesuré sur la carte graphique d'un vrai téléphone.
+- **Mur tracé en ligne en pierre de taille** (même interrupteur 🧱 ; décision produit : la surface fermée garde le
+  parpaing, le tracé est bâti en pierre ; la forme est portée par le type, `isStructurePolylineType`) : le
+  `mur-ligne` (épaisseur `EPAISSEUR_MUR_LIGNE`, 98 % de la hauteur) prend la carte et le relief de la pierre de
+  taille des parois (`PIERRE`, `e.texPierre`) — même teinte, sans nuance par structure, ombre de contact au pied,
+  Textures HD suivies. Lot à lui dans la tuile (`pierreMur`), matériau `murPierre` (`_matMurPierre`) : celui des
+  parois ne convient pas tel quel, un mur passe sous un pilier ou un front et doit être reculé en profondeur
+  (contrat de `_estMur`) ; il partage donc les textures, pas le matériau, et suit la carte des parois quand elle
+  est redessinée (`_suivreMurPierre`, appelé par `_paroiTexturee`). Coordonnées de texture en mètres
+  (`MUR_PIERRE.m`, l'échelle est dans le `repeat` de la carte), u le long du mur, dessus en projection monde.
+  Ce qui le distingue d'une paroi de galerie, à teinte égale : une paroi part d'un lit au sol et est coupée où
+  tombe le ciel ; le mur finit sur une assise entière — son appareil est calé sur sa tête (`lot.dv`, lu par
+  `_prisme` : la tête tombe `MUR_PIERRE.tete` = 2 cm sous un lit du motif), l'assise entamée est au pied, dans
+  l'ombre de contact. Coût : ni dessin ni texture de plus quand la pierre des parois existe déjà (mixte, galerie,
+  arc) ; en rendu structures sans paroi ni arc, le premier mur en ligne la fait dessiner (11 ms mesurées au PC,
+  0,67 Mo, 2,67 en HD) ; un appel de dessin de plus pour une tuile qui porte à la fois un mur en surface et un mur
+  en ligne, aucun sinon ; même programme que la roche et le parpaing. 🧱 coupé : couleur de la légende, inchangé.
+  Garde-fou : § 24 quater (murs).
+- **Nuance de roche par structure** (même interrupteur 🧱, `NUANCE_ROCHE`, `_nuanceRoche`) : chaque pilier, front ou
+  type perso en roche reçoit une teinte à lui — celle de sa masse (blanc, `TEINTE_MASSE_2`) assombrie de 0 à 16 % et
+  tirée de ± 6 % vers le chaud ou le froid — posée par sommet comme la 2e masse : deux piliers voisins ne sortent
+  plus du même moule, la 2e masse reste reconnaissable (les plages des deux masses ne se recouvrent pas : rapport
+  bleu / rouge des sommets de 0,94 à 1,06 pour la 1re, de 0,53 à 0,60 pour la 2e). ⚠️ contrat :
+  tirée de la position du premier sommet de la structure (px du plan, comme l'origine du motif), jamais de
+  `Math.random` : la même à chaque reconstruction de tuile, à chaque ouverture, sur chaque appareil. Murs sans
+  nuance (parpaing : un appareil régulier ; pierre de taille : la teinte des parois). Aucun coût : une couleur de
+  sommet déjà écrite.
+- **Ombre de contact** (même interrupteur 🧱, `OMBRE_CONTACT`) : au pied des piliers, des fronts, des murs et des
+  parois des galeries et des tubes, la teinte descend à 50 % au contact du sol et revient à 100 % en 28 cm (au plus
+  le tiers de la hauteur) : les volumes tiennent au sol. Au pied seul (décision produit) : en tête, l'ombre dessinait
+  un collier sombre sous le dessus des piliers en vue d'édition, où le plafond est caché. ⚠️ contrat (décision
+  batterie) : posée **par sommet** dans la couleur du maillage (`_faceOmbree`, `Lot.quadDegrade`), multipliée par la
+  texture et par la teinte de la 2e masse ; ni ombre calculée, ni passe de rendu, ni lumière en plus. Le lot texturé
+  la porte (`lot.ombre = { sol, plafond }` sur la roche, le parpaing, la pierre des murs en ligne et celle des
+  parois d'une tuile) : `_prisme`
+  et `_paroiY` découpent alors chaque face verticale en deux bandes (sol, +28 cm, tête) sans toucher aux coordonnées
+  de texture (v = hauteur en mètres) ; une paroi coupée par un niveau entremêlé ne s'assombrit qu'au bout qui touche
+  le sol. Matériaux `roche`, `parpaing`, `murPierre` et `paroi` en couleurs de sommets (blanc hors de la bande). Volumes des
+  passages, remblais, dessus des structures : sans ombre. Coût mesuré (salle fictive de 2 025 piliers de 6 à 12 pans,
+  PC) : sommets de la scène × 1,7 (79 300 → 136 100 à 100 m de portée, 8 800 → 14 900 à 30 m), triangles dessinés au
+  plus 9 500 → 16 100, temps par image 0,6 → 0,7 ms ; aucun appel de dessin ni matériau de plus. Coupé : géométrie
+  d'origine.
+- **Sol et ciel de carrière** (même interrupteur 🧱 ; coupé : noirs, ci-dessous) : deux textures distinctes, couleur
+  et normal map, dessinées dans un canvas comme les autres (`_texturesPeintes`, aucune image). **Sol** (`SOL`,
+  `_solDame`) : calcaire damé en bosses douces, plages de terre plus lisses et à peine plus sombres (35 % de la
+  surface, bord fondu, teinte tirée d'au plus `terreForce` vers la terre), cailloutis d'éclats de 1 à 3,5 cm serrés
+  par plages. 🩸 Plages et taches larges (`nuance`) restent faibles : vues d'en haut, en vue d'édition, des plages
+  marquées dessinent la grille du motif de 4 m ; le relief et le cailloutis, eux, ne se lisent qu'à hauteur d'yeux
+  et portent le caractère du sol. **Plafond** (`CIEL`, `_cielCarriere`) : le banc laissé
+  en place au toit, un joint de stratification presque plan — bosses douces, fissures longues en tous sens, et peu de
+  traces d'outil (décision produit) : six passes de pic par motif (`CIEL.passes`, `CIEL.trace`), chacune une
+  rangée de 7 à 13 coups courts (16 à 30 cm), droits, parallèles et régulièrement espacés (5,5 à 8 cm), tous à l'une
+  des deux orientations du motif, obliques à leur rangée ; de grandes plages nues entre elles. 🩸 Coups fins et de
+  creux modéré : des sillons larges et creux en faisceaux qui convergent se lisent comme les plis d'un tissu
+  froissé. Un peu plus gris et plus sombre que le sol (pas davantage : trop sombre, un niveau du dessus montré en
+  transparence ne s'y lisait plus, checkup § 46 bis ; luminance du motif d'au moins 105, checkup § 24 quater). ⚠️ contrat (décision produit) : que des traits ouverts, dans la couleur comme dans le relief —
+  un contour fermé (plaque de banc, palier) se répète avec le motif et craquelle le plafond d'une longue galerie.
+  Motif de **4 m** à 256 px (64 px/m ; 512 px en Textures HD) : plus grand que celui d'une
+  paroi, un sol se voit sur des dizaines de mètres. ⚠️ contrat (décision produit) : le sol reste peu contrasté et
+  jamais plus clair que le sable calcaire (`COULEUR_CALCAIRE`) — rubans, liserés, zones et plan au sol se lisent
+  dessus ; le liseré sombre de l'itinéraire garde plus de 3:1 sur le sol le plus sombre (checkup § 24 quater).
+  ⚠️ contrat : une seule projection, **monde / 4 m** (u = x, v = z), pour les pièces des galeries (`_dalleTexturee`)
+  et pour le carré qui suit (`_calerCarre` : `repeat` et `offset` des cartes recalculés quand le carré se déplace ou
+  change de taille) — le motif reste fixe sous les pieds et ne saute pas quand la portée change ; couleur et relief
+  sont calés ensemble (three.js transforme chaque carte avec la sienne). Les deux jeux de textures (`carre`,
+  `monde`) partagent une image (clone : un envoi au GPU). Les copies des matériaux du sol et du plafond (voisins,
+  voile, sol en pente, sol voilé) suivent carte, relief et couleur (`_suivreCartes`). Coût : dessinées à la première
+  vue texturée de la page (`_cartesSol` : sol ~33 ms, ciel ~15 ms au PC ; ~100 et ~55 ms au téléphone ralenti × 4),
+  quatre canvas de 256 px (1 Mo dans la page, 1,4 Mo de textures avec leurs mipmaps) ; `KtaVue3D.textures()` rend
+  `sols`, `motifs` et `calage`.
 - **Remblais et effondrements texturés** (même interrupteur 🧱) : `remblais` en terre et sable calcaire tassés avec
   cailloux et blocs anguleux à moitié enfouis (`REMBLAIS` : motif de 2 m, du gravier de 1 cm aux blocs de 25 cm),
   `effondrement` en éboulis de fontis (`EBOULIS` : motif de 4 m, gros blocs cassés jusqu'à 60 cm, empilés, fissurés,
@@ -2136,7 +2284,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 
 - **Itinéraire** (décision produit) : ruban **plein** continu de 0,3 m (`LARGEUR_ITI`) à `--kta-interaction` (la
   couleur de l'itinéraire de la carte ; le doré reste aux itinéraires publiés par l'équipe) sur un liseré `--kta-fond`
-  de 4 cm par bord, gardé parce que le sol est clair (grain calcaire, plan au sol) et que le ruban passe sur le liseré
+  de 4 cm par bord, gardé parce que le sol est clair (sol damé, plan au sol) et que le ruban passe sur le liseré
   vert d'un tracé ; **chevrons « ^ » de sens** `--kta-fond` (9,3:1 sur le ruban) tous les `ITI.pas` = 2 m à partir
   de 1 m, pointe vers l'arrivée, branches de 0,26 m sur 6 cm (`_chevronIti`) : le dessin du trajet du jeu
   (`addons/mkmg`), à la couleur de l'app, sans code partagé. Chaque segment est prolongé d'une demi-largeur à ses bouts
@@ -2391,7 +2539,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   profondeur, trouée par les bouches comme le sol : tracés, zones et structures passent dessus par la profondeur du sol
   (🩸 posée 6 mm au-dessus et départagée par la profondeur, elle dépendait de la précision du tampon de profondeur).
 - **Sol et plafond noirs 🧱 coupé** (décision produit, `_grainSol`) : carré qui suit et pièces des galeries noirs,
-  sans grain, dans les trois rendus ; allumé, le grain calcaire. Le matériau change, rien n'est reconstruit.
+  sans carte ni relief, dans les trois rendus ; allumé, le sol damé et le ciel de carrière (§ Sol et ciel de
+  carrière). Le matériau change, rien n'est reconstruit, et rien n'est dessiné tant que 🧱 reste coupé.
 
 ### Niveaux voisins (QCM du 07/11/2026, lot C du multi-niveau en 3D)
 
@@ -2423,14 +2572,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Niveau actif d'abord** : ni la règle du pas (sauf les structures d'un niveau entremêlé, ci-dessous), ni la visée
   (`_pointVise`), ni les fiches, ni les passages, ni le suivi ne lisent les voisins ; ils se voient et cachent ce qui est derrière eux. Le niveau actif ne change que par un
   passage, une galerie inclinée ou ▲▼. **Vue d'édition** : voisins sans plafond, **estompés** selon le réglage ⚙️
-  « 🌫️ Estomper » (`reglerEstomper`, `config.js > getVue3DEstomper`, `myktamap_v3d_estomper_v1`, cet appareil, activé
+  « 🌫️ Niveaux en transparence » (`reglerEstomper`, `config.js > getVue3DEstomper`, `myktamap_v3d_estomper_v1`, cet appareil, activé
   par défaut, au doigt comme au pointeur ; un seul réglage pour les deux côtés) : le **dessous assombri**
-  (`ESTOMPE.dessous`), le **dessus en fantôme** (`ESTOMPE.fantome` : transparent, sans écriture de profondeur, sol
+  (`ESTOMPE.dessous`), le **dessus en fantôme** (`ESTOMPE.fantome` : opacité 0,35, sans écriture de profondeur, sol
   caché) : on voit où passent ses galeries sans qu'il cache le niveau actif, et il ne capte aucun toucher
   (`_pointVise` ne lit que les tuiles du niveau actif). Copies des matériaux par manière (`_matEstompe`), le maillage
   garde l'original dans `userData.matOrigine`. Coupé : le dessous en rendu d'origine, **rien au-dessus** (il
-  couvrirait la scène, comme son plafond qu'elle retire : `_voisinCache`). À hauteur d'yeux, jamais. Checkup § 46
-  (`KTA_V3D_SEUL=estomper`), § 48 (`=fantome`).
+  couvrirait la scène, comme son plafond qu'elle retire : `_voisinCache`). **À hauteur d'yeux** (même réglage, décision produit) : le voisin **juste** au-dessus et **juste** en dessous (`_transparenceYeux` : deux plus proches de `_niveauxEdition`, jamais un niveau entremêlé, jamais en rendu structures) se voit à travers le plafond et le sol, là seulement où une de ses galeries passe à l'aplomb. Ses tuiles posent un **masque** (`_masqueTransparence` : éventails de leurs pièces à la hauteur du plafond ou du sol actif, bit `GABARIT.transparence`, un seul bit pour les deux côtés : l'œil est entre le sol et le plafond, leurs plans ne se recouvrent jamais à l'écran) ; le sol et le plafond opaques du niveau actif n'y sont pas dessinés, leur copie **voilée** l'est (`_matVoile`, `ESTOMPE.voile` 0,65, `ORDRE_VOILE` : avant l'eau et les zones du niveau actif) : le sol se lit toujours comme un sol. Le voisin passe en matériau **opaque non éclairé** (`_matEstompe` « yeux » : sa couleur propre, brouillard gardé ; ses transparents d'origine restent transparents, `ORDRE_FANTOME` ; 🩸 côté d'origine gardé : en `DoubleSide`, le sol du dessus vu par-dessous et le plafond du dessous vu par-dessus feraient écran sur la galerie). 🩸 Un fantôme transparent coûtait ~10 ms par image au téléphone : opaque, il est caché partout par le niveau actif et ne paraît que sous le voile (coût mesuré dans le bruit, checkup § 46 bis). Portée voulue : à quelques mètres, le regard en biais n'atteint pas la géométrie du voisin (la roche entre les niveaux n'est pas dessinée) ; on voit **où** passe sa galerie (bande voilée), et la galerie elle-même en passant dessous ou dessus. Le pas et la visée lisent les données, jamais le dessin : le sol reste solide. « Actif seul » (≡) retire tous les voisins
+  (`_niveauxMontres` lit `visibleLevels`). Checkup § 46
+  (`KTA_V3D_SEUL=estomper`), § 46 bis (`=transparence`), § 48 (`=fantome`).
 - **Sol du niveau actif en vue d'édition** (`_maniereSol`, `_majSolActif`, décision produit ; rendus structures et
   mixte, dont le sol d'un seul tenant cachait tout le dessous ; pas en galerie, où rien de plein n'est sous les
   galeries) : 🌫️ activé, 🗺️ plan au sol éteint et niveau actif qui n'est pas le plus profond du plan → 🧱 coupé :
@@ -2659,8 +2809,13 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   de l'app masqués ; endurance vidée par le pas rapide, course interdite à bout de souffle puis rendue ; cible
   atteinte → vague 2 ; Quitter ; difficile → ni tracés, ni trajet, ni balise ; fermer la vue termine la partie.
   Monde vidé puis situations posées (`essai`) : vague peuplée, un coup tue l'égaré à 5 m, recharge de 1,5 s,
-  munitions et champignon ramassés, santé qui baisse au contact, silhouette figée dans le faisceau et qui avance de
+  munitions et champignon ramassés, coup d'égaré au contact, silhouette figée dans le faisceau et qui avance de
   dos, santé à 0 → fin et meilleure vague retenue, « Rejouer ».
+  Page à part (§ 23 bis, `KTA_V3D_SEUL=mkmg`, galerie fictive) : silhouette — lente de loin, rapide de près, plus vite
+  à chaque vague, lampe qui vacille sous 8 m, pile × 2 quand on la fixe, recul de 12 m et sonnée au tir, contact,
+  grésillement situé ; fumigène — lancer, stock, mur pour les marcheurs, figés dedans, silhouette qui traverse hors
+  faisceau, dissipation, ramassage, gardien, reprise du contexte WebGL, fin de partie ; coups portés — élan, dégâts,
+  cadence, esquive, gardien ; écran de fin — précision, égarés tués, durée, scores gardés sous leur forme.
   Données changées pendant la vue (§ 26, objets fictifs) : ouverture en libre au centre d'un pilier → place dégagée,
   en suivi (tracker dans le pilier) → rien ; rien sur 40 images sans signal, un rendu sans changement relu sans rien
   refaire ; itinéraire remplacé, puis aperçu posé → aucune reconstruction, ruban seul refait (le nouveau) ; carte
@@ -2702,7 +2857,16 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   sommets, 3e, surface, désarmé caché, sans chevaucher boussole, joystick, pavé ni zoom) ; angle droit → « 90° » comme
   la carte ; survol (pilier, cavage fermé) en édition, bloqué à hauteur d'yeux, place dégagée au retour ; plan au sol
   au point visé et vu à l'écran (pixels d'une capture) ; 🧱 coupé : sol et plafond noirs (trois rendus), plan au sol visible dessus, parois de galerie à la couleur de légende
-  de leur tracé (type `cust-…` compris), légende changée vue ouverte → la paroi suit, rallumé → la pierre ; tuile ⚙️
+  de leur tracé (type `cust-…` compris), légende changée vue ouverte → la paroi suit, rallumé → la pierre ; sol et
+  ciel de carrière (§ 24 quater, `KTA_V3D_SEUL=textures`) : deux motifs distincts avec relief, sans couture, sol peu
+  contrasté et jamais plus clair que le sable calcaire, liseré de l'itinéraire à plus de 3:1, carré calé sur le monde
+  (déplacement, portée), pièces des galeries à la même projection, noirs et jamais dessinés 🧱 coupé, reprise du
+  contexte, temps du premier dessin (téléphone ralenti × 4) ; ombre de contact : teinte × 0,5 au pied des piliers
+  (1re et 2e masse), du mur et des parois, pleine à 28 cm et jusqu'en tête, deux bandes par face, texture inchangée,
+  rien 🧱 coupé ; nuance de roche : deux piliers de 1re masse différents, discrète, 2e masse reconnaissable, stable après
+  reconstruction et réouverture ; Textures HD : défaut selon l'appareil, bouton HD sur la ligne de 🧱 (393 px
+  compris), 512 px et grain, bascule sans géométrie refaite, grisé et sans effet 🧱 coupé, retour à 256 px sans
+  redessin, reprise du contexte, temps et mémoire ; tuile ⚙️
   au-dessus de la colonne ✏️, curseurs entiers, sélecteur de niveau hors de la colonne, de la tuile et de la grille
   (portrait et paysage) ; ▼ en vue d'édition → la 3D au −1 sans passage, carte et tracker au 0, tracé dessiné au −1,
   retour à hauteur d'yeux dégagé, plan à un niveau sans sélecteur ; vue d'édition, zoom et inclinaison retrouvés à la

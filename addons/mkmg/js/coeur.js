@@ -10,13 +10,14 @@
 // window.KtaAddons.mkmg = { lancer(), quitter(), etat(), essai } (etat, essai : checkup). Une vague =
 // rejoindre un point B (POI de plus en plus loin, sinon un point des tracés) avec des égarés et, dès la vague 2, la
 // silhouette (monde.js) ; fusil à pompe (rage après 20 égarés : santé pleine, 30 s de tir auto, endurance sans fin,
-// dégâts reçus ÷ 2, halo rouge), munitions,
-// piles et champignons ramassés en passant ; viseur à la souris capturée (PC) ; santé à 0 = fin,
-// meilleure vague retenue par difficulté. La pile de la lampe s'use (lampe qui baisse et vacille, à plat = lueur de
+// dégâts reçus ÷ 2, halo rouge), fumigènes (bouton ou G : un nuage qui arrête les marcheurs et cache de la
+// silhouette), munitions, piles, champignons et fumigènes ramassés en passant ; viseur à la souris capturée (PC) ;
+// santé à 0 = fin (bilan affiché, meilleure vague retenue par difficulté). La pile de la lampe s'use, deux fois plus
+// vite en fixant la silhouette (lampe qui baisse et vacille, aussi quand la silhouette est proche ; à plat = lueur de
 // quelques mètres : ctx.regler({ lampe })) ; l'eau ralentit (ctx.regler({ vitesse })) ; près d'un effondrement, des
-// éboulis couvrent les grognements. Dès la vague 4, sur un plan multi-niveau, B est parfois à un autre niveau ; toutes
-// les 5 vagues, un gardien garde B. Difficulté : facile = tracés + itinéraire du jeu + guidage ; moyen = tracés +
-// itinéraire ; difficile = rien.
+// éboulis couvrent les grognements. Sur un plan multi-niveau, B est parfois à un autre niveau, et toujours quand celui
+// où l'on est a moins de 3 POI joignables (sauf vague du gardien) ; toutes les 5 vagues, un gardien garde B.
+// Difficulté : facile = tracés + itinéraire du jeu + guidage ; moyen = tracés + itinéraire ; difficile = rien.
 // 🔒 Ne touche ni tracker, ni session, ni filtres, ni l'itinéraire de l'app : la greffe (KtaVue3D.greffer) est son
 // seul accès ; ses trajets sont calculés par Pathfinder.computeRoute (lecture) et dessinés dans son propre groupe.
 // ⚠️ contrat (décision produit) : refusé sur une installation reliée à un serveur, pendant le suivi du tracker, une
@@ -54,11 +55,15 @@
       "hud.plusSante": "+{n} santé", "hud.recule": "Elle recule…",
       "fin.titre": "Tu es resté sous terre", "fin.texte": "Vague {n} · {r} réussie(s)",
       "fin.meilleure": "Meilleure vague ({diff}) : {m}", "fin.rejouer": "Rejouer",
+      "fin.precision": "Précision : {p} % ({t} / {n})", "fin.precisionSans": "Précision : aucun tir",
+      "fin.tues": "Égarés tués : {n}", "fin.duree": "Durée : {d}",
       "hud.tropTard": "Trop tard ! Ils arrivent de partout…", "hud.tenaille": "Pris en tenaille : fuis !",
       "hud.lampe": "Lampe", "hud.plusPile": "+{n} % de pile", "hud.pileFaible": "La lampe faiblit…",
       "hud.pileVide": "Plus de pile : avance à tâtons", "hud.objectifNiveau": "Rejoins : {nom} · niveau {n}",
       "hud.hurle": "Un hurlement… ils accourent !", "hud.gardien": "Gardien",
-      "hud.gardienVague": "Quelque chose garde la sortie…", "hud.gardienAbattu": "Le gardien est tombé !"
+      "hud.gardienVague": "Quelque chose garde la sortie…", "hud.gardienAbattu": "Le gardien est tombé !",
+      "hud.fumigene": "Fumigène : {n} / {m} (bouton ou touche G)", "hud.fumigeneVide": "Plus de fumigène",
+      "hud.plusFumigene": "+1 fumigène"
     },
     en: {
       "confirmer.titre": "⛏️ Six feet under",
@@ -86,11 +91,15 @@
       "hud.plusSante": "+{n} health", "hud.recule": "It backs away…",
       "fin.titre": "You stayed underground", "fin.texte": "Wave {n} · {r} cleared",
       "fin.meilleure": "Best wave ({diff}): {m}", "fin.rejouer": "Play again",
+      "fin.precision": "Accuracy: {p}% ({t} / {n})", "fin.precisionSans": "Accuracy: no shot fired",
+      "fin.tues": "Lost ones killed: {n}", "fin.duree": "Time: {d}",
       "hud.tropTard": "Too late! They come from everywhere…", "hud.tenaille": "Caught in a pincer: run!",
       "hud.lampe": "Lamp", "hud.plusPile": "+{n}% battery", "hud.pileFaible": "The lamp is fading…",
       "hud.pileVide": "Battery dead: feel your way", "hud.objectifNiveau": "Reach: {nom} · level {n}",
       "hud.hurle": "A howl… they're coming!", "hud.gardien": "Guardian",
-      "hud.gardienVague": "Something guards the way out…", "hud.gardienAbattu": "The guardian has fallen!"
+      "hud.gardienVague": "Something guards the way out…", "hud.gardienAbattu": "The guardian has fallen!",
+      "hud.fumigene": "Smoke grenade: {n} / {m} (button or G key)", "hud.fumigeneVide": "No smoke grenade left",
+      "hud.plusFumigene": "+1 smoke grenade"
     },
     es: {
       "confirmer.titre": "⛏️ Dos metros bajo tierra",
@@ -118,11 +127,15 @@
       "hud.plusSante": "+{n} salud", "hud.recule": "Retrocede…",
       "fin.titre": "Te quedaste bajo tierra", "fin.texte": "Oleada {n} · {r} superada(s)",
       "fin.meilleure": "Mejor oleada ({diff}): {m}", "fin.rejouer": "Jugar otra vez",
+      "fin.precision": "Precisión: {p} % ({t} / {n})", "fin.precisionSans": "Precisión: ningún disparo",
+      "fin.tues": "Perdidos abatidos: {n}", "fin.duree": "Duración: {d}",
       "hud.tropTard": "¡Demasiado tarde! Llegan por todas partes…", "hud.tenaille": "Atrapado en tenaza: ¡huye!",
       "hud.lampe": "Linterna", "hud.plusPile": "+{n} % de batería", "hud.pileFaible": "La linterna se apaga…",
       "hud.pileVide": "Sin batería: avanza a tientas", "hud.objectifNiveau": "Llega a: {nom} · nivel {n}",
       "hud.hurle": "Un aullido… ¡vienen corriendo!", "hud.gardien": "Guardián",
-      "hud.gardienVague": "Algo vigila la salida…", "hud.gardienAbattu": "¡El guardián ha caído!"
+      "hud.gardienVague": "Algo vigila la salida…", "hud.gardienAbattu": "¡El guardián ha caído!",
+      "hud.fumigene": "Bote de humo: {n} / {m} (botón o tecla G)", "hud.fumigeneVide": "Sin botes de humo",
+      "hud.plusFumigene": "+1 bote de humo"
     }
   };
 
@@ -152,21 +165,24 @@
     pile: { max: 100, parS: 0.55, faible: 25, min: 0.08, vacille: 0.35, vacilleHz: 2.5, vacilleMs: [50, 200] },
     eau: { x: 0.6, ploufM: 0.6, testMs: 200 },
     eboulis: { rayonM: 15, s: [8, 20], masqueMs: 2500, testMs: 1000 },
-    // B à un autre niveau (plan multi-niveau) : dès la vague `des`, une fois sur `1 / chance` ; jamais en vague boss.
-    autreNiveau: { des: 4, chance: 0.4 }, gardienTous: 5,
+    // B à un autre niveau (plan multi-niveau) : dès la vague 1, une fois sur `1 / chance`, et toujours quand le niveau
+    // a moins de `minPoi` POI joignables (à `minM` au moins, bout du trajet à `horsTraceM` au plus) ; jamais en vague
+    // boss.
+    autreNiveau: { chance: 0.4, minPoi: 3 }, gardienTous: 5,
     // Trajet recalé (on fuit, le trajet suit) : à plus de `ecartM` du trajet pendant `tenirMs`, au plus une fois
     // toutes les `entreMs`.
     recalage: { ecartM: 6, tenirMs: 1500, entreMs: 3000 }
   };
   // Butin (décision produit) : objets posés à chaque vague × `x` (au moins `min` de chaque), chance qu'un égaré
-  // abattu lâche un champignon (`lacher`) ou une caisse (`lacherMunitions`) ; pile qui s'use × `pileX`.
+  // abattu lâche un champignon (`lacher`) ou une caisse (`lacherMunitions`) ; pile qui s'use × `pileX` ; `fumigenes`
+  // posés à chaque vague (nombre exact, hors `x`).
   const DIFFICULTES = {
     facile: { traces: true, route: true, guidage: true,
-      butin: { x: 2, min: 2, lacher: 0.5, lacherMunitions: 0.2, pileX: 0.75 } },
+      butin: { x: 2, min: 2, lacher: 0.5, lacherMunitions: 0.2, pileX: 0.75, fumigenes: 2 } },
     moyen: { traces: true, route: true, guidage: false,
-      butin: { x: 1.5, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1 } },
+      butin: { x: 1.5, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1, fumigenes: 1 } },
     difficile: { traces: false, route: false, guidage: false,
-      butin: { x: 1, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1 } }
+      butin: { x: 1, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1, fumigenes: 1 } }
   };
   const ROUTE = { largeur: 0.3, y: 0.08 };
   // Chevrons du sens du trajet, posés sur le ruban (m) : un tous les `pas`, longueur `l`, épaisseur des branches `ep`.
@@ -266,7 +282,8 @@
       canon: REGLES.cartouches.canon, reserve: REGLES.cartouches.reserve, rechargeFin: 0, fin: false, tues: 0,
       tirs: 0, touches: 0,
       blesseT: 0, ecouteurs: [], saleT: 0, carte: null, mondes: {}, pile: REGLES.pile.max, lampeK: 1, eau: false,
-      eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0,
+      eauT: 0, plouf: null, eboulisT: 0, eboulisProchain: 0, masqueFin: 0, pileAlerte: 0, silM: null, silVue: false,
+      usure: 0, coups: 0, rates: 0, debutT: performance.now(), fumigenes: _monde().REGLES.fumigene.depart, nuages: [],
       ecartT: 0, recaleT: 0, recale: false, recalages: 0,
       rageTues: 0, rageFin: 0, rageCanon: 0, rechargeRage: false, gachette: false, prochainTir: 0 };
     const retirer = window.KtaVue3D.greffer({ nom: "mkmg", scene: _scene, surImage: _surImage, demonter: _demonter });
@@ -331,6 +348,10 @@
     _eau(p, ctx, t);
     _eboulis(p, ctx, t);
     const r = _monde().animer(p, ctx, dt);
+    p.silM = r.silhouetteM;
+    p.silVue = r.fixee;
+    p.coups += r.coups;
+    p.rates += r.rates;
     // Un éboulis couvre grognements et pas un moment.
     r.sons.forEach(function (s) {
       if (t < p.masqueFin && (s[0] === "grogne" || s[0] === "pas")) return;
@@ -348,6 +369,10 @@
         p.reserve += n;
         _jouer("ramasse");
         _message(_t("hud.plusCartouches", { n: n }));
+      } else if (type === "fumigene") {
+        p.fumigenes++;
+        _jouer("ramasse");
+        _message(_t("hud.plusFumigene"));
       } else if (type === "pile") {
         const n = _monde().REGLES.piles.gain;
         p.pile = Math.min(REGLES.pile.max, p.pile + n);
@@ -377,13 +402,17 @@
     if (t - p.saleT >= REGLES.imageMs) { p.saleT = t; ctx.sale(); }
   }
 
-  // Pile de la lampe : s'use, la lampe baisse et vacille sous le seuil faible, lueur minimale à plat.
+  // Pile de la lampe : s'use (deux fois plus vite tant que la silhouette est dans le faisceau), la lampe baisse sous
+  // le seuil faible, lueur minimale à plat. Elle vacille pile faible, et quand la silhouette est toute proche : les
+  // deux causes s'ajoutent (même vacillement, plus fréquent).
   function _pile(p, ctx, t, dt) {
-    const L = REGLES.pile;
-    p.pile = Math.max(0, p.pile - L.parS * p.regle.butin.pileX * dt);
+    const L = REGLES.pile, S = _monde().REGLES.silhouette;
+    p.usure = L.parS * p.regle.butin.pileX * (p.silVue ? S.pileX : 1);
+    p.pile = Math.max(0, p.pile - p.usure * dt);
     let k = p.pile >= L.faible ? 1 : L.min + (1 - L.min) * p.pile / L.faible;
-    if (p.pile < L.faible) {
-      const freq = L.vacilleHz * (1 - p.pile / L.faible) + 0.4;
+    let freq = p.pile < L.faible ? L.vacilleHz * (1 - p.pile / L.faible) + 0.4 : 0;
+    if (p.silM !== null && p.silM < S.vacilleM) freq += S.vacilleHz * (1 - p.silM / S.vacilleM) + 0.6;
+    if (freq > 0) {
       if (t > (p.vacilleFin || 0) && Math.random() < dt * freq) {
         p.vacilleFin = t + L.vacilleMs[0] + Math.random() * (L.vacilleMs[1] - L.vacilleMs[0]);
       }
@@ -461,14 +490,17 @@
     on(document, "pointerdown", function () { _son().reveiller(); }, true);
     on(document, "visibilitychange", function () { if (document.visibilityState === "visible") _son().reveiller(); });
     // 🩸 R est aussi le raccourci « Recherche » de la carte (shortcuts.js, écouteur de document posé avant le jeu) :
-    // pris sur window en capture et arrêté là, sinon la recherche s'ouvre par-dessus la partie.
+    // pris sur window en capture et arrêté là, sinon la recherche s'ouvre par-dessus la partie. G (fumigène) n'est
+    // le raccourci de rien dans l'app ; pris au même endroit, il ne le deviendra pas pendant une partie.
     on(window, "keydown", function (ev) {
-      if (ev.code !== "KeyR" || ev.ctrlKey || ev.metaKey || ev.altKey || document.getElementById("kta-confirm-oui")) {
+      const rage = ev.code === "KeyR", fumigene = ev.code === "KeyG";
+      if (!(rage || fumigene) || ev.ctrlKey || ev.metaKey || ev.altKey || document.getElementById("kta-confirm-oui")) {
         return;
       }
       ev.stopPropagation();
       ev.preventDefault();
-      if (!ev.repeat) _rage();
+      if (ev.repeat) return;
+      if (rage) _rage(); else _fumigene();
     }, true);
     on(document, "keydown", function (ev) {
       _son().reveiller();
@@ -621,6 +653,21 @@
 
   function _degatsX(p) { return p.rageFin ? REGLES.rage.degatsX : 1; }
 
+  // Fumigène lancé dans l'axe du regard (bouton au-dessus de « Rage », touche G) : monde.js > lancerFumigene.
+  function _fumigene() {
+    const p = _p;
+    if (!p || p.fin || !p.ctx) return;
+    if (p.fumigenes <= 0) { _jouer("vide"); _message(_t("hud.fumigeneVide")); return; }
+    p.fumigenes--;
+    const ctx = p.ctx, n = _monde().lancerFumigene(p, ctx);
+    _jouer("lance");
+    // Sifflement situé là où il tombe ; à ses pieds, au centre.
+    const loin = Math.hypot(n.x - ctx.pos.x, n.y - ctx.pos.y) > 0.5 * ctx.sc;
+    _jouer("siffle", 1, loin ? _monde().angle(ctx, n) : undefined);
+    _majHud();
+    ctx.sale();
+  }
+
   function _finRage(p) {
     p.rageFin = 0;
     if (p.rechargeRage) { p.rechargeFin = 0; p.rechargeRage = false; }
@@ -713,33 +760,52 @@
       }).filter(function (c) { return c.d >= REGLES.minM || autre; })
         .sort(function (a, b) { return Math.abs(a.d - voulu) - Math.abs(b.d - voulu); }).slice(0, REGLES.candidats);
     };
-    const cands = candidats(_pois(niv), false);
+    const ici = candidats(_pois(niv), false);
     const repli = _pointDesTraces(niv, pos, sc, voulu);
-    if (repli) cands.push(repli);
-    // Vague boss : B sur ce niveau (le gardien y est posé) ; sinon, parfois, à un autre niveau du plan.
+    // Vague boss : B sur ce niveau (le gardien y est posé). Sinon, sur un plan multi-niveau, B est à un autre niveau
+    // une fois sur `1 / chance`, et toujours quand ce niveau a moins de `minPoi` POI joignables.
     const boss = p.vague % REGLES.gardienTous === 0, AN = REGLES.autreNiveau;
-    const autre = !boss && niv !== null && niv !== undefined && p.vague >= AN.des && window.APP_CONFIG &&
-      window.APP_CONFIG.multiLevel === true && Math.random() < AN.chance;
-    const listes = [cands];
-    if (autre) {
-      listes.unshift(candidats(_pois(null).filter(function (q) { return _niveauDe(q) !== niv; }), true));
+    const multi = !boss && niv !== null && niv !== undefined && window.APP_CONFIG &&
+      window.APP_CONFIG.multiLevel === true;
+    const ailleurs = multi ? candidats(_pois(null).filter(function (q) { return _niveauDe(q) !== niv; }), true) : [];
+    const routes = new Map();
+    // Trajet vers c, gardé (un POI compté n'est pas routé une 2e fois) ; undefined = partie ou vague périmée.
+    const essayer = async function (c) {
+      if (routes.has(c)) return routes.get(c);
+      let r = await _route(pos, c, niv, c.niveau);
+      if (_p !== p || jeton !== p.calcul) return undefined;
+      // 🩸 Le trajet s'accroche au tracé le plus proche, même loin : un POI à plus de horsTraceM m de tout tracé
+      // (relevé dans la roche, salle isolée) donnait un B qu'on ne rejoint pas. Écarté, au suivant.
+      if (r) {
+        const b = r[r.length - 1];
+        if (Math.hypot(b.x - c.x, b.y - c.y) / sc > REGLES.horsTraceM) r = null;
+      }
+      routes.set(c, r);
+      return r;
+    };
+    let autre = false;
+    // Niveau pauvre : compté sur les candidats triés, arrêté à `minPoi` (jamais tout le niveau routé).
+    if (ailleurs.length && !(autre = Math.random() < AN.chance)) {
+      let n = 0;
+      for (let i = 0; i < ici.length && n < AN.minPoi; i++) {
+        const r = await essayer(ici[i]);
+        if (r === undefined) return;
+        if (r) n++;
+      }
+      autre = n < AN.minPoi;
     }
+    // ⚠️ contrat (décision produit) : le sommet des tracés d'ici vient en dernier, après les POI de tous les niveaux.
+    const listes = (autre ? [ailleurs, ici] : [ici, ailleurs]).concat(repli ? [[repli]] : []);
     let cible = null, route = null;
     for (let l = 0; l < listes.length && !route; l++) {
       for (let i = 0; i < listes[l].length && !route; i++) {
-        route = await _route(pos, listes[l][i], niv, listes[l][i].niveau);
-        if (_p !== p || jeton !== p.calcul) return;
-        // 🩸 Le trajet s'accroche au tracé le plus proche, même loin : un POI à plus de horsTraceM m de tout tracé
-        // (relevé dans la roche, salle isolée) donnait un B qu'on ne rejoint pas. Écarté, au suivant.
-        if (route) {
-          const b = route[route.length - 1];
-          if (Math.hypot(b.x - listes[l][i].x, b.y - listes[l][i].y) / sc > REGLES.horsTraceM) route = null;
-        }
+        route = await essayer(listes[l][i]);
+        if (route === undefined) return;
         if (route) cible = listes[l][i];
       }
     }
     // Aucun trajet (plan sans tracés, réseau coupé) : un point des tracés plutôt qu'un POI, sans itinéraire.
-    if (!cible) cible = repli || cands[0] || null;
+    if (!cible) cible = repli || ici[0] || null;
     // ⚠️ contrat (décision produit) : un POI relevé hors de la galerie (à horsTraceM m au plus d'un tracé) est
     // validé DANS la galerie, au bout du trajet sur les tracés ; et jamais dans une structure (pilier, mur, front) :
     // la place libre la plus proche de ce point (règle du pas de la vue, hors remblais, effondrement, inaccessible).
@@ -875,15 +941,24 @@
     try { return JSON.parse(localStorage.getItem(CLE_SCORES) || "{}") || {}; } catch (e) { return {}; }
   }
 
+  // Bilan de la partie pour l'écran de fin : précision (balles au but / tirées, null sans tir), égarés tués, durée (s).
+  function _bilan(p) {
+    return { tirs: p.tirs, touches: p.touches, precision: p.tirs ? Math.round(p.touches / p.tirs * 100) : null,
+      tues: p.tues, dureeS: Math.max(0, Math.round(((p.finT || performance.now()) - p.debutT) / 1000)) };
+  }
+
   function _finPartie() {
     const p = _p;
     p.fin = true;
+    p.finT = performance.now();
     if (p.viseur) p.viseur.liberer();   // la souris rendue pour toucher la carte de fin
     // La carte de fin est sous les commandes (calque de la greffe) : joystick et pavé retirés le temps de toucher.
     p.ctx.regler({ course: false, commandes: false });
     _son().proximite(0);
     _son().ambiance(false);
     _jouer("fin");
+    // ⚠️ contrat : la clé des scores garde sa forme { <difficulté>: meilleure vague }, lue telle quelle par toute
+    // version du jeu ; le bilan de la partie (précision, égarés, durée) est affiché, pas retenu.
     const scores = _lireScores(), avant = Number(scores[p.diff]) || 0;
     scores[p.diff] = Math.max(avant, p.reussies);
     try { localStorage.setItem(CLE_SCORES, JSON.stringify(scores)); } catch (e) { /* stockage refusé : sans score */ }
@@ -892,6 +967,12 @@
     _el(f, "div", "mkmg-fin-titre", _t("fin.titre"));
     _el(f, "div", "mkmg-fin-texte", _t("fin.texte", { n: p.vague, r: p.reussies }));
     _el(f, "div", "mkmg-fin-texte", _t("fin.meilleure", { diff: _t("diff." + p.diff), m: scores[p.diff] }));
+    const b = _bilan(p), stats = _el(f, "div", "mkmg-fin-stats");
+    _el(stats, "div", "", b.precision === null ? _t("fin.precisionSans")
+      : _t("fin.precision", { p: b.precision, t: b.touches, n: b.tirs }));
+    _el(stats, "div", "", _t("fin.tues", { n: b.tues }));
+    const duree = Math.floor(b.dureeS / 60) + ":" + String(b.dureeS % 60).padStart(2, "0");
+    _el(stats, "div", "", _t("fin.duree", { d: duree }));
     const bts = _el(f, "div", "mkmg-fin-boutons");
     const rejouer = _el(bts, "button", "mkmg-bouton mkmg-bouton-primaire", _t("fin.rejouer"));
     rejouer.type = "button";
@@ -1110,6 +1191,15 @@
     h.rage.type = "button";
     h.rage.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _rage(); });
     h.rage.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+    h.fumigene = _el(ctx.hud, "button", "mkmg-fumigene");
+    h.fumigene.type = "button";
+    const ico = _el(h.fumigene, "span", "mkmg-fumigene-ico");
+    ico.setAttribute("data-kta-ico", "cloud-fog");
+    ico.setAttribute("aria-hidden", "true");
+    if (window.KtaIcones && typeof window.KtaIcones.poser === "function") window.KtaIcones.poser(h.fumigene);
+    h.fumigeneN = _el(h.fumigene, "span", "mkmg-fumigene-n");
+    h.fumigene.addEventListener("pointerdown", function (ev) { ev.preventDefault(); _fumigene(); });
+    h.fumigene.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
     h.message = _el(ctx.hud, "div", "mkmg-message");
     h.message.hidden = true;
     h.message.setAttribute("aria-live", "polite");
@@ -1199,6 +1289,10 @@
       _t("hud.rageCharge", { n: Math.min(p.rageTues, R.tues), m: R.tues });
     h.rage.setAttribute("aria-label", h.rage.title);
     h.tirer.classList.toggle("mkmg-tirer-rage", rage);
+    h.fumigeneN.textContent = String(p.fumigenes);
+    h.fumigene.disabled = p.fin || p.fumigenes <= 0;
+    h.fumigene.title = _t("hud.fumigene", { n: p.fumigenes, m: _monde().REGLES.fumigene.max });
+    h.fumigene.setAttribute("aria-label", h.fumigene.title);
     h.halo.classList.toggle("mkmg-halo-actif", rage);
     h.tirer.title = _t("hud.tirer") + " — " + _t("hud.cartouches") + " : " + p.canon + " + " + p.reserve +
       (p.rechargeFin ? " (" + _t("hud.recharge") + ")" : "");
@@ -1249,7 +1343,18 @@
       tenailleMi: p.tenailleMi,
       chronoDepasse: p.chronoDepasse,
       chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
-      ennemis: p.ennemis.map(function (o) { return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu }; }),
+      ennemis: p.ennemis.map(function (o) {
+        return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu, sonnee: performance.now() < (o.sonneeFin || 0),
+          elan: !!o.elanFin };
+      }),
+      coups: { portes: p.coups, rates: p.rates }, bilan: _bilan(p),
+      usure: +p.usure.toFixed(4), vacille: performance.now() < (p.vacilleFin || 0),
+      fumigene: { stock: p.fumigenes, bouton: !!p.hud && !p.hud.fumigene.disabled,
+        nuages: (p.nuages || []).map(function (n) {
+          return { x: n.x, y: n.y, maillage: !!n.mesh && n.mesh.parent === p.ctx.groupe,
+            opacite: n.mat ? +n.mat.opacity.toFixed(3) : 0,
+            plein: performance.now() - n.t0 < _monde().REGLES.fumigene.pleinS * 1000 };
+        }) },
       objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }),
       cadavres: (p.cadavres || []).length, butin: p.regle.butin, pile: Math.round(p.pile), lampe: +p.lampeK.toFixed(2), eau: p.eau,
       cibleNiveau: p.cible && p.cible.niveau !== undefined ? p.cible.niveau : null,
@@ -1268,11 +1373,15 @@
       _monde().dessiner(_p, _p.ctx, false);
     },
     pile: function (v) { if (_p) _p.pile = v; },
+    fumigenes: function (n) { if (_p) { _p.fumigenes = n; _majHud(); } },
+    nuage: function (x, y) { if (_p && _p.ctx) _monde().poserNuage(_p, _p.ctx, x, y); },
     rage: function (n) { if (_p) { _p.rageTues = n; _majHud(); } },
     rageFin: function () { if (_p && _p.rageFin) _p.rageFin = performance.now(); },
     sante: function (v) { if (_p) _p.sante = v; },
     chrono: function (ms) { if (_p) { _p.chronoFin = performance.now() + ms; _p.chronoDepasse = false; } },
     tenaille: function () { if (_p && _p.ctx) _tenaille(_p, _p.ctx); },
+    // Vague n tout de suite (cible cherchée à nouveau, depuis la position de la vue).
+    vague: function (n) { if (_p && _p.ctx) { _p.vague = n - 1; _nouvelleVague(); } },
     // Regard rejoué comme la souris capturée (dx, dy en px), glisser clos aussitôt.
     viser: function (dx, dy) { if (_p && _p.viseur) { _p.viseur.tourner(dx, dy); _p.viseur.lever(); } }
   };

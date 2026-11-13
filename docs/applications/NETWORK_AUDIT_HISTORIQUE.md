@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.26.0 (vue 3D texturée, niveaux en transparence)
+
+**Aucune requête nouvelle, aucun domaine nouveau, aucun fichier nouveau.** Les textures de la vue 3D (sol, plafond, pierre de taille, tôle de la voiture), y compris en Textures HD, sont dessinées sur l'appareil par le code déjà gardé hors ligne. Rien n'est envoyé.
+
 ### v2.25.0 (arc de soutènement, Vérifier le plan, image de collision retirée)
 
 **Aucune requête nouvelle, aucun domaine nouveau, et un fichier de moins.** L'image de collision d'un plan n'est plus téléchargée à son ouverture ni ajoutée aux fichiers qu'un plan garde hors ligne. Les trois nouvelles icônes de points (ossuaire, outil de carrier, fontis) et le module « Vérifier le plan » sont des fichiers du site, gardés hors ligne comme les autres. Tout le reste se calcule sur l'appareil.

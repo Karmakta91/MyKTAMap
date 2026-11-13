@@ -1,0 +1,14 @@
+# Dérogations `data/` pour des commits DÉJÀ POUSSÉS — lu par scripts/check-data-hors-git.js en CI
+# (scripts/ci-commits.sh pose KTA_COMMIT_CI). Format gardé par scripts/check-derogations-data.js.
+#
+# 🔒 Écrit par KARMA seul, comme une ligne `Data-deroge:`. Seulement pour un commit qu'on ne peut plus
+# réécrire (poussé par l'éditeur web de GitHub sans sa ligne) et dont le contenu de `data/` est voulu
+# (relevé fictif). Un relevé réel poussé par erreur ne se déroge pas : il se retire et l'incident se traite.
+#
+# Une ligne par commit : <SHA complet, 40 caractères> <motif, 5 caractères minimum>
+# Exemple (commenté) :
+# 0123456789abcdef0123456789abcdef01234567 relevé fictif mis à jour par l'éditeur web
+#
+# La dérogation ne couvre que `data/` : l'anti-fuite pro et les noms réels restent rejoués sur ce commit.
+a1340f7473de52ca1be72122d760e70309ae8f25 nouveau_plan_test
+f85e7d1642901beec018423243d49e13eb9e25e7 nouveau_plan_test2

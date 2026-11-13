@@ -151,7 +151,6 @@ const SORTIES = [
 ];
 const PLAFOND_HTML = {
   "index.html": { "🔎": 2, "⏳": 1, "⚠": 1, "📋": 1, "🗺": 1 },
-  "js/ajusterSommets.js": { "🗑": 1 },
   "js/confadmin.js": { "📦": 1, "📂": 1 },
   "js/createConf.js": { "📄": 1, "⬜": 3, "▫": 3, "⬛": 3, "📜": 3, "🫥": 1, "⚠": 5, "✅": 1, "⭐": 1 },
   "js/homeLoader.js": { "💾": 1 },
