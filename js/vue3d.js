@@ -183,13 +183,15 @@
   const COULEUR_CALCAIRE = "#c9b48c";
   const HACHURE_PAS = 0.6;   // m : période des hachures d'une zone inaccessible (sol et rideau)
   // Sol de carrière (carré qui suit et pièces des galeries, 🧱 activé ; _solDame) : calcaire damé, plages de terre
-  // (`terrePart` de la surface, plus sombres et plus lisses), cailloutis (`cailloux` éclats de `caillou` m de rayon
-  // par motif, serrés par plages), couleur et normal map dessinées dans un canvas, aucune image téléchargée. Motif
-  // de `m` m : plus grand que celui d'une paroi, un sol se voit sur des dizaines de mètres et rien n'y cache la
-  // répétition. ⚠️ contrat (décision produit) : peu contrasté et jamais plus clair que COULEUR_CALCAIRE — rubans,
+  // (`terrePart` de la surface, plus lisses ; teinte tirée vers `terre` d'au plus `terreForce` au cœur d'une plage),
+  // cailloutis (`cailloux` éclats de `caillou` m de rayon par motif, serrés par plages), couleur et normal map
+  // dessinées dans un canvas, aucune image téléchargée. Motif de `m` m : plus grand que celui d'une paroi, un sol se
+  // voit sur des dizaines de mètres et rien n'y cache la répétition. 🩸 `terreForce` et `nuance` (écart de teinte
+  // des taches larges) restent faibles : vues d'en haut (vue d'édition), des plages marquées dessinent la grille
+  // du motif. ⚠️ contrat (décision produit) : peu contrasté et jamais plus clair que COULEUR_CALCAIRE — rubans,
   // liserés, zones et plan au sol se lisent dessus.
   const SOL = { m: 4, px: 256, couleur: COULEUR_CALCAIRE, terre: "#bda881", eclat: "#d3c6a8", terrePart: 0.35,
-    cailloux: 1300, caillou: [0.008, 0.035], grain: 0.1, relief: 1.7, graine: 83 };
+    terreForce: 0.35, nuance: 0.07, cailloux: 1300, caillou: [0.008, 0.035], grain: 0.1, relief: 1.7, graine: 83 };
   // Ciel de carrière (plafond, 🧱 activé ; _cielCarriere) : le banc laissé au toit, taillé au pic. `fissures`
   // fissures longues en tous sens, `grappes` grappes de traces de pic, bosses de la taille, taches larges. Plus gris
   // et plus sombre que le sol : le regard reste en bas. ⚠️ contrat (décision produit) : que des traits OUVERTS
@@ -2527,7 +2529,7 @@
   }
 
   // Sol de carrière (SOL) : calcaire damé en bosses douces à quatre échelles, plages de terre (masque à deux
-  // échelles, bord irrégulier : plus sombres, plus lisses, un peu en creux), cailloutis (éclats de calcaire ovales en
+  // échelles, bord irrégulier : à peine plus sombres, plus lisses, un peu en creux), cailloutis (éclats de calcaire ovales en
   // relief, gardés selon un semis à grande échelle : serrés par plages, absents ailleurs), grain fin.
   // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _solDame(alea) {
@@ -2563,10 +2565,10 @@
     for (let y = 0; y < n; y++) {
       for (let x = 0; x < n; x++) {
         const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
-        const e = (masque[p] - seuil) / 0.16 + 0.5, mt = e <= 0 ? 0 : e >= 1 ? 0.7 : 0.7 * e * e * (3 - 2 * e);
-        const masse = 0.5 * large[p] + 0.3 * moyen[p] + 0.2 * fin[p];
-        haut[p] = (0.34 * moyen[p] + 0.2 * fin[p] + 0.1 * tres[p]) * (1 - 0.6 * mt) - 0.05 * mt + eclat[p];
-        const f = (0.9 + 0.1 * masse) * (1 + (grain() - 0.5) * S.grain);
+        const e = (masque[p] - seuil) / 0.16 + 0.5, pl = e <= 0 ? 0 : e >= 1 ? 1 : e * e * (3 - 2 * e);
+        const mt = S.terreForce * pl, masse = 0.5 * large[p] + 0.3 * moyen[p] + 0.2 * fin[p];
+        haut[p] = (0.34 * moyen[p] + 0.2 * fin[p] + 0.1 * tres[p]) * (1 - 0.42 * pl) - 0.035 * pl + eclat[p];
+        const f = (1 - S.nuance + S.nuance * masse) * (1 + (grain() - 0.5) * S.grain);
         const ke = Math.min(1, eclat[p] * 9), fe = ke * ton[p];
         let r0 = base.r + (terre.r - base.r) * mt, g0 = base.g + (terre.g - base.g) * mt;
         let b0 = base.b + (terre.b - base.b) * mt;

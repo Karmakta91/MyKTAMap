@@ -2088,8 +2088,11 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   d'origine.
 - **Sol et ciel de carrière** (même interrupteur 🧱 ; coupé : noirs, ci-dessous) : deux textures distinctes, couleur
   et normal map, dessinées dans un canvas comme les autres (`_texturesPeintes`, aucune image). **Sol** (`SOL`,
-  `_solDame`) : calcaire damé en bosses douces, plages de terre plus sombres et plus lisses (35 % de la surface, bord
-  fondu), cailloutis d'éclats de 1 à 3,5 cm serrés par plages. **Plafond** (`CIEL`, `_cielCarriere`) : le banc laissé
+  `_solDame`) : calcaire damé en bosses douces, plages de terre plus lisses et à peine plus sombres (35 % de la
+  surface, bord fondu, teinte tirée d'au plus `terreForce` vers la terre), cailloutis d'éclats de 1 à 3,5 cm serrés
+  par plages. 🩸 Plages et taches larges (`nuance`) restent faibles : vues d'en haut, en vue d'édition, des plages
+  marquées dessinent la grille du motif de 4 m ; le relief et le cailloutis, eux, ne se lisent qu'à hauteur d'yeux
+  et portent le caractère du sol. **Plafond** (`CIEL`, `_cielCarriere`) : le banc laissé
   au toit, bosses de la taille, fissures longues en tous sens, traces de pic en grappes, un peu plus gris et plus
   sombre que le sol (pas davantage : trop sombre, un niveau du dessus montré en transparence ne s'y lisait plus,
   checkup § 46 bis). ⚠️ contrat (décision produit) : que des traits ouverts, dans la couleur comme dans le relief —
