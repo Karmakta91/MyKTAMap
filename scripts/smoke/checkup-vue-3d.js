@@ -9272,8 +9272,8 @@ async function sectionFichesReglage(nav) {
 // calcaire, liseré de l'itinéraire à plus de 3:1 du sol le plus sombre ; carré qui suit calé sur le monde (après un
 // déplacement, après un changement de portée), pièces des galeries à la même projection ; 🧱 coupé : noirs, sans
 // carte ni relief, aucun dessin ; reprise du contexte WebGL ; temps du premier dessin (téléphone ralenti × 4 sous
-// Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied et en tête des piliers, du mur et des
-// parois, pleine à 0,28 m, trois bandes par face, texture inchangée, rien 🧱 coupé. Nuance de roche par structure
+// Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied des piliers, du mur et des parois,
+// pleine à 0,28 m et jusqu'en tête, deux bandes par face, texture inchangée, rien 🧱 coupé. Nuance de roche par structure
 // (NUANCE_ROCHE) : deux piliers voisins différents, discrète, 2e masse reconnaissable, stable (tuiles refaites, vue
 // rouverte). Textures HD (HD, config.js > getVue3DTexturesHD) : défaut selon l'appareil, bouton de la tuile, 512 px
 // et grain de détail, bascule sans géométrie refaite, sans effet 🧱 coupé, retour à 256 px sans redessin, reprise du
@@ -9375,12 +9375,13 @@ async function sectionTexturesSol(nav) {
         return { sommets: n, ecart: pire };
       };
       // Ombre de contact : sommets des maillages texturés d'une famille → teinte (rouge / 255) la plus sombre et la
-      // plus claire au contact (y = 0 ou y = h à 1 mm), à la fin du dégradé et au-delà, hauteur de fin, v = y / m.
+      // plus claire au contact du sol (y = 0 à 1 mm), dans le dégradé, au-delà, et en tête (y = h à 1 mm, comptée
+      // aussi au-delà), hauteurs des sommets, v = y / m.
       const ombres = function (famille, m) {
         let ctx = null;
         const deg = K.greffer({ nom: "v3d-textures-ombre", scene: function (c) { ctx = c; } });
-        const h = K.etat().hauteur, o = { sommets: 0, contact: [1, 0], plein: [1, 0], entre: [1, 0], ys: {}, v: 0,
-          haut: h, pleins: [] };
+        const h = K.etat().hauteur, o = { sommets: 0, contact: [1, 0], plein: [1, 0], entre: [1, 0], tete: [1, 0],
+          ys: {}, v: 0, haut: h, pleins: [] };
         let racine = ctx.groupe;
         while (racine.parent) racine = racine.parent;
         racine.traverse(function (me) {
@@ -9390,9 +9391,10 @@ async function sectionTexturesSol(nav) {
           const uv = me.geometry.attributes.uv.array, nn = me.geometry.attributes.normal.array;
           for (let i = 0; i < p.length / 3; i++) {
             if (Math.abs(nn[i * 3 + 1]) > 60) continue;   // dessus : pas une face verticale
-            const y = p[i * 3 + 1], k = c[i * 3] / 255, d = Math.min(y, h - y);
-            const q = d < 0.001 ? o.contact : d > 0.2799 ? o.plein : o.entre;
+            const y = p[i * 3 + 1], k = c[i * 3] / 255;
+            const q = y < 0.001 ? o.contact : y > 0.2799 ? o.plein : o.entre;
             q[0] = Math.min(q[0], k); q[1] = Math.max(q[1], k);
+            if (h - y < 0.001) { o.tete[0] = Math.min(o.tete[0], k); o.tete[1] = Math.max(o.tete[1], k); }
             // Teintes pleines (hors ombre) : une par structure nuancée, [r, v, b] sur 255.
             const cle = c[i * 3] + "," + c[i * 3 + 1] + "," + c[i * 3 + 2];
             if (q === o.plein && o.pleins.indexOf(cle) < 0) o.pleins.push(cle);
@@ -9587,20 +9589,22 @@ async function sectionTexturesSol(nav) {
     // la même proportion.
     verifier(O.sommets && pres(O.roche.contact[1], 0.5 * O.roche.plein[1]) &&
       pres(O.roche.contact[0], 0.5 * O.roche.plein[0]) && O.roche.plein[1] <= 1 && O.roche.plein[1] > 0.8 &&
-      O.roche.entre[1] === 0 && O.roche.v < 1e-4,
-    nom + "ombre de contact des piliers : teinte × 0,5 au sol et au plafond (" + O.roche.contact[1].toFixed(2) +
+      O.roche.entre[1] === 0 && O.roche.v < 1e-4 && O.roche.tete[0] === O.roche.plein[0] &&
+      O.roche.tete[1] === O.roche.plein[1],
+    nom + "ombre de contact des piliers : teinte × 0,5 au sol (" + O.roche.contact[1].toFixed(2) +
       " pour " + O.roche.plein[1].toFixed(2) + ", " + O.roche.contact[0].toFixed(2) + " pour " +
-      O.roche.plein[0].toFixed(2) + "), pleine à 0,28 m, texture inchangée (v = y / 3 m ; " + O.roche.sommets +
-      " sommets de faces)", O.roche);
-    verifier(Object.keys(O.roche.ys).sort().join() === "0.00,0.28," + (O.roche.haut - 0.28).toFixed(2) + "," +
-      O.roche.haut.toFixed(2), nom + "faces des piliers en trois bandes (sol, 0,28 m, plafond − 0,28 m, plafond)",
-    O.roche.ys);
-    verifier(pres(O.mur.contact[0], 0.5) && O.mur.entre[0] > 0.5 && O.mur.entre[1] < 1 && O.mur.plein[1] === 1,
-      nom + "mur (98 % de la hauteur) : sombre au pied, tête prise dans le dégradé du plafond", O.mur);
+      O.roche.plein[0].toFixed(2) + "), pleine à 0,28 m et jusqu'en tête (aucune ombre sous le plafond), texture " +
+      "inchangée (v = y / 3 m ; " + O.roche.sommets + " sommets de faces)", O.roche);
+    verifier(Object.keys(O.roche.ys).sort().join() === "0.00,0.28," + O.roche.haut.toFixed(2),
+      nom + "faces des piliers en deux bandes (sol, 0,28 m, plafond)", O.roche.ys);
+    verifier(pres(O.mur.contact[0], 0.5) && pres(O.mur.contact[1], 0.5) && O.mur.entre[1] === 0 &&
+      O.mur.plein[0] === 1 && O.mur.plein[1] === 1 && Object.keys(O.mur.ys).length === 3,
+    nom + "mur (98 % de la hauteur) : sombre au pied, pleine teinte de 0,28 m à sa tête", O.mur);
     verifier(O.paroiSommets && pres(O.paroi.contact[0], 0.5) && pres(O.paroi.contact[1], 0.5) &&
-      O.paroi.plein[0] === 1 && O.paroi.v < 1e-4 && O.paroi.sommets > 0,
-    nom + "parois de galerie : même ombre au pied et en tête, texture en mètres inchangée (" + O.paroi.sommets +
-      " sommets)", O.paroi);
+      O.paroi.plein[0] === 1 && O.paroi.tete[0] === 1 && O.paroi.tete[1] === 1 && O.paroi.v < 1e-4 &&
+      O.paroi.sommets > 0,
+    nom + "parois de galerie : même ombre au pied, pleine teinte en tête, texture en mètres inchangée (" +
+      O.paroi.sommets + " sommets)", O.paroi);
     verifier(O.coupe.roche.sommets === 0 && (O.coupe.couleurs.opaque || []).length >= 1 &&
       (O.coupe.couleurs.opaque || []).every(function (c) { return /^#[0-9a-f]{6}$/.test(c); }) &&
       (O.coupe.couleurs.opaque || []).length <= 3,

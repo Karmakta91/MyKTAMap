@@ -244,12 +244,13 @@
   // de force `force` (± la moitié), pleine jusqu'à `pres` m de l'œil, éteinte à `loin` m. ⚠️ contrat : HD coupé, les
   // shaders sont ceux de three.js, sans une ligne de plus.
   const HD = { px: 2, grainPx: 64, grainM: 0.25, force: 0.36, pres: 1.2, loin: 4, graine: 97 };
-  // Ombre de contact (🧱 activé) : au pied et en tête des piliers, des fronts, des murs et des parois des galeries
-  // et des tubes, la teinte descend à `force` au contact du sol et du plafond et revient à 1 en `haut` m — les
-  // volumes tiennent au sol au lieu d'y flotter. ⚠️ contrat (décision batterie) : posée PAR SOMMET, dans la couleur
-  // du maillage (_faceOmbree) ; ni ombre calculée, ni passe de rendu, ni lumière en plus, aucun coût par image hors
-  // des sommets des bandes (deux bandes de plus par face verticale). Multipliée par la texture et par la teinte de
-  // la 2e masse ; les coordonnées de texture restent en mètres.
+  // Ombre de contact (🧱 activé) : au pied des piliers, des fronts, des murs et des parois des galeries et des tubes,
+  // la teinte descend à `force` au contact du sol et revient à 1 en `haut` m — les volumes tiennent au sol au lieu d'y
+  // flotter. Au pied seul (décision produit) : une ombre en tête dessinait un collier sombre sous le dessus des
+  // piliers en vue d'édition, où le plafond est caché. ⚠️ contrat (décision batterie) : posée PAR SOMMET, dans la
+  // couleur du maillage (_faceOmbree) ; ni ombre calculée, ni passe de rendu, ni lumière en plus, aucun coût par
+  // image hors des sommets de la bande (une bande de plus par face verticale). Multipliée par la texture et par la
+  // teinte de la 2e masse ; les coordonnées de texture restent en mètres.
   const OMBRE_CONTACT = { haut: 0.28, force: 0.5 };
   // Pierre de taille de carrière (parois des galeries et des tubes, 🧱 activé ; jamais les piliers ni les fronts) :
   // motif de 2 m (128 px/m), assises de hauteur tirée, blocs de longueur tirée, joints irréguliers (largeur, pente,
@@ -1093,18 +1094,17 @@
   }
 
   // Face verticale texturée de p à q (m), de y0 à y1, avec l'ombre de contact du lot (OMBRE_CONTACT ; lot.ombre =
-  // { sol, plafond } : hauteurs en m des surfaces qu'elle touche) : découpée en bandes aux hauteurs où la teinte
-  // change de pente, teinte par sommet, coordonnées de texture u0..u1 et v = y / mv (inchangées : la texture ne voit
-  // pas le découpage). Une face qui ne touche ni le sol ni le plafond reste un quadrilatère à pleine teinte.
+  // { sol, plafond } : hauteurs en m du sol qu'elle touche et du plafond, qui borne la bande au tiers de la hauteur) :
+  // découpée à la hauteur où le dégradé du pied s'arrête, teinte par sommet, coordonnées de texture u0..u1 et
+  // v = y / mv (inchangées : la texture ne voit pas le découpage). Une face qui ne descend pas dans la bande du pied
+  // reste un quadrilatère à pleine teinte.
   function _faceOmbree(lot, p, q, y0, y1, n, col, u0, u1, mv) {
     const O = lot.ombre, a = Math.min(OMBRE_CONTACT.haut, (O.plafond - O.sol) / 3), f = OMBRE_CONTACT.force;
     const k = function (y) {
-      const d = Math.min(y - O.sol, O.plafond - y);
+      const d = y - O.sol;
       return d >= a ? 1 : d <= 0 ? f : f + (1 - f) * d / a;
     };
-    const ys = [y0];
-    [O.sol + a, O.plafond - a].forEach(function (y) { if (y > y0 + 1e-4 && y < y1 - 1e-4) ys.push(y); });
-    ys.push(y1);
+    const ya = O.sol + a, ys = ya > y0 + 1e-4 && ya < y1 - 1e-4 ? [y0, ya, y1] : [y0, y1];
     for (let i = 0; i + 1 < ys.length; i++) {
       const b = ys[i], h = ys[i + 1];
       lot.quadDegrade([p[0], b, p[1]], [q[0], b, q[1]], [q[0], h, q[1]], [p[0], h, p[1]], n, col, k(b), k(h),

@@ -2072,19 +2072,20 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   tirée de la position du premier sommet de la structure (px du plan, comme l'origine du motif), jamais de
   `Math.random` : la même à chaque reconstruction de tuile, à chaque ouverture, sur chaque appareil. Murs en
   parpaing sans nuance (un appareil régulier). Aucun coût : une couleur de sommet déjà écrite.
-- **Ombre de contact** (même interrupteur 🧱, `OMBRE_CONTACT`) : au pied et en tête des piliers, des fronts, des murs
-  et des parois des galeries et des tubes, la teinte descend à 50 % au contact du sol et du plafond et revient à
-  100 % en 28 cm (au plus le tiers de la hauteur) : les volumes tiennent au sol. ⚠️ contrat (décision batterie) :
-  posée **par sommet** dans la couleur du maillage (`_faceOmbree`, `Lot.quadDegrade`), multipliée par la texture et
-  par la teinte de la 2e masse ; ni ombre calculée, ni passe de rendu, ni lumière en plus. Le lot texturé la porte
-  (`lot.ombre = { sol, plafond }` sur la roche, le parpaing et la pierre des parois d'une tuile) : `_prisme` et
-  `_paroiY` découpent alors chaque face verticale en trois bandes (sol, +28 cm, plafond −28 cm, plafond) sans toucher
-  aux coordonnées de texture (v = hauteur en mètres) ; une paroi coupée par un niveau entremêlé ne s'assombrit qu'aux
-  bouts qui touchent le sol ou le plafond ; un mur (98 % de la hauteur) garde sa tête dans le dégradé. Matériaux
-  `roche`, `parpaing` et `paroi` en couleurs de sommets (blanc hors des bandes). Volumes des passages, remblais,
-  dessus des structures : sans ombre. Coût mesuré (salle fictive de 2 025 piliers de 6 à 12 pans, PC) : sommets de
-  la scène × 2,4 (79 300 → 192 900 à 100 m de portée, 11 600 → 27 800 à 30 m), triangles dessinés au plus 10 000 →
-  23 700, temps par image 0,8 → 0,95 ms ; aucun appel de dessin ni matériau de plus. Coupé : géométrie d'origine.
+- **Ombre de contact** (même interrupteur 🧱, `OMBRE_CONTACT`) : au pied des piliers, des fronts, des murs et des
+  parois des galeries et des tubes, la teinte descend à 50 % au contact du sol et revient à 100 % en 28 cm (au plus
+  le tiers de la hauteur) : les volumes tiennent au sol. Au pied seul (décision produit) : en tête, l'ombre dessinait
+  un collier sombre sous le dessus des piliers en vue d'édition, où le plafond est caché. ⚠️ contrat (décision
+  batterie) : posée **par sommet** dans la couleur du maillage (`_faceOmbree`, `Lot.quadDegrade`), multipliée par la
+  texture et par la teinte de la 2e masse ; ni ombre calculée, ni passe de rendu, ni lumière en plus. Le lot texturé
+  la porte (`lot.ombre = { sol, plafond }` sur la roche, le parpaing et la pierre des parois d'une tuile) : `_prisme`
+  et `_paroiY` découpent alors chaque face verticale en deux bandes (sol, +28 cm, tête) sans toucher aux coordonnées
+  de texture (v = hauteur en mètres) ; une paroi coupée par un niveau entremêlé ne s'assombrit qu'au bout qui touche
+  le sol. Matériaux `roche`, `parpaing` et `paroi` en couleurs de sommets (blanc hors de la bande). Volumes des
+  passages, remblais, dessus des structures : sans ombre. Coût mesuré (salle fictive de 2 025 piliers de 6 à 12 pans,
+  PC) : sommets de la scène × 1,7 (79 300 → 136 100 à 100 m de portée, 8 800 → 14 900 à 30 m), triangles dessinés au
+  plus 9 500 → 16 100, temps par image 0,6 → 0,7 ms ; aucun appel de dessin ni matériau de plus. Coupé : géométrie
+  d'origine.
 - **Sol et ciel de carrière** (même interrupteur 🧱 ; coupé : noirs, ci-dessous) : deux textures distinctes, couleur
   et normal map, dessinées dans un canvas comme les autres (`_texturesPeintes`, aucune image). **Sol** (`SOL`,
   `_solDame`) : calcaire damé en bosses douces, plages de terre plus sombres et plus lisses (35 % de la surface, bord
@@ -2771,9 +2772,9 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   ciel de carrière (§ 24 quater, `KTA_V3D_SEUL=textures`) : deux motifs distincts avec relief, sans couture, sol peu
   contrasté et jamais plus clair que le sable calcaire, liseré de l'itinéraire à plus de 3:1, carré calé sur le monde
   (déplacement, portée), pièces des galeries à la même projection, noirs et jamais dessinés 🧱 coupé, reprise du
-  contexte, temps du premier dessin (téléphone ralenti × 4) ; ombre de contact : teinte × 0,5 au pied et en tête des
-  piliers (1re et 2e masse), du mur et des parois, pleine à 28 cm, trois bandes par face, texture inchangée, rien 🧱
-  coupé ; nuance de roche : deux piliers de 1re masse différents, discrète, 2e masse reconnaissable, stable après
+  contexte, temps du premier dessin (téléphone ralenti × 4) ; ombre de contact : teinte × 0,5 au pied des piliers
+  (1re et 2e masse), du mur et des parois, pleine à 28 cm et jusqu'en tête, deux bandes par face, texture inchangée,
+  rien 🧱 coupé ; nuance de roche : deux piliers de 1re masse différents, discrète, 2e masse reconnaissable, stable après
   reconstruction et réouverture ; Textures HD : défaut selon l'appareil, bouton HD sur la ligne de 🧱 (393 px
   compris), 512 px et grain, bascule sans géométrie refaite, grisé et sans effet 🧱 coupé, retour à 256 px sans
   redessin, reprise du contexte, temps et mémoire ; tuile ⚙️
