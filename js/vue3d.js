@@ -198,8 +198,12 @@
   // (fissures, sillons) — un contour fermé (plaque de banc, palier) se répète avec le motif et craquelle le plafond
   // d'une longue galerie. ⚠️ contrat : même `m` que SOL (une seule projection monde pour le sol et le plafond,
   // _dalleTexturee).
+  // `trace` : un sillon de pic, long de `long` m, de rayon `rayon` m, espacé de `pas` m du suivant dans sa grappe,
+  // creusé de `creux` (hauteur dessinée) et assombri de `sombre` au fond. 🩸 Taille voulue : plus fins ou moins
+  // marqués, les sillons se fondent dès 10 m sous un éclairage plat (☀️ Plein jour) et le plafond d'une salle
+  // redevient lisse.
   const CIEL = { m: SOL.m, px: 256, couleur: "#c1b598", fissures: 11, grappes: 70, grain: 0.07, relief: 2.6,
-    graine: 89 };
+    trace: { long: [0.2, 0.5], rayon: 0.028, pas: [0.07, 0.12], creux: 0.17, sombre: 0.14 }, graine: 89 };
   // Ordre de rendu du sol (carré qui suit et sol des galeries) : avant tout le reste, pour que le plan au sol
   // (PLAN_SOL.ordre) se pose dessus sans dépendre de la profondeur.
   const ORDRE_SOL = -0.6;
@@ -2595,12 +2599,19 @@
       _fissurer(C, alea, alea() * n, alea() * n, alea() * 2 * Math.PI, (0.5 + alea() * 1.3) * k,
         (0.3 + alea() * 0.4) * q, 0.5);
     }
+    const R = T.trace;
     for (let g = 0; g < T.grappes; g++) {
       const cx = alea() * n, cy = alea() * n, a0 = alea() * Math.PI, nb = 2 + Math.floor(alea() * 4);
       for (let i = 0; i < nb; i++) {
-        const a = a0 + (alea() - 0.5) * 0.25, l = (0.08 + alea() * 0.16) * k, e = (0.03 + alea() * 0.03) * k * i;
+        const a = a0 + (alea() - 0.5) * 0.25, l = (R.long[0] + alea() * (R.long[1] - R.long[0])) * k;
+        const e = (R.pas[0] + alea() * (R.pas[1] - R.pas[0])) * k * i;
         const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
-        for (let s = 0; s < l; s += 0.5 * q) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9 * q, 0.08, 0.05);
+        // Sillon en fuseau : plein au milieu, effilé aux deux bouts (un coup de pic, pas un trait de règle).
+        for (let s = 0; s < l; s += 0.5 * q) {
+          const t = Math.sin(Math.PI * s / l);
+          _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, R.rayon * k * (0.45 + 0.55 * t), R.creux * t,
+            R.sombre * t);
+        }
       }
     }
     const img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(T.couleur);
@@ -2610,7 +2621,7 @@
       for (let x = 0; x < n; x++) {
         const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
         haut[p] -= creux[p];
-        const f = (0.8 + 0.2 * tache[p]) * (0.94 + 0.12 * tache2[p]) * (1 - sombre[p]) *
+        const f = (0.81 + 0.2 * tache[p]) * (0.94 + 0.12 * tache2[p]) * (1 - sombre[p]) *
           (1 + (grain() - 0.5) * T.grain);
         img[o4] = base.r * 255 * f; img[o4 + 1] = base.g * 255 * f;
         img[o4 + 2] = base.b * 255 * f * (1.02 - 0.04 * tache2[p]);

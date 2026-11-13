@@ -2093,8 +2093,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   par plages. 🩸 Plages et taches larges (`nuance`) restent faibles : vues d'en haut, en vue d'édition, des plages
   marquées dessinent la grille du motif de 4 m ; le relief et le cailloutis, eux, ne se lisent qu'à hauteur d'yeux
   et portent le caractère du sol. **Plafond** (`CIEL`, `_cielCarriere`) : le banc laissé
-  au toit, bosses de la taille, fissures longues en tous sens, traces de pic en grappes, un peu plus gris et plus
-  sombre que le sol (pas davantage : trop sombre, un niveau du dessus montré en transparence ne s'y lisait plus,
+  au toit, bosses de la taille, fissures longues en tous sens, traces de pic en grappes (`CIEL.trace` : sillons en
+  fuseau de 20 à 50 cm, larges de 5 à 6 cm — plus fins, ils se fondent dès 10 m en ☀️ Plein jour et le plafond d'une
+  salle redevient lisse), un peu plus gris et plus sombre que le sol (pas davantage : trop sombre, un niveau du dessus montré en transparence ne s'y lisait plus,
   checkup § 46 bis). ⚠️ contrat (décision produit) : que des traits ouverts, dans la couleur comme dans le relief —
   un contour fermé (plaque de banc, palier) se répète avec le motif et craquelle le plafond d'une longue galerie.
   Motif de **4 m** à 256 px (64 px/m ; 512 px en Textures HD) : plus grand que celui d'une
