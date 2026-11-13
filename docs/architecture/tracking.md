@@ -2081,8 +2081,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   retourné une fois sur deux), tirée de la position de la face, donc stable d'une ouverture à l'autre et d'un
   appareil à l'autre. Même matériau, même texture, aucun appel de dessin de plus ; coût : douze sommets par pan
   (environ + 190 sommets pour une face de 64 m ; rien pour un pilier aux faces de moins de 6 m, donc rien sur la
-  salle de piliers de référence). 🩸 Contrepartie : la jointure de deux pans peut se voir en plein jour (un saut de
-  nuance vertical), comme une reprise de taille. Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
+  salle de piliers de référence). **Jointure sans saut de nuance** : deux origines prises au hasard se raccordent
+  sur des taches larges différentes et la jointure se lit comme une ligne verticale plus claire d'un côté ;
+  l'origine d'un pan est donc choisie parmi 64 tirages (`BRISE.essais`), celle dont la colonne de départ a la
+  teinte la plus proche de la colonne où finit le pan d'avant sur toute la hauteur de la face (`_tonRoche` : teinte
+  du motif par case de 12,5 cm, lue une fois par page sur la carte dessinée), jamais à moins de 0,2 motif de la
+  hauteur du pan d'avant (le même dessin reviendrait à côté). La jointure n'est plus qu'un changement de dessin.
+  Garde-fou : § 12 quater (faces longues brisées, courtes entières, mêmes origines après reconstruction des
+  tuiles). Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
   `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche :
   sans elle un pilier passé de la 1re à la 2e masse ne changeait rien dans la scène), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
   le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,

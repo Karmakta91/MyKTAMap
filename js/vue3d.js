@@ -262,7 +262,9 @@
   // pilier de 2e masse, il retardait d'une image le changement de niveau sous le fondu (WebKit).
   const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f0b98a";
   // Face de roche de plus de `long` motifs (un front, le flanc d'un long pilier) : pans de `pan` motifs de long.
-  const BRISE = { long: 2, pan: [1, 1.7] };
+  // `essais` origines tirées par pan, la mieux raccordée en teinte gardée ; `ton` : cases par côté du motif pour
+  // comparer les teintes (_tonRoche) ; `haut` : écart de v minimal (motifs) entre deux pans qui se suivent.
+  const BRISE = { long: 2, pan: [1, 1.7], essais: 64, ton: 24, haut: 0.2 };
   // Nuance de roche par structure (🧱 activé, _nuanceRoche) : deux piliers voisins ne sortent plus du même moule. La
   // teinte de la structure (blanc, ou TEINTE_MASSE_2) est assombrie de 0 à `clair` et tirée vers le chaud ou le
   // froid d'au plus `chaud` (une composante abaissée : une couleur de sommet ne dépasse jamais 1). Discrète exprès :
@@ -504,6 +506,7 @@
   const _police = { etat: "absente", promesse: null };
   let _appareils = {};               // canvas des textures déjà dessinés (_texturesPeintes : structures, parois, sol)
   const _appareilsMs = {};          // ms du premier dessin de chacun (checkup)
+  let _tonMotif = null;             // teinte du motif de la roche par case (_tonRoche), une fois par page
   let _dernierGl = null;            // contexte de la dernière vue fermée (checkup : libéré ou non)
   let _derniereFermeture = null;    // "utilisateur" | "contexte" (checkup)
   // « Voir sur la carte » : surbrillance du contour sur la carte (ms) ; dernier objet montré (checkup).
@@ -1152,7 +1155,10 @@
       if (l < 1e-6) continue;
       const n = [dz / l, 0, -dx / l];
       if (lot.brise && m && l > BRISE.long * m) _faceBrisee(lot, p, q, y0, y1, n, col, m);
-      else if (lot.ombre && m) _faceOmbree(lot, p, q, y0, y1, n, col, s / m, (s + l) / m, m);
+      else if (lot.ombre && m) {
+        if (lot.brise) _pansReleves().courtes.add(p[0].toFixed(2) + "," + p[1].toFixed(2) + "," + q[0].toFixed(2));
+        _faceOmbree(lot, p, q, y0, y1, n, col, s / m, (s + l) / m, m);
+      }
       else {
         lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], n, col,
           m ? [s / m, y0 / m, (s + l) / m, y0 / m, (s + l) / m, y1 / m, s / m, y1 / m] : undefined);
@@ -1189,15 +1195,40 @@
   // dérivés de la position de la face (cm) : les mêmes à chaque reconstruction de tuile, à chaque ouverture et sur
   // chaque appareil. ⚠️ contrat : même géométrie (pans coplanaires jointifs), même matériau ; coût : douze sommets
   // par pan avec l'ombre de contact (six sans), au lieu d'autant pour la face entière.
+  // 🩸 Jointure sans saut de nuance : l'origine d'un pan est choisie parmi BRISE.essais tirages, celle dont la
+  // colonne de départ a la teinte la plus proche de la colonne où finit le pan d'avant, sur toute la hauteur de la
+  // face (_tonRoche) — deux origines prises au hasard se raccordent sur des taches larges différentes, et la
+  // jointure se lit comme une ligne verticale. Relevé du checkup : e.pans (face → pans et leurs origines).
   function _faceBrisee(lot, p, q, y0, y1, n, col, m) {
     const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
-    const alea = _aleaGraine(_hachage("pan," + p[0].toFixed(2) + "," + p[1].toFixed(2) + "," + q[0].toFixed(2) + "," +
-      q[1].toFixed(2)));
+    const cle = p[0].toFixed(2) + "," + p[1].toFixed(2) + "," + q[0].toFixed(2) + "," + q[1].toFixed(2);
+    const alea = _aleaGraine(_hachage("pan," + cle)), T = _tonRoche(), nt = BRISE.ton, sig = [];
+    const case1 = function (x) { return ((Math.floor(x * nt) % nt) + nt) % nt; };
+    // Écart de teinte entre deux colonnes du motif (u, décalage de v), sur la hauteur de la face.
+    const ecart = function (ua, va, ub, vb) {
+      let d = 0;
+      for (let y = y0; y < y1; y += m / nt) {
+        d += Math.abs(T[case1(y / m + va) * nt + case1(ua)] - T[case1(y / m + vb) * nt + case1(ub)]);
+      }
+      return d;
+    };
+    let fin = null;
     for (let s = 0; s < l - 1e-6;) {
       let pan = (BRISE.pan[0] + alea() * (BRISE.pan[1] - BRISE.pan[0])) * m;
       if (l - s - pan < BRISE.pan[0] * m / 2) pan = l - s;
       const a = [p[0] + dx * s / l, p[1] + dz * s / l], b = [p[0] + dx * (s + pan) / l, p[1] + dz * (s + pan) / l];
-      const u = alea(), dv = alea(), sens = alea() < 0.5 ? -1 : 1, u1 = u + sens * pan / m;
+      let u = 0, dv = 0, sens = 1, mieux = Infinity;
+      for (let k = 0; k < (fin && T ? BRISE.essais : 1); k++) {
+        const uk = alea(), vk = alea(), sk = alea() < 0.5 ? -1 : 1;
+        // Jamais à la hauteur du pan d'avant (à moins de BRISE.haut motif près) : le même dessin reviendrait à côté.
+        const dh = fin ? Math.abs(((vk - fin[1]) % 1 + 1.5) % 1 - 0.5) : 1;
+        const d = !fin || !T ? 0 : ecart(fin[0], fin[1], uk, vk) + (dh < BRISE.haut ? 1e6 : 0);
+        if (d < mieux) { mieux = d; u = uk; dv = vk; sens = sk; }
+      }
+      const u1 = u + sens * pan / m;
+      // Colonne où finit ce pan : la dernière qu'il montre (juste en deçà de u1).
+      fin = [u1 - sens * 0.5 / nt, dv];
+      sig.push(u.toFixed(4) + "/" + dv.toFixed(4) + "/" + sens + "/" + pan.toFixed(3));
       if (lot.ombre) _faceOmbree(lot, a, b, y0, y1, n, col, u, u1, m, dv);
       else {
         lot.quad([a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]], n, col,
@@ -1205,6 +1236,33 @@
       }
       s += pan;
     }
+    _pansReleves().longues.set(cle, sig);
+  }
+
+  // Relevé des faces de roche (checkup, KtaVue3D.textures().pans) : longues → leurs pans, courtes laissées entières.
+  function _pansReleves() { return _e.pans || (_e.pans = { longues: new Map(), courtes: new Set() }); }
+
+  // Teinte moyenne du motif de la roche par case (BRISE.ton × BRISE.ton, v vers le haut ; somme R + V + B), lue une
+  // fois par page sur la carte dessinée — la roche est dessinée ici si elle ne l'est pas encore (_matsTextures).
+  // Lue sur le premier dessin fait dans la page (256 px, ou 512 en Textures HD : le même dessin plus fin, des cases
+  // à très peu près égales — deux appareils de finesse différente peuvent choisir des origines différentes).
+  function _tonRoche() {
+    if (_tonMotif) return _tonMotif;
+    let d = _appareils.roche || _appareils["roche@" + HD.px];
+    if (!d) { _matsTextures(); d = _appareils.roche || _appareils["roche@" + HD.px]; }
+    if (!d) return null;
+    const cv = d.couleur, n = cv.width, nt = BRISE.ton, c = n / nt, T = new Float32Array(nt * nt);
+    const px = cv.getContext("2d").getImageData(0, 0, n, n).data;
+    for (let y = 0; y < n; y++) {
+      const r = nt - 1 - Math.min(nt - 1, Math.floor(y / c));
+      for (let x = 0; x < n; x++) {
+        const o = (y * n + x) * 4;
+        T[r * nt + Math.min(nt - 1, Math.floor(x / c))] += px[o] + px[o + 1] + px[o + 2];
+      }
+    }
+    for (let i = 0; i < nt * nt; i++) T[i] /= c * c;
+    _tonMotif = T;
+    return T;
   }
 
   // Origine du motif sur un contour (m) : tirée de la position de son premier sommet, deux volumes voisins ne montrent
@@ -14360,6 +14418,12 @@
     (e.texStructures || []).forEach(function (t) { if (t.image) images.add(t.image); });
     let octets = 0;
     images.forEach(function (im) { octets += im.width * im.height * 4 * 4 / 3; });
+    // Faces de roche : longues brisées en pans (nombre, pans, empreinte de leurs origines), courtes entières.
+    const pans = e.pans || { longues: new Map(), courtes: new Set() }, lignes = [];
+    let nbPans = 0;
+    pans.longues.forEach(function (sig, k) { nbPans += sig.length; lignes.push(k + ":" + sig.join("|")); });
+    r.pans = { longues: pans.longues.size, pans: nbPans, courtes: pans.courtes.size,
+      empreinte: _hachage(lignes.sort().join(";")) };
     r.hd = { voulu: e.hd === true, actif: _hdActif(), finesse: _fin(),
       bouton: e.boutonTexturesHD ? e.boutonTexturesHD.getAttribute("aria-pressed") : null,
       grise: e.boutonTexturesHD ? e.boutonTexturesHD.disabled : null, grain: !!e.texGrain,

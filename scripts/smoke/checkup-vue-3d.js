@@ -2037,6 +2037,19 @@ async function sectionPleinJour(page) {
   };
   // Faces intérieures des piliers nord (à gauche) et sud (à droite), 6 m devant (à l'écran du téléphone aussi).
   const r = {};
+  // Faces de roche brisées en pans (vue3d.js > _faceBrisee, BRISE) : relevé à l'ouverture, puis après une
+  // reconstruction des tuiles (🧱 basculé deux fois) — mêmes pans, mêmes origines.
+  r.pans = await page.evaluate(async function () {
+    const K = window.KtaVue3D, pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const out = { actives: K.textures().actives, depart: K.textures().pans };
+    K.basculerTextures();
+    await pause(200);
+    out.coupe = K.textures().actives;
+    K.basculerTextures();
+    await pause(300);
+    out.refait = K.textures().pans;
+    return out;
+  });
   r.nuit = await lire();
   // Une plage de chaque face, pas un point : douze carrés de 9 px, de 6 à 9 m devant et de 1,3 à 2 m de haut — le
   // dessin de la roche (fissure, passe de pic) ne pèse plus sur la mesure. → [gauche, droite], au dixième.
@@ -2162,6 +2175,15 @@ async function sectionPleinJour(page) {
   verifier(J.fond === PJ.fond && J.brouillard === PJ.fond && Math.abs(J.brume[0] - 30 * PJ.brume) < 0.01 &&
     J.brume[1] === 30, "Plein jour : brouillard clair (jeton --kta-texte-3) de 40 % à 100 % de la portée, fond pareil",
     { fond: J.fond, brouillard: J.brouillard, brume: J.brume });
+  // Deux piliers de 80 × 4,5 m : quatre faces de 80 m brisées en pans de 3 à 5,1 m (16 à 27 chacune), quatre bouts
+  // de 4,5 m laissés entiers ; tuiles refaites : mêmes pans et mêmes origines (empreinte égale).
+  const PA = r.pans.depart || {}, PB = r.pans.refait || {};
+  verifier(r.pans.actives === true && r.pans.coupe === false && PA.longues === 4 && PA.courtes === 4 &&
+    PA.pans >= 4 * 16 && PA.pans <= 4 * 27 && PB.longues === 4 && PB.pans === PA.pans &&
+    PB.empreinte === PA.empreinte,
+  "roche : les 4 faces de 80 m brisées en " + PA.pans + " pans (3 à 5,1 m), les " + PA.courtes +
+    " faces de 4,5 m entières ; tuiles refaites : mêmes pans, mêmes origines du motif (empreinte " + PA.empreinte +
+    ")", r.pans);
   verifier(J.px[1] - J.px[0] > 40 && Math.abs(N.px[1] - N.px[0]) < 25,
     "relief : face au soleil claire, face opposée sombre (gauche / droite " + J.px.join(" / ") + " ; nuit " +
     N.px.join(" / ") + ")", { jour: J.px, nuit: N.px });
