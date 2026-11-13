@@ -14,7 +14,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_yq2u8b"
     },
     {
       "id": "Bugatti chiron",
@@ -28,7 +30,9 @@
       "description": "truc de fou !!!",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_di51p8"
     },
     {
       "id": "Eboulement",
@@ -42,7 +46,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_2bei3p"
     },
     {
       "id": "Salle des nains",
@@ -56,7 +62,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_m2977k"
     },
     {
       "id": "Broyeur",
@@ -70,7 +78,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_sl7dvr"
     },
     {
       "id": "Chatière dans l'éboulement",
@@ -83,8 +93,22 @@
       "etat": "Non inspectée",
       "description": "",
       "profondeur": null,
-      "date_update": "2026-05-04",
-      "source": "editor"
+      "date_update": "2026-11-13",
+      "source": "editor",
+      "updatedAt": 1794573098297,
+      "uid": "pt_mweygo00_3qfff1",
+      "precis": {
+        "pts": [
+          {
+            "x": 2783.25,
+            "y": 1132.75
+          },
+          {
+            "x": 2856,
+            "y": 1020.5
+          }
+        ]
+      }
     },
     {
       "id": "Gaz",
@@ -98,7 +122,9 @@
       "description": "poche de gaz",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_skgcas"
     },
     {
       "id": "Tag",
@@ -112,7 +138,9 @@
       "description": "Tag a la bombe",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_smncev"
     },
     {
       "id": "Transformateur",
@@ -126,7 +154,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_2hwd0d"
     },
     {
       "id": "Fourgonnette blanche",
@@ -140,7 +170,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_1xa7kt"
     },
     {
       "id": "Passage 01",
@@ -154,7 +186,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_t43855"
     },
     {
       "id": "Effondrement",
@@ -168,7 +202,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_19oasb"
     },
     {
       "id": "Salle sombre",
@@ -182,7 +218,9 @@
       "description": "Belle salle",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_i0vaoo"
     },
     {
       "id": "Graffiti de carrier",
@@ -196,7 +234,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_8s4y8s"
     },
     {
       "id": "Grand puit",
@@ -210,7 +250,9 @@
       "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_q9efwk"
     },
     {
       "id": "Transformateur",
@@ -224,7 +266,12 @@
       "description": "Brulé",
       "profondeur": null,
       "date_update": "2026-05-04",
-      "source": "editor"
+      "source": "editor",
+      "updatedAt": 1794573055871,
+      "uid": "pt_mweygo00_atrblg"
     }
-  ]
+  ],
+  "roads": [],
+  "zones": [],
+  "structures": []
 }

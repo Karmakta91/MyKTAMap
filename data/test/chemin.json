@@ -38,7 +38,9 @@
           "x": 3420,
           "y": 395
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_1dpi88"
     },
     {
       "type": "principal",
@@ -95,7 +97,9 @@
           "x": 2267,
           "y": 1499
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_08rzw6"
     },
     {
       "type": "principal",
@@ -165,14 +169,16 @@
           "y": 1367
         },
         {
-          "x": 766,
-          "y": 1269
+          "x": 756.5,
+          "y": 1260.5
         },
         {
           "x": 976,
           "y": 1257
         }
-      ]
+      ],
+      "updatedAt": 1794572824852,
+      "uid": "rd_mweybg1l_q5gehh"
     },
     {
       "type": "principal",
@@ -182,7 +188,11 @@
           "y": 1503
         },
         {
-          "x": 888,
+          "x": 887.75,
+          "y": 1276.5
+        },
+        {
+          "x": 867.5,
           "y": 1039
         },
         {
@@ -217,7 +227,9 @@
           "x": 1678,
           "y": 1031
         }
-      ]
+      ],
+      "updatedAt": 1794572822147,
+      "uid": "rd_mweybg1l_v4ta5y"
     },
     {
       "type": "secondaire",
@@ -234,7 +246,9 @@
           "x": 3642,
           "y": 659
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_noeex2"
     },
     {
       "type": "secondaire",
@@ -247,7 +261,9 @@
           "x": 2264,
           "y": 725
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_cvs2bl"
     },
     {
       "type": "secondaire",
@@ -268,7 +284,9 @@
           "x": 1220,
           "y": 1545
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_arev7r"
     },
     {
       "type": "secondaire",
@@ -289,7 +307,9 @@
           "x": 1346,
           "y": 407
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_isvk02"
     },
     {
       "type": "chemin",
@@ -310,7 +330,9 @@
           "x": 1784,
           "y": 734
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_wu4zr2"
     },
     {
       "type": "chemin",
@@ -355,7 +377,9 @@
           "x": 2554,
           "y": 1149
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_ay0gtj"
     },
     {
       "type": "chemin",
@@ -376,7 +400,9 @@
           "x": 3882,
           "y": 799
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_590tus"
     },
     {
       "type": "chemin",
@@ -397,7 +423,11 @@
           "x": 2232,
           "y": 1501
         }
-      ]
+      ],
+      "updatedAt": 1794572812281,
+      "uid": "rd_mweybg1l_sux48u"
     }
-  ]
+  ],
+  "zones": [],
+  "structures": []
 }
