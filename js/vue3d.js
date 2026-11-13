@@ -6156,16 +6156,17 @@
       y: +(c.cz * _e.sc).toFixed(3) } });
   }
 
-  // ps : puits rond maçonné, ouvert dans le plafond, ciel au sommet (comme un puits de surface).
+  // ps : puits rond maçonné, ouvert dans le plafond, ciel au sommet (comme un puits de surface). Sous d'autres
+  // niveaux, il les traverse jusqu'au jour comme tout puits ouvert (_sommetPlafond : bouche au bit GABARIT.conduit).
   function _puitsOuvert(v, lots, g, ring) {
-    const e = _e, h = e.hauteur, L = VOLUME.long;
-    for (let k = 0; k < ring.length; k++) _paroiY(lots.parois, ring[k], ring[(k + 1) % ring.length], h, h + L);
-    _dessus(lots.plafond, ring, h, BLANC);
+    const e = _e, h = e.hauteur, S = _sommetPlafond(v, ring), cime = S.cime;
+    for (let k = 0; k < ring.length; k++) _paroiY(lots.parois, ring[k], ring[(k + 1) % ring.length], h, cime);
+    _dessus(S.roche ? lots.plafondConduit : lots.plafond, ring, h, BLANC);
     if (!e.texCiel) e.texCiel = _texCiel();
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: e.texCiel, fog: false, depthWrite: false,
       toneMapped: false, transparent: true }));
     const r = 2 * v.a * 0.95;
-    sp.position.set(v.cx, h + L - 0.05, v.cz);
+    sp.position.set(v.cx, cime - 0.05, v.cz);
     sp.scale.set(r, r, 1);
     sp.renderOrder = 2;
     sp.userData.famille = "ciel";

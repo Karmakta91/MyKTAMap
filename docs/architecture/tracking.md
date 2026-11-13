@@ -1648,7 +1648,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   sols et plafonds des voisins du dessus respectent (`_matsVoisins`) : rien de leur niveau en travers du conduit.
   🩸 Les parois des tubes d'un voisin ne lisent pas le gabarit : une galerie du dessus qui ne couvre qu'une partie de
   la bouche coupe le conduit, fermé (checkup § 52, `KTA_V3D_SEUL=puits-dessus`). **Puits ouvert au jour** (ciel :
-  `peo`, `eso`) sous d'autres niveaux (montrés ou non) : il les **traverse tous**, galerie ou roche, jusqu'à 6 m
+  `peo`, `eso`, puits de surface `ps`) sous d'autres niveaux (montrés ou non) : il les **traverse tous**, galerie ou roche, jusqu'à 6 m
   au-dessus du plafond du plus haut, bouche au bit `GABARIT.conduit` : aucun sol ni plafond du dessus ne ferme le
   ciel, avec ou sans galerie au droit. **Vu d'un niveau qu'il traverse** (`_puitsTraversants`, puits du niveau M
   montré ou non, trois rendus) : volume `traverse` à la place du puits sur M, parois du plafond de M à notre sol et de

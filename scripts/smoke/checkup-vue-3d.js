@@ -11897,7 +11897,8 @@ async function sectionPuitsDessus(nav) {
 // _sommetPlafond, _niveauxAuDessus, GABARIT.conduit, rayon ; KTA_V3D_SEUL=puits-ciel) ─────────────────────────────
 // Plan FICTIF en mémoire : niveaux 0 et +1 (2 m chacun). Au 0, galerie est-ouest de x = −30 à 30 ; au +1, une galerie
 // au droit du 0 de x = 10 à 30. Au 0 seul : puits à échelons ouverts (peo, sans niveau lié) en (15, 0) sous la galerie
-// du +1 et en (−15, 0) sous sa roche. Témoins non ouverts : aération (pa) en (−5, 0) sous la roche, puits à échelons
+// du +1 et en (−15, 0) sous sa roche ; puits de surface rond (ps) en (−25, 0) sous la roche.
+// Témoins non ouverts : aération (pa) en (−5, 0) sous la roche, puits à échelons
 // (jpe, 0 ↔ +1) en (25, 0) sous la galerie. Écart du +1 : +1 m (sol à 3 m), puis +4 m (sol à 6 m).
 // Puits ouvert : conduit jusqu'à VOLUME.long au-dessus du plafond du +1 (au moins au-dessus du nôtre), bouche au bit
 // GABARIT.conduit, disque de ciel au sommet, et le rayon vertical depuis le fond du puits ne touche rien d'autre que
@@ -11921,6 +11922,7 @@ async function sectionPuitsCiel(nav) {
         Object.assign({ id: "Puits ouvert galerie", uid: "pt_pc_peo_g", level: 0, tags: ["peo"] }, P(15, 0)),
         Object.assign({ id: "Puits ouvert roche", uid: "pt_pc_peo_r", level: 0, tags: ["peo"] }, P(-15, 0)),
         Object.assign({ id: "Aération roche", uid: "pt_pc_pa_r", level: 0, tags: ["pa"] }, P(-5, 0)),
+        Object.assign({ id: "Puits de surface roche", uid: "pt_pc_ps_r", level: 0, tags: ["ps"] }, P(-25, 0)),
         Object.assign({ id: "Puits galerie", uid: "pt_pc_jpe_g", level: 0, niveaux: [0, 1], tags: ["jpe"] }, P(25, 0))
       ]);
     });
@@ -11953,6 +11955,7 @@ async function sectionPuitsCiel(nav) {
               return v ? lire(v) : null;
             };
             return { h: e.hauteur, peoG: par("peo", 15), peoR: par("peo", -15), paR: par("pa", -5),
+              psR: par("ps", -25),
               jpeG: par("jpe", 25) };
           }, { ecart: ecart, rendu: rendu, vus: vus });
           const k = nom + rendu + " « " + vus + " », écart " + ecart + " m : ";
@@ -11967,6 +11970,9 @@ async function sectionPuitsCiel(nav) {
           verifier(jour(r.peoR),
             k + "puits ouvert sous la roche du +1 : conduit jusqu'à " + cimeJour + " m, ciel au sommet, rien du +1 " +
             "en travers du rayon vertical", r.peoR);
+          verifier(jour(r.psR),
+            k + "puits de surface (ps) sous la roche du +1 : conduit jusqu'à " + cimeJour + " m, ciel au sommet, " +
+            "rien du +1 en travers du rayon vertical", r.psR);
           verifier(!!r.paR && r.paR.conduit && r.paR.conduit.roche === true && pr(r.paR.conduit.cime, h + 6) &&
             r.paR.haut === null && r.paR.cielVu === false,
             k + "aération sous la roche (témoin) : conduit de 6 m, sans ciel", r.paR);
