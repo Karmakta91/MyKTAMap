@@ -246,7 +246,10 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 ### 29bis. CI GitHub : garde-fous à chaque push (`.github/workflows/ci.yml`, audit CI/CD du 08/10/2026)
 
 - **`ci.yml`** (push `Karma_dev` / `main`, PR) : `node --check`, **`scripts/ci-commits.sh`** (anti-fuite pro et
-  `data/` hors Git rejoués **commit par commit** sur la plage du push — `Data-deroge:` lu dans le message ;
+  `data/` hors Git rejoués **commit par commit** sur la plage du push — `Data-deroge:` lu dans le message, ou le SHA
+  complet du commit listé avec son motif dans `scripts/ci-derogations-data.txt` (commit déjà poussé sans sa ligne,
+  éditeur web : la plage de `main` le reverrait au merge `--no-ff` ; KARMA seul, format gardé par
+  `check-derogations-data.js`) ;
   `check-no-pro-leak` et `check-data-hors-git` acceptent `KTA_FICHIERS_CI` ; `check-noms-reels --message` relit
   le message de chaque commit), puis **`.githooks/pre-commit`** (tous les garde-fous ; `check-noms-reels` y relit
   **tous** les fichiers suivis, `CI` étant posé). Un hook contourné ne passe plus en silence. Dépôt privé : quota gratuit des minutes Actions.

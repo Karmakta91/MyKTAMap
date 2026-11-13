@@ -522,7 +522,8 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-constantes-orphelines.js` | Constante MAJUSCULE utilisée dans `js/` mais déclarée nulle part | pre-commit |
 | `check-couleurs-inline.js` | Couleur hex en dur dans un style posé par le JS au-delà du cliquet (la charte s'écrit `var(--kta-…)`) | pre-commit |
 | `check-csp-inline.js` | Script inline (`onclick=`, `javascript:`, `<script>` sans `src`) bloqué par la CSP stricte | pre-commit |
-| `check-data-hors-git.js` | Commit qui embarque un fichier de `data/` (relevés réels), sauf ligne `Data-deroge:` écrite par KARMA | commit-msg + ci-commits |
+| `check-data-hors-git.js` | Commit qui embarque un fichier de `data/` (relevés réels), sauf ligne `Data-deroge:` écrite par KARMA (ou, commit déjà poussé, son SHA complet dans `ci-derogations-data.txt`) | commit-msg + ci-commits |
+| `check-derogations-data.js` | `ci-derogations-data.txt` mal formé (SHA abrégé, motif vide), ou contrôle `data/` qui laisserait passer un commit non listé | pre-commit |
 | `check-devmode-docs.js` | Mode Développeur qui lirait la doc technique (il faudrait la déployer), hash ou rendu des outils cassés | pre-commit |
 | `check-doc-langues.js` | Guides utilisateur fr/en/es désappariés : section absente ou traduction sous 70 % du FR | pre-commit |
 | `check-doc-recherche.js` | Recherche plein texte de la Documentation et de l'Aide qui rate ou double des occurrences | pre-commit |

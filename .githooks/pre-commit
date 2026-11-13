@@ -23,6 +23,9 @@ node scripts/check-no-pro-leak.js || exit $?
 # Depot public : aucun nom reel lie aux releves (empreintes sha256, sans derogation).
 node scripts/check-noms-reels.js || exit $?
 
+# Derogations data/ des commits deja pousses (scripts/ci-derogations-data.txt) : format et controle reel.
+node scripts/check-derogations-data.js || exit $?
+
 # Cycle de vie des modales (consultatif).
 node scripts/check-modal-lifecycle.js
 

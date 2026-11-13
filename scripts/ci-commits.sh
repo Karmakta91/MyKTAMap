@@ -7,7 +7,8 @@
 # (ou la PR) apporte : un commit fait avec --no-verify, depuis un poste sans hooks, ou par l'éditeur
 # web de GitHub, ne passe plus en silence.
 #
-#   - data/ : commit par commit, avec SON message (la dérogation `Data-deroge:` reste possible) ;
+#   - data/ : commit par commit, avec SON message (la dérogation `Data-deroge:` reste possible) ; un commit
+#     déjà poussé sans sa ligne se déroge par son SHA complet dans scripts/ci-derogations-data.txt (KARMA) ;
 #   - anti-fuite : tous les fichiers touchés par la plage, contenu tel qu'il est au dernier commit ;
 #   - noms réels : le message de chaque commit (les fichiers, eux, sont tous relus par le pre-commit en CI).
 #
@@ -28,7 +29,7 @@ ko=0
 for c in $(git rev-list "$plage"); do
   fichiers=$(git diff-tree --no-commit-id --name-only -r --diff-filter=ACMR "$c")
   git log -1 --format=%B "$c" > "$msg"
-  if ! KTA_FICHIERS_CI="$fichiers" node scripts/check-data-hors-git.js "$msg"; then
+  if ! KTA_FICHIERS_CI="$fichiers" KTA_COMMIT_CI="$c" node scripts/check-data-hors-git.js "$msg"; then
     echo "   ↑ commit $(git log -1 --format='%h %s' "$c")"
     ko=1
   fi
