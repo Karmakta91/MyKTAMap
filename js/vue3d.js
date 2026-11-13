@@ -135,9 +135,9 @@
   // Tympan : maçonnerie de même profondeur entre l'extrados, les piédroits, les parois et le ciel, faces reculées de
   // `retrait` m sous celles des claveaux ; joints entre claveaux bouchés au fond par un mortier reculé de `fond` m.
   // Matière et teinte (décision produit). 🧱 coupé : aplats à la couleur de la légende, nuancée de ± `nuance` par
-  // claveau. 🧱 activé : pierre de taille texturée à la teinte du niveau (_teinteArc : celle des parois du tube qu'il
-  // barre, sinon celle de la masse du niveau, comme ses piliers) — claveaux en pierre dressée (CLAVEAU), un bloc de
-  // géométrie chacun, assombri d'au plus `nuance` ; piédroits, impostes et tympan dans l'appareil des parois
+  // claveau. 🧱 activé : pierre de taille texturée, partout à la teinte des parois de pierre (en tube comme en
+  // chambre ou en rendu structures, quelle que soit la masse du niveau) — claveaux en pierre dressée (CLAVEAU), un
+  // bloc de géométrie chacun, assombri d'au plus `nuance` ; piédroits, impostes et tympan dans l'appareil des parois
   // (PIERRE), à `piedroit`, `sommier` et `tympan` de la teinte ; faces des joints à `mortier`.
   const ARC = { pied: 0.3, ep: 0.25, prof: 0.5, joint: 0.012, claveau: 0.32, min: 5, max: 15, cle: 0.04,
     imposte: 0.06, deborde: 0.03, piedMin: 0.6, porteeMin: 0.6, nuance: 0.1, mortier: 0.5, tube: 3,
@@ -6675,7 +6675,7 @@
 
   // ── Arc de soutènement ; ossuaire, outil de carrier, fontis ───────────────────────────────────────────────
   // Formes faites en code, sans fichier : peu de triangles, lot opaque du volume ou de la tuile (couleurs par
-  // sommet). L'arc lit la charte 🧱 coupé (sa couleur de légende) et prend la pierre du niveau 🧱 activé (ses deux
+  // sommet). L'arc lit la charte 🧱 coupé (sa couleur de légende) et prend la pierre des parois 🧱 activé (ses deux
   // lots texturés, _lotsArc) ; le fontis lit la charte (remblais du cône) ; ossuaire et outil ont des couleurs de la
   // scène, comme le véhicule.
 
@@ -6698,27 +6698,6 @@
     _paroiTexturee();
     ajouter(arcs.claveaux, _matClaveau(), 0, "arc");
     ajouter(arcs.pierre, _e.mats.paroi, 0, "arc");
-  }
-
-  // Teinte de la pierre d'un arc, 🧱 activé (décision produit : celle du niveau, là où il est) : en travers d'un tube
-  // (`tube`), la teinte de ses parois de pierre (blanc : la texture seule) ; ailleurs (chambre, rendu structures),
-  // celle de la masse du niveau, comme ses piliers et ses fronts — TEINTE_MASSE_2 quand les structures de 2e masse
-  // y sont les plus nombreuses, blanc sinon. Comptée sur toutes les structures du niveau (filtres de la carte
-  // ignorés), une fois par état des données.
-  function _teinteArc(tube) {
-    const e = _e;
-    if (tube) return BLANC;
-    const cle = e.donnees ? e.donnees.empreinte : "";
-    if (!e.masses || e.masses.cle !== cle) e.masses = { cle: cle, niveaux: new Map() };
-    if (!e.masses.niveaux.has(e.niveau)) {
-      let n1 = 0, n2 = 0;
-      _tab(window.getStructures).concat(_tab(window.getAllEmbeddedStructures)).forEach(function (s) {
-        if (!s || _textureDe(s.type) !== "roche" || !_surNiveau(s, e.niveau)) return;
-        if (MASSE_2[s.type]) n2++; else n1++;
-      });
-      e.masses.niveaux.set(e.niveau, n2 > n1);
-    }
-    return e.masses.niveaux.get(e.niveau) ? (e.teinte2 || (e.teinte2 = new THREE.Color(TEINTE_MASSE_2))) : BLANC;
   }
 
   // Arc de soutènement `s` (polyligne `arc`) dans les lots `lots` (_lotsArc) : un arc par segment
@@ -6781,7 +6760,9 @@
     const piedMin = Math.min(A.piedMin, h * 0.4);
     let ys = h - re, kv = 1;
     if (ys < piedMin) { ys = piedMin; kv = (h - ys) / re; }
-    const tex = lots.tex, base = tex ? _teinteArc(!ferme) : _couleur("structures", "arc");
+    // 🧱 activé : la teinte des parois de pierre de taille, partout (décision produit) — la texture seule, jamais
+    // la teinte chaude de la 2e masse : un arc est bâti, pas taillé dans la masse.
+    const tex = lots.tex, base = tex ? BLANC : _couleur("structures", "arc");
     const teinte = function (f) {
       return { r: Math.min(1, base.r * f), g: Math.min(1, base.g * f), b: Math.min(1, base.b * f) };
     };

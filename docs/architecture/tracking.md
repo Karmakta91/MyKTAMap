@@ -2018,9 +2018,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   tube (milieu dans sa largeur, hors chambre, à plus de 30° de l'axe) va **d'une paroi du tube à l'autre**, là où sa
   ligne les coupe ; ailleurs (chambre, structures), tel que dessiné. **Matière et teinte** (décision produit).
   🧱 coupé : aplats à la couleur de la légende, dans le lot opaque de la tuile. 🧱 activé : pierre de taille
-  texturée avec relief, **à la teinte du niveau** (`_teinteArc`) — en travers d'un tube, celle de ses parois de
-  pierre (la texture seule) ; ailleurs (chambre, rendu structures), celle de la masse du niveau, comme ses piliers
-  (`TEINTE_MASSE_2` quand les structures de 2e masse y sont les plus nombreuses). **Claveaux** : un bloc de
+  texturée avec relief, **partout à la teinte des parois de pierre de taille** (la texture seule) — en travers
+  d'un tube comme en chambre ou en rendu structures, quelle que soit la masse du niveau : un arc est bâti, il ne
+  prend jamais la teinte chaude des piliers de 2e masse. **Claveaux** : un bloc de
   géométrie chacun (joints et fonds de joint gardés), en pierre dressée (`CLAVEAU`, `_pierresDressees`,
   `_matClaveau`) — une planche de 4 × 4 pierres entières dessinée dans un canvas (grain fin, nuance légère, arêtes
   émoussées, layage discret par endroits), une case tirée par face, nuance par claveau (au plus − 10 %).

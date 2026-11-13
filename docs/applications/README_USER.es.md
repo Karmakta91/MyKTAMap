@@ -603,7 +603,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - Paredes de las galerías: sillería (hiladas de bloques, juntas irregulares, relieve con la lámpara). La sillería conserva su tamaño sea cual sea la altura de la galería.
 - Pilares y frentes de cantera: roca bruta (la masa caliza dejada en su sitio: relieve, matices, finos estratos, grietas y marcas de herramienta, sin juntas); la 2.ª masa es la misma roca, en un tono más cálido, para distinguirla de la 1.ª. Una estructura personalizada lleva la roca.
 - Muros: bloque de hormigón, a su tamaño real (un bloque mide 50 cm, sea cual sea el muro).
-- Arcos de sostenimiento: piedra de sillería del tono del nivel — dovelas de piedra labrada, pilares y mampostería sobre el arco en la piedra de las paredes.
+- Arcos de sostenimiento: piedra de sillería del mismo tono que las paredes de las galerías, en todas partes — dovelas de piedra labrada, pilares y mampostería sobre el arco en la piedra de las paredes.
 - **Relleno**: tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados.
 - **Derrumbe** (hundimiento): un amontonamiento de grandes bloques rotos y agrietados, con poca tierra.
 - Relleno y derrumbe están a su tamaño real y no cambian de forma. Una zona personalizada conserva su color.

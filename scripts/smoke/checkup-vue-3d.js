@@ -4021,7 +4021,8 @@ async function restaurerFormes(page) {
 // tel que dessiné en structures (surbaissé) ; tympan : aucun jour entre l'extrados, le ciel et les parois, ouverture
 // libre sous l'intrados (rayons sur la scène) ; on marche dessous sans buter (au milieu et contre un piédroit).
 // 🧱 activé : deux maillages texturés avec relief (claveaux en pierre dressée, maçonnerie dans l'appareil des
-// parois), teinte du niveau (parois du tube, masse du niveau), Textures HD ; 🧱 coupé : aplats de la légende.
+// parois), partout à la teinte des parois de pierre (niveau de 2e masse compris), Textures HD ; 🧱 coupé : aplats de
+// la légende.
 // Ossuaire contre la paroi du côté du POI (le pan, crânes, obstacle mince : on ne l'atteint pas de face, on le
 // longe), sur la face d'un pilier à 3 m, panneau seul en structures sans structure. Outil de carrier (2,1 × 1,2 m, le
 // long de l'axe) qui arrête le pas des deux côtés. Fontis : plafond troué, cloche, cône poussé contre la paroi du côté du POI, qui
@@ -4189,8 +4190,8 @@ async function sectionModeles(page) {
     await pause(300);
     r.hdCoupe = (K.textures().materiaux.claveau || {}).carte;
     await K.fermer();
-    // Teinte du niveau : structures de 2e masse les plus nombreuses → l'arc tel que dessiné (structures) prend la
-    // teinte de la 2e masse, comme les piliers ; en travers d'un tube (mixte), celle de ses parois de pierre.
+    // Niveau de 2e masse (toutes ses structures de roche) : l'arc garde la teinte des parois de pierre, tel que
+    // dessiné (structures) comme en travers d'un tube (mixte) ; seuls les piliers portent la teinte chaude.
     window.setStructures([{ uid: "st_m_arc", type: "arc", level: 0, points: [P(-30, -1.6), P(-30, 1.6)] },
       { uid: "st_m_pil", type: "pilier-2", level: 0, points: [P(0, 20), P(2, 20), P(2, 22), P(0, 22)] }]);
     r.masse2 = {};
@@ -4268,7 +4269,7 @@ async function sectionModeles(page) {
     "structure à portée (structures) : le panneau seul", { m: M.ossPil, s: S.ossPil, g: Gl.ossPil, so: S.oss });
   verifier(R.sansTx.arcs === 1 && R.sansTx.outil && sansJour(R.sansTx.jours),
     "🧱 coupé : arc et outil construits, tympan sans jour", R.sansTx);
-  // Arc texturé (vue3d.js > _lotsArc, CLAVEAU, _teinteArc) : 🧱 activé, deux maillages à carte, relief, coordonnées
+  // Arc texturé (vue3d.js > _lotsArc, CLAVEAU) : 🧱 activé, deux maillages à carte, relief, coordonnées
   // de texture et couleurs par sommet (claveaux en pierre dressée, maçonnerie dans l'appareil des parois).
   const texture = function (l) {
     return l.length === 2 && l.every(function (m) { return m.carte && m.relief && m.sommets && m.uv && m.triangles > 0; });
@@ -4277,7 +4278,8 @@ async function sectionModeles(page) {
     const o = R[k], a0 = (o.arcs || [])[0] || {}, tri = o.mailles.reduce(function (s, m) { return s + m.triangles; }, 0);
     verifier(texture(o.mailles) && a0.texture === true && tri === a0.triangles && a0.teinte === "#ffffff",
       k + " : 🧱 activé, arc en deux maillages texturés avec relief (claveaux, maçonnerie ; " + tri +
-      " triangles, ceux du relevé), teinte du niveau (1re masse, parois : blanc)", { mailles: o.mailles, arc: a0 });
+      " triangles, ceux du relevé), teinte des parois de pierre (blanc : la texture seule)",
+    { mailles: o.mailles, arc: a0 });
   });
   // Teinte de la pierre : moyenne de la planche des claveaux à moins de 8 % par composante de celle des parois, et
   // jamais plus sombre de plus de 8 % (l'arc ne jure plus à côté d'elles).
@@ -4303,10 +4305,10 @@ async function sectionModeles(page) {
   "Textures HD : claveaux et maçonnerie de l'arc en 512 px (dessin " + R.hd.dessins["claveau@2"] +
     " ms), retour à 256 px", { hd: R.hd.mailles, coupe: R.hdCoupe });
   const p2 = (R.masse2.piliers || []).map(function (c) { return parseInt(c.slice(5, 7), 16) / parseInt(c.slice(1, 3), 16); });
-  verifier(R.masse2.structures === "#f0b98a" && R.masse2.mixte === "#ffffff" && p2.length > 0 &&
+  verifier(R.masse2.structures === "#ffffff" && R.masse2.mixte === "#ffffff" && p2.length > 0 &&
     p2.every(function (v) { return v < 0.65; }),
-  "teinte du niveau : niveau de 2e masse → arc tel que dessiné à la teinte chaude de ses piliers (" +
-    R.masse2.structures + "), arc en travers d'un tube à celle de ses parois (" + R.masse2.mixte + ")", R.masse2);
+  "niveau de 2e masse (piliers à la teinte chaude) : l'arc garde la teinte des parois de pierre, tel que dessiné (" +
+    R.masse2.structures + ") comme en travers d'un tube (" + R.masse2.mixte + ")", R.masse2);
   if (CAPTURES) await capturesModeles(page);
   await restaurerFormes(page);
 }
