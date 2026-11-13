@@ -135,10 +135,11 @@
   // Tympan : maçonnerie de même profondeur entre l'extrados, les piédroits, les parois et le ciel, faces reculées de
   // `retrait` m sous celles des claveaux ; joints entre claveaux bouchés au fond par un mortier reculé de `fond` m.
   // Matière et teinte (décision produit). 🧱 coupé : aplats à la couleur de la légende, nuancée de ± `nuance` par
-  // claveau. 🧱 activé : pierre de taille texturée à la teinte du niveau (_teinteArc : celle des parois du tube qu'il
-  // barre, sinon celle de la masse du niveau, comme ses piliers) — claveaux en pierre dressée (CLAVEAU), un bloc de
-  // géométrie chacun, assombri d'au plus `nuance` ; piédroits, impostes et tympan dans l'appareil des parois
-  // (PIERRE), à `piedroit`, `sommier` et `tympan` de la teinte ; faces des joints à `mortier`.
+  // claveau. 🧱 activé : pierre de taille texturée, partout à la teinte des parois de pierre (en tube comme en
+  // chambre ou en rendu structures, quelle que soit la masse du niveau) — claveaux en pierre dressée (CLAVEAU), un
+  // bloc de géométrie chacun, assombri d'au plus `nuance` ; piédroits et impostes dans l'appareil des parois (PIERRE),
+  // à `piedroit` et `sommier` de la teinte ; tympan en moellons (BLOCAGE), à `tympan` ; faces des joints à
+  // `mortier`.
   const ARC = { pied: 0.3, ep: 0.25, prof: 0.5, joint: 0.012, claveau: 0.32, min: 5, max: 15, cle: 0.04,
     imposte: 0.06, deborde: 0.03, piedMin: 0.6, porteeMin: 0.6, nuance: 0.1, mortier: 0.5, tube: 3,
     retrait: 0.005, fond: 0.006, piedroit: 0.92, sommier: 0.85, tympan: 0.94 };
@@ -237,15 +238,33 @@
   // « Textures HD » (HD ci-dessous), coupé par défaut au doigt.
   // Roche brute (piliers, fronts : la masse calcaire laissée en place, décision produit, jamais appareillée) :
   // motif de 3 m (85 px/m) — sans joints la répétition se voit plus, d'où un motif plus grand que l'appareil et des
-  // taches à deux échelles ; strates tous les `strate` m (lit de `lit` m, ondulé de `onde` m), `fissures` fissures,
-  // `grappes` grappes de traces d'outil (pic, broche). Longueurs en m.
-  const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 7, grappes: 40,
+  // taches à deux échelles ; strates tous les `strate` m (lit de `lit` m, ondulé de `onde` m), `fissures` fissures.
+  // Traces d'outil en PASSES de coups parallèles, comme le carrier les laisse, de grandes plages nues entre elles :
+  // `pic` (souchevage) — `passes` passes de `rangs` rangées superposées de `coups` coups courts (`long` m), serrés
+  // (`pas` m) et obliques, toutes les rangées d'une passe à la même orientation, l'une des `angles` (rad : une ou
+  // deux dominantes pour tout le motif) ; `lance` (défermage) — `passes` passes de `coups` longues stries droites
+  // (`long` m), parallèles, à `pente` rad au plus de la verticale, espacées de `pas` m. `ecart` : écart de longueur
+  // d'un coup à l'autre dans sa passe ; `rayon` (m), `creux` (hauteur dessinée) et `sombre` d'un coup. ⚠️ contrat
+  // (décision produit) : jamais d'angle tiré au hasard dans une passe. 🩸 Stries de lance peu nombreuses et peu
+  // creusées : longues et droites, elles se reconnaissent d'un motif à l'autre sur un long front. Longueurs en m.
+  // Fissures rares et fines (`fissures` par motif, de force `fissure` : 1 = creux et ombre pleins) : longues et
+  // sombres, ce sont elles qui signent le motif quand il se répète. Longue face (BRISE) : le motif y est décalé de
+  // pan en pan (_faceBrisee).
+  const ROCHE = { m: 3, px: 256, couleur: "#cdc1a3", strate: 0.42, lit: 0.012, onde: 0.15, fissures: 4, fissure: 0.55,
+    pic: { passes: 5, angles: [1.0, 2.15], rangs: [2, 4], coups: [9, 17], long: [0.12, 0.2], pas: [0.04, 0.06],
+      ecart: 0.15, rayon: 0.015, creux: 0.11, sombre: 0.06 },
+    lance: { passes: 2, coups: [3, 6], long: [0.5, 1.1], pas: [0.07, 0.12], pente: 0.07, ecart: 0.2, rayon: 0.015,
+      creux: 0.09, sombre: 0.05 },
     grain: 0.07, relief: 4, graine: 53 };
   // 2e masse (pilier-2, front-2) : la même roche, plus chaude (teinte par sommet multipliée par la texture, même
   // matériau et même maillage que la 1re, blanche ; chacune nuancée par structure : NUANCE_ROCHE). 🩸 Sans elle, 🧱 activé, 1re et 2e masse étaient la même roche :
   // un pilier passé de l'une à l'autre ne changeait rien dans la scène. Pas de second matériau : préparé au premier
   // pilier de 2e masse, il retardait d'une image le changement de niveau sous le fondu (WebKit).
   const MASSE_2 = { "pilier-2": true, "front-2": true }, TEINTE_MASSE_2 = "#f0b98a";
+  // Face de roche de plus de `long` motifs (un front, le flanc d'un long pilier) : pans de `pan` motifs de long.
+  // `essais` origines tirées par pan, la mieux raccordée en teinte gardée ; `ton` : cases par côté du motif pour
+  // comparer les teintes (_tonRoche) ; `haut` : écart de v minimal (motifs) entre deux pans qui se suivent.
+  const BRISE = { long: 2, pan: [1, 1.7], essais: 64, ton: 24, haut: 0.2 };
   // Nuance de roche par structure (🧱 activé, _nuanceRoche) : deux piliers voisins ne sortent plus du même moule. La
   // teinte de la structure (blanc, ou TEINTE_MASSE_2) est assombrie de 0 à `clair` et tirée vers le chaud ou le
   // froid d'au plus `chaud` (une composante abaissée : une couleur de sommet ne dépasse jamais 1). Discrète exprès :
@@ -274,10 +293,22 @@
   // Pierre dressée des claveaux d'un arc (🧱 activé ; _pierresDressees) : planche de `cases` × `cases` pierres
   // entières, une case par face de claveau (tirée par face, parfois retournée : deux claveaux voisins ne sortent pas
   // du même moule). Une case vaut `pierre` m de pierre : grain fin, nuance légère, arêtes émoussées sur `biseau` m,
-  // par endroits un layage discret (stries parallèles de taille tous les `layage` m, de force `strie`). Même
-  // teinte de base que la pierre des parois. `m` : mètres couverts par la planche, pour le grain des Textures HD.
+  // et un layage discret, irrégulier comme un travail à la main (`layage`) : coups parallèles à `angle` rad, à
+  // ± `ecart` près d'une pierre à l'autre, espacés de `pas` m en moyenne (de 0,55 à 1,65 fois, tiré à chaque
+  // coup), de profondeur tirée, `manque` des coups absents, effacés par plages (zones lisses) ; creux de `creux`
+  // (hauteur dessinée) et assombri de `sombre` au plus. 🩸 Jamais une onde régulière ni un creux marqué : de très
+  // près, surtout en Textures HD, elle raye la pierre comme une tôle. Même teinte de base que la pierre des
+  // parois. `m` : mètres couverts par la planche, pour le grain des Textures HD.
   const CLAVEAU = { px: 256, cases: 4, pierre: 0.32, m: 1.28, couleur: PIERRE.couleur, biseau: 0.014,
-    layage: [0.014, 0.022], strie: 0.5, relief: 2.2, graine: 37 };
+    layage: { angle: 0.8, ecart: 0.2, pas: [0.016, 0.028], manque: 0.25, creux: 0.05, sombre: 0.045 },
+    relief: 2.2, graine: 37 };
+  // Moellons du tympan d'un arc (🧱 activé ; _moellonsBruts) : maçonnerie de blocage, plus rustique que la pierre de
+  // taille des parois, de la même teinte. Motif de `m` m ; assises approximatives de hauteur `assise`, moellons de
+  // longueur `bloc`, chacun décalé d'au plus `ecart` de sa taille (formes et lits irréguliers), contours tordus de
+  // ± `tors` m ; joints larges (`joint` : demi-largeur) et creux, faces bombées sur `biseau` m et gauchies. Longueurs
+  // en m. ⚠️ contrat : coordonnées de texture en motifs (mètres / `m`), posées par _tympanArc.
+  const BLOCAGE = { m: 2, px: 256, couleur: PIERRE.couleur, mortier: "#a69a83", assise: [0.1, 0.2],
+    bloc: [0.14, 0.5], ecart: 0.3, joint: [0.006, 0.013], biseau: 0.03, tors: 0.016, relief: 2.6, graine: 71 };
   // Parpaing (murs) : motif de 1 m (256 px/m, un joint de 1 cm fait 2,6 px ; un appareil régulier se répète de
   // toute façon), blocs de 50 × 20 cm à joints droits, gris béton, pores.
   const PARPAING = { m: 1, px: 256, couleur: "#a3a29c", mortier: "#b5b1a6", l: 0.5, h: 0.2, joint: 0.01,
@@ -384,12 +415,30 @@
   // point a une liaison, éteint (COULEUR_PORTAIL_ETEINT) sinon.
   const PORTAIL = { l: 1, h: 2, plafond: 0.1, bord: 0.09, ep: 0.08, recul: 0.005 };
   const COULEUR_PORTAIL_ETEINT = "#3d4048";   // couleur de la scène : un cadre de fer sombre
-  // Véhicule (vehicule) : voiture simplifiée, dimensions et obstacle dans KtaGalerie (ACCES_DIM.vehicule*) ; caisse
-  // de `garde` m au-dessus du sol jusqu'à `caisse` m, habitacle jusqu'au toit (vehiculeH, borné sous le plafond),
-  // de `hab` de la longueur, en retrait de `retrait` m sur les côtés ; quatre roues de `roue` m de rayon et
-  // `roueL` m de large, à 0,2 m des bouts. Couleurs de la scène, sobres (pas de la charte de l'UI).
-  const VEHICULE = { garde: 0.2, caisse: 0.8, hab: 0.6, retrait: 0.1, roue: 0.28, roueL: 0.18,
-    cotes: 12, carrosserie: "#59616b", vitre: "#1d2228", pneu: "#1b1b1b" };
+  // Véhicule (vehicule, _vehicule) : petite voiture à hayon, dimensions et obstacle dans KtaGalerie
+  // (ACCES_DIM.vehicule*). ⚠️ contrat : toute la forme tient dans le rectangle au sol de l'obstacle et sous
+  // vehiculeH (borné sous le plafond) — `marge` m de retrait sur chaque face. Caisse de `garde` m au-dessus du sol
+  // jusqu'à la ceinture (`caisse` m), habitacle jusqu'au toit, flancs rentrés de `devers` m en haut des vitres ;
+  // quatre roues de `roue` m de rayon et `roueL` m de large à `cotes` pans, axes à 0,2 m + un rayon des bouts,
+  // dans des passages de roue de `passage` m de jeu. Profil (`profil`) : stations de l'avant (u = 1) à l'arrière
+  // (u = −1), en parts de la demi-longueur — [u, demi-largeur (part), bas, ceinture (m pour une ceinture de
+  // `caisse`), habitacle (0 : capot ou coffre, 1 : toit)] ; les passages de roue ajoutent leurs stations.
+  // Couleurs de la scène, sobres (pas de la charte de l'UI) ; 🧱 activé, la poussière (`poussiere`) gagne le bas de
+  // caisse (`voile` : part au sol, part au toit) et les faces à plat (`depot`), moins les vitres et les pneus.
+  const VEHICULE = { garde: 0.2, caisse: 0.8, roue: 0.28, roueL: 0.18, cotes: 16, marge: 0.012, devers: 0.11,
+    passage: 0.06,
+    profil: [[1, 0.8, 0.34, 0.62, 0], [0.965, 0.93, 0.24, 0.67, 0], [0.9125, 0.98, 0.2, 0.7, 0],
+      [0.4875, 1, 0.2, 0.77, 0], [0.4, 1, 0.2, 0.8, 0], [0.1, 1, 0.2, 0.8, 1], [-0.4875, 1, 0.2, 0.8, 1],
+      [-0.9125, 0.98, 0.2, 0.82, 0], [-0.965, 0.93, 0.24, 0.7, 0], [-1, 0.82, 0.34, 0.6, 0]],
+    carrosserie: "#5a6a72", bas: "#2b2e32", dessous: "#17181a", vitre: "#1d2228", pneu: "#1b1b1b",
+    jante: "#8d9196", moyeu: "#4a4d52", phare: "#d8d2bc", feu: "#7a2a22", poussiere: "#b3a585",
+    voile: [0.26, 0.03], depot: 0.08 };
+  // Tôle du véhicule (🧱 activé ; _toleUsee) : carte claire qui module la couleur des sommets — peinture passée en
+  // plaques larges, coulures verticales, piqûres de rouille, grain ; relief à peine bosselé. Motif de `m` m,
+  // coordonnées de texture en motifs. Une seule carte pour toute la voiture, vitres et pneus compris (la
+  // poussière ne choisit pas) : aucun appel de dessin de plus que le lot opaque qu'elle remplace.
+  const TOLE = { m: 1, px: 256, couleur: "#f2eee4", plaques: 0.16, coulures: 0.07, piqures: 45, grain: 0.06,
+    relief: 1.4, graine: 113 };
   // Ossuaire (_ossuaire) : pan de `h` m au plus, `plafond` m sous le ciel au moins ; bouts d'os de `bout` m tous les
   // `pas` m, rangées de `rang` m, en relief de `relief` m sur le fond, dôme de `dome` m à `cotesOs` pans ; crânes de
   // `l` × `h` × `p` m tous les `pas` m, `avance` m devant le pan, `longs` fuseaux, parallèles `lats` (rad) ; `rangs` :
@@ -457,6 +506,7 @@
   const _police = { etat: "absente", promesse: null };
   let _appareils = {};               // canvas des textures déjà dessinés (_texturesPeintes : structures, parois, sol)
   const _appareilsMs = {};          // ms du premier dessin de chacun (checkup)
+  let _tonMotif = null;             // teinte du motif de la roche par case (_tonRoche), une fois par page
   let _dernierGl = null;            // contexte de la dernière vue fermée (checkup : libéré ou non)
   let _derniereFermeture = null;    // "utilisateur" | "contexte" (checkup)
   // « Voir sur la carte » : surbrillance du contour sur la carte (ms) ; dernier objet montré (checkup).
@@ -1104,7 +1154,11 @@
       const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
       if (l < 1e-6) continue;
       const n = [dz / l, 0, -dx / l];
-      if (lot.ombre && m) _faceOmbree(lot, p, q, y0, y1, n, col, s / m, (s + l) / m, m);
+      if (lot.brise && m && l > BRISE.long * m) _faceBrisee(lot, p, q, y0, y1, n, col, m);
+      else if (lot.ombre && m) {
+        if (lot.brise) _pansReleves().courtes.add(p[0].toFixed(2) + "," + p[1].toFixed(2) + "," + q[0].toFixed(2));
+        _faceOmbree(lot, p, q, y0, y1, n, col, s / m, (s + l) / m, m);
+      }
       else {
         lot.quad([p[0], y0, p[1]], [q[0], y0, q[1]], [q[0], y1, q[1]], [p[0], y1, p[1]], n, col,
           m ? [s / m, y0 / m, (s + l) / m, y0 / m, (s + l) / m, y1 / m, s / m, y1 / m] : undefined);
@@ -1119,7 +1173,9 @@
   // découpée à la hauteur où le dégradé du pied s'arrête, teinte par sommet, coordonnées de texture u0..u1 et
   // v = y / mv (inchangées : la texture ne voit pas le découpage). Une face qui ne descend pas dans la bande du pied
   // reste un quadrilatère à pleine teinte.
-  function _faceOmbree(lot, p, q, y0, y1, n, col, u0, u1, mv) {
+  // `dv` facultatif (motifs) : décalage de v, pour une face de roche brisée en pans (_faceBrisee).
+  function _faceOmbree(lot, p, q, y0, y1, n, col, u0, u1, mv, dv) {
+    dv = dv || 0;
     const O = lot.ombre, a = Math.min(OMBRE_CONTACT.haut, (O.plafond - O.sol) / 3), f = OMBRE_CONTACT.force;
     const k = function (y) {
       const d = y - O.sol;
@@ -1129,8 +1185,84 @@
     for (let i = 0; i + 1 < ys.length; i++) {
       const b = ys[i], h = ys[i + 1];
       lot.quadDegrade([p[0], b, p[1]], [q[0], b, q[1]], [q[0], h, q[1]], [p[0], h, p[1]], n, col, k(b), k(h),
-        [u0, b / mv, u1, b / mv, u1, h / mv, u0, h / mv]);
+        [u0, b / mv + dv, u1, b / mv + dv, u1, h / mv + dv, u0, h / mv + dv]);
     }
+  }
+
+  // Longue face de roche (lot.brise, plus de BRISE.long motifs) de p à q : découpée en pans de BRISE.pan motifs de
+  // long, chacun à sa propre origine du motif (u et v décalés, sens de u retourné une fois sur deux) — sur un long
+  // front, le même groupe de fissures et de stries ne revient plus à pas fixe et à la même hauteur. Tirages
+  // dérivés de la position de la face (cm) : les mêmes à chaque reconstruction de tuile, à chaque ouverture et sur
+  // chaque appareil. ⚠️ contrat : même géométrie (pans coplanaires jointifs), même matériau ; coût : douze sommets
+  // par pan avec l'ombre de contact (six sans), au lieu d'autant pour la face entière.
+  // 🩸 Jointure sans saut de nuance : l'origine d'un pan est choisie parmi BRISE.essais tirages, celle dont la
+  // colonne de départ a la teinte la plus proche de la colonne où finit le pan d'avant, sur toute la hauteur de la
+  // face (_tonRoche) — deux origines prises au hasard se raccordent sur des taches larges différentes, et la
+  // jointure se lit comme une ligne verticale. Relevé du checkup : e.pans (face → pans et leurs origines).
+  function _faceBrisee(lot, p, q, y0, y1, n, col, m) {
+    const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+    const cle = p[0].toFixed(2) + "," + p[1].toFixed(2) + "," + q[0].toFixed(2) + "," + q[1].toFixed(2);
+    const alea = _aleaGraine(_hachage("pan," + cle)), T = _tonRoche(), nt = BRISE.ton, sig = [];
+    const case1 = function (x) { return ((Math.floor(x * nt) % nt) + nt) % nt; };
+    // Écart de teinte entre deux colonnes du motif (u, décalage de v), sur la hauteur de la face.
+    const ecart = function (ua, va, ub, vb) {
+      let d = 0;
+      for (let y = y0; y < y1; y += m / nt) {
+        d += Math.abs(T[case1(y / m + va) * nt + case1(ua)] - T[case1(y / m + vb) * nt + case1(ub)]);
+      }
+      return d;
+    };
+    let fin = null;
+    for (let s = 0; s < l - 1e-6;) {
+      let pan = (BRISE.pan[0] + alea() * (BRISE.pan[1] - BRISE.pan[0])) * m;
+      if (l - s - pan < BRISE.pan[0] * m / 2) pan = l - s;
+      const a = [p[0] + dx * s / l, p[1] + dz * s / l], b = [p[0] + dx * (s + pan) / l, p[1] + dz * (s + pan) / l];
+      let u = 0, dv = 0, sens = 1, mieux = Infinity;
+      for (let k = 0; k < (fin && T ? BRISE.essais : 1); k++) {
+        const uk = alea(), vk = alea(), sk = alea() < 0.5 ? -1 : 1;
+        // Jamais à la hauteur du pan d'avant (à moins de BRISE.haut motif près) : le même dessin reviendrait à côté.
+        const dh = fin ? Math.abs(((vk - fin[1]) % 1 + 1.5) % 1 - 0.5) : 1;
+        const d = !fin || !T ? 0 : ecart(fin[0], fin[1], uk, vk) + (dh < BRISE.haut ? 1e6 : 0);
+        if (d < mieux) { mieux = d; u = uk; dv = vk; sens = sk; }
+      }
+      const u1 = u + sens * pan / m;
+      // Colonne où finit ce pan : la dernière qu'il montre (juste en deçà de u1).
+      fin = [u1 - sens * 0.5 / nt, dv];
+      sig.push(u.toFixed(4) + "/" + dv.toFixed(4) + "/" + sens + "/" + pan.toFixed(3));
+      if (lot.ombre) _faceOmbree(lot, a, b, y0, y1, n, col, u, u1, m, dv);
+      else {
+        lot.quad([a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]], n, col,
+          [u, y0 / m + dv, u1, y0 / m + dv, u1, y1 / m + dv, u, y1 / m + dv]);
+      }
+      s += pan;
+    }
+    _pansReleves().longues.set(cle, sig);
+  }
+
+  // Relevé des faces de roche (checkup, KtaVue3D.textures().pans) : longues → leurs pans, courtes laissées entières.
+  function _pansReleves() { return _e.pans || (_e.pans = { longues: new Map(), courtes: new Set() }); }
+
+  // Teinte moyenne du motif de la roche par case (BRISE.ton × BRISE.ton, v vers le haut ; somme R + V + B), lue une
+  // fois par page sur la carte dessinée — la roche est dessinée ici si elle ne l'est pas encore (_matsTextures).
+  // Lue sur le premier dessin fait dans la page (256 px, ou 512 en Textures HD : le même dessin plus fin, des cases
+  // à très peu près égales — deux appareils de finesse différente peuvent choisir des origines différentes).
+  function _tonRoche() {
+    if (_tonMotif) return _tonMotif;
+    let d = _appareils.roche || _appareils["roche@" + HD.px];
+    if (!d) { _matsTextures(); d = _appareils.roche || _appareils["roche@" + HD.px]; }
+    if (!d) return null;
+    const cv = d.couleur, n = cv.width, nt = BRISE.ton, c = n / nt, T = new Float32Array(nt * nt);
+    const px = cv.getContext("2d").getImageData(0, 0, n, n).data;
+    for (let y = 0; y < n; y++) {
+      const r = nt - 1 - Math.min(nt - 1, Math.floor(y / c));
+      for (let x = 0; x < n; x++) {
+        const o = (y * n + x) * 4;
+        T[r * nt + Math.min(nt - 1, Math.floor(x / c))] += px[o] + px[o + 1] + px[o + 2];
+      }
+    }
+    for (let i = 0; i < nt * nt; i++) T[i] /= c * c;
+    _tonMotif = T;
+    return T;
   }
 
   // Origine du motif sur un contour (m) : tirée de la position de son premier sommet, deux volumes voisins ne montrent
@@ -1386,6 +1518,7 @@
     const roche = new Lot(), parpaing = new Lot(), tx = _e.textures === true;
     const remblaisTex = new Lot(), eboulis = new Lot(), arcs = _lotsArc(opaque, h);
     if (ombre) roche.ombre = parpaing.ombre = ombre;
+    roche.brise = true;
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
       remblais: tx ? remblaisTex : remblaisTube, eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.s.length; i++) {
@@ -2658,10 +2791,12 @@
 
   // Roche brute (piliers et fronts : la masse calcaire laissée en place, jamais appareillée) : relief en bosses à
   // trois échelles (champs bouclés), nuances de calcaire en taches larges, strates horizontales discrètes et
-  // ondulées, fissures en creux (marches aléatoires bouclées) et traces d'outil (pic, broche : courts sillons
-  // parallèles en grappes, obliques). Aucun joint, aucun bloc. Motif de ROCHE.m mètres (décalé par structure) : sans
-  // joints la répétition se voit plus, d'où un motif plus grand que celui du parpaing et deux échelles de taches.
-  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  // ondulées, fissures en creux (marches aléatoires bouclées) et traces d'outil en passes de coups parallèles
+  // (ROCHE.pic : rangées de coups de pic courts, serrés, obliques ; ROCHE.lance : longues stries presque
+  // verticales). Aucun joint, aucun bloc. Motif de ROCHE.m mètres (décalé par structure) : sans joints la répétition
+  // se voit plus, d'où un motif plus grand que celui du parpaing et deux échelles de taches.
+  // → { couleur, normale (canvas n × n), traces: { pic: { passes, coups, orientations }, lance: { passes, coups,
+  // penteMax } } (relevé du checkup) }. 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _rocheBrute(alea) {
     const R = ROCHE, n = _px(R), k = n / R.m, q = _fin(), haut = new Float32Array(n * n), sombre = new Float32Array(n * n);
     const creux = new Float32Array(n * n);
@@ -2690,16 +2825,46 @@
     const C = { n: n, q: q, creux: creux, sombre: sombre };
     for (let f = 0; f < R.fissures; f++) {
       _fissurer(C, alea, alea() * n, alea() * n, Math.PI / 2 + (alea() - 0.5) * 0.9, (0.3 + alea() * 0.9) * k,
-        (0.4 + alea() * 0.6) * q, 1);
+        (0.3 + alea() * 0.4) * q, R.fissure);
     }
-    // Traces d'outil (pic, broche) : sillons isolés ou par deux ou trois, de longueur, d'angle et d'écart tirés.
-    for (let g = 0; g < R.grappes; g++) {
-      const cx = alea() * n, cy = alea() * n, a0 = (alea() < 0.5 ? -1 : 1) * (0.4 + alea() * 0.8);
-      const nb = 1 + Math.floor(alea() * 3);
+    // Traces d'outil. Un coup : droit, de (x, y) vers l'angle a, long de l px, effilé aux deux bouts.
+    const tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
+    const coup = function (O, x, y, a, l, f) {
+      const ca = Math.cos(a), sa = Math.sin(a), r = Math.max(0.8 * q, O.rayon * k);
+      for (let s = 0; s < l; s += 0.5 * q) {
+        const t = Math.min(1, 4 * Math.min(s, l - s) / l);
+        _creuser(C, x + ca * s, y + sa * s, r * (0.6 + 0.4 * t), O.creux * f * t, O.sombre * f * t);
+      }
+    };
+    const traces = { fissures: R.fissures, pic: { passes: R.pic.passes, coups: 0, orientations: [] },
+      lance: { passes: R.lance.passes, coups: 0, penteMax: 0 } };
+    // Passes de pic : rangées superposées de coups obliques, même orientation, même pas et même longueur (à
+    // `ecart` près) pour toute la passe ; la rangée court presque à l'horizontale.
+    for (let g = 0; g < R.pic.passes; g++) {
+      const O = R.pic, dominante = alea() < 0.7 ? 0 : O.angles.length - 1, a = O.angles[dominante] + (alea() - 0.5) * 0.1;
+      if (traces.pic.orientations.indexOf(dominante) < 0) traces.pic.orientations.push(dominante);
+      const rg = (alea() - 0.5) * 0.3, nb = Math.round(tire(O.coups)), pas = tire(O.pas) * k, l0 = tire(O.long) * k;
+      const rangs = Math.round(tire(O.rangs)), haut0 = l0 * Math.abs(Math.sin(a));
+      let rx = alea() * n, ry = alea() * n;
+      for (let j = 0; j < rangs; j++) {
+        for (let i = 0; i < nb; i++) {
+          coup(O, rx + Math.cos(rg) * pas * i, ry + Math.sin(rg) * pas * i, a, l0 * (1 + (alea() - 0.5) * 2 * O.ecart),
+            0.7 + alea() * 0.3);
+        }
+        traces.pic.coups += nb;
+        rx += (alea() - 0.5) * pas + haut0 * Math.cos(a) / Math.abs(Math.sin(a));
+        ry += haut0 * (0.95 + alea() * 0.2);
+      }
+    }
+    // Passes de lance : quelques longues stries droites, parallèles, presque verticales, côte à côte.
+    for (let g = 0; g < R.lance.passes; g++) {
+      const O = R.lance, pente = (alea() - 0.5) * 2 * O.pente, a = Math.PI / 2 + pente, nb = Math.round(tire(O.coups));
+      const pas = tire(O.pas) * k, l0 = tire(O.long) * k, ox = alea() * n, oy = alea() * n;
+      traces.lance.penteMax = Math.max(traces.lance.penteMax, Math.abs(pente));
+      traces.lance.coups += nb;
       for (let i = 0; i < nb; i++) {
-        const a = a0 + (alea() - 0.5) * 0.3, l = (0.06 + alea() * 0.14) * k, e = (0.02 + alea() * 0.04) * k * i;
-        const ox = cx - Math.sin(a0) * e, oy = cy + Math.cos(a0) * e;
-        for (let s = 0; s < l; s += 0.5 * q) _creuser(C, ox + Math.cos(a) * s, oy + Math.sin(a) * s, 0.9 * q, 0.07, 0.035);
+        coup(O, ox + pas * i * (0.9 + alea() * 0.2), oy + (alea() - 0.5) * O.ecart * l0,
+          a, l0 * (1 + (alea() - 0.5) * 2 * O.ecart), 0.7 + alea() * 0.3);
       }
     }
     for (let p = 0; p < n * n; p++) haut[p] -= creux[p];
@@ -2718,7 +2883,7 @@
       }
     }
     for (let p = 0; p < n * n; p++) haut[p] += (grain() - 0.5) * 0.02;
-    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, R.relief * q) };
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, R.relief * q), traces: traces };
   }
 
   // Pierraille (REMBLAIS, EBOULIS) : sol de terre et de sable (bruit à trois échelles, grains clairs), cailloux et
@@ -2922,20 +3087,132 @@
     return e.mats.claveau;
   }
 
+  // Matériau du tympan des arcs (🧱), fait au premier arc texturé : moellons de blocage (BLOCAGE), couleur + normal
+  // map, teinte par sommet ; suit les Textures HD comme la roche (_habiller, _detailler).
+  function _matBlocage() {
+    const e = _e;
+    if (e.mats.blocage) return e.mats.blocage;
+    const t0 = performance.now();
+    e.mats.blocage = _habiller(_detailler(new THREE.MeshLambertMaterial({ vertexColors: true }), BLOCAGE.m),
+      "blocage", _moellonsBruts, BLOCAGE.graine);
+    e.msBlocage = performance.now() - t0;
+    return e.mats.blocage;
+  }
+
+  // Maçonnerie de moellons (BLOCAGE) : un germe par moellon, rangé en assises approximatives puis décalé ; chaque
+  // pixel appartient au germe le plus proche, la distance étant rapportée à la taille du moellon et arrondie aux
+  // angles (norme 4 : des pavés aux coins ronds, de tailles inégales, lits qui ondulent, mortier plus large là où
+  // trois moellons se touchent) ; l'écart au second plus proche donne le joint (large, en creux, mortier grenu) et
+  // le bombé de la face. Contours tordus par deux champs de bruit ; face gauchie (pente propre à chaque moellon),
+  // bosselée, teinte tirée par moellon. Motif sans couture (distances bouclées).
+  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  // ⚠️ Coût : neuf germes lus par pixel, jamais tous — ceux de son assise et des deux voisines, à sa colonne et de
+  // part et d'autre (tables par ligne et par colonne).
+  function _moellonsBruts(alea) {
+    const B = BLOCAGE, n = _px(B), k = n / B.m, q = _fin(), tire = function (b) { return b[0] + alea() * (b[1] - b[0]); };
+    const haut = new Float32Array(n * n), img = new Uint8ClampedArray(n * n * 4);
+    const base = new THREE.Color(B.couleur), mo = new THREE.Color(B.mortier);
+    const tache = _champBoucle(alea, 6, 6, n), face = _champBoucle(alea, 26, 26, n), fin = _champBoucle(alea, 60, 60, n);
+    const tx = _champBoucle(alea, 12, 12, n), ty = _champBoucle(alea, 12, 12, n);
+    // Longueurs tirées dont la somme fait le motif (la dernière prend le reste, coupée en deux si elle est trop grande).
+    const decoupe = function (b) {
+      const out = [];
+      for (let x = 0; x < B.m - 1e-6;) {
+        let l = tire(b);
+        if (B.m - x - l < b[0]) l = B.m - x;
+        if (l > b[1] * 1.2) l /= 2;
+        out.push([x, l]);
+        x += l;
+      }
+      return out;
+    };
+    // Assises : leurs moellons dans l'ordre, et pour chaque colonne de pixels le rang de celui qui la couvre.
+    const A = [], rang = new Int16Array(n);
+    decoupe(B.assise).forEach(function (a) {
+      const dec = alea() * B.m, G = [], col = new Int16Array(n);
+      for (let y = Math.round(a[0] * k); y < Math.round((a[0] + a[1]) * k) && y < n; y++) rang[y] = A.length;
+      A.push({ G: G, col: col });
+      decoupe(B.bloc).forEach(function (b) {
+        const t = 0.86 + alea() * 0.18, chaud = alea(), gris = alea() < 0.25;
+        const c1 = Math.round((dec + b[0] + b[1]) * k);
+        for (let c = Math.round((dec + b[0]) * k); c < c1; c++) col[c % n] = G.length;
+        const x = (((dec + b[0] + b[1] * (0.5 + (alea() - 0.5) * B.ecart)) % B.m) + B.m) % B.m * k;
+        const y = (((a[0] + a[1] * (0.5 + (alea() - 0.5) * B.ecart)) % B.m) + B.m) % B.m * k;
+        G.push({ x: x, y: y, hx: b[1] * k / 2, hy: a[1] * k / 2, demi: tire(B.joint) * k,
+          gx: (alea() - 0.5) * 0.5 / (b[1] * k),
+          gy: (alea() - 0.5) * 0.5 / (a[1] * k), bombe: 0.45 + alea() * 0.3,
+          teinte: gris ? [t * 0.95, t * 0.97, t] : [t * (1 + 0.04 * chaud), t, t * (0.96 - 0.06 * chaud)] });
+      });
+    });
+    const na = A.length;
+    let graine = Math.floor(alea() * 2147483647) | 1;
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
+    const biseau = B.biseau * k, tors = 2 * B.tors * k, demiN = n / 2;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
+        const px = x + (tx[p] - 0.5) * tors, py = y + (ty[p] - 0.5) * tors;
+        const cx = ((Math.floor(px) % n) + n) % n, ra = rang[((Math.floor(py) % n) + n) % n];
+        let d1 = Infinity, d2 = Infinity, g1 = null, g2 = null, x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+        for (let j = ra - 1; j <= ra + 1; j++) {
+          const a = A[(j + na) % na], ng = a.G.length, c = a.col[cx];
+          for (let i = c - 1; i <= c + 1; i++) {
+            const g = a.G[(i + ng) % ng];
+            let dx = g.x - px, dy = g.y - py;
+            if (dx > demiN) dx -= n; else if (dx < -demiN) dx += n;
+            if (dy > demiN) dy -= n; else if (dy < -demiN) dy += n;
+            const u = dx * dx / (g.hx * g.hx), v = dy * dy / (g.hy * g.hy), d = u * u + v * v;
+            if (d < d1) { d2 = d1; g2 = g1; x2 = x1; y2 = y1; d1 = d; g1 = g; x1 = dx; y1 = dy; } else if (d < d2) {
+              d2 = d; g2 = g; x2 = dx; y2 = dy;
+            }
+          }
+        }
+        // Distance (px) à la frontière entre les deux moellons les plus proches, moins le demi-joint : l'écart des
+        // deux distances réduites, rendu en pixels par la demi-taille de chaque moellon dans la direction du pixel.
+        const h1 = Math.abs(x1) * g1.hy > Math.abs(y1) * g1.hx ? g1.hx : g1.hy;
+        const h2 = !g2 ? h1 : Math.abs(x2) * g2.hy > Math.abs(y2) * g2.hx ? g2.hx : g2.hy;
+        const bord = (Math.sqrt(Math.sqrt(d2)) - Math.sqrt(Math.sqrt(d1))) / (1 / h1 + 1 / h2) -
+          g1.demi * (0.7 + 0.6 * fin[p]);
+        if (bord < 0) {
+          const f = 0.88 + grain() * 0.2, c = Math.min(1, -bord / (g1.demi || 1));
+          haut[p] = 0.16 - 0.1 * c + grain() * 0.06;
+          img[o4] = mo.r * 255 * f; img[o4 + 1] = mo.g * 255 * f; img[o4 + 2] = mo.b * 255 * f;
+        } else {
+          const t = bord < biseau ? bord / biseau : 1, s = t * (2 - t), te = g1.teinte;
+          haut[p] = 0.22 + g1.bombe * s - (x1 * g1.gx + y1 * g1.gy) * s + (face[p] - 0.5) * 0.2 +
+            (fin[p] - 0.5) * 0.1 + (grain() - 0.5) * 0.05;
+          const f = (0.92 + 0.2 * tache[p]) * (0.93 + 0.14 * face[p]) * (1 + (grain() - 0.5) * 0.09) * (0.84 + 0.16 * s);
+          img[o4] = base.r * 255 * te[0] * f; img[o4 + 1] = base.g * 255 * te[1] * f; img[o4 + 2] = base.b * 255 * te[2] * f;
+        }
+        img[o4 + 3] = 255;
+      }
+    }
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, B.relief * q) };
+  }
+
   // Planche de pierres dressées (CLAVEAU) : cases × cases pierres entières côte à côte. Chaque pierre : face
   // dressée presque plane (bosses très douces, grain fin), teinte propre, arêtes émoussées (la hauteur et la couleur
-  // tombent vers le bord de la case : la lampe accroche le chanfrein), layage par endroits (stries parallèles à
-  // l'angle et au pas de la pierre, là où un voile à grande échelle le laisse voir), quelques pores.
+  // tombent vers le bord de la case : la lampe accroche le chanfrein), layage discret (CLAVEAU.layage : un profil
+  // de coups tiré par pierre, en travers de leur direction — pas, profondeur et largeur inégaux, coups manquants —,
+  // lu avec une légère ondulation et effacé par plages à deux échelles), quelques pores.
   // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
   function _pierresDressees(alea) {
     const V = CLAVEAU, n = _px(V), q = _fin(), nc = V.cases, c = n / nc, k = c / V.pierre;
     const haut = new Float32Array(n * n), img = new Uint8ClampedArray(n * n * 4), base = new THREE.Color(V.couleur);
     const tache = _champBoucle(alea, 9, 9, n), bosse = _champBoucle(alea, 20, 20, n), voile = _champBoucle(alea, 7, 7, n);
     const pierres = [];
+    const Y = V.layage, lp = Math.ceil(c * 1.5) + 4;
     for (let i = 0; i < nc * nc; i++) {
-      const t = 0.9 + alea() * 0.1, chaud = alea(), a = (alea() < 0.5 ? -1 : 1) * (0.5 + alea() * 0.6);
+      const t = 0.9 + alea() * 0.1, chaud = alea(), a = Y.angle + (alea() - 0.5) * 2 * Y.ecart;
+      const pas = (Y.pas[0] + alea() * (Y.pas[1] - Y.pas[0])) * k, coups = new Float32Array(lp);
+      for (let x = alea() * pas; x < lp; x += pas * (0.55 + alea() * 1.1)) {
+        const f = alea() < Y.manque ? 0 : 0.3 + alea() * 0.7, w = Math.max(q, pas * (0.25 + alea() * 0.25));
+        for (let j = Math.max(0, Math.floor(x - w)); j <= Math.min(lp - 1, Math.ceil(x + w)); j++) {
+          coups[j] = Math.max(coups[j], f * Math.max(0, 1 - Math.abs(j - x) / w));
+        }
+      }
       pierres.push({ teinte: alea() < 0.2 ? [t * 0.96, t * 0.98, t] : [t * (1 + 0.02 * chaud), t, t * (0.98 - 0.04 * chaud)],
-        ca: Math.cos(a), sa: Math.sin(a), pas: (V.layage[0] + alea() * (V.layage[1] - V.layage[0])) * k });
+        ca: Math.cos(a), sa: Math.sin(a), coups: coups, onde: (0.4 + alea() * 0.8) * pas });
     }
     let graine = Math.floor(alea() * 2147483647) | 1;
     const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
@@ -2945,11 +3222,13 @@
         const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4, lx = x % c, ly = y % c;
         const S = pierres[Math.floor(y / c) * nc + Math.floor(x / c)];
         const bord = Math.min(lx, c - 1 - lx, ly, c - 1 - ly) + 0.5, t = bord < biseau ? bord / biseau : 1;
-        const s = t * t * (3 - 2 * t), vu = Math.max(0, Math.min(1, voile[p] * 3 - 1.2)) * V.strie * s;
-        const strie = Math.sin(2 * Math.PI * (lx * S.ca + ly * S.sa) / S.pas);
-        haut[p] = 0.35 + 0.65 * s + (bosse[p] - 0.5) * 0.1 + strie * 0.07 * vu + (grain() - 0.5) * 0.05;
-        const f = (0.93 + 0.14 * tache[p]) * (1 + (grain() - 0.5) * 0.07) * (0.8 + 0.2 * s) *
-          (1 - 0.07 * vu * Math.max(0, -strie));
+        // Zones lisses : le layage s'efface là où l'un des deux voiles (large, moyen) tombe.
+        const s = t * t * (3 - 2 * t), vu = Math.max(0, Math.min(1, voile[p] * 3 - 0.9)) *
+          Math.max(0, Math.min(1, tache[p] * 2.6 - 0.55)) * s;
+        const tt = Math.max(0, Math.min(lp - 2, lx * S.ca + ly * S.sa + (bosse[p] - 0.5) * S.onde)), i0 = Math.floor(tt);
+        const coup = (S.coups[i0] + (S.coups[i0 + 1] - S.coups[i0]) * (tt - i0)) * vu;
+        haut[p] = 0.35 + 0.65 * s + (bosse[p] - 0.5) * 0.1 - coup * Y.creux + (grain() - 0.5) * 0.05;
+        const f = (0.93 + 0.14 * tache[p]) * (1 + (grain() - 0.5) * 0.07) * (0.8 + 0.2 * s) * (1 - Y.sombre * coup);
         img[o4] = base.r * 255 * S.teinte[0] * f; img[o4 + 1] = base.g * 255 * S.teinte[1] * f;
         img[o4 + 2] = base.b * 255 * S.teinte[2] * f; img[o4 + 3] = 255;
       }
@@ -6635,90 +6914,291 @@
     v.trace = { allume: v.allume, haut: +H.toFixed(3), largeur: PORTAIL.l };
   }
 
-  // Véhicule : caisse, habitacle (vitres sombres sur les quatre côtés) et quatre roues, le long de l'axe (v.dir),
-  // dans le lot opaque. ⚠️ contrat : l'obstacle est son rectangle au sol (galerieEmprise.js > _obstaclesAcces).
+  // Véhicule : petite voiture à hayon le long de l'axe (v.dir), avant vers +s. Caisse = sections en travers
+  // (_sectionVehicule) aux stations du profil (VEHICULE.profil, plus celles des passages de roue), reliées de proche
+  // en proche et fermées aux deux bouts : capot, pare-brise et lunette inclinés, toit, flancs galbés et rentrés en
+  // haut, bas de caisse et boucliers sombres ; normales lissées par sommet sauf aux arêtes vives (plus de 50°).
+  // Vitres, phares, calandre et feux : plaques posées à VEHICULE.marge / 2 de la tôle. Roues : pneu à
+  // VEHICULE.cotes pans (normales radiales), flanc, jante à branches. 🧱 activé : lot `tole` (matériau _matTole,
+  // coordonnées de texture en motifs, projetées selon la face) et voile de poussière par triangle ; 🧱 coupé : la
+  // même forme en aplats dans le lot opaque. ⚠️ contrat : l'obstacle est son rectangle au sol (galerieEmprise.js >
+  // _obstaclesAcces) — aucun sommet n'en sort ni ne dépasse la hauteur (v.trace.boite : la boîte mesurée).
+  // Relevé : v.trace { long, large, haut (m), boite: { long, large, bas, haut }, pans, texture }.
   function _vehicule(v, lots) {
-    const e = _e, V = VEHICULE, Q = _repere(v), a = v.a, b = v.b, lot = lots.opaque;
-    const haut = Math.min(DIM_ACCES.vehiculeH, e.hauteur - 0.05), caisse = Math.min(V.caisse, haut - 0.2);
-    const ha = a * V.hab, hb = b - V.retrait, verre = 0.012;
-    const corps = _couleurFixe(V.carrosserie), vitre = _couleurFixe(V.vitre), pneu = _couleurFixe(V.pneu);
-    _pave(lot, Q, -a, a, -b, b, V.garde, caisse, corps);
-    _pave(lot, Q, -ha * 0.9, ha, -hb, hb, caisse, haut, corps);
-    const yv0 = caisse + 0.06, yv1 = haut - 0.08;
-    [[-hb - verre, -1], [hb + verre, 1]].forEach(function (c) {
-      const p = Q(-ha * 0.9 + 0.1, c[0]), q = Q(ha - 0.1, c[0]), n = [-Math.sin(v.dir || 0) * c[1], 0,
-        Math.cos(v.dir || 0) * c[1]];
-      lot.quad([p[0], yv0, p[1]], [q[0], yv0, q[1]], [q[0], yv1, q[1]], [p[0], yv1, p[1]], n, vitre);
+    const e = _e, V = VEHICULE, tex = e.textures === true, lot = tex ? _lot(lots, "tole") : lots.opaque;
+    const mg = V.marge, a = v.a - mg, b = v.b - mg;
+    const haut = Math.min(DIM_ACCES.vehiculeH, e.hauteur - 0.05), toit = haut - mg;
+    const ceinture = Math.min(V.caisse, haut - 0.2), ky = ceinture / V.caisse;
+    const ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0), M = TOLE.m;
+    const C = {};
+    ["carrosserie", "bas", "dessous", "vitre", "pneu", "jante", "moyeu", "phare", "feu", "poussiere"]
+      .forEach(function (k) { C[k] = _couleurFixe(V[k]); });
+    const boite = { s: 0, t: 0, bas: Infinity, haut: -Infinity };
+    // Triangle du repère de la voiture ([s, y, t]) → monde, normales par sommet (même repère), sens corrigé.
+    const tri = function (A, B, Cc, nA, nB, nC, col) {
+      let gx = (B[1] - A[1]) * (Cc[2] - A[2]) - (B[2] - A[2]) * (Cc[1] - A[1]);
+      let gy = (B[2] - A[2]) * (Cc[0] - A[0]) - (B[0] - A[0]) * (Cc[2] - A[2]);
+      let gz = (B[0] - A[0]) * (Cc[1] - A[1]) - (B[1] - A[1]) * (Cc[0] - A[0]);
+      const l = Math.hypot(gx, gy, gz);
+      if (l < 1e-9) return;
+      gx /= l; gy /= l; gz /= l;
+      if (gx * (nA[0] + nB[0] + nC[0]) + gy * (nA[1] + nB[1] + nC[1]) + gz * (nA[2] + nB[2] + nC[2]) < 0) {
+        let x = B; B = Cc; Cc = x; x = nB; nB = nC; nC = x;
+        gx = -gx; gy = -gy; gz = -gz;
+      }
+      const P = [A, B, Cc], N = [nA, nB, nC];
+      let c = col;
+      if (tex) {
+        // Poussière : plus dense vers le sol, déposée sur les faces à plat.
+        const ym = (A[1] + B[1] + Cc[1]) / 3;
+        const k = Math.min(0.6, V.voile[0] + (V.voile[1] - V.voile[0]) * Math.min(1, ym / toit) +
+          (gy > 0.7 ? V.depot : 0)) * (col === C.pneu || col === C.vitre || col === C.dessous ? 0.4 : 1);
+        c = { r: col.r + (C.poussiere.r - col.r) * k, g: col.g + (C.poussiere.g - col.g) * k,
+          b: col.b + (C.poussiere.b - col.b) * k };
+      }
+      const W = P.map(function (p) {
+        boite.s = Math.max(boite.s, Math.abs(p[0])); boite.t = Math.max(boite.t, Math.abs(p[2]));
+        boite.bas = Math.min(boite.bas, p[1]); boite.haut = Math.max(boite.haut, p[1]);
+        return [v.cx + ux * p[0] - uz * p[2], p[1], v.cz + uz * p[0] + ux * p[2]];
+      });
+      // Coordonnées de texture : projection selon l'axe dominant de la face (flanc, dessus, bout).
+      const ax = Math.abs(gx), ay = Math.abs(gy), az = Math.abs(gz);
+      const uv = !tex ? undefined : [].concat.apply([], P.map(function (p) {
+        return az >= ax && az >= ay ? [p[0] / M, p[1] / M] : ay >= ax ? [p[0] / M, p[2] / M] : [p[2] / M, p[1] / M];
+      }));
+      const i0 = lot.n.length;
+      lot.tri(W[0], W[1], W[2], [ux * gx - uz * gz, gy, uz * gx + ux * gz], c, uv);
+      for (let i = 0; i < 3; i++) {
+        const n = N[i], ln = Math.hypot(n[0], n[1], n[2]) || 1;
+        lot.n[i0 + i * 3] = Math.round((ux * n[0] - uz * n[2]) / ln * 127);
+        lot.n[i0 + i * 3 + 1] = Math.round(n[1] / ln * 127);
+        lot.n[i0 + i * 3 + 2] = Math.round((uz * n[0] + ux * n[2]) / ln * 127);
+      }
+    };
+    // Plaque (vitre, phare) : quadrilatère plat, décollé de VEHICULE.marge / 2 le long de sa normale.
+    const plaque = function (q, n, col) {
+      const l = Math.hypot(n[0], n[1], n[2]) || 1, d = mg / 2 / l;
+      const p = q.map(function (x) { return [x[0] + n[0] * d, x[1] + n[1] * d, x[2] + n[2] * d]; });
+      tri(p[0], p[1], p[2], n, n, n, col);
+      tri(p[0], p[2], p[3], n, n, n, col);
+    };
+    // Stations : celles du profil, et quatre par essieu pour le passage de roue (pieds et dessus de l'arche).
+    const R = Math.min(V.roue, (ceinture - 0.1) / 2), xa = a - R - 0.2, ra = R + V.passage, rt = R * 0.55;
+    const ya = 2 * R + V.passage * 0.8, cles = V.profil;
+    const us = cles.map(function (k) { return k[0]; });
+    [1, -1].forEach(function (c) {
+      [xa - ra, xa - rt, xa + rt, xa + ra].forEach(function (s) {
+        const u = c * s / a;
+        if (!us.some(function (x) { return Math.abs(x - u) < 0.01; })) us.push(u);
+      });
     });
-    [[ha + verre, 1], [-ha * 0.9 - verre, -1]].forEach(function (c) {
-      const p = Q(c[0], -hb + 0.1), q = Q(c[0], hb - 0.1), n = [Math.cos(v.dir || 0) * c[1], 0,
-        Math.sin(v.dir || 0) * c[1]];
-      lot.quad([p[0], yv0, p[1]], [q[0], yv0, q[1]], [q[0], yv1, q[1]], [p[0], yv1, p[1]], n, vitre);
+    us.sort(function (x, y) { return y - x; });
+    const station = function (u) {
+      let i = 0;
+      while (i < cles.length - 2 && u < cles[i + 1][0]) i++;
+      const A = cles[i], B = cles[i + 1], f = Math.max(0, Math.min(1, (A[0] - u) / (A[0] - B[0])));
+      const L = function (j) { return A[j] + (B[j] - A[j]) * f; };
+      const s = u * a, d = Math.abs(Math.abs(s) - xa);
+      const arche = d >= ra ? 0 : d <= rt ? ya : ya * (ra - d) / (ra - rt);
+      const yc = L(3) * ky, cab = L(4);
+      return { s: s, w: L(1) * b, yb: Math.max(L(2) * ky, Math.min(arche, yc - 0.06)), yc: yc,
+        yt: yc + cab * (toit - yc), cab: cab, bout: Math.abs(u) > 0.9 };
+    };
+    const S = us.map(station), ns = S.length, np = 12;
+    const anneaux = S.map(_sectionVehicule), T = [];
+    // Bandes d'un anneau à l'autre : 0 et 10 bas de caisse, 1-2 et 8-9 flanc, 3 et 7 vitrage, 4 et 6 rive du toit,
+    // 5 dessus (capot, pare-brise, toit, lunette, coffre), 11 dessous.
+    for (let i = 0; i + 1 < ns; i++) {
+      const bout = S[i].bout && S[i + 1].bout;
+      for (let j = 0; j < np; j++) {
+        const k = (j + 1) % np, bas = j === 0 || j === 10 || (bout && (j === 1 || j === 9));
+        const col = j === 11 ? C.dessous : bas ? C.bas : C.carrosserie;
+        T.push([anneaux[i][j], anneaux[i + 1][j], anneaux[i + 1][k], col, null],
+          [anneaux[i][j], anneaux[i + 1][k], anneaux[i][k], col, null]);
+      }
+    }
+    // Bouts : éventail autour du centre de l'anneau.
+    [0, ns - 1].forEach(function (i) {
+      const A = anneaux[i], c = [A[0][0], (S[i].yb + S[i].yc) / 2, 0];
+      for (let j = 0; j < np; j++) T.push([c, A[j], A[(j + 1) % np], C.carrosserie, i ? -1 : 1]);
     });
-    // Roues : prismes à V.cotes faces, axe en travers (t), posées au sol.
-    const R = V.roue, ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
+    // Normales : par triangle, puis par sommet la somme de celles des triangles voisins à moins de 50° (arêtes
+    // vives gardées : ceinture, boucliers ; galbe lissé). Vers l'extérieur : l'anneau tourne toujours dans le même
+    // sens, la normale géométrique d'une bande pointe vers l'intérieur ; un bout regarde vers son côté de s.
+    const par = new Map();
+    const cle = function (p) { return p[0].toFixed(3) + "," + p[1].toFixed(3) + "," + p[2].toFixed(3); };
+    T.forEach(function (t) {
+      const A = t[0], B = t[1], D = t[2];
+      let gx = (B[1] - A[1]) * (D[2] - A[2]) - (B[2] - A[2]) * (D[1] - A[1]);
+      let gy = (B[2] - A[2]) * (D[0] - A[0]) - (B[0] - A[0]) * (D[2] - A[2]);
+      let gz = (B[0] - A[0]) * (D[1] - A[1]) - (B[1] - A[1]) * (D[0] - A[0]);
+      const l = Math.hypot(gx, gy, gz);
+      if (l < 1e-9) { t.n = null; return; }
+      const sens = t[4] === null ? -1 : gx * t[4] < 0 ? -1 : 1;
+      t.n = [sens * gx / l, sens * gy / l, sens * gz / l];
+      t.aire = l;
+      [A, B, D].forEach(function (p) {
+        const k = cle(p);
+        if (!par.has(k)) par.set(k, []);
+        par.get(k).push(t);
+      });
+    });
+    const lisse = function (t, p) {
+      const n = [0, 0, 0];
+      par.get(cle(p)).forEach(function (o) {
+        if (o.n[0] * t.n[0] + o.n[1] * t.n[1] + o.n[2] * t.n[2] < 0.64) return;
+        n[0] += o.n[0] * o.aire; n[1] += o.n[1] * o.aire; n[2] += o.n[2] * o.aire;
+      });
+      return n;
+    };
+    T.forEach(function (t) {
+      if (t.n) tri(t[0], t[1], t[2], lisse(t, t[0]), lisse(t, t[1]), lisse(t, t[2]), t[3]);
+    });
+    // Vitrage : le flanc de l'habitacle est un plan (t ne dépend que de y), le pare-brise et la lunette aussi.
+    const iC = cles.findIndex(function (k) { return k[4] === 1; }), sC = cles[iC - 1][0] * a, sF = cles[iC][0] * a;
+    const sR = cles[iC + 1][0] * a, sH = cles[iC + 2][0] * a, yH = cles[iC + 2][3] * ky;
+    const flanc = _sectionVehicule({ s: 0, w: b, yb: V.garde, yc: ceinture, yt: toit, cab: 1 });
+    const t3 = flanc[3][2], y3 = flanc[3][1], t4 = flanc[4][2], y4 = flanc[4][1], t5 = flanc[5][2];
+    const tY = function (y) { return t3 + (t4 - t3) * (y - y3) / (y4 - y3); };
+    const y0 = ceinture + 0.05, y1 = y4 - 0.05, sB = (sF + sR) / 2;
+    const sAv = function (y) { return sC + (sF - sC) * (y - ceinture) / (toit - ceinture) - 0.09; };
+    const sAr = function (y) { return sH + (sR - sH) * (y - yH) / (toit - yH) + 0.09; };
+    if (y1 > y0 + 0.03) {
+      [1, -1].forEach(function (c) {
+        const n = [0, t3 - t4, c * (y4 - y3)];
+        const P = function (s, y) { return [s, y, c * tY(y)]; };
+        plaque([P(sAv(y0), y0), P(sB + 0.03, y0), P(sB + 0.03, y1), P(sAv(y1), y1)], n, C.vitre);
+        plaque([P(sB - 0.03, y0), P(sAr(y0), y0), P(sAr(y1), y1), P(sB - 0.03, y1)], n, C.vitre);
+      });
+      // Pare-brise (du capot au toit) et lunette (du toit au hayon) : trapèzes, 12 % de montant en bas et en haut.
+      [[sC, ceinture, sF, 1], [sH, yH, sR, -1]].forEach(function (g) {
+        const P = function (f, c) {
+          return [g[0] + (g[2] - g[0]) * f, g[1] + (toit - g[1]) * f, c * (t3 + (t5 - t3) * f - 0.07)];
+        };
+        plaque([P(0.12, -1), P(0.12, 1), P(0.88, 1), P(0.88, -1)], [g[3] * (toit - g[1]), g[3] * (g[0] - g[2]), 0],
+          C.vitre);
+      });
+    }
+    // Phares et calandre sur le bout avant, feux sur le bout arrière.
+    [[0, 1, C.phare], [ns - 1, -1, C.feu]].forEach(function (g) {
+      const st = S[g[0]], n = [g[1], 0, 0], yh = st.yc - 0.03, yl = Math.max(st.yb + 0.03, yh - 0.1);
+      const w = st.w - 0.09;
+      if (yh - yl < 0.03) return;
+      [1, -1].forEach(function (c) {
+        plaque([[st.s, yl, c * w * 0.5], [st.s, yl, c * w], [st.s, yh, c * w], [st.s, yh, c * w * 0.5]], n, g[2]);
+      });
+      if (g[1] < 0) return;
+      plaque([[st.s, yl, -w * 0.38], [st.s, yl, w * 0.38], [st.s, yh, w * 0.38], [st.s, yh, -w * 0.38]], n, C.bas);
+    });
+    // Roues : axe en travers (t), posées au sol, face extérieure dans le plan du flanc.
+    const N = V.cotes, rj = R * 0.62;
     [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(function (r) {
-      const sc = r[0] * (a - R - 0.2), t0 = r[1] * (b - V.roueL), t1 = r[1] * b + r[1] * 0.01;
-      for (let k = 0; k < V.cotes; k++) {
-        const a0 = 2 * Math.PI * k / V.cotes, a1 = 2 * Math.PI * (k + 1) / V.cotes;
-        const s0 = sc + R * Math.cos(a0), y0 = R + R * Math.sin(a0);
-        const s1 = sc + R * Math.cos(a1), y1 = R + R * Math.sin(a1);
-        const nm = (a0 + a1) / 2, n = [ux * Math.cos(nm), Math.sin(nm), uz * Math.cos(nm)];
-        const A = Q(s0, t0), B = Q(s1, t0), C = Q(s1, t1), D = Q(s0, t1);
-        lot.quad([A[0], y0, A[1]], [B[0], y1, B[1]], [C[0], y1, C[1]], [D[0], y0, D[1]], n, pneu);
-        const F = Q(sc, t1), G = Q(s0, t1), H = Q(s1, t1), nf = [-uz * r[1], 0, ux * r[1]];
-        lot.tri([F[0], R, F[1]], [G[0], y0, G[1]], [H[0], y1, H[1]], nf, pneu);
+      const sc = r[0] * xa, te = r[1] * b, ti = r[1] * (b - V.roueL), nf = [0, 0, r[1]], ni = [0, 0, -r[1]];
+      const pt = function (k, rayon, t) {
+        const an = 2 * Math.PI * k / N;
+        return [sc + rayon * Math.cos(an), R + rayon * Math.sin(an), t];
+      };
+      const nr = function (k) { const an = 2 * Math.PI * k / N; return [Math.cos(an), Math.sin(an), 0]; };
+      for (let k = 0; k < N; k++) {
+        tri(pt(k, R, ti), pt(k + 1, R, ti), pt(k + 1, R, te), nr(k), nr(k + 1), nr(k + 1), C.pneu);
+        tri(pt(k, R, ti), pt(k + 1, R, te), pt(k, R, te), nr(k), nr(k + 1), nr(k), C.pneu);
+        tri(pt(k, rj, te), pt(k, R, te), pt(k + 1, R, te), nf, nf, nf, C.pneu);
+        tri(pt(k, rj, te), pt(k + 1, R, te), pt(k + 1, rj, te), nf, nf, nf, C.pneu);
+        // Jante à branches : un secteur clair, un secteur sombre.
+        tri([sc, R, te], pt(k, rj, te), pt(k + 1, rj, te), nf, nf, nf, k % 2 ? C.moyeu : C.jante);
+        tri([sc, R, ti], pt(k, R, ti), pt(k + 1, R, ti), ni, ni, ni, C.dessous);
       }
     });
-    v.trace = { long: +(2 * a).toFixed(3), large: +(2 * b).toFixed(3), haut: +haut.toFixed(3) };
+    v.trace = { long: +(2 * v.a).toFixed(3), large: +(2 * v.b).toFixed(3), haut: +haut.toFixed(3),
+      boite: { long: +(2 * boite.s).toFixed(4), large: +(2 * boite.t).toFixed(4), bas: +boite.bas.toFixed(4),
+        haut: +boite.haut.toFixed(4) }, pans: N, texture: tex };
+  }
+
+  // Section en travers de la caisse à la station `o` (_vehicule) → 12 points [s, y, t], du bas du flanc +t au bas
+  // du flanc −t en passant par le toit : bas de caisse rentré, flanc galbé (le plus large aux 7/10 de sa hauteur),
+  // ceinture, haut des vitres rentré de VEHICULE.devers × `o.cab`, rive du toit. Capot et coffre (`o.cab` = 0) :
+  // les trois derniers points se confondent à la ceinture.
+  function _sectionVehicule(o) {
+    const V = VEHICULE, h = o.yc - o.yb, w3 = o.w - 0.04, w4 = w3 - V.devers * o.cab;
+    const demi = [[o.w - 0.07, o.yb], [o.w - 0.015, o.yb + Math.min(0.07, h * 0.4)], [o.w, o.yb + h * 0.7], [w3, o.yc],
+      [w4, o.yt - 0.04 * o.cab], [w4 - 0.05 * o.cab, o.yt]];
+    return demi.map(function (p) { return [o.s, p[1], p[0]]; })
+      .concat(demi.slice().reverse().map(function (p) { return [o.s, p[1], -p[0]]; }));
+  }
+
+  // Matériau de la tôle du véhicule (🧱), fait au premier véhicule construit (aucun coût sans véhicule ni 🧱
+  // coupé) : carte claire + normal map, couleurs par sommet ; suit les Textures HD (_habiller, _detailler).
+  function _matTole() {
+    const e = _e;
+    if (e.mats.tole) return e.mats.tole;
+    const t0 = performance.now();
+    e.mats.tole = _habiller(_detailler(new THREE.MeshLambertMaterial({ vertexColors: true }), TOLE.m), "tole",
+      _toleUsee, TOLE.graine);
+    e.msTole = performance.now() - t0;
+    return e.mats.tole;
+  }
+
+  // Tôle usée (TOLE) : peinture passée en plaques larges à deux échelles, coulures verticales (bruit étiré en
+  // hauteur), piqûres sombres, grain fin ; hauteur presque plane (bosses très douces, piqûres en creux).
+  // → { couleur, normale } (canvas n × n). 🩸 Hauteur en v vers le haut (comme _appareil) : ligne y écrite à n − 1 − y.
+  function _toleUsee(alea) {
+    const T = TOLE, n = _px(T), q = _fin(), haut = new Float32Array(n * n), img = new Uint8ClampedArray(n * n * 4);
+    const base = new THREE.Color(T.couleur), large = _champBoucle(alea, 4, 4, n), moyen = _champBoucle(alea, 13, 13, n);
+    const coule = _champBoucle(alea, 26, 3, n), bosse = _champBoucle(alea, 6, 6, n), pique = new Float32Array(n * n);
+    for (let i = 0; i < T.piqures; i++) {
+      const cx = alea() * n, cy = alea() * n, rr = (0.7 + alea() * 1.3) * q, f = 0.25 + alea() * 0.4;
+      for (let y = Math.floor(cy - rr); y <= cy + rr; y++) {
+        for (let x = Math.floor(cx - rr); x <= cx + rr; x++) {
+          const d = Math.hypot(x - cx, y - cy);
+          if (d > rr) continue;
+          const p = (((y % n) + n) % n) * n + (((x % n) + n) % n);
+          pique[p] = Math.max(pique[p], f * (1 - d / rr));
+        }
+      }
+    }
+    let graine = Math.floor(alea() * 2147483647) | 1;
+    const grain = function () { graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0; return graine / 4294967296; };
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const p = y * n + x, o4 = ((n - 1 - y) * n + x) * 4;
+        const f = (1 - T.plaques * (0.6 * large[p] + 0.4 * moyen[p])) *
+          (1 - T.coulures * Math.max(0, coule[p] * 2 - 1)) * (1 - pique[p]) * (1 + (grain() - 0.5) * T.grain);
+        haut[p] = 0.3 * bosse[p] + 0.05 * moyen[p] - 0.25 * pique[p] + (grain() - 0.5) * 0.02;
+        img[o4] = base.r * 255 * f; img[o4 + 1] = base.g * 255 * f * (1 - 0.05 * pique[p]);
+        img[o4 + 2] = base.b * 255 * f * (1 - 0.12 * pique[p]); img[o4 + 3] = 255;
+      }
+    }
+    return { couleur: _canvasDe(img, n), normale: _carteNormale(haut, n, T.relief * q) };
   }
 
   // ── Arc de soutènement ; ossuaire, outil de carrier, fontis ───────────────────────────────────────────────
   // Formes faites en code, sans fichier : peu de triangles, lot opaque du volume ou de la tuile (couleurs par
-  // sommet). L'arc lit la charte 🧱 coupé (sa couleur de légende) et prend la pierre du niveau 🧱 activé (ses deux
+  // sommet). L'arc lit la charte 🧱 coupé (sa couleur de légende) et prend la pierre des parois 🧱 activé (ses deux
   // lots texturés, _lotsArc) ; le fontis lit la charte (remblais du cône) ; ossuaire et outil ont des couleurs de la
-  // scène, comme le véhicule.
+  // scène, comme le véhicule (_vehicule).
 
-  // Lots d'une tuile pour ses arcs → { claveaux, pierre, tex }. 🧱 activé : deux lots à coordonnées de texture, les
-  // claveaux (matériau `claveau`, _matClaveau) et la maçonnerie des piédroits, impostes et tympans (matériau
-  // `paroi` : l'appareil des parois, avec son ombre de contact) ; 🧱 coupé : le lot opaque de la tuile.
-  // Pourquoi deux lots : un claveau est une pierre entière (planche CLAVEAU, une case par face), la maçonnerie un
-  // appareil répété en mètres déjà dessiné pour les parois — ni matériau ni texture de plus pour elle.
+  // Lots d'une tuile pour ses arcs → { claveaux, pierre, tympan, tex }. 🧱 activé : trois lots à coordonnées de
+  // texture, les claveaux (matériau `claveau`, _matClaveau), la pierre de taille des piédroits et des impostes
+  // (matériau `paroi` : l'appareil des parois, avec son ombre de contact) et les moellons des tympans (matériau
+  // `blocage`, _matBlocage) ; 🧱 coupé : le lot opaque de la tuile.
+  // Pourquoi trois lots : un claveau est une pierre entière (planche CLAVEAU, une case par face), piédroits et
+  // impostes réemploient l'appareil répété en mètres déjà dessiné pour les parois, et le tympan a sa maçonnerie
+  // propre, plus rustique — dans l'appareil des parois il se fond en elles et l'arc ne se détache plus.
   function _lotsArc(opaque, h) {
-    if (_e.textures !== true) return { claveaux: opaque, pierre: opaque, tex: false };
+    if (_e.textures !== true) return { claveaux: opaque, pierre: opaque, tympan: opaque, tex: false };
     const pierre = new Lot();
     pierre.ombre = { sol: 0, plafond: h };
-    return { claveaux: new Lot(), pierre: pierre, tex: true };
+    return { claveaux: new Lot(), pierre: pierre, tympan: new Lot(), tex: true };
   }
 
-  // Maillages des arcs texturés d'une tuile (famille « arc ») : deux appels de dessin par tuile qui porte un arc,
+  // Maillages des arcs texturés d'une tuile (famille « arc ») : trois appels de dessin par tuile qui porte un arc,
   // aucun sans arc ni 🧱 coupé (les arcs sont alors dans le lot opaque).
   function _poserArcs(arcs, ajouter) {
     if (!arcs.tex || !arcs.claveaux.p.length) return;
     _paroiTexturee();
     ajouter(arcs.claveaux, _matClaveau(), 0, "arc");
     ajouter(arcs.pierre, _e.mats.paroi, 0, "arc");
-  }
-
-  // Teinte de la pierre d'un arc, 🧱 activé (décision produit : celle du niveau, là où il est) : en travers d'un tube
-  // (`tube`), la teinte de ses parois de pierre (blanc : la texture seule) ; ailleurs (chambre, rendu structures),
-  // celle de la masse du niveau, comme ses piliers et ses fronts — TEINTE_MASSE_2 quand les structures de 2e masse
-  // y sont les plus nombreuses, blanc sinon. Comptée sur toutes les structures du niveau (filtres de la carte
-  // ignorés), une fois par état des données.
-  function _teinteArc(tube) {
-    const e = _e;
-    if (tube) return BLANC;
-    const cle = e.donnees ? e.donnees.empreinte : "";
-    if (!e.masses || e.masses.cle !== cle) e.masses = { cle: cle, niveaux: new Map() };
-    if (!e.masses.niveaux.has(e.niveau)) {
-      let n1 = 0, n2 = 0;
-      _tab(window.getStructures).concat(_tab(window.getAllEmbeddedStructures)).forEach(function (s) {
-        if (!s || _textureDe(s.type) !== "roche" || !_surNiveau(s, e.niveau)) return;
-        if (MASSE_2[s.type]) n2++; else n1++;
-      });
-      e.masses.niveaux.set(e.niveau, n2 > n1);
-    }
-    return e.masses.niveaux.get(e.niveau) ? (e.teinte2 || (e.teinte2 = new THREE.Color(TEINTE_MASSE_2))) : BLANC;
+    ajouter(arcs.tympan, _matBlocage(), 0, "arc");
   }
 
   // Arc de soutènement `s` (polyligne `arc`) dans les lots `lots` (_lotsArc) : un arc par segment
@@ -6729,7 +7209,9 @@
   function _arcSoutenement(lots, s, mx) {
     const e = _e, sc = e.sc, out = [];
     const pts = (s.points || []).filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
-    const taille = function () { return lots.claveaux.p.length + (lots.tex ? lots.pierre.p.length : 0); };
+    const taille = function () {
+      return lots.claveaux.p.length + (lots.tex ? lots.pierre.p.length + lots.tympan.p.length : 0);
+    };
     for (let i = 0; i + 1 < pts.length; i++) {
       const ab = _arcEntreParois(pts[i], pts[i + 1], mx);
       if (!ab) continue;
@@ -6772,7 +7254,7 @@
   // bouché. Tympan (_tympanArc) au-dessus de l'extrados ; `biais` : pente des parois (_arcEntreParois) ; `ferme` :
   // sans paroi de tube contre lui (structures, chambre), ses bouts sont fermés. `lots` (_lotsArc) : texturé
   // (`lots.tex`), chaque face d'un claveau, joints compris, prend une case entière de la planche CLAVEAU ; piédroits
-  // et impostes prennent l'appareil des parois, en mètres (_pave).
+  // et impostes prennent l'appareil des parois, en mètres (_pave) ; le tympan, ses moellons (BLOCAGE).
   function _arcPleinCintre(lots, ax, az, bx, bz, biais, ferme) {
     const e = _e, A = ARC, h = e.hauteur, dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
     if (L < A.porteeMin) return null;
@@ -6781,7 +7263,9 @@
     const piedMin = Math.min(A.piedMin, h * 0.4);
     let ys = h - re, kv = 1;
     if (ys < piedMin) { ys = piedMin; kv = (h - ys) / re; }
-    const tex = lots.tex, base = tex ? _teinteArc(!ferme) : _couleur("structures", "arc");
+    // 🧱 activé : la teinte des parois de pierre de taille, partout (décision produit) — la texture seule, jamais
+    // la teinte chaude de la 2e masse : un arc est bâti, pas taillé dans la masse.
+    const tex = lots.tex, base = tex ? BLANC : _couleur("structures", "arc");
     const teinte = function (f) {
       return { r: Math.min(1, base.r * f), g: Math.min(1, base.g * f), b: Math.min(1, base.b * f) };
     };
@@ -6843,8 +7327,8 @@
         });
       }
     }
-    _tympanArc(lots.pierre, { cx: cx, cz: cz, ux: ux, uz: uz, L: L, re: re, ys: ys, kv: kv, n: n, h: h, P: P,
-      biais: biais || 0, ferme: !!ferme, u0: up }, teinte(A.tympan));
+    _tympanArc(lots.tympan, { cx: cx, cz: cz, ux: ux, uz: uz, L: L, re: re, ys: ys, kv: kv, n: n, h: h, P: P,
+      biais: biais || 0, ferme: !!ferme, u0: tex ? alea() * BLOCAGE.m : undefined }, teinte(A.tympan));
     return { portee: +L.toFixed(3), piedH: +ys.toFixed(3), intradosY: +(ys + kv * ri).toFixed(3),
       cleY: +(ys + kv * re).toFixed(3), claveaux: n, k: +kv.toFixed(3), pied: +pied.toFixed(3), tympan: true,
       texture: tex, teinte: "#" + new THREE.Color(base.r, base.g, base.b).getHexString() };
@@ -6857,15 +7341,18 @@
   // oblique dans un tube : les bandes des piédroits suivent la paroi (`a.biais`), jamais en deçà de l'extrados.
   // ⚠️ contrat : tout est au-dessus de l'imposte, hors de l'ouverture ; le pas ne change pas (l'arc n'est pas un
   // obstacle). Coût : 6n + 8 triangles de plus que l'arc seul (fonds de joint compris, extrados noyés retirés).
-  // `a.u0` défini (🧱 activé) : appareil des parois, coordonnées de texture en mètres — la portée et la hauteur sur
-  // les faces, la portée et la profondeur au dessus, la profondeur et la hauteur aux bouts.
+  // `a.u0` défini (🧱 activé) : moellons (BLOCAGE), coordonnées de texture en motifs (mètres / BLOCAGE.m, origine
+  // `a.u0` m tirée par arc) — la portée et la hauteur sur les faces, la portée et la profondeur au dessus, la
+  // profondeur et la hauteur aux bouts.
   function _tympanArc(lot, a, col) {
     const nx = -a.uz, nz = a.ux, h = a.h, w = a.P - ARC.retrait, re = a.re, tex = a.u0 !== undefined;
+    const M = BLOCAGE.m;
     const W = function (s, y, t) { return [a.cx + a.ux * s + nx * t, y, a.cz + a.uz * s + nz * t]; };
     // Face verticale à la profondeur t, de quatre points (s, y).
     const pan = function (q, t, nrm) {
       lot.quad(W(q[0], q[1], t), W(q[2], q[3], t), W(q[4], q[5], t), W(q[6], q[7], t), nrm, col,
-        tex ? [q[0] + a.u0, q[1], q[2] + a.u0, q[3], q[4] + a.u0, q[5], q[6] + a.u0, q[7]] : undefined);
+        tex ? [(q[0] + a.u0) / M, q[1] / M, (q[2] + a.u0) / M, q[3] / M, (q[4] + a.u0) / M, q[5] / M,
+          (q[6] + a.u0) / M, q[7] / M] : undefined);
     };
     const bout = function (c, t) {
       const s = c * a.L / 2 + a.biais * t;
@@ -6886,12 +7373,13 @@
     });
     const b0 = bout(-1, w), b1 = bout(1, w), b2 = bout(1, -w), b3 = bout(-1, -w);
     lot.quad(W(b0, h, w), W(b1, h, w), W(b2, h, -w), W(b3, h, -w), [0, 1, 0], col,
-      tex ? [b0 + a.u0, w, b1 + a.u0, w, b2 + a.u0, -w, b3 + a.u0, -w] : undefined);
+      tex ? [(b0 + a.u0) / M, w / M, (b1 + a.u0) / M, w / M, (b2 + a.u0) / M, -w / M, (b3 + a.u0) / M, -w / M]
+        : undefined);
     if (!a.ferme) return;
     [1, -1].forEach(function (d) {
       const s = d * a.L / 2;
       lot.quad(W(s, a.ys, -w), W(s, a.ys, w), W(s, h, w), W(s, h, -w), [d * a.ux, 0, d * a.uz], col,
-        tex ? [-w, a.ys, w, a.ys, w, h, -w, h] : undefined);
+        tex ? [-w / M, a.ys / M, w / M, a.ys / M, w / M, h / M, -w / M, h / M] : undefined);
     });
   }
 
@@ -7214,6 +7702,7 @@
   function _ajouterAcces(lots, ajouter) {
     if (lots.bois && lots.bois.p.length) ajouter(lots.bois, _matPorte(), 0, "porte");
     if (lots.roche && lots.roche.p.length) { _matsTextures(); ajouter(lots.roche, _e.mats.roche, 0, "chatiere"); }
+    if (lots.tole && lots.tole.p.length) ajouter(lots.tole, _matTole(), 0, "vehicule");
     if (lots.remblais && lots.remblais.p.length) ajouter(lots.remblais, _matZone("remblais"), 0, "remblais");
     if (lots.eau) ajouter(lots.eau, _e.mats.eauGalerie, 2, "eau");
   }
@@ -7228,7 +7717,7 @@
       cote: v.cote || 0, appui: v.appui || null,
       dirParoi: v.surParoi ? +((v.dir || 0) * 180 / Math.PI).toFixed(2) : null, vehicule: !!v.vehicule,
       ossuaire: !!v.ossuaire, outil: !!v.outil, fontis: !!v.fontis,
-      roche: n(lots.roche), bois: n(lots.bois),
+      roche: n(lots.roche), bois: n(lots.bois), tole: n(lots.tole),
       remblais: n(lots.remblais),
       eau: n(lots.eau), porteTexturee: !!(porte && porte.material.map), remblaisTexture: !!(remblais &&
       remblais.material.map), familles: g.children.map(function (o) { return o.userData.famille; }) }, v.trace || {});
@@ -13860,7 +14349,8 @@
   function textures() {
     if (!_e) return null;
     const e = _e, mats = { roche: e.mats.roche, parpaing: e.mats.parpaing, opaque: e.mats.opaque, murs: e.mats.murs,
-      paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis, porte: e.mats.porte };
+      paroi: e.mats.paroi, paroiUnie: e.mats.paroiUnie, remblais: e.mats.remblais, eboulis: e.mats.eboulis,
+      porte: e.mats.porte, tole: e.mats.tole };
     const r = { actives: _texturesActives(), bouton: !!e.boutonTextures && e.boutonTextures.getAttribute("aria-pressed"),
       uvParMetre: { roche: 1 / ROCHE.m, parpaing: 1 / PARPAING.m, pierre: 1 / PIERRE.m, remblais: 1 / REMBLAIS.m,
         eboulis: 1 / EBOULIS.m,
@@ -13885,7 +14375,7 @@
       for (let i = 0; i < d.length; i += 4) t += Math.hypot(d[i] / 127.5 - 1, d[i + 1] / 127.5 - 1);
       return +(t / (w * h)).toFixed(3);
     };
-    ["roche", "parpaing", "paroi", "remblais", "eboulis", "porte"].forEach(function (k) {
+    ["roche", "parpaing", "paroi", "remblais", "eboulis", "porte", "tole"].forEach(function (k) {
       const m = mats[k];
       if (!m) return;
       r.materiaux[k] = { pente: m.normalMap ? pente(m.normalMap.image) : 0, carte: m.map.image.width + "x" + m.map.image.height, normale: !!m.normalMap,
@@ -13895,6 +14385,13 @@
         lits: lits(m.map.image) };
     });
     r.materiaux.paroi.pierre = !!e.texPierre && e.mats.paroi.map === e.texPierre.couleur;
+    // Traces d'outil de la roche dessinée à la finesse en vigueur (_rocheBrute).
+    const tr = (_appareils[_fin() > 1 ? "roche@" + _fin() : "roche"] || {}).traces;
+    if (r.materiaux.roche && tr) {
+      r.materiaux.roche.traces = { fissures: tr.fissures, pic: { passes: tr.pic.passes, coups: tr.pic.coups,
+        orientations: tr.pic.orientations.length }, lance: { passes: tr.lance.passes, coups: tr.lance.coups,
+        penteMax: +tr.lance.penteMax.toFixed(3) } };
+    }
     // Claveaux des arcs (matériau fait au premier arc texturé) et teinte moyenne des cartes ([r, v, b] sur 255) de
     // la pierre des claveaux et de celle des parois, à comparer.
     const moyenne = function (cv) {
@@ -13908,6 +14405,12 @@
         normale: !!mc.normalMap, couleursSommets: mc.vertexColors, moyenne: moyenne(mc.map.image),
         ms: Math.round(e.msClaveau || 0) };
     }
+    const mb = e.mats.blocage;
+    if (mb) {
+      r.materiaux.blocage = { pente: pente(mb.normalMap.image), carte: mb.map.image.width + "x" + mb.map.image.height,
+        normale: !!mb.normalMap, couleursSommets: mb.vertexColors, moyenne: moyenne(mb.map.image),
+        ms: Math.round(e.msBlocage || 0) };
+    }
     if (r.materiaux.paroi.pierre) r.materiaux.paroi.moyenne = moyenne(e.mats.paroi.map.image);
     // Textures HD : préférence, état en vigueur, bouton, grain de détail ; mémoire des textures de la vue (images
     // distinctes × 4 octets, mipmaps compris : × 4 / 3).
@@ -13915,6 +14418,12 @@
     (e.texStructures || []).forEach(function (t) { if (t.image) images.add(t.image); });
     let octets = 0;
     images.forEach(function (im) { octets += im.width * im.height * 4 * 4 / 3; });
+    // Faces de roche : longues brisées en pans (nombre, pans, empreinte de leurs origines), courtes entières.
+    const pans = e.pans || { longues: new Map(), courtes: new Set() }, lignes = [];
+    let nbPans = 0;
+    pans.longues.forEach(function (sig, k) { nbPans += sig.length; lignes.push(k + ":" + sig.join("|")); });
+    r.pans = { longues: pans.longues.size, pans: nbPans, courtes: pans.courtes.size,
+      empreinte: _hachage(lignes.sort().join(";")) };
     r.hd = { voulu: e.hd === true, actif: _hdActif(), finesse: _fin(),
       bouton: e.boutonTexturesHD ? e.boutonTexturesHD.getAttribute("aria-pressed") : null,
       grise: e.boutonTexturesHD ? e.boutonTexturesHD.disabled : null, grain: !!e.texGrain,

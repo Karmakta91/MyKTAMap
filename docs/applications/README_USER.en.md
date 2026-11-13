@@ -603,7 +603,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - Tunnel walls: dressed stone (courses of blocks, irregular joints, relief under the lamp). The stone keeps its size whatever the tunnel height.
 - Pillars and working faces: raw rock (the limestone mass left in place: bumps, shades, thin strata, cracks and tool marks, no joints); the 2nd mass is the same rock in a warmer shade, to tell it from the 1st. A custom structure gets the rock.
 - Walls: concrete block, at its real size (a block is 50 cm long, whatever the wall).
-- Support arches: dressed stone in the tone of the level — voussoirs in smooth-dressed stone, piers and the masonry above the arch in the same stone as the gallery walls.
+- Support arches: dressed stone in the same tone as the gallery walls, everywhere — voussoirs in smooth-dressed stone, piers in the same stone as the gallery walls, and rougher rubble masonry above the arch.
 - **Backfill**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
 - **Collapse** (sinkhole): rubble of large broken, cracked blocks, with little earth.
 - Backfill and collapse are at their real size and do not change shape. A custom zone keeps its colour.
@@ -656,7 +656,7 @@ Where and how a way through is drawn:
 - ![](../../icon/plaque.png) **Marker plate**: an inscription carved into a stone block, flat on the nearest wall, with the point's name in capitals; if the point's description starts with a date or an acronym (“1857”, “12/03/1890”, “IGC 1902”, “R. 45”), its first line is carved below, smaller. Each plate has its own wear, always the same for a given point. The plate widens for a long name, then goes onto two lines, never cutting it. The point has no sign above it: tap the plate to open its card. The name stays with 🧱 off.
 - ![](../../icon/epure.png) **Survey datum**: a light line drawn on the nearest wall, at eye level.
 - ![](../../icon/portail.png) **Portal (inter-plan link)**: a door frame against the wall, **lit** when the point has a link to another plan, dark otherwise. The card of **any point linked** to another plan (portal or not) offers **🌀 Go to plan…**: the confirmation shows over the view; if you confirm, the view closes and the other plan opens. The card's link ➜ does the same.
-- ![](../../icon/vehicule.png) **Vehicle**: a small simplified car (a city car about 3.2 m long) in the tunnel, along it. **You bump into it**, as into a pillar.
+- ![](../../icon/vehicule.png) **Vehicle**: a small hatchback (a city car about 3.2 m long: bonnet, windscreen and windows, headlights, wheels with rims; dusty when 🧱 textures are on) in the tunnel, along it. **You bump into it**, as into a pillar.
 - ![](../../icon/ossuaire.png) **Ossuary**: a wall of neatly stacked bones against the nearest gallery wall, at head height, with two rows of skulls. **You cannot walk through it**: you walk along it. In a chamber or in Structures rendering, it is set on the nearest pillar, wall or face, like the plaque.
 - ![](../../icon/outil.png) **Quarryman's tool**: an old rusty crusher on four spoked wheels (hopper, crusher, electric motor), in the gallery, along it. **You bump into it**, as with the vehicle.
 - ![](../../icon/fontis.png) **Fontis**: a black bell-shaped hole breaking through the ceiling, with a cone of rubble below, pushed against the wall on the point's side. **You bump into the cone and walk past it**: it always leaves room for a body.

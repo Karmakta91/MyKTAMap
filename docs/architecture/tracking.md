@@ -1813,11 +1813,29 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   après la vue) s'affiche **par-dessus** la vue ; confirmée, `goTo` émet `kta:avantChangementPlan` avant tout
   chargement et la vue se ferme sans « Je suis ici ? » (`_fermerPourPlan` : la liaison recale elle-même le
   tracker) ; de même pour ➜ de la section liaisons de la fiche. **Véhicule**
-  (`vehicule`) : voiture simplifiée (caisse, habitacle à vitres sombres, quatre roues ; `ACCES_DIM.vehicule*` =
+  (`vehicule`, `_vehicule`, `VEHICULE`) : petite voiture à hayon faite en code (`ACCES_DIM.vehicule*` =
   3,2 × 1,4 × 1,3 m, une citadine), dans le tube du côté du POI gardée entre les parois (demi-emprise 0,7 m), le
-  long de l'axe ;
-  **arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
-  survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes`).
+  long de l'axe, avant vers +s. **Forme** : la caisse est une suite de sections en travers (`_sectionVehicule`,
+  douze points : bas de caisse rentré, flanc galbé, ceinture, vitres rentrées vers le toit) posées aux stations
+  d'un profil (`VEHICULE.profil` : bouclier, capot, pare-brise incliné, toit, lunette inclinée, hayon) et à
+  celles des **passages de roue** (arche en trapèze découpée dans le bas de caisse), reliées de proche en proche ;
+  normales lissées par sommet, arêtes de plus de 50° gardées vives. Vitres, phares, calandre et feux : plaques
+  posées à 6 mm de la tôle. Roues à seize pans, flanc de pneu et jante à branches. ⚠️ contrat : **toute la forme
+  tient dans le rectangle de l'obstacle** et sous la hauteur (retrait de 12 mm, boîte des sommets dans
+  `v.trace.boite`) ; `v.trace` garde `long`, `large`, `haut`. **Matière** : 🧱 coupé, la même silhouette en
+  aplats dans le lot opaque du volume ; 🧱 activé, un lot `tole` (famille « vehicule », matériau `_matTole`) —
+  carte claire dessinée dans un canvas (`TOLE`, `_toleUsee` : peinture passée en plaques, coulures, piqûres,
+  relief à peine bosselé) qui module la couleur des sommets, et voile de poussière par triangle (plus dense vers le
+  sol et sur les faces à plat, moindre sur les vitres et les pneus). Choix : une seule carte pour toute la voiture,
+  vitres et pneus compris, plutôt qu'un matériau par matière — le lot `tole` remplace le lot opaque du volume,
+  **aucun appel de dessin de plus**, et les Textures HD suivent par le mécanisme commun (512 px, grain de détail)
+  sans refaire la géométrie. Coût mesuré (huit voitures dans le champ, PC) : 662 triangles par voiture (176 pour
+  les deux pavés et les quatre prismes d'avant), 18 appels de dessin avant comme après, une carte et son relief de
+  plus pour la vue (0,7 Mo, 2,8 Mo en 512 px), premier dessin 12 à 25 ms (34 à 38 ms en 512 px), temps par image
+  0,5 → 0,6 ms 🧱 activé, 0,4 ms inchangé 🧱 coupé.
+  **Arrête le pas** comme un pilier (`BLOQUE`, rectangle au sol : `_obstaclesAcces`, `ctx.libre`) ; vue d'édition :
+  survol. Garde-fou : `checkup-vue-3d.js` § 14 septies (`KTA_V3D_SEUL=formes` : maillage lu sur la scène dans
+  l'emprise, triangles bornés, 🧱 coupé / activé / Textures HD).
 - **Formes de patrimoine** (`galerieEmprise.js > ACCES`, `BLOQUE`, `ACCES_DIM.ossuaire*` / `outil*` ; `vue3d.js >
   _ossuaire`, `_outilCarrier`, `_fontis`, `OSSUAIRE`, `OUTIL`, `FONTIS` ; décision produit) : faites en code (lot
   opaque, couleurs par sommet, aucune texture ni fichier), panneau du POI gardé. **Ossuaire** (`ossuaire`, forme de
@@ -2012,26 +2030,35 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   joints de mortier assombris, fond bouché), 0,5 m de profondeur, **extrados à la clé au ciel du niveau**. Plus large
   que le ciel ne le permet (piédroits sous 0,6 m) : surbaissé en demi-ellipse. **Tympan** (`_tympanArc`) : maçonnerie
   pleine de la profondeur de l'arc qui comble tout l'espace entre l'extrados, les piédroits, les parois et le ciel
-  (faces reculées de 5 mm sous les claveaux, appareil des parois ou couleur de légende) ; seule l'ouverture sous
+  (faces reculées de 5 mm sous les claveaux, moellons ou couleur de légende) ; seule l'ouverture sous
   l'intrados reste vide. Arc oblique dans un tube : ses bouts suivent la paroi ; sans paroi contre lui (structures,
   chambre), tel que dessiné et fermé aux bouts. En mixte et en galerie, un segment en travers d'un
   tube (milieu dans sa largeur, hors chambre, à plus de 30° de l'axe) va **d'une paroi du tube à l'autre**, là où sa
   ligne les coupe ; ailleurs (chambre, structures), tel que dessiné. **Matière et teinte** (décision produit).
   🧱 coupé : aplats à la couleur de la légende, dans le lot opaque de la tuile. 🧱 activé : pierre de taille
-  texturée avec relief, **à la teinte du niveau** (`_teinteArc`) — en travers d'un tube, celle de ses parois de
-  pierre (la texture seule) ; ailleurs (chambre, rendu structures), celle de la masse du niveau, comme ses piliers
-  (`TEINTE_MASSE_2` quand les structures de 2e masse y sont les plus nombreuses). **Claveaux** : un bloc de
+  texturée avec relief, **partout à la teinte des parois de pierre de taille** (la texture seule) — en travers
+  d'un tube comme en chambre ou en rendu structures, quelle que soit la masse du niveau : un arc est bâti, il ne
+  prend jamais la teinte chaude des piliers de 2e masse. **Claveaux** : un bloc de
   géométrie chacun (joints et fonds de joint gardés), en pierre dressée (`CLAVEAU`, `_pierresDressees`,
   `_matClaveau`) — une planche de 4 × 4 pierres entières dessinée dans un canvas (grain fin, nuance légère, arêtes
-  émoussées, layage discret par endroits), une case tirée par face, nuance par claveau (au plus − 10 %).
-  **Piédroits, impostes et tympan** : l'appareil des parois (`PIERRE`, matériau `paroi`, coordonnées de texture
-  en mètres), avec l'ombre de contact au pied. Architecture : deux lots par tuile qui porte un arc (`_lotsArc`,
-  `_poserArcs`, famille « arc ») — la maçonnerie réemploie le matériau et la texture des parois, seuls les
-  claveaux ont les leurs (une pierre entière par face ne se tire pas d'un appareil répété). Les Textures HD suivent
-  (planche en 512 px, grain de détail). Coût mesuré (douze arcs dans une galerie, PC) : 2 appels de dessin par tuile
-  qui porte un arc (1 sans texture), 266 triangles par arc de 2,5 m (250 sans texture : 16 pour la bande de l'ombre
-  de contact ; tympan : 6 × claveaux + 8), 2 textures de plus pour la vue, premier dessin de la planche 11 à 15 ms
-  (66 ms en 512 px), temps par image 0,4 → 0,5 ms. ⚠️ contrat : **on
+  émoussées, layage discret et irrégulier — coups parallèles à une orientation qui varie un peu d'une pierre à
+  l'autre, de pas, de profondeur et de largeur inégaux, certains absents, effacés par plages : de près, une pierre
+  dressée à la main, jamais une onde régulière qui la raie), une case tirée par face, nuance par claveau (au plus
+  − 10 %).
+  **Piédroits et impostes** : l'appareil des parois (`PIERRE`, matériau `paroi`, coordonnées de texture en
+  mètres), avec l'ombre de contact au pied. **Tympan** : maçonnerie de moellons (`BLOCAGE`, `_moellonsBruts`,
+  `_matBlocage`), plus rustique que les parois et de la même teinte — moellons de tailles et de formes inégales en
+  assises approximatives, joints larges et creux, faces bombées (un germe par moellon, distance rapportée à sa
+  taille : chaque pixel va au plus proche, l'écart au second donne le joint) ; dans l'appareil des parois il se
+  fondait en elles et l'arc ne se détachait plus. Architecture : trois lots par tuile qui porte un arc
+  (`_lotsArc`, `_poserArcs`, famille « arc ») — piédroits et impostes réemploient le matériau et la texture des
+  parois, claveaux et tympan ont les leurs. Les Textures HD suivent (512 px, grain de détail). Coût mesuré (PC) :
+  3 appels de dessin par tuile qui porte un arc (1 sans texture), 266 triangles par arc de 2,5 m (250 sans
+  texture : 16 pour la bande de l'ombre de contact ; tympan : 6 × claveaux + 8), 4 textures de plus pour la vue
+  (couleur et relief des claveaux et des moellons : 0,7 Mo chacun des deux matériaux, mipmaps compris, 2,8 Mo en
+  512 px), premier dessin de la planche des claveaux 11 à 22 ms (46 à 66 ms en 512 px), des moellons 30 à 37 ms
+  (93 ms en 512 px ; le sol en coûte 33), temps par image inchangé par le troisième lot (douze arcs dans une
+  galerie : 0,5 à 0,6 ms, 12 appels de dessin au lieu de 10). ⚠️ contrat : **on
   passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas `arc`) ; ni face où
   poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode mixte, il ne fait pas
   d'une galerie une chambre (`galerieEmprise.js > _indexStructures`).
@@ -2042,8 +2069,26 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   par défaut) : parois des galeries et des tubes en pierre de taille (§ Scène galerie ; coupé : couleur de légende du
   tracé) ;
   piliers et fronts en **roche brute** (décision produit : la masse calcaire laissée en place, jamais appareillée —
-  bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux, traces
-  d'outil ; aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
+  bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux ;
+  **traces d'outil en passes de coups parallèles**, comme le carrier les laisse (décision produit : jamais d'angle
+  tiré au hasard dans une passe) — `ROCHE.pic`, cinq passes de rangées superposées de coups de pic courts, serrés
+  et obliques, à l'une de deux orientations dominantes pour tout le motif (souchevage) ; `ROCHE.lance`, deux
+  passes de quelques longues stries droites, presque verticales (défermage) ; de grandes plages nues entre elles.
+  🩸 Le motif (3 m) se répéterait sur une longue face — de face et en plein jour, le même groupe de fissures et de
+  passes tous les 3 m sur un long front. Deux parades : les **fissures sont rares et fines** (quatre par motif, à
+  demi-force : longues et sombres, ce sont elles qui signent le motif), et une **face de plus de 6 m est brisée en
+  pans** de 3 à 5 m (`_faceBrisee`, `BRISE`) — chaque pan a sa propre origine du motif (u et v décalés, sens
+  retourné une fois sur deux), tirée de la position de la face, donc stable d'une ouverture à l'autre et d'un
+  appareil à l'autre. Même matériau, même texture, aucun appel de dessin de plus ; coût : douze sommets par pan
+  (environ + 190 sommets pour une face de 64 m ; rien pour un pilier aux faces de moins de 6 m, donc rien sur la
+  salle de piliers de référence). **Jointure sans saut de nuance** : deux origines prises au hasard se raccordent
+  sur des taches larges différentes et la jointure se lit comme une ligne verticale plus claire d'un côté ;
+  l'origine d'un pan est donc choisie parmi 64 tirages (`BRISE.essais`), celle dont la colonne de départ a la
+  teinte la plus proche de la colonne où finit le pan d'avant sur toute la hauteur de la face (`_tonRoche` : teinte
+  du motif par case de 12,5 cm, lue une fois par page sur la carte dessinée), jamais à moins de 0,2 motif de la
+  hauteur du pan d'avant (le même dessin reviendrait à côté). La jointure n'est plus qu'un changement de dessin.
+  Garde-fou : § 12 quater (faces longues brisées, courtes entières, mêmes origines après reconstruction des
+  tuiles). Aucun joint), la 2e masse (`pilier-2`, `front-2`) dans la même roche plus chaude (teinte
   `TEINTE_MASSE_2` posée par sommet, multipliée par la texture ; même matériau et même maillage que la 1re, blanche :
   sans elle un pilier passé de la 1re à la 2e masse ne changeait rien dans la scène), murs (`mur`, `mur-ligne`) en parpaing de 50 × 20 cm ; un type perso `cust-…` résolu par
   le canon prend la roche (son entrée de légende n'a pas de type de base, seulement une géométrie : ligne = front,

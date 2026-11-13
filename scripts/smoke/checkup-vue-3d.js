@@ -2037,12 +2037,36 @@ async function sectionPleinJour(page) {
   };
   // Faces intérieures des piliers nord (à gauche) et sud (à droite), 6 m devant (à l'écran du téléphone aussi).
   const r = {};
+  // Faces de roche brisées en pans (vue3d.js > _faceBrisee, BRISE) : relevé à l'ouverture, puis après une
+  // reconstruction des tuiles (🧱 basculé deux fois) — mêmes pans, mêmes origines.
+  r.pans = await page.evaluate(async function () {
+    const K = window.KtaVue3D, pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const out = { actives: K.textures().actives, depart: K.textures().pans };
+    K.basculerTextures();
+    await pause(200);
+    out.coupe = K.textures().actives;
+    K.basculerTextures();
+    await pause(300);
+    out.refait = K.textures().pans;
+    return out;
+  });
   r.nuit = await lire();
-  const FACES = await projeter([[6, 2, -1.49], [6, 2, 1.49]]);
-  r.nuit.px = await lumiere(FACES, 4);
+  // Une plage de chaque face, pas un point : douze carrés de 9 px, de 6 à 9 m devant et de 1,3 à 2 m de haut — le
+  // dessin de la roche (fissure, passe de pic) ne pèse plus sur la mesure. → [gauche, droite], au dixième.
+  const PLAGE = [];
+  [-1.49, 1.49].forEach(function (z) {
+    [6, 7, 8, 9].forEach(function (x) { [1.3, 1.65, 2].forEach(function (y) { PLAGE.push([x, y, z]); }); });
+  });
+  const FACES = await projeter(PLAGE);
+  const faces = async function () {
+    const px = await lumiere(FACES, 4), n = px.length / 2;
+    const moy = function (l) { return +(l.reduce(function (s, v) { return s + v; }, 0) / l.length).toFixed(1); };
+    return [moy(px.slice(0, n)), moy(px.slice(n))];
+  };
+  r.nuit.px = await faces();
   await page.evaluate(function () { window.KtaVue3D.reglerPleinJour(true); });
   r.jour = await lire();
-  r.jour.px = await lumiere(FACES, 4);
+  r.jour.px = await faces();
   await capture(page, "plein-jour-yeux");
   // Nord calibré à 180° : le soleil passe de l'autre côté.
   await page.evaluate(function () {
@@ -2051,7 +2075,7 @@ async function sectionPleinJour(page) {
     window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
   });
   r.sud = await lire();
-  r.sud.px = await lumiere(FACES, 4);
+  r.sud.px = await faces();
   // Lampe en Plein jour : active, réglable (25 % = discrète), curseurs actifs.
   r.lampe = await page.evaluate(function () {
     const K = window.KtaVue3D, e = K.etat().eclairage;
@@ -2151,6 +2175,15 @@ async function sectionPleinJour(page) {
   verifier(J.fond === PJ.fond && J.brouillard === PJ.fond && Math.abs(J.brume[0] - 30 * PJ.brume) < 0.01 &&
     J.brume[1] === 30, "Plein jour : brouillard clair (jeton --kta-texte-3) de 40 % à 100 % de la portée, fond pareil",
     { fond: J.fond, brouillard: J.brouillard, brume: J.brume });
+  // Deux piliers de 80 × 4,5 m : quatre faces de 80 m brisées en pans de 3 à 5,1 m (16 à 27 chacune), quatre bouts
+  // de 4,5 m laissés entiers ; tuiles refaites : mêmes pans et mêmes origines (empreinte égale).
+  const PA = r.pans.depart || {}, PB = r.pans.refait || {};
+  verifier(r.pans.actives === true && r.pans.coupe === false && PA.longues === 4 && PA.courtes === 4 &&
+    PA.pans >= 4 * 16 && PA.pans <= 4 * 27 && PB.longues === 4 && PB.pans === PA.pans &&
+    PB.empreinte === PA.empreinte,
+  "roche : les 4 faces de 80 m brisées en " + PA.pans + " pans (3 à 5,1 m), les " + PA.courtes +
+    " faces de 4,5 m entières ; tuiles refaites : mêmes pans, mêmes origines du motif (empreinte " + PA.empreinte +
+    ")", r.pans);
   verifier(J.px[1] - J.px[0] > 40 && Math.abs(N.px[1] - N.px[0]) < 25,
     "relief : face au soleil claire, face opposée sombre (gauche / droite " + J.px.join(" / ") + " ; nuit " +
     N.px.join(" / ") + ")", { jour: J.px, nuit: N.px });
@@ -2946,7 +2979,8 @@ async function capturesPente(page) {
 // élargie au nom jusqu'à 1 m puis sur deux lignes, nom jamais coupé), épure (traits sur la paroi), portail (cadre allumé
 // avec une liaison fictive, éteint sans ; fiche « Passer au plan », confirmation au-dessus de la vue, annuler garde
 // la vue, confirmer la ferme ; aucun bouton sans liaison), véhicule (citadine de 3,2 × 1,4 × 1,3 m, dans la galerie, le long de l'axe, arrête le
-// pas, ctx.libre fermé, survol en vue d'édition). Rendu structures : plaque, épure et portail sans paroi ni
+// pas, ctx.libre fermé, survol en vue d'édition ; silhouette de voiture en un maillage texturé, triangles bornés, tout
+// entière dans l'emprise de l'obstacle, la même en aplats 🧱 coupé, tôle en 512 px en Textures HD). Rendu structures : plaque, épure et portail sans paroi ni
 // structure à 3 m = panneau seul (sur une structure : sectionFormesStructures) ; tag sans forme = aucun volume.
 // Point lié sans le tag portail : « Passer au plan » aussi, et ➜ de sa fiche ferme la vue après la confirmation. 50 plaques : mémoire des textures mesurée.
 async function sectionFormesPoi(page) {
@@ -3010,9 +3044,9 @@ async function sectionFormesPoi(page) {
       return id === "v3d-plan-fictif-b" ? { id: id, name: "Plan fictif B", type: "server", path: "fictif/" }
         : window.__v3dFormesSauve.trouve.call(window.PlanRegistry, id);
     };
-    let ctx = null;
+    let ctx = null, scene3d = null;
     const lireCtx = function () {
-      const deg = K.greffer({ nom: "v3d-formes", scene: function (c) { ctx = c; } });
+      const deg = K.greffer({ nom: "v3d-formes", scene: function (c) { ctx = c; scene3d = c.groupe.parent; } });
       if (deg) deg();
     };
     const rel = function (q) { return [+(q.x / sc - ox).toFixed(3), +(q.y / sc - oz).toFixed(3)]; };
@@ -3032,6 +3066,31 @@ async function sectionFormesPoi(page) {
       await pause(80);
       await images(3);
     };
+    // Maillage du véhicule lu sur la scène : le lot texturé (famille « vehicule », 🧱 activé) ou le lot opaque de
+    // son volume (🧱 coupé : le maillage « passage » centré sur lui) → triangles, carte, boîte des sommets (m)
+    // autour du centre du volume (dx le long de la galerie, dz en travers, y).
+    const mailleVeh = function () {
+      const v = vol("vehicule");
+      if (!v || !ctx || !scene3d) return null;
+      const cx = v.x / sc, cz = v.y / sc, scene = scene3d, out = [];
+      scene.updateMatrixWorld(true);
+      scene.traverse(function (m) {
+        if (!m.isMesh || ["vehicule", "passage"].indexOf(m.userData.famille) < 0) return;
+        const p = m.geometry.attributes.position, b = { dx: 0, dz: 0, y0: Infinity, y1: -Infinity };
+        const w = new ctx.THREE.Vector3();
+        for (let i = 0; i < p.count; i++) {
+          w.fromBufferAttribute(p, i).applyMatrix4(m.matrixWorld);
+          b.dx = Math.max(b.dx, Math.abs(w.x - cx)); b.dz = Math.max(b.dz, Math.abs(w.z - cz));
+          b.y0 = Math.min(b.y0, w.y); b.y1 = Math.max(b.y1, w.y);
+        }
+        if (b.dx > 3 || b.dz > 3) return;
+        out.push({ famille: m.userData.famille, triangles: p.count / 3, carte: !!m.material.map,
+          relief: !!m.material.normalMap, uv: !!m.geometry.attributes.uv, sommets: !!m.material.vertexColors,
+          taille: m.material.map ? m.material.map.image.width : 0, dx: +b.dx.toFixed(4), dz: +b.dz.toFixed(4),
+          y0: +b.y0.toFixed(4), y1: +b.y1.toFixed(4) });
+      });
+      return out;
+    };
     const r = {};
     // ── Par rendu : formes, places, chatière traversée en libre, véhicule qui bloque ──
     for (const rendu of ["mixte", "galerie", "structures"]) {
@@ -3042,8 +3101,8 @@ async function sectionFormesPoi(page) {
         return v ? { construit: v.construit, place: rel(v), cote: v.cote, trace: { trou: v.trou, hautTrou: v.hautTrou,
           long: v.long, largeur: v.largeur, largeTrou: v.largeTrou, dir: v.dir, plaqueY: v.plaqueY, texture: v.texture, nom: v.nom, epureY: v.epureY,
           traits: v.traits, allume: v.allume, large: v.large, haut: v.haut, plaqueL: v.plaqueL, plaqueH: v.plaqueH,
-          lignes: v.lignes, coupe: v.coupe, taillePx: v.taillePx }, roche: v.roche, familles: v.familles,
-          triangles: v.triangles } : null;
+          lignes: v.lignes, coupe: v.coupe, taillePx: v.taillePx, boite: v.boite, pans: v.pans }, roche: v.roche,
+          tole: v.tole, familles: v.familles, triangles: v.triangles } : null;
       };
       o.chat = pick(vol("chatiere", "pt_f_chat")); o.chatOb = pick(vol("chatiere", "pt_f_chat_ob"));
       o.plN = pick(vol("plaque", "pt_f_pl_n")); o.plS = pick(vol("plaque", "pt_f_pl_s"));
@@ -3079,6 +3138,7 @@ async function sectionFormesPoi(page) {
       o.ep = pick(vol("epure")); o.def = !!vol("default");
       o.poLie = pick(vol("portail", "pt_f_po_lie")); o.poSeul = pick(vol("portail", "pt_f_po_seul"));
       o.veh = pick(vol("vehicule"));
+      o.vehMaille = mailleVeh();
       o.plaques = K.etat().plaques;
       if (rendu !== "structures") {
         // Chatière en libre : pas de 0,1 m le long de l'axe, de x = −27 à −13 ; hauteur de caméra relue à chaque
@@ -3129,9 +3189,21 @@ async function sectionFormesPoi(page) {
       plFam: (vol("plaque", "pt_f_pl_n") || {}).familles, chatRoche: (vol("chatiere", "pt_f_chat") || {}).roche,
       chatTri: (vol("chatiere", "pt_f_chat") || {}).triangles, ep: (vol("epure") || {}).traits,
       po: (vol("portail", "pt_f_po_lie") || {}).allume, veh: !!(vol("vehicule") || {}).construit, avant: avantTx };
+    lireCtx();
+    r.sansTx.vehMaille = mailleVeh();
+    r.sansTx.vehTole = (vol("vehicule") || {}).tole;
     K.basculerTextures();
     await pause(150); await images(3);
     r.avecTx = K.etat().plaques;
+    // Véhicule : Textures HD basculées vue ouverte (la tôle suit, la géométrie ne bouge pas), puis recoupées.
+    lireCtx();
+    r.vehRallume = mailleVeh();
+    K.basculerTexturesHD();
+    await pause(400); await images(3);
+    r.vehHd = { maille: mailleVeh(), tole: (K.textures().materiaux.tole || {}).carte, dessins: K.textures().dessins };
+    K.basculerTexturesHD();
+    await pause(300); await images(3);
+    r.vehHdCoupe = (K.textures().materiaux.tole || {}).carte;
     await K.fermer();
     // ── Chatière en suivi : le tracker avance pas à pas, la vue suit ──
     window.setPlanRenduVue3D(null, "mixte");
@@ -3378,6 +3450,20 @@ async function sectionFormesPoi(page) {
     verifier(!!o.veh && o.veh.construit && pr(o.veh.place[1], 0.5) && pr(o.veh.trace.long, 3.2) &&
       pr(o.veh.trace.large, 1.4) && pr(o.veh.trace.haut, 1.3),
     k + " : véhicule de 3,2 × 1,4 × 1,3 m (citadine) dans la galerie, du côté du POI (gardé entre les parois)", o.veh);
+    // Forme de la voiture (vue3d.js > _vehicule, VEHICULE) : un maillage texturé (tôle) de 300 à 900 triangles
+    // (deux pavés et quatre prismes en faisaient 176 ; au-delà, la forme coûte plus qu'un ossuaire), tout entier
+    // dans le rectangle de l'obstacle (3,2 × 1,4 m) et sous 1,3 m, sans y flotter (il le remplit à 5 cm près).
+    const vm = (o.vehMaille || []).filter(function (m) { return m.famille === "vehicule"; }), m0 = vm[0] || {};
+    const bt = (o.veh && o.veh.trace.boite) || {};
+    verifier(vm.length === 1 && m0.carte && m0.relief && m0.uv && m0.sommets && m0.taille === 256 &&
+      m0.triangles >= 300 && m0.triangles <= 900 && m0.triangles === o.veh.tole &&
+      m0.dx <= 1.6 + 1e-4 && m0.dx >= 1.55 && m0.dz <= 0.7 + 1e-4 && m0.dz >= 0.65 && m0.y0 >= -1e-4 &&
+      m0.y1 <= 1.3 + 1e-4 && m0.y1 >= 1.25 && bt.long <= 3.2 && bt.large <= 1.4 && bt.haut <= 1.3 && bt.bas >= 0 &&
+      o.veh.trace.pans >= 14,
+    k + " : voiture en un maillage texturé (tôle 256 px, relief) de " + m0.triangles + " triangles (300 à 900), " +
+      "roues à " + (o.veh && o.veh.trace.pans) + " pans, tout entière dans l'emprise de l'obstacle (demi-longueur " +
+      m0.dx + " ≤ 1,6 m, demi-largeur " + m0.dz + " ≤ 0,7 m, de " + m0.y0 + " à " + m0.y1 + " ≤ 1,3 m)",
+    { maille: o.vehMaille, boite: bt });
     verifier(o.vehA < 38.1 && o.vehA > 37.4 && o.vehR > 41.9 && o.vehR < 42.6 && !o.ctxVeh,
       k + " : véhicule bloque le pas (butée à " + o.vehA + " et " + o.vehR + " m) ; ctx.libre fermé",
       { a: o.vehA, r: o.vehR, ctx: o.ctxVeh });
@@ -3397,6 +3483,21 @@ async function sectionFormesPoi(page) {
     T.chatRoche === 0 && T.chatTri > 0 && T.ep === 7 && T.po === true && T.veh && R.avecTx.n === T.avant.n,
   "🧱 coupé : la plaque garde son nom (" + T.plaques.n + " textures), chatière unie, épure, portail et véhicule " +
   "gardés ; rallumé, " + R.avecTx.n + " textures", T);
+  // Véhicule 🧱 coupé : la même silhouette (mêmes triangles, même boîte) en aplats dans le lot opaque de son
+  // volume, sans carte ; Textures HD : la tôle en 512 px sans que la géométrie change, retour à 256 px.
+  const vmx = (R.mixte.vehMaille || []).filter(function (m) { return m.famille === "vehicule"; })[0] || {};
+  const vs = (T.vehMaille || []), vs0 = vs.filter(function (m) { return m.famille === "passage"; })[0] || {};
+  verifier(vs.length === 1 && T.vehTole === 0 && !vs0.carte && !vs0.uv && vs0.sommets &&
+    vs0.triangles === vmx.triangles && vs0.dx === vmx.dx && vs0.dz === vmx.dz && vs0.y1 === vmx.y1,
+  "🧱 coupé : la voiture garde sa silhouette (" + vs0.triangles + " triangles, même boîte) en aplats dans le lot " +
+    "opaque, aucun maillage texturé", { coupe: vs, active: vmx });
+  const vh = ((R.vehHd || {}).maille || []).filter(function (m) { return m.famille === "vehicule"; })[0] || {};
+  const vr = (R.vehRallume || []).filter(function (m) { return m.famille === "vehicule"; })[0] || {};
+  verifier(vr.triangles === vmx.triangles && vr.taille === 256 && vh.taille === 512 && R.vehHd.tole === "512x512" &&
+    vh.triangles === vmx.triangles && vh.dx === vmx.dx && R.vehHd.dessins["tole@2"] >= 0 && R.vehHdCoupe === "256x256",
+  "🧱 rallumé : la tôle revient ; Textures HD : tôle en 512 px (dessin " + ((R.vehHd || {}).dessins || {})["tole@2"] +
+    " ms ; 256 px : " + ((R.vehHd || {}).dessins || {}).tole + " ms), mêmes " + vh.triangles +
+    " triangles, retour à 256 px", { rallume: vr, hd: R.vehHd, coupe: R.vehHdCoupe });
   verifier(R.suivi.modes.length === 1 && R.suivi.modes[0] === "suivi" && !!R.suiviDans &&
     R.suiviDans.cameraY < 0.45 && pr(R.suivi.apres, R.suivi.oeil) && pr(R.suivi.avant, R.suivi.oeil) &&
     R.suivi.fin > -13.5, "suivi : caméra abaissée dans la chatière (" + (R.suiviDans && R.suiviDans.cameraY) +
@@ -4020,8 +4121,9 @@ async function restaurerFormes(page) {
 // d'une paroi du tube à l'autre en mixte et en galerie (portée 2,5 m, clé au ciel, piédroits, claveaux impairs),
 // tel que dessiné en structures (surbaissé) ; tympan : aucun jour entre l'extrados, le ciel et les parois, ouverture
 // libre sous l'intrados (rayons sur la scène) ; on marche dessous sans buter (au milieu et contre un piédroit).
-// 🧱 activé : deux maillages texturés avec relief (claveaux en pierre dressée, maçonnerie dans l'appareil des
-// parois), teinte du niveau (parois du tube, masse du niveau), Textures HD ; 🧱 coupé : aplats de la légende.
+// 🧱 activé : trois maillages texturés avec relief (claveaux en pierre dressée, piédroits et impostes dans l'appareil
+// des parois, tympan en moellons), partout à la teinte des parois de pierre (niveau de 2e masse compris), Textures HD ; 🧱 coupé : aplats de
+// la légende.
 // Ossuaire contre la paroi du côté du POI (le pan, crânes, obstacle mince : on ne l'atteint pas de face, on le
 // longe), sur la face d'un pilier à 3 m, panneau seul en structures sans structure. Outil de carrier (2,1 × 1,2 m, le
 // long de l'axe) qui arrête le pas des deux côtés. Fontis : plafond troué, cloche, cône poussé contre la paroi du côté du POI, qui
@@ -4138,7 +4240,8 @@ async function sectionModeles(page) {
       o.arcs = e.arcs; o.hauteur = e.hauteur;
       if (e.arcs && e.arcs[0] && scene) o.jours = jours(e.arcs[0], e.hauteur);
       o.mailles = maillesArc();
-      o.mats = { claveau: K.textures().materiaux.claveau || null, paroi: K.textures().materiaux.paroi };
+      o.mats = { claveau: K.textures().materiaux.claveau || null, paroi: K.textures().materiaux.paroi,
+        blocage: K.textures().materiaux.blocage || null, dessins: K.textures().dessins };
       const pick = function (v) {
         return v ? { construit: v.construit, place: rel(v), cote: v.cote, appui: v.appui, plafond: v.plafond,
           triangles: v.triangles, bouchesPlafond: v.bouchesPlafond, familles: v.familles, cone: v.cone || null,
@@ -4180,17 +4283,18 @@ async function sectionModeles(page) {
     r.sansTx.legende = (K.textures().couleurs.opaque || []).slice();
     K.basculerTextures();
     await pause(250);
-    // 🧱 rallumé vue ouverte : l'arc reprend ses deux maillages texturés ; Textures HD : la planche des claveaux suit.
+    // 🧱 rallumé vue ouverte : l'arc reprend ses trois maillages texturés ; Textures HD : claveaux et moellons suivent.
     r.rallume = { mailles: maillesArc(), arc: K.etat().arcs[0] };
     K.basculerTexturesHD();
     await pause(400);
-    r.hd = { mailles: maillesArc(), claveau: K.textures().materiaux.claveau, dessins: K.textures().dessins };
+    r.hd = { mailles: maillesArc(), claveau: K.textures().materiaux.claveau,
+      blocage: K.textures().materiaux.blocage, dessins: K.textures().dessins };
     K.basculerTexturesHD();
     await pause(300);
     r.hdCoupe = (K.textures().materiaux.claveau || {}).carte;
     await K.fermer();
-    // Teinte du niveau : structures de 2e masse les plus nombreuses → l'arc tel que dessiné (structures) prend la
-    // teinte de la 2e masse, comme les piliers ; en travers d'un tube (mixte), celle de ses parois de pierre.
+    // Niveau de 2e masse (toutes ses structures de roche) : l'arc garde la teinte des parois de pierre, tel que
+    // dessiné (structures) comme en travers d'un tube (mixte) ; seuls les piliers portent la teinte chaude.
     window.setStructures([{ uid: "st_m_arc", type: "arc", level: 0, points: [P(-30, -1.6), P(-30, 1.6)] },
       { uid: "st_m_pil", type: "pilier-2", level: 0, points: [P(0, 20), P(2, 20), P(2, 22), P(0, 22)] }]);
     r.masse2 = {};
@@ -4268,16 +4372,18 @@ async function sectionModeles(page) {
     "structure à portée (structures) : le panneau seul", { m: M.ossPil, s: S.ossPil, g: Gl.ossPil, so: S.oss });
   verifier(R.sansTx.arcs === 1 && R.sansTx.outil && sansJour(R.sansTx.jours),
     "🧱 coupé : arc et outil construits, tympan sans jour", R.sansTx);
-  // Arc texturé (vue3d.js > _lotsArc, CLAVEAU, _teinteArc) : 🧱 activé, deux maillages à carte, relief, coordonnées
-  // de texture et couleurs par sommet (claveaux en pierre dressée, maçonnerie dans l'appareil des parois).
+  // Arc texturé (vue3d.js > _lotsArc, CLAVEAU, BLOCAGE) : 🧱 activé, trois maillages à carte, relief, coordonnées
+  // de texture et couleurs par sommet (claveaux en pierre dressée, piédroits et impostes dans l'appareil des parois,
+  // tympan en moellons).
   const texture = function (l) {
-    return l.length === 2 && l.every(function (m) { return m.carte && m.relief && m.sommets && m.uv && m.triangles > 0; });
+    return l.length === 3 && l.every(function (m) { return m.carte && m.relief && m.sommets && m.uv && m.triangles > 0; });
   };
   ["mixte", "galerie", "structures"].forEach(function (k) {
     const o = R[k], a0 = (o.arcs || [])[0] || {}, tri = o.mailles.reduce(function (s, m) { return s + m.triangles; }, 0);
     verifier(texture(o.mailles) && a0.texture === true && tri === a0.triangles && a0.teinte === "#ffffff",
-      k + " : 🧱 activé, arc en deux maillages texturés avec relief (claveaux, maçonnerie ; " + tri +
-      " triangles, ceux du relevé), teinte du niveau (1re masse, parois : blanc)", { mailles: o.mailles, arc: a0 });
+      k + " : 🧱 activé, arc en trois maillages texturés avec relief (claveaux, piédroits, tympan ; " + tri +
+      " triangles, ceux du relevé), teinte des parois de pierre (blanc : la texture seule)",
+    { mailles: o.mailles, arc: a0 });
   });
   // Teinte de la pierre : moyenne de la planche des claveaux à moins de 8 % par composante de celle des parois, et
   // jamais plus sombre de plus de 8 % (l'arc ne jure plus à côté d'elles).
@@ -4290,6 +4396,20 @@ async function sectionModeles(page) {
   "claveaux : planche de pierres dressées de 256 px avec relief (pente " + mcl.pente + "), teinte moyenne " +
     JSON.stringify(mcl.moyenne) + " proche de celle de la pierre des parois " + JSON.stringify(mpa.moyenne) +
     " (écarts " + JSON.stringify(ecartTeinte) + ", au plus 8 %) ; premier dessin " + mcl.ms + " ms", { c: mcl, p: mpa });
+  // Tympan (vue3d.js > BLOCAGE, _moellonsBruts) : sa propre carte (moellons, pas l'appareil des parois), de la même
+  // teinte que la pierre des parois (au plus 8 % d'écart par composante), plus rustique (relief plus marqué que celui
+  // des claveaux dressés).
+  const mbl = M.mats.blocage || {};
+  const ecartBlocage = (mbl.moyenne && mpa.moyenne) ? mbl.moyenne.map(function (v, i) {
+    return +((v - mpa.moyenne[i]) / mpa.moyenne[i]).toFixed(3);
+  }) : null;
+  verifier(!!ecartBlocage && ecartBlocage.every(function (d) { return Math.abs(d) <= 0.08; }) &&
+    mbl.carte === "256x256" && mbl.normale && mbl.couleursSommets && mbl.pente > mcl.pente * 1.5 &&
+    M.mailles.filter(function (m) { return m.taille === 256; }).length === 3,
+  "tympan : maçonnerie de moellons de 256 px, relief plus marqué que les claveaux (pente " + mbl.pente + " contre " +
+    mcl.pente + "), teinte moyenne " + JSON.stringify(mbl.moyenne) + " proche de la pierre des parois (écarts " +
+    JSON.stringify(ecartBlocage) + ", au plus 8 %) ; premier dessin " + (M.mats.dessins || {}).blocage + " ms",
+  { b: mbl, p: mpa });
   const sa = R.sansTx.arc || {};
   verifier(R.sansTx.mailles.length === 0 && sa.texture === false && /^#[0-9a-f]{6}$/.test(sa.teinte || "") &&
     sa.teinte !== "#ffffff" && sa.triangles === (M.arcs[0] || {}).triangles - 16,
@@ -4299,14 +4419,15 @@ async function sectionModeles(page) {
   verifier(texture(R.rallume.mailles) && (R.rallume.arc || {}).texture === true,
     "🧱 rallumé vue ouverte : l'arc reprend sa pierre texturée", R.rallume);
   verifier(texture(R.hd.mailles) && R.hd.mailles.every(function (m) { return m.taille === 512; }) &&
-    (R.hd.claveau || {}).carte === "512x512" && R.hd.dessins["claveau@2"] >= 0 && R.hdCoupe === "256x256",
-  "Textures HD : claveaux et maçonnerie de l'arc en 512 px (dessin " + R.hd.dessins["claveau@2"] +
-    " ms), retour à 256 px", { hd: R.hd.mailles, coupe: R.hdCoupe });
+    (R.hd.claveau || {}).carte === "512x512" && R.hd.dessins["claveau@2"] >= 0 && R.hdCoupe === "256x256" &&
+    (R.hd.blocage || {}).carte === "512x512" && R.hd.dessins["blocage@2"] >= 0,
+  "Textures HD : claveaux, piédroits et moellons du tympan en 512 px (dessin des claveaux " +
+    R.hd.dessins["claveau@2"] + " ms, des moellons " + R.hd.dessins["blocage@2"] + " ms), retour à 256 px", { hd: R.hd.mailles, coupe: R.hdCoupe });
   const p2 = (R.masse2.piliers || []).map(function (c) { return parseInt(c.slice(5, 7), 16) / parseInt(c.slice(1, 3), 16); });
-  verifier(R.masse2.structures === "#f0b98a" && R.masse2.mixte === "#ffffff" && p2.length > 0 &&
+  verifier(R.masse2.structures === "#ffffff" && R.masse2.mixte === "#ffffff" && p2.length > 0 &&
     p2.every(function (v) { return v < 0.65; }),
-  "teinte du niveau : niveau de 2e masse → arc tel que dessiné à la teinte chaude de ses piliers (" +
-    R.masse2.structures + "), arc en travers d'un tube à celle de ses parois (" + R.masse2.mixte + ")", R.masse2);
+  "niveau de 2e masse (piliers à la teinte chaude) : l'arc garde la teinte des parois de pierre, tel que dessiné (" +
+    R.masse2.structures + ") comme en travers d'un tube (" + R.masse2.mixte + ")", R.masse2);
   if (CAPTURES) await capturesModeles(page);
   await restaurerFormes(page);
 }
@@ -9352,7 +9473,7 @@ async function sectionFichesReglage(nav) {
 // Chromium). Ombre de contact (OMBRE_CONTACT) : teinte par sommet × 0,5 au pied des piliers, du mur et des parois,
 // pleine à 0,28 m et jusqu'en tête, deux bandes par face, texture inchangée, rien 🧱 coupé. Nuance de roche par structure
 // (NUANCE_ROCHE) : deux piliers voisins différents, discrète, 2e masse reconnaissable, stable (tuiles refaites, vue
-// rouverte). Textures HD (HD, config.js > getVue3DTexturesHD) : défaut selon l'appareil, bouton de la tuile, 512 px
+// rouverte). Traces d'outil de la roche (ROCHE.pic, ROCHE.lance) : passes de coups parallèles, une ou deux orientations. Textures HD (HD, config.js > getVue3DTexturesHD) : défaut selon l'appareil, bouton de la tuile, 512 px
 // et grain de détail, bascule sans géométrie refaite, sans effet 🧱 coupé, retour à 256 px sans redessin, reprise du
 // contexte, temps et mémoire (PC, téléphone ralenti × 4).
 async function sectionTexturesSol(nav) {
@@ -9490,7 +9611,7 @@ async function sectionTexturesSol(nav) {
       await ouvrir("structures", 0, 0);
       const t0 = K.textures();
       r.defaut = { sols: t0.sols, motifs: t0.motifs, uv: t0.uvParMetre.sol, dessins: t0.dessins, msSol: t0.msSol,
-        calage: ecartCalage(t0), cote: t0.calage.cote };
+        calage: ecartCalage(t0), cote: t0.calage.cote, roche: t0.materiaux.roche };
       // Ombre de contact : roche (piliers de 1re et 2e masse), parpaing (mur à 98 % de la hauteur).
       r.ombre = { roche: ombres("opaque", 3), mur: ombres("murs", 1), teintes: t0.teintes,
         sommets: t0.materiaux.parpaing.couleursSommets && t0.materiaux.roche.couleursSommets };
@@ -9644,6 +9765,20 @@ async function sectionTexturesSol(nav) {
       contraste.toFixed(1) + ":1 ≥ 3:1, seuil des objets graphiques)", { sol5: M.sol.lum5, lisere: liseHex });
     verifier(R.defaut.uv === 0.25 && M.sol.taille === 256 && M.ciel.taille === 256,
       nom + "motif de 4 m (0,25 de texture par mètre), 256 px", { uv: R.defaut.uv, sol: M.sol.taille });
+    // Roche des piliers et des fronts (vue3d.js > ROCHE.pic, ROCHE.lance) : traces d'outil en passes de coups
+    // parallèles — pic à une ou deux orientations pour tout le motif, lance à 0,07 rad (4°) au plus de la verticale,
+    // peu de stries longues (elles se reconnaissent d'un motif à l'autre sur un long front), et de la roche nue :
+    // au plus 400 coups de pic par motif de 3 m.
+    const Tr = (R.defaut.roche || {}).traces || { pic: {}, lance: {} };
+    verifier(Tr.fissures >= 1 && Tr.fissures <= 5 && Tr.pic.passes >= 3 && Tr.pic.passes <= 8 && Tr.pic.coups >= 40 &&
+      Tr.pic.coups <= 400 &&
+      Tr.pic.orientations >= 1 && Tr.pic.orientations <= 2 && Tr.lance.passes >= 1 && Tr.lance.passes <= 3 &&
+      Tr.lance.coups >= 3 && Tr.lance.coups <= 18 && Tr.lance.penteMax <= 0.07 + 1e-9,
+    nom + "roche des piliers et des fronts : " + Tr.fissures + " fissures par motif (au plus 5 : elles signent le " +
+      "motif quand il se répète), " + Tr.pic.coups + " coups de pic en " + Tr.pic.passes +
+      " passes de rangées parallèles, " + Tr.pic.orientations + " orientation(s) ; " + Tr.lance.coups +
+      " stries de lance en " + Tr.lance.passes + " passes, à " + Tr.lance.penteMax + " rad au plus de la verticale",
+    R.defaut.roche);
     verifier(R.defaut.calage < 1e-3 && R.deplace.calage < 1e-3 && R.portee.calage < 1e-3 &&
       R.portee.cote > R.defaut.cote, nom + "carré qui suit calé sur le monde : au départ, après un déplacement, " +
       "après un changement de portée (côté " + R.defaut.cote + " → " + R.portee.cote + " m, sans saut du motif)",
