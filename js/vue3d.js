@@ -4283,7 +4283,7 @@
     t.obj.position.y = v.dy;
     t.obj.userData.voisin = v.niveau;
     _masqueTransparence(v, t);
-    const plafond = _plafondVoisinVu(v);
+    const plafond = _plafondVoisinVu();
     t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = plafond; });
     if (_voisinEstompe(v)) _estomperObjet(t.obj, _voisinEstompe(v));
   }
@@ -4345,7 +4345,7 @@
       v.plans.plafond.scale.copy(e.plafond.scale);
       const cache = v.plansCaches || {};
       v.plans.sol.visible = vu && (solPlein || v.dessus) && !cache.sol;
-      v.plans.plafond.visible = vu && _plafondVoisinVu(v) && !cache.plafond;
+      v.plans.plafond.visible = vu && _plafondVoisinVu() && !cache.plafond;
     });
   }
 
@@ -5299,7 +5299,7 @@
   }
 
   function _estomperVoisin(v) {
-    const mode = _voisinEstompe(v), transp = _transparenceYeux(v), plafond = _plafondVoisinVu(v);
+    const mode = _voisinEstompe(v), transp = _transparenceYeux(v), plafond = _plafondVoisinVu();
     v.tuiles.forEach(function (t) {
       if (!t.obj) return;
       _estomperObjet(t.obj, mode);
@@ -14482,7 +14482,7 @@
     let nbPans = 0;
     pans.longues.forEach(function (sig, k) { nbPans += sig.length; lignes.push(k + ":" + sig.join("|")); });
     r.pans = { longues: pans.longues.size, pans: nbPans, courtes: pans.courtes.size,
-      empreinte: _hachage(lignes.sort().join(";")) };
+      empreinte: _hachage(lignes.sort(function (a, b) { return a < b ? -1 : (a > b ? 1 : 0); }).join(";")) };
     r.hd = { voulu: e.hd === true, actif: _hdActif(), finesse: _fin(),
       bouton: e.boutonTexturesHD ? e.boutonTexturesHD.getAttribute("aria-pressed") : null,
       grise: e.boutonTexturesHD ? e.boutonTexturesHD.disabled : null, grain: !!e.texGrain,
