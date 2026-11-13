@@ -277,6 +277,111 @@ async function capture(page, nom) {
   await page.screenshot({ path: path.join(CAPTURES, nom + ".png") });
 }
 
+// Relevé écarté de la scène d'un test (script d'initialisation de chaque page, cf main > nav.newContext).
+// Une section qui pose ses propres formes remplace les accesseurs du relevé (getAllEmbeddedRoads, …Zones, …Points,
+// …Structures) puis appelle window.__v3dReleve.aligner() ; elle le rappelle après les avoir rendus.
+// 🩸 Remplacer les accesseurs ne suffit pas : la règle du pas (tracking.js > _segmentsBloquesParStructure),
+// l'itinéraire (pathfinder.js > zones dures, murs en ligne) et ⛏️ Volume exploité lisent les registres des calques
+// (_ktaDataStructurePolygons, _ktaDataPolygons) sans passer par eux. Un pilier du relevé, absent de la scène dessinée,
+// arrêtait alors le pas d'un test selon l'endroit où le relevé en pose.
+// aligner() : accesseur remplacé → son registre mis de côté (tableau vide à la place) ; accesseur d'origine → registre
+// remis. Sans effet si rien n'a changé : une section jouée à l'intérieur d'une autre ne remet rien trop tôt.
+// ⚠️ Un calque de test se charge APRÈS aligner() (il s'inscrit dans le registre vide) et se retire avant de rendre
+// les accesseurs ; un changement de plan pendant qu'un registre est de côté n'est pas géré.
+// 🔒 Garde-fou : chaque appel rejoue la règle du pas en travers de chaque structure du relevé mise de côté (session
+// ignorée le temps de la sonde) ; une seule qui arrête encore le pas = exception « la scène du test n'est pas vide ».
+// Sections jouées SUR le relevé (début de main) : la scène dessinée le garde, deux aides pour le pas seulement.
+// bandeLibre(x0, y0, x1, y1, pas, niveau) → true si aucune structure du relevé n'arrête un pas dans ce rectangle
+// (px ; quadrillage de segments tous les `pas`) : sert à choisir un départ dégagé. sansStructures() met de côté le
+// registre des structures le temps d'un bloc synchrone et rend la fonction qui le remet.
+function brancherReleve() {
+  if (window.__v3dReleve) return;
+  const REGISTRES = { getAllEmbeddedZones: "_ktaDataPolygons", getAllEmbeddedStructures: "_ktaDataStructurePolygons" };
+  const ACCESSEURS = ["getAllEmbeddedRoads", "getAllEmbeddedZones", "getAllEmbeddedPoints", "getAllEmbeddedStructures"];
+  const origine = {}, reels = {}, bilan = { alignements: 0, temoins: 0, restants: 0 };
+  // Accesseur d'origine = la première fonction que l'app pose sous ce nom (utils.js, road.js).
+  ACCESSEURS.forEach(function (g) {
+    Object.defineProperty(window, g, { configurable: true, enumerable: true,
+      get: function () { return undefined; },
+      set: function (f) {
+        origine[g] = f;
+        Object.defineProperty(window, g, { value: f, writable: true, configurable: true, enumerable: true });
+      } });
+  });
+  // Règle du pas jouée sur le relevé seul (structures de session ignorées) → nombre de segments refusés.
+  const refuses = function (segments, niveau) {
+    const session = window.getStructures;
+    window.getStructures = function () { return []; };
+    try {
+      return window.ktaSegmentsBloquesParStructure(segments, niveau, true).filter(Boolean).length;
+    } finally { window.getStructures = session; }
+  };
+  const pasVide = function (n, quoi) {
+    return new Error("la scène du test n'est pas vide : objets du relevé présents (" + n + " " + quoi + ")");
+  };
+  // Nombre de structures de `liste` qui arrêtent un pas tiré en travers de leur emprise, à leur niveau.
+  const sonder = function (liste) {
+    if (typeof window.ktaSegmentsBloquesParStructure !== "function" || !Array.isArray(liste)) return 0;
+    const parNiveau = {};
+    liste.forEach(function (e) {
+      if (!e || !Array.isArray(e.points) || e.points.length < 2) return;
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      e.points.forEach(function (p) {
+        x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+      });
+      const niveau = Number.isInteger(e.level) ? e.level : 0;
+      (parNiveau[niveau] = parNiveau[niveau] || []).push([x0 - 1, (y0 + y1) / 2, x1 + 1, (y0 + y1) / 2]);
+    });
+    let n = 0;
+    Object.keys(parNiveau).forEach(function (niveau) { n += refuses(parNiveau[niveau], +niveau); });
+    return n;
+  };
+  window.__v3dReleve = {
+    bandeLibre: function (x0, y0, x1, y1, pas, niveau) {
+      const segments = [];
+      for (let x = x0; x <= x1 + 1e-6; x += pas) segments.push([x, y0, x, y1]);
+      for (let y = y0; y <= y1 + 1e-6; y += pas) segments.push([x0, y, x1, y]);
+      return refuses(segments, niveau) === 0;
+    },
+    sansStructures: function () {
+      const k = "_ktaDataStructurePolygons";
+      if (k in reels) return function () {};
+      const liste = window[k];
+      window[k] = [];
+      const restants = sonder(liste);
+      if (restants) { window[k] = liste; throw pasVide(restants, "structure(s) du relevé arrêtent encore le pas"); }
+      return function () { window[k] = liste; };
+    },
+    aligner: function () {
+      ACCESSEURS.forEach(function (g) {
+        if (!origine[g]) throw new Error("relevé : accesseur " + g + " introuvable, la scène ne peut pas être vidée");
+      });
+      Object.keys(REGISTRES).forEach(function (g) {
+        const k = REGISTRES[g], remplace = window[g] !== origine[g];
+        if (remplace && !(k in reels)) {
+          if (g === "getAllEmbeddedStructures") bilan.temoins = sonder(window[k]);
+          reels[k] = window[k];
+          window[k] = [];
+        } else if (!remplace && k in reels) {
+          window[k] = reels[k];
+          delete reels[k];
+        }
+      });
+      bilan.alignements++;
+      if ("_ktaDataStructurePolygons" in reels) {
+        bilan.restants = sonder(reels._ktaDataStructurePolygons);
+        if (bilan.restants) throw pasVide(bilan.restants, "structure(s) du relevé arrêtent encore le pas");
+      }
+    },
+    // { ecartes: registres de côté, alignements, temoins: structures du relevé qui arrêtaient le pas avant d'être
+    // mises de côté, restants: celles qui l'arrêtent encore (0 attendu) }
+    etat: function () {
+      return { ecartes: Object.keys(reels), alignements: bilan.alignements, temoins: bilan.temoins,
+        restants: bilan.restants };
+    }
+  };
+}
+
 // Plan dense synthétique, dans le registre des structures embarquées (mémoire seule, aucune session écrite).
 // Maille de 7 m : piliers irréguliers de 6 à 12 sommets, murs polygones allongés, murs en ligne et fronts dans
 // les galeries ; quelques zones, tracés et POI.
@@ -974,6 +1079,7 @@ async function sectionDonnees(page, MX) {
     const vrais = window.__v3dEmb;
     window.getAllEmbeddedRoads = vrais.r; window.getAllEmbeddedZones = vrais.z; window.getAllEmbeddedPoints = vrais.p;
     window.getAllEmbeddedStructures = vrais.s;
+    window.__v3dReleve.aligner();
     const CAL = "v3d_dn_calque";
     const json = { data: [Object.assign({ id: "POI calque v3d", nom: "POI calque v3d", uid: "pt_dn_cal", tags: ["salle"],
       level: 0, description: "" }, P(-3, 2))],
@@ -1021,6 +1127,7 @@ async function sectionDonnees(page, MX) {
     window.PLAN_CONFIG.dataLayers = window.PLAN_CONFIG.dataLayers.filter(function (l) { return l.id !== CAL; });
     window.getAllEmbeddedRoads = bouchons.r; window.getAllEmbeddedZones = bouchons.z;
     window.getAllEmbeddedPoints = bouchons.p; window.getAllEmbeddedStructures = bouchons.s;
+    window.__v3dReleve.aligner();
     URL.revokeObjectURL(url);
     r.fin = r.finAvantCalque;
     window.setRoads([]); window.setZones([]); window.setStructures([]); window.setEditorPoints([]);
@@ -1151,6 +1258,7 @@ async function sectionTypeModifie(page) {
     };
     window.getAllEmbeddedRoads = duCalque(vrais.r); window.getAllEmbeddedZones = duCalque(vrais.z);
     window.getAllEmbeddedPoints = function () { return []; }; window.getAllEmbeddedStructures = duCalque(vrais.s);
+    window.__v3dReleve.aligner();
     // Deux types perso de tracé, identifiants de même longueur, couleurs distinctes.
     const LC = window.LegendCustomization, trouver = LC.findCustomEntry;
     const PERSO = { "cust-v3d-ty-a": "#3c9be0", "cust-v3d-ty-b": "#e0583c" };
@@ -1308,6 +1416,7 @@ async function sectionTypeModifie(page) {
     LC.findCustomEntry = trouver;
     window.getAllEmbeddedRoads = bouchons.r; window.getAllEmbeddedZones = bouchons.z;
     window.getAllEmbeddedPoints = bouchons.p; window.getAllEmbeddedStructures = bouchons.s;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = bouchons.id;
     window.setVue3DTextures(texAvant);
     window.setRoads([]); window.setZones([]); window.setStructures([]);
@@ -1352,6 +1461,7 @@ async function sectionFichesObjets(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-fiches";
     const poser = function () {
       window.setRoads([{ uid: "rd_fi_p", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)],
@@ -1571,6 +1681,7 @@ async function sectionFichesObjets(page) {
     const vrais = window.__v3dFi;
     window.getAllEmbeddedRoads = vrais.r; window.getAllEmbeddedZones = vrais.z; window.getAllEmbeddedPoints = vrais.p;
     window.getAllEmbeddedStructures = vrais.s;
+    window.__v3dReleve.aligner();
     const CAL = "v3d_fi_calque";
     const json = { data: [], structures: [
       { uid: "st_fi_cal1", type: "pilier-1", level: 0, points: rect(13, 15, 5, 7), description: "note du calque" },
@@ -1798,6 +1909,7 @@ async function sectionLampesMembres(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-lampes";
     if (K.etat().ouvert !== false) await K.fermer();
     window.setPlanRenduVue3D(null, "structures");
@@ -1900,6 +2012,7 @@ async function sectionLampesMembres(page) {
     await K.fermer();
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -2009,6 +2122,7 @@ async function sectionPleinJour(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-plein-jour";
     window.getPlanNorthCalibre = function () { return false; };
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2156,6 +2270,7 @@ async function sectionPleinJour(page) {
     if (typeof window.setVue3DLampeIntensite === "function" && s.intensite) window.setVue3DLampeIntensite(s.intensite);
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.__v3dReleve.aligner();
     window.getPlanNorthCalibre = s.calibre; window.getPlanNorthOffset = s.nord;
     window.dispatchEvent(new CustomEvent("kta:northOffsetChange"));
     window.setRoads([]); window.setZones([]); window.setStructures([]);
@@ -2233,6 +2348,7 @@ async function sectionZonesNiveaux(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-zones-niveaux";
     C.multiLevel = true; C.availableLevels = [-2, -1, 0]; C.visibleLevels = [-2, -1, 0]; C.activeLevel = 0;
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2283,6 +2399,7 @@ async function sectionZonesNiveaux(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -2326,6 +2443,7 @@ async function sectionConePassage(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-cone";
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2437,6 +2555,7 @@ async function sectionConePassage(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads(av.roads); window.setZones(av.zn); window.setStructures(av.st); window.setEditorPoints(av.pts);
     window.setPlanRenduVue3D(null, av.rendu);
     G.invalider();
@@ -2455,6 +2574,7 @@ async function sectionConePassage(page) {
         const vide = function () { return []; };
         window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
         window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
         window._currentLoadedPlanId = "v3d-checkup-cone";
         window.setPlanRenduVue3D(null, "mixte");
         window.setRoads([{ uid: "rd_cone_cap", type: "secondaire", level: 0, points: [P(-50, 30), P(50, 30)] }]);
@@ -2472,6 +2592,7 @@ async function sectionConePassage(page) {
         await K.fermer();
         window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
         window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+        window.__v3dReleve.aligner();
         window.setRoads(s.roads); window.setEditorPoints(s.pts); window.setPlanRenduVue3D(null, s.rendu);
         window.__v3dCone = null;
         window.KtaGalerie.invalider();
@@ -2557,6 +2678,7 @@ async function sectionPente(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = PID;
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
     C.smartNav = false;
@@ -2716,6 +2838,7 @@ async function sectionPente(page) {
     window.effacerReglagesNiveaux(PID);
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     C.smartNav = av.smart;
     window.setPlanRenduVue3D(null, av.rendu);
@@ -2819,6 +2942,7 @@ async function sectionPenteLargeur(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = PID;
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
     if (K.etat().ouvert !== false) await K.fermer();
@@ -2889,6 +3013,7 @@ async function sectionPenteLargeur(page) {
     window.effacerReglagesNiveaux(PID);
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.setPlanRenduVue3D(null, av.rendu);
     window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
@@ -2944,6 +3069,7 @@ async function capturesPente(page) {
         const vide = function () { return []; };
         window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
         window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
         window._currentLoadedPlanId = PID;
         C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
         window.setStructures([]); window.setZones([]); window.setEditorPoints([]);
@@ -3006,6 +3132,7 @@ async function sectionFormesPoi(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-formes";
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
@@ -3576,6 +3703,7 @@ async function sectionPlaques(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-plaques";
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
@@ -3981,6 +4109,7 @@ async function poserFormesStructures(page) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-formes";
       window.ktaSetActiveLevel(0);
       if (window.getTrackingActif()) window.stopTracking();
@@ -4059,6 +4188,7 @@ async function capturesFormes(page) {
         const vide = function () { return []; };
         window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
         window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
         window._currentLoadedPlanId = "v3d-checkup-formes";
         window.setPlanRenduVue3D(null, "mixte");
         window.setVue3DTextures(true);
@@ -4105,6 +4235,7 @@ async function restaurerFormes(page) {
     if (!s) return;
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.__v3dReleve.aligner();
     window.setRoads(s.roads); window.setZones(s.zn); window.setStructures(s.st); window.setEditorPoints(s.pts);
     window.setPlanRenduVue3D(null, s.rendu);
     window.PlanRegistry.findById = s.trouve;
@@ -4142,6 +4273,7 @@ async function sectionModeles(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-modeles";
     window.ktaSetActiveLevel(0);
     if (K.etat().ouvert !== false) await K.fermer();
@@ -4529,6 +4661,7 @@ async function sectionEcartItineraire(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-ecart-iti";
     C.multiLevel = true; C.availableLevels = [-1, 0, 1]; C.visibleLevels = [-1, 0, 1]; C.activeLevel = 0;
     C.smartNav = false;
@@ -4672,6 +4805,7 @@ async function sectionEcartItineraire(page) {
     C.smartNav = av.smart;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -4734,6 +4868,7 @@ async function sectionEncartReste(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-encart";
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
     if (K.etat().ouvert !== false) await K.fermer();
@@ -4840,6 +4975,7 @@ async function sectionEncartReste(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -4942,6 +5078,7 @@ async function sectionCamera(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-camera";
     if (window.ktaSetActiveLevel) window.ktaSetActiveLevel(0); else C.activeLevel = 0;
     const carre = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
@@ -5355,6 +5492,7 @@ async function sectionCamera(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.setVue3DTextures(av.tx);
@@ -5516,6 +5654,7 @@ async function sectionCameraPixels(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window.setStructures([]); window.setRoads([]); window.setZones([]); window.setEditorPoints([]);
     window.setVue3DTextures(true);
     window.setPlanRenduVue3D(null, "structures");
@@ -5574,6 +5713,7 @@ async function sectionCameraPixels(page) {
     await window.KtaVue3D.fermer();
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s;
+    window.__v3dReleve.aligner();
     window.setVue3DTextures(s.tx);
     window.setEditorPoints(window.__v3dPoints || []);
     window.KtaGalerie.invalider();
@@ -5872,6 +6012,7 @@ async function sectionSautCarnet(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-saut";
     C.multiLevel = false;
     window.setPlanRenduVue3D(null, "structures");
@@ -5975,6 +6116,7 @@ async function sectionSautCarnet(page) {
     C.multiLevel = s.ml;
     window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
     window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
     window.KtaGalerie.invalider();
   });
@@ -6657,6 +6799,7 @@ async function sectionNiveauEdition(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
     if (window.ktaSetActiveLevel) window.ktaSetActiveLevel(0); else C.activeLevel = 0;
     const carre = function (x0, z0, x1, z1, lv) {
@@ -6745,6 +6888,7 @@ async function sectionNiveauEdition(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setStructures([]); window.setZones([]);
     window.setEditorPoints(window.__v3dPoints || []);
     window.KtaGalerie.invalider();
@@ -6881,6 +7025,7 @@ async function sectionDessin(page) {
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = "v3d-checkup-dessin";
     // Plan à deux niveaux (−1 et 0), carte au 0 : la 3D dessine au −1.
     C.multiLevel = true;
@@ -7337,6 +7482,7 @@ async function sectionDessin(page) {
     C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
     window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
     window.setRoads([]); window.setZones([]); window.setStructures([]);
     window.setEditorPoints(window.__v3dPoints || window.getEditorPoints());
     window.KtaGalerie.invalider();
@@ -7488,6 +7634,7 @@ async function sectionAjusterSommets(nav, mode) {
       const calque = [{ uid: "st_aj_calque", type: "pilier-1", level: -1,
         points: [P(-1, 4), P(1, 4), P(1, 6), P(-1, 6)] }];
       window.getAllEmbeddedStructures = function () { return calque; };
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-ajuster";
       // Au doigt, réglage ⚙️ Fiches coupé (défaut du téléphone) : l'ajustement reste permis (§ 37).
       if (window.__ajDoigt) window.setVue3DFichesObjets(false);
@@ -7940,6 +8087,7 @@ async function sectionAjusterSourisReelle(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-souris";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "structures");
@@ -8214,6 +8362,7 @@ async function sectionPoi3D(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-poi";
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
       window.setPlanRenduVue3D(null, "structures");
@@ -8465,6 +8614,7 @@ async function sectionMesures3D(nav, mode) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-mesures";
       window.setPlanDistTotTousNiveaux(null, false);
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
@@ -8771,6 +8921,7 @@ async function sectionPointPrecis3D(nav, mode) {
       const cq = Object.assign({ id: "cq", nom: "Calque fictif", uid: "pt_pp3_cq", level: 0, tags: ["info"],
         layerId: "x" }, P(-12, 0.6));
       window.getAllEmbeddedPoints = function () { return [cq]; };
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-precis";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "mixte");
@@ -9161,6 +9312,7 @@ async function sectionPassageFicheCalque(nav) {
       window.getAllEmbeddedPoints = duCalque(vrais.p);
       window.getAllEmbeddedStructures = duCalque(vrais.s);
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = function () { return []; };
+      window.__v3dReleve.aligner();
       window.setStructures([]); window.setZones([]);
       window.setRoads([{ uid: "rd_pfc_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] },
         { uid: "rd_pfc_1", type: "principal", level: 1, points: [P(-60, 0), P(60, 0)] }]);
@@ -9377,6 +9529,7 @@ async function sectionFichesReglage(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-fiches";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "structures");
@@ -9530,6 +9683,7 @@ async function sectionTexturesSol(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-textures-sol";
       C.multiLevel = false;
       try { localStorage.removeItem("myktamap_v3d_textures_v1"); } catch (err) { /* lecture seule */ }
@@ -10146,6 +10300,7 @@ async function sectionRecherche3D(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-recherche";
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
       if (window.ktaSetActiveLevel) window.ktaSetActiveLevel(0); else C.activeLevel = 0;
@@ -10499,6 +10654,7 @@ async function sectionNiveauxVoisins(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = PID;
       C.multiLevel = true; C.availableLevels = [-2, -1, 0, 1]; C.visibleLevels = [-2, -1, 0, 1];
       window.ktaSetActiveLevel(0);
@@ -10968,6 +11124,7 @@ async function sectionSolZones(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = PID;
       C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0];
       window.ktaSetActiveLevel(0);
@@ -11164,6 +11321,7 @@ async function pageNiveauxFictifs(nav, pid, niveaux, sols, hauteurs, prep, conte
     const vide = function () { return []; };
     window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
     window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
     window._currentLoadedPlanId = a.pid;
     C.multiLevel = true; C.availableLevels = a.niveaux.slice(); C.visibleLevels = a.niveaux.slice();
     window.ktaSetActiveLevel(0);
@@ -14181,6 +14339,7 @@ async function sectionLimiterPortee(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-limiter";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "structures");
@@ -14390,6 +14549,7 @@ function semerToutPlan() {
   const vide = function () { return []; };
   window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
   window.getAllEmbeddedStructures = vide;
+  window.__v3dReleve.aligner();
   window._currentLoadedPlanId = "v3d-mesure-tout-plan";
   window.APP_CONFIG.multiLevel = true;
   window.ktaSetActiveLevel(0);
@@ -14543,6 +14703,7 @@ async function sectionPanneauxDezoom(nav) {
       const vide = function () { return []; };
       window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
       window.getAllEmbeddedStructures = vide;
+      window.__v3dReleve.aligner();
       window._currentLoadedPlanId = "v3d-checkup-panneaux";
       C.multiLevel = false;
       window.setPlanRenduVue3D(null, "structures");
@@ -15161,6 +15322,13 @@ async function sectionCaseBoutonsZoom(nav) {
 (async function main() {
   const lancement = { args: ["--enable-gpu", "--ignore-gpu-blocklist", "--use-angle=d3d11"] };
   const nav = await lancerNavigateur(chromium, lancement);
+  // Chaque page du checkup reçoit window.__v3dReleve avant les scripts de l'app (cf brancherReleve).
+  const nouveauContexte = nav.newContext.bind(nav);
+  nav.newContext = async function (options) {
+    const c = await nouveauContexte(options);
+    await c.addInitScript(brancherReleve);
+    return c;
+  };
   const contexte = await nav.newContext(TEL
     ? { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, serviceWorkers: "block" }
     : { viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
@@ -15505,20 +15673,27 @@ async function sectionCaseBoutonsZoom(nav) {
       const prep = await page.evaluate(function () {
         const sc = window.APP_CONFIG.scale;
         if (window.APP_CONFIG.multiLevel === true) window.APP_CONFIG.activeLevel = 0;
-        // Départ : le point le plus proche du centre assez loin des bords pour la bande nord-sud de -4 m à +2 m.
+        // Départ : le point le plus proche du centre assez loin des bords pour la bande nord-sud de -4 m à +2 m,
+        // dans un couloir que le relevé laisse au pas (du pilier posé à 3 m au nord jusqu'à 8 m au sud, 1 m de part
+        // et d'autre) : les pas joués là ne jugent que les formes du checkup.
         const c = window.map.getCenter();
         const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
         const cx = Math.round(c.lng), cy = Math.round(H - c.lat);
         const libre = function (px, py) {
-          return px > 5 * sc && px < W - 5 * sc && py > 6 * sc && py < H - 4 * sc;
+          return px > 5 * sc && px < W - 5 * sc && py > 6 * sc && py < H - 4 * sc &&
+            window.__v3dReleve.bandeLibre(px - sc, py - 3 * sc, px + sc, py + 8 * sc, 0.5 * sc, 0);
         };
-        let x = cx, y = cy;
+        let x = cx, y = cy, trouve = false;
         chercher: for (let r = 0; r < 400; r++) {
-          for (let a = 0; a < 16; a++) {
+          for (let a = 0; a < (r ? 16 : 1); a++) {
             const px = Math.round(cx + Math.cos(a * Math.PI / 8) * r * sc);
             const py = Math.round(cy + Math.sin(a * Math.PI / 8) * r * sc);
-            if (libre(px, py)) { x = px; y = py; break chercher; }
+            if (libre(px, py)) { x = px; y = py; trouve = true; break chercher; }
           }
+        }
+        if (!trouve) {
+          throw new Error("la scène du test n'est pas vide : objets du relevé présents (aucun couloir de départ " +
+            "dégagé à 400 m du centre du plan)");
         }
         const d = 3 * sc, l = 1.5 * sc, m = 0.25 * sc, ym = y - d - l;
         window.setStructures([
@@ -15533,8 +15708,10 @@ async function sectionCaseBoutonsZoom(nav) {
         // Tracker en suivi, posé au départ : la tuile ouvre la vue là.
         window.recalerTrackerSurPoint(x, y, 0);
         if (!window.getTrackingActif()) window.startTracking();
-        return { x: x, y: y, sc: sc, multi: window.APP_CONFIG.multiLevel === true };
+        return { x: x, y: y, sc: sc, multi: window.APP_CONFIG.multiLevel === true,
+          duCentre: +(Math.hypot(x - cx, y - cy) / sc).toFixed(1) };
       });
+      console.log("  ℹ️ départ à " + prep.duCentre + " m du centre du plan (couloir que le relevé laisse au pas)");
 
       // ── 2. Ouverture par le bouton cube : indicateur de chargement, focus dans la vue ─────────────────────
       await page.evaluate(function () {
@@ -16207,7 +16384,8 @@ async function sectionCaseBoutonsZoom(nav) {
       }
 
       // ── Collisions : jamais à travers un pilier, un mur, un mur en ligne, un front ou un pilier perso ──────
-      // Obstacles fictifs posés loin du départ : seule la règle des structures est jugée. Chaque pas est vérifié par
+      // Obstacles fictifs posés loin du départ : seule la règle des structures est jugée, structures du relevé mises
+      // de côté le temps du bloc (elles arrêteraient un pas à la place de l'obstacle jugé). Chaque pas est vérifié par
       // une géométrie propre au checkup (pas celle de l'app) : le segment parcouru ne coupe aucune arête, l'arrivée
       // n'est dans aucun polygone, et le corps garde au moins 0,2 m du bord.
       const coll = await page.evaluate(function (p) {
@@ -16226,6 +16404,7 @@ async function sectionCaseBoutonsZoom(nav) {
           { nom: "pilier perso", s: { uid: "st_v3d_c6", type: "cust-v3d-test", level: 0, points: carre(ox + 100 * sc, oy, 1 * sc, 1 * sc) } }
         ];
         const avant = window.getStructures().slice();
+        const remettreReleve = window.__v3dReleve.sansStructures();
         window.setStructures(avant.concat(obstacles.map(function (o) { return o.s; })));
         const coupe = function (ax, ay, bx, by, cx, cy, dx, dy) {
           const o = function (px, py, qx, qy, rx, ry) { return (qx - px) * (ry - py) - (qy - py) * (rx - px); };
@@ -16307,6 +16486,7 @@ async function sectionCaseBoutonsZoom(nav) {
         const t0 = window.KtaVue3D.etat().pos;
         window.KtaVue3D.avancer(3);
         juger(T, t0, window.KtaVue3D.etat().pos, "pas de 3 m sur un pilier de 0,4 m");
+        remettreReleve();
         window.setStructures(avant);
         window.KtaVue3D.placer(p.x, p.y - 1 * sc, 0);   // à 2 m du pilier du départ, écarté du tracker
         return { echecs: echecs.slice(0, 6), nEchecs: echecs.length, pas: pas, butees: butees,
@@ -16598,6 +16778,7 @@ async function sectionCaseBoutonsZoom(nav) {
         const vide = function () { return []; };
         window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
         window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
         window._currentLoadedPlanId = "v3d-checkup-galerie";
         if (window.getTrackingActif()) window.stopTracking();
         window.ktaSetActiveLevel(0);
@@ -16640,6 +16821,11 @@ async function sectionCaseBoutonsZoom(nav) {
           modele: { pieces: m.pieces.length, aretes: m.aretes.length, dalles: m.dalles, coudes: m.coudes, bouts: m.bouts,
             ms: +m.msConstruction.toFixed(1) } };
       });
+      // Formes du checkup seules en scène : le relevé ne doit plus arrêter un pas (garde-fou de brancherReleve).
+      const releve = await page.evaluate(function () { return window.__v3dReleve.etat(); });
+      verifier(releve.ecartes.length === 2 && releve.restants === 0,
+        "relevé écarté des scènes fictives : registres des zones et des structures de côté, aucune de ses " +
+        "structures n'arrête plus le pas (" + releve.temoins + " l'arrêtaient)", releve);
       // Point (mètres, relatif à une forme) → coordonnées plan (px).
       const pt = function (cx, x, z, cap) {
         return { x: (G.ox + cx + x) * G.sc, y: (G.oz + z) * G.sc, cap: cap === undefined ? 0 : cap };
@@ -21640,6 +21826,7 @@ async function sectionCaseBoutonsZoom(nav) {
         const s = window.__v3dEmb;
         window.getAllEmbeddedRoads = s.r; window.getAllEmbeddedZones = s.z; window.getAllEmbeddedPoints = s.p;
         window.getAllEmbeddedStructures = s.s; window._currentLoadedPlanId = s.id;
+        window.__v3dReleve.aligner();
         window.setRoads([]); window.setZones([]); window.setEditorPoints(window.__v3dPoints || []);
         window.KtaGalerie.invalider();
       });
