@@ -634,6 +634,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/server.js` | Serveur statique local des harnais (Service Worker, `data/index.json`) |
 | `smoke/navigateur.js` | Lance le navigateur des harnais avec replis (shell headless, Chromium, Edge) |
 | `smoke/attendre.js` | Attente d'une condition dans la page compatible avec la CSP (remplace `waitForFunction`) |
+| `smoke/planV2Fictif.js` | Plan tuilé V2 fictif fabriqué en mémoire pour les harnais (tuiles, plan-config, index ; rien sur disque) |
 | `smoke/repro-import.js` | Reproduction manuelle : l'import d'un profil complet ne reste pas bloqué |
 | `smoke/releve-theme.js` | Outil de mesure : surcharges claires sans effet (CSSOM), relevé du style calculé avant / après, clair et sombre, états forcés |
 | `smoke/releve-theme-ecrans.js` | Écrans parcourus par `releve-theme.js` sur le relevé fictif, dans un ordre reproductible |
@@ -713,6 +714,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-tableur-session.js` | L'Éditeur de données applique un fichier de session à la session (multi-niveau) |
 | `smoke/checkup-toasts.js` | Toasts empilés et « J'accepte » des CGU, PC et téléphone, deux thèmes |
 | `smoke/checkup-tuiles-hors-ecran.js` | Le tuilage V2 ne pose que les tuiles proches de l'écran |
+| `smoke/checkup-plan-sol-portee.js` | Plan au sol de la vue 3D aussi net case 🛡️ cochée ou décochée, au même cadrage (fictif + V2 fictif) |
 | `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
 | `smoke/checkup-urgence-memoire.js` | Défauts invisibles à l'œil : fuite au changement de plan, console, plan de démonstration |
 | `smoke/checkup-distance-totale.js` | 📏 Distance totale : niveau affiché compté, case « Tous les niveaux » retenue par plan, changement de niveau, 3D, plan à un niveau |

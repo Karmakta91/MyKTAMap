@@ -1888,7 +1888,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   retenus tant que la vue est ouverte (repartent du défaut à la réouverture). ⚠️ contrat : une greffe qui interdit la
   vue d'édition (`ctx.regler({ plongee: false })`) refuse aussi le zoom (`zoomer` rend le recul inchangé). Deux rayons
   en vue d'édition. **Rayon vu** (`_rayonVue`) : max(1,4 × portée, 2,3 m par mètre de recul) — carré de sol et de
-  plafond (2,4 × le rayon), plan au sol 🗺️ (même emprise) et brouillard (compté depuis la caméra : du recul + 30 % du
+  plafond (2,4 × le rayon), plan au sol 🗺️ (même emprise case 🛡️ cochée ; jamais la portée « Tout le plan »,
+  cf. ci-dessous) et brouillard (compté depuis la caméra : du recul + 30 % du
   rayon au recul + rayon + 2 m ; `camera.far` = fin du brouillard + 10 m) : pas de bord noir en dézoomant ; 345 m à
   150 m de recul. **Rayon construit** (`_rayonScene`) : le même, mais la part du recul plafonnée à 100 m
   (`RAYON_RECUL_MAX`, atteint vers 43 m de recul) — tuiles, volumes, panneaux de POI, lampes des membres. Au-delà,
@@ -2531,8 +2532,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   tant que la vue est ouverte, offert à **tous les niveaux** : un niveau ≠ 0 qui a ses calques image
   (`imageLayers[].level`, `window._ktaImageOverlays`) montre ceux-là (calés comme sur la carte, lus depuis leur URL
   s'ils ne sont pas posés), sinon le plan de base ; changer de niveau la redessine. Une texture
-  carrée (1024 px au doigt, 2048 au pointeur fin) sur le carré de sol, à une place fixe, redessinée à un quart
-  d'écart (place ou emprise) ; source : les `<img>` du fond déjà chargés par la carte (direct, tuiles V1), plan V2 :
+  carrée (1024 px au doigt, 2048 au pointeur fin), à une place fixe, redessinée à un quart d'écart (place ou
+  emprise). ⚠️ contrat (décision produit) : le plan affiché ne tient pas compte de la limite, mais de ce qui est à
+  l'écran — son emprise (`_rayonPlanSol`) suit le cadrage (recul en vue d'édition, champ proche à hauteur d'yeux), la
+  portée plafonnée à celle de la case cochée, jamais la portée de construction. 🩸 Tirée de la portée, case décochée,
+  la même texture couvrait tout le plan et le niveau de tuiles V2 tombait au plus grossier : 20 → 0,8 px/m (relevé
+  fictif), 0,16 px/m et z −3 (plan V2 de 3,8 km) au même cadrage (`checkup-plan-sol-portee.js`). Limite connue : en
+  vue d'édition rasante, portée « Tout le plan », le plan au sol s'arrête à ~70 m alors que les structures vont
+  jusqu'à l'horizon ; source : les `<img>` du fond déjà chargés par la carte (direct, tuiles V1), plan V2 :
   `ktaDessinerRegionTuiles` (tuiles du ZIP ou du cache, niveau le moins détaillé qui suffit). Libérée coupée, à la
   fermeture et à la perte du contexte. Centrée sur le centre de la scène (le point visé, caméra détachée). ⚠️ contrat :
   dessinée juste après le sol (`ORDRE_SOL` −0,6 < `PLAN_SOL.ordre` −0,5 < le reste), sans test ni écriture de
