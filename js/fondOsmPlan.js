@@ -483,7 +483,11 @@
     const inter = _panneau.querySelector("[data-fond-osm='interrupteur']");
     inter.classList.toggle("kta-actif", _allume);
     inter.setAttribute("aria-pressed", _allume ? "true" : "false");
-    _panneau.querySelector("[data-fond-osm='etat']").textContent = _t(_allume ? "fondosm.etat.on" : "fondosm.etat.off");
+    const etat = _panneau.querySelector("[data-fond-osm='etat']");
+    const on = _t("fondosm.etat.on"), off = _t("fondosm.etat.off");
+    etat.textContent = _allume ? on : off;
+    // Place du plus long des deux, en gras (CSS .kta-fond-osm-etat::after) : la ligne ne bouge pas au basculement.
+    etat.setAttribute("data-reserve", on.length >= off.length ? on : off);
     const curseur = _panneau.querySelector("[data-fond-osm='transparence']");
     curseur.value = String(_transparence);
     curseur.disabled = !_allume;

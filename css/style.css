@@ -15039,8 +15039,21 @@ body.kta-theme-light .kta-group-flyout-fond { background: rgba(20, 28, 44, 0.35)
 .kta-fond-osm-panneau .kta-group-flyout-title { display: inline-flex; align-items: center; gap: 6px; }
 .kta-fond-osm-etat {
   margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
   font-size: 12px;
   color: var(--kta-texte-3);
+}
+/* Réserve invisible du libellé d'état le plus long, en gras (data-reserve posé par fondOsmPlan.js > _majPanneau). */
+.kta-fond-osm-etat::after {
+  content: attr(data-reserve);
+  font-weight: 700;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
 }
 .kta-group-flyout-btn.kta-actif .kta-fond-osm-etat { color: var(--kta-accent-texte); font-weight: 700; }
 .kta-fond-osm-panneau .kta-group-flyout-btn:disabled {
@@ -15055,10 +15068,19 @@ body.kta-theme-light .kta-group-flyout-fond { background: rgba(20, 28, 44, 0.35)
   font-size: 13px;
   color: var(--kta-texte-2);
 }
-.kta-fond-osm-curseur > span:first-child { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.kta-fond-osm-curseur input[type="range"] { flex: 1 1 auto; min-width: 60px; accent-color: var(--kta-accent); }
+/* 🩸 Panneau de largeur fixe : le libellé passe à la ligne et le curseur prend le reste, sinon « 100 % » sort du
+   panneau (libellé espagnol, police système iOS plus large). La valeur garde la place de « 100 % ». */
+.kta-fond-osm-curseur > span:first-child {
+  display: inline-flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere;
+}
+.kta-fond-osm-curseur > span:first-child svg { flex: 0 0 auto; }
+.kta-fond-osm-curseur input[type="range"] {
+  flex: 1 1 72px; min-width: 0; max-width: 100%; margin: 0; accent-color: var(--kta-accent);
+}
 .kta-fond-osm-curseur input[type="range"]:disabled { cursor: not-allowed; }
-.kta-fond-osm-valeur { width: 44px; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+.kta-fond-osm-valeur {
+  flex: 0 0 auto; min-width: 5.5ch; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums;
+}
 /* Bouton du haut : actif = fond allumé ; indisponible = sans géoréf (texte méta, bordure pointillée, jamais
    d'opacité : ui.md §53). */
 body.kta-refonte-v1 .kta-refonte-header .kta-refonte-counter-osm { cursor: pointer; user-select: none; }
