@@ -2707,7 +2707,8 @@ Décision du lot D : la doc entière passe en SVG à l'affichage (§ Substitutio
 - Élément statique : `data-kta-ico="nom"`, rempli au chargement par `KtaIcones.poser()` (accueil, Configuration et
   ses fenêtres) ; ailleurs, le gabarit appelle `window.ktaIcone("nom")` devant le libellé. Le bouton garde son `title`
   / `aria-label` : le SVG est `aria-hidden`. Un libellé posé par `textContent` ne peut pas porter l'icône : le module
-  passe par `innerHTML` (icône + texte échappé) ou un nœud texte après l'icône ; un attribut (`title`, `placeholder`),
+  passe par `innerHTML` (icône + texte échappé) ou un nœud texte après l'icône (`check-icone-texte.js` refuse
+  `ktaIcone(` posé en `textContent`, directement ou via une fonction du fichier) ; un attribut (`title`, `placeholder`),
   une `<option>` et un titre d'alerte restent du texte sans icône. Devant un libellé traduit,
   l'icône est un `span` FRÈRE de l'élément `data-i18n` (qui réécrit tout son contenu) ; une clé `data-i18n-html` ne
   porte jamais l'emoji ni le SVG.

@@ -77,6 +77,12 @@ const CLES_INDEX = ["home.plans.title", "home.osm.title", "home.add.title", "hom
   "home.netlog.copyBtn", "home.netlog.exportBtn", "home.netlog.clearBtn", "home.netdoc.title",
   "home.netdoc.whitelistTitle", "home.netdoc.verifyTitle", "home.netdoc.scopeTitle", "home.netdoc.docTitle",
   "home.netdoc.openFull"];
+// Assistants d'un module qui reçoivent le NOM de l'icône en 1er argument et la posent eux-mêmes (icône en HTML,
+// libellé en texte : check-icone-texte.js) : valent une icône à côté du libellé (règle 1), et leurs noms sont
+// vérifiés comme ceux de ktaIcone (règle 2).
+const ICONE_EN_ARGUMENT = {
+  "js/photosGalerie.js": /\b_(?:section|bouton)\(\s*"([a-z0-9-]+)"/g
+};
 // Libellés migrés rendus par un module : chaque appel cité doit avoir son icône à côté (ktaIcone ou `ico:`).
 const APPELS_JS = {
   "js/homeConfig.js": ['_t("home.cfg.depannage.title")', '_t("home.cfg.forceUpdateBtn")', '_t("home.cfg.killSwBtn")',
@@ -462,7 +468,10 @@ const SRC_INTERFACE = lire("js/interface.js");
         n++;
         if (/\{ titre: /.test(l)) return;   // titre d'une alerte (ktaAlerte, texte seul)
         const autour = [lignes[i - 1] || "", l, lignes[i + 1] || ""].join("\n");
-        if (!/ktaIcone\(|\bico: "|_ICO|ICONE|categoryIcon|_icoFiche\(|_poserIcone\(/.test(autour)) c2Nus.push(f + ":" + (i + 1) + " : « " + cle + " » sans icône");
+        const parNom = ICONE_EN_ARGUMENT[f] ? new RegExp(ICONE_EN_ARGUMENT[f].source).test(autour) : false;
+        if (!parNom && !/ktaIcone\(|\bico: "|_ICO|ICONE|categoryIcon|_icoFiche\(|_poserIcone\(/.test(autour)) {
+          c2Nus.push(f + ":" + (i + 1) + " : « " + cle + " » sans icône");
+        }
       });
       if (!n) c2Nus.push(f + " : « " + cle + " » introuvable");
     });
@@ -590,6 +599,13 @@ const SRC_INTERFACE = lire("js/interface.js");
       n++;
       const nom = m[1] || m[2];
       if (!K.existe(nom)) inconnus.push(f + " : « " + nom + " »");
+    }
+    if (ICONE_EN_ARGUMENT[f]) {
+      const reArg = new RegExp(ICONE_EN_ARGUMENT[f].source, "g");
+      while ((m = reArg.exec(s)) !== null) {
+        n++;
+        if (!K.existe(m[1])) inconnus.push(f + " : « " + m[1] + " » (assistant à icône)");
+      }
     }
   });
   t("2. " + n + " appels nommés, tous connus du module", n > 0 && inconnus.length === 0, inconnus.join("\n   "));
