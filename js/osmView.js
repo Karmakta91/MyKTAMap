@@ -11,7 +11,8 @@
 // du niveau choisi : 3 coins plan (flip Y) → KmzExport.planToGps → L.imageOverlay.rotated(url, tl, tr, bl).
 // Superpose POI, tracker, tracés, itinéraire, zones, structures, couche Mode Secours, filtres tag / niveau.
 // Expose : window.OsmView = { open, close, isAvailable, isOptedIn, setOptedIn, getPlanGpsBbox,
-// recheckOfflineCache }.
+// getGeorefEffectif, recheckOfflineCache }. Ouverte par le Mode Secours (l'accueil a son widget) ; le bouton
+// carte du plan pose le fond OSM sous le plan (fondOsmPlan.js) au lieu de l'ouvrir.
 // Prérequis : géoréf (plan-config ou Réglages), plan V2 tuilé, OSM autorisé, en ligne ou tuiles en cache.
 // 🩸 Plans V2 tuilés SEULEMENT : l'image complète en imageOverlay sature le GPU mobile (OOM silencieux).
 // 🩸 Niveau adaptatif + culling : au plus MAX_TILES_BASELINE tuiles au boot, puis delta de zoom OSM = delta
@@ -387,6 +388,13 @@
     const v = String(s);
     if (el.style.getPropertyValue("--kta-marker-scale") !== v) el.style.setProperty("--kta-marker-scale", v);
   }
+  // Calage modifié (KmzExport > appliquerCalageUtilisateur), fenêtre fermée : la projection mémorisée est oubliée,
+  // sinon getPlanGpsBbox (emprise de « Ma position » et d'« Enregistrer hors ligne » du fond OSM) garde l'ancienne.
+  window.addEventListener("kta:georefChange", function () {
+    if (_osmMap) return;
+    _proj = null;
+    if (window.OsmTilesCache) _recheckCachedForCurrentPlan().catch(function() {});
+  });
   // Réglage basculé pendant que la Vue est ouverte : la forme de l'icône change (map.js > ktaIconeOsm), re-rendu.
   window.addEventListener("kta:tailleIconesChange", function () {
     if (!_osmMap || !_proj) return;
@@ -2272,6 +2280,8 @@
     setOptedIn: setOptedIn,
     // bbox GPS du plan (L.LatLngBounds | null) pour le briefing PDF du Mode Secours
     getPlanGpsBbox: _getPlanGpsBbox,
+    // géoréf effectif (même cascade que la fenêtre) pour le fond OSM sous le plan (fondOsmPlan.js)
+    getGeorefEffectif: _getEffectiveGeoref,
     // rafraîchit _planHasCachedTiles (lue par isAvailable) : main.js au boot, osmHomePreview après cache,
     // secoursMode au besoin
     recheckOfflineCache: _recheckCachedForCurrentPlan,

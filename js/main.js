@@ -1122,7 +1122,10 @@ function _accorderModeleCalage(planId, dejaLa, georef) {
 }
 
 // Calibrage GPS embarqué (plan-config.json > plan.georef) → KmzExport.setCalibration : pré-remplit Export
-// externe et Réglages > Géoréférencement. Idempotent ; un calibrage local saisi par l'user a la priorité.
+// externe et Réglages > Géoréférencement. Idempotent. Un calibrage local valide saisi par l'user GAGNE (décision
+// produit) : il remplace plan.georef en MÉMOIRE, pour tous ses lecteurs (fond OSM, Vue OSM, Secours) ; le ZIP
+// n'est pas réécrit. ⚠️ Limite voulue : un plan régénéré avec un meilleur calage ne remplace pas, sur cet
+// appareil, un calibrage déjà saisi (le dire dans les Réglages, interfaceConfig.js).
 function _propagerGeorefVersKmzExport(planId) {
   try {
     const georef = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef;
@@ -1141,8 +1144,17 @@ function _propagerGeorefVersKmzExport(planId) {
             && pt.x >= -1 && pt.x <= W + 1 && pt.y >= -1 && pt.y <= H + 1;
       };
       // Dimensions inconnues : on ne peut rien juger, on respecte l'existant.
-      if (!Number.isFinite(W) || !Number.isFinite(H) || (dansLePlan(dejaLa.pointA) && dansLePlan(dejaLa.pointB))) {
+      if (!Number.isFinite(W) || !Number.isFinite(H) || (dansLePlan(dejaLa.pointA) && dansLePlan(dejaLa.pointB)
+          && (!dejaLa.pointC || dansLePlan(dejaLa.pointC)))) {
         _accorderModeleCalage(planId, dejaLa, georef);
+        if (!window.KmzExport.memesPoints(dejaLa, georef)) {
+          let valide = false;
+          try { window.KmzExport.buildTransformCalib(dejaLa); valide = true; } catch (e) { /* inutilisable */ }
+          if (valide) {
+            window.PLAN_CONFIG.plan.georef = JSON.parse(JSON.stringify(dejaLa));
+            console.log("[Main] 🌐 Calibrage des Réglages gardé à la place du calage embarqué (planId=" + planId + ")");
+          }
+        }
         return;
       }
       console.warn("[Main] 🌐 Calibrage périmé pour planId=" + planId +

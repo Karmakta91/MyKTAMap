@@ -1,4 +1,4 @@
-# Architecture MyKTAMap — Vue OSM (modale + widget HOME)
+# Architecture MyKTAMap — Vue OSM (modale, widget HOME, fond sous le plan)
 
 > 🌍 **v1.90.2 — L'OPT-IN DEVIENT UN OPT-OUT.** Décision KARMA : *« active le mode OSM par défaut, dans 99 %
 > des cas ce mode est utilisé »*. `myktamap_osm_view_opt_in` est **tri-état** et c'est tout l'intérêt :
@@ -38,8 +38,73 @@
 > 🔒 **Restent prioritaires sur le défaut** : incognito, hors-ligne réel, aucun plan
 > géoréférencé — testés dans `mount()` **après** l'opt-in, et le garde-fou tient cet ordre.
 
-> Référence détaillée de la roadmap Vue OSM (v1.39.0 → v1.43.8). Lue à la demande.
-> Sections : §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus · §6 extension · §7 synergie Mode Secours · §8 cache OSM offline (v1.43.0 → v1.43.8)
+> Référence détaillée de la Vue OSM. Lue à la demande.
+> Sections : fond OSM sous le plan (`fondOsmPlan.js`) · §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus · §6 extension · §7 synergie Mode Secours · §8 cache OSM offline
+
+---
+
+## 🗺️ Fond OSM sous le plan (mode plan, `js/fondOsmPlan.js`)
+
+En mode plan, le bouton carte de la barre du haut (`#kta-refonte-counter-osm`, `refonteInterface.js`) n'ouvre **plus**
+la fenêtre Vue OSM (décision produit) : il ouvre un petit panneau ancré sous lui (classes `.kta-group-flyout`, mode
+ancré, sans fond assombri) avec quatre commandes. Le panneau se ferme (✕, Échap, toucher dehors) sans éteindre le fond.
+
+| Commande | Effet |
+|---|---|
+| Interrupteur « Fond OSM sous le plan » | `FondOsmPlan.allumer()` / `eteindre()` : couche OSM dans la carte du plan, bouton du haut en état actif (`.kta-fond-osm-actif`), attribution « © OpenStreetMap » fixée au-dessus de la barre d'état |
+| Transparence du plan (0 → 100 %, 50 % au premier usage) | opacité de l'**image du plan** seulement : `tilePane` (tuiles V2) et overlays du fond (`_ktaBaseLayers` : rendu direct et repli V2 ; `_baseTiles` : tuiles V1). Le fond OSM reste opaque. Éteint : opacité rendue à 1. **Retenue par plan** (décision produit) : localStorage `myktamap_fond_osm_v1_<planId>` ("0" à "100", lecture et écriture en try/catch), purgée et transférée avec les données du plan (`planRegistry.js > purgeAssociatedData`, `transferAssociatedData` → `FondOsmPlan.retirer` / `transferer`), exportée avec le profil (`profileExportImport.js > PER_PLAN_PREFIXES`) |
+| Ma position | un `getCurrentPosition` (jamais `watchPosition`, fix de moins de 10 s accepté), mêmes garde-fous que la fenêtre (§4) : refus hors de `OsmView.getPlanGpsBbox().pad(0.5)`, bloqué en incognito, rien de persisté ni d'envoyé. Point (`.kta-fond-osm-moi`) et cercle de précision posés sur le plan par `KmzExport.gpsToPlan`, en mémoire jusqu'au plan suivant |
+| Enregistrer hors ligne | l'emprise du plan (`OsmView.getPlanGpsBbox`) dans le cache « Save Offline » partagé, par le code du bouton 💾 : `OsmTilesCache.cacheTilesForBbox(bbox, z)` (seule implémentation, `cacheVisibleTiles` y passe aussi), `z = OsmTilesCache.zoomPourBbox(bbox, 18)` = le zoom le plus fin où l'emprise tient sur z − 1, z, z + 1 sous le plafond de 200 tuiles. Grisée, raison écrite dans la commande, si OSM est coupé, en incognito ou hors ligne (relu aux événements `online` / `offline`). Progression « fait / total » dans la commande, fin par un toast (compte des tuiles, déjà là, échecs, plafond) ; prévient la fenêtre Vue OSM (`recheckOfflineCache`) |
+
+**Rendu.** Une `L.GridLayer` en canvas (`CoucheFondOsm`), pane `ktaFondOsm` z-index 150, sous `tilePane` (200). Pour
+chaque tuile de la carte du plan : les 3 coins (pixel projeté → `map.unproject` → pixel image → `KmzExport.planToGps`
+du calage `buildTransformCalib`, donc similitude 2 points ou affine 3 points, modèle local ou historique) donnent
+l'affine Mercator → canvas ; les 1 à 4 tuiles OSM qui couvrent la tuile (davantage si le plan est très tourné par
+rapport au nord) sont dessinées par `setTransform` + `drawImage`. Pas de seconde carte synchronisée. Zoom OSM : celui
+dont un pixel vaut un pixel CSS de la tuile (arrondi), plafonné à 19 ; au-delà, la tuile 19 est agrandie (flou assumé,
+aucune requête). Le calage est relu à chaque allumage (un géoréf saisi dans les Réglages vaut tout de suite).
+
+- 🩸 **Précision float32** : au zoom 19, une coordonnée Mercator vaut ~1e8 px, au-delà de ce que la matrice du canvas
+  garde ; tout est posé relatif au coin de la tuile. Mesuré : point du plan sur son pixel OSM à 0,23 px au zoom max,
+  à plat comme tourné de 35°.
+- 🩸 **Liserés** : chaque canvas déborde d'un pixel CSS à droite et en bas avec son vrai contenu (`COTE = 257`), et
+  chaque tuile OSM reçoit une bande d'un demi-pixel sur sa dernière colonne et sa dernière ligne. Sans eux, sous
+  rotation, l'anticrénelage laissait voir le fond de la carte entre deux tuiles. Étirer la tuile entière l'aurait
+  décalée (0,67 px mesurés au lieu de 0,23).
+- 🩸 **`minZoom: -20`** : une `GridLayer` vaut `minZoom: 0` par défaut, or la carte du plan descend sous zéro : sans
+  lui, aucune tuile au dézoom.
+- **Canvas en pixels CSS**, sans facteur d'écran, comme une couche de tuiles Leaflet ordinaire et la fenêtre Vue OSM.
+- **Plan orienté** : le pane est créé dans `map._ktaRotatePane` s'il existe (sinon dans le map-pane, que
+  `mapBearing.js` déplace dans le sien). La couche s'inscrit dans `map._ktaGrillesSousRotation` : à chaque angle, la
+  rotation de la carte du plan relance `_update` de ces seules grilles (pas un parcours de tous les calques), et le
+  patch `_installerPatchGrilles` (désormais posé pour toutes les cartes, `rot.grilles` vrai partout) élargit leur zone
+  au rectangle tourné.
+- **Images OSM** : d'abord le cache « Save Offline » (`OsmTilesCache.getCachedTile`, URL `blob:` révoquée après
+  décodage), puis le réseau seulement si en ligne, OSM autorisé et hors incognito ; 48 images décodées gardées (LRU),
+  un échec n'est pas gardé. 🩸 Sans réseau permis, une tuile absente à son zoom est prise dans une tuile enregistrée
+  jusqu'à 6 zooms plus large (morceau agrandi, `drawImage` sur un rectangle source) : « Enregistrer hors ligne » ne
+  garde que 3 zooms, le fond serait vide à tous les autres. Éteindre coupe les images en vol (`src = ""`), vide le cache, remet chaque canvas à 0 × 0
+  (`tileunload` : iOS ne rend sa mémoire qu'ainsi).
+
+**Gates.** Bouton grisé (`.kta-fond-osm-indispo`, bordure pointillée, raison en `title` et en toast au toucher) sans
+géoréf effectif (`OsmView.getGeorefEffectif`, même cascade que la fenêtre, §2.2). Allumer est refusé avec un message
+si OSM est coupé (`OsmView.isOptedIn`, `ktaAlerte`) ou en incognito (toast) ; couper OSM pendant que le fond est
+affiché l'éteint (`kta:osmOptInChange`). Hors ligne : un toast à l'allumage, une phrase d'état en tête du panneau
+(`fondosm.horsLigne`, `.kta-tx-warn`, relue aux événements `online` / `offline` sans rouvrir), tuiles enregistrées
+seulement.
+
+**À chaque plan ouvert** (décision produit) : interrupteur éteint (`mktm:plan-ferme`, `mktm:plan-pret`, et le polling
+2 s du bouton détecte une carte remplacée), point « Ma position » effacé ; la transparence, elle, reprend la valeur
+retenue pour ce plan.
+
+**Hors périmètre** : les exports PNG / PDF / KMZ redessinent depuis les données (`exporter.js`, `kmzExport.js`), le
+fond n'y entre pas ; la vue 3D ne le montre pas. Le Mode Secours ouvre toujours la fenêtre Vue OSM (bouton 🌍 du
+scénario, capture du briefing PDF).
+
+🛡️ `scripts/smoke/checkup-fond-osm.js` (tuiles OSM synthétiques, calage fictif prêté en mémoire au relevé fictif).
+Mesure (iPhone émulé, processeur ÷4, relevé fictif rendu en V2 par un tuilage prêté, glissés et zoom scriptés) :
+57 images/s fond éteint, 49 allumé ; tourné de 30° : 48 éteint, 32 allumé ; 8 canvas (2 Mo) à plat, 16 (4 Mo)
+tournée, 33 à 48 images OSM décodées (~8 à 12 Mo) ; tout rendu à l'extinction. ⚠️ Non mesuré sur un vrai téléphone.
 
 ---
 
@@ -64,7 +129,8 @@ La **Vue OSM** projette les plans MyKTAMap géoréférencés sur OpenStreetMap (
 
 | Module | Fichier | Contexte | API publique |
 |---|---|---|---|
-| **Modale full-screen** | `js/osmView.js` (~1300 l) | Map mode (plan chargé) | `window.OsmView = { open, close, isAvailable, isOptedIn, setOptedIn }` |
+| **Modale full-screen** | `js/osmView.js` | Plan chargé, ouverte par le Mode Secours (le bouton carte du plan pose le fond sous le plan) | `window.OsmView = { open, close, isAvailable, isOptedIn, setOptedIn, getPlanGpsBbox, getGeorefEffectif, recheckOfflineCache }` |
+| **Fond sous le plan** | `js/fondOsmPlan.js` | Mode plan, bouton carte du haut | `window.FondOsmPlan` (section ci-dessus) |
 | **Widget HOME** | `js/osmHomePreview.js` (~900 l) | HOME (aucun plan chargé) | `window.OsmHomePreview = { mount, refresh, selectPlan, openFullScreen }` |
 
 **Lib externe vendored** : `lib/leaflet-imageoverlay-rotated.js` (BSD 2-clause) — rend une image comme parallélogramme via 3 coins (CSS `transform: matrix(…)`). Utilisé pour projeter les tuiles plan en pixel space CRS.Simple vers EPSG:3857 OSM via `KmzExport.buildTransform + planToGps`.
@@ -96,15 +162,29 @@ Si pas opt-in : `confirm()` natif explicite avec mention du domaine `tile.openst
 WGS84), `pointB.estimated: true` pour un B déduit (`config.js > ktaEstimerPointB`).
 
 ```
-_getEffectiveGeoref()   (osmView.js ; secoursMode.js suit le même ordre)
-  1. PLAN_CONFIG.plan.georef          (embarqué ZIP via générateur)
+_getEffectiveGeoref()   (osmView.js, donc fond OSM et Vue OSM ; secoursMode.js suit le même ordre)
+  1. PLAN_CONFIG.plan.georef          (embarqué ZIP, OU calage des Réglages remis en mémoire)
   2. KmzExport.getCalibration(planId) (LS myktamap_kmz_calib_<planId>)
 ```
 
-Les autres consommateurs (exports, GPX, recherche, widget HOME) lisent le localStorage d'abord. La source 2 est
-remplie depuis la source 1 au chargement du plan (`main.js > _propagerGeorefVersKmzExport`, objet ENTIER) ; un
-calage local dont les points sont dans le plan est respecté. Cas user qui saisit le géoréf dans les Réglages →
-source 2 seulement.
+(décision produit) **Le calage saisi dans l'app GAGNE sur celui embarqué dans le plan**, pour tous les
+consommateurs, tout de suite et au rechargement :
+- **Saisie** (Réglages › Enregistrer, Recaler, modale Export externe) : `KmzExport.appliquerCalageUtilisateur`
+  écrit le localStorage, `PLAN_CONFIG.plan.georef` **en mémoire** (plan ouvert) et l'entrée du registre qui
+  porte un géoréf (accueil), puis émet `kta:georefChange { planId }`. Le fond OSM allumé recalcule sa
+  transformation et se redessine sans être rallumé (`fondOsmPlan.js > _surCalage`, « Ma position » posée avec
+  l'ancien calage retirée) ; `osmView.js` oublie sa projection mémorisée (emprise de « Ma position » et
+  d'« Enregistrer hors ligne »).
+- **Chargement** (`main.js > _propagerGeorefVersKmzExport`) : localStorage vide → rempli depuis `plan.georef`
+  (objet ENTIER) ; calage local valide (A, B et C dans le plan, transformation calculable) et différent →
+  il remplace `plan.georef` en mémoire (le ZIP n'est pas réécrit) ; calage local périmé (point hors du plan :
+  canvas d'une autre génération) → remplacé par `plan.georef`.
+- **« Mettre à jour le plan »** (`createConf.js > _georefReglagesPourMaj`, mêmes règles) : le calage des Réglages
+  remplace celui du ZIP dans le formulaire du Générateur, donc dans le plan-config produit ; le Générateur le dit.
+- Les autres consommateurs (exports KMZ / GPX, recherche, urgence, widget HOME) lisent le localStorage d'abord.
+- ⚠️ **Limite voulue** : un plan régénéré AILLEURS avec un meilleur calage ne remplace pas, sur un appareil, un
+  calage déjà saisi dans les Réglages (« Effacer » dans les Réglages pour revenir à celui du plan). La fenêtre
+  Réglages › Géoréférencement le dit (`config.georef.noteGagne`). Garde-fou : `checkup-georef-reglages.js`.
 
 **Modèle de calage** (`KmzExport.buildTransform`, seule source des conversions degrés ⇄ mètres de l'app) :
 
@@ -121,7 +201,8 @@ source 2 seulement.
 - **Recalage** : Réglages > Géoréférencement affiche `precisionCalage` (« ± X aux coins » : écart au modèle exact
   pour un calage historique, d³ / 2R² pour le local) et, pour un calage historique, « Recaler en projection
   exacte » : la confirmation annonce `ecartRecalage` (déplacement max aux 4 coins), puis le calage passe en
-  `"local"` dans le localStorage, le registre et `PLAN_CONFIG` **en mémoire** (le ZIP n'est pas réécrit).
+  `"local"` par `appliquerCalageUtilisateur` (localStorage, registre, `PLAN_CONFIG` **en mémoire** ; le ZIP
+  n'est pas réécrit).
   Le Générateur affiche la même ligne sous ses champs (`createConf.js > _plannerMajPrecision`), au modèle que le
   calage aura en générant ; « approchée » y renvoie aux Réglages pour recaler.
 - 🩸 **Propagation** : mêmes points des deux côtés, modèles différents → le `"local"` gagne dans les deux sens
@@ -140,7 +221,7 @@ consommateurs passent par `buildTransformCalib(calibOuGeoref)`**, qui transmet `
 `sigImport` appellent `buildTransform` en direct (calage synthétique sur l'emprise) avec `MODELE_LOCAL`.
 ⚠️ `metresParPixel`/`rotation` restent dérivés de A/B même en affine (affichage d'échelle = approximation
 assumée). ⚠️ La modale KMZ de sessionExporter n'édite que A/B : `_kmzLireCalib` **fusionne le pointC et le modèle
-stockés** avant `setCalibration`, sinon chaque save KMZ écraserait l'affine. Limite documentée user : corrige une
+stockés** avant `appliquerCalageUtilisateur`, sinon chaque save KMZ écraserait l'affine. Limite documentée user : corrige une
 déformation GLOBALE, pas les erreurs locales morceau par morceau d'un assemblage.
 
 ### 2.3 Tuiles V2 + niveau adaptatif + viewport culling (v1.39.10-11)
@@ -533,9 +614,10 @@ Permet à l'utilisateur de **précharger les tuiles `tile.openstreetmap.org`** c
 
 | Contexte | Bouton UI | Module |
 |---|---|---|
-| Modale Vue OSM (plan georef) | Bandeau « 💾 Cacher offline » | `osmView.js` |
+| Modale Vue OSM (plan georef, ouverte par le Mode Secours) | Bandeau « 💾 Cacher offline » | `osmView.js` |
 | Widget Vue OSM HOME | Bandeau compact « 💾 » | `osmHomePreview.js` |
 | Mode Secours (icône 🌍) | Hérite modale Vue OSM (même bouton) | `secoursMode.js` → `OsmView.open` |
+| Fond OSM sous le plan (mode plan) | « Enregistrer hors ligne » du panneau (emprise du plan) ; il **lit** ce cache, et hors ligne ne lit que lui | `fondOsmPlan.js` |
 
 ### 8.2 Architecture modules
 
@@ -577,6 +659,8 @@ sw.js > ASSETS_TO_CACHE : ./js/osmTilesCache.js
 window.OsmTilesCache = {
   init,                    // Promise<IDBDatabase> — idempotent
   cacheVisibleTiles,       // (map, {onProgress, zoomDelta=1}) → Promise<{cached, skipped, total}>
+  cacheTilesForBbox,       // (bbox, zoom, {onProgress}) : même chose sur une bbox (seule implémentation)
+  zoomPourBbox,            // (bbox, zMax) → zoom le plus fin où la bbox tient sur 3 zooms sous 200 tuiles
   getCachedTile,           // (z, x, y) → Promise<Blob|null>
   hasCachedTile,           // (z, x, y) → Promise<boolean>
   getStats,                // () → Promise<{count, sizeBytes, oldest, newest}>

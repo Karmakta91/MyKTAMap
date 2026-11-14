@@ -237,7 +237,11 @@ function majLargeurFronts() {
   // Hors zoom/pan, le canvas ne se redessine pas seul : une repeinture forcée.
   try {
     const r = window.map && window.map._renderer;
-    if (r && typeof r._redraw === "function") {
+    // 🩸 Renderer pas encore (ou plus) sur la carte : pas de canvas à repeindre.
+    if (r && r._map && r._ctx && typeof r._redraw === "function") {
+      // 🩸 Redessin en attente ANNULÉ d'abord : `_redraw` remet `_redrawRequest` à null sans annuler l'image
+      // programmée, qui partait ensuite sur un renderer démonté (carte quittée juste après l'ouverture).
+      if (r._redrawRequest) { L.Util.cancelAnimFrame(r._redrawRequest); r._redrawRequest = null; }
       // 🩸 `_redrawBounds` à null D'ABORD : `_redraw` clippe sur ces bornes (posées par un `_requestRedraw` en
       // attente) et le reste de la carte garderait l'ancienne largeur. À null, tout le canvas est repeint.
       r._redrawBounds = null;

@@ -44,16 +44,10 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Essai sur dev : chatière, galerie inclinée, sommets, jeu, mini-carte, transparence** — `1147b92e` chatière ;
-  `04efcd48` galerie inclinée en édition 3D ; `4ce78f12` menu des sommets ; `93759be9` jeu multi-niveau ; `61a8bd33` +
-  `fe52d9a4` mini-carte 3D ; `32a296ec` + `f15d5470` « Niveaux en transparence » (voisins vus au sol et au plafond).
-  `qui: KARMA · action: refaire une chatière ; galerie inclinée en vue d'édition ; transparence à hauteur d'yeux au
-  téléphone (fluidité, sol lisible) · fini: vus conformes, ou bugs ouverts · depuis: 12/11/2026 · taille: XS`
-- **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
-  « Comblé » fr / en / es, case « Respecter… », brancard, 3D jusqu'au ciel ; dans le même lot, le message à l'échec
-  (sortie d'urgence comprise) qui nomme les zones Comblé en cause. `docs/ETUDE_REMBLAIS.md`.
-  `qui: Claude · action: lot 1 de ETUDE_REMBLAIS.md · fini: Comblé dur partout, message à l'échec, checkups verts
-  · depuis: 11/11/2026 · taille: M`
+- **Comblé et effondré évités, jamais bloquants (remblais, lot 1)** — révision KARMA du 14/11, seul Inaccessible bloque ;
+  itinéraire qui l'évite s'il y a un autre chemin, sinon passe et le dit (urgence comprise) ; 3D jusqu'au ciel sauf le
+  long d'un tracé qui le traverse ; Vérifier le plan signale ces tracés. Après la masse au sol. `docs/ETUDE_REMBLAIS.md`.
+  `qui: Claude · action: lot 1 révisé, après les lots 2-4 · fini: checkups verts · depuis: 11/11/2026 · taille: M`
 
 ## Ensuite
 
@@ -139,10 +133,11 @@
   des règles qu'aucun écran relevé n'atteint (Vue OSM, instance à mot de passe, sous-fenêtres profondes).
   `qui: Claude · action: étendre le relevé aux écrans non couverts puis retirer ce qu'il prouve mort
   · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
-- **Plan au sol net sur un grand plan** — ✅ mesuré 04/11 : une texture de 1024 px pour ~100 m de sol, floue de près ;
-  piste : ne couvrir que la partie visible, plus fine.
-  `qui: Claude · action: texture limitée au champ visible, mémoire mesurée en iPhone émulé · fini: lisible de près,
-  mémoire tenue · depuis: 04/11/2026 · taille: S`
+- **Plan au sol net sur un grand plan, et jusqu'à l'horizon** — ✅ 04/11 : 1024 px pour ~100 m, flou de près ; ✅ 14/11 :
+  emprise = cadrage (`dcce47e3`), mais en « Tout le plan » vue rasante, sol nu au-delà de ~70 m. Piste : deux textures
+  (proche nette, lointaine grossière) ; `camera.far` = diagonale à portée illimitée, précision de profondeur à suivre.
+  `qui: Claude · action: texture proche + lointaine, mémoire en iPhone émulé · fini: lisible de près et au loin
+  · depuis: 04/11/2026 · taille: M`
 - **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
   session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
   du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
@@ -151,10 +146,20 @@
 
 ## Entrant
 
-- **`check-uid.js` instable : « 5 000 tirages distincts »** — 1 échec sur 4 au pre-commit le 12/11 : 5 000 uid
-  dans la même milliseconde, 6 caractères aléatoires, collision possible (doublons déjà régénérés par `ensureAll`).
-  `qui: Claude · action: tirages étalés ou moins nombreux, sans affaiblir le test · fini: 20 passages verts
-  · depuis: 12/11/2026 · taille: XS`
+- **`_redraw()` direct du renderer en Vue OSM** — `osmView.js` et `osmHomePreview.js` appellent `r._redraw()` sans
+  annuler le redessin en attente : même motif que le bug corrigé dans `structures.js > majLargeurFronts` (14/11).
+  `qui: Claude · action: annuler la requête en attente, garde renderer monté, checkup · depuis: 14/11/2026 · taille: XS`
+- **Pile de test Docker sur le port de Sonar** — une pile de test a pris le 9000 (13/11) : la porte Sonar de
+  `merge-main.ps1` échoue tant qu'elle tourne. Refuser ce port aux piles de test, ou les sortir de sa plage.
+  `qui: Claude · action: trouver la pile en cause, plage de ports réservée · depuis: 13/11/2026 · taille: XS`
+- **Scan Sonar impossible depuis une copie séparée** — le scanner (Docker) ne lit pas le `.git` d'un worktree
+  (chemin Windows absolu) : `RepositoryNotFoundException`. Les lots ne peuvent pas prouver la porte avant intégration.
+  `qui: Claude · action: monter le dépôt principal dans le conteneur, ou scan sans SCM sur un projet Sonar à part
+  · depuis: 13/11/2026 · taille: XS`
+- **En-tête de licence : étendre le garde-fou** — `check-entete-licence.js` ne lit que `js/` et `sw.js` ; `addons/`
+  et `css/` portent l'en-tête aujourd'hui sans que rien ne l'impose.
+  `qui: Claude · action: ajouter addons/**/*.js et css/*.css au périmètre · depuis: 13/11/2026 · taille: XS`
+
 - **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
   d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
   `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.

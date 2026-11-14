@@ -42,9 +42,20 @@ if (K) {
   const RE = /^(pt|rd|zn|st)_[0-9a-z]+_[0-9a-z]{6}$/;
   t("genUid : format préfixe_date36_alea6", ["pt", "rd", "zn", "st"].every((p) => RE.test(K.genUid(p)) && K.genUid(p).indexOf(p + "_") === 0));
   t("genUid : famille inconnue → « pt » (jamais un préfixe arbitraire)", K.genUid("xx").indexOf("pt_") === 0);
-  const lot = new Set();
-  for (let i = 0; i < 5000; i++) lot.add(K.genUid("pt"));
-  t("genUid : 5 000 tirages distincts", lot.size === 5000);
+  // Unicité au pire cas réel (migration de masse dans la même ms) : horloge du module FIGÉE, seul l'aléa de 6
+  // caractères (36^6 ≈ 2,2·10⁹) sépare les 5 000 tirages. 🩸 « 5 000 distincts » exigé à l'horloge réelle échouait
+  // au hasard (≈ 0,6 % au pire cas, selon la vitesse de la machine). Ici : au plus 1 collision ; P(≥ 2) ≈ 1,6·10⁻⁵
+  // (λ = n(n−1)/2 / 36^6 ≈ 0,0057, P ≈ λ²/2), alors qu'un aléa cassé en donne des milliers. Les doublons
+  // eux-mêmes sont rattrapés par ensureAll (« collision forcée » plus bas).
+  const DateVm = vm.runInContext("Date", ctx), vraiNow = DateVm.now;
+  DateVm.now = function () { return 1700000000000; };
+  let lot;
+  try {
+    lot = new Set();
+    for (let i = 0; i < 5000; i++) lot.add(K.genUid("pt"));
+  } finally { DateVm.now = vraiNow; }
+  t("genUid : 5 000 tirages dans la même ms (horloge figée), au plus 1 collision — " + (5000 - lot.size) + " vue(s)",
+    lot.size >= 4999 && Array.from(lot).every((u) => u.indexOf("pt_" + (1700000000000).toString(36) + "_") === 0));
 
   // ensure : pose, n'écrase jamais
   const o1 = K.ensure({ nom: "a" }, "pt", 1000);

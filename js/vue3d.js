@@ -10117,12 +10117,24 @@
     return out;
   }
 
+  // Rayon (m) couvert par le plan au sol : celui de _rayonVue, portée plafonnée à celle de la case 🛡️ cochée
+  // (e.porteeVoulue, bornée à PORTEE.max).
+  // ⚠️ contrat (décision produit) : le plan affiché ne tient pas compte de la limite, mais de ce qui est à l'écran.
+  // Son emprise suit le cadrage — le recul en vue d'édition, le champ proche à hauteur d'yeux —, jamais la portée de
+  // construction : case décochée (« Tout le plan »), la même texture (PLAN_SOL.pxFin / pxDoigt px) couvrait tout le
+  // plan, et le niveau de tuiles V2 choisi d'après elle (ktaDessinerRegionTuiles) devenait le plus grossier — plan
+  // illisible au même cadrage. Les structures, elles, restent construites sans plafond.
+  function _rayonPlanSol() {
+    const e = _e, d = Math.min(e.distance, e.porteeVoulue || PORTEE.defaut);
+    return e.vue === "plongee" ? Math.max(d * 1.4, e.recul * SOL_PAR_RECUL) : d;
+  }
+
   // À chaque image (_majDessin) : plan au sol voulu et permis → texture (re)faite si la place ou l'emprise ont bougé.
   function _majPlanSol() {
     const e = _e, d = e.dessin;
     const voulu = d.planSol && _dessinPermis();
     if (!voulu) { if (d.sol && d.sol.mesh) _libererPlanSol(); return; }
-    const c = _centreScene(), s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonVue(), px = c.x, pz = c.z;
+    const c = _centreScene(), s = d.sol || (d.sol = { jeton: 0 }), cote = 2.4 * _rayonPlanSol(), px = c.x, pz = c.z;
     if (s.enCours) return;
     if (s.reprises > 0) { s.reprises--; e.sale = true; }
     if (s.mesh && s.niveau === e.niveau && Math.hypot(px - s.cx, pz - s.cz) < s.cote * PLAN_SOL.ecart &&
@@ -10182,7 +10194,8 @@
       mesh.userData.famille = "planSol";
       e.scene.add(mesh);
       Object.assign(s, { mesh: mesh, tex: tex, cx: cx, cz: cz, cote: cote, px: N, ok: !!(r && r.ok),
-        v2: v2, niveau: niveau, calques: (r && r.calques) || 0, tuiles: r && r.tuiles, ms: performance.now() - t0, faits: (s.faits || 0) + 1,
+        v2: v2, niveau: niveau, calques: (r && r.calques) || 0, tuiles: r && r.tuiles, z: r ? r.z : undefined,
+        ms: performance.now() - t0, faits: (s.faits || 0) + 1,
         reprises: PLAN_SOL.reprises });
       e.sale = true;
     });
@@ -10209,7 +10222,7 @@
         : null,
       ajustements: Object.assign({}, e.ajustements), ronds: Object.assign({}, d.ronds || {}),
       planSol: d.sol && d.sol.mesh ? { px: d.sol.px, cote: +d.sol.cote.toFixed(1), ok: d.sol.ok, v2: d.sol.v2,
-        tuiles: d.sol.tuiles || null, ms: Math.round(d.sol.ms), faits: d.sol.faits, niveau: d.sol.niveau,
+        tuiles: d.sol.tuiles || null, z: d.sol.z, ms: Math.round(d.sol.ms), faits: d.sol.faits, niveau: d.sol.niveau,
         calques: d.sol.calques,
         octets: d.sol.px * d.sol.px * 4 } : { voulu: !!d.planSol } };
   }

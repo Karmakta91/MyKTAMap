@@ -120,9 +120,9 @@
       '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="' + window.I18n.t("ui.refonte.counter_histoire_title") + '" role="button" tabindex="0">' +
         '<span class="kta-refonte-counter-icon">' + _ico("scroll") + '</span>' +
       '</span>' +
-      // Bouton Vue OSM (icône map, celle du widget de l'accueil) : visible seulement si le plan a un géoréf GPS
-      // valide ET que l'utilisateur a activé la vue.
-      '<span class="kta-refonte-counter kta-refonte-counter-osm" id="kta-refonte-counter-osm" title="' + window.I18n.t("ui.refonte.counter_osm_title") + '" role="button" tabindex="0" style="display:none;">' +
+      // Bouton du fond OSM sous le plan (icône map, celle du widget de l'accueil) : grisé sans géoréf GPS, la
+      // raison au survol (js/fondOsmPlan.js > majBouton).
+      '<span class="kta-refonte-counter kta-refonte-counter-osm" id="kta-refonte-counter-osm" title="' + window.I18n.t("fondosm.bouton.title") + '" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false">' +
         '<span class="kta-refonte-counter-icon">' + _ico("map") + '</span>' +
       '</span>' +
       // Bouton Sortie d'urgence (js/sortieUrgence.js) ; ⚠️ contrat : même icône que celui de la vue 3D (vue3d.js).
@@ -178,33 +178,32 @@
       });
     }
 
-    // Bouton 🌍 Vue OSM (js/osmView.js). 🩸 Polling permanent 2 s (isAvailable ≈ 0,3 ms) : aucun événement
-    // « plan config prêt » n'est émis, et un chargement > 3 s ferait rater un timeout. Couvre aussi le
-    // changement de plan et l'activation sans événement.
+    // Bouton du fond OSM (js/fondOsmPlan.js) : ouvre son petit panneau ; la fenêtre Vue OSM ne s'ouvre plus du plan
+    // (Mode Secours seulement ; l'accueil a son widget). 🩸 Polling permanent 2 s : aucun événement « plan config prêt » n'est
+    // émis, et un géoréf saisi dans les Réglages doit dégriser le bouton sans recharger.
     const osmBtn = document.getElementById("kta-refonte-counter-osm");
     if (osmBtn) {
-      function _refreshOsmVisibility() {
-        const show = !!(window.OsmView && window.OsmView.isAvailable && window.OsmView.isAvailable());
-        osmBtn.style.display = show ? "" : "none";
+      function _majBoutonFondOsm() {
+        if (window.FondOsmPlan) window.FondOsmPlan.majBouton(osmBtn);
       }
-      function _openOsm() {
-        if (window.OsmView && typeof window.OsmView.open === "function") {
-          window.OsmView.open();
-        } else {
-          console.warn("[Refonte] OsmView indisponible");
-        }
+      function _ouvrirFondOsm() {
+        if (window.FondOsmPlan) window.FondOsmPlan.basculerPanneau(osmBtn);
+        else console.warn("[Refonte] FondOsmPlan indisponible");
       }
-      osmBtn.addEventListener("click", _openOsm);
+      osmBtn.addEventListener("click", _ouvrirFondOsm);
       osmBtn.addEventListener("keydown", function(e) {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          _openOsm();
+          _ouvrirFondOsm();
         }
       });
-      _refreshOsmVisibility();
-      _ecouterWindow("kta:osmOptInChange", _refreshOsmVisibility);
-      const minuterieOsm = setInterval(_refreshOsmVisibility, 2000);
-      _headerNettoyages.push(function() { clearInterval(minuterieOsm); });
+      _majBoutonFondOsm();
+      _ecouterWindow("kta:osmOptInChange", _majBoutonFondOsm);
+      const minuterieOsm = setInterval(_majBoutonFondOsm, 2000);
+      _headerNettoyages.push(function() {
+        clearInterval(minuterieOsm);
+        if (window.FondOsmPlan) window.FondOsmPlan.fermerPanneau();
+      });
     }
 
     // Bouton 🚨 Sortie d'urgence : recherche de la sortie la plus proche (pathfinder).

@@ -9,14 +9,15 @@
 //   1. peu de tuiles posées et peu de REQUÊTES de tuiles parties (échoue si tout le niveau est posé) ;
 //   2. aucun trou : chaque point de l'écran dans le plan est couvert, au départ ET après déplacement ;
 //   3. filtre multi-niveau : niveau 0 masqué → aucune tuile ; ré-affiché → seulement les proches.
+// Plan V2 FICTIF fabriqué par le checkup (planV2Fictif.js : rien sur disque, Service Worker bloqué). Grille de
+// 32 × 20 tuiles au niveau le plus fin : assez grand pour que « tout le niveau posé » se voie.
 // Usage : node scripts/smoke/checkup-tuiles-hors-ecran.js
 "use strict";
 
 const { chromium } = require("playwright");
 const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
-const fs = require("fs");
-const path = require("path");
+const { servirPlanV2Fictif } = require("./planV2Fictif.js");
 const server = require("./server.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);   // même port que server.js
@@ -26,16 +27,6 @@ const LS_PREGATES = {
   "myktamap_alert_seen_offline-precache-2026-06": "2026-06-13T12:00:00Z",
   "myktamap_tutorial_seen_v1": "1"
 };
-
-function planAOuvrir() {
-  try {
-    const idx = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "data", "index.json"), "utf8"));
-    const plans = (idx && idx.plans) || [];
-    const fictif = plans.find(function (p) { return /fictif/i.test(p.name || ""); });
-    return { nom: (fictif || plans[0] || {}).name || "Relevé fictif de test", fictif: !!fictif };
-  } catch (e) { return { nom: "Relevé fictif de test", fictif: true }; }
-}
-const PLAN = planAOuvrir();
 
 const problemes = [];
 function pb(m) { problemes.push(m); console.log("  ❌ " + m); }
@@ -47,8 +38,9 @@ function inf(m) { console.log("  •  " + m); }
   nav = await lancerNavigateur(chromium);
   const erreurs = [];
   try {
-    if (!PLAN.fictif) inf("⚠️ le relevé fictif n'est pas dans data/index.json — checkup sur « " + PLAN.nom + " »");
-    const page = await nav.newPage({ viewport: { width: 1200, height: 850 } });
+    const ctx = await nav.newContext({ viewport: { width: 1200, height: 850 }, serviceWorkers: "block" });
+    const page = await ctx.newPage();
+    const PLAN = await servirPlanV2Fictif(page);
     page.on("pageerror", function (e) { erreurs.push(String(e)); });
     let requetesTuiles = 0;
     page.on("request", function (r) { if (/\/tiles\/z-?\d+\//.test(r.url())) requetesTuiles++; });

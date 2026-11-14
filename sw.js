@@ -30,7 +30,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.26.0";
+const CACHE_NAME = "myktamap-cache-v2.27.0";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -423,6 +423,7 @@ const ASSETS_TO_CACHE = [
   "./js/kmzExport.js",
   // Vue OSM (plan au-dessus OpenStreetMap)
   "./js/osmView.js",
+  "./js/fondOsmPlan.js",
   "./js/osmHomePreview.js",
   "./js/kmzImport.js",
   // GPX import + export (réutilise calibrage KMZ)

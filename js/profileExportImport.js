@@ -54,6 +54,7 @@
     "myktamap_plan_prefs_",       // préférences par plan (calibrations des calques image, Nord…)
     "myktamap_route_avoid_",      // avoidances itinéraire Pathfinder
     "myktamap_note_libre_",       // note libre Mode Histoire (markdown user)
+    "myktamap_fond_osm_v1_",      // transparence du fond OSM sous le plan (fondOsmPlan.js)
     "myktamap_perf_toggles_v2_"   // toggles Perf ULTRA PER-PLAN (ex-clé globale)
   ];
 

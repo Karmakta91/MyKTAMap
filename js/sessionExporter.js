@@ -3982,7 +3982,7 @@
       window.ktaAlerte(t("export.err.calibInvalide", { msg: e.message }), { type: "erreur" });
       return;
     }
-    window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
+    window.KmzExport.appliquerCalageUtilisateur(_kmzCurrentPlanId(), c);
 
     const sel = _kmzSelection();
     const levels = sel.levels;
@@ -4166,7 +4166,7 @@
       window.ktaAlerte(t("export.err.calibInvalide", { msg: e.message }), { type: "erreur" });
       return;
     }
-    window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
+    window.KmzExport.appliquerCalageUtilisateur(_kmzCurrentPlanId(), c);
     const choix = _modal && _modal.querySelector('input[name="geojson_proj"]:checked');
     const epsg = (choix && choix.value === "2154") ? 2154 : 4326;
     try {
@@ -4262,7 +4262,7 @@
       window.ktaAlerte(t("export.err.calibInvalide", { msg: e.message }), { type: "erreur" });
       return;
     }
-    window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
+    window.KmzExport.appliquerCalageUtilisateur(_kmzCurrentPlanId(), c);
 
     const incPoints   = document.getElementById("gpx_points")   && document.getElementById("gpx_points").checked;
     const incEmbedded = document.getElementById("gpx_embedded") && document.getElementById("gpx_embedded").checked;

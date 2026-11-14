@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.26.0` (13/11/2026)
+## 📦 Version courante — `v2.27.0` (14/11/2026)
 
-> 🧊 **v2.26.0 — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage** : en 3D, sol damé et ciel de carrière texturés, ombre de contact au pied des piliers et des parois, nuance de roche propre à chaque structure, stries d'outil en passes parallèles, arcs en pierre de taille (claveaux, tympan en moellons), mur tracé en ligne en pierre de taille, véhicule en silhouette de voiture, réglage **Textures HD** ; **Niveaux en transparence** (fantôme du dessus en vue d'édition, voisins à travers plafond et sol à hauteur d'yeux) ; mini-carte plus grande en paysage, collée au bandeau de guidage ; icônes au trait dans le menu au sommet ; correctifs. Détail : journal ci-dessous.
+> 🗺️ **v2.27.0 — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes** : en mode plan, le bouton carte ouvre un petit panneau qui pose **OpenStreetMap sous le plan** (interrupteur, transparence du plan retenue pour chaque plan, **Ma position** ponctuelle, **Enregistrer hors ligne**), calé sur le géoréférencement, qui tourne avec le plan orienté ; la fenêtre Vue OSM reste celle de l'accueil et du Mode Secours. En 3D, le plan au sol reste net en « Tout le plan ». Le calage modifié dans les Réglages est repris partout (fond OSM, Vue OSM, Secours) et écrit par « Mettre à jour le plan ». Libellés : **Plaque/indication**, **Épure/graffiti**, « Arc de soutènement », « Zone jonction » et les piliers et fronts de 2e masse sans leur précision. Détail : journal ci-dessous.
 
 ---
 
@@ -127,7 +127,8 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 
 | Fonctionnalité | Module(s) clé(s) |
 |---|---|
-| Modale OSM : plan projeté sur fond OpenStreetMap via géoréférencement 2 points | `osmView.js` |
+| Modale OSM (ouverte par le Mode Secours) : plan projeté sur fond OpenStreetMap via géoréférencement 2 points | `osmView.js` |
+| Fond OpenStreetMap sous le plan (bouton carte du haut) : interrupteur, transparence du plan, « Ma position » | `fondOsmPlan.js` |
 | Cartes OSM (modale et widget de l'accueil) tournées à la main (deux doigts, Maj + molette, bouton nord), nord en haut à chaque ouverture | `osmView.js`, `osmHomePreview.js`, `mapBearing.js` |
 | Widget aperçu OSM sur la home | `osmHomePreview.js` |
 | Légende du plan en lecture seule depuis les deux cartes OSM (avertissement si plusieurs plans) | `interfaceLegende.js` |
@@ -214,7 +215,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (151 modules)
+## 🟢 L'application : modules JS (152 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -343,6 +344,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `kmzExport.js` | Export KMZ géolocalisé (GroundOverlay ou superoverlay V2) et moteur de calage plan ↔ GPS |
 | `osmTilesCache.js` | Cache hors ligne des tuiles OpenStreetMap (IDB, servi par le SW) |
 | `osmView.js` | Modale Vue OSM : le plan projeté sur OpenStreetMap par son géoréférencement |
+| `fondOsmPlan.js` | Fond OpenStreetMap sous le plan, dans la carte du plan, et son petit panneau (bouton carte du haut) |
 | `osmHomePreview.js` | Widget Vue OSM de l'accueil : plans géoréférencés empilés, sans charger de plan |
 | `kmzImport.js` | Import KMZ → ZIP de plan MyKTAMap |
 | `gpxIO.js` | Export / import GPX 1.1 de la session |
@@ -632,6 +634,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/server.js` | Serveur statique local des harnais (Service Worker, `data/index.json`) |
 | `smoke/navigateur.js` | Lance le navigateur des harnais avec replis (shell headless, Chromium, Edge) |
 | `smoke/attendre.js` | Attente d'une condition dans la page compatible avec la CSP (remplace `waitForFunction`) |
+| `smoke/planV2Fictif.js` | Plan tuilé V2 fictif fabriqué en mémoire pour les harnais (tuiles, plan-config, index ; rien sur disque) |
 | `smoke/repro-import.js` | Reproduction manuelle : l'import d'un profil complet ne reste pas bloqué |
 | `smoke/releve-theme.js` | Outil de mesure : surcharges claires sans effet (CSSOM), relevé du style calculé avant / après, clair et sombre, états forcés |
 | `smoke/releve-theme-ecrans.js` | Écrans parcourus par `releve-theme.js` sur le relevé fictif, dans un ordre reproductible |
@@ -666,6 +669,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
+| `smoke/checkup-georef-reglages.js` | Calage modifié dans les Réglages : gagne sur le calage embarqué (mémoire, registre, fond OSM sans rallumer, Secours, plan rouvert, « Mettre à jour le plan »), calage périmé écarté |
 | `smoke/checkup-mode-dev.js` | Mode Développeur sans mot de passe : confirmation chartée, outils rendus, journal affiché et copié, appareil déjà déverrouillé gardé actif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
 | `smoke/checkup-arc.js` | Arc de soutènement en travers d'une galerie : itinéraire, pas du tracker et vue 3D passent (mur en ligne témoin arrêté), outil de dessin, trait rayé, légende, filtres, export image |
@@ -675,6 +679,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
 | `smoke/checkup-inaccessible-sous-structures.js` | Zones (inaccessible comprise) sous les structures sur le canvas commun après chargement, édition, ⏪ et filtre ; hachures en CanvasPattern ; fiche au clic |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
+| `smoke/checkup-fond-osm.js` | Fond OSM sous le plan : bouton grisé sans géoréf, interrupteur, transparence de l'image du plan, calage au pixel au zoom max, plan orienté, extinction, hors ligne, OSM refusé et incognito sans requête, « Ma position » |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
 | `smoke/checkup-osm-rotation.js` | Rotation manuelle des cartes OSM (widget de l'accueil en contexte téléphone, Vue OSM) : vrai geste CDP, page ni défilée ni zoomée, coins couverts à 45° (tuiles OSM et du plan), toucher et mesure sous rotation, Maj + molette, bouton nord, nord en haut à la recréation, autres cartes droites |
@@ -710,6 +715,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-tableur-session.js` | L'Éditeur de données applique un fichier de session à la session (multi-niveau) |
 | `smoke/checkup-toasts.js` | Toasts empilés et « J'accepte » des CGU, PC et téléphone, deux thèmes |
 | `smoke/checkup-tuiles-hors-ecran.js` | Le tuilage V2 ne pose que les tuiles proches de l'écran |
+| `smoke/checkup-plan-sol-portee.js` | Plan au sol de la vue 3D aussi net case 🛡️ cochée ou décochée, au même cadrage (fictif + V2 fictif) |
 | `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
 | `smoke/checkup-urgence-memoire.js` | Défauts invisibles à l'œil : fuite au changement de plan, console, plan de démonstration |
 | `smoke/checkup-distance-totale.js` | 📏 Distance totale : niveau affiché compté, case « Tous les niveaux » retenue par plan, changement de niveau, 3D, plan à un niveau |
@@ -817,6 +823,17 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.27.0 (14/11/2026) — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes (branche `Karma_dev`)
+
+> Écart avec la prod v2.26.0.
+
+- **🗺️ Fond OpenStreetMap sous le plan** (`js/fondOsmPlan.js`, `js/refonteInterface.js`, `mapBearing.js`, `osmView.js > getGeorefEffectif`, `vue-osm.md` § Fond OSM sous le plan) : en mode plan, le bouton carte du haut n'ouvre plus la fenêtre Vue OSM mais un petit panneau ancré au bouton : interrupteur du fond OSM posé **sous** le plan, dans sa carte (une couche de tuiles canvas, chaque tuile OSM placée par le calage du plan), curseur de transparence de l'image du plan (le fond reste opaque, valeur retenue pour chaque plan, `myktamap_fond_osm_v1_<planId>`, purgée avec le plan), **Ma position** (un relevé GPS, sans suivi, refusé hors de l'emprise du plan et en incognito), **Enregistrer hors ligne** (emprise du plan dans le cache OSM partagé, `OsmTilesCache.cacheTilesForBbox`, même code que le bouton 💾 ; grisé hors ligne, en incognito ou OSM coupé). Bouton grisé sans géoréférencement (raison au survol), allumé quand le fond l'est ; le fond tourne avec le plan orienté, s'éteint à chaque plan ouvert, est refusé (avec un message) si OSM est coupé dans Configuration ou en incognito ; hors ligne, seules les tuiles enregistrées s'affichent (une tuile d'un zoom plus large est agrandie à défaut), aucune requête. Au-delà du zoom 19 d'OSM, la dernière tuile est agrandie. Attribution © OpenStreetMap visible tant qu'il est allumé ; exports PNG, PDF et KMZ sans le fond. La Vue OSM de l'accueil (widget et plein écran) ne change pas ; la fenêtre Vue OSM reste ouverte par le Mode Secours. Guides, Aide, audit réseau (même domaine, nouveau point d'appel). `checkup-fond-osm.js`.
+- **Finitions du panneau Fond OSM** (`js/fondOsmPlan.js`, `css/style.css`, `js/ktaIcones.js > toggle-left`, `checkup-fond-osm.js`) : hors ligne, une phrase en tête du panneau le dit (suit le réseau sans rouvrir) ; l'icône de l'interrupteur montre l'état (rond à gauche éteint, à droite allumé) ; « 100 % » ne sort plus du panneau au téléphone ; attribution « © OpenStreetMap » discrète (10 px, couleur méta, lien souligné, contraste ≥ 4,5:1 mesuré dans les deux thèmes) ; les réglages par plan (`myktamap_plan_prefs_`) partent avec le plan supprimé et suivent sa version serveur.
+- **🧊 Plan au sol net en « Tout le plan »** (`js/vue3d.js`, `tracking.md` § Vue 3D) : sans limite de portée, l'image du plan au sol suit l'emprise du cadrage et non plus la portée : elle reste nette.
+- **Libellés plus justes** (dicos `lang/`, `EDITOR_TAG_LABELS`, `LEGENDE_LABELS`, `DEFAULT_LABELS`, guides, `AI_CONTEXT.md`) : le type `plaque` s'affiche **Plaque/indication** (en Plate/sign, es Placa/indicación), `epure` **Épure/graffiti** (en Drawing/graffiti, es Dibujo/grafiti) ; dans le choix des structures et des zones, « Arc de soutènement », « Pilier 2e masse », « Front de taille 2e masse » et « Zone jonction » sans leur précision. Clés de type, icônes et comportement inchangés.
+- **🌐 Calage des Réglages pris partout et écrit par « Mettre à jour le plan »** (`kmzExport.js > appliquerCalageUtilisateur`, `main.js > _propagerGeorefVersKmzExport`, `fondOsmPlan.js`, `osmView.js`, `createConf.js > _georefReglagesPourMaj`, `vue-osm.md` § 2.2, `checkup-georef-reglages.js`) : un point modifié ou ajouté dans ⚙️ Réglages › Géoréférencement (et Recaler, Export externe) était ignoré par le fond OSM, la Vue OSM et le Mode Secours quand le plan embarquait déjà un calage — même après rechargement, et « Mettre à jour le plan » réécrivait l'ancien. Il est maintenant repris tout de suite (fond OSM redessiné sans être rallumé), à chaque ouverture et dans le plan mis à jour. Limite voulue, dite dans les Réglages : un plan régénéré ailleurs ne remplace pas un calage déjà saisi (« Effacer » pour revenir à celui du plan).
+- **Correctif** : plus de redessin sur un canvas orphelin après la sortie d'un plan (`structures.js`) ; deux checkups hérités stabilisés.
 
 #### v2.26.0 (13/11/2026) — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage (branche `Karma_dev`)
 
@@ -10129,6 +10146,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🧊 **v2.26.0 — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage** : en 3D, sol damé et ciel de carrière texturés, ombre de contact au pied des piliers et des parois, nuance de roche propre à chaque structure, stries d'outil en passes parallèles, arcs en pierre de taille (claveaux, tympan en moellons), mur tracé en ligne en pierre de taille, véhicule en silhouette de voiture, réglage **Textures HD** ; **Niveaux en transparence** (fantôme du dessus en vue d'édition, voisins à travers plafond et sol à hauteur d'yeux) ; mini-carte plus grande en paysage, collée au bandeau de guidage ; icônes au trait dans le menu au sommet ; correctifs. Détail : journal ci-dessous.
 
 > 🏛️ **v2.25.0 — Arc de soutènement, Vérifier le plan, trois nouveaux types de points, Favoris et Annuler en vue 3D** : nouvelle structure **arc de soutènement** (trait bleu rayé de rouge, ne bloque rien), modelée en plein cintre en 3D ; types de points **ossuaire**, **outil de carrier** et **fontis**, modelés en 3D ; **Vérifier le plan** dans l'Éditeur de données ; chatière relevée en plusieurs points ; en 3D, ⭐ Favoris et ⏪ Annuler / Rétablir dans la rangée du haut, ⛏️ qui ouvre la table des niveaux ; l'image de collision disparaît du Générateur et de l'app ; correctifs (niveau du tracker à la réouverture, 2e masse au niveau −1, bandeau de guidage en 3D). Détail : journal ci-dessous.
 

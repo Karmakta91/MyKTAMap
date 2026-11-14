@@ -2702,7 +2702,8 @@ Décision du lot D : la doc entière passe en SVG à l'affichage (§ Substitutio
   ConfAdmin), `landmark` (texte du Sénat dans les conditions), `external-link` (PDF dans un onglet), `clock` (Plus
   tard), `keyboard` (raccourcis clavier), `type` (recalage par les noms), `leaf` (Leaflet), `instagram` et `mail`
   (contacts du pied de page) ; pour la doc seule (lot D) : `layout-dashboard` (Présentation de l'interface) et
-  `toggle-right` (un mode reste actif).
+  `toggle-right` (un mode reste actif) ; `toggle-left` / `toggle-right` montrent aussi l'état de
+  l'interrupteur du fond OSM sous le plan (rond à gauche éteint, à droite allumé, `fondOsmPlan.js > _majPanneau`).
 - Élément statique : `data-kta-ico="nom"`, rempli au chargement par `KtaIcones.poser()` (accueil, Configuration et
   ses fenêtres) ; ailleurs, le gabarit appelle `window.ktaIcone("nom")` devant le libellé. Le bouton garde son `title`
   / `aria-label` : le SVG est `aria-hidden`. Un libellé posé par `textContent` ne peut pas porter l'icône : le module

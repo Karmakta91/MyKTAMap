@@ -446,6 +446,24 @@
     catch(e) {}
   }
 
+  // Calage saisi par l'utilisateur (Réglages, Recaler, Export externe) : il GAGNE sur le calage embarqué dans le
+  // plan (décision produit). Persisté, puis recopié dans PLAN_CONFIG.plan.georef en mémoire (plan ouvert) et dans
+  // l'entrée du registre qui porte un géoréf (accueil), enfin annoncé par « kta:georefChange » { planId }.
+  // ⚠️ contrat : un plan régénéré avec un autre calage ne remplace pas, sur cet appareil, un calage déjà saisi
+  // ici (main.js > _propagerGeorefVersKmzExport le remet en mémoire à chaque chargement).
+  function appliquerCalageUtilisateur(planId, calib) {
+    setCalibration(planId, calib);
+    const copie = function() { return JSON.parse(JSON.stringify(calib)); };
+    const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
+    if (pc && (window._currentLoadedPlanId || "default") === (planId || "default")) pc.georef = copie();
+    try {
+      const R = window.PlanRegistry;
+      const ent = R && typeof R.findById === "function" ? R.findById(planId) : null;
+      if (ent && ent.georef && typeof R.addOrUpdate === "function") R.addOrUpdate({ id: planId, georef: copie() });
+    } catch(e) { console.warn("[KmzExport] calage : registre non mis à jour", e); }
+    try { window.dispatchEvent(new CustomEvent("kta:georefChange", { detail: { planId: planId } })); } catch(e) {}
+  }
+
   // ── KML : helpers ──────────
   function _xmlEsc(s) {
     return String(s == null ? "" : s)
@@ -1454,6 +1472,7 @@
     precisionCalage: precisionCalage,
     getCalibration:  getCalibration,
     setCalibration:  setCalibration,
+    appliquerCalageUtilisateur: appliquerCalageUtilisateur,
     genererKml:      genererKml,
     genererKmz:      genererKmz,
     // Règles partagées avec l'export GeoJSON : mêmes libellés, géométries et couleurs que le KML.
