@@ -4284,7 +4284,8 @@ function _afficherImporterKmz(prefilledFile) {
 
             <label class="kta-cfg-label">${window.ktaIcone("m-zone") + " " + window.I18n.t("gen.kmz.polygonType")}</label>
             <select class="kta-cfg-input" id="kta-kmz-imp-zone-type">
-              <option value="remblais" selected>${window.I18n.t("gen.imp.zoneRemblais")}</option>
+              <option value="masse-sol" selected>${window.I18n.t("gen.imp.zoneMasseSol")}</option>
+              <option value="remblais">${window.I18n.t("gen.imp.zoneRemblais")}</option>
               <option value="eau">${window.I18n.t("gen.imp.zoneEau")}</option>
               <option value="effondrement">${window.I18n.t("gen.imp.zoneEffondrement")}</option>
               <option value="inaccessible">${window.I18n.t("gen.imp.zoneInaccessible")}</option>
@@ -5158,6 +5159,11 @@ function _afficherImporterSig(prefilledFile) {
             <select class="kta-cfg-input" id="kta-sig-imp-niveau"></select>
           </div>
           <div id="kta-sig-imp-niveau-apercu" style="margin-top:6px;"></div>
+          <!-- Masse au sol : colonne facultative de la part comblée (0,5 ou 50 %), sigImport.js > combleDe. -->
+          <div class="kta-planner-grille" style="margin-top:8px;">
+            <label class="kta-cfg-label">${T("gen.sig.colonneComble")}</label>
+            <select class="kta-cfg-input" id="kta-sig-imp-comble"></select>
+          </div>
           <!-- 🎨 v1.82.0 — une couleur par etage. Sans elle, six niveaux
                superposes sortaient tous de la meme teinte : illisible, et le
                multi-niveau perdait l essentiel de son interet. -->
@@ -5174,6 +5180,7 @@ function _afficherImporterSig(prefilledFile) {
                   style="margin-top:8px; display:none;">${window.ktaIcone("list")} ${T("gen.sig.legendeBtn")}</button>
           <div id="kta-sig-imp-legende-etat" style="font-size:11.5px; color:var(--kta-texte-3); margin-top:4px;"></div>
           <div id="kta-sig-imp-map-tables" style="margin-top:10px;"></div>
+          <div id="kta-sig-imp-defaut" class="kta-planner-info" style="margin-top:8px;" hidden></div>
           ${_htmlNiveauxPente("kta-sig-imp")}
         </div>
 
@@ -5413,6 +5420,16 @@ async function _sigImpAnalyserFichier(file) {
         }).join("");
     const devine = cols.find(function(c) { return /^(niveau|level|etage|étage|lvl)$/i.test(c.cle); });
     if (devine) selN.value = devine.cle;
+    // Colonne de la part comblée (masse au sol), facultative : présélectionnée sur un nom sans ambiguïté.
+    const selC = document.getElementById("kta-sig-imp-comble");
+    if (selC) {
+      selC.innerHTML = '<option value="">' + T("gen.sig.combleAucune") + '</option>'
+        + cols.map(function(c) {
+            return '<option value="' + _escAttrSig(c.cle) + '">' + _escHtmlSig(c.cle) + '</option>';
+          }).join("");
+      const devC = cols.find(function(c) { return /^(comble|part_?comble|hauteur_?remblai)$/i.test(c.cle); });
+      if (devC) selC.value = devC.cle;
+    }
     selN.addEventListener("change", _sigImpApercuNiveaux);
     _sigImpApercuNiveaux();
 
@@ -5502,7 +5519,9 @@ const _SIG_TYPES = {
   points:    ["default", "pa", "pb", "pc", "pe", "ps", "psf", "salle", "chatiere", "passage", "danger", "fontis", "info", "ossuaire", "outil"],
   lignes:    ["chemin", "secondaire", "principal"],
   // `pente` = zone « Jonction » : niveaux de/à saisis sous la table (_htmlNiveauxPente), plan multi-niveau.
-  polygones: ["remblais", "eau", "effondrement", "inaccessible", "pente"]
+  // 🩸 `masse-sol` EN TÊTE : c'est le type d'une valeur non reconnue (1re option de sa liste), comme le défaut
+  // d'ingest (sigImport.js > zoneDefaut). Un Comblé posé en silence deviendrait un obstacle.
+  polygones: ["masse-sol", "remblais", "eau", "effondrement", "inaccessible", "pente"]
 };
 // Structures proposées EN PLUS, par famille. Chaque géométrie peut viser toutes les familles : un polygone
 // peut être une zone, un pilier, un mur ou un front de taille dessiné fermé ; une polyligne peut porter le
@@ -5511,7 +5530,7 @@ const _SIG_TYPES = {
 const _SIG_TYPES_SUP = {
   points:    [],
   lignes:    ["struct:front-1", "struct:front-2", "struct:mur-ligne", "struct:arc", "struct:mur",
-              "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible", "zone:pente"],
+              "zone:masse-sol", "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible", "zone:pente"],
   polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur",
               "struct:front-1", "struct:front-2", "struct:mur-ligne",
               "trace:chemin", "trace:secondaire", "trace:principal"]
@@ -5558,7 +5577,11 @@ function _sigImpRendreTables() {
   const box = document.getElementById("kta-sig-imp-map-tables");
   if (!box || !_sigImportState) return;
   const cle = document.getElementById("kta-sig-imp-colonne").value;
-  if (!cle) { box.innerHTML = '<div style="color:var(--kta-texte-3); font-size:12px;">' + T("gen.sig.mapAucune") + '</div>'; return; }
+  if (!cle) {
+    box.innerHTML = '<div style="color:var(--kta-texte-3); font-size:12px;">' + T("gen.sig.mapAucune") + '</div>';
+    _sigImpMajDefaut(null);
+    return;
+  }
 
   const parFam = window.SigImport.valeursParFamille(_sigImportState.data, cle);
   const catPour = { points: null, lignes: "traces", polygones: "zones" };
@@ -5600,6 +5623,7 @@ function _sigImpRendreTables() {
     html += '</div>';
   });
   box.innerHTML = html || '<div style="color:var(--kta-texte-3); font-size:12px;">' + T("gen.sig.mapVide") + '</div>';
+  _sigImpMajDefaut(cle);
 
   // 🩸 Changer le routage change les id des entrées de légende : celles déjà éditées seraient perdues sans
   // explication. On repart d'une légende vierge et le bouton le dit.
@@ -5610,6 +5634,15 @@ function _sigImpRendreTables() {
     });
   });
   _sigImpMajPente();
+}
+
+// Polygones sans type reconnu (valeur vide ou sans synonyme) : rangés en masse au sol, le nombre est dit sous la table.
+function _sigImpMajDefaut(cle) {
+  const box = document.getElementById("kta-sig-imp-defaut");
+  if (!box || !_sigImportState || !window.SigImport || !window.SigImport.compterPolygonesDefaut) return;
+  const n = window.SigImport.compterPolygonesDefaut(_sigImportState.data, cle || null);
+  box.hidden = n === 0;
+  box.textContent = n ? window.I18n.t("gen.sig.defautMasse", { n: n }) : "";
 }
 
 // Niveaux de/à de la zone « Jonction », affichés dès qu'une valeur est routée vers elle.
@@ -5738,6 +5771,8 @@ async function _sigImpGenerer() {
                  pente: penteSig,
                  // La colonne du niveau voyage avec le mapping.
                  cleNiveau: (document.getElementById("kta-sig-imp-niveau") || {}).value || null,
+                 // Colonne facultative de la part comblée des masses au sol.
+                 cleComble: (document.getElementById("kta-sig-imp-comble") || {}).value || null,
                  // Types de légende par étage (case cochée par défaut).
                  couleurParNiveau: !!(document.getElementById("kta-sig-imp-couleurs-niveau") || {}).checked,
                  // Entrées renommées/recolorées dans l'éditeur ; sinon `ingest` les fabrique.

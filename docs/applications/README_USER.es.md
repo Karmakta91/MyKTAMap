@@ -320,7 +320,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Medición** | 📐 | Medir una distancia o una superficie, **calcular la distancia total de los trazados** y el **⛏️ volumen explotado** de un sector, borrar |
 | **Edición de puntos** | ✏️ | Añadir tus propios puntos *(clic directo: interruptor ON/OFF)* |
 | **Trazados** | 🛣️ | Trazar galerías principales, secundarias, caminos, uniones |
-| **Zonas** | ⬛ | Trazar zonas de escombros, derrumbe, agua o inaccesibles |
+| **Zonas** | ⬛ | Trazar zonas de escombros, relleno parcial, derrumbe, agua o inaccesibles |
 | **Estructuras** | 🏛️ | Pilares, muros y frentes de explotación |
 
 **Cómo funciona:**
@@ -985,12 +985,25 @@ En el grupo **⬛ Zonas**, superficies cerradas para anotar el mapa:
 | Tipo | Aspecto | Efecto en el itinerario |
 |---|---|---|
 | ⬛ **Escombros** | gris oscuro | ninguno |
+| ⬛ **Relleno parcial** | arena con granos, contorno discontinuo | ninguno por ahora |
 | 🟥 **Derrumbe** | rojo | ninguno |
 | 🟦 **Agua** | azul | ninguno |
 | ⛔ **Inaccesible** | rayado rojo oscuro / negro | **bloquea** el paso |
 | 🪜 **Zona de unión** (mapa multinivel) | color del trazado de unión, velo ligero | ninguno: el itinerario pasa por el trazado de unión que la cruza (ver 🏗️ Modo multinivel) |
 
-Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego los escombros, los derrumbes, y lo inaccesible encima de las demás zonas; las estructuras (pilares, muros, frentes de cantera) quedan siempre por encima de las zonas.
+Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego el relleno parcial, los escombros, los derrumbes, y lo inaccesible encima de las demás zonas; las estructuras (pilares, muros, frentes de cantera) quedan siempre por encima de las zonas.
+
+### ⬛ Relleno parcial — parte rellena
+
+Un **relleno parcial** son escombros que solo llenan una parte de la altura de la galería, sobre los que se camina. **Escombros** sigue siendo la zona rellena hasta el techo.
+
+- En la burbuja de la zona, elige la **parte rellena**: ¼, ½, ¾ u **Otra** (un valor como 0,9) y luego **Aplicar la parte rellena**. La burbuja muestra también el equivalente en metros, según la altura del nivel (ajustes del plano).
+- Sin valor, un relleno parcial cuenta como ½.
+- En el mapa, cuanto más alta es la parte, más granos hay.
+- Con 1 o más, la galería está llena: la burbuja propone pasar la zona a **Escombros**.
+- La **Hoja de cálculo** tiene una columna **comble**, con las mismas opciones.
+- El valor sigue a la zona en las exportaciones **KMZ** y **GeoJSON**. En la **importación SIG**, «ms», «masse au sol» y «remblai partiel» dan un relleno parcial; una columna de altura opcional da su parte (0,5 o 50 %). Un polígono cuyo tipo no se reconoce pasa a relleno parcial, y la pantalla de correspondencia dice cuántos.
+- Por ahora, el relleno parcial no cambia ni el itinerario ni la vista 3D.
 
 ### ⛔ Zona «Inaccesible» — bloquea el itinerario
 

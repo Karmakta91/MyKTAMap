@@ -7,7 +7,7 @@
 // laisse le styleUrl pendant, Google Earth retombe sur son trait par défaut et la couleur choisie est perdue.
 // Les couleurs passent par `js/styleResolver.js` et un <Style> est déclaré par type hors intégrés utilisé.
 // Trois invariants :
-//   1. les 14 styles BUILT-IN restent identiques à REFERENCE : le KML a ses propres LARGEURS (unité ≠
+//   1. les 15 styles BUILT-IN restent identiques à REFERENCE : le KML a ses propres LARGEURS (unité ≠
 //      `weight` Leaflet : un front est à 5 ici, 10 sur la carte) et ALPHAS ; brancher naïvement le
 //      résolveur sur ces champs changerait le rendu dans Google Earth ;
 //   2. un type CUSTOM produit un style, et un front custom n'a JAMAIS de PolyStyle (le canon donne un
@@ -28,6 +28,7 @@ const REFERENCE = {
   road_jonction:     { line: "#ff4ecb", width: 4, alpha: 1 },
   road_itinerary:    { line: "#00d4ff", width: 6, alpha: 1 },
   zone_eau:          { line: "#0066aa", fill: "#3aa9e8", fillAlpha: 0.6,  width: 2 },
+  "zone_masse-sol":  { line: "#6b5532", fill: "#c9b48c", fillAlpha: 0.6,  width: 2 },
   zone_remblais:     { line: "#3a3a44", fill: "#5a5a68", fillAlpha: 0.6,  width: 2 },
   zone_effondrement: { line: "#cc0000", fill: "#ff3333", fillAlpha: 0.6,  width: 2 },
   zone_inaccessible: { line: "#5a0a0a", fill: "#7a0000", fillAlpha: 0.65, width: 2 },
@@ -122,9 +123,10 @@ cas("front custom garde la largeur KML 5", !!cf && cf.width === 5);
 cas("pilier custom : fond + largeur 2", !!cm && cm.fill === "#123456" && cm.width === 2);
 
 // ── 3. Les types inconnus prennent le repli de la carte ──────────
-// Repli de la carte : `_resolveZoneStyle(zone.type) || _resolveZoneStyle("remblais")`, pendant côté structures.
+// Repli de la carte : `_resolveZoneStyle(zone.type[, zone]) || _resolveZoneStyle("remblais")`, pendant côté
+// structures (le 2e argument porte la part comblée d'une masse au sol).
 function repliCarte(fichier, fn) {
-  const re = new RegExp(fn + "\\([a-z]+\\.type\\) \\|\\| " + fn + "\\(\"([^\"]+)\"\\)");
+  const re = new RegExp(fn + "\\([a-z]+\\.type(?:, [a-z]+)?\\) \\|\\| " + fn + "\\(\"([^\"]+)\"\\)");
   const m = re.exec(fs.readFileSync(fichier, "utf8"));
   return m ? m[1] : null;
 }

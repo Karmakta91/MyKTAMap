@@ -418,11 +418,11 @@ Une zone (tout type, `cust-*` compris) peut toucher plusieurs niveaux : un effon
 
 #### 31.1 Zone "Inaccessible" (contrainte DURE)
 
-**Type de zone** : `"inaccessible"` (4ème type, après `eau`/`remblais`/`effondrement`). Tracé via le groupe ⬛ Zones de la sidebar, bouton ⛔.
+**Type de zone** : `"inaccessible"`. Tracé via le groupe ⬛ Zones de la sidebar, bouton ⛔.
 
 **Visuel** : hachures rouge sombre / noir à 45°, peintes en `CanvasPattern` (`styleResolver.js > _motifCanvas`, couleurs
 dans `CANON.zones.inaccessible._motif`) sur le **même canvas** que les autres vecteurs, session comme calques. Elle passe
-donc par-dessus les autres zones (tri `eau < remblais < effondrement < inaccessible`) et **sous les structures**
+donc par-dessus les autres zones (tri `KTA_ORDRE_ZONES` : `eau < masse-sol < remblais < effondrement < inaccessible`) et **sous les structures**
 (`structures.js > ktaStructuresAuDessus`, rappelé après chaque rendu de zones : sur un canvas, la dernière couche
 ajoutée se peint au-dessus). Le motif suit la carte au glissé et garde sa taille à l'écran au zoom. Exports, KMZ, Vue
 OSM, pastilles : aplat de repli (`{ flat: true }`).
@@ -571,25 +571,14 @@ Audit demandé KARMA pour vérifier que les modales "aide" (📖) et "légende" 
 - Légende PNG : `"Inaccessible (bloque l'itinéraire)"` → `"Inaccessible"` (commit `0419752`)
 - **Principe** : sémantique portée par le **visuel** (couleur unique magenta pour jonction, hachures rouge/noir pour inaccessible) + icône dans la sidebar (⛔, 🪜) → pas besoin de doubler en texte. Labels sobres alignés avec le reste du projet.
 
-#### 31.7 Pour ajouter une 5ème type de zone (futur)
+#### 31.7 Ajouter un type de zone
 
-**À NE PAS OUBLIER** quand on ajoute un nouveau type de zone (au-delà des 4 actuels eau/remblais/effondrement/inaccessible) :
-
-1. `js/zones.js > ZONE_STYLES` — style visuel (color/fillColor/fillOpacity)
-2. `js/zones.js > ordreType` — position d'affichage dans la pile (ordre = z-index logique)
-3. `js/interface.js > _creerGroupeAccordeon zones` — bouton sous-action
-4. `js/interface.js > Aide intégrée` — ligne descriptive
-5. `js/utils.js > ZONE_STYLES_DATA + ZONE_STYLES_EMBED + ZONE_STYLES_EXPORT` — styles pour data layers + export rapide
-6. `js/utils.js > ajouterPointsDepuisJSON > zonesTriees ordre` — ordre embedded zones
-7. `js/utils.js > telechargerPlan > ordre` — tri zones session
-8. `js/exporter.js > _compterTypes / hasZones / zoneLabels / ordre / filtreZ + checkboxes ann_zones_*` (×~10 sites)
-9. `js/sessionExporter.js > _trierParType (×3 sites) / syncParent (×2) / zoneTypes filter / zoneTypesActifs + checkboxes adv_zones_* / conv_zones_*` (~8 sites)
-10. `js/styleResolver.js > CANON.zones.<type>._motif` — hachures en CanvasPattern si nécessaire (jamais un SVG : il passerait au-dessus des structures)
-11. `css/style.css` — styles spécifiques si besoin
-12. Pathfinder si bloquant : helper de détection dans `pathfinder.js`
-13. Doc : CLAUDE.md (cette section), AI_CONTEXT.md (liste anti-hallucination), README_USER.md, README.md (journal)
-
-C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne pas en oublier.
+Types actuels : `eau`, `masse-sol` (masse au sol, part comblée `comble`), `remblais`, `effondrement`, `inaccessible`,
+`pente`. La liste des ~25 sites (style du canon, saisie, icône, légende, filtres, zones embarquées, exports, échanges
+KMZ / GeoJSON / SIG / Générateur, champ propre au type, palettes délibérées, effets 3D / itinéraire, garde-fous, doc)
+vit dans la skill `.claude/skills/add-zone-type` (relevée sur l'ajout de `masse-sol`). Un grep large sur
+`"effondrement"` et `remblais` reste le meilleur filet. La masse au sol n'a **aucun effet** sur l'itinéraire tant que
+le lot 6 de `docs/ETUDE_REMBLAIS.md` n'est pas livré : ni contrainte dure, ni coût.
 
 ---
 

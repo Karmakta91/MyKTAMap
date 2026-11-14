@@ -174,6 +174,11 @@
         if (!Array.isArray(z.points) || z.points.length < 3) return;
         const props = proprietes("zone", z.type, _libelle("zones", z.type), z, KE.styleResolu("zones", z.type));
         if (multi) props.niveaux = nv;
+        // Masse au sol : part comblée (0-1), absente = ½ (relue par l'import SIG, colonne « comble »).
+        if (z.type === "masse-sol") {
+          props.comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z)
+            : (Number.isFinite(z.comble) && z.comble > 0 ? z.comble : 0.5);
+        }
         ajouter(polygone(z.points), props, z.uid);
       });
     }

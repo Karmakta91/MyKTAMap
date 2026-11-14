@@ -60,6 +60,7 @@ window.LegendCustomization = (function() {
     zones: {
       eau:          "Eau",
       remblais:     "Remblais",
+      "masse-sol":  "Masse au sol",
       effondrement: "Effondrement",
       inaccessible: "Inaccessible"
     },

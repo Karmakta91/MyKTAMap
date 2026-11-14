@@ -320,7 +320,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Mesure** | 📐 | Mesurer une distance ou une surface, **calculer la distance totale des tracés** et le **⛏️ volume exploité** d'un secteur, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points *(clic direct — interrupteur ON/OFF)* |
 | **Tracés** | 🛣️ | Tracer galeries principales, secondaires, chemins, jonctions |
-| **Zones** | ⬛ | Tracer des zones de remblais, effondrement, eau ou inaccessibles |
+| **Zones** | ⬛ | Tracer des zones de remblais, masse au sol, effondrement, eau ou inaccessibles |
 | **Structures** | 🏛️ | Piliers, murs et fronts de taille |
 
 **Comment ça marche :**
@@ -985,12 +985,25 @@ Dans le groupe **⬛ Zones**, des surfaces fermées pour annoter le plan :
 | Type | Aspect | Effet sur l'itinéraire |
 |---|---|---|
 | ⬛ **Remblais** | gris foncé | aucun |
+| ⬛ **Masse au sol** | sable à grains, contour en tirets | aucun pour l'instant |
 | 🟥 **Effondrement** | rouge | aucun |
 | 🟦 **Eau** | bleu | aucun |
 | ⛔ **Inaccessible** | hachures rouge sombre / noir | **bloque** le passage |
 | 🪜 **Zone jonction** (plan multi-niveau) | couleur du tracé jonction, voile léger | aucun : l'itinéraire passe par le tracé jonction qui la traverse (voir 🏗️ Mode multi-niveau) |
 
-Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone : **re-tape le premier point** (un cercle l'entoure dès le 3e point) ou appuie sur **✅ Fermer la zone en cours**. L'outil reste allumé : tape directement la zone suivante, et re-appuie sur le type pour l'éteindre. Quel que soit l'ordre de tracé, l'eau s'affiche dessous, puis les remblais, les effondrements, et l'inaccessible par-dessus les autres zones ; les structures (piliers, murs, fronts de taille) restent toujours au-dessus des zones.
+Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone : **re-tape le premier point** (un cercle l'entoure dès le 3e point) ou appuie sur **✅ Fermer la zone en cours**. L'outil reste allumé : tape directement la zone suivante, et re-appuie sur le type pour l'éteindre. Quel que soit l'ordre de tracé, l'eau s'affiche dessous, puis la masse au sol, les remblais, les effondrements, et l'inaccessible par-dessus les autres zones ; les structures (piliers, murs, fronts de taille) restent toujours au-dessus des zones.
+
+### ⬛ Masse au sol — part comblée
+
+Une **masse au sol** est un remblai partiel : il ne remplit qu'une partie de la hauteur de la galerie, et l'on marche dessus. Le **Remblais** reste la zone comblée jusqu'au ciel.
+
+- Dans la bulle de la zone, choisis la **part comblée** : ¼, ½, ¾ ou **Autre** (une valeur comme 0,9), puis **Appliquer la part comblée**. La bulle affiche aussi l'équivalent en mètres, d'après la hauteur du niveau (réglages du plan).
+- Sans valeur, une masse au sol vaut ½.
+- Sur la carte, plus la part est haute, plus il y a de grains.
+- À 1 ou plus, la galerie est pleine : la bulle propose de passer la zone en **Remblais**.
+- Le **Tableur** a une colonne **comble**, avec les mêmes choix.
+- La valeur suit la zone dans les exports **KMZ** et **GeoJSON**. À l'**import SIG**, « ms », « masse au sol » et « remblai partiel » donnent une masse au sol ; une colonne de hauteur facultative donne sa part (0,5 ou 50 %). Un polygone dont le type n'est pas reconnu devient une masse au sol, et l'écran de correspondance dit combien.
+- Pour l'instant, la masse au sol ne change ni l'itinéraire ni la vue 3D.
 
 ### ⛔ Zone « Inaccessible » — bloque l'itinéraire
 

@@ -4,12 +4,15 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// zones.js — tracé des zones polygonales remplies (eau, remblais, effondrement, inaccessible, pente, cust-…).
-// Fermeture : re-clic sur le 1er sommet (≥ 3 sommets) ou bouton « Fermer la zone ».
+// zones.js — tracé des zones polygonales remplies (eau, masse au sol, remblais, effondrement, inaccessible, pente,
+// cust-…). Fermeture : re-clic sur le 1er sommet (≥ 3 sommets) ou bouton « Fermer la zone ».
 // Expose : window.initZones, toggleZoneMode, getZones/setZones, getCurrentZone(Index), …
 // 🩸 La zone INACCESSIBLE bloque le pathfinder (segment qui traverse le polygone retiré du graphe) ; ses
 //   hachures sont un CanvasPattern (styleResolver.js) sur le canvas commun : elle passe sous les structures.
-// ⚠️ Empilement : eau < remblais < effondrement < inaccessible < structures (structures.js >
+// ⚠️ Masse au sol (`masse-sol`, remblai partiel) : `comble` = part de la hauteur de galerie comblée (0-1), absent = ½
+//   (styleResolver.js > ktaCombleZone) ; ses grains suivent cette part (ktaResolveStyle(…, { comble })). Sans effet
+//   sur l'itinéraire et la vue 3D tant que leurs lots ne sont pas livrés (docs/ETUDE_REMBLAIS.md).
+// ⚠️ Empilement : eau < masse au sol < remblais < effondrement < inaccessible < structures (structures.js >
 //   ktaStructuresAuDessus, rappelé après chaque rendu).
 // ⚠️ Plusieurs niveaux : `niveaux` (⊇ level, poiJonction.js > ktaNiveauxObjet), saisis dans la fiche de la zone
 //   (utils.js > attacherNotePopup) ; un seul polygone, affiché si l'un de ses niveaux est visible.
@@ -19,7 +22,9 @@
 // Styles : window.ktaResolveStyle (styleResolver.js), jamais de table locale.
 // Garde-fou : scripts/check-filets-donnees.js, check-uid.js, check-style-canon.js, check-zones-niveaux.js
 
-window.modeZone = null; // null | "remblais" | "effondrement" | "eau" | "inaccessible" | "pente" | "cust-…"
+// null | "remblais" | "masse-sol" | "effondrement" | "eau" | "inaccessible" | "pente" | "cust-…"
+window.modeZone = null;
+
 
 let zonesData = [];
 let currentZone = null;
@@ -37,7 +42,7 @@ const ZONE_STYLE_PREVIEW = {
 
 // Built-in et custom via ktaResolveStyle : objet NEUF à chaque appel (le muter ne contamine rien).
 let _resolverManquantSignaleZ = false;
-function _resolveZoneStyle(type) {
+function _resolveZoneStyle(type, zone) {
   if (typeof window.ktaResolveStyle !== "function") {
     if (!_resolverManquantSignaleZ) {
       _resolverManquantSignaleZ = true;
@@ -45,7 +50,10 @@ function _resolveZoneStyle(type) {
     }
     return null;
   }
-  return window.ktaResolveStyle("zones", type);
+  // Part comblée (masse au sol) : styleResolver.js > ktaCombleZone, chargé avant ce module dans l'app.
+  const opts = (zone && typeof window.ktaCombleZone === "function")
+    ? { comble: window.ktaCombleZone(zone) } : undefined;
+  return window.ktaResolveStyle("zones", type, opts);
 }
 
 // Niveaux d'une zone : règle commune points / zones (poiJonction.js > ktaNiveauxObjet).
@@ -95,6 +103,7 @@ function initZones() {
     } else {
       _typeLabel = (window.modeZone === "eau" ? "Eau"
                   : window.modeZone === "remblais" ? "Remblais"
+                  : window.modeZone === "masse-sol" ? "Masse au sol"
                   : window.modeZone === "effondrement" ? "Effondrement"
                   : window.modeZone === "inaccessible" ? "Inaccessible"
                   : window.modeZone === "pente" ? "Jonction"
@@ -160,6 +169,7 @@ function _labelTypeZone(type) {
   }
   return (type === "eau" ? "Eau"
         : type === "remblais" ? "Remblais"
+        : type === "masse-sol" ? "Masse au sol"
         : type === "effondrement" ? "Effondrement"
         : type === "inaccessible" ? "Inaccessible"
         : type === "pente" ? "Jonction"
@@ -250,10 +260,10 @@ function renderZones() {
   window.ktaRetirerCalque(previewLayer);
   previewLayer = null;
 
-  // Ordre d'empilement : jonction (voile en dessous : une autre zone posée dedans reste lisible), eau, remblais,
-  // effondrement, inaccessible au-dessus des autres zones (elle bloque le pathfinder, elle doit se voir), toutes
-  // sous les structures (rappel en fin de rendu).
-  const ordreType = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+  // Ordre d'empilement (KTA_ORDRE_ZONES) : jonction (voile en dessous : une autre zone posée dedans reste lisible),
+  // eau, masse au sol, remblais, effondrement, inaccessible au-dessus des autres zones (elle bloque le pathfinder,
+  // elle doit se voir), toutes sous les structures (rappel en fin de rendu).
+  const ordreType = window.KTA_ORDRE_ZONES || {};
   const zonesAffichage = [...zonesData].sort(function(a, b) {
     const oa = ordreType[a.type] !== undefined ? ordreType[a.type] : 99;
     const ob = ordreType[b.type] !== undefined ? ordreType[b.type] : 99;
@@ -267,7 +277,7 @@ function renderZones() {
     if (!_zonePasseFiltres(zone)) return;
 
     const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
-    const style = _resolveZoneStyle(zone.type) || _resolveZoneStyle("remblais");
+    const style = _resolveZoneStyle(zone.type, zone) || _resolveZoneStyle("remblais");
 
     if (zone === currentZone) {
       // En cours de tracé : aperçu en pointillés.
@@ -308,6 +318,7 @@ function renderZones() {
         const _zoneEmojis = {
           eau:          "💧",
           remblais:     "⬛",
+          "masse-sol":  "",
           effondrement: "🟥",
           inaccessible: "⛔",
           pente:        "🪜"
@@ -318,11 +329,15 @@ function renderZones() {
               const e = window.LegendCustomization.findCustomEntry(t);
               if (e) return e.label;
             }
-            if (_zoneEmojis[t]) return window.LegendCustomization.getLabel("zones", t);
+            // Type built-in (clé présente, même sans émoji : masse au sol) → libellé de la légende.
+            if (Object.prototype.hasOwnProperty.call(_zoneEmojis, t)) {
+              return window.LegendCustomization.getLabel("zones", t);
+            }
           }
           const LBL = {
             eau:          "💧 Eau",
             remblais:     "⬛ Remblais",
+            "masse-sol":  "Masse au sol",
             effondrement: "🟥 Effondrement",
             inaccessible: "⛔ Inaccessible",
             pente:        "🪜 Zone Jonction"

@@ -320,7 +320,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Measurement** | 📐 | Measure a distance or an area, **compute the total length of paths** and the **⛏️ mined volume** of a sector, clear |
 | **Point editing** | ✏️ | Add your own points *(direct click — ON/OFF switch)* |
 | **Paths** | 🛣️ | Draw main and secondary galleries, paths, junctions |
-| **Zones** | ⬛ | Draw backfill, collapse, water or inaccessible zones |
+| **Zones** | ⬛ | Draw backfill, partial fill, collapse, water or inaccessible zones |
 | **Structures** | 🏛️ | Pillars, walls and working faces |
 
 **How it works:**
@@ -985,12 +985,25 @@ In the **⬛ Zones** group, closed surfaces to annotate the map:
 | Type | Look | Effect on the route |
 |---|---|---|
 | ⬛ **Backfill** | dark grey | none |
+| ⬛ **Partial fill** | grained sand, dashed outline | none for now |
 | 🟥 **Collapse** | red | none |
 | 🟦 **Water** | blue | none |
 | ⛔ **Inaccessible** | dark red / black hatching | **blocks** the way |
 | 🪜 **Junction zone** (multi-level map) | junction trace colour, light veil | none: the route follows the junction trace that crosses it (see 🏗️ Multi-level mode) |
 
-Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
+Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then partial fill, backfill, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
+
+### ⬛ Partial fill — fill level
+
+A **partial fill** is rubble that only fills part of the gallery height, and you walk on it. **Backfill** remains the area filled up to the roof.
+
+- In the zone's bubble, choose the **fill level**: ¼, ½, ¾ or **Other** (a value such as 0.9), then **Apply fill level**. The bubble also shows the equivalent in metres, from the level height (plan settings).
+- Without a value, a partial fill counts as ½.
+- On the map, the higher the level, the more grains.
+- At 1 or more, the gallery is full: the bubble offers to turn the zone into **Backfill**.
+- The **Spreadsheet** has a **comble** column, with the same choices.
+- The value follows the zone in **KMZ** and **GeoJSON** exports. On **GIS import**, “ms”, “masse au sol” and “remblai partiel” give a partial fill; an optional height column gives its level (0.5 or 50 %). A polygon whose type is not recognised becomes a partial fill, and the matching screen says how many.
+- For now, a partial fill changes neither the route nor the 3D view.
 
 ### ⛔ "Inaccessible" zone — blocks the route
 

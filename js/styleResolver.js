@@ -9,8 +9,9 @@
 //   categorie ∈ "traces" | "zones" | "structures" ; types `cust-*` résolus via LegendCustomization.
 //   Sans opts : style de la carte, `inaccessible` hachurée par un CanvasPattern (même canvas que les
 //   autres vecteurs : l'ordre d'empilement zones < structures tient). opts.flat = true → aplat de repli
-//   (export bitmap, KMZ, fond OSM, pastilles).
+//   (export bitmap, KMZ, fond OSM, pastilles). opts.comble (0-1, absent = ½) → densité des grains de `masse-sol`.
 // · ktaStyleBuiltins(cat) → clés built-in · ktaSwatchColor · ktaTypeSwatchHtml · ktaLabelAvecPastille
+// · ktaCombleZone(zone) → part comblée d'une masse au sol (absent = ½) · KTA_ORDRE_ZONES (empilement des zones)
 // · Couleur liée : zones.pente (zone jonction) prend le trait de traces.jonction (`_couleurDe`).
 // · ktaAppliquerCouleurChoisie(cat, cle, style) : applique la couleur choisie par l'utilisateur
 //   (Légende → Modifier) à un style déjà construit — réservé aux deux palettes délibérées ci-dessous.
@@ -45,6 +46,15 @@
         fillOpacity: 1, weight: 3, opacity: 1,
         _flatFill: "#7a0000", _flatFillOpacity: 0.65,
         _motif: { voile: "#cc0000", voileOpacite: 0.45, raie: "#1a1f2e", largeur: 4, pas: 14 }
+      },
+      // Masse au sol (remblai partiel) : sable translucide, grains sombres et galets clairs dont le NOMBRE suit la
+      // part comblée (`opts.comble` = zone.comble) — `_motif.genre` "grains" (_motifCanvas) ; contour tireté court
+      // (jamais les tirets 10 6 de la jonction). Aplat de repli : le sable à 50 %. Décision produit (maquette B).
+      "masse-sol": {
+        color: "#6b5532", fillColor: "#c9b48c", fillOpacity: 1, weight: 3, opacity: 1, dashArray: "4 3",
+        _flatFill: "#c9b48c", _flatFillOpacity: 0.5,
+        _motif: { genre: "grains", fondOpacite: 0.5, grain: "#45361f", galet: "#efe6d0", tuile: 48, cases: [11, 10],
+          rGrain: 1.4, rGalet: 2.6, partGalets: 0.3, plafond: 0.85 }
       },
       // Zone jonction (salle dont le sol monte d'un niveau à l'autre). ⚠️ contrat (décision produit) : sa couleur
       // EST celle du tracé jonction (`_couleurDe`, couleur choisie comprise) : changer l'une change l'autre. Les
@@ -128,16 +138,67 @@
     return s;
   }
 
-  // ── Motif de hachures en CanvasPattern (un par type, construit une fois) ───
+  // ── Motifs en CanvasPattern (hachures : un par type ; grains : un par type et par cran) ───
   // ⚠️ Accepté tel quel en `fillColor` par le renderer canvas de Leaflet (ctx.fillStyle = …) ; ancré à
   // l'origine des points de calque : il suit la carte au glissé et garde sa taille à l'écran au zoom.
   // null (pas de canvas : Node, contexte refusé) → l'appelant retombe sur l'aplat.
   const _motifs = {};
-  function _motifCanvas(cle, fond, m) {
-    if (Object.prototype.hasOwnProperty.call(_motifs, cle)) return _motifs[cle];
+  // Part comblée → part des grains peints, bornée à m.plafond (un cran haut garde une étiquette lisible), arrondie au
+  // vingtième : au plus 18 motifs par type. Absente ou illisible : ½ (data-formats.md, champ `comble`).
+  function _partGrains(m, comble) {
+    const c = Number.isFinite(comble) ? Math.max(0, Math.min(1, comble)) : 0.5;
+    return Math.round(Math.min(c, m.plafond) * 20) / 20;
+  }
+  // Tuile de grains (genre "grains") : grille tremblée de cases[0] × cases[1] grains tirés dans un ORDRE FIXE (graine
+  // constante) : un cran plus haut garde les grains du cran d'en dessous, sans amas ni répétition visible.
+  function _tuileGrains(c, g, fond, m, part) {
+    const T = m.tuile, nx = m.cases[0], ny = m.cases[1];
+    let graine = 7;
+    const alea = function () { graine = (graine * 16807) % 2147483647; return graine / 2147483647; };
+    const grains = [];
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      grains.push({ x: (i + 0.15 + alea() * 0.7) * T / nx, y: (j + 0.15 + alea() * 0.7) * T / ny,
+        a: alea() * Math.PI, galet: alea() < m.partGalets, k: alea() });
+    }
+    grains.sort(function (p, q) { return p.k - q.k; });
+    c.width = T; c.height = T;
+    g.globalAlpha = m.fondOpacite;
+    g.fillStyle = fond;
+    g.fillRect(0, 0, T, T);
+    g.globalAlpha = 1;
+    const n = Math.round(part * grains.length);
+    for (let i = 0; i < n; i++) {
+      const p = grains[i];
+      // Copies aux bords : la tuile se raccorde sans couture.
+      for (let dx = -T; dx <= T; dx += T) for (let dy = -T; dy <= T; dy += T) {
+        g.beginPath();
+        if (p.galet) {
+          g.fillStyle = m.galet; g.strokeStyle = m.grain; g.lineWidth = 1.1;
+          g.ellipse(p.x + dx, p.y + dy, m.rGalet, m.rGalet * 0.75, p.a, 0, 2 * Math.PI);
+          g.fill(); g.stroke();
+        } else {
+          g.fillStyle = m.grain;
+          g.arc(p.x + dx, p.y + dy, m.rGrain, 0, 2 * Math.PI);
+          g.fill();
+        }
+      }
+    }
+  }
+  // `part` : genre "grains" seulement (_partGrains) ; la clé du cache la porte.
+  function _motifCanvas(cle, fond, m, part) {
+    const k = m.genre === "grains" ? cle + "@" + part : cle;
+    if (Object.prototype.hasOwnProperty.call(_motifs, k)) return _motifs[k];
     let motif = null;
     try {
-      if (typeof document !== "undefined" && document && typeof document.createElement === "function") {
+      if (typeof document !== "undefined" && document && typeof document.createElement === "function" &&
+          m.genre === "grains") {
+        const c = document.createElement("canvas");
+        const g = c.getContext && c.getContext("2d");
+        if (g && typeof g.createPattern === "function") {
+          _tuileGrains(c, g, fond, m, part);
+          motif = g.createPattern(c, "repeat");
+        }
+      } else if (typeof document !== "undefined" && document && typeof document.createElement === "function") {
         // Tuile carrée de côté pas·√2 : des rayures à 45° espacées de `pas` s'y raccordent bord à bord.
         const T = Math.round(m.pas * Math.SQRT2);
         const c = document.createElement("canvas");
@@ -162,8 +223,31 @@
         }
       }
     } catch (e) { motif = null; }
-    _motifs[cle] = motif;
+    _motifs[k] = motif;
     return motif;
+  }
+
+  // Échantillon de légende d'un type à grains : la tuile du cran ½ en image (data:), OPAQUE — fond composé sur le
+  // papier du plan : sur une surface sombre de l'interface, le sable translucide sortait brun foncé. null sans canvas.
+  const _echantillons = {};
+  function _echantillonGrains(cle, fond, m) {
+    if (Object.prototype.hasOwnProperty.call(_echantillons, cle)) return _echantillons[cle];
+    let url = null;
+    try {
+      if (typeof document !== "undefined" && document && typeof document.createElement === "function") {
+        const c = document.createElement("canvas");
+        const g = c.getContext && c.getContext("2d");
+        if (g && typeof c.toDataURL === "function") {
+          _tuileGrains(c, g, fond, m, _partGrains(m, 0.5));
+          g.globalCompositeOperation = "destination-over";
+          g.fillStyle = "#ffffff";
+          g.fillRect(0, 0, c.width, c.height);
+          url = c.toDataURL("image/png");
+        }
+      }
+    } catch (e) { url = null; }
+    _echantillons[cle] = url;
+    return url;
   }
 
   // Objets imbriqués (`rayures`, `_motif`) copiés aussi : l'appelant peut muter le style sans toucher la table.
@@ -240,7 +324,8 @@
       const fondCanon = s.fillColor;
       _appliquerOverride(categorie, cle, s);
       if (!plat && s._motif && s.fillColor === fondCanon) {
-        const motif = _motifCanvas(cle, fondCanon, s._motif);
+        const part = s._motif.genre === "grains" ? _partGrains(s._motif, opts && opts.comble) : undefined;
+        const motif = _motifCanvas(cle, fondCanon, s._motif, part);
         if (motif) {
           s.fillColor = motif;
         } else {
@@ -275,6 +360,16 @@
     return s.color || null;
   }
 
+  // Image (data:) de l'échantillon d'un type à grains (masse au sol), opaque, cran ½ ; null pour tout autre type,
+  // sans canvas, ou si la couleur canon est remplacée (Légende → Modifier : l'aplat choisi fait foi).
+  function ktaEchantillonType(categorie, cle) {
+    const t = CANON[categorie] && CANON[categorie][cle];
+    if (!t || !t._motif || t._motif.genre !== "grains") return null;
+    const s = ktaResolveStyle(categorie, cle, { flat: true });
+    if (!s || s.fillColor !== t._flatFill) return null;
+    return _echantillonGrains(cle, t.fillColor, t._motif);
+  }
+
   // Pastille HTML résolue en direct (trait ou carré bordé), à la place d'un émoji de couleur
   // qui ne suit pas la couleur choisie. `repli` rendu si le type est introuvable.
   // ⚠️ HTML : seulement dans un conteneur innerHTML. Les titres de popup échappent leur texte
@@ -292,6 +387,12 @@
       return '<span style="display:inline-block;width:18px;height:4px;background:' + s.color +
              ';vertical-align:middle;border-radius:1px;"></span>';
     }
+    // Type à grains (masse au sol) : l'échantillon opaque du motif (ktaEchantillonType).
+    const url = ktaEchantillonType(categorie, cle);
+    if (url) {
+      return '<span style="display:inline-block;width:13px;height:13px;background:url(' + url +
+             ') center/24px;border:2px dashed ' + s.color + ';vertical-align:middle;border-radius:3px;"></span>';
+    }
     return '<span style="display:inline-block;width:13px;height:13px;background:' + (s.fillColor || s.color) +
            ';border:2px solid ' + s.color + ';vertical-align:middle;border-radius:3px;"></span>';
   }
@@ -303,8 +404,12 @@
   function ktaLabelAvecPastille(categorie, cle, label) {
     const l = String(label == null ? "" : label);
     // Trait rayé (arc) : aucun émoji de couleur ne le dit, son libellé n'en porte pas ; la pastille est posée.
+    // Type à grains (masse au sol) : pas d'émoji non plus (aucun ne dit le sable), la pastille est posée.
     const st = ktaResolveStyle(categorie, cle, { flat: true });
-    if (st && st.rayures) return ktaTypeSwatchHtml(categorie, cle, "") + " " + l;
+    const t = CANON[categorie] && CANON[categorie][cle];
+    if ((st && st.rayures) || (t && t._motif && t._motif.genre === "grains")) {
+      return ktaTypeSwatchHtml(categorie, cle, "") + " " + l;
+    }
     for (let i = 0; i < _EMOJIS_COULEUR.length; i++) {
       const e = _EMOJIS_COULEUR[i];
       if (l.indexOf(e) === 0) {
@@ -317,6 +422,32 @@
 
   window.ktaResolveStyle    = ktaResolveStyle;
   window.ktaStyleBuiltins   = ktaStyleBuiltins;
+  // Part comblée d'une masse au sol (0-1) : `comble` s'il est un nombre > 0, sinon ½ (zone dessinée ou importée sans
+  // valeur). Une valeur ≥ 1 reste telle quelle : la fiche propose alors de passer en Comblé.
+  window.ktaCombleZone = function (zone) {
+    const c = zone ? Number(zone.comble) : NaN;
+    return Number.isFinite(c) && c > 0 ? c : 0.5;
+  };
+  // Part comblée en texte : « ¼ », « ½ », « ¾ » pour les crans, sinon la valeur (0,9 en décimale locale).
+  window.ktaTexteComble = function (v) {
+    const crans = { 0.25: "¼", 0.5: "½", 0.75: "¾" };
+    if (Object.prototype.hasOwnProperty.call(crans, v)) return crans[v];
+    const loc = typeof window.ktaLocale === "function" ? window.ktaLocale() : "fr-FR";
+    return Number(v).toLocaleString(loc, { maximumFractionDigits: 2 });
+  };
+  // Mètres de remblai d'une part comblée, d'après la hauteur du niveau de la zone (config.js > getNiveauVertical ; 2 m
+  // sans réglage) → { m, h } (mètres, hauteur de galerie). Une valeur pour tous les niveaux : celui de `level` sert.
+  window.ktaMetresComble = function (zone, v) {
+    const lvl = zone && Number.isInteger(zone.level) ? zone.level : 0;
+    let h = 2;
+    try {
+      const nv = typeof window.getNiveauVertical === "function" ? window.getNiveauVertical(lvl) : null;
+      if (nv && nv.hauteurM > 0) h = nv.hauteurM;
+    } catch (e) { /* hauteur par défaut */ }
+    return { m: Number(v) * h, h: h };
+  };
+  // Ordre d'empilement des types de zones (carte, exports, zones embarquées) : une seule table ; inconnu → au-dessus.
+  window.KTA_ORDRE_ZONES = { pente: -1, eau: 0, "masse-sol": 0.5, remblais: 1, effondrement: 2, inaccessible: 3 };
   // Pour les palettes délibérées : la règle « ce qu'une couleur repeint » n'est pas recopiée.
   window.ktaAppliquerCouleurChoisie = function(categorie, cle, style) {
     if (!style) return style;
@@ -327,6 +458,7 @@
   window.ktaAssombrir       = _assombrir;
   window.ktaSwatchColor       = ktaSwatchColor;
   window.ktaTypeSwatchHtml    = ktaTypeSwatchHtml;
+  window.ktaEchantillonType   = ktaEchantillonType;
   window.ktaLabelAvecPastille = ktaLabelAvecPastille;
   // ⚠️ Tests et diagnostic UNIQUEMENT : un module applicatif passe par ktaResolveStyle().
   window.__ktaStyleCanon  = CANON;

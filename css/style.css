@@ -18796,6 +18796,23 @@ html.kta-theme-light .kta-note-popup-jct-niveau {
 .kta-note-popup-niveaux-zone-cases { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
 .kta-note-popup-niveaux-zone-case { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .kta-note-popup-niveaux-zone .kta-note-popup-actions { margin-top: 6px; }
+/* Part comblée d'une masse au sol (utils.js > _combleHtml) : crans ¼ ½ ¾ / Autre, mètres de remblai. */
+.kta-note-popup-comble { margin-top: 6px; font-size: 12px; color: var(--kta-texte-2); }
+.kta-note-popup-comble-titre { color: var(--kta-texte-2); }
+.kta-note-popup-comble-crans { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; }
+.kta-note-popup-comble-cran { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.kta-note-popup .kta-note-popup-comble-autre {
+  /* 🩸 .leaflet-popup-content input impose width: 100 % !important : la saisie libre reste dans la ligne des crans. */
+  width: 5em !important; flex: 0 0 auto; margin-top: 0 !important; padding: 2px 6px !important;
+}
+.kta-note-popup-comble-metres { margin-top: 4px; color: var(--kta-texte-3); }
+.kta-note-popup-comble .kta-note-popup-actions { margin-top: 6px; }
+.kta-note-popup-comble-appliquer {
+  background: rgba(140, 180, 255, 0.14);
+  border: 1px solid rgba(140, 180, 255, 0.30);
+  color: var(--kta-texte-2);
+}
+.kta-note-popup-comble-appliquer:hover { background: rgba(140, 180, 255, 0.24); }
 .kta-note-popup-zone-jonction-avis { margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--kta-texte-2); }
 .kta-note-popup-jct-statut { margin-top: 6px; font-size: 12px; line-height: 1.4; }
 body.kta-theme-light .kta-convert-source { color: #1a1f2e; }

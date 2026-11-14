@@ -841,6 +841,10 @@
         parts.push('<Data name="mkm:niveaux"><value>' + extra.niveaux.join(",") + '</value></Data>');
       }
       if (extra && extra.copie) parts.push('<Data name="mkm:copie"><value>1</value></Data>');
+      // Masse au sol : part comblée (0-1), absente = ½ à la relecture.
+      if (extra && Number.isFinite(extra.comble)) {
+        parts.push('<Data name="mkm:comble"><value>' + extra.comble + '</value></Data>');
+      }
       // POI danger : jour du constat (« AAAA-MM-JJ », déjà validé par poiDanger.js).
       if (extra && extra.dateConstat) {
         parts.push('<Data name="mkm:dateConstat"><value>' + _xmlEsc(extra.dateConstat) + '</value></Data>');
@@ -903,8 +907,9 @@
       else if (zone.type === "pente") nom = "🪜 Jonction";   // même nom que le tracé jonction (#zone_pente)
       else nom = _nomType(zone.type);
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
-      const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null,
-        multi ? { niveaux: multi.niveaux, copie: multi.copie } : null);
+      const extra = multi ? { niveaux: multi.niveaux, copie: multi.copie } : {};
+      if (zone.type === "masse-sol" && Number.isFinite(zone.comble)) extra.comble = zone.comble;
+      const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null, extra);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +

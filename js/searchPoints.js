@@ -612,6 +612,7 @@
   }
   function _zoneTypeLabel(type) {
     const keys = { eau: "search.zoneType.eau", remblais: "search.zoneType.remblais",
+      "masse-sol": "legend.label.zones.masse-sol",
       effondrement: "search.zoneType.effondrement", inaccessible: "search.zoneType.inaccessible",
       pente: "search.zoneType.pente" };
     return _lcOuI18n("zones", type, keys[type] || null);

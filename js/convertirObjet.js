@@ -443,6 +443,7 @@
     delete neuf.toLevel;
     delete neuf.jonction;
     if (familleCible !== "zones") delete neuf.niveaux;   // plusieurs niveaux : propre aux zones (et aux POI)
+    if (typeCible !== "masse-sol") delete neuf.comble;   // part comblée : propre à la masse au sol (absente = ½)
     if (familleCible === "zones" && typeCible === "pente" && niv && Number.isInteger(niv.de) &&
         Number.isInteger(niv.vers) && niv.de !== niv.vers) {
       neuf.level = niv.de;
@@ -658,6 +659,39 @@
     return true;
   }
 
+  // ── Part comblée d'une masse au sol (fiche de la zone, crans ¼ ½ ¾ ou « Autre ») ──────────
+  // `valeur` = part de la hauteur de galerie (> 0) ; une valeur ≥ 1 est refusée ici : la fiche propose d'abord de
+  // passer en Comblé (convertir vers `remblais`). Une valeur pour tous les niveaux d'une zone multi-niveau.
+  // 🩸 Même objet muté en place (uid gardé, touch pour la synchro), comme changerNiveauxZone ; graphe non touché (la
+  // masse au sol est sans effet sur l'itinéraire tant que son lot n'est pas livré).
+  function changerComble(obj, valeur) {
+    // 🔒 lecture seule
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    const v = Number(valeur);
+    if (!obj || obj.type !== "masse-sol" || !Number.isFinite(v) || v <= 0 || v >= 1) return false;
+    const ecrire = _ecrivain("zones");
+    if (typeof ecrire !== "function") {
+      console.warn("[Convertir] setteur manquant pour la part comblée d'une zone");
+      return false;
+    }
+    const liste = _lire("zones").slice();
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable("zones");
+    const cible = liste[idx];
+    if (cible.type !== "masse-sol" || cible.comble === v) return false;   // rien à annuler
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState("zones") : null;
+    cible.comble = v;
+    if (window.KtaUid) window.KtaUid.touch(cible);
+    ecrire(liste);
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      const part = window.ktaTexteComble ? window.ktaTexteComble(v) : v;
+      window.HistoryManager.record(_t("masseSol.histoire", { part: part }), avant, "zones");
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+
   // ── Niveaux d'une zone jonction (fiche de la zone, « Du niveau » / « Au niveau ») ──────────
   // `level` = de, `niveaux` = [de, vers] : exactement deux niveaux, DIFFÉRENTS (comme un tracé jonction). Le sens de
   // la pente reste celui du tracé jonction qui la traverse (galerieEmprise.js > penteDeZone), pas l'ordre choisi ici.
@@ -811,7 +845,8 @@
   //     HistoryManager.record comme pour toute réapparition.
   //   - itinéraire calculé et aperçus (`_preview`) : jamais pris au tableau, toujours gardés.
   // Toutes les lignes sont validées AVANT toute écriture : la première fautive arrête tout →
-  // { erreur: { ligne (1 = première), code, type } }, code ∈ typeInconnu | typeIncompatible | typeInterdit | niveau.
+  // { erreur: { ligne (1 = première), code, type } }, code ∈ typeInconnu | typeIncompatible | typeInterdit | niveau |
+  // comble.
   // `opts.simuler` : rien n'est écrit (compte des suppressions avant la confirmation d'un plan partagé).
   // `opts.acces` = { lire, ecrire, categorie } : liste hors vecteurs (les POI du Tableur) — mêmes règles par uid,
   // sans validation de type (un point n'en a pas), `categorie` = celle de l'historique. ⚠️ L'appelant fournit la liste,
@@ -828,6 +863,9 @@
     return out;
   }
 
+  // `comble` d'une masse au sol : absent, ou part de la hauteur strictement entre 0 et 1 (≥ 1 = un Comblé : la colonne
+  // `type` le dit, pas cette valeur).
+  function _combleLisible(v) { return v === undefined || v === null || (Number.isFinite(v) && v > 0 && v < 1); }
   // `niveaux` d'un passage entre niveaux (poiJonction.js) : absent, ou liste d'entiers.
   function _niveauxLisibles(v) {
     return v == null || (Array.isArray(v) && v.every(Number.isInteger));
@@ -878,6 +916,7 @@
         if (vecteur && connus.indexOf(l.type) < 0) return fautive("typeInconnu");
         if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
         if (!_niveauxLisibles(l.niveaux)) return fautive("niveau");
+        if (!_combleLisible(l.comble)) return fautive("comble");
         plan.push({ neuf: l });
         continue;
       }
@@ -894,6 +933,7 @@
       }
       if (touche("level") && l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
       if (touche("niveaux") && !_niveauxLisibles(l.niveaux)) return fautive("niveau");
+      if (touche("comble") && !_combleLisible(l.comble)) return fautive("comble");
       if (touche("level") && l.level != null && l.level !== niveauDe(obj)) {
         if (CIBLES_INTERDITES[op.type || obj.type]) return fautive("niveau");
         // Zone jonction : ses deux niveaux se changent dans sa fiche (changerNiveauxPente), comme une jonction.
@@ -1187,6 +1227,7 @@
     changerNiveau: changerNiveau,   // liste « Niveau » de la popup (multi-niveau)
     changerNiveauxJonction: changerNiveauxJonction,   // fiche d'une jonction (fromLevel / toLevel)
     changerNiveauxZone: changerNiveauxZone,   // fiche d'une zone (niveaux en plus de `level`)
+    changerComble: changerComble,   // fiche d'une masse au sol (part comblée)
     // Règle seule, sans écriture ni historique : niveau en lot de la sélection (selectionZone.js > niveauLot).
     poserNiveau:   _poserNiveau,
     changerNiveauxPente: changerNiveauxPente,   // fiche d'une zone jonction (du niveau … au niveau …)

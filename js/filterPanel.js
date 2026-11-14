@@ -469,8 +469,9 @@
                 jonction: "🪜", itinerary: "🗺️" })[type] || "✨";
     }
     if (category === "zones") {
-      return ({ eau: "💧", remblais: "⬛", effondrement: "🟥",
-                inaccessible: "⛔", pente: "🪜" })[type] || "✨";
+      // Masse au sol : pas d'émoji (aucun ne dit le sable) — sa pastille résolue est toujours trouvée.
+      const z = { eau: "💧", remblais: "⬛", "masse-sol": "", effondrement: "🟥", inaccessible: "⛔", pente: "🪜" };
+      return Object.prototype.hasOwnProperty.call(z, type) ? z[type] : "✨";
     }
     if (category === "structures") {
       return ({ "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
@@ -696,7 +697,8 @@
            _section(window.I18n.t("filter.section.roadTypes"), "roads",
              _renderTypesSection("roads", "roadTypes", ["principal", "secondaire", "chemin", "jonction"]), "m-galerie") +
            _section(window.I18n.t("filter.section.zoneTypes"), "zones",
-             _renderTypesSection("zones", "zoneTypes", ["eau", "remblais", "effondrement", "inaccessible"]), "m-zone") +
+             _renderTypesSection("zones", "zoneTypes",
+               ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"]), "m-zone") +
            _section(window.I18n.t("filter.section.structTypes"), "structs",
              _renderTypesSection("structures", "structTypes", window.KTA_STRUCTURE_TYPES_BUILTIN ||
                ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"]),
@@ -1052,7 +1054,8 @@
       return { nom: nom || type || "?", type: nom ? type : "" };
     }
     const type = _lcLabel(fam.lc, o.type, o.type, { sansMarque: true });
-    return { nom: o.label || o.nom || type || "?", type: _emojiForType(fam.cle, o.type) + " " + type };
+    const e = _emojiForType(fam.cle, o.type);
+    return { nom: o.label || o.nom || type || "?", type: (e ? e + " " : "") + type };
   }
 
   // Créateur connu par la prise auteurObjet, "" s'il est inconnu, undefined sans la prise.

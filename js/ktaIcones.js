@@ -34,6 +34,10 @@
     "m-galerie": '<path d="M2 9c3 0 4-3 7-3s4 3 7 3 4-2 6-2"/><path d="M2 17c3 0 4-3 7-3s4 3 7 3 4-2 6-2"/>',
     "m-zone": '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4.6 11.4 11.4 4.6M4.6 19.4 19.4 4.6M12.6 ' +
       '19.4l6.8-6.8"/>',
+    // Masse au sol : le contour tireté et les galets de son motif (styleResolver.js > CANON.zones["masse-sol"]).
+    "m-masse-sol": '<rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.4"/><ellipse cx="10" ' +
+      'cy="10" rx="2" ry="1.5"/><ellipse cx="14.5" cy="15" rx="2" ry="1.5"/><circle cx="15" cy="9" r=".8"/>' +
+      '<circle cx="9" cy="15.5" r=".8"/>',
     "m-pilier": '<rect x="6" y="3" width="12" height="18" rx="1"/><path d="M6 9h12M6 15h12M11 3v6M14 9v6M10 15v6"/>',
     "ruler": '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 ' +
       '0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 ' +
@@ -507,6 +511,8 @@
     { e: "✏️", i: "pencil", a: /^(?:de la barre latérale|(?:button )?(?:in|on|of) the sidebar|de la barra lateral)/ },
     { e: "✏️", i: "pencil", a: /^(?:\(il se surligne\)|\(it lights up\)|\(se resalta\)|pour sortir du mode|again to leave|para salir del modo)/ },
     { e: "🛣️", i: "m-galerie" },
+    // Masse au sol : aucun emoji ne dit le sable ; le ⬛ suivi de son nom prend son icône (grille des zones de l'Aide).
+    { e: "⬛", i: "m-masse-sol", a: /^(?:Masse au sol|Partial fill|Relleno parcial)\b/ },
     { e: "⬛", i: "m-zone" },
     { e: "🏛️", i: "m-pilier" },
     { e: "📐", i: "ruler" },

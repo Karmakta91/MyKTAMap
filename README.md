@@ -583,6 +583,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-podometre-global.js` | Réglage de podomètre lu dans un plan-config au lieu du réglage global de l'appareil | pre-commit |
 | `check-poi-jonction.js` | POI entre niveaux (`jes` / `jpe` / `jps`) compté comme sortie de surface, jonctions absentes du graphe | pre-commit |
 | `check-niveaux-verticaux.js` | Géométrie verticale des niveaux (sol, hauteur de galerie, écart avec le dessus) : plan sans la donnée changé, pref locale qui ne gagne plus, écart stocké, consommateur qui relit les tables au lieu de `getNiveauVertical` | pre-commit |
+| `check-masse-sol.js` | Zone « Masse au sol » : grains qui ne suivent plus la part comblée, `comble` perdu par une copie ou à l'aller-retour KMZ / GeoJSON / SIG, fiche ou Tableur qui acceptent ≥ 1, défaut SIG d'un polygone non reconnu repassé en Comblé | pre-commit |
 | `check-zones-niveaux.js` | Zone reliée à plusieurs niveaux (`niveaux`) affichée hors de ses niveaux, qui ne bloque plus l'itinéraire sur chacun, ou champ perdu à l'aller-retour session / KMZ / GeoJSON | pre-commit |
 | `check-verifier-plan.js` | « Vérifier le plan » qui ne dit plus la même chose que l'itinéraire (segments coupés), contrôles C1 à C3 ou « vu, normal » cassés, test de zone dure écrit hors de la table unique | pre-commit |
 | `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
@@ -696,6 +697,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-plan-oriente.js` | Mode « plan orienté » : la vue tournée affiche tout au bon endroit |
 | `smoke/checkup-poi-jonction.js` | POI entre niveaux : raccords proposés et validés, itinéraire |
 | `smoke/checkup-point-precis.js` | Point précis d'un POI : pose depuis la fiche, pointillé 2D, session, itinéraire |
+| `smoke/checkup-masse-sol.js` | Masse au sol : motif par part comblée sur la carte, légende, fiche (crans, ⏪, passage en Remblais), Tableur, KMZ relu |
 | `smoke/checkup-zones-niveaux.js` | Zone reliée à plusieurs niveaux : cases de la fiche, filtre, itinéraire contourné sur chacun, ⏪, KMZ et GeoJSON relus |
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
 | `smoke/checkup-dessin-sans-fiche.js` | Outil armé (dessin, mesure, ajout de point, pickers) : tout toucher pose au point touché, aucune fiche, un seul outil à la fois (2D et 3D, doigt et souris) |
@@ -823,6 +825,13 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### Pas encore publié (branche `Karma_dev`)
+
+> Écart avec la prod v2.27.0.
+
+- **⬛ Zone « Masse au sol »** (`masse-sol`, lot 3 de `docs/ETUDE_REMBLAIS.md`, style retenu sur maquette : variante B) : remblai partiel, sur lequel on marche ; le Remblais reste le comblement jusqu'au ciel. **Style du canon** (`styleResolver.js > CANON.zones["masse-sol"]`) : sable translucide, grains sombres et galets clairs dont le **nombre suit la part comblée** (un `CanvasPattern` par cran, tuile de 48 px, grains cumulatifs, plafonnés à 85 % pour qu'une étiquette reste lisible), contour en tirets courts « 4 3 » (jamais ceux de la jonction) ; aplat sable à 50 % dans les exports, le KMZ et la Vue OSM ; pastille et échantillon de légende **opaques** (composés sur papier, `ktaEchantillonType`) ; icône `m-masse-sol`. **Part comblée** (`comble`, 0-1, absente = ½, `ktaCombleZone`) : bloc de la bulle (crans ¼ ½ ¾ ou « Autre », mètres d'après la hauteur du niveau, `KtaConvertir.changerComble`, une entrée ⏪), à 1 ou plus la bulle propose de passer la zone en Remblais ; colonne `comble` au Tableur (éditeur dédié, code d'erreur `comble` à l'application) ; une valeur pour tous les niveaux d'une zone multi-niveau ; recopiée par les zones embarquées (`_ktaDataPolygons`, `getAllEmbeddedZones`, fiche même sans note). **Échanges** : KMZ `#zone_masse-sol` + `mkm:comble` (export et relecture), GeoJSON propriété `comble`, import SIG (synonymes `ms` / `masse au sol` / `remblai partiel` → masse au sol, `mc` / `masse au ciel` / `comble` → Remblais, colonne de hauteur facultative : 0,5 ou 50 %) ; **défaut d'un polygone SIG non reconnu = masse au sol** (Générateur compris, import KMZ présélectionné), l'écran de correspondance dit combien tombent dans ce défaut ; avec « une couleur par niveau », la masse au sol garde sa clé. Légende in-app, filtres, statistiques, recherche, exports PNG / PDF / session / KMZ ; empilement eau < masse au sol < Remblais (`KTA_ORDRE_ZONES`, une seule table). **Sans effet sur l'itinéraire ni sur la vue 3D** pour l'instant (aplat sable au sol en 3D ; lots 4 et 6 de l'étude). Guides fr / en / es, Aide, `AI_CONTEXT.md`, `data-formats.md`.
+- 🛡️ `check-masse-sol.js` (pre-commit, 34 contrôles, falsifié) : canon et part par défaut, rendu par part, fiche et Tableur (≥ 1 refusé), KMZ / GeoJSON, import SIG (synonymes, défaut, colonne de hauteur, compte), copies et défauts du Générateur. `check-style-resolver` (masse au sol : motif par cran, densité, plafond, aplat, couleur choisie) et `check-kml-styles` (15 styles figés) étendus.
 
 #### v2.27.0 (14/11/2026) — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes (branche `Karma_dev`)
 

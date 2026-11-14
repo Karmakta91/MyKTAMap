@@ -13,6 +13,8 @@
 // ⚠️ Plan PARTAGÉ (KtaExtensions.importPartage) : un objet retiré reçoit une trace de suppression (sinon il revient
 //   du serveur) ; s'il en retire, il faut `remplacer` de la prise, et une confirmation chiffrée.
 // Plan multi-niveau : colonne « level » toujours présente, en liste (niveaux du plan + niveau actuel).
+// Masse au sol : colonne « comble » (part comblée) dès qu'une zone de ce type est là, éditée par crans ¼ ½ ¾ ou une
+//   valeur libre (_editerComble), en lecture seule sur les autres types ; absente = ½ (affiché « ½ (défaut) »).
 // 🩸 uid/updatedAt ne sont jamais des colonnes ; « Dupliquer » donne un uid neuf (js/ktaUid.js).
 // Garde-fous : scripts/check-resolution-convert.js, scripts/check-uid.js, scripts/check-calque-session.js
 
@@ -723,8 +725,11 @@
     set.delete("uid");
     set.delete("updatedAt");
     if (_niveauxPlan()) set.add("level");   // multi-niveau : toujours là, même sans aucun `level` (0 par défaut)
+    // Masse au sol : la part comblée a sa colonne, même si aucune zone ne la porte encore (absente = ½).
+    if (data.some(function(p) { return p && p.type === "masse-sol"; })) set.add("comble");
     // Ordre des clés courantes (level à côté de x/y) ; les autres suivent en queue.
-    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "tags", "etat", "description", "points", "profondeur", "date_update", "dateConstat"];
+    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "comble", "tags", "etat", "description",
+      "points", "profondeur", "date_update", "dateConstat"];
     const ordonnees = [];
     ordreCourant.forEach(function(k) { if (set.has(k)) { ordonnees.push(k); set.delete(k); } });
     set.forEach(function(k) { ordonnees.push(k); });
@@ -880,7 +885,7 @@
       _colonnes.forEach(function(col) {
         const v = p[col];
         const ro = (col === "id" || col === "points" || col === "accroches" || col === "precis" ||
-                    (col === "level" && _sansNiveau(p)));
+                    (col === "level" && _sansNiveau(p)) || (col === "comble" && p.type !== "masse-sol"));
         let cls = "";
         if (ro) cls += "col-readonly";
         const typeInconnu = (col === "type" && typesConnus.length > 0 && v != null && v !== "" &&
@@ -905,6 +910,10 @@
           const pts = Array.isArray(v.pts) ? v.pts.filter(Boolean)
             : [{ x: v.x, y: v.y }].concat(v.x2 !== undefined ? [{ x: v.x2, y: v.y2 }] : []);
           contenu = _escapeHtml(pts.map(function(a) { return q(a.x) + ", " + q(a.y); }).join(" → "));
+        } else if (col === "comble" && p.type === "masse-sol") {
+          // Part comblée : texte du cran (« ½ ») ; absente → la valeur par défaut, dite comme telle.
+          contenu = _escapeHtml(Number.isFinite(v) && v > 0 ? window.ktaTexteComble(v)
+            : window.I18n.t("tabledit.col.combleDefaut", { part: window.ktaTexteComble(0.5) }));
         } else if (col === "niveaux" && Array.isArray(v)) {
           contenu = _escapeHtml(v.map(function(n) { return window.ktaFormatNiveau(n); }).join(", "));
         } else if (col === "level" && niveauxPlan && !_sansNiveau(p) && (v == null || Number.isInteger(v))) {
@@ -994,6 +1003,7 @@
     const valOrig = p[col];
 
     if (col === "level" && _niveauxPlan()) { _editerNiveau(td, idx); return; }
+    if (col === "comble") { if (p.type === "masse-sol") _editerComble(td, idx); return; }
     const htmlOrig = td.innerHTML;
     td.classList.add("editing");
 
@@ -1083,6 +1093,73 @@
         valider();
         _focusVoisin(idx, col, e.shiftKey ? "left" : "right");
       }
+    });
+  }
+
+  // Cellule « comble » d'une masse au sol : liste ¼ ½ ¾ / Autre… ; « Autre… » remplace la liste par une saisie libre
+  // (virgule ou point). Une valeur ≤ 0, illisible ou ≥ 1 est refusée (≥ 1 : passer la zone en Comblé par sa colonne
+  // `type`) : la cellule garde son ancienne valeur et le dit.
+  function _editerComble(td, idx) {
+    const p = _data[idx];
+    const actuel = Number.isFinite(p.comble) && p.comble > 0 ? p.comble : 0.5;
+    const crans = [0.25, 0.5, 0.75];
+    const sel = document.createElement("select");
+    sel.setAttribute("aria-label", window.I18n.t("masseSol.label"));
+    const options = crans.indexOf(actuel) < 0 ? crans.concat([actuel]).sort(function(a, b) { return a - b; }) : crans;
+    options.forEach(function(c) {
+      const opt = document.createElement("option");
+      opt.value = String(c);
+      opt.textContent = window.ktaTexteComble(c);
+      if (c === actuel) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    const optAutre = document.createElement("option");
+    optAutre.value = "autre";
+    optAutre.textContent = window.I18n.t("masseSol.autre") + "…";
+    sel.appendChild(optAutre);
+    td.classList.add("editing");
+    td.innerHTML = "";
+    td.appendChild(sel);
+    sel.focus();
+    let fini = false;
+    function ecrire(v) {
+      if (fini) return;
+      fini = true;
+      if (Number.isFinite(v) && v > 0 && v < 1) {
+        if (v !== p.comble) { p.comble = v; _toucher(p); _modifie = true; }
+      } else if (v !== null && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(window.I18n.t(v >= 1 ? "tabledit.comble.versComble" : "masseSol.invalide"), "warn");
+      }
+      td.classList.remove("editing");
+      _construireCorps();
+      _miseAJourInfos();
+    }
+    function libre() {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.inputMode = "decimal";
+      input.value = window.ktaTexteComble(actuel);
+      input.setAttribute("aria-label", window.I18n.t("masseSol.autreAide"));
+      td.innerHTML = "";
+      td.appendChild(input);
+      input.focus();
+      input.select();
+      const lire = function() { return Number(String(input.value).trim().replace(",", ".")); };
+      input.addEventListener("blur", function() { ecrire(lire()); });
+      input.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") { e.preventDefault(); ecrire(null); }
+        else if (e.key === "Enter") { e.preventDefault(); ecrire(lire()); _focusVoisin(idx, "comble", "down"); }
+      });
+    }
+    sel.addEventListener("change", function() {
+      if (sel.value === "autre") { libre(); return; }
+      ecrire(Number(sel.value));
+    });
+    sel.addEventListener("blur", function() {
+      if (sel.value !== "autre" && sel.isConnected) ecrire(Number(sel.value));
+    });
+    sel.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") { e.preventDefault(); ecrire(null); }
     });
   }
 

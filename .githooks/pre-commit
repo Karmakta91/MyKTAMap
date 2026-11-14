@@ -280,6 +280,10 @@ node scripts/check-mur-ligne.js || exit $?
 # garde a l'aller-retour (session, KMZ, GeoJSON).
 node scripts/check-zones-niveaux.js || exit $?
 
+# Masse au sol (remblai partiel) : style du canon par part comblee, fiche, Tableur, `comble` garde a l'aller-retour
+# KMZ / GeoJSON / SIG, defaut SIG d'un polygone non reconnu = masse au sol (jamais un Comble pose en silence).
+node scripts/check-masse-sol.js || exit $?
+
 # Verifier le plan : C1 (troncons coupes) = graphe de l'itineraire, C1 a C3 sur donnees fictives, "vu, normal".
 node scripts/check-verifier-plan.js || exit $?
 

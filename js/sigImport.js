@@ -548,7 +548,12 @@
     },
     zones: {
       eau: "eau", water: "eau", inondation: "eau", "zone humide": "eau",
-      remblais: "remblais", remblai: "remblais", comblement: "remblais",
+      // Comblé (`remblais`) : masse au ciel ; `remblai(s)` seul reste Comblé (statu quo, visible et modifiable dans
+      // l'écran de correspondance). Masse au sol : remblai partiel (docs/ETUDE_REMBLAIS.md § 13).
+      remblais: "remblais", remblai: "remblais", comblement: "remblais", comble: "remblais", mc: "remblais",
+      "masse au ciel": "remblais",
+      ms: "masse-sol", "masse au sol": "masse-sol", "masse-sol": "masse-sol", "remblai partiel": "masse-sol",
+      "remblais partiel": "masse-sol", "remblais partiels": "masse-sol",
       effondrement: "effondrement", eboulement: "effondrement", fontis: "effondrement",
       inaccessible: "inaccessible", interdit: "inaccessible", danger: "inaccessible"
     }
@@ -574,6 +579,32 @@
     _collecte(normalise.lignes,    "lignes");
     _collecte(normalise.polygones, "polygones");
     return out;
+  }
+
+  // Part comblée d'une masse au sol lue dans la colonne `cle` (facultative) : « 0,5 » ou 0.5 = part ; « 50 % » ou un
+  // nombre de 1 à 100 = pourcentage. Vide, illisible, ≤ 0 ou ≥ 1 (un Comblé) → null : la zone garde le défaut (½).
+  function combleDe(props, cle) {
+    if (!cle || !props) return null;
+    const k = _trouverCle(props, cle);
+    if (!k || props[k] == null) return null;
+    const brut = String(props[k]).trim();
+    const n = Number(brut.replace("%", "").trim().replace(",", "."));
+    if (!Number.isFinite(n) || n <= 0) return null;
+    const part = (/%$/.test(brut) || n > 1) ? n / 100 : n;
+    return part > 0 && part < 1 ? Math.round(part * 1000) / 1000 : null;
+  }
+
+  // Polygones qui tombent dans le type par défaut de l'écran de correspondance (masse au sol) : valeur vide, ou sans
+  // synonyme de zone ni de structure. Compté pour être dit à l'écran (createConf.js > _sigImpMajDefaut).
+  function compterPolygonesDefaut(normalise, cle) {
+    let n = 0;
+    ((normalise && normalise.polygones) || []).forEach(function(it) {
+      const k = cle ? _trouverCle(it.props, cle) : null;
+      const v = (k && it.props[k] != null) ? String(it.props[k]).trim() : "";
+      const t = _norm(v);
+      if (!v || (!SYNONYMES.zones[t] && !SYNONYMES.structures[t])) n++;
+    });
+    return n;
   }
 
   function proposerMapping(valeurs, categorie) {
@@ -633,7 +664,7 @@
     const mapTraces  = opts.mapTraces || {};
     const mapZones   = opts.mapZones  || {};
     const typeDefaut = opts.roadType  || "secondaire";
-    const zoneDefaut = opts.zoneType  || "remblais";
+    const zoneDefaut = opts.zoneType  || "masse-sol";
     const cleType    = opts.cleType   || null;
     const TYPES_POLYLIGNE = ["mur-ligne", "front-1", "front-2", "arc"];
 
@@ -697,7 +728,9 @@
     opts = opts || {};
     const tagDefaut   = opts.pointTag || "default";
     const typeDefaut  = opts.roadType || "secondaire";
-    const zoneDefaut  = opts.zoneType || "remblais";
+    // 🩸 Défaut d'un polygone non reconnu = masse au sol (décision produit) : un Comblé posé en silence par un import
+    // mal reconnu deviendrait un obstacle ; l'écran de correspondance dit combien tombent dans ce défaut.
+    const zoneDefaut  = opts.zoneType || "masse-sol";
     const cleType     = opts.cleType  || null;         // colonne SIG choisie
     const mapTraces   = opts.mapTraces || {};
     const mapZones    = opts.mapZones  || {};
@@ -733,6 +766,9 @@
     }
 
     const points = [], roads = [], zones = [], structures = [];
+    // Colonne de hauteur facultative (masse au sol) et compte des polygones tombés dans le type par défaut.
+    const cleComble = opts.cleComble || null;
+    let nbDefautZones = 0;
 
     // Types par niveau : opt-in.
     const couleurParNiveau = opts.couleurParNiveau === true;
@@ -761,8 +797,9 @@
       // type de niveau le confondrait avec les fronts du même étage. Un arc aussi, pour l'inverse : devenu type
       // personnalisé en ligne, la vue 3D le compterait comme obstacle (tracking.js > _formeObstacle, avecPerso).
       if (categorie === "structures" && (typeBase === "mur-ligne" || typeBase === "arc")) return typeBase;
-      // Zone jonction : garde SA clé (la 3D et la fiche la lisent par `pente`), couleur du tracé jonction.
-      if (categorie === "zones" && typeBase === "pente") return typeBase;
+      // Zone jonction : garde SA clé (la 3D et la fiche la lisent par `pente`), couleur du tracé jonction. Masse au
+      // sol aussi : sa part comblée (fiche, 3D, itinéraire) se lit par `masse-sol`, jamais par un type de niveau.
+      if (categorie === "zones" && (typeBase === "pente" || typeBase === "masse-sol")) return typeBase;
       const estLigne = (categorie === "traces") || TYPES_POLYLIGNE.indexOf(typeBase) >= 0;
       // Un id par (catégorie, FORME, niveau) : un front (ligne) et un pilier (polygone) ne partagent pas d'entrée.
       const id = _idNiveau(categorie + (estLigne ? "-l" : ""), lvl);
@@ -842,9 +879,14 @@
       });
       if (pts.length < 3) return;
       const v = _valeurType(z.props);
+      if (!(v && mapZones[v])) nbDefautZones++;
       const rZ = _router((v && mapZones[v]) || zoneDefaut, "zones");
       const o = { type: rZ.type, points: pts };
       if (z.nom) o.note = z.nom;
+      if (rZ.type === "masse-sol") {
+        const c = combleDe(z.props, cleComble);
+        if (c !== null) o.comble = c;
+      }
       const lvl = _niveauDe(z.props);
       if (lvl !== null) o.level = lvl;
       o.type = _typeNiveau(o.type,
@@ -860,6 +902,8 @@
       customEntries: customEntries,
       stats: { points: points.length, roads: roads.length, zones: zones.length,
                structures: structures.length,
+               // Polygones sans type reconnu, rangés dans le type par défaut (masse au sol, sauf choix contraire).
+               zonesDefaut: nbDefautZones,
                // Répartition par niveau affichée AVANT de générer : un import multi-niveaux retombé à plat se voit.
                parNiveau: (function() {
                  const r = {};
@@ -1149,6 +1193,8 @@
     analyserAttributs:  analyserAttributs,
     valeursParFamille:  valeursParFamille,
     proposerMapping:    proposerMapping,
+    combleDe:           combleDe,   // part comblée lue dans la colonne de hauteur (masse au sol)
+    compterPolygonesDefaut: compterPolygonesDefaut,   // polygones rangés dans le type par défaut
     previsualiserEntreesNiveaux: previsualiserEntreesNiveaux,
     ingest:             ingest,
     genererZipMyktamap: genererZipMyktamap

@@ -965,6 +965,7 @@
       const ZONE_LABELS = {
         eau:          window.I18n.t("ui.refonte.label_zone_eau"),
         remblais:     window.I18n.t("ui.refonte.label_zone_remblais"),
+        "masse-sol":  window.I18n.t("legend.label.zones.masse-sol"),
         effondrement: window.I18n.t("ui.refonte.label_zone_effondrement"),
         inaccessible: window.I18n.t("ui.refonte.label_zone_inaccessible"),
         pente:        window.I18n.t("ui.refonte.label_zone_pente")
@@ -1331,6 +1332,7 @@
         // Libellé par LC ; emoji en suffixe (LC.getLabel rend le texte seul).
         const fallbackTxt = t === "eau" ? window.I18n.t("ui.refonte.label_zone_eau") :
                             t === "remblais" ? window.I18n.t("ui.refonte.label_zone_remblais") :
+                            t === "masse-sol" ? window.I18n.t("legend.label.zones.masse-sol") :
                             t === "effondrement" ? window.I18n.t("ui.refonte.label_zone_effondrement") :
                             t === "inaccessible" ? window.I18n.t("ui.refonte.label_zone_inaccessible") :
                             t === "pente" ? window.I18n.t("ui.refonte.label_zone_pente") : t;

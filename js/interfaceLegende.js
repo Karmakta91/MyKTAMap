@@ -274,6 +274,15 @@ function _ktaLegendeCorps(src, opts) {
   }
   let contenuZones = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.ktaIcone("m-zone")} ${window.I18n.t("legendui.section.zones")}</div>`;
   contenuZones += _ligneZone("eau");
+  // Masse au sol : l'échantillon opaque de ses grains et son contour tireté (styleResolver.js > ktaEchantillonType) ;
+  // couleur remplacée par l'utilisateur : la ligne d'aplat commune.
+  const _echMasse = typeof window.ktaEchantillonType === "function"
+    ? window.ktaEchantillonType("zones", "masse-sol") : null;
+  if (_echMasse && _visible("zones", "masse-sol")) {
+    contenuZones += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:url(${_echMasse}) center/28px; height:14px; border:2px dashed ${_couleurTrait("zones", "masse-sol")};"></span><span class="kta-legende-label">${_label("zones", "masse-sol")}</span></div>`;
+  } else {
+    contenuZones += _ligneZone("masse-sol");
+  }
   contenuZones += _ligneZone("remblais");
   contenuZones += _ligneZone("effondrement");
   // Inaccessible : fond hachuré, traité à part.

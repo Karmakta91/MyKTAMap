@@ -308,7 +308,7 @@
       // kmzExport > _emitExtendedDataLevel. Absent (KMZ tiers) → null → niveau 0 côté appelant.
       const _mkmData = (function() {
         const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false, dateConstat: null,
-          jonction: false };
+          jonction: false, comble: null };
         const dataEls = pm.querySelectorAll(":scope > ExtendedData > Data");
         for (let j = 0; j < dataEls.length; j++) {
           const el = dataEls[j];
@@ -323,6 +323,12 @@
             continue;
           }
           if (name === "mkm:copie") { out.copie = (valEl.textContent || "").trim() === "1"; continue; }
+          // Masse au sol : part comblée (décimale), gardée seulement si elle est un nombre > 0.
+          if (name === "mkm:comble") {
+            const c = Number((valEl.textContent || "").trim().replace(",", "."));
+            if (Number.isFinite(c) && c > 0) out.comble = c;
+            continue;
+          }
           // Ancien marqueur de zone jonction (KMZ d'avant le type `pente`) : converti à l'import.
           if (name === "mkm:jonction") { out.jonction = (valEl.textContent || "").trim() === "1"; continue; }
           if (name === "mkm:dateConstat") {
@@ -448,7 +454,7 @@
             if (Number.isInteger(_mkmData.level)) _st.level = _mkmData.level;
             out.structures.push(_st);
           } else {
-            const zoneMatch     = _styleUrl.match(/^#zone_(eau|remblais|effondrement|inaccessible|pente)$/);
+            const zoneMatch     = _styleUrl.match(/^#zone_(eau|masse-sol|remblais|effondrement|inaccessible|pente)$/);
             const zoneCustMatch = _styleUrl.match(/^#zone_(cust-[A-Za-z0-9_-]+)$/);
             const zoneType = (zoneMatch && zoneMatch[1])
                              ? zoneMatch[1]
@@ -462,6 +468,7 @@
             };
             if (Number.isInteger(_mkmData.level)) _zn.level = _mkmData.level;
             if (_mkmData.niveaux) _zn.niveaux = _mkmData.niveaux;
+            if (zoneType === "masse-sol" && _mkmData.comble !== null) _zn.comble = _mkmData.comble;
             if (_mkmData.niveaux && _mkmData.jonction && _mkmData.niveaux.length >= 2) _zn.type = "pente";
             out.zones.push(_zn);
           }
