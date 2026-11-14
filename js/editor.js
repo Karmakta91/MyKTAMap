@@ -53,7 +53,7 @@ const EDITOR_TAG_LABELS = {
   info:     "Information",
   elec:     "Électricité",
   epure:    "Épure",
-  plaque:   "Plaque indication",
+  plaque:   "Plaque/indication",
   portail:  "Portail (liaison inter-plan)",
   ossuaire: "Ossuaire",
   outil:    "Outil de carrier",

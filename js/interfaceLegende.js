@@ -42,7 +42,7 @@ const LEGENDE_LABELS = {
   chatiere: "Chatière",
   passage:  "Passage",
   danger:   "Danger",
-  plaque:   "Plaque indication",
+  plaque:   "Plaque/indication",
   portail:  "Portail (liaison inter-plan)",
   ossuaire: "Ossuaire",
   outil:    "Outil de carrier",
