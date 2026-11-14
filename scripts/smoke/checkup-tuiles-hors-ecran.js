@@ -9,14 +9,17 @@
 //   1. peu de tuiles posées et peu de REQUÊTES de tuiles parties (échoue si tout le niveau est posé) ;
 //   2. aucun trou : chaque point de l'écran dans le plan est couvert, au départ ET après déplacement ;
 //   3. filtre multi-niveau : niveau 0 masqué → aucune tuile ; ré-affiché → seulement les proches.
+// Plan V2 FICTIF fabriqué par le checkup (aucun fichier : ni dans data/ ni ailleurs) : une entrée ajoutée à la
+// volée à data/index.json, un plan-config V2 et des tuiles PNG unies générées en mémoire, servis par page.route
+// (Service Worker bloqué : toutes les requêtes passent par l'interception). Grille de 32 × 20 tuiles au niveau
+// le plus fin : assez grand pour que « tout le niveau posé » se voie.
 // Usage : node scripts/smoke/checkup-tuiles-hors-ecran.js
 "use strict";
 
 const { chromium } = require("playwright");
 const lancerNavigateur = require("./navigateur.js");   // repli Chromium → Edge
 const attendre = require("./attendre.js");   // pas de waitForFunction : refusé par la CSP de l'app
-const fs = require("fs");
-const path = require("path");
+const zlib = require("zlib");
 const server = require("./server.js");
 
 const BASE = "http://127.0.0.1:" + (parseInt(process.env.SMOKE_PORT, 10) || 8123);   // même port que server.js
@@ -27,15 +30,70 @@ const LS_PREGATES = {
   "myktamap_tutorial_seen_v1": "1"
 };
 
-function planAOuvrir() {
-  try {
-    const idx = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "data", "index.json"), "utf8"));
-    const plans = (idx && idx.plans) || [];
-    const fictif = plans.find(function (p) { return /fictif/i.test(p.name || ""); });
-    return { nom: (fictif || plans[0] || {}).name || "Relevé fictif de test", fictif: !!fictif };
-  } catch (e) { return { nom: "Relevé fictif de test", fictif: true }; }
+// ── Plan V2 fictif ──
+const TUILE = 512, NB_X = 32, NB_Y = 20;
+const PLAN = { id: "checkup_v2_fictif", dossier: "data/checkup-v2-fictif", nom: "Plan V2 fictif du checkup" };
+const PLAN_CONFIG = {
+  plan: { name: PLAN.nom, version: "V2", author: "checkup", imageWidth: TUILE * NB_X, imageHeight: TUILE * NB_Y,
+    baseImage: "data/fond.png", tiledV2: true },
+  imageLayers: [], dataLayers: [], tracking: {}, icons: {}, iconsEmbarquees: [],
+  tiling: { version: 2, tileSize: TUILE, format: "png", alpha: false, minNativeZoom: -3, maxNativeZoom: 0 }
+};
+
+// PNG uni (RVB 8 bits) de cote × cote : signature, IHDR, IDAT (zlib), IEND.
+function pngUni(cote, r, v, b) {
+  const crcTable = [];
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    crcTable[n] = c >>> 0;
+  }
+  const crc = function (buf) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  };
+  const bloc = function (type, data) {
+    const t = Buffer.from(type, "ascii"), lg = Buffer.alloc(4), cs = Buffer.alloc(4);
+    lg.writeUInt32BE(data.length);
+    cs.writeUInt32BE(crc(Buffer.concat([t, data])));
+    return Buffer.concat([lg, t, data, cs]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(cote, 0); ihdr.writeUInt32BE(cote, 4);
+  ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  const ligne = Buffer.alloc(1 + cote * 3);
+  for (let x = 0; x < cote; x++) { ligne[1 + x * 3] = r; ligne[2 + x * 3] = v; ligne[3 + x * 3] = b; }
+  const brut = Buffer.alloc(ligne.length * cote);
+  for (let y = 0; y < cote; y++) ligne.copy(brut, y * ligne.length);
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), bloc("IHDR", ihdr),
+    bloc("IDAT", zlib.deflateSync(brut)), bloc("IEND", Buffer.alloc(0))]);
 }
-const PLAN = planAOuvrir();
+// Une tuile par niveau (teinte distincte), le fond de repli en petit.
+const TUILES = { "0": pngUni(TUILE, 90, 110, 140), "-1": pngUni(TUILE, 110, 130, 90),
+  "-2": pngUni(TUILE, 140, 100, 90), "-3": pngUni(TUILE, 120, 120, 120) };
+const FOND = pngUni(64, 100, 100, 100);
+
+async function servirPlanFictif(page) {
+  await page.route(/\/data\/index\.json(\?.*)?$/, async function (route) {
+    const rep = await route.fetch();
+    let idx;
+    try { idx = await rep.json(); } catch (e) { idx = { plans: [] }; }
+    idx.plans = (idx.plans || []).concat([{ id: PLAN.id, path: PLAN.dossier, name: PLAN.nom }]);
+    await route.fulfill({ response: rep, contentType: "application/json", body: JSON.stringify(idx) });
+  });
+  const echap = PLAN.dossier.replace(/[/-]/g, "\\$&");
+  await page.route(new RegExp("/" + echap + "/(.*)$"), function (route) {
+    const p = new URL(route.request().url()).pathname.split("/" + PLAN.dossier + "/")[1] || "";
+    const m = /tiles\/z(-?\d)\/x\d+_y-?\d+\.png$/.exec(p);
+    if (p === "plan-config.json") {
+      return route.fulfill({ contentType: "application/json", body: JSON.stringify(PLAN_CONFIG) });
+    }
+    if (m && TUILES[m[1]]) return route.fulfill({ contentType: "image/png", body: TUILES[m[1]] });
+    if (/fond\.png$/.test(p)) return route.fulfill({ contentType: "image/png", body: FOND });
+    return route.fulfill({ status: 404, body: "" });
+  });
+}
 
 const problemes = [];
 function pb(m) { problemes.push(m); console.log("  ❌ " + m); }
@@ -47,8 +105,9 @@ function inf(m) { console.log("  •  " + m); }
   nav = await lancerNavigateur(chromium);
   const erreurs = [];
   try {
-    if (!PLAN.fictif) inf("⚠️ le relevé fictif n'est pas dans data/index.json — checkup sur « " + PLAN.nom + " »");
-    const page = await nav.newPage({ viewport: { width: 1200, height: 850 } });
+    const ctx = await nav.newContext({ viewport: { width: 1200, height: 850 }, serviceWorkers: "block" });
+    const page = await ctx.newPage();
+    await servirPlanFictif(page);
     page.on("pageerror", function (e) { erreurs.push(String(e)); });
     let requetesTuiles = 0;
     page.on("request", function (r) { if (/\/tiles\/z-?\d+\//.test(r.url())) requetesTuiles++; });

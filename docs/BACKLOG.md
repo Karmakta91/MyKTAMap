@@ -150,10 +150,9 @@
 
 ## Entrant
 
-- **Deux checkups rouges hérités** — `checkup-ouvertures-enchainees` : erreur Leaflet `_clear` / `_redraw`, reproduite
-  à l'identique sur `938dda8e` (14/11) ; `checkup-tuiles-hors-ecran` : attend un plan V2 absent d'une copie séparée.
-  `qui: Claude · action: corriger l'erreur Leaflet ou le test ; plan V2 fictif fourni au second · depuis: 14/11/2026
-  · taille: S`
+- **`_redraw()` direct du renderer en Vue OSM** — `osmView.js` et `osmHomePreview.js` appellent `r._redraw()` sans
+  annuler le redessin en attente : même motif que le bug corrigé dans `structures.js > majLargeurFronts` (14/11).
+  `qui: Claude · action: annuler la requête en attente, garde renderer monté, checkup · depuis: 14/11/2026 · taille: XS`
 - **Pile de test Docker sur le port de Sonar** — une pile de test a pris le 9000 (13/11) : la porte Sonar de
   `merge-main.ps1` échoue tant qu'elle tourne. Refuser ce port aux piles de test, ou les sortir de sa plage.
   `qui: Claude · action: trouver la pile en cause, plage de ports réservée · depuis: 13/11/2026 · taille: XS`
@@ -165,10 +164,6 @@
   et `css/` portent l'en-tête aujourd'hui sans que rien ne l'impose.
   `qui: Claude · action: ajouter addons/**/*.js et css/*.css au périmètre · depuis: 13/11/2026 · taille: XS`
 
-- **`check-uid.js` instable : « 5 000 tirages distincts »** — 1 échec sur 4 au pre-commit le 12/11 : 5 000 uid
-  dans la même milliseconde, 6 caractères aléatoires, collision possible (doublons déjà régénérés par `ensureAll`).
-  `qui: Claude · action: tirages étalés ou moins nombreux, sans affaiblir le test · fini: 20 passages verts
-  · depuis: 12/11/2026 · taille: XS`
 - **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
   d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
   `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
