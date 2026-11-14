@@ -102,7 +102,7 @@ function initZones() {
       _typeLabel = e ? e.label : window.modeZone;
     } else {
       _typeLabel = (window.modeZone === "eau" ? "Eau"
-                  : window.modeZone === "remblais" ? "Remblais"
+                  : window.modeZone === "remblais" ? "Comblé"
                   : window.modeZone === "masse-sol" ? "Masse au sol"
                   : window.modeZone === "effondrement" ? "Effondrement"
                   : window.modeZone === "inaccessible" ? "Inaccessible"
@@ -168,7 +168,7 @@ function _labelTypeZone(type) {
     return e ? e.label : type;
   }
   return (type === "eau" ? "Eau"
-        : type === "remblais" ? "Remblais"
+        : type === "remblais" ? "Comblé"
         : type === "masse-sol" ? "Masse au sol"
         : type === "effondrement" ? "Effondrement"
         : type === "inaccessible" ? "Inaccessible"
@@ -336,7 +336,7 @@ function renderZones() {
           }
           const LBL = {
             eau:          "💧 Eau",
-            remblais:     "⬛ Remblais",
+            remblais:     "⬛ Comblé",
             "masse-sol":  "Masse au sol",
             effondrement: "🟥 Effondrement",
             inaccessible: "⛔ Inaccessible",

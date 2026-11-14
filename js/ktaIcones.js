@@ -784,8 +784,9 @@
     // Compteurs de la barre du haut (en minuscules) ; les catégories de la Recherche (capitale) sont en SVG.
     { e: "🛣️", s: "compteurs de la barre du haut", b: /(?:points?|puntos?) ·$/ },
     { e: "⬛", s: "compteurs de la barre du haut", b: /(?:tracés|paths|trazados) ·$/ },
-    { e: "⬛", s: "type Remblais (pastille de type), fond noir de l'export",
-      a: /^(?:Remblais|Backfill|Rubble|Escombros|Noir|Black|Negro)\b/ },
+    // 🩸 Le é final de « Comblé » n'est pas un caractère de mot : \b n'y tiendrait pas, d'où le regard en avant.
+    { e: "⬛", s: "type Comblé (pastille de type), fond noir de l'export",
+      a: /^(?:Comblé|Filled to roof|Colmatado|Noir|Black|Negro)(?![\wÀ-ÿ])/ },
     { e: "⬛", s: "zone du Secours, POI Bloqué",
       a: /^(?:Définir zone|Define (?:a )?zone|Definir zona|Bloqué|Blocked|Bloqueado)/ },
     { e: "⛏️", s: "famille Patrimoine des types de points (légende, export)", a: /^(?:Patrimoine|Heritage|Patrimonio)\b/ },
@@ -1144,7 +1145,7 @@
     { e: "↔️", s: "flèche typographique entre deux termes (N0 ↔ N+1, session ↔ calques)" },
     { e: "©", s: "symbole du droit d'auteur dans l'attribution citée telle quelle" },
     { e: "⛔", s: "type de zone Inaccessible : son repli dans l'interface est ce même emoji" },
-    { e: "⬛", s: "pastille du type Remblais, statut Bloqué du Secours (la couleur est l'information)" },
+    { e: "⬛", s: "pastille du type Comblé, statut Bloqué du Secours (la couleur est l'information)" },
     { e: "🚪", s: "tag POI Point d'entrée du plan (icône du catalogue)" },
     { e: "🟦", s: "pastille de couleur d'un type (la couleur est l'information)" },
     { e: "🟨", s: "pastille de couleur d'un type" },

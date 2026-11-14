@@ -320,7 +320,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 | **Mesure** | 📐 | Mesurer une distance ou une surface, **calculer la distance totale des tracés** et le **⛏️ volume exploité** d'un secteur, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points *(clic direct — interrupteur ON/OFF)* |
 | **Tracés** | 🛣️ | Tracer galeries principales, secondaires, chemins, jonctions |
-| **Zones** | ⬛ | Tracer des zones de remblais, masse au sol, effondrement, eau ou inaccessibles |
+| **Zones** | ⬛ | Tracer des zones Comblé, masse au sol, effondrement, eau ou inaccessibles |
 | **Structures** | 🏛️ | Piliers, murs et fronts de taille |
 
 **Comment ça marche :**
@@ -528,7 +528,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 **Ce qui t'arrête**
 
 - Avec la largeur du corps, on bute contre les piliers, murs et fronts (personnalisés compris) en Structures, contre les parois en Galerie, contre les deux en Mixte (dans une chambre, seulement les structures).
-- Dans les trois rendus, un **remblais**, un **effondrement** ou une zone **⛔ inaccessible** arrête aussi, dans une galerie comme dans une chambre.
+- Dans les trois rendus, un **Comblé**, un **effondrement** ou une zone **⛔ inaccessible** arrête aussi, dans une galerie comme dans une chambre.
 - Si tu pars de l'intérieur de l'une d'elles, tu es ramené au bord et tu repars.
 - Une **masse au sol** ne t'arrête pas d'office : tu montes dessus par sa pente. La vue se courbe s'il reste moins de 1,8 m sous le plafond, tu passes à plat ventre sous 1 m, et le pas s'arrête là où il reste moins de 0,5 m (demi-tour toujours possible).
 - C'est la 3D seulement : la carte, l'itinéraire, le guidage et le tracker n'en tiennent pas compte (l'itinéraire, lui, évite déjà les zones ⛔).
@@ -587,7 +587,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 **🏛️ Structures**
 
 - Piliers, murs et fronts de taille dressés à la hauteur de galerie du niveau (⚙️ Réglages › 📉 Niveaux, ou ⛏️ Volume exploité sur un plan à un niveau ; 2 m sinon).
-- Remblais et effondrements en volume (60 % de cette hauteur), eau, zones ⛔ inaccessibles, masses au sol à leur part comblée.
+- Zones Comblé et effondrements en volume (60 % de cette hauteur), eau, zones ⛔ inaccessibles, masses au sol à leur part comblée.
 - Tracés et itinéraire au sol.
 - Points en panneaux, toujours visibles (un point relevé dans un pilier s'affiche contre sa face), plus petits et plus pâles au loin, et effacés tout près de toi pour ne pas boucher la vue.
 
@@ -596,7 +596,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - Les tracés deviennent des galeries, sans les structures : principal 2,5 m de large, secondaire 2 m, chemin 1,7 m, tracé personnalisé 2 m.
 - Carrefours ouverts, coudes, cul-de-sac fermé, un liseré au sol de la couleur du tracé.
 - Parois en pierre de taille (avec 🧱 Textures ; coupé : à la couleur de la légende de leur tracé).
-- Les zones s'arrêtent aux parois : le remblais et l'effondrement bouchent la galerie, une zone ⛔ inaccessible tend un rideau rouge hachuré en travers.
+- Les zones s'arrêtent aux parois : le Comblé et l'effondrement bouchent la galerie, une zone ⛔ inaccessible tend un rideau rouge hachuré en travers.
 - Seuls les points à moins de 10 m d'un tracé (salles comprises) s'affichent, contre la paroi.
 
 **🧱 Textures**
@@ -605,9 +605,9 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - Piliers et fronts de taille : roche brute (la masse calcaire laissée en place : bosses, nuances, fines strates, fissures et traces d'outil, sans joints) ; la 2e masse est la même roche, à peine plus chaude ; pour bien la distinguer de la 1re, coupe les textures. Une structure personnalisée prend la roche.
 - Murs : parpaing, à sa taille réelle (un parpaing fait 50 cm, quel que soit le mur). Un mur tracé en ligne est en pierre de taille, de la même teinte que les parois des galeries.
 - Arcs de soutènement : pierre de taille de la même teinte que les parois des galeries, partout — claveaux en pierre dressée, piédroits dans la pierre des parois, et au-dessus de l'arc une maçonnerie de moellons plus rustique.
-- **Remblais** : terre et sable calcaire tassés, mêlés de cailloux et de blocs de calcaire anguleux à moitié enfouis.
+- **Comblé** : terre et sable calcaire tassés, mêlés de cailloux et de blocs de calcaire anguleux à moitié enfouis.
 - **Effondrement** (fontis) : un éboulis de gros blocs cassés et fissurés, avec peu de terre.
-- Remblais et effondrement sont à leur taille réelle et ne changent pas de forme. Une zone personnalisée garde sa couleur.
+- Comblé et effondrement sont à leur taille réelle et ne changent pas de forme. Une zone personnalisée garde sa couleur.
 - Coupé : chaque structure et chaque zone reprend la couleur de la légende, la tienne comprise ; les parois des galeries prennent la couleur de leur tracé (à un carrefour, celle du tracé le plus large) ; sol et plafond deviennent noirs (le plan au sol 🗺️ reste visible dessus).
 - Le bois, la pierre et les remblais des accès (plus bas) suivent aussi ce réglage.
 
@@ -693,7 +693,7 @@ Où et comment un passage se dessine :
 - **Ma dernière position** ou **Me repositionner** : la 3D te place là où le tracker est mis (position et niveau).
 - **📍 Je suis ici** dans la fiche d'un point recale le tracker sur la carte, mais la 3D reste où tu es. En suivi, elle passe alors en **libre** (un message le dit) : le bouton du suivi la ramène au tracker.
 - **Itinéraire** : dessiné au sol en **ruban bleu bordé de sombre**, avec des **chevrons** qui montrent le sens, avec un **mât** à chaque étape et un panneau **🏁** à l'arrivée, niveau par niveau.
-- Là où il traverse un **remblais** ou un **effondrement**, il monte le long de sa face et passe **par-dessus** (chevrons et étapes aussi), sans que le tracé de la carte change.
+- Là où il traverse un **Comblé** ou un **effondrement**, il monte le long de sa face et passe **par-dessus** (chevrons et étapes aussi), sans que le tracé de la carte change.
 - La vue le redessine dès qu'il change (tracé depuis 🚨 pendant la 3D compris).
 - **Guidage** : un **bandeau** sous la rangée de boutons donne la même consigne que sur la carte (« Dans ~20 m, tourner à droite »). Des **chevrons dorés** au sol montrent le chemin jusqu'à la prochaine manœuvre.
 - En **suivi**, c'est la consigne de ton tracker (un aperçu depuis le tracker si le guidage de la carte est coupé). En **libre**, c'est un **aperçu** calculé depuis l'endroit où tu es en 3D (le guidage réel, lui, suit le tracker) ; si tu t'écartes du trajet en libre, l'itinéraire est recalculé tout seul depuis ta place en 3D, sans bouger le tracker, et en suivi le bandeau propose, comme sur la carte, **Recalculer d'ici**, **Je suis ici** ou **Ignorer**. Pas d'annonce vocale.
@@ -985,24 +985,24 @@ Dans le groupe **⬛ Zones**, des surfaces fermées pour annoter le plan :
 
 | Type | Aspect | Effet sur l'itinéraire |
 |---|---|---|
-| ⬛ **Remblais** | gris foncé | aucun |
+| ⬛ **Comblé** | gris foncé | aucun |
 | ⬛ **Masse au sol** | sable à grains, contour en tirets | aucun pour l'instant |
 | 🟥 **Effondrement** | rouge | aucun |
 | 🟦 **Eau** | bleu | aucun |
 | ⛔ **Inaccessible** | hachures rouge sombre / noir | **bloque** le passage |
 | 🪜 **Zone jonction** (plan multi-niveau) | couleur du tracé jonction, voile léger | aucun : l'itinéraire passe par le tracé jonction qui la traverse (voir 🏗️ Mode multi-niveau) |
 
-Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone : **re-tape le premier point** (un cercle l'entoure dès le 3e point) ou appuie sur **✅ Fermer la zone en cours**. L'outil reste allumé : tape directement la zone suivante, et re-appuie sur le type pour l'éteindre. Quel que soit l'ordre de tracé, l'eau s'affiche dessous, puis la masse au sol, les remblais, les effondrements, et l'inaccessible par-dessus les autres zones ; les structures (piliers, murs, fronts de taille) restent toujours au-dessus des zones.
+Appuie sur un type, pose au moins 3 points (en pointillé), puis ferme la zone : **re-tape le premier point** (un cercle l'entoure dès le 3e point) ou appuie sur **✅ Fermer la zone en cours**. L'outil reste allumé : tape directement la zone suivante, et re-appuie sur le type pour l'éteindre. Quel que soit l'ordre de tracé, l'eau s'affiche dessous, puis la masse au sol, les zones Comblé, les effondrements, et l'inaccessible par-dessus les autres zones ; les structures (piliers, murs, fronts de taille) restent toujours au-dessus des zones.
 
 ### ⬛ Masse au sol — part comblée
 
-Une **masse au sol** est un remblai partiel : il ne remplit qu'une partie de la hauteur de la galerie, et l'on marche dessus. Le **Remblais** reste la zone comblée jusqu'au ciel.
+Une **masse au sol** est un remblai partiel : il ne remplit qu'une partie de la hauteur de la galerie, et l'on marche dessus. Le **Comblé** reste la zone comblée jusqu'au ciel.
 
 - Dans la bulle de la zone, choisis la **part comblée** : ¼, ½, ¾ ou **Autre** (une valeur comme 0,9), puis **Appliquer la part comblée**. La bulle affiche aussi l'équivalent en mètres, d'après la hauteur du niveau (réglages du plan).
 - Sans valeur, une masse au sol vaut ½.
 - Une part **négative** (−¼, −½, −¾ ou une valeur comme −0,4) abaisse le sol : la bulle dit alors de combien il descend. Sur la carte, ses grains sont clairs, en creux, sans galets. En dessous de −1, la valeur est refusée.
 - Sur la carte, plus la part est haute, plus il y a de grains.
-- À 1 ou plus, la galerie est pleine : la bulle propose de passer la zone en **Remblais**.
+- À 1 ou plus, la galerie est pleine : la bulle propose de passer la zone en **Comblé**.
 - Le **Tableur** a une colonne **comble**, avec les mêmes choix.
 - La valeur suit la zone dans les exports **KMZ** et **GeoJSON**. À l'**import SIG**, « ms », « masse au sol » et « remblai partiel » donnent une masse au sol ; une colonne de hauteur facultative donne sa part (0,5 ou 50 %). Un polygone dont le type n'est pas reconnu devient une masse au sol, et l'écran de correspondance dit combien.
 - En **vue 3D**, on marche dessus : son dessus monte en pente douce depuis ses bords libres (pas le long des parois ni des piliers) jusqu'à la part comblée. Debout s'il reste 1,8 m ou plus sous le plafond, courbé entre 1 et 1,8 m, à plat ventre entre 0,5 et 1 m ; sous 0,5 m, on ne passe plus (demi-tour toujours possible). Le ruban de l'itinéraire, les panneaux et la mini-carte suivent. Un sol abaissé descend de la même pente douce, et tu y descends debout.
@@ -1191,7 +1191,7 @@ Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a ét
 - les **piliers retranchés** : surface et nombre. Comptent les piliers, les murs et les structures personnalisées fermées, les tiens et ceux des calques de données (même masqués), coupés au bord du secteur. Les fronts de taille et les murs en ligne ne comptent pas ;
 - la **surface exploitée** (secteur moins piliers) et le **taux de défruitement** (exploité ÷ secteur) ;
 - le **volume exploité** : surface exploitée × **hauteur moyenne de galerie**, à saisir dans la fenêtre (au départ celle du niveau, 2 m sinon ; recalcul immédiat). Sur un plan à un niveau, elle est retenue pour le plan ; sur un plan à plusieurs niveaux, elle sert au calcul seulement : la hauteur de chaque niveau se règle dans ⚙️ Réglages › Niveaux : profondeur et hauteur, et une phrase le rappelle sous le champ ;
-- les **remblais** (zones « Remblais » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins remblais).
+- la surface **comblée** (zones « Comblé » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins comblé).
 
 Sur un plan à étages, seul le **niveau actif** compte (dans la 🧊 Vue 3D : celui de la 3D), et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
 

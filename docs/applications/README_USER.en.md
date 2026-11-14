@@ -320,7 +320,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Measurement** | 📐 | Measure a distance or an area, **compute the total length of paths** and the **⛏️ mined volume** of a sector, clear |
 | **Point editing** | ✏️ | Add your own points *(direct click — ON/OFF switch)* |
 | **Paths** | 🛣️ | Draw main and secondary galleries, paths, junctions |
-| **Zones** | ⬛ | Draw backfill, partial fill, collapse, water or inaccessible zones |
+| **Zones** | ⬛ | Draw filled-to-roof, partial fill, collapse, water or inaccessible zones |
 | **Structures** | 🏛️ | Pillars, walls and working faces |
 
 **How it works:**
@@ -528,7 +528,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 **What stops you**
 
 - With the width of a body, you bump into pillars, walls and faces (custom ones included) in Structures mode, into the walls in Tunnels mode, into both in Mixed mode (in a chamber, only structures).
-- In all three renderings, **backfill**, a **collapse** or an **⛔ inaccessible** zone stops you too, in a tunnel as in a chamber.
+- In all three renderings, a **Filled to roof** zone, a **collapse** or an **⛔ inaccessible** zone stops you too, in a tunnel as in a chamber.
 - If you start inside one of them, you are brought back to its edge and can move on.
 - A **partial fill** does not stop you by itself: you climb onto it up its slope. The view stoops when less than 1.8 m is left under the ceiling, you crawl under 1 m, and you stop where less than 0.5 m is left (you can always turn back).
 - This is 3D only: the map, the route, the guidance and the tracker ignore them (the route already avoids ⛔ zones).
@@ -587,7 +587,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 **🏛️ Structures**
 
 - Pillars, walls and quarry faces raised to the level's gallery height (⚙️ Settings › 📉 Levels, or ⛏️ Mined volume on a single-level map; otherwise 2 m).
-- Backfill and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones, partial fills at their fill level.
+- Filled-to-roof and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones, partial fills at their fill level.
 - Traces and route on the floor.
 - Points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
 
@@ -596,7 +596,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - Traces become tunnels, without the structures: main 2.5 m wide, secondary 2 m, path 1.7 m, custom trace 2 m.
 - Open crossroads, bends, closed dead ends, a floor stripe in the trace's colour.
 - Walls of dressed stone (with 🧱 Textures; off: in the legend colour of their trace).
-- Zones stop at the walls: backfill and collapses block the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it.
+- Zones stop at the walls: filled-to-roof zones and collapses block the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it.
 - Only points within 10 m of a trace (rooms included) are shown, against the wall.
 
 **🧱 Textures**
@@ -605,9 +605,9 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - Pillars and working faces: raw rock (the limestone mass left in place: bumps, shades, thin strata, cracks and tool marks, no joints); the 2nd mass is the same rock in a barely warmer shade; to tell it clearly from the 1st, turn the textures off. A custom structure gets the rock.
 - Walls: concrete block, at its real size (a block is 50 cm long, whatever the wall). A wall drawn as a line is in dressed stone, in the same tone as the tunnel walls.
 - Support arches: dressed stone in the same tone as the gallery walls, everywhere — voussoirs in smooth-dressed stone, piers in the same stone as the gallery walls, and rougher rubble masonry above the arch.
-- **Backfill**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
+- **Filled to roof**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
 - **Collapse** (sinkhole): rubble of large broken, cracked blocks, with little earth.
-- Backfill and collapse are at their real size and do not change shape. A custom zone keeps its colour.
+- Filled to roof and collapse are at their real size and do not change shape. A custom zone keeps its colour.
 - Off: every structure and every zone takes back its legend colour, yours included; tunnel walls take the colour of their trace (at a crossroads, the widest trace's); floor and ceiling turn black (the 🗺️ plan on the ground stays visible on top).
 - The wood, stone and backfill of accesses (below) follow this setting too.
 
@@ -693,7 +693,7 @@ Where and how a way through is drawn:
 - **My last position** or **Set my position**: the 3D view takes you where the tracker is put (position and level).
 - **📍 I am here** in a point's card realigns the tracker on the map, but the 3D view stays where you are. In follow mode it then switches to **free** mode (a message says so): the follow button brings it back to the tracker.
 - **Route**: drawn on the ground as a **blue strip edged in dark**, with **chevrons** showing the way, with a **post** at each stop and a **🏁** sign at the end, level by level.
-- Where it crosses **backfill** or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same.
+- Where it crosses a **Filled to roof** zone or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same.
 - The view redraws it as soon as it changes (drawn from 🚨 during the 3D view included).
 - **Guidance**: a **banner** under the row of buttons gives the same instruction as on the map ("In ~20 m, turn right"). **Golden chevrons** on the ground show the way to the next manoeuvre.
 - In **follow** mode it is your tracker's instruction (a preview from the tracker if the map's guidance is off). In **free** mode it is a **preview** worked out from where you are in 3D (real guidance still follows the tracker); if you stray from the route in free mode, the route is recalculated on its own from your 3D spot, without moving the tracker, and in follow mode the banner offers, as on the map, **Recompute from here**, **I am here** or **Ignore**. No voice announcements.
@@ -985,24 +985,24 @@ In the **⬛ Zones** group, closed surfaces to annotate the map:
 
 | Type | Look | Effect on the route |
 |---|---|---|
-| ⬛ **Backfill** | dark grey | none |
+| ⬛ **Filled to roof** | dark grey | none |
 | ⬛ **Partial fill** | grained sand, dashed outline | none for now |
 | 🟥 **Collapse** | red | none |
 | 🟦 **Water** | blue | none |
 | ⛔ **Inaccessible** | dark red / black hatching | **blocks** the way |
 | 🪜 **Junction zone** (multi-level map) | junction trace colour, light veil | none: the route follows the junction trace that crosses it (see 🏗️ Multi-level mode) |
 
-Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then partial fill, backfill, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
+Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then partial fill, filled-to-roof zones, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
 
 ### ⬛ Partial fill — fill level
 
-A **partial fill** is rubble that only fills part of the gallery height, and you walk on it. **Backfill** remains the area filled up to the roof.
+A **partial fill** is rubble that only fills part of the gallery height, and you walk on it. **Filled to roof** remains the area filled up to the roof.
 
 - In the zone's bubble, choose the **fill level**: ¼, ½, ¾ or **Other** (a value such as 0.9), then **Apply fill level**. The bubble also shows the equivalent in metres, from the level height (plan settings).
 - Without a value, a partial fill counts as ½.
 - A **negative** level (−¼, −½, −¾ or a value such as −0.4) lowers the floor: the bubble then says how far it drops. On the map, its grains are light, sunken, without pebbles. Below −1, the value is refused.
 - On the map, the higher the level, the more grains.
-- At 1 or more, the gallery is full: the bubble offers to turn the zone into **Backfill**.
+- At 1 or more, the gallery is full: the bubble offers to turn the zone into **Filled to roof**.
 - The **Spreadsheet** has a **comble** column, with the same choices.
 - The value follows the zone in **KMZ** and **GeoJSON** exports. On **GIS import**, “ms”, “masse au sol” and “remblai partiel” give a partial fill; an optional height column gives its level (0.5 or 50 %). A polygon whose type is not recognised becomes a partial fill, and the matching screen says how many.
 - In the **3D view**, you walk on it: its top rises in a gentle slope from its free edges (not along walls or pillars) up to the fill level. Standing with 1.8 m or more left under the ceiling, stooping between 1 and 1.8 m, crawling between 0.5 and 1 m; under 0.5 m you can no longer pass (you can always turn back). The route ribbon, the signs and the mini-map follow. A lowered floor goes down the same gentle slope, and you walk down into it standing.
@@ -1191,7 +1191,7 @@ In the **📐 Measurement** group, **⛏️ Mined volume** works out what was ex
 - the **pillars deducted**: area and count. Pillars, walls and closed custom structures count, yours and those of the data layers (even hidden), clipped at the sector edge. Working faces and line walls do not count;
 - the **mined area** (sector minus pillars) and the **extraction ratio** (mined ÷ sector);
 - the **mined volume**: mined area × **average gallery height**, typed in the window (at first the level's height, otherwise 2 m; recalculated at once). On a single-level map, it is remembered for the map; on a map with several levels, it is only used for the calculation: each level's height is set in ⚙️ Settings › Levels: depth and height, and a sentence under the field says so;
-- the **backfill** (“Backfill” zones inside the sector void) in m² and m³, and the **current void** (mined minus backfill).
+- the **filled** area (“Filled to roof” zones inside the sector void) in m² and m³, and the **current void** (mined minus filled).
 
 On a multi-level plan, only the **active level** counts (in the 🧊 3D view: the view's level), and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
 

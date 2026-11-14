@@ -2976,7 +2976,7 @@ function ajouterPointsDepuisJSON(url, layer) {
               }
               const LBL = {
                 eau:          "💧 Eau",
-                remblais:     "⬛ Remblais",
+                remblais:     "⬛ Comblé",
                 "masse-sol":  "Masse au sol",
                 effondrement: "🟥 Effondrement",
                 inaccessible: "⛔ Inaccessible",

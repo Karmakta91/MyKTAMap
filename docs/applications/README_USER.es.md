@@ -320,7 +320,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Medición** | 📐 | Medir una distancia o una superficie, **calcular la distancia total de los trazados** y el **⛏️ volumen explotado** de un sector, borrar |
 | **Edición de puntos** | ✏️ | Añadir tus propios puntos *(clic directo: interruptor ON/OFF)* |
 | **Trazados** | 🛣️ | Trazar galerías principales, secundarias, caminos, uniones |
-| **Zonas** | ⬛ | Trazar zonas de escombros, relleno parcial, derrumbe, agua o inaccesibles |
+| **Zonas** | ⬛ | Trazar zonas colmatadas, de relleno parcial, derrumbe, agua o inaccesibles |
 | **Estructuras** | 🏛️ | Pilares, muros y frentes de explotación |
 
 **Cómo funciona:**
@@ -528,7 +528,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 **Lo que te para**
 
 - Con la anchura de un cuerpo, chocas contra pilares, muros y frentes (personalizados incluidos) en modo Estructuras, contra las paredes en modo Galería, contra ambos en modo Mixto (en una cámara, solo las estructuras).
-- En las tres representaciones, un **relleno**, un **derrumbe** o una zona **⛔ inaccesible** también te para, en una galería como en una cámara.
+- En las tres representaciones, un **Colmatado**, un **derrumbe** o una zona **⛔ inaccesible** también te para, en una galería como en una cámara.
 - Si sales desde dentro de una de ellas, vuelves al borde y puedes seguir.
 - Un **relleno parcial** no te para de por sí: subes encima por su pendiente. La vista se agacha si quedan menos de 1,8 m bajo el techo, te arrastras por debajo de 1 m, y el paso se detiene donde quedan menos de 0,5 m (siempre puedes dar media vuelta).
 - Es solo en 3D: el mapa, la ruta, el guiado y el tracker no los tienen en cuenta (la ruta ya evita las zonas ⛔).
@@ -587,7 +587,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 **🏛️ Estructuras**
 
 - Pilares, muros y frentes de explotación levantados a la altura de galería del nivel (⚙️ Ajustes › 📉 Niveles, o ⛏️ Volumen explotado en un plano de un solo nivel; si no 2 m).
-- Rellenos y derrumbes en volumen (60 % de esa altura), agua, zonas ⛔ inaccesibles, rellenos parciales a su parte rellena.
+- Zonas colmatadas y derrumbes en volumen (60 % de esa altura), agua, zonas ⛔ inaccesibles, rellenos parciales a su parte rellena.
 - Trazados e itinerario en el suelo.
 - Puntos en carteles, siempre visibles (un punto levantado dentro de un pilar se muestra contra su cara), más pequeños y pálidos a lo lejos, y difuminados muy cerca de ti para no tapar la vista.
 
@@ -596,7 +596,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - Los trazados se convierten en galerías, sin las estructuras: principal 2,5 m de ancho, secundario 2 m, camino 1,7 m, trazado personalizado 2 m.
 - Cruces abiertos, codos, fondos de saco cerrados, una franja en el suelo del color del trazado.
 - Paredes de sillería (con 🧱 Texturas; desactivado: del color de la leyenda de su trazado).
-- Las zonas se detienen en las paredes: el relleno y el derrumbe tapan la galería, una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado.
+- Las zonas se detienen en las paredes: el colmatado y el derrumbe tapan la galería, una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado.
 - Solo se muestran los puntos a menos de 10 m de un trazado (salas incluidas), contra la pared.
 
 **🧱 Texturas**
@@ -605,9 +605,9 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - Pilares y frentes de cantera: roca bruta (la masa caliza dejada en su sitio: relieve, matices, finos estratos, grietas y marcas de herramienta, sin juntas); la 2.ª masa es la misma roca, en un tono apenas más cálido; para distinguirla bien de la 1.ª, desactiva las texturas. Una estructura personalizada lleva la roca.
 - Muros: bloque de hormigón, a su tamaño real (un bloque mide 50 cm, sea cual sea el muro). Un muro trazado en línea es de sillería, del mismo tono que las paredes de las galerías.
 - Arcos de sostenimiento: piedra de sillería del mismo tono que las paredes de las galerías, en todas partes — dovelas de piedra labrada, pilares en la piedra de las paredes y, sobre el arco, una mampostería de mampuestos más rústica.
-- **Relleno**: tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados.
+- **Colmatado**: tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados.
 - **Derrumbe** (hundimiento): un amontonamiento de grandes bloques rotos y agrietados, con poca tierra.
-- Relleno y derrumbe están a su tamaño real y no cambian de forma. Una zona personalizada conserva su color.
+- Colmatado y derrumbe están a su tamaño real y no cambian de forma. Una zona personalizada conserva su color.
 - Desactivado: cada estructura y cada zona recupera el color de la leyenda, el tuyo incluido; las paredes de las galerías toman el color de su trazado (en un cruce, el del trazado más ancho); suelo y techo quedan negros (el 🗺️ plano en el suelo sigue visible encima).
 - La madera, la piedra y el relleno de los accesos (más abajo) también siguen este ajuste.
 
@@ -693,7 +693,7 @@ Dónde y cómo se dibuja un paso:
 - **Mi última posición** o **Recolocarme**: la 3D te lleva donde queda el tracker (posición y nivel).
 - **📍 Estoy aquí** en la ficha de un punto recoloca el tracker en el mapa, pero la 3D se queda donde estás. En seguimiento, pasa entonces a **libre** (un mensaje lo indica): el botón del seguimiento la devuelve al tracker.
 - **Ruta**: dibujada en el suelo como una **franja azul bordeada de oscuro**, con **chevrones** que indican el sentido, con un **mástil** en cada etapa y un cartel **🏁** a la llegada, nivel por nivel.
-- Donde cruza un **relleno** o un **derrumbe**, sube por su cara y pasa **por encima** (chevrones y etapas también), sin que cambie la ruta del mapa.
+- Donde cruza un **Colmatado** o un **derrumbe**, sube por su cara y pasa **por encima** (chevrones y etapas también), sin que cambie la ruta del mapa.
 - La vista la vuelve a dibujar en cuanto cambia (trazada desde 🚨 durante la vista 3D incluida).
 - **Guiado**: una **banda** bajo la fila de botones da la misma indicación que en el mapa (« En ~20 m, gira a la derecha »). **Chevrones dorados** en el suelo muestran el camino hasta la próxima maniobra.
 - En **seguimiento**, es la indicación de tu tracker (una vista previa desde el tracker si el guiado del mapa está desactivado). En **libre**, es una **vista previa** calculada desde donde estás en 3D (el guiado real sigue al tracker); si te apartas del trayecto en libre, el itinerario se recalcula solo desde tu lugar en 3D, sin mover el tracker, y en seguimiento la banda ofrece, como en el mapa, **Recalcular desde aquí**, **Estoy aquí** o **Ignorar**. Sin anuncios de voz.
@@ -985,24 +985,24 @@ En el grupo **⬛ Zonas**, superficies cerradas para anotar el mapa:
 
 | Tipo | Aspecto | Efecto en el itinerario |
 |---|---|---|
-| ⬛ **Escombros** | gris oscuro | ninguno |
+| ⬛ **Colmatado** | gris oscuro | ninguno |
 | ⬛ **Relleno parcial** | arena con granos, contorno discontinuo | ninguno por ahora |
 | 🟥 **Derrumbe** | rojo | ninguno |
 | 🟦 **Agua** | azul | ninguno |
 | ⛔ **Inaccesible** | rayado rojo oscuro / negro | **bloquea** el paso |
 | 🪜 **Zona de unión** (mapa multinivel) | color del trazado de unión, velo ligero | ninguno: el itinerario pasa por el trazado de unión que la cruza (ver 🏗️ Modo multinivel) |
 
-Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego el relleno parcial, los escombros, los derrumbes, y lo inaccesible encima de las demás zonas; las estructuras (pilares, muros, frentes de cantera) quedan siempre por encima de las zonas.
+Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego el relleno parcial, las zonas colmatadas, los derrumbes, y lo inaccesible encima de las demás zonas; las estructuras (pilares, muros, frentes de cantera) quedan siempre por encima de las zonas.
 
 ### ⬛ Relleno parcial — parte rellena
 
-Un **relleno parcial** son escombros que solo llenan una parte de la altura de la galería, sobre los que se camina. **Escombros** sigue siendo la zona rellena hasta el techo.
+Un **relleno parcial** son escombros que solo llenan una parte de la altura de la galería, sobre los que se camina. **Colmatado** sigue siendo la zona rellena hasta el techo.
 
 - En la burbuja de la zona, elige la **parte rellena**: ¼, ½, ¾ u **Otra** (un valor como 0,9) y luego **Aplicar la parte rellena**. La burbuja muestra también el equivalente en metros, según la altura del nivel (ajustes del plano).
 - Sin valor, un relleno parcial cuenta como ½.
 - Una parte **negativa** (−¼, −½, −¾ o un valor como −0,4) baja el suelo: la burbuja indica entonces cuánto baja. En el mapa, sus granos son claros, hundidos, sin guijarros. Por debajo de −1, el valor se rechaza.
 - En el mapa, cuanto más alta es la parte, más granos hay.
-- Con 1 o más, la galería está llena: la burbuja propone pasar la zona a **Escombros**.
+- Con 1 o más, la galería está llena: la burbuja propone pasar la zona a **Colmatado**.
 - La **Hoja de cálculo** tiene una columna **comble**, con las mismas opciones.
 - El valor sigue a la zona en las exportaciones **KMZ** y **GeoJSON**. En la **importación SIG**, «ms», «masse au sol» y «remblai partiel» dan un relleno parcial; una columna de altura opcional da su parte (0,5 o 50 %). Un polígono cuyo tipo no se reconoce pasa a relleno parcial, y la pantalla de correspondencia dice cuántos.
 - En la **vista 3D**, se camina encima: su parte superior sube en pendiente suave desde sus bordes libres (no a lo largo de las paredes ni de los pilares) hasta la parte rellena. De pie si quedan 1,8 m o más bajo el techo, agachado entre 1 y 1,8 m, arrastrándose entre 0,5 y 1 m; por debajo de 0,5 m ya no se pasa (siempre puedes dar media vuelta). La cinta del itinerario, los paneles y el minimapa siguen. Un suelo rebajado baja con la misma pendiente suave, y bajas a él de pie.
@@ -1191,7 +1191,7 @@ En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se e
 - los **pilares descontados**: superficie y número. Cuentan los pilares, los muros y las estructuras personalizadas cerradas, las tuyas y las de las capas de datos (incluso ocultas), recortados en el borde del sector. Los frentes de explotación y los muros en línea no cuentan;
 - la **superficie explotada** (sector menos pilares) y la **tasa de extracción** (explotada ÷ sector);
 - el **volumen explotado**: superficie explotada × **altura media de galería**, que se escribe en la ventana (al principio la del nivel, si no 2 m; recalculada al instante). En un plano de un solo nivel, se guarda para el plano; en un plano con varios niveles, solo sirve para el cálculo: la altura de cada nivel se ajusta en ⚙️ Ajustes › Niveles: profundidad y altura, y una frase lo recuerda bajo el campo;
-- los **escombros** (zonas «Escombros» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos escombros).
+- la superficie **colmatada** (zonas «Colmatado» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos colmatado).
 
 En un plano de varios niveles solo cuenta el **nivel activo** (en la 🧊 Vista 3D: el de la 3D), y la ventana lo indica. El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.
 
