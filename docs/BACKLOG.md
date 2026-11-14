@@ -69,13 +69,6 @@
   tant que le nombre ne change pas, au repos ; coût mesuré d'abord sur le plus gros relevé des checkups.
   `qui: Claude · action: mesurer le coût puis lot 4 de ETUDE_VERIFIER_PLAN.md · fini: pastille et toast une fois,
   temps mesuré · depuis: 11/11/2026 · taille: S`
-- **Masse au sol : maquette 2D (remblais, lot 2)** — rendu 2D de la masse au sol à valider avant le code.
-  `docs/ETUDE_REMBLAIS.md`.
-  `qui: Claude · action: maquette 2D · fini: maquette validée par KARMA · depuis: 11/11/2026 · taille: S`
-- **Masse au sol, donnée et 2D (remblais, lot 3)** — type ajouté partout, champ `comble`, fiche, Tableur, copies,
-  KMZ / GeoJSON / SIG, légende, exports, défaut d'import ; garde-fou d'aller-retour. `docs/ETUDE_REMBLAIS.md`.
-  `qui: Claude · action: lot 3 de ETUDE_REMBLAIS.md · fini: type partout, aller-retour vert · depuis: 11/11/2026
-  · taille: L`
 - **Masse au sol en 3D (remblais, lot 4)** — sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ;
   mesure de perf. `docs/ETUDE_REMBLAIS.md`.
   `qui: Claude · action: lot 4 de ETUDE_REMBLAIS.md · fini: checkup-vue-3d vert, perf mesurée · depuis: 11/11/2026
@@ -146,6 +139,9 @@
 
 ## Entrant
 
+- **`checkup-exports-structures` rouge depuis le nouveau relevé fictif** — il attend 10 structures de calque et en voit
+  217 depuis `a1340f74` (14/11) ; hérité, sans lien avec un lot.
+  `qui: Claude · action: adapter le test au relevé enrichi sans l'affaiblir · depuis: 14/11/2026 · taille: XS`
 - **`_redraw()` direct du renderer en Vue OSM** — `osmView.js` et `osmHomePreview.js` appellent `r._redraw()` sans
   annuler le redessin en attente : même motif que le bug corrigé dans `structures.js > majLargeurFronts` (14/11).
   `qui: Claude · action: annuler la requête en attente, garde renderer monté, checkup · depuis: 14/11/2026 · taille: XS`
