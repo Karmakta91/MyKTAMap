@@ -162,15 +162,29 @@ Si pas opt-in : `confirm()` natif explicite avec mention du domaine `tile.openst
 WGS84), `pointB.estimated: true` pour un B déduit (`config.js > ktaEstimerPointB`).
 
 ```
-_getEffectiveGeoref()   (osmView.js ; secoursMode.js suit le même ordre)
-  1. PLAN_CONFIG.plan.georef          (embarqué ZIP via générateur)
+_getEffectiveGeoref()   (osmView.js, donc fond OSM et Vue OSM ; secoursMode.js suit le même ordre)
+  1. PLAN_CONFIG.plan.georef          (embarqué ZIP, OU calage des Réglages remis en mémoire)
   2. KmzExport.getCalibration(planId) (LS myktamap_kmz_calib_<planId>)
 ```
 
-Les autres consommateurs (exports, GPX, recherche, widget HOME) lisent le localStorage d'abord. La source 2 est
-remplie depuis la source 1 au chargement du plan (`main.js > _propagerGeorefVersKmzExport`, objet ENTIER) ; un
-calage local dont les points sont dans le plan est respecté. Cas user qui saisit le géoréf dans les Réglages →
-source 2 seulement.
+(décision produit) **Le calage saisi dans l'app GAGNE sur celui embarqué dans le plan**, pour tous les
+consommateurs, tout de suite et au rechargement :
+- **Saisie** (Réglages › Enregistrer, Recaler, modale Export externe) : `KmzExport.appliquerCalageUtilisateur`
+  écrit le localStorage, `PLAN_CONFIG.plan.georef` **en mémoire** (plan ouvert) et l'entrée du registre qui
+  porte un géoréf (accueil), puis émet `kta:georefChange { planId }`. Le fond OSM allumé recalcule sa
+  transformation et se redessine sans être rallumé (`fondOsmPlan.js > _surCalage`, « Ma position » posée avec
+  l'ancien calage retirée) ; `osmView.js` oublie sa projection mémorisée (emprise de « Ma position » et
+  d'« Enregistrer hors ligne »).
+- **Chargement** (`main.js > _propagerGeorefVersKmzExport`) : localStorage vide → rempli depuis `plan.georef`
+  (objet ENTIER) ; calage local valide (A, B et C dans le plan, transformation calculable) et différent →
+  il remplace `plan.georef` en mémoire (le ZIP n'est pas réécrit) ; calage local périmé (point hors du plan :
+  canvas d'une autre génération) → remplacé par `plan.georef`.
+- **« Mettre à jour le plan »** (`createConf.js > _georefReglagesPourMaj`, mêmes règles) : le calage des Réglages
+  remplace celui du ZIP dans le formulaire du Générateur, donc dans le plan-config produit ; le Générateur le dit.
+- Les autres consommateurs (exports KMZ / GPX, recherche, urgence, widget HOME) lisent le localStorage d'abord.
+- ⚠️ **Limite voulue** : un plan régénéré AILLEURS avec un meilleur calage ne remplace pas, sur un appareil, un
+  calage déjà saisi dans les Réglages (« Effacer » dans les Réglages pour revenir à celui du plan). La fenêtre
+  Réglages › Géoréférencement le dit (`config.georef.noteGagne`). Garde-fou : `checkup-georef-reglages.js`.
 
 **Modèle de calage** (`KmzExport.buildTransform`, seule source des conversions degrés ⇄ mètres de l'app) :
 
@@ -187,7 +201,8 @@ source 2 seulement.
 - **Recalage** : Réglages > Géoréférencement affiche `precisionCalage` (« ± X aux coins » : écart au modèle exact
   pour un calage historique, d³ / 2R² pour le local) et, pour un calage historique, « Recaler en projection
   exacte » : la confirmation annonce `ecartRecalage` (déplacement max aux 4 coins), puis le calage passe en
-  `"local"` dans le localStorage, le registre et `PLAN_CONFIG` **en mémoire** (le ZIP n'est pas réécrit).
+  `"local"` par `appliquerCalageUtilisateur` (localStorage, registre, `PLAN_CONFIG` **en mémoire** ; le ZIP
+  n'est pas réécrit).
   Le Générateur affiche la même ligne sous ses champs (`createConf.js > _plannerMajPrecision`), au modèle que le
   calage aura en générant ; « approchée » y renvoie aux Réglages pour recaler.
 - 🩸 **Propagation** : mêmes points des deux côtés, modèles différents → le `"local"` gagne dans les deux sens
@@ -206,7 +221,7 @@ consommateurs passent par `buildTransformCalib(calibOuGeoref)`**, qui transmet `
 `sigImport` appellent `buildTransform` en direct (calage synthétique sur l'emprise) avec `MODELE_LOCAL`.
 ⚠️ `metresParPixel`/`rotation` restent dérivés de A/B même en affine (affichage d'échelle = approximation
 assumée). ⚠️ La modale KMZ de sessionExporter n'édite que A/B : `_kmzLireCalib` **fusionne le pointC et le modèle
-stockés** avant `setCalibration`, sinon chaque save KMZ écraserait l'affine. Limite documentée user : corrige une
+stockés** avant `appliquerCalageUtilisateur`, sinon chaque save KMZ écraserait l'affine. Limite documentée user : corrige une
 déformation GLOBALE, pas les erreurs locales morceau par morceau d'un assemblage.
 
 ### 2.3 Tuiles V2 + niveau adaptatif + viewport culling (v1.39.10-11)

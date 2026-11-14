@@ -669,6 +669,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
+| `smoke/checkup-georef-reglages.js` | Calage modifié dans les Réglages : gagne sur le calage embarqué (mémoire, registre, fond OSM sans rallumer, Secours, plan rouvert, « Mettre à jour le plan »), calage périmé écarté |
 | `smoke/checkup-mode-dev.js` | Mode Développeur sans mot de passe : confirmation chartée, outils rendus, journal affiché et copié, appareil déjà déverrouillé gardé actif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
 | `smoke/checkup-arc.js` | Arc de soutènement en travers d'une galerie : itinéraire, pas du tracker et vue 3D passent (mur en ligne témoin arrêté), outil de dessin, trait rayé, légende, filtres, export image |
@@ -822,6 +823,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### Pas encore publié (après v2.27.0, branche `Karma_dev`)
+
+- **🌐 Le calage des Réglages gagne sur celui du plan** (`kmzExport.js > appliquerCalageUtilisateur`, `main.js > _propagerGeorefVersKmzExport`, `fondOsmPlan.js`, `osmView.js`, `createConf.js > _georefReglagesPourMaj`, `vue-osm.md` § 2.2, `checkup-georef-reglages.js`) : un point modifié ou ajouté dans ⚙️ Réglages › Géoréférencement (et Recaler, Export externe) était ignoré par le fond OSM, la Vue OSM et le Mode Secours quand le plan embarquait déjà un calage — même après rechargement, et « Mettre à jour le plan » réécrivait l'ancien. Il est maintenant repris tout de suite (fond OSM redessiné sans être rallumé), à chaque ouverture et dans le plan mis à jour. Limite voulue, dite dans les Réglages : un plan régénéré ailleurs ne remplace pas un calage déjà saisi (« Effacer » pour revenir à celui du plan).
 
 #### v2.27.0 (14/11/2026) — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes (branche `Karma_dev`)
 

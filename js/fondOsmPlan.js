@@ -683,6 +683,21 @@
     if (_allume && (!_osmAutorise() || _incognito())) eteindre();
     _majTout();
   }
+  // Calage modifié (Réglages, Recaler, Export externe : KmzExport > appliquerCalageUtilisateur) : le fond allumé
+  // repart du nouveau calage sans être rallumé ; le point « Ma position », posé avec l'ancien, est retiré.
+  function _surCalage(e) {
+    const id = e && e.detail && e.detail.planId;
+    if (id && id !== (window._currentLoadedPlanId || "default")) return;
+    _effacerMoi();
+    if (_allume && _couche) {
+      try { _transfo = window.KmzExport.buildTransformCalib(_georef()); }
+      catch (err) { console.warn("[FondOsmPlan] nouveau calage inutilisable :", err); eteindre(); return; }
+      _couche.redraw();
+      console.log("[FondOsmPlan] calage modifié : fond redessiné");
+    }
+    _majTout();
+  }
+  window.addEventListener("kta:georefChange", _surCalage);
   window.addEventListener("kta:osmOptInChange", _surRefus);
   window.addEventListener("online", _majPanneau);
   window.addEventListener("offline", _majPanneau);

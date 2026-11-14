@@ -186,6 +186,9 @@ function _renderCfgGeorefSection() {
         '</div>' +
       '</div>' +
 
+      // Limite voulue du « calage des Réglages gagne » (main.js > _propagerGeorefVersKmzExport), dite ici.
+      '<p id="cfg_kmz_note_gagne" style="font-size:11.5px; color:var(--kta-texte-3); margin:8px 2px 0; ' +
+        'line-height:1.45;">' + window.ktaEsc(window.I18n.t("config.georef.noteGagne")) + '</p>' +
       '<div id="cfg_kmz_status" style="font-size:12px; margin:8px 2px 4px; min-height:18px;"></div>' +
 
       '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
@@ -368,7 +371,8 @@ function _bindCfgGeorefHandlers() {
       return;
     }
     const planId = window._currentLoadedPlanId || "default";
-    window.KmzExport.setCalibration(planId, c);
+    // Gagne sur le calage embarqué dans le plan, tout de suite (fond OSM, Vue OSM, Secours) et au rechargement.
+    window.KmzExport.appliquerCalageUtilisateur(planId, c);
     _majCfgPrecision();
     _setStatus(window.I18n.t("config.georef.okSaved"), "ok");
     if (window.OOMGuard && window.OOMGuard.showToast) {
@@ -469,22 +473,11 @@ function _majCfgPrecision() {
   bloc.style.display = "";
 }
 
-// Recalage : même calage au modèle "local", dans le localStorage, le registre (HOME) et PLAN_CONFIG en mémoire
-// (la Vue OSM et le Secours lisent plan.georef en premier ; main.js > _accorderModeleCalage le refait au
-// prochain chargement, le ZIP n'est pas réécrit).
+// Recalage : même calage au modèle "local", comme tout calage saisi ici (KmzExport > appliquerCalageUtilisateur :
+// localStorage, PLAN_CONFIG en mémoire, registre, kta:georefChange) ; le ZIP n'est pas réécrit.
 function _cfgAppliquerRecalage(planId, cal) {
   const KE = window.KmzExport;
-  const neuf = Object.assign({}, cal, { modele: KE.MODELE_LOCAL });
-  KE.setCalibration(planId, neuf);
-  const g = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef;
-  if (g && KE.memesPoints(g, cal)) g.modele = KE.MODELE_LOCAL;
-  try {
-    const R = window.PlanRegistry;
-    const ent = R && typeof R.findById === "function" ? R.findById(planId) : null;
-    if (ent && ent.georef && KE.memesPoints(ent.georef, cal) && typeof R.addOrUpdate === "function") {
-      R.addOrUpdate({ id: planId, georef: Object.assign({}, ent.georef, { modele: KE.MODELE_LOCAL }) });
-    }
-  } catch (e) { console.warn("[InterfaceConfig] recalage : registre non mis à jour", e); }
+  KE.appliquerCalageUtilisateur(planId, Object.assign({}, cal, { modele: KE.MODELE_LOCAL }));
 }
 
 // ── Recherche POI (géoréf des Réglages) ──────────

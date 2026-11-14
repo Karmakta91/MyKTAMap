@@ -388,6 +388,13 @@
     const v = String(s);
     if (el.style.getPropertyValue("--kta-marker-scale") !== v) el.style.setProperty("--kta-marker-scale", v);
   }
+  // Calage modifié (KmzExport > appliquerCalageUtilisateur), fenêtre fermée : la projection mémorisée est oubliée,
+  // sinon getPlanGpsBbox (emprise de « Ma position » et d'« Enregistrer hors ligne » du fond OSM) garde l'ancienne.
+  window.addEventListener("kta:georefChange", function () {
+    if (_osmMap) return;
+    _proj = null;
+    if (window.OsmTilesCache) _recheckCachedForCurrentPlan().catch(function() {});
+  });
   // Réglage basculé pendant que la Vue est ouverte : la forme de l'icône change (map.js > ktaIconeOsm), re-rendu.
   window.addEventListener("kta:tailleIconesChange", function () {
     if (!_osmMap || !_proj) return;

@@ -1665,6 +1665,7 @@ async function _chargerZipModifier(file) {
     if (!planConfigFile) throw new Error(window.I18n.t("gen.zipModif.noPlanConfig"));
     const config = JSON.parse(await planConfigFile.text());
     _plannerSourceZip = { sha256: shaZip, taille: file.size, nom: (config.plan && config.plan.name) || "" };
+    if (_plannerMaj) _plannerMaj.georefReglages = _georefReglagesPourMaj(_plannerMaj.planId, config);
     _preRemplirFormulaire(config);
     _plannerZipStatus(window.I18n.t("gen.zipModif.charge", { name: file.name }), false);
     if (_plannerMaj) _appliquerMaj();
@@ -1710,9 +1711,34 @@ function _appliquerMaj() {
   _majVisibiliteCheckboxPhotos();
   _majCompteurPhotosPlanner();
   const echelle = _appliquerEchelleRecalibree(maj.planId);
+  const calage = maj.georefReglages ? window.I18n.t("gen.maj.georefReglages") : "";
   _plannerZipStatus(window.I18n.t("gen.maj.statut", { remplaces: remplaces, nouveaux: nouveaux }) +
-    (echelle ? " " + echelle : ""), false);
+    (echelle ? " " + echelle : "") + (calage ? " " + calage : ""), false);
   if (refuses.length) _plannerErreur(window.I18n.t("gen.maj.tropDeCalques", { ids: refuses.join(", ") }));
+}
+
+// Calage GPS saisi dans l'app (Réglages, Recaler, Export externe : KmzExport.getCalibration(planId)) : il gagne sur
+// celui du ZIP (décision produit, comme au chargement : main.js > _propagerGeorefVersKmzExport), donc la mise à
+// jour l'écrit dans le nouveau plan-config. Ignoré s'il est inutilisable ou périmé (point hors de l'image du ZIP).
+// Modifie `config.plan.georef` AVANT le préremplissage ; → true si le calage des Réglages a été repris.
+function _georefReglagesPourMaj(planId, config) {
+  const KE = window.KmzExport, plan = config && config.plan;
+  const cal = (planId && KE && typeof KE.getCalibration === "function") ? KE.getCalibration(planId) : null;
+  if (!plan || !cal || !cal.pointA || !cal.pointB) return false;
+  if (plan.georef && KE.memesPoints(cal, plan.georef) && (plan.georef.modele || null) === (cal.modele || null)) {
+    return false;
+  }
+  const W = plan.imageWidth, H = plan.imageHeight;
+  const dedans = function(p) {
+    return !p || (Number.isFinite(p.x) && Number.isFinite(p.y)
+      && p.x >= -1 && p.x <= W + 1 && p.y >= -1 && p.y <= H + 1);
+  };
+  if (Number.isFinite(W) && Number.isFinite(H) && !(dedans(cal.pointA) && dedans(cal.pointB) && dedans(cal.pointC))) {
+    return false;
+  }
+  try { KE.buildTransformCalib(cal); } catch (e) { return false; }
+  plan.georef = JSON.parse(JSON.stringify(cal));
+  return true;
 }
 
 // Échelle recalibrée dans l'app (⚙️ Réglages, rangée sur l'appareil par plan : config.js > getPlanScale) : elle
