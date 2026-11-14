@@ -51,7 +51,7 @@
 
 ## Ensuite
 
-- **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : « Placer la pente » puis toucher le bord bas ;
+- **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : une ou plusieurs rampes, « Placer une pente » puis toucher un bord bas ;
   pente déduite (hauteur ÷ longueur jusqu'au bord opposé) ; les autres bords en front vertical ; chevrons en 2D vers le
   haut. Sans rampe placée, talus 30° automatique inchangé. Priorité KARMA (« un gros plus »), juste après talus honnête.
   `qui: Claude · action: lot après talus honnête · fini: rampe en 2D (chevrons) et 3D, fiche, KMZ, checkup
