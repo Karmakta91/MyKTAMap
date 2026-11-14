@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.26.0` (13/11/2026)
+## 📦 Version courante — `v2.27.0` (14/11/2026)
 
-> 🧊 **v2.26.0 — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage** : en 3D, sol damé et ciel de carrière texturés, ombre de contact au pied des piliers et des parois, nuance de roche propre à chaque structure, stries d'outil en passes parallèles, arcs en pierre de taille (claveaux, tympan en moellons), mur tracé en ligne en pierre de taille, véhicule en silhouette de voiture, réglage **Textures HD** ; **Niveaux en transparence** (fantôme du dessus en vue d'édition, voisins à travers plafond et sol à hauteur d'yeux) ; mini-carte plus grande en paysage, collée au bandeau de guidage ; icônes au trait dans le menu au sommet ; correctifs. Détail : journal ci-dessous.
+> 🗺️ **v2.27.0 — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes** : en mode plan, le bouton carte ouvre un petit panneau qui pose **OpenStreetMap sous le plan** (interrupteur, transparence du plan retenue pour chaque plan, **Ma position** ponctuelle, **Enregistrer hors ligne**), calé sur le géoréférencement, qui tourne avec le plan orienté ; la fenêtre Vue OSM reste celle de l'accueil et du Mode Secours. En 3D, le plan au sol reste net en « Tout le plan ». Libellés : **Plaque/indication**, **Épure/graffiti**, « Arc de soutènement », « Zone jonction » et les piliers et fronts de 2e masse sans leur précision. Détail : journal ci-dessous.
 
 ---
 
@@ -823,9 +823,15 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
-#### Pas encore publié (après v2.26.0, branche `Karma_dev`)
+#### v2.27.0 (14/11/2026) — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes (branche `Karma_dev`)
+
+> Écart avec la prod v2.26.0.
 
 - **🗺️ Fond OpenStreetMap sous le plan** (`js/fondOsmPlan.js`, `js/refonteInterface.js`, `mapBearing.js`, `osmView.js > getGeorefEffectif`, `vue-osm.md` § Fond OSM sous le plan) : en mode plan, le bouton carte du haut n'ouvre plus la fenêtre Vue OSM mais un petit panneau ancré au bouton : interrupteur du fond OSM posé **sous** le plan, dans sa carte (une couche de tuiles canvas, chaque tuile OSM placée par le calage du plan), curseur de transparence de l'image du plan (le fond reste opaque, valeur retenue pour chaque plan, `myktamap_fond_osm_v1_<planId>`, purgée avec le plan), **Ma position** (un relevé GPS, sans suivi, refusé hors de l'emprise du plan et en incognito), **Enregistrer hors ligne** (emprise du plan dans le cache OSM partagé, `OsmTilesCache.cacheTilesForBbox`, même code que le bouton 💾 ; grisé hors ligne, en incognito ou OSM coupé). Bouton grisé sans géoréférencement (raison au survol), allumé quand le fond l'est ; le fond tourne avec le plan orienté, s'éteint à chaque plan ouvert, est refusé (avec un message) si OSM est coupé dans Configuration ou en incognito ; hors ligne, seules les tuiles enregistrées s'affichent (une tuile d'un zoom plus large est agrandie à défaut), aucune requête. Au-delà du zoom 19 d'OSM, la dernière tuile est agrandie. Attribution © OpenStreetMap visible tant qu'il est allumé ; exports PNG, PDF et KMZ sans le fond. La Vue OSM de l'accueil (widget et plein écran) ne change pas ; la fenêtre Vue OSM reste ouverte par le Mode Secours. Guides, Aide, audit réseau (même domaine, nouveau point d'appel). `checkup-fond-osm.js`.
+- **Finitions du panneau Fond OSM** (`js/fondOsmPlan.js`, `css/style.css`, `js/ktaIcones.js > toggle-left`, `checkup-fond-osm.js`) : hors ligne, une phrase en tête du panneau le dit (suit le réseau sans rouvrir) ; l'icône de l'interrupteur montre l'état (rond à gauche éteint, à droite allumé) ; « 100 % » ne sort plus du panneau au téléphone ; attribution « © OpenStreetMap » discrète (10 px, couleur méta, lien souligné, contraste ≥ 4,5:1 mesuré dans les deux thèmes) ; les réglages par plan (`myktamap_plan_prefs_`) partent avec le plan supprimé et suivent sa version serveur.
+- **🧊 Plan au sol net en « Tout le plan »** (`js/vue3d.js`, `tracking.md` § Vue 3D) : sans limite de portée, l'image du plan au sol suit l'emprise du cadrage et non plus la portée : elle reste nette.
+- **Libellés plus justes** (dicos `lang/`, `EDITOR_TAG_LABELS`, `LEGENDE_LABELS`, `DEFAULT_LABELS`, guides, `AI_CONTEXT.md`) : le type `plaque` s'affiche **Plaque/indication** (en Plate/sign, es Placa/indicación), `epure` **Épure/graffiti** (en Drawing/graffiti, es Dibujo/grafiti) ; dans le choix des structures et des zones, « Arc de soutènement », « Pilier 2e masse », « Front de taille 2e masse » et « Zone jonction » sans leur précision. Clés de type, icônes et comportement inchangés.
+- **Correctif** : plus de redessin sur un canvas orphelin après la sortie d'un plan (`structures.js`) ; deux checkups hérités stabilisés.
 
 #### v2.26.0 (13/11/2026) — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage (branche `Karma_dev`)
 
@@ -10138,6 +10144,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🧊 **v2.26.0 — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage** : en 3D, sol damé et ciel de carrière texturés, ombre de contact au pied des piliers et des parois, nuance de roche propre à chaque structure, stries d'outil en passes parallèles, arcs en pierre de taille (claveaux, tympan en moellons), mur tracé en ligne en pierre de taille, véhicule en silhouette de voiture, réglage **Textures HD** ; **Niveaux en transparence** (fantôme du dessus en vue d'édition, voisins à travers plafond et sol à hauteur d'yeux) ; mini-carte plus grande en paysage, collée au bandeau de guidage ; icônes au trait dans le menu au sommet ; correctifs. Détail : journal ci-dessous.
 
 > 🏛️ **v2.25.0 — Arc de soutènement, Vérifier le plan, trois nouveaux types de points, Favoris et Annuler en vue 3D** : nouvelle structure **arc de soutènement** (trait bleu rayé de rouge, ne bloque rien), modelée en plein cintre en 3D ; types de points **ossuaire**, **outil de carrier** et **fontis**, modelés en 3D ; **Vérifier le plan** dans l'Éditeur de données ; chatière relevée en plusieurs points ; en 3D, ⭐ Favoris et ⏪ Annuler / Rétablir dans la rangée du haut, ⛏️ qui ouvre la table des niveaux ; l'image de collision disparaît du Générateur et de l'app ; correctifs (niveau du tracker à la réouverture, 2e masse au niveau −1, bandeau de guidage en 3D). Détail : journal ci-dessous.
 

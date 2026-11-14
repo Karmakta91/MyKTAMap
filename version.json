@@ -1,8 +1,8 @@
 {
-  "version": "v2.26.0",
-  "released": "2026-11-13",
+  "version": "v2.27.0",
+  "released": "2026-11-14",
   "notes": [
-    "🧊 Vue 3D plus vraie : sol et ciel de carrière texturés, ombres et nuances de la pierre, arcs en pierre de taille, voiture, réglage Textures HD.",
-    "🌫️ En 3D, les niveaux voisins se devinent en transparence ; la mini-carte grandit en paysage."
+    "🗺️ Le fond OpenStreetMap d'un plan s'affiche désormais directement sous le plan, depuis le bouton carte : transparence, ma position, enregistrement hors ligne.",
+    "🧊 En 3D, le plan au sol reste net même sans limite de portée ; ✏️ noms plus justes : Plaque/indication, Épure/graffiti."
   ]
 }
