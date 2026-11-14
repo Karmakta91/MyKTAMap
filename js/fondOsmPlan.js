@@ -474,7 +474,7 @@
       else if (role === "hors-ligne") enregistrerHorsLigne();
     });
     p.querySelector("[data-fond-osm='transparence']").addEventListener("input", function(e) {
-      regler(parseInt(e.target.value, 10));
+      regler(Number.parseInt(e.target.value, 10));
     });
     return p;
   }
@@ -593,7 +593,7 @@
     const id = _planCourant();
     if (!id) return TRANSPARENCE_DEFAUT;
     try {
-      const v = parseInt(localStorage.getItem(CLE_TRANSPARENCE + id), 10);
+      const v = Number.parseInt(localStorage.getItem(CLE_TRANSPARENCE + id), 10);
       return (v >= 0 && v <= 100) ? v : TRANSPARENCE_DEFAUT;
     } catch(e) { return TRANSPARENCE_DEFAUT; }
   }
