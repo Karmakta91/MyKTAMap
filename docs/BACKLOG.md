@@ -51,6 +51,10 @@
 
 ## Ensuite
 
+- **Sol abaissé qui débouche sur le niveau du dessous** — décidé 14/11 (après le lot 4 de la masse au sol) : en 3D, le
+  plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
+  jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
+  `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M`
 - **Course i18n au démarrage sous WebKit** — ✅ vu 04/11 : sous WebKit, `checkup-guidage.js` tombe parfois sur
   `[I18n] Clé manquante : "home.profile.stats.storageTitle"`, alors que la clé existe ; l'appel vient de
   `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
