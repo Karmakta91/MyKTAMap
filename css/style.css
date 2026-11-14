@@ -15105,20 +15105,23 @@ body.kta-theme-light .kta-refonte-counter-osm.kta-fond-osm-indispo {
 }
 /* Attribution exigée par la licence ODbL, visible tant que le fond est allumé. */
 /* Fixée au-dessus de la barre d'état : le conteneur de la carte descend sous elle. */
+/* Attribution ODbL : discrète mais toujours visible et cliquable. Fond voilé (90 %) : le contraste texte / fond
+   reste ≥ 4,5:1 sur une tuile blanche comme sur du noir, dans les deux thèmes (jamais d'opacité sur le texte). */
 .kta-fond-osm-attrib {
   position: fixed;
-  left: 6px;
-  bottom: calc(var(--kta-statusbar-h, 52px) + 6px);
+  left: 4px;
+  bottom: calc(var(--kta-statusbar-h, 52px) + 4px);
   z-index: 1000;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 0 4px;
+  border-radius: 3px;
   background: var(--kta-fond);
-  color: var(--kta-texte-2);
-  font-size: 11px;
-  line-height: 1.4;
+  background: color-mix(in srgb, var(--kta-fond) 90%, transparent);
+  color: var(--kta-texte-3);
+  font-size: 10px;
+  line-height: 1.5;
   pointer-events: auto;
 }
-.kta-fond-osm-attrib a { color: var(--kta-interaction); text-decoration: none; }
+.kta-fond-osm-attrib a { color: var(--kta-texte-2); text-decoration: underline; text-underline-offset: 1px; }
 /* Point « Ma position » (un fix, jamais de suivi). */
 .kta-fond-osm-moi {
   box-sizing: border-box;
