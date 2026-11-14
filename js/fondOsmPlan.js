@@ -444,7 +444,7 @@
       '</div>' +
       '<p class="kta-fond-osm-horsligne kta-tx-warn" data-fond-osm="hors-ligne-msg" role="status" hidden></p>' +
       '<button type="button" class="kta-group-flyout-btn" data-fond-osm="interrupteur" aria-pressed="false">' +
-        '<span class="kta-group-flyout-btn-icon">' + window.ktaIcone("toggle-right") + '</span>' +
+        '<span class="kta-group-flyout-btn-icon" data-fond-osm="interrupteur-ico"></span>' +
         '<span class="kta-group-flyout-btn-label">' + window.ktaEsc(_t("fondosm.interrupteur")) + '</span>' +
         '<span class="kta-fond-osm-etat" data-fond-osm="etat"></span>' +
       '</button>' +
@@ -484,6 +484,13 @@
     const inter = _panneau.querySelector("[data-fond-osm='interrupteur']");
     inter.classList.toggle("kta-actif", _allume);
     inter.setAttribute("aria-pressed", _allume ? "true" : "false");
+    // Rond à gauche = éteint, à droite = allumé ; doré à l'état actif par la couleur du bouton (currentColor).
+    const ico = inter.querySelector("[data-fond-osm='interrupteur-ico']");
+    const nomIco = _allume ? "toggle-right" : "toggle-left";
+    if (ico.getAttribute("data-ico") !== nomIco) {
+      ico.innerHTML = window.ktaIcone(nomIco);
+      ico.setAttribute("data-ico", nomIco);
+    }
     // Hors ligne : dit dans le panneau, tenu à jour par les événements online / offline (fin de fichier).
     const msg = _panneau.querySelector("[data-fond-osm='hors-ligne-msg']");
     msg.hidden = _enLigne();

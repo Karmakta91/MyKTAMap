@@ -6,7 +6,8 @@
 // Le relevé fictif n'est pas géoréférencé : le checkup lui prête un calage fictif EN MÉMOIRE (en mer, près de 0°/0°),
 // jamais dans data/. Les tuiles OSM sont fabriquées ici (PNG synthétiques) : aucune requête ne sort vers le vrai
 // serveur. 🩸 Service worker bloqué : sinon il fait la requête à la place de la page et page.route ne la voit pas.
-// F1 bouton grisé sans géoréf, raison au survol, aucun panneau · F2 panneau ancré, interrupteur, attribution, fond
+// F1 bouton grisé sans géoréf, raison au survol, aucun panneau · F2 panneau ancré, interrupteur (icône rond à gauche
+//   éteint, à droite allumé), attribution, fond
 //   dessiné au dézoom (zoom négatif), panneau fermé sans éteindre, la fenêtre Vue OSM ne s'ouvre pas ·
 // F3 transparence sur l'image du plan, fond opaque ·
 // F4 calage : un point du plan tombe sur son pixel OSM à moins de 1 px au zoom max (contre-essai : pixel voisin
@@ -179,6 +180,16 @@ function lireHorsLigne() {
   const b = document.querySelector("[data-fond-osm='hors-ligne']");
   if (!b) return null;
   return { desactivee: b.disabled, texte: (b.querySelector("[data-fond-osm='hors-ligne-etat']") || {}).textContent || "" };
+}
+// Icône de l'interrupteur : { rond: "gauche" | "droite", couleur, couleurLibelleEtat } (Lucide toggle-left / -right).
+function lireIconeInterrupteur() {
+  const ico = document.querySelector("[data-fond-osm='interrupteur-ico']");
+  const c = ico && ico.querySelector("svg circle");
+  if (!c) return null;
+  const etat = document.querySelector("[data-fond-osm='etat']");
+  const btn = document.querySelector("[data-fond-osm='interrupteur']");
+  return { rond: +c.getAttribute("cx") < 12 ? "gauche" : "droite", couleur: getComputedStyle(ico).color,
+           couleurLibelleEtat: getComputedStyle(btn.classList.contains("kta-actif") ? etat : btn).color };
 }
 // Phrase d'état hors ligne du panneau : { visible, texte }.
 function lirePhraseHorsLigne() {
@@ -355,12 +366,31 @@ async function mesurerCalage(page, etat, decalage, lib) {
       "petit panneau ancré sous le bouton, la fenêtre Vue OSM ne s'ouvre pas", geo);
     const avant = s.etat.requetes.length;
     verifier(avant === 0, "aucune tuile OSM demandée fond éteint", avant);
+    const capturer = async function (nomFichier) {
+      if (!process.env.KTA_CAPTURE_DIR) return;
+      await (await page.$(".kta-fond-osm-panneau")).screenshot({ path: path.join(process.env.KTA_CAPTURE_DIR, nomFichier) });
+    };
+    const i0 = await page.evaluate(lireIconeInterrupteur);
+    verifier(i0 && i0.rond === "gauche", "éteint : icône de l'interrupteur, rond à gauche", i0);
+    await capturer("interrupteur-eteint.png");
     await page.click("[data-fond-osm='interrupteur']");
     await tuilesChargees(page);
     const f1 = await page.evaluate(lireFond);
     const b2 = await page.evaluate(lireBouton);
     verifier(f1.etat.allume && f1.canvas > 0 && f1.attribution && b2.actif,
       "allumé : canvas dans le pane, attribution visible, bouton actif", { canvas: f1.canvas, attrib: f1.attribution, actif: b2.actif });
+    const i1 = await page.evaluate(lireIconeInterrupteur);
+    verifier(i1 && i1.rond === "droite" && i1.couleur === i1.couleurLibelleEtat,
+      "allumé : rond à droite, à la couleur de l'état actif", i1);
+    await capturer("interrupteur-allume.png");
+    await page.click("[data-fond-osm='interrupteur']");
+    await page.waitForTimeout(200);
+    const i2 = await page.evaluate(lireIconeInterrupteur);
+    await page.click("[data-fond-osm='interrupteur']");
+    await tuilesChargees(page);
+    const i3 = await page.evaluate(lireIconeInterrupteur);
+    verifier(i2 && i2.rond === "gauche" && i3 && i3.rond === "droite", "bascule : rond à gauche puis à droite",
+      { eteint: i2 && i2.rond, rallume: i3 && i3.rond });
     verifier(f1.zPane < f1.zTiles, "pane du fond sous l'image du plan", { zPane: f1.zPane, zTiles: f1.zTiles });
     verifier(s.etat.requetes.length > 0 && s.etat.requetes.every(function (u) { return RE_OSM.test(u); }),
       "requêtes vers tile.openstreetmap.org seulement", s.etat.requetes.length);
@@ -617,6 +647,8 @@ async function mesurerCalage(page, etat, decalage, lib) {
     const msgOpt = (await cle(page, "fondosm.refus.optin")).slice(0, 30);
     verifier(!f8.etat.allume && f8.canvas === 0 && s.etat.requetes.length === 0 && await texteVisible(page, msgOpt),
       "OSM refusé : fond refusé avec un message, aucune requête", { allume: f8.etat.allume, requetes: s.etat.requetes.length });
+    const i8 = await page.evaluate(lireIconeInterrupteur);
+    verifier(i8 && i8.rond === "gauche", "OSM refusé : l'icône reste rond à gauche", i8);
     const hl8 = await page.evaluate(lireHorsLigne);
     await page.click("[data-fond-osm='hors-ligne']", { force: true }).catch(function () {});
     await page.waitForTimeout(800);
