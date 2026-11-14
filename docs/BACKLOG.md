@@ -31,10 +31,6 @@
 
 ## Maintenant
 
-- **Essai fond OSM sous le plan** — `6e30b19f` + `7b6fd204` + `19f4e457` : panneau du bouton carte (on/off,
-  transparence retenue par plan, Ma position, Enregistrer hors ligne). Mesuré sur le fictif en émulation seulement.
-  `qui: KARMA · action: iPhone sur dev, vrai plan tuilé : fluidité plan orienté tourné, attribution, hors ligne
-  · fini: conforme, ou bugs ouverts · depuis: 14/11/2026 · taille: XS`
 - **`_currentLoadedPlanId` à l'accueil : scénario pro** — community fait : id remis à null au retour à l'accueil, plan
   quitté dans `_ktaDernierPlanId` (carte OSM), prouvé par `smoke.js` sous Chromium et WebKit. Reste à prouver côté pro :
   plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
