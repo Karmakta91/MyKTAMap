@@ -18,7 +18,7 @@
 
 ## 📦 Version courante — `v2.27.0` (14/11/2026)
 
-> 🗺️ **v2.27.0 — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes** : en mode plan, le bouton carte ouvre un petit panneau qui pose **OpenStreetMap sous le plan** (interrupteur, transparence du plan retenue pour chaque plan, **Ma position** ponctuelle, **Enregistrer hors ligne**), calé sur le géoréférencement, qui tourne avec le plan orienté ; la fenêtre Vue OSM reste celle de l'accueil et du Mode Secours. En 3D, le plan au sol reste net en « Tout le plan ». Libellés : **Plaque/indication**, **Épure/graffiti**, « Arc de soutènement », « Zone jonction » et les piliers et fronts de 2e masse sans leur précision. Détail : journal ci-dessous.
+> 🗺️ **v2.27.0 — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes** : en mode plan, le bouton carte ouvre un petit panneau qui pose **OpenStreetMap sous le plan** (interrupteur, transparence du plan retenue pour chaque plan, **Ma position** ponctuelle, **Enregistrer hors ligne**), calé sur le géoréférencement, qui tourne avec le plan orienté ; la fenêtre Vue OSM reste celle de l'accueil et du Mode Secours. En 3D, le plan au sol reste net en « Tout le plan ». Le calage modifié dans les Réglages est repris partout (fond OSM, Vue OSM, Secours) et écrit par « Mettre à jour le plan ». Libellés : **Plaque/indication**, **Épure/graffiti**, « Arc de soutènement », « Zone jonction » et les piliers et fronts de 2e masse sans leur précision. Détail : journal ci-dessous.
 
 ---
 
@@ -824,10 +824,6 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
-#### Pas encore publié (après v2.27.0, branche `Karma_dev`)
-
-- **🌐 Le calage des Réglages gagne sur celui du plan** (`kmzExport.js > appliquerCalageUtilisateur`, `main.js > _propagerGeorefVersKmzExport`, `fondOsmPlan.js`, `osmView.js`, `createConf.js > _georefReglagesPourMaj`, `vue-osm.md` § 2.2, `checkup-georef-reglages.js`) : un point modifié ou ajouté dans ⚙️ Réglages › Géoréférencement (et Recaler, Export externe) était ignoré par le fond OSM, la Vue OSM et le Mode Secours quand le plan embarquait déjà un calage — même après rechargement, et « Mettre à jour le plan » réécrivait l'ancien. Il est maintenant repris tout de suite (fond OSM redessiné sans être rallumé), à chaque ouverture et dans le plan mis à jour. Limite voulue, dite dans les Réglages : un plan régénéré ailleurs ne remplace pas un calage déjà saisi (« Effacer » pour revenir à celui du plan).
-
 #### v2.27.0 (14/11/2026) — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes (branche `Karma_dev`)
 
 > Écart avec la prod v2.26.0.
@@ -836,6 +832,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 - **Finitions du panneau Fond OSM** (`js/fondOsmPlan.js`, `css/style.css`, `js/ktaIcones.js > toggle-left`, `checkup-fond-osm.js`) : hors ligne, une phrase en tête du panneau le dit (suit le réseau sans rouvrir) ; l'icône de l'interrupteur montre l'état (rond à gauche éteint, à droite allumé) ; « 100 % » ne sort plus du panneau au téléphone ; attribution « © OpenStreetMap » discrète (10 px, couleur méta, lien souligné, contraste ≥ 4,5:1 mesuré dans les deux thèmes) ; les réglages par plan (`myktamap_plan_prefs_`) partent avec le plan supprimé et suivent sa version serveur.
 - **🧊 Plan au sol net en « Tout le plan »** (`js/vue3d.js`, `tracking.md` § Vue 3D) : sans limite de portée, l'image du plan au sol suit l'emprise du cadrage et non plus la portée : elle reste nette.
 - **Libellés plus justes** (dicos `lang/`, `EDITOR_TAG_LABELS`, `LEGENDE_LABELS`, `DEFAULT_LABELS`, guides, `AI_CONTEXT.md`) : le type `plaque` s'affiche **Plaque/indication** (en Plate/sign, es Placa/indicación), `epure` **Épure/graffiti** (en Drawing/graffiti, es Dibujo/grafiti) ; dans le choix des structures et des zones, « Arc de soutènement », « Pilier 2e masse », « Front de taille 2e masse » et « Zone jonction » sans leur précision. Clés de type, icônes et comportement inchangés.
+- **🌐 Calage des Réglages pris partout et écrit par « Mettre à jour le plan »** (`kmzExport.js > appliquerCalageUtilisateur`, `main.js > _propagerGeorefVersKmzExport`, `fondOsmPlan.js`, `osmView.js`, `createConf.js > _georefReglagesPourMaj`, `vue-osm.md` § 2.2, `checkup-georef-reglages.js`) : un point modifié ou ajouté dans ⚙️ Réglages › Géoréférencement (et Recaler, Export externe) était ignoré par le fond OSM, la Vue OSM et le Mode Secours quand le plan embarquait déjà un calage — même après rechargement, et « Mettre à jour le plan » réécrivait l'ancien. Il est maintenant repris tout de suite (fond OSM redessiné sans être rallumé), à chaque ouverture et dans le plan mis à jour. Limite voulue, dite dans les Réglages : un plan régénéré ailleurs ne remplace pas un calage déjà saisi (« Effacer » pour revenir à celui du plan).
 - **Correctif** : plus de redessin sur un canvas orphelin après la sortie d'un plan (`structures.js`) ; deux checkups hérités stabilisés.
 
 #### v2.26.0 (13/11/2026) — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage (branche `Karma_dev`)
