@@ -7,8 +7,8 @@
 // masseSol.js — sol d'une masse au sol (zone `masse-sol`), une seule règle pour la vue 3D et la fiche de la carte.
 // Expose window.KtaMasseSol :
 //   PENTE (tan 30°), PAS (découpe des bords, m), SONDE (m) ;
-//   bords(ring, bloque) → { ouverts: [[ax, az, bx, bz]], fermes } : chaque bord découpé par PAS, ouvert si une sonde
-//     qui le franchit vers l'extérieur n'est pas arrêtée par `bloque(ax, az, bx, bz)` (m) ;
+//   bords(ring, bloque, autres) → { ouverts: [[ax, az, bx, bz]], fermes } : chaque bord découpé par PAS, ouvert
+//     seulement s'il donne sur du vide libre (_ferme : sondes courte et longue, contour lui-même, autres masses) ;
 //   sol(m, x, z) → sol (m, signé comme m.H) en un point du contour ; m = { ring, H, ouverts, pente? } ;
 //   atteinte(m) → hauteur la plus haute (ou profondeur la plus basse) que le sol atteint dans la zone (signée) ;
 //   bloqueCarte(niveau, rendu, sc) → la sonde de la règle du pas, sans la vue 3D (fiche de la carte) ;
@@ -22,9 +22,52 @@
 // lisent ces fonctions, jamais une copie. Garde-fou : scripts/smoke/checkup-vue-3d.js > sectionMasseSol.
 (function () {
   "use strict";
-  const PENTE = Math.tan(30 * Math.PI / 180), PAS = 0.5, SONDE = 0.35;
+  const PENTE = Math.tan(30 * Math.PI / 180), PAS = 0.5, SONDE = 0.35, LOIN = 1.2;
 
-  function bords(ring, bloque) {
+  // Segments AB et CD (m) se coupent-ils (intérieurs) ?
+  function _coupe(ax, az, bx, bz, cx, cz, dx, dz) {
+    const d = (bx - ax) * (dz - cz) - (bz - az) * (dx - cx);
+    if (Math.abs(d) < 1e-12) return false;
+    const t = ((cx - ax) * (dz - cz) - (cz - az) * (dx - cx)) / d;
+    const u = ((cx - ax) * (bz - az) - (cz - az) * (bx - ax)) / d;
+    return t > 0 && t < 1 && u > 0 && u < 1;
+  }
+
+  // La sonde (sx, sz) → (lx, lz) recoupe-t-elle le contour lui-même (hors du bord i) ?
+  function _recoupe(ring, i, sx, sz, lx, lz) {
+    for (let k = 0; k < ring.length; k++) {
+      if (k === i) continue;
+      const p = ring[k], q = ring[(k + 1) % ring.length];
+      if (_coupe(sx, sz, lx, lz, p[0], p[1], q[0], q[1])) return true;
+    }
+    return false;
+  }
+
+  // ⚠️ contrat (décision produit) : un bord est FERMÉ (pas de talus, le sol arrive à plat contre lui, comme contre une
+  // paroi) si :
+  //   - la sonde courte (SONDE) ou la sonde longue (LOIN, l'écart qu'on laisse entre un contour et un pilier ou un mur
+  //     voisin), droit devant, est arrêtée par la règle du pas (`bloque`) ;
+  //   - l'une des sondes longues droit devant ou en biais (±45°) recoupe le contour lui-même (une encoche autour d'un
+  //     pilier, la zone qui revient) ou, en biais, touche une structure (`bloque.structure`, facultatif : les biais
+  //     ne lisent pas les parois des tubes, une vraie extrémité près d'une paroi reste ouverte) ;
+  //   - le bout de la sonde courte est dans une autre masse au sol du niveau (`autres`, contours en m : deux masses
+  //     jointives forment un seul remblai).
+  // Seules les vraies extrémités (le remblai s'arrête dans la galerie libre) restent ouvertes.
+  function _ferme(ring, i, cx, cz, nx, nz, bloque, autres) {
+    const sx = cx + nx * 0.05, sz = cz + nz * 0.05;
+    if (bloque(cx - nx * 0.05, cz - nz * 0.05, cx + nx * SONDE, cz + nz * SONDE)) return true;
+    const lx = cx + nx * LOIN, lz = cz + nz * LOIN;
+    if (bloque(sx, sz, lx, lz) || _recoupe(ring, i, sx, sz, lx, lz)) return true;
+    const c = Math.SQRT1_2, st = typeof bloque.structure === "function" ? bloque.structure : null;
+    for (let s = -1; s <= 1; s += 2) {
+      const ux = (nx - s * nz) * c, uz = (nz + s * nx) * c, bx = cx + ux * LOIN, bz = cz + uz * LOIN;
+      if (_recoupe(ring, i, sx, sz, bx, bz) || (st && st(sx, sz, bx, bz))) return true;
+    }
+    const ex = cx + nx * SONDE, ez = cz + nz * SONDE;
+    return !!(autres && autres.some(function (r) { return _dans(r, ex, ez); }));
+  }
+
+  function bords(ring, bloque, autres) {
     const out = { ouverts: [], fermes: 0 };
     for (let i = 0; i < ring.length; i++) {
       const p = ring[i], q = ring[(i + 1) % ring.length], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
@@ -34,7 +77,7 @@
         const ax = p[0] + dx * j / k, az = p[1] + dz * j / k;
         const bx = p[0] + dx * (j + 1) / k, bz = p[1] + dz * (j + 1) / k;
         const cx = (ax + bx) / 2, cz = (az + bz) / 2;
-        if (bloque(cx - nx * 0.05, cz - nz * 0.05, cx + nx * SONDE, cz + nz * SONDE)) out.fermes++;
+        if (_ferme(ring, i, cx, cz, nx, nz, bloque, autres)) out.fermes++;
         else out.ouverts.push([ax, az, bx, bz]);
       }
     }
@@ -112,7 +155,7 @@
         !/ligne|^front|^arc$/.test(String(s.type || ""));
     }).map(function (s) { return s.points.map(function (q) { return [q.x / sc, q.y / sc]; }); });
     const dansStructure = function (x, z) { return pleines.some(function (r) { return _dans(r, x, z); }); };
-    return function (ax, az, bx, bz) {
+    const sonde = function (ax, az, bx, bz) {
       if (pc && (bx < 0 || bz < 0 || bx * sc > pc.imageWidth || bz * sc > pc.imageHeight)) return true;
       const segs = [[ax * sc, az * sc, bx * sc, bz * sc]];
       if (G && typeof G.zonesBloquent === "function" && G.zonesBloquent(segs, n, undefined, rendu)[0]) return true;
@@ -122,6 +165,14 @@
           window.ktaSegmentsBloquesParStructure(segs, n, true)[0]) return true;
       return !!(rendu === "mixte" && G && G.paroisBloquent(segs, n)[0]);
     };
+    // Structures seules (sondes en biais de _ferme) : bout dans une structure, face franchie ; rien en galerie.
+    sonde.structure = function (ax, az, bx, bz) {
+      if (rendu === "galerie") return false;
+      if (dansStructure(bx, bz)) return true;
+      return typeof window.ktaSegmentsBloquesParStructure === "function" &&
+        !!window.ktaSegmentsBloquesParStructure([[ax * sc, az * sc, bx * sc, bz * sc]], n, true)[0];
+    };
+    return sonde;
   }
 
   function anneau(points, sc) {
@@ -140,10 +191,10 @@
     return out;
   }
 
-  function masse(zone, sc, H, bloque) {
+  function masse(zone, sc, H, bloque, autres) {
     const ring = anneau(zone && zone.points, sc);
     if (ring.length < 3) return null;
-    const b = bords(ring, bloque);
+    const b = bords(ring, bloque, autres);
     return { ring: ring, H: H, ouverts: b.ouverts, fermes: b.fermes };
   }
 
@@ -155,10 +206,16 @@
     const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(zone) : 0.5;
     const H = window.ktaMetresComble(zone, Math.max(-1, Math.min(1, c))).m;
     const rendu = (typeof window.getPlanRenduVue3D === "function" && window.getPlanRenduVue3D()) || "mixte";
-    const m = masse(zone, sc, H, bloqueCarte(zone.level, rendu, sc));
+    const nv = Number.isInteger(zone.level) ? zone.level : 0;
+    const tab = function (f) { try { return typeof f === "function" ? (f() || []) : []; } catch (e) { return []; } };
+    const autres = tab(window.getZones).concat(tab(window.getAllEmbeddedZones)).filter(function (z) {
+      return z && z.type === "masse-sol" && z.points !== zone.points &&
+        (Number.isInteger(z.level) ? z.level : 0) === nv;
+    }).map(function (z) { return anneau(z.points, sc); }).filter(function (r) { return r.length >= 3; });
+    const m = masse(zone, sc, H, bloqueCarte(zone.level, rendu, sc), autres);
     return m ? { atteinte: atteinte(m), H: H } : null;
   }
 
-  window.KtaMasseSol = { PENTE: PENTE, PAS: PAS, SONDE: SONDE, bords: bords, sol: sol, atteinte: atteinte,
+  window.KtaMasseSol = { PENTE: PENTE, PAS: PAS, SONDE: SONDE, LOIN: LOIN, bords: bords, sol: sol, atteinte: atteinte,
     bloqueCarte: bloqueCarte, anneau: anneau, masse: masse, atteinteZone: atteinteZone };
 })();

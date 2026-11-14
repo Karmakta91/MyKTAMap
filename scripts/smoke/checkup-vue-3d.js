@@ -3224,6 +3224,54 @@ async function sectionMasseSol(page) {
     r.borne = { masses: K.etat().masses, centre: await ici(-4, 0) };
     await K.fermer();
     window.setPlanProfondeurs(PID, { "0": null, "-1": null });
+    // Bords jamais ouverts contre une structure (structures, mixte) : masse ½ (x 60 à 72) dont le contour s'écarte de
+    // 0,6 m autour d'un pilier (encoche), masse ½ jointive (x 72 à 78) ; deux piliers posés dedans. Sol à 0,4 m de
+    // l'encoche, du bord commun et de la face d'un pilier : le cran (1,2 m), jamais un talus.
+    window.setRoads([{ uid: "rd_ms_b", type: "principal", level: 0, points: [P(50, 0), P(90, 0)] }]);
+    window.setZones([
+      { uid: "zn_ms_enc", type: "masse-sol", level: 0, comble: 0.5, points: [P(60, -6), P(72, -6), P(72, 6), P(67.6, 6),
+        P(67.6, 1.4), P(64.4, 1.4), P(64.4, 6), P(60, 6)] },
+      { uid: "zn_ms_joint", type: "masse-sol", level: 0, comble: 0.5, points: rect(72, -6, 78, 6) }
+    ]);
+    window.setStructures([
+      { uid: "st_ms_enc", type: "pilier-1", level: 0, points: rect(65, 2, 67, 4) },
+      { uid: "st_ms_in1", type: "pilier-1", level: 0, points: rect(63, -4, 64, -3) },
+      { uid: "st_ms_in2", type: "pilier-1", level: 0, points: rect(69, -4, 70, -3) }
+    ]);
+    r.piliers = {};
+    for (const rendu of ["structures", "mixte"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(55, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      r.piliers[rendu] = { encoche: await ici(66, 1.0), joint: await ici(71.6, 0), face: await ici(62.6, -3.5),
+        bout: await ici(61, 0), masses: K.etat().masses };
+      await K.fermer();
+    }
+    // POI posés sur le sol local : un point de danger (halo) et un outil de carrier (forme au sol) sur la ½ (x −30 à
+    // −20), puis sur la −½.
+    window.setStructures([]);
+    window.setRoads([{ uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    r.poi = {};
+    for (const c of [0.5, -0.5]) {
+      window.setZones([{ uid: "zn_ms_poi", type: "masse-sol", level: 0, comble: c, points: rect(-30, -6, -20, 6) }]);
+      window.setEditorPoints([
+        Object.assign({ id: "POI masse info", level: 0, tags: ["danger"] }, P(-25, 0.5)),
+        Object.assign({ id: "POI masse outil", level: 0, tags: ["outil"] }, P(-24, -0.5))
+      ]);
+      window.setPlanRenduVue3D(null, "structures");
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(-35, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(400);
+      const e = K.etat();
+      r.poi[c] = { oeil: e.oeil, hauteur: e.hauteur,
+        panneau: e.panneaux.filter(function (q) { return q.nom === "POI masse info"; })[0] || null,
+        ossuaire: e.volumes.filter(function (v) { return v.genre === "poi" && v.construit; }).map(function (v) {
+          return { construit: v.construit, solLocal: v.solLocal };
+        })[0] || null };
+      await K.fermer();
+    }
+    window.setEditorPoints([]);
     // Budget : une masse de 40 × 12 m (480 m²), 🧱 allumé puis coupé.
     window.setZones([{ uid: "zn_ms_g", type: "masse-sol", level: 0, comble: 0.75, points: rect(-40, -6, 0, 6) }]);
     window.setPlanRenduVue3D(null, "structures");
@@ -3277,8 +3325,10 @@ async function sectionMasseSol(page) {
     verifier(p.hors.sol === 0 && p.hors.vide === null && camOk(p.hors), k + " : hors masse, sol 0 et vue inchangée",
       p.hors);
     if (p.pilier) {
-      verifier(pr(p.pilier.sol, Math.min(1.8, T30 * Math.hypot(1, 1.15)), 0.02),
-        k + " : pilier à cheval sur le bord = bord fermé (talus depuis les bords libres seulement)", p.pilier);
+      // Bords à moins de LOIN (1,2 m) du pilier fermés aussi (sondes en biais) : la pente part plus loin du pilier.
+      verifier(p.pilier.sol > T30 * Math.hypot(1, 1.15) + 0.1 && p.pilier.sol <= 1.8,
+        k + " : pilier à cheval sur le bord = bord fermé, à plat contre lui (talus depuis les bords libres, loin du " +
+        "pilier)", p.pilier);
     }
     ["quart", "demi", "troisQuarts"].forEach(function (n) {
       const m = c.montee[n];
@@ -3333,6 +3383,20 @@ async function sectionMasseSol(page) {
   verifier(R.borne.masses.bornes.every(Boolean) && R.borne.masses.fonds.every(function (v) { return pr(v, -0.3); }) &&
     pr(R.borne.centre.sol, -0.3), "sol abaissé, multi-niveau : sols −25 / −28 (2,4 m) → jamais sous le plafond du −1 " +
     "+ 0,3 m (−0,3 m), borne signalée", R.borne);
+  Object.keys(R.piliers).forEach(function (rendu) {
+    const p = R.piliers[rendu];
+    verifier(pr(p.encoche.sol, 1.2) && pr(p.joint.sol, 1.2) && pr(p.face.sol, 1.2) && pr(p.bout.sol, T30, 0.02),
+      "masse au sol, " + rendu + " : à plat (1,2 m) contre l'encoche d'un pilier, contre le bord d'une masse " +
+      "jointive " +
+      "et contre la face d'un pilier posé dedans ; la pente reste à l'extrémité (1 m → " + T30.toFixed(3) + " m)", p);
+  });
+  [0.5, -0.5].forEach(function (c) {
+    const q = R.poi[c], sol = c * 2.4, att = Math.min(sol + q.oeil + 0.4, q.hauteur - 0.3);
+    verifier(!!q.panneau && pr(q.panneau.y, att, 0.02) && pr(q.panneau.haloY, 0.03 + sol, 0.02) && !!q.ossuaire &&
+      q.ossuaire.construit && Math.sign(q.ossuaire.solLocal) === Math.sign(c) && Math.abs(q.ossuaire.solLocal) > 0.3,
+      "masse au sol " + (c > 0 ? "½" : "−½") + " : panneau, halo et forme (outil de carrier) posés sur le sol local (" + sol +
+      " m)", q);
+  });
   ["textures", "aplat"].forEach(function (t) {
     const m = R.budget[t];
     verifier(m && m.n === 1 && m.triMax > 0 && m.triMax <= 2000,
@@ -3349,7 +3413,9 @@ async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
     ["creux-bord", -33, 0, 90, true, true], ["creux-fond", -27, -2, 60, true, true],
-    ["creux-bord-aplat", -33, 0, 90, false, true], ["masse-sommet-aplat", -25, 0, 90, false]];
+    ["creux-bord-aplat", -33, 0, 90, false, true], ["masse-sommet-aplat", -25, 0, 90, false],
+    ["creux-pilier", -28.5, 0.5, 130, true, true],
+    ["creux-pilier-hd", -28.5, 0.5, 130, true, true, true]];
   for (const rendu of ["galerie", "mixte", "structures"]) {
     for (const q of vues) {
       await page.evaluate(async function (c) {
@@ -3373,6 +3439,7 @@ async function capturesMasseSol(page) {
         window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
         window.setPlanRenduVue3D(null, c.rendu);
         window.setVue3DTextures(c.q[4]);
+        window.setVue3DTexturesHD(!!c.q[6]);
         window.ktaSetActiveLevel(0);
         window.KtaGalerie.invalider();
         if (K.etat().ouvert !== false) await K.fermer();
@@ -3386,6 +3453,7 @@ async function capturesMasseSol(page) {
   await page.evaluate(async function () {
     await window.KtaVue3D.fermer();
     window.setVue3DTextures(true);
+    window.setVue3DTexturesHD(false);
     window.effacerReglagesNiveaux("v3d-checkup-masse");
   });
 }

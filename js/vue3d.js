@@ -938,6 +938,23 @@
         window.ktaSegmentsBloquesParStructure(segs, n, true)[0]) return true;
     return !!(e.mixte && G && G.paroisBloquent(segs, n)[0]);
   }
+  // Structures seules (sondes en biais : masseSol.js > _ferme) : bout dans une structure du niveau, face franchie ;
+  // rien en galerie (les structures n'y sont pas dessinées).
+  _bloqueSonde.structure = function (ax, az, bx, bz) {
+    const e = _e, sc = e.sc, n = e.niveau === null ? undefined : e.niveau;
+    if (e.galerie) return false;
+    if (e.volumes && e.volumesNiveau === e.niveau && _volumeContenant(bx, bz)) return true;
+    return typeof window.ktaSegmentsBloquesParStructure === "function" &&
+      !!window.ktaSegmentsBloquesParStructure([[ax * sc, az * sc, bx * sc, bz * sc]], n, true)[0];
+  };
+
+  // Contours (m) des autres masses au sol du niveau de la scène que `z` (bords jointifs : masseSol.js > _ferme).
+  function _autresMasses(z) {
+    const e = _e;
+    return _tab(window.getZones).concat(_tab(window.getAllEmbeddedZones)).filter(function (o) {
+      return o && o !== z && o.type === "masse-sol" && o.points !== z.points && _zoneSurNiveau(o, e.niveau);
+    }).map(function (o) { return _anneau(o.points, e.sc); }).filter(function (r) { return r.length >= 3; });
+  }
 
   // Masse au sol de la zone `z` au niveau de la scène → { z, ring (m, sens positif), H (m), ouverts ([[ax, az, bx, bz]]
   // m : morceaux de bord ouverts, de MASSE.pas au plus), x0, z0, x1, z1 }, null si son contour est vide. En cache par
@@ -965,7 +982,7 @@
         m.z0 = Math.min(m.z0, q[1]); m.z1 = Math.max(m.z1, q[1]);
       });
       // Bords découpés et sondés par la règle partagée (masseSol.js > bords), la sonde étant celle de la 3D.
-      const b = window.KtaMasseSol.bords(ring, _bloqueSonde);
+      const b = window.KtaMasseSol.bords(ring, _bloqueSonde, _autresMasses(z));
       m.ouverts = b.ouverts;
       m.fermes = b.fermes;
     }
@@ -1017,21 +1034,31 @@
     return haut > 0 ? haut : bas;
   }
 
-  // Pied d'une structure (contour en m) dans un sol abaissé : prisme sans dessus du sol local le plus bas (sommets et
-  // centre, _solMasse) jusqu'au sol du niveau, même lot, même couleur et même motif. Niveau actif seulement (les
-  // masses de e.masses sont les siennes : un voisin construit n'a pas les siennes ici).
-  function _piedMasse(lot, ring, col, m, u0) {
+  // Fond (m, ≤ 0) sous une structure (contour en m) posée dans un sol abaissé : le sol local le plus bas (sommets et
+  // centre, _solMasse) ; 0 ailleurs. Niveau actif seulement (les masses de e.masses sont les siennes : un voisin
+  // construit n'a pas les siennes ici).
+  function _fondPied(ring) {
     const e = _e;
-    if (!e.masses || !e.masses.length || e.dyContexte || e.massesNiveau !== e.niveau || ring.length < 3) return;
+    if (!e.masses || !e.masses.length || e.dyContexte || e.massesNiveau !== e.niveau || ring.length < 3) return 0;
     let cx = 0, cz = 0, fond = 0;
     ring.forEach(function (q) {
       cx += q[0] / ring.length; cz += q[1] / ring.length;
       fond = Math.min(fond, _solMasse(q[0], q[1]));
     });
     fond = Math.min(fond, _solMasse(cx, cz));
-    if (fond > -0.01) return;
-    _prisme(lot, ring, fond, 0, col, false, m, u0);
-    e.piedsMasse = (e.piedsMasse || 0) + 1;
+    return fond > -0.01 ? 0 : fond;
+  }
+
+  // ⚠️ contrat (décision produit) : une structure posée dans un sol abaissé est UNE géométrie qui descend jusqu'au fond
+  // (_prisme de `fond` au sommet) : même nuance, mêmes coordonnées de texture calées au monde (v = y / motif), mêmes
+  // normales, ombre de contact posée au nouveau pied (lot.ombre.sol le temps de ce prisme) — jamais un pavé ajouté.
+  function _prismePied(lot, ring, y1, col, dessus, m, u0) {
+    const fond = _fondPied(ring);
+    if (!fond) { _prisme(lot, ring, 0, y1, col, dessus, m, u0); return; }
+    const O = lot.ombre;
+    if (O) lot.ombre = Object.assign({}, O, { sol: fond });
+    try { _prisme(lot, ring, fond, y1, col, dessus, m, u0); } finally { if (O) lot.ombre = O; }
+    _e.piedsMasse = (_e.piedsMasse || 0) + 1;
   }
 
   // Vide restant (m) au-dessus d'une masse en (x, z) m ; Infinity hors masse, sur un sol abaissé (plus de vide que le
@@ -1083,7 +1110,7 @@
   // MASSE.triMax triangles) et ses pans verticaux (bords fermés : jusqu'à la hauteur comblée ; bords ouverts : rien,
   // le talus y part de 0). `tex` : coordonnées de texture en mètres / REMBLAIS.m (lot texturé 🧱). Rend le nombre de
   // triangles posés.
-  function _maillageMasse(lot, m, col, tex) {
+  function _maillageMasse(lot, m, col, tex, motif) {
     const w = m.x1 - m.x0, d = m.z1 - m.z0;
     // Budget : 2 triangles par case (≈ w × d / pas²) + 2 par pan (≈ périmètre / pas) ≤ 90 % de MASSE.triMax (les cases
     // découpées au contour en ajoutent un peu) → plus petit pas qui tient, jamais sous MASSE.pas.
@@ -1095,7 +1122,7 @@
     const T = MASSE.triMax * 0.9;
     const pas = Math.max(MASSE.pas, (2 * per + Math.sqrt(4 * per * per + 8 * T * w * d)) / (2 * T));
     const nx = Math.max(1, Math.ceil(w / pas)), nz = Math.max(1, Math.ceil(d / pas));
-    const mt = REMBLAIS.m, avant = lot.p.length;
+    const mt = motif || REMBLAIS.m, avant = lot.p.length;
     const H = function (x, z) { return _solMasseDe(m, x, z); };
     const uv = function (a, b, c) {
       return tex ? [a[0] / mt, a[2] / mt, b[0] / mt, b[2] / mt, c[0] / mt, c[2] / mt] : undefined;
@@ -1188,7 +1215,11 @@
 
   // Masse au sol `z` dessinée dans la tuile : texturée (🧱 : lot du remblais, terre et cailloux) ou à la couleur de la
   // légende (aplat). Compte ses triangles (checkup, mesure de perf : e.trianglesMasses).
-  function _masseSol(lotTex, lotUni, z, trous) {
+  // ⚠️ contrat (décision produit) : un sol abaissé est un creusement dans la roche, pas un tas : son fond et son talus
+  // prennent le sol de pierre du niveau (`lotCreux`, matériau des sols des galeries sans gabarit : _matsPente, même
+  // carte et même grain HD, coordonnées en mètres / SOL.m comme les dalles) ; 🧱 coupé, la couleur de ce sol. Le
+  // remblai (part positive) garde terre et cailloux.
+  function _masseSol(lotTex, lotUni, z, trous, lotCreux) {
     const e = _e, t0 = performance.now(), m = _masseDe(z);
     if (!m) return;
     // Sol abaissé : le sol du niveau (ou du voisin construit) est troué sur le contour, comme la bouche d'un puits.
@@ -1197,7 +1228,8 @@
       _dessus(trous[bit] || (trous[bit] = new Lot()), m.ring, 0, BLANC);
     }
     const tex = e.textures === true;
-    const n = _maillageMasse(tex ? lotTex : lotUni, m, tex ? BLANC : _couleur("zones", "masse-sol", "fillColor"), tex);
+    const n = m.H < 0 && lotCreux ? _maillageMasse(lotCreux, m, BLANC, true, SOL.m)
+      : _maillageMasse(tex ? lotTex : lotUni, m, tex ? BLANC : _couleur("zones", "masse-sol", "fillColor"), tex);
     e.trianglesMasses = (e.trianglesMasses || 0) + n;
     e.trianglesMasseMax = Math.max(e.trianglesMasseMax || 0, n);
     e.msMasses = (e.msMasses || 0) + performance.now() - t0;
@@ -1594,8 +1626,7 @@
     const p0 = points[0];
     let parcouru = m && p0 ? ((p0.x / sc * 0.37 + p0.y / sc * 0.61) % m + m) % m : 0;
     _pavesLigne(points, sc, ep).forEach(function (q) {
-      _prisme(lot, q.ring, 0, h, col, true, m, m ? parcouru : undefined);
-      _piedMasse(lot, q.ring, col, m, m ? parcouru : undefined);
+      _prismePied(lot, q.ring, h, col, true, m, m ? parcouru : undefined);
       parcouru += q.l;
     });
   }
@@ -1883,8 +1914,7 @@
       } else if (_estLigne(s.type)) {
         _murLigne(lot, s.points, sc, _epaisseurLigne(s.type), hs, col, m);
       } else {
-        _prisme(lot, _anneau(s.points, sc), 0, hs, col, true, m);
-        _piedMasse(lot, _anneau(s.points, sc), col, m);
+        _prismePied(lot, _anneau(s.points, sc), hs, col, true, m);
       }
       if (!pente) _structureSurTremie(lot, s, hs, col, m);
     }
@@ -1892,7 +1922,7 @@
       const z = t.z[i], ring = _anneau(z.points, sc);
       if (ring.length < 3) continue;
       // Masse au sol : son dessus en talus (_masseSol), en chambre comme en tube ; ni prisme ni découpe aux parois.
-      if (z.type === "masse-sol") { _masseSol(remblaisTex, opaque, z, trous); continue; }
+      if (z.type === "masse-sol") { _masseSol(remblaisTex, opaque, z, trous, solPente); continue; }
       const pz = _penteDeLaZone(z);
       if (pz) {
         _zoneJonction(z, pz, { solPente: solPente, plafondPente: plafondPente, parois: parois, trous: trous });
@@ -2131,7 +2161,8 @@
     }
     // 🧱 : remblais et effondrement texturés (_zoneGalerie), le lot du remblais prend alors le matériau `remblais`.
     const tx = e.textures === true;
-    const lots = { trous: trous, opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau,
+    const solCreux = new Lot();
+    const lots = { trous: trous, solCreux: solCreux, opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau,
       remblais: remblais,
       eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
@@ -2156,6 +2187,7 @@
       groupe.add(me);
     };
     ajouter(sol, e.mats.solGalerie, ORDRE_SOL, "sol");
+    if (solCreux.p.length) ajouter(solCreux, _matsPente().sol, ORDRE_SOL, "sol");
     ajouter(plafond, e.mats.plafondGalerie, 0, "plafond");
     if (parois.p.length) _paroiTexturee();
     ajouter(parois, e.mats.paroi, 0, "parois");
@@ -2229,7 +2261,7 @@
     const e = _e, sc = e.sc, h = e.hauteur, ring = _anneau(z.points, sc);
     if (ring.length < 3) return;
     // Masse au sol : entière (les parois du tube cachent ce qui est dans la roche), pas découpée par pièce.
-    if (z.type === "masse-sol") { _masseSol(lots.remblais, lots.opaque, z, lots.trous); return; }
+    if (z.type === "masse-sol") { _masseSol(lots.remblais, lots.opaque, z, lots.trous, lots.solCreux); return; }
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     ring.forEach(function (q) {
       x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]);
@@ -2484,7 +2516,9 @@
     sp.userData.fond = coul.surface;
     sp.scale.set(PANNEAU.l * sp.userData.part, PANNEAU.l * sp.userData.part * sp.userData.ratio, 1);
     const x = ou ? ou[0] : p.x / _e.sc, z = ou ? ou[1] : p.y / _e.sc;
-    sp.position.set(x, Number.isFinite(o.y) ? o.y : Math.min(_solMasse(x, z) + _e.oeil + 0.4, _e.hauteur - 0.3), z);
+    // Sol local (masse au sol : remblai ou sol abaissé, _solMasse) : le panneau garde sa hauteur au-dessus de lui.
+    const solP = _solMasse(x, z);
+    sp.position.set(x, Number.isFinite(o.y) ? o.y + solP : Math.min(solP + _e.oeil + 0.4, _e.hauteur - 0.3), z);
     sp.renderOrder = 10;
     const jonction = passage ? (p._v3dJonction || p) : null;
     // `point` : le POI d'origine (celui de la carte), dont la fiche s'ouvre au toucher (_toucher).
@@ -2542,7 +2576,7 @@
       me.renderOrder = 3;
       halo.add(me);
     });
-    halo.position.set(sp.userData.poi.x, HALO.y, sp.userData.poi.z);
+    halo.position.set(sp.userData.poi.x, HALO.y + _solMasse(sp.userData.poi.x, sp.userData.poi.z), sp.userData.poi.z);
     halo.userData.famille = "halo";
     groupe.add(halo);
     sp.userData.halo = halo;
@@ -6253,6 +6287,14 @@
       cielVu: g.children.some(function (o) { return o.userData.famille === "ciel"; }),
       marches: v.relMarches || null };
     if (v.acces) Object.assign(v.stats, _statsAcces(v, lots, g));
+    // Masse au sol : un volume sans bouche ni trémie (formes des POI : plaque, ossuaire, outil, fontis, chatière,
+    // véhicule, porte…) est posé sur le sol local à son centre ; un passage troué (puits, galerie inclinée) reste au
+    // sol du niveau (ses bouches marquent le gabarit à y = 0).
+    if (!vv && v.genre !== "pente" && !n(lots.sol) && !n(lots.plafond) && !n(lots.plafondConduit) &&
+        !Object.keys(lots.trous).length && Number.isFinite(v.cx) && Number.isFinite(v.cz)) {
+      g.position.y = _solMasse(v.cx, v.cz);
+      v.stats.solLocal = +g.position.y.toFixed(3);
+    }
     e.scene.add(g);
     v.obj = g;
     e.sale = true;
@@ -14537,6 +14579,7 @@
         return Object.assign({ genre: v.genre, tag: v.tag || null, forme: v.forme || null, moyen: v.moyen || null,
           sol: !!v.sol, plafond: !!v.plafond, ciel: !!v.ciel, grille: !!v.grille, echelons: !!v.echelons,
           passage: !!v.passage, monte: v.monte === undefined ? null : v.monte, construit: !!v.obj, x: v.x, y: v.y,
+          solLocal: v.obj ? +v.obj.position.y.toFixed(3) : null,
           traverse: Number.isInteger(v.traverse) ? v.traverse : null,
           bouche: v.genre === "poi" ? [[-v.a, -v.b], [v.a, -v.b], [v.a, v.b], [-v.a, v.b]].map(function (q) {
             return _repere(v)(q[0], q[1]);
@@ -14593,6 +14636,7 @@
       boites: boites,
       panneaux: Array.from(e.panneaux).map(function (sp) {
         return { visible: sp.visible && !!sp.parent && sp.parent.visible, x: sp.position.x, z: sp.position.z,
+          y: +sp.position.y.toFixed(3), haloY: sp.userData.halo ? +sp.userData.halo.position.y.toFixed(3) : null,
           nom: sp.userData.poi.nom, jonction: !!sp.userData.poi.jonction, ecran: _ecran(sp.position),
           dansVolume: !!sp.userData.poi.anneau, depthTest: sp.material.depthTest, ordre: sp.renderOrder,
           genre: sp.userData.poi.genre, danger: !!sp.userData.poi.danger, favori: !!sp.userData.poi.favori,
