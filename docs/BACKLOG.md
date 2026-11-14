@@ -51,9 +51,10 @@
 
 ## Ensuite
 
-- **Masse au sol : pente réglable par zone (rampe)** — décidé 14/11 après « talus honnête » : pente du talus par zone
-  (option b de `ETUDE_REMBLAIS.md` § 6), pour les galeries hautes où 30° ne suffit pas ou gêne.
-  `qui: Claude · action: QCM (saisie, sens de la rampe, 2D) puis lot · fini: pente par zone en 2D et 3D, checkup
+- **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : « Placer la pente » puis toucher le bord bas ;
+  pente déduite (hauteur ÷ longueur jusqu'au bord opposé) ; les autres bords en front vertical ; chevrons en 2D vers le
+  haut. Sans rampe placée, talus 30° automatique inchangé. Priorité KARMA (« un gros plus »), juste après talus honnête.
+  `qui: Claude · action: lot après talus honnête · fini: rampe en 2D (chevrons) et 3D, fiche, KMZ, checkup
   · depuis: 14/11/2026 · taille: M`
 - **Sol abaissé qui débouche sur le niveau du dessous** — décidé 14/11 (après le lot 4 de la masse au sol) : en 3D, le
   plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
